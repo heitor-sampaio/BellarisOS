@@ -77,7 +77,10 @@ test.describe('o pré-atendimento: a ficha da rede e o pendente do agendamento',
   })
 
   test('as ações das fichas de procedimento não editam nem apagam a de pré-atendimento', async ({ browser }) => {
-    const gestor = await criarMembro(`pag${marca}`, { tenant: A.tenantId, permissoes: [{ modulo: 'forms', nivel: 'MANAGE' }] })
+    // Pela Admin da rede, que é quem mexe nas fichas desde 18/11 (o Heitor:
+    // "Configuração da rede toda só pela conta admin") — a recusa de quem não é
+    // a Admin deixaria a ficha intacta sem provar nada.
+    const gestor = await criarMembro(`pag${marca}`, { tenant: A.tenantId, donoDaRede: true, permissoes: [] })
     const ctx = await browser.newContext({ storageState: gestor.estado })
     const page = await ctx.newPage()
     try {
@@ -185,20 +188,25 @@ test.describe('o pré-atendimento: a equipe edita a ficha e a anamnese', () => {
   let B: OutraRede
   let gestor: MembroDeTeste
   let daUnidade: MembroDeTeste
+  let semSerAdmin: MembroDeTeste
   let daRede: MembroDeTeste
 
   test.beforeAll(async () => {
     B = await criarOutraRede(`pb${marca}`)
     const fichas = [{ modulo: 'forms' as const, nivel: 'MANAGE' as const }]
-    gestor = await criarMembro(`pbg${marca}`, { tenant: B.tenantId, permissoes: fichas })
+    // A ficha de saúde é configuração da rede toda: só a Admin da rede (o
+    // Heitor, 18/11: "Configuração da rede toda só pela conta admin"). As
+    // Fichas em Gerenciar, de uma unidade ou da rede inteira, são o "não pode".
+    gestor = await criarMembro(`pbg${marca}`, { tenant: B.tenantId, donoDaRede: true, permissoes: [] })
     daUnidade = await criarMembro(`pbu${marca}`, { tenant: B.tenantId, branchId: B.branchId, permissoes: fichas })
+    semSerAdmin = await criarMembro(`pbn${marca}`, { tenant: B.tenantId, permissoes: fichas })
     daRede = await criarMembro(`pbc${marca}`, {
       tenant: B.tenantId,
       permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'medical_records', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }],
     })
   })
   test.afterAll(async () => {
-    await daRede?.limpar(); await daUnidade?.limpar(); await gestor?.limpar()
+    await daRede?.limpar(); await daUnidade?.limpar(); await semSerAdmin?.limpar(); await gestor?.limpar()
     await B?.limpar()
   })
 
@@ -230,6 +238,21 @@ test.describe('o pré-atendimento: a equipe edita a ficha e a anamnese', () => {
       await chamarAcao(u, 'actions/pre-atendimento.ts', 'salvarFichaDePreAtendimento', `/e2e-un-pb${marca}/settings?tab=fichas`,
         [await comCampo({ id: 'so-da-unidade', type: 'text', label: 'Da unidade' })])
       expect(await idsDaFicha(), 'quem tem unidade fixa não muda a ficha da rede').not.toContain('so-da-unidade')
+
+      // "A rede inteira" com as Fichas em Gerenciar, sem ser a Admin: também não.
+      const comoSemSerAdmin = await browser.newContext({ storageState: semSerAdmin.estado })
+      try {
+        const n = await comoSemSerAdmin.newPage()
+        const r = await chamarAcao(n, 'actions/pre-atendimento.ts', 'salvarFichaDePreAtendimento', '/admin/settings?tab=fichas',
+          [await comCampo({ id: 'sem-ser-admin', type: 'text', label: 'Sem ser a Admin' })])
+        expect(r.texto).toContain('Esta configuração é só da Admin da rede.')
+        expect(await idsDaFicha(), 'quem não é a Admin da rede não muda a ficha').not.toContain('sem-ser-admin')
+        const envio = await chamarAcao(n, 'actions/pre-atendimento.ts', 'definirEnvioDoPreAtendimento', '/admin/settings?tab=fichas',
+          [{ envio: true, validadeMeses: 12 }])
+        expect(envio.texto).toContain('Esta configuração é só da Admin da rede.')
+      } finally {
+        await comoSemSerAdmin.close()
+      }
     } finally {
       await comoGestor.close(); await comoUnidade.close()
     }

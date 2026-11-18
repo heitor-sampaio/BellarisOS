@@ -1,11 +1,11 @@
 'use client'
 
 import React, { useActionState, useEffect, useEffectEvent, useMemo, useRef, useState, useTransition } from 'react'
-import { Plus, Lock, Trash2, Pencil, Check, X, CheckCircle2, AlertTriangle, Users } from 'lucide-react'
+import { Plus, Lock, Trash2, Pencil, Check, X, CheckCircle2, AlertTriangle, Users, Copy } from 'lucide-react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
-import { createRole, updateRole, deleteRole } from '@/actions/roles'
+import { createRole, updateRole, deleteRole, duplicarCargo } from '@/actions/roles'
 import { saveRolePermissions } from '@/actions/permissions'
 import { escopoInicial } from '@/lib/cargos/escopo-inicial'
 import { cargoEscolhido } from '@/lib/cargos/cargo-escolhido'
@@ -134,7 +134,8 @@ export function RolesEditor({ roles, permsByRole, tabsByRole, canSeeTeam, foraDo
               Cargo novo: começa sem acesso nenhum.
             </p>
             <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
-              Dê o nome ao lado e clique em Criar. Depois, escolha aqui o que ele acessa.
+              {/* A4 da 24ª: o campo fica na lista de cargos (no celular, acima). */}
+              Dê o nome na lista de cargos e clique em Criar. Depois, escolha aqui o que ele acessa.
             </p>
           </div>
         )}
@@ -211,6 +212,17 @@ function RoleListPanel({
     if (createState && 'success' in createState && createState.success) aoCriar(createState.role?.id ?? null)
   }, [createState])
 
+  // A15 da 15ª: "Duplicar" — "Cópia de X" com a matriz e as abas; abre a cópia.
+  function duplicar(role: EditorRole) {
+    setError(null)
+    startTransition(async () => {
+      const res = await duplicarCargo(role.id)
+      if ('error' in res) { setError(res.error); return }
+      toast.success(`Cargo “${res.role.label}” criado.`)
+      onSelect(res.role.id)
+    })
+  }
+
   function confirmDelete() {
     const role = toDelete
     if (!role) return
@@ -251,7 +263,7 @@ function RoleListPanel({
           }}
         >
           <input
-            name="label" type="text" required autoFocus
+            name="label" type="text" required autoFocus aria-label="Nome do cargo"
             className="field" placeholder="Ex.: Agenda e caixa"
             style={{ background: 'var(--surface)' }}
           />
@@ -285,6 +297,7 @@ function RoleListPanel({
             deleting={pending}
             onSelect={() => onSelect(role.id)}
             onRename={() => setRenaming(role.id)}
+            onDuplicate={() => duplicar(role)}
             onDelete={() => setToDelete(role)}
           />
         ),
@@ -310,7 +323,7 @@ function RoleListPanel({
 }
 
 function RoleCard({
-  role, perms, selected, unsaved, canSeeTeam, deleting, onSelect, onRename, onDelete,
+  role, perms, selected, unsaved, canSeeTeam, deleting, onSelect, onRename, onDuplicate, onDelete,
 }: {
   role: EditorRole
   perms: Partial<Record<AppModule, RoleModulePermission>>
@@ -320,6 +333,7 @@ function RoleCard({
   deleting: boolean
   onSelect: () => void
   onRename: () => void
+  onDuplicate: () => void
   onDelete: () => void
 }) {
   const count = role.memberCount ?? 0
@@ -361,6 +375,10 @@ function RoleCard({
           <span style={{ display: 'inline-flex', gap: 2, flexShrink: 0 }}>
             <button type="button" onClick={e => { e.stopPropagation(); onRename() }} title="Renomear" style={iconBtn()}>
               <Pencil size={12} />
+            </button>
+            <button type="button" data-duplicar-cargo onClick={e => { e.stopPropagation(); onDuplicate() }} disabled={deleting}
+              title="Duplicar" aria-label={`Duplicar o cargo ${role.label}`} style={iconBtn()}>
+              <Copy size={12} />
             </button>
             <button type="button" onClick={e => { e.stopPropagation(); onDelete() }} disabled={deleting} title="Excluir" style={iconBtn()}>
               <Trash2 size={12} />
@@ -1078,11 +1096,15 @@ function SegmentedLevel({ options, value, travado = false, motivo, onChange }: {
       {(['NONE', 'VIEW', 'MANAGE'] as const).map(lvl => {
         const available = options.includes(lvl)
         const active    = value === lvl
+        // A3 da 24ª (princípio 3): travado, os outros níveis tinham cara de
+        // clicáveis — só o que vale aparece, com o cadeado (a largura fica).
+        const escondido = !available || (travado && !active)
         return (
           <button
             key={lvl}
             type="button"
             disabled={!available || travado}
+            aria-hidden={escondido && available ? true : undefined}
             aria-pressed={active}
             onClick={() => onChange(lvl)}
             title={!available ? `${LEVEL_LABELS[lvl]} não se aplica a esta área` : travado ? motivo : undefined}
@@ -1091,10 +1113,12 @@ function SegmentedLevel({ options, value, travado = false, motivo, onChange }: {
               // Largura fixa mesmo quando o nível não existe para o módulo: sem
               // isto a coluna direita serrilha entre áreas de 2 e 3 níveis.
               width: 86,
-              visibility: available ? 'visible' : 'hidden',
+              visibility: escondido ? 'hidden' : 'visible',
               cursor: travado ? 'not-allowed' : available ? 'pointer' : 'default',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4,
             }}
           >
+            {travado && active && <Lock size={11} aria-hidden="true" />}
             {LEVEL_LABELS[lvl]}
           </button>
         )

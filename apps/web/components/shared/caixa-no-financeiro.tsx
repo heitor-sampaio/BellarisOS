@@ -67,7 +67,7 @@ export function CsvDoFechamentoDoDia({ unidades, unidadeInicial }: {
   const [aberta, setAberta] = useState(false)
   const [dia, setDia] = useState(hoje)
   const [unidade, setUnidade] = useState(
-    unidades.find(u => u.id === unidadeInicial)?.id ?? (unidades.length === 1 ? unidades[0]!.id : ''))
+    unidades.find(u => u.id === unidadeInicial)?.id ?? (unidades.length === 1 ? unidades[0]!.id : 'TODAS'))
   const [erro, setErro] = useState<string | null>(null)
   const [pendente, start] = useTransition()
 
@@ -89,7 +89,7 @@ export function CsvDoFechamentoDoDia({ unidades, unidadeInicial }: {
   return (
     <>
       <button type="button" className="btn-secondary" onClick={() => {
-        setUnidade(unidades.find(u => u.id === unidadeInicial)?.id ?? (unidades.length === 1 ? unidades[0]!.id : ''))
+        setUnidade(unidades.find(u => u.id === unidadeInicial)?.id ?? (unidades.length === 1 ? unidades[0]!.id : 'TODAS'))
         setErro(null); setAberta(true)
       }}>
         <Download size={14} aria-hidden /> CSV do fechamento do dia
@@ -115,7 +115,8 @@ export function CsvDoFechamentoDoDia({ unidades, unidadeInicial }: {
               <label className="field-label" style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                 Unidade
                 <select className="filtro-select" value={unidade} onChange={e => setUnidade(e.target.value)}>
-                  <option value="">Selecione…</option>
+                  {/* A24 da 24ª: sem a unidade recortada, todas de uma vez (era "Selecione…"). */}
+                  <option value="TODAS">Todas as unidades</option>
                   {unidades.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                 </select>
               </label>

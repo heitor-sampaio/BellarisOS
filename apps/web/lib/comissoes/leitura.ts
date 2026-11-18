@@ -200,9 +200,16 @@ export async function linhasDoAtendimento(tenantId: string, appt: {
   const pacote = doCliente?.service_packages
   if (sessaoDePacote && doCliente && pacote) {
     // O pacote trazido de fora (F35) sem valor de referência: a sessão não tem
-    // valor, e a comissão de execução é R$ 0 (princípio 4 — não se chuta o
-    // valor de outro pacote; decisão 1 do Heitor).
-    if (doCliente.de_fora && sessaoDePacote.preco == null) return []
+    // valor. O percentual dá R$ 0 (princípio 4 — não se chuta o valor de outro
+    // pacote); o "R$ fixo por sessão" é pago, porque não depende do valor
+    // (item 11 das correções da auditoria, decisão do Claude pelo princípio 2,
+    // 2026-11-18: é o valor que a rede escolheu; era R$ 0 também).
+    if (doCliente.de_fora && sessaoDePacote.preco == null) {
+      const procedimento = (sessaoDePacote.procedure_id as string | null) ?? pacote.procedure_id ?? appt.procedure_id
+      const regra = regraDaSessaoDePacote(comissaoDoPacoteDaLinha(doCliente).execucao, regras, procedimento, gerais)
+      if (!regra || regra.tipo !== 'FIXED_AMOUNT') return []
+      return [{ procedure_id: procedimento, origem: 'PACOTE', treatment_plan_id: null, regra_tipo: regra.tipo, regra_valor: regra.valor, preco: 0 }]
+    }
     // A parte do preço desta SESSÃO (rateio da venda, pelo preço de tabela de
     // cada procedimento). Vendido antes do rateio: preço da venda ÷ sessões; de
     // antes de existir venda: o do catálogo.

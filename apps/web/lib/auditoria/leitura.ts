@@ -275,8 +275,15 @@ async function nomesDaAuditoria(ctx: TenantContext, registros: readonly Registro
   const medidasDosProdutos = Object.fromEntries(((p ?? []) as Partial<UnidadesDoProduto & { id: string }>[])
     .map(x => [x.id as string, x.unit ? unidadeDoInsumo({ unit: x.unit, consumption_unit: x.consumption_unit ?? null, units_per_package: x.units_per_package ?? null }) : ''])
     .filter(([, medida]) => medida))
+  // A10 da 24ª: a embalagem e o rendimento dela — o custo corrigido do lote se diz por embalagem.
+  const embalagensDosProdutos = Object.fromEntries(((p ?? []) as Partial<UnidadesDoProduto & { id: string }>[])
+    .filter(x => x.unit)
+    .map(x => [x.id as string, {
+      unidade: x.unit as string,
+      fator: x.consumption_unit && Number(x.units_per_package) > 0 ? Number(x.units_per_package) : 1,
+    }]))
   return {
-    clientes: mapa(c), membros: mapa(m), unidades: mapa(u),
+    clientes: mapa(c), membros: mapa(m), unidades: mapa(u), embalagensDosProdutos,
     // D2 da 23ª: o fuso de cada unidade, para a hora do agendamento citado.
     fusos: Object.fromEntries(((u ?? []) as { id: string; fuso: string | null }[]).map(b => [b.id, fusoValido(b.fuso)])),
     produtos: mapa(p), medidasDosProdutos, cargos: cargosPorPermissao,

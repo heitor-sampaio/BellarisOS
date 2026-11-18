@@ -22,6 +22,13 @@ export interface PreviaDoEstornoDoCredito {
   bonusSai: number
   /** As duas formas de o bônus sair, com o que volta em cada uma (do banco). */
   opcoesDoBonus: { INTEIRO: { volta: number; bonusSai: number }; PROPORCIONAL: { volta: number; bonusSai: number } } | null
+  /**
+   * O crédito CONCEDIDO (o "Conceder crédito", o bônus de outra venda) que está no
+   * saldo e fica com a cliente: não volta em dinheiro (auditoria das regras,
+   * 2026-11-18 — decisão do Claude pelos princípios: "não vamos fazer as
+   * clinicas perderem dinheiro").
+   */
+  concedidoFica: number
 }
 
 const opcao = (v: unknown) => {
@@ -44,6 +51,7 @@ export function lerPreviaDoEstornoDoCredito(v: unknown): PreviaDoEstornoDoCredit
     parcial: lerParcial(j.parcial),
     bonus:    num(j.bonus),
     bonusSai: num(j.bonus_sai),
+    concedidoFica: num(j.concedido_fica),
     opcoesDoBonus: j.opcoes_do_bonus && typeof j.opcoes_do_bonus === 'object'
       ? { INTEIRO: opcao((j.opcoes_do_bonus as Record<string, unknown>).INTEIRO), PROPORCIONAL: opcao((j.opcoes_do_bonus as Record<string, unknown>).PROPORCIONAL) }
       : null,

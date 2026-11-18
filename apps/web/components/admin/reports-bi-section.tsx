@@ -12,6 +12,7 @@ import { getAtendimentosSemReceita } from '@/lib/metrics/fechamento-extra'
 import { recorteDosModulos } from '@/lib/metrics/escopo'
 import { SEM_ESTOQUE_NO_RESULTADO } from '@/lib/metrics/resultado'
 import { getPerdas } from '@/lib/metrics/perdas'
+import { getTransferenciasDeEstoque } from '@/lib/metrics/transferencias'
 import { getEntradasDeEstoque } from '@/lib/metrics/contadora'
 import { getQuemAtende } from '@/lib/metrics/relatorio'
 import {
@@ -149,6 +150,7 @@ export async function ReportsBiSection({
     seriesDoResultado,
     perdas,
     agendaDoPeriodo,
+    transferencias,
   ] = await Promise.all([
     getRelatorioDosModulos({
       tenantId: ctx.tenantId!, branchIds,
@@ -225,6 +227,12 @@ export async function ReportsBiSection({
     tab === 'overview'
       ? getCoreDosModulos({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: periodInfo.fullTo, recorte })
       : Promise.resolve(null),
+    // As transferências entre unidades (A33 da 20ª): o que saiu e o que entrou
+    // em cada unidade do recorte, com o custo — como as perdas, do estoque da
+    // unidade. A rede de uma unidade só não transfere: nem se consulta.
+    needBatches && !umaUnidade
+      ? getTransferenciasDeEstoque({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: periodInfo.fullTo })
+      : Promise.resolve(undefined),
   ])
 
   // Quanto cada um ganha é do FINANCEIRO de todos: a aba Profissionais é de
@@ -334,6 +342,7 @@ export async function ReportsBiSection({
         comercial={comercial}
         vendas={vendas}
         perdas={perdas}
+        transferencias={transferencias}
         // A31 da 10ª: a compra (as entradas de estoque, com fornecedor e nota) fica fora do
         // resultado, e a contadora não a via (não abre o Estoque).
         comprasNoEstoque={needInstall ? await getEntradasDeEstoque({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: periodInfo.fullTo }) : undefined}

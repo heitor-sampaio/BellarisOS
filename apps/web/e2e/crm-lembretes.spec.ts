@@ -8,9 +8,11 @@ import { dayKeyTZ, addDaysTZ } from '../lib/datetime'
  * Os lembretes do CRM (9ª simulação, 2026-11-07), pelo cron de verdade.
  * Princípio 6: são AVISOS no sino de quem tem o lead — o card não anda.
  * - A42: o dia do retorno combinado chega → "Retorno de hoje: X".
- * - A45: a cliente ligada comprou com a oportunidade aberta → "X comprou …:
- *   marque o ganho" (quem criou o lead não é quem vendeu).
- * Uma vez cada: rodar o cron de novo não repete. Compartilhado: chama o cron
+ * - A45 (desde 2026-11-18, auditoria das regras): o ganho a marcar NÃO é mais
+ *   do cron — é o modelo "Marque o ganho" das Automações (rascunho). A compra
+ *   da cliente ligada grava o fato `lead.cliente_comprou` (gatilho no banco),
+ *   e o cron do CRM não avisa nada dela.
+ * Uma vez: rodar o cron de novo não repete. Compartilhado: chama o cron
  * (que passa por todas as redes); os dados são de uma rede [e2e] própria.
  */
 
@@ -32,7 +34,7 @@ test.afterAll(async () => {
   await rede?.limpar()
 })
 
-test('A42 e A45: o cron avisa quem tem o lead — o retorno do dia e o ganho a marcar —, uma vez, sem mover o card', async ({ request }) => {
+test('A42: o cron avisa quem tem o lead do retorno do dia, uma vez, sem mover o card; o ganho a marcar é o fato das Automações', async ({ request }) => {
   const segredo = process.env.CRON_SECRET
   test.skip(!segredo, 'CRON_SECRET não está no .env.local')
   const { data: f } = await db().from('crm_funnels').insert({ tenant_id: rede.tenantId, name: 'Vendas', is_default: true, position: 0 }).select('id').single<{ id: string }>()
@@ -69,16 +71,21 @@ test('A42 e A45: o cron avisa quem tem o lead — o retorno do dia e o ganho a m
   await rodar()
   const lista = await avisos()
   expect(lista.map(a => a.title).sort()).toEqual([
-    `Marque o ganho: ${nome('Renata comprou')}`,
     `Retorno atrasado: ${nome('Retorno atrasado')} (${ontem.slice(8, 10)}/${ontem.slice(5, 7)})`,
   ])
   const retorno = lista.find(a => a.data.leadId === deHoje)!
   expect(retorno.body).toContain('Ligar sobre o orçamento')
   expect(retorno.data.caminho).toBe(`/admin/oportunidades?lead=${deHoje}`)
-  expect(lista.find(a => a.data.leadId === comprou)!.body).toContain('Plano Harmonização')
+  expect(lista.find(a => a.data.leadId === comprou)).toBeUndefined()
+  // A compra virou o fato do motor, uma linha para a oportunidade aberta.
+  const { data: fatos } = await db().from('domain_events').select('nome, dados, origem')
+    .eq('tenant_id', rede.tenantId).eq('nome', 'lead.cliente_comprou').eq('entidade_id', comprou)
+  expect(fatos).toHaveLength(1)
+  expect(fatos![0]!.origem).toBe('banco')
+  expect((fatos![0]!.dados as { compra?: string; responsavelId?: string })).toMatchObject({ compra: 'Plano Harmonização', responsavelId: dono })
 
   // Nada se move sozinho, e o aviso não se repete.
   expect((await db().from('leads').select('crm_stage_id').eq('id', comprou).single()).data?.crm_stage_id).toBe(novo!.id)
   await rodar()
-  expect(await avisos()).toHaveLength(2)
+  expect(await avisos()).toHaveLength(1)
 })

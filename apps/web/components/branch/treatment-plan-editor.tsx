@@ -9,10 +9,15 @@ import { situacaoDoPlano } from '@/lib/plano-de-tratamento/situacao'
 import { Dica } from '@/components/shared/dica'
 import { textoDeQuemConclui } from '@/lib/equipe/textos-de-quem-pode'
 import type { RetratoDoCancelamento } from '@/lib/plano-de-tratamento/retrato-do-cancelamento'
+import { CampoDoDesconto, contaDoDesconto, descontoDoEstado, type EstadoDoDesconto } from '@/components/shared/campo-do-desconto'
+import { estadoDoCombinado, totalComOCombinado, type DescontoCombinado } from '@/lib/plano-de-tratamento/desconto-combinado'
+import type { Desconto } from '@/lib/vendas/desconto'
 
 export interface TreatmentPlanEditorRef {
   getSessions: () => PlanSessionInput[]
   getNotes:    () => string
+  /** 22ª A20: o desconto do plano combinado no editor (nulo: sem desconto). */
+  getDesconto: () => Desconto | null
 }
 
 // -- Tipos exportados ----------------------------------------------------------
@@ -53,6 +58,8 @@ export interface ExistingPlan {
   sessions: ExistingPlanSession[]
   /** D4 da 12ª: o retrato do cancelado (getPlanoParaEditar). */
   cancelamento?: RetratoDoCancelamento | null
+  /** 22ª A20: o desconto do plano combinado no editor. */
+  descontoCombinado?: DescontoCombinado | null
 }
 
 // Kept for backward compat with appointment-session.tsx state
@@ -139,6 +146,11 @@ interface Props {
    * (o botão que ela não tem). Nulo: finaliza.
    */
   quemFinaliza?:        string[] | null
+  /**
+   * 23ª A21: a cada mudança, as sessões e as observações da tela — o plano
+   * novo do Planejamento fica no rascunho da aba até o "Salvar plano".
+   */
+  onMudou?:             (plano: { sessions: ExistingPlanSession[]; notes: string }) => void
 }
 
 // -- Helpers -------------------------------------------------------------------
@@ -450,7 +462,7 @@ function SessionCard({
 
 export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(function TreatmentPlanEditor({
   appointmentId, slug, procedures, existingPlan, hideActions, availableProducts = [], onSalvarPorPlano, branchId, opcional = false, quemFinaliza = null,
-  podeAnotar = true, onMudarProcedimentos,
+  podeAnotar = true, onMudarProcedimentos, onMudou,
 }, ref) {
   const [sessions,  setSessions]  = useState<EditorSession[]>(() => fromExisting(existingPlan))
   const avisarProcedimentos = useEffectEvent((lista: EditorSession[]) =>
@@ -468,6 +480,17 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
     return () => { vivo = false }
   }, [branchId])
   const [notes,     setNotes]     = useState(existingPlan?.notes ?? '')
+  // 22ª A20: o desconto do plano ("as três por 420"), em R$ ou %, sobre o total das sessões.
+  const [desconto,  setDesconto]  = useState<EstadoDoDesconto>(() => estadoDoCombinado(existingPlan?.descontoCombinado))
+  const avisarMudanca = useEffectEvent((lista: EditorSession[], texto: string) =>
+    onMudou?.({
+      sessions: lista.map(s => ({ procedures: s.procs.filter(p => p.procedureId).map(p => ({
+        procedureId: p.procedureId, name: p.name, price: p.price,
+        products: p.products.map(pr => ({ productId: pr.productId, name: pr.name, unit: pr.unit, quantity: pr.quantity })),
+      })) })),
+      notes: texto,
+    }))
+  useEffect(() => { avisarMudanca(sessions, notes) }, [sessions, notes])
   const [msg,       setMsg]       = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -480,6 +503,7 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
     (sum, s) => sum + s.procs.reduce((ps, p) => ps + p.price, 0),
     0,
   )
+  const contaDoPlano = contaDoDesconto(grandTotal, desconto)
 
   // A mesma conta do checkout: a dica não promete o que ele não aplica.
   const pacoteDaDica = pacotes.length
@@ -617,6 +641,7 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
   useImperativeHandle(ref, () => ({
     getSessions: toActionSessions,
     getNotes:    () => notes,
+    getDesconto: () => descontoDoEstado(desconto),
   }))
 
   // -- Salvar rascunho -----------------------------------------------
@@ -624,7 +649,7 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
   function handleSave() {
     startTransition(async () => {
       setMsg(null)
-      const result = await saveTreatmentPlan(appointmentId, toActionSessions(), notes, slug)
+      const result = await saveTreatmentPlan(appointmentId, toActionSessions(), notes, slug, descontoDoEstado(desconto))
       setMsg(result.error ? `Erro: ${result.error}` : 'Rascunho salvo.')
     })
   }
@@ -640,7 +665,7 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
     }
     startTransition(async () => {
       setMsg(null)
-      const saveResult = await saveTreatmentPlan(appointmentId, toActionSessions(), notes, slug)
+      const saveResult = await saveTreatmentPlan(appointmentId, toActionSessions(), notes, slug, descontoDoEstado(desconto))
       if (saveResult.error) { setMsg(`Erro: ${saveResult.error}`); return }
       const propResult = await proposeTreatmentPlan(saveResult.planId!, slug)
       const erroDaProposta = (propResult as { error?: string } | undefined)?.error
@@ -683,6 +708,16 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
               </div>
             </div>
           ))}
+          {existingPlan?.descontoCombinado && (() => {
+            const subtotal = (existingPlan.sessions ?? []).reduce((t, s) => t + s.procedures.reduce((x, p) => x + p.price, 0), 0)
+            const c = totalComOCombinado(subtotal, existingPlan.descontoCombinado)
+            return c.reais > 0 ? (
+              <p data-desconto-do-plano-combinado style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                <span>Desconto do plano: −{fmtBRL(c.reais)}</span>
+                <strong>Total {fmtBRL(c.total)}</strong>
+              </p>
+            ) : null
+          })()}
           {existingPlan?.notes && (
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', fontStyle: 'italic', padding: '8px 12px', background: 'var(--bg-app)', borderRadius: 8 }}>
               “{existingPlan.notes}”
@@ -712,7 +747,7 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
                 </span>
               )}
               <span data-desconto-no-checkout style={{ display: 'block' }}>
-                O desconto é dado no checkout do plano (no PDV, ou no “Fechar agora”): aqui vão os preços de tabela.
+                O “Desconto do plano” vai pronto ao checkout do plano (no PDV, ou no “Fechar agora”), onde ainda se ajusta. A cliente vê o total com ele.
               </span>
             </Dica>
           </h3>
@@ -724,8 +759,13 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
           </p>
         </div>
         {grandTotal > 0 && (
-          <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--brand)', letterSpacing: '-0.01em' }}>
-            {fmtBRL(grandTotal)}
+          <span data-total-do-plano style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0 }}>
+            {contaDoPlano.reais > 0 && (
+              <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', textDecoration: 'line-through' }}>{fmtBRL(grandTotal)}</span>
+            )}
+            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--brand)', letterSpacing: '-0.01em' }}>
+              {fmtBRL(contaDoPlano.liquido)}
+            </span>
           </span>
         )}
       </div>
@@ -790,6 +830,13 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
               Há o pacote <strong>{pacoteDaDica.nome}</strong> por <strong>{fmtBRL(pacoteDaDica.preco)}</strong> — no checkout a economia
               ({fmtBRL(pacoteDaDica.economia)}) entra como desconto.
             </p>
+          </div>
+        )}
+
+        {/* 22ª A20: o valor fechado do plano sem mexer em cada sessão. */}
+        {grandTotal > 0 && (
+          <div data-desconto-do-plano>
+            <CampoDoDesconto estado={desconto} aoMudar={setDesconto} total={grandTotal} rotulo="Desconto do plano (opcional)" />
           </div>
         )}
 

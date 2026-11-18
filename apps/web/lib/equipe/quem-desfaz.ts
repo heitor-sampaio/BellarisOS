@@ -38,15 +38,15 @@ export async function quemRecebeNaUnidade(tenantId: string, branchId: string | n
 }
 
 /**
- * A9 da 20ª simulação (princípios 1 e 3): quem CONCLUI o atendimento — o
- * Prontuário em Gerenciar, de todos (com "só os meus", conclui só os dela).
- * D1 da 22ª (princípio 3): E a Agenda de todos (em Ver ou Gerenciar) — com a
- * Agenda "só os meus", a pessoa nem abre o atendimento de outra
- * (`deOutroProfissional`), e a lista mandava pedir a ela. A Admin da rede
- * entra sempre.
+ * Quem CONCLUI o atendimento de outra pessoa: o Atendimento em Gerenciar, de
+ * todos (o Heitor, 2026-11-18: "Só inicia e conclui atendimento quem tem
+ * gerenciar no atendimento"; era o Prontuário em Gerenciar, A9 da 20ª). D1 da
+ * 22ª (princípio 3): E a Agenda de todos (em Ver ou Gerenciar) — com a Agenda
+ * "só os meus", a pessoa nem abre o atendimento de outra
+ * (`deOutroProfissional`). A Admin da rede entra sempre.
  */
 export async function quemConcluiOAtendimento(tenantId: string, branchId: string | null): Promise<string[]> {
-  return quemTemNoNivel(tenantId, branchId, 'medical_records', ['MANAGE'], {
+  return quemTemNoNivel(tenantId, branchId, 'atendimento', ['MANAGE'], {
     soDeTodos: true, eTambem: { modulo: 'agenda', niveis: ['VIEW', 'MANAGE'] },
   })
 }
@@ -81,12 +81,31 @@ export async function quemMudaNaRede(tenantId: string, modulos: readonly AppModu
 }
 
 /**
+ * Quem muda a configuração da REDE TODA desde 18/11: só a Admin da rede (o
+ * Heitor: "só pela conta admin"; `mexeNaConfigDaRede`). As ativas, pelo cargo
+ * de sistema gravado — a aba das Configurações diz os nomes (A5 da 14ª).
+ */
+export async function adminsAtivasDaRede(tenantId: string): Promise<string[]> {
+  return quemTemNoNivel(tenantId, null, [], ['MANAGE'], { soAdmin: true })
+}
+
+/**
  * Quem MARCA A CHEGADA de um atendimento que não é dele (A10 da 19ª; D20): a
  * Agenda em Gerenciar de TODOS — com "só os meus", a pessoa marca só a dos
  * próprios, e não a de quem pede. A Admin da rede entra sempre.
  */
 export async function quemMarcaAChegada(tenantId: string, branchId: string | null): Promise<string[]> {
   return quemTemNoNivel(tenantId, branchId, 'agenda', ['MANAGE'], { soDeTodos: true })
+}
+
+/**
+ * Quem MUDA as comissões (A24 da 17ª simulação, 2026-11-17): a configuração
+ * das comissões é da rede toda — desde 18/11, só da Admin da rede ("só pela
+ * conta admin"; `actions/comissoes.ts`). A recusa do Copilot diz os nomes.
+ */
+export async function quemMudaAsComissoes(tenantId: string): Promise<string[]> {
+  // Desde 18/11 a configuração das comissões é só da Admin da rede.
+  return adminsAtivasDaRede(tenantId)
 }
 
 function quemTemEmGerenciar(tenantId: string, branchId: string | null, modulo: AppModule | readonly AppModule[]): Promise<string[]> {
@@ -99,6 +118,8 @@ async function quemTemNoNivel(
     soDeTodos?: boolean
     /** O cargo precisa ter TAMBÉM este módulo num destes níveis (com o mesmo `soDeTodos`). */
     eTambem?: { modulo: AppModule; niveis: readonly ('VIEW' | 'MANAGE')[] }
+    /** Só a Admin da rede (o cargo de sistema), sem olhar módulo. */
+    soAdmin?: boolean
   } = {},
 ): Promise<string[]> {
   const admin = createAdminClient()
@@ -111,7 +132,7 @@ async function quemTemNoNivel(
   }, 'carregar os cargos com o módulo')
   const modulos = typeof modulo === 'string' ? [modulo] : [...modulo]
   const [perms, tambem, admins] = await Promise.all([
-    cargosCom(modulos, niveis),
+    opcoes.soAdmin || !modulos.length ? Promise.resolve([] as { role_id: unknown }[]) : cargosCom(modulos, niveis),
     opcoes.eTambem ? cargosCom([opcoes.eTambem.modulo], opcoes.eTambem.niveis) : Promise.resolve(null),
     lerTodas((de, ate) => admin.from('tenant_roles').select('id')
       .eq('tenant_id', tenantId).eq('key', 'NETWORK_ADMIN').eq('is_system', true)

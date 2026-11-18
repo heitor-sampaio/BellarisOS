@@ -1,6 +1,7 @@
 import 'server-only'
 import type { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
+import { lerRegrasDoPacote, recusaDaSessaoNaoLiberada } from '@/lib/pacotes/regras'
 
 /**
  * Agendar usando o que o cliente JÁ PAGOU (fase 3 de "Vender", 2026-09-30):
@@ -97,7 +98,7 @@ export async function conferirCredito(
     return { procedureId: venda.procedure_id, preco: Number(u.preco) }
   }
   const s = await ler(admin.from('package_sessions')
-    .select('status, appointment_id, procedure_id, preco, client_packages!inner(client_id, price, total_sessions, expires_at, branches!inner(tenant_id), service_packages(procedure_id, price, total_sessions))')
+    .select('status, appointment_id, procedure_id, preco, client_package_id, client_packages!inner(client_id, price, total_sessions, expires_at, branches!inner(tenant_id), service_packages(procedure_id, price, total_sessions))')
     .eq('id', c.id).maybeSingle(), 'buscar a sessão do pacote')
   const cp = s?.client_packages as unknown as {
     client_id: string; price: number | null; total_sessions: number; expires_at: string | null
@@ -106,6 +107,20 @@ export async function conferirCredito(
   if (!s || cp?.branches.tenant_id !== tenantId || cp.client_id !== clientId) return { error: 'Crédito não encontrado para este cliente.' }
   if (s.status !== 'AVAILABLE' || s.appointment_id) return { error: 'Esta sessão já foi usada ou agendada.' }
   if (cp.expires_at && new Date(cp.expires_at).getTime() < agora) return { error: 'Este pacote venceu.' }
+  // Item 8 da auditoria (decisão do Claude pelo princípio 1, 2026-11-18): a
+  // rede que libera as sessões do pacote no crediário só depois de pago. Todo
+  // caminho que agenda ou usa a sessão passa por aqui (o núcleo do agendamento
+  // — a equipe e o app —, o Copilot e o "Abater do pacote"); o banco confere
+  // de novo (`private.pacote_sessao_liberada`).
+  const regras = lerRegrasDoPacote(await ler(admin.from('tenants')
+    .select('pacote_crediario_libera, pacote_vencido_cancela').eq('id', tenantId).maybeSingle(), 'ler as regras do pacote da rede'))
+  if (!regras.crediarioLibera) {
+    const { data, error } = await admin.rpc('metrics_em_aberto_dos_pacotes', { p_tenant: tenantId, p_pacotes: [s.client_package_id as string] })
+    if (error) throw new Error(`Não consegui ler o em aberto do pacote: ${error.message}`)
+    const emAberto = Number(((data ?? []) as { em_aberto: number | string }[])[0]?.em_aberto ?? 0)
+    const recusa = recusaDaSessaoNaoLiberada(regras, emAberto)
+    if (recusa) return { error: recusa }
+  }
   const procedureId = (s.procedure_id as string | null) ?? cp.service_packages?.procedure_id ?? null
   if (!procedureId) return { error: 'A sessão do pacote não tem procedimento.' }
   // A parte da sessão no rateio da venda; pacote de antes do rateio: preço ÷ sessões.

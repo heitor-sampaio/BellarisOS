@@ -20,6 +20,7 @@ import { ResumoDoQuadro } from '@/components/branch/crm-resumo-do-quadro'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { UserPlus } from 'lucide-react'
 import { lerTodas } from '@/lib/db'
+import { avisoDosFunis, mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -55,8 +56,9 @@ export default async function AdminOportunidadesPage({
   const novoDaPessoa = canEdit && rawContato && UUID.test(rawContato)
     ? await pessoaParaNovoLead(ctx.tenantId!, rawContato) : null
   // Configurar funis (funis, etapas, motivos de perda) é configuração da
-  // clínica: Configurações em Gerenciar (D-1, decisão do Heitor, 2026-10-29).
-  const podeConfigurar = can(ctx, 'settings', 'MANAGE')
+  // rede: Configurações em Gerenciar (D-1, decisão do Heitor, 2026-10-29) e,
+  // desde 18/11, só a Admin da rede ("só pela conta admin").
+  const podeConfigurar = can(ctx, 'settings', 'MANAGE') && mexeNaConfigDaRede(ctx)
 
   // -- Funis e etapas --
   const funnels     = await seedDefaultFunnel(ctx.tenantId!)
@@ -161,6 +163,12 @@ export default async function AdminOportunidadesPage({
             <ResumoDoQuadro stats={stats} />
             {' · '}{branches.length} {branches.length === 1 ? 'unidade' : 'unidades'}
           </p>
+          {/* A18 da 18ª: sem o "Configurar funis", a frase diz de quem são os funis. */}
+          {avisoDosFunis(ctx) && (
+            <p data-aviso-dos-funis style={{ color: 'var(--text-faint)', fontSize: 'var(--text-2xs)', marginTop: 4 }}>
+              {avisoDosFunis(ctx)}
+            </p>
+          )}
         </div>
 
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -217,7 +225,7 @@ export default async function AdminOportunidadesPage({
             networkMode
             branches={branches}
             leadAberto={leadAberto}
-            podeAgendar={can(ctx, 'crm', 'MANAGE') && temRecurso(ctx, 'agenda')}
+            podeAgendar={can(ctx, 'crm', 'MANAGE') && can(ctx, 'agenda', 'MANAGE') && temRecurso(ctx, 'agenda')}
             podeMover={can(ctx, 'crm', 'MANAGE')}
           />
         </>

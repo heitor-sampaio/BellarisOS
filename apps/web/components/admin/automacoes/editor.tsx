@@ -47,7 +47,7 @@ const PALETA: { grupo: string; tipos: TipoDeNo[] }[] = [
   { grupo: 'Espera',        tipos: [NODES.ESPERA_DURACAO, NODES.ESPERA_ATE] },
   { grupo: 'Faz',           tipos: [
     NODES.ACAO_NOTIFICAR_EQUIPE, NODES.ACAO_ANOTAR, NODES.ACAO_MENSAGEM,
-    NODES.ACAO_MOVER_ETAPA, NODES.ACAO_DESFECHO, NODES.ACAO_TAG_CLIENTE,
+    NODES.ACAO_MOVER_ETAPA, NODES.ACAO_DESFECHO, NODES.ACAO_TAG_CLIENTE, NODES.ACAO_REMOVER_TAG,
     NODES.ACAO_ATRIBUIR, NODES.BUSCAR_CLIENTES,
   ] },
 ]
@@ -56,14 +56,22 @@ const PALETA: { grupo: string; tipos: TipoDeNo[] }[] = [
 const EXECUTAVEIS: TipoDeNo[] = [
   NODES.GATILHO_EVENTO, NODES.CONDICAO_SE, NODES.CONDICAO_ESCOLHA,
   NODES.ACAO_NOTIFICAR_EQUIPE, NODES.ACAO_ANOTAR, NODES.ACAO_MENSAGEM,
-  NODES.ACAO_MOVER_ETAPA, NODES.ACAO_DESFECHO, NODES.ACAO_TAG_CLIENTE,
+  NODES.ACAO_MOVER_ETAPA, NODES.ACAO_DESFECHO, NODES.ACAO_TAG_CLIENTE, NODES.ACAO_REMOVER_TAG,
   NODES.ACAO_ATRIBUIR, NODES.ESPERA_DURACAO, NODES.ESPERA_ATE,
   NODES.GATILHO_AGENDA, NODES.BUSCAR_CLIENTES,
 ]
 
 export function EditorDeAutomacao({
-  automacao, podeEditar,
-}: { automacao: AutomacaoCompleta; podeEditar: boolean }) {
+  automacao, podeEditar, soPausa = false,
+}: {
+  automacao: AutomacaoCompleta; podeEditar: boolean
+  /**
+   * A sessão de suporte (auditoria das regras, 2026-11-18): o suporte só
+   * PAUSA a automação ligada — não edita, não liga, não exclui. A action
+   * também recusa (`bloqueioDoSuporte`).
+   */
+  soPausa?: boolean
+}) {
   const router = useRouter()
   const [nome, setNome]         = useState(automacao.nome)
   const [grafo, setGrafo]       = useState<GrafoDeAutomacao>(automacao.grafo)
@@ -379,6 +387,16 @@ export function EditorDeAutomacao({
               {status === 'ATIVA' ? <><Pause size={14} /> Desligar</> : <><Play size={14} /> Ligar</>}
             </button>
           </>
+        )}
+        {soPausa && status === 'ATIVA' && (
+          <button
+            type="button" className="btn-primary" onClick={alternarStatus} disabled={salvando}
+            data-suporte-so-pausa
+            title="No modo suporte, a automação só se desliga: editar e ligar é da própria rede."
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          >
+            <Pause size={14} /> Desligar
+          </button>
         )}
       </div>
 

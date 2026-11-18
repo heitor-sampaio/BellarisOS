@@ -19,6 +19,7 @@ import { banco, nomeDeTeste, tenantId } from './apoio/banco'
 
 const criadas: string[] = []
 let funilExtraId: string | null = null
+let funilDeBaseId: string | null = null
 const marca = Date.now().toString(36)
 const NOME_FUNIL = `[e2e] Pós-venda ${marca}`
 const ETAPA_DO_EXTRA = `[e2e] Retorno ${marca}`
@@ -33,6 +34,7 @@ test.afterAll(async () => {
   }
   // As etapas vão junto por cascade.
   if (funilExtraId) await db.from('crm_funnels').delete().eq('id', funilExtraId)
+  if (funilDeBaseId) await db.from('crm_funnels').delete().eq('id', funilDeBaseId)
 })
 
 async function novaAutomacao(page: import('@playwright/test').Page, comNome: string): Promise<string> {
@@ -49,6 +51,18 @@ async function novaAutomacao(page: import('@playwright/test').Page, comNome: str
 test('com mais de um funil, escolhe-se o funil e depois a etapa', async ({ page }) => {
   const db = banco()
   const tenant = await tenantId()
+
+  // A rede de teste só ganha o funil padrão quando alguém abre o quadro ou o
+  // dashboard — num banco novo, este spec roda antes disso (completa de 18/11:
+  // o funil padrão nasceu seis minutos depois desta falha). Sem outro funil
+  // ativo, cria um, para o "segundo" abaixo ser de fato o segundo.
+  const { data: ativos } = await db.from('crm_funnels').select('id').eq('tenant_id', tenant).is('archived_at', null)
+  if (!(ativos ?? []).length) {
+    const { data: base, error: erroBase } = await db.from('crm_funnels')
+      .insert({ tenant_id: tenant, name: `[e2e] Base ${marca}`, position: 89 }).select('id').single()
+    if (erroBase) throw new Error(`Não consegui criar o funil de base: ${erroBase.message}`)
+    funilDeBaseId = base!.id as string
+  }
 
   // Um segundo funil, para o seletor ter o que oferecer. Sem ele o teste
   // provaria o contrário do que quer: um funil só não mostra seletor nenhum.

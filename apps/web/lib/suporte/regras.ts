@@ -3,11 +3,14 @@ import type { ResolvedPermissions } from '@estetica-os/types'
 /**
  * As regras do acesso do suporte, puras (testadas em tests/suporte-regras.test.ts).
  *
- * - **Quem autoriza quem:** o próprio membro, para si; quem é da REDE
- *   (abrangência de rede) com `settings: MANAGE`, para qualquer membro.
- *   Gente de unidade só autoriza a si mesma. A conta de uma Admin da rede
- *   só uma Admin da rede autoriza (D19, F70): a gerente com Configurações
- *   abria ao suporte o acesso total que ela mesma não tem.
+ * - **Quem autoriza:** só a Admin da rede (o cargo de sistema gravado), para
+ *   qualquer membro, ela mesma e outra Admin (auditoria das regras,
+ *   2026-11-18: "autorizar o suporte é da Admin da rede, como a configuração
+ *   da rede toda" — o Heitor: "só pela conta admin"). Até ali o próprio membro
+ *   se autorizava, e quem era da rede com `settings: MANAGE` autorizava os
+ *   outros (a D19 da F70 já tirava dela a conta de uma Admin).
+ * - **Quem revoga:** a própria pessoa (a conta é dela; tirar o acesso é o
+ *   menos arriscado) e a Admin da rede.
  * - **Dado clínico:** só quem tem `medical_records: MANAGE` pode incluí-lo —
  *   o mesmo critério de liberar prontuário num pedido de LGPD.
  * - **Duração da autorização:** 24 h, 72 h (padrão) ou 7 dias.
@@ -33,12 +36,21 @@ interface QuemAutoriza {
 /** A mensagem de quando a conta é de uma Admin da rede e quem pede não é. */
 export const SO_ADMIN_AUTORIZA_ADMIN = 'A conta de uma Admin da rede só outra Admin da rede autoriza ao suporte.'
 
-export function podeAutorizar(quem: QuemAutoriza, alvoUserId: string, alvo: { alvoEhAdmin?: boolean } = {}): boolean {
+/** Autorizar o suporte a entrar numa conta (qualquer uma da rede): só a Admin da rede. */
+export function podeAutorizar(quem: QuemAutoriza): boolean {
+  if (!quem.internalUserId) return false
+  return quem.isNetworkAdmin === true
+}
+
+/** Revogar: a própria pessoa, sempre; a conta de outra pessoa, só a Admin da rede. */
+export function podeRevogar(quem: QuemAutoriza, alvoUserId: string): boolean {
   if (!quem.internalUserId) return false
   if (quem.internalUserId === alvoUserId) return true
-  if (alvo.alvoEhAdmin && !quem.isNetworkAdmin) return false
-  return quem.branchId === null && quem.permissions.settings === 'MANAGE'
+  return podeAutorizar(quem)
 }
+
+/** A recusa de autorizar, para a tela e a action. */
+export const SO_A_ADMIN_AUTORIZA = 'Autorizar o suporte a entrar numa conta é só da Admin da rede.'
 
 export function podeIncluirClinico(quem: Pick<QuemAutoriza, 'permissions'>): boolean {
   return quem.permissions.medical_records === 'MANAGE'

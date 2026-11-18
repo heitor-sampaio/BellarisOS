@@ -19,17 +19,19 @@ const GRUPOS_DE_QUEM_VENDEU: { rotulo: string; de: (m: MembroDaVenda) => boolean
   { rotulo: 'Quem tem o Comercial no cargo', de: m => !m.atende && !m.recebe },
 ]
 
-export function CampoQuemVendeu({ equipe, valor, aoMudar, comissao = null }: {
+export function CampoQuemVendeu({ equipe, valor, aoMudar, comissao = null, rotulo = 'Quem vendeu' }: {
   equipe: MembroDaVenda[]; valor: string; aoMudar: (id: string) => void
   /** A18 da 12ª: a comissão de venda de quem foi escolhido e de onde vem (`textoDaComissaoDaVenda`). */
   comissao?: string | null
+  /** O nome do campo (na comanda do atendimento, "Quem vendeu os produtos"). */
+  rotulo?: string
 }) {
   return (
     // Um <div>, não <label>: o botão da dica dentro do rótulo o roubaria do seletor
     // (o seletor tem o próprio aria-label).
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-        <span className="overline">Quem vendeu</span>
+        <span className="overline">{rotulo}</span>
         {/* O "e vazio?" mora na dica (2026-11-16 — era uma linha fixa); a venda pergunta antes de seguir vazia. */}
         {!valor && (
           <Dica rotulo="Sobre deixar sem ninguém">
@@ -37,7 +39,7 @@ export function CampoQuemVendeu({ equipe, valor, aoMudar, comissao = null }: {
           </Dica>
         )}
       </span>
-      <select className="field" aria-label="Quem vendeu" value={valor} onChange={e => aoMudar(e.target.value)}>
+      <select className="field" aria-label={rotulo} value={valor} onChange={e => aoMudar(e.target.value)}>
         {/* A46 da 11ª: o texto longo saía cortado no celular — a explicação vai embaixo. */}
         <option value="">Escolha quem vendeu</option>
         {/* A15 da 8ª simulação: quem atende e quem recebe primeiro; depois quem tem Vendas no cargo (A42 da 11ª). */}

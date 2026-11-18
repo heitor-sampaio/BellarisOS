@@ -3,8 +3,9 @@ const emLista = (itens: string[]) => itens.length <= 1 ? (itens[0] ?? '') : `${i
 export interface DocumentoDoAviso { titulo: string; status: string; faltando: string[] }
 
 /**
- * O aviso dos documentos que a venda do pacote deixou para a cliente assinar
- * (PC2; D1 da 15ª simulação).
+ * O aviso dos termos e dos outros documentos que a venda do pacote deixou
+ * para a cliente assinar (PC2; D1 da 15ª simulação) — o contrato já foi
+ * assinado antes do pagamento.
  *
  * Até a 15ª ele era fixo: "1 depende de completar o cadastro. Estão na ficha,
  * em Documentos." — não dizia O QUE faltava. Agora diz o que falta no cadastro
@@ -29,8 +30,10 @@ export function avisoDosDocumentosDaVenda(docs: DocumentoDoAviso[], opcoes: { ve
 /**
  * A6 da 18ª (princípios 3 e 7): o aviso ANTES de vender o pacote — o contrato
  * dele pede do cadastro o que falta (o balcão só descobria depois de vender).
- * Só avisa (princípio 2): a venda segue.
+ * Desde a auditoria de 2026-11-18 o contrato se assina ANTES do pagamento (PC2:
+ * "o ideal era funcionar como no plano de tratamento"; do plano: "primeiro
+ * colhe assinatura, depois paga"): com o cadastro incompleto, o dinheiro espera.
  */
 export function avisoDoContratoAntesDeVender(c: { titulo: string; faltando: string[] }): string {
-  return `O contrato deste pacote (${c.titulo}) pede ${emLista(c.faltando)}, que falta no cadastro. Completado o cadastro antes de vender, ele já sai pronto para assinar.`
+  return `O contrato deste pacote (${c.titulo}) pede ${emLista(c.faltando)}, que falta no cadastro. A cliente assina o contrato antes do pagamento: complete o cadastro para ele ficar pronto para assinar.`
 }

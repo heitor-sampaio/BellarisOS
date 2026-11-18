@@ -6,7 +6,8 @@ import { EVENTOS } from '@estetica-os/types'
 import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
-import { computeAvailableSlots, candidatasDoDia, conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
+import { computeAvailableSlots, candidatasDoDia, conferirPecasDoAgendamento, horarioOcupado, quemRealizaNaUnidade } from '@/lib/appointments/core'
+import { proximosDias, DIAS_DO_REMARCAR } from '@/lib/appointments/dias-livres'
 import { textoDaTroca } from '@/lib/appointments/troca-de-profissional'
 import { pagosAntes } from '@/lib/appointments/pago-antes'
 import { precoDoProcedimentoNaUnidade } from '@/lib/procedimentos/preco-na-unidade'
@@ -126,6 +127,8 @@ export async function remarcarPelaCliente(
   appointmentId: string, scheduledAt: string, semPreferencia = false,
   /** A unidade nova (A15): sem ela, a do agendamento. */
   branchId: string | null = null,
+  /** 22ª A42: outra pessoa que realiza o procedimento, escolhida no "Com quem?". */
+  profissionalId: string | null = null,
 ): Promise<Resultado> {
   try {
     const achado = await agendamentoDaCliente(appointmentId)
@@ -134,7 +137,9 @@ export async function remarcarPelaCliente(
     if (!ABERTOS.includes(a.status)) return { error: 'Este agendamento não pode mais ser remarcado.' }
     const recusa = recusaDoPrazo(a.scheduled_at, prazoHoras)
     if (recusa) return { error: recusa }
-    if (!a.professional_id && !semPreferencia) return { error: 'Fale com a equipe para remarcar este horário.' }
+    const outraPessoa = !semPreferencia && !!profissionalId && profissionalId !== a.professional_id
+    if (outraPessoa && !UUID.safeParse(profissionalId).success) return { error: 'Escolha com quem de novo.' }
+    if (!a.professional_id && !semPreferencia && !outraPessoa) return { error: 'Fale com a equipe para remarcar este horário.' }
     const unidade = await unidadeDoRemarcar(admin, a, branchId)
     if (!unidade) return { error: 'Esta unidade não atende este procedimento agora. Escolha outra.' }
     const mudaDeUnidade = unidade !== a.branch_id
@@ -156,6 +161,13 @@ export async function remarcarPelaCliente(
       profissional = escolherQuemAtende(candidatas, hora)
       if (!profissional) return { error: 'Este horário não está mais disponível. Escolha outro.' }
       nomeDeQuemAtende = candidatas.find(c => c.id === profissional)?.nome ?? null
+    } else if (outraPessoa) {
+      // 22ª A42: a pessoa escolhida no "Com quem?" — realiza o procedimento,
+      // atende na unidade e está livre no horário (as mesmas do agendar).
+      const escolhida = (await candidatasParaRemarcar(admin, a, dayKeyTZ(inicio, fuso), unidade)).find(c => c.id === profissionalId)
+      if (!escolhida || !escolhida.livres.includes(hora)) return { error: 'Este horário não está mais disponível. Escolha outro.' }
+      profissional = escolhida.id
+      nomeDeQuemAtende = escolhida.nome
     } else {
       const livres = await computeAvailableSlots(admin, unidade, a.professional_id!, dayKeyTZ(inicio, fuso), a.duration_min || 30, a.id)
       if (!livres.includes(hora)) return { error: 'Este horário não está mais disponível. Escolha outro.' }
@@ -265,7 +277,11 @@ export async function quemAtendeNoRemarcar(appointmentId: string, dia: string, h
 }
 
 /** Os horários livres para remarcar: os do self-service, do mesmo profissional (ou de todas, em "Sem preferência") e duração. */
-export async function horariosParaRemarcar(appointmentId: string, dia: string, semPreferencia = false, branchId: string | null = null): Promise<{ slots: string[] } | { error: string }> {
+export async function horariosParaRemarcar(
+  appointmentId: string, dia: string, semPreferencia = false, branchId: string | null = null,
+  /** 22ª A42: outra pessoa que realiza o procedimento (o "Com quem?"). */
+  profissionalId: string | null = null,
+): Promise<{ slots: string[] } | { error: string }> {
   try {
     const achado = await agendamentoDaCliente(appointmentId)
     if (!achado) return { error: 'Agendamento não encontrado.' }
@@ -274,15 +290,70 @@ export async function horariosParaRemarcar(appointmentId: string, dia: string, s
     // A unidade escolhida no "Em qual unidade?" (A15).
     const unidade = await unidadeDoRemarcar(admin, a, branchId)
     if (!unidade) return { error: 'Esta unidade não atende este procedimento agora. Escolha outra.' }
-    if (semPreferencia) return { slots: juntarHorarios((await candidatasParaRemarcar(admin, a, dia, unidade)).map(c => c.livres)) }
-    if (!a.professional_id) return { slots: [] }
-    // A mesma profissional na outra unidade só se ela atende lá.
-    if (unidade !== a.branch_id) {
-      const atende = await ler(admin.from('users').select('atende_em').eq('id', a.professional_id).maybeSingle(),
-        'conferir onde ela atende') as { atende_em: string[] | null } | null
-      if (!(atende?.atende_em ?? []).includes(unidade)) return { slots: [] }
-    }
-    return { slots: await computeAvailableSlots(admin, unidade, a.professional_id, dia, a.duration_min || 30, a.id) }
+    return { slots: await livresParaRemarcar(admin, a, dia, unidade, { semPreferencia, profissionalId }) }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+type EscolhaDoComQuem = { semPreferencia: boolean; profissionalId: string | null }
+
+/** Os livres de um dia pela escolha do "Com quem?": sem preferência, outra pessoa ou a mesma. */
+async function livresParaRemarcar(admin: ReturnType<typeof createAdminClient>, a: {
+  id: string; branch_id: string; procedure_id: string | null; professional_id: string | null; duration_min: number; clients: { tenant_id: string }
+}, dia: string, unidade: string, escolha: EscolhaDoComQuem): Promise<string[]> {
+  if (escolha.semPreferencia) return juntarHorarios((await candidatasParaRemarcar(admin, a, dia, unidade)).map(c => c.livres))
+  if (escolha.profissionalId && escolha.profissionalId !== a.professional_id) {
+    if (!UUID.safeParse(escolha.profissionalId).success) return []
+    return (await candidatasParaRemarcar(admin, a, dia, unidade)).find(c => c.id === escolha.profissionalId)?.livres ?? []
+  }
+  if (!a.professional_id) return []
+  // A mesma profissional na outra unidade só se ela atende lá.
+  if (unidade !== a.branch_id) {
+    const atende = await ler(admin.from('users').select('atende_em').eq('id', a.professional_id).maybeSingle(),
+      'conferir onde ela atende') as { atende_em: string[] | null } | null
+    if (!(atende?.atende_em ?? []).includes(unidade)) return []
+  }
+  return computeAvailableSlots(admin, unidade, a.professional_id, dia, a.duration_min || 30, a.id)
+}
+
+/**
+ * 22ª A42 (princípio 7): quem realiza o procedimento na unidade do horário
+ * novo — o "Com quem?" do Remarcar, como o "Tem preferência?" do Agendar.
+ */
+export async function quemRealizaNoRemarcar(appointmentId: string, branchId: string | null = null): Promise<{ pessoas: { id: string; nome: string; atual: boolean }[] } | { error: string }> {
+  try {
+    const achado = await agendamentoDaCliente(appointmentId)
+    if (!achado) return { error: 'Agendamento não encontrado.' }
+    const { admin, a } = achado
+    const unidade = await unidadeDoRemarcar(admin, a, branchId)
+    if (!unidade) return { error: 'Esta unidade não atende este procedimento agora. Escolha outra.' }
+    const equipe = await quemRealizaNaUnidade(admin, a.clients.tenant_id, unidade, a.procedure_id)
+    return { pessoas: equipe.map(p => ({ id: p.id, nome: p.name, atual: p.id === a.professional_id })) }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+/**
+ * 22ª A42: os dias com horário livre nas próximas duas semanas (no relógio da
+ * unidade), pela escolha do "Com quem?" — a cliente não abre dia por dia para
+ * achar um. O horário mesmo se escolhe no dia.
+ */
+export async function diasLivresParaRemarcar(
+  appointmentId: string, escolha: EscolhaDoComQuem, branchId: string | null = null,
+): Promise<{ dias: string[] } | { error: string }> {
+  try {
+    const achado = await agendamentoDaCliente(appointmentId)
+    if (!achado) return { error: 'Agendamento não encontrado.' }
+    const { admin, a } = achado
+    const unidade = await unidadeDoRemarcar(admin, a, branchId)
+    if (!unidade) return { error: 'Esta unidade não atende este procedimento agora. Escolha outra.' }
+    const fuso = await lerFusoDaUnidade(admin, unidade)
+    const dias = proximosDias(dayKeyTZ(new Date(), fuso), DIAS_DO_REMARCAR)
+    const pela: EscolhaDoComQuem = { semPreferencia: !!escolha?.semPreferencia, profissionalId: escolha?.profissionalId ?? null }
+    const livres = await Promise.all(dias.map(d => livresParaRemarcar(admin, a, d, unidade, pela)))
+    return { dias: dias.filter((_, i) => (livres[i] ?? []).length > 0) }
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }

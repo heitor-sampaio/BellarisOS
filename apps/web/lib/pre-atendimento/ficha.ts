@@ -205,3 +205,37 @@ export async function avisarDoPreAtendimento(
   if (!p || !slug) return
   await avisarCliente(admin, p.client_id, avisoDoPreAtendimento(slug, p.modo))
 }
+
+/**
+ * O que o Início do app precisa para oferecer a ficha (15ª A33 = 16ª A11,
+ * `ofereceAFichaNoApp`): a rede tem a ficha ativa, a validade dela e a ÚLTIMA
+ * resposta com conteúdo — a mesma conta de `pre_atendimento_abrir_manual`
+ * (a anamnese do prontuário e os pré-atendimentos respondidos; a gravada
+ * vazia não conta).
+ */
+export async function dadosDaOfertaNoApp(admin: Admin, tenantId: string, clientId: string): Promise<{
+  temFichaAtiva: boolean; ultimaResposta: string | null; validadeMeses: number
+}> {
+  const [ficha, rede, prontuario, respondidos] = await Promise.all([
+    ler(admin.from('forms').select('id').eq('tenant_id', tenantId).eq('tipo', 'PRE_ATENDIMENTO').eq('is_active', true).limit(1),
+      'conferir a ficha de saúde da rede') as Promise<{ id: string }[] | null>,
+    ler(admin.from('tenants').select('pre_atendimento_validade_meses').eq('id', tenantId).maybeSingle(),
+      'ler a validade da ficha de saúde') as Promise<{ pre_atendimento_validade_meses: number | null } | null>,
+    ler(admin.from('medical_records').select('general_anamnesis').eq('client_id', clientId).maybeSingle(),
+      'ler a última ficha de saúde') as Promise<{ general_anamnesis: Record<string, unknown> | null } | null>,
+    ler(admin.from('pre_atendimentos').select('respondido_em, respostas').eq('client_id', clientId).eq('status', 'RESPONDIDO')
+      .not('respondido_em', 'is', null).order('respondido_em', { ascending: false }).limit(10),
+      'ler as fichas respondidas') as Promise<{ respondido_em: string; respostas: Record<string, unknown> | null }[] | null>,
+  ])
+  const g = prontuario?.general_anamnesis ?? null
+  const vazia = !!g && String(g.versao) === '2' && Object.keys((g.respostas as Record<string, unknown> | null) ?? {}).length === 0
+  const doProntuario = g && !vazia ? ((g.respondidoEm as string | null) || (g.updatedAt as string | null) || null) : null
+  const doRespondido = (respondidos ?? []).find(r => Object.keys(r.respostas ?? {}).length > 0)?.respondido_em ?? null
+  const datas = [doProntuario, doRespondido].filter((d): d is string => !!d && !Number.isNaN(new Date(d).getTime()))
+  const ultimaResposta = datas.sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] ?? null
+  return {
+    temFichaAtiva: (ficha ?? []).length > 0,
+    ultimaResposta,
+    validadeMeses: Number(rede?.pre_atendimento_validade_meses ?? 6),
+  }
+}

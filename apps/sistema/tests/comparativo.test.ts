@@ -34,7 +34,7 @@ describe('comparativoDosPlanos', () => {
     expect(linha('Agenda').celulas.map(x => x.tipo)).toEqual(['sim', 'sim'])
     expect(linha('Pacotes').celulas.map(x => x.tipo)).toEqual(['nao', 'sim'])
     // Lançado em 2026-10-08: sem o "em breve".
-    expect(linha('Copilot (IA secretária)').emBreve).toBeUndefined()
+    expect(linha('Copilot (IA)').emBreve).toBeUndefined()
     expect(c.secoes.map(s => s.titulo)).toContain('Atendimento')
   })
   it('os limites: o número ou "Ilimitado"', () => {
@@ -44,7 +44,7 @@ describe('comparativoDosPlanos', () => {
   })
   it('os adicionais à venda: o preço, "não oferece", ou já incluído no plano', () => {
     expect(linha('Conexão de WhatsApp adicional').celulas.map(texto)).toEqual(['R$ 49,00 por conexão', 'Ilimitado no plano'])
-    expect(linha('Copilot (IA secretária) avulso').celulas.map(texto)).toEqual(['R$ 99,00 por mês', 'Incluído no plano'])
+    expect(linha('Copilot (IA) avulso').celulas.map(texto)).toEqual(['R$ 99,00 por mês', 'Incluído no plano'])
     const semOferta = comparativoDosPlanos([{ ...planos[0]!, recursos: { ...basico, adicionais: {} } }])
     const w = semOferta.secoes.flatMap(s => s.linhas).find(l => l.rotulo === 'Conexão de WhatsApp adicional')!
     expect(w.celulas.map(x => x.tipo)).toEqual(['nao'])

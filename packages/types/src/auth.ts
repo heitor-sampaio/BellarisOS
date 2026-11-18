@@ -14,6 +14,11 @@ export type UserRole =
 // autorização das Server Actions (via assertPermission).
 export const APP_MODULES = [
   'agenda',
+  // O Atendimento (o Heitor, 2026-11-18: "Agenda é agenda e atendimento é
+  // atendimento. Só inicia e conclui atendimento quem tem gerenciar no
+  // atendimento."): Ver abre a tela do atendimento; Gerenciar inicia e conclui.
+  // O clínico dentro dele (evolução, fotos, ficha de saúde) segue do Prontuário.
+  'atendimento',
   'clients',
   // Fidelidade: saldo, extrato, ajuste e resgates do cliente. Configurar o
   // programa (e o catálogo) é Configurações — decisão de rede, não de balcão.
@@ -64,7 +69,9 @@ export type PermissionScope = 'OWN' | 'ALL'
  */
 // Em `reports` o escopo não é "os meus registros" e sim "a minha unidade": é o
 // que separa quem acompanha o consolidado da rede de quem só olha a própria.
-export const SCOPED_MODULES = ['agenda', 'medical_records', 'financial', 'crm', 'reports'] as const
+// O Atendimento tem o "só os meus" como a Agenda: o atendimento é de quem atende
+// (decisão do Claude pelo princípio 1, 2026-11-18).
+export const SCOPED_MODULES = ['agenda', 'atendimento', 'medical_records', 'financial', 'crm', 'reports'] as const
 export type ScopedModule = typeof SCOPED_MODULES[number]
 
 export type ResolvedPermissions = Record<AppModule, PermissionLevel>

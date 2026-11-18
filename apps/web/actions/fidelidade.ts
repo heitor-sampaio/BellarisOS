@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission, alcancaUnidade, assertRecurso } from '@/lib/auth'
+import { getTenantContext, assertPermission, alcancaUnidade, assertRecurso, podeReceber } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
@@ -15,6 +15,8 @@ import { saidaDoVoucher } from '@/lib/estoque/baixa'
 import { comNovaTentativa } from '@/lib/estoque/nova-tentativa'
 import { voucherEmitido } from '@/lib/events/fidelidade'
 import { falaDaRede } from '@/lib/unidades/uma-so'
+import { trocaNaComanda } from '@/lib/fidelidade/troca-na-comanda-leitura'
+import type { TrocaNaComanda } from '@/lib/fidelidade/troca-na-comanda'
 
 /**
  * Fidelidade — as ações da equipe. Todo export daqui é endpoint público
@@ -273,6 +275,28 @@ async function resgatarUmaVez(ctx: Awaited<ReturnType<typeof getTenantContext>>,
   await voucherEmitido(voucherId, ctx)
   revalidatePath(`/admin/clients/${entrada.clientId}`)
   return { voucherId }
+}
+
+/**
+ * A50 da 24ª: a troca de pontos no receber o atendimento — o que a comanda
+ * oferece (lib/fidelidade/troca-na-comanda-leitura.ts). Lê quem recebe; troca
+ * (`resgatarRecompensa`) quem tem a Fidelidade em Gerenciar. Nulo: nada a trocar.
+ */
+export async function trocaDePontosDoAtendimento(appointmentId: string): Promise<TrocaNaComanda | null> {
+  try {
+    const ctx = await getTenantContext()
+    if (!podeReceber(ctx)) return null
+    if (typeof appointmentId !== 'string' || !/^[0-9a-f-]{36}$/i.test(appointmentId)) return null
+    const appt = await ler(createAdminClient().from('appointments')
+      .select('client_id, procedure_id, branch_id, branches!inner(tenant_id)')
+      .eq('id', appointmentId).maybeSingle(), 'buscar o agendamento') as
+      { client_id: string | null; procedure_id: string | null; branch_id: string; branches: unknown } | null
+    const rede = (appt?.branches as { tenant_id: string } | null)?.tenant_id
+    if (!appt?.client_id || rede !== ctx.tenantId || !alcancaUnidade(ctx, appt.branch_id)) return null
+    return await trocaNaComanda(ctx, { clienteId: appt.client_id, branchId: appt.branch_id, procedimentoId: appt.procedure_id })
+  } catch {
+    return null
+  }
 }
 
 export async function cancelarVoucher(entrada: { voucherId: string; motivo: string }): Promise<{ error?: string }> {

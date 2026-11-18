@@ -50,6 +50,12 @@ export const EVENTOS = {
   LEAD_ETAPA_MUDOU: 'lead.etapa_mudou',
   LEAD_GANHO:       'lead.ganho',
   LEAD_PERDIDO:     'lead.perdido',
+  // A cliente ligada a uma oportunidade ABERTA comprou (pacote, pré-pago ou
+  // plano aceito) depois de a oportunidade nascer. Sai de GATILHO no banco
+  // (origem 'banco', sem ator), como `pagamento.*`: a compra nasce em vários
+  // lugares. É o gatilho do modelo "Marque o ganho" (auditoria das regras,
+  // 2026-11-18: o aviso saiu do cron e foi para as Automações — r2-cfg-04).
+  LEAD_CLIENTE_COMPROU: 'lead.cliente_comprou',
 
   // ── Inbox ─────────────────────────────────────────────────────────────
   // Metade destes nasce no WEBHOOK, não numa ação — é o motivo de o emissor
@@ -453,6 +459,7 @@ export const ROTULOS_DE_EVENTO: Record<NomeDeEvento, string> = {
   'lead.etapa_mudou': 'Oportunidade mudou de etapa',
   'lead.ganho':       'Oportunidade ganha',
   'lead.perdido':     'Oportunidade perdida',
+  'lead.cliente_comprou': 'Cliente da oportunidade comprou',
 
   // Inbox
   'conversa.iniciada':           'Conversa iniciada',

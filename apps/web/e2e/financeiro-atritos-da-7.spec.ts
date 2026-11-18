@@ -4,6 +4,7 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { apagarDocumentosEmitidos } from './apoio/limpeza'
 import { abrirVendaNoPdv, euVendi, pagoNoPix, receberPlanoNoPdv, receberAtendimentoNoPdv } from './apoio/vender'
+import { venderNaTelaPassandoPeloContrato } from './apoio/contrato-do-pacote'
 
 /**
  * Os atritos do caixa da 7ª simulação (2026-11-05), da F32:
@@ -189,7 +190,7 @@ test('A47: vendido o pacote, a venda oferece agendar a 1ª sessão agora', async
     await dlg.getByLabel('Pacote', { exact: true }).selectOption(pacoteId)
     await pagoNoPix(dlg)
     await euVendi(dlg)
-    await dlg.getByRole('button', { name: /Vender por/ }).click()
+    await venderNaTelaPassandoPeloContrato(dlg, dlg.getByRole('button', { name: /Vender por/ }))
     const agendar = dlg.locator('[data-agendar-a-primeira-sessao]')
     await expect(agendar).toContainText('Agendar a 1ª sessão agora')
     await expect(agendar).toContainText(nomeDoProc)

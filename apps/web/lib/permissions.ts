@@ -28,6 +28,7 @@ export function isScoped(module: AppModule): module is ScopedModule {
 // Rótulos pt-BR de cada módulo (usados na matriz de cargos e afins)
 export const MODULE_LABELS: Record<AppModule, string> = {
   agenda:          'Agenda',
+  atendimento:     'Atendimento',
   clients:         'Clientes',
   loyalty:         'Fidelidade',
   medical_records: 'Prontuário',
@@ -54,7 +55,10 @@ export const MODULE_LABELS: Record<AppModule, string> = {
 // O que cada módulo ABRANGE — ao lado do nome, na tela de Cargos. (O que cada
 // NÍVEL libera é outra coisa: `LEVEL_COPY`, no editor.)
 export const MODULE_HINTS: Partial<Record<AppModule, string>> = {
-  agenda:          'Agendamentos, check-in e atendimentos',
+  // A Agenda volta a ser agenda (o Heitor, 2026-11-18): agendar, confirmar,
+  // chegada, remarcar, cancelar, falta e trocar quem atende.
+  agenda:          'Agendamentos, confirmação, chegada e remarcação',
+  atendimento:     'A tela do atendimento: iniciar e concluir',
   clients:         'Cadastro e ficha de clientes',
   loyalty:         'Pontos do cliente: saldo, extrato e ajuste',
   medical_records: 'Ficha de saúde, evolução, fotos e anexos clínicos',
@@ -71,13 +75,14 @@ export const MODULE_HINTS: Partial<Record<AppModule, string>> = {
   roles:           'Criar cargos e definir o que cada um acessa',
   settings:        'Dados da rede, unidades e integrações',
   automations:     'Fluxos que reagem sozinhos ao que acontece',
-  copilot:         'A secretária virtual: consultar e pedir gravações conversando',
+  copilot:         'Consultar o sistema e pedir gravações conversando',
   audit:           'O que mudou no sistema, quem mudou e quando',
 }
 
 /** Rótulo do escopo, por módulo — o que "só os meus" significa em cada um. */
 export const SCOPE_LABELS: Record<ScopedModule, { own: string; all: string }> = {
   agenda:          { own: 'Só a própria agenda',      all: 'Agenda de todos' },
+  atendimento:     { own: 'Só os próprios atendimentos', all: 'Atendimentos de todos' },
   medical_records: { own: 'Só os próprios pacientes', all: 'Todos os pacientes' },
   financial:       { own: 'Só as próprias comissões', all: 'Financeiro completo' },
   crm:             { own: 'Só as próprias oportunidades', all: 'Todas as oportunidades' },
@@ -93,6 +98,7 @@ export const SCOPE_LABELS: Record<ScopedModule, { own: string; all: string }> = 
  */
 export const MODULE_LEVELS: Record<AppModule, readonly PermissionLevel[]> = {
   agenda:          ['NONE', 'VIEW', 'MANAGE'],
+  atendimento:     ['NONE', 'VIEW', 'MANAGE'],
   clients:         ['NONE', 'VIEW', 'MANAGE'],
   loyalty:         ['NONE', 'VIEW', 'MANAGE'],
   medical_records: ['NONE', 'VIEW', 'MANAGE'],

@@ -111,17 +111,23 @@ export const ABAS_DA_UNIDADE: readonly ChaveDeAba[] =
   ['unidade', 'permissions', 'fichas', 'documentos', 'integrations', 'tags', 'importacoes', 'general']
 
 /**
- * As abas que são configuração da CLÍNICA TODA (H7, decisão do Heitor,
- * 2026-11-01: "gerente de uma unidade só mexe no que é da unidade"). Quem tem
- * unidade fixa abre a aba e lê "Esta configuração é da clínica toda" — sem o
- * editor (a action também recusa: `recusaDaConfigDaRede`). Fora daqui fica
+ * As abas que são configuração da REDE TODA — só da Admin da rede desde 18/11
+ * (o Heitor: "só pela conta admin"; era de quem tinha "A rede inteira", H7 de
+ * 2026-11-01). Quem não é a Admin da rede abre a aba e lê "Esta configuração
+ * é só da Admin da rede" — sem o editor (a action também recusa:
+ * `recusaDaConfigDaRede`). Fora daqui fica
  * só a Unidade (a dela). As Importações entraram (C73 do levantamento das
  * regras, F70; H8, 2ª volta: "Importações é da rede, ela que vai importar os
  * seus clientes ou o que for, e na importação poder escolher se aquilo
  * pertence a uma unidade").
+ *
+ * A LGPD fica de fora: não é configuração, é o pedido da cliente, e quem
+ * libera o prontuário é quem tem o Prontuário em Gerenciar (C31,
+ * `docs/regras/crm-inbox.md`; `reviewMedicalData` não pede o cargo). Na lista,
+ * a aba escondia o "Liberar" que a action aceita.
  */
 export const ABAS_DA_REDE_TODA: readonly ChaveDeAba[] =
-  ABAS_DE_CONFIGURACAO.map(t => t.key).filter(k => k !== 'unidade')
+  ABAS_DE_CONFIGURACAO.map(t => t.key).filter(k => k !== 'unidade' && k !== 'lgpd')
 
 /**
  * O que "Configurações" quer dizer no resumo do cargo (A7 da 7ª simulação,
@@ -209,7 +215,7 @@ export function motivoDaAbaFechada(pedida: string, o: {
   if (!aba) return `A aba “${pedida}” não existe. Você está na aba ${o.abriu}.`
   if (!o.noPortal.includes(aba.key)) {
     return o.unidadeFixa
-      ? `A aba ${aba.label} é da rede toda: quem muda é quem tem “A rede inteira”. Você está na aba ${o.abriu}.`
+      ? `A aba ${aba.label} é da rede toda: quem muda é a Admin da rede. Você está na aba ${o.abriu}.`
       : `A aba ${aba.label} fica nas Configurações da rede. Você está na aba ${o.abriu}.`
   }
   if (!o.noPlano(aba)) return `A aba ${aba.label} não está no plano da rede. Você está na aba ${o.abriu}.`

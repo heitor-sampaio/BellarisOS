@@ -30,7 +30,9 @@ export const MODULE_GROUPS: readonly ModuleGroup[] = [
     key:     'atendimento',
     label:   'Atendimento',
     hint:    'O dia a dia com o cliente na unidade',
-    modules: ['agenda', 'clients', 'loyalty', 'medical_records'],
+    // O Atendimento logo depois da Agenda (o Heitor, 2026-11-18: "Agenda é
+    // agenda e atendimento é atendimento").
+    modules: ['agenda', 'atendimento', 'clients', 'loyalty', 'medical_records'],
   },
   {
     key:     'vendas',
@@ -67,7 +69,7 @@ export const MODULE_GROUPS: readonly ModuleGroup[] = [
   {
     key:     'copilot',
     label:   'Copilot',
-    hint:    'A secretária virtual, num chat sobre todas as telas',
+    hint:    'Consultar e pedir gravações conversando, num chat sobre todas as telas',
     modules: ['copilot'],
   },
 ]
@@ -77,10 +79,20 @@ export const MODULE_GROUPS: readonly ModuleGroup[] = [
 const SEM_ACESSO = 'Não aparece para esta pessoa.'
 
 export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, string>>> = {
+  // A Agenda é agenda (o Heitor, 2026-11-18: "Agenda é agenda e atendimento é
+  // atendimento"): iniciar e concluir saíram daqui e são do Atendimento. Sai o
+  // D20 ("a Agenda em Ver inicia e conclui").
   agenda: {
     NONE:   SEM_ACESSO,
-    VIEW:   'Abre a agenda, inicia e conclui atendimentos e escreve as anotações da sessão.',
-    MANAGE: 'Tudo do Ver, mais marcar, remarcar, cancelar, marcar falta, fazer check-in e trocar quem atende no horário.',
+    VIEW:   'Abre a agenda e vê os horários marcados. Não marca nem remarca horário: isso é Gerenciar.',
+    MANAGE: 'Tudo do Ver, mais marcar, confirmar, marcar a chegada, remarcar, cancelar, marcar falta e trocar quem atende no horário.',
+  },
+  // O Heitor, 2026-11-18: "Só inicia e conclui atendimento quem tem gerenciar no
+  // atendimento."
+  atendimento: {
+    NONE:   SEM_ACESSO,
+    VIEW:   'Abre a tela do atendimento (pela Agenda) e os planos de tratamento, sem iniciar nem concluir.',
+    MANAGE: 'Tudo do Ver, e inicia e conclui o atendimento, lança os insumos usados e monta e aceita o plano de tratamento na avaliação. A evolução, as fotos e a ficha de saúde pedem também o Prontuário em Gerenciar.',
   },
   clients: {
     NONE:   SEM_ACESSO,
@@ -95,7 +107,7 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   medical_records: {
     NONE:   SEM_ACESSO,
     VIEW:   'Lê, no Prontuário, a ficha de saúde, a evolução, as fotos do atendimento e os anexos clínicos (exames, laudos, receitas).',
-    MANAGE: 'Tudo do Ver, mais preencher a ficha de saúde e a evolução, tirar as fotos do atendimento, anexar exames e laudos, acrescentar anotação ao atendimento concluído e liberar a parte clínica em pedidos de LGPD. Montar o plano de tratamento não pede o Prontuário: é de quem atende.',
+    MANAGE: 'Tudo do Ver, mais preencher a ficha de saúde e a evolução, tirar as fotos do atendimento, anexar exames e laudos, acrescentar anotação ao atendimento concluído e liberar a parte clínica em pedidos de LGPD. O início e o fim do atendimento e o plano de tratamento não pedem o Prontuário: são do Atendimento.',
   },
   // O Heitor, 2026-11-16: "A permissão de gerenciar documentos serve para
   // alguém poder criar/editar/excluir os modelos de documentos." Ver os
@@ -129,7 +141,7 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   crm: {
     NONE:   SEM_ACESSO,
     VIEW:   'Vê o funil de oportunidades, abre os cards e lê as conversas com os contatos (WhatsApp, Instagram, Messenger).',
-    MANAGE: 'Tudo do Ver, mais criar e mover oportunidades, responder as conversas e agendar direto pelo CRM. Montar funis, etapas e motivos de perda é Configurações.',
+    MANAGE: 'Tudo do Ver, mais criar e mover oportunidades e responder as conversas. Agendar pelo CRM pede também a Agenda em Gerenciar. Montar funis, etapas e motivos de perda é Configurações.',
   },
   marketing: {
     NONE:   SEM_ACESSO,
@@ -182,10 +194,14 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
 export const SCOPE_NOTE: Partial<Record<ScopedModule, string>> = {
   reports:   'Uma unidade por vez: quem não tem “A rede inteira” vê só as unidades dela, uma de cada vez; quem tem escolhe a unidade e vê uma de cada vez. O consolidado da rede fica indisponível.',
   financial: 'Com alcance próprio a tela vira só "minhas comissões": some faturamento, despesas e extrato — e não dá para lançar, mesmo com Gerenciar.',
-  // D20 (o Heitor, 2026-11-11): Ver inicia e conclui; Gerenciar confirma,
-  // marca a chegada, cancela, marca a falta, remarca e troca a profissional;
-  // com "só os meus", tudo isso só nos dela (F65).
-  agenda:    'Com "só os meus", a pessoa mexe só nos atendimentos dela. Em Ver, inicia e conclui. Em Gerenciar, também marca a chegada, cancela e marca a falta dos dela. Confirmar a presença fica com quem tem "todos" e Gerenciar.',
+  // A Agenda é agenda (o Heitor, 2026-11-18); o D20 saiu. Com "só os meus" e
+  // Gerenciar, cancela, marca a falta, remarca e passa a outra pessoa os dela
+  // (28/10: "a profissional (no que é dela) ou quem gerencia a agenda cancela e
+  // passa o atendimento a outra pessoa").
+  agenda:    'Com "só os meus", a pessoa vê só os agendamentos dela. Em Gerenciar, também marca a chegada, remarca, cancela, marca a falta e passa a outra pessoa os dela. Confirmar a presença fica com quem tem "todos" e Gerenciar.',
+  // O "só os meus" do Atendimento (decisão do Claude pelo princípio 1, 2026-11-18:
+  // o atendimento é de quem atende, como a Agenda).
+  atendimento: 'Com "só os meus", a pessoa inicia e conclui só os atendimentos dela. Com "todos", qualquer um das unidades dela.',
 }
 
 // ─── Módulos que só existem no portal da rede ────────────────────────────────
@@ -193,7 +209,9 @@ export const SCOPE_NOTE: Partial<Record<ScopedModule, string>> = {
 // esses acessos não valem nada para essa pessoa. Já aconteceu com `forms` e
 // `reports`, que ganharam tela na unidade; estes três são de rede por natureza.
 
-export const NETWORK_ONLY_NOTE = 'Só funciona para quem tem “A rede inteira”.'
+// Desde 18/11 a configuração da rede toda é só da Admin da rede (o Heitor:
+// "só pela conta admin"; `mexeNaConfigDaRede`).
+export const NETWORK_ONLY_NOTE = 'Só funciona para quem tem “A rede inteira”, e criar e mudar é só da Admin da rede.'
 
 export const NETWORK_ONLY: readonly AppModule[] = ['marketing', 'automations', 'roles', 'settings']
 
@@ -201,11 +219,12 @@ export const NETWORK_ONLY: readonly AppModule[] = ['marketing', 'automations', '
  * A nota de abrangência de um módulo de rede. Configurações é a exceção (H7, o
  * Heitor, 2026-11-01: "gerente de uma unidade só mexe no que é da unidade"):
  * quem tem unidade fixa usa a aba Unidade — a nota "só funciona para quem tem
- * abrangência de rede" era falsa ali (A10 da 10ª simulação).
+ * abrangência de rede" era falsa ali (A10 da 10ª simulação). O resto, desde
+ * 18/11, é só da Admin da rede ("só pela conta admin").
  */
 export function notaDeAbrangencia(modulo: AppModule): string {
   if (modulo === 'settings') {
-    return 'Quem não tem “A rede inteira” mexe só na aba Unidade (os dados, o horário e as salas das unidades dela): as integrações, os funis, as fichas, os modelos de documento e o resto são da rede toda e ficam com quem tem “A rede inteira”.'
+    return 'Quem não é a Admin da rede mexe só na aba Unidade (os dados, o horário e as salas das unidades dela): as integrações, os funis, as fichas, os modelos de documento e o resto são da rede toda, e só a Admin da rede muda.'
   }
   return NETWORK_ONLY_NOTE
 }
@@ -217,8 +236,8 @@ export function notaDeAbrangencia(modulo: AppModule): string {
  * de alguém da unidade não esperar uma tela que ela não vai ter.
  */
 export const SO_NA_REDE_NOTE: Partial<Record<AppModule, string>> = {
-  marketing:   'É da rede toda: as telas ficam no portal da rede e valem só para quem tem “A rede inteira”.',
-  automations: 'É da rede toda: as automações ficam no portal da rede e valem só para quem tem “A rede inteira”.',
+  marketing:   'É da rede toda: as telas ficam no portal da rede e valem só para quem tem “A rede inteira”; criar e mudar é só da Admin da rede.',
+  automations: 'É da rede toda: as automações ficam no portal da rede e valem só para quem tem “A rede inteira”; criar e mudar é só da Admin da rede.',
 }
 
 // ─── Cargos sensíveis ────────────────────────────────────────────────────────
@@ -236,9 +255,9 @@ export const SENSITIVE_NOTE: Partial<Record<AppModule, string>> = {
  * Recebimentos) — e está sem o Financeiro. A16 da 11ª simulação: a Estoquista
  * (só o Estoque) lia o aviso sem nem atender. Princípio 3.
  */
-export function avisaSemMinhasComissoes(niveis: Partial<Record<'agenda' | 'medical_records' | 'crm' | 'cashier' | 'financial', string>>): boolean {
+export function avisaSemMinhasComissoes(niveis: Partial<Record<'agenda' | 'atendimento' | 'medical_records' | 'crm' | 'cashier' | 'financial', string>>): boolean {
   if ((niveis.financial ?? 'NONE') !== 'NONE') return false
-  return (['agenda', 'medical_records', 'crm', 'cashier'] as const).some(m => (niveis[m] ?? 'NONE') !== 'NONE')
+  return (['agenda', 'atendimento', 'medical_records', 'crm', 'cashier'] as const).some(m => (niveis[m] ?? 'NONE') !== 'NONE')
 }
 
 /**
@@ -250,8 +269,12 @@ export function avisaSemMinhasComissoes(niveis: Partial<Record<'agenda' | 'medic
  * Nulo para quem nem vende nem mexe no comercial.
  */
 export function quemVendeNoResumo(niveis: Partial<Record<'procedures' | 'crm' | 'clients' | 'cashier' | 'financial', string>>): string | null {
-  if (niveis.cashier === 'MANAGE' || niveis.financial === 'MANAGE') {
-    return 'Vende no PDV (procedimento, pacote, produto e crédito).'
+  // A5 da 24ª (princípio 3): o Fechamento do dia vem junto, e a linha diz de onde.
+  if (niveis.cashier === 'MANAGE') {
+    return 'Vende no PDV (procedimento, pacote, produto e crédito) e faz o Fechamento do dia: os dois vêm do PDV.'
+  }
+  if (niveis.financial === 'MANAGE') {
+    return 'Vende no PDV (procedimento, pacote, produto e crédito) e faz o Fechamento do dia: os dois vêm do Financeiro em Gerenciar.'
   }
   if ((['procedures', 'crm', 'clients'] as const).some(m => niveis[m] === 'MANAGE')) {
     return 'Não vende no PDV: vender é de quem tem o PDV (ou o Financeiro em Gerenciar).'
@@ -333,28 +356,31 @@ export function nivelDoPdvPeloFinanceiro(niveis: Partial<Record<'cashier' | 'fin
 
 /**
  * De onde vem a entrada Tratamentos do resumo do cargo (A2 da 22ª; princípio
- * 3, como Documentos na A24 da 21ª). D1 da 23ª: o menu a mostra a quem tem a
- * Agenda (a régua da página, `lib/menu.ts`) — vinha do Prontuário e de quem
- * recebe, e a página barrava.
+ * 3, como Documentos na A24 da 21ª). Os planos são de quem atende (PT2: "quem
+ * monta o plano é quem atende"): o menu a mostra a quem tem o Atendimento (a
+ * régua da página, `lib/menu.ts`) — era a Agenda até 2026-11-18.
  */
-export function tratamentosNoResumo(niveis: Partial<Record<'agenda' | 'medical_records' | 'cashier' | 'financial', string>>): string | null {
-  if ((niveis.agenda ?? 'NONE') === 'NONE') return null
-  return 'Tratamentos vem da Agenda em “Ver”: os planos de tratamento das clientes, para acompanhar.'
+export function tratamentosNoResumo(niveis: Partial<Record<'atendimento' | 'agenda' | 'medical_records' | 'cashier' | 'financial', string>>): string | null {
+  if ((niveis.atendimento ?? 'NONE') === 'NONE') return null
+  return 'Tratamentos vem do Atendimento em “Ver”: os planos de tratamento das clientes, para acompanhar.'
 }
 
 /**
- * A2 da 23ª simulação (princípio 3): concluir pede o Prontuário em Gerenciar e
- * alcançar o atendimento (D1 da 22ª, `quemConcluiOAtendimento`) — com "só os
- * meus" na Agenda ou no Prontuário, a pessoa conclui só os próprios. Nada
- * dizia isso ao montar o cargo, e toda limpeza de outra pessoa dependia da
- * Admin. Nulo quando não se aplica (sem a Agenda, sem o Prontuário em
- * Gerenciar, ou com os dois de todos).
+ * Quem inicia e conclui, no resumo do cargo (A2 da 23ª, A1 da 24ª; princípio
+ * 3). Desde 2026-11-18 é o Atendimento (o Heitor: "Só inicia e conclui
+ * atendimento quem tem gerenciar no atendimento"): em Ver, só vê; em Gerenciar
+ * "só os meus", só os próprios; sem o Prontuário em Gerenciar, conclui sem o
+ * clínico. Nulo sem o Atendimento, ou com ele em Gerenciar de todos e o
+ * Prontuário em Gerenciar.
  */
 export function conclusaoNoResumo(
-  niveis: Partial<Record<'agenda' | 'medical_records', string>>,
-  escopos: Partial<Record<'agenda' | 'medical_records', string>>,
+  niveis: Partial<Record<'atendimento' | 'agenda' | 'medical_records', string>>,
+  escopos: Partial<Record<'atendimento' | 'agenda' | 'medical_records', string>>,
 ): string | null {
-  if ((niveis.agenda ?? 'NONE') === 'NONE' || niveis.medical_records !== 'MANAGE') return null
-  if (escopos.agenda !== 'OWN' && escopos.medical_records !== 'OWN') return null
-  return 'Conclui só os próprios atendimentos: o de outra pessoa que atende conclui quem tem a Agenda de todos e o Prontuário em Gerenciar de todos.'
+  const nivel = niveis.atendimento ?? 'NONE'
+  if (nivel === 'NONE') return null
+  if (nivel !== 'MANAGE') return 'Vê os atendimentos, sem iniciar nem concluir: iniciar e concluir pedem o Atendimento em Gerenciar.'
+  if (escopos.atendimento === 'OWN') return 'Inicia e conclui só os próprios atendimentos: o de outra pessoa que atende, quem tem o Atendimento em Gerenciar de todos.'
+  if (niveis.medical_records !== 'MANAGE') return 'Inicia e conclui os atendimentos. A evolução, as fotos e a ficha de saúde pedem o Prontuário em Gerenciar.'
+  return null
 }

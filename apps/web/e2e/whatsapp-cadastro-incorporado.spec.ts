@@ -52,13 +52,13 @@ test.beforeAll(async () => {
   const outra = await criarOutraRede(`es${marca}`)
   f = {
     graph, outra,
-    config: await criarMembro(`escfg${marca}`, {
-      tenant: outra.tenantId, rotulo: 'Config WhatsApp',
-      permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }],
-    }),
+    // A integração é configuração da rede toda: só a Admin da rede conecta (o
+    // Heitor, 18/11: "Configuração da rede toda só pela conta admin"). O
+    // leitor, com as Configurações em Gerenciar num cargo próprio, é o "não pode".
+    config: await criarMembro(`escfg${marca}`, { tenant: outra.tenantId, rotulo: 'Config WhatsApp', donoDaRede: true, permissoes: [] }),
     leitor: await criarMembro(`esleitor${marca}`, {
-      tenant: outra.tenantId, rotulo: 'Sem configurações',
-      permissoes: [{ modulo: 'crm', nivel: 'VIEW' }],
+      tenant: outra.tenantId, rotulo: 'Sem ser a Admin',
+      permissoes: [{ modulo: 'crm', nivel: 'VIEW' }, { modulo: 'settings', nivel: 'MANAGE' }],
     }),
   }
 })
@@ -117,7 +117,7 @@ async function entregar(p: Page, campo: string, valor: Record<string, unknown>) 
 }
 
 test.describe.serial('WhatsApp pelo cadastro incorporado da Meta', () => {
-  test('sem permissão de configurações, nada conecta', async ({ browser }) => {
+  test('quem não é a Admin da rede (mesmo com Configurações em Gerenciar) não conecta nada', async ({ browser }) => {
     await como(browser, 'leitor', async p => {
       await conectar(p, { code: 'cod', wabaId: WABA, phoneNumberId: FONE_ID, modo: 'coexistencia' }).catch(() => null)
     })

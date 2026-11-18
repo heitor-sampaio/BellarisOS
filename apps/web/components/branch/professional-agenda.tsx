@@ -29,6 +29,7 @@ import { bloqueioNoDia, type BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
 import { useAgora } from '@/lib/use-agora'
 import { useFuso } from '@/components/shared/fuso'
 import { naParede, isoNaParede, fusoLocal } from '@/lib/datetime'
+import { ROTULO_DO_STATUS } from '@/lib/agenda/rotulo-do-status'
 
 type ViewMode = 'dia' | 'semana' | 'mes'
 
@@ -37,7 +38,7 @@ const STATUS_COLORS: Record<string, {
   pill: { bg: string; color: string }
   dot: string; label: string
 }> = {
-  SCHEDULED:   { bg: 'var(--surface)', border: 'var(--border)',   pill: { bg: 'var(--bg-app)', color: 'var(--text-muted)' }, dot: 'var(--text-faint)',       label: 'Aguardando'       },
+  SCHEDULED:   { bg: 'var(--surface)', border: 'var(--border)',   pill: { bg: 'var(--bg-app)', color: 'var(--text-muted)' }, dot: 'var(--text-faint)',       label: ROTULO_DO_STATUS.SCHEDULED },
   CONFIRMED:   { bg: 'var(--surface)', border: 'var(--border)',   pill: { bg: 'var(--success-soft)', color: 'var(--success)' }, dot: 'var(--success)',        label: 'Confirmado'       },
   ARRIVED:     { bg: 'var(--surface)', border: 'var(--success)',  pill: { bg: 'var(--success-soft)', color: 'var(--success)' }, dot: 'var(--success)',        label: 'Chegou'           },
   IN_PROGRESS: { bg: 'var(--bg-app)',        border: 'var(--brand)',    pill: { bg: 'var(--brand-soft)', color: 'var(--brand)' }, dot: 'var(--brand)', label: 'Em atendimento'   },
@@ -486,7 +487,7 @@ export function ProfessionalAgendaView({
               {[
                 { dot: 'var(--success)',      label: 'Confirmado'      },
                 { dot: 'var(--brand)', label: 'Em atendimento'  },
-                { dot: 'var(--text-faint)',      label: 'Aguardando'      },
+                { dot: 'var(--text-faint)',      label: ROTULO_DO_STATUS.SCHEDULED },
               ].map(({ dot, label }) => (
                 <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                   <div style={{ width: 7, height: 7, borderRadius: '50%', background: dot }} />
@@ -555,67 +556,38 @@ export function ProfessionalAgendaView({
                 const height = evHeight(ev)
                 const time   = format(parseISO(ev.start), 'HH:mm') // parede
                 const isIP   = ev.status === 'IN_PROGRESS'
-                // A24 da 8ª: o cartão de menos de 1 h (até 72 px) não tinha altura para
-                // as duas linhas com o avatar — o procedimento saía cortado no de 30 e
-                // no de 40 min. Curto, ele é duas linhas: a hora e a cliente, o procedimento.
-                if (height - 4 < 76) {
-                  return (
-                    <Link key={ev.id} href={`/${slug}/agenda/${ev.id}`} style={{ textDecoration: 'none', display: 'block' }}>
-                      <div data-cartao-minha-agenda={ev.id} data-liberou={ev.status === 'COMPLETED' && liberouOHorario(ev) ? '' : undefined} {...(ev.unidade ? { 'data-outra-unidade': ev.unidade } : {})}
-                        title={[time, ev.clientName, ev.procedureName, `${ev.durationMin} min`, ev.unidade ? `Na unidade ${ev.unidade}` : null].filter(Boolean).join(' · ')}
-                        style={{
-                          position: 'absolute', top: top + 2, ...evLados(ev), height: height - 4,
-                          borderRadius: 10, background: st.bg,
-                          border: `1.5px solid ${isIP ? 'var(--brand)' : 'var(--border)'}`, borderLeft: `3.5px solid ${st.dot}`,
-                          padding: '3px 12px', display: 'flex', flexDirection: 'column', justifyContent: 'center',
-                          cursor: 'pointer', overflow: 'hidden',
-                        }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden' }}>
-                          <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: isIP ? 'var(--brand)' : 'var(--text)', flexShrink: 0 }}>{time}</span>
-                          {/* O nome da cliente nunca some (A8 da 13ª): cede por último. */}
-                          <span data-cliente-do-cartao style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', flex: '1 1 auto', minWidth: '5em' }}>{ev.clientName}</span>
-                          <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: st.pill.color, flexShrink: 0 }}>· {st.label}</span>
-                          <SeloDoMenor menor={ev.menor} />
-                        </div>
-                        {/* A8 da 13ª: o selo da outra unidade vai para a linha do
-                            procedimento e encolhe com reticências — na linha da
-                            cliente, sem encolher, ele empurrava o nome para fora. */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', minWidth: 0 }}>
-                          {ev.unidade && <SeloDaOutraUnidade unidade={ev.unidade} />}
-                          <p data-procedimento-do-cartao style={{ fontSize: 'var(--text-overline)', lineHeight: 1.25, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
-                            {ev.procedureName} · {ev.durationMin}min
-                          </p>
-                        </div>
-                      </div>
-                    </Link>
-                  )
-                }
+                // 23ª A24: UM desenho de cartão — o curto (menos de 1 h, até 72 px:
+                // A24 da 8ª) é o mesmo compactado, com o selo do status e o da
+                // unidade no mesmo lugar. Eram dois desenhos, e o curto era lido
+                // como "o de outra unidade".
+                const compacto = height - 4 < 76
                 return (
                   <Link key={ev.id} href={`/${slug}/agenda/${ev.id}`} style={{ textDecoration: 'none', display: 'block' }}>
-                    <div data-cartao-minha-agenda={ev.id} data-liberou={ev.status === 'COMPLETED' && liberouOHorario(ev) ? '' : undefined} {...(ev.unidade ? { 'data-outra-unidade': ev.unidade } : {})} style={{
-                      position: 'absolute', top: top + 2, ...evLados(ev), height: height - 4,
-                      borderRadius: 10,
-                      background: st.bg,
-                      border: `1.5px solid ${isIP ? 'var(--brand)' : 'var(--border)'}`,
-                      borderLeft: `3.5px solid ${st.dot}`,
-                      padding: '10px 14px',
-                      display: 'flex', flexDirection: 'column', justifyContent: 'center',
-                      cursor: 'pointer', overflow: 'hidden',
-                    }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = isIP ? 'var(--brand-soft)' : 'var(--bg-app)' }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = st.bg }}
+                    <div data-cartao-minha-agenda={ev.id} data-compacto={compacto ? '' : undefined}
+                      data-liberou={ev.status === 'COMPLETED' && liberouOHorario(ev) ? '' : undefined} {...(ev.unidade ? { 'data-outra-unidade': ev.unidade } : {})}
+                      title={[time, ev.clientName, ev.procedureName, `${ev.durationMin} min`, ev.unidade ? `Na unidade ${ev.unidade}` : null].filter(Boolean).join(' · ')}
+                      style={{
+                        position: 'absolute', top: top + 2, ...evLados(ev), height: height - 4,
+                        borderRadius: 10, background: st.bg,
+                        border: `1.5px solid ${isIP ? 'var(--brand)' : 'var(--border)'}`, borderLeft: `3.5px solid ${st.dot}`,
+                        padding: compacto ? '3px 12px' : '10px 14px',
+                        display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: compacto ? 1 : 5,
+                        cursor: 'pointer', overflow: 'hidden',
+                      }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = isIP ? 'var(--brand-soft)' : 'var(--bg-app)' }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = st.bg }}
                     >
-                      {/* Linha superior: hora + duração + status */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
-                        <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: isIP ? 'var(--brand)' : 'var(--text)', letterSpacing: '-0.01em' }}>
+                      {/* Linha de cima: hora · duração · status · menor · unidade (este encolhe com reticências — A8 da 13ª). */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', minWidth: 0 }}>
+                        <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: isIP ? 'var(--brand)' : 'var(--text)', letterSpacing: '-0.01em', flexShrink: 0 }}>
                           {time}
                         </span>
-                        <span style={{ fontSize: 'var(--text-overline)', fontWeight: 600, color: 'var(--text-faint)' }}>
+                        <span style={{ fontSize: 'var(--text-overline)', fontWeight: 600, color: 'var(--text-faint)', flexShrink: 0 }}>
                           · {ev.durationMin}min
                         </span>
                         <span style={{
-                          fontSize: 'var(--text-overline)', fontWeight: 700, padding: '2px 9px', borderRadius: 'var(--radius-chip-token)',
-                          background: st.pill.bg, color: st.pill.color,
+                          fontSize: 'var(--text-overline)', fontWeight: 700, padding: compacto ? '0 7px' : '2px 9px', borderRadius: 'var(--radius-chip-token)',
+                          background: st.pill.bg, color: st.pill.color, flexShrink: 0,
                         }}>
                           {st.label}
                         </span>
@@ -624,25 +596,38 @@ export function ProfessionalAgendaView({
                         {/* O dela numa outra unidade em que atende (decisão 2 da 8ª). */}
                         {ev.unidade && <SeloDaOutraUnidade unidade={ev.unidade} />}
                       </div>
-                      {/* Linha inferior: avatar + nome + procedimento */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {/* Linha de baixo: a cliente e o procedimento (no alto, com o avatar). */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: compacto ? 6 : 8, minWidth: 0 }}>
+                        {!compacto && (
+                          <div style={{
+                            width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
+                            background: isIP ? 'var(--brand)' : 'var(--brand-soft)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 'var(--text-overline)', fontWeight: 800, color: isIP ? 'var(--on-brand)' : 'var(--brand)',
+                          }}>
+                            {initials(ev.clientName)}
+                          </div>
+                        )}
                         <div style={{
-                          width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
-                          background: isIP ? 'var(--brand)' : 'var(--brand-soft)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 'var(--text-overline)', fontWeight: 800, color: isIP ? 'var(--on-brand)' : 'var(--brand)',
+                          minWidth: 0, flex: '1 1 auto', display: 'flex',
+                          flexDirection: compacto ? 'row' : 'column', alignItems: compacto ? 'center' : 'stretch', gap: compacto ? 6 : 1,
+                          whiteSpace: 'nowrap', overflow: 'hidden', lineHeight: compacto ? 1.25 : 1.3,
                         }}>
-                          {initials(ev.clientName)}
-                        </div>
-                        <div style={{ minWidth: 0 }}>
-                          <p data-cliente-do-cartao style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.3 }}>
+                          {/* O nome da cliente nunca some (A8 da 13ª): cede por último. */}
+                          <p data-cliente-do-cartao style={{
+                            fontSize: compacto ? 'var(--text-sm-sz)' : 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)',
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: compacto ? '1 1 auto' : undefined, minWidth: compacto ? '5em' : 0,
+                          }}>
                             {ev.clientName}
                           </p>
-                          <p data-procedimento-do-cartao style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
-                            {ev.procedureName}
+                          <p data-procedimento-do-cartao style={{
+                            fontSize: compacto ? 'var(--text-overline)' : 'var(--text-2xs)', color: 'var(--text-muted)',
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: compacto ? '0 1 auto' : undefined,
+                          }}>
+                            {compacto ? `· ${ev.procedureName}` : ev.procedureName}
                           </p>
                           {/* A linha do responsável, quando o bloco tem altura para ela. */}
-                          {ev.menor && height >= 96 && (
+                          {!compacto && ev.menor && height >= 96 && (
                             <p data-responsavel-do-agendamento style={{ fontSize: 'var(--text-2xs)', color: ev.menor.responsavel ? 'var(--text-muted)' : 'var(--warning)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
                               {ev.menor.responsavel ?? 'Menor de idade, sem responsável legal no cadastro'}
                             </p>

@@ -17,6 +17,7 @@ import { lerTodas } from '@/lib/db'
 import { umaUnidadeSo } from '@/lib/unidades/uma-so'
 import { unidadesParaLer, periodoDaTela, nomeNaTela } from '@/lib/unidades/da-tela'
 import { getAReceberDaOperadora, getParcelasDaOperadora } from '@/lib/metrics/operadora'
+import { comOProcedimento, parcelasComOProcedimento } from '@/lib/financeiro/procedimento-do-lancamento'
 import { getFluxoDeCaixa } from '@/lib/metrics/fluxo-de-caixa'
 import { getTotalDosAtendimentosAReceber } from '@/lib/metrics/a-receber'
 import { resultadoDoPeriodo, SEM_ESTOQUE_NO_RESULTADO } from '@/lib/metrics/resultado'
@@ -156,7 +157,8 @@ export default async function AdminFinanceiroPage({
     // F2c: o cartão em N vezes que a OPERADORA ainda deposita, mês a mês, pelo
     // vencimento até o fim do período — o total das ativas e cada unidade.
     getAReceberDaOperadora({ tenantId: ctx.tenantId!, branchIds: null, from: start, to: fimDoPeriodo }),
-    getParcelasDaOperadora({ tenantId: ctx.tenantId!, branchIds: null, from: start, to: fimDoPeriodo }),
+    getParcelasDaOperadora({ tenantId: ctx.tenantId!, branchIds: null, from: start, to: fimDoPeriodo })
+      .then(ps => parcelasComOProcedimento(ctx.tenantId!, ps)),
     // "Reforça", item 4: os concluídos sem pagamento da rede inteira,
     // separados dos lançamentos (só apareciam no Fechamento).
     getTotalDosAtendimentosAReceber({ tenantId: ctx.tenantId! }),
@@ -179,7 +181,8 @@ export default async function AdminFinanceiroPage({
   // CX6 (2026-11-14): as taxas estimadas e a venda sem taxa do período, o total e cada unidade.
   const taxasDoPeriodo = await getTaxasDoPeriodo({ tenantId: ctx.tenantId!, branchIds, from: start, to: end })
 
-  const txs = (txsRaw ?? []) as unknown as LancamentoLido[]
+  // A26 da 24ª: o lançamento do atendimento diz o procedimento ("Atendimento concluído" não dizia).
+  const txs = (await comOProcedimento(ctx.tenantId!, (txsRaw ?? []) as unknown as LancamentoLido[]))
   // O resultado da rede e as parcelas dele (D8 da 8ª: a conta embaixo do cartão).
   const totalConta = resultadoDoPeriodo({ ...core, ...estoqueNoResultado.total })
 

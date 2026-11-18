@@ -22,6 +22,9 @@ import { criarLoginDoCliente, darAcessoAoCliente, desfazerLogin, ligarLoginAoCli
 import { CPF_INVALIDO, documentoDaFicha, documentoEstrangeiroRepetido } from '@/lib/clients/documento'
 import { colunasDoResponsavel } from '@/lib/clients/menor'
 import { conferirIndicadaPor } from '@/lib/clients/indicada-por'
+import { enderecoDoFormulario, soOPreenchido } from '@/lib/clients/endereco-do-cadastro'
+import { marcacoesDaTag, MAXIMO_DE_FICHAS_POR_MARCACAO } from '@/lib/tags/marcar-em-varias'
+import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
 import { umaVez, chaveDoEnvio, chaveDoConteudo } from '@/lib/envio-unico'
 import { fichasQueJaExistem, respostaDoJaExiste, proximaSemResposta, atualizarFichaComOPreenchido, type FichaQueJaExiste, type PreenchidoAgora } from '@/lib/clients/ja-existe'
 import type { TenantContext } from '@estetica-os/types'
@@ -203,6 +206,9 @@ async function addClientInterno(ctx: TenantContext, formData: FormData): Promise
   // As perguntas do cadastro (a ficha arquivada do telefone, a ficha que JÁ
   // EXISTE — r2-cli-01 —, o lead do CRM) — as MESMAS que a tela faz antes do
   // clique (A18, `conferirTelefoneDoCadastro`): o servidor confere de novo.
+  // A29 da 22ª = A39 da 23ª: o endereço (opcional) do Novo cliente.
+  const endereco = enderecoDoFormulario(formData)
+
   const doTelefone = await perguntaDoTelefone(admin, ctx, fone, respostasDoFormulario(formData), !!(leadId || conversationId),
     { cpf: document, nome: name, nascimento: birthDate })
   if ('pergunta' in doTelefone) return doTelefone.pergunta
@@ -211,6 +217,7 @@ async function addClientInterno(ctx: TenantContext, formData: FormData): Promise
   if ('atualizar' in doTelefone) {
     return atualizarPeloCadastro(ctx, doTelefone.atualizar, {
       phone: fone.gravar, email, documento: doc.colunas, birth_date: birthDate, gender, notes, tags,
+      endereco: soOPreenchido(endereco),
     }, { leadId, conversationId, slug, comAcesso, email, documento: docDoAcesso })
   }
   const { pessoaDoCrm } = doTelefone
@@ -233,7 +240,7 @@ async function addClientInterno(ctx: TenantContext, formData: FormData): Promise
   const dadosDoCliente = {
     tenant_id: ctx.tenantId!, branch_id: branch.id as string,
     name, phone: fone.gravar, email, ...doc.colunas, ...resp.colunas,
-    birth_date: birthDate, gender, notes, tags,
+    birth_date: birthDate, gender, notes, tags, ...endereco,
     is_active: true, auth_id: authId,
     ...(indicada.id ? { indicada_por: indicada.id } : {}),
   }
@@ -740,11 +747,55 @@ export async function toggleClientStatus(clientId: string, isActive: boolean, sl
   )
 
   if (slug) {
-    revalidatePath(`/${slug}/clients`)
+    if (slug) revalidatePath(`/${slug}/clients`)
     revalidatePath(`/${slug}/clients/${clientId}`)
   }
   revalidatePath('/admin/clients')
   revalidatePath(`/admin/clients/${clientId}`)
   revalidateTag(`clients:${ctx.tenantId!}`, { expire: 0 })
   return {}
+}
+
+/**
+ * "Marcar tag" em várias clientes de uma vez, pela seleção da lista de
+ * Clientes (A21 da 16ª simulação, 2026-11-17). É a pessoa que marca (CLAUDE.md
+ * §1): só uma tag do vocabulário da rede (`marcacoesDaTag`), e só em quem
+ * ainda não a tem — as tags que a ficha já tinha ficam. Cada ficha grava pelo
+ * núcleo do cadastro (`atualizarClienteCore`: a rede, o "dados alterados").
+ * A cliente é da rede (H5): a seleção vale em qualquer unidade.
+ */
+export async function marcarTagEmClientes(
+  clientIds: string[], tag: string, slug: string | null,
+): Promise<{ error: string } | { marcadas: number; jaTinham: number; tag: string }> {
+  try {
+    const ctx = await getTenantContext()
+    if (!can(ctx, 'clients', 'MANAGE')) return { error: SO_CONSULTA_CLIENTES }
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    const ids = [...new Set((Array.isArray(clientIds) ? clientIds : []).filter(id => typeof id === 'string' && uuid.test(id)))]
+    if (!ids.length) return { error: 'Escolha ao menos uma cliente.' }
+    if (ids.length > MAXIMO_DE_FICHAS_POR_MARCACAO) return { error: `Marque até ${MAXIMO_DE_FICHAS_POR_MARCACAO} clientes de cada vez.` }
+
+    const admin = createAdminClient()
+    const [vocabulario, fichas] = await Promise.all([
+      tagsAtivasDaRede(ctx.tenantId!),
+      ler(admin.from('clients').select('id, tags').eq('tenant_id', ctx.tenantId!).in('id', ids), 'ler as clientes escolhidas') as
+        Promise<{ id: string; tags: string[] | null }[] | null>,
+    ])
+    const { tag: daRede, mudar } = marcacoesDaTag(fichas ?? [], typeof tag === 'string' ? tag : '', vocabulario)
+    if (!daRede) return { error: 'Essa tag não existe na rede: crie-a em Configurações → Tags.' }
+
+    let marcadas = 0
+    for (const f of mudar) {
+      const r = await atualizarClienteCore(admin, ctx, f.id, { tags: f.tags }, slug)
+      if (r.error) return { error: marcadas ? `${marcadas} marcadas; parou numa ficha: ${r.error}` : r.error }
+      marcadas++
+    }
+    revalidateTag(`clients:${ctx.tenantId}`, { expire: 0 })
+    revalidatePath(`/${slug}/clients`)
+    revalidatePath('/admin/clients')
+    return { marcadas, jaTinham: (fichas ?? []).length - mudar.length, tag: daRede }
+  } catch (e) {
+    console.error('[marcarTagEmClientes]', e)
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
+  }
 }

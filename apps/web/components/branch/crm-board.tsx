@@ -9,7 +9,8 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { idadeDoLead } from '@/lib/crm/idade-do-lead'
-import { updateLeadStage } from '@/actions/leads'
+import { updateLeadStage, automacoesAoMoverOCard } from '@/actions/leads'
+import { usePerguntaDasAutomacoes } from './pergunta-das-automacoes'
 import { ClientForm } from './client-form'
 import { rotuloDaOportunidade, type CRMFunnel, type CRMStage } from '@/lib/crm'
 import { rotaCliente } from '@/lib/rotas'
@@ -505,7 +506,7 @@ function MenuItem({
 function LeadCard({
   lead, slug, branchId, allStages, funnels, funnelId, procedures, branches, networkMode, nowMs, podeCadastrarCliente = false,
   unidadesParaAgendar, isDragging, onDragStart, onDragEnd, onLeadDeleted, abrirAoMontar, onAbertoAoMontar,
-  desfechos, onMoverPara,
+  desfechos, onMoverPara, perguntar,
 }: {
   lead:           Lead
   slug:           string
@@ -531,6 +532,8 @@ function LeadCard({
   /** As etapas de ganho e de perda do funil aberto (A18/A19); nulo, sem os botões. */
   desfechos?: { ganho: CRMStage | null; perdido: CRMStage | null } | null
   onMoverPara?: (leadId: string, etapaId: string) => void
+  /** A35 da 22ª: a pergunta das automações do quadro (`usePerguntaDasAutomacoes`). */
+  perguntar?: ReturnType<typeof usePerguntaDasAutomacoes>['perguntar']
 }) {
   const fuso = useFuso()
   const [convertOpen, setConvertOpen] = useState(false)
@@ -611,7 +614,11 @@ function LeadCard({
     if (!primeira) return
     moveRef.current?.close()
     startMoving(async () => {
-      await updateLeadStage(lead.id, primeira.id, slug)
+      // A35 da 22ª: automação ligada que casa com a mudança → "Disparar?".
+      const disparar = perguntar ? await perguntar(() => automacoesAoMoverOCard(lead.id, primeira.id)) : true
+      if (disparar === null) return
+      const r = await updateLeadStage(lead.id, primeira.id, slug, null, disparar)
+      if (r.error) { toast.error(r.error); return }
       // Sai deste quadro: o card agora pertence a outro funil.
       onLeadDeleted(lead.id)
       router.refresh()
@@ -802,23 +809,28 @@ function LeadCard({
           */}
           {(outrosFunis.length > 0 || (desfechos && onMoverPara) || outrasEtapas.length > 0 || !!unidadesParaAgendar?.length) && (
           <div ref={menuRef} style={{ position: 'relative', flexShrink: 0 }}>
+            {/* A43 da 24ª (design): só o ícone, ninguém sabia o que o "…" guardava. */}
             <button
               type="button"
+              data-acoes-do-card
               title="Ações da oportunidade"
+              aria-label="Ações da oportunidade"
               aria-haspopup="menu"
               aria-expanded={menuAberto}
               onClick={e => { e.stopPropagation(); abrirOuFecharOMenu(e.currentTarget) }}
               disabled={moving}
               style={{
-                width: 24, height: 24, borderRadius: 6,
+                height: 24, padding: '0 7px', gap: 4, borderRadius: 6,
                 border: '1px solid var(--border)',
                 background: menuAberto ? 'var(--brand-soft)' : 'var(--bg-app)',
-                color: menuAberto ? 'var(--brand)' : 'var(--text-faint)',
+                color: menuAberto ? 'var(--brand)' : 'var(--text-muted)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', fontFamily: 'inherit',
                 opacity: moving ? 0.5 : 1,
               }}
             >
               <MoreHorizontal size={12} />
+              <span>Ações</span>
             </button>
 
             {menuAberto && posDoMenu && createPortal(
@@ -1156,7 +1168,10 @@ export function CRMBoard({
     : networkMode ? (branches ?? [])
     : branchId ? [{ id: branchId, name: branchName ?? '', slug }] : null
   // Levar o card à etapa de desfecho perdido pergunta o motivo antes de mover.
-  const [perdaPendente, setPerdaPendente] = useState<{ id: string; etapa: string } | null>(null)
+  const [perdaPendente, setPerdaPendente] = useState<{ id: string; etapa: string; disparar: boolean } | null>(null)
+  // A35 da 22ª (o Heitor, 2026-11-18): mover o card com automação ligada que
+  // casa com a mudança pergunta "Disparar?" antes.
+  const { perguntar, janela: perguntaDasAutomacoes } = usePerguntaDasAutomacoes()
   const [perdendo, setPerdendo] = useState(false)
   const [erroDaPerda, setErroDaPerda] = useState<string | null>(null)
   const [leads, setLeads]     = useState<Lead[]>(initialLeads)
@@ -1301,22 +1316,25 @@ export function CRMBoard({
     // O id vem do arraste; sem ele (o navegador não repassou), o card que estava sendo arrastado.
     const id   = e.dataTransfer.getData('text/plain') || draggingId || ''
     setDraggingId(null); setOverStage(null); enterCounts.current = {}
-    moverPara(id, targetStageId)
+    void moverPara(id, targetStageId)
   }
 
   /** Leva o card a uma etapa — o arraste, o menu do card e a sugestão da compra (A18/A19). */
-  function moverPara(id: string, targetStageId: string) {
+  async function moverPara(id: string, targetStageId: string) {
     const lead = leads.find(l => l.id === id)
     if (!lead || lead.crm_stage_id === targetStageId) return
+    // A35 da 22ª: a pergunta das automações vem antes (e antes do motivo da perda).
+    const disparar = await perguntar(() => automacoesAoMoverOCard(id, targetStageId))
+    if (disparar === null) return
     if (allStages.find(s => s.id === targetStageId)?.outcome === 'LOST') {
       setErroDaPerda(null)
-      setPerdaPendente({ id, etapa: targetStageId })
+      setPerdaPendente({ id, etapa: targetStageId, disparar })
       return
     }
     setLeads(prev => prev.map(l => l.id === id ? { ...l, crm_stage_id: targetStageId, motivo_perda_id: null, crm_motivos_perda: null } : l))
     startTransition(async () => {
       // A recusa volta o card para onde estava e diz por quê (era descartada).
-      const r = await updateLeadStage(id, targetStageId, slug)
+      const r = await updateLeadStage(id, targetStageId, slug, null, disparar)
       if (r.error) {
         setLeads(prev => prev.map(l => l.id === id ? lead : l))
         toast.error(r.error)
@@ -1329,7 +1347,7 @@ export function CRMBoard({
   async function confirmarPerda(perda: { motivoId: string; obs: string | null }) {
     if (!perdaPendente) return
     setPerdendo(true); setErroDaPerda(null)
-    const r = await updateLeadStage(perdaPendente.id, perdaPendente.etapa, slug, perda)
+    const r = await updateLeadStage(perdaPendente.id, perdaPendente.etapa, slug, perda, perdaPendente.disparar)
     setPerdendo(false)
     if (r?.error) { setErroDaPerda(r.error); return }
     const { id, etapa } = perdaPendente
@@ -1352,6 +1370,7 @@ export function CRMBoard({
 
   return (
     <div className="crm-board-root" style={{ display: 'flex', flexDirection: 'column', gap: 0, flex: 1, minHeight: 0 }}>
+      {perguntaDasAutomacoes}
       {perdaPendente && (
         <PerguntaDaPerda motivos={motivos} oportunidade={rotuloDaPerda(perdaPendente.id)} enviando={perdendo} erro={erroDaPerda}
           onConfirmar={confirmarPerda} onVoltar={() => setPerdaPendente(null)} />
@@ -1490,7 +1509,8 @@ export function CRMBoard({
                   abrirAoMontar={leadPendente === lead.id}
                   onAbertoAoMontar={aoAbrirLeadDaUrl}
                   desfechos={desfechos}
-                  onMoverPara={moverPara}
+                  onMoverPara={(leadId, etapaId) => void moverPara(leadId, etapaId)}
+                  perguntar={perguntar}
                 />
               ))}
 

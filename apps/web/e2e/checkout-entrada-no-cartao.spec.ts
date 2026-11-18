@@ -4,6 +4,7 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { criarMembro, clienteComSessao, type MembroDeTeste } from './apoio/sessao'
 import { apagarDocumentosEmitidos } from './apoio/limpeza'
 import { abrirVendaNoPdv, euVendi, euVendiOPlano, pagoNoPix, receberPlanoNoPdv } from './apoio/vender'
+import { venderNaTelaPassandoPeloContrato } from './apoio/contrato-do-pacote'
 
 /**
  * D5 e D6 da 6ª simulação (F20), e o A47.
@@ -129,7 +130,7 @@ test.describe('a entrada no cartão e o crediário da rede', () => {
       await expect(page.getByRole('heading', { name: 'Documento assinado' })).toBeVisible()
       await page.getByRole('button', { name: 'Continuar' }).click()
       // Sem agendamento aqui (as sessões se agendam pelo plano): recebe.
-      await janela.getByRole('button', { name: 'Receber o plano' }).click()
+      await janela.getByRole('button', { name: /^(Receber R\$|Fechar a comanda)/ }).click()
       await expect(janela).toHaveCount(0, { timeout: 20_000 })
     })
     await expect.poll(async () => ((await db().from('financial_transactions').select('id').eq('treatment_plan_id', planId)).data ?? []).length).toBe(4)
@@ -160,7 +161,7 @@ test.describe('a entrada no cartão e o crediário da rede', () => {
       await page.getByRole('button', { name: 'Confirmar: o cliente assinou o papel' }).click()
       await expect(page.getByRole('heading', { name: 'Documento assinado' })).toBeVisible()
       await page.getByRole('button', { name: 'Continuar' }).click()
-      await janela.getByRole('button', { name: 'Receber o plano' }).click()
+      await janela.getByRole('button', { name: /^(Receber R\$|Fechar a comanda)/ }).click()
       await expect(janela).toHaveCount(0, { timeout: 20_000 })
     })
     await expect.poll(async () => ((await db().from('financial_transactions').select('id').eq('treatment_plan_id', planId)).data ?? []).length).toBe(3)
@@ -197,7 +198,7 @@ test.describe('a entrada no cartão e o crediário da rede', () => {
       await expect(dlg.getByText(/2× R\$\s150,00/).first()).toBeVisible()
       await pagoNoPix(dlg)
       await euVendi(dlg)
-      await dlg.getByRole('button', { name: /Vender por/ }).click()
+      await venderNaTelaPassandoPeloContrato(dlg, dlg.getByRole('button', { name: /Vender por/ }))
       await expect.poll(async () => (await db().from('client_packages').select('id').eq('client_id', cliente)).data?.length).toBe(1)
     })
     const { data: cp } = await db().from('client_packages').select('id').eq('client_id', cliente).single()
@@ -242,10 +243,10 @@ test.describe('a entrada no cartão e o crediário da rede', () => {
         await p.goto(`/${un!.slug}/financeiro?aba=movimentacoes&period=custom&from=${hoje}&to=${ate}`)
         await p.getByRole('row').filter({ hasText: `Pacote crediário ${marca}` }).getByRole('button', { name: 'Receber', exact: true }).click()
         const dlg = p.getByRole('dialog', { name: 'Receber' })
-        const forma = dlg.getByLabel('Forma de pagamento')
-        await expect(forma).toHaveValue('')
+        // A25 da 24ª: as formas em blocos, como no PDV (era o seletor "Selecione…").
+        await expect(dlg.getByRole('radio', { checked: true })).toHaveCount(0)
         await expect(dlg.getByRole('button', { name: 'Confirmar recebimento' })).toBeDisabled()
-        await forma.selectOption('PIX')
+        await dlg.getByRole('radio', { name: 'Pix', exact: true }).click()
         await dlg.getByRole('button', { name: 'Confirmar recebimento' }).click()
         await expect(dlg).toBeHidden()
       })

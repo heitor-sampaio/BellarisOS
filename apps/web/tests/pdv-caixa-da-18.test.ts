@@ -197,8 +197,10 @@ describe('A6: o PDV avisa antes de vender o que o contrato do pacote pede', () =
     expect(faltando.some(f => /pagamento/i.test(f))).toBe(false)
   })
   it('o aviso diz o contrato e o que falta', () => {
+    // PC2 (auditoria de 2026-11-18): o contrato se assina ANTES do pagamento —
+    // o aviso não diz mais que "a venda segue" com o cadastro incompleto.
     expect(avisoDoContratoAntesDeVender({ titulo: 'Contrato de pacote', faltando: ['Endereço'] }))
-      .toBe('O contrato deste pacote (Contrato de pacote) pede Endereço, que falta no cadastro. Completado o cadastro antes de vender, ele já sai pronto para assinar.')
+      .toBe('O contrato deste pacote (Contrato de pacote) pede Endereço, que falta no cadastro. A cliente assina o contrato antes do pagamento: complete o cadastro para ele ficar pronto para assinar.')
   })
   it('a venda do pacote mostra o aviso com "Completar o cadastro"', () => {
     const t = ler('components/shared/vender-pacote.tsx')

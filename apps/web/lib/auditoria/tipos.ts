@@ -47,6 +47,11 @@ export interface NomesDaAuditoria {
    * quando há; senão a embalagem), lida agora — "2 frascos de Toxina 1 frasco".
    */
   medidasDosProdutos?: Record<string, string>
+  /**
+   * A10 da 24ª: a embalagem do produto (o nome dela e quantas medidas de
+   * consumo ela rende) — o custo do lote corrigido se diz "por seringa".
+   */
+  embalagensDosProdutos?: Record<string, { unidade: string; fator: number }>
   /** O cargo de cada permissão e de cada aba de relatório (o id da linha → o nome do cargo), lido agora. */
   cargos?:   Record<string, string>
   /** O nome do pacote vendido (`client_packages.package_id` → o pacote), lido agora (D7 da 16ª). */

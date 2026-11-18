@@ -23,7 +23,10 @@ describe('PT3: a sessão de plano ou de pacote se agenda pelo app', () => {
     expect(situacaoDaSessaoNoApp({ status: 'COMPLETED', scheduled_at: '2026-11-10T13:00:00Z', completed_at: '2026-11-10T14:00:00Z' }, fuso).texto).toBe('Feita em 10/11')
     expect(situacaoDaSessaoNoApp({ status: 'SCHEDULED', scheduled_at: '2026-11-20T13:00:00Z', completed_at: null }, fuso).texto).toBe('Agendada para 20/11 às 10:00')
     expect(situacaoDaSessaoNoApp(null, fuso)).toMatchObject({ texto: 'A agendar', aAgendar: true })
-    expect(situacaoDaSessaoNoApp({ status: 'CANCELLED', scheduled_at: '2026-11-20T13:00:00Z', completed_at: null }, fuso).aAgendar).toBe(true)
+    // Ligada a um CANCELADO só fica a desistência no meio (o `pre_pago_libera`
+    // solta o cancelado antes de iniciar): a sessão conta como usada e não
+    // volta (o Heitor, 2026-11-18: "problema de quem desistir"). Era "A agendar".
+    expect(situacaoDaSessaoNoApp({ status: 'CANCELLED', scheduled_at: '2026-11-20T13:00:00Z', completed_at: null }, fuso).aAgendar).toBe(false)
   })
 })
 

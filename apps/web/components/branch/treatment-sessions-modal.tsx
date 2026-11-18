@@ -71,7 +71,7 @@ interface Props {
    */
   onCancelarPlano?: () => void
   /** A41 da 11ª: o crediário deste pacote ainda em aberto (só a quem recebe). */
-  emAberto?: { valor: number; parcelas: number; unidadeId?: string | null } | null
+  emAberto?: { valor: number; parcelas: number; unidadeId?: string | null; liberaAsSessoes?: boolean } | null
   /** A21 da 14ª: aberta pelo "Agendar" de uma sessão da ficha de tratamento — já com o agendar dela aberto. */
   agendarSessaoId?: string | null
 }
@@ -429,7 +429,7 @@ export function TreatmentSessionsModal({
         {/* Body */}
         <div style={{ overflowY: 'auto', flex: 1, padding: '16px 24px 20px' }}>
           {/* A41 da 11ª: ao agendar a sessão, o que falta pagar do pacote (as sessões seguem liberadas). */}
-          {emAberto && <div style={{ marginBottom: 12 }}><AvisoDoPacoteEmAberto valor={emAberto.valor} parcelas={emAberto.parcelas} clienteId={clientId} unidadeId={emAberto.unidadeId} slug={slug} /></div>}
+          {emAberto && <div style={{ marginBottom: 12 }}><AvisoDoPacoteEmAberto valor={emAberto.valor} parcelas={emAberto.parcelas} clienteId={clientId} unidadeId={emAberto.unidadeId} slug={slug} liberaAsSessoes={emAberto.liberaAsSessoes ?? true} /></div>}
           {loading ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '24px 0', color: 'var(--text-faint)' }}>
               <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />

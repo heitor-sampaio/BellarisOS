@@ -168,7 +168,11 @@ export async function createCrmAppointment(
 ): Promise<{ id?: string; error?: string; jaExiste?: FichaQueJaExiste }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'crm', 'MANAGE')
-  // Agendar pela conversa é agenda: fora do plano da rede, não nasce agendamento.
+  // Agendar pelo CRM é agendar: pede também a Agenda em Gerenciar (decisão do
+  // Claude pelo princípio 3, 2026-11-18 — a mesma régua do agendar da agenda;
+  // até aqui o CRM em Gerenciar bastava). Fora do plano da rede, não nasce
+  // agendamento.
+  assertPermission(ctx, 'agenda', 'MANAGE')
   assertRecurso(ctx, 'agenda')
   const admin = createAdminClient()
 

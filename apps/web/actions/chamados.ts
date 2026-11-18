@@ -4,7 +4,7 @@ import { getTenantContext, can } from '@/lib/auth'
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, mensagemDoErro } from '@/lib/db'
-import { podeIncluirClinico, HORAS_PADRAO } from '@/lib/suporte/regras'
+import { podeIncluirClinico, podeAutorizar, podeRevogar, HORAS_PADRAO, SO_A_ADMIN_AUTORIZA } from '@/lib/suporte/regras'
 import { contextoDoNavegador } from '@/lib/suporte/chamados-regras'
 import { revalidateTag } from 'next/cache'
 import { sessoesEmCurso, tagDaSessao } from '@/lib/suporte/sessao'
@@ -52,6 +52,8 @@ export async function abrirChamado(form: FormData): Promise<Resultado<{ chamadoI
   if (!corpo || corpo.length > 5000) return { ok: false, error: 'Conte o que aconteceu (até 5.000 caracteres).' }
 
   const autorizar = form.get('autorizar') === '1'
+  // Autorizar o suporte é só da Admin da rede (auditoria das regras, 2026-11-18).
+  if (autorizar && !podeAutorizar(ctx)) return { ok: false, error: SO_A_ADMIN_AUTORIZA }
   const clinico = autorizar && form.get('clinico') === '1'
   if (clinico && !podeIncluirClinico(ctx)) return { ok: false, error: 'Só quem gerencia o prontuário libera dado clínico ao suporte.' }
 
@@ -115,7 +117,7 @@ export async function responderChamado(form: FormData): Promise<Resultado> {
   }
 }
 
-export async function meusChamados(): Promise<Resultado<{ chamados: ChamadoResumo[]; daRede: boolean; podeClinico: boolean }>> {
+export async function meusChamados(): Promise<Resultado<{ chamados: ChamadoResumo[]; daRede: boolean; podeClinico: boolean; podeAutorizar: boolean }>> {
   const ctx = await getTenantContext()
   if (ctx.suporte || !ctx.tenantId || ctx.isClient) return { ok: false, error: 'Sem acesso.' }
   try {
@@ -123,19 +125,25 @@ export async function meusChamados(): Promise<Resultado<{ chamados: ChamadoResum
     // Sem o id interno não há "os meus" — e nunca cai em "todos".
     const chamados = daRede ? await chamadosDaRede(ctx.tenantId, {})
       : ctx.internalUserId ? await chamadosDaRede(ctx.tenantId, { userId: ctx.internalUserId }) : []
-    return { ok: true, chamados, daRede, podeClinico: podeIncluirClinico(ctx) }
+    return { ok: true, chamados, daRede, podeClinico: podeIncluirClinico(ctx), podeAutorizar: podeAutorizar(ctx) }
   } catch (e) {
     return { ok: false, error: mensagemDoErro(e) }
   }
 }
 
-export async function verChamado(chamadoId: string): Promise<Resultado<{ chamado: ChamadoCompleto; meu: boolean }>> {
+export async function verChamado(chamadoId: string): Promise<Resultado<{ chamado: ChamadoCompleto; meu: boolean; podeAutorizar: boolean; podeRevogar: boolean }>> {
   const ctx = await getTenantContext()
   if (ctx.suporte) return { ok: false, error: 'Sem acesso.' }
   try {
     const chamado = await chamadoAoAlcance(ctx, chamadoId)
     if (!chamado) return { ok: false, error: 'Chamado não encontrado.' }
-    return { ok: true, chamado, meu: chamado.quemId === ctx.internalUserId }
+    // A autorização do chamado é da conta de quem o abriu: só a Admin da rede a
+    // dá; revogar, quem abriu e a Admin.
+    const alvo = chamado.quemId ?? ''
+    return {
+      ok: true, chamado, meu: chamado.quemId === ctx.internalUserId,
+      podeAutorizar: !!alvo && podeAutorizar(ctx), podeRevogar: !!alvo && podeRevogar(ctx, alvo),
+    }
   } catch (e) {
     return { ok: false, error: mensagemDoErro(e) }
   }

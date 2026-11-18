@@ -41,7 +41,7 @@ export function NotaDoVencimento({ valor, proximo, emAbertoTotal, concluidosSemP
   hrefDasVencidas?: string
   /**
    * A42 da 12ª: quem só VÊ o financeiro (a contadora) não tem o "Pagar" na
-   * linha — o link diz "Ver a lista", não "Ver e dar baixa".
+   * linha — o link diz "Ver a lista", não "Ver e receber" (A25 da 24ª: era "Ver e dar baixa").
    */
   podeDarBaixa?: boolean
   /** A43 da 12ª: o "A pagar" (a despesa em aberto): "Ver e pagar". */
@@ -69,7 +69,7 @@ export function NotaDoVencimento({ valor, proximo, emAbertoTotal, concluidosSemP
             ? <span data-vence-no-periodo>Vence no período: <strong>{formatBRL(valor)}</strong></span>
             : <>Em aberto: <strong>{formatBRL(emAbertoTotal)}</strong></>}
           {hrefDaBaixa && emAbertoTotal > 0 && (
-            <> · <a href={hrefDaBaixa} style={{ color: 'inherit', fontWeight: 700, textDecoration: 'underline' }}>{podeDarBaixa ? (despesa ? 'Ver e pagar' : 'Ver e dar baixa') : 'Ver a lista'}</a></>
+            <> · <a href={hrefDaBaixa} style={{ color: 'inherit', fontWeight: 700, textDecoration: 'underline' }}>{podeDarBaixa ? (despesa ? 'Ver e pagar' : 'Ver e receber') : 'Ver a lista'}</a></>
           )}
         </span>
       )}

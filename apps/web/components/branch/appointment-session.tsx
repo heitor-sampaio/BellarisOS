@@ -36,6 +36,8 @@ import { AnotacoesDoAtendimento, RegistroEditado } from '@/components/branch/ano
 import type { AnotacaoDoAtendimento, VersaoDoRegistro } from '@/lib/prontuario/anotacoes-e-versoes'
 import { FotosDoAtendimento, type FotoDoAtendimento } from '@/components/branch/fotos-do-atendimento'
 import { lerRascunho, gravarRascunho, limparRascunho, type RespostaDaFicha } from '@/lib/atendimento/rascunho'
+import { avisoDaFichaNaoRespondida, avisoDaFichaParaOPlano } from '@/lib/atendimento/obrigatorias'
+import { PreAtendimentoDoAgendamento } from '@/components/branch/pre-atendimento-do-agendamento'
 import { salvarFichaDoProcedimento } from '@/actions/anamnesis'
 import type { AnamnesisRow } from '@/lib/anamnesis'
 import { rotaAgenda, rotaNoPortal, rotaDaComanda } from '@/lib/rotas'
@@ -58,6 +60,7 @@ import { recusaDaEntradaAcimaDoTotal } from '@/lib/checkout/entrada'
 import { parcelasEmTexto } from '@/lib/checkout/resumo-do-pagamento'
 import { avisoDoMenor, ehMenorDeIdade, linhaDoResponsavel, type ResponsavelLegal } from '@/lib/clients/menor'
 import { textoDoRegistroTravado } from '@/lib/atendimento/registro-travado'
+import { TEXTO_DA_SESSAO_NA_DESISTENCIA } from '@/lib/atendimento/desistencia'
 import { lotesDaBaixa, textoDosLotesDaBaixa, type LoteParaBaixa, type ParteDaBaixa } from '@/lib/estoque/fefo'
 import { textoDoPlanoDoConcluido } from '@/lib/plano-de-tratamento/textos'
 import { mesDeClienteDesde } from '@/lib/clientes/cliente-desde'
@@ -356,10 +359,11 @@ function CancelModal({ appointmentId, slug, onClose, desistencia = null }: {
   appointmentId: string; slug: string; onClose: () => void
   /**
    * A desistência NO MEIO do atendimento (A27 da 8ª simulação), para quem
-   * escreve no prontuário: registrar a intercorrência e baixar o insumo já
-   * aplicado (os marcados na tela), numa transação com o cancelamento.
+   * atende (o Atendimento em Gerenciar): baixar o insumo já aplicado (os
+   * marcados na tela) e, com o Prontuário em Gerenciar (`registraClinico`),
+   * registrar a intercorrência — numa transação com o cancelamento.
    */
-  desistencia?: { insumos: SessionProduct[] } | null
+  desistencia?: { insumos: SessionProduct[]; registraClinico: boolean } | null
 }) {
   const router = useRouter()
   const [state, action, pending] = useActionState(cancelAppointmentSession, null)
@@ -393,10 +397,15 @@ function CancelModal({ appointmentId, slug, onClose, desistencia = null }: {
               <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
                 O atendimento já começou. Se algo aconteceu ou algum insumo já foi aplicado, registre aqui — vai junto com o cancelamento (sem comissão nem cobrança).
               </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label htmlFor="cancelamento-intercorrencia" className="field-label">Intercorrência (opcional)</label>
-                <textarea id="cancelamento-intercorrencia" name="intercorrencia" rows={2} placeholder="O que aconteceu — fica no prontuário do atendimento" className="field" style={{ resize: 'vertical' }} />
-              </div>
+              <p data-sessao-paga-conta style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+                {TEXTO_DA_SESSAO_NA_DESISTENCIA}
+              </p>
+              {desistencia.registraClinico && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <label htmlFor="cancelamento-intercorrencia" className="field-label">Intercorrência (opcional)</label>
+                  <textarea id="cancelamento-intercorrencia" name="intercorrencia" rows={2} placeholder="O que aconteceu — fica no prontuário do atendimento" className="field" style={{ resize: 'vertical' }} />
+                </div>
+              )}
               {desistencia.insumos.length > 0 && (
                 <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
                   <input type="checkbox" checked={baixar} onChange={e => setBaixar(e.target.checked)} style={{ marginTop: 3 }} />
@@ -436,8 +445,14 @@ function textoDoPagamentoAoFinalizar(t: { plano: boolean; pacote: boolean; pacot
 }
 
 // Modal 1: Profissional confirma conclusão clínica (sem pagamento)
-function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences, insumos, queixas, anamnese = null, ficha = null, pagamento, onClose, planejamentos = [], estoque = [], onAjustarInsumo }: {
+function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences, insumos, queixas, anamnese = null, ficha = null, pagamento, onClose, planejamentos = [], estoque = [], onAjustarInsumo, registraClinico = true }: {
   appointmentId: string; slug: string
+  /**
+   * Escreve o clínico (o Prontuário em Gerenciar)? Sem ele, conclui sem a
+   * evolução e as intercorrências (o Atendimento em Gerenciar conclui — o
+   * Heitor, 2026-11-18; o clínico segue do Prontuário).
+   */
+  registraClinico?: boolean
   /** Os planejamentos de injetáveis que a ficha da tela usa (A36: a dose do mapa × a baixa). */
   planejamentos?: string[]
   /** Os insumos do estoque da unidade (para incluir na baixa o produto do mapa). */
@@ -524,13 +539,15 @@ function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences,
               {/* A23 da 23ª: era a pergunta "…foi realizado com sucesso?", sem resposta. */}
               <span>Confirme que o procedimento foi feito.</span>
               {/* O subtítulo mora na dica (2026-11-16, "A explicação mora na dica"). */}
-              <Dica rotulo="Sobre a conclusão">Concluir grava o atendimento no prontuário e libera a cliente. Se algo saiu do esperado, anote nas intercorrências.</Dica>
+              <Dica rotulo="Sobre a conclusão">{registraClinico
+                ? 'Concluir grava o atendimento no prontuário e libera a cliente. Se algo saiu do esperado, anote nas intercorrências.'
+                : 'Concluir encerra o atendimento, baixa os insumos e libera a cliente. A evolução e as intercorrências são de quem tem o Prontuário em Gerenciar.'}</Dica>
             </p>
           </div>
           {/* A29 da 8ª simulação: o que já foi escrito NA TELA não se repete aqui
               como campo — a janela mostra o que vai ao prontuário (para mudar, é
               na tela). Só o que está em branco vira campo, para escrever agora. */}
-          {(initialNotes?.trim() || initialIntercurrences?.trim()) && (
+          {registraClinico && (initialNotes?.trim() || initialIntercurrences?.trim()) && (
             <div data-evolucao-da-tela style={{ padding: '10px 14px', borderRadius: 'var(--radius-field-token)', background: 'var(--bg-app)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 6 }}>
               {initialNotes?.trim() && (
                 <div>
@@ -549,14 +566,14 @@ function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences,
               <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Vai ao prontuário como está na tela. Para mudar, volte e edite na tela.</p>
             </div>
           )}
-          {!initialNotes?.trim() && (
+          {registraClinico && !initialNotes?.trim() && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {/* A42: a evolução tem UM nome em toda a tela (era "Anotações clínicas", "O que foi realizado" e "Observações finais"). */}
               <label htmlFor="conclusao-evolucao" className="field-label">Evolução <span style={{ fontWeight: 400, color: 'var(--text-faint)' }}>(opcional)</span></label>
               <textarea id="conclusao-evolucao" name="notes" rows={3} defaultValue="" placeholder="Técnicas, áreas tratadas, produtos utilizados…" className="field" style={{ resize: 'vertical' }} />
             </div>
           )}
-          {!initialIntercurrences?.trim() && (
+          {registraClinico && !initialIntercurrences?.trim() && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <label htmlFor="conclusao-intercorrencias" className="field-label">Intercorrências <span style={{ fontWeight: 400, color: 'var(--text-faint)' }}>(opcional)</span></label>
               <textarea id="conclusao-intercorrencias" name="intercurrences" rows={2} defaultValue="" placeholder="Reações ou observações…" className="field" style={{ resize: 'vertical' }} />
@@ -1186,7 +1203,8 @@ export function AppointmentSession({
     // servidor também não o regrava). As obrigatórias já passaram no "Finalizar".
     const concluida = appointment.status === 'COMPLETED'
     // As dores primeiro — é a ordem da página (A35): o aviso vai junto do campo.
-    if (!concluida && canViewRecords && !evalComplaints.trim()) {
+    // As dores são clínicas: só quem as escreve (o Prontuário em Gerenciar) as deve.
+    if (!concluida && canEditRecords && !evalComplaints.trim()) {
       setErroDasDores(FALTAM_AS_DORES); setGenError(FALTAM_AS_DORES)
       return
     }
@@ -1196,16 +1214,18 @@ export function AppointmentSession({
     setGenerating(true)
     const currentSessions = evalEditorRef.current?.getSessions() ?? []
     const currentNotes    = evalEditorRef.current?.getNotes()    ?? evalPlanNotes
+    // 22ª A20: o desconto do plano do editor; sem o editor na tela, não mexe.
+    const currentDesconto = evalEditorRef.current ? evalEditorRef.current.getDesconto() : undefined
     const anamnese = concluida ? null : await anamneseDaAvaliacao.current?.coletar()
     if (anamnese?.error) { setGenerating(false); setGenError(anamnese.error); return }
     // A ficha do procedimento vai NA MESMA gravação do plano (revisão do
     // Heitor, 2026-10-29): era salva antes, numa action à parte, e o plano que
     // falhava a deixava gravada pela metade. Sem mexer nela, a salva fica.
     const res = concluida
-      ? await generateEvaluationPlan(appointment.id, '', null, currentSessions, currentNotes, '', '', slug, null)
+      ? await generateEvaluationPlan(appointment.id, '', null, currentSessions, currentNotes, '', '', slug, null, { descontoDoPlano: currentDesconto })
       : await generateEvaluationPlan(
           appointment.id, evalComplaints, anamnese?.respostas ?? null, currentSessions, currentNotes,
-          evalSessionNotes, evalSessionInterc, slug, fichaDigitada, { confirmarPlanejamentoVazio },
+          evalSessionNotes, evalSessionInterc, slug, fichaDigitada, { confirmarPlanejamentoVazio, descontoDoPlano: currentDesconto },
         )
     // O planejamento sem ponto (atend-12): o servidor pergunta; a resposta gera de novo.
     if (res.confirmarPlanejamentoVazio && res.error) {
@@ -1260,13 +1280,23 @@ export function AppointmentSession({
   const mostraChegarEIniciar = aChegar && canCheckin && canManage && ehDaProfissional
   const mostraCheckin        = aChegar && canCheckin && !(canManage && ehDaProfissional)
   const mostraIniciar        = (status === 'ARRIVED' || (status === 'CONFIRMED' && !(canCheckin && ehDaProfissional))) && canManage
-  const mostraFinalizar      = status === 'IN_PROGRESS' && canManage && canEditRecords
+  // Finalizar é do Atendimento em Gerenciar (o Heitor, 2026-11-18); o clínico
+  // dentro dele (a evolução, a ficha) segue do Prontuário (`canEditRecords`).
+  const mostraFinalizar      = status === 'IN_PROGRESS' && canManage
   const temAcaoPrincipal     = mostraChegarEIniciar || mostraCheckin || mostraIniciar || mostraFinalizar || aReceber
   const isDone    = ['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(status)
+  // 15ª A7: a ficha de saúde nunca respondida (só para quem vê o clínico, antes de concluir).
+  const avisoDaFichaNao = canViewRecords && !isDone ? avisoDaFichaNaoRespondida(nomeParaSaudar(client.name), anamnesis, fichaPreAtendimento.rows) : null
+  // A36 da 24ª: o bloco do plano diz, antes do clique, o que falta na ficha de saúde.
+  const avisoDoPlanoPelaFicha = canViewRecords && appointment.status !== 'COMPLETED'
+    ? avisoDaFichaParaOPlano(fichaPreAtendimento.rows, anamneseNaTela?.respostas ?? {})
+    : null
+  const [linkDaFichaAberto, setLinkDaFichaAberto] = useState(false)
   const age       = calcAge(client.birthDate)
   // Somente BRANCH_ADMIN e NETWORK_ADMIN podem desbloquear edição pós-conclusão
   const editLocked = isDone && !isUnlocked
-  const registroTravado = textoDoRegistroTravado(status, canReassign && canEditRecords)
+  // Corrigir o concluído: o Atendimento e o Prontuário em Gerenciar (`canEditRecords`).
+  const registroTravado = textoDoRegistroTravado(status, canEditRecords)
 
   // Observações (controladas, o estado acima) + salvar unificado da ficha
   const fichaRef = useRef<AnamnesisFormHandle>(null)
@@ -1697,7 +1727,7 @@ export function AppointmentSession({
 
       {showCancel  && (
         <CancelModal appointmentId={appointment.id} slug={slug} onClose={() => setShowCancel(false)}
-          desistencia={status === 'IN_PROGRESS' && canEditRecords ? { insumos: confirmedInsumos } : null} />
+          desistencia={status === 'IN_PROGRESS' && canManage ? { insumos: confirmedInsumos, registraClinico: canEditRecords } : null} />
       )}
       {oQueFalta   && <OQueFaltaParaFinalizar grupos={oQueFalta} onFechar={() => setOQueFalta(null)} />}
       {showFinish  && (
@@ -1708,6 +1738,7 @@ export function AppointmentSession({
           // Um estado só para a evolução e a intercorrência, nos dois formulários (D8).
           initialNotes={notes}
           initialIntercurrences={intercurrences}
+          registraClinico={canEditRecords}
           insumos={confirmedInsumos}
           // As dores e a anamnese da tela vão na conclusão (D3, 2026-10-28). As
           // dores só existem no formulário da avaliação; a anamnese, onde foi digitada.
@@ -1779,7 +1810,7 @@ export function AppointmentSession({
             {/* Check-in (SCHEDULED + canCheckin) */}
             {/* O planejamento é do cliente e abre de qualquer atendimento —
                 não só da consulta de avaliação, como era antes. */}
-            <button type="button" onClick={() => setPlanejamentoAberto('tratamento')} className="btn-ghost"
+            <button type="button" onClick={() => setPlanejamentoAberto('tratamento')} className="btn-secondary"
               style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 16px', fontSize: 'var(--text-base-sz)' }}>
               <ClipboardList size={14} /> Planejamento
             </button>
@@ -1805,14 +1836,15 @@ export function AppointmentSession({
                 (dizia que quem conclui é "o profissional", nome de cargo). */}
             {/* A12 da 21ª: era um texto cinza pequeno, lido só depois de iniciar.
                 Trava o fim do atendimento — fica à vista, como aviso, antes do botão. */}
-            {['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(status) && canManage && !canEditRecords && (
+            {/* Desde 2026-11-18 é o Atendimento em Gerenciar que inicia e conclui. */}
+            {['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(status) && !canManage && quemConclui !== null && (
               <span data-quem-conclui role="note" style={{
                 display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 'var(--radius-field-token)',
                 background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', color: 'var(--warning)',
                 fontSize: 'var(--text-sm-sz)', fontWeight: 700,
               }}>
                 <Lock size={14} aria-hidden="true" style={{ flexShrink: 0 }} />
-                <span><strong>Você não conclui este atendimento.</strong> <span>{textoDeQuemConclui(quemConclui)}</span></span>
+                <span><strong>Você não inicia nem conclui este atendimento.</strong> <span>{textoDeQuemConclui(quemConclui)}</span></span>
               </span>
             )}
 
@@ -1847,7 +1879,7 @@ export function AppointmentSession({
               </button>
             )}
 
-            {/* Finalizar (IN_PROGRESS + canManage + prontuário) — conclui clinicamente. */}
+            {/* Finalizar (IN_PROGRESS + o Atendimento em Gerenciar). */}
             {mostraFinalizar && (
               <button type="button" onClick={() => {
                 const falta = conferirObrigatorias()
@@ -1961,6 +1993,36 @@ export function AppointmentSession({
               A ficha de saúde de {nomeParaSaudar(client.name) || 'quem está sendo atendido'} está vencida (respondida em {new Date(fichaDeSaudeVencidaEm).toLocaleDateString('pt-BR', { timeZone: fuso })}).
               <span style={{ fontWeight: 600 }}> Ela continua valendo; peça a atualização.</span>
             </span>
+          </div>
+        )}
+
+        {/* 15ª A7 (princípios 3 e 7): a ficha de saúde NUNCA respondida — o
+            "Finalizar" barra pelas obrigatórias dela. Avisa antes, com os dois
+            caminhos: responder aqui ou mandar o link à cliente. */}
+        {avisoDaFichaNao && (
+          <div data-ficha-nao-respondida role="note" style={{
+            display: 'flex', flexDirection: 'column', gap: 10, padding: '10px 14px', borderRadius: 'var(--radius-field-token)',
+            background: 'var(--warning-soft)', border: '1px solid var(--warning-border)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', color: 'var(--warning)', fontSize: 'var(--text-sm-sz)', fontWeight: 700 }}>
+              <ClipboardList size={16} aria-hidden="true" style={{ flexShrink: 0 }} />
+              <span style={{ flex: '1 1 220px' }}>{avisoDaFichaNao}</span>
+              <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {canEditRecords && (
+                  <button type="button" data-responder-a-ficha className="btn-secondary" style={{ fontSize: 'var(--text-sm-sz)' }}
+                    onClick={() => document.querySelector('[data-anamnese-geral]')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+                    Responder aqui
+                  </button>
+                )}
+                {!isProfessional && (
+                  <button type="button" data-enviar-o-link-da-ficha className="btn-secondary" style={{ fontSize: 'var(--text-sm-sz)' }}
+                    aria-expanded={linkDaFichaAberto} onClick={() => setLinkDaFichaAberto(v => !v)}>
+                    Enviar o link
+                  </button>
+                )}
+              </span>
+            </div>
+            {linkDaFichaAberto && <PreAtendimentoDoAgendamento appointmentId={appointment.id} slug={slug} podeMandar={!isProfessional} />}
           </div>
         )}
 
@@ -2315,7 +2377,7 @@ export function AppointmentSession({
                       <div>
                         <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Falta finalizar a avaliação</p>
                         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
-                          {canManage && canEditRecords
+                          {canManage
                             ? <>O plano foi enviado, mas o atendimento segue em aberto: use “Finalizar atendimento”, <OndeEstaOFinalizar />, para registrar a avaliação no prontuário.</>
                             : 'O plano foi enviado, mas o atendimento segue em aberto: quem atende conclui pelo “Finalizar atendimento”.'}
                         </p>
@@ -2385,7 +2447,7 @@ export function AppointmentSession({
                   />
                   {/* Os insumos de HOJE continuam até concluir (D8): gerar o plano não
                       encerra o atendimento, e quem usou outra dose corrige aqui. */}
-                  {canEditRecords && <InsumoCard key={versaoDosInsumos} {...insumoProps} />}
+                  {canManage && <InsumoCard key={versaoDosInsumos} {...insumoProps} />}
                   <ObservacoesCard
                     notes={notes}
                     intercurrences={intercurrences}
@@ -2403,7 +2465,7 @@ export function AppointmentSession({
                   {canViewRecords && <DorasCard
                     value={evalComplaints}
                     onChange={v => { setEvalComplaints(v); if (v.trim()) setErroDasDores(null) }}
-                    readonly={editLocked}
+                    readonly={editLocked || !canEditRecords}
                     erro={erroDasDores}
                   />}
 
@@ -2430,8 +2492,8 @@ export function AppointmentSession({
                     availableProducts={availableProducts}
                     hideActions={true}
                     opcional={!isDone}
-                    // A9 da 20ª: sem o "Finalizar" (sem o Prontuário em Gerenciar), a dica diz quem finaliza.
-                    quemFinaliza={canEditRecords ? null : quemConclui ?? []}
+                    // A9 da 20ª: sem o "Finalizar" (sem o Atendimento em Gerenciar), a dica diz quem finaliza.
+                    quemFinaliza={canManage ? null : quemConclui ?? []}
                     // A anotação clínica do plano é do Prontuário (PT2).
                     podeAnotar={canEditRecords}
                     onPlanChange={(_items, notes) => setEvalPlanNotes(notes)}
@@ -2440,7 +2502,7 @@ export function AppointmentSession({
                   {/* O que foi USADO hoje. O formulário da avaliação não tinha
                       onde lançar: a profissional lançava no editor do plano e o
                       estoque nunca baixava (simulação de 2026-10-20). */}
-                  {canEditRecords && <InsumoCard key={versaoDosInsumos} {...insumoProps} />}
+                  {canManage && <InsumoCard key={versaoDosInsumos} {...insumoProps} />}
 
                   {/* Observações do atendimento — controladas, sem save individual.
                       São prontuário: só para quem o escreve. */}
@@ -2506,7 +2568,13 @@ export function AppointmentSession({
                   {/* PT2 (2026-11-14): na avaliação CONCLUÍDA só o plano nasce, e
                       monta quem atende na unidade — "a dra pode realizar a
                       avaliação e depois com calma montar o plano". */}
-                  {canManage && (status === 'COMPLETED' ? montaPlanoNaUnidade : (canEditRecords && !isDone)) && (
+                  {/* 2026-11-18: na avaliação aberta, gera e aceita quem tem o
+                      Atendimento em Gerenciar (PT2: "quem monta o plano é quem
+                      atende"); o clínico que vai junto, só com o Prontuário. Na
+                      CONCLUÍDA, monta quem atende na unidade — sem pedir o
+                      Atendimento em Gerenciar ("nem precisa de permissão pra
+                      isso"), como generateEvaluationPlan (montaPlano). */}
+                  {(status === 'COMPLETED' ? montaPlanoNaUnidade : canManage && !isDone) && (
                     <div className="card" style={{ padding: '20px 24px' }}>
                       {status === 'COMPLETED' && (
                         <div data-montar-plano-da-avaliacao style={{ marginBottom: 12 }}>
@@ -2548,6 +2616,22 @@ export function AppointmentSession({
                               Monte um plano só se a cliente quiser um tratamento. Ele também pode ser montado depois de concluir.
                             </Dica>
                           </h3>
+                        </div>
+                      )}
+                      {avisoDoPlanoPelaFicha && !genError && (
+                        <div data-ficha-antes-do-plano role="note" style={{
+                          display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12, padding: '10px 14px',
+                          borderRadius: 'var(--radius-field-token)', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)',
+                          color: 'var(--warning)', fontSize: 'var(--text-sm-sz)', fontWeight: 700,
+                        }}>
+                          <ClipboardList size={16} aria-hidden="true" style={{ flexShrink: 0 }} />
+                          <span style={{ flex: '1 1 220px' }}>{avisoDoPlanoPelaFicha}</span>
+                          {canEditRecords && (
+                            <button type="button" className="btn-secondary" style={{ fontSize: 'var(--text-sm-sz)' }}
+                              onClick={() => document.querySelector('[data-anamnese-geral]')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+                              Responder aqui
+                            </button>
+                          )}
                         </div>
                       )}
                       {genError && (

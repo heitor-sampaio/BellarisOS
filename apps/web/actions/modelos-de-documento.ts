@@ -28,7 +28,6 @@ import { ensurePrivateBucket, getSignedUrl, MODELOS_DE_DOCUMENTO_BUCKET } from '
 import { validarDocumentoDoEditor, TIPOS_DE_MODELO, CONTRATOS_DA_REDE, ROTULO_DO_TIPO, type TipoDeModelo } from '@/lib/documentos/variaveis'
 import { normalizarListasDoEditor, type DocumentoDoEditor } from '@/lib/documentos/editor/converter'
 import { medidasDaImagem } from '@/lib/documentos/editor/medidas-da-imagem'
-import { falaDaRede } from '@/lib/unidades/uma-so'
 
 type Resultado = { error?: string; id?: string; versao?: number; novaVersao?: boolean; /** A8: o contrato de plano (ou de pacote) novo ficou inativo (a rede já tem um ativo). */ nasceuInativo?: boolean }
 
@@ -342,14 +341,16 @@ export async function enviarImagemDoModelo(formData: FormData): Promise<{
 
 /**
  * Liga ou desliga, para a REDE inteira, o envio do link de assinatura pela
- * conversa do inbox. Por ser da rede, pede abrangência de rede — quem é de
- * uma unidade vê a escolha, mas não a muda.
+ * conversa do inbox. É configuração da rede toda: só a Admin da rede a muda
+ * (o Heitor, 18/11: "Configuração da rede toda só pela conta admin"; era quem
+ * tinha "A rede inteira") — quem não é vê a escolha, mas não a muda.
  */
 export async function definirEnvioDoLinkPelaConversa(ligado: boolean): Promise<Resultado> {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'documents', 'MANAGE')
-    if (ctx.branchId !== null) return { error: await falaDaRede(ctx.tenantId, 'Esta escolha vale para a rede inteira: quem muda é quem administra a rede.') }
+    const daRede = recusaDaConfigDaRede(ctx)
+    if (daRede) return { error: daRede }
     if (typeof ligado !== 'boolean') return { error: 'Escolha inválida.' }
     const admin = createAdminClient()
     const linhas = await gravar(admin.from('tenants')

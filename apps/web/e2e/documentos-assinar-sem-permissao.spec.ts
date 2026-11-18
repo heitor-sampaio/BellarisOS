@@ -14,10 +14,13 @@ import { apagarDocumentosEmitidos } from './apoio/limpeza'
  * cliente assinar e isso não representa risco."
  *
  * - Quem está na tela (o PDV, o atendimento) colhe a assinatura SEM o módulo
- *   Documentos: o contrato do pacote que vendeu e o termo do procedimento.
+ *   Documentos: o contrato do pacote que vende (antes do dinheiro — PC2, a
+ *   auditoria das regras de 2026-11-18) e o termo do procedimento.
  * - O mesmo membro não grava modelo de documento nem dispensa um documento
- *   (chamando as actions direto); quem tem os Documentos em Gerenciar grava o
- *   modelo (o controle).
+ *   (chamando as actions direto). O modelo de documento é configuração da
+ *   rede toda (o Heitor, 18/11: "Configuração da rede toda só pela conta
+ *   admin"): nem quem tem os Documentos em Gerenciar com "A rede inteira" o
+ *   grava; a Admin da rede grava (o controle).
  *
  * Numa rede [e2e] própria.
  */
@@ -36,6 +39,7 @@ let rede: OutraRede | null = null
 let slug = ''
 let balcao: MembroDeTeste | null = null
 let modelos: MembroDeTeste | null = null
+let admin: MembroDeTeste | null = null
 let cliente = ''
 let pacote = ''
 let agendamento = ''
@@ -121,10 +125,14 @@ test.beforeAll(async () => {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Balcao sem documentos',
     permissoes: [{ modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'cashier', nivel: 'MANAGE' }, { modulo: 'agenda', nivel: 'MANAGE' }],
   })
-  // Quem responde pelos modelos: os Documentos em Gerenciar, com "A rede inteira".
+  // Os Documentos em Gerenciar, com "A rede inteira" — sem ser a Admin da rede.
   modelos = await criarMembro(`spm${marca}`, {
     tenant: rede.tenantId, branchId: null, rotulo: 'Modelos de documento',
     permissoes: [{ modulo: 'documents', nivel: 'MANAGE' }],
+  })
+  // Quem grava o modelo: a Admin da rede (o cargo de sistema).
+  admin = await criarMembro(`spa${marca}`, {
+    tenant: rede.tenantId, branchId: null, rotulo: 'Admin da rede', permissoes: [], cargoDaRede: 'NETWORK_ADMIN',
   })
 })
 
@@ -135,27 +143,35 @@ test.afterAll(async () => {
   }
   await balcao?.limpar()
   await modelos?.limpar()
+  await admin?.limpar()
   await rede?.limpar()
 })
 
 test.describe.serial('colher a assinatura não pede o módulo Documentos', () => {
-  test('o balcão vende o pacote no PDV e colhe na tela a assinatura do contrato', async ({ browser }) => {
+  test('o balcão colhe na tela a assinatura do contrato do pacote ANTES do pagamento, e vende', async ({ browser }) => {
+    const args = [cliente, pacote, rede!.branchId, { forma: 'AVISTA', metodo: 'PIX' }, null, null, null]
     const contrato = await como(browser, balcao!.estado, async p => {
-      const r = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', `/${slug}/pdv`,
-        [cliente, pacote, rede!.branchId, { forma: 'AVISTA', metodo: 'PIX' }, null, null, null])
-      const vendido = /"clientPackageId":"([0-9a-f-]{36})"/.exec(r.texto)?.[1] ?? ''
-      expect(vendido, `a venda fechou: ${r.texto.slice(0, 300)}`).not.toBe('')
-      // Ninguém manda "falar com quem tem os Documentos": quem vendeu colhe.
+      const r = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', `/${slug}/pdv`, args)
+      // PC2: "primeiro colhe assinatura, depois paga" — nada se vende ainda.
+      expect(r.texto, 'sem o contrato assinado, não vende').not.toContain('clientPackageId')
+      // Ninguém manda "falar com quem tem os Documentos": quem vende colhe.
       expect(r.texto).not.toContain('quem tem os Documentos')
-      const { data } = await db().from('issued_documents').select('id, status').eq('client_package_id', vendido).eq('title', NOME.contrato).single<{ id: string; status: string }>()
+      const id = /"contratoParaAssinar":\{"id":"([0-9a-f-]{36})"/.exec(r.texto)?.[1] ?? ''
+      expect(id, `a venda pediu o contrato: ${r.texto.slice(0, 300)}`).not.toBe('')
+      const { data } = await db().from('issued_documents').select('id, status, title').eq('id', id).single<{ id: string; status: string; title: string }>()
+      expect(data!.title).toBe(NOME.contrato)
       expect(data!.status).toBe('PENDENTE')
 
       await p.goto(`/${slug}/documentos/${data!.id}/assinar`)
       await expect(p.getByRole('heading', { name: NOME.contrato })).toBeVisible()
       await colherNaTela(p)
+      await expect.poll(() => statusDe(data!.id)).toBe('ASSINADO')
+      const venda = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', `/${slug}/pdv`, args)
+      const vendido = /"clientPackageId":"([0-9a-f-]{36})"/.exec(venda.texto)?.[1] ?? ''
+      expect(vendido, `assinado, a venda fechou: ${venda.texto.slice(0, 300)}`).not.toBe('')
+      expect((await db().from('issued_documents').select('client_package_id').eq('id', data!.id).single()).data!.client_package_id, 'a venda adotou o contrato').toBe(vendido)
       return data!.id
     })
-    await expect.poll(() => statusDe(contrato)).toBe('ASSINADO')
     const { data: s } = await db().from('document_signatures').select('channel, conducted_by').eq('issued_document_id', contrato).single()
     expect(s).toMatchObject({ channel: 'CLINICA', conducted_by: balcao!.userId })
   })
@@ -178,7 +194,7 @@ test.describe.serial('colher a assinatura não pede o módulo Documentos', () =>
     await expect.poll(() => statusDe(t!.id)).toBe('ASSINADO')
   })
 
-  test('o balcão não grava modelo de documento nem dispensa; quem tem os Documentos em Gerenciar grava o modelo', async ({ browser }) => {
+  test('o balcão não grava modelo de documento nem dispensa; o modelo é só da Admin da rede', async ({ browser }) => {
     const documento = { corpo: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Termo de ' }, { type: 'variavel', attrs: { nome: 'cliente.nome' } }] }] } }
     const salvar = (p: Page, nome: string) => chamarAcao(p, 'actions/modelos-de-documento.ts', 'salvarModeloDoEditor', '/admin/settings?tab=documentos',
       [{ nome, tipo: 'TERMO', exigencia: 'AVISA', documento }])
@@ -200,7 +216,14 @@ test.describe.serial('colher a assinatura não pede o módulo Documentos', () =>
     expect(await quantos(NOME.modeloNao), 'sem os Documentos, o modelo não grava').toBe(0)
     expect(await statusDe(aberto!.id), 'sem os Documentos, não dispensa').not.toBe('DISPENSADO')
 
-    await como(browser, modelos!.estado, async p => { await salvar(p, NOME.modeloSim) })
-    await expect.poll(() => quantos(NOME.modeloSim), { message: 'com os Documentos em Gerenciar, grava' }).toBe(1)
+    // Os Documentos em Gerenciar, com "A rede inteira", sem ser a Admin: recusa, e diz por quê.
+    await como(browser, modelos!.estado, async p => {
+      const r = await salvar(p, NOME.modeloNao)
+      expect(r.texto).toContain('Esta configuração é só da Admin da rede.')
+    })
+    expect(await quantos(NOME.modeloNao), 'os Documentos em Gerenciar sem ser a Admin: não grava').toBe(0)
+
+    await como(browser, admin!.estado, async p => { await salvar(p, NOME.modeloSim) })
+    await expect.poll(() => quantos(NOME.modeloSim), { message: 'a Admin da rede grava' }).toBe(1)
   })
 })

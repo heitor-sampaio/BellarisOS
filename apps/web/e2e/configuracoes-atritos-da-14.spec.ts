@@ -138,7 +138,7 @@ test('A5: a aba da rede toda diz quem muda, pelo nome', async ({ browser }) => {
   await como(browser, gerente, async p => {
     await p.goto(`/${slug}/settings?tab=tags`)
     const aviso = p.locator('[data-config-da-rede]')
-    await expect(aviso).toContainText('Esta configuração é da rede toda')
+    await expect(aviso).toContainText('Esta configuração é só da Admin da rede')
     await expect(aviso.locator('[data-quem-muda]')).toContainText(nomeDaDona)
     await expect(aviso.locator('[data-quem-muda]'), 'a própria gerente não entra').not.toContainText(await nome(gerente))
   })

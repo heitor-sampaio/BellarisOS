@@ -10,7 +10,7 @@ import { ler } from '@/lib/db'
 import { alcancaUnidade } from '@/lib/auth'
 import { dayKeyTZ, partsInTZ } from '@/lib/datetime'
 import { fusoValido } from '@/lib/unidades/fuso'
-import { normalizarHorario, intervalosDoDia, diaDaSemana, cabeNoHorario, textoDosIntervalos } from '@/lib/agenda/horario'
+import { normalizarHorario, intervalosDoDia, diaDaSemana, avisoForaDoHorario } from '@/lib/agenda/horario'
 import { conferirPecasDoAgendamento, conflitosDoHorario } from '@/lib/appointments/core'
 import { bloqueiosQueBatem } from '@/lib/agenda/bloqueios'
 import { avisoDoBloqueioDaProfissional, avisoDoBloqueioDaSala } from '@/lib/agenda/bloqueio'
@@ -62,11 +62,7 @@ export async function avisosDoHorarioCore(ctx: TenantContext, a: {
   )
   const p = partsInTZ(inicio, fuso)
   const inicioMin = p.hour * 60 + p.minute
-  const foraDoHorario = cabeNoHorario(intervalos, inicioMin, inicioMin + duracao)
-    ? null
-    : intervalos.length
-      ? `Fora do horário de atendimento de ${nome} (${textoDosIntervalos(intervalos)}). O encaixe é permitido.`
-      : `${nome} não atende neste dia. O encaixe é permitido.`
+  const foraDoHorario = avisoForaDoHorario(nome, intervalos, inicioMin, duracao)
 
   // A28 da 7ª: TODOS os que batem ("das 10:00 às 10:30 e das 10:30 às 11:00"),
   // e não só o primeiro.

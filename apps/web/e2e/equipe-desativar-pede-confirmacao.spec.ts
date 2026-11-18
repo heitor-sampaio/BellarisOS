@@ -18,10 +18,11 @@ const db = () => banco()
 let rede: OutraRede | null = null
 let gestor: MembroDeTeste | null = null
 let alvo: MembroDeTeste | null = null
+let dona: MembroDeTeste | null = null
 let outraUnidade = ''
 
-async function como(browser: Browser, fn: (p: Page) => Promise<void>) {
-  const ctx = await browser.newContext({ storageState: gestor!.estado })
+async function como(browser: Browser, fn: (p: Page) => Promise<void>, quem: MembroDeTeste = gestor!) {
+  const ctx = await browser.newContext({ storageState: quem.estado })
   try { await fn(await ctx.newPage()) } finally { await ctx.close() }
 }
 
@@ -32,6 +33,11 @@ test.beforeAll(async () => {
     permissoes: [{ modulo: 'team', nivel: 'MANAGE' }, { modulo: 'settings', nivel: 'MANAGE' }, { modulo: 'procedures', nivel: 'MANAGE' }],
   })
   alvo = await criarMembro(`dca${marca}`, { tenant: rede.tenantId, rotulo: 'Alvo', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }] })
+  // Desativar unidade é configuração da rede toda: só a Admin da rede (o
+  // Heitor, 18/11: "Configuração da rede toda só pela conta admin";
+  // toggleBranchStatus em docs/regras/plataforma.md). Desativar membro segue
+  // com a Equipe em Gerenciar (o gestor).
+  dona = await criarMembro(`dcd${marca}`, { tenant: rede.tenantId, rotulo: 'Dona', donoDaRede: true, permissoes: [] })
   const { data, error } = await db().from('branches')
     .insert({ tenant_id: rede.tenantId, name: `${PREFIXO} Segunda ${marca}`, slug: `e2e-dc2-${marca}` }).select('id').single<{ id: string }>()
   expect(error).toBeNull()
@@ -39,7 +45,7 @@ test.beforeAll(async () => {
 })
 test.afterAll(async () => {
   if (outraUnidade) await db().from('branches').delete().eq('id', outraUnidade)
-  await alvo?.limpar(); await gestor?.limpar(); await rede?.limpar()
+  await alvo?.limpar(); await dona?.limpar(); await gestor?.limpar(); await rede?.limpar()
 })
 
 test('o procedimento novo nasce FORA do app (self-service desligado)', async ({ browser }) => {
@@ -87,5 +93,5 @@ test('desativar unidade pede confirmação', async ({ browser }) => {
     await expect(janela).toContainText(`Segunda ${marca}`)
     await janela.getByRole('button', { name: 'Desativar' }).click()
     await expect.poll(async () => (await db().from('branches').select('is_active').eq('id', outraUnidade).single()).data?.is_active).toBe(false)
-  })
+  }, dona!)
 })

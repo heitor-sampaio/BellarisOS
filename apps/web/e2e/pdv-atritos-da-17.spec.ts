@@ -101,6 +101,8 @@ test('D3: a comanda paga em duas formas diz as duas; reaberta pelo estorno, diz 
     const detalhe = p.locator('[data-comanda-aberta]')
     await detalhe.getByRole('radio', { name: 'Pix' }).click()
     await detalhe.getByRole('button', { name: /Receber R\$\s?300,00/ }).click()
+    // "Quem vendeu os produtos" vazio: a tela pergunta (item 1 da auditoria das regras).
+    await p.getByRole('alertdialog', { name: 'Confirmar a venda' }).getByRole('button', { name: 'Receber assim' }).click()
     await expect(p.locator(`[data-lista-de-comandas] [data-comanda="${comanda}"]`)).toHaveCount(0)
   })
   const doAtendimento = (await db().from('financial_transactions').select('id').eq('appointment_id', agendamento)

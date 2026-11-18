@@ -1,6 +1,7 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
+import { juntarAsFormasDaParcela, type FormaDaParcela, type LinhaParaJuntar } from '@/lib/financeiro/formas-da-parcela'
 
 /**
  * O dinheiro e as sessões de UM plano de tratamento (J-42, 2026-10-30): o
@@ -19,6 +20,8 @@ export interface LancamentoDoPlano {
   parcelaTotal:  number | null
   forma:         string | null
   cartaoVezes:   number | null
+  /** Limite da 21ª: a parcela recebida em várias formas, numa linha (o valor é o total). */
+  formas?:       FormaDaParcela[] | null
 }
 
 export interface FinanceiroDoPlano {
@@ -51,7 +54,8 @@ export async function getFinanceiroDoPlano(tenantId: string, planId: string): Pr
     recebido: n(r.recebido),
     aReceber: n(r.a_receber),
     sessoes:  { total: n(r.sessoes_total), feitas: n(r.sessoes_feitas), agendadas: n(r.sessoes_agendadas) },
-    lancamentos: ((linhas ?? []) as Record<string, unknown>[]).map(l => ({
+    // Limite da 21ª: as formas da mesma parcela numa linha só.
+    lancamentos: juntarAsFormasDaParcela((linhas ?? []) as unknown as (LinhaParaJuntar & Record<string, unknown>)[]).map(l => ({
       id:            String(l.id),
       descricao:     (l.description as string | null) ?? null,
       valor:         n(l.amount),
@@ -62,6 +66,7 @@ export async function getFinanceiroDoPlano(tenantId: string, planId: string): Pr
       parcelaTotal:  (l.parcela_total as number | null) ?? null,
       forma:         (l.payment_method as string | null) ?? null,
       cartaoVezes:   (l.cartao_vezes as number | null) ?? null,
+      formas:        l.formasDaParcela,
     })),
   }
 }

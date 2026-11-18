@@ -3,7 +3,8 @@ import { z } from 'zod/v4'
 import { REPORT_TABS, type ReportTab } from '@estetica-os/types'
 import { can, isOwnScope, podeVerRelatorio } from '@/lib/auth'
 import { resolvePeriod } from '@/lib/metrics/period'
-import { getTicketMedio, getResultadoDoEstoque, getEmAberto } from '@/lib/metrics/queries'
+import { getTicketMedio, getResultadoDoEstoque, getEmAberto, getByBranch, getComposicaoFinanceira } from '@/lib/metrics/queries'
+import { DEFINICOES } from '@/lib/metrics/definicoes'
 import { painelComercial } from '@/lib/metrics/painel-comercial'
 import { getRelatorioDosModulos, getCoreDosModulos } from '@/lib/metrics/dos-modulos'
 import { recorteDosModulos } from '@/lib/metrics/escopo'
@@ -12,7 +13,7 @@ import { comandaDaVenda, FORA_DO_TOTAL, type Venda } from '@/lib/metrics/vendas-
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
 import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
 import { DATA, dinheiro, idsDasUnidades, nomesPorId, procedimentosDaUnidade, resolverUnidade } from '@/lib/copilot/ferramentas/comum'
-import { resultadoDoPeriodo } from '@/lib/metrics/resultado'
+import { resultadoDoPeriodo, taxaDeConclusao, taxaDeAproveitamento } from '@/lib/metrics/resultado'
 
 /**
  * PROCEDIMENTOS (o catálogo) e INDICADORES.
@@ -54,6 +55,9 @@ export const procedimentos: FerramentaDeLeitura<{ busca?: string; unidade?: stri
   },
 }
 
+/** A taxa de `lib/metrics` como a tela a mostra ("27,3%"); sem denominador, nula. */
+const emPct = (v: number | null) => v === null ? null : `${v.toFixed(1).replace('.', ',')}%`
+
 const PERIODOS = ['today', 'week', '7d', '15d', '30d', 'month', 'last_month', 'quarter', 'custom'] as const
 
 export const indicadores: FerramentaDeLeitura<{
@@ -62,7 +66,7 @@ export const indicadores: FerramentaDeLeitura<{
   nome: 'indicadores',
   tipo: 'leitura',
   modulo: 'reports', nivel: 'VIEW',
-  descricao: 'Os números da rede num período (os mesmos dos Relatórios). aba: overview (faturamento, a receber, despesas, atendimentos, novos clientes, comissões), financeiro (por unidade, forma de pagamento, categoria), vendas (cada venda, com o número da comanda do PDV: atendimento avulso, pacote, pré-pago, plano, produto e crédito interno — o crédito interno fica fora do total —, com o total por tipo), agenda (por status, dia da semana, origem), clientes (ativos, perfil, quem mais gasta), procedimentos, profissionais, estoque, comercial (a aba Oportunidades: o funil, a conversão, os motivos de perda e a conversão por origem). periodo: today, week, 7d, 15d, 30d, month (padrão), last_month, quarter, ou custom com de/ate. "A semana" sem outra data é week (a semana atual) e "o mês" é month: não pergunte qual; a resposta diz o período ("periodo").',
+  descricao: 'Os números da rede num período (os mesmos dos Relatórios). aba: overview (faturamento, a receber, despesas, atendimentos e o aproveitamento, novos clientes, comissões), financeiro (a receita paga por unidade, por forma de pagamento e por categoria — receitaPorUnidade, receitaPorFormaDePagamento, receitaPorCategoria — e a despesa paga por unidade e por categoria — despesaPorUnidade, despesaPorCategoria —, com os totais), vendas (cada venda, com o número da comanda do PDV: atendimento avulso, pacote, pré-pago, plano, produto e crédito interno — o crédito interno fica fora do total —, com o total por tipo), agenda (por status, dia da semana, origem, a taxa de conclusão e o aproveitamento, cada um com o que conta; o comparecimento é o dos primeiros atendimentos, na aba comercial), clientes (ativos, perfil, quem mais gasta), procedimentos, profissionais, estoque, comercial (a aba Oportunidades: o funil, a conversão, os motivos de perda e a conversão por origem). periodo: today, week, 7d, 15d, 30d, month (padrão), last_month, quarter, ou custom com de/ate. "A semana" sem outra data é week (a semana atual) e "o mês" é month: não pergunte qual; a resposta diz o período ("periodo").',
   parametros: z.object({
     aba: z.enum(REPORT_TABS).optional(),
     periodo: z.enum(PERIODOS).optional(),
@@ -142,6 +146,8 @@ export const indicadores: FerramentaDeLeitura<{
           receitaDeServicos: dinheiro(atual.serviceRevenue),
           atendimentosConcluidos: atual.appointmentsCompleted, atendimentosConcluidosAnterior: anterior.appointmentsCompleted,
           agendamentos: atual.appointmentsTotal, cancelados: atual.appointmentsCancelled, faltas: atual.appointmentsNoShow,
+          // A41 da 24ª [4]: a taxa vai pronta, com o nome e o que conta — o Copilot não divide.
+          aproveitamento: { valor: emPct(taxaDeAproveitamento({ concluidos: atual.appointmentsCompleted, total: atual.appointmentsTotal })), oQueConta: DEFINICOES.aproveitamento.texto },
           // A média por CLIENTE (o pago pelas clientes ÷ as que pagaram), como as telas.
           ticketMedio: ticket.total.valor === null ? null : dinheiro(ticket.total.valor),
           clientesQuePagaram: ticket.total.clientesQuePagaram,
@@ -192,24 +198,58 @@ export const indicadores: FerramentaDeLeitura<{
       }
     }
 
-    const [r, ticket] = await Promise.all([
+    const noRecorte = new Set(branchIds)
+    const [r, ticket, totais, porUnidadeAteAgora, composicao, agendaAteOFim] = await Promise.all([
       // A agenda vai até o FIM do período, como a aba Agenda dos Relatórios (C5, F68).
       getRelatorioDosModulos({ ...janela, to: aba === 'agenda' ? periodo.fullTo : periodo.to, prevFrom: periodo.prevFrom, prevTo: periodo.prevTo, aba, granularidade: periodo.granularity === 'hour' ? 'hour' : 'day', recorte }),
       aba === 'clientes' ? getTicketMedio(doDinheiro) : Promise.resolve(null),
+      // D1 da 24ª [3]: a receita e a despesa do período (a conta do núcleo, a do
+      // Financeiro) e, por unidade, a de `getByBranch` — o "Por unidade" do
+      // Financeiro da rede. Na agenda, o mesmo núcleo dá o aproveitamento (até agora).
+      aba === 'financeiro' || aba === 'agenda' ? getCoreDosModulos({ ...janela, recorte }) : Promise.resolve(null),
+      (aba === 'financeiro' && !recorteProprio) || (aba === 'agenda' && recorte.agenda === null)
+        ? getByBranch({ tenantId: c.ctx.tenantId!, from: periodo.from, to: periodo.to }).then(l => l.filter(b => noRecorte.has(b.branchId)))
+        : Promise.resolve(null),
+      // A despesa por categoria: a composição do Financeiro (sem o estorno, F59).
+      aba === 'financeiro' && !recorteProprio ? getComposicaoFinanceira({ tenantId: c.ctx.tenantId!, branchIds, from: periodo.from, to: periodo.to }) : Promise.resolve(null),
+      // A41 da 24ª [4]: a taxa de conclusão é a dos Relatórios, até o FIM do período.
+      aba === 'agenda' ? getCoreDosModulos({ ...janela, to: periodo.fullTo, recorte }) : Promise.resolve(null),
     ])
     const nomesDasUnidades = await nomesPorId(c, 'branches', [...r.receitaPorUnidade.map(x => x.branchId), ...r.agendaPorUnidade.map(x => x.branchId), ...r.estoque.porUnidade.map(x => x.branchId)])
     const unidade = (id: string) => nomesDasUnidades.get(id) ?? id
     const top = <T>(l: T[], n = 15) => l.slice(0, n)
+    const aproveitamentoDe = new Map((porUnidadeAteAgora ?? []).map(b =>
+      [b.branchId, emPct(taxaDeAproveitamento({ concluidos: b.appointmentsCompleted, total: b.appointmentsTotal }))]))
 
     const porAba: Record<Exclude<ReportTab, 'overview' | 'comercial' | 'vendas'>, unknown> = {
+      // D1 da 24ª [3]: cada chave diz se é receita ou despesa — "porUnidade" era a
+      // receita, e o Copilot a deu como a despesa de cada unidade.
       financeiro: {
-        porUnidade: r.receitaPorUnidade.map(x => ({ unidade: unidade(x.branchId), atual: dinheiro(x.atual), anterior: dinheiro(x.anterior) })),
-        porFormaDePagamento: r.receitaPorForma.map(x => ({ forma: x.forma, valor: dinheiro(x.valor) })),
-        porCategoria: r.receitaPorCategoria.map(x => ({ categoria: x.categoria, valor: dinheiro(x.valor) })),
+        ...(totais ? { receita: dinheiro(totais.revenueCash) } : {}),
+        receitaPorUnidade: r.receitaPorUnidade.map(x => ({ unidade: unidade(x.branchId), atual: dinheiro(x.atual), anterior: dinheiro(x.anterior) })),
+        receitaPorFormaDePagamento: r.receitaPorForma.map(x => ({ forma: x.forma, valor: dinheiro(x.valor) })),
+        receitaPorCategoria: r.receitaPorCategoria.map(x => ({ categoria: x.categoria, valor: dinheiro(x.valor) })),
+        // A despesa não se atribui a ela com o financeiro "só os meus" (como na visão geral).
+        ...(recorteProprio || !totais ? {} : {
+          despesas: dinheiro(totais.expensesCash),
+          despesaPorUnidade: (porUnidadeAteAgora ?? []).map(b => ({ unidade: unidade(b.branchId), valor: dinheiro(b.expensesCash) })),
+          despesaPorCategoria: (composicao?.despesas ?? []).map(x => ({ categoria: x.chave, valor: dinheiro(x.valor) })),
+          notaDaDespesa: 'A despesa paga no período, pelo dia do pagamento: a mesma do Financeiro. O estorno não é despesa.',
+        }),
       },
+      // A41 da 24ª [4]: as taxas vão prontas, com o nome e o que contam — o
+      // Copilot não divide os números da agenda (os futuros entravam).
       agenda: {
         porStatus: r.agendamentosPorStatus, porDiaDaSemana: r.porDiaDaSemana, porOrigem: r.porOrigem,
-        porUnidade: r.agendaPorUnidade.map(x => ({ ...x, unidade: unidade(x.branchId), branchId: undefined })),
+        ...(agendaAteOFim ? { taxaDeConclusao: { valor: emPct(taxaDeConclusao({ concluidos: agendaAteOFim.appointmentsCompleted, total: agendaAteOFim.appointmentsTotal })), oQueConta: DEFINICOES.conclusao.texto } } : {}),
+        ...(totais ? { aproveitamento: { valor: emPct(taxaDeAproveitamento({ concluidos: totais.appointmentsCompleted, total: totais.appointmentsTotal })), oQueConta: DEFINICOES.aproveitamento.texto } } : {}),
+        comparecimento: 'O comparecimento do sistema é o dos primeiros atendimentos do comercial (aba comercial, "primeirosAtendimentos"): só o que já devia ter acontecido.',
+        porUnidade: r.agendaPorUnidade.map(x => ({
+          ...x, unidade: unidade(x.branchId), branchId: undefined,
+          taxaDeConclusao: emPct(taxaDeConclusao({ concluidos: x.concluidos, total: x.total })),
+          ...(aproveitamentoDe.has(x.branchId) ? { aproveitamento: aproveitamentoDe.get(x.branchId) } : {}),
+        })),
+        nota: 'Use as taxas com o nome delas; não calcule outra com estes números.',
       },
       clientes: {
         ativos: r.clientes.totalAtivos, porFaixaDeIdade: r.clientes.porFaixa, porGenero: r.clientes.porGenero,

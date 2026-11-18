@@ -164,6 +164,12 @@ export const CAMPOS_DO_EVENTO: Record<NomeDeEvento, CampoDeEvento[]> = {
   ],
   [EVENTOS.LEAD_GANHO]:   [...LEAD, campo('desfecho', 'Desfecho')],
   [EVENTOS.LEAD_PERDIDO]: [...LEAD, campo('desfecho', 'Desfecho')],
+  [EVENTOS.LEAD_CLIENTE_COMPROU]: [
+    ...LEAD,
+    campo('clienteNome', 'Nome da cliente'),
+    campo('compra',      'O que comprou'),
+    campo('compraEm',    'Quando comprou', 'data'),
+  ],
 
   // ── Inbox ─────────────────────────────────────────────────────────────
   // O anúncio entra em `iniciada` e em `mensagem_recebida` porque o clique no

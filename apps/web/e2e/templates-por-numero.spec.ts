@@ -49,10 +49,9 @@ test.beforeAll(async () => {
   test.setTimeout(240_000)
   graph = await subirGraphFalsa()
   outra = await criarOutraRede(`tpl${marca}`)
-  admin = await criarMembro(`tpladm${marca}`, {
-    tenant: outra.tenantId, rotulo: 'Marketing',
-    permissoes: [{ modulo: 'marketing', nivel: 'MANAGE' }, { modulo: 'settings', nivel: 'MANAGE' }],
-  })
+  // Integrações e templates são configuração da rede toda: só a Admin da rede
+  // (o Heitor, 18/11: "Configuração da rede toda só pela conta admin").
+  admin = await criarMembro(`tpladm${marca}`, { tenant: outra.tenantId, rotulo: 'Admin', donoDaRede: true, permissoes: [] })
   graph.responder(`/${W1}/message_templates`, { data: [
     { id: '7001', name: 'boas_vindas', status: 'APPROVED', category: 'UTILITY', language: 'pt_BR',
       components: [{ type: 'BODY', text: 'Olá, {{nome}}!', example: { body_text_named_params: [{ param_name: 'nome', example: 'Ana' }] } }] },

@@ -35,7 +35,9 @@ import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { notifyCancelledAppointment } from '@/lib/appointments/avisos'
 import { quemDesfazNoCaixa, quemRecebeNoPdv } from '@/lib/equipe/quem-desfaz'
 import { retratoDoCancelamento, type RetratoDoCancelamento } from '@/lib/plano-de-tratamento/retrato-do-cancelamento'
-import { montaPlano, RECUSA_QUEM_MONTA } from '@/lib/plano-de-tratamento/quem-monta'
+import { montaPlano, RECUSA_QUEM_MONTA, RECUSA_QUEM_ATENDE } from '@/lib/plano-de-tratamento/quem-monta'
+import { recusaDoDesconto } from '@/lib/vendas/desconto'
+import { combinadoDoPlano } from '@/lib/plano-de-tratamento/desconto-combinado'
 import { situacoesDosPlanos, andamentoDosPlanos, type DocumentosDoPlano, type SituacaoDoContrato } from '@/lib/plano-de-tratamento/andamento-do-plano'
 import { SITUACOES_COMERCIAIS, situacaoComercialDoPlano, type SituacaoComercial } from '@/lib/plano-de-tratamento/situacao'
 
@@ -84,6 +86,24 @@ function podeFecharEstePlano(ctx: TenantContext, unidadeId: string | null | unde
 }
 
 /**
+ * Quem atende a avaliação ABERTA de onde o plano nasceu gera e aceita o plano
+ * ali (PT2: "quem monta o plano é quem atende, nem precisa de permissão pra
+ * isso pq isso é proprio atendimento"). Com o módulo do Atendimento
+ * (2026-11-18), "quem atende" é o Atendimento em Gerenciar, com o atendimento
+ * ao alcance e, no "só os meus", o dela.
+ *
+ * ⚠️ Não é export: todo export de arquivo `'use server'` vira endpoint público.
+ */
+async function atendeAAvaliacaoAberta(
+  admin: ReturnType<typeof createAdminClient>, ctx: TenantContext, avaliacaoId: string | null,
+): Promise<boolean> {
+  if (!avaliacaoId || !can(ctx, 'atendimento', 'MANAGE')) return false
+  const a = await agendamentoDoTenant(admin, avaliacaoId, ctx)
+  if (!a || a.status === 'COMPLETED' || a.status === 'CANCELLED' || a.status === 'NO_SHOW') return false
+  return !deOutroProfissional(ctx, a.professional_id) && !deOutroNoAtendimento(ctx, a.professional_id)
+}
+
+/**
  * Escreve a anotação clínica do plano (as "Observações da profissional")?
  * É prontuário (PT2: "a anotação clínica dentro do plano continua pedindo o
  * Prontuário"): o módulo em Gerenciar e, no "só os meus" do prontuário, o
@@ -114,6 +134,28 @@ export interface PlanSessionProcedure {
 export interface PlanSessionInput {
   procedures: PlanSessionProcedure[]
   sortOrder?: number
+}
+
+/**
+ * 22ª A20: o desconto do plano combinado no editor → as colunas do plano.
+ * `undefined` = a tela não mandou (não mexe); nulo = sem desconto. Recusa só o
+ * impossível (princípio 2): mais de 100% ou acima do total das sessões.
+ */
+function colunasDoCombinado(entrada: unknown, sessions: PlanSessionInput[], ator: string | null):
+  { colunas: Record<string, unknown> } | { error: string } | null {
+  if (entrada === undefined) return null
+  const lido = EntradaDoDesconto.safeParse(entrada)
+  if (!lido.success) return { error: 'Desconto do plano inválido.' }
+  const d = lido.data ?? null
+  const subtotal = sessions.reduce((t, s) => t + s.procedures.reduce((x, p) => x + (Number(p.price) || 0), 0), 0)
+  const recusa = recusaDoDesconto(subtotal, d)
+  if (recusa) return { error: recusa.replace('valor da venda', 'total do plano') }
+  const com = !!d && d.valor > 0
+  return { colunas: {
+    desconto_combinado_tipo:  com ? d!.tipo : null,
+    desconto_combinado_valor: com ? Math.round(d!.valor * 100) / 100 : 0,
+    desconto_combinado_por:   com ? ator : null,
+  } }
 }
 
 export interface PlanSessionForCheckout {
@@ -204,7 +246,7 @@ async function planoDaProfissional(
   ctx: TenantContext,
   plano: { professional_id?: unknown; client_id?: unknown },
 ): Promise<boolean> {
-  if (!isOwnScope(ctx, 'agenda')) return true
+  if (!isOwnScope(ctx, 'atendimento')) return true
   if (!ctx.internalUserId) return false
   if (plano.professional_id === ctx.internalUserId) return true
   const cliente = (plano.client_id as string | null | undefined) ?? null
@@ -301,10 +343,12 @@ async function saveTreatmentPlanInterno(
   sessions: PlanSessionInput[],
   notes: string,
   slug: string,
+  /** 22ª A20: o desconto do plano do editor (sem ele, não mexe). */
+  desconto?: unknown,
 ): Promise<{ planId?: string; error?: string }> {
   const ctx   = await getTenantContext()
   assertRecurso(ctx, 'planos_de_tratamento')
-  assertPermission(ctx, 'agenda', 'VIEW')
+  assertPermission(ctx, 'atendimento', 'VIEW')
   const admin = createAdminClient()
 
   // Agendamento de outra rede responde como inexistente — senão o plano
@@ -314,6 +358,8 @@ async function saveTreatmentPlanInterno(
   // PT2: o rascunho do plano da avaliação é de quem monta (quem atende na unidade).
   if (!montaPlano(ctx, appt.branch_id as string)) return { error: RECUSA_QUEM_MONTA }
   const anota = anotaNoPlano(ctx, ctx.internalUserId)
+  const combinado = colunasDoCombinado(desconto, sessions, ctx.internalUserId ?? null)
+  if (combinado && 'error' in combinado) return combinado
 
   const { data: plan, error: planErr } = await admin
     .from('treatment_plans')
@@ -324,6 +370,7 @@ async function saveTreatmentPlanInterno(
       professional_id:           ctx.internalUserId!,
       // A anotação é prontuário: sem ele, a que existe fica (PT2).
       ...(anota ? { professional_notes: notes } : {}),
+      ...(combinado ? combinado.colunas : {}),
       status:                    'DRAFT',
       updated_at:                new Date().toISOString(),
     }, { onConflict: 'evaluation_appointment_id' })
@@ -333,6 +380,8 @@ async function saveTreatmentPlanInterno(
 
   const res = await gravarSessoes(admin, plan.id as string, sessions, { tenantId: ctx.tenantId!, unidadeId: appt.branch_id as string })
   if (res.error) return res
+  // DC4: os documentos do plano nascem na criação (e acompanham o que se salva).
+  await emitirDocumentosDoPlano(ctx.tenantId!, plan.id as string)
 
   revalidatePath(`/${slug}/agenda/${appointmentId}`)
   return { planId: plan.id as string }
@@ -353,13 +402,13 @@ export async function getPlanosDoCliente(clientId: string): Promise<{
   }[]
 }> {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'agenda', 'VIEW')
+  assertPermission(ctx, 'atendimento', 'VIEW')
   const admin = createAdminClient()
 
   // Agenda "só os meus" (`planoDaProfissional`): a cliente que ela atende tem
   // todos os planos à vista, de quem quer que seja; a outra, só os que ela montou.
-  const ownerAgenda = ownerFilter(ctx, 'agenda')
-  if (isOwnScope(ctx, 'agenda') && !ownerAgenda) return { planos: [] }
+  const ownerAgenda = ownerFilter(ctx, 'atendimento')
+  if (isOwnScope(ctx, 'atendimento') && !ownerAgenda) return { planos: [] }
   const dela = ownerAgenda && !(await clienteAtendidaPor(admin, ownerAgenda, clientId)) ? ownerAgenda : null
 
   let consulta = admin
@@ -418,7 +467,7 @@ export async function criarPlanoDoCliente(
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'planos_de_tratamento')
   // Ver planos é da Agenda; montar é de quem atende (PT2), conferido na unidade abaixo.
-  assertPermission(ctx, 'agenda', 'VIEW')
+  assertPermission(ctx, 'atendimento', 'VIEW')
   if (!montaPlano(ctx)) return { error: RECUSA_QUEM_MONTA }
   const admin = createAdminClient()
 
@@ -486,10 +535,12 @@ export async function salvarPlanoNovo(
   appointmentId: string | null,
   sessions: PlanSessionInput[],
   notes: string,
+  /** 22ª A20: o desconto do plano do editor. */
+  desconto?: unknown,
 ): Promise<{ planId?: string; error?: string }> {
   const criado = await criarPlanoDoCliente(clientId, branchId, appointmentId)
   if (criado.error || !criado.planId) return { error: criado.error ?? 'Não foi possível criar o plano.' }
-  const salvo = await salvarPlanoDoCliente(criado.planId, sessions, notes)
+  const salvo = await salvarPlanoDoCliente(criado.planId, sessions, notes, desconto)
   if (salvo.error) {
     const admin = createAdminClient()
     await tentar(admin.from('treatment_plan_sessions').delete().eq('plan_id', criado.planId), 'desfazer as sessões do plano novo')
@@ -511,7 +562,7 @@ export async function vincularClienteAoPlano(
 ): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'planos_de_tratamento')
-  assertPermission(ctx, 'agenda', 'VIEW')
+  assertPermission(ctx, 'atendimento', 'VIEW')
   const admin = createAdminClient()
 
   const plan = await planoDoTenant(admin, planId, ctx)
@@ -530,6 +581,8 @@ export async function vincularClienteAoPlano(
     .update({ client_id: clientId, updated_at: new Date().toISOString() })
     .eq('id', planId)
   if (error) return { error: error.message }
+  // DC4: o plano feito sem cliente ganha os documentos ao ganhar a cliente.
+  await emitirDocumentosDoPlano(ctx.tenantId!, planId)
 
   revalidatePath(`/${plan.slug}/clients/${clientId}`)
   revalidatePath(`/admin/clients/${clientId}`)
@@ -579,7 +632,7 @@ export async function buscarClientesParaPlano(termo: string): Promise<{
 export async function renomearPlano(planId: string, nome: string): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'planos_de_tratamento')
-  assertPermission(ctx, 'agenda', 'VIEW')
+  assertPermission(ctx, 'atendimento', 'VIEW')
   const admin = createAdminClient()
 
   const plan = await planoDoTenant(admin, planId, ctx)
@@ -613,7 +666,7 @@ export async function getCabecalhoDoPlano(planId: string): Promise<{
   error?: string
 }> {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'agenda', 'VIEW')
+  assertPermission(ctx, 'atendimento', 'VIEW')
   const admin = createAdminClient()
 
   const plan = await planoDoTenant(admin, planId, ctx)
@@ -668,7 +721,7 @@ export async function listarPlanejamentos(opcoes?: {
   }[]
 }> {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'agenda', 'VIEW')
+  assertPermission(ctx, 'atendimento', 'VIEW')
   const admin = createAdminClient()
 
   // `treatment_plans` não tem tenant_id: o recorte é pela unidade.
@@ -686,8 +739,8 @@ export async function listarPlanejamentos(opcoes?: {
   // filtro não pode vir depois de ler: os planos das clientes que ela atende
   // (o `!inner` em cadeia plano → cliente → agendamento com ela) e os que ela
   // montou, juntos.
-  const dela = ownerFilter(ctx, 'agenda')
-  if (isOwnScope(ctx, 'agenda') && !dela) return { planos: [] }
+  const dela = ownerFilter(ctx, 'atendimento')
+  if (isOwnScope(ctx, 'atendimento') && !dela) return { planos: [] }
 
   const situacaoPedida = opcoes?.situacao && (SITUACOES_COMERCIAIS as readonly string[]).includes(opcoes.situacao)
     ? opcoes.situacao : null
@@ -808,7 +861,7 @@ export async function getResumoDoPlano(planId: string): Promise<{
   error?: string
 }> {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'agenda', 'VIEW')
+  assertPermission(ctx, 'atendimento', 'VIEW')
   const admin = createAdminClient()
   const plan = await planoDoTenant(admin, planId, ctx)
   if (!plan) return { error: 'Plano não encontrado.' }
@@ -839,6 +892,8 @@ export async function getPlanoParaEditar(planId: string): Promise<{
     sessions: { procedures: { procedureId: string; name: string; price: number; products?: { productId: string; name: string; unit: string; quantity: number }[] }[] }[]
     /** D4 da 12ª: o retrato do cancelado (a data, o motivo, o dinheiro), para a tela só de leitura. */
     cancelamento?: RetratoDoCancelamento | null
+    /** 22ª A20: o desconto do plano combinado (só no rascunho e no proposto: depois, o checkout já o tem). */
+    descontoCombinado?: { tipo: 'VALOR' | 'PERCENTUAL'; valor: number } | null
     /**
      * D4 da 14ª (F73): o catálogo da unidade DO plano — o editor lista só o
      * que ela faz, em qualquer portal e unidade em que o plano é aberto.
@@ -848,7 +903,7 @@ export async function getPlanoParaEditar(planId: string): Promise<{
   error?: string
 }> {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'agenda', 'VIEW')
+  assertPermission(ctx, 'atendimento', 'VIEW')
   const admin = createAdminClient()
 
   const plan = await planoDoTenant(admin, planId, ctx)
@@ -858,6 +913,7 @@ export async function getPlanoParaEditar(planId: string): Promise<{
     .from('treatment_plans')
     .select(`
       id, status, professional_notes, professional_id, client_id, cancelado_em, cancelamento_motivo, cancelamento,
+      desconto_combinado_tipo, desconto_combinado_valor,
       treatment_plan_sessions(sort_order, treatment_plan_session_procedures(procedure_id, price, sort_order, products, procedures(name)))
     `)
     .eq('id', planId)
@@ -900,6 +956,9 @@ export async function getPlanoParaEditar(planId: string): Promise<{
       notes,
       sessions,
       catalogo,
+      descontoCombinado: ['DRAFT', 'PROPOSED'].includes(data.status as string)
+        ? combinadoDoPlano(data as { desconto_combinado_tipo?: string | null; desconto_combinado_valor?: number | string | null })
+        : null,
       cancelamento: retratoDoCancelamento(data as { cancelado_em?: string | null; cancelamento_motivo?: string | null; cancelamento?: unknown },
         await fusoDaUnidade(ctx.tenantId, plan.branch_id as string)),
     },
@@ -929,10 +988,12 @@ async function salvarPlanoDoClienteInterno(
   planId: string,
   sessions: PlanSessionInput[],
   notes: string,
+  /** 22ª A20: o desconto do plano do editor (sem ele, não mexe). */
+  desconto?: unknown,
 ): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'planos_de_tratamento')
-  assertPermission(ctx, 'agenda', 'VIEW')
+  assertPermission(ctx, 'atendimento', 'VIEW')
   const admin = createAdminClient()
 
   const plan = await planoDoTenant(admin, planId, ctx)
@@ -945,14 +1006,19 @@ async function salvarPlanoDoClienteInterno(
 
   // A anotação clínica é do Prontuário: quem não a escreve não a apaga (PT2).
   const anota = anotaNoPlano(ctx, (plan.professional_id as string | null) ?? null)
+  const combinado = colunasDoCombinado(desconto, sessions, ctx.internalUserId ?? null)
+  if (combinado && 'error' in combinado) return combinado
   const { error } = await admin
     .from('treatment_plans')
-    .update({ ...(anota ? { professional_notes: notes || null } : {}), updated_at: new Date().toISOString() })
+    .update({ ...(anota ? { professional_notes: notes || null } : {}), ...(combinado ? combinado.colunas : {}), updated_at: new Date().toISOString() })
     .eq('id', planId)
   if (error) return { error: error.message }
 
   const res = await gravarSessoes(admin, planId, sessions, { tenantId: ctx.tenantId!, unidadeId: plan.branch_id as string })
   if (res.error) return res
+  // DC4: os documentos do plano nascem na criação (o primeiro "Salvar plano") e
+  // acompanham as sessões: o que saiu é cancelado, o que entrou nasce.
+  await emitirDocumentosDoPlano(ctx.tenantId!, planId)
 
   revalidatePath(`/${plan.slug}/clients/${plan.client_id}`)
   revalidatePath(`/admin/clients/${plan.client_id}`)
@@ -971,7 +1037,7 @@ export async function getTreatmentPlanSessions(planId: string): Promise<{
   total:    number
 }> {
   const ctx   = await getTenantContext()
-  assertPermission(ctx, 'agenda', 'VIEW')
+  assertPermission(ctx, 'atendimento', 'VIEW')
   const admin = createAdminClient()
 
   const plan = await ler(admin
@@ -1047,7 +1113,7 @@ export async function getTreatmentPlanSessions(planId: string): Promise<{
 export async function proposeTreatmentPlan(planId: string, slug: string) {
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'planos_de_tratamento')
-  assertPermission(ctx, 'agenda', 'VIEW')
+  assertPermission(ctx, 'atendimento', 'VIEW')
 
   const admin = createAdminClient()
 
@@ -1166,13 +1232,14 @@ export interface DocumentosDoPlanoNaTela {
  * revisão do Heitor de 2026-11-13): o catálogo da rede (os modelos ativos e os
  * procedimentos com termo ou outros documentos) e o que este plano excluiu. A
  * conta (`documentosPuxadosDoPlano`) é da tela, sobre as sessões que estão no
- * editor; o banco aplica a mesma no aceite (`private.modelos_do_plano`).
+ * editor; o banco aplica a mesma ao salvar o plano (`private.modelos_do_plano`:
+ * DC4, os documentos nascem na criação).
  * Sem plano (o novo, ainda sem id): o catálogo, sem exclusões.
  */
 export async function getDocumentosDoPlano(planId: string | null): Promise<DocumentosDoPlanoNaTela | null> {
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'planos_de_tratamento')
-  assertPermission(ctx, 'agenda', 'VIEW')
+  assertPermission(ctx, 'atendimento', 'VIEW')
   if (planId && !/^[0-9a-f-]{36}$/i.test(planId)) return null
   if (!(await redeTemRecurso(ctx.tenantId!, 'documentos'))) return null
   const admin = createAdminClient()
@@ -1205,21 +1272,22 @@ export async function getDocumentosDoPlano(planId: string | null): Promise<Docum
 
 /**
  * "Excluir" e "Incluir de novo" num documento puxado (DC1c/PC9b): grava a
- * lista no plano. Quem pode é quem monta o plano (PT2, `montaPlano`), e só
- * antes do aceite — aceito, os documentos já nasceram. Os ids passam pelos
- * modelos da rede: o que não é dela não entra.
+ * lista no plano e sincroniza os documentos (DC4: eles já nasceram na criação —
+ * o excluído é cancelado, o incluído de novo nasce). Quem pode é quem monta o
+ * plano (PT2, `montaPlano`), e só antes do aceite. Os ids passam pelos modelos
+ * da rede: o que não é dela não entra.
  */
 export async function salvarDocumentosExcluidosDoPlano(planId: string, excluidos: string[]): Promise<{ error?: string }> {
   try {
     const ctx = await getTenantContext()
     assertRecurso(ctx, 'planos_de_tratamento')
-    assertPermission(ctx, 'agenda', 'VIEW')
+    assertPermission(ctx, 'atendimento', 'VIEW')
     const admin = createAdminClient()
     const plan = await planoDoTenant(admin, planId, ctx)
     if (!plan) return { error: 'Plano não encontrado.' }
     if (!montaPlano(ctx, plan.branch_id as string)) return { error: RECUSA_QUEM_MONTA }
     if (plan.status !== 'DRAFT' && plan.status !== 'PROPOSED') {
-      return { error: 'Este plano já foi aceito: os documentos dele já nasceram.' }
+      return { error: 'Este plano já foi aceito: os documentos dele não mudam mais por aqui.' }
     }
     const pedidos = [...new Set((Array.isArray(excluidos) ? excluidos : []).filter(x => typeof x === 'string' && /^[0-9a-f-]{36}$/i.test(x)))]
     const daRede = pedidos.length
@@ -1228,6 +1296,8 @@ export async function salvarDocumentosExcluidosDoPlano(planId: string, excluidos
       : []
     await gravar(admin.from('treatment_plans').update({ documentos_excluidos: pedidos.filter(id => daRede.includes(id)), updated_at: new Date().toISOString() })
       .eq('id', planId), 'gravar os documentos excluídos do plano')
+    // DC4: o excluído sai (cancelado), o incluído de novo nasce.
+    await emitirDocumentosDoPlano(ctx.tenantId!, planId)
     revalidatePath(`/${plan.slug}/planejamentos/${planId}`)
     revalidatePath(`/admin/planejamentos/${planId}`)
     return {}
@@ -1241,8 +1311,10 @@ export async function salvarDocumentosExcluidosDoPlano(planId: string, excluidos
 /**
  * O aceite do plano (PT1b, a revisão do Heitor de 2026-11-13): só "quero
  * fazer" — sem pergunta de dinheiro ("pode ser intimidador e levar a
- * desistencia"). O plano vira aceito, os documentos ficam prontos e a comanda
- * do plano nasce no PDV com o valor inteiro. O dinheiro é no PDV: a forma, o
+ * desistencia"). O plano vira aceito (os termos e os outros documentos já nasceram na
+ * criação, DC4), o desconto
+ * combinado no editor se aplica aos preços (22ª A20, na mesma transação) e a
+ * comanda do plano nasce no PDV com o valor do plano. O dinheiro é no PDV: a forma, o
  * contrato com ela, e só então o recebimento ("primeiro colhe assinatura,
  * depois paga").
  */
@@ -1250,12 +1322,18 @@ export async function aceitarPlano(planId: string): Promise<{ error?: string; co
   try {
     const ctx = await getTenantContext()
     assertRecurso(ctx, 'planos_de_tratamento')
-    assertPodeFecharPlano(ctx)
+    // Na avaliação aberta, aceita também quem atende ESTE atendimento (PT2; o
+    // Atendimento em Gerenciar desde 2026-11-18) — conferido abaixo, pelo plano.
+    if (!can(ctx, 'atendimento', 'MANAGE')) assertPodeFecharPlano(ctx)
     const admin = createAdminClient()
     const alvo = await planoDoTenant(admin, planId, ctx)
     if (!alvo) return { error: 'Plano não encontrado.' }
-    // Aceita quem monta o plano (quem atende na unidade DELE) ou quem recebe.
-    if (!podeFecharEstePlano(ctx, alvo.branch_id as string)) return { error: RECUSA_QUEM_MONTA }
+    // Aceita quem monta o plano (quem atende na unidade DELE), quem recebe, ou
+    // quem atende a avaliação aberta de onde ele nasceu.
+    if (!podeFecharEstePlano(ctx, alvo.branch_id as string)
+      && !(await atendeAAvaliacaoAberta(admin, ctx, alvo.evaluation_appointment_id as string | null))) {
+      return { error: RECUSA_QUEM_MONTA }
+    }
     if (alvo.status === 'DRAFT') {
       const plan = await ler(admin.from('treatment_plans')
         .select('id, evaluation_appointment_id, professional_notes, client_id').eq('id', planId).single(), 'buscar o plano')
@@ -1467,10 +1545,11 @@ async function generateEvaluationPlanInterno(
    */
   fichaDaTela:           Record<string, unknown> | null = null,
   /** A resposta à pergunta do planejamento sem ponto (atend-12): só com ela o plano nasce. */
-  opcoes:                { confirmarPlanejamentoVazio?: boolean } = {},
+  opcoes:                { confirmarPlanejamentoVazio?: boolean; descontoDoPlano?: unknown } = {},
 ): Promise<{ error?: string; planId?: string; confirmarPlanejamentoVazio?: boolean }> {
   const ctx   = await getTenantContext()
-  assertPermission(ctx, 'agenda', 'VIEW')
+  // A tela do atendimento (o módulo do Atendimento, 2026-11-18).
+  assertPermission(ctx, 'atendimento', 'VIEW')
   // A avaliação monta o plano: é do plano de tratamento.
   assertRecurso(ctx, 'planos_de_tratamento')
   const admin = createAdminClient()
@@ -1492,11 +1571,17 @@ async function generateEvaluationPlanInterno(
   const concluida = appt.status === 'COMPLETED'
   // Quem gera (PT2, 2026-11-14): na avaliação concluída só o plano nasce —
   // monta quem atende na unidade ("Montar plano desta avaliação"). Na ABERTA,
-  // a mesma gravação escreve o registro do atendimento (as dores, a ficha, a
-  // anamnese, a evolução): segue do Prontuário em Gerenciar, como o "Finalizar".
-  if (concluida ? !montaPlano(ctx, appt.branch_id as string) : !can(ctx, 'medical_records', 'MANAGE')) {
-    return { error: concluida ? RECUSA_QUEM_MONTA : 'Gerar o plano na avaliação grava o prontuário: é preciso ter o Prontuário em Gerenciar.' }
+  // gera quem atende ESTE atendimento (PT2: "quem monta o plano é quem atende,
+  // nem precisa de permissão pra isso pq isso é proprio atendimento"; com o
+  // módulo do Atendimento, 2026-11-18: o Atendimento em Gerenciar, com o "só os
+  // meus" dele). Saiu o Prontuário em Gerenciar da trava: o que a mesma
+  // gravação escreve de CLÍNICO (as dores, a ficha, a ficha de saúde, a
+  // evolução) só vai com ele — sem ele, só o plano.
+  const atendeEste = can(ctx, 'atendimento', 'MANAGE') && !deOutroNoAtendimento(ctx, appt.professional_id)
+  if (concluida ? !montaPlano(ctx, appt.branch_id as string) : !atendeEste) {
+    return { error: concluida ? RECUSA_QUEM_MONTA : RECUSA_QUEM_ATENDE }
   }
+  const registraClinico = can(ctx, 'medical_records', 'MANAGE')
   // A anotação clínica do plano (as "Observações da profissional") é do Prontuário.
   const anota = anotaNoPlano(ctx, ctx.internalUserId)
 
@@ -1504,11 +1589,11 @@ async function generateEvaluationPlanInterno(
   let pendente: Record<string, unknown> | null = null
   let ficha: ReturnType<typeof fichaParaConcluir> = null
   if (!concluida) {
-    if (!complaints.trim()) return { error: 'Registre as dores/queixas do cliente.' }
+    if (registraClinico && !complaints.trim()) return { error: 'Registre as dores/queixas do cliente.' }
     // A anamnese no formato da ficha ATUAL (nula sem mudança: a que a cliente
     // respondeu não vira "pela equipe"); as respostas, limpas, fecham o
     // pré-atendimento pendente — a equipe a revisou.
-    if (anamnesis) {
+    if (anamnesis && registraClinico) {
       const fichaDeSaude = await fichaDePreAtendimento(admin, ctx.tenantId!)
       const limpas = respostasDaFicha(fichaDeSaude.rows, anamnesis)
       pendente = Object.keys(limpas).length ? limpas : null
@@ -1518,7 +1603,7 @@ async function generateEvaluationPlanInterno(
     }
     // A ficha do procedimento da tela: o retrato da ficha ligada a ELE (não a
     // que o navegador diz), com o planejador retratado no servidor.
-    if (fichaDaTela && appt.procedure_id) {
+    if (registraClinico && fichaDaTela && appt.procedure_id) {
       const proc = await ler(admin.from('procedures').select('form_id')
         .eq('id', appt.procedure_id).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o procedimento')
       const form = proc?.form_id
@@ -1554,6 +1639,10 @@ async function generateEvaluationPlanInterno(
     if (falta) return { error: falta }
   }
 
+  // 22ª A20: o desconto do plano do editor vai na mesma gravação.
+  const combinado = colunasDoCombinado(opcoes.descontoDoPlano, sessions, ctx.internalUserId ?? null)
+  if (combinado && 'error' in combinado) return combinado
+
   // Só o que a unidade do atendimento (a do plano que nasce) faz (D4 da 14ª, F73).
   const naoFeito = await recusaDosProcedimentosDoPlano(admin, ctx.tenantId!, appt.branch_id as string,
     sessions.flatMap(s => s.procedures.map(p => p.procedureId)))
@@ -1577,6 +1666,8 @@ async function generateEvaluationPlanInterno(
       ...(anota ? { notas_do_plano: planNotes } : {}),
       // A conferência das obrigatórias no banco (atend-04): sem o recurso, o planejador não barra.
       sem_injetaveis: !temRecurso(ctx, 'injetaveis'),
+      // Sem a chave, o combinado que havia fica (migration 20261123100001).
+      ...(combinado ? { desconto_combinado: { tipo: combinado.colunas.desconto_combinado_tipo, valor: combinado.colunas.desconto_combinado_valor } } : {}),
       sessoes: sessions.map(s => ({
         procedimentos: s.procedures.map((p, j) => ({
           procedure_id: p.procedureId,
@@ -1585,7 +1676,8 @@ async function generateEvaluationPlanInterno(
           products:     (p.products ?? []).map(pr => ({ product_id: pr.productId, name: pr.name, unit: pr.unit, quantity: pr.quantity })),
         })),
       })),
-      ...(!concluida ? {
+      // O clínico só com o Prontuário em Gerenciar (sem a chave, o gravado fica).
+      ...(!concluida && registraClinico ? {
         queixas: complaints.trim(),
         ...(comEvolucao ? { notas: sessionNotes.trim() || null, intercorrencias: sessionIntercurrences.trim() || null } : {}),
         ...(anamnese ? { anamnese } : {}),
@@ -1602,6 +1694,8 @@ async function generateEvaluationPlanInterno(
       clientId: appt.client_id, agendamentoId: appointmentId, referencia: 'form_data',
     })
   }
+  // DC4: os documentos do plano nascem na criação.
+  await emitirDocumentosDoPlano(ctx.tenantId!, planId)
   // A12 da 20ª: o plano gerado nasce proposto — a cliente é avisada (uma vez por plano).
   await avisarDoPlanoProposto(ctx.tenantId!, planId)
 
@@ -1661,7 +1755,7 @@ export type SessionScheduleInput = {
 export type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import { rotuloDoPagamento, vezesNoCartao, maquininhaDoPagamento, metodoQuePagaAgora, partesQuePagamAgora, temOutrasFormas, type PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
-import { recusaDosDocumentosDoPlano } from '@/lib/documentos/plano'
+import { recusaDosDocumentosDoPlano, emitirDocumentosDoPlano } from '@/lib/documentos/plano'
 import { precosDoPlano, descontoDoPlano, precosComDesconto } from '@/lib/checkout/desconto-do-plano'
 import { EntradaDoDesconto, motivoDoDesconto } from '@/lib/vendas/desconto'
 import { quemVendeu, type QuemVendeuDaTela } from '@/lib/vendas/equipe-da-venda'
@@ -1674,7 +1768,7 @@ import { fichaParaConcluir } from '@/lib/atendimento/ficha-do-procedimento'
 import { retratarInjetaveis } from '@/lib/injetaveis/alcance'
 import { perguntaDoPlanejamentoVazio } from '@/lib/atendimento/retrato-dos-injetaveis'
 import { avulsosDoPlano, textoDoAvulso } from '@/lib/checkout/plano-e-avulso'
-import { deOutroProfissional, DE_OUTRO_PROFISSIONAL } from '@/lib/appointments/alteracoes'
+import { deOutroProfissional, deOutroNoAtendimento, DE_OUTRO_PROFISSIONAL } from '@/lib/appointments/alteracoes'
 import { emitirEventoClinico } from '@/lib/events/clinico'
 import { EVENTOS } from '@estetica-os/types'
 import { oQueFaltaParaSeguir } from '@/lib/atendimento/obrigatorias-no-servidor'
@@ -2264,7 +2358,7 @@ export interface TreatmentFileDetails {
 export async function getTreatmentPlanDetails(planId: string, clientId: string): Promise<{ data?: TreatmentFileDetails; error?: string }> {
   try {
     const ctx = await getTenantContext()
-    assertPermission(ctx, 'agenda', 'VIEW')
+    assertPermission(ctx, 'atendimento', 'VIEW')
 
     const admin = createAdminClient()
     // Ver as sessões é da clínica (H5; F73): a recepção de outra unidade abre a ficha de tratamento.
@@ -2367,7 +2461,7 @@ export async function getTreatmentPlanDetails(planId: string, clientId: string):
  */
 export async function pacotesParaODicaDoPlano(branchId: string): Promise<PacoteParaComparar[]> {
   const ctx = await getTenantContext()
-  if (!can(ctx, 'medical_records', 'VIEW') && !can(ctx, 'agenda', 'VIEW') && !can(ctx, 'procedures', 'VIEW')) return []
+  if (!can(ctx, 'medical_records', 'VIEW') && !can(ctx, 'atendimento', 'VIEW') && !can(ctx, 'agenda', 'VIEW') && !can(ctx, 'procedures', 'VIEW')) return []
   if (!branchId || !alcancaUnidade(ctx, branchId)) return []
   const unidade = await ler(createAdminClient().from('branches').select('id')
     .eq('id', branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'conferir a unidade do plano')
@@ -2449,7 +2543,7 @@ export async function getPassosDoPlano(planId: string): Promise<{ passos?: Passo
   try {
     const ctx = await getTenantContext()
     assertRecurso(ctx, 'planos_de_tratamento')
-    assertPermission(ctx, 'agenda', 'VIEW')
+    assertPermission(ctx, 'atendimento', 'VIEW')
     const admin = createAdminClient()
     const plan = await planoDoTenant(admin, planId, ctx)
     if (!plan) return { error: 'Plano não encontrado.' }

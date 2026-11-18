@@ -33,12 +33,14 @@ import {
 
 /**
  * O horário cai num BLOQUEIO da profissional (decisão 3 da 7ª simulação)? O
- * Copilot não oferece nem marca o horário bloqueado: a recusa diz o bloqueio
- * e que o encaixe nele é pela agenda (onde a equipe é avisada e encaixa).
+ * Copilot AVISA no cartão e deixa confirmar, como a agenda da equipe
+ * (princípio 2, "não recusar o valor que a rede escolheu: no máximo, avisar";
+ * 2026-11-18 — até aqui recusava e mandava encaixar pela agenda). Os livres
+ * que ele oferece continuam sem o bloqueado (`computeAvailableSlots`).
  */
-async function recusaDoBloqueado(c: ContextoDaFerramenta, a: { professionalId: string; nome: string; inicio: Date; duracaoMin: number; fuso: string }): Promise<string | null> {
+async function avisoDoBloqueado(c: ContextoDaFerramenta, a: { professionalId: string; nome: string; inicio: Date; duracaoMin: number; fuso: string }): Promise<string> {
   const [b] = await bloqueiosQueBatem(c.admin, { professionalId: a.professionalId, inicio: a.inicio, fim: new Date(a.inicio.getTime() + a.duracaoMin * 60_000) })
-  return b ? `${a.nome} está com o horário bloqueado ${trechoDoBloqueio(b, a.fuso)} (${b.motivo}). Escolha outro horário — o encaixe num horário bloqueado é pela agenda.` : null
+  return b ? `${a.nome} está com o horário bloqueado ${trechoDoBloqueio(b, a.fuso)} (${b.motivo}). O encaixe é permitido: confirme só se for isso mesmo. ` : ''
 }
 
 /** O profissional está livre? A mesma conferência da tela (horarioOcupado, no núcleo). */
@@ -142,8 +144,7 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
     if (!(await livre(c, { professionalId: prof.id, inicio, duracaoMin: duracao }))) {
       return { erro: `${prof.name} já tem agendamento nesse horário. Veja os horários livres.` }
     }
-    const bloqueado = await recusaDoBloqueado(c, { professionalId: prof.id, nome: prof.name, inicio, duracaoMin: duracao, fuso })
-    if (bloqueado) return { erro: bloqueado }
+    const avisoDoBloqueio = await avisoDoBloqueado(c, { professionalId: prof.id, nome: prof.name, inicio, duracaoMin: duracao, fuso })
 
     // "Quem realiza" (por-01): como a janela da agenda, AVISA sem barrar — o
     // encaixe é da clínica (princípio 2).
@@ -166,7 +167,7 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
             : { rotulo: 'Valor', valor: dinheiro(proc.price) },
           ...(a.observacao ? [{ rotulo: 'Observação', valor: a.observacao }] : []),
         ],
-        aviso: avisoDoRealiza + (jaExiste
+        aviso: avisoDoBloqueio + avisoDoRealiza + (jaExiste
           ? `${textoDaFichaQueJaExiste(jaExiste)} Nada foi gravado: agende numa ficha nova mesmo assim, ou na ficha que existe. ${avisoDaCliente}`
           : avisoDaCliente),
         ...(jaExiste ? { escolhas: escolhasDaFichaQueJaExiste(jaExiste) } : {}),
@@ -265,8 +266,7 @@ export const remarcar: FerramentaDeEscrita<{ agendamento: string; data: string; 
     if (quem && !(await livre(c, { professionalId: quem, inicio, duracaoMin: ag.duration_min || 60, excluir: ag.id }))) {
       return { erro: `${nomeDoProfissional} já tem agendamento nesse horário.` }
     }
-    const bloqueado = quem ? await recusaDoBloqueado(c, { professionalId: quem, nome: nomeDoProfissional, inicio, duracaoMin: ag.duration_min || 60, fuso }) : null
-    if (bloqueado) return { erro: bloqueado }
+    const avisoDoBloqueio = quem ? await avisoDoBloqueado(c, { professionalId: quem, nome: nomeDoProfissional, inicio, duracaoMin: ag.duration_min || 60, fuso }) : ''
     // A28 da 21ª (princípio 3): a troca só de quem atende saía "Remarcar
     // atendimento", com o De e o Para iguais, sem quem atendia nem a unidade. A
     // palavra é a da Equipe e da Auditoria ("Repassou"): trocar quem atende.
@@ -288,7 +288,7 @@ export const remarcar: FerramentaDeEscrita<{ agendamento: string; data: string; 
           quemAtende,
           { rotulo: 'Unidade', valor: unidade },
         ],
-        aviso: await avisoDaClienteNoCartao(c, ag.clientId, 'remarcar'),
+        aviso: avisoDoBloqueio + await avisoDaClienteNoCartao(c, ag.clientId, 'remarcar'),
       },
       payload: { appointmentId: ag.id, scheduledAt: inicio.toISOString(), professionalId, ...(soQuemAtende ? { soQuemAtende: true } : {}) },
     }

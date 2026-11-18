@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useActionState, useCallback, useEffect } from 'react'
+import { rotuloDoPagoAntes } from '@/lib/appointments/pago-antes-textos'
 import { useRouter, usePathname } from 'next/navigation'
 import { X, CheckCircle2, Clock, AlertCircle, AlertTriangle, Ban, Play, CalendarClock, DoorOpen, HandCoins, Lock } from 'lucide-react'
 import Link from 'next/link'
@@ -71,11 +72,14 @@ interface AppointmentSheetProps {
   /** O membro logado (users.id): no agendamento DELE, "Marcar chegada e iniciar" (A25). */
   meuId?: string | null
   /**
-   * Conclui o atendimento (o Prontuário em Gerenciar: concluir grava o
-   * prontuário). Sem ele, a janela diz quem conclui ANTES do Iniciar (A20 da 10ª).
+   * Inicia e conclui o atendimento: o Atendimento em Gerenciar (o Heitor,
+   * 2026-11-18: "Só inicia e conclui atendimento quem tem gerenciar no
+   * atendimento"). Sem ele, a janela não oferece o Iniciar e diz quem inicia.
    */
   podeConcluir?: boolean
-  /** A9 da 20ª: sem concluir, quem conclui — o Prontuário em Gerenciar, pelo nome (quemConcluiOAtendimento). */
+  /** O Atendimento "só os meus": inicia e conclui só os DELA. */
+  atendimentoProprio?: boolean
+  /** Sem iniciar, quem inicia e conclui — o Atendimento em Gerenciar, pelo nome (quemConcluiOAtendimento). */
   quemConclui?: string[] | null
   onClose:     () => void
 }
@@ -99,16 +103,18 @@ const STATUS_CHIP: Record<string, string> = {
   NO_SHOW:     'chip chip-muted',
 }
 
-export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, podeGerenciar = false, meuId = null, podeConcluir = true, quemConclui = null, onClose }: AppointmentSheetProps) {
+export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, podeGerenciar = false, meuId = null, podeConcluir = true, atendimentoProprio = false, quemConclui = null, onClose }: AppointmentSheetProps) {
   const isProfessional = escopoProprio ?? userRole === 'PROFESSIONAL'
   // A dona (ou a gerente) que atende, no agendamento DELA: o gesto da
   // profissional, em vez de "Chegou" → "Iniciar" (A25 da 6ª simulação: eram
   // quatro cliques e uma confirmação). A action é a mesma (chegarEIniciar).
   const ehMeu = !!meuId && appointment.professionalId === meuId && podeGerenciar
-  // Cancelar e "Não compareceu": a agenda em Gerenciar — a recepção (todas) e
-  // a profissional "só os meus", no dela (agenda-06). A agenda em Ver inicia e
-  // conclui, e só (D20, F65: os botões apareciam e a action recusava).
+  // Cancelar e "Não compareceu": a agenda em Gerenciar — quem tem "todos" e
+  // quem tem "só os meus", no dela (agenda-06). Iniciar e concluir são do
+  // Atendimento em Gerenciar (o Heitor, 2026-11-18; saiu o D20, "a agenda em
+  // Ver inicia e conclui"), com o "só os meus" dele.
   const podeCancelar = podeGerenciar
+  const podeAtenderEste = podeConcluir && (!atendimentoProprio || (!!meuId && appointment.professionalId === meuId))
   const router   = useRouter()
   // Para onde ir ao iniciar o atendimento: quem decide o portal é o caminho
   // atual, não o slug do registro. Sem isto, iniciar pela agenda da rede jogava
@@ -239,10 +245,11 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
   // 10ª: eram três quase iguais, dois em rosé). No agendamento DELA, o gesto
   // dela; chegou, iniciar; confirmado, a chegada; agendado, confirmar.
   const aindaNaoChegou = appointment.status === 'SCHEDULED' || appointment.status === 'CONFIRMED'
-  const mostraChegarEIniciar = aindaNaoChegou && (isProfessional || ehMeu) && ehODia && podeGerenciar
+  const mostraChegarEIniciar = aindaNaoChegou && (isProfessional || ehMeu) && ehODia && podeGerenciar && podeAtenderEste
   const mostraConfirmar = appointment.status === 'SCHEDULED' && !isProfessional && podeGerenciar
   const mostraChegou = aindaNaoChegou && !isProfessional && ehODia && podeGerenciar
-  const mostraIniciar = appointment.status === 'ARRIVED' || (appointment.status === 'CONFIRMED' && !isProfessional)
+  const chegaAoInicio = appointment.status === 'ARRIVED' || (appointment.status === 'CONFIRMED' && !isProfessional)
+  const mostraIniciar = chegaAoInicio && podeAtenderEste
   const principal = mostraChegarEIniciar ? 'chegarEIniciar'
     : appointment.status === 'ARRIVED' ? 'iniciar'
     : appointment.status === 'CONFIRMED' && mostraChegou ? 'chegou'
@@ -332,8 +339,9 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
                     não "Já pago" — a venda no crediário tem parcelas em aberto (o texto diz). */}
                 {appointment.pagoAntes ? (
                   <>
-                    <p className="overline">Incluído</p>
-                    <p data-pago-antes style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--success)', marginTop: 3 }}>
+                    {/* 21ª: o plano aceito e não recebido diz "A receber", não "Incluído". */}
+                    <p className="overline">{rotuloDoPagoAntes(appointment.pagoAntes)}</p>
+                    <p data-pago-antes style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: rotuloDoPagoAntes(appointment.pagoAntes) === 'A receber' ? 'var(--warning)' : 'var(--success)', marginTop: 3 }}>
                       {appointment.pagoAntes}
                     </p>
                   </>
@@ -364,17 +372,18 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
         {/* Ações de status */}
         {isActive && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {/* A20 da 10ª: quem não conclui (sem o Prontuário em Gerenciar) lê ANTES de iniciar.
-                A9 da 20ª: a permissão e quem conclui, pelo nome. A12 da 21ª: trava o
-                fim do atendimento — aviso à vista, acima dos botões (era cinza, embaixo). */}
-            {(mostraIniciar || mostraChegarEIniciar) && !podeConcluir && (
+            {/* A20 da 10ª: quem não inicia nem conclui (sem o Atendimento em
+                Gerenciar, ou o de outra pessoa com "só os meus") lê por quê, onde
+                estaria o Iniciar. A9 da 20ª: a permissão e quem conclui, pelo nome.
+                A12 da 21ª: aviso à vista, acima dos botões. */}
+            {chegaAoInicio && !podeAtenderEste && (
               <p data-quem-conclui role="note" style={{
                 display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 12px', borderRadius: 'var(--radius-field-token)',
                 background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', color: 'var(--warning)',
                 fontSize: 'var(--text-sm-sz)', fontWeight: 700,
               }}>
                 <Lock size={14} aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
-                <span><strong>Você não conclui este atendimento.</strong> <span>{textoDeQuemConclui(quemConclui)}</span></span>
+                <span><strong>Você não inicia nem conclui este atendimento.</strong> <span>{textoDeQuemConclui(quemConclui)}</span></span>
               </p>
             )}
             {/* A profissional no agendamento que ainda não chegou: o mesmo
@@ -483,8 +492,10 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
               </form>
             )}
 
-            {/* A22 da 8ª: trocar a profissional pela janela, não só arrastando. */}
-            {!isProfessional && podeGerenciar && (
+            {/* A22 da 8ª: trocar a profissional pela janela, não só arrastando.
+                Com a Agenda "só os meus" e Gerenciar, passa a outra pessoa o
+                atendimento DELA (o Heitor, 2026-11-18; a action confere). */}
+            {(!isProfessional || ehMeu) && podeGerenciar && (
               <TrocarProfissional appointmentId={appointment.id} slug={slug} atual={appointment.professionalName}
                 onTrocou={() => { onClose(); router.refresh() }} />
             )}

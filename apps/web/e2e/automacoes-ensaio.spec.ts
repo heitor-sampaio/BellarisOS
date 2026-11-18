@@ -32,10 +32,9 @@ test.beforeAll(async () => {
   const outra = await criarOutraRede(`ens${marca}`)
   f = {
     outra,
-    membro: await criarMembro(`ens${marca}`, {
-      tenant: outra.tenantId, rotulo: 'Automações',
-      permissoes: [{ modulo: 'automations', nivel: 'MANAGE' }],
-    }),
+    // Automações são configuração da rede toda: só a Admin da rede (o Heitor,
+    // 18/11: "Configuração da rede toda só pela conta admin").
+    membro: await criarMembro(`ens${marca}`, { tenant: outra.tenantId, rotulo: 'Automações', donoDaRede: true, permissoes: [] }),
   }
 })
 

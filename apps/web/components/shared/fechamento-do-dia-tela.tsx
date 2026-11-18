@@ -2,6 +2,7 @@
 
 import { useId, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { toast } from 'sonner'
 import { AlertTriangle, CheckCircle2, Clock } from 'lucide-react'
 import { fecharODia, informarFundoDeTroco } from '@/actions/fechamento'
@@ -10,7 +11,7 @@ import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
 import type { FechamentoDoDia, AvisosDoFechamento } from '@/lib/metrics'
 import type { EstornoDoDia, MovimentoDaUnidade, RecebidoPorPessoa, CartaoPorBandeira } from '@/lib/metrics/fechamento-extra'
-import { textoDoMovimentoDepois, lerConferidoDoCampo, valoresParaFecharDeNovo, diferencaNaTela, avisoDaGavetaNegativa, rotuloDoBotaoDeFechar, type LinhaDaConferencia } from '@/lib/financeiro/conferencia-do-fechamento'
+import { textoDoMovimentoDepois, lerConferidoDoCampo, valoresParaFecharDeNovo, diferencaNaTela, avisoDaGavetaNegativa, rotuloDoBotaoDeFechar, pedidoDoMotivoDaDiferenca, motivoDoFechamentoAnterior, type LinhaDaConferencia } from '@/lib/financeiro/conferencia-do-fechamento'
 import { rotuloDaForma, rotuloDaFormaDoFechamento, nomeDaBandeira } from '@/lib/financeiro/formas'
 import { parseDinheiro } from '@estetica-os/utils'
 
@@ -49,7 +50,7 @@ const DETALHE: React.CSSProperties = { display: 'block', fontSize: 'var(--text-x
  * vem do servidor (lib/metrics e as linhas de `linhasDaConferencia`); aqui só
  * se desenha e se manda o conferido.
  */
-export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo, linhas, feitos, podeFechar, comandasAbertas = 0, avisos, movimentoDepois = null, atendeAte = null, fundoInformado = null, estornos = null, porQuemRecebeu = [], daRede = null, bandeiras = [] }: {
+export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo, linhas, feitos, podeFechar, comandasAbertas = 0, avisos, movimentoDepois = null, atendeAte = null, fundoInformado = null, estornos = null, porQuemRecebeu = [], daRede = null, bandeiras = [], linkDoCsv = null }: {
   /** O PDV do portal (`/<slug>/pdv` ou `/admin/pdv`). */
   basePath:  string
   dia:       string
@@ -78,6 +79,8 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
   daRede?: { unidades: MovimentoDaUnidade[]; total: { entradas: number; saidas: number; lancamentos: number } } | null
   /** A44 da 12ª: as linhas de cartão por bandeira (do banco). */
   bandeiras?: CartaoPorBandeira[]
+  /** A23 da 24ª: o CSV do fechamento, no Financeiro → Movimentações (só a quem o vê). */
+  linkDoCsv?: string | null
 }) {
   const router = useRouter()
   const ultimo = feitos[0] ?? null
@@ -138,6 +141,14 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
       router.refresh()
     })
   }
+
+  // A21 da 24ª (princípio 2): a diferença que se digita pede o motivo — sugere, não obriga.
+  const pedidoDoMotivo = conferindo
+    ? pedidoDoMotivoDaDiferenca(linhas.flatMap(l => {
+        const d = diferencaNaTela(l, { conferindo, texto: valores[l.forma] ?? '', fechado: !!ultimo })
+        return d.tipo === 'valor' && d.valor !== 0 ? [{ forma: l.forma, valor: d.valor }] : []
+      }), obs)
+    : null
 
   const detalheDasBandeiras = (forma: string) => {
     if (!bandeiras.some(b => b.forma === forma)) return null
@@ -336,13 +347,17 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
             <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
               <label className="field-label" style={{ display: 'flex', flexDirection: 'column', gap: 5, flex: '1 1 220px' }}>
                 Observação
-                <input className="field" value={obs} onChange={e => setObs(e.target.value)} placeholder="Opcional" maxLength={500} />
+                <input className="field" value={obs} onChange={e => setObs(e.target.value)}
+                  placeholder={pedidoDoMotivo ? 'O motivo da diferença' : 'Opcional'} maxLength={500} />
               </label>
               {reabrindo && (
                 <button type="button" className="btn-ghost" disabled={pendente} onClick={() => { setReabrindo(false); setErro(null) }}>Cancelar</button>
               )}
               <button type="submit" className="btn-primary" disabled={pendente}>{rotuloDoBotaoDeFechar({ reabrindo, pendente })}</button>
             </div>
+          )}
+          {pedidoDoMotivo && (
+            <p data-pede-o-motivo role="note" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{pedidoDoMotivo}</p>
           )}
           {conferindo && (
             <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
@@ -354,6 +369,15 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
               <button type="button" className="btn-secondary" onClick={fecharDeNovo}>Fechar de novo</button>
             </div>
           )}
+          {/* A23 da 24ª (princípio 7): a planilha do fechamento mora no Financeiro — a tela leva até ela. */}
+          {linkDoCsv && (
+            <p style={{ fontSize: 'var(--text-sm-sz)' }}>
+              <Link data-csv-do-fechamento href={linkDoCsv} style={{ color: 'var(--brand)', fontWeight: 700 }}>
+                Baixar o CSV do fechamento
+              </Link>
+              <span style={{ color: 'var(--text-muted)' }}> · no Financeiro → Movimentações</span>
+            </p>
+          )}
           {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600 }}>{erro}</p>}
         </div>
       </form>
@@ -364,6 +388,8 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
           {feitos.slice(1).map(f => (
             <p key={f.id} style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', padding: '4px 0' }}>
               {hora(f.quando)} · {f.quem ?? '—'} · dinheiro esperado {brl(f.esperado)}, contado {brl(f.contado)} · <Diferenca valor={f.diferenca} />
+              {/* A21 da 24ª: o motivo de cada fechamento anterior (ou que não foi anotado). */}
+              {motivoDoFechamentoAnterior(f) && <> · <span data-motivo-do-fechamento>{motivoDoFechamentoAnterior(f)}</span></>}
             </p>
           ))}
         </div>

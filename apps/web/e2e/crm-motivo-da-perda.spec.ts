@@ -52,10 +52,10 @@ test.beforeAll(async () => {
   sdr = await criarMembro(`mps${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'SDR', permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }, { modulo: 'reports', nivel: 'VIEW' }],
   })
-  // Da REDE: montar o funil é configuração da clínica toda (H7, 2026-11-01).
-  gerente = await criarMembro(`mpg${marca}`, {
-    tenant: rede.tenantId, rotulo: 'Gerente', permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }, { modulo: 'settings', nivel: 'MANAGE' }],
-  })
+  // Montar o funil é configuração da rede toda: só a Admin da rede (o Heitor,
+  // 18/11: "Configuração da rede toda só pela conta admin"; era quem tinha "A
+  // rede inteira", H7 de 2026-11-01).
+  gerente = await criarMembro(`mpg${marca}`, { tenant: rede.tenantId, rotulo: 'Gerente', donoDaRede: true, permissoes: [] })
 })
 test.afterAll(async () => {
   if (rede) {
@@ -148,7 +148,7 @@ test.describe.serial('o motivo da perda', () => {
       await p.getByLabel('Novo motivo').fill('Distância')
       await p.getByRole('button', { name: 'Adicionar motivo' }).click()
       await expect.poll(async () => (await db().from('crm_motivos_perda').select('nome').eq('tenant_id', rede!.tenantId).eq('nome', 'Distância')).data?.length).toBe(1)
-    }, () => gerente!) // montar o funil é Configurações (D-1, 2026-10-29); a SDR não tem o botão
+    }, () => gerente!) // montar o funil é da Admin da rede (18/11); a SDR não tem o botão
   })
 
   test('"Outro" fica por último, mesmo com motivo criado depois dele (A15)', async ({ browser }) => {

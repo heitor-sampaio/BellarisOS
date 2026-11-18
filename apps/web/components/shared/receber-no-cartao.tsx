@@ -11,9 +11,10 @@ import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { OutrasFormas } from '@/components/shared/outras-formas'
 import { recusaDasOutras, valorDaPrincipal, type EstadoDaParte } from '@/lib/checkout/varias-formas'
 import { partesDaBaixa, type ParteDaBaixa } from '@/lib/financeiro/baixa-em-formas'
+import { FormasDePagamento, FORMAS_DA_BAIXA } from '@/components/shared/formas-de-pagamento'
 
-/** As formas de quem recebe agora (as do "Novo lançamento"). */
-const FORMAS_DE_PAGAMENTO = ['PIX', 'CASH', 'DEBIT_CARD', 'CREDIT_CARD'] as const
+/** As formas de quem recebe agora (as do "Novo lançamento" — e as da parcela no PDV). */
+const FORMAS_DE_PAGAMENTO = FORMAS_DA_BAIXA
 
 /**
  * "Marcar como pago" de um lançamento a receber no CARTÃO (r3-f13-01; o
@@ -37,6 +38,9 @@ const FORMAS_DE_PAGAMENTO = ['PIX', 'CASH', 'DEBIT_CARD', 'CREDIT_CARD'] as cons
  * A1 da 21ª (a decisão de 16/11, "+ Outra forma" em todo Receber à vista): a
  * receita se recebe em mais de uma forma — um lançamento pago por forma. A3:
  * a parcela recebida antes das anteriores avisa (como no PDV).
+ *
+ * A25 da 24ª (princípio 3): a forma em blocos, o mesmo componente do "Receber
+ * esta parcela" do PDV (era um seletor "Selecione…" aqui e botões lá).
  */
 export function ReceberNoCartao({ descricao, metodo, valor, cliente = null, adiantada = null, pending, aoConfirmar, aoFechar }: {
   descricao: string
@@ -77,14 +81,8 @@ export function ReceberNoCartao({ descricao, metodo, valor, cliente = null, adia
         {adiantada && (
           <p data-parcela-adiantada role="note" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{adiantada}</p>
         )}
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          <span className="field-label">Forma de pagamento *</span>
-          <select className="field" aria-label="Forma de pagamento" value={forma} disabled={pending}
-            onChange={e => { setForma(e.target.value); setVezes(1); setBandeira(''); setMaquininha('') }}>
-            <option value="">Selecione…</option>
-            {FORMAS_DE_PAGAMENTO.map(f => <option key={f} value={f}>{rotuloDaForma(f, null, { longo: true })}</option>)}
-          </select>
-        </label>
+        <FormasDePagamento valor={forma} formas={FORMAS_DE_PAGAMENTO} desligado={pending}
+          aoMudar={f => { setForma(f); setVezes(1); setBandeira(''); setMaquininha('') }} />
         <CampoDaBandeira metodo={forma} valor={bandeira} aoMudar={setBandeira} total={valorDaPrimeira}
           maquininha={maquininha} aoMudarMaquininha={v => { setMaquininha(v); setVezes(1) }} />
         {noCredito && (

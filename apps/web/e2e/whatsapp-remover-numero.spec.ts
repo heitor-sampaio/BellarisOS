@@ -56,10 +56,9 @@ test.beforeAll(async () => {
   rede = await criarOutraRede(`rn${marca}`)
   const funil = await ins('crm_funnels', { tenant_id: rede.tenantId, name: 'F', is_default: true, position: 0 })
   etapa = (await ins('crm_stages', { tenant_id: rede.tenantId, funnel_id: funil.id, name: 'Novo', color: '#c34d6b', position: 0, outcome: 'OPEN' })).id
-  config = await criarMembro(`rncfg${marca}`, {
-    tenant: rede.tenantId, rotulo: 'Configura o WhatsApp',
-    permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }, { modulo: 'crm', nivel: 'MANAGE' }],
-  })
+  // Remover a caixa é configuração da rede toda: só a Admin da rede (o Heitor,
+  // 18/11: "Configuração da rede toda só pela conta admin"); ela tem o CRM.
+  config = await criarMembro(`rncfg${marca}`, { tenant: rede.tenantId, rotulo: 'Configura o WhatsApp', donoDaRede: true, permissoes: [] })
 })
 
 test.afterAll(async () => {

@@ -2,7 +2,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
-import { chamarAcao } from './apoio/acao-direta'
+import { venderPacotePelaAcao, venderNaTelaPassandoPeloContrato } from './apoio/contrato-do-pacote'
 import { abrirVendaNoPdv, euVendi, pagoNoPix } from './apoio/vender'
 
 /**
@@ -28,14 +28,15 @@ const db = () => banco()
 const n = (v: unknown) => Number(v ?? 0)
 let rede: OutraRede | null = null
 let gestor: MembroDeTeste | null = null
+let dona: MembroDeTeste | null = null
 let slug = ''
 let cliente = ''
 let pacote = ''
 const NOME = `${PREFIXO} Pacote responsável ${marca}`
 const vence = () => new Date(Date.now() + 30 * 86_400_000).toISOString()
 
-async function como<T>(browser: Browser, fn: (p: Page) => Promise<T>) {
-  const ctx = await browser.newContext({ storageState: gestor!.estado })
+async function como<T>(browser: Browser, fn: (p: Page) => Promise<T>, quem: MembroDeTeste = gestor!) {
+  const ctx = await browser.newContext({ storageState: quem.estado })
   try { return await fn(await ctx.newPage()) } finally { await ctx.close() }
 }
 /** A linha da responsável do pacote vendido, e quanto ela deve agora (a soma do extrato). */
@@ -66,6 +67,10 @@ test.beforeAll(async () => {
       { modulo: 'cashier', nivel: 'MANAGE' }, { modulo: 'agenda', nivel: 'VIEW' },
     ],
   })
+  // A comissão do pacote (como a do procedimento) é configuração da rede toda:
+  // só a Admin da rede a grava no cadastro (o Heitor, 18/11: "Configuração da
+  // rede toda só pela conta admin"). A venda segue com o gestor.
+  dona = await criarMembro(`cprd${marca}`, { tenant: rede.tenantId, rotulo: 'Dona', donoDaRede: true, permissoes: [] })
 })
 
 test.afterAll(async () => {
@@ -84,6 +89,7 @@ test.afterAll(async () => {
     await b.from('envios_unicos').delete().eq('tenant_id', rede.tenantId)
   }
   await gestor?.limpar()
+  await dona?.limpar()
   await rede?.limpar()
 })
 
@@ -105,7 +111,7 @@ test('o cadastro do pacote: a comissão de quem atende "Valor do pacote", em %',
     await comissao.getByLabel('Valor da comissão sobre o pacote').fill('10')
     await card.getByRole('button', { name: 'Salvar pacote' }).click()
     await expect(card.locator('[data-pacote]', { hasText: NOME })).toContainText('Execução: 10% do pacote, para a profissional responsável')
-  })
+  }, dona!)
   const { data, error } = await db().from('service_packages')
     .select('id, comissao_execucao, comissao_responsavel_tipo, comissao_responsavel_valor').eq('tenant_id', rede!.tenantId).eq('name', NOME).single()
   expect(error).toBeNull()
@@ -124,7 +130,7 @@ test('a venda pela ficha escolhe a responsável; no Pix, os 10% de R$ 900 (R$ 90
     await janela.getByRole('radio', { name: 'Pix', exact: true }).click()
     await pagoNoPix(janela)
     await euVendi(janela)
-    await janela.getByRole('button', { name: /^Vender por R\$\s900,00$/ }).click()
+    await venderNaTelaPassandoPeloContrato(janela, janela.getByRole('button', { name: /^Vender por R\$\s900,00$/ }))
     await expect(janela).toBeHidden()
   })
   const { data: cp } = await db().from('client_packages').select('id, responsavel_id, comissao_execucao')
@@ -141,7 +147,7 @@ test('no crediário (entrada + 2 parcelas), a comissão da responsável aguarda 
   let cpId = ''
   await como(browser, async p => {
     await p.goto(rota)
-    const r = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', `/${slug}/pdv`, [
+    const r = await venderPacotePelaAcao(p, `/${slug}/pdv`, [
       cliente, pacote, rede!.branchId, { forma: 'PARCELADO', metodo: 'PIX', entrada: 300, parcelas: 2, primeiroVencimento: vence() }, null, null,
       { responsavelId: rede!.professionalId },
     ])
@@ -163,11 +169,11 @@ test('sem responsável, a venda pergunta; confirmada, vende — e ninguém receb
   const antes = (await db().from('client_packages').select('id').eq('client_id', cliente)).data!.length
   await como(browser, async p => {
     await p.goto(rota)
-    const pergunta = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', `/${slug}/pdv`,
+    const pergunta = await venderPacotePelaAcao(p, `/${slug}/pdv`,
       [cliente, pacote, rede!.branchId, { forma: 'AVISTA', metodo: 'PIX' }, null, null, {}])
     expect(pergunta!.texto).toContain('Ninguém foi marcado como responsável')
     expect((await db().from('client_packages').select('id').eq('client_id', cliente)).data!.length, 'sem a resposta, não vende').toBe(antes)
-    const r = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', `/${slug}/pdv`,
+    const r = await venderPacotePelaAcao(p, `/${slug}/pdv`,
       [cliente, pacote, rede!.branchId, { forma: 'AVISTA', metodo: 'PIX' }, null, null, { semResponsavel: true }])
     expect(r!.texto).toContain('clientPackageId')
   })

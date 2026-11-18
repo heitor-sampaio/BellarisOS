@@ -23,8 +23,11 @@ export const CATEGORIA_COMPRA_DE_ESTOQUE = 'Compra de estoque'
 export const CATEGORIA_MATERIAL_DE_CONSUMO = 'Material de consumo (limpeza, copa)'
 
 export const CATEGORIAS_DE_RECEITA = ['Atendimento', 'Venda de produto', 'Taxa de agendamento', 'Pacote de sessões', 'Outro'] as const
+// A28 da 24ª (princípio 7): as mais comuns primeiro — a lista abria em
+// "Fornecedores", que diz de quem e não o quê. "Outro" fica no fim.
 export const CATEGORIAS_DE_DESPESA = [
-  'Fornecedores', CATEGORIA_COMPRA_DE_ESTOQUE, 'Aluguel', 'Contas (energia, água, internet)', 'Salários', 'Equipamentos', 'Manutenção', 'Marketing', 'Material de escritório', CATEGORIA_MATERIAL_DE_CONSUMO, 'Outro',
+  CATEGORIA_COMPRA_DE_ESTOQUE, 'Salários', 'Aluguel', 'Contas (energia, água, internet)', 'Marketing', CATEGORIA_MATERIAL_DE_CONSUMO,
+  'Manutenção', 'Equipamentos', 'Fornecedores', 'Material de escritório', 'Outro',
 ] as const
 
 /** A categoria é de compra de estoque (fica no caixa, fora do lucro)? O espelho do predicado de `metrics_resultado`. */

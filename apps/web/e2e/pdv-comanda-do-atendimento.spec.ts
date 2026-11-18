@@ -60,10 +60,15 @@ test.beforeAll(async () => {
     .select('id').single<{ id: string }>()
   expect(error).toBeNull()
   procLimpeza = pr!.id
-  // Quem está no balcão: agenda, clientes e o PDV (cashier) em Gerenciar.
+  // Quem está no balcão: agenda, clientes e o PDV (cashier) em Gerenciar — e o
+  // Atendimento em Gerenciar, que é quem inicia (e abre a comanda pelo início):
+  // o Heitor, 18/11: "Só inicia e conclui atendimento quem tem gerenciar no atendimento".
   recepcao = await criarMembro(`pdvr${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Balcão',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'cashier', nivel: 'MANAGE' }],
+    permissoes: [
+      { modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'atendimento', nivel: 'MANAGE' },
+      { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'cashier', nivel: 'MANAGE' },
+    ],
   })
 })
 test.afterAll(async () => {

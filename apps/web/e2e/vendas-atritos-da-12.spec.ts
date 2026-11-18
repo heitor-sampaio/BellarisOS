@@ -3,7 +3,7 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { abrirVendaNoPdv } from './apoio/vender'
-import { chamarAcao } from './apoio/acao-direta'
+import { venderPacotePelaAcao } from './apoio/contrato-do-pacote'
 
 /**
  * Os atritos do comercial da 12ª simulação (2026-11-10/11, a Rita e a Paula da
@@ -164,7 +164,7 @@ test('A21: o Enter na busca do "Indicada por" não envia o cadastro', async ({ b
 
 test('A22: a sessão do pacote diz que os horários aparecem depois da profissional e da data', async ({ browser }) => {
   await como(browser, dona, async p => {
-    const r = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', `/${slug}/pdv`,
+    const r = await venderPacotePelaAcao(p, `/${slug}/pdv`,
       [cliente, pacoteSemRegra, rede.branchId, { forma: 'AVISTA', metodo: 'PIX' }, null, null, { vendedorId: dona.userId }])
     expect(r.texto).toContain('clientPackageId')
     await p.goto(`/${slug}/clients/${cliente}`)

@@ -30,6 +30,8 @@ export type AudienceRules = {
   has_app_account?:      boolean
   max_days_since_visit?: number
   min_visits?:           number
+  /** A15/A37 da 15ª: só estas clientes ("Clientes específicas"), escolhidas pela busca. */
+  client_ids?:           string[]
 }
 
 export type NotificationCampaign = {
@@ -366,6 +368,24 @@ export async function deleteCampaign(id: string): Promise<{ error?: string }> {
 
   if (error) return { error: error.message }
   redirect('/admin/notificacoes')
+}
+
+// -- Clientes específicas (A37 da 15ª) ------------------------------------
+
+/**
+ * A busca das "Clientes específicas" do público: por nome, telefone ou CPF
+ * (a regra única da busca de cliente, `buscar_clientes`), na rede de quem pede.
+ */
+export async function buscarClientesParaCampanha(termo: string): Promise<{ id: string; nome: string; telefone: string }[]> {
+  const ctx = await getTenantContext()
+  assertRecurso(ctx, 'campanhas')
+  assertPermission(ctx, 'marketing', 'MANAGE')
+  const busca = typeof termo === 'string' ? termo.trim().slice(0, 80) : ''
+  if (busca.length < 2) return []
+  const { data, error } = await createAdminClient().rpc('buscar_clientes', { p_tenant: ctx.tenantId!, p_termo: busca, p_limite: 8 })
+  if (error) return []
+  return ((data ?? []) as { id: string; name: string; phone: string | null }[])
+    .map(c => ({ id: c.id, nome: c.name, telefone: c.phone ?? '' }))
 }
 
 // -- Audience preview ---------------------------------------------------

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { formatBRL } from '@estetica-os/utils'
 import { rotaDaClienteNoPdv } from '@/lib/rotas'
+import { textoDoPacoteEmAberto } from '@/lib/pacotes/regras'
 
 /**
  * A41 da 11ª simulação (decidido pelos princípios 1 e 2): o pacote vendido no
@@ -14,9 +15,15 @@ import { rotaDaClienteNoPdv } from '@/lib/rotas'
  * recebe no PDV: o aviso diz isso e leva a cliente ao PDV da unidade do
  * pacote, onde as parcelas dela aparecem. Só chega aqui para quem recebe (o
  * PDV ou o Financeiro em Gerenciar — a página só lê o em aberto a ela).
+ *
+ * Liberar as sessões antes de pago é da REDE desde o item 8 da auditoria
+ * (decisão do Claude pelo princípio 1, 2026-11-18; Configurações → Geral): sem
+ * liberar, o aviso diz que as sessões esperam o pagamento.
  */
-export function AvisoDoPacoteEmAberto({ valor, parcelas, clienteId, unidadeId, slug }: {
+export function AvisoDoPacoteEmAberto({ valor, parcelas, clienteId, unidadeId, slug, liberaAsSessoes = true }: {
   valor: number; parcelas: number
+  /** A regra da rede (`tenants.pacote_crediario_libera`): o padrão libera. */
+  liberaAsSessoes?: boolean
   /** Com a cliente, o "Receber no PDV" (a "Nova venda" com ela, onde estão as parcelas). */
   clienteId?: string | null
   /** A unidade do pacote: o PDV em que as parcelas dele estão. */
@@ -31,7 +38,7 @@ export function AvisoDoPacoteEmAberto({ valor, parcelas, clienteId, unidadeId, s
       borderRadius: 'var(--radius-field-token)', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)',
     }}>
       <strong>{formatBRL(valor)}</strong> deste pacote ainda em aberto ({parcelas === 1 ? '1 parcela' : `${parcelas} parcelas`} do crediário).
-      {' '}As sessões seguem liberadas; o que falta se recebe no PDV.
+      {' '}{textoDoPacoteEmAberto(liberaAsSessoes)}
       {clienteId && (
         <>
           {' '}

@@ -29,6 +29,8 @@ export function CopilotForaDoPlano({ emTeste, assinaturaHref }: { emTeste: boole
         onClick={() => setAberto(true)} aria-label="Copilot: fora do plano" aria-expanded="false" title="Copilot (fora do plano)">
         <Sparkles size={18} />
         <span className="copilot-botao-rotulo">Copilot</span>
+        {/* A16 da 15ª (princípio 3): o "fora do plano" à vista, não só no title. */}
+        <span className="copilot-botao-selo" aria-hidden="true">Fora do plano</span>
       </button>
     )
   }
@@ -40,7 +42,7 @@ export function CopilotForaDoPlano({ emTeste, assinaturaHref }: { emTeste: boole
           <span className="copilot-icone"><Sparkles size={15} /></span>
           <div>
             <strong>Copilot</strong>
-            <span>Sua secretária virtual</span>
+            <span>Pergunte ou peça, conversando</span>
           </div>
         </div>
         <button type="button" className="copilot-acao-topo" aria-label="Fechar o Copilot" onClick={() => setAberto(false)} title="Fechar">

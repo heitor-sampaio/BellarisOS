@@ -377,6 +377,16 @@ export async function registrarAplicacao(
   })
   const data = gravada as { id: string; novo: boolean; atualizada: boolean } | null
   if (error || !data) return { error: `Erro ao registrar a aplicação: ${error?.message}` }
+  // A35 da 24ª (princípio 3): o ponto registrado continua desenhado. O mapa
+  // vivo é o que está na tela — sem isto, a tela relia o planejamento salvo
+  // antes (vazio) e dizia "Nenhum ponto nesta ilustração", e o atendimento
+  // concluído abria o mapa sem os pontos. Só com a aplicação gravada agora.
+  if (data.novo || data.atualizada) {
+    const { error: erroDoMapa } = await admin.from('injectable_maps')
+      .update({ view: mapa.view ?? 'front', points: mapa.points ?? [], updated_by: ctx.internalUserId, updated_at: new Date().toISOString() })
+      .eq('id', mapId)
+    if (erroDoMapa) return { error: `A aplicação foi registrada, mas o mapa não foi salvo: ${erroDoMapa.message}` }
+  }
   if (!data.novo) {
     if (!data.atualizada) return { error: 'Este atendimento já foi encerrado: a aplicação registrada nele fica como está.' }
     revalidarPlanejamento(slug, clientId)

@@ -4,7 +4,7 @@ import { useId, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { UserMinus } from 'lucide-react'
 import { JanelaModal } from '@/components/shared/janela-modal'
-import { deactivateTeamMember, pendenciasParaDesativar } from '@/actions/team'
+import { deactivateTeamMember, pendenciasParaDesativar, marcarUnidadeNoAtende } from '@/actions/team'
 import type { PendenciasDoMembro, AgendamentoParaRepassar } from '@/lib/equipe/repasse'
 import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
@@ -298,7 +298,12 @@ export function LinhaDoAgendamento({ a, nome, valor, aviso, estilo, onEscolher, 
           {/* A11 da 8ª: diz quem atende em outra unidade e como incluí-la. */}
           {a.emOutraUnidade.length
             ? <>Ninguém livre que atenda nesta unidade. Atende{a.emOutraUnidade.length > 1 ? 'm' : ''} em outra unidade:{' '}
-                {a.emOutraUnidade.map(p => `${p.nome} (${p.unidades.join(', ')})`).join('; ')}. Para repassar a essa pessoa, marque
+                {a.emOutraUnidade.map(p => `${p.nome} (${p.unidades.join(', ')})`).join('; ')}.
+                {/* 18ª A29 (resto): marca a unidade no "Atende" dela daqui mesmo, pelo núcleo da Equipe. */}
+                {equipe && onAtualizar && a.unidadeId && (
+                  <MarcarNoAtende pessoas={a.emOutraUnidade} unidade={a.unidade} unidadeId={a.unidadeId} equipe={equipe} onMarcou={onAtualizar} />
+                )}
+                {' '}Ou marque
                 “{a.unidade}” no “Atende clientes em” da ficha dela na{' '}
                 {equipe && onAtualizar
                   ? <>
@@ -315,5 +320,32 @@ export function LinhaDoAgendamento({ a, nome, valor, aviso, estilo, onEscolher, 
         </span>
       )}
     </div>
+  )
+}
+
+/** 18ª A29 (resto): "Marcar <unidade> no Atende de X" — e a lista do repasse se relê. */
+function MarcarNoAtende({ pessoas, unidade, unidadeId, equipe, onMarcou }: {
+  pessoas: { id: string; nome: string }[]; unidade: string; unidadeId: string; equipe: string; onMarcou: () => void
+}) {
+  const [marcando, iniciar] = useTransition()
+  const [erro, setErro] = useState<string | null>(null)
+  return (
+    <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, margin: '6px 0' }}>
+      {pessoas.map(p => (
+        <button key={p.id} type="button" data-marcar-no-atende={p.id} className="btn-secondary" disabled={marcando}
+          style={{ fontSize: 'var(--text-xs-sz)', padding: '4px 10px' }}
+          onClick={() => {
+            setErro(null)
+            iniciar(async () => {
+              const r = await marcarUnidadeNoAtende(p.id, unidadeId, equipe)
+              if (r.error) { setErro(r.error); return }
+              onMarcou()
+            })
+          }}>
+          {marcando ? 'Marcando…' : `Marcar ${unidade} no Atende de ${p.nome}`}
+        </button>
+      ))}
+      {erro && <span role="alert" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 600 }}>{erro}</span>}
+    </span>
   )
 }

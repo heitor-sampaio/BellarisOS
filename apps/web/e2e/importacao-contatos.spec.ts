@@ -19,7 +19,9 @@ import { chamarAcao } from './apoio/acao-direta'
  *    UTM…) e, no cliente, a unidade e a situação por linha (2026-10-13, "quanto
  *    mais completa, melhor").
  *
- * Numa rede `[e2e]` própria.
+ * Numa rede `[e2e]` própria. As Importações são da rede toda: desde 18/11 só
+ * a Admin da rede importa (o Heitor: "Configuração da rede toda só pela conta
+ * admin"); quem tem os Clientes ou o CRM em Gerenciar, sem ser ela, não.
  */
 
 test.describe.configure({ mode: 'serial' })
@@ -50,9 +52,7 @@ test.beforeAll(async () => {
   test.setTimeout(240_000)
   outra = await criarOutraRede(`imp${marca}`)
   unidadeNome = (await db().from('branches').select('name').eq('id', outra.branchId).single()).data!.name as string
-  admin = await criarMembro(`imp${marca}`, { tenant: outra.tenantId, rotulo: 'Recepção', permissoes: [
-    { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'crm', nivel: 'MANAGE' }, { modulo: 'settings', nivel: 'MANAGE' },
-  ] })
+  admin = await criarMembro(`imp${marca}`, { tenant: outra.tenantId, rotulo: 'Recepção', donoDaRede: true, permissoes: [] })
   soVe = await criarMembro(`impv${marca}`, { tenant: outra.tenantId, rotulo: 'Só vê', permissoes: [{ modulo: 'clients', nivel: 'VIEW' }] })
   soCrm = await criarMembro(`impc${marca}`, { tenant: outra.tenantId, rotulo: 'SDR', permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }] })
   const f = await db().from('crm_funnels').insert({ tenant_id: outra.tenantId, name: `${PREFIXO} Funil ${marca}`, is_default: true }).select('id').single<{ id: string }>()
@@ -258,7 +258,7 @@ test('quem só vê clientes não importa (nem pela action direta)', async ({ bro
   expect(await importacao(`furo-${marca}.csv`)).toBeUndefined()
 })
 
-test('quem só tem o CRM importa contatos; "Sem responsável" vale; e o contato sem o nono dígito é achado', async ({ browser }) => {
+test('quem só tem o CRM não importa; "Sem responsável" vale; e o contato sem o nono dígito é achado', async ({ browser }) => {
   // O WhatsApp guarda muito celular brasileiro SEM o nono dígito (12 dígitos).
   const s4 = sufixo.slice(-4)
   const guardado = `55217777${s4}`
@@ -267,10 +267,22 @@ test('quem só tem o CRM importa contatos; "Sem responsável" vale; e o contato 
   }).select('id').single<{ id: string }>()
   expect(error).toBeNull()
   const nome = `sem-nono-${marca}.csv`
+  // Com o CRM em Gerenciar, sem ser a Admin da rede: a aba só diz de quem é, e
+  // a action recusa (o Heitor, 18/11: "Configuração da rede toda só pela conta admin").
   await como(browser, soCrm, async p => {
+    await p.goto('/admin/settings?tab=importacoes')
+    await expect(p.locator('[data-config-da-rede]')).toContainText('Esta configuração é só da Admin da rede.')
+    await expect(p.getByLabel('Arquivo CSV')).toHaveCount(0)
+    const r = await chamarAcao(p, 'actions/importacao.ts', 'importarContatos', '/admin/settings', [{
+      destino: 'contatos', nomeArquivo: nome, mapeamento: ['name', 'phone'],
+      linhas: [[`${PREFIXO} Mel ${marca}`, `(21) 97777-${s4}`]], oportunidade: { etapaId: etapa, responsavelId: null },
+    }])
+    expect(r.texto).toContain('Esta configuração é só da Admin da rede.')
+  })
+  expect(await importacao(nome), 'o CRM sozinho não importa').toBeUndefined()
+  await como(browser, admin, async p => {
     await abrirArquivo(p, nome, Buffer.from(`Nome;Celular\n${PREFIXO} Mel ${marca};(21) 97777-${s4}\n`, 'utf-8'))
-    // Só o destino que o cargo alcança.
-    await expect(p.getByRole('button', { name: 'Como clientes', exact: true })).toHaveCount(0)
+    await p.getByRole('button', { name: 'Como contatos do CRM', exact: true }).click()
     await p.getByLabel('Criar oportunidade no funil').check()
     await p.getByLabel('Etapa', { exact: true }).selectOption(etapa)
     await p.getByLabel('Responsável', { exact: true }).selectOption({ label: 'Sem responsável' })
@@ -466,13 +478,15 @@ test('clientes com a unidade e a situação de cada linha', async ({ browser }) 
   expect(padrao!.tags ?? [], 'sem tag de unidade (T1)').toEqual([])
 })
 
-test('a coluna de responsável pede o "todos" do CRM (o "só os meus" não distribui leads)', async ({ browser }) => {
+test('o CRM com "só os meus" não importa nem distribui leads pela planilha', async ({ browser }) => {
+  // Desde 18/11 a recusa vem antes, pela Admin da rede (a Admin tem o CRM
+  // inteiro, e o "só os meus" não chega mais à importação).
   await como(browser, soOsMeus, async p => {
     const r = await chamarAcao(p, 'actions/importacao.ts', 'importarContatos', '/admin/settings', [{
       destino: 'contatos', nomeArquivo: `distribui-${marca}.csv`, mapeamento: ['name', 'phone', 'op_responsavel'],
       linhas: [['X', '21955550000', `e2e-prof-imp${marca}@bellaris.invalid`]], oportunidade: { etapaId: etapa },
     }])
-    expect(r.texto).toContain('Seu cargo não define o responsável de outra pessoa')
+    expect(r.texto).toContain('Esta configuração é só da Admin da rede.')
   })
   expect(await importacao(`distribui-${marca}.csv`)).toBeUndefined()
 })

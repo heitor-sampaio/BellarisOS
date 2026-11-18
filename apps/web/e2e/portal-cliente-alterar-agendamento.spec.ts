@@ -178,16 +178,42 @@ test.describe('atritos da remarcação (frente 8)', () => {
     await como(browser, cliente!, async p => {
       await p.goto(`/${slug}/cliente/home`)
       await expect(p.getByText('Nenhum agendamento próximo.')).toHaveCount(0)
-      await expect(p.locator('[data-passou-da-hora]')).toContainText('Hoje, já no horário')
+      // A46 da 24ª: o horário (30 min, há uma hora) já acabou — não é "já no horário".
+      await expect(p.locator('[data-passou-da-hora]')).toContainText('O horário já passou; a equipe ainda vai registrar o atendimento.')
       // O porquê mora na dica (2026-11-16).
       await p.locator('[data-passou-da-hora] [data-dica-botao]').hover()
       await expect(p.locator('[data-passou-da-hora]')).toContainText('A equipe registra quando o atendimento terminar')
+      // Na Agenda, o cartão diz o mesmo, sem "Agendado" nem "Prazo do app encerrado".
+      await p.goto(`/${slug}/cliente/agendamentos`)
+      const cartao = p.locator(`a[href$="/agendamentos/${id}"]`)
+      await expect(cartao).toContainText('Horário passou')
+      await expect(cartao.locator('[data-horario-passou]')).toBeVisible()
+      await expect(cartao.locator('[data-prazo-encerrado]')).toHaveCount(0)
     })
     // Concluído, sai dos próximos.
     expect((await db().from('appointments').update({ status: 'COMPLETED', completed_at: new Date().toISOString() }).eq('id', id)).error).toBeNull()
     await como(browser, cliente!, async p => {
       await p.goto(`/${slug}/cliente/home`)
       await expect(p.locator('[data-passou-da-hora]')).toHaveCount(0)
+    })
+    // Ainda no horário (começou há 10 min, dura 30): "Hoje, já no horário".
+    const agora = await agendado(cliente!.clientId, new Date(haMinutosHoje(10)))
+    await como(browser, cliente!, async p => {
+      await p.goto(`/${slug}/cliente/home`)
+      await expect(p.locator('[data-passou-da-hora]')).toContainText('Hoje, já no horário')
+    })
+    expect((await db().from('appointments').update({ status: 'CANCELLED' }).eq('id', agora)).error).toBeNull()
+  })
+
+  // A47 da 24ª (princípio 7): remarcar pedia dois toques — o "Remarcar" do
+  // cartão abre o detalhe com o formulário já aberto.
+  test('A47: o Remarcar do cartão abre o formulário de uma vez', async ({ browser }) => {
+    const id = await agendado(cliente!.clientId, new Date(`${dia(8)}T10:00:00-03:00`))
+    await como(browser, cliente!, async p => {
+      await p.goto(`/${slug}/cliente/agendamentos`)
+      await p.locator(`a[href$="/agendamentos/${id}?remarcar=1"]`).click()
+      await expect(p).toHaveURL(u => u.pathname.endsWith(`/agendamentos/${id}`) && u.searchParams.get('remarcar') === '1')
+      await expect(p.getByLabel('Novo dia')).toBeVisible()
     })
   })
 

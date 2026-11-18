@@ -76,7 +76,7 @@ async function abrirOPagamento(p: Page, planId: string): Promise<Locator> {
 
 /** Da documentação (sem documentos nesta rede) ao fim: recebe (as sessões se agendam pelo plano). */
 async function concluir(janela: Locator) {
-  await janela.getByRole('button', { name: 'Receber o plano' }).click()
+  await janela.getByRole('button', { name: /^(Receber R\$|Fechar a comanda)/ }).click()
   await expect(janela).toHaveCount(0, { timeout: 20_000 })
 }
 

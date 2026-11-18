@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import { Star, CheckCircle2, CalendarDays, User } from 'lucide-react'
 import { confirmAndRateAppointment } from '@/actions/appointments'
 import { useFuso } from '@/components/shared/fuso'
-import { textoDoQuandoNoConfirmar, BOTAO_DE_CONFIRMAR_NO_APP } from '@/lib/clientes/textos-do-app'
+import { toast } from 'sonner'
+import { textoDoQuandoNoConfirmar, BOTAO_DE_CONFIRMAR_NO_APP, textoDoConfirmadoNoApp } from '@/lib/clientes/textos-do-app'
 
 interface Props {
   appointmentId:    string
@@ -92,6 +93,9 @@ export function ConfirmAppointmentForm({
       setSubmitting(false)
       return
     }
+    // A45 da 24ª: o confirmar voltava ao histórico sem aviso nenhum.
+    const avaliou = (avaliaOAtendimento && notaDoAtendimento > 0) || Object.values(notas).some(n => n > 0) || !!feedback.trim()
+    toast.success(textoDoConfirmadoNoApp(avaliou))
     router.replace(`/${slug}/cliente/historico`)
     router.refresh()
   }

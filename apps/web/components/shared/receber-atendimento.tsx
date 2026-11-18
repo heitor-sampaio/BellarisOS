@@ -1,8 +1,11 @@
 'use client'
 
-import { useActionState, useEffect, useState } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { X, Loader2, CheckCircle2 } from 'lucide-react'
 import { confirmPayment, previaDoPagamento } from '@/actions/appointments'
+import { trocaDePontosDoAtendimento } from '@/actions/fidelidade'
+import { TrocarPontos } from '@/components/shared/trocar-pontos'
 import { abaterDoPacote } from '@/actions/a-receber'
 import { calcularDescontoComPontos, maximoDePontos } from '@/lib/fidelidade/resgate'
 import { formatarPontos } from '@/lib/fidelidade/formato'
@@ -10,6 +13,10 @@ import { CampoDoDesconto, LembreteDoMotivo, contaDoDesconto, descontoDoEstado, e
 import { FORMAS_DO_BALCAO } from '@/components/shared/formas-de-pagamento'
 import { Dica } from '@/components/shared/dica'
 import { oQueSaiNoReceber, type SaiDaComanda } from '@/lib/pdv/situacoes'
+import { voucherDepoisDoDesconto } from '@/lib/fidelidade/voucher-na-comanda'
+import { CampoQuemVendeu, PerguntaDaVenda } from '@/components/shared/pergunta-da-venda'
+import { PERGUNTA_SEM_VENDEDOR } from '@/lib/vendas/pergunta-sem-vendedor'
+import type { MembroDaVenda } from '@/components/shared/vender'
 import {
   CamposDoPagamento, MotivoDoBotao, estadoDoPagamento, montarPagamento, recusaForaDoCampo, useRecusaDoPagamento,
   type EstadoDoPagamento,
@@ -91,6 +98,11 @@ export interface ReceberAtendimentoProps {
   pagamentoCombinado?: { metodo: string | null; rotulo: string; desconto?: number } | null
   /** Sessões de pacote da cliente que podem pagar este atendimento (D9). */
   pacotesParaAbater?: PacoteParaAbater[]
+  /**
+   * A comanda tem produto acrescentado (ainda não vendido): a equipe para o
+   * "Quem vendeu os produtos" (com-06; nasce VAZIO, r2-ven-12). Nulo, sem produto.
+   */
+  equipeDosProdutos?: MembroDaVenda[] | null
 }
 
 /**
@@ -99,6 +111,7 @@ export interface ReceberAtendimentoProps {
  */
 export function FormularioDeReceberAtendimento({
   appointmentId, slug, price, pagamentoCombinado, pacotesParaAbater = [], clienteId, onFeito, onVoltar, onPendente, aoMudarOQueSai,
+  equipeDosProdutos = null,
 }: ReceberAtendimentoProps & {
   /** A10 da 23ª: o que sai do valor (o voucher, o desconto, os pontos) e o total, para a comanda os mostrar. */
   aoMudarOQueSai?: (linhas: SaiDaComanda[], total: number) => void
@@ -124,21 +137,44 @@ export function FormularioDeReceberAtendimento({
   const [descontoEstado, setDescontoEstado] = useState(() => estadoDoDesconto(pagamentoCombinado?.desconto))
   // O motivo do desconto, controlado: sem ele, a janela lembra que existe (A49 da 7ª).
   const [motivoDoDesconto, setMotivoDoDesconto] = useState('')
+  // A50 da 24ª: a troca de pontos por voucher, aqui mesmo (era só na ficha).
+  const [troca, setTroca] = useState<Awaited<ReturnType<typeof trocaDePontosDoAtendimento>>>(null)
+  // "Quem vendeu os produtos" (com-06: "Se o campo ficar vazio, aviso e confirmação.
+  // Campo vazio não gera comissão para ninguém"): nasce vazio; vazio, pergunta antes.
+  const [vendedorId, setVendedorId] = useState('')
+  const [semVendedor, setSemVendedor] = useState(false)
+  const [perguntaDoVendedor, setPerguntaDoVendedor] = useState(false)
+  const formulario = useRef<HTMLFormElement>(null)
   useEffect(() => {
     let vivo = true
     previaDoPagamento(appointmentId).then(r => { if (vivo) setPrevia(r) }).catch(() => { /* sem pontos a oferecer */ })
+    trocaDePontosDoAtendimento(appointmentId).then(r => { if (vivo) setTroca(r) }).catch(() => { /* nada a trocar */ })
     return () => { vivo = false }
   }, [appointmentId])
+  // Trocou: relê os vouchers e os pontos, e deixa o voucher novo escolhido.
+  async function depoisDaTroca(novo: string) {
+    const [p, t] = await Promise.all([
+      previaDoPagamento(appointmentId).catch(() => null),
+      trocaDePontosDoAtendimento(appointmentId).catch(() => null),
+    ])
+    setPrevia(p); setTroca(t); setPontos('')
+    if (p?.vouchers.some(v => v.id === novo)) setVoucherId(novo)
+  }
   const feito = state !== null && !state?.error && !pending
   useEffect(() => { onPendente?.(pending) }, [pending]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (feito) onFeito() }, [feito]) // eslint-disable-line react-hooks/exhaustive-deps
-  // O voucher desconta primeiro, depois o desconto comercial; os pontos valem
-  // sobre o que sobra — a mesma ordem do servidor.
-  const voucher = previa?.vouchers.find(v => v.id === voucherId) ?? null
-  const aposVoucher = Math.round((price - (voucher?.desconto ?? 0)) * 100) / 100
-  const doDesconto  = contaDoDesconto(aposVoucher, descontoEstado)
+  // "Desconto, voucher, pontos" (o Heitor, 2026-11-18): o desconto comercial
+  // sobre o total da comanda, o voucher sobre o que sobrou, os pontos sobre o
+  // resto — a mesma conta do servidor e do banco (`voucherDepoisDoDesconto`).
+  const doDesconto  = contaDoDesconto(price, descontoEstado)
   const pedidoDeDesconto = doDesconto.recusa ? null : descontoDoEstado(descontoEstado)
-  const base    = doDesconto.liquido
+  const descontoDoVoucherAgora = (v: NonNullable<typeof previa>['vouchers'][number]) => previa
+    ? voucherDepoisDoDesconto(v.voucher, { procedureId: previa.procedureId, preco: previa.preco, itens: previa.itens, descontoVenda: doDesconto.reais })
+    : { desconto: 0 }
+  const escolhido = previa?.vouchers.find(v => v.id === voucherId) ?? null
+  const contaDoVoucher = escolhido ? descontoDoVoucherAgora(escolhido) : null
+  const voucher = escolhido && contaDoVoucher && !contaDoVoucher.motivo ? { name: escolhido.name, desconto: contaDoVoucher.desconto } : null
+  const base    = Math.max(0, Math.round((doDesconto.liquido - (voucher?.desconto ?? 0)) * 100) / 100)
   const regras  = previa ? { valorDoPonto: previa.valorDoPonto, minimo: previa.minimo, tetoPct: previa.tetoPct } : null
   const resgate = previa && regras
     ? calcularDescontoComPontos({ saldo: previa.saldo, preco: base, pedido: Number(pontos) || 0, regras })
@@ -154,6 +190,14 @@ export function FormularioDeReceberAtendimento({
     setEstado(e)
   }
   const recusa = totalZero ? null : recusaDoPagamento(estado, total, 'da comanda')
+  const comProdutos = equipeDosProdutos !== null
+  function antesDeEnviar(e: React.FormEvent<HTMLFormElement>) {
+    if (comProdutos && !vendedorId && !semVendedor) { e.preventDefault(); setPerguntaDoVendedor(true) }
+  }
+  function receberSemVendedor() {
+    flushSync(() => { setSemVendedor(true); setPerguntaDoVendedor(false) })
+    formulario.current?.requestSubmit()
+  }
   // A10 da 23ª (princípio 3): o total da comanda segue o que sai aqui — não só o botão.
   const oQueSai = oQueSaiNoReceber({
     voucher: voucher ? { nome: voucher.name, desconto: voucher.desconto } : null,
@@ -165,7 +209,7 @@ export function FormularioDeReceberAtendimento({
   if (feito) return null
 
   return (
-    <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <form ref={formulario} action={action} onSubmit={antesDeEnviar} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <input type="hidden" name="appointment_id" value={appointmentId} />
       <input type="hidden" name="slug" value={slug} />
       {pacotesParaAbater.length > 0 && (
@@ -173,7 +217,7 @@ export function FormularioDeReceberAtendimento({
       )}
       {pedidoDeDesconto && <input type="hidden" name="desconto_tipo" value={pedidoDeDesconto.tipo} />}
       {pedidoDeDesconto && <input type="hidden" name="desconto_valor" value={String(pedidoDeDesconto.valor)} />}
-      <CampoDoDesconto estado={descontoEstado} aoMudar={e => { setDescontoEstado(e); setPontos('') }} total={aposVoucher} />
+      <CampoDoDesconto estado={descontoEstado} aoMudar={e => { setDescontoEstado(e); setPontos('') }} total={price} />
       {/* J-47: o porquê do desconto, opcional — fica no lançamento e na linha do tempo. */}
       {pedidoDeDesconto && (
         <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>
@@ -190,7 +234,7 @@ export function FormularioDeReceberAtendimento({
             onChange={e => { setVoucherId(e.target.value); setPontos('') }}>
             <option value="">Nenhum</option>
             {previa.vouchers.map(v => (
-              <option key={v.id} value={v.id}>{v.name} (−{brl(v.desconto)})</option>
+              <option key={v.id} value={v.id}>{v.name} (−{brl(descontoDoVoucherAgora(v).desconto)})</option>
             ))}
           </select>
         </div>
@@ -232,6 +276,15 @@ export function FormularioDeReceberAtendimento({
           ) : null}
         </div>
       )}
+      {aVista && troca && <TrocarPontos troca={troca} aoTrocar={v => { void depoisDaTroca(v) }} />}
+      {comProdutos && (
+        <>
+          <input type="hidden" name="vendedor_dos_produtos" value={vendedorId} />
+          <input type="hidden" name="sem_vendedor_dos_produtos" value={semVendedor ? '1' : ''} />
+          <CampoQuemVendeu rotulo="Quem vendeu os produtos" equipe={equipeDosProdutos ?? []} valor={vendedorId}
+            aoMudar={id => { setVendedorId(id); setSemVendedor(false); setPerguntaDoVendedor(false) }} />
+        </>
+      )}
       {totalZero ? (
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)' }}>Nada a receber — sem forma de pagamento.</p>
       ) : (
@@ -246,6 +299,10 @@ export function FormularioDeReceberAtendimento({
             </p>
           )}
         </div>
+      )}
+      {perguntaDoVendedor && (
+        <PerguntaDaVenda texto={PERGUNTA_SEM_VENDEDOR} pendente={pending} rotuloConfirmar="Receber assim"
+          aoConfirmar={receberSemVendedor} aoVoltar={() => setPerguntaDoVendedor(false)} />
       )}
       {state?.error && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{state.error}</p>}
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4, flexWrap: 'wrap' }}>

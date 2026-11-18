@@ -32,7 +32,7 @@ describe('A12: quem não conclui lê isso à vista, antes de iniciar', () => {
       expect(aviso).toBeLessThan(f.indexOf(botao))
       const bloco = f.slice(aviso, aviso + 900)
       expect(bloco).toContain('var(--warning-soft)')
-      expect(bloco).toContain('Você não conclui este atendimento.')
+      expect(bloco).toContain('Você não inicia nem conclui este atendimento.')
       expect(bloco).toContain('textoDeQuemConclui(')
     })
   }

@@ -3,6 +3,7 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
+import { venderPacotePelaAcao } from './apoio/contrato-do-pacote'
 import { apagarDocumentosEmitidos } from './apoio/limpeza'
 
 /**
@@ -79,7 +80,7 @@ test.describe.serial('D1: o documento da venda do pacote com "faltam dados"', ()
 
   test('a venda diz o que falta no cadastro, e quem vendeu é quem colhe', async ({ browser }) => {
     const texto = await como(browser, vendedora!.estado, async p => {
-      const r = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', `/${slug}/pdv`,
+      const r = await venderPacotePelaAcao(p, `/${slug}/pdv`,
         [cliente, pacote, rede!.branchId, { forma: 'AVISTA', metodo: 'PIX' }, null, null, null])
       return r.texto
     })

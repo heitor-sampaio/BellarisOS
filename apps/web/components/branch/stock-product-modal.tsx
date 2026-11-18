@@ -18,6 +18,7 @@ import { CampoDaLista, type ItemDaLista } from '@/components/admin/campo-da-list
 import { loteVencido, validadeNaTela } from '@/lib/estoque/validade'
 import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
+import { avisoDoCustoDaEntrada } from '@/lib/estoque/custo-da-entrada'
 
 export interface StockProductModalHandle { open: () => void }
 
@@ -128,6 +129,8 @@ function ProductFields({
     if (!cost || !upp || upp <= 0 || !consumptionUnit) return null
     return cost / upp
   }, [costPriceStr, unitsPerPkgStr, consumptionUnit])
+  // A10 da 24ª: o produto novo não tem custo nem venda de referência — o aviso é o do custo fora do comum.
+  const avisoDoCusto = avisoDoCustoDaEntrada(costPriceStr.trim() ? Number(costPriceStr) : null, { custo: null, venda: null })
 
   // Os ids dos campos (o rótulo aponta para eles): um por formulário aberto.
   const uid = useId()
@@ -418,6 +421,12 @@ function ProductFields({
                       onChange={e => setCostPriceStr(e.target.value)}
                       placeholder="0,00" style={{ paddingLeft: 28 }} />
                   </div>
+                  {/* A10 da 24ª: o custo fora do comum avisa também aqui, como na Entrada — sem recusar (princípio 2). */}
+                  {avisoDoCusto && (
+                    <p data-custo-fora-do-comum role="alert" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)', lineHeight: 1.45 }}>
+                      {avisoDoCusto}
+                    </p>
+                  )}
                 </div>
               </div>
 

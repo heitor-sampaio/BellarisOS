@@ -30,13 +30,12 @@ test.beforeAll(async () => {
   }).select('id').single<{ id: string }>()
   expect(error, 'criar a rede').toBeNull()
   redeSemUnidade = t!.id
-  semUnidade = await criarMembro(`stp${marca}`, {
-    tenant: redeSemUnidade, rotulo: 'Dona', permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }],
-  })
+  // As donas como o cadastro de verdade as cria: no cargo de sistema Admin da
+  // rede (`packages/nucleo/src/lib/redes/criar.ts`) — o setup é configuração da
+  // rede toda, só dela (o Heitor, 18/11: "Configuração da rede toda só pela conta admin").
+  semUnidade = await criarMembro(`stp${marca}`, { tenant: redeSemUnidade, rotulo: 'Dona', donoDaRede: true, permissoes: [] })
   comUnidade = await criarOutraRede(`stpu${marca}`)
-  donaComUnidade = await criarMembro(`stpu${marca}`, {
-    tenant: comUnidade.tenantId, rotulo: 'Dona', permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }],
-  })
+  donaComUnidade = await criarMembro(`stpu${marca}`, { tenant: comUnidade.tenantId, rotulo: 'Dona', donoDaRede: true, permissoes: [] })
 })
 
 test.afterAll(async () => {

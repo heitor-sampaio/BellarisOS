@@ -21,7 +21,10 @@ test.beforeAll(async () => {
   }).select('id').single<{ id: string }>()
   expect(error, 'criar a rede').toBeNull()
   tenantId = t!.id
-  dona = await criarMembro(`msk${marca}`, { tenant: tenantId, rotulo: 'Dona', permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }] })
+  // A dona como o cadastro de verdade a cria: no cargo de sistema Admin da rede
+  // (`packages/nucleo/src/lib/redes/criar.ts`) — o setup é configuração da rede
+  // toda, só dela (o Heitor, 18/11: "Configuração da rede toda só pela conta admin").
+  dona = await criarMembro(`msk${marca}`, { tenant: tenantId, rotulo: 'Dona', donoDaRede: true, permissoes: [] })
 })
 
 test.afterAll(async () => {

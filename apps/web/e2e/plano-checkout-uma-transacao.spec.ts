@@ -131,7 +131,7 @@ test('o checkout diz a comissão de venda de quem vendeu, e "Quem vendeu" volta 
       .toHaveText(`Comissão de venda de ${nomeDoConsultor}: 5% do vendido — da rede. Sai quando a venda estiver paga inteira.`)
     await janela.getByRole('radio', { name: 'Pix', exact: true }).click()
     await janela.getByRole('button', { name: 'Ir para a documentação' }).click()
-    await expect(janela.getByRole('button', { name: 'Receber o plano' })).toBeEnabled()
+    await expect(janela.getByRole('button', { name: /^(Receber R\$|Fechar a comanda)/ })).toBeEnabled()
   })
   // Outra aba (o sessionStorage é da aba): o que foi escolhido continua escolhido.
   await como(browser, async p => {

@@ -5,6 +5,7 @@ import { Check } from 'lucide-react'
 import type { Horario } from '@/lib/agenda/horario'
 import { gradeDoCheckout, aPartirDeAgora } from '@/lib/checkout/grade-de-horarios'
 import { useFuso } from '@/components/shared/fuso'
+import { useAgora } from '@/lib/use-agora'
 import { Dica } from '@/components/shared/dica'
 
 /**
@@ -38,7 +39,11 @@ export function GradeDeHorarios({
   fuso?:                 string
 }) {
   const fusoDaTela = useFuso()
-  const [agora] = useState(() => new Date())
+  // A38 da 24ª: o relógio ANDA (de 30 em 30 s) — a grade aberta havia minutos
+  // seguia oferecendo o horário que já passou. Antes do relógio do navegador,
+  // a hora em que a grade abriu.
+  const [abriuEm] = useState(() => Date.now())
+  const agora = new Date(useAgora() ?? abriuEm)
   const limite = aPartirDeAgora(data, agora, fusoDado ?? fusoDaTela)
   const [erroDoEncaixe, setErroDoEncaixe] = useState<string | null>(null)
   const grade = gradeDoCheckout(horarioDaUnidade, horarioDoProfissional, data, limite)

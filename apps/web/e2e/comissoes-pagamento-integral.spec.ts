@@ -207,14 +207,21 @@ test.describe.serial('comissão só com o pagamento integral', () => {
   })
 
   test('Configurações → Comissões não oferece mais "No atendimento": diz a regra única', async ({ browser }) => {
-    await comSessao(browser, gestor!, async p => {
-      await p.goto('/admin/settings?tab=comissoes')
-      const como = p.locator('[aria-label="Como a comissão acontece"]')
-      // O "como funciona" mora na dica do bloco (2026-11-16).
-      await como.getByRole('button', { name: 'Como funciona (pacote, plano, cartão, crediário, estorno)' }).hover()
-      await expect(como).toContainText('quando a cliente paga tudo o que a gerou')
-      await expect(como).toContainText('Cartão de crédito em várias vezes conta como pago')
-      await expect(como.getByRole('button', { name: 'No atendimento' })).toHaveCount(0)
-    })
+    // A aba é configuração da rede toda: só a Admin da rede a abre com o
+    // editor (o Heitor, 18/11: "Configuração da rede toda só pela conta admin").
+    const dona = await criarMembro(`cpid${marca}`, { tenant: rede!.tenantId, rotulo: 'Dona', donoDaRede: true, permissoes: [] })
+    try {
+      await comSessao(browser, dona, async p => {
+        await p.goto('/admin/settings?tab=comissoes')
+        const como = p.locator('[aria-label="Como a comissão acontece"]')
+        // O "como funciona" mora na dica do bloco (2026-11-16).
+        await como.getByRole('button', { name: 'Como funciona (pacote, plano, cartão, crediário, estorno)' }).hover()
+        await expect(como).toContainText('quando a cliente paga tudo o que a gerou')
+        await expect(como).toContainText('Cartão de crédito em várias vezes conta como pago')
+        await expect(como.getByRole('button', { name: 'No atendimento' })).toHaveCount(0)
+      })
+    } finally {
+      await dona.limpar()
+    }
   })
 })

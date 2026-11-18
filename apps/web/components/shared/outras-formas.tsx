@@ -29,12 +29,36 @@ export function OutrasFormas({ metodoPrincipal, total, outras, aoMudar, metodos,
   const principal = valorDaPrincipal(total, outras)
   const mudar = (i: number, parte: Partial<EstadoDaParte>) => aoMudar(outras.map((p, j) => (j === i ? { ...p, ...parte } : p)))
   const rotulo = { fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' } as const
+  // O valor da 1ª forma não se digita: a mesma altura de um campo, sem cara de campo.
+  const valorFixo = {
+    display: 'flex', alignItems: 'center', minHeight: 'var(--altura-controle)', fontSize: 'var(--text-sm-sz)',
+    fontWeight: 'var(--weight-semibold)', overflowWrap: 'anywhere',
+  } as const
   return (
     <div data-outras-formas style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* A17 da 24ª (princípio 3): a 1ª forma tem a caixa dela, como as outras — o valor no
+          lugar do campo, com o porquê (era uma frase solta, e a 1ª forma parecia sem valor). */}
       {outras.length > 0 && (
-        <p data-valor-da-primeira-forma style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-soft)' }}>
-          {metodoPrincipal ? rotuloDaForma(metodoPrincipal) : 'A forma de cima'}: <b style={{ color: 'var(--text)' }}>{formatBRL(Math.max(0, principal))}</b> (o que falta das outras)
-        </p>
+        <div data-parte-do-pagamento={1} style={{
+          display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 12px',
+          border: '1px solid var(--border)', borderRadius: 'var(--radius-field)', background: 'var(--surface)',
+        }}>
+          <div className="form-2col" style={{ alignItems: 'end' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span style={rotulo}>1ª forma</span>
+              <span style={{ ...valorFixo, color: metodoPrincipal ? 'var(--text)' : 'var(--text-muted)' }}>
+                {metodoPrincipal ? rotuloDaForma(metodoPrincipal) : 'A escolhida acima'}
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span style={rotulo}>Valor nesta forma</span>
+              <span data-valor-da-primeira-forma style={valorFixo}>
+                <b style={{ color: 'var(--text)' }}>{formatBRL(Math.max(0, principal))}</b>
+                <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)' }}>&nbsp;· o que falta das outras</span>
+              </span>
+            </div>
+          </div>
+        </div>
       )}
       {outras.map((p, i) => (
         <OutraForma key={i} parte={p} numero={i + 2} metodos={metodos} clienteId={clienteId} semMaquininha={semMaquininha} rotulo={rotulo}

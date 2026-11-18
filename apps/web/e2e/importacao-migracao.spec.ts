@@ -39,9 +39,9 @@ test.beforeAll(async () => {
   rede = await criarOutraRede(`mig${marca}`)
   unidadeNome = (await db().from('branches').select('name').eq('id', rede.branchId).single()).data!.name as string
   expect((await db().from('procedures').update({ name: PROC, price: 150 }).eq('id', rede.procedureId)).error).toBeNull()
-  dona = await criarMembro(`migd${marca}`, { tenant: rede.tenantId, rotulo: 'Dona', permissoes: [
-    { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'financial', nivel: 'MANAGE' }, { modulo: 'settings', nivel: 'MANAGE' },
-  ] })
+  // As Importações são da rede toda: só a Admin da rede (o Heitor, 18/11:
+  // "Configuração da rede toda só pela conta admin").
+  dona = await criarMembro(`migd${marca}`, { tenant: rede.tenantId, rotulo: 'Dona', donoDaRede: true, permissoes: [] })
 })
 test.afterAll(async () => {
   await dona?.limpar()

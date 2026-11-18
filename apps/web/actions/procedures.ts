@@ -8,6 +8,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { parseDinheiro, DINHEIRO_INVALIDO } from '@estetica-os/utils'
 import { procedimentoCriado, procedimentoPrecoAlterado } from '@/lib/events/cadastro'
+import { marcaSemInsumo } from '@/lib/procedimentos/sem-insumo'
 import { TIPOS_DE_OUTROS_DOCUMENTOS, type TipoDeModelo } from '@/lib/documentos/variaveis'
 
 /**
@@ -269,6 +270,8 @@ async function addProcedureInterno(
       consent_template_id:   termoId,
       contract_template_id:  contratoId,
       outros_documentos:     outros ?? [],
+      // A7 da 23ª: "não usa insumo" só vale sem insumo ligado.
+      sem_insumo:            marcaSemInsumo(formData.get('sem_insumo') === 'on', products.length),
       ...(pontos !== undefined && { loyalty_points: pontos }),
       is_active:             true,
     })
@@ -420,7 +423,7 @@ async function updateProcedureInterno(
   // Atualiza dados básicos
   const { error } = await admin
     .from('procedures')
-    .update({ name, category, description, duration_min: durationMin, price, labor_cost: laborCost, other_costs: otherCosts, visible_on_client_app: visibleOnClientApp, form_id: fichaId, consent_template_id: termoId, contract_template_id: contratoId, ...(outros !== undefined && { outros_documentos: outros }), ...(pontos !== undefined && { loyalty_points: pontos }) })
+    .update({ name, category, description, duration_min: durationMin, price, labor_cost: laborCost, other_costs: otherCosts, visible_on_client_app: visibleOnClientApp, form_id: fichaId, consent_template_id: termoId, contract_template_id: contratoId, sem_insumo: marcaSemInsumo(formData.get('sem_insumo') === 'on', products.length), ...(outros !== undefined && { outros_documentos: outros }), ...(pontos !== undefined && { loyalty_points: pontos }) })
     .eq('id', procedureId)
     .eq('tenant_id', ctx.tenantId!)
 

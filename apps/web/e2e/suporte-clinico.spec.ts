@@ -40,8 +40,9 @@ test.beforeAll(async () => {
     tenant: outra.tenantId, rotulo: 'Alvo',
     permissoes: [{ modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'medical_records', nivel: 'MANAGE' }],
   })
+  // Quem autoriza o suporte é a Admin da rede (2026-11-18).
   gestor = await criarMembro(`scgest${marca}`, {
-    tenant: outra.tenantId, rotulo: 'Gestor',
+    tenant: outra.tenantId, rotulo: 'Gestor', donoDaRede: true,
     permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }, { modulo: 'medical_records', nivel: 'MANAGE' }],
   })
   membros.push(alvo, gestor)
@@ -116,7 +117,9 @@ test.describe.serial('suporte: dado clínico', () => {
     }
   })
 
-  test('só quem gerencia o prontuário libera dado clínico', async ({ browser }) => {
+  // Desde 18/11 só a Admin da rede autoriza (e ela tem o prontuário): quem
+  // não é a Admin é recusado antes, com ou sem o dado clínico.
+  test('quem não é a Admin da rede não autoriza, nem com o dado clínico', async ({ browser }) => {
     const semProntuario = await criarMembro(`scsem${marca}`, {
       tenant: outra!.tenantId, rotulo: 'SemProntuario', permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }],
     })
@@ -126,7 +129,7 @@ test.describe.serial('suporte: dado clínico', () => {
       const p = await ctx.newPage()
       const r = await chamarAcao(p, 'actions/suporte-autorizacao.ts', 'autorizarSuporte', '/admin/settings',
         [{ userId: alvo.userId, horas: 24, incluiClinico: true }])
-      expect(r.texto).toContain('Só quem gerencia o prontuário')
+      expect(r.texto).toContain('só da Admin da rede')
     } finally { await ctx.close() }
   })
 })

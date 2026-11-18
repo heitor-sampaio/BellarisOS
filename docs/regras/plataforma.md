@@ -277,7 +277,8 @@ um muro que não depende de cada trava do código.
   `platform_plans.recursos`, e a rede, o RETRATO
   (`tenant_subscriptions.recursos`).
   - **Sem plano, sem retrato = tudo liberado** (nenhuma rede antiga tinha
-    plano). O gatilho `trg_retrato_sem_plano` zera o retrato quando o
+    plano — decisão do Claude, 2026-10-06; a do Heitor é o plano definir e já
+    valer). O gatilho `trg_retrato_sem_plano` zera o retrato quando o
     `plan_id` vira nulo.
   - O retrato só muda quando o PLANO da rede muda (trocar só o valor não traz
     a versão nova) ou no "Aplicar a versão atual do plano"
@@ -368,9 +369,14 @@ um muro que não depende de cada trava do código.
   sem rolagem lateral; no computador, os nomes dos planos ficam presos no topo
   (o card usa `overflow: clip`, não `hidden`, para o `sticky` funcionar).
   Prova: `e2e/planos-comparativo.spec.ts` e `apps/sistema/tests/comparativo.test.ts`.
-- **Os ADICIONAIS do plano** (2026-10-07, decisão do Heitor): conexões de
+- **Os ADICIONAIS do plano** (2026-10-07): conexões de
   WhatsApp além do limite e o Copilot avulso, SOMADOS à mensalidade — uma
-  assinatura só no Asaas, com o total.
+  assinatura só no Asaas, com o total. Do Heitor: o preço de cada adicional
+  mora no plano, contratam o sistema E a rede, o valor soma na mensalidade e
+  o Copilot avulso já se vende. O resto deste bloco (o preço retratado, as
+  quantidades, recusar tirar conexão em uso, trocar de plano encerrar o que
+  ele já inclui, quem contrata no app da rede, o suporte e a rede cancelada
+  não contratarem) é decisão do Claude, 2026-10-07.
   - **O plano oferece** (`recursos.adicionais`, `{ whatsapp: { valor_centavos },
     copilot: { valor_centavos } }`), no editor do plano ("Adicionais à
     venda"). Ausente = não oferece. A oferta vale pelo plano do CATÁLOGO (não
@@ -429,8 +435,14 @@ um muro que não depende de cada trava do código.
   - Prova: `e2e/planos-adicionais.spec.ts`, o bloco "os adicionais levam o
     total ao Asaas" de `e2e/assinaturas-asaas.spec.ts` e
     `tests/planos-adicionais.test.ts`.
-- **Cortesia e desconto** (2026-10-07, decisões do Heitor), na tela da rede do
-  sistema ("Cortesia e desconto"): por ITEM — o plano, as conexões de
+- **Cortesia e desconto** (2026-10-07), na tela da rede do
+  sistema ("Cortesia e desconto"). Do Heitor: cortesia ou desconto em
+  qualquer item, o desconto em percentual OU em reais, a data de fim
+  opcional, a rede toda de cortesia ativa e sem cobrança (nunca suspensa) e a
+  rede vendo a condição. O resto deste bloco (a cobrança que pausa e religa
+  sozinha em 3 dias, o "sem cobrança" quando não religa, o mínimo de R$ 5,00,
+  perdoar o atraso, trocar de plano tirar a condição do plano) é decisão do
+  Claude, na verificação de 2026-10-07. A regra: por ITEM — o plano, as conexões de
   WhatsApp, o Copilot avulso —, desconto em percentual (1 a 100) ou em reais,
   ou cortesia (de graça), com data de fim opcional (vale o dia inteiro).
   - Mora em `tenant_subscriptions.condicoes`; a conta é
@@ -509,9 +521,16 @@ um muro que não depende de cada trava do código.
 
 **Entrar como (impersonificação autorizada):**
 - **Só com AUTORIZAÇÃO vigente da rede** (`support_grants`: 24 h, 72 h
-  ou 7 dias; uma por pessoa). Autoriza o próprio membro (para si) ou quem é da
-  rede com `settings: MANAGE` (Configurações → Suporte); "incluir dados
-  clínicos" pede prontuário MANAGE de quem autoriza (`lib/suporte/regras.ts`).
+  ou 7 dias; uma por pessoa). **Quem autoriza é a Admin da rede** (o cargo de
+  sistema gravado, `ctx.isNetworkAdmin`), para qualquer membro, ela mesma e
+  outra Admin — em Configurações → Suporte ou no chamado (decisão do Claude
+  pelas regras do Heitor na auditoria das regras, 2026-11-18: "autorizar o
+  suporte é da Admin da rede, como a configuração da rede toda", que ele
+  respondeu "só pela conta admin"). Até ali o próprio membro se autorizava, e
+  quem era da rede com `settings: MANAGE` autorizava os outros. **Revogar**: a
+  própria pessoa (a conta é dela) e a Admin da rede (`podeAutorizar`,
+  `podeRevogar`, `lib/suporte/regras.ts`). "Incluir dados clínicos" pede
+  prontuário MANAGE de quem autoriza. Prova: `tests/suporte-regras.test.ts`.
 - **É uma sessão REAL do Auth do membro**: parte do app e todo o Realtime
   falam com o banco pelo token, então trocar só o contexto do servidor não
   funcionaria. Prazo: 60 min, nunca além da autorização.
@@ -634,10 +653,14 @@ um muro que não depende de cada trava do código.
 - **O print é PNG/JPEG até 5 MB pelo cabeçalho do arquivo**, no bucket privado
   `suporte-anexos` (o bucket também recusa outro tipo e tamanho), em
   `<rede>/<uuid>.<ext>`; gravação que falhou apaga o arquivo.
-- **Autorizar pelo chamado** ("Autorizo o suporte…" ao abrir, ou o botão na
-  conversa) cria a autorização de 72 h do PRÓPRIO membro, ligada ao chamado
-  (o chamado tem de ser dele). Revogar fica na mesma conversa — quem autoriza
-  por ali pode não ter acesso a Configurações.
+- **Autorizar pelo chamado** é da Admin da rede (2026-11-18): o "Autorizo o
+  suporte…" ao abrir só aparece para ela (a outra pessoa lê "Se o suporte
+  precisar entrar na sua conta, quem autoriza é a Admin da rede.", e
+  `abrirChamado` recusa o `autorizar`), e o botão "Autorizar por 72 h" na
+  conversa autoriza a conta de QUEM ABRIU o chamado — no dela ou no de outra
+  pessoa da rede. A autorização fica ligada ao chamado (o chamado tem de ser
+  de quem recebe o acesso). Revogar fica na mesma conversa, para quem abriu e
+  para a Admin da rede (`verChamado` diz `podeAutorizar`/`podeRevogar`).
 - **O suporte nunca se autoriza**: "Pedir autorização" é uma mensagem do
   sistema na conversa + sino; quem decide é a rede.
 - **Nota interna** (`interna`) é filtrada NO BANCO para a rede. Só a
@@ -655,14 +678,21 @@ um muro que não depende de cada trava do código.
 - Um gatilho garante que o chamado de uma autorização ou sessão é da mesma rede.
 - Tabelas: RLS ligada e ZERO políticas. Prova: `e2e/chamados.spec.ts`.
 
-**A configuração da rede toda (H7, decisão do Heitor, 2026-11-01:
-"gerente de uma unidade só mexe no que é da unidade"):**
+**A configuração da rede toda é só da Admin da rede** (o Heitor, 18/11, na
+auditoria das regras, pergunta 8: "só pela conta admin"; antes, H7 de
+2026-11-01, "gerente de uma unidade só mexe no que é da unidade", bastava ter
+“A rede inteira”):
 - Quem não tinha “A rede inteira”, com os módulos em Gerenciar, abria Configurações
   no portal da unidade e gravava o que vale para todas as unidades (A6 da 5ª
-  simulação) — a tela só avisava "alterar aqui muda para todas". A trava é da
-  ABRANGÊNCIA (`ctx.branchId`), nunca do nome do cargo: `mexeNaConfigDaRede`
-  / `recusaDaConfigDaRede` (`lib/configuracao-da-rede.ts`), na action E na
-  tela.
+  simulação). Desde 18/11 nem quem tem “A rede inteira” grava sem ser a Admin
+  da rede. A trava é o CARGO de sistema gravado (`ctx.isNetworkAdmin`: o
+  membro em cache com `tenant_roles.key = 'NETWORK_ADMIN'` e `is_system`),
+  nunca a claim `role` nem o rótulo (C58, F70): `mexeNaConfigDaRede` /
+  `recusaDaConfigDaRede` (`lib/configuracao-da-rede.ts`), na action E na
+  tela. A aba diz "Esta configuração é só da Admin da rede." Prova:
+  `tests/config-da-rede-so-da-admin.test.ts`,
+  `e2e/permissoes-config-de-quem-tem-uma-unidade.spec.ts` (a gerente de uma
+  unidade e a sócia com “A rede inteira”, as duas com tudo em Gerenciar).
 - **Quem é da rede chega, pelo portal da UNIDADE, ao que só a rede tem** (A1
   da 14ª simulação, F74, 2026-11-13; CLAUDE.md §1, a rede de uma unidade só: quem tem o cargo Admin da rede
   entra pelo endereço da unidade e não achava Comissões nem Automações). Uma
@@ -677,25 +707,30 @@ um muro que não depende de cada trava do código.
   (não entra em `/admin`). Trava: `tests/configuracoes-e-menu-da-14.test.ts`
   (toda entrada de `ADMIN_MENU` chega ao menu da unidade de quem é da rede).
 - **A aba da rede toda diz QUEM muda** (A5 da 14ª, princípio 3): depois de
-  "Esta configuração é da rede toda", "Quem muda: …" com os nomes de quem é
-  da rede e tem o módulo da aba em Gerenciar (`quemMudaNaRede`,
-  `lib/equipe/quem-desfaz.ts` — a mesma consulta do "quem desfaz").
-- **Fica com quem é da rede** (a action recusa, a aba diz "Esta configuração é
-  da rede toda" sem o editor, `ABAS_DA_REDE_TODA`): tags
-  (`actions/tags.ts`), funis, etapas e motivos de perda (`crm-funnels`,
-  `crm-stages`, `crm-motivos`; o "Configurar funis" some do quadro da
-  unidade), cargos, a matriz e quem vê o inbox (`roles`, `permissions`,
-  `rede.atualizarVisibilidadeDoInbox`), os dados da rede e o setup
-  (`rede.atualizarDadosDaRede`, `setup`; a aba Geral fica só para ler), as
-  fichas (`fichas`) e a ficha de saúde, os modelos de documento
+  "Esta configuração é só da Admin da rede.", "Quem muda: …" com os nomes das
+  Admins da rede ativas (`adminsAtivasDaRede`, `lib/equipe/quem-desfaz.ts`).
+- **Fica com a Admin da rede** (a action recusa, a aba diz "Esta configuração é
+  só da Admin da rede." sem o editor, `ABAS_DA_REDE_TODA`): tags
+  (`actions/tags.ts`), funis, etapas, motivos e origens (`crm-funnels`,
+  `crm-stages`, `crm-motivos`, `crm-origens`; o "Configurar funis" some do
+  quadro, nos dois portais, e o quadro diz "Funis e etapas são da rede toda:
+  quem muda é a Admin da rede."), cargos, a matriz e quem vê o inbox (`roles`,
+  `permissions`, `rede.atualizarVisibilidadeDoInbox`), os dados da rede e o
+  setup (`rede.atualizarDadosDaRede`, `setup`; a aba Geral fica só para ler),
+  as fichas (`fichas`) e a ficha de saúde, os modelos de documento
   (`modelos-de-documento`; desde 2026-11-16 do módulo `documents`, os
   "Modelos de documento" — `docs/regras/documentos.md`), as integrações e as caixas de WhatsApp
   (`integrations`, `uazapi-connection`, o OAuth da Meta em `/api/oauth/meta`;
   o inbox vazio manda pedir a quem administra), as ações em lote
-  (`acoes-em-lote`), as automações, as campanhas e os templates (que já eram
-  só do portal da rede, D-2). Já eram da rede antes: a fidelidade, a configuração de
-  comissões, as taxas e a comissão do procedimento, criar/desativar unidade, a
-  assinatura e o suporte.
+  (`acoes-em-lote`), as Importações (`importacao`), as automações, as
+  campanhas e os templates, a configuração de comissões, o máximo de parcelas
+  do crediário e a comissão do procedimento (`actions/comissoes.ts`,
+  `podeMudarComissaoDoProcedimento`), e criar/desativar unidade
+  (`createBranch`, `toggleBranchStatus`).
+  **Ainda pela abrangência (“A rede inteira”), a alinhar:** a fidelidade
+  (`actions/fidelidade.ts`), as taxas da maquininha (`actions/maquininhas.ts`)
+  e a assinatura (`actions/assinatura.ts`) — a aba já as mostra só para ler a
+  quem não é a Admin.
 - **O catálogo de procedimentos, as categorias e os pacotes são de quem tem
   Procedimentos em Gerenciar, e só isso** (PR1/PR6 e PC6 do plano de
   adaptação, 2026-11-13): saíram da lista do que é da rede. Ver
@@ -743,7 +778,10 @@ um muro que não depende de cada trava do código.
     cria, edita, apaga e vê só as suas, no inbox (`created_by` em toda leitura
     e gravação de `actions/quick-replies.ts`; o nome é único por pessoa,
     `uq_quick_replies_titulo_da_pessoa`; a sessão não lê nem grava a tabela).
-    Quem guarda é quem MANDA mensagem (o CRM em Gerenciar, como o envio).
+    Quem guarda é cada pessoa com o CRM (em Ver já basta): a resposta é DELA
+    (H8: "cada usuário poder configurar as suas"; era o CRM em Gerenciar, "como
+    o envio", e quem só via o inbox não tinha as suas — saiu na auditoria das
+    regras, 2026-11-18).
     Deixaram de ser uma biblioteca da rede (C72, F69; a única linha da
     produção tinha autor). **Têm um lugar fixo** (A8 da 14ª, F71): o botão
     "Minhas respostas rápidas" no topo da lista do Inbox, nos dois portais,
@@ -752,14 +790,14 @@ um muro que não depende de cada trava do código.
     tinha onde criá-las). É o mesmo editor; fora da conversa, o clique no
     atalho o edita. Prova: `e2e/inbox-respostas-de-cada-pessoa.spec.ts`,
     `e2e/inbox-minhas-respostas-rapidas.spec.ts`.
-  - **As Importações são de quem é da rede**, e a importação escolhe a que
-    unidade os registros pertencem (a ficha da cliente, os produtos). Quem
-    não tem “A rede inteira” não importa: a aba diz "Esta configuração é da
-    rede toda", e a action recusa (`importarContatos`,
+  - **As Importações são da rede** (desde 18/11, só da Admin da rede), e a
+    importação escolhe a que unidade os registros pertencem (a ficha da
+    cliente, os produtos). Quem não é a Admin não importa: a aba diz "Esta
+    configuração é só da Admin da rede.", e a action recusa (`importarContatos`,
     `retomarImportacao`; a aba está em `ABAS_DA_REDE_TODA`). Prova:
     `e2e/permissoes-f70.spec.ts` ("C73").
-- Sem aba pedida, quem não tem “A rede inteira” abre Configurações na primeira aba que
-  é DELA.
+- Sem aba pedida, quem não é a Admin da rede abre Configurações na primeira aba que
+  é DELA (a Unidade, no portal da unidade).
 - **A aba pedida que não abre diz por quê** (A11 da 12ª simulação, 2026-11-11;
   princípio 3: quem tinha só a Acácia abria `?tab=commissions` e
   `?tab=permissions` e caía nas Tags calada). A tela abre a primeira aba que
@@ -851,6 +889,14 @@ abaixo entraram na F70, 2026-11-12):
   que o membro já tem não é dar. Mora em `lib/equipe/cargo-acima.ts`
   (`cargosAcimaDoMeu`, `assertRoleInTenant`). Prova:
   `e2e/permissoes-f70.spec.ts` ("C62").
+  **"Duplicar" o cargo** (A15 da 15ª, 2026-11-17) passa pela mesma trava:
+  "Cópia de X" (`nomeDaCopia`, `lib/cargos/duplicar.ts`; "(2)" se o nome já
+  existe) com a matriz, as abas de Relatórios e as caixas do inbox do
+  original, numa transação (`salvar_matriz_do_cargo`); Cargos em Gerenciar,
+  a rede toda (`recusaDaConfigDaRede`), o suporte não; quem não é a Admin da
+  rede não duplica um cargo com módulo que ela não tem (`duplicarCargo`,
+  `actions/roles.ts`). O cargo de sistema não se duplica. Prova:
+  `tests/pendencias-area-3.test.ts`.
 - **Desativar uma unidade mostra o que fica e oferece resolver, sem impedir**
   (H6, opção a; a mesma regra da H6 de 01/11 para o membro, e os princípios 2
   e 3). "A unidade Jardins tem 2 pessoas da equipe só nela e 14 agendamentos
@@ -876,8 +922,9 @@ abaixo entraram na F70, 2026-11-12):
     desativada continuam dizendo o que ficou, com os mesmos caminhos
     (`[data-o-que-ficou]`).
 - **A unidade desativada continua CONTADA e ALCANÇÁVEL enquanto tiver o que
-  ficou** (H6, o Heitor; C45 em `indicadores.md`; princípio 3 — D1, D2 e A32
-  da 14ª, F72). A regra é uma, em `lib/unidades/da-tela.ts`:
+  ficou** (decisão do Claude pelo princípio 3, F72 — D1, D2 e A32 da 14ª; C45
+  em `indicadores.md`. A H6 do Heitor fala só da janela — "mostra o que fica e
+  oferece resolver, sem impedir" —, não da contagem nem das recusas abaixo). A regra é uma, em `lib/unidades/da-tela.ts`:
   - **para LER** — `unidadesParaLer(tenantId, { periodo?, colunas? })`: as
     ativas e as desativadas com o que ficou (`temOQueFicou`: agenda futura,
     estoque com saldo, a receber, comissão a pagar) ou com movimento no
@@ -901,15 +948,12 @@ abaixo entraram na F70, 2026-11-12):
   - Nenhuma tela filtra `is_active` das unidades por conta própria:
     `tests/unidades-da-tela.test.ts` trava. Prova:
     `e2e/unidade-desativada-f72.spec.ts`.
-- **Só uma Admin autoriza o suporte a entrar na conta de uma Admin** (D19; a
-  regra de 29/10, "somente admin pode alterar admin": entrar como ela é agir
-  como ela). Para a própria conta, ela mesma; para a de outra Admin, outra
-  Admin. Quem tem Configurações em Gerenciar sem ser Admin não vê o botão na
-  linha de uma Admin, e a action recusa. Quem autoriza também revoga.
-  `podeAutorizar(quem, alvo, { alvoEhAdmin })` em `lib/suporte/regras.ts`; a
-  aba Suporte mostra a conta dela desligada, "(só uma Admin da rede
-  autoriza)". Prova: `tests/suporte-regras.test.ts`, `e2e/permissoes-f70.spec.ts`
-  ("C59").
+- **Só a Admin da rede autoriza o suporte** (desde 2026-11-18; acima, "Entrar
+  como"). A D19 (F70: a conta de uma Admin só outra Admin autoriza; "somente
+  admin pode alterar admin") ficou contida nela. Quem não é a Admin não vê a
+  aba Suporte para editar (é configuração da rede toda), e a action recusa
+  ("Autorizar o suporte a entrar numa conta é só da Admin da rede."). Prova:
+  `tests/suporte-regras.test.ts`, `e2e/permissoes-f70.spec.ts` ("C59").
 
 **A pessoa de VÁRIAS unidades (EQ1a, EQ1b, EQ1c e PO1 — Bloco Equipe e
 Portais, 2026-11-14; o Heitor, 2026-11-13: "permitir linkar a pessoa em mais
@@ -965,13 +1009,48 @@ de uma unidade"):**
   aberto pelo Financeiro em Gerenciar mostra no seletor o nível que vale,
   "Gerenciar", travado, com o porquê ao lado (A1, `nivelDoPdvPeloFinanceiro`;
   o que se grava segue "Sem acesso"); o menu e o resumo mostram Tratamentos a
-  quem tem a Agenda — a régua da página —, não mais a quem tem o Prontuário ou
+  quem tem a Agenda (desde 2026-11-18, o Atendimento) — a régua da página —, não mais a quem tem o Prontuário ou
   recebe (D1; "quem recebe cobra o plano ali" caiu com o PDV4/PT1c/PDV7), e a
   dica diz "Tratamentos vem da Agenda em “Ver”"; o resumo diz "Conclui só os
   próprios atendimentos…" quando o cargo tem o Prontuário em Gerenciar e "só
   os meus" na Agenda ou no Prontuário (A2, `conclusaoNoResumo`); e o
   Desativar com o "Repassar todos … para" quem não pegou todos diz "Desativar
   e repassar 1 de 5" (A3, `rotuloDoDesativar`).
+  **E a 24ª** (`tests/atritos-da-24-cargos-atendimento-app.test.ts`): sem o
+  Prontuário em Gerenciar, o resumo diz "Não conclui atendimentos: concluir
+  pede o Prontuário em Gerenciar." (A1/A51, `conclusaoNoResumo`), e a Agenda
+  em Ver diz "inicia… Concluir também pede o Prontuário em Gerenciar. Não
+  marca nem remarca horário" (A2; a regra de quem conclui não mudou); o
+  seletor travado mostra só o nível que vale, com o cadeado (A3); "Dê o nome
+  na lista de cargos e clique em Criar" (A4); o resumo diz de onde vêm a venda
+  e o Fechamento do dia: do PDV, ou do Financeiro em Gerenciar (A5,
+  `quemVendeNoResumo`).
+  **O módulo Atendimento** (o Heitor, 2026-11-18: "Agenda é agenda e
+  atendimento é atendimento. Só inicia e conclui atendimento quem tem
+  gerenciar no atendimento."): o 20º módulo, no grupo Atendimento logo depois
+  da Agenda (`MODULE_GROUPS`), com Ver e Gerenciar e o escopo "só os meus" ×
+  "todos" como o da Agenda (`SCOPED_MODULES`; decisão do Claude pelo princípio
+  1). Iniciar, concluir, a desistência no meio e o plano da avaliação aberta
+  são dele; Tratamentos vem dele ("Tratamentos vem do Atendimento em “Ver”…",
+  `tratamentosNoResumo`); o clínico continua do Prontuário. O resumo do cargo
+  diz "Vê os atendimentos, sem iniciar nem concluir: iniciar e concluir pedem
+  o Atendimento em Gerenciar.", "Inicia e conclui só os próprios
+  atendimentos: …" (com "só os meus") e, sem o Prontuário em Gerenciar,
+  "Inicia e conclui os atendimentos. A evolução, as fotos e a ficha de saúde
+  pedem o Prontuário em Gerenciar." (`conclusaoNoResumo`). Saíram o "Não
+  conclui atendimentos: concluir pede o Prontuário em Gerenciar." (A1 da 24ª)
+  e o "Concluir também pede o Prontuário" da Agenda em Ver (A2 da 24ª): a
+  Agenda voltou a ser só agenda. Os cargos que existiam e os modelos ganharam
+  o módulo pela migration `20261123900001` (regra em `atendimento.md` §9.1,
+  "Quem faz o quê na agenda e no atendimento").
+- **O Desativar marca a unidade no "Atende" ali mesmo** (18ª A29, 2026-11-17):
+  quando ninguém mais atende o agendamento na unidade dele, mas alguém da
+  equipe atende em outra, a linha oferece "Marcar <unidade> no Atende de X"
+  (`[data-marcar-no-atende]`, a quem tem a Equipe em Gerenciar) — antes só
+  abria a Equipe em outra aba. Ela passa pelo núcleo da Equipe
+  (`marcarUnidadeNoAtende` → `updateTeamMember`, sem repetir as regras: a
+  Admin da rede, o cargo acima, a abrangência); depois, a lista se atualiza
+  e a pessoa aparece no repasse. Prova: `tests/pendencias-area-1.test.ts`.
 - **Os textos da Equipe dizem o que vale para ESTA pessoa** (A17, A18, A21 da
   17ª; princípio 3): salvar o cargo confirma ("Cargo “X” salvo."), e "O que
   essa pessoa vai ver" diz o Copilot pelo nível (`copilotNoResumo`); cadastrar
@@ -1000,8 +1079,13 @@ disponiveis"):**
   permissão: diz onde a pessoa aparece como profissional (agenda, agendar,
   repasse, comissão, relatórios da unidade) — §9.1 de `atendimento.md`.
 - **Uma caixa (EQ1c)**: "Atende clientes" marcada vale em todas as unidades
-  DELA (a rede inteira: as ativas na hora de salvar — a unidade aberta depois
-  nasce sem ninguém marcado, princípio 6). Com mais de uma unidade, "Escolher em
+  DELA (a rede inteira: as ativas na hora de salvar). A unidade aberta (ou
+  reativada) depois entra no "Atende" de quem tem "A rede inteira" e já atendia
+  em todas as outras (EQ1, o Heitor, 2026-11-14, "Concord." à "A rede inteira
+  (todas, inclusive as que vierem)"; era "nasce sem ninguém marcado, princípio
+  6" — saiu na auditoria das regras, 2026-11-18). O gatilho
+  `trg_atende_na_unidade_nova` (migration `20261123900002`) acrescenta a
+  unidade; quem escolheu à mão um subconjunto fica como escolheu. Com mais de uma unidade, "Escolher em
   quais unidades atende" (fechado por padrão) abre a lista; a marca de antes
   fora das unidades dela aparece na lista e não some calada.
 - A ABRANGÊNCIA (`users.branch_id`/`outras_unidades`) não muda com o "Atende": marcar a Talita (da
@@ -1181,8 +1265,25 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
     o id de uma gravação que caiu em duas páginas.
   - O filtro "Quem" tem "Só o que foi pelo Copilot" (`pessoa=copilot` →
     `via = 'copilot'`, A37 da 16ª).
+  - **O lançamento editado diz de quanto para quanto, e o estorno diz qual
+    pagamento** (A33 da 24ª): "Editou o lançamento (valor: R$ 150,00 → R$
+    100,00; data de referência: 10/11/2026 → 12/11/2026; pago: não → sim)" —
+    o valor, as datas (no fuso da unidade), o pago, a forma, a descrição, a
+    parcela, o fornecedor e a nota guardam o antes e o depois (os `valores`
+    do gatilho de `financial_transactions`, migration `20261123600001`); o
+    texto livre (`notes`) sai só pelo nome. Só nomes, "a, b e c" como antes.
+    O estorno: "Estornou o atendimento (R$ 320,00 · Débito)", e no crediário
+    "(R$ 100,00 · Pix · parcela 2/4)" — a forma e a parcela do lançamento
+    estornado (lido agora; senão a forma do estorno). Vale no CSV (a mesma
+    frase). **O custo corrigido do lote** (A10 da 24ª): "Corrigiu o custo do
+    lote de Preenchedor: de R$ 40.000,00 para R$ 400,00 por seringa" (o
+    `product_id` é o rótulo do movimento, migration `20261123600002`; a
+    embalagem e o rendimento lidos agora, `embalagensDosProdutos`); o ajuste
+    da correção, "Ajustou o estoque (correção de cadastro): …".
   - A página segue por gravação (`?antes=<id>`): a gravação que começa numa
-    página termina nela. O CSV segue uma linha por registro, e cada uma leva a
+    página termina nela. Numa página antiga, "Voltar às mais recentes" fica no
+    topo e no fim (A34 da 24ª, `[data-auditoria-voltar]`; era "Mais recentes"
+    só no fim, depois de 50 linhas). O CSV segue uma linha por registro, e cada uma leva a
     frase da gravação dela na coluna "Gravação" (`linhasDoCsvDaAuditoria`,
     A38 da 16ª: quem procura "Estornou" no arquivo acha; vazia quando a linha
     já diz a mesma frase, A7 da 21ª); o CSV lê todas as
@@ -1316,6 +1417,7 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
 ❌ Confiar só no marcador de React cache para saber se é sessão de suporte numa action — é sessaoDeSuporteAtual (o token)
 ❌ Mexer numa autorização de suporte sem ler antes as sessões em curso (sessoesEmCurso) e expirar o cache delas
 ❌ Mostrar nota interna do chamado à rede, ou o suporte autorizar acesso por conta própria
+❌ Deixar quem não é a Admin da rede autorizar o suporte (nem a si mesmo) — podeAutorizar lê ctx.isNetworkAdmin; revogar a própria conta continua livre (podeRevogar)
 ❌ Action do sistema sem getPlatformContext({ papel: 'ADMIN' }), ou página sem { verSistema: true } (o proxy é a primeira parede, não a única)
 ❌ Abrir uma action do sistema ao GERENTE (ele só vê) ou o suporte a ele — o alcance de cada papel é papelAlcanca
 ❌ Parte editável numa tela do sistema fora de um fieldset sistema-leitura (o Gerente veria o botão ativo)
@@ -1335,7 +1437,7 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
 ❌ Criar cliente ou assinatura no Asaas sem procurar antes pelo externalReference (o Asaas aceita duplicado)
 ❌ Webhook do Asaas que responde diferente de 200 para o que já gravou (o Asaas repete e, com 15 falhas, pausa a fila)
 ❌ Mandar automação, campanha ou push ao paciente de uma rede bloqueada (redeEstaBloqueada)
-❌ Action ou tela que grava configuração da rede toda sem recusaDaConfigDaRede / mexeNaConfigDaRede (quem não tinha “A rede inteira” mudava para todas — H7), ou decidir isso pelo nome do cargo
+❌ Action ou tela que grava configuração da rede toda sem recusaDaConfigDaRede / mexeNaConfigDaRede (é só da Admin da rede, 18/11 — "só pela conta admin"), ou decidir isso pela claim role, pelo rótulo do cargo ou pela abrangência (ctx.branchId)
 ❌ Chamar assinaturas_aplicar_regras em teste sem p_tenant (vale para as redes reais)
 ❌ Ler pela SESSÃO a unidade do membro que vem do banco (ctx.branchId) com .single(): com a claim velha a RLS a esconde e a tela dá 500 (D9 da 9ª) — é pelo servidor, com a rede
 ❌ Abrir a leitura da auditoria pela sessão, gravar nela fora do gatilho/da função, ou pôr nela o TEXTO de um registro clínico ou de credencial (só os nomes das colunas)

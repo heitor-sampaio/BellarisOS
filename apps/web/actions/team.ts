@@ -445,6 +445,36 @@ export async function updateTeamMember(
   return { success: true }
 }
 
+/**
+ * 18ª A29 (resto): o "Marcar <unidade> no Atende de X" da janela do Desativar
+ * — quem atende em outra unidade passa a atender também nesta, e o repasse a
+ * alcança. Pelo NÚCLEO da Equipe (`updateTeamMember`): o mesmo cargo, a lista
+ * do "Atende" de antes mais a unidade, e todas as regras de lá (alcance, a
+ * Admin da rede, só as unidades de quem edita, só unidades ativas).
+ */
+export async function marcarUnidadeNoAtende(userId: string, branchId: string, redirectPath = '/admin/team'): Promise<{ error?: string }> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'team', 'MANAGE')
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!uuid.test(userId) || !uuid.test(branchId)) return { error: MEMBRO_NAO_ENCONTRADO }
+  const membro = await ler(createAdminClient().from('users').select('id, role_id, atende_em')
+    .eq('id', userId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o membro') as
+    { id: string; role_id: string | null; atende_em: string[] | null } | null
+  if (!membro?.role_id) return { error: MEMBRO_NAO_ENCONTRADO }
+  const dados = new FormData()
+  dados.set('userId', membro.id)
+  dados.set('roleId', membro.role_id)
+  dados.set('_atendeEm', '1')
+  dados.set('atendeEm', [...new Set([...(membro.atende_em ?? []), branchId])].join(','))
+  dados.set('providesServices', 'on')
+  // Só um caminho interno (é o que a tela revalida).
+  dados.set('redirectPath', /^\/[\w\-/]*$/.test(redirectPath) ? redirectPath : '/admin/team')
+  const r = await updateTeamMember(undefined, dados)
+  if ('error' in r) return { error: r.error }
+  if ('pergunta' in r || 'repasseDoAtende' in r) return { error: 'Não deu para marcar por aqui: faça pela Equipe.' }
+  return {}
+}
+
 const MEMBRO_NAO_ENCONTRADO = 'Membro não encontrado.'
 
 /**

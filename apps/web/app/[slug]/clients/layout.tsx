@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { subDays } from 'date-fns'
 import { getTenantContext, can } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
@@ -68,11 +69,13 @@ export default async function ClientsLayout({
           // /clients/new recusava. `null` esconde; `undefined` usa o padrão.
           newClientHref={can(ctx, 'clients', 'MANAGE') ? undefined : null}
           // A21 da 21ª: a importação é de quem é da rede (H8) — o atalho também.
-          importarHref={can(ctx, 'clients', 'MANAGE') && ctx.branchId === null ? `/${slug}/settings?tab=importacoes` : null}
+          importarHref={can(ctx, 'clients', 'MANAGE') && mexeNaConfigDaRede(ctx) ? `/${slug}/settings?tab=importacoes` : null}
           clients={clients}
           basePath={`/${slug}/clients`}
           totalActive={totalActive}
           aniversariantes={aniversariantes}
+          // A21 da 16ª: escolher várias e "Marcar tag" (Clientes em Gerenciar).
+          marcarTag={can(ctx, 'clients', 'MANAGE') ? { slug } : null}
         />
       }
     >

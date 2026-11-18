@@ -81,7 +81,9 @@ interface Props {
   meuId?: string | null
   /** Conclui o atendimento (o Prontuário em Gerenciar) — sem ele, a janela diz quem conclui antes do Iniciar (A20 da 10ª). */
   podeConcluir?: boolean
-  /** A9 da 20ª: sem concluir, quem conclui — o Prontuário em Gerenciar, pelo nome (quemConcluiOAtendimento). */
+  /** O Atendimento "só os meus": inicia e conclui só os dela. */
+  atendimentoProprio?: boolean
+  /** A9 da 20ª: sem iniciar e concluir, quem conclui — o Atendimento em Gerenciar, pelo nome (quemConcluiOAtendimento). */
   quemConclui?: string[] | null
   /** Os bloqueios pontuais (decisão 3 da 7ª), cada um com o rótulo que a grade mostra. */
   bloqueios?: (BloqueioDaAgenda & { rotulo: string })[]
@@ -589,7 +591,7 @@ function StatusLegend() {
 
 // -- Componente principal ------------------------------------------------------
 export function AdminAgendaView({
-  view, selectedDate, todayStr, branches, todasUnidades, unidadeId, appointments, janela, podeAgendar, escopoProprio, meuId = null, podeConcluir = true, quemConclui = null, bloqueios = [], paraBloquear = null,
+  view, selectedDate, todayStr, branches, todasUnidades, unidadeId, appointments, janela, podeAgendar, escopoProprio, meuId = null, podeConcluir = true, atendimentoProprio = false, quemConclui = null, bloqueios = [], paraBloquear = null,
 }: Props) {
   const router = useRouter()
   const fala = useFala()
@@ -833,6 +835,7 @@ export function AdminAgendaView({
           escopoProprio={escopoProprio}
           podeGerenciar={podeAgendar}
           podeConcluir={podeConcluir}
+          atendimentoProprio={atendimentoProprio}
           quemConclui={quemConclui}
           meuId={meuId}
           onClose={() => { setSelecionado(null); router.refresh() }}

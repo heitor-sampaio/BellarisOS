@@ -6,6 +6,6 @@ export default async function AdminPlanejamentosPage() {
   // A trava da PÁGINA (§6: o layout protege a navegação, não a URL).
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'planos_de_tratamento')
-  assertPermission(ctx, 'agenda', 'VIEW')
+  assertPermission(ctx, 'atendimento', 'VIEW')
   return <ListaDePlanejamentos branchId={null} branchName={null} basePath="/admin/planejamentos" />
 }

@@ -3,6 +3,7 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
+import { venderPacotePelaAcao } from './apoio/contrato-do-pacote'
 import { abrirVendaNoPdv, pagoNoPix } from './apoio/vender'
 
 /**
@@ -149,7 +150,7 @@ test('o pacote e o pré-pago também: quem vendeu leva a venda (e a comissão de
   const rota = `/${slug}/clients/${cliente}`
   await como(browser, async p => {
     await p.goto(rota)
-    const r1 = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', `/${slug}/pdv`,
+    const r1 = await venderPacotePelaAcao(p, `/${slug}/pdv`,
       [cliente, pacote, rede!.branchId, PIX, null, null, { vendedorId: rede!.professionalId }])
     expect(r1!.texto).toContain('clientPackageId')
     const r2 = await chamarAcao(p, 'actions/pre-pago.ts', 'venderProcedimento', `/${slug}/pdv`,

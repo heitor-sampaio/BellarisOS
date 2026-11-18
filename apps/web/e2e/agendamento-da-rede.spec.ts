@@ -4,6 +4,7 @@ import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
 import { apagarAgendamentos, apagarClientes } from './apoio/limpeza'
+import { DEFAULT_FUNNEL_NAME, DEFAULT_STAGES } from '../lib/crm'
 
 /**
  * O agendamento só nasce com peças DA REDE — e na unidade de quem agenda.
@@ -48,6 +49,14 @@ test.beforeAll(async () => {
   await b.from('users').update({ provides_services: true }).eq('id', prof.userId)
   const outra = await criarOutraRede(`ag${marca}`)
   const clienteAlheio = await outra.criarCliente(`Alheio ${marca}`)
+  // O funil padrão nasce no primeiro acesso ao CRM (seedDefaultFunnel): no banco
+  // recém-semeado, este spec pode rodar antes de qualquer tela do CRM (completa
+  // de 18/11). A mesma função do app o cria, ou devolve o que já existe.
+  const { error: eFunil } = await b.rpc('crm_funil_padrao', {
+    p_tenant: tenant, p_nome: DEFAULT_FUNNEL_NAME,
+    p_etapas: DEFAULT_STAGES.map((s, i) => ({ name: s.name, color: s.color, position: i, outcome: s.outcome })),
+  })
+  expect(eFunil, 'o funil padrão da rede').toBeNull()
   const etapa = (await b.from('crm_stages').select('id').eq('tenant_id', tenant).eq('outcome', 'OPEN').limit(1).single<{ id: string }>()).data!.id
   f = {
     unidade: unidade!.id, segunda: segunda?.id ?? null, prof,

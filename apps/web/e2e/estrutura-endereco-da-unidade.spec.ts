@@ -50,9 +50,10 @@ test.describe('o endereço da unidade é único entre as redes', () => {
     A = await criarOutraRede(`eua${marca}`)
     B = await criarOutraRede(`eub${marca}`)
     await db().from('tenants').update({ name: `[e2e] Clínica Bela ${marca}` }).eq('id', B.tenantId)
-    const gestao = [{ modulo: 'settings' as const, nivel: 'MANAGE' as const }]
-    gestorA = await criarMembro(`eua${marca}`, { tenant: A.tenantId, permissoes: gestao })
-    gestorB = await criarMembro(`eub${marca}`, { tenant: B.tenantId, permissoes: gestao })
+    // Criar unidade é configuração da rede toda: só a Admin da rede (o Heitor,
+    // 18/11: "Configuração da rede toda só pela conta admin").
+    gestorA = await criarMembro(`eua${marca}`, { tenant: A.tenantId, donoDaRede: true, permissoes: [] })
+    gestorB = await criarMembro(`eub${marca}`, { tenant: B.tenantId, donoDaRede: true, permissoes: [] })
   })
 
   test.afterAll(async () => {

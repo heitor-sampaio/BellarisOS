@@ -14,7 +14,7 @@ export default async function BranchPlanejamentosPage({
   // A funcionalidade é do PLANO da rede (lib/planos/recursos.ts).
   assertRecurso(ctx, 'planos_de_tratamento')
   // A trava da PÁGINA (§6: o layout protege a navegação, não a URL).
-  assertPermission(ctx, 'agenda', 'VIEW')
+  assertPermission(ctx, 'atendimento', 'VIEW')
 
   const supabase = await createSupabase()
   const branch = await ler(supabase

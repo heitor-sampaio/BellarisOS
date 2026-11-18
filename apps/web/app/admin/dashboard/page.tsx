@@ -30,6 +30,7 @@ import { recorteDosModulos } from '@/lib/metrics/escopo'
 import { getCoreDosModulos } from '@/lib/metrics/dos-modulos'
 import { abertosDeAntes, SEM_ABERTOS_DE_ANTES } from '@/lib/metrics/abertos-de-antes'
 import { AbertosDeAntes } from '@/components/branch/abertos-de-antes'
+import { etapasDoQueOCargoVe } from '@/lib/dashboard/etapas-do-ciclo'
 import { ClientesDoPeriodo, ReativarClientes, deQuemSaoAsClientes } from '@/components/shared/quadros-de-clientes'
 import { intervaloDosAnuncios } from '@/lib/ads/periodo'
 import { getClientesParaReativarDoRecorte, getClientesAtivos } from '@/lib/metrics/unidade'
@@ -348,7 +349,6 @@ export default async function AdminDashboardPage({
     slug:         b.branchSlug,
     revenue:      b.revenueCash,
     appointments: b.appointmentsCompleted,
-    newClients:   b.newClients,
     ticketMedio:  ticket?.porUnidade[b.branchId]?.valor ?? 0,
   }))
 
@@ -646,17 +646,14 @@ export default async function AdminDashboardPage({
     : []
 
   // F7b (H3): o "Reativar clientes" e o "Clientes no mês" só existiam no
-  // dashboard da unidade. Na rede, as sumidas da CLÍNICA inteira (sem visita
-  // em nenhuma unidade há 90 dias), com a unidade de cada uma; recortada a
-  // uma unidade pelo ?unidade=, o mesmo quadro da unidade. Na clínica de UMA
-  // unidade, a clínica e a unidade são a mesma coisa (r2-ind-03, o Heitor):
-  // todas as clientes ativas. Com a agenda
+  // dashboard da unidade. A cliente é da REDE (o Heitor, 18/11): as sumidas
+  // são as da rede inteira (sem visita em nenhuma unidade há 90 dias), com a
+  // unidade da última visita, também no ?unidade=. Com a agenda
   // "só os meus", as dela (o recorte da agenda).
   const noventaDias = addDaysTZ(now, -90, fuso)
-  const umaSoNoRecorte = branches.length === 1 && !umaUnidade ? branches[0]! : null
   // A regra é UMA, a do Copilot também (r3-f13-10): getClientesParaReativarDoRecorte.
   const paraReativar = !canClients
-    ? { total: 0, comVisita: 0, recentesSemVisita: 0, daUnidade: false, lista: [] as { id: string; name: string; ultimaVisita: string | null; unidade: string | null; antesDoSistema?: boolean }[] }
+    ? { total: 0, comVisita: 0, recentesSemVisita: 0, lista: [] as { id: string; name: string; ultimaVisita: string | null; unidade: string | null; antesDoSistema?: boolean }[] }
     : await getClientesParaReativarDoRecorte({
         tenantId: ctx.tenantId!,
         unidade: branches.length === 1 ? { id: branches[0]!.id as string, name: branches[0]!.name as string } : null,
@@ -666,14 +663,16 @@ export default async function AdminDashboardPage({
     <div className="grid-stack-md" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
       <ClientesDoPeriodo
         titulo="Clientes no período"
-        // A10 da 13ª: o quadro diz o seu recorte (a unidade é a tag da cliente — C6).
-        subtitulo={`${agendaDela ? 'As suas novas clientes e os seus agendamentos' : paraReativar.daUnidade ? 'Novas clientes atendidas na unidade e os agendamentos dela' : 'Novas clientes e agendamentos da rede'} · ${periodLabel}, até agora`}
-        etapas={[
-          { label: 'Novos clientes',    count: core.newClients,            color: 'var(--brand)' },
+        // A10 da 13ª: o quadro diz o seu recorte. "Novos clientes" só na rede (o
+        // Heitor, 18/11): no ?unidade= o número não existe, e o quadro fala dos agendamentos dela.
+        subtitulo={`${agendaDela ? (core.newClients === null ? 'Os seus agendamentos' : 'As suas novas clientes e os seus agendamentos') : core.newClients === null ? 'Os agendamentos da unidade' : 'Novas clientes e agendamentos da rede'} · ${periodLabel}, até agora`}
+        // A32 da 24ª: sem a Agenda, sem as etapas da agenda (eram zeros).
+        etapas={etapasDoQueOCargoVe([
+          ...(core.newClients === null ? [] : [{ label: 'Novos clientes', count: core.newClients, color: 'var(--brand)' }]),
           { label: 'Agendamentos',      count: core.appointmentsTotal,     color: 'var(--brand-2)' },
           { label: 'Concluídos',        count: core.appointmentsCompleted, color: 'var(--brand-3)' },
           { label: 'Cancelados/faltas', count: core.appointmentsCancelled + core.appointmentsNoShow, color: 'var(--border)' },
-        ]}
+        ], canAgenda)}
       />
       <ReativarClientes
         clientes={paraReativar.lista.map(c => ({
@@ -682,9 +681,10 @@ export default async function AdminDashboardPage({
         }))}
         total={paraReativar.total}
         comVisita={paraReativar.comVisita} recentesSemVisita={paraReativar.recentesSemVisita}
-        deQuem={deQuemSaoAsClientes({ daUnidade: paraReativar.daUnidade, dela: !!agendaDela })}
+        deQuem={deQuemSaoAsClientes({ dela: !!agendaDela })}
         hrefAgendar="/admin/agenda"
-        hrefVerTodas={umaSoNoRecorte && !umaUnidade ? `/admin/clients?unidade=${umaSoNoRecorte.slug as string}` : '/admin/clients'}
+        // A lista de clientes é da rede (não há "?unidade=" nela).
+        hrefVerTodas="/admin/clients"
       />
     </div>
   ) : null

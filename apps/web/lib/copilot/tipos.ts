@@ -18,6 +18,12 @@ export interface ResumoDaAcao {
    * escolhida vai ao `efetivar` da ferramenta; o "Cancelar" continua.
    */
   escolhas?: { chave: string; rotulo: string }[]
+  /**
+   * As `escolhas` numa LISTA com um "Confirmar", em vez de um botão por opção
+   * (A40 da 24ª: a categoria que o Copilot sugeriu se troca no cartão). A
+   * primeira escolha vem marcada; o `rotulo` é o do campo.
+   */
+  escolhaEmLista?: { rotulo: string }
 }
 
 export type StatusDaAcao = 'pendente' | 'executando' | 'feita' | 'cancelada' | 'falhou' | 'vencida'

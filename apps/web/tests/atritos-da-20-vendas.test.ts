@@ -155,11 +155,13 @@ describe('A8: o avulso de uma unidade sem ninguém que recebe diz que é a rede'
   })
 })
 
-describe('A9: quem não conclui lê que concluir pede o Prontuário em Gerenciar, e quem conclui', () => {
+// Desde 2026-11-18 iniciar e concluir são do Atendimento em Gerenciar (o Heitor:
+// "Só inicia e conclui atendimento quem tem gerenciar no atendimento").
+describe('A9: quem não conclui lê que iniciar e concluir pedem o Atendimento em Gerenciar, e quem conclui', () => {
   it('o texto diz a permissão e os nomes', () => {
     expect(textoDeQuemConclui(['Fábio Tulipa', 'Dr. Marcos']))
-      .toBe('Concluir grava o prontuário: quem tem o Prontuário em Gerenciar conclui (Fábio Tulipa e Dr. Marcos).')
-    expect(textoDeQuemConclui([])).toBe('Concluir grava o prontuário: quem tem o Prontuário em Gerenciar conclui.')
+      .toBe('Iniciar e concluir o atendimento é de quem tem o Atendimento em Gerenciar (Fábio Tulipa e Dr. Marcos).')
+    expect(textoDeQuemConclui([])).toBe('Iniciar e concluir o atendimento é de quem tem o Atendimento em Gerenciar.')
   })
   it('nenhuma tela diz mais "Quem conclui é o profissional"', () => {
     for (const arquivo of ['components/branch/appointment-session.tsx', 'components/branch/appointment-sheet.tsx']) {

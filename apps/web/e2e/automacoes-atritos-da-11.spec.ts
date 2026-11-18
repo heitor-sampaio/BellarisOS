@@ -31,10 +31,9 @@ async function como(browser: Browser, fn: (p: Page) => Promise<void>) {
 test.beforeAll(async () => {
   rede = await criarOutraRede(`aut11${marca}`)
   expect((await db().from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede.tenantId)).error).toBeNull()
-  marta = await criarMembro(`aut11m${marca}`, {
-    tenant: rede.tenantId, rotulo: 'Dona',
-    permissoes: [{ modulo: 'automations', nivel: 'MANAGE' }, { modulo: 'marketing', nivel: 'MANAGE' }],
-  })
+  // Automações e campanhas são configuração da rede toda: só a Admin da rede
+  // (o Heitor, 18/11: "Configuração da rede toda só pela conta admin").
+  marta = await criarMembro(`aut11m${marca}`, { tenant: rede.tenantId, rotulo: 'Dona', donoDaRede: true, permissoes: [] })
 })
 
 test.afterAll(async () => {

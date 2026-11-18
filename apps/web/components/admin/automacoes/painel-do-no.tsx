@@ -210,6 +210,8 @@ export function PainelDoNo({
                 <option value="unidade">A unidade do fato</option>
                 <option value="cargo">Um cargo</option>
                 <option value="usuario">Uma pessoa</option>
+                {/* O modelo "Marque o ganho" (2026-11-18): o responsável do card. */}
+                <option value="responsavel">Quem cuida da oportunidade</option>
               </select>
               {c.alvo === 'cargo' && (
                 <select
@@ -358,8 +360,9 @@ export function PainelDoNo({
           </Campo>
         )}
 
-        {/* T4 do Bloco Tags: só adiciona, e uma das tags cadastradas da rede. */}
-        {no.tipo === NODES.ACAO_TAG_CLIENTE && (
+        {/* T4 do Bloco Tags: uma das tags cadastradas da rede. A "Remover tag"
+            (de volta em 2026-11-18) usa o mesmo seletor. */}
+        {(no.tipo === NODES.ACAO_TAG_CLIENTE || no.tipo === NODES.ACAO_REMOVER_TAG) && (
           <Campo rotulo="Tag">
             <select
               className="field" value={(c.tag as string) ?? ''}
@@ -369,7 +372,9 @@ export function PainelDoNo({
               <option value="">Escolha a tag…</option>
               {(opcoes?.tags ?? []).map(t => <option key={t} value={t}>{t}</option>)}
             </select>
-            <Dica>A tag é adicionada ao cliente. Tirar uma tag é só pela ficha.</Dica>
+            <Dica>{no.tipo === NODES.ACAO_REMOVER_TAG
+              ? 'A tag é tirada do cliente. Se ele não a tem, o passo não faz nada.'
+              : 'A tag é adicionada ao cliente. Para tirar, use o passo "Remover tag".'}</Dica>
           </Campo>
         )}
 

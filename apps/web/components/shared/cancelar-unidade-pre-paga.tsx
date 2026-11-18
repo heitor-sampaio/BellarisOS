@@ -45,7 +45,7 @@ export function CancelarUnidadePrePaga({ unidadeId, onFechar, onCancelada }: {
       else {
         setPrevia(r.previa)
         // No cartão só existe o estorno inteiro: já vem escolhido.
-        if (r.previa.parcial?.cartao) setEscolha(e => comOPagamentoInteiro(e, r.previa!.parcial))
+        if (r.previa.parcial?.cartao) setEscolha(e => comOPagamentoInteiro(e))
       }
     })
     return () => { vivo = false }

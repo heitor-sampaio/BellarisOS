@@ -14,8 +14,9 @@ export const AVISOS_DA_URL = {
   'atende-em-outra-unidade': 'Os seus atendimentos nessa unidade estão na sua agenda, aqui. O resto daquela unidade é da equipe de lá.',
   // A23 da 15ª: a pessoa pediu a rede — o aviso diz de quem ela é, pela abrangência.
   'portal-da-rede': 'O portal da rede é de quem tem “A rede inteira”. Você está na sua unidade.',
-  // C61 (F70): o primeiro acesso da clínica (o /setup) é de quem é da rede.
-  'setup-da-rede':  'A configuração inicial da rede é de quem tem “A rede inteira”. Você está na sua unidade.',
+  // C61 (F70): o primeiro acesso (o /setup) é configuração da rede toda — só da
+  // Admin da rede (o Heitor, 18/11). Leva ao painel da unidade ou ao da rede.
+  'setup-da-rede':  'A configuração inicial da rede é só da Admin da rede. Você está no painel.',
   // A14 da 13ª (F70): "?unidade=" no portal de uma unidade abria esta, calado.
   'filtro-de-unidade': 'Aqui é o portal desta unidade: para ver outra, troque de unidade no menu ou use o portal da rede.',
 } as const

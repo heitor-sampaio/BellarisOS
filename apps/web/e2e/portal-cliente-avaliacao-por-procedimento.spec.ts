@@ -15,7 +15,10 @@ import { chamarAcaoComFormulario } from './apoio/acao-direta'
  *   Botox + Preenchimento, Botox 5 e Preenchimento 4. O ranking por
  *   procedimento usa a nota do procedimento; o da profissional, a do
  *   atendimento.
- * - Só o atendimento: cada procedimento do atendimento recebe a nota dele.
+ * - Só o atendimento: a nota é do atendimento e da profissional; o procedimento
+ *   sem nota própria fica FORA da média do ranking por procedimento — não herda
+ *   a nota do atendimento (decisão do Claude pelo princípio 4, 18/11, na
+ *   auditoria das regras; migration `20261123900003`; atendimento.md §9.1).
  * - Só cada procedimento: a profissional fica com a média das notas.
  * - A avaliação de antes (`procedure_rating` + `client_rating`) continua
  *   valendo: a do atendimento e a do procedimento do agendamento.
@@ -153,7 +156,7 @@ test.describe.serial('a avaliação do atendimento e de cada procedimento', () =
     })
   })
 
-  test('só o atendimento: a cliente dá uma nota, e cada procedimento do atendimento fica com ela', async ({ browser }) => {
+  test('só o atendimento: a cliente dá uma nota, que é do atendimento e da profissional — o procedimento não a herda', async ({ browser }) => {
     expect((await db().from('tenants').update({ avaliacao_o_que: 'ATENDIMENTO' }).eq('id', rede!.tenantId)).error).toBeNull()
     const ap = await sessaoDePlano()
     await como(browser, cliente!.estado, async p => {
@@ -162,8 +165,9 @@ test.describe.serial('a avaliação do atendimento e de cada procedimento', () =
       await expect(p.getByRole('group', { name: `Procedimento: ${PREFIXO} Botox ${marca}` })).toHaveCount(0)
     })
     await avaliar(cliente!.estado, browser, ap, { Atendimento: 1 })
-    expect(await notas(), 'cada procedimento recebe a nota do atendimento').toEqual({
-      botox: [3, 2], preench: [2.5, 2], profissional: [2, 2],
+    // Princípio 4: o procedimento sem nota própria fica fora da média (era herdar o 1).
+    expect(await notas(), 'a profissional ganha a nota; os procedimentos ficam como estavam').toEqual({
+      botox: [5, 1], preench: [4, 1], profissional: [2, 2],
     })
   })
 
@@ -176,9 +180,11 @@ test.describe.serial('a avaliação do atendimento e de cada procedimento', () =
     })
     await avaliar(cliente!.estado, browser, ap, { [`Procedimento: ${PREFIXO} Botox ${marca}`]: 4, [`Procedimento: ${PREFIXO} Preenchimento ${marca}`]: 2 })
     expect((await db().from('appointments').select('client_rating').eq('id', ap).single()).data?.client_rating, 'sem nota do atendimento').toBeNull()
-    // Botox 5, 1, 4 → 3,33; Preenchimento 4, 1, 2 → 2,33; a profissional 3, 1 e (4+2)/2 = 3 → 2,33.
+    // Botox 5 e 4 → 4,50; Preenchimento 4 e 2 → 3,00 (o "só o atendimento" acima não
+    // deu nota a eles); a profissional 3, 1 e (4+2)/2 = 3 → 2,33.
     const r = await notas()
-    expect([r.botox![0]!.toFixed(2), r.botox![1], r.preench![0]!.toFixed(2), r.profissional![0]!.toFixed(2), r.profissional![1]]).toEqual(['3.33', 3, '2.33', '2.33', 3])
+    expect([r.botox![0]!.toFixed(2), r.botox![1], r.preench![0]!.toFixed(2), r.preench![1], r.profissional![0]!.toFixed(2), r.profissional![1]])
+      .toEqual(['4.50', 2, '3.00', 2, '2.33', 3])
     expect((await db().from('tenants').update({ avaliacao_o_que: 'OS_DOIS' }).eq('id', rede!.tenantId)).error).toBeNull()
   })
 
@@ -190,8 +196,9 @@ test.describe.serial('a avaliação do atendimento e de cada procedimento', () =
     })
     expect(error).toBeNull()
     const r = await notas()
-    // Preenchimento: 4, 1, 2 e o 5 de antes → 3; a profissional: 3, 1, 3 e o 5 → 3.
-    expect([r.preench, r.profissional]).toEqual([[3, 4], [3, 4]])
+    // Preenchimento: 4, 2 e o 5 de antes → 3,67; a profissional: 3, 1, 3 e o 5 → 3.
+    expect([r.preench![0]!.toFixed(2), r.preench![1]]).toEqual(['3.67', 3])
+    expect(r.profissional).toEqual([3, 4])
   })
 
   test('a action recusa nota de procedimento que não foi feito no atendimento, e avaliar de novo', async ({ browser }) => {

@@ -3,6 +3,7 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
+import { venderPacotePelaAcao } from './apoio/contrato-do-pacote'
 
 /**
  * F73 — o tratamento é da CLÍNICA (D3 da 14ª simulação; H5, CLAUDE.md §5: "A
@@ -83,7 +84,7 @@ test.beforeAll(async ({ browser }) => {
   expect((await b.from('service_package_items').insert({ tenant_id: rede.tenantId, package_id: pacote, procedure_id: rede.procedureId, quantity: 3 })).error).toBeNull()
   // A venda na SAVASSI (a unidade A).
   await como(browser, gestor, async p => {
-    const r = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', '/admin/pdv', [
+    const r = await venderPacotePelaAcao(p, '/admin/pdv', [
       cliente, pacote, rede.branchId, { forma: 'AVISTA', metodo: 'PIX' }, null, null, { vendedorId: null, semVendedor: true, semResponsavel: true },
     ])
     expect(r.texto).toContain('clientPackageId')

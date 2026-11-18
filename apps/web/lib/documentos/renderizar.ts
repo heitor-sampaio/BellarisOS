@@ -8,7 +8,6 @@ import { converterDocumentoDoEditor } from './editor/converter'
 import { marcacaoParaEditor } from './editor/da-marcacao'
 import { variavelObrigatoria } from './variaveis'
 import type { TipoDeDocumento } from './situacao'
-import { ehMenorDeIdade } from '@/lib/clients/menor'
 import { valoresDoDocumento, validadeDoPacote, type DadosDoDocumento } from './valores'
 import { fusoValido } from '@/lib/unidades/fuso'
 import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
@@ -43,6 +42,11 @@ export interface DocumentoEmitido {
   treatment_plan_id:   string | null
   /** O pacote vendido (PC2, leva 2): os documentos da venda do pacote. */
   client_package_id:   string | null
+  /**
+   * O pacote do CATÁLOGO do contrato colhido antes da venda (PC2, auditoria de
+   * 2026-11-18): o pacote vendido ainda não existe; a venda o adota.
+   */
+  service_package_id?: string | null
   procedure_id:        string | null
   kind:                TipoDeDocumento
   source:              'EDITOR' | 'ARQUIVO'
@@ -66,7 +70,7 @@ export interface DocumentoEmitido {
 }
 
 export const COLUNAS_DO_DOCUMENTO =
-  'id, tenant_id, branch_id, client_id, template_id, template_version_id, appointment_id, treatment_plan_id, client_package_id, procedure_id, ' +
+  'id, tenant_id, branch_id, client_id, template_id, template_version_id, appointment_id, treatment_plan_id, client_package_id, service_package_id, procedure_id, ' +
   'kind, source, title, moment, enforcement, status, content, content_sha256, missing_fields, ' +
   'verification_code, signed_at, closed_reason, payment_snapshot, created_at'
 
@@ -114,6 +118,7 @@ async function dadosDoPlano(doc: DocumentoEmitido) {
  * e, no termo, os procedimentos do pacote que usam este termo.
  */
 async function dadosDoPacote(doc: DocumentoEmitido, fuso: string) {
+  if (!doc.client_package_id && doc.service_package_id) return dadosDoPacoteAVender(doc, fuso)
   const admin = createAdminClient()
   const [vendido, sessoes] = await Promise.all([
     ler(admin.from('client_packages')
@@ -152,6 +157,39 @@ async function dadosDoPacote(doc: DocumentoEmitido, fuso: string) {
   }
 }
 
+/**
+ * O contrato colhido ANTES da venda (PC2, auditoria de 2026-11-18: "primeiro
+ * colhe assinatura, depois paga"): o pacote vendido ainda não existe — os
+ * dados saem do catálogo (o nome, o preço da tabela, os itens e a validade,
+ * contada a partir de hoje). Ninguém atende ainda: a profissional sai vazia.
+ */
+async function dadosDoPacoteAVender(doc: DocumentoEmitido, fuso: string) {
+  const admin = createAdminClient()
+  const [pacote, itens] = await Promise.all([
+    ler(admin.from('service_packages').select('name, price, validity_days')
+      .eq('id', doc.service_package_id!).eq('tenant_id', doc.tenant_id).maybeSingle(), 'buscar o pacote do contrato'),
+    ler(admin.from('service_package_items').select('quantity, sort_order, procedures(name)')
+      .eq('tenant_id', doc.tenant_id).eq('package_id', doc.service_package_id!).order('sort_order'), 'buscar os itens do pacote do contrato'),
+  ])
+  type Item = { quantity: number; procedures: { name: string } | null }
+  const linhas = ((itens ?? []) as unknown as Item[]).map(i => ({ nome: i.procedures?.name ?? 'Procedimento', sessoes: Number(i.quantity) || 0 }))
+  const dias = (pacote?.validity_days as number | null | undefined) ?? null
+  const expira = dias ? new Date(Date.now() + dias * 86_400_000).toISOString() : null
+  const subtotal = Number(pacote?.price ?? 0) || 0
+  return {
+    subtotal,
+    responsavelId: null as string | null,
+    pacote: {
+      nome: (pacote?.name as string | undefined) ?? 'Pacote',
+      itens: linhas,
+      sessoes: linhas.reduce((t, i) => t + i.sessoes, 0),
+      validade: validadeDoPacote(dias, expira, fuso),
+      total: subtotal,
+    },
+    procedimentosDoTermo: null as string[] | null,
+  }
+}
+
 /** Tudo que as variáveis de um documento podem pedir. `desconto` em reais. */
 async function dadosDoDocumento(doc: DocumentoEmitido, pagamento: PagamentoDoPlano | null, definido: boolean, desconto: number): Promise<DadosDoDocumento> {
   const admin = createAdminClient()
@@ -184,7 +222,7 @@ async function dadosDoDocumento(doc: DocumentoEmitido, pagamento: PagamentoDoPla
   // F62: no relógio da unidade do documento; sem unidade, o comum da rede.
   const fuso = unidade ? fusoValido((unidade as { fuso?: string | null }).fuso) : await fusoDaRede(doc.tenant_id)
   // PC2: no documento da venda do pacote, quem atende é a responsável da venda (se houver).
-  const doPacote = doc.client_package_id && !doc.appointment_id ? await dadosDoPacote(doc, fuso) : null
+  const doPacote = (doc.client_package_id || doc.service_package_id) && !doc.appointment_id ? await dadosDoPacote(doc, fuso) : null
   if (!profissionalId && doPacote) profissionalId = doPacote.responsavelId
   if (profissionalId) {
     const u = await ler(admin.from('users').select('name, registro_conselho').eq('id', profissionalId).eq('tenant_id', doc.tenant_id).maybeSingle(), 'buscar o profissional')
@@ -278,15 +316,14 @@ export async function garantirRenderizado(
     const dados = await dadosDoDocumento(doc, pagamento, definido, desconto)
     const valores = valoresDoDocumento(dados)
     // "fui informada(o)" na forma do sexo da ficha (A50); sem o dado, como está.
-    // Na menor de idade, o nome e o CPF do responsável são obrigatórios: é ele
-    // quem assina (decisão 2 do Heitor, 2026-11-05).
-    const menor = ehMenorDeIdade(dados.cliente.birth_date)
+    // A menor sem responsável NÃO trava o documento (decisão 2 do Heitor,
+    // 2026-11-05: "avisar, não barrar"): o responsável sai vazio e a tela avisa.
     // PC2: na venda do pacote sem responsável, ninguém atende ainda — a
     // profissional sai vazia (e a tela diz), em vez de travar o documento
     // (princípios 2 e 4: não chutar um nome, avisar).
-    const semQuemAtende = !!doc.client_package_id && !dados.profissional
+    const semQuemAtende = !!(doc.client_package_id || doc.service_package_id) && !dados.profissional
     const r = interpolar(documentoDaVersao(versao, tenantId), v => valores[v] ?? null,
-      v => !variavelObrigatoria(v, { menor }) || (semQuemAtende && v.startsWith('profissional.')),
+      v => !variavelObrigatoria(v) || (semQuemAtende && v.startsWith('profissional.')),
       t => concordarComOGenero(t, dados.cliente.gender as SexoDaFicha))
     conteudo = formaCanonica(r.documento)
     texto = textoDoDocumento(r.documento)

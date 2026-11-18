@@ -11,7 +11,9 @@ import type { TenantContext } from '@estetica-os/types'
  * pontos nem comissão de venda; fora do catálogo e das Vendas. A sessão
  * restante se agenda e se consome como a de um pacote vendido aqui — a
  * comissão de EXECUÇÃO e a receita dos atendimentos saem do rateio do valor
- * de referência; sem ele, R$ 0 (princípios 4 e 5).
+ * de referência; sem ele, R$ 0 (princípios 4 e 5) — menos a comissão de "R$
+ * fixo por sessão", que não depende do valor e é paga (item 11 das correções
+ * da auditoria, decisão do Claude pelo princípio 2, 2026-11-18).
  */
 
 /** A parte de cada sessão no valor de referência, em centavos (a última leva a sobra — o banco faz o mesmo). */
@@ -30,7 +32,7 @@ export function contaDoPacoteDeFora(entrada: { total: number; usadas: number; va
   return {
     restantes: `Ficam ${total - usadas} de ${total} sessões para agendar${usadas ? ` (${usadas} ${usadas === 1 ? 'usada' : 'usadas'} antes do sistema)` : ''}.`,
     valor: parte === null
-      ? 'Sem valor de referência, as sessões trazidas não geram comissão de execução (R$ 0) nem entram na receita dos atendimentos.'
+      ? 'Sem valor de referência, as sessões trazidas não entram na receita dos atendimentos, e a comissão de execução em percentual é R$ 0. A de R$ fixo por sessão é paga.'
       : `${formatBRL(parte)} por sessão (o valor de referência ÷ ${total}): é a base da comissão de execução e da receita dos atendimentos, no dia de cada sessão.`,
     caixa: 'O pacote de antes não entra no caixa, no faturamento nem nas Vendas, e não gera pontos nem comissão de venda.',
   }

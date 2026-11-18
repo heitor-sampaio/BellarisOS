@@ -1,17 +1,28 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useTransition } from 'react'
 import { iniciaisDoNome } from '@estetica-os/utils'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Search, UserPlus } from 'lucide-react'
+import { Search, UserPlus, Check } from 'lucide-react'
+import { toast } from 'sonner'
+import { marcarTagEmClientes } from '@/actions/clients'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { PickerCompacto } from '@/components/shared/picker-compacto'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
 import { useFala } from '@/components/shared/uma-unidade'
+import { Dica } from '@/components/shared/dica'
 import { opcoesDeTag, temTag, alternarTag } from '@/lib/tags/escolha'
 import { clienteCasaComBusca } from '@/lib/busca/cliente'
+
+/**
+ * A12 da 24ª (princípio 3): todas as fichas importadas sem "Cliente desde"
+ * apareciam "Novo", e nada dizia que o selo é calculado — não é tag (a tag é
+ * só da rede, e o sistema nunca põe uma). A regra é a dos novos clientes
+ * (`coalesce(cliente_desde, created_at)`, `indicadores.md`).
+ */
+const TITULO_DO_SELO_NOVO = 'Cliente há menos de 30 dias, pela data "Cliente desde" da ficha (sem ela, a do cadastro). Calculado pelo sistema: não é tag.'
 
 interface ClientItem {
   id:         string
@@ -44,6 +55,12 @@ interface Props {
    * uma, decidido pelo banco (`aniversariantesDoMes`) — e o nome do mês.
    */
   aniversariantes?:  { nomeDoMes: string; mes: number; dias: Record<string, number> } | null
+  /**
+   * A21 da 16ª simulação: escolher várias clientes e "Marcar tag" — de quem tem
+   * Clientes em Gerenciar. `slug` é a unidade do portal (null na rede); sem
+   * a prop, a seleção não aparece.
+   */
+  marcarTag?:        { slug: string | null } | null
 }
 
 
@@ -72,6 +89,7 @@ export function ClientsSidebar({
   newClientHref,
   importarHref = null,
   aniversariantes = null,
+  marcarTag = null,
 }: Props) {
   const pathname = usePathname()
   const router   = useRouter()
@@ -80,6 +98,10 @@ export function ClientsSidebar({
   const [search,           setSearch]           = useState('')
   const [filter,           setFilter]           = useState<Filter>('ativos')
   const [tagsEscolhidas,   setTagsEscolhidas]   = useState<string[]>([])
+  // A21 da 16ª: a seleção para o "Marcar tag" (é a pessoa que marca, CLAUDE.md §1).
+  const [selecionando,     setSelecionando]     = useState(false)
+  const [escolhidas,       setEscolhidas]       = useState<string[]>([])
+  const [marcando,         startMarcar]         = useTransition()
 
   /**
    * As tags da rede (Configurações → Tags), mais as que algum cliente carregado
@@ -128,6 +150,23 @@ export function ClientsSidebar({
 
   const addHref = newClientHref === undefined ? `${basePath}/new` : newClientHref
 
+  function sairDaSelecao() { setSelecionando(false); setEscolhidas([]) }
+  function alternarEscolhida(id: string) {
+    setEscolhidas(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+  function marcar(tag: string) {
+    if (!marcarTag) return
+    startMarcar(async () => {
+      const r = await marcarTagEmClientes(escolhidas, tag, marcarTag.slug)
+      if ('error' in r) { toast.error(r.error); return }
+      const feitas = r.marcadas === 1 ? '1 cliente marcada' : `${r.marcadas} clientes marcadas`
+      toast.success(`“${r.tag}”: ${feitas}${r.jaTinham ? ` (${r.jaTinham} já tinham)` : ''}.`)
+      sairDaSelecao()
+      router.refresh()
+    })
+  }
+  const todasDaLista = filtered.length > 0 && filtered.every(c => escolhidas.includes(c.id))
+
   /** Mesmo desenho dos campos da coluna; rosé quando o filtro está valendo. */
   /**
    * Gatilho de filtro que abre uma lista. Da barra, é um liga/desliga — ou o
@@ -160,6 +199,17 @@ export function ClientsSidebar({
             <span data-contador-de-clientes style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', fontWeight: 600 }}>
               {ativos(totalActive)}
             </span>
+            {/* A12 da 24ª: o selo fica dentro da linha (um botão), e a dica não vai dentro
+                de botão — mora aqui, ao lado do contador, e o "Novo" diz a regra no title. */}
+            {' '}
+            <Dica rotulo="Sobre os selos da lista">
+              <span style={{ display: 'block' }}>Os selos da lista são calculados pelo sistema, não são tags.</span>
+              <span style={{ display: 'block', marginTop: 6 }}>
+                Novo: cliente há menos de 30 dias, pela data &quot;Cliente desde&quot; da ficha — sem ela, a do cadastro (a ficha
+                importada sem essa data aparece como nova). Arquivada: a ficha arquivada. VIP: a ficha com a tag VIP da rede.
+                Regular: as outras.
+              </span>
+            </Dica>
             {importarHref && (
               <>
                 <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}> · </span>
@@ -222,7 +272,38 @@ export function ClientsSidebar({
             classeBotao={classeGatilho(tagsEscolhidas.length > 0)}
             onEscolher={t => setTagsEscolhidas(prev => alternarTag(prev, t))}
           />
+
+          {marcarTag && !selecionando && (
+            <button type="button" data-selecionar-clientes className="filtro-toggle" onClick={() => setSelecionando(true)}>
+              Selecionar
+            </button>
+          )}
         </div>
+
+        {/* A21 da 16ª: a barra da seleção — quantas, todas as da lista, e o "Marcar tag". */}
+        {marcarTag && selecionando && (
+          <div data-barra-da-selecao style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
+            <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text)' }}>
+              {escolhidas.length === 1 ? '1 escolhida' : `${escolhidas.length} escolhidas`}
+            </span>
+            <button type="button" className="btn-ghost" style={{ fontSize: 'var(--text-xs-sz)' }}
+              onClick={() => setEscolhidas(todasDaLista ? [] : [...new Set([...escolhidas, ...filtered.map(c => c.id)])])}>
+              {todasDaLista ? 'Nenhuma' : 'Todas da lista'}
+            </button>
+            <PickerCompacto
+              rotuloBotao={marcando ? 'Marcando…' : 'Marcar tag'}
+              opcoes={(vocabulario ?? []).map(t => ({ valor: t, rotulo: t }))}
+              selecionadas={[]}
+              textoListaVazia={fala('A rede ainda não tem tags (Configurações → Tags).')}
+              larguraPainel={220}
+              classeBotao={escolhidas.length && !marcando ? 'filtro-toggle is-ativo' : 'filtro-toggle'}
+              onEscolher={t => marcar(t)}
+            />
+            <button type="button" className="btn-ghost" style={{ fontSize: 'var(--text-xs-sz)' }} onClick={sairDaSelecao}>
+              Cancelar
+            </button>
+          </div>
+        )}
       </div>
 
       {/* A lista rola por dentro; cabeçalho, busca e filtros ficam parados.
@@ -237,6 +318,7 @@ export function ClientsSidebar({
         ) : (
           filtered.map(c => {
             const isSelected = c.id === selectedId
+            const escolhida  = escolhidas.includes(c.id)
             const initials   = iniciaisDoNome(c.name)
             const isVip      = c.tags.includes('VIP')
             // A arquivada tem a marca na linha (J-23).
@@ -248,7 +330,8 @@ export function ClientsSidebar({
               <button
                 key={c.id}
                 type="button"
-                onClick={() => router.push(`${basePath}/${c.id}`)}
+                onClick={() => (selecionando ? alternarEscolhida(c.id) : router.push(`${basePath}/${c.id}`))}
+                aria-pressed={selecionando ? escolhida : undefined}
                 style={{
                   width: '100%', textAlign: 'left',
                   padding: '11px 16px',
@@ -260,6 +343,16 @@ export function ClientsSidebar({
                 onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = 'var(--bg-app)' }}
                 onMouseLeave={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
               >
+                {selecionando && (
+                  <span aria-hidden="true" style={{
+                    width: 18, height: 18, borderRadius: 5, flexShrink: 0,
+                    border: `1.5px solid ${escolhida ? 'var(--brand)' : 'var(--border)'}`,
+                    background: escolhida ? 'var(--brand)' : 'var(--surface)', color: 'var(--on-brand)',
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {escolhida && <Check size={12} />}
+                  </span>
+                )}
                 {/* Avatar */}
                 <div style={{
                   width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
@@ -280,7 +373,7 @@ export function ClientsSidebar({
                       fontSize: 'var(--text-overline)', fontWeight: 700, flexShrink: 0,
                       padding: '2px 6px', borderRadius: 10,
                       background: badgeBg, color: badgeColor,
-                    }}>
+                    }} title={badgeLabel === 'Novo' ? TITULO_DO_SELO_NOVO : undefined}>
                       {badgeLabel}
                     </span>
                   </div>

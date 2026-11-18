@@ -18,9 +18,9 @@ test.describe.configure({ timeout: 150_000 })
 
 test.beforeAll(async () => {
   rede = await criarOutraRede(`ih${marca}`)
-  admin = await criarMembro(`ih${marca}`, { tenant: rede.tenantId, rotulo: 'Recepção', permissoes: [
-    { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'crm', nivel: 'MANAGE' }, { modulo: 'settings', nivel: 'MANAGE' },
-  ] })
+  // As Importações são da rede toda: só a Admin da rede (o Heitor, 18/11:
+  // "Configuração da rede toda só pela conta admin").
+  admin = await criarMembro(`ih${marca}`, { tenant: rede.tenantId, rotulo: 'Recepção', donoDaRede: true, permissoes: [] })
 })
 test.afterAll(async () => { await admin?.limpar(); await rede?.limpar() })
 

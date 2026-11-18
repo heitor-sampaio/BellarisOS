@@ -24,7 +24,7 @@ export async function getClientNotifications(): Promise<{ notifications: ClientN
     .from('client_notifications')
     .select('id, title, body, type, is_read, is_received, created_at, data')
     .eq('client_id', ctx.clientId!)
-    .eq('is_read', false)
+    // 22ª A40: os lidos ficam na lista (esmaecidos) — a "Foto nova" aberta não se achava de novo.
     .order('created_at', { ascending: false })
     .limit(40), 'carregar as notificações')
 
@@ -44,7 +44,7 @@ export async function markAllNotificationsReceived(): Promise<void> {
     .eq('is_received', false), 'marcar a notificação como lida')
 }
 
-// Notification modal opened: removes from list + updates campaign read metrics
+// Notification modal opened: marca como lida (fica na lista, esmaecida — 22ª A40) + updates campaign read metrics
 export async function markNotificationRead(id: string): Promise<void> {
   const ctx = await getTenantContext()
   if (!ctx.isClient) return

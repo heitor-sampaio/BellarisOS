@@ -441,6 +441,26 @@ export async function computeAvailableSlots(
 }
 
 /**
+ * Quem atende na unidade (ativa, "Atende" marcado nela) e realiza o
+ * procedimento (por-01) — a equipe das candidatas do dia, e a lista do "Com
+ * quem?" do Remarcar do app (22ª A42). Por nome.
+ */
+export async function quemRealizaNaUnidade(
+  admin: Admin, tenantId: string, branchId: string, procedureId?: string | null,
+): Promise<{ id: string; name: string }[]> {
+  const [todas, realizam] = await Promise.all([
+    ler(admin.from('users').select('id, name')
+      .eq('tenant_id', tenantId)
+      .or(filtroDeQuemAtendeNaUnidade(branchId))
+      .eq('provides_services', true)
+      .eq('is_active', true)
+      .order('name'), 'carregar quem atende na unidade'),
+    procedureId ? quemRealizaOProcedimento(admin, procedureId) : Promise.resolve([] as string[]),
+  ])
+  return ((todas ?? []) as { id: string; name: string }[]).filter(p => realiza(realizam, p.id))
+}
+
+/**
  * As profissionais que atendem na unidade (a da rede atende em todas:
  * `filtroDeQuemAtendeNaUnidade`), cada uma com os livres do dia e quantos
  * atendimentos já tem nele — a base do "Sem preferência" do app (D-16). Os
@@ -453,16 +473,7 @@ export async function candidatasDoDia(
   /** Ao REMARCAR, o próprio agendamento não ocupa o horário (A59). */
   ignorarAgendamentoId?: string,
 ): Promise<CandidataDoHorario[]> {
-  const [todas, realizam] = await Promise.all([
-    ler(admin.from('users').select('id, name')
-      .eq('tenant_id', tenantId)
-      .or(filtroDeQuemAtendeNaUnidade(branchId))
-      .eq('provides_services', true)
-      .eq('is_active', true)
-      .order('name'), 'carregar quem atende na unidade'),
-    procedureId ? quemRealizaOProcedimento(admin, procedureId) : Promise.resolve([] as string[]),
-  ])
-  const equipe = ((todas ?? []) as { id: string; name: string }[]).filter(p => realiza(realizam, p.id))
+  const equipe = await quemRealizaNaUnidade(admin, tenantId, branchId, procedureId)
   if (!equipe.length) return []
 
   const fuso = await lerFusoDaUnidade(admin, branchId)

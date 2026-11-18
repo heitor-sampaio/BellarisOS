@@ -12,31 +12,39 @@ type Admin = ReturnType<typeof createAdminClient>
  * comanda; as vendas se leem pelo id que ela guarda.
  */
 export async function linhaDaComandaDoPdv(admin: Admin, tenantId: string, comandaId: string): Promise<LinhaDaComanda> {
-  const c = await ler(admin.from('comandas').select('product_sale_id, procedure_sale_id, treatment_plan_id')
+  const c = await ler(admin.from('comandas').select('product_sale_id, procedure_sale_id, treatment_plan_id, client_package_id')
     .eq('id', comandaId).eq('tenant_id', tenantId).maybeSingle(), 'ler a venda da comanda') as
-    { product_sale_id: string | null; procedure_sale_id: string | null; treatment_plan_id: string | null } | null
+    { product_sale_id: string | null; procedure_sale_id: string | null; treatment_plan_id: string | null; client_package_id: string | null } | null
   if (!c) return linhaDaComanda(null)
   let venda: VendaDaLinha | null = null
   if (c.product_sale_id) {
     const [v, itens] = await Promise.all([
-      ler(admin.from('product_sales').select('quantity, preco_unitario, price')
+      ler(admin.from('product_sales').select('quantity, preco_unitario, price, desconto')
         .eq('id', c.product_sale_id).eq('tenant_id', tenantId).maybeSingle(), 'ler a venda de produto da comanda') as
-        Promise<{ quantity: number | null; preco_unitario: number | string | null; price: number | string | null } | null>,
+        Promise<{ quantity: number | null; preco_unitario: number | string | null; price: number | string | null; desconto: number | string | null } | null>,
       ler(admin.from('product_sale_items').select('id').eq('sale_id', c.product_sale_id).eq('tenant_id', tenantId),
         'contar os produtos da venda') as Promise<{ id: string }[] | null>,
     ])
     if (v) venda = {
       tipo: 'PRODUTO', quantidade: Number(v.quantity ?? 1), total: Number(v.price ?? 0), itens: (itens ?? []).length,
       precoUnitario: v.preco_unitario == null ? null : Number(v.preco_unitario),
+      desconto: v.desconto == null ? undefined : Number(v.desconto),
     }
   } else if (c.procedure_sale_id) {
-    const v = await ler(admin.from('procedure_sales').select('quantity, preco_unitario_tabela, price')
+    const v = await ler(admin.from('procedure_sales').select('quantity, preco_unitario_tabela, price, desconto')
       .eq('id', c.procedure_sale_id).eq('tenant_id', tenantId).maybeSingle(), 'ler o pré-pago da comanda') as
-      { quantity: number | null; preco_unitario_tabela: number | string | null; price: number | string | null } | null
+      { quantity: number | null; preco_unitario_tabela: number | string | null; price: number | string | null; desconto: number | string | null } | null
     if (v) venda = {
       tipo: 'PRE_PAGO', quantidade: Number(v.quantity ?? 1), total: Number(v.price ?? 0),
       precoUnitario: v.preco_unitario_tabela == null ? null : Number(v.preco_unitario_tabela),
+      desconto: v.desconto == null ? undefined : Number(v.desconto),
     }
+  } else if (c.client_package_id) {
+    // A15 da 24ª: o pacote vendido com desconto (o item cheio e a linha do desconto).
+    const v = await ler(admin.from('client_packages').select('desconto')
+      .eq('id', c.client_package_id).maybeSingle(), 'ler o pacote da comanda') as
+      { desconto: number | string | null } | null
+    if (v) venda = { tipo: 'PACOTE', desconto: Number(v.desconto ?? 0) }
   } else if (c.treatment_plan_id) {
     const sessoes = await ler(admin.from('treatment_plan_sessions')
       .select('sort_order, treatment_plan_session_procedures(sort_order, procedures(name))')

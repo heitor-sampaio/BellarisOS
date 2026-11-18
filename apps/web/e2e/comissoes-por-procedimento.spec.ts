@@ -52,14 +52,11 @@ test.beforeAll(async () => {
   // A ficha de saúde respondida (as obrigatórias): desde a revisão do Heitor de
   // 2026-10-29, a obrigatória sem resposta barra o "Finalizar atendimento".
   await responderAnamnese(cliente, rede.tenantId)
-  gestor = await criarMembro(`cppg${marca}`, {
-    tenant: rede.tenantId, rotulo: 'Gestor',
-    permissoes: [
-      { modulo: 'financial', nivel: 'MANAGE' }, { modulo: 'procedures', nivel: 'MANAGE' }, { modulo: 'team', nivel: 'VIEW' },
-      { modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'medical_records', nivel: 'MANAGE' },
-      { modulo: 'stock', nivel: 'VIEW' }, { modulo: 'cashier', nivel: 'MANAGE' },
-    ],
-  })
+  // A comissão do procedimento é configuração da rede toda: só a Admin da rede
+  // (o Heitor, 18/11: "Configuração da rede toda só pela conta admin"). O
+  // gestor é a Admin; quem tem o Financeiro em Gerenciar sem ser a Admin é o
+  // "não pode" do último caso.
+  gestor = await criarMembro(`cppg${marca}`, { tenant: rede.tenantId, rotulo: 'Gestor', donoDaRede: true, permissoes: [] })
   // O gestor também atende (sem regra nenhuma): é a segunda linha do "por profissional".
   await db().from('users').update({ provides_services: true }).eq('id', gestor.userId)
   // Gere o catálogo e VÊ o financeiro: não mexe em quanto cada um ganha.
@@ -241,4 +238,31 @@ test('quem só vê o financeiro não vê nem muda a comissão do procedimento', 
     expect(r.texto).not.toContain('"ok":true')
   })
   expect(await regrasDo(procB)).toEqual([{ professional_id: gestor.userId, type: 'PERCENTAGE', value: 15 }])
+})
+
+test('quem tem o Financeiro em Gerenciar sem ser a Admin da rede não vê nem muda a comissão do procedimento', async ({ browser }) => {
+  // O chip abria o modal e o Salvar ficava parado: a action recusa desde 18/11
+  // (o Heitor: "Configuração da rede toda só pela conta admin"), e a tela não
+  // pode oferecer o que a pessoa não usa.
+  const financeiro = await criarMembro(`cppf${marca}`, {
+    tenant: rede.tenantId, rotulo: 'Financeiro',
+    permissoes: [{ modulo: 'procedures', nivel: 'MANAGE' }, { modulo: 'financial', nivel: 'MANAGE' }],
+  })
+  try {
+    await como(browser, financeiro, async p => {
+      await p.goto('/admin/procedures')
+      await expect(p.getByRole('heading', { name: 'Procedimentos' })).toBeVisible()
+      await expect(p.locator('[data-comissao-procedimento]')).toHaveCount(0)
+      await p.getByRole('button', { name: 'Novo procedimento' }).first().click()
+      await expect(p.locator('dialog[open]').locator('[aria-label="Comissão do procedimento"]')).toHaveCount(0)
+      await p.keyboard.press('Escape')
+      const r = await chamarAcao(p, 'actions/comissoes.ts', 'salvarComissaoDoProcedimento', '/admin/procedures', [procB, {
+        modo: 'GERAL', geral: { tipo: 'PERCENTAGE', valor: 90 },
+      }])
+      expect(r.texto).toContain('quem muda é a Admin')
+    })
+    expect(await regrasDo(procB)).toEqual([{ professional_id: gestor.userId, type: 'PERCENTAGE', value: 15 }])
+  } finally {
+    await financeiro.limpar()
+  }
 })

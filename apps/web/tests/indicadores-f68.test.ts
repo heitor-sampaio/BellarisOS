@@ -106,12 +106,14 @@ describe('D10: os números "Meus" de quem atende em mais de uma unidade', () => 
 
 describe('A10: cada quadro de clientes diz o seu recorte', () => {
   it('o vazio do "Reativar" diz de quais clientes fala', () => {
-    const texto = (vazioDoReativar as (a: number, b: number, recorte?: string) => string)(3, 5, 'atendidas na unidade')
-    expect(texto).toContain('5 clientes atendidas na unidade, cadastradas nos últimos 90 dias')
+    const texto = (vazioDoReativar as (a: number, b: number, recorte?: string) => string)(3, 5, 'da rede')
+    expect(texto).toContain('5 clientes da rede, cadastradas nos últimos 90 dias')
   })
 
-  it('o "Clientes no mês" da unidade diz que são as atendidas na unidade', () => {
-    expect(ler('app/[slug]/dashboard/page.tsx')).toMatch(/atendidas na unidade/)
+  // Regra mudada na 24ª simulação: a cliente é da REDE — a unidade não tem
+  // "atendidas na unidade" nem novas clientes; o quadro diz que fala dos agendamentos dela.
+  it('o "Clientes no mês" da unidade diz que fala dos agendamentos da unidade', () => {
+    expect(ler('app/[slug]/dashboard/page.tsx')).toMatch(/Os agendamentos da unidade/)
   })
 })
 

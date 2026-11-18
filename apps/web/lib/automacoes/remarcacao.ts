@@ -4,6 +4,8 @@ import type { ConfigEsperaAte, GrafoDeAutomacao } from '@estetica-os/types'
 import { caminhosDoCampo } from './condicoes'
 import { hidratarParaCaminhos, type ContextoDaExecucao, type EventoDoGatilho } from './contexto'
 import { quandoChegarEm } from './tempo'
+import { limitesDe, vesperaSeCairNoSilencio } from './limites'
+import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { chaveDoPasso } from './passos'
 import { gravar, ler } from '@/lib/db'
 
@@ -65,10 +67,10 @@ export async function reprogramarEsperasDoAgendamento(
 
   // O agendamento tem de ser desta rede (o horário novo vem do banco, não de quem chamou).
   const ag = await ler(admin.from('appointments')
-    .select('scheduled_at, branches!inner(tenant_id)')
+    .select('scheduled_at, branch_id, branches!inner(tenant_id)')
     .eq('id', appointmentId)
     .eq('branches.tenant_id', tenantId)
-    .maybeSingle(), 'buscar o horário do agendamento remarcado') as { scheduled_at: string | null } | null
+    .maybeSingle(), 'buscar o horário do agendamento remarcado') as { scheduled_at: string | null; branch_id: string | null } | null
   if (!ag?.scheduled_at) return 0
 
   const runs = (await ler(admin.from('automation_runs')
@@ -80,7 +82,7 @@ export async function reprogramarEsperasDoAgendamento(
   if (!runs.length) return 0
 
   const [automacoes, passos] = await Promise.all([
-    ler(admin.from('automations').select('id, grafo')
+    ler(admin.from('automations').select('id, grafo, limites')
       .eq('tenant_id', tenantId)
       .in('id', [...new Set(runs.map(r => r.automation_id))]), 'buscar as automações das execuções'),
     ler(admin.from('automation_run_steps').select('id, run_id, ordem, no_id, tipo, status, resumo')
@@ -88,6 +90,8 @@ export async function reprogramarEsperasDoAgendamento(
       .order('ordem', { ascending: false }), 'buscar o último passo das execuções'),
   ])
   const grafoDe = new Map(((automacoes ?? []) as { id: string; grafo: GrafoDeAutomacao }[]).map(a => [a.id, a.grafo]))
+  const limitesDaAutomacao = new Map(((automacoes ?? []) as { id: string; limites: unknown }[]).map(a => [a.id, limitesDe(a.limites)]))
+  const fuso = ag.branch_id ? await fusoDaUnidade(tenantId, ag.branch_id) : undefined
   const ultimoDe = new Map<string, PassoGravado>()
   for (const p of (passos ?? []) as PassoGravado[]) if (!ultimoDe.has(p.run_id)) ultimoDe.set(p.run_id, p)
 
@@ -106,7 +110,12 @@ export async function reprogramarEsperasDoAgendamento(
       for (const k of RELER) delete contexto[k]
       await hidratarParaCaminhos(contexto, eventoDoContexto(contexto), tenantId, caminhosDoCampo(cfg.campo ?? ''))
       const r = quandoChegarEm(cfg, contexto, agora)
-      rodarApos = (r.data ?? agora).toISOString()
+      // D17 ("a + c opcional"): com a opção ligada, o lembrete que cairia no
+      // silêncio sai na véspera às 20:00 — também no horário novo.
+      const vespera = r.data && Number(cfg.minutos ?? 0) < 0
+        ? vesperaSeCairNoSilencio(limitesDaAutomacao.get(run.automation_id) ?? limitesDe(null), r.data, agora, fuso)
+        : null
+      rodarApos = (vespera ?? r.data ?? agora).toISOString()
       for (const k of RELER) delete contexto[k]
       const doPasso = (contexto.passos as Record<string, Record<string, unknown>> | undefined)?.[chaveDoPasso(no, grafoDe.get(run.automation_id)!)]
       if (doPasso) doPasso.ate = rodarApos

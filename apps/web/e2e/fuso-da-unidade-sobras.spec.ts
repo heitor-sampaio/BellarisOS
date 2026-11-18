@@ -28,6 +28,7 @@ const db = () => banco()
 let rede: OutraRede | null = null
 let recepcao: MembroDeTeste | null = null
 let dona: MembroDeTeste | null = null
+let admin: MembroDeTeste | null = null
 let slug = ''
 let cliente = ''
 let futuro = ''
@@ -76,6 +77,9 @@ test.beforeAll(async () => {
       { modulo: 'automations', nivel: 'MANAGE' },
     ],
   })
+  // Automações e campanhas são configuração da rede toda: só a Admin da rede
+  // (o Heitor, 18/11: "Configuração da rede toda só pela conta admin").
+  admin = await criarMembro(`fzsa${marca}`, { tenant: rede.tenantId, rotulo: 'Admin', donoDaRede: true, permissoes: [] })
 })
 
 test.afterAll(async () => {
@@ -85,6 +89,7 @@ test.afterAll(async () => {
   }
   await recepcao?.limpar()
   await dona?.limpar()
+  await admin?.limpar()
   await rede?.limpar()
 })
 
@@ -128,7 +133,7 @@ test('D13: a agenda da rede rola até a hora de agora numa unidade 24 h', async 
 })
 
 test('A7: o relógio das automações diz o fuso da rede', async ({ browser }) => {
-  await como(browser, dona!, async p => {
+  await como(browser, admin!, async p => {
     await p.goto('/admin/automacoes')
     await p.getByRole('button', { name: 'Usar um modelo' }).click()
     await expect(p.locator('[data-modelo="aniversario"] [data-relogio-da-rede]')).toHaveText('No horário de Rio Branco.')
@@ -138,7 +143,7 @@ test('A7: o relógio das automações diz o fuso da rede', async ({ browser }) =
 
 test('D4: a campanha agendada grava a hora digitada no relógio da rede, e a tela diz qual', async ({ browser }) => {
   const nome = `[e2e] Campanha fuso fzs${marca}`
-  await como(browser, dona!, async p => {
+  await como(browser, admin!, async p => {
     await p.goto('/admin/notificacoes/nova')
     await p.getByRole('button', { name: /Agendada/ }).click()
     await expect(p.getByLabel('Data e hora do disparo')).toBeVisible()

@@ -12,6 +12,8 @@ import { temTag } from '@/lib/tags/escolha'
 import { filtroDosClientesNovos } from '@/lib/copilot/clientes-novos'
 import { diaDeClienteDesde } from '@/lib/clientes/cliente-desde'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
+import { getEmAbertoDasVendas } from '@/lib/metrics/pacote-em-aberto'
+import { mostraOValor, planosDaCliente } from '@/lib/copilot/ferramentas/vendas'
 import {
   STATUS_DO_AGENDAMENTO, dinheiro, fusoDe, fusosPorUnidade, hojeNoFuso, nomesPorId, quandoLegivel, resolverCliente, resolverUnidade, rota,
 } from '@/lib/copilot/ferramentas/comum'
@@ -43,7 +45,7 @@ export const cliente: FerramentaDeLeitura<{ cliente: string }> = {
   nome: 'cliente',
   tipo: 'leitura',
   modulo: 'clients', nivel: 'VIEW',
-  descricao: 'A ficha de UM cliente (por id, nome ou telefone): contato, nascimento, tags, próximos e últimos atendimentos, pacotes e pré-pagos com sessões restantes, crédito interno em R$ e pontos de fidelidade (conforme as permissões da pessoa). Nada clínico (a Ficha de saúde e o prontuário ficam na tela).',
+  descricao: 'A ficha de UM cliente (por id, nome ou telefone): contato, nascimento, tags, próximos e últimos atendimentos, pacotes e pré-pagos com sessões restantes, os planos de tratamento (situação e sessões), o em aberto de cada venda (pacote, pré-pago, plano), crédito interno em R$ e pontos de fidelidade (conforme as permissões da pessoa). Nada clínico (a Ficha de saúde e o prontuário ficam na tela). O detalhe das sessões de um plano: ferramenta plano.',
   parametros: z.object({ cliente: z.string().min(2).max(120).describe('Id, nome ou telefone do cliente.') }),
   async executar(c, { cliente: pedido }) {
     const achado = await resolverCliente(c, pedido)
@@ -86,6 +88,33 @@ export const cliente: FerramentaDeLeitura<{ cliente: string }> = {
             ? saldoDoCliente(ficha.id, c.admin) : null)
         : Promise.resolve(null),
     ])
+    // CP1 (2026-11-17): os planos de tratamento e o em aberto das vendas — o
+    // valor só a quem vê o valor (`mostraOValor`). Só leitura.
+    const verPlanos = can(c.ctx, 'atendimento', 'VIEW') && temRecurso(c.ctx, 'planos_de_tratamento')
+    const verValor = mostraOValor(c.ctx)
+    const [planosDeTratamento, vendasDaCliente] = await Promise.all([
+      verPlanos ? planosDaCliente(c, ficha.id, false) : Promise.resolve(null),
+      verValor ? Promise.all([
+        ler(c.admin.from('client_packages').select('id, service_packages(name), branches!inner(tenant_id)')
+          .eq('client_id', ficha.id).eq('branches.tenant_id', c.ctx.tenantId!), 'ler os pacotes da cliente'),
+        ler(c.admin.from('procedure_sales').select('id, procedures(name)')
+          .eq('client_id', ficha.id).eq('tenant_id', c.ctx.tenantId!), 'ler os pré-pagos da cliente'),
+      ]) : Promise.resolve(null),
+    ])
+    let emAbertoDasVendas: { venda: string; emAberto: string; parcelas: number }[] | undefined
+    if (vendasDaCliente) {
+      const [pacs, pres] = vendasDaCliente as [
+        { id: string; service_packages: { name: string } | null }[] | null, { id: string; procedures: { name: string } | null }[] | null,
+      ]
+      const nomes = new Map<string, string>([
+        ...(pacs ?? []).map(p => [p.id, `Pacote ${p.service_packages?.name ?? ''}`.trim()] as [string, string]),
+        ...(pres ?? []).map(p => [p.id, `Pré-pago ${p.procedures?.name ?? ''}`.trim()] as [string, string]),
+      ])
+      const aberto = await getEmAbertoDasVendas(c.ctx.tenantId!, [...nomes.keys()])
+      emAbertoDasVendas = Object.entries(aberto).filter(([, v]) => v.valor > 0)
+        .map(([id, v]) => ({ venda: nomes.get(id) ?? 'Venda', emAberto: dinheiro(v.valor), parcelas: v.parcelas }))
+    }
+
     type Ag = { id: string; scheduled_at: string; status: string; procedure_id: string; professional_id: string | null; branch_id: string }
     const ags = [...((proximos ?? []) as Ag[]), ...((ultimos ?? []) as Ag[])]
     const [procs, profs, fusos, fusoDoPortal] = await Promise.all([
@@ -117,6 +146,9 @@ export const cliente: FerramentaDeLeitura<{ cliente: string }> = {
         href,
         ...(verAgenda ? { proximosAtendimentos: ((proximos ?? []) as Ag[]).map(fmt), ultimosAtendimentos: ((ultimos ?? []) as Ag[]).map(fmt) } : {}),
         pacotesEPrePagos: creditos.map(k => ({ procedimento: k.procedimento, origem: k.origem, sessoesRestantes: k.restantes, venceEm: k.venceEm?.slice(0, 10) ?? null })),
+        ...(planosDeTratamento ? { planosDeTratamento } : {}),
+        // O em aberto dos planos vem em cada plano; aqui, o dos pacotes e pré-pagos.
+        ...(emAbertoDasVendas ? { emAbertoDasVendas } : {}),
         ...(creditoInterno !== undefined ? { creditoInterno: dinheiro(creditoInterno) } : {}),
         ...(pontos !== null ? { pontosDeFidelidade: pontos } : {}),
       },

@@ -1,10 +1,12 @@
 ﻿'use server'
 
 import { camposDaPerda } from '@/lib/crm/motivos-perda'
-import { etapaDeCrm } from '@/lib/events/lead'
+import { etapaDeCrm, eventoDoDesfecho, emitirEventoDeLead } from '@/lib/events/lead'
 import type { LeadChange } from '@/lib/lead-events'
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission, ownerFilter, assertRecurso, can } from '@/lib/auth'
+import { getTenantContext, assertPermission, ownerFilter, assertRecurso, can, temRecurso } from '@/lib/auth'
+import { recusaDaConfigDaRede } from '@/lib/configuracao-da-rede'
+import { EVENTOS } from '@estetica-os/types'
 import { fichasDoTelefoneDoLead, respostaDaFichaDoTelefone } from '@/lib/crm/ficha-do-telefone'
 import { diaDoRetorno } from '@/lib/crm/retorno'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -13,11 +15,14 @@ import {
   diferencas, listaLegivel,
 } from '@/lib/lead-events'
 import { parseDinheiro } from '@estetica-os/utils'
-import { ler, mensagemDoErro } from '@/lib/db'
+import { ler, lerTodas, mensagemDoErro } from '@/lib/db'
 import { criarOportunidadeCore, etapaDaRede, moverEtapaCore, salvarProcedimentosDeInteresse } from '@/lib/crm/oportunidade'
 import { pessoaDoNovoLeadValida } from '@/lib/crm/pessoa-para-novo-lead'
 import { propagarDadosDaPessoa, digitosDoTelefone, telefoneParaGravar } from '@/lib/contatos/propagar'
 import { leadAoAlcance } from '@/lib/crm/alcance'
+import {
+  automacoesQueOMovimentoDispara, COLUNAS_DO_CARD_PARA_PREVER, type CardParaPrever,
+} from '@/lib/crm/automacoes-do-movimento'
 import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
 import { tagsDoVocabulario } from '@/lib/tags/escolha'
 import { podeTrocarResponsavel, trocarResponsavelCore } from '@/lib/crm/responsavel'
@@ -213,6 +218,8 @@ export async function updateLead(
     const leadId     = str(formData, '_leadId')
     const slug       = str(formData, '_slug') ?? ''
     const crmStageId = str(formData, 'crm_stage_id')
+    // A35 da 22ª: a resposta à pergunta das automações ("Não" move sem disparar).
+    const disparar = str(formData, '_disparar') !== 'nao'
 
     if (!leadId) return { error: 'Oportunidade não identificada.' }
     // C27 (F70): o alcance ANTES de tudo. O filtro do dono no update segurava
@@ -366,6 +373,15 @@ export async function updateLead(
         ...autor,
         changes:     mudancaDaPerda ? [mudancaDaPerda] : null,
       })
+      // A35 da 22ª (o Heitor, 2026-11-18): mudar a etapa pelo modal é mover o
+      // card como no quadro — os mesmos eventos (não emitia nenhum: a
+      // automação de "entrou na etapa" não via o card movido por aqui), e o
+      // "Não" da pergunta move sem disparar.
+      const de = await etapaDeCrm(ctx.tenantId!, etapaAnterior)
+      const destino = await etapaDeCrm(ctx.tenantId!, crmStageId)
+      await emitirEventoDeLead(EVENTOS.LEAD_ETAPA_MUDOU, leadId, ctx, { deEtapaNome: de.nome, semDespachar: !disparar })
+      const evento = eventoDoDesfecho(destino.desfecho)
+      if (evento) await emitirEventoDeLead(evento, leadId, ctx, { deEtapaNome: de.nome, semDespachar: !disparar })
     }
 
     if (antes) {
@@ -406,6 +422,8 @@ export async function updateLeadStage(
   leadId: string, crm_stage_id: string, slug: string,
   /** Levando à etapa perdida, o motivo (a tela exige — 2026-10-21). */
   perda?: { motivoId: string; obs?: string | null } | null,
+  /** A35 da 22ª: a resposta à pergunta das automações — `false` move sem disparar. */
+  disparar = true,
 ): Promise<{ error?: string }> {
   try {
     const ctx = await getTenantContext()
@@ -413,7 +431,7 @@ export async function updateLeadStage(
     assertPermission(ctx, 'crm', 'MANAGE')
 
     // O núcleo (lib/crm/oportunidade.ts) é o mesmo do Copilot.
-    const r = await moverEtapaCore(createAdminClient(), ctx, leadId, crm_stage_id, { perda, exigirMotivo: true })
+    const r = await moverEtapaCore(createAdminClient(), ctx, leadId, crm_stage_id, { perda, exigirMotivo: true, semDespachar: !disparar })
     if ('error' in r) return { error: r.error }
 
     revalidatePath(`/${slug}/oportunidades`)
@@ -421,6 +439,136 @@ export async function updateLeadStage(
     return {}
   } catch (e) {
     console.error('[updateLeadStage]', e)
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
+  }
+}
+
+const UUID_DO_CARD = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * A pergunta antes de mover UM card pela tela (A35 da 22ª; o Heitor,
+ * 2026-11-18: "Também ao arrastar um"): o arraste, o menu do card, outro
+ * funil, o seletor de etapa do inbox e o modal. As automações ligadas que
+ * aquela mudança dispararia — só as que casam (`automacoesQueOMovimentoDispara`).
+ * Vazio: a tela move direto.
+ */
+export async function automacoesAoMoverOCard(
+  leadId: string, paraStageId: string,
+): Promise<{ automacoes: string[] } | { error: string }> {
+  try {
+    const ctx = await getTenantContext()
+    assertRecurso(ctx, 'oportunidades')
+    assertPermission(ctx, 'crm', 'MANAGE')
+    if (!UUID_DO_CARD.test(leadId) || !UUID_DO_CARD.test(paraStageId)) return { error: 'Oportunidade não encontrada.' }
+    const admin = createAdminClient()
+    if (!(await leadAoAlcance(admin, ctx, leadId))) return { error: 'Oportunidade não encontrada.' }
+    if (!(await etapaDaRede(ctx.tenantId!, paraStageId))) return { error: 'Etapa não encontrada.' }
+    const card = await ler(admin.from('leads').select(COLUNAS_DO_CARD_PARA_PREVER)
+      .eq('id', leadId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'ler a oportunidade') as CardParaPrever | null
+    if (!card) return { error: 'Oportunidade não encontrada.' }
+    return { automacoes: await automacoesQueOMovimentoDispara(ctx, [card], paraStageId) }
+  } catch (e) {
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
+  }
+}
+
+// --- Mover as oportunidades de uma etapa (A35 da 22ª) ------------------------
+
+const UUID_DA_ETAPA = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * As travas do "Mover as N para…" da configuração do funil: a tela é a de
+ * Configurações (quem monta o funil — Configurações em Gerenciar, da rede
+ * toda, H7), e mover cards é do CRM em Gerenciar.
+ */
+async function contextoDoMoverDaEtapa() {
+  const ctx = await getTenantContext()
+  assertRecurso(ctx, 'oportunidades')
+  assertPermission(ctx, 'settings', 'MANAGE')
+  assertPermission(ctx, 'crm', 'MANAGE')
+  return ctx
+}
+
+type EtapaLida = { id: string; funnel_id: string | null; outcome: string | null; name: string }
+async function etapaParaMover(tenantId: string, stageId: string): Promise<EtapaLida | null> {
+  if (!UUID_DA_ETAPA.test(stageId)) return null
+  return await ler(createAdminClient().from('crm_stages').select('id, funnel_id, outcome, name')
+    .eq('id', stageId).eq('tenant_id', tenantId).maybeSingle(), 'buscar a etapa') as EtapaLida | null
+}
+
+/** As oportunidades da etapa que a pessoa alcança (o CRM "só os meus": as dela e as sem responsável). */
+function cardsDaEtapa(ctx: Awaited<ReturnType<typeof getTenantContext>>, deStageId: string, colunas: string) {
+  const admin = createAdminClient()
+  const dono = ownerFilter(ctx, 'crm')
+  return lerTodas((ini, fim) => {
+    let q = admin.from('leads').select(colunas).eq('tenant_id', ctx.tenantId!).eq('crm_stage_id', deStageId)
+    if (dono) q = q.or(`owner_id.is.null,owner_id.eq.${dono}`)
+    return q.order('id').range(ini, fim)
+  }, 'ler as oportunidades da etapa')
+}
+
+/**
+ * As automações LIGADAS que mover as oportunidades desta etapa para a outra
+ * dispararia — só as que casam com a mudança (o destino e os filtros do
+ * gatilho, `automacoesQueOMovimentoDispara`; 2026-11-18). A tela pergunta
+ * "Disparar?" só quando há alguma (decisão do Heitor, 2026-11-17).
+ */
+export async function automacoesDoMovimento(
+  deStageId: string, paraStageId: string,
+): Promise<{ automacoes: string[] } | { error: string }> {
+  try {
+    const ctx = await contextoDoMoverDaEtapa()
+    const daRede = recusaDaConfigDaRede(ctx)
+    if (daRede) return { error: daRede }
+    const [de, para] = await Promise.all([etapaParaMover(ctx.tenantId!, deStageId), etapaParaMover(ctx.tenantId!, paraStageId)])
+    if (!de || !para) return { error: 'Etapa não encontrada.' }
+    if (!temRecurso(ctx, 'automacoes')) return { automacoes: [] }
+    const cards = (await cardsDaEtapa(ctx, deStageId, COLUNAS_DO_CARD_PARA_PREVER)) as unknown as CardParaPrever[] | null
+    return { automacoes: await automacoesQueOMovimentoDispara(ctx, cards ?? [], paraStageId) }
+  } catch (e) {
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
+  }
+}
+
+/**
+ * Move as oportunidades de uma etapa para outra do MESMO funil (A35 da 22ª),
+ * uma a uma pelo núcleo do quadro (`moverEtapaCore`: o alcance, a linha do
+ * tempo, os eventos). `disparar` é a resposta da pessoa à pergunta das
+ * automações: no "Não", o movimento se registra e não vai ao motor. A etapa
+ * perdida fica fora do destino: ali o quadro pede o motivo de cada uma.
+ * Com o CRM "só os meus", movem-se as dela e as sem responsável; as outras
+ * ficam, e a tela diz quantas.
+ */
+export async function moverOportunidadesDaEtapa(
+  deStageId: string, paraStageId: string, slug: string, disparar: boolean,
+): Promise<{ movidas: number; ficaram: number } | { error: string }> {
+  try {
+    const ctx = await contextoDoMoverDaEtapa()
+    const daRede = recusaDaConfigDaRede(ctx)
+    if (daRede) return { error: daRede }
+    if (deStageId === paraStageId) return { error: 'Escolha outra etapa.' }
+    const [de, para] = await Promise.all([etapaParaMover(ctx.tenantId!, deStageId), etapaParaMover(ctx.tenantId!, paraStageId)])
+    if (!de || !para) return { error: 'Etapa não encontrada.' }
+    if (de.funnel_id !== para.funnel_id) return { error: 'As duas etapas precisam ser do mesmo funil.' }
+    if (para.outcome === 'LOST') return { error: 'Para a etapa perdida, mova no quadro: ali se diz o motivo de cada uma.' }
+
+    const admin = createAdminClient()
+    const leads = (await cardsDaEtapa(ctx, deStageId, 'id')) as unknown as { id: string }[] | null
+    let movidas = 0
+    for (const l of leads ?? []) {
+      const r = await moverEtapaCore(admin, ctx, l.id as string, paraStageId, { semDespachar: !disparar })
+      if ('ok' in r) movidas++
+    }
+    const { count, error } = await admin.from('leads').select('id', { count: 'exact', head: true })
+      .eq('tenant_id', ctx.tenantId!).eq('crm_stage_id', deStageId)
+    if (error) return { error: `Erro ao contar as oportunidades: ${error.message}` }
+
+    revalidatePath(`/${slug}/oportunidades`)
+    revalidatePath('/admin/oportunidades')
+    revalidatePath('/admin/settings')
+    return { movidas, ficaram: count ?? 0 }
+  } catch (e) {
+    console.error('[moverOportunidadesDaEtapa]', e)
     return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }

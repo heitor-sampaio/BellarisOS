@@ -114,8 +114,8 @@ export interface ClienteSumida {
  * Os números vêm de lib/metrics (`comVisita`, `recentesSemVisita`).
  */
 export function vazioDoReativar(comVisita: number, recentesSemVisita: number, deQuem?: string): string {
-  // A10 da 13ª: o texto diz DE QUAIS clientes fala ("atendidas na unidade",
-  // "da clínica"), senão o "5 cadastradas" daqui brigava com o "4 novos" do lado.
+  // A10 da 13ª: o texto diz DE QUAIS clientes fala ("com horário com você",
+  // "da rede"), senão o "5 cadastradas" daqui brigava com o "4 novos" do lado.
   const quem = deQuem ? ` ${deQuem},` : ''
   const recentes = recentesSemVisita === 1
     ? `1 cliente${quem} cadastrada nos últimos 90 dias`
@@ -131,14 +131,13 @@ export function vazioDoReativar(comVisita: number, recentesSemVisita: number, de
 
 /**
  * De quais clientes os quadros falam (A10 da 13ª simulação): o "Clientes no
- * mês" e o "Reativar" contam universos diferentes conforme o recorte, e cada
- * um diz o seu. As da unidade são as atendidas nela (agendamento não
- * cancelado — T1 do Bloco Tags; era a tag "Unidade: X").
+ * mês" e o "Reativar" dizem de quem falam. A cliente é da REDE (24ª
+ * simulação — a "atendida na unidade" de T1/H16 era uma leitura do Claude, e
+ * saiu): fora o "só os meus", são sempre as da rede.
  */
-export function deQuemSaoAsClientes(r: { daUnidade: boolean; dela: boolean }): string {
+export function deQuemSaoAsClientes(r: { dela: boolean }): string {
   // A12 da 16ª: são as com horário com ela (não cancelado), não só as já atendidas.
-  if (r.dela) return 'com horário com você'
-  return r.daUnidade ? 'atendidas na unidade' : 'da rede'
+  return r.dela ? 'com horário com você' : 'da rede'
 }
 
 /** As clientes sem visita há mais de 90 dias (o total e as há mais tempo sem vir). */

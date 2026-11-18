@@ -90,6 +90,25 @@ export function PainelDeLimites({
               <strong>Sem silêncio: a mensagem sai a qualquer hora.</strong>
             </p>
           )}
+          {/* D17 do levantamento ("a + c opcional", o Heitor, 2026-11-11):
+              desligada por padrão. */}
+          {!semSilencio && (
+            <label data-madrugada-na-vespera style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
+              <input
+                type="checkbox" checked={!!limites.madrugadaNaVespera}
+                disabled={somenteLeitura}
+                onChange={e => onChange({ ...limites, madrugadaNaVespera: e.target.checked })}
+              />
+              <span>Se cair de madrugada, mandar na véspera às 20:00</span>
+              <Dica rotulo="Como a véspera funciona">
+                Vale para o lembrete que espera &quot;antes de&quot; uma data (o
+                horário do agendamento). Se a hora dele cair no silêncio, ele
+                sai às 20:00 da véspera em vez de esperar a manhã — quando o
+                horário é antes do fim do silêncio, sem isso ele não sai. Com o
+                silêncio começando antes das 20:00, ele espera a manhã.
+              </Dica>
+            </label>
+          )}
         </div>
 
         <div>

@@ -13,8 +13,9 @@ import { criarMembro, type MembroDeTeste } from './apoio/sessao'
  * clínica sem canal ligado o Inbox só dizia "Conectar o WhatsApp", e a dona e
  * a recepção não tinham onde configurar as suas. Agora há um lugar fixo no topo
  * do Inbox, nos dois portais, que lista, cria, edita e apaga as SUAS — o mesmo
- * editor da conversa. Continua pedindo o CRM em Gerenciar (quem guarda é quem
- * manda mensagem, a decisão da F69).
+ * editor da conversa. Desde a auditoria das regras (2026-11-18) basta o CRM
+ * em Ver: a resposta é DELA (H8: "cada usuário poder configurar as suas"); era
+ * o CRM em Gerenciar, "quem guarda é quem manda mensagem" (F69).
  */
 
 test.setTimeout(150_000)
@@ -84,9 +85,19 @@ test('A8: no Inbox da unidade o lugar é o mesmo', async ({ browser }) => {
   expect((data ?? []).map(r => r.title)).toEqual([`Horário ${marca}`])
 })
 
-test('A8: quem só vê o CRM não manda mensagem, e não ganha o botão', async ({ browser }) => {
+test('A8: quem só vê o CRM também guarda as suas (a resposta é dela, 18/11)', async ({ browser }) => {
   await como(browser, soVe, '/admin/inbox', async p => {
     await expect(p.getByPlaceholder('Pesquisar…')).toBeVisible({ timeout: 20_000 })
-    await expect(p.getByRole('button', { name: 'Minhas respostas rápidas' })).toHaveCount(0)
+    await p.getByRole('button', { name: 'Minhas respostas rápidas' }).click()
+    const janela = p.getByRole('dialog', { name: 'Minhas respostas rápidas' })
+    // As da recepção não aparecem: cada pessoa vê só as suas.
+    await expect(janela).toContainText('Nenhuma resposta rápida ainda')
+    await janela.getByRole('button', { name: 'Novo' }).click()
+    await janela.getByPlaceholder('Preço da limpeza de pele').fill(`Só vê ${marca}`)
+    await janela.getByPlaceholder(/A limpeza de pele profunda/).fill('Até já')
+    await janela.getByRole('button', { name: 'Salvar' }).click()
+    await expect(janela).toContainText(`Só vê ${marca}`)
   })
+  const { data } = await db().from('quick_replies').select('title, created_by').eq('tenant_id', rede.tenantId).eq('title', `Só vê ${marca}`)
+  expect((data ?? []).map(r => r.created_by), 'é dela').toEqual([soVe.userId])
 })

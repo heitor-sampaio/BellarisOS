@@ -18,6 +18,7 @@ import { usePathname } from 'next/navigation'
 import { rotaNoPortal } from '@/lib/rotas'
 import { dayKeyTZ, naParede, daParede, instanteNoFuso } from '@/lib/datetime'
 import { useFuso } from '@/components/shared/fuso'
+import { useAgora } from '@/lib/use-agora'
 import { textoDoProximoLivre } from '@/lib/agenda/proximo-livre'
 import { unicaOpcao } from '@/lib/uma-opcao'
 import { CampoIndicadaPor } from '@/components/shared/campo-indicada-por'
@@ -493,11 +494,13 @@ export function AppointmentModal({
   const foraDaGrade = horasDaGrade.length > 0 && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(localDT)
     && !horasDaGrade.includes(localDT.slice(11, 16)) && avisosDoMomento.length === 0
 
+  // A38 da 24ª: o mínimo do campo anda com o relógio (era o da abertura).
+  const relogio = useAgora() ?? agora
   const minDT = useMemo(() => {
-    const now = naParede(new Date(agora), fuso)
+    const now = naParede(new Date(relogio), fuso)
     const pad = (n: number) => String(n).padStart(2, '0')
     return `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`
-  }, [agora, fuso])
+  }, [relogio, fuso])
 
   return (
     <JanelaModal onFechar={onClose} rotulo="Novo agendamento" largura={520}>
@@ -804,6 +807,16 @@ export function AppointmentModal({
               </Field>
             )}
           </div>
+          {/* A52 da 24ª: a unidade sem sala cadastrada — o agendamento segue sem
+              sala (D5), e a janela diz isso numa linha, com o caminho na dica. */}
+          {!temSalas && !!unidadeId && !carregandoUnidade && (
+            <p data-unidade-sem-sala style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: -4 }}>
+              <span>Sem sala cadastrada nesta unidade</span>
+              <Dica rotulo="Sobre a unidade sem sala">
+                O agendamento segue sem sala. As salas se cadastram nas Configurações da unidade.
+              </Dica>
+            </p>
+          )}
 
           <Field label="Data e hora *" htmlFor="ag-quando">
             <input
@@ -864,6 +877,7 @@ export function AppointmentModal({
                   onEscolher={h => escolherHora(`${diaEscolhido}T${h}`)}
                   carregando={false}
                   semOutroHorario
+                  fuso={fuso}
                 />
               </div>
             )}

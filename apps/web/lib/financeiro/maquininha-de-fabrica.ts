@@ -41,3 +41,10 @@ export function vaziaDeFabrica<T extends MaquininhaParaConferir>(lista: readonly
   if (bandeiras.some(b => b && (b.prazo.trim() !== '' || !Object.values(b.valores).every(vazio)))) return null
   return m
 }
+
+/**
+ * A7 da 24ª simulação (princípio 3): o "Adicionar" que preenche a de fábrica
+ * esvaziava o nome e focava nele, mudo — parecia que a maquininha tinha sumido.
+ * A tela diz o que está fazendo, até o "Salvar taxas".
+ */
+export const AVISO_DA_DE_FABRICA = 'Use esta, que ainda não tem taxas: dê o nome e as taxas da sua maquininha, e salve.'

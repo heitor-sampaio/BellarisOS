@@ -20,13 +20,10 @@ let gestor: MembroDeTeste | null = null
 
 test.beforeAll(async () => {
   rede = await criarOutraRede(`fv${marca}`)
-  gestor = await criarMembro(`fvg${marca}`, {
-    tenant: rede.tenantId, rotulo: 'Gestor vouchers',
-    permissoes: [
-      { modulo: 'settings', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'loyalty', nivel: 'MANAGE' },
-      { modulo: 'agenda', nivel: 'VIEW' }, { modulo: 'cashier', nivel: 'MANAGE' },
-    ],
-  })
+  // Cadastrar a recompensa é configuração da fidelidade, da rede toda: a aba é
+  // só da Admin da rede (o Heitor, 18/11: "Configuração da rede toda só pela
+  // conta admin"); ela também troca e recebe.
+  gestor = await criarMembro(`fvg${marca}`, { tenant: rede.tenantId, rotulo: 'Gestor vouchers', donoDaRede: true, permissoes: [] })
   const { error } = await db().from('loyalty_configs').upsert({
     tenant_id: rede.tenantId, enabled: true, earn_mode: 'POR_REAL', points_per_real: 1,
     redeem_points_value: 0.1, redeem_min_points: 0, redeem_max_pct: 100,

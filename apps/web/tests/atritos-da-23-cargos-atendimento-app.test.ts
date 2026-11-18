@@ -33,7 +33,7 @@ import type { ResolvedPermissions } from '@estetica-os/types'
 const fonte = (rel: string) => readFileSync(join(__dirname, '..', rel), 'utf8')
 const com = (over: Partial<ResolvedPermissions>): ResolvedPermissions => ({ ...NO_PERMISSIONS, ...over })
 
-describe('D1: Tratamentos segue a página — a Agenda em Ver', () => {
+describe('D1: Tratamentos segue a página — o Atendimento em Ver (era a Agenda até 2026-11-18)', () => {
   it('quem recebe, sem a Agenda, não vê Tratamentos (nos dois portais)', () => {
     for (const menu of [ADMIN_MENU, BRANCH_MENU]) {
       for (const p of [com({ cashier: 'MANAGE' }), com({ financial: 'MANAGE' }), com({ medical_records: 'MANAGE' })]) {
@@ -41,15 +41,18 @@ describe('D1: Tratamentos segue a página — a Agenda em Ver', () => {
       }
     }
   })
-  it('com a Agenda em Ver, aparece', () => {
+  // Desde 2026-11-18 (o Heitor: "Agenda é agenda e atendimento é atendimento. Só inicia
+  // e conclui atendimento quem tem gerenciar no atendimento"): o módulo Atendimento.
+  it('com o Atendimento em Ver, aparece; só com a Agenda, não', () => {
     for (const menu of [ADMIN_MENU, BRANCH_MENU]) {
-      expect(menuEntriesFor(menu, com({ agenda: 'VIEW' })).map(e => e.key)).toContain('planejamentos')
+      expect(menuEntriesFor(menu, com({ agenda: 'MANAGE' })).map(e => e.key)).not.toContain('planejamentos')
+      expect(menuEntriesFor(menu, com({ atendimento: 'VIEW' })).map(e => e.key)).toContain('planejamentos')
     }
   })
-  it('o resumo diz que vem da Agenda', async () => {
+  it('o resumo diz que vem do Atendimento', async () => {
     const { tratamentosNoResumo } = await import('@/lib/permissions-copy')
-    expect(tratamentosNoResumo({ agenda: 'VIEW' })).toBe('Tratamentos vem da Agenda em “Ver”: os planos de tratamento das clientes, para acompanhar.')
-    expect(tratamentosNoResumo({ agenda: 'NONE', medical_records: 'MANAGE', cashier: 'MANAGE' })).toBeNull()
+    expect(tratamentosNoResumo({ atendimento: 'VIEW' })).toBe('Tratamentos vem do Atendimento em “Ver”: os planos de tratamento das clientes, para acompanhar.')
+    expect(tratamentosNoResumo({ agenda: 'MANAGE', medical_records: 'MANAGE', cashier: 'MANAGE' })).toBeNull()
   })
 })
 
@@ -68,14 +71,15 @@ describe('A1: o PDV aberto pelo Financeiro mostra o nível que vale, travado', (
 })
 
 describe('A2: o resumo diz que conclui só os próprios atendimentos', () => {
-  it('o texto, com o Prontuário em Gerenciar e "só os meus" na Agenda ou no Prontuário', async () => {
+  // Desde 2026-11-18 (o Heitor: "Agenda é agenda e atendimento é atendimento. Só inicia
+  // e conclui atendimento quem tem gerenciar no atendimento"): o módulo Atendimento.
+  it('o texto, com o Atendimento em Gerenciar "só os meus"', async () => {
     const { conclusaoNoResumo } = await import('@/lib/permissions-copy')
-    const texto = 'Conclui só os próprios atendimentos: o de outra pessoa que atende conclui quem tem a Agenda de todos e o Prontuário em Gerenciar de todos.'
-    expect(conclusaoNoResumo({ agenda: 'VIEW', medical_records: 'MANAGE' }, { agenda: 'OWN', medical_records: 'ALL' })).toBe(texto)
-    expect(conclusaoNoResumo({ agenda: 'MANAGE', medical_records: 'MANAGE' }, { agenda: 'ALL', medical_records: 'OWN' })).toBe(texto)
-    expect(conclusaoNoResumo({ agenda: 'VIEW', medical_records: 'MANAGE' }, { agenda: 'ALL', medical_records: 'ALL' })).toBeNull()
-    expect(conclusaoNoResumo({ agenda: 'NONE', medical_records: 'MANAGE' }, { agenda: 'OWN', medical_records: 'ALL' })).toBeNull()
-    expect(conclusaoNoResumo({ agenda: 'VIEW', medical_records: 'VIEW' }, { agenda: 'OWN', medical_records: 'ALL' })).toBeNull()
+    const texto = 'Inicia e conclui só os próprios atendimentos: o de outra pessoa que atende, quem tem o Atendimento em Gerenciar de todos.'
+    expect(conclusaoNoResumo({ atendimento: 'MANAGE', medical_records: 'MANAGE' }, { atendimento: 'OWN' })).toBe(texto)
+    expect(conclusaoNoResumo({ atendimento: 'MANAGE', medical_records: 'MANAGE' }, { atendimento: 'ALL' })).toBeNull()
+    // A Agenda e o Prontuário não iniciam nem concluem.
+    expect(conclusaoNoResumo({ agenda: 'MANAGE', medical_records: 'MANAGE' }, { agenda: 'OWN', medical_records: 'ALL' })).toBeNull()
   })
   it('o resumo do cargo mostra', () => {
     const f = fonte('components/admin/roles-editor.tsx')
@@ -149,9 +153,9 @@ describe('A26: o atendimento de outra pessoa diz quem conclui', () => {
   it('o texto', async () => {
     const { textoDeQuemConcluiODeOutra } = await import('@/lib/equipe/textos-de-quem-pode')
     expect(textoDeQuemConcluiODeOutra(['Carla Acácia']))
-      .toBe('Quem conclui é quem tem a Agenda de todos e o Prontuário em Gerenciar (Carla Acácia).')
+      .toBe('Quem conclui é quem tem o Atendimento em Gerenciar e a Agenda de todos (Carla Acácia).')
     expect(textoDeQuemConcluiODeOutra([]))
-      .toBe('Quem conclui é quem tem a Agenda de todos e o Prontuário em Gerenciar.')
+      .toBe('Quem conclui é quem tem o Atendimento em Gerenciar e a Agenda de todos.')
   })
   it('a tela passa os nomes a quem tem o Prontuário', () => {
     expect(fonte('app/_shared/sessao-de-atendimento.tsx'))

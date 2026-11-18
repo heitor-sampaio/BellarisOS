@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import type { TenantContext } from '@estetica-os/types'
-import { getTenantContext } from '@/lib/auth'
+import { getTenantContext, can } from '@/lib/auth'
+import { quemMudaAsComissoes } from '@/lib/equipe/quem-desfaz'
+import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { copilotNoCargo, copilotNoPlano } from '@/lib/copilot/disponivel'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { origemPublica } from '@/lib/origem'
@@ -162,7 +164,9 @@ export async function POST(req: NextRequest) {
         const unidades = ctx.unidades && ctx.unidades.length > 1
           ? (() => { const nomes = new Map(todasAsUnidades.map(u => [u.id, u.name])); return ctx.unidades!.map(id => nomes.get(id)).filter((n): n is string => !!n) })()
           : undefined
-        const instrucoes = instrucoesDoCopilot(ctx, { rede: rede?.nome ?? null, unidade: unidade?.name ?? null, unidades, pagina, slugDoPortal, fuso })
+        // A24 da 17ª: a quem não muda as comissões, o prompt leva quem muda (pelo nome).
+        const quemMuda = can(ctx, 'financial', 'MANAGE') && mexeNaConfigDaRede(ctx) ? undefined : await quemMudaAsComissoes(ctx.tenantId!).catch(() => undefined)
+        const instrucoes = instrucoesDoCopilot(ctx, { rede: rede?.nome ?? null, unidade: unidade?.name ?? null, unidades, pagina, slugDoPortal, fuso, quemMudaAsComissoes: quemMuda })
         const disponiveis = ferramentasDoCargo(ctx)
         const ferramentas = paraOModelo(disponiveis)
         const cf = { ctx, admin, pagina, slugDoPortal, conversaId: conversa.id }

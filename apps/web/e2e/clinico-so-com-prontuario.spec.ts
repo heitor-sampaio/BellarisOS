@@ -30,7 +30,7 @@ const TOKEN_PAGINA = `TOKEN-DA-PAGINA-${marca}`
 const MARCADOR = '••••••••'
 
 interface Fx {
-  outra: OutraRede; admin: MembroDeTeste; recepcao: MembroDeTeste
+  outra: OutraRede; admin: MembroDeTeste; recepcao: MembroDeTeste; dona: MembroDeTeste
   clienteId: string; agendamentoId: string; planoId: string; laudoId: string; numeroId: string
 }
 let f: Fx | null = null
@@ -54,6 +54,10 @@ test.beforeAll(async () => {
   const recepcao = await membro('recepcao', [
     { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'agenda', nivel: 'MANAGE' },
   ])
+  // As integrações são configuração da rede toda: só a Admin da rede abre a
+  // aba e grava (o Heitor, 18/11: "Configuração da rede toda só pela conta admin").
+  const dona = await criarMembro(`cldona${marca}`, { tenant: outra.tenantId, rotulo: 'Clinico dona', donoDaRede: true, permissoes: [] })
+  criado.membros.push(dona)
 
   const clienteId = await outra.criarCliente('Paciente Clinico')
   const amanha = new Date(Date.now() + 24 * 3600_000).toISOString()
@@ -104,7 +108,7 @@ test.beforeAll(async () => {
   })
   expect(eMsg, 'criar a integração do Messenger').toBeNull()
 
-  f = { outra, admin, recepcao, clienteId, agendamentoId: ap!.id, planoId: plano!.id, laudoId: doc!.id, numeroId: num!.id }
+  f = { outra, admin, recepcao, dona, clienteId, agendamentoId: ap!.id, planoId: plano!.id, laudoId: doc!.id, numeroId: num!.id }
 })
 
 test.afterAll(async () => {
@@ -251,7 +255,7 @@ test.describe.serial('dado clínico só com prontuário', () => {
 
 test.describe.serial('credencial de integração fora da tela', () => {
   test('a aba de integrações mostra o marcador, nunca o token', async ({ browser }) => {
-    await comSessao(browser, f!.admin.estado, async p => {
+    await comSessao(browser, f!.dona.estado, async p => {
       const html = await conteudo(p, '/admin/settings?tab=integrations')
       expect(html).toContain(`Caixa ${marca}`)
       expect(html).not.toContain(TOKEN)
@@ -262,9 +266,11 @@ test.describe.serial('credencial de integração fora da tela', () => {
   })
 
   test('salvar com o marcador mantém o token do banco', async ({ browser }) => {
-    await comSessao(browser, f!.admin.estado, async p => {
-      await chamarAcao(p, 'actions/integrations.ts', 'salvarNumeroWhatsApp', '/admin/settings',
+    await comSessao(browser, f!.dona.estado, async p => {
+      const r = await chamarAcao(p, 'actions/integrations.ts', 'salvarNumeroWhatsApp', '/admin/settings',
         [f!.numeroId, 'uazapi', { token: MARCADOR, baseUrl: 'https://e2e.invalido' }, false])
+      // Gravou de fato: a recusa (quem não é a Admin) também deixaria o token.
+      expect(r.texto).toContain('"ok":true')
     })
     const { data } = await db().from('whatsapp_numbers').select('config').eq('id', f!.numeroId).single<{ config: Record<string, string> }>()
     // No banco ele mora CIFRADO (lib/integracoes/cofre.ts): o que se compara é o decifrado.

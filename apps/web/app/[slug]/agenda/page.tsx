@@ -318,9 +318,10 @@ export default async function AgendaPage({ params, searchParams }: {
         userRole={ctx.role}
         escopoProprio={isOwnScope(ctx, 'agenda')}
         meuId={ctx.internalUserId ?? null}
-        podeConcluir={can(ctx, 'medical_records', 'MANAGE')}
-        // A9 da 20ª: sem concluir, a janela diz quem conclui.
-        quemConclui={can(ctx, 'medical_records', 'MANAGE') ? null : await quemConcluiOAtendimento(ctx.tenantId!, branchId)}
+        podeConcluir={can(ctx, 'atendimento', 'MANAGE')}
+        atendimentoProprio={isOwnScope(ctx, 'atendimento')}
+        // A9 da 20ª: sem iniciar e concluir (o Atendimento em Gerenciar, de todos), a janela diz quem conclui.
+        quemConclui={can(ctx, 'atendimento', 'MANAGE') && !isOwnScope(ctx, 'atendimento') ? null : await quemConcluiOAtendimento(ctx.tenantId!, branchId)}
         dataInicial={dataInicial}
         comCancelados={comCancelados}
         bloqueios={bloqueios}

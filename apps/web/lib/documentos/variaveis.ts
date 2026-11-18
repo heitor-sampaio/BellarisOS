@@ -88,13 +88,15 @@ export const VARIAVEIS_DE_DOCUMENTO = {
   'cliente.uf':            { grupo: 'Cliente',     rotulo: 'UF',                tipos: TODOS, exemplo: 'SC' },
   'cliente.cep':           { grupo: 'Cliente',     rotulo: 'CEP',               tipos: TODOS, exemplo: '89201-000' },
 
-  // O responsável legal da menor (decisão 2 do Heitor, 2026-11-05). Opcionais
-  // no catálogo — na adulta saem vazias —, mas na MENOR o nome e o CPF são
-  // obrigatórios (`variavelObrigatoria`): sem eles o termo fica INCOMPLETO.
-  'responsavel.nome':       { grupo: 'Responsável legal', rotulo: 'Nome do responsável (menor de idade)', tipos: TODOS, exemplo: 'Marta Lima', opcional: true, vaziaQuando: 'na cliente adulta' },
-  'responsavel.cpf':        { grupo: 'Responsável legal', rotulo: 'CPF do responsável', tipos: TODOS, exemplo: '529.982.247-25', opcional: true, vaziaQuando: 'na cliente adulta' },
-  'responsavel.parentesco': { grupo: 'Responsável legal', rotulo: 'Parentesco', tipos: TODOS, exemplo: 'Mãe', opcional: true, vaziaQuando: 'na cliente adulta' },
-  'responsavel.telefone':   { grupo: 'Responsável legal', rotulo: 'Telefone do responsável', tipos: TODOS, exemplo: '(71) 98888-7777', opcional: true, vaziaQuando: 'na cliente adulta' },
+  // O responsável legal da menor (decisão 2 do Heitor, 2026-11-05: "termo
+  // assinado pelo responsável (avisar, não barrar)"). Opcionais em todo
+  // documento: na adulta saem vazias, e na menor ainda sem responsável também —
+  // a ficha, a agenda e o atendimento avisam, e o documento segue (auditoria
+  // das regras, 2026-11-18: a F29 tinha feito o termo travar).
+  'responsavel.nome':       { grupo: 'Responsável legal', rotulo: 'Nome do responsável (menor de idade)', tipos: TODOS, exemplo: 'Marta Lima', opcional: true, vaziaQuando: 'na cliente adulta e na menor sem responsável no cadastro' },
+  'responsavel.cpf':        { grupo: 'Responsável legal', rotulo: 'CPF do responsável', tipos: TODOS, exemplo: '529.982.247-25', opcional: true, vaziaQuando: 'na cliente adulta e na menor sem responsável no cadastro' },
+  'responsavel.parentesco': { grupo: 'Responsável legal', rotulo: 'Parentesco', tipos: TODOS, exemplo: 'Mãe', opcional: true, vaziaQuando: 'na cliente adulta e na menor sem responsável no cadastro' },
+  'responsavel.telefone':   { grupo: 'Responsável legal', rotulo: 'Telefone do responsável', tipos: TODOS, exemplo: '(71) 98888-7777', opcional: true, vaziaQuando: 'na cliente adulta e na menor sem responsável no cadastro' },
 
   'rede.nome':             { grupo: 'Rede',        rotulo: 'Nome da rede',      tipos: TODOS, exemplo: 'Estética Bellaris' },
   'rede.documento':        { grupo: 'Rede',        rotulo: 'CNPJ ou CPF da rede', tipos: TODOS, exemplo: '12.345.678/0001-90' },
@@ -161,12 +163,13 @@ export function ehOpcional(nome: string): boolean {
   return !!CATALOGO[nome]?.opcional
 }
 
-/** Na MENOR de idade, o responsável assina: o nome e o CPF dele deixam de ser opcionais. */
-const OBRIGATORIAS_DA_MENOR = new Set(['responsavel.nome', 'responsavel.cpf'])
-
-/** A variável que, faltando, deixa o documento INCOMPLETO — o catálogo, mais o responsável da menor. */
-export function variavelObrigatoria(nome: string, cliente: { menor: boolean }): boolean {
-  if (cliente.menor && OBRIGATORIAS_DA_MENOR.has(nome)) return true
+/**
+ * A variável que, faltando, deixa o documento INCOMPLETO — a do catálogo. O
+ * responsável da menor NÃO entra (decisão 2 do Heitor, 7ª simulação: "avisar,
+ * não barrar"): sem ele, quem avisa é a ficha (`avisoDoMenor`) e o documento
+ * diz o que saiu vazio (`vazias`).
+ */
+export function variavelObrigatoria(nome: string): boolean {
   return !ehOpcional(nome)
 }
 

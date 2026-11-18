@@ -7,7 +7,7 @@
 
 ### 9.9 Eventos de domínio e automações
 
-Toda ação relevante do sistema vira um fato em `domain_events` — 47 eventos
+Toda ação relevante do sistema vira um fato em `domain_events` — 48 eventos
 nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
 `packages/types/src/eventos.ts`. As automações assinam essa corrente.
 
@@ -31,9 +31,16 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
 - **Eventos clínicos não carregam conteúdo clínico**, e o contexto da automação
   também não hidrata prontuário. A automação avisa que a ficha chegou; quem
   precisa do conteúdo abre o prontuário, com a permissão que ele exige.
-- `pagamento.*`, `estoque.*`, `comissao.liberada` e `comissao.paga` saem de GATILHO ou função no banco (`origem: 'banco'`, sem
+- `pagamento.*`, `estoque.*`, `comissao.liberada`, `comissao.paga` e `lead.cliente_comprou` saem de GATILHO ou função no banco (`origem: 'banco'`, sem
   ator), porque esses fatos nascem em cinco ou seis lugares do código e
   instrumentar um a um é garantir esquecer o próximo.
+- **`lead.cliente_comprou`**: a cliente ligada a uma oportunidade ABERTA (e
+  criada antes da compra) comprou — pacote, pré-pago ou plano aceito (migration
+  `20261124100001`; uma linha por oportunidade e por compra). Traz o nome, a
+  etapa, o funil, quem cuida (`responsavelId`), o que comprou e quando. É o
+  gatilho do modelo "Marque o ganho", que saiu do cron do CRM (auditoria das
+  regras, 2026-11-18; r2-cfg-04: "toda e qualquer automação deve ser feita
+  através dos módulos de automações"). O card não anda: o modelo só avisa.
 - **O fato do banco dispara automação pelo cron** (C2 do levantamento das
   regras, F69). Nenhum `emitirEvento` despacha o que o gatilho SQL grava: até
   a F69 a automação "Pagamento recebido → avisar" passava no ensaio e nunca
@@ -201,6 +208,11 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   modelo. Em 03/11 nenhuma rede real o tinha (a única automação de mover
   etapa fora das `[e2e]` é um rascunho da Bellaris Clinic de 24/09). Prova: `e2e/crm-agendar-liga-oportunidade.spec.ts`,
   `tests/automacoes-modelos.test.ts`.
+- **"Avisar a equipe" pode avisar "Quem cuida da oportunidade"** (`alvo:
+  'responsavel'`, 2026-11-18): o responsável do card do fato (ou o hidratado
+  pelo lead do contexto). Sem responsável, não avisa ninguém e o histórico diz
+  "A oportunidade não tem responsável." O aviso abre o card (`?lead=`, no
+  portal da pessoa). Prova: `tests/marque-o-ganho-vira-automacao.test.ts`.
 - **"Definir responsável"** (`acao.atribuir`) usa o núcleo da tela,
   `trocarResponsavelCore` (`lib/crm/responsavel.ts`): a pessoa é da rede e
   ATIVA, e a linha do tempo diz de quem para quem (até 2026-10-09 o "de" era
@@ -220,7 +232,10 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   pacote** (todo dia às 09:00, "Buscar clientes" com o pacote vencendo daqui
   a 7 dias), **confirmação** (`agendamento.confirmado`), **cancelamento**
   (`agendamento.cancelado`) e **pontos de fidelidade**
-  (`fidelidade.pontos_ganhos`, com os pontos e o saldo do fato)) e
+  (`fidelidade.pontos_ganhos`, com os pontos e o saldo do fato) e, desde a
+  auditoria das regras (2026-11-18), **Marque o ganho** (`lead.cliente_comprou`
+  → "Avisar a equipe" a "Quem cuida da oportunidade", o lembrete que o cron
+  do CRM mandava a todas as redes)) e
   `criarAutomacaoDeModelo` grava o grafo DO SERVIDOR (o navegador manda só a
   chave), em RASCUNHO, para a rede revisar. O procedimento fica no passo
   "Se", nunca no gatilho. Modelo novo usa só nodes e eventos do catálogo, e
@@ -304,6 +319,9 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
     descarta;
   - o **teto** (3 por cliente por dia, por automação, na automação nova) faz
     a execução PARAR quando passa dele; o ensaio não conta.
+  - a opção **"Se cair de madrugada, mandar na véspera às 20:00"**
+    (desligada; aparece com o silêncio preenchido) muda só a espera "antes
+    de" que cairia no silêncio — ver o D17, abaixo.
   - **O campo vazio desliga** o silêncio ou o teto, de propósito, e a tela
     diz: "Sem silêncio: a mensagem sai a qualquer hora", "Sem teto". O
     padrão vale só na automação nova. O vazio grava `null`
@@ -333,21 +351,37 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
     atende das 07:00 às 22:00: parte desse horário está no silêncio."
     (`silencioNoHorarioDasUnidades`, pelo horário das unidades ativas;
     `[data-silencio-no-horario]`). O silêncio continua o da rede.
-- **O suporte não liga automação nem muda os limites** (D18 do levantamento
-  das regras, o Heitor, 2026-11-11, opção a; CLAUDE.md §14: a ação que manda
-  algo à paciente passa por `bloqueioDoSuporte`). Na sessão de suporte,
-  LIGAR (`mudarStatusDaAutomacao` com `ATIVA`, antes até de ler o id) e
-  mudar os limites (`salvarAutomacao` com silêncio ou teto diferentes do
-  gravado) são recusados: o fluxo ligado rodaria depois e falaria com as
-  pacientes. Pausar e editar o fluxo com os mesmos limites, o suporte pode —
-  é como ele para uma automação que está mandando errado (F63; a D18 é "não
-  liga nem muda limites"). Prova (contra o build): `e2e/suporte-credenciais.spec.ts`.
+- **Na sessão de suporte, a automação só PAUSA** (D18 do levantamento das
+  regras, o Heitor, 2026-11-11, opção a: "o suporte não liga automação nem muda
+  os limites"; e o "só pausa" da auditoria das regras, 2026-11-18: o suporte
+  editava o texto de uma automação ligada, e saía à paciente um texto do
+  suporte; CLAUDE.md §14, a ação que manda algo à paciente passa por
+  `bloqueioDoSuporte`). Na sessão de suporte, `criarAutomacao`,
+  `criarAutomacaoDeModelo`, `salvarAutomacao` (ligada ou não) e
+  `excluirAutomacao` são recusados com "modo suporte", e
+  `mudarStatusDaAutomacao` só aceita `PAUSADA` (LIGAR é recusado antes até de
+  ler o id). O ensaio continua (não grava nem manda nada). Na tela, o editor
+  abre só para ler e, com a automação ligada, mostra "Desligar"
+  (`[data-suporte-so-pausa]`) — é como o suporte para uma automação que está
+  mandando errado (F63). Prova: `tests/automacoes-suporte-so-pausa.test.ts` e
+  (contra o build) `e2e/suporte-credenciais.spec.ts`.
 - **O lembrete do agendamento e a madrugada** (D17 do levantamento das
-  regras, 2026-11-11). Era da campanha "Automática" ("a + c opcional": o aviso
-  de madrugada e a véspera às 20:00); com o MK1 (2026-11-14) o lembrete é o
-  modelo "Lembrete antes do agendamento" das Automações, e quem segura a
-  madrugada é o silêncio noturno da automação (que a rede ajusta). O
-  `lembrete-de-madrugada.ts` saiu com a campanha automática.
+  regras, o Heitor, 2026-11-11: "a + c opcional"). Era da campanha
+  "Automática"; com o MK1 (2026-11-14) o lembrete é o modelo "Lembrete antes
+  do agendamento" das Automações. O "a" é o silêncio noturno da automação (a
+  mensagem que cai nele espera, D2 da 19ª). O "c" voltou na auditoria das
+  regras (2026-11-18), porque com o D2 o lembrete de um horário antes das 08:00
+  nunca saía: nos limites da automação, **"Se cair de madrugada, mandar na
+  véspera às 20:00"** (`limites.madrugadaNaVespera`, DESLIGADO por padrão,
+  princípio 6). Ligado, a espera "antes de" (`minutos < 0`, o "1 dia antes", o
+  "2 horas antes") que cairia no silêncio sai às 20:00 da véspera do momento
+  (`vesperaSeCairNoSilencio`, `lib/automacoes/limites.ts`, no fuso da
+  unidade), em vez de esperar o fim do silêncio. Não vale (fica a espera de
+  sempre) se essas 20:00 já passaram ou se as 20:00 estão, elas mesmas, no
+  silêncio que a rede escolheu (decisão do Claude pelos princípios 2 e 3: o
+  silêncio é da rede, e a opção não o atravessa). A remarcação do agendamento
+  refaz a conta. A janela "Ligar a automação?" diz a opção quando ligada
+  (`limitesAntesDeLigar`). Prova: `tests/automacoes-madrugada-na-vespera.test.ts`.
 - **"Sem visita há N dias" não é quem acabou de chegar** (C53, F69): a busca
   do passo "Buscar clientes" corta também pela data de cliente
   (`cliente_desde_antes` = o mesmo corte; cliente desde = a informada, senão
@@ -366,17 +400,20 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   a cliente é da REDE — não existe tag de unidade, e `clients.branch_id` não
   decide nada). O campo "Unidade" do passo saiu, e o dia do aniversário é o
   do fuso da rede. Um `unidadeId` gravado antes é ignorado.
-- **"Adicionar tag" só adiciona** (T4 do Bloco Tags, 2026-11-14; a regra das
-  Tags do CLAUDE.md §1: "o sistema não coloca tag nenhuma automaticamente em
-  ninguém"). A ação (era "Marcar com tag", com "Adicionar/Remover") põe na
-  cliente uma das tags CADASTRADAS da rede (o seletor lista Configurações →
-  Tags) — é o único caminho do sistema que grava tag, e só porque a rede montou
-  o fluxo. Tirar tag é da pessoa, na ficha. Um passo antigo gravado com o modo
-  de remover não faz nada e diz por quê no passo a passo ("Refaça este passo")
-  — inverter o que a rede montou seria pior (`executar.ts`). A trava:
+- **"Adicionar tag" e "Remover tag"** (a regra das Tags do CLAUDE.md §1: "o
+  sistema não coloca tag nenhuma automaticamente em ninguém" — o fluxo é da
+  rede, que o montou). "Adicionar tag" põe na cliente uma das tags CADASTRADAS
+  da rede (o seletor lista Configurações → Tags); "Remover tag"
+  (`acao.remover_tag`, `removerTagDoCliente` em `lib/automacoes/acoes-crm.ts`)
+  tira uma delas — sem a tag, o passo não faz nada e diz "O cliente não tinha
+  esta tag.". O T4 do Bloco Tags (2026-11-14) tinha tirado o remover, numa
+  leitura do Claude (a fala do Heitor era sobre o nome); voltou na auditoria das
+  regras (2026-11-18: "simplificar não é reduzir funcionalidade", princípio 7).
+  O passo antigo gravado como "Marcar com tag" no modo de remover volta a
+  remover. Prova: `tests/automacoes-remover-tag.test.ts`,
   `tests/tags-so-quem-marca.test.ts`. O anel de automações
-  (`e2e/automacoes-anel.spec.ts`) passou a se fechar por "Mover de etapa"
-  (etapa 2 ↔ etapa 3): a tag só cresce, e não fecha anel.
+  (`e2e/automacoes-anel.spec.ts`) se fecha por "Mover de etapa" (etapa 2 ↔
+  etapa 3).
 - **O "N dias depois do ÚLTIMO atendimento"** (C52, F69) era da campanha
   "Automática"; com o MK1 é o modelo "Retorno depois do atendimento" das
   Automações.
@@ -449,6 +486,14 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   `tests/campanha-filtros-chegam-ao-disparo.test.ts`. Prova (uma regra por
   teste, a prévia e o disparo): `e2e/campanha-cada-filtro-chega.spec.ts`; a
   de todo ano pelo cron: `e2e/campanha-data-anual.spec.ts`.
+- **"Clientes específicas"** (A37 da 15ª, 2026-11-17; princípio 1): o público
+  também mira clientes escolhidas uma a uma, pela busca (`buscarClientesParaCampanha`,
+  a regra única `buscar_clientes`), até 200. Gravadas em
+  `audience_rules.client_ids`, viram o `client_ids` do público em
+  `filtrosDaCampanha` (só uuid; a rede, o `clientes_do_publico` recorta) e
+  valem JUNTO com os outros filtros. O "Revisar" e o detalhe dizem os nomes
+  ("Clientes: Ana, Bia" — `clientesDaCampanha`). Prova:
+  `tests/pendencias-area-3.test.ts`.
 - **A campanha de todo ano diz quando sai** (D8 da 11ª simulação,
   2026-11-10; refeito no MK1): a revisão e os detalhes dizem "Dispara: todo
   ano em 08/03, a partir das 09:00" (`[data-quando-dispara]`, `quandoDispara`,
@@ -520,6 +565,15 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
 
 ---
 
+**Quem decide se o fato casa com o gatilho é `gatilhoCasa`**
+(`lib/automacoes/gatilho-casa.ts`, 2026-11-18): o nó de gatilho de evento e
+o filtro dele sobre o fato, hidratando só as entidades que o filtro cita (a
+que não carrega não casa: falha fechada, D3 da 16ª). O despacho
+(`despacharEvento`) e a pergunta "Mover dispara a automação…? Disparar?" da
+tela do CRM (A35 da 22ª, `docs/regras/crm-inbox.md`) usam a mesma função —
+a pergunta só cita a automação que o despacho rodaria. No "Não" da pergunta,
+o fato se grava e não vai ao motor (`emitirEvento` com `semDespachar`).
+
 ## O que nunca fazer aqui
 
 ```
@@ -535,7 +589,10 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
 ❌ Decidir a janela "Ligar a automação?" pelo canal à mão — é canaisParaACliente (lib/automacoes/antes-de-ligar.ts): todo fluxo que chega à cliente, push incluído (A10 da 14ª)
 ❌ Mandar campanha fora de enviarCampanha, ou ler os aparelhos pela ficha (push_tokens.client_id) — são os de todas as fichas do login, e o disparo é reivindicado por dia (C51/C56)
 ❌ Gravar o limite vazio da automação como undefined (some no JSON e o padrão volta) — é null (C54)
-❌ Ação de automação que TIRA tag, ou caminho que põe tag sem ser a "Adicionar tag" que a rede montou (o sistema não põe tag sozinho — tests/tags-so-quem-marca.test.ts trava)
+❌ Caminho que põe ou tira tag sem ser o "Adicionar tag"/"Remover tag" que a rede montou (o sistema não põe tag sozinho — tests/tags-so-quem-marca.test.ts trava)
+❌ Aviso ou lembrete da rede num cron, ligado para todas as redes — é modelo nas Automações, nascendo rascunho (r2-cfg-04; o "Marque o ganho" saiu do crm-lembretes em 2026-11-18)
+❌ Na sessão de suporte, deixar criar, editar, excluir ou ligar automação — o suporte só pausa (tests/automacoes-suporte-so-pausa.test.ts)
+❌ Ligar o "mandar na véspera às 20:00" por padrão, ou deixá-lo atravessar o silêncio que a rede escolheu (D17)
 ❌ Filtro de unidade no público da campanha ou no "Buscar clientes" (a cliente é da rede — MK2/T1 do Bloco Tags)
 ❌ Remarcar um agendamento sem emitir agendamento.remarcado (é ele que reprograma o lembrete que espera o horário antigo — D1 da 20ª)
 ```

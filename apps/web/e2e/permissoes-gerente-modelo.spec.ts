@@ -45,8 +45,8 @@ test('quem tem o cargo-modelo Gerente numa unidade só abre a aba Unidade e não
     const p = await ctx.newPage()
     await p.goto(`/${slug}/settings?tab=unidade`)
     await expect(p.getByRole('heading', { name: 'Salas' })).toBeVisible()
-    // O que é da clínica toda continua da rede (H7).
+    // O que é da rede toda é só da Admin da rede (18/11; era H7).
     await p.goto(`/${slug}/settings?tab=tags`)
-    await expect(p.getByText('Esta configuração é da rede toda').first()).toBeVisible()
+    await expect(p.getByText('Esta configuração é só da Admin da rede').first()).toBeVisible()
   } finally { await ctx.close() }
 })

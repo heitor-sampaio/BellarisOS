@@ -226,7 +226,8 @@ test('D9, A39: com o prontuário só em Ver, nada de "Aceitar plano" (era o "Fec
   })
   await como(browser, gerente!, async p => {
     await p.goto(`/${slug}/agenda/${emCurso}`)
-    await expect(p.getByText(/^Concluir grava o prontuário: quem tem o Prontuário em Gerenciar conclui/)).toBeVisible()
+    // Desde 2026-11-18: iniciar e concluir são do Atendimento em Gerenciar.
+    await expect(p.getByText(/^Iniciar e concluir o atendimento é de quem tem o Atendimento em Gerenciar/)).toBeVisible()
     await expect(p.locator('[data-aceitar-plano]')).toHaveCount(0)
     await expect(p.getByRole('button', { name: 'Gerar plano · a cliente vai pensar' })).toHaveCount(0)
     await expect(p.locator('[data-dica-do-avulso]')).toHaveCount(0)

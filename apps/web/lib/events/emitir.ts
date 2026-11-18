@@ -56,6 +56,12 @@ async function despachar(
 export async function emitirEvento(
   nome: NomeDeEvento,
   e:    EntradaDeEvento,
+  /**
+   * A35 da 22ª (decisão do Heitor, 2026-11-17): mover à mão as oportunidades
+   * de uma etapa pergunta se as automações disparam; no "Não", o fato fica
+   * registrado, mas não vai ao motor.
+   */
+  opcoes?: { semDespachar?: boolean },
 ): Promise<void> {
   try {
     // O insert é do núcleo (a plataforma grava por lá, sem despachar).
@@ -66,6 +72,7 @@ export async function emitirEvento(
     // No modo suporte nada sai para o paciente — e as automações mandam
     // mensagem. O fato fica registrado (a clínica vê), mas não dispara fluxo.
     if (gravado.suporteSessaoId) return
+    if (opcoes?.semDespachar) return
 
     await despachar({
       id:         gravado.id,

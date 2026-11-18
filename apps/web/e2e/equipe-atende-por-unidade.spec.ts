@@ -219,20 +219,45 @@ test('quem tem só uma unidade, com a Equipe em Gerenciar, marca e desmarca só 
   }
 })
 
-test('a unidade nova nasce sem ninguém marcado, e a Equipe dela diz', async ({ browser }) => {
-  const { data: c, error } = await db().from('branches')
-    .insert({ tenant_id: rede!.tenantId, name: `${PREFIXO} Centro ${marca}`, slug: `e2e-centro-${marca}` })
-    .select('id, slug').single<{ id: string; slug: string }>()
-  expect(error).toBeNull()
+// Revista em 18/11 (EQ1, o Heitor: "Concord." a "A rede inteira (todas,
+// inclusive as que vierem)"; gatilho `trg_atende_na_unidade_nova`): quem tem
+// "A rede inteira" e atende em TODAS as unidades atende também na nova; quem é
+// de unidade, ou escolheu à mão em quais atende, fica como estava. Era "a
+// unidade nova nasce sem ninguém marcado".
+test('a unidade nova: quem é da rede e atende em todas entra nela; sem ninguém, a Equipe dela diz', async ({ browser }) => {
+  const nomeDaProf = `${PREFIXO} Prof atu${marca}`
+  const unidadeNova = async (nome: string, slug: string) => {
+    const { data, error } = await db().from('branches')
+      .insert({ tenant_id: rede!.tenantId, name: `${PREFIXO} ${nome} ${marca}`, slug: `${slug}-${marca}` })
+      .select('id, slug').single<{ id: string; slug: string }>()
+    expect(error).toBeNull()
+    return data!
+  }
+  // A profissional da rede atende nas duas (o primeiro caso): entra na nova; a
+  // Talita, da Água Verde, não.
+  const centro = await unidadeNova('Centro', 'e2e-centro')
   await como(browser, dona!.estado, async p => {
-    expect(await quemAtendeNa(p, c!.id), 'ninguém atende na unidade nova').toEqual([])
-    await p.goto(`/${c!.slug}/team`)
-    await expect(p.locator('[data-ninguem-atende]')).toContainText('Ninguém atende nesta unidade ainda')
-    // E o cartão da unidade, em Configurações → Unidades, também diz.
-    await p.goto('/admin/settings?tab=unidades')
-    await expect(p.locator('.card').filter({ hasText: `${PREFIXO} Centro ${marca}` }).locator('[data-quem-atende-na-unidade]'))
-      .toContainText('Ninguém atende nesta unidade ainda')
+    expect(await quemAtendeNa(p, centro.id), 'quem é da rede e atende em todas entra na nova; a Talita, não').toEqual([nomeDaProf])
   })
+
+  // Escolhida à mão (só a Água Verde), a profissional da rede fica de fora da
+  // próxima: a unidade nasce sem ninguém, e a tela diz.
+  expect((await db().from('users').update({ atende_em: [rede!.branchId] }).eq('id', rede!.professionalId)).error).toBeNull()
+  const portao = await unidadeNova('Portão', 'e2e-portao')
+  try {
+    await como(browser, dona!.estado, async p => {
+      expect(await quemAtendeNa(p, portao.id), 'ninguém atende na unidade nova').toEqual([])
+      await p.goto(`/${portao.slug}/team`)
+      await expect(p.locator('[data-ninguem-atende]')).toContainText('Ninguém atende nesta unidade ainda')
+      // E o cartão da unidade, em Configurações → Unidades, também diz.
+      await p.goto('/admin/settings?tab=unidades')
+      await expect(p.locator('.card').filter({ hasText: `${PREFIXO} Portão ${marca}` }).locator('[data-quem-atende-na-unidade]'))
+        .toContainText('Ninguém atende nesta unidade ainda')
+    })
+  } finally {
+    // Os casos seguintes contam com ela atendendo onde atendia.
+    expect((await db().from('users').update({ atende_em: [rede!.branchId, batel, centro.id] }).eq('id', rede!.professionalId)).error).toBeNull()
+  }
 })
 
 test('a comissão: "Minhas comissões" da Talita, pela Água Verde, cobre também o Batel em que ela atende', async ({ browser }) => {

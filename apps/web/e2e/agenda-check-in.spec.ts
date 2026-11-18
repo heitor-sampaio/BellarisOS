@@ -42,8 +42,11 @@ async function como(browser: Browser, fn: (p: Page) => Promise<void>) {
 
 test.beforeAll(async () => {
   rede = await criarOutraRede(`ci${marca}`)
+  // A Agenda marca a chegada; iniciar é do Atendimento em Gerenciar (o Heitor,
+  // 18/11: "Só inicia e conclui atendimento quem tem gerenciar no atendimento").
   recepcao = await criarMembro(`cir${marca}`, {
-    tenant: rede.tenantId, rotulo: 'Recepção', permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }],
+    tenant: rede.tenantId, rotulo: 'Recepção',
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'atendimento', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }],
   })
 })
 test.afterAll(async () => { await recepcao?.limpar(); await rede?.limpar() })

@@ -1,7 +1,7 @@
 import { quemRealizaOsProcedimentos } from '@/lib/procedimentos/quem-realiza'
-import { nomesDosSemInsumo } from '@/lib/procedimentos/sem-insumo'
+import { nomesDosSemInsumo, procedimentosSemInsumoLigado } from '@/lib/procedimentos/sem-insumo'
 import { unidadesParaCriar } from '@/lib/unidades/da-tela'
-import { getTenantContext, can, temRecurso } from '@/lib/auth'
+import { getTenantContext, can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedProductsReference } from '@/lib/cached-queries'
 import { ehInsumo } from '@/lib/estoque/uso'
@@ -11,6 +11,7 @@ import { categoriasAtivasDaRede } from '@/lib/procedimentos/categorias'
 import { ToggleProcedureBtn } from '@/components/admin/toggle-procedure-btn'
 import { ComissaoDoProcedimento, type DadosDaComissao } from '@/components/admin/comissao-do-procedimento'
 import { comissaoDosProcedimentos } from '@/lib/comissoes/leitura'
+import { podeMudarComissaoDoProcedimento } from '@/lib/comissoes/gravacao'
 import { Pencil, Smartphone } from 'lucide-react'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { ler } from '@/lib/db'
@@ -58,8 +59,10 @@ export async function CatalogoDeProcedimentos({ termo }: { termo: string }) {
   // Na rede de uma unidade (PO2), o rótulo que é só a rede é o nome dela.
   const fala = await falaDaTela(ctx.tenantId)
   // Quanto cada um ganha é do financeiro (§9.7): gerir o catálogo não basta.
-  // E a comissão do procedimento vale para a rede inteira.
-  const podeComissao = can(ctx, 'financial', 'MANAGE') && temRecurso(ctx, 'comissoes') && ctx.branchId === null
+  // E a comissão do procedimento é da rede toda: só a Admin da rede (o Heitor,
+  // 18/11, "só pela conta admin") — a MESMA regra da action, senão o chip
+  // abria um modal que não salvava.
+  const podeComissao = podeMudarComissaoDoProcedimento(ctx)
   const COLUNAS = colunas(podeComissao)
 
   const admin = createAdminClient()
@@ -80,7 +83,7 @@ export async function CatalogoDeProcedimentos({ termo }: { termo: string }) {
     unidadesParaCriar(ctx.tenantId!),
 
     ler(admin.from('procedures')
-      .select('id, name, category, description, duration_min, price, labor_cost, other_costs, visible_on_client_app, is_active, created_at, form_id, consent_template_id, contract_template_id, outros_documentos, loyalty_points')
+      .select('id, name, category, description, duration_min, price, labor_cost, other_costs, visible_on_client_app, is_active, created_at, form_id, consent_template_id, contract_template_id, outros_documentos, loyalty_points, sem_insumo')
       .eq('tenant_id', ctx.tenantId!).is('branch_id', null)
       .order('category').order('name'), 'carregar os procedimentos'),
 
@@ -184,7 +187,8 @@ export async function CatalogoDeProcedimentos({ termo }: { termo: string }) {
   // insumo, e nada lembrava de ligar depois — a baixa automática nunca
   // acontecia. Com insumo no estoque, o catálogo diz quais estão sem.
   const temInsumo = productList.length > 0
-  const semInsumo = temInsumo ? procList.filter(p => p.is_active && !p.procedure_products.length) : []
+  // A7 da 23ª: o que a rede marcou "não usa insumo" (a Avaliação, a Massagem) fica fora.
+  const semInsumo = temInsumo ? procedimentosSemInsumoLigado(procList) : []
   const idsSemInsumo = new Set(semInsumo.map(p => p.id))
 
   const totalActive   = procList.filter(p => p.is_active).length
@@ -235,7 +239,7 @@ export async function CatalogoDeProcedimentos({ termo }: { termo: string }) {
           {/* A27 da 22ª: na mesma linha — a quebra do JSX punha um espaço antes dos dois-pontos. */}
           {' '}({nomesDosSemInsumo(semInsumo.map(p => p.name))}): a baixa automática do estoque não acontece {semInsumo.length === 1 ? 'nele' : 'neles'}.
           {canEdit ? ' Ligue os insumos em “Editar” → Insumos utilizados.' : ''}{' '}
-          <Dica rotulo="O que não usa insumo">O que não usa insumo (a avaliação, a massagem) pode ficar assim: o aviso é só um lembrete.</Dica>
+          <Dica rotulo="O que não usa insumo">O que não usa insumo (a avaliação, a massagem) se marca no procedimento, em “Editar” → “Este procedimento não usa insumo”, e sai deste aviso.</Dica>
         </p>
       )}
 
@@ -316,6 +320,7 @@ export async function CatalogoDeProcedimentos({ termo }: { termo: string }) {
                     contract_template_id: (p.contract_template_id as string | null) ?? null,
                     outros_documentos:    (p.outros_documentos as string[] | null) ?? [],
                     loyalty_points:       (p.loyalty_points as number | null) ?? null,
+                    sem_insumo:           !!(p as { sem_insumo?: boolean | null }).sem_insumo,
                     room_ids:             p.room_ids,
                     professional_ids:     p.professional_ids,
                   }
@@ -359,10 +364,13 @@ export async function CatalogoDeProcedimentos({ termo }: { termo: string }) {
                           {branchLabel}
                         </span>
                       </td>
-                      <td data-label="App" data-par style={{ padding: '13px 16px' }}>
+                      {/* A9 da 24ª (princípio 3): o ícone sozinho, igual nas linhas, não dizia sim nem não. */}
+                      <td data-label="App" data-par data-no-app={p.visible_on_client_app ? 'sim' : 'nao'} style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
                         {p.visible_on_client_app
-                          ? <Smartphone size={14} color="var(--brand)" aria-label="Permite auto agendamento" />
-                          : <span style={{ color: 'var(--text-faint)', fontSize: 'var(--text-2xs)' }}>—</span>}
+                          ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--brand)', fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)' }}>
+                              <Smartphone size={13} aria-hidden /> Sim
+                            </span>
+                          : <span style={{ color: 'var(--text-faint)', fontSize: 'var(--text-2xs)' }}>Não</span>}
                       </td>
                       <td data-label="Situação" data-par style={{ padding: '13px 16px' }}>
                         <span className={p.is_active ? 'chip chip-success' : 'chip chip-muted'}>

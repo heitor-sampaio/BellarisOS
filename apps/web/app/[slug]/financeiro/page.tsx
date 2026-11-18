@@ -23,6 +23,7 @@ import { descontosDosLancamentos } from '@/lib/financeiro/desconto-do-lancamento
 import { pagosSemDinheiro, type LancamentoSemDinheiro } from '@/lib/financeiro/pago-sem-dinheiro'
 import { getTaxaDosLancamentos } from '@/lib/metrics/contadora'
 import { getAReceberDaOperadora, getParcelasDaOperadora } from '@/lib/metrics/operadora'
+import { comOProcedimento, parcelasComOProcedimento } from '@/lib/financeiro/procedimento-do-lancamento'
 import { getFluxoDeCaixa } from '@/lib/metrics/fluxo-de-caixa'
 import { getTotalDosAtendimentosAReceber } from '@/lib/metrics/a-receber'
 import { getAReceberVencido } from '@/lib/metrics/vencidas'
@@ -115,7 +116,8 @@ export default async function FinancialPage({
     // F2c: o cartão em N vezes que a OPERADORA ainda deposita, mês a mês, pelo
     // vencimento — separado do a receber da cliente (ela já pagou tudo).
     getAReceberDaOperadora({ ...argsDoNucleo, from: start, to: fimDoPeriodo }),
-    getParcelasDaOperadora({ ...argsDoNucleo, from: start, to: fimDoPeriodo }),
+    getParcelasDaOperadora({ ...argsDoNucleo, from: start, to: fimDoPeriodo })
+      .then(ps => parcelasComOProcedimento(ctx.tenantId!, ps)),
     // "Reforça", item 4: os concluídos sem pagamento, separados dos
     // lançamentos (só apareciam no Fechamento), no escopo do financeiro.
     getTotalDosAtendimentosAReceber({ tenantId: ctx.tenantId!, unidadeId: branch.id as string, profissionalId: recorteDosModulos(ctx).financeiro }),
@@ -127,9 +129,10 @@ export default async function FinancialPage({
   // perdia os lançamentos mais antigos — a busca e os filtros da lista também.
   const unidadeId = branch.id as string
   // FI2: o Resumo não tem a lista — só as outras abas a leem.
-  const lancamentos = aba === 'resumo' ? [] : await lerTodas((de, ate) => soAsVencidas
+  // A26 da 24ª: o lançamento do atendimento diz o procedimento ("Atendimento concluído" não dizia).
+  const lancamentos = aba === 'resumo' ? [] : await comOProcedimento(ctx.tenantId!, (await lerTodas((de, ate) => soAsVencidas
     ? doPeriodo(de, ate).lt('due_date', startOfDayTZ(new Date(), fuso).toISOString())
-    : doPeriodo(de, ate), 'carregar os lançamentos')
+    : doPeriodo(de, ate), 'carregar os lançamentos')) ?? [])
   function doPeriodo(de: number, ate: number) {
     return createAdminClient()
     .from('financial_transactions')

@@ -12,7 +12,7 @@ import { criarMembro, type MembroDeTeste } from './apoio/sessao'
  * MK1 (2026-11-14): a "Automática" saiu (os gatilhos de cada cliente são
  * modelos nas Automações); a regra vale para a Agendada — sem a data, não
  * avança; a de todo ano diz quando sai, na revisão e nos detalhes.
- * Rede `[e2e]` própria, membro com Marketing em Gerenciar.
+ * Rede `[e2e]` própria, com a Admin da rede (desde 18/11, só ela monta a campanha).
  */
 
 const marca = Date.now().toString(36)
@@ -21,7 +21,9 @@ let membro: MembroDeTeste | null = null
 
 test.beforeAll(async () => {
   rede = await criarOutraRede(`cp11${marca}`)
-  membro = await criarMembro(`cp11${marca}`, { tenant: rede.tenantId, rotulo: 'Marketing', permissoes: [{ modulo: 'marketing', nivel: 'MANAGE' }] })
+  // A campanha é configuração da rede toda: só a Admin da rede (o Heitor,
+  // 18/11: "Configuração da rede toda só pela conta admin").
+  membro = await criarMembro(`cp11${marca}`, { tenant: rede.tenantId, rotulo: 'Marketing', donoDaRede: true, permissoes: [] })
 })
 
 test.afterAll(async () => {

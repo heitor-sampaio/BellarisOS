@@ -1,4 +1,5 @@
 import 'server-only'
+import type { EnderecoDoCadastro } from '@/lib/clients/endereco-do-cadastro'
 import type { TenantContext } from '@estetica-os/types'
 import type { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
@@ -112,6 +113,8 @@ export interface PreenchidoAgora {
   gender?:     string | null
   notes?:      string | null
   tags?:       string[] | null
+  /** O endereço preenchido agora (A29 da 22ª): só o que veio, por cima do dela. */
+  endereco?:   Partial<EnderecoDoCadastro>
 }
 
 /**
@@ -140,6 +143,7 @@ export async function atualizarFichaComOPreenchido(
   if (texto(agora.email)) colunas.email = texto(agora.email)!.toLowerCase()
   if (texto(agora.birth_date)) colunas.birth_date = texto(agora.birth_date)
   if (texto(agora.gender)) colunas.gender = texto(agora.gender)
+  for (const [coluna, v] of Object.entries(agora.endereco ?? {})) if (v) colunas[coluna] = v
   const doc = agora.documento
   if (doc?.document) {
     if (antes.document && antes.document !== doc.document) return { error: `A ficha de ${antes.name} já tem outro CPF. Confira o CPF digitado.` }

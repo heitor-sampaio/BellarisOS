@@ -639,7 +639,7 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
                       // A57: o pacote trazido de fora — as usadas antes do sistema não somem.
                       <p data-usadas-antes style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 4 }}>
                         Pacote de antes: {usadasAntesDoSistema(activePackage.usadasAntes ?? 0)}.
-                        {activePackage.semValorDeReferencia && ' Sem valor de referência: as sessões não geram comissão de execução (R$ 0).'}
+                        {activePackage.semValorDeReferencia && ' Sem valor de referência: a comissão de execução em percentual é R$ 0 (a de R$ fixo por sessão é paga).'}
                       </p>
                     )}
                     {onCancelarPacote && (

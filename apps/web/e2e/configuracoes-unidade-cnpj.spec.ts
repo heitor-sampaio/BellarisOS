@@ -47,9 +47,10 @@ async function abrirNovaUnidade(p: Page, nome: string, { emBranco = true } = {})
 test.beforeAll(async () => {
   rede = await criarOutraRede(`cn${marca}`)
   expect((await db().from('tenants').update({ document: CNPJ }).eq('id', rede.tenantId)).error).toBeNull()
-  gestora = await criarMembro(`cng${marca}`, {
-    tenant: rede.tenantId, rotulo: 'Gestora', permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }],
-  })
+  // Criar unidade é configuração da rede toda: só a Admin da rede (o Heitor,
+  // 18/11: "Configuração da rede toda só pela conta admin"; createBranch em
+  // docs/regras/plataforma.md).
+  gestora = await criarMembro(`cng${marca}`, { tenant: rede.tenantId, rotulo: 'Gestora', donoDaRede: true, permissoes: [] })
 })
 
 test.afterAll(async () => {

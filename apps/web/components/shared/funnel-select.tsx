@@ -1,10 +1,12 @@
 'use client'
 
+import { useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { SegSelect } from '@/components/shared/seg-select'
+import { Dica } from '@/components/shared/dica'
 import { mesclarParams } from '@/lib/query-params'
 import type { CRMFunnel } from '@/lib/crm'
-import { COOKIE_DO_FUNIL } from '@/lib/crm/funil-lembrado'
+import { cookieDoFunilLembrado, funilParaLembrar } from '@/lib/crm/funil-lembrado'
 
 /**
  * Seletor de funil — o mesmo no quadro do CRM, no dashboard e no comercial.
@@ -17,7 +19,8 @@ import { COOKIE_DO_FUNIL } from '@/lib/crm/funil-lembrado'
  * Com um funil só o seletor não aparece: não há escolha a oferecer.
  *
  * A escolha também fica anotada (A34 da 23ª, `lib/crm/funil-lembrado.ts`):
- * sem `?funil=`, a tela abre no último escolhido.
+ * sem `?funil=`, a tela abre no último escolhido. O `?funil=` que abriu a
+ * tela também conta (A42 da 24ª), e a dica diz que o lembrado é deste navegador.
  */
 export function FunnelSelect({
   funnels, activeId,
@@ -27,18 +30,31 @@ export function FunnelSelect({
 }) {
   const router = useRouter()
   const params = useSearchParams()
+  const pedido = params.get('funil')
+
+  useEffect(() => {
+    const lembrar = funilParaLembrar(pedido, activeId)
+    if (lembrar) document.cookie = cookieDoFunilLembrado(lembrar)
+  }, [pedido, activeId])
 
   if (funnels.length <= 1) return null
 
   return (
-    <SegSelect
-      options={funnels.map(f => ({ key: f.id, label: f.name }))}
-      value={activeId}
-      onSelect={id => {
-        document.cookie = `${COOKIE_DO_FUNIL}=${encodeURIComponent(id)}; path=/; max-age=31536000; samesite=lax`
-        router.push(mesclarParams(params, { funil: id }))
-      }}
-      ariaLabel="Selecionar funil"
-    />
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+      <SegSelect
+        options={funnels.map(f => ({ key: f.id, label: f.name }))}
+        value={activeId}
+        onSelect={id => {
+          document.cookie = cookieDoFunilLembrado(id)
+          router.push(mesclarParams(params, { funil: id }))
+        }}
+        ariaLabel="Selecionar funil"
+      />
+      <Dica rotulo="Sobre o funil que abre">
+        O funil escolhido (aqui ou por um link) fica lembrado neste navegador: as Oportunidades e os Relatórios
+        abrem nele. Em outro aparelho ou navegador, abrem no funil padrão — ou, sem oportunidade nele, no primeiro
+        funil que tem.
+      </Dica>
+    </span>
   )
 }

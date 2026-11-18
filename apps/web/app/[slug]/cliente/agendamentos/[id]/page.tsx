@@ -53,8 +53,13 @@ function LinhaDoDocumento({ slug, doc, fuso }: { slug: string; doc: ResumoDeDocu
   )
 }
 
-export default async function AgendamentoDaClientePage({ params }: { params: Promise<{ slug: string; id: string }> }) {
+export default async function AgendamentoDaClientePage({ params, searchParams }: {
+  params: Promise<{ slug: string; id: string }>
+  searchParams: Promise<{ remarcar?: string }>
+}) {
   const { slug, id } = await params
+  // A47 da 24ª: o "Remarcar" do cartão abre o formulário já aberto.
+  const abrirRemarcando = (await searchParams).remarcar === '1'
   // O id vai a uma coluna uuid: o que não é uuid é 404, não 22P02 (D15).
   idOu404(id)
   const ctx = await getTenantContext()
@@ -173,6 +178,7 @@ export default async function AgendamentoDaClientePage({ params }: { params: Pro
           whatsapp={whatsapp}
           whatsappParaAlterar={whatsappParaAlterar}
           ligar={telefone ? `tel:+${telefone.startsWith('55') && telefone.length > 11 ? telefone : `55${telefone}`}` : null}
+          abrirRemarcando={abrirRemarcando}
         />
         </FusoProvider>
       )}

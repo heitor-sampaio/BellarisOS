@@ -351,6 +351,10 @@ test.describe('CF3a: a tela', () => {
       await p.locator('[data-auditoria-mais]').click()
       await expect(p).toHaveURL(/antes=\d+/)
       await expect(p.locator('[data-linha-da-auditoria]').first()).toBeVisible()
+      // A34 da 24ª: na página antiga, a volta às mais recentes também no topo.
+      await p.locator('[data-auditoria-voltar]').click()
+      await expect(p).not.toHaveURL(/antes=/)
+      await expect(p.locator('[data-linha-da-auditoria]')).toHaveCount(50)
     })
   })
 })

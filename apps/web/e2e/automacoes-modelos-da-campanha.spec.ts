@@ -13,7 +13,7 @@ import { addDaysTZ, dayKeyTZ, instanteNoFuso, startOfDayTZ, endOfDayTZ } from '.
  * vencimento de pacote é o relógio + a busca "pacote vencendo daqui a N dias"
  * (o pacote cancelado não vence — a regra da campanha de antes).
  *
- * Rede `[e2e]` própria, membro com as Automações em Gerenciar.
+ * Rede `[e2e]` própria, com a Admin da rede (desde 18/11, só ela mexe nas Automações).
  */
 
 test.setTimeout(180_000)
@@ -31,9 +31,9 @@ async function como(browser: Browser, fn: (p: Page) => Promise<void>) {
 
 test.beforeAll(async () => {
   rede = await criarOutraRede(`au1${marca}`)
-  marta = await criarMembro(`au1m${marca}`, {
-    tenant: rede.tenantId, rotulo: 'Automações', permissoes: [{ modulo: 'automations', nivel: 'MANAGE' }],
-  })
+  // Automações são configuração da rede toda: só a Admin da rede (o Heitor,
+  // 18/11: "Configuração da rede toda só pela conta admin").
+  marta = await criarMembro(`au1m${marca}`, { tenant: rede.tenantId, rotulo: 'Automações', donoDaRede: true, permissoes: [] })
   const sp = await db().from('service_packages').insert({
     tenant_id: rede.tenantId, branch_id: rede.branchId, procedure_id: rede.procedureId,
     name: `${PREFIXO} Pacote ${marca}`, total_sessions: 4, price: 400,

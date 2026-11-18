@@ -57,8 +57,11 @@ test.beforeAll(async () => {
   }
   outra = await criarOutraRede(`hist${marca}`)
   outraAlheia = await criarOutraRede(`histx${marca}`)
-  membro = await criarMembro(`hist${marca}`, { tenant: outra.tenantId, rotulo: 'Config', permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }] })
-  alheio = await criarMembro(`histx${marca}`, { tenant: outraAlheia.tenantId, rotulo: 'Config', permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }] })
+  // A caixa é configuração da rede toda: só a Admin da rede (o Heitor, 18/11:
+  // "Configuração da rede toda só pela conta admin"). A alheia também é Admin
+  // — da rede DELA —, senão a recusa viria do cargo, não da rede.
+  membro = await criarMembro(`hist${marca}`, { tenant: outra.tenantId, rotulo: 'Config', donoDaRede: true, permissoes: [] })
+  alheio = await criarMembro(`histx${marca}`, { tenant: outraAlheia.tenantId, rotulo: 'Config', donoDaRede: true, permissoes: [] })
   const { data, error } = await db().from('whatsapp_numbers').insert({
     tenant_id: outra.tenantId, provider: 'uazapi', label: `${PREFIXO} Recepção ${marca}`, is_active: true,
     config: { token: `e2e-hist-${marca}`, baseUrl: falsa.url },

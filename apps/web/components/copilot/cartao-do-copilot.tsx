@@ -37,6 +37,8 @@ export function CartaoDoCopilot({ cartao, pagina, aoNavegar, aoMudar }: {
   // inteira (15 s com o banco lento, a completa de 07/11), com tudo já gravado.
   const [pendente, setPendente] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  // A escolha da lista (A40 da 24ª); sem mexer, vale a primeira (a sugerida).
+  const [naLista, setNaLista] = useState<string | null>(null)
 
   if (cartao.tipo === 'links') {
     return (
@@ -101,8 +103,23 @@ export function CartaoDoCopilot({ cartao, pagina, aoNavegar, aoMudar }: {
 
       {status === 'pendente' && !pendente && (
         <div className="copilot-cartao-botoes">
-          {/* O cartão com escolhas (r2-cli-01): uma opção por botão, no lugar do "Confirmar". */}
-          {resumo.escolhas?.length
+          {/* A40 da 24ª: as escolhas em LISTA (a categoria sugerida, que se troca aqui) e um "Confirmar". */}
+          {resumo.escolhas?.length && resumo.escolhaEmLista
+            ? (
+              <>
+                <label className="copilot-cartao-lista" data-escolha-em-lista>
+                  <span className="field-label">{resumo.escolhaEmLista.rotulo}</span>
+                  <select className="filtro-select" value={naLista ?? resumo.escolhas[0]!.chave} onChange={e => setNaLista(e.target.value)}>
+                    {resumo.escolhas.map(e => <option key={e.chave} value={e.chave}>{e.rotulo}</option>)}
+                  </select>
+                </label>
+                <button type="button" className="btn-primary" onClick={() => decidir('confirmar', naLista ?? resumo.escolhas![0]!.chave)}>
+                  <Check size={14} /> Confirmar
+                </button>
+              </>
+            )
+            // O cartão com escolhas (r2-cli-01): uma opção por botão, no lugar do "Confirmar".
+            : resumo.escolhas?.length
             ? resumo.escolhas.map((e, i) => (
                 <button key={e.chave} type="button" className={i === 0 ? 'btn-primary' : 'btn-secondary'} onClick={() => decidir('confirmar', e.chave)}>
                   <Check size={14} /> {e.rotulo}

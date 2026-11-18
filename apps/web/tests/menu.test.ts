@@ -48,8 +48,11 @@ describe('quem só recebe não entra no financeiro', () => {
 })
 
 describe('entradas com mais de uma porta', () => {
-  it('Tratamentos abre pela Agenda — nem pelo prontuário nem por quem recebe (D1 da 23ª)', () => {
-    expect(menuEntriesFor(BRANCH_MENU, com({ agenda: 'VIEW' })).map(e => e.key)).toContain('planejamentos')
+  // Desde 2026-11-18 o plano é de quem atende: Tratamentos abre pelo Atendimento
+  // (a Agenda voltou a ser agenda — o Heitor, "Agenda é agenda e atendimento é atendimento").
+  it('Tratamentos abre pelo Atendimento — nem pela Agenda, nem pelo prontuário, nem por quem recebe', () => {
+    expect(menuEntriesFor(BRANCH_MENU, com({ atendimento: 'VIEW' })).map(e => e.key)).toContain('planejamentos')
+    expect(menuEntriesFor(BRANCH_MENU, com({ agenda: 'MANAGE' })).map(e => e.key)).not.toContain('planejamentos')
     expect(menuEntriesFor(BRANCH_MENU, com({ medical_records: 'VIEW' })).map(e => e.key)).not.toContain('planejamentos')
     expect(menuEntriesFor(BRANCH_MENU, com({ cashier: 'MANAGE' })).map(e => e.key)).not.toContain('planejamentos')
   })
@@ -119,7 +122,7 @@ describe('menuSectionsFor', () => {
   })
 
   it('Planejamento junta Tratamentos e Injetáveis', () => {
-    const secoes = menuSectionsFor(ADMIN_MENU, com({ agenda: 'VIEW', medical_records: 'VIEW' }))
+    const secoes = menuSectionsFor(ADMIN_MENU, com({ atendimento: 'VIEW', medical_records: 'VIEW' }))
     const planejamento = secoes.find(s => s.key === 'planejamento')
     expect(planejamento!.entries.map(e => e.label)).toEqual(['Tratamentos', 'Injetáveis'])
   })
@@ -140,8 +143,8 @@ describe('menuSectionsFor', () => {
 
 describe('menuLabelsFor', () => {
   it('devolve só os rótulos, na ordem do menu', () => {
-    // D1 da 23ª: a Agenda em Ver abre também Tratamentos (a régua da página).
-    expect(menuLabelsFor(BRANCH_MENU, com({ agenda: 'VIEW' }))).toEqual(['Dashboard', 'Agenda', 'Tratamentos'])
+    // O Atendimento em Ver abre Tratamentos (a régua da página, 2026-11-18).
+    expect(menuLabelsFor(BRANCH_MENU, com({ agenda: 'VIEW', atendimento: 'VIEW' }))).toEqual(['Dashboard', 'Agenda', 'Tratamentos'])
   })
 })
 

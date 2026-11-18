@@ -20,10 +20,9 @@ let cliente: ClienteDeTeste | null = null
 
 test.beforeAll(async () => {
   outra = await criarOutraRede(`lig${marca}`)
-  gestor = await criarMembro(`lig${marca}`, {
-    tenant: outra.tenantId, rotulo: 'Gestão',
-    permissoes: [{ modulo: 'automations', nivel: 'MANAGE' }, { modulo: 'marketing', nivel: 'MANAGE' }],
-  })
+  // Automações e campanhas são configuração da rede toda: só a Admin da rede
+  // (o Heitor, 18/11: "Configuração da rede toda só pela conta admin").
+  gestor = await criarMembro(`lig${marca}`, { tenant: outra.tenantId, rotulo: 'Gestão', donoDaRede: true, permissoes: [] })
   cliente = await clienteComSessao(`lig${marca}`, (await unidadesAtivas())[0]!)
 })
 

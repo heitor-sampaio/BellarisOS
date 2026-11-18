@@ -31,6 +31,7 @@ import { PainelPlanejamento } from '@/components/branch/painel-planejamento'
 import { rotaAgenda, rotaClientes, rotaCliente, rotaNoPortal } from '@/lib/rotas'
 import type { LoteDoAtendimento } from '@/lib/prontuario/lotes-dos-atendimentos'
 import { CampoIndicadaPor, type FichaQueIndicou } from '@/components/shared/campo-indicada-por'
+import { CamposDeEndereco, mascaraDoCep, type EnderecoNaTela } from '@/components/shared/campos-de-endereco'
 import type { IndicacaoDaFicha } from '@/lib/clientes/indicacao-da-ficha'
 import { rotaComParams } from '@/lib/query-params'
 import { iniciaisDoNome, maskPhone, TIPOS_DE_DOCUMENTO } from '@estetica-os/utils'
@@ -60,6 +61,7 @@ import { AcoesDoLancamentoDaFicha } from '@/components/shared/acoes-do-lancament
 import { textoDaOrigemDoCredito } from '@/lib/creditos/origem'
 import { mesDeClienteDesde } from '@/lib/clientes/cliente-desde'
 import { AvisoDoPacoteEmAberto } from '@/components/shared/aviso-do-pacote-em-aberto'
+import type { PacoteVencidoDaFicha } from '@/lib/pacotes/regras'
 import { useFuso } from '@/components/shared/fuso'
 import { avisoDaAbaFechada } from '@/lib/clients/aba-fechada'
 
@@ -135,11 +137,14 @@ export interface ProfilePackage {
   deFora?:       boolean
   /** Do pacote trazido: as sessões usadas antes do sistema (A57). */
   usadasAntes?:  number
-  /** Do pacote trazido: sem valor de referência (a comissão de execução é R$ 0 — princípio 4). */
+  /** Do pacote trazido: sem valor de referência (a comissão de execução em percentual é R$ 0 — princípio 4; a de R$ fixo é paga — item 11 da auditoria). */
   semValorDeReferencia?: boolean
   /** A41 da 11ª: o que ainda está em aberto deste pacote (o crediário) — só a quem recebe; `unidadeId`, a do pacote (o PDV dele). */
-  emAberto?:     { valor: number; parcelas: number; unidadeId?: string | null } | null
+  emAberto?:     { valor: number; parcelas: number; unidadeId?: string | null
+    /** Item 8 da auditoria: a rede libera as sessões antes de pago (o padrão)? `tenants.pacote_crediario_libera`. */
+    liberaAsSessoes?: boolean } | null
 }
+
 
 export interface ProfileTransaction {
   id:            string
@@ -182,6 +187,11 @@ export interface ProfileTransaction {
   doAtendimento?:  boolean
   /** A3 da 21ª: a parcela em aberto recebida antes das anteriores da mesma venda (o aviso do "Receber"). */
   adiantada?:      string | null
+  /**
+   * Limite da 21ª: a parcela recebida em várias formas, numa linha — o texto
+   * ("Pix R$ 400,00 + Dinheiro R$ 200,00") e cada forma, com o recibo e o estorno dela.
+   */
+  formas?:         { texto: string; itens: { id: string; rotulo: string; valor: number; metodo: string | null }[] } | null
 }
 
 export interface ProfileInternalCredit {
@@ -331,6 +341,8 @@ interface Props {
   podeVerPlanos?:        boolean
   /** Cancelar o pacote (F2b, 2026-11-01): `financial: MANAGE`. */
   podeCancelarPacote?:   boolean
+  /** Item 9 da auditoria: o pacote vencido que a rede deixa cancelar (só com a regra ligada). */
+  pacoteVencido?:        PacoteVencidoDaFicha | null
   /**
    * A33 da 8ª: quem estorna, devolve e cancela pacote (o Financeiro em
    * Gerenciar), para quem recebe e não desfaz saber a quem pedir. Nulo: quem
@@ -729,11 +741,6 @@ function applyDocMask(v: string) {
     .replace(/(\d{3})\.(\d{3})\.(\d{3})(\d)/, '$1.$2.$3-$4')
 }
 
-function applyCepMask(v: string) {
-  const d = v.replace(/\D/g, '').slice(0, 8)
-  return d.replace(/(\d{5})(\d)/, '$1-$2')
-}
-
 function DadosTab({ client, slug, podeEditar }: {
   client: ProfileClient; slug: string
   /** Clientes em Gerenciar. Sem isso, os campos só se leem (D5, 2026-11-01). */
@@ -752,13 +759,12 @@ function DadosTab({ client, slug, podeEditar }: {
   const [phone,      setPhone]      = useState(maskPhone(client.phone ?? ''))
   const [email,      setEmail]      = useState(client.email ?? '')
   const [birthDate,  setBirthDate]  = useState(client.birthDate ? client.birthDate.slice(0, 10) : '')
-  const [zipCode,    setZipCode]    = useState(client.zipCode   ? applyCepMask(client.zipCode) : '')
-  const [address,    setAddress]    = useState(client.address ?? '')
-  const [addrNum,    setAddrNum]    = useState(client.addressNumber ?? '')
-  const [addrComp,   setAddrComp]   = useState(client.addressComplement ?? '')
-  const [neighborhood, setNeighborhood] = useState(client.neighborhood ?? '')
-  const [city,       setCity]       = useState(client.city ?? '')
-  const [state,      setState]      = useState(client.state ?? '')
+  // O endereço: o mesmo componente do Novo cliente (A29 da 22ª = A39 da 23ª).
+  const [endereco,   setEndereco]   = useState<EnderecoNaTela>({
+    cep: client.zipCode ? mascaraDoCep(client.zipCode) : '', logradouro: client.address ?? '',
+    numero: client.addressNumber ?? '', complemento: client.addressComplement ?? '',
+    bairro: client.neighborhood ?? '', cidade: client.city ?? '', uf: client.state ?? '',
+  })
   // A menor de idade: o responsável legal (decisão 2 do Heitor, 2026-11-05).
   const [responsavel, setResponsavel] = useState(client.responsavel ? {
     nome: client.responsavel.nome, cpf: client.responsavel.cpf ? applyDocMask(client.responsavel.cpf) : '',
@@ -777,7 +783,6 @@ function DadosTab({ client, slug, podeEditar }: {
 
   const [cpfStatus,  setCpfStatus]  = useState<'idle' | 'checking' | 'ok' | 'self' | 'dup'>('idle')
   const [cpfDupName, setCpfDupName] = useState('')
-  const [cepLoading, setCepLoading] = useState(false)
   const [saving,     setSaving]     = useState(false)
   const [saveError,  setSaveError]  = useState<string | null>(null)
   const [saved,      setSaved]      = useState(false)
@@ -806,26 +811,6 @@ function DadosTab({ client, slug, podeEditar }: {
     }, 500)
   }
 
-  async function handleCepChange(v: string) {
-    const masked = applyCepMask(v)
-    setZipCode(masked)
-    setSaved(false)
-    const digits = masked.replace(/\D/g, '')
-    if (digits.length !== 8) return
-    setCepLoading(true)
-    try {
-      const res  = await fetch(`https://viacep.com.br/ws/${digits}/json/`)
-      const data = await res.json()
-      if (!data.erro) {
-        setAddress(data.logradouro ?? '')
-        setNeighborhood(data.bairro ?? '')
-        setCity(data.localidade ?? '')
-        setState(data.uf ?? '')
-      }
-    } catch {}
-    setCepLoading(false)
-  }
-
   async function handleSave() {
     if (cpfStatus === 'dup') return
     if (nome.trim().length < 2) { setSaveError('Informe o nome do cliente.'); return }
@@ -833,7 +818,7 @@ function DadosTab({ client, slug, podeEditar }: {
     setSaveError(null)
     const result = await updateClientContactData(
       client.id,
-      { name: nome, gender, document: cpf, documentType: tipoDoc, phone, email, birthDate, zipCode, address, addressNumber: addrNum, addressComplement: addrComp, neighborhood, city, state, tags: selectedTags,
+      { name: nome, gender, document: cpf, documentType: tipoDoc, phone, email, birthDate, zipCode: endereco.cep, address: endereco.logradouro, addressNumber: endereco.numero, addressComplement: endereco.complemento, neighborhood: endereco.bairro, city: endereco.cidade, state: endereco.uf, tags: selectedTags,
         ...(menor ? { responsavel } : {}),
         ...(mudouIndicacao ? { indicadaPor: indicadaPor?.id ?? null } : {}) },
       slug,
@@ -969,50 +954,8 @@ function DadosTab({ client, slug, podeEditar }: {
       <div>
         <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Endereço</p>
 
-        <div className="form-2col" style={{ marginBottom: 10 }}>
-          <div>
-            <label style={labelStyle}>CEP</label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type="text" inputMode="numeric" placeholder="00000-000"
-                value={zipCode} onChange={e => handleCepChange(e.target.value)}
-                style={{ ...fieldStyle, paddingRight: cepLoading ? 32 : 12 }}
-              />
-              {cepLoading && <Loader2 size={13} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)', animation: 'spin 1s linear infinite' }} />}
-            </div>
-          </div>
-          <div>
-            <label style={labelStyle}>Bairro</label>
-            <input type="text" placeholder="Bairro" value={neighborhood} onChange={e => { setNeighborhood(e.target.value); setSaved(false) }} style={fieldStyle} />
-          </div>
-        </div>
-
-        <div style={{ marginBottom: 10 }}>
-          <label style={labelStyle}>Logradouro</label>
-          <input type="text" placeholder="Rua, Avenida…" value={address} onChange={e => { setAddress(e.target.value); setSaved(false) }} style={fieldStyle} />
-        </div>
-
-        <div className="form-2col" style={{ marginBottom: 10 }}>
-          <div>
-            <label style={labelStyle}>Número</label>
-            <input type="text" placeholder="Nº" value={addrNum} onChange={e => { setAddrNum(e.target.value); setSaved(false) }} style={fieldStyle} />
-          </div>
-          <div>
-            <label style={labelStyle}>Complemento</label>
-            <input type="text" placeholder="Apto, Sala…" value={addrComp} onChange={e => { setAddrComp(e.target.value); setSaved(false) }} style={fieldStyle} />
-          </div>
-        </div>
-
-        <div className="form-2col">
-          <div>
-            <label style={labelStyle}>Cidade</label>
-            <input type="text" placeholder="Cidade" value={city} onChange={e => { setCity(e.target.value); setSaved(false) }} style={fieldStyle} />
-          </div>
-          <div>
-            <label style={labelStyle}>UF</label>
-            <input type="text" placeholder="UF" maxLength={2} value={state} onChange={e => { setState(e.target.value.toUpperCase()); setSaved(false) }} style={{ ...fieldStyle, textTransform: 'uppercase' }} />
-          </div>
-        </div>
+        <CamposDeEndereco valor={endereco} onChange={e => { setEndereco(e); setSaved(false) }}
+          estiloDoCampo={fieldStyle} estiloDoRotulo={labelStyle} />
       </div>
 
       {/* Tags */}
@@ -1386,7 +1329,11 @@ function FinanceiroTab({
                       </div>
                     </td>
                     <td data-label="Forma" data-par style={{ padding: '12px 16px' }}>
-                      {(t.forma !== undefined ? t.forma : t.paymentMethod && rotuloDaForma(t.paymentMethod, t.cartaoVezes)) && (
+                      {t.formas ? (
+                        <span data-formas-da-parcela style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)', whiteSpace: 'normal' }}>
+                          {t.formas.texto}
+                        </span>
+                      ) : (t.forma !== undefined ? t.forma : t.paymentMethod && rotuloDaForma(t.paymentMethod, t.cartaoVezes)) ? (
                         <span data-forma-do-lancamento style={{
                           fontSize: 'var(--text-overline)', fontWeight: 700, padding: '3px 8px', borderRadius: 10,
                           background: 'var(--bg-app)', color: 'var(--text-muted)',
@@ -1394,7 +1341,7 @@ function FinanceiroTab({
                         }}>
                           {t.forma !== undefined ? t.forma : rotuloDaForma(t.paymentMethod, t.cartaoVezes)}
                         </span>
-                      )}
+                      ) : null}
                       {/* A40: por que a venda de produto não deu pontos (como a janela "Vender"). */}
                       {t.semPontos && (
                         <span data-sem-pontos style={{ display: 'block', marginTop: 4, fontSize: 'var(--text-overline)', color: 'var(--text-muted)' }}>
@@ -1425,13 +1372,28 @@ function FinanceiroTab({
                           <RemarcarVencimento lancamento={{ id: t.id, descricao: t.description, valor: t.amount, vencimento: t.dueDate }} />
                         )}
                         {/* A32 e A35 da 12ª: estornar e receber sem sair da ficha (no celular, era a página de 20 mil px). */}
-                        <AcoesDoLancamentoDaFicha slug={slug} podeEstornar={podeEstornar} podeReceber={podeReceberParcela}
+                        {/* Limite da 21ª: a parcela em várias formas — o estorno e o recibo de cada forma. */}
+                        {t.formas && t.formas.itens.map(f => (
+                          <span key={f.id} data-forma-da-parcela={f.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontSize: 'var(--text-overline)', fontWeight: 600, color: 'var(--text-muted)' }}>{f.rotulo}</span>
+                            <AcoesDoLancamentoDaFicha slug={slug} podeEstornar={podeEstornar} podeReceber={false} forma={f.rotulo}
+                              lancamento={{ id: f.id, descricao: t.description, valor: f.valor, pago: true, metodo: f.metodo,
+                                vendaDeProduto: t.vendaDeProduto, vendaDeCredito: t.vendaDeCredito, doAtendimento: t.doAtendimento }} />
+                            {!soOsProprios && (
+                              <a href={`/api/recibos/${f.id}`} target="_blank" rel="noopener" title="Recibo (PDF): imprimir ou baixar" aria-label={`Recibo (${f.rotulo})`}
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)', textDecoration: 'none' }}>
+                                <FileText size={12} aria-hidden /> Recibo
+                              </a>
+                            )}
+                          </span>
+                        ))}
+                        {!t.formas && <AcoesDoLancamentoDaFicha slug={slug} podeEstornar={podeEstornar} podeReceber={podeReceberParcela}
                           lancamento={{ id: t.id, descricao: t.description, valor: t.amount, pago: t.isPaid, estornada: t.estornada, estorno: t.estorno, saida: t.saida,
                             metodo: t.paymentMethod, vendaDeProduto: t.vendaDeProduto, vendaDeCredito: t.vendaDeCredito, doAtendimento: t.doAtendimento,
-                            adiantada: t.adiantada ?? null }} />
+                            adiantada: t.adiantada ?? null }} />}
                         {/* r2-ven-13: o recibo do pago (PDF), onde a recepção procura. Quem só vê
                             o dela não tira recibo (a rota pede quem recebe ou vê a unidade inteira). */}
-                        {t.isPaid && !t.estornada && !t.estorno && !t.saida && !soOsProprios && (
+                        {!t.formas && t.isPaid && !t.estornada && !t.estorno && !t.saida && !soOsProprios && (
                           <a href={`/api/recibos/${t.id}`} target="_blank" rel="noopener" title="Recibo (PDF): imprimir ou baixar"
                             style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)', textDecoration: 'none' }}>
                             <FileText size={12} aria-hidden /> Recibo
@@ -1522,7 +1484,7 @@ export function ClientProfile({
   fidelidade, activePackage,
   transactions, internalCredits, documents, recordForms = [], lotesDosAtendimentos = {}, podeAbrirLote = false, anexosClinicosFora = 0, anexosClinicos = [], temModuloProntuario = false, anotacoesEVersoes = { anotacoes: {}, versoes: {} }, podeAnotar = false, pedidoLgpd = null, podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, alergias = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, portalNoPlano = false, veFinanceiro = false, isNetworkWide, clienteSemUnidade = false, perguntaAUnidade = false, clientHistory, opportunities = [],
   planProcedures = [], planProducts = [], podeReceber = false, podeMontarPlano = false, termos = null,
-  prePagos = [], podeAgendar = false, podeCancelarPacote = false, quemDesfaz = null, pagoComCredito = 0, podeRemarcar = false, podeEstornar = false, podeReceberParcela = false, podeEditarCadastro = false, quemCompletaOCadastro: quemCompleta = null, podeExportarProntuario = false, podeVerPlanos = false,
+  prePagos = [], podeAgendar = false, podeCancelarPacote = false, pacoteVencido = null, quemDesfaz = null, pagoComCredito = 0, podeRemarcar = false, podeEstornar = false, podeReceberParcela = false, podeEditarCadastro = false, quemCompletaOCadastro: quemCompleta = null, podeExportarProntuario = false, podeVerPlanos = false,
   aReceber = { itens: [], total: { n: 0, valor: 0 } }, comandaParaReceber = null, podeReceberAtendimento = false,
   totaisFinanceiros = { pago: 0, aReceber: 0, credito: null }, financeiroSoOsProprios = false,
 }: Props) {
@@ -1539,6 +1501,8 @@ export function ClientProfile({
 
   // Cancelar o pacote em andamento (F2b): a janela da conta.
   const [cancelandoPacote, setCancelandoPacote] = useState(false)
+  // Item 9: o pacote vencido, quando a rede o cancela.
+  const [cancelandoVencido, setCancelandoVencido] = useState(false)
   const pacoteCancelavel = podeCancelarPacote && !!activePackage && !activePackage.planId
   // Cancelar o plano FECHADO (D4 da 9ª; decisão 2 do Heitor: "usa a mesma coisa
   // do pacote"): a mesma janela e a mesma permissão — o Financeiro em Gerenciar.
@@ -1674,6 +1638,9 @@ export function ClientProfile({
       {cancelandoPacote && activePackage && (activePackage.planId
         ? <CancelarPlano planId={activePackage.planId} onFechar={() => setCancelandoPacote(false)} />
         : <CancelarPacote clientPackageId={activePackage.id} onFechar={() => setCancelandoPacote(false)} />)}
+      {cancelandoVencido && pacoteVencido && (
+        <CancelarPacote clientPackageId={pacoteVencido.id} onFechar={() => setCancelandoVencido(false)} />
+      )}
 
       {/* -- Hero card ------------------------------------------------- */}
       <div className="card" style={{ padding: '20px 24px' }}>
@@ -1949,6 +1916,15 @@ export function ClientProfile({
         )}
         <ProcedimentosPagos vendas={prePagos} podeCancelar={podeReceber} podeAgendar={podeAgendar && !arquivada}
           branches={branches} currentBranchId={currentBranchId ?? ''} />
+        {/* Item 9 da auditoria: o pacote vencido, quando a rede o cancela (Configurações → Geral). */}
+        {pacoteVencido && podeCancelarPacote && (
+          <div className="card" data-pacote-vencido style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', flex: '1 1 260px', minWidth: 0 }}>
+              <strong>{pacoteVencido.nome}</strong> venceu em {pacoteVencido.venceuEm}, com {pacoteVencido.restantes === 1 ? '1 sessão que sobrou' : `${pacoteVencido.restantes} sessões que sobraram`}.
+            </p>
+            <button type="button" className="btn-ghost" onClick={() => setCancelandoVencido(true)}>Cancelar pacote</button>
+          </div>
+        )}
         <div className="rg-3" style={{ gap: 12, alignItems: 'start' }}>
 
           {/* 1. Tratamento em andamento */}
@@ -1995,10 +1971,10 @@ export function ClientProfile({
               </p>
             </div>
             {/* A41 da 11ª: o pacote segue liberando; a ficha diz o que falta pagar dele. */}
-            {activePackage.emAberto && <AvisoDoPacoteEmAberto valor={activePackage.emAberto.valor} parcelas={activePackage.emAberto.parcelas} clienteId={client.id} unidadeId={activePackage.emAberto.unidadeId} slug={slug} />}
+            {activePackage.emAberto && <AvisoDoPacoteEmAberto valor={activePackage.emAberto.valor} parcelas={activePackage.emAberto.parcelas} clienteId={client.id} unidadeId={activePackage.emAberto.unidadeId} slug={slug} liberaAsSessoes={activePackage.emAberto.liberaAsSessoes ?? true} />}
             {activePackage.deFora && activePackage.semValorDeReferencia && (
               <p data-pacote-sem-valor style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 600, lineHeight: 1.45 }}>
-                Sem valor de referência: as sessões deste pacote não geram comissão de execução (R$ 0) nem entram na receita dos atendimentos.
+                Sem valor de referência: as sessões deste pacote não entram na receita dos atendimentos, e a comissão de execução em percentual é R$ 0 (a de R$ fixo por sessão é paga).
               </p>
             )}
             {/* A33 da 8ª: quem recebe e não cancela sabe a quem pedir. */}

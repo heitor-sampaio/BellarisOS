@@ -47,7 +47,7 @@ export function EstornarVendaDeCredito({ transacaoId, descricao, onFechar }: {
       if (r.error || !r.previa) { setErro(r.error ?? 'Não consegui calcular o estorno.'); return }
       setPrevia(r.previa)
       // No cartão só existe o estorno inteiro: já vem escolhido, na forma original (A41 da 8ª).
-      if (r.previa.parcial?.cartao) setEscolha(e => comOPagamentoInteiro({ ...e, comoEstornar: null }, r.previa!.parcial))
+      if (r.previa.parcial?.cartao) setEscolha(e => comOPagamentoInteiro({ ...e, comoEstornar: null }))
     })
     return () => { vivo = false }
   }, [transacaoId, bonusComo])
@@ -119,12 +119,17 @@ export function EstornarVendaDeCredito({ transacaoId, descricao, onFechar }: {
               {/* A31 da 12ª: o usado inteiro, e quanto dele foi do bônus. */}
               <div style={linha}><span>Já usado</span><span data-ja-usado style={{ ...valor, whiteSpace: 'normal', textAlign: 'right' }}>{textoDoJaUsado(previa)}</span></div>
               {temBonus && <div style={linha}><span>Bônus que sai</span><span style={valor}>{formatBRL(previa.bonusSai)}</span></div>}
+              {/* Item 6 da auditoria (2026-11-18): o crédito concedido não vira dinheiro. */}
+              {previa.concedidoFica > 0 && (
+                <div data-concedido-fica style={linha}><span>Crédito concedido (fica com a cliente)</span><span style={valor}>{formatBRL(previa.concedidoFica)}</span></div>
+              )}
               <div style={{ ...linha, borderTop: '1px solid var(--hairline)', paddingTop: 6 }}>
                 <span style={{ color: 'var(--text)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                   <span>Volta à cliente</span>
                   {/* O "como se calcula" mora na dica (2026-11-16); o que não se desfaz fica no topo da janela. */}
                   <Dica rotulo="Como se calcula o que volta">
-                    O que volta é o saldo de crédito dela hoje ({formatBRL(previa.saldo)}), até o que ela pagou
+                    O que volta é o saldo de crédito dela hoje ({formatBRL(previa.saldo)}), sem o crédito concedido
+                    (ele fica com ela e não vira dinheiro), até o que ela pagou
                     {previa.metodo ? ` (${rotuloDaForma(previa.metodo, previa.vezes)})` : ''}. O crédito que volta sai do saldo dela.
                   </Dica>
                 </span>

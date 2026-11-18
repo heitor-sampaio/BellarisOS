@@ -586,10 +586,11 @@ export function AdminFinancialView({
   const cartaoDaOperadora = (naAba: boolean) => (
     <KpiCard
       chave="a-receber-operadora"
+      // A27 da 24ª: o número grande é o em aberto, como o "A receber" da cliente (A17 da 23ª).
       label="A receber da operadora"
-      value={fmtBRL(operadora.aReceber)}
+      value={fmtBRL(operadora.emAberto)}
       nota={<>
-        <NotaDoVencimento valor={operadora.aReceber} proximo={operadora.proximo} emAbertoTotal={operadora.emAberto} />
+        <NotaDoVencimento noTopoOEmAberto valor={operadora.aReceber} proximo={operadora.proximo} emAbertoTotal={operadora.emAberto} />
         {/* D3: o cartão leva à lista das parcelas (no A receber). */}
         <LinkDasParcelas temParcelas={parcelasVisiveis.length > 0} href={naAba ? undefined : daAba('a-receber')} />
       </>}

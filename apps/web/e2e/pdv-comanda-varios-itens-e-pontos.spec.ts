@@ -137,6 +137,11 @@ test('a Mariana leva um sérum na comanda do atendimento: acrescenta, usa os pon
     const receber = detalhe.getByRole('button', { name: /Receber R\$\s?284,00/ })
     await expect(receber).toBeDisabled()
     await detalhe.getByRole('radio', { name: 'Pix' }).click()
+    // "Quem vendeu os produtos" nasce vazio (com-06, r2-ven-12 — item 1 da
+    // auditoria das regras): quem registra escolhe; era quem atendeu, sozinho.
+    const quemVendeu = detalhe.getByLabel('Quem vendeu os produtos')
+    await expect(quemVendeu).toHaveValue('')
+    await quemVendeu.selectOption(rede!.professionalId)
     await receber.click()
     await expect(p.locator(`[data-lista-de-comandas] [data-comanda="${comanda}"]`)).toHaveCount(0)
   })
@@ -150,7 +155,7 @@ test('a Mariana leva um sérum na comanda do atendimento: acrescenta, usa os pon
   expect(itens[0]!.product_sale_id, 'o item virou a venda do produto').not.toBeNull()
   const venda = (await db().from('product_sales').select('id, price, preco_tabela, sold_by').eq('id', itens[0]!.product_sale_id!).single()).data!
   expect({ tabela: n(venda.preco_tabela), preco: n(venda.price) }).toEqual({ tabela: 120, preco: 120 })
-  // Quem vendeu o produto é a profissional do atendimento (o desenho: "Quem vendeu: Dra. Ana Lima").
+  // Quem vendeu o produto é quem a tela escolheu em "Quem vendeu os produtos".
   expect(venda.sold_by).toBe(rede!.professionalId)
   const { data: doProduto } = await db().from('financial_transactions')
     .select('id, amount, loyalty_discount, payment_method, is_paid').eq('product_sale_id', venda.id)
@@ -223,10 +228,16 @@ test('o estorno da venda do produto da comanda devolve o estoque e os pontos del
     await detalhe.getByRole('radio', { name: 'Pix' }).click()
     // 300 − R$ 5,00 dos pontos.
     await detalhe.getByRole('button', { name: /Receber R\$\s?295,00/ }).click()
+    // "Quem vendeu os produtos" ficou vazio: a tela pergunta, e confirmado,
+    // ninguém vendeu (com-06 — item 1 da auditoria das regras).
+    const pergunta = p.getByRole('alertdialog', { name: 'Confirmar a venda' })
+    await expect(pergunta).toBeVisible()
+    await pergunta.getByRole('button', { name: 'Receber assim' }).click()
     await expect(p.locator(`[data-lista-de-comandas] [data-comanda="${comanda}"]`)).toHaveCount(0)
   })
   expect(await estoque(serum)).toBe(antes - 1)
   const venda = (await itensDa(comanda))[0]!.product_sale_id!
+  expect((await db().from('product_sales').select('sold_by').eq('id', venda).single()).data!.sold_by, 'vazio confirmado: ninguém vendeu').toBeNull()
   const tx = (await db().from('financial_transactions').select('id').eq('product_sale_id', venda).single<{ id: string }>()).data!
   const saldoAntes = await saldoDePontos(cliente)
   await como(balcao!, browser, async p => {
@@ -258,6 +269,9 @@ test('D1 da 16ª: o estorno só do atendimento reabre a comanda pedindo só o qu
     const detalhe = p.locator('[data-comanda-aberta]')
     await detalhe.getByRole('radio', { name: 'Pix' }).click()
     await detalhe.getByRole('button', { name: /Receber R\$\s?300,00/ }).click()
+    // "Quem vendeu os produtos" vazio: a tela pergunta antes (com-06 — item 1 da
+    // auditoria das regras, 18/11); confirmado, ninguém vendeu.
+    await p.getByRole('alertdialog', { name: 'Confirmar a venda' }).getByRole('button', { name: 'Receber assim' }).click()
     await expect(p.locator(`[data-lista-de-comandas] [data-comanda="${comanda}"]`)).toHaveCount(0)
   })
   const estoqueDepois = await estoque(serum)
@@ -376,9 +390,10 @@ test('FD2a na ficha: o voucher de desconto diz que se usa no PDV; FD2c: a Fideli
   expect((await db().rpc('resgatar_recompensa', {
     p_tenant: rede!.tenantId, p_cliente: cliente, p_recompensa: recompensa, p_unidade: rede!.branchId, p_ator: 'e2e',
   })).error).toBeNull()
+  // A aba Fidelidade é configuração da rede toda: só a Admin da rede a abre (o
+  // Heitor, 18/11: "Configuração da rede toda só pela conta admin").
   const config = await criarMembro(`pdic${marca}`, {
-    tenant: rede!.tenantId, rotulo: 'Configura',
-    permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'loyalty', nivel: 'MANAGE' }],
+    tenant: rede!.tenantId, rotulo: 'Admin da rede', permissoes: [], cargoDaRede: 'NETWORK_ADMIN',
   })
   try {
     await como(config, browser, async p => {

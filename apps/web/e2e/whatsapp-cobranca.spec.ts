@@ -62,10 +62,10 @@ test.beforeAll(async () => {
     graph, outra, caixa, conv, tel,
     tplPromo: await tpl('promo', 'MARKETING'),
     tplLembrete: await tpl('lembrete', 'UTILITY'),
-    gestor: await criarMembro(`cobg${marca}`, {
-      tenant: outra.tenantId, rotulo: 'Gestor WhatsApp',
-      permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }, { modulo: 'settings', nivel: 'MANAGE' }],
-    }),
+    // A aba de integrações (o mês do número, conectar) é configuração da rede
+    // toda: só a Admin da rede (o Heitor, 18/11: "Configuração da rede toda só
+    // pela conta admin"). Ela tem o CRM, que o inbox pede.
+    gestor: await criarMembro(`cobg${marca}`, { tenant: outra.tenantId, rotulo: 'Gestor WhatsApp', donoDaRede: true, permissoes: [] }),
   }
 })
 

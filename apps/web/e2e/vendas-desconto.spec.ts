@@ -4,6 +4,7 @@ import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { responderAnamnese } from './apoio/anamnese'
 import { chamarAcao } from './apoio/acao-direta'
+import { venderPacotePelaAcao, venderNaTelaPassandoPeloContrato } from './apoio/contrato-do-pacote'
 import { abrirVendaNoPdv, euVendi, pagoNoPix, receberAtendimentoNoPdv, escolherFormaPorValor, botaoDeReceber } from './apoio/vender'
 
 /**
@@ -93,7 +94,7 @@ test.describe.serial('desconto nas vendas', () => {
       await expect(dlg.getByTestId('conta-do-desconto')).toContainText('720,00')
       await pagoNoPix(dlg)
       await euVendi(dlg)
-      await dlg.getByRole('button', { name: /^Vender por R\$\s720,00$/ }).click()
+      await venderNaTelaPassandoPeloContrato(dlg, dlg.getByRole('button', { name: /^Vender por R\$\s720,00$/ }))
       // Quem agenda vê o "Agendar a 1ª sessão agora" (A47 da 7ª); aqui fica para depois.
       await dlg.locator('[data-agendar-a-primeira-sessao]').getByRole('button', { name: 'Cancelar' }).click()
       await expect(dlg).toBeHidden({ timeout: 15_000 })
@@ -111,7 +112,7 @@ test.describe.serial('desconto nas vendas', () => {
   test('pacote: desconto maior que o preço é recusado pela action e pela função', async ({ browser }) => {
     const cliente = await rede!.criarCliente('Pacote recusa')
     await comSessao(browser, async p => {
-      const r = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', '/admin/pdv',
+      const r = await venderPacotePelaAcao(p, '/admin/pdv',
         [cliente, pacoteId, rede!.branchId, { forma: 'AVISTA', metodo: 'PIX' }, { tipo: 'VALOR', valor: 900 }])
       expect(r.texto).toContain('maior que o valor')
     })

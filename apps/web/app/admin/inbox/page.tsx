@@ -7,6 +7,7 @@ import { CRMInbox } from '@/components/admin/crm-inbox'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { TravaRolagem } from '@/components/shared/trava-rolagem'
 import { lerTodas } from '@/lib/db'
+import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 
 export default async function AdminInboxPage({
   searchParams,
@@ -77,7 +78,7 @@ export default async function AdminInboxPage({
         branches={branches}
         initialSelectedId={convParam ?? null}
         canaisConectados={canais.canais}
-        podeConfigurarIntegracoes={can(ctx, 'settings', 'MANAGE')}
+        podeConfigurarIntegracoes={can(ctx, 'settings', 'MANAGE') && mexeNaConfigDaRede(ctx)}
         numerosDaRede={canais.numeros}
         numeroDoUsuario={canais.numeroDoUsuario}
       />

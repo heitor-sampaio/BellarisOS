@@ -177,7 +177,8 @@ export default async function BranchOportunidadesPage({
   // Configurar funis (funis, etapas, motivos de perda) é configuração da
   // clínica: Configurações em Gerenciar (D-1, decisão do Heitor, 2026-10-29).
   // Mover os cards continua com quem opera o quadro (`crm`).
-  // E é da clínica toda: quem tem unidade fixa não configura (H7, 2026-11-01).
+  // E é da rede toda: só a Admin da rede configura (o Heitor, 18/11: "só pela
+  // conta admin"; era quem tinha "A rede inteira", H7).
   const podeConfigurar = can(ctx, 'settings', 'MANAGE') && mexeNaConfigDaRede(ctx)
 
   return (
@@ -196,9 +197,9 @@ export default async function BranchOportunidadesPage({
             <ResumoDoQuadro stats={stats} />
           </p>
           {/* A18 da 18ª: sem o "Configurar funis", a frase diz de quem são os funis. */}
-          {avisoDosFunis(ctx, can(ctx, 'settings', 'MANAGE')) && (
+          {avisoDosFunis(ctx) && (
             <p data-aviso-dos-funis style={{ color: 'var(--text-faint)', fontSize: 'var(--text-2xs)', marginTop: 4 }}>
-              {avisoDosFunis(ctx, can(ctx, 'settings', 'MANAGE'))}
+              {avisoDosFunis(ctx)}
             </p>
           )}
         </div>
@@ -248,7 +249,7 @@ export default async function BranchOportunidadesPage({
         slug={slug}
         leadAberto={leadAberto}
         podeCadastrarCliente={can(ctx, 'clients', 'MANAGE')}
-        podeAgendar={can(ctx, 'crm', 'MANAGE') && temRecurso(ctx, 'agenda')}
+        podeAgendar={can(ctx, 'crm', 'MANAGE') && can(ctx, 'agenda', 'MANAGE') && temRecurso(ctx, 'agenda')}
         podeMover={can(ctx, 'crm', 'MANAGE')}
       />
     </div>

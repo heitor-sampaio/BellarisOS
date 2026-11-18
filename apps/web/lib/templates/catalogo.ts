@@ -12,6 +12,7 @@ import { daMeta } from './importar'
  *  - ligar um número puxa da Meta tudo o que a conta dele (a WABA) tem;
  *  - desligar ou remover tira do BellarisOS os templates da conta que ficou
  *    sem número ligado. Só daqui: na Meta continuam, e ligar de novo os traz.
+ *    Os rascunhos ficam (nunca foram à Meta).
  *
  * O catálogo continua sendo da WABA, não do número (`whatsapp-push.md`): dois
  * números da mesma conta dividem os templates, e desligar um deles não apaga
@@ -100,10 +101,14 @@ export async function importarCatalogoDaWaba(
 /**
  * Tira do BellarisOS os templates das contas que ficaram SEM número oficial
  * ligado (e os de antes dos múltiplos números, sem conta). Na Meta, nada muda.
+ *
+ * O RASCUNHO fica (decisão do Claude pelo menos destrutivo, 2026-11-18, na
+ * auditoria das regras): ele nunca foi à Meta, e ligar o número de novo não o
+ * traria de volta. Sem número da conta, a tela não o mostra; religado, volta.
  */
 export async function limparCatalogosSemNumero(admin: Admin, tenantId: string): Promise<void> {
   const contas = [...new Set((await numerosOficiais(tenantId)).map(n => n.wabaId))]
-  let q = admin.from('message_templates').delete().eq('tenant_id', tenantId)
+  let q = admin.from('message_templates').delete().eq('tenant_id', tenantId).neq('status', 'DRAFT')
   q = contas.length
     ? q.or(`waba_id.is.null,waba_id.not.in.(${contas.map(c => `"${c}"`).join(',')})`)
     : q

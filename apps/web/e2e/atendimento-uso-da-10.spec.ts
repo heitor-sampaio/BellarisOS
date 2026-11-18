@@ -196,19 +196,23 @@ test('A19: o insumo do atendimento concluído sai com vírgula', async ({ browse
   })
 })
 
-// A9 da 20ª: o texto diz a PERMISSÃO e quem a tem ("Concluir grava o prontuário: quem tem o Prontuário em Gerenciar conclui (…)").
-test('A20: quem abre o atendimento de outra pessoa lê quem conclui ANTES de iniciar', async ({ browser }) => {
+// A9 da 20ª: o texto diz a PERMISSÃO e quem a tem. Desde 2026-11-18 iniciar e
+// concluir são do Atendimento em Gerenciar (o Heitor: "Só inicia e conclui
+// atendimento quem tem gerenciar no atendimento"): a Agenda em Gerenciar, sem
+// ele, nem vê o "Iniciar" — lê quem inicia e conclui no lugar dele.
+test('A20: quem não inicia lê quem inicia e conclui, no lugar do "Iniciar"', async ({ browser }) => {
   const { id } = await agendamento('Gerente', { status: 'CONFIRMED', profissional: rede!.professionalId })
   await como(browser, gerente!, async p => {
-    // Na tela do atendimento, ao lado do "Iniciar".
+    // Na tela do atendimento.
     await p.goto(`/${slug}/agenda/${id}`)
-    await expect(p.getByRole('button', { name: 'Iniciar atendimento' }).first()).toBeVisible()
-    await expect(p.getByText(/Concluir grava o prontuário: quem tem o Prontuário em Gerenciar conclui/).first()).toBeVisible()
+    await expect(p.getByRole('button', { name: 'Iniciar atendimento' })).toHaveCount(0)
+    await expect(p.getByText(/Iniciar e concluir o atendimento é de quem tem o Atendimento em Gerenciar/).first()).toBeVisible()
     // E na janela da agenda.
     await p.goto(`/${slug}/agenda?date=${hoje}`)
     await (await cartaoNaGradeDoDia(p, id)).click()
     const janela = p.getByRole('dialog', { name: 'Agendamento' })
-    await expect(janela.getByRole('button', { name: 'Iniciar atendimento' })).toBeVisible()
-    await expect(janela.getByText(/Concluir grava o prontuário: quem tem o Prontuário em Gerenciar conclui/)).toBeVisible()
+    await expect(janela.getByRole('button', { name: 'Iniciar atendimento' })).toHaveCount(0)
+    await expect(janela.getByText('Você não inicia nem conclui este atendimento.')).toBeVisible()
+    await expect(janela.getByText(/Iniciar e concluir o atendimento é de quem tem o Atendimento em Gerenciar/)).toBeVisible()
   })
 })

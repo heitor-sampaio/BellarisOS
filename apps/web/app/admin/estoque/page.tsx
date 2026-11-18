@@ -187,8 +187,8 @@ export default async function AdminEstoquePage({
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
             {unidade
               ? <>{daLeitura.get(unidade.id)?.name ?? unidade.name}{desativadas.has(unidade.id) && <> <SeloUnidadeDesativada /></>}</>
-              // A clínica de uma unidade não fala "rede" (F8).
-              : umaUnidadeSo(branches.length) ? 'Estoque'
+              // A rede de uma unidade não fala "rede" (F8): diz o nome dela (A11 da 24ª: era "Estoque" sob "Estoque").
+              : umaUnidadeSo(branches.length) ? (branches[0]?.name ?? '')
               : `Visão consolidada da rede · ${branches.length} unidades`}
           </p>
         </div>

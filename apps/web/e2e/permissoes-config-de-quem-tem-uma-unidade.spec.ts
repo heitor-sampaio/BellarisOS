@@ -5,16 +5,18 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao, chamarAcaoComFormulario } from './apoio/acao-direta'
 
 /**
- * H7 da 5ª simulação (decisão do Heitor, 2026-11-01): "gerente de uma unidade
- * só mexe no que é da unidade".
+ * A configuração da rede toda é só da Admin da rede (o Heitor, 18/11, na
+ * auditoria das regras: "só pela conta admin"). Antes (H7 da 5ª simulação,
+ * 2026-11-01: "gerente de uma unidade só mexe no que é da unidade") bastava
+ * ter "A rede inteira".
  *
  * A gerente de unidade fixa da Zona Sul abria "Tags e importações" e o resto de
- * Configurações e gravava o que vale para a clínica inteira (A6) — a tela só
- * avisava que "alterar aqui muda para todas as unidades". A trava é da
- * ABRANGÊNCIA (`ctx.branchId`), não do cargo: com os módulos em Gerenciar, quem
- * tem unidade fixa não grava configuração da rede, pela tela nem pela action
- * direta. Continua mexendo no que é da unidade dela (os dados, o horário e as
- * salas dela). A dona (da rede, com os mesmos gestos) é o controle.
+ * Configurações e gravava o que vale para a rede inteira (A6). Agora a trava é
+ * o CARGO de sistema Admin da rede gravado (`ctx.isNetworkAdmin`), nunca a
+ * claim: com os módulos em Gerenciar, nem quem tem unidade fixa nem quem tem
+ * "A rede inteira" sem ser a Admin grava configuração da rede, pela tela nem
+ * pela action direta. A gerente continua mexendo no que é da unidade dela (os
+ * dados, o horário e as salas). A dona (Admin da rede) é o controle.
  */
 
 const marca = Date.now().toString(36)
@@ -22,6 +24,7 @@ const db = () => banco()
 let rede: OutraRede | null = null
 let gerente: MembroDeTeste | null = null
 let dona: MembroDeTeste | null = null
+let daRede: MembroDeTeste | null = null
 let slug = ''
 test.describe.configure({ timeout: 180_000 })
 
@@ -47,6 +50,8 @@ test.beforeAll(async () => {
   slug = (await db().from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
   gerente = await criarMembro(`pgug${marca}`, { tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Gerente', permissoes: TUDO_EM_GERENCIAR })
   dona = await criarMembro(`pgud${marca}`, { tenant: rede.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
+  // "A rede inteira" (sem unidade) e tudo em Gerenciar, mas sem o cargo de Admin da rede.
+  daRede = await criarMembro(`pgur${marca}`, { tenant: rede.tenantId, branchId: null, rotulo: 'Sócia', permissoes: TUDO_EM_GERENCIAR })
 })
 
 test.afterAll(async () => {
@@ -59,16 +64,18 @@ test.afterAll(async () => {
     await db().from('crm_motivos_perda').delete().eq('tenant_id', t)
     await db().from('integration_configs').delete().eq('tenant_id', t)
   }
-  await gerente?.limpar(); await dona?.limpar(); await rede?.limpar()
+  await gerente?.limpar(); await dona?.limpar(); await daRede?.limpar(); await rede?.limpar()
 })
+
+type Quem = 'gerente' | 'dona' | 'daRede'
 
 /** Uma gravação de configuração da REDE, chamada direto pela action. */
 interface Caso {
   nome: string
   /** A chamada como a pessoa, com o nome que ela grava. */
-  chamar: (p: Page, quem: 'gerente' | 'dona') => Promise<unknown>
+  chamar: (p: Page, quem: Quem) => Promise<unknown>
   /** Quantos registros com o nome de quem gravou (ou o valor que a action mudaria). */
-  gravou: (quem: 'gerente' | 'dona') => Promise<unknown>
+  gravou: (quem: Quem) => Promise<unknown>
   /** O que `gravou` devolve quando NADA foi gravado. */
   nada: unknown
   semControle?: string
@@ -102,7 +109,7 @@ const CASOS: Caso[] = [
     }),
     gravou: async q => (await db().from('tenants').select('name').eq('id', rede!.tenantId).single<{ name: string }>()).data?.name === nome('Rede', q) ? 1 : 0 },
   { nome: 'quem vê o inbox no "só os meus" (Configurações → Cargos)', nada: 'pessoa',
-    chamar: (p, q) => chamarAcao(p, 'actions/rede.ts', 'atualizarVisibilidadeDoInbox', `/${slug}/settings?tab=permissions`, [q === 'gerente' ? 'conversa' : 'pessoa']),
+    chamar: (p, q) => chamarAcao(p, 'actions/rede.ts', 'atualizarVisibilidadeDoInbox', `/${slug}/settings?tab=permissions`, [q === 'dona' ? 'pessoa' : 'conversa']),
     gravou: async () => (await db().from('tenants').select('inbox_visibilidade').eq('id', rede!.tenantId).single<{ inbox_visibilidade: string }>()).data?.inbox_visibilidade,
     semControle: 'a dona grava o padrão' },
   { nome: 'integrações (Configurações → Integrações)', nada: 0,
@@ -121,7 +128,7 @@ const CASOS: Caso[] = [
     gravou: q => conta('notification_campaigns', 'name', nome('Campanha', q)) },
 ]
 
-test('quem tem só uma unidade, com tudo em Gerenciar, não grava configuração da rede pela action direta; a Admin da rede grava', async ({ browser }) => {
+test('quem não é a Admin da rede (uma unidade ou "A rede inteira"), com tudo em Gerenciar, não grava configuração da rede pela action direta; a Admin da rede grava', async ({ browser }) => {
   // O controle primeiro: a dona grava cada uma (e a página fica compilada).
   await como(browser, dona!, async p => {
     for (const c of CASOS) {
@@ -133,6 +140,12 @@ test('quem tem só uma unidade, com tudo em Gerenciar, não grava configuração
     for (const c of CASOS) {
       await c.chamar(p, 'gerente')
       expect.soft(await c.gravou('gerente'), `a gerente não grava — ${c.nome}`).toEqual(c.nada)
+    }
+  })
+  await como(browser, daRede!, async p => {
+    for (const c of CASOS) {
+      await c.chamar(p, 'daRede')
+      expect.soft(await c.gravou('daRede'), `quem tem "A rede inteira" sem ser a Admin não grava — ${c.nome}`).toEqual(c.nada)
     }
   })
 })
@@ -154,11 +167,11 @@ test('quem tem só uma unidade continua mexendo na unidade dela: os dados, o hor
   expect((await db().from('rooms').select('id').eq('branch_id', rede!.branchId).eq('name', sala)).data?.length, 'a sala dela').toBe(1)
 })
 
-test('na tela, quem tem só uma unidade lê "Esta configuração é da rede toda" e não acha o botão; a Admin da rede edita', async ({ browser }) => {
+test('na tela, quem não é a Admin da rede lê "Esta configuração é só da Admin da rede" e não acha o botão; a Admin da rede edita', async ({ browser }) => {
   await como(browser, gerente!, async p => {
     for (const aba of ['tags', 'permissions', 'fichas', 'documentos', 'integrations', 'general']) {
       await p.goto(`/${slug}/settings?tab=${aba}`)
-      await expect.soft(p.locator('[data-config-da-rede]'), `a aba ${aba} diz de quem é`).toContainText('Esta configuração é da rede toda')
+      await expect.soft(p.locator('[data-config-da-rede]'), `a aba ${aba} diz de quem é`).toContainText('Esta configuração é só da Admin da rede')
     }
     await p.goto(`/${slug}/settings?tab=tags`)
     await expect(p.getByRole('button', { name: 'Criar tag' }), 'sem o botão de criar tag').toHaveCount(0)
@@ -168,6 +181,17 @@ test('na tela, quem tem só uma unidade lê "Esta configuração é da rede toda
     await p.goto(`/${slug}/oportunidades`)
     await expect(p.getByRole('heading', { name: 'Oportunidades' }).first()).toBeVisible()
     await expect(p.getByTitle('Configurar funis'), 'sem "Configurar funis"').toHaveCount(0)
+  })
+  await como(browser, daRede!, async p => {
+    await p.goto('/admin/settings?tab=tags')
+    await expect(p.locator('[data-config-da-rede]'), 'a sócia da rede lê de quem é').toContainText('Esta configuração é só da Admin da rede')
+    // Diz quem muda, pelo nome: a Admin da rede (A5 da 14ª).
+    await expect(p.locator('[data-quem-muda]')).toBeVisible()
+    await expect(p.getByRole('button', { name: 'Criar tag' })).toHaveCount(0)
+    await p.goto('/admin/oportunidades')
+    await expect(p.getByRole('heading', { name: 'Oportunidades' }).first()).toBeVisible()
+    await expect(p.getByTitle('Configurar funis')).toHaveCount(0)
+    await expect(p.locator('[data-aviso-dos-funis]')).toContainText('quem muda é a Admin da rede')
   })
   await como(browser, dona!, async p => {
     await p.goto('/admin/settings?tab=tags')

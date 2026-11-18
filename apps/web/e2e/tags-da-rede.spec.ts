@@ -26,6 +26,7 @@ const db = () => banco()
 let outra: OutraRede
 let admin: MembroDeTeste
 let soVe: MembroDeTeste
+let gestora: MembroDeTeste
 let clienteId: string
 let contatoId: string
 let leadId: string
@@ -34,7 +35,11 @@ const POS = `${PREFIXO} Pós-operatório ${marca}`
 test.beforeAll(async () => {
   test.setTimeout(240_000)
   outra = await criarOutraRede(`tag${marca}`)
-  admin = await criarMembro(`tag${marca}`, { tenant: outra.tenantId, rotulo: 'Recepção', permissoes: [
+  // As tags são configuração da rede toda: só a Admin da rede (o Heitor,
+  // 18/11: "Configuração da rede toda só pela conta admin").
+  admin = await criarMembro(`tag${marca}`, { tenant: outra.tenantId, rotulo: 'Recepção', donoDaRede: true, permissoes: [] })
+  // Clientes, CRM e Configurações em Gerenciar, sem ser a Admin da rede.
+  gestora = await criarMembro(`tagg${marca}`, { tenant: outra.tenantId, rotulo: 'Gestora', permissoes: [
     { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'crm', nivel: 'MANAGE' }, { modulo: 'settings', nivel: 'MANAGE' },
   ] })
   soVe = await criarMembro(`tagv${marca}`, { tenant: outra.tenantId, rotulo: 'Só vê', permissoes: [{ modulo: 'clients', nivel: 'VIEW' }] })
@@ -65,7 +70,7 @@ test.afterAll(async () => {
     if (clienteId) { await b.from('loyalty_accounts').delete().eq('client_id', clienteId); await b.from('clients').delete().eq('id', clienteId) }
     await b.from('tags').delete().eq('tenant_id', t)
   }
-  await admin?.limpar(); await soVe?.limpar()
+  await admin?.limpar(); await soVe?.limpar(); await gestora?.limpar()
   await outra?.limpar()
 })
 
@@ -171,10 +176,16 @@ test('arquivada sai das opções, mas fica em quem já tem', async ({ browser })
   expect((await vocabulario()).find(t => t.nome === noivas)?.arquivada_em).toBeTruthy()
 })
 
-test('quem só vê clientes não mexe no vocabulário (nem pela action direta)', async ({ browser }) => {
+test('quem só vê clientes, ou gerencia sem ser a Admin da rede, não mexe no vocabulário (nem pela action direta)', async ({ browser }) => {
   await como(browser, soVe, async p => {
     const r = await chamarAcao(p, 'actions/tags.ts', 'criarTag', '/admin/settings', [`${PREFIXO} Furo ${marca}`])
     expect(r.texto).not.toContain('"ok":true')
+  })
+  await como(browser, gestora, async p => {
+    await p.goto('/admin/settings?tab=tags')
+    await expect(p.locator('[data-config-da-rede]')).toContainText('Esta configuração é só da Admin da rede.')
+    const r = await chamarAcao(p, 'actions/tags.ts', 'criarTag', '/admin/settings', [`${PREFIXO} Furo ${marca}`])
+    expect(r.texto).toContain('Esta configuração é só da Admin da rede.')
   })
   expect((await vocabulario()).map(t => t.nome)).not.toContain(`${PREFIXO} Furo ${marca}`)
 })

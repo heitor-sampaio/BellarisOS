@@ -4,11 +4,13 @@ import {
   useRef, useCallback, useActionState, useEffect, useEffectEvent, useMemo,
   useState, forwardRef, useImperativeHandle, useId,
 } from 'react'
+import { flushSync } from 'react-dom'
 import { useRouter, usePathname } from 'next/navigation'
 import { X, UserPlus, CheckCircle2, Check, MessageSquare, CalendarPlus } from 'lucide-react'
 import { ScheduleModal } from '@/components/admin/inbox-lead-panel'
 import type { PessoaParaNovoLead } from '@/lib/crm/pessoa-para-novo-lead'
-import { createLead, updateLead, responsaveisParaOportunidade, fichaDoTelefoneDoLead } from '@/actions/leads'
+import { createLead, updateLead, responsaveisParaOportunidade, fichaDoTelefoneDoLead, automacoesAoMoverOCard } from '@/actions/leads'
+import { usePerguntaDasAutomacoes } from './pergunta-das-automacoes'
 import { openLeadConversation } from '@/actions/inbox'
 import { rotaInbox } from '@/lib/rotas'
 import type { CRMFunnel, CRMStage } from '@/lib/crm'
@@ -176,6 +178,16 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
     const vaiPerder = isEdit && stageId !== (existing?.crm_stage_id ?? '')
       && stages.find(s => s.id === stageId)?.outcome === 'LOST'
     const [motivos,  setMotivos]  = useState<OpcaoDeMotivo[] | null>(null)
+    /**
+     * A35 da 22ª (o Heitor, 2026-11-18): mudar a etapa pelo modal é mover o
+     * card. Com automação ligada que casa com a mudança, o salvar pergunta
+     * "Disparar?" antes; a resposta vale para a etapa escolhida e vai no
+     * `_disparar` ("Não" move sem disparar).
+     */
+    const mudouEtapa = isEdit && !!stageId && stageId !== (existing?.crm_stage_id ?? '')
+    const { perguntar, janela: perguntaDasAutomacoes } = usePerguntaDasAutomacoes()
+    const [respostaDasAutomacoes, setRespostaDasAutomacoes] = useState<{ etapa: string; disparar: boolean } | null>(null)
+    const formRef = useRef<HTMLFormElement>(null)
     const [motivoId, setMotivoId] = useState('')
     const [motivoObs, setMotivoObs] = useState('')
     useEffect(() => {
@@ -248,6 +260,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
       setStageId(existing?.crm_stage_id ?? initialStageId ?? stages[0]?.id ?? '')
       setOrigem(existing?.source ?? '')
       setMotivoId(''); setMotivoObs('')
+      setRespostaDasAutomacoes(null)
       // O lead novo nasce sem tag: quem marca é a pessoa (Bloco Tags).
       setTags(existing?.tags ?? [])
       setErroConversa(null)
@@ -438,11 +451,27 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
 
           {/* Body */}
           <div style={{ padding: '24px 24px 28px' }}>
-            <form key={pessoa?.id ?? 'novo'} action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+            {perguntaDasAutomacoes}
+            <form ref={formRef} key={pessoa?.id ?? 'novo'} action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
               onSubmit={e => {
                 // D11: sem a resposta do "É a mesma pessoa?", não envia (o envio limparia o formulário) e diz o que falta.
-                if (fichaDoFone && !resposta) { e.preventDefault(); setFaltaResponder(true) } else setFaltaResponder(false)
+                if (fichaDoFone && !resposta) { e.preventDefault(); setFaltaResponder(true); return }
+                setFaltaResponder(false)
+                // A35 da 22ª: a etapa mudou e ainda não se perguntou para esta etapa.
+                if (mudouEtapa && respostaDasAutomacoes?.etapa !== stageId) {
+                  e.preventDefault()
+                  const etapa = stageId
+                  void perguntar(() => automacoesAoMoverOCard(existing!.id, etapa)).then(disparar => {
+                    if (disparar === null) return
+                    flushSync(() => setRespostaDasAutomacoes({ etapa, disparar }))
+                    formRef.current?.requestSubmit()
+                  })
+                }
               }}>
+              {mudouEtapa && (
+                <input type="hidden" name="_disparar"
+                  value={respostaDasAutomacoes?.etapa === stageId && !respostaDasAutomacoes.disparar ? 'nao' : 'sim'} />
+              )}
               {pessoa && <input type="hidden" name="_contatoId" value={pessoa.id} />}
               <input type="hidden" name="_funnelId"     value={funnelId ?? ''} />
               <input type="hidden" name="_slug"         value={activeBranchSlug} />

@@ -105,6 +105,13 @@ export async function TelaDaAuditoria({
         <button type="submit" className="btn-primary" style={{ height: 'var(--altura-controle)' }}>Filtrar</button>
       </form>
 
+      {/* A34 da 24ª: numa página antiga, a volta às mais recentes fica à vista também no topo. */}
+      {pagina.antes && (
+        <div style={{ marginBottom: 10 }}>
+          <Link href={`${basePath}${params({})}`} className="btn-ghost" data-auditoria-voltar>Voltar às mais recentes</Link>
+        </div>
+      )}
+
       {linhas.length === 0 ? (
         <div className="card" style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '18px 20px' }}>
           <ScrollText size={16} aria-hidden style={{ color: 'var(--text-faint)' }} />
@@ -145,11 +152,11 @@ export async function TelaDaAuditoria({
         </div>
       )}
 
-      {/* Por gravação, a página segue por cursor (`?antes=`): "Mais recentes" volta ao começo. */}
+      {/* Por gravação, a página segue por cursor (`?antes=`): "Voltar às mais recentes" volta ao começo. */}
       {(pagina.antes || pagina.temMais) && (
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginTop: 14 }}>
           {pagina.antes
-            ? <Link href={`${basePath}${params({})}`} className="btn-ghost">Mais recentes</Link>
+            ? <Link href={`${basePath}${params({})}`} className="btn-ghost">Voltar às mais recentes</Link>
             : <span />}
           {pagina.temMais && pagina.proximo && (
             <Link href={`${basePath}${params({ antes: pagina.proximo })}`} className="btn-ghost" data-auditoria-mais>

@@ -5,7 +5,8 @@ import { can, isOwnScope, podeReceber, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, lerTodas } from '@/lib/db'
 import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
-import { formaDoLancamento } from '@/lib/financeiro/formas'
+import { formaDoLancamento, rotuloDaForma } from '@/lib/financeiro/formas'
+import { juntarAsFormasDaParcela, formasDaParcelaEmTexto } from '@/lib/financeiro/formas-da-parcela'
 import { vendaDeProdutoNaoPontua } from '@/lib/fidelidade/leitura'
 import { ordenarTransacoesDaFicha } from '@/lib/clientes/ordem-das-transacoes'
 import { getAtendimentosAReceber, type ListaAReceber } from '@/lib/metrics/a-receber'
@@ -102,7 +103,8 @@ export async function financeiroDaFicha(ctx: TenantContext, clientId: string): P
     return p ? anterioresEmAbertoEmTexto(p, emAberto) : null
   }
   // D7 da 10ª: em ordem pela data que a linha mostra (ordenarTransacoesDaFicha).
-  const transactions: ProfileTransaction[] = ordenarTransacoesDaFicha((linhas as Linha[]).map(l => ({
+  // Limite da 21ª: a parcela recebida em várias formas é UMA linha (o total e cada forma).
+  const transactions: ProfileTransaction[] = ordenarTransacoesDaFicha(juntarAsFormasDaParcela(linhas as Linha[]).map(l => ({
     id:            l.id,
     description:   l.description,
     amount:        Number(l.amount),
@@ -130,6 +132,9 @@ export async function financeiroDaFicha(ctx: TenantContext, clientId: string): P
     vendaDeCredito: !!l.credito_vendido_id,
     doAtendimento:  !!l.appointment_id,
     adiantada:      adiantadaDe(l),
+    formas:         l.formasDaParcela
+      ? { texto: formasDaParcelaEmTexto(l.formasDaParcela), itens: l.formasDaParcela.map(f => ({ id: f.id, rotulo: rotuloDaForma(f.forma, f.vezes), valor: f.valor, metodo: f.forma })) }
+      : null,
   })))
 
   const primeira = aReceber.itens.find(a => alcancaUnidade(ctx, a.branchId)) ?? null

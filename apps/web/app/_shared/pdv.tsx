@@ -24,6 +24,7 @@ import { parcelasEmAbertoDaCliente, CHAVES_DA_VENDA, type VendaDaComanda } from 
 import { itensDaComanda } from '@/lib/pdv/itens-da-comanda'
 import { linhaDaComandaDoPdv } from '@/lib/pdv/linha-da-comanda-leitura'
 import { fidelidadeParaAVenda } from '@/lib/fidelidade/na-venda'
+import { trocaNaComanda } from '@/lib/fidelidade/troca-na-comanda-leitura'
 import { vendaDeProdutoNaoPontua } from '@/lib/fidelidade/leitura'
 import { quemDesfazNoCaixa } from '@/lib/equipe/quem-desfaz'
 import { podeEstornar } from '@/lib/financeiro/so-os-meus'
@@ -111,6 +112,18 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
       doAtendimento ? null : linhaDaComandaDoPdv(admin, ctx.tenantId!, comanda.id),
     ])
     const comProdutos = itens.some(i => !i.vendido)
+    // A16 da 24ª (princípio 7): o contrato da venda do pacote que espera a assinatura — a
+    // comanda leva até ela (era só logo depois da venda, ou pela ficha). Colher não pede permissão.
+    const pacoteDaVenda = comanda.origem === 'VENDA' && !comanda.estornada
+      ? (await ler(admin.from('comandas').select('client_package_id')
+          .eq('id', comanda.id).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'ler o pacote da comanda') as { client_package_id: string | null } | null)?.client_package_id ?? null
+      : null
+    const documentosParaColher = pacoteDaVenda
+      ? ((await ler(admin.from('issued_documents').select('id, title')
+          .eq('tenant_id', ctx.tenantId!).eq('client_package_id', pacoteDaVenda).eq('status', 'PENDENTE')
+          .order('kind').order('title'), 'ler os documentos da venda do pacote')) as { id: string; title: string }[] | null ?? [])
+          .map(d => ({ id: d.id, titulo: d.title }))
+      : []
     // Com produto na comanda, o atendimento não se abate do pacote: a comanda se recebe inteira.
     const pacotes = aReceber && !comProdutos && agendamento?.status === 'COMPLETED' && agendamento.procedure_id
       ? (await creditosDoCliente(admin, ctx.tenantId!, comanda.clienteId))
@@ -126,6 +139,10 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
       pacotesParaAbater: pacotes,
       pagamentoCombinado: aReceber && comanda.agendamentoId
         ? await pagamentoCombinadoDoAtendimento(ctx.tenantId!, comanda.agendamentoId) : null,
+      // com-06 (o Heitor: "Campo vazio não gera comissão para ninguém"): o produto
+      // acrescentado na comanda tem "Quem vendeu os produtos", vazio — era quem atendeu.
+      equipeDosProdutos: aReceber && comProdutos
+        ? await equipeDaVenda(ctx.tenantId!, unidadeId, ctx.internalUserId, veComissaoDeTodos(ctx)) : null,
       // A2 da 15ª (princípios 3 e 7): a comanda paga diz a quem não estorna de quem é o estorno.
       quemEstorna: comanda.paga && !comanda.estornada && !podeEstornar(ctx)
         ? await quemDesfazNoCaixa(ctx.tenantId!, unidadeId) : null,
@@ -135,6 +152,7 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
       pagamentos: comanda.paga && !comanda.estornada
         ? await lancamentosDaComanda(admin, ctx.tenantId!, unidadeId, comanda.id) : null,
       podeEstornar: podeEstornar(ctx),
+      documentosParaColher,
       // A32 da 20ª: a linha do produto diz que ele não pontua (a regra da rede).
       produtoNaoPontua: itens.length > 0 ? await vendaDeProdutoNaoPontua(ctx.tenantId!, admin) : false,
       // A1 da 16ª (princípio 7): a comanda do crediário recebe as parcelas dela ali mesmo.
@@ -170,7 +188,7 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
     // A arquivada não compra (princípio 3: a tela diz por quê, não volta calada à busca).
     else if (!cliente.is_active) novaVenda = { dados: null, aviso: `${cliente.name} está arquivada. Para vender, reative a cliente na ficha.` }
     else {
-      const [pacotes, procedimentos, produtos, equipe, aReceber, emAberto, fidelidade, contrato] = await Promise.all([
+      const [pacotes, procedimentos, produtos, equipe, aReceber, emAberto, fidelidadeLida, contrato, troca] = await Promise.all([
         pacotesAVenda(ctx.tenantId!, unidadeId), procedimentosAVenda(ctx.tenantId!, unidadeId), produtosAVenda(ctx.tenantId!, unidadeId),
         equipeDaVenda(ctx.tenantId!, unidadeId, ctx.internalUserId, veComissaoDeTodos(ctx)),
         getAtendimentosAReceber({ tenantId: ctx.tenantId!, clienteId: cliente.id }),
@@ -180,7 +198,13 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
         fidelidadeParaAVenda(ctx.tenantId!, cliente.id),
         // A6 da 18ª: o que o contrato de pacote pede do cadastro dela e falta — antes de vender.
         faltaParaOContratoDoPacote(ctx.tenantId!, cliente.id),
+        // A50 da 24ª: trocar pontos por voucher de desconto aqui mesmo (era só na ficha).
+        trocaNaComanda(ctx, { clienteId: cliente.id, branchId: unidadeId, procedimentoId: null }),
       ])
+      // Sem saldo para descontar nem voucher, a troca ainda abre o bloco da fidelidade.
+      const fidelidade = troca
+        ? { ...(fidelidadeLida ?? { saldo: 0, valorDoPonto: 0, minimo: 0, tetoPct: 100, vouchers: [] }), troca }
+        : fidelidadeLida
       novaVenda = { dados: {
         cliente: { id: cliente.id, name: cliente.name, phone: cliente.phone }, pacotes, procedimentos, produtos, equipe, aReceber: aReceber.itens,
         podeAgendar: can(ctx, 'agenda', 'MANAGE'), emAberto, fidelidade,

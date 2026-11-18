@@ -25,10 +25,9 @@ const hojeSP = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_P
 
 test.beforeAll(async () => {
   rede = await criarOutraRede(`fop${marca}`)
-  gestor = await criarMembro(`fopg${marca}`, {
-    tenant: rede.tenantId, rotulo: 'Gestor opcionais',
-    permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }, { modulo: 'loyalty', nivel: 'MANAGE' }],
-  })
+  // A configuração da fidelidade é da rede toda: a aba é só da Admin da rede
+  // (o Heitor, 18/11: "Configuração da rede toda só pela conta admin").
+  gestor = await criarMembro(`fopg${marca}`, { tenant: rede.tenantId, rotulo: 'Gestor opcionais', donoDaRede: true, permissoes: [] })
 })
 test.afterAll(async () => {
   for (const s of sessoes) await s.limpar()

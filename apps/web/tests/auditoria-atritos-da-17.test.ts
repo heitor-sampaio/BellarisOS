@@ -93,7 +93,8 @@ describe('A26: as frases dizem o fato', () => {
       r({ tabela: 'financial_transactions', branch_id: 'bS', client_id: 'cP',
         depois: { type: 'EXPENSE', amount: 320, paid_at: '2026-11-15T17:29:07Z', category: 'Estorno', payment_method: 'DEBIT_CARD' } }),
     ])
-    expect(sp(g[0]!.oQue)).toBe('Estornou o atendimento (R$ 320,00) — Paula Reis')
+    // Regra mudada na 24ª (A33): o estorno diz também a forma do pagamento estornado.
+    expect(sp(g[0]!.oQue)).toBe('Estornou o atendimento (R$ 320,00 · Débito) — Paula Reis')
   })
 
   it('"quando aconteceu" não aparece: é a conta do sistema, não um campo da pessoa', () => {

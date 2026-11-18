@@ -197,8 +197,11 @@ test('A18: o card diz "Agendado dd/mm hh:mm" e, depois da venda, sugere levar a 
     await expect(sugestao).toContainText('Comprou Plano A18')
     expect((await db().from('leads').select('crm_stage_id').eq('id', leadComprou).single()).data?.crm_stage_id, 'nada se move sozinho').toBe(etapa.avaliacao)
     await sugestao.getByRole('button', { name: 'Mover para Fechado' }).click()
+    // Espera com a página aberta: fechar o contexto logo depois do clique
+    // abortava a action no meio (completa de 18/11: o POST saiu com os ids
+    // certos e voltou -1, e o card ficou na Avaliação).
+    await expect.poll(async () => (await db().from('leads').select('crm_stage_id').eq('id', leadComprou).single()).data?.crm_stage_id).toBe(etapa.ganho)
   })
-  await expect.poll(async () => (await db().from('leads').select('crm_stage_id').eq('id', leadComprou).single()).data?.crm_stage_id).toBe(etapa.ganho)
 })
 
 test('A19: a 1440 px, perder pelo menu do card e pelo arraste, sem rolar até a coluna', async ({ browser }) => {

@@ -33,6 +33,9 @@ export const NODES = {
   ACAO_MOVER_ETAPA:      'acao.mover_etapa',
   ACAO_DESFECHO:         'acao.desfecho',
   ACAO_TAG_CLIENTE:      'acao.tag_cliente',
+  // Volta própria (auditoria das regras, 2026-11-18): "simplificar não é
+  // reduzir funcionalidade" — tirar a tag que a rede escolheu, no fluxo dela.
+  ACAO_REMOVER_TAG:      'acao.remover_tag',
   ACAO_ATRIBUIR:         'acao.atribuir',
   ACAO_ANOTAR:           'acao.anotar',
 } as const
@@ -77,6 +80,7 @@ export const ROTULOS_DE_NO: Record<TipoDeNo, string> = {
   [NODES.ACAO_MOVER_ETAPA]:      'Mover de etapa',
   [NODES.ACAO_DESFECHO]:         'Marcar ganho ou perdido',
   [NODES.ACAO_TAG_CLIENTE]:      'Adicionar tag',
+  [NODES.ACAO_REMOVER_TAG]:      'Remover tag',
   [NODES.ACAO_ATRIBUIR]:         'Definir responsável',
   [NODES.ACAO_ANOTAR]:           'Anotar na oportunidade',
 }
@@ -159,6 +163,11 @@ export const DADOS_DO_NO: Record<TipoDeNo, readonly DadoDoPasso[]> = {
   [NODES.ACAO_TAG_CLIENTE]: [
     { campo: 'alterado', rotulo: 'Adicionou a tag', tipo: 'booleano' },
     { campo: 'tag',      rotulo: 'Tag',             tipo: 'texto' },
+    MOTIVO,
+  ],
+  [NODES.ACAO_REMOVER_TAG]: [
+    { campo: 'alterado', rotulo: 'Removeu a tag', tipo: 'booleano' },
+    { campo: 'tag',      rotulo: 'Tag',           tipo: 'texto' },
     MOTIVO,
   ],
   [NODES.ACAO_ATRIBUIR]: [
@@ -306,7 +315,11 @@ export interface ConfigAcaoMensagem {
 }
 
 export interface ConfigAcaoNotificarEquipe {
-  alvo:    'usuario' | 'cargo' | 'unidade'
+  /**
+   * `responsavel` = quem cuida da oportunidade do fluxo (o modelo "Marque o
+   * ganho", auditoria das regras, 2026-11-18). Sem `alvoId`.
+   */
+  alvo:    'usuario' | 'cargo' | 'unidade' | 'responsavel'
   alvoId?: string | null
   titulo:  string
   corpo:   string
@@ -322,9 +335,10 @@ export interface ConfigAcaoDesfecho {
 }
 
 /**
- * "Adicionar tag" (T4 do Bloco Tags, 2026-11-14): uma das tags cadastradas da
- * rede, e só ADICIONA — o sistema não tira tag de ninguém. O `modo` de antes
- * saiu; um nó antigo gravado com o de remover não faz nada (executar.ts).
+ * "Adicionar tag" (T4 do Bloco Tags, 2026-11-14) e "Remover tag" (de volta
+ * como ação própria na auditoria das regras, 2026-11-18): uma das tags
+ * cadastradas da rede. O `modo` de antes saiu da tela; o nó antigo gravado com
+ * o de remover tira a tag (executar.ts).
  */
 export interface ConfigAcaoTagCliente {
   tag:  string
@@ -402,12 +416,20 @@ export interface LimitesDaAutomacao {
   silencioAte?:  string | null
   /** Máximo de execuções por cliente por dia. `null` = sem teto. */
   tetoPorClienteDia?: number | null
+  /**
+   * "Se cair de madrugada, mandar na véspera às 20:00" (D17 do levantamento
+   * das regras, o Heitor, 2026-11-11: "a + c opcional"). Desligada por
+   * padrão. Ligada, a espera "antes de" uma data (o lembrete) que terminaria
+   * dentro do silêncio termina na véspera às 20:00 (`vesperaSeCairNoSilencio`).
+   */
+  madrugadaNaVespera?: boolean | null
 }
 
 export const LIMITES_PADRAO: LimitesDaAutomacao = {
   silencioDe:        '21:00',
   silencioAte:       '08:00',
   tetoPorClienteDia: 3,
+  madrugadaNaVespera: false,
 }
 
 /** Teto de encadeamento. Um anel fecha em três voltas, não em três mil. */

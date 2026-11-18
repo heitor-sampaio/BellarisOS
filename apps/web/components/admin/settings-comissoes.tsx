@@ -8,12 +8,12 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { salvarConfigDeComissao, salvarMaximoDeParcelas } from '@/actions/comissoes'
 import { salvarMaquininha, arquivarMaquininha, salvarTaxaDoPix } from '@/actions/maquininhas'
 import type { Maquininha, EntradaDaMaquininha } from '@/lib/financeiro/maquininhas'
-import { vaziaDeFabrica } from '@/lib/financeiro/maquininha-de-fabrica'
+import { vaziaDeFabrica, AVISO_DA_DE_FABRICA } from '@/lib/financeiro/maquininha-de-fabrica'
 import { CREDIARIO_PADRAO, opcoesDeParcelas, TETO_DO_CREDIARIO } from '@/lib/financeiro/parcelas-do-crediario'
 import { BANDEIRAS, chaveDaTaxa, creditoPelaTaxaPorParcela, taxasDaTabelaColada, faixaDaOperadora, avisoDaTaxaQueBaixa, type Bandeira, type CartaoPorBandeira } from '@/lib/financeiro/bandeiras'
 import { taxaQueVale } from '@/lib/financeiro/formas'
 import { maximoDeVezes, opcoesDeVezes, TETO_DE_VEZES, PRAZO_PADRAO_DA_OPERADORA, PRAZO_MAXIMO_DA_OPERADORA, recusaDoPrazoDaOperadora, recusaDaTaxaDaMaquininha } from '@/lib/financeiro/vezes-do-cartao'
-import { rotuloDaBase, type ConfigDeComissao, type MetodoComTaxa, type ComissaoDoProduto } from '@/lib/comissoes/config'
+import { rotuloDaBase, OPCOES_DA_BASE_COM_PONTOS, type ConfigDeComissao, type MetodoComTaxa, type ComissaoDoProduto } from '@/lib/comissoes/config'
 import { parseDecimal, NUMERO_INVALIDO, formatBRL } from '@estetica-os/utils'
 import { Fala } from '@/components/shared/uma-unidade'
 import { Dica } from '@/components/shared/dica'
@@ -33,10 +33,8 @@ const QUANDO_VALE = [
   'Cartão de crédito em várias vezes conta como pago: quem paga a rede é a operadora. No crediário (entrada + parcelas), a comissão libera quando a última parcela entra.',
   'Até lá, ela aparece no extrato como “aguardando o pagamento integral”, fora do a pagar e do fechamento. Se um pagamento for estornado, a comissão volta a aguardar.',
 ] as const
-const BASES = {
-  PRECO:      { label: 'Sobre o preço', explicacao: 'Quando a cliente usa pontos ou voucher como desconto, a comissão continua sobre o preço do atendimento. O desconto é custo da rede.' },
-  VALOR_PAGO: { label: 'Sobre o valor pago', explicacao: 'Quando a cliente usa pontos ou voucher, a comissão cai na mesma proporção. Quem atende divide o custo do programa.' },
-} as const
+// O texto mora em lib/comissoes/config.ts (item 10 da auditoria: vale em toda comissão).
+const BASES = OPCOES_DA_BASE_COM_PONTOS
 const PERIODOS = {
   MENSAL:    { label: 'Mensal', explicacao: 'Quem tem o Financeiro em Gerenciar fecha e paga as comissões uma vez por mês.' },
   QUINZENAL: { label: 'Quinzenal', explicacao: 'Dois fechamentos por mês: do dia 1 ao 15 e do 16 ao fim do mês.' },
@@ -684,6 +682,8 @@ function TabelaDeTaxas({ maquininhas, pixGravado, podeEditar }: {
   // A chave da maquininha nova (ainda sem id): um contador da tela.
   const [novas, setNovas] = useState(0)
   const nomeRef = useRef<HTMLInputElement>(null)
+  // A7 da 24ª: a de fábrica que o "Adicionar" está preenchendo (a tela diz, até salvar).
+  const [preenchendo, setPreenchendo] = useState<string | null>(null)
   function adicionarMaquininha() {
     // A4 da 23ª (princípio 7): a rede só com a "Maquininha" vazia de fábrica
     // preenche essa — ela perde o nome de fábrica e pede o nome e as taxas.
@@ -691,6 +691,7 @@ function TabelaDeTaxas({ maquininhas, pixGravado, podeEditar }: {
     if (vazia) {
       setLista(l => l.map(m => m.chave === vazia.chave ? { ...m, nome: '' } : m))
       abrir(vazia.chave)
+      setPreenchendo(vazia.chave)
       setSalvo(false)
       requestAnimationFrame(() => nomeRef.current?.focus())
       return
@@ -755,6 +756,7 @@ function TabelaDeTaxas({ maquininhas, pixGravado, podeEditar }: {
       }
       setAvisoTaxaMenor(avisos)
       setSalvo(true)
+      setPreenchendo(null)
       router.refresh()
     })
   }
@@ -822,6 +824,11 @@ function TabelaDeTaxas({ maquininhas, pixGravado, podeEditar }: {
           <input ref={nomeRef} className="field" aria-label="Nome da maquininha" disabled={!podeEditar} maxLength={60}
             placeholder="Ex.: Stone" value={atual.nome} autoFocus={!atual.id}
             onChange={e => { const v = e.target.value; mudarAtual(() => ({ nome: v })) }} />
+          {preenchendo === atual.chave && (
+            <p data-preenchendo-a-de-fabrica role="status" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--brand)', fontWeight: 'var(--weight-semibold)' }}>
+              {AVISO_DA_DE_FABRICA}
+            </p>
+          )}
         </div>
       </div>
 

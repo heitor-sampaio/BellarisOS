@@ -6,11 +6,12 @@ import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { getFechamentoDoDia } from '@/lib/metrics'
-import { janelaDoDia } from '@/lib/financeiro/fechamento'
+import { janelaDoDia, diaDoFechamento } from '@/lib/financeiro/fechamento'
 import { fusoValido } from '@/lib/unidades/fuso'
 import { conferidoValido, linhasDaConferencia, fechamentoGravadoDaLinha } from '@/lib/financeiro/conferencia-do-fechamento'
 import { getEstornosDoDia, getFechamentoPorQuemRecebeu, getFechamentoPorBandeira, getTaxasPorMaquininha } from '@/lib/metrics/fechamento-extra'
-import { csvDoFechamento } from '@/lib/financeiro/csv-da-contadora'
+import { csvDoFechamento, juntarCsvsDoFechamento } from '@/lib/financeiro/csv-da-contadora'
+import { unidadesParaLer } from '@/lib/unidades/da-tela'
 import { veComissaoDeTodos } from '@/lib/comissoes/quem-ve'
 
 /**
@@ -142,44 +143,98 @@ export async function csvDoFechamentoDoDia(
     const ctx = await getTenantContext()
     if (!can(ctx, 'financial', 'VIEW') || isOwnScope(ctx, 'financial')) throw semAcesso()
     if (typeof dia !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dia)) return { error: 'Dia inválido.' }
-    if (typeof branchId !== 'string' || !/^[0-9a-f-]{36}$/i.test(branchId)) return { error: 'Unidade não encontrada.' }
-
     const admin = createAdminClient()
+
+    // A24 da 24ª: "Todas as unidades" — um bloco por unidade ao alcance, no mesmo arquivo.
+    if (branchId === 'TODAS') {
+      const unidades = (await unidadesParaLer<{ fuso: string | null }>(ctx.tenantId!, { colunas: 'fuso' }))
+        .filter(u => alcancaUnidade(ctx, u.id))
+      if (unidades.length === 0) return { error: 'Unidade não encontrada.' }
+      const csvs: string[] = []
+      for (const u of unidades) {
+        // A unidade em que o dia ainda não chegou (outro fuso) fica de fora.
+        const csv = await csvDaUnidade(ctx, admin, u, dia)
+        if (csv != null) csvs.push(csv)
+      }
+      if (csvs.length === 0) return { error: 'Dia inválido.' }
+      return { ok: true, csv: juntarCsvsDoFechamento(csvs), nome: `fechamento-${dia}-todas.csv` }
+    }
+
+    if (typeof branchId !== 'string' || !/^[0-9a-f-]{36}$/i.test(branchId)) return { error: 'Unidade não encontrada.' }
     const unidade = await ler(admin.from('branches').select('id, name, fuso')
       .eq('id', branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'conferir a unidade') as { id: string; name: string; fuso: string | null } | null
     if (!unidade || !alcancaUnidade(ctx, branchId)) return { error: 'Unidade não encontrada.' }
-    const fuso = fusoValido(unidade.fuso)
-    const janela = janelaDoDia(dia, new Date(), fuso)
-    if (!janela) return { error: 'Dia inválido.' }
-    const args = { tenantId: ctx.tenantId!, branchId, from: janela.from, to: janela.to }
-
-    const [resumo, estornos, porQuemRecebeu, bandeiras, ultimo, taxasPorMaquininha] = await Promise.all([
-      getFechamentoDoDia({ ...args, dia }),
-      getEstornosDoDia(args),
-      getFechamentoPorQuemRecebeu(args),
-      getFechamentoPorBandeira(args),
-      // D2 da 21ª: o retrato inteiro do último fechamento — a conferência é a da tela.
-      ler(admin.from('fechamentos_do_dia').select('fechado_por_nome, fechado_em, diferenca, contado_dinheiro, esperado_dinheiro, conferido, resumo')
-        .eq('tenant_id', ctx.tenantId!).eq('branch_id', branchId).eq('dia', dia)
-        .order('fechado_em', { ascending: false }).limit(1).maybeSingle(), 'ler o último fechamento') as
-        Promise<{ fechado_por_nome: string | null; fechado_em: string; diferenca: number | string; contado_dinheiro: number | string
-          esperado_dinheiro: number | string | null; conferido: unknown; resumo: unknown } | null>,
-      // A28 da 14ª (D7): a taxa e o líquido por maquininha só a quem vê o financeiro da rede.
-      veComissaoDeTodos(ctx) ? getTaxasPorMaquininha(args) : Promise.resolve(null),
-    ])
-    const csv = csvDoFechamento({
-      dia, unidade: unidade.name, fuso,
-      formas: resumo.formas, total: resumo.total, esperadoDinheiro: resumo.esperadoDinheiro,
-      estornos: estornos.itens, porQuemRecebeu, bandeiras, taxasPorMaquininha,
-      fechado: ultimo ? { quem: ultimo.fechado_por_nome, quando: ultimo.fechado_em, diferenca: Number(ultimo.diferenca) } : null,
-      // D2 da 21ª: o CSV dizia "Bateu" pela diferença gravada num dia que mudou depois — a régua é a da tela.
-      conferencia: ultimo ? linhasDaConferencia({
-        formas: resumo.formas, esperadoDinheiro: resumo.esperadoDinheiro,
-        estornadoHoje: estornos.mesmoDiaPorForma, ultimo: fechamentoGravadoDaLinha(ultimo),
-      }) : null,
-    })
+    const csv = await csvDaUnidade(ctx, admin, unidade, dia)
+    if (csv == null) return { error: 'Dia inválido.' }
     return { ok: true, csv, nome: `fechamento-${dia}.csv` }
   } catch (e) {
     return { error: mensagemDoErro(e) }
+  }
+}
+
+/** O CSV do fechamento de UMA unidade (a rede e o alcance já conferidos); nulo = dia fora da janela. */
+async function csvDaUnidade(
+  ctx: Awaited<ReturnType<typeof getTenantContext>>,
+  admin: ReturnType<typeof createAdminClient>,
+  unidade: { id: string; name: string; fuso: string | null },
+  dia: string,
+): Promise<string | null> {
+  const branchId = unidade.id
+  const fuso = fusoValido(unidade.fuso)
+  const janela = janelaDoDia(dia, new Date(), fuso)
+  if (!janela) return null
+  const args = { tenantId: ctx.tenantId!, branchId, from: janela.from, to: janela.to }
+
+  const [resumo, estornos, porQuemRecebeu, bandeiras, ultimo, taxasPorMaquininha] = await Promise.all([
+    getFechamentoDoDia({ ...args, dia }),
+    getEstornosDoDia(args),
+    getFechamentoPorQuemRecebeu(args),
+    getFechamentoPorBandeira(args),
+    // D2 da 21ª: o retrato inteiro do último fechamento — a conferência é a da tela.
+    ler(admin.from('fechamentos_do_dia').select('fechado_por_nome, fechado_em, diferenca, contado_dinheiro, esperado_dinheiro, conferido, resumo')
+      .eq('tenant_id', ctx.tenantId!).eq('branch_id', branchId).eq('dia', dia)
+      .order('fechado_em', { ascending: false }).limit(1).maybeSingle(), 'ler o último fechamento') as
+      Promise<{ fechado_por_nome: string | null; fechado_em: string; diferenca: number | string; contado_dinheiro: number | string
+        esperado_dinheiro: number | string | null; conferido: unknown; resumo: unknown } | null>,
+    // A28 da 14ª (D7): a taxa e o líquido por maquininha só a quem vê o financeiro da rede.
+    veComissaoDeTodos(ctx) ? getTaxasPorMaquininha(args) : Promise.resolve(null),
+  ])
+  return csvDoFechamento({
+    dia, unidade: unidade.name, fuso,
+    formas: resumo.formas, total: resumo.total, esperadoDinheiro: resumo.esperadoDinheiro,
+    estornos: estornos.itens, porQuemRecebeu, bandeiras, taxasPorMaquininha,
+    fechado: ultimo ? { quem: ultimo.fechado_por_nome, quando: ultimo.fechado_em, diferenca: Number(ultimo.diferenca) } : null,
+    // D2 da 21ª: o CSV dizia "Bateu" pela diferença gravada num dia que mudou depois — a régua é a da tela.
+    conferencia: ultimo ? linhasDaConferencia({
+      formas: resumo.formas, esperadoDinheiro: resumo.esperadoDinheiro,
+      estornadoHoje: estornos.mesmoDiaPorForma, ultimo: fechamentoGravadoDaLinha(ultimo),
+    }) : null,
+  })
+}
+
+/**
+ * A22 da 24ª: o dinheiro esperado na gaveta da unidade HOJE (o fundo + o saldo
+ * em espécie do dia), para o pagamento de comissão em dinheiro avisar quando
+ * deixa a gaveta negativa. Só avisa (princípio 2); nulo para quem não vê.
+ */
+export async function dinheiroNaGavetaDeHoje(
+  branchId: string,
+): Promise<{ naGaveta: number } | null> {
+  try {
+    const ctx = await getTenantContext()
+    if (!(can(ctx, 'financial', 'VIEW') || podeVerFechamento(ctx))) return null
+    if (typeof branchId !== 'string' || !/^[0-9a-f-]{36}$/i.test(branchId)) return null
+    const admin = createAdminClient()
+    const unidade = await ler(admin.from('branches').select('id, fuso')
+      .eq('id', branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'conferir a unidade') as { id: string; fuso: string | null } | null
+    if (!unidade || !alcancaUnidade(ctx, branchId)) return null
+    const fuso = fusoValido(unidade.fuso)
+    const dia = diaDoFechamento(null, new Date(), fuso)
+    const janela = janelaDoDia(dia, new Date(), fuso)
+    if (!janela) return null
+    const resumo = await getFechamentoDoDia({ tenantId: ctx.tenantId!, branchId, from: janela.from, to: janela.to, dia })
+    return { naGaveta: resumo.esperadoDinheiro }
+  } catch {
+    return null
   }
 }

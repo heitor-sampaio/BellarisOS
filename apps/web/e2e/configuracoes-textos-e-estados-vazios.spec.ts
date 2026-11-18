@@ -14,6 +14,7 @@ const marca = Date.now().toString(36)
 let A: OutraRede
 let gerente: MembroDeTeste
 let daUnidade: MembroDeTeste
+let dona: MembroDeTeste
 
 test.beforeAll(async () => {
   A = await criarOutraRede(`txt${marca}`)
@@ -30,10 +31,14 @@ test.beforeAll(async () => {
     tenant: A.tenantId, branchId: A.branchId, rotulo: 'Da unidade',
     permissoes: [{ modulo: 'procedures', nivel: 'VIEW' }, { modulo: 'settings', nivel: 'MANAGE' }],
   })
+  // A ficha de saúde e os funis são configuração da rede toda: só a Admin da
+  // rede (o Heitor, 18/11: "Configuração da rede toda só pela conta admin").
+  dona = await criarMembro(`txd${marca}`, { tenant: A.tenantId, rotulo: 'Dona', donoDaRede: true, permissoes: [] })
 })
 
 test.afterAll(async () => {
   await gerente?.limpar()
+  await dona?.limpar()
   await daUnidade?.limpar()
   await A?.limpar()
 })
@@ -69,7 +74,7 @@ test('A5: "Insumos utilizados" sem produto leva ao cadastro no Estoque', async (
 })
 
 test('A7: salvar a ficha de pré-atendimento confirma', async ({ browser }) => {
-  await como(browser, gerente, async p => {
+  await como(browser, dona, async p => {
     await p.goto('/admin/settings?tab=fichas')
     await p.getByRole('button', { name: 'Editar perguntas' }).click()
     await p.getByRole('button', { name: 'Salvar ficha' }).click()
@@ -94,7 +99,7 @@ test('A8: na unidade, Geral não manda à aba Assinatura — diz que é de quem 
 })
 
 test('A9: o texto do funil diz que o formulário cria um funil NOVO e que os existentes não mudam', async ({ browser }) => {
-  await como(browser, gerente, async p => {
+  await como(browser, dona, async p => {
     await p.goto('/admin/oportunidades')
     await p.getByTitle('Configurar funis').click()
     // O texto mora na dica dos FUNIS (2026-11-16).

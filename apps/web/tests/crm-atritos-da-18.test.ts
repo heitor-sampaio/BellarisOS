@@ -54,11 +54,12 @@ describe('A17: o card perdido diz o motivo', () => {
 })
 
 describe('A18: no quadro, os funis dizem de quem são', () => {
-  it('quem não tem "A rede inteira" lê a frase, pela abrangência e pela permissão', async () => {
+  // Desde 18/11 a configuração da rede toda é só da Admin da rede ("só pela
+  // conta admin"): a frase diz isso (tests/config-da-rede-so-da-admin.test.ts).
+  it('quem não é a Admin da rede lê a frase', async () => {
     const { avisoDosFunis } = await import('@/lib/configuracao-da-rede')
-    expect(avisoDosFunis({ branchId: 'b1' }, true)).toBe('Funis e etapas são da rede toda: quem muda é quem tem “A rede inteira”.')
-    expect(avisoDosFunis({ branchId: 'b1' }, false)).toBe('Funis e etapas são da rede toda: quem muda é quem tem “A rede inteira” e Configurações em Gerenciar.')
-    expect(avisoDosFunis({ branchId: null }, true)).toBeNull()
+    expect(avisoDosFunis({ isNetworkAdmin: false })).toBe('Funis e etapas são da rede toda: quem muda é a Admin da rede.')
+    expect(avisoDosFunis({ isNetworkAdmin: true })).toBeNull()
   })
   it('o quadro da unidade mostra a frase', () => {
     expect(fonte('app/[slug]/oportunidades/page.tsx')).toMatch(/avisoDosFunis\(/)

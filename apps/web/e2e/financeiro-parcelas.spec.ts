@@ -2,7 +2,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
-import { chamarAcao } from './apoio/acao-direta'
+import { venderPacotePelaAcao } from './apoio/contrato-do-pacote'
 
 /**
  * Cada parcela é um lançamento (pedido do Heitor, 2026-09-30 — migration
@@ -75,7 +75,7 @@ test('parcelado: a entrada no dia, cada parcela no mês dela, e o "Pagar" quita 
   const [m1, m2] = [mes(1), mes(2)]
   await comSessao(browser, async p => {
     // Entrada de 200 + 3 parcelas de 200, a primeira no dia 15 do mês que vem.
-    const r = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', '/admin/pdv', [
+    const r = await venderPacotePelaAcao(p, '/admin/pdv', [
       cliente, pacoteId, rede!.branchId,
       { forma: 'PARCELADO', metodo: 'CREDIT_CARD', entrada: 200, parcelas: 3, primeiroVencimento: new Date(`${m1.dia15}T12:00:00-03:00`).toISOString() },
     ])
@@ -107,7 +107,7 @@ test('parcelado: a entrada no dia, cada parcela no mês dela, e o "Pagar" quita 
     // A2 da 16ª: na receita o botão é "Receber".
     await linhas.first().getByRole('button', { name: 'Receber', exact: true }).click()
     const receber = p.getByRole('dialog', { name: 'Receber' })
-    await receber.getByLabel('Forma de pagamento').selectOption('PIX')
+    await receber.getByRole('radio', { name: 'Pix', exact: true }).click()
     await receber.getByRole('button', { name: 'Confirmar recebimento' }).click()
     await expect.poll(async () => {
       const { data } = await db().from('financial_transactions').select('parcela_numero, is_paid')

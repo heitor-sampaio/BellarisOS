@@ -69,9 +69,10 @@ describe('D3/A5: a linha da comanda diz a quantidade vendida', () => {
     const l = linhaDaComanda({ tipo: 'PRODUTO', quantidade: 2, precoUnitario: 150, total: 300, itens: 1 })
     expect({ ...l, detalhe: sp(l.detalhe) }).toEqual({ quantidade: 2, detalhe: '2 × R$ 150,00' })
   })
-  it('com desconto, o unitário e o desconto', () => {
-    expect(sp(linhaDaComanda({ tipo: 'PRODUTO', quantidade: 2, precoUnitario: 98, total: 184.44, itens: 1 }).detalhe))
-      .toBe('2 × R$ 98,00 (R$ 11,56 de desconto)')
+  it('com desconto, o unitário (o desconto vai numa linha própria da comanda — A15 da 24ª)', () => {
+    const l = linhaDaComanda({ tipo: 'PRODUTO', quantidade: 2, precoUnitario: 98, total: 184.44, itens: 1 })
+    expect(sp(l.detalhe)).toBe('2 × R$ 98,00')
+    expect(l.desconto).toBe(11.56)
   })
   it('o kit de vários produtos é uma linha (a descrição já os lista)', () => {
     expect(linhaDaComanda({ tipo: 'PRODUTO', quantidade: 1, precoUnitario: null, total: 300, itens: 3 }))

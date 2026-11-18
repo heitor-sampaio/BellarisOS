@@ -1,4 +1,5 @@
 import { subDays } from 'date-fns'
+import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { getTenantContext, can } from '@/lib/auth'
 import { ClientsSidebar } from '@/components/branch/clients-sidebar'
 import { ListaDetalhe } from '@/components/shared/lista-detalhe'
@@ -56,8 +57,10 @@ export default async function AdminClientsLayout({
           // escondido aqui e só existia dentro do portal de uma unidade.
           newClientHref={can(ctx, 'clients', 'MANAGE') ? undefined : null}
           // A21 da 21ª: a importação é de quem é da rede (H8) — o atalho também.
-          importarHref={can(ctx, 'clients', 'MANAGE') && ctx.branchId === null ? '/admin/settings?tab=importacoes' : null}
+          importarHref={can(ctx, 'clients', 'MANAGE') && mexeNaConfigDaRede(ctx) ? '/admin/settings?tab=importacoes' : null}
           aniversariantes={aniversariantes}
+          // A21 da 16ª: escolher várias e "Marcar tag" (Clientes em Gerenciar).
+          marcarTag={can(ctx, 'clients', 'MANAGE') ? { slug: null } : null}
         />
       }
     >

@@ -38,7 +38,7 @@ import { notifyCancelledAppointment, getUserName } from '@/lib/appointments/avis
 import { EVENTOS } from '@estetica-os/types'
 import { bandeiraDoPagamento } from '@/lib/financeiro/bandeiras'
 import { pontosDoConjunto } from '@/lib/pacotes/pontos-do-cancelamento'
-import { prepararDocumentosDoPacote } from '@/lib/documentos/pacote'
+import { prepararDocumentosDoPacote, contratoDaVendaDoPacote, type ContratoParaAssinar } from '@/lib/documentos/pacote'
 import { rotuloDoQueFalta } from '@/lib/documentos/leitura'
 import { oQueFalta } from '@/lib/documentos/o-que-falta'
 
@@ -116,14 +116,27 @@ export async function salvarPacote(entrada: unknown): Promise<Resultado> {
  * rateiam, então a comissão de cada sessão já sai sobre o vendido.
  */
 /** A equipe da venda (com-04/com-06): quem é a profissional responsável do pacote, e a resposta à pergunta de sem ninguém. */
-export interface EquipeDaVendaDoPacote extends QuemVendeuDaTela { responsavelId?: string | null; semResponsavel?: boolean }
+export interface EquipeDaVendaDoPacote extends QuemVendeuDaTela {
+  responsavelId?: string | null; semResponsavel?: boolean
+  /** A resposta à pergunta do contrato assinado com outro pagamento (PC2): troca por um novo, a assinar. */
+  substituirContrato?: boolean
+}
 type ResultadoDaVendaDoPacote = {
   error?: string; clientPackageId?: string; confirmarSemResponsavel?: string; confirmarSemVendedor?: string
+  /**
+   * PC2 (o Heitor, 2026-11-13: "o ideal era funcionar como no plano"; do plano:
+   * "primeiro colhe assinatura, depois paga"): o contrato de pacote a colher
+   * ANTES do dinheiro. Veio isto, nada se gravou — colhe, e vende de novo.
+   */
+  contratoParaAssinar?: ContratoParaAssinar
+  /** O contrato foi assinado com outro pagamento: vender assim pede um novo (A45 da 5ª, como no plano). */
+  confirmarSubstituirContrato?: string
   /** A 1ª sessão do pacote vendido, para o "Agendar a 1ª sessão agora" (A47 da 7ª simulação). */
   primeiraSessao?: { id: string; procedimento: { id: string; nome: string; duracaoMin: number } } | null
   /**
-   * PC2 (leva 2): os documentos que a venda emitiu, para a tela dizer o que
-   * ficou para assinar. A venda não espera por eles (princípios 2 e 6).
+   * PC2 (leva 2): os termos e os outros documentos que a venda emitiu, para a
+   * tela dizer o que ficou para assinar. Esses não seguram o dinheiro — só o
+   * contrato de pacote (`contratoParaAssinar`).
    */
   documentos?: DocumentoDaVenda[]
   /**
@@ -226,6 +239,19 @@ async function venderPacoteUmaVez(
       }
     }
 
+    // PC2: com o contrato de pacote ativo na rede, "primeiro colhe assinatura,
+    // depois paga" (o Heitor, do plano; do pacote: "o ideal era funcionar como
+    // no plano de tratamento"). O contrato nasce com ESTE combinado; sem ele
+    // assinado (ou dispensado, com o motivo), o dinheiro não entra.
+    const contrato = await contratoDaVendaDoPacote({
+      tenantId: ctx.tenantId!, clienteId, pacoteId, unidadeId: branchId, ator: ctx.internalUserId ?? null,
+      pagamento: lido.data, desconto: reais, substituir: equipe?.substituirContrato === true,
+    })
+    if (contrato && 'substituir' in contrato) {
+      return { confirmarSubstituirContrato: `O contrato “${contrato.substituir.titulo}” já foi assinado para outro pagamento (${contrato.substituir.pagamento}). Vender com este pagamento substitui o contrato: o assinado fica guardado como substituído, e a cliente assina o novo antes do pagamento. Substituir?` }
+    }
+    if (contrato) return { contratoParaAssinar: contrato.assinar }
+
     const lancamentos = comMotivoDoDesconto(lancamentosDoPagamento(vendido, pagamentoDaVenda, `Pacote ${pacote.name as string}`), motivoDoDesconto(d.data, reais))
     // Cada sessão com o seu procedimento e a sua parte do preço VENDIDO (rateio
     // pelo preço de tabela): é a base da comissão dela. O banco confere a soma.
@@ -250,7 +276,8 @@ async function venderPacoteUmaVez(
       ? { id: primeira.id as string, procedimento: { id: primeira.procedure_id as string, nome: procDaPrimeira?.name ?? 'Sessão', duracaoMin: Number(procDaPrimeira?.duration_min ?? 0) } }
       : null
 
-    // PC2: os documentos da venda, montados com o pagamento. A venda já está
+    // PC2: os termos e os outros documentos da venda (o contrato, já assinado,
+    // a venda adotou), montados com o pagamento. A venda já está
     // gravada: falhar aqui não a desfaz — os documentos se montam de novo ao
     // abrir (a ficha, o link), e a tela diz que não deu.
     let documentos: DocumentoDaVenda[] = []

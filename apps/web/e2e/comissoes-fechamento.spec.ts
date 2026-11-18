@@ -187,8 +187,10 @@ test.describe.serial('comissões — fechamento e visibilidade', () => {
       await p.goto(ROTA)
       const linha = p.locator(`[data-fechamento="${ultimo!.id}"]`)
       await linha.getByRole('button', { name: 'Estornar' }).click()
-      await linha.getByLabel('Motivo do estorno').fill(`${PREFIXO} pago em dobro`)
-      await linha.getByRole('button', { name: 'Confirmar estorno' }).click()
+      // A29 da 24ª: o estorno abre numa janela (era um bloco dentro da linha).
+      const janela = p.getByRole('dialog', { name: 'Estornar o fechamento?' })
+      await janela.getByLabel('Motivo do estorno').fill(`${PREFIXO} pago em dobro`)
+      await janela.getByRole('button', { name: 'Confirmar estorno' }).click()
       await expect(linha).toContainText('Estornado')
     })
 

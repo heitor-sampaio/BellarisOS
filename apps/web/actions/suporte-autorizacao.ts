@@ -4,8 +4,7 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, mensagemDoErro } from '@/lib/db'
-import { podeAutorizar, podeIncluirClinico, horasValidas, HORAS_PADRAO, SO_ADMIN_AUTORIZA_ADMIN } from '@/lib/suporte/regras'
-import { cargoEhAdminDaRede } from '@/lib/equipe/admin-da-rede'
+import { podeAutorizar, podeRevogar, podeIncluirClinico, horasValidas, HORAS_PADRAO, SO_A_ADMIN_AUTORIZA } from '@/lib/suporte/regras'
 import { tagDaSessao, sessoesEmCurso } from '@/lib/suporte/sessao'
 
 /**
@@ -20,22 +19,18 @@ import { tagDaSessao, sessoesEmCurso } from '@/lib/suporte/sessao'
 type Resultado = { ok: true } | { ok: false; error: string }
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-/** O membro alvo tem o cargo de sistema Admin da rede? (D19: só outra Admin autoriza a conta dela.) */
-async function alvoEhAdmin(admin: ReturnType<typeof createAdminClient>, tenantId: string, userId: string): Promise<boolean> {
-  const alvo = await ler(admin.from('users').select('role_id')
-    .eq('id', userId).eq('tenant_id', tenantId).maybeSingle(), 'conferir o cargo do membro') as { role_id: string | null } | null
-  return cargoEhAdminDaRede(admin, tenantId, alvo?.role_id)
-}
-
 export async function autorizarSuporte(pedido: {
   userId: string; horas?: number; incluiClinico?: boolean; chamadoId?: string | null
 }): Promise<Resultado> {
   const ctx = await getTenantContext()
   if (ctx.suporte) return { ok: false, error: 'A sessão de suporte não autoriza acesso.' }
   if (!ctx.tenantId || !UUID.test(pedido?.userId ?? '')) return { ok: false, error: 'Pedido inválido.' }
-  if (!podeAutorizar(ctx, pedido.userId)) return { ok: false, error: 'Você só pode autorizar o acesso à sua própria conta.' }
-  if (pedido.userId !== ctx.internalUserId && !ctx.isNetworkAdmin
-      && await alvoEhAdmin(createAdminClient(), ctx.tenantId, pedido.userId)) return { ok: false, error: SO_ADMIN_AUTORIZA_ADMIN }
+  // Só a Admin da rede autoriza (auditoria das regras, 2026-11-18).
+  if (!podeAutorizar(ctx)) return { ok: false, error: SO_A_ADMIN_AUTORIZA }
+  // O alvo é um membro da rede (a função do banco também confere).
+  const alvo = await ler(createAdminClient().from('users').select('id')
+    .eq('id', pedido.userId).eq('tenant_id', ctx.tenantId).maybeSingle(), 'conferir o membro') as { id: string } | null
+  if (!alvo) return { ok: false, error: 'Membro não encontrado.' }
   const horas = pedido.horas ?? HORAS_PADRAO
   if (!horasValidas(horas)) return { ok: false, error: 'Duração inválida.' }
   const clinico = !!pedido.incluiClinico
@@ -75,7 +70,7 @@ export async function revogarAutorizacaoDeSuporte(grantId: string): Promise<Resu
       .eq('id', grantId).eq('tenant_id', ctx.tenantId).is('revoked_at', null).maybeSingle(), 'buscar a autorização') as
       { id: string; target_user_id: string } | null
     if (!grant) return { ok: false, error: 'Autorização não encontrada.' }
-    if (!podeAutorizar(ctx, grant.target_user_id, { alvoEhAdmin: await alvoEhAdmin(admin, ctx.tenantId, grant.target_user_id) })) {
+    if (!podeRevogar(ctx, grant.target_user_id)) {
       return { ok: false, error: 'Você não pode revogar esta autorização.' }
     }
     const { data, error } = await admin.rpc('suporte_revogar_autorizacao', {

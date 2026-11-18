@@ -34,9 +34,9 @@ test.beforeAll(async () => {
   test.setTimeout(180_000)
   rede = await criarOutraRede(`ic${marca}`)
   unidadeNome = (await db().from('branches').select('name').eq('id', rede.branchId).single()).data!.name as string
-  admin = await criarMembro(`ic${marca}`, { tenant: rede.tenantId, rotulo: 'Recepção', permissoes: [
-    { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'crm', nivel: 'MANAGE' }, { modulo: 'settings', nivel: 'MANAGE' },
-  ] })
+  // As Importações são da rede toda: só a Admin da rede (o Heitor, 18/11:
+  // "Configuração da rede toda só pela conta admin").
+  admin = await criarMembro(`ic${marca}`, { tenant: rede.tenantId, rotulo: 'Recepção', donoDaRede: true, permissoes: [] })
   const m = await db().from('clients').insert({ tenant_id: rede.tenantId, branch_id: rede.branchId, name: MARLENE, phone: FONE_MARLENE, is_active: true, tags: [] })
     .select('id').single<{ id: string }>()
   expect(m.error).toBeNull()

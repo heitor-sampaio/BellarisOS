@@ -9,6 +9,8 @@ import {
 } from 'lucide-react'
 import { createCampaign, updateCampaign, activateCampaign } from '@/actions/notification-campaigns'
 import { AudiencePreview } from '@/components/admin/audience-preview'
+import { EscolherClientes, type ClienteEscolhida } from '@/components/admin/escolher-clientes'
+import { MAXIMO_DE_CLIENTES_ESPECIFICAS } from '@/lib/notifications/filtros-da-campanha'
 import { CanalDaCampanha } from '@/components/admin/canal-da-campanha'
 import { TagPicker } from '@/components/shared/tag-picker'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
@@ -43,11 +45,13 @@ interface Props {
   existing?:  NotificationCampaign
   /** Quem vê as Automações ganha o link para onde os gatilhos de cada cliente foram (MK1). */
   podeVerAutomacoes?: boolean
+  /** A37 da 15ª: os nomes das "Clientes específicas" da campanha que se edita. */
+  clientesDaCampanha?: ClienteEscolhida[]
 }
 
 type Step = 1 | 2 | 3 | 4
 
-export function NotificationCampaignForm({ procedures, existing, podeVerAutomacoes = false }: Props) {
+export function NotificationCampaignForm({ procedures, existing, podeVerAutomacoes = false, clientesDaCampanha = [] }: Props) {
   const router = useRouter()
   // A campanha é da rede: a hora digitada é a do relógio comum das unidades (F64, D4).
   const fuso   = useFuso()
@@ -90,6 +94,8 @@ export function NotificationCampaignForm({ procedures, existing, podeVerAutomaco
   const vocabulario = useTagsDaRede()
   const [hasApp,        setHasApp]        = useState(regras.has_app_account ?? false)
   const [maxDays,       setMaxDays]       = useState<number | null>(regras.max_days_since_visit ?? null)
+  // A37 da 15ª (princípio 1): a campanha também mira clientes escolhidas uma a uma.
+  const [clientes,      setClientes]      = useState<ClienteEscolhida[]>(clientesDaCampanha)
 
   const audienceRules: AudienceRules = {
     ...(genders.length     && { genders }),
@@ -97,6 +103,7 @@ export function NotificationCampaignForm({ procedures, existing, podeVerAutomaco
     ...(tags.length        && { tags }),
     ...(hasApp             && { has_app_account: true }),
     ...(maxDays            && { max_days_since_visit: maxDays }),
+    ...(clientes.length    && { client_ids: clientes.map(c => c.id) }),
   }
 
   // A19 da 11ª: "Sentimos sua falta, Ana" parecia o texto de verdade — é um
@@ -379,6 +386,14 @@ export function NotificationCampaignForm({ procedures, existing, podeVerAutomaco
 
           {/* MK2 do Bloco Tags (2026-11-14): sem filtro de unidade — a cliente é
               da rede, e as tags cobrem o recorte que a rede quiser. */}
+          {/* A37 da 15ª: as clientes escolhidas uma a uma (com os outros filtros, todos valem juntos). */}
+          <div data-clientes-especificas>
+            <SectionLabel dica={{ rotulo: 'Sobre as clientes específicas', texto: 'Só as clientes escolhidas aqui recebem. Os outros filtros, se houver, valem junto: a cliente precisa passar por todos.' }}>
+              Clientes específicas
+            </SectionLabel>
+            <EscolherClientes escolhidas={clientes} aoMudar={setClientes} maximo={MAXIMO_DE_CLIENTES_ESPECIFICAS} />
+          </div>
+
           {/* Gender */}
           <div>
             <SectionLabel>Gênero</SectionLabel>
@@ -490,7 +505,7 @@ export function NotificationCampaignForm({ procedures, existing, podeVerAutomaco
           {/* A15 da 7ª simulação: o público estimado vinha sem o filtro que o explica. */}
           <div data-filtros-do-publico>
             <ReviewRow label="Filtros do público" value={(() => {
-              const f = filtrosDoPublico(audienceRules, { procedimentos: procedures })
+              const f = filtrosDoPublico(audienceRules, { procedimentos: procedures, clientes })
               return f.length ? f.join(' · ') : 'Nenhum filtro: todas as clientes ativas'
             })()} />
           </div>

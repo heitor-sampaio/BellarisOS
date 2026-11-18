@@ -21,6 +21,7 @@ const marca = Date.now().toString(36)
 const db = () => banco()
 let rede: OutraRede | null = null
 let gestor: MembroDeTeste | null = null
+let dona: MembroDeTeste | null = null
 let soVe: MembroDeTeste | null = null
 
 test.beforeAll(async () => {
@@ -28,6 +29,11 @@ test.beforeAll(async () => {
   // O profissional da rede atende: sem comissão, a tela tem de avisar.
   const { error } = await db().from('users').update({ provides_services: true, is_active: true }).eq('id', rede.professionalId)
   expect(error).toBeNull()
+  // Configurações → Comissões e taxas é configuração da rede toda: só a Admin
+  // da rede (o Heitor, 18/11: "Configuração da rede toda só pela conta
+  // admin"). A comissão de cada um, na Equipe, fica com o Financeiro em
+  // Gerenciar — o gestor.
+  dona = await criarMembro(`comd${marca}`, { tenant: rede.tenantId, rotulo: 'Dona comissões', donoDaRede: true, permissoes: [] })
   gestor = await criarMembro(`comg${marca}`, {
     tenant: rede.tenantId, rotulo: 'Gestor comissões',
     permissoes: [{ modulo: 'financial', nivel: 'MANAGE' }, { modulo: 'team', nivel: 'VIEW' }],
@@ -41,6 +47,7 @@ test.beforeAll(async () => {
 test.afterAll(async () => {
   if (soVe) await soVe.limpar()
   if (gestor) await gestor.limpar()
+  if (dona) await dona.limpar()
   if (rede) await rede.limpar()
 })
 
@@ -54,7 +61,20 @@ const regras = async () => (await db().from('commission_rules').select('procedur
 
 test.describe.serial('comissões — configuração e regras', () => {
   test('Configurações → Comissões grava como a comissão acontece e as taxas', async ({ browser }) => {
+    // O "não pode": o Financeiro em Gerenciar, sem ser a Admin, lê de quem é a
+    // aba e a action recusa.
     await comSessao(browser, gestor!, async p => {
+      await p.goto('/admin/settings?tab=comissoes')
+      await expect(p.getByText('Esta configuração é só da Admin da rede.').first()).toBeVisible()
+      await expect(p.locator('[aria-label="Como a comissão acontece"]')).toHaveCount(0)
+      const r = await chamarAcao(p, 'actions/comissoes.ts', 'salvarConfigDeComissao', '/admin/settings',
+        [{ desconta_insumos: true, desconta_taxa: true, base_com_pontos: 'PRECO', periodo: 'QUINZENAL' }])
+      expect(r.texto).toContain('quem muda é a Admin')
+    })
+    expect((await db().from('commission_configs').select('periodo').eq('tenant_id', rede!.tenantId).maybeSingle()).data?.periodo,
+      'nada gravado pelo gestor').not.toBe('QUINZENAL')
+
+    await comSessao(browser, dona!, async p => {
       await p.goto('/admin/settings?tab=comissoes')
       // O profissional atende e não tem comissão: o aviso o nomeia.
       await expect(p.locator('[data-sem-regra]')).toContainText(`Prof com${marca}`)
@@ -83,14 +103,15 @@ test.describe.serial('comissões — configuração e regras', () => {
 
     const { data: cfg } = await db().from('commission_configs')
       .select('modo, desconta_insumos, desconta_taxa, periodo, updated_by').eq('tenant_id', rede!.tenantId).single()
-    expect(cfg).toEqual({ modo: 'INTEGRAL', desconta_insumos: true, desconta_taxa: true, periodo: 'QUINZENAL', updated_by: gestor!.userId })
+    expect(cfg).toEqual({ modo: 'INTEGRAL', desconta_insumos: true, desconta_taxa: true, periodo: 'QUINZENAL', updated_by: dona!.userId })
     // C75 da F67: as taxas do cartão na maquininha; o Pix, à parte.
     expect(await taxasDaPrimeira(rede!.tenantId)).toEqual([['CREDIT_CARD', 1, 3.2], ['CREDIT_CARD', 6, 8]])
     expect(await taxaDoPix(rede!.tenantId)).toBe(0.99)
   })
 
   test('o modo antigo ("no atendimento") não se grava nem pela action', async ({ browser }) => {
-    await comSessao(browser, gestor!, async p => {
+    // Pela Admin: a recusa de quem não é a Admin passaria sem provar nada.
+    await comSessao(browser, dona!, async p => {
       const r = await chamarAcao(p, 'actions/comissoes.ts', 'salvarConfigDeComissao', '/admin/settings',
         [{ modo: 'ATENDIMENTO', desconta_insumos: true, desconta_taxa: true, base_com_pontos: 'PRECO', periodo: 'SEMANAL' }])
       expect(r.texto).not.toContain('"ok":true')
@@ -125,8 +146,8 @@ test.describe.serial('comissões — configuração e regras', () => {
       [null, 'PERCENTAGE', 30], [rede!.procedureId, 'FIXED_AMOUNT', 80],
     ])
 
-    // Com padrão, o aviso de "sem comissão" some.
-    await comSessao(browser, gestor!, async p => {
+    // Com padrão, o aviso de "sem comissão" some (a aba é da Admin da rede).
+    await comSessao(browser, dona!, async p => {
       await p.goto('/admin/settings?tab=comissoes')
       await expect(p.locator('[aria-label="Comissão de cada profissional"]')).toContainText('Todos os profissionais que atendem têm comissão configurada')
     })

@@ -22,7 +22,9 @@ import { responderAnamnese } from './apoio/anamnese'
  *    aqui: a comissão de EXECUÇÃO sai pela regra do profissional sobre o
  *    rateio do valor de referência, e a receita dos atendimentos conta o
  *    rateio no dia da sessão; sem valor de referência, R$ 0 e a tela avisa
- *    (princípios 4 e 5). O caixa nunca conta.
+ *    (princípios 4 e 5) — menos a regra de "R$ fixo por sessão", que não
+ *    depende do valor e é paga (item 11 das correções da auditoria, decisão
+ *    do Claude pelo princípio 2, 2026-11-18). O caixa nunca conta.
  */
 
 const marca = Date.now().toString(36)
@@ -213,7 +215,7 @@ test('sem valor de referência: a comissão de execução é R$ 0, nada entra na
     await janela.getByLabel('Procedimento').selectOption({ label: PROC })
     await janela.getByLabel('Sessões do pacote').fill('3')
     await expect(janela.locator('[data-conta-do-pacote-de-fora]'))
-      .toContainText('Sem valor de referência, as sessões trazidas não geram comissão de execução (R$ 0)')
+      .toContainText('Sem valor de referência, as sessões trazidas não entram na receita dos atendimentos, e a comissão de execução em percentual é R$ 0. A de R$ fixo por sessão é paga.')
   })
 
   const ap = await sessaoNoAtendimento(semValor.id, 1)
@@ -221,6 +223,25 @@ test('sem valor de referência: a comissão de execução é R$ 0, nada entra na
   expect(await devidoDoAtendimento(ap)).toBe(0)
   const { count } = await db().from('commission_lines').select('id', { count: 'exact', head: true }).eq('appointment_id', ap)
   expect(count, 'sem valor, nenhuma linha de comissão').toBe(0)
+})
+
+test('item 11 da auditoria: sem valor de referência, o "R$ fixo por sessão" é pago (o percentual não)', async ({ browser }) => {
+  // A regra do profissional passa a R$ 25 fixo por sessão (a que vale no pacote de fora, "pela regra").
+  expect((await db().from('commission_rules').update({ type: 'FIXED_AMOUNT', value: 25 })
+    .eq('tenant_id', rede.tenantId).eq('professional_id', rede.professionalId).is('procedure_id', null)).error).toBeNull()
+  try {
+    const semValor = (await pacotesDela()).find(c => c.valor_referencia === null)!
+    expect(semValor).toBeTruthy()
+    const ap = await sessaoNoAtendimento(semValor.id, 2)
+    await finalizarPelaTela(browser, ap)
+    const { data: linhas } = await db().from('commission_lines').select('regra_tipo, regra_valor, preco').eq('appointment_id', ap)
+    expect((linhas ?? []).map(l => [l.regra_tipo, n(l.regra_valor), n(l.preco)]), 'uma linha de R$ fixo, sem preço').toEqual([['FIXED_AMOUNT', 25, 0]])
+    // Liberada na conclusão: o pacote de fora não deve nada à rede.
+    await expect.poll(() => devidoDoAtendimento(ap), { message: 'o fixo da sessão trazida', timeout: 15_000 }).toBe(25)
+  } finally {
+    expect((await db().from('commission_rules').update({ type: 'PERCENTAGE', value: 10 })
+      .eq('tenant_id', rede.tenantId).eq('professional_id', rede.professionalId).is('procedure_id', null)).error).toBeNull()
+  }
 })
 
 test('o app da cliente diz "Pacote de antes: N de M restantes", sem pagamento nem recibo', async ({ browser }) => {

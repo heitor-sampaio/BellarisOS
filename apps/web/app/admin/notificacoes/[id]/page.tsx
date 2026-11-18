@@ -14,6 +14,8 @@ import { quemReceberiaHoje } from '@/lib/notifications/gatilho-de-hoje'
 import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 import { FUSO_PADRAO, nomeDoFuso } from '@/lib/unidades/fuso'
 import { formatarNoFuso } from '@/lib/formatar-no-fuso'
+import { clientesDaCampanha } from '@/lib/notifications/clientes-da-campanha'
+import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,10 +52,15 @@ export default async function CampanhaDetailPage({ params }: { params: Promise<{
 
   // A campanha é da rede: as horas no relógio comum das unidades (F64, D4).
   const fuso = await fusoDaRede(ctx.tenantId)
+  // A37 da 15ª: as "Clientes específicas", pelo nome.
+  const clientes = await clientesDaCampanha(ctx.tenantId!, (campaign.audience_rules as { client_ids?: unknown }).client_ids)
   const statusCfg = STATUS_CFG[campaign.status] ?? STATUS_CFG.DRAFT
   // D10 da 12ª: na de todo ano, "Quem receberia hoje" é a DATA de hoje (a
   // escolha do cron) — o público inteiro fica numa linha à parte.
   const mostraQuemReceberia = can(ctx, 'marketing', 'MANAGE') && !['ARCHIVED', 'COMPLETED'].includes(campaign.status)
+  // Editar, ativar, pausar, arquivar e excluir: só a Admin da rede (a campanha é
+  // configuração da rede toda — o Heitor, 18/11).
+  const podeEditar = can(ctx, 'marketing', 'MANAGE') && mexeNaConfigDaRede(ctx)
   const deHoje = mostraQuemReceberia ? await quemReceberiaHoje(campaign) : null
   const TypeIcon  = TYPE_ICON[campaign.type] ?? Zap
   const readRate  = campaign.total_sent > 0
@@ -98,12 +105,12 @@ export default async function CampanhaDetailPage({ params }: { params: Promise<{
         {/* Actions */}
         <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
           {/* Os mesmos estados em que o servidor aceita a edição. */}
-          {['DRAFT', 'PAUSED'].includes(campaign.status) && (
+          {podeEditar && ['DRAFT', 'PAUSED'].includes(campaign.status) && (
             <Link href={`/admin/notificacoes/${id}/editar`} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <Pencil size={14} /> Editar
             </Link>
           )}
-          {['DRAFT', 'PAUSED'].includes(campaign.status) && (
+          {podeEditar && ['DRAFT', 'PAUSED'].includes(campaign.status) && (
             <form action={async () => { 'use server'; await activateCampaign(id) }}>
               <button type="submit" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Send size={14} />
@@ -111,17 +118,17 @@ export default async function CampanhaDetailPage({ params }: { params: Promise<{
               </button>
             </form>
           )}
-          {campaign.status === 'ACTIVE' && (
+          {podeEditar && campaign.status === 'ACTIVE' && (
             <form action={async () => { 'use server'; await pauseCampaign(id) }}>
               <button type="submit" className="btn-secondary">Pausar</button>
             </form>
           )}
-          {!['ARCHIVED', 'COMPLETED'].includes(campaign.status) && (
+          {podeEditar && !['ARCHIVED', 'COMPLETED'].includes(campaign.status) && (
             <form action={async () => { 'use server'; await archiveCampaign(id) }}>
               <button type="submit" className="btn-ghost" style={{ color: 'var(--text-muted)' }}>Arquivar</button>
             </form>
           )}
-          {['DRAFT', 'ARCHIVED'].includes(campaign.status) && (
+          {podeEditar && ['DRAFT', 'ARCHIVED'].includes(campaign.status) && (
             <DeleteCampaignButton action={deleteCampaign.bind(null, id)} />
           )}
         </div>
@@ -165,7 +172,7 @@ export default async function CampanhaDetailPage({ params }: { params: Promise<{
         {/* Audience */}
         <div className="card" style={{ flex: '1 1 260px', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>Público</h2>
-          <AudienceRow rules={campaign.audience_rules} />
+          <AudienceRow rules={campaign.audience_rules} clientes={clientes} />
           {/* A21 da 11ª: quem receberia HOJE, também fora do assistente (o
               rascunho não dizia) — a mesma conta do disparo. */}
           {mostraQuemReceberia && (
@@ -260,7 +267,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   )
 }
 
-function AudienceRow({ rules }: { rules: Record<string, unknown> }) {
+function AudienceRow({ rules, clientes }: { rules: Record<string, unknown>; clientes: { id: string; name: string }[] }) {
   const items: { label: string; value: string }[] = []
 
   // Sem "Unidades" (MK2 do Bloco Tags): o público é da rede, e uma regra
@@ -271,13 +278,16 @@ function AudienceRow({ rules }: { rules: Record<string, unknown> }) {
     tags?: string[]
     has_app_account?: boolean
     max_days_since_visit?: number
+    client_ids?: string[]
   }
 
-  if (!r.genders?.length
+  if (!r.genders?.length && !r.client_ids?.length
       && !r.procedure_ids?.length && !r.tags?.length && !r.has_app_account && !r.max_days_since_visit) {
     return <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>Todos os clientes ativos da rede</p>
   }
 
+  // A37 da 15ª: as escolhidas uma a uma (a removida da rede não aparece, nem recebe).
+  if (r.client_ids?.length)       items.push({ label: 'Clientes', value: clientes.length ? clientes.map(c => c.name).join(', ') : 'nenhuma ficha encontrada' })
   if (r.genders?.length)          items.push({ label: 'Gênero',     value: r.genders.join(', ') })
   if (r.procedure_ids?.length)    items.push({ label: 'Procedimentos', value: `${r.procedure_ids.length} selecionado(s)` })
   if (r.tags?.length)             items.push({ label: 'Tags',       value: r.tags.join(', ') })

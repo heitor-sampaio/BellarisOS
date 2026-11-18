@@ -6,6 +6,8 @@ import { getTenantContext, assertPermission, assertRecurso, can } from '@/lib/au
 import { getCachedNetworkProcedures } from '@/lib/cached-queries'
 import { getCampaign } from '@/actions/notification-campaigns'
 import { NotificationCampaignForm } from '@/components/admin/notification-campaign-form'
+import { clientesDaCampanha } from '@/lib/notifications/clientes-da-campanha'
+import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,6 +23,9 @@ export default async function EditarCampanhaPage({ params }: { params: Promise<{
   // A funcionalidade é do PLANO da rede (lib/planos/recursos.ts).
   assertRecurso(ctx, 'campanhas')
   assertPermission(ctx, 'marketing', 'MANAGE')
+  // A campanha é configuração da rede toda: só a Admin da rede edita (o Heitor,
+  // 18/11). Quem não é volta aos detalhes, que só mostram — a action recusaria.
+  if (!mexeNaConfigDaRede(ctx)) redirect(`/admin/notificacoes/${id}`)
 
   let campaign
   try {
@@ -31,7 +36,11 @@ export default async function EditarCampanhaPage({ params }: { params: Promise<{
   if (!['DRAFT', 'PAUSED'].includes(campaign.status)) redirect(`/admin/notificacoes/${id}`)
 
   // O público é da rede, sem filtro de unidade (MK2 do Bloco Tags).
-  const procedures = await getCachedNetworkProcedures(ctx.tenantId!)
+  const [procedures, clientes] = await Promise.all([
+    getCachedNetworkProcedures(ctx.tenantId!),
+    // A37 da 15ª: os nomes das "Clientes específicas".
+    clientesDaCampanha(ctx.tenantId!, campaign.audience_rules?.client_ids),
+  ])
 
   return (
     <div>
@@ -58,6 +67,7 @@ export default async function EditarCampanhaPage({ params }: { params: Promise<{
         existing={campaign}
         procedures={(procedures ?? []) as { id: string; name: string; category: string | null }[]}
         podeVerAutomacoes={can(ctx, 'automations', 'VIEW')}
+        clientesDaCampanha={clientes}
       />
     </div>
   )

@@ -164,7 +164,11 @@ export async function moverEtapaCore(
    * O motivo da perda, quando o destino é uma etapa de desfecho LOST. A TELA
    * exige (`exigirMotivo`); o Copilot e as automações movem sem ele.
    */
-  opcoes: { perda?: PerdaInformada | null; exigirMotivo?: boolean; semAlcance?: boolean } = {},
+  opcoes: {
+    perda?: PerdaInformada | null; exigirMotivo?: boolean; semAlcance?: boolean
+    /** A35 da 22ª: o movimento se registra, mas não dispara automação (a pessoa disse "Não"). */
+    semDespachar?: boolean
+  } = {},
 ): Promise<{ ok: true } | { error: string }> {
   if (!(await etapaDaRede(ctx.tenantId!, stageId))) return { error: 'Etapa não encontrada.' }
 
@@ -196,9 +200,10 @@ export async function moverEtapaCore(
     // perdido — ver `lib/events/lead.ts` para o porquê de serem dois.
     const de      = await etapaDeCrm(ctx.tenantId!, etapaAnterior)
     const destino = await etapaDeCrm(ctx.tenantId!, stageId)
-    await emitirEventoDeLead(EVENTOS.LEAD_ETAPA_MUDOU, leadId, ctx, { deEtapaNome: de.nome })
+    const semDespachar = !!opcoes.semDespachar
+    await emitirEventoDeLead(EVENTOS.LEAD_ETAPA_MUDOU, leadId, ctx, { deEtapaNome: de.nome, semDespachar })
     const evento = eventoDoDesfecho(destino.desfecho)
-    if (evento) await emitirEventoDeLead(evento, leadId, ctx, { deEtapaNome: de.nome })
+    if (evento) await emitirEventoDeLead(evento, leadId, ctx, { deEtapaNome: de.nome, semDespachar })
   }
   return { ok: true }
 }

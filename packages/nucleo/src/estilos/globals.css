@@ -370,8 +370,11 @@
   /* O rótulo de um campo (A39 da 6ª simulação): a classe era usada nos
      formulários e não existia — "Bandeira (opcional)" e "Forma de pagamento"
      saíam no tamanho do corpo, maiores que os rótulos em volta. */
+  /* A9 da 24ª: alinhado à esquerda também dentro de quem centraliza (o "Categoria"
+     do Novo produto saía no meio da coluna). */
   .field-label {
     display: block;
+    text-align: left;
     font-size: var(--text-xs-sz);
     font-weight: var(--weight-bold);
     color: var(--text-muted);
@@ -2496,6 +2499,23 @@ a.suporte-link-forte:hover { color: var(--brand); }
 .aviso-assinatura[data-tom="atraso"] { background: var(--warning-soft); color: var(--warning); border-color: var(--warning-border); }
 @media (max-width: 640px) { .aviso-assinatura { white-space: normal; } }
 
+/* O aviso que um redirecionamento deixou na URL (`?aviso=`, A23 da 15ª =
+   A14 da 18ª = A17 da 19ª): uma faixa no topo do conteúdo, abaixo da topbar,
+   que fica até a pessoa fechar — era um toast sobre a busca, que sumia. */
+.aviso-da-url {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding: 10px 12px 10px 14px;
+  border-radius: var(--radius-card-sm); background: var(--warning-soft); color: var(--text);
+  border: 1px solid var(--warning-border);
+  font-size: var(--text-sm-sz); font-weight: var(--weight-semibold);
+}
+.aviso-da-url > svg { color: var(--warning); }
+.aviso-da-url-fechar {
+  flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border: none; border-radius: var(--radius-full); cursor: pointer;
+  background: transparent; color: var(--text-muted);
+}
+.aviso-da-url-fechar:hover { background: var(--surface); color: var(--text); }
+
 /* ── O topo da tela do atendimento (D1 e A3 da 10ª simulação, 2026-11-10) ──
    A linha das ações media 744 px no celular de 412: o "Finalizar" ficava fora
    da tela, sem rolagem, e o título espremido quebrava uma palavra por linha.
@@ -2649,7 +2669,10 @@ body:has(.copilot-botao:not([data-subir="sim"])) main {
 .copilot-cartao dt { color: var(--text-muted); font-size: var(--text-xs-sz); }
 .copilot-cartao dd { margin: 0; font-weight: var(--weight-semibold); overflow-wrap: anywhere; }
 .copilot-cartao-aviso { font-size: var(--text-xs-sz); color: var(--warning); }
-.copilot-cartao-botoes { display: flex; gap: 8px; }
+.copilot-cartao-botoes { display: flex; flex-wrap: wrap; gap: 8px; }
+/* A40 da 24ª: a escolha em lista (a categoria sugerida) ocupa a linha, e os botões vêm embaixo. */
+.copilot-cartao-lista { flex-basis: 100%; display: flex; flex-direction: column; gap: 4px; }
+.copilot-cartao-lista .filtro-select { width: 100%; }
 .copilot-cartao-estado { font-size: var(--text-xs-sz); font-weight: var(--weight-bold); display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
 .copilot-cartao-estado[data-status="feita"] { color: var(--success); }
 .copilot-cartao-estado[data-status="falhou"], .copilot-cartao-estado[data-status="vencida"] { color: var(--danger); }
@@ -2837,6 +2860,19 @@ body:has(.copilot-botao:not([data-subir="sim"])) main {
   border: 1px solid var(--border); box-shadow: var(--shadow-popover);
 }
 .copilot-botao.copilot-botao-fora:hover { background: var(--bg-app); }
+/* A16 da 15ª simulação (princípio 3): o selo "Fora do plano" à vista no botão
+   (era só o title). No celular, o botão é um círculo: o selo pousa em cima. */
+.copilot-botao-selo {
+  display: inline-flex; align-items: center; padding: 2px 8px;
+  border-radius: var(--radius-full); background: var(--warning-soft); color: var(--warning);
+  font-size: var(--text-2xs); font-weight: var(--weight-bold); white-space: nowrap;
+}
+@media (max-width: 1023px) {
+  .copilot-botao .copilot-botao-selo {
+    position: absolute; top: -10px; right: -6px; padding: 1px 6px;
+    border: 1px solid var(--warning-border);
+  }
+}
 @media (min-width: 1024px) { .copilot-painel.copilot-painel-fora { height: auto; } }
 .copilot-painel-fora .copilot-vazio a { color: var(--brand); font-weight: var(--weight-bold); }
 

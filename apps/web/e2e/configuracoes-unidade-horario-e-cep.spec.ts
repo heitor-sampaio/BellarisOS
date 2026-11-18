@@ -33,9 +33,10 @@ async function viaCepFalso(p: Page) {
 
 test.beforeAll(async () => {
   rede = await criarOutraRede(`uh${marca}`)
-  gestora = await criarMembro(`uhg${marca}`, {
-    tenant: rede.tenantId, rotulo: 'Gestora', permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }],
-  })
+  // Criar unidade é configuração da rede toda: só a Admin da rede (o Heitor,
+  // 18/11: "Configuração da rede toda só pela conta admin"; createBranch em
+  // docs/regras/plataforma.md).
+  gestora = await criarMembro(`uhg${marca}`, { tenant: rede.tenantId, rotulo: 'Gestora', donoDaRede: true, permissoes: [] })
 })
 
 test.afterAll(async () => {

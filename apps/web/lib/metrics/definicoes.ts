@@ -82,6 +82,21 @@ export const DEFINICOES = {
       + 'no faturamento e nas Vendas). Por isso o mesmo atendimento pode valer menos aqui do que no Total vendido das Vendas: '
       + 'lá o voucher e os pontos contam como pagamento.',
   },
+  /**
+   * A30 da 24ª (princípio 3): a base de cada aba dos Relatórios. O voucher de
+   * R$ 40 "sumia" das Vendas (lá ele PAGA parte da venda) e a margem dos
+   * Procedimentos era do preço cheio, sem a tela dizer.
+   */
+  baseDasVendas: {
+    rotulo: 'Qual valor esta aba usa',
+    texto: 'O valor da venda, no dia em que foi feita: o voucher e os pontos da fidelidade contam como pagamento (estão dentro do valor); '
+      + 'o desconto fica fora. Por isso a venda com voucher aparece aqui pelo valor inteiro, e na aba Procedimentos pelo que a cliente pagou.',
+  },
+  baseDosProcedimentos: {
+    rotulo: 'Qual valor esta aba usa',
+    texto: 'A receita dos atendimentos é o que a cliente pagou, no dia do atendimento: líquida do voucher e dos pontos. '
+      + 'A margem por faixa de idade é outra conta: o preço do agendamento (antes do voucher e dos pontos) menos o custo do catálogo.',
+  },
   /** A ficha da cliente (A56): o preço médio dos atendimentos, ao lado do investido total. */
   precoMedioPorAtendimento: {
     rotulo: 'O que o preço médio por atendimento conta',

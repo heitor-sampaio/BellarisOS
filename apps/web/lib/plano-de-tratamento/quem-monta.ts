@@ -33,3 +33,9 @@ export const TEXTO_QUEM_MONTA = 'Quem monta o plano é quem atende nesta unidade
 
 /** A recusa da action a quem não atende na unidade do plano. */
 export const RECUSA_QUEM_MONTA = 'Quem monta o plano é quem atende na unidade dele (Equipe → "Atende").'
+
+/**
+ * A recusa, na avaliação ABERTA, a quem não atende ESTE atendimento (PT2; o
+ * Atendimento em Gerenciar desde 2026-11-18, com o "só os meus" dele).
+ */
+export const RECUSA_QUEM_ATENDE = 'Gerar e aceitar o plano na avaliação é de quem atende: pede o Atendimento em Gerenciar.'

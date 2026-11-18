@@ -10,7 +10,9 @@ import { chamarAcao } from './apoio/acao-direta'
  * lançamentos. Decidido pelo princípio 3: a devolução é POR LINHA, com o
  * estoque e o dinheiro proporcionais; no cartão vale o estorno inteiro
  * (r2-fin-03) — o pagamento todo volta e o que fica é lançado de novo, na
- * forma ORIGINAL já escolhida (A41, princípio 5).
+ * forma que quem devolve escolher — a "Forma do pagamento do usado" nasce
+ * vazia (item 13 da auditoria das regras, 2026-11-18, decisão do Claude pelo
+ * princípio 4; substitui a A41 da 8ª, que a trazia preenchida).
  *
  * Numa rede [e2e] própria.
  */
@@ -129,7 +131,7 @@ test('A34: devolver 1 de 2 séruns pagos no Pix — o estoque volta 1, o Pix fic
   expect((extrato ?? []).reduce((s, e) => s + n(e.amount), 0), '10% de R$ 190').toBeCloseTo(19, 2)
 })
 
-test('A34 + A41: no cartão, o pagamento volta inteiro e o que fica é lançado de novo — a forma já vem a original (Crédito 3x)', async ({ browser }) => {
+test('A34 + forma do usado vazia: no cartão, o pagamento volta inteiro e o que fica é lançado de novo na forma que quem devolve escolhe', async ({ browser }) => {
   test.setTimeout(120_000)
   let venda = ''
   await como(browser, async p => {
@@ -142,11 +144,14 @@ test('A34 + A41: no cartão, o pagamento volta inteiro e o que fica é lançado 
     await parte.getByLabel(`Quantas de ${nomeSerum} voltam`).selectOption('1')
     await parte.getByRole('radio', { name: /Não voltou/ }).check()
     await parte.getByRole('radio', { name: /^Estorno/ }).first().check()
-    // No cartão, o inteiro vem escolhido — e a forma do que fica, a original.
+    // No cartão, o inteiro vem escolhido — e a forma do que fica, VAZIA: o
+    // sistema não chuta como a cliente paga (item 13 da auditoria).
     await expect(parte.getByRole('radio', { name: /Estornar o pagamento inteiro/ })).toBeChecked()
-    await expect(parte.getByLabel('Forma do pagamento do usado')).toHaveValue('CREDIT_CARD')
-    await expect(parte.getByLabel('Vezes no cartão')).toHaveValue('3')
+    await expect(parte.getByLabel('Forma do pagamento do usado')).toHaveValue('')
     await parte.getByLabel('Motivo da devolução *').fill('Um veio aberto')
+    await expect(parte.getByRole('button', { name: 'Devolver', exact: true }), 'sem a forma do usado, não devolve').toBeDisabled()
+    await parte.getByLabel('Forma do pagamento do usado').selectOption('CREDIT_CARD')
+    await parte.getByLabel('Vezes no cartão').selectOption('3')
     await parte.getByRole('button', { name: 'Devolver', exact: true }).click()
     await expect(parte).toBeHidden({ timeout: 20_000 })
   })

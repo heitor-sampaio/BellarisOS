@@ -120,9 +120,12 @@ comanda (PDV-P1).
   intimidador e levar a desistencia"; e "primeiro colhe assinatura, depois
   paga"):
   - **Aceitar é só "quero fazer"** (`aceitarPlano` → `plano_aceitar`): o plano
-    vira ACCEPTED, os termos e os outros documentos ficam prontos (o contrato
-    de plano não: ele nasce no PDV, com a forma — DC4, leva 2) e a comanda
-    `PLANO` nasce no PDV com o valor inteiro. Nenhum dinheiro, nenhum agendamento, nenhuma pergunta
+    vira ACCEPTED (os termos e os outros documentos já nasceram na CRIAÇÃO do
+    plano — DC4, "o do pacote e o do plano, na venda/na criação"; o contrato
+    de plano não: ele nasce no PDV, com a forma) e a comanda
+    `PLANO` nasce no PDV com o valor do plano — o desconto combinado no editor
+    já aplicado aos preços, na mesma transação (22ª A20, abaixo em "Desconto
+    em todas as vendas"). Nenhum dinheiro, nenhum agendamento, nenhuma pergunta
     de forma. Aceita quem monta o plano — quem ATENDE na unidade dele
     (`montaPlano`, PT2 de 2026-11-14; era o Prontuário em Gerenciar) — ou
     quem recebe. Na página do plano o botão é o do passo ① ("Aceite", PT1a);
@@ -135,9 +138,14 @@ comanda (PDV-P1).
     aceita."): a página do plano no app (`/[slug]/cliente/planos/[id]`) tem
     "Aceitar o plano" (`aceitarPlanoPelaCliente`, `actions/plano-da-cliente.ts`)
     — o MESMO `plano_aceitar`, sem pergunta de dinheiro. Só o plano DELA
-    (`ctx.clientId`, a ficha da rede do endereço), só o PROPOSTO e dentro da
-    validade (`tenants.plano_validade_dias`; vencido, a tela manda falar com a
-    equipe e a action recusa — princípio 3), não a arquivada, não na sessão de
+    (`ctx.clientId`, a ficha da rede do endereço), só o PROPOSTO — **vencido,
+    o app avisa e aceita** (decisão do Claude pelo princípio 2, auditoria das
+    regras, 2026-11-18: a validade da proposta é "só informação", como diz o
+    bloco do plano aprovado, e o checkout na unidade já não recusava; o app
+    recusava): "Proposta vencida em …: os valores podem ter mudado. Na dúvida,
+    fale com a equipe antes de aceitar." (`avisoDaPropostaVencida`,
+    `[data-proposta-vencida]`, prova: `e2e/vendas-auditoria-c-dinheiro.spec.ts`),
+    com o "Aceitar o plano" —, não a arquivada, não na sessão de
     suporte (`bloqueioDoSuporte`). **A equipe é avisada** (sino e push,
     `user_notifications` tipo `plano_aceito`) pela PERMISSÃO: quem tem Agenda,
     Caixa ou Financeiro em Gerenciar na unidade do plano ou na rede inteira
@@ -237,14 +245,25 @@ comanda (PDV-P1).
     de novo ao receber.
   - **Ao receber** (`confirmar_pagamento_do_atendimento`), os itens pendentes
     se vendem por `produto_vender_itens` (os lotes, o FEFO, a baixa do
-    estoque — nada duplicado), na MESMA forma do atendimento, com o
-    profissional do atendimento como quem vendeu; o lançamento do produto
+    estoque — nada duplicado), na MESMA forma do atendimento, com quem a tela
+    escolheu em **"Quem vendeu os produtos"** como quem vendeu (o Heitor,
+    com-06: "às vezes quem vai registrar a venda é recepção e quem vendeu foi a
+    profissional (...) Se o campo ficar vazio, aviso e confirmação. Campo vazio
+    não gera comissão para ninguém"; r2-ven-12: "nasce sempre vazio" —
+    auditoria das regras, 2026-11-18; era o profissional do atendimento, sem
+    ninguém escolher). O campo aparece no "Receber" da comanda com produto a
+    vender (`equipeDosProdutos`), nasce VAZIO, e vazio a tela pergunta
+    (`PerguntaDaVenda`, "Receber assim"); a action confere (`quemVendeu`) e o
+    banco grava `p_dados.vendedor_dos_produtos` (migration
+    `20261124000001`); confirmado vazio, ninguém vendeu. O lançamento do produto
     nasce em aberto e vira pago junto, para o ganho de pontos pegar o valor
     pago. A venda não abre comanda própria (`bellaris.venda_na_comanda`
     segura o gatilho `comanda_da_venda`): ela é da comanda do atendimento.
-  - Os descontos (voucher, desconto comercial, pontos) se repartem entre o
-    atendimento e os produtos na proporção do valor (`private.parte_dos_itens`);
-    o voucher de PROCEDIMENTO fica inteiro no atendimento.
+  - Os descontos (desconto comercial, voucher, pontos — nesta ordem, a de
+    todo lugar: o Heitor, 2026-11-18, "Desconto, voucher, pontos") se repartem
+    entre o atendimento e os produtos na proporção do valor
+    (`private.parte_dos_itens`); o voucher de PROCEDIMENTO fica inteiro no
+    atendimento.
   - O estorno e o cancelamento do produto são os da venda de produto (o
     estoque volta pelos lotes, os pontos do lançamento saem).
   - Com produto pendente, o atendimento não se abate de pacote (a comanda
@@ -410,6 +429,43 @@ comanda (PDV-P1).
   - O cartão do Financeiro volta a "A receber da cliente · em aberto" (A17):
     o número grande é o em aberto, e a nota diz "Vence no período: R$ …"
     (`noTopoOEmAberto`). Era o A9 da 22ª.
+- **O PDV e o caixa da 24ª simulação** (2026-11-18; princípios 2, 3 e 7;
+  prova: `tests/atritos-da-24-caixa.test.ts`):
+  - O "N vendas com parcelas a receber" abre SÓ essas vendas: Fechadas hoje
+    com `?so=a-receber` (A14, `hrefDasComValorEmAberto`, `comandasDoFiltro`),
+    e a tela diz o filtro e o "Ver todas as fechadas hoje".
+  - A venda com desconto mostra o item CHEIO e uma linha "Desconto −R$ …"
+    (A15; produto, pré-pago e pacote — `desconto` em `linhaDaComanda`). O
+    detalhe da linha fica só com o unitário ("2 × R$ 98,00"): o "(… de
+    desconto)" saiu dele.
+  - A comanda da venda de pacote com contrato a assinar leva a ele: "Colher a
+    assinatura" (A16, `documentosParaColher`); logo depois da venda o
+    "Colher a assinatura agora" é botão.
+  - Com "+ Outra forma", a 1ª forma tem a caixa dela, com o valor (o que falta
+    das outras) no lugar do campo (A17).
+  - Sem estoque, o resumo do produto não diz "sai do estoque agora", e o
+    motivo do "Vender" desligado é "Falta estoque nesta unidade." (A18,
+    `fimDoResumoDoProduto`, `motivoDaFaltaNoBotao`). A parcela em aberto não
+    corta o texto (A19).
+  - O checkout do plano: o botão final diz o que entra ("Receber R$ …" ou
+    "Fechar a comanda", `rotuloDoReceberOPlano`); "O que se recebe agora" diz
+    a forma; o aviso do plano fechado diz o nome da cliente (A20). Os passos
+    ficam: o contrato se assina antes de cobrar (PT1c).
+  - O Fechamento do dia com diferença pede o motivo na observação — sugere,
+    não obriga (A21, `pedidoDoMotivoDaDiferenca`); os fechamentos anteriores
+    dizem o motivo ou "sem motivo anotado" (`motivoDoFechamentoAnterior`).
+    E leva ao CSV do fechamento no Financeiro → Movimentações, a quem vê o
+    Financeiro da unidade inteira (A23, `linkDoCsvDoFechamento`).
+  - O CSV do fechamento, na rede sem unidade recortada, sai de "Todas as
+    unidades": um bloco por unidade ao alcance, no mesmo arquivo (A24,
+    `csvDoFechamentoDoDia('TODAS', …)`, `juntarCsvsDoFechamento`).
+  - "Receber" a parcela no Financeiro usa as formas em blocos, como o PDV, e
+    o cartão diz "Ver e receber" (A25).
+  - Pagar a comissão em Dinheiro que deixa a gaveta de hoje negativa avisa
+    (A22, `dinheiroNaGavetaDeHoje`, `avisoDaGavetaNoPagamento`) — não recusa.
+  - A maquininha de fábrica, ao ser escolhida para preencher, diz "Use esta,
+    que ainda não tem taxas: dê o nome e as taxas da sua maquininha, e salve."
+    (A7, `AVISO_DA_DE_FABRICA`).
 - **Os pontos e o voucher no PDV** (FD2a, fase 5b): na comanda do atendimento
   valem sobre o TOTAL da comanda (atendimento + produtos: `previaDoPagamento`
   e `confirmPayment` somam `valorDosItensDoAtendimento`); na "Nova venda"
@@ -447,6 +503,15 @@ comanda (PDV-P1).
   (`marcarPagoEmFormasCore` → `lancamento_receber_em_formas`; a conferência
   em `lib/financeiro/baixa-em-formas.ts`). Até 5 formas, fechando o valor ao
   centavo; a linha com desconto ou pontos não se divide.
+  **As formas da mesma parcela são UMA linha nas listas** (limite da 21ª,
+  2026-11-17; princípio 3: "Parcela 2/4" duas vezes parecia parcela
+  repetida): o Financeiro (as duas listas), a ficha e o plano (o da equipe e o
+  do app) mostram a parcela uma vez, com o total e "Pix R$ 400,00 + Dinheiro
+  R$ 200,00" (`juntarAsFormasDaParcela`, `lib/financeiro/formas-da-parcela.ts`:
+  a mesma descrição, parcela, criação e pagamento, paga e viva). O recibo e o
+  estorno seguem POR FORMA, na própria linha ("Estornar (Pix)"). No CSV, uma
+  linha por forma (a contadora concilia assim), com "(forma 1 de 2)" na
+  descrição (`posicaoNaParcela`).
 - **O avulso tem as formas da venda** (o Heitor, 2026-11-16: "Mesma regra de
   pagamentos dos outros"): a comanda do atendimento oferece à vista (numa
   forma ou em várias), o Crediário com entrada e parcelas (até o limite da
@@ -463,7 +528,8 @@ comanda (PDV-P1).
   "Crediário · R$ … em aberto" como a da venda, e as parcelas se recebem
   nela e no PDV da cliente (`parcelasEmAbertoDaCliente`, agora também pelo
   `appointment_id`). Os pontos e o voucher só no à vista ("Os pontos e o
-  voucher se usam no pagamento à vista."). O estorno de UMA das formas reabre
+  voucher se usam no pagamento à vista."; o porquê está em `fidelidade.md`,
+  "Os três limites que ficam"). O estorno de UMA das formas reabre
   a comanda só no que falta (`jaCobertoDoAtendimento`; a tela diz "Já pago"
   com o que ficou), e `atendimentos_a_receber.price` passa a ser o que FALTA.
   No crediário e no a receber o botão diz "Fechar a comanda" (nada, ou só a
@@ -499,14 +565,22 @@ plano").
   (`package_sessions.appointment_id`), os documentos abertos dela são
   cancelados (`trg_documentos_da_sessao_de_pacote`). O **contrato de pacote**
   é um modelo da rede, um só ativo, e toda rede nasce com o padrão (DC1/DC2,
-  `documentos.md`). **A venda emite** (leva 2, 2026-11-14) o contrato de
-  pacote ativo (com `pacote.*` e o `pagamento.*` da venda) e os documentos
-  puxados dos procedimentos distintos — o termo e os "Outros documentos",
-  menos os que o pacote exclui no pop-up (`documentos_excluidos`). A venda
-  NÃO espera a assinatura (princípios 2 e 6): a tela da venda diz o que ficou
-  para assinar, e o "Bloqueia" do documento do pacote trava o início de cada
-  SESSÃO dele. Cancelar o pacote cancela os documentos abertos dele. Regra
-  inteira em `documentos.md`; prova: `e2e/documentos-link-unico-e-pacote.spec.ts`.
+  `documentos.md`). **O contrato de pacote se assina ANTES do dinheiro,
+  como no plano** (PC2, o Heitor, 2026-11-13: "o ideal era funcionar como no
+  plano de tratamento"; do plano: "primeiro colhe assinatura, depois paga" —
+  a auditoria das regras de 2026-11-18 corrigiu o "a venda não espera"): com
+  o contrato de pacote ativo, `venderPacote` devolve o contrato a colher
+  (`contratoParaAssinar`, montado com o `pacote.*` e o `pagamento.*` da venda)
+  e não grava nada; assinado — ou dispensado, com o motivo —, a venda fecha e o
+  adota; assinado com outro pagamento, pergunta antes de substituir.
+  **A venda emite** (leva 2, 2026-11-14) os documentos puxados dos
+  procedimentos distintos — o termo e os "Outros documentos", menos os que o
+  pacote exclui no pop-up (`documentos_excluidos`). Esses NÃO seguram o
+  dinheiro: a tela da venda diz o que ficou para assinar, e o "Bloqueia" deles
+  trava o início de cada SESSÃO. Cancelar o pacote cancela os documentos
+  abertos dele. Regra inteira em `documentos.md`; prova:
+  `e2e/documentos-pacote-assina-antes-de-pagar.spec.ts`,
+  `e2e/documentos-link-unico-e-pacote.spec.ts`.
 - **Os itens** moram em `service_package_items` (procedimento + quantidade);
   `service_packages.total_sessions` é a soma e `procedure_id` o primeiro item
   (as leituras de "o procedimento do pacote" seguem certas). Pacote e itens se
@@ -620,21 +694,41 @@ plano").
     vencimento do "a receber" é OPCIONAL (aqui e no pagamento do contrato):
     sem data, o lançamento nasce sem `due_date` e o contrato diz "a receber"
     sem o dia.
-- **O pacote no crediário segue liberando, e a tela diz o que falta pagar**
-  (A41 da 11ª simulação, 2026-11-10; decidido pelos princípios — o pacote
-  segue liberando: princípio 1, nada muda sem a rede pedir; a tela avisa:
-  princípio 2). O pacote de entrada R$ 150 + 3 × R$ 100 liberava as 6 sessões
-  calado. Na ficha, embaixo do cartão "Tratamento em andamento", e ao agendar a
+- **Liberar as sessões do pacote no crediário é da REDE, e a tela diz o que
+  falta pagar** (decisão do Claude pelo princípio 1, 2026-11-18 — item 8 da
+  auditoria das regras; era "o pacote segue liberando: princípio 1, nada muda
+  sem a rede pedir", A41 da 11ª, e o princípio 1 pede que a rede decida).
+  Configurações → Geral → "Pacote com valor em aberto"
+  (`tenants.pacote_crediario_libera`, `lib/pacotes/regras.ts`):
+  - **"Libera as sessões e avisa o que falta"** (o PADRÃO, o de antes): o
+    pacote vendido no crediário (ou a receber) libera todas as sessões, e a
+    tela avisa (princípio 2).
+  - **"Libera as sessões só depois de pago"**: a sessão do pacote com valor em
+    aberto não se liga a agendamento nenhum até o pacote estar pago — "Este
+    pacote ainda tem R$ 300,00 em aberto, e a rede libera as sessões do pacote
+    no crediário só depois de pago. O que falta se recebe no PDV." Vale em
+    todo caminho que agenda ou usa a sessão, porque todos passam por
+    `conferirCredito` (`lib/creditos/credito.ts`): o agendar da equipe e o do
+    app (PT3), pelo núcleo do agendamento, o Copilot e o "Abater do pacote". O
+    banco é a segunda linha (`private.pacote_sessao_liberada`, BEFORE UPDATE
+    OF `appointment_id` em `package_sessions`, só na ligação de livre a
+    ligada; migration `20261124000301`). O em aberto é o de
+    `metrics_em_aberto_dos_pacotes` (a parcela estornada não conta).
+  O pacote de entrada R$ 150 + 3 × R$ 100 liberava as 6 sessões
+  calado (A41). Na ficha, embaixo do cartão "Tratamento em andamento", e ao agendar a
   sessão (a ficha de tratamento → "Gerenciar sessões"): "R$ 300,00 deste
   pacote ainda em aberto (3 parcelas do crediário). As sessões seguem
-  liberadas; o que falta se recebe no PDV." e o "Receber no PDV", que leva à
+  liberadas; o que falta se recebe no PDV." — sem liberar, "As sessões se
+  liberam quando ele estiver pago; o que falta se recebe no PDV."
+  (`textoDoPacoteEmAberto`) — e o "Receber no PDV", que leva à
   "Nova venda" com a cliente no PDV da unidade do pacote, onde as parcelas
   dela aparecem (CX1; `rotaDaClienteNoPdv`, `lib/rotas.ts` — dizia "no
   Financeiro" até 2026-11-16) (`AvisoDoPacoteEmAberto`,
   `[data-pacote-em-aberto]`), só a quem recebe (o dinheiro é do caixa, como o
   saldo do plano — A39 da 7ª). A conta é do banco (`metrics_em_aberto_dos_pacotes`
   → `getEmAbertoDosPacotes`, `lib/metrics/pacote-em-aberto.ts`; migration
-  `20261110005604`). Prova: `e2e/vendas-atritos-da-11.spec.ts` ("A41").
+  `20261110005604`). Prova: `e2e/vendas-atritos-da-11.spec.ts` ("A41"),
+  `e2e/pacote-regras-da-rede.spec.ts` ("8"), `tests/pacote-regras-da-rede.test.ts`.
 - **"Abater do pacote": o pacote vendido DEPOIS paga o avulso já concluído**
   (D9 da simulação de 2026-10-28, decisão do Heitor). No recebimento de um
   avulso CONCLUÍDO e a receber — a comanda dele no PDV, desde o PDV7 (a
@@ -693,14 +787,16 @@ plano").
     pago agora, na forma que quem cancela escolher ("Forma do pagamento do
     usado", e as vezes no crédito, até o limite da rede), com o pacote
     (`client_package_id`), os pontos e a comissão pelos gatilhos de sempre.
-    **A forma do usado já vem a ORIGINAL** (A41 da 8ª simulação, 2026-11-06;
-    decidido pelo princípio 5): escolhido o "inteiro" (no cartão, ele já vem),
-    a "Forma do pagamento do usado" vem com o meio, as vezes e a bandeira do
-    pagamento estornado — "Crédito 3x" —, e quem cancela troca se a cliente
-    pagar de outro jeito. Vinha em branco, e o Pix de R$ 800 da Helena foi
-    inventado (`comOPagamentoInteiro`, `escolha-da-devolucao.tsx`; vale no
-    pacote, na unidade do pré-pago e na devolução de produto). Prova:
-    `e2e/vendas-produto-devolver-parte.spec.ts` ("A41").
+    **A forma do usado nasce VAZIA** (decisão do Claude pelo princípio 4,
+    auditoria das regras, 2026-11-18 — como toda forma de pagamento, A37 da
+    24ª: o sistema não chuta como a cliente paga): escolhido o "inteiro" (no
+    cartão, ele já vem), a "Forma do pagamento do usado", as vezes e a
+    bandeira ficam em branco, e quem cancela escolhe; o que já tinha escolhido
+    não se desfaz (`comOPagamentoInteiro`, `escolha-da-devolucao.tsx`; vale no
+    pacote, na unidade do pré-pago e na devolução de produto). Substitui a A41
+    da 8ª simulação, que trazia a do pagamento estornado. Prova:
+    `e2e/vendas-produto-devolver-parte.spec.ts` ("forma do usado vazia"),
+    `tests/auditoria-c-dinheiro.test.ts`.
     O retrato do cancelamento guarda a escolha (`cancelamento.estorno`,
     `.novo`). **No cartão (crédito, em qualquer número de vezes, e débito)
     só existe a (b)** (r2-fin-03, §9.6): a (a) fica desligada com o motivo
@@ -724,8 +820,24 @@ plano").
     atendimento agora (chegou ou em andamento) recusa o cancelamento.
   - As sessões que sobraram ficam `CANCELLED` (`PackageSessionStatus`, que não
     se agendam); o pacote guarda `cancelado_em`, quem, o motivo,
-    `valor_cancelado` e o retrato da conta (`cancelamento`). Pacote vencido,
-    já cancelado ou com todas as sessões feitas não se cancela.
+    `valor_cancelado` e o retrato da conta (`cancelamento`). Pacote já
+    cancelado ou com todas as sessões feitas não se cancela.
+  - **Cancelar o pacote VENCIDO é da rede** (decisão do Claude pelo
+    princípio 1, 2026-11-18 — item 9 da auditoria das regras; o Heitor, 18/11:
+    "pacote vencido = configuração da rede"). Configurações → Geral →
+    "Pacote vencido" (`tenants.pacote_vencido_cancela`): **"Não se cancela"**
+    (o PADRÃO, o de antes — "Este pacote venceu em …: as sessões que sobraram
+    não se devolvem. Cancelar o pacote vencido é uma opção da rede, em
+    Configurações → Geral.") ou **"Pode ser cancelado, com a devolução"**: o
+    vencido com sessão que sobrou se cancela pela MESMA conta
+    (`pacote_cancelar_devolvendo`, só a trava do vencido olha a opção;
+    migration `20261124000301`) — as sessões que sobraram, o crediário que
+    cai e o que volta. A ficha (para quem tem o Financeiro em Gerenciar) mostra
+    o vencido fora do "Tratamento em andamento" — "Pacote X venceu em
+    10/11/2026, com 4 sessões que sobraram." — com o "Cancelar pacote", que
+    abre a janela de sempre (`pacoteVencidoDaFicha`,
+    `lib/pacotes/regras-da-rede.ts`; `[data-pacote-vencido]`). Prova:
+    `e2e/pacote-regras-da-rede.spec.ts` ("9").
   - Tudo numa transação (`pacote_cancelar_devolvendo`, migration
     `20261103001303`, a partir de `20261101000252`; o valor novo do enum em
     `20261101000251`).
@@ -859,8 +971,10 @@ plano").
   - **A sessão restante se agenda e se consome como a de um pacote vendido
     aqui** ("Já pago" no agendar, no app e na sessão; a conclusão a marca
     usada). A comissão de EXECUÇÃO sai pela regra do profissional sobre a parte
-    da sessão (`comissoes.md`); sem valor de referência, R$ 0 (princípio 4: o
-    app não cria a linha). A receita dos atendimentos (a execução) conta essa
+    da sessão (`comissoes.md`); sem valor de referência, o percentual dá R$ 0
+    (princípio 4: o app não cria a linha), e o "R$ fixo por sessão" é pago
+    (item 11 da auditoria das regras, decisão do Claude pelo princípio 2,
+    2026-11-18). A receita dos atendimentos (a execução) conta essa
     parte no dia da sessão, pelo `package_sessions.preco` (r2-ind-01); sem
     ela, nada (princípio 5). O caixa e o faturamento nunca contam.
   - **A tela diz o que é** (A57): o cartão da ficha "PACOTE DE ANTES · 4 de 6
@@ -1186,8 +1300,16 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   e `estornarVendaDeCredito`, com o Financeiro em Gerenciar e a unidade ao
   alcance — a permissão do estorno). A conta é do banco
   (`credito_estornar_venda`, com `p_simular`): volta o SALDO de crédito da
-  cliente hoje, até o que ela pagou — o que ela já usou fica pago. A janela
-  diz "Vendido R$ 300,00 · Já usado R$ 119,00 · Volta à cliente R$ 181,00".
+  cliente hoje, até o que ela pagou — o que ela já usou fica pago —, **tirado
+  antes o crédito CONCEDIDO** (decisão do Claude pelos princípios, auditoria
+  das regras, 2026-11-18, sobre a fala do Heitor no bônus: "não vamos fazer as
+  clinicas perderem dinheiro"; migration `20261124000002`): o "Conceder
+  crédito" e o bônus de OUTRA venda (`internal_credits.concedido`) são os
+  últimos a ser gastos, ficam com a cliente como crédito e nunca voltam em
+  dinheiro; o bônus desta venda segue a escolha de sempre. A janela
+  diz "Vendido R$ 300,00 · Já usado R$ 119,00 · Volta à cliente R$ 181,00",
+  e, havendo, "Crédito concedido (fica com a cliente)" (`concedido_fica`,
+  `[data-concedido-fica]`; prova: `e2e/vendas-auditoria-c-dinheiro.spec.ts`).
   Voltando tudo, o estorno de sempre; voltando parte, a escolha de sempre
   (`EscolhaDaDevolucao soEstorno`): estorno parcial (o pagamento fica com o
   usado e um "Estorno parcial" leva o resto, com os pontos na proporção) ou o
@@ -1196,7 +1318,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   negativo), e a venda guarda `estornado_em` e o retrato. Confirmar manda o
   "volta" que a janela mostrou (`p_esperado`); o banco recusa se mudou.
   Decidido pelo princípio 3: o crédito é um saldo só, então "o que ela não
-  usou" é o saldo dela hoje, até o vendido (a tela mostra a conta).
+  usou" é o saldo dela hoje, até o vendido, menos o concedido (a tela mostra
+  a conta).
 - **O lançamento solto não se estorna**: `estornar_transacao` recusa o da venda
   do crédito ("Este lançamento é de uma venda de crédito interno: estorne a
   venda…") — só `credito_estornar_venda` o deixa passar
@@ -1864,6 +1987,16 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   "Receita · Pago · + R$ 130,00" do pagamento com `INTERNAL_CREDIT` ganha "Uso
   do crédito interno: não é receita — o caixa foi quando o crédito foi
   comprado…" (`notaDoUsoDeCredito`, `[data-uso-de-credito]`). A regra F7 fica.
+- **O lançamento do atendimento diz o procedimento** (A26 da 24ª;
+  princípio 3): "Atendimento concluído" vira o nome do procedimento do
+  agendamento ("Preenchimento labial", "Limpeza de pele — saldo") nas
+  Movimentações dos dois financeiros, no CSV delas e nas parcelas a receber
+  da operadora — lido na hora pelo `appointment_id` (`comOProcedimento`,
+  `parcelasComOProcedimento`, `lib/financeiro/procedimento-do-lancamento.ts`;
+  a troca é `descricaoComOProcedimento`). A descrição gravada não muda.
+- **O cartão da operadora tem o em aberto em destaque** (A27 da 24ª), como o
+  da cliente: o número grande é o que a operadora ainda vai depositar, e o
+  total do período fica embaixo (`NotaDoVencimento noTopoOEmAberto`).
 - **O "A receber da operadora" diz o débito** (A38 da 11ª; princípio 4: o
   débito e o Pix não têm prazo configurado): "Débito no período: R$ 540,00 —
   conta como recebido no dia da venda" (`NotaDoDebito`,
@@ -1903,7 +2036,10 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   (caixa e lucro), como a "Material de consumo (limpeza, copa)" (A22 da 17ª
   simulação: o material de limpeza caía em "Outro"); só a "Compra de estoque"
   fica fora do lucro (`lib/financeiro/categorias.ts`, a lista única da tela e
-  do Copilot). Prova: `e2e/financeiro-despesa-sem-desconto.spec.ts`,
+  do Copilot). A lista vem pela ordem do uso (A28 da 24ª): "Compra de
+  estoque", "Salários", "Aluguel", "Contas…", "Marketing", "Material de
+  consumo…", "Manutenção", "Equipamentos", "Fornecedores", "Material de
+  escritório" e, por último, "Outro". Prova: `e2e/financeiro-despesa-sem-desconto.spec.ts`,
   `tests/financeiro-categorias.test.ts`.
 - **O dinheiro DIGITADO tem UMA leitura** (`parseDinheiro`,
   `@estetica-os/utils`; D10 de 2026-10-27 e D3 de 2026-10-29): "180" é
@@ -2648,8 +2784,11 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   do seu plano de
   tratamento (sessão N de M)", ou "Incluído no pré-pago de Y (unidade N de M)"), e a
   lista de procedimentos diz "Incluído" no lugar do preço — a MESMA escolha
-  que o agendamento usa (`jaPagoNoApp`, ao lado de `pagoParaAgendar`). Prova:
-  `e2e/portal-cliente-confirmar-ja-pago.spec.ts`.
+  que o agendamento usa (`jaPagoNoApp`, ao lado de `pagoParaAgendar`) —, e,
+  abaixo da duração, o texto inteiro ("Faz parte do seu plano de tratamento
+  (sessão n de t)", `[data-ja-pago]`; 23ª A38, 2026-11-17: só "Incluído" não
+  dizia de quê). Prova: `e2e/portal-cliente-confirmar-ja-pago.spec.ts`,
+  `tests/pendencias-area-1.test.ts`.
 - **O check-in só cobra o que VENCEU** (`emAbertoDoPlano` /
   `separarOEmAberto`): em aberto sem data ou com vencimento até o fim de hoje
   (Brasília). Parcela que vence depois já está combinada — aparece no banner
@@ -2706,9 +2845,30 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     (`treatment_plans.desconto`/`desconto_por`). Contrato, sessões, comissão e
     fidelidade leem o preço vendido e não precisam saber de desconto. Parte
     sempre do preço de antes: repetir é seguro, e desconto 0 desfaz.
+    **O desconto COMBINADO no editor do plano** (22ª A20, 2026-11-17;
+    `treatment_plans.desconto_combinado_tipo`/`_valor`/`_por`) vira o
+    `desconto` aplicado NO ACEITE (decisão do CLAUDE pelo princípio 3,
+    2026-11-18, levada ao Heitor): o `plano_aceitar` chama o `plano_aplicar_desconto` na mesma
+    transação, e desde o aceite a comanda, o em aberto
+    (`metrics_em_aberto_das_vendas`), a agenda, a ficha, o app e o contrato
+    leem o preço vendido. O checkout do plano abre com o combinado (o passo
+    salvo e o contrato assinado continuam vencendo) e ainda o ajusta; como o
+    rateio parte sempre do `preco_tabela`, receber com o mesmo desconto não
+    o aplica duas vezes. Antes do aceite, os preços são os de tabela e as
+    telas mostram o total com o combinado (§9.4 de `atendimento.md`, A34).
   - **Avulso**: `financial_transactions.sale_discount`, fora de `amount` (o
-    bruto é `amount + loyalty_discount + sale_discount`). A ordem é voucher →
-    desconto comercial → pontos (o teto dos pontos vale sobre o que sobra).
+    bruto é `amount + loyalty_discount + sale_discount`). **A ordem é desconto
+    comercial → voucher → pontos**, a mesma da Nova venda (o Heitor,
+    2026-11-18: "Desconto, voucher, pontos" — auditoria das regras; era voucher
+    → desconto → pontos só no avulso): o desconto vale sobre o total da
+    comanda, o voucher sobre o que sobrou dele (o de % sobre o que sobrou; o
+    de R$ até o que sobrou; o de procedimento paga o que sobra do atendimento
+    depois da parte dele no desconto — `voucherDepoisDoDesconto`,
+    `lib/fidelidade/voucher-na-comanda.ts`, o espelho de
+    `private.parte_dos_itens`), e os pontos sobre o resto. A tela, a action e
+    o banco (`confirmar_pagamento_do_atendimento`, migration
+    `20261124000001`) fazem a mesma conta, e o "o que sai" do receber lista
+    nessa ordem (`oQueSaiNoReceber`).
     O desconto tem um **motivo OPCIONAL** (J-47, 2026-10-30): o campo
     "Motivo do desconto (opcional)" aparece na janela do pagamento quando há
     desconto, e `confirmar_pagamento_do_atendimento` o grava em
@@ -2811,7 +2971,9 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   do portal mostra o plano proposto (`data-plano-proposto`) com as sessões e
   os procedimentos, o valor (a soma dos preços das sessões, em centavos), a
   validade e "Falar com a equipe" (o WhatsApp da unidade do endereço,
-  `aUnidadeDoEndereco`). O app NÃO aceita: o aceite é feito na
+  `aUnidadeDoEndereco`). Desde o PT1b (2026-11-14, o Heitor: "A cliente
+  recebe o plano no app, analisa e aceita.") o app também ACEITA ("Aceitar o
+  plano", acima em "A cliente aceita PELO APP"); até ali o aceite era só na
   unidade. A anotação do profissional (`professional_notes`) e a da sessão
   (`treatment_plan_sessions.notes`) são clínicas e nem são lidas pela tela.
   A validade é da REDE (`tenants.plano_validade_dias`, 30 por padrão, 1–365,
@@ -2969,6 +3131,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 ❌ Gravar pela ficha da rede (venda, crédito, pontos, voucher, sessão) na unidade de cadastro da cliente ou na primeira da lista — com duas ou mais unidades, pergunta (D1 da 8ª)
 ❌ Estornar em parte um pagamento no cartão (crédito ou débito): o cartão estorna o pagamento inteiro (r2-fin-03) — no cancelamento do pacote é o "estornar o pagamento inteiro e lançar o usado de novo"
 ❌ Cancelar pacote fora de pacote_cancelar_devolvendo, ou fazer a conta do cancelamento na tela (é a simulação da mesma função), ou ler "pacote em andamento" sem tirar o cancelado (cancelado_em)
+❌ Decidir no código se a sessão do pacote em aberto se agenda, ou se o vencido se cancela — é a regra da REDE (tenants.pacote_crediario_libera, pacote_vencido_cancela; itens 8 e 9 da auditoria), lida em conferirCredito e em pacote_cancelar_devolvendo
 ❌ Cancelar o plano fechado fora de plano_cancelar_devolvendo, com uma conta própria (preço de tabela, multa) ou mexendo no dinheiro fora de private.cancelamento_dinheiro — é a regra do pacote (decisão 2 do Heitor sobre a 9ª)
 ❌ Calcular desconto de venda fora de lib/vendas/desconto.ts, ou confiar no valor de desconto que o navegador manda
 ❌ Pôr desconto comercial em amount ou em loyalty_discount (é sale_discount no avulso; no pacote e no plano, o preço vendido)
@@ -3010,7 +3173,11 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 ❌ Vender produto fora de produto_vender_itens (a de um produto só, produto_vender, é a versão velha e nada a chama), ou ler os produtos de uma venda pelo product_id do cabeçalho (no kit é só o primeiro: são os product_sale_items)
 ❌ Estornar o lançamento de uma venda de produto fora de produto_estornar_venda (a venda, o estoque e o custo não saberiam), ou contar product_sales sem tirar a estornada (estornada_em)
 ❌ Devolver parte de uma venda de produto estornando a venda inteira e vendendo de novo, ou fora de produto_devolver_itens — e ler o valor, as unidades ou o custo de uma venda de produto sem tirar o devolvido (price − valor_devolvido, custo − custo_devolvido)
-❌ Deixar a "Forma do pagamento do usado" em branco no estorno inteiro: vem a do pagamento original (comOPagamentoInteiro — A41 da 8ª)
+❌ Preencher sozinho a "Forma do pagamento do usado" no estorno inteiro (com a do pagamento estornado ou qualquer outra): nasce vazia, quem cancela escolhe (comOPagamentoInteiro — item 13 da auditoria, decisão do Claude pelo princípio 4)
+❌ Devolver em dinheiro, no estorno da venda de crédito, o crédito CONCEDIDO (o "Conceder crédito", o bônus de outra venda): ele fica com a cliente (credito_estornar_venda — item 6 da auditoria)
+❌ Recusar, no app, o aceite do plano com a proposta vencida: avisa (avisoDaPropostaVencida) e aceita (item 7 da auditoria, decisão do Claude pelo princípio 2)
+❌ Dar o produto acrescentado na comanda a quem atendeu como quem vendeu: é o "Quem vendeu os produtos", que nasce vazio (com-06, r2-ven-12)
+❌ Aplicar o voucher antes do desconto comercial, ou numa ordem diferente em algum caminho: é desconto → voucher → pontos em todo lugar (o Heitor, 2026-11-18)
 ❌ Mostrar o a receber vencido como "Pendente", ou decidir no navegador se venceu (o dia é do servidor: situacaoDoVencimento; os números, metrics_a_receber_vencido — D13 da 9ª)
 ❌ Tabela de lançamentos sem cards-mobile, ou as Transações da ficha fora da ordem da data que a linha mostra (ordenarTransacoesDaFicha — D7 da 10ª)
 ❌ Trocar o due_date de um lançamento sem lancamento_remarcar_vencimento (o histórico da remarcação se perde — A37 da 9ª)

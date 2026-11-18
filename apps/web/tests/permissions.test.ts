@@ -121,9 +121,10 @@ describe('MODULE_LEVELS', () => {
     }
   })
 
-  it('declara níveis para os 19 módulos, sem sobra', () => {
+  // O Atendimento entrou em 2026-11-18 (o Heitor: "Agenda é agenda e atendimento é atendimento").
+  it('declara níveis para os 20 módulos, sem sobra', () => {
     expect(Object.keys(MODULE_LEVELS).sort()).toEqual([...ALL_MODULES].sort())
-    expect(ALL_MODULES).toHaveLength(19)
+    expect(ALL_MODULES).toHaveLength(20)
   })
 
   // A regra mudou em 2026-11-16 (o Heitor: "Auditoria é só admin"): a Auditoria
@@ -182,10 +183,10 @@ describe('resolveReportTabs', () => {
 })
 
 describe('isScoped', () => {
-  it('cinco módulos têm escopo — os quatro do CLAUDE.md §11 mais reports', () => {
+  it('seis módulos têm escopo — os do CLAUDE.md §11, reports e o Atendimento (como a Agenda)', () => {
     // `reports` entrou depois ("só a própria unidade" × "a rede inteira") e o
     // CLAUDE.md ainda lista quatro. Quem manda é `SCOPED_MODULES`.
     const escopaveis = ALL_MODULES.filter(isScoped)
-    expect(escopaveis.sort()).toEqual(['agenda', 'crm', 'financial', 'medical_records', 'reports'])
+    expect(escopaveis.sort()).toEqual(['agenda', 'atendimento', 'crm', 'financial', 'medical_records', 'reports'])
   })
 })

@@ -27,7 +27,7 @@ import { decifrarSegredos, temSegredoEmTextoPuro } from '../lib/integracoes/cofr
 const marca = Date.now().toString(36)
 const db = () => banco()
 
-interface Fx { graph: GraphFalsa; outra: OutraRede; config: MembroDeTeste; leitor: MembroDeTeste }
+interface Fx { graph: GraphFalsa; outra: OutraRede; config: MembroDeTeste; gestor: MembroDeTeste; leitor: MembroDeTeste }
 let f: Fx | null = null
 
 /** A linha como está NO BANCO (os segredos cifrados). */
@@ -60,8 +60,14 @@ test.beforeAll(async () => {
   const outra = await criarOutraRede(`ads${marca}`)
   f = {
     graph, outra,
+    // As integrações são configuração da rede toda: só a Admin da rede (o
+    // Heitor, 18/11: "Configuração da rede toda só pela conta admin").
     config: await criarMembro(`adscfg${marca}`, {
-      tenant: outra.tenantId, rotulo: 'Config anúncios',
+      tenant: outra.tenantId, rotulo: 'Config anúncios', donoDaRede: true, permissoes: [],
+    }),
+    // Configurações em Gerenciar, mas não é a Admin da rede: não mexe.
+    gestor: await criarMembro(`adsgest${marca}`, {
+      tenant: outra.tenantId, rotulo: 'Gestor anúncios',
       permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }, { modulo: 'marketing', nivel: 'VIEW' }],
     }),
     // Vê o marketing, mas não mexe em configuração.
@@ -80,6 +86,7 @@ test.afterAll(async () => {
   olhar('integrações', await b.from('integration_configs').delete().eq('tenant_id', f.outra.tenantId))
   olhar('eventos', await b.from('domain_events').delete().eq('tenant_id', f.outra.tenantId))
   await f.config.limpar()
+  await f.gestor.limpar()
   await f.leitor.limpar()
   await f.outra.limpar()
   await f.graph.fechar()
@@ -87,7 +94,7 @@ test.afterAll(async () => {
 })
 
 /** Como o membro de configuração, numa página nova. */
-async function comoConfig<T>(browser: import('@playwright/test').Browser, fn: (p: Page) => Promise<T>, quem: 'config' | 'leitor' = 'config') {
+async function comoConfig<T>(browser: import('@playwright/test').Browser, fn: (p: Page) => Promise<T>, quem: 'config' | 'gestor' | 'leitor' = 'config') {
   const ctx = await browser.newContext({ storageState: f![quem].estado })
   try { return await fn(await ctx.newPage()) } finally { await ctx.close() }
 }
@@ -169,17 +176,19 @@ test.describe.serial('integração de anúncios pela tela', () => {
     expect(f!.graph.terminadasEm('/me/adaccounts')[0]!.corpo).toMatchObject({ access_token: `tok-${marca}` })
   })
 
-  test('quem só vê o marketing não mexe na integração', async ({ browser }) => {
+  test('quem só vê o marketing, ou tem Configurações sem ser a Admin da rede, não mexe na integração', async ({ browser }) => {
     const antes = await integracao('meta_ads')
     const buscasAntes = f!.graph.terminadasEm('/me/adaccounts').length
-    await comoConfig(browser, async p => {
-      const acao = (funcao: string, args: unknown[]) => chamarAcao(p, 'actions/integrations.ts', funcao, '/admin/marketing', args)
-      await acao('saveAdsConfig', ['meta_ads', { adAccountId: '999', accessToken: 'invasor', pixelId: 'px9' }, true])
-      await acao('confirmMetaAdsSelection', ['999', 'px9'])
-      await acao('fetchMetaAdAccounts', [])
-      await acao('disconnectMetaAds', [])
-      await acao('saveAdsConfig', ['google_ads', { customerId: '999' }, true])
-    }, 'leitor')
+    for (const quem of ['leitor', 'gestor'] as const) {
+      await comoConfig(browser, async p => {
+        const acao = (funcao: string, args: unknown[]) => chamarAcao(p, 'actions/integrations.ts', funcao, '/admin/marketing', args)
+        await acao('saveAdsConfig', ['meta_ads', { adAccountId: '999', accessToken: 'invasor', pixelId: 'px9' }, true])
+        await acao('confirmMetaAdsSelection', ['999', 'px9'])
+        await acao('fetchMetaAdAccounts', [])
+        await acao('disconnectMetaAds', [])
+        await acao('saveAdsConfig', ['google_ads', { customerId: '999' }, true])
+      }, quem)
+    }
     expect(await integracao('meta_ads'), 'a Meta Ads segue igual').toEqual(antes)
     expect(await integracao('google_ads'), 'o Google Ads não nasce').toBeNull()
     expect(f!.graph.terminadasEm('/me/adaccounts'), 'nem consultou a Meta').toHaveLength(buscasAntes)

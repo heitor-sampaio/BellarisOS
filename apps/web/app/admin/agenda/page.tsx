@@ -1,4 +1,4 @@
-﻿import { getTenantContext, assertPermission, ownerFilter, can, podeReceber } from '@/lib/auth'
+﻿import { getTenantContext, assertPermission, ownerFilter, isOwnScope, can, podeReceber } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { lerTodas } from '@/lib/db'
 import type { ComponentProps } from 'react'
@@ -188,9 +188,10 @@ export default async function AdminAgendaPage({
         podeAgendar={ctx.permissions.agenda === 'MANAGE'}
         escopoProprio={agendaOwner !== null}
         meuId={ctx.internalUserId ?? null}
-        podeConcluir={can(ctx, 'medical_records', 'MANAGE')}
-        // A9 da 20ª: sem concluir, a janela diz quem conclui (os da unidade escolhida, ou os da rede).
-        quemConclui={can(ctx, 'medical_records', 'MANAGE') ? null : await quemConcluiOAtendimento(ctx.tenantId!, unidadeId || null)}
+        podeConcluir={can(ctx, 'atendimento', 'MANAGE')}
+        atendimentoProprio={isOwnScope(ctx, 'atendimento')}
+        // A9 da 20ª: sem iniciar e concluir (o Atendimento em Gerenciar, de todos), a janela diz quem conclui (os da unidade escolhida, ou os da rede).
+        quemConclui={can(ctx, 'atendimento', 'MANAGE') && !isOwnScope(ctx, 'atendimento') ? null : await quemConcluiOAtendimento(ctx.tenantId!, unidadeId || null)}
         bloqueios={bloqueios}
         paraBloquear={paraBloquear}
       />

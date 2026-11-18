@@ -54,6 +54,8 @@ export interface AgendamentoParaRepassar {
   cliente: string
   procedimento: string
   unidade: string
+  /** 18ª A29: o id da unidade — o "Marcar <unidade> no Atende de X" da janela. */
+  unidadeId: string
   /**
    * Já passou sem ninguém fechar (agendado/confirmado nos últimos 30 dias — A10
    * da 8ª simulação: a Ana das 23:55 de ontem ficava com a Débora sem aviso).
@@ -64,7 +66,7 @@ export interface AgendamentoParaRepassar {
    * atende (A11 da 8ª: "ninguém livre" não dizia que havia quem atendesse em
    * outra, nem como incluí-la). Não recebe o repasse: a tela diz como marcar.
    */
-  emOutraUnidade: { nome: string; unidades: string[] }[]
+  emOutraUnidade: { id: string; nome: string; unidades: string[] }[]
   /** Quem atende na unidade e está livre no horário. */
   livres: PessoaDoRepasse[]
   /** Quem atende na unidade, mas já tem atendimento no horário. */
@@ -207,10 +209,10 @@ export async function pendenciasDoMembro(
       const bate = (p: { id: string }) => (ocupados.get(p.id) ?? []).some(o => ini < o.fim && fim > o.ini)
       return {
         id: a.id, quando: a.scheduled_at, duracaoMin: a.duration_min || 60,
-        cliente: a.clients?.name ?? 'Cliente', procedimento: a.procedures?.name ?? 'Atendimento', unidade: a.branches?.name ?? '',
+        cliente: a.clients?.name ?? 'Cliente', procedimento: a.procedures?.name ?? 'Atendimento', unidade: a.branches?.name ?? '', unidadeId: a.branch_id,
         vencido: fim <= agoraMs,
         emOutraUnidade: equipe.filter(p => !atendeNaUnidade(p, a.branch_id) && realizaEste(p) && (p.atende_em ?? []).length)
-          .map(p => ({ nome: p.name, unidades: (p.atende_em ?? []).map(u => nomeDaUnidade.get(u)).filter((x): x is string => !!x) }))
+          .map(p => ({ id: p.id, nome: p.name, unidades: (p.atende_em ?? []).map(u => nomeDaUnidade.get(u)).filter((x): x is string => !!x) }))
           .filter(p => p.unidades.length),
         livres:   daUnidade.filter(p => !bate(p)).map(p => ({ id: p.id, nome: p.name })),
         ocupadas: daUnidade.filter(bate).map(p => ({ id: p.id, nome: p.name })),

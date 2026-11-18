@@ -13,7 +13,8 @@ export type { DocumentoPuxado, ModeloAtivo, ProcedimentoComDocumentos }
  * procedimento distinto, uma vez cada; o contrato do procedimento não (vale o
  * contrato de plano da rede, que nasce no PDV com o pagamento). O plano guarda
  * o que a rede EXCLUIU (`treatment_plans.documentos_excluidos`), e o banco
- * aplica a mesma conta no aceite (`private.modelos_do_plano`).
+ * aplica a mesma conta ao salvar o plano (`private.modelos_do_plano`; DC4: os
+ * documentos nascem na criação).
  */
 export function documentosPuxadosDoPlano(
   procedimentosPorSessao: readonly (readonly string[])[],

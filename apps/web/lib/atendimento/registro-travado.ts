@@ -20,7 +20,7 @@ export function textoDoRegistroTravado(status: string, podeCorrigir: boolean): {
     titulo: 'Registro bloqueado para edição',
     texto: podeCorrigir
       ? 'Atendimento concluído. Para corrigir, use "Editar registro": a alteração fica no histórico.'
-      : 'Atendimento concluído. Corrigir o registro pede a Agenda e o Prontuário em Gerenciar.',
+      : 'Atendimento concluído. Corrigir o registro pede o Atendimento e o Prontuário em Gerenciar.',
     podeEditar: podeCorrigir,
   }
 }

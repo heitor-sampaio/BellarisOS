@@ -156,8 +156,8 @@ export async function marcarDesfecho(
 
 /**
  * "Adicionar tag" (T4 do Bloco Tags, 2026-11-14): adiciona uma tag ao cliente
- * — a ação que a rede montou é o único caminho do sistema que grava tag, e só
- * adiciona (tirar é da pessoa, na ficha).
+ * — a ação que a rede montou é o único caminho do sistema que grava tag (a
+ * "Remover tag", abaixo, é a que tira).
  */
 export async function adicionarTagAoCliente(
   ator: AtorDaAutomacao,
@@ -187,6 +187,44 @@ export async function adicionarTagAoCliente(
 
   const { error } = await admin
     .from('clients').update({ tags: novas }).eq('id', clienteId).eq('tenant_id', ator.tenantId)
+
+  if (error) throw new Error(`Não consegui alterar as tags: ${error.message}`)
+
+  await emitirEventoDeCliente(EVENTOS.CLIENTE_DADOS_ALTERADOS, clienteId, ctxDaAutomacao(ator), {
+    alterou: ['tags'],
+    ...extras(ator),
+  })
+
+  return { alterado: true, tag: limpa }
+}
+
+/**
+ * "Remover tag" (auditoria das regras, 2026-11-18: a ação voltou, "simplificar
+ * não é reduzir funcionalidade"): tira do cliente a tag que a rede escolheu no
+ * fluxo que ela montou. Sem a tag, nada a fazer (não é erro).
+ */
+export async function removerTagDoCliente(
+  ator: AtorDaAutomacao,
+  contexto: ContextoDaExecucao,
+  tag: string,
+): Promise<Record<string, unknown>> {
+  const clienteId = clienteDo(contexto)
+  if (!clienteId) return { alterado: false, motivo: 'Este fluxo não tem cliente no contexto.' }
+
+  const limpa = tag.trim()
+  if (!limpa) throw new Error('Nenhuma tag escolhida.')
+
+  const admin = createAdminClient()
+  const cliente = await ler(admin
+    .from('clients').select('tags').eq('id', clienteId).eq('tenant_id', ator.tenantId).maybeSingle(), 'buscar o cliente')
+
+  if (!cliente) return { alterado: false, motivo: 'Cliente não encontrado.' }
+
+  const atuais = (cliente.tags as string[] | null) ?? []
+  if (!atuais.includes(limpa)) return { alterado: false, motivo: 'O cliente não tinha esta tag.' }
+
+  const { error } = await admin
+    .from('clients').update({ tags: atuais.filter(t => t !== limpa) }).eq('id', clienteId).eq('tenant_id', ator.tenantId)
 
   if (error) throw new Error(`Não consegui alterar as tags: ${error.message}`)
 

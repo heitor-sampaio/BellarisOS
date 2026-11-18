@@ -27,6 +27,7 @@ const db = () => banco()
 const nome = (r: string) => `${PREFIXO} ${r} ${marca}`
 let rede: OutraRede
 let joana: MembroDeTeste
+let dona: MembroDeTeste
 const vendas: Record<'novo' | 'avaliacao' | 'ganho' | 'perdido', string> = { novo: '', avaliacao: '', ganho: '', perdido: '' }
 const NOMES_DE_VENDAS = ['Novo contato', 'Avaliação agendada com a cliente', 'Fechado', 'Perdido']
 
@@ -63,10 +64,14 @@ test.beforeAll(async () => {
     tenant: rede.tenantId, rotulo: 'Comercial',
     permissoes: [{ modulo: 'crm', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'settings', nivel: 'MANAGE' }],
   })
+  // Criar funil é configuração da rede toda: só a Admin da rede (o Heitor,
+  // 18/11: "Configuração da rede toda só pela conta admin").
+  dona = await criarMembro(`cr16d${marca}`, { tenant: rede.tenantId, rotulo: 'Dona', donoDaRede: true, permissoes: [] })
 })
 
 test.afterAll(async () => {
   await joana?.limpar()
+  await dona?.limpar()
   await rede?.limpar()
 })
 
@@ -125,7 +130,7 @@ test('A17: com o filtro, a barra diz quantas mostra, e que o topo é do funil in
 
 test('A19: o funil criado abre selecionado, com as etapas dele', async ({ browser }) => {
   const nomeDoFunil = `Noivas ${marca}`
-  await como(browser, joana, async p => {
+  await como(browser, dona, async p => {
     await p.goto('/admin/oportunidades?configurar=funis')
     const janela = p.getByRole('dialog')
     await expect(janela.getByText('ETAPAS DE VENDAS')).toBeVisible()

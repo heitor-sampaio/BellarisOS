@@ -17,9 +17,14 @@ import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
  *   à meia-noite tocaria o celular de madrugada) ou, passado o dia sem aviso,
  *   "Retorno atrasado: X (10/11)". Uma vez por dia marcado
  *   (`retorno_avisado_em`; trocar a data o zera).
- * - A45: a cliente ligada comprou com a oportunidade aberta → "Marque o ganho:
- *   X" (`crm_lembretes_de_ganho`, a régua da sugestão do card). Uma vez por
- *   oportunidade (`ganho_lembrado_em`).
+ *   O aviso a pedido da rede (o "Retorno em N dias" com outro texto, outro
+ *   alvo, por WhatsApp) é das Automações; este é só o lembrete no sino de
+ *   quem tem o card (decisão do Claude na 9ª simulação, pelo princípio 6).
+ *
+ * O lembrete do ganho a marcar (A45) SAIU daqui em 2026-11-18 (auditoria das
+ * regras; r2-cfg-04: "toda e qualquer automação deve ser feita através dos
+ * módulos de automações"): é um modelo das Automações (`marque-o-ganho`, em
+ * lib/automacoes/modelos.ts), no fato `lead.cliente_comprou`, que nasce rascunho.
  *
  * Cada aviso REIVINDICA a linha antes de sair (a marca gravada só se ainda
  * estava vazia): duas passagens do cron não avisam duas vezes (§9.9).
@@ -70,7 +75,6 @@ export async function GET(req: NextRequest) {
     return bloqueadas.get(tenantId)!
   }
   let retornos = 0
-  let ganhos = 0
 
   try {
     // --- A42: os retornos -------------------------------------------------
@@ -103,29 +107,9 @@ export async function GET(req: NextRequest) {
       retornos++
     }
 
-    // --- A45: o ganho a marcar -------------------------------------------
-    const aLembrar = (await ler(admin.rpc('crm_lembretes_de_ganho', { p_limite: 500 }), 'ler as oportunidades a lembrar do ganho') ?? []) as {
-      lead_id: string; tenant_id: string; owner_id: string; nome: string; compra: string; compra_em: string
-    }[]
-    const donosDosGanhos = await donos(admin, aLembrar.map(g => g.owner_id))
-    for (const g of aLembrar) {
-      const dono = donosDosGanhos.get(g.owner_id)
-      if (!dono?.is_active || await bloqueada(g.tenant_id)) continue
-      const meu = await ler(admin.from('leads').update({ ganho_lembrado_em: agora.toISOString() })
-        .eq('id', g.lead_id).is('ganho_lembrado_em', null).select('id'), 'reivindicar o lembrete do ganho')
-      if (!meu?.length) continue
-      await notifyUser(admin, dono.id, {
-        type: 'crm.lembrete',
-        title: `Marque o ganho: ${g.nome}`,
-        body: `${g.nome} comprou ${g.compra}, e a oportunidade dela segue aberta. Se fechou, leve o card a Ganho no quadro — ele não muda sozinho.`,
-        data: { leadId: g.lead_id, caminho: caminhoDoLead(dono, g.lead_id) },
-      })
-      ganhos++
-    }
-
-    return NextResponse.json({ ok: true, retornos, ganhos })
+    return NextResponse.json({ ok: true, retornos })
   } catch (e) {
     console.error('[cron/crm-lembretes]', e)
-    return NextResponse.json({ error: e instanceof Error ? e.message : String(e), retornos, ganhos }, { status: 500 })
+    return NextResponse.json({ error: e instanceof Error ? e.message : String(e), retornos }, { status: 500 })
   }
 }

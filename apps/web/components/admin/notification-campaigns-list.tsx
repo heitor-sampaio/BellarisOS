@@ -35,11 +35,19 @@ interface Props {
   campaigns:    NotificationCampaign[]
   totalSent:    number
   activeCount:  number
+  /**
+   * Cria, ativa, pausa e arquiva: a campanha é configuração da rede toda, só
+   * da Admin da rede (o Heitor, 18/11: "Configuração da rede toda só pela conta
+   * admin"). Sem isso a tela só mostra — a action recusaria o botão.
+   */
+  podeEditar:   boolean
+  /** Por que não edita, quando é por não ser a Admin da rede (princípio 3). */
+  avisoDaRede?: string | null
 }
 
 type Filter = 'ALL' | CampaignStatus
 
-export function NotificationCampaignsList({ campaigns, totalSent, activeCount }: Props) {
+export function NotificationCampaignsList({ campaigns, totalSent, activeCount, podeEditar, avisoDaRede }: Props) {
   const fuso = useFuso()
   const router = useRouter()
   const [filter, setFilter]   = useState<Filter>('ALL')
@@ -105,15 +113,19 @@ export function NotificationCampaignsList({ campaigns, totalSent, activeCount }:
           ariaLabel="Filtrar por status"
         />
 
-        <button
-          type="button"
-          onClick={() => router.push('/admin/notificacoes/nova')}
-          className="btn-primary"
-          style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-        >
-          <Plus size={15} />
-          Nova campanha
-        </button>
+        {podeEditar ? (
+          <button
+            type="button"
+            onClick={() => router.push('/admin/notificacoes/nova')}
+            className="btn-primary"
+            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            <Plus size={15} />
+            Nova campanha
+          </button>
+        ) : avisoDaRede ? (
+          <p data-config-da-rede style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>{avisoDaRede}</p>
+        ) : null}
       </div>
 
       {/* -- Table ------------------------------------------------ */}
@@ -234,7 +246,7 @@ export function NotificationCampaignsList({ campaigns, totalSent, activeCount }:
                             rotulo="Ver"
                             onClick={() => router.push(`/admin/notificacoes/${c.id}`)}
                           />
-                          {c.status === 'DRAFT' && (
+                          {podeEditar && c.status === 'DRAFT' && (
                             <IconBtn
                               icon={<Play size={14} />}
                               title="Ativar"
@@ -243,7 +255,7 @@ export function NotificationCampaignsList({ campaigns, totalSent, activeCount }:
                               onClick={() => handleAction(c.id, () => activateCampaign(c.id))}
                             />
                           )}
-                          {c.status === 'ACTIVE' && (
+                          {podeEditar && c.status === 'ACTIVE' && (
                             <IconBtn
                               icon={<Pause size={14} />}
                               title="Pausar"
@@ -252,7 +264,7 @@ export function NotificationCampaignsList({ campaigns, totalSent, activeCount }:
                               onClick={() => handleAction(c.id, () => pauseCampaign(c.id))}
                             />
                           )}
-                          {!['ARCHIVED', 'COMPLETED'].includes(c.status) && (
+                          {podeEditar && !['ARCHIVED', 'COMPLETED'].includes(c.status) && (
                             <IconBtn
                               icon={<Archive size={14} />}
                               title="Arquivar"

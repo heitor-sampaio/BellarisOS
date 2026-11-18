@@ -1,4 +1,9 @@
-# Copilot — a secretária virtual
+# Copilot
+
+> Na tela, o Copilot não tem nome de função (A49 da 24ª; CLAUDE.md §1,
+> "Vocabulário"): nem "secretária" — a matriz diz "Consultar o sistema e
+> pedir gravações conversando", e o plano, "Copilot (IA)".
+> `tests/vocabulario-no-texto.test.ts` trava.
 
 > Área nova (2026-10-08). O índice está no §9 do `CLAUDE.md`. As regras gerais
 > — rede e RLS, permissões, `gravar`/`ler`/`tentar`, portais — continuam lá e
@@ -124,6 +129,22 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   prompt manda indicar o PDV. O `marcar_pago` é a baixa do Financeiro
   (`markTransactionPaid`, Caixa em Gerenciar), com o boleto na despesa, como
   a tela. As vendas dos indicadores levam o número da comanda.
+  **As leituras de venda** (as pendências das simulações 15ª–23ª,
+  2026-11-17), SÓ LEITURA (`lib/copilot/ferramentas/vendas.ts`):
+  `comandas_abertas` (as abertas do PDV, `comandasDoPdv`, nas unidades da
+  pessoa ou na pedida, e de um cliente se pedido; de quem recebe ou vê o
+  Fechamento do dia), `plano` (os planos de tratamento de um cliente: a
+  situação, as sessões feitas, agendadas e a agendar — a sessão do atendimento
+  iniciado e cancelado conta como feita; o Atendimento em Ver, com o "só os
+  meus" dele, como a tela — era a Agenda até 2026-11-18 —, e a funcionalidade
+  no plano) e, na `cliente`, os
+  planos e o em aberto de cada pacote e pré-pago (`metrics_em_aberto_das_vendas`).
+  **O valor só a quem vê o valor** (`mostraOValor`: quem recebe ou vê o
+  Fechamento). Vender, receber e aceitar plano pelo Copilot NÃO existe — decisão
+  do Heitor (17–18/11, na conversa da 24ª simulação; até aqui só estava na
+  memória do Claude, e o DEVLOG passa a registrá-la): o Copilot só lê e manda ao PDV; o aceite do plano
+  fica na tela do atendimento e no app da cliente. Nada clínico: a anotação do plano não sai. Prova:
+  `tests/pendencias-area-3.test.ts`.
 - **Anexos** (`lib/copilot/anexos.ts`) são lidos no pedido e DESCARTADOS (a
   conversa guarda nome e tipo). Tipo pelo conteúdo. Imagem ≤ 5 MB (a foto
   grande é reduzida no navegador), PDF como arquivo, txt/csv como texto, voz
@@ -189,8 +210,8 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
     existe tag de unidade): "novos", "tag" e "aniversariantes" não recortam
     por unidade (`copilot_clientes_da_tag` perdeu o `p_tag_unidade`), a ficha
     não separa "unidades" das tags, e criar oportunidade não põe tag. O
-    "sem visita" é o "Reativar clientes" do dashboard — na unidade, as
-    atendidas nela
+    "sem visita" é o "Reativar clientes" do dashboard — sempre o da rede,
+    também com a unidade pedida (24ª simulação: a cliente é da rede)
     (`getClientesParaReativarDoRecorte`, r3-f13-10: "os dois têm de dar a
     mesma resposta").
   - **Os "clientes novos" são os do dashboard** (sobra da F49, 10ª simulação,
@@ -202,7 +223,13 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   - **Oportunidade**: `criar_oportunidade` aceita valor e responsável (este só
     com `podeTrocarResponsavel`, e como a tela: cria e troca em seguida);
     `trocar_responsavel` pelo `trocarResponsavelCore`; a leitura diz se já é
-    cliente.
+    cliente. **`mover_etapa` pergunta das automações** (A35 da 22ª, o Heitor:
+    "se mover os cards manualmente dispararia automacoes, perguntar se deseja
+    disparar ou nao"; no Copilot desde a auditoria das regras, 2026-11-18):
+    com automação que o movimento dispararia (a régua da tela,
+    `automacoesQueOMovimentoDispara`), o cartão diz "Mover dispara a automação
+    “X”. Disparar?" e dá "Disparar" ou "Não disparar" (o "Não" move com o
+    `semDespachar`). Prova: `tests/copilot-mover-pergunta-automacoes.test.ts`.
   - **Documentos** (`documentos`): a situação de cada termo e contrato, pelas
     funções da tela (`lib/metrics/documentos`) — sem o texto nem o motivo
     livre da dispensa.
@@ -302,10 +329,14 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   `e2e/copilot-extras.spec.ts` (contra o build).
 - **O bloqueio pontual da agenda** (decisão 3 da 7ª simulação, 2026-11-05):
   os livres (`horarios_livres`, por `computeAvailableSlots`) já não trazem o
-  horário bloqueado, e `agendar`/`remarcar` recusam no preparo o horário que
-  cai num bloqueio da profissional, dizendo o bloqueio e que o encaixe nele é
-  pela agenda (`recusaDoBloqueado`, `lib/copilot/ferramentas/agenda-escrita.ts`).
-  Bloquear e desfazer é da tela (Agenda → "Bloquear horário").
+  horário bloqueado. Pedido num horário bloqueado, `agendar`/`remarcar` AVISAM
+  no cartão e deixam confirmar, como a agenda da equipe ("…está com o horário
+  bloqueado das 12:00 às 13:00 (Almoço). O encaixe é permitido: confirme só se
+  for isso mesmo.", `avisoDoBloqueado`, `lib/copilot/ferramentas/agenda-escrita.ts`).
+  Recusavam ("o encaixe num horário bloqueado é pela agenda"); virou aviso na
+  auditoria das regras (decisão do Claude pelo princípio 2, 2026-11-18: na
+  agenda o bloqueio só avisa, e o Copilot não é mais duro que ela). Bloquear e
+  desfazer é da tela (Agenda → "Bloquear horário").
 - **A profissional é de quem ATENDE na unidade** (decisão 2 do Heitor sobre a
   8ª simulação, 2026-11-06: o "atende" vira um checklist das unidades):
   `resolverProfissional` (`lib/copilot/ferramentas/comum.ts`), com a unidade
@@ -359,6 +390,29 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   `lancamentos` marca o contra-lançamento do estorno como `tipo: "estorno"`
   e o tira do filtro `despesa`/`receita`; a descrição e o prompt mandam usar
   `indicadores` para totais e nunca somar as linhas.
+  **Por unidade e por categoria, a aba `financeiro`** (D1 da 24ª; princípio 3:
+  "a despesa de cada unidade" saiu com a RECEITA — R$ 1.100 num dia de
+  R$ 234,42 —, porque a chave era `porUnidade` e só havia a receita): cada
+  chave diz o que é — `receitaPorUnidade`, `receitaPorFormaDePagamento`,
+  `receitaPorCategoria` e `despesaPorUnidade` (`getByBranch`, o "Por unidade"
+  do Financeiro da rede), `despesaPorCategoria` (`getComposicaoFinanceira`, sem
+  o estorno), com os totais do núcleo. Com o financeiro "só os meus", a despesa
+  não vai. Prova: `tests/copilot-atritos-da-24.test.ts`.
+- **As taxas da agenda vão prontas, com o nome** (A41 da 24ª; princípio 4: o
+  "comparecimento" era uma conta do Copilot, 2 de 6 com os futuros): a aba
+  `agenda` traz a taxa de conclusão (até o fim do período, a dos Relatórios) e
+  o aproveitamento (até agora, o do dashboard), cada um com o texto de
+  `DEFINICOES`, e por unidade; a `overview`, o aproveitamento. O comparecimento
+  é o dos primeiros atendimentos (aba `comercial`). O prompt manda citar a que
+  existe e nunca calcular uma taxa. Prova: idem.
+- **A categoria que a pessoa não disse vem SUGERIDA** (A40 da 24ª; princípio 3:
+  "Fornecedores" para a lavanderia, gravada calada): sem `categoriaDaPessoa`, o
+  cartão do `lancar` troca a linha "Categoria" por uma lista ("Categoria
+  (sugerida)", `ResumoDaAcao.escolhaEmLista`: as `escolhas` num select, a
+  sugerida primeiro, com um "Confirmar") e avisa "A categoria foi sugerida pelo
+  Copilot: confira ou troque antes de confirmar."; o `efetivar` grava a
+  escolhida, se for da lista do tipo. Com a categoria dita pela pessoa, o
+  cartão é o de sempre. Prova: idem.
 - **O cartão da despesa paga diz "Pago em"** (A29 da 21ª): o dia (o de hoje,
   no fuso da unidade) vai no cartão e no payload, e é o que se grava.
 - **"Receba a massagem da Bruna"** (A30 da 21ª): o Copilot não recebe; diz
@@ -387,8 +441,10 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   `permissoesDaPessoa`): "abra Financeiro → Comissões" ia a quem tem o
   Financeiro só em Ver, que também não muda nada lá. Para MUDAR algo sem o
   módulo em Gerenciar, o Copilot não indica a tela: diz que a permissão dela
-  não muda isso e que quem tem o módulo em Gerenciar muda. (Dizer o NOME de
-  quem tem seria uma leitura nova da equipe — não entrou.)
+  não muda isso e que quem tem o módulo em Gerenciar muda. Nas comissões, o
+  prompt leva os NOMES de quem muda (`quemMudaAsComissoes`, de
+  `lib/equipe/quem-desfaz.ts`: o Financeiro em Gerenciar, na rede; a Admin
+  da rede sempre), lidos pela rota só para quem não muda (A24 da 17ª, resto).
 - **"Compra de estoque" é só a mercadoria que entra no estoque** (D5 da 16ª):
   a descrição do `lancar` diz que ela conta no caixa e fica fora do
   resultado (material de limpeza, de copa ou de consumo não é), e que, sem
@@ -470,6 +526,9 @@ topbar; o modal (camada de cima) fica de fora. Prova: `tests/copilot-atritos-da-
 ❌ Ferramenta que troca a unidade pedida pela da página calada (resolverUnidade recusa a de fora com o motivo)
 ❌ Falar de cargo como se fosse fixo no prompt ou nas mensagens ("o seu cargo…"): é a permissão
 ❌ Somar as linhas de lancamentos para dar despesa ou receita do período (é indicadores; o estorno não é despesa — D1 da 21ª)
+❌ Chave de dinheiro que não diz se é receita ou despesa ("porUnidade" era a receita e saiu como despesa — D1 da 24ª)
+❌ Taxa calculada pelo Copilot com os números das ferramentas (vai pronta de lib/metrics, com o nome — A41 da 24ª)
+❌ Nome de função para o Copilot na tela ("secretária" — A49 da 24ª)
 ❌ Caminho de tela solto no texto, com ou sem id (o link vai com o nome — A27 da 21ª, A32 da 22ª)
 ❌ Cortar a chave da escolha do cartão abaixo do tamanho dela ("mesma:<uuid>" tem 42; o corte em 40 fazia o "Sim, é X" nunca valer — CP1)
 ```

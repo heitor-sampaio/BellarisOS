@@ -33,10 +33,10 @@ let termoAlheio: string | null = null
 test.beforeAll(async () => {
   rede = await criarOutraRede(`dm${marca}`)
   alheia = await criarOutraRede(`dma${marca}`)
-  gestor = await criarMembro(`dmg${marca}`, {
-    tenant: rede.tenantId, rotulo: 'Gestor documentos',
-    permissoes: [{ modulo: 'documents', nivel: 'MANAGE' }, { modulo: 'procedures', nivel: 'MANAGE' }],
-  })
+  // Os modelos de documento são configuração da rede toda: só a Admin da rede
+  // (o Heitor, 18/11: "Configuração da rede toda só pela conta admin"). Os
+  // casos de fronteira continuam provando a REDE: ela é Admin só da dela.
+  gestor = await criarMembro(`dmg${marca}`, { tenant: rede.tenantId, rotulo: 'Gestor documentos', donoDaRede: true, permissoes: [] })
   // O termo da OUTRA rede, direto pela função — alvo dos testes de fronteira.
   const { data, error } = await db().rpc('documento_modelo_salvar', {
     p_tenant: alheia.tenantId, p_modelo: null, p_nome: `${PREFIXO} Termo alheio ${marca}`, p_tipo: 'TERMO',
@@ -282,6 +282,10 @@ test.describe.serial('documentos: modelos da rede', () => {
       const linhaA = secao.locator('[data-modelo]', { hasText: nomeA })
       await expect(linhaA.getByText('Ativo', { exact: true })).toBeVisible()
       await linhaB.getByRole('button', { name: 'Tornar ativo' }).click()
+      // A32 da 15ª: a troca pede confirmação, com o que passa a valer e o que sai.
+      const pergunta = page.getByRole('dialog', { name: 'Trocar o contrato?' })
+      await expect(pergunta).toContainText(`O contrato de plano “${nomeB}” passa a valer; “${nomeA}” fica inativo.`)
+      await pergunta.getByRole('button', { name: 'Trocar o contrato' }).click()
       await expect(linhaB.getByText('Ativo', { exact: true })).toBeVisible()
       await expect(linhaA.getByRole('button', { name: 'Tornar ativo' })).toBeVisible()
     })

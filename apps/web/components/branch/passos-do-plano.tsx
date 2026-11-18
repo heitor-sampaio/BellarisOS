@@ -147,7 +147,10 @@ export function PassosDoPlano({
     : aceito ? <Chip texto={passos.aceitoEm ? `Aceito em ${formatarNoFuso(passos.aceitoEm, 'dd/MM/yyyy', fuso)}` : 'Aceito'} tom="feito" />
     : <Chip texto={passos.status === 'DRAFT' ? 'Rascunho · falta aceitar' : 'Falta aceitar'} tom="falta" />
 
-  const estadoDosDocs = !aceito ? <Chip texto="Depois do aceite" tom="neutro" />
+  // DC4: os termos e os outros documentos nascem na criação do plano — o estado
+  // aparece antes do aceite também (a cliente já pode assinar).
+  const estadoDosDocs = cancelado ? <Chip texto="Cancelado" tom="neutro" />
+    : docs.total === 0 && !aceito ? <Chip texto="Nenhum por enquanto" tom="neutro" />
     : docs.total === 0 ? <Chip texto="Nenhum a assinar" tom="feito" />
     : <Chip texto={`${docs.assinados} de ${docs.total} ${plural(docs.total, 'assinado', 'assinados')}`} tom={docs.abertos ? 'falta' : 'feito'} />
 
@@ -174,8 +177,8 @@ export function PassosDoPlano({
       </Passo>
 
       <Passo chave="documentos" numero={2} titulo="Documentos" estado={estadoDosDocs} atual={atual === 'documentos'} feito={docsFeitos}
-        sobre={!aceito ? 'Os termos e documentos do plano ficam prontos no aceite, para a cliente assinar pelo link ou no aparelho.' : undefined}>
-        {aceito && docs.total > 0 && (
+        sobre={!aceito ? 'Os termos e documentos do plano nascem quando o plano é salvo, para a cliente assinar pelo link ou no aparelho.' : undefined}>
+        {!cancelado && docs.total > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               {texto(docs.abertos
                 ? `${docs.abertos} ${plural(docs.abertos, 'documento falta', 'documentos faltam')} assinar${docs.faltamDados ? ` (${docs.faltamDados} com dados do cadastro faltando)` : ''}: pelo link ou no aparelho, na ficha da cliente.`

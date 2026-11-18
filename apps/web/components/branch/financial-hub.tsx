@@ -621,9 +621,10 @@ export function FinancialHub({
   // pagou tudo; não é dívida dela (lib/metrics/operadora).
   const cartaoDaOperadora = (naAba: boolean) => (
     <KpiCardFull
+      // A27 da 24ª: o número grande é o em aberto, como o "A receber" da cliente (A17 da 23ª).
       chave="a-receber-operadora"
       nota={<>
-        <NotaDoVencimento valor={aReceberDaOperadora.aReceber} proximo={aReceberDaOperadora.proximo} emAbertoTotal={aReceberDaOperadora.emAberto} />
+        <NotaDoVencimento noTopoOEmAberto valor={aReceberDaOperadora.aReceber} proximo={aReceberDaOperadora.proximo} emAbertoTotal={aReceberDaOperadora.emAberto} />
         {/* D3: o cartão leva à lista das parcelas (no A receber). */}
         <LinkDasParcelas temParcelas={parcelasDaOperadora.length > 0} href={naAba ? undefined : daAba('a-receber')} />
       </>}
@@ -634,10 +635,10 @@ export function FinancialHub({
         <NotaDoDebito debito={composicao.formas.find(f => f.chave === 'DEBIT_CARD')?.valor ?? 0} />
       </>}
       label="A receber da operadora"
-      curr={aReceberDaOperadora.aReceber} prev={0}
+      curr={aReceberDaOperadora.emAberto} prev={0}
       icon={<CreditCard size={13} style={{ color: 'var(--success)' }} />}
       iconBg="var(--success-bg)"
-      valueColor={aReceberDaOperadora.aReceber > 0 ? 'var(--success)' : 'var(--text)'}
+      valueColor={aReceberDaOperadora.emAberto > 0 ? 'var(--success)' : 'var(--text)'}
     />
   )
   const cartaoAPagar = (naAba: boolean) => (

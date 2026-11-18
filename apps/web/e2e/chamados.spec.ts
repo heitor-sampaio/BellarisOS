@@ -3,7 +3,7 @@ import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { criarAtendente, plataformaNoAr, urlDaPlataforma, type AtendenteDeTeste } from './apoio/plataforma'
-import { chamarAcao } from './apoio/acao-direta'
+import { chamarAcao, chamarAcaoComFormulario } from './apoio/acao-direta'
 import { entrarComPaciencia } from './apoio/suporte'
 
 /**
@@ -51,8 +51,10 @@ test.beforeAll(async () => {
   colega = await criarMembro(`chcol${marca}`, {
     tenant: outra.tenantId, rotulo: 'Colega', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }],
   })
+  // Quem administra a rede: a Admin da rede — desde 18/11, só ela autoriza o
+  // suporte a entrar numa conta (no chamado de quem abriu).
   gestor = await criarMembro(`chgest${marca}`, {
-    tenant: outra.tenantId, rotulo: 'Gestor', permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }],
+    tenant: outra.tenantId, rotulo: 'Gestor', donoDaRede: true, permissoes: [],
   })
   membros.push(alvo, colega, gestor)
   atendente = await criarAtendente(`ch${marca}`, { papel: 'SUPORTE' })
@@ -98,15 +100,38 @@ test.describe.serial('chamados de suporte', () => {
       await janela.locator('input[name="assunto"]').fill(ASSUNTO)
       await janela.locator('textarea[name="corpo"]').fill('Cliquei na agenda e a tela ficou em branco.')
       await janela.locator('input[name="anexo"]').setInputFiles({ name: 'print.png', mimeType: 'image/png', buffer: PNG })
-      await janela.getByLabel(/Autorizo o suporte/).check()
+      // Quem não é a Admin da rede não autoriza: a caixa não aparece, e a nota diz quem.
+      await expect(janela.getByLabel(/Autorizo o suporte/)).toHaveCount(0)
+      await expect(janela.locator('[data-autorizar-so-a-admin]')).toContainText('Admin da rede')
       await janela.getByRole('button', { name: 'Enviar' }).click()
       await expect(janela.getByRole('heading', { name: new RegExp(`· ${ASSUNTO}`) })).toBeVisible({ timeout: 20_000 })
-      await expect(janela.getByText(/Acesso do suporte autorizado até/)).toBeVisible()
+      await expect(janela.getByText(/Acesso do suporte autorizado até/)).toHaveCount(0)
+      // A action também recusa o "autorizar" de quem não é a Admin.
+      const r = await chamarAcaoComFormulario(page, 'actions/chamados.ts', 'abrirChamado', '/admin/dashboard', [], {
+        assunto: `Forçado ${marca}`, corpo: 'x', autorizar: '1',
+      })
+      expect(r.texto).toContain('só da Admin da rede')
     } finally { await ctx.close() }
 
+    // A Admin da rede autoriza a conta de quem abriu, pela conversa do chamado.
+    const chamadoDoAlvo = (await db().from('support_tickets').select('id').eq('tenant_id', outra!.tenantId).eq('assunto', ASSUNTO)
+      .single<{ id: string }>()).data!.id
+    const ca = await browser.newContext({ storageState: gestor.estado })
+    try {
+      const page = await ca.newPage()
+      await page.goto('/admin/dashboard')
+      const janela = page.getByRole('dialog', { name: 'Ajuda' })
+      await expect(async () => {
+        await page.evaluate(i => window.dispatchEvent(new CustomEvent('bellaris:ajuda', { detail: { chamadoId: i } })), chamadoDoAlvo)
+        await expect(janela).toBeVisible({ timeout: 3_000 })
+      }).toPass({ timeout: 60_000 })
+      await janela.getByRole('button', { name: 'Autorizar por 72 h' }).click()
+      await expect(janela.getByText(/Acesso do suporte autorizado até/)).toBeVisible({ timeout: 20_000 })
+    } finally { await ca.close() }
+
     const { data: t, error } = await db().from('support_tickets')
-      .select('id, status, opened_by_user_id, contexto, grant_id').eq('tenant_id', outra!.tenantId).eq('assunto', ASSUNTO)
-      .single<{ id: string; status: string; opened_by_user_id: string; contexto: Record<string, unknown>; grant_id: string | null }>()
+      .select('id, status, opened_by_user_id, contexto').eq('tenant_id', outra!.tenantId).eq('assunto', ASSUNTO)
+      .single<{ id: string; status: string; opened_by_user_id: string; contexto: Record<string, unknown> }>()
     expect(error).toBeNull()
     chamadoId = t!.id
     expect(t!.status).toBe('aberto')
@@ -114,8 +139,12 @@ test.describe.serial('chamados de suporte', () => {
     // O contexto: a tela vem do navegador; quem, da sessão.
     expect(t!.contexto.pagina).toBe('/admin/dashboard')
     expect(String(t!.contexto.usuario)).toContain(`chalvo${marca}`)
+    // Desde 18/11 a autorização nasce DEPOIS de aberto o chamado, pela Admin
+    // da rede ("Autorizar por 72 h" na conversa): o elo é o `ticket_id` da
+    // autorização (gravado na mesma função), não o `grant_id` do chamado, que
+    // só o "autorizo" da abertura preenchia.
     const { data: g } = await db().from('support_grants').select('ticket_id, via, target_user_id, revoked_at')
-      .eq('id', t!.grant_id!).single<{ ticket_id: string; via: string; target_user_id: string; revoked_at: string | null }>()
+      .eq('ticket_id', t!.id).is('revoked_at', null).single<{ ticket_id: string; via: string; target_user_id: string; revoked_at: string | null }>()
     expect(g).toMatchObject({ ticket_id: chamadoId, via: 'chamado', target_user_id: alvo.userId, revoked_at: null })
     const { data: msgs } = await db().from('support_ticket_messages').select('author_kind, anexos').eq('ticket_id', chamadoId)
     expect(msgs).toHaveLength(1)
@@ -252,10 +281,9 @@ test.describe.serial('chamados de suporte', () => {
     const { data: n } = await db().from('user_notifications').select('data').eq('user_id', colega.userId).eq('type', 'suporte.chamado')
     expect(n).toHaveLength(1)
 
-    // A clínica autoriza pela própria conversa.
-    const cc = await browser.newContext({ storageState: colega.estado })
-    try {
-      const page = await cc.newPage()
+    // A rede decide pela conversa: o colega lê que quem autoriza é a Admin da
+    // rede, e ela autoriza a conta dele ali mesmo (2026-11-18).
+    const abrirAConversa = async (page: import('@playwright/test').Page) => {
       await page.goto('/admin/dashboard')
       const janela = page.getByRole('dialog', { name: 'Ajuda' })
       // O evento só abre a janela depois de a Ajuda hidratar (é ela que o
@@ -264,9 +292,20 @@ test.describe.serial('chamados de suporte', () => {
         await page.evaluate(i => window.dispatchEvent(new CustomEvent('bellaris:ajuda', { detail: { chamadoId: i } })), id)
         await expect(janela).toBeVisible({ timeout: 3_000 })
       }).toPass({ timeout: 60_000 })
+      return janela
+    }
+    const cc = await browser.newContext({ storageState: colega.estado })
+    try {
+      const janela = await abrirAConversa(await cc.newPage())
+      await expect(janela.locator('[data-autorizar-so-a-admin]')).toContainText('autorização da Admin da rede')
+      await expect(janela.getByRole('button', { name: 'Autorizar por 72 h' })).toHaveCount(0)
+    } finally { await cc.close() }
+    const cg = await browser.newContext({ storageState: gestor.estado })
+    try {
+      const janela = await abrirAConversa(await cg.newPage())
       await janela.getByRole('button', { name: 'Autorizar por 72 h' }).click()
       await expect(janela.getByText(/Acesso do suporte autorizado até/)).toBeVisible({ timeout: 20_000 })
-    } finally { await cc.close() }
+    } finally { await cg.close() }
     const { data: g2 } = await db().from('support_grants').select('ticket_id').eq('target_user_id', colega.userId).is('revoked_at', null)
     expect(g2).toEqual([{ ticket_id: id }])
   })

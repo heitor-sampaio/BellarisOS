@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { adminsDaRede, souAdminDaRede } from '@/lib/equipe/admin-da-rede'
 import { falaDaRede } from '@/lib/unidades/uma-so'
+import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { EntradaDaComissaoDoProcedimento, EntradaDaComissaoDoProduto } from './config'
 import type { z } from 'zod'
 
@@ -17,9 +18,13 @@ import type { z } from 'zod'
 
 export type EntradaDaComissao = z.infer<typeof EntradaDaComissaoDoProcedimento>
 
-/** Quanto cada um ganha é do financeiro (§9.7), e o conjunto do procedimento é da rede. */
+/**
+ * Quanto cada um ganha é do financeiro (§9.7), e o conjunto do procedimento é
+ * configuração da rede toda: só da Admin da rede (o Heitor, 18/11: "só pela
+ * conta admin"; `mexeNaConfigDaRede`, pelo cargo de sistema gravado).
+ */
 export function podeMudarComissaoDoProcedimento(ctx: TenantContext): boolean {
-  return can(ctx, 'financial', 'MANAGE') && temRecurso(ctx, 'comissoes') && ctx.branchId === null
+  return can(ctx, 'financial', 'MANAGE') && temRecurso(ctx, 'comissoes') && mexeNaConfigDaRede(ctx)
 }
 
 export const SEM_PERMISSAO_DE_COMISSAO = 'Seu cargo não muda a comissão dos procedimentos.'

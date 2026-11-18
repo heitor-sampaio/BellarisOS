@@ -5,10 +5,9 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 
 /**
  * A26 e A27 da 14ª simulação (F75) — o recorte dito na tela (princípio 3):
- * - A26: o "Novos" do ranking de unidades conta as clientes atendidas na
- *   unidade (desde o Bloco Tags; era a tag "Unidade: <nome>") — a mesma cliente conta em
- *   cada unidade em que foi atendida, e a coluna somava mais que o cartão
- *   "Novos clientes". O ranking diz isso.
+ * - A26: o "Novos" do ranking de unidades somava mais que o cartão "Novos
+ *   clientes". Regra mudada na 24ª (o Heitor, 18/11): "Novos clientes" só
+ *   existe na rede — o ranking não tem mais a coluna, nem a dica dela.
  * - A27: o fechamento das comissões é por unidade — quem atende em duas tem
  *   dois fechamentos, cada um uma despesa no financeiro da unidade. A tela de
  *   Comissões diz isso quando a rede tem mais de uma unidade.
@@ -41,14 +40,14 @@ test.afterAll(async () => {
   await rede?.limpar()
 })
 
-test('A26: o ranking de unidades diz que a cliente conta em cada unidade em que foi atendida', async ({ browser }) => {
+test('A26 (24ª): o ranking de unidades não tem "Novos" — novos clientes só na rede', async ({ browser }) => {
   test.setTimeout(120_000)
   await como(browser, async p => {
     await p.goto('/admin/dashboard')
     await expect(p.getByText('Ranking de unidades')).toBeVisible({ timeout: 30_000 })
-    // O recorte mora na dica do título (2026-11-16).
-    await p.getByRole('button', { name: 'Como os novos de cada unidade são contados' }).hover()
-    await expect(p.locator('[data-recorte-do-ranking]')).toContainText('atendida em duas unidades conta em cada uma')
+    await expect(p.getByRole('button', { name: 'Como os novos de cada unidade são contados' })).toHaveCount(0)
+    await expect(p.locator('[data-recorte-do-ranking]')).toHaveCount(0)
+    await expect(p.getByRole('columnheader', { name: 'Novos', exact: true })).toHaveCount(0)
   })
 })
 

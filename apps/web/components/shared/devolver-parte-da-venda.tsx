@@ -68,7 +68,7 @@ export function DevolverParteDaVenda({ transacaoId, onFechar }: { transacaoId: s
       setErro(null)
       setPrevia(r.previa)
       // No cartão só existe o estorno inteiro: já vem escolhido, na forma original (A41).
-      setEscolha(e => r.previa!.parcial?.cartao ? comOPagamentoInteiro({ ...e, comoEstornar: null }, r.previa!.parcial) : e)
+      setEscolha(e => r.previa!.parcial?.cartao ? comOPagamentoInteiro({ ...e, comoEstornar: null }) : e)
     })
   }
 

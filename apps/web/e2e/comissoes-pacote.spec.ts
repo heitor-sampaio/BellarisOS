@@ -25,6 +25,7 @@ const db = () => banco()
 let rede: OutraRede | null = null
 let gestor: MembroDeTeste | null = null
 let soProcedimentos: MembroDeTeste | null = null
+let dona: MembroDeTeste | null = null
 let cliente = ''
 let proc = ''
 /** O pacote da tela: venda 10%, execução R$ 25 fixo por sessão. */
@@ -105,6 +106,10 @@ test.beforeAll(async () => {
       { modulo: 'cashier', nivel: 'MANAGE' },
     ],
   })
+  // A comissão do pacote (como a do procedimento) é configuração da rede toda:
+  // só a Admin da rede a grava no cadastro (o Heitor, 18/11: "Configuração da
+  // rede toda só pela conta admin"). Vender e concluir seguem com o gestor.
+  dona = await criarMembro(`cpkd${marca}`, { tenant: rede.tenantId, rotulo: 'Dona', donoDaRede: true, permissoes: [] })
   soProcedimentos = await criarMembro(`cpkp${marca}`, {
     tenant: rede.tenantId, rotulo: 'Só procedimentos', permissoes: [{ modulo: 'procedures', nivel: 'MANAGE' }],
   })
@@ -138,6 +143,7 @@ test.afterAll(async () => {
     if (r4.error) falhas.push(`pacotes: ${r4.error.message}`)
   }
   await soProcedimentos?.limpar()
+  await dona?.limpar()
   await gestor?.limpar()
   await rede?.limpar()
   expect(falhas).toEqual([])
@@ -145,7 +151,7 @@ test.afterAll(async () => {
 
 test.describe.serial('comissão do pacote — venda e execução', () => {
   test('o cadastro do pacote configura as duas; quem não é do financeiro não as vê nem grava', async ({ browser }) => {
-    await comSessao(browser, gestor!, async p => {
+    await comSessao(browser, dona!, async p => {
       await p.goto('/admin/pacotes')
       const card = p.locator('[aria-label="Pacotes"]')
       await card.getByRole('button', { name: 'Novo pacote' }).click()

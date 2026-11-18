@@ -82,7 +82,13 @@ test('a profissional marca a chegada e inicia, pela tela do atendimento, o agend
 test('a profissional da REDE ("só os meus") marca a chegada e inicia pela janela da agenda', async ({ browser }) => {
   const daRede = await criarMembro(`cer${marca}`, {
     tenant: rede!.tenantId, rotulo: 'Profissional da rede',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' }, { modulo: 'clients', nivel: 'VIEW' }],
+    // Iniciar pede o Atendimento em Gerenciar (o Heitor, 18/11: "Só inicia e
+    // conclui atendimento quem tem gerenciar no atendimento"), com o "só os meus".
+    permissoes: [
+      { modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' },
+      { modulo: 'atendimento', nivel: 'MANAGE', escopo: 'OWN' },
+      { modulo: 'clients', nivel: 'VIEW' },
+    ],
   })
   try {
     expect((await db().from('users').update({ provides_services: true }).eq('id', daRede.userId)).error).toBeNull()

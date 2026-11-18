@@ -3,7 +3,7 @@ import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { abrirVendaNoPdv, receberPlanoNoPdv } from './apoio/vender'
-import { chamarAcao } from './apoio/acao-direta'
+import { venderPacotePelaAcao } from './apoio/contrato-do-pacote'
 
 /**
  * Os atritos de venda da 11ª simulação (2026-11-10), numa rede [e2e] própria:
@@ -53,7 +53,7 @@ test.beforeAll(async ({ browser }) => {
   // A venda no crediário: entrada de R$ 150 no Pix e 3 × R$ 100 a receber.
   const rota = `/${slug}/pdv`
   await como(browser, recepcao, async p => {
-    const r = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', rota, [
+    const r = await venderPacotePelaAcao(p, rota, [
       cliente, pacote, rede.branchId,
       { forma: 'PARCELADO', metodo: 'PIX', entrada: 150, parcelas: 3, primeiroVencimento: new Date(Date.now() + 7 * 86_400_000).toISOString() },
       null, null, { vendedorId: recepcao.userId },

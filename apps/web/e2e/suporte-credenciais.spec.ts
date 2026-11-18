@@ -51,8 +51,11 @@ async function agendamento(): Promise<string> {
 test.beforeAll(async () => {
   test.setTimeout(600_000)
   outra = await criarOutraRede(`sk${marca}`)
+  // A Admin da rede: desde 18/11 só ela autoriza o suporte, e a configuração
+  // da rede toda é só dela — com outra pessoa, a recusa seria a da Admin, não
+  // a do modo suporte, e o teste não provaria nada.
   alvo = await criarMembro(`skalvo${marca}`, {
-    tenant: outra.tenantId, rotulo: 'Alvo',
+    tenant: outra.tenantId, rotulo: 'Alvo', donoDaRede: true,
     permissoes: [
       { modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'crm', nivel: 'MANAGE' },
       { modulo: 'marketing', nivel: 'MANAGE' }, { modulo: 'documents', nivel: 'MANAGE' }, { modulo: 'team', nivel: 'MANAGE' },
@@ -137,20 +140,24 @@ test.describe.serial('suporte: credenciais e travas', () => {
 
   // C7 do levantamento (F63; D18, o Heitor na 2ª volta): o que muda a clínica
   // de verdade — tirar ou devolver o acesso de alguém, apagar cargo, ligar
-  // automação ou mudar os limites dela — o suporte não faz.
-  test('não desativa nem reativa membro, não apaga cargo, não liga automação nem muda os limites', async () => {
+  // automação — o suporte não faz. E, desde a auditoria das regras (18/11), a
+  // automação o suporte só PAUSA: não cria, não edita (nem com os mesmos
+  // limites), não exclui.
+  test('não desativa nem reativa membro, não apaga cargo; na automação, só pausa', async () => {
     const p = sup!.page
     const casos: [string, string, string, unknown[]][] = [
       ['actions/team.ts', 'deactivateTeamMember', '/admin/team', [QUALQUER, '/admin/team']],
       ['actions/team.ts', 'reactivateTeamMember', '/admin/team', [QUALQUER, '/admin/team']],
       ['actions/roles.ts', 'deleteRole', '/admin/settings', [QUALQUER]],
       ['actions/automacoes.ts', 'mudarStatusDaAutomacao', '/admin/automacoes', [QUALQUER, 'ATIVA']],
+      ['actions/automacoes.ts', 'criarAutomacao', '/admin/automacoes', [`${PREFIXO} do suporte ${marca}`]],
+      ['actions/automacoes.ts', 'excluirAutomacao', '/admin/automacoes', [QUALQUER]],
     ]
     for (const [arquivo, funcao, rota, args] of casos) {
       expect((await chamarAcao(p, arquivo, funcao, rota, args)).texto, funcao).toContain('modo suporte')
     }
     const { data: auto, error } = await db().from('automations').insert({
-      tenant_id: outra!.tenantId, nome: `${PREFIXO} limites ${marca}`, status: 'RASCUNHO', gatilhos: [],
+      tenant_id: outra!.tenantId, nome: `${PREFIXO} limites ${marca}`, status: 'ATIVA', gatilhos: [],
       grafo: { nos: [], ligacoes: [] }, limites: { silencioDe: '21:00', silencioAte: '08:00', tetoPorClienteDia: 3 },
     }).select('id').single<{ id: string }>()
     expect(error).toBeNull()
@@ -158,8 +165,13 @@ test.describe.serial('suporte: credenciais e travas', () => {
       const salvar = (limites: unknown) => chamarAcao(p, 'actions/automacoes.ts', 'salvarAutomacao', `/admin/automacoes/${auto!.id}`,
         [{ id: auto!.id, nome: `${PREFIXO} limites ${marca}`, grafo: { nos: [], ligacoes: [] }, limites }])
       expect((await salvar({ silencioDe: '21:00', silencioAte: '08:00', tetoPorClienteDia: 30 })).texto, 'mudar o teto').toContain('modo suporte')
-      // O controle: salvar o fluxo com os mesmos limites, o suporte pode.
-      expect((await salvar({ silencioDe: '21:00', silencioAte: '08:00', tetoPorClienteDia: 3 })).texto).not.toContain('modo suporte')
+      expect((await salvar({ silencioDe: '21:00', silencioAte: '08:00', tetoPorClienteDia: 3 })).texto, 'editar com os mesmos limites').toContain('modo suporte')
+      // Na tela, a automação ligada mostra só o "Desligar".
+      await p.goto(`/admin/automacoes/${auto!.id}`)
+      await expect(p.locator('[data-suporte-so-pausa]')).toBeVisible()
+      // O controle: pausar, o suporte pode.
+      expect((await chamarAcao(p, 'actions/automacoes.ts', 'mudarStatusDaAutomacao', `/admin/automacoes/${auto!.id}`, [auto!.id, 'PAUSADA'])).texto).not.toContain('modo suporte')
+      expect((await db().from('automations').select('status').eq('id', auto!.id).single<{ status: string }>()).data?.status).toBe('PAUSADA')
     } finally {
       await db().from('automation_versions').delete().eq('automation_id', auto!.id)
       await db().from('automations').delete().eq('id', auto!.id)

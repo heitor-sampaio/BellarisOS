@@ -3,6 +3,7 @@ import { idOu404 } from '@/lib/id-da-rota'
 import { getTenantContext, assertPermission, can } from '@/lib/auth'
 import { getAutomacao } from '@/actions/automacoes'
 import { EditorDeAutomacao } from '@/components/admin/automacoes/editor'
+import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 
 export default async function AutomacaoPage({
   params,
@@ -19,10 +20,15 @@ export default async function AutomacaoPage({
   // propósito: a diferença entre as duas respostas contaria que o id existe.
   if (error || !automacao) notFound()
 
+  // Mexer na automação é configuração da rede toda: só a Admin da rede (18/11,
+  // "só pela conta admin"). Na sessão de suporte o editor só lê, e a automação
+  // ligada mostra "Desligar": o suporte só pausa (auditoria das regras, 18/11).
+  const gerencia = can(ctx, 'automations', 'MANAGE') && mexeNaConfigDaRede(ctx)
   return (
     <EditorDeAutomacao
       automacao={automacao}
-      podeEditar={can(ctx, 'automations', 'MANAGE')}
+      podeEditar={gerencia && !ctx.suporte}
+      soPausa={gerencia && !!ctx.suporte}
     />
   )
 }

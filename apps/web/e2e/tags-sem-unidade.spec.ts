@@ -36,6 +36,7 @@ let unidadeB = { id: '', slug: '', name: '' }
 let gestao: MembroDeTeste
 let recepcaoA: MembroDeTeste
 let comercialUnica: MembroDeTeste
+let admin: MembroDeTeste
 let etapaNovo = ''
 let etapaNovoUnica = ''
 
@@ -115,6 +116,9 @@ test.beforeAll(async () => {
     tenant: unica.tenantId, rotulo: 'Comercial',
     permissoes: [{ modulo: 'crm', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }],
   })
+  // A campanha é configuração da rede toda: só a Admin da rede a monta (o
+  // Heitor, 18/11: "Configuração da rede toda só pela conta admin").
+  admin = await criarMembro(`tsua${marca}`, { tenant: rede.tenantId, rotulo: 'Admin', donoDaRede: true, permissoes: [] })
 })
 
 test.afterAll(async () => {
@@ -124,7 +128,7 @@ test.afterAll(async () => {
     const ids = (data ?? []).map(l => l.id as string)
     if (ids.length) { await db().from('lead_events').delete().in('lead_id', ids); await db().from('leads').delete().in('id', ids) }
   }
-  await gestao?.limpar(); await recepcaoA?.limpar(); await comercialUnica?.limpar()
+  await gestao?.limpar(); await recepcaoA?.limpar(); await comercialUnica?.limpar(); await admin?.limpar()
   await rede?.limpar(); await unica?.limpar()
 })
 
@@ -164,7 +168,9 @@ test('CL1/CL2: a lista da rede não diz nem filtra a unidade', async ({ browser 
   })
 })
 
-test('T1/A26: as novas clientes de uma unidade são as atendidas nela, não as da tag', async () => {
+// Regra mudada na 24ª (o Heitor, 18/11): "Novos clientes" só existe na REDE — nem a
+// tag nem o atendimento fazem a cliente ser de uma unidade. Numa unidade, nulo.
+test('24ª: novas clientes só na rede — nem a tag nem o atendimento as dão a uma unidade', async () => {
   const desde = { cliente_desde: DIA_ANTIGO }
   // A tag diz A, mas ela só foi atendida na B.
   const carla = await cliente('Carla tag A', { ...desde, tags: [`Unidade: ${unidadeA.name}`] })
@@ -179,17 +185,18 @@ test('T1/A26: as novas clientes de uma unidade são as atendidas nela, não as d
   const de = '2021-05-10T03:00:00.000Z', ate = '2021-05-11T02:59:59.999Z'
   const { data, error } = await db().rpc('metrics_by_branch', { p_tenant: rede.tenantId, p_from: de, p_to: ate })
   expect(error).toBeNull()
-  const novas = (id: string) => Number((data as { branch_id: string; new_clients: number }[]).find(r => r.branch_id === id)?.new_clients)
-  expect(novas(unidadeA.id), 'na A: a Eva').toBe(1)
-  expect(novas(unidadeB.id), 'na B: a Carla').toBe(1)
+  const novas = (id: string) => (data as { branch_id: string; new_clients: number | null }[]).find(r => r.branch_id === id)?.new_clients
+  expect(novas(unidadeA.id), 'na A: sem o número').toBeNull()
+  expect(novas(unidadeB.id), 'na B: sem o número').toBeNull()
 
-  for (const [ids, esperado] of [[[unidadeA.id], 1], [[unidadeB.id], 1], [null, 3]] as const) {
+  for (const [ids, esperado] of [[[unidadeA.id], null], [[unidadeB.id], null], [null, 3]] as const) {
     const core = await db().rpc('metrics_core', { p_tenant: rede.tenantId, p_branch_ids: ids, p_from: de, p_to: ate })
     expect(core.error).toBeNull()
-    expect(Number((core.data as { new_clients: number }[])[0]!.new_clients), `metrics_core ${JSON.stringify(ids)}`).toBe(esperado)
+    const v = (core.data as { new_clients: number | null }[])[0]!.new_clients
+    expect(v == null ? null : Number(v), `metrics_core ${JSON.stringify(ids)}`).toBe(esperado)
     const serie = await db().rpc('metrics_new_clients_series', { p_tenant: rede.tenantId, p_branch_ids: ids, p_from: de, p_to: ate, p_granularity: 'day' })
     expect(serie.error).toBeNull()
-    expect((serie.data as { count: number }[]).reduce((s, r) => s + Number(r.count), 0), `série ${JSON.stringify(ids)}`).toBe(esperado)
+    expect((serie.data as { count: number }[]).reduce((s, r) => s + Number(r.count), 0), `série ${JSON.stringify(ids)}`).toBe(esperado ?? 0)
   }
 })
 
@@ -207,7 +214,7 @@ test('T1: o "Reativar" da unidade é de quem foi atendida nela, não de quem tem
 })
 
 test('MK2: o público da campanha não tem "Unidades", e as tags se chamam "Tags"', async ({ browser }) => {
-  await como(browser, gestao, async p => {
+  await como(browser, admin, async p => {
     await p.goto('/admin/notificacoes/nova')
     await p.getByRole('button', { name: /Próximo/ }).click()
     await p.getByPlaceholder('ex: Aniversariantes de julho').fill(nome('Campanha'))

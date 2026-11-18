@@ -19,6 +19,7 @@ const db = () => banco()
 let rede: OutraRede | null = null
 let dona: MembroDeTeste | null = null
 let sdr: MembroDeTeste | null = null
+let quemLibera: MembroDeTeste | null = null
 let slug = ''
 let pedido = ''
 
@@ -30,9 +31,15 @@ async function como(browser: Browser, quem: MembroDeTeste, fn: (p: Page) => Prom
 test.beforeAll(async () => {
   rede = await criarOutraRede(`pc${marca}`)
   slug = (await db().from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
-  dona = await criarMembro(`pcd${marca}`, {
-    tenant: rede.tenantId, rotulo: 'Dona',
-    permissoes: [{ modulo: 'roles', nivel: 'MANAGE' }, { modulo: 'settings', nivel: 'MANAGE' }, { modulo: 'medical_records', nivel: 'MANAGE' }, { modulo: 'procedures', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }],
+  // Cargos e a unidade nova são configuração da rede toda: só a Admin da rede
+  // (o Heitor, 18/11: "Configuração da rede toda só pela conta admin").
+  dona = await criarMembro(`pcd${marca}`, { tenant: rede.tenantId, rotulo: 'Dona', donoDaRede: true, permissoes: [] })
+  // A LGPD NÃO é configuração da rede: libera o prontuário quem tem o
+  // Prontuário em Gerenciar (C31, docs/regras/crm-inbox.md) — aqui, um cargo
+  // próprio da rede, sem ser a Admin.
+  quemLibera = await criarMembro(`pcl${marca}`, {
+    tenant: rede.tenantId, rotulo: 'Libera LGPD',
+    permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }, { modulo: 'medical_records', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }],
   })
   sdr = await criarMembro(`pcs${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'SDR', permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }],
@@ -46,16 +53,16 @@ test.beforeAll(async () => {
 })
 test.afterAll(async () => {
   if (pedido) await db().from('lgpd_requests').delete().eq('id', pedido)
-  await sdr?.limpar(); await dona?.limpar(); await rede?.limpar()
+  await sdr?.limpar(); await quemLibera?.limpar(); await dona?.limpar(); await rede?.limpar()
 })
 
 test('a matriz de Cargos não oferece o Copilot à rede que não o tem', async ({ browser }) => {
   await como(browser, dona!, async p => {
     await p.goto('/admin/settings?tab=permissions')
-    await expect(p.getByText(/Agendamentos, check-in e atendimentos/).first(), 'a matriz carregou').toBeVisible()
-    // O "A secretária virtual…" do grupo mora na dica (2026-11-16): a linha é o que se confere.
+    await expect(p.locator('[data-modulo="agenda"]').first(), 'a matriz carregou').toBeVisible()
+    // A descrição do grupo mora na dica (2026-11-16): a linha é o que se confere.
     await expect(p.locator('[data-modulo="copilot"]'), 'sem a linha do Copilot').toHaveCount(0)
-    await expect(p.getByText(/A secretária virtual/), 'sem a linha do Copilot').toHaveCount(0)
+    await expect(p.getByText(/Consultar o sistema e pedir gravações conversando/), 'sem a linha do Copilot').toHaveCount(0)
   })
 })
 
@@ -68,7 +75,7 @@ test('a matriz de Cargos avisa que Marketing e Automações valem só para quem 
   const aviso = /só para quem tem “A rede inteira”/
   await como(browser, dona!, async p => {
     await p.goto('/admin/settings?tab=permissions')
-    await expect(p.getByText(/Agendamentos, check-in e atendimentos/).first(), 'a matriz carregou').toBeVisible()
+    await expect(p.locator('[data-modulo="agenda"]').first(), 'a matriz carregou').toBeVisible()
     // A nota mora na dica ao lado do nome do módulo (2026-11-16).
     for (const modulo of ['marketing', 'automations']) {
       const linha = p.locator(`[data-modulo="${modulo}"]`).first()
@@ -98,7 +105,9 @@ test('o topo das Configurações diz o que a pessoa vê, não "cargos e integra�
 })
 
 test('LGPD: a aba conta o pedido esperando, e liberar o prontuário pede confirmação', async ({ browser }) => {
-  await como(browser, dona!, async p => {
+  // Quem libera não é a Admin da rede: a aba LGPD abre para quem tem o
+  // Prontuário em Gerenciar (C31), não é configuração da rede toda.
+  await como(browser, quemLibera!, async p => {
     await p.goto('/admin/settings?tab=unidades')
     await expect(p.getByRole('link', { name: 'LGPD (1)' })).toBeVisible()
     await p.goto('/admin/settings?tab=lgpd')

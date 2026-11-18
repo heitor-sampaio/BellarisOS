@@ -3,12 +3,13 @@ import { unidadesParaLer } from '@/lib/unidades/da-tela'
 import { AvisoUnidadeDesativada } from '@/components/client-portal/unidade-desativada'
 import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
-import { CalendarDays, ChevronRight, Clock3, User, Plus, MapPin } from 'lucide-react'
+import { CalendarDays, CalendarClock, ChevronRight, Clock3, User, Plus, MapPin } from 'lucide-react'
 import { ler } from '@/lib/db'
-import { separarAgendaDoPortal, limiteParaAlterar, aindaDaParaAlterar, inicioDosProximos } from '@/lib/clientes/agenda-do-portal'
+import { separarAgendaDoPortal, limiteParaAlterar, aindaDaParaAlterar, inicioDosProximos, horarioPassouSemAtender } from '@/lib/clientes/agenda-do-portal'
 import { textoDoConcluido } from '@/lib/agenda/hora-real'
 import { textoDoHorarioNoHistorico } from '@/lib/clientes/textos-do-app'
 import { fusoValido } from '@/lib/unidades/fuso'
+import { rotuloDoPagoAntes } from '@/lib/appointments/pago-antes-textos'
 import { pagosAntes } from '@/lib/appointments/pago-antes'
 import { valoresCobrados, type ValorCobrado } from '@/lib/appointments/valor-cobrado'
 import { nomesDasSessoesDoPlano } from '@/lib/plano-de-tratamento/nome-da-sessao-no-servidor'
@@ -76,7 +77,7 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
   // O que já foi pago antes (D12): pré-pago, pacote, plano — sem o "R$" a pagar.
   const [jaPagos, cobrados, nomesDasSessoes] = await Promise.all([
     // D4 da 21ª: a sessão do pacote no crediário diz o que ela ainda tem em aberto (é dela).
-    pagosAntes(admin, (data ?? []).map(a => a.id as string), ficha ? { tenantId: ficha.tenant_id, mostraOValor: true } : undefined),
+    pagosAntes(admin, (data ?? []).map(a => a.id as string), ficha ? { tenantId: ficha.tenant_id, mostraOValor: true, daCliente: true } : undefined),
     valoresCobrados(admin, (data ?? []).filter(a => a.status === 'COMPLETED').map(a => a.id as string)),
     // A sessão de plano com mais de um procedimento diz todos (A36).
     nomesDasSessoesDoPlano(admin, (data ?? []).map(a => a.id as string)),
@@ -186,7 +187,12 @@ function AppointmentCard({ appt, slug, highlight = false, prazoHoras, comUnidade
   // O dia e a hora no relógio da unidade do agendamento (F62).
   const fuso  = fusoValido(appt.branches?.fuso)
   const concluidoEm = appt.status === 'COMPLETED' ? textoDoConcluido(appt.scheduled_at, appt.completed_at, fuso) : null
-  const color = STATUS_COLOR[appt.status] ?? 'var(--text-muted)'
+  // A46 da 24ª: o de hoje cujo horário acabou sem a equipe registrar.
+  const passou = horarioPassouSemAtender(appt)
+  const color = passou ? 'var(--warning)' : STATUS_COLOR[appt.status] ?? 'var(--text-muted)'
+  // A47 da 24ª: remarcar num toque — o cartão leva ao formulário já aberto.
+  const remarca = prazoHoras != null && !passou && ['SCHEDULED', 'CONFIRMED'].includes(appt.status)
+    && appt.branches?.is_active !== false && aindaDaParaAlterar(appt.scheduled_at, prazoHoras)
   // D8 da 7ª: pago, vale o cobrado (o preço menos o desconto da recepção).
   const valor = appt.cobrado ? appt.cobrado.cobrado : Number(appt.price)
   const price = valor
@@ -194,14 +200,16 @@ function AppointmentCard({ appt, slug, highlight = false, prazoHoras, comUnidade
     : '—'
 
   return (
-    <Link
-      href={`/${slug}/cliente/agendamentos/${appt.id}`}
+    <div
       className="card"
       style={{
-        display: 'block', textDecoration: 'none', color: 'inherit',
         padding: highlight ? '16px 18px' : '13px 18px',
         border:  highlight ? '1.5px solid var(--brand)' : undefined,
       }}
+    >
+    <Link
+      href={`/${slug}/cliente/agendamentos/${appt.id}`}
+      style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}
     >
       {/* Procedure name + status badge */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
@@ -224,7 +232,7 @@ function AppointmentCard({ appt, slug, highlight = false, prazoHoras, comUnidade
           color,
           whiteSpace:   'nowrap',
         }}>
-          {STATUS_LABEL[appt.status] ?? appt.status}
+          {passou ? 'Horário passou' : STATUS_LABEL[appt.status] ?? appt.status}
         </span>
         {/* A seta diz que o cartão abre (J-61). */}
         <ChevronRight data-abre-detalhe size={16} color="var(--text-faint)" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
@@ -254,7 +262,7 @@ function AppointmentCard({ appt, slug, highlight = false, prazoHoras, comUnidade
           </span>
         </span>
         {appt.pagoAntes ? (
-          <span data-pago-antes style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--success)', marginLeft: 'auto' }}>
+          <span data-pago-antes style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: rotuloDoPagoAntes(appt.pagoAntes) === 'A receber' ? 'var(--warning)' : 'var(--success)', marginLeft: 'auto' }}>
             {appt.pagoAntes}
           </span>
         ) : appt.price > 0 && (
@@ -272,18 +280,33 @@ function AppointmentCard({ appt, slug, highlight = false, prazoHoras, comUnidade
       {appt.branches?.is_active === false && (
         <AvisoUnidadeDesativada nome={appt.branches.name} aberto={['SCHEDULED', 'CONFIRMED'].includes(appt.status)} />
       )}
-      {prazoHoras != null && ['SCHEDULED', 'CONFIRMED'].includes(appt.status) && aindaDaParaAlterar(appt.scheduled_at, prazoHoras) && (
+      {prazoHoras != null && !passou && ['SCHEDULED', 'CONFIRMED'].includes(appt.status) && aindaDaParaAlterar(appt.scheduled_at, prazoHoras) && (
         <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
           Alterar até {limiteParaAlterar(appt.scheduled_at, prazoHoras, fuso)}
         </p>
       )}
+      {/* A46 da 24ª: passou o horário — o cartão diz isso, não "Prazo do app encerrado". */}
+      {prazoHoras != null && passou && (
+        <p data-horario-passou style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
+          O horário já passou; a equipe ainda vai registrar o atendimento.
+        </p>
+      )}
       {/* A53 da 7ª simulação: passado o prazo, o cartão já diz o caminho (a regra do prazo fica). */}
-      {prazoHoras != null && ['SCHEDULED', 'CONFIRMED'].includes(appt.status) && !aindaDaParaAlterar(appt.scheduled_at, prazoHoras)
+      {prazoHoras != null && !passou && ['SCHEDULED', 'CONFIRMED'].includes(appt.status) && !aindaDaParaAlterar(appt.scheduled_at, prazoHoras)
         && new Date(appt.scheduled_at).getTime() > new Date(inicioDosProximos(new Date(), fuso)).getTime() && (
         <p data-prazo-encerrado style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
           Prazo do app encerrado: fale com a equipe para alterar
         </p>
       )}
     </Link>
+      {remarca && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 6 }}>
+          <Link data-remarcar-do-cartao href={`/${slug}/cliente/agendamentos/${appt.id}?remarcar=1`} className="btn-ghost"
+            style={{ fontSize: 'var(--text-sm-sz)', textDecoration: 'none' }}>
+            <CalendarClock size={14} aria-hidden="true" /> Remarcar
+          </Link>
+        </div>
+      )}
+    </div>
   )
 }

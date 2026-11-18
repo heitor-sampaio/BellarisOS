@@ -63,9 +63,14 @@ export function regraDoLancamento(l: LancamentoDoExtrato, nomeDaPessoa: string |
   return regra
 }
 
-/** "base cheia (sem taxa nem insumo descontados; os pontos…)" ou o que saiu dela (J-46, A10). */
+/**
+ * "base cheia (sem taxa nem insumo descontados; os pontos…)" ou o que saiu dela
+ * (J-46, A10). Os pontos seguem o retrato da linha em TODA origem — o pacote, o
+ * plano e as vendas também (item 10 das correções da auditoria, decisão do
+ * Claude pelos princípios 2 e 3, 2026-11-18; era só no avulso).
+ */
 export const rotuloDaBaseDoLancamento = (l: LancamentoDoExtrato) =>
-  rotuloDaBase({ desconta_taxa: l.descontaTaxa, desconta_insumos: l.descontaInsumos, base_com_pontos: l.origem === 'AVULSO' ? l.baseComPontos : 'PRECO' })
+  rotuloDaBase({ desconta_taxa: l.descontaTaxa, desconta_insumos: l.descontaInsumos, base_com_pontos: l.baseComPontos })
 
 const TIPO: Record<LancamentoDoExtrato['kind'], string> = { LIBERACAO: 'Liberação', AJUSTE: 'Ajuste', ESTORNO: 'Estorno', AGUARDANDO: 'Aguardando' }
 const SITUACAO: Record<LancamentoDoExtrato['status'], string> = { OPEN: 'A pagar', PAID: 'Paga', AGUARDANDO: 'Aguardando o pagamento integral' }
@@ -88,7 +93,8 @@ const reais = (v: number | null) => v == null ? '' : v.toFixed(2).replace('.', '
  */
 export function textoDoFechamento(f: Pick<Fechamento, 'inicio' | 'fim' | 'paidAt'>, fuso?: string): string {
   const hora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: fuso ?? 'America/Sao_Paulo' })
-  return `lançamentos de ${dia(f.inicio, fuso)} até ${dia(f.fim, fuso)}${f.fim ? ` às ${hora(f.fim)}` : ''}, pago em ${dia(f.paidAt, fuso)}`
+  // A29 da 24ª (princípio 3): a hora do pagamento também (o CSV já trazia).
+  return `lançamentos de ${dia(f.inicio, fuso)} até ${dia(f.fim, fuso)}${f.fim ? ` às ${hora(f.fim)}` : ''}, pago em ${dia(f.paidAt, fuso)}${f.paidAt ? ` às ${hora(f.paidAt)}` : ''}`
 }
 const campo = (v: string) => /[";\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v
 

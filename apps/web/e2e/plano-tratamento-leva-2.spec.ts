@@ -18,7 +18,10 @@ import { diaEmQueAUnidadeAbre } from './apoio/datas'
  *   assinatura, depois paga".
  * - DC1c/PC9b e DC4: na página do plano, os documentos puxados dos
  *   procedimentos (o termo e os outros; o contrato do procedimento não), cada
- *   um com "Excluir"; nascem no aceite, o contrato de plano com o pagamento.
+ *   um com "Excluir"; nascem na CRIAÇÃO do plano (DC4, "concordo": "o do
+ *   pacote e o do plano, na venda/na criação" — a auditoria de 2026-11-18
+ *   corrigiu o "no aceite") e acompanham o plano salvo; o contrato de plano
+ *   nasce com o pagamento.
  * - PT3: no app, a cliente vê TUDO do plano e agenda as sessões em aberto — a
  *   de plano OU de pacote, mesmo sem o "Permitir auto agendamento".
  * - FD2a/FD2b na comanda do PLANO: os pontos no receber, e o ponto nasce do
@@ -175,7 +178,7 @@ test('PT1b: pelo app, a cliente só aceita o plano DELA, e só o proposto', asyn
   expect(await st(rascunho), 'o rascunho não se aceita pelo app').toBe('DRAFT')
 })
 
-test('DC1c/PC9b + DC4: a página do plano lista os documentos puxados com "Excluir"; o excluído não nasce no aceite', async ({ browser }) => {
+test('DC1c/PC9b + DC4: a página do plano lista os documentos puxados com "Excluir"; nascem antes do aceite, e o excluído sai', async ({ browser }) => {
   const cliente = await rede!.criarCliente('Documentos')
   const { planId } = await plano(cliente, 'PROPOSED', [rede!.procedureId, procB], 'Docs')
   await como(browser, atende!.estado, async p => {
@@ -193,12 +196,20 @@ test('DC1c/PC9b + DC4: a página do plano lista os documentos puxados com "Exclu
   })
   await expect.poll(async () => (await db().from('treatment_plans').select('documentos_excluidos').eq('id', planId).single()).data!.documentos_excluidos)
     .toEqual([modelos.fora])
+  // DC4: o plano salvo já tem os documentos — ANTES do aceite —, sem o excluído.
+  await expect.poll(async () => (await documentosDo(planId)).map(d => d.template_id).sort(), 'nascem antes do aceite os que ficaram')
+    .toEqual([modelos.termo, modelos.imagem].sort())
+  expect((await db().from('treatment_plans').select('status').eq('id', planId).single()).data!.status, 'o plano segue proposto').toBe('PROPOSED')
   await como(browser, atende!.estado, async p => {
     await p.goto(`/${slug}/planejamentos/${planId}`)
+    // Incluir de novo: nasce; excluir outra vez: o aberto é cancelado.
+    await chamarAcao(p, 'actions/treatment-plans.ts', 'salvarDocumentosExcluidosDoPlano', `/${slug}/planejamentos/${planId}`, [planId, []])
+    expect((await documentosDo(planId)).map(d => d.template_id).sort(), 'o incluído de novo nasce').toEqual([modelos.termo, modelos.imagem, modelos.fora].sort())
+    await chamarAcao(p, 'actions/treatment-plans.ts', 'salvarDocumentosExcluidosDoPlano', `/${slug}/planejamentos/${planId}`, [planId, [modelos.fora]])
     await chamarAcao(p, 'actions/treatment-plans.ts', 'aceitarPlano', `/${slug}/planejamentos/${planId}`, [planId])
   })
   const docs = await documentosDo(planId)
-  expect(docs.map(d => d.template_id).sort(), 'nascem no aceite os que ficaram').toEqual([modelos.termo, modelos.imagem].sort())
+  expect(docs.map(d => d.template_id).sort(), 'o aceite não muda os que ficaram').toEqual([modelos.termo, modelos.imagem].sort())
 })
 
 test('PT1c: o contrato de plano nasce no PDV com a forma, e o PDV não recebe sem ele assinado ou dispensado', async ({ browser }) => {

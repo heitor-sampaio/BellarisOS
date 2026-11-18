@@ -117,12 +117,15 @@ describe('Tags: só a pessoa (ou a ação "Adicionar tag") grava (T1–T4)', () 
     expect(proc.texto).not.toMatch(/mergeTags\([^)]*origem/)
   })
 
-  it('a ação da automação se chama "Adicionar tag" e só adiciona (T4)', () => {
+  // T4 deu o NOME, "Adicionar tag"; o tirar saiu por leitura do Claude e volta
+  // como ação própria, "Remover tag" (auditoria das regras, 2026-11-18:
+  // "simplificar não é reduzir funcionalidade"). As duas são a rede montando o
+  // fluxo — o sistema continua sem pôr tag sozinho.
+  it('as ações da automação são "Adicionar tag" e "Remover tag" (T4; auditoria de 18/11)', () => {
     expect(ROTULOS_DE_NO[NODES.ACAO_TAG_CLIENTE]).toBe('Adicionar tag')
-    const painel = codigo.find(c => c.arquivo === 'apps/web/components/admin/automacoes/painel-do-no.tsx')!
-    expect(painel.texto).not.toMatch(/Remover a tag/)
+    expect(ROTULOS_DE_NO[NODES.ACAO_REMOVER_TAG]).toBe('Remover tag')
     const acao = codigo.find(c => c.arquivo === 'apps/web/lib/automacoes/acoes-crm.ts')!
-    expect(acao.texto).not.toMatch(/'remover'/)
+    expect(acao.texto).toMatch(/export async function removerTagDoCliente/)
   })
 })
 

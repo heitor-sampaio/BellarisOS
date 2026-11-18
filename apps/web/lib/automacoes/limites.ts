@@ -67,6 +67,35 @@ export function noSilencio(
   return { dentro: true, liberaEm: libera }
 }
 
+/**
+ * "Se cair de madrugada, mandar na véspera às 20:00" (D17 do levantamento das
+ * regras, o Heitor, 2026-11-11: "a + c opcional"; a opção, desligada por
+ * padrão, voltou na auditoria das regras, 2026-11-18). Com ela LIGADA, a
+ * espera "antes de" uma data (o lembrete) que terminaria dentro do silêncio
+ * termina na véspera às 20:00 — o último 20:00 antes do momento. Sem ela, a
+ * mensagem espera o fim do silêncio, e o lembrete de um horário antes das
+ * 08:00 não sai (D2 da 19ª: o momento passou).
+ *
+ * Devolve `null` (nada muda) quando a opção está desligada, sem silêncio, o
+ * momento não cai no silêncio, as 20:00 já passaram, ou as próprias 20:00
+ * estão dentro do silêncio (a rede que silencia antes das 20:00).
+ */
+export function vesperaSeCairNoSilencio(
+  limites: LimitesDaAutomacao,
+  ate: Date,
+  agora = new Date(),
+  fuso?: string,
+): Date | null {
+  if (!limites.madrugadaNaVespera) return null
+  if (!noSilencio(limites, ate, fuso).dentro) return null
+  const inicio = startOfDayTZ(ate, fuso)
+  let vespera = new Date(inicio.getTime() + 20 * 60 * 60_000)
+  if (vespera.getTime() > ate.getTime()) vespera = new Date(vespera.getTime() - 24 * 60 * 60_000)
+  if (vespera.getTime() <= agora.getTime()) return null
+  if (noSilencio(limites, vespera, fuso).dentro) return null
+  return vespera
+}
+
 function emMinutos(hhmm: string): number | null {
   const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm.trim())
   if (!m) return null

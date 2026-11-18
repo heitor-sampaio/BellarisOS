@@ -119,6 +119,19 @@ export function configDaLinha(linha: Partial<Record<keyof ConfigDeComissao, unkn
 }
 
 /**
+ * A escolha da rede sobre os pontos e o voucher na comissão
+ * (`commission_configs.base_com_pontos`), como Configurações → Comissões a
+ * explica. Vale em TODA comissão — o atendimento, as sessões de pacote e de
+ * plano e as vendas (item 10 das correções da auditoria, decisão do Claude
+ * pelos princípios 2 e 3, 2026-11-18: no pacote, no plano e nas vendas os
+ * pontos nunca saíam da base, nem com a rede em "Sobre o valor pago").
+ */
+export const OPCOES_DA_BASE_COM_PONTOS = {
+  PRECO:      { label: 'Sobre o preço', explicacao: 'Quando a cliente usa pontos ou voucher, a comissão continua sobre o preço. O desconto é custo da rede. Vale no atendimento, nas sessões de pacote e de plano e nas vendas.' },
+  VALOR_PAGO: { label: 'Sobre o valor pago', explicacao: 'Quando a cliente usa pontos ou voucher, a comissão cai na mesma proporção. Quem atende e quem vende dividem o custo do programa. Vale no atendimento, nas sessões de pacote e de plano e nas vendas.' },
+} as const satisfies Record<BaseComPontos, { label: string; explicacao: string }>
+
+/**
  * O que sai da base da comissão, em palavras (J-46, 2026-10-30): a dona achou
  * que a comissão descontava taxa e insumo, e o padrão é a base CHEIA. A
  * configuração e o extrato dizem a mesma frase.

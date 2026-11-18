@@ -28,7 +28,8 @@ describe('A19: avisoDoCustoDaEntrada', () => {
     expect(avisoDoCustoDaEntrada(95, { custo: 90, venda: 180 })).toBeNull()
     expect(avisoDoCustoDaEntrada(900, { custo: 90, venda: null })).toBeNull()
     expect(avisoDoCustoDaEntrada(null, { custo: 90, venda: 180 })).toBeNull()
-    expect(avisoDoCustoDaEntrada(90000, { custo: 0, venda: null })).toBeNull()
+    // Regra mudada na 24ª (A10): sem referência, o custo pequeno não avisa; o de R$ 10.000 ou mais avisa (correcoes-da-24-area3).
+    expect(avisoDoCustoDaEntrada(900, { custo: 0, venda: null })).toBeNull()
   })
   it('a Entrada mostra o aviso, e o lápis do produto diz onde desfazer a entrada', () => {
     const modal = ler('components/admin/admin-stock-manage-modal.tsx')
@@ -57,7 +58,8 @@ describe('A22: chipDaComissao', () => {
     expect(chipDaComissao({ padrao: null, excecoes: 0, vendaPct: 3, atende: true })).toBe('Sem comissão de atendimento · venda 3%')
   })
   it('quem não atende: a de venda', () => {
-    expect(chipDaComissao({ padrao: null, excecoes: 0, vendaPct: null, atende: false })).toBe('Sem comissão de venda')
+    // A6 da 24ª: sem a dela, vale a do pacote, do produto ou da rede (era "Sem comissão de venda").
+    expect(chipDaComissao({ padrao: null, excecoes: 0, vendaPct: null, atende: false })).toBe('Venda: a do pacote, produto ou rede')
     expect(chipDaComissao({ padrao: null, excecoes: 0, vendaPct: 2.5, atende: false })).toBe('Venda 2,5%')
   })
   it('com padrão, como antes', () => {

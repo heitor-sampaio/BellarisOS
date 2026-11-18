@@ -10,13 +10,13 @@ import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
 import { FormularioDeReceberAtendimento, type PacoteParaAbater } from '@/components/shared/receber-atendimento'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
-import { rotaCliente } from '@/lib/rotas'
+import { rotaCliente, rotaNoPortal } from '@/lib/rotas'
 import { ReceberOPlano } from '@/components/shared/pdv/receber-o-plano'
 import {
   SITUACOES_DO_PDV, seloDaComanda, emAbertoDaComanda, detalheDaComanda, formasDaComandaEmTexto, descontosDaComanda,
   estornoAnteriorEmTexto, valorNaLista, produtosEstornadosEmTexto, pagoJuntoEmTexto, rotuloDoPagamentoDaComanda,
   estornoDaVendaEmTexto, recebidaAgoraEmTexto, voucherDoProdutoEstornadoEmTexto, vendaEstornadaEmTexto, rotuloDoDiaNoPdv, textoDasComValorEmAberto,
-  abertasNasOutrasEmTexto, vazioDasAbertas, type AbertasNaOutraUnidade, type SaiDaComanda, type ComandaDoPdv, type SituacaoDoPdv,
+  abertasNasOutrasEmTexto, vazioDasAbertas, hrefDasComValorEmAberto, comandasDoFiltro, FILTRO_COM_VALOR_EM_ABERTO, type AbertasNaOutraUnidade, type SaiDaComanda, type ComandaDoPdv, type SituacaoDoPdv,
 } from '@/lib/pdv/situacoes'
 import { NovaVenda, type VendaDoPdv } from '@/components/shared/pdv/nova-venda'
 import { ProdutosDaComanda } from '@/components/shared/pdv/produtos-da-comanda'
@@ -26,6 +26,7 @@ import { ParcelasEmAberto } from '@/components/shared/pdv/parcelas-em-aberto'
 import { AcoesDoLancamentoDaFicha } from '@/components/shared/acoes-do-lancamento-da-ficha'
 import type { LancamentoDaComanda } from '@/lib/pdv/lancamentos-da-comanda'
 import type { LinhaDaComanda } from '@/lib/pdv/linha-da-comanda'
+import type { MembroDaVenda } from '@/components/shared/vender'
 
 export interface ComandaEscolhida {
   comanda:            ComandaDoPdv
@@ -39,6 +40,8 @@ export interface ComandaEscolhida {
   produtosParaAcrescentar: { id: string; name: string; price: number; unidade: string; disponivel: number }[]
   pacotesParaAbater:  PacoteParaAbater[]
   pagamentoCombinado: { metodo: string | null; rotulo: string; desconto?: number } | null
+  /** com-06: a equipe do "Quem vendeu os produtos" da comanda com produto a vender (nulo, sem produto). */
+  equipeDosProdutos?: MembroDaVenda[] | null
   /** A2 da 15ª: na comanda paga, quem estorna — só a quem não tem o Financeiro em Gerenciar (nulo: não diz). */
   quemEstorna?:       string[] | null
   /** A1 da 16ª: as parcelas em aberto da venda desta comanda, com o "Receber esta parcela". */
@@ -49,6 +52,8 @@ export interface ComandaEscolhida {
   podeEstornar?:      boolean
   /** A32 da 20ª: a rede tem a fidelidade e a venda de produto não pontua (a linha do produto diz). */
   produtoNaoPontua?:  boolean
+  /** A16 da 24ª: o contrato da venda do pacote que ainda espera a assinatura (a comanda leva até ela). */
+  documentosParaColher?: { id: string; titulo: string }[]
 }
 
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -99,7 +104,8 @@ export function CabecalhoDoPdv({ basePath, unidadeId, naRede, vista, recebidoHoj
       <span data-resumo-do-pdv style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', fontWeight: 600 }}>
         {rotuloDoDiaNoPdv(naRede ? unidadeNome : null)}: <b style={{ color: 'var(--text)' }}>{brl(recebidoHoje)}</b> recebidos · <b style={{ color: 'var(--text)' }}>{abertas}</b> {abertas === 1 ? 'comanda aberta' : 'comandas abertas'}
         {/* A12 da 23ª: a venda fechada com parcelas a receber está em "Fechadas hoje" — o topo leva a ela. */}
-        {textoDasComValorEmAberto(comValorEmAberto) && <> · <Link data-com-valor-em-aberto href={`${basePath}?ver=PAGAS${daUnidade ? `&${daUnidade}` : ''}`}
+        {/* A14 da 24ª: e só a elas (`?so=a-receber`), não a "Fechadas hoje" inteira. */}
+        {textoDasComValorEmAberto(comValorEmAberto) && <> · <Link data-com-valor-em-aberto href={hrefDasComValorEmAberto(basePath, naRede ? unidadeId : null)}
           style={{ color: 'var(--brand)', fontWeight: 'var(--weight-bold)' }}>{textoDasComValorEmAberto(comValorEmAberto)}</Link></>}
       </span>
       <span style={{ flex: 1 }} />
@@ -149,7 +155,10 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
 }) {
   const router = useRouter()
   const pathname = usePathname()
-  const clienteDaUrl = useSearchParams().get('cliente')
+  const parametros = useSearchParams()
+  const clienteDaUrl = parametros.get('cliente')
+  // A14 da 24ª: `?so=a-receber` — só as vendas com parcelas a receber (o link do topo).
+  const so = situacao === 'PAGAS' && parametros.get('so') === FILTRO_COM_VALOR_EM_ABERTO ? FILTRO_COM_VALOR_EM_ABERTO : null
   const hora = horaNo(useFuso())
   const [busca, setBusca] = useState('')
 
@@ -158,6 +167,7 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
     const q = new URLSearchParams()
     if (naRede) q.set('unidade', unidadeId)
     if (situacao !== 'ABERTAS') q.set('ver', situacao)
+    if (so) q.set('so', so)
     for (const [k, v] of Object.entries(mais)) q.set(k, v)
     const s = q.toString()
     return s ? `${basePath}?${s}` : basePath
@@ -175,8 +185,16 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
   const textoDaRecebida = recebidaAgora ? recebidaAgoraEmTexto(recebidaAgora) : null
   const visiveis = useMemo(() => {
     const t = busca.trim().toLocaleLowerCase('pt-BR')
-    return t ? comandas.filter(c => c.cliente.toLocaleLowerCase('pt-BR').includes(t)) : comandas
-  }, [busca, comandas])
+    const doFiltro = comandasDoFiltro(comandas, so)
+    return t ? doFiltro.filter(c => c.cliente.toLocaleLowerCase('pt-BR').includes(t)) : doFiltro
+  }, [busca, comandas, so])
+  // Sem o filtro: o mesmo endereço, sem o `so` (e sem a comanda aberta, que pode não estar nele).
+  const semOFiltro = () => {
+    const q = new URLSearchParams()
+    if (naRede) q.set('unidade', unidadeId)
+    q.set('ver', situacao)
+    return `${basePath}?${q.toString()}`
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -203,6 +221,12 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
                 onChange={e => setBusca(e.target.value)} style={{ paddingLeft: 30, width: '100%' }} />
             </label>
           </div>
+          {so && (
+            <p data-so-as-com-valor-em-aberto style={{ padding: '0 14px 10px', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', display: 'flex', flexWrap: 'wrap', gap: '4px 10px' }}>
+              <span>Só as vendas com parcelas a receber</span>
+              <Link href={semOFiltro()} style={{ color: 'var(--brand)', fontWeight: 700 }}>Ver todas as fechadas hoje</Link>
+            </p>
+          )}
           {/* A15 da 22ª: a comanda aberta numa outra unidade não some atrás do "Nenhuma comanda aberta". */}
           {situacao === 'ABERTAS' && abertasNasOutrasEmTexto(abertasNasOutras).length > 0 && visiveis.length > 0 && (
             <p data-abertas-nas-outras style={{ padding: '0 14px 10px', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', display: 'flex', flexWrap: 'wrap', gap: '4px 10px' }}>
@@ -216,7 +240,7 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
               <p style={{ textAlign: 'center', color: 'var(--text-faint)', fontSize: 'var(--text-sm-sz)' }}>
                 {busca.trim() ? `Nenhuma comanda de “${busca.trim()}”.`
                   : situacao === 'ABERTAS' ? vazioDasAbertas(naRede ? unidades.find(u => u.id === unidadeId)?.name : null, abertasNasOutras)
-                  : situacao === 'PAGAS' ? 'Nenhuma comanda fechada hoje.' : 'Nenhuma comanda hoje.'}
+                  : situacao === 'PAGAS' ? (so ? 'Nenhuma venda de hoje com parcelas a receber.' : 'Nenhuma comanda fechada hoje.') : 'Nenhuma comanda hoje.'}
               </p>
               {/* A11 da 23ª: a comanda aberta na outra unidade é o caminho, dentro do vazio. */}
               {!busca.trim() && situacao === 'ABERTAS' && abertasNasOutrasEmTexto(abertasNasOutras).length > 0 && (
@@ -271,6 +295,7 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
           ) : (
             <ComandaNaTela e={escolhida} hora={hora} slugDaUnidade={slugDaUnidade}
               fichaHref={rotaCliente(pathname, slugDaUnidade, escolhida.comanda.clienteId)}
+              hrefDaAssinatura={id => rotaNoPortal(pathname, slugDaUnidade, `/documentos/${id}/assinar`)}
               // A2 da 19ª: a recebida vai na URL, e a tela diz o que entrou.
               aoReceber={() => { router.push(href({ recebida: escolhida.comanda.id })); router.refresh() }}
               aoEstornar={escolhida.comanda.origem === 'ATENDIMENTO'
@@ -288,11 +313,12 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
   )
 }
 
-function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber, aoEstornar }: {
+function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, hrefDaAssinatura, aoReceber, aoEstornar }: {
   e: ComandaEscolhida
   hora: (iso: string | null) => string
   slugDaUnidade: string
   fichaHref: string
+  hrefDaAssinatura: (documentoId: string) => string
   aoReceber: () => void
   aoEstornar: () => void
 }) {
@@ -304,6 +330,8 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber, aoEstorna
   const emAberto = emAbertoDaComanda(c, useFuso())
   // A1 da 17ª (princípio 3): a comanda paga diz o desconto e o voucher, e o total é o que foi pago.
   const descontos = c.origem === 'ATENDIMENTO' ? descontosDaComanda(c) : []
+  // A15 da 24ª (princípio 3): a venda com desconto mostra o item cheio e a linha do desconto.
+  const descontoDaVenda = c.origem === 'VENDA' ? e.linha?.desconto ?? 0 : 0
   const totalPago = c.origem === 'ATENDIMENTO' && c.paga && !c.estornada && c.recebido != null
   // A2 da 17ª: a comanda reaberta diz o pagamento estornado de antes.
   const estornoAnterior = aReceber ? estornoAnteriorEmTexto(c, hora) : null
@@ -355,7 +383,7 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber, aoEstorna
               )}
             </div>
             <span data-quantidade-da-linha style={{ color: 'var(--text-muted)', textAlign: 'center', fontWeight: 600 }}>{e.linha?.quantidade ?? 1}</span>
-            <span style={{ textAlign: 'right', fontWeight: 800, color: 'var(--text)' }}>{brl(e.valorDoAtendimento ?? c.valor)}</span>
+            <span style={{ textAlign: 'right', fontWeight: 800, color: 'var(--text)' }}>{brl((e.valorDoAtendimento ?? c.valor) + descontoDaVenda)}</span>
           </div>
           {c.origem === 'ATENDIMENTO' && (
             <ProdutosDaComanda comandaId={c.id} slug={slugDaUnidade} itens={e.itens} aReceber={aReceber} naoPontua={!!e.produtoNaoPontua}
@@ -376,6 +404,12 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber, aoEstorna
               <span style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>−{brl(d.valor)}</span>
             </div>
           ))}
+          {descontoDaVenda > 0 && (
+            <div data-desconto-da-venda style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 10, color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
+              <span>Desconto</span>
+              <span style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>−{brl(descontoDaVenda)}</span>
+            </div>
+          )}
           {saiNoReceber?.linhas.map(d => (
             <div key={d.chave} data-sai-no-receber={d.chave} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 10, color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
               <span>{d.rotulo}</span>
@@ -425,6 +459,18 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber, aoEstorna
                   {emAberto}
                 </p>
               )}
+              {/* A16 da 24ª (princípio 7): o contrato do pacote que espera a assinatura se colhe daqui. */}
+              {(e.documentosParaColher ?? []).map(d => (
+                <div key={d.id} data-colher-assinatura-da-venda={d.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '8px 12px',
+                  border: '1px solid var(--border)', borderRadius: 'var(--radius-field-token)', background: 'var(--bg-app)',
+                }}>
+                  <span style={{ flex: '1 1 160px', minWidth: 0, fontSize: 'var(--text-sm-sz)', color: 'var(--text)', overflowWrap: 'anywhere' }}>
+                    <b style={{ fontWeight: 'var(--weight-bold)' }}>{d.titulo}</b> · falta a assinatura
+                  </span>
+                  <Link href={hrefDaAssinatura(d.id)} className="btn-secondary">Colher a assinatura</Link>
+                </div>
+              ))}
               {e.parcelasDaComanda && e.parcelasDaComanda.length > 0 && (
                 <ParcelasEmAberto parcelas={e.parcelasDaComanda} slug={slugDaUnidade} titulo="Parcelas desta venda" compacta />
               )}
@@ -500,6 +546,7 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber, aoEstorna
           ) : aReceber && c.agendamentoId ? (
             <FormularioDeReceberAtendimento key={`${c.id}:${c.valor}`} appointmentId={c.agendamentoId} slug={slugDaUnidade} price={c.valor}
               clienteId={c.clienteId} pagamentoCombinado={e.pagamentoCombinado} pacotesParaAbater={e.pacotesParaAbater}
+              equipeDosProdutos={e.equipeDosProdutos ?? null}
               onFeito={aoReceber} aoMudarOQueSai={(linhas, total) => setNoReceber({ comanda: c.id, linhas, total })} />
           ) : null}
         </div>

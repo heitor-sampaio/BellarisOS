@@ -36,7 +36,7 @@ export interface Funcionalidade {
 }
 
 export const FUNCIONALIDADES = [
-  { chave: 'agenda',               rotulo: 'Agenda',                                   grupo: 'Atendimento', modulos: ['agenda'] },
+  { chave: 'agenda',               rotulo: 'Agenda',                                   grupo: 'Atendimento', modulos: ['agenda', 'atendimento'] },
   { chave: 'prontuario',           rotulo: 'Prontuário e fichas',                      grupo: 'Atendimento', modulos: ['medical_records'] },
   // 2026-10-07: partes de módulo — sem elas, o prontuário e os modelos de
   // documento (que também são do módulo forms) seguem valendo.
@@ -59,7 +59,7 @@ export const FUNCIONALIDADES = [
   { chave: 'comissoes',            rotulo: 'Comissões',                                grupo: 'Gestão',      modulos: [] },
   { chave: 'relatorios',           rotulo: 'Relatórios',                               grupo: 'Gestão',      modulos: ['reports'] },
   { chave: 'cargos',               rotulo: 'Cargos personalizados',                    grupo: 'Gestão',      modulos: ['roles'] },
-  { chave: 'copilot',              rotulo: 'Copilot (IA secretária)',                  grupo: 'Novidades',   modulos: ['copilot'] },
+  { chave: 'copilot',              rotulo: 'Copilot (IA)',                  grupo: 'Novidades',   modulos: ['copilot'] },
 ] as const satisfies readonly Funcionalidade[]
 
 export type ChaveDeFuncionalidade = (typeof FUNCIONALIDADES)[number]['chave']
@@ -87,7 +87,7 @@ export const LIMITE_MAXIMO = 10
  */
 export const ADICIONAIS = [
   { chave: 'whatsapp', rotulo: 'Conexão de WhatsApp adicional', maximo: null },
-  { chave: 'copilot',  rotulo: 'Copilot (IA secretária)',       maximo: 1 },
+  { chave: 'copilot',  rotulo: 'Copilot (IA)',       maximo: 1 },
 ] as const satisfies readonly { chave: string; rotulo: string; maximo: number | null }[]
 
 export type ChaveDeAdicional = (typeof ADICIONAIS)[number]['chave']

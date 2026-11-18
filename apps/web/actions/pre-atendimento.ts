@@ -10,7 +10,7 @@ import { origemPublicaDe } from '@/lib/origem'
 import { novoToken, telefoneParaWhatsApp, VALIDADE_DO_LINK_DIAS } from '@/lib/documentos/link'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
-import { semAcesso } from '@/lib/sem-acesso'
+import { recusaDaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { normalizeFormSchema, validateFormSchema, flattenFields } from '@/lib/anamnesis'
 import { TIPOS_FORA_DO_PRE_ATENDIMENTO } from '@/lib/anamnese-geral'
 import { gravarAnamneseGeral, preAtendimentoPendente } from '@/lib/pre-atendimento/ficha'
@@ -26,9 +26,9 @@ import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
  * O pré-atendimento pela equipe (2026-10-20, decisões do Heitor): a ficha
  * universal da rede, o envio ao agendar e a anamnese do atendimento.
  *
- * A ficha e o envio são da REDE (uma ficha por rede): mudam só quem tem
- * `forms: MANAGE` e abrangência de rede — como os procedimentos e as demais
- * configurações. Personalizar a ficha é do plano (`fichas`), como as outras.
+ * A ficha e o envio são da REDE (uma ficha por rede): mudam só a Admin da
+ * rede com `forms: MANAGE` (18/11, `recusaDaConfigDaRede`), como as demais
+ * configurações da rede toda. Personalizar a ficha é do plano (`fichas`).
  */
 
 type Resultado = { ok: true } | { error: string }
@@ -39,7 +39,10 @@ export async function salvarFichaDePreAtendimento(input: { id?: string; name: st
   const ctx = await getTenantContext()
   assertPermission(ctx, 'forms', 'MANAGE')
   assertRecurso(ctx, 'fichas')
-  if (ctx.branchId !== null) throw semAcesso()
+  // A ficha de saúde é configuração da rede toda: só a Admin da rede (o
+  // Heitor, 18/11: "só pela conta admin"; era quem tinha "A rede inteira").
+  const daRede = recusaDaConfigDaRede(ctx)
+  if (daRede) return { error: daRede }
 
   const nome = String(input?.name ?? '').trim().slice(0, 120) || 'Ficha de saúde'
   const schema = normalizeFormSchema(input?.schema)
@@ -62,7 +65,8 @@ const EntradaDoEnvio = z.object({ envio: z.boolean(), validadeMeses: z.number().
 export async function definirEnvioDoPreAtendimento(input: unknown): Promise<Resultado> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'forms', 'MANAGE')
-  if (ctx.branchId !== null) throw semAcesso()
+  const daRede = recusaDaConfigDaRede(ctx)
+  if (daRede) return { error: daRede }
   const dados = EntradaDoEnvio.safeParse(input)
   if (!dados.success) return { error: 'A validade vai de 1 a 36 meses.' }
 

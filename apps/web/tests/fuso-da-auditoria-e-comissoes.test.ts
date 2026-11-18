@@ -63,7 +63,8 @@ describe('D3: os "Últimos fechamentos" no fuso da rede', () => {
     const texto = textoDoFechamento({
       inicio: '2026-11-17T04:00:00.000Z', fim: '2026-11-17T22:37:00.000Z', paidAt: '2026-11-17T22:37:30.000Z',
     }, CG)
-    expect(sp(texto)).toBe('lançamentos de 17/11/2026 até 17/11/2026 às 18:37, pago em 17/11/2026')
+    // A29 da 24ª: o pago também diz a hora (no fuso da rede).
+    expect(sp(texto)).toBe('lançamentos de 17/11/2026 até 17/11/2026 às 18:37, pago em 17/11/2026 às 18:37')
   })
 
   it('a linha do fechamento usa o texto com o fuso', () => {

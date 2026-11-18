@@ -11,7 +11,7 @@ import { criarMembro, type MembroDeTeste } from './apoio/sessao'
  * - o seletor de campo repetia rótulos (Situação ×3, Procedimento ×2);
  * - o modelo mandava por WhatsApp numa rede sem WhatsApp.
  *
- * Rede `[e2e]` própria (sem número de WhatsApp), membro só com Automações.
+ * Rede `[e2e]` própria (sem número de WhatsApp), com a Admin da rede (desde 18/11, só ela mexe nas Automações).
  */
 
 const marca = Date.now().toString(36)
@@ -25,7 +25,9 @@ test.beforeAll(async () => {
   const { data } = await banco().from('procedures').select('name').eq('id', outra.procedureId).single<{ name: string }>()
   f = {
     outra, procNome: data!.name,
-    membro: await criarMembro(`amr${marca}`, { tenant: outra.tenantId, rotulo: 'Automações', permissoes: [{ modulo: 'automations', nivel: 'MANAGE' }] }),
+    // Automações são configuração da rede toda: só a Admin da rede (o Heitor,
+    // 18/11: "Configuração da rede toda só pela conta admin").
+    membro: await criarMembro(`amr${marca}`, { tenant: outra.tenantId, rotulo: 'Automações', donoDaRede: true, permissoes: [] }),
   }
 })
 test.afterAll(async () => {

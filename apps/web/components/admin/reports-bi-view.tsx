@@ -15,6 +15,7 @@ import type { Relatorio } from '@/lib/metrics/relatorio'
 import type { MetricsCore } from '@/lib/metrics'
 import type { DadosDeVendas } from './reports-bi-section'
 import type { RelatorioDePerdas } from '@/lib/metrics/perdas'
+import type { RelatorioDeTransferencias } from '@/lib/metrics/transferencias'
 import type { EntradaDeEstoqueDoPeriodo } from '@/lib/metrics/contadora'
 import { csvDoDre } from '@/lib/financeiro/csv-da-contadora'
 import { baixarCsv } from '@/lib/financeiro/csv-dos-lancamentos'
@@ -140,6 +141,8 @@ export interface ReportsBiProps {
   vendas?: DadosDeVendas
   /** As perdas do período (D-7) — nas abas Estoque e Financeiro, e não com o financeiro "só os meus". */
   perdas?: RelatorioDePerdas
+  /** As transferências entre unidades no período (A33 da 20ª) — na aba Estoque, com mais de uma unidade. */
+  transferencias?: RelatorioDeTransferencias
   /** A31 da 10ª: as entradas de estoque do período (ao custo, com fornecedor e nota) — aba Financeiro. */
   comprasNoEstoque?: { linhas: EntradaDeEstoqueDoPeriodo[]; total: number }
 }
@@ -272,6 +275,16 @@ function KpiCard({
 }
 
 // -- Section card --------------------------------------------------------------
+/** A30 da 24ª: a base do valor da aba, curta, com a explicação na dica. */
+function BaseDaAba({ texto, dica }: { texto: string; dica: DefinicaoDoNumero }) {
+  return (
+    <p data-base-da-aba style={{ display: 'inline-flex', alignItems: 'center', gap: 6, margin: 0, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+      {texto}
+      <Dica rotulo={dica.rotulo}>{dica.texto}</Dica>
+    </p>
+  )
+}
+
 function SCard({
   title, children, style, dica, sobre, rotuloDoSobre,
 }: {
@@ -399,7 +412,8 @@ function TabOverview(p: ReportsBiProps) {
           <KpiCard label="Lucro"          value={profit}            format="brl" accent={profit >= 0 ? 'var(--success)' : 'var(--danger)'} delta={pctDelta(profit, prevProfit)}     showDelta />
         </>}
         <KpiCard label="Atendimentos"   value={core.appointmentsCompleted} format="int" delta={pctDelta(core.appointmentsCompleted, corePrev.appointmentsCompleted)} showDelta dica={DEFINICOES.atendimentos} />
-        <KpiCard label="Novos Clientes" value={core.newClients}            format="int" delta={pctDelta(core.newClients, corePrev.newClients)}                       showDelta />
+        {/* "Novos clientes" só na rede (o Heitor, 18/11): numa unidade o número não existe (nulo). */}
+        {core.newClients !== null && <KpiCard label="Novos Clientes" value={core.newClients} format="int" delta={pctDelta(core.newClients, corePrev.newClients ?? 0)} showDelta />}
         {/* Sem delta: o ticket do período anterior não é carregado. */}
         <KpiCard label="Ticket médio"   value={avgTicket}         format="brl" dica={DEFINICOES.ticket} />
       </div>
@@ -639,6 +653,7 @@ function TabVendas(p: ReportsBiProps) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <BaseDaAba texto="Valores da venda, com o voucher e os pontos" dica={DEFINICOES.baseDasVendas} />
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         {/* A30 da 10ª: dois "totais" sem ponte — o caixa e o vendido. A diferença é a regra
             (princípio 5: o caixa no dia em que o dinheiro entrou), e a tela a diz — na dica do
@@ -837,8 +852,8 @@ function TabClientes(p: ReportsBiProps) {
   const c = r.clientes
 
   const totalAtivos = c.totalAtivos
-  // Novos clientes do núcleo — a mesma regra do dashboard (a unidade e os
-  // cadastros da rede, sem unidade). Aqui contava só os com unidade.
+  // Novos clientes do núcleo, só na REDE (o Heitor, 18/11: "o cliente é da rede"):
+  // numa unidade da rede de duas ou mais o número é nulo, e a aba não o mostra.
   const novos       = core.newClients
 
   // Retenção vem do banco: clientes atendidos no período que JÁ tinham sido
@@ -884,16 +899,18 @@ function TabClientes(p: ReportsBiProps) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         <KpiCard label="Total Ativos"     value={totalAtivos}  format="int" />
-        <KpiCard label="Novos no Período" value={novos}        format="int" delta={pctDelta(novos, corePrev.newClients)} showDelta />
+        {novos !== null && <KpiCard label="Novos no Período" value={novos} format="int" delta={pctDelta(novos, corePrev.newClients ?? 0)} showDelta />}
         <KpiCard label="Atendidos no Período" value={clientsServed}    format="int" accent={CHART_COLORS[1]} />
         <KpiCard label="Primeira Vez"         value={firstTimeClients} format="int" accent={CHART_COLORS[2]} />
         <KpiCard label="Taxa de Retenção"     value={taxaRetencao}     format="pct" accent={taxaRetencao == null ? undefined : taxaRetencao >= 40 ? 'var(--success)' : 'var(--warning)'} />
         <KpiCard label="Ticket médio"     value={gastoMedio}   format="brl" />
       </div>
       <div className="rg-2" style={{ gap: 16 }}>
+        {novos !== null && (
         <SCard title="Novos Clientes ao Longo do Tempo" style={{ gridColumn: '1 / -1' }}>
           <MiniAreaChart data={acquisitionData} height={160} />
         </SCard>
+        )}
         <SCard title="Faixa Etária">
           <DonutChart data={byAge} />
         </SCard>
@@ -1042,6 +1059,7 @@ function TabProcedimentos(p: ReportsBiProps) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <BaseDaAba texto="Receita líquida do voucher e dos pontos" dica={DEFINICOES.baseDosProcedimentos} />
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         {/* Só "Total Execuções" tem delta: o anterior da receita paga dos
             atendimentos não é carregado. O ticket é o do sistema (por
@@ -1091,7 +1109,9 @@ function TabProcedimentos(p: ReportsBiProps) {
         </SCard>
         {/* A margem é do custo do CATÁLOGO: não se atribui a ela ("só os meus"). */}
         {!p.soOsMeus && (
-          <SCard title="Top 3 por Faixa de Idade — Margem">
+          <SCard title="Top 3 por Faixa de Idade — Margem" rotuloDoSobre="Como a margem é contada"
+            sobre="Pelo preço do agendamento (antes do voucher e dos pontos) menos o custo do catálogo.">
+
             {!faixas.temCustos
               ? <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)', margin: 0 }}>
                   Configure o custo dos insumos em Procedimentos para visualizar a margem por faixa etária.
@@ -1278,6 +1298,15 @@ function TabEstoque(p: ReportsBiProps) {
             <DonutChart data={byCategory} />
           </SCard>
           )}
+          {/* A31 da 24ª (princípio 3): com uma categoria só, o quadro diz por que não há gráfico. */}
+          {byCategory.length === 1 && (
+          <SCard title="Valor em Estoque por Categoria"
+            rotuloDoSobre="Por que não há gráfico" sobre="Com uma categoria só, o gráfico seria uma fatia inteira. Ele aparece quando os produtos tiverem duas ou mais categorias (no cadastro do produto).">
+            <p data-categoria-unica style={{ margin: 0, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+              Todo o valor está em <strong style={{ color: 'var(--text)' }}>{byCategory[0]!.name}</strong>.
+            </p>
+          </SCard>
+          )}
           {!p.umaUnidade && (
           <SCard title="Saúde do Estoque por Unidade" style={{ gridColumn: '1 / -1' }}>
             <SimpleTable columns={branchHealthCols} rows={branchHealthRows} />
@@ -1328,6 +1357,50 @@ function TabEstoque(p: ReportsBiProps) {
                         ? `${l.quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${medidaNoPlural(l.unidade, l.quantidade)} (${l.embalagens.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${medidaNoPlural(l.embalagem, l.embalagens)})`
                         : `${l.quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${medidaNoPlural(l.unidade, l.quantidade)}`,
                       custo:   l.custo,
+                    }))}
+                  />
+                </div>
+              )}
+            </SCard>
+          </div>
+        )}
+        {/* As transferências entre unidades (A33 da 20ª): o que saiu e o que
+            entrou em cada unidade, com o custo — prontos do banco
+            (metrics_transferencias_de_estoque). */}
+        {p.transferencias && (
+          <div data-transferencias style={{ gridColumn: '1 / -1' }}>
+            <SCard title="Transferências entre unidades" rotuloDoSobre="Sobre as transferências"
+              sobre="O custo é o do lote que saiu, nas duas pontas: a transferência não muda o valor do produto.">
+              {p.transferencias.movimentos === 0 ? (
+                <EmptyMsg texto="Nenhuma transferência no período." />
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {p.transferencias.porUnidade.map(u => (
+                      <span key={u.branchId} data-transferencias-da-unidade style={{
+                        fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '4px 10px', borderRadius: 99,
+                        background: 'var(--bg-app)', border: '1px solid var(--border)', color: 'var(--text)',
+                      }}>
+                        {u.unidade} · saiu {fmtBRLFull(u.saiu)} · entrou {fmtBRLFull(u.entrou)}
+                      </span>
+                    ))}
+                  </div>
+                  <SimpleTable
+                    columns={[
+                      { key: 'unidade',   label: 'Unidade' },
+                      { key: 'movimento', label: 'Movimento' },
+                      { key: 'produto',   label: 'Produto' },
+                      { key: 'qtd',       label: 'Quantidade', align: 'right' },
+                      { key: 'custo',     label: 'Custo', align: 'right', render: v => fmtBRLFull(Number(v)) },
+                    ]}
+                    rows={p.transferencias.linhas.map(l => ({
+                      unidade:   l.unidade,
+                      movimento: l.direcao === 'SAIU' ? `Saiu para ${l.outra ?? '—'}` : `Entrou de ${l.outra ?? '—'}`,
+                      produto:   l.produto,
+                      qtd:       l.medida && l.medida !== l.embalagem
+                        ? `${l.quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${medidaNoPlural(l.medida, l.quantidade)} (${l.embalagens.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${medidaNoPlural(l.embalagem, l.embalagens)})`
+                        : `${l.quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${medidaNoPlural(l.embalagem, l.quantidade)}`,
+                      custo:     l.custo,
                     }))}
                   />
                 </div>

@@ -52,25 +52,29 @@ describe('A19: a importação diz a coluna que fica de fora [3]', () => {
   })
 })
 
-describe('A20: o termo fica fora de "Outros documentos" até haver um termo escolhido [7]', () => {
+// Auditoria das regras (2026-11-18): a A20 escondia o termo e o contrato de
+// "Outros documentos" até haver um escolhido no campo próprio — contra o PC7
+// ("qualquer documento que tenha sido criado ou anexado no sistema"). Este
+// bloco travava isso; agora trava o PC7.
+describe('PC7: "Outros documentos" oferece todo documento da rede (a A20 estreitava)', () => {
   const lista = [
     { id: 'd1', nome: 'Autorização de imagem', tipo: 'DOCUMENTO', ativo: true },
     { id: 't1', nome: 'Termo da toxina', tipo: 'TERMO', ativo: true },
     { id: 't2', nome: 'Termo do peeling', tipo: 'TERMO', ativo: true },
     { id: 'k1', nome: 'Contrato avulso', tipo: 'CONTRATO', ativo: true },
   ]
-  it('sem termo nem contrato escolhidos, só os Documentos', async () => {
+  it('sem termo nem contrato escolhidos, todos', async () => {
     const { outrosDocumentosOferecidos } = await import('@/lib/documentos/outros-do-procedimento')
-    expect(outrosDocumentosOferecidos(lista, { termo: '', contrato: '', marcados: [] }).map(o => o.id)).toEqual(['d1'])
+    expect(outrosDocumentosOferecidos(lista, { termo: '', contrato: '', marcados: [] }).map(o => o.id)).toEqual(['d1', 't1', 't2', 'k1'])
   })
-  it('com um termo escolhido, os OUTROS termos entram (um segundo termo); com o contrato, os outros contratos', async () => {
+  it('o escolhido no campo próprio não se repete aqui (A36 da 15ª)', async () => {
     const { outrosDocumentosOferecidos } = await import('@/lib/documentos/outros-do-procedimento')
-    expect(outrosDocumentosOferecidos(lista, { termo: 't1', contrato: '', marcados: [] }).map(o => o.id)).toEqual(['d1', 't2'])
+    expect(outrosDocumentosOferecidos(lista, { termo: 't1', contrato: '', marcados: [] }).map(o => o.id)).toEqual(['d1', 't2', 'k1'])
     expect(outrosDocumentosOferecidos(lista, { termo: 't1', contrato: 'k1', marcados: [] }).map(o => o.id)).toEqual(['d1', 't2'])
   })
   it('o que já está marcado fica (sumir apagaria o vínculo ao salvar)', async () => {
     const { outrosDocumentosOferecidos } = await import('@/lib/documentos/outros-do-procedimento')
-    expect(outrosDocumentosOferecidos(lista, { termo: '', contrato: '', marcados: ['t2'] }).map(o => o.id)).toEqual(['d1', 't2'])
+    expect(outrosDocumentosOferecidos(lista, { termo: 't2', contrato: '', marcados: ['t2'] }).map(o => o.id)).toEqual(['d1', 't1', 't2', 'k1'])
   })
   it('o cadastro do procedimento usa', () => {
     expect(ler('components/admin/procedure-form.tsx')).toContain('outrosDocumentosOferecidos(')

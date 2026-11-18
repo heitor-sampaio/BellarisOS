@@ -6,6 +6,7 @@ import { responderAnamnese } from './apoio/anamnese'
 import { chamarAcao, chamarAcaoComFormulario } from './apoio/acao-direta'
 import { abrirVendaNoPdv, euVendi, pagoNoPix, receberAtendimentoNoPdv, escolherFormaPorValor, botaoDeReceber } from './apoio/vender'
 import { primeiraMaquininha, taxasDaPrimeira, taxaDoPix, seletorDaBandeira } from './apoio/maquininha'
+import { venderNaTelaPassandoPeloContrato } from './apoio/contrato-do-pacote'
 
 /**
  * r3-f13-01 (o Heitor, revisão de 2026-11-03: "Lembre-se, flexibilidade.
@@ -229,7 +230,7 @@ test.describe.serial('o cartão por bandeira', () => {
       await dlg.getByLabel('Bandeira').selectOption({ label: 'Elo' })
       await pagoNoPix(dlg)
       await euVendi(dlg)
-      await dlg.getByRole('button', { name: /Vender por/ }).click()
+      await venderNaTelaPassandoPeloContrato(dlg, dlg.getByRole('button', { name: /Vender por/ }))
       await expect.poll(async () => (await db().from('client_packages').select('id').eq('client_id', cliente)).data?.length, { message: 'vendido' }).toBe(1)
     })
     const { data: cp } = await db().from('client_packages').select('id').eq('client_id', cliente).single()

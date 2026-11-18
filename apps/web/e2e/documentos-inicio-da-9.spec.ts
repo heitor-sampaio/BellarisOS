@@ -65,7 +65,13 @@ test.beforeAll(async () => {
   agendamento = ap!.id
   recepcao = await criarMembro(`di9r${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Recepção',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'documents', nivel: 'MANAGE' }],
+    // O "Iniciar" (desabilitado pela trava) só aparece a quem inicia: o
+    // Atendimento em Gerenciar (o Heitor, 18/11: "Só inicia e conclui
+    // atendimento quem tem gerenciar no atendimento").
+    permissoes: [
+      { modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'atendimento', nivel: 'MANAGE' },
+      { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'documents', nivel: 'MANAGE' },
+    ],
   })
   soVe = await criarMembro(`di9v${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Sem permissão de documento',

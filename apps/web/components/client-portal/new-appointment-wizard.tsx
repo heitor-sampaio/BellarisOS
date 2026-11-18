@@ -310,6 +310,12 @@ export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], p
                   <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
                     {p.duration_min}min
                   </p>
+                  {/* 23ª A38 (princípio 3): o que está incluído, por inteiro — o "Incluído" sozinho não dizia em quê. */}
+                  {p.jaPago && (
+                    <p data-ja-pago style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', fontWeight: 600, marginTop: 2 }}>
+                      {p.jaPago}
+                    </p>
+                  )}
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
                   <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--brand)' }}>

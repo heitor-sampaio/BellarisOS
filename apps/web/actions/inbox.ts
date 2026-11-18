@@ -32,6 +32,9 @@ import { passaNasCaixas, passaNoAlcanceDoDono, type AlcanceDoDono } from '@/lib/
 import { alcanceDoDono, caixasDoAlcance, conversaAoAlcance, mensagemAoAlcance } from '@/lib/inbox/alcance'
 import { numeroRemovidoDaConversa, recusaDoNumeroRemovido, SUFIXO_DO_REMOVIDO } from '@/lib/inbox/numero-removido'
 import { leadAoAlcance } from '@/lib/crm/alcance'
+import {
+  automacoesQueOMovimentoDispara, COLUNAS_DO_CARD_PARA_PREVER, type CardParaPrever,
+} from '@/lib/crm/automacoes-do-movimento'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { abrirConversaNoNumero, numerosParaResponder, type NumeroParaResponder } from '@/lib/inbox/responder-por-outro-numero'
 
@@ -846,7 +849,7 @@ export async function getConversationCard(conversationId: string): Promise<Conve
       social:   c.pessoa?.social_media ?? null,
       canal:    c.channel as InboxChannel,
     },
-    cliente, venda, comOportunidades, comAgenda: temRecurso(ctx, 'agenda'), podeCadastrarCliente: can(ctx, 'clients', 'MANAGE'), abertas, concluidas, stages, funnels, procedimentos, tagsDaRede,
+    cliente, venda, comOportunidades, comAgenda: temRecurso(ctx, 'agenda') && can(ctx, 'crm', 'MANAGE') && can(ctx, 'agenda', 'MANAGE'), podeCadastrarCliente: can(ctx, 'clients', 'MANAGE'), abertas, concluidas, stages, funnels, procedimentos, tagsDaRede,
     outrasThreads,
   }
 }
@@ -1239,11 +1242,77 @@ export async function atualizarContato(
  * deixaria o funil mentindo sobre o que aconteceu. Ligar as duas pontas é
  * trabalho do módulo de automações.
  */
+type Admin = ReturnType<typeof createAdminClient>
+
+/**
+ * A etapa a que "Ganhou", "Perdeu" ou "Reabrir" leva a oportunidade: a
+ * PRIMEIRA do funil dela com aquele desfecho. Reabrir volta para a primeira em
+ * aberto, não para onde a oportunidade estava: a etapa anterior não é guardada
+ * em lugar nenhum, e adivinhar pelo histórico seria menos previsível do que
+ * recomeçar do começo — de onde quem reabriu pode mover para a etapa certa em
+ * um clique.
+ */
+async function destinoDaSituacao(
+  admin: Admin, tenantId: string, leadId: string, desfecho: 'OPEN' | 'WON' | 'LOST',
+): Promise<{ card: CardParaPrever; atual: InboxStage; destino: InboxStage } | { error: string }> {
+  const { data: lead, error: erroLead } = await admin
+    .from('leads')
+    .select(COLUNAS_DO_CARD_PARA_PREVER)
+    .eq('id', leadId)
+    .eq('tenant_id', tenantId)
+    .maybeSingle()
+
+  if (erroLead) return { error: erroLead.message }
+  if (!lead)    return { error: 'Oportunidade não encontrada.' }
+
+  const card   = lead as unknown as CardParaPrever
+  const stages = (await listAllStages(tenantId)) as InboxStage[]
+  const atual  = stages.find(s => s.id === card.crm_stage_id)
+  if (!atual) return { error: 'Oportunidade sem etapa. Escolha um funil antes de concluir.' }
+
+  const destino = stages
+    .filter(s => s.funnel_id === atual.funnel_id && s.outcome === desfecho)
+    .sort((a, b) => a.position - b.position)[0]
+
+  if (!destino) {
+    const rotulo = desfecho === 'WON' ? 'ganho' : desfecho === 'LOST' ? 'perda' : 'andamento'
+    return { error: `Este funil não tem etapa de ${rotulo}. Ajuste as etapas em Oportunidades → Funis.` }
+  }
+  return { card, atual, destino }
+}
+
+/**
+ * A pergunta das automações antes do "Ganhou", "Perdeu" ou "Reabrir" do inbox
+ * (A35 da 22ª; o Heitor, 2026-11-18): as automações ligadas que a mudança
+ * dispararia, só as que casam (`automacoesQueOMovimentoDispara`). Vazio: o
+ * painel move direto.
+ */
+export async function automacoesAoDefinirSituacao(
+  leadId: string, desfecho: 'OPEN' | 'WON' | 'LOST',
+): Promise<{ automacoes: string[] } | { error: string }> {
+  try {
+    const ctx = await getTenantContext()
+    assertRecurso(ctx, 'oportunidades')
+    assertPermission(ctx, 'crm', 'MANAGE')
+    if (!['OPEN', 'WON', 'LOST'].includes(desfecho)) return { error: 'Situação inválida.' }
+    const admin = createAdminClient()
+    if (!(await leadAoAlcance(admin, ctx, leadId))) return { error: 'Oportunidade não encontrada.' }
+    const d = await destinoDaSituacao(admin, ctx.tenantId!, leadId, desfecho)
+    if ('error' in d) return { error: d.error }
+    if (d.destino.id === d.atual.id) return { automacoes: [] }
+    return { automacoes: await automacoesQueOMovimentoDispara(ctx, [d.card], d.destino.id) }
+  } catch (e) {
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
+  }
+}
+
 export async function definirSituacaoOportunidade(
   leadId: string,
   desfecho: 'OPEN' | 'WON' | 'LOST',
   /** Marcando perdida, o motivo (2026-10-21, decisão do Heitor). */
   perda?: { motivoId: string; obs?: string | null } | null,
+  /** A35 da 22ª: a resposta à pergunta das automações — `false` move sem disparar. */
+  disparar = true,
 ): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'oportunidades')
@@ -1253,41 +1322,14 @@ export async function definirSituacaoOportunidade(
   // o card dele, e este botão faz o mesmo movimento por outro caminho.
   if (!(await leadAoAlcance(admin, ctx, leadId))) return { ok: false, error: 'Oportunidade não encontrada.' }
 
-  const { data: lead, error: erroLead } = await admin
-    .from('leads')
-    .select('id, crm_stage_id')
-    .eq('id', leadId)
-    .eq('tenant_id', ctx.tenantId!)
-    .maybeSingle()
-
-  if (erroLead) return { ok: false, error: erroLead.message }
-  if (!lead)    return { ok: false, error: 'Oportunidade não encontrada.' }
-
-  const stages = (await listAllStages(ctx.tenantId!)) as InboxStage[]
-  const atual  = stages.find(s => s.id === (lead as { crm_stage_id: string | null }).crm_stage_id)
-  if (!atual) return { ok: false, error: 'Oportunidade sem etapa. Escolha um funil antes de concluir.' }
-
-  // Reabrir volta para a PRIMEIRA etapa em aberto do funil, não para onde a
-  // oportunidade estava: a etapa anterior não é guardada em lugar nenhum, e
-  // adivinhar pelo histórico seria menos previsível do que recomeçar do começo
-  // — de onde quem reabriu pode mover para a etapa certa em um clique.
-  const destino = stages
-    .filter(s => s.funnel_id === atual.funnel_id && s.outcome === desfecho)
-    .sort((a, b) => a.position - b.position)[0]
-
-  if (!destino) {
-    const rotulo = desfecho === 'WON' ? 'ganho' : desfecho === 'LOST' ? 'perda' : 'andamento'
-    return {
-      ok: false,
-      error: `Este funil não tem etapa de ${rotulo}. Ajuste as etapas em Oportunidades → Funis.`,
-    }
-  }
-  if (destino.id === atual.id) return { ok: true }
+  const d = await destinoDaSituacao(admin, ctx.tenantId!, leadId, desfecho)
+  if ('error' in d) return { ok: false, error: d.error }
+  if (d.destino.id === d.atual.id) return { ok: true }
 
   // O núcleo do quadro e do Copilot: o motivo da perda, a linha do tempo e os
   // eventos de ganho/perda (até 2026-10-21 este caminho gravava a etapa direto,
   // sem nenhum dos três).
-  const r = await moverEtapaCore(admin, ctx, leadId, destino.id, { perda, exigirMotivo: true })
+  const r = await moverEtapaCore(admin, ctx, leadId, d.destino.id, { perda, exigirMotivo: true, semDespachar: !disparar })
   if ('error' in r) return { ok: false, error: r.error }
 
   revalidarInbox()

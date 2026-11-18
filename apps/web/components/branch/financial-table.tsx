@@ -20,6 +20,7 @@ import { RemarcarVencimento, VencimentoRemarcado, type RemarcacaoDoVencimento } 
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { resultadoDaLista } from '@/lib/metrics/resultado'
 import { csvDosLancamentos, linhaDoLancamento, baixarCsv } from '@/lib/financeiro/csv-dos-lancamentos'
+import { juntarAsFormasDaParcela, formasDaParcelaEmTexto, posicaoNaParcela } from '@/lib/financeiro/formas-da-parcela'
 import { useFuso } from '@/components/shared/fuso'
 
 export interface Transaction {
@@ -51,6 +52,9 @@ export interface Transaction {
   product_sale_id?: string | null
   /** Da venda de crédito na clínica (decisão 1 da 9ª): o estorno é da venda e devolve o saldo não usado. */
   credito_vendido_id?: string | null
+  /** A parcela do crediário (limite da 21ª: as formas da mesma parcela numa linha). */
+  parcela_numero?: number | null
+  parcela_total?:  number | null
   /** O pago, no dia do pagamento; o em aberto, no vencimento (ou na criação). */
   data_de_referencia?: string | null
   /** D13 da 9ª: em aberto com o vencimento antes de hoje (decidido no servidor). */
@@ -170,6 +174,17 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
 
   // O resultado do que está na tela, com sinal (J-48) — a conta mora em lib/metrics.
   const totalFiltered = resultadoDaLista(filtered)
+  // Limite da 21ª: a parcela recebida em várias formas é UMA linha ("Pix R$ 400,00 + Dinheiro R$ 200,00");
+  // o recibo e o estorno seguem por forma. No CSV, uma linha por forma, com "forma 1 de 2".
+  const linhas = useMemo(() => juntarAsFormasDaParcela(filtered), [filtered])
+  const csv = () => {
+    const pos = posicaoNaParcela(filtered)
+    return csvDosLancamentos(filtered.map(t => {
+      const l = linhaDoLancamento(t)
+      const p = pos.get(t.id)
+      return p ? { ...l, descricao: `${l.descricao} (${p})` } : l
+    }), fuso)
+  }
 
   const thStyle: React.CSSProperties = {
     fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)',
@@ -253,7 +268,7 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
 
         {/* A44 da 8ª: o CSV do que está na lista (os filtros valem), para a contadora. */}
         <button type="button" className="btn-secondary" disabled={filtered.length === 0}
-          onClick={() => baixarCsv(nomeDoCsv, csvDosLancamentos(filtered.map(t => linhaDoLancamento(t)), fuso))}>
+          onClick={() => baixarCsv(nomeDoCsv, csv())}>
           <Download size={14} aria-hidden /> Exportar CSV
         </button>
 
@@ -263,7 +278,7 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
           marginLeft: 'auto', fontSize: 'var(--text-sm-sz)', fontWeight: 800,
           color: totalFiltered >= 0 ? 'var(--success)' : 'var(--danger)',
         }}>
-          {filtered.length} lançamento{filtered.length !== 1 ? 's' : ''} · caixa da lista {totalFiltered < 0 ? '−' : ''}{fmtBRL(Math.abs(totalFiltered))}
+          {linhas.length} lançamento{linhas.length !== 1 ? 's' : ''} · caixa da lista {totalFiltered < 0 ? '−' : ''}{fmtBRL(Math.abs(totalFiltered))}
         </span>
       </div>
 
@@ -292,14 +307,14 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((tx, i) => {
+                {linhas.map((tx, i) => {
                   const isIncome  = tx.type === 'INCOME'
                   const pmStyle   = tx.payment_method ? (PM_COLORS[tx.payment_method] ?? { bg: 'var(--bg-app)', color: 'var(--text-muted)' }) : null
                   const isReversed = tx.notes === 'Estornada'
 
                   return (
                     <tr key={tx.id} data-lancamento={tx.id} style={{
-                      borderBottom: i < filtered.length - 1 ? '1px solid var(--hairline)' : 'none',
+                      borderBottom: i < linhas.length - 1 ? '1px solid var(--hairline)' : 'none',
                       background: isReversed ? 'var(--bg-app)' : i % 2 === 0 ? 'var(--surface)' : 'transparent',
                       opacity: isReversed ? 0.5 : 1,
                     }}>
@@ -369,7 +384,11 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
 
                       {/* Pagamento */}
                       <td data-label="Pagamento" data-par style={{ padding: '13px 16px' }}>
-                        {tx.payment_method && pmStyle ? (
+                        {tx.formasDaParcela ? (
+                          <span data-formas-da-parcela style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text)', whiteSpace: 'normal' }}>
+                            {formasDaParcelaEmTexto(tx.formasDaParcela)}
+                          </span>
+                        ) : tx.payment_method && pmStyle ? (
                           <span style={{
                             fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '3px 9px', borderRadius: 99,
                             background: pmStyle.bg, color: pmStyle.color,
@@ -458,8 +477,40 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
                           {!tx.is_paid && !isReversed && podeRemarcar && (
                             <RemarcarVencimento lancamento={{ id: tx.id, descricao: tx.description, valor: Number(tx.amount), vencimento: tx.due_date }} />
                           )}
+                          {/* Limite da 21ª: a parcela em várias formas — o recibo e o estorno de cada forma. */}
+                          {tx.formasDaParcela && (
+                            <div data-acoes-das-formas style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
+                              {tx.formasDaParcela.map(f => {
+                                const rotulo = rotuloDaForma(f.forma, f.vezes)
+                                return (
+                                  <div key={f.id} data-forma-da-parcela={f.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{rotulo}</span>
+                                    <a href={`/api/recibos/${f.id}`} target="_blank" rel="noopener" aria-label={`Recibo (${rotulo})`} title="Recibo (PDF): imprimir ou baixar" style={{
+                                      width: 30, height: 30, borderRadius: 7, border: '1px solid var(--border)', background: 'var(--surface)',
+                                      color: 'var(--text-faint)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    }}>
+                                      <FileText size={12} />
+                                    </a>
+                                    {canReverse && (
+                                      <button type="button" data-estornar aria-label={`Estornar (${rotulo})`} title={`Estornar o ${rotulo}`}
+                                        onClick={() => tx.credito_vendido_id
+                                          ? setCreditoAEstornar({ id: f.id, descricao: tx.description })
+                                          : setAEstornar({ id: f.id, descricao: tx.description, valor: f.valor, vendaDeProduto: !!tx.product_sale_id, doAtendimento: !!tx.appointment_id })} style={{
+                                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                                        fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '5px 10px', borderRadius: 7,
+                                        border: '1px solid var(--border)', background: 'var(--surface)',
+                                        color: 'var(--text-muted)', cursor: 'pointer', whiteSpace: 'nowrap',
+                                      }}>
+                                        <RotateCcw size={12} aria-hidden /> Estornar
+                                      </button>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
                           {/* ven-06: o recibo do que foi pago (PDF — imprimir ou baixar). */}
-                          {isIncome && tx.is_paid && !isReversed && tx.category !== 'Estorno' && (
+                          {!tx.formasDaParcela && isIncome && tx.is_paid && !isReversed && tx.category !== 'Estorno' && (
                             <a href={`/api/recibos/${tx.id}`} target="_blank" rel="noopener" aria-label="Recibo" title="Recibo (PDF): imprimir ou baixar" style={{
                             width: 30, height: 30, borderRadius: 7,
                             border: '1px solid var(--border)', background: 'var(--surface)',
@@ -470,7 +521,7 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
                           </a>
                           )}
                           {/* Estorno não se estorna — o banco também recusa. */}
-                          {tx.is_paid && !isReversed && tx.category !== 'Estorno' && canReverse && (
+                          {!tx.formasDaParcela && tx.is_paid && !isReversed && tx.category !== 'Estorno' && canReverse && (
                             // A32 da 9ª: o "Estornar" com texto (era só o ícone de 30 px).
                             <button type="button" data-estornar title={tx.pago_sem_dinheiro ? "Desfazer o pagamento" : "Estornar"} onClick={() => tx.credito_vendido_id
                               ? setCreditoAEstornar({ id: tx.id, descricao: tx.description })

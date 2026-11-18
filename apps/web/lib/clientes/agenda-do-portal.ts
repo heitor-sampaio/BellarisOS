@@ -41,6 +41,19 @@ export function jaPassouDaHora(scheduledAt: string, agora: Date = new Date()): b
   return new Date(scheduledAt).getTime() < agora.getTime()
 }
 
+/**
+ * Agendado ou confirmado, e o horário (início + duração) já acabou (A46 da
+ * 24ª, princípio 3): segue em "Próximos" até a equipe registrar (A51 da 7ª),
+ * mas o app diz que o horário passou em vez de "Agendado" e "Prazo do app
+ * encerrado". Na clínica ou em atendimento, não: a equipe já está nele.
+ */
+export function horarioPassouSemAtender(
+  a: { status: string; scheduled_at: string; duration_min?: number | null }, agora: Date = new Date(),
+): boolean {
+  if (a.status !== 'SCHEDULED' && a.status !== 'CONFIRMED') return false
+  return new Date(a.scheduled_at).getTime() + (a.duration_min ?? 60) * 60_000 <= agora.getTime()
+}
+
 export function separarAgendaDoPortal<T extends { status: string; scheduled_at: string }>(
   agendamentos: T[], agora: Date = new Date(),
   /** O fuso da unidade de cada agendamento (F62: o "hoje" é o dela). */

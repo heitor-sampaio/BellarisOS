@@ -14,6 +14,8 @@ import {
 import {
   createStage, renameStage, updateStageColor, updateStageOutcome, deleteStage, reorderStages, oportunidadesNaEtapa,
 } from '@/actions/crm-stages'
+import { moverOportunidadesDaEtapa, automacoesDoMovimento } from '@/actions/leads'
+import { textoDoMoverDaEtapa, perguntaDasAutomacoes, resultadoDoMover } from '@/lib/crm/mover-da-etapa'
 import {
   createFunnel, renameFunnel, setDefaultFunnel, setFunnelArchived, deleteFunnel, reorderFunnels,
 } from '@/actions/crm-funnels'
@@ -40,13 +42,15 @@ interface CRMStageSettingsProps {
 
 // --- Linha de etapa ----------------------------------------------
 function StageRow({
-  stage, slug, ultimaDePerda,
+  stage, slug, ultimaDePerda, destinos,
   isDragging, onDragStart, onDragEnd,
 }: {
   stage:       CRMStage
   slug:        string
   /** A11 da 17ª: a última etapa de perda do funil — apagar ou mudar pergunta antes. */
   ultimaDePerda: boolean
+  /** A35 da 22ª: as outras etapas do funil para onde as oportunidades podem ir (sem a perdida). */
+  destinos:    { id: string; name: string }[]
   isDragging:  boolean
   onDragStart: (e: React.DragEvent, id: string) => void
   onDragEnd:   () => void
@@ -61,6 +65,12 @@ function StageRow({
   // A32 da 21ª: a exclusão chega já com as oportunidades da etapa contadas.
   const [confirmar, setConfirmar] = useState<{ acao: 'excluir'; oportunidades: number } | { acao: 'resultado'; para: StageOutcome } | null>(null)
   const [contando, setContando] = useState(false)
+  // A35 da 22ª: "Mover as N para [etapa]" — e, se alguma automação ligada
+  // dispararia, a pergunta "Disparar?" (decisão do Heitor, 2026-11-17).
+  const [destino, setDestino] = useState('')
+  const [automacoes, setAutomacoes] = useState<string[] | null>(null)
+  const [movendo, setMovendo] = useState(false)
+  const [movido, setMovido] = useState<string | null>(null)
   const [, start] = useTransition()
   const router = useRouter()
 
@@ -123,6 +133,26 @@ function StageRow({
     setDeleteErr(null)
     const res = await deleteStage(stage.id, slug)
     if (res?.error) { setDeleteErr(res.error); return }
+    router.refresh()
+  }
+
+  async function handleMover() {
+    if (!destino) return
+    setDeleteErr(null); setMovido(null); setMovendo(true)
+    const r = await automacoesDoMovimento(stage.id, destino)
+    setMovendo(false)
+    if ('error' in r) { setDeleteErr(r.error); return }
+    if (r.automacoes.length) { setAutomacoes(r.automacoes); return }
+    await moverAgora(true)
+  }
+
+  async function moverAgora(disparar: boolean) {
+    setAutomacoes(null); setMovendo(true)
+    const r = await moverOportunidadesDaEtapa(stage.id, destino, slug, disparar)
+    setMovendo(false)
+    if ('error' in r) { setDeleteErr(r.error); return }
+    setMovido(resultadoDoMover(r.movidas, r.ficaram))
+    setConfirmar({ acao: 'excluir', oportunidades: r.ficaram })
     router.refresh()
   }
 
@@ -237,6 +267,31 @@ function StageRow({
             {/* A32 da 21ª: com oportunidades, quantas e o que fazer. */}
             {perguntaAoExcluirEtapa(stage.name, confirmar.acao === 'resultado' || ultimaDePerda, confirmar.acao === 'excluir' ? confirmar.oportunidades : 0)}
           </p>
+          {movido && <p data-movidas role="status" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--success)', fontWeight: 700, margin: 0 }}>{movido}</p>}
+          {confirmar.acao === 'excluir' && confirmar.oportunidades > 0 && destinos.length > 0 && (
+            <div data-mover-da-etapa style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <label htmlFor={`mover-${stage.id}`} style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>
+                {textoDoMoverDaEtapa(confirmar.oportunidades)}
+              </label>
+              <select id={`mover-${stage.id}`} className="field" value={destino} disabled={movendo || automacoes !== null}
+                onChange={e => { setDestino(e.target.value); setAutomacoes(null) }} style={{ width: 'auto' }}>
+                <option value="">Escolha a etapa…</option>
+                {destinos.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+              <button type="button" className="btn-secondary" style={{ fontSize: 'var(--text-xs-sz)' }}
+                disabled={!destino || movendo || automacoes !== null} onClick={() => void handleMover()}>
+                {movendo ? 'Movendo…' : 'Mover'}
+              </button>
+              <Dica rotulo="Sobre mover as oportunidades">Move todas as oportunidades desta etapa de uma vez, como no quadro. A etapa perdida não aparece aqui: nela, o quadro pede o motivo de cada uma.</Dica>
+            </div>
+          )}
+          {automacoes && (
+            <div data-pergunta-das-automacoes role="alertdialog" aria-label="Disparar as automações?" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text)' }}>{perguntaDasAutomacoes(automacoes)}</span>
+              <button type="button" className="btn-primary" style={{ fontSize: 'var(--text-xs-sz)' }} disabled={movendo} onClick={() => void moverAgora(true)}>Sim</button>
+              <button type="button" className="btn-secondary" style={{ fontSize: 'var(--text-xs-sz)' }} disabled={movendo} onClick={() => void moverAgora(false)}>Não</button>
+            </div>
+          )}
           <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {!(confirmar.acao === 'excluir' && confirmar.oportunidades > 0) && (
               <button type="button" className="btn-secondary" style={{ fontSize: 'var(--text-xs-sz)' }}
@@ -735,6 +790,7 @@ export function CRMStageSettings({
                   stage={stage}
                   slug={slug}
                   ultimaDePerda={ehAUltimaDePerda(etapasDoFunil, stage.id)}
+                  destinos={etapasDoFunil.filter(e => e.id !== stage.id && e.outcome !== 'LOST').map(e => ({ id: e.id, name: e.name }))}
                   isDragging={draggingStage === stage.id}
                   onDragStart={handleStageDragStart}
                   onDragEnd={limparDnD}

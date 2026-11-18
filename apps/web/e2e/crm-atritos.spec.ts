@@ -19,6 +19,7 @@ const db = () => banco()
 let rede: OutraRede | null = null
 let sdr: MembroDeTeste | null = null
 let admin: MembroDeTeste | null = null
+let gestor: MembroDeTeste | null = null
 let slug = ''
 
 async function como(browser: Browser, fn: (p: Page) => Promise<void>) {
@@ -32,10 +33,14 @@ test.beforeAll(async () => {
   sdr = await criarMembro(`crs${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'SDR', permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }],
   })
-  // Da REDE: as integrações são da clínica toda, e o atalho é de quem as muda
-  // (H7, 2026-11-01: a gerente de unidade fixa pede a quem administra).
-  admin = await criarMembro(`cra${marca}`, {
-    tenant: rede.tenantId, rotulo: 'Admin',
+  // As integrações são configuração da rede toda, e o atalho é de quem as
+  // muda: só a Admin da rede (o Heitor, 18/11: "Configuração da rede toda só
+  // pela conta admin"; era quem tinha "A rede inteira", H7 de 2026-11-01).
+  admin = await criarMembro(`cra${marca}`, { tenant: rede.tenantId, rotulo: 'Admin', donoDaRede: true, permissoes: [] })
+  // "A rede inteira" com o CRM e as Configurações em Gerenciar, sem ser a Admin
+  // da rede: pede a ela, como o SDR.
+  gestor = await criarMembro(`crg${marca}`, {
+    tenant: rede.tenantId, rotulo: 'Gestor',
     permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }, { modulo: 'settings', nivel: 'MANAGE' }],
   })
 })
@@ -49,7 +54,7 @@ test.afterAll(async () => {
     }
     await db().from('contacts').delete().eq('tenant_id', rede.tenantId)
   }
-  await sdr?.limpar(); await admin?.limpar(); await rede?.limpar()
+  await sdr?.limpar(); await admin?.limpar(); await gestor?.limpar(); await rede?.limpar()
 })
 
 test.describe.serial('o CRM', () => {
@@ -97,9 +102,20 @@ test.describe.serial('o CRM', () => {
       await expect(p.getByText(/Nenhum canal ligado/)).toBeVisible()
       await expect(p.getByRole('button', { name: 'Iniciar primeira conversa' })).toHaveCount(0)
       // A16: o SDR não vê Configurações → Integrações; o aviso manda pedir a quem administra.
-      await expect(p.getByText('Peça a quem tem as Configurações em Gerenciar para conectar o WhatsApp.')).toBeVisible()
+      await expect(p.getByText('Peça à Admin da rede para conectar o WhatsApp.')).toBeVisible()
       await expect(p.getByRole('link', { name: /Conectar o WhatsApp/ })).toHaveCount(0)
     })
+    // Com as Configurações em Gerenciar, mas sem ser a Admin da rede: também
+    // pede, nos dois portais (o atalho levaria a uma aba que só mostra).
+    const cg = await browser.newContext({ storageState: gestor!.estado })
+    try {
+      const p = await cg.newPage()
+      for (const rota of [`/${slug}/inbox`, '/admin/inbox']) {
+        await p.goto(rota)
+        await expect(p.getByText('Peça à Admin da rede para conectar o WhatsApp.')).toBeVisible()
+        await expect(p.getByRole('link', { name: /Conectar o WhatsApp/ })).toHaveCount(0)
+      }
+    } finally { await cg.close() }
     // Quem pode configurar vê o atalho.
     const ctx = await browser.newContext({ storageState: admin!.estado })
     try {

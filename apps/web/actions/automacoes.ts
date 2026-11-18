@@ -194,6 +194,10 @@ export async function getAutomacao(id: string): Promise<{
 export async function criarAutomacao(nome: string): Promise<{ id?: string; error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'automations', 'MANAGE')
+  // Na sessão de suporte, a automação só se PAUSA (auditoria das regras,
+  // 2026-11-18; D18; CLAUDE.md §14): o que ela manda chega à paciente.
+  const doSuporte = bloqueioDoSuporte(ctx, 'criar uma automação (o suporte só pausa)')
+  if (doSuporte) return { error: doSuporte }
   // A automação é da clínica toda (H7): quem tem unidade fixa não muda.
   const daRede = recusaDaConfigDaRede(ctx)
   if (daRede) return { error: daRede }
@@ -230,6 +234,10 @@ export async function criarAutomacao(nome: string): Promise<{ id?: string; error
 export async function criarAutomacaoDeModelo(chave: string): Promise<{ id?: string; error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'automations', 'MANAGE')
+  // Na sessão de suporte, a automação só se PAUSA (auditoria das regras,
+  // 2026-11-18; D18; CLAUDE.md §14): o que ela manda chega à paciente.
+  const doSuporte = bloqueioDoSuporte(ctx, 'criar uma automação (o suporte só pausa)')
+  if (doSuporte) return { error: doSuporte }
   // A automação é da clínica toda (H7): quem tem unidade fixa não muda.
   const daRede = recusaDaConfigDaRede(ctx)
   if (daRede) return { error: daRede }
@@ -260,12 +268,6 @@ export async function criarAutomacaoDeModelo(chave: string): Promise<{ id?: stri
   return { id: data.id as string }
 }
 
-function mesmosLimites(a: LimitesDaAutomacao | null, novos: LimitesDaAutomacao): boolean {
-  const x = { ...LIMITES_PADRAO, ...(a ?? {}) }
-  const b = { ...LIMITES_PADRAO, ...novos }
-  return x.silencioDe === b.silencioDe && x.silencioAte === b.silencioAte && x.tetoPorClienteDia === b.tetoPorClienteDia
-}
-
 export async function salvarAutomacao(input: {
   id:        string
   nome:      string
@@ -275,6 +277,10 @@ export async function salvarAutomacao(input: {
 }): Promise<{ error?: string; problemas?: string[] }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'automations', 'MANAGE')
+  // Na sessão de suporte, a automação só se PAUSA (auditoria das regras,
+  // 2026-11-18; D18; CLAUDE.md §14): o que ela manda chega à paciente.
+  const doSuporte = bloqueioDoSuporte(ctx, 'editar uma automação (o suporte só pausa)')
+  if (doSuporte) return { error: doSuporte }
   // A automação é da clínica toda (H7): quem tem unidade fixa não muda.
   const daRede = recusaDaConfigDaRede(ctx)
   if (daRede) return { error: daRede }
@@ -285,13 +291,6 @@ export async function salvarAutomacao(input: {
     .eq('id', input.id).maybeSingle(), 'buscar a automação')
 
   if (!atual || atual.tenant_id !== ctx.tenantId) return { error: 'Automação não encontrada.' }
-
-  // Os limites decidem quantas mensagens a paciente recebe e em que horário:
-  // o suporte não muda (D18, o Heitor na 2ª volta). Editar o fluxo, pode.
-  if (!mesmosLimites(atual.limites as LimitesDaAutomacao | null, input.limites ?? LIMITES_PADRAO)) {
-    const travado = bloqueioDoSuporte(ctx, 'mudar os limites de uma automação')
-    if (travado) return { error: travado }
-  }
 
   const problemas = validarGrafo(input.grafo)
   const erros = problemas.filter(p => p.grau === 'erro')
@@ -478,7 +477,8 @@ export async function mudarStatusDaAutomacao(
   const admin = createAdminClient()
 
   // Ligar faz a automação mandar mensagem à paciente: o suporte não liga
-  // (D18, o Heitor na 2ª volta). Pausar, pode.
+  // (D18, o Heitor na 2ª volta). Pausar, pode — é a única coisa que o suporte
+  // faz numa automação (auditoria das regras, 2026-11-18).
   if (status === 'ATIVA') {
     const travado = bloqueioDoSuporte(ctx, 'ligar uma automação')
     if (travado) return { error: travado }
@@ -516,6 +516,10 @@ export async function mudarStatusDaAutomacao(
 export async function excluirAutomacao(id: string): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'automations', 'MANAGE')
+  // Na sessão de suporte, a automação só se PAUSA (auditoria das regras,
+  // 2026-11-18; D18; CLAUDE.md §14): o que ela manda chega à paciente.
+  const doSuporte = bloqueioDoSuporte(ctx, 'excluir uma automação (o suporte só pausa)')
+  if (doSuporte) return { error: doSuporte }
   // A automação é da clínica toda (H7): quem tem unidade fixa não muda.
   const daRede = recusaDaConfigDaRede(ctx)
   if (daRede) return { error: daRede }

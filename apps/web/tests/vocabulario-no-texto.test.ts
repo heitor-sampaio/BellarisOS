@@ -69,7 +69,8 @@ const NOMES_VELHOS = /[Tt]ermos e contratos|TERMOS E CONTRATOS|(?<![\w-])Recebim
  * como um cargo fixo) — o exemplo do nome do cargo e do número fala do que a
  * pessoa faz ("Agenda e caixa", "Principal, Comercial…").
  */
-const CARGO_FIXO = /(?<![\w-])(?:recep[çc][ãa]o|recepcionistas?|gerentes?|contadoras?)(?![\w-])/i
+// A49 da 24ª: "secretária" também é nome de função — a linha do Copilot na matriz dizia "A secretária virtual".
+const CARGO_FIXO = /(?<![\w-])(?:recep[çc][ãa]o|recepcionistas?|gerentes?|contadoras?|secret[áa]rias?)(?![\w-])/i
 
 /** A string é frase (texto que alguém lê) — e não chave, caminho ou id? */
 function ehFrase(s: string): boolean {
@@ -128,7 +129,7 @@ function achados(arquivo: string, texto: string, padrao: RegExp): string[] {
  *   GERENTE, docs/regras/plataforma.md) — lá o cargo é fixo de verdade.
  */
 const EXCECOES: readonly (readonly [string, string])[] = [
-  ['apps/web/lib/copilot/prompt.ts', 'Você é o Copilot, a secretária virtual do BellarisOS'],
+  ['apps/web/lib/copilot/prompt.ts', 'Você é o Copilot do BellarisOS'],
   ['apps/web/components/shared/topbar.tsx', 'Gerente'],
   ['apps/web/components/shared/topbar.tsx', 'Recepcionista'],
   ['apps/web/components/shared/topbar.tsx', 'Gerente comercial'],
@@ -351,7 +352,8 @@ describe('Vocabulário: o texto que se lê fala o sistema revisado', { timeout: 
       '<input placeholder="Ex.: Recepção" />',
       "const b = 'O pagamento é confirmado pela recepcionista.'",
       "const c = <p>A contadora baixa o CSV</p>",
+      "const d = 'A secretária virtual: consultar'",
     ].join('\n')
-    expect(achados('exemplo.tsx', exemplo, CARGO_FIXO).map(l => l.split(':')[0])).toEqual(['1', '2', '3', '4'])
+    expect(achados('exemplo.tsx', exemplo, CARGO_FIXO).map(l => l.split(':')[0])).toEqual(['1', '2', '3', '4', '5'])
   })
 })

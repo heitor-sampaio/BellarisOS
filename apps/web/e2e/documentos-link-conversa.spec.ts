@@ -32,6 +32,7 @@ const TEL_B_CONVERSA = `55489${sufixo}`
 let rede: OutraRede | null = null
 let admin: MembroDeTeste | null = null
 let daUnidade: MembroDeTeste | null = null
+let daRedeSemAdmin: MembroDeTeste | null = null
 let falsa: UazapiFalsa | null = null
 let caixa = ''
 let oficial = ''
@@ -71,7 +72,13 @@ test.beforeAll(async () => {
   rede = await criarOutraRede(`dc${marca}`)
   const { data: un } = await db().from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()
   slug = un!.slug
+  // Ligar o envio pela conversa é configuração da rede toda: só a Admin da
+  // rede (o Heitor, 18/11: "Configuração da rede toda só pela conta admin").
   admin = await criarMembro(`dca${marca}`, {
+    tenant: rede.tenantId, rotulo: 'Admin da rede', permissoes: [], cargoDaRede: 'NETWORK_ADMIN',
+  })
+  // Os Documentos em Gerenciar com "A rede inteira", sem ser a Admin: não liga.
+  daRedeSemAdmin = await criarMembro(`dcr${marca}`, {
     tenant: rede.tenantId, rotulo: 'Gerência documentos',
     permissoes: [{ modulo: 'forms', nivel: 'MANAGE' }, { modulo: 'documents', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }],
   })
@@ -133,6 +140,7 @@ test.afterAll(async () => {
   }
   await falsa?.fechar()
   await daUnidade?.limpar()
+  await daRedeSemAdmin?.limpar()
   await admin?.limpar()
   await rede?.limpar()
 })
@@ -154,14 +162,20 @@ test.describe.serial('documentos: link pela conversa do inbox', () => {
     expect((await db().from('document_sign_links').select('id').eq('issued_document_id', docA)).data).toEqual([])
   })
 
-  test('quem é de uma unidade não liga a opção da rede', async ({ browser }) => {
+  test('quem não é a Admin da rede não liga a opção da rede (nem de uma unidade, nem da rede inteira)', async ({ browser }) => {
     await como(browser, daUnidade!.estado, async page => {
       const r = await chamarAcao(page, 'actions/modelos-de-documento.ts', 'definirEnvioDoLinkPelaConversa', `/${slug}/settings?tab=documentos`, [true])
-      // A rede de teste tem UMA unidade, e a recusa diz "rede inteira" assim
-      // mesmo: desde o PO2 (2026-11-16) a fala de uma unidade só troca o RÓTULO
-      // que é só a rede pelo nome dela — "clínica toda" saiu do sistema.
-      expect(r.texto).toContain('Esta escolha vale para a rede inteira')
+      // "clínica toda" saiu do sistema (PO2, 2026-11-16).
+      expect(r.texto).toContain('Esta configuração é só da Admin da rede.')
       expect(r.texto).not.toMatch(/cl[ií]nica/i)
+    })
+    // Até 18/11 bastava "A rede inteira" com os Documentos em Gerenciar.
+    await como(browser, daRedeSemAdmin!.estado, async page => {
+      const r = await chamarAcao(page, 'actions/modelos-de-documento.ts', 'definirEnvioDoLinkPelaConversa', '/admin/settings?tab=documentos', [true])
+      expect(r.texto).toContain('Esta configuração é só da Admin da rede.')
+      await page.goto('/admin/settings?tab=documentos')
+      await expect(page.getByText('Esta configuração é só da Admin da rede.').first()).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Também pela conversa' })).toHaveCount(0)
     })
     expect((await db().from('tenants').select('documentos_link_pela_conversa').eq('id', rede!.tenantId).single()).data)
       .toEqual({ documentos_link_pela_conversa: false })

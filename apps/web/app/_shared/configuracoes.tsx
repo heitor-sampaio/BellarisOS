@@ -56,7 +56,7 @@ import {
   ABAS_DE_CONFIGURACAO, ABAS_DA_REDE, ABAS_DA_UNIDADE, ABAS_DA_REDE_TODA, abaNoPlano, abaLiberada, type ChaveDeAba,
   chaveDaAbaPedida, motivoDaAbaFechada, linkDaAbaNaRede, abasSoDaRede, abasEmGrupos,
 } from '@/lib/configuracoes/abas'
-import { quemMudaNaRede } from '@/lib/equipe/quem-desfaz'
+import { adminsAtivasDaRede } from '@/lib/equipe/quem-desfaz'
 import Link from 'next/link'
 
 /**
@@ -72,11 +72,11 @@ import Link from 'next/link'
  * as sete, a unidade fica sem "Unidades" (o card leva a `/admin/branches`) e
  * sem "LGPD" (a lista é da rede inteira, sem recorte por unidade).
  *
- * Quem tem UNIDADE FIXA (H7, decisão do Heitor, 2026-11-01: "gerente de uma
- * unidade só mexe no que é da unidade") abre as abas da clínica toda
- * (`ABAS_DA_REDE_TODA`) e lê de quem elas são, sem o editor — a action
- * também recusa (`recusaDaConfigDaRede`). Dela são a aba Unidade (os dados,
- * o horário e as salas da unidade do portal) e as Importações.
+ * Quem não é a Admin da rede (o Heitor, 18/11: a configuração da rede toda é
+ * "só pela conta admin"; era quem tinha unidade fixa, H7 de 2026-11-01) abre
+ * as abas da rede toda (`ABAS_DA_REDE_TODA`) e lê de quem elas são, sem o
+ * editor — a action também recusa (`recusaDaConfigDaRede`). Fica com a
+ * permissão a aba Unidade (os dados, o horário e as salas da unidade do portal).
  */
 
 // A lista das abas (e o módulo de cada uma) mora em `lib/configuracoes/abas.ts`,
@@ -159,14 +159,14 @@ export async function Configuracoes({
   const abaFechada = requested && requested !== activeTab
     ? motivoDaAbaFechada(requested, {
         noPortal: abas, gerencia: m => can(ctx, m, 'MANAGE'), noPlano: a => abaNoPlano(a, ctx.plano),
-        unidadeFixa: !mexeNaConfigDaRede(ctx), nomeDoModulo: m => MODULE_LABELS[m],
+        unidadeFixa: ctx.branchId !== null, nomeDoModulo: m => MODULE_LABELS[m],
         abriu: tabs.find(t => t.key === activeTab)?.label ?? primeira.label,
       })
     : null
 
   // A1 da 14ª: a aba que só a rede tem leva a /admin, para quem é da rede.
   const linkDaAbaFechada = abaFechada && requested
-    ? linkDaAbaNaRede(requested, { noPortal: abas, unidadeFixa: !mexeNaConfigDaRede(ctx) })
+    ? linkDaAbaNaRede(requested, { noPortal: abas, unidadeFixa: ctx.branchId !== null })
     : null
   // A1 da 14ª (CLAUDE.md §1, "otimize para a clínica única"): no portal da
   // unidade, quem é da rede tem à mão as abas que só a clínica toda tem
@@ -175,17 +175,15 @@ export async function Configuracoes({
     ? abasSoDaRede(m => can(ctx, m, 'MANAGE'), ctx.plano)
     : []
 
-  // H7 (decisão do Heitor, 2026-11-01): quem tem unidade fixa abre a aba da
-  // configuração da clínica toda e lê de quem ela é — sem o editor, e sem ler
-  // o que só o editor usa. A Geral mostra os dados, só para ler.
+  // Quem não é a Admin da rede (18/11; era a unidade fixa, H7) abre a aba da
+  // configuração da rede toda e lê de quem ela é — sem o editor, e sem ler o
+  // que só o editor usa. A Geral mostra os dados, só para ler.
   const daRedeToda = !mexeNaConfigDaRede(ctx) && ABAS_DA_REDE_TODA.includes(activeTab)
   const conteudo: ChaveDeAba | null = daRedeToda && activeTab !== 'general' ? null : activeTab
-  // A5 da 14ª (princípios 3 e 7): a aba da clínica toda diz QUEM muda, pelo
+  // A5 da 14ª (princípios 3 e 7): a aba da rede toda diz QUEM muda, pelo
   // nome — como o estorno diz quem estorna (A33 da 8ª).
-  const abaAtiva = TABS.find(t => t.key === activeTab)!
-  const quemMuda = daRedeToda
-    ? await quemMudaNaRede(ctx.tenantId!, [abaAtiva.module, ...((abaAtiva as { alternativas?: readonly AppModule[] }).alternativas ?? [])])
-    : []
+  // Desde 18/11 quem muda é só a Admin da rede ("só pela conta admin").
+  const quemMuda = daRedeToda ? await adminsAtivasDaRede(ctx.tenantId!) : []
 
   const supabase = await createClient()
   const admin    = createAdminClient()
@@ -453,7 +451,7 @@ export async function Configuracoes({
       )}
 
 
-      {/* A configuração da clínica toda, para quem tem unidade fixa (H7). */}
+      {/* A configuração da rede toda, para quem não é a Admin da rede. */}
       {daRedeToda && (
         <div className="card" data-config-da-rede style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '14px 18px', marginBottom: conteudo ? 20 : 0 }}>
           <Lock size={15} aria-hidden style={{ color: 'var(--text-faint)', flexShrink: 0, marginTop: 2 }} />
@@ -526,7 +524,7 @@ export async function Configuracoes({
 
       {conteudo === 'documentos' && modelosDeDocumento && (
         <SettingsDocumentos modelos={modelosDeDocumento} imagens={imagensDosModelos}
-          envio={{ pelaConversa: linkPelaConversa, podeMudar: ctx.branchId === null }} />
+          envio={{ pelaConversa: linkPelaConversa, podeMudar: mexeNaConfigDaRede(ctx) }} />
       )}
 
       {conteudo === 'integrations' && (

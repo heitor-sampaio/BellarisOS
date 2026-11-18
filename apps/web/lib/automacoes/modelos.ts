@@ -254,6 +254,32 @@ export const MODELOS_DE_AUTOMACAO: readonly ModeloDeAutomacao[] = [
       ],
     }),
   },
+  {
+    // O lembrete "Marque o ganho" (A45 da 9ª) era do cron `crm-lembretes`,
+    // ligado em todas as redes. Saiu dali e virou modelo (auditoria das
+    // regras, 2026-11-18): r2-cfg-04, "toda e qualquer automação deve ser
+    // feita através dos módulos de automações"; princípio 6. Nasce RASCUNHO.
+    // O card não anda: quem marca o ganho é a pessoa (crm-05).
+    chave: 'marque-o-ganho',
+    nome: 'Marque o ganho',
+    descricao: 'Quando a cliente de uma oportunidade aberta compra (pacote, pré-pago ou plano aceito), avisa no sino quem cuida da oportunidade para levar o card a Ganho. O card não muda sozinho.',
+    revisar: 'O texto do aviso.',
+    grafo: () => ({
+      nos: [
+        { id: 'n_ganho_fato', tipo: NODES.GATILHO_EVENTO, nome: 'Cliente da oportunidade comprou', pos: { x: 80, y: 120 },
+          config: { evento: 'lead.cliente_comprou' } },
+        { id: 'n_ganho_aviso', tipo: NODES.ACAO_NOTIFICAR_EQUIPE, nome: 'Avisar quem cuida', pos: { x: 360, y: 120 },
+          config: {
+            alvo: 'responsavel',
+            titulo: 'Marque o ganho: {{evento.dados.nome}}',
+            corpo: '{{evento.dados.nome}} comprou {{evento.dados.compra}}, e a oportunidade dela segue aberta. Se fechou, leve o card a Ganho no quadro — ele não muda sozinho.',
+          } },
+      ],
+      ligacoes: [
+        { id: 'l_ganho_1', de: 'n_ganho_fato', para: 'n_ganho_aviso' },
+      ],
+    }),
+  },
 ]
 
 export function modeloDeAutomacao(chave: string): ModeloDeAutomacao | null {

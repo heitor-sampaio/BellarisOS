@@ -10,6 +10,7 @@ import { catalogoDePacotes } from '@/lib/pacotes/leitura'
 import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
 import { equipeDaVenda } from '@/lib/vendas/equipe-da-venda'
 import { contratoAssinadoDoPlano, contratoSemDocumentoDaCliente } from '@/lib/documentos/plano'
+import { combinadoDoPlano } from '@/lib/plano-de-tratamento/desconto-combinado'
 
 /**
  * Monta o que o `CheckoutWizard` precisa para um plano.
@@ -37,7 +38,7 @@ export async function montarCheckoutPlan(
 
   const planRaw = await ler(admin
     .from('treatment_plans')
-    .select('id, status, professional_notes, professional_id, client_id, branch_id, vendido_por, clients(name, document, documento_numero, phone)')
+    .select('id, status, professional_notes, professional_id, client_id, branch_id, vendido_por, desconto_combinado_tipo, desconto_combinado_valor, clients(name, document, documento_numero, phone)')
     .eq('id', planId)
     .eq('branch_id', branchId)
     .maybeSingle(), 'carregar o plano do checkout')
@@ -108,6 +109,8 @@ export async function montarCheckoutPlan(
       comissaoDoPlanoPct: configDaComissao?.plano_pct != null ? Number(configDaComissao.plano_pct) : null,
       contratoAssinado,
       contratoSemDocumento,
+      // 22ª A20: o desconto do plano combinado no editor — o checkout parte dele.
+      descontoCombinado: combinadoDoPlano(planRaw as { desconto_combinado_tipo?: string | null; desconto_combinado_valor?: number | string | null }),
     },
   }
 }

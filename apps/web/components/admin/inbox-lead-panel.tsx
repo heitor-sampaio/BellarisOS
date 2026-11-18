@@ -26,14 +26,15 @@ import { useOrigensDaRede } from '@/components/shared/use-origens-da-rede'
 import { StageOptions } from '@/components/branch/stage-options'
 import { LeadTimeline } from '@/components/branch/lead-timeline'
 import {
-  getConversationCard, criarOportunidade, atualizarContato, definirSituacaoOportunidade,
+  getConversationCard, criarOportunidade, atualizarContato, definirSituacaoOportunidade, automacoesAoDefinirSituacao,
   type Conversation,
   type ConversationCard,
   type Oportunidade,
   type InboxStage,
   type ThreadDoContato,
 } from '@/actions/inbox'
-import { updateLead, updateLeadStage } from '@/actions/leads'
+import { updateLead, updateLeadStage, automacoesAoMoverOCard } from '@/actions/leads'
+import { usePerguntaDasAutomacoes } from '@/components/branch/pergunta-das-automacoes'
 import { ClientForm } from '@/components/branch/client-form'
 import {
   getCrmSchedulingData,
@@ -213,7 +214,17 @@ export function InboxLeadPanel({
   const [erro, setErro] = useState<string | null>(null)
   // "Por que perdeu?": marcar perdida (ou levar a uma etapa perdida) pergunta o
   // motivo antes (2026-10-21, decisão do Heitor).
-  const [perguntaPerda, setPerguntaPerda] = useState<{ leadId: string; etapa?: string } | null>(null)
+  const [perguntaPerda, setPerguntaPerda] = useState<{ leadId: string; etapa?: string; disparar: boolean } | null>(null)
+  // A35 da 22ª (o Heitor, 2026-11-18): mudar a etapa ou a situação com
+  // automação ligada que casa com a mudança pergunta "Disparar?" antes.
+  const { perguntar, janela: perguntaDasAutomacoes } = usePerguntaDasAutomacoes()
+  /** Ganhou, Perdeu ou Reabrir: a pergunta das automações, depois o movimento (a perda pede o motivo). */
+  async function definirSituacao(leadId: string, d: 'OPEN' | 'WON' | 'LOST') {
+    const disparar = await perguntar(() => automacoesAoDefinirSituacao(leadId, d))
+    if (disparar === null) return
+    if (d === 'LOST') { setErroDaPerda(null); setPerguntaPerda({ leadId, disparar }); return }
+    await comAcao(() => definirSituacaoOportunidade(leadId, d, null, disparar))
+  }
   const [perdendo, setPerdendo] = useState(false)
   const [erroDaPerda, setErroDaPerda] = useState<string | null>(null)
   const [aviso, setAviso] = useState<{ funnelId: string; leadId: string } | null>(null)
@@ -553,13 +564,15 @@ export function InboxLeadPanel({
             disabled={disabled}
             aberta={expandida === o.id}
             onToggle={() => setExpandida(e => (e === o.id ? null : o.id))}
-            onConcluir={d => { if (d === 'LOST') { setErroDaPerda(null); setPerguntaPerda({ leadId: o.id }) } else void comAcao(() => definirSituacaoOportunidade(o.id, d)) }}
-            onPerder={etapa => { setErroDaPerda(null); setPerguntaPerda({ leadId: o.id, etapa }) }}
+            onConcluir={d => void definirSituacao(o.id, d)}
+            onPerder={(etapa, disparar) => { setErroDaPerda(null); setPerguntaPerda({ leadId: o.id, etapa, disparar }) }}
+            perguntar={perguntar}
             onMudou={() => { void recarregar(); setHistoricoKey(k => k + 1); onLeadChanged?.() }}
             onAgendar={card.comAgenda ? () => setScheduling(o.id) : undefined}
           />
         ))}
 
+        {perguntaDasAutomacoes}
         {perguntaPerda && (
           <PerguntaDaPerda enviando={perdendo} erro={erroDaPerda} onVoltar={() => setPerguntaPerda(null)}
             oportunidade={(() => {
@@ -573,10 +586,10 @@ export function InboxLeadPanel({
             })()}
             onConfirmar={async perda => {
               setPerdendo(true); setErroDaPerda(null)
-              const { leadId, etapa } = perguntaPerda
+              const { leadId, etapa, disparar } = perguntaPerda
               const r = etapa
-                ? await updateLeadStage(leadId, etapa, slug, perda).then(x => ({ ok: !x?.error, error: x?.error }))
-                : await definirSituacaoOportunidade(leadId, 'LOST', perda)
+                ? await updateLeadStage(leadId, etapa, slug, perda, disparar).then(x => ({ ok: !x?.error, error: x?.error }))
+                : await definirSituacaoOportunidade(leadId, 'LOST', perda, disparar)
               setPerdendo(false)
               if (!r.ok) { setErroDaPerda(r.error ?? 'Não foi possível marcar como perdida.'); return }
               setPerguntaPerda(null)
@@ -654,7 +667,7 @@ export function InboxLeadPanel({
                       <button
                         type="button"
                         title="Voltar para em aberto"
-                        onClick={() => comAcao(() => definirSituacaoOportunidade(o.id, 'OPEN'))}
+                        onClick={() => void definirSituacao(o.id, 'OPEN')}
                         style={{
                           flexShrink: 0, border: 'none', background: 'none', padding: 0,
                           cursor: 'pointer', fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--brand)',
@@ -762,7 +775,7 @@ function JanelaDeCadastro({ onFechar, children }: { onFechar: () => void; childr
 /** Uma oportunidade aberta: resumo sempre visível, detalhes ao expandir. */
 function OportunidadeItem({
   oportunidade: o, stages, funnels, corDaEtapa, procedimentos, slug, disabled, aberta,
-  onToggle, onConcluir, onMudou, onAgendar, onPerder,
+  onToggle, onConcluir, onMudou, onAgendar, onPerder, perguntar,
 }: {
   oportunidade: Oportunidade
   stages:   InboxStage[]
@@ -776,7 +789,9 @@ function OportunidadeItem({
   onToggle:   () => void
   onConcluir: (situacao: 'OPEN' | 'WON' | 'LOST') => void
   /** Escolheu uma etapa de desfecho perdido: quem chama pergunta o motivo. */
-  onPerder:   (etapa: string) => void
+  onPerder:   (etapa: string, disparar: boolean) => void
+  /** A35 da 22ª: a pergunta das automações do painel. */
+  perguntar:  ReturnType<typeof usePerguntaDasAutomacoes>['perguntar']
   onMudou:    () => void
   /** Ausente: a agenda está fora do plano da rede. */
   onAgendar?: () => void
@@ -795,11 +810,15 @@ function OportunidadeItem({
     (t, id) => t + (procedimentos.find(p => p.id === id)?.price ?? 0), 0,
   )
 
-  function mudarEtapa(next: string) {
-    if (stages.find(s => s.id === next)?.outcome === 'LOST') { onPerder(next); return }
+  async function mudarEtapa(next: string) {
+    if (!next || next === stageId) return
+    // A35 da 22ª: automação ligada que casa com a mudança → "Disparar?" antes.
+    const disparar = await perguntar(() => automacoesAoMoverOCard(o.id, next))
+    if (disparar === null) return
+    if (stages.find(s => s.id === next)?.outcome === 'LOST') { onPerder(next, disparar); return }
     setStageId(next)
     startSave(async () => {
-      await updateLeadStage(o.id, next, slug)
+      await updateLeadStage(o.id, next, slug, null, disparar)
       onMudou()
     })
   }
@@ -872,7 +891,7 @@ function OportunidadeItem({
       {aberta && (
         <div style={{ padding: '10px', borderTop: '1px solid var(--hairline)', display: 'flex', flexDirection: 'column', gap: 8 }}>
           <select className="field" value={stageId} disabled={disabled}
-            onChange={e => mudarEtapa(e.target.value)} style={{ fontSize: 'var(--text-sm-sz)' }}>
+            onChange={e => void mudarEtapa(e.target.value)} style={{ fontSize: 'var(--text-sm-sz)' }}>
             <option value="">—</option>
             <StageOptions funnels={funnels} stages={stages} />
           </select>

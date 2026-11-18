@@ -18,8 +18,12 @@ import type { ContextoDaExecucao } from './contexto'
  */
 
 interface AvisoParaEquipe {
-  alvo:      'usuario' | 'cargo' | 'unidade'
+  alvo:      'usuario' | 'cargo' | 'unidade' | 'responsavel'
   alvoId:    string | null
+  /** Em `responsavel`: quem cuida da oportunidade do fluxo (`lead.responsavelId`). */
+  responsavelId?: string | null
+  /** A oportunidade do fluxo: o aviso abre o card (o "Abrir" do sino). */
+  leadId?:   string | null
   titulo:    string
   corpo:     string
   automacao: string
@@ -39,13 +43,22 @@ export async function notificarEquipe(
 ): Promise<Record<string, unknown>> {
   const admin = createAdminClient()
 
-  let q = admin.from('users').select('id').eq('tenant_id', tenantId).eq('is_active', true)
+  // "Quem cuida da oportunidade" (o modelo "Marque o ganho", auditoria das
+  // regras, 2026-11-18): o card sem responsável não tem a quem avisar — é um
+  // fato, não erro de configuração.
+  if (aviso.alvo === 'responsavel' && !aviso.responsavelId) {
+    return { avisados: 0, motivo: 'A oportunidade não tem responsável.' }
+  }
+
+  let q = admin.from('users').select('id, branch_id, branches(slug)').eq('tenant_id', tenantId).eq('is_active', true)
 
   // Alvo sem id é configuração incompleta, e LANÇA: o passo tem de aparecer
   // como falho no histórico. Devolver um resumo dizendo "não avisei" deixaria
   // o run verde, e um run verde que não fez nada é pior que um vermelho — é a
   // mentira que o passo a passo existe para não contar.
-  if (aviso.alvo === 'usuario') {
+  if (aviso.alvo === 'responsavel') {
+    q = q.eq('id', aviso.responsavelId!)
+  } else if (aviso.alvo === 'usuario') {
     if (!aviso.alvoId) throw new Error('Nenhuma pessoa escolhida para avisar.')
     q = q.eq('id', aviso.alvoId)
   } else if (aviso.alvo === 'cargo') {
@@ -62,21 +75,32 @@ export async function notificarEquipe(
   const { data, error } = await q
   if (error) throw new Error(`Não consegui achar quem avisar: ${error.message}`)
 
-  const destinatarios = (data ?? []).map(u => u.id as string)
+  const destinatarios = (data ?? []) as unknown as { id: string; branch_id?: string | null; branches?: { slug?: string } | null }[]
   if (!destinatarios.length) return { avisados: 0, motivo: 'Ninguém corresponde ao alvo.' }
 
-  for (const userId of destinatarios) {
-    await notifyUser(admin, userId, {
+  for (const u of destinatarios) {
+    await notifyUser(admin, u.id, {
       type:  'automacao',
       title: aviso.titulo || 'Automação',
       body:  aviso.corpo,
       // A origem vai no payload para a tela poder dizer de onde veio, em vez
-      // de mais um aviso anônimo no sino.
-      data:  { automacao: aviso.automacao },
+      // de mais um aviso anônimo no sino. Com oportunidade, o "Abrir" leva ao
+      // card no portal de quem recebe (como o lembrete do cron fazia).
+      data:  {
+        automacao: aviso.automacao,
+        ...(aviso.leadId ? { leadId: aviso.leadId, caminho: caminhoDoCard(u, aviso.leadId) } : {}),
+      },
     })
   }
 
   return { avisados: destinatarios.length, alvo: aviso.alvo }
+}
+
+/** O quadro no portal de quem recebe, com o card aberto (`?lead=`). */
+function caminhoDoCard(u: { branch_id?: string | null; branches?: { slug?: string } | null }, leadId: string): string {
+  return u.branch_id && u.branches?.slug
+    ? `/${u.branches.slug}/oportunidades?lead=${leadId}`
+    : `/admin/oportunidades?lead=${leadId}`
 }
 
 /**

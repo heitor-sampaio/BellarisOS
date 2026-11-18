@@ -65,9 +65,12 @@ test.describe('Dashboards: a explicação fica na dica', () => {
     await moraNaDica(page, ticket, 'Como o ticket médio é contado', /Pago pelas clientes ÷/)
     await moraNaDica(page, corpo, 'O que é a taxa de aproveitamento', /Horários passados concluídos ÷ total marcado/)
 
-    // A rede de teste tem duas unidades: o ranking aparece, e o recorte dele mora na dica.
+    // A rede de teste tem duas unidades: o ranking aparece — sem a coluna
+    // "Novos" nem a dica dela. "Novos clientes" só na rede (o Heitor, 18/11:
+    // a cliente é da rede; A44 da 24ª): a cliente não é nova numa unidade.
     if (await page.getByText('Ranking de unidades', { exact: true }).count() > 0) {
-      await moraNaDica(page, corpo, 'Como os novos de cada unidade são contados', /conta em cada uma/)
+      await expect(corpo.getByRole('button', { name: 'Como os novos de cada unidade são contados' })).toHaveCount(0)
+      await expect(corpo.getByRole('columnheader', { name: 'Novos', exact: true })).toHaveCount(0)
     }
 
     const clientes = page.locator('[data-clientes-do-periodo]').first()

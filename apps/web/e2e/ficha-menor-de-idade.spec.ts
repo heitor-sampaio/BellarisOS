@@ -12,8 +12,10 @@ import { diaEmQueAUnidadeAbre } from './apoio/datas'
  * Anotações. Com `idadeEm` < 18, a ficha pede o "Responsável legal" (nome,
  * CPF, parentesco, telefone); a agenda e o atendimento mostram "Menor"; o
  * termo ganha as variáveis do responsável e é assinado por ele. Avisar, não
- * barrar (princípio 2): sem responsável, a ficha e o atendimento avisam, e o
- * termo que pede o responsável fica INCOMPLETO. Numa rede [e2e] própria.
+ * barrar ("termo assinado pelo responsável (avisar, não barrar)"): sem
+ * responsável, a ficha e o atendimento avisam, e o termo segue para assinar —
+ * o responsável sai vazio (auditoria das regras, 2026-11-18: a F29 deixava o
+ * termo INCOMPLETO e o início travado). Numa rede [e2e] própria.
  */
 
 test.describe.configure({ mode: 'serial' })
@@ -151,7 +153,7 @@ test('a janela da agenda e o atendimento mostram "Menor" e o responsável — ou
   })
 })
 
-test('o termo cita o responsável e é assinado por ele; sem responsável, fica incompleto', async ({ browser }) => {
+test('o termo cita o responsável e é assinado por ele; sem responsável, avisa e não trava', async ({ browser }) => {
   const sem = await menorAgendada(`Termo sem ${marca}`, {}, '14:00')
   const com = await menorAgendada(`Termo com ${marca}`, { responsavel_nome: 'Marta Lima', responsavel_cpf: CPF_DA_MAE, responsavel_parentesco: 'Mãe' }, '15:00')
   const docDe = async (cliente: string) => (await db().from('issued_documents').select('id').eq('client_id', cliente).single<{ id: string }>()).data!.id
@@ -161,10 +163,14 @@ test('o termo cita o responsável e é assinado por ele; sem responsável, fica 
 
   await como(browser, async p => {
     await p.goto(`/${slug}/clients/${sem.cliente}`)
-    await expect(p.locator('[data-falta-no-cadastro]'), 'A24: a falta aparece na Visão geral')
-      .toContainText('falta no cadastro Responsável legal · Nome do responsável (menor de idade), Responsável legal · CPF do responsável')
+    // Avisar: a Visão geral diz que falta o responsável. Não barrar: o termo não fica em "faltam dados".
+    await expect(p.locator('[data-aviso-do-menor]')).toContainText('sem responsável legal no cadastro')
+    await expect(p.locator('[data-falta-no-cadastro]'), 'o responsável não é "falta no cadastro" do termo').toHaveCount(0)
+    // Abrir o termo o monta: sai PENDENTE, para assinar.
+    await p.goto(`/${slug}/documentos/${docSem}/assinar`)
+    await expect(p.getByRole('button', { name: 'Assinar no papel' })).toBeVisible()
   })
-  expect((await db().from('issued_documents').select('status').eq('id', docSem).single()).data?.status).toBe('INCOMPLETO')
+  expect((await db().from('issued_documents').select('status').eq('id', docSem).single()).data?.status).toBe('PENDENTE')
 
   await como(browser, async p => {
     await p.goto(`/${slug}/documentos/${docCom}/assinar`)

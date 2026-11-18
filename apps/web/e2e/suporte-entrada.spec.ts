@@ -33,7 +33,8 @@ test.beforeAll(async () => {
   test.setTimeout(300_000)
   outra = await criarOutraRede(`se${marca}`)
   alvo = await criarMembro(`sealvo${marca}`, { tenant: outra.tenantId, rotulo: 'Alvo', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }] })
-  gestor = await criarMembro(`segest${marca}`, { tenant: outra.tenantId, rotulo: 'Gestor', permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }] })
+  // Quem autoriza o suporte é a Admin da rede (2026-11-18).
+  gestor = await criarMembro(`segest${marca}`, { tenant: outra.tenantId, rotulo: 'Gestor', donoDaRede: true, permissoes: [] })
   atendente = await criarAtendente(`se${marca}`, { papel: 'SUPORTE' })
 })
 

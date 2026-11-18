@@ -167,7 +167,7 @@ test.describe.serial('indicadores com cenário conhecido', () => {
       revenueCash: num(r.revenue_cash), revenuePending: num(r.revenue_pending), expensesCash: num(r.expenses_cash),
       serviceRevenue: num(r.service_revenue), completed: num(r.appointments_completed), total: num(r.appointments_total),
       cancelled: num(r.appointments_cancelled), noShow: num(r.appointments_no_show), minutes: num(r.scheduled_minutes),
-      newClients: num(r.new_clients), commOpen: num(r.commissions_open), commPaid: num(r.commissions_paid),
+      newClients: r.new_clients, commOpen: num(r.commissions_open), commPaid: num(r.commissions_paid),
       charged: num(r.appointments_charged),
     }).toEqual({
       revenueCash: 300,     // t1 + t2 (o estorno some dos dois lados)
@@ -176,7 +176,9 @@ test.describe.serial('indicadores com cenário conhecido', () => {
       serviceRevenue: 300,  // a1 + a2, preço dos concluídos
       completed: 2, total: 5, cancelled: 1, noShow: 1,
       minutes: 60 + 30 + 20, // cancelado e falta não ocupam agenda
-      newClients: 1,        // só C2: C1 é antigo e C3 é de OUTRA unidade
+      // 24ª (o Heitor, 18/11): "Novos clientes" só existe na rede — a unidade [e2e]
+      // é uma das unidades da rede, e o número dela é nulo.
+      newClients: null,
       commOpen: 25, commPaid: 10, // 20 de a1 + 5 do acerto de a0 lançado em março; o −2 é de abril
       charged: 2,           // os concluídos COBRADOS (preço > 0): o denominador do ticket
     })
@@ -191,7 +193,8 @@ test.describe.serial('indicadores com cenário conhecido', () => {
     // cliente DELE é o novo cliente com agendamento não cancelado com ele —
     // C2. Era 0 por construção ("clientes novos não são do profissional"), e o
     // card "Novos clientes" de quem tem "só os meus" dizia sempre 0.
-    expect(num(r.new_clients), 'C2, novo e atendido por ele').toBe(1)
+    // 24ª: numa unidade da rede de várias, o número não existe (nulo), também no "só os meus".
+    expect(r.new_clients, 'só na rede').toBeNull()
   })
 
   test('séries: por mês e por dia, receita e despesa pagas', async () => {
@@ -205,8 +208,8 @@ test.describe.serial('indicadores com cenário conhecido', () => {
   test('por unidade: a linha da unidade bate com o núcleo', async () => {
     const { data } = await banco().rpc('metrics_by_branch', { p_tenant: c!.tenant, p_from: DE, p_to: ATE })
     const r = data!.find((l: Record<string, unknown>) => l.branch_id === c!.unidade)!
-    expect([num(r.revenue_cash), num(r.revenue_pending), num(r.expenses_cash), num(r.service_revenue), num(r.new_clients)])
-      .toEqual([300, 70, 40, 300, 1])
+    expect([num(r.revenue_cash), num(r.revenue_pending), num(r.expenses_cash), num(r.service_revenue), r.new_clients])
+      .toEqual([300, 70, 40, 300, null]) // 24ª: "Novos clientes" só na rede
     expect([num(r.commissions_open), num(r.commissions_paid)], 'comissão pelo lançamento, como no núcleo').toEqual([25, 10])
     // Conta TODAS as movimentações da janela, estorno incluído — é contagem de
     // lançamentos, não de dinheiro: t1..t6 e a contra-transação.
@@ -244,7 +247,8 @@ test.describe.serial('indicadores com cenário conhecido', () => {
       .toEqual([2, 1, 1]) // C1 já tinha sido atendida antes da janela
 
     const { data: novos } = await db.rpc('metrics_new_clients_series', { ...args(), p_granularity: 'month' })
-    expect(novos!.map((b: Record<string, unknown>) => num(b.count))).toEqual([1])
+    // 24ª: na unidade da rede de várias, a série de novos clientes vem vazia (só na rede).
+    expect(novos!.map((b: Record<string, unknown>) => num(b.count))).toEqual([])
   })
 
   test('relatórios, aba por aba: o que cada gráfico desenha (metrics_relatorio)', async () => {

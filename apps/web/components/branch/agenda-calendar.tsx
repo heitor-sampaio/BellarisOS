@@ -29,6 +29,7 @@ import type { BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
 import { blocosDosBloqueios } from '@/lib/agenda/horario-livre'
 import { dayKeyTZ, naParede, daParede, isoNaParede } from '@/lib/datetime'
 import { useFuso, NotaDoFuso } from '@/components/shared/fuso'
+import { ROTULO_DO_STATUS } from '@/lib/agenda/rotulo-do-status'
 
 type ViewMode = 'dia' | 'semana' | 'mes'
 
@@ -59,7 +60,9 @@ interface AgendaCalendarProps {
   meuId?: string | null
   /** Conclui o atendimento (o Prontuário em Gerenciar) — sem ele, a janela diz quem conclui antes do Iniciar (A20 da 10ª). */
   podeConcluir?: boolean
-  /** A9 da 20ª: sem concluir, quem conclui — o Prontuário em Gerenciar, pelo nome (quemConcluiOAtendimento). */
+  /** O Atendimento "só os meus": inicia e conclui só os dela. */
+  atendimentoProprio?: boolean
+  /** A9 da 20ª: sem iniciar e concluir, quem conclui — o Atendimento em Gerenciar, pelo nome (quemConcluiOAtendimento). */
   quemConclui?: string[] | null
   /** O horário de funcionamento da unidade e de cada profissional (nulo = o padrão / segue a unidade). */
   horarioDaUnidade?:          Horario | null
@@ -190,7 +193,7 @@ function todayDate(fuso: string): Date {
 // -- Component ----------------------------------------------------------------
 
 export function AgendaCalendar({
-  branchId, slug, events, procedures, professionals, rooms, canWrite, userRole, escopoProprio, meuId = null, podeConcluir = true, quemConclui = null,
+  branchId, slug, events, procedures, professionals, rooms, canWrite, userRole, escopoProprio, meuId = null, podeConcluir = true, atendimentoProprio = false, quemConclui = null,
   horarioDaUnidade = null, horariosDosProfissionais = {}, ocupadoForaDosProfissionais = {}, dataInicial = null, comCancelados = false,
   bloqueios = [], colunasDeQuemNaoAtende = [],
 }: AgendaCalendarProps) {
@@ -434,7 +437,7 @@ export function AgendaCalendar({
               {[
                 { color: 'var(--success)', label: 'Confirmado' },
                 { color: 'var(--brand)', label: 'Em atendimento' },
-                { color: 'var(--text-faint)', label: 'Aguardando' },
+                { color: 'var(--text-faint)', label: ROTULO_DO_STATUS.SCHEDULED },
               ].map(l => (
                 <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: l.color }} />
@@ -516,6 +519,7 @@ export function AgendaCalendar({
           escopoProprio={escopoProprio}
           podeGerenciar={canWrite}
           podeConcluir={podeConcluir}
+          atendimentoProprio={atendimentoProprio}
           quemConclui={quemConclui}
           meuId={meuId}
           onClose={() => setSelectedEvent(null)}

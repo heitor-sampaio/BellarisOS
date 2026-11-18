@@ -38,8 +38,10 @@ test.beforeAll(async () => {
   asaas = await subirAsaasFalso(PORTA)
   admin = await criarAtendente(`asad${marca}`, { papel: 'ADMIN' })
   outra = await criarOutraRede(`as${marca}`)
+  // Quem administra a rede: a Admin da rede — a aba Assinatura é da rede toda
+  // (o Heitor, 18/11: "Configuração da rede toda só pela conta admin").
   gestor = await criarMembro(`asgest${marca}`, {
-    tenant: outra.tenantId, rotulo: 'Gestor', permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }],
+    tenant: outra.tenantId, rotulo: 'Gestor', donoDaRede: true, permissoes: [],
   })
 })
 

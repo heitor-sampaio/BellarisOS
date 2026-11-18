@@ -6,6 +6,7 @@ import { rotulosDoPeriodo } from '@/lib/rotulos-do-periodo'
 import Link from 'next/link'
 import { SeloUnidadeDesativada } from '@/components/shared/selo-unidade-desativada'
 import { Dica } from '@/components/shared/dica'
+import { TEXTO_DA_NOTA_DO_PROCEDIMENTO } from '@/lib/avaliacao/notas'
 import { DEFINICOES, type DefinicaoDoNumero } from '@/lib/metrics/definicoes'
 import {
   TrendingUp, TrendingDown, Users, Calendar,
@@ -32,7 +33,6 @@ export interface BranchStat {
   slug:         string
   revenue:      number
   appointments: number
-  newClients:   number
   ticketMedio:  number
 }
 
@@ -98,7 +98,8 @@ export interface AdminDashboardProps {
   totalRevenue:      number
   totalCost:         number
   totalAppointments: number
-  newClients:       number
+  /** Só na rede (o Heitor, 18/11): nulo no recorte de uma unidade — o cartão some. */
+  newClients:       number | null
   ticketMedio:      number | null
   /** O denominador do ticket: as clientes que pagaram no período. */
   clientesQuePagaram: number
@@ -118,7 +119,7 @@ export interface AdminDashboardProps {
   hrefDaRede?:      string
   prevRevenue:      number
   prevAppointments: number
-  prevNewClients:   number
+  prevNewClients:   number | null
   branchStats:      BranchStat[]
   todayTotal:       number
   todayByBranch:    TodayBranchStat[]
@@ -484,7 +485,7 @@ export function AdminDashboardView({
 
   const deltaRevenue      = pctDelta(totalRevenue,      prevRevenue)
   const deltaAppointments = pctDelta(totalAppointments, prevAppointments)
-  const deltaNewClients   = pctDelta(newClients,        prevNewClients)
+  const deltaNewClients   = newClients === null ? null : pctDelta(newClients, prevNewClients ?? 0)
 
   const maxRevenue  = Math.max(...branchStats.map(b => b.revenue), 1)
   const sortedStats = [...branchStats].sort((a, b) => b.revenue - a.revenue)
@@ -578,7 +579,8 @@ export function AdminDashboardView({
           anterior={rotulo.anterior}
           icon={<Calendar size={16} color="var(--brand)" />}
         />}
-        {can('clients') && <KpiCard
+        {/* "Novos clientes" só na rede (o Heitor, 18/11): no recorte de uma unidade, o número não existe. */}
+        {can('clients') && newClients !== null && <KpiCard
           label="Novos clientes"
           value={newClients}
           format="int"
@@ -621,17 +623,9 @@ export function AdminDashboardView({
               com a agenda "só os meus", fica de fora (a evolução segue). */}
           {!agendaPropria && !umaUnidade && (<>
           <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            {/* A26 da 14ª: a mesma cliente conta em cada unidade em que foi
-                atendida — a coluna somava mais que o cartão "Novos clientes", e a
-                tela não dizia por quê (princípio 3). Diz na dica do título (2026-11-16). */}
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking de unidades</span>
-              <Dica rotulo="Como os novos de cada unidade são contados">
-                <span data-recorte-do-ranking>
-                  Novos: as clientes novas atendidas na unidade (com agendamento nela). Quem foi atendida em duas unidades conta em cada uma, por isso a soma pode passar do cartão “Novos clientes”.
-                </span>
-              </Dica>
-            </span>
+            {/* "Novos clientes" só na rede (o Heitor, 18/11: "o cliente é da rede"): o
+                ranking não tem a coluna "Novos" — a cliente não é de uma unidade (A44 da 24ª). */}
+            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking de unidades</span>
             <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{monthLabel}</span>
           </div>
 
@@ -643,13 +637,13 @@ export function AdminDashboardView({
           <table className="cards-mobile" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                {['#', 'Unidade', 'Receita', 'Atend.', 'Novos', 'Ticket médio', ''].map((h, i) => (
+                {['#', 'Unidade', 'Receita', 'Atend.', 'Ticket médio', ''].map((h, i) => (
                   <th key={i} style={{
                     padding: i === 0 ? '9px 8px 9px 18px' : '9px 16px',
-                    textAlign: i <= 1 ? 'left' : (i === 6 ? 'right' : 'right'),
+                    textAlign: i <= 1 ? 'left' : 'right',
                     fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)',
                     letterSpacing: '0.06em', textTransform: 'uppercase',
-                    width: i === 0 ? 32 : i === 6 ? 56 : undefined,
+                    width: i === 0 ? 32 : i === 5 ? 56 : undefined,
                   }}>{h}</th>
                 ))}
               </tr>
@@ -681,9 +675,6 @@ export function AdminDashboardView({
                     </td>
                     <td data-label="Atend." data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>
                       {b.appointments}
-                    </td>
-                    <td data-label="Novos" data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>
-                      {b.newClients}
                     </td>
                     <td data-label="Ticket médio" data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                       {b.ticketMedio > 0 ? fmtBRL(b.ticketMedio) : '—'}
@@ -1194,7 +1185,7 @@ export function AdminDashboardView({
         {/* Procedimentos melhor avaliados */}
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8, background: 'var(--success-bg)' }}>
-            <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--success)' }}>★ Procedimentos melhor avaliados</span>
+            <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--success)' }}>★ Procedimentos melhor avaliados<Dica rotulo="Sobre a nota dos procedimentos">{TEXTO_DA_NOTA_DO_PROCEDIMENTO}</Dica></span>
           </div>
           {bestRatedProcedures.length === 0 ? (
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', padding: '20px 18px' }}>Sem avaliações no período.</p>

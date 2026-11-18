@@ -68,10 +68,11 @@ describe('A20: a coluna de fora que a oportunidade levaria', () => {
 })
 
 describe('A21: "Importar" na lista de Clientes, para quem importa', () => {
-  it('os dois layouts passam o atalho só com Clientes em Gerenciar e “A rede inteira”', () => {
+  // Desde 18/11 as Importações são só da Admin da rede ("só pela conta admin").
+  it('os dois layouts passam o atalho só com Clientes em Gerenciar e a quem mexe na configuração da rede (a Admin)', () => {
     for (const rel of ['app/[slug]/clients/layout.tsx', 'app/admin/clients/layout.tsx']) {
       const f = ler(rel)
-      expect(f, rel).toMatch(/importarHref=\{can\(ctx, 'clients', 'MANAGE'\) && ctx\.branchId === null/)
+      expect(f, rel).toMatch(/importarHref=\{can\(ctx, 'clients', 'MANAGE'\) && mexeNaConfigDaRede\(ctx\)/)
       expect(f, rel).toContain('/settings?tab=importacoes')
     }
   })

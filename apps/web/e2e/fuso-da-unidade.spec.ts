@@ -24,6 +24,7 @@ const marca = Date.now().toString(36)
 const db = () => banco()
 let rede: OutraRede | null = null
 let gestora: MembroDeTeste | null = null
+let admin: MembroDeTeste | null = null
 
 async function como<T>(browser: Browser, quem: MembroDeTeste, fn: (p: Page) => Promise<T>) {
   const ctx = await browser.newContext({ storageState: quem.estado })
@@ -39,11 +40,16 @@ test.beforeAll(async () => {
       { modulo: 'cashier', nivel: 'MANAGE' }, { modulo: 'reports', nivel: 'VIEW' },
     ],
   })
+  // Criar unidade é configuração da rede toda: só a Admin da rede (o Heitor,
+  // 18/11: "Configuração da rede toda só pela conta admin"). Os dados da
+  // unidade (o fuso dela) seguem com a permissão — a gestora.
+  admin = await criarMembro(`fza${marca}`, { tenant: rede.tenantId, rotulo: 'Admin', donoDaRede: true, permissoes: [] })
 })
 
 test.afterAll(async () => {
   if (rede) await db().from('branches').delete().eq('tenant_id', rede.tenantId).neq('id', rede.branchId)
   await gestora?.limpar()
+  await admin?.limpar()
   await rede?.limpar()
 })
 
@@ -72,7 +78,7 @@ test.describe('o campo', () => {
 
   test('o "Nova unidade" sugere o fuso pelo estado do CEP, e a unidade nasce com ele', async ({ browser }) => {
     const nome = `${PREFIXO} Cuiabá ${marca}`
-    await como(browser, gestora!, async p => {
+    await como(browser, admin!, async p => {
       await p.route('https://viacep.com.br/**', r => r.fulfill({
         json: { logradouro: 'Avenida Getúlio Vargas', bairro: 'Centro', localidade: 'Cuiabá', uf: 'MT' },
       }))
@@ -117,7 +123,8 @@ test.describe('o campo', () => {
       plan_status: 'trial',
     }).select('id').single<{ id: string }>()
     expect(error, 'criar a rede').toBeNull()
-    const dona = await criarMembro(`fzs${marca}`, { tenant: t!.id, rotulo: 'Dona', permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }] })
+    // O setup é da Admin da rede (o Heitor, 18/11: "Configuração da rede toda só pela conta admin").
+    const dona = await criarMembro(`fzs${marca}`, { tenant: t!.id, rotulo: 'Dona', donoDaRede: true, permissoes: [] })
     try {
       await como(browser, dona, async p => {
         await p.route('https://viacep.com.br/**', r => r.fulfill({

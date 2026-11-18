@@ -28,22 +28,22 @@ export function textoDeQuemRecebe(quem: string[] | null | undefined, opcoes: { s
 }
 
 /**
- * A9 da 20ª (princípios 1 e 3): concluir grava o prontuário e pede o
- * Prontuário em Gerenciar — a tela dizia "Quem conclui é o profissional" a
- * quem ERA quem atende, sem o Prontuário no cargo. Diz a permissão e os nomes.
+ * Quem conclui (A9 da 20ª, princípio 3: a tela diz a permissão e os nomes).
+ * Desde 2026-11-18 é o Atendimento em Gerenciar (o Heitor: "Só inicia e
+ * conclui atendimento quem tem gerenciar no atendimento").
  */
 export function textoDeQuemConclui(quem: string[] | null | undefined): string {
-  return `Concluir grava o prontuário: quem tem o Prontuário em Gerenciar conclui${entreParenteses(quem)}.`
+  return `Iniciar e concluir o atendimento é de quem tem o Atendimento em Gerenciar${entreParenteses(quem)}.`
 }
 
 /**
  * A26 da 23ª (princípio 3): o atendimento de OUTRA pessoa aberto por quem tem
  * a Agenda "só os meus" dizia só "Este atendimento é de outra pessoa que
- * atende". A quem tem o Prontuário, diz quem conclui: a Agenda de todos e o
- * Prontuário em Gerenciar (`quemConcluiOAtendimento`, D1 da 22ª).
+ * atende". Diz quem conclui: quem tem o Atendimento em Gerenciar de todos
+ * (`quemConcluiOAtendimento`; o Heitor, 2026-11-18).
  */
 export function textoDeQuemConcluiODeOutra(quem: string[] | null | undefined): string {
-  return `Quem conclui é quem tem a Agenda de todos e o Prontuário em Gerenciar${entreParenteses(quem)}.`
+  return `Quem conclui é quem tem o Atendimento em Gerenciar e a Agenda de todos${entreParenteses(quem)}.`
 }
 
 /**

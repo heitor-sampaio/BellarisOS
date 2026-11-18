@@ -45,10 +45,9 @@ test.beforeAll(async () => {
   graph.responder(`/${FONE_ANTIGO}`, { id: FONE_ANTIGO, display_phone_number: '+55 48 3333-0101', verified_name: `Antigo ${marca}` })
   graph.responder(`/${FONE_NOVO}`, { id: FONE_NOVO, display_phone_number: '+55 48 3333-0202', verified_name: `Novo ${marca}` })
   rede = await criarOutraRede(`cm${marca}`)
-  config = await criarMembro(`cmcfg${marca}`, {
-    tenant: rede.tenantId, rotulo: 'Configura o WhatsApp',
-    permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }],
-  })
+  // A integração é configuração da rede toda: só a Admin da rede (o Heitor,
+  // 18/11: "Configuração da rede toda só pela conta admin").
+  config = await criarMembro(`cmcfg${marca}`, { tenant: rede.tenantId, rotulo: 'Configura o WhatsApp', donoDaRede: true, permissoes: [] })
   const ins = async (linha: Record<string, unknown>) => {
     const { data, error } = await db().from('whatsapp_numbers').insert(linha).select('id').single<{ id: string }>()
     expect(error).toBeNull()

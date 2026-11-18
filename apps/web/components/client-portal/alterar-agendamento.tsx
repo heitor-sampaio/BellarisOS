@@ -8,7 +8,7 @@ import { limiteParaAlterar } from '@/lib/clientes/agenda-do-portal'
 import { useFuso } from '@/components/shared/fuso'
 import { instanteNoFuso } from '@/lib/datetime'
 import { textoDoRemarcado } from '@/lib/clientes/textos-do-app'
-import { cancelarPelaCliente, remarcarPelaCliente, horariosParaRemarcar, quemAtendeNoRemarcar } from '@/actions/portal-agendamentos'
+import { cancelarPelaCliente, remarcarPelaCliente, horariosParaRemarcar, quemAtendeNoRemarcar, quemRealizaNoRemarcar, diasLivresParaRemarcar } from '@/actions/portal-agendamentos'
 import { Dica } from '@/components/shared/dica'
 
 /** O dia no relógio da unidade (F62). */
@@ -17,6 +17,11 @@ const diaDeHoje = (fuso: string) => diaNoFuso(Date.now(), fuso)
 const diaDeAmanha = (fuso: string) => diaNoFuso(Date.now() + 86_400_000, fuso)
 /** "quinta-feira, 13/11" — o dia escolhido (AAAA-MM-DD), pelo meio-dia de Brasília. */
 const diaPorExtenso = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', timeZone: 'UTC' })
+/** "qui., 20/11" — o chip de um dia com horário livre (22ª A42). */
+const diaCurto = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', timeZone: 'UTC' })
+
+/** A escolha do "Com quem?": sem preferência, outra pessoa que realiza, ou a mesma. */
+type EscolhaDoComQuem = { semPreferencia: boolean; profissionalId: string | null }
 
 /**
  * Cancelar ou remarcar pelo portal, até o prazo da rede (2026-10-21). Dentro
@@ -26,7 +31,7 @@ const diaPorExtenso = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateStri
 /** Uma unidade do "Em qual unidade?" (A15): o relógio dela e se a mesma profissional atende lá. */
 export interface UnidadeDoRemarcar { id: string; nome: string; fuso: string; comAMesma: boolean }
 
-export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, whatsapp, whatsappParaAlterar = null, ligar = null, telefone, profissional = null, semPreferenciaInicial = false, ofereceSemPreferencia = false, unidade: unidadeDoAgendamento = '', unidadeInicial, unidades = [] }: {
+export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, whatsapp, whatsappParaAlterar = null, ligar = null, telefone, profissional = null, semPreferenciaInicial = false, ofereceSemPreferencia = false, unidade: unidadeDoAgendamento = '', unidadeInicial, unidades = [], abrirRemarcando = false }: {
   appointmentId: string
   /** A unidade do agendamento. */
   unidade?:      string
@@ -47,6 +52,8 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
   semPreferenciaInicial?: boolean
   /** Mais de uma profissional realiza o procedimento na unidade: oferece "Sem preferência" (A59). */
   ofereceSemPreferencia?: boolean
+  /** A47 da 24ª: veio do "Remarcar" do cartão — o formulário já abre (um toque). */
+  abrirRemarcando?: boolean
   /** O telefone da clínica, já formatado — o contato quando o app não remarca mais. */
   telefone:      string | null
 }) {
@@ -64,7 +71,7 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
   const podeAlterar = new Date(scheduledAt).getTime() - abertoEm >= prazoHoras * 3600_000
   // O dia e a hora em que o prazo acaba (J-61): era só "até 24 horas antes".
   const limite = limiteParaAlterar(scheduledAt, prazoHoras, fuso)
-  const [modo, setModo] = useState<'nada' | 'remarcar' | 'cancelar'>('nada')
+  const [modo, setModo] = useState<'nada' | 'remarcar' | 'cancelar'>(abrirRemarcando && podeAlterar ? 'remarcar' : 'nada')
   const [dia, setDia] = useState('')
   const [slots, setSlots] = useState<string[] | null>(null)
   const [hora, setHora] = useState<string | null>(null)
@@ -75,8 +82,36 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
   // Com quem remarcar (A59): a mesma profissional, ou "Sem preferência" — que
   // escolhe de novo, entre quem realiza, quem estiver livre no horário.
   const [semPreferenciaEscolhida, setSemPreferencia] = useState(ofereceSemPreferencia && semPreferenciaInicial)
-  const semPreferencia = semPreferenciaEscolhida || !comAMesma
+  // 22ª A42: ou outra pessoa que realiza o procedimento na unidade, da lista
+  // (como o "Tem preferência?" do Agendar). Vazio: a escolha dos chips.
+  const [outraPessoa, setOutraPessoa] = useState('')
+  const semPreferencia = !outraPessoa && (semPreferenciaEscolhida || !comAMesma)
   const ofereceComQuem = ofereceSemPreferencia && comAMesma
+  const escolhaAtual: EscolhaDoComQuem = { semPreferencia, profissionalId: outraPessoa || null }
+  // Quem realiza na unidade do horário novo, e os dias com horário livre pela
+  // escolha — as respostas guardam a chave a que se referem.
+  const [pessoasDe, setPessoasDe] = useState<{ chave: string; pessoas: { id: string; nome: string; atual: boolean }[] } | null>(null)
+  const chaveDasPessoas = modo === 'remarcar' ? unidade : null
+  const outras = pessoasDe && pessoasDe.chave === chaveDasPessoas ? pessoasDe.pessoas.filter(x => !x.atual) : []
+  useEffect(() => {
+    if (chaveDasPessoas === null) return
+    let vivo = true
+    quemRealizaNoRemarcar(appointmentId, chaveDasPessoas || null)
+      .then(r => { if (vivo) setPessoasDe({ chave: chaveDasPessoas, pessoas: 'error' in r ? [] : r.pessoas }) })
+      .catch(() => { if (vivo) setPessoasDe({ chave: chaveDasPessoas, pessoas: [] }) })
+    return () => { vivo = false }
+  }, [chaveDasPessoas, appointmentId])
+  const [diasDe, setDiasDe] = useState<{ chave: string; dias: string[] } | null>(null)
+  const chaveDosDias = modo === 'remarcar' ? `${unidade}|${semPreferencia ? 'sem' : outraPessoa || 'mesma'}` : null
+  const diasLivres = diasDe && diasDe.chave === chaveDosDias ? diasDe.dias : null
+  useEffect(() => {
+    if (chaveDosDias === null) return
+    let vivo = true
+    diasLivresParaRemarcar(appointmentId, { semPreferencia, profissionalId: outraPessoa || null }, unidade || null)
+      .then(r => { if (vivo) setDiasDe({ chave: chaveDosDias, dias: 'error' in r ? [] : r.dias }) })
+      .catch(() => { if (vivo) setDiasDe({ chave: chaveDosDias, dias: [] }) })
+    return () => { vivo = false }
+  }, [chaveDosDias, appointmentId, semPreferencia, outraPessoa, unidade])
   // A56 da 11ª: em "Sem preferência", quem fica com o horário — antes de confirmar.
   // A resposta guarda o dia e a hora a que se refere: a de outro horário não aparece.
   const [quemAtendeDe, setQuemAtendeDe] = useState<{ chave: string; nome: string | null; mesma: boolean } | null>(null)
@@ -126,11 +161,11 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
     )
   }
 
-  function escolherDia(novo: string, sem = semPreferencia, onde = unidade) {
+  function escolherDia(novo: string, escolha: EscolhaDoComQuem = escolhaAtual, onde = unidade) {
     setDia(novo); setHora(null); setSlots(null); setErro(null)
     if (!novo) return
     iniciar(async () => {
-      const r = await horariosParaRemarcar(appointmentId, novo, sem, onde || null)
+      const r = await horariosParaRemarcar(appointmentId, novo, escolha.semPreferencia, onde || null, escolha.profissionalId)
       if ('error' in r) setErro(r.error)
       else setSlots(r.slots)
     })
@@ -140,7 +175,7 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
     if (!dia || !hora) return
     setErro(null)
     iniciar(async () => {
-      const r = await remarcarPelaCliente(appointmentId, instanteNoFuso(dia, hora, fuso).toISOString(), semPreferencia, unidade || null)
+      const r = await remarcarPelaCliente(appointmentId, instanteNoFuso(dia, hora, fuso).toISOString(), semPreferencia, unidade || null, outraPessoa || null)
       if ('error' in r) { setErro(r.error); return }
       // A51 da 12ª: o remarcado diz com quem ficou e quando (a Sabrina passou da Eva à Fernanda calada);
       // A29 da 14ª: e ONDE, quando mudou de unidade.
@@ -188,14 +223,14 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
               <select className="filtro-select" value={unidade} onChange={e => {
                 const nova = e.target.value
                 const mesma = nova === unidadeDoAgendamento || !!unidades.find(u => u.id === nova)?.comAMesma
-                setUnidade(nova)
-                if (dia) escolherDia(dia, semPreferenciaEscolhida || !mesma, nova)
+                setUnidade(nova); setOutraPessoa('')
+                if (dia) escolherDia(dia, { semPreferencia: semPreferenciaEscolhida || !mesma, profissionalId: null }, nova)
               }}>
                 {unidades.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
               </select>
             </label>
           )}
-          {outraUnidade && !comAMesma && (
+          {outraUnidade && !comAMesma && !outraPessoa && (
             <p data-outra-unidade-quem-atende style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.45 }}>
               {profissional ? `${profissional} não atende em ${escolhida?.nome ?? 'nesta unidade'}: o` : 'O'} horário novo fica com quem estiver livre lá.
             </p>
@@ -203,12 +238,12 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
           {ofereceComQuem && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', color: 'var(--text-muted)' }}>
               <div role="group" aria-label="Com quem?" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                <button type="button" aria-pressed={!semPreferencia} className={!semPreferencia ? 'chip-filtro is-ativo' : 'chip-filtro'}
-                  onClick={() => { setSemPreferencia(false); if (dia) escolherDia(dia, false) }}>
+                <button type="button" aria-pressed={!semPreferencia && !outraPessoa} className={!semPreferencia && !outraPessoa ? 'chip-filtro is-ativo' : 'chip-filtro'}
+                  onClick={() => { setSemPreferencia(false); setOutraPessoa(''); if (dia) escolherDia(dia, { semPreferencia: false, profissionalId: null }) }}>
                   {profissional ? `Só com ${profissional}` : 'A mesma profissional'}
                 </button>
                 <button type="button" aria-pressed={semPreferencia} className={semPreferencia ? 'chip-filtro is-ativo' : 'chip-filtro'}
-                  onClick={() => { setSemPreferencia(true); if (dia) escolherDia(dia, true) }}>
+                  onClick={() => { setSemPreferencia(true); setOutraPessoa(''); if (dia) escolherDia(dia, { semPreferencia: true, profissionalId: null }) }}>
                   Sem preferência
                 </button>
               </div>
@@ -224,6 +259,21 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
               </Dica>
             </div>
           )}
+          {/* 22ª A42: as outras pessoas que realizam o procedimento na unidade — a
+              lista vem dos dados, então é um select (design.md). */}
+          {outras.length > 0 && (
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>
+              {ofereceComQuem ? 'Ou com outra pessoa' : 'Com quem?'}
+              <select data-com-quem className="filtro-select" value={outraPessoa} onChange={e => {
+                const id = e.target.value
+                setOutraPessoa(id)
+                if (dia) escolherDia(dia, id ? { semPreferencia: false, profissionalId: id } : { semPreferencia: semPreferenciaEscolhida || !comAMesma, profissionalId: null })
+              }}>
+                <option value="">{ofereceComQuem ? 'Escolha' : 'Quem estiver livre'}</option>
+                {outras.map(x => <option key={x.id} value={x.id}>{x.nome}</option>)}
+              </select>
+            </label>
+          )}
           <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>
             Novo dia
             <input type="date" className="field" value={dia} onChange={e => escolherDia(e.target.value)} />
@@ -232,6 +282,23 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
             <button type="button" className={dia === diaDeHoje(fuso) ? 'chip-filtro is-ativo' : 'chip-filtro'} onClick={() => escolherDia(diaDeHoje(fuso))}>Hoje</button>
             <button type="button" className={dia === diaDeAmanha(fuso) ? 'chip-filtro is-ativo' : 'chip-filtro'} onClick={() => escolherDia(diaDeAmanha(fuso))}>Amanhã</button>
           </div>
+          {/* 22ª A42: os dias com horário livre nas próximas duas semanas, pela escolha acima. */}
+          {diasLivres && diasLivres.length > 0 && (
+            <div data-dias-livres role="group" aria-label="Dias com horário" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span className="overline">Dias com horário</span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {diasLivres.map(d => (
+                  <button key={d} type="button" aria-pressed={dia === d}
+                    className={dia === d ? 'chip-filtro is-ativo' : 'chip-filtro'} onClick={() => escolherDia(d)}>
+                    {diaCurto(d)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {diasLivres && diasLivres.length === 0 && (
+            <p data-sem-dias-livres style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Nenhum horário livre nas próximas duas semanas.</p>
+          )}
           {slots && slots.length === 0 && (
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Nenhum horário livre neste dia.</p>
           )}

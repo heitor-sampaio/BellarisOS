@@ -13,5 +13,7 @@ export function chipDaComissao(c: { padrao: string | null; excecoes: number; ven
   const daVenda = venda != null ? ` · venda ${pct(venda)}%` : ''
   if (c.padrao) return `Comissão ${c.padrao}${excecoes}${daVenda}`
   if (c.atende || c.excecoes > 0) return `${c.excecoes > 0 ? 'Sem comissão padrão' : 'Sem comissão de atendimento'}${excecoes}${daVenda}`
-  return venda != null ? `Venda ${pct(venda)}%` : 'Sem comissão de venda'
+  // A6 da 24ª (princípio 3): "Sem comissão de venda" em quem ganhou a do
+  // pacote — sem a dela, vale a do pacote ou do produto, e depois a da rede.
+  return venda != null ? `Venda ${pct(venda)}%` : 'Venda: a do pacote, produto ou rede'
 }

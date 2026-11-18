@@ -36,11 +36,15 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   "Outros documentos: …"), e a action também (`idsDoFormularioDaRede`).
   Na tela, os Documentos vêm primeiro; o termo e o contrato no fim, com o
   tipo entre parênteses — "Nome (termo)", "(contrato, inativo)" (A22 da 18ª
-  simulação, `lib/documentos/outros-do-procedimento.ts`). O termo e o
-  contrato só aparecem ali como o SEGUNDO: sem termo escolhido no campo
-  "Termo de consentimento", nenhum termo é oferecido em "Outros documentos"
-  (e o escolhido também não); o mesmo com o contrato. O já marcado continua
-  (A20 da 20ª, `outrosDocumentosOferecidos`).
+  simulação, `lib/documentos/outros-do-procedimento.ts`). **"Outros
+  documentos" oferece TODO modelo ativo da rede desses tipos** (PC7, o Heitor,
+  2026-11-13: "qualquer documento que tenha sido criado ou anexado no
+  sistema"), menos o que já está escolhido no campo próprio ("Termo de
+  consentimento", "Contrato") — que não se repete; o já marcado continua,
+  mesmo inativo (`outrosDocumentosOferecidos`). A A20 da 20ª, que só oferecia
+  um termo depois de escolhido o do campo, estreitava o PC7 e saiu na
+  auditoria das regras de 2026-11-18 (o "menos o do campo" é decisão do Claude
+  pelos princípios 3 e 7, 2026-11-18).
   ⚠️ É uma COLUNA de array, não uma tabela de ligação: uma tabela com chave
   estrangeira para `procedures` e `document_templates` viraria junção para
   o PostgREST (o PGRST201 de 04/11 — `atendimento.md`). No plano, o cliente
@@ -57,16 +61,49 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   (PC3) diz "sem prazo de validade"; com prazo, "180 dias, até 13/05/2027"
   (`validadeDoPacote`, no fuso da unidade). Na venda (leva 2) o documento do
   pacote sem responsável deixa `profissional.*` vazio em vez de travar
-  (princípios 2 e 4).
-- **A venda do pacote emite os documentos** (PC2, DC1c/PC9b — Bloco
+  (princípios 2 e 4) — e o contrato colhido ANTES da venda (abaixo) também:
+  ninguém atende ainda. Antes da venda, os dados do pacote saem do catálogo
+  (`dadosDoPacoteAVender`: o nome, o preço de tabela, os itens, e a validade
+  contada a partir de hoje).
+- **O contrato de pacote se assina ANTES do dinheiro, como no plano** (PC2,
+  o Heitor, 2026-11-13: "ele assina pelo pacote. o ideal era funcionar como no
+  plano de tratamento"; do plano: "primeiro colhe assinatura, depois paga" —
+  `docs/revisao.md`. A auditoria das regras de 2026-11-18 corrigiu o "a venda
+  não espera", que partia de "do pacote nada foi dito"). Com o contrato de
+  pacote ativo na rede, `venderPacote` — depois de conferir o resto e das
+  perguntas, ANTES de qualquer lançamento — pede o contrato desta cliente e
+  deste pacote (`contratoDaVendaDoPacote`, `lib/documentos/pacote.ts` →
+  `documento_contrato_da_venda_do_pacote`, migration `20261124000101`): ele
+  nasce com `service_package_id` (o pacote do catálogo; o vendido ainda não
+  existe), o momento `VENDA_PACOTE`, e se monta com o combinado da venda.
+  - Aberto (a assinar, faltam dados): a venda devolve `contratoParaAssinar` e
+    NÃO grava nada. A tela da venda (`[data-contrato-antes-de-vender]`) leva a
+    colher ali mesmo (a tela de assinatura dentro do "Vender"), manda o link,
+    ou leva a completar o cadastro; "Já assinou: vender" vende de novo.
+  - Assinado com ESTE combinado (ou um que não cita o pagamento), ou
+    DISPENSADO com o motivo (quem dispensa documentos, na ficha): a venda
+    fecha e o ADOTA (`documentos_emitir_do_pacote` liga o pré-venda ao pacote
+    vendido NESTA transação, `purchased_at = now()`; o contrato não nasce de
+    novo).
+  - Assinado com OUTRO pagamento (ou noutra unidade): a venda pergunta antes
+    (A45 da 5ª, como no plano: `confirmarSubstituirContrato`); confirmado, o
+    assinado vira SUBSTITUIDO e nasce um a assinar. A regra pura é
+    `situacaoDoContratoDaVenda` (`lib/documentos/contrato-da-venda.ts`).
+  - O banco guarda um contrato vivo por cliente e pacote antes da venda
+    (`uniq_contrato_da_venda_do_pacote`). A validade citada é contada de hoje
+    (decisão do Claude pelo princípio 4, 2026-11-18: o vendido conta da venda;
+    a diferença é a dos dias entre colher e vender).
+  - Prova: `e2e/documentos-pacote-assina-antes-de-pagar.spec.ts`,
+    `tests/auditoria-c-documentos.test.ts`.
+- **A venda do pacote emite os outros documentos** (PC2, DC1c/PC9b — Bloco
   Documentos, leva 2, 2026-11-14): o gatilho `trg_documentos_do_pacote_vendido`
   (AFTER INSERT em `client_packages`, menos o trazido de fora) emite, com
-  `issued_documents.client_package_id` e o momento `VENDA_PACOTE`, o contrato
-  de pacote ativo da rede e os documentos PUXADOS dos procedimentos distintos
-  do pacote — o termo e os "Outros documentos" (TERMO e DOCUMENTO), uma vez
-  cada; o contrato do procedimento não (`private.modelos_do_pacote`). A action
-  da venda os monta com o pagamento da venda (`prepararDocumentosDoPacote`):
-  o contrato cita `pacote.*` e `pagamento.*`.
+  `issued_documents.client_package_id` e o momento `VENDA_PACOTE`, os
+  documentos PUXADOS dos procedimentos distintos do pacote — o termo e os
+  "Outros documentos" (TERMO e DOCUMENTO), uma vez cada; o contrato do
+  procedimento não (`private.modelos_do_pacote`) — e adota o contrato de pacote
+  colhido antes. A action da venda os monta com o pagamento da venda
+  (`prepararDocumentosDoPacote`).
   - **O pop-up do pacote mostra o que vai nascer** (Comercial → Pacotes,
     `[role=group][aria-label="Documentos do pacote"]`): o contrato de pacote da
     rede (`[data-contrato-do-pacote]`) e os puxados (`[data-puxado]`), cada um
@@ -75,10 +112,10 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
     novo ligado ao procedimento entra sozinho, e o que a tela mostra é o que
     nasce (princípio 3). A lista é a mesma regra no app e no banco
     (`documentosPuxadosDoPacote`, `lib/pacotes/documentos.ts`).
-  - **A venda NÃO espera a assinatura** (decisão pelos princípios 2 e 6: o
-    "assinatura antes do dinheiro" do Heitor, PT1c, foi dito do PLANO; do
-    pacote nada foi dito). A tela da venda diz o que ficou para assinar
-    (`[data-documentos-da-venda]`, ou a descrição do aviso) e leva a colher.
+  - **Os termos e os outros documentos não seguram o dinheiro** (só o
+    contrato, como no plano: PT1c). A tela da venda diz o que ficou para
+    assinar (`[data-documentos-da-venda]`, ou a descrição do aviso) e leva a
+    colher.
   - **O "Bloqueia" do documento do pacote trava a SESSÃO** (o início de cada
     sessão do pacote, como todo "Bloqueia"): `documentos_pendentes_do_atendimento`
     conta, na sessão de pacote, os abertos do pacote vendido, e a janela e a
@@ -100,13 +137,21 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   `salvarDocumentosExcluidosDoPlano`); a conta é a mesma do pacote
   (`documentosPuxadosDoPlano`, `lib/plano-de-tratamento/documentos.ts`), ao
   vivo sobre as sessões do editor.
-  - **Quando nascem** (decisão pelos princípios — DEVLOG, "Bloco Plano de
-    tratamento, leva 2"): os termos e os outros, no ACEITE
-    (`documentos_bloqueiam_plano` → `documentos_emitir_do_plano(plano,
-    false)`); o contrato de plano, no PDV com o pagamento (PT1c). O "na
-    criação" do DC4 foi lido como "nasce do plano, sem o check-in": o
-    rascunho e o proposto ainda mudam e podem nunca ser aceitos, e o PT1b diz
-    "Aceito, os documentos ficam prontos".
+  - **Quando nascem: na CRIAÇÃO do plano** (DC4, aprovado pelo Heitor com
+    "concordo", 2026-11-13: "o do pacote e o do plano, na venda/na criação";
+    `docs/revisao.md`: "nascem na criação e se assinam de uma vez"). Os termos
+    e os outros documentos nascem no primeiro "Salvar plano" com cliente
+    (`emitirDocumentosDoPlano`, `lib/documentos/plano.ts`, chamado em cada
+    salvar, no gerar da avaliação, no ligar a cliente e no Excluir/Incluir de
+    novo); o contrato de plano, no PDV com o pagamento (PT1c). A auditoria das
+    regras de 2026-11-18 corrigiu o "no ACEITE", que lia o DC4 ao contrário.
+    `documentos_emitir_do_plano` só emite para plano com cliente e aberto
+    (rascunho, proposto, aceito). Salvar de novo acompanha o plano: o
+    documento de um procedimento que saiu das sessões (ou que foi excluído) é
+    cancelado e o link revogado; o que entrou nasce; e o plano cancelado ou
+    recusado cancela os abertos (`trg_documentos_do_plano_cancelado`, "Plano
+    cancelado" / "Plano recusado") — decisão do Claude pelo princípio 3,
+    2026-11-18: o que a tela do plano mostra é o que está para assinar.
   - A cliente os assina quando quiser — no app (também na página do plano),
     pelo link único ou no aparelho da unidade.
   - **No app, o plano aceito diz onde se assina o contrato** (A35 da 21ª;
@@ -135,7 +180,13 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   `[data-contrato-inativo]`). Prova: `e2e/documentos-modelos.spec.ts`.
   O aviso nomeia o ativo e traz o "Tornar ativo" do novo ali mesmo — "Usar
   este no lugar de “A”?" (A23 da 18ª: quem só salvava seguia vendendo com o
-  de antes; `[data-tornar-ativo-o-novo]`).
+  de antes; `[data-tornar-ativo-o-novo]`). **O "Tornar ativo" da linha
+  confirma** (A32 da 15ª, decisão do Claude pelos princípios; a regra de
+  02/11 do Heitor é mais estreita — "campo vazio que muda algo pede aviso e
+  confirmação" —, e estendê-la ao "Tornar ativo" foi do Claude): "Trocar o contrato?" com "O contrato de pacote “Íris” passa a
+  valer; “De fábrica” fica inativo." (`confirmacaoDeTornarAtivo`,
+  `lib/documentos/tornar-ativo.ts`). O do aviso já é a resposta à pergunta
+  "Usar este no lugar de…?", e troca direto.
 - **O documento da cliente sem CPF** (cli-09, revisão do Heitor de
   2026-11-02: "contrato sem documento da cliente vale menos"): `cliente.cpf`,
   sem CPF, é o passaporte (ou o RNE) com o tipo — "Passaporte CB1234567" —, e
@@ -145,13 +196,15 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   "Passaporte CB***67"). Sem nenhum dos dois, continua INCOMPLETO. Prova:
   `e2e/documentos-passaporte.spec.ts`, `tests/documentos-valores.test.ts`.
 - **O responsável legal da menor assina o termo** (decisão 2 do Heitor, 7ª
-  simulação, 2026-11-05: "concordo"). As variáveis `responsavel.nome`,
+  simulação, 2026-11-05: "concordo" — "termo assinado pelo responsável
+  (avisar, não barrar)"). As variáveis `responsavel.nome`,
   `responsavel.cpf`, `responsavel.parentesco` e `responsavel.telefone` valem
-  em todo tipo e são OPCIONAIS no catálogo (na adulta saem vazias), mas na
-  MENOR de idade o nome e o CPF do responsável são obrigatórios
-  (`variavelObrigatoria`, `renderizar.ts`): sem eles o termo fica INCOMPLETO
-  ("Responsável legal · Nome do responsável…"), e o termo que BLOQUEIA já
-  segura o início — e a Visão geral da ficha diz o que falta (A24). Quem
+  em todo tipo e são OPCIONAIS no catálogo, na adulta E na menor
+  (`variavelObrigatoria(nome)`, sem a idade): a menor sem responsável no
+  cadastro NÃO deixa o termo em "faltam dados" nem segura o início — a ficha
+  AVISA ("sem responsável legal no cadastro", `[data-aviso-do-menor]`), e o
+  responsável sai vazio. A F29 tinha trocado o "avisar" por "barrar"; a
+  auditoria das regras de 2026-11-18 voltou à fala. Quem
   assina é ELE: `quemAssina` (`lib/clients/menor.ts`) — o aceite, o "Conferi o
   documento de identidade de", a evidência (`document_signatures.signer_name`
   "Marta Lima, responsável legal de Beatriz Lima", `signer_document` o CPF
@@ -432,8 +485,9 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   `e2e/checkout-de-plano.spec.ts` ("o caixa sem o módulo de Termos", que
   espera o refresh e confere que a tela ficou).
 - **O contrato do plano sem o documento da cliente AVISA antes de emitir** (A35
-  da 9ª simulação; princípio 2 — avisar, não recusar; o contrato padrão segue
-  sem exigir o CPF): com um contrato de plano ativo na rede e a ficha sem CPF,
+  da 9ª simulação; cli-09, o Heitor, 2026-11-02: "contrato sem documento da
+  cliente vale menos" — vale menos, não deixa de valer: avisa, e a rede
+  decide, princípio 2): com um contrato de plano ativo na rede e a ficha sem CPF,
   passaporte nem RNE, o checkout diz no passo do plano e no do pagamento "O
   cadastro de Renata não tem CPF (nem passaporte ou RNE): o contrato do plano
   sai sem esse documento. Para incluir, complete o cadastro antes de ir para a
@@ -492,7 +546,10 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   (`documentos_modelos_padrao`: migration para as de antes, `registerAction`
   para as novas; o de pacote desde o DC2, 2026-11-14 —
   `system_key = 'CONTRATO_PACOTE_PADRAO'`, semeado também nas redes que já
-  tinham o de plano). Sem CPF de propósito: o contrato de antes não o exigia.
+  tinham o de plano). Sem `cliente.cpf` obrigatório no texto padrão: o
+  contrato sem documento da cliente "vale menos" (cli-09, o Heitor,
+  2026-11-02), não deixa de valer — o checkout avisa (A35) e a rede decide
+  se o modelo dela exige (princípio 2).
   Semear de novo não duplica. Prova: `e2e/documentos-tipos-e-nascimento.spec.ts` ("DC2").
   O texto do contrato de plano semeado tem o título igual ao nome do modelo,
   "Contrato de prestação de serviços" (A5 da 21ª, migration
@@ -773,7 +830,10 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
 ❌ Gravar o token do link de assinatura (só o SHA-256), ou contar tentativas do link fora de documento_link_abrir
 ❌ Assinar vários documentos juntos fora de documentos_assinar, ou montar o texto do aceite no navegador (é textoDoAceite no servidor, com os títulos do banco)
 ❌ Pôr no link, ou na assinatura de juntos, documento de outra cliente, de outro momento ou com "faltam dados"
-❌ Fazer a venda do pacote esperar a assinatura (o "Bloqueia" do pacote trava a SESSÃO, não a venda — PC2)
+❌ Gravar o dinheiro da venda do pacote antes de contratoDaVendaDoPacote, ou deixá-lo entrar com o contrato de pacote aberto ("primeiro colhe assinatura, depois paga" — PC2; os termos e os outros documentos não seguram a venda, o "Bloqueia" deles trava a SESSÃO)
+❌ Emitir os termos e os outros documentos do plano só no aceite (DC4: nascem na criação, e cada salvar do plano chama emitirDocumentosDoPlano)
+❌ Deixar o termo da menor sem responsável em "faltam dados" (decisão 2 da 7ª: "avisar, não barrar" — variavelObrigatoria não olha a idade)
+❌ Esconder de "Outros documentos" um modelo ativo da rede de tipo aceito (PC7: "qualquer documento que tenha sido criado ou anexado"), além do escolhido no campo próprio
 ❌ Abrir no editor (ou gravar) o JSON do modelo sem normalizarListasDoEditor: a edição mostraria o que o documento não diz (A16 da 12ª)
 ❌ Montar o link de /verificar com NEXT_PUBLIC_APP_URL (é o do build) — é urlDoAppDaRede() (D11)
 ❌ Registrar "notificado no portal" (ou dizer "enviado") quando o plano não tem o portal: o aviso não sai (C57a)

@@ -8,6 +8,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { maskPhone } from '@estetica-os/utils'
 import { lerVisibilidade, type VisibilidadeDoInbox } from '@/lib/inbox/visibilidade'
+import { lerRegrasDoPacote, type RegrasDoPacote } from '@/lib/pacotes/regras'
 
 /** O que a tela de Configurações → Geral mostra da rede. */
 export interface DadosDaRede {
@@ -24,6 +25,12 @@ export interface DadosDaRede {
   validadeDoPlanoDias: number
   /** F17-3: o que a cliente avalia ao confirmar o atendimento pelo app (padrão: os dois). */
   oQueAClienteAvalia: OQueAClienteAvalia
+  /**
+   * Itens 8 e 9 da auditoria (decisões do Claude pelo princípio 1, 2026-11-18):
+   * o pacote no crediário libera as sessões antes de quitado (padrão: sim) e o
+   * pacote vencido se cancela (padrão: não). `lib/pacotes/regras.ts`.
+   */
+  regrasDoPacote: RegrasDoPacote
   /** Somente leitura — quem muda isso é a assinatura, não esta tela. */
   planName:   string | null
   planStatus: string | null
@@ -37,7 +44,7 @@ export async function lerDadosDaRede(): Promise<DadosDaRede | null> {
   const t = await ler(
     createAdminClient()
       .from('tenants')
-      .select('id, name, slug, document, email, phone, website, plan_name, plan_status, created_at, portal_prazo_alteracao_horas, plano_validade_dias, avaliacao_o_que')
+      .select('id, name, slug, document, email, phone, website, plan_name, plan_status, created_at, portal_prazo_alteracao_horas, plano_validade_dias, avaliacao_o_que, pacote_crediario_libera, pacote_vencido_cancela')
       .eq('id', ctx.tenantId!)
       .maybeSingle(),
     'carregar os dados da rede',
@@ -55,6 +62,7 @@ export async function lerDadosDaRede(): Promise<DadosDaRede | null> {
     prazoPortalHoras: Number(t.portal_prazo_alteracao_horas ?? 24),
     validadeDoPlanoDias: Number((t as { plano_validade_dias?: number }).plano_validade_dias ?? 30),
     oQueAClienteAvalia: oQueAvalia((t as { avaliacao_o_que?: string }).avaliacao_o_que),
+    regrasDoPacote: lerRegrasDoPacote(t as { pacote_crediario_libera?: boolean | null; pacote_vencido_cancela?: boolean | null }),
     planName:   (t.plan_name as string | null) ?? null,
     planStatus: (t.plan_status as string | null) ?? null,
     criadaEm:   t.created_at as string,
@@ -114,6 +122,14 @@ export async function atualizarDadosDaRede(
     return { error: 'O que a cliente avalia: escolha uma das opções.' }
   }
 
+  // Itens 8 e 9 (as regras do pacote da rede): sem o campo (outro formulário), fica como está.
+  const simOuNao = (k: string): boolean | undefined => {
+    const v = texto(k)
+    return v === 'sim' ? true : v === 'nao' ? false : undefined
+  }
+  const crediarioLibera = simOuNao('pacote_crediario_libera')
+  const vencidoCancela  = simOuNao('pacote_vencido_cancela')
+
   let website = texto('website')
   if (website && !/^https?:\/\//i.test(website)) website = `https://${website}`
 
@@ -131,6 +147,8 @@ export async function atualizarDadosDaRede(
         portal_prazo_alteracao_horas: prazo,
         plano_validade_dias: validadeDoPlano,
         ...(oQueAvaliaPedido ? { avaliacao_o_que: oQueAvaliaPedido } : {}),
+        ...(crediarioLibera !== undefined ? { pacote_crediario_libera: crediarioLibera } : {}),
+        ...(vencidoCancela !== undefined ? { pacote_vencido_cancela: vencidoCancela } : {}),
         updated_at: new Date().toISOString(),
       })
       .eq('id', ctx.tenantId!)

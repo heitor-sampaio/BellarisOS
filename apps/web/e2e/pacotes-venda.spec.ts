@@ -4,6 +4,7 @@ import { banco, PREFIXO, apagarConversas } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
+import { venderPacotePelaAcao, venderNaTelaPassandoPeloContrato } from './apoio/contrato-do-pacote'
 import { apagarClientes } from './apoio/limpeza'
 import { responderAnamnese } from './apoio/anamnese'
 import { abrirVendaNoPdv, euVendi, pagoNoPix, escolherAUnidadeDaVenda } from './apoio/vender'
@@ -169,7 +170,7 @@ test.describe.serial('pacotes — catálogo, venda e comissão', () => {
       await dlg.getByLabel('Parcelas').selectOption('3')
       await pagoNoPix(dlg)
       await euVendi(dlg)
-      await dlg.getByRole('button', { name: /Vender por/ }).click()
+      await venderNaTelaPassandoPeloContrato(dlg, dlg.getByRole('button', { name: /Vender por/ }))
       await expect.poll(async () => (await db().from('client_packages').select('id').eq('client_id', cliente)).data?.length,
         { message: 'a venda grava' }).toBe(1)
     })
@@ -244,7 +245,7 @@ test.describe.serial('pacotes — catálogo, venda e comissão', () => {
     expect(naoBate.error?.message).toMatch(/não batem/)
 
     await comSessao(browser, gestor!, async p => {
-      const r = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', '/admin/pdv',
+      const r = await venderPacotePelaAcao(p, '/admin/pdv',
         [cliente, pacoteId, rede!.branchId, { forma: 'AVISTA', metodo: 'BITCOIN' }])
       expect(r.texto).not.toContain('clientPackageId')
 
@@ -259,7 +260,7 @@ test.describe.serial('pacotes — catálogo, venda e comissão', () => {
     })
     await comSessao(browser, soVe!, async p => {
       // Quem não recebe dinheiro não vende.
-      const r = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', '/admin/pdv',
+      const r = await venderPacotePelaAcao(p, '/admin/pdv',
         [cliente, pacoteId, rede!.branchId, { forma: 'AVISTA', metodo: 'PIX' }])
       expect(r.texto).not.toContain('clientPackageId')
     })
@@ -291,7 +292,7 @@ test.describe.serial('pacotes — catálogo, venda e comissão', () => {
       await expect(dlg.getByLabel('Vencimento')).toHaveValue('')
       await pagoNoPix(dlg)
       await euVendi(dlg)
-      await dlg.getByRole('button', { name: /Vender por/ }).click()
+      await venderNaTelaPassandoPeloContrato(dlg, dlg.getByRole('button', { name: /Vender por/ }))
       await expect.poll(async () => (await db().from('client_packages').select('id').eq('client_id', cliente)).data?.length,
         { message: 'a segunda venda grava' }).toBe(2)
     })
@@ -363,7 +364,7 @@ test.describe.serial('pacotes — catálogo, venda e comissão', () => {
       await expect(dlg2.getByLabel('Pacote', { exact: true })).toBeVisible()
       await pagoNoPix(dlg2)
       await euVendi(dlg2)
-      await dlg2.getByRole('button', { name: /^Vender por/ }).click()
+      await venderNaTelaPassandoPeloContrato(dlg2, dlg2.getByRole('button', { name: /^Vender por/ }))
       // Quem agenda vê o "Agendar a 1ª sessão agora" (no PDV, como na ficha); aqui fica para depois.
       await dlg2.locator('[data-agendar-a-primeira-sessao]').getByRole('button', { name: 'Cancelar' }).click()
       await expect(dlg2).toBeHidden({ timeout: 15_000 })
@@ -384,7 +385,7 @@ test.describe.serial('pacotes — catálogo, venda e comissão', () => {
       await dlg.getByLabel('Vezes no cartão').selectOption('3')
       await pagoNoPix(dlg)
       await euVendi(dlg)
-      await dlg.getByRole('button', { name: /Vender por/ }).click()
+      await venderNaTelaPassandoPeloContrato(dlg, dlg.getByRole('button', { name: /Vender por/ }))
       // Quem agenda vê o "Agendar a 1ª sessão agora" (A47 da 7ª); aqui fica para depois.
       await dlg.locator('[data-agendar-a-primeira-sessao]').getByRole('button', { name: 'Cancelar' }).click()
       await expect(dlg).toBeHidden({ timeout: 15_000 })

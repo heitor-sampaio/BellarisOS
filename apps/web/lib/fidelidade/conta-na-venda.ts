@@ -5,6 +5,7 @@
  * vendido (já com o desconto comercial), e os pontos sobre o que sobra.
  */
 import { calcularDescontoComPontos, maximoDePontos } from '@/lib/fidelidade/resgate'
+import type { TrocaNaComanda } from '@/lib/fidelidade/troca-na-comanda'
 import { descontoDoVoucher, type VoucherParaCalculo } from '@/lib/fidelidade/voucher'
 
 export interface FidelidadeDaVenda {
@@ -14,6 +15,8 @@ export interface FidelidadeDaVenda {
   tetoPct:      number
   /** Os vouchers de DESCONTO ativos da cliente (o de procedimento e o de produto não valem na venda). */
   vouchers:     (VoucherParaCalculo & { id: string; name: string })[]
+  /** A50 da 24ª: a troca de pontos por voucher na venda (lib/fidelidade/troca-na-comanda.ts). */
+  troca?:       TrocaNaComanda | null
 }
 
 export interface EscolhaDaFidelidade {

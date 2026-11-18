@@ -43,7 +43,7 @@ export function contaDoDesconto(total: number, e: EstadoDoDesconto): { reais: nu
   return { reais, liquido: Math.round((total - reais) * 100) / 100, recusa }
 }
 
-export function CampoDoDesconto({ estado, aoMudar, total, comMotivo = false }: {
+export function CampoDoDesconto({ estado, aoMudar, total, comMotivo = false, rotulo: titulo = 'Desconto (opcional)' }: {
   estado:  EstadoDoDesconto
   aoMudar: (e: EstadoDoDesconto) => void
   /** O valor sobre o qual o desconto é dado. */
@@ -53,12 +53,14 @@ export function CampoDoDesconto({ estado, aoMudar, total, comMotivo = false }: {
    * e aparece na lista do Financeiro. O recebimento do atendimento tem o dele.
    */
   comMotivo?: boolean
+  /** O rótulo do campo (o desconto do plano, 22ª A20). */
+  rotulo?: string
 }) {
   const { reais, liquido, recusa } = contaDoDesconto(total, estado)
   const rotulo = { fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' } as const
   return (
     <div data-campo-desconto style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <span style={rotulo}>Desconto (opcional)</span>
+      <span style={rotulo}>{titulo}</span>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <SegSelect
           ariaLabel="Tipo de desconto"

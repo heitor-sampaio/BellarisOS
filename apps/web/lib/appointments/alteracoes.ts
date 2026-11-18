@@ -51,6 +51,15 @@ export function deOutroProfissional(ctx: TenantContext, professionalId: string |
 }
 
 /**
+ * Com o Atendimento "só os meus" (o módulo do Atendimento, 2026-11-18), o
+ * atendimento de OUTRO profissional não se inicia, não se conclui e não ganha
+ * evolução. O "só os meus" da Agenda (`deOutroProfissional`) é o de VER.
+ */
+export function deOutroNoAtendimento(ctx: TenantContext, professionalId: string | null | undefined): boolean {
+  return isOwnScope(ctx, 'atendimento') && (!ctx.internalUserId || professionalId !== ctx.internalUserId)
+}
+
+/**
  * O agendamento, se for da rede E de uma unidade ao alcance — ou dela mesma,
  * numa unidade em que atende (decisão 2 da 8ª simulação, `alcancaOAgendamento`).
  */

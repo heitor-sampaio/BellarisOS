@@ -78,7 +78,7 @@ describe('limitesDe', () => {
     // Automação recém-criada não deveria depender de alguém lembrar de
     // configurar isto para não acordar cliente de madrugada.
     expect(limitesDe({})).toEqual({
-      silencioDe: '21:00', silencioAte: '08:00', tetoPorClienteDia: 3,
+      silencioDe: '21:00', silencioAte: '08:00', tetoPorClienteDia: 3, madrugadaNaVespera: false,
     })
   })
 

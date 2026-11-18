@@ -23,7 +23,8 @@ export type MetricsCore = {
   appointmentsCancelled: number
   appointmentsNoShow:    number
   scheduledMinutes:      number
-  newClients:            number
+  /** Só na REDE (o Heitor, 18/11: "o cliente é da rede"): nulo no recorte de uma unidade da rede de duas ou mais. */
+  newClients:            number | null
   commissionsOpen:       number
   commissionsPaid:       number
   /** Concluídos COBRADOS (preço > 0): o denominador do ticket médio (2026-10-27). */
@@ -51,7 +52,8 @@ export type BranchMetrics = {
   appointmentsCancelled: number
   appointmentsNoShow:    number
   scheduledMinutes:      number
-  newClients:            number
+  /** Nulo: "Novos clientes" por unidade não existe (só na rede de uma unidade, em que a unidade é a rede). */
+  newClients:            number | null
   commissionsOpen:       number
   commissionsPaid:       number
   transactionsCount:     number
@@ -120,7 +122,7 @@ export async function getCore(args: Args): Promise<MetricsCore> {
     appointmentsCancelled: n(row.appointments_cancelled),
     appointmentsNoShow:    n(row.appointments_no_show),
     scheduledMinutes:      n(row.scheduled_minutes),
-    newClients:            n(row.new_clients),
+    newClients:            row.new_clients == null ? null : n(row.new_clients),
     commissionsOpen:       n(row.commissions_open),
     commissionsPaid:       n(row.commissions_paid),
     appointmentsCharged:   n(row.appointments_charged),
@@ -148,7 +150,7 @@ export async function getByBranch(
     appointmentsCancelled: n(r.appointments_cancelled),
     appointmentsNoShow:    n(r.appointments_no_show),
     scheduledMinutes:      n(r.scheduled_minutes),
-    newClients:            n(r.new_clients),
+    newClients:            r.new_clients == null ? null : n(r.new_clients),
     commissionsOpen:       n(r.commissions_open),
     commissionsPaid:       n(r.commissions_paid),
     transactionsCount:     n(r.transactions_count),

@@ -14,7 +14,7 @@ import { criarMembro, type MembroDeTeste } from './apoio/sessao'
  *   problemas do rodapé perdia uma linha, o quadro ganhava 24 px de altura e
  *   o reenquadramento movia tudo).
  *
- * Roda numa rede `[e2e]`, com um membro que só tem Automações.
+ * Roda numa rede `[e2e]`, com a Admin da rede (desde 18/11, só ela mexe nas Automações).
  */
 
 const marca = Date.now().toString(36)
@@ -25,10 +25,9 @@ test.beforeAll(async () => {
   const outra = await criarOutraRede(`qde${marca}`)
   f = {
     outra,
-    membro: await criarMembro(`qde${marca}`, {
-      tenant: outra.tenantId, rotulo: 'Automações',
-      permissoes: [{ modulo: 'automations', nivel: 'MANAGE' }],
-    }),
+    // Automações são configuração da rede toda: só a Admin da rede (o Heitor,
+    // 18/11: "Configuração da rede toda só pela conta admin").
+    membro: await criarMembro(`qde${marca}`, { tenant: outra.tenantId, rotulo: 'Automações', donoDaRede: true, permissoes: [] }),
   }
 })
 

@@ -95,7 +95,10 @@ test('A30: o "A receber da operadora" e o fluxo de caixa dizem o LÍQUIDO, com o
     await como(browser, dona!, async p => {
       await p.goto(rota)
       const cartao = p.locator('[data-kpi="a-receber-operadora"]')
-      await expect(cartao.locator('[data-em-aberto]')).toContainText(/R\$\s950,00/)
+      // A27 da 24ª: o número grande é o em aberto (o líquido que a operadora
+      // ainda deposita); o que vence no período fica na nota, embaixo.
+      await expect(cartao.locator('[data-valor-do-kpi]')).toContainText(/R\$\s950,00/)
+      await expect(cartao.locator('[data-vence-no-periodo]')).toBeVisible()
       // O "líquido" e o bruto moram na dica do cartão (2026-11-16).
       await cartao.locator('[data-dica-botao]').hover()
       await expect(cartao.locator('[data-dica-do-vencimento]')).toContainText('líquido')

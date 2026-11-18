@@ -4,6 +4,7 @@ import { listCampaigns } from '@/actions/notification-campaigns'
 import { NotificationCampaignsList } from '@/components/admin/notification-campaigns-list'
 import { CanalDaCampanha } from '@/components/admin/canal-da-campanha'
 import { Dica } from '@/components/shared/dica'
+import { CONFIG_DA_REDE, mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,6 +16,10 @@ export default async function AdminNotificacoesPage() {
 
   const { campaigns, totalSent, activeCount } = await listCampaigns()
   const veAutomacoes = temRecurso(ctx, 'automacoes') && can(ctx, 'automations', 'VIEW')
+  // A campanha é configuração da rede toda: só a Admin da rede cria, ativa e
+  // arquiva (o Heitor, 18/11: "Configuração da rede toda só pela conta admin").
+  const gerencia = can(ctx, 'marketing', 'MANAGE')
+  const podeEditar = gerencia && mexeNaConfigDaRede(ctx)
 
   return (
     <div>
@@ -48,6 +53,8 @@ export default async function AdminNotificacoesPage() {
         campaigns={campaigns}
         totalSent={totalSent}
         activeCount={activeCount}
+        podeEditar={podeEditar}
+        avisoDaRede={gerencia && !mexeNaConfigDaRede(ctx) ? CONFIG_DA_REDE : null}
       />
     </div>
   )

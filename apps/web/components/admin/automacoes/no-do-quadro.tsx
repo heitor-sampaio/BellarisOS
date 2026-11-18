@@ -36,6 +36,7 @@ export const ICONE_DO_NO: Record<TipoDeNo, LucideIcon> = {
   [NODES.ACAO_MOVER_ETAPA]:      MoveRight,
   [NODES.ACAO_DESFECHO]:         Trophy,
   [NODES.ACAO_TAG_CLIENTE]:      Tag,
+  [NODES.ACAO_REMOVER_TAG]:      Tag,
   [NODES.ACAO_ATRIBUIR]:         UserCheck,
   [NODES.ACAO_ANOTAR]:           PenLine,
 }

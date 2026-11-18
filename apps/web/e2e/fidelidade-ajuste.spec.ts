@@ -19,6 +19,7 @@ const db = () => banco()
 let rede: OutraRede | null = null
 let gestor: MembroDeTeste | null = null
 let recepcao: MembroDeTeste | null = null
+let dona: MembroDeTeste | null = null
 let cliente = ''
 const alheios: string[] = []
 
@@ -31,6 +32,10 @@ test.beforeAll(async () => {
       { modulo: 'settings', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'loyalty', nivel: 'MANAGE' },
     ],
   })
+  // Ligar o programa é configuração da rede toda: a aba é só da Admin da rede
+  // (o Heitor, 18/11: "Configuração da rede toda só pela conta admin"). O
+  // ajuste de pontos segue de quem tem a Fidelidade em Gerenciar (o gestor).
+  dona = await criarMembro(`fad${marca}`, { tenant: rede.tenantId, rotulo: 'Dona', donoDaRede: true, permissoes: [] })
   recepcao = await criarMembro(`far${marca}`, {
     tenant: rede.tenantId, rotulo: 'Recepção fidelidade',
     permissoes: [{ modulo: 'clients', nivel: 'VIEW' }, { modulo: 'loyalty', nivel: 'VIEW' }],
@@ -38,7 +43,7 @@ test.beforeAll(async () => {
 })
 
 test.afterAll(async () => {
-  for (const m of [gestor, recepcao]) if (m) await m.limpar()
+  for (const m of [gestor, recepcao, dona]) if (m) await m.limpar()
   if (alheios.length) expect(await apagarClientes(alheios)).toEqual([])
   if (rede) await rede.limpar()
 })
@@ -54,12 +59,18 @@ async function saldo(clientId: string) {
 }
 
 test.describe.serial('fidelidade pela tela', () => {
-  test('desligada, a ficha não mostra pontos; o gestor liga o programa em Configurações', async ({ browser }) => {
+  test('desligada, a ficha não mostra pontos; a Admin da rede liga o programa em Configurações', async ({ browser }) => {
     await como(browser, gestor!, async p => {
       await p.goto(`/admin/clients/${cliente}`)
       await expect(p.getByRole('heading').first()).toBeVisible()
       await expect(p.getByTestId('fidelidade-do-cliente')).toHaveCount(0)
-
+      // Com as Configurações e a Fidelidade em Gerenciar, mas sem ser a Admin
+      // da rede: a aba só mostra.
+      await p.goto('/admin/settings?tab=fidelidade')
+      await expect(p.locator('[data-config-da-rede]')).toContainText('Esta configuração é só da Admin da rede.')
+      await expect(p.getByRole('button', { name: 'Programa desligado' })).toHaveCount(0)
+    })
+    await como(browser, dona!, async p => {
       await p.goto('/admin/settings?tab=fidelidade')
       await p.getByRole('button', { name: 'Programa desligado' }).click()
       await expect(p.getByRole('button', { name: 'Programa ligado' })).toBeVisible()

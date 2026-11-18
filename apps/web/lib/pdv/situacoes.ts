@@ -218,8 +218,9 @@ export function oQueSaiNoReceber({ voucher, desconto, pontos }: {
   pontos: { pontos: number; desconto: number }
 }): SaiDaComanda[] {
   const linhas: SaiDaComanda[] = []
-  if (voucher && voucher.desconto > 0) linhas.push({ chave: 'voucher', rotulo: `Voucher “${voucher.nome}”`, valor: voucher.desconto })
+  // "Desconto, voucher, pontos" (o Heitor, 2026-11-18): a ordem em que saem.
   if (desconto > 0) linhas.push({ chave: 'desconto', rotulo: 'Desconto', valor: desconto })
+  if (voucher && voucher.desconto > 0) linhas.push({ chave: 'voucher', rotulo: `Voucher “${voucher.nome}”`, valor: voucher.desconto })
   if (pontos.desconto > 0) linhas.push({ chave: 'pontos', rotulo: 'Pontos', valor: pontos.desconto })
   return linhas
 }
@@ -383,8 +384,30 @@ export function pagoJuntoEmTexto(pagamentos: readonly PagamentoDaComandaNaTela[]
  * e vai a "Fechadas hoje" com o selo "A receber" — e o topo dizia "0 comandas
  * abertas". O topo cita as comandas de hoje que ainda têm valor a receber.
  */
+/** A comanda fechada (paga, não estornada) com valor ainda a receber: o crediário. */
+export function temValorEmAberto(c: ComandaDoPdv): boolean {
+  return c.paga && !c.estornada && !c.canceladaEm && c.emAberto > 0
+}
+
 export function contarComValorEmAberto(comandas: readonly ComandaDoPdv[]): number {
-  return comandas.filter(c => c.paga && !c.estornada && !c.canceladaEm && c.emAberto > 0).length
+  return comandas.filter(temValorEmAberto).length
+}
+
+/**
+ * A14 da 24ª simulação (princípio 3): o "2 vendas com parcelas a receber" do
+ * topo abria "Fechadas hoje" inteira — as pagas, as estornadas e as a receber
+ * misturadas. O link leva `?so=a-receber`, e a lista mostra só elas.
+ */
+export const FILTRO_COM_VALOR_EM_ABERTO = 'a-receber'
+
+export function comandasDoFiltro(comandas: readonly ComandaDoPdv[], so: string | null | undefined): ComandaDoPdv[] {
+  return so === FILTRO_COM_VALOR_EM_ABERTO ? comandas.filter(temValorEmAberto) : [...comandas]
+}
+
+export function hrefDasComValorEmAberto(basePath: string, unidadeId: string | null): string {
+  const q = new URLSearchParams({ ver: 'PAGAS', so: FILTRO_COM_VALOR_EM_ABERTO })
+  if (unidadeId) q.set('unidade', unidadeId)
+  return `${basePath}?${q.toString()}`
 }
 
 /**

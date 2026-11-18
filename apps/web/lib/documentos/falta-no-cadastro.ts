@@ -5,7 +5,6 @@ import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
 import { rotuloDoQueFalta } from '@/lib/documentos/leitura'
 import { valoresDoDocumento, type DadosDoDocumento } from '@/lib/documentos/valores'
 import { variavelObrigatoria } from '@/lib/documentos/variaveis'
-import { ehMenorDeIdade } from '@/lib/clients/menor'
 import { oQueFalta } from '@/lib/documentos/o-que-falta'
 
 /**
@@ -26,8 +25,8 @@ export function faltandoDoCadastro(variaveis: readonly string[], cliente: Record
     agora: new Date(), cliente: cliente as DadosDoDocumento['cliente'],
     rede: { name: null, document: null, phone: null, email: null }, unidade: null, procedimento: null, agendamento: null, pagamento: null,
   } as DadosDoDocumento)
-  const menor = ehMenorDeIdade((cliente.birth_date as string | null | undefined) ?? null)
-  const faltam = variaveis.filter(v => /^(cliente|responsavel)\./.test(v) && variavelObrigatoria(v, { menor }) && !valores[v])
+  // O responsável da menor não entra: sem ele o documento segue (decisão 2 da 7ª, "avisar, não barrar").
+  const faltam = variaveis.filter(v => /^(cliente|responsavel)\./.test(v) && variavelObrigatoria(v) && !valores[v])
   return oQueFalta(faltam.map(rotuloDoQueFalta))
 }
 

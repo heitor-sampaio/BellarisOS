@@ -19,10 +19,9 @@ let gestor: MembroDeTeste | null = null
 
 test.beforeAll(async () => {
   rede = await criarOutraRede(`fva${marca}`)
-  gestor = await criarMembro(`fvag${marca}`, {
-    tenant: rede.tenantId, rotulo: 'Gestor validade',
-    permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'loyalty', nivel: 'MANAGE' }],
-  })
+  // A configuração da fidelidade é da rede toda: a aba é só da Admin da rede
+  // (o Heitor, 18/11: "Configuração da rede toda só pela conta admin").
+  gestor = await criarMembro(`fvag${marca}`, { tenant: rede.tenantId, rotulo: 'Gestor validade', donoDaRede: true, permissoes: [] })
 })
 test.afterAll(async () => {
   if (gestor) await gestor.limpar()

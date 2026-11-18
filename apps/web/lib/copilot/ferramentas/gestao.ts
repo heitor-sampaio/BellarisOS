@@ -28,7 +28,7 @@ export const lancamentos: FerramentaDeLeitura<{
   modulo: 'financial', nivel: 'VIEW',
   // "Só as próprias comissões" não é financeiro da clínica: a tela também não mostra.
   pode: ctx => !isOwnScope(ctx, 'financial'),
-  descricao: 'Lançamentos financeiros (contas a receber e a pagar): em aberto (padrão), vencidos, pagos ou todos; receita ou despesa; por período (vencimento, ou pagamento quando "pagos"), unidade ou cliente (id). Até 50. Para TOTAIS do período (a despesa, a receita, por unidade) use a ferramenta indicadores — nunca some estas linhas. O estorno (tipo "estorno") é o contra-lançamento de um pagamento desfeito: não é despesa nem receita, e fica de fora quando o pedido é só despesa ou só receita.',
+  descricao: 'Lançamentos financeiros (contas a receber e a pagar): em aberto (padrão), vencidos, pagos ou todos; receita ou despesa; por período (vencimento, ou pagamento quando "pagos"), unidade ou cliente (id). Até 50. Para TOTAIS do período use a ferramenta indicadores — nunca some estas linhas: a despesa e a receita do período na aba overview; por unidade e por categoria na aba financeiro (despesaPorUnidade, despesaPorCategoria; receitaPorUnidade, receitaPorCategoria). O estorno (tipo "estorno") é o contra-lançamento de um pagamento desfeito: não é despesa nem receita, e fica de fora quando o pedido é só despesa ou só receita.',
   parametros: z.object({
     tipo: z.enum(['receita', 'despesa']).optional(),
     situacao: z.enum(['em_aberto', 'vencidos', 'pagos', 'todos']).optional(),

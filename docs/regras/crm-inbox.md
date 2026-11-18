@@ -62,6 +62,11 @@
   é por ficha, e cada rede responde pelos dados dela.
 - **A cliente de balcão** (2026-10-21, decisão do Heitor): "Novo cliente"
   pede só nome e telefone; e-mail e CPF são opcionais (preenchidos, válidos).
+  O endereço também é opcional, recolhido em "Endereço (opcional)" (A29 da
+  22ª = A39 da 23ª, 2026-11-17: o contrato do pacote precisa dele), com o
+  MESMO componente de CEP da aba Dados (`CamposDeEndereco`,
+  `components/shared/campos-de-endereco.tsx`; `enderecoDoFormulario`). No
+  "Unificar com a ficha", só o endereço preenchido vai por cima.
   O acesso ao app é a caixa "Criar o acesso ao app", que só se marca com os
   dois — sem ela, nenhum login nasce. Criado o acesso, a tela
   CONFIRMA (toast: login = e-mail, senha inicial = CPF, trocada no primeiro acesso — em texto
@@ -142,7 +147,11 @@
     `variantesDoTelefone`) que ainda não é cliente — a oportunidade, até a PERDIDA
     que voltou, ou só a conversa — faz a tela perguntar "É a mesma pessoa do
     contato X?" (D-9, frente de cadastro de 2026-10-29; `pessoaDoCrmDoTelefone`,
-    `lib/clients/pessoa-do-crm.ts`). "Sim" liga à ficha nova as oportunidades
+    `lib/clients/pessoa-do-crm.ts`. Do Heitor: perguntar e, no "Sim", ligar à
+    ficha as oportunidades e as conversas e contar a conversão. Perguntar só a
+    quem tem o CRM, ligar só o que ela alcança, perguntar também quando só há
+    a conversa e converter a mais recente são decisões do Claude daquela
+    frente, anotadas "para revisar"). "Sim" liga à ficha nova as oportunidades
     e as conversas da pessoa que quem cadastra ALCANÇA (`leadAoAlcance`,
     `conversaAoAlcance`; sem o CRM não pergunta): a mais recente segue a
     conversão de sempre (CONVERTED, o clique do anúncio, a API de
@@ -333,6 +342,9 @@ AG2, MK2; migration `20261114800001_tags_sem_unidade`):**
   (`recorte_e_a_clinica`: nulo, ou todas as unidades ativas — a rede de uma
   unidade só) conta todas. Quem foi atendida em duas conta em cada uma, e uma
   vez no total (o ranking diz isso). A tela diz "atendidas na unidade".
+  **Desfeito na 24ª simulação** (o Heitor, 2026-11-18): a "atendida na
+  unidade" era uma leitura do Claude. "Novos clientes" só existe na rede, e o
+  "Reativar" é sempre o da rede (`indicadores.md`).
 - **T2** — a conversa que chega de anúncio e a oportunidade criada à mão não
   ganham a origem como tag (`deriveLeadSource`/`resolveLeadSource` não têm
   mais `tags`): a origem é a ORIGEM.
@@ -390,6 +402,13 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   (Ativos, Novos, Inativos — escolha única) e Tags (várias, todas valem juntas,
   sem caixa) no `PickerCompacto`, como o quadro. O segmento fixo "Todos / VIP /
   Novos / Inativos" saiu: VIP é uma tag como as outras.
+- **"Selecionar" e "Marcar tag" na lista de Clientes** (A21 da 16ª,
+  2026-11-17; Clientes em Gerenciar): escolhe-se uma a uma (ou "Todas da
+  lista", a do filtro) e uma tag do VOCABULÁRIO; muda só quem ainda não a
+  tem, e as tags da ficha ficam (`marcarTagEmClientes`, `actions/clients.ts`;
+  `marcacoesDaTag`, `lib/tags/marcar-em-varias.ts`; até 200 de cada vez; cada
+  ficha pelo `atualizarClienteCore`). É a pessoa que marca — o sistema nunca
+  põe tag sozinho (CLAUDE.md §1). Prova: `tests/pendencias-area-3.test.ts`.
 - **"Aniversariantes de novembro"** na Situação (A9 da 8ª simulação,
   2026-11-06: só havia a automação desligada): quem faz aniversário no mês de
   Brasília, decidido PELO BANCO (`clientes_aniversariantes`, só o servidor;
@@ -672,10 +691,12 @@ contatos dela — e vê Configurações só com essa aba.
 - **A importação é de quem é da REDE** (H8 do levantamento das regras, o
   Heitor, 2026-11-11: "Importações é da rede, ela que vai importar os seus
   clientes ou o que for, e na importação poder escolher se aquilo pertence a
-  uma unidade"): quem não tem “A rede inteira” não importa (`recusaDaConfigDaRede`;
-  a aba diz "Esta configuração é da rede toda"), e a importação escolhe a
-  unidade a que os registros pertencem. (Correção C73: hoje quem não tem “A rede inteira” importa
-  para a unidade dela.) `plataforma.md`, "A configuração da rede toda".
+  uma unidade"): desde 18/11, só a Admin da rede importa (a configuração da
+  rede toda é "só pela conta admin"; `recusaDaConfigDaRede`; a aba diz "Esta
+  configuração é só da Admin da rede.", e o "Importar planilha" da lista de
+  Clientes só aparece para ela), e a importação escolhe a unidade a que os
+  registros pertencem. A C73 entrou na F70: quem não tinha “A rede inteira”
+  importava para a unidade dela. `plataforma.md`, "A configuração da rede toda".
 - **O destino é escolhido a cada importação**: *clientes* (a ficha, na unidade
   escolhida; `clients: MANAGE`) ou *contatos do CRM* (só a
   pessoa: nome, telefone, e-mail, rede social, tags; `crm: MANAGE`). Oportunidade no funil é
@@ -702,8 +723,9 @@ contatos dela — e vê Configurações só com essa aba.
   página manda; o servidor monta as suas (`referenciasDaRede`,
   `lib/importacao/referencias.ts`).
 - **No cliente**: a situação (ativo/inativo) vale só para quem NASCE (quem já
-  existe fica como a rede tem); a unidade POR LINHA só na rede (quem é de
-  unidade importa para a dela), e a escolhida na tela vale para as linhas sem.
+  existe fica como a rede tem); a unidade POR LINHA (a coluna "unidade"), e a
+  escolhida na tela vale para as linhas sem. Quem importa é a Admin da rede, que
+  alcança todas as unidades (desde a C73 ninguém de unidade importa).
   A rede social não é da ficha: no destino clientes ela só vai para o card.
 - **O arquivo é lido no navegador** (`csv.ts`: UTF-8 ou Windows-1252, `;` `,`
   ou tabulação, aspas RFC 4180; `campos.ts` sugere a coluna pelo cabeçalho);
@@ -832,8 +854,8 @@ contatos dela — e vê Configurações só com essa aba.
   (`lib/busca/abrir.ts`, o evento que a busca da topbar escuta) — a quem não
   cria oportunidade (a busca não os mostra), "aparecem no Inbox quando a
   conversa começar". **A lista de Clientes tem o atalho "Importar planilha"**
-  (A21 da 21ª), para quem importa clientes: Clientes em Gerenciar e “A rede
-  inteira”. Prova: `tests/importacao-atritos-da-21.test.ts`.
+  (A21 da 21ª), para quem importa clientes: Clientes em Gerenciar e a Admin da
+  rede (`mexeNaConfigDaRede`, desde 18/11). Prova: `tests/importacao-atritos-da-21.test.ts`.
 - **A linha que juntou com quem já existe diz em quem entrou e o que ficou
   de fora** (A30 da 22ª simulação; princípio 3: o resultado dizia só "1 sem
   mudança"). Com o nome ou o e-mail diferentes dos de quem já existe (só o
@@ -848,7 +870,9 @@ contatos dela — e vê Configurações só com essa aba.
   - **"Cliente desde"** (`clients.cliente_desde`, data; aceita "03/2021" e
     "2019"): a ficha de antes do mês NÃO conta como cliente nova dele — os
     novos clientes contam por `coalesce(cliente_desde, created_at)`
-    (`indicadores.md`), e o selo "Novo" da lista também. **E a tela diz o
+    (`indicadores.md`), e o selo "Novo" da lista também — que diz, na dica
+    ao lado do contador e no `title` do selo, que é calculado e não é tag (A12
+    da 24ª). **E a tela diz o
     dela** (D6 da 10ª simulação, 2026-11-10; princípio 3): a ficha e o
     atendimento diziam "Cliente desde nov 2026" (o cadastro no sistema) para
     quem a planilha diz desde 2021. "Cliente desde" na ficha, no cabeçalho do
@@ -1090,8 +1114,11 @@ pessoa (`lib/crm/atividade-da-pessoa.ts`).
   conversa", a MESMA janela do painel do inbox (`ScheduleModal`,
   `createCrmAppointment`): nome e telefone da oportunidade, a ficha nasce ligada ao
   card (`leads.client_id`), o agendamento é COMMERCIAL e a linha do tempo
-  do card diz que houve o agendamento. Aparece com o CRM em Gerenciar e a
-  agenda no plano (`podeAgendar`). Prova: `e2e/crm-agendar-liga-oportunidade.spec.ts` ("A16").
+  do card diz que houve o agendamento. Aparece com o CRM em Gerenciar, a
+  Agenda em Gerenciar e a agenda no plano (`podeAgendar` no quadro, `comAgenda`
+  no inbox), e `createCrmAppointment` pede os dois: quem não marca horário na
+  Agenda não marca pelo CRM (decisão do Claude pelo princípio 3, 2026-11-18,
+  na auditoria das regras — agendava só com o CRM). Prova: `e2e/crm-agendar-liga-oportunidade.spec.ts` ("A16").
   **Na rede de duas ou mais unidades, a janela nasce SEM unidade** (sobra da
   F33 da 8ª simulação, 2026-11-06; princípio 3): nascia na primeira em ordem
   alfabética; agora "Selecione a unidade…" (`unidadeInicial`,
@@ -1271,7 +1298,9 @@ e A34 da 23ª): sem `?funil=`, o último escolhido no seletor (o cookie
 `bellaris-funil`, `lib/crm/funil-lembrado.ts`) e, sem ele, o padrão — que,
 vazio, cede ao primeiro funil com oportunidade no recorte do quadro
 (`funilDoDashboard`, a regra do Dashboard; `indicadores.md`). Prova:
-`e2e/crm-atritos-da-23.spec.ts`.
+`e2e/crm-atritos-da-23.spec.ts`. O `?funil=` que abriu a tela também fica
+lembrado (A42 da 24ª; `funilParaLembrar`), e a dica do seletor diz que o
+lembrado é DESTE navegador. Prova: `tests/atritos-da-24-crm-clientes-cadastros.test.ts`.
 Clicar no nome do funil, na janela, também o seleciona (A12 da 17ª). E
 **tirar a ÚLTIMA etapa de perda do funil avisa, não recusa** (A11 da 17ª;
 princípio 2): excluir a etapa ou mudar o desfecho dela abre "Este funil fica
@@ -1289,6 +1318,53 @@ excluir.", com "Entendi" e sem o "Excluir". A recusa da action e a do funil
 dizem o mesmo, no plural certo (`recusaDaEtapaComOportunidades`,
 `recusaDoFunilComOportunidades`; nada de "oportunidade(s)"). Prova:
 `tests/atendimento-crm-atritos-da-21.test.ts`, `e2e/crm-estrutura.spec.ts`.
+**E ali mesmo: "Mover as N para [etapa]"** (A35 da 22ª, 2026-11-17): abaixo
+da pergunta, as outras etapas do funil (sem a perdida — nela o quadro pede o
+motivo de cada uma) e o "Mover" (`moverOportunidadesDaEtapa`,
+`actions/leads.ts`: Configurações e CRM em Gerenciar, a rede toda — H7 —,
+mesmo funil; uma a uma pelo `moverEtapaCore`, com o "só os meus" do CRM — a
+que é de outra pessoa fica, e a linha diz quantas). **Decisão do Heitor
+(17/11): se mover à mão dispararia automações, PERGUNTAR se dispara ou não**
+— `automacoesDoMovimento` lista as ligadas que aquela mudança dispararia;
+com alguma, "Mover dispara a automação “X”. Disparar?" com Sim/Não. No
+"Não", o movimento se registra (a linha do tempo, o evento), mas não vai ao
+motor (`semDespachar`, de `moverEtapaCore` a `emitirEvento`). Movidas todas,
+a pergunta volta ao "Excluir a etapa". Prova: `tests/pendencias-area-3.test.ts`.
+
+**A mesma pergunta ao mover UM card pela tela** (o Heitor, 2026-11-18:
+"Também ao arrastar um"). Vale em todo caminho de mover pela tela: o
+arraste do quadro, o "Mover para a etapa" e o ganho/perda do menu do card, o
+"Mover para outro funil", o seletor de etapa do painel do inbox, o
+"Ganhou"/"Perdeu"/"Reabrir" do inbox e a etapa do modal da oportunidade.
+Antes de mover, a tela consulta (`automacoesAoMoverOCard` em
+`actions/leads.ts`, `automacoesAoDefinirSituacao` em `actions/inbox.ts`) e,
+com automação que dispararia, pergunta (`usePerguntaDasAutomacoes`,
+`components/branch/pergunta-das-automacoes.tsx`): "Sim" move e dispara,
+"Não" move sem disparar (`updateLeadStage`, `definirSituacaoOportunidade` e
+o `_disparar` do `updateLead` levam o `semDespachar`), fechar a janela não
+move. Sem automação, move direto, como antes. Indo para a etapa perdida, a
+pergunta das automações vem antes do "Por que perdeu?". **O Copilot também
+pergunta** (auditoria das regras, 2026-11-18: ele move a pedido da pessoa,
+e a fala do Heitor é sobre mover à mão): o cartão de confirmação do
+`mover_etapa` diz "Mover dispara a automação “X”. Disparar?" e dá "Disparar"
+ou "Não disparar" (a mesma régua, `automacoesQueOMovimentoDispara`; o "Não"
+leva o `semDespachar`); sem automação, o cartão de sempre. Se uma automação
+passou a disparar entre o cartão e o "Confirmar", ele não move e pede para
+refazer. Prova: `tests/copilot-mover-pergunta-automacoes.test.ts`. Só as
+próprias automações movem sem perguntar.
+- **A pergunta cita só a automação que DE FATO dispararia**: a que está
+  ligada, assina o movimento (ou o ganho/a perda, no destino de desfecho) e
+  cujo gatilho casa com a mudança — o funil e a etapa de destino e os
+  filtros do gatilho, avaliados sobre o fato como ele sairia
+  (`automacoesQueOMovimentoDispara`, `lib/crm/automacoes-do-movimento.ts`),
+  pela MESMA régua do despacho (`gatilhoCasa`, `lib/automacoes/gatilho-casa.ts`).
+  No "Mover as N", basta uma das oportunidades casar. Sem as automações no
+  plano, na sessão de suporte (nada vai ao motor) ou com o card já na etapa,
+  não pergunta.
+- **Mudar a etapa pelo modal agora emite o movimento** (`updateLead`): antes
+  não emitia evento nenhum, e a automação de "mudou de etapa" não via o card
+  movido por ali.
+- Prova: `tests/automacoes-ao-mover-o-card.test.ts`.
 
 **O motivo da perda** (2026-10-21, decisão do Heitor). Levar a oportunidade
 a uma etapa de desfecho `LOST` pela TELA pergunta "Por que perdeu?": um
@@ -1360,8 +1436,8 @@ oportunidade segue aberta." com "Mover para Fechado" (`data-sugere-ganho`). É
 SUGESTÃO: nada se move sozinho (crm-05, princípio 6) — quem move é a pessoa,
 no botão, pelo `updateLeadStage` de sempre. Uma ida ao banco para o quadro
 inteiro (`crm_sinais_dos_clientes`, migration `20261105003102`, só
-`service_role`; `lib/crm/sinais-do-card.ts`). **Os lembretes do CRM são avisos para a pessoa, nunca o card andando** (A42 e
-A45 da 9ª simulação, 2026-11-07; princípio 6). Migration `20261107004302`.
+`service_role`; `lib/crm/sinais-do-card.ts`). **Os lembretes do CRM são avisos para a pessoa, nunca o card andando** (A42 da
+9ª simulação, 2026-11-07; princípio 6). Migration `20261107004302`.
 - **O lembrete de retorno** (A42: quem cuidava do card só tinha as Observações para "ligar de
   novo na quinta"): o card tem "Lembrete de retorno" — "Retornar em" (o DIA,
   `leads.retornar_em`) e "O que fazer no retorno" (`retornar_obs`), no "Nova
@@ -1372,19 +1448,30 @@ A45 da 9ª simulação, 2026-11-07; princípio 6). Migration `20261107004302`.
   7h de Brasília (o de madrugada tocaria o celular), ou "Retorno atrasado: X
   (10/11)"; uma vez por dia marcado (`retorno_avisado_em`, reivindicado antes
   de sair; trocar a data o zera). Card ganho ou perdido não avisa; sem
-  responsável, não há a quem avisar (o card mostra).
+  responsável, não há a quem avisar (o card mostra). **De quem é a decisão**:
+  do Claude, na 9ª simulação, pelos princípios — é o lembrete do dia que a
+  PRÓPRIA pessoa marcou no card, como um despertador, e não uma automação da
+  rede (o Heitor não falou deste aviso; o D-12, "vira lembrete à recepção e
+  gatilho de automação", era do "Retorno em N dias" do atendimento, que saiu).
+  Se a rede quiser um aviso diferente (outro texto, outra pessoa, WhatsApp), é
+  uma automação dela.
 - **O ganho a marcar** (A45: uma pessoa criou a oportunidade, outra vendeu o plano, e
-  o card ficou em "Mover para Fechado"): quando a cliente ligada compra (pacote,
-  pré-pago ou plano aceito) com a oportunidade aberta — a régua da sugestão do
-  card (A18 da 7ª) —, o responsável recebe "Marque o ganho: X — X comprou Plano
-  Y, e a oportunidade dela segue aberta…" (`crm_lembretes_de_ganho`, só
-  `service_role`; uma vez por oportunidade, `ganho_lembrado_em`). As que já
-  estavam assim no dia da migration foram marcadas como lembradas (o card já
-  sugeria).
+  o card ficou em "Mover para Fechado") é um MODELO das Automações, não do cron
+  (auditoria das regras, 2026-11-18; r2-cfg-04: "toda e qualquer automação deve
+  ser feita através dos módulos de automações"; princípio 6). Até ali o cron
+  `crm-lembretes` mandava "Marque o ganho" a todas as redes, sem desligar. Agora:
+  o fato `lead.cliente_comprou` (gatilho no banco, migration `20261124100001`:
+  a cliente ligada compra — pacote, pré-pago ou plano aceito — com a
+  oportunidade aberta e criada antes, a régua da sugestão do card, A18 da 7ª;
+  uma vez por oportunidade e por compra) e o modelo "Marque o ganho"
+  (`lib/automacoes/modelos.ts`), que nasce rascunho: "Avisar a equipe" a
+  "Quem cuida da oportunidade" com o texto de antes. `crm_lembretes_de_ganho`
+  saiu; a coluna `ganho_lembrado_em` fica (dado gravado), e nada mais a grava.
+  Prova: `tests/marque-o-ganho-vira-automacao.test.ts`.
 - O aviso abre o card: `data.caminho` (`/admin/oportunidades?lead=` ou o da
   unidade do responsável), que o sino da equipe mostra como "Abrir" (só caminho
   deste app, `caminhoInterno`).
-- Prova: `e2e/crm-lembretes.spec.ts` (o cron, uma vez cada, sem mover o card),
+- Prova: `e2e/crm-lembretes.spec.ts` (o cron só do retorno, uma vez, sem mover o card),
   `e2e/crm-atritos-da-9.spec.ts` ("A42", o campo e o card).
 
 **O resumo do quadro diz a base e leva aos perdidos** (A44 da 9ª simulação,
@@ -1476,6 +1563,7 @@ o contato junto.
 ## O que nunca fazer aqui
 
 ```
+❌ Mover a oportunidade pela TELA sem a pergunta das automações (usePerguntaDasAutomacoes) — o "Não" do Heitor sumiria nesse caminho
 ❌ Pôr tag sozinho (gatilho, origem, unidade, importação de outra coluna) — só a pessoa marca, ou a ação "Adicionar tag" que a rede montou (tests/tags-so-quem-marca trava)
 ❌ Entrada livre de tag numa tela (o gatilho põe a tag nova no vocabulário da rede): é o TagPicker, e a action passa por tagsDoVocabulario (D7 da 18ª)
 ❌ Ler uma tag como "a unidade da cliente" — não existe tag de unidade (H16); "a cliente nesta unidade" é a atendida nela
@@ -1522,7 +1610,7 @@ o contato junto.
 ❌ Gravar o telefone da oportunidade, do contato ou do card sem telefoneParaGravar (lib/contatos/propagar.ts): o formato do WhatsApp, e o incompleto recusado (F70, C28)
 ❌ Editar o card (updateLead) sem leadAoAlcance ANTES de gravar, nem conferir a linha devolvida (F70, C27)
 ❌ Procurar cliente com ilike no nome ou no telefone cru (Copilot, seletores): é a regra única buscar_clientes / clienteCasaComBusca (D6 da 8ª; F70, C5)
-❌ Importar (importarContatos, retomarImportacao) sem recusaDaConfigDaRede: as Importações são de quem é da rede (H8; F70, C73)
+❌ Importar (importarContatos, retomarImportacao) sem recusaDaConfigDaRede: as Importações são da rede, e só a Admin da rede as faz (H8; F70, C73; 18/11)
 ❌ Unificar ficha trocando o documento que ela já tem (CPF por passaporte, um passaporte por outro): a ficha tem UM documento (F70, C31)
 ❌ Barrar o cadastro ou o atendimento da menor sem responsável (é aviso — princípio 2), ou decidir "menor" fora de ehMenorDeIdade
 ❌ Oferecer cadastrar ou editar cliente a quem tem Clientes em Ver, ou recusar isso lançando semAcesso dentro do useActionState (é { error: SO_CONSULTA_CLIENTES })

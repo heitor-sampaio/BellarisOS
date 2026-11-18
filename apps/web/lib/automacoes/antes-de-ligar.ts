@@ -92,7 +92,11 @@ export function limitesAntesDeLigar(l: LimitesDaAutomacao): string {
   const teto = l.tetoPorClienteDia
     ? `No máximo ${l.tetoPorClienteDia} por cliente por dia.`
     : 'Sem teto por cliente.'
-  return `${silencio} ${teto}`
+  // D17 ("a + c opcional"): a opção ligada também se diz antes de ligar.
+  const vespera = l.madrugadaNaVespera && l.silencioDe && l.silencioAte
+    ? ' O lembrete que cairia no silêncio sai na véspera às 20:00.'
+    : ''
+  return `${silencio}${vespera} ${teto}`
 }
 
 const minutosDe = (h: string) => { const [a, b] = h.split(':').map(Number); return a! * 60 + b! }

@@ -34,7 +34,14 @@
 - Notificações operacionais: novo agendamento, cancelamento, remarcação,
   check-in e estoque no mínimo ou abaixo (pela régua da tela, uma vez por
   cruzamento — A48 da 11ª, `atendimento.md` §9.5)
-- Notificações para cliente: confirmação, lembrete 24h antes, promoções
+- Notificações para cliente, no celular (push): o horário marcado, remarcado,
+  cancelado e concluído e o pagamento — o aviso do próprio fato
+  (`lib/appointments/avisos.ts`, `texto-do-aviso.ts`). O lembrete antes do
+  agendamento e a confirmação NÃO saem sozinhos: são modelos das Automações,
+  que nascem desligados (MK1, 2026-11-14; princípio 6: "automação nasce como
+  modelo desligado; a rede liga se quiser"); as promoções são campanhas (push,
+  D-3). Era o texto da especificação original ("confirmação, lembrete 24h
+  antes, promoções"), corrigido na auditoria das regras (2026-11-18).
 - **O plano proposto avisa a cliente** (A12 da 20ª simulação, 2026-11-17;
   princípio 3, como a "Foto nova"): "Plano novo" — "<unidade> preparou um
   plano de tratamento para você.", sem nada do procedimento (o aviso aparece
@@ -53,10 +60,21 @@
   lê por `aparelhos_das_clientes(fichas)` (a mesma régua, em lote), e o "vai
   receber no celular" (`publico_com_aparelho`) conta igual. Prova:
   `e2e/campanha-defeitos-do-levantamento.spec.ts` ("C51").
+- **O aviso aberto FICA no sino do app** (22ª A40, 2026-11-17): abrir um aviso
+  o tirava da lista, e a "Foto nova" não se achava de novo. O sino traz os
+  lidos também (`getClientNotifications` sem o filtro de `is_read`), esmaecidos
+  (`[data-lida]`); o clique só marca como lido, e "Em dia" vale quando todos
+  estão lidos. Prova: `tests/pendencias-area-1.test.ts`.
 - **O aparelho é de UMA pessoa OU de UMA cliente** (C56, F69): `push_tokens`
   tem `check (num_nonnulls(user_id, client_id) = 1)` — o aparelho com os dois
   levaria o aviso da rede à equipe e o da equipe à cliente.
-- Fallback de notificação WhatsApp para quando push falhar (uazapi ou API oficial, conforme o que a rede tiver conectado)
+- **Não há WhatsApp no lugar do push que falha** (D-3, o Heitor, 2026-10-29:
+  "O WhatsApp fica para o futuro."; princípio 6). A cliente sem aparelho
+  registrado fica com o aviso no sino do app ("Guardado no sino do app", A13
+  da 20ª). Mandar pelo WhatsApp é uma automação que a rede monta e liga. Era o
+  texto da especificação original ("fallback de WhatsApp quando o push
+  falhar"), que o código nunca fez; corrigido na auditoria das regras
+  (2026-11-18).
 
 ### 9.8.0 Os números de WhatsApp da rede
 
@@ -91,7 +109,9 @@ tabela veio remover.
   conexão" da lista. Prova: `e2e/whatsapp-nome-do-numero.spec.ts`.
 - **`branch_id` no número é RÓTULO**, não escopo (decisão do Heitor,
   2026-09-25). Não entra em RLS, não entra em `ownerFilter`, e a conversa
-  continua nascendo com `branch_id` nulo — a unidade vira tag depois.
+  continua nascendo com `branch_id` nulo. A unidade NÃO vira tag (o sistema não
+  põe tag nenhuma, CLAUDE.md §1, "Tags"; T1 do Bloco Tags, 2026-11-14: não
+  existe tag de unidade) — o "vira tag depois" de 2026-09-25 saiu.
 - **Cada número tem seu provedor.** uazapi e oficial convivem na mesma rede.
   Nada derruba a conexão vizinha para ativar a sua.
 - **Remover um número NÃO junta as conversas: elas ficam como estão**
@@ -284,9 +304,13 @@ número ligado.
   (`salvarNumeroWhatsApp`). Falha da Meta NÃO desfaz a conexão: vira aviso, e
   o "Sincronizar" da tela faz o mesmo caminho (status + os criados no painel).
 - **Desligar ou remover tira DAQUI os templates da conta que ficou sem número
-  ligado** (`limparCatalogosSemNumero`) — inclusive rascunhos. Na Meta nada se
+  ligado** (`limparCatalogosSemNumero`). Na Meta nada se
   apaga (ligar de novo os traz); apagar na Meta é só o botão "Apagar" de um
   template. Dois números da mesma conta: desligar um não apaga nada.
+  **Os rascunhos ficam** (decisão do Claude pelo menos destrutivo, 2026-11-18,
+  na auditoria das regras): o rascunho nunca foi à Meta, e ligar de novo não o
+  traria. Sem número da conta, a tela não o mostra; religado, ele volta.
+  Prova: `tests/templates-rascunho-fica-ao-desligar.test.ts`.
 - **"De qual número é"** é a conta: a lista mostra os números ligados da conta
   do template e filtra por número (pela conta dele); o template novo nasce na
   conta do número escolhido (com um só, ele). Toda conversa com a Meta sobre um
@@ -513,6 +537,7 @@ Sem forma de pagamento na conta, a Meta recusa todo template (código
 ❌ Falar com a Meta sobre um template pela "config oficial da rede" — é configDaWaba(template.waba_id)
 ❌ Ligar, desligar ou remover um número oficial sem acompanharCatalogos (o catálogo fica de outra conta)
 ❌ Apagar template NA META ao desligar um número (só daqui; na Meta é o "Apagar" do template)
+❌ Apagar o RASCUNHO de template ao desligar um número (nunca foi à Meta, e religar não o traz)
 ❌ Oferecer ou enviar template com nao_suportado (a Meta recusa ou o cliente recebe {{1}})
 ❌ Deduplicar mensagem só com "procura e, se não achou, grava" (duas entregas simultâneas gravam as duas) — é o índice único e o 23505 tratado como "já estava"
 ❌ Ler a mensagem pelo external_id com maybeSingle sem limit(1) quando o erro dela derruba o webhook

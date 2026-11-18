@@ -69,10 +69,9 @@ test.beforeAll(async () => {
 
   f = {
     outra, segunda: b2!.id, c,
-    membro: await criarMembro(`flt${marca}`, {
-      tenant: outra.tenantId, rotulo: 'Marketing',
-      permissoes: [{ modulo: 'marketing', nivel: 'MANAGE' }],
-    }),
+    // Disparar a campanha é da Admin da rede: a campanha é configuração da
+    // rede toda (o Heitor, 18/11: "Configuração da rede toda só pela conta admin").
+    membro: await criarMembro(`flt${marca}`, { tenant: outra.tenantId, rotulo: 'Marketing', donoDaRede: true, permissoes: [] }),
   }
 })
 

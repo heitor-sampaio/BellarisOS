@@ -25,11 +25,14 @@ import { textoDaExigenciaDoModelo } from '@/lib/checkout/exigencia-do-modelo'
 import Link from 'next/link'
 import { lerEntrada, erroDaEntrada, recusaDaEntradaAcimaDoTotal } from '@/lib/checkout/entrada'
 import { parcelasEmTexto } from '@/lib/checkout/resumo-do-pagamento'
-import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado, estadoDoDesconto } from '@/components/shared/campo-do-desconto'
+import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado, estadoDoDesconto, type EstadoDoDesconto } from '@/components/shared/campo-do-desconto'
+import { estadoDoCombinado } from '@/lib/plano-de-tratamento/desconto-combinado'
 import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
 import { CampoDaBandeira, CampoDaMaquininha, useFaltaAMaquininha } from '@/components/shared/campo-da-bandeira'
 import { SaldoDoCredito } from '@/components/shared/saldo-do-credito'
 import { textoDasSessoesSemData, avisoDoPlanoFechado, textoDaSessaoJaAgendada } from '@/lib/checkout/sessoes-sem-data'
+import { rotuloDoReceberOPlano } from '@/lib/checkout/rotulos-do-plano'
+import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { toast } from 'sonner'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
 import { useOpcoesDeParcelas } from '@/components/shared/use-maximo-de-vezes'
@@ -89,6 +92,8 @@ export interface CheckoutPlan {
    * a tela parte dele e diz que mudar as condições pede um contrato novo.
    */
   contratoAssinado?: { titulo: string; pagamento: PagamentoDoPlano | null; desconto: number; frase: string } | null
+  /** 22ª A20: o desconto do plano combinado no editor — o checkout parte dele (e ainda se ajusta). */
+  descontoCombinado?: { tipo: 'VALOR' | 'PERCENTUAL'; valor: number } | null
   /** A35 da 9ª: a rede tem contrato de plano e a ficha não tem CPF, passaporte nem RNE (só aviso — princípio 2). */
   contratoSemDocumento?: boolean
   /** FD2a/FD2b: o saldo e os vouchers de desconto da cliente (nulo: nada a oferecer). */
@@ -218,7 +223,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
 
   // Desconto do fechamento (2026-09-30): R$ ou %, sobre a soma dos
   // procedimentos. Daqui para baixo toda conta é sobre o que o cliente paga.
-  const [desconto, setDesconto] = useState(SEM_DESCONTO)
+  // 22ª A20: parte do combinado no editor do plano, quando há.
+  const [desconto, setDesconto] = useState<EstadoDoDesconto>(() => plan.descontoCombinado ? estadoDoCombinado(plan.descontoCombinado) : SEM_DESCONTO)
 
   // "Quem vendeu" (decisão 4 da 7ª): nasce VAZIO, como em toda venda
   // (r2-ven-12); vazio, a venda pergunta antes de seguir (com-06).
@@ -243,6 +249,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
     : null
   const entradaNum = Math.max(0, Math.min('valor' in entradaLida ? entradaLida.valor : 0, liquido))
   const saldo      = Math.round((liquido - entradaNum) * 100) / 100
+  // A20 da 24ª: o que entra agora — o "Total a cobrar" / "Recebido agora" do pagamento e o botão final.
+  const valorAgora = Math.round(((formaPgto === 'AVISTA' ? fid.aPagar : formaPgto === 'PARCELADO' ? entradaNum : 0) + (recebeHoje ? precoDeHoje : 0)) * 100) / 100
   // D2 da 7ª: as parcelas como serão GRAVADAS ("2x de R$ 890,66 + 1x de R$ 890,68"), não a média.
   const textoDasParcelas = parcelasEmTexto(saldo, parcelas)
 
@@ -518,7 +526,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
       // D8 da 12ª: a sala única do procedimento estava ocupada — a sessão foi sem sala.
       if ('avisoDaSala' in result && result.avisoDaSala) toast.warning(result.avisoDaSala, { duration: 10_000 })
       // A37 da 8ª: concluir caía na ficha sem confirmação nenhuma.
-      toast.success(avisoDoPlanoFechado(plan.sessions.length, semData, jaAgendadas))
+      toast.success(avisoDoPlanoFechado(plan.sessions.length, semData, jaAgendadas, plan.clientName))
       if (onDone) { onDone(plan.clientId); return }
       router.push(rotaCliente(pathname, slug, plan.clientId))
     })
@@ -902,6 +910,15 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
         <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>
           O que se recebe agora
         </p>
+        {/* A20 da 24ª (princípio 3): a forma escolhida em "Como vai ser pago" aparece aqui — o
+            "+ Outra forma" ficava sem dizer qual é a primeira. */}
+        {(formaPgto === 'AVISTA' || (formaPgto === 'PARCELADO' && entradaNum > 0)) && (
+          <p data-forma-do-que-se-recebe style={{ fontSize: 'var(--text-sm-sz)', color: paymentMethod ? 'var(--text)' : 'var(--text-muted)', marginBottom: 14 }}>
+            {paymentMethod
+              ? <>Forma: <b style={{ fontWeight: 'var(--weight-bold)' }}>{rotuloDaForma(paymentMethod, null, { longo: true })}</b></>
+              : 'Forma: escolha acima, em “Como vai ser pago”.'}
+          </p>
+        )}
         {/* A36 da 8ª: com o crédito na clínica, o saldo dela e o que sobra. */}
         {(formaPgto === 'AVISTA' || formaPgto === 'PARCELADO') && paymentMethod === 'INTERNAL_CREDIT' && (
           <div style={{ marginBottom: 16 }}>
@@ -946,7 +963,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
             {recebeHoje && ' (com o atendimento de hoje)'}
           </span>
           <span style={{ fontSize: 'var(--text-name)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>
-            {fmtBRL((formaPgto === 'AVISTA' ? fid.aPagar : formaPgto === 'PARCELADO' ? entradaNum : 0) + (recebeHoje ? precoDeHoje : 0))}
+            {fmtBRL(valorAgora)}
           </span>
         </div>
         {formaPgto !== 'AVISTA' && (
@@ -1091,7 +1108,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
           style={{ width: '100%', padding: '14px', fontSize: 'var(--text-card-title)', justifyContent: 'center', gap: 8 }}
         >
           {podeSeguir
-            ? (podeAgendar ? 'Ir para o agendamento' : 'Receber o plano')
+            // A20 da 24ª: o botão diz o que entra (o título da janela já é "Receber o plano").
+            ? (podeAgendar ? 'Ir para o agendamento' : rotuloDoReceberOPlano(valorAgora))
             : `Falta assinar: ${documentosQueTravam.map(d => d.titulo).join(', ')}`}
           <ChevronRight size={18} />
         </button>

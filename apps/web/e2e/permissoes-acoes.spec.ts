@@ -20,7 +20,7 @@ import { apagarClientes } from './apoio/limpeza'
  */
 
 const marca = Date.now().toString(36)
-const SO_VER: Permissao[] = (['agenda', 'clients', 'medical_records', 'procedures', 'stock', 'financial', 'cashier',
+const SO_VER: Permissao[] = (['agenda', 'atendimento', 'clients', 'medical_records', 'procedures', 'stock', 'financial', 'cashier',
   'crm', 'marketing', 'team', 'forms', 'roles', 'settings', 'automations'] as const).map(modulo => ({ modulo, nivel: 'VIEW' }))
 
 interface Fx {

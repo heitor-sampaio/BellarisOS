@@ -50,10 +50,9 @@ test.describe.serial('com sessão', () => {
   test.beforeAll(async () => {
     test.setTimeout(240_000)
     outra = await criarOutraRede(`sdk${marca}`)
-    membro = await criarMembro(`sdkcfg${marca}`, {
-      tenant: outra.tenantId, rotulo: 'Config',
-      permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }],
-    })
+    // "Conectar pela Meta" é configuração da rede toda: só a Admin da rede (o
+    // Heitor, 18/11: "Configuração da rede toda só pela conta admin").
+    membro = await criarMembro(`sdkcfg${marca}`, { tenant: outra.tenantId, rotulo: 'Config', donoDaRede: true, permissoes: [] })
   })
 
   test.afterAll(async () => {

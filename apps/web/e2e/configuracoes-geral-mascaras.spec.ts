@@ -26,7 +26,9 @@ test.beforeAll(async () => {
   const { error } = await db().from('tenants')
     .update({ document: CNPJ_ANTES, phone: '5548999990000' }).eq('id', rede.tenantId)
   expect(error, 'o CNPJ e o telefone da rede').toBeNull()
-  dona = await criarMembro(`gm${marca}`, { tenant: rede.tenantId, rotulo: 'Dona', permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }] })
+  // Os dados da rede são configuração da rede toda: só a Admin da rede edita
+  // (o Heitor, 18/11: "Configuração da rede toda só pela conta admin").
+  dona = await criarMembro(`gm${marca}`, { tenant: rede.tenantId, rotulo: 'Dona', donoDaRede: true, permissoes: [] })
 })
 test.afterAll(async () => { await dona?.limpar(); await rede?.limpar() })
 

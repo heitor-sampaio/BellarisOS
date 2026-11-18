@@ -44,7 +44,7 @@ test('o editor de planos guarda a cota do Copilot (em milhões de tokens por mê
     await form.locator('input[name="nome"]').fill(nome)
     await form.locator('input[name="valor"]').fill('199,00')
     // O Copilot saiu do "em breve": o rótulo é só o nome.
-    await expect(form.getByRole('checkbox', { name: 'Copilot (IA secretária)', exact: true })).toBeChecked()
+    await expect(form.getByRole('checkbox', { name: 'Copilot (IA)', exact: true })).toBeChecked()
     await form.getByLabel('Cota mensal do Copilot (milhões de tokens)').fill('2,5')
     await form.getByRole('button', { name: 'Criar plano' }).click()
     await expect(p.getByText('Plano criado.')).toBeVisible({ timeout: 15_000 })

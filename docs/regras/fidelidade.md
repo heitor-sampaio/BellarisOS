@@ -55,7 +55,8 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
   tira os pontos do que voltou (na proporção, no estorno parcial). É o
   primeiro ramo de `fidelidade_pontos_do_pagamento` (`credito_vendido_id`).
   Prova: `e2e/vendas-credito-interno.spec.ts`. **O bônus do crédito não
-  pontua** (A20 da 11ª, decisão do Heitor): os pontos são sobre o PAGO (R$ 500
+  pontua** (A20 da 11ª, decisão do Claude, pela decisão 1 do Heitor acima —
+  "pelo dinheiro pago"; não há aprovação dele registrada para a A20): os pontos são sobre o PAGO (R$ 500
   de R$ 500 + R$ 50 de bônus), pelo lançamento; o bônus é concessão sem
   dinheiro. Prova: `e2e/vendas-credito-bonus.spec.ts`.
 - **Estorno** (`estornar_transacao`) tira exatamente o que aquele pagamento deu
@@ -102,7 +103,10 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
   navegador não entra.
 - **Comissão com pontos/voucher**: sobre o preço ou sobre o valor pago — é
   `commission_configs.base_com_pontos` (Configurações → Comissões, §9.7), não
-  mais `loyalty_configs.commission_base` (a coluna ficou sem leitor).
+  mais `loyalty_configs.commission_base` (a coluna ficou sem leitor). A
+  escolha vale em toda comissão — o atendimento, as sessões de pacote e de
+  plano e as vendas (item 10 da auditoria das regras, decisão do Claude pelos
+  princípios 2 e 3, 2026-11-18; era só no avulso; `comissoes.md`).
 - Pago todo com pontos: `amount` 0, sem forma de pagamento, sem "Purchase" na
   API de Conversões (o `pagamento.recebido` sai, com 0).
 - Estorno devolve os pontos usados (ESTORNO_RESGATE) e tira os ganhos.
@@ -112,6 +116,11 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
     entre os lançamentos na proporção do valor (`private.parte_dos_itens`), e
     o RESGATE sai em uma linha por lançamento: o estorno de um deles devolve
     só os pontos dele. O voucher de procedimento fica inteiro no atendimento.
+  - **A ordem é desconto comercial → voucher → pontos em todo lugar** (o
+    Heitor, 2026-11-18: "Desconto, voucher, pontos" — auditoria das regras):
+    na comanda do atendimento o voucher vale sobre o que sobrou do desconto
+    (`voucherDepoisDoDesconto`, `lib/fidelidade/voucher-na-comanda.ts`; o
+    banco confere o mesmo, migration `20261124000001`), como na "Nova venda".
   - **Em várias formas** ("+ Outra forma", D1 da 18ª, 2026-11-16): os pontos
     e o voucher ficam na PRIMEIRA forma (o `loyalty_discount` dela). Na venda,
     o lançamento dela é que se reduz, e eles não passam do valor dela ("Os
@@ -124,6 +133,24 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
     (`fidelidadeDaVenda`) e conferida no banco (`private.fidelidade_na_venda`,
     pela `venda_com_fidelidade`, uma transação). A venda de crédito interno
     (`creditos_vendidos`) não usa pontos: é dinheiro guardado, não consumo.
+  - **Os três limites que ficam, e por quê** (item 12 da auditoria das
+    regras, decisão do Claude pelo princípio 2, 2026-11-18: só fica o que é
+    impossível; nenhum recusa um valor que a rede escolheu):
+    (1) **"na primeira forma"** é só a contabilidade do lançamento: toda tela
+    soma a fidelidade de volta à primeira forma (`comFidelidadeNaPrimeira`),
+    então a conferência do banco ("passam do valor da primeira forma") não
+    dispara pela tela — não é limite para quem recebe;
+    (2) **"só à vista"** (avulso e Nova venda): o desconto de pontos e voucher
+    é o `loyalty_discount` de um lançamento PAGO agora, e o RESGATE e o
+    voucher se prendem a ele — é por ele que o estorno e o cancelamento do
+    pacote ou do plano devolvem os pontos. No crediário sem entrada e no a
+    receber, nada se paga agora, e não há onde prendê-los. Se a rede pedir,
+    o próximo passo é o crediário COM entrada (a fidelidade abate a entrada),
+    que mexe em quatro funções do banco;
+    (3) **"só o voucher de desconto na Nova venda"**: o voucher de
+    procedimento paga o ATENDIMENTO daquele procedimento, e se usa na comanda
+    dele; no pré-pago, no pacote e no plano ele exigiria uma unidade a preço
+    zero no rateio que o cancelamento da unidade, a comissão e as Vendas leem.
   - **O ponto nasce quando a comanda é paga** (FD2b), pelo valor pago: o
     lançamento nasce em aberto e vira pago já reduzido, e o gatilho de ganho
     (`on_transaction_loyalty_earn`, no UPDATE de `is_paid`) pontua o que entrou.
@@ -237,7 +264,10 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
     opção existir não ganha.
   - **O bônus é da cliente e vale em qualquer unidade** (H10 do levantamento
     das regras, o Heitor, 2026-11-11: "O bônus é da cliente. A cliente é da
-    rede"). Com o saldo um só (FD3), o "Onde o bônus pode ser usado" e a
+    rede(clinica). A clinica decide onde pode ser usado." — a última frase
+    caiu com o FD3, recomendação do Claude que ele aprovou em 13/11,
+    "concordo": o saldo é um só, da rede).
+    Com o FD3, o "Onde o bônus pode ser usado" e a
     correção C64 (o bônus preso à unidade de cadastro) saíram: não há o que
     escolher. O lançamento do bônus guarda uma unidade só como registro.
   - **A venda de produto pontua?** (`pontua_venda_de_produto`, D4,
@@ -363,6 +393,15 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
   pagamento) traz outra referência de `fidelidade`. O cartão "Pontos" dizia
   800 e o painel "Nenhum ponto ainda" até recarregar. Prova:
   `e2e/fidelidade-painel-atualiza.spec.ts`.
+- **Trocar pontos por voucher na comanda** (A50 da 24ª, 2026-11-18): o
+  receber o atendimento e a "Nova venda" do PDV oferecem "Trocar pontos por
+  voucher" (`TrocarPontos`, `trocaNaComanda`), com a mesma troca da ficha
+  (`resgatarRecompensa`); o voucher novo já vem escolhido. Só o que vale ali:
+  o de desconto, e o de procedimento do procedimento do atendimento
+  (`recompensasDaComanda`). Aparece quando o saldo alcança alguma. Troca quem
+  tem a Fidelidade em Gerenciar; quem não tem lê "Trocar pontos por voucher é
+  de quem tem a Fidelidade em Gerenciar: …" (`textoDeQuemTroca`). Prova:
+  `tests/atritos-da-24-caixa.test.ts`.
 
 ---
 

@@ -23,21 +23,16 @@ export const ESCOLHA_INICIAL: EscolhaDaDevolucaoEstado = {
 }
 
 /**
- * "Estornar o pagamento inteiro e lançar o usado de novo", com a forma do
- * pagamento novo JÁ na forma original — o meio, as vezes e a bandeira (A41 da
- * 8ª simulação, 2026-11-06; decidido pelo princípio 5: o Pix de R$ 800 que a
- * Marta escolheu, no cancelamento do pacote pago em Crédito 3x, foi inventado).
- * A recepção troca, se a cliente pagar o que fica de outro jeito. O que já foi
+ * "Estornar o pagamento inteiro e lançar o usado de novo": a "Forma do
+ * pagamento do usado" nasce VAZIA, como toda forma (A37 da 6ª: "a forma nasce
+ * vazia"; decisão do Claude pelo princípio 4, auditoria das regras,
+ * 2026-11-18). Era a A41 da 8ª, que a punha na forma original do pagamento
+ * estornado — mas a cliente pode pagar o que fica de outro jeito, e uma forma
+ * escolhida sozinha é a que se grava sem ninguém escolher. O que já foi
  * escolhido não é desfeito.
  */
-export function comOPagamentoInteiro(e: EscolhaDaDevolucaoEstado, parcial: PagamentoEmParte | null): EscolhaDaDevolucaoEstado {
-  const original = parcial?.metodo && (FORMAS_DO_USADO as readonly string[]).includes(parcial.metodo) ? parcial.metodo : ''
-  if (e.novoMetodo || !original) return { ...e, comoEstornar: 'INTEIRO' }
-  return {
-    ...e, comoEstornar: 'INTEIRO', novoMetodo: original,
-    novoVezes: original === 'CREDIT_CARD' ? Math.max(1, parcial?.vezes ?? 1) : 1,
-    novaBandeira: original === 'CREDIT_CARD' || original === 'DEBIT_CARD' ? parcial?.bandeira ?? '' : '',
-  }
+export function comOPagamentoInteiro(e: EscolhaDaDevolucaoEstado): EscolhaDaDevolucaoEstado {
+  return { ...e, comoEstornar: 'INTEIRO' }
 }
 
 /** O pagamento pego em parte, se o que volta vai por estorno. */
@@ -136,7 +131,7 @@ export function EscolhaDaDevolucao({ prefixo, devolver, parcial, fidelidade, est
           </label>
           <label style={opcao}>
             <input type="radio" name={`${prefixo}-como-estornar`} checked={estado.comoEstornar === 'INTEIRO'} disabled={desligado}
-              onChange={() => aoMudar(comOPagamentoInteiro(estado, emParte))} style={{ accentColor: 'var(--brand)', marginTop: 3 }} />
+              onChange={() => aoMudar(comOPagamentoInteiro(estado))} style={{ accentColor: 'var(--brand)', marginTop: 3 }} />
             <span>
               Estornar o pagamento inteiro e lançar o usado de novo{' '}
               <span style={{ color: 'var(--text-muted)' }}>

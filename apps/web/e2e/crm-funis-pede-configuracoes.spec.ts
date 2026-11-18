@@ -11,12 +11,17 @@ import { chamarAcao, chamarAcaoComFormulario } from './apoio/acao-direta'
  *
  * Antes bastava o CRM em Gerenciar: a SDR que opera o quadro renomeava as
  * etapas e apagava motivos de perda da clínica inteira.
+ *
+ * Desde 18/11 (o Heitor: "Configuração da rede toda só pela conta admin") é
+ * só a Admin da rede: as Configurações em Gerenciar, mesmo com "A rede
+ * inteira", deixaram de bastar.
  */
 
 const marca = Date.now().toString(36)
 const db = () => banco()
 let rede: OutraRede
 let operadora: MembroDeTeste
+let gestora: MembroDeTeste
 let configuradora: MembroDeTeste
 let slug = ''
 
@@ -33,36 +38,45 @@ test.beforeAll(async () => {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'SDR',
     permissoes: [{ modulo: 'crm', nivel: 'MANAGE', escopo: 'ALL' }],
   })
-  // Da REDE: o funil é configuração da clínica toda, e quem tem unidade fixa
-  // não o muda nem com Configurações (H7, 2026-11-01 —
-  // e2e/permissoes-config-de-quem-tem-uma-unidade.spec.ts).
-  configuradora = await criarMembro(`cfpc${marca}`, {
+  // O funil é configuração da rede toda: só a Admin da rede o muda (o Heitor,
+  // 18/11: "Configuração da rede toda só pela conta admin"). Nem quem tem "A
+  // rede inteira" com o CRM e as Configurações em Gerenciar (era o H7 de
+  // 2026-11-01 — e2e/permissoes-config-de-quem-tem-uma-unidade.spec.ts).
+  gestora = await criarMembro(`cfpg${marca}`, {
     tenant: rede.tenantId, rotulo: 'Gerente',
     permissoes: [{ modulo: 'crm', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'settings', nivel: 'MANAGE' }],
   })
+  configuradora = await criarMembro(`cfpc${marca}`, { tenant: rede.tenantId, rotulo: 'Admin', donoDaRede: true, permissoes: [] })
 })
 
 test.afterAll(async () => {
   await operadora?.limpar()
+  await gestora?.limpar()
   await configuradora?.limpar()
   await rede?.limpar()
 })
 
 const tela = () => `/${slug}/oportunidades`
 
-test('"Configurar funis" só aparece para quem tem Configurações em Gerenciar', async ({ browser }) => {
+test('"Configurar funis" só aparece para a Admin da rede', async ({ browser }) => {
   await como(browser, operadora, async p => {
     await p.goto(tela())
     await expect(p.getByRole('heading', { name: 'Oportunidades' })).toBeVisible()
     await expect(p.getByTitle('Configurar funis'), 'quem só opera o quadro').toHaveCount(0)
   })
+  await como(browser, gestora, async p => {
+    await p.goto(tela())
+    await expect(p.getByRole('heading', { name: 'Oportunidades' })).toBeVisible()
+    await expect(p.getByTitle('Configurar funis'), 'com Configurações, sem ser a Admin da rede').toHaveCount(0)
+    await expect(p.getByText('Funis e etapas são da rede toda: quem muda é a Admin da rede.')).toBeVisible()
+  })
   await como(browser, configuradora, async p => {
     await p.goto(tela())
-    await expect(p.getByTitle('Configurar funis'), 'controle: com Configurações').toBeVisible()
+    await expect(p.getByTitle('Configurar funis'), 'controle: a Admin da rede').toBeVisible()
   })
 })
 
-test('sem Configurações, as actions de funil, etapa e motivo de perda recusam', async ({ browser }) => {
+test('sem ser a Admin da rede, as actions de funil, etapa e motivo de perda recusam', async ({ browser }) => {
   const funil = `${PREFIXO} Funil ${marca}`
   const motivo = `${PREFIXO} Motivo ${marca}`
   // A14 da 7ª: as origens do lead também são configuração do funil.
@@ -73,7 +87,7 @@ test('sem Configurações, as actions de funil, etapa e motivo de perda recusam'
   const { data: umMotivo } = await db().from('crm_motivos_perda').select('id').eq('tenant_id', rede.tenantId).eq('ativo', true).limit(1).single<{ id: string }>()
   expect(etapa, 'o funil padrão existe').toBeTruthy()
 
-  await como(browser, operadora, async p => {
+  for (const quem of [operadora, gestora]) await como(browser, quem, async p => {
     await p.goto(tela())
     const r = await chamarAcaoComFormulario(p, 'actions/crm-funnels.ts', 'createFunnel', tela(), [undefined], { name: funil, _slug: slug })
     expect(r.texto, 'chegou à action').not.toContain('Server action not found')
@@ -88,7 +102,7 @@ test('sem Configurações, as actions de funil, etapa e motivo de perda recusam'
   expect((await db().from('crm_motivos_perda').select('id').eq('tenant_id', rede.tenantId).eq('nome', motivo)).data, 'o motivo não nasceu').toEqual([])
   expect((await db().from('crm_motivos_perda').select('ativo').eq('id', umMotivo!.id).single<{ ativo: boolean }>()).data!.ativo, 'o motivo segue ativo').toBe(true)
 
-  // Controle: com Configurações, cria.
+  // Controle: a Admin da rede cria.
   await como(browser, configuradora, async p => {
     await p.goto(tela())
     await chamarAcaoComFormulario(p, 'actions/crm-funnels.ts', 'createFunnel', tela(), [undefined], { name: funil, _slug: slug })

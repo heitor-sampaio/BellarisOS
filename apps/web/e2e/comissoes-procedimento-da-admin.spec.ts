@@ -61,33 +61,41 @@ const salvar = (p: Page, entrada: unknown) =>
 const porProfissional = (...linhas: [string, number][]) => ({
   modo: 'POR_PROFISSIONAL', profissionais: linhas.map(([id, valor]) => ({ professional_id: id, tipo: 'PERCENTAGE', valor })),
 })
-// A rede de teste tem UMA unidade: a recusa fala "Admin", não "Admin da rede" (r2-cfg-02).
-const RECUSA = 'Só quem é Admin altera a comissão de uma Admin.'
+// Desde 18/11 a comissão do procedimento INTEIRA é configuração da rede toda:
+// só a Admin da rede a muda (o Heitor, 18/11: "Configuração da rede toda só
+// pela conta admin"). Quem tem o Financeiro em Gerenciar, sem ser a Admin, não
+// mexe nem no valor dela nem no dos outros. A rede de teste tem UMA unidade: a
+// recusa fala "Admin", não "Admin da rede" (r2-cfg-02).
+const RECUSA = 'A comissão do procedimento vale para a rede inteira: quem muda é a Admin.'
 
 test('quem não é Admin da rede não põe, não muda e não tira o valor da Admin no procedimento; a Admin muda', async ({ browser }) => {
   await como(browser, financeiro!, async p => {
     // Pôr um valor para a Admin: recusado.
     expect((await salvar(p, porProfissional([dona!.userId, 50]))).texto).toContain(RECUSA)
+    // E o de quem não é Admin também: o procedimento é da rede toda.
+    expect((await salvar(p, porProfissional([rede!.professionalId, 20]))).texto).toContain(RECUSA)
     expect(await regras(), 'nada gravado').toEqual([])
-    // Controle: o de quem não é Admin grava.
-    expect((await salvar(p, porProfissional([rede!.professionalId, 20]))).texto).toContain('"ok":true')
-    expect(await regras()).toEqual([{ quem: 'prof', valor: 20 }])
   })
 
-  // A Admin põe o dela (e mantém o do profissional).
+  // A Admin põe o dela e o do profissional.
   await como(browser, dona!, async p => {
     expect((await salvar(p, porProfissional([dona!.userId, 50], [rede!.professionalId, 20]))).texto).toContain('"ok":true')
   })
   expect(await regras()).toEqual([{ quem: 'dona', valor: 50 }, { quem: 'prof', valor: 20 }])
 
   await como(browser, financeiro!, async p => {
-    // Mudar o valor dela, tirá-lo da lista ou trocar tudo por "a mesma para todos": recusado.
+    // Mudar o valor dela, tirá-lo da lista, trocar tudo por "a mesma para todos"
+    // ou mudar só o do profissional: recusado.
     expect((await salvar(p, porProfissional([dona!.userId, 10], [rede!.professionalId, 20]))).texto).toContain(RECUSA)
     expect((await salvar(p, porProfissional([rede!.professionalId, 20]))).texto).toContain(RECUSA)
     expect((await salvar(p, { modo: 'GERAL', geral: { tipo: 'PERCENTAGE', valor: 30 } })).texto).toContain(RECUSA)
-    expect(await regras(), 'o da Admin ficou como estava').toEqual([{ quem: 'dona', valor: 50 }, { quem: 'prof', valor: 20 }])
-    // O envio que deixa o dela como está e muda o do profissional passa.
-    expect((await salvar(p, porProfissional([dona!.userId, 50], [rede!.professionalId, 25]))).texto).toContain('"ok":true')
+    expect((await salvar(p, porProfissional([dona!.userId, 50], [rede!.professionalId, 25]))).texto).toContain(RECUSA)
+    expect(await regras(), 'o da Admin e o do profissional ficaram como estavam').toEqual([{ quem: 'dona', valor: 50 }, { quem: 'prof', valor: 20 }])
   })
-  expect(await regras()).toEqual([{ quem: 'dona', valor: 50 }, { quem: 'prof', valor: 25 }])
+
+  // A Admin muda o dela e o do profissional.
+  await como(browser, dona!, async p => {
+    expect((await salvar(p, porProfissional([dona!.userId, 10], [rede!.professionalId, 25]))).texto).toContain('"ok":true')
+  })
+  expect(await regras()).toEqual([{ quem: 'dona', valor: 10 }, { quem: 'prof', valor: 25 }])
 })

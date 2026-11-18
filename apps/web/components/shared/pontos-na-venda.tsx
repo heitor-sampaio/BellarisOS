@@ -1,8 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { formatarPontos } from '@/lib/fidelidade/formato'
 import { Dica } from '@/components/shared/dica'
+import { TrocarPontos } from '@/components/shared/trocar-pontos'
 import { descontoDoVoucher } from '@/lib/fidelidade/voucher'
 import { SEM_FIDELIDADE, contaDaFidelidade, type ContaDaFidelidade, type EscolhaDaFidelidade, type FidelidadeDaVenda } from '@/lib/fidelidade/conta-na-venda'
 
@@ -22,10 +24,13 @@ export function PontosNaVenda({ fidelidade, vendido, escolha, conta, aVista, aoM
   aVista:     boolean
   aoMudar:    (e: EscolhaDaFidelidade) => void
 }) {
+  const router = useRouter()
   const vouchers = fidelidade.vouchers
     .map(v => ({ v, d: descontoDoVoucher(v, { procedureId: null, preco: vendido }) }))
     .filter(({ d }) => !d.motivo && d.desconto > 0)
-  if (!vouchers.length && fidelidade.saldo <= 0) return null
+  // A50 da 24ª: a troca de pontos por voucher, sem sair da venda.
+  const troca = fidelidade.troca ?? null
+  if (!vouchers.length && fidelidade.saldo <= 0 && !troca) return null
   return (
     <div data-pontos-da-venda style={{
       display: 'flex', flexDirection: 'column', gap: 8,
@@ -45,7 +50,7 @@ export function PontosNaVenda({ fidelidade, vendido, escolha, conta, aVista, aoM
           )}
         </span>
         <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-          Saldo: <strong style={{ color: 'var(--text)' }}>{formatarPontos(fidelidade.saldo)}</strong>
+          Saldo: <strong style={{ color: 'var(--text)' }}>{formatarPontos(troca?.saldo ?? fidelidade.saldo)}</strong>
         </span>
       </div>
       {!aVista ? (
@@ -84,6 +89,8 @@ export function PontosNaVenda({ fidelidade, vendido, escolha, conta, aVista, aoM
               ) : null}
             </>
           )}
+          {/* Trocou: a página relê a fidelidade, e o voucher novo já vem escolhido. */}
+          {troca && <TrocarPontos troca={troca} aoTrocar={v => { aoMudar({ pontos: 0, voucherId: v }); router.refresh() }} />}
         </>
       )}
     </div>

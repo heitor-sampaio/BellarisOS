@@ -147,7 +147,7 @@ export function Topbar({ userName, userRole, roleLabel, internalUserId, initialU
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         {/* Ajuda: chamado com o suporte. No modo suporte quem está aqui é o atendente */}
-        {internalUserId && !suporte && <Ajuda internalUserId={internalUserId} />}
+        {internalUserId && !suporte && <Ajuda />}
         {internalUserId && (
           <StaffNotificationBell internalUserId={internalUserId} initialUnread={initialUnread} comAjuda={!suporte} />
         )}

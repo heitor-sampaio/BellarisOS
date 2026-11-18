@@ -7,9 +7,10 @@ import { idadeEm, cpfValido, telefoneDoCadastro } from '@estetica-os/utils'
  * ou no atendimento, nem termo assinado por ele.
  *
  * Puro de propósito (a tela, o servidor e o teste dizem o mesmo). Avisar, não
- * barrar (princípio 2): sem responsável a ficha e o atendimento avisam; o
- * termo que BLOQUEIA fica INCOMPLETO (o nome e o CPF do responsável são
- * obrigatórios na menor) e já segura o início.
+ * barrar ("termo assinado pelo responsável (avisar, não barrar)"): sem
+ * responsável a ficha e o atendimento avisam, e o termo segue — o responsável
+ * sai vazio, a menor assina por si (auditoria das regras, 2026-11-18: a F29
+ * tinha deixado o termo em "faltam dados" e o início travado).
  */
 
 export const MAIORIDADE = 18

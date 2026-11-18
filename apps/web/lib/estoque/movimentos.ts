@@ -146,6 +146,13 @@ export async function ajusteDeEstoqueCore(admin: Admin, ctx: TenantContext, a: {
    * (A38 da 10ª), e sem ele pelo FEFO.
    */
   loteId?: string | null; loteValidade?: string | null
+  /**
+   * A10 da 24ª: o ajuste da "Correção de cadastro" (o custo ou a quantidade
+   * digitados errado na entrada, depois que já saiu algo do lote). Grava pelo
+   * `estoque_ajuste_de_correcao`, que marca o movimento: não é perda — fica fora
+   * do "Consumo com perdas" e do giro (`metrics_perdas`).
+   */
+  correcao?: boolean
 }): Promise<{ ok: true; de: number } | { error: string }> {
   if (!alcancaUnidade(ctx, a.branchId)) return { error: 'Operação não permitida fora da sua unidade.' }
   if (!a.motivo.trim()) return { error: 'Motivo do ajuste é obrigatório.' }
@@ -159,7 +166,7 @@ export async function ajusteDeEstoqueCore(admin: Admin, ctx: TenantContext, a: {
 
   // Numa transação só, com a linha do saldo travada (estoque_ajuste_com_lote:
   // a contagem exata, e o que sobra entra num lote — D5 da 10ª).
-  const anterior = await gravar(admin.rpc('estoque_ajuste_com_lote', {
+  const anterior = await gravar(admin.rpc(a.correcao ? 'estoque_ajuste_de_correcao' : 'estoque_ajuste_com_lote', {
     p_produto: a.productId, p_unidade: a.branchId, p_contagem: a.novoSaldo, p_em_consumo: !!a.emConsumo,
     p_motivo: a.motivo.trim(), p_autor: ctx.internalUserId,
     p_lote: a.loteId || null, p_lote_numero: null, p_lote_validade: a.loteValidade || null,

@@ -36,10 +36,12 @@ describe('A1: a linha do PDV diz que o Financeiro em Gerenciar o abre', () => {
 })
 
 describe('A2: o resumo diz de onde vem Tratamentos', () => {
-  // D1 da 23ª: a regra mudou — Tratamentos vem da Agenda (a régua da página).
-  it('o texto, com a Agenda', async () => {
+  // D1 da 23ª: Tratamentos vem da régua da página — desde 2026-11-18 o
+  // Atendimento (o plano é de quem atende; a Agenda voltou a ser agenda).
+  it('o texto, com o Atendimento', async () => {
     const { tratamentosNoResumo } = await import('@/lib/permissions-copy')
-    expect(tratamentosNoResumo({ agenda: 'VIEW' })).toMatch(/^Tratamentos vem da Agenda/)
+    expect(tratamentosNoResumo({ atendimento: 'VIEW' })).toMatch(/^Tratamentos vem do Atendimento/)
+    expect(tratamentosNoResumo({ agenda: 'VIEW' })).toBeNull()
     expect(tratamentosNoResumo({ medical_records: 'VIEW' })).toBeNull()
     expect(tratamentosNoResumo({ financial: 'MANAGE' })).toBeNull()
   })

@@ -220,7 +220,9 @@ describe('A24: o /setup só avisa o domingo fechado quando ele está fechado', (
     expect(domingoFechadoNoHorario('{ruim')).toBe(true)
   })
   it('a tela usa a conta', () => {
-    expect(ler('components/setup/setup-wizard.tsx')).toContain('domingoFechadoNoHorario(')
+    // A9 da 24ª: a faixa mora em AvisoDoDomingoFechado, a mesma do /setup e da Nova unidade.
+    expect(ler('components/setup/setup-wizard.tsx')).toContain('<AvisoDoDomingoFechado')
+    expect(ler('components/shared/aviso-do-domingo-fechado.tsx')).toContain('domingoFechadoNoHorario(')
   })
 })
 

@@ -18,10 +18,9 @@ let gestor: MembroDeTeste | null = null
 test.beforeAll(async () => {
   rede = await criarOutraRede(`csa${marca}`)
   expect((await db().from('users').update({ provides_services: false }).eq('id', rede.professionalId)).error).toBeNull()
-  gestor = await criarMembro(`csag${marca}`, {
-    tenant: rede.tenantId, rotulo: 'Gestor comissões',
-    permissoes: [{ modulo: 'financial', nivel: 'MANAGE' }, { modulo: 'team', nivel: 'VIEW' }],
-  })
+  // Configurações → Comissões e taxas é configuração da rede toda: só a Admin
+  // da rede a abre (o Heitor, 18/11: "Configuração da rede toda só pela conta admin").
+  gestor = await criarMembro(`csag${marca}`, { tenant: rede.tenantId, rotulo: 'Gestor comissões', donoDaRede: true, permissoes: [] })
 })
 test.afterAll(async () => { await gestor?.limpar(); await rede?.limpar() })
 

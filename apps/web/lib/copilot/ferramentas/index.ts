@@ -5,6 +5,7 @@ import { agendamentos, horariosLivres } from '@/lib/copilot/ferramentas/agenda'
 import { cliente, clientes } from '@/lib/copilot/ferramentas/clientes'
 import { procedimentos, indicadores } from '@/lib/copilot/ferramentas/indicadores'
 import { lancamentos, estoque, oportunidades } from '@/lib/copilot/ferramentas/gestao'
+import { comandasAbertas, plano } from '@/lib/copilot/ferramentas/vendas'
 import { agendar, remarcar, cancelar, confirmarAgendamento, fazerCheckIn } from '@/lib/copilot/ferramentas/agenda-escrita'
 import { cadastrarCliente, atualizarContato, criarAcessoAoApp, marcarTags } from '@/lib/copilot/ferramentas/clientes-escrita'
 import { documentos } from '@/lib/copilot/ferramentas/documentos'
@@ -22,6 +23,8 @@ export const FERRAMENTAS: Ferramenta[] = [
   cliente, clientes,
   procedimentos, indicadores,
   lancamentos, estoque, oportunidades,
+  // CP1 (2026-11-17): só leitura — vender, receber e aceitar plano é na tela.
+  comandasAbertas, plano,
   documentos, cobrancaDoWhatsapp,
   // Gravação (só com o Confirmar do cartão)
   agendar, remarcar, cancelar, confirmarAgendamento, fazerCheckIn,

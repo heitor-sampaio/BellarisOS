@@ -73,7 +73,7 @@ test('lançar receita na unidade escolhida e dar baixa — tudo pelo /admin', as
   await linhaPendente.getByTitle('Receber', { exact: true }).click()
   // D6 da 6ª simulação: a receita sem forma pergunta a forma ao receber.
   const receber = page.getByRole('dialog', { name: 'Receber' })
-  await receber.getByLabel('Forma de pagamento').selectOption('PIX')
+  await receber.getByRole('radio', { name: 'Pix', exact: true }).click()
   await receber.getByRole('button', { name: 'Confirmar recebimento' }).click()
 
   await expect.poll(async () => {

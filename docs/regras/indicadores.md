@@ -225,8 +225,12 @@
     trava).
   - **Lucro e margem também moram em lib/metrics** (`resultadoDoPeriodo`,
     `variacaoDaMargemPp` em `lib/metrics/resultado.ts`): **lucro = receita paga
-    − (despesa paga − compra de estoque paga) − insumo consumido** (decisão do
-    Heitor, 2026-10-29); margem = lucro ÷ receita, nula sem receita; a
+    − (despesa paga − compra de estoque paga) − insumo consumido** (o Heitor,
+    2026-10-29: o consumo "serve pra controle de estoque e aferimento de
+    métricas de custo/margem/lucro", e a movimentação não gera outra despesa,
+    "pagar 2x" — é dele que o lucro desconta o insumo; tirar do lucro a
+    despesa "Compra de estoque" foi desenho do Claude sobre essa fala, que
+    ele não fechou); margem = lucro ÷ receita, nula sem receita; a
     variação da margem em p.p. O insumo entra pelo que foi CONSUMIDO nos
     atendimentos (o custo do movimento, `metrics_giro_estoque`; o lote não
     guarda custo próprio). A despesa da categoria **"Compra de estoque"**
@@ -253,14 +257,20 @@
     `consumo_de_insumo` (em `metrics_resultado` e
     `metrics_series_do_resultado`; com "só os meus", a venda de quem vendeu), e
     o DRE diz "− Insumos e produtos vendidos". A perda (D-7) NÃO entra (não
-    gerou receita — decisão para o Heitor). Prova: `e2e/vendas-produto.spec.ts`.
+    gerou receita; a pergunta que ficou aqui ao Heitor ele respondeu na revisão
+    de 2026-11-02, est-04/est-05: a perda é métrica, não dinheiro — abaixo, em
+    "A perda é MÉTRICA"). Prova: `e2e/vendas-produto.spec.ts`.
     **A tela diz isso** (A10/A36/A37 da 22ª; só o texto, a regra não mudou):
     a conta do resultado diz "o custo do produto quando ele é vendido, mesmo
     a receber"; a Receita dos atendimentos diz que é líquida do voucher e dos
     pontos (por isso pode valer menos que o Total vendido das Vendas); o
     Consumo no Período dos Relatórios tem a dica do giro. Prova:
     `tests/atritos-da-22-caixa.test.ts`.
-    **A venda ESTORNADA não entra** (H2, 2026-11-01; `product_sales.estornada_em`):
+    **A venda ESTORNADA não entra** (`product_sales.estornada_em`; de quem é:
+    sair das Vendas segue a regra do Heitor, 18/11, "Uma coisa só foi vendida
+    se foi paga"; a H2 de 01/11 pediu a pergunta "houve devolução?"; o custo
+    do que não voltou virar perda no dia do estorno e a venda sair também do
+    mês dela são decisões do Claude na F3, pelos princípios):
     nem o custo no lucro (`metrics_resultado`, `metrics_series_do_resultado`),
     nem a venda em Relatórios → Vendas. Se o produto não voltou, o custo dela
     aparece em "Perdas no período" (`metrics_perdas`, motivo
@@ -338,8 +348,10 @@
     concluídos) e 8 h no dashboard, e as duas davam números diferentes.
     A ocupação da unidade conta só a agenda DA unidade: o profissional entra
     na capacidade com o horário dele MENOS o que tem agendado em outra
-    unidade (`ocupadoFora`; o da rede atende em todas — decisão do Heitor,
-    2026-10-28). Sem isso ele aparecia livre em duas unidades ao mesmo tempo.
+    unidade (`ocupadoFora`). Em quais unidades a pessoa atende é o "Atende"
+    por unidade (`users.atende_em`, decisão 2 do Heitor na 8ª simulação, que
+    substituiu a de 2026-10-28, "o da rede atende em todas"). Sem isso ele
+    aparecia livre em duas unidades ao mesmo tempo.
     **E menos o tempo BLOQUEADO dele** (D15 da 8ª simulação, 2026-11-06;
     princípio 3): o bloqueio pontual da profissional (`agenda_bloqueios`) entra
     como bloco ocupado (`blocosDosBloqueios`, `lib/agenda/horario-livre.ts`; os
@@ -429,7 +441,9 @@
     sumia, e a tela dizia "Sem dados no período" com R$ 5.562 em estoque (D17,
     migration `20261028000502`). Prova: `e2e/indicadores-uma-conta-so.spec.ts`.
     Com uma categoria só, o gráfico não aparece (A30 da 23ª: era uma pizza de
-    100% "Sem categoria", que não diz nada).
+    100% "Sem categoria", que não diz nada) — e o quadro diz por quê: "Todo o
+    valor está em <categoria>", com a dica "Por que não há gráfico" (A31 da
+    24ª, `[data-categoria-unica]`).
   - **perdas do estoque** (D-7, 2026-10-30) = os movimentos `LOSS` NEGATIVOS
     e não desfeitos do período (C69, F66: a perda desfeita — "Desfazer perda",
     `desfeita_em` — sai, e o movimento positivo que a desfaz não conta), ao
@@ -441,7 +455,9 @@
     período" de Relatórios → Estoque, que some com o financeiro "só os meus"
     (como o saldo). A perda não entra no giro nem no lucro. A venda de
     produto estornada cujo produto NÃO voltou também é perda ali
-    (`VENDA_ESTORNADA`, "Venda estornada (não voltou)" — H2, 2026-11-01).
+    (`VENDA_ESTORNADA`, "Venda estornada (não voltou)" — decisão do Claude
+    na F3, pelos princípios; a H2 de 01/11 pediu só a pergunta "houve
+    devolução?").
     **E o ajuste de inventário que contou a MENOS** (`INVENTARIO`,
     "Inventário" — D5 da 10ª, 2026-11-10; migration `20261110004903`): o
     movimento `MANUAL_ADJUSTMENT` negativo, ao custo do lote de onde saiu (os
@@ -452,6 +468,13 @@
     2026-11-11; migration `20261111006101`): o ajuste negativo da entrega do
     voucher (`reference = 'voucher:<id>'`) era contado como "Inventário"; é o
     motivo dele, ao custo do lote.
+    **E o ajuste da "Correção de cadastro" não é perda** (A10 da 24ª, o
+    Heitor: "As duas"; migration `20261123600001`): o custo ou a quantidade
+    digitados errado na entrada, acertados por Ajuste depois que já saiu algo
+    do lote. O movimento nasce com `correcao_de_cadastro` (o
+    `estoque_ajuste_de_correcao`, motivo "Correção de cadastro" na janela do
+    Ajuste) e fica fora de "Perdas no período", do "Consumo com perdas" e do
+    giro (`metrics_perdas`: `and not m.correcao_de_cadastro`).
     **A perda é MÉTRICA, não dinheiro** (est-04/est-05, revisão de 2026-11-02:
     "perdido ou não, o insumo já foi pago na compra … serve como métrica"):
     não entra no lucro nem no financeiro, e o relatório mostra, além da
@@ -467,6 +490,22 @@
     (`[data-fora-do-lucro]`), que a perda e o ajuste são métrica e não entram
     no resultado, nem quando a compra é paga. Prova:
     `e2e/financeiro-atritos-da-10.spec.ts` ("D8").
+  - **As transferências entre unidades** (A33 da 20ª simulação, 2026-11-17;
+    migration `20261123200002`): o relatório de Estoque não as mostrava (só a
+    Auditoria). Cada perna de `estoque_transferir` (`TRANSFER_OUT` na origem,
+    `TRANSFER_IN` no destino, ligadas pela `reference`) é uma linha da unidade
+    dela — "Saiu para X" ou "Entrou de Y" —, com a quantidade (na unidade do
+    movimento e em embalagens) e o custo, que é o da SAÍDA nas duas pernas (os
+    lotes que saíram, `custo_do_lote`; o que nenhum lote cobre, à conta de
+    `custo_do_movimento`): a transferência não muda o valor. Por unidade ×
+    direção × outra unidade × produto, e o total da unidade × direção —
+    `metrics_transferencias_de_estoque` (grouping sets, só o servidor chama)
+    → `getTransferenciasDeEstoque` (`lib/metrics/transferencias.ts`). É a
+    seção "Transferências entre unidades" de Relatórios → Estoque
+    (`[data-transferencias]`), que some com o financeiro "só os meus" (como
+    as perdas) e na rede de uma unidade só. É métrica: não entra no lucro
+    nem no financeiro. Prova: `tests/pendencias-pdv-estoque-documentos.test.ts`,
+    `e2e/estoque-transferencia-no-relatorio.spec.ts`.
   - **A conversão é da OPORTUNIDADE** (decisão do Heitor, 2026-10-29: "o
     objeto é a oportunidade"): as oportunidades na etapa de GANHO (desfecho
     `WON`) ÷ as oportunidades do funil, sem importar se a pessoa já é cliente.
@@ -615,20 +654,22 @@ isso** (sobra da F35): "Última visita há 120 dias · antes do sistema"
 `e2e/indicadores-cenario.spec.ts` (unidade `[e2e]` + janela em 2021, antes de
 qualquer dado real). `relatorios-coerencia` prova que tela e RPC concordam;
 aquele prova que estão CERTOS. Mexeu numa `metrics_*`, o cenário tem de continuar
-batendo — ou mudar junto, com o porquê. `new_clients` da UNIDADE são as
-clientes novas ATENDIDAS nela — com agendamento não cancelado na unidade (T1
-do Bloco Tags, 2026-11-14, migration `20261114800001`; decisão por H16 e
-princípio 3: é o FATO, não a tag nem o cadastro). A rede inteira (nulo ou
-todas as unidades ativas, `public.recorte_e_a_clinica`) conta todas — também
-a nova ainda sem agendamento. Foi `clients.branch_id` (a unidade de cadastro)
-até a F68 e a tag "Unidade: <nome>" de 2026-11-12 (C6 da F68) a 2026-11-14.
-**E o ranking de unidades diz que a mesma cliente conta em cada unidade** (A26
-da 14ª, F75; princípio 3): a coluna "Novos" somava mais que o cartão "Novos
-clientes", calada. Embaixo do título: "Novos: as clientes novas atendidas na
-unidade (com agendamento nela). Quem foi atendida em duas unidades conta em
-cada uma…" (`[data-recorte-do-ranking]`). Desde o Bloco Tags a conta é a
-desse FATO (antes era a marca "Unidade: X"). Prova:
-`e2e/indicadores-f75-recortes-ditos.spec.ts`, `e2e/tags-sem-unidade.spec.ts`.
+batendo — ou mudar junto, com o porquê.
+
+**"Novos clientes" só existe na REDE** (o Heitor, 2026-11-18, 24ª simulação —
+resolve a A44): a cliente é da rede, e nenhuma unidade "tem" clientes novas.
+`new_clients` de `metrics_core`, `metrics_by_branch` e
+`metrics_new_clients_series` é NULO fora do recorte da rede inteira (nulo ou
+todas as unidades ativas, `public.recorte_e_a_clinica`; na rede de UMA
+unidade, a unidade é a rede e o número existe) — migration
+`20261123600001`. A tela esconde o que é nulo (`newClients: number | null`
+em `lib/metrics/queries.ts`): o cartão "Novos clientes", a etapa "Novos
+clientes" dos quadros de clientes, a coluna "Novos" do ranking de unidades e
+o gráfico "Novos clientes ao longo do tempo" dos Relatórios. O quadro da
+unidade diz "Os agendamentos da unidade". ~~As clientes novas ATENDIDAS na
+unidade~~ (T1/H16 do Bloco Tags, 2026-11-14) era uma leitura do Claude, não
+uma regra do Heitor, e saiu; antes dela, a tag "Unidade: X" (C6 da F68) e a
+unidade de cadastro (`clients.branch_id`).
 
 **Uma regra de receita, e toda soma de dinheiro parte dela.**
 `metrics_receitas_pagas` (migration `20260927000011`) é o conjunto canônico —
@@ -671,10 +712,11 @@ KPI que não fazia nenhum dos dois.
 - **Consumo de insumo é uma conta só** (`metrics_giro_estoque`, por
   `custo_do_movimento`): custo do MOVIMENTO, que é o da unidade de CONSUMO
   (§9.5); o de consumo do cadastro só como reserva. Dashboard, estoque e
-  relatórios. **Entra no lucro** (decisão do Heitor, 2026-10-29; acima, em
+  relatórios. **Entra no lucro** (o Heitor, 2026-10-29; acima, em
   "Lucro e margem") — e a movimentação de estoque NUNCA gera despesa (D13
   revisto, 2026-10-28): a compra paga, se a rede quiser no caixa, é um
-  lançamento manual na categoria "Compra de estoque", que fica fora do lucro.
+  lançamento manual na categoria "Compra de estoque", que fica fora do lucro
+  (desenho do Claude, para o produto não sair duas vezes; ele não o fechou).
   O ponto do gráfico "Evolução do Período" vem pronto de `pontosDaEvolucao`
   (`lib/metrics/evolucao.ts`), com o custo do LUCRO (a despesa sem a compra
   de estoque, mais o insumo consumido). O DRE tem a linha "− Insumos
@@ -752,7 +794,8 @@ geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro:
   (`sold_at`, o vendido, quem vendeu). O parcelado é UMA venda.
 - **Produto** (D4, 2026-10-30): `product_sales.sold_at`, o vendido, quem
   vendeu; a quantidade são as embalagens ("3× Sérum"). A venda ESTORNADA sai
-  (H2, 2026-11-01): era R$ 6.013 contra R$ 5.915 na 5ª simulação. **A
+  (o Heitor, 18/11: "Uma coisa só foi vendida se foi paga"; sair também do
+  mês dela é decisão do Claude na F3): era R$ 6.013 contra R$ 5.915 na 5ª simulação. **A
   devolvida em PARTE vale o que ficou** (A34 da 8ª, 2026-11-06): o valor é
   `price − valor_devolvido` e a quantidade, as unidades que ficaram com a
   cliente; o custo dela no lucro é `custo − custo_devolvido`, e o que voltou
@@ -827,7 +870,10 @@ número, e o texto mora UM lugar, `lib/metrics/definicoes.ts` (`DEFINICOES`) —
 mudou a conta, muda o texto junto. A "Taxa de aproveitamento" (dashboard da
 rede: concluídos ÷ marcados ATÉ AGORA) e a "Taxa de Conclusão" (Relatórios →
 Agenda: o período inteiro, até o FIM dele, com os que ainda vão acontecer)
-dizem por que diferem. E a data de cada número (J-56): a receita, a despesa e o
+dizem por que diferem. As duas contas moram em `lib/metrics/resultado.ts`
+(`taxaDeAproveitamento`, `taxaDeConclusao`), e o Copilot as cita prontas, com
+o nome e a definição — nunca divide os números da agenda (A41 da 24ª,
+`copilot.md`). E a data de cada número (J-56): a receita, a despesa e o
 ticket contam pelo dia do PAGAMENTO; os atendimentos, pela hora MARCADA (ou a
 conclusão, quando veio antes) — dicas nos cartões do dashboard da rede, do da
 unidade e da Visão geral dos Relatórios. Prova: `e2e/indicadores-dicas-das-taxas.spec.ts`.
@@ -926,6 +972,10 @@ a função de `lib/metrics` devolve nulo, como o ticket e a conversão. Prova:
   dois dashboards), "Contados até agora, os cancelados e as faltas também.
   Relatórios → Agenda conta o período inteiro, com os que ainda vão acontecer."
   (`[data-recorte-dos-cancelados]`). Prova: `e2e/relatorios-atritos-da-8.spec.ts`.
+  **Sem a Agenda, o quadro não mostra as etapas dela** (A32 da 24ª: o núcleo
+  não conta os agendamentos para quem não tem a Agenda, e o quadro dizia
+  "Agendamentos 0" num dia de 4): `etapasDoQueOCargoVe`
+  (`lib/dashboard/etapas-do-ciclo.ts`), nos dois dashboards.
   **E diz os que ainda vêm hoje** (A12 da 16ª: "Agendamentos 0" com 2
   marcados para mais tarde): o recorte "até agora" continua, e a etapa
   Agendamentos do dashboard da unidade leva "2 ainda hoje"
@@ -954,13 +1004,11 @@ a função de `lib/metrics` devolve nulo, como o ticket e a conversão. Prova:
   (`metrics_clientes_para_reativar_rede` → `getClientesParaReativarDaRede`,
   migration `20261102000702`): quem foi a outra unidade não está sumida —,
   com a unidade de cada uma (a da última visita concluída; quem nunca veio,
-  a do cadastro). Recortada a uma unidade pelo `?unidade=`, é o quadro da
-  unidade (`metrics_clientes_para_reativar`: as clientes atendidas nela —
-  agendamento não cancelado —, T1 do Bloco Tags; era a tag). **Na rede de
-  UMA unidade, é o da rede** (r2-ind-03, o Heitor, 2026-11-03: "na clínica
-  de uma unidade, a clínica e a unidade são a mesma coisa"): todas as
-  clientes ativas, também as nunca atendidas — no /admin e no
-  dashboard da unidade (`redeTemUmaUnidade` → `getClientesParaReativarDaRede`).
+  sem unidade — a do cadastro saiu na 24ª). **É sempre o da rede**, em
+  qualquer portal e com o `?unidade=` (o Heitor, 2026-11-18, 24ª: a
+  cliente é da rede): o quadro da unidade que contava "as atendidas nela"
+  (T1 do Bloco Tags) saiu com a regra dos novos clientes, acima. Na rede de
+  UMA unidade, a unidade de cada linha não aparece (r2-ind-03, D-19).
   Prova: `e2e/indicadores-reativar-clientes-da-rede.spec.ts` ("r2-ind-03").
   **O vazio diz o que é** (D16 da 8ª simulação, 2026-11-06): o quadro conta
   quem SUMIU (cadastrada antes dos 90 dias, sem visita neles), e com a base
@@ -978,7 +1026,8 @@ a função de `lib/metrics` devolve nulo, como o ticket e a conversão. Prova:
   não mudou. Prova: `e2e/ficha-uso-da-10.spec.ts` ("A35").
   **E o Copilot dá a mesma resposta** (r3-f13-10, o Heitor, 2026-11-03: "os
   dois têm de dar a mesma resposta"): a escolha entre a conta da unidade e a
-  da rede mora num lugar só, `getClientesParaReativarDoRecorte`
+  da rede mora num lugar só, `getClientesParaReativarDoRecorte` (desde a 24ª,
+  sempre a da rede)
   (`lib/metrics/unidade.ts`), que os dois dashboards e o "sem visita" do
   Copilot chamam (com a agenda "só os meus" também lá). O Copilot, sem
   unidade, juntava as listas de cada unidade pela tag e deixava de fora a
@@ -1232,9 +1281,12 @@ etária de `metrics_relatorio`, e o "Total Execuções" da aba Procedimentos
 do núcleo, e deixaria de fechar com a soma da tabela). A NOTA de cada
 procedimento é a que a cliente deu A ELE (F17-3, `atendimento.md`):
 `metrics_notas_dos_procedimentos(atendimento)` — as notas por procedimento;
-sem nenhuma ("Só o atendimento"), cada procedimento feito fica com a nota do
-atendimento, e o do agendamento com a nota de procedimento de antes, quando
-houver. A da profissional (`metrics_top_professionals`) é a do atendimento;
+sem nenhuma, o do agendamento fica com a nota de procedimento de antes
+(`procedure_rating`), quando houver, e o resto fica SEM nota: fora da média,
+sem herdar a nota do atendimento (decisão do Claude pelo princípio 4,
+2026-11-18, na auditoria das regras — com "Só o atendimento" herdava; migration
+`20261123900003`). A configuração e o dashboard dizem isso
+(`TEXTO_DA_NOTA_DO_PROCEDIMENTO`). A da profissional (`metrics_top_professionals`) é a do atendimento;
 sem ela ("Só cada procedimento"), a média das dos procedimentos daquele
 atendimento. A margem por faixa segue o preço do atendimento. O ranking e a tabela por PROFISSIONAL contam
 ATENDIMENTOS: a sessão é um atendimento (+1, com os R$ 2.000) — decisão da
@@ -1292,21 +1344,22 @@ mudou, pelos princípios (3: o que a tela mostra é o que vale; 4: não chutar):
   recebível, a configuração como antes. O dia do pagamento fica com a taxa
   dele, e o do estorno a devolve.
 - **Réguas** (C49): os motivos de perda só dos funis ATIVOS; o comercial conta
-  o agendamento por `aconteceu_em`; o "Reativar" da unidade mostra a última
-  visita NA unidade.
+  o agendamento por `aconteceu_em`; ~~o "Reativar" da unidade mostra a última
+  visita NA unidade~~ (24ª: o Reativar é sempre o da rede).
 - ~~A unidade da cliente é a tag~~ (C6/C45) — desfeito no Bloco Tags
-  (2026-11-14, H16): as novas clientes do cartão, da série e do "Por unidade"
-  de uma unidade são as ATENDIDAS nela (a que foi atendida em duas conta nas
-  duas linhas e uma vez no total), e o público das campanhas e do "Buscar
-  clientes" (`clientes_do_publico`) não tem mais filtro de unidade (MK2).
+  (2026-11-14), e o público das campanhas e do "Buscar clientes"
+  (`clientes_do_publico`) não tem mais filtro de unidade (MK2).
+  ~~As novas clientes de uma unidade são as ATENDIDAS nela~~ (H16): saiu na
+  24ª — "Novos clientes" só existe na rede (acima).
 - **O total da rede conta a unidade desativada** (C45): o dashboard e o
   Financeiro da rede inteira somam todas as unidades — a desativada com
   movimento já aparecia no "Por unidade", e o total não fechava. Desde a F72
-  (H6; D1 da 14ª) o recorte de uma unidade, as listas e os filtros de LEITURA
+  (decisão do Claude pelo princípio 3; D1 da 14ª) o recorte de uma unidade, as listas e os filtros de LEITURA
   também a alcançam enquanto ela tiver o que ficou ou movimento no período
   (`unidadesParaLer`, `lib/unidades/da-tela.ts`, com o selo "Unidade
   desativada"); só os seletores de coisa NOVA seguem as ativas
-  (`unidadesParaCriar`). Regra inteira em `plataforma.md` (H6).
+  (`unidadesParaCriar`). Regra inteira em `plataforma.md` (a unidade
+  desativada continua contada e alcançável).
 - **Comparações** (C46): `resolvePeriod` devolve `prevFullTo` (o fim do
   período anterior INTEIRO); o "A receber" e o "A pagar" do hub comparam com
   `getEmAberto` até ele (eram o período inteiro × o pedaço decorrido). O selo
@@ -1336,8 +1389,15 @@ mudou, pelos princípios (3: o que a tela mostra é o que vale; 4: não chutar):
   tela está recortada (unidade ou "só os meus"). O "só os meus" da agenda não
   recorta a ficha.
 - **Cada quadro de clientes diz o seu recorte** (A10 da 13ª):
-  `deQuemSaoAsClientes` — "atendidas na unidade", "da rede", "que você
-  atendeu" — no subtítulo do "Clientes no mês" e no "Reativar".
+  `deQuemSaoAsClientes` — "da rede" ou "com horário com você" (o "atendidas
+  na unidade" saiu na 24ª) — no "Reativar", e o subtítulo do "Clientes no
+  mês" diz se fala das novas clientes da rede ou só dos agendamentos.
+- **Cada aba dos Relatórios diz a base do valor** (A30 da 24ª; princípio 3):
+  Vendas, "Valores da venda, com o voucher e os pontos" (o voucher e os
+  pontos contam como pagamento); Procedimentos, "Receita líquida do voucher e
+  dos pontos", e a margem por faixa de idade diz que é o preço do agendamento
+  menos o custo do catálogo (`DEFINICOES.baseDasVendas`,
+  `baseDosProcedimentos`, `[data-base-da-aba]`).
 - **O Copilot usa as funções da tela** (C5): o "a receber" é o do Financeiro
   (`getEmAberto` até o fim do período), a aba agenda vai até o fim do período,
   e o comercial é o painel da aba Oportunidades (`painelComercial`, que saiu da

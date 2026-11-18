@@ -26,10 +26,9 @@ test.beforeAll(async () => {
   expect(error, 'o aparelho da cliente com app').toBeNull()
   f = {
     outra, comApp, semApp,
-    membro: await criarMembro(`cam${marca}`, {
-      tenant: outra.tenantId, rotulo: 'Marketing',
-      permissoes: [{ modulo: 'marketing', nivel: 'MANAGE' }],
-    }),
+    // A campanha é configuração da rede toda: só a Admin da rede a monta (o
+    // Heitor, 18/11: "Configuração da rede toda só pela conta admin").
+    membro: await criarMembro(`cam${marca}`, { tenant: outra.tenantId, rotulo: 'Marketing', donoDaRede: true, permissoes: [] }),
   }
 })
 

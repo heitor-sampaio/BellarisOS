@@ -89,48 +89,11 @@ export async function getValorEmEstoquePorProduto(branchIds: string[]): Promise<
   return new Map(linhas.map(l => [l.branch_id ? `${l.product_id}:${l.branch_id}` : l.product_id, Number(l.valor ?? 0)]))
 }
 
-export interface ClientesParaReativar {
-  /** Quantos clientes da unidade estão sem visita desde `desde`. */
-  total: number
-  /** Os há mais tempo sem vir; quem nunca veio fica no fim. */
-  /** `antesDoSistema`: a última visita é a do sistema de antes (a importada, F35). */
-  lista: { id: string; name: string; phone: string | null; ultimaVisita: string | null; antesDoSistema: boolean }[]
-  /**
-   * Para o vazio dizer o que é (D16 da 8ª): as clientes do recorte com alguma
-   * visita concluída, e as cadastradas desde `desde` sem nenhuma (fora do quadro).
-   */
-  comVisita: number
-  recentesSemVisita: number
-}
-
-export async function getClientesParaReativar(args: {
-  tenantId: string; branchId: string; desde: Date; limite?: number
-  /** A cliente da unidade é a atendida nela (agendamento não cancelado; T1 do
-   * Bloco Tags — não existe tag de unidade). "Só os meus": só as clientes que ela atendeu (agendamento não cancelado na unidade). */
-  professionalId?: string | null
-}): Promise<ClientesParaReativar> {
-  const data = await ler(createAdminClient().rpc('metrics_clientes_para_reativar', {
-    p_tenant: args.tenantId, p_branch_id: args.branchId,
-    p_desde: args.desde.toISOString(), p_limite: args.limite ?? 3,
-    p_professional_id: args.professionalId ?? null,
-  }), 'buscar os clientes para reativar')
-  const d = (data ?? {}) as {
-    total?: number; com_visita?: number; recentes_sem_visita?: number
-    lista?: { id: string; name: string; phone: string | null; ultima_visita: string | null; antes_do_sistema?: boolean }[]
-  }
-  return {
-    total: Number(d.total ?? 0),
-    comVisita: Number(d.com_visita ?? 0), recentesSemVisita: Number(d.recentes_sem_visita ?? 0),
-    lista: (d.lista ?? []).map(c => ({ id: c.id, name: c.name, phone: c.phone, ultimaVisita: c.ultima_visita, antesDoSistema: c.antes_do_sistema === true })),
-  }
-}
-
 /**
- * As clientes a reativar da REDE (F7b, H3: "a dona vê tudo, sempre"): sem
- * visita em NENHUMA unidade da clínica desde `desde`, com a unidade de cada
- * uma — a da última visita; quem nunca veio, a do cadastro
- * (`metrics_clientes_para_reativar_rede`). A da unidade continua
- * `getClientesParaReativar`.
+ * As clientes a reativar da REDE: sem visita em NENHUMA unidade desde `desde`,
+ * com a unidade da última visita (quem nunca veio, sem unidade —
+ * `metrics_clientes_para_reativar_rede`). A cliente é da rede (o Heitor, 24ª
+ * simulação): não há "as clientes da unidade".
  */
 export interface ClienteParaReativarDaRede {
   id: string; name: string; phone: string | null; ultimaVisita: string | null
@@ -163,39 +126,30 @@ export async function getClientesParaReativarDaRede(args: {
 }
 
 /**
- * O "Reativar clientes" de um RECORTE — a regra ÚNICA do dashboard (os dois
- * portais) e do Copilot (r3-f13-10, o Heitor em 2026-11-03: "os dois têm de
- * dar a mesma resposta"):
- * - na rede de UMA unidade, a rede inteira — todas as clientes ativas
- *   (r2-ind-03: "na clínica de uma unidade, a clínica e a unidade são a mesma
- *   coisa");
- * - com várias e o recorte numa unidade, as atendidas nela (agendamento não
- *   cancelado; T1 do Bloco Tags, 2026-11-14 — era a tag "Unidade: X");
- * - com várias e sem recorte, a clínica inteira: sem visita em NENHUMA
- *   unidade, com a unidade de cada uma.
- * Quem mostra não escolhe entre a conta da unidade e a da rede: chama esta.
+ * O "Reativar clientes" — a regra ÚNICA do dashboard (os dois portais) e do
+ * Copilot (r3-f13-10, o Heitor em 2026-11-03: "os dois têm de dar a mesma
+ * resposta"). A cliente é da REDE (o Heitor, 24ª simulação: "Novos clientes"
+ * e o que conta clientes é da rede; a "atendida na unidade" de T1/H16 era
+ * uma leitura do Claude, e saiu): a conta é sempre a da rede inteira — sem
+ * visita em NENHUMA unidade —, em qualquer portal. A unidade do recorte não
+ * estreita a lista; ela fica só no endereço da tela.
+ * Na rede de uma unidade, dizer a unidade de cada uma é ruído (D-19).
  */
 export async function getClientesParaReativarDoRecorte(args: {
   tenantId: string
-  /** A unidade do recorte (a do portal, a do `?unidade=`, a do pedido), ou nula = a clínica toda. */
-  unidade: { id: string; name: string } | null
+  /** A unidade do recorte (a do portal, a do `?unidade=`, a do pedido). Não estreita: a cliente é da rede. */
+  unidade?: { id: string; name: string } | null
   desde: Date; limite?: number
   /** "Só os meus" da agenda: as dela. */
   professionalId?: string | null
-}): Promise<{ total: number; lista: ClienteParaReativarDaRede[]; daUnidade: boolean; comVisita: number; recentesSemVisita: number }> {
-  const umaSo = await redeTemUmaUnidade(args.tenantId)
-  if (args.unidade && !umaSo) {
-    const r = await getClientesParaReativar({
-      tenantId: args.tenantId, branchId: args.unidade.id,
-      desde: args.desde, limite: args.limite, professionalId: args.professionalId,
-    })
-    return { ...r, lista: r.lista.map(c => ({ ...c, unidade: null, unidadeSlug: null })), daUnidade: true }
-  }
-  const r = await getClientesParaReativarDaRede({
-    tenantId: args.tenantId, desde: args.desde, limite: args.limite, professionalId: args.professionalId,
-  })
-  // Com uma unidade só, dizer a unidade de cada uma é ruído (D-19).
-  return { ...r, lista: umaSo ? r.lista.map(c => ({ ...c, unidade: null, unidadeSlug: null })) : r.lista, daUnidade: false }
+}): Promise<{ total: number; lista: ClienteParaReativarDaRede[]; comVisita: number; recentesSemVisita: number }> {
+  const [umaSo, r] = await Promise.all([
+    redeTemUmaUnidade(args.tenantId),
+    getClientesParaReativarDaRede({
+      tenantId: args.tenantId, desde: args.desde, limite: args.limite, professionalId: args.professionalId,
+    }),
+  ])
+  return { ...r, lista: umaSo ? r.lista.map(c => ({ ...c, unidade: null, unidadeSlug: null })) : r.lista }
 }
 
 /**

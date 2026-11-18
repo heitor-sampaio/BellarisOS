@@ -87,8 +87,10 @@ test.beforeAll(async () => {
   // A fidelidade ligada, por real pago; a venda de produto começa NÃO pontuando.
   const fid = await db().from('loyalty_configs').upsert({ tenant_id: rede.tenantId, enabled: true, earn_mode: 'POR_REAL', points_per_real: 1 }, { onConflict: 'tenant_id' })
   expect(fid.error).toBeNull()
+  // A fidelidade é configuração da rede toda: só a Admin da rede (o Heitor,
+  // 18/11: "Configuração da rede toda só pela conta admin").
   dona = await criarMembro(`vpd${marca}`, {
-    tenant: rede.tenantId, rotulo: 'Configurações', permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }],
+    tenant: rede.tenantId, rotulo: 'Admin da rede', permissoes: [], cargoDaRede: 'NETWORK_ADMIN',
   })
   financeiro = await criarMembro(`vpf${marca}`, {
     tenant: rede.tenantId, rotulo: 'Financeiro', permissoes: [{ modulo: 'financial', nivel: 'MANAGE' }],
@@ -258,15 +260,17 @@ test.describe.serial('a venda de produto', () => {
     const { data: antes } = await db().from('commission_lines').select('id').eq('tenant_id', rede!.tenantId)
     expect(antes ?? []).toEqual([])
 
-    const ctxFin = await browser.newContext({ storageState: financeiro!.estado })
+    // A configuração de comissões é da rede toda: a Admin da rede (o Heitor, 18/11:
+    // "Configuração da rede toda só pela conta admin"); o Financeiro em Gerenciar não muda.
+    const ctxAdmin = await browser.newContext({ storageState: dona!.estado })
     try {
-      const p = await ctxFin.newPage()
+      const p = await ctxAdmin.newPage()
       await p.goto('/admin/settings?tab=comissoes')
       const como = p.locator('[aria-label="Como a comissão acontece"]')
       await como.getByLabel('Comissão na venda de produto (%)').fill('10')
       await como.getByRole('button', { name: 'Salvar' }).click()
       await expect(como.getByRole('status')).toHaveText('Salvo.')
-    } finally { await ctxFin.close() }
+    } finally { await ctxAdmin.close() }
     const { data: cfg } = await db().from('commission_configs').select('produto_pct').eq('tenant_id', rede!.tenantId).single()
     expect(n(cfg?.produto_pct)).toBe(10)
 

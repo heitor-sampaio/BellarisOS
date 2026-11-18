@@ -1,43 +1,45 @@
 /**
- * A configuração que vale para a CLÍNICA TODA (a rede) só se grava por quem é
- * da rede — H7 da 5ª simulação, decisão do Heitor (2026-11-01): "gerente de
- * uma unidade só mexe no que é da unidade".
+ * A configuração que vale para a REDE TODA só se grava pela Admin da rede — o
+ * Heitor, 18/11, na auditoria das regras (pergunta 8): "só pela conta admin".
+ * Até ali (H7 da 5ª simulação, 2026-11-01: "gerente de uma unidade só mexe no
+ * que é da unidade") bastava ter "A rede inteira" com o módulo em Gerenciar.
  *
- * A gerente de unidade fixa, com os módulos em Gerenciar, gravava tags,
- * funis, cargos, fichas, termos, integrações, automações e campanhas — o que
- * muda para todas as unidades (A6). A trava é da ABRANGÊNCIA do membro
- * (`ctx.branchId`, CLAUDE.md §11), nunca do nome do cargo: o mesmo cargo serve
- * a quem é da rede e a quem é de uma unidade.
+ * A trava lê o CARGO de sistema gravado (`ctx.isNetworkAdmin`: o membro em
+ * cache com `tenant_roles.key = 'NETWORK_ADMIN'` e `is_system`), nunca a claim
+ * `role` do token nem o rótulo do cargo (C58, F70). Tags, funis e etapas,
+ * motivos, origens, cargos, fichas, modelos de documento, integrações,
+ * automações, campanhas, templates, as Importações, os dados da rede e a
+ * comissão do procedimento.
  *
- * Fica com a unidade o que é dela: os dados, o horário e as salas da unidade
- * (Configurações → Unidade), o estoque dela, a equipe dela. As importações
- * passaram a ser da rede (C73, F70; H8): a importação escolhe a unidade. A lista do que ficou em cada lado está em `docs/regras/plataforma.md`.
+ * Fica com a PERMISSÃO (sem precisar do cargo): a aba Unidade (dados, horário,
+ * salas), o estoque (o catálogo é de quem tem o Estoque em Gerenciar), a
+ * equipe e as respostas rápidas (de cada pessoa). A lista do que ficou em cada
+ * lado está em `docs/regras/plataforma.md`.
  *
  * Puro de propósito: a página (o aviso e o botão) e a action (a recusa) leem
  * a mesma regra.
  */
 
-export const CONFIG_DA_REDE = 'Esta configuração é da rede toda: quem muda é quem tem “A rede inteira”.'
+export const CONFIG_DA_REDE = 'Esta configuração é só da Admin da rede.'
 
-/** Quem é da rede (sem unidade fixa) mexe na configuração da clínica. */
-export function mexeNaConfigDaRede(ctx: { branchId: string | null }): boolean {
-  return ctx.branchId === null
+type QuemMexe = { isNetworkAdmin: boolean }
+
+/** A Admin da rede (o cargo de sistema) mexe na configuração da rede toda. */
+export function mexeNaConfigDaRede(ctx: QuemMexe): boolean {
+  return ctx.isNetworkAdmin === true
 }
 
-/** A recusa da action que grava configuração da clínica, ou nulo. */
-export function recusaDaConfigDaRede(ctx: { branchId: string | null }): string | null {
+/** A recusa da action que grava configuração da rede toda, ou nulo. */
+export function recusaDaConfigDaRede(ctx: QuemMexe): string | null {
   return mexeNaConfigDaRede(ctx) ? null : CONFIG_DA_REDE
 }
 
 /**
- * A frase do quadro de oportunidades para quem não tem “A rede inteira” (A18
+ * A frase do quadro de oportunidades para quem não configura os funis (A18
  * da 18ª simulação): o "Configurar funis" some do quadro dela, e a explicação
- * só existia em Configurações. Diz a abrangência e, sem Configurações em
- * Gerenciar, a permissão também. Nulo para quem configura.
+ * só existia em Configurações. Nulo para quem configura.
  */
-export function avisoDosFunis(ctx: { branchId: string | null }, temConfiguracoesEmGerenciar: boolean): string | null {
+export function avisoDosFunis(ctx: QuemMexe): string | null {
   if (mexeNaConfigDaRede(ctx)) return null
-  return temConfiguracoesEmGerenciar
-    ? 'Funis e etapas são da rede toda: quem muda é quem tem “A rede inteira”.'
-    : 'Funis e etapas são da rede toda: quem muda é quem tem “A rede inteira” e Configurações em Gerenciar.'
+  return 'Funis e etapas são da rede toda: quem muda é a Admin da rede.'
 }

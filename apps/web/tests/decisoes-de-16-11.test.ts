@@ -58,7 +58,8 @@ describe('B. o aviso de quem abriu uma unidade fora do alcance não sugere cria�
   it('os três avisos dizem onde a pessoa está', () => {
     expect(AVISOS_DA_URL['outra-unidade']).toBe('Essa unidade não está entre as suas. Você está na sua unidade.')
     expect(AVISOS_DA_URL['portal-da-rede']).toBe('O portal da rede é de quem tem “A rede inteira”. Você está na sua unidade.')
-    expect(AVISOS_DA_URL['setup-da-rede']).toBe('A configuração inicial da rede é de quem tem “A rede inteira”. Você está na sua unidade.')
+    // O Heitor, 18/11: o setup é só da Admin da rede, e o aviso serve aos dois painéis.
+    expect(AVISOS_DA_URL['setup-da-rede']).toBe('A configuração inicial da rede é só da Admin da rede. Você está no painel.')
   })
 })
 

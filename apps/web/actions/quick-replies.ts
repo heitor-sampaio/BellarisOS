@@ -56,7 +56,9 @@ export async function saveQuickReply(
 ): Promise<{ ok: boolean; id?: string; error?: string }> {
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'inbox')
-  assertPermission(ctx, 'crm', 'MANAGE')
+  // Cada pessoa guarda as suas (H8, o Heitor: "cada usuário poder configurar
+  // as suas"): basta abrir o inbox (o CRM em Ver). Era o CRM em Gerenciar.
+  assertPermission(ctx, 'crm', 'VIEW')
   const admin = createAdminClient()
 
   const title   = input.title?.trim()   ?? ''
@@ -104,7 +106,9 @@ export async function saveQuickReply(
 export async function deleteQuickReply(id: string): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'inbox')
-  assertPermission(ctx, 'crm', 'MANAGE')
+  // Cada pessoa guarda as suas (H8, o Heitor: "cada usuário poder configurar
+  // as suas"): basta abrir o inbox (o CRM em Ver). Era o CRM em Gerenciar.
+  assertPermission(ctx, 'crm', 'VIEW')
 
   const eu = await membroId(ctx)
   if (!eu) return { ok: false, error: 'Atalho não encontrado.' }

@@ -25,6 +25,8 @@ export async function emitirEventoDeLead(
     origem?: OrigemDeEvento
     /** Quantas automações houve antes deste fato — o anti-loop do motor. */
     profundidade?: number
+    /** O fato se grava, mas não dispara automação (A35 da 22ª: a pessoa disse "Não"). */
+    semDespachar?: boolean
   },
 ): Promise<void> {
   try {
@@ -69,7 +71,7 @@ export async function emitirEventoDeLead(
       // Só a criação é única. Um card entra e sai da mesma etapa várias vezes,
       // e pode ser reaberto depois de ganho — cada passagem é um fato novo.
       chave: nome === EVENTOS.LEAD_CRIADO ? `${nome}:${leadId}` : undefined,
-    })
+    }, { semDespachar: extras?.semDespachar })
   } catch (e) {
     console.error('[eventoDeLead]', nome, (e as Error).message)
   }

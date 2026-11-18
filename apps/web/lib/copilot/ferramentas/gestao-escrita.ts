@@ -11,6 +11,8 @@ import { loteVencido, validadeNaTela } from '@/lib/estoque/validade'
 import { medidaNoPlural } from '@/lib/estoque/medidas'
 import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { criarOportunidadeCore, moverEtapaCore } from '@/lib/crm/oportunidade'
+import { automacoesQueOMovimentoDispara, COLUNAS_DO_CARD_PARA_PREVER, type CardParaPrever } from '@/lib/crm/automacoes-do-movimento'
+import { perguntaDasAutomacoes } from '@/lib/crm/mover-da-etapa'
 import { leadAoAlcance } from '@/lib/crm/alcance'
 import { fichasDoTelefoneDoLead } from '@/lib/crm/ficha-do-telefone'
 import { telefoneParaGravar } from '@/lib/contatos/propagar'
@@ -77,11 +79,22 @@ function categoria(tipo: 'receita' | 'despesa', pedida: string): string | { erro
   const achada = lista.find(c => semAcento(c) === semAcento(pedida)) ?? lista.find(c => semAcento(c).includes(semAcento(pedida)))
   return achada ?? { erro: `Categoria de ${tipo} "${pedida}" não existe. Categorias: ${lista.join(', ')}.` }
 }
+/** As categorias do cartão (A40 da 24ª): a sugerida primeiro, depois as outras da lista. */
+function categoriasDoCartao(tipo: 'receita' | 'despesa', sugerida: string): { chave: string; rotulo: string }[] {
+  const lista: readonly string[] = tipo === 'receita' ? CATEGORIAS_DE_RECEITA : CATEGORIAS_DE_DESPESA
+  return [sugerida, ...lista.filter(c => c !== sugerida)].map(c => ({ chave: `categoria:${c}`, rotulo: c }))
+}
+/** A categoria da chave escolhida, se for uma da lista do tipo. */
+function categoriaDaEscolha(tipo: 'INCOME' | 'EXPENSE', escolha: string): string | null {
+  const lista: readonly string[] = tipo === 'INCOME' ? CATEGORIAS_DE_RECEITA : CATEGORIAS_DE_DESPESA
+  const nome = escolha.startsWith('categoria:') ? escolha.slice('categoria:'.length) : ''
+  return lista.includes(nome) ? nome : null
+}
 // Os dois portais: a rede e a unidade (o mesmo que a tela revalida).
 const revalidar = (tela: string) => { revalidatePath(`/admin/${tela}`); revalidatePath(`/[slug]/${tela}`, 'page') }
 const revalidarFinanceiro = () => revalidar('financeiro')
 
-interface ArgsLancar { tipo: 'receita' | 'despesa'; descricao: string; valor: number; categoria: string; vencimento?: string; pago?: boolean; forma?: string; bandeira?: string; vezes?: number; maquininha?: string; unidade?: string }
+interface ArgsLancar { tipo: 'receita' | 'despesa'; descricao: string; valor: number; categoria: string; categoriaDaPessoa?: boolean; vencimento?: string; pago?: boolean; forma?: string; bandeira?: string; vezes?: number; maquininha?: string; unidade?: string }
 interface PayloadLancar { branchId: string; tipo: 'INCOME' | 'EXPENSE'; categoria: string; descricao: string; valor: number; forma: string | null; bandeira?: string | null; vezes?: number | null; maquininha?: string | null; vencimento: string | null; pago: boolean; pagoEm?: string | null }
 /** "· 3x" no resumo do cartão (F17-5): o crédito em N vezes. */
 const emVezes = (vezes: number | null | undefined) => vezes && vezes >= 2 ? ` · ${vezes}x` : ''
@@ -95,12 +108,13 @@ export const lancar: FerramentaDeEscrita<ArgsLancar, PayloadLancar> = {
   // D5 da 16ª (princípios 3 e 4): "Material de limpeza" virou "Compra de
   // estoque" e saiu do resultado. A categoria diz o que é, e na dúvida pergunta.
   // A22 da 17ª: o material de consumo tem a sua categoria (a mesma da tela).
-  descricao: `Lança uma receita ou despesa avulsa (não ligada a atendimento): descrição, valor em reais, categoria (receita: ${CATEGORIAS_DE_RECEITA.join(', ')}; despesa: ${CATEGORIAS_DE_DESPESA.join(', ')}). "${CATEGORIA_COMPRA_DE_ESTOQUE}" é só a mercadoria que entra no estoque (produto de revenda ou insumo cadastrado no Estoque): conta no caixa e fica fora do resultado, porque o lucro já desconta o insumo consumido — material de limpeza, de copa ou de consumo da unidade não é compra de estoque: é "${CATEGORIA_MATERIAL_DE_CONSUMO}". Quando nenhuma categoria da lista serve com certeza, pergunte à pessoa qual usar (ou use "Outro" se ela disser); nunca escolha a mais parecida calado. Vencimento (AAAA-MM-DD) se for a pagar/receber, ou pago=true com a forma (dinheiro, Pix, débito, crédito; na despesa, também boleto) e, no cartão, a bandeira se a pessoa disser (Visa, Mastercard, Elo, Amex, Hipercard, Outras). Na receita paga no crédito, as vezes se a pessoa disser ("no crédito em 3x" → vezes=3): é um pagamento só, que a operadora deposita em N. No cartão pago, a maquininha pelo nome (ex.: Stone) quando a rede tem mais de uma — sem ela, a ferramenta pergunta.`,
+  descricao: `Lança uma receita ou despesa avulsa (não ligada a atendimento): descrição, valor em reais, categoria (receita: ${CATEGORIAS_DE_RECEITA.join(', ')}; despesa: ${CATEGORIAS_DE_DESPESA.join(', ')}). "${CATEGORIA_COMPRA_DE_ESTOQUE}" é só a mercadoria que entra no estoque (produto de revenda ou insumo cadastrado no Estoque): conta no caixa e fica fora do resultado, porque o lucro já desconta o insumo consumido — material de limpeza, de copa ou de consumo da unidade não é compra de estoque: é "${CATEGORIA_MATERIAL_DE_CONSUMO}". Quando nenhuma categoria da lista serve com certeza, pergunte à pessoa qual usar (ou use "Outro" se ela disser); nunca escolha a mais parecida calado. categoriaDaPessoa=true só quando a PESSOA disse a categoria; quando é você quem a escolhe pela descrição, deixe de fora: o cartão a mostra como sugerida e a pessoa troca antes de confirmar. Vencimento (AAAA-MM-DD) se for a pagar/receber, ou pago=true com a forma (dinheiro, Pix, débito, crédito; na despesa, também boleto) e, no cartão, a bandeira se a pessoa disser (Visa, Mastercard, Elo, Amex, Hipercard, Outras). Na receita paga no crédito, as vezes se a pessoa disser ("no crédito em 3x" → vezes=3): é um pagamento só, que a operadora deposita em N. No cartão pago, a maquininha pelo nome (ex.: Stone) quando a rede tem mais de uma — sem ela, a ferramenta pergunta.`,
   parametros: z.object({
     tipo: z.enum(['receita', 'despesa']),
     descricao: z.string().min(2).max(200),
     valor: z.number().positive().max(10_000_000),
     categoria: z.string().min(2).max(60),
+    categoriaDaPessoa: z.boolean().optional(),
     vencimento: DATA.optional(),
     pago: z.boolean().optional(),
     forma: z.string().max(30).optional(),
@@ -132,20 +146,27 @@ export const lancar: FerramentaDeEscrita<ArgsLancar, PayloadLancar> = {
     // A29 da 21ª (princípio 3): o cartão do pago diz o DIA do pagamento — o de
     // hoje na unidade —, e é esse dia que o núcleo grava (pagoNoDia).
     const pagoEm = pago ? hojeNoFuso(await fusoDe(c, u.unidade!.id)) : null
+    // A40 da 24ª (princípio 3): "Fornecedores" para a lavanderia, escolhida por ele e
+    // gravada calada. Sem a pessoa dizer a categoria, ela vem SUGERIDA e se troca no cartão.
+    const sugerida = !a.categoriaDaPessoa
+    const avisos = [
+      ...(sugerida ? ['A categoria foi sugerida pelo Copilot: confira ou troque antes de confirmar.'] : []),
+      // D5 da 16ª (princípio 3): o cartão diz o que a categoria faz com o resultado.
+      ...(a.tipo === 'despesa' && ehCompraDeEstoque(cat) ? ['Compra de estoque: conta no caixa e fica fora do resultado (é a mercadoria que entra no estoque).'] : []),
+    ]
     return {
       resumo: {
         titulo: a.tipo === 'receita' ? 'Lançar receita' : 'Lançar despesa',
         linhas: [
           { rotulo: 'Descrição', valor: a.descricao.trim() },
           { rotulo: 'Valor', valor: dinheiro(valor) },
-          { rotulo: 'Categoria', valor: cat },
+          ...(sugerida ? [] : [{ rotulo: 'Categoria', valor: cat }]),
           { rotulo: 'Situação', valor: pago ? `pago${forma ? ` · ${FORMA_LEGIVEL[forma]}` : ''}${emVezes(vezes)}${bandeira ? ` · ${rotuloDaBandeira(bandeira)}` : ''}${maq ? ` · ${maq.nome}` : ''}` : `vence ${a.vencimento!.split('-').reverse().join('/')}` },
           ...(pagoEm ? [{ rotulo: 'Pago em', valor: pagoEm.split('-').reverse().join('/') }] : []),
           { rotulo: 'Unidade', valor: u.unidade!.name },
         ],
-        // D5 da 16ª (princípio 3): o cartão diz o que a categoria faz com o resultado.
-        ...(a.tipo === 'despesa' && ehCompraDeEstoque(cat)
-          ? { aviso: 'Compra de estoque: conta no caixa e fica fora do resultado (é a mercadoria que entra no estoque).' } : {}),
+        ...(avisos.length ? { aviso: avisos.join(' ') } : {}),
+        ...(sugerida ? { escolhas: categoriasDoCartao(a.tipo, cat), escolhaEmLista: { rotulo: 'Categoria (sugerida)' } } : {}),
       },
       payload: {
         branchId: u.unidade!.id, tipo: a.tipo === 'receita' ? 'INCOME' : 'EXPENSE', categoria: cat,
@@ -157,15 +178,18 @@ export const lancar: FerramentaDeEscrita<ArgsLancar, PayloadLancar> = {
       },
     }
   },
-  async efetivar(c, p) {
+  async efetivar(c, p, escolha) {
+    // A40 da 24ª: a categoria escolhida na lista do cartão (a sugerida, ou outra da mesma lista).
+    const categoria = escolha ? categoriaDaEscolha(p.tipo, escolha) : p.categoria
+    if (!categoria) return { erro: 'Escolha uma das categorias do cartão.' }
     const r = await lancarCore(c.admin, c.ctx, {
-      branchId: p.branchId, tipo: p.tipo, categoria: p.categoria, descricao: p.descricao, valor: p.valor,
+      branchId: p.branchId, tipo: p.tipo, categoria, descricao: p.descricao, valor: p.valor,
       formaDePagamento: p.forma, vencimento: p.vencimento, pago: p.pago, pagoEm: p.pagoEm ?? null, bandeira: p.bandeira ?? null, vezes: p.vezes ?? null,
       maquininha: p.maquininha ?? null,
     })
     if ('error' in r) return { erro: r.error }
     revalidarFinanceiro()
-    return { mensagem: `${p.tipo === 'INCOME' ? 'Receita' : 'Despesa'} de ${dinheiro(p.valor)} lançada.` }
+    return { mensagem: `${p.tipo === 'INCOME' ? 'Receita' : 'Despesa'} de ${dinheiro(p.valor)} lançada em ${categoria}.` }
   },
 }
 
@@ -514,7 +538,25 @@ export const criarOportunidade: FerramentaDeEscrita<ArgsOportunidade, PayloadOpo
   },
 }
 
-export const moverEtapa: FerramentaDeEscrita<{ oportunidade: string; etapa: string }, { leadId: string; stageId: string; funnelId: string }> = {
+/**
+ * A35 da 22ª (o Heitor: "se mover os cards manualmente dispararia automacoes,
+ * perguntar se deseja disparar ou nao"; "Também ao arrastar um"): o Copilot
+ * move a pedido da pessoa, então o cartão diz quais automações o movimento
+ * dispara (a régua da tela, `automacoesQueOMovimentoDispara`) e dá "Disparar"
+ * ou "Não disparar". No "Não", o movimento se grava e o fato não vai ao motor.
+ */
+const ESCOLHAS_DO_MOVIMENTO = [
+  { chave: 'disparar', rotulo: 'Disparar' },
+  { chave: 'nao-disparar', rotulo: 'Não disparar' },
+]
+
+async function automacoesDoMovimento(c: ContextoDaFerramenta, leadId: string, stageId: string): Promise<string[]> {
+  const card = await ler(c.admin.from('leads').select(COLUNAS_DO_CARD_PARA_PREVER)
+    .eq('id', leadId).eq('tenant_id', c.ctx.tenantId!).maybeSingle(), 'ler a oportunidade para prever as automações') as unknown as CardParaPrever | null
+  return card ? automacoesQueOMovimentoDispara(c.ctx, [card], stageId) : []
+}
+
+export const moverEtapa: FerramentaDeEscrita<{ oportunidade: string; etapa: string }, { leadId: string; stageId: string; funnelId: string; automacoes?: string[] }> = {
   nome: 'mover_etapa',
   tipo: 'escrita',
   modulo: 'crm', nivel: 'MANAGE',
@@ -533,6 +575,7 @@ export const moverEtapa: FerramentaDeEscrita<{ oportunidade: string; etapa: stri
     const destino = etapas.find(e => e.name.toLowerCase() === p) ?? etapas.find(e => e.name.toLowerCase().includes(p))
     if (!destino) return { erro: `Etapa "${a.etapa}" não existe neste funil. Etapas: ${etapas.map(e => e.name).join(', ')}.` }
     if (destino.id === atual.id) return { erro: `A oportunidade já está em "${atual.name}".` }
+    const automacoes = await automacoesDoMovimento(c, a.oportunidade, destino.id)
     return {
       resumo: {
         titulo: 'Mover oportunidade',
@@ -541,13 +584,21 @@ export const moverEtapa: FerramentaDeEscrita<{ oportunidade: string; etapa: stri
           { rotulo: 'De', valor: atual.name },
           { rotulo: 'Para', valor: destino.name },
         ],
+        ...(automacoes.length ? { aviso: perguntaDasAutomacoes(automacoes), escolhas: ESCOLHAS_DO_MOVIMENTO } : {}),
       },
-      payload: { leadId: a.oportunidade, stageId: destino.id, funnelId: atual.funnel_id },
+      payload: { leadId: a.oportunidade, stageId: destino.id, funnelId: atual.funnel_id, automacoes },
     }
   },
-  async efetivar(c, p) {
+  async efetivar(c, p, escolha) {
     if (ownerFilter(c.ctx, 'crm') && !(await leadAoAlcance(c.admin, c.ctx, p.leadId))) return { erro: 'Oportunidade não encontrada.' }
-    const r = await moverEtapaCore(c.admin, c.ctx, p.leadId, p.stageId)
+    // O mundo mudou desde o cartão? Uma automação que passou a disparar sem a
+    // pessoa ter escolhido não dispara calada: o cartão é refeito.
+    const perguntou = !!p.automacoes?.length
+    if (perguntou && escolha !== 'disparar' && escolha !== 'nao-disparar') return { erro: 'Escolha no cartão: disparar ou não as automações.' }
+    if (!perguntou && (await automacoesDoMovimento(c, p.leadId, p.stageId)).length) {
+      return { erro: 'Uma automação passou a disparar com este movimento. Peça de novo para eu perguntar se dispara.' }
+    }
+    const r = await moverEtapaCore(c.admin, c.ctx, p.leadId, p.stageId, { semDespachar: escolha === 'nao-disparar' })
     if ('error' in r) return { erro: r.error }
     revalidar('oportunidades')
     return { mensagem: 'Oportunidade movida.', href: rotaOportunidade(c.pagina, c.slugDoPortal, p.leadId, p.funnelId), rotuloDoLink: 'Abrir no quadro' }

@@ -2,33 +2,39 @@ import { describe, it, expect, beforeAll } from 'vitest'
 import type { ResolvedPermissions } from '@estetica-os/types'
 import { NO_PERMISSIONS } from '@/lib/permissions'
 import {
-  podeAutorizar, podeIncluirClinico, horasValidas, prazoDaSessao, nomeComSuporte, HORAS_PADRAO,
+  podeAutorizar, podeRevogar, podeIncluirClinico, horasValidas, prazoDaSessao, nomeComSuporte, HORAS_PADRAO,
 } from '@/lib/suporte/regras'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { sessaoVigente } from '@/lib/suporte/sessao'
 
 const com = (p: Partial<ResolvedPermissions>): ResolvedPermissions => ({ ...NO_PERMISSIONS, ...p })
 
+// Desde 18/11 (auditoria das regras): autorizar o suporte a entrar numa conta é
+// da Admin da rede, como a configuração da rede toda (o Heitor: "só pela conta
+// admin"). Revogar, a própria pessoa sempre pode (o menos arriscado) — e a
+// Admin da rede, qualquer uma.
 describe('quem autoriza o suporte', () => {
-  it('o próprio membro autoriza a si mesmo, com qualquer cargo', () => {
-    expect(podeAutorizar({ internalUserId: 'u1', branchId: 'b1', permissions: NO_PERMISSIONS }, 'u1')).toBe(true)
+  const gerenteDaRede = { internalUserId: 'u1', branchId: null, permissions: com({ settings: 'MANAGE' }) }
+  it('só a Admin da rede autoriza — qualquer membro, ela mesma e outra Admin', () => {
+    const adminDaRede = { ...gerenteDaRede, isNetworkAdmin: true }
+    expect(podeAutorizar(adminDaRede)).toBe(true)
+    expect(podeAutorizar(adminDaRede)).toBe(true)
+    expect(podeAutorizar(adminDaRede)).toBe(true)
   })
-  it('quem é da rede com Configurações (gerenciar) autoriza qualquer membro', () => {
-    expect(podeAutorizar({ internalUserId: 'u1', branchId: null, permissions: com({ settings: 'MANAGE' }) }, 'u2')).toBe(true)
+  it('quem não é a Admin não autoriza, nem a si mesmo, nem com “A rede inteira” e Configurações', () => {
+    expect(podeAutorizar({ internalUserId: 'u1', branchId: 'b1', permissions: NO_PERMISSIONS })).toBe(false)
+    expect(podeAutorizar(gerenteDaRede)).toBe(false)
+    expect(podeAutorizar(gerenteDaRede)).toBe(false)
+    expect(podeAutorizar({ internalUserId: 'u1', branchId: 'b1', permissions: com({ settings: 'MANAGE' }) })).toBe(false)
   })
-  it('gente de unidade não autoriza outro, nem com Configurações', () => {
-    expect(podeAutorizar({ internalUserId: 'u1', branchId: 'b1', permissions: com({ settings: 'MANAGE' }) }, 'u2')).toBe(false)
-    expect(podeAutorizar({ internalUserId: 'u1', branchId: null, permissions: com({ settings: 'VIEW' }) }, 'u2')).toBe(false)
-  })
-  it('D19 (F70): a conta de uma Admin da rede só uma Admin da rede autoriza', () => {
-    const gerenteDaRede = { internalUserId: 'u1', branchId: null, permissions: com({ settings: 'MANAGE' }) }
-    expect(podeAutorizar(gerenteDaRede, 'u2', { alvoEhAdmin: true })).toBe(false)
-    expect(podeAutorizar({ ...gerenteDaRede, isNetworkAdmin: true }, 'u2', { alvoEhAdmin: true })).toBe(true)
-    // A própria Admin, para si, sempre.
-    expect(podeAutorizar({ ...gerenteDaRede, internalUserId: 'u2', isNetworkAdmin: true }, 'u2', { alvoEhAdmin: true })).toBe(true)
+  it('revogar: a própria pessoa sempre; os outros, só a Admin da rede', () => {
+    expect(podeRevogar({ internalUserId: 'u1', branchId: 'b1', permissions: NO_PERMISSIONS }, 'u1')).toBe(true)
+    expect(podeRevogar(gerenteDaRede, 'u2')).toBe(false)
+    expect(podeRevogar({ ...gerenteDaRede, isNetworkAdmin: true }, 'u2')).toBe(true)
+    expect(podeRevogar({ internalUserId: null, branchId: null, permissions: NO_PERMISSIONS }, 'u2')).toBe(false)
   })
   it('sem membro (cliente final) não autoriza nada', () => {
-    expect(podeAutorizar({ internalUserId: null, branchId: null, permissions: com({ settings: 'MANAGE' }) }, 'u2')).toBe(false)
+    expect(podeAutorizar({ internalUserId: null, branchId: null, permissions: com({ settings: 'MANAGE' }), isNetworkAdmin: true })).toBe(false)
   })
   it('dado clínico só com prontuário MANAGE', () => {
     expect(podeIncluirClinico({ permissions: com({ medical_records: 'MANAGE' }) })).toBe(true)

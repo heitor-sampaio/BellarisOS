@@ -16,9 +16,12 @@ import { apagarDocumentosEmitidos } from './apoio/limpeza'
  *   imagem, o hash DELE), o seu PDF e o seu código. O que tem "faltam dados"
  *   não entra, e a tela diz qual falta. O aparelho na clínica e o portal
  *   fazem o mesmo.
- * - PC2: a venda do pacote emite o contrato de pacote (com `pacote.*` e
- *   `pagamento.*` da venda) e os documentos puxados dos procedimentos que
- *   ficaram; a venda não espera a assinatura (princípios 2 e 6).
+ * - PC2: o contrato de pacote (com `pacote.*` e `pagamento.*` da venda) se
+ *   assina ANTES do dinheiro — "o ideal era funcionar como no plano de
+ *   tratamento"; do plano: "primeiro colhe assinatura, depois paga" (a
+ *   auditoria das regras de 2026-11-18 corrigiu o "a venda não espera"). Os
+ *   documentos puxados dos procedimentos que ficaram nascem com a venda e não
+ *   seguram o dinheiro.
  * - DC1c/PC9b: o pop-up do pacote lista o contrato de pacote e os documentos
  *   puxados, cada um com "Excluir"; a exclusão fica gravada no pacote.
  *
@@ -338,40 +341,64 @@ test.describe.serial('documentos: o link único, uma assinatura para todos e o p
     expect((await db().from('service_packages').update({ documentos_excluidos: [modelos.imagem] }).eq('id', pacote)).error).toBeNull()
   })
 
-  test('PC2: a venda do pacote emite o contrato de pacote preenchido e os puxados que ficaram — e não espera a assinatura', async ({ browser }) => {
+  test('PC2: o contrato de pacote, preenchido, se assina ANTES do dinheiro; assinado, a venda o adota e emite os puxados que ficaram', async ({ browser }) => {
     const slug = `e2e-un-lu${marca}`
+    const args = [cliente, pacote, rede!.branchId, { forma: 'AVISTA', metodo: 'PIX' }, null, null, null]
+    const antes = (await db().from('client_packages').select('id').eq('client_id', cliente)).data!.length
+    let contratoId = ''
     await como(browser, gestor!.estado, async p => {
-      const r = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', `/${slug}/pdv`,
-        [cliente, pacote, rede!.branchId, { forma: 'AVISTA', metodo: 'PIX' }, null, null, null])
+      const r = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', `/${slug}/pdv`, args)
+      expect(r.texto, 'sem o contrato assinado, a venda não fecha').not.toContain('clientPackageId')
+      contratoId = /"contratoParaAssinar":\{"id":"([0-9a-f-]{36})"/.exec(r.texto)?.[1] ?? ''
+    })
+    expect(contratoId, 'a venda devolveu o contrato a colher').not.toBe('')
+    expect((await db().from('client_packages').select('id').eq('client_id', cliente)).data!.length, 'nada se gravou').toBe(antes)
+    const doContrato = async () => (await db().from('issued_documents')
+      .select('kind, status, moment, service_package_id, client_package_id, content_text, content_sha256').eq('id', contratoId).single()).data as
+      { kind: string; status: string; moment: string; service_package_id: string | null; client_package_id: string | null; content_text: string | null; content_sha256: string | null }
+    const pre = await doContrato()
+    expect(pre.kind).toBe('CONTRATO_PACOTE')
+    expect(pre.status).toBe('PENDENTE')
+    expect(pre.moment).toBe('VENDA_PACOTE')
+    expect(pre.service_package_id, 'o pacote do catálogo').toBe(pacote)
+    expect(pre.client_package_id, 'o vendido ainda não existe').toBeNull()
+    expect(pre.content_text).toContain(NOME.pacote)
+    expect(pre.content_text).toMatch(/Pix/i)
+    expect(pre.content_text).toMatch(/700,00/)
+    expect(pre.content_text).toMatch(/90 dias, até/)
+
+    await como(browser, gestor!.estado, async p => {
+      const a = await chamarAcao(p, 'actions/documentos.ts', 'assinarNaTela', `/admin/documentos/${contratoId}/assinar`, [{
+        id: contratoId, assinatura: PNG, hashExibido: pre.content_sha256 ?? '', identidadeConferida: true, aceite: 'Li e concordo com o contrato do pacote.',
+      }])
+      expect(a.status).toBe(200)
+      expect((await doContrato()).status, 'a cliente assinou na tela').toBe('ASSINADO')
+      const r = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', `/${slug}/pdv`, args)
       vendido = /"clientPackageId":"([0-9a-f-]{36})"/.exec(r.texto)?.[1] ?? ''
     })
-    expect(vendido, 'a venda fechou sem esperar a assinatura').not.toBe('')
-    const emitidos = ((await db().from('issued_documents').select('template_id, kind, status, moment, appointment_id, content_text, missing_fields')
+    expect(vendido, 'assinado, a venda fecha').not.toBe('')
+    expect((await doContrato()).client_package_id, 'a venda adotou o contrato assinado').toBe(vendido)
+    const emitidos = ((await db().from('issued_documents').select('id, template_id, kind, status, moment, appointment_id, missing_fields')
       .eq('client_package_id', vendido)).data ?? []) as
-      { template_id: string; kind: string; status: string; moment: string; appointment_id: string | null; content_text: string | null; missing_fields: string[] }[]
-    expect(emitidos.map(e => e.template_id).sort(), 'o contrato de pacote, os termos e o documento que ficou; nem o contrato do procedimento, nem o excluído')
+      { id: string; template_id: string; kind: string; status: string; moment: string; appointment_id: string | null; missing_fields: string[] }[]
+    expect(emitidos.map(e => e.template_id).sort(), 'o contrato de pacote (adotado), os termos e o documento que ficou; nem o contrato do procedimento, nem o excluído')
       .toEqual([modelos.pacote, modelos.termo, modelos.termoB, modelos.endereco].sort())
+    expect(emitidos.filter(e => e.kind === 'CONTRATO_PACOTE').map(e => e.id), 'um contrato só: o assinado antes').toEqual([contratoId])
     expect(new Set(emitidos.map(e => e.moment))).toEqual(new Set(['VENDA_PACOTE']))
     expect(emitidos.every(e => e.appointment_id === null)).toBe(true)
-    const contrato = emitidos.find(e => e.kind === 'CONTRATO_PACOTE')!
-    expect(contrato.status).toBe('PENDENTE')
-    expect(contrato.content_text).toContain(NOME.pacote)
-    expect(contrato.content_text).toMatch(/Pix/i)
-    expect(contrato.content_text).toMatch(/700,00/)
-    expect(contrato.content_text).toMatch(/90 dias, até/)
-    expect(emitidos.find(e => e.template_id === modelos.endereco)!.status).toBe('INCOMPLETO')
+    expect(emitidos.find(e => e.template_id === modelos.endereco)!.status, 'o termo com faltam dados não segura o dinheiro').toBe('INCOMPLETO')
   })
 
   test('PC10: o link do pacote leva os documentos abertos da venda, num link só', async ({ browser }) => {
-    const contrato = (await db().from('issued_documents').select('id').eq('client_package_id', vendido).eq('kind', 'CONTRATO_PACOTE').single()).data!.id as string
-    const t = await gerarLink(browser, contrato, cliente)
-    const linhas = await linhasDoLink(t)
     const ids = ((await db().from('issued_documents').select('id, template_id').eq('client_package_id', vendido)).data ?? []) as { id: string; template_id: string }[]
     const de = (m: string) => ids.find(i => i.template_id === m)!.id
-    expect(linhas.map(l => l.issued_document_id).sort()).toEqual([de(modelos.pacote), de(modelos.termo), de(modelos.termoB)].sort())
+    const t = await gerarLink(browser, de(modelos.termo), cliente)
+    const linhas = await linhasDoLink(t)
+    // O contrato já foi assinado antes do dinheiro (PC2): ficam os termos abertos.
+    expect(linhas.map(l => l.issued_document_id).sort()).toEqual([de(modelos.termo), de(modelos.termoB)].sort())
   })
 
-  test('PC2: o documento do pacote em "Bloqueia" trava a SESSÃO do pacote até a assinatura — a venda não', async () => {
+  test('PC2: o termo do pacote em "Bloqueia" trava a SESSÃO do pacote até a assinatura — a venda não', async () => {
     // A sessão do pacote não emite documento (o pacote tem os dele); o que ele
     // tem em aberto vale para as sessões dele.
     const sessao = (await db().from('package_sessions').select('id, procedure_id').eq('client_package_id', vendido).order('session_number').limit(1).single()).data as { id: string; procedure_id: string }
@@ -382,12 +409,12 @@ test.describe.serial('documentos: o link único, uma assinatura para todos e o p
     expect(error, 'agendar a sessão').toBeNull()
     expect((await db().from('package_sessions').update({ appointment_id: ag!.id }).eq('id', sessao.id)).error).toBeNull()
     const pendentes = ((await db().rpc('documentos_pendentes_do_atendimento', { p_agendamento: ag!.id })).data ?? []) as { id: string; kind: string }[]
-    expect(pendentes.map(p => p.kind), 'os abertos do pacote valem para a sessão').toContain('CONTRATO_PACOTE')
+    expect(pendentes.map(p => p.kind), 'os abertos do pacote valem para a sessão').toContain('TERMO')
 
-    expect((await db().from('issued_documents').update({ enforcement: 'BLOQUEIA' }).eq('client_package_id', vendido).eq('kind', 'CONTRATO_PACOTE')).error).toBeNull()
+    expect((await db().from('issued_documents').update({ enforcement: 'BLOQUEIA' }).eq('client_package_id', vendido).eq('template_id', modelos.termo)).error).toBeNull()
     const inicio = await db().from('appointments').update({ status: 'IN_PROGRESS' }).eq('id', ag!.id)
-    expect(inicio.error?.message ?? '', 'a sessão não começa sem o contrato do pacote assinado').toMatch(/Falta assinar/)
-    expect((await db().from('issued_documents').update({ enforcement: 'AVISA' }).eq('client_package_id', vendido).eq('kind', 'CONTRATO_PACOTE')).error).toBeNull()
+    expect(inicio.error?.message ?? '', 'a sessão não começa sem o termo do pacote assinado').toMatch(/Falta assinar/)
+    expect((await db().from('issued_documents').update({ enforcement: 'AVISA' }).eq('client_package_id', vendido).eq('template_id', modelos.termo)).error).toBeNull()
     // Solta a sessão: o próximo teste cancela o pacote.
     expect((await db().from('package_sessions').update({ appointment_id: null }).eq('id', sessao.id)).error).toBeNull()
     expect((await db().from('appointments').update({ status: 'CANCELLED' }).eq('id', ag!.id)).error).toBeNull()
@@ -395,9 +422,11 @@ test.describe.serial('documentos: o link único, uma assinatura para todos e o p
 
   test('cancelar o pacote cancela os documentos abertos dele', async () => {
     expect((await db().from('client_packages').update({ cancelado_em: new Date().toISOString() }).eq('id', vendido)).error).toBeNull()
-    const docs = ((await db().from('issued_documents').select('status, closed_reason').eq('client_package_id', vendido)).data ?? []) as { status: string; closed_reason: string | null }[]
+    const docs = ((await db().from('issued_documents').select('kind, status, closed_reason').eq('client_package_id', vendido)).data ?? []) as { kind: string; status: string; closed_reason: string | null }[]
     expect(docs.length).toBe(4)
-    expect(docs.every(d => d.status === 'CANCELADO' && /Pacote cancelado/.test(d.closed_reason ?? ''))).toBe(true)
+    const abertos = docs.filter(d => d.kind !== 'CONTRATO_PACOTE')
+    expect(abertos.every(d => d.status === 'CANCELADO' && /Pacote cancelado/.test(d.closed_reason ?? ''))).toBe(true)
+    expect(docs.find(d => d.kind === 'CONTRATO_PACOTE')!.status, 'o contrato assinado fica como foi assinado').toBe('ASSINADO')
   })
 
   test('CA4: no portal, "Assinar todos" assina os abertos da cliente de uma vez', async ({ browser }) => {

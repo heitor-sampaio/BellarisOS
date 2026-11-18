@@ -12,8 +12,10 @@ import { addDaysTZ, partsInTZ } from '../lib/datetime'
  * vencimento de pacote, a confirmação, o cancelamento e os pontos viraram
  * modelos DESLIGADOS nas Automações (AU1) — a tela diz onde eles estão.
  *
- * Rede `[e2e]` própria; quem monta tem o Marketing em Gerenciar e vê as
- * Automações (o link).
+ * Rede `[e2e]` própria; quem monta é a Admin da rede — a campanha é
+ * configuração da rede toda (o Heitor, 18/11: "Configuração da rede toda só
+ * pela conta admin"). Quem tem o Marketing em Gerenciar sem ser a Admin da
+ * rede só vê (o último teste).
  */
 
 test.setTimeout(180_000)
@@ -22,6 +24,7 @@ const marca = Date.now().toString(36)
 const db = () => banco()
 let rede: OutraRede
 let marta: MembroDeTeste
+let gestora: MembroDeTeste
 
 async function como(browser: Browser, fn: (p: Page) => Promise<void>) {
   const ctx = await browser.newContext({ storageState: marta.estado, viewport: { width: 1440, height: 900 } })
@@ -30,8 +33,9 @@ async function como(browser: Browser, fn: (p: Page) => Promise<void>) {
 
 test.beforeAll(async () => {
   rede = await criarOutraRede(`mk1${marca}`)
-  marta = await criarMembro(`mk1m${marca}`, {
-    tenant: rede.tenantId, rotulo: 'Marketing',
+  marta = await criarMembro(`mk1m${marca}`, { tenant: rede.tenantId, rotulo: 'Marketing', donoDaRede: true, permissoes: [] })
+  gestora = await criarMembro(`mk1g${marca}`, {
+    tenant: rede.tenantId, rotulo: 'Gestora de marketing',
     permissoes: [{ modulo: 'marketing', nivel: 'MANAGE' }, { modulo: 'automations', nivel: 'VIEW' }],
   })
 })
@@ -39,6 +43,7 @@ test.beforeAll(async () => {
 test.afterAll(async () => {
   if (rede) await db().from('notification_campaigns').delete().eq('tenant_id', rede.tenantId)
   await marta?.limpar()
+  await gestora?.limpar()
   await rede?.limpar()
 })
 
@@ -112,6 +117,8 @@ test('MK1: a action recusa a campanha "Automática" — nada se grava', async ({
       notification_type: 'promotion', audience_rules: {},
     }])
     expect(r.status).toBe(200)
+    // Recusada pelo TIPO, não por quem pede (é a Admin da rede).
+    expect(r.texto).not.toContain('só da Admin da rede')
     // A agendada com gatilho de cliente também.
     const r2 = await chamarAcao(p, 'actions/notification-campaigns.ts', 'createCampaign', '/admin/notificacoes/nova', [{
       name: `${nome} 2`, type: 'SCHEDULED', scheduled_at: '2030-01-01T09:00', trigger_type: 'BEFORE_APPOINTMENT', trigger_config: { hours: 24 },
@@ -129,4 +136,39 @@ test('MK1: o banco não aceita mais o tipo "Automática" nem o gatilho de client
   expect(automatica.error, 'o tipo AUTOMATED é recusado').not.toBeNull()
   const lembrete = await db().from('notification_campaigns').insert({ ...base, name: `${PREFIXO} lembrete ${marca}`, type: 'SCHEDULED', trigger_type: 'BEFORE_APPOINTMENT', trigger_config: { hours: 2 } })
   expect(lembrete.error, 'o gatilho de cliente é recusado').not.toBeNull()
+})
+
+test('a campanha é da Admin da rede: com o Marketing em Gerenciar, a tela só mostra e a action recusa', async ({ browser }) => {
+  const nome = `${PREFIXO} Rascunho da rede ${marca}`
+  const { data: c, error } = await db().from('notification_campaigns').insert({
+    tenant_id: rede.tenantId, name: nome, status: 'DRAFT', type: 'IMMEDIATE',
+    title: 'x', body: `${PREFIXO} corpo ${marca}`, audience_rules: {},
+  }).select('id').single<{ id: string }>()
+  expect(error).toBeNull()
+  const ctx = await browser.newContext({ storageState: gestora.estado, viewport: { width: 1440, height: 900 } })
+  try {
+    const p = await ctx.newPage()
+    await p.goto('/admin/notificacoes')
+    await expect(p.locator('tr', { hasText: nome })).toBeVisible()
+    await expect(p.locator('[data-config-da-rede]')).toContainText('Esta configuração é só da Admin da rede.')
+    await expect(p.getByRole('button', { name: 'Nova campanha' })).toHaveCount(0)
+    await expect(p.locator('tr', { hasText: nome }).getByRole('button', { name: 'Ativar' })).toHaveCount(0)
+    await expect(p.locator('tr', { hasText: nome }).getByRole('button', { name: 'Arquivar' })).toHaveCount(0)
+
+    await p.goto(`/admin/notificacoes/${c!.id}`)
+    await expect(p.getByRole('heading', { name: nome })).toBeVisible()
+    for (const b of ['Enviar agora', 'Arquivar']) await expect(p.getByRole('button', { name: b })).toHaveCount(0)
+    await expect(p.getByRole('link', { name: 'Editar' })).toHaveCount(0)
+
+    // O endereço da criação e o da edição voltam para onde ela só vê.
+    await p.goto('/admin/notificacoes/nova')
+    await expect(p).toHaveURL(/\/admin\/notificacoes$/)
+    await p.goto(`/admin/notificacoes/${c!.id}/editar`)
+    await expect(p).toHaveURL(new RegExp(`/admin/notificacoes/${c!.id}$`))
+
+    // E a action recusa, pelo id.
+    const r = await chamarAcao(p, 'actions/notification-campaigns.ts', 'archiveCampaign', `/admin/notificacoes/${c!.id}`, [c!.id])
+    expect(r.texto).toContain('Esta configuração é só da Admin da rede.')
+  } finally { await ctx.close() }
+  expect((await db().from('notification_campaigns').select('status').eq('id', c!.id).single()).data?.status).toBe('DRAFT')
 })

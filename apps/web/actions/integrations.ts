@@ -515,6 +515,10 @@ export async function fetchMetaAdAccounts(): Promise<{
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'anuncios')
   assertPermission(ctx, 'settings', 'MANAGE')
+  // Buscar as contas é o "Alterar conta" da integração, que é da rede toda: só
+  // a Admin da rede consulta a Meta com o token da rede (o Heitor, 18/11).
+  const recusaDaRede = recusaDaConfigDaRede(ctx)
+  if (recusaDaRede) return { ok: false, error: recusaDaRede }
 
   const admin = createAdminClient()
   const data = await ler(admin

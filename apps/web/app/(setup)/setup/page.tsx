@@ -4,7 +4,7 @@ import { getTenantContext, assertPermission, temRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { SetupWizard } from '@/components/setup/setup-wizard'
 import { ler } from '@/lib/db'
-import { comAviso } from '@/lib/aviso-da-url'
+import { saidaDoSetup } from '@/lib/setup/quem-abre'
 
 export default async function SetupPage({ searchParams }: { searchParams: Promise<{ passo?: string }> }) {
   const { passo } = await searchParams
@@ -12,14 +12,15 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
   // A cliente que abre /setup vai ao portal dela (J-67): era a tela de "sem
   // acesso", com HTTP 500. Quem é da equipe segue a trava de sempre.
   if (ctx.isClient) redirect('/auth/redirect')
+  // O setup é configuração da rede toda, só da Admin da rede (o Heitor, 18/11:
+  // "Configuração da rede toda só pela conta admin"): quem não é abria o
+  // assistente e as actions recusavam no fim (C61, F70). Vai ao painel — o da
+  // unidade dela, ou o da rede — com o aviso.
+  const dela = ctx.branchId === null ? null : await ler(createAdminClient().from('branches').select('slug')
+    .eq('id', ctx.branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade') as { slug: string } | null
+  const saida = saidaDoSetup(ctx, dela?.slug ?? null)
+  if (saida) redirect(saida)
   assertPermission(ctx, 'settings', 'MANAGE')
-  // O setup é da clínica toda (C61, F70; H7): a gerente de unidade fixa abria
-  // o assistente e as actions recusavam no fim. Vai ao painel da unidade dela.
-  if (ctx.branchId !== null) {
-    const dela = await ler(createAdminClient().from('branches').select('slug')
-      .eq('id', ctx.branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade') as { slug: string } | null
-    redirect(dela?.slug ? comAviso(`/${dela.slug}/dashboard`, 'setup-da-rede') : '/')
-  }
 
   const admin = createAdminClient()
   const [tenant, unidades] = await Promise.all([

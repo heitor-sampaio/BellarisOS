@@ -2,6 +2,7 @@ import { getTenantContext, assertPermission, can, temRecurso } from '@/lib/auth'
 import { listarAutomacoes } from '@/actions/automacoes'
 import { redeTemWhatsapp } from '@/lib/automacoes/canal-da-rede'
 import { ListaDeAutomacoes } from '@/components/admin/automacoes/lista'
+import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 
 /**
@@ -29,7 +30,8 @@ export default async function AutomacoesPage() {
       <RealtimeRefresher tables={['automation_runs']} debounceMs={2000} />
       <ListaDeAutomacoes
         automacoes={automacoes}
-        podeEditar={can(ctx, 'automations', 'MANAGE')}
+        // Só a Admin da rede (18/11), e nunca na sessão de suporte (ela só pausa, no editor).
+        podeEditar={can(ctx, 'automations', 'MANAGE') && mexeNaConfigDaRede(ctx) && !ctx.suporte}
         erro={error}
         whatsappConectado={whatsappConectado}
         veCampanhas={temRecurso(ctx, 'campanhas') && can(ctx, 'marketing', 'VIEW')}

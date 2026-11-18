@@ -1,17 +1,16 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { gravar, ler } from '@/lib/db'
+import { gravar, ler, tentar } from '@/lib/db'
 import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
 import { pagamentoNormalizado, mesmoPagamento, frasesDoPagamento, pagamentoDoRetrato, descontoDoRetrato, type PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import { garantirRenderizado, COLUNAS_DO_DOCUMENTO, type DocumentoEmitido } from './renderizar'
 
 /**
- * Os documentos do FECHAMENTO do plano: um termo por procedimento distinto e o
- * contrato de plano da rede (§9.4.1).
- *
- * Nascem no checkout depois de escolhido o pagamento — o contrato o cita — e
- * a regra do "não fecha sem assinar" é conferida aqui, ANTES do primeiro
- * lançamento de dinheiro. O gatilho no plano é a segunda linha.
+ * Os documentos do plano: um termo por procedimento distinto (e os outros
+ * documentos), que nascem ao salvar o plano (DC4), e o contrato de plano da
+ * rede (§9.4.1), que nasce no PDV depois de escolhido o pagamento — ele o
+ * cita. A regra do "não recebe sem o contrato assinado" é conferida aqui,
+ * ANTES do primeiro lançamento de dinheiro. O gatilho no plano é a segunda linha.
  */
 
 type Contrato = Pick<DocumentoEmitido, 'id' | 'title' | 'template_version_id'> & { payment_snapshot: unknown }
@@ -66,7 +65,8 @@ export async function contratoAssinadoDoPlano(
 /**
  * A35 da 9ª: o contrato do plano vai sem o documento da cliente? A rede tem um
  * contrato de plano ativo e a ficha não tem CPF, passaporte nem RNE. Só aviso
- * (princípio 2): o contrato padrão não exige o CPF, e a clínica decide.
+ * (princípio 2; cli-09, o Heitor, 2026-11-02: "contrato sem documento da
+ * cliente vale menos") — o contrato padrão não trava por ele, e a rede decide.
  */
 export async function contratoSemDocumentoDaCliente(
   tenantId: string, cliente: { document: string | null; documento_numero: string | null } | null,
@@ -81,6 +81,22 @@ export async function redeTemContratoDePlano(tenantId: string): Promise<boolean>
   const contrato = await ler(createAdminClient().from('document_templates').select('id')
     .eq('tenant_id', tenantId).eq('kind', 'CONTRATO_PLANO').eq('is_active', true).limit(1), 'conferir o contrato de plano da rede')
   return (contrato ?? []).length > 0
+}
+
+/**
+ * Os documentos do plano nascem na CRIAÇÃO (DC4, o Heitor, 2026-11-13:
+ * "concordo" — "o do pacote e o do plano, na venda/na criação"; "os documentos
+ * nascem na criação e se assinam de uma vez"): a cada "Salvar plano", os
+ * termos e os outros documentos puxados dos procedimentos (o contrato de plano
+ * não: ele nasce no PDV, com a forma — PT1c). O banco cancela o aberto que
+ * saiu do plano e emite o que entrou (`documentos_emitir_do_plano`); plano sem
+ * cliente, ou fechado, não emite. O plano já está salvo: falhar aqui não o
+ * desfaz — o aceite emite de novo (`documentos_bloqueiam_plano`).
+ */
+export async function emitirDocumentosDoPlano(tenantId: string, planId: string): Promise<void> {
+  if (!(await redeTemRecurso(tenantId, 'documentos'))) return
+  await tentar(createAdminClient().rpc('documentos_emitir_do_plano', { p_plano: planId, p_com_contrato: false }),
+    'emitir os documentos do plano salvo')
 }
 
 /**

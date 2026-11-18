@@ -133,7 +133,7 @@ export async function recusaDoMembroDaVenda(
   return null
 }
 
-/** "Quem vendeu" da venda (com-06): o que a tela mandou. Sem `vendedorId` (um chamador de antes), é quem registra. */
+/** "Quem vendeu" da venda (com-06): o que a tela mandou. Sem `vendedorId` (um caminho sem o campo), ninguém. */
 export interface QuemVendeuDaTela { vendedorId?: string | null; semVendedor?: boolean }
 
 /** A pergunta quando "Quem vendeu" fica vazio (com-06): o texto mora num módulo puro, que a tela também lê. */
@@ -144,12 +144,15 @@ export { PERGUNTA_SEM_VENDEDOR }
  * comissão para ninguém"): a pessoa escolhida, da equipe e ao alcance da
  * unidade; vazio (`vendedorId: null`) só com a confirmação (`semVendedor`),
  * senão a pergunta. Sem a chave `vendedorId` — um caminho que não tem o campo —,
- * quem registrou, como antes.
+ * ninguém: a comissão de venda e o "Meu faturamento" da venda não vão a quem
+ * registrou (auditoria das regras, 2026-11-18 — era "quem registrou, como
+ * antes", contra o com-06). Toda tela de venda manda o campo; `registrou`
+ * fica na assinatura só para quem chama não mudar.
  */
 export async function quemVendeu(
-  tenantId: string, registrou: string | null, equipe: QuemVendeuDaTela | null | undefined, branchId: string,
+  tenantId: string, _registrou: string | null, equipe: QuemVendeuDaTela | null | undefined, branchId: string,
 ): Promise<{ vendedor: string | null } | { error: string } | { pergunta: string }> {
-  if (equipe == null || (!('vendedorId' in equipe) && equipe.semVendedor !== true)) return { vendedor: registrou }
+  if (equipe == null || (!('vendedorId' in equipe) && equipe.semVendedor !== true)) return { vendedor: null }
   const id = typeof equipe.vendedorId === 'string' && equipe.vendedorId ? equipe.vendedorId : null
   if (id) {
     const recusa = await recusaDoMembroDaVenda(tenantId, id, branchId, { papel: 'Quem vendeu' })

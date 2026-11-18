@@ -145,6 +145,22 @@ export function cabeNoHorario(intervalos: Intervalo[], inicioMin: number, fimMin
 }
 
 /**
+ * O aviso do encaixe fora do horário de quem atende (A37 da 24ª, princípio 3):
+ * o atendimento que passa da meia-noite num dia de 00:00–24:00 dizia "Fora do
+ * horário de atendimento (00:00–24:00)" — o motivo é a virada do dia, e o
+ * aviso diz isso.
+ */
+export function avisoForaDoHorario(nome: string, intervalos: Intervalo[], inicioMin: number, duracaoMin: number): string | null {
+  const fim = inicioMin + duracaoMin
+  if (cabeNoHorario(intervalos, inicioMin, fim)) return null
+  if (!intervalos.length) return `${nome} não atende neste dia. O encaixe é permitido.`
+  if (fim > 24 * 60 && cabeNoHorario(intervalos, inicioMin, 24 * 60)) {
+    return `Passa da meia-noite (fim às ${hhmm(fim - 24 * 60)}): o horário de atendimento de ${nome} vai até 24:00. O encaixe é permitido.`
+  }
+  return `Fora do horário de atendimento de ${nome} (${textoDosIntervalos(intervalos)}). O encaixe é permitido.`
+}
+
+/**
  * As faixas de [janelaDe, janelaAte) — minutos do dia — FORA dos períodos de
  * trabalho: o que a coluna da profissional sombreia na grade do dia (J-30).
  */

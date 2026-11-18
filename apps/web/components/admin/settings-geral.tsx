@@ -8,7 +8,7 @@ import { atualizarDadosDaRede, type DadosDaRede } from '@/actions/rede'
 import { rotuloDaSituacao } from '@/lib/redes/situacao'
 import { nomeDoPlanoNaTela } from '@/lib/redes/texto-do-plano'
 import { useFala } from '@/components/shared/uma-unidade'
-import { O_QUE_A_CLIENTE_AVALIA, ROTULO_DO_QUE_AVALIA } from '@/lib/avaliacao/notas'
+import { O_QUE_A_CLIENTE_AVALIA, ROTULO_DO_QUE_AVALIA, TEXTO_DA_NOTA_DO_PROCEDIMENTO } from '@/lib/avaliacao/notas'
 import { useFuso } from '@/components/shared/fuso'
 
 /**
@@ -85,6 +85,8 @@ export function SettingsGeral({ rede, podeEditar, naRede = true, appDaCliente = 
             porque="Até quantas horas antes a cliente cancela ou remarca pelo app." />
           <SoLeitura rotulo="O que a cliente avalia" valor={ROTULO_DO_QUE_AVALIA[rede.oQueAClienteAvalia]} />
           <SoLeitura rotulo="Validade do plano proposto" valor={`${rede.validadeDoPlanoDias} ${rede.validadeDoPlanoDias === 1 ? 'dia' : 'dias'}`} />
+          <SoLeitura rotulo="Pacote com valor em aberto" valor={TEXTO_DO_CREDIARIO[rede.regrasDoPacote.crediarioLibera ? 'sim' : 'nao']} />
+          <SoLeitura rotulo="Pacote vencido" valor={TEXTO_DO_VENCIDO[rede.regrasDoPacote.vencidoCancela ? 'sim' : 'nao']} />
         </div>
       )}
 
@@ -120,7 +122,7 @@ export function SettingsGeral({ rede, podeEditar, naRede = true, appDaCliente = 
             defaultValue={rede.prazoPortalHoras} disabled={!podeEditar} inputMode="numeric" />
         </Campo>
 
-        <Campo rotulo="O que a cliente avalia" dica="Ao confirmar o atendimento pelo app. A nota do atendimento vale para a profissional; a de cada procedimento, para o ranking de procedimentos.">
+        <Campo rotulo="O que a cliente avalia" dica={`Ao confirmar o atendimento pelo app. A nota do atendimento vale para a profissional. ${TEXTO_DA_NOTA_DO_PROCEDIMENTO}`}>
           <select name="avaliacao_o_que" className="field" defaultValue={rede.oQueAClienteAvalia} disabled={!podeEditar}>
             {O_QUE_A_CLIENTE_AVALIA.map(o => <option key={o} value={o}>{ROTULO_DO_QUE_AVALIA[o]}</option>)}
           </select>
@@ -129,6 +131,22 @@ export function SettingsGeral({ rede, podeEditar, naRede = true, appDaCliente = 
         <Campo rotulo="Validade do plano proposto (dias)" dica="O app da cliente mostra o plano proposto com “Válido até”, contando desde quando foi proposto.">
           <input name="plano_validade_dias" type="number" min={1} max={365} step={1} className="field"
             defaultValue={rede.validadeDoPlanoDias} disabled={!podeEditar} inputMode="numeric" />
+        </Campo>
+
+        {/* Itens 8 e 9 da auditoria (decisões do Claude pelo princípio 1, 2026-11-18): duas
+            regras do pacote que são da rede, com o padrão de antes (lib/pacotes/regras.ts). */}
+        <Campo rotulo="Pacote com valor em aberto" dica="O pacote vendido no crediário (ou a receber) ainda não pago. Liberando, a cliente agenda as sessões e a ficha avisa o que falta; sem liberar, as sessões esperam o pagamento, e a tela diz o porquê.">
+          <select name="pacote_crediario_libera" className="field" defaultValue={rede.regrasDoPacote.crediarioLibera ? 'sim' : 'nao'} disabled={!podeEditar}>
+            <option value="sim">{TEXTO_DO_CREDIARIO.sim}</option>
+            <option value="nao">{TEXTO_DO_CREDIARIO.nao}</option>
+          </select>
+        </Campo>
+
+        <Campo rotulo="Pacote vencido" dica="Cancelando, o pacote vencido com sessões que sobraram se cancela na ficha pela mesma conta do cancelamento de sempre: as sessões que sobraram e o que volta à cliente.">
+          <select name="pacote_vencido_cancela" className="field" defaultValue={rede.regrasDoPacote.vencidoCancela ? 'sim' : 'nao'} disabled={!podeEditar}>
+            <option value="nao">{TEXTO_DO_VENCIDO.nao}</option>
+            <option value="sim">{TEXTO_DO_VENCIDO.sim}</option>
+          </select>
         </Campo>
       </div>
       )}
@@ -191,6 +209,10 @@ export function SettingsGeral({ rede, podeEditar, naRede = true, appDaCliente = 
     </form>
   )
 }
+
+/** As opções das regras do pacote (itens 8 e 9 da auditoria), na tela e na leitura. */
+const TEXTO_DO_CREDIARIO = { sim: 'Libera as sessões e avisa o que falta', nao: 'Libera as sessões só depois de pago' } as const
+const TEXTO_DO_VENCIDO   = { nao: 'Não se cancela', sim: 'Pode ser cancelado, com a devolução' } as const
 
 /**
  * O campo com o rótulo ligado (htmlFor/id). A `dica` (o que o campo faz) mora no

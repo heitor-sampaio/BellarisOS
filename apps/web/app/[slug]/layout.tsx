@@ -130,7 +130,6 @@ export default async function BranchLayout({
     <UmaUnidadeProvider valor={umaUnidade} nome={nomeDaRede}>
     <FusoProvider fuso={fuso}>
     <SidebarProvider>
-      <Suspense fallback={null}><AvisoDaUrl /></Suspense>
       <BranchSidebar
         slug={branch.slug}
         branchName={branch.name}
@@ -154,6 +153,8 @@ export default async function BranchLayout({
         overflowX:     'clip',
         minWidth:      0,
       }}>
+        {/* A23 da 15ª: o aviso da URL é uma faixa no topo do conteúdo, não um toast. */}
+        <Suspense fallback={null}><AvisoDaUrl /></Suspense>
         {children}
       </main>
       {/* A secretária virtual, por cima de todas as telas da equipe (docs/regras/copilot.md). */}

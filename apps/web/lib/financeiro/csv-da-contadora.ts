@@ -169,3 +169,13 @@ export function csvDoFechamento(f: FechamentoParaCsv): string {
     ] : []),
   ])
 }
+
+/**
+ * A24 da 24ª simulação (princípio 7): no portal da rede, o CSV do fechamento
+ * pedia a unidade em "Selecione…", sem "todas". Com "Todas as unidades", as
+ * planilhas de cada unidade vêm uma depois da outra (cada uma já diz a
+ * unidade), com uma linha em branco entre elas e o BOM só no começo.
+ */
+export function juntarCsvsDoFechamento(csvs: readonly string[]): string {
+  return csvs.map((c, i) => (i === 0 ? c : c.replace(/^\uFEFF/, ''))).join('\r\n\r\n')
+}

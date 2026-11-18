@@ -82,6 +82,8 @@ interface ExistingProcedure {
   /** "Outros documentos" (DC1b/PC7): os modelos que também nascem no atendimento avulso. */
   outros_documentos?: string[]
   loyalty_points?: number | null
+  /** A7 da 23ª: "Este procedimento não usa insumo" (a faixa do catálogo o ignora). */
+  sem_insumo?: boolean
   /** As salas em que é feito (D5). */
   room_ids?: string[]
   /** Quem realiza (por-01). Vazio = todas as que atendem. */
@@ -305,7 +307,7 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
   const [termoEscolhido, setTermoEscolhido] = useState(existing?.consent_template_id ?? '')
   const [contratoEscolhido, setContratoEscolhido] = useState(existing?.contract_template_id ?? '')
   // A22 da 18ª: os documentos primeiro; o termo e o contrato no fim, com "(termo)".
-  // A20 da 20ª (princípio 7): o termo entra pelo campo dele — aqui, só um segundo termo (ou contrato).
+  // PC7: todo documento da rede criado ou anexado — menos o escolhido no campo próprio (A36 da 15ª).
   const outrosVisiveis = outrosDocumentosOferecidos(modelos?.outros ?? [], { termo: termoEscolhido, contrato: contratoEscolhido, marcados: outrosMarcados })
   function alternarOutro(id: string) {
     setOutrosMarcados(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id])
@@ -645,6 +647,12 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
             QUEM REALIZA
           </TituloDaSecao>
           <div role="group" aria-label="Quem realiza" style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+            {/* A9 da 24ª (princípio 3): o vazio vinha sem chip, e só a dica dizia "todos".
+                O chip diz e, tocado, volta ao vazio. */}
+            <button type="button" data-quem-realiza-todos className={quemRealiza.length === 0 ? 'chip-filtro is-ativo' : 'chip-filtro'}
+              aria-pressed={quemRealiza.length === 0} onClick={() => setQuemRealiza([])}>
+              Todos que atendem
+            </button>
             {profissionais.map(p => {
               const on = quemRealiza.includes(p.id)
               return (
@@ -717,6 +725,26 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', padding: '8px 0' }}>
             Nenhum insumo adicionado. Clique em “Adicionar insumo” para vincular produtos do estoque.
           </p>
+        )}
+
+        {/* A7 da 23ª (princípio 1): a Avaliação e a Massagem não usam insumo — a
+            rede marca, e o aviso "sem insumo ligado" do catálogo as deixa de fora.
+            Só sem insumo ligado: com insumo, o procedimento usa insumo. */}
+        {insumos.length === 0 && (
+          <div data-sem-insumo style={{ display: 'flex', alignItems: 'center', gap: 6, paddingBottom: 4 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+              <input type="checkbox" name="sem_insumo" defaultChecked={existing?.sem_insumo ?? false}
+                style={{ accentColor: 'var(--brand)', width: 15, height: 15 }} />
+              <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>
+                Este procedimento não usa insumo
+              </span>
+            </label>
+            <span style={{ color: 'var(--text-muted)' }}>
+              <Dica rotulo="Sobre o procedimento sem insumo">
+                Marcado, ele sai do aviso “procedimentos ativos sem insumo ligado” do catálogo. Nada sai do estoque no atendimento dele.
+              </Dica>
+            </span>
+          </div>
         )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

@@ -622,6 +622,8 @@ async function adminAdjustStockInterno(
     const r = await ajusteDeEstoqueCore(createAdminClient(), ctx, {
       productId, branchId, novoSaldo: newQty, motivo: reason, emConsumo,
       loteId: str(formData, 'loteId'), loteValidade: str(formData, 'lote_validade'),
+      // A10 da 24ª: o motivo "Correção de cadastro" — o ajuste não é perda.
+      correcao: str(formData, 'tipo_do_ajuste') === 'correcao_de_cadastro',
     })
     if ('error' in r) return { error: r.error }
 
@@ -753,6 +755,8 @@ export interface MovimentoDeEstoque {
   perdaSemDesfazer: string | null
   /** C23: o brinde entregue pela fidelidade (o ajuste do voucher) — não é "Ajuste manual". */
   brinde: boolean
+  /** A10 da 24ª: o ajuste da "Correção de cadastro" — não é perda. */
+  correcao: boolean
 }
 
 /**
@@ -779,7 +783,7 @@ export async function getProductMovements(
   const admin = createAdminClient()
   let query = admin
     .from('stock_movements')
-    .select('id, type, quantity, balance_after, notes, reference, created_at, unit_cost, motivo_da_perda, fornecedor, marca, nota_fiscal, desfeita_em, desfeita_motivo, desfeita_pelo, branch_id, branches!inner(name, tenant_id), stock_movement_batches(quantity, product_batches(id, batch_number, expires_at, quantity))')
+    .select('id, type, quantity, balance_after, notes, reference, created_at, unit_cost, motivo_da_perda, fornecedor, marca, nota_fiscal, desfeita_em, desfeita_motivo, desfeita_pelo, correcao_de_cadastro, branch_id, branches!inner(name, tenant_id), stock_movement_batches(quantity, product_batches(id, batch_number, expires_at, quantity))')
     .eq('product_id', productId)
     .eq('branches.tenant_id', ctx.tenantId!)
     .order('created_at', { ascending: false })
@@ -814,6 +818,7 @@ export async function getProductMovements(
     motivo_da_perda: string | null
     fornecedor: string | null; marca: string | null; nota_fiscal: string | null; desfeita_em: string | null; desfeita_motivo: string | null
     desfeita_pelo: string | null
+    correcao_de_cadastro: boolean | null
     branch_id: string
     stock_movement_batches: { quantity: number | string; product_batches: { id: string; batch_number: string | null; expires_at: string | null; quantity: number | string } | null }[] | null
   }
@@ -929,6 +934,7 @@ export async function getProductMovements(
       ? 'Só a perda mais nova de cada unidade se desfaz: para desfazer esta, desfaça antes as mais novas desta unidade.'
       : null,
     brinde: m.type === 'MANUAL_ADJUSTMENT' && (m.reference ?? '').startsWith('voucher:'),
+    correcao: m.type === 'MANUAL_ADJUSTMENT' && m.correcao_de_cadastro === true,
   }))
 }
 
@@ -1109,6 +1115,43 @@ export async function desfazerEntradaDeEstoque(movimentoId: string, motivo: stri
     }
     revalidatePath('/admin/estoque')
     if (ctx.branchId) revalidatePath('/*/stock')
+    return { success: true }
+  } catch (e) {
+    if ((e as { digest?: string })?.digest) throw e
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+/**
+ * "Corrigir custo" do lote (A10 da 24ª simulação, o Heitor: "As duas"): o
+ * custo digitado errado na entrada (R$ 40.000 por seringa) se corrige no
+ * próprio lote enquanto NADA saiu dele — o valor em estoque, o insumo e a
+ * margem passam a usar o certo, e a Auditoria guarda o antes e o depois. Saiu
+ * algo, o caminho é o Ajuste com o motivo "Correção de cadastro". O custo é
+ * por EMBALAGEM, como na Entrada; zero vale (princípio 2), negativo não. Pede
+ * o Estoque em Gerenciar e a unidade do lote ao alcance; a conferência de que
+ * nada saiu é do banco (`estoque_corrigir_custo_do_lote`).
+ */
+export async function corrigirCustoDoLote(loteId: string, custoPorEmbalagem: number): Promise<{ error?: string; success?: true }> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'stock', 'MANAGE')
+    if (typeof loteId !== 'string' || !/^[0-9a-f-]{36}$/i.test(loteId)) return { error: 'Lote não encontrado.' }
+    const custo = Number(custoPorEmbalagem)
+    if (!Number.isFinite(custo) || custo < 0) return { error: 'Informe um custo de zero ou mais.' }
+    const admin = createAdminClient()
+    const lote = await ler(admin.from('product_batches').select('id, branch_id, branches!inner(tenant_id)')
+      .eq('id', loteId).eq('branches.tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o lote')
+    if (!lote || !alcancaUnidade(ctx, lote.branch_id as string)) return { error: 'Lote não encontrado.' }
+    const { error } = await admin.rpc('estoque_corrigir_custo_do_lote', {
+      p_tenant: ctx.tenantId!, p_lote: loteId, p_custo_embalagem: Math.round(custo * 100) / 100,
+    })
+    if (error) {
+      if (error.code === 'P0001') return { error: error.message }
+      throw new Error(`Não consegui corrigir o custo do lote: ${error.message}`)
+    }
+    revalidatePath('/admin/estoque')
+    revalidatePath('/[slug]/estoque', 'page')
     return { success: true }
   } catch (e) {
     if ((e as { digest?: string })?.digest) throw e

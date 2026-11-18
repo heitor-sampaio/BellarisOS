@@ -77,13 +77,10 @@ test.beforeAll(async () => {
   modelos.termo = await modelo(NOME.termo, 'TERMO', 'BLOQUEIA', '# Termo\n\nEu, **{{cliente.nome}}**, autorizo.\n\n[[assinatura]]', ['cliente.nome'])
   modelos.contrato = await modelo(NOME.contrato, 'CONTRATO', 'AVISA', '# Contrato\n\n{{cliente.nome}}\n\n[[assinatura]]', ['cliente.nome'])
   modelos.outroTermo = await modelo(NOME.outroTermo, 'TERMO', 'AVISA', '# Termo extra\n\n{{cliente.nome}}\n\n[[assinatura]]', ['cliente.nome'])
-  gestor = await criarMembro(`dtn${marca}`, {
-    tenant: rede.tenantId, branchId: null, rotulo: 'Gestão de documentos',
-    permissoes: [
-      { modulo: 'forms', nivel: 'MANAGE' }, { modulo: 'procedures', nivel: 'MANAGE' }, { modulo: 'settings', nivel: 'MANAGE' },
-      { modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'documents', nivel: 'MANAGE' },
-    ],
-  })
+  // Os modelos de documento (Configurações → Documentos) são configuração da
+  // rede toda: só a Admin da rede (o Heitor, 18/11: "Configuração da rede toda
+  // só pela conta admin").
+  gestor = await criarMembro(`dtn${marca}`, { tenant: rede.tenantId, rotulo: 'Gestão de documentos', donoDaRede: true, permissoes: [] })
 })
 
 test.afterAll(async () => {
@@ -127,6 +124,8 @@ test.describe.serial('documentos: os cinco tipos e "nasce ao agendar"', () => {
       // "Tornar ativo" no contrato de pacote: o padrão sai, o B entra.
       const secao = p.getByRole('region', { name: 'Contrato de pacote' })
       await secao.locator(`[data-modelo="${segundo}"]`).getByRole('button', { name: 'Tornar ativo' }).click()
+      // A32 da 15ª: a troca pede confirmação antes.
+      await p.getByRole('dialog', { name: 'Trocar o contrato?' }).getByRole('button', { name: 'Trocar o contrato' }).click()
       await expect.poll(async () => (await db().from('document_templates').select('is_active').eq('id', segundo).single()).data?.is_active).toBe(true)
       expect((await db().from('document_templates').select('is_active').eq('id', modelos.pacote).single()).data?.is_active).toBe(false)
 

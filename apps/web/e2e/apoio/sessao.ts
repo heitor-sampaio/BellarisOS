@@ -47,7 +47,7 @@ export interface ClienteDeTeste extends SessaoDeTeste {
 }
 
 type Modulo =
-  | 'agenda' | 'clients' | 'loyalty' | 'medical_records' | 'documents' | 'procedures' | 'stock' | 'financial'
+  | 'agenda' | 'atendimento' | 'clients' | 'loyalty' | 'medical_records' | 'documents' | 'procedures' | 'stock' | 'financial'
   | 'cashier' | 'crm' | 'marketing' | 'reports' | 'team' | 'forms' | 'roles'
   | 'settings' | 'automations' | 'copilot' | 'audit'
 
@@ -56,6 +56,21 @@ export interface Permissao {
   /** 'NONE' grava a linha sem acesso — o caso do escopo guardado num módulo que o cargo não tem (D6, 2026-10-29). */
   nivel:  'NONE' | 'VIEW' | 'MANAGE'
   escopo?: 'OWN' | 'ALL'
+}
+
+/**
+ * O módulo Atendimento (2026-11-18) pela regra da migration
+ * `20261123900001`: o cargo de teste que não o diz ganha o que a rede ganhou —
+ * Agenda em Ver ou Gerenciar E Prontuário em Gerenciar → Atendimento em
+ * Gerenciar; só a Agenda → Atendimento em Ver; o escopo é o da Agenda. Os
+ * specs escritos antes do módulo seguem valendo; quem quer outro, diz.
+ */
+export function comAtendimento(permissoes: Permissao[]): Permissao[] {
+  if (permissoes.some(p => p.modulo === 'atendimento')) return permissoes
+  const agenda = permissoes.find(p => p.modulo === 'agenda' && p.nivel !== 'NONE')
+  if (!agenda) return permissoes
+  const prontuario = permissoes.some(p => p.modulo === 'medical_records' && p.nivel === 'MANAGE')
+  return [...permissoes, { modulo: 'atendimento', nivel: prontuario ? 'MANAGE' : 'VIEW', escopo: agenda.escopo ?? 'ALL' }]
 }
 
 /**
@@ -217,7 +232,7 @@ export async function criarMembro(
     }
 
     if (cargoProprio && opcoes.permissoes.length) {
-      const { error: erroPerm } = await db.from('role_permissions').insert(opcoes.permissoes.map(p => ({
+      const { error: erroPerm } = await db.from('role_permissions').insert(comAtendimento(opcoes.permissoes).map(p => ({
         tenant_id: tenant, role_id: roleId, module: p.modulo, level: p.nivel, scope: p.escopo ?? 'ALL',
       })))
       if (erroPerm) throw new Error(`gravar a matriz do cargo: ${erroPerm.message}`)

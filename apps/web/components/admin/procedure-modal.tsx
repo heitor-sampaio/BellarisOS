@@ -29,6 +29,8 @@ interface ExistingProcedure {
   contract_template_id?: string | null
   outros_documentos?: string[]
   loyalty_points?: number | null
+  /** A7 da 23ª: "Este procedimento não usa insumo". */
+  sem_insumo?: boolean
   room_ids?: string[]
   /** Quem realiza (por-01). */
   professional_ids?: string[]

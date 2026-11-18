@@ -35,6 +35,7 @@ const OBRIGATORIOS: Partial<Record<TipoDeNo, { campo: string; rotulo: string }[]
   [NODES.ACAO_MENSAGEM]:         [{ campo: 'canal',  rotulo: 'o canal' }, { campo: 'texto', rotulo: 'a mensagem' }],
   [NODES.ACAO_MOVER_ETAPA]:      [{ campo: 'etapaId', rotulo: 'a etapa de destino' }],
   [NODES.ACAO_TAG_CLIENTE]:      [{ campo: 'tag',    rotulo: 'a tag' }],
+  [NODES.ACAO_REMOVER_TAG]:      [{ campo: 'tag',    rotulo: 'a tag' }],
   [NODES.CONDICAO_ESCOLHA]:      [{ campo: 'campo',  rotulo: 'o campo a comparar' }],
 }
 

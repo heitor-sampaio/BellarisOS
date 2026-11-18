@@ -392,7 +392,7 @@ export function ImportadorDeContatos(p: Props) {
             <p data-formato-do-pacote style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
               Pacote de antes: <strong style={{ color: 'var(--text)' }}>procedimento; total; usadas</strong> e, se tiver, o valor de referência e a
               validade — ex.: “Limpeza de pele; 10; 7; R$ 1.500,00; 31/12/2027”. Mais de um na mesma célula, separados por “|”. Sem o
-              valor de referência, as sessões trazidas contam R$ 0 (sem comissão de execução nem receita dos atendimentos).
+              valor de referência, as sessões trazidas não entram na receita dos atendimentos, e a comissão de execução em percentual é R$ 0 (a de R$ fixo por sessão é paga).
             </p>
           )}
           {faltando.length > 0 && (
@@ -468,7 +468,7 @@ export function ImportadorDeContatos(p: Props) {
                 <Aviso tom="espera">
                   <span data-pacotes-sem-valor>
                     {plural(semValor, 'pacote de antes sem valor de referência', 'pacotes de antes sem valor de referência')}: as sessões
-                    trazidas não geram comissão de execução (R$ 0) nem entram na receita dos atendimentos. Para contar, ponha o valor na
+                    trazidas não entram na receita dos atendimentos, e a comissão de execução em percentual é R$ 0 (a de R$ fixo por sessão é paga). Para contar, ponha o valor na
                     planilha (“procedimento; total; usadas; valor”).
                   </span>
                 </Aviso>

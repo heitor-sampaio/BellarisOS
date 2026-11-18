@@ -52,7 +52,8 @@ export function ParcelasEmAberto({ parcelas, slug, titulo = 'Em aberto com a cli
           }}>
             {p.vencida && <AlertCircle size={14} aria-label="Vencida" style={{ color: 'var(--warning)', flexShrink: 0 }} />}
             <span title={[tituloDaParcela(p), p.vencimento].filter(Boolean).join(' · ')} style={{
-              flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)',
+              // A19 da 24ª (design, como o A14 da 22ª): o texto quebra em vez de cortar ao lado do Receber.
+              flex: 1, minWidth: 0, overflowWrap: 'anywhere', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)',
             }}>
               <b style={{ color: 'var(--text)', fontWeight: 'var(--weight-bold)' }}>
                 {valorDaParcelaEmTexto(p)}

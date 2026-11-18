@@ -11,6 +11,7 @@ import {
 } from '@/actions/treatment-plans'
 import type { FinanceiroDoPlano, LancamentoDoPlano } from '@/lib/metrics/plano'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
+import { formasDaParcelaEmTexto } from '@/lib/financeiro/formas-da-parcela'
 import { endOfDayTZ } from '@/lib/datetime'
 import { TreatmentPlanEditor } from '@/components/branch/treatment-plan-editor'
 import type { TreatmentProcedure, ExistingPlan, AvailableProduct, TreatmentPlanEditorRef } from '@/components/branch/treatment-plan-editor'
@@ -21,6 +22,7 @@ import { useFuso } from '@/components/shared/fuso'
 import { PassosDoPlano } from '@/components/branch/passos-do-plano'
 import { DocumentosDoPlano } from '@/components/branch/documentos-do-plano'
 import { Dica } from '@/components/shared/dica'
+import { chaveDoPlanoNaoSalvo, lerPlanoNaoSalvo, gravarPlanoNaoSalvo, limparPlanoNaoSalvo } from '@/lib/atendimento/rascunho'
 
 /**
  * Planejamento de tratamento do CLIENTE.
@@ -135,7 +137,7 @@ export function PlanejamentoTratamento({
   const excluidosDoNovo = useRef<string[]>([])
   async function salvarOQueEstaNaTela(): Promise<boolean> {
     if (!aberto || !editorRef.current) return true
-    const res = await salvarPlanoDoCliente(aberto.id, editorRef.current.getSessions(), editorRef.current.getNotes())
+    const res = await salvarPlanoDoCliente(aberto.id, editorRef.current.getSessions(), editorRef.current.getNotes(), editorRef.current.getDesconto())
     if (res.error) { setErroDoBotao(res.error); return false }
     return true
   }
@@ -208,8 +210,29 @@ export function PlanejamentoTratamento({
 
   // "Novo plano" abre o editor SEM gravar (2026-10-21, decisão do Heitor): o
   // plano nasce no primeiro "Salvar plano". O rascunho da tela não tem id.
+  //
+  // 23ª A21: o plano novo fica no rascunho da aba (sessionStorage, por cliente
+  // e atendimento) até o "Salvar plano": fechar a janela perdia tudo. Abrir o
+  // "Novo plano" de novo o traz de volta; "Descartar" o apaga.
+  const chaveDoNovo = chaveDoPlanoNaoSalvo(clientId, appointmentId)
+  const [versaoDoNovo, setVersaoDoNovo] = useState(0)
+  const [recuperado, setRecuperado] = useState(false)
+  // Lido só no navegador (o servidor não tem a aba): o botão da lista diz que há um.
+  const [temNaoSalvo, setTemNaoSalvo] = useState(false)
+  useEffect(() => {
+    if (aberto) return
+    setTemNaoSalvo(!!lerPlanoNaoSalvo(chaveDoNovo)) // eslint-disable-line react-hooks/set-state-in-effect -- o sessionStorage só existe no navegador
+  }, [aberto, chaveDoNovo])
   function novoPlano() {
     setErro(null)
+    const guardado = lerPlanoNaoSalvo(chaveDoNovo)
+    setRecuperado(!!guardado)
+    setAberto({ id: '', status: 'DRAFT', notes: guardado?.notes || null, sessions: guardado?.sessions ?? [] })
+  }
+  function descartarONaoSalvo() {
+    limparPlanoNaoSalvo(chaveDoNovo)
+    setRecuperado(false)
+    setVersaoDoNovo(v => v + 1)
     setAberto({ id: '', status: 'DRAFT', notes: null, sessions: [] })
   }
   const ehNovo = aberto?.id === ''
@@ -225,8 +248,10 @@ export function PlanejamentoTratamento({
     if (!aberto) return
     setErro(null); setSalvando(true)
     if (ehNovo) {
-      const novo = await salvarPlanoNovo(clientId, branchId, appointmentId ?? null, sessions, notes)
+      const novo = await salvarPlanoNovo(clientId, branchId, appointmentId ?? null, sessions, notes, editorRef.current?.getDesconto())
       if (novo.error || !novo.planId) { setSalvando(false); setErro(novo.error ?? 'Não foi possível criar o plano.'); return }
+      limparPlanoNaoSalvo(chaveDoNovo)
+      setRecuperado(false)
       if (excluidosDoNovo.current.length) {
         const r = await salvarDocumentosExcluidosDoPlano(novo.planId, excluidosDoNovo.current)
         if (r.error) setErro(r.error)
@@ -238,7 +263,7 @@ export function PlanejamentoTratamento({
       else await abrirPlano(novo.planId)
       return
     }
-    const res = await salvarPlanoDoCliente(aberto.id, sessions, notes)
+    const res = await salvarPlanoDoCliente(aberto.id, sessions, notes, editorRef.current?.getDesconto())
     setSalvando(false)
     if (res.error) { setErro(res.error); return }
     await carregarLista()
@@ -385,7 +410,7 @@ export function PlanejamentoTratamento({
         <button type="button" onClick={novoPlano} disabled={carregando} className="btn-primary"
           style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-base-sz)' }}>
           {carregando ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-          Novo plano
+          {temNaoSalvo ? 'Continuar o plano não salvo' : 'Novo plano'}
         </button>
       )}
     </div>
@@ -459,6 +484,19 @@ export function PlanejamentoTratamento({
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600, padding: '8px 12px', background: 'var(--danger-soft)', borderRadius: 8 }}>{erro}</p>
       )}
 
+      {/* 23ª A21: o plano novo voltou do rascunho da aba. */}
+      {ehNovo && recuperado && (
+        <div data-plano-nao-salvo role="note" style={{
+          display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '8px 12px', borderRadius: 'var(--radius-field-token)',
+          background: 'var(--info-soft)', border: '1px solid var(--info-border)', fontSize: 'var(--text-sm-sz)', color: 'var(--text)',
+        }}>
+          <span style={{ flex: '1 1 200px' }}>Este plano ainda não foi salvo.</span>
+          <button type="button" className="btn-ghost" onClick={descartarONaoSalvo} style={{ fontSize: 'var(--text-sm-sz)', padding: '4px 10px' }}>
+            Descartar
+          </button>
+        </div>
+      )}
+
       {paginaDoPlano && (
         <PassosDoPlano key={`passos-${aberto.id}-${aberto.status}`} planId={aberto.id} slug={slug}
           unidadesParaAgendar={unidadesParaAgendar}
@@ -516,7 +554,7 @@ export function PlanejamentoTratamento({
           atendimento — daí `hideActions` e os botões abaixo. */}
       <TreatmentPlanEditor
         ref={editorRef}
-        key={aberto.id}
+        key={aberto.id || `novo-${versaoDoNovo}`}
         appointmentId=""
         slug={slug}
         procedures={!ehNovo && catalogoDoPlano ? catalogoDoPlano : procedures}
@@ -527,6 +565,7 @@ export function PlanejamentoTratamento({
         onSalvarPorPlano={editavel ? salvar : undefined}
         podeAnotar={podeAnotar}
         onMudarProcedimentos={setProcsNaTela}
+        onMudou={ehNovo && editavel ? (p => gravarPlanoNaoSalvo(chaveDoNovo, p)) : undefined}
       />
 
       {/* DC1c/PC9b e DC4: os documentos que o plano puxa dos procedimentos. */}
@@ -591,7 +630,8 @@ function situacaoDoLancamento(l: LancamentoDoPlano, fuso = 'America/Sao_Paulo'):
     // O pagamento é um instante: o dia da unidade (F62b). O vencimento é âncora de
     // meio-dia −03 (data sem hora): cai no mesmo dia em todo fuso do Brasil (F64).
     const quando = l.pagoEm ? ` em ${diaNoFuso(new Date(l.pagoEm), fuso)}` : ''
-    return { texto: `Pago${quando} · ${rotuloDaForma(l.forma, l.cartaoVezes)}`, cor: 'var(--success)' }
+    // Limite da 21ª: a parcela em várias formas diz cada uma ("Pix R$ 400,00 + Dinheiro R$ 200,00").
+    return { texto: `Pago${quando} · ${l.formas ? formasDaParcelaEmTexto(l.formas) : rotuloDaForma(l.forma, l.cartaoVezes)}`, cor: 'var(--success)' }
   }
   if (!l.vencimento) return { texto: 'A receber', cor: 'var(--warning)' }
   const venceu = new Date(l.vencimento).getTime() <= endOfDayTZ(new Date(), fuso).getTime()

@@ -43,10 +43,9 @@ if (window.fbAsyncInit) window.fbAsyncInit();
 test.beforeAll(async () => {
   test.setTimeout(240_000)
   outra = await criarOutraRede(`mf${marca}`)
-  membro = await criarMembro(`mfcfg${marca}`, {
-    tenant: outra.tenantId, rotulo: 'Config',
-    permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }],
-  })
+  // A integração é configuração da rede toda: só a Admin da rede (o Heitor,
+  // 18/11: "Configuração da rede toda só pela conta admin").
+  membro = await criarMembro(`mfcfg${marca}`, { tenant: outra.tenantId, rotulo: 'Config', donoDaRede: true, permissoes: [] })
 })
 
 test.afterAll(async () => {

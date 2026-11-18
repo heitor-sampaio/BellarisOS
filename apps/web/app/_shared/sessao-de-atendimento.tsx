@@ -1,8 +1,9 @@
+import { combinadoDoPlano } from '@/lib/plano-de-tratamento/desconto-combinado'
 import { nomesDasMaquininhas } from '@/lib/financeiro/vezes-da-rede'
 import { maquininhaDoRotulo } from '@/lib/financeiro/formas'
 import { notFound } from 'next/navigation'
 import { idOu404 } from '@/lib/id-da-rota'
-import { getTenantContext, assertPermission, can, isOwnScope, podeReceber, temRecurso } from '@/lib/auth'
+import { getTenantContext, assertAnyPermission, can, isOwnScope, podeReceber, temRecurso } from '@/lib/auth'
 import { montaPlano } from '@/lib/plano-de-tratamento/quem-monta'
 import { quemDesfazNoCaixa, quemMarcaAChegada, quemRecebeNaUnidade, quemConcluiOAtendimento } from '@/lib/equipe/quem-desfaz'
 import { colheOsDocumentos, dispensaDocumentos } from '@/lib/documentos/acesso'
@@ -60,7 +61,10 @@ export async function SessaoDeAtendimento({
   id:       string
 }) {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'agenda', 'VIEW')
+  // A tela do agendamento é também a do atendimento: abre com a Agenda (a
+  // chegada, o cancelar) ou com o Atendimento (o Heitor, 2026-11-18: "Agenda é
+  // agenda e atendimento é atendimento").
+  assertAnyPermission(ctx, ['agenda', 'atendimento'], 'VIEW')
   // O id vai a uma coluna uuid: o que não é uuid é 404, não 22P02 (D15).
   idOu404(id)
 
@@ -107,7 +111,7 @@ export async function SessaoDeAtendimento({
     const daOutra = apptRaw.professional as unknown as { name: string | null } | null
     // A26 da 23ª: a quem tem o Prontuário, quem conclui o de outra pessoa (os nomes).
     return <AtendimentoDeOutraProfissional slug={slug} profissional={daOutra?.name ?? null}
-      quemConclui={can(ctx, 'medical_records', 'VIEW') ? await quemConcluiOAtendimento(ctx.tenantId!, branchId) : null} />
+      quemConclui={can(ctx, 'atendimento', 'VIEW') ? await quemConcluiOAtendimento(ctx.tenantId!, branchId) : null} />
   }
 
   type RawProc   = { id: string; name: string; category: string; duration_min: number }
@@ -197,7 +201,7 @@ export async function SessaoDeAtendimento({
     ler(admin
       .from('treatment_plans')
       .select(`
-        id, status, professional_notes,
+        id, status, professional_notes, desconto_combinado_tipo, desconto_combinado_valor,
         treatment_plan_sessions(
           id, sort_order,
           treatment_plan_session_procedures(procedure_id, price, sort_order, products, procedures(name))
@@ -430,6 +434,10 @@ export async function SessaoDeAtendimento({
     id:       planRaw.id as string,
     status:   planRaw.status as string,
     notes:    canViewRecords ? ((planRaw.professional_notes as string | null) ?? null) : null,
+    // 22ª A20: o desconto do plano combinado no editor (no rascunho e no proposto).
+    descontoCombinado: ['DRAFT', 'PROPOSED'].includes(planRaw.status as string)
+      ? combinadoDoPlano(planRaw as { desconto_combinado_tipo?: string | null; desconto_combinado_valor?: number | string | null })
+      : null,
     sessions: ((planRaw.treatment_plan_sessions as unknown as RawPlanSess[]) ?? [])
       .sort((a, b) => a.sort_order - b.sort_order)
       .map(sess => ({
@@ -542,13 +550,16 @@ export async function SessaoDeAtendimento({
   const isResponsibleProfessional = ctx.providesServices && ctx.internalUserId === apptRaw.professional_id
 
   const canCheckin   = ctx.permissions.agenda === 'MANAGE'
-  // Quem inicia e conclui é o ESCOPO (D21, C14 — F65): com "só os meus", só
-  // o próprio; com "todos", qualquer um da unidade ao alcance (a página já
-  // conferiu o alcance). Era "a responsável ou a agenda em Gerenciar".
-  const canManage    = isOwnScope(ctx, 'agenda') ? ctx.internalUserId === apptRaw.professional_id : true
+  // Quem inicia e conclui é o Atendimento em Gerenciar (o Heitor, 2026-11-18:
+  // "Só inicia e conclui atendimento quem tem gerenciar no atendimento"), no
+  // ESCOPO dele (D21, C14): com "só os meus", só o próprio; com "todos",
+  // qualquer um da unidade ao alcance (a página já conferiu o alcance).
+  const canManage    = can(ctx, 'atendimento', 'MANAGE')
+    && (isOwnScope(ctx, 'atendimento') || isOwnScope(ctx, 'agenda') ? ctx.internalUserId === apptRaw.professional_id : true)
   const canReassign  = isAdmin
   const canPayment   = ctx.permissions.cashier === 'MANAGE'
-  // Editar o clínico depende do módulo, não só de ser o responsável: com
+  // Editar o clínico (a evolução, as fotos, a ficha de saúde, a ficha) é do
+  // Prontuário em Gerenciar, dentro do atendimento que a pessoa toca: com
   // `medical_records: Ver` a ficha aparecia preenchível e o salvamento era
   // recusado depois de a pessoa digitar tudo.
   const canEditRecords = canManage && can(ctx, 'medical_records', 'MANAGE')
@@ -660,7 +671,9 @@ export async function SessaoDeAtendimento({
         isPartOfPlan={isPartOfPlan}
         podeMontarPlano={temRecurso(ctx, 'planos_de_tratamento')}
         // PT2: monta o plano quem ATENDE na unidade do atendimento (não é permissão).
-        montaPlanoNaUnidade={montaPlano(ctx, branchId)}
+        // PT2: monta quem atende na unidade — dentro do Atendimento (o plano só
+        // existe para quem o tem, ao menos em Ver; generateEvaluationPlan confere).
+        montaPlanoNaUnidade={montaPlano(ctx, branchId) && can(ctx, 'atendimento', 'VIEW')}
         podeInjetaveis={temRecurso(ctx, 'injetaveis')}
         isPackageSession={!!sessaoDePacote}
         pacoteDeFora={!!(sessaoDePacote as { client_packages?: { de_fora?: boolean | null } | null } | null)?.client_packages?.de_fora}
@@ -681,8 +694,8 @@ export async function SessaoDeAtendimento({
         // A11 da 19ª: o avulso concluído aguardando o PDV diz quem recebe, a quem não recebe.
         // A8 da 20ª: também na janela do "Finalizar" (em atendimento), e se só a rede recebe.
         quemRecebe={!podeReceber(ctx) && ['IN_PROGRESS', 'COMPLETED'].includes(apptRaw.status as string) && !pago ? await quemRecebeNaUnidade(ctx.tenantId!, branchId) : null}
-        // A9 da 20ª: quem não conclui (sem o Prontuário em Gerenciar) lê quem conclui, pelo nome.
-        quemConclui={canManage && !canEditRecords && ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(apptRaw.status as string)
+        // A9 da 20ª: quem não inicia nem conclui (sem o Atendimento em Gerenciar) lê quem faz, pelo nome.
+        quemConclui={!canManage && ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(apptRaw.status as string)
           ? await quemConcluiOAtendimento(ctx.tenantId!, branchId) : null}
         // A10 da 19ª: sem o check-in no cargo, o agendado diz QUEM marca a chegada.
         quemMarcaAChegada={!canCheckin && apptRaw.status === 'SCHEDULED' ? await quemMarcaAChegada(ctx.tenantId!, branchId) : null}

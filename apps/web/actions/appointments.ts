@@ -28,7 +28,7 @@ import { juntarHorarios, escolherQuemAtende } from '@/lib/appointments/sem-prefe
 import { proximoHorarioLivre as procurarHorarioLivre } from '@/lib/agenda/proximo-livre'
 import {
   agendamentoAoAlcance, cancelarCore, checkinCore, confirmarCore, remarcarCore, revalidarAgendamento, mudarUnidadeCore,
-  deOutroProfissional, DE_OUTRO_PROFISSIONAL,
+  deOutroProfissional, deOutroNoAtendimento, DE_OUTRO_PROFISSIONAL,
 } from '@/lib/appointments/alteracoes'
 import { comNovaTentativa } from '@/lib/estoque/nova-tentativa'
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
@@ -47,6 +47,8 @@ import { recusaDoProcedimentoNaUnidade } from '@/lib/procedimentos/disponivel-na
 import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
 import { calcularDescontoComPontos, maximoDePontos } from '@/lib/fidelidade/resgate'
 import { descontoDoVoucher, type VoucherParaCalculo } from '@/lib/fidelidade/voucher'
+import { voucherDepoisDoDesconto } from '@/lib/fidelidade/voucher-na-comanda'
+import { quemVendeu } from '@/lib/vendas/equipe-da-venda'
 import { valorDosItensDoAtendimento, jaCobertoDoAtendimento } from '@/lib/pdv/itens-da-comanda'
 import { insumosPorProduto, montarInsumosDaBaixa } from '@/lib/atendimento/insumos-da-baixa'
 import { corrigirRegistro } from '@/lib/prontuario/corrigir'
@@ -198,16 +200,16 @@ async function updateAppointmentStatusInterno(
   opcoes: { inicioAdiantadoConfirmado?: boolean } = {},
 ) {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'agenda', 'VIEW')
 
-  // Quem faz o quê na agenda (D20, F65): a agenda em Ver inicia e conclui,
-  // dentro do escopo; confirmar, marcar a chegada, cancelar e marcar a falta
-  // são da agenda em Gerenciar (C10: até 2026-11-12 quem só via confirmava,
-  // cancelava e marcava a falta pelo id). Com "só os meus" e Gerenciar,
-  // cancela e marca a falta só do DELA (agenda-06, revisão do Heitor de
-  // 2026-11-02); confirmar e chegar seguem com a recepção.
-  const doCicloDeVida = (['CONFIRMED', 'ARRIVED', 'CANCELLED', 'NO_SHOW'] as string[]).includes(status)
-  if (doCicloDeVida && ctx.permissions.agenda !== 'MANAGE') throw semAcesso()
+  // "Agenda é agenda e atendimento é atendimento. Só inicia e conclui
+  // atendimento quem tem gerenciar no atendimento." (o Heitor, 2026-11-18; saiu
+  // o D20, "a Agenda em Ver inicia e conclui"). Iniciar e concluir são do
+  // Atendimento em Gerenciar; confirmar, marcar a chegada, cancelar e marcar a
+  // falta, da Agenda em Gerenciar (C10). Com "só os meus" e Gerenciar, cancela
+  // e marca a falta só do DELA (agenda-06, revisão do Heitor de 2026-11-02);
+  // confirmar e chegar seguem com quem tem "todos".
+  const doAtendimento = status === 'IN_PROGRESS' || status === 'COMPLETED'
+  assertPermission(ctx, doAtendimento ? 'atendimento' : 'agenda', 'MANAGE')
   if (isOwnScope(ctx, 'agenda') && (status === 'CONFIRMED' || status === 'ARRIVED')) throw semAcesso()
 
   if (status === 'CANCELLED' && !cancellationReason?.trim()) {
@@ -316,6 +318,7 @@ async function completeAppointment(
   }
 
   if (deOutroProfissional(ctx, appt.professional_id as string | null)) throw new Error(DE_OUTRO_PROFISSIONAL)
+  if (deOutroNoAtendimento(ctx, appt.professional_id as string | null)) throw new Error('Apenas o profissional responsável pode concluir este atendimento.')
 
   // Só se conclui o que foi iniciado, e a conclusão é a transação do
   // "Finalizar" (H5 = a, C13, F65): este caminho só lança o a receber do
@@ -440,11 +443,13 @@ export async function chegarEIniciar(
 ): Promise<{ error?: string; chegou?: boolean; confirmarInicioAdiantado?: boolean }> {
   try {
     const ctx = await getTenantContext()
+    // A chegada é da Agenda; o início, do Atendimento (o Heitor, 2026-11-18).
     assertPermission(ctx, 'agenda', 'MANAGE')
+    assertPermission(ctx, 'atendimento', 'MANAGE')
     const admin = createAdminClient()
     const ag = await agendamentoAoAlcance(admin, ctx, appointmentId)
     if (!ag) return { error: 'Agendamento não encontrado.' }
-    if (isOwnScope(ctx, 'agenda') && ag.professional_id !== ctx.internalUserId) {
+    if ((isOwnScope(ctx, 'agenda') || isOwnScope(ctx, 'atendimento')) && ag.professional_id !== ctx.internalUserId) {
       return { error: 'Apenas o profissional responsável pode marcar a chegada e iniciar este atendimento.' }
     }
     // A trava do DIA vem antes da pergunta do horário (D10 da 7ª simulação):
@@ -500,7 +505,8 @@ async function startAppointmentInterno(
 ): Promise<{ error?: string; confirmarInicioAdiantado?: boolean }> {
   try {
     const ctx = await getTenantContext()
-    assertPermission(ctx, 'agenda', 'VIEW')
+    // Só inicia quem tem o Atendimento em Gerenciar (o Heitor, 2026-11-18).
+    assertPermission(ctx, 'atendimento', 'MANAGE')
 
     const admin = createAdminClient()
     const appt = await ler(admin
@@ -514,7 +520,9 @@ async function startAppointmentInterno(
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId || !alcancaOAgendamento(ctx, apptBranch.id, appt.professional_id as string | null)) return { error: 'Agendamento não encontrado.' }
     if (appt.status !== 'CONFIRMED' && appt.status !== 'ARRIVED') return { error: 'O cliente precisa estar confirmado ou ter chegado (check-in) antes de iniciar.' }
 
-    if (isOwnScope(ctx, 'agenda') && appt.professional_id !== ctx.internalUserId) {
+    // O "só os meus" do Atendimento (o atendimento é de quem atende) e o da
+    // Agenda (quem vê só os dela não chega ao de outra).
+    if ((isOwnScope(ctx, 'atendimento') || isOwnScope(ctx, 'agenda')) && appt.professional_id !== ctx.internalUserId) {
       return { error: 'Apenas o profissional responsável pode iniciar este atendimento.' }
     }
 
@@ -782,12 +790,14 @@ async function cancelAppointmentSessionInterno(
 
     // A desistência NO MEIO (A27 da 8ª simulação): a intercorrência e o insumo
     // já aplicado vão junto do cancelamento, numa transação
-    // (`desistir_do_atendimento`). Escrevem o prontuário e o estoque: pedem o
-    // Prontuário em Gerenciar, como concluir.
+    // (`desistir_do_atendimento`). Como na conclusão (2026-11-18): o insumo é
+    // do Atendimento em Gerenciar; a intercorrência, clínica, do Prontuário em
+    // Gerenciar.
     const intercorrencia = ((formData.get('intercorrencia') as string | null) ?? '').trim()
     const porProduto = insumosPorProduto(formData.get('products_used') as string | null)
     if (formData.get('desistencia') === '1' && (intercorrencia || porProduto.size)) {
-      assertPermission(ctx, 'medical_records', 'MANAGE')
+      if (porProduto.size) assertPermission(ctx, 'atendimento', 'MANAGE')
+      if (intercorrencia) assertPermission(ctx, 'medical_records', 'MANAGE')
       const admin = createAdminClient()
       const existente = await agendamentoAoAlcance(admin, ctx, appointmentId)
       if (!existente) return { error: 'Agendamento não encontrado.' }
@@ -856,29 +866,35 @@ async function finishSessionInterno(
 }> {
   try {
     const ctx = await getTenantContext()
-    assertPermission(ctx, 'agenda', 'VIEW')
-    // Concluir grava a evolução no prontuário (concluir_atendimento): é do
-    // módulo de prontuário, não da agenda (2026-10-03).
-    if (!can(ctx, 'medical_records', 'MANAGE')) {
-      return { error: 'Concluir o atendimento grava o prontuário: é preciso ter o módulo Prontuário para gerenciar.' }
-    }
+    // Só conclui quem tem o Atendimento em Gerenciar (o Heitor, 2026-11-18:
+    // "Só inicia e conclui atendimento quem tem gerenciar no atendimento").
+    // Saiu o "concluir pede o Prontuário em Gerenciar": o que é CLÍNICO — a
+    // evolução, a intercorrência, as dores, a ficha de saúde e a ficha do
+    // procedimento — continua do Prontuário em Gerenciar, e sem ele o que
+    // chegar disso não se grava (o que já estava gravado fica).
+    assertPermission(ctx, 'atendimento', 'MANAGE')
+    const registraClinico = can(ctx, 'medical_records', 'MANAGE')
 
     const appointmentId  = (formData.get('appointment_id') as string)?.trim()
-    const notes          = (formData.get('notes') as string)?.trim() || null
-    const intercurrences = (formData.get('intercurrences') as string)?.trim() || null
+    const notes          = registraClinico ? (formData.get('notes') as string)?.trim() || null : null
+    const intercurrences = registraClinico ? (formData.get('intercurrences') as string)?.trim() || null : null
     const slug           = (formData.get('slug') as string)?.trim()
     // As dores e a anamnese digitadas na tela (D3 da simulação de 2026-10-28):
     // vão NA MESMA transação da conclusão. Sem o campo no formulário (a tela
     // que não os tem), nada muda no que já estava gravado.
-    const temQueixas     = formData.has('queixas')
+    const temQueixas     = registraClinico && formData.has('queixas')
     const queixas        = ((formData.get('queixas') as string | null) ?? '').trim() || null
     let anamneseDigitada: unknown = null
-    try { anamneseDigitada = JSON.parse((formData.get('anamnese') as string | null) ?? 'null') } catch { /* JSON inválido → sem anamnese */ }
+    if (registraClinico) {
+      try { anamneseDigitada = JSON.parse((formData.get('anamnese') as string | null) ?? 'null') } catch { /* JSON inválido → sem anamnese */ }
+    }
     // A ficha própria do procedimento, como está NA TELA (D1 da simulação de
     // 2026-10-29): também vai na transação da conclusão. Sem ela no
     // formulário, a ficha já gravada (o "Salvar ficha") fica como está.
     let fichaDigitada: unknown = null
-    try { fichaDigitada = JSON.parse((formData.get('ficha') as string | null) ?? 'null') } catch { /* JSON inválido → sem ficha */ }
+    if (registraClinico) {
+      try { fichaDigitada = JSON.parse((formData.get('ficha') as string | null) ?? 'null') } catch { /* JSON inválido → sem ficha */ }
+    }
 
     const admin = createAdminClient()
 
@@ -898,7 +914,7 @@ async function finishSessionInterno(
     // do horário adiantado e a trava dos termos que bloqueiam.
     if (appt.status !== 'IN_PROGRESS') return { error: 'Só se conclui o atendimento que foi iniciado: use “Iniciar” e depois “Finalizar”.' }
 
-    if (isOwnScope(ctx, 'agenda') && appt.professional_id !== ctx.internalUserId) {
+    if ((isOwnScope(ctx, 'atendimento') || isOwnScope(ctx, 'agenda')) && appt.professional_id !== ctx.internalUserId) {
       return { error: 'Apenas o profissional responsável pode concluir este atendimento.' }
     }
 
@@ -1138,34 +1154,37 @@ export async function confirmPayment(
     // Pontos como desconto (fidelidade, fase 2): o SERVIDOR calcula a partir
     // dos pontos pedidos — o valor que o navegador mostra não entra. O banco
     // confere de novo (config, teto, saldo) dentro da transação.
-    // A ordem: o voucher desconta PRIMEIRO, depois o desconto comercial (sobre o
-    // que sobrou), e os pontos valem sobre o que sobra dos dois.
+    // A ordem (o Heitor, 2026-11-18: "Desconto, voucher, pontos"): o desconto
+    // comercial PRIMEIRO, sobre o total; o voucher sobre o que sobrou
+    // (`voucherDepoisDoDesconto`, a conta da tela e do banco); os pontos sobre
+    // o que sobra dos dois. Era voucher → desconto → pontos, só no avulso.
     // PDV, fase 5b (FD2a): tudo sobre o TOTAL da comanda — o atendimento e os
     // produtos acrescentados nela, que o banco vende junto.
     // A comanda reaberta pelo estorno de UMA das formas cobra só o que falta do atendimento.
     const preco = Math.round((parseFloat(String(appt.price)) - await jaCobertoDoAtendimento(appointmentId, admin)) * 100) / 100
     if (!(preco > 0)) return { error: 'Pagamento já registrado para este atendimento.' }
-    const total = Math.round((preco + await valorDosItensDoAtendimento(ctx.tenantId!, appointmentId, admin)) * 100) / 100
+    const itens = await valorDosItensDoAtendimento(ctx.tenantId!, appointmentId, admin)
+    const total = Math.round((preco + itens) * 100) / 100
     let pontos = 0, desconto = 0, descontoVoucher = 0, descontoVenda = 0
     let valorFinal = total
     const cfg = pedido > 0 || voucherId ? await configDaRede(ctx.tenantId!, admin) : null
     if (cfg && !cfg.enabled) return { error: 'O programa de fidelidade está desligado nesta rede.' }
     {
+      const recusa = recusaDoDesconto(total, pedidoDeDesconto.data)
+      if (recusa) return { error: recusa }
+      descontoVenda = descontoEmReais(total, pedidoDeDesconto.data)
+      valorFinal = Math.round((total - descontoVenda) * 100) / 100
+
       if (voucherId) {
         const v = await ler(admin.from('loyalty_vouchers')
           .select('type, status, expires_at, procedure_id, discount_value, client_id')
           .eq('id', voucherId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o voucher')
         if (!v || v.client_id !== appt.client_id) return { error: 'Voucher não encontrado para este cliente.' }
-        const dv = descontoDoVoucher(v as VoucherParaCalculo, { procedureId: appt.procedure_id as string | null, preco, total })
+        const dv = voucherDepoisDoDesconto(v as VoucherParaCalculo, { procedureId: appt.procedure_id as string | null, preco, itens, descontoVenda })
         if (dv.motivo) return { error: dv.motivo }
         descontoVoucher = dv.desconto
-        valorFinal = Math.round((total - descontoVoucher) * 100) / 100
+        valorFinal = Math.round((valorFinal - descontoVoucher) * 100) / 100
       }
-
-      const recusa = recusaDoDesconto(valorFinal, pedidoDeDesconto.data)
-      if (recusa) return { error: recusa }
-      descontoVenda = descontoEmReais(valorFinal, pedidoDeDesconto.data)
-      valorFinal = Math.round((valorFinal - descontoVenda) * 100) / 100
 
       if (pedido > 0 && cfg) {
         const saldo = await saldoDoCliente(appt.client_id as string, admin)
@@ -1178,6 +1197,20 @@ export async function confirmPayment(
       }
     }
     if (valorFinal > 0 && !pagamento) return { error: 'Selecione a forma de pagamento.' }
+    // Quem vendeu os produtos da comanda (com-06, o Heitor: "Campo vazio não gera
+    // comissão para ninguém"; r2-ven-12: "nasce sempre vazio"): o escolhido na
+    // tela, da equipe e ao alcance; vazio só confirmado — e então ninguém. Era
+    // quem atendeu, sem ninguém escolher.
+    let vendedorDosProdutos: string | null = null
+    if (itens > 0) {
+      const vendeu = await quemVendeu(ctx.tenantId!, null, {
+        vendedorId: String(formData.get('vendedor_dos_produtos') ?? '').trim() || null,
+        semVendedor: formData.get('sem_vendedor_dos_produtos') === '1',
+      }, apptBranch!.id)
+      if ('error' in vendeu) return { error: vendeu.error }
+      if ('pergunta' in vendeu) return { error: vendeu.pergunta }
+      vendedorDosProdutos = vendeu.vendedor
+    }
     // O "+ Outra forma" fecha o total; a entrada do crediário não passa dele.
     const recusaDaEntrada = recusaDaEntradaDoPagamento(pagamento, valorFinal, 'da comanda')
     if (recusaDaEntrada) return { error: recusaDaEntrada }
@@ -1202,6 +1235,7 @@ export async function confirmPayment(
           cartao_bandeira: valorFinal > 0 ? cartaoBandeira : null,
           maquininha_id: valorFinal > 0 ? maquininhaId : null,
           desconto_motivo: descontoVenda > 0 ? motivoDoDesconto : null,
+          vendedor_dos_produtos: vendedorDosProdutos,
         },
       }), 'confirmar o pagamento')
     } catch (e) {
@@ -1231,7 +1265,16 @@ export async function previaDoPagamento(appointmentId: string): Promise<{
   minimo:       number
   tetoPct:      number
   maximo:       number
-  vouchers:     { id: string; name: string; desconto: number; expires_at: string }[]
+  /**
+   * Os vouchers que servem NESTE atendimento. `desconto` é o de sem desconto
+   * comercial; a tela refaz a conta com o desconto dado (`voucherDepoisDoDesconto`
+   * sobre `voucher`, `preco`, `itens` e `procedureId` — "Desconto, voucher, pontos").
+   */
+  vouchers:     { id: string; name: string; desconto: number; expires_at: string; voucher: VoucherParaCalculo }[]
+  /** O que falta do atendimento e o valor dos produtos da comanda. */
+  preco:        number
+  itens:        number
+  procedureId:  string | null
 } | null> {
   const ctx = await getTenantContext()
   if (!podeReceber(ctx)) return null
@@ -1250,7 +1293,8 @@ export async function previaDoPagamento(appointmentId: string): Promise<{
   // O que falta do atendimento (a comanda reaberta pelo estorno de uma das formas).
   const preco = Math.max(0, Math.round((parseFloat(String(appt.price)) - await jaCobertoDoAtendimento(appointmentId, admin)) * 100) / 100)
   // PDV, fase 5b (FD2a): o voucher de desconto e os pontos valem sobre o total da comanda.
-  const total = Math.round((preco + await valorDosItensDoAtendimento(ctx.tenantId!, appointmentId, admin)) * 100) / 100
+  const itens = await valorDosItensDoAtendimento(ctx.tenantId!, appointmentId, admin)
+  const total = Math.round((preco + itens) * 100) / 100
   const [saldoLido, meus] = await Promise.all([
     saldoDoCliente(appt.client_id as string, admin),
     ler(admin.from('loyalty_vouchers')
@@ -1262,13 +1306,16 @@ export async function previaDoPagamento(appointmentId: string): Promise<{
   const vouchers = ((meus ?? []) as (VoucherParaCalculo & { id: string; name: string })[])
     .map(v => ({ v, d: descontoDoVoucher(v, { procedureId: appt.procedure_id as string | null, preco, total }) }))
     .filter(({ d }) => !d.motivo && d.desconto > 0)
-    .map(({ v, d }) => ({ id: v.id, name: v.name, desconto: d.desconto, expires_at: v.expires_at }))
+    .map(({ v, d }) => ({
+      id: v.id, name: v.name, desconto: d.desconto, expires_at: v.expires_at,
+      voucher: { type: v.type, status: v.status, expires_at: v.expires_at, procedure_id: v.procedure_id, discount_value: v.discount_value },
+    }))
 
   const saldo = cfg.redeem_points_value > 0 ? Math.max(0, saldoLido) : 0
   if (saldo <= 0 && vouchers.length === 0) return null
 
   const regras = { valorDoPonto: cfg.redeem_points_value, minimo: cfg.redeem_min_points, tetoPct: cfg.redeem_max_pct }
-  return { saldo, ...regras, maximo: maximoDePontos(saldo, total, regras), vouchers }
+  return { saldo, ...regras, maximo: maximoDePontos(saldo, total, regras), vouchers, preco, itens, procedureId: (appt.procedure_id as string | null) ?? null }
 }
 
 // --- Salvar rascunho de notas (sem concluir) ---------------------
@@ -1296,7 +1343,9 @@ async function saveDraftNotesInterno(
 ): Promise<{ error?: string; success?: boolean }> {
   try {
     const ctx = await getTenantContext()
-    assertPermission(ctx, 'agenda', 'VIEW')
+    // A evolução é do atendimento (o Atendimento em Gerenciar, 2026-11-18) e é
+    // clínica (o Prontuário em Gerenciar).
+    assertPermission(ctx, 'atendimento', 'MANAGE')
     if (!can(ctx, 'medical_records', 'MANAGE')) {
       return { error: 'A evolução é prontuário: é preciso ter o módulo Prontuário para gerenciar.' }
     }
@@ -1317,6 +1366,7 @@ async function saveDraftNotesInterno(
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId || !alcancaOAgendamento(ctx, apptBranch.id, appt.professional_id as string | null)) return { error: 'Agendamento não encontrado.' }
     // A evolução do atendimento de OUTRA, com a agenda "só os meus" (D4, 2026-10-28).
     if (deOutroProfissional(ctx, appt.professional_id as string | null)) return { error: DE_OUTRO_PROFISSIONAL }
+    if (deOutroNoAtendimento(ctx, appt.professional_id as string | null)) return { error: DE_OUTRO_PROFISSIONAL }
 
     // O cancelado e a falta não tiveram atendimento: não há evolução a
     // escrever (C15, F65). A intercorrência da desistência se grava no próprio
@@ -1325,11 +1375,10 @@ async function saveDraftNotesInterno(
       return { error: 'Este agendamento foi cancelado ou a cliente não compareceu: não há atendimento para escrever a evolução.' }
     }
 
-    // O registro concluído se corrige com a Agenda em Gerenciar (o "Editar
-    // registro" pede a Agenda E o Prontuário em Gerenciar — A39 da 5ª).
+    // O registro concluído se corrige com o Atendimento e o Prontuário em
+    // Gerenciar (as travas acima). Era a Agenda E o Prontuário (A39 da 5ª); a
+    // Agenda voltou a ser agenda (o Heitor, 2026-11-18).
     const isFinalised = appt.status === 'COMPLETED'
-    const isAdmin     = ctx.permissions.agenda === 'MANAGE'
-    if (isFinalised && !isAdmin) return { error: 'Registro finalizado: corrigir pede a Agenda e o Prontuário em Gerenciar.' }
 
     // A correção do concluído guarda a versão de antes (bloco Prontuário,
     // PR2b): uma transação, `prontuario_corrigir_registro`. Sem mudança, nada.

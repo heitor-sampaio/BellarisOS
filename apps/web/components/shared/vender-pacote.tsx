@@ -7,6 +7,11 @@ import { avisoDaVenda } from '@/lib/vendas/aviso-da-venda'
 import { avisoDosDocumentosDaVenda, avisoDoContratoAntesDeVender } from '@/lib/documentos/aviso-da-venda'
 import { formatBRL } from '@estetica-os/utils'
 import { venderPacote, type DocumentoDaVenda } from '@/actions/pacotes'
+import { documentoParaAssinar } from '@/actions/documentos'
+import { TelaDeAssinatura, type DocumentoNaTela } from '@/components/shared/tela-de-assinatura'
+import { EnviarLinkDeAssinatura } from '@/components/shared/enviar-link-de-assinatura'
+import { avisoDasVazias } from '@/lib/documentos/variaveis'
+import type { ContratoParaAssinar } from '@/lib/documentos/pacote'
 import Link from 'next/link'
 import { rotaNoPortal, rotaCliente } from '@/lib/rotas'
 import { schedulePackageSession } from '@/actions/appointments'
@@ -65,7 +70,11 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
   const rotaDosDados = `${rotaCliente(pathname, pathname.split('/')[1] ?? '', clienteId)}?aba=dados`
   // Depois da venda: a 1ª sessão, para o "Agendar a 1ª sessão agora" (A47).
   const [vendida, setVendida] = useState<{ id: string; procedimento: { id: string; nome: string; duracaoMin: number } } | null>(null)
-  // PC2: os documentos que a venda deixou para assinar — a venda não espera.
+  // PC2: os termos e os outros documentos que a venda deixou para assinar (esses não seguram o dinheiro).
+  // O CONTRATO de pacote, sim: "primeiro colhe assinatura, depois paga" (auditoria de 2026-11-18).
+  const [contrato, setContrato] = useState<ContratoParaAssinar | null>(null)
+  const [assinando, setAssinando] = useState<DocumentoNaTela | null>(null)
+  const [contratoAssinado, setContratoAssinado] = useState(false)
   const [docsDaVenda, setDocsDaVenda] = useState<DocumentoDaVenda[]>([])
   // D1 da 15ª: quem vendeu colhe a assinatura (2026-11-16: sem o módulo
   // Documentos); `veNaFicha`, se ela vê a ficha da cliente.
@@ -87,11 +96,33 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
   const [responsavelId, setResponsavelId] = useState('')
   // "Quem vendeu" (com-06): nasce VAZIO (r2-ven-12); vazio, a venda pergunta.
   const [vendedorId, setVendedorId] = useState('')
-  const [pergunta, setPergunta] = useState<{ texto: string; sem: 'VENDEDOR' | 'RESPONSAVEL' } | null>(null)
+  const [pergunta, setPergunta] = useState<{ texto: string; sem: 'VENDEDOR' | 'RESPONSAVEL' | 'CONTRATO' } | null>(null)
   const [semVendedor, setSemVendedor] = useState(false)
   const quemAtende = equipe.filter(m => m.atende)
 
-  function vender(resposta: { semVendedor?: boolean; semResponsavel?: boolean } = {}) {
+  /** PC2: o contrato a colher abre a tela de assinatura AQUI dentro (sair perderia o pagamento escolhido). */
+  function abrirContrato(id: string) {
+    setErro(null)
+    iniciar(async () => {
+      const r = await documentoParaAssinar(id)
+      if (r.error || !r.doc) { setErro(r.error ?? 'Não consegui abrir o contrato.'); return }
+      setAssinando(r.doc)
+    })
+  }
+
+  /** De volta da assinatura: assinado, é vender; senão, o contrato segue à vista. */
+  function voltarDoContrato(id: string) {
+    setAssinando(null)
+    iniciar(async () => {
+      const r = await documentoParaAssinar(id)
+      if (r.doc?.status === 'ASSINADO') { setContrato(null); setContratoAssinado(true) }
+    })
+  }
+
+  /** Mudou o que o contrato cita (o pacote, o pagamento, o desconto): ele se monta de novo ao vender. */
+  function esquecerContrato() { setContrato(null); setContratoAssinado(false) }
+
+  function vender(resposta: { semVendedor?: boolean; semResponsavel?: boolean; substituirContrato?: boolean } = {}) {
     setErro(recusaDoPagamento(estado, fid.aPagar))
     if (recusaDoPagamento(estado, fid.aPagar)) return
     const semV = resposta.semVendedor ?? semVendedor
@@ -99,10 +130,14 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
     iniciar(async () => {
       const r = await venderPacote(clienteId, pacote.id, branchId, montarPagamento(estado, fid.aPagar), descontoDoEstado(desconto), envio.chave(),
         { vendedorId: vendedorId || null, semVendedor: semV,
-          responsavelId: pacote.pedeResponsavel ? responsavelId || null : null, semResponsavel: resposta.semResponsavel === true },
+          responsavelId: pacote.pedeResponsavel ? responsavelId || null : null, semResponsavel: resposta.semResponsavel === true,
+          substituirContrato: resposta.substituirContrato === true },
         fid.paraEnviar)
       if (r.confirmarSemVendedor) { setPergunta({ texto: r.confirmarSemVendedor, sem: 'VENDEDOR' }); return }
       if (r.confirmarSemResponsavel) { setPergunta({ texto: r.confirmarSemResponsavel, sem: 'RESPONSAVEL' }); return }
+      if (r.confirmarSubstituirContrato) { setPergunta({ texto: r.confirmarSubstituirContrato, sem: 'CONTRATO' }); return }
+      // PC2: nada se gravou — o contrato primeiro, depois o pagamento.
+      if (r.contratoParaAssinar) { setPergunta(null); setContratoAssinado(false); setContrato(r.contratoParaAssinar); return }
       if (r.error) { setErro(r.error); return }
       envio.renovar()
       router.refresh()
@@ -118,6 +153,10 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
     })
   }
 
+  if (assinando && contrato) return (
+    <TelaDeAssinatura doc={assinando} podeColher aoTerminar={() => voltarDoContrato(contrato.id)} />
+  )
+
   if (vendida) return (
     <div data-agendar-a-primeira-sessao style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
@@ -127,8 +166,9 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
         <div data-documentos-da-venda style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '10px 12px', borderRadius: 'var(--radius-field-token)', background: 'var(--bg-app)', border: '1px solid var(--border)' }}>
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>{avisoDosDocumentosDaVenda(docsDaVenda, { veNaFicha })}</p>
           {docsDaVenda.some(d => d.status === 'PENDENTE') && (
+            // A16 da 24ª: com cara de botão (era um link com cara de texto).
             <Link href={rotaNoPortal(pathname, pathname.split('/')[1], `/documentos/${docsDaVenda.find(d => d.status === 'PENDENTE')!.id}/assinar`)}
-              style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--brand)', fontWeight: 'var(--weight-bold)' }}>
+              className="btn-secondary" style={{ alignSelf: 'flex-start' }}>
               Colher a assinatura agora
             </Link>
           )}
@@ -166,7 +206,7 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <span className="overline">Pacote</span>
-        <select className="field" aria-label="Pacote" value={pacoteId} onChange={e => { setPacoteId(e.target.value); setPergunta(null) }}>
+        <select className="field" aria-label="Pacote" value={pacoteId} onChange={e => { setPacoteId(e.target.value); setPergunta(null); esquecerContrato() }}>
           {pacotes.map(p => <option key={p.id} value={p.id}>{p.name} — {formatBRL(p.price)}</option>)}
         </select>
       </label>
@@ -217,18 +257,55 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
         <p className="overline">Pagamento</p>
-        <CampoDoDesconto estado={desconto} aoMudar={setDesconto} total={pacote.price} comMotivo />
-        <CamposDoPagamento estado={estado} aoMudar={setEstado} formas={['AVISTA', 'PARCELADO', 'A_RECEBER']} total={fid.aPagar} clienteId={clienteId} variasFormas />
+        <CampoDoDesconto estado={desconto} aoMudar={d => { setDesconto(d); esquecerContrato() }} total={pacote.price} comMotivo />
+        <CamposDoPagamento estado={estado} aoMudar={e => { setEstado(e); esquecerContrato() }} formas={['AVISTA', 'PARCELADO', 'A_RECEBER']} total={fid.aPagar} clienteId={clienteId} variasFormas />
         {fid.bloco}
         {estado.forma === 'A_RECEBER' && (
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>O valor fica a receber no financeiro, com o vencimento, se você informar um.</p>
         )}
       </div>
+      {/* PC2 (auditoria de 2026-11-18): "primeiro colhe assinatura, depois paga" — o contrato do pacote antes do dinheiro. */}
+      {contrato && (
+        <div data-contrato-antes-de-vender={contrato.id} role="note" style={{
+          display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px', borderRadius: 'var(--radius-field-token)',
+          background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-border)',
+        }}>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 'var(--weight-semibold)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>Antes do pagamento, a cliente assina o contrato: {contrato.titulo}.</span>
+            <Dica rotulo="Por que o contrato vem antes">
+              O contrato cita o pagamento escolhido. Assinado, a venda segue. Quem dispensa documentos pode dispensá-lo, com o motivo, na ficha da cliente.
+            </Dica>
+          </p>
+          {contrato.status === 'INCOMPLETO' && (
+            <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+              Falta no cadastro: {contrato.faltando.join(', ')}.{' '}
+              <Link href={rotaDosDados} style={{ color: 'var(--brand)', fontWeight: 'var(--weight-bold)' }}>Completar o cadastro</Link>
+            </p>
+          )}
+          {avisoDasVazias(contrato.vazias) && (
+            <p data-variaveis-vazias style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+              {avisoDasVazias(contrato.vazias)}
+            </p>
+          )}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            {contrato.status === 'PENDENTE' && (
+              <button type="button" className="btn-primary" disabled={pendente} onClick={() => abrirContrato(contrato.id)}>Colher assinatura</button>
+            )}
+            {contrato.status === 'PENDENTE' && <EnviarLinkDeAssinatura documentoId={contrato.id} jaEnviadoAte={contrato.linkAte} />}
+            <button type="button" className="btn-secondary" disabled={pendente} onClick={() => vender()}>Já assinou: vender</button>
+          </div>
+        </div>
+      )}
+      {contratoAssinado && !contrato && (
+        <p data-contrato-assinado role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', fontWeight: 'var(--weight-semibold)' }}>
+          Contrato assinado. Agora, o pagamento.
+        </p>
+      )}
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
       {pergunta ? (
         <PerguntaDaVenda texto={pergunta.texto} pendente={pendente}
-          rotuloConfirmar={pergunta.sem === 'RESPONSAVEL' ? 'Vender sem responsável' : 'Vender assim'}
-          aoConfirmar={() => vender(pergunta.sem === 'RESPONSAVEL' ? { semResponsavel: true } : { semVendedor: true })}
+          rotuloConfirmar={pergunta.sem === 'RESPONSAVEL' ? 'Vender sem responsável' : pergunta.sem === 'CONTRATO' ? 'Substituir o contrato' : 'Vender assim'}
+          aoConfirmar={() => vender(pergunta.sem === 'RESPONSAVEL' ? { semResponsavel: true } : pergunta.sem === 'CONTRATO' ? { substituirContrato: true } : { semVendedor: true })}
           aoVoltar={() => setPergunta(null)} />
       ) : (
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>

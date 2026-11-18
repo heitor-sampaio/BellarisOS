@@ -62,7 +62,6 @@ test.beforeAll(async () => {
   await atendimento(await cliente('Marlene', 200), segunda, diasAtras(120))
   // Carla: sumiu da primeira unidade, mas veio à Segunda há 10 dias — não está sumida da clínica.
   const carla = await cliente('Carla', 200)
-  // A da unidade é de quem foi atendida nela (T1 do Bloco Tags: o fato, não a tag).
   await atendimento(carla, rede.branchId, diasAtras(120))
   await atendimento(carla, segunda, diasAtras(10))
   // Nunca veio: cadastrada há 200 dias na primeira unidade, sem atendimento.
@@ -90,7 +89,8 @@ test('a dona vê no /admin as clientes a reativar da rede inteira, com a unidade
     await expect(marlene).toContainText(nomeDaSegunda)
     const nunca = quadro.locator('[data-cliente]', { hasText: nome('Nunca veio') })
     await expect(nunca).toContainText('Nunca veio')
-    await expect(nunca).toContainText(nomeDaPrimeira)
+    // 24ª: quem nunca veio não tem unidade (a do cadastro saiu — a cliente é da rede).
+    await expect(nunca).not.toContainText(nomeDaPrimeira)
     // Veio à outra unidade há 10 dias: não está sumida da clínica.
     await expect(quadro).not.toContainText(nome('Carla'))
   })
@@ -108,13 +108,16 @@ test('a dona vê no /admin o "Clientes no período", do núcleo, no período esc
   })
 })
 
-test('com ?unidade=, o quadro é o da unidade (a Carla sumiu da primeira)', async ({ browser }) => {
+// Regra mudada na 24ª (o Heitor, 18/11): a cliente é da rede — o "Reativar" é o da
+// rede também com o ?unidade= (era "as atendidas na unidade", T1).
+test('com ?unidade=, o quadro continua o da rede (a Carla veio à Segunda: não sumiu)', async ({ browser }) => {
   const slug = (await db().from('branches').select('slug').eq('id', rede!.branchId).single<{ slug: string }>()).data!.slug
   await como(browser, async p => {
     await p.goto(`/admin/dashboard?unidade=${slug}`)
     const quadro = p.locator('[data-reativar-clientes]')
     await expect(quadro).toBeVisible()
-    await expect(quadro).toContainText(nome('Carla'))
+    await expect(quadro.locator('[data-cliente]', { hasText: nome('Marlene') })).toBeVisible()
+    await expect(quadro).not.toContainText(nome('Carla'))
   })
 })
 

@@ -9,7 +9,8 @@ import { responderAnamnese } from './apoio/anamnese'
  * - A33: depois de enviar o plano, a avaliação seguia "Em atendimento" e nada
  *   dizia à profissional que falta o "Finalizar" (gerar o plano não conclui a
  *   avaliação — a regra fica; a tela passa a dizer).
- * - A34: a tela do plano não dizia que o desconto é dado no checkout.
+ * - A34: a tela do plano não dizia onde vai o desconto (desde a 22ª A20, no
+ *   próprio editor, e ele vai pronto ao checkout).
  * - A37: a drenagem avulsa abria o formulário da avaliação ("Dores do
  *   cliente", "Tratamento / Nova sessão") sem dizer que o plano é opcional.
  * - A38: a busca de insumo numa rede sem produtos voltava vazia, calada.
@@ -109,7 +110,8 @@ test('A34 e A37: o plano é opcional na tela e diz que o desconto é dado no che
     await p.getByRole('button', { name: 'Sobre o plano do tratamento' }).hover()
     await expect(p.locator('[data-plano-opcional]')).toContainText('Opcional')
     await expect(p.locator('[data-plano-opcional]')).toContainText('Finalizar atendimento')
-    await expect(p.locator('[data-desconto-no-checkout]')).toContainText('O desconto é dado no checkout')
+    // 22ª A20: o desconto do plano se combina no editor e vai pronto ao checkout (a regra A34 mudou).
+    await expect(p.locator('[data-desconto-no-checkout]')).toContainText('vai pronto ao checkout do plano')
   })
 })
 

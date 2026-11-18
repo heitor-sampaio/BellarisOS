@@ -2,6 +2,8 @@ import type { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { getEmAbertoDasVendas } from '@/lib/metrics/pacote-em-aberto'
 import { comOEmAberto } from '@/lib/appointments/sessao-do-pacote'
+import { getFinanceiroDoPlano } from '@/lib/metrics/plano'
+import { textoDoPlanoAReceber } from '@/lib/appointments/pago-antes-textos'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -20,13 +22,18 @@ type Admin = ReturnType<typeof createAdminClient>
  * pré-pago, o plano) ainda tem em aberto no crediário — "4 limpezas · sessão
  * 2 de 4 · R$ 600,00 em aberto". O valor, só com `mostraOValor` (quem recebe,
  * e a própria cliente); senão, "com parcelas em aberto".
+ *
+ * 21ª (limite "Incluído" sem valor): o plano aceito ainda SEM lançamento não
+ * está pago — "Sessão do plano · a receber no PDV (R$ X)" (para a cliente, "a
+ * pagar na unidade"); o valor do plano, de `lib/metrics`, só com `mostraOValor`.
  */
 export async function pagosAntes(
   admin: Admin, agendamentos: string[],
-  emAberto?: { tenantId: string; mostraOValor: boolean },
+  emAberto?: { tenantId: string; mostraOValor: boolean; daCliente?: boolean },
 ): Promise<Map<string, string>> {
   const textos = new Map<string, string>()
   const vendaDe = new Map<string, string>()
+  const planoDe = new Map<string, string>()
   const ids = [...new Set(agendamentos.filter(Boolean))]
   for (let i = 0; i < ids.length; i += 150) {
     const lote = ids.slice(i, i + 150)
@@ -59,14 +66,25 @@ export async function pagosAntes(
     for (const a of (planos ?? []) as { id: string; treatment_plan_id: string | null }[]) {
       if (textos.has(a.id)) continue
       textos.set(a.id, 'Sessão do plano de tratamento')
-      if (a.treatment_plan_id) vendaDe.set(a.id, a.treatment_plan_id)
+      if (a.treatment_plan_id) { vendaDe.set(a.id, a.treatment_plan_id); planoDe.set(a.id, a.treatment_plan_id) }
     }
   }
   if (emAberto && vendaDe.size) {
-    const aberto = await getEmAbertoDasVendas(emAberto.tenantId, [...vendaDe.values()])
+    const planos = [...new Set(planoDe.values())]
+    const [aberto, financeiros] = await Promise.all([
+      getEmAbertoDasVendas(emAberto.tenantId, [...vendaDe.values()]),
+      Promise.all(planos.map(async id => [id, await getFinanceiroDoPlano(emAberto.tenantId, id)] as const)),
+    ])
+    const semReceber = new Map(financeiros.filter(([, f]) => f.lancamentos.length === 0).map(([id, f]) => [id, f.valor]))
     for (const [agendamento, venda] of vendaDe) {
       const texto = textos.get(agendamento)
-      if (texto) textos.set(agendamento, comOEmAberto(texto, aberto[venda]?.valor, emAberto.mostraOValor))
+      if (!texto) continue
+      const plano = planoDe.get(agendamento)
+      if (plano && semReceber.has(plano)) {
+        textos.set(agendamento, textoDoPlanoAReceber(semReceber.get(plano), { mostraOValor: emAberto.mostraOValor, daCliente: emAberto.daCliente }))
+      } else {
+        textos.set(agendamento, comOEmAberto(texto, aberto[venda]?.valor, emAberto.mostraOValor))
+      }
     }
   }
   return textos

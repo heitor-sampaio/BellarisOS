@@ -41,13 +41,15 @@ import { LotesVencendo } from '@/components/shared/lotes-vencendo'
 import { EstoqueAbaixoDoMinimo } from '@/components/shared/estoque-abaixo-do-minimo'
 import { itensAbaixoDoMinimo } from '@/lib/estoque/abaixo-do-minimo'
 import { lotesVencendoDoRecorte } from '@/lib/estoque/lotes'
+import { etapasDoQueOCargoVe } from '@/lib/dashboard/etapas-do-ciclo'
 import { AvatarDaCliente as Avatar, ClientesDoPeriodo, ReativarClientes, deQuemSaoAsClientes } from '@/components/shared/quadros-de-clientes'
+import { ROTULO_DO_STATUS } from '@/lib/agenda/rotulo-do-status'
 
 // O avatar da cliente é o dos quadros de clientes (um desenho só, F7b).
 
 // --- Status chips -------------------------------------------------
 const STATUS_STYLE: Record<string, { label: string; bg: string; color: string }> = {
-  SCHEDULED:   { label: 'Aguardando',  bg: 'var(--bg-app)',      color: 'var(--text-muted)' },
+  SCHEDULED:   { label: ROTULO_DO_STATUS.SCHEDULED, bg: 'var(--bg-app)',      color: 'var(--text-muted)' },
   CONFIRMED:   { label: 'Confirmado',  bg: 'var(--brand-soft)',  color: 'var(--brand)'      },
   ARRIVED:     { label: 'Chegou',      bg: 'var(--success-soft)', color: 'var(--success)'    },
   IN_PROGRESS: { label: 'Em atend.',   bg: 'var(--warning-soft)',color: 'var(--warning)'    },
@@ -218,7 +220,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
       ? getClientesParaReativarDoRecorte({
           tenantId: ctx.tenantId!, unidade: { id: branchId, name: branch.name }, desde: ninetyDaysAgo, professionalId: proId,
         })
-      : Promise.resolve({ total: 0, lista: [], comVisita: 0, recentesSemVisita: 0, daUnidade: true }),
+      : Promise.resolve({ total: 0, lista: [], comVisita: 0, recentesSemVisita: 0 }),
 
     // Ticket médio = o pago pelas clientes ÷ as que pagaram (2026-10-29): dinheiro.
     canFinancial
@@ -336,7 +338,9 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   // até agora, o mesmo dos cartões. De 2026-10-28 a 10-29 fechava no fim do
   // mês (D12), com os horários de mais tarde e o cancelado de amanhã.
   const funnel = [
-    { label: 'Novos clientes',    count: core.newClients,            color: 'var(--brand)' },
+    // "Novos clientes" só na rede (o Heitor, 18/11: "o cliente é da rede"): na
+    // unidade da rede de duas ou mais o número não existe (nulo) e a etapa sai.
+    ...(core.newClients === null ? [] : [{ label: 'Novos clientes', count: core.newClients, color: 'var(--brand)' }]),
     // A12 da 16ª: a conta é até agora; a etapa diz também os de hoje que ainda vêm.
     { label: 'Agendamentos',      count: core.appointmentsTotal,     color: 'var(--brand-2)',
       nota: aindaHoje > 0 ? `${aindaHoje} ainda hoje` : undefined },
@@ -696,14 +700,15 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
         {canClients && (
           <ClientesDoPeriodo
             titulo="Clientes no mês"
-            // A10 da 13ª: o quadro diz o seu recorte — as novas clientes são as que
-            // FREQUENTAM a unidade (a tag; C6), não as cadastradas nela.
+            // A10 da 13ª: o quadro diz o seu recorte. A cliente é da REDE (o Heitor,
+            // 18/11): na unidade da rede de duas ou mais não há "novas clientes".
             subtitulo={proId
-              ? `As suas novas clientes e os seus agendamentos neste mês, até agora${nasUnidades(unidadesDaAgenda)}`
-              : paraReativar.daUnidade
-                ? 'Novas clientes atendidas na unidade e os agendamentos da unidade, neste mês, até agora'
+              ? `${core.newClients === null ? 'Os seus agendamentos' : 'As suas novas clientes e os seus agendamentos'} neste mês, até agora${nasUnidades(unidadesDaAgenda)}`
+              : core.newClients === null
+                ? 'Os agendamentos da unidade, neste mês, até agora'
                 : 'Novas clientes da rede e os agendamentos, neste mês, até agora'}
-            etapas={funnel}
+            // A32 da 24ª: sem a Agenda, sem as etapas da agenda (eram zeros).
+            etapas={etapasDoQueOCargoVe(funnel, canAgenda)}
           />
         )}
 
@@ -713,7 +718,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
             clientes={toReactivate.map(c => ({ id: c.id, name: c.name, diasSemVir: c.daysSince, antesDoSistema: c.antesDoSistema }))}
             total={inactiveCount}
             comVisita={paraReativar.comVisita} recentesSemVisita={paraReativar.recentesSemVisita}
-            deQuem={deQuemSaoAsClientes({ daUnidade: paraReativar.daUnidade, dela: !!proId })}
+            deQuem={deQuemSaoAsClientes({ dela: !!proId })}
             hrefAgendar={`/${slug}/agenda`}
             hrefVerTodas={`/${slug}/clients?status=active`}
           />

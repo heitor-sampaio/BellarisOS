@@ -77,8 +77,8 @@ test('D3: o checkout do plano diz que a sessão 1 já está agendada, e o fim a 
     await euVendiOPlano(page)
     await janela.getByRole('button', { name: 'Ir para a documentação' }).click()
     // Sem documento configurado, a documentação só confirma.
-    await janela.getByRole('button', { name: 'Receber o plano', exact: true }).click()
-    await expect(page.getByText('Plano fechado: 2 sessões. 1 já agendada, 1 sem data — agende pela ficha quando a cliente marcar.'))
+    await janela.getByRole('button', { name: /^(Receber R\$|Fechar a comanda)/ }).click()
+    await expect(page.getByText(/Plano fechado: 2 sessões\. 1 já agendada, 1 sem data — agende pela ficha quando .+ marcar\./))
       .toBeVisible({ timeout: 30_000 })
   })
   // A sessão 1 segue com o agendamento dela (o checkout não marcou outro).

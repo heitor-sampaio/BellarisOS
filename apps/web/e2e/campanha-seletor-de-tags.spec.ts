@@ -18,10 +18,9 @@ test.beforeAll(async () => {
   const outra = await criarOutraRede(`cst${marca}`)
   f = {
     outra,
-    membro: await criarMembro(`cst${marca}`, {
-      tenant: outra.tenantId, rotulo: 'Marketing',
-      permissoes: [{ modulo: 'marketing', nivel: 'MANAGE' }],
-    }),
+    // A campanha é configuração da rede toda: só a Admin da rede a monta (o
+    // Heitor, 18/11: "Configuração da rede toda só pela conta admin").
+    membro: await criarMembro(`cst${marca}`, { tenant: outra.tenantId, rotulo: 'Marketing', donoDaRede: true, permissoes: [] }),
   }
 })
 test.afterAll(async () => {

@@ -56,8 +56,9 @@ test.beforeAll(async () => {
     ],
   })
   criado.membros.push(alvo)
+  // Quem autoriza o suporte é a Admin da rede (2026-11-18).
   const gestor = await criarMembro(`sigest${marca}`, {
-    tenant: outra.tenantId, rotulo: 'Gestor', permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }],
+    tenant: outra.tenantId, rotulo: 'Gestor', donoDaRede: true, permissoes: [],
   })
   criado.membros.push(gestor)
   const atendente = await criarAtendente(`si${marca}`, { papel: 'SUPORTE' })

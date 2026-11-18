@@ -84,7 +84,8 @@ describe('A34: o último funil escolhido fica [7]', () => {
     expect((await funilDoDashboard({ funis, pedido: null, lembrado: 'arquivado', lerFunil, total: e => e.total })).funil?.id).toBe('corporal')
   })
   it('o seletor anota a escolha; o quadro (nos dois portais) e o relatório leem', () => {
-    expect(ler('components/shared/funnel-select.tsx')).toContain('COOKIE_DO_FUNIL')
+    // A42 da 24ª: o cookie se monta em lib/crm/funil-lembrado (cookieDoFunilLembrado, com o COOKIE_DO_FUNIL).
+    expect(ler('components/shared/funnel-select.tsx')).toContain('cookieDoFunilLembrado(')
     for (const f of ['app/admin/oportunidades/page.tsx', 'app/[slug]/oportunidades/page.tsx', 'components/admin/reports-bi-section.tsx']) {
       expect(ler(f), f).toContain('funilLembrado(')
     }

@@ -1,10 +1,10 @@
 import type { TenantContext } from '@estetica-os/types'
-import { podeReceber } from '@/lib/auth'
+import { podeReceber, can, isOwnScope } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { getFechamentoDoDia, getAvisosDoFechamento } from '@/lib/metrics'
 import { diaDoFechamento, janelaDoDia, diaAindaAberto } from '@/lib/financeiro/fechamento'
-import { linhasDaConferencia, movimentoDepoisDoFechamento, fechamentoGravadoDaLinha } from '@/lib/financeiro/conferencia-do-fechamento'
+import { linhasDaConferencia, movimentoDepoisDoFechamento, fechamentoGravadoDaLinha, linkDoCsvDoFechamento } from '@/lib/financeiro/conferencia-do-fechamento'
 import { normalizarHorario } from '@/lib/agenda/horario'
 import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { comandasDoPdv } from '@/lib/pdv/comandas'
@@ -119,6 +119,9 @@ export async function FechamentoDoDia({ ctx, unidades, unidadeId, diaPedido, bas
             porQuemRecebeu={porQuemRecebeu}
             bandeiras={bandeiras}
             daRede={daRede}
+            // A23 da 24ª: o CSV do fechamento é de quem vê o Financeiro da unidade inteira (CX6).
+            linkDoCsv={can(ctx, 'financial', 'VIEW') && !isOwnScope(ctx, 'financial')
+              ? linkDoCsvDoFechamento(basePath, unidades.length > 1 ? unidadeId : null) : null}
             comandasAbertas={abertas.length}
             avisos={avisos}
             movimentoDepois={movimentoDepois}

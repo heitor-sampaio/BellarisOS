@@ -1,17 +1,20 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { SeloUnidadeDesativada } from '@/components/shared/selo-unidade-desativada'
 import { useRouter } from 'next/navigation'
 import { ChevronDown, Download } from 'lucide-react'
 import { formatBRL } from '@estetica-os/utils'
 import { fecharComissoes, estornarFechamento } from '@/actions/comissoes'
+import { dinheiroNaGavetaDeHoje } from '@/actions/fechamento'
+import { avisoDaGavetaNoPagamento } from '@/lib/financeiro/conferencia-do-fechamento'
 import type { ResumoDoProfissional, LancamentoDoExtrato, Fechamento } from '@/lib/comissoes/leitura'
 import { textoDaBase } from '@/lib/comissoes/base-efetiva'
 import { origemDoLancamento as origemDe, tituloDoLancamento, regraDoLancamento, rotuloDaBaseDoLancamento as base, csvDoExtrato, ehDeVenda, vinculosDoExtrato, situacaoDoLancamento, textoDoFechamento } from '@/lib/comissoes/extrato-texto'
 import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
+import { JanelaModal } from '@/components/shared/janela-modal'
 
 /**
  * Financeiro → Comissões (os dois portais). Por profissional e unidade: o que
@@ -251,6 +254,16 @@ function Fechar({ profissional, periodo, rotuloDoPeriodo, emCurso, lancamentos }
   const pagarAgora = Math.round(marcados.reduce((t, l) => t + l.amount * 100, 0)) / 100
   const ficam = lancamentos.length - marcados.length
 
+  // A22 da 24ª (princípio 2): pagar em Dinheiro que deixa a gaveta de hoje negativa avisa — não recusa.
+  const [naGaveta, setNaGaveta] = useState<number | null>(null)
+  useEffect(() => {
+    if (!confirmando || metodo !== 'CASH') return
+    let vivo = true
+    void dinheiroNaGavetaDeHoje(profissional.branchId).then(r => { if (vivo) setNaGaveta(r?.naGaveta ?? null) })
+    return () => { vivo = false }
+  }, [confirmando, metodo, profissional.branchId])
+  const avisoDaGaveta = metodo === 'CASH' && naGaveta != null && pagarAgora > 0 ? avisoDaGavetaNoPagamento(naGaveta, pagarAgora) : null
+
   function alternar(id: string) {
     setDesmarcados(atual => {
       const novo = new Set(atual)
@@ -326,6 +339,9 @@ function Fechar({ profissional, periodo, rotuloDoPeriodo, emCurso, lancamentos }
               {pendente ? 'Pagando…' : 'Confirmar pagamento'}
             </button>
           </div>
+          {avisoDaGaveta && (
+            <p data-gaveta-no-pagamento role="note" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>{avisoDaGaveta}</p>
+          )}
           {marcados.length === 0 && (
             <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Marque ao menos um lançamento para pagar.</p>
           )}
@@ -424,23 +440,27 @@ function LinhaDeFechamento({ f, podeEstornar, fusoDaRede: daRede }: { f: Fechame
           Estornado em {data(f.estornadoAt, fusoDaRede)}{f.estornoMotivo ? ` — ${f.estornoMotivo}` : ''}. Os lançamentos voltaram para “a pagar”.
         </p>
       )}
+      {/* A29 da 24ª: o estorno numa janela, como nas outras telas (era um bloco na linha). */}
       {aberto && (
-        <div role="group" aria-label="Estornar o fechamento"
-          style={{ padding: 12, borderRadius: 'var(--radius-field-token)', border: '1px solid var(--border)', background: 'var(--bg-app)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
-            A despesa de {formatBRL(f.total)} é estornada no financeiro e os lançamentos voltam para “a pagar”.
-          </p>
-          <input className="field" aria-label="Motivo do estorno" placeholder="Motivo (obrigatório)" value={motivo}
-            onChange={e => setMotivo(e.target.value)} maxLength={300} />
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button type="button" className="btn-secondary" onClick={() => setAberto(false)} disabled={pendente}>Cancelar</button>
-            <button type="button" className="btn-primary" onClick={estornar} disabled={pendente || !motivo.trim()}>
-              {pendente ? 'Estornando…' : 'Confirmar estorno'}
-            </button>
+        <JanelaModal rotulo="Estornar o fechamento?" largura={440} travado={pendente} onFechar={() => { setAberto(false); setErro(null) }} fechaNoFundo={false}>
+          <div data-estornar-fechamento style={{ padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Estornar o fechamento?</h2>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+              <strong style={{ color: 'var(--text)' }}>{f.professionalName} · {formatBRL(f.total)}</strong>. A despesa é estornada no financeiro e os lançamentos voltam para “a pagar”.
+            </p>
+            <input className="field" aria-label="Motivo do estorno" placeholder="Motivo (obrigatório)" value={motivo}
+              onChange={e => setMotivo(e.target.value)} maxLength={300} autoFocus />
+            {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button type="button" className="btn-secondary" onClick={() => setAberto(false)} disabled={pendente}>Cancelar</button>
+              <button type="button" className="btn-primary" onClick={estornar} disabled={pendente || !motivo.trim()}>
+                {pendente ? 'Estornando…' : 'Confirmar estorno'}
+              </button>
+            </div>
           </div>
-        </div>
+        </JanelaModal>
       )}
-      {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
+      {erro && !aberto && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
     </div>
   )
 }

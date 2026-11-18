@@ -70,7 +70,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <UmaUnidadeProvider valor={umaUnidade} nome={nomeDaRede}>
     <FusoProvider fuso={fuso}>
     <SidebarProvider>
-      <Suspense fallback={null}><AvisoDaUrl /></Suspense>
       <AdminSidebar permissions={ctx.permissions} scopes={ctx.scopes} plano={ctx.plano ?? null} />
       <Topbar userName={ctx.userName || 'Usuário'} userRole={ctx.role} roleLabel={ctx.roleLabel} internalUserId={ctx.internalUserId} initialUnread={initialUnread} slug={null} permissions={ctx.permissions} scopes={ctx.scopes} plano={ctx.plano ?? null} agendaPropria={isOwnScope(ctx, 'agenda')} suporte={ctx.suporte ?? null} assinatura={await avisoDaAssinatura(ctx)} saudacaoInicial={saudacao(new Date(), fuso)} />
       <main style={{
@@ -83,6 +82,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         overflowX:     'clip',
         minWidth:      0,
       }}>
+        {/* A23 da 15ª: o aviso da URL é uma faixa no topo do conteúdo, não um toast. */}
+        <Suspense fallback={null}><AvisoDaUrl /></Suspense>
         {children}
       </main>
       {/* A secretária virtual, por cima de todas as telas da equipe (docs/regras/copilot.md). */}

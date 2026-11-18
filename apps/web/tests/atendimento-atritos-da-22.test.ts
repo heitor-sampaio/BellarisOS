@@ -33,13 +33,16 @@ const modulosDo = (p: Pedido) => p.ops.find(o => o.op === 'in' && o.args[0] === 
 
 const UNIDADE = '11111111-1111-4111-8111-111111111111'
 
-describe('D1: quem conclui é quem ALCANÇA o atendimento — o Prontuário em Gerenciar de todos E a Agenda de todos', () => {
-  it('o cargo com o Prontuário de todos e a Agenda só a própria não entra', async () => {
+// Desde 2026-11-18 quem conclui é o Atendimento em Gerenciar (o Heitor: "Só
+// inicia e conclui atendimento quem tem gerenciar no atendimento"); era o
+// Prontuário em Gerenciar. O laço da Agenda de todos (D1) fica.
+describe('D1: quem conclui é quem ALCANÇA o atendimento — o Atendimento em Gerenciar de todos E a Agenda de todos', () => {
+  it('o cargo com o Atendimento de todos e a Agenda só a própria não entra', async () => {
     const { quemConcluiOAtendimento } = await import('@/lib/equipe/quem-desfaz')
     responder = p => {
       if (p.tabela === 'role_permissions') {
         const m = modulosDo(p)
-        if (m?.includes('medical_records')) return { data: [{ role_id: 'so-prontuario' }, { role_id: 'os-dois' }], error: null }
+        if (m?.includes('atendimento')) return { data: [{ role_id: 'so-atendimento' }, { role_id: 'os-dois' }], error: null }
         if (m?.includes('agenda')) return { data: [{ role_id: 'os-dois' }, { role_id: 'so-agenda' }], error: null }
       }
       if (p.tabela === 'tenant_roles') return { data: [{ id: 'admin-da-rede' }], error: null }

@@ -4,6 +4,8 @@ import { getTenantContext, assertPermission, assertRecurso, can } from '@/lib/au
 import { getCachedNetworkProcedures } from '@/lib/cached-queries'
 import { NotificationCampaignForm } from '@/components/admin/notification-campaign-form'
 import { Dica } from '@/components/shared/dica'
+import { redirect } from 'next/navigation'
+import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,7 +14,9 @@ export default async function NovaCampanhaPage() {
   // A funcionalidade é do PLANO da rede (lib/planos/recursos.ts).
   assertRecurso(ctx, 'campanhas')
   assertPermission(ctx, 'marketing', 'MANAGE')
-
+  // A campanha é configuração da rede toda: só a Admin da rede cria (o Heitor,
+  // 18/11). Quem não é volta à lista, que diz por quê — a action recusaria.
+  if (!mexeNaConfigDaRede(ctx)) redirect('/admin/notificacoes')
 
   // O público é da rede, sem filtro de unidade (MK2 do Bloco Tags).
   const procedures = await getCachedNetworkProcedures(ctx.tenantId!)

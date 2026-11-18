@@ -60,8 +60,10 @@ test.beforeAll(async () => {
   alheia = await criarOutraRede(`daa${marca}`)
   gestor = await criarMembro(`dag${marca}`, {
     tenant: rede.tenantId, rotulo: 'Recepção documentos',
+    // Iniciar é do Atendimento em Gerenciar (o Heitor, 18/11: "Só inicia e
+    // conclui atendimento quem tem gerenciar no atendimento").
     permissoes: [
-      { modulo: 'documents', nivel: 'MANAGE' }, { modulo: 'agenda', nivel: 'MANAGE' },
+      { modulo: 'documents', nivel: 'MANAGE' }, { modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'atendimento', nivel: 'MANAGE' },
       { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'medical_records', nivel: 'VIEW' },
     ],
   })

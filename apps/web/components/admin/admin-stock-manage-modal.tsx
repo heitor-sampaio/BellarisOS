@@ -424,6 +424,8 @@ function AjusteForm({ product, allBranches, defaultBranchId, sugerida, onClose, 
   const [newQty,    setNewQty]    = useState('')
   const [confirmed, setConfirmed] = useState(false)
   const [loteDoAjuste, setLoteDoAjuste] = useState('')
+  // A10 da 24ª: o tipo do ajuste — a contagem (inventário) ou a correção do que se digitou errado.
+  const [tipoDoAjuste, setTipoDoAjuste] = useState<'inventario' | 'correcao_de_cadastro'>('inventario')
   const lotesDaUnidade = (product.lotes ?? []).filter(l => l.unidadeId === branchId)
 
   // D3 da 7ª simulação: a toxina tinha 780 UI e o ajuste mostrava "8 frasco"
@@ -641,6 +643,21 @@ function AjusteForm({ product, allBranches, defaultBranchId, sugerida, onClose, 
           )}
         </>
       )}
+
+      {/* A10 da 24ª: "Correção de cadastro" não é perda — fica fora do consumo com perdas e do giro. */}
+      <FieldWrap>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
+          <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, letterSpacing: '0.04em' }}>Tipo do ajuste</span>
+          <Dica rotulo="Inventário ou correção de cadastro">
+            Inventário: a contagem da prateleira; a diferença a menos conta como perda. Correção de cadastro: a quantidade ou o custo
+            foram digitados errado na entrada — o ajuste acerta o saldo e não conta como perda, nem no consumo com perdas, nem no giro.
+          </Dica>
+        </span>
+        <SegSelect ariaLabel="Tipo do ajuste" value={tipoDoAjuste}
+          options={[{ key: 'inventario', label: 'Inventário' }, { key: 'correcao_de_cadastro', label: 'Correção de cadastro' }]}
+          onSelect={k => setTipoDoAjuste(k as 'inventario' | 'correcao_de_cadastro')} />
+        <input type="hidden" name="tipo_do_ajuste" value={tipoDoAjuste} />
+      </FieldWrap>
 
       <FieldWrap>
         <label htmlFor="ajuste-motivo" style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>Motivo *</label>
@@ -1164,6 +1181,7 @@ function HistoricoTab({ product, defaultBranchId, podeDesfazer = true, onAlterou
                   : m.type === 'LOSS' && m.quantity > 0 ? 'Perda desfeita'
                   : m.desfazAjuste ? 'Ajuste desfeito'
                   : m.brinde ? 'Brinde da fidelidade'
+                  : m.correcao ? 'Correção de cadastro'
                   : (MOV_LABEL[m.type] ?? m.type)}
                 <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · {m.branchName}</span>
               </p>

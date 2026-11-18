@@ -429,7 +429,7 @@ export function Copilot() {
           <span className="copilot-icone"><Sparkles size={15} /></span>
           <div>
             <strong>Copilot</strong>
-            <span>{vista === 'conversas' ? 'Suas conversas' : (titulo ?? (conversaId ? 'Conversa' : 'Sua secretária virtual'))}</span>
+            <span>{vista === 'conversas' ? 'Suas conversas' : (titulo ?? (conversaId ? 'Conversa' : 'Pergunte ou peça, conversando'))}</span>
           </div>
         </div>
         <button type="button" className="copilot-acao-topo" aria-label="Conversas" aria-pressed={vista === 'conversas'}

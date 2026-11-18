@@ -23,7 +23,7 @@ import type { ParteDaBaixa } from '@/lib/financeiro/baixa-em-formas'
  *   janela pergunta a forma (a parcela do crediário nasce sem meio — D6 da 6ª).
  * As actions conferem tudo de novo (rede, unidade ao alcance, permissão).
  */
-export function AcoesDoLancamentoDaFicha({ lancamento, slug, podeEstornar, podeReceber, aoEstornar }: {
+export function AcoesDoLancamentoDaFicha({ lancamento, slug, podeEstornar, podeReceber, aoEstornar, forma }: {
   lancamento: {
     id: string; descricao: string; valor: number; pago: boolean
     estornada?: boolean; estorno?: boolean; saida?: boolean
@@ -37,6 +37,8 @@ export function AcoesDoLancamentoDaFicha({ lancamento, slug, podeEstornar, podeR
   podeReceber: boolean
   /** A2 da 17ª: no PDV, a comanda reaberta pelo estorno vai às Abertas (sem isto, a tela só recarrega). */
   aoEstornar?: () => void
+  /** Limite da 21ª: a forma desta linha, quando a parcela foi recebida em várias ("Estornar (Pix)"). */
+  forma?: string
 }) {
   const router = useRouter()
   const [pendente, iniciar] = useTransition()
@@ -93,7 +95,7 @@ export function AcoesDoLancamentoDaFicha({ lancamento, slug, podeEstornar, podeR
         </button>
       )}
       {mostraEstornar && (
-        <button type="button" data-estornar onClick={() => l.vendaDeCredito ? setCreditoAEstornar(true) : setAEstornar(true)}
+        <button type="button" data-estornar aria-label={forma ? `Estornar (${forma})` : undefined} onClick={() => l.vendaDeCredito ? setCreditoAEstornar(true) : setAEstornar(true)}
           style={{ ...botao, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)' }}>
           <RotateCcw size={12} aria-hidden /> Estornar
         </button>

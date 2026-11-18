@@ -23,7 +23,7 @@ export async function DetalheDePlano({
   const ctx = await getTenantContext()
   // A funcionalidade é do PLANO da rede (lib/planos/recursos.ts).
   assertRecurso(ctx, 'planos_de_tratamento')
-  assertPermission(ctx, 'agenda', 'VIEW')
+  assertPermission(ctx, 'atendimento', 'VIEW')
 
   const { plano, error } = await getCabecalhoDoPlano(planId)
   // O catálogo e o preço são os da unidade DO PLANO (D4 da 14ª, F73; D2 da

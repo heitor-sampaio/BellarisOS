@@ -11,16 +11,19 @@ export interface RegrasDoPublico {
   has_app_account?: boolean
   max_days_since_visit?: number
   min_visits?: number
+  /** A37 da 15ª: as clientes escolhidas uma a uma. */
+  client_ids?: string[]
 }
 
 const SEXO: Record<'M' | 'F' | 'O', string> = { F: 'feminino', M: 'masculino', O: 'outro' }
 
 export function filtrosDoPublico(
   regras: RegrasDoPublico,
-  nomes: { procedimentos?: { id: string; name: string }[] } = {},
+  nomes: { procedimentos?: { id: string; name: string }[]; clientes?: { id: string; name: string }[] } = {},
 ): string[] {
   const nomeDe = (lista: { id: string; name: string }[] | undefined, id: string) => lista?.find(x => x.id === id)?.name ?? 'removido'
   const saida: string[] = []
+  if (regras.client_ids?.length) saida.push(`Clientes: ${regras.client_ids.map(id => nomeDe(nomes.clientes, id)).join(', ')}`)
   if (regras.tags?.length) saida.push(`Tags: ${regras.tags.join(', ')}`)
   if (regras.genders?.length) saida.push(`Sexo: ${regras.genders.map(g => SEXO[g]).join(', ')}`)
   if (regras.procedure_ids?.length) saida.push(`Fez: ${regras.procedure_ids.map(id => nomeDe(nomes.procedimentos, id)).join(', ')}`)

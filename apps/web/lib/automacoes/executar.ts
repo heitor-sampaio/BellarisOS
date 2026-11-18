@@ -8,6 +8,7 @@ import type {
   ConfigEsperaDuracao, ConfigEsperaAte, ConfigBuscarClientes,
 } from '@estetica-os/types'
 import { avaliarGrupo, escolherSaida, caminhosDoCampo } from './condicoes'
+import { gatilhoCasa } from './gatilho-casa'
 import {
   contextoDoEvento, hidratarParaCaminhos,
   type ContextoDaExecucao, type EventoDoGatilho,
@@ -16,11 +17,11 @@ import { interpolarTexto, caminhosDoTexto } from './variaveis'
 import { fusoDaUnidade, fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 import { notificarEquipe, anotarNaLinhaDoTempo } from './acoes'
 import {
-  moverDeEtapa, marcarDesfecho, adicionarTagAoCliente, definirResponsavel,
+  moverDeEtapa, marcarDesfecho, adicionarTagAoCliente, removerTagDoCliente, definirResponsavel,
   type AtorDaAutomacao,
 } from './acoes-crm'
 import { mandarMensagem } from './acoes-mensagem'
-import { podeFalarCom, limitesDe } from './limites'
+import { podeFalarCom, limitesDe, vesperaSeCairNoSilencio } from './limites'
 import { retidaPeloSilencio, reconferirDepoisDoSilencio } from './silencio'
 import { quandoVoltar, quandoChegarEm, buscarClientes } from './tempo'
 import { resumoDoNo } from './resumo'
@@ -50,7 +51,7 @@ import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
  */
 const ACOES: TipoDeNo[] = [
   NODES.ACAO_MENSAGEM, NODES.ACAO_NOTIFICAR_EQUIPE, NODES.ACAO_MOVER_ETAPA,
-  NODES.ACAO_DESFECHO, NODES.ACAO_TAG_CLIENTE, NODES.ACAO_ATRIBUIR,
+  NODES.ACAO_DESFECHO, NODES.ACAO_TAG_CLIENTE, NODES.ACAO_REMOVER_TAG, NODES.ACAO_ATRIBUIR,
   NODES.ACAO_ANOTAR, NODES.BUSCAR_CLIENTES,
 ]
 
@@ -149,23 +150,11 @@ export async function despacharEvento(
       if (!gatilho) continue
 
       // O filtro do gatilho roda ANTES de criar o run: "só quando o valor passa
-      // de 500" não deveria deixar rastro de execução para todo pagamento.
-      const config = gatilho.config as { filtro?: Parameters<typeof avaliarGrupo>[1] }
-      if (config.filtro) {
-        const ctx = contextoDoEvento(evento)
-        try {
-          await hidratarParaCaminhos(
-            ctx, evento, tenantId,
-            (config.filtro.regras ?? []).flatMap(r => caminhosDoCampo(r.campo)),
-          )
-        } catch (e) {
-          // D3 da 16ª: a entidade do filtro não carregou — esta automação não
-          // dispara (falha fechada), e as outras do mesmo fato seguem.
-          console.error('[despacharEvento] filtro', linha.id, (e as Error).message)
-          continue
-        }
-        if (!avaliarGrupo(ctx, config.filtro)) continue
-      }
+      // de 500" não deveria deixar rastro de execução para todo pagamento. A
+      // régua é a mesma da pergunta "Mover dispara…?" da tela (A35 da 22ª);
+      // a entidade do filtro que não carrega não dispara (falha fechada, D3 da
+      // 16ª), e as outras do mesmo fato seguem.
+      if (!(await gatilhoCasa(grafo, evento, tenantId, { rotulo: linha.id as string }))) continue
 
       const { data: criado, error: insErro } = await admin.from('automation_runs').insert({
         tenant_id:     tenantId,
@@ -429,10 +418,15 @@ async function rodarNo(
     case NODES.ACAO_NOTIFICAR_EQUIPE: {
       const cfg = no.config as ConfigAcaoNotificarEquipe
       const textos = [cfg.titulo ?? '', cfg.corpo ?? '']
-      await hidratarParaCaminhos(contexto, evento, run.tenant_id, textos.flatMap(caminhosDoTexto))
+      await hidratarParaCaminhos(contexto, evento, run.tenant_id, [
+        ...textos.flatMap(caminhosDoTexto), ...(cfg.alvo === 'responsavel' ? ['lead'] : []),
+      ])
+      const lead = contexto.lead as { id?: string; responsavelId?: string | null } | null | undefined
       const r = await notificarEquipe(run.tenant_id, {
         alvo:   cfg.alvo,
         alvoId: cfg.alvoId ?? null,
+        responsavelId: lead?.responsavelId ?? null,
+        leadId: lead?.id ?? null,
         titulo: interpolarTexto(cfg.titulo ?? '', contexto, await fusoDaMensagem(run.tenant_id, contexto, evento)),
         corpo:  interpolarTexto(cfg.corpo ?? '', contexto, await fusoDaMensagem(run.tenant_id, contexto, evento)),
         automacao: automacao.nome,
@@ -506,13 +500,20 @@ async function rodarNo(
 
     case NODES.ACAO_TAG_CLIENTE: {
       const cfg = no.config as ConfigAcaoTagCliente & { modo?: string }
-      // T4 (Bloco Tags): a ação só adiciona. Um nó antigo, gravado para tirar
-      // a tag, não faz nada — inverter o que a rede montou seria pior.
-      if (cfg.modo && cfg.modo !== 'adicionar') {
-        return { resumo: { alterado: false, motivo: 'A ação só adiciona tag: a de tirar saiu do sistema. Refaça este passo.' } }
-      }
       await hidratarParaCaminhos(contexto, evento, run.tenant_id, ['cliente'])
+      // O passo de antes da "Remover tag" própria, gravado com o modo de
+      // remover, tira a tag — o que a rede montou (auditoria das regras,
+      // 2026-11-18; de 14/11 a 18/11 ele não fazia nada).
+      if (cfg.modo === 'remover') {
+        return { resumo: await removerTagDoCliente(atorDaAutomacao(run, automacao), contexto, cfg.tag) }
+      }
       return { resumo: await adicionarTagAoCliente(atorDaAutomacao(run, automacao), contexto, cfg.tag) }
+    }
+
+    case NODES.ACAO_REMOVER_TAG: {
+      const cfg = no.config as ConfigAcaoTagCliente
+      await hidratarParaCaminhos(contexto, evento, run.tenant_id, ['cliente'])
+      return { resumo: await removerTagDoCliente(atorDaAutomacao(run, automacao), contexto, cfg.tag) }
     }
 
     case NODES.ACAO_ATRIBUIR: {
@@ -536,10 +537,17 @@ async function rodarNo(
       const cfg = no.config as ConfigEsperaAte
       await hidratarParaCaminhos(contexto, evento, run.tenant_id, caminhosDoCampo(cfg.campo ?? ''))
       const r = quandoChegarEm(cfg, contexto)
+      // D17 ("a + c opcional"): a espera "antes de" que terminaria no
+      // silêncio termina na véspera às 20:00, se a rede ligou a opção.
+      const vespera = r.data && Number(cfg.minutos ?? 0) < 0
+        ? vesperaSeCairNoSilencio(limitesDe(automacao.limites), r.data, new Date(), await fusoDaMensagem(run.tenant_id, contexto, evento))
+        : null
       // Momento que já passou não vira espera eterna: o fluxo segue agora, com
       // o motivo no passo. Travar num passado seria o pior sintoma possível —
       // nada acontece e nada explica.
-      return r.data
+      return vespera
+        ? { esperarAte: vespera, resumo: { esperando: 'até', campo: cfg.campo, ate: vespera.toISOString(), naVespera: true } }
+        : r.data
         ? { esperarAte: r.data, resumo: { esperando: 'até', campo: cfg.campo, ate: r.data.toISOString() } }
         : { resumo: { esperando: false, motivo: r.motivo } }
     }

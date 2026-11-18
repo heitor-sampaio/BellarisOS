@@ -11,7 +11,8 @@ import { getFinanceiroDoPlano } from '@/lib/metrics/plano'
 import { documentosDoPlanoNoPortal } from '@/lib/documentos/leitura'
 import { situacaoDaSessaoNoApp } from '@/lib/plano-de-tratamento/sessao-no-app'
 import { nomeDaSessao, nomeDoPlanoNoApp, descontoDoPlanoNoApp } from '@/lib/plano-de-tratamento/nome'
-import { propostaVencida, validoAteDaProposta } from '@/lib/plano-de-tratamento/validade'
+import { combinadoDoPlano, totalComOCombinado } from '@/lib/plano-de-tratamento/desconto-combinado'
+import { propostaVencida, validoAteDaProposta, avisoDaPropostaVencida } from '@/lib/plano-de-tratamento/validade'
 import { quemMarcaAsSessoes } from '@/lib/plano-de-tratamento/textos'
 import { redeTemContratoDePlano } from '@/lib/documentos/plano'
 import { avisoDoContratoDoPlanoNoApp, textoDoPlanoAceitoNoApp } from '@/lib/clientes/textos-do-app'
@@ -50,11 +51,12 @@ export default async function PlanoDaClientePage({ params, searchParams }: {
   if (!cliente) notFound()
 
   const plano = await ler(admin.from('treatment_plans')
-    .select('id, status, name, desconto, created_at, branches!inner(tenant_id), treatment_plan_sessions(id, sort_order, appointments!treatment_plan_sessions_appointment_id_fkey(status, scheduled_at, completed_at), treatment_plan_session_procedures(price, sort_order, procedures(id, name, is_active)))')
+    .select('id, status, name, desconto, desconto_combinado_tipo, desconto_combinado_valor, created_at, branches!inner(tenant_id), treatment_plan_sessions(id, sort_order, appointments!treatment_plan_sessions_appointment_id_fkey(status, scheduled_at, completed_at), treatment_plan_session_procedures(price, sort_order, procedures(id, name, is_active)))')
     .eq('id', id).eq('client_id', ctx.clientId!).eq('branches.tenant_id', cliente.tenant_id)
     .in('status', ['PROPOSED', 'ACCEPTED', 'COMPLETED'])
     .maybeSingle(), 'buscar o plano') as {
       id: string; status: 'PROPOSED' | 'ACCEPTED' | 'COMPLETED'; name: string | null; desconto: number | null; created_at: string
+      desconto_combinado_tipo: string | null; desconto_combinado_valor: number | string | null
       treatment_plan_sessions: Sessao[]
     } | null
   if (!plano) notFound()
@@ -82,6 +84,10 @@ export default async function PlanoDaClientePage({ params, searchParams }: {
     status: plano.status, tipos: documentos.map(d => d.tipo), recebido: (financeiro?.lancamentos.length ?? 0) > 0, redeTemContrato,
   })
   const valor = sessoes.reduce((t, s) => t + Math.round(precoDa(s) * 100), 0) / 100
+  // 22ª A20 (princípio 3): o desconto do plano combinado com a equipe — a
+  // cliente aceita vendo o total com ele. Aceito, ele já está nos preços
+  // (`plano_aceitar` o aplica), e o desconto dito é o aplicado (`plano.desconto`).
+  const combinado = proposto ? totalComOCombinado(valor, combinadoDoPlano(plano)) : { reais: 0, total: valor }
   const vencido = proposto && propostaVencida(plano.created_at, validade)
   const diaDaValidade = validoAteDaProposta(plano.created_at, validade).toLocaleDateString('pt-BR', { timeZone: fuso })
 
@@ -112,8 +118,8 @@ export default async function PlanoDaClientePage({ params, searchParams }: {
             {nomeDoPlanoNoApp(plano.name)}
           </h1>
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
-            {proposto ? 'Proposto' : plano.status === 'COMPLETED' ? 'Concluído' : 'Aceito'} · {sessoes.length} {sessoes.length === 1 ? 'sessão' : 'sessões'} · {formatBRL(valor)}
-            {descontoDoPlanoNoApp(plano.desconto) ? ` · ${descontoDoPlanoNoApp(plano.desconto)}` : ''}
+            {proposto ? 'Proposto' : plano.status === 'COMPLETED' ? 'Concluído' : 'Aceito'} · {sessoes.length} {sessoes.length === 1 ? 'sessão' : 'sessões'} · {formatBRL(combinado.total)}
+            {descontoDoPlanoNoApp(combinado.reais || plano.desconto) ? ` · ${descontoDoPlanoNoApp(combinado.reais || plano.desconto)}` : ''}
           </p>
         </div>
       </div>
@@ -166,18 +172,22 @@ export default async function PlanoDaClientePage({ params, searchParams }: {
         <section aria-label="Aceitar" className="card" style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Valor do plano</span>
-            <span style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--brand)', letterSpacing: '-0.01em' }}>{formatBRL(valor)}</span>
+            <span style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--brand)', letterSpacing: '-0.01em' }}>{formatBRL(combinado.total)}</span>
           </div>
+          {combinado.reais > 0 && (
+            <p data-desconto-combinado style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: -6 }}>
+              {formatBRL(valor)} com desconto de {formatBRL(combinado.reais)}
+            </p>
+          )}
+          {/* A validade é só informação (princípio 2, 2026-11-18): o vencido avisa e se aceita. */}
           {vencido ? (
-            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>
-              Proposta vencida em {diaDaValidade} — fale com a equipe para atualizar o plano.
+            <p data-proposta-vencida style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>
+              {avisoDaPropostaVencida(diaDaValidade)}
             </p>
           ) : (
-            <>
-              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Válido até {diaDaValidade}.</p>
-              <AceitarPlano slug={slug} planId={plano.id} />
-            </>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Válido até {diaDaValidade}.</p>
           )}
+          <AceitarPlano slug={slug} planId={plano.id} />
         </section>
       )}
 
@@ -189,7 +199,7 @@ export default async function PlanoDaClientePage({ params, searchParams }: {
                 num plano de R$ 3.490 dizia que não havia o que pagar — diz o valor, a combinar. */}
             {financeiro.lancamentos.length === 0 ? (
               <p data-plano-a-combinar style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 600 }}>
-                {formatBRL(valor)}, a combinar na unidade
+                {formatBRL(combinado.total)}{combinado.reais > 0 ? ` (com desconto de ${formatBRL(combinado.reais)})` : ''}, a combinar na unidade
               </p>
             ) : (
               <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 'var(--text-sm-sz)', fontWeight: 600 }}>

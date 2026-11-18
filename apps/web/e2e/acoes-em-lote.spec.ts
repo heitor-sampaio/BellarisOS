@@ -31,7 +31,9 @@ test.beforeAll(async () => {
   falsa = await subirUazapiFalsa()
   falsa.historico = { status: { processingComplete: true, diagnosis: [] }, chats: [], mensagens: {} }
   outra = await criarOutraRede(`lote${marca}`)
-  membro = await criarMembro(`lote${marca}`, { tenant: outra.tenantId, rotulo: 'Config', permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }] })
+  // As ações em lote são configuração da rede toda: só a Admin da rede (o
+  // Heitor, 18/11: "Configuração da rede toda só pela conta admin").
+  membro = await criarMembro(`lote${marca}`, { tenant: outra.tenantId, rotulo: 'Config', donoDaRede: true, permissoes: [] })
   for (const k of ['a', 'b', 'c', 'd'] as const) {
     const { data, error } = await db().from('whatsapp_numbers').insert({
       tenant_id: outra.tenantId, provider: 'uazapi', label: rotulo(k), is_active: true,

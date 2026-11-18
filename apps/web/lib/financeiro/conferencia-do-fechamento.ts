@@ -1,4 +1,6 @@
 import { parseDinheiro } from '@estetica-os/utils'
+import { rotuloDaFormaDoFechamento } from '@/lib/financeiro/formas'
+import { linkDaAba } from '@/lib/financeiro/abas'
 
 /**
  * A conferência do Fechamento do dia, uma linha por forma de pagamento (CX4
@@ -306,4 +308,52 @@ export function diferencaNaTela(l: LinhaDaConferencia, args: { conferindo: boole
   if (l.mudouDepois && l.conferido != null) return { tipo: 'a-conferir' }
   if (l.diferenca == null) return { tipo: 'nao-conferido' }
   return { tipo: 'valor', valor: l.diferenca }
+}
+
+/**
+ * A21 da 24ª simulação (princípio 2: avisar e oferecer, sem obrigar): fechar
+ * com "Faltou R$ 40,34" não pedia nem sugeria o motivo, e os fechamentos
+ * anteriores guardavam a diferença sem explicação. Com diferença e a
+ * observação vazia, a tela diz a diferença e pede o motivo — fechar continua
+ * valendo sem ele.
+ */
+export function pedidoDoMotivoDaDiferenca(diferencas: readonly { forma: string; valor: number }[], observacao: string): string | null {
+  if (observacao.trim()) return null
+  const comDiferenca = diferencas.filter(d => Math.round(d.valor * 100) !== 0)
+  if (!comDiferenca.length) return null
+  const partes = comDiferenca.map((d, i) => {
+    const verbo = d.valor < 0 ? 'faltou' : 'sobrou'
+    const texto = `${verbo} ${brl(Math.abs(d.valor))} no ${rotuloDaFormaDoFechamento(d.forma)}`
+    return i === 0 ? texto.charAt(0).toUpperCase() + texto.slice(1) : texto
+  })
+  const lista = partes.length === 1 ? partes[0] : `${partes.slice(0, -1).join(', ')} e ${partes[partes.length - 1]}`
+  return `${lista}: diga o motivo na observação.`
+}
+
+/** O motivo de um fechamento anterior: a observação; com diferença e sem ela, "sem motivo anotado" (A21). */
+export function motivoDoFechamentoAnterior(f: { observacao: string | null; diferenca: number }): string | null {
+  if (f.observacao?.trim()) return `“${f.observacao.trim()}”`
+  return Math.round(f.diferenca * 100) !== 0 ? 'sem motivo anotado' : null
+}
+
+/**
+ * A22 da 24ª (princípio 2: avisar, não recusar): pagar a comissão em Dinheiro
+ * levava a gaveta a −R$ 431,66 sem aviso — o Fechamento tinha o
+ * `avisoDaGavetaNegativa`, o "Fechar e pagar" não. `naGaveta` é o esperado em
+ * espécie de hoje (o mesmo número do Fechamento).
+ */
+export function avisoDaGavetaNoPagamento(naGaveta: number, valor: number): string | null {
+  const fica = Math.round(naGaveta * 100) - Math.round(valor * 100)
+  if (!(fica < 0)) return null
+  return `Pagar ${brl(valor)} em dinheiro deixa a gaveta de hoje em −${brl(Math.abs(fica) / 100)}: confira o dinheiro da gaveta, ou escolha outra forma.`
+}
+
+/**
+ * A23 da 24ª (princípio 7): o CSV do fechamento mora no Financeiro →
+ * Movimentações (CX6), e a tela de fechar não levava até ele. O link é o do
+ * mesmo portal (`/<slug>/pdv` → `/<slug>/financeiro`), com a unidade na rede.
+ */
+export function linkDoCsvDoFechamento(basePathDoPdv: string, unidadeId: string | null): string {
+  const base = basePathDoPdv.replace(/\/pdv$/, '/financeiro')
+  return linkDaAba(base, 'movimentacoes', { unidade: unidadeId ?? undefined })
 }

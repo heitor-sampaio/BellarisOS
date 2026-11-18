@@ -238,7 +238,8 @@ export function NotificationBell({ initialUnread, clientId }: Props) {
     setOpen(false)
     startTransition(async () => {
       await markNotificationRead(n.id)
-      setNotifications(prev => prev ? prev.filter(x => x.id !== n.id) : null)
+      // 22ª A40: o lido fica na lista, esmaecido — dá para abrir de novo.
+      setNotifications(prev => prev ? prev.map(x => x.id === n.id ? { ...x, is_read: true } : x) : null)
     })
   }
 
@@ -309,7 +310,7 @@ export function NotificationBell({ initialUnread, clientId }: Props) {
             <h2 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', margin: 0 }}>
               Notificações
             </h2>
-            {notifications !== null && notifications.length === 0 && (
+            {notifications !== null && notifications.every(n => n.is_read) && (
               <span style={{
                 fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)',
                 background: 'var(--bg-app)', border: '1px solid var(--hairline)',
@@ -453,8 +454,12 @@ function NotificationItem({ notification: n, onClick }: { notification: ClientNo
   return (
     <li
       onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } }}
+      data-lida={n.is_read ? '' : undefined}
       style={{
-        display: 'flex', gap: 10, padding: '11px 14px',
+        display: 'flex', gap: 10, padding: '11px 14px', opacity: n.is_read ? 0.6 : 1,
         background: n.is_received ? 'transparent' : 'var(--brand-soft)',
         borderBottom: '1px solid var(--hairline)',
         alignItems: 'flex-start', cursor: 'pointer',
@@ -474,15 +479,15 @@ function NotificationItem({ notification: n, onClick }: { notification: ClientNo
         <p style={{
           fontSize: 'var(--text-base-sz)', fontWeight: n.is_received ? 500 : 700,
           color: n.is_received ? 'var(--text-muted)' : 'var(--text)',
-          marginBottom: 2, lineHeight: 1.35,
-          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          marginBottom: 2, lineHeight: 1.35, overflowWrap: 'anywhere',
         }}>
           {n.title}
         </p>
         {n.body && (
           <p style={{
             fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', lineHeight: 1.4, marginBottom: 2,
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            // A48 da 24ª: até três linhas (cortava em uma, com reticências); o toque abre o texto inteiro.
+            display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'anywhere',
           }}>
             {n.body}
           </p>

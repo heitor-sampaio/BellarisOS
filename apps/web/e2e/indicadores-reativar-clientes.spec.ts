@@ -37,7 +37,10 @@ test('cadastrada há pouco não é "para reativar"; cadastrada há meses e sem v
 test('o card do mês no dashboard da unidade: clientes no mês (não "funil de leads"), com o número de cada etapa', async ({ browser }) => {
   const { criarMembro } = await import('./apoio/sessao')
   const membro = await criarMembro(`rvm${marca}`, {
-    tenant: rede!.tenantId, branchId: rede!.branchId, rotulo: 'Caixa', permissoes: [{ modulo: 'clients', nivel: 'VIEW' }, { modulo: 'financial', nivel: 'MANAGE' }],
+    // A Agenda em Ver: sem ela, o quadro não mostra as etapas da agenda (A32 da 24ª,
+    // docs/regras/indicadores.md) — e este teste é do número de cada etapa.
+    tenant: rede!.tenantId, branchId: rede!.branchId, rotulo: 'Caixa',
+    permissoes: [{ modulo: 'clients', nivel: 'VIEW' }, { modulo: 'financial', nivel: 'MANAGE' }, { modulo: 'agenda', nivel: 'VIEW' }],
   })
   const cliente = await rede!.criarCliente('Do mês')
   const { error } = await db().from('appointments').insert({

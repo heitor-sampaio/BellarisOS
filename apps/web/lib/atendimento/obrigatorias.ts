@@ -1,5 +1,5 @@
 import { primeiraObrigatoriaVazia, obrigatoriasVazias, type AnamnesisRow, type AnamnesisFieldType } from '@/lib/anamnesis'
-import { TIPOS_FORA_DO_PRE_ATENDIMENTO } from '@/lib/anamnese-geral'
+import { TIPOS_FORA_DO_PRE_ATENDIMENTO, anamneseRespondida, type AnamneseGeral } from '@/lib/anamnese-geral'
 
 /**
  * "Tudo que for obrigatório é obrigatório e barra qualquer progressão se não
@@ -43,4 +43,31 @@ export function faltaNaFichaDoProcedimento(
   const ignorar: AnamnesisFieldType[] = o.semInjetaveis ? ['injectable_map'] : []
   const f = primeiraObrigatoriaVazia(rows, respostas, ignorar)
   return f ? { onde: 'ficha', campo: f.id, rotulo: f.label, mensagem: `Falta preencher "${f.label}" na ficha de atendimento.` } : null
+}
+
+/**
+ * A faixa da ficha de saúde NUNCA respondida no atendimento (15ª A7;
+ * princípios 3 e 7): o "Finalizar" barra pelas obrigatórias dela, e a tela só
+ * avisava da ficha vencida. Diz quantas obrigatórias faltam, para responder
+ * ali ou mandar o link antes. Nula com a ficha respondida ou sem pergunta.
+ */
+export function avisoDaFichaNaoRespondida(
+  nome: string, anamnese: AnamneseGeral | null | undefined, rows: AnamnesisRow[],
+): string | null {
+  const respostas = anamnese?.respostas ?? {}
+  if (anamneseRespondida(anamnese)) return null
+  if (!rows.some(r => (r.fields ?? []).some(f => f.type !== 'section' && !TIPOS_FORA_DO_PRE_ATENDIMENTO.includes(f.type)))) return null
+  const n = rotulosQueFaltamNaAnamnese(rows, respostas).length
+  const quem = nome || 'quem está sendo atendido'
+  return `A ficha de saúde de ${quem} ainda não foi respondida${n ? ` (${n} obrigatória${n > 1 ? 's' : ''})` : ''}.`
+}
+
+/**
+ * O aviso do bloco do plano (A36 da 24ª, princípio 3): o "Gerar plano" barra
+ * pelas obrigatórias da ficha de saúde — o bloco diz quais antes do clique,
+ * como faz com as queixas.
+ */
+export function avisoDaFichaParaOPlano(rows: AnamnesisRow[], respostas: Record<string, unknown>): string | null {
+  const faltam = rotulosQueFaltamNaAnamnese(rows, respostas)
+  return faltam.length ? `Para gerar o plano, falta responder na ficha de saúde: ${faltam.map(r => `"${r}"`).join(', ')}.` : null
 }

@@ -31,7 +31,7 @@ export type Orcamento =
 export type OrcamentoQueCabe = Extract<Orcamento, { cabe: true }>
 
 const ROTULO = new Map<string, string>(FUNCIONALIDADES.map(f => [f.chave, f.rotulo]))
-/** O nome curto, na conta ("Copilot", não "Copilot (IA secretária)"). */
+/** O nome curto, na conta ("Copilot", não "Copilot (IA)"). */
 const curto = (chave: string) => (ROTULO.get(chave) ?? chave).replace(/\s*\(.*\)$/, '')
 
 const ate = (n: number, um: string, varios: string) => `Até ${n} ${n === 1 ? um : varios}`

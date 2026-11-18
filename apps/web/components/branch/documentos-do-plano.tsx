@@ -12,7 +12,8 @@ import { Dica } from '@/components/shared/dica'
  * 2026-11-13): o termo e os outros documentos de cada procedimento das
  * sessões — nunca o contrato do procedimento —, cada um com "Excluir"; e o
  * contrato de plano da rede, que nasce no PDV com o pagamento. Os puxados
- * nascem no ACEITE (o plano rascunho ou proposto ainda muda).
+ * nascem na CRIAÇÃO (DC4: "o do pacote e o do plano, na venda/na criação") e
+ * acompanham o plano salvo: o que sai é cancelado, o que entra nasce.
  *
  * As sessões vêm do editor, ao vivo (`procedimentosPorSessao`). No plano
  * salvo, "Excluir" grava na hora; no novo (sem id), a lista fica aqui e quem
@@ -74,8 +75,8 @@ export function DocumentosDoPlano({ planId, procedimentosPorSessao, editavel, ac
         <span>Documentos</span>
         <Dica rotulo="Sobre os documentos do plano">
           {aceito
-            ? 'Os termos e os outros documentos nasceram no aceite; a cliente assina quando quiser (no app, pelo link ou na unidade).'
-            : 'Os termos e os outros documentos nascem quando o plano é aceito; a cliente assina quando quiser.'}
+            ? 'Os termos e os outros documentos nasceram quando o plano foi salvo; a cliente assina quando quiser (no app, pelo link ou na unidade).'
+            : 'Os termos e os outros documentos nascem quando o plano é salvo e acompanham o que muda nele; a cliente assina quando quiser.'}
         </Dica>
       </p>
       <div data-contrato-do-plano style={linha}>

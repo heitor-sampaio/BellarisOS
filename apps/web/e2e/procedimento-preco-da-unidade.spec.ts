@@ -3,6 +3,7 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, clienteComSessao, type MembroDeTeste, type ClienteDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao, chamarAcaoComFormulario } from './apoio/acao-direta'
+import { venderPacotePelaAcao } from './apoio/contrato-do-pacote'
 import { diaEmQueAUnidadeAbre } from './apoio/datas'
 
 /**
@@ -118,7 +119,7 @@ test('D2: o Vender cobra o preço da unidade — o pré-pago e o rateio do pacot
     const v = await chamarAcao(p, 'actions/pre-pago.ts', 'venderProcedimento', rota,
       [cliente, rede!.procedureId, menino, 1, null, { forma: 'AVISTA', metodo: 'PIX' }, null, null, {}])
     expect(v.texto, 'vendeu o pré-pago').toContain('saleId')
-    const k = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', rota,
+    const k = await venderPacotePelaAcao(p, rota,
       [cliente, pacote, menino, { forma: 'AVISTA', metodo: 'PIX' }, null, null, {}])
     expect(k.texto, 'vendeu o pacote').toContain('clientPackageId')
   })

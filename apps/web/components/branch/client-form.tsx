@@ -10,6 +10,7 @@ import { toast } from 'sonner'
 import { maskPhone as telefoneParaExibir, maskTelefoneDigitando, telefoneDoCadastro, TIPOS_DE_DOCUMENTO, documentoEstrangeiro } from '@estetica-os/utils'
 import { ResponsavelLegal, RESPONSAVEL_VAZIO, type CamposDoResponsavel } from '@/components/shared/responsavel-legal'
 import { CampoIndicadaPor } from '@/components/shared/campo-indicada-por'
+import { CamposDeEndereco, ENDERECO_VAZIO, type EnderecoNaTela } from '@/components/shared/campos-de-endereco'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
 import { Dica } from '@/components/shared/dica'
 import { avisoDoAcessoCriado, avisoDaUnidadeDeCadastro, oQueFaltaResponder, POR_QUE_JA_EXISTE, perguntaJuntoDoDocumento, textoDoSimDaPessoa } from '@/lib/clients/textos-do-cadastro'
@@ -82,6 +83,8 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
   // mesma coisa deixava esta aqui sem nenhuma página que a montasse.
   const [state, formAction, pending] = useActionState(addClient, undefined)
   const [selectedTags, setSelectedTags] = useState<string[]>([])
+  // A29 da 22ª = A39 da 23ª: o endereço, recolhido (o contrato do pacote precisa dele).
+  const [endereco, setEndereco] = useState<EnderecoNaTela>(ENDERECO_VAZIO)
   const [phone, setPhone] = useState(prefill?.phone ? telefoneParaExibir(prefill.phone) : '')
   const [document, setDocument] = useState('')
   const [email, setEmail] = useState(prefill?.email ?? '')
@@ -359,6 +362,17 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
       <Field label="Indicada por (opcional)" grupo>
         <CampoIndicadaPor />
       </Field>
+
+      {/* A29 da 22ª = A39 da 23ª (princípio 7): o endereço é opcional e fica
+          recolhido — o mesmo componente de CEP da aba Dados. */}
+      <details data-endereco-do-cadastro className="card" style={{ padding: '12px 16px' }}>
+        <summary style={{ cursor: 'pointer', fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+          Endereço (opcional)
+        </summary>
+        <div style={{ marginTop: 12 }}>
+          <CamposDeEndereco valor={endereco} onChange={setEndereco} comNomes classeDoCampo="field" />
+        </div>
+      </details>
 
       {/* Tags */}
       <Field label="Tags" grupo>

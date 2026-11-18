@@ -146,3 +146,74 @@ export function gravarRascunho(appointmentId: string, r: RascunhoDoAtendimento, 
 export function limparRascunho(appointmentId: string, armazem: Storage | null = daSessao()): void {
   try { armazem?.removeItem(chaveDoRascunho(appointmentId)) } catch { /* idem */ }
 }
+
+/**
+ * O plano NOVO do Planejamento, ainda não salvo (23ª A21): ele existia só na
+ * tela até o primeiro "Salvar plano", e fechar a janela perdia tudo. Fica no
+ * mesmo sessionStorage da aba (a anotação é clínica: morre com a aba), por
+ * cliente e atendimento de origem, e some no "Salvar plano" ou no "Descartar".
+ */
+export interface ProcedimentoDoPlanoNaoSalvo {
+  procedureId: string; name: string; price: number
+  products?: { productId: string; name: string; unit: string; quantity: number }[]
+}
+export interface PlanoNaoSalvo {
+  sessions: { procedures: ProcedimentoDoPlanoNaoSalvo[] }[]
+  notes: string
+}
+
+export function chaveDoPlanoNaoSalvo(clientId: string, appointmentId: string | null | undefined): string {
+  return `bellaris:plano-nao-salvo:${clientId || 'sem-cliente'}:${appointmentId ?? ''}`
+}
+
+function planoLimpo(v: unknown): PlanoNaoSalvo | null {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return null
+  const bruto = v as { sessions?: unknown; notes?: unknown }
+  if (!Array.isArray(bruto.sessions) || (bruto.notes !== undefined && typeof bruto.notes !== 'string')) return null
+  const sessions: PlanoNaoSalvo['sessions'] = []
+  for (const s of bruto.sessions) {
+    const procs = (s as { procedures?: unknown } | null)?.procedures
+    if (!Array.isArray(procs)) return null
+    const limpos: ProcedimentoDoPlanoNaoSalvo[] = []
+    for (const p of procs as Record<string, unknown>[]) {
+      if (!p || typeof p.procedureId !== 'string' || !p.procedureId || typeof p.name !== 'string'
+        || typeof p.price !== 'number' || !Number.isFinite(p.price) || p.price < 0) return null
+      const products = Array.isArray(p.products)
+        ? (p.products as Record<string, unknown>[]).filter(pr => pr && typeof pr.productId === 'string' && typeof pr.name === 'string'
+            && typeof pr.unit === 'string' && typeof pr.quantity === 'number' && Number.isFinite(pr.quantity) && pr.quantity >= 0)
+            .map(pr => ({ productId: pr.productId as string, name: pr.name as string, unit: pr.unit as string, quantity: pr.quantity as number }))
+        : undefined
+      limpos.push({ procedureId: p.procedureId, name: p.name, price: p.price, ...(products ? { products } : {}) })
+    }
+    sessions.push({ procedures: limpos })
+  }
+  return { sessions, notes: typeof bruto.notes === 'string' ? bruto.notes : '' }
+}
+
+const planoComAlgo = (p: PlanoNaoSalvo) => p.notes.trim() !== '' || p.sessions.some(s => s.procedures.length > 0)
+
+export function lerPlanoNaoSalvo(chave: string, armazem: Storage | null = daSessao()): PlanoNaoSalvo | null {
+  try {
+    const texto = armazem?.getItem(chave)
+    if (!texto) return null
+    const p = planoLimpo(JSON.parse(texto))
+    return p && planoComAlgo(p) ? p : null
+  } catch {
+    return null
+  }
+}
+
+export function gravarPlanoNaoSalvo(chave: string, plano: PlanoNaoSalvo, armazem: Storage | null = daSessao()): void {
+  try {
+    if (!armazem) return
+    const p = planoLimpo(plano)
+    if (!p || !planoComAlgo(p)) { armazem.removeItem(chave); return }
+    armazem.setItem(chave, JSON.stringify(p))
+  } catch {
+    // Sem armazenamento: fica sem rascunho, nada mais.
+  }
+}
+
+export function limparPlanoNaoSalvo(chave: string, armazem: Storage | null = daSessao()): void {
+  try { armazem?.removeItem(chave) } catch { /* idem */ }
+}

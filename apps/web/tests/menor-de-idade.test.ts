@@ -68,13 +68,16 @@ describe('as variáveis do responsável no termo', () => {
     expect(v['responsavel.telefone']).toBe('(71) 98888-7777')
   })
 
-  it('na adulta, são opcionais (saem vazias); na menor, o nome e o CPF do responsável são obrigatórios', () => {
+  // Auditoria das regras (2026-11-18): a decisão 2 aprovada é "termo assinado
+  // pelo responsável (avisar, não barrar)". Este teste travava o contrário (a
+  // F29: na menor, o nome e o CPF do responsável obrigatórios, o termo em
+  // "faltam dados" e o início travado).
+  it('são opcionais na adulta E na menor: sem responsável, a ficha avisa e o termo segue', () => {
     expect(ehOpcional('responsavel.nome')).toBe(true)
-    expect(variavelObrigatoria('responsavel.nome', { menor: false })).toBe(false)
-    expect(variavelObrigatoria('responsavel.nome', { menor: true })).toBe(true)
-    expect(variavelObrigatoria('responsavel.cpf', { menor: true })).toBe(true)
-    expect(variavelObrigatoria('responsavel.telefone', { menor: true })).toBe(false)
-    expect(variavelObrigatoria('cliente.nome', { menor: false }), 'as outras seguem o catálogo').toBe(true)
-    expect(variavelObrigatoria('cliente.email', { menor: true })).toBe(false)
+    expect(variavelObrigatoria('responsavel.nome')).toBe(false)
+    expect(variavelObrigatoria('responsavel.cpf')).toBe(false)
+    expect(variavelObrigatoria('responsavel.telefone')).toBe(false)
+    expect(variavelObrigatoria('cliente.nome'), 'as outras seguem o catálogo').toBe(true)
+    expect(variavelObrigatoria('cliente.email')).toBe(false)
   })
 })

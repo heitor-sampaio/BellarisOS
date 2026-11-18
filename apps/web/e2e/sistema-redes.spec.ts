@@ -38,8 +38,9 @@ test.beforeAll(async () => {
   admin = await criarAtendente(`srad${marca}`, { papel: 'ADMIN' })
   suporte = await criarAtendente(`srsu${marca}`, { papel: 'SUPORTE' })
   outra = await criarOutraRede(`sr${marca}`)
+  // Quem autoriza o suporte é a Admin da rede (2026-11-18).
   gestor = await criarMembro(`srgest${marca}`, {
-    tenant: outra.tenantId, rotulo: 'Gestor', permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }, { modulo: 'agenda', nivel: 'MANAGE' }],
+    tenant: outra.tenantId, rotulo: 'Gestor', donoDaRede: true, permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }, { modulo: 'agenda', nivel: 'MANAGE' }],
   })
   cliente = await clienteComSessao(`sr${marca}`, { id: outra.branchId, slug: `e2e-un-sr${marca}` }, { tenant: outra.tenantId })
 })

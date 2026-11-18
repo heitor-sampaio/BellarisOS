@@ -194,6 +194,15 @@ export function taxaDeConclusao(n: { concluidos: number; total: number }): numbe
   return percent(n.concluidos, n.total)
 }
 
+/**
+ * O aproveitamento da agenda (o dashboard): concluídos ÷ agendamentos do
+ * período ATÉ AGORA, em %. A conta é a da conclusão; muda a janela — o que
+ * está marcado para mais tarde ainda não entra (`DEFINICOES.aproveitamento`).
+ */
+export function taxaDeAproveitamento(n: { concluidos: number; total: number }): number | null {
+  return percent(n.concluidos, n.total)
+}
+
 /** Retenção: as clientes atendidas que já tinham vindo antes ÷ as atendidas no período, em %. */
 export function taxaDeRetencao(r: { clientsServed: number; returningClients: number }): number | null {
   return percent(r.returningClients, r.clientsServed)

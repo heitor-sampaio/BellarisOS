@@ -182,7 +182,7 @@ test.describe.serial('checkout de plano', () => {
 
       // Sem agendamento aqui: as sessões se agendam depois, pelo plano.
       await expect(janela.getByRole('button', { name: 'Ir para o agendamento' })).toHaveCount(0)
-      await janela.getByRole('button', { name: 'Receber o plano' }).click()
+      await janela.getByRole('button', { name: /^(Receber R\$|Fechar a comanda)/ }).click()
       await expect(janela).toHaveCount(0)
     })
 

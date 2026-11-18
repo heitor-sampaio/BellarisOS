@@ -27,7 +27,7 @@ export async function ListaDePlanejamentos({
   const ctx = await getTenantContext()
   // A funcionalidade é do PLANO da rede (lib/planos/recursos.ts).
   assertRecurso(ctx, 'planos_de_tratamento')
-  assertPermission(ctx, 'agenda', 'VIEW')
+  assertPermission(ctx, 'atendimento', 'VIEW')
 
   // Na rede não existe "a unidade atual", e o plano precisa de uma: é ela que
   // decide o caixa que recebe e a agenda onde as sessões caem. Por isso o

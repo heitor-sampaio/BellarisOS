@@ -9,9 +9,11 @@ import { CalendarDays, ChevronRight, ClipboardList, FileSignature, MapPin, Messa
 import { formatBRL, formatDia } from '@estetica-os/utils'
 import { aUnidadeDoEndereco, comMensagem } from '@/lib/clientes/a-unidade'
 import { CartaoDaUnidade } from '@/components/client-portal/cartao-da-unidade'
-import { preAtendimentoPendente } from '@/lib/pre-atendimento/ficha'
+import { preAtendimentoPendente, dadosDaOfertaNoApp } from '@/lib/pre-atendimento/ficha'
+import { ofereceAFichaNoApp } from '@/lib/pre-atendimento/oferta-no-app'
+import { OfertaDaFichaDeSaude } from '@/components/client-portal/oferta-da-ficha-de-saude'
 import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
-import { STATUS_DO_PROXIMO, inicioDosProximos, jaPassouDaHora } from '@/lib/clientes/agenda-do-portal'
+import { STATUS_DO_PROXIMO, inicioDosProximos, jaPassouDaHora, horarioPassouSemAtender } from '@/lib/clientes/agenda-do-portal'
 import { fusoValido } from '@/lib/unidades/fuso'
 import { boasVindas, nomeParaSaudar } from '@/lib/saudacao'
 import { nomesDasSessoesDoPlano } from '@/lib/plano-de-tratamento/nome-da-sessao-no-servidor'
@@ -22,9 +24,10 @@ import { bonusDosCreditosDaCliente } from '@/lib/creditos/bonus-da-cliente'
 import { restantesDoPacoteDeFora } from '@/lib/pacotes/de-fora'
 import { quemMarcaAsSessoes } from '@/lib/plano-de-tratamento/textos'
 import { agendavelPeloApp } from '@/lib/clientes/agendavel-no-app'
-import { validoAteDaProposta } from '@/lib/plano-de-tratamento/validade'
+import { validoAteDaProposta, avisoDaPropostaVencida } from '@/lib/plano-de-tratamento/validade'
 import { textoDoIndiqueUmaAmiga } from '@/lib/fidelidade/indicacao'
 import { nomeDoPlanoNoApp, descontoDoPlanoNoApp } from '@/lib/plano-de-tratamento/nome'
+import { combinadoDoPlano, totalComOCombinado } from '@/lib/plano-de-tratamento/desconto-combinado'
 import { textoDoParaAvaliar } from '@/lib/clientes/textos-do-app'
 import { Dica } from '@/components/shared/dica'
 
@@ -46,6 +49,9 @@ type NextAppt = {
   professionals: { name: string } | null
   /** A unidade do agendamento (A53 da 8ª): pode não ser a do endereço. */
   branch_id?:   string
+  /** A situação e a duração (A46 da 24ª: o horário que acabou sem a equipe registrar). */
+  status?:       string
+  duration_min?: number | null
   /** A hora real do concluído (A30 da 14ª: o cartão "para avaliar" diz a hora). */
   completed_at?: string | null
   branches?:    { name: string; address: string | null; city: string | null; state: string | null; is_active?: boolean } | null
@@ -71,6 +77,9 @@ type ActivePlan = {
   /** A55 da 12ª: o nome que a clínica deu e o desconto, no cartão. */
   name?:      string | null
   desconto?:  number | string | null
+  /** 22ª A20: o desconto do plano combinado no editor (o proposto mostra o total com ele). */
+  desconto_combinado_tipo?:  string | null
+  desconto_combinado_valor?: number | string | null
   // Os procedimentos vêm das SESSÕES. `treatment_plan_items` é legado: nenhum
   // código escreve nela desde que o plano passou a ser por sessão, e a lista
   // aqui aparecia sem nenhum procedimento.
@@ -100,7 +109,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
   const [clientRes, nextApptRes, pendingConfirmRes, packagesRes, plansRes, saldoDePontos, prePagosRes] = await Promise.all([
     ler(admin.from('clients').select('name, tenant_id, gender').eq('id', ctx.clientId!).single(), 'buscar o cliente'),
     ler(admin.from('appointments')
-      .select('id, scheduled_at, branch_id, branches(name, address, city, state, is_active), procedures(name), professionals:users!professional_id(name)')
+      .select('id, scheduled_at, status, duration_min, branch_id, branches(name, address, city, state, is_active), procedures(name), professionals:users!professional_id(name)')
       .eq('client_id', ctx.clientId!)
       // A mesma regra dos "Próximos" da Agenda (D14).
       .in('status', [...STATUS_DO_PROXIMO])
@@ -124,7 +133,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
       .order('purchased_at', { ascending: false })
       .limit(5), 'buscar os pacotes'),
     ler(admin.from('treatment_plans')
-      .select('id, status, created_at, name, desconto, treatment_plan_sessions(sort_order, appointments!treatment_plan_sessions_appointment_id_fkey(status, scheduled_at, completed_at), treatment_plan_session_procedures(price, sort_order, procedures(name, visible_on_client_app, is_active)))')
+      .select('id, status, created_at, name, desconto, desconto_combinado_tipo, desconto_combinado_valor, treatment_plan_sessions(sort_order, appointments!treatment_plan_sessions_appointment_id_fkey(status, scheduled_at, completed_at), treatment_plan_session_procedures(price, sort_order, procedures(name, visible_on_client_app, is_active)))')
       .eq('client_id', ctx.clientId!)
       .in('status', ['PROPOSED', 'ACCEPTED'])
       .order('created_at', { ascending: false })
@@ -218,6 +227,13 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
     .eq('client_id', ctx.clientId!).in('status', ['A_GERAR', 'PENDENTE']), 'contar os documentos para assinar')
   // A ficha de pré-atendimento que a clínica mandou ao agendar (2026-10-20).
   const preAtendimento = await preAtendimentoPendente(admin, ctx.clientId!)
+  // 15ª A33 = 16ª A11: sem pendente (o envio automático desligado), o Início
+  // oferece a ficha a quem tem atendimento marcado e não tem ficha válida — o
+  // pendente nasce no clique dela.
+  const proximoFuturo = nextAppt && !jaPassou(new Date(nextAppt.scheduled_at)) ? nextAppt.id : null
+  const ofertaDaFicha = !preAtendimento && proximoFuturo && redeDoCliente
+    ? ofereceAFichaNoApp({ pendente: false, proximoAgendamentoId: proximoFuturo, ...(await dadosDaOfertaNoApp(admin, redeDoCliente, ctx.clientId!)) })
+    : null
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -256,6 +272,8 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
           <ChevronRight size={16} color="var(--brand)" />
         </Link>
       )}
+
+      {ofertaDaFicha && <OfertaDaFichaDeSaude appointmentId={ofertaDaFicha} slug={slug} />}
 
       {/* -- Documentos para assinar --------------------------------- */}
       {paraAssinar > 0 && (
@@ -411,7 +429,10 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                 {jaPassouDaHora(nextAppt.scheduled_at) && (
                   // O estado fica à vista; o porquê de ainda estar aqui, na dica (2026-11-16).
                   <p data-passou-da-hora style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span>Hoje, já no horário</span>
+                    {/* A46 da 24ª: o horário que já acabou não é "já no horário". */}
+                    <span>{nextAppt.status && horarioPassouSemAtender({ status: nextAppt.status, scheduled_at: nextAppt.scheduled_at, duration_min: nextAppt.duration_min })
+                      ? 'O horário já passou; a equipe ainda vai registrar o atendimento.'
+                      : 'Hoje, já no horário'}</span>
                     <Dica rotulo="Por que ainda aparece aqui">A equipe registra quando o atendimento terminar.</Dica>
                   </p>
                 )}
@@ -587,6 +608,8 @@ function PlanoProposto({ plano, slug, validadeDias, whatsapp, telefone, avulsos 
   const sessoes = [...(plano.treatment_plan_sessions ?? [])].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
   const itens = sessoes.flatMap(s => s.treatment_plan_session_procedures ?? [])
   const valor = itens.reduce((t, i) => t + Math.round(Number(i.price ?? 0) * 100), 0) / 100
+  // 22ª A20: o total com o desconto do plano combinado (princípio 3).
+  const combinado = totalComOCombinado(valor, combinadoDoPlano(plano))
   const validoAte = validoAteDaProposta(plano.created_at, validadeDias)
   const vencido = jaPassou(validoAte)
   const dia = validoAte.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
@@ -612,13 +635,16 @@ function PlanoProposto({ plano, slug, validadeDias, whatsapp, telefone, avulsos 
       </ol>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', borderTop: '1px solid var(--hairline)', paddingTop: 10 }}>
         <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>{sessoes.length} {sessoes.length === 1 ? 'sessão' : 'sessões'}</span>
-        <span style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--brand)', letterSpacing: '-0.01em' }}>{formatBRL(valor)}</span>
+        <span style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--brand)', letterSpacing: '-0.01em' }}>{formatBRL(combinado.total)}</span>
       </div>
+      {combinado.reais > 0 && (
+        <p data-desconto-combinado style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: -8 }}>{descontoDoPlanoNoApp(combinado.reais)}</p>
+      )}
       <p style={{ fontSize: 'var(--text-sm-sz)', color: vencido ? 'var(--warning)' : 'var(--text-muted)', fontWeight: 600 }}>
         {/* PT1b (2026-11-14): a cliente aceita pelo app, na página do plano. */}
-        {vencido ? `Proposta vencida em ${dia} — fale com a equipe para atualizar.` : `Válido até ${dia}.`}
+        {vencido ? avisoDaPropostaVencida(dia) : `Válido até ${dia}.`}
       </p>
-      <Link href={`/${slug}/cliente/planos/${plano.id}`} prefetch={false} className={vencido ? 'btn-secondary' : 'btn-primary'} style={{ justifyContent: 'center' }}>
+      <Link href={`/${slug}/cliente/planos/${plano.id}`} prefetch={false} className="btn-primary" style={{ justifyContent: 'center' }}>
         Ver o plano <ChevronRight size={14} aria-hidden="true" />
       </Link>
       {avulsos.length > 0 && (

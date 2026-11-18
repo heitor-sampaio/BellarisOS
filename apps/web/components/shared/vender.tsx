@@ -12,7 +12,7 @@ import { venderProcedimento, agendarUnidadePrePaga } from '@/actions/pre-pago'
 import { venderCredito, acessoDaClienteAoApp } from '@/actions/credito-interno'
 import { textoDoBonus } from '@/lib/creditos/bonus'
 import { rotaCliente, rotaDaComanda, rotaNoPortal } from '@/lib/rotas'
-import { faltaDeEstoqueNaVenda } from '@/lib/vendas/falta-de-estoque'
+import { faltaDeEstoqueNaVenda, fimDoResumoDoProduto, motivoDaFaltaNoBotao } from '@/lib/vendas/falta-de-estoque'
 import { venderProduto } from '@/actions/produtos'
 import { SessionScheduler } from '@/components/branch/treatment-sessions-modal'
 import { SegSelect } from '@/components/shared/seg-select'
@@ -212,7 +212,7 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe, fid
         </button>
       )}
       <p data-resumo-do-produto style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)' }}>
-        {linhas.map(l => `${l.qtd} × ${formatBRL(l.prod.price)}`).join(' + ')} = {formatBRL(tabela)} · sai do estoque agora, pelo lote que vence primeiro
+        {linhas.map(l => `${l.qtd} × ${formatBRL(l.prod.price)}`).join(' + ')} = {formatBRL(tabela)}{fimDoResumoDoProduto(falta) ? ` · ${fimDoResumoDoProduto(falta)}` : ''}
       </p>
       <CampoQuemVendeu equipe={equipe} valor={vendedorId} aoMudar={id => { setVendedorId(id); setPergunta(null) }}
         comissao={comissaoDosProdutos(equipe.find(m => m.id === vendedorId), linhas.map(l => l.prod))} />
@@ -245,14 +245,15 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe, fid
           padding: '8px 12px', fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-semibold)',
         }}>
           {falta}{' '}
-          <Link href={rotaNoPortal(pathname, pathname.split('/')[1], '/estoque')} style={{ color: 'inherit', fontWeight: 'var(--weight-bold)' }}>Dar entrada no Estoque</Link>
+          {/* A18 da 24ª: a Entrada tem cara de botão (era um link da cor do texto). */}
+          <Link href={rotaNoPortal(pathname, pathname.split('/')[1], '/estoque')} className="btn-secondary" style={{ marginTop: 6 }}>Dar entrada no Estoque</Link>
         </p>
       )}
       {pergunta ? (
         <PerguntaDaVenda texto={pergunta} pendente={pendente} aoConfirmar={() => vender(true)} aoVoltar={() => setPergunta(null)} />
       ) : (
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-          <MotivoDoBotao motivo={pendente || erro ? null : recusaForaDoCampo(estado, fid.aPagar, recusaDoPagamento(estado, fid.aPagar))} />
+          <MotivoDoBotao motivo={pendente || erro ? null : motivoDaFaltaNoBotao(falta) ?? recusaForaDoCampo(estado, fid.aPagar, recusaDoPagamento(estado, fid.aPagar))} />
           <button type="button" className="btn-secondary" onClick={onFim} disabled={pendente}>Cancelar</button>
           <button type="button" className="btn-primary" onClick={() => vender()} disabled={pendente || !!falta || !!conta.recusa || !!fid.recusa || !!recusaDoPagamento(estado, fid.aPagar) || !quantidadesValidas}>
             {pendente ? 'Vendendo…' : `Vender por ${formatBRL(fid.aPagar)}`}

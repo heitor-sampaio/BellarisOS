@@ -13,6 +13,7 @@ import type { ItemDaLista } from './campo-da-lista'
 import { rotuloDoUso } from '@/lib/estoque/uso'
 import { SegSelect } from '@/components/shared/seg-select'
 import { BotaoAplicadoEm, LotesEsgotados } from '@/components/admin/aplicacoes-do-lote'
+import { CorrigirCustoDoLote } from '@/components/admin/corrigir-custo-do-lote'
 import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
 import {
@@ -35,6 +36,8 @@ export type LoteNaTela = {
   fornecedor?: string | null
   marca?: string | null
   notaFiscal?: string | null
+  /** A10 da 24ª: nada saiu do lote — o custo dele se corrige aqui ("Corrigir custo"). */
+  custoEditavel?: boolean
 }
 
 type BranchStock = {
@@ -652,6 +655,10 @@ export function AdminStockView({ products, branches, productCategories = [], mar
                                             <span>{l.quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} {p.unit}</span>
                                             {podeVerAplicacoes && <BotaoAplicadoEm loteId={l.id} rotulo={`${p.name} · ${l.numero ? `lote ${l.numero}` : 'lote sem número'}`} />}
                                             <span>{l.custoPorEmbalagem != null ? `custo ${fmtBRLv(l.custoPorEmbalagem)}/${p.unit}${l.origemDoCusto === 'AJUSTE' ? ' (último custo)' : ''}` : 'custo —'}</span>
+                                            {!readOnly && l.custoEditavel && (
+                                              <CorrigirCustoDoLote loteId={l.id} rotulo={`${p.name} · ${l.numero ? `lote ${l.numero}` : 'lote sem número'}`}
+                                                custoAtual={l.custoPorEmbalagem} embalagem={p.unit} />
+                                            )}
                                             {(l.notaFiscal || l.marca || l.fornecedor) && (
                                               <span data-compra-do-lote>{[l.notaFiscal ? `NF ${l.notaFiscal}` : null, l.marca, l.fornecedor].filter(Boolean).join(' · ')}</span>
                                             )}

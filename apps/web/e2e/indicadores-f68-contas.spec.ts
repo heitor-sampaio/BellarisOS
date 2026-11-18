@@ -171,7 +171,9 @@ test.describe('F68 — as contas no banco', () => {
     expect(await publico(rede!.branchId)).toEqual([cliente])
   })
 
-  test('T1/C45: as novas clientes de cada unidade são as atendidas nela (não a tag); o total da rede, a rede inteira', async () => {
+  // Regra mudada na 24ª (o Heitor, 18/11): "Novos clientes" só existe na REDE — a
+  // "atendida na unidade" (T1) saiu. Numa unidade da rede de duas, o número é nulo.
+  test('24ª: "Novos clientes" só na rede — nulo em cada unidade, a rede inteira conta todas', async () => {
     // Uma nova atendida só na B (cadastrada na A, com a tag "Unidade: A" — que
     // não conta), uma nas duas, uma sem atendimento, uma com o da B cancelado.
     const soB = await rede!.criarCliente('Nova da B')
@@ -194,22 +196,20 @@ test.describe('F68 — as contas no banco', () => {
     const novas = async (unidades: string[] | null) => {
       const { data, error } = await db().rpc('metrics_core', { p_tenant: rede!.tenantId, p_branch_ids: unidades, ...janelaDeHoje, p_professional_id: null })
       expect(error).toBeNull()
-      return Number(data![0]!.new_clients)
+      const v = data![0]!.new_clients
+      return v == null ? null : Number(v)
     }
     const { data: todas } = await db().from('clients').select('id, created_at').eq('tenant_id', rede!.tenantId).gte('created_at', janelaDeHoje.p_from)
-    const ids = (todas ?? []).map(c => c.id as string)
-    const { data: ags } = await db().from('appointments').select('client_id, branch_id, status').in('client_id', ids)
-    const atendidasEm = (u: string) => new Set((ags ?? []).filter(a => a.branch_id === u && a.status !== 'CANCELLED').map(a => a.client_id as string)).size
-    expect(await novas([unidadeB])).toBe(atendidasEm(unidadeB))
-    expect(await novas([rede!.branchId])).toBe(atendidasEm(rede!.branchId))
-    expect(await novas(null)).toBe((todas ?? []).length)
-    expect(atendidasEm(unidadeB), 'a da B e a das duas; a cancelada não').toBeGreaterThanOrEqual(2)
+    expect(await novas([unidadeB]), 'a unidade não tem novas clientes').toBeNull()
+    expect(await novas([rede!.branchId]), 'a unidade não tem novas clientes').toBeNull()
+    expect(await novas(null), 'a rede conta todas, também a sem agendamento').toBe((todas ?? []).length)
+    expect(await novas([rede!.branchId, unidadeB]), 'todas as unidades ativas = a rede').toBe((todas ?? []).length)
 
-    // O "Por unidade" (metrics_by_branch) conta a MESMA régua.
+    // O "Por unidade" (metrics_by_branch): sem o número na linha da unidade.
     const { data: porUnidade, error } = await db().rpc('metrics_by_branch', { p_tenant: rede!.tenantId, ...janelaDeHoje })
     expect(error).toBeNull()
-    const linha = (id: string) => Number((porUnidade as { branch_id: string; new_clients: number }[]).find(l => l.branch_id === id)!.new_clients)
-    expect(linha(unidadeB)).toBe(atendidasEm(unidadeB))
-    expect(linha(rede!.branchId)).toBe(atendidasEm(rede!.branchId))
+    const linha = (id: string) => (porUnidade as { branch_id: string; new_clients: number | null }[]).find(l => l.branch_id === id)!.new_clients
+    expect(linha(unidadeB)).toBeNull()
+    expect(linha(rede!.branchId)).toBeNull()
   })
 })

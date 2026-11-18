@@ -58,17 +58,25 @@ test('o cadastro de cliente: o rótulo leva ao campo, o telefone ganha máscara,
 
 test('o telefone da unidade tem máscara — no campo e no cartão', async ({ browser }) => {
   expect((await db().from('branches').update({ phone: '4833334444' }).eq('id', rede!.branchId)).error).toBeNull()
-  await como(browser, gestor!.estado, async p => {
-    await p.goto('/admin/settings?tab=unidades')
-    await expect(p.getByText('(48) 3333-4444')).toBeVisible()
-    await p.goto(`/admin/branches/${rede!.branchId}`)
-    const tel = p.getByLabel('Telefone')
-    await expect(async () => {
-      await tel.fill('')
-      await tel.pressSequentially('48991234567')
-      await expect(tel).toHaveValue('(48) 99123-4567', { timeout: 1000 })
-    }).toPass()
-  })
+  // A aba Unidades da rede (criar e desativar unidade) é configuração da rede
+  // toda: só a Admin da rede a abre (o Heitor, 18/11: "Configuração da rede
+  // toda só pela conta admin").
+  const dona = await criarMembro(`fad${marca}`, { tenant: rede!.tenantId, rotulo: 'Dona', donoDaRede: true, permissoes: [] })
+  try {
+    await como(browser, dona.estado, async p => {
+      await p.goto('/admin/settings?tab=unidades')
+      await expect(p.getByText('(48) 3333-4444')).toBeVisible()
+      await p.goto(`/admin/branches/${rede!.branchId}`)
+      const tel = p.getByLabel('Telefone')
+      await expect(async () => {
+        await tel.fill('')
+        await tel.pressSequentially('48991234567')
+        await expect(tel).toHaveValue('(48) 99123-4567', { timeout: 1000 })
+      }).toPass()
+    })
+  } finally {
+    await dona.limpar()
+  }
 })
 
 test('o lançamento financeiro: o rótulo leva ao campo, e a despesa tem forma de pagamento', async ({ browser }) => {

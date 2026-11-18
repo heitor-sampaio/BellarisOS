@@ -23,13 +23,15 @@ export function rotuloDoOutroDocumento(o: OutroDocumento): string {
 }
 
 /**
- * O que "Outros documentos" oferece (A20 da 20ª simulação; princípio 7): o
- * termo recém-criado aparecia no "Termo de consentimento" E aqui, até ser
- * escolhido lá. O termo entra pelo campo dele: aqui, um termo só aparece
- * quando já há um escolhido (é um SEGUNDO termo), e um contrato, quando já há
- * um contrato. O escolhido no campo não se repete aqui; o que já está marcado
- * fica sempre (sumir da lista apagaria o vínculo ao salvar), e o inativo só se
- * está marcado.
+ * O que "Outros documentos" oferece: todo documento da rede criado ou anexado
+ * do tipo Documento, Termo ou Contrato do procedimento (PC7, o Heitor,
+ * 2026-11-13: "qualquer documento que tenha sido criado ou anexado no
+ * sistema"). A A20 da 20ª tinha escondido o termo e o contrato enquanto não
+ * havia um escolhido no campo próprio — isso estreitava o PC7 e saiu
+ * (auditoria das regras, 2026-11-18). O escolhido no "Termo de consentimento"
+ * ou no "Contrato" não se repete aqui (A36 da 15ª: seria o mesmo documento
+ * duas vezes); o que já está marcado fica sempre (sumir da lista apagaria o
+ * vínculo ao salvar), e o inativo só se está marcado.
  */
 export function outrosDocumentosOferecidos<T extends OutroDocumento & { id: string }>(
   lista: readonly T[], escolhidos: { termo: string; contrato: string; marcados: readonly string[] },
@@ -37,9 +39,6 @@ export function outrosDocumentosOferecidos<T extends OutroDocumento & { id: stri
   const { termo, contrato, marcados } = escolhidos
   return outrosDocumentosEmOrdem(lista.filter(o => {
     if (marcados.includes(o.id)) return true
-    if (!o.ativo || o.id === termo || o.id === contrato) return false
-    if (o.tipo === 'TERMO') return !!termo
-    if (o.tipo === 'CONTRATO') return !!contrato
-    return true
+    return o.ativo && o.id !== termo && o.id !== contrato
   }))
 }

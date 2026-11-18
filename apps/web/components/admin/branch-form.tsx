@@ -9,6 +9,7 @@ import { CampoDoFuso } from '@/components/shared/campo-do-fuso'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { maskPhoneDigitando, maskCEPDigitando, maskCPFouCNPJDigitando } from '@estetica-os/utils'
 import { EditorDeHorario } from '@/components/shared/editor-de-horario'
+import { AvisoDoDomingoFechado } from '@/components/shared/aviso-do-domingo-fechado'
 import { useFala } from '@/components/shared/uma-unidade'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { Dica } from '@/components/shared/dica'
@@ -45,6 +46,12 @@ export function BranchForm({ cnpjDaRede = null }: { cnpjDaRede?: string | null }
   const fala = useFala()
   const envio = useEnvioUnico()
   const formRef = useRef<HTMLFormElement>(null)
+  // A9 da 24ª: o horário como está no editor, para a faixa do domingo fechado (a do /setup).
+  const [horario, setHorario] = useState<string | null>(null)
+  const lerHorarioDepois = () => requestAnimationFrame(() => {
+    const v = formRef.current ? new FormData(formRef.current).get('horario') : null
+    setHorario(typeof v === 'string' && v ? v : null)
+  })
   // O CNPJ em branco pergunta antes de criar (cfg-01): a resposta vai em `_cnpj`.
   const [documento, setDocumento] = useState(cnpjInicial)
   const [respostaCnpj, setRespostaCnpj] = useState<'' | 'sem'>('')
@@ -97,7 +104,7 @@ export function BranchForm({ cnpjDaRede = null }: { cnpjDaRede?: string | null }
     setName(''); setSlug(''); setSlugTouched(false); setDocumento(cnpjInicial); setRespostaCnpj('')
     setTelefone(''); setEmail(''); setInscricao('')
     setZipCode(''); setAddress(''); setCity(''); setUf('')
-    setCepError(null); setCepBuscado('')
+    setCepError(null); setCepBuscado(''); setHorario(null)
   }
 
   // Busca o endereço assim que o CEP chega a 8 dígitos, sem esperar sair do
@@ -351,7 +358,12 @@ export function BranchForm({ cnpjDaRede = null }: { cnpjDaRede?: string | null }
                     Os horários livres da agenda e do app da cliente seguem este horário. O padrão é segunda a sábado, das 8h às 20h.
                   </Dica>
                 </p>
-                <EditorDeHorario nome="horario" valor={null} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <AvisoDoDomingoFechado horario={horario} />
+                  <div onChange={lerHorarioDepois} onClick={lerHorarioDepois}>
+                    <EditorDeHorario nome="horario" valor={null} />
+                  </div>
+                </div>
               </section>
 
               {erro && (

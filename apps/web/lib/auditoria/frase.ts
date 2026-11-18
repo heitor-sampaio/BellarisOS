@@ -129,6 +129,7 @@ const CAMPO: Record<string, string> = {
   devolucao_movement_id: 'devolução ao estoque', stock_movement_id: 'baixa do estoque', custo: 'custo', cost_price: 'custo',
   inbox_visibilidade: 'quem vê as conversas', inbox_caixas: 'caixas do WhatsApp', pix_taxa_pct: 'taxa do Pix', taxas: 'taxas',
   max_vezes: 'máximo de vezes', portal_prazo_alteracao_horas: 'prazo para a cliente alterar', plano_validade_dias: 'validade do plano',
+  pacote_crediario_libera: 'sessões do pacote com valor em aberto', pacote_vencido_cancela: 'cancelar o pacote vencido',
   document: 'CNPJ', onboarding_completed_at: 'configuração inicial', atende_em: 'atende em', outras_unidades: 'outras unidades',
   provides_services: 'atende', config: 'configuração', phone_e164: 'telefone', is_default: 'padrão', social_media: 'redes sociais',
   identifiers: 'identificadores', city: 'cidade', state: 'UF', zip_code: 'CEP', neighborhood: 'bairro', address_number: 'número',
@@ -175,7 +176,7 @@ const CAMPO: Record<string, string> = {
   cancelado_em: 'cancelamento', cancelado_por: 'quem cancelou', cancelamento_motivo: 'motivo do cancelamento',
   valor_cancelado: 'valor do cancelamento', cancelamento: 'cancelamento', nome_arquivo: 'arquivo', destino: 'destino',
   com_erro: 'andamento', completadas: 'andamento', com_aviso: 'andamento', oportunidades: 'andamento', erro: 'erro', erros: 'erros',
-  unit_cost: 'custo', reference: 'referência', balance_after: 'saldo',
+  unit_cost: 'custo', reference: 'referência', balance_after: 'saldo', correcao_de_cadastro: 'correção de cadastro',
 }
 
 /** O nome de cada campo na Auditoria (a trava de A30 da 18ª lê daqui). */
@@ -246,6 +247,53 @@ function camposMudados(colunas: readonly string[]): string {
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const numero = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : typeof v === 'string' && v.trim() && Number.isFinite(Number(v)) ? Number(v) : null)
 
+const DATAS_DO_LANCAMENTO: ReadonlySet<string> = new Set(['due_date', 'paid_at', 'data_de_referencia'])
+const TIPO_DO_LANCAMENTO: Record<string, string> = { INCOME: 'receita', EXPENSE: 'despesa' }
+const SITUACAO_DO_LANCAMENTO: Record<string, string> = { PENDING: 'pendente', PAID: 'pago', CANCELLED: 'cancelado', OVERDUE: 'vencido' }
+
+/** Um valor do lançamento como a tela o diz (A33 da 24ª); nulo = não se sabe dizer. */
+function valorDoLancamento(col: string, v: unknown, fuso?: string): string | null {
+  if (v === null || v === undefined || v === '') return '—'
+  if (typeof v === 'boolean') return v ? 'sim' : 'não'
+  if (col === 'amount') { const n = numero(v); return n == null ? null : brl(n) }
+  if (col === 'payment_method') return texto(v) ? rotuloDaForma(texto(v)) : null
+  if (col === 'type') return texto(v) ? TIPO_DO_LANCAMENTO[texto(v)!] ?? texto(v) : null
+  if (col === 'status') return texto(v) ? SITUACAO_DO_LANCAMENTO[texto(v)!] ?? texto(v) : null
+  if (DATAS_DO_LANCAMENTO.has(col)) {
+    const s = texto(v)
+    if (!s) return null
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return diaLegivel(s)
+    const d = new Date(s)
+    if (Number.isNaN(d.getTime())) return null
+    const p = partsInTZ(d, fuso)
+    return `${String(p.day).padStart(2, '0')}/${String(p.month).padStart(2, '0')}/${p.year}`
+  }
+  if (typeof v === 'number') return v.toLocaleString('pt-BR')
+  return texto(v)
+}
+
+/**
+ * A33 da 24ª: o lançamento editado diz de quanto para quanto ("valor: R$ 150,00
+ * → R$ 100,00; pago: não → sim") — "valor, data de referência, pago e mais 3
+ * campos" não dizia. A coluna que a auditoria não guarda (o texto livre) sai
+ * só pelo nome.
+ */
+function camposDoLancamentoEditado(r: RegistroDaAuditoria, fuso?: string): string {
+  const daPessoa = r.colunas.filter(c => !DERIVADAS.has(c))
+  const partes = [...new Set(daPessoa.length ? daPessoa : r.colunas)].map(c => {
+    const nome = CAMPO[c] ?? c.replace(/_/g, ' ')
+    if (!(c in r.antes) && !(c in r.depois)) return nome
+    const de = valorDoLancamento(c, r.antes[c], fuso)
+    const para = valorDoLancamento(c, r.depois[c], fuso)
+    return de != null && para != null && de !== para ? `${nome}: ${de} → ${para}` : nome
+  })
+  const ditos = [...new Set(partes)]
+  // Só nomes: "a, b e c", como os outros registros. Com valores, "; " (o valor tem vírgula).
+  if (!ditos.some(d => d.includes('→'))) return camposMudados(r.colunas)
+  if (ditos.length > 5) return `${ditos.slice(0, 4).join('; ')} e mais ${ditos.length - 4} campos`
+  return ditos.join('; ')
+}
+
 /**
  * "2 frascos de Toxina 1 frasco": a quantidade do movimento, com a medida em
  * que ele se grava, e o produto, lidos agora (A33 da 21ª: "2 Toxina 1 frasco"
@@ -261,6 +309,19 @@ function doProduto(r: RegistroDaAuditoria, nomes: NomesDaAuditoria): string {
 
 /** O movimento de estoque lido como o fato (A28 da 15ª: saía sem produto nem quantidade). */
 function fraseDoMovimento(r: RegistroDaAuditoria, nomes: NomesDaAuditoria): string | null {
+  // A10 da 24ª: o custo do lote corrigido (o da entrada) — de quanto para quanto,
+  // por embalagem (o movimento grava o custo de CONSUMO; × o rendimento = a embalagem).
+  if (r.operacao === 'editou' && r.colunas.includes('unit_cost')) {
+    const id = texto(r.depois.product_id) ?? texto(r.antes.product_id)
+    const produto = (id && nomes.produtos?.[id]) || 'produto'
+    const emb = id ? nomes.embalagensDosProdutos?.[id] : undefined
+    const fator = emb && emb.fator > 0 ? emb.fator : 1
+    const de = numero(r.antes.unit_cost)
+    const para = numero(r.depois.unit_cost)
+    const valores = de != null && para != null
+      ? `: de ${brl(de * fator)} para ${brl(para * fator)} por ${emb?.unidade || 'embalagem'}` : ''
+    return `Corrigiu o custo do lote de ${produto}${valores}`
+  }
   if (r.operacao !== 'criou') return null
   const tipo = texto(r.depois.type)
   const p = doProduto(r, nomes)
@@ -276,7 +337,9 @@ function fraseDoMovimento(r: RegistroDaAuditoria, nomes: NomesDaAuditoria): stri
     case 'SALE':              return `Baixou ${p} na venda`
     case 'SALE_RETURN':       return `Devolveu ao estoque ${p}`
     case 'PROCEDURE_USAGE':   return `Baixou ${p} no atendimento`
-    case 'MANUAL_ADJUSTMENT': return `Ajustou o estoque: ${p}`
+    // A10 da 24ª: o ajuste da correção de cadastro diz o motivo (não é perda).
+    case 'MANUAL_ADJUSTMENT': return r.depois.correcao_de_cadastro === true
+      ? `Ajustou o estoque (correção de cadastro): ${p}` : `Ajustou o estoque: ${p}`
     case 'TRANSFER_OUT':      return `Mandou ${p}${unidade ? ` de ${unidade}` : ''}`
     case 'TRANSFER_IN':       return `Recebeu ${p}${unidade ? ` em ${unidade}` : ''}`
     default:                  return null
@@ -514,7 +577,8 @@ export function fraseDaAuditoria(r: RegistroDaAuditoria, nomes: NomesDaAuditoria
   // A35 da 16ª: com duas unidades, a sala de qual.
   if (r.tabela === 'rooms' && r.branch_id && nomes.unidades[r.branch_id]) frase += ` em ${nomes.unidades[r.branch_id]}`
   if (r.operacao === 'editou') {
-    const campos = camposMudados(r.colunas)
+    const campos = r.tabela === 'financial_transactions'
+      ? camposDoLancamentoEditado(r, fusoDoRegistro(r, nomes)) : camposMudados(r.colunas)
     if (campos) frase += ` (${campos})`
   }
   return frase
@@ -738,7 +802,16 @@ function fraseDoEstorno(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAu
   const ativos = vouchers.length ? `${volta ? ' e' : ', e'} ${emLista(vouchers)} ${vouchers.length === 1 ? 'voltou' : 'voltaram'} a ativo` : ''
   const clienteId = linhas.find(l => l.client_id)?.client_id
   const cliente = clienteId ? nomes.clientes[clienteId] ?? null : null
-  return `Estornou ${alvo} (${brl(valor)})${volta}${ativos}${cliente ? ` — ${cliente}` : ''}`
+  // A33 da 24ª: qual pagamento — a forma e a parcela do lançamento estornado (lido
+  // agora; senão a forma do estorno). Com dois lançamentos estornados, só o valor.
+  const estornados = linhas.filter(l => l.tabela === 'financial_transactions' && l.operacao === 'editou'
+    && l.registro_id && nomes.lancamentos?.[l.registro_id])
+  const original = saidas.length === 1 && estornados.length <= 1
+    ? (estornados[0]?.registro_id ? nomes.lancamentos?.[estornados[0].registro_id] : undefined) : undefined
+  const forma = saidas.length === 1 ? (original?.forma ?? texto(saidas[0]!.depois.payment_method)) : null
+  const parcela = original?.parcela && original.de && original.de > 1 ? `parcela ${original.parcela}/${original.de}` : null
+  const qual = [forma ? rotuloDaForma(forma, original?.vezes ?? null) : null, parcela].filter(Boolean).join(' · ')
+  return `Estornou ${alvo} (${brl(valor)}${qual ? ` · ${qual}` : ''})${volta}${ativos}${cliente ? ` — ${cliente}` : ''}`
 }
 
 /** A transferência: a saída de uma unidade e a entrada na outra, na mesma gravação. */

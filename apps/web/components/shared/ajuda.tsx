@@ -24,11 +24,15 @@ const quando = (iso: string, fuso = 'America/Sao_Paulo') => new Intl.DateTimeFor
   day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: fuso,
 }).format(new Date(iso))
 
-export function Ajuda({ internalUserId }: { internalUserId: string | null }) {
+// Desde 18/11 quem autoriza o suporte é a Admin da rede, e o alvo é quem abriu
+// o chamado (`verChamado`): a Ajuda não precisa mais do id de quem está logado.
+export function Ajuda() {
   const [aberta, setAberta] = useState(false)
   const [tela, setTela] = useState<Tela>({ tipo: 'lista' })
-  // Vem da lista (a primeira tela): só quem gerencia o prontuário libera dado clínico.
+  // Vem da lista (a primeira tela): só quem gerencia o prontuário libera dado
+  // clínico, e só a Admin da rede autoriza o suporte (2026-11-18).
   const [podeClinico, setPodeClinico] = useState(false)
+  const [podeAutorizar, setPodeAutorizar] = useState(false)
 
   useEffect(() => {
     function abrir(e: Event) {
@@ -49,9 +53,9 @@ export function Ajuda({ internalUserId }: { internalUserId: string | null }) {
       {aberta && (
         <JanelaModal onFechar={() => setAberta(false)} rotulo="Ajuda" largura={600} fechaNoFundo={false}>
           <div style={{ padding: 'var(--card-pad)' }}>
-            {tela.tipo === 'lista' && <Lista onAbrir={id => setTela({ tipo: 'conversa', id })} onNovo={() => setTela({ tipo: 'novo' })} onFechar={() => setAberta(false)} onPodeClinico={setPodeClinico} />}
-            {tela.tipo === 'novo' && <Novo podeClinico={podeClinico} onVoltar={() => setTela({ tipo: 'lista' })} onCriado={id => setTela({ tipo: 'conversa', id })} />}
-            {tela.tipo === 'conversa' && <Conversa id={tela.id} internalUserId={internalUserId} onVoltar={() => setTela({ tipo: 'lista' })} />}
+            {tela.tipo === 'lista' && <Lista onAbrir={id => setTela({ tipo: 'conversa', id })} onNovo={() => setTela({ tipo: 'novo' })} onFechar={() => setAberta(false)} onPodeClinico={setPodeClinico} onPodeAutorizar={setPodeAutorizar} />}
+            {tela.tipo === 'novo' && <Novo podeClinico={podeClinico} podeAutorizar={podeAutorizar} onVoltar={() => setTela({ tipo: 'lista' })} onCriado={id => setTela({ tipo: 'conversa', id })} />}
+            {tela.tipo === 'conversa' && <Conversa id={tela.id} onVoltar={() => setTela({ tipo: 'lista' })} />}
           </div>
         </JanelaModal>
       )}
@@ -88,17 +92,18 @@ function Situacao({ status }: { status: ChamadoResumo['status'] }) {
   return <span className="chamado-situacao" data-situacao={status}>{ROTULO_DA_SITUACAO[status]}</span>
 }
 
-function Lista({ onAbrir, onNovo, onFechar, onPodeClinico }: {
+function Lista({ onAbrir, onNovo, onFechar, onPodeClinico, onPodeAutorizar }: {
   onAbrir: (id: string) => void; onNovo: () => void; onFechar: () => void; onPodeClinico: (v: boolean) => void
+  onPodeAutorizar: (v: boolean) => void
 }) {
   const fuso = useFuso()
   const [dados, setDados] = useState<{ chamados: ChamadoResumo[]; daRede: boolean } | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   useEffect(() => {
     meusChamados()
-      .then(r => { if (r.ok) { setDados(r); onPodeClinico(r.podeClinico) } else setErro(r.error) })
+      .then(r => { if (r.ok) { setDados(r); onPodeClinico(r.podeClinico); onPodeAutorizar(r.podeAutorizar) } else setErro(r.error) })
       .catch(() => setErro('Não consegui carregar os chamados.'))
-  }, [onPodeClinico])
+  }, [onPodeClinico, onPodeAutorizar])
   return (
     <>
       <Cabecalho titulo="Ajuda" dica={['Sobre a Ajuda', 'Fale com o suporte do BellarisOS. A resposta chega no sino.']} onFechar={onFechar} />
@@ -139,7 +144,9 @@ function CampoDeAnexo({ nome }: { nome: string }) {
   )
 }
 
-function Novo({ podeClinico, onVoltar, onCriado }: { podeClinico: boolean; onVoltar: () => void; onCriado: (id: string) => void }) {
+function Novo({ podeClinico, podeAutorizar, onVoltar, onCriado }: {
+  podeClinico: boolean; podeAutorizar: boolean; onVoltar: () => void; onCriado: (id: string) => void
+}) {
   const [autorizar, setAutorizar] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [gravando, iniciar] = useTransition()
@@ -171,10 +178,12 @@ function Novo({ podeClinico, onVoltar, onCriado }: { podeClinico: boolean; onVol
             placeholder="O que você tentou fazer, o que apareceu na tela e com qual cliente ou agendamento." />
         </label>
         <CampoDeAnexo nome="anexo" />
-        <label className="ajuda-check">
-          <input type="checkbox" name="autorizar" value="1" checked={autorizar} onChange={e => setAutorizar(e.target.checked)} />
-          <span>Autorizo o suporte a entrar na minha conta por 72 horas para olhar o problema de perto.</span>
-        </label>
+        {podeAutorizar
+          ? <label className="ajuda-check">
+              <input type="checkbox" name="autorizar" value="1" checked={autorizar} onChange={e => setAutorizar(e.target.checked)} />
+              <span>Autorizo o suporte a entrar na minha conta por 72 horas para olhar o problema de perto.</span>
+            </label>
+          : <p className="ajuda-nota" data-autorizar-so-a-admin>Se o suporte precisar entrar na sua conta, quem autoriza é a Admin da rede.</p>}
         {autorizar && podeClinico && (
           <label className="ajuda-check ajuda-check-sub">
             <input type="checkbox" name="clinico" value="1" />
@@ -192,9 +201,9 @@ function Novo({ podeClinico, onVoltar, onCriado }: { podeClinico: boolean; onVol
   )
 }
 
-function Conversa({ id, internalUserId, onVoltar }: { id: string; internalUserId: string | null; onVoltar: () => void }) {
+function Conversa({ id, onVoltar }: { id: string; onVoltar: () => void }) {
   const fuso = useFuso()
-  const [dados, setDados] = useState<{ chamado: ChamadoCompleto; meu: boolean } | null>(null)
+  const [dados, setDados] = useState<{ chamado: ChamadoCompleto; meu: boolean; podeAutorizar: boolean; podeRevogar: boolean } | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [erroDoEnvio, setErroDoEnvio] = useState<string | null>(null)
   const [gravando, iniciar] = useTransition()
@@ -230,10 +239,13 @@ function Conversa({ id, internalUserId, onVoltar }: { id: string; internalUserId
     })
   }
 
+  // A autorização do chamado é da conta de quem o abriu; quem a dá é a Admin
+  // da rede (2026-11-18) — no chamado dela ou no de outra pessoa da rede.
   function autorizar() {
-    if (!internalUserId) return
+    const alvo = dados?.chamado.quemId
+    if (!alvo) return
     iniciar(async () => {
-      const r = await autorizarSuporte({ userId: internalUserId, chamadoId: id })
+      const r = await autorizarSuporte({ userId: alvo, chamadoId: id })
       if (!r.ok) { toast.error(r.error); return }
       toast.success('Acesso autorizado por 72 horas.')
       carregar()
@@ -242,7 +254,7 @@ function Conversa({ id, internalUserId, onVoltar }: { id: string; internalUserId
 
   if (erro) return <><Cabecalho titulo="Chamado" onVoltar={onVoltar} /><p className="ajuda-erro">{erro}</p></>
   if (!dados) return <><Cabecalho titulo="Chamado" onVoltar={onVoltar} /><p className="ajuda-nota">Carregando…</p></>
-  const { chamado: c, meu } = dados
+  const { chamado: c, meu, podeAutorizar, podeRevogar } = dados
 
   return (
     <>
@@ -251,14 +263,18 @@ function Conversa({ id, internalUserId, onVoltar }: { id: string; internalUserId
       {c.autorizacao
         ? <div className="ajuda-aviso" data-tom="ok" style={{ marginTop: 10 }}>
             <span>Acesso do suporte autorizado até {quando(c.autorizacao.expiraEm, fuso)}{c.autorizacao.clinico ? ', com dados clínicos' : ''}.</span>
-            {meu && <button type="button" className="btn-secondary" disabled={gravando} onClick={() => revogar(c.autorizacao!.id)}>Revogar</button>}
+            {podeRevogar && <button type="button" className="btn-secondary" disabled={gravando} onClick={() => revogar(c.autorizacao!.id)}>Revogar</button>}
           </div>
-        : meu && (
-          <div className="ajuda-aviso" style={{ marginTop: 10 }}>
-            <span>O suporte só entra na sua conta com a sua autorização.</span>
-            <button type="button" className="btn-secondary" onClick={autorizar} disabled={gravando}>Autorizar por 72 h</button>
-          </div>
-        )}
+        : podeAutorizar
+          ? <div className="ajuda-aviso" style={{ marginTop: 10 }}>
+              <span>{meu ? 'O suporte só entra na sua conta com a sua autorização.' : `O suporte só entra na conta de ${c.quem ?? 'quem abriu'} com a sua autorização.`}</span>
+              <button type="button" className="btn-secondary" onClick={autorizar} disabled={gravando}>Autorizar por 72 h</button>
+            </div>
+          : meu && (
+            <div className="ajuda-aviso" data-autorizar-so-a-admin style={{ marginTop: 10 }}>
+              <span>O suporte só entra na sua conta com a autorização da Admin da rede.</span>
+            </div>
+          )}
       <div className="chamado-conversa">
         {c.mensagens.map(m => (
           <div key={m.id} className="chamado-msg" data-autor={m.autor}>

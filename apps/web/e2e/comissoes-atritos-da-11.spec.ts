@@ -3,6 +3,7 @@ import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
+import { venderPacotePelaAcao } from './apoio/contrato-do-pacote'
 import { abrirVendaNoPdv } from './apoio/vender'
 
 /**
@@ -108,9 +109,9 @@ test('A17: o pacote sem "De venda" usa a da pessoa; o que tem, o dele (a regra d
   const rota = `/${slug}/pdv`
   let semRegra = '', comRegra = ''
   await como(browser, dona, async p => {
-    const a = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', rota, [cliente, pacoteSemRegra, rede.branchId, { forma: 'AVISTA', metodo: 'PIX' }, null, null, { vendedorId: tatiane.userId }])
+    const a = await venderPacotePelaAcao(p, rota, [cliente, pacoteSemRegra, rede.branchId, { forma: 'AVISTA', metodo: 'PIX' }, null, null, { vendedorId: tatiane.userId }])
     semRegra = /"clientPackageId":"([0-9a-f-]{36})"/.exec(a.texto)?.[1] ?? ''
-    const b = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', rota, [cliente, pacoteComRegra, rede.branchId, { forma: 'AVISTA', metodo: 'PIX' }, null, null, { vendedorId: tatiane.userId }])
+    const b = await venderPacotePelaAcao(p, rota, [cliente, pacoteComRegra, rede.branchId, { forma: 'AVISTA', metodo: 'PIX' }, null, null, { vendedorId: tatiane.userId }])
     comRegra = /"clientPackageId":"([0-9a-f-]{36})"/.exec(b.texto)?.[1] ?? ''
   })
   expect(semRegra && comRegra, 'vendeu os dois').toBeTruthy()
@@ -159,8 +160,8 @@ test('A17 e A43: o extrato diz de onde veio o percentual, e a venda do plano diz
   expect((await b.from('users').update({ comissao_venda_pct: 3 }).eq('id', tatiane.userId)).error).toBeNull()
   const rota = `/${slug}/pdv`
   await como(browser, dona, async p => {
-    await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', rota, [cliente, pacoteSemRegra, rede.branchId, { forma: 'AVISTA', metodo: 'PIX' }, null, null, { vendedorId: tatiane.userId }])
-    await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', rota, [cliente, pacoteComRegra, rede.branchId, { forma: 'AVISTA', metodo: 'PIX' }, null, null, { vendedorId: tatiane.userId }])
+    await venderPacotePelaAcao(p, rota, [cliente, pacoteSemRegra, rede.branchId, { forma: 'AVISTA', metodo: 'PIX' }, null, null, { vendedorId: tatiane.userId }])
+    await venderPacotePelaAcao(p, rota, [cliente, pacoteComRegra, rede.branchId, { forma: 'AVISTA', metodo: 'PIX' }, null, null, { vendedorId: tatiane.userId }])
   })
   expect((await b.from('users').update({ comissao_venda_pct: null }).eq('id', tatiane.userId)).error).toBeNull()
   const plano = await rede.criarPlanoProposto('Plano B', { semTermo: true })
@@ -187,7 +188,7 @@ test('A42: "Quem vendeu" traz quem tem Vendas, sem a estoquista — e o servidor
     const campo = dlg.getByLabel('Quem vendeu')
     await expect(campo.locator('option', { hasText: 'Tatiane' })).toHaveCount(1)
     await expect(campo.locator('option', { hasText: 'Gisele' })).toHaveCount(0)
-    const r = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', rota, [cliente, pacoteSemRegra, rede.branchId, { forma: 'AVISTA', metodo: 'PIX' }, null, null, { vendedorId: gisele.userId }])
+    const r = await venderPacotePelaAcao(p, rota, [cliente, pacoteSemRegra, rede.branchId, { forma: 'AVISTA', metodo: 'PIX' }, null, null, { vendedorId: gisele.userId }])
     expect(r.texto).toContain('Quem vendeu')
     expect(r.texto).not.toContain('clientPackageId')
   })

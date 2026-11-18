@@ -1774,6 +1774,165 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-18 — A auditoria das regras: o que o Claude decidiu com a base errada, corrigido pela fala do Heitor
+
+O Heitor achou em `indicadores.md` a regra "a nova cliente da unidade é a atendida nela; a atendida em duas conta nas duas", anotada como "decisão por H16". A H16 diz o contrário: "o cliente não é da unidade, o cliente é da rede". A regra foi inventada pelo Claude. Ele perguntou "que outras regras tu que criou?" e esclareceu: "O problema não é tu tomar as decisoes. O problema é tu tomar as decisões partindo da premissa errada e ainda citar uma regra que diz exatamente o contrário do que tu fez."
+
+Seis agentes leram inteiros os arquivos de `docs/regras/` e o CLAUDE.md §4–§11, e conferiram cada citação na fala (`docs/revisao.md`, este DEVLOG, CLAUDE.md). O resultado, em estimativa:
+- ~350 regras são do Heitor e a fala diz aquilo;
+- ~480 são do Claude, pequenas e coerentes com as regras dele;
+- ~45 têm a base em dúvida;
+- **~40 têm a base errada ou citam o Heitor errado, em 7 causas.**
+
+As respostas da revisão de 02–03/11 (as "113 decisões") ficaram numa página fora do git e foram conferidas pelo resumo deste DEVLOG.
+
+**As respostas do Heitor (18/11):**
+- **Agenda × atendimento:** "Agenda é agenda e atendimento é atendimento. Só inicia e conclui atendimento quem tem gerenciar no atendimento." Nasce o módulo **Atendimento**, e o D20 ("a Agenda em Ver inicia e conclui") sai.
+- **"Novos clientes":** "Só na rede".
+- **As listas de clientes por atividade numa unidade** (as que mais gastaram, o gasto, as atendidas): "O que fez nesta unidade".
+- **"Sumida":** "eu nunca falei nada sobre cliente 'sumida'". A lista "Reativar" e o "confirmado" de 29/10 eram do Claude; vale a cliente da rede.
+- **A configuração da rede toda:** "só pela conta admin". Antes bastava "A rede inteira".
+- **A ordem dos descontos:** "Desconto, voucher, pontos", em todo lugar.
+- **Desistir no meio do atendimento:** "Não existe isso de desistir no meio do atendimento. Se isso por ventura acontecer, problema de quem desistir." A sessão paga não volta.
+- **A falta:** devolve a sessão, como já era.
+- **O plano como venda:** "Obviamente que no recebimento. Uma coisa só foi vendida se foi paga." Como já era.
+- **O fuso:** um por unidade, como já era.
+- **O Copilot (17/11):** só lê e manda ao PDV; não vende, não recebe e não aceita o plano.
+- **O escopo:** "Estamos construindo um sistema, de escopo fechado, com regras definidas, então NÃO EXISTE isso de não zerar defeitos e esses tais atritos." Daqui em diante, todo achado de simulação cita a regra que o sistema não cumpre. O que não viola regra nenhuma não vira código; vai ao Heitor como "está no escopo?".
+
+**O que foi corrigido para seguir a fala:**
+- **A cliente é da rede.**
+  - "Novos clientes" só no total da rede: `metrics_core`, `metrics_by_branch` e `metrics_new_clients_series` dão nulo fora da rede inteira. Numa rede de uma unidade, a unidade é a rede.
+  - O "Reativar" é sempre o da rede, com a unidade da última visita. Sai o recurso à unidade de cadastro.
+  - Sai o rótulo "atendidas na unidade".
+- **O módulo Atendimento** (migration `20261123900001`).
+  - Ver e Gerenciar, com escopo. Iniciar, concluir, desistir no meio e gerar ou aceitar o plano na avaliação pedem o Atendimento em Gerenciar. O clínico continua do Prontuário. Ver os planos e a lista Tratamentos pedem o Atendimento em Ver (o PT2: "quem monta o plano é quem atende").
+  - A migration dá o módulo em Gerenciar a quem tinha a Agenda e o Prontuário em Gerenciar, e em Ver a quem tinha só a Agenda.
+  - ⚠️ O cargo com a Agenda em Gerenciar e sem o Prontuário deixou de iniciar: a rede dá o Atendimento a esse cargo se quiser.
+- **Permissão.**
+  - Com "só os meus", a pessoa passa o próprio atendimento a outra (fala de 28/10).
+  - "A rede inteira" atende também nas unidades novas (EQ1; gatilho `trg_atende_na_unidade_nova`).
+  - Agendar pelo CRM pede a Agenda em Gerenciar.
+  - Cada pessoa grava as próprias respostas rápidas (H8).
+  - A configuração da rede toda e a autorização do suporte são só da Admin da rede (`ctx.isNetworkAdmin`, o cargo de sistema gravado).
+- **Comissão sem escolha.** O produto da comanda do atendimento nasce sem vendedor, e a venda gravada sem o campo não vai a ninguém (com-06: "Campo vazio não gera comissão para ninguém").
+- **Assinatura e documentos.**
+  - O pacote assina antes de pagar, como o plano (PC2: "o ideal era funcionar como no plano de tratamento").
+  - Os documentos do plano nascem na criação (DC4).
+  - A menor de idade sem responsável: avisa, não barra (decisão 2 da 7ª).
+- **Automação fora do módulo.**
+  - O "Marque o ganho" virou o modelo DESLIGADO `marque-o-ganho`, com o evento `lead.cliente_comprou` (r2-cfg-04: "toda e qualquer automação deve ser feita através dos módulos de automações").
+  - Voltou a opção do D17, desligada: "se cair de madrugada, mandar na véspera às 20:00".
+  - O suporte só pausa uma automação.
+- **Número chutado.** O ranking por procedimento não herda a nota do atendimento (princípio 4).
+- **Texto velho.** Corrigidos os trechos que contradiziam uma decisão posterior: o aceite pelo app, quem importa, "o da rede atende em todas", o lembrete de 24h automático, "a unidade vira tag", "o cargo Contadora" e os rótulos "para revisar" já respondidos.
+- **Citações.** As regras com partes do Claude sob "decisão do Heitor" passaram a dizer de quem é cada parte: Adicionais, Cortesia, "sem plano, tudo liberado", a unidade desativada, a fórmula do lucro, o estorno de produto, o desconto do plano no aceite, "Mandar pela conversa", a H10, o bônus do crédito, o D-9 e o "só os meus" para ação.
+
+**Decididas pelo Claude, pelos princípios, com a base certa (marcadas como dele):**
+- O estorno da venda de crédito devolve só o vendido, nunca o concedido.
+- O aceite do plano vencido no app avisa e não recusa.
+- O pacote no crediário libera as sessões por configuração da rede (`tenants.pacote_crediario_libera`).
+- O pacote vencido se cancela por configuração da rede (`tenants.pacote_vencido_cancela`).
+- Os pontos seguem a base de comissão escolhida pela rede.
+- O "R$ fixo por sessão" no pacote de fora paga o fixo.
+- A "Forma do pagamento do usado" nasce vazia.
+- "Outros documentos" mostra todo modelo.
+- O Copilot pergunta das automações ao mover o cartão e avisa do horário bloqueado em vez de recusar.
+- "Remover tag" voltou como ação própria.
+- Desligar o número oficial não apaga os rascunhos de template.
+- Os três limites dos pontos e do voucher no PDV ficam, com o motivo técnico em `fidelidade.md`.
+
+**Migrations** (todas aplicadas na produção e no banco local):
+- `20261123900001` a `…004` (Atendimento, unidade nova, nota do procedimento, desistência);
+- `20261124000001`, `…002`, `…101`, `…201` e `…301` (quem vendeu e a ordem dos descontos, o estorno do crédito, os documentos, os pontos na base, as regras do pacote);
+- `20261124100001` (o "Marque o ganho");
+- `20261124300001` (a comissão de venda segue a escolha da rede sobre os pontos — achada na completa, abaixo).
+
+**A completa desta leva (18/11):** a primeira deu 106 falhas e 138 testes sem rodar, em ~3 h — os specs antigos
+punham um cargo próprio (Configurações em Gerenciar, "A rede inteira") para configurar a rede, e com a regra nova
+a tela esconde e a action recusa: o teste esperava até o limite de 5 min. Corrigidos: os specs passam a configurar
+pela Admin da rede, e o membro antigo vira o controle do "não pode"; o membro que inicia atendimento ganha o
+Atendimento em Gerenciar. Os defeitos de verdade que ela achou, corrigidos no código:
+- a comissão de venda (pacote, plano, procedimento, produto) gravava sempre "sobre o preço", ignorando a escolha da
+  rede (`comissoes.md`, "A escolha da rede vale em toda comissão");
+- o envio do link de documento pela conversa, a ficha de pré-atendimento e a busca das contas de anúncio ainda
+  aceitavam quem tem "A rede inteira" sem ser a Admin;
+- telas que mostravam o que a action recusa: as de campanha (Nova, Ativar, Pausar, Arquivar, Editar, Excluir), o
+  chip da comissão do procedimento, o atalho "Conectar o WhatsApp" do inbox da rede e o assistente do `/setup`
+  (quem tem "A rede inteira" sem ser a Admin vai ao painel com o aviso — `lib/setup/quem-abre.ts`);
+- a aba LGPD tinha saído de quem tem o Prontuário em Gerenciar (a LGPD não é configuração da rede — C31);
+- o "Montar um plano" na avaliação concluída pedia o Atendimento em Gerenciar, e a action aceita quem atende na
+  unidade (PT2) — a tela segue a action, com o Atendimento ao menos em Ver;
+- o inbox sem canal dizia "peça a quem tem as Configurações em Gerenciar" (agora "à Admin da rede").
+Rodadas só as falhas e os vizinhos (99 arquivos): 481 passam em 12 min.
+
+**Em aberto, para a próxima leva (a cliente da rede até o fim):**
+- a RLS de `clients`, que ainda recorta pela unidade de cadastro;
+- a linha da cliente na Auditoria como da rede;
+- os padrões que ainda saem de `clients.branch_id`: documentos do app, `destinoDaCliente`, avisos de vencimento, plano, mapa de injetáveis, exportação da LGPD e a "Unidade de cadastro" nas telas;
+- a cliente criada pela conversa sem unidade;
+- `metrics_vendas` com `coalesce(vendido_por, professional_id)` (com-06);
+- a baixa pelo Financeiro em Gerenciar no que não passa pelo balcão (CX2);
+- fidelidade, maquininhas e assinatura ainda conferem a abrangência, e não a Admin;
+- o evento "sessão do pacote usada" na desistência.
+
+### 2026-11-18 — As pendências das simulações 15ª–23ª e os defeitos e atritos da 24ª, corrigidos
+
+**As pendências.** Os 26 itens que tinham ficado "de fora" da 15ª à 23ª foram corrigidos. O Heitor (17/11): "Eu nao quero que fique nada pra tras, defeitos e atritos todos precisam ser corrigidos, sempre."
+- Atendimento:
+  - a faixa da ficha de saúde não respondida;
+  - o app oferece a ficha a quem tem atendimento marcado;
+  - o rascunho do Planejamento;
+  - um desenho só de cartão na Minha agenda;
+  - o "Incluído" com o texto do plano;
+  - "Sessão do plano · a receber no PDV";
+  - o desconto combinado no editor do plano;
+  - a remarcação no app com os dias livres;
+  - os avisos lidos no sino;
+  - "Marcar no Atende" ao desativar.
+- Dinheiro e estoque:
+  - a métrica de transferências de estoque;
+  - as formas da mesma parcela numa linha;
+  - a marca "não usa insumo" (`procedures.sem_insumo`);
+  - a confirmação do "Tornar ativo".
+- CRM e cadastros:
+  - o endereço no Novo cliente;
+  - "Mover as N para…";
+  - "Duplicar" cargo;
+  - o selo "Fora do plano" do Copilot;
+  - o aviso da URL em faixa;
+  - a campanha para clientes específicas;
+  - marcar tag em várias clientes;
+  - os nomes na recusa de comissão do Copilot;
+  - as leituras do Copilot de comandas, plano e em aberto.
+- **A35 (decisão do Heitor, 17–18/11):** mover o cartão à mão com automação ligada pergunta "Disparar?". Vale para um cartão ou vários, em todo caminho de tela.
+  - O `gatilhoCasa` (`lib/automacoes/gatilho-casa.ts`) é a conferência única do gatilho.
+  - Achado no caminho: mudar a etapa pelo modal não emitia o evento.
+- **A10 da 24ª (decisão do Heitor, "As duas"):** o custo do lote se corrige enquanto nada saiu dele, com o antes e o depois na Auditoria. Depois disso, o ajuste "Correção de cadastro" não conta como perda nem no giro. O aviso de custo fora do comum (R$ 10.000 por embalagem, sem referência) é decisão do Claude: só avisa.
+
+**A 24ª.** Ela rodou sobre `36aaeeb6` e achou 1 defeito e 52 atritos, todos corrigidos.
+- **D1:** o Copilot respondia a despesa com a receita. Agora as chaves dizem se são receita ou despesa, e a despesa vem pela conta do Financeiro.
+- **Cargos e atendimento:** o resumo diz quem conclui; um nome só por situação ("Agendado"); a grade com o relógio que anda e o fuso da unidade; "Horário passou" no app; "Remarcar" no cartão; a unidade sem sala.
+- **PDV e caixa:**
+  - a maquininha de fábrica a preencher;
+  - "N vendas com parcelas a receber" filtra;
+  - o desconto em linha própria;
+  - a 1ª forma em caixa própria;
+  - o motivo da diferença no fechamento;
+  - o aviso da gaveta negativa ao pagar comissão em dinheiro;
+  - o CSV de todas as unidades;
+  - "Trocar pontos por voucher" na comanda.
+- **Financeiro e estoque:** o procedimento no lugar de "Atendimento concluído"; o antes → depois na Auditoria; a ordem das categorias.
+- **Copilot e CRM:**
+  - a categoria sugerida no cartão de despesa;
+  - as taxas citadas prontas;
+  - o `?funil=` lembrado;
+  - "Ações" no cartão;
+  - a dica dos selos calculados;
+  - sem "secretária" no texto.
+- **Migrations** (aplicadas na produção e no banco local): `20261123000001`, `20261123100001`/`…002` (o desconto do plano), `20261123200001`/`…002` (sem insumo, transferências), `20261123600001`/`…002` (o custo do lote, a correção de cadastro, os novos clientes só na rede, a Auditoria com o antes e o depois).
+- **Vale uma completa quando o Heitor pedir.** Mudaram permissões, menu, `recursos.ts` do núcleo, layouts, topbar, a rota do Copilot e o pagamento.
+
 ### 2026-11-17 — Os defeitos e atritos da 23ª simulação, corrigidos
 
 A 23ª rodou sobre `17e38ac4` com o "[sim] Studio Acácia" (uma unidade, quatro pessoas, um caixa sem a Agenda) e a "[sim] Rede Bromélia" (duas unidades em Campo Grande, UTC−4, com o Copilot). O dinheiro bateu centavo a centavo nos dois times, e os 2 defeitos e 21 dos atritos consertados na 22ª apareceram funcionando. Ela achou 3 defeitos (2 médios, 1 baixo) e 40 atritos; nada foi ao Heitor.
@@ -1804,7 +1963,7 @@ A 23ª rodou sobre `17e38ac4` com o "[sim] Studio Acácia" (uma unidade, quatro 
   - A28/A34: o quadro de Oportunidades e a aba Comercial abrem no `?funil=`, senão no último escolhido (cookie `bellaris-funil`), senão no padrão com oportunidade.
   - A29: o comparecimento só conta o que já devia ter acontecido; sem nenhum, "—".
 - **App da cliente**: a aba "Fotos e arquivos", com o cartão em Documentos (A35); o botão fixo "Confirmar que realizei o atendimento", a nota "(opcional)" (A36); "Ver o plano" no cabeçalho do plano aceito (A37).
-- **De fora**: A24 (o desenho do cartão de outra unidade na Minha agenda segue a duração, não a unidade); o rascunho do Planejamento ao sair e o botão do cabeçalho (resto do A21); A7, A38 e A39 já anotados (a marca "não usa insumo", o "Incluído" do plano no Agendar, o endereço no cadastro rápido).
+- ~~**De fora**: A24, o resto do A21, A7, A38 e A39~~: corrigidos em 18/11 com as pendências (entrada acima).
 - **Migration** (aplicada na produção e no banco local): `20261123000001_comparecimento_so_o_que_ja_passou` (`metrics_comercial`).
 - **A completa contra o banco local**:
   - isolados 1618 passando e 1 falha: o `suporte-credenciais` (a navegação interrompida pela queda da sessão de suporte; passou sozinho, 10/10);

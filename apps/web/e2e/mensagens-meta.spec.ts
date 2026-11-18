@@ -7,6 +7,7 @@ import { chamarAcao } from './apoio/acao-direta'
 import { subirGraphFalsa, type GraphFalsa } from './apoio/graph-falsa'
 import { subirUazapiFalsa, type UazapiFalsa } from './apoio/uazapi-falsa'
 import { decifrarSegredos } from '../lib/integracoes/cofre'
+import { ARQUIVO_DE_SESSAO } from '../playwright.config'
 
 /**
  * O que faltava da P5: template, mídia, entrada pelo Instagram e os crons
@@ -205,17 +206,27 @@ test.describe.serial('mensagens pela Meta e crons', () => {
   })
 
   test('caixa pela tela: endereço interno é recusado e chave fora da lista não é gravada', async ({ browser }) => {
-    const ctx = await browser.newContext({ storageState: f!.config.estado })
+    // A caixa é configuração da rede toda: só a Admin da rede grava (o Heitor,
+    // 18/11: "Configuração da rede toda só pela conta admin"). Quem salva é a
+    // sessão padrão da suíte (a Admin); o membro com Configurações em
+    // Gerenciar, num cargo próprio, é o "não pode".
+    const comoConfig = await browser.newContext({ storageState: f!.config.estado })
+    const ctx = await browser.newContext({ storageState: ARQUIVO_DE_SESSAO })
     const page = await ctx.newPage()
-    const salvar = (sufixo: string, config: Record<string, string>) =>
-      chamarAcao(page, 'actions/integrations.ts', 'salvarNumeroWhatsApp', '/admin/settings',
+    const salvarEm = (p: typeof page, sufixo: string, config: Record<string, string>) =>
+      chamarAcao(p, 'actions/integrations.ts', 'salvarNumeroWhatsApp', '/admin/settings',
         // Inativa: ativar emitiria "integração conectada" na corrente da rede.
         [null, 'uazapi', config, false, { rotulo: `${PREFIXO} Config ${marca} ${sufixo}` }])
+    const salvar = (sufixo: string, config: Record<string, string>) => salvarEm(page, sufixo, config)
     // O token mora CIFRADO no banco (lib/integracoes/cofre.ts): compara-se o decifrado.
     const caixas = async () => ((await db().from('whatsapp_numbers').select('label, config')
       .like('label', `${PREFIXO} Config ${marca}%`)).data ?? [])
       .map(c => ({ ...c, config: decifrarSegredos(c.config as Record<string, unknown>) }))
     try {
+      const recusa = await salvarEm(await comoConfig.newPage(), 'nao-admin', { token: `e2e-cfg-${marca}`, baseUrl: 'https://e2e.invalido' })
+      expect(recusa.texto).toContain('Esta configuração é só da Admin da rede.')
+      expect(await caixas(), 'quem não é a Admin da rede não grava a caixa').toEqual([])
+
       // O servidor faz a chamada para esse endereço: aceitar um interno é dar à
       // clínica um jeito de o app falar com a rede de dentro (SSRF).
       await salvar('local', { token: `e2e-cfg-${marca}`, baseUrl: 'http://127.0.0.1:9' })
@@ -226,6 +237,7 @@ test.describe.serial('mensagens pela Meta e crons', () => {
       await salvar('ok', { token: `e2e-cfg-${marca}`, baseUrl: 'https://e2e.invalido', graphBase: 'http://127.0.0.1:1', provider: 'official' })
     } finally {
       await ctx.close()
+      await comoConfig.close()
     }
     expect(await caixas(), 'só token e baseUrl entram').toEqual([
       { label: `${PREFIXO} Config ${marca} ok`, config: { token: `e2e-cfg-${marca}`, baseUrl: 'https://e2e.invalido' } },

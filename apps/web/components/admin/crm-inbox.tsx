@@ -1677,12 +1677,13 @@ export function CRMInbox({
       {showMinhasRespostas && (
         // A8 da 14ª (H8): o lugar fixo das respostas rápidas da pessoa, fora
         // da conversa — também sem canal ligado.
-        <InboxQuickReplies canEdit={canEdit} busca="" onClose={() => setShowMinhasRespostas(false)} />
+        // Cada pessoa edita as suas (H8): não depende do CRM em Gerenciar.
+        <InboxQuickReplies canEdit busca="" onClose={() => setShowMinhasRespostas(false)} />
       )}
 
       {showAtalhos && (
         <InboxQuickReplies
-          canEdit={canEdit}
+          canEdit
           busca={buscaAtalho}
           onEscolher={texto => {
             // Substitui a barra digitada; sem isso o '/limpeza' ficaria na
@@ -1769,17 +1770,16 @@ export function CRMInbox({
               )}
             </div>
 
-            {canEdit && (
-              <button
-                type="button"
-                onClick={() => setShowMinhasRespostas(true)}
-                className="btn-ghost"
-                data-minhas-respostas
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs-sz)', marginBottom: 8, padding: '4px 6px' }}
-              >
-                <Zap size={13} /> Minhas respostas rápidas
-              </button>
-            )}
+            {/* Cada pessoa guarda as suas respostas rápidas (H8): o botão é de todos do inbox. */}
+            <button
+              type="button"
+              onClick={() => setShowMinhasRespostas(true)}
+              className="btn-ghost"
+              data-minhas-respostas
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs-sz)', marginBottom: 8, padding: '4px 6px' }}
+            >
+              <Zap size={13} /> Minhas respostas rápidas
+            </button>
 
             {/* A origem mudou para dentro do painel, junto dos outros cortes.
                 O que sobra aqui é o resumo do que está filtrando — e ele só
@@ -1829,7 +1829,7 @@ export function CRMInbox({
                     {podeConfigurarIntegracoes
                       ? <>Nenhum canal ligado: as conversas chegam aqui depois que o WhatsApp (ou o Instagram) é ligado.{' '}
                           <Link href={`${slug ? `/${slug}` : '/admin'}/settings?tab=integrations`} style={{ color: 'var(--brand)', fontWeight: 700 }}>Conectar o WhatsApp</Link></>
-                      : <>Nenhum canal ligado: as conversas chegam aqui depois que o WhatsApp (ou o Instagram) é ligado. Peça a quem tem as Configurações em Gerenciar para conectar o WhatsApp.</>}
+                      : <>Nenhum canal ligado: as conversas chegam aqui depois que o WhatsApp (ou o Instagram) é ligado. Peça à Admin da rede para conectar o WhatsApp.</>}
                   </p>
                 )}
                 {/* Lista vazia por causa de filtro tem saída à mão: sem isto a

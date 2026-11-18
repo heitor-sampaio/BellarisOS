@@ -156,7 +156,7 @@ export function resumoDoNo(tipo: TipoDeNo, config: Record<string, unknown>, fuso
       return `${CANAL_TEXTO[(c.canal as string) ?? ''] ?? (c.canal as string) ?? 'canal'}: ${trecho(c.texto as string)}`
 
     case NODES.ACAO_NOTIFICAR_EQUIPE: {
-      const alvo = { usuario: 'uma pessoa', cargo: 'um cargo', unidade: 'a unidade' }[
+      const alvo = { usuario: 'uma pessoa', cargo: 'um cargo', unidade: 'a unidade', responsavel: 'quem cuida da oportunidade' }[
         (c.alvo as string) ?? ''
       ] ?? 'a equipe'
       return `${alvo}: ${trecho(c.titulo as string) || trecho(c.corpo as string)}`
@@ -174,6 +174,7 @@ export function resumoDoNo(tipo: TipoDeNo, config: Record<string, unknown>, fuso
       return (c.desfecho as string) === 'perdido' ? 'marcar como perdido' : 'marcar como ganho'
 
     case NODES.ACAO_TAG_CLIENTE:
+    case NODES.ACAO_REMOVER_TAG:
       return `"${(c.tag as string) ?? '…'}"`
 
     case NODES.ACAO_ATRIBUIR:

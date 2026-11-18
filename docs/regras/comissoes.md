@@ -80,8 +80,10 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   as gerais junto (vale para quem não tem regra nenhuma). Procedimento com
   geral não tem exceção: `comissao_do_procedimento_definir` substitui o
   conjunto inteiro do procedimento, a Equipe não o oferece como exceção e
-  `comissao_regras_definir` recusa. Muda quem tem `financial: MANAGE` e é da
-  rede. Prova: `e2e/comissoes-por-procedimento.spec.ts`.
+  `comissao_regras_definir` recusa. Muda quem tem `financial: MANAGE` e é a
+  Admin da rede (desde 18/11, o Heitor: a configuração da rede toda é "só pela
+  conta admin"; até ali, quem tinha “A rede inteira”). Prova:
+  `e2e/comissoes-por-procedimento.spec.ts`, `tests/config-da-rede-so-da-admin.test.ts`.
   - **A comissão da profissional, na Equipe, diz QUAIS procedimentos têm a
     geral** (A11 da 10ª simulação, 2026-11-10; princípio 3: a Camila tinha
     35% e a janela não dizia que o Microagulhamento pagava 40% "para todos"):
@@ -121,7 +123,8 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   `tests/configuracoes-e-menu-da-14.test.ts`). O passo do setup segue "Taxas
   da maquininha" e diz o nome da aba.
 - **Configuração da REDE** (`commission_configs`, Configurações → Comissões,
-  `financial: MANAGE` + abrangência de rede): `modo` (só `INTEGRAL` desde
+  `financial: MANAGE` + a Admin da rede desde 18/11, `mexeNaConfigDaRede`;
+  também o máximo de parcelas do crediário): `modo` (só `INTEGRAL` desde
   2026-11-01, acima; era ATENDIMENTO | PAGAMENTO), descontos da base
   (`desconta_insumos`, `desconta_taxa`), `base_com_pontos` (PRECO | VALOR_PAGO,
   veio de `loyalty_configs.commission_base`) e `periodo` do fechamento
@@ -137,10 +140,27 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   insumo descontados; os pontos e o voucher usados não saem dela)" na regra
   "Sobre o preço", ou "base sem os pontos e o voucher usados…" no "Sobre o valor
   pago" (`rotuloDaBase` com `base_com_pontos`). No extrato vale o retrato da
-  linha (`comissoes_extrato_linhas` devolve `base_com_pontos`), e só no avulso:
-  no pacote, no plano e nas vendas os pontos são forma de pagamento e nunca
-  saem da base (`comissao_conta`). Prova: `tests/comissoes-config.test.ts`,
-  `e2e/comissoes-configuracao.spec.ts`, `e2e/comissoes-pacote.spec.ts`.
+  linha (`comissoes_extrato_linhas` devolve `base_com_pontos`), em TODA origem.
+  **A escolha da rede vale em toda comissão** (item 10 das correções da
+  auditoria das regras — decisão do Claude pelos princípios 2 e 3,
+  2026-11-18; era "só no avulso: no pacote, no plano e nas vendas os pontos
+  são forma de pagamento e nunca saem da base", e a escolha da rede não valia
+  ali): com "Sobre o valor pago", os pontos e o voucher usados saem da base
+  também na venda do pacote e em cada sessão dele, na venda do plano e em cada
+  procedimento executado dele, no pré-pago e na venda de produto. A parte de
+  cada linha é a proporção do preço dela no preço cheio da venda (a sessão de
+  R$ 200 de um pacote de R$ 800 leva 1/4 dos pontos); os pontos lidos são os
+  dos lançamentos pagos e vivos da venda, e o estorno os devolve à base
+  (`private.comissao_conta_detalhe`, migration `20261124000201`). Com "Sobre o
+  preço", nada muda. Configurações → Comissões diz isso nas duas opções ("Vale
+  no atendimento, nas sessões de pacote e de plano e nas vendas.",
+  `OPCOES_DA_BASE_COM_PONTOS`, `lib/comissoes/config.ts`), e o extrato diz a
+  frase do retrato em toda linha (`rotuloDaBaseDoLancamento`). Para a
+  QUITAÇÃO os pontos continuam contando como pagamento (o pacote pago com
+  pontos está pago). Prova: `tests/comissoes-config.test.ts`,
+  `tests/comissoes-pontos-e-pacote-de-fora.test.ts`,
+  `e2e/comissoes-configuracao.spec.ts`, `e2e/comissoes-pacote.spec.ts`,
+  `e2e/comissoes-pontos-na-base-das-vendas.spec.ts`.
   **O valor ao lado da frase é a base EFETIVA** (D3 da 10ª simulação,
   2026-11-10; princípio 3): o extrato dizia "base sem a taxa da maquininha:
   R$ 420,00 · 40%" ao lado de R$ 165,48 (40% de 420 daria 168), e o CSV punha
@@ -233,13 +253,14 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     dois"), com o campo `comissao` gravado por `createProduct`/`updateProduct`
     (`comissaoDoProdutoNoFormulario`, `lib/comissoes/gravacao.ts`, conferido
     ANTES de gravar). Mostra e grava SÓ quem muda comissão — o Financeiro em
-    Gerenciar, comissões no plano e abrangência de rede
-    (`podeMudarComissaoDoProcedimento`; quem não tem “A rede inteira” e quem só
-    tem o Estoque não veem a seção, e o servidor recusa o campo: "Seu cargo
+    Gerenciar, comissões no plano e a Admin da rede
+    (`podeMudarComissaoDoProcedimento`: desde 18/11 só a Admin da rede, como
+    toda configuração da rede toda; quem só tem o Estoque não vê a seção, e o
+    servidor recusa o campo: "Seu cargo
     não muda a comissão dos produtos."). Com "Uma regra sobre o total", o
     cadastro não oferece campo: diz "A rede comissiona a venda de produto
     por uma regra sobre o total (5% do vendido)…" com o caminho para
-    Configurações → Comissões (decisão da F14, para o Heitor revisar). Em
+    Configurações → Comissões (decisão do Claude na F14, pelos princípios). Em
     Configurações → Comissões ficam a escolha e a regra geral, e o RESUMO só
     de leitura de cada produto ("10% do vendido", "R$ 3,00 por unidade",
     "regra geral") com o caminho do Estoque — um lugar só para editar
@@ -268,10 +289,18 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   gravar); confirmada, `sold_by` fica nulo e nenhuma linha de comissão de
   venda nasce. A pessoa escolhida é conferida no servidor (da rede, ativa, e
   da unidade ou da rede, ou de fora e que ATENDE nela — decisão 2 da 8ª) e na
-  função; a responsável do pacote tem de atender NESTA unidade. O chamador que
-  não manda o campo (`vendedorId` ausente) segue como antes: quem registrou.
+  função; a responsável do pacote tem de atender NESTA unidade. **O caminho
+  que não manda o campo (`vendedorId` ausente) não dá a venda a ninguém** (o
+  Heitor, com-06: "Campo vazio não gera comissão para ninguém"; auditoria das
+  regras, 2026-11-18 — era "segue como antes: quem registrou", uma comissão
+  sem ninguém escolher): sem o campo, `sold_by` fica nulo, sem comissão de
+  venda e fora do "Meu faturamento" de quem registrou. Toda tela de venda
+  (pacote, pré-pago, produto, plano) manda o campo. O produto acrescentado na
+  comanda do atendimento também tem o seu, "Quem vendeu os produtos", vazio
+  (era quem atendeu — `vendas-financeiro.md`, "O produto na comanda do
+  atendimento").
   Prova: `e2e/vendas-quem-vendeu.spec.ts`. **A lista vem em grupos** (A15 da
-  8ª simulação, 2026-11-06: quem tinha o cargo Contadora, que só vê, aparecia no meio): "Quem
+  8ª simulação, 2026-11-06: quem tinha só o Financeiro em Ver aparecia no meio): "Quem
   atende" (nesta unidade), "Quem recebe" (o PDV ou o Financeiro em
   Gerenciar, ou a Admin) e "Quem tem o Comercial no cargo" (`equipeDaVenda`).
   **E só quem VENDE** (A42 da 11ª simulação, 2026-11-10 — a frente F56: "a
@@ -286,8 +315,8 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   `e2e/comissoes-atritos-da-11.spec.ts` ("A42").
 - **A comissão do PACOTE é do cadastro de cada pacote** (decisão do Heitor,
   2026-10-30; migration `20261029001501`): Comercial → Pacotes, seção "Comissão"
-  do formulário (só para quem tem `financial: MANAGE`, da rede e com
-  comissões no plano — `podeMudarComissaoDoProcedimento`; `salvarPacote`
+  do formulário (só para quem tem `financial: MANAGE`, é a Admin da rede
+  (desde 18/11) e tem comissões no plano — `podeMudarComissaoDoProcedimento`; `salvarPacote`
   recusa o campo `comissao` de quem não pode, antes de gravar). Duas, cada uma
   ligada ou não, gravadas em `service_packages` e RETRATADAS em
   `client_packages` na venda (mudar o catálogo vale para as próximas):
@@ -333,10 +362,17 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     profissional (`REGRA`) sobre a parte da sessão no rateio do valor de
     referência (`package_sessions.preco`), e libera na conclusão — o pacote
     não tem preço de venda (`client_packages.price` nulo: nada que a cliente
-    deva à rede, `comissao_conta`). Sem valor de referência, R$ 0 e a tela
-    avisa (princípio 4): `linhasDoAtendimento` não cria a linha para a sessão
-    sem preço de um pacote `de_fora` — nem a regra de "R$ fixo" (a decisão
-    disse R$ 0). Prova: `e2e/pacote-de-fora.spec.ts`.
+    deva à rede, `comissao_conta`). Sem valor de referência, o PERCENTUAL dá
+    R$ 0 e a tela avisa (princípio 4: não se chuta o valor) —
+    `linhasDoAtendimento` não cria a linha percentual para a sessão sem preço
+    de um pacote `de_fora`. **O "R$ fixo por sessão" é pago** (item 11 das
+    correções da auditoria das regras — decisão do Claude pelo princípio 2,
+    2026-11-18: o fixo é o valor que a rede escolheu e não depende do valor de
+    referência; era R$ 0 também): a linha nasce com o fixo e `preco` 0, e
+    libera na conclusão. A janela de trazer, o cartão da ficha, a ficha de
+    tratamento e a importação dizem "a comissão de execução em percentual é
+    R$ 0 (a de R$ fixo por sessão é paga)" (`contaDoPacoteDeFora`). Prova:
+    `e2e/pacote-de-fora.spec.ts`, `tests/comissoes-pontos-e-pacote-de-fora.test.ts`.
   - **"Abater do pacote"** segue a execução do pacote: com `REGRA`, a linha
     avulsa vira a de pacote com a mesma regra (o de antes); com a do pacote, a
     avulsa é CANCELADA e nasce UMA linha com a regra dele (ou nenhuma).
@@ -476,7 +512,9 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   **O chip diz QUAL comissão** (A22 da 19ª simulação, princípio 3; era "Sem
   comissão" em toda linha, e a Patrícia deu 25% de atendimento a quem só
   vende): quem atende sem padrão, "Sem comissão de atendimento"; quem não
-  atende, "Venda 3%" ou "Sem comissão de venda"; com padrão, como antes
+  atende, "Venda 3%" ou "Venda: a do pacote, produto ou rede" (A6 da 24ª: o
+  "Sem comissão de venda" escondia a do pacote, do produto e da rede, que
+  valem); com padrão, como antes
   ("Comissão 25% · 2 exceções · venda 3%") — `chipDaComissao`
   (`lib/comissoes/chip-do-membro.ts`). O campo do valor da regra mostra um
   exemplo ("Ex.: 10", "Ex.: 50,00"), não um 0 que parecia já preenchido (A24).
@@ -615,7 +653,9 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     pagamento). A regra não mudou. Prova: `e2e/comissoes-uso-da-10.spec.ts` ("A32").
     As três datas (o início, o fim com a hora e o pago) vão no fuso da rede
     (`textoDoFechamento`, `lib/comissoes/extrato-texto.ts`; D3 da 23ª: a tela
-    dizia a hora de Brasília e o CSV a da rede).
+    dizia a hora de Brasília e o CSV a da rede). O pago diz também a HORA
+    ("pago em 18/11/2026 às 10:05" — A29 da 24ª): dois fechamentos do mesmo
+    dia se distinguem.
   - **Pagar só parte: marcar e desmarcar os lançamentos** (A21 da 10ª
     simulação; decisão do Heitor, 2026-11-10: "concordo com marcar e
     desmarcar" — a Admin da rede queria pagar parte da comissão da Camila agora e o
@@ -651,7 +691,9 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   - Fechamento não se reabre: estorno depois dele vira lançamento negativo
     no próximo. Saldo negativo não fecha.
   - **Estornar um fechamento** (`estornarFechamento` →
-    `comissao_estornar_fechamento`, com motivo): estorna a despesa por
+    `comissao_estornar_fechamento`, com motivo — numa janela, "Estornar o
+    fechamento?", com quem e quanto: A29 da 24ª; era um grupo aberto na
+    própria linha): estorna a despesa por
     `estornar_transacao` e devolve os lançamentos dele a "a pagar". É a ÚNICA
     porta — o gatilho `trg_despesa_de_fechamento` recusa estornar essa despesa
     pelo financeiro comum (a comissão ficaria "paga" com o dinheiro de volta).
@@ -695,6 +737,8 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
 ❌ Criar linha de comissão em outro modo que não INTEGRAL (o gatilho trg_comissao_linha_integral garante), ou reescrever o modo de uma linha antiga
 ❌ Decidir a regra de um procedimento sem as gerais (regraAplicavel sem o terceiro argumento ignora "a mesma para todos")
 ❌ Mandar ao banco a base de comissão que o navegador enviou (plano e pacote se leem em linhasDoAtendimento)
+❌ Deixar a escolha da rede sobre os pontos ("Sobre o valor pago") valer só no avulso — vale no pacote, no plano e nas vendas (comissao_conta_detalhe; item 10 da auditoria)
+❌ Zerar a comissão de "R$ fixo por sessão" do pacote de fora por falta do valor de referência — só o percentual depende dele (item 11 da auditoria)
 ❌ Cancelar ou marcar falta num atendimento concluído — o que se desfaz é o pagamento (estorno)
 ❌ Recortar comissão por scheduled_at do atendimento (o período é o do lançamento, released_at)
 ❌ Mostrar comissão de outra pessoa sem financial com escopo de todos (team e reports não bastam)

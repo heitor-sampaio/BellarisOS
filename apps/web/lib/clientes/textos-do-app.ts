@@ -150,3 +150,8 @@ export function miniaturaNoApp(d: { category: string; file_url: string }): strin
  * confirmar").
  */
 export const BOTAO_DE_CONFIRMAR_NO_APP = 'Confirmar que realizei o atendimento'
+
+/** O aviso ao confirmar pelo app (A45 da 24ª, princípio 3): voltava ao histórico sem aviso. */
+export function textoDoConfirmadoNoApp(avaliou: boolean): string {
+  return avaliou ? 'Atendimento confirmado; avaliação enviada.' : 'Atendimento confirmado.'
+}

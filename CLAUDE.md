@@ -105,6 +105,16 @@ regra de negócio que não está clara ou que contraria um deles.
    continua; muda a organização, os nomes, a ordem e o que fica à vista.
    Opções, botões e comandos fáceis de achar e de entender.
 
+**Escopo fechado** (o Heitor, 2026-11-18: "Estamos construindo um sistema, de
+escopo fechado, com regras definidas, então NÃO EXISTE isso de não zerar
+defeitos e esses tais atritos. O sistema é feito para fazer X e deve fazer X e
+ponto final."). Defeito ou atrito é o sistema não cumprir uma regra (deste
+arquivo, de `docs/regras/`, uma decisão do Heitor ou um princípio acima) — e
+se corrige. O que não viola regra nenhuma ("seria bom ter", recurso novo) não
+vira código: vai ao Heitor como "está no escopo?". Correção não acrescenta
+escopo. Regra decidida pelo Claude diz que é dele; só se atribui ao Heitor o
+que a fala dele diz, relida antes de citar.
+
 ---
 
 ## 2. Stack
@@ -318,7 +328,7 @@ conta é dela; as fichas são de cada rede, e cada rede só vê a sua.
 - Fica de fora: a mesma pessoa como EQUIPE de uma rede e cliente de outra
   com o mesmo e-mail (usa outro e-mail).
 - Prova: `e2e/portal-cliente-varias-redes.spec.ts`.
-- **A ficha é da REDE, não da unidade de cadastro** (H5, 2026-11-02: "A
+- **A ficha é da REDE, não da unidade de cadastro** (H5, 2026-11-01: "A
   cliente é da clínica, pode agendar em qualquer unidade da clínica"). O portal
   de QUALQUER unidade ativa da rede da ficha abre a mesma ficha
   (`slugsDaRede` em `fichaDaRequisicao`; o layout de `[slug]` confere a
@@ -593,7 +603,14 @@ tinha a Agenda guardava o OWN esmaecido da agenda, e o dashboard a recortava
 quem lê o escopo é que o ignora enquanto o módulo está em NONE.
 Prova: `e2e/permissoes-escopo-sem-modulo.spec.ts`.
 
-Os 19 módulos: `agenda`, `clients`, `loyalty`, `medical_records`, `documents`,
+**Agenda é agenda e atendimento é atendimento** (o Heitor, 2026-11-18: "Só
+inicia e conclui atendimento quem tem gerenciar no atendimento"): o módulo
+`atendimento` (Ver/Gerenciar, com escopo) inicia, conclui, desiste no meio e
+gera o plano na avaliação; a Agenda agenda, confirma, remarca, cancela e marca
+a falta; o clínico (evolução, fotos, ficha de saúde) é do Prontuário. Regra em
+`docs/regras/atendimento.md`.
+
+Os 20 módulos: `agenda`, `atendimento`, `clients`, `loyalty`, `medical_records`, `documents`,
 `procedures`, `stock`, `financial`, `cashier`, `crm`, `marketing`, `reports`, `team`,
 `forms`, `roles`, `settings`, `automations`, `copilot` e `audit` (a Auditoria: SÓ da
 Admin da rede — o Heitor, 2026-11-16: "Auditoria é só admin". Fora da matriz de Cargos, não se dá a cargo
@@ -602,7 +619,7 @@ da Admin da rede) entra num grupo
 de `MODULE_GROUPS` (`lib/permissions-copy.ts`) — fora de grupo ele não aparece na
 tela de Cargos (`tests/permissions.test.ts` trava). Nem todo módulo distingue os três níveis — `MODULE_LEVELS`
 (`lib/permissions.ts`) declara o que cada um aceita, e a tela de cargos só
-oferece esses. O escopo aparece apenas em `SCOPED_MODULES`: `agenda`,
+oferece esses. O escopo aparece apenas em `SCOPED_MODULES`: `agenda`, `atendimento`,
 `medical_records`, `financial`, `crm` e `reports` (em `reports` o escopo é "só
 a minha unidade" × "a rede inteira", não "os meus registros").
 
@@ -694,17 +711,18 @@ Regras:
   de cargo com valor fora das opções fica em "Selecione…", nunca no primeiro
   da lista (era o que rebaixava a Admin da rede). Prova:
   `e2e/equipe-dona-que-atende.spec.ts`.
-- **A configuração da rede toda é de quem tem “A rede inteira”** (H7, decisão do
-  Heitor, 2026-11-01: "gerente de uma unidade só mexe no que é da unidade").
-  Com os módulos em Gerenciar, quem não tem "A rede inteira" (`ctx.branchId !== null` — uma unidade ou várias, EQ1b)
-  não grava tags, funis, cargos, fichas, modelos de documento, integrações, automações,
-  campanhas, templates, as Importações nem os
-  dados da rede: a action devolve
-  `recusaDaConfigDaRede` (`lib/configuracao-da-rede.ts`) e a aba diz "Esta
-  configuração é da rede toda". Continua com a dela: a aba Unidade (dados,
-  horário, salas), o estoque e a equipe. As respostas rápidas são de cada
-  pessoa (H8 do levantamento das regras, 2026-11-11 — C72 na F69; a C73
-  ainda não entrou). O cadastro de produtos, as categorias, as marcas e os
+- **A configuração da rede toda é só da Admin da rede** (o Heitor, 2026-11-18:
+  "Configuração da rede toda só pela conta admin"; era a H7 de 01/11, quem
+  tinha "A rede inteira"). Tags, funis, cargos, fichas, modelos de documento,
+  integrações, automações, campanhas, templates, as Importações, a comissão do
+  procedimento e os dados da rede: `mexeNaConfigDaRede`/`recusaDaConfigDaRede`
+  (`lib/configuracao-da-rede.ts`) leem `ctx.isNetworkAdmin` (o cargo de sistema
+  gravado, nunca a claim), e a aba diz "Esta configuração é só da Admin da
+  rede." e quem a muda. Autorizar o suporte a entrar na conta também é só da
+  Admin da rede (`podeAutorizar`, `lib/suporte/regras.ts`). Fica com quem tem
+  a permissão: a aba Unidade (dados, horário, salas), o estoque e a equipe. As
+  respostas rápidas são de cada pessoa (H8 do levantamento das regras,
+  2026-11-11; a C73 entrou na F70). O cadastro de produtos, as categorias, as marcas e os
   fornecedores do estoque são de quem tem o Estoque em Gerenciar, e só isso
   (Bloco Estoque, 2026-11-14/15: "é só quem tem permissão de gerenciar"; a
   C63 e a C71 saíram), com a unidade do estoque inicial entre as da pessoa
@@ -810,7 +828,8 @@ do arquivo dele em `docs/regras/` ("O que nunca fazer aqui").
 ❌ Receber um id em export 'use server' sem confirmar que ele é da rede da sessão
 ❌ Limpar um estado da rede ANTES de conferir o id que vai recebê-lo (setDefaultFunnel zerava o padrão)
 ❌ Action que recebe id de registro de UNIDADE e confere só a rede (use alcancaUnidade depois da rede)
-❌ Action que grava configuração da rede toda sem recusaDaConfigDaRede (quem não tinha “A rede inteira” a mudava para todas — H7)
+❌ Action que grava configuração da rede toda sem recusaDaConfigDaRede (é só da Admin da rede, pelo cargo gravado — o Heitor, 18/11)
+❌ Atribuir ao Heitor uma regra sem reler a fala dele, ou decidir regra de negócio sobre premissa que contraria uma regra dele (a "nova cliente da unidade" citava a H16, que diz o contrário — auditoria de 18/11)
 ❌ Botão que a pessoa não pode usar (o módulo em Ver, sem o módulo): a tela esconde, e a action devolve { error } em vez de lançar dentro do useActionState
 ❌ Criar agendamento fora de createAppointmentCore sem conferirPecasDoAgendamento
 ❌ Deixar o branchId do chamador vencer o do contexto numa leitura (ctx.branchId ?? branchId)

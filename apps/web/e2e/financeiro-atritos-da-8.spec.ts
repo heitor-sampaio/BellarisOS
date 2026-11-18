@@ -108,7 +108,7 @@ test('A38: o "Em aberto" leva às parcelas, com a baixa na linha', async ({ brow
   await como(browser, dona!, async p => {
     await p.goto(`/${slug}/financeiro`)
     await expect(p.getByText(`parcela 2/2 ${marca}`)).toHaveCount(0)
-    await p.locator('[data-em-aberto]').getByRole('link', { name: 'Ver e dar baixa' }).first().click()
+    await p.locator('[data-em-aberto]').getByRole('link', { name: 'Ver e receber' }).first().click()
     await p.getByRole('button', { name: 'Sobre as contas a receber' }).hover()
     await expect(p.locator('[data-so-o-em-aberto]')).toBeVisible()
     const linha = p.locator('tr', { hasText: `parcela 2/2 ${marca}` })

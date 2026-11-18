@@ -32,6 +32,12 @@ export interface LoteDoProduto {
   /** E14 (Bloco Estoque): a marca da entrada que criou o lote. */
   marca?: string | null
   notaFiscal?: string | null
+  /**
+   * A10 da 24ª: o custo se corrige no próprio lote ("Corrigir custo") — nada
+   * saiu dele, e ele veio de uma entrada ou de um ajuste, não de transferência
+   * (`lotes_com_custo_editavel`, a mesma conferência da gravação).
+   */
+  custoEditavel?: boolean
 }
 
 type Admin = ReturnType<typeof createAdminClient>
@@ -55,6 +61,7 @@ export async function lotesComSaldo(
   const dosProdutos = linhas.filter(l => fator.has(l.product_id))
   // O custo de cada lote pela função do banco (uma ida só; os ids no corpo).
   const custos = new Map<string, { custo: number | null; origem: LoteDoProduto['origemDoCusto'] }>()
+  const editaveis = new Set<string>()
   for (let i = 0; i < dosProdutos.length; i += 500) {
     const pedaco = dosProdutos.slice(i, i + 500).map(l => l.id)
     const { data, error } = await admin.rpc('custos_dos_lotes', { p_lotes: pedaco })
@@ -62,6 +69,9 @@ export async function lotesComSaldo(
     for (const c of (data ?? []) as { lote: string; custo: number | string | null; origem: string | null }[]) {
       custos.set(c.lote, { custo: c.custo != null ? Number(c.custo) : null, origem: (c.origem as LoteDoProduto['origemDoCusto']) ?? null })
     }
+    const ed = await admin.rpc('lotes_com_custo_editavel', { p_lotes: pedaco })
+    if (ed.error) throw new Error(`Não consegui ler quais lotes têm o custo editável: ${ed.error.message}`)
+    for (const e of (ed.data ?? []) as { lote: string }[]) editaveis.add(e.lote)
   }
   // A14 da 14ª (princípio 7): o fornecedor e a nota da compra do lote — moravam
   // só no Histórico, e a linha do lote não dizia de onde ele veio.
@@ -87,6 +97,7 @@ export async function lotesComSaldo(
       fornecedor: daCompra.get(l.id)?.fornecedor ?? null,
       marca: daCompra.get(l.id)?.marca ?? null,
       notaFiscal: daCompra.get(l.id)?.notaFiscal ?? null,
+      custoEditavel: editaveis.has(l.id),
     }
   })
 }

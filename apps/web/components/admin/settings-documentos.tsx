@@ -9,6 +9,8 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { CONTRATOS_DA_REDE, ROTULO_DO_TIPO, type TipoDeModelo } from '@/lib/documentos/variaveis'
 import { Fala } from '@/components/shared/uma-unidade'
 import { Dica } from '@/components/shared/dica'
+import { BotaoComConfirmacao } from '@/components/shared/botao-com-confirmacao'
+import { confirmacaoDeTornarAtivo } from '@/lib/documentos/tornar-ativo'
 
 /**
  * Configurações → Documentos: os modelos de documento da rede.
@@ -193,13 +195,14 @@ export function SettingsDocumentos({ modelos, imagens, envio }: {
                     </div>
                     {ehDaRede(g.tipo) && !m.ativo ? (
                       // Um só ativo: o inativo não liga sozinho, ele TOMA o
-                      // lugar do atual (D-5).
-                      <button
-                        type="button" className="btn-secondary" onClick={() => tornarAtivo(m)} disabled={ocupado === m.id}
-                        title="Passa a valer este contrato; o atual fica inativo"
-                      >
-                        {ocupado === m.id ? 'Trocando…' : 'Tornar ativo'}
-                      </button>
+                      // lugar do atual (D-5). A32 da 15ª: a troca pede
+                      // confirmação, com o que passa a valer e o que sai.
+                      <BotaoComConfirmacao className="btn-secondary"
+                        acao={() => tornarContratoAtivo(m.id)} aoFeito={() => setSalvoInativo(null)}
+                        titulo="Trocar o contrato?" rotuloConfirmar="Trocar o contrato"
+                        explicacao={confirmacaoDeTornarAtivo({ tipo: g.tipo, novo: m.nome, atual: atualAtivo(g.tipo) })}>
+                        Tornar ativo
+                      </BotaoComConfirmacao>
                     ) : (
                       <button
                         type="button" onClick={() => alternar(m)} disabled={ocupado === m.id}

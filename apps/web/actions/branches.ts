@@ -9,6 +9,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { semAcesso } from '@/lib/sem-acesso'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
+import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { slugDoTexto, candidatosDeEndereco, escolherEndereco } from '@/lib/unidades/endereco'
 import { maskCPF, maskCNPJ } from '@estetica-os/utils'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
@@ -52,8 +53,9 @@ export async function createBranch(
 ): Promise<RespostaDeCriarUnidade> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
-  // Abrir unidade nova é decisão da REDE, não de quem tem unidade fixa (§11).
-  if (ctx.branchId !== null) throw semAcesso()
+  // Abrir unidade nova é configuração da rede toda: só da Admin da rede (o
+  // Heitor, 18/11: "só pela conta admin"; era quem tinha "A rede inteira").
+  if (!mexeNaConfigDaRede(ctx)) throw semAcesso()
 
   const name     = (formData.get('name') as string)?.trim()
   const slugRaw  = (formData.get('slug') as string)?.trim()
@@ -124,9 +126,23 @@ async function inserirUnidade(
 
     revalidatePath('/admin/branches')
     revalidateTag(`branches:${tenantId}`, { expire: 0 })
+    await expirarQuemAtendeNaRedeInteira(tenantId)
     return { success: true }
   }
   return { error: 'Erro ao criar unidade. Tente novamente.' }
+}
+
+/**
+ * A unidade nova (ou reativada) entra no "Atende" de quem tem "A rede inteira"
+ * e atende em todas (o gatilho `atende_na_unidade_nova`; EQ1: "A rede inteira
+ * (todas, inclusive as que vierem)"). O "Atende" mora no membro em cache e na
+ * lista de quem atende: os dois expiram aqui.
+ */
+async function expirarQuemAtendeNaRedeInteira(tenantId: string): Promise<void> {
+  revalidateTag(`professionals:${tenantId}`, { expire: 0 })
+  const daRede = await ler(createAdminClient().from('users').select('auth_id')
+    .eq('tenant_id', tenantId).is('branch_id', null).eq('provides_services', true), 'ler quem atende na rede inteira') as { auth_id: string | null }[] | null
+  for (const m of daRede ?? []) if (m.auth_id) revalidateTag(`user:${m.auth_id}`, { expire: 0 })
 }
 
 export async function updateBranch(
@@ -194,9 +210,10 @@ export async function updateBranch(
 export async function toggleBranchStatus(branchId: string, isActive: boolean) {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
-  // Desativar uma unidade tira a agenda dela do ar: decisão da REDE (§11). A
-  // gerente da A desativava a B.
-  if (ctx.branchId !== null) throw semAcesso()
+  // Desativar uma unidade tira a agenda dela do ar: configuração da rede toda,
+  // só da Admin da rede (18/11, "só pela conta admin"). A gerente da A
+  // desativava a B.
+  if (!mexeNaConfigDaRede(ctx)) throw semAcesso()
 
   const supabase = createAdminClient()
   // Reativar conta para o LIMITE de unidades do plano (lib/planos/limites.ts).
@@ -216,6 +233,7 @@ export async function toggleBranchStatus(branchId: string, isActive: boolean) {
   revalidatePath('/admin/branches')
   revalidatePath(`/admin/branches/${branchId}`)
   revalidateTag(`branches:${ctx.tenantId!}`, { expire: 0 })
+  if (isActive) await expirarQuemAtendeNaRedeInteira(ctx.tenantId!)
 }
 
 /**

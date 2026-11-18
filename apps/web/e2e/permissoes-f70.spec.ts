@@ -12,9 +12,10 @@ import { chamarAcao, chamarAcaoComFormulario } from './apoio/acao-direta'
  *   com tudo até o token renovar — e qualquer claim que dissesse
  *   NETWORK_ADMIN valia mais que o cargo gravado no banco. Agora o cargo de
  *   sistema é lido do banco (`tenant_roles.key` + `is_system`).
- * - C61: o `/setup` (o primeiro acesso da clínica) abria para a gerente de
- *   unidade fixa — e as actions recusavam no fim. Vai à unidade dela, com o
- *   aviso.
+ * - C61: o `/setup` (o primeiro acesso da rede) abria para quem tem unidade
+ *   fixa — e as actions recusavam no fim. Vai à unidade dela, com o aviso. Desde
+ *   18/11 o setup é só da Admin da rede: quem tem "A rede inteira" sem ser a
+ *   Admin vai ao painel da rede, com o mesmo aviso.
  * - C60: Relatórios em "Ver" sem nenhuma aba era aceito (um acesso que não
  *   abre nada), e a matriz se gravava em três passos soltos — agora numa
  *   transação (`salvar_matriz_do_cargo`).
@@ -30,6 +31,7 @@ const db = () => banco()
 let rede: OutraRede | null = null
 let membro: MembroDeTeste | null = null
 let gerente: MembroDeTeste | null = null
+let daRede: MembroDeTeste | null = null
 let slug = ''
 
 async function como<T>(browser: Browser, estado: string, fn: (p: Page) => Promise<T>) {
@@ -46,10 +48,14 @@ test.beforeAll(async () => {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Gerente da unidade',
     permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }, { modulo: 'financial', nivel: 'MANAGE' }],
   })
+  // "A rede inteira" (sem unidade) e Configurações em Gerenciar, sem ser a Admin da rede.
+  daRede = await criarMembro(`f70r${marca}`, {
+    tenant: rede.tenantId, rotulo: 'Configura a rede', permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }],
+  })
   slug = (await db().from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
 })
 
-test.afterAll(async () => { await gerente?.limpar(); await membro?.limpar(); await rede?.limpar() })
+test.afterAll(async () => { await daRede?.limpar(); await gerente?.limpar(); await membro?.limpar(); await rede?.limpar() })
 
 test('C58: a claim NETWORK_ADMIN no token não vale mais que o cargo do banco', async ({ browser }) => {
   const b = db()
@@ -73,6 +79,18 @@ test('C61: o /setup de quem tem só uma unidade, com Configurações em Gerencia
     const r = await p.request.get('/setup', { maxRedirects: 0 })
     expect([303, 307, 308], 'redireciona').toContain(r.status())
     expect(r.headers().location ?? '').toContain(`/${slug}/dashboard?aviso=setup-da-rede`)
+  })
+})
+
+// O setup é configuração da rede toda, só da Admin da rede (o Heitor, 18/11:
+// "Configuração da rede toda só pela conta admin"): quem tem "A rede inteira"
+// e Configurações em Gerenciar, sem ser a Admin, abria o assistente e as
+// actions de `actions/setup.ts` recusavam no fim.
+test('o /setup de quem tem "A rede inteira" sem ser a Admin da rede leva ao painel da rede, com o aviso', async ({ browser }) => {
+  await como(browser, daRede!.estado, async p => {
+    const r = await p.request.get('/setup', { maxRedirects: 0 })
+    expect([303, 307, 308], 'redireciona').toContain(r.status())
+    expect(r.headers().location ?? '').toContain('/admin/dashboard?aviso=setup-da-rede')
   })
 })
 
@@ -156,7 +174,7 @@ test('C59 (D19): a conta de uma Admin da rede só outra Admin autoriza ao suport
     await como(browser, gerenteDaRede.estado, async p => {
       const r = await chamarAcao(p, 'actions/suporte-autorizacao.ts', 'autorizarSuporte', '/admin/settings?tab=suporte',
         [{ userId: dona.userId, horas: 24 }])
-      expect(r.texto).toContain('só outra Admin da rede autoriza')
+      expect(r.texto).toContain('só da Admin da rede')
     })
     const { count } = await b.from('support_grants').select('id', { count: 'exact', head: true }).eq('target_user_id', dona.userId)
     expect(count, 'nenhuma autorização para a conta da Admin').toBe(0)

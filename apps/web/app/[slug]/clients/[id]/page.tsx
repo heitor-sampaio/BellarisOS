@@ -18,6 +18,7 @@ import { ehAnexoClinico, atendimentoDoAnexo } from '@/lib/clientes/anexos'
 import { getCachedBranchBySlug, getCachedClientProfileData } from '@/lib/cached-queries'
 import { formatarNoFuso } from '@/lib/formatar-no-fuso'
 import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
+import { regrasDoPacoteDaRede, pacoteVencidoDaFicha } from '@/lib/pacotes/regras-da-rede'
 import { ClientProfile } from '@/components/branch/client-profile'
 import { pedidoLgpdDaFicha } from '@/lib/lgpd/aviso-do-pedido'
 import { eventosDeConfirmacaoEChegada, eventoDaAvaliacao, comAutores } from '@/lib/clients/historico-do-agendamento'
@@ -171,6 +172,11 @@ export default async function ClientProfilePage({
   const pkgsArray = Array.isArray(pkgs) ? pkgs : pkgs ? [pkgs] : []
   const now = new Date()
   // O pacote cancelado (F2b) não está em andamento: fica só no histórico.
+  // Itens 8 e 9 da auditoria: as regras do pacote da rede (o aviso do em aberto e o cancelar do vencido).
+  const regrasDoPacote = await regrasDoPacoteDaRede(ctx.tenantId!)
+  const pacoteVencido = can(ctx, 'financial', 'MANAGE')
+    ? await pacoteVencidoDaFicha(ctx.tenantId!, pkgsArray as unknown as Parameters<typeof pacoteVencidoDaFicha>[1], regrasDoPacote)
+    : null
   const activePkg = pkgsArray.find(p =>
     !(p as { cancelado_em?: string | null }).cancelado_em &&
     p.used_sessions < p.total_sessions &&
@@ -198,7 +204,7 @@ export default async function ClientProfilePage({
     if (podeReceber(ctx)) {
       const emAberto = (await getEmAbertoDosPacotes(ctx.tenantId!, [activePkg.id as string]))[activePkg.id as string] ?? null
       // CX1: o aviso leva ao PDV da unidade do pacote, onde as parcelas dele estão.
-      activePackage.emAberto = emAberto ? { ...emAberto, unidadeId: (activePkg as { branch_id?: string | null }).branch_id ?? null } : null
+      activePackage.emAberto = emAberto ? { ...emAberto, unidadeId: (activePkg as { branch_id?: string | null }).branch_id ?? null, liberaAsSessoes: regrasDoPacote.crediarioLibera } : null
     }
   }
 
@@ -579,8 +585,9 @@ export default async function ClientProfilePage({
       // A10 da 20ª: sem editar, o aviso do que falta diz quem completa o cadastro.
       quemCompletaOCadastro={can(ctx, 'clients', 'MANAGE') ? null : await quemCompletaOCadastro(ctx.tenantId!, branch.id)}
       podeExportarProntuario={can(ctx, 'medical_records', 'MANAGE')}
-      podeVerPlanos={can(ctx, 'agenda', 'VIEW')}
+      podeVerPlanos={can(ctx, 'atendimento', 'VIEW')}
       podeCancelarPacote={can(ctx, 'financial', 'MANAGE')}
+      pacoteVencido={pacoteVencido}
       podeRemarcar={can(ctx, 'financial', 'MANAGE') && !isOwnScope(ctx, 'financial')}
       // A32 e A35 da 12ª: estornar (o Financeiro em Gerenciar) e receber a parcela (Recebimentos) na ficha.
       podeEstornar={podeEstornar(ctx)}
