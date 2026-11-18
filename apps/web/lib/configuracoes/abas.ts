@@ -1,4 +1,5 @@
 import type { AppModule } from '@estetica-os/types'
+import { CONFIG_DA_REDE } from '@/lib/configuracao-da-rede'
 
 /**
  * As abas de Configurações — uma lista só, lida pela tela
@@ -104,11 +105,13 @@ export const ABAS_DA_REDE: readonly ChaveDeAba[] =
 
 /**
  * As abas do portal da unidade. A Unidade é DELA; as outras (as Importações também, C73)
- * são da clínica toda (`ABAS_DA_REDE_TODA`) e, para quem tem unidade fixa,
- * dizem isso em vez de abrir o editor (H7, 2026-11-01).
+ * são da rede toda (`ABAS_DA_REDE_TODA`) e, para quem não é a Admin da rede,
+ * dizem isso em vez de abrir o editor (H7, 2026-11-01; o Heitor, 18/11).
+ * A LGPD entrou (D8 da 25ª): quem libera o prontuário (Prontuário em
+ * Gerenciar) pode ter só a unidade, e a aba é o lugar do "Liberar".
  */
 export const ABAS_DA_UNIDADE: readonly ChaveDeAba[] =
-  ['unidade', 'permissions', 'fichas', 'documentos', 'integrations', 'tags', 'importacoes', 'general']
+  ['unidade', 'permissions', 'fichas', 'documentos', 'integrations', 'tags', 'importacoes', 'lgpd', 'general']
 
 /**
  * As abas que são configuração da REDE TODA — só da Admin da rede desde 18/11
@@ -138,10 +141,16 @@ export const ABAS_DA_REDE_TODA: readonly ChaveDeAba[] =
  */
 export function rotuloDasAbasAlcancadas(
   abas: readonly ChaveDeAba[], gerencia: (m: AppModule) => boolean,
+  /**
+   * Só as abas que a pessoa USA sem ser a Admin da rede (A-CONF1 da 25ª): as da
+   * rede toda dizem "Esta configuração é só da Admin da rede.", não contam.
+   */
+  o: { soAsDela?: boolean } = {},
 ): string | null {
   if (gerencia('settings')) return null
   const nomes = ABAS_DE_CONFIGURACAO
     .filter(a => abas.includes(a.key) && abaLiberada(a, gerencia))
+    .filter(a => !o.soAsDela || !ABAS_DA_REDE_TODA.includes(a.key))
     .map(a => a.label)
   if (!nomes.length) return null
   const lista = nomes.length === 1 ? nomes[0] : `${nomes.slice(0, -1).join(', ')} e ${nomes[nomes.length - 1]}`
@@ -210,6 +219,13 @@ export function motivoDaAbaFechada(pedida: string, o: {
   nomeDoModulo: (m: AppModule) => string
   /** A aba que abriu no lugar. */
   abriu: string
+  /**
+   * O cargo de sistema Admin da rede (`mexeNaConfigDaRede(ctx)`). `false`: a
+   * aba da rede toda diz a regra (A-CONF2 da 25ª; CLAUDE.md §11), não o módulo.
+   */
+  souAdmin?: boolean
+  /** As Admins ativas da rede, pelo nome — o "Quem muda". */
+  quemMuda?: readonly string[]
 }): string | null {
   const aba = ABAS_DE_CONFIGURACAO.find(a => a.key === pedida)
   if (!aba) return `A aba “${pedida}” não existe. Você está na aba ${o.abriu}.`
@@ -219,6 +235,11 @@ export function motivoDaAbaFechada(pedida: string, o: {
       : `A aba ${aba.label} fica nas Configurações da rede. Você está na aba ${o.abriu}.`
   }
   if (!o.noPlano(aba)) return `A aba ${aba.label} não está no plano da rede. Você está na aba ${o.abriu}.`
+  if (o.souAdmin === false && ABAS_DA_REDE_TODA.includes(aba.key)) {
+    const nomes = o.quemMuda ?? []
+    const quem = nomes.length ? ` Quem muda: ${nomes.length === 1 ? nomes[0] : `${nomes.slice(0, -1).join(', ')} e ${nomes[nomes.length - 1]}`}.` : ''
+    return `A aba ${aba.label}: ${CONFIG_DA_REDE}${quem} Você está na aba ${o.abriu}.`
+  }
   if (!abaLiberada(aba, o.gerencia)) {
     return `A aba ${aba.label} pede ${o.nomeDoModulo(aba.module)} em Gerenciar no cargo, e o seu não tem. Você está na aba ${o.abriu}.`
   }

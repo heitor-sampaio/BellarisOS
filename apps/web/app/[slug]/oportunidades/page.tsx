@@ -12,6 +12,7 @@ import { funilLembrado } from '@/lib/crm/funil-lembrado-no-servidor'
 import { resumoDoFunil } from '@/lib/metrics/resultado'
 import { ResumoDoQuadro } from '@/components/branch/crm-resumo-do-quadro'
 import { CRMBoard } from '@/components/branch/crm-board'
+import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
 import { CRMLeadModal } from '@/components/branch/crm-lead-modal'
 import { pessoaParaNovoLead } from '@/lib/crm/pessoa-para-novo-lead'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -215,6 +216,8 @@ export default async function BranchOportunidadesPage({
               activeFunnelId={selecionado?.id ?? ''}
             />
           )}
+          {/* D13 da 25ª: criar oportunidade pede o CRM em Gerenciar (a action já recusava). */}
+          {can(ctx, 'crm', 'MANAGE') && (
           <CRMLeadModal
             branchId={branch.id}
             slug={slug}
@@ -231,6 +234,7 @@ export default async function BranchOportunidadesPage({
               </button>
             }
           />
+          )}
         </div>
       </div>
 
@@ -251,6 +255,7 @@ export default async function BranchOportunidadesPage({
         podeCadastrarCliente={can(ctx, 'clients', 'MANAGE')}
         podeAgendar={can(ctx, 'crm', 'MANAGE') && can(ctx, 'agenda', 'MANAGE') && temRecurso(ctx, 'agenda')}
         podeMover={can(ctx, 'crm', 'MANAGE')}
+        tagsDaRede={await tagsAtivasDaRede(ctx.tenantId!)}
       />
     </div>
   )

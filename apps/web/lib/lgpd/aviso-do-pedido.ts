@@ -5,31 +5,41 @@ import { ler } from '@/lib/db'
 import { adminsDaRede } from '@/lib/equipe/admin-da-rede'
 import { prazoDeResposta } from '@/lib/lgpd/prazo'
 import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
+import { caminhoDaAbaLgpd } from '@/lib/lgpd/caminho-da-aba'
 
 type Admin = ReturnType<typeof createAdminClient>
 
-/** Onde a clínica responde ao pedido: a aba LGPD de Configurações, no portal da rede. */
+/** Onde a rede responde ao pedido: a aba LGPD de Configurações, no portal da rede. */
 export const CAMINHO_DA_ABA_LGPD = '/admin/settings?tab=lgpd'
 
 /**
  * Quem responde ao pedido de dados: quem abre a aba LGPD — Configurações em
- * Gerenciar, da clínica toda (a aba é do portal da rede) — e a Admin da rede
- * (o cargo de sistema, que tem tudo).
+ * Gerenciar — e a Admin da rede (o cargo de sistema, que tem tudo). Com a
+ * aba também no portal da unidade (D8 da 25ª), quem tem só unidades entra:
+ * o aviso a leva à aba da unidade principal dela.
  */
-async function quemResponde(admin: Admin, tenantId: string, comProntuario: boolean): Promise<string[]> {
+async function quemResponde(admin: Admin, tenantId: string, comProntuario: boolean): Promise<{ id: string; caminho: string }[]> {
   // Com o prontuário no pacote, também quem o LIBERA (Prontuário em Gerenciar,
   // que abre a aba LGPD — C31, F70): a parte clínica espera por essa pessoa.
   const modulos = comProntuario ? ['settings', 'medical_records'] : ['settings']
   const cargos = await ler(admin.from('role_permissions').select('role_id')
     .eq('tenant_id', tenantId).in('module', modulos).eq('level', 'MANAGE'), 'listar os cargos que respondem à LGPD') as { role_id: string }[] | null
   const roleIds = (cargos ?? []).map(c => c.role_id)
-  const comConfig = roleIds.length ? (await ler(admin.from('users').select('id')
-    .eq('tenant_id', tenantId).eq('is_active', true).is('branch_id', null).in('role_id', roleIds),
-  'listar quem responde à LGPD') as { id: string }[] | null ?? []).map(u => u.id) : []
+  type Quem = { id: string; branch_id: string | null; branches: { slug: string } | null }
+  const comConfig = roleIds.length ? (await ler(admin.from('users').select('id, branch_id, branches(slug)')
+    .eq('tenant_id', tenantId).eq('is_active', true).in('role_id', roleIds),
+  'listar quem responde à LGPD') as unknown as Quem[] | null ?? []) : []
   const admins = await adminsDaRede(admin, tenantId)
   const ativos = admins.size ? (await ler(admin.from('users').select('id')
     .eq('tenant_id', tenantId).eq('is_active', true).in('id', [...admins]), 'as Admins ativas') as { id: string }[] | null ?? []).map(u => u.id) : []
-  return [...new Set([...comConfig, ...ativos])]
+  const porId = new Map<string, string>()
+  for (const id of ativos) porId.set(id, CAMINHO_DA_ABA_LGPD)
+  for (const u of comConfig) {
+    if (porId.has(u.id)) continue
+    const slug = u.branch_id ? u.branches?.slug ?? null : null
+    porId.set(u.id, slug ? `/${slug}/settings?tab=lgpd` : CAMINHO_DA_ABA_LGPD)
+  }
+  return [...porId].map(([id, caminho]) => ({ id, caminho }))
 }
 
 /**
@@ -46,13 +56,13 @@ export async function avisarPedidoDaCliente(pedidoId: string): Promise<void> {
     'ler o pedido de dados') as { tenant_id: string; requested_at: string; include_medical: boolean; clients: { name: string } | null } | null
     if (!pedido) return
     const nome = pedido.clients?.name ?? 'Uma cliente'
-    const ids = await quemResponde(admin, pedido.tenant_id, pedido.include_medical)
+    const quem = await quemResponde(admin, pedido.tenant_id, pedido.include_medical)
     const fuso = await fusoDaRede(pedido.tenant_id)
-    await Promise.allSettled(ids.map(id => notifyUser(admin, id, {
+    await Promise.allSettled(quem.map(({ id, caminho }) => notifyUser(admin, id, {
       type: 'lgpd.pedido',
       title: `Pedido de dados (LGPD): ${nome}`,
       body: `${nome} pediu os dados dela pelo app${pedido.include_medical ? ', com o prontuário (a parte do prontuário espera a liberação de quem tem o Prontuário em Gerenciar)' : ''}. Responder até ${prazoDeResposta(pedido.requested_at, true, fuso)} (15 dias do pedido), em Configurações → LGPD.`,
-      data: { pedidoId, caminho: CAMINHO_DA_ABA_LGPD },
+      data: { pedidoId, caminho },
     })))
   } catch (e) {
     console.error('[avisarPedidoDaCliente]', e)
@@ -81,9 +91,10 @@ export async function pedidoLgpdEmAberto(tenantId: string, clientId: string): Pr
 /** O aviso da ficha (A49): o pedido em aberto e, a quem responde, o caminho da aba. */
 export async function pedidoLgpdDaFicha(
   ctx: { tenantId: string | null; branchId: string | null; permissions: Record<string, string> }, clientId: string,
+  /** A unidade do portal (D8 da 25ª: a aba LGPD existe também nela); nulo = a rede. */
+  slug: string | null = null,
 ): Promise<{ pedidoEm: string; prazo: string; aberto: boolean; caminho: string | null } | null> {
   const p = ctx.tenantId ? await pedidoLgpdEmAberto(ctx.tenantId, clientId) : null
   if (!p) return null
-  const responde = ctx.branchId === null && ctx.permissions.settings === 'MANAGE'
-  return { ...p, caminho: responde ? CAMINHO_DA_ABA_LGPD : null }
+  return { ...p, caminho: caminhoDaAbaLgpd(ctx, slug) }
 }

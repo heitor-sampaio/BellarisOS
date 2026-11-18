@@ -177,7 +177,21 @@ const CAMPO: Record<string, string> = {
   valor_cancelado: 'valor do cancelamento', cancelamento: 'cancelamento', nome_arquivo: 'arquivo', destino: 'destino',
   com_erro: 'andamento', completadas: 'andamento', com_aviso: 'andamento', oportunidades: 'andamento', erro: 'erro', erros: 'erros',
   unit_cost: 'custo', reference: 'referência', balance_after: 'saldo', correcao_de_cadastro: 'correção de cadastro',
+  // A18 da 25ª: a fidelidade e o acesso da cliente saíam crus ("first access bonus", "portal ligado em").
+  first_access_bonus: 'bônus do primeiro acesso', birthday_bonus: 'bônus de aniversário', expiry_months: 'validade dos pontos',
+  expiry_notice_days: 'aviso antes de os pontos vencerem', client_redeem: 'troca pela cliente', revoked_by_user_id: 'quem revogou',
+  motivo_revogacao: 'motivo da revogação', portal_ligado_em: 'acesso ao portal',
 }
+
+/**
+ * O nome do campo que muda conforme a tabela (D16 da 25ª): o `document` da
+ * rede é o CNPJ; o da cliente, o CPF — "Editou a ficha (CNPJ)" dizia outra coisa.
+ */
+const CAMPO_DA_TABELA: Record<string, Record<string, string>> = {
+  clients: { document: 'CPF', documento_tipo: 'tipo de documento', documento_numero: 'documento' },
+}
+const nomeDoCampo = (c: string, tabela?: string) =>
+  (tabela ? CAMPO_DA_TABELA[tabela]?.[c] : undefined) ?? CAMPO[c] ?? c.replace(/_/g, ' ')
 
 /** O nome de cada campo na Auditoria (a trava de A30 da 18ª lê daqui). */
 export const CAMPO_DA_AUDITORIA: Readonly<Record<string, string>> = CAMPO
@@ -237,9 +251,9 @@ function emLista(partes: readonly string[]): string {
  * Os campos mudados, pelo nome (A27 da 15ª: "um campo" e "outros campos" não
  * diziam o quê). A coluna fora de `CAMPO` sai pelo próprio nome, sem o "_".
  */
-function camposMudados(colunas: readonly string[]): string {
+function camposMudados(colunas: readonly string[], tabela?: string): string {
   const daPessoa = colunas.filter(c => !DERIVADAS.has(c))
-  const ditos = [...new Set((daPessoa.length ? daPessoa : colunas).map(c => CAMPO[c] ?? c.replace(/_/g, ' ')))]
+  const ditos = [...new Set((daPessoa.length ? daPessoa : colunas).map(c => nomeDoCampo(c, tabela)))]
   if (ditos.length > 4) return `${ditos.slice(0, 3).join(', ')} e mais ${ditos.length - 3} campos`
   return emLista(ditos)
 }
@@ -518,6 +532,11 @@ export function fraseDaAuditoria(r: RegistroDaAuditoria, nomes: NomesDaAuditoria
   }
   const fato = fraseDoRegistroDa17(r, nomes, cliente)
   if (fato) return fato
+  // A21 da 25ª: a falta é o fato ("Editou o agendamento (situação)" não dizia).
+  if (r.tabela === 'appointments' && r.operacao === 'editou' && texto(r.depois.status) === 'NO_SHOW'
+    && texto(r.antes.status) !== 'NO_SHOW') {
+    return `Marcou a falta${cliente ? ` de ${cliente}` : ''}`
+  }
   // A31 da 18ª: o cancelamento é o fato ("Editou o agendamento (motivo do cancelamento, …)" não dizia).
   if (r.tabela === 'appointments' && r.operacao === 'editou' && texto(r.depois.status) === 'CANCELLED'
     && texto(r.antes.status) !== 'CANCELLED') {
@@ -578,7 +597,7 @@ export function fraseDaAuditoria(r: RegistroDaAuditoria, nomes: NomesDaAuditoria
   if (r.tabela === 'rooms' && r.branch_id && nomes.unidades[r.branch_id]) frase += ` em ${nomes.unidades[r.branch_id]}`
   if (r.operacao === 'editou') {
     const campos = r.tabela === 'financial_transactions'
-      ? camposDoLancamentoEditado(r, fusoDoRegistro(r, nomes)) : camposMudados(r.colunas)
+      ? camposDoLancamentoEditado(r, fusoDoRegistro(r, nomes)) : camposMudados(r.colunas, r.tabela)
     if (campos) frase += ` (${campos})`
   }
   return frase
@@ -837,7 +856,11 @@ const paiDaGravacao = (linhas: readonly RegistroDaAuditoria[]) =>
 // mexeu (o agendamento, o lançamento recebido, a venda): ele dá a frase, a
 // unidade e o link da linha. Nada muda no que se grava; muda o que se lê.
 
-interface Recebimento { linha: RegistroDaAuditoria; tipo: string | null; valor: number; forma: string | null; categoria: string | null; vezes?: number | null }
+interface Recebimento {
+  linha: RegistroDaAuditoria; tipo: string | null; valor: number; forma: string | null; categoria: string | null; vezes?: number | null
+  /** A20a da 25ª: o desconto da venda (`sale_discount`) e o pago com pontos ou voucher (`loyalty_discount`). */
+  desconto?: number; pontos?: number
+}
 
 /**
  * Os lançamentos que ficaram PAGOS nesta gravação: criados já pagos, ou
@@ -871,6 +894,7 @@ function recebimentosDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: N
       forma: texto(estado.payment_method) ?? lido?.forma ?? null, categoria,
       // A38 da 22ª: as vezes do crédito ("Crédito 8x") — a auditoria não as guarda; vêm do lançamento lido.
       vezes: numero(estado.cartao_vezes) ?? lido?.vezes ?? null,
+      desconto: numero(estado.sale_discount) ?? 0, pontos: numero(estado.loyalty_discount) ?? 0,
     })
   }
   return recebidos
@@ -922,6 +946,22 @@ function pagamentoDaVenda(linhas: readonly RegistroDaAuditoria[], nomes: NomesDa
   return pagos.length ? `, recebeu ${pagoEmTexto} e ficou ${emAberto} a receber` : `, a receber (${emAberto})`
 }
 
+/**
+ * ", com desconto de R$ 20,00 e R$ 30,00 em pontos" (A20a da 25ª; princípio 3):
+ * "Recebeu R$ 180,00 (Pix)" calava o que abateu o preço. Com o voucher, os
+ * pontos são ele (a frase já o diz).
+ */
+function abatimentosDasEntradas(rs: readonly Recebimento[], comVoucher: boolean): string {
+  const soma = (f: (x: Recebimento) => number) => Math.round(rs.reduce((t, x) => t + f(x), 0) * 100) / 100
+  const desconto = soma(x => x.desconto ?? 0)
+  const pontos = comVoucher ? 0 : soma(x => x.pontos ?? 0)
+  const partes = [
+    ...(desconto > 0 ? [`desconto de ${brl(desconto)}`] : []),
+    ...(pontos > 0 ? [`${brl(pontos)} em pontos`] : []),
+  ]
+  return partes.length ? `, com ${emLista(partes)}` : ''
+}
+
 /** " — Rita Moura": a cliente da gravação, se for uma só. */
 function clienteDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria, preferida?: RegistroDaAuditoria): string {
   const id = preferida?.client_id ?? linhas.find(l => l.client_id)?.client_id
@@ -953,7 +993,8 @@ function fatoDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAu
   const totalRecebido = entradas.reduce((t, x) => t + x.valor, 0)
   const voucher = voucherDaGravacao(linhas)
   const formasDaEntrada = formasComValor(entradas)
-  const eRecebeu = entradas.length ? ` e recebeu ${brl(totalRecebido)}${formasDaEntrada ? ` (${formasDaEntrada})` : ''}${voucher ? `, com ${voucher}` : ''}` : ''
+  const abatimentos = abatimentosDasEntradas(entradas, !!voucher)
+  const eRecebeu = entradas.length ? ` e recebeu ${brl(totalRecebido)}${formasDaEntrada ? ` (${formasDaEntrada})` : ''}${abatimentos}${voucher ? `, com ${voucher}` : ''}` : ''
 
   // A venda: o pacote, o pré-pago, o crédito.
   const pacote = criada('client_packages')
@@ -961,6 +1002,10 @@ function fatoDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAu
     const pk = texto(pacote.depois.package_id)
     const nome = pk ? nomes.pacotes?.[pk] : null
     const preco = numero(pacote.depois.price)
+    // A20b da 25ª: o pacote de antes do sistema é registrado, não vendido (não entrou dinheiro).
+    if (pacote.depois.de_fora === true) {
+      return { principal: pacote, frase: `Registrou ${nome ? `o pacote de antes ${nome}` : 'um pacote de antes do sistema'}${clienteDaGravacao(linhas, nomes, pacote)}` }
+    }
     return {
       principal: pacote,
       frase: `Vendeu ${nome ? `o pacote ${nome}` : 'um pacote'}${preco !== null ? ` (${brl(preco)})` : ''}${pagamentoDaVenda(linhas, nomes, entradas)}${clienteDaGravacao(linhas, nomes, pacote)}`,
@@ -1027,7 +1072,7 @@ function fatoDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAu
     const forma = formasComValor(entradas)
     return {
       principal,
-      frase: `Recebeu ${brl(totalRecebido)}${forma ? ` (${forma})` : ''}${produtos ? `, com ${produtos}` : ''}${voucher ? `${produtos ? ' e' : ','} com ${voucher}` : ''}${clienteDaGravacao(linhas, nomes, principal)}`,
+      frase: `Recebeu ${brl(totalRecebido)}${forma ? ` (${forma})` : ''}${abatimentos}${produtos ? `, com ${produtos}` : ''}${voucher ? `${produtos ? ' e' : ','} com ${voucher}` : ''}${clienteDaGravacao(linhas, nomes, principal)}`,
     }
   }
   const saidasPagas = recebidos.filter(x => x.tipo === 'EXPENSE')
@@ -1087,7 +1132,7 @@ export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: Nome
   if (fato) return fato.frase
   // A34 da 19ª: o remarcar, o repasse e o cancelamento gravados com outros registros.
   const doAgendamento = linhas.map(l => (l.tabela === 'appointments' && l.operacao === 'editou' ? fraseDaAuditoria(l, nomes) : null))
-    .find(f => f && /^(Remarcou|Repassou|Cancelou) /.test(f))
+    .find(f => f && /^(Remarcou|Repassou|Cancelou|Marcou a falta) /.test(f))
   if (doAgendamento) return doAgendamento
   // A36 da 20ª: o agendamento criado com outros registros (o link da ficha, a oportunidade) é o fato.
   const agendou = [...linhas].reverse().find(l => l.tabela === 'appointments' && l.operacao === 'criou')

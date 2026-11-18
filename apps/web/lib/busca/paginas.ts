@@ -133,8 +133,9 @@ export function paginasDaBusca(
   const prefixo = naRede ? '' : `/${slug}`
   const base = naRede ? '/admin' : `/${slug}`
 
-  // A26 da 15ª: quem só leria as abas Tags e Importações não acha Configurações (o menu também não a mostra).
-  const semConfiguracoes = !naRede && soLeriaAsConfiguracoes(permissions, !!opcoes.daRede)
+  // A26 da 15ª e A-CONF1 da 25ª: quem não é a Admin da rede e só chegaria às abas da rede toda não acha
+  // Configurações, em nenhum dos portais (o menu também não a mostra).
+  const semConfiguracoes = soLeriaAsConfiguracoes(permissions, !!opcoes.adminDaRede)
   const menu = menuEntriesFor(naRede ? ADMIN_MENU : BRANCH_MENU, permissions, plano, scopes)
     .filter(e => !semConfiguracoes || e.key !== 'settings')
   const paginas: PaginaDaBusca[] = menu.map(e => ({
@@ -184,7 +185,7 @@ export function paginasDaBusca(
   // tem (as taxas, a fidelidade…), com o endereço da rede (A18 da 8ª).
   if (!naRede && opcoes.daRede) {
     for (const aba of ABAS_DE_CONFIGURACAO) {
-      if (!SO_NA_REDE.includes(aba.key)) continue
+      if (semConfiguracoes || !SO_NA_REDE.includes(aba.key)) continue
       if (!abaLiberada(aba, m => permissions[m] === 'MANAGE')) continue
       if (!abaNoPlano(aba, plano)) continue
       paginas.push({

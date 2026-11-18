@@ -85,6 +85,12 @@ interface CRMLeadModalProps {
    * oportunidade nasce ligada a ELA (`_contatoId`). Os dados vêm do servidor.
    */
   novoDaPessoa?:   PessoaParaNovoLead | null
+  /**
+   * Só para ler (D13 da 25ª): quem tem o CRM em Ver abre o card e vê tudo —
+   * os campos desligados, sem "Salvar". A action já recusava; a tela dizia
+   * que dava.
+   */
+  somenteLeitura?: boolean
 }
 
 /**
@@ -109,7 +115,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
   function CRMLeadModal(
     {
       slug, branches, stages, funnels, funnelId, procedures,
-      initialStageId, existing, trigger, onLeadCreated, agendar, novoDaPessoa,
+      initialStageId, existing, trigger, onLeadCreated, agendar, novoDaPessoa, somenteLeitura = false,
     },
     ref,
   ) {
@@ -389,7 +395,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
           }}>
             <div>
               <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
-                {isEdit ? 'Editar oportunidade' : 'Nova oportunidade'}
+                {somenteLeitura ? 'Oportunidade' : isEdit ? 'Editar oportunidade' : 'Nova oportunidade'}
               </h2>
               <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
                 {isEdit ? existing!.name : 'Adicionar contato ao funil de CRM'}
@@ -479,7 +485,9 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
               <input type="hidden" name="tags" value={JSON.stringify(tags)} />
               {isEdit && <input type="hidden" name="_leadId" value={existing!.id} />}
 
-
+              {/* D13 da 25ª: com o CRM em Ver, os campos ficam desligados (o fieldset desliga todos). */}
+              <fieldset disabled={somenteLeitura} data-somente-leitura={somenteLeitura ? '' : undefined}
+                style={{ border: 0, padding: 0, margin: 0, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
               {/* Nome */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                 <Label htmlFor={idNome}>Nome *</Label>
@@ -650,7 +658,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
               <div>
                 <p style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span>TAGS</span>
-                  <Dica rotulo="Sobre as tags">As tags da rede, para filtrar. Criar uma nova é em Configurações → Tags.</Dica>
+                  <Dica rotulo="Sobre as tags">As tags da rede, para filtrar. Uma nova, a Admin da rede cria em Configurações → Tags.</Dica>
                 </p>
 
                 {/* D7 da 18ª: escolhe pelo vocabulário da rede, como a ficha e o inbox —
@@ -694,6 +702,8 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                 </div>
               </div>
 
+              </fieldset>
+
               {/* Histórico — só na edição: card que ainda não existe não tem
                   passado, e a consulta seria por um id inexistente. */}
               {isEdit && aberto && (
@@ -722,12 +732,14 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
                 <button type="button" onClick={close} className="btn-secondary" disabled={pending}>
-                  Cancelar
+                  {somenteLeitura ? 'Fechar' : 'Cancelar'}
                 </button>
+                {!somenteLeitura && (
                 <button type="submit" disabled={pending} className="btn-primary">
                   <UserPlus size={15} />
                   {pending ? (isEdit ? 'Salvando…' : 'Criando…') : (isEdit ? 'Salvar' : 'Criar oportunidade')}
                 </button>
+                )}
               </div>
             </form>
           </div>

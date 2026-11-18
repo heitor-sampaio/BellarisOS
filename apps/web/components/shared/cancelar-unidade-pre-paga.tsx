@@ -15,7 +15,7 @@ import {
 } from '@/components/shared/escolha-da-devolucao'
 
 /**
- * "Cancelar unidade" do pré-pago (D1 da 6ª simulação): o mesmo fluxo do
+ * "Cancelar sessão" do pré-pago (era "unidade" até a A6 da 25ª) (D1 da 6ª simulação): o mesmo fluxo do
  * cancelamento do pacote. A janela mostra a conta que o BANCO fez
  * (`procedimento_cancelar_unidade_devolvendo` simulando) — o que a venda
  * passa a valer, o a receber que cai antes e o que volta —, e a recepção
@@ -67,9 +67,9 @@ export function CancelarUnidadePrePaga({ unidadeId, onFechar, onCancelada }: {
       if (r.error) { setErro(r.error); return }
       onCancelada(r.devolver && r.devolver > 0
         ? r.destino === 'CREDITO'
-          ? `Unidade cancelada. ${formatBRL(r.devolver)} ficaram de crédito interno.`
-          : `Unidade cancelada. ${formatBRL(r.devolver)} estornados à cliente.`
-        : r.reduzido && r.reduzido > 0 ? `Unidade cancelada. O a receber diminuiu ${formatBRL(r.reduzido)}.` : 'Unidade cancelada.')
+          ? `Sessão cancelada. ${formatBRL(r.devolver)} ficaram de crédito interno.`
+          : `Sessão cancelada. ${formatBRL(r.devolver)} estornados à cliente.`
+        : r.reduzido && r.reduzido > 0 ? `Sessão cancelada. O a receber diminuiu ${formatBRL(r.reduzido)}.` : 'Sessão cancelada.')
       onFechar()
       router.refresh()
     })
@@ -79,10 +79,11 @@ export function CancelarUnidadePrePaga({ unidadeId, onFechar, onCancelada }: {
   const valor = { color: 'var(--text)', fontWeight: 700, whiteSpace: 'nowrap' } as const
 
   return (
-    <JanelaModal rotulo="Cancelar unidade" largura={480} travado={cancelando} onFechar={onFechar} fechaNoFundo={false}>
+    // A6 da 25ª: "sessão" — a unidade é a da rede (CLAUDE.md §1).
+    <JanelaModal rotulo="Cancelar sessão" largura={480} travado={cancelando} onFechar={onFechar} fechaNoFundo={false}>
       <div style={{ padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 14 }}>
         <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
-          {previa ? `Cancelar a unidade ${previa.unidade} de ${previa.procedimento}?` : 'Cancelar unidade'}
+          {previa ? `Cancelar a sessão ${previa.unidade} de ${previa.procedimento}?` : 'Cancelar sessão'}
         </h2>
 
         {!previa && !erro ? (
@@ -96,7 +97,7 @@ export function CancelarUnidadePrePaga({ unidadeId, onFechar, onCancelada }: {
               borderRadius: 'var(--radius-field-token)', border: '1px solid var(--border)', background: 'var(--bg-app)',
             }}>
               <div style={linha}>
-                <span>Unidade {previa.unidade} de {previa.quantidade}</span>
+                <span>Sessão {previa.unidade} de {previa.quantidade}</span>
                 <span style={valor}>{formatBRL(previa.precoUnidade)}</span>
               </div>
               <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
@@ -144,7 +145,7 @@ export function CancelarUnidadePrePaga({ unidadeId, onFechar, onCancelada }: {
                 onChange={e => setMotivo(e.target.value)} placeholder="Ex.: a cliente mudou de cidade" />
             </label>
             <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-              A unidade deixa de valer e não volta a ser agendada. Não se desfaz.
+              A sessão deixa de valer e não volta a ser agendada. Não se desfaz.
             </p>
           </>
         )}
@@ -154,7 +155,7 @@ export function CancelarUnidadePrePaga({ unidadeId, onFechar, onCancelada }: {
           <button type="button" className="btn-secondary" disabled={cancelando} onClick={onFechar}>Voltar</button>
           {previa && (
             <button type="button" className="btn-primary" disabled={cancelando || !pronto} onClick={confirmar}>
-              {cancelando ? 'Cancelando…' : 'Cancelar unidade'}
+              {cancelando ? 'Cancelando…' : 'Cancelar sessão'}
             </button>
           )}
         </div>

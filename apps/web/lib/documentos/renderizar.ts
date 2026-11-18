@@ -338,7 +338,9 @@ export async function garantirRenderizado(
 
   // A35 da 16ª: montado igual ao guardado, nada se grava (nem um código novo).
   const status = faltando.length ? 'INCOMPLETO' : 'PENDENTE'
-  if (!montagemMudou(doc, { status, hash, faltando, comPagamento: !!opcoes.pagamento })) return { ...doc, vazias }
+  // O retrato do pagamento vai junto do texto que o cita (A20c da 25ª: igual ao gravado, não é mudança).
+  const retrato = opcoes.pagamento ? pagamentoNormalizado(opcoes.pagamento.valor, opcoes.pagamento.desconto ?? 0) : null
+  if (!montagemMudou(doc, { status, hash, faltando, pagamento: retrato })) return { ...doc, vazias }
 
   await gravar(admin.rpc('documento_registrar_texto', {
     p_doc:      doc.id,
@@ -349,8 +351,7 @@ export async function garantirRenderizado(
     p_sha256:   hash,
     p_faltando: faltando,
     p_codigo:   gerarCodigoDeVerificacao(),
-    // O retrato do pagamento vai junto do texto que o cita.
-    p_pagamento: opcoes.pagamento ? pagamentoNormalizado(opcoes.pagamento.valor, opcoes.pagamento.desconto ?? 0) : null,
+    p_pagamento: retrato,
   }), 'montar o documento')
 
   const montado = await lerDocumento(tenantId, docId)

@@ -42,8 +42,36 @@ export function textoDeQuemConclui(quem: string[] | null | undefined): string {
  * atende". Diz quem conclui: quem tem o Atendimento em Gerenciar de todos
  * (`quemConcluiOAtendimento`; o Heitor, 2026-11-18).
  */
-export function textoDeQuemConcluiODeOutra(quem: string[] | null | undefined): string {
-  return `Quem conclui é quem tem o Atendimento em Gerenciar e a Agenda de todos${entreParenteses(quem)}.`
+export function textoDeQuemConcluiODeOutra(quem: string[] | null | undefined, daPropria?: string | null): string {
+  // A9 da 25ª: a profissional do agendamento, com o Atendimento em Gerenciar, conclui o dela.
+  const ela = daPropria?.trim() ? `${daPropria.trim()}, que atende, ou ` : ''
+  return `Quem conclui é ${ela}quem tem o Atendimento em Gerenciar e a Agenda de todos${entreParenteses(quem)}.`
+}
+
+/**
+ * A9 da 25ª (princípio 3): quem conclui ESTE atendimento — os de todos
+ * (`quemConcluiOAtendimento`) e a profissional dele, quando ela conclui os
+ * próprios (o Atendimento em Gerenciar "só os meus" — `idsQueConcluemOsProprios`).
+ * Lista nula: não se aplica (a tela não mostra).
+ */
+export function nomesDeQuemConclui(
+  todos: string[] | null | undefined,
+  profissional: { id: string | null; nome: string | null } | null,
+  concluemOsProprios: readonly string[] | null | undefined,
+): string[] | null {
+  if (!todos) return null
+  const nome = profissional?.nome?.trim()
+  if (!profissional?.id || !nome || !concluemOsProprios?.includes(profissional.id) || todos.includes(nome)) return todos
+  return [nome, ...todos]
+}
+
+/**
+ * A8 da 25ª (princípio 7; atendimento.md, "Quem não vê o clínico"): a
+ * obrigatória da ficha de saúde em branco barra quem conclui sem o
+ * Prontuário, e a recusa diz quem a responde.
+ */
+export function textoDeQuemRespondeAFicha(quem: string[] | null | undefined): string {
+  return `Quem responde a ficha de saúde é quem tem o Prontuário em Gerenciar${entreParenteses(quem)}, ou a cliente, pelo app ou pelo link.`
 }
 
 /**

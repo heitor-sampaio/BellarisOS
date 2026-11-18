@@ -156,9 +156,9 @@ test.describe.serial('agendar com crédito', () => {
       const { data: c } = await db().from('clients').select('name').eq('id', cliente).single()
       await p.getByPlaceholder('Buscar cliente por nome ou telefone…').fill(String(c!.name).replace(PREFIXO, '').trim())
       await p.getByText(String(c!.name)).first().click()
-      await p.getByLabel('Usar o que já foi pago').selectOption({ index: 1 })
+      await p.getByLabel('Usar o que já está incluído').selectOption({ index: 1 })
       // O "vem do que já foi pago" mora na dica do campo (2026-11-16).
-      await p.getByRole('button', { name: 'Sobre o que já foi pago' }).hover()
+      await p.getByRole('button', { name: 'Sobre o que já está incluído' }).hover()
       await expect(p.locator('[data-credito-escolhido]')).toBeVisible()
       await p.locator('select[name="professional_id"]').selectOption(rede!.professionalId)
       await p.locator('input[type="datetime-local"]').fill(`${dia}T11:00`)

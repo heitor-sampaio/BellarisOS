@@ -329,7 +329,15 @@ function ProductFields({
       {/* E10: o produto não tem marca nem fornecedor — quem os tem é cada entrada. */}
       <div className="form-2col">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          <Label htmlFor={id('minimo')}>Estoque mínimo</Label>
+          {/* A27 da 25ª (princípio 3): o do cadastro é o de quando o produto entra na unidade (trg_bps_minimo_do_produto); depois, vale o dela. */}
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
+            <Label htmlFor={id('minimo')}>Estoque mínimo</Label>
+            <Dica rotulo="Sobre o estoque mínimo do cadastro">
+              <span data-minimo-padrao>
+                Vale para a unidade quando o produto entra nela. Depois, cada unidade tem o seu, na aba “Estoque mínimo” do produto.
+              </span>
+            </Dica>
+          </span>
           <input id={id('minimo')} name="min_stock" type="number" step="0.001" min="0" className="field"
             defaultValue={product?.min_stock ?? 0}
             placeholder="0" />

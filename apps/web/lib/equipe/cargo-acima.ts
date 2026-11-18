@@ -3,6 +3,7 @@ import type { TenantContext, AppModule, PermissionLevel, ReportTab } from '@este
 import type { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { MODULE_LABELS, isScoped } from '@/lib/permissions'
+import { abasForaDoPlano, modulosForaDoPlano } from '@estetica-os/nucleo/lib/planos/recursos'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -22,14 +23,23 @@ const ORDEM: Record<PermissionLevel, number> = { NONE: 0, VIEW: 1, MANAGE: 2 }
 
 export interface LinhaDoCargo { module: string; level: PermissionLevel; scope: 'OWN' | 'ALL' }
 
-/** Os módulos em que o cargo passa do que `ctx` tem (vazio = não passa). Puro. */
+/**
+ * Os módulos em que o cargo passa do que `ctx` tem (vazio = não passa). Puro.
+ * O que está fora do PLANO da rede não conta (A-CONF5 da 25ª; princípio 3): o
+ * contexto já o zera para todos, inclusive para quem dá o cargo, e a recusa
+ * listava "Copilot" numa rede que não tem o Copilot.
+ */
 export function modulosAcimaDoMeu(
-  ctx: Pick<TenantContext, 'permissions' | 'scopes' | 'reportTabs'>,
+  ctx: Pick<TenantContext, 'permissions' | 'scopes' | 'reportTabs' | 'plano'>,
   linhas: LinhaDoCargo[], abas: string[],
 ): string[] {
+  const plano = (ctx.plano ?? null) as Parameters<typeof modulosForaDoPlano>[0]
+  const foraDoPlano = new Set<string>(modulosForaDoPlano(plano))
+  const abasForaDoPlanoDaRede = new Set<string>(abasForaDoPlano(plano))
   const acima = new Set<string>()
   for (const l of linhas) {
     const m = l.module as AppModule
+    if (foraDoPlano.has(m)) continue
     const meu = (ctx.permissions?.[m] ?? 'NONE') as PermissionLevel
     if (ORDEM[l.level] > ORDEM[meu]) { acima.add(MODULE_LABELS[m] ?? m); continue }
     if (l.level !== 'NONE' && isScoped(m) && l.scope === 'ALL' && ctx.scopes?.[m as keyof typeof ctx.scopes] === 'OWN') {
@@ -37,7 +47,8 @@ export function modulosAcimaDoMeu(
     }
   }
   const relatorios = linhas.find(l => l.module === 'reports')
-  if (relatorios && relatorios.level !== 'NONE' && abas.some(a => !(ctx.reportTabs ?? []).includes(a as ReportTab))) {
+  if (relatorios && relatorios.level !== 'NONE' && !foraDoPlano.has('reports')
+    && abas.some(a => !abasForaDoPlanoDaRede.has(a) && !(ctx.reportTabs ?? []).includes(a as ReportTab))) {
     acima.add(MODULE_LABELS.reports)
   }
   return [...acima]

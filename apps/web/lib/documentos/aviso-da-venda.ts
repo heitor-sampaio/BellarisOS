@@ -37,3 +37,13 @@ export function avisoDosDocumentosDaVenda(docs: DocumentoDoAviso[], opcoes: { ve
 export function avisoDoContratoAntesDeVender(c: { titulo: string; faltando: string[] }): string {
   return `O contrato deste pacote (${c.titulo}) pede ${emLista(c.faltando)}, que falta no cadastro. A cliente assina o contrato antes do pagamento: complete o cadastro para ele ficar pronto para assinar.`
 }
+
+/**
+ * A5(b) da 25ª (princípio 7): "Já assinou: vender" sem a assinatura — a venda
+ * devolve o MESMO contrato para assinar, e a tela não mudava nada. O aviso diz
+ * por quê. Outro contrato (a venda mudou) ou o primeiro pedido: nada.
+ */
+export function avisoDoJaAssinou(contratoNaTela: string | null, devolvido: { id: string; status: string }): string | null {
+  if (!contratoNaTela || devolvido.id !== contratoNaTela || devolvido.status === 'ASSINADO') return null
+  return 'A cliente ainda não assinou o contrato: colha a assinatura ou envie o link.'
+}

@@ -20,7 +20,7 @@ import {
   NETWORK_ONLY, notaDeAbrangencia, SO_NA_REDE_NOTE, avisaSemMinhasComissoes, quemVendeNoResumo, copilotNoResumo, textoDoQueFaltaNoCargo, documentosNoResumo,
   pdvAbertoPeloFinanceiro, tratamentosNoResumo, nivelDoPdvPeloFinanceiro, conclusaoNoResumo,
 } from '@/lib/permissions-copy'
-import { ADMIN_MENU, BRANCH_MENU, menuLabelsFor } from '@/lib/menu'
+import { ADMIN_MENU, BRANCH_MENU, menuLabelsFor, soLeriaAsConfiguracoes } from '@/lib/menu'
 import { rotuloDasAbasAlcancadas, ABAS_DA_REDE, ABAS_DA_UNIDADE } from '@/lib/configuracoes/abas'
 import { OPCOES_DE_CAIXAS, type CaixasDoCargo } from '@/lib/inbox/visibilidade'
 import { SegSelect } from '@/components/shared/seg-select'
@@ -996,11 +996,15 @@ function MenuPreview({ levels, scopes, reportTabs }: { levels: Levels; scopes: S
   // aba dos outros módulos (o Financeiro, só Comissões e taxas) — o resumo diz.
   const gerencia = (m: AppModule) => permissions[m] === 'MANAGE'
   const comAbas = (abas: Parameters<typeof rotuloDasAbasAlcancadas>[0]) => (rotulo: string) =>
-    rotulo === 'Configurações' ? (rotuloDasAbasAlcancadas(abas, gerencia) ?? rotulo) : rotulo
+    rotulo === 'Configurações' ? (rotuloDasAbasAlcancadas(abas, gerencia, { soAsDela: true }) ?? rotulo) : rotulo
   // Sem escolha ainda, a prévia lê "todos" (salvar pede a escolha antes).
   const escopos = Object.fromEntries(ALL_MODULES.map(m => [m, scopes[m] ?? 'ALL'])) as ResolvedScopes
-  const network = menuLabelsFor(ADMIN_MENU, permissions, escopos).map(comAbas(ABAS_DA_REDE))
-  const branch  = menuLabelsFor(BRANCH_MENU, permissions, escopos).map(comAbas(ABAS_DA_UNIDADE))
+  // A-CONF1 da 25ª: o cargo editável nunca é o de Admin da rede — sem aba que a pessoa use, Configurações
+  // não aparece (a configuração da rede toda é só da Admin da rede, CLAUDE.md §11).
+  const semConfiguracoes = soLeriaAsConfiguracoes(permissions, false)
+  const doMenu = (menu: typeof ADMIN_MENU) => semConfiguracoes ? menu.filter(e => e.key !== 'settings') : menu
+  const network = menuLabelsFor(doMenu(ADMIN_MENU), permissions, escopos).map(comAbas(ABAS_DA_REDE))
+  const branch  = menuLabelsFor(doMenu(BRANCH_MENU), permissions, escopos).map(comAbas(ABAS_DA_UNIDADE))
   const sobreDocumentos = [...network, ...branch].includes('Documentos') ? documentosNoResumo(levels) : null
   // A2 da 22ª: de onde vem Tratamentos, como Documentos.
   const sobreTratamentos = [...network, ...branch].includes('Tratamentos') ? tratamentosNoResumo(levels) : null

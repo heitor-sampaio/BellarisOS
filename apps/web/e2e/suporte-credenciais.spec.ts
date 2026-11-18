@@ -3,7 +3,7 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { criarAtendente, plataformaNoAr, urlDaPlataforma, type AtendenteDeTeste } from './apoio/plataforma'
-import { chamarAcao } from './apoio/acao-direta'
+import { chamarAcao, chamarAcaoComFormulario } from './apoio/acao-direta'
 import { apagarAgendamentos } from './apoio/limpeza'
 import {
   sessaoDoNavegador, sessaoDoToken, rest, restBruto, authApi, renovar, autorizarPor, entrarComo, irComASessaoCaindo, sessoesAtivasDaRede, limparSuporteDaRede,
@@ -16,7 +16,8 @@ import {
  *  - aparelho de push na conta do membro (seguiria recebendo o sino depois);
  *  - login novo na equipe, cargo e permissão (acesso permanente, fora do prazo);
  *  - nada sai para o paciente: mensagem, template, campanha, link de
- *    assinatura — e o push do agendamento não vai ao cliente;
+ *    assinatura, a resposta do pedido de prontuário (LGPD) e o acesso ao app
+ *    criado no cadastro — e o push do agendamento não vai ao cliente;
  *  - re-autorizar troca as regras: a sessão em curso cai;
  *  - vencer o prazo mata o token e o refresh;
  *  - o "Sair" por link não desloga um membro comum.
@@ -91,7 +92,10 @@ test.afterAll(async () => {
 
 test.describe.serial('suporte: credenciais e travas', () => {
   test('entra com autorização', async ({ browser }) => {
-    await autorizarPor(browser, alvo.estado, alvo.userId)
+    // Com o prontuário (CRM-08 da varredura de 18/11): sem ele, a resposta ao
+    // pedido de prontuário pararia na permissão, e o teste não provaria a trava
+    // do modo suporte. Com MAIS acesso, cada "não faz" abaixo prova mais.
+    await autorizarPor(browser, alvo.estado, alvo.userId, { clinico: true })
     sup = await entrarComo(browser, atendente!.estado, outra!.tenantId, `Alvo skalvo${marca}`)
     expect(await sessoesAtivasDaRede(outra!.tenantId)).toHaveLength(1)
   })
@@ -128,7 +132,7 @@ test.describe.serial('suporte: credenciais e travas', () => {
     expect(data ?? []).toHaveLength(0)
   })
 
-  test('nada sai para o paciente: template, campanha e link de assinatura', async () => {
+  test('nada sai para o paciente: template, campanha, link de assinatura, pedido de prontuário e acesso ao app', async () => {
     const p = sup!.page
     const t = await chamarAcao(p, 'actions/inbox.ts', 'sendTemplateMessage', '/admin/inbox', [QUALQUER, QUALQUER, {}])
     expect(t.texto).toContain('modo suporte')
@@ -136,6 +140,34 @@ test.describe.serial('suporte: credenciais e travas', () => {
     expect(c.texto).toContain('modo suporte')
     const l = await chamarAcao(p, 'actions/documentos.ts', 'gerarLinkDeAssinatura', `/admin/clients/${clienteId}`, [QUALQUER])
     expect(l.texto).toContain('modo suporte')
+
+    // CRM-08 (varredura de 18/11): liberar o prontuário no pedido de dados manda o
+    // pacote ao app da cliente. O pedido segue "em análise".
+    const agora = new Date().toISOString()
+    const { data: pedido, error: ePedido } = await db().from('lgpd_requests').insert({
+      tenant_id: outra!.tenantId, client_id: clienteId, type: 'export', status: 'completed', requested_at: agora,
+      completed_at: agora, include_medical: true, medical_status: 'pending', requested_via: 'portal',
+    }).select('id').single<{ id: string }>()
+    expect(ePedido).toBeNull()
+    try {
+      const rv = await chamarAcaoComFormulario(p, 'actions/lgpd.ts', 'reviewMedicalData', '/admin/settings?tab=lgpd', [null],
+        { request_id: pedido!.id, decision: 'approved' })
+      expect(rv.texto, 'responder o pedido do prontuário').toContain('modo suporte')
+      const { data: depois } = await db().from('lgpd_requests').select('medical_status').eq('id', pedido!.id).single<{ medical_status: string }>()
+      expect(depois?.medical_status).toBe('pending')
+    } finally {
+      await db().from('lgpd_requests').delete().eq('id', pedido!.id)
+    }
+
+    // CRM-09: o cadastro com acesso ao app manda o login à cliente — nem a ficha nasce.
+    const email = `e2e-suporte-acesso-${marca}@bellaris.invalid`
+    const ac = await chamarAcaoComFormulario(p, 'actions/clients.ts', 'addClient', '/admin/clients/new', [undefined], {
+      name: `${PREFIXO} Acesso pelo suporte ${marca}`, phone: '(41) 99876-5432', email,
+      document_type: 'CPF', document: '529.982.247-25', _acesso: 'on',
+    })
+    expect(ac.texto, 'cadastrar com acesso ao app').toContain('modo suporte')
+    const { data: fichas } = await db().from('clients').select('id').eq('tenant_id', outra!.tenantId).eq('email', email)
+    expect(fichas ?? []).toHaveLength(0)
   })
 
   // C7 do levantamento (F63; D18, o Heitor na 2ª volta): o que muda a clínica

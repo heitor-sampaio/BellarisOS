@@ -135,11 +135,11 @@ test.describe.serial('o plano e o pacote da 9ª', () => {
       await p.goto(`/admin/clients/${cliente!.clientId}`)
       await expect(p.locator('[data-tratamento-que-abre]')).toContainText('Abrir para ver e agendar as sessões')
       await p.getByRole('button', { name: '+ Agendar' }).click()
-      const jaPago = p.getByLabel('Usar o que já foi pago')
+      const jaPago = p.getByLabel('Usar o que já está incluído')
       await expect(jaPago).toBeVisible()
       await expect(jaPago.locator('option', { hasText: 'Plano de tratamento' })).toHaveCount(2)
       await p.locator('#ag-procedimento').selectOption(drenagem)
-      await expect(p.locator('[data-credito-pre-escolhido]')).toContainText('Plano de tratamento (sessão 2 de 3)')
+      await expect(p.locator('[data-credito-pre-escolhido]')).toContainText('Incluído no plano de tratamento (sessão 2 de 3)')
     })
   })
 
@@ -172,7 +172,10 @@ test.describe.serial('o plano e o pacote da 9ª', () => {
       await p.goto(`/admin/planejamentos/${plano}`)
       const rodape = p.locator('[data-resumo-do-plano] [data-rodape-do-plano]')
       await expect(rodape).toContainText('se recebe no PDV')
-      await expect(rodape).not.toContainText('Financeiro')
+      // A28 da 9ª: o que falta não "se recebe no Financeiro". A14 da 25ª: a
+      // transferência que caiu na conta tem baixa lá (CX2) — as duas portas são regra.
+      await expect(rodape).not.toContainText('se recebe no Financeiro')
+      await expect(rodape).toContainText('Se caiu na conta, a baixa é no Financeiro.')
       await expect(rodape.getByRole('link', { name: 'Receber no PDV' }))
         .toHaveAttribute('href', `/admin/pdv?unidade=${rede!.branchId}&nova=1&cliente=${cliente!.clientId}`)
     })

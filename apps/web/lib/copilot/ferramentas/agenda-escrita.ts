@@ -165,7 +165,8 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
           { rotulo: 'Quando', valor: quandoLegivel(inicio, fuso) },
           { rotulo: 'Unidade', valor: unidade.name },
           pago
-            ? { rotulo: 'Já pago', valor: `${pago.texto} · ${dinheiro(pago.preco)}` }
+            // A3 da 25ª: "Incluído", não "Já pago" (o crediário tem parcelas em aberto).
+            ? { rotulo: 'Incluído', valor: `${pago.texto} · ${dinheiro(pago.preco)}` }
             : { rotulo: 'Valor', valor: dinheiro(proc.price) },
           ...(a.observacao ? [{ rotulo: 'Observação', valor: a.observacao }] : []),
         ],

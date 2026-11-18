@@ -38,6 +38,17 @@ export interface FinanceiroDaFicha {
    * atendimento a receber mais antigo numa unidade ao alcance de quem lê.
    */
   comandaParaReceber: { comandaId: string | null; unidadeId: string; slug: string } | null
+  /**
+   * A2 da 25ª: os planos ACEITOS e ainda não recebidos — não estão no "A
+   * receber" (o aceite não lança dinheiro; o plano é venda quando é pago), e a
+   * ficha diz quais, quanto (`metrics_financeiro_do_plano`) e a comanda do PDV.
+   */
+  planosNaoRecebidos: PlanoNaoRecebido[]
+}
+
+export interface PlanoNaoRecebido {
+  id: string; nome: string; valor: number
+  comandaId: string | null; unidadeId: string; slug: string
 }
 
 const VAZIO: ListaAReceber = { itens: [], total: { n: 0, valor: 0 } }
@@ -57,13 +68,13 @@ type Linha = {
 export async function financeiroDaFicha(ctx: TenantContext, clientId: string): Promise<FinanceiroDaFicha> {
   const veFinanceiro = can(ctx, 'financial', 'VIEW') || podeReceber(ctx)
   if (!veFinanceiro) {
-    return { veFinanceiro, soOsProprios: false, transactions: [], internalCredits: [], totais: { pago: 0, aReceber: 0, credito: null }, aReceber: VAZIO, comandaParaReceber: null }
+    return { veFinanceiro, soOsProprios: false, transactions: [], internalCredits: [], totais: { pago: 0, aReceber: 0, credito: null }, aReceber: VAZIO, comandaParaReceber: null, planosNaoRecebidos: [] }
   }
   const soOsProprios = isOwnScope(ctx, 'financial') && ctx.permissions.cashier !== 'MANAGE'
   const meu = soOsProprios ? (ctx.internalUserId ?? '00000000-0000-0000-0000-000000000000') : null
   const admin = createAdminClient()
 
-  const [linhas, totaisRaw, aReceber, creditos] = await Promise.all([
+  const [linhas, totaisRaw, aReceber, creditos, planosNaoRecebidos] = await Promise.all([
     lerTodas<unknown>((de, ate) => {
       let q = admin.from('financial_transactions')
         .select(`id, type, description, amount, payment_method, cartao_vezes, cartao_bandeira, is_paid, paid_at, created_at, due_date, notes, category, appointment_id, parcela_numero, parcela_total, product_sale_id, credito_vendido_id, client_package_id, procedure_sale_id, treatment_plan_id, branch_id,
@@ -79,6 +90,8 @@ export async function financeiroDaFicha(ctx: TenantContext, clientId: string): P
     soOsProprios ? Promise.resolve([]) : ler(admin.from('internal_credits')
       .select('id, amount, description, created_at, concedido, transaction_id, credito_vendido_id').eq('client_id', clientId)
       .order('created_at', { ascending: false }), 'carregar o crédito interno'),
+    // A2 da 25ª: o plano não é dos atendimentos de ninguém — "só os meus" não o lê.
+    soOsProprios ? Promise.resolve([] as PlanoNaoRecebido[]) : planosAceitosNaoRecebidos(ctx.tenantId!, clientId),
   ])
 
   const t = ((totaisRaw ?? []) as { pago: number | string; a_receber: number | string; credito: number | string | null }[])[0]
@@ -139,7 +152,7 @@ export async function financeiroDaFicha(ctx: TenantContext, clientId: string): P
 
   const primeira = aReceber.itens.find(a => alcancaUnidade(ctx, a.branchId)) ?? null
   return {
-    veFinanceiro, soOsProprios, transactions, aReceber,
+    veFinanceiro, soOsProprios, transactions, aReceber, planosNaoRecebidos,
     comandaParaReceber: primeira ? { comandaId: primeira.comandaId, unidadeId: primeira.branchId, slug: primeira.branchSlug } : null,
     internalCredits: ((creditos ?? []) as { id: string; amount: number | string; description: string; created_at: string; concedido: boolean | null; transaction_id: string | null; credito_vendido_id: string | null }[])
       // A41 da 9ª: de onde veio cada crédito (o concedido nunca teve dinheiro).
@@ -151,4 +164,35 @@ export async function financeiroDaFicha(ctx: TenantContext, clientId: string): P
       credito:  t?.credito == null ? null : Number(t.credito),
     },
   }
+}
+
+/**
+ * A2 da 25ª: os planos aceitos da cliente sem recebimento nenhum — a mesma
+ * régua do resumo do plano (`getResumoDoPlano`: nenhum lançamento de receita
+ * vivo). O valor é o do plano (`metrics_financeiro_do_plano`).
+ */
+async function planosAceitosNaoRecebidos(tenantId: string, clientId: string): Promise<PlanoNaoRecebido[]> {
+  const admin = createAdminClient()
+  const planos = ((await ler(admin.from('treatment_plans').select('id, name, branch_id, branches!inner(tenant_id, slug)')
+    .eq('client_id', clientId).eq('status', 'ACCEPTED').eq('branches.tenant_id', tenantId)
+    .order('created_at'), 'buscar os planos aceitos da cliente')) ?? []) as unknown as
+    { id: string; name: string | null; branch_id: string; branches: { slug: string } | null }[]
+  if (!planos.length) return []
+  const ids = planos.map(p => p.id)
+  const [vivos, comandas] = await Promise.all([
+    ler(admin.from('financial_transactions').select('treatment_plan_id').in('treatment_plan_id', ids).eq('type', 'INCOME')
+      .is('estorno_de', null).or('notes.is.null,notes.neq.Estornada'), 'conferir se os planos foram recebidos'),
+    ler(admin.from('comandas').select('id, treatment_plan_id').in('treatment_plan_id', ids).is('cancelada_em', null),
+      'buscar as comandas dos planos'),
+  ])
+  const recebidos = new Set(((vivos ?? []) as { treatment_plan_id: string }[]).map(v => v.treatment_plan_id))
+  const comandaDo = new Map(((comandas ?? []) as { id: string; treatment_plan_id: string }[]).map(c => [c.treatment_plan_id, c.id]))
+  const faltam = planos.filter(p => !recebidos.has(p.id))
+  const valores = await Promise.all(faltam.map(p =>
+    ler(admin.rpc('metrics_financeiro_do_plano', { p_tenant: tenantId, p_plan: p.id }).maybeSingle(), 'o valor do plano')))
+  return faltam.map((p, i) => ({
+    id: p.id, nome: p.name?.trim() || 'Plano de tratamento',
+    valor: Number((valores[i] as { valor?: number | string } | null)?.valor ?? 0),
+    comandaId: comandaDo.get(p.id) ?? null, unidadeId: p.branch_id, slug: p.branches?.slug ?? '',
+  }))
 }

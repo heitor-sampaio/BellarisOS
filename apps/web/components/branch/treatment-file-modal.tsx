@@ -259,11 +259,13 @@ interface Props {
   onCancelarPacote?: () => void
   /** Cancelar o plano fechado (D4 da 9ª): a mesma janela do pacote, para quem tem o financeiro em Gerenciar. */
   onCancelarPlano?: () => void
+  /** D12 da 25ª: o "Iniciar" das sessões é de quem tem o Atendimento em Gerenciar. */
+  podeIniciarAtendimento?: boolean
 }
 
 // -- Modal principal -----------------------------------------------------------
 
-export function TreatmentFileModal({ client, activePackage, branches, currentBranchId, slug, canManageProcedures, isNetworkWide, onClose, onCancelarPacote, onCancelarPlano }: Props) {
+export function TreatmentFileModal({ client, activePackage, branches, currentBranchId, slug, canManageProcedures, isNetworkWide, onClose, onCancelarPacote, onCancelarPlano, podeIniciarAtendimento = false }: Props) {
   const fuso = useFuso()
   const [details,      setDetails]      = useState<TreatmentFileDetails | null>(null)
   // Nasce carregando quando há plano: a busca inicial sai no efeito abaixo.
@@ -357,6 +359,7 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
         canManageProcedures={canManageProcedures}
         isNetworkWide={isNetworkWide}
         onClose={() => setSessionsOpen(false)}
+        podeIniciar={podeIniciarAtendimento}
         agendarSessaoId={agendarSessao}
         onCancelarPlano={onCancelarPlano}
         emAberto={activePackage.emAberto ?? null}

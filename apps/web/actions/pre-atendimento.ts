@@ -171,7 +171,7 @@ export async function situacaoDoPreAtendimento(appointmentId: string): Promise<S
     // A ficha gravada vazia não é respondida (D2 da simulação de 2026-10-28).
     ler(admin.from('pre_atendimentos').select('respondido_em').eq('appointment_id', ap.id).eq('status', 'RESPONDIDO').neq('respostas', '{}')
       .order('respondido_em', { ascending: false }).limit(1).maybeSingle(), 'buscar a ficha de saúde do agendamento'),
-    ler(admin.from('clients').select('document, birth_date').eq('id', ap.client_id).maybeSingle(), 'buscar a cliente'),
+    ler(admin.from('clients').select('document, birth_date, auth_id').eq('id', ap.client_id).maybeSingle(), 'buscar a cliente'),
     envioPelaConversaLigado(ctx.tenantId!),
   ])
   const podeLink = ((cliente?.document as string | null) ?? '').replace(/\D/g, '').length > 0 || !!cliente?.birth_date
@@ -193,7 +193,9 @@ export async function situacaoDoPreAtendimento(appointmentId: string): Promise<S
       'buscar o link da ficha') as { expires_at: string; token_cifrado: string | null } | null : null
     return {
       estado: 'PENDENTE', modo: pendente.modo as 'COMPLETO' | 'CONFIRMAR', podeLink, podeCompletarNascimento, pelaConversa, clienteId: ap.client_id as string,
-      linkValidoAte: valendo?.expires_at ?? null, linkDeNovo: !!valendo?.token_cifrado, noAppEm: noApp?.created_at ?? null,
+      linkValidoAte: valendo?.expires_at ?? null, linkDeNovo: !!valendo?.token_cifrado,
+      // A10 da 25ª (princípio 3): "Mandada ao app" só para quem tem o acesso ao app.
+      noAppEm: cliente?.auth_id ? (noApp?.created_at ?? null) : null,
     }
   }
   if (deste) return { estado: 'RESPONDIDO', respondidoEm: deste.respondido_em as string | null, podeLink }

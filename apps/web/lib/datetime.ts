@@ -207,3 +207,41 @@ export const isoNaParede = (iso: string | null | undefined, tz: string = BUSINES
 export function fusoLocal(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone || BUSINESS_TZ
 }
+
+/** Um instante em ISO (data, hora e o fuso: `Z` ou `±hh:mm`), como o banco e o `toISOString` gravam. */
+const ISO_DE_INSTANTE = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}(:?\d{2})?)$/
+
+/** O instante do texto, se ele é um ISO de instante; senão, nulo. */
+function instanteDoIso(valor: string): Date | null {
+  if (!ISO_DE_INSTANTE.test(valor)) return null
+  const d = new Date(valor)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
+/**
+ * O instante em ISO, no relógio do fuso e com o deslocamento dele:
+ * "2026-11-18T17:30:00.000Z" → "2026-11-18T14:30:00-03:00" (A24 da 25ª: o
+ * JSON do titular levava o UTC cru; segue ISO porque é o arquivo da
+ * portabilidade). O que não é um instante (a data sem hora, um texto) devolve
+ * nulo: quem chama deixa como está.
+ */
+export function isoNoFuso(valor: string, tz: string = BUSINESS_TZ): string | null {
+  const d = instanteDoIso(valor)
+  if (!d) return null
+  const p = partsInTZ(d, tz)
+  const min = Math.round(offsetMs(d, tz) / 60_000)
+  const sinal = min < 0 ? '-' : '+'
+  const abs = Math.abs(min)
+  return `${p.year}-${pad(p.month)}-${pad(p.day)}T${pad(p.hour)}:${pad(p.minute)}:${pad(p.second)}${sinal}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`
+}
+
+/**
+ * O instante em ISO para ler na tela: 'dd/mm/aaaa hh:mm' no fuso (A25 da 25ª:
+ * a dica das automações mostrava o ISO em UTC). Nulo para o que não é instante.
+ */
+export function dataHoraNoFuso(valor: string, tz: string = BUSINESS_TZ): string | null {
+  const d = instanteDoIso(valor)
+  if (!d) return null
+  const p = partsInTZ(d, tz)
+  return `${pad(p.day)}/${pad(p.month)}/${p.year} ${pad(p.hour)}:${pad(p.minute)}`
+}

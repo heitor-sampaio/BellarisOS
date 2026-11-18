@@ -244,6 +244,11 @@ interface Props {
    * mandar a cliente a outra pessoa. O mesmo critério do PDV (`podeReceber`).
    */
   podeReceber?:          boolean
+  /**
+   * D12 da 25ª: os planos da cliente (o Atendimento em Ver). Sem ele, a sessão
+   * não mostra o "Planejamento" (os leitores do plano recusariam).
+   */
+  podeVerPlanos?:        boolean
   /** A35 da 12ª: quem recebe e não estorna — a quem pedir o estorno (os nomes de quemDesfazNoCaixa). */
   quemEstorna?:          string[] | null
   /**
@@ -391,6 +396,8 @@ function CancelModal({ appointmentId, slug, onClose, desistencia = null }: {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <label htmlFor="cancelamento-motivo" className="field-label">Motivo do cancelamento *</label>
             <textarea id="cancelamento-motivo" name="cancellation_reason" required rows={3} placeholder="Descreva o motivo…" className="field" style={{ resize: 'vertical' }} />
+            {/* A11 da 25ª (princípio 3): o motivo vai no aviso do cancelamento (textoDoCancelado). */}
+            <p data-motivo-vai-a-cliente style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 4 }}>Vai também no aviso à cliente.</p>
           </div>
           {desistencia && (
             <div data-desistencia style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '12px 14px', borderRadius: 'var(--radius-field-token)', background: 'var(--bg-app)', border: '1px solid var(--border)' }}>
@@ -1077,7 +1084,7 @@ export function AppointmentSession({
   professionals, history, branchId, slug,
   canCheckin, canManage, ehDaProfissional = false, canEditRecords, canViewRecords = true, fotosDoAtendimento = null, anotacoes = null, versoesDoRegistro = [], podeAnotar = false, portalNoPlano = false, canReassign, canPayment, isProfessional, paymentTransaction, pagamentoEstornado = null, comandaId = null,
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
-  isPartOfPlan = false, isPackageSession = false, pacoteDeFora = false, sessaoDoPacote = null, isPrePago = false, podeReceber = false, quemEstorna = null, quemRecebe = null, quemConclui = null, quemMarcaAChegada = null, podeEstornar = false, planoEmAberto = null, documentos = null, podeMontarPlano = true, montaPlanoNaUnidade = false, podeInjetaveis = true,
+  isPartOfPlan = false, isPackageSession = false, pacoteDeFora = false, sessaoDoPacote = null, isPrePago = false, podeReceber = false, quemEstorna = null, quemRecebe = null, quemConclui = null, quemMarcaAChegada = null, podeEstornar = false, planoEmAberto = null, documentos = null, podeMontarPlano = true, montaPlanoNaUnidade = false, podeInjetaveis = true, podeVerPlanos = false,
 }: Props) {
   const router   = useRouter()
   // Portal de onde se está vendo o atendimento — `slug` é o endereço da
@@ -1680,6 +1687,7 @@ export function AppointmentSession({
               podeAnotarNoPlano={canEditRecords}
               // Injetáveis é prontuário: o clínico desta sessão.
               podeVerInjetaveis={canViewRecords}
+              podeVerPlanos={podeVerPlanos}
               podeReceber={podeReceber}
               abaInicial={planejamentoAberto === 'injetaveis' ? 'injetaveis' : 'tratamento'}
               // Registro bloqueado: a avaliação não monta mais o plano na tela
@@ -1810,10 +1818,13 @@ export function AppointmentSession({
             {/* Check-in (SCHEDULED + canCheckin) */}
             {/* O planejamento é do cliente e abre de qualquer atendimento —
                 não só da consulta de avaliação, como era antes. */}
-            <button type="button" onClick={() => setPlanejamentoAberto('tratamento')} className="btn-secondary"
-              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 16px', fontSize: 'var(--text-base-sz)' }}>
-              <ClipboardList size={14} /> Planejamento
-            </button>
+            {/* D12 da 25ª: só para quem vê os planos (o Atendimento em Ver). */}
+            {podeVerPlanos && (
+              <button type="button" onClick={() => setPlanejamentoAberto('tratamento')} className="btn-secondary"
+                style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 16px', fontSize: 'var(--text-base-sz)' }}>
+                <ClipboardList size={14} /> Planejamento
+              </button>
+            )}
             {/* A10 da 9ª simulação: o mapa de injetáveis da cliente abre (e se
                 cria) daqui, sem ir ao menu Injetáveis e voltar. É prontuário:
                 só para quem vê o clínico, no plano que tem o recurso. */}

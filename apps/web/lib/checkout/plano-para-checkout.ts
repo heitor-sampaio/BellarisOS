@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedBranchProfessionals } from '@/lib/cached-queries'
-import { getTreatmentPlanSessions } from '@/actions/treatment-plans'
+import { sessoesDoPlanoParaCheckout } from '@/lib/checkout/sessoes-do-plano'
 import type { CheckoutPlan } from '@/components/branch/checkout-wizard'
 import { ler } from '@/lib/db'
 import { precosDoPlano } from '@/lib/checkout/desconto-do-plano'
@@ -61,8 +61,10 @@ export async function montarCheckoutPlan(
   type RawClient = { name: string; document: string | null; documento_numero: string | null; phone: string | null }
   const cli = planRaw.clients as unknown as RawClient | null
 
-  const [{ sessions }, precos, professionalsRaw, medRecordRaw, branchesRaw, atendimentoDeHoje, pacotes, equipe, contratoAssinado, contratoSemDocumento, configDaComissao] = await Promise.all([
-    getTreatmentPlanSessions(planId),
+  const [sessions, precos, professionalsRaw, medRecordRaw, branchesRaw, atendimentoDeHoje, pacotes, equipe, contratoAssinado, contratoSemDocumento, configDaComissao] = await Promise.all([
+    // D3 da 25ª: sem a trava do Atendimento — quem chama já conferiu quem recebe.
+    // D2 da 25ª: ao preço de TABELA, que fecha com o subtotal; o desconto aparece à parte.
+    sessoesDoPlanoParaCheckout(tenantId, planId, { precoDeTabela: true }),
     // O total é o de ANTES do desconto: depois de um checkout que falhou no
     // meio, os preços do plano já estão rateados, e o desconto é dado de novo
     // sobre o valor original.

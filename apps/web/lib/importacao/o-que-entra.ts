@@ -2,6 +2,17 @@ import { camposDoDestino, sugerirMapeamento, type ChaveDeCampo, type Destino } f
 import { nomeDiferente } from '@/lib/importacao/normalizar'
 
 /**
+ * A22 da 25ª simulação (princípio 3: nada de regra escondida): sem uma coluna
+ * em "Cliente desde", a ficha nova conta como cliente nova a partir de hoje —
+ * os novos clientes e o selo "Novo" contam por coalesce(cliente_desde,
+ * created_at) (indicadores.md). A prévia diz, antes de importar.
+ */
+export function avisoSemClienteDesde(destino: Destino, mapa: readonly (ChaveDeCampo | null)[]): string | null {
+  if (destino !== 'clientes' || mapa.includes('cliente_desde')) return null
+  return 'Sem uma coluna em “Cliente desde”, as fichas novas contam como clientes novas a partir de hoje (em “Novos clientes” e no selo “Novo”).'
+}
+
+/**
  * A linha que JUNTOU com quem já existe (A30 da 22ª simulação; princípio 3):
  * o resultado dizia só "1 sem mudança", e a prévia tinha dito "completa o que
  * está em branco". A linha diz em quem entrou e o que dela ficou de fora —

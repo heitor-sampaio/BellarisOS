@@ -13,7 +13,7 @@ import { MenuComRolagem } from '@/components/shared/menu-com-rolagem'
 import { logoutAction } from '@/actions/auth'
 import { useSidebar } from '@/components/shared/sidebar-context'
 import { useFala } from '@/components/shared/uma-unidade'
-import { ADMIN_MENU, menuSectionsFor } from '@/lib/menu'
+import { menuDaRedeFor } from '@/lib/menu'
 import type { ResolvedPermissions, ResolvedScopes } from '@estetica-os/types'
 
 const SIDEBAR_GRADIENT = 'var(--gradient-brand)'
@@ -45,7 +45,7 @@ const ICONS: Record<string, React.ReactNode> = {
   automations:  <Workflow   size={18} />,
 }
 
-export function AdminSidebar({ permissions, scopes, plano = null }: { permissions: ResolvedPermissions; scopes?: Partial<ResolvedScopes>; plano?: { funcionalidades: readonly string[] } | null }) {
+export function AdminSidebar({ permissions, scopes, plano = null, adminDaRede = false }: { permissions: ResolvedPermissions; scopes?: Partial<ResolvedScopes>; plano?: { funcionalidades: readonly string[] } | null; adminDaRede?: boolean }) {
   const { isOpen, close, collapsed, toggleCollapsed } = useSidebar()
   // A clínica de uma unidade lê "Clínica" no lugar de "Rede" (F8).
   const fala = useFala()
@@ -111,7 +111,7 @@ export function AdminSidebar({ permissions, scopes, plano = null }: { permission
         <MenuComRolagem onClick={close} recolhida={collapsed}>
           {/* Cada categoria recolhe pelo título; com a barra recolhida em
               ícones, o título vira um filete que ainda separa os blocos. */}
-          {menuSectionsFor(ADMIN_MENU, permissions, plano, scopes).map(secao => (
+          {menuDaRedeFor(permissions, plano, scopes, { adminDaRede }).map(secao => (
             <SecaoDoMenu key={secao.key ?? '_topo'} chave={secao.key} titulo={secao.label}
               entradas={secao.entries} icones={ICONS} recolhida={collapsed} filete={separatorBg} />
           ))}

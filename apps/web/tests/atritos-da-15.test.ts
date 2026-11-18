@@ -97,7 +97,8 @@ describe('A10/A17: o app não diz "Já pago" no que é do pacote', () => {
     expect(textoDoCreditoNoApp({ tipo: 'PACOTE', origem: '4 lasers', procedimento: 'Laser', numero: 1, total: 4 }))
       .toBe('Incluído no pacote 4 lasers (sessão 1 de 4)')
     expect(textoDoCreditoNoApp({ tipo: 'PRE_PAGO', origem: 'Pré-pago', procedimento: 'Limpeza', numero: 2, total: 3 }))
-      .toBe('Incluído no pré-pago de Limpeza (unidade 2 de 3)')
+      // A6 da 25ª: a "unidade" do pré-pago é a sessão (a unidade é a da rede).
+      .toBe('Incluído no pré-pago de Limpeza (sessão 2 de 3)')
   })
   it('o passo do procedimento no app diz "Incluído", não "Já pago"', () => {
     const wizard = ler('components/client-portal/new-appointment-wizard.tsx')
@@ -106,16 +107,19 @@ describe('A10/A17: o app não diz "Já pago" no que é do pacote', () => {
   })
 })
 
+// Desde 18/11 (o Heitor: "Configuração da rede toda só pela conta admin") quem vê é a Admin da rede, não
+// quem tem "A rede inteira" (A-CONF1 da 25ª; o resto em tests/config-da-rede-sobras-da-25.test.ts).
 describe('A26: "Tags e importações" sai do menu de quem só leria as duas abas', () => {
-  const temConfiguracoes = (p: ResolvedPermissions, daRede: boolean) =>
-    menuDaUnidadeFor(p, null, undefined, { base: '/centro', daRede }).flatMap(s => s.entries).some(e => e.key === 'settings')
+  const temConfiguracoes = (p: ResolvedPermissions, daRede: boolean, adminDaRede = false) =>
+    menuDaUnidadeFor(p, null, undefined, { base: '/centro', daRede, adminDaRede }).flatMap(s => s.entries).some(e => e.key === 'settings')
 
   it('quem tem unidades e só chega pelas Clientes ou pelo CRM não vê o item', () => {
     expect(temConfiguracoes(com({ clients: 'MANAGE' }), false)).toBe(false)
     expect(temConfiguracoes(com({ crm: 'MANAGE' }), false)).toBe(false)
   })
-  it('quem tem "A rede inteira" segue vendo, e quem tem as Configurações também', () => {
-    expect(temConfiguracoes(com({ clients: 'MANAGE' }), true)).toBe(true)
+  it('quem tem "A rede inteira" sem ser a Admin também não; a Admin da rede vê, e quem tem as Configurações também', () => {
+    expect(temConfiguracoes(com({ clients: 'MANAGE' }), true)).toBe(false)
+    expect(temConfiguracoes(com({ clients: 'MANAGE' }), true, true)).toBe(true)
     expect(temConfiguracoes(com({ settings: 'MANAGE' }), false)).toBe(true)
   })
   it('a busca também não oferece a tela nem as duas abas', () => {
@@ -123,8 +127,9 @@ describe('A26: "Tags e importações" sai do menu de quem só leria as duas abas
     expect(keys).not.toContain('settings')
     expect(keys).not.toContain('settings:tags')
     expect(keys).not.toContain('settings:importacoes')
-    const daRede = paginasDaBusca('centro', com({ clients: 'MANAGE' }), null, undefined, { daRede: true }).map(p => p.key)
-    expect(daRede).toContain('settings')
+    expect(paginasDaBusca('centro', com({ clients: 'MANAGE' }), null, undefined, { daRede: true }).map(p => p.key)).not.toContain('settings')
+    const admin = paginasDaBusca('centro', com({ clients: 'MANAGE' }), null, undefined, { daRede: true, adminDaRede: true }).map(p => p.key)
+    expect(admin).toContain('settings')
   })
 })
 

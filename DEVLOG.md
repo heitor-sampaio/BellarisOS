@@ -1774,6 +1774,47 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-18 — Os defeitos e atritos da 25ª simulação, corrigidos
+
+A 25ª rodou com quatro times sobre `a14295d6`: o "[sim] Studio Amarílis" (uma unidade, Recife), a "[sim] Rede Cerejeira" (duas unidades, Manaus, UTC−4), o "[sim] Espaço Glicínia" (migração, Curitiba) e a "[sim] Rede Hibisco" (comercial e Copilot, BH). O dinheiro bateu nos quatro times: caixa, receita, lucro, a receber, comissões, pontos e estoque. O que falhou foi o plano de tratamento, o caminho mais longo do comercial. Ela achou 17 defeitos e 36 atritos. As correções foram feitas em três frentes paralelas (plano e PDV; configuração, auditoria e CRM; atendimento, busca e migração), cada achado com a regra dele.
+
+- **Plano de tratamento e PDV**:
+  - D1: o plano aceito e ainda não recebido dizia "Plano fechado e pago" com tudo a receber; agora diz "Plano aceito e ainda não recebido: a comanda do plano está no PDV." (o Heitor, 18/11: "Uma coisa só foi vendida se foi paga.").
+  - D2: a lista e o checkout mostravam o total ANTES do desconto (480/1.520), e o contrato o de depois (420/1.420); agora todas as telas mostram o mesmo.
+  - D3: quem tem o PDV em Gerenciar sem o Atendimento recebia "sem acesso" e o erro #441 ao receber o plano; o checkout lê as sessões sem a trava do Atendimento (`lib/checkout/sessoes-do-plano.ts`).
+  - D4: o termo que bloqueia, emitido no plano, não travava a sessão do plano; agora trava (`documentos_pendentes_do_atendimento` conta os documentos do plano, migration `20261124900001`).
+  - D5: o relatório de Vendas voltou a dizer "Crédito na clínica" (uma migration de 21/11 recriou a função com o texto antigo); voltou a "Crédito interno" (`900002`).
+  - O plano entra em Vendas no primeiro recebimento PAGO, não no aceite (`900002`).
+  - D12: sem o Atendimento, "Planejamento" e "Iniciar" saem da sessão.
+  - A1b: avisa do plano salvo com sessão vazia. A2: "A receber" da ficha diz o plano aceito e não recebido. A3: "Incluído no plano de tratamento (sessão 2 de 3)…" no lugar de "Já pago". A4: o "Vendedor" do pacote. A5b: "Já assinou: vender".
+  - A6: o pré-pago chama de "sessão" o que chamava de "unidade", na tela e no banco (`900004`).
+  - A14: o rodapé diz a outra porta, "Se caiu na conta, a baixa é no Financeiro."
+  - A17: o extrato de comissão separa o desconto dos pontos e do voucher (`900003`).
+  - A20d (CLAUDE.md §14): as sessões e o cabeçalho do plano se gravam numa transação só (`plano_gravar_sessoes`, `950001`), e o plano fechado não volta a rascunho pelo "Salvar" da avaliação.
+- **Configuração, auditoria e CRM**:
+  - A-CONF1/2/3/5: as sobras da decisão de 18/11 ("configuração da rede toda só pela conta admin"). O menu e o resumo do cargo não levam a uma recusa; as abas dizem "Esta configuração é só da Admin da rede." e quem a muda; o editor de automação não diz "pronto para ligar" a quem não liga; a recusa do cargo acima não lista módulo fora do plano.
+  - D8: a aba LGPD volta a quem tem o Prontuário em Gerenciar numa unidade.
+  - D13: "Nova oportunidade" sai de quem tem o CRM em Ver.
+  - D14: o quadro de Oportunidades filtra por tag (CLAUDE.md §1, Tags; `lib/crm/filtro-de-tags.ts`).
+  - D15: o aviso da oportunidade ganha usa o nome e o telefone do contato sem ficha.
+  - D16: a Auditoria chama o documento da ficha de CPF, não de CNPJ.
+  - A13: a tabela da Equipe cabe a 1440. A18: os nomes legíveis dos campos. A19: "Telefone alterado" só quando o número muda. A20a–c e A21: os recebimentos e a falta na Auditoria. A24/A25: as datas no fuso (o JSON da LGPD e o editor de automação).
+  - As provas pela action: FID-01 (o voucher se cancela e se entrega em outra unidade da rede), CRM-03 (a aba Oportunidades da ficha no "só os meus") e CRM-10 ("Ir para a conversa" respeita as caixas do cargo), em `e2e/crm-alcance-varredura-da-25.spec.ts`.
+- **Atendimento, busca e migração**:
+  - D7: o público "sem visita há N dias" e o Reativar contam a última visita importada (`20261125000001`).
+  - D17: os "Próximos agendamentos" da busca só trazem o que está em aberto (`20261125000002`).
+  - A8: a ficha de saúde obrigatória diz quem responde. A9: quem conclui inclui a profissional do agendamento com "só os meus". A10: "Mandada ao app" só para quem tem acesso. A11: o motivo do cancelamento diz que vai à cliente. A15: a unidade nos próximos da ficha. A22: o aviso da importação. A26: a recompensa no extrato do app. A27: qual estoque mínimo vale.
+- **Não eram defeito**: A7, A16 e A23. Já estavam corrigidos e subiram com `67aea03d`: D9, D10, D11 e A-CONF4. O A12 não se reproduziu; a 26ª confere com captura.
+- **Ao Heitor** (em aberto): D6 (o avulso, o pacote, o pré-pago e o produto não pagos contam em Vendas?) e A29 (o selo "Novo" na ficha migrada). "Está no escopo?": A1a, A28, A30, A11 (o motivo interno × o da cliente), as tags na linha da lista e o filtro por profissional e sala na Agenda. Frente separada, por ser DEFEITO pela regra das Tags: o filtro por tag na Agenda, nos Relatórios e no Financeiro.
+- **Specs antigos que travavam o texto velho**: `plano-atritos-da-9` (A3 e A14 da 25ª). `crm-alcance-varredura-da-25` conferia "não encontrad" na resposta inteira da action, que traz o "Página não encontrada" do modelo de 404; agora confere a mensagem da action.
+- **A completa local contra o build** deu 1637 + 873 + 1 testes passando e 4 falhas. As 4 eram specs presos à regra velha, e passam depois do ajuste (22/22):
+  - `configuracoes-atritos-da-7` e `importacao-contatos` (A-CONF1: a comissão, as taxas e as Importações são da Admin da rede);
+  - `lgpd-exportacao-pela-equipe` (A24: o mesmo instante, no fuso da rede);
+  - `vendas-atritos-da-11` (A14).
+- Vitest: 3840 testes.
+- `automacoes-mobile` e `inbox-nome-da-pessoa`, que falharam na completa anterior só sob carga, passaram.
+- O `conferir` deu 16 diferenças, todas das 7 migrations desta entrega.
+
 ### 2026-11-18 — A cliente da rede até o fim e a varredura de conformidade (cada regra contra o código)
 
 O Heitor (18/11): "A gente precisa intensificar esses testes, o lançamento é em uns 20 dias. Precisamos zerar defeitos
@@ -1806,6 +1847,9 @@ Procedimentos e produtos: a sessão só lê. Automações e eventos: leitura só
 (`private.sessao_ve_o_modulo`), e as telas assinam `automacoes_sinais`. Ordem: `20261124400001` (aditiva) antes do
 deploy, `20261124400002` (restritiva; tira `medical_record_entries`, `domain_events` e `automation_runs` do Realtime)
 depois. Prova: `e2e/rls-sessao-so-le-prontuario-e-automacoes.spec.ts`, com o token de cada membro.
+**Na produção (18/11, ~17:40):** `20261124400001`, `400003`, `500001`, `500002`, `600001`, `600002`, `700001` e
+`800001` antes do push; o deploy de `67aea03d` em SUCCESS nos quatro serviços; depois, `400002`. O `banco-local
+conferir` deu a estrutura IGUAL à da produção.
 
 **Agenda, atendimento, prontuário, estoque:**
 - desistir no meio (cancelar o Em atendimento) é do Atendimento em Gerenciar, com o escopo dele — na action, na

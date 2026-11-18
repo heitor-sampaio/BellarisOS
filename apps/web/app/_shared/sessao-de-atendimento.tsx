@@ -5,7 +5,8 @@ import { notFound } from 'next/navigation'
 import { idOu404 } from '@/lib/id-da-rota'
 import { getTenantContext, assertAnyPermission, can, isOwnScope, podeReceber, temRecurso } from '@/lib/auth'
 import { montaPlano } from '@/lib/plano-de-tratamento/quem-monta'
-import { quemDesfazNoCaixa, quemMarcaAChegada, quemRecebeNaUnidade, quemConcluiOAtendimento } from '@/lib/equipe/quem-desfaz'
+import { quemDesfazNoCaixa, quemMarcaAChegada, quemRecebeNaUnidade, quemConcluiOAtendimento, idsQueConcluemOsProprios } from '@/lib/equipe/quem-desfaz'
+import { nomesDeQuemConclui } from '@/lib/equipe/textos-de-quem-pode'
 import { colheOsDocumentos, dispensaDocumentos } from '@/lib/documentos/acesso'
 import { documentosDoAgendamento } from '@/lib/documentos/leitura'
 import { clienteNoEscopo } from '@/lib/clientes/atendida-por'
@@ -110,8 +111,11 @@ export async function SessaoDeAtendimento({
   if (deOutroProfissional(ctx, apptRaw.professional_id as string | null)) {
     const daOutra = apptRaw.professional as unknown as { name: string | null } | null
     // A26 da 23ª: a quem tem o Prontuário, quem conclui o de outra pessoa (os nomes).
+    // A9 da 25ª: a profissional do agendamento, com o Atendimento em Gerenciar "só os meus", conclui o dela.
     return <AtendimentoDeOutraProfissional slug={slug} profissional={daOutra?.name ?? null}
-      quemConclui={can(ctx, 'atendimento', 'VIEW') ? await quemConcluiOAtendimento(ctx.tenantId!, branchId) : null} />
+      quemConclui={can(ctx, 'atendimento', 'VIEW') ? await quemConcluiOAtendimento(ctx.tenantId!, branchId) : null}
+      profissionalConclui={can(ctx, 'atendimento', 'VIEW') && !!apptRaw.professional_id
+        && (await idsQueConcluemOsProprios(ctx.tenantId!)).includes(apptRaw.professional_id as string)} />
   }
 
   type RawProc   = { id: string; name: string; category: string; duration_min: number }
@@ -678,6 +682,9 @@ export async function SessaoDeAtendimento({
         // existe para quem o tem, ao menos em Ver; generateEvaluationPlan confere).
         montaPlanoNaUnidade={montaPlano(ctx, branchId) && can(ctx, 'atendimento', 'VIEW')}
         podeInjetaveis={temRecurso(ctx, 'injetaveis')}
+        // D12 da 25ª: o plano da cliente é do Atendimento (os leitores pedem o
+        // Atendimento em Ver) — sem ele, nada de "Planejamento" na sessão.
+        podeVerPlanos={can(ctx, 'atendimento', 'VIEW')}
         isPackageSession={!!sessaoDePacote}
         pacoteDeFora={!!(sessaoDePacote as { client_packages?: { de_fora?: boolean | null } | null } | null)?.client_packages?.de_fora}
         // A7 da 18ª: a faixa "Sessão 1 de 6 do pacote …, já paga".
@@ -698,8 +705,11 @@ export async function SessaoDeAtendimento({
         // A8 da 20ª: também na janela do "Finalizar" (em atendimento), e se só a rede recebe.
         quemRecebe={!podeReceber(ctx) && ['IN_PROGRESS', 'COMPLETED'].includes(apptRaw.status as string) && !pago ? await quemRecebeNaUnidade(ctx.tenantId!, branchId) : null}
         // A9 da 20ª: quem não inicia nem conclui (sem o Atendimento em Gerenciar) lê quem faz, pelo nome.
+        // A9 da 25ª: e a profissional do agendamento, quando ela conclui os próprios.
         quemConclui={!canManage && ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(apptRaw.status as string)
-          ? await quemConcluiOAtendimento(ctx.tenantId!, branchId) : null}
+          ? nomesDeQuemConclui(await quemConcluiOAtendimento(ctx.tenantId!, branchId),
+              { id: (apptRaw.professional_id as string | null) ?? null, nome: (apptRaw.professional as unknown as { name: string | null } | null)?.name ?? null },
+              await idsQueConcluemOsProprios(ctx.tenantId!)) : null}
         // A10 da 19ª: sem o check-in no cargo, o agendado diz QUEM marca a chegada.
         quemMarcaAChegada={!canCheckin && apptRaw.status === 'SCHEDULED' ? await quemMarcaAChegada(ctx.tenantId!, branchId) : null}
         // A19 da 14ª: quem estorna (o Financeiro em Gerenciar, de todos — a régua da ficha) estorna daqui, pela mesma janela.

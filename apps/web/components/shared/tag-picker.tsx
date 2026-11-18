@@ -26,7 +26,7 @@ export function TagPicker({
       selecionadas={selecionadas}
       multiplo
       disabled={disabled}
-      textoListaVazia="A rede ainda não tem tags. Elas são criadas em Configurações → Tags."
+      textoListaVazia="A rede ainda não tem tags: a Admin da rede cria em Configurações → Tags."
       onEscolher={t => onChange(
         selecionadas.includes(t)
           ? selecionadas.filter(x => x !== t)

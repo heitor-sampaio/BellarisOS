@@ -190,3 +190,33 @@ test('sobra da F35: o "Reativar clientes" do dashboard diz "antes do sistema" ao
     await expect(p.locator('[data-reativar-clientes] [data-cliente]', { hasText: nome('Tatiana') }).locator('[data-antes-do-sistema]')).toHaveCount(0)
   })
 })
+
+// D7 da 25ª simulação (decisão 1 (c) do Heitor; crm-inbox.md): a ficha que veio
+// SÓ com a "Última visita" (sem "Cliente desde") é cliente de antes — entra no
+// "Reativar clientes" e no público "sem retorno". O "é cliente antes do corte"
+// lia só o cadastro (hoje), e as duas listas a deixavam de fora. Fica por
+// último: ela é nova pelo cadastro, e os números acima não a contam.
+test('D7: a ficha só com a "Última visita" de antes entra no Reativar e no público "sem retorno"', async () => {
+  const { data: bruna, error } = await db().from('clients').insert({
+    tenant_id: rede.tenantId, branch_id: rede.branchId, name: nome('Bruna'), phone: fone(7),
+    ultima_visita_antes: iso(120),
+  }).select('id').single()
+  expect(error).toBeNull()
+
+  const desde = new Date(Date.now() - 90 * 86_400_000).toISOString()
+  const { data: reativar, error: e1 } = await db().rpc('metrics_clientes_para_reativar_rede', { p_tenant: rede.tenantId, p_desde: desde, p_limite: 50 })
+  expect(e1).toBeNull()
+  const linha = (reativar as { lista: { id: string; antes_do_sistema: boolean; ultima_visita: string | null }[] }).lista.find(x => x.id === bruna!.id)
+  expect(linha, 'a Bruna sumiu há 120 dias').toBeTruthy()
+  expect(linha!.antes_do_sistema).toBe(true)
+  expect(linha!.ultima_visita?.slice(0, 10)).toBe(iso(120))
+
+  // O público "sem visita há 60 dias" (filtrosDaCampanha: o mesmo corte nos dois).
+  const corte = new Date(Date.now() - 60 * 86_400_000).toISOString()
+  const { data: publico, error: e2 } = await db().rpc('clientes_do_publico', {
+    p_tenant: rede.tenantId, p_filtros: { sem_retorno_desde: corte, cliente_desde_antes: corte },
+  })
+  expect(e2).toBeNull()
+  const ids = ((publico ?? []) as { id: string }[]).map(c => c.id)
+  expect(ids).toContain(bruna!.id)
+})

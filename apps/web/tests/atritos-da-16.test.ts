@@ -285,11 +285,12 @@ describe('a Auditoria da 16ª', () => {
   it('A35: abrir o documento sem mudar nada não grava de novo (as 14 "gerações")', async () => {
     const { montagemMudou } = await import('@/lib/documentos/montagem-mudou')
     const doc = { status: 'INCOMPLETO', content_sha256: 'h1', missing_fields: ['cliente.cpf'] }
-    expect(montagemMudou(doc, { status: 'INCOMPLETO', hash: 'h1', faltando: ['cliente.cpf'], comPagamento: false })).toBe(false)
-    expect(montagemMudou(doc, { status: 'INCOMPLETO', hash: 'h2', faltando: ['cliente.cpf'], comPagamento: false })).toBe(true)
-    expect(montagemMudou(doc, { status: 'PENDENTE', hash: 'h1', faltando: [], comPagamento: false })).toBe(true)
-    expect(montagemMudou(doc, { status: 'INCOMPLETO', hash: 'h1', faltando: ['cliente.cpf'], comPagamento: true })).toBe(true)
-    expect(montagemMudou({ status: 'A_GERAR', content_sha256: null, missing_fields: [] }, { status: 'PENDENTE', hash: 'h1', faltando: [], comPagamento: false })).toBe(true)
+    // A20c da 25ª: o pagamento passou a ser o retrato (antes, `comPagamento`, que contava sempre como mudança).
+    expect(montagemMudou(doc, { status: 'INCOMPLETO', hash: 'h1', faltando: ['cliente.cpf'] })).toBe(false)
+    expect(montagemMudou(doc, { status: 'INCOMPLETO', hash: 'h2', faltando: ['cliente.cpf'] })).toBe(true)
+    expect(montagemMudou(doc, { status: 'PENDENTE', hash: 'h1', faltando: [] })).toBe(true)
+    expect(montagemMudou(doc, { status: 'INCOMPLETO', hash: 'h1', faltando: ['cliente.cpf'], pagamento: { forma: 'NADA_AGORA' } })).toBe(true)
+    expect(montagemMudou({ status: 'A_GERAR', content_sha256: null, missing_fields: [] }, { status: 'PENDENTE', hash: 'h1', faltando: [] })).toBe(true)
     expect(ler('lib/documentos/renderizar.ts')).toContain('montagemMudou(')
   })
   it('A36: o que a cliente fez pelo link é dela, "pelo link"', () => {

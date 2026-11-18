@@ -88,7 +88,8 @@ function Unidade({ unidade: u, podeCancelar, agenda }: { unidade: UnidadePrePaga
   return (
     <li data-unidade-pre-paga style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 'var(--text-xs-sz)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <span style={{ fontWeight: 700, color: 'var(--text)' }}>Unidade {u.numero}</span>
+        {/* A6 da 25ª: "Sessão" — a unidade é a da rede (CLAUDE.md §1). */}
+        <span style={{ fontWeight: 700, color: 'var(--text)' }}>Sessão {u.numero}</span>
         <span style={{ color: 'var(--text-muted)' }}>{formatBRL(u.preco)}</span>
         <span style={{ color: u.status === 'DISPONIVEL' ? 'var(--success)' : 'var(--text-muted)' }}>{situacao(u, fuso)}</span>
         {livre && !cancelando && !agendando && (
@@ -117,7 +118,7 @@ function Unidade({ unidade: u, podeCancelar, agenda }: { unidade: UnidadePrePaga
             const r = await agendarUnidadePrePaga({ unidadeId: u.id, branchId, professionalId, scheduledAt })
             if (r.error) return { error: r.error }
             setAgendando(false)
-            setAviso('Unidade agendada.')
+            setAviso('Sessão agendada.')
             router.refresh()
             return {}
           }}

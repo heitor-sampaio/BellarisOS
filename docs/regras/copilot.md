@@ -308,10 +308,11 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   por "Agendar para a ficha de X" (`usar`: a ficha como está), e a ficha
   ARQUIVADA só oferece cadastrar mesmo assim (`escolhasDaFichaQueJaExiste`
   pelo `podeUnificar`).
-- **O `agendar` segue a janela "+ Agendar"** (C5, F65): o "Já pago" — o que
-  a cliente já pagou do MESMO procedimento (a sessão livre do plano, o pacote,
+- **O `agendar` segue a janela "+ Agendar"** (C5, F65): o "Incluído" — o que
+  a cliente já tem do MESMO procedimento (a sessão livre do plano, o pacote,
   o pré-pago; `pagoParaAgendar`, a escolha do app) — entra sozinho, o cartão
-  diz "Já pago: …" no lugar do valor e a sessão do plano usa a duração dela;
+  diz "Incluído: …" no lugar do valor (A3 da 25ª: era "Já pago", também com
+  parcelas em aberto) e a sessão do plano usa a duração dela;
   o crédito que outro agendamento pegou entre o cartão e o Confirmar vira
   avulso, e a mensagem diz. A profissional fora de "Quem realiza" é AVISADA
   no cartão, sem barrar (princípio 2). O procedimento que a unidade não faz e

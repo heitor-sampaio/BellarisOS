@@ -653,6 +653,14 @@ nenhum outro número (atendimentos, receita, retenção) a lê. **E o quadro diz
 isso** (sobra da F35): "Última visita há 120 dias · antes do sistema"
 (`[data-antes-do-sistema]`, nos dois dashboards). Prova:
 `e2e/importacao-migracao.spec.ts`.
+**E a ficha só com a "Última visita" é cliente de antes** (D7 da 25ª
+simulação; decisão do Claude pelo princípio 3, cumprindo a 1 (c) do Heitor):
+o "é cliente antes do corte" do Reativar (o "cadastrada há mais de 90 dias")
+e do público "sem retorno" (`cliente_desde_antes`) é
+`least(coalesce(cliente_desde, created_at), ultima_visita_antes)` — a
+importada sem "Cliente desde" ficava com o cadastro de hoje e saía das duas
+listas (migration `20261125000001`). Os "novos clientes" e o selo "Novo"
+seguem por `coalesce(cliente_desde, created_at)`.
 
 **Todo indicador tem valor esperado escrito à mão** em
 `e2e/indicadores-cenario.spec.ts` (unidade `[e2e]` + janela em 2021, antes de
@@ -821,10 +829,18 @@ geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro:
   todas as unidades canceladas) sai das Vendas e do CSV. Estornar só um
   LANÇAMENTO do pacote (o pagamento errado) não muda a venda: o pacote segue
   vendido.
-- **Plano**: `treatment_plans.aceito_em` (gatilho `trg_plano_aceito_em` na
-  passagem para ACCEPTED; os antigos herdaram o evento `plano.aceito`, o
-  primeiro lançamento ou o `updated_at`), e vale a soma dos procedimentos dele
-  (já com o desconto rateado). **O plano cancelado vale o que foi usado, como o
+- **Plano**: a data é a do PRIMEIRO RECEBIMENTO PAGO dele — o primeiro
+  lançamento de receita do plano (`financial_transactions.treatment_plan_id`)
+  pago, que não é estorno nem estornado, com algum valor; o dia é o do
+  pagamento (`paid_at`). O Heitor, 18/11: "Obviamente que no recebimento. Uma
+  coisa só foi vendida se foi paga." Era o `aceito_em` até 13/11 e, depois, o
+  primeiro lançamento pago ou não (no crediário, a parcela em aberto já fazia
+  a venda); a régua do pago é a do "Comprou" do CRM
+  (`private.plano_pagamento_que_vale`), escrita por extenso em
+  `metrics_vendas` — leitura do Claude da fala do Heitor, na 25ª simulação
+  (migration `20261124900002`). O aceito que nunca foi pago não aparece. Vale
+  a soma dos procedimentos dele (já com o desconto rateado). Prova:
+  `e2e/relatorio-vendas-plano-no-recebimento.spec.ts`. **O plano cancelado vale o que foi usado, como o
   pacote** (D4 da 9ª simulação, decisão 2 do Heitor, 2026-11-07; migration
   `20261107004103`): a soma menos `treatment_plans.valor_cancelado`; o que caiu
   inteiro sai. O cancelado antes desta regra (sem `cancelado_em`) segue fora. **É de quem

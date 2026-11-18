@@ -7,7 +7,7 @@ import {
   configDaRede, saldoDoCliente, extratoDoCliente, vouchersDoCliente, recompensasDaRede, pontosVencendo,
 } from '@/lib/fidelidade/leitura'
 import { descricaoDoVoucher, situacaoDoVoucher } from '@/lib/fidelidade/voucher'
-import { formatarPontos, rotuloDoLancamento, faltamPontos, jaPodeTrocar } from '@/lib/fidelidade/formato'
+import { formatarPontos, rotuloDoLancamento, descricaoParaACliente, faltamPontos, jaPodeTrocar } from '@/lib/fidelidade/formato'
 import { TrocarRecompensa } from '@/components/client-portal/trocar-recompensa'
 import { quemTrocaPontos } from '@/lib/equipe/quem-desfaz'
 import { textoDoIndiqueUmaAmiga, COMO_INDICAR } from '@/lib/fidelidade/indicacao'
@@ -174,6 +174,12 @@ export default async function FidelidadeDoClientePage({ params }: { params: Prom
                   <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>
                     {rotuloDoLancamento(l.kind, l.description)}
                   </p>
+                  {/* A26 da 25ª (princípio 3): a troca diz a recompensa; o uso no pagamento, o desconto. */}
+                  {descricaoParaACliente(l.kind, l.description) && (
+                    <p data-descricao-do-lancamento style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text)' }}>
+                      {descricaoParaACliente(l.kind, l.description)}
+                    </p>
+                  )}
                   <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
                     {new Date(l.created_at).toLocaleDateString('pt-BR', { timeZone: fuso })}
                     {l.branch_name && ` · ${l.branch_name}`}

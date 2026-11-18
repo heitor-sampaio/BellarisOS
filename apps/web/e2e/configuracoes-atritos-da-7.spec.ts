@@ -121,10 +121,13 @@ test('A7/A8: o resumo do cargo diz a aba de Configurações e não conta "só a 
     await expect(cartaoSdr).toContainText('Relatórios uma unidade por vez')
     await expect(cartaoSdr).not.toContainText('2 só os próprios')
 
-    // A7: o Financeiro alcança só a aba Comissões (com as taxas).
+    // A7 era: o Financeiro alcançava a aba Comissões (com as taxas). Desde 18/11 a
+    // comissão e as taxas são configuração da rede, só da Admin (CLAUDE.md §11), e o
+    // resumo do cargo não lista Configurações a quem só chegaria a recusas (A-CONF1 da 25ª).
     await p.getByText(`Financeiro cf7${marca}`).first().click()
     await expect(p.getByRole('heading', { name: new RegExp(`Financeiro cf7${marca}`) })).toBeVisible()
-    await expect(p.locator('[data-resumo-na-rede]')).toContainText('Configurações (só Comissões e taxas)')
+    await expect(p.locator('[data-resumo-na-rede]')).toContainText('Financeiro')
+    await expect(p.locator('[data-resumo-na-rede]')).not.toContainText('Configurações')
   })
 })
 

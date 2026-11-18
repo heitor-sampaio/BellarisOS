@@ -13,6 +13,7 @@ import { atividadeDasPessoas } from '@/lib/crm/atividade-da-pessoa'
 import { sinaisDasClientes, sugereGanho } from '@/lib/crm/sinais-do-card'
 import type { ComponentProps } from 'react'
 import { CRMBoard } from '@/components/branch/crm-board'
+import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
 import { CRMLeadModal } from '@/components/branch/crm-lead-modal'
 import { pessoaParaNovoLead } from '@/lib/crm/pessoa-para-novo-lead'
 import { CRMStageSettings } from '@/components/branch/crm-stage-settings'
@@ -227,6 +228,7 @@ export default async function AdminOportunidadesPage({
             leadAberto={leadAberto}
             podeAgendar={can(ctx, 'crm', 'MANAGE') && can(ctx, 'agenda', 'MANAGE') && temRecurso(ctx, 'agenda')}
             podeMover={can(ctx, 'crm', 'MANAGE')}
+            tagsDaRede={await tagsAtivasDaRede(ctx.tenantId!)}
             podeCadastrarCliente={can(ctx, 'clients', 'MANAGE')}
           />
         </>

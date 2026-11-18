@@ -43,7 +43,8 @@ describe('A1: quem é da rede chega, pelo portal da unidade, ao que só a rede t
 
   it('as abas que só a rede tem, para a lista "Na rede toda" da unidade — com a permissão e o plano de cada uma', () => {
     const todas = abasSoDaRede(gerenciaTudo, null).map(a => a.key)
-    expect(todas).toEqual(expect.arrayContaining(['comissoes', 'fidelidade', 'lgpd', 'assinatura']))
+    // A LGPD está também na unidade desde a D8 da 25ª (quem libera o prontuário pode ter só a unidade).
+    expect(todas).toEqual(expect.arrayContaining(['comissoes', 'fidelidade', 'assinatura']))
     expect(todas.some(k => ABAS_DA_UNIDADE.includes(k)), 'nenhuma aba que a unidade já tem').toBe(false)
     expect(abasSoDaRede(m => m === 'financial', null).map(a => a.key)).toEqual(['comissoes'])
     expect(abasSoDaRede(gerenciaTudo, { funcionalidades: [] }).map(a => a.key)).not.toContain('fidelidade')

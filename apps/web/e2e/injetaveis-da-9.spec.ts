@@ -85,9 +85,10 @@ test('D14: registrada a aplicação, o botão vira "Atualizar", e o mesmo mapa n
   const { id, mapa } = await atendimento('Marina')
   await como(browser, profissional!, async p => {
     await p.goto(`/${slug}/agenda/${id}`)
-    await p.getByRole('main').getByRole('button', { name: 'Planejamento' }).click()
+    // D12 da 25ª: sem o Atendimento, a sessão não tem "Planejamento" (os planos
+    // são do Atendimento); o mapa abre pelo "Mapa de injetáveis".
+    await p.getByRole('main').getByRole('button', { name: 'Mapa de injetáveis' }).click()
     const janela = p.getByRole('dialog')
-    await janela.getByText('Injetáveis', { exact: true }).click()
     await janela.getByText(`Toxina Marina ${marca}`).click()
     await janela.getByRole('button', { name: 'Registrar aplicação' }).click()
     await expect(janela.getByText('Aplicação registrada neste atendimento.')).toBeVisible()

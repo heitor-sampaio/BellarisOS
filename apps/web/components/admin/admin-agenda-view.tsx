@@ -85,6 +85,8 @@ interface Props {
   atendimentoProprio?: boolean
   /** A9 da 20ª: sem iniciar e concluir, quem conclui — o Atendimento em Gerenciar, pelo nome (quemConcluiOAtendimento). */
   quemConclui?: string[] | null
+  /** A9 da 25ª: os ids de quem conclui os PRÓPRIOS (idsQueConcluemOsProprios) — a profissional do agendamento entra em "quem conclui". */
+  concluemOsProprios?: string[] | null
   /** Os bloqueios pontuais (decisão 3 da 7ª), cada um com o rótulo que a grade mostra. */
   bloqueios?: (BloqueioDaAgenda & { rotulo: string })[]
   /** "Bloquear horário" (com uma unidade na tela): quem atende e as salas dela. */
@@ -591,7 +593,7 @@ function StatusLegend() {
 
 // -- Componente principal ------------------------------------------------------
 export function AdminAgendaView({
-  view, selectedDate, todayStr, branches, todasUnidades, unidadeId, appointments, janela, podeAgendar, escopoProprio, meuId = null, podeConcluir = true, atendimentoProprio = false, quemConclui = null, bloqueios = [], paraBloquear = null,
+  view, selectedDate, todayStr, branches, todasUnidades, unidadeId, appointments, janela, podeAgendar, escopoProprio, meuId = null, podeConcluir = true, atendimentoProprio = false, quemConclui = null, concluemOsProprios = null, bloqueios = [], paraBloquear = null,
 }: Props) {
   const router = useRouter()
   const fala = useFala()
@@ -837,6 +839,7 @@ export function AdminAgendaView({
           podeConcluir={podeConcluir}
           atendimentoProprio={atendimentoProprio}
           quemConclui={quemConclui}
+          concluemOsProprios={concluemOsProprios}
           meuId={meuId}
           onClose={() => { setSelecionado(null); router.refresh() }}
         />

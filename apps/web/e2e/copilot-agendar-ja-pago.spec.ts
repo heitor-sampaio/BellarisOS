@@ -65,7 +65,8 @@ test('C5: o crédito do mesmo procedimento entra sozinho, e o cartão diz "Já p
   await comSessao(browser, rede.dono.estado, async p => {
     await p.goto('/admin/agenda')
     const cartao = await pedir(p, { cliente, procedimento: rede.outra.procedureId, profissional: rede.outra.professionalId, data: DIA, hora: '09:00' })
-    await expect(cartao.getByText(/Já pago/).first(), 'o cartão diz o que ela já pagou').toBeVisible()
+    // A3 da 25ª: "Incluído", não "Já pago" (o crediário tem parcelas em aberto).
+    await expect(cartao.getByText(/Incluído/).first(), 'o cartão diz o que ela já tem').toBeVisible()
     await cartao.getByRole('button', { name: 'Confirmar' }).click()
     await expect(cartao.getByRole('status')).toContainText('Feito')
   })

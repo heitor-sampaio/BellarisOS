@@ -63,7 +63,8 @@ describe('o servidor recusa o procedimento que a unidade do plano não faz', () 
   it('gravarSessoes confere ANTES de apagar as sessões antigas', () => {
     const c = corpo('actions/treatment-plans.ts', 'gravarSessoes')
     const confere = c.indexOf('recusaDosProcedimentosDoPlano(')
-    const apaga = c.indexOf('.delete()')
+    // A20d da 25ª: quem apaga e insere é a função do banco, numa transação só.
+    const apaga = c.indexOf("'plano_gravar_sessoes'")
     expect(confere).toBeGreaterThan(-1)
     expect(confere).toBeLessThan(apaga)
   })
@@ -81,9 +82,10 @@ describe('o servidor recusa o procedimento que a unidade do plano não faz', () 
     expect(c.indexOf('recusaDosProcedimentosDoPlano(')).toBeLessThan(c.indexOf("'gerar_plano_da_avaliacao'"))
   })
 
-  it('só gravarSessoes insere procedimento de sessão de plano', () => {
+  // A20d da 25ª: nem gravarSessoes insere direto — ela chama `plano_gravar_sessoes`, depois da conferência.
+  it('ninguém no app insere procedimento de sessão de plano direto', () => {
     const quem = ['app', 'components', 'actions', 'lib'].flatMap(arquivos).filter(a =>
       /from\('treatment_plan_session_procedures'\)\s*\.(insert|upsert)/.test(fs.readFileSync(path.join(RAIZ, a), 'utf8')))
-    expect(quem).toEqual([path.join('actions', 'treatment-plans.ts')])
+    expect(quem).toEqual([])
   })
 })

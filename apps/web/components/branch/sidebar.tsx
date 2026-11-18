@@ -54,6 +54,8 @@ interface BranchSidebarProps {
   /** O plano da rede (`ctx.plano`): item de funcionalidade fora dele some. */
   plano?:          { funcionalidades: readonly string[] } | null
   isNetworkAdmin?: boolean
+  /** O cargo de sistema Admin da rede (`mexeNaConfigDaRede(ctx)`): é quem vê Configurações sem aba usável (A-CONF1 da 25ª). */
+  adminDaRede?:    boolean
   allBranches?:    { name: string; slug: string }[]
   /** A rede tem UMA unidade ativa (D-19): sem "Voltar para a rede" nem o seletor de unidade. */
   umaUnidade?:     boolean
@@ -62,7 +64,7 @@ interface BranchSidebarProps {
 const SIDEBAR_GRADIENT = 'var(--gradient-brand)'
 
 export function BranchSidebar({
-  slug, branchName, permissions, scopes, plano = null, isNetworkAdmin, allBranches = [], umaUnidade = false,
+  slug, branchName, permissions, scopes, plano = null, isNetworkAdmin, adminDaRede = false, allBranches = [], umaUnidade = false,
 }: BranchSidebarProps) {
   const base = `/${slug}`
   const [switcherOpen, setSwitcherOpen] = useState(false)
@@ -198,7 +200,7 @@ export function BranchSidebar({
           {/* Cada categoria recolhe pelo título; com a barra recolhida em
               ícones, o título vira um filete. */}
           {/* A1 da 14ª: quem é da rede vê também as entradas da clínica, levando a /admin. */}
-          {menuDaUnidadeFor(permissions, plano, scopes, { base, daRede: !!isNetworkAdmin }).map(secao => (
+          {menuDaUnidadeFor(permissions, plano, scopes, { base, daRede: !!isNetworkAdmin, adminDaRede }).map(secao => (
             <SecaoDoMenu key={secao.key ?? '_topo'} chave={secao.key} titulo={secao.label}
               entradas={secao.entries}
               icones={ICONS} recolhida={collapsed} filete={separatorBg} />

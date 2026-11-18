@@ -14,11 +14,13 @@ import { textoDeQuemConcluiODeOutra } from '@/lib/equipe/textos-de-quem-pode'
  * continua barrando: nada do atendimento (cliente, procedimento, ficha) chega
  * aqui, só o nome de quem atende, que a agenda já mostra nos seletores.
  */
-export function AtendimentoDeOutraProfissional({ slug, profissional, quemConclui = null }: {
+export function AtendimentoDeOutraProfissional({ slug, profissional, quemConclui = null, profissionalConclui = false }: {
   slug:         string
   profissional: string | null
   /** A26 da 23ª: a quem tem o Prontuário, quem conclui (nulo: não se aplica). */
   quemConclui?: string[] | null
+  /** A9 da 25ª: a profissional do agendamento conclui o dela (o Atendimento em Gerenciar "só os meus"). */
+  profissionalConclui?: boolean
 }) {
   const pathname = usePathname()
   return (
@@ -56,7 +58,7 @@ export function AtendimentoDeOutraProfissional({ slug, profissional, quemConclui
             fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)',
             lineHeight: 'var(--leading-snug)', marginBottom: 20,
           }}>
-            {textoDeQuemConcluiODeOutra(quemConclui)}
+            {textoDeQuemConcluiODeOutra(quemConclui, profissionalConclui ? profissional : null)}
           </p>
         )}
         <Link href={rotaAgenda(pathname, slug)} className="btn-primary" style={{ display: 'inline-flex' }}>

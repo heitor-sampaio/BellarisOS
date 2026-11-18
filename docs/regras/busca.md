@@ -27,6 +27,13 @@ embaixo da topbar. Desde a fase 2 (2026-10-08) também tem AÇÕES (abaixo).
   todas as palavras em qualquer ordem (`private.tem_todas`), telefone e CPF por
   dígitos. Procedimento respeita a disponibilidade por unidade; oportunidade de
   funil arquivado fica de fora.
+- **"Próximo agendamento" é o EM ABERTO** (D17 da 25ª simulação; princípio 3):
+  agendado, confirmado, chegou ou em atendimento, de hoje em diante no dia da
+  unidade — a mesma régua do "Próximo" do app (`STATUS_DO_PROXIMO`,
+  `atendimento.md`): o de hoje fica até a conclusão, mesmo com o horário já
+  passado; a falta e o concluído de hoje saem (só o cancelado saía). Migration
+  `20261125000002`. Prova: `e2e/busca-universal-proximos-em-aberto.spec.ts`,
+  `tests/atritos-da-25-migracao.test.ts`.
 - **As páginas que não são do menu** entram em `paginasDaBusca` partindo da
   entrada do menu de que dependem (a mesma visibilidade): o "Automações → O que
   já aconteceu" (CF2, 2026-11-16) só aparece com as Automações no menu, e

@@ -693,7 +693,10 @@ function ResumoDoPlano({ planId, slug, onCancelado, semFaltaReceber = false }: {
 
   const { sessoes } = resumo
   // Hierarquia por preenchimento: o número que pede ação é o preenchido.
-  const destaque = resumo.aReceber > 0 ? 'aReceber' : 'recebido'
+  // D1 da 25ª: o plano aceito e ainda não recebido tem o valor inteiro a receber
+  // (a comanda no PDV) — o "A receber" dos lançamentos é zero até o dinheiro entrar.
+  const aReceberNaTela = faltaReceber ? resumo.valor : resumo.aReceber
+  const destaque = aReceberNaTela > 0 ? 'aReceber' : 'recebido'
   const caixa = (chave: 'valor' | 'recebido' | 'aReceber', titulo: string, valor: number, attr: Record<string, string>) => {
     const cheio = destaque === chave
     return (
@@ -725,7 +728,7 @@ function ResumoDoPlano({ planId, slug, onCancelado, semFaltaReceber = false }: {
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         {caixa('valor', 'Valor do plano', resumo.valor, { 'data-plano-valor': '' })}
         {caixa('recebido', 'Recebido', resumo.recebido, { 'data-plano-recebido': '' })}
-        {caixa('aReceber', 'A receber', resumo.aReceber, { 'data-plano-a-receber': '' })}
+        {caixa('aReceber', 'A receber', aReceberNaTela, { 'data-plano-a-receber': '' })}
       </div>
 
       <p data-plano-sessoes style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>
@@ -748,9 +751,9 @@ function ResumoDoPlano({ planId, slug, onCancelado, semFaltaReceber = false }: {
         </div>
       )}
 
-      <p data-rodape-do-plano style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs-sz)', color: resumo.aReceber > 0 ? 'var(--text-muted)' : 'var(--success)', fontWeight: 600 }}>
+      <p data-rodape-do-plano style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs-sz)', color: aReceberNaTela > 0 ? 'var(--text-muted)' : 'var(--success)', fontWeight: 600 }}>
         <CheckCircle2 size={13} style={{ flexShrink: 0 }} />
-        <span style={{ flex: 1 }}>{rodapeDoPlanoFechado(resumo.aReceber, noPdv.quem)}</span>
+        <span style={{ flex: 1 }}>{rodapeDoPlanoFechado(resumo.aReceber, noPdv.quem, { naoRecebido: !!faltaReceber })}</span>
         {resumo.aReceber > 0 && noPdv.receber && (
           <Link href={rotaDaClienteNoPdv(pathname, slug, noPdv.receber.unidadeId, noPdv.receber.clienteId)}
             style={{ color: 'var(--brand)', fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>

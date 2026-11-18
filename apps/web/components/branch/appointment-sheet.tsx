@@ -19,7 +19,7 @@ import { MudarDeUnidade, TrocarProfissional, UsarOQueJaFoiPago } from './janela-
 import type { MenorDoAgendamento } from '@/components/shared/selo-do-menor'
 import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
-import { textoDeQuemConclui } from '@/lib/equipe/textos-de-quem-pode'
+import { textoDeQuemConclui, nomesDeQuemConclui } from '@/lib/equipe/textos-de-quem-pode'
 import { TEXTO_DA_SESSAO_NA_DESISTENCIA } from '@/lib/atendimento/desistencia'
 import { naParede, daParede } from '@/lib/datetime'
 
@@ -82,6 +82,8 @@ interface AppointmentSheetProps {
   atendimentoProprio?: boolean
   /** Sem iniciar, quem inicia e conclui — o Atendimento em Gerenciar, pelo nome (quemConcluiOAtendimento). */
   quemConclui?: string[] | null
+  /** A9 da 25ª: os ids de quem conclui os PRÓPRIOS (idsQueConcluemOsProprios) — a profissional do agendamento entra em "quem conclui". */
+  concluemOsProprios?: string[] | null
   onClose:     () => void
 }
 
@@ -104,7 +106,7 @@ const STATUS_CHIP: Record<string, string> = {
   NO_SHOW:     'chip chip-muted',
 }
 
-export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, podeGerenciar = false, meuId = null, podeConcluir = true, atendimentoProprio = false, quemConclui = null, onClose }: AppointmentSheetProps) {
+export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, podeGerenciar = false, meuId = null, podeConcluir = true, atendimentoProprio = false, quemConclui = null, concluemOsProprios = null, onClose }: AppointmentSheetProps) {
   const isProfessional = escopoProprio ?? userRole === 'PROFESSIONAL'
   // A dona (ou a gerente) que atende, no agendamento DELA: o gesto da
   // profissional, em vez de "Chegou" → "Iniciar" (A25 da 6ª simulação: eram
@@ -388,7 +390,7 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
                 fontSize: 'var(--text-sm-sz)', fontWeight: 700,
               }}>
                 <Lock size={14} aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
-                <span><strong>Você não inicia nem conclui este atendimento.</strong> <span>{textoDeQuemConclui(quemConclui)}</span></span>
+                <span><strong>Você não inicia nem conclui este atendimento.</strong> <span>{textoDeQuemConclui(nomesDeQuemConclui(quemConclui, { id: appointment.professionalId ?? null, nome: appointment.professionalName }, concluemOsProprios))}</span></span>
               </p>
             )}
             {/* A profissional no agendamento que ainda não chegou: o mesmo
@@ -576,6 +578,8 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
                   placeholder="Descreva o motivo…"
                   style={{ background: 'var(--surface)' }}
                 />
+                {/* A11 da 25ª (princípio 3): o motivo vai no aviso do cancelamento (textoDoCancelado). */}
+                <p data-motivo-vai-a-cliente style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Vai também no aviso à cliente.</p>
                 {emAtendimento && (
                   <p data-sessao-paga-conta style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text)', lineHeight: 1.5 }}>
                     {TEXTO_DA_SESSAO_NA_DESISTENCIA}

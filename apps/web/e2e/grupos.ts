@@ -496,6 +496,8 @@ export const ISOLADOS = [
   'dicas-portal-da-cliente.spec.ts',
   // A varredura de 18/11 (vendas e financeiro): as taxas, o abater com produto, o plano_receber e o usado.
   'financeiro-varredura-18-taxas.spec.ts',
+  // A varredura de 18/11 (fidelidade e CRM), conferida na 25ª: FID-01, CRM-03 e CRM-10.
+  'crm-alcance-varredura-da-25.spec.ts',
 ]
 
 /** As quatro regras sobre o texto de um spec. `null` = isolado; senão, o motivo. */

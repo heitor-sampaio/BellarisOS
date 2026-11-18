@@ -59,6 +59,7 @@ import { planejamentosDaFicha, perguntaDoPlanejamentoVazio, temPlanejadorSemPlan
 import type { AnamnesisRow } from '@/lib/anamnesis'
 import { retratarInjetaveis, planejamentoAplicadoNoAtendimento } from '@/lib/injetaveis/alcance'
 import { oQueFaltaParaSeguir } from '@/lib/atendimento/obrigatorias-no-servidor'
+import { aQuemPedirAFichaDeSaude } from '@/lib/atendimento/quem-responde-a-ficha'
 import { perguntaDoInicioAdiantado } from '@/lib/appointments/inicio-adiantado'
 import { planosComOProcedimento, textoDoPlano } from '@/lib/checkout/plano-e-avulso'
 import { nomeParaSaudar } from '@/lib/saudacao'
@@ -1025,6 +1026,7 @@ async function finishSessionInterno(
       tenantId: ctx.tenantId!, appointmentId, procedureId: (appt.procedure_id as string | null) ?? null,
       clientId: (appt.client_id as string | null) ?? null, semInjetaveis: !temRecurso(ctx, 'injetaveis'),
       anamneseNaTela: anamnese, fichaNaTela: daTela && ficha ? ficha.answers : null,
+      aQuemPedirAFicha: aQuemPedirAFichaDeSaude(ctx, (appt.branch_id as string | null) ?? null),
     })
     if (falta) return { error: falta }
 

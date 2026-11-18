@@ -323,3 +323,26 @@ test('"Só os meus": os passos do plano de quem ela não atende não abrem — p
     await expect(p.locator('[data-passos-do-plano] [data-passo]')).toHaveCount(4)
   })
 })
+
+// A20d da 25ª: o rascunho da avaliação (`saveTreatmentPlan`) fazia o upsert com DRAFT sem olhar o
+// status — o plano aceito voltava a rascunho. Agora recusa antes de gravar, e a função confere de novo.
+test('A20d: o plano aceito não volta a rascunho pelo "Salvar" da avaliação, nem as sessões mudam', async ({ browser }) => {
+  const { planId, clientId } = await planoAceito('Aceito não reabre')
+  const { data: ag, error } = await db().from('appointments').insert({
+    branch_id: rede!.branchId, client_id: clientId, professional_id: atende!.userId, procedure_id: rede!.procedureId,
+    scheduled_at: new Date(Date.now() - 2 * 3600_000).toISOString(), duration_min: 30, price: 0, status: 'COMPLETED',
+  }).select('id').single<{ id: string }>()
+  expect(error).toBeNull()
+  expect((await db().from('treatment_plans').update({ evaluation_appointment_id: ag!.id }).eq('id', planId)).error).toBeNull()
+
+  await como(atende!, browser, async p => {
+    const r = await chamarAcao(p, 'actions/treatment-plans.ts', 'saveTreatmentPlan', `/${slug}/agenda/${ag!.id}`,
+      [ag!.id, sessoes(rede!.procedureId, 999), '', slug])
+    expect(r.texto).toContain('já foi fechado')
+  })
+  expect((await db().from('treatment_plans').select('status').eq('id', planId).single<{ status: string }>()).data!.status,
+    'continua aceito').toBe('ACCEPTED')
+  const { data: preco } = await db().from('treatment_plan_sessions').select('treatment_plan_session_procedures(price)').eq('plan_id', planId)
+  expect(Number((preco![0] as unknown as { treatment_plan_session_procedures: { price: number }[] }).treatment_plan_session_procedures[0]!.price),
+    'as sessões ficam').toBe(50)
+})

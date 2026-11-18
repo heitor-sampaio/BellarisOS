@@ -52,6 +52,37 @@ export async function quemConcluiOAtendimento(tenantId: string, branchId: string
 }
 
 /**
+ * A9 da 25ª (princípio 3): quem conclui os PRÓPRIOS atendimentos — o
+ * Atendimento em Gerenciar em qualquer escopo, com a Agenda (Ver ou
+ * Gerenciar). Os ids dos ativos: a tela junta a profissional do agendamento
+ * aos nomes de `quemConcluiOAtendimento` (`nomesDeQuemConclui`).
+ */
+export async function idsQueConcluemOsProprios(tenantId: string): Promise<string[]> {
+  const admin = createAdminClient()
+  const cargosCom = (modulo: AppModule, niveis: readonly ('VIEW' | 'MANAGE')[]) => lerTodas((de, ate) =>
+    admin.from('role_permissions').select('role_id')
+      .eq('tenant_id', tenantId).in('module', [modulo]).in('level', [...niveis])
+      .order('role_id').order('module').range(de, ate), 'carregar os cargos com o módulo')
+  const [atendimento, agenda] = await Promise.all([cargosCom('atendimento', ['MANAGE']), cargosCom('agenda', ['VIEW', 'MANAGE'])])
+  const comAgenda = new Set((agenda ?? []).map(p => p.role_id as string))
+  const cargos = [...new Set((atendimento ?? []).map(p => p.role_id as string).filter(id => comAgenda.has(id)))]
+  if (cargos.length === 0) return []
+  const membros = await lerTodas((de, ate) => admin.from('users').select('id')
+    .eq('tenant_id', tenantId).eq('is_active', true).in('role_id', cargos)
+    .order('id').range(de, ate), 'carregar quem conclui os próprios')
+  return (membros ?? []).map(m => m.id as string)
+}
+
+/**
+ * A8 da 25ª (princípio 7): quem RESPONDE a ficha de saúde na sessão — o
+ * Prontuário em Gerenciar (atendimento.md, "Quem não vê o clínico"). A Admin
+ * da rede entra sempre.
+ */
+export async function quemRespondeAFichaDeSaude(tenantId: string, branchId: string | null): Promise<string[]> {
+  return quemTemEmGerenciar(tenantId, branchId, 'medical_records')
+}
+
+/**
  * A10 da 20ª simulação (princípio 3): quem COMPLETA o cadastro da cliente — os
  * Clientes em Gerenciar. A Admin da rede entra sempre.
  */

@@ -188,7 +188,7 @@ export async function previaDoCancelamentoDaUnidade(
     // Financeiro em Gerenciar, sem "só os meus" (a action confere o mesmo).
     if (!podeEstornar(ctx)) throw semAcesso()
     const admin = createAdminClient()
-    if (!await unidadeAoAlcance(admin, ctx, unidadeId)) return { error: 'Unidade não encontrada.' }
+    if (!await unidadeAoAlcance(admin, ctx, unidadeId)) return { error: 'Sessão não encontrada.' }
     const j = await ler(admin.rpc('procedimento_cancelar_unidade_devolvendo', {
       p_tenant: ctx.tenantId!, p_unidade: unidadeId, p_ator: ctx.internalUserId ?? null, p_ator_nome: ctx.userName ?? null,
       p_motivo: null, p_destino: null, p_esperado: null, p_simular: true, p_estorno: null, p_novo: null,
@@ -238,7 +238,7 @@ export async function cancelarUnidadePrePaga(
     if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }
     const admin = createAdminClient()
     const unidade = await unidadeAoAlcance(admin, ctx, unidadeId)
-    if (!unidade) return { error: 'Unidade não encontrada.' }
+    if (!unidade) return { error: 'Sessão não encontrada.' }
     const novo = lido.data.estorno === 'INTEIRO' ? lido.data.novo ?? null : null
     // C75 (VF-01 da varredura de 18/11): no cartão do usado, as vezes e a maquininha da rede.
     { const recusa = await recusaDoPagamentoDoUsado(ctx.tenantId!, novo); if (recusa) return { error: recusa } }
@@ -280,7 +280,8 @@ export async function agendarUnidadePrePaga(p: {
       .eq('id', p.unidadeId).maybeSingle(), 'buscar a unidade')
     const venda = unidade?.procedure_sales as unknown as { tenant_id: string; client_id: string } | undefined
     // Agendar o que já foi pago vale em qualquer unidade da clínica (H5; F73).
-    if (!unidade || !venda || !alcancaOTratamento(ctx, venda.tenant_id)) return { error: 'Unidade não encontrada.' }
+    // A6 da 25ª: a "unidade" do pré-pago é a sessão (a unidade é a da rede).
+    if (!unidade || !venda || !alcancaOTratamento(ctx, venda.tenant_id)) return { error: 'Sessão não encontrada.' }
 
     const res = await createAppointmentCore(admin, ctx, {
       branchId: p.branchId, clientId: venda.client_id, procedureId: null,

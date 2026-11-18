@@ -354,8 +354,10 @@ function DocumentosDoPacote({ documentos, procedimentosDoPacote, excluidos, muda
   )
 }
 
+// A4 da 25ª: sem regra no pacote, vale a comissão de venda de quem vendeu —
+// a opção diz isso (dizia "Nenhuma", e o resumo, "a regra de quem vendeu").
 const VENDAS = [
-  { key: 'NENHUMA',      label: 'Nenhuma' },
+  { key: 'NENHUMA',      label: 'A de quem vendeu' },
   { key: 'PERCENTAGE',   label: 'Percentual' },
   { key: 'FIXED_AMOUNT', label: 'Valor fixo' },
 ]

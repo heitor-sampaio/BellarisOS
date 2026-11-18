@@ -136,7 +136,18 @@ test('a sessão do pacote: 10% de R$ 200 − R$ 10 (a parte dela nos pontos) = R
     const doProfissional = p.locator(`[data-comissoes-de="${rede.professionalId}"]`)
     await doProfissional.getByRole('button', { name: 'Extrato' }).click()
     await expect(doProfissional).toContainText('base sem os pontos e o voucher usados')
+    // A17 da 25ª (princípio 3): os R$ 10 são pontos, não desconto.
+    await expect(doProfissional).toContainText(/R\$\s200,00 − R\$\s10,00 de pontos e voucher/)
+    await expect(doProfissional).not.toContainText(/R\$\s10,00 de desconto/)
   })
+  const { data: ext, error: eExt } = await db().rpc('comissoes_extrato_com_regra', {
+    p_tenant: rede.tenantId, p_branch_ids: null, p_inicio: new Date(Date.now() - 86_400_000).toISOString(),
+    p_fim: new Date(Date.now() + 86_400_000).toISOString(), p_profissional: rede.professionalId,
+  })
+  expect(eExt).toBeNull()
+  const daSessao = ((ext ?? []) as { appointment_id: string | null; base_desconto: number; base_fidelidade: number }[])
+    .find(l => l.appointment_id === ap!.id)
+  expect([n(daSessao?.base_desconto), n(daSessao?.base_fidelidade)], 'A17: os R$ 10 que saíram da base são de pontos').toEqual([10, 10])
 })
 
 test('Configurações → Comissões diz que a escolha vale também nas sessões e nas vendas', async ({ browser }) => {

@@ -11,7 +11,14 @@ export interface BaseDaLinha {
   preco: number | null
   /** A base que a conta usou (base × regra = previsto); nula sem linha. */
   base: number | null
+  /** O que saiu do preço antes da taxa: o desconto E os pontos e o voucher. */
   baseDesconto: number
+  /**
+   * A17 da 25ª (princípio 3): a parte de `baseDesconto` que foi de pontos e
+   * voucher — não é desconto (vendas-financeiro.md), e a tela diz à parte.
+   * Ausente nas leituras de antes: tudo é desconto, como era.
+   */
+  baseFidelidade?: number
   baseTaxa: number
   baseInsumos: number
   /** A proporção do que ficou (pacote/plano cancelado, venda devolvida): 1 = tudo. */
@@ -23,8 +30,11 @@ const pct = (f: number) => `${(Math.round(f * 1000) / 10).toLocaleString('pt-BR'
 /** "R$ 420,00 − R$ 6,30 da taxa" — o caminho do preço à base; vazio quando a base é o preço. */
 export function composicaoDaBase(l: BaseDaLinha): string {
   if (l.preco == null || l.base == null) return ''
+  const fidelidade = Math.min(Math.max(l.baseFidelidade ?? 0, 0), l.baseDesconto)
+  const desconto = Math.round((l.baseDesconto - fidelidade) * 100) / 100
   const partes = [
-    l.baseDesconto > 0 ? `${formatBRL(l.baseDesconto)} de desconto` : null,
+    desconto > 0 ? `${formatBRL(desconto)} de desconto` : null,
+    fidelidade > 0 ? `${formatBRL(fidelidade)} de pontos e voucher` : null,
     l.baseTaxa > 0 ? `${formatBRL(l.baseTaxa)} da taxa` : null,
     l.baseInsumos > 0 ? `${formatBRL(l.baseInsumos)} de insumos` : null,
   ].filter(Boolean)

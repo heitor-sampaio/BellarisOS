@@ -3,6 +3,7 @@ import type {
   GrafoDeAutomacao, NoDoGrafo, TipoDeNo, NomeDeEvento, ConfigGatilhoEvento,
 } from '@estetica-os/types'
 import { chaveDoPasso, nomeDoPasso } from './passos'
+import { dataHoraNoFuso } from '@/lib/datetime'
 
 /**
  * O que existe para escolher NESTE ponto do fluxo.
@@ -33,6 +34,8 @@ export interface ItemDeVariavel {
 
 export interface GrupoDeVariaveis {
   grupo: string
+  /** O que o seletor mostra no lugar do nome do grupo, quando há o que avisar (D15 da 25ª). */
+  rotulo?: string
   itens: ItemDeVariavel[]
 }
 
@@ -67,6 +70,9 @@ export const CAMPOS_DAS_ENTIDADES: GrupoDeVariaveis[] = [
     { caminho: 'agendamento.data',         rotulo: 'Data e hora' },
   ] },
   { grupo: 'Oportunidade', itens: [
+    // D15 da 25ª: o nome e o telefone da OPORTUNIDADE — os da cliente ficam vazios sem ficha.
+    { caminho: 'lead.nome',     rotulo: 'Nome' },
+    { caminho: 'lead.telefone', rotulo: 'Telefone' },
     { caminho: 'lead.etapa',  rotulo: 'Etapa do funil' },
     { caminho: 'lead.origem', rotulo: 'Origem' },
     { caminho: 'lead.valor',  rotulo: 'Valor' },
@@ -138,6 +144,16 @@ interface Opcoes {
   vistos?: CampoVisto[]
 }
 
+/**
+ * O gatilho de oportunidade ou de conversa chega, no caso comum, de quem ainda
+ * não tem ficha: os campos da cliente ficam vazios, e o grupo diz isso (D15 da 25ª).
+ */
+const SEM_FICHA_NO_CASO_COMUM = /^(lead|conversa)\./
+const CLIENTE_SEM_FICHA = 'Cliente (vazio se a pessoa ainda não tem ficha)'
+
+/** Id visto no payload (`clienteId`, `branch_id`): não é pergunta que o fluxo faz (A25 da 25ª). */
+const EH_ID = (caminho: string) => /(^|[._])id$|[a-z]Id$|_id$/.test(caminho)
+
 export function variaveisDisponiveis(
   grafo: GrafoDeAutomacao,
   noId:  string,
@@ -161,7 +177,7 @@ export function variaveisDisponiveis(
 
   const jaTem = new Set(doGatilho.map(i => i.caminho))
   for (const v of vistos) {
-    if (jaTem.has(v.caminho)) continue
+    if (jaTem.has(v.caminho) || EH_ID(v.caminho)) continue
     doGatilho.push({ caminho: v.caminho, rotulo: ultimaParte(v.caminho), exemplo: v.exemplo })
   }
 
@@ -169,7 +185,9 @@ export function variaveisDisponiveis(
     grupos.push({ grupo: 'O que chegou no gatilho', itens: doGatilho })
   }
 
-  grupos.push(...CAMPOS_DAS_ENTIDADES)
+  const semFicha = !!evento && SEM_FICHA_NO_CASO_COMUM.test(evento)
+  grupos.push(...CAMPOS_DAS_ENTIDADES.map(g =>
+    semFicha && g.grupo === 'Cliente' ? { ...g, rotulo: CLIENTE_SEM_FICHA } : g))
   grupos.push({ grupo: 'O fato', itens: CAMPOS_DO_FATO.map(c => ({ caminho: c.caminho, rotulo: c.rotulo })) })
 
   for (const anterior of antecessoresDe(grafo, noId)) {
@@ -204,6 +222,8 @@ export function achatarDados(
   dados: unknown,
   prefixo = 'evento.dados',
   nivel = 0,
+  /** O fuso da rede: a data e hora da dica sai nele (A25 da 25ª). */
+  fuso?: string,
 ): CampoVisto[] {
   if (nivel > 2 || !dados || typeof dados !== 'object' || Array.isArray(dados)) return []
 
@@ -211,10 +231,10 @@ export function achatarDados(
   for (const [chave, valor] of Object.entries(dados as Record<string, unknown>)) {
     const caminho = `${prefixo}.${chave}`
     if (valor && typeof valor === 'object' && !Array.isArray(valor)) {
-      saida.push(...achatarDados(valor, caminho, nivel + 1))
+      saida.push(...achatarDados(valor, caminho, nivel + 1, fuso))
       continue
     }
-    saida.push({ caminho, exemplo: comoExemplo(valor) })
+    saida.push({ caminho, exemplo: comoExemplo(valor, fuso) })
   }
   return saida
 }
@@ -222,8 +242,11 @@ export function achatarDados(
 /** O valor como dica de tela: curto, e sem despejar o payload inteiro. */
 const MAX_EXEMPLO = 80
 
-function comoExemplo(valor: unknown): string {
+function comoExemplo(valor: unknown, fuso?: string): string {
   if (valor === null || valor === undefined) return '—'
+  // A25 da 25ª: o instante em ISO ("2026-11-18T17:30:00.000Z") vira a data e hora da rede.
+  const instante = typeof valor === 'string' && fuso ? dataHoraNoFuso(valor, fuso) : null
+  if (instante) return instante
   const texto = Array.isArray(valor) ? valor.join(', ') : String(valor)
   return texto.length > MAX_EXEMPLO ? `${texto.slice(0, MAX_EXEMPLO)}…` : texto
 }

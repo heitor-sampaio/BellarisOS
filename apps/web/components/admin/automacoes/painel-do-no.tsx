@@ -298,7 +298,9 @@ export function PainelDoNo({
               }}>
                 <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text)', margin: 0, lineHeight: 1.5 }}>
                   A rede não tem WhatsApp conectado: por este canal, a mensagem não sai.
-                  Conecte em Configurações → Integrações, ou mande como aviso no celular da cliente.
+                  {somenteLeitura
+                    ? ' Quem conecta é a Admin da rede, em Configurações → Integrações.'
+                    : ' Conecte em Configurações → Integrações, ou mande como aviso no celular da cliente.'}
                 </p>
                 {!somenteLeitura && (
                   <button type="button" className="btn-secondary" style={{ alignSelf: 'flex-start', fontSize: 'var(--text-xs-sz)' }}
@@ -856,7 +858,7 @@ function SelectDeCampo({
     >
       <option value="">Escolha o campo…</option>
       {grupos.map(g => (
-        <optgroup key={g.grupo} label={g.grupo}>
+        <optgroup key={g.grupo} label={g.rotulo ?? g.grupo}>
           {g.itens.map(i => (
             <option key={i.caminho} value={i.caminho}>
               {i.exemplo ? `${rotulos.get(i.caminho) ?? i.rotulo} — ${i.exemplo}` : (rotulos.get(i.caminho) ?? i.rotulo)}
@@ -925,7 +927,7 @@ function TextoComVariaveis({
         >
           <option value="">Inserir variável…</option>
           {grupos.map(g => (
-            <optgroup key={g.grupo} label={g.grupo}>
+            <optgroup key={g.grupo} label={g.rotulo ?? g.grupo}>
               {g.itens.map(i => (
                 <option key={i.caminho} value={i.caminho}>
                   {i.exemplo ? `${i.rotulo} — ${i.exemplo}` : i.rotulo}

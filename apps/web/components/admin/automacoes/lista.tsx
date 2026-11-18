@@ -23,8 +23,12 @@ import { NODES } from '@estetica-os/types'
  */
 
 export function ListaDeAutomacoes({
-  automacoes, podeEditar, erro, whatsappConectado = true, veCampanhas = false,
-}: { automacoes: AutomacaoNaLista[]; podeEditar: boolean; erro?: string; whatsappConectado?: boolean; veCampanhas?: boolean }) {
+  automacoes, podeEditar, erro, whatsappConectado = true, veCampanhas = false, avisoDaRede = null,
+}: {
+  automacoes: AutomacaoNaLista[]; podeEditar: boolean; erro?: string; whatsappConectado?: boolean; veCampanhas?: boolean
+  /** Por que não cria, quando é por não ser a Admin da rede (A-CONF3 da 25ª; princípio 3). */
+  avisoDaRede?: string | null
+}) {
   const router = useRouter()
   const [criando, criar] = useTransition()
   const [nome, setNome]  = useState('')
@@ -107,6 +111,9 @@ export function ListaDeAutomacoes({
               </button>
             </div>
           )
+        )}
+        {!podeEditar && avisoDaRede && (
+          <p data-config-da-rede style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>{avisoDaRede}</p>
         )}
 
       {vendoModelos && (

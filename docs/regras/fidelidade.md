@@ -77,6 +77,12 @@ recompensas, igual (`salvarConfigFidelidade` e `salvarRecompensa` passam por
   `e2e/fidelidade-atritos-da-12.spec.ts` ("A30"), `tests/atritos-da-12-f61.test.ts`.
 - **Ajuste manual** pela equipe (`loyalty: MANAGE`), com motivo, por
   `ajustar_pontos` — débito acima do saldo é recusado.
+- **O extrato do app diz a recompensa trocada** (A26 da 25ª simulação;
+  princípio 3): a troca ("Recompensa: Limpeza de pele") e o uso no pagamento
+  ("Desconto no pagamento: R$ …") levam a descrição que o banco escreve,
+  embaixo do título (`descricaoParaACliente`, `[data-descricao-do-lancamento]`);
+  o ajuste, o voucher cancelado e o estorno não — levam o motivo que a equipe
+  escreveu. Prova: `tests/atritos-da-25-ficha-estoque-app.test.ts`.
 - **Saldo = SOMA do extrato** (`saldo_de_pontos`). `loyalty_accounts.balance`
   saiu do banco (fase 4). Extrato e conta só se LEEM pela sessão: quem
   escreve é o gatilho e o servidor, com a trava `fidelidade:<cliente>`.

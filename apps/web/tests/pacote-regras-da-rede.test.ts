@@ -36,11 +36,11 @@ describe('item 8: liberar as sessões do pacote no crediário é da rede', () =>
     expect(recusaDaSessaoNaoLiberada({ crediarioLibera: true, vencidoCancela: false }, 300)).toBeNull()
     expect(recusaDaSessaoNaoLiberada({ crediarioLibera: false, vencidoCancela: false }, 0)).toBeNull()
     expect(sp(recusaDaSessaoNaoLiberada({ crediarioLibera: false, vencidoCancela: false }, 300)))
-      .toBe('Este pacote ainda tem R$ 300,00 em aberto, e a rede libera as sessões do pacote no crediário só depois de pago. O que falta se recebe no PDV.')
+      .toBe('Este pacote ainda tem R$ 300,00 em aberto, e a rede libera as sessões do pacote no crediário só depois de pago. O que falta se recebe no PDV. Se caiu na conta, a baixa é no Financeiro.')
   })
   it('o aviso do em aberto diz a regra da rede', () => {
-    expect(textoDoPacoteEmAberto(true)).toBe('As sessões seguem liberadas; o que falta se recebe no PDV.')
-    expect(textoDoPacoteEmAberto(false)).toBe('As sessões se liberam quando ele estiver pago; o que falta se recebe no PDV.')
+    expect(textoDoPacoteEmAberto(true)).toBe('As sessões seguem liberadas; o que falta se recebe no PDV. Se caiu na conta, a baixa é no Financeiro.')
+    expect(textoDoPacoteEmAberto(false)).toBe('As sessões se liberam quando ele estiver pago; o que falta se recebe no PDV. Se caiu na conta, a baixa é no Financeiro.')
   })
 
   // O banco de mentira de conferirCredito: a sessão, a rede e o em aberto.

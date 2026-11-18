@@ -64,6 +64,8 @@ interface AgendaCalendarProps {
   atendimentoProprio?: boolean
   /** A9 da 20ª: sem iniciar e concluir, quem conclui — o Atendimento em Gerenciar, pelo nome (quemConcluiOAtendimento). */
   quemConclui?: string[] | null
+  /** A9 da 25ª: os ids de quem conclui os PRÓPRIOS (idsQueConcluemOsProprios) — a profissional do agendamento entra em "quem conclui". */
+  concluemOsProprios?: string[] | null
   /** O horário de funcionamento da unidade e de cada profissional (nulo = o padrão / segue a unidade). */
   horarioDaUnidade?:          Horario | null
   horariosDosProfissionais?:  Record<string, Horario | null>
@@ -193,7 +195,7 @@ function todayDate(fuso: string): Date {
 // -- Component ----------------------------------------------------------------
 
 export function AgendaCalendar({
-  branchId, slug, events, procedures, professionals, rooms, canWrite, userRole, escopoProprio, meuId = null, podeConcluir = true, atendimentoProprio = false, quemConclui = null,
+  branchId, slug, events, procedures, professionals, rooms, canWrite, userRole, escopoProprio, meuId = null, podeConcluir = true, atendimentoProprio = false, quemConclui = null, concluemOsProprios = null,
   horarioDaUnidade = null, horariosDosProfissionais = {}, ocupadoForaDosProfissionais = {}, dataInicial = null, comCancelados = false,
   bloqueios = [], colunasDeQuemNaoAtende = [],
 }: AgendaCalendarProps) {
@@ -521,6 +523,7 @@ export function AgendaCalendar({
           podeConcluir={podeConcluir}
           atendimentoProprio={atendimentoProprio}
           quemConclui={quemConclui}
+          concluemOsProprios={concluemOsProprios}
           meuId={meuId}
           onClose={() => setSelectedEvent(null)}
         />

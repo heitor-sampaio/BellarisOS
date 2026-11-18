@@ -267,7 +267,7 @@ export function ClientsSidebar({
             opcoes={tagsDisponiveis.map(t => ({ valor: t, rotulo: t }))}
             selecionadas={tagsEscolhidas}
             multiplo
-            textoListaVazia={fala('A rede ainda não tem tags (Configurações → Tags).')}
+            textoListaVazia={fala('A rede ainda não tem tags: a Admin da rede cria em Configurações → Tags.')}
             larguraPainel={220}
             classeBotao={classeGatilho(tagsEscolhidas.length > 0)}
             onEscolher={t => setTagsEscolhidas(prev => alternarTag(prev, t))}
@@ -294,7 +294,7 @@ export function ClientsSidebar({
               rotuloBotao={marcando ? 'Marcando…' : 'Marcar tag'}
               opcoes={(vocabulario ?? []).map(t => ({ valor: t, rotulo: t }))}
               selecionadas={[]}
-              textoListaVazia={fala('A rede ainda não tem tags (Configurações → Tags).')}
+              textoListaVazia={fala('A rede ainda não tem tags: a Admin da rede cria em Configurações → Tags.')}
               larguraPainel={220}
               classeBotao={escolhidas.length && !marcando ? 'filtro-toggle is-ativo' : 'filtro-toggle'}
               onEscolher={t => marcar(t)}

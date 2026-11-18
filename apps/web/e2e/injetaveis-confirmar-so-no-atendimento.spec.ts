@@ -79,9 +79,10 @@ test('dentro do atendimento continua: confirma, ajusta e registra a aplicação'
   expect(error).toBeNull()
   await como(browser, async p => {
     await p.goto(`/${slug}/agenda/${ag!.id}`)
-    await p.getByRole('main').getByRole('button', { name: 'Planejamento' }).click()
+    // D12 da 25ª: sem o Atendimento, a sessão não tem "Planejamento" (os planos
+    // são do Atendimento); o mapa abre pelo "Mapa de injetáveis".
+    await p.getByRole('main').getByRole('button', { name: 'Mapa de injetáveis' }).click()
     const janela = p.getByRole('dialog')
-    await janela.getByText('Injetáveis', { exact: true }).click()
     await janela.getByText(`Toxina terço superior ${marca}`).click()
     await janela.getByRole('button', { name: 'Confirmar aplicação' }).click()
     await expect(janela.getByText('Aplicação confirmada', { exact: false })).toBeVisible()

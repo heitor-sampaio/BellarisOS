@@ -291,9 +291,12 @@ export function TemplatesManager({
       <Aviso tom="espera">
         Conecte um número da API oficial do WhatsApp para ver e criar templates. Ao
         conectar, os templates que a conta já tem na Meta vêm junto.{' '}
-        <Link href="/admin/settings?tab=integrations" style={{ color: 'inherit', fontWeight: 800 }}>
-          Ir para as integrações →
-        </Link>
+        {/* A-CONF3 da 25ª: as integrações são da Admin da rede — o link levava os outros a uma recusa. */}
+        {podeEditar ? (
+          <Link href="/admin/settings?tab=integrations" style={{ color: 'inherit', fontWeight: 800 }}>
+            Ir para as integrações →
+          </Link>
+        ) : 'Para conectar, peça à Admin da rede.'}
       </Aviso>
     )
   }

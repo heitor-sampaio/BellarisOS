@@ -74,6 +74,8 @@ const rotuloDoFinanceiro = (_p: ResolvedPermissions, s?: Partial<ResolvedScopes>
  */
 const rotuloDeConfiguracoes = (comFinanceiro: boolean) => (p: ResolvedPermissions) =>
   has(p, 'settings') || has(p, 'roles') || has(p, 'forms') || has(p, 'documents') || (comFinanceiro && p.financial === 'MANAGE')
+    // D8 da 25ª: quem libera o prontuário chega à aba LGPD — não é "Tags e importações".
+    || p.medical_records === 'MANAGE'
     ? 'Configurações'
     : 'Tags e importações'
 
@@ -153,7 +155,7 @@ export const ADMIN_MENU: readonly MenuEntry[] = [
     key: 'settings', group: 'gestao', label: rotuloDeConfiguracoes(true), href: '/admin/settings',
     // Importações abre também com clientes ou CRM em Gerenciar (a aba delas).
     visible: p => has(p, 'settings') || has(p, 'roles') || has(p, 'forms') || has(p, 'documents') || p.financial === 'MANAGE'
-      || p.clients === 'MANAGE' || p.crm === 'MANAGE',
+      || p.clients === 'MANAGE' || p.crm === 'MANAGE' || p.medical_records === 'MANAGE',
   },
 ]
 
@@ -190,7 +192,7 @@ export const BRANCH_MENU: readonly MenuEntry[] = [
   {
     key: 'settings', group: 'gestao', label: rotuloDeConfiguracoes(false), href: '/settings',
     visible: p => has(p, 'settings') || has(p, 'roles') || has(p, 'forms') || has(p, 'documents')
-      || p.clients === 'MANAGE' || p.crm === 'MANAGE',
+      || p.clients === 'MANAGE' || p.crm === 'MANAGE' || p.medical_records === 'MANAGE',
   },
 ]
 
@@ -205,15 +207,20 @@ export const SO_NO_MENU_DA_REDE: readonly MenuEntry[] =
   ADMIN_MENU.filter(e => !BRANCH_MENU.some(b => b.key === e.key))
 
 /**
- * Quem chega a Configurações SÓ pelas Clientes ou pelo CRM em Gerenciar (as
- * abas Tags e Importações) e não tem "A rede inteira" só leria as duas: elas
- * são configuração da rede toda (H7) e dizem "Quem muda: …". O item "Tags e
- * importações" prometia uma tela onde nada se faz — sai do menu e da busca
- * dela (A26 da 15ª simulação; CLAUDE.md §14, "botão que a pessoa não pode
- * usar: a tela esconde"). A tela continua de pé pela URL, com a frase.
+ * Quem não é a Admin da rede e só chegaria às abas da configuração da rede
+ * toda (Cargos, Fichas, Documentos, Comissões e taxas, Tags, Importações…)
+ * só leria "Esta configuração é só da Admin da rede." — desde 18/11 (o
+ * Heitor: "Configuração da rede toda só pela conta admin"; CLAUDE.md §11)
+ * isso vale também para quem tem "A rede inteira" (A-CONF1 da 25ª; era a A26
+ * da 15ª, que olhava a abrangência). O item sai do menu, da busca e do resumo
+ * do cargo (CLAUDE.md §14, "botão que a pessoa não pode usar: a tela
+ * esconde"). Fica para quem usa alguma aba: Configurações em Gerenciar (a
+ * Unidade, a LGPD, a Geral para ler) ou o Prontuário em Gerenciar (a LGPD,
+ * D8 da 25ª). A tela continua de pé pela URL, com a frase.
+ * `souAdmin`: o cargo de sistema (`mexeNaConfigDaRede(ctx)`).
  */
-export function soLeriaAsConfiguracoes(p: ResolvedPermissions, daRede: boolean): boolean {
-  return !daRede && !(has(p, 'settings') || has(p, 'roles') || has(p, 'forms') || has(p, 'documents'))
+export function soLeriaAsConfiguracoes(p: ResolvedPermissions, souAdmin: boolean): boolean {
+  return !souAdmin && !(p.settings === 'MANAGE' || p.medical_records === 'MANAGE')
 }
 
 /**
@@ -226,12 +233,24 @@ export function menuDaUnidadeFor(
   permissions: ResolvedPermissions,
   plano: PlanoDoMenu,
   scopes: Partial<ResolvedScopes> | undefined,
-  o: { base: string; daRede: boolean },
+  /** `adminDaRede`: o cargo de sistema (`mexeNaConfigDaRede(ctx)`) — é ele, não a abrangência, que vê a configuração da rede toda. */
+  o: { base: string; daRede: boolean; adminDaRede?: boolean },
 ): MenuSection[] {
   const daUnidade = BRANCH_MENU
-    .filter(e => e.key !== 'settings' || !soLeriaAsConfiguracoes(permissions, o.daRede))
+    .filter(e => e.key !== 'settings' || !soLeriaAsConfiguracoes(permissions, !!o.adminDaRede))
     .map(e => ({ ...e, href: `${o.base}${e.href}` }))
   return menuSectionsFor([...daUnidade, ...(o.daRede ? SO_NO_MENU_DA_REDE : [])], permissions, plano, scopes)
+}
+
+/** O menu do portal da REDE: a mesma regra de Configurações do menu da unidade (A-CONF1 da 25ª). */
+export function menuDaRedeFor(
+  permissions: ResolvedPermissions,
+  plano: PlanoDoMenu,
+  scopes: Partial<ResolvedScopes> | undefined,
+  o: { adminDaRede: boolean },
+): MenuSection[] {
+  const menu = ADMIN_MENU.filter(e => e.key !== 'settings' || !soLeriaAsConfiguracoes(permissions, !!o.adminDaRede))
+  return menuSectionsFor(menu, permissions, plano, scopes)
 }
 
 export function menuEntriesFor(

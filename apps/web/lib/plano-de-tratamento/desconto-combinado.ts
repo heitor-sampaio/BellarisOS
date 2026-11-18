@@ -30,6 +30,19 @@ export function totalComOCombinado(subtotal: number, combinado: DescontoCombinad
   return { reais, total: Math.round((subtotal - reais) * 100) / 100 }
 }
 
+/**
+ * D2 da 25ª (princípio 3): o valor do plano nas LISTAS (os planos da cliente,
+ * Planejamentos). Antes do aceite o preço gravado é o de tabela, e a tela mostra
+ * o total com o combinado (atendimento.md, "O desconto combinado"); do aceite
+ * em diante o gravado já é o vendido (`plano_aceitar` aplica o combinado) —
+ * vale ele. A lista dizia 480 onde o contrato e o recebido diziam 420.
+ */
+export function totalDoPlanoNaLista(status: string, soma: number, combinado: DescontoCombinado | null | undefined): number {
+  const redonda = Math.round(soma * 100) / 100
+  if (status !== 'DRAFT' && status !== 'PROPOSED') return redonda
+  return totalComOCombinado(redonda, combinado).total
+}
+
 /** O combinado → o estado do campo do desconto (`CampoDoDesconto`). */
 export function estadoDoCombinado(combinado: DescontoCombinado | null | undefined): { tipo: Desconto['tipo']; texto: string } {
   if (!combinado || !(combinado.valor > 0)) return { tipo: 'VALOR', texto: '' }

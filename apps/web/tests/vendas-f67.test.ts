@@ -45,7 +45,8 @@ describe('A5 da 13ª: o pacote sem "De venda" próprio diz que vale a regra de q
   it('na lista dos pacotes', async () => {
     const { rotuloDaComissaoDoPacote } = await import('@/lib/comissoes/config')
     expect(rotuloDaComissaoDoPacote({ venda: null, execucao: { tipo: 'REGRA', valor: null } }))
-      .toBe('Venda: a regra de quem vendeu · Execução: regra de cada profissional')
+      // A4 da 25ª: "a de quem vendeu", o nome da opção do pacote.
+      .toBe('Venda: a de quem vendeu · Execução: regra de cada profissional')
   })
 })
 

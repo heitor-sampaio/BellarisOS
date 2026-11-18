@@ -577,7 +577,7 @@ export function EditorDeAutomacao({
             />
           </div>
 
-          <ListaDeProblemas problemas={problemas} naoExecutaveis={naoExecutaveis.length} />
+          <ListaDeProblemas problemas={problemas} naoExecutaveis={naoExecutaveis.length} podeLigar={podeEditar} soPausa={soPausa} />
         </div>
 
         {/* Um painel por vez: os dois juntos comeriam 640px do quadro, e as
@@ -627,8 +627,13 @@ export function EditorDeAutomacao({
 }
 
 function ListaDeProblemas({
-  problemas, naoExecutaveis,
-}: { problemas: ProblemaDoGrafo[]; naoExecutaveis: number }) {
+  problemas, naoExecutaveis, podeLigar = true, soPausa = false,
+}: {
+  problemas: ProblemaDoGrafo[]; naoExecutaveis: number
+  /** Quem liga (a Admin da rede, fora do suporte). A-CONF3 da 25ª: "pronto para ligar" a quem não liga prometia o botão. */
+  podeLigar?: boolean
+  soPausa?: boolean
+}) {
   const erros  = problemas.filter(p => p.grau === 'erro')
   const avisos = problemas.filter(p => p.grau === 'aviso')
 
@@ -651,7 +656,11 @@ function ListaDeProblemas({
         display: 'flex', alignItems: 'center', gap: 7,
         fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)', color: 'var(--success)',
       }}>
-        <CheckCircle2 size={14} /> O fluxo está pronto para ligar.
+        <CheckCircle2 size={14} /> {podeLigar
+          ? 'O fluxo está pronto para ligar.'
+          : soPausa
+            ? 'O fluxo está completo. Pelo suporte, a automação só se pausa.'
+            : 'O fluxo está completo; ligar é da Admin da rede.'}
       </div>
     )
   }

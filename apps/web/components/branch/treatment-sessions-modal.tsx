@@ -74,6 +74,11 @@ interface Props {
   emAberto?: { valor: number; parcelas: number; unidadeId?: string | null; liberaAsSessoes?: boolean } | null
   /** A21 da 14ª: aberta pelo "Agendar" de uma sessão da ficha de tratamento — já com o agendar dela aberto. */
   agendarSessaoId?: string | null
+  /**
+   * D12 da 25ª (o Heitor, 18/11: "Só inicia e conclui atendimento quem tem
+   * gerenciar no atendimento"): o "Iniciar" da sessão agendada. Sem ele, "Ver".
+   */
+  podeIniciar?: boolean
 }
 
 // -- Helpers -------------------------------------------------------------------
@@ -317,7 +322,7 @@ export function TreatmentSessionsModal({
   clientPackageId, planId, planStatus,
   packageName, totalSessions,
   clientId, procedureId, procedureName, price, durationMin,
-  slug, branches, currentBranchId, onClose, onCancelarPlano, emAberto = null, agendarSessaoId = null,
+  slug, branches, currentBranchId, onClose, onCancelarPlano, emAberto = null, agendarSessaoId = null, podeIniciar = false,
 }: Props) {
   const fuso = useFuso()
   const router = useRouter()
@@ -498,7 +503,7 @@ export function TreatmentSessionsModal({
                           </button>
                         )}
 
-                        {isBooked && sess.appointmentId && (
+                        {isBooked && sess.appointmentId && podeIniciar && (
                           <button type="button"
                             onClick={() => router.push(rotaAtendimento(pathname, slug, sess.appointmentId!))}
                             style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 7, fontSize: 'var(--text-2xs)', fontWeight: 700, cursor: 'pointer', background: 'var(--brand)', color: 'var(--surface)', border: 'none' }}>
@@ -506,7 +511,7 @@ export function TreatmentSessionsModal({
                           </button>
                         )}
 
-                        {isDone && sess.appointmentId && (
+                        {(isDone || (isBooked && !podeIniciar)) && sess.appointmentId && (
                           <button type="button"
                             onClick={() => router.push(rotaAtendimento(pathname, slug, sess.appointmentId!))}
                             style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 7, fontSize: 'var(--text-2xs)', fontWeight: 700, cursor: 'pointer', background: 'var(--bg-app)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>

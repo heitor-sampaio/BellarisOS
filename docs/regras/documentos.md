@@ -154,6 +154,14 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
     2026-11-18: o que a tela do plano mostra é o que está para assinar.
   - A cliente os assina quando quiser — no app (também na página do plano),
     pelo link único ou no aparelho da unidade.
+  - **O "Bloqueia" do documento do plano trava a SESSÃO do plano** (D4 da 25ª
+    simulação, 2026-11-18 — aplicação, pelo Claude, do "nenhuma porta põe
+    IN_PROGRESS com documento BLOQUEIA aberto"): como no pacote, a sessão
+    não emite documento seu, e `documentos_pendentes_do_atendimento` conta os
+    abertos do plano dela (`appointments.treatment_plan_id`); a trava do
+    início já não deixa a sessão de plano passar direto. A janela e a sessão
+    de atendimento os mostram (`documentosDoAgendamento`). Prova:
+    `e2e/documentos-plano-bloqueia-a-sessao.spec.ts`.
   - **No app, o plano aceito diz onde se assina o contrato** (A35 da 21ª;
     princípio 3): sem o contrato emitido, com o plano ainda não recebido e a
     rede com um contrato de plano ativo, o bloco Documentos diz "O contrato

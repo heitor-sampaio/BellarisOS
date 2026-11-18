@@ -25,7 +25,7 @@ export interface FiltrosDoPublico {
   aniversario?:       { mes: number; dia: number }
   /** Nenhum atendimento concluído marcado desde este instante (ISO). */
   sem_retorno_desde?: string
-  /** Cliente da clínica de antes deste instante: coalesce(cliente_desde, created_at) (ISO). */
+  /** Cliente da rede de antes deste instante: coalesce(cliente_desde, created_at), ou a última visita de antes, a mais antiga (ISO; D7 da 25ª). */
   cliente_desde_antes?: string
   /** Ao menos N atendimentos concluídos. */
   min_visitas?:       number

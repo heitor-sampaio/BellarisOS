@@ -10,6 +10,7 @@ import type { SalaParaAgendar } from '@/lib/appointments/salas'
 import { creditosParaAgendar } from '@/actions/creditos'
 import { formatBRL, maskPhone, maskTelefoneDigitando, telefoneDoCadastro, temDigitosDeMais } from '@estetica-os/utils'
 import type { CreditoParaAgendar } from '@/lib/creditos/credito'
+import { textoDoCreditoAoAgendar } from '@/lib/creditos/texto-do-pago'
 import { X, Calendar, Search, UserPlus, Loader2, AlertTriangle, CheckCircle2, Ban, FileSignature } from 'lucide-react'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { PerguntaJaExiste } from '@/components/shared/pergunta-ja-existe'
@@ -686,9 +687,11 @@ export function AppointmentModal({
               rede define preço, duração e ficha, e o atendimento herda de lá
               que é uma avaliação. */}
           {creditosDoCliente.length > 0 && (
-            <Field label="Já pago"
-              dica={credito ? { rotulo: 'Sobre o que já foi pago', texto: <span data-credito-escolhido>O procedimento e o preço vêm do que já foi pago; o PDV não cobra de novo.</span> } : null}>
-              <select className="field" aria-label="Usar o que já foi pago" value={credito ? chaveDoCredito(credito) : ''}
+            // A3 da 25ª: "Incluído", não "Já pago" — o pacote e o plano no
+            // crediário têm parcelas em aberto (o app e a janela já diziam assim).
+            <Field label="Incluído"
+              dica={credito ? { rotulo: 'Sobre o que já está incluído', texto: <span data-credito-escolhido>O procedimento e o preço vêm do pacote, do pré-pago ou do plano da cliente; o PDV não cobra a sessão de novo.</span> } : null}>
+              <select className="field" aria-label="Usar o que já está incluído" value={credito ? chaveDoCredito(credito) : ''}
                 onChange={e => setCreditoSel(e.target.value)}>
                 <option value="">Não usar — cobrar no atendimento</option>
                 {creditosDoCliente.map(c => (
@@ -701,7 +704,7 @@ export function AppointmentModal({
                 <p data-credito-pre-escolhido role="status" style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 'var(--text-xs-sz)', color: 'var(--success)', fontWeight: 'var(--weight-semibold)' }}>
                   <CheckCircle2 size={13} aria-hidden style={{ flexShrink: 0, marginTop: 1 }} />
                   <span>
-                    Já pago: {credito.origem}{credito.numero && credito.total ? ` (sessão ${credito.numero} de ${credito.total})` : ''}. Para cobrar à parte, escolha “Não usar”.
+                    {textoDoCreditoAoAgendar(credito)}. Para cobrar à parte, escolha “Não usar”.
                   </span>
                   {/* O porquê mora na dica (2026-11-16); o que fazer fica à vista. */}
                   <Dica rotulo="Por que já veio escolhido">Escolhido porque o procedimento é o mesmo.</Dica>
@@ -713,7 +716,7 @@ export function AppointmentModal({
           {credito ? (
             <Field label="Procedimento *">
               <p className="field" style={{ display: 'flex', alignItems: 'center', color: 'var(--text)' }}>
-                {credito.procedimento} — já pago ({formatBRL(credito.preco)})
+                {credito.procedimento} — incluído ({formatBRL(credito.preco)})
               </p>
             </Field>
           ) : (

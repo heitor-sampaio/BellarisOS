@@ -733,8 +733,17 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
           </p>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--hairline)' }}>
-          <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)' }}>Total: {fmtBRL(total)}</span>
+        {/* D2 da 25ª (princípio 3): as sessões vêm ao preço de TABELA; com o
+            desconto combinado, o subtotal, o desconto e o total que fica — o
+            mesmo valor do contrato e do que se recebe. */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--hairline)' }}>
+          {contaDesc.reais > 0 && (
+            <>
+              <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text-muted)' }}>Subtotal: {fmtBRL(total)}</span>
+              <span data-desconto-do-plano style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text-muted)' }}>Desconto: −{fmtBRL(contaDesc.reais)}</span>
+            </>
+          )}
+          <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)' }}>Total: {fmtBRL(contaDesc.liquido)}</span>
         </div>
       </div>
 

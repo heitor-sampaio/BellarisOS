@@ -138,11 +138,21 @@ export async function documentosDoAgendamento(tenantId: string, appointmentId: s
   const admin = createAdminClient()
   // PC2 (leva 2): a sessão de pacote não tem documento seu — valem os do
   // pacote vendido, e é por eles que o "Bloqueia" trava o início dela.
-  const sessao = await ler(admin.from('package_sessions').select('client_package_id')
-    .eq('appointment_id', appointmentId).maybeSingle(), 'buscar a sessão de pacote do atendimento') as { client_package_id: string } | null
-  const doAtendimento = sessao
-    ? `appointment_id.eq.${appointmentId},client_package_id.eq.${sessao.client_package_id}`
-    : `appointment_id.eq.${appointmentId}`
+  // D4 da 25ª: a sessão de plano também não tem documento seu — valem os do
+  // plano (a trava do início os conta, `documentos_pendentes_do_atendimento`).
+  const [sessaoLida, agendamentoLido] = await Promise.all([
+    ler(admin.from('package_sessions').select('client_package_id')
+      .eq('appointment_id', appointmentId).maybeSingle(), 'buscar a sessão de pacote do atendimento'),
+    ler(admin.from('appointments').select('treatment_plan_id')
+      .eq('id', appointmentId).maybeSingle(), 'buscar o plano do atendimento'),
+  ])
+  const sessao = sessaoLida as { client_package_id: string } | null
+  const agendamento = agendamentoLido as { treatment_plan_id: string | null } | null
+  const doAtendimento = [
+    `appointment_id.eq.${appointmentId}`,
+    sessao ? `client_package_id.eq.${sessao.client_package_id}` : null,
+    agendamento?.treatment_plan_id ? `treatment_plan_id.eq.${agendamento.treatment_plan_id}` : null,
+  ].filter(Boolean).join(',')
   const docs = await ler(admin.from('issued_documents').select(COLUNAS_DO_DOCUMENTO)
     .eq('tenant_id', tenantId).or(doAtendimento)
     .not('status', 'in', '(CANCELADO,SUBSTITUIDO)')

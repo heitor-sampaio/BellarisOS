@@ -161,7 +161,8 @@ test.describe.serial('comissão do pacote — venda e execução', () => {
       await card.getByLabel('Preço do pacote').fill('800')
       const comissao = card.getByRole('group', { name: 'Comissão do pacote' })
       // O padrão é o de sempre: sem comissão de venda, a execução pela regra de cada profissional.
-      await expect(comissao.getByRole('group', { name: 'Comissão de venda' }).getByRole('button', { name: 'Nenhuma' }))
+      // A4 da 25ª: a opção sem regra no pacote é "A de quem vendeu" (era "Nenhuma").
+      await expect(comissao.getByRole('group', { name: 'Comissão de venda' }).getByRole('button', { name: 'A de quem vendeu' }))
         .toHaveAttribute('aria-pressed', 'true')
       await expect(comissao.getByRole('group', { name: 'Comissão de execução' }).getByRole('button', { name: 'Regra do profissional' }))
         .toHaveAttribute('aria-pressed', 'true')

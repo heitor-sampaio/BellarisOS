@@ -517,7 +517,12 @@
   (`quemConcluiOAtendimento`, `eTambem`) — quem tem a Agenda "só os meus" não
   abre o atendimento de outra pessoa e não entra na lista. Vale também na
   janela da agenda dos dois portais (a mesma função). Prova:
-  `tests/atendimento-atritos-da-22.test.ts`. E
+  `tests/atendimento-atritos-da-22.test.ts`. **E a profissional do próprio
+  agendamento entra** (A9 da 25ª; princípio 3): com o Atendimento em
+  Gerenciar "só os meus" (e a Agenda), ela conclui o dela — a sessão, a
+  janela da agenda e a tela do atendimento de outra pessoa ("Quem conclui é
+  Bruna, que atende, ou …") a juntam aos nomes (`idsQueConcluemOsProprios`,
+  `nomesDeQuemConclui`). Prova: `tests/atritos-da-25-atendimento.test.ts`. E
   o concluído A RECEBER não diz "Este agendamento já foi encerrado." embaixo
   do "Receber no PDV" (A14; era o "Receber pagamento" — desde o PDV7 a
   janela leva à comanda do atendimento no PDV, `rotaDaComanda`). Prova:
@@ -1016,6 +1021,10 @@
   10:00, na unidade Moinhos.", "Novo horário: … na unidade Moinhos." —
   `lib/appointments/texto-do-aviso.ts`), e o da equipe também ("Cancelado:
   Juliana — Avaliação de …"). Prova: `tests/textos-dos-avisos-da-9.test.ts`.
+  **O motivo do cancelamento vai no aviso, e o campo diz** (A11 da 25ª;
+  princípio 3): "Vai também no aviso à cliente." embaixo do "Motivo do
+  cancelamento *", na janela da agenda e na sessão
+  (`[data-motivo-vai-a-cliente]`). Prova: `tests/atritos-da-25-atendimento.test.ts`.
 - **O agendar do app passa pelo NÚCLEO da agenda** (por-05, revisão do Heitor
   de 2026-11-02): `createClientAppointment` confere o que é do app (o
   procedimento visível no app, o horário entre os livres, quem atende na
@@ -1208,7 +1217,10 @@
   ficha também** (A32 da 7ª simulação, 2026-11-05, sobra da A36: a sessão
   Criolipólise + Drenagem aparecia só "Criolipólise"): as duas páginas da
   ficha leem `nomesDasSessoesDoPlano` (`[data-proximos-agendamentos]`). Prova:
-  `e2e/agenda-atritos-da-7.spec.ts` ("A32"). **E a duração prevista é a do
+  `e2e/agenda-atritos-da-7.spec.ts` ("A32"). **E dizem a unidade** na rede de
+  duas ou mais (A15 da 25ª; princípio 7): "… · Dra. Ana · Moinhos"
+  (`unidadeNaFicha`, `[data-unidade-do-agendamento]`). Prova:
+  `tests/atritos-da-25-ficha-estoque-app.test.ts`. **E a duração prevista é a do
   AGENDAMENTO** (D5 da 7ª simulação, 2026-11-05; princípio 3): a sessão
   Criolipólise + Drenagem gravava 110 min e a tela do atendimento dizia "60
   min", a do procedimento principal. `sessao-de-atendimento.tsx` lê
@@ -1238,8 +1250,10 @@
   Heitor): o "Já pago" do modal (`creditosDoCliente`) lista também a próxima
   sessão livre de cada plano fechado, por procedimento principal ("Drenagem —
   Plano de tratamento · 2 restantes"), e ela vem escolhida quando o
-  procedimento bate, como a do pacote (A20 da 8ª): "Já pago: Plano de
-  tratamento (sessão 2 de 3)". A grade de horários é a do modal. O avulso já
+  procedimento bate, como a do pacote (A20 da 8ª): "Incluído no plano de
+  tratamento (sessão 2 de 3)" (A3 da 25ª: era "Já pago", também com o plano no
+  crediário, de parcelas em aberto; o campo é "Incluído",
+  `textoDoCreditoAoAgendar`). A grade de horários é a do modal. O avulso já
   marcado não se liga a uma sessão de plano (`agendamento_usar_credito` é do
   pacote e do pré-pago). E o cartão "Tratamento em andamento" diz "Abrir para
   ver e agendar as sessões" (`[data-tratamento-que-abre]`). Prova: o mesmo spec
@@ -1507,6 +1521,17 @@ de decisões) — **implementadas na F65 (2026-11-12)**:
   `recusaDosProcedimentosDoPlano`, em `gravarSessoes` (antes de apagar as
   sessões antigas) e antes do `gerar_plano_da_avaliacao`. Prova:
   `e2e/plano-unidade-do-plano-f73.spec.ts`, `tests/catalogo-do-plano.test.ts`.
+- **O plano se grava numa transação só, e o fechado não volta a rascunho**
+  (A20d da 25ª; §14): `gravarSessoes` confere e monta, e `plano_gravar_sessoes`
+  (só o servidor) grava o cabeçalho (o rascunho da avaliação; as observações e
+  o desconto do editor) e as sessões juntos, com o plano travado, conferindo de
+  novo a rede, o plano fechado e os procedimentos — a falha no meio não deixa
+  mais o plano sem sessões. Fechado é o aceito, o concluído, o cancelado e o
+  recusado (`planoFechado`, `lib/plano-de-tratamento/fechado.ts`): o "Salvar"
+  da avaliação e o do editor recusam "Este plano já foi fechado e não pode mais
+  ser alterado." antes de gravar (o rascunho da avaliação reabria o aceito como
+  DRAFT). Prova: `tests/plano-sessoes-numa-transacao.test.ts`,
+  `e2e/plano-tratamento-leva-1.spec.ts` (A20d).
 - **O preço vazio é R$ 0,00 — o procedimento gratuito** (A1 da 6ª simulação,
   2026-11-04; princípios 2 e 4): a avaliação grátis tinha só o "0,00" de
   exemplo, e o navegador recusava o campo vazio. O campo não é mais
@@ -1758,6 +1783,9 @@ const procedures = await ler(
     (`client_notifications` `pre_atendimento`), "Mandada ao app da cliente ao
     agendar, em 12/11 às 18:11. O link é para mandar de novo, ou a quem não
     usa o app." (`situacao.noAppEm`). Prova: `tests/atritos-da-17-cadastros.test.ts`.
+    Só para a cliente COM acesso ao app (A10 da 25ª; princípio 3): sem o
+    acesso, o aviso fica gravado mas ninguém o lê, e a janela não diz que foi
+    (`clients.auth_id`). Prova: `tests/atritos-da-25-atendimento.test.ts`.
     **O app OFERECE a ficha a quem tem atendimento marcado** (15ª A33 = 16ª
     A11, 2026-11-17): com o envio automático desligado (o padrão, princípio
     6), o pendente nunca nascia e a cliente não tinha onde responder. Com a
@@ -3121,6 +3149,12 @@ indicada é a do consolidado do levantamento):
     dois dashboards, o aviso do sino e o Copilot. Trava:
     `tests/configuracoes-e-menu-da-14.test.ts` (nenhum
     `formatarQuantidadeComUnidade(minimoParaMostrar(` fora dela).
+  - **O mínimo do cadastro diz quando vale** (A27 da 25ª; princípio 3): ao
+    lado do "Estoque mínimo" do produto, a dica "Vale para a unidade quando o
+    produto entra nela. Depois, cada unidade tem o seu, na aba “Estoque
+    mínimo” do produto." (`[data-minimo-padrao]`) — editar o do cadastro não
+    muda o da unidade que já tem o seu. Prova:
+    `tests/atritos-da-25-ficha-estoque-app.test.ts`.
   - **A unidade filtrada vem marcada** (A16, princípio 7): com `?unidade=`, a
     Entrada (se ativa), o Ajuste e a Perda já vêm com ela, também na entrada
     pelo leitor (`unidadeSugerida`, `admin-stock-manage-modal.tsx`).
@@ -3487,7 +3521,10 @@ O resto do fluxo:
     Quem responde é quem atende com o Prontuário em Gerenciar. Quem não o tem
     conclui com o Atendimento em Gerenciar (2026-11-18), sem o clínico — a
     obrigatória em branco a barra como a qualquer um, e quem responde é quem
-    tem o Prontuário —, **e não recebe a ficha de saúde para responder** (A31 da 6ª simulação, 2026-11-04): sem o
+    tem o Prontuário; a recusa diz isso, com os nomes: "Quem responde a ficha
+    de saúde é quem tem o Prontuário em Gerenciar (…), ou a cliente, pelo app
+    ou pelo link." (A8 da 25ª, princípio 7; `aQuemPedirAFichaDeSaude`, no
+    "Finalizar" e no "Gerar plano") —, **e não recebe a ficha de saúde para responder** (A31 da 6ª simulação, 2026-11-04): sem o
     prontuário a ficha de saúde nem é lida, e o formulário da avaliação mostrava a
     quem não tem o Prontuário a ficha inteira em branco ("pediu de novo a anamnese da Márcia"
     enquanto a profissional via "Anamnese revisada"). A ficha de saúde, nos dois
@@ -3763,7 +3800,7 @@ O resto do fluxo:
 ❌ Trocar a profissional de um agendamento (janela, arraste, remarcação) para quem não atende na unidade dele, ou sem "de quem para quem" no histórico — é recusaDeQuemNaoAtende + textoDaTroca (A22 da 8ª)
 ❌ Somar o scrollTop da grade à posição do arraste (o retângulo da coluna já anda com a rolagem — A22 da 8ª)
 ❌ Gravar a desistência no meio (intercorrência, insumo) fora de desistir_do_atendimento, ou calcular a baixa fora de montarInsumosDaBaixa (A27 da 8ª)
-❌ Deixar o "Já pago" em "Não usar" quando a cliente tem crédito do MESMO procedimento (vem escolhido, com aviso — A20 da 8ª), ou ligar crédito a agendamento já marcado fora de agendamento_usar_credito
+❌ Deixar o "Incluído" (era "Já pago") em "Não usar" quando a cliente tem crédito do MESMO procedimento (vem escolhido, com aviso — A20 da 8ª), ou ligar crédito a agendamento já marcado fora de agendamento_usar_credito
 ❌ Ler as anotações da ficha (clients.notes) para decidir alergia: elas aparecem como estão escritas (A28 da 8ª; atend-15)
 ❌ Ler ou gravar agenda_bloqueios pela sessão (só o servidor: actions/agenda-bloqueios.ts e lib/agenda/bloqueios.ts), ou deixar quem tem "só os meus" bloquear outra pessoa ou uma sala
 ❌ Decidir qual sala serve a um procedimento fora de salasParaOProcedimento (lib/agenda/salas.ts), ou gravar sala pela sessão (só o servidor, actions/salas.ts)

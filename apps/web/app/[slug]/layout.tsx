@@ -141,6 +141,7 @@ export default async function BranchLayout({
         scopes={ctx.scopes}
         plano={ctx.plano ?? null}
         isNetworkAdmin={daRede}
+        adminDaRede={mexeNaConfigDaRede(ctx)}
         allBranches={allBranches}
         umaUnidade={umaUnidade}
       />

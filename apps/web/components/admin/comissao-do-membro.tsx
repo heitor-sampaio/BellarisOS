@@ -61,14 +61,20 @@ export function ComissaoDoMembro({ membro, regras, procedimentos, comGeral = [],
   const padrao = regras.find(r => r.procedure_id === null) ?? null
   const excecoes = regras.filter(r => r.procedure_id !== null).length
   const semRegra = atende && !padrao
+  // A22 da 19ª: o chip diz QUAL comissão falta — a de atendimento (quem atende) ou a de venda.
+  const textoDoChip = chipDaComissao({ padrao: padrao ? rotuloDaRegra(padrao) : null, excecoes, vendaPct, atende })
 
   return (
     <>
-      <button type="button" onClick={abrir} title={`Comissão de ${membro.nome}`} aria-label={`Comissão de ${membro.nome}`}
-        className={semRegra ? 'chip chip-warning' : 'chip chip-muted'} style={{ cursor: 'pointer' }}
+      <button type="button" onClick={abrir} title={`${textoDoChip} — Comissão de ${membro.nome}`} aria-label={`Comissão de ${membro.nome}`}
+        className={semRegra ? 'chip chip-warning' : 'chip chip-muted'} style={{ cursor: 'pointer', textAlign: 'left' }}
         data-comissao={membro.id}>
-        {/* A22 da 19ª: o chip diz QUAL comissão falta — a de atendimento (quem atende) ou a de venda. */}
-        {chipDaComissao({ padrao: padrao ? rotuloDaRegra(padrao) : null, excecoes, vendaPct, atende })}
+        {/* A13 da 25ª (design.md, "Tabela com coluna de ações cabe no cartão"): o chip é nowrap, e
+            o texto longo ("Venda: a do pacote, produto ou…") fazia dele a largura da coluna de ações
+            — a 1440 px a Equipe cortava. Quebra em até duas linhas; o limite mora no span. */}
+        <span data-texto-do-chip style={{ whiteSpace: 'normal', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', maxWidth: 200 }}>
+          {textoDoChip}
+        </span>
       </button>
 
       <dialog ref={dialogRef} className="modal modal-flex" style={{ maxWidth: 560, textAlign: 'left' }}

@@ -13,7 +13,7 @@ import { validarLinha, marcarRepetidas, nomeDiferente, avisoDaMenorNaPlanilha, p
 import { maskPhone } from '@estetica-os/utils'
 import { importarContatos, andamentoDaImportacao, cruzamentoDaImportacao, type AndamentoDaImportacao, type CruzamentoDaLinha } from '@/actions/importacao'
 import type { ImportacaoAnterior } from '@/lib/importacao/historico'
-import { linhasQueJuntamNaPlanilha, textoDoBotaoDeImportar, colunasQueNaoEntram, colunasQueAOportunidadeLeva, avisoDasColunasDaOportunidade, ondeEstaoOsImportados, placarDaImportacao, rotuloDaEtapaDaImportacao } from '@/lib/importacao/o-que-entra'
+import { avisoSemClienteDesde, linhasQueJuntamNaPlanilha, textoDoBotaoDeImportar, colunasQueNaoEntram, colunasQueAOportunidadeLeva, avisoDasColunasDaOportunidade, ondeEstaoOsImportados, placarDaImportacao, rotuloDaEtapaDaImportacao } from '@/lib/importacao/o-que-entra'
 import { abrirABusca } from '@/lib/busca/abrir'
 import { ehPortalDaRede, rotaClientes, rotaOportunidades } from '@/lib/rotas'
 import { useFuso } from '@/components/shared/fuso'
@@ -437,6 +437,12 @@ export function ImportadorDeContatos(p: Props) {
                 </p>
               )
             })()}
+            {/* A22 da 25ª (princípio 3): sem "Cliente desde", as fichas novas são clientes novas de hoje. */}
+            {avisoSemClienteDesde(destino, mapa) && (
+              <p data-sem-cliente-desde style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: 0 }}>
+                {avisoSemClienteDesde(destino, mapa)}
+              </p>
+            )}
             {/* A7 da 10ª: uma amostra do que entra — era só "20 linhas prontas". */}
             {prontas > 0 && (
               <div data-amostra-da-importacao style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>

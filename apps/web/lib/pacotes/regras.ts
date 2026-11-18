@@ -1,4 +1,5 @@
 import { formatBRL } from '@estetica-os/utils'
+import { BAIXA_NO_FINANCEIRO } from '@/lib/plano-de-tratamento/textos'
 
 /**
  * As duas regras do pacote que são da REDE (itens 8 e 9 da auditoria das
@@ -32,14 +33,14 @@ export function lerRegrasDoPacote(linha: { pacote_crediario_libera?: boolean | n
 /** A sessão do pacote com dinheiro em aberto, na rede que só libera depois de pago: o porquê da recusa. */
 export function recusaDaSessaoNaoLiberada(regras: RegrasDoPacote, emAberto: number): string | null {
   if (regras.crediarioLibera || !(emAberto > 0)) return null
-  return `Este pacote ainda tem ${formatBRL(emAberto)} em aberto, e a rede libera as sessões do pacote no crediário só depois de pago. O que falta se recebe no PDV.`
+  return `Este pacote ainda tem ${formatBRL(emAberto)} em aberto, e a rede libera as sessões do pacote no crediário só depois de pago. O que falta se recebe no PDV. ${BAIXA_NO_FINANCEIRO}`
 }
 
 /** O fim do aviso do em aberto do pacote (`AvisoDoPacoteEmAberto`), pela regra da rede. */
 export function textoDoPacoteEmAberto(liberaAsSessoes: boolean): string {
   return liberaAsSessoes
-    ? 'As sessões seguem liberadas; o que falta se recebe no PDV.'
-    : 'As sessões se liberam quando ele estiver pago; o que falta se recebe no PDV.'
+    ? `As sessões seguem liberadas; o que falta se recebe no PDV. ${BAIXA_NO_FINANCEIRO}`
+    : `As sessões se liberam quando ele estiver pago; o que falta se recebe no PDV. ${BAIXA_NO_FINANCEIRO}`
 }
 
 /**

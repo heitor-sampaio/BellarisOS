@@ -39,6 +39,17 @@ export function descricaoDoLancamento(tipo: string, descricao?: string | null): 
 }
 
 /**
+ * A linha de baixo no extrato do APP (A26 da 25ª simulação; princípio 3): a
+ * troca diz a recompensa ("Recompensa: Limpeza de pele") e o uso no pagamento
+ * diz o desconto — textos que o banco escreve. Os outros ficam de fora: o
+ * ajuste, o voucher cancelado e o estorno levam o motivo ou a descrição que a
+ * equipe escreveu, que não é para a cliente.
+ */
+export function descricaoParaACliente(tipo: string, descricao?: string | null): string | null {
+  return tipo === 'VOUCHER' || tipo === 'RESGATE' ? descricaoDoLancamento(tipo, descricao) : null
+}
+
+/**
  * Sem a troca pelo app, a recompensa que o saldo já alcança diz isso (A53 da
  * 12ª simulação: com 780 pontos, a de 500 dizia só "a troca é feita na
  * recepção").

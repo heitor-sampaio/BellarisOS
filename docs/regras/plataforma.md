@@ -838,7 +838,13 @@ auditoria das regras, pergunta 8: "só pela conta admin"; antes, H7 de
   tela só pelas abas dos outros módulos, e "O que essa pessoa vai ver" diz
   "Configurações (só Comissões e taxas)" para o Financeiro
   (`rotuloDasAbasAlcancadas`, `lib/configuracoes/abas.ts`, pela mesma
-  `abaLiberada`). O menu lateral segue "Configurações" (o rótulo longo
+  `abaLiberada`). Desde a configuração da rede ser só da Admin (18/11; A-CONF1
+  da 25ª), o resumo conta só as abas que a pessoa USA — as da rede toda
+  (`ABAS_DA_REDE_TODA`) saem dele —, e o menu das duas barras e a busca não
+  oferecem Configurações a quem só leria abas da rede toda
+  (`soLeriaAsConfiguracoes`, `lib/menu.ts`); a aba da rede toda aberta pela
+  URL diz "Esta configuração é só da Admin da rede." e quem muda (A-CONF2).
+  O menu lateral segue "Configurações" (o rótulo longo
   cortava, J-16). **E o cartão do cargo não conta Relatórios "só a unidade"
   como "só os próprios"** (A8): "3 áreas · 1 só os próprios · Relatórios só
   da unidade" — em Relatórios o escopo é a unidade (CLAUDE.md §11). **A Admin

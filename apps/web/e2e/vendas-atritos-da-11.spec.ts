@@ -77,7 +77,9 @@ test('A41: a ficha e o agendar da sessão dizem os R$ 300,00 em aberto do pacote
     // leva a cliente ao PDV da unidade do pacote, onde as parcelas dela aparecem.
     const noPdv = `/${slug}/pdv?unidade=${rede.branchId}&nova=1&cliente=${cliente}`
     await expect(aviso).toContainText('o que falta se recebe no PDV')
-    await expect(aviso).not.toContainText('Financeiro')
+    await expect(aviso).not.toContainText('se recebe no Financeiro')
+    // A14 da 25ª: a transferência que caiu na conta tem baixa no Financeiro (CX2).
+    await expect(aviso).toContainText('Se caiu na conta, a baixa é no Financeiro.')
     await expect(aviso.getByRole('link', { name: 'Receber no PDV' })).toHaveAttribute('href', noPdv)
     // Ao agendar a sessão: a ficha de tratamento → "Gerenciar sessões".
     await p.locator('[data-tratamento-que-abre]').click()

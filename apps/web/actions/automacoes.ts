@@ -679,7 +679,7 @@ export async function amostraDoEvento(nome: string): Promise<CampoVisto[]> {
     return []
   }
 
-  return achatarDados(data?.dados ?? null)
+  return achatarDados(data?.dados ?? null, 'evento.dados', 0, await fusoDaRede(ctx.tenantId!))
 }
 
 // ─── Histórico e ensaio ─────────────────────────────────────────────────────

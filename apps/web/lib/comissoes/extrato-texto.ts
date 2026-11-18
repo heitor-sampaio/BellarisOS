@@ -86,6 +86,8 @@ export function situacaoDoLancamento(l: Pick<LancamentoDoExtrato, 'kind' | 'stat
 }
 const dia = (iso: string | null, fuso = 'America/Sao_Paulo') => iso ? new Date(iso).toLocaleDateString('pt-BR', { timeZone: fuso }) : '—'
 const reais = (v: number | null) => v == null ? '' : v.toFixed(2).replace('.', ',')
+/** A parte do que saiu da base que foi de pontos e voucher (A17 da 25ª); nunca mais que o total. */
+const fidelidadeDaBase = (l: LancamentoDoExtrato) => Math.min(Math.max(l.baseFidelidade ?? 0, 0), l.baseDesconto)
 
 /**
  * A linha do fechamento em "Últimos fechamentos" (A32 da 10ª: até a hora do
@@ -119,12 +121,14 @@ export function csvDoExtrato(
   // A20 da 23ª (princípio 3): "Desconto 0,00" com o voucher de R$ 30 parecia erro — a coluna é o
   // desconto que saiu da BASE (com a base cheia, o voucher e os pontos não saem; "O que saiu da base" diz).
   const tabela = [
-    ['Lançamento', 'Hora', 'Profissional', 'Unidade', 'Atendimento', 'Cliente', 'Procedimento', 'Origem', 'Preço', 'Desconto que saiu da base', 'Taxa da maquininha', 'Insumos', 'Proporção que ficou', 'Base', 'O que saiu da base', 'Regra', 'Tipo', 'Motivo', 'Ligação', 'Valor', 'Previsto', 'Situação', 'Pago em'],
+    ['Lançamento', 'Hora', 'Profissional', 'Unidade', 'Atendimento', 'Cliente', 'Procedimento', 'Origem', 'Preço', 'Desconto que saiu da base', 'Pontos e voucher que saíram da base', 'Taxa da maquininha', 'Insumos', 'Proporção que ficou', 'Base', 'O que saiu da base', 'Regra', 'Tipo', 'Motivo', 'Ligação', 'Valor', 'Previsto', 'Situação', 'Pago em'],
     ...emOrdem.map(l => [
       // As datas no dia da unidade (F62b).
       dia(l.releasedAt, fuso), hora(l.releasedAt), nomes.get(l.professionalId) ?? '', unidades.get(l.branchId) ?? '', dia(l.scheduledAt, fuso),
       l.cliente ?? '', l.procedimento ?? '', origemDoLancamento(l),
-      reais(l.preco), l.preco == null ? '' : reais(l.baseDesconto),
+      // A17 da 25ª (princípio 3): os pontos e o voucher não são desconto — cada um na sua coluna.
+      reais(l.preco), l.preco == null ? '' : reais(l.baseDesconto - fidelidadeDaBase(l)),
+      l.preco == null ? '' : reais(fidelidadeDaBase(l)),
       l.preco == null || !l.descontaTaxa ? '' : reais(l.baseTaxa),
       l.preco == null || !l.descontaInsumos ? '' : reais(l.baseInsumos),
       l.preco == null || l.baseFator >= 1 ? '' : `${String(Math.round(l.baseFator * 10000) / 100).replace('.', ',')}%`,

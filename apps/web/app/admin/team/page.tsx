@@ -302,12 +302,18 @@ export default async function AdminTeamPage({
                     </td>
 
                     <td data-label="Cargo" className="so-desktop" style={{ padding: '14px 20px' }}>
+                      {/* A13 da 25ª: o "Atende em A e B" (nowrap) espremia as ações; os chips quebram a
+                          linha, e o selo, até duas linhas, com o texto inteiro no title (design.md). */}
+                      <div data-cargo-do-membro style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
                       <span className="chip chip-brand">{label}</span>
                       {selo(m) && (
-                        <span className="chip chip-success" style={{ marginLeft: 6 }} data-atende-em>
-                          {selo(m)}
+                        <span className="chip chip-success" data-atende-em title={selo(m) ?? undefined}>
+                          <span style={{ whiteSpace: 'normal', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', maxWidth: 200 }}>
+                            {selo(m)}
+                          </span>
                         </span>
                       )}
+                      </div>
                     </td>
 
                     <td data-label="Situação" data-par style={{ padding: '14px 20px' }}>

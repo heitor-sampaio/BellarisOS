@@ -44,6 +44,7 @@ import { ProcedimentosPagos } from '@/components/shared/procedimentos-pagos'
 import type { PrePagoDoCliente } from '@/lib/pre-pago/leitura'
 import { AcessosAoProntuario, type AcessoNaFicha } from '@/components/branch/acessos-ao-prontuario'
 import { ComandasAbertasDaFicha } from '@/components/shared/comandas-abertas-da-ficha'
+import type { PlanoNaoRecebido } from '@/lib/clientes/financeiro-da-ficha'
 import type { ListaAReceber } from '@/lib/metrics/a-receber'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { Dica } from '@/components/shared/dica'
@@ -64,6 +65,7 @@ import { AvisoDoPacoteEmAberto } from '@/components/shared/aviso-do-pacote-em-ab
 import type { PacoteVencidoDaFicha } from '@/lib/pacotes/regras'
 import { useFuso } from '@/components/shared/fuso'
 import { avisoDaAbaFechada } from '@/lib/clients/aba-fechada'
+import { unidadeNaFicha } from '@/lib/clientes/unidade-na-ficha'
 
 // -- Types --------------------------------------------------------------------
 
@@ -118,6 +120,8 @@ export interface ProfileAppointment {
   status:          string
   procedureName:   string
   professionalName: string
+  /** A15 da 25ª: a unidade do agendamento (`unidadeNaFicha`). */
+  branchId?:       string | null
 }
 
 export interface ProfilePackage {
@@ -342,6 +346,8 @@ interface Props {
   podeExportarProntuario?: boolean
   /** Os planos de tratamento (Agenda em Ver, a de `getPlanosDoCliente`); sem eles, o Planejamento é só injetáveis (D6). */
   podeVerPlanos?:        boolean
+  /** D12 da 25ª: o "Iniciar" das sessões do pacote e do plano — o Atendimento em Gerenciar. */
+  podeIniciarAtendimento?: boolean
   /** Cancelar o pacote, o plano e a unidade pré-paga (F2b, C36): `podeEstornar` — o Financeiro em Gerenciar, sem "só os meus". */
   podeCancelarPacote?:   boolean
   /** Item 9 da auditoria: o pacote vencido que a rede deixa cancelar (só com a regra ligada). */
@@ -388,6 +394,8 @@ interface Props {
   aReceber?:             ListaAReceber
   /** CX3: a comanda a que o "Receber no PDV" leva (numa unidade ao alcance). */
   comandaParaReceber?:   { comandaId: string | null; unidadeId: string; slug: string } | null
+  /** A2 da 25ª: os planos aceitos e ainda não recebidos (fora do "A receber"; a ficha diz). */
+  planosNaoRecebidos?:   PlanoNaoRecebido[]
   /** Quem recebe (`podeReceber`: o PDV ou o Financeiro em Gerenciar), a régua do PDV. */
   podeReceberAtendimento?: boolean
 }
@@ -1489,8 +1497,8 @@ export function ClientProfile({
   fidelidade, activePackage,
   transactions, internalCredits, documents, recordForms = [], lotesDosAtendimentos = {}, podeAbrirLote = false, anexosClinicosFora = 0, anexosClinicos = [], temModuloProntuario = false, anotacoesEVersoes = { anotacoes: {}, versoes: {} }, podeAnotar = false, pedidoLgpd = null, podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, alergias = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, portalNoPlano = false, veFinanceiro = false, isNetworkWide, unidadeDoPlano, unidadesDoPlano = [], perguntaAUnidade = false, clientHistory, opportunities = [], veOportunidades = true,
   planProcedures = [], planProducts = [], podeReceber = false, podeMontarPlano = false, termos = null,
-  prePagos = [], podeAgendar = false, podeCancelarPacote = false, pacoteVencido = null, quemDesfaz = null, pagoComCredito = 0, podeRemarcar = false, podeEstornar = false, podeReceberParcela = false, podeEditarCadastro = false, quemCompletaOCadastro: quemCompleta = null, podeExportarProntuario = false, podeVerPlanos = false,
-  aReceber = { itens: [], total: { n: 0, valor: 0 } }, comandaParaReceber = null, podeReceberAtendimento = false,
+  prePagos = [], podeAgendar = false, podeCancelarPacote = false, pacoteVencido = null, quemDesfaz = null, pagoComCredito = 0, podeRemarcar = false, podeEstornar = false, podeReceberParcela = false, podeEditarCadastro = false, quemCompletaOCadastro: quemCompleta = null, podeExportarProntuario = false, podeVerPlanos = false, podeIniciarAtendimento = false,
+  aReceber = { itens: [], total: { n: 0, valor: 0 } }, comandaParaReceber = null, planosNaoRecebidos = [], podeReceberAtendimento = false,
   totaisFinanceiros = { pago: 0, aReceber: 0, credito: null }, financeiroSoOsProprios = false,
 }: Props) {
   const router   = useRouter()
@@ -1638,6 +1646,7 @@ export function ClientProfile({
           onClose={() => setTreatmentModalOpen(false)}
           onCancelarPacote={pacoteCancelavel ? () => { setTreatmentModalOpen(false); setCancelandoPacote(true) } : undefined}
           onCancelarPlano={planoCancelavel ? () => { setTreatmentModalOpen(false); setCancelandoPacote(true) } : undefined}
+          podeIniciarAtendimento={podeIniciarAtendimento}
         />
       )}
       {cancelandoPacote && activePackage && (activePackage.planId
@@ -1862,7 +1871,7 @@ export function ClientProfile({
 
       {/* O atendido e ainda não pago é comanda aberta do PDV (CX3): sem lista
           à parte — o resumo e o caminho para a comanda. */}
-      <ComandasAbertasDaFicha total={aReceber.total} receber={comandaParaReceber} podeReceber={podeReceberAtendimento} />
+      <ComandasAbertasDaFicha total={aReceber.total} receber={comandaParaReceber} podeReceber={podeReceberAtendimento} planos={planosNaoRecebidos} />
 
       {/* A alergia em destaque, em toda aba, a quem vê o prontuário (A30 da 15ª: só o texto dela). */}
       <AlertaDeAlergia alergias={alergias ?? alergiasDaAnamnese(generalAnamnesis)} />
@@ -2039,6 +2048,8 @@ export function ClientProfile({
                       <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 2 }}>
                         {formatarNoFuso(a.scheduledAt, "EEE, dd MMM · HH:mm", fuso)}
                         {a.professionalName !== '—' && ` · ${a.professionalName}`}
+                        {/* A15 da 25ª (princípio 7): na rede de duas ou mais, ONDE. */}
+                        {unidadeNaFicha(a.branchId, branches) && <span data-unidade-do-agendamento>{` · ${unidadeNaFicha(a.branchId, branches)}`}</span>}
                       </p>
                     </div>
                     <span className={a.status === 'CONFIRMED' ? 'chip chip-success' : 'chip chip-brand'} style={{ fontSize: 'var(--text-overline)' }}>

@@ -7,7 +7,7 @@ import { SO_CONSULTA_CLIENTES } from '@/lib/clients/so-consulta'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { leadAoAlcance } from '@/lib/crm/alcance'
 import { conversaAoAlcance } from '@/lib/inbox/alcance'
-import { cpfValido, telefoneDoCadastro, telefoneInternacional } from '@estetica-os/utils'
+import { cpfValido, telefoneDoCadastro } from '@estetica-os/utils'
 import { after } from 'next/server'
 import { enviarEventoCapi } from '@/lib/ads/capi'
 import { emitirEventoDeCliente } from '@/lib/events/cliente'
@@ -655,7 +655,9 @@ export async function updateClientContactData(
     ...doc.colunas,
     ...resp.colunas,
     // O de outro país guarda o "+", como foi escrito: é por ele que se sabe que não é nacional.
-    phone:               telefoneInternacional(data.phone) ?? (data.phone?.replace(/\D/g, '') || null),
+    // A19 da 25ª: no formato único do cadastro (o nacional com a máscara, o de fora como foi escrito),
+    // como a ficha nova — só os dígitos não casavam o mesmo número com a conversa e o aviso de repetido.
+    phone:               telefoneDoCadastro(data.phone)?.gravar ?? null,
     email:               data.email?.trim() || null,
     birth_date:          data.birthDate || null,
     zip_code:            data.zipCode?.replace(/\D/g, '') || null,
@@ -728,8 +730,8 @@ export async function updateClientSelf(
   // cache da lista de clientes expirado.
   try {
     const r = await atualizarClienteCore(admin, { ...ctx, tenantId: ficha.tenant_id }, ctx.clientId, {
-      // O de outro país guarda o "+", como foi escrito (a regra da aba Dados).
-      phone:              telefoneInternacional(phone) ?? (phone?.replace(/\D/g, '') || null),
+      // O formato único do cadastro (A19 da 25ª), a regra da aba Dados: o de outro país guarda o "+".
+      phone:              telefoneDoCadastro(phone)?.gravar ?? null,
       email:              email?.toLowerCase() ?? null,
       zip_code:           texto('zip_code')?.replace(/\D/g, '') || null,
       address:            texto('address'),

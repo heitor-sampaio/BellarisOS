@@ -144,8 +144,9 @@ test('A20: com pacote do procedimento, o "Já pago" vem escolhido e avisa; o age
     const modal = p.getByRole('dialog', { name: 'Novo agendamento' })
     await expect(modal.getByText(`${PREFIXO} Bruna`)).toBeVisible()
     await modal.locator('#ag-procedimento').selectOption(rede!.procedureId)
-    await expect(modal.getByLabel('Usar o que já foi pago'), 'o crédito do procedimento vem escolhido').not.toHaveValue('')
-    await expect(modal.locator('[data-credito-pre-escolhido]')).toContainText('Já pago')
+    await expect(modal.getByLabel('Usar o que já está incluído'), 'o crédito do procedimento vem escolhido').not.toHaveValue('')
+    // A3 da 25ª: "Incluído", não "Já pago" (o crediário tem parcelas em aberto).
+    await expect(modal.locator('[data-credito-pre-escolhido]')).toContainText('Incluído no pacote')
     await modal.locator('#ag-profissional').selectOption(rede!.professionalId)
     await modal.locator('#ag-quando').fill(`${DIA4}T09:00`)
     await modal.getByRole('button', { name: 'Confirmar agendamento' }).click()

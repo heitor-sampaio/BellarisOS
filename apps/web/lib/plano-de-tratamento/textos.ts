@@ -1,3 +1,5 @@
+import { formatBRL } from '@estetica-os/utils'
+
 /**
  * Os textos do plano de tratamento que dependem de quem lê ou do atendimento
  * (F41, 9ª simulação). Puro: a tela e o teste usam o mesmo.
@@ -35,18 +37,58 @@ export function textoDoPlanoNaTela({ faltamAsDores }: { faltamAsDores: boolean }
  * Gerenciar (`podeReceber`, a régua da página do PDV): `quem` são os nomes
  * (`quemRecebeNoPdv`); nulo, quem lê já recebe.
  */
-export function rodapeDoPlanoFechado(aReceber: number, quem: string[] | null): string {
+export function rodapeDoPlanoFechado(
+  aReceber: number, quem: string[] | null,
+  /** D1 da 25ª: o plano ACEITO sem dinheiro nenhum ainda — não está "pago" (o Heitor, 18/11: "Uma coisa só foi vendida se foi paga."). */
+  opcoes: { naoRecebido?: boolean } = {},
+): string {
+  if (opcoes.naoRecebido) return 'Plano aceito e ainda não recebido: a comanda do plano está no PDV.'
   if (!(aReceber > 0)) return 'Plano fechado e pago.'
   const base = 'Plano fechado. O que falta (as parcelas em aberto) se recebe no PDV'
-  if (!quem) return `${base}.`
+  // A14 da 25ª: a transferência que caiu na conta tem baixa no Financeiro (CX2).
+  if (!quem) return `${base}. ${BAIXA_NO_FINANCEIRO}`
   return quem.length
-    ? `${base}, com quem tem o PDV ou o Financeiro em Gerenciar: ${quem.join(', ')}.`
-    : `${base}, com quem tem o PDV ou o Financeiro em Gerenciar.`
+    ? `${base}, com quem tem o PDV ou o Financeiro em Gerenciar: ${quem.join(', ')}. ${BAIXA_NO_FINANCEIRO}`
+    : `${base}, com quem tem o PDV ou o Financeiro em Gerenciar. ${BAIXA_NO_FINANCEIRO}`
+}
+
+/**
+ * A14 da 25ª (princípio 3): o que falta se recebe no PDV — e a transferência
+ * que caiu na conta tem baixa no Financeiro (CX2, aprovado pelo Heitor em
+ * 13/11; `podeDarBaixa`). As duas portas são regra.
+ */
+export const BAIXA_NO_FINANCEIRO = 'Se caiu na conta, a baixa é no Financeiro.'
+
+/**
+ * A2 da 25ª (princípio 3): o "A receber" da ficha é o que foi LANÇADO — o
+ * plano aceito e ainda não recebido não está nele (o aceite não lança
+ * dinheiro; o plano é venda quando é pago, o Heitor, 18/11: "Uma coisa só foi
+ * vendida se foi paga."). A ficha diz qual, quanto e onde se recebe.
+ */
+export function textoDoPlanoNaoRecebidoNaFicha(planos: { nome: string; valor: number }[]): string | null {
+  if (!planos.length) return null
+  const total = Math.round(planos.reduce((s, p) => s + p.valor, 0) * 100) / 100
+  return planos.length === 1
+    ? `Plano “${planos[0]!.nome}” aceito e ainda não recebido: ${formatBRL(total)}. Não entra no “A receber” até ser pago: a comanda do plano está no PDV.`
+    : `${planos.length} planos aceitos e ainda não recebidos: ${formatBRL(total)}. Não entram no “A receber” até serem pagos: as comandas dos planos estão no PDV.`
 }
 
 /** "2", "2 e 4", "2, 4 e 6". */
 function listaDeNumeros(ns: number[]): string {
   return ns.length > 1 ? `${ns.slice(0, -1).join(', ')} e ${ns[ns.length - 1]}` : String(ns[0] ?? '')
+}
+
+/**
+ * A1(b) da 25ª (princípios 3 e 7): a sessão sem procedimento não entra no
+ * plano — ia ao contrato e à conta das sessões valendo R$ 0, sem aviso. O
+ * salvar recusa e diz qual (a numeração é a da tela, a partir de 1).
+ */
+export function recusaDaSessaoVazia(sessions: { procedures: unknown[] }[]): string | null {
+  const vazias = sessions.map((s, i) => (s.procedures?.length ? 0 : i + 1)).filter(n => n > 0)
+  if (!vazias.length) return null
+  return vazias.length === 1
+    ? `A sessão ${vazias[0]} está sem procedimento: inclua um ou tire a sessão.`
+    : `As sessões ${listaDeNumeros(vazias)} estão sem procedimento: inclua um em cada ou tire-as.`
 }
 
 /**

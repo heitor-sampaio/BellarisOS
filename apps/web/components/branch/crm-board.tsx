@@ -10,6 +10,7 @@ import {
 import { toast } from 'sonner'
 import { idadeDoLead } from '@/lib/crm/idade-do-lead'
 import { updateLeadStage, automacoesAoMoverOCard } from '@/actions/leads'
+import { opcoesDeTagDoQuadro, temAlgumaTag } from '@/lib/crm/filtro-de-tags'
 import { usePerguntaDasAutomacoes } from './pergunta-das-automacoes'
 import { ClientForm } from './client-form'
 import { rotuloDaOportunidade, type CRMFunnel, type CRMStage } from '@/lib/crm'
@@ -78,10 +79,12 @@ function diaCurto(dia: string): string {
 }
 
 function FiltersBar({
-  leads, filters, sort, funnels, funnelId,
+  leads, filters, sort, funnels, funnelId, tagsDaRede = [],
   onFiltersChange, onSortChange, onClear,
 }: {
   leads:           Lead[]
+  /** As tags ativas da rede (D14 da 25ª): o filtro as oferece mesmo sem card com tag. */
+  tagsDaRede?:     string[]
   filters:         FiltersState
   sort:            SortOrder
   /** O funil entra na MESMA barra: escolher o quadro e filtrá-lo são o mesmo
@@ -97,10 +100,10 @@ function FiltersBar({
     [leads],
   )
 
-  // Tags que aparecem em pelo menos um lead
+  // D14 da 25ª: o vocabulário da rede, mais as tags dos cards que não estão nele (uma arquivada).
   const availableTags = useMemo(
-    () => [...new Set(leads.flatMap(l => l.tags ?? []))].sort((a, b) => a.localeCompare(b, 'pt-BR')),
-    [leads],
+    () => opcoesDeTagDoQuadro(tagsDaRede, leads.map(l => l.tags)),
+    [tagsDaRede, leads],
   )
 
   // Donos presentes na tela. "Sem dono" é uma opção de verdade: é o bolo comum,
@@ -456,8 +459,10 @@ interface CRMBoardProps {
   podeCadastrarCliente?: boolean
   /** "Agendar" no card (A16 da 6ª simulação): o CRM em Gerenciar e a agenda no plano. */
   podeAgendar?: boolean
-  /** Mover o card pelos botões (A18/A19 da 7ª): o CRM em Gerenciar. */
+  /** Mover o card pelos botões (A18/A19 da 7ª): o CRM em Gerenciar. Sem ele, o quadro só se lê (D13 da 25ª). */
   podeMover?: boolean
+  /** As tags ativas da rede, para o filtro de Tags (D14 da 25ª). */
+  tagsDaRede?: string[]
 }
 
 // --- Cores suaves a partir de hex --------------------------------
@@ -506,9 +511,11 @@ function MenuItem({
 function LeadCard({
   lead, slug, branchId, allStages, funnels, funnelId, procedures, branches, nowMs, podeCadastrarCliente = false,
   unidadesParaAgendar, isDragging, onDragStart, onDragEnd, onLeadDeleted, abrirAoMontar, onAbertoAoMontar,
-  desfechos, onMoverPara, perguntar,
+  desfechos, onMoverPara, perguntar, somenteLeitura = false,
 }: {
   lead:           Lead
+  /** Sem o CRM em Gerenciar (D13 da 25ª): o card abre para ler, não arrasta nem muda de funil. */
+  somenteLeitura?: boolean
   slug:           string
   branchId:       string
   allStages:      CRMStage[]
@@ -703,6 +710,7 @@ function LeadCard({
           retornar_em: lead.retornar_em ?? null, retornar_obs: lead.retornar_obs ?? null,
         }}
         agendar={unidadesParaAgendar ? { unidades: unidadesParaAgendar, clienteId: lead.client_id } : undefined}
+        somenteLeitura={somenteLeitura}
       />
 
       {/* Mover para outro funil */}
@@ -773,7 +781,7 @@ function LeadCard({
         className="crm-card"
         data-lead-id={lead.id}
         data-lead-card
-        draggable
+        draggable={!somenteLeitura}
         onDragStart={handleDragStartCard}
         onDragEnd={handleDragEndCard}
         onClick={handleCardClick}
@@ -807,7 +815,7 @@ function LeadCard({
             ocupando o topo do card. Excluir lead deixou de existir (2026-09-28):
             sem outro funil, não há menu.
           */}
-          {(outrosFunis.length > 0 || (desfechos && onMoverPara) || outrasEtapas.length > 0 || !!unidadesParaAgendar?.length) && (
+          {((outrosFunis.length > 0 && !somenteLeitura) || (desfechos && onMoverPara) || outrasEtapas.length > 0 || !!unidadesParaAgendar?.length) && (
           <div ref={menuRef} style={{ position: 'relative', flexShrink: 0 }}>
             {/* A43 da 24ª (design): só o ícone, ninguém sabia o que o "…" guardava. */}
             <button
@@ -877,7 +885,7 @@ function LeadCard({
                     Agendar
                   </MenuItem>
                 )}
-                {outrosFunis.length > 0 && (
+                {outrosFunis.length > 0 && !somenteLeitura && (
                 <MenuItem
                   icon={<ArrowRightLeft size={13} />}
                   onClick={() => { setMenuAberto(false); moveRef.current?.showModal() }}
@@ -1155,7 +1163,7 @@ const semRelogio = () => null
 export function CRMBoard({
   initialLeads, stages, allStages, funnels, funnelId,
   procedures, branchId, branchName, slug, networkMode, branches, leadAberto, motivos = [], podeCadastrarCliente = false,
-  podeAgendar = false, podeMover = false,
+  podeAgendar = false, podeMover = false, tagsDaRede = [],
 }: CRMBoardProps) {
   // O dia da criação no relógio da unidade (F62b).
   const fuso = useFuso()
@@ -1233,7 +1241,7 @@ export function CRMBoard({
       result = result.filter(l => l.source && filters.sources.includes(l.source))
 
     if (filters.tags.length > 0)
-      result = result.filter(l => (l.tags ?? []).some(t => filters.tags.includes(t)))
+      result = result.filter(l => temAlgumaTag(l.tags, filters.tags))
 
     if (filters.owners.length > 0)
       result = result.filter(l =>
@@ -1382,6 +1390,7 @@ export function CRMBoard({
         sort={sort}
         funnels={funnels}
         funnelId={funnelId}
+        tagsDaRede={tagsDaRede}
         onFiltersChange={setFilters}
         onSortChange={setSort}
         onClear={() => { setFilters(DEFAULT_FILTERS); setSort('newest') }}
@@ -1466,7 +1475,8 @@ export function CRMBoard({
                   {stageLeads.length}
                 </span>
               </div>
-              {!networkMode && (
+              {/* D13 da 25ª: o "+" da etapa pede o CRM em Gerenciar. */}
+              {!networkMode && podeMover && (
               <CRMLeadModal
                 branchId={branchId} slug={slug}
                 stages={allStages} funnels={funnels} funnelId={funnelId}
@@ -1510,8 +1520,9 @@ export function CRMBoard({
                   abrirAoMontar={leadPendente === lead.id}
                   onAbertoAoMontar={aoAbrirLeadDaUrl}
                   desfechos={desfechos}
-                  onMoverPara={(leadId, etapaId) => void moverPara(leadId, etapaId)}
+                  onMoverPara={podeMover ? (leadId, etapaId) => void moverPara(leadId, etapaId) : undefined}
                   perguntar={perguntar}
+                  somenteLeitura={!podeMover}
                 />
               ))}
 

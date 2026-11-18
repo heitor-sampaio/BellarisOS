@@ -566,7 +566,10 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   como pedir e os prazos; prova em `e2e/privacidade-publica.spec.ts`.) O aviso
   do pedido de exportação com prontuário chega também a quem tem o Prontuário
   em Gerenciar, e a aba LGPD abre para ela — é quem libera o prontuário
-  (`quemResponde`, `lib/lgpd/aviso-do-pedido.ts`). Fluxo: o cliente solicita
+  (`quemResponde`, `lib/lgpd/aviso-do-pedido.ts`). A aba LGPD está nos DOIS
+  portais (D8 da 25ª): quem tem só unidades abre a da unidade, o aviso e a
+  ficha a levam lá (`caminhoDaAbaLgpd`, `lib/lgpd/caminho-da-aba.ts`), e o
+  menu mostra Configurações a quem tem o Prontuário em Gerenciar. Fluxo: o cliente solicita
   em `/[slug]/cliente/perfil`, `actions/lgpd.ts` grava o pedido e processa em
   `after()` (não há fila no projeto) — e SÓ a action grava: até a F63 a
   política `lgpd_requests_insert` deixava a cliente gravar pela chave pública
@@ -930,7 +933,16 @@ oferece segue o módulo (clientes com `clients`, contatos com `crm`).
     nem a de antes, nos 90 dias; a "última visita" é a mais recente das duas,
     com "antes_do_sistema"), o público "sem retorno" das campanhas e a "Última
     visita" da lista de Clientes (decidido pelo princípio 3: o que a tela
-    mostra é o que vale na conta).
+    mostra é o que vale na conta). **A ficha só com a "Última visita" (sem
+    "Cliente desde") é cliente de antes** nas duas listas (D7 da 25ª, decisão
+    do Claude pelo princípio 3): o "é cliente antes do corte" é o mais antigo
+    entre o "cliente desde" (ou o cadastro) e a visita de antes — migration
+    `20261125000001`; prova: `e2e/importacao-migracao.spec.ts` ("D7").
+    **A prévia avisa quando falta a coluna "Cliente desde"** (A22 da 25ª,
+    princípio 3): "Sem uma coluna em “Cliente desde”, as fichas novas contam
+    como clientes novas a partir de hoje (em “Novos clientes” e no selo
+    “Novo”)." (`avisoSemClienteDesde`, `[data-sem-cliente-desde]`). Prova:
+    `tests/atritos-da-25-ficha-estoque-app.test.ts`.
   - **"Pacote de antes (procedimento; total; usadas)"** — e, opcionais, o valor
     de referência e a validade ("Limpeza de pele; 10; 7; 1500; 31/12/2027";
     mais de um com "|"; `lerPacotesDaPlanilha`): cria o pacote trazido de

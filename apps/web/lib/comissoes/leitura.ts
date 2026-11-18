@@ -285,6 +285,8 @@ export interface LancamentoDoExtrato {
    * preço até ela — D3 da 10ª: o extrato mostrava o preço onde dizia base.
    */
   base: number | null; baseDesconto: number; baseTaxa: number; baseInsumos: number; baseFator: number
+  /** A17 da 25ª: a parte de `baseDesconto` que foi de pontos e voucher (não é desconto). */
+  baseFidelidade?: number
   /**
    * Quando o lançamento foi pago (o dia do fechamento dele); nulo a pagar. A21
    * da 10ª: com o pagamento parcial, o extrato diz por lançamento o que foi pago
@@ -358,6 +360,7 @@ export async function extratoDasComissoes(r: Recorte): Promise<LancamentoDoExtra
     plano: (l.plano as string | null) ?? null,
     base: l.base == null ? null : Number(l.base),
     baseDesconto: Number(l.base_desconto ?? 0), baseTaxa: Number(l.base_taxa ?? 0), baseInsumos: Number(l.base_insumos ?? 0),
+    baseFidelidade: Number(l.base_fidelidade ?? 0),
     baseFator: l.base_fator == null ? 1 : Number(l.base_fator),
     pagoEm: l.status === 'PAID' && l.payout_id ? pagoEm.get(String(l.payout_id)) ?? null : null,
     regraDe: l.regra_de === 'ITEM' || l.regra_de === 'PESSOA' || l.regra_de === 'CLINICA' ? l.regra_de : null,

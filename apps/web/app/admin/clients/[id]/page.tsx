@@ -224,6 +224,8 @@ export default async function AdminClientProfilePage({
     status:           a.status,
     procedureName:    nomesDasSessoes.get(a.id as string) ?? (a.procedures as { name?: string } | null)?.name ?? '—',
     professionalName: (a.professional as { name?: string } | null)?.name ?? '—',
+    // A15 da 25ª: a unidade do agendamento (a ficha a diz na rede de duas ou mais).
+    branchId:         (a.branch_id as string | null) ?? null,
   }))
 
   const upcomingAppointments = allAppointments
@@ -342,7 +344,7 @@ export default async function AdminClientProfilePage({
   // receber — é UMA leitura (lib/clientes/financeiro-da-ficha.ts), com o "só os
   // próprios" do financeiro (D6, 2026-10-27).
   const financeiro = await financeiroDaFicha(ctx, id)
-  const { veFinanceiro, transactions, internalCredits, aReceber, comandaParaReceber } = financeiro
+  const { veFinanceiro, transactions, internalCredits, aReceber, comandaParaReceber, planosNaoRecebidos } = financeiro
 
   type RawDoc = { id: string; name: string; category: string; file_path: string; file_name: string; file_size: number | null; mime_type: string | null; uploaded_by: { name: string } | null; created_at: string; enviado_em: string | null; enviado_por_nome: string | null; momento: string | null; atendimento: { id: string; scheduled_at: string; procedures: { name: string } | null } | null }
   // Anexo clínico (exame, laudo…) é prontuário: sem o módulo, nem sai daqui.
@@ -557,6 +559,7 @@ export default async function AdminClientProfilePage({
         unidadesDoPlano={perguntaAUnidade ? unidadesAtivas.map(u => ({ id: u.id, name: u.name })) : []}
         aReceber={aReceber}
         comandaParaReceber={comandaParaReceber}
+        planosNaoRecebidos={planosNaoRecebidos}
         podeReceberAtendimento={podeReceber(ctx)}
         perguntaAUnidade={perguntaAUnidade}
         prePagos={prePagos}
@@ -566,6 +569,7 @@ export default async function AdminClientProfilePage({
         quemCompletaOCadastro={can(ctx, 'clients', 'MANAGE') ? null : await quemCompletaOCadastro(ctx.tenantId!, null)}
         podeExportarProntuario={can(ctx, 'medical_records', 'MANAGE')}
         podeVerPlanos={can(ctx, 'atendimento', 'VIEW')}
+        podeIniciarAtendimento={can(ctx, 'atendimento', 'MANAGE')}
       podeCancelarPacote={podeEstornar(ctx)}
       pacoteVencido={pacoteVencido}
         podeRemarcar={can(ctx, 'financial', 'MANAGE') && !isOwnScope(ctx, 'financial')}

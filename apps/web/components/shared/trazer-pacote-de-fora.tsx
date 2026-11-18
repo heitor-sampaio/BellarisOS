@@ -76,7 +76,7 @@ function JanelaTrazerPacote({ clientId, procedimentos, unidades, unidadeAtual, o
       })
       if (r.error) { setErro(r.error); return }
       envio.renovar()
-      toast.success('Pacote de antes registrado: as sessões restantes já se agendam como "Já pago".')
+      toast.success('Pacote de antes registrado: as sessões restantes já se agendam como “Incluído”.')
       onFechar()
       router.refresh()
     })

@@ -1318,8 +1318,9 @@ export function ScheduleModal({
 
           {creditos.length > 0 && (
             <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-              <span style={labelStyle}>Já pago</span>
-              <select className="field" aria-label="Usar o que já foi pago" value={creditoSel} style={selectStyle}
+              {/* A3 da 25ª: "Incluído", não "Já pago" (o crediário tem parcelas em aberto). */}
+              <span style={labelStyle}>Incluído</span>
+              <select className="field" aria-label="Usar o que já está incluído" value={creditoSel} style={selectStyle}
                 onChange={e => {
                   setCreditoSel(e.target.value)
                   const c = creditos.find(x => chaveDoCredito(x) === e.target.value)

@@ -81,7 +81,7 @@ test('quem tem Clientes em Gerenciar exporta pela ficha: o pedido é da equipe, 
     comunicacoes: { data: string; titulo: string }[]
   }
   expect(pacote.planosDeTratamento[0]).toMatchObject({ total: 50, sessoes: [{ numero: 1, procedimentos: [{ procedimento: nomeDoProc, valor: 50 }] }] })
-  expect(pacote.comunicacoes.find(c => c.titulo.includes(marca))?.data).toBe('2026-11-03T13:45:00+00:00')
+  expect(pacote.comunicacoes.find(c => c.titulo.includes(marca))?.data).toBe('2026-11-03T10:45:00-03:00') // A24 da 25ª: no fuso da rede, o mesmo instante
 })
 
 test('sem o Prontuário em Gerenciar não inclui o prontuário; quem só vê não exporta', async ({ browser }) => {

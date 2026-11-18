@@ -38,6 +38,11 @@ export async function oQueFaltaParaSeguir(admin: Admin, o: {
   semInjetaveis:  boolean
   anamneseNaTela: AnamneseGeral | null
   fichaNaTela:    Record<string, unknown> | null
+  /**
+   * A8 da 25ª (princípio 7): a quem não tem o Prontuário em Gerenciar, quem
+   * responde a ficha de saúde (`aQuemPedirAFichaDeSaude`) — só na falta dela.
+   */
+  aQuemPedirAFicha?: () => Promise<string>
 }): Promise<string | null> {
   if (o.clientId) {
     const fichaAtual = await fichaDePreAtendimento(admin, o.tenantId)
@@ -48,7 +53,7 @@ export async function oQueFaltaParaSeguir(admin: Admin, o: {
       respostas = paraAnamneseGeral(mr?.general_anamnesis ?? null, fichaAtual)?.respostas ?? {}
     }
     const falta = faltaNaAnamnese(fichaAtual.rows, respostas)
-    if (falta) return falta.mensagem
+    if (falta) return o.aQuemPedirAFicha ? `${falta.mensagem} ${await o.aQuemPedirAFicha()}` : falta.mensagem
   }
 
   if (o.procedureId) {

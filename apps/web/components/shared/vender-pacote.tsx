@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { toast } from 'sonner'
 import { avisoDaVenda } from '@/lib/vendas/aviso-da-venda'
-import { avisoDosDocumentosDaVenda, avisoDoContratoAntesDeVender } from '@/lib/documentos/aviso-da-venda'
+import { avisoDosDocumentosDaVenda, avisoDoContratoAntesDeVender, avisoDoJaAssinou } from '@/lib/documentos/aviso-da-venda'
 import { formatBRL } from '@estetica-os/utils'
 import { venderPacote, type DocumentoDaVenda } from '@/actions/pacotes'
 import { documentoParaAssinar } from '@/actions/documentos'
@@ -137,7 +137,13 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
       if (r.confirmarSemResponsavel) { setPergunta({ texto: r.confirmarSemResponsavel, sem: 'RESPONSAVEL' }); return }
       if (r.confirmarSubstituirContrato) { setPergunta({ texto: r.confirmarSubstituirContrato, sem: 'CONTRATO' }); return }
       // PC2: nada se gravou — o contrato primeiro, depois o pagamento.
-      if (r.contratoParaAssinar) { setPergunta(null); setContratoAssinado(false); setContrato(r.contratoParaAssinar); return }
+      if (r.contratoParaAssinar) {
+        // A5(b) da 25ª: o "Já assinou: vender" sem a assinatura diz por que não vendeu.
+        const aviso = avisoDoJaAssinou(contrato?.id ?? null, r.contratoParaAssinar)
+        setPergunta(null); setContratoAssinado(false); setContrato(r.contratoParaAssinar)
+        if (aviso) setErro(aviso)
+        return
+      }
       if (r.error) { setErro(r.error); return }
       envio.renovar()
       router.refresh()

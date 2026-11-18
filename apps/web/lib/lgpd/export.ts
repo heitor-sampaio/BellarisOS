@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { formatDia } from '@estetica-os/utils'
 import { dataDeClienteDesde } from '@/lib/clientes/cliente-desde'
 import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
+import { isoNoFuso } from '@/lib/datetime'
 import { textoDoProntuarioForaDoPacote, prontuarioNaSolicitacao, type SituacaoDoProntuario } from '@/lib/lgpd/situacao-do-prontuario'
 import { buildPdf, type PdfSection } from '@/lib/pdf'
 import { ensurePrivateBucket, DOCUMENTOS_ASSINADOS_BUCKET } from '@/lib/storage'
@@ -64,15 +65,18 @@ const SITUACAO_DO_PLANO: Record<string, string> = {
  * A rede de segurança do JSON do titular (J-65): tira o que é id (`id`,
  * `…_id`, `…Id`) e troca o nome de coluna (`snake_case`) por camelCase, em
  * qualquer nível — o conteúdo do prontuário e da ficha vem do banco como foi
- * gravado.
+ * gravado. Com o fuso, o instante em ISO vira 'dd/mm/aaaa hh:mm' no fuso da
+ * rede (A24 da 25ª: o titular lia "2026-11-18T17:30:00.000Z"); a data sem
+ * hora (o nascimento) fica como está.
  */
-export function paraOTitular(v: unknown): unknown {
-  if (Array.isArray(v)) return v.map(paraOTitular)
+export function paraOTitular(v: unknown, fuso?: string): unknown {
+  if (Array.isArray(v)) return v.map(x => paraOTitular(x, fuso))
+  if (typeof v === 'string') return fuso ? (isoNoFuso(v, fuso) ?? v) : v
   if (!v || typeof v !== 'object') return v
   const saida: Record<string, unknown> = {}
   for (const [k, x] of Object.entries(v as Record<string, unknown>)) {
     if (k === 'id' || /_id$/.test(k) || /[a-z]Id$/.test(k)) continue
-    saida[k.replace(/_([a-z0-9])/g, (_, c: string) => c.toUpperCase())] = paraOTitular(x)
+    saida[k.replace(/_([a-z0-9])/g, (_, c: string) => c.toUpperCase())] = paraOTitular(x, fuso)
   }
   return saida
 }
@@ -433,7 +437,7 @@ export async function buildClientExport(
     fichasDeSaude,
     comunicacoes: (notifications ?? []).map(n => ({ data: n.created_at, titulo: n.title, mensagem: n.body, lida: Boolean(n.is_read) })),
     prontuario:   includeMedical ? prontuarioLegivel(medical) : foraDoPacote.json,
-  }) as Json
+  }, fuso) as Json
 
   // ─── PDF (leitura) ─────────────────────────────────────────────────────────
   const sections: PdfSection[] = [

@@ -2,7 +2,7 @@ import { getTenantContext, assertPermission, can, temRecurso } from '@/lib/auth'
 import { listarAutomacoes } from '@/actions/automacoes'
 import { redeTemWhatsapp } from '@/lib/automacoes/canal-da-rede'
 import { ListaDeAutomacoes } from '@/components/admin/automacoes/lista'
-import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
+import { CONFIG_DA_REDE, mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 
 /**
@@ -34,6 +34,9 @@ export default async function AutomacoesPage() {
         automacoes={automacoes}
         // Só a Admin da rede (18/11), e nunca na sessão de suporte (ela só pausa, no editor).
         podeEditar={can(ctx, 'automations', 'MANAGE') && mexeNaConfigDaRede(ctx) && !ctx.suporte}
+        // A-CONF3 da 25ª (princípio 3): quem tem as Automações em Gerenciar e não é a Admin da rede lê
+        // por que não cria — como nas campanhas.
+        avisoDaRede={can(ctx, 'automations', 'MANAGE') && !mexeNaConfigDaRede(ctx) ? CONFIG_DA_REDE : null}
         erro={error}
         whatsappConectado={whatsappConectado}
         veCampanhas={temRecurso(ctx, 'campanhas') && can(ctx, 'marketing', 'VIEW')}

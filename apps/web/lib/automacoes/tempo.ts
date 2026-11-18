@@ -183,7 +183,8 @@ export function filtrosDaBusca(cfg: ConfigBuscarClientes, fuso?: string, agora =
     sem_retorno_desde: corte,
     // E quem chegou depois do corte também (C53, F69): "sem visita há 60 dias"
     // não é a cliente que se cadastrou anteontem — o "Sentimos sua falta" ia a
-    // quem acabou de chegar. Cliente desde = a data informada, senão o cadastro.
+    // quem acabou de chegar. Cliente desde = a data informada, senão o cadastro
+    // — ou a última visita de antes, se for mais antiga (D7 da 25ª).
     cliente_desde_antes: corte,
     pacote_vence_de:  vence ? startOfDayTZ(vence, fuso).toISOString() : undefined,
     pacote_vence_ate: vence ? endOfDayTZ(vence, fuso).toISOString() : undefined,

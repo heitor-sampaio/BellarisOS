@@ -20,7 +20,7 @@ import {
   getCachedBranchProfessionals, getCachedRoomsByBranch, filtroDeQuemAtendeNaUnidade, getCachedNetworkBranches,
 } from '@/lib/cached-queries'
 import { MeusAtendimentosEmOutrasUnidades } from '@/components/branch/meus-de-outras-unidades'
-import { quemConcluiOAtendimento } from '@/lib/equipe/quem-desfaz'
+import { quemConcluiOAtendimento, idsQueConcluemOsProprios } from '@/lib/equipe/quem-desfaz'
 
 export default async function AgendaPage({ params, searchParams }: {
   params: Promise<{ slug: string }>
@@ -322,6 +322,8 @@ export default async function AgendaPage({ params, searchParams }: {
         atendimentoProprio={isOwnScope(ctx, 'atendimento')}
         // A9 da 20ª: sem iniciar e concluir (o Atendimento em Gerenciar, de todos), a janela diz quem conclui.
         quemConclui={can(ctx, 'atendimento', 'MANAGE') && !isOwnScope(ctx, 'atendimento') ? null : await quemConcluiOAtendimento(ctx.tenantId!, branchId)}
+        // A9 da 25ª: a profissional do agendamento que conclui os próprios entra em "quem conclui".
+        concluemOsProprios={can(ctx, 'atendimento', 'MANAGE') && !isOwnScope(ctx, 'atendimento') ? null : await idsQueConcluemOsProprios(ctx.tenantId!)}
         dataInicial={dataInicial}
         comCancelados={comCancelados}
         bloqueios={bloqueios}

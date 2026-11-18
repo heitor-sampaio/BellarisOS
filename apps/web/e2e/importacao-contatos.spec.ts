@@ -383,13 +383,15 @@ test('as importações moram em Configurações: os botões de Clientes e de Opo
     await p.goto('/admin/importar-contatos')
     await expect(p).toHaveURL(/\/admin\/settings\?tab=importacoes/)
   })
-  // Quem só tem o CRM chega pelo menu: Configurações, só com a aba dele.
+  // As Importações são configuração da rede, só da Admin (o Heitor, 18/11). Quem só
+  // tem o CRM não acha no menu um caminho que só leva à recusa (A-CONF1 da 25ª); a
+  // recusa da aba e da action está no teste do CRM sozinho, acima.
   await como(browser, soCrm, async p => {
     await p.goto('/admin/dashboard')
-    await expect(p.getByRole('navigation').getByText('Tags e importações', { exact: true })).toBeVisible()
-    await p.goto('/admin/settings')
-    await expect(p.getByRole('link', { name: 'Importações', exact: true })).toBeVisible()
-    await expect(p.getByRole('link', { name: 'Integrações', exact: true })).toHaveCount(0)
+    // Controle: o menu está na tela, com o que o CRM abre.
+    await expect(p.getByRole('navigation').getByText('Oportunidades', { exact: true }).first()).toBeVisible()
+    await expect(p.getByRole('navigation').getByText('Configurações', { exact: true })).toHaveCount(0)
+    await expect(p.getByRole('navigation').getByText('Tags e importações', { exact: true })).toHaveCount(0)
   })
 })
 

@@ -191,6 +191,33 @@ test('o servidor recusa o "Finalizar" sem a obrigatória — a trava não é só
   })
 })
 
+// A8 da 25ª (princípio 7; atendimento.md, "Quem não vê o clínico"): quem
+// conclui sem o Prontuário para na obrigatória da ficha de saúde — a regra
+// fica —, e a recusa diz QUEM a responde (o Prontuário em Gerenciar, ou a cliente).
+test('A8: sem o Prontuário, a recusa pela ficha de saúde diz quem a responde', async ({ browser }) => {
+  const soAtende = await criarMembro(`oba${marca}`, {
+    tenant: rede!.tenantId, branchId: rede!.branchId, rotulo: 'Só o atendimento',
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'atendimento', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }],
+  })
+  try {
+    const { id } = await atendimentoEmCurso('Sem prontuario')
+    const ctx = await browser.newContext({ storageState: soAtende.estado })
+    try {
+      const p = await ctx.newPage()
+      const rota = `/${slug}/agenda/${id}`
+      const r = await chamarAcaoComFormulario(p, 'actions/appointments.ts', 'finishSession', rota, [null],
+        { appointment_id: id, slug, products_used: '[]', notes: '', intercurrences: '' })
+      expect(r.texto, 'a recusa diz o que falta').toContain('na ficha de saúde.')
+      expect(r.texto, 'e quem responde').toContain('Quem responde a ficha de saúde é quem tem o Prontuário em Gerenciar (')
+      expect(await status(id)).toBe('IN_PROGRESS')
+    } finally {
+      await ctx.close()
+    }
+  } finally {
+    await soAtende.limpar()
+  }
+})
+
 test('a anamnese que a cliente respondeu pelo app vale: só a ficha do procedimento falta', async ({ browser }) => {
   const { id, cliente } = await atendimentoEmCurso('PeloApp')
   await responderAnamnese(cliente, rede!.tenantId)

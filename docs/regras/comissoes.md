@@ -177,6 +177,17 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   maquininha, Insumos, Proporção que ficou e Base. No valor fixo, a base é o
   preço sem os pontos e o voucher. Prova: `e2e/comissoes-atritos-da-10.spec.ts`,
   `tests/comissoes-base-efetiva.test.ts`.
+  **Os pontos e o voucher não se chamam "desconto" na base** (A17 da 25ª;
+  decisão do Claude pelo princípio 3 — vendas-financeiro.md: os pontos e o voucher "não é desconto"): com
+  "Sobre o valor pago", a base saía "R$ 200,00 − R$ 40,00 de desconto" quando
+  os R$ 40 eram pontos. A conta (`comissao_conta_detalhe`,
+  `comissao_base_do_pagamento`) devolve também `base_fidelidade`, a parte de
+  `base_desconto` que foi de pontos e voucher (`base_desconto` segue o total
+  que saiu antes da taxa: nenhuma conta mudou), e o extrato
+  (`comissoes_extrato_com_regra`) a leva; a tela diz "R$ 20,00 de desconto −
+  R$ 20,00 de pontos e voucher", e o CSV tem a coluna "Pontos e voucher que
+  saíram da base" ao lado da do desconto. Migration `20261124900003`. Prova:
+  `tests/comissao-base-pontos-e-voucher-da-25.test.ts`.
   **Cada lançamento com a base DA HORA DELE** (D7 da 11ª simulação,
   2026-11-10; princípio 3): depois do cancelamento do pacote de R$ 1.100
   (ficaram R$ 110), a liberação de R$ 33,00 — lançada com o pacote inteiro —
@@ -223,7 +234,8 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   de vezes, sem bandeira), o "+ Adicionar maquininha" abre ESSA, com o nome
   vazio, em vez de criar uma segunda (`vaziaDeFabrica`,
   `lib/financeiro/maquininha-de-fabrica.ts`). No CSV do extrato, a coluna é
-  "Desconto que saiu da base" (A20 da 23ª).
+  "Desconto que saiu da base" (A20 da 23ª), e os pontos e o voucher têm a
+  coluna deles, "Pontos e voucher que saíram da base" (A17 da 25ª).
 - **A comissão da VENDA DE PRODUTO** (D4, decisão do Heitor, 2026-10-29: "é
   configurável pela clínica"; migration `20261029001306`): Configurações →
   Comissões → "Venda de produto", `commission_configs.produto_pct` (vazio = sem
@@ -462,7 +474,8 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   - **O "De venda" do pacote diz que vence** (A5 da 12ª simulação,
     2026-11-11; princípio 3: o pacote com 5% não dizia que valia no lugar do
     3% da Paula e do 8% da Rita): "Vale no lugar da comissão de venda de cada
-    pessoa (Equipe → Comissão)", e o "Nenhuma" diz "Sem regra no pacote, vale
+    pessoa (Equipe → Comissão)", e o "A de quem vendeu" (era "Nenhuma" até a A4
+    da 25ª; o resumo da lista diz "Venda: a de quem vendeu") diz "Sem regra no pacote, vale
     a comissão de venda de quem vendeu…" — dizia "Quem vende o pacote não
     recebe comissão", falso desde a A17 (`[data-ajuda-da-venda]`). Prova:
     `e2e/configuracoes-atritos-da-12.spec.ts` ("A5").

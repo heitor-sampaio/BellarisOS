@@ -183,10 +183,16 @@ comanda (PDV-P1).
     cancelado (ou recusado) leva a comanda que não foi paga.
   - A comanda do plano está "Paga" quando o receber lançou o dinheiro (à
     vista ou no crediário, como a venda), na hora do primeiro lançamento.
-  - **O plano é venda quando é RECEBIDO** (`metrics_vendas`, decisão pelos
-    princípios 3 e 5, 2026-11-13): a data da venda do plano é a do primeiro
-    lançamento de receita, não a do aceite — o aceito que nunca se recebeu não
-    vendeu nada. Plano antigo aceito sem lançamento algum sai do relatório.
+  - **O plano é venda quando é PAGO** (`metrics_vendas`; o Heitor, 18/11:
+    "Obviamente que no recebimento. Uma coisa só foi vendida se foi paga."):
+    a data da venda do plano é a do primeiro recebimento PAGO dele (o
+    lançamento de receita do plano pago, que não é estorno nem estornado, no
+    dia do pagamento), não a do aceite — o aceito que nunca se pagou não
+    vendeu nada. Até a 25ª simulação contava o primeiro lançamento, pago ou
+    não: no crediário, a parcela em aberto já fazia a venda (a leitura do
+    pago, a mesma do "Comprou" do CRM, é do Claude — migration
+    `20261124900002`). Plano antigo aceito sem recebimento pago sai do
+    relatório.
   - A rota antiga `/checkout/<plano>` leva aonde a coisa mora: proposto → o
     plano; aceito → a comanda dele no PDV.
 - **O Fechamento do dia mora no PDV** (CX4, fase 4, 2026-11-14): "Fechar o
@@ -1058,13 +1064,14 @@ o procedimento avulso pago antes.
     `agendarUnidadePrePaga`), o modal da agenda e o do inbox (campo "Já
     pago", `creditosParaAgendar`), e o "Agendar agora" depois de vender um
     procedimento (quem tem `agenda: MANAGE`).
-  - **No modal da agenda, o "Já pago" vem ESCOLHIDO quando o procedimento
+  - **No modal da agenda, o "Incluído" (era "Já pago" até a A3 da 25ª: o
+    crediário tem parcelas em aberto) vem ESCOLHIDO quando o procedimento
     bate** (A20 da 8ª simulação, 2026-11-06; decidido pelo princípio 3): a
     Bruna saiu avulsa a R$ 180 com a sessão do pacote livre ("Não usar —
     cobrar no atendimento" era o padrão). Escolhido o procedimento, o crédito
-    dele (o mais antigo) vem escolhido, com o aviso "Já pago: Pacote X
-    (sessão 2 de 3) — escolhido porque o procedimento é o mesmo. Para cobrar
-    à parte, escolha “Não usar”." (`[data-credito-pre-escolhido]`). Como o
+    dele (o mais antigo) vem escolhido, com o aviso "Incluído no pacote X
+    (sessão 2 de 3). Para cobrar à parte, escolha “Não usar”." (o porquê na
+    dica: "Escolhido porque o procedimento é o mesmo.") (`[data-credito-pre-escolhido]`). Como o
     app (que já usava o pacote sozinho).
   - **O avulso já marcado se liga depois** (A20): a janela do agendamento EM
     ABERTO, avulso (sem plano, sem crédito ligado, sem lançamento vivo), de
@@ -1095,8 +1102,9 @@ o procedimento avulso pago antes.
   e não agendada, por quem tem o **Financeiro em Gerenciar** (C36 da F67: era
   de quem recebe, e o caixa devolvia dinheiro por ali; como cancelar o pacote)
   sem "só os meus", e com a unidade ao alcance:
-  "Cancelar" no card "Procedimentos pagos" abre a janela "Cancelar unidade"
-  (`CancelarUnidadePrePaga`), com a conta que o BANCO fez
+  "Cancelar" no card "Procedimentos pagos" abre a janela "Cancelar sessão"
+  (`CancelarUnidadePrePaga`; na tela é "sessão" — A6 da 25ª: "unidade" é a
+  unidade da rede), com a conta que o BANCO fez
   (`procedimento_cancelar_unidade_devolvendo` com `p_simular`,
   `previaDoCancelamentoDaUnidade`): a venda passa a valer o vendido menos as
   unidades canceladas; o a receber que passa disso cai ANTES (a parcela
@@ -1105,7 +1113,9 @@ o procedimento avulso pago antes.
   parte, estorno parcial ou o pagamento inteiro estornado e o que fica lançado
   de novo, na forma escolhida — no CARTÃO só o inteiro, e os recebíveis da
   operadora dele caem pelo gatilho) ou CRÉDITO INTERNO (`internal_credits`,
-  "Cancelamento da unidade 2 de Peeling"; o dinheiro e os pontos ficam). A
+  "Cancelamento da sessão 2 de Peeling" — A6 da 25ª, migration
+  `20261124900004`: as recusas, o motivo do estorno e o acerto da comissão
+  também dizem "sessão"; "unidade" é a da rede; o dinheiro e os pontos ficam). A
   escolha é o mesmo componente do pacote (`EscolhaDaDevolucao`). Os pontos
   seguem o estorno; a comissão das unidades usadas se acerta pela venda que
   ficou. Confirmar manda o "a devolver" que a janela mostrou (`p_esperado`); o
@@ -1226,7 +1236,7 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   `20261106003801`) — o que volta (a parte de cada item no vendido, com o
   desconto rateado pela tabela, como a comissão por produto), o que a venda
   passa a valer, o a receber que cai antes e o que volta. O dinheiro é o fluxo
-  do cancelamento da unidade do pré-pago: o a receber que passa do novo valor
+  do cancelamento da sessão do pré-pago: o a receber que passa do novo valor
   cai antes; o pago além dele volta como quem cancela escolher — ESTORNO (o
   "Estorno parcial" na mesma forma, ou, no CARTÃO, o pagamento inteiro
   estornado e o que fica lançado de novo, r2-fin-03) ou CRÉDITO INTERNO. O

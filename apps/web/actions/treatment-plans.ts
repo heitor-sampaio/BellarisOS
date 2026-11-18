@@ -16,6 +16,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, tentar, contar, mensagemDoErro, lerTodas } from '@/lib/db'
 import { montarCheckoutPlan } from '@/lib/checkout/plano-para-checkout'
 import { unidadesDosInsumos, procedimentosParaPlano } from '@/lib/checkout/procedimentos-do-plano'
+import { sessoesDoPlanoParaCheckout } from '@/lib/checkout/sessoes-do-plano'
 import { recusaDosProcedimentosDoPlano } from '@/lib/procedimentos/disponivel-na-unidade'
 import { planoCasaComBusca } from '@/lib/busca/cliente'
 import { emAbertoDoPlano } from '@/lib/checkout/em-aberto-do-plano'
@@ -38,7 +39,9 @@ import { quemDesfazNoCaixa, quemRecebeNoPdv } from '@/lib/equipe/quem-desfaz'
 import { retratoDoCancelamento, type RetratoDoCancelamento } from '@/lib/plano-de-tratamento/retrato-do-cancelamento'
 import { montaPlano, RECUSA_QUEM_MONTA, RECUSA_QUEM_ATENDE } from '@/lib/plano-de-tratamento/quem-monta'
 import { recusaDoDesconto } from '@/lib/vendas/desconto'
-import { combinadoDoPlano } from '@/lib/plano-de-tratamento/desconto-combinado'
+import { combinadoDoPlano, totalDoPlanoNaLista } from '@/lib/plano-de-tratamento/desconto-combinado'
+import { recusaDaSessaoVazia } from '@/lib/plano-de-tratamento/textos'
+import { planoFechado, RECUSA_DO_PLANO_FECHADO } from '@/lib/plano-de-tratamento/fechado'
 import { situacoesDosPlanos, andamentoDosPlanos, type DocumentosDoPlano, type SituacaoDoContrato } from '@/lib/plano-de-tratamento/andamento-do-plano'
 import { SITUACOES_COMERCIAIS, situacaoComercialDoPlano, type SituacaoComercial } from '@/lib/plano-de-tratamento/situacao'
 
@@ -186,8 +189,8 @@ export interface PlanSessionForCheckout {
  * Regrava as sessões de um plano.
  *
  * Só com o procedimento que a unidade DO PLANO faz (D4 da 14ª, F73): o editor
- * já lista só esses, e a conferência mora aqui — antes de apagar as sessões
- * antigas —, porque toda gravação de sessões de plano passa por esta função
+ * já lista só esses, e a conferência mora aqui — antes de `plano_gravar_sessoes`
+ * apagar as antigas —, porque toda gravação de sessões de plano passa por esta função
  * (a da avaliação, `gerar_plano_da_avaliacao`, confere antes do rpc).
  *
  * ⚠️ Não é export: todo export de arquivo `'use server'` vira endpoint público,
@@ -195,42 +198,53 @@ export interface PlanSessionForCheckout {
  */
 async function gravarSessoes(
   admin: ReturnType<typeof createAdminClient>,
-  planId: string,
+  /** Nulo: o rascunho do plano da avaliação (`cabecalho.avaliacao`), criado ou reaberto pela função. */
+  planId: string | null,
   sessions: PlanSessionInput[],
   plano: { tenantId: string; unidadeId: string },
-): Promise<{ error?: string }> {
+  /**
+   * O cabeçalho vai na MESMA transação (A20d da 25ª): `notas` e `combinado` só
+   * quando mudam (sem a chave, o gravado fica); `avaliacao` e `profissional` no rascunho.
+   */
+  cabecalho: {
+    avaliacao?: string
+    profissional?: string | null
+    notas?: string | null
+    combinado?: Record<string, unknown>
+  } = {},
+): Promise<{ planId?: string; error?: string }> {
+  // A1(b) da 25ª: a sessão vazia não se grava (quem chama já recusou antes).
+  const vazia = recusaDaSessaoVazia(sessions)
+  if (vazia) return { error: vazia }
   const naoFeito = await recusaDosProcedimentosDoPlano(admin, plano.tenantId, plano.unidadeId,
     sessions.flatMap(s => s.procedures.map(p => p.procedureId)))
   if (naoFeito) return { error: naoFeito }
 
-  // Apaga as antigas (cascade leva os procedimentos junto)
-  await gravar(admin.from('treatment_plan_sessions').delete().eq('plan_id', planId), 'limpar as sessões do plano')
-
-  for (let i = 0; i < sessions.length; i++) {
-    const sess = sessions[i]!
-    const { data: newSess, error: sessErr } = await admin
-      .from('treatment_plan_sessions')
-      .insert({ plan_id: planId, sort_order: i })
-      .select('id')
-      .single()
-    if (sessErr || !newSess) return { error: `Erro ao salvar sessão ${i + 1}: ${sessErr?.message}` }
-
-    if (sess.procedures.length > 0) {
-      const { error } = await admin.from('treatment_plan_session_procedures').insert(
-        sess.procedures.map((p, j) => ({
-          session_id:   newSess.id,
-          procedure_id: p.procedureId,
-          price:        p.price,
-          sort_order:   p.sortOrder ?? j,
-          products:     (p.products ?? []).map(pr => ({
-            product_id: pr.productId, name: pr.name, unit: pr.unit, quantity: pr.quantity,
-          })),
+  // A20d da 25ª (CLAUDE.md §14): apagar as antigas e inserir as novas vale junto. Eram chamadas
+  // separadas — a que falhasse no meio deixava o plano sem sessões. O app monta; a função grava
+  // numa transação só, conferindo de novo a rede, o plano fechado e os procedimentos
+  // (migration 20261124950001). O cabeçalho do plano vai junto, com o plano travado.
+  const { data, error } = await admin.rpc('plano_gravar_sessoes', {
+    p_tenant:    plano.tenantId,
+    p_plano:     planId,
+    p_cabecalho: cabecalho,
+    p_sessoes: sessions.map(s => ({
+      procedimentos: s.procedures.map((p, j) => ({
+        procedure_id: p.procedureId,
+        price:        p.price,
+        sort_order:   p.sortOrder ?? j,
+        products:     (p.products ?? []).map(pr => ({
+          product_id: pr.productId, name: pr.name, unit: pr.unit, quantity: pr.quantity,
         })),
-      )
-      if (error) return { error: `Erro ao salvar os procedimentos da sessão ${i + 1}: ${error.message}` }
-    }
+      })),
+    })),
+  })
+  if (error) {
+    // A recusa da função (o plano fechado, por exemplo) chega como está.
+    return { error: /fechado|não encontrad/.test(error.message) ? error.message : `Erro ao salvar o plano: ${error.message}` }
   }
-  return {}
+  if (!data) return { error: 'Não foi possível salvar o plano.' }
+  return { planId: data as string }
 }
 
 /**
@@ -351,6 +365,9 @@ async function saveTreatmentPlanInterno(
   assertRecurso(ctx, 'planos_de_tratamento')
   assertPermission(ctx, 'atendimento', 'VIEW')
   const admin = createAdminClient()
+  // A1(b) da 25ª: a sessão sem procedimento não entra no plano.
+  const vazia = recusaDaSessaoVazia(sessions)
+  if (vazia) return { error: vazia }
 
   // Agendamento de outra rede responde como inexistente — senão o plano
   // nasceria no cliente e na unidade de lá.
@@ -362,30 +379,31 @@ async function saveTreatmentPlanInterno(
   const combinado = colunasDoCombinado(desconto, sessions, ctx.internalUserId ?? null)
   if (combinado && 'error' in combinado) return combinado
 
-  const { data: plan, error: planErr } = await admin
+  // A20d da 25ª: o plano fechado (aceito, concluído, cancelado, recusado) não volta a rascunho.
+  // O upsert punha DRAFT sem olhar o status; a recusa vem antes de qualquer gravação (e a
+  // função confere de novo, com o plano travado).
+  const existente = await ler(admin
     .from('treatment_plans')
-    .upsert({
-      evaluation_appointment_id: appointmentId,
-      client_id:                 appt.client_id,
-      branch_id:                 appt.branch_id,
-      professional_id:           ctx.internalUserId!,
-      // A anotação é prontuário: sem ele, a que existe fica (PT2).
-      ...(anota ? { professional_notes: notes } : {}),
-      ...(combinado ? combinado.colunas : {}),
-      status:                    'DRAFT',
-      updated_at:                new Date().toISOString(),
-    }, { onConflict: 'evaluation_appointment_id' })
-    .select('id')
-    .single()
-  if (planErr || !plan) return { error: `Erro ao salvar plano: ${planErr?.message}` }
+    .select('status')
+    .eq('evaluation_appointment_id', appointmentId)
+    .maybeSingle(), 'buscar o plano da avaliação')
+  if (planoFechado(existente?.status as string | undefined)) return { error: RECUSA_DO_PLANO_FECHADO }
 
-  const res = await gravarSessoes(admin, plan.id as string, sessions, { tenantId: ctx.tenantId!, unidadeId: appt.branch_id as string })
-  if (res.error) return res
+  // O cabeçalho (cliente e unidade do agendamento, quem monta, a anotação, o desconto) e as
+  // sessões numa transação só (§14). A anotação é prontuário: sem ele, a que existe fica (PT2).
+  const cabecalho = {
+    avaliacao:    appointmentId,
+    profissional: ctx.internalUserId ?? null,
+    ...(anota ? { notas: notes } : {}),
+    ...(combinado ? { combinado: combinado.colunas } : {}),
+  }
+  const res = await gravarSessoes(admin, null, sessions, { tenantId: ctx.tenantId!, unidadeId: appt.branch_id as string }, cabecalho)
+  if (res.error || !res.planId) return { error: res.error ?? 'Não foi possível salvar o plano.' }
   // DC4: os documentos do plano nascem na criação (e acompanham o que se salva).
-  await emitirDocumentosDoPlano(ctx.tenantId!, plan.id as string)
+  await emitirDocumentosDoPlano(ctx.tenantId!, res.planId)
 
   revalidatePath(`/${slug}/agenda/${appointmentId}`)
-  return { planId: plan.id as string }
+  return { planId: res.planId }
 }
 
 // -- Planejamento do CLIENTE ---------------------------------------------------
@@ -416,6 +434,7 @@ export async function getPlanosDoCliente(clientId: string): Promise<{
     .from('treatment_plans')
     .select(`
       id, status, professional_notes, professional_id, created_at, evaluation_appointment_id,
+      desconto_combinado_tipo, desconto_combinado_valor,
       clients!inner(tenant_id),
       treatment_plan_sessions(treatment_plan_session_procedures(price))
     `)
@@ -436,10 +455,11 @@ export async function getPlanosDoCliente(clientId: string): Promise<{
         notes:    podeVerClinico(ctx, (p.professional_id as string | null) ?? null) ? ((p.professional_notes as string | null) ?? null) : null,
         criadoEm: p.created_at as string,
         sessoes:  sessoes.length,
-        total:    sessoes.reduce(
+        // D2 da 25ª: antes do aceite, com o combinado — o valor do contrato.
+        total:    totalDoPlanoNaLista(p.status as string, sessoes.reduce(
           (s, sess) => s + (sess.treatment_plan_session_procedures ?? []).reduce((t, pr) => t + Number(pr.price), 0),
           0,
-        ),
+        ), combinadoDoPlano(p as unknown as { desconto_combinado_tipo?: string | null; desconto_combinado_valor?: number | string | null })),
         origemId: (p.evaluation_appointment_id as string | null) ?? null,
       }
     })
@@ -761,10 +781,10 @@ export async function listarPlanejamentos(opcoes?: {
       .from('treatment_plans')
       .select(recorte === 'daCliente'
         // O agendamento vem limitado a um, só para existir.
-        ? `id, name, status, created_at, branch_id,
+        ? `id, name, status, created_at, branch_id, desconto_combinado_tipo, desconto_combinado_valor,
            clients!inner(id, name, phone, document, appointments!inner(id)),
            treatment_plan_sessions(treatment_plan_session_procedures(price))`
-        : `id, name, status, created_at, branch_id,
+        : `id, name, status, created_at, branch_id, desconto_combinado_tipo, desconto_combinado_valor,
            clients(id, name, phone, document),
            treatment_plan_sessions(treatment_plan_session_procedures(price))`)
       .in('branch_id', alcance.map(b => b.id))
@@ -814,10 +834,11 @@ export async function listarPlanejamentos(opcoes?: {
         situacao: situacoes.get(p.id as string) ?? 'RASCUNHO',
         criadoEm: p.created_at as string,
         sessoes:  sessoes.length,
-        total:    sessoes.reduce(
+        // D2 da 25ª: antes do aceite, com o combinado — o valor do contrato.
+        total:    totalDoPlanoNaLista(p.status as string, sessoes.reduce(
           (s, sess) => s + (sess.treatment_plan_session_procedures ?? []).reduce((t, pr) => t + Number(pr.price), 0),
           0,
-        ),
+        ), combinadoDoPlano(p as unknown as { desconto_combinado_tipo?: string | null; desconto_combinado_valor?: number | string | null })),
         cliente:  cli ? { id: cli.id, name: cli.name, phone: cli.phone } : null,
         unidade:  doTenant.find(b => b.id === p.branch_id)?.name ?? null,
       }
@@ -997,27 +1018,28 @@ async function salvarPlanoDoClienteInterno(
   assertRecurso(ctx, 'planos_de_tratamento')
   assertPermission(ctx, 'atendimento', 'VIEW')
   const admin = createAdminClient()
+  // A1(b) da 25ª: a sessão sem procedimento não entra no plano.
+  const vazia = recusaDaSessaoVazia(sessions)
+  if (vazia) return { error: vazia }
 
   const plan = await planoDoTenant(admin, planId, ctx)
   if (!plan) return { error: 'Plano não encontrado.' }
   // PT2: monta quem ATENDE na unidade do plano — sem o Prontuário em Gerenciar.
   if (!montaPlano(ctx, plan.branch_id as string)) return { error: RECUSA_QUEM_MONTA }
-  if (plan.status === 'ACCEPTED' || plan.status === 'COMPLETED') {
-    return { error: 'Este plano já foi fechado e não pode mais ser alterado.' }
-  }
+  // A20d da 25ª: fechado é também o cancelado e o recusado (retrato só de leitura; o editor os trava).
+  if (planoFechado(plan.status as string | null)) return { error: RECUSA_DO_PLANO_FECHADO }
 
   // A anotação clínica é do Prontuário: quem não a escreve não a apaga (PT2).
   const anota = anotaNoPlano(ctx, (plan.professional_id as string | null) ?? null)
   const combinado = colunasDoCombinado(desconto, sessions, ctx.internalUserId ?? null)
   if (combinado && 'error' in combinado) return combinado
-  const { error } = await admin
-    .from('treatment_plans')
-    .update({ ...(anota ? { professional_notes: notes || null } : {}), ...(combinado ? combinado.colunas : {}), updated_at: new Date().toISOString() })
-    .eq('id', planId)
-  if (error) return { error: error.message }
-
-  const res = await gravarSessoes(admin, planId, sessions, { tenantId: ctx.tenantId!, unidadeId: plan.branch_id as string })
-  if (res.error) return res
+  // As observações e o desconto vão com as sessões, numa transação só (A20d da 25ª; §14).
+  const cabecalho = {
+    ...(anota ? { notas: notes || null } : {}),
+    ...(combinado ? { combinado: combinado.colunas } : {}),
+  }
+  const res = await gravarSessoes(admin, planId, sessions, { tenantId: ctx.tenantId!, unidadeId: plan.branch_id as string }, cabecalho)
+  if (res.error) return { error: res.error }
   // DC4: os documentos do plano nascem na criação (o primeiro "Salvar plano") e
   // acompanham as sessões: o que saiu é cancelado, o que entrou nasce.
   await emitirDocumentosDoPlano(ctx.tenantId!, planId)
@@ -1056,56 +1078,7 @@ export async function getTreatmentPlanSessions(planId: string): Promise<{
     .maybeSingle(), 'buscar a unidade')
   if (branch?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, plan.branch_id as string)) return { sessions: [], total: 0 }
 
-  const rawSessions = await ler(admin
-    .from('treatment_plan_sessions')
-    .select(`
-      id, sort_order, appointment_id,
-      treatment_plan_session_procedures(procedure_id, price, sort_order, products, procedures(name, duration_min))
-    `)
-    .eq('plan_id', planId)
-    .order('sort_order'), 'carregar as sessões do plano')
-
-  type RawProcProduct = { product_id: string; name: string; unit: string; quantity: number }
-  type RawProc = { procedure_id: string; price: number; sort_order: number; products: RawProcProduct[]; procedures: { name: string; duration_min: number } | null }
-  type RawSess = { id: string; sort_order: number; appointment_id: string | null; treatment_plan_session_procedures: RawProc[] }
-
-  // D3 da 15ª: o agendamento vivo de cada sessão (cancelado e falta não contam).
-  const idsDosAgendamentos = ((rawSessions ?? []) as unknown as RawSess[]).map(s => s.appointment_id).filter((x): x is string => !!x)
-  const agendados = idsDosAgendamentos.length
-    ? await ler(admin.from('appointments').select('id, scheduled_at')
-        .in('id', idsDosAgendamentos).not('status', 'in', '(CANCELLED,NO_SHOW)'), 'ler os agendamentos das sessões')
-    : []
-  const inicioDoAgendamento = new Map(((agendados ?? []) as { id: string; scheduled_at: string }[]).map(a => [a.id, a.scheduled_at]))
-
-  // A unidade do insumo é a de consumo do produto, lida agora (D9).
-  const unidades = await unidadesDosInsumos(ctx.tenantId!, ((rawSessions ?? []) as unknown as RawSess[])
-    .flatMap(s => (s.treatment_plan_session_procedures ?? []).flatMap(p => (p.products ?? []).map(pr => pr.product_id))))
-
-  const sessions: PlanSessionForCheckout[] = ((rawSessions ?? []) as unknown as RawSess[]).map(s => {
-    const procs = (s.treatment_plan_session_procedures ?? [])
-      .sort((a, b) => a.sort_order - b.sort_order)
-      .map(p => ({
-        procedureId: p.procedure_id,
-        name:        p.procedures?.name ?? '—',
-        price:       Number(p.price),
-        durationMin: p.procedures?.duration_min ?? 60,
-        products:    (p.products ?? []).map((pr: RawProcProduct) => ({
-          productId: pr.product_id, name: pr.name, unit: unidades.get(pr.product_id) ?? pr.unit, quantity: Number(pr.quantity),
-        })),
-      }))
-    const totalPrice = procs.reduce((sum, p) => sum + p.price, 0)
-    return {
-      id:              s.id,
-      sortOrder:       s.sort_order,
-      totalPrice,
-      mainProcedureId: procs[0]?.procedureId ?? '',
-      mainDurationMin: procs.reduce((sum, p) => sum + p.durationMin, 0),
-      procedures:      procs,
-      appointmentId:   s.appointment_id ?? null,
-      agendada:        s.appointment_id ? inicioDoAgendamento.get(s.appointment_id) ?? null : null,
-    }
-  })
-
+  const sessions = await sessoesDoPlanoParaCheckout(ctx.tenantId!, planId)
   const total = sessions.reduce((sum, s) => sum + s.totalPrice, 0)
   return { sessions, total }
 }
@@ -1555,6 +1528,9 @@ async function generateEvaluationPlanInterno(
   const admin = createAdminClient()
 
   if (sessions.length === 0) return { error: 'Adicione ao menos uma sessão ao plano antes de enviar.' }
+  // A1(b) da 25ª: a sessão sem procedimento não entra no plano.
+  const vazia = recusaDaSessaoVazia(sessions)
+  if (vazia) return { error: vazia }
 
   // Grava anamnese e prontuário do cliente DESTE agendamento: de outra rede,
   // seria escrever no prontuário de uma clínica alheia.
@@ -1623,6 +1599,7 @@ async function generateEvaluationPlanInterno(
     const falta = await oQueFaltaParaSeguir(admin, {
       tenantId: ctx.tenantId!, appointmentId, procedureId: appt.procedure_id, clientId: appt.client_id,
       semInjetaveis: !temRecurso(ctx, 'injetaveis'), anamneseNaTela: anamnese, fichaNaTela: ficha?.answers ?? null,
+      aQuemPedirAFicha: aQuemPedirAFichaDeSaude(ctx, (appt.branch_id as string | null) ?? null),
     })
     if (falta) return { error: falta }
     // O planejamento escolhido sem nenhum ponto pede a confirmação explícita (atend-12).
@@ -1635,6 +1612,7 @@ async function generateEvaluationPlanInterno(
     const falta = await oQueFaltaParaSeguir(admin, {
       tenantId: ctx.tenantId!, appointmentId, procedureId: appt.procedure_id, clientId: appt.client_id,
       semInjetaveis: !temRecurso(ctx, 'injetaveis'), anamneseNaTela: null, fichaNaTela: null,
+      aQuemPedirAFicha: aQuemPedirAFichaDeSaude(ctx, (appt.branch_id as string | null) ?? null),
     })
     if (falta) return { error: falta }
   }
@@ -1772,6 +1750,7 @@ import { deOutroProfissional, deOutroNoAtendimento, DE_OUTRO_PROFISSIONAL } from
 import { emitirEventoClinico } from '@/lib/events/clinico'
 import { EVENTOS } from '@estetica-os/types'
 import { oQueFaltaParaSeguir } from '@/lib/atendimento/obrigatorias-no-servidor'
+import { aQuemPedirAFichaDeSaude } from '@/lib/atendimento/quem-responde-a-ficha'
 import { registrarAcessoAoProntuario } from '@/lib/prontuario/acessos'
 import { pontosDoConjunto } from '@/lib/pacotes/pontos-do-cancelamento'
 import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
@@ -1884,8 +1863,9 @@ async function checkoutTreatmentPlanInterno(
   const recusaDosDocumentos = await recusaDosDocumentosDoPlano(ctx.tenantId!, planId, pagamento, doDesconto.reais)
   if (recusaDosDocumentos) return { error: recusaDosDocumentos }
 
-  // Busca sessões com procedimentos
-  const { sessions } = await getTreatmentPlanSessions(planId)
+  // Busca sessões com procedimentos (D3 da 25ª: sem a trava do Atendimento —
+  // quem recebe é `podeReceber`, conferido acima, e o plano já é da rede e do alcance).
+  const sessions = await sessoesDoPlanoParaCheckout(ctx.tenantId!, planId)
   if (sessions.length === 0) return { error: 'Plano sem sessões cadastradas.' }
   // O total é o do plano DEPOIS do desconto: o rateio (`precosComDesconto`)
   // fecha exatamente nele, e é o que `plano_checkout` confere.

@@ -417,7 +417,7 @@ export async function reaberturaDoEstorno(transactionId: string): Promise<{ text
       return { texto: `O dinheiro volta à cliente, e o plano volta a ter ${valor} a receber. Para desfazer a venda, use “Cancelar plano” na ficha.` }
     }
     if (tx.procedure_sale_id) {
-      return { texto: `O dinheiro volta à cliente, e o pré-pago volta a ter ${valor} a receber. Para desfazer a venda, cancele a unidade pré-paga na ficha.` }
+      return { texto: `O dinheiro volta à cliente, e o pré-pago volta a ter ${valor} a receber. Para desfazer a venda, cancele a sessão pré-paga na ficha.` }
     }
     return { texto: null }
   } catch {

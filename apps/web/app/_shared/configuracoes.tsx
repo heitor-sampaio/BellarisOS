@@ -69,8 +69,9 @@ import Link from 'next/link'
  * ou `forms` em MANAGE não valerem nada numa gerente de unidade.
  *
  * Quais abas cada portal oferece é decisão da página, não daqui: `/admin` abre
- * as sete, a unidade fica sem "Unidades" (o card leva a `/admin/branches`) e
- * sem "LGPD" (a lista é da rede inteira, sem recorte por unidade).
+ * todas, a unidade fica sem "Unidades" (o card leva a `/admin/branches`). A
+ * "LGPD" está nos dois (D8 da 25ª): o pedido é da cliente, que é da rede, e
+ * quem libera o prontuário pode ter só a unidade.
  *
  * Quem não é a Admin da rede (o Heitor, 18/11: a configuração da rede toda é
  * "só pela conta admin"; era quem tinha unidade fixa, H7 de 2026-11-01) abre
@@ -161,6 +162,9 @@ export async function Configuracoes({
         noPortal: abas, gerencia: m => can(ctx, m, 'MANAGE'), noPlano: a => abaNoPlano(a, ctx.plano),
         unidadeFixa: ctx.branchId !== null, nomeDoModulo: m => MODULE_LABELS[m],
         abriu: tabs.find(t => t.key === activeTab)?.label ?? primeira.label,
+        // A-CONF2 da 25ª: a aba da rede toda diz que é só da Admin da rede, e quem muda.
+        souAdmin: mexeNaConfigDaRede(ctx),
+        quemMuda: mexeNaConfigDaRede(ctx) ? [] : await adminsAtivasDaRede(ctx.tenantId!),
       })
     : null
 

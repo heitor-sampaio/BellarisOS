@@ -158,6 +158,8 @@ export default async function ClientProfilePage({
     status:           a.status,
     procedureName:    nomesDasSessoes.get(a.id as string) ?? (a.procedures as { name?: string } | null)?.name ?? '—',
     professionalName: (a.professional as { name?: string } | null)?.name ?? '—',
+    // A15 da 25ª: a unidade do agendamento (a ficha a diz na rede de duas ou mais).
+    branchId:         (a.branch_id as string | null) ?? null,
   }))
 
   const upcomingAppointments = allAppointments.filter(a => UPCOMING_STATUSES.includes(a.status))
@@ -277,7 +279,7 @@ export default async function ClientProfilePage({
   // receber — é UMA leitura (lib/clientes/financeiro-da-ficha.ts), com o "só os
   // próprios" do financeiro (D6, 2026-10-27).
   const financeiro = await financeiroDaFicha(ctx, id)
-  const { veFinanceiro, transactions, internalCredits, aReceber, comandaParaReceber } = financeiro
+  const { veFinanceiro, transactions, internalCredits, aReceber, comandaParaReceber, planosNaoRecebidos } = financeiro
 
   // Documents — bucket privado: assinamos os paths (signed URLs, 1h) para download
   type RawDoc = { id: string; name: string; category: string; file_path: string; file_name: string; file_size: number | null; mime_type: string | null; uploaded_by: { name: string } | null; created_at: string; enviado_em: string | null; enviado_por_nome: string | null; momento: string | null; atendimento: { id: string; scheduled_at: string; procedures: { name: string } | null } | null }
@@ -517,7 +519,7 @@ export default async function ClientProfilePage({
   // permissão de documento). Dispensar é de quem responde pelos modelos.
   const veTermos = veOsDocumentos(ctx)
   const [pedidoLgpd, termosItens, pelaConversa, prePagos, quemDesfaz, pagoComCredito, fidelidade] = await Promise.all([
-    pedidoLgpdDaFicha(ctx, id),
+    pedidoLgpdDaFicha(ctx, id, slug),
     veTermos && veDocumentos ? documentosDoCliente(ctx.tenantId!, id) : Promise.resolve([]),
     veTermos ? envioPelaConversaLigado(ctx.tenantId!) : Promise.resolve(false),
     prePagosDoCliente(ctx.tenantId!, id),
@@ -577,6 +579,7 @@ export default async function ClientProfilePage({
       podeMontarPlano={montaPlano(ctx, branch.id)}
       aReceber={aReceber}
       comandaParaReceber={comandaParaReceber}
+      planosNaoRecebidos={planosNaoRecebidos}
         podeReceberAtendimento={podeReceber(ctx)}
       prePagos={prePagos}
       podeAgendar={can(ctx, 'agenda', 'MANAGE')}
@@ -585,6 +588,7 @@ export default async function ClientProfilePage({
       quemCompletaOCadastro={can(ctx, 'clients', 'MANAGE') ? null : await quemCompletaOCadastro(ctx.tenantId!, branch.id)}
       podeExportarProntuario={can(ctx, 'medical_records', 'MANAGE')}
       podeVerPlanos={can(ctx, 'atendimento', 'VIEW')}
+      podeIniciarAtendimento={can(ctx, 'atendimento', 'MANAGE')}
       podeCancelarPacote={podeEstornar(ctx)}
       pacoteVencido={pacoteVencido}
       podeRemarcar={can(ctx, 'financial', 'MANAGE') && !isOwnScope(ctx, 'financial')}
