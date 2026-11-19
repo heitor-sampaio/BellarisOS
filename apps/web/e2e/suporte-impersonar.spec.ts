@@ -265,9 +265,12 @@ test.describe.serial('suporte: entrar como', () => {
   // sessão no navegador e falava direto com o PostgREST — gravava o que a RLS
   // deixa ao membro, fora do registro de acesso. Agora a sessão de suporte não
   // grava pelo PostgREST (política RESTRICTIVE `suporte_sem_escrita`); o que
-  // ela muda, muda pelo app, que registra. O alvo é o agendamento: a ficha da
-  // cliente a sessão não grava mais nem pelo membro (M1, o Heitor, 18/11).
-  test('o token da sessão de suporte NÃO grava pelo PostgREST; o do próprio membro grava', async () => {
+  // ela muda, muda pelo app, que registra. Desde 19/11 nem o membro grava pela
+  // sessão (o Heitor: "Qualquer gravação que não passa pela validação do
+  // backend ta errada e é uma brecha de segurança"; 20261128100001): o
+  // controle é o membro LER o agendamento — a sessão alcança a linha, e mesmo
+  // assim não grava.
+  test('o token da sessão de suporte NÃO grava pelo PostgREST; nem o do próprio membro', async () => {
     const patch = (token: string, notas: string) => fetch(`${URL_SUPA}/rest/v1/appointments?id=eq.${f!.agendamentoId}`, {
       method: 'PATCH',
       headers: { apikey: ANON, Authorization: `Bearer ${token}`, 'content-type': 'application/json', Prefer: 'return=representation' },
@@ -278,9 +281,10 @@ test.describe.serial('suporte: entrar como', () => {
     const doSuporte = (await sessaoDoNavegador(sup!.ctx)).access_token
     expect(await patch(doSuporte, `escrito pelo suporte ${marca}`), 'nenhuma linha').toBe(0)
     expect(await notas()).not.toBe(`escrito pelo suporte ${marca}`)
-    // Controle: o membro, com a sessão DELE, grava (a RLS deixa).
-    expect(await patch(f!.alvo.accessToken, `escrito pelo membro ${marca}`), 'o membro grava').toBe(1)
-    expect(await notas()).toBe(`escrito pelo membro ${marca}`)
+    // Controle: o membro, com a sessão DELE, LÊ o agendamento — e não grava.
+    expect(await rest(f!.alvo.accessToken, `appointments?select=id&id=eq.${f!.agendamentoId}`), 'o membro lê o agendamento').toHaveLength(1)
+    expect(await patch(f!.alvo.accessToken, `escrito pelo membro ${marca}`), 'nem o membro grava pela sessão').toBe(0)
+    expect(await notas()).not.toBe(`escrito pelo membro ${marca}`)
   })
 
   test('no app da rede, nada do atendente: nem a sessão dele, nem cookie de volta, nem o painel', async () => {

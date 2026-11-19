@@ -222,6 +222,10 @@ pelo app. Até 2026-09-27 o prontuário e a fidelidade só exigiam
   Toda gravação passa pelo servidor, depois da trava (permissão e alcance), pelo
   cliente de serviço; nenhuma tabela tem política de INSERT/UPDATE/DELETE para
   a sessão (equipe ou cliente final). A regra abaixo (F63) era o começo disto.
+  As 21 políticas de escrita que sobravam (17 tabelas) saíram em
+  `20261128100001`. A trava é `e2e_gravacoes_pela_sessao()` (política de
+  escrita, tabela sem RLS, view gravável, função volátil exposta), que
+  `e2e/rls-sessao-nunca-grava.spec.ts` exige vazia.
 - **Configuração e dado sensível: a sessão só LÊ** (F63, 2026-11-12). Cargos,
   LGPD, comissões, taxas, campanhas, estoque: o servidor grava pelo cliente de
   serviço, depois da trava; as comissões nem se leem pela sessão (a tela
@@ -240,9 +244,7 @@ pelo app. Até 2026-09-27 o prontuário e a fidelidade só exigiam
   `e2e/quadro-tempo-real.spec.ts` (membro da rede e de unidade).
 - ⚠️ Política que compara `auth.jwt() ->> 'x'` está ERRADA: as claims moram em
   `app_metadata` — use `jwt_claim('x')`. A de `leads` era assim e nunca valeu.
-  (Sobram cinco assim — `appointment_history`, `branch_product_stock`,
-  `crm_stages`, `lead_procedures`, `treatment_plan_items` —, permissivas e
-  mortas: dão sempre falso, não abrem nada.)
+  (As últimas cinco assim, mortas, saíram em `20261128100001`.)
 - ⚠️ **No Realtime, o nulo da claim chega como o TEXTO `"null"`**
   (`realtime.subscription.claims`: `"branch_id": "null"`). `jwt_claim` trata o
   texto `'null'` como nulo (migration `20261005000001`). Sem isso,

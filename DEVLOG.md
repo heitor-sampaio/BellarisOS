@@ -1774,6 +1774,25 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-19 — A sessão nunca grava: as 21 políticas de escrita que sobravam saíram
+
+O Heitor (19/11): "Qualquer gravação que não passa pela validação do backend ta errada e é uma brecha de segurança." A chave pública está no navegador: o que uma política deixa a sessão gravar, qualquer membro (ou cliente) grava direto no PostgREST, sem a trava da action.
+
+- **O que havia** (lido na produção em 19/11): 21 políticas de escrita pela sessão em 17 tabelas — agendamentos e o histórico deles, o estoque da unidade, o caixa, as conversas e mensagens, os funis e as etapas, os eventos e os procedimentos da oportunidade, os modelos de mensagem, os itens do plano, as transferências de estoque, as notificações (equipe e cliente) e os aparelhos de push. A maioria vinha das primeiras migrations (julho). Não havia outro caminho: nenhuma tabela sem RLS, nenhuma view gravável e nenhuma função que grava exposta à sessão; no `storage`, nenhuma política de escrita.
+- **Nenhuma tela usava essas portas**: as ~90 gravações do app nessas tabelas já eram do cliente de serviço, depois da trava (varredura de 19/11). Tirá-las não muda tela nenhuma.
+- **A migration `20261128100001`**:
+  - as políticas de INSERT/UPDATE/DELETE saem;
+  - as de ALL saem, e a LEITURA que davam volta como SELECT, com a mesma condição (`to authenticated`, a regra do Realtime): caixa, funis, modelos de mensagem, transferências e os aparelhos de push da cliente. Conversas e mensagens já tinham a leitura da rede;
+  - as cinco mortas (`auth.jwt() ->> 'tenant_id'`, sempre nulo) saem sem reposição: não davam nada;
+  - a TRAVA `e2e_gravacoes_pela_sessao()` (só o serviço executa) lista todo caminho de escrita da sessão: política permissiva de escrita (`public` e `storage`), tabela sem RLS com permissão de escrita, view gravável, função volátil exposta.
+- **A prova**, `e2e/rls-sessao-nunca-grava.spec.ts` (isolado, rede própria): a trava tem de voltar vazia — tabela nova com política de escrita derruba o teste —; e, em cada uma das 17 tabelas, a Admin da rede (ou a cliente) tenta inserir, mudar e apagar pela chave pública, e o banco não muda.
+  - TDD: antes da migration (com só a trava no banco), 13 falhas: a trava listou as 21 políticas, e em 12 tabelas a sessão gravou ("a linha não nasce pela sessão" em 10; "a linha não muda nem some" nas duas de notificação, que só tinham UPDATE). As cinco de política morta já passavam. Depois: 18/18.
+- **Os testes que já existiam e mudaram** (nenhum apagado), pela regra do Heitor de 19/11 ("a sessão nunca grava"):
+  - `auditoria` (CF3b), `copilot-auditoria-cp1` e `suporte-impersonar` provavam algo pela sessão da dona/do membro GRAVANDO o agendamento (o cabeçalho forjado não troca o ator; não marca "pelo Copilot"; o membro grava e o suporte não). Agora a mesma tentativa não grava: o que protegiam continua provado — nenhum registro em nome de quem o cabeçalho forjado diz, nenhuma marca, e o suporte não grava —, e o controle do suporte passou a ser o membro LER o agendamento.
+- **O reset do banco local parava no Windows**: o checkout com `core.autocrlf` punha CRLF nas migrations, e a troca de texto de várias linhas (`pg_temp.trocar_no_corpo`) da `20261125500002` não achava o trecho. `.gitattributes` fixa LF em `supabase/migrations/*.sql` (o índice já era LF; nada muda na produção nem no CI). Com isso, o acerto de CR do banco local deixou de achar o que normalizar.
+- CLAUDE.md §4: a regra ganhou a migration e a prova; a nota das cinco políticas mortas saiu.
+- **Provas**: a completa local (banco zerado): isolados 1.673 passaram e compartilhados 872. As quatro falhas não vêm desta mudança: `atendimento-atritos-da-11` (A25) e `atendimento-ficha-planejador-injetaveis` passam sozinhos (só sob a carga); o A22 (`agenda-mesmo-procedimento-no-dia`) perdeu o arquivo de rastro porque rodei outra execução ao lado, e passa sozinho; `relatorios-filtro-de-tags` (de `a7b27051`) depende do relógio: grava as vendas pagas "2 horas atrás" e confere o período Hoje — entre 0h e 2h de Brasília o pagamento cai na véspera e a tela diz, certo, "0 vendas". Mudar o teste é com o Heitor (regra de 19/11). Vitest 3.985; `tsc` limpo. Na produção: a `20261128100001` com o texto do arquivo, a trava responde 0, e o `conferir` deu IGUAL (fora a trava local da rede de teste).
+
 ### 2026-11-18/19 — As respostas do Heitor de 18/11: a tag é da pessoa, os filtros que faltavam e "não pago não conta na venda"
 
 As respostas da noite de 18/11 (na entrada da 25ª, abaixo) viraram cinco frentes, cada uma com o teste antes:
@@ -1794,7 +1813,7 @@ As respostas da noite de 18/11 (na entrada da 25ª, abaixo) viraram cinco frente
 - **Specs**: `plano-cancelar-proposto` chamava o aceite postando na Início, onde a action não mora; posta na página do plano, como o app. `tags-da-pessoa` procurava `"error":` na resposta inteira (o RSC traz a chave `error` do roteador); confere a linha da action.
 - **Regras novas do Heitor em 19/11** (CLAUDE.md §4, §14 e §15):
   - "o teste só pode ser alterado se a regra foi alterada": teste que falha se corrige no código; toda entrega lista os testes alterados com a regra que mudou (abaixo).
-  - "Qualquer gravação que não passa pela validação do backend ta errada e é uma brecha de segurança": a sessão NUNCA grava. Em 19/11 ainda há 17 tabelas com política de escrita pela sessão (agendamentos, estoque da unidade, caixa, conversas, mensagens, funis, etapas, eventos e procedimentos da oportunidade, modelos de mensagem, itens do plano, transferências, notificações, aparelhos de push). Nenhuma tela grava por elas, mas a porta está aberta: é a próxima frente, logo depois desta entrega.
+  - "Qualquer gravação que não passa pela validação do backend ta errada e é uma brecha de segurança": a sessão NUNCA grava. Em 19/11 ainda há 17 tabelas com política de escrita pela sessão (agendamentos, estoque da unidade, caixa, conversas, mensagens, funis, etapas, eventos e procedimentos da oportunidade, modelos de mensagem, itens do plano, transferências, notificações, aparelhos de push). Nenhuma tela grava por elas, mas a porta estava aberta: fechada na entrada de cima (19/11).
   - O filtro de tags com várias marcadas é E (o Heitor, 19/11: "Quem tem TODAS (E)"). Era decisão do Claude em 18/11; agora é dele.
 - **Os testes que já existiam e mudaram nesta entrega** (nenhum apagado):
   - "nao pago nao conta na venda" (D6): `relatorio-vendas`, `vendas-produto`, `indicadores-concluido-antes-da-hora`, `dicas-relatorios-dashboard`, `relatorio-vendas-plano-no-recebimento` (o crédito vendido só entra pago — confirmado pelo Heitor em 19/11), `tests/vendas-plano-no-recebimento`.
@@ -1804,6 +1823,7 @@ As respostas da noite de 18/11 (na entrada da 25ª, abaixo) viraram cinco frente
   - Só a mecânica: `tests/atritos-da-25-migracao` passou a conferir também as migrations que remendam um trecho da função depois.
 - **Provas**: a completa local (banco zerado, `preparar`): isolados 1.646 e compartilhados 871 passaram. As três falhas eram dos testes acima, decididas pelo Heitor, e passam: os três de segurança (35 testes, com os 19 que não tinham rodado) e o D5 (2). Vitest 3.983, `tsc` limpo, `conferir`: as 70 diferenças são as cinco migrations desta entrega.
 - **A completa anterior perdeu a rede de teste principal** no meio dos compartilhados (o rastro é o do `e2e_apagar_rede`: a rede e o membro da admin apagados, o login ficou). Não se repetiu na rodada seguinte, e a causa não foi achada. O banco local ganhou uma trava só de teste (no scratchpad, fora do repositório) que recusa apagar ou renomear a rede `rede-de-teste`, e fica nas próximas completas.
+- **Na produção (19/11)**: as cinco migrations com o texto do arquivo — as três de antes do código, a `20261125500001` (aditiva) antes do push, e a `20261125500002` (tira `leads.tags` e a ponte) depois de os quatro serviços subirem `a7b27051`. O `conferir` deu IGUAL, fora a trava local da rede de teste.
 
 ### 2026-11-18 — Os defeitos e atritos da 25ª simulação, corrigidos
 

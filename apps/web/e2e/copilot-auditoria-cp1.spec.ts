@@ -80,9 +80,12 @@ test('pela chave de serviço, a marca vale com quem gravou', async () => {
   expect((await linhasDe('clients', ficha)).at(-1)).toEqual(['editou', rede.dono.userId, `${nomeDoDono} (pelo Copilot)`, 'membro', 'copilot'])
 })
 
-// A ficha a sessão não grava mais (M1, o Heitor, 18/11): o agendamento, sim, e
-// ele é auditado — é por ele que se prova que o cabeçalho forjado não marca.
-test('pela sessão, o cabeçalho forjado não vale: sem a marca', async () => {
+// A sessão NUNCA grava (o Heitor, 19/11: "Qualquer gravação que não passa pela
+// validação do backend ta errada e é uma brecha de segurança"; 20261128100001).
+// Até ali a sessão do dono gravava o agendamento, e o teste provava que o
+// cabeçalho forjado não marcava "pelo Copilot". Agora a mesma tentativa não
+// grava nada — e nenhuma linha sai marcada.
+test('pela sessão, o cabeçalho forjado não vale: nada grava, nada se marca', async () => {
   const o = rede.outra
   const { data: ag, error: eA } = await db().from('appointments').insert({
     branch_id: o.branchId, client_id: ficha, professional_id: o.professionalId, procedure_id: o.procedureId,
@@ -98,8 +101,10 @@ test('pela sessão, o cabeçalho forjado não vale: sem a marca', async () => {
     body: JSON.stringify({ price: 120 }),
   })
   expect(r.status, await r.clone().text()).toBe(200)
-  expect(((await r.json()) as unknown[]).length, 'a sessão do dono alterou o agendamento').toBe(1)
-  expect((await linhasDe('appointments', ag!.id)).at(-1)).toEqual(['editou', rede.dono.userId, nomeDoDono, 'membro', null])
+  expect(((await r.json()) as unknown[]).length, 'a sessão do dono não altera o agendamento').toBe(0)
+  const { data: depois } = await db().from('appointments').select('price').eq('id', ag!.id).single<{ price: number }>()
+  expect(Number(depois!.price), 'o preço não mudou').toBe(100)
+  expect((await linhasDe('appointments', ag!.id)).filter(l => l[0] === 'editou'), 'nenhuma edição registrada').toEqual([])
 })
 
 test('valor que não é "copilot" não marca', async () => {

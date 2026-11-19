@@ -182,10 +182,12 @@ test.describe('CF3b: o registro', () => {
       .toEqual(['suporte', rede.professionalId, `${profNome} (via suporte: ${NOME_DO_STAFF})`, sessaoDeSuporte])
   })
 
-  // Desde a M1 (o Heitor, 18/11) a sessão não grava a ficha da cliente — só o
-  // servidor. O agendamento a sessão ainda grava (appointments_update), e ele é
-  // auditado: é por ele que se prova que o cabeçalho forjado não troca o ator.
-  test('pela sessão, quem agiu é o dono do token — o cabeçalho forjado não vale', async () => {
+  // A sessão NUNCA grava (o Heitor, 19/11: "Qualquer gravação que não passa
+  // pela validação do backend ta errada e é uma brecha de segurança";
+  // 20261128100001). Até ali a sessão da dona gravava o agendamento, e o teste
+  // provava que o cabeçalho forjado não trocava o ator. Agora a mesma tentativa
+  // não grava nada — e nenhum registro sai em nome de quem o cabeçalho diz.
+  test('pela sessão, o cabeçalho forjado não grava nada nem registra em nome de ninguém', async () => {
     const { data: ag, error: eA } = await db().from('appointments').insert({
       branch_id: rede.branchId, client_id: clienteId, professional_id: rede.professionalId, procedure_id: rede.procedureId,
       scheduled_at: new Date(Date.now() + 86_400_000).toISOString(), duration_min: 30, price: 100, status: 'SCHEDULED',
@@ -200,10 +202,11 @@ test.describe('CF3b: o registro', () => {
       body: JSON.stringify({ price: 120 }),
     })
     expect(r.status, await r.clone().text()).toBe(200)
-    expect(((await r.json()) as unknown[]).length, 'a sessão da dona alterou o agendamento').toBe(1)
-    const l = (await linhasDaRede()).filter(x => x.tabela === 'appointments' && x.registro_id === ag!.id && x.operacao === 'editou').at(-1)!
-    expect([l.ator_user_id, l.ator_tipo, l.suporte_sessao_id, l.colunas]).toEqual([dona.userId, 'membro', null, ['price']])
-    expect(l.client_id).toBe(clienteId)
+    expect(((await r.json()) as unknown[]).length, 'a sessão da dona não altera o agendamento').toBe(0)
+    const { data: depois } = await db().from('appointments').select('price').eq('id', ag!.id).single<{ price: number }>()
+    expect(Number(depois!.price), 'o preço não mudou').toBe(100)
+    const editou = (await linhasDaRede()).filter(x => x.tabela === 'appointments' && x.registro_id === ag!.id && x.operacao === 'editou')
+    expect(editou, 'nenhum registro de edição, em nome de ninguém').toEqual([])
   })
 
   test('o texto da ficha não vai ao registro — só que a coluna mudou', async () => {

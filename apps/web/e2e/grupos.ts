@@ -282,6 +282,8 @@ export const ISOLADOS = [
   'rls-realtime-sem-sessao.spec.ts',
   // A sessão só lê o prontuário, os procedimentos, os produtos e as automações (18/11).
   'rls-sessao-so-le-prontuario-e-automacoes.spec.ts',
+  // A sessão nunca grava (o Heitor, 19/11): a trava das políticas e as 17 tabelas.
+  'rls-sessao-nunca-grava.spec.ts',
   'sessao-httponly.spec.ts',
   'suporte-entrada.spec.ts',
   'suporte-impersonar.spec.ts',

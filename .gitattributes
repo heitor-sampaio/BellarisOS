@@ -1,0 +1,5 @@
+# As migrations em LF também na cópia de trabalho do Windows (core.autocrlf):
+# as trocas de texto no corpo das funções (pg_temp.trocar_no_corpo) procuram
+# trechos de várias linhas, e o CRLF do checkout não acha o LF do banco — o
+# reset local parava (19/11). Em Linux (produção, CI) já era LF.
+supabase/migrations/*.sql text eol=lf
