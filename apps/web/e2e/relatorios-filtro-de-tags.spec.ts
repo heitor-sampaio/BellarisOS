@@ -26,6 +26,14 @@ const db = () => banco()
 let rede: OutraRede
 let gestor: MembroDeTeste
 const horas = (h: number) => new Date(Date.now() + h * 3_600_000).toISOString()
+// Um instante de HOJE no fuso da unidade (Brasília, o padrão de `branches.fuso`),
+// entre a meia-noite e agora: a tela abre no período Hoje. "2 horas atrás"
+// caía na véspera entre 0h e 2h (o Heitor, 19/11: ok para corrigir o teste).
+const deHoje = (fracao: number) => {
+  const dia = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
+  const inicio = new Date(`${dia}T00:00:00-03:00`).getTime()
+  return new Date(inicio + (Date.now() - inicio) * fracao).toISOString()
+}
 const janela = () => ({ p_tenant: rede.tenantId, p_branch_ids: [rede.branchId], p_from: horas(-24), p_to: horas(24) })
 
 test.beforeAll(async () => {
@@ -45,12 +53,12 @@ test.beforeAll(async () => {
     expect((await db().from('clients').update({ tags: [...tags] }).eq('id', cliente)).error, `as tags da ${nome}`).toBeNull()
     const ag = await db().from('appointments').insert({
       branch_id: rede.branchId, client_id: cliente, procedure_id: rede.procedureId, professional_id: rede.professionalId,
-      duration_min: 30, status: 'COMPLETED', source: 'INTERNAL', price: valor, scheduled_at: horas(-3), completed_at: horas(-3),
+      duration_min: 30, status: 'COMPLETED', source: 'INTERNAL', price: valor, scheduled_at: deHoje(0.3), completed_at: deHoje(0.3),
     }).select('id').single<{ id: string }>()
     expect(ag.error, ag.error?.message).toBeNull()
     expect((await db().from('financial_transactions').insert({
       branch_id: rede.branchId, client_id: cliente, appointment_id: ag.data!.id, type: 'INCOME', category: 'Serviços',
-      description: `${PREFIXO} Atendimento ${marca}`, amount: valor, is_paid: true, paid_at: horas(-2), payment_method: 'PIX', created_by: 'e2e',
+      description: `${PREFIXO} Atendimento ${marca}`, amount: valor, is_paid: true, paid_at: deHoje(0.6), payment_method: 'PIX', created_by: 'e2e',
     })).error, `o pagamento da ${nome}`).toBeNull()
   }
 
