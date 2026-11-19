@@ -1774,6 +1774,15 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-19 — O catálogo de regras: a área de atendimento (rascunho para o Heitor)
+
+O passo 3 da ordem combinada ("concordo, segue"; o Heitor, 19/11: "pode rodar a completa e começa o catálogo"). `docs/catalogo/atendimento.md`: só as regras que valem hoje, numeradas, cada uma com a fonte (a fala do Heitor letra por letra, um princípio, "decisão do Claude" ou a recomendação aprovada com a resposta dele), a linha de onde saiu e os números do rascunho que ela junta.
+- 190 regras: Agenda 68, Atendimento 21, Plano de tratamento 23, Prontuário 18, Fichas 15, Procedimentos 15, Estoque 30. Saíram de 440 no rascunho; 37 ficaram fora (detalhe de tela ou implementação, em apêndice com o motivo) e 3 são de outra área.
+- 33 perguntas ao Heitor (as regras escritas como decisão dele sem a fala, as contradições do próprio texto — quem monta o plano, quem desiste no meio, o "só os meus" no confirmar e na chegada) e 19 divergências (o texto de `docs/regras/` contra a decisão mais nova, a corrigir depois da revisão dele).
+- Conferido por script: as 85 falas do Heitor citadas existem nos documentos, letra por letra (as 4 com aspas escapadas, à mão, em `docs/revisao.md:192-195`); nenhum dos 440 números do rascunho sumiu.
+- `docs/regras/` não mudou: o catálogo é rascunho até o Heitor revisar.
+- **A completa** (pedida pelo Heitor, banco local zerado, depois da parte do inbox de `a7810af5`): isolados 1.706 passaram; compartilhados 875 passaram e 1 pulado; as 628 redes de teste apagadas no fim. Saiu com código 1 porque, no fim dos isolados, um processo de teste não fechou em 5 minutos ("worker-1 process did not exit within 300000ms after stop"). Nenhuma completa anterior teve isso. Os specs novos e alterados desta frente rodados juntos num processo só (150) passaram e fecharam (saída 0): a causa não está achada. Fica observado na próxima completa.
+
 ### 2026-11-19 — A sessão só lê sinais: a leitura também é do servidor
 
 O Heitor (19/11), "vai na 2", à proposta "a sessão não lê nem grava tabela nenhuma; só escuta os sinais do tempo real". A pergunta dele antes ("manter as tabelas assinadas realmente é uma possível falha de segurança?"): é. O Realtime entrega a quem assina tudo o que a política de leitura deixa, e as políticas só conferiam a REDE. Exemplos: `messages` dava toda mensagem de WhatsApp a qualquer membro, sem o CRM e sem o "só as minhas"; `clients`, a ficha com CPF.
