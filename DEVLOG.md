@@ -1828,6 +1828,11 @@ O Heitor (19/11), "vai na 2", à proposta "a sessão não lê nem grava tabela n
     - `planos-adicionais` (chave estrangeira do plano) e `automacoes-mobile` (o gatilho 57 px fora da tela) falharam só sob a carga e passam sozinhos.
   - Depois da parte do inbox: o inbox, o CRM, o quadro, os sinais e os oito ajustados, contra o build, 128 + 109 passaram. O caso novo da conversa aberta FALHA com os gatilhos do sinal da conversa desligados e passa com eles. Vitest 3.994; `tsc` e `eslint` limpos.
   - A completa não rodou de novo depois da parte do inbox: ela mexe no inbox, nos sinais e em duas páginas.
+  - **Na produção (19/11)**, nesta ordem: a parte 1 com o texto do arquivo, antes do código; o push de `a7810af5` e o Railway em SUCCESS nos 4 serviços; a parte 2 com o texto do arquivo. Depois:
+    - as duas travas (`e2e_leituras_pela_sessao` e `e2e_gravacoes_pela_sessao`) respondem 0;
+    - o Realtime publica só as tabelas de sinal (`sinais` e as seis antigas);
+    - o advisor de segurança só aponta `planos_do_site`, que é pública de propósito;
+    - o `conferir` deu IGUAL, fora a guarda local da rede de teste.
 
 ### 2026-11-19 — A sessão nunca grava: as 21 políticas de escrita que sobravam saíram
 
