@@ -60,9 +60,12 @@ describe('sugerirMapeamento', () => {
     const chaves = camposDoDestino('contatos', { oportunidade: true }).map(c => c.chave)
     expect(chaves).toEqual(expect.arrayContaining([
       'op_origem', 'op_valor', 'op_observacoes', 'op_procedimentos', 'op_etapa', 'op_responsavel',
-      'op_utm_source', 'op_utm_medium', 'op_utm_campaign', 'op_tags',
+      'op_utm_source', 'op_utm_medium', 'op_utm_campaign',
     ]))
     expect(new Set(chaves).size).toBe(chaves.length)
+    // A tag é da PESSOA (o Heitor, 18/11): a coluna "Tags da oportunidade" de antes vai para as tags da pessoa.
+    expect(chaves).not.toContain('op_tags')
+    expect(sugerirMapeamento(['Nome', 'Tags da oportunidade'], 'contatos', { oportunidade: true })).toEqual(['name', 'tags'])
     expect(camposDoDestino('contatos').some(c => c.grupo === 'oportunidade')).toBe(false)
     expect(sugerirMapeamento(
       ['Nome', 'Celular', 'Origem', 'Valor', 'Etapa', 'Vendedor', 'Procedimento de interesse', 'utm_campaign', 'Obs'],

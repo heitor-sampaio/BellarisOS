@@ -103,7 +103,9 @@ embaixo da topbar. Desde a fase 2 (2026-10-08) também tem AÇÕES (abaixo).
   (`pessoaParaNovoLead`, `lib/crm/pessoa-para-novo-lead.ts`); a oportunidade
   nasce ligada a ESSA pessoa (`_contatoId` em `createLead`, conferido: da rede
   e ainda sem oportunidade) — também a que só tem e-mail. O parâmetro sai da
-  URL ao abrir. Prova: `e2e/busca-universal-contato.spec.ts`.
+  URL ao abrir. Prova: `e2e/busca-universal-contato.spec.ts`. O contato que
+  já tem ficha (`contacts.client_id`, 18/11 — `crm-inbox.md` §9.2.1) não entra
+  no grupo: ele é achado como a cliente (migration `20261125500001`).
 
 ### As ações (fase 2, 2026-10-08)
 

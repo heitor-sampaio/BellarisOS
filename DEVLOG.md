@@ -1774,6 +1774,37 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-18/19 — As respostas do Heitor de 18/11: a tag é da pessoa, os filtros que faltavam e "não pago não conta na venda"
+
+As respostas da noite de 18/11 (na entrada da 25ª, abaixo) viraram cinco frentes, cada uma com o teste antes:
+
+- **A tag é da pessoa** (o Heitor: "a tag é da pessoa e pode ter mais de uma tag"; "sim, liga sozinha quando bater com uma ficha só"):
+  - A oportunidade não tem tag própria: o cartão do quadro e o painel do inbox mostram e editam as tags da PESSOA. `contacts.client_id` liga o contato à ficha, e gatilhos de espelho mantêm `clients.tags` = as tags dos contatos dela (`private.juntar_tags` normaliza ao vocabulário).
+  - A conversa (e a oportunidade) que chega pelo telefone de UMA ficha ativa se liga sozinha a ela (`private.ficha_unica_do_telefone`); mãe e filha no mesmo número, não.
+  - O filtro de tag é E em todo lugar — o público da campanha também (era OU).
+  - Contatos e fichas: a sessão só LÊ; o servidor grava (as políticas de escrita pela sessão saíram).
+  - Duas migrations: `20261125500001` (aditiva, ANTES do código) e `20261125500002` (tira `leads.tags`, DEPOIS do deploy).
+- **O filtro por tag** (regra das Tags, CLAUDE.md §1) nos Relatórios (`p_tags` em 13 funções `metrics_*`, `20261125100002`), no Financeiro (A receber, A pagar, Movimentações, nos dois portais) e na Agenda. A opção é o vocabulário da rede, lido no servidor (quem só tem a Agenda ou o Financeiro também filtra). A linha sem cliente (despesa) sai quando há tag marcada. O `?tags=` tem um leitor só (`lib/tags/filtro-na-url.ts`).
+- **A Agenda filtra por profissional e por sala** (o Heitor: "Então precisa arrumar"), no servidor. Decisões do Claude: no portal da rede, a sala só aparece com a unidade escolhida; a "Minha agenda" não tem filtro.
+- **D6, "nao pago nao conta na venda"**: o avulso, o pacote, o pré-pago e o produto entram em Vendas no primeiro recebimento PAGO, como o plano; o que teve o único pagamento estornado inteiro sai (`20261125100001`).
+- **A1a, o plano proposto ganha "Cancelar"** ("sim nos dois"): sem dinheiro, com motivo, para quem edita o plano; o documento pendente sai, e o app recusa o aceite com "Este plano foi cancelado e não pode mais ser aceito." (`20261125400001`).
+- **A30, os dias de teste na Assinatura** ("Mostra"): "termina em N dias / amanhã / hoje", no relógio de Brasília (`lib/redes/dias-do-teste.ts`; o aviso do topo arredondava para cima).
+- **A29**: nada a mudar (o selo "Novo" das importadas fica).
+- **O banco local não subia do zero**: as migrations seguidas criavam `pg_temp.trocar_no_corpo` com `create function` na mesma sessão do `db reset`. As cinco a partir da `20261125000001` passaram a `create or replace` (o `pg_temp` não deixa nada na produção).
+- **Specs**: `plano-cancelar-proposto` chamava o aceite postando na Início, onde a action não mora; posta na página do plano, como o app. `tags-da-pessoa` procurava `"error":` na resposta inteira (o RSC traz a chave `error` do roteador); confere a linha da action.
+- **Regras novas do Heitor em 19/11** (CLAUDE.md §4, §14 e §15):
+  - "o teste só pode ser alterado se a regra foi alterada": teste que falha se corrige no código; toda entrega lista os testes alterados com a regra que mudou (abaixo).
+  - "Qualquer gravação que não passa pela validação do backend ta errada e é uma brecha de segurança": a sessão NUNCA grava. Em 19/11 ainda há 17 tabelas com política de escrita pela sessão (agendamentos, estoque da unidade, caixa, conversas, mensagens, funis, etapas, eventos e procedimentos da oportunidade, modelos de mensagem, itens do plano, transferências, notificações, aparelhos de push). Nenhuma tela grava por elas, mas a porta está aberta: é a próxima frente, logo depois desta entrega.
+  - O filtro de tags com várias marcadas é E (o Heitor, 19/11: "Quem tem TODAS (E)"). Era decisão do Claude em 18/11; agora é dele.
+- **Os testes que já existiam e mudaram nesta entrega** (nenhum apagado):
+  - "nao pago nao conta na venda" (D6): `relatorio-vendas`, `vendas-produto`, `indicadores-concluido-antes-da-hora`, `dicas-relatorios-dashboard`, `relatorio-vendas-plano-no-recebimento` (o crédito vendido só entra pago — confirmado pelo Heitor em 19/11), `tests/vendas-plano-no-recebimento`.
+  - "a tag é da pessoa": `crm-atritos`, `crm-atritos-da-16`, `tags-sem-unidade`, `tags-da-rede`, `rls-isolamento` (a função `lead_tags_da_rede` saiu), `tests/importacao`, `tests/tags-so-quem-marca`, `tests/crm-atritos-da-18`.
+  - O filtro de tags E (o Heitor, 19/11): `campanha-cada-filtro-chega`, `tests/campanha-filtros-do-publico`, `tests/quadro-de-oportunidades-da-25`.
+  - A sessão não grava a ficha nem o contato (o Heitor, 19/11, opção "a"): `rls-cliente-da-rede` e `rls-sessao-so-le` (provavam que a sessão alterava a ficha; agora provam que não altera); `auditoria` (CF3b), `suporte-impersonar` e `copilot-auditoria-cp1` usavam a escrita na ficha só como meio — provam o mesmo pelo agendamento, e a verificação "o texto da ficha não vai ao registro" virou um teste próprio.
+  - Só a mecânica: `tests/atritos-da-25-migracao` passou a conferir também as migrations que remendam um trecho da função depois.
+- **Provas**: a completa local (banco zerado, `preparar`): isolados 1.646 e compartilhados 871 passaram. As três falhas eram dos testes acima, decididas pelo Heitor, e passam: os três de segurança (35 testes, com os 19 que não tinham rodado) e o D5 (2). Vitest 3.983, `tsc` limpo, `conferir`: as 70 diferenças são as cinco migrations desta entrega.
+- **A completa anterior perdeu a rede de teste principal** no meio dos compartilhados (o rastro é o do `e2e_apagar_rede`: a rede e o membro da admin apagados, o login ficou). Não se repetiu na rodada seguinte, e a causa não foi achada. O banco local ganhou uma trava só de teste (no scratchpad, fora do repositório) que recusa apagar ou renomear a rede `rede-de-teste`, e fica nas próximas completas.
+
 ### 2026-11-18 — Os defeitos e atritos da 25ª simulação, corrigidos
 
 A 25ª rodou com quatro times sobre `a14295d6`: o "[sim] Studio Amarílis" (uma unidade, Recife), a "[sim] Rede Cerejeira" (duas unidades, Manaus, UTC−4), o "[sim] Espaço Glicínia" (migração, Curitiba) e a "[sim] Rede Hibisco" (comercial e Copilot, BH). O dinheiro bateu nos quatro times: caixa, receita, lucro, a receber, comissões, pontos e estoque. O que falhou foi o plano de tratamento, o caminho mais longo do comercial. Ela achou 17 defeitos e 36 atritos. As correções foram feitas em três frentes paralelas (plano e PDV; configuração, auditoria e CRM; atendimento, busca e migração), cada achado com a regra dele.
@@ -1805,7 +1836,16 @@ A 25ª rodou com quatro times sobre `a14295d6`: o "[sim] Studio Amarílis" (uma 
   - D17: os "Próximos agendamentos" da busca só trazem o que está em aberto (`20261125000002`).
   - A8: a ficha de saúde obrigatória diz quem responde. A9: quem conclui inclui a profissional do agendamento com "só os meus". A10: "Mandada ao app" só para quem tem acesso. A11: o motivo do cancelamento diz que vai à cliente. A15: a unidade nos próximos da ficha. A22: o aviso da importação. A26: a recompensa no extrato do app. A27: qual estoque mínimo vale.
 - **Não eram defeito**: A7, A16 e A23. Já estavam corrigidos e subiram com `67aea03d`: D9, D10, D11 e A-CONF4. O A12 não se reproduziu; a 26ª confere com captura.
-- **Ao Heitor** (em aberto): D6 (o avulso, o pacote, o pré-pago e o produto não pagos contam em Vendas?) e A29 (o selo "Novo" na ficha migrada). "Está no escopo?": A1a, A28, A30, A11 (o motivo interno × o da cliente), as tags na linha da lista e o filtro por profissional e sala na Agenda. Frente separada, por ser DEFEITO pela regra das Tags: o filtro por tag na Agenda, nos Relatórios e no Financeiro.
+- **Ao Heitor**, respondidos em 18/11 (noite):
+  - A29 (as fichas importadas aparecem com o selo "Novo"; devem?) e A1a (o plano proposto e não aceito sem "Cancelar"; entra?): "sim nos dois" — o selo fica; o proposto ganha o Cancelar.
+  - D6: "nao pago nao conta na venda" — o avulso, o pacote, o pré-pago e o produto só entram em Vendas pagos, como o plano.
+  - A28: "a importação é atraves de csv que le as colunas automaticamente e mostra para o usuario relacionar tabela x sistema" — é o que o importador faz (`sugerirMapeamento`); não era defeito.
+  - A30 (os dias de teste que faltam na Assinatura): "Mostra".
+  - A11 (dois campos de motivo no cancelamento): "Não". As tags na linha da lista de Clientes: "Não".
+  - O filtro por profissional e por sala na Agenda: "Então precisa arrumar" — entra, com a tag ao lado (regra das Tags).
+  - Frente da regra das Tags (defeito): o filtro por tag nos Relatórios e no Financeiro.
+  - As tags moram em três colunas que nunca se encontram (`clients.tags` da ficha, `contacts.tags` do inbox, `leads.tags` do quadro): marcar "VIP" na ficha não fazia a pessoa aparecer no filtro do inbox nem do quadro. Pergunta: a tag é uma só, da pessoa, ou a oportunidade tem tags próprias? O Heitor: "a tag é da pessoa e pode ter mais de uma tag" — uma lista por pessoa, que vale em todo filtro; a oportunidade não tem tag própria.
+  - A conversa que chega pelo telefone de uma ficha já cadastrada se liga sozinha à ficha? (só quando o telefone bate com UMA ficha; mãe e filha no mesmo número, não). O Heitor: "sim, liga sozinha quando bater com uma ficha só".
 - **Specs antigos que travavam o texto velho**: `plano-atritos-da-9` (A3 e A14 da 25ª). `crm-alcance-varredura-da-25` conferia "não encontrad" na resposta inteira da action, que traz o "Página não encontrada" do modelo de 404; agora confere a mensagem da action.
 - **A completa local contra o build** deu 1637 + 873 + 1 testes passando e 4 falhas. As 4 eram specs presos à regra velha, e passam depois do ajuste (22/22):
   - `configuracoes-atritos-da-7` e `importacao-contatos` (A-CONF1: a comissão, as taxas e as Importações são da Admin da rede);

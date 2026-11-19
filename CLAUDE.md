@@ -217,6 +217,11 @@ pelo app. Até 2026-09-27 o prontuário e a fidelidade só exigiam
   integração nenhuma no cargo) lia o token da Meta pela chave pública. Tela que precise de algo dali pelo navegador não
   reabre a tabela: expõe só as colunas sem segredo, numa view ou função.
   Prova: `e2e/credenciais-fora-da-sessao.spec.ts`.
+- **A sessão NUNCA grava** (o Heitor, 2026-11-19: "Qualquer gravação que não
+  passa pela validação do backend ta errada e é uma brecha de segurança").
+  Toda gravação passa pelo servidor, depois da trava (permissão e alcance), pelo
+  cliente de serviço; nenhuma tabela tem política de INSERT/UPDATE/DELETE para
+  a sessão (equipe ou cliente final). A regra abaixo (F63) era o começo disto.
 - **Configuração e dado sensível: a sessão só LÊ** (F63, 2026-11-12). Cargos,
   LGPD, comissões, taxas, campanhas, estoque: o servidor grava pelo cliente de
   serviço, depois da trava; as comissões nem se leem pela sessão (a tela
@@ -829,6 +834,7 @@ do arquivo dele em `docs/regras/` ("O que nunca fazer aqui").
 ❌ Policy RLS que confere só o cargo (role <> 'CLIENT') sem conferir a REDE
 ❌ Política de leitura pela sessão em tabela de módulo com escopo (prontuário, comissões, lançamentos): a RLS não aplica o "só os meus" — o servidor lê, a tela assina um sinal
 ❌ Decidir qualquer coisa por clients.branch_id (é só onde a ficha nasceu; a cliente é da rede)
+❌ Política de INSERT/UPDATE/DELETE para a sessão em QUALQUER tabela — toda gravação passa pelo servidor (o Heitor, 19/11)
 ❌ Política de ESCRITA em tabela de configuração que confere só eh_da_rede() (sem o módulo, qualquer membro da rede grava) — a sessão lê, o servidor grava
 ❌ Policy de leitura numa tabela do Realtime sem `to authenticated` (o inscrito anônimo a estoura e o lote some para todos)
 ❌ Escolher a ficha da cliente pela claim client_id ou por auth_id … limit 1 (ela tem uma ficha por rede: é ctx.clientId no app, clientes_do_login() no banco)
@@ -915,6 +921,13 @@ pnpm --filter web test:e2e:completa # a suíte inteira contra o build dos TRÊS 
 FALHA pelo motivo certo (o comportamento que falta, não um erro do teste) — a
 falha vai na mensagem do commit —, e só então se implementa até passar. Mudança
 que só move código, sem comportamento novo, se apoia nos testes que já existem.
+
+**Teste só muda se a regra mudou** (o Heitor, 2026-11-19: "o teste só pode ser
+alterado se a regra foi alterada"; "a gente só sabe o que tá errado por causa
+dos testes"). Teste que falha se corrige no CÓDIGO, até passar no teste que já
+existe — nunca criando outro ao lado nem afrouxando o que estava. Alterar ou
+apagar um teste exige a regra que mudou (a fala do Heitor, com a data), e toda
+entrega lista ao Heitor cada teste alterado ou apagado, com essa regra.
 
 **Qual E2E rodar** (decisão do Heitor, 2026-09-28 — a suíte inteira passa de
 15 minutos, e esperar por ela a cada etapa tornava o desenvolvimento inviável):

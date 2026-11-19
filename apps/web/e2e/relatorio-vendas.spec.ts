@@ -15,6 +15,10 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  *
  * Numa rede `[e2e]` própria, com as datas em 2021: o que a tela mostra é só
  * o que este teste criou.
+ *
+ * D6 (o Heitor, 18/11: "nao pago nao conta na venda"): toda venda entra no dia
+ * do primeiro recebimento pago — aqui cada uma é paga no dia em que foi
+ * vendida (`pagar`), e o não pago está em e2e/relatorio-vendas-so-o-pago.spec.ts.
  */
 
 test.describe.configure({ mode: 'serial' })
@@ -28,6 +32,15 @@ let pacoteId: string
 const nome = (r: string) => `${PREFIXO} ${r} ${marca}`
 /** O cliente da rede de teste leva a marca dela (criarCliente). */
 const cliente = (r: string) => `${PREFIXO} ${r} vnd${marca}`
+
+/** O recebimento pago da venda, no dia dela (D6: sem ele, não é venda). */
+async function pagar(ligacao: Record<string, string>, valor: number, em: string) {
+  const { error } = await db().from('financial_transactions').insert({
+    branch_id: outra.branchId, type: 'INCOME', category: 'Serviços', description: 'Venda', amount: valor,
+    is_paid: true, paid_at: em, created_at: em, payment_method: 'PIX', created_by: outra.professionalId, ...ligacao,
+  })
+  expect(error, error?.message).toBeNull()
+}
 
 const MARCO = '/admin/reports?tab=vendas&period=custom&from=2021-03-01&to=2021-03-31'
 const ABRIL = '/admin/reports?tab=vendas&period=custom&from=2021-04-01&to=2021-04-30'
@@ -79,6 +92,7 @@ test.beforeAll(async () => {
     total_sessions: 1, used_sessions: 1, price: 450, preco_tabela: 500, desconto: 50, sold_by: outra.professionalId,
   }).select('id').single<{ id: string }>()
   expect(cp.error).toBeNull()
+  await pagar({ client_id: bia, client_package_id: cp.data!.id }, 450, '2021-03-12T15:00:00Z')
   const sessao = await db().from('appointments').insert({
     ...base, client_id: bia, status: 'COMPLETED', scheduled_at: '2021-03-13T12:00:00Z', price: 450,
   }).select('id').single<{ id: string }>()
@@ -88,17 +102,21 @@ test.beforeAll(async () => {
     session_number: 1, procedure_id: outra.procedureId, preco: 450,
   })).error).toBeNull()
   // Vendido em abril: fora de março.
-  expect((await db().from('client_packages').insert({
+  const deAbril = await db().from('client_packages').insert({
     client_id: bia, package_id: pacoteId, branch_id: outra.branchId, purchased_at: '2021-04-02T15:00:00Z',
     total_sessions: 1, used_sessions: 0, price: 500, preco_tabela: 500, desconto: 0, sold_by: outra.professionalId,
-  })).error).toBeNull()
+  }).select('id').single<{ id: string }>()
+  expect(deAbril.error).toBeNull()
+  await pagar({ client_id: bia, client_package_id: deAbril.data!.id }, 500, '2021-04-02T15:00:00Z')
 
   // 3. Procedimento pré-pago: 3 unidades por 300.
-  expect((await db().from('procedure_sales').insert({
+  const prePago = await db().from('procedure_sales').insert({
     tenant_id: outra.tenantId, branch_id: outra.branchId, client_id: caio, procedure_id: outra.procedureId,
     quantity: 3, preco_unitario_tabela: 100, preco_tabela: 300, desconto: 0, price: 300,
     sold_by: outra.professionalId, sold_at: '2021-03-15T15:00:00Z',
-  })).error).toBeNull()
+  }).select('id').single<{ id: string }>()
+  expect(prePago.error).toBeNull()
+  await pagar({ client_id: caio, procedure_sale_id: prePago.data!.id }, 300, '2021-03-15T15:00:00Z')
 
   // 4. Plano fechado: o valor é o dos procedimentos dele (500 + 300). "Quem
   // vendeu" marcado: sem ele a venda não é de ninguém (com-06) e a coluna
@@ -143,11 +161,18 @@ test.beforeAll(async () => {
 
   // Abril: 52 pré-pagos + o pacote de 2/4 = 53 vendas, para a paginação (50
   // por página) e a exportação, que leva TODAS.
-  expect((await db().from('procedure_sales').insert(Array.from({ length: 52 }, (_, i) => ({
+  const deAbrilPrePagos = await db().from('procedure_sales').insert(Array.from({ length: 52 }, (_, i) => ({
     tenant_id: outra.tenantId, branch_id: outra.branchId, client_id: caio, procedure_id: outra.procedureId,
     quantity: 1, preco_unitario_tabela: 10, preco_tabela: 10, desconto: 0, price: 10,
     sold_by: outra.professionalId, sold_at: new Date(Date.UTC(2021, 3, 5, 12, i)).toISOString(),
-  })))).error).toBeNull()
+  }))).select('id, sold_at')
+  expect(deAbrilPrePagos.error).toBeNull()
+  const recebimentos = await db().from('financial_transactions').insert((deAbrilPrePagos.data ?? []).map(v => ({
+    branch_id: outra.branchId, client_id: caio, procedure_sale_id: v.id as string, type: 'INCOME', category: 'Serviços',
+    description: 'Venda', amount: 10, is_paid: true, paid_at: v.sold_at as string, created_at: v.sold_at as string,
+    payment_method: 'PIX', created_by: outra.professionalId,
+  })))
+  expect(recebimentos.error, recebimentos.error?.message).toBeNull()
 })
 
 test.afterAll(async () => {

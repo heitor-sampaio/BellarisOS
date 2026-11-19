@@ -832,7 +832,6 @@ function OportunidadeItem({
     fd.set('source', source)
     fd.set('notes', notes)
     fd.set('crm_stage_id', stageId)
-    fd.set('tags', JSON.stringify(o.tags))
     fd.set('procedure_ids', JSON.stringify(procs))
     fd.set('value', valor)
     startSave(async () => {

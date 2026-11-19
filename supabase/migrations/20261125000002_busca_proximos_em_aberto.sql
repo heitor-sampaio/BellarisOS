@@ -7,7 +7,7 @@
 -- tirava o cancelado: a falta e o concluído de hoje apareciam como
 -- "próximos" (princípio 3). O dia já é o da unidade (20261111006203).
 
-create function pg_temp.trocar_no_corpo(p_fn regprocedure, p_de text[], p_para text[], p_vezes int[])
+create or replace function pg_temp.trocar_no_corpo(p_fn regprocedure, p_de text[], p_para text[], p_vezes int[])
 returns void language plpgsql as $f$
 declare
   d text := pg_get_functiondef(p_fn);

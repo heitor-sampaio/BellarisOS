@@ -9,6 +9,8 @@ import { mesclarParams } from '@/lib/query-params'
 import { EvolutionChart, type ChartPoint } from './evolution-chart'
 import { PeriodSelector, type Period } from './period-selector'
 import { SegSelect } from '@/components/shared/seg-select'
+import { FiltroDeTags } from '@/components/shared/filtro-de-tags'
+import { abaTemFiltroDeTags, tagsNaUrl } from '@/lib/metrics/tags-do-relatorio'
 import { FunnelSelect } from '@/components/shared/funnel-select'
 import { validadeDoLote, type LinhaLote, type LinhaParcela } from './reports-linhas'
 import type { Relatorio } from '@/lib/metrics/relatorio'
@@ -146,6 +148,10 @@ export interface ReportsBiProps {
   transferencias?: RelatorioDeTransferencias
   /** A31 da 10ª: as entradas de estoque do período (ao custo, com fornecedor e nota) — aba Financeiro. */
   comprasNoEstoque?: { linhas: EntradaDeEstoqueDoPeriodo[]; total: number }
+  /** O vocabulário de tags da rede (as opções do filtro). Vazio: o filtro não aparece. */
+  tagsDaRede?: string[]
+  /** As tags que valem na aba aberta (`?tags=`; nas abas sem o filtro, nenhuma). */
+  tagsEscolhidas?: string[]
 }
 
 // -- Animated number -----------------------------------------------------------
@@ -634,7 +640,7 @@ function TabVendas(p: ReportsBiProps) {
 
   const ir = (mudar: Record<string, string | null>) => router.push(mesclarParams(searchParams, mudar))
 
-  // A exportação leva o MESMO recorte da tela (período, unidade e tipo), sem
+  // A exportação leva o MESMO recorte da tela (período, unidade, tipo e tags), sem
   // página: todas as vendas.
   const exportar = new URLSearchParams()
   for (const chave of ['period', 'from', 'to'] as const) {
@@ -645,6 +651,9 @@ function TabVendas(p: ReportsBiProps) {
   const unidade = p.selectedBranchId ?? (p.showBranchFilter ? null : p.branches[0]?.id ?? null)
   if (unidade) exportar.set('branch', unidade)
   if (v.tipo) exportar.set('tipo', v.tipo)
+  // O filtro de Tags vai junto: o CSV é o que a tela mostra.
+  const tagsDoFiltro = tagsNaUrl(p.tagsEscolhidas ?? [])
+  if (tagsDoFiltro) exportar.set('tags', tagsDoFiltro)
 
   const th = (align: 'left' | 'right' = 'left'): CSSProperties => ({
     padding: '8px 12px', textAlign: align,
@@ -666,11 +675,11 @@ function TabVendas(p: ReportsBiProps) {
         <KpiCard label="Total vendido" value={resumo.geral.total} hero detalhe={vendasNoPlural(resumo.geral.quantidade)}
           rotuloDoSobre="Como o Total vendido se liga ao caixa" sobre={
             <span data-ponte-vendas-caixa>
-              O Total vendido é a venda, no dia em que foi feita; o caixa do período é o dinheiro, no dia em que entrou:{' '}
+              O Total vendido é a venda, no dia do primeiro pagamento dela (o que não foi pago não é venda); o caixa do período é o dinheiro, no dia em que entrou:{' '}
               <strong style={{ color: 'var(--text)' }}>{fmtBRLFull(p.core.revenueCash)}</strong> (Financeiro). A diferença é a regra: o crédito
               interno vendido entra no caixa e não no Total vendido (ele aparece na lista, com a comanda; a venda é o que for pago com ele, quando a
-              cliente usar); o pacote e o plano entram aqui
-              inteiros, no dia da venda, e no caixa só o que já foi recebido; a sessão de pacote, de plano e a unidade pré-paga não são venda de novo;
+              cliente usar); o pacote, o pré-pago e o plano parcelados entram aqui
+              inteiros, no dia da primeira parcela paga, e no caixa só o que já foi recebido; a sessão de pacote, de plano e a unidade pré-paga não são venda de novo;
               o voucher e os pontos da fidelidade pagam parte da venda (contam aqui) e não entram no caixa; o desconto da venda fica fora dos dois.
             </span>
           } />
@@ -682,7 +691,7 @@ function TabVendas(p: ReportsBiProps) {
 
       <SCard title="Vendas do período" rotuloDoSobre="Quem aparece em Profissional" sobre={
         <span data-legenda-das-vendas>
-          Profissional: quem atendeu; no pacote, no pré-pago, no produto e no plano, quem vendeu (o plano sem “Quem vendeu”, a dona dele); o crédito interno não tem. A sessão de pacote, de plano ou pré-paga não aparece de novo — já foi vendida. A venda de antes do PDV não tem comanda (—).
+          Profissional: quem atendeu; no pacote, no pré-pago, no produto e no plano, quem vendeu (sem “Quem vendeu”, a venda fica sem nome); o crédito interno não tem. A sessão de pacote, de plano ou pré-paga não aparece de novo — já foi vendida. A venda de antes do PDV não tem comanda (—).
         </span>
       }>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
@@ -1563,6 +1572,13 @@ export function ReportsBiView(props: ReportsBiProps) {
     router.push(mesclarParams(searchParams, { unidade: unidade?.slug ?? (id || null), branch: null }))
   }
 
+  // O filtro de Tags (só nas abas de pessoas): a tag escolhida que saiu do
+  // vocabulário continua na lista, marcada, para dar para desmarcar — a tela
+  // mostra o que vale na conta (princípio 3).
+  const tagsEscolhidas = props.tagsEscolhidas ?? []
+  const opcoesDeTag = [...(props.tagsDaRede ?? []), ...tagsEscolhidas.filter(t => !(props.tagsDaRede ?? []).includes(t))]
+  const comFiltroDeTags = abaTemFiltroDeTags(tab) && opcoesDeTag.length > 0
+
   const activeSection = {
     overview:       <TabOverview      {...props} />,
     financeiro:     <TabFinanceiro    {...props} />,
@@ -1625,11 +1641,26 @@ export function ReportsBiView(props: ReportsBiProps) {
           onSelect={(k) => switchTab(k as Tab)}
           ariaLabel="Seção do relatório"
         />
-        <PeriodSelector
-          current={props.period}
-          fromDate={props.customFrom}
-          toDate={props.customTo}
-        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {/* O filtro de Tags compartilhado (o do Financeiro): o mesmo gatilho e a
+              mesma dica; trocar a tag volta à primeira página da lista. */}
+          {comFiltroDeTags && (
+            <FiltroDeTags
+              tagsDaRede={props.tagsDaRede ?? []}
+              escolhidas={tagsEscolhidas}
+              limpar={['pagina']}
+              sobre={'A tag filtra pessoas: entra no relatório só o que é de uma cliente com TODAS as tags marcadas '
+                + '(maiúscula ou minúscula, tanto faz). O que não tem cliente sai enquanto houver tag marcada. Na aba Comercial vale a tag da pessoa da oportunidade '
+                + '(a cliente; sem ela, o contato); nos atendimentos comerciais, a da cliente. A equipe (Profissionais ativos) não muda. Visão geral, '
+                + 'Financeiro e Estoque não têm este filtro: a despesa e o lucro não são de uma cliente.'}
+            />
+          )}
+          <PeriodSelector
+            current={props.period}
+            fromDate={props.customFrom}
+            toDate={props.customTo}
+          />
+        </div>
       </div>
 
       {/* Active section */}

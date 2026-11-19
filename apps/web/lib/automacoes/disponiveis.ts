@@ -76,7 +76,8 @@ export const CAMPOS_DAS_ENTIDADES: GrupoDeVariaveis[] = [
     { caminho: 'lead.etapa',  rotulo: 'Etapa do funil' },
     { caminho: 'lead.origem', rotulo: 'Origem' },
     { caminho: 'lead.valor',  rotulo: 'Valor' },
-    { caminho: 'lead.tags',   rotulo: 'Tags' },
+    // A tag é da PESSOA (o Heitor, 18/11): as da ficha da oportunidade, ou do contato.
+    { caminho: 'lead.tags',   rotulo: 'Tags da pessoa' },
   ] },
   { grupo: 'Conversa', itens: [
     { caminho: 'conversa.canal',  rotulo: 'Canal' },

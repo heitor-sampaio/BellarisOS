@@ -89,6 +89,8 @@ interface Props {
    * mais antigo — as atrasadas primeiro; as Movimentações, pelo mais recente.
    */
   ordemInicial?: 'asc' | 'desc'
+  /** O filtro de Tags (`FiltroDeTags`): a lista já chega filtrada do servidor (`?tags=`). */
+  filtroDeTags?: React.ReactNode
 }
 
 const PM_COLORS: Record<string, { bg: string; color: string }> = {
@@ -112,7 +114,7 @@ function fmtDatetime(iso: string, fuso = 'America/Sao_Paulo') {
 type FilterType = 'all' | 'INCOME' | 'EXPENSE'
 type SortDir    = 'asc' | 'desc'
 
-export function FinancialTable({ transactions, slug, canReverse, canPay, podeRemarcar = false, nomeDoCsv = 'lancamentos.csv', ordemInicial = 'desc' }: Props) {
+export function FinancialTable({ transactions, slug, canReverse, canPay, podeRemarcar = false, nomeDoCsv = 'lancamentos.csv', ordemInicial = 'desc', filtroDeTags }: Props) {
   const fuso = useFuso()
   const [search,     setSearch]     = useState('')
   const [filterType, setFilterType] = useState<FilterType>('all')
@@ -265,6 +267,8 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
           {sortDir === 'desc' ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
           {sortDir === 'desc' ? 'Mais recente' : 'Mais antigo'}
         </button>
+
+        {filtroDeTags}
 
         {/* A44 da 8ª: o CSV do que está na lista (os filtros valem), para a contadora. */}
         <button type="button" className="btn-secondary" disabled={filtered.length === 0}

@@ -518,6 +518,19 @@ um muro que não depende de cada trava do código.
   MANAGE`; o "Pagar" some no modo suporte) e o aviso no topo para quem
   administra a rede (teste acabando em 7 dias; em atraso, com a data da
   suspensão e o link da fatura).
+  - **O teste diz quantos dias faltam** (A30 da 25ª, o Heitor: "Mostra"):
+    "Período de teste até 18/12/2026 — termina em 30 dias"
+    (`[data-dias-do-teste]`); no penúltimo dia "termina amanhã", no último
+    "termina hoje". A conta é UMA, pura, `diasDoTeste`/`textoDoFimDoTeste`
+    (`lib/redes/dias-do-teste.ts`), a mesma do aviso do topo: dias de
+    CALENDÁRIO em Brasília entre hoje e o último dia (a hora do dia não muda o
+    número); o último dia conta inteiro, porque o banco grava `trial_ends_at`
+    às 23:59:59 de São Paulo e o cron vence por esse instante; passado ele,
+    nada. Brasília e não o fuso da unidade (decisão do Claude pelo princípio 3):
+    a data na tela e o vencimento são desse relógio, e no de outra unidade o
+    dia da conta e o da data divergiriam. O aviso do topo era `Math.ceil` do
+    instante e dizia "termina em 1 dia" no último dia. Prova:
+    `tests/assinatura-dias-do-teste.test.ts`.
 - Prova: `e2e/sistema-redes.spec.ts` (criar, editar, desligar, as regras) e
   `e2e/assinaturas-asaas.spec.ts` (contra o build, com o Asaas falso).
 

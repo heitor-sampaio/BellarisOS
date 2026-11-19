@@ -3,6 +3,7 @@
 import { moverEtapaCore } from '@/lib/crm/oportunidade'
 import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
 import { tagsDoVocabulario } from '@/lib/tags/escolha'
+import { expirarCacheDasTags } from '@/lib/tags/da-pessoa'
 import { getTenantContext, assertPermission, podeReceber, assertRecurso, temRecurso, can } from '@/lib/auth'
 import { redeTemWhatsapp } from '@/lib/automacoes/canal-da-rede'
 import { idsDaPaginaDoInbox } from '@/lib/inbox/pagina'
@@ -658,7 +659,6 @@ export interface InboxLead {
   source:        string | null
   notes:         string | null
   crm_stage_id:  string | null
-  tags:          string[]
   branch_id:     string | null
   client_id:     string | null
   procedure_ids: string[]
@@ -974,7 +974,7 @@ async function buscarOportunidades(
 
   const { data, error } = await admin
     .from('leads')
-    .select('id, name, phone, email, social_media, source, notes, crm_stage_id, tags, branch_id, client_id, owner_id, created_at, value, lead_procedures(procedure_id)')
+    .select('id, name, phone, email, social_media, source, notes, crm_stage_id, branch_id, client_id, owner_id, created_at, value, lead_procedures(procedure_id)')
     .eq('tenant_id', tenantId)
     .or(filtro)
     .order('created_at', { ascending: false })
@@ -982,7 +982,7 @@ async function buscarOportunidades(
   if (error) { console.error('[getConversationCard] oportunidades:', error.message); return [] }
   type LeadLido = {
     id: string; name: string; phone: string | null; email: string | null; social_media: string | null
-    source: string | null; notes: string | null; crm_stage_id: string | null; tags: string[] | null
+    source: string | null; notes: string | null; crm_stage_id: string | null
     branch_id: string | null; client_id: string | null; owner_id: string | null; created_at: string
     value: number | string | null; lead_procedures: { procedure_id: string }[] | null
   }
@@ -1006,7 +1006,7 @@ async function buscarOportunidades(
     return {
       id: l.id, name: l.name, phone: l.phone, email: l.email,
       social_media: l.social_media, source: l.source, notes: l.notes,
-      crm_stage_id: l.crm_stage_id, tags: l.tags ?? [],
+      crm_stage_id: l.crm_stage_id,
       branch_id: l.branch_id, client_id: l.client_id,
       procedure_ids: (l.lead_procedures ?? []).map(p => p.procedure_id),
       value:       l.value === null || l.value === undefined ? null : Number(l.value),
@@ -1190,13 +1190,16 @@ export async function atualizarContato(
   // tem a cópia dela, que é o card e se edita lá.
   const daPessoa: Record<string, unknown> = {}
   // D7 da 18ª: só as do vocabulário (e as que a pessoa já tinha) — criar tag é de Configurações → Tags (H7).
+  // O contato com ficha tem a MESMA lista dela: o banco leva à ficha (20261125500001).
+  let fichaDoContato: string | null = null
   if (dados.tags !== undefined && contatoId) {
     const [vocabulario, atual] = await Promise.all([
       tagsAtivasDaRede(ctx.tenantId!),
-      ler(admin.from('contacts').select('tags').eq('id', contatoId).eq('tenant_id', ctx.tenantId!).maybeSingle(),
-        'ler as tags do contato') as Promise<{ tags: string[] | null } | null>,
+      ler(admin.from('contacts').select('tags, client_id').eq('id', contatoId).eq('tenant_id', ctx.tenantId!).maybeSingle(),
+        'ler as tags do contato') as Promise<{ tags: string[] | null; client_id: string | null } | null>,
     ])
     daPessoa.tags = tagsDoVocabulario(dados.tags, vocabulario, atual?.tags ?? [])
+    fichaDoContato = atual?.client_id ?? null
   }
   if (typeof dados.email === 'string') daPessoa.email = dados.email.trim().toLowerCase().slice(0, 200) || null
   if (typeof dados.social === 'string') daPessoa.social_media = dados.social.trim().slice(0, 200) || null
@@ -1207,6 +1210,7 @@ export async function atualizarContato(
       .eq('id', contatoId)
       .eq('tenant_id', ctx.tenantId!)
     if (erroPessoa) return { ok: false, error: erroPessoa.message }
+    if (daPessoa.tags !== undefined) expirarCacheDasTags(ctx.tenantId!, fichaDoContato)
   }
 
   const mudouNome = patch.contact_name !== undefined

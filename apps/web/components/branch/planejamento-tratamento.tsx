@@ -5,7 +5,7 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { rotaComParams } from '@/lib/query-params'
 import Link from 'next/link'
 import { rotaNoPortal, rotaDaClienteNoPdv } from '@/lib/rotas'
-import { ClipboardList, Plus, ChevronLeft, Loader2, Send, CheckCircle2, UserPlus, UserCheck } from 'lucide-react'
+import { ClipboardList, Plus, ChevronLeft, Loader2, Send, CheckCircle2, UserPlus, UserCheck, XCircle } from 'lucide-react'
 import {
   getPlanosDoCliente, salvarPlanoNovo, salvarPlanoDoCliente, getPlanoParaEditar, salvarDocumentosExcluidosDoPlano,
   proposeTreatmentPlan, aceitarPlano, vincularClienteAoPlano, buscarClientesParaPlano, getResumoDoPlano,
@@ -19,6 +19,7 @@ import type { TreatmentProcedure, ExistingPlan, AvailableProduct, TreatmentPlanE
 import { situacaoDoPlano, TEXTO_QUEM_MONTA } from '@/lib/plano-de-tratamento/situacao'
 import { rodapeDoPlanoFechado, textoDoPlanoNaTela } from '@/lib/plano-de-tratamento/textos'
 import { CancelarPlano } from '@/components/shared/cancelar-pacote'
+import { CancelarPlanoProposto } from '@/components/branch/cancelar-plano-proposto'
 import { useFuso } from '@/components/shared/fuso'
 import { PassosDoPlano } from '@/components/branch/passos-do-plano'
 import { DocumentosDoPlano } from '@/components/branch/documentos-do-plano'
@@ -132,6 +133,8 @@ export function PlanejamentoTratamento({
   // A24 da 14ª: o erro do "Aceitar plano" (e do "Cliente vai pensar") aparece
   // JUNTO do botão — no topo, a Débora não o via.
   const [erroDoBotao, setErroDoBotao] = useState<string | null>(null)
+  // A1a da 25ª: a janela do "Cancelar plano" do rascunho e do proposto (sem dinheiro).
+  const [cancelandoProposto, setCancelandoProposto] = useState(false)
   // Uma sessão agendada pelos passos relê o resumo (as sessões feitas e agendadas).
   const [versaoDoResumo, setVersaoDoResumo] = useState(0)
 
@@ -466,6 +469,14 @@ export function PlanejamentoTratamento({
           <Send size={14} /> Cliente vai pensar
         </button>
       )}
+      {/* A1a da 25ª (o Heitor, 18/11: "sim"): o rascunho e o proposto se cancelam, sem
+          dinheiro, por quem monta o plano — o aceito é o "Cancelar plano" do Financeiro. */}
+      {(aberto.status === 'DRAFT' || aberto.status === 'PROPOSED') && (
+        <button type="button" data-cancelar-proposto onClick={() => setCancelandoProposto(true)} disabled={salvando} className="btn-ghost"
+          style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-base-sz)' }}>
+          <XCircle size={14} /> Cancelar plano
+        </button>
+      )}
       {erroDoBotao && <ErroDoBotao texto={erroDoBotao} />}
     </div>
   ) : !editavel && podeReceber && aberto.status === 'PROPOSED' ? (
@@ -604,6 +615,11 @@ export function PlanejamentoTratamento({
       {/* Na ficha (e na avaliação), o aceite fica embaixo do editor; na página
           do plano, no passo ① (PT1a). */}
       {!paginaDoPlano && botoesDoAceite}
+      {cancelandoProposto && !ehNovo && (
+        <CancelarPlanoProposto planId={aberto.id} rascunho={aberto.status === 'DRAFT'}
+          onFechar={() => setCancelandoProposto(false)}
+          onCancelado={() => { void carregarLista(); void abrirPlano(aberto.id) }} />
+      )}
 
       {/* D4 da 12ª: o cancelado é um RETRATO — a data, quem, o motivo, o que
           foi devolvido e o que ficou (o `cancelamento` que o banco guarda). */}

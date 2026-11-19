@@ -424,7 +424,6 @@ export function validarLinha(
         break
       }
       case 'tags':
-      case 'op_tags':
         dados[campo.chave] = separarTags(v).map(t => t.slice(0, 60))
         break
       case 'notes':

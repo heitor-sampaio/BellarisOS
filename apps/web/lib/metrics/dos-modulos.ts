@@ -15,6 +15,8 @@ type Recorte = Pick<RecorteDosModulos, 'agenda' | 'financeiro'>
 
 export async function getCoreDosModulos(args: {
   tenantId: string; branchIds?: string[] | null; from: Date; to: Date; recorte: Recorte
+  /** O filtro de Tags dos Relatórios (só nas abas de pessoas): vai aos dois recortes. */
+  tags?: string[] | null
   /**
    * As unidades de cada módulo, quando diferem do `branchIds` (D10 da 13ª: o
    * "Meus…" de quem atende em duas unidades conta as duas — `unidadesDoQueEDela`).

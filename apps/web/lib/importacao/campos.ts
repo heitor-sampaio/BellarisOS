@@ -19,7 +19,7 @@ export type ChaveDeCampo =
   | 'cliente_desde' | 'ultima_visita' | 'pacote'
   | 'responsavel_nome' | 'responsavel_cpf' | 'responsavel_parentesco' | 'responsavel_telefone'
   | 'op_origem' | 'op_valor' | 'op_observacoes' | 'op_procedimentos' | 'op_etapa' | 'op_responsavel'
-  | 'op_utm_source' | 'op_utm_medium' | 'op_utm_campaign' | 'op_tags'
+  | 'op_utm_source' | 'op_utm_medium' | 'op_utm_campaign'
 
 export interface CampoDoSistema {
   chave:       ChaveDeCampo
@@ -53,7 +53,10 @@ const NOME = p('name', 'Nome', ['nome', 'nome completo', 'cliente', 'paciente', 
 const TELEFONE = p('phone', 'Telefone', ['telefone', 'celular', 'fone', 'whatsapp', 'whats', 'tel', 'phone', 'telefone celular', 'contato', 'numero de telefone'], true)
 const EMAIL = p('email', 'E-mail', ['email', 'e mail', 'mail', 'endereco de email'])
 const SOCIAL_SINONIMOS = ['rede social', 'redes sociais', 'instagram', 'insta', 'perfil', 'perfil do instagram', 'social', 'arroba']
-const TAGS = p('tags', 'Tags', ['tags', 'tag', 'etiquetas', 'etiqueta', 'marcadores', 'categoria', 'categorias'])
+// A tag é da PESSOA (o Heitor, 18/11: "a tag é da pessoa e pode ter mais de uma tag"): a coluna
+// "Tags da oportunidade" de antes é a mesma coluna (a oportunidade não tem tag própria).
+const TAGS = p('tags', 'Tags', ['tags', 'tag', 'etiquetas', 'etiqueta', 'marcadores', 'categoria', 'categorias',
+  'tags da oportunidade', 'tags do lead', 'etiquetas da oportunidade'])
 
 const DA_PESSOA: Record<Destino, CampoDoSistema[]> = {
   clientes: [
@@ -111,7 +114,6 @@ const DA_OPORTUNIDADE: CampoDoSistema[] = [
   o('op_utm_source', 'UTM source', ['utm source', 'source']),
   o('op_utm_medium', 'UTM medium', ['utm medium', 'medium']),
   o('op_utm_campaign', 'Campanha (UTM campaign)', ['utm campaign', 'campanha', 'campaign']),
-  o('op_tags', 'Tags da oportunidade', ['tags da oportunidade', 'tags do lead', 'etiquetas da oportunidade']),
 ]
 
 /**

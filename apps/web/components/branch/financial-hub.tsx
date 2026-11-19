@@ -30,6 +30,8 @@ import type { AReceberVencido } from '@/lib/metrics/vencidas'
 import type { MesDoFluxo } from '@/lib/metrics/fluxo-de-caixa'
 import { AbasDoFinanceiro } from '@/components/shared/abas-do-financeiro'
 import { linkDaAba, ROTULO_DO_A_RECEBER_DA_CLIENTE, type AbaDoFinanceiro } from '@/lib/financeiro/abas'
+import { FiltroDeTags } from '@/components/shared/filtro-de-tags'
+import { tagsParaAUrl } from '@/lib/tags/filtro-na-url'
 
 // --- Types --------------------------------------------------------
 
@@ -119,6 +121,10 @@ interface Props {
   comComissoes:     boolean
   /** CX6 (2026-11-14): as taxas estimadas e a venda sem taxa do período (eram do Fechamento do dia). */
   taxasDoPeriodo?:  TaxasDoPeriodo
+  /** O vocabulário da rede (lido no servidor): as opções do filtro de Tags das listas. */
+  tagsDaRede?:      string[]
+  /** As tags marcadas (`?tags=`): a lista já veio filtrada do servidor. */
+  tags?:            string[]
 }
 
 // --- Helpers ------------------------------------------------------
@@ -534,6 +540,8 @@ export function FinancialHub({
   taxasDoPeriodo,
   aba,
   comComissoes,
+  tagsDaRede = [],
+  tags = [],
 }: Props) {
   const router              = useRouter()
   const [, startTransition] = useTransition()
@@ -546,6 +554,8 @@ export function FinancialHub({
     q.set('period', p)
     if (p === 'custom' && from) q.set('from', from)
     if (p === 'custom' && to) q.set('to', to)
+    // As Tags ficam (CLAUDE.md §1): o filtro da lista não some ao trocar o período.
+    if (tags.length) q.set('tags', tagsParaAUrl(tags))
     startTransition(() => { router.push(`?${q.toString()}`) })
   }
 
@@ -600,7 +610,7 @@ export function FinancialHub({
 
   // FI1: o link de cada aba guarda o período; a mudança de período guarda a aba.
   const base = `/${slug}/financeiro`
-  const manter = { period, from: period === 'custom' ? customFrom : undefined, to: period === 'custom' ? customTo : undefined }
+  const manter = { period, from: period === 'custom' ? customFrom : undefined, to: period === 'custom' ? customTo : undefined, tags: tags.length ? tagsParaAUrl(tags) : undefined }
   const daAba = (a: AbaDoFinanceiro, extra: Record<string, string> = {}) => linkDaAba(base, a, manter, extra)
   const cartaoAReceber = (naAba: boolean) => (
     <KpiCardFull
@@ -669,6 +679,9 @@ export function FinancialHub({
       canPay={canPay}
       podeRemarcar={canWrite}
       ordemInicial={ordemInicial}
+      // As Tags (CLAUDE.md §1), ao lado dos filtros fixos da lista.
+      filtroDeTags={<FiltroDeTags tagsDaRede={tagsDaRede} escolhidas={tags}
+        sobre="Só os lançamentos das clientes com TODAS as tags marcadas; o que não tem cliente (a despesa, o fornecedor) sai. Os cartões acima não mudam com a tag." />}
     />
   )
   const tituloDeSecao: React.CSSProperties = { fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }

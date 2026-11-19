@@ -20,7 +20,7 @@ import { extrasDoCsv, type LancamentoParaOCsv } from '@/lib/financeiro/extras-do
 import { granularidadeDoPeriodo } from '@/lib/financeiro/barras'
 import { ler, lerTodas } from '@/lib/db'
 import { nomesDosRegistros } from '@/lib/nomes-dos-registros'
-import { descontosDosLancamentos } from '@/lib/financeiro/desconto-do-lancamento'
+import { descontosDosLancamentos, type LancamentoComDesconto } from '@/lib/financeiro/desconto-do-lancamento'
 import { pagosSemDinheiro, type LancamentoSemDinheiro } from '@/lib/financeiro/pago-sem-dinheiro'
 import { getTaxaDosLancamentos } from '@/lib/metrics/contadora'
 import { getAReceberDaOperadora, getParcelasDaOperadora } from '@/lib/metrics/operadora'
@@ -31,6 +31,19 @@ import { getAReceberVencido } from '@/lib/metrics/vencidas'
 import { startOfDayTZ } from '@/lib/datetime'
 import { situacaoDoVencimento } from '@/lib/financeiro/vencimentos'
 import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
+import { tagsDaUrl } from '@/lib/tags/filtro-na-url'
+import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
+import { selectComAsTags, comAsTags } from '@/lib/financeiro/filtro-de-tags'
+
+/**
+ * Uma linha da lista, como o select pede. Com as Tags o select é montado
+ * (`selectComAsTags`) e o tipo deixa de sair do texto: os campos lidos aqui
+ * vão nomeados; o resto segue para a tela como antes.
+ */
+type LancamentoLido = Record<string, unknown> & LancamentoComDesconto & {
+  id: string; client_id: string | null; maquininha_id: string | null
+  is_paid: boolean; due_date: string | null; description?: unknown; appointment_id?: unknown
+}
 
 export default async function FinancialPage({
   params,
@@ -52,6 +65,9 @@ export default async function FinancialPage({
   // A43 da 12ª / FI4: o A pagar é todo o a pagar em aberto, de qualquer vencimento (a despesa).
   const soAPagar = aba === 'a-pagar'
   const soOEmAberto = aba === 'a-receber' || soAPagar
+  // As Tags (CLAUDE.md §1): a lista só com os lançamentos das clientes com
+  // TODAS as tags marcadas — na consulta (comAsTags); o Resumo não tem a lista.
+  const tags = aba === 'resumo' ? [] : tagsDaUrl(sp.tags)
 
   const ctx = await getTenantContext()
   // `cashier` governa RECEBER — no atendimento e no checkout do plano. Esta
@@ -133,12 +149,13 @@ export default async function FinancialPage({
   // A26 da 24ª: o lançamento do atendimento diz o procedimento ("Atendimento concluído" não dizia).
   const lancamentos = aba === 'resumo' ? [] : await comOProcedimento(ctx.tenantId!, (await lerTodas((de, ate) => soAsVencidas
     ? doPeriodo(de, ate).lt('due_date', startOfDayTZ(new Date(), fuso).toISOString())
-    : doPeriodo(de, ate), 'carregar os lançamentos')) ?? [])
+    : doPeriodo(de, ate), 'carregar os lançamentos')) as unknown as LancamentoLido[] ?? [])
   function doPeriodo(de: number, ate: number) {
-    return createAdminClient()
+    // As Tags: a cliente pelo embed INNER e o `cs` (todas) — lib/financeiro/filtro-de-tags.
+    return comAsTags(createAdminClient()
     .from('financial_transactions')
-    .select('id, type, category, description, amount, payment_method, cartao_vezes, cartao_bandeira, maquininha_id, is_paid, paid_at, due_date, notes, estorno_motivo, product_sale_id, credito_vendido_id, sale_discount, desconto_motivo, client_package_id, procedure_sale_id, treatment_plan_id, created_at, appointment_id, data_de_referencia, parcela_numero, parcela_total, client_id, vencimentos_anteriores, loyalty_discount, fornecedor, nota_fiscal, valor_antes_do_estorno')
-    .eq('branch_id', unidadeId)
+    .select(selectComAsTags('id, type, category, description, amount, payment_method, cartao_vezes, cartao_bandeira, maquininha_id, is_paid, paid_at, due_date, notes, estorno_motivo, product_sale_id, credito_vendido_id, sale_discount, desconto_motivo, client_package_id, procedure_sale_id, treatment_plan_id, created_at, appointment_id, data_de_referencia, parcela_numero, parcela_total, client_id, vencimentos_anteriores, loyalty_discount, fornecedor, nota_fiscal, valor_antes_do_estorno', tags))
+    .eq('branch_id', unidadeId), tags)
     .or(soOEmAberto ? 'notes.is.null,notes.neq.Estornada' : 'is_paid.eq.true,amount.neq.0')
     // A38 da 8ª: "Ver e dar baixa" — todo o a receber em aberto, de qualquer
     // vencimento (a parcela do mês que vem não aparecia em lugar nenhum).
@@ -166,13 +183,16 @@ export default async function FinancialPage({
   // A44 da 12ª: o desconto em reais e a profissional de cada lançamento, para o CSV;
   // A43: todo o a pagar em aberto da unidade.
   const [semDinheiro, taxas, extras, aPagarEmAberto, maquininhas] = await Promise.all([
-    pagosSemDinheiro((lancamentos ?? []) as LancamentoSemDinheiro[]),
+    pagosSemDinheiro((lancamentos ?? []) as unknown as LancamentoSemDinheiro[]),
     getTaxaDosLancamentos(ctx.tenantId!, (lancamentos ?? []).map(t => t.id as string)),
     extrasDoCsv(ctx.tenantId!, (lancamentos ?? []) as unknown as LancamentoParaOCsv[]),
     getAPagarEmAberto({ tenantId: ctx.tenantId!, branchIds: [unidadeId] }),
     // A18 da 14ª: com mais de uma maquininha, a lista e o CSV dizem qual.
     nomesDasMaquininhas(ctx.tenantId!),
   ])
+  // As opções do filtro de Tags: o vocabulário da rede, lido aqui (quem só tem
+  // o Financeiro também as vê); o Resumo não tem o filtro.
+  const tagsDaRede = aba === 'resumo' ? [] : await tagsAtivasDaRede(ctx.tenantId!)
   const transactions = (lancamentos ?? []).map(({ client_id, maquininha_id, ...t }) => ({
     ...t,
     maquininha_nome: maquininhaDoRotulo(maquininhas, maquininha_id as string | null),
@@ -265,6 +285,8 @@ export default async function FinancialPage({
         // CX6 (2026-11-14): as taxas estimadas e a venda sem taxa do período, da unidade.
         taxasDoPeriodo={ownFinancial ? undefined : (await getTaxasDoPeriodo({ ...argsDoNucleo, from: start, to: end })).total}
         aba={aba}
+        tagsDaRede={tagsDaRede}
+        tags={tags}
         comComissoes={temRecurso(ctx, 'comissoes')}
       />
     </>

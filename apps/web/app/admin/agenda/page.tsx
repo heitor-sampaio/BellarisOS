@@ -16,15 +16,17 @@ import { ler } from '@/lib/db'
 import { unidadesParaLer, nomeNaTela } from '@/lib/unidades/da-tela'
 import { fusoComum, fusoValido } from '@/lib/unidades/fuso'
 import { quemConcluiOAtendimento, idsQueConcluemOsProprios } from '@/lib/equipe/quem-desfaz'
+import { filtrosDaAgenda, aplicarFiltrosDaAgenda, bloqueioPassaNoFiltro } from '@/lib/agenda/filtros'
+import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
 
 type AgendaView = 'day' | 'week'
 
 export default async function AdminAgendaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string; date?: string; unidade?: string }>
+  searchParams: Promise<{ view?: string; date?: string; unidade?: string; profissional?: string; sala?: string; tags?: string }>
 }) {
-  const { view: rawView, date: rawDate, unidade } = await searchParams
+  const { view: rawView, date: rawDate, unidade, ...pedidoDosFiltros } = await searchParams
 
   const ctx = await getTenantContext()
   assertPermission(ctx, 'agenda', 'VIEW')
@@ -115,6 +117,28 @@ export default async function AdminAgendaPage({
   // "só a própria" via a agenda de todo mundo nesta tela.
   const agendaOwner = ownerFilter(ctx, 'agenda')
 
+  // Os filtros (o Heitor, 18/11: "Então precisa arrumar"; e a regra das Tags),
+  // na CONSULTA e só entre as opções da tela: quem atende nas unidades
+  // mostradas ("Atende" por unidade, §9.1; com a Agenda em "só os meus", o
+  // filtro de profissional não existe), as salas da unidade escolhida (sem
+  // unidade escolhida, as salas são de cada uma e o filtro não aparece —
+  // princípio 7) e o vocabulário de tags da rede, lido no servidor.
+  const umaUnidade = branches.length === 1 ? branches[0]! : null
+  const [listasDeQuemAtende, salasDaUnidade, tagsDaRede] = await Promise.all([
+    agendaOwner ? Promise.resolve([]) : Promise.all(branchIds.map(id => getCachedBranchProfessionals(id, ctx.tenantId!))),
+    umaUnidade ? getCachedRoomsByBranch(umaUnidade.id, ctx.tenantId!) : Promise.resolve(null),
+    tagsAtivasDaRede(ctx.tenantId!),
+  ])
+  const quemAtende = agendaOwner ? null : [...new Map(
+    listasDeQuemAtende.flatMap(l => (l ?? []) as { id: string; name: string }[]).map(p => [p.id, { id: p.id, name: p.name }]),
+  ).values()].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+  const salasDaTela = umaUnidade ? ((salasDaUnidade ?? []) as { id: string; name: string }[]).map(r => ({ id: r.id, name: r.name })) : null
+  const filtros = filtrosDaAgenda(pedidoDosFiltros, {
+    profissionais: quemAtende ? quemAtende.map(p => p.id) : null,
+    salas:         salasDaTela ? salasDaTela.map(s => s.id) : null,
+    tags:          tagsDaRede,
+  })
+
   //
   // Em páginas até o fim (2026-10-22), como a da unidade: com `.limit(1000)`,
   // a semana de uma rede movimentada perdia os últimos horários, e o dia
@@ -124,11 +148,12 @@ export default async function AdminAgendaPage({
   const apptsRaw = await lerTodas((de, ate) => {
     let apptsQuery = admin
       .from('appointments')
-      .select('id, scheduled_at, duration_min, started_at, completed_at, arrived_at, cancellation_reason, status, source, branch_id, procedure_id, client_id, professional_id, price, procedures(name), clients(name), users!appointments_professional_id_fkey(name), rooms(name)')
+      .select('id, scheduled_at, duration_min, started_at, completed_at, arrived_at, cancellation_reason, status, source, branch_id, procedure_id, client_id, professional_id, price, procedures(name), clients(name, tags), users!appointments_professional_id_fkey(name), rooms(name)')
       .in('branch_id', branchIds)
       .gte('scheduled_at', startDate.toISOString())
       .lte('scheduled_at', endDate.toISOString())
     if (agendaOwner) apptsQuery = apptsQuery.eq('professional_id', agendaOwner)
+    apptsQuery = aplicarFiltrosDaAgenda(apptsQuery, filtros)
     return apptsQuery.order('scheduled_at', { ascending: true }).order('id').range(de, ate)
   }, 'carregar a agenda da rede')
 
@@ -147,7 +172,8 @@ export default async function AdminAgendaPage({
   // O bloqueio pontual (decisão 3 da 7ª): cada um na coluna da unidade de onde
   // foi feito (a da sala), com de quem é. Com "só os meus", só os dela.
   const todosOsBloqueios = await bloqueiosDoPeriodo(ctx.tenantId!, { de: startDate.toISOString(), ate: endDate.toISOString(), unidades: branchIds })
-  const bloqueiosVistos = agendaOwner ? todosOsBloqueios.filter(b => b.professionalId === agendaOwner) : todosOsBloqueios
+  const bloqueiosVistos = (agendaOwner ? todosOsBloqueios.filter(b => b.professionalId === agendaOwner) : todosOsBloqueios)
+    .filter(b => bloqueioPassaNoFiltro(b, filtros))
   const salasDosBloqueios = [...new Set(bloqueiosVistos.map(b => b.roomId).filter((x): x is string => !!x))]
   const [nomesDosBloqueios, salasLidas] = await Promise.all([
     nomesDosRegistros(ctx.tenantId!, { membros: bloqueiosVistos.map(b => b.professionalId) }),
@@ -196,6 +222,8 @@ export default async function AdminAgendaPage({
         concluemOsProprios={can(ctx, 'atendimento', 'MANAGE') && !isOwnScope(ctx, 'atendimento') ? null : await idsQueConcluemOsProprios(ctx.tenantId!)}
         bloqueios={bloqueios}
         paraBloquear={paraBloquear}
+        filtros={filtros}
+        opcoesDosFiltros={{ profissionais: quemAtende, salas: salasDaTela, tags: tagsDaRede }}
       />
     </>
   )

@@ -74,17 +74,21 @@ test.describe.serial('o CRM', () => {
         await expect(p.locator('[data-lead-card]').filter({ hasText: nome }), 'o card nasce com o nome').toBeVisible()
       }
     })
-    const { data: leads } = await db().from('leads').select('tags').eq('tenant_id', rede!.tenantId).like('name', `%Lead _ ${marca}`)
+    // A tag é da PESSOA (o Heitor, 18/11): a oportunidade não tem tag própria —
+    // confere a pessoa de cada card.
+    const { data: leads } = await db().from('leads').select('contacts!leads_contato_id_fkey(tags)').eq('tenant_id', rede!.tenantId).like('name', `%Lead _ ${marca}`)
     expect(leads, 'os dois leads').toHaveLength(2)
     // O sistema não põe tag sozinho (Bloco Tags, 2026-11-14): sem tag de unidade.
-    for (const l of leads!) expect(l.tags ?? [], 'nascem sem tag').toEqual([])
+    for (const l of (leads ?? []) as unknown as { contacts: { tags: string[] | null } | null }[]) {
+      expect(l.contacts?.tags ?? [], 'a pessoa nasce sem tag').toEqual([])
+    }
   })
 
   test('a origem não aparece duas vezes no card, e "Telefone" é uma origem', async ({ browser }) => {
     const { data: etapa } = await db().from('crm_stages').select('id').eq('tenant_id', rede!.tenantId).order('position').limit(1).single<{ id: string }>()
     const nome = `${PREFIXO} Insta ${marca}`
     const { error } = await db().from('leads').insert({
-      tenant_id: rede!.tenantId, name: nome, phone: `55489${String(Date.now()).slice(-8)}`, source: 'Instagram', tags: ['Instagram'], crm_stage_id: etapa!.id,
+      tenant_id: rede!.tenantId, name: nome, phone: `55489${String(Date.now()).slice(-8)}`, source: 'Instagram', crm_stage_id: etapa!.id,
     })
     expect(error).toBeNull()
     await como(browser, async p => {

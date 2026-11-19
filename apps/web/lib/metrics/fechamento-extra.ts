@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { lerTodas } from '@/lib/db'
 import { getFechamentoDoDia } from '@/lib/metrics/queries'
 import { estornadoNoMesmoDiaPorForma } from '@/lib/metrics/estornos-por-forma'
+import { paramDeTags } from '@/lib/metrics/tags-do-relatorio'
 
 /**
  * O que o Fechamento do dia mostra AO LADO do resumo por forma (8ª simulação,
@@ -56,10 +57,13 @@ export interface SemReceita { semPagamento: { n: number; valor: number }; comCre
  */
 export async function getAtendimentosSemReceita(args: {
   tenantId: string; branchIds: string[] | null; from: Date; to: Date; professionalId?: string | null
+  /** O filtro de Tags dos Relatórios: só os atendimentos de cliente com todas. */
+  tags?: string[] | null
 }): Promise<{ porProcedimento: Record<string, SemReceita>; porProfissional: Record<string, SemReceita> }> {
   const linhas = await lerTodas((de, ate) => createAdminClient().rpc('metrics_atendimentos_sem_receita', {
     p_tenant: args.tenantId, p_branch_ids: args.branchIds, p_from: args.from.toISOString(), p_to: args.to.toISOString(),
     p_professional_id: args.professionalId ?? null,
+    ...paramDeTags(args.tags),
   }).range(de, ate), 'contar os atendimentos sem receita') as {
     eixo: string; nome: string; sem_pagamento_n: number; sem_pagamento_valor: number | string; com_credito_n: number; com_credito_valor: number | string
   }[]

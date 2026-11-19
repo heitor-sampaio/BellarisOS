@@ -25,6 +25,8 @@ import type { LinhaLote, LinhaParcela } from '@/components/admin/reports-linhas'
 import {
   getVendas, getResumoDeVendas, ehTipoDeVenda, POR_PAGINA, type Venda, type ResumoDeVendas, type TipoDeVenda,
 } from '@/lib/metrics/vendas'
+import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
+import { tagsDaAba, tagsDaUrl } from '@/lib/metrics/tags-do-relatorio'
 
 
 export type ReportsTab    = 'overview' | 'financeiro' | 'vendas' | 'agenda' | 'clientes' | 'procedimentos' | 'profissionais' | 'estoque' | 'comercial'
@@ -43,7 +45,7 @@ type Period = ReportsPeriod
  */
 export async function ReportsBiSection({
   tenantId, branches, todasAsUnidades, selectedBranchId, allowNetwork, showBranchFilter,
-  tab, period, rawFrom, rawTo, rawFunil, rawTipo, rawPagina, scopeLabel, umaUnidade = false,
+  tab, period, rawFrom, rawTo, rawFunil, rawTipo, rawPagina, rawTags, scopeLabel, umaUnidade = false,
 }: {
   tenantId:   string
   /** Unidades que entram no cálculo. Uma só quando há recorte. */
@@ -62,6 +64,8 @@ export async function ReportsBiSection({
   /** Aba Vendas: o tipo escolhido e a página da lista. */
   rawTipo?:   string
   rawPagina?: string
+  /** O filtro de Tags (`?tags=a,b`), nas abas de pessoas. */
+  rawTags?:   string
   /** Overline do cabeçalho: 'Rede' ou o nome da unidade. */
   scopeLabel: string
   /** A rede tem UMA unidade ativa (D-19): os quadros por unidade somem. */
@@ -117,6 +121,15 @@ export async function ReportsBiSection({
   const prevEnd     = periodInfo.prevTo
   const periodLabel = periodInfo.label
 
+  // -- Tags (CLAUDE.md §1: a tag é o filtro personalizado da rede) ----------
+  // Só nas abas de PESSOAS (`tagsDaAba`): a linha entra se a cliente dela — na
+  // aba Comercial, a pessoa da oportunidade — tem TODAS as marcadas. Na Visão geral, no
+  // Financeiro e no Estoque a tag da URL não chega à conta (princípio 3: o
+  // lucro "filtrado por tag" não é de ninguém). As opções são o vocabulário da
+  // rede, lido aqui; sem tag nenhuma, a tela nem mostra o filtro.
+  const tagsDaRede = await tagsAtivasDaRede(tenantId)
+  const tags = tagsDaAba(tab, tagsDaUrl(rawTags))
+
   // -- O que a aba precisa ----------------------------------------------
   // Os NÚMEROS vêm agregados do Postgres (`metrics_relatorio`, só a aba
   // aberta) e do núcleo (`metrics_core`). Antes esta seção trazia as linhas do
@@ -155,7 +168,7 @@ export async function ReportsBiSection({
     getRelatorioDosModulos({
       tenantId: ctx.tenantId!, branchIds,
       from: startDate, to: fimDaJanela, prevFrom: prevStart, prevTo: prevEnd,
-      aba: tab, granularidade: granularity, recorte,
+      aba: tab, granularidade: granularity, recorte, tags,
     }),
 
     // Lotes vencendo em ≤ 30 dias: a MESMA conta do cartão "Validade em 30
@@ -185,22 +198,22 @@ export async function ReportsBiSection({
 
     // Retenção real (quem já era cliente antes do período e voltou)
     needClientes
-      ? getRetention({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate, professionalId: profAgenda })
+      ? getRetention({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate, professionalId: profAgenda, tags })
       : Promise.resolve({ clientsServed: 0, returningClients: 0, firstTimeClients: 0 }),
 
     // Novos clientes por dia, dentro da janela e no fuso do negócio
     needClientes
       ? getNewClientsSeries({
           tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate,
-          granularity: period === 'all' ? 'month' : 'day', professionalId: profAgenda,
+          granularity: period === 'all' ? 'month' : 'day', professionalId: profAgenda, tags,
         })
       : Promise.resolve([]),
 
     // O dinheiro e as contagens do período, agregados no Postgres — a mesma
     // conta do dashboard. Atendimentos, novos clientes, ticket, agenda e
     // comissões também saem daqui: recontar na tela era a segunda cópia.
-    getCoreDosModulos({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: fimDaJanela, recorte }),
-    getCoreDosModulos({ tenantId: ctx.tenantId!, branchIds, from: prevStart, to: prevEnd, recorte }),
+    getCoreDosModulos({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: fimDaJanela, recorte, tags }),
+    getCoreDosModulos({ tenantId: ctx.tenantId!, branchIds, from: prevStart, to: prevEnd, recorte, tags }),
     getSeries({
       tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate,
       granularity, professionalId: profDinheiro,
@@ -209,7 +222,7 @@ export async function ReportsBiSection({
     // Ticket médio = o pago pelas clientes ÷ as que pagaram (2026-10-29): a
     // Visão geral, Clientes e Procedimentos mostram o MESMO número.
     ['overview', 'clientes', 'procedimentos'].includes(tab)
-      ? getTicketMedio({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate, professionalId: profDinheiro })
+      ? getTicketMedio({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate, professionalId: profDinheiro, tags })
       : Promise.resolve(null),
 
     // O lucro desconta o insumo consumido e deixa a compra de estoque no
@@ -262,7 +275,7 @@ export async function ReportsBiSection({
   // Vive aqui desde que deixou de ser tela própria (/admin/comercial): o funil
   // e a conversão são relatório, e estavam numa entrada de menu só deles.
   const comercial = tab === 'comercial'
-    ? await painelComercial({ tenantId, branchIds, from: startDate, to: periodInfo.fullTo, rawFunil, funilLembrado: await funilLembrado(), ownerId: donoNoCrm })
+    ? await painelComercial({ tenantId, branchIds, from: startDate, to: periodInfo.fullTo, rawFunil, funilLembrado: await funilLembrado(), ownerId: donoNoCrm, tags })
     : undefined
 
   // -- Aba Vendas ----------------------------------------------------
@@ -273,7 +286,7 @@ export async function ReportsBiSection({
     ? await (async (): Promise<DadosDeVendas> => {
         const tipo   = ehTipoDeVenda(rawTipo) ? rawTipo : null
         // A venda é dinheiro: segue o financeiro (com ele "só os meus", as dela).
-        const doPeriodo = { tenantId, branchIds, from: startDate, to: periodInfo.fullTo, professionalId: profDinheiro }
+        const doPeriodo = { tenantId, branchIds, from: startDate, to: periodInfo.fullTo, professionalId: profDinheiro, tags }
         const resumo = await getResumoDeVendas(doPeriodo)
         // Sem filtro, a lista tem TODAS as linhas — o crédito também (RL1),
         // que o "Total vendido" não soma.
@@ -347,9 +360,11 @@ export async function ReportsBiSection({
         // resultado, e a contadora não a via (não abre o Estoque).
         comprasNoEstoque={needInstall ? await getEntradasDeEstoque({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: periodInfo.fullTo }) : undefined}
         quemAtende={quemAtende}
+        tagsDaRede={tagsDaRede}
+        tagsEscolhidas={tags}
         receitaDeTodos={profAgenda !== null && profDinheiro === null}
         semReceita={tab === 'procedimentos' || tab === 'profissionais' || tab === 'overview'
-          ? await getAtendimentosSemReceita({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate, professionalId: profAgenda })
+          ? await getAtendimentosSemReceita({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate, professionalId: profAgenda, tags })
           : null}
       />
     </>

@@ -22,6 +22,8 @@ import { useFala } from '@/components/shared/uma-unidade'
 import { dayKeyTZ, naParede, isoNaParede, fusoLocal } from '@/lib/datetime'
 import { FusoProvider, useFuso } from '@/components/shared/fuso'
 import { useAgora, passouSemFechar } from '@/lib/use-agora'
+import { buscaComFiltro, SEM_FILTRO, type FiltrosDaAgenda } from '@/lib/agenda/filtros'
+import { FiltrosDaAgendaNaBarra } from '@/components/shared/filtros-da-agenda'
 
 /** A dica do agendamento em aberto que passou do horário (A21 da 9ª; sobra da F43 na agenda da rede). */
 const TEXTO_DO_PASSOU = 'passou do horário sem chegada nem conclusão: marque a falta, a chegada ou conclua'
@@ -91,6 +93,10 @@ interface Props {
   bloqueios?: (BloqueioDaAgenda & { rotulo: string })[]
   /** "Bloquear horário" (com uma unidade na tela): quem atende e as salas dela. */
   paraBloquear?: { branchId: string; profissionais: { id: string; name: string }[]; salas: { id: string; name: string }[]; soEu: { id: string; name: string } | null } | null
+  /** Os filtros da URL (`?profissional=`, `?sala=`, `?tags=`), já aplicados na consulta. */
+  filtros?: FiltrosDaAgenda
+  /** As opções: quem atende nas unidades mostradas (null = "só os meus"), as salas da unidade escolhida (null = sem unidade escolhida) e as tags da rede. */
+  opcoesDosFiltros?: { profissionais: { id: string; name: string }[] | null; salas: { id: string; name: string }[] | null; tags: string[] }
 }
 
 // -- Constantes visuais --------------------------------------------------------
@@ -594,6 +600,7 @@ function StatusLegend() {
 // -- Componente principal ------------------------------------------------------
 export function AdminAgendaView({
   view, selectedDate, todayStr, branches, todasUnidades, unidadeId, appointments, janela, podeAgendar, escopoProprio, meuId = null, podeConcluir = true, atendimentoProprio = false, quemConclui = null, concluemOsProprios = null, bloqueios = [], paraBloquear = null,
+  filtros = SEM_FILTRO, opcoesDosFiltros = { profissionais: null, salas: null, tags: [] },
 }: Props) {
   const router = useRouter()
   const fala = useFala()
@@ -632,11 +639,15 @@ export function AdminAgendaView({
 
   // O recorte por unidade acompanha a navegação de data e de modo: quem veio do
   // dashboard olhando uma unidade não deve perdê-la ao virar o dia.
+  // Os filtros também: a sala é da unidade, e sai quando a unidade muda.
   const navigate = (dateStr: string, v: AgendaView = view, unidade: string = unidadeId) => {
     const q = new URLSearchParams({ view: v, date: dateStr })
     if (unidade) q.set('unidade', unidade)
-    router.push(`/admin/agenda?${q.toString()}`)
+    router.push(`/admin/agenda${buscaComFiltro(q.toString(), { ...filtros, sala: unidade === unidadeId ? filtros.sala : null })}`)
   }
+  // O filtro vai para a URL e o servidor relê a agenda com ele.
+  const mudarFiltro = (mudanca: Partial<FiltrosDaAgenda>) =>
+    router.replace(`/admin/agenda${buscaComFiltro(window.location.search, mudanca)}`, { scroll: false })
 
   const prevDate = view === 'week'
     ? addDays(mondayStr, -7)
@@ -730,6 +741,14 @@ export function AdminAgendaView({
               ariaLabel="Unidade"
             />
           )}
+
+          <FiltrosDaAgendaNaBarra
+            profissionais={opcoesDosFiltros.profissionais}
+            salas={opcoesDosFiltros.salas}
+            tags={opcoesDosFiltros.tags}
+            filtros={filtros}
+            onMudar={mudarFiltro}
+          />
 
           {/* Toggle de view */}
           <SegSelect

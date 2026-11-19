@@ -227,7 +227,8 @@ test.describe.serial('RLS: uma rede não enxerga a outra', () => {
     const anon = createClient(URL_, ANON, { auth: { persistSession: false } })
     const rede = await tenantId()
     for (const [fn, args] of [
-      ['lead_tags_da_rede', { p_tenant: rede }],
+      // lead_tags_da_rede saiu (20261125500002: a oportunidade não tem tag própria); tags_da_rede fica.
+      ['tags_da_rede', { p_tenant: rede }],
       ['eventos_resumo_do_catalogo', { p_tenant_id: rede }],
       ['mark_notification_read', { p_notification_id: '00000000-0000-0000-0000-000000000000' }],
     ] as const) {

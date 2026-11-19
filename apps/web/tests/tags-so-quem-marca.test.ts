@@ -73,11 +73,12 @@ function gravamTags(): string[] {
 /** Quem grava `tags`, e por que é a PESSOA (ou a ação que a rede montou). */
 const QUEM_PODE: Record<string, string> = {
   'apps/web/actions/clients.ts': 'o cadastro e a ficha: as tags que a pessoa marcou, do vocabulário da rede (tagsDoVocabulario)',
-  'apps/web/actions/leads.ts': 'o card da oportunidade: as tags que a pessoa marcou',
+  'apps/web/actions/leads.ts': 'o card da oportunidade: as tags que a pessoa marcou (gravadas na PESSOA, lib/tags/da-pessoa.ts)',
   'apps/web/actions/inbox.ts': 'o painel do inbox: as tags da pessoa, marcadas por quem atende',
   'apps/web/lib/clients/atualizar.ts': 'a ficha (atualizarClienteCore): as tags que a pessoa marcou',
   'apps/web/lib/clients/ja-existe.ts': 'o "Unificar": junta as tags que a pessoa marcou nas duas fichas',
-  'apps/web/lib/crm/oportunidade.ts': 'a oportunidade criada: as tags que a pessoa marcou (a origem não vira tag)',
+  // A tag é da PESSOA (o Heitor, 18/11, noite): o card e a automação gravam na ficha ou no contato por aqui.
+  'apps/web/lib/tags/da-pessoa.ts': 'as tags da pessoa marcadas no card da oportunidade ou pela ação "Adicionar tag"',
   'apps/web/lib/importacao/processar.ts': 'a planilha: a coluna de tags que a pessoa importa',
   'apps/web/lib/automacoes/acoes-crm.ts': 'a ação "Adicionar tag" da automação que a rede montou',
   'apps/web/lib/copilot/ferramentas/clientes-escrita.ts': 'o Copilot: a tag que a pessoa pediu',

@@ -29,7 +29,7 @@ test.describe('Relatórios: a explicação fica na dica', () => {
     await page.goto('/admin/reports?tab=vendas&period=month')
     const corpo = page.locator('main')
     await expect(page.getByText('Total vendido', { exact: true })).toBeVisible({ timeout: 30_000 })
-    await moraNaDica(page, corpo, 'Como o Total vendido se liga ao caixa', /O Total vendido é a venda, no dia em que foi feita/)
+    await moraNaDica(page, corpo, 'Como o Total vendido se liga ao caixa', /O Total vendido é a venda, no dia do primeiro pagamento dela/) // D6 (18/11): era "no dia em que foi feita"
     await moraNaDica(page, corpo, 'Quem aparece em Profissional', /no pacote, no pré-pago, no produto e no plano, quem vendeu/)
     // O dado continua à vista: a quantidade de vendas embaixo do total.
     await expect(page.getByText(/^\d[\d.]* vendas?$/).first()).toBeVisible()

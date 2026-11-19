@@ -52,7 +52,9 @@ describe('metrics_vendas da 25ª', () => {
   it('D5: a forma é "Crédito interno", nunca "Crédito na clínica"', () => {
     const { arquivos, corpo } = corpoVigente()
     expect(corpo, arquivos.join(' + ')).not.toMatch(/Crédito na clínica/)
-    expect(corpo, arquivos.join(' + ')).toMatch(/'CREDITO', cv\.created_at, 'Crédito interno'/)
+    // D6 (o Heitor, 18/11: "nao pago nao conta na venda"): o crédito também entra no 1º
+    // recebimento pago (rec.em), não mais na criação — tests/vendas-so-o-pago.test.ts.
+    expect(corpo, arquivos.join(' + ')).toMatch(/'CREDITO', rec\.em, 'Crédito interno'/)
   })
   it('o plano entra em Vendas no primeiro recebimento PAGO, na data do pagamento', () => {
     const { arquivos, corpo } = corpoVigente()

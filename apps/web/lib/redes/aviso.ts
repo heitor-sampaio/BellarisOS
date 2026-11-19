@@ -3,6 +3,7 @@ import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { faturaEmAberto, lerAssinatura } from '@/lib/redes/assinatura'
+import { diasDoTeste } from '@/lib/redes/dias-do-teste'
 
 /**
  * O aviso da assinatura no topo — só para quem administra a rede (a equipe
@@ -28,8 +29,10 @@ export async function avisoDaAssinatura(ctx: Pick<TenantContext, 'tenantId' | 'i
       { plan_status: string | null; trial_ends_at: string | null; em_atraso_desde: string | null } | null
     if (!t) return null
     if (t.plan_status === 'trial' && t.trial_ends_at) {
-      const dias = Math.ceil((Date.parse(t.trial_ends_at) - Date.now()) / 86_400_000)
-      return dias >= 0 && dias <= 7 ? { tipo: 'teste', dias } : null
+      // A mesma conta da aba Assinatura (A30 da 25ª): dias de calendário em
+      // Brasília até o último dia — no último dia, 0 ("termina hoje").
+      const dias = diasDoTeste(t.trial_ends_at, new Date())
+      return dias !== null && dias <= 7 ? { tipo: 'teste', dias } : null
     }
     if (t.plan_status === 'past_due') {
       const cfg = await ler(createAdminClient().from('platform_settings').select('dias_de_carencia').eq('id', 1).maybeSingle(),

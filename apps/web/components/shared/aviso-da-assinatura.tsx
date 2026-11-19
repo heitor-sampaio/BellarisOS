@@ -1,5 +1,6 @@
 import { AlertTriangle, Clock } from 'lucide-react'
 import type { AvisoDaAssinatura as Aviso } from '@/lib/redes/aviso'
+import { textoDoFimDoTeste } from '@/lib/redes/dias-do-teste'
 
 /**
  * O aviso da assinatura no topo (só quem administra a rede o recebe):
@@ -13,7 +14,8 @@ export function AvisoDaAssinatura({ aviso, rotaDaAba }: { aviso: Aviso; rotaDaAb
     return (
       <a href={rotaDaAba} className="aviso-assinatura" data-tom="info">
         <Clock size={14} aria-hidden />
-        {aviso.dias === 0 ? 'O teste termina hoje' : `O teste termina em ${aviso.dias} ${aviso.dias === 1 ? 'dia' : 'dias'}`}
+        {/* A30 da 25ª: o mesmo texto da aba Assinatura ("termina amanhã" no penúltimo dia). */}
+        O teste {textoDoFimDoTeste(aviso.dias)}
       </a>
     )
   }

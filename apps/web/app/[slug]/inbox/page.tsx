@@ -57,7 +57,7 @@ export default async function BranchInboxPage({
   const leadsRaw = await lerTodas((de, ate) => {
     let leadsQuery = admin
       .from('leads')
-      .select('id, name, phone, tags')
+      .select('id, name, phone')
       .eq('tenant_id', ctx.tenantId!)
     if (leadOwner) leadsQuery = leadsQuery.or(`owner_id.is.null,owner_id.eq.${leadOwner}`)
     return leadsQuery.order('created_at', { ascending: false }).order('id').range(de, ate)

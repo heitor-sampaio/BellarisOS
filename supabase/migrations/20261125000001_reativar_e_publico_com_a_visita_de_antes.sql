@@ -16,7 +16,7 @@
 -- ultima_visita_antes); o LEAST ignora o nulo. Os "Novos clientes" e o selo
 -- "Novo" NÃO mudam (a pergunta do A29 ao Heitor).
 
-create function pg_temp.trocar_no_corpo(p_fn regprocedure, p_de text[], p_para text[], p_vezes int[])
+create or replace function pg_temp.trocar_no_corpo(p_fn regprocedure, p_de text[], p_para text[], p_vezes int[])
 returns void language plpgsql as $f$
 declare
   d text := pg_get_functiondef(p_fn);

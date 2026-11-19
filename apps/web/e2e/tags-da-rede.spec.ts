@@ -12,8 +12,10 @@ import { chamarAcao } from './apoio/acao-direta'
  *  - Rede nova nasce SEM tag nenhuma (o Heitor, 2026-11-16 — eram as oito de
  *    sempre, VIP, Indicação…); tag gravada em qualquer lugar entra no
  *    vocabulário sozinha (gatilho).
- *  - Criar, renomear (em clientes, contatos e oportunidades — e juntar, se o
- *    nome novo já existe) e arquivar.
+ *  - Criar, renomear (em todas as pessoas — e juntar, se o nome novo já
+ *    existe) e arquivar. A tag é da PESSOA (o Heitor, 18/11: "a tag é da
+ *    pessoa e pode ter mais de uma tag"): o uso conta fichas e contatos sem
+ *    ficha; a oportunidade não tem tag própria (era "1 oportunidade").
  *  - A ficha oferece o vocabulário, e mostra a tag de fora que a pessoa já tem.
  *
  * Numa rede `[e2e]` própria.
@@ -43,8 +45,9 @@ test.beforeAll(async () => {
     { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'crm', nivel: 'MANAGE' }, { modulo: 'settings', nivel: 'MANAGE' },
   ] })
   soVe = await criarMembro(`tagv${marca}`, { tenant: outra.tenantId, rotulo: 'Só vê', permissoes: [{ modulo: 'clients', nivel: 'VIEW' }] })
-  // A mesma tag de fora em clientes, contatos e oportunidades (gravada direto:
-  // é o caminho da importação e da automação).
+  // A mesma tag de fora numa ficha e num contato sem ficha (gravada direto: é
+  // o caminho da importação e da automação). A oportunidade é do contato, e
+  // não tem tag própria.
   const c = await db().from('clients').insert({
     tenant_id: outra.tenantId, branch_id: outra.branchId, name: `${PREFIXO} Cliente ${marca}`,
     phone: '5548' + String(Date.now()).slice(-9), tags: ['VIP', POS, 'retorno'], is_active: true,
@@ -52,11 +55,11 @@ test.beforeAll(async () => {
   expect(c.error).toBeNull()
   clienteId = c.data!.id
   const fone = '5521' + String(Date.now()).slice(-9)
-  const p = await db().from('contacts').insert({ tenant_id: outra.tenantId, name: `${PREFIXO} Pessoa ${marca}`, phone: fone, identifiers: [fone], tags: [POS] })
+  const p = await db().from('contacts').insert({ tenant_id: outra.tenantId, name: `${PREFIXO} Pessoa ${marca}`, phone: fone, identifiers: [fone], tags: [POS, 'Orgânico'] })
     .select('id').single<{ id: string }>()
   expect(p.error).toBeNull()
   contatoId = p.data!.id
-  const l = await db().from('leads').insert({ tenant_id: outra.tenantId, name: `${PREFIXO} Lead ${marca}`, phone: fone, tags: [POS, 'Orgânico'] })
+  const l = await db().from('leads').insert({ tenant_id: outra.tenantId, name: `${PREFIXO} Lead ${marca}`, phone: fone, contato_id: contatoId })
     .select('id').single<{ id: string }>()
   expect(l.error).toBeNull()
   leadId = l.data!.id
@@ -86,7 +89,7 @@ const vocabulario = async () => ((await db().from('tags').select('nome, arquivad
 // era "a rede nova nasce com as tags padrão".
 test('a rede nova nasce sem tag nenhuma, e a tag gravada em qualquer lugar entra no vocabulário', async () => {
   const nomes = (await vocabulario()).map(t => t.nome)
-  // Só o que foi gravado no beforeAll (cliente, contato e oportunidade) — nenhuma das oito de antes.
+  // Só o que foi gravado no beforeAll (a ficha e o contato) — nenhuma das oito de antes.
   expect([...nomes].sort()).toEqual(['Orgânico', POS, 'retorno', 'VIP'].sort())
   for (const antiga of ['Indicação', 'Alergias', 'Gestante', 'Idoso', 'Plano', 'Desconto']) expect(nomes).not.toContain(antiga)
   // O sistema não põe tag sozinho (Bloco Tags, 2026-11-14): nenhuma "Unidade: …".
@@ -98,8 +101,8 @@ test('Configurações → Tags: cria, mostra o uso, e a ficha oferece a tag nova
     await p.goto('/admin/settings?tab=tags')
     const linha = p.locator('[data-tag]', { hasText: POS })
     await expect(linha).toContainText('1 cliente')
-    await expect(linha).toContainText('1 contato')
-    await expect(linha).toContainText('1 oportunidade')
+    await expect(linha).toContainText('1 contato sem ficha')
+    await expect(linha).not.toContainText('oportunidade')
 
     await p.getByLabel('Nova tag').fill(`${PREFIXO} Noivas ${marca}`)
     await p.getByRole('button', { name: 'Criar tag' }).click()
@@ -118,7 +121,7 @@ test('Configurações → Tags: cria, mostra o uso, e a ficha oferece a tag nova
   expect(data!.tags).toEqual(expect.arrayContaining(['VIP', POS, 'retorno', `${PREFIXO} Noivas ${marca}`]))
 })
 
-test('renomear muda a tag em clientes, contatos e oportunidades', async ({ browser }) => {
+test('renomear muda a tag em todas as pessoas (a ficha e o contato)', async ({ browser }) => {
   const novo = `${PREFIXO} Pós-op ${marca}`
   await como(browser, admin, async p => {
     await p.goto('/admin/settings?tab=tags')
@@ -129,12 +132,11 @@ test('renomear muda a tag em clientes, contatos e oportunidades', async ({ brows
     await expect(p.locator('[data-tag]', { hasText: novo })).toContainText('1 cliente')
     await expect(p.locator('[data-tag]', { hasText: POS })).toHaveCount(0)
   })
-  const [c, k, l] = await Promise.all([
+  const [c, k] = await Promise.all([
     db().from('clients').select('tags').eq('id', clienteId).single(),
     db().from('contacts').select('tags').eq('id', contatoId).single(),
-    db().from('leads').select('tags').eq('id', leadId).single(),
   ])
-  for (const r of [c, k, l]) {
+  for (const r of [c, k]) {
     expect(r.data!.tags).toContain(novo)
     expect(r.data!.tags).not.toContain(POS)
   }

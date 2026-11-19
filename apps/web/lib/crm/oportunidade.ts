@@ -1,7 +1,7 @@
 import 'server-only'
 import type { TenantContext } from '@estetica-os/types'
 import { EVENTOS } from '@estetica-os/types'
-import { resolveLeadSource, mergeTags } from '@estetica-os/utils'
+import { resolveLeadSource } from '@estetica-os/utils'
 import { ownerFilter } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
@@ -10,6 +10,7 @@ import { registrarEventoLead, etapaAtualDoLead } from '@/lib/lead-events'
 import { emitirEventoDeLead, eventoDoDesfecho, etapaDeCrm } from '@/lib/events/lead'
 import { camposDaPerda, type PerdaInformada } from '@/lib/crm/motivos-perda'
 import { TELEFONE_INCOMPLETO } from '@/lib/contatos/propagar'
+import { pessoaDaOportunidadeNoBanco, somarTagsNaPessoa } from '@/lib/tags/da-pessoa'
 import { normalizarTelefone } from '@/lib/importacao/normalizar'
 
 /**
@@ -77,6 +78,7 @@ export interface NovaOportunidade {
   crmStageId?: string | null
   funnelId?: string | null
   procedureIds?: string[]
+  /** As tags da PESSOA (crm-inbox.md §9.2.1): somadas à ficha, ou ao contato, depois de criada. */
   tags?: string[]
   fbclid?: string | null
   gclid?: string | null
@@ -121,8 +123,6 @@ export async function criarOportunidadeCore(
 
   // Origem canônica: se há atribuição, deriva; senão respeita a escolhida; sem nada, sem origem ("Não informado", D14).
   const derived = resolveLeadSource({ fbclid: o.fbclid ?? null, gclid: o.gclid ?? null, utm_source: o.utmSource ?? null, utm_medium: o.utmMedium ?? null }, o.origem ?? null)
-  // A origem não vira tag (T2 do Bloco Tags): as tags são as que a pessoa marcou.
-  const tags = mergeTags(o.tags ?? [])
   const etapaInicial = await resolverEtapa(ctx.tenantId!, o.crmStageId ?? null, o.funnelId ?? null)
 
   const { data: lead, error } = await admin.from('leads').insert({
@@ -136,7 +136,6 @@ export async function criarOportunidadeCore(
     fbclid: o.fbclid ?? null, gclid: o.gclid ?? null,
     utm_source: o.utmSource ?? null, utm_medium: o.utmMedium ?? null, utm_campaign: o.utmCampaign ?? null,
     ctwa_clid: derived.ctwa_clid ?? null,
-    tags,
     // Atribui o lead a quem o criou (base para KPIs por vendedor) — ou ao
     // responsável que quem chama escolheu e conferiu.
     owner_id: opcoes.responsavelId !== undefined ? opcoes.responsavelId : ctx.internalUserId,
@@ -150,6 +149,13 @@ export async function criarOportunidadeCore(
   }
 
   await salvarProcedimentosDeInteresse(admin, ctx.tenantId!, lead.id as string, o.procedureIds ?? [])
+  // A oportunidade não tem tag própria: as marcadas ao criar vão para a PESSOA
+  // dela (a ficha; sem ela, o contato que o gatilho ligou). A origem não vira
+  // tag (T2 do Bloco Tags). Soma, nunca tira o que a pessoa já tinha.
+  if (o.tags?.length) {
+    const pessoa = await pessoaDaOportunidadeNoBanco(ctx.tenantId!, lead.id as string)
+    if (pessoa) await somarTagsNaPessoa(ctx.tenantId!, pessoa, o.tags)
+  }
   await registrarEventoLead({
     tenantId: ctx.tenantId!, leadId: lead.id as string, type: 'CREATED', toStageId: etapaInicial,
     actorUserId: ctx.internalUserId, actorName: ctx.userName || null,

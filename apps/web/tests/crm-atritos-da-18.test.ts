@@ -34,7 +34,10 @@ describe('D7: a oportunidade escolhe a tag pelo vocabulário', () => {
   })
 
   it('criar e editar a oportunidade, e as tags do contato no inbox, passam pelo vocabulário', () => {
-    expect(fonte('actions/leads.ts').match(/tagsDoVocabulario\(/g)?.length).toBeGreaterThanOrEqual(2)
+    // Criar passa direto; editar grava na PESSOA (a tag é da pessoa, 18/11 à noite), por gravarTagsDaOportunidade.
+    expect(fonte('actions/leads.ts')).toMatch(/tagsDoVocabulario\(/)
+    expect(fonte('actions/leads.ts')).toMatch(/gravarTagsDaOportunidade\(/)
+    expect(fonte('lib/tags/da-pessoa.ts')).toMatch(/tagsDoVocabulario\(/)
     expect(fonte('actions/inbox.ts')).toMatch(/tagsDoVocabulario\(/)
   })
 })

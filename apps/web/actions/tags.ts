@@ -17,9 +17,13 @@ import { validarNomeDeTag } from '@/lib/tags/escolha'
 
 const QUEM_GERENCIA = ['clients', 'crm'] as const
 
+/**
+ * O uso conta PESSOAS (a tag é da pessoa — o Heitor, 18/11): as fichas e os
+ * contatos que ainda não têm ficha (o com ficha é a mesma pessoa, já contada).
+ */
 export interface TagDaRede {
   id: string; nome: string; arquivada: boolean
-  clientes: number; contatos: number; oportunidades: number
+  clientes: number; contatos: number
 }
 
 /** As opções das telas (ficha, cadastro, card, campanha) — só as ativas. */
@@ -35,10 +39,10 @@ export async function listarTagsComUso(): Promise<TagDaRede[]> {
   assertAnyPermission(ctx, [...QUEM_GERENCIA], 'MANAGE')
   const { data, error } = await createAdminClient().rpc('tags_da_rede', { p_tenant: ctx.tenantId! })
   if (error) throw new Error(`Ler as tags da rede: ${error.message}`)
-  return ((data ?? []) as { id: string; nome: string; arquivada_em: string | null; clientes: number; contatos: number; oportunidades: number }[])
+  return ((data ?? []) as { id: string; nome: string; arquivada_em: string | null; clientes: number; contatos: number }[])
     .map(t => ({
       id: t.id, nome: t.nome, arquivada: !!t.arquivada_em,
-      clientes: Number(t.clientes), contatos: Number(t.contatos), oportunidades: Number(t.oportunidades),
+      clientes: Number(t.clientes), contatos: Number(t.contatos),
     }))
 }
 

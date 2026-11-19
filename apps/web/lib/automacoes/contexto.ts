@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { dayKeyTZ } from '@/lib/datetime'
 import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 import { ler } from '@/lib/db'
+import { EMBED_TAGS_DA_PESSOA, tagsDaPessoaDaOportunidade } from '@/lib/tags/pessoa'
 
 /**
  * O contexto de uma execução: o que as condições leem e o que as variáveis
@@ -219,7 +220,7 @@ export async function hidratar(
     if (alvo === 'lead') {
       const data = exigir(await ler(admin
         .from('leads')
-        .select('id, name, phone, email, source, owner_id, crm_stage_id, client_id, tags, value, crm_stages(name)')
+        .select(`id, name, phone, email, source, owner_id, crm_stage_id, client_id, contato_id, value, crm_stages(name), ${EMBED_TAGS_DA_PESSOA}`)
         .eq('id', id).eq('tenant_id', tenantId).maybeSingle(), 'buscar a oportunidade'))
       contexto.lead = {
         id:            data.id,
@@ -231,7 +232,10 @@ export async function hidratar(
         etapaId:       data.crm_stage_id,
         etapa:         (data.crm_stages as unknown as { name?: string } | null)?.name ?? null,
         clienteId:     data.client_id,
-        tags:          data.tags ?? [],
+        // A pessoa sem ficha: é nela que o "Adicionar tag" grava.
+        contatoId:     data.contato_id,
+        // As tags da PESSOA (crm-inbox.md §9.2.1): a oportunidade não tem tag própria.
+        tags:          tagsDaPessoaDaOportunidade(data as unknown as Parameters<typeof tagsDaPessoaDaOportunidade>[0]),
         valor:         data.value != null ? Number(data.value) : null,
       }
       return contexto

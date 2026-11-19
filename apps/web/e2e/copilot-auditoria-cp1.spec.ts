@@ -80,18 +80,26 @@ test('pela chave de serviço, a marca vale com quem gravou', async () => {
   expect((await linhasDe('clients', ficha)).at(-1)).toEqual(['editou', rede.dono.userId, `${nomeDoDono} (pelo Copilot)`, 'membro', 'copilot'])
 })
 
+// A ficha a sessão não grava mais (M1, o Heitor, 18/11): o agendamento, sim, e
+// ele é auditado — é por ele que se prova que o cabeçalho forjado não marca.
 test('pela sessão, o cabeçalho forjado não vale: sem a marca', async () => {
-  const r = await fetch(`${URL_}/rest/v1/clients?id=eq.${ficha}&select=id`, {
+  const o = rede.outra
+  const { data: ag, error: eA } = await db().from('appointments').insert({
+    branch_id: o.branchId, client_id: ficha, professional_id: o.professionalId, procedure_id: o.procedureId,
+    scheduled_at: new Date(Date.now() + 86_400_000).toISOString(), duration_min: 30, price: 100, status: 'SCHEDULED',
+  }).select('id').single<{ id: string }>()
+  expect(eA, eA?.message).toBeNull()
+  const r = await fetch(`${URL_}/rest/v1/appointments?id=eq.${ag!.id}&select=id`, {
     method: 'PATCH',
     headers: {
       apikey: ANON, Authorization: `Bearer ${rede.dono.accessToken}`, 'content-type': 'application/json', Prefer: 'return=representation',
       'x-bellaris-via': 'copilot',
     },
-    body: JSON.stringify({ is_active: true }),
+    body: JSON.stringify({ price: 120 }),
   })
   expect(r.status, await r.clone().text()).toBe(200)
-  expect(((await r.json()) as unknown[]).length, 'a sessão do dono alterou a ficha').toBe(1)
-  expect((await linhasDe('clients', ficha)).at(-1)).toEqual(['editou', rede.dono.userId, nomeDoDono, 'membro', null])
+  expect(((await r.json()) as unknown[]).length, 'a sessão do dono alterou o agendamento').toBe(1)
+  expect((await linhasDe('appointments', ag!.id)).at(-1)).toEqual(['editou', rede.dono.userId, nomeDoDono, 'membro', null])
 })
 
 test('valor que não é "copilot" não marca', async () => {
@@ -101,7 +109,7 @@ test('valor que não é "copilot" não marca', async () => {
       apikey: SERVICO, Authorization: `Bearer ${SERVICO}`, 'content-type': 'application/json', Prefer: 'return=representation',
       'x-bellaris-ator': authDoDono, 'x-bellaris-via': 'qualquer coisa',
     },
-    body: JSON.stringify({ is_active: false }),
+    body: JSON.stringify({ is_active: true }),
   })
   expect(r.status, await r.clone().text()).toBe(200)
   expect((await linhasDe('clients', ficha)).at(-1)).toEqual(['editou', rede.dono.userId, nomeDoDono, 'membro', null])

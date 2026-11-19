@@ -15,6 +15,7 @@ import { interessadosNoFato } from '@/lib/notifications/interessados'
 import { notifyUser } from '@/lib/notifications/notify'
 import { formatBRL } from '@estetica-os/utils'
 import { combinadoDoPlano, totalComOCombinado } from '@/lib/plano-de-tratamento/desconto-combinado'
+import { RECUSA_DO_PLANO_CANCELADO_NO_APP } from '@/lib/plano-de-tratamento/cancelar-proposto'
 
 /**
  * O aceite do plano PELO APP (PT1b, a revisão do Heitor de 2026-11-13: "a
@@ -57,6 +58,8 @@ export async function aceitarPlanoPelaCliente(planId: string): Promise<{ error?:
       } | null
     if (!plano) return { error: 'Plano não encontrado.' }
     if (plano.status === 'ACCEPTED' || plano.status === 'COMPLETED') return { error: 'Este plano já foi aceito.' }
+    // A1a da 25ª: o plano que a unidade cancelou (com a página aberta no app) recusa com a frase clara.
+    if (plano.status === 'CANCELLED' || plano.status === 'REJECTED') return { error: RECUSA_DO_PLANO_CANCELADO_NO_APP }
     if (plano.status !== 'PROPOSED') return { error: 'Plano não encontrado.' }
     if (!(await redeTemRecurso(cliente.tenant_id, 'planos_de_tratamento'))) return { error: 'Plano não encontrado.' }
 

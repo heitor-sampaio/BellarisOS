@@ -39,7 +39,7 @@ export interface DadosComerciais {
  * de unidade escolhido no topo da tela.
  */
 export async function painelComercial({
-  tenantId, branchIds, from, to, rawFunil, funilLembrado, ownerId,
+  tenantId, branchIds, from, to, rawFunil, funilLembrado, ownerId, tags,
 }: {
   tenantId:  string
   branchIds: string[]
@@ -51,6 +51,12 @@ export async function painelComercial({
   funilLembrado?: string | null
   /** CRM "só os meus": os leads dela e os sem dono (o recorte do quadro). */
   ownerId?:  string | null
+  /**
+   * O filtro de Tags dos Relatórios: as oportunidades cuja PESSOA (a cliente;
+   * sem ela, o contato) tem todas as tags — o Heitor, 18/11: "a tag é da
+   * pessoa"; os atendimentos comerciais, os de cliente com todas.
+   */
+  tags?:     string[] | null
 }): Promise<DadosComerciais> {
   const admin    = createAdminClient()
 
@@ -61,7 +67,7 @@ export async function painelComercial({
   // A28 da 23ª: sem `?funil=`, o último escolhido e, sem ele, o padrão — que,
   // vazio no período, cede ao primeiro funil com oportunidade (a regra do
   // Dashboard, A30 da 20ª).
-  const lerFunil = (funnelId: string | null) => getLeadFunnel({ tenantId, branchIds: null, from, to, funnelId, ownerId })
+  const lerFunil = (funnelId: string | null) => getLeadFunnel({ tenantId, branchIds: null, from, to, funnelId, ownerId, tags })
 
   // Os números vêm agregados do banco (getPainelComercial, 2026-10-22): a tela
   // contava sobre as listas de leads e de atendimentos, e o PostgREST cortava
@@ -69,15 +75,15 @@ export async function painelComercial({
   const [{ funil: funilAtivo, etapas }, painel, usersRaw, motivosDePerda] = await Promise.all([
     funilDoDashboard({ funis: funisAtivos, pedido: rawFunil, lembrado: funilLembrado, lerFunil, total: e => resumoDoFunil(e).total }),
 
-    getPainelComercial({ tenantId, branchIds, from, to, ownerId }),
+    getPainelComercial({ tenantId, branchIds, from, to, ownerId, tags }),
 
     ler(admin.from('users').select('id, name').eq('tenant_id', tenantId), 'carregar a equipe'),
 
-    getMotivosDePerda({ tenantId, from, to, ownerId }),
+    getMotivosDePerda({ tenantId, from, to, ownerId, tags }),
   ])
 
   // A20 da 7ª simulação: a conversão por origem, a mesma conta, sobre as mesmas oportunidades.
-  const conversaoPorOrigem = await getConversaoPorOrigem({ tenantId, from, to, ownerId, temGanho: painel.temGanho })
+  const conversaoPorOrigem = await getConversaoPorOrigem({ tenantId, from, to, ownerId, temGanho: painel.temGanho, tags })
 
   const nomeDe = new Map((usersRaw ?? []).map((u: { id: string; name: string }) => [u.id, u.name]))
 

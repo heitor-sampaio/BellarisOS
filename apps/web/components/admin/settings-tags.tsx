@@ -19,8 +19,7 @@ const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um :
 function uso(t: TagDaRede): string {
   const partes = [
     t.clientes ? plural(t.clientes, 'cliente', 'clientes') : null,
-    t.contatos ? plural(t.contatos, 'contato', 'contatos') : null,
-    t.oportunidades ? plural(t.oportunidades, 'oportunidade', 'oportunidades') : null,
+    t.contatos ? plural(t.contatos, 'contato sem ficha', 'contatos sem ficha') : null,
   ].filter(Boolean)
   return partes.length ? partes.join(' · ') : 'Sem uso'
 }
@@ -83,11 +82,11 @@ export function SettingsTags({ iniciais }: { iniciais: TagDaRede[] }) {
       <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: 0, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
         <span><Fala>As tags da rede</Fala></span>
         <Dica rotulo="Sobre as tags" largura={340}>
-          <Fala>As tags da rede</Fala>, as mesmas na ficha do cliente e no CRM. A tag nova que a equipe grava
-          no card da oportunidade ou na importação, ou que a ação “Adicionar tag” de uma automação da rede
-          grava, também passa a aparecer aqui. O sistema não põe tag em ninguém sozinho. Renomear troca a
-          tag em todos os clientes, contatos e oportunidades; arquivar tira das opções, mas quem já tem
-          continua com ela.
+          <Fala>As tags da rede</Fala>. A tag é da pessoa: marcada na ficha, no inbox ou no card da
+          oportunidade, é a mesma nos três e vale em todo filtro. A tag nova que a importação ou a ação
+          “Adicionar tag” de uma automação da rede grava também passa a aparecer aqui. O sistema não põe
+          tag em ninguém sozinho. Renomear troca a tag em todas as pessoas; arquivar tira das opções, mas
+          quem já tem continua com ela.
         </Dica>
       </p>
 

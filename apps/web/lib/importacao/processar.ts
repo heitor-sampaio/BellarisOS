@@ -289,7 +289,6 @@ async function gravarLinha(
     valor: dados.op_valor ? Number(dados.op_valor) : null,
     crmStageId: texto('op_etapa') ?? p.oportunidade.etapaId,
     procedureIds: (dados.op_procedimentos as string[] | undefined) ?? [],
-    tags: (dados.op_tags as string[] | undefined) ?? [],
     utmSource: texto('op_utm_source'), utmMedium: texto('op_utm_medium'), utmCampaign: texto('op_utm_campaign'),
   }, {
     semEventos: true, responsavelId: texto('op_responsavel') ?? p.oportunidade.responsavelId, clientId,

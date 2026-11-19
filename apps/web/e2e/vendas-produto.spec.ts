@@ -375,7 +375,9 @@ test.describe.serial('a venda de produto', () => {
     expect(tx!.map(t => t.notes)).toEqual(['Estornada'])
 
     const r = await resumoDoProduto()
-    expect(r, 'sem a venda estornada: as três de R$ 149').toEqual({ q: 3, total: 447 })
+    // D6 (o Heitor, 18/11: "nao pago nao conta na venda"): a de R$ 149 a receber também
+    // fica fora até ser paga — eram as três de R$ 149 (q 3, R$ 447).
+    expect(r, 'sem a venda estornada nem a a receber: as duas pagas de R$ 149').toEqual({ q: 2, total: 298 })
     expect(await consumo(), 'o custo do lucro sem a venda estornada').toBe(await custoDasVivas())
   })
 
@@ -400,7 +402,8 @@ test.describe.serial('a venda de produto', () => {
     const { count } = await db().from('stock_movements').select('id', { count: 'exact', head: true }).eq('product_id', serum).eq('type', 'SALE_RETURN')
     expect(count).toBe(1)
     expect(await pontos(), 'os pontos dela voltam').toEqual(expect.arrayContaining([{ points: -149, kind: 'ESTORNO_GANHO' }]))
-    expect(await resumoDoProduto()).toEqual({ q: 2, total: 298 })
+    // D6: a a receber segue fora (era q 2, R$ 298).
+    expect(await resumoDoProduto()).toEqual({ q: 1, total: 149 })
     expect(await consumo()).toBe(await custoDasVivas())
 
     const dia = hojeBR()

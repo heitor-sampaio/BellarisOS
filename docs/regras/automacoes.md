@@ -434,6 +434,11 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   `clientes_do_publico`, migration `20261115700002`). É o modelo de
   vencimento de pacote — o "antes do pacote vencer" da campanha automática.
   Prova: `e2e/automacoes-modelos-da-campanha.spec.ts`.
+- **O filtro de Tags do público é E** (o Heitor, 19/11; `crm-inbox.md`, "O filtro de
+  Tags é E em todo lugar"): no "Buscar clientes" e no público das campanhas
+  (`clientes_do_publico`), com duas tags entra só quem tem as duas — era OU
+  (`&&`) —, sem distinguir a caixa. A prévia da campanha diz "Tags (todas):
+  …". Prova: `e2e/campanha-cada-filtro-chega.spec.ts` ("duas tags (E)").
 - **"Buscar clientes" é da rede, sem unidade** (T1 do Bloco Tags, 2026-11-14:
   a cliente é da REDE — não existe tag de unidade, e `clients.branch_id` não
   decide nada). O campo "Unidade" do passo saiu, e o dia do aniversário é o
@@ -454,7 +459,14 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   leitura do Claude (a fala do Heitor era sobre o nome); voltou na auditoria das
   regras (2026-11-18: "simplificar não é reduzir funcionalidade", princípio 7).
   O passo antigo gravado como "Marcar com tag" no modo de remover volta a
-  remover. Prova: `tests/automacoes-remover-tag.test.ts`,
+  remover. **A tag é da PESSOA** (o Heitor, 18/11, noite: "a tag é da pessoa
+  e pode ter mais de uma tag"; `crm-inbox.md`): o "Adicionar tag" grava na
+  ficha do fluxo (a cliente, ou a da oportunidade) e, sem ficha, no CONTATO da
+  oportunidade — o banco a leva à ficha quando ela vier (`somarTagNaPessoa`,
+  `lib/tags/da-pessoa.ts`). A condição "Oportunidade → Tags da pessoa"
+  (`lead.tags`) lê as da pessoa; a oportunidade não tem tag própria. O
+  "Remover tag" segue só na ficha (decisão do Claude: a revisão das tags de
+  18/11 não o estendeu). Prova: `tests/automacoes-remover-tag.test.ts`,
   `tests/tags-so-quem-marca.test.ts`. O anel de automações
   (`e2e/automacoes-anel.spec.ts`) se fecha por "Mover de etapa" (etapa 2 ↔
   etapa 3).

@@ -21,10 +21,12 @@ import {
 } from '@/lib/cached-queries'
 import { MeusAtendimentosEmOutrasUnidades } from '@/components/branch/meus-de-outras-unidades'
 import { quemConcluiOAtendimento, idsQueConcluemOsProprios } from '@/lib/equipe/quem-desfaz'
+import { filtrosDaAgenda, aplicarFiltrosDaAgenda, SEM_FILTRO } from '@/lib/agenda/filtros'
+import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
 
 export default async function AgendaPage({ params, searchParams }: {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ date?: string; cancelados?: string }>
+  searchParams: Promise<{ date?: string; cancelados?: string; profissional?: string; sala?: string; tags?: string }>
 }) {
   const { slug } = await params
   // O dia aberto vai na URL (2026-10-21): recarregar ou mandar o link abre nele.
@@ -49,6 +51,24 @@ export default async function AgendaPage({ params, searchParams }: {
 
   const branchId = branch.id
 
+  // Quem atende aqui, as salas e o vocabulário de tags da rede (lido no
+  // servidor: quem só tem a Agenda também filtra por tag) — as opções dos
+  // filtros, que precisam existir ANTES da consulta da agenda.
+  const [professionals, rooms, tagsDaRede] = await Promise.all([
+    getCachedBranchProfessionals(branchId, ctx.tenantId!),
+    getCachedRoomsByBranch(branchId, ctx.tenantId!),
+    professionalOnly ? Promise.resolve([] as string[]) : tagsAtivasDaRede(ctx.tenantId!),
+  ])
+  // Os filtros (o Heitor, 18/11: "Então precisa arrumar"; e a regra das Tags):
+  // profissional, sala e tags, na CONSULTA. Só valem entre as opções da tela.
+  // A "Minha agenda" (a Agenda em "só os meus") não tem filtro: ela é a
+  // profissional, e a agenda de uma pessoa cabe na tela (princípio 7).
+  const filtros = professionalOnly ? SEM_FILTRO : filtrosDaAgenda(busca, {
+    profissionais: ((professionals ?? []) as { id: string }[]).map(p => p.id),
+    salas:         ((rooms ?? []) as { id: string }[]).map(r => r.id),
+    tags:          tagsDaRede,
+  })
+
   // Janela de 3 meses em volta do dia aberto: mês anterior + atual + próximo
   const base = dataInicial ? new Date(`${dataInicial}T12:00:00`) : new Date()
   const from = startOfMonth(subMonths(base, 1)).toISOString()
@@ -57,20 +77,22 @@ export default async function AgendaPage({ params, searchParams }: {
   // Em páginas (lerTodas, 2026-10-21): o PostgREST devolve no máximo 1000
   // linhas, e numa unidade movimentada os 3 meses passam disso — a grade
   // perdia horários em silêncio. A ordem tem desempate pelo id: sem ela, as
-  // páginas se sobrepõem.
+  // páginas se sobrepõem. As tags da cliente (`clients(tags)`) vêm só para o
+  // filtro de tag, na consulta; o nome dela segue saindo de nomesDosRegistros.
   const paginaDaAgenda = (de: number, ate: number) => {
     let q = supabase
       .from('appointments')
       .select(`
         id, scheduled_at, duration_min, status, price, professional_id, client_id, room_id, arrived_at, completed_at, procedure_id,
         cancellation_reason,
-        procedures(name)
+        procedures(name), clients(tags)
       `)
       .eq('branch_id', branchId)
       .gte('scheduled_at', from)
       .lte('scheduled_at', to)
     if (!comCancelados) q = q.not('status', 'in', '("CANCELLED","NO_SHOW")')
     if (professionalOnly && ctx.internalUserId) q = q.eq('professional_id', ctx.internalUserId)
+    q = aplicarFiltrosDaAgenda(q, filtros)
     return q.order('scheduled_at').order('id').range(de, ate)
   }
 
@@ -81,16 +103,12 @@ export default async function AgendaPage({ params, searchParams }: {
   const [
     rawAppointments,
     procedures,
-    professionals,
-    rooms,
     horarioRaw,
     abertos,
   ] = await Promise.all([
     lerTodas(paginaDaAgenda, 'carregar a agenda'),
 
     getCachedBranchProcedures(branchId, ctx.tenantId!),
-    getCachedBranchProfessionals(branchId, ctx.tenantId!),
-    getCachedRoomsByBranch(branchId, ctx.tenantId!),
     // O horário de funcionamento (2026-10-21): a grade e a ocupação da agenda.
     Promise.all([
       ler(createAdminClient().from('branches').select('horario').eq('id', branchId).maybeSingle(), 'buscar o horário da unidade'),
@@ -140,14 +158,17 @@ export default async function AgendaPage({ params, searchParams }: {
   // Verde e cobre o Batel: o dela no Batel aparece aqui, com a unidade, e abre
   // pela tela do atendimento deste portal. O resto do Batel, não.
   const outrasOndeAtendo = (ctx.atendeEm ?? []).filter(u => u !== branchId)
+  // Os filtros valem também aqui: a profissional escolhida que não sou eu, ou
+  // a sala (é desta unidade), não deixam nada desta lista; a tag recorta na consulta.
   const meusDeFora = ctx.internalUserId && outrasOndeAtendo.length
-    ? ((await lerTodas((de, ate) => createAdminClient().from('appointments')
-        .select('id, scheduled_at, duration_min, status, price, professional_id, client_id, procedure_id, branch_id, arrived_at, completed_at, procedures(name), branches!inner(tenant_id)')
+    && (!filtros.profissional || filtros.profissional === ctx.internalUserId) && !filtros.sala
+    ? ((await lerTodas((de, ate) => aplicarFiltrosDaAgenda(createAdminClient().from('appointments')
+        .select('id, scheduled_at, duration_min, status, price, professional_id, client_id, procedure_id, branch_id, arrived_at, completed_at, procedures(name), branches!inner(tenant_id), clients(tags)')
         .eq('branches.tenant_id', ctx.tenantId!)
         .eq('professional_id', ctx.internalUserId!)
         .in('branch_id', outrasOndeAtendo)
         .not('status', 'in', '("CANCELLED","NO_SHOW")')
-        .gte('scheduled_at', from).lte('scheduled_at', to)
+        .gte('scheduled_at', from).lte('scheduled_at', to), { ...filtros, profissional: null })
         .order('scheduled_at').order('id').range(de, ate), 'carregar os meus agendamentos nas outras unidades')) ?? [])
     : []
   const unidadesDaRede = meusDeFora.length ? (await getCachedNetworkBranches(ctx.tenantId!)) as { id: string; name: string; slug: string }[] : []
@@ -327,6 +348,8 @@ export default async function AgendaPage({ params, searchParams }: {
         dataInicial={dataInicial}
         comCancelados={comCancelados}
         bloqueios={bloqueios}
+        filtros={filtros}
+        tagsDaRede={tagsDaRede}
       />
     </div>
   )

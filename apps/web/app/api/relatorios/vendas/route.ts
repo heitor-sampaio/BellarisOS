@@ -5,6 +5,7 @@ import { resolvePeriod } from '@/lib/metrics'
 import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
 import { recorteDosModulos } from '@/lib/metrics/escopo'
 import { getTodasAsVendas, ehTipoDeVenda } from '@/lib/metrics/vendas'
+import { tagsDaUrl } from '@/lib/metrics/tags-do-relatorio'
 import { nomeDoCsvDeVendas, CABECALHO_DO_CSV_DE_VENDAS, colunasDoCsvDeVendas } from '@/lib/metrics/vendas-comum'
 
 /**
@@ -70,6 +71,8 @@ export async function GET(req: NextRequest) {
     // 2026-10-29) — com ele "só os meus", as vendas DELA, o mesmo recorte da
     // aba. A exportação não abre o que a tela fecha.
     professionalId: recorteDosModulos(ctx).financeiro,
+    // O filtro de Tags da aba (a cliente tem todas): a exportação é o que a tela mostra.
+    tags: tagsDaUrl(q.get('tags')),
   })
 
   // `;` e BOM: é como o Excel brasileiro abre sem perguntar nada. Cada linha

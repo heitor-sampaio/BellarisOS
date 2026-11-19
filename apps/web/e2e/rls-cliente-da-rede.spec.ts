@@ -86,13 +86,16 @@ test('o membro de UMA unidade lê, pela sessão, a ficha nascida na outra', asyn
   expect(data ?? [], 'a ficha é da rede: a unidade em que nasceu não a esconde').toHaveLength(1)
 })
 
-test('e altera a ficha nascida na outra (a trava do módulo é da action; a RLS confere a rede)', async () => {
+// A sessão só LÊ a ficha (20261125500001: a ficha tem CPF e as tags da pessoa,
+// que o banco espelha nos contatos — CLAUDE.md §4, F63). Quem altera, de
+// qualquer unidade da rede, é a action (`updateClientContactData`), pelo
+// servidor: era "e altera a ficha nascida na outra" pela chave pública.
+test('e não altera a ficha pela sessão — quem altera é a action, pelo servidor', async () => {
   const cidade = `${PREFIXO} cidade ${marca}`
-  const { data, error } = await comoMembro(membroDeA!).from('clients').update({ city: cidade }).eq('id', fichaDeB).select('id')
-  expect(error).toBeNull()
-  expect(data ?? [], 'a alteração atingiu a ficha').toHaveLength(1)
-  const { data: lida } = await db().from('clients').select('city').eq('id', fichaDeB).single<{ city: string }>()
-  expect(lida?.city).toBe(cidade)
+  const { data } = await comoMembro(membroDeA!).from('clients').update({ city: cidade }).eq('id', fichaDeB).select('id')
+  expect(data ?? [], 'a alteração não atingiu a ficha').toHaveLength(0)
+  const { data: lida } = await db().from('clients').select('city').eq('id', fichaDeB).single<{ city: string | null }>()
+  expect(lida?.city).not.toBe(cidade)
 })
 
 // Os injetáveis são PRONTUÁRIO, módulo escopável: desde 18/11 (ATD-P01) a

@@ -86,12 +86,21 @@ test('o plano entra em Vendas no primeiro recebimento PAGO, na data do pagamento
   expect(new Date(planos.find(v => v.id === noCrediario)!.data).toISOString()).toBe(pagaEm)
 })
 
+// A regra mudou em 18/11 (o Heitor: "nao pago nao conta na venda", todos os
+// tipos — confirmado por ele em 19/11 para este teste): o crédito vendido só
+// entra em Vendas com o recebimento pago, e entra como "Crédito interno".
 test('D5: o crédito vendido aparece como "Crédito interno"', async () => {
   const cliente = await rede!.criarCliente('Credito')
   const cv = await db().from('creditos_vendidos').insert({
     tenant_id: rede!.tenantId, branch_id: rede!.branchId, client_id: cliente, valor: 150, registrado_por_nome: 'e2e',
   }).select('id').single<{ id: string }>()
   expect(cv.error, cv.error?.message).toBeNull()
+  expect((await vendas()).map(v => v.id), 'sem o recebimento pago, não é venda').not.toContain(cv.data!.id)
+  const { error } = await db().from('financial_transactions').insert({
+    branch_id: rede!.branchId, type: 'INCOME', category: 'e2e', amount: 150, created_by: 'e2e',
+    description: `${PREFIXO} Crédito ${marca}`, credito_vendido_id: cv.data!.id, is_paid: true, paid_at: horas(-1),
+  })
+  expect(error, error?.message).toBeNull()
   const linha = (await vendas()).find(v => v.id === cv.data!.id)
   expect(linha?.descricao, 'a forma do crédito').toBe('Crédito interno')
 })

@@ -112,7 +112,10 @@ test('A16: o campo "Etapa" do modal lista só as etapas do funil do card', async
 })
 
 test('A17: com o filtro, a barra diz quantas mostra, e que o topo é do funil inteiro', async ({ browser }) => {
-  await lead('Filtro Noiva', { tags: ['Noiva'] })
+  // A tag é da PESSOA (o Heitor, 18/11: "a tag é da pessoa"): marcada no contato do card.
+  const noiva = await lead('Filtro Noiva')
+  const { data: k } = await db().from('leads').select('contato_id').eq('id', noiva).single<{ contato_id: string }>()
+  expect((await db().from('contacts').update({ tags: ['Noiva'] }).eq('id', k!.contato_id)).error, 'a tag da pessoa').toBeNull()
   await lead('Filtro Outra')
   await como(browser, joana, async p => {
     await p.goto('/admin/oportunidades')

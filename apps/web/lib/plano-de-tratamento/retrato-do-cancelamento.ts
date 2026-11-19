@@ -28,7 +28,22 @@ export function retratoDoCancelamento(p: {
   const c = (p.cancelamento && typeof p.cancelamento === 'object' ? p.cancelamento : {}) as Record<string, unknown>
   const por = typeof c.por === 'string' && c.por.trim() ? `, por ${c.por.trim()}` : ''
   const [dia, hora] = quandoNoFuso(fuso).format(new Date(p.cancelado_em)).split(', ')
+  const quando = `Cancelado em ${dia} às ${hora}${por}.`
+  const motivo = p.cancelamento_motivo?.trim() || null
   const linhas: string[] = []
+
+  // A1a da 25ª (o Heitor, 18/11: "sim"): o rascunho ou o proposto cancelado não
+  // tem dinheiro — "Uma coisa só foi vendida se foi paga." Sem "usado" nem "devolver".
+  if (c.antes_do_aceite === true) {
+    linhas.push('Cancelado antes do aceite: nada foi vendido nem recebido.')
+    const docs = Number(c.documentos ?? 0)
+    if (docs > 0) {
+      linhas.push(docs === 1
+        ? '1 documento que esperava assinatura foi cancelado.'
+        : `${docs} documentos que esperavam assinatura foram cancelados.`)
+    }
+    return { quando, motivo, linhas }
+  }
 
   const sessoes = Number(c.sessoes ?? 0)
   const restantes = Number(c.restantes ?? 0)
@@ -58,5 +73,5 @@ export function retratoDoCancelamento(p: {
       : `${agendamentos} ${um ? 'agendamento cancelado' : 'agendamentos cancelados'} com o plano.`)
   }
 
-  return { quando: `Cancelado em ${dia} às ${hora}${por}.`, motivo: p.cancelamento_motivo?.trim() || null, linhas }
+  return { quando, motivo, linhas }
 }

@@ -232,9 +232,11 @@ test('MK2: o público da campanha não tem "Unidades", e as tags se chamam "Tags
 test('AG2: o Agendar do card escolhe a unidade numa caixa simples — a tag não escolhe', async ({ browser }) => {
   const { data: l, error } = await db().from('leads').insert({
     tenant_id: rede.tenantId, name: nome('Lia tag B'), phone: '5548' + String(Date.now()).slice(-9),
-    crm_stage_id: etapaNovo, tags: [`Unidade: ${unidadeB.name}`],
-  }).select('id').single<{ id: string }>()
+    crm_stage_id: etapaNovo,
+  }).select('id, contato_id').single<{ id: string; contato_id: string }>()
   expect(error).toBeNull()
+  // A tag é da PESSOA (o Heitor, 18/11): a "Unidade: B" marcada no contato do card.
+  expect((await db().from('contacts').update({ tags: [`Unidade: ${unidadeB.name}`] }).eq('id', l!.contato_id)).error).toBeNull()
   await como(browser, gestao, async p => {
     await p.goto(`/admin/oportunidades?lead=${l!.id}`)
     const card = p.getByRole('dialog').filter({ hasText: 'Editar oportunidade' })

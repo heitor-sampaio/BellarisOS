@@ -89,7 +89,7 @@ export const DEFINICOES = {
    */
   baseDasVendas: {
     rotulo: 'Qual valor esta aba usa',
-    texto: 'O valor da venda, no dia em que foi feita: o voucher e os pontos da fidelidade contam como pagamento (estão dentro do valor); '
+    texto: 'O valor da venda, no dia do primeiro pagamento dela (o que não foi pago não entra): o voucher e os pontos da fidelidade contam como pagamento (estão dentro do valor); '
       + 'o desconto fica fora. Por isso a venda com voucher aparece aqui pelo valor inteiro, e na aba Procedimentos pelo que a cliente pagou.',
   },
   baseDosProcedimentos: {

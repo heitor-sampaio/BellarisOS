@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { lerTodas } from '@/lib/db'
 import { conversaoDasOportunidades, ticketMedio, type EstoqueNoResultado } from './resultado'
 import type { FatiaDoResultado } from './evolucao'
+import { paramDeTags } from './tags-do-relatorio'
 
 /**
  * Acesso às funções de agregação do Postgres (migration 20260909000001).
@@ -76,6 +77,12 @@ type Args = {
   to: Date
   /** Escopa tudo a um profissional (dashboard do profissional que atende). */
   professionalId?: string | null
+  /**
+   * O filtro de Tags dos Relatórios (só as abas de pessoas, `tagsDaAba`): a
+   * cliente da linha tem TODAS (E, sem distinguir a caixa). Vai só às funções
+   * que o aceitam (`paramDeTags`) — não entra em `baseArgs`.
+   */
+  tags?: string[] | null
 }
 
 function baseArgs({ tenantId, branchIds, from, to }: Args) {
@@ -108,6 +115,7 @@ function logRpcError(fn: string, error: { message: string } | null): void {
 export async function getCore(args: Args): Promise<MetricsCore> {
   const { data, error } = await createAdminClient().rpc('metrics_core', {
     ...baseArgs(args), p_professional_id: args.professionalId ?? null,
+    ...paramDeTags(args.tags),
   })
   logRpcError('metrics_core', error)
   const row = (data as Record<string, unknown>[] | null)?.[0]
@@ -233,6 +241,7 @@ export interface TicketMedio { pagoPelasClientes: number; clientesQuePagaram: nu
 export async function getTicketMedio(args: Args): Promise<{ total: TicketMedio; porUnidade: Record<string, TicketMedio> }> {
   const { data, error } = await createAdminClient().rpc('metrics_ticket_medio', {
     ...baseArgs(args), p_professional_id: args.professionalId ?? null,
+    ...paramDeTags(args.tags),
   })
   logRpcError('metrics_ticket_medio', error)
   const linha = (r: Record<string, unknown> | undefined): TicketMedio => {
@@ -647,7 +656,7 @@ export type Retention = {
 export async function getRetention(args: Args): Promise<Retention> {
   // `professionalId` ("só os meus" da agenda): as clientes que ELA atendeu; "voltou" é quem a
   // CLÍNICA já tinha atendido antes, por qualquer profissional (2026-10-29).
-  const { data, error } = await createAdminClient().rpc('metrics_retention', { ...baseArgs(args), p_professional_id: args.professionalId ?? null })
+  const { data, error } = await createAdminClient().rpc('metrics_retention', { ...baseArgs(args), p_professional_id: args.professionalId ?? null, ...paramDeTags(args.tags) })
   logRpcError('metrics_retention', error)
   const row = (data as Record<string, unknown>[] | null)?.[0]
   return {
@@ -665,6 +674,7 @@ export async function getNewClientsSeries(
     ...baseArgs(args), p_granularity: args.granularity ?? 'day',
     // "Só os meus": as novas que têm agendamento não cancelado com ela.
     p_professional_id: args.professionalId ?? null,
+    ...paramDeTags(args.tags),
   })
   logRpcError('metrics_new_clients_series', error)
   return ((data as Record<string, unknown>[] | null) ?? []).map(r => ({
@@ -694,11 +704,13 @@ export type PainelComercial = {
   porDono: { dono: string | null; leads: number; ganhos: number; conversaoPct: number | null; agendamentos: number }[]
 }
 
-export async function getPainelComercial(args: { tenantId: string; branchIds: string[]; from: Date; to: Date; ownerId?: string | null }): Promise<PainelComercial> {
+export async function getPainelComercial(args: { tenantId: string; branchIds: string[]; from: Date; to: Date; ownerId?: string | null; tags?: string[] | null }): Promise<PainelComercial> {
   const { data, error } = await createAdminClient().rpc('metrics_comercial', {
     p_tenant: args.tenantId, p_branch_ids: args.branchIds, p_from: args.from.toISOString(), p_to: args.to.toISOString(),
     // CRM "só os meus": os leads dela e os sem dono (o recorte do quadro); os agendamentos que ela marcou.
     p_owner: args.ownerId ?? null,
+    // Tags: as da PESSOA da oportunidade (`metrics_tags_da_pessoa_da_oportunidade`); os atendimentos comerciais, as da cliente.
+    ...paramDeTags(args.tags),
   })
   logRpcError('metrics_comercial', error)
   const r = (data ?? {}) as Record<string, unknown>
@@ -723,10 +735,11 @@ export async function getPainelComercial(args: { tenantId: string; branchIds: st
  * rede inteira — os leads são da rede, como no funil. Perdida sem motivo (o
  * Copilot e as automações movem sem perguntar) vem como "Sem motivo".
  */
-export async function getMotivosDePerda(args: { tenantId: string; from: Date; to: Date; ownerId?: string | null }): Promise<{ motivo: string; total: number }[]> {
+export async function getMotivosDePerda(args: { tenantId: string; from: Date; to: Date; ownerId?: string | null; tags?: string[] | null }): Promise<{ motivo: string; total: number }[]> {
   const { data, error } = await createAdminClient().rpc('metrics_motivos_de_perda', {
     p_tenant: args.tenantId, p_from: args.from.toISOString(), p_to: args.to.toISOString(),
     p_owner: args.ownerId ?? null,
+    ...paramDeTags(args.tags),
   })
   logRpcError('metrics_motivos_de_perda', error)
   return ((data as Record<string, unknown>[] | null) ?? []).map(r => ({ motivo: String(r.motivo), total: n(r.total) }))
@@ -738,10 +751,11 @@ export async function getMotivosDePerda(args: { tenantId: string; from: Date; to
  * os meus" com os sem dono), por `leads.source`. A conversão é a de sempre,
  * `conversaoDasOportunidades` — sem etapa de ganho na rede, "—".
  */
-export async function getConversaoPorOrigem(args: { tenantId: string; from: Date; to: Date; ownerId?: string | null; temGanho: boolean }): Promise<{ origem: string; leads: number; ganhos: number; conversaoPct: number | null }[]> {
+export async function getConversaoPorOrigem(args: { tenantId: string; from: Date; to: Date; ownerId?: string | null; temGanho: boolean; tags?: string[] | null }): Promise<{ origem: string; leads: number; ganhos: number; conversaoPct: number | null }[]> {
   const { data, error } = await createAdminClient().rpc('metrics_conversao_por_origem', {
     p_tenant: args.tenantId, p_from: args.from.toISOString(), p_to: args.to.toISOString(),
     p_owner: args.ownerId ?? null,
+    ...paramDeTags(args.tags),
   })
   logRpcError('metrics_conversao_por_origem', error)
   return ((data as Record<string, unknown>[] | null) ?? []).map(r => {
@@ -763,6 +777,7 @@ export async function getLeadFunnel(
   const { data, error } = await createAdminClient().rpc('metrics_lead_funnel', {
     // `ownerId`: o CRM "só os meus" — os leads da pessoa e os sem dono, como o quadro.
     ...baseArgs(args), p_funnel: args.funnelId ?? null, p_owner: args.ownerId ?? null,
+    ...paramDeTags(args.tags),
   })
   logRpcError('metrics_lead_funnel', error)
   return etapasDoFunil(data)

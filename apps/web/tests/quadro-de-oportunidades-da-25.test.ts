@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { opcoesDeTagDoQuadro, temAlgumaTag } from '@/lib/crm/filtro-de-tags'
+import { opcoesDeTagDoQuadro, temTodasAsTags } from '@/lib/crm/filtro-de-tags'
 
 /**
  * O quadro de oportunidades na 25ª simulação.
@@ -42,14 +42,24 @@ describe('D14: o filtro de Tags do quadro oferece o vocabulário da rede', () =>
     expect(opcoesDeTagDoQuadro(['VIP'], [['vip', 'Antiga']])).toEqual(['Antiga', 'VIP'])
   })
   it('o filtro não liga para a caixa ("VIP" e "vip" são a mesma tag)', () => {
-    expect(temAlgumaTag(['vip'], ['VIP'])).toBe(true)
-    expect(temAlgumaTag(['Outra'], ['VIP'])).toBe(false)
+    expect(temTodasAsTags(['vip'], ['VIP'])).toBe(true)
+    expect(temTodasAsTags(['Outra'], ['VIP'])).toBe(false)
+  })
+  // A regra mudou (o Heitor, 19/11: "Quem tem TODAS (E)", em todo filtro de
+  // tags): o quadro usava OU (`temAlgumaTag`), e a lista de Clientes, o
+  // inbox e o Financeiro usam E. Agora o card entra com TODAS as marcadas.
+  it('com duas tags marcadas, o card precisa das DUAS (E, como Clientes e o inbox)', () => {
+    expect(temTodasAsTags(['VIP', 'Indicação'], ['vip', 'Indicação'])).toBe(true)
+    expect(temTodasAsTags(['VIP'], ['VIP', 'Indicação'])).toBe(false)
+    expect(temTodasAsTags([], ['VIP'])).toBe(false)
+    expect(temTodasAsTags(null, ['VIP'])).toBe(false)
   })
   it('as duas páginas passam o vocabulário ao quadro, e o quadro o usa', () => {
     expect(ler('app/[slug]/oportunidades/page.tsx')).toMatch(/tagsDaRede=\{/)
     expect(ler('app/admin/oportunidades/page.tsx')).toMatch(/tagsDaRede=\{/)
     const board = ler('components/branch/crm-board.tsx')
     expect(board).toMatch(/opcoesDeTagDoQuadro\(/)
-    expect(board).toMatch(/temAlgumaTag\(/)
+    expect(board).toMatch(/temTodasAsTags\(l\.tags, filters\.tags\)/)
+    expect(board).not.toMatch(/temAlgumaTag/)
   })
 })

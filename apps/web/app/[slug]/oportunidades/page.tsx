@@ -13,6 +13,7 @@ import { resumoDoFunil } from '@/lib/metrics/resultado'
 import { ResumoDoQuadro } from '@/components/branch/crm-resumo-do-quadro'
 import { CRMBoard } from '@/components/branch/crm-board'
 import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
+import { EMBED_TAGS_DA_PESSOA, tagsDaPessoaDaOportunidade } from '@/lib/tags/pessoa'
 import { CRMLeadModal } from '@/components/branch/crm-lead-modal'
 import { pessoaParaNovoLead } from '@/lib/crm/pessoa-para-novo-lead'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -27,7 +28,10 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 /** O que a tela lê do lead; o resto do select passa adiante como veio. */
 type LeadLido = Record<string, unknown> & {
   contato_id: string
-  tags:       string[] | null
+  client_id:  string | null
+  // As tags são da PESSOA (crm-inbox.md §9.2.1): a ficha, ou o contato.
+  pessoa_ficha?:   { tags: string[] | null } | null
+  pessoa_contato?: { tags: string[] | null } | null
   users:      { name: string; is_active: boolean } | null
 }
 
@@ -125,7 +129,7 @@ export default async function BranchOportunidadesPage({
         .from('leads')
         .select(`
           id, name, phone, email, social_media, source,
-          crm_stage_id, notes, client_id, created_at, tags,
+          crm_stage_id, notes, client_id, created_at, ${EMBED_TAGS_DA_PESSOA},
           owner_id, users(name, is_active), contato_id,
           motivo_perda_id, motivo_perda_obs, crm_motivos_perda(nome), retornar_em, retornar_obs,
           lead_procedures(procedure_id, procedures(name, price))
@@ -158,10 +162,13 @@ export default async function BranchOportunidadesPage({
   const abertaNaEtapa = (etapa: unknown) => allStages.find(st => st.id === etapa)?.outcome === 'OPEN'
   const leadsData = leads.map(l => {
     const { users: dono, contato_id: pessoa, ...rest } = l
+    // As tags da pessoa vão em `tags`; os embeds não seguem para a tela.
+    delete rest.pessoa_ficha
+    delete rest.pessoa_contato
     const ativ = atividade.get(pessoa)
     return {
       ...rest,
-      tags:                l.tags ?? [],
+      tags:                tagsDaPessoaDaOportunidade(l),
       owner_name:          dono?.name ?? null,
       owner_ativo:         dono ? dono.is_active : null,
       last_interaction_at: ativ?.last_interaction_at ?? null,

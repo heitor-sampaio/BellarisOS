@@ -141,6 +141,11 @@ export function historicoDoCancelamento(
 ): { date: string; title: string; subtitle: string; amount: number | null } | null {
   if (!pkg.cancelado_em) return null
   const c = (pkg.cancelamento ?? {}) as Record<string, unknown>
+  // A1a da 25ª: o plano cancelado ANTES do aceite (rascunho ou proposto) não tem dinheiro.
+  if (c.antes_do_aceite === true) {
+    const partes = ['antes do aceite: nada foi vendido nem recebido', pkg.cancelamento_motivo ? `Motivo: ${pkg.cancelamento_motivo}` : null].filter(Boolean)
+    return { date: pkg.cancelado_em, title: `${rotulo} cancelado: ${nome}`, subtitle: partes.join(' · '), amount: null }
+  }
   const restantes = Number(c.restantes ?? 0)
   const devolver = num(c.devolver)
   const comoVoltou = devolver > 0

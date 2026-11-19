@@ -7,6 +7,7 @@ import type { OrigemDeEvento, AtorDoEvento } from '@estetica-os/types'
 import type { ContextoDaExecucao } from './contexto'
 import { ler } from '@/lib/db'
 import { trocarResponsavelCore } from '@/lib/crm/responsavel'
+import { pessoaDe, somarTagNaPessoa } from '@/lib/tags/da-pessoa'
 
 /**
  * As ações que mexem no CRM.
@@ -155,45 +156,37 @@ export async function marcarDesfecho(
 }
 
 /**
- * "Adicionar tag" (T4 do Bloco Tags, 2026-11-14): adiciona uma tag ao cliente
- * — a ação que a rede montou é o único caminho do sistema que grava tag (a
- * "Remover tag", abaixo, é a que tira).
+ * "Adicionar tag" (T4 do Bloco Tags, 2026-11-14): a ação que a rede montou é o
+ * único caminho do sistema que grava tag sem uma pessoa marcando. A tag é da
+ * PESSOA (o Heitor, 18/11: "a tag é da pessoa e pode ter mais de uma tag"):
+ * grava na ficha do fluxo (a cliente, ou a da oportunidade); sem ficha, no
+ * contato da oportunidade — e o banco leva à ficha quando ela vier.
  */
 export async function adicionarTagAoCliente(
   ator: AtorDaAutomacao,
   contexto: ContextoDaExecucao,
   tag: string,
 ): Promise<Record<string, unknown>> {
-  const clienteId = clienteDo(contexto)
-  if (!clienteId) return { alterado: false, motivo: 'Este fluxo não tem cliente no contexto.' }
+  const lead = contexto.lead as { clienteId?: string | null; contatoId?: string | null } | null
+  const clienteId = clienteDo(contexto) ?? lead?.clienteId ?? null
+  const pessoa = await pessoaDe(ator.tenantId, { clientId: clienteId, contatoId: lead?.contatoId ?? null })
+  if (!pessoa) return { alterado: false, motivo: 'Este fluxo não tem cliente nem oportunidade no contexto.' }
 
   const limpa = tag.trim()
   if (!limpa) throw new Error('Nenhuma tag escolhida.')
 
-  const admin = createAdminClient()
-  const cliente = await ler(admin
-    .from('clients').select('tags').eq('id', clienteId).eq('tenant_id', ator.tenantId).maybeSingle(), 'buscar o cliente')
-
-  if (!cliente) return { alterado: false, motivo: 'Cliente não encontrado.' }
-
-  const atuais = (cliente.tags as string[] | null) ?? []
-  const tem    = atuais.includes(limpa)
-
+  const r = await somarTagNaPessoa(ator.tenantId, pessoa, limpa)
+  if (!r.existe) return { alterado: false, motivo: pessoa.tabela === 'clients' ? 'Cliente não encontrado.' : 'Pessoa não encontrada.' }
   // Nada a fazer é um FATO, não um erro: adicionar uma tag que já está lá não
   // deveria pintar o passo de vermelho nem emitir "dados alterados".
-  if (tem) return { alterado: false, motivo: 'O cliente já tinha esta tag.' }
+  if (!r.alterado) return { alterado: false, motivo: 'A pessoa já tinha esta tag.' }
 
-  const novas = [...atuais, limpa]
-
-  const { error } = await admin
-    .from('clients').update({ tags: novas }).eq('id', clienteId).eq('tenant_id', ator.tenantId)
-
-  if (error) throw new Error(`Não consegui alterar as tags: ${error.message}`)
-
-  await emitirEventoDeCliente(EVENTOS.CLIENTE_DADOS_ALTERADOS, clienteId, ctxDaAutomacao(ator), {
-    alterou: ['tags'],
-    ...extras(ator),
-  })
+  if (pessoa.tabela === 'clients') {
+    await emitirEventoDeCliente(EVENTOS.CLIENTE_DADOS_ALTERADOS, pessoa.id, ctxDaAutomacao(ator), {
+      alterou: ['tags'],
+      ...extras(ator),
+    })
+  }
 
   return { alterado: true, tag: limpa }
 }

@@ -19,19 +19,41 @@ import { join } from 'node:path'
 
 const MIGRATIONS = join(__dirname, '..', '..', '..', 'supabase', 'migrations')
 
+function migrations(): { nome: string; sql: string }[] {
+  return readdirSync(MIGRATIONS).filter(n => n.endsWith('.sql')).sort()
+    .map(n => ({ nome: n, sql: readFileSync(join(MIGRATIONS, n), 'utf8') }))
+}
+
 function ultimaQueMexeEm(funcao: string): { nome: string; sql: string } {
-  const nomes = readdirSync(MIGRATIONS).filter(n => n.endsWith('.sql')).sort()
-  for (let i = nomes.length - 1; i >= 0; i--) {
-    const sql = readFileSync(join(MIGRATIONS, nomes[i]!), 'utf8')
-    if (sql.includes(`public.${funcao}(`)) return { nome: nomes[i]!, sql }
+  const todas = migrations()
+  for (let i = todas.length - 1; i >= 0; i--) {
+    if (todas[i]!.sql.includes(`public.${funcao}(`)) return todas[i]!
   }
   throw new Error(`nenhuma migration mexe em ${funcao}`)
 }
 
+/**
+ * A última que mexe na função E no trecho (`marca`). As que vêm depois e só
+ * remendam outra parte do corpo vivo (`pg_temp.trocar_no_corpo`) não citam o
+ * trecho — e o remendo só troca o que cita: `depois` as devolve para conferir.
+ */
+function ultimaQueMexeNoTrecho(funcao: string, marca: RegExp) {
+  const todas = migrations()
+  for (let i = todas.length - 1; i >= 0; i--) {
+    const m = todas[i]!
+    if (m.sql.includes(`public.${funcao}(`) && marca.test(m.sql)) {
+      return { ...m, depois: todas.slice(i + 1).filter(d => d.sql.includes(`public.${funcao}(`)) }
+    }
+  }
+  throw new Error(`nenhuma migration mexe em ${funcao} com ${marca}`)
+}
+
 describe('D7: a visita de antes do sistema conta como "cliente antes do corte"', () => {
   it('o público "sem retorno" (clientes_do_publico)', () => {
-    const { nome, sql } = ultimaQueMexeEm('clientes_do_publico')
+    const { nome, sql, depois } = ultimaQueMexeNoTrecho('clientes_do_publico', /ultima_visita_antes/)
     expect(sql, nome).toMatch(/least\(coalesce\(c\.cliente_desde::timestamp at time zone f\.fuso, c\.created_at\),\s*c\.ultima_visita_antes::timestamp at time zone f\.fuso\) < f\.cliente_desde_antes/)
+    // O remendo que vem depois (a 20261125500001, as tags em E) não cita a visita de antes: não a tira.
+    for (const r of depois) expect(r.sql, r.nome).not.toMatch(/ultima_visita_antes/)
   })
   it('o "Reativar clientes" da rede (metrics_clientes_para_reativar_rede)', () => {
     const { nome, sql } = ultimaQueMexeEm('metrics_clientes_para_reativar_rede')

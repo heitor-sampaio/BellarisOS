@@ -23,7 +23,7 @@ const marca = Date.now().toString(36)
 const DIA = 24 * 3600 * 1000
 const db = () => banco()
 
-type Nome = 'vip' | 'outraUnidade' | 'masculino' | 'fezHa100' | 'veioHa10' | 'nuncaVeioAntiga' | 'novaSemVisita' | 'comApp' | 'duasVisitas'
+type Nome = 'vip' | 'vipNoiva' | 'outraUnidade' | 'masculino' | 'fezHa100' | 'veioHa10' | 'nuncaVeioAntiga' | 'novaSemVisita' | 'comApp' | 'duasVisitas'
 let f: { outra: OutraRede; membro: MembroDeTeste; segunda: string; c: Record<Nome, string> } | null = null
 
 test.beforeAll(async () => {
@@ -45,6 +45,7 @@ test.beforeAll(async () => {
   }
   const c = {
     vip:             await ficha('Vip', { tags: [`VIP ${marca}`] }),
+    vipNoiva:        await ficha('Vip e noiva', { tags: [`VIP ${marca}`, `Noiva ${marca}`] }),
     outraUnidade:    await ficha('Outra unidade', { branch_id: b2!.id }),
     masculino:       await ficha('Masculino', { gender: 'M' }),
     fezHa100:        await ficha('Fez há 100 dias'),
@@ -91,11 +92,15 @@ async function comoMembro(browser: Browser, fn: (p: Page) => Promise<void>) {
 const casos: { regra: string; regras: () => Record<string, unknown>; quem: () => Nome[] }[] = [
   { regra: 'sem visita há mais de 60 dias', regras: () => ({ max_days_since_visit: 60 }),
     // Não entram: quem veio há 10 e há 5 dias, nem a cadastrada hoje.
-    quem: () => ['vip', 'outraUnidade', 'masculino', 'fezHa100', 'nuncaVeioAntiga', 'comApp'] },
-  { regra: 'tag', regras: () => ({ tags: [`VIP ${marca}`] }), quem: () => ['vip'] },
+    quem: () => ['vip', 'vipNoiva', 'outraUnidade', 'masculino', 'fezHa100', 'nuncaVeioAntiga', 'comApp'] },
+  { regra: 'tag', regras: () => ({ tags: [`VIP ${marca}`] }), quem: () => ['vip', 'vipNoiva'] },
+  // O filtro de Tags é E em todo lugar (crm-inbox.md; o Heitor, 19/11: "Quem
+  // tem TODAS (E)"): com duas, só quem tem as DUAS (era OU, e a "Vip" entrava).
+  // E a tag pedida em outra caixa acha a gravada ("noiva" acha "Noiva").
+  { regra: 'duas tags (E)', regras: () => ({ tags: [`VIP ${marca}`, `noiva ${marca}`] }), quem: () => ['vipNoiva'] },
   // MK2 do Bloco Tags (2026-11-14): o público é da rede, sem filtro de unidade —
   // a regra de unidade gravada antes não recorta (a VIP é da outra unidade e recebe).
-  { regra: 'unidade gravada antes (não recorta)', regras: () => ({ branch_ids: [f!.segunda], tags: [`VIP ${marca}`] }), quem: () => ['vip'] },
+  { regra: 'unidade gravada antes (não recorta)', regras: () => ({ branch_ids: [f!.segunda], tags: [`VIP ${marca}`] }), quem: () => ['vip', 'vipNoiva'] },
   { regra: 'sexo', regras: () => ({ genders: ['M'] }), quem: () => ['masculino'] },
   { regra: 'procedimento feito', regras: () => ({ procedure_ids: [f!.outra.procedureId] }), quem: () => ['fezHa100', 'veioHa10', 'duasVisitas'] },
   { regra: 'só quem tem o app', regras: () => ({ has_app_account: true }), quem: () => ['comApp'] },

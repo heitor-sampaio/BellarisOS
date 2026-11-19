@@ -51,6 +51,9 @@ test('o concluído antes da hora conta já; o concluído atrasado fica no dia ma
   const { data: porUnidade } = await db().rpc('metrics_by_branch', { p_tenant: rede!.tenantId, p_from: janela.p_from, p_to: janela.p_to })
   expect(porUnidade?.find((b: { branch_id: string }) => b.branch_id === rede!.branchId)).toMatchObject({ appointments_completed: 1, service_revenue: 180 })
 
+  // D6 (o Heitor, 18/11: "nao pago nao conta na venda"): nenhum dos dois foi
+  // pago, então nenhum é venda — a venda entra no dia do primeiro recebimento
+  // pago (e2e/relatorio-vendas-so-o-pago.spec.ts). Era o adiantado, R$ 180.
   const { data: vendas } = await db().rpc('metrics_vendas', janela)
-  expect((vendas ?? []).filter((v: { tipo: string }) => v.tipo === 'PROCEDIMENTO')).toEqual([expect.objectContaining({ valor: 180 })])
+  expect((vendas ?? []).filter((v: { tipo: string }) => v.tipo === 'PROCEDIMENTO')).toEqual([])
 })

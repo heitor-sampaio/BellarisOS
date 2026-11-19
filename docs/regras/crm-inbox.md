@@ -395,8 +395,38 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   (`tagsDoVocabulario`, `lib/tags/escolha.ts`; o cadastro e a ficha entraram
   na varredura de 18/11, CRM-01). Criar tag é em Configurações → Tags. Prova:
   `tests/crm-atritos-da-18.test.ts`, `tests/tags-so-quem-marca.test.ts`.
-- ⚠️ **O vocabulário cresce por GATILHO** (`trg_registrar_tags` em clients,
-  contacts e leads): toda tag gravada por quem pode marcar entra, qualquer
+- **A tag é da PESSOA** (o Heitor, 18/11, noite — a pergunta: "a tag é uma
+  só, da pessoa? Marcou na ficha, no inbox ou na oportunidade, vale em todo
+  filtro. Ou a oportunidade pode ter tags próprias?"; a resposta: "a tag é da
+  pessoa e pode ter mais de uma tag"). UMA lista por pessoa, marcada na
+  ficha, no painel do inbox ou no card da oportunidade, e que vale em TODO
+  filtro (Clientes, inbox, quadro, campanhas, automações, Copilot,
+  Financeiro, Agenda, Relatórios). Mora na ficha (`clients.tags`) e nos
+  contatos dela (`contacts.tags`, ligados por `contacts.client_id`) — e o
+  BANCO as mantém iguais (os espelhos da `20261125500001`): cada leitor lê a
+  sua coluna, e as duas dizem o mesmo. A pessoa sem ficha tem as do contato.
+  - **A oportunidade não tem tag própria**: o card mostra e edita as da
+    pessoa dele (a ficha; sem ela, o contato — `EMBED_TAGS_DA_PESSOA`,
+    `lib/tags/pessoa.ts`); `createLead`/`updateLead` gravam nela
+    (`gravarTagsDaOportunidade`, `lib/tags/da-pessoa.ts`). `leads.tags` saiu
+    (`20261125500002`); a coluna "Tags da oportunidade" da importação virou a
+    de Tags (da pessoa).
+  - **Quando a ficha e o contato se encontram** (o "Cadastrar cliente" do
+    card, o "É a mesma pessoa", a conversa da ficha, a ligação automática
+    abaixo), as tags dos dois se JUNTAM, sem repetir e sem distinguir a caixa.
+    A ligação é posta pelo banco, num lugar só (`private.ligar_contato_a_ficha`,
+    gatilhos em `leads` e `conversations`), e NUNCA religa o contato que já
+    é de outra ficha.
+  - **Toda tag gravada sai com o nome do vocabulário** (gatilho em `clients` e
+    `contacts`, `private.juntar_tags`): o `@>`/`cs` dos filtros acha "VIP"
+    mesmo que alguém tenha escrito "vip" (decisão do Claude, 18/11).
+  - **A sessão só LÊ a ficha e o contato** (CLAUDE.md §4, F63): com o espelho,
+    gravar `contacts.tags` pela chave pública mudaria a ficha sem a trava da
+    action. Os escritores do app são todos do servidor. Prova:
+    `e2e/rls-sessao-so-le.spec.ts` ("contato e ficha").
+  - Prova: `tests/tags-da-pessoa.test.ts`, `e2e/tags-da-pessoa.spec.ts`.
+- ⚠️ **O vocabulário cresce por GATILHO** (`trg_registrar_tags` em clients
+  e contacts; o de leads saiu com a coluna): toda tag gravada por quem pode marcar entra, qualquer
   que seja o nome (até o Bloco Tags, 2026-11-14, as `Unidade: …` — que eram
   do sistema — eram puladas; o sistema não põe mais tag nenhuma). Gravar tag
   por um caminho novo não precisa registrar nada — e não deve.
@@ -404,7 +434,9 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   a mesma. Marcar usa o nome do vocabulário; desmarcar tira qualquer grafia
   (`lib/tags/escolha.ts`).
 - **Renomear troca em todo lugar numa transação** (`renomear_tag`: clients,
-  contacts, leads e a semente das conversas). Nome que já existe JUNTA as duas
+  contacts e a semente das conversas — as oportunidades não têm tag desde
+  18/11). O uso na aba conta PESSOAS: as fichas e os contatos sem ficha
+  (`tags_da_rede`). Nome que já existe JUNTA as duas
   (fica a que existia, com o nome dela, sem repetir na pessoa). O fluxo de
   automação que cita o nome antigo NÃO é reescrito (versão publicada não muda
   sozinha): a tela lista quais ajustar (`automacoes_que_citam_tag`).
@@ -412,6 +444,19 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   (Ativos, Novos, Inativos — escolha única) e Tags (várias, todas valem juntas,
   sem caixa) no `PickerCompacto`, como o quadro. O segmento fixo "Todos / VIP /
   Novos / Inativos" saiu: VIP é uma tag como as outras.
+- **O filtro de Tags é E em todo lugar** (decisão do Heitor, 19/11: "Quem tem
+  TODAS (E)", entre E, OU e a pessoa escolher; proposta do Claude em 18/11 pelo
+  princípio 7, quando a lista de Clientes era E e o quadro e as campanhas, OU): com duas tags
+  marcadas, entra quem tem AS DUAS — a lista de Clientes e o quadro de
+  oportunidades sem caixa (`temTodasAsTags`, `lib/crm/filtro-de-tags.ts`; o
+  quadro era OU, `temAlgumaTag`), o inbox (`contacts.tags @>`), as listas do
+  Financeiro (`cs`, `vendas-financeiro.md` §9.6) pelo nome gravado, que é o do
+  vocabulário (`tagsDoVocabulario`), e o público das campanhas e o "Buscar
+  clientes" das automações (`clientes_do_publico`, era `&&`, OU — 18/11; a
+  prévia diz "Tags (todas)" com mais de uma). Os três `?tags=` (Financeiro,
+  Agenda, Relatórios) usam o mesmo leitor (`lib/tags/filtro-na-url.ts`: a
+  vírgula do nome vai escapada). Prova:
+  `tests/quadro-de-oportunidades-da-25.test.ts`, `e2e/campanha-cada-filtro-chega.spec.ts`.
 - **"Selecionar" e "Marcar tag" na lista de Clientes** (A21 da 16ª,
   2026-11-17; Clientes em Gerenciar): escolhe-se uma a uma (ou "Todas da
   lista", a do filtro) e uma tag do VOCABULÁRIO; muda só quem ainda não a
@@ -752,8 +797,8 @@ oferece segue o módulo (clientes com `clients`, contatos com `crm`).
   os apelidos: "facebook" é Meta Ads; o desconhecido vira "Outro", não erro;
   `normalizarOrigem` com `refs.origens`), valor estimado ("R$ 1.500,00"),
   observações, procedimento de interesse, etapa (do funil escolhido), responsável
-  (nome ou e-mail da equipe ativa), UTM source/medium/campaign e tags da
-  oportunidade. Etapa e responsável da linha vencem os da tela; vazio, valem os
+  (nome ou e-mail da equipe ativa) e UTM source/medium/campaign (as tags são da
+  PESSOA — 18/11 —: a coluna "Tags da oportunidade" casa com a de Tags). Etapa e responsável da linha vencem os da tela; vazio, valem os
   da tela. ⚠️ A COLUNA de responsável distribui oportunidades: a action a recusa para
   quem não tem `podeTrocarResponsavel` (a tela nem a oferece). Com mais de um
   funil, o campo da tela se chama "Funil e etapa" (as etapas vêm agrupadas por
@@ -1038,6 +1083,29 @@ São quatro entidades e é fácil confundi-las. A regra é:
 | **`leads`** | a **OPORTUNIDADE** no funil | várias por pessoa |
 | **`clients`** | a **FICHA** na rede (CPF, prontuário, financeiro) | no máximo uma por pessoa |
 
+**O contato sabe a ficha dele** (`contacts.client_id`, 18/11, com a tag da
+pessoa): posto pelo banco quando a oportunidade ou a conversa ganha a ficha,
+nunca religado. Não é único — a mesma pessoa pode ter dois contatos (Instagram
+e WhatsApp sem identificador em comum), os dois da mesma ficha. E não existe a
+volta (`clients.contato_id`): duas chaves entre as duas tabelas deixariam o
+embed do PostgREST ambíguo (PGRST201).
+
+**A conversa que chega pelo telefone de UMA ficha liga sozinha a ela** (o
+Heitor, 18/11, noite — a pergunta: "Quando chega uma conversa no WhatsApp pelo
+telefone de uma ficha que já existe, ela deve se ligar sozinha a essa ficha? …
+só quando o telefone bate com UMA ficha; com mais de uma (mãe e filha no mesmo
+número) não liga e deixa para a equipe"; a resposta: "sim, liga sozinha quando
+bater com uma ficha só"). No banco, para todo caminho que cria conversa
+(`trg_conversa_liga_a_ficha` → `private.ligar_conversa_a_ficha`): o contato sem
+ficha cujo telefone casa com EXATAMENTE UMA ficha ATIVA da rede ganha a ficha
+(e a conversa sem ficha, também), e as tags se juntam. A régua do telefone é a
+da importação (D11: o nacional de 10 ou 11 dígitos sem o 55, ou o de fora com
+"+"; `private.ficha_unica_do_telefone`). Zero ou duas+ fichas: não liga. Só o
+telefone (nem e-mail nem nome), e nunca o contato que já é de outra ficha. A
+oportunidade nova de quem já tem ficha nasce com o contato DELA
+(`fn_oportunidade_ganha_contato`), não com o primeiro do telefone. Prova:
+`e2e/tags-da-pessoa.spec.ts`.
+
 **A conversa NÃO é a pessoa.** Ela era, e isso funcionava enquanto cada pessoa
 tinha uma conversa só. Deixou de funcionar com vários números: o dedup inclui a
 caixa — de propósito, porque no celular do cliente são duas conversas mesmo —,
@@ -1091,7 +1159,9 @@ contato (`atualizarContato`). Não propagam: a oportunidade tem a SUA cópia
   automático regravar o número da pessoa, que é o destino da conversa. Prova:
   `e2e/inbox-contato-email.spec.ts` (A16).
 
-**As TAGS são da pessoa** (`contacts.tags`), e sempre eram — o comentário em
+**As TAGS são da pessoa** (`contacts.tags`; com ficha, as MESMAS de `clients.tags`
+— o Heitor, 18/11: "a tag é da pessoa e pode ter mais de uma tag"; ver "A tag é
+da PESSOA", no §9.2), e sempre eram — o comentário em
 `conversations.tags` já dizia "Tags do CONTATO: descrevem a pessoa, não o
 negócio". `conversations.tags` sobrevive como **semente**: escrita uma vez no
 nascimento da thread (desde o Bloco Tags, 2026-11-14, nasce vazia: a origem
@@ -1658,6 +1728,12 @@ o contato junto.
 ❌ Ler leads pela SESSÃO numa tela que roda na unidade (a política de leitura só deixa passar quem é da rede, e a oportunidade é sempre da rede: o quadro da unidade via "0 leads" até 2026-10-20) — o servidor lê pelo cliente de serviço, com a rede e o ownerFilter na consulta
 ❌ Agrupar a fila do inbox por pessoa — é uma linha por conversa (decisão de 2026-09-26)
 ❌ Ler tags de conversations.tags (é semente; a fonte é contacts.tags)
+❌ Dar tag própria à oportunidade, ou ler/gravar leads.tags — a tag é da PESSOA (o Heitor, 18/11): o card lê EMBED_TAGS_DA_PESSOA e grava por gravarTagsDaOportunidade
+❌ Gravar contacts.client_id fora de private.ligar_contato_a_ficha (ou de um update com .is('client_id', null)), ou religar o contato que já é de outra ficha
+❌ Ligar a conversa à ficha por e-mail, nome ou com DUAS fichas no telefone — só o telefone de UMA ficha ativa (o Heitor, 18/11: "liga sozinha quando bater com uma ficha só")
+❌ Criar clients.contato_id (a volta da ligação): duas chaves entre clients e contacts deixam o embed ambíguo (PGRST201)
+❌ Abrir escrita pela sessão em contacts ou clients (o espelho das tags mudaria a ficha sem a trava da action)
+❌ Filtro de tag com && (OU) — é E em todo lugar, como o público das campanhas desde 18/11
 ❌ Procurar "o anúncio do cliente" na conversa mais recente em vez da mais recente COM anúncio
 ❌ Ligar conversa a contato no TypeScript (é gatilho; senão o próximo ponto esquece)
 ❌ Filtrar por canal ou caixa ao procurar o contato (é o cruzamento que interessa)
@@ -1682,7 +1758,7 @@ o contato junto.
 ❌ Dizer "hoje"/"ontem" de um registro por 24 h corridas (differenceInDays) — é o dia de Brasília (idadeDoLead, dayKeyTZ — D12 da 12ª)
 ❌ Mover o card porque a cliente comprou — o card SUGERE ("Mover para Fechado"), quem move é a pessoa (A18 da 7ª, crm-05)
 ❌ Renomear a ficha sem levar o nome às pessoas ligadas a ela (atualizarClienteCore → propagarDadosDaPessoa — A21 da 7ª)
-❌ Renomear tag com update à mão em uma tabela só (é renomear_tag, nas quatro, numa transação)
+❌ Renomear tag com update à mão em uma tabela só (é renomear_tag, em todas, numa transação)
 ❌ Política de `clients` (ou de tabela que segue a ficha: injetáveis…) que confere `clients.branch_id` / `can_access_branch` da ficha — a ficha é da REDE: a equipe confere a rede (`tenant_id` da sessão, `cliente_da_minha_rede`), a cliente `clientes_do_login()` (auditoria das regras, 18/11; prova `e2e/rls-cliente-da-rede.spec.ts`)
 ❌ Lançar a trava de módulo (assertPermission) num layout.tsx de seção: sai antes do streaming e a resposta é 500 — o layout sem o módulo só deixa passar a página, e a trava é dela (D11 da 7ª)
 ❌ Recusar o acesso ao app de quem tem passaporte ou RNE, ou escolher a senha inicial fora de documentoDoAcesso (o CPF, senão o documento da ficha — decisão 1 da 7ª)

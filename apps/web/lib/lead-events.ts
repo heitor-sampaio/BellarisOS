@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { EMBED_TAGS_DA_PESSOA, tagsDaPessoaDaOportunidade } from '@/lib/tags/pessoa'
 
 export type LeadEventType =
   | 'CREATED'
@@ -115,7 +116,8 @@ export const CAMPOS_LEAD: Record<string, string> = {
   social_media: 'Rede social',
   source:       'Origem',
   notes:        'Observações',
-  tags:         'Tags',
+  // A tag é da PESSOA (crm-inbox.md §9.2.1): o card mostra e edita as dela.
+  tags:         'Tags da pessoa',
   procedures:   'Procedimentos de interesse',
 }
 
@@ -178,7 +180,7 @@ export async function estadoAtualDoLead(
 
   const { data, error } = await admin
     .from('leads')
-    .select('crm_stage_id, name, phone, email, social_media, source, notes, tags, lead_procedures(procedure_id, procedures(name))')
+    .select(`crm_stage_id, name, phone, email, social_media, source, notes, client_id, ${EMBED_TAGS_DA_PESSOA}, lead_procedures(procedure_id, procedures(name))`)
     .eq('id', leadId)
     .eq('tenant_id', tenantId)
     .maybeSingle()
@@ -190,12 +192,14 @@ export async function estadoAtualDoLead(
     crm_stage_id: string | null
     name: string | null; phone: string | null; email: string | null
     social_media: string | null; source: string | null; notes: string | null
-    tags: string[] | null
+    client_id: string | null
+    pessoa_ficha: { tags: string[] | null } | null
+    pessoa_contato: { tags: string[] | null } | null
     // O embed aninhado vem como objeto no runtime e como lista no tipo gerado.
     lead_procedures: { procedure_id: string; procedures: { name: string } | { name: string }[] | null }[] | null
   }
 
-  const tags = l.tags ?? []
+  const tags = tagsDaPessoaDaOportunidade(l)
 
   return {
     crm_stage_id: l.crm_stage_id,

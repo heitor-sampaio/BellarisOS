@@ -61,6 +61,8 @@ export const ISOLADOS = [
   'financeiro-atritos-da-12.spec.ts',
   // O Bloco Financeiro do plano de adaptação (2026-11-14): as cinco abas (FI1–FI8).
   'financeiro-abas.spec.ts',
+  // As Tags nas listas do Financeiro (CLAUDE.md §1; 18/11, noite).
+  'financeiro-filtro-de-tags.spec.ts',
   // O Bloco Prontuário do plano de adaptação (2026-11-14): fotos e anexos clínicos
   // no Prontuário (PR1), anotações e versões do registro (PR2).
   'prontuario-fotos-e-anexos.spec.ts',
@@ -109,6 +111,8 @@ export const ISOLADOS = [
   'agenda-nomes-de-outra-unidade.spec.ts',
   'agenda-profissional-da-rede.spec.ts',
   'agenda-salas.spec.ts',
+  // Os filtros da agenda (profissional, sala e tag — o Heitor, 18/11).
+  'agenda-filtros.spec.ts',
   'agenda-so-os-meus-pelo-id.spec.ts',
   'agendar-com-credito.spec.ts',
   'anuncios-integracao.spec.ts',
@@ -487,6 +491,8 @@ export const ISOLADOS = [
   'plano-tratamento-leva-1.spec.ts',
   // Leva 2 (2026-11-14): o aceite pelo app, o contrato no PDV, os documentos puxados, tudo no app e os pontos.
   'plano-tratamento-leva-2.spec.ts',
+  // A1a da 25ª (o Heitor, 18/11: "sim"): o "Cancelar plano" do proposto e do rascunho, sem dinheiro.
+  'plano-cancelar-proposto.spec.ts',
   // MK1, AU1 e RL1 (2026-11-14): a campanha Imediata ou Agendada, os modelos
   // que vieram da campanha automática e as comandas na aba Vendas.
   'campanha-imediata-ou-agendada.spec.ts',
@@ -498,6 +504,12 @@ export const ISOLADOS = [
   'financeiro-varredura-18-taxas.spec.ts',
   // A varredura de 18/11 (fidelidade e CRM), conferida na 25ª: FID-01, CRM-03 e CRM-10.
   'crm-alcance-varredura-da-25.spec.ts',
+  // D6 (o Heitor, 18/11: "nao pago nao conta na venda"): toda venda no primeiro recebimento pago.
+  'relatorio-vendas-so-o-pago.spec.ts',
+  // O filtro de Tags nos Relatórios (18/11): as funções com p_tags, a tela e o CSV.
+  'relatorios-filtro-de-tags.spec.ts',
+  // A tag é da pessoa (o Heitor, 18/11): a ficha e o contato iguais, e a conversa que liga sozinha à ficha.
+  'tags-da-pessoa.spec.ts',
 ]
 
 /** As quatro regras sobre o texto de um spec. `null` = isolado; senão, o motivo. */

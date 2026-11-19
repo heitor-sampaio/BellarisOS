@@ -42,6 +42,7 @@ import { recusaDoDesconto } from '@/lib/vendas/desconto'
 import { combinadoDoPlano, totalDoPlanoNaLista } from '@/lib/plano-de-tratamento/desconto-combinado'
 import { recusaDaSessaoVazia } from '@/lib/plano-de-tratamento/textos'
 import { planoFechado, RECUSA_DO_PLANO_FECHADO } from '@/lib/plano-de-tratamento/fechado'
+import { EntradaDoCancelamentoProposto, recusaDoCancelamentoSemDinheiro, RECUSA_DO_PLANO_CANCELADO } from '@/lib/plano-de-tratamento/cancelar-proposto'
 import { situacoesDosPlanos, andamentoDosPlanos, type DocumentosDoPlano, type SituacaoDoContrato } from '@/lib/plano-de-tratamento/andamento-do-plano'
 import { SITUACOES_COMERCIAIS, situacaoComercialDoPlano, type SituacaoComercial } from '@/lib/plano-de-tratamento/situacao'
 
@@ -1309,6 +1310,8 @@ export async function aceitarPlano(planId: string): Promise<{ error?: string; co
       && !(await atendeAAvaliacaoAberta(admin, ctx, alvo.evaluation_appointment_id as string | null))) {
       return { error: RECUSA_QUEM_MONTA }
     }
+    // A1a da 25ª: o plano cancelado (pelo "Cancelar plano" do proposto, ou o recusado antigo) não se aceita.
+    if (alvo.status === 'CANCELLED' || alvo.status === 'REJECTED') return { error: RECUSA_DO_PLANO_CANCELADO }
     if (alvo.status === 'DRAFT') {
       const plan = await ler(admin.from('treatment_plans')
         .select('id, evaluation_appointment_id, professional_notes, client_id').eq('id', planId).single(), 'buscar o plano')
@@ -1476,6 +1479,59 @@ export async function cancelarPlano(planId: string, entrada: unknown): Promise<{
     revalidatePath('/[slug]/financeiro', 'page')
     revalidatePath('/admin/agenda')
     revalidatePath('/[slug]/agenda', 'page')
+    return { ok: true }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+// -- Cancelar o plano ainda não aceito (A1a da 25ª) ---------------------------
+
+/**
+ * O "Cancelar plano" do rascunho e do PROPOSTO (A1a da 25ª simulação; o Heitor,
+ * 18/11, à pergunta "o plano proposto e ainda não aceito não tem um botão
+ * 'Cancelar'. Entra?": "sim"). Sem dinheiro — a comanda do plano nasce no
+ * aceite, e "Uma coisa só foi vendida se foi paga." —: o plano fica cancelado,
+ * com o motivo e o retrato, e os documentos dele que esperavam assinatura caem
+ * (o gatilho `documentos_do_plano_cancelado`, na transação de
+ * `plano_cancelar_proposto`). Cancela quem MONTA o plano (`montaPlano`, PT2),
+ * como quem o edita e o manda à cliente; o aceito segue com `cancelarPlano`
+ * (o Financeiro em Gerenciar). A oportunidade não se move (R12).
+ */
+export async function cancelarPlanoProposto(planId: string, entrada: unknown): Promise<{ error?: string; ok?: true }> {
+  try {
+    const ctx = await getTenantContext()
+    assertRecurso(ctx, 'planos_de_tratamento')
+    assertPermission(ctx, 'atendimento', 'VIEW')
+    const lido = EntradaDoCancelamentoProposto.safeParse(entrada)
+    if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }
+    if (typeof planId !== 'string' || !/^[0-9a-f-]{36}$/i.test(planId)) return { error: 'Plano não encontrado.' }
+    const admin = createAdminClient()
+    // A rede, a unidade ao alcance e, no "só os meus" do Atendimento, o plano dela.
+    const plan = await planoDoTenant(admin, planId, ctx)
+    if (!plan) return { error: 'Plano não encontrado.' }
+    if (!montaPlano(ctx, plan.branch_id as string)) return { error: RECUSA_QUEM_MONTA }
+    const recusa = recusaDoCancelamentoSemDinheiro(plan.status as string | null)
+    if (recusa) return { error: recusa }
+
+    await gravar(admin.rpc('plano_cancelar_proposto', {
+      p_tenant: ctx.tenantId!, p_plano: planId, p_ator: ctx.internalUserId ?? null,
+      p_ator_nome: ctx.userName || ctx.roleLabel || 'Equipe', p_motivo: lido.data.motivo,
+    }), 'cancelar o plano')
+
+    if (plan.client_id) revalidateTag(`client:${plan.client_id}`, { expire: 0 })
+    revalidateTag(`clients:${ctx.tenantId!}`, { expire: 0 })
+    revalidatePath(`/${plan.slug}/planejamentos/${planId}`)
+    revalidatePath(`/admin/planejamentos/${planId}`)
+    revalidatePath(`/${plan.slug}/planejamentos`)
+    revalidatePath('/admin/planejamentos')
+    revalidatePath('/[slug]/clients/[id]', 'page')
+    revalidatePath('/admin/clients/[id]', 'page')
+    revalidatePath('/[slug]/cliente/home', 'page')
+    if (plan.evaluation_appointment_id) {
+      revalidatePath(`/${plan.slug}/agenda/${plan.evaluation_appointment_id}`)
+      revalidatePath(`/admin/agenda/${plan.evaluation_appointment_id}`)
+    }
     return { ok: true }
   } catch (e) {
     return { error: mensagemDoErro(e) }

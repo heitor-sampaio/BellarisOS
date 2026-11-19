@@ -25,6 +25,7 @@ import {
 } from '@/lib/crm/automacoes-do-movimento'
 import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
 import { tagsDoVocabulario } from '@/lib/tags/escolha'
+import { gravarTagsDaOportunidade } from '@/lib/tags/da-pessoa'
 import { podeTrocarResponsavel, trocarResponsavelCore } from '@/lib/crm/responsavel'
 
 function str(fd: FormData, key: string) {
@@ -103,7 +104,9 @@ export async function createLead(
     const utmMedium   = str(formData, 'utm_medium')
     const utmCampaign = str(formData, 'utm_campaign')
     const procedureIds = parseProcedureIds(formData)
-    // D7 da 18ª: a oportunidade nova marca só tags do vocabulário da rede.
+    // D7 da 18ª: a oportunidade nova marca só tags do vocabulário da rede. E
+    // a tag é da PESSOA (o Heitor, 18/11: "a tag é da pessoa e pode ter mais de
+    // uma tag"): o núcleo as soma à ficha, ou ao contato.
     const pedidas      = parseStringArray(formData, 'tags')
     const manualTags   = pedidas.length ? tagsDoVocabulario(pedidas, await tagsAtivasDaRede(ctx.tenantId!), []) : []
 
@@ -258,19 +261,11 @@ export async function updateLead(
       patch.crm_stage_id = crmStageId
     }
 
-    // Só atualiza tags se o form as enviou (evita apagar tags de callers que não editam tags)
-    // D7 da 18ª: só as do vocabulário da rede (e as que o card já tinha) —
-    // a tag nova seria criada pelo gatilho, e criar tag é de Configurações → Tags (H7).
-    let novasTags = formData.has('tags') ? parseStringArray(formData, 'tags') : null
-    if (novasTags) {
-      const [vocabulario, atual] = await Promise.all([
-        tagsAtivasDaRede(ctx.tenantId!),
-        ler(createAdminClient().from('leads').select('tags').eq('id', leadId).eq('tenant_id', ctx.tenantId!).maybeSingle(),
-          'ler as tags da oportunidade') as Promise<{ tags: string[] | null } | null>,
-      ])
-      novasTags = tagsDoVocabulario(novasTags, vocabulario, atual?.tags ?? [])
-      patch.tags = novasTags
-    }
+    // As tags só mudam se o form as enviou (o caller que não edita tags não as
+    // apaga). São as da PESSOA (o Heitor, 18/11: "a tag é da pessoa e pode ter
+    // mais de uma tag"): gravadas na ficha, ou no contato, depois do alcance
+    // conferido — `gravarTagsDaOportunidade`, só as do vocabulário (D7 da 18ª).
+    const tagsPedidas = formData.has('tags') ? parseStringArray(formData, 'tags') : null
 
     // A42 da 9ª: o lembrete de retorno (o dia e o que fazer), só quando o form
     // o mandou. Trocar o dia zera o aviso — o novo dia avisa de novo.
@@ -336,6 +331,7 @@ export async function updateLead(
     if (!gravadas?.length) return { error: 'Oportunidade não encontrada.' }
 
     await salvarProcedimentosDeInteresse(admin, ctx.tenantId!, leadId, procedureIds)
+    const trocaDeTags = tagsPedidas ? await gravarTagsDaOportunidade(ctx.tenantId!, leadId, tagsPedidas) : null
 
     // Nome e telefone do card são cópia da PESSOA: a pessoa, as conversas e as
     // outras oportunidades dela acompanham (`propagarDadosDaPessoa`). Até
@@ -390,7 +386,7 @@ export async function updateLead(
         procedures: listaLegivel(await nomesDeProcedimentos(admin, ctx.tenantId!, procedureIds)),
       }
       // A "Unidade: X" é uma tag como as outras (H16): sem evento próprio.
-      if (novasTags) depois.tags = listaLegivel(novasTags)
+      if (trocaDeTags) depois.tags = listaLegivel(trocaDeTags.depois)
 
       const mudou = diferencas(antes.campos, depois)
       if (mudou.length > 0) {

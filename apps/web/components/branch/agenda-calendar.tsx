@@ -30,6 +30,8 @@ import { blocosDosBloqueios } from '@/lib/agenda/horario-livre'
 import { dayKeyTZ, naParede, daParede, isoNaParede } from '@/lib/datetime'
 import { useFuso, NotaDoFuso } from '@/components/shared/fuso'
 import { ROTULO_DO_STATUS } from '@/lib/agenda/rotulo-do-status'
+import { buscaComFiltro, ocupacaoSeMede, bloqueioPassaNoFiltro, SEM_FILTRO, type FiltrosDaAgenda } from '@/lib/agenda/filtros'
+import { FiltrosDaAgendaNaBarra } from '@/components/shared/filtros-da-agenda'
 
 type ViewMode = 'dia' | 'semana' | 'mes'
 
@@ -77,6 +79,10 @@ interface AgendaCalendarProps {
   comCancelados?: boolean
   /** Os bloqueios pontuais da janela (decisão 3 da 7ª): das profissionais e das salas. */
   bloqueios?: BloqueioDaAgenda[]
+  /** Os filtros da URL (`?profissional=`, `?sala=`, `?tags=`), já aplicados na consulta. */
+  filtros?: FiltrosDaAgenda
+  /** O vocabulário de tags da rede (lido no servidor): as opções do filtro de tag. */
+  tagsDaRede?: string[]
 }
 
 // -- KPI helpers -------------------------------------------------------------
@@ -197,7 +203,7 @@ function todayDate(fuso: string): Date {
 export function AgendaCalendar({
   branchId, slug, events, procedures, professionals, rooms, canWrite, userRole, escopoProprio, meuId = null, podeConcluir = true, atendimentoProprio = false, quemConclui = null, concluemOsProprios = null,
   horarioDaUnidade = null, horariosDosProfissionais = {}, ocupadoForaDosProfissionais = {}, dataInicial = null, comCancelados = false,
-  bloqueios = [], colunasDeQuemNaoAtende = [],
+  bloqueios = [], colunasDeQuemNaoAtende = [], filtros = SEM_FILTRO, tagsDaRede = [],
 }: AgendaCalendarProps) {
   const router = useRouter()
   // F62: a grade desenha no relógio da UNIDADE, qualquer que seja o do
@@ -208,9 +214,20 @@ export function AgendaCalendar({
     ...e, start: isoNaParede(e.start, fuso)!, end: isoNaParede(e.end, fuso)!,
     arrivedAt: isoNaParede(e.arrivedAt, fuso), completedAt: isoNaParede(e.completedAt, fuso),
   })), [events, fuso])
-  const bloqueiosNaParede = useMemo(() => bloqueios.map(b => ({ ...b, inicio: isoNaParede(b.inicio, fuso)!, fim: isoNaParede(b.fim, fuso)! })), [bloqueios, fuso])
+  // Com a profissional escolhida no filtro, a grade é só a coluna dela — e a
+  // ocupação, a dela. O agendar e o bloquear seguem com todas.
+  const daGrade = filtros.profissional ? professionals.filter(p => p.id === filtros.profissional) : professionals
+  // E o bloqueio, o da profissional ou o da sala escolhida (`bloqueioPassaNoFiltro`).
+  const bloqueiosDaGrade = useMemo(() => bloqueios.filter(b => bloqueioPassaNoFiltro(b, filtros)), [bloqueios, filtros])
+  const bloqueiosNaParede = useMemo(() => bloqueiosDaGrade.map(b => ({ ...b, inicio: isoNaParede(b.inicio, fuso)!, fim: isoNaParede(b.fim, fuso)! })), [bloqueiosDaGrade, fuso])
   // A grade (dia e semana) tem também a coluna de quem não atende mais aqui e tem agendamento (D3 da 9ª).
-  const colunas = colunasDeQuemNaoAtende.length ? [...professionals, ...colunasDeQuemNaoAtende] : professionals
+  const colunas = colunasDeQuemNaoAtende.length ? [...daGrade, ...colunasDeQuemNaoAtende] : daGrade
+  // Os filtros vão para a URL e o servidor relê a agenda com eles (nunca
+  // recortando no navegador o que já veio). O dia aberto vai junto.
+  function mudarFiltro(mudanca: Partial<FiltrosDaAgenda>) {
+    router.replace(window.location.pathname + buscaComFiltro(window.location.search, mudanca), { scroll: false })
+  }
+  const medeOcupacao = ocupacaoSeMede(filtros)
 
   // Liga e desliga pela URL: quem traz os cancelados é o servidor (a consulta
   // da agenda os deixa de fora). O dia aberto vai junto, já na URL.
@@ -251,7 +268,7 @@ export function AgendaCalendar({
   const abrirEvento = useCallback((ev: CalendarEvent) => setSelectedEvent(events.find(e => e.id === ev.id) ?? ev), [events])
   const [dropError,     setDropError]     = useState<string | null>(null)
 
-  const { totalCount, waitingCount, occupancy, base: baseDaOcupacaoDaTela } = calcKPIs(events, professionals, view, currentDate, horarioDaUnidade, horariosDosProfissionais, ocupadoForaDosProfissionais, bloqueios, fuso)
+  const { totalCount, waitingCount, occupancy, base: baseDaOcupacaoDaTela } = calcKPIs(events, daGrade, view, currentDate, horarioDaUnidade, horariosDosProfissionais, ocupadoForaDosProfissionais, bloqueiosDaGrade, fuso)
 
   // -- Drag-and-drop ----------------------------------------------------------
   const moverAgendamento = useCallback(async (eventId: string, newStart: Date, newProfId: string) => {
@@ -345,13 +362,17 @@ export function AgendaCalendar({
           <NotaDoFuso />
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
             <span style={{ fontWeight: 700, color: 'var(--text)' }}>{totalCount}</span> {atendimentosPorExtenso(totalCount)}
-            {' · '}
-            <span style={{ fontWeight: 700, color: occupancy >= 80 ? 'var(--brand)' : 'var(--text)' }}>{occupancy}%</span> de ocupação
-            {/* A53 da 9ª: a conta da ocupação. A15 da 21ª: na linha, com os
-                descontos, ela quebrava em parênteses aninhados — vai para a dica. */}
-            {baseDaOcupacaoDaTela && <> <Dica rotulo={DEFINICOES.ocupacao.rotulo}>
-              <span data-base-da-ocupacao style={{ display: 'block', marginBottom: 6, fontWeight: 700 }}>{baseDaOcupacaoDaTela}.</span>
-              {DEFINICOES.ocupacao.texto}
+            {medeOcupacao ? <>
+              {' · '}
+              <span style={{ fontWeight: 700, color: occupancy >= 80 ? 'var(--brand)' : 'var(--text)' }}>{occupancy}%</span> de ocupação
+              {/* A53 da 9ª: a conta da ocupação. A15 da 21ª: na linha, com os
+                  descontos, ela quebrava em parênteses aninhados — vai para a dica. */}
+              {baseDaOcupacaoDaTela && <> <Dica rotulo={DEFINICOES.ocupacao.rotulo}>
+                <span data-base-da-ocupacao style={{ display: 'block', marginBottom: 6, fontWeight: 700 }}>{baseDaOcupacaoDaTela}.</span>
+                {DEFINICOES.ocupacao.texto}
+              </Dica></>}
+            </> : <> <Dica rotulo="Sem a ocupação com este filtro">
+              <span data-ocupacao-com-filtro>A ocupação mede o tempo das profissionais. Com o filtro de sala ou de tag, a conta não seria a do que está na tela: tire esse filtro para vê-la.</span>
             </Dica></>}
             {waitingCount > 0 && (
               <>
@@ -368,6 +389,14 @@ export function AgendaCalendar({
             className={comCancelados ? 'filtro-toggle is-ativo' : 'filtro-toggle'}>
             {comCancelados ? 'Esconder cancelados' : 'Mostrar cancelados'}
           </button>
+          {/* Os filtros (o Heitor, 18/11): profissional, sala e tag, na consulta. */}
+          <FiltrosDaAgendaNaBarra
+            profissionais={escopoProprio ? null : professionals.map(p => ({ id: p.id, name: p.name }))}
+            salas={rooms}
+            tags={tagsDaRede}
+            filtros={filtros}
+            onMudar={mudarFiltro}
+          />
           {/* View switcher */}
           <SegSelect
             options={(['dia', 'semana', 'mes'] as ViewMode[]).map(v => ({ key: v, label: viewLabel[v] }))}
@@ -452,7 +481,7 @@ export function AgendaCalendar({
           {/* Week view: occupancy */}
           {view === 'semana' && totalCount > 0 && (
             <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', fontWeight: 600 }}>
-              {totalCount} {atendimentosPorExtenso(totalCount)} · {occupancy}% de ocupação
+              {totalCount} {atendimentosPorExtenso(totalCount)}{medeOcupacao && <> · {occupancy}% de ocupação</>}
             </span>
           )}
         </div>

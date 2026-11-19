@@ -37,6 +37,8 @@ import { AvisosDasTaxas, CsvDoFechamentoDoDia } from '@/components/shared/caixa-
 import type { TaxasDoPeriodo } from '@/lib/metrics/queries'
 import { AbasDoFinanceiro } from '@/components/shared/abas-do-financeiro'
 import { linkDaAba, ROTULO_DO_A_RECEBER_DA_CLIENTE, type AbaDoFinanceiro } from '@/lib/financeiro/abas'
+import { FiltroDeTags } from '@/components/shared/filtro-de-tags'
+import { tagsParaAUrl } from '@/lib/tags/filtro-na-url'
 
 // --- Types -------------------------------------------------------------------
 
@@ -197,6 +199,10 @@ interface Props {
   aba:              Exclude<AbaDoFinanceiro, 'comissoes'>
   /** O plano da rede tem comissões: a aba aparece. */
   comComissoes:     boolean
+  /** O vocabulário da rede (lido no servidor): as opções do filtro de Tags das listas. */
+  tagsDaRede?:      string[]
+  /** As tags marcadas (`?tags=`): a lista já veio filtrada do servidor. */
+  tags?:            string[]
 }
 
 // --- Helpers -----------------------------------------------------------------
@@ -287,7 +293,7 @@ export function AdminFinancialView({
   totalProximoAReceber = null, totalProximoAPagar = null,
   prevRevenue, prevExpenses,
   branchStats, umaUnidade = false, transactions, soAsVencidas = false, nomeDoCsv = 'lancamentos.csv', branchSlugMap, branches, unidadeInicial = '',
-  canWrite = false, canPay = false, canReverse = false, aba, comComissoes,
+  canWrite = false, canPay = false, canReverse = false, aba, comComissoes, tagsDaRede = [], tags = [],
 }: Props) {
   const fuso = useFuso()
   const router      = useRouter()
@@ -338,6 +344,8 @@ export function AdminFinancialView({
       if (p === 'custom' && f) q.set('from', f)
       if (p === 'custom' && t) q.set('to',   t)
       if (unidade && unidade !== 'all') q.set('unidade', unidade)
+      // As Tags ficam (CLAUDE.md §1): o filtro da lista não some ao trocar o período ou a unidade.
+      if (tags.length) q.set('tags', tagsParaAUrl(tags))
       router.push(`/admin/financeiro?${q}`)
     })
   }
@@ -556,6 +564,7 @@ export function AdminFinancialView({
     from: period === 'custom' ? customFrom : undefined,
     to:   period === 'custom' ? customTo : undefined,
     unidade: filterBranch !== 'all' ? filterBranch : undefined,
+    tags: tags.length ? tagsParaAUrl(tags) : undefined,
   }
   const daAba = (a: AbaDoFinanceiro, extra: Record<string, string> = {}) => linkDaAba(base, a, manter, extra)
   // A42 da 12ª: quem só vê o Financeiro lia "use Pagar na linha" sem botão nenhum.
@@ -649,6 +658,10 @@ export function AdminFinancialView({
         {aba === 'movimentacoes' && (
           <CsvDoFechamentoDoDia unidades={branches.map(b => ({ id: b.id, name: b.name }))} unidadeInicial={filterBranch !== 'all' ? filterBranch : null} />
         )}
+
+        {/* As Tags (CLAUDE.md §1), ao lado dos filtros fixos: vão à URL e a lista vem filtrada do servidor. */}
+        <FiltroDeTags tagsDaRede={tagsDaRede} escolhidas={tags}
+          sobre="Só os lançamentos das clientes com TODAS as tags marcadas; o que não tem cliente (a despesa, o fornecedor) sai. Os cartões acima não mudam com a tag." />
 
         {/* Filtro por unidade — só com mais de uma (D-19). Vai à URL: as abas o levam junto. */}
         {!umaUnidade && <select

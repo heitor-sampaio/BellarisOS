@@ -1,6 +1,7 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
+import { paramDeTags } from '@/lib/metrics/tags-do-relatorio'
 
 /**
  * Os agregados da tela de relatórios, calculados no Postgres
@@ -75,6 +76,8 @@ export async function getRelatorio(args: {
   aba: Aba; granularidade: 'hour' | 'day'
   /** "Só os meus" (2026-10-28): os números DELA — os predicados de metrics_core. */
   professionalId?: string | null
+  /** O filtro de Tags (só nas abas de pessoas — `tagsDaAba`): a cliente tem todas. */
+  tags?: string[] | null
 }): Promise<Relatorio> {
   const admin = createAdminClient()
   const [data, categorias] = await Promise.all([
@@ -84,12 +87,14 @@ export async function getRelatorio(args: {
       p_prev_from: args.prevFrom.toISOString(), p_prev_to: args.prevTo.toISOString(),
       p_aba: args.aba, p_granularidade: args.granularidade,
       p_professional_id: args.professionalId ?? null,
+      ...paramDeTags(args.tags),
     }), 'calcular os relatórios'),
     args.aba === 'procedimentos'
       ? ler(admin.rpc('metrics_receita_por_categoria_de_procedimento', {
           p_tenant: args.tenantId, p_branch_ids: args.branchIds,
           p_from: args.from.toISOString(), p_to: args.to.toISOString(),
           p_professional_id: args.professionalId ?? null,
+          ...paramDeTags(args.tags),
         }), 'calcular a receita por categoria')
       : Promise.resolve([]),
   ])

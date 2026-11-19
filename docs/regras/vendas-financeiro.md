@@ -926,6 +926,11 @@ plano").
     cancelar, a janela chama `onCancelado` e a tela relê o plano aberto e a
     lista (o `router.refresh()` não chega ao estado do navegador). Prova:
     `e2e/plano-defeitos-da-12.spec.ts` ("D5 e D4").
+  - **O plano ainda NÃO aceito (rascunho ou proposto) se cancela sem dinheiro**
+    (A1a da 25ª; o Heitor, 18/11: "sim"): nada foi vendido nem recebido, então
+    não há conta — é o "Cancelar plano" de quem monta o plano, com o motivo
+    (`cancelarPlanoProposto` → `plano_cancelar_proposto`). A regra está em
+    `atendimento.md` ("O plano ainda não aceito também se cancela").
   - Substitui o "Cancelar tratamento" (`cancelTreatmentPlan`, que não mexia nas
     parcelas e dava de crédito o preço dos agendamentos futuros, pago ou não, a
     quem tinha a Agenda em Gerenciar). Prova: `e2e/plano-cancelar.spec.ts`.
@@ -1426,6 +1431,31 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   - O período, o filtro de unidade da rede e as permissões não mudaram:
     quem só vê lê as abas sem lançar, dar baixa nem remarcar; o "só os meus"
     vai às comissões dele, como antes.
+  - **As Tags nas listas** (CLAUDE.md §1, Tags — o Heitor, 13/11: "onde
+    tiver for passível de filtro, um dos filtros que ela pode usar são as tags
+    … além dos filtros que a gente já apresenta ali fixos em cada página"):
+    A receber, A pagar e Movimentações, nos dois portais, têm o filtro "Tags"
+    (`FiltroDeTags`, `components/shared/filtro-de-tags.tsx`: o
+    `PickerCompacto` múltiplo ao lado dos filtros fixos da lista). A tag
+    filtra PESSOAS: o lançamento entra se a cliente dele (`clients.tags`) tem
+    TODAS as tags marcadas (E, como Clientes e o inbox); o lançamento sem
+    cliente (a despesa, o fornecedor) sai quando há tag marcada. Decisões do
+    Claude (princípios 3 e 7): o filtro vai NA CONSULTA — a cliente pelo
+    embed INNER e o `cs` do PostgREST (`comAsTags`/`selectComAsTags`,
+    `lib/financeiro/filtro-de-tags.ts`), lido em páginas, nunca recortando
+    um lote já lido —; mora na URL (`?tags=`, `lib/tags/filtro-na-url.ts`), e
+    as abas e a troca de período ou de unidade o levam junto (Comissões não:
+    é por profissional); as opções são o vocabulário da rede, lido no
+    servidor (`tagsAtivasDaRede`), e sem tag nenhuma na rede o filtro não
+    aparece; o "Exportar CSV" e o "caixa da lista" são os da lista filtrada.
+    **Os cartões e números não mudam com a tag** — o Resumo não tem o
+    filtro, e os cartões do A receber e do A pagar seguem os da unidade (ou
+    do recorte da rede): misturam despesa sem pessoa, e a tag recortaria só
+    um lado da conta (como nas abas Visão geral e Financeiro dos
+    Relatórios). A dica do filtro diz isso. As parcelas da operadora
+    (embaixo do A receber) também não mudam. Prova:
+    `tests/financeiro-filtro-de-tags.test.ts`,
+    `e2e/financeiro-filtro-de-tags.spec.ts`.
   - Prova: `e2e/financeiro-abas.spec.ts`, `tests/financeiro-abas.test.ts`.
 
 - **O que a F67 fechou (2026-11-12) — a régua de quem mexe no dinheiro**:
@@ -3237,6 +3267,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 ❌ Link para o Financeiro com ?aberto=todos ou ?aberto=a-pagar: é ?aba=a-receber / ?aba=a-pagar (linkDaAba, lib/financeiro/abas.ts — FI1)
 ❌ Pôr no topo do Financeiro outro botão além do "Novo lançamento" (o crédito interno é da ficha da cliente — FI7)
 ❌ Ler a lista de lançamentos no Resumo (ele é feito dos números de lib/metrics; a lista é das abas — FI2)
+❌ Filtrar a lista do Financeiro por tag na tela, depois de ler (é na consulta: comAsTags, o embed INNER da cliente), ou deixar o ?tags= de fora de um link de aba ou da troca de período
 ❌ Recriar uma política de leitura ou escrita em financial_transactions para a sessão (saiu no FI8; a lista é do servidor)
 ❌ Ler "os membros da unidade" em users com branch_id.eq sozinho: as outras unidades ficam de fora — é filtroDosMembrosDaUnidade / membroAlcancaAUnidade (D1 da 17ª)
 ❌ Dizer "Bateu" no fechamento com o registrado de agora e o conferido de um fechamento em que ele era outro (D2 da 17ª: "a conferir")

@@ -4,6 +4,7 @@ import { ler } from '@/lib/db'
 import {
   ehTipoDeVenda, POR_PAGINA, type TipoDeVenda, type Venda, type ResumoDeVendas,
 } from '@/lib/metrics/vendas-comum'
+import { paramDeTags } from '@/lib/metrics/tags-do-relatorio'
 
 export * from '@/lib/metrics/vendas-comum'
 
@@ -29,6 +30,11 @@ interface Recorte {
    * dona do plano (D14 da 8ª) — (a coluna "Profissional").
    */
   professionalId?: string | null
+  /**
+   * As tags marcadas no filtro (E, sem distinguir a caixa): só as vendas cuja
+   * cliente tem todas; a venda sem cliente sai. Vazio ou nulo, todas.
+   */
+  tags?: string[] | null
 }
 
 type Linha = {
@@ -50,6 +56,7 @@ export async function getVendas(r: Recorte & { tipo?: TipoDeVenda | null; limite
     p_from: r.from.toISOString(), p_to: r.to.toISOString(),
     p_tipo: r.tipo ?? null, p_limite: r.limite ?? POR_PAGINA, p_offset: r.offset ?? 0,
     p_professional_id: r.professionalId ?? null,
+    ...paramDeTags(r.tags),
   }), 'carregar as vendas do período') as Linha[] | null
   return (linhas ?? []).map(daLinha)
 }
@@ -69,6 +76,7 @@ export async function getResumoDeVendas(r: Recorte): Promise<ResumoDeVendas> {
     p_tenant: r.tenantId, p_branch_ids: r.branchIds,
     p_from: r.from.toISOString(), p_to: r.to.toISOString(),
     p_professional_id: r.professionalId ?? null,
+    ...paramDeTags(r.tags),
   }), 'resumir as vendas do período') as { tipo: string | null; quantidade: number | string; total: number | string; linhas: number | string }[] | null
 
   const vazio = { quantidade: 0, total: 0 }

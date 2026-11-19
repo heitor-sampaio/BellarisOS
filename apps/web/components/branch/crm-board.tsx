@@ -10,7 +10,7 @@ import {
 import { toast } from 'sonner'
 import { idadeDoLead } from '@/lib/crm/idade-do-lead'
 import { updateLeadStage, automacoesAoMoverOCard } from '@/actions/leads'
-import { opcoesDeTagDoQuadro, temAlgumaTag } from '@/lib/crm/filtro-de-tags'
+import { opcoesDeTagDoQuadro, temTodasAsTags } from '@/lib/crm/filtro-de-tags'
 import { usePerguntaDasAutomacoes } from './pergunta-das-automacoes'
 import { ClientForm } from './client-form'
 import { rotuloDaOportunidade, type CRMFunnel, type CRMStage } from '@/lib/crm'
@@ -1241,7 +1241,8 @@ export function CRMBoard({
       result = result.filter(l => l.source && filters.sources.includes(l.source))
 
     if (filters.tags.length > 0)
-      result = result.filter(l => temAlgumaTag(l.tags, filters.tags))
+      // E (todas as marcadas), como Clientes, o inbox e o Financeiro (princípio 7).
+      result = result.filter(l => temTodasAsTags(l.tags, filters.tags))
 
     if (filters.owners.length > 0)
       result = result.filter(l =>

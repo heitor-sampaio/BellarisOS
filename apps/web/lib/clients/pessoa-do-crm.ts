@@ -102,6 +102,11 @@ export async function ligarPessoaDoCrmAoCliente(
     })
   }
   for (const id of pessoa.conversaIds) await ligarContatoAoCliente(admin, ctx.tenantId!, id, clientId)
+  // O contato passa a ser da ficha (o banco já liga pela oportunidade e pela
+  // conversa; a pessoa sem nenhuma das duas, por aqui), e as tags dos dois se
+  // juntam (crm-inbox.md §9.2.1). Nunca religa o que já é de outra ficha.
+  await gravar(admin.from('contacts').update({ client_id: clientId })
+    .eq('id', pessoa.contatoId).eq('tenant_id', ctx.tenantId!).is('client_id', null), 'ligar o contato à ficha')
   // A25 da 15ª: a pessoa é a cliente — o contato passa a ter o nome da ficha
   // (seguia "Camila Duarte" da planilha com a ficha "Camila Rocha").
   if (nomeDaFicha.trim()) {

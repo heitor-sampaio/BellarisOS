@@ -205,4 +205,44 @@ test.describe('a sessão só lê: a escrita é do servidor', () => {
     const { data: ainda } = await db.from('clients').select('id').eq('id', ficha!.id)
     expect((ainda ?? []).length, 'a ficha não se apaga pela sessão').toBe(1)
   })
+
+  // A tag é da PESSOA (o Heitor, 18/11, noite): a ficha e os contatos dela têm
+  // a MESMA lista, e o banco a espelha (20261125500001). Gravar `contacts.tags`
+  // pela chave pública mudaria a ficha sem a trava da action — e a ficha tem
+  // CPF: a sessão só LÊ as duas (era `contacts_operacional` FOR ALL e
+  // `clients_insert`/`clients_update` para qualquer membro da rede).
+  test('contato e ficha: quem tem o CRM em Gerenciar não grava pela chave pública', async () => {
+    const db = banco()
+    const s = comToken(daRede!.accessToken)
+    const fone = '5548' + String(Date.now()).slice(-9)
+
+    const { data: ficha, error: eF } = await db.from('clients').insert({
+      tenant_id: tenant, branch_id: unidade.id, name: `${PREFIXO} ficha da sessão ${marca}`, phone: fone,
+    }).select('id').single<{ id: string }>()
+    expect(eF, 'criar a ficha de teste').toBeNull()
+    limpar.push(() => db.from('clients').delete().eq('id', ficha!.id))
+    const { data: contato, error: eK } = await db.from('contacts').insert({
+      tenant_id: tenant, name: `${PREFIXO} contato da sessão ${marca}`, phone: fone, identifiers: [fone],
+    }).select('id').single<{ id: string }>()
+    expect(eK, 'criar o contato de teste').toBeNull()
+    limpar.push(() => db.from('contacts').delete().eq('id', contato!.id))
+
+    // O controle: a sessão LÊ o contato e a ficha (o inbox e a lista precisam).
+    expect(((await s.from('contacts').select('id').eq('id', contato!.id)).data ?? []).length, 'a sessão lê o contato').toBe(1)
+    expect(((await s.from('clients').select('id').eq('id', ficha!.id)).data ?? []).length, 'a sessão lê a ficha').toBe(1)
+
+    await s.from('contacts').update({ tags: [`Plantada ${marca}`], client_id: ficha!.id }).eq('id', contato!.id)
+    await s.from('clients').update({ tags: [`Plantada ${marca}`], name: `${PREFIXO} trocado ${marca}` }).eq('id', ficha!.id)
+    await s.from('contacts').insert({ tenant_id: tenant, name: `${PREFIXO} plantado ${marca}`, identifiers: [] })
+    await s.from('clients').insert({ tenant_id: tenant, name: `${PREFIXO} plantada ${marca}` })
+    limpar.push(() => db.from('contacts').delete().eq('tenant_id', tenant).eq('name', `${PREFIXO} plantado ${marca}`))
+    limpar.push(() => db.from('clients').delete().eq('tenant_id', tenant).eq('name', `${PREFIXO} plantada ${marca}`))
+
+    const { data: k } = await db.from('contacts').select('tags, client_id').eq('id', contato!.id).single<{ tags: string[]; client_id: string | null }>()
+    expect(k, 'o contato não muda pela sessão').toEqual({ tags: [], client_id: null })
+    const { data: c } = await db.from('clients').select('tags, name').eq('id', ficha!.id).single<{ tags: string[]; name: string }>()
+    expect(c, 'a ficha não muda pela sessão').toEqual({ tags: [], name: `${PREFIXO} ficha da sessão ${marca}` })
+    expect(((await db.from('contacts').select('id').eq('tenant_id', tenant).eq('name', `${PREFIXO} plantado ${marca}`)).data ?? []), 'o contato não nasce pela sessão').toEqual([])
+    expect(((await db.from('clients').select('id').eq('tenant_id', tenant).eq('name', `${PREFIXO} plantada ${marca}`)).data ?? []), 'a ficha não nasce pela sessão').toEqual([])
+  })
 })

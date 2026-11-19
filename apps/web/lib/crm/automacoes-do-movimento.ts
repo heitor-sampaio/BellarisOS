@@ -6,6 +6,7 @@ import { ler } from '@/lib/db'
 import { temRecurso } from '@/lib/auth'
 import { eventoDoDesfecho } from '@/lib/events/lead'
 import { gatilhoCasa } from '@/lib/automacoes/gatilho-casa'
+import { EMBED_TAGS_DA_PESSOA } from '@/lib/tags/pessoa'
 import type { EventoDoGatilho } from '@/lib/automacoes/contexto'
 
 /**
@@ -19,8 +20,9 @@ import type { EventoDoGatilho } from '@/lib/automacoes/contexto'
  */
 
 /** As colunas do card que a previsão lê (as mesmas do retrato do evento e da hidratação do lead). */
+// As tags são as da PESSOA (crm-inbox.md §9.2.1), pelo embed da ficha e do contato.
 export const COLUNAS_DO_CARD_PARA_PREVER =
-  'id, branch_id, name, phone, email, client_id, source, owner_id, crm_stage_id, tags, value, crm_stages(name)'
+  `id, branch_id, name, phone, email, client_id, source, owner_id, crm_stage_id, value, crm_stages(name), ${EMBED_TAGS_DA_PESSOA}`
 
 export interface CardParaPrever {
   id: string

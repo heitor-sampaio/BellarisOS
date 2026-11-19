@@ -24,8 +24,11 @@ export const ABAS_DO_FINANCEIRO: readonly { chave: AbaDoFinanceiro; rotulo: stri
 /** As abas da página `/financeiro` (Comissões é outra página). */
 const DA_PAGINA: readonly AbaDoFinanceiro[] = ['resumo', 'a-receber', 'a-pagar', 'movimentacoes']
 
-/** O que o link de uma aba leva junto: o período e a unidade (na rede). */
-const MANTIDOS = ['period', 'from', 'to', 'unidade'] as const
+/**
+ * O que o link de uma aba leva junto: o período, a unidade (na rede) e as
+ * tags (`?tags=`, o filtro das listas — CLAUDE.md §1, Tags).
+ */
+const MANTIDOS = ['period', 'from', 'to', 'unidade', 'tags'] as const
 
 export interface AbaPedida {
   aba: Exclude<AbaDoFinanceiro, 'comissoes'>

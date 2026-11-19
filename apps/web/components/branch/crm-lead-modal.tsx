@@ -658,7 +658,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
               <div>
                 <p style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span>TAGS</span>
-                  <Dica rotulo="Sobre as tags">As tags da rede, para filtrar. Uma nova, a Admin da rede cria em Configurações → Tags.</Dica>
+                  <Dica rotulo="Sobre as tags">As tags são da pessoa: as mesmas da ficha e do inbox, e valem em todo filtro. Uma nova, a Admin da rede cria em Configurações → Tags.</Dica>
                 </p>
 
                 {/* D7 da 18ª: escolhe pelo vocabulário da rede, como a ficha e o inbox —

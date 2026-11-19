@@ -1169,6 +1169,44 @@
   horário com quem o ocupou depois (o ativo à esquerda). A agenda da rede, que
   sempre os mostrou, apaga o bloco e diz o motivo. Prova:
   `e2e/agenda-cancelados.spec.ts`.
+- **Os filtros: profissional, sala e tag** (o Heitor, 18/11, sobre a agenda
+  que só tinha "mostrar cancelados" e dia/semana/mês: "Então precisa
+  arrumar"; e a regra das Tags, CLAUDE.md §1). Na barra do cabeçalho da agenda
+  da unidade e da rede, cada um um `PickerCompacto`
+  (`FiltrosDaAgendaNaBarra`, `components/shared/filtros-da-agenda.tsx`), com
+  "Limpar filtros". A regra é UMA, pura, `lib/agenda/filtros.ts`.
+  - **Na CONSULTA**, nunca no navegador: `?profissional=`, `?sala=` e
+    `?tags=a,b` vão na URL, como o `?date=`, e o servidor relê a agenda com
+    eles (`filtrosDaAgenda` + `aplicarFiltrosDaAgenda`); a tag vai na cliente
+    embutida (`clients(tags)` com `clients=not.is.null`, o `!inner`).
+  - **O pedido não vence o escopo nem a abrangência**: só vale o que está nas
+    opções da tela — quem ATENDE na(s) unidade(s) da tela (§9.1, "Atende" por
+    unidade), as salas da unidade, o vocabulário ATIVO da rede
+    (`tagsAtivasDaRede`, lido no servidor: quem só tem a Agenda também filtra
+    por tag); o resto não vira filtro escondido. Com a Agenda em "só os meus"
+    o filtro de profissional não existe.
+  - **A tag filtra PESSOAS**: o agendamento entra se a cliente dele tem TODAS
+    as tags marcadas (E, como Clientes e o inbox); sem cliente, sai. Rede sem
+    tag nenhuma: o filtro não aparece.
+  - **Na rede, a sala só com a unidade escolhida** (decisão do Claude pelo
+    princípio 7): as salas são de cada unidade ("Sala 1" de duas unidades
+    seria uma lista confusa); a rede de uma unidade só já a tem. Trocar de
+    unidade tira a sala e mantém a profissional e as tags.
+  - **Os números respeitam o filtro** (princípio 3): o "N atendimentos" e os
+    contadores da rede contam o filtrado; com a profissional, a grade é só a
+    coluna dela e a ocupação, a dela; com sala ou tag, a ocupação (tempo das
+    profissionais) não se diz, e a dica explica (`ocupacaoSeMede`,
+    `[data-ocupacao-com-filtro]`). O bloqueio segue o filtro: o da
+    profissional, o da sala (`bloqueioPassaNoFiltro`). Agendar e bloquear
+    seguem com todas.
+  - **A "Minha agenda" (a Agenda em "só os meus") não tem filtro** (decisão
+    do Claude pelo princípio 7): a profissional é ela, a agenda de uma pessoa
+    cabe na tela e cada cartão já diz a cliente e a sala; ela não tem barra de
+    filtros fixos à qual a tag se somaria.
+  - A lista "Seus atendimentos em outras unidades" segue os filtros (a
+    profissional que não é a pessoa, ou a sala desta unidade, a esvaziam); o
+    aviso dos abertos de dias anteriores, não (é aviso, não a agenda).
+  Prova: `e2e/agenda-filtros.spec.ts`, `tests/agenda-filtros.test.ts`.
 - **O que já foi pago aparece como PAGO** (D12 da 5ª simulação): a janela da
   agenda (unidade e rede) e a Agenda do app da cliente mostram "Pré-pago · 1
   de 2", "Pacote X · sessão 1 de 2" ou "Sessão do plano de tratamento" no
@@ -2331,6 +2369,36 @@ const procedures = await ler(
   preenchido, na ordem do Heitor: aceitar → assinar → pagar → agendar. As
   contagens das sessões são da fonte única (`metrics_financeiro_do_plano`).
   Aceita quem monta o plano (quem atende na unidade dele) ou quem recebe.
+- **O plano ainda não aceito também se cancela** (A1a da 25ª simulação; o
+  Heitor, 18/11, à pergunta "o plano proposto e ainda não aceito não tem um
+  botão 'Cancelar'. Entra?": "sim"). No rascunho e no PROPOSTO, ao lado do
+  "Aceitar plano", o "Cancelar plano" (`[data-cancelar-proposto]`, a janela
+  `CancelarPlanoProposto`) — a forma do cancelamento do aceito (o motivo
+  obrigatório), sem a conta do dinheiro: nada foi vendido nem recebido (o
+  Heitor, 18/11: "Uma coisa só foi vendida se foi paga."; a comanda do plano
+  só nasce no aceite). Cancela quem MONTA o plano (`montaPlano`, a permissão
+  de quem o edita e o manda à cliente); quem só recebe não vê o botão, e
+  `cancelarPlanoProposto` recusa com `{ error: RECUSA_QUEM_MONTA }` depois de
+  conferidos a rede, o alcance e o "só os meus" (`planoDoTenant`). O aceito
+  segue com o "Cancelar plano" do Financeiro em Gerenciar, com o dinheiro
+  (`vendas-financeiro.md`); a action e a função recusam o aceito, o concluído
+  e o já cancelado (`recusaDoCancelamentoSemDinheiro`,
+  `lib/plano-de-tratamento/cancelar-proposto.ts`). Numa transação
+  (`plano_cancelar_proposto`, só o servidor; migration `20261125400001`): o
+  plano fica `CANCELLED` com o retrato (`cancelado_em`, `cancelado_por`,
+  `cancelamento_motivo`, `cancelamento.antes_do_aceite`), e o gatilho
+  `documentos_do_plano_cancelado` cancela os documentos que esperavam
+  assinatura e revoga os links deles. A tela mostra "Cancelado antes do
+  aceite: nada foi vendido nem recebido." e quantos documentos caíram
+  (`retratoDoCancelamento`); o Histórico da ficha diz "antes do aceite"
+  (`historicoDoCancelamento`). O app da cliente deixa de mostrar o plano (o
+  Início e a página leem só o proposto, o aceito e o concluído), e o aceite
+  dele recusa "Este plano foi cancelado e não pode mais ser aceito. Fale com
+  a equipe se quiser retomar o tratamento." (`plano_aceitar` diz o mesmo à
+  equipe — era "Este plano já foi aceito."). A Auditoria registra quem
+  cancelou (o gatilho de `treatment_plans`). A oportunidade da cliente não se
+  move (nada se move sozinho; R12), e nenhum evento sai. Prova:
+  `tests/plano-cancelar-proposto.test.ts`, `e2e/plano-cancelar-proposto.spec.ts`.
 - **Cada sessão tem o [Agendar], e há o "Agendar todas"** (PT1d), a qualquer
   momento depois do aceite (antes dele, o passo ④ diz "depois do aceite" — e o
   servidor recusa a sessão de plano não aceito, `conferirCredito`). O agendar
@@ -3796,6 +3864,7 @@ O resto do fluxo:
 ❌ Decidir na tela se um horário está livre pelo INÍCIO, ou sem os bloqueios — é ocupanteDoHorario / livresEntre (lib/agenda/horario-livre.ts), o intervalo inteiro (D5/D15 da 8ª)
 ❌ Deixar o Confirmar do agendar (ou do remarcar) gravar antes de chegar a conferência do horário escolhido (o aviso vinha depois — D9 da 8ª)
 ❌ Trocar a hora que o modal mostra sem dizer (o próximo livre que pula de dia calado — D7 da 12ª): só troca a que não cabe, e com textoDoProximoLivre
+❌ Filtrar a agenda (profissional, sala, tag) no navegador, sobre o que já veio, ou aceitar da URL o que não está nas opções da tela — é filtrosDaAgenda + aplicarFiltrosDaAgenda, na consulta (lib/agenda/filtros.ts)
 ❌ Agrupar agendamento por dia com scheduled_at.slice(0, 10) ou toISOString da meia-noite local (é o dia em UTC) — é dayKeyTZ (D4 da 8ª)
 ❌ Trocar a profissional de um agendamento (janela, arraste, remarcação) para quem não atende na unidade dele, ou sem "de quem para quem" no histórico — é recusaDeQuemNaoAtende + textoDaTroca (A22 da 8ª)
 ❌ Somar o scrollTop da grade à posição do arraste (o retângulo da coluna já anda com a rolagem — A22 da 8ª)
@@ -3846,6 +3915,7 @@ O resto do fluxo:
 ❌ Gravar a avaliação da cliente fora de avaliar_atendimento, ou ler a nota de um procedimento fora de metrics_notas_dos_procedimentos (a configuração e a avaliação de antes moram ali)
 ❌ Dar ao procedimento sem nota própria a nota do atendimento no ranking (princípio 4: fica fora da média — migration 20261123900003)
 ❌ Iniciar ou concluir (startAppointment, o "Em atendimento", finishSession, generateEvaluationPlan na avaliação aberta) sem o Atendimento em Gerenciar e o escopo dele, ou decidir isso pela Agenda ou pelo Prontuário (o Heitor, 2026-11-18)
+❌ Cancelar o plano proposto ou o rascunho mexendo em dinheiro, comanda ou oportunidade, ou fora de plano_cancelar_proposto (nada foi vendido: "Uma coisa só foi vendida se foi paga." — o Heitor, 18/11; A1a da 25ª)
 ❌ Devolver à cliente a sessão paga (pacote, pré-pago, plano) do atendimento INICIADO e cancelado — a desistência no meio gasta a sessão (o Heitor, 2026-11-18; pre_pago_libera)
 ❌ Esconder o "Trocar profissional" do agendamento DELA de quem tem a Agenda em Gerenciar "só os meus" (o Heitor, 2026-10-28: "a profissional (no que é dela) ou quem gerencia a agenda cancela e passa o atendimento")
 ❌ Ação do topo da tela do atendimento numa linha que não quebra, ou a ação principal fora de .sessao-acao-principal (no celular o "Finalizar" saía da tela — D1 da 10ª)

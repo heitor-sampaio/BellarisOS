@@ -265,14 +265,15 @@ test.describe.serial('suporte: entrar como', () => {
   // sessão no navegador e falava direto com o PostgREST — gravava o que a RLS
   // deixa ao membro, fora do registro de acesso. Agora a sessão de suporte não
   // grava pelo PostgREST (política RESTRICTIVE `suporte_sem_escrita`); o que
-  // ela muda, muda pelo app, que registra.
+  // ela muda, muda pelo app, que registra. O alvo é o agendamento: a ficha da
+  // cliente a sessão não grava mais nem pelo membro (M1, o Heitor, 18/11).
   test('o token da sessão de suporte NÃO grava pelo PostgREST; o do próprio membro grava', async () => {
-    const patch = (token: string, notas: string) => fetch(`${URL_SUPA}/rest/v1/clients?id=eq.${f!.clienteId}`, {
+    const patch = (token: string, notas: string) => fetch(`${URL_SUPA}/rest/v1/appointments?id=eq.${f!.agendamentoId}`, {
       method: 'PATCH',
       headers: { apikey: ANON, Authorization: `Bearer ${token}`, 'content-type': 'application/json', Prefer: 'return=representation' },
       body: JSON.stringify({ notes: notas }),
     }).then(async r => { const c = await r.json().catch(() => null); return Array.isArray(c) ? c.length : 0 })
-    const notas = async () => (await db().from('clients').select('notes').eq('id', f!.clienteId).single()).data!.notes as string | null
+    const notas = async () => (await db().from('appointments').select('notes').eq('id', f!.agendamentoId).single()).data!.notes as string | null
 
     const doSuporte = (await sessaoDoNavegador(sup!.ctx)).access_token
     expect(await patch(doSuporte, `escrito pelo suporte ${marca}`), 'nenhuma linha').toBe(0)

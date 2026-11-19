@@ -21,9 +21,14 @@ export function opcoesDeTagDoQuadro(
   return [...porChave.values()].sort((a, b) => a.localeCompare(b, 'pt-BR'))
 }
 
-/** O card tem alguma das tags escolhidas (sem distinguir a caixa). */
-export function temAlgumaTag(tags: readonly string[] | null | undefined, escolhidas: readonly string[]): boolean {
-  if (!tags?.length || !escolhidas.length) return false
-  const quero = new Set(escolhidas.map(chave))
-  return tags.some(t => quero.has(chave(t)))
+/**
+ * O card tem TODAS as tags escolhidas, sem distinguir a caixa. Era "alguma"
+ * (OU) e a lista de Clientes, o inbox e o Financeiro usam E: o mesmo filtro
+ * funciona igual em todo lugar (princípio 7; 18/11, noite).
+ */
+export function temTodasAsTags(tags: readonly string[] | null | undefined, escolhidas: readonly string[]): boolean {
+  if (!escolhidas.length) return true
+  if (!tags?.length) return false
+  const tem = new Set(tags.map(chave))
+  return escolhidas.every(t => tem.has(chave(t)))
 }

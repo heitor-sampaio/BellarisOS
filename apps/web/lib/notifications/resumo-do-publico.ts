@@ -24,7 +24,8 @@ export function filtrosDoPublico(
   const nomeDe = (lista: { id: string; name: string }[] | undefined, id: string) => lista?.find(x => x.id === id)?.name ?? 'removido'
   const saida: string[] = []
   if (regras.client_ids?.length) saida.push(`Clientes: ${regras.client_ids.map(id => nomeDe(nomes.clientes, id)).join(', ')}`)
-  if (regras.tags?.length) saida.push(`Tags: ${regras.tags.join(', ')}`)
+  // O filtro de Tags é E (crm-inbox.md): com mais de uma, entram as que têm todas.
+  if (regras.tags?.length) saida.push(`${regras.tags.length > 1 ? 'Tags (todas)' : 'Tags'}: ${regras.tags.join(', ')}`)
   if (regras.genders?.length) saida.push(`Sexo: ${regras.genders.map(g => SEXO[g]).join(', ')}`)
   if (regras.procedure_ids?.length) saida.push(`Fez: ${regras.procedure_ids.map(id => nomeDe(nomes.procedimentos, id)).join(', ')}`)
   if (regras.max_days_since_visit) saida.push(`Sem visita há mais de ${regras.max_days_since_visit} dias`)

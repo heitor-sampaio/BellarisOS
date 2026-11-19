@@ -182,19 +182,34 @@ test.describe('CF3b: o registro', () => {
       .toEqual(['suporte', rede.professionalId, `${profNome} (via suporte: ${NOME_DO_STAFF})`, sessaoDeSuporte])
   })
 
+  // Desde a M1 (o Heitor, 18/11) a sessão não grava a ficha da cliente — só o
+  // servidor. O agendamento a sessão ainda grava (appointments_update), e ele é
+  // auditado: é por ele que se prova que o cabeçalho forjado não troca o ator.
   test('pela sessão, quem agiu é o dono do token — o cabeçalho forjado não vale', async () => {
-    const r = await fetch(`${URL_}/rest/v1/clients?id=eq.${clienteId}&select=id`, {
+    const { data: ag, error: eA } = await db().from('appointments').insert({
+      branch_id: rede.branchId, client_id: clienteId, professional_id: rede.professionalId, procedure_id: rede.procedureId,
+      scheduled_at: new Date(Date.now() + 86_400_000).toISOString(), duration_min: 30, price: 100, status: 'SCHEDULED',
+    }).select('id').single<{ id: string }>()
+    expect(eA, eA?.message).toBeNull()
+    const r = await fetch(`${URL_}/rest/v1/appointments?id=eq.${ag!.id}&select=id`, {
       method: 'PATCH',
       headers: {
         apikey: ANON, Authorization: `Bearer ${dona.accessToken}`, 'content-type': 'application/json',
         Prefer: 'return=representation', 'x-bellaris-ator': profAuth, 'x-bellaris-suporte-sessao': sessaoDeSuporte,
       },
-      body: JSON.stringify({ notes: `nota ${marca}` }),
+      body: JSON.stringify({ price: 120 }),
     })
     expect(r.status, await r.clone().text()).toBe(200)
-    expect(((await r.json()) as unknown[]).length, 'a sessão da dona alterou a ficha').toBe(1)
+    expect(((await r.json()) as unknown[]).length, 'a sessão da dona alterou o agendamento').toBe(1)
+    const l = (await linhasDaRede()).filter(x => x.tabela === 'appointments' && x.registro_id === ag!.id && x.operacao === 'editou').at(-1)!
+    expect([l.ator_user_id, l.ator_tipo, l.suporte_sessao_id, l.colunas]).toEqual([dona.userId, 'membro', null, ['price']])
+    expect(l.client_id).toBe(clienteId)
+  })
+
+  test('o texto da ficha não vai ao registro — só que a coluna mudou', async () => {
+    expect((await db().from('clients').update({ notes: `nota ${marca}` }).eq('id', clienteId)).error).toBeNull()
     const l = (await linhasDaRede()).filter(x => x.tabela === 'clients' && x.registro_id === clienteId && x.operacao === 'editou').at(-1)!
-    expect([l.ator_user_id, l.ator_tipo, l.suporte_sessao_id, l.colunas]).toEqual([dona.userId, 'membro', null, ['notes']])
+    expect(l.colunas).toEqual(['notes'])
     expect(l.client_id).toBe(clienteId)
     expect(JSON.stringify([l.antes, l.depois]), 'o texto da ficha não vai ao registro').not.toContain(`nota ${marca}`)
   })

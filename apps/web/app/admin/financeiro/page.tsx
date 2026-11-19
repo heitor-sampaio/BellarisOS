@@ -26,6 +26,9 @@ import { descontosDosLancamentos, type LancamentoComDesconto } from '@/lib/finan
 import { pagosSemDinheiro, type LancamentoSemDinheiro } from '@/lib/financeiro/pago-sem-dinheiro'
 import { getTaxaDosLancamentos } from '@/lib/metrics/contadora'
 import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
+import { tagsDaUrl } from '@/lib/tags/filtro-na-url'
+import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
+import { selectComAsTags, comAsTags } from '@/lib/financeiro/filtro-de-tags'
 
 /** Lançamento como o select pede. */
 type LancamentoLido = {
@@ -52,6 +55,9 @@ export default async function AdminFinanceiroPage({
   // A43 da 12ª / FI4: o A pagar é todo o a pagar em aberto, de qualquer vencimento (a despesa).
   const soAPagar = aba === 'a-pagar'
   const soOEmAberto = aba === 'a-receber' || soAPagar
+  // As Tags (CLAUDE.md §1): a lista só com os lançamentos das clientes com
+  // TODAS as tags marcadas — na consulta (comAsTags); o Resumo não tem a lista.
+  const tags = aba === 'resumo' ? [] : tagsDaUrl(sp.tags)
   const period = sp.period ?? 'month'
   // Janela e comparação vêm da camada de métricas: no fuso do negócio e com o
   // período anterior de mesma duração. A resolução local antes montava "custom"
@@ -102,10 +108,11 @@ export default async function AdminFinanceiroPage({
   const metricArgs = { tenantId: ctx.tenantId!, branchIds: null, from: start, to: end }
 
   // A lista do período (ou de todo o em aberto, A38 da 8ª), lida em páginas.
-  const daLista = (de: number, ate: number) => admin
+  // As Tags: a cliente pelo embed INNER e o `cs` (todas) — lib/financeiro/filtro-de-tags.
+  const daLista = (de: number, ate: number) => comAsTags(admin
       .from('financial_transactions')
-      .select('id, type, category, description, amount, payment_method, cartao_vezes, cartao_bandeira, maquininha_id, is_paid, paid_at, due_date, created_at, branch_id, notes, estorno_motivo, product_sale_id, credito_vendido_id, sale_discount, desconto_motivo, client_package_id, procedure_sale_id, treatment_plan_id, appointment_id, data_de_referencia, parcela_numero, parcela_total, vencimentos_anteriores, loyalty_discount, fornecedor, nota_fiscal, valor_antes_do_estorno, cliente:clients!financial_transactions_client_id_fkey(name)')
-      .in('branch_id', branchIds)
+      .select(selectComAsTags('id, type, category, description, amount, payment_method, cartao_vezes, cartao_bandeira, maquininha_id, is_paid, paid_at, due_date, created_at, branch_id, notes, estorno_motivo, product_sale_id, credito_vendido_id, sale_discount, desconto_motivo, client_package_id, procedure_sale_id, treatment_plan_id, appointment_id, data_de_referencia, parcela_numero, parcela_total, vencimentos_anteriores, loyalty_discount, fornecedor, nota_fiscal, valor_antes_do_estorno, cliente:clients!financial_transactions_client_id_fkey(name)', tags))
+      .in('branch_id', branchIds), tags)
       // A38 da 8ª: "Ver e dar baixa" — todo o a receber em aberto, de qualquer
       // vencimento. Senão, o período é pela DATA DE REFERÊNCIA (2026-09-30): o
       // pago, no dia do pagamento; o em aberto, no vencimento. O saldo zerado
@@ -235,6 +242,9 @@ export default async function AdminFinanceiroPage({
     // A18 da 14ª: com mais de uma maquininha, a lista e o CSV dizem qual.
     nomesDasMaquininhas(ctx.tenantId!),
   ])
+  // As opções do filtro de Tags: o vocabulário da rede, lido aqui (quem só tem
+  // o Financeiro também as vê); o Resumo não tem o filtro.
+  const tagsDaRede = aba === 'resumo' ? [] : await tagsAtivasDaRede(ctx.tenantId!)
   const transactions = txs.map(({ maquininha_id, ...t }) => ({
     ...t,
     maquininha_nome: maquininhaDoRotulo(maquininhas, maquininha_id),
@@ -302,6 +312,8 @@ export default async function AdminFinanceiroPage({
         canPay={podeDarBaixa(ctx)}
         canReverse={ctx.permissions.financial === 'MANAGE'}
         aba={aba}
+        tagsDaRede={tagsDaRede}
+        tags={tags}
         comComissoes={temRecurso(ctx, 'comissoes')}
       />
     </>

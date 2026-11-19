@@ -165,8 +165,9 @@
     2026-10-22): `aconteceu_em` (coluna gerada) é a hora marcada, ou a da
     conclusão quando ela veio ANTES. Todo indicador de atendimento usa esse
     eixo — `metrics_core`, `by_branch`, `relatorio`, `retention`, os rankings,
-    a receita por categoria, `metrics_vendas` e os clientes a reativar
-    (migration `20261022000001`). Era `scheduled_at`, e como o período em
+    a receita por categoria e os clientes a reativar
+    (migration `20261022000001`; `metrics_vendas` usava também até a D6 de
+    18/11 — a venda agora é datada pelo primeiro recebimento pago, abaixo). Era `scheduled_at`, e como o período em
     andamento fecha em "agora", o concluído antes da hora (chegou cedo, o
     encaixe adiantou) ficava fora do dashboard até a hora marcada passar. O
     concluído DEPOIS da hora (finalizado no dia seguinte) segue no dia
@@ -775,7 +776,31 @@ comissão e a receita sem o atendimento pago com crédito, sem nota. Prova:
 **Relatório de vendas** (aba Vendas, 2026-10-14): cada venda do período, uma
 linha — `metrics_vendas` (migration `20261014000001`), paginada por
 `metrics_vendas_pagina` e totalizada por `metrics_vendas_resumo` (por tipo e
-geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro:
+geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro — mas
+**só o que foi pago é venda**:
+- **Não pago não conta na venda** (D6, o Heitor, 18/11, sobre a 25ª
+  simulação: "nao pago nao conta na venda"; a mesma fala do plano: "Uma coisa
+  só foi vendida se foi paga."). TODO tipo segue a régua do plano: a venda
+  entra quando há dinheiro PAGO dela — o primeiro lançamento de receita ligado
+  a ela (o avulso por `appointment_id`, o pacote por `client_package_id`, o
+  pré-pago por `procedure_sale_id`, o produto por `product_sale_id`, o crédito
+  por `credito_vendido_id`, o plano por `treatment_plan_id`) que está pago,
+  não é estorno nem estornado e tem algum valor (dinheiro, ou os pontos e o
+  voucher, `loyalty_discount`) — e na DATA desse recebimento
+  (`min(coalesce(paid_at, created_at))`), a mesma para os seis tipos baterem
+  entre si. O concluído aguardando o pagamento, o pacote e o pré-pago só com
+  parcela em aberto e o produto a receber ficam FORA até a primeira parcela
+  ser paga; o que teve o único pagamento estornado inteiro também sai. O
+  VALOR de cada tipo não muda (o vendido, menos o cancelado, o devolvido e o
+  desconto: o parcelado entra inteiro no dia da primeira parcela paga), nem o
+  "Quem vendeu". O pago com crédito interno é pago. Migration
+  `20261125100001` (troca de trechos no corpo vivo de `metrics_vendas`);
+  na produção de 18/11, o avulso caía de 33 para 31, o pacote de 24 para 23 e
+  o pré-pago de 7 para 5. O que lê as vendas segue sozinho: a aba, o CSV e o
+  Copilot (`getResumoDeVendas`/`getVendas`). A comissão do avulso já era do
+  atendimento pago (`comissoes.md`), e o caixa, o faturamento e o "Meu
+  faturamento" são dinheiro recebido (princípio 5): nada disso mudou. Prova:
+  `tests/vendas-so-o-pago.test.ts`, `e2e/relatorio-vendas-so-o-pago.spec.ts`.
 - **Cada linha é uma COMANDA do PDV** (RL1 da revisão do Heitor, 2026-11-14:
   "rl1 ok"): atendimento avulso, pacote, pré-pago, plano, produto e crédito
   interno, com o número da comanda (`metrics_vendas.comanda`, coluna
@@ -785,7 +810,7 @@ geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro:
   ("Atendimentos avulsos", "Pacotes", "Pré-pagos", "Planos", "Produtos",
   "Créditos"). Migration `20261115700003`.
 - **O Crédito interno vendido** (`creditos_vendidos`, tipo `CREDITO`, na
-  data da venda, o valor menos o devolvido; o estornado inteiro sai) aparece
+  data do pagamento — D6 —, o valor menos o devolvido; o estornado inteiro sai) aparece
   na lista e no CSV, mas o "Total vendido" NÃO o soma: o que se paga com ele
   é que é a venda, e somar os dois contaria o mesmo dinheiro duas vezes. A
   conta mora no banco — `metrics_vendas_resumo` devolve o geral sem o crédito
@@ -799,12 +824,15 @@ geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro:
   desconto fica fora dos dois (A31 da 20ª; sem número: não há métrica dele).
 - **Atendimento avulso** (era "Procedimento"): atendimento concluído, com preço, que não consumiu
   nada já vendido. A sessão de pacote, a unidade pré-paga e a sessão de plano
-  não são venda de novo. Data `aconteceu_em` (o dia em que aconteceu — D13; o eixo de `serviceRevenue`);
+  não são venda de novo. Data: a do primeiro recebimento pago (D6; era
+  `aconteceu_em`, o dia em que aconteceu — o concluído não pago entrava);
   vale o preço menos o desconto comercial da venda (`sale_discount`; ponto
   é forma de pagamento, não desconto).
-- **Pacote** (`purchased_at`, o vendido, quem vendeu) e **pré-pago**
-  (`sold_at`, o vendido, quem vendeu). O parcelado é UMA venda.
-- **Produto** (D4, 2026-10-30): `product_sales.sold_at`, o vendido, quem
+- **Pacote** (o vendido, quem vendeu) e **pré-pago** (o vendido, quem
+  vendeu), no dia do primeiro recebimento pago (D6; eram `purchased_at` e
+  `sold_at`). O parcelado é UMA venda.
+- **Produto** (D4, 2026-10-30): no dia do primeiro recebimento pago (D6;
+  era `product_sales.sold_at`), o vendido, quem
   vendeu; a quantidade são as embalagens ("3× Sérum"). A venda ESTORNADA sai
   (o Heitor, 18/11: "Uma coisa só foi vendida se foi paga"; sair também do
   mês dela é decisão do Claude na F3): era R$ 6.013 contra R$ 5.915 na 5ª simulação. **A
@@ -825,10 +853,11 @@ geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro:
 - **Pacote CANCELADO e pré-pago com unidade cancelada valem o que ficou**
   (F2b, 2026-11-01; migration `20261101000252`): o pacote, `price −
   valor_cancelado` (o usado), e o pré-pago, o vendido menos as unidades
-  canceladas — na data da venda. O que caiu inteiro (nenhuma sessão feita,
+  canceladas — na data do primeiro recebimento pago (D6). O que caiu inteiro (nenhuma sessão feita,
   todas as unidades canceladas) sai das Vendas e do CSV. Estornar só um
-  LANÇAMENTO do pacote (o pagamento errado) não muda a venda: o pacote segue
-  vendido.
+  LANÇAMENTO do pacote (o pagamento errado) não muda o VALOR da venda; se era
+  o ÚNICO pagamento, a venda sai até outro ser pago (D6), e a data passa a ser
+  a do primeiro pagamento que ficou.
 - **Plano**: a data é a do PRIMEIRO RECEBIMENTO PAGO dele — o primeiro
   lançamento de receita do plano (`financial_transactions.treatment_plan_id`)
   pago, que não é estorno nem estornado, com algum valor; o dia é o do
@@ -1431,6 +1460,60 @@ mudou, pelos princípios (3: o que a tela mostra é o que vale; 4: não chutar):
 Prova: `e2e/indicadores-f68-contas.spec.ts`, `e2e/indicadores-f68-telas.spec.ts`,
 `tests/indicadores-f68.test.ts`.
 
+## O filtro de Tags nos Relatórios (18/11)
+
+A regra das tags vale para o sistema inteiro (CLAUDE.md §1, o Heitor,
+13/11: "onde tiver for passível de filtro, um dos filtros que ela pode usar
+são as tags … além dos filtros que a gente já apresenta ali fixos em cada
+página"). Nos Relatórios, o gatilho "Tags" (o `<FiltroDeTags>` compartilhado
+com o Financeiro — `<PickerCompacto multiplo>`, "Tags · N",
+`[data-filtro-de-tags]`, ao lado do período; trocar a tag volta à primeira
+página) guarda a escolha na URL (`?tags=a,b`, com o leitor das outras telas,
+`lib/tags/filtro-na-url.ts`: a vírgula do nome vai escapada) e vai à CONSULTA:
+as funções ganharam `p_tags text[] default null` (migration
+`20261125100002`), e sem tag a chamada é a de antes. As opções são o
+vocabulário da rede (`tagsAtivasDaRede`, lido no servidor); a rede sem tag
+nenhuma não vê o filtro. A tag escolhida que saiu do vocabulário segue na
+lista, marcada, para dar para desmarcar.
+
+Decisões do Claude (princípios 3 e 7) — e a do Heitor, onde a fala dele vem citada:
+- **A tag filtra PESSOAS.** A linha entra se a cliente dela (`clients.tags`)
+  tem TODAS as tags marcadas (E), sem distinguir maiúscula de minúscula —
+  "VIP" e "vip" são a mesma, como na lista de Clientes. Uma régua só, no
+  banco: `public.metrics_tem_as_tags` / `metrics_cliente_tem_as_tags`. A linha
+  sem cliente (a venda sem ficha, o lançamento sem cliente, a comissão sem
+  atendimento nem lançamento de cliente) sai enquanto houver tag.
+- **Na aba Comercial, a tag é a da PESSOA da oportunidade** (o Heitor,
+  18/11: "a tag é da pessoa e pode ter mais de uma tag" — a oportunidade não
+  tem tag própria, e `leads.tags` não é lida): o funil, o total, a conversão,
+  o ranking, os motivos de perda e a conversão por origem. A pessoa é a
+  cliente ligada (`leads.client_id` → `clients.tags`) e, sem cliente, o
+  contato (`leads.contato_id` → `contacts.tags`) — num lugar só,
+  `public.metrics_tags_da_pessoa_da_oportunidade` (a régua:
+  `metrics_oportunidade_tem_as_tags`). Desde a `20261125500001` a ficha e os
+  contatos dela têm a MESMA lista (o banco espelha; `crm-inbox.md`), e a
+  `20261125500002` tirou `leads.tags`. Os atendimentos comerciais (agendados, realizados,
+  comparecimento) não têm oportunidade ligada: valem as tags da cliente deles.
+- **O filtro aparece nas abas de pessoas**: Vendas (a lista, o resumo e o
+  CSV), Agenda, Clientes, Procedimentos, Profissionais e Comercial — e nelas o
+  núcleo (`metrics_core`: o dinheiro, os atendimentos, as novas, as comissões)
+  e o período anterior da comparação no mesmo filtro. "Profissionais ativos"
+  (a equipe) não muda: não é de uma cliente.
+- **Não aparece no Estoque** (não há pessoa) **nem na Visão geral e no
+  Financeiro**, que misturam o dinheiro com a despesa, o DRE e o lucro: o
+  lucro "filtrado por tag" seria um número que não é de ninguém. Nessas abas a
+  tag da URL nem chega à conta (`tagsDaAba`).
+- Funções com `p_tags`: `metrics_vendas_pagina`, `metrics_vendas_resumo`,
+  `metrics_core`, `metrics_relatorio`, `metrics_retention`,
+  `metrics_new_clients_series`, `metrics_ticket_medio`,
+  `metrics_atendimentos_sem_receita`,
+  `metrics_receita_por_categoria_de_procedimento`, `metrics_comercial`,
+  `metrics_lead_funnel`, `metrics_conversao_por_origem`,
+  `metrics_motivos_de_perda` — a assinatura nova fica só com o
+  `service_role`, como as vizinhas.
+Prova: `tests/relatorios-filtro-de-tags.test.ts`,
+`e2e/relatorios-filtro-de-tags.spec.ts`.
+
 ---
 
 ## O que nunca fazer aqui
@@ -1438,4 +1521,6 @@ Prova: `e2e/indicadores-f68-contas.spec.ts`, `e2e/indicadores-f68-telas.spec.ts`
 ```
 ❌ Escrever "lead" num número, rótulo, coluna ou dica da tela (Relatórios, dashboard, Marketing) — é "oportunidade" (CR1/RL2; tests/oportunidade-no-texto trava)
 ❌ Trocar a CHAVE de uma aba de Relatórios para mudar o nome dela (role_report_tabs e a URL guardam a chave) — muda o rótulo em REPORT_TAB_LABELS
+❌ Filtrar por tag DEPOIS de ler as linhas (no app ou na tela) — a tag vai à função (`p_tags`), senão o corte de 1000 e o total não batem
+❌ Contar como venda o que não tem recebimento pago (D6) — a régua é a do primeiro lançamento de receita pago, a mesma dos seis tipos
 ```
