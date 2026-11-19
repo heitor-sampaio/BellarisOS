@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { banco, tenantId, unidadesAtivas, PREFIXO } from './apoio/banco'
 import { criarMembro, clienteComSessao, type MembroDeTeste, type ClienteDeTeste } from './apoio/sessao'
+import { leOSinalDaRede } from './apoio/sinais'
 
 /**
  * A sessão só LÊ o que a tela precisa ler — quem grava é o servidor, depois da
@@ -22,8 +23,10 @@ import { criarMembro, clienteComSessao, type MembroDeTeste, type ClienteDeTeste 
  *    categorias do estoque, disponibilidade e preço do procedimento por
  *    unidade) aceitavam escrita de qualquer membro da rede, sem o módulo.
  *
- * Cada caso tem o controle: a mesma sessão LÊ o que precisa ler, então "não
- * gravou" não é só uma sessão que não alcança nada.
+ * Cada caso tem o controle: a mesma sessão LÊ o sinal da rede, então "não
+ * gravou" não é só uma sessão que não alcança nada. Desde 19/11 a sessão só
+ * lê SINAIS (o Heitor, "vai na 2"; CLAUDE.md §4): o cargo, o contato e a ficha
+ * também não se leem mais pela sessão (até ali o controle era lê-los).
  */
 
 const marca = Date.now().toString(36)
@@ -70,10 +73,12 @@ test.describe('a sessão só lê: a escrita é do servidor', () => {
     const db = banco()
     const s = comToken(daRede!.accessToken)
 
-    // O controle: ela LÊ a matriz do próprio cargo (o contexto precisa).
+    // O controle: o token vale (lê o sinal da rede); a matriz do cargo, nem a
+    // dela, sai pela sessão (o contexto a lê pelo servidor).
+    expect(await leOSinalDaRede(daRede!.accessToken, tenant), 'a sessão lê o sinal da rede').toBe(1)
     const { data: lida, error: erroLeitura } = await s.from('role_permissions').select('module, level').eq('role_id', daRede!.roleId)
     expect(erroLeitura, 'a leitura da própria matriz').toBeNull()
-    expect((lida ?? []).length, 'a sessão enxerga o próprio cargo').toBeGreaterThan(0)
+    expect(lida ?? [], 'nem o próprio cargo sai pela sessão').toEqual([])
 
     // 1. Gerenciar em Cargos e no Financeiro, no próprio cargo.
     await s.from('role_permissions').upsert([
@@ -198,9 +203,10 @@ test.describe('a sessão só lê: a escrita é do servidor', () => {
     }).select('id').single()
     expect(error, 'criar a ficha de teste').toBeNull()
     limpar.push(() => db.from('clients').delete().eq('id', ficha!.id))
-    // O controle: a profissional da unidade LÊ a ficha.
+    // O controle: o token vale (lê o sinal da rede); a ficha não sai pela sessão.
+    expect(await leOSinalDaRede(daUnidade!.accessToken, tenant), 'a sessão lê o sinal da rede').toBe(1)
     const { data: lida } = await s.from('clients').select('id').eq('id', ficha!.id)
-    expect((lida ?? []).length, 'a sessão enxerga a ficha').toBe(1)
+    expect(lida ?? [], 'a ficha não sai pela sessão').toEqual([])
     await s.from('clients').delete().eq('id', ficha!.id)
     const { data: ainda } = await db.from('clients').select('id').eq('id', ficha!.id)
     expect((ainda ?? []).length, 'a ficha não se apaga pela sessão').toBe(1)
@@ -227,9 +233,11 @@ test.describe('a sessão só lê: a escrita é do servidor', () => {
     expect(eK, 'criar o contato de teste').toBeNull()
     limpar.push(() => db.from('contacts').delete().eq('id', contato!.id))
 
-    // O controle: a sessão LÊ o contato e a ficha (o inbox e a lista precisam).
-    expect(((await s.from('contacts').select('id').eq('id', contato!.id)).data ?? []).length, 'a sessão lê o contato').toBe(1)
-    expect(((await s.from('clients').select('id').eq('id', ficha!.id)).data ?? []).length, 'a sessão lê a ficha').toBe(1)
+    // O controle: o token vale (lê o sinal da rede); o contato e a ficha se
+    // leem pelo servidor (o inbox e a lista), não pela sessão.
+    expect(await leOSinalDaRede(daRede!.accessToken, tenant), 'a sessão lê o sinal da rede').toBe(1)
+    expect(((await s.from('contacts').select('id').eq('id', contato!.id)).data ?? []).length, 'o contato não sai pela sessão').toBe(0)
+    expect(((await s.from('clients').select('id').eq('id', ficha!.id)).data ?? []).length, 'a ficha não sai pela sessão').toBe(0)
 
     await s.from('contacts').update({ tags: [`Plantada ${marca}`], client_id: ficha!.id }).eq('id', contato!.id)
     await s.from('clients').update({ tags: [`Plantada ${marca}`], name: `${PREFIXO} trocado ${marca}` }).eq('id', ficha!.id)

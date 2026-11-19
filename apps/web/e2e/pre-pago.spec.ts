@@ -6,6 +6,7 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { responderAnamnese } from './apoio/anamnese'
 import { chamarAcao } from './apoio/acao-direta'
 import { abrirVendaNoPdv, euVendi, pagoNoPix } from './apoio/vender'
+import { leOSinalDaRede } from './apoio/sinais'
 
 /**
  * Procedimento pré-pago (decisão do Heitor, 2026-09-30 — migration
@@ -249,8 +250,11 @@ test.describe.serial('procedimento pré-pago', () => {
     expect(ins.error, 'a sessão não cria venda').not.toBeNull()
     const upd = await api.from('procedure_sale_units').update({ status: 'DISPONIVEL' }).eq('id', u!.id).select('id')
     expect(upd.data ?? [], 'a sessão não mexe na unidade').toEqual([])
+    // O controle: o token vale (lê o sinal da rede). Desde 19/11 a sessão só lê SINAIS (o Heitor, "vai na 2"; CLAUDE.md §4):
+    // a venda também não se lê pela sessão (até ali, "mas a equipe lê").
+    expect(await leOSinalDaRede(gestor!.accessToken, rede!.tenantId), 'a sessão lê o sinal da rede').toBe(1)
     const lido = await api.from('procedure_sales').select('id').eq('id', v)
-    expect(lido.data?.length, 'mas a equipe lê').toBe(1)
+    expect(lido.data ?? [], 'a venda não sai pela sessão').toEqual([])
   })
 
   test('fidelidade por procedimento: os pontos das unidades, na proporção do pago', async () => {

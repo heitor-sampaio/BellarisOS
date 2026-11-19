@@ -311,19 +311,10 @@ export async function ReportsBiSection({
   // -- Render --------------------------------------------------------
   return (
     <>
-      <RealtimeRefresher tables={[
-        'appointments',
-        'financeiro_sinais',
-        'clients',
-        'comissoes_sinais',
-        'stock_movements',
-        'branch_product_stock',
-        'installments',
-        'product_batches',
-        'procedure_products',
-        'client_packages',
-        'treatment_plans',
-      ]} />
+      <RealtimeRefresher
+        tables={['financeiro_sinais', 'comissoes_sinais']}
+        topicos={['agenda', 'clientes', 'estoque', 'procedimentos', 'pacotes', 'planos']}
+      />
       <ReportsBiView
         scopeLabel={scopeLabel}
         selectedBranchId={selectedBranchId ?? null}

@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { leOSinalDaRede } from './apoio/sinais'
 
 /**
  * A sessão só LÊ — e o dado de um módulo, só com o módulo (CLAUDE.md §4, F63:
@@ -25,10 +26,13 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  * tem o Prontuário o vê pela TELA, que lê pelo servidor — é o controle.
  *
  * Provado COMO o membro (o token dele no PostgREST), numa rede `[e2e]`
- * própria. Cada caso tem o controle: quem tem o módulo LÊ (pela sessão, ou
- * pela tela no prontuário), então "não leu" não é uma sessão que não alcança
+ * própria. Cada caso tem o controle: o token LÊ o sinal da rede (ou a tela
+ * mostra, no prontuário), então "não leu" não é uma sessão que não alcança
  * nada; e o que não se grava é recusado também à Admin — quem grava é o
- * servidor, depois da trava da action.
+ * servidor, depois da trava da action. Desde 19/11 a sessão só lê SINAIS (o
+ * Heitor, "vai na 2"; CLAUDE.md §4): procedimento, produto e automação também
+ * não se leem mais pela sessão, nem com o módulo (até ali o controle era a
+ * sessão com o módulo LER a linha).
  */
 
 const marca = Date.now().toString(36)
@@ -247,13 +251,14 @@ test.describe('prontuário: ninguém lê nem grava pela sessão; quem tem o Pron
   })
 })
 
-test.describe('procedimentos e produtos: a sessão lê, o servidor grava', () => {
+test.describe('procedimentos e produtos: a sessão não lê nem grava; o servidor grava', () => {
   test('o preço do procedimento não muda pela sessão — sem Procedimentos, com Procedimentos em Gerenciar, nem a Admin', async () => {
     const { data: antes } = await db().from('procedures').select('price').eq('id', rede!.procedureId).single<{ price: number | string }>()
     for (const m of [semNada, gerenciaProcedimentosEEstoque, admin]) {
       const api = comoMembro(m)
-      // O controle: a sessão LÊ o procedimento (o catálogo e o Realtime dele).
-      expect(await linhas(m, 'procedures', rede!.procedureId), 'a sessão lê o procedimento').toBe(1)
+      // O controle: o token vale (lê o sinal da rede); o procedimento, não.
+      expect(await leOSinalDaRede(m.accessToken, rede!.tenantId), 'a sessão lê o sinal da rede').toBe(1)
+      expect(await linhas(m, 'procedures', rede!.procedureId), 'o procedimento não sai pela sessão').toBe(0)
       const { data: mudou } = await api.from('procedures').update({ price: 999 }).eq('id', rede!.procedureId).select('id')
       expect(mudou ?? [], 'o preço só muda pela action (com o histórico de preço)').toEqual([])
       const { error: insumo } = await api.from('procedure_products').insert({ procedure_id: rede!.procedureId, product_id: produto, quantity: 1, unit_cost: 0 })
@@ -275,22 +280,26 @@ test.describe('procedimentos e produtos: a sessão lê, o servidor grava', () =>
       const { data: apagou } = await api.from('products').delete().eq('id', produto).select('id')
       expect(apagou ?? [], 'o produto não se apaga pela sessão').toEqual([])
     }
-    // O controle: quem tem a unidade do produto o LÊ pela sessão.
-    expect(await linhas(gerenciaProcedimentosEEstoque, 'products', produto), 'a sessão da unidade lê o produto').toBe(1)
+    // O controle: o token vale (lê o sinal da rede); o produto, não.
+    expect(await leOSinalDaRede(gerenciaProcedimentosEEstoque.accessToken, rede!.tenantId), 'a sessão lê o sinal da rede').toBe(1)
+    expect(await linhas(gerenciaProcedimentosEEstoque, 'products', produto), 'o produto não sai pela sessão').toBe(0)
     const { data: ainda } = await db().from('products').select('name, sale_price').eq('id', produto).single<{ name: string; sale_price: number | string }>()
     expect(ainda?.name).toBe(`${PREFIXO} produto ${marca}`)
     expect(Number(ainda?.sale_price)).toBe(10)
   })
 })
 
-test.describe('automações: lê só quem tem as Automações e "A rede inteira"; as telas escutam um sinal', () => {
-  test('sem as Automações (ou só numa unidade), a sessão não lê a corrente nem as automações', async () => {
+test.describe('automações: a sessão não lê, nem com as Automações; as telas escutam um sinal', () => {
+  test('ninguém lê a corrente nem as automações pela sessão — nem com as Automações na rede, nem a Admin', async () => {
     for (const [tabela, id] of [['domain_events', fato], ['automations', automacao]] as const) {
       expect(await linhas(semNada, tabela, id), `${tabela}: sem as Automações, nada`).toBe(0)
       expect(await linhas(automacoesNaUnidade, tabela, id), `${tabela}: as Automações moram no portal da rede`).toBe(0)
-      // O controle: as Automações com "A rede inteira", e a Admin.
-      expect(await linhas(automacoesNaRede, tabela, id), `${tabela}: com as Automações na rede, lê`).toBe(1)
-      expect(await linhas(admin, tabela, id), `${tabela}: a Admin da rede lê`).toBe(1)
+      expect(await linhas(automacoesNaRede, tabela, id), `${tabela}: nem com as Automações na rede`).toBe(0)
+      expect(await linhas(admin, tabela, id), `${tabela}: nem a Admin da rede`).toBe(0)
+    }
+    // O controle: o token vale — quem tem as Automações lê o sinal delas (o teste de baixo).
+    for (const m of [automacoesNaRede, admin]) {
+      expect(await leOSinalDaRede(m.accessToken, rede!.tenantId), 'o sinal da rede').toBe(1)
     }
   })
 

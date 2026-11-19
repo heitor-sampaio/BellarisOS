@@ -69,7 +69,7 @@ export default async function CampanhaDetailPage({ params }: { params: Promise<{
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <RealtimeRefresher tables={['notification_campaigns']} filter={`id=eq.${id}`} />
+      <RealtimeRefresher topicos={['campanhas']} />
 
       {/* Back */}
       <Link

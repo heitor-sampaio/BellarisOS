@@ -1,8 +1,7 @@
-import { createClient } from '@/lib/supabase/server'
 import { DesativarUnidade } from '@/components/admin/desativar-unidade'
 import { oQueFicaNaUnidade, resumoDoQueFica, temOQueFicou, NADA_FICA, type OQueFicaNaUnidade } from '@/lib/unidades/desativar'
 import { CaminhosDoQueFicou } from '@/components/admin/o-que-ficou'
-import { getTenantContext } from '@/lib/auth'
+import { getTenantContext, unidadesDoContexto } from '@/lib/auth'
 import { BranchForm } from '@/components/admin/branch-form'
 import { toggleBranchStatus } from '@/actions/branches'
 import { semAcesso } from '@/lib/sem-acesso'
@@ -18,21 +17,24 @@ import { SalasDaUnidade, type SalaDaUnidade } from '@/components/admin/salas-da-
 
 export async function SettingsBranches() {
   const ctx = await getTenantContext()
-  const supabase = await createClient()
   // Quantos atendem em cada unidade (o "Atende" por unidade, decisão 2 da 8ª):
   // a unidade nova nasce sem ninguém marcado (princípio 6), e o cartão diz.
   // Em paralelo com o resto: a página não pode demorar mais (o #salas do link).
   const lendoOndeAtendem = ler(createAdminClient().from('users').select('atende_em')
     .eq('tenant_id', ctx.tenantId!).eq('is_active', true).eq('provides_services', true), 'carregar onde a equipe atende')
 
-  const branches = await ler(supabase
+  // A sessão só lê sinais (o Heitor, 19/11, "vai na 2"): as unidades se leem
+  // pelo servidor, e a abrangência que a RLS aplicava vai na consulta.
+  const minhas = unidadesDoContexto(ctx)
+  let lendoUnidades = createAdminClient()
     .from('branches')
     .select(`
       id, name, slug, email, phone, city, state, is_active, created_at,
       users(id)
     `)
     .eq('tenant_id', ctx.tenantId!)
-    .order('created_at', { ascending: true }), 'carregar as unidades')
+  if (minhas) lendoUnidades = lendoUnidades.in('id', minhas)
+  const branches = await ler(lendoUnidades.order('created_at', { ascending: true }), 'carregar as unidades')
 
   // O endereço do app da cliente de cada unidade (A4): é este que se dá a ela.
   const origem = await origemDoApp()
@@ -63,7 +65,7 @@ export async function SettingsBranches() {
 
   return (
     <div>
-      <RealtimeRefresher tables={['branches']} />
+      <RealtimeRefresher topicos={['unidades']} />
 
       {/* Header da seção */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>

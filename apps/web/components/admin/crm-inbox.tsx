@@ -14,7 +14,7 @@ import {
 import Link from 'next/link'
 import Image from 'next/image'
 import { formatarNoFuso, diaRelativo } from '@/lib/formatar-no-fuso'
-import { createClient } from '@/lib/supabase/client'
+import { useSinais, useSinalDaConversa } from '@/components/shared/realtime-refresher'
 import {
   getMessages, sendMessage, sendMediaMessage, markConversationRead,
   setConversationStatus, createConversationForLead, getMessageMediaUrl, editMessage,
@@ -25,7 +25,6 @@ import {
 } from '@/actions/inbox'
 import { InboxLeadPanel, type PanelBranch } from '@/components/admin/inbox-lead-panel'
 import { nomeDoAnuncio, legendaDoAnuncio } from '@/lib/ads/rotulo'
-import { destinoDoEvento } from '@/lib/inbox/lista'
 import { conversaCasaComBusca } from '@/lib/inbox/busca'
 import { recusaDoNumeroRemovido } from '@/lib/inbox/numero-removido-texto'
 import {
@@ -986,13 +985,6 @@ export function CRMInbox({
   // A assinatura do Realtime é montada uma vez só (deps `[]`), então os
   // handlers não enxergam o estado por closure — enxergam por aqui.
   const conversasRef = useRef(conversations)
-  /**
-   * Ids que o servidor já se recusou a devolver — conversa de outro dono, com
-   * o escopo "só os meus" do CRM. O Realtime entrega o evento (a RLS é por
-   * rede), e sem esta marca cada mensagem trocada nelas pediria a lista
-   * inteira de novo.
-   */
-  const pedidosSemResposta = useRef<Set<string>>(new Set())
   const [selectedId,    setSelectedId]    = useState<string | null>(initialSelectedId)
   const [messages,      setMessages]      = useState<Message[]>([])
   // Já nasce carregando quando a página abre numa conversa (`?c=`).
@@ -1042,12 +1034,8 @@ export function CRMInbox({
   const midiaPedida = useRef<Set<string>>(new Set())
 
   /**
-   * Busca o link assinado de uma mensagem que chegou pelo realtime.
-   *
-   * O evento traz `media_path` e nunca `media_url` — esta última não é coluna,
-   * nasce da assinatura em `getMessages`. Vale tanto no INSERT quanto no UPDATE:
-   * o UPDATE de `is_read` chega logo depois da mensagem e é a única notícia que
-   * a tela tem daquela linha em vários casos.
+   * Busca o link assinado de uma mensagem que voltou sem ele na releitura do
+   * sinal (a assinatura em `getMessages` falhou, ou a mídia chegou depois).
    */
   // O retry chama `tentar` de novo, não o próprio callback: referenciar a
   // constante dentro do seu inicializador é o que o React Compiler recusa.
@@ -1165,130 +1153,75 @@ export function CRMInbox({
       setLoadingMsgs(false)
     })
     markConversationRead(selectedId)
+  }, [selectedId])
 
-    const supabase = createClient()
-    const channel = supabase
-      .channel(`inbox-msgs-${selectedId}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages',
-        filter: `conversation_id=eq.${selectedId}`,
-      }, (payload) => {
-        const newMsg = payload.new as Message
-        setMessages(prev => mesclarMensagem(prev, newMsg))
-        assinarMidiaSeFaltar(newMsg)
-
+  // Realtime: o sinal DESTA conversa (`c:<id>`, sem conteúdo — o Heitor, 19/11,
+  // "vai na 2"): a mensagem nova, o recibo do WhatsApp, a conversa ou a
+  // oportunidade dela. O recibo de outra conversa não acorda esta tela. A
+  // conversa aberta recarrega pelo servidor (getMessages, que aplica
+  // o alcance e assina a mídia) e se MESCLA com a tela: a otimista que ainda
+  // está "enviando" casa com a real (mesclarMensagem), e nada some.
+  const mensagensRef = useRef(messages)
+  useEffect(() => { mensagensRef.current = messages }, [messages])
+  const lendoMensagens = useRef<{ em: boolean; de_novo: boolean }>({ em: false, de_novo: false })
+  const aoSinalDaConversa = useCallback(() => {
+    const id = selecionadaRef.current
+    if (!id) return
+    if (lendoMensagens.current.em) { lendoMensagens.current.de_novo = true; return }
+    lendoMensagens.current = { em: true, de_novo: false }
+    getMessages(id)
+      .then(lidas => {
+        if (selecionadaRef.current !== id) return
+        const antes = new Set(mensagensRef.current.map(m => m.id))
+        const chegou = lidas.some(m => m.direction === 'inbound' && !antes.has(m.id))
+        // A mídia já assinada na tela não se perde se a releitura não a trouxe.
+        setMessages(prev => {
+          const porId = new Map(prev.map(m => [m.id, m]))
+          return lidas.reduce((acc, m) => mesclarMensagem(acc, { ...m, media_url: m.media_url ?? porId.get(m.id)?.media_url ?? null }), prev)
+        })
+        for (const m of lidas) assinarMidiaSeFaltar(m)
         // Quem está com a conversa ABERTA já leu. Sem isto o trigger incrementa
         // `unread_count` e a conversa fica com badge de não lida na cara de
         // quem acabou de ler a mensagem.
-        if (newMsg.direction === 'inbound') {
-          markConversationRead(selectedId)
-          setConversations(prev => prev.map(c =>
-            c.id === selectedId ? { ...c, unread_count: 0 } : c,
-          ))
+        if (chegou) {
+          markConversationRead(id)
+          setConversations(prev => prev.map(c => c.id === id ? { ...c, unread_count: 0 } : c))
         }
       })
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'messages',
-        filter: `conversation_id=eq.${selectedId}`,
-      }, (payload) => {
-        const updated = payload.new as Message
-        // ⚠️ Mesclar, nunca substituir.
-        //
-        // A linha do realtime não tem `media_url` (não é coluna) nem
-        // `sent_by_name` com o join, então trocar o objeto inteiro APAGA o que a
-        // tela já sabia. E o UPDATE mais comum é justo o `is_read: true` que o
-        // próprio inbox dispara ao receber mensagem com a conversa aberta: a
-        // mídia aparecia e sumia meio segundo depois, voltando para "[audio]".
-        setMessages(prev => prev.map(m => m.id === updated.id
-          ? { ...m, ...updated, media_url: m.media_url ?? updated.media_url ?? null }
-          : m))
-        assinarMidiaSeFaltar(updated)
+      .catch(err => console.error('[inbox] recarregar a conversa', err))
+      .finally(() => {
+        const deNovo = lendoMensagens.current.de_novo
+        lendoMensagens.current = { em: false, de_novo: false }
+        if (deNovo) aoSinalDaConversa()
       })
-      .subscribe()
-
-    return () => { supabase.removeChannel(channel) }
-  }, [selectedId, assinarMidiaSeFaltar])
+  }, [assinarMidiaSeFaltar])
+  // 300 ms juntam a mensagem e os recibos que chegam em seguida numa leitura.
+  useSinalDaConversa(selectedId, aoSinalDaConversa, 300)
 
   // Escrever a ref no efeito, e não durante o render, porque render tem de ser
   // puro — é o que o React Compiler cobra.
   useEffect(() => { conversasRef.current = conversations }, [conversations])
 
-  // Subscribe to conversation list changes (new convs from inbound, unread updates)
-  useEffect(() => {
-    const supabase = createClient()
-
-    /** Uma consulta de cada vez, por mais eventos que cheguem em rajada. */
-    let recarregando = false
-    function recarregar() {
-      if (recarregando) return
-      recarregando = true
-      recarregarListaRef.current()
-        .then(convs => {
-          if (!convs) return
-          const vieram = new Set(convs.map(c => c.id))
-          for (const id of pedidosSemResposta.current) {
-            if (vieram.has(id)) pedidosSemResposta.current.delete(id)
-          }
-        })
-        .catch(err => console.error('[inbox] recarregar conversas', err))
-        .finally(() => { recarregando = false })
-    }
-
-    /**
-     * Um evento de conversa chegou. O `destinoDoEvento` explica os três
-     * caminhos — e o do meio é o que fazia falta: a conversa só passa a
-     * pertencer à lista no UPDATE que lhe dá a primeira mensagem, não no
-     * INSERT que cria o contato.
-     */
-    function aoMudarConversa(linha: Conversation) {
-      const naLista = conversasRef.current.some(c => c.id === linha.id)
-      switch (destinoDoEvento(linha, naLista, pedidosSemResposta.current)) {
-        case 'atualizar':
-          // Reordenar aqui, e não só no servidor: a lista vem ordenada por
-          // `last_message_at`, e sem refazer a ordem a conversa que acabou de
-          // receber mensagem continuava no mesmo lugar do meio da lista.
-          setConversations(prev => ordenarPorUltimaMensagem(
-            prev.map(c => c.id === linha.id ? { ...c, ...linha } : c),
-          ))
-          return
-        case 'recarregar':
-          // Tags, dono, etapa e funil vêm de outras tabelas e não estão na
-          // linha do Realtime: só o servidor monta o card inteiro, e sem ele a
-          // conversa nova ficaria fora de qualquer filtro.
-          pedidosSemResposta.current.add(linha.id)
-          recarregar()
-          return
-        case 'ignorar':
-          return
-      }
-    }
-
-    const channel = supabase
-      .channel('inbox-conversations')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'conversations',
-      }, payload => aoMudarConversa(payload.new as Conversation))
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'conversations',
-      }, payload => aoMudarConversa(payload.new as Conversation))
-      // Sem este retorno, canal que não conecta não deixa rastro nenhum: a
-      // lista simplesmente para de atualizar e a suspeita recai sobre o banco.
-      .subscribe((status, err) => {
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.error('[inbox] canal de conversas:', status, err?.message ?? '')
-        }
+  // Realtime da lista: o sinal do inbox da rede (sem conteúdo). A lista
+  // recarrega pelo servidor — com os filtros, a busca e o tanto que já está na
+  // tela —, que monta o card inteiro (tags, dono, etapa) e aplica o alcance.
+  // A lista só se move quando muda uma conversa ou uma oportunidade da rede
+  // (o recibo do WhatsApp não). A rajada (uma campanha, várias conversas ao
+  // mesmo tempo) vira no máximo uma recarga por segundo; e uma consulta de
+  // cada vez — o que chega no meio pede mais uma volta no fim.
+  const lendoLista = useRef<{ em: boolean; de_novo: boolean }>({ em: false, de_novo: false })
+  const aoSinalDaLista = useCallback(() => {
+    if (lendoLista.current.em) { lendoLista.current.de_novo = true; return }
+    lendoLista.current = { em: true, de_novo: false }
+    recarregarListaRef.current()
+      .catch(err => console.error('[inbox] recarregar conversas', err))
+      .finally(() => {
+        const deNovo = lendoLista.current.de_novo
+        lendoLista.current = { em: false, de_novo: false }
+        if (deNovo) aoSinalDaLista()
       })
-
-    return () => { supabase.removeChannel(channel) }
   }, [])
+  useSinais(['inbox'], aoSinalDaLista, true, 1000)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })

@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { leOSinalDaRede } from './apoio/sinais'
 
 /**
  * A ficha é da REDE, também na RLS (o Heitor: "o cliente não é da unidade, o
@@ -18,8 +19,10 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  * Gerenciar) é da action.
  *
  * Provado COMO o membro (o token dele no PostgREST), numa rede `[e2e]` com
- * duas unidades: o membro de A lê e altera a ficha nascida em B; o controle
- * é a ficha de OUTRA rede, que continua invisível.
+ * duas unidades. Desde 19/11 a sessão só lê SINAIS (o Heitor, "vai na 2"):
+ * o membro de A não lê nem altera ficha nenhuma pela chave pública — a ficha
+ * nascida em B ele abre pelo servidor; o controle é a ficha de OUTRA rede,
+ * que continua invisível e intocável.
  */
 
 const marca = Date.now().toString(36)
@@ -80,10 +83,16 @@ test.afterAll(async () => {
   await alheia?.limpar()
 })
 
-test('o membro de UMA unidade lê, pela sessão, a ficha nascida na outra', async () => {
+// Desde 19/11 a sessão só lê SINAIS (o Heitor, "vai na 2"; CLAUDE.md §4): a
+// ficha não se lê pela chave pública, de unidade nenhuma — a da outra unidade
+// o membro abre pelo SERVIDOR (e2e/ficha-de-outra-unidade.spec.ts). Até ali o
+// teste provava que a RLS a deixava ler a ficha nascida na outra unidade.
+test('o membro de UMA unidade não lê, pela sessão, a ficha nascida na outra — nem nenhuma', async () => {
   const { data, error } = await comoMembro(membroDeA!).from('clients').select('id').eq('id', fichaDeB)
   expect(error).toBeNull()
-  expect(data ?? [], 'a ficha é da rede: a unidade em que nasceu não a esconde').toHaveLength(1)
+  expect(data ?? [], 'a ficha não sai pela chave pública').toHaveLength(0)
+  // O controle: o token vale e alcança a rede dele (o sinal, o que ele ainda lê).
+  expect(await leOSinalDaRede(membroDeA!.accessToken, rede!.tenantId), 'o sinal da rede').toBe(1)
 })
 
 // A sessão só LÊ a ficha (20261125500001: a ficha tem CPF e as tags da pessoa,

@@ -1,8 +1,7 @@
 import { notFound } from 'next/navigation'
 import { unidadesParaCriar } from '@/lib/unidades/da-tela'
-import { getTenantContext, assertPermission, ownerFilter, can, assertRecurso } from '@/lib/auth'
+import { getTenantContext, assertPermission, ownerFilter, can, assertRecurso, alcancaUnidade } from '@/lib/auth'
 import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
-import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getConversations, opcoesDoInbox } from '@/actions/inbox'
 import { canaisConectados } from '@/lib/channels/factory'
@@ -27,12 +26,13 @@ export default async function BranchInboxPage({
   assertRecurso(ctx, 'inbox')
   assertPermission(ctx, 'crm', 'VIEW')
 
-  const supabase = await createSupabase()
-
-  const branch = await ler(supabase
+  const branch = await ler(createAdminClient()
     .from('branches').select('id, name')
     .eq('slug', slug).eq('tenant_id', ctx.tenantId!).single(), 'buscar a unidade')
   if (!branch) notFound()
+  // A sessão só lê sinais (o Heitor, 19/11, "vai na 2"): a unidade se lê pelo
+  // servidor, e a abrangência que a RLS conferia se confere aqui.
+  if (!alcancaUnidade(ctx, branch.id as string)) notFound()
 
   // ⚠️ Sem recorte por unidade, igual ao quadro de Oportunidades: lead e
   // conversa são da REDE. Quem responde na unidade vê as mesmas conversas de
@@ -77,7 +77,11 @@ export default async function BranchInboxPage({
     // por trás: quem rola aqui é só a conversa.
     <div className="inbox-page" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <TravaRolagem />
-      <RealtimeRefresher tables={['leads', 'conversations']} />
+      {/* A lista e a conversa aberta se recarregam sozinhas (o CRMInbox assina
+          o tópico `inbox` e o sinal da conversa). A página relê as oportunidades,
+          os funis, as etapas e as tags: só quando o quadro muda, não a cada
+          mensagem da rede (19/11). */}
+      <RealtimeRefresher tables={['crm_quadro_sinais']} />
 
       <CRMInbox
         telaCheia

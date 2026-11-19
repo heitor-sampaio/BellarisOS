@@ -85,7 +85,9 @@ describe('a sessão só lê o prontuário, os procedimentos, os produtos e as au
       expect(texto, pagina).toContain("tables={['automacoes_sinais']}")
     }
     const atendimento = readFileSync(join(__dirname, '..', 'app/_shared/sessao-de-atendimento.tsx'), 'utf-8')
-    expect(atendimento).toContain("tables={['appointments', 'prontuario_sinais', 'financeiro_sinais']}")
+    // A agenda também vem por sinal desde 19/11 (o Heitor, "vai na 2": a
+    // sessão só lê sinais) — o tópico `agenda` de `public.sinais`.
+    expect(atendimento).toContain("tables={['prontuario_sinais', 'financeiro_sinais']} topicos={['agenda']}")
   })
 
   it('a função da leitura confere o cargo GRAVADO (nunca a claim role) e não abre à anon', () => {

@@ -226,6 +226,13 @@ pelo app. Até 2026-09-27 o prontuário e a fidelidade só exigiam
   `20261128100001`. A trava é `e2e_gravacoes_pela_sessao()` (política de
   escrita, tabela sem RLS, view gravável, função volátil exposta), que
   `e2e/rls-sessao-nunca-grava.spec.ts` exige vazia.
+- **A sessão só lê SINAIS** (o Heitor, 2026-11-19, "vai na 2", à proposta "a
+  sessão não lê nem grava tabela nenhuma; só escuta os sinais do tempo real").
+  Toda leitura é do servidor, pelo cliente de serviço, depois da trava
+  (permissão, escopo, abrangência), com o filtro da rede explícito; o navegador
+  só assina as tabelas `*_sinais` (sem conteúdo) e recarrega pelo servidor.
+  Tabela nova nasce sem política nenhuma. Isto substitui, para a leitura, as
+  regras por módulo abaixo (F63, "módulo com escopo não se lê pela sessão").
 - **Configuração e dado sensível: a sessão só LÊ** (F63, 2026-11-12). Cargos,
   LGPD, comissões, taxas, campanhas, estoque: o servidor grava pelo cliente de
   serviço, depois da trava; as comissões nem se leem pela sessão (a tela

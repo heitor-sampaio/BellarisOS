@@ -3,7 +3,6 @@
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { comissaoDoFormulario, gravarComissaoDoProcedimento, recusaDaComissaoDaAdmin } from '@/lib/comissoes/gravacao'
-import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { parseDinheiro, DINHEIRO_INVALIDO } from '@estetica-os/utils'
@@ -353,8 +352,7 @@ async function updateProcedureInterno(
 
   const procedureId = formData.get('_procedureId') as string
 
-  const supabase = await createSupabase()
-  const existing = await ler(supabase
+  const existing = await ler(createAdminClient()
     .from('procedures')
     .select('id, price')
     .eq('id', procedureId)

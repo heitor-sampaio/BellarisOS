@@ -65,7 +65,11 @@ export default async function AdminInboxPage({
     // por trás: quem rola aqui é só a conversa.
     <div className="inbox-page" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <TravaRolagem />
-      <RealtimeRefresher tables={['leads', 'conversations']} />
+      {/* A lista e a conversa aberta se recarregam sozinhas (o CRMInbox assina
+          o tópico `inbox` e o sinal da conversa). A página relê as oportunidades,
+          os funis, as etapas e as tags: só quando o quadro muda, não a cada
+          mensagem da rede (19/11). */}
+      <RealtimeRefresher tables={['crm_quadro_sinais']} />
 
       <CRMInbox
         telaCheia

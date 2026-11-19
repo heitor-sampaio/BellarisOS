@@ -2,8 +2,7 @@ import { notFound } from 'next/navigation'
 import { unidadesParaCriar } from '@/lib/unidades/da-tela'
 import { idOu404 } from '@/lib/id-da-rota'
 import Link from 'next/link'
-import { getTenantContext, assertPermission } from '@/lib/auth'
-import { createClient } from '@/lib/supabase/server'
+import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
 import { toggleBranchStatus } from '@/actions/branches'
 import type { ComponentProps } from 'react'
 import { BranchEditForm } from '@/components/admin/branch-edit-form'
@@ -29,9 +28,7 @@ export default async function BranchDetailPage({ params }: Props) {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
 
-  const supabase = await createClient()
-
-  const branch = await ler(supabase
+  const branch = await ler(createAdminClient()
     .from('branches')
     .select(`
       id, name, slug, document, state_registration,
@@ -47,6 +44,9 @@ export default async function BranchDetailPage({ params }: Props) {
   // para toda unidade. Ninguém aqui lia o cargo — saiu do select (2026-09-27).
 
   if (!branch) notFound()
+  // A sessão só lê sinais (o Heitor, 19/11, "vai na 2"): a unidade se lê pelo
+  // servidor, e a abrangência que a RLS conferia se confere aqui.
+  if (!alcancaUnidade(ctx, branch.id as string)) notFound()
 
   // As salas da unidade (D5, 2026-10-30): as ativas e as desativadas.
   const salas = ((await ler(createAdminClient().from('rooms').select('id, name, is_active')

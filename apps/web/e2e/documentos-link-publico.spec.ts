@@ -6,6 +6,7 @@ import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
 import { apagarDocumentosEmitidos } from './apoio/limpeza'
+import { leOSinalDaRede } from './apoio/sinais'
 
 /**
  * Termos e contratos — fase 6: o link público de assinatura
@@ -332,8 +333,10 @@ test.describe.serial('documentos: link público de assinatura', () => {
       p_doc: doc, p_tenant: rede!.tenantId, p_token_hash: sha('x'), p_expira: new Date().toISOString(), p_ator: null,
     })
     expect(error, 'a função não é da sessão').not.toBeNull()
-    // Controle: a mesma sessão lê os documentos da rede dela.
+    // Controle: o token vale (lê o sinal da rede). Desde 19/11 a sessão só lê SINAIS (o Heitor, "vai na 2"; CLAUDE.md §4):
+    // os documentos da rede dela também não saem pela sessão.
+    expect(await leOSinalDaRede(gestor!.accessToken, rede!.tenantId), 'a sessão lê o sinal da rede').toBe(1)
     const { data: docs } = await sessao.from('issued_documents').select('id').eq('id', doc)
-    expect(docs).toHaveLength(1)
+    expect(docs ?? []).toEqual([])
   })
 })

@@ -9,7 +9,7 @@ import { formatarNoFuso } from '@/lib/formatar-no-fuso'
 import { getTreatmentPlanDetails } from '@/actions/treatment-plans'
 import { getClientPackageSessions } from '@/actions/appointments'
 import { TreatmentSessionsModal } from './treatment-sessions-modal'
-import { createClient as createSupabaseClient } from '@/lib/supabase/client'
+import { useSinais } from '@/components/shared/realtime-refresher'
 import type { TreatmentFileDetails } from '@/actions/treatment-plans'
 import type { ProfileClient, ProfilePackage } from './client-profile'
 import { JanelaModal } from '@/components/shared/janela-modal'
@@ -309,20 +309,9 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
   // "Agora" para a idade, lido uma vez: o render não pode ler o relógio.
   const [agora] = useState(() => Date.now())
 
-  // Realtime: re-busca detalhes quando plano ou seus agendamentos mudam
-  useEffect(() => {
-    if (!activePackage.planId) return
-    const supabase = createSupabaseClient()
-    const planId   = activePackage.planId
-    const channel  = supabase.channel(`tfm-${planId}`)
-
-    channel
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'appointments',     filter: `treatment_plan_id=eq.${planId}` }, fetchDetails)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'treatment_plan_sessions', filter: `plan_id=eq.${planId}` }, fetchDetails)
-      .subscribe()
-
-    return () => { supabase.removeChannel(channel) }
-  }, [activePackage.planId, fetchDetails])
+  // Realtime: re-busca os detalhes (pelo servidor) quando a agenda ou os planos
+  // da rede mudam — o sinal, sem conteúdo (o Heitor, 19/11, "vai na 2").
+  useSinais(['agenda', 'planos'], fetchDetails, !!activePackage.planId)
 
   // O andamento (A22): "A começar · 0 de 2 sessões", não "FECHADO".
   const situacao = situacaoDaExecucao(details?.status ?? 'ACCEPTED', activePackage.usedSessions, activePackage.totalSessions)

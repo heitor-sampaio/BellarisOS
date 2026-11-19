@@ -284,6 +284,7 @@ export const ISOLADOS = [
   'rls-sessao-so-le-prontuario-e-automacoes.spec.ts',
   // A sessão nunca grava (o Heitor, 19/11): a trava das políticas e as 17 tabelas.
   'rls-sessao-nunca-grava.spec.ts',
+  'rls-sessao-so-le-sinais.spec.ts',
   'sessao-httponly.spec.ts',
   'suporte-entrada.spec.ts',
   'suporte-impersonar.spec.ts',

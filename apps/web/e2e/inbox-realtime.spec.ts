@@ -73,3 +73,31 @@ test('conversa nova aparece na lista sem recarregar a página', async ({ page })
   // Sem nenhum reload: o card tem de entrar sozinho.
   await expect(page.getByText(nome).first()).toBeVisible({ timeout: 45_000 })
 })
+
+/**
+ * A mensagem que chega na conversa ABERTA aparece sozinha. Desde 19/11 a tela
+ * assina o sinal DAQUELA conversa (`c:<id>`) e relê pelo servidor — o recibo
+ * de outra conversa não a acorda (ao Heitor: "o inbox que pode ter muita
+ * atualização e vai atualizar toda rede").
+ */
+test('a mensagem que chega na conversa aberta aparece sem recarregar a página', async ({ page }) => {
+  test.skip(!convId, 'depende da conversa do teste de cima')
+  const db = banco()
+  const tenant = await tenantId()
+
+  await page.goto(`/admin/inbox?c=${convId}`)
+  // Dentro da CONVERSA (as bolhas), não na lista: o cartão da lista mostra a
+  // última mensagem também, e se recarrega por outro sinal (o da lista).
+  const conversa = page.locator('.inbox-thread .bolha-linha')
+  await expect(conversa.filter({ hasText: 'Oi, vim pelo anuncio' }).first()).toBeVisible({ timeout: 30_000 })
+  await page.waitForTimeout(1500)
+
+  const texto = `Chegou agora ${Date.now()}`
+  const { error } = await db.from('messages').insert({
+    conversation_id: convId, tenant_id: tenant, direction: 'inbound', content: texto,
+    channel: 'manual', status: 'delivered', external_id: `e2e-rt-${Date.now()}-2`, is_read: false,
+  })
+  expect(error, error?.message).toBeNull()
+
+  await expect(conversa.filter({ hasText: texto }).first()).toBeVisible({ timeout: 30_000 })
+})

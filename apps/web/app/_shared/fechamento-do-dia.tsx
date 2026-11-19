@@ -90,7 +90,7 @@ export async function FechamentoDoDia({ ctx, unidades, unidadeId, diaPedido, bas
   const recebe = podeReceber(ctx)
   return (
     <>
-      <RealtimeRefresher tables={['financeiro_sinais', 'appointments']} />
+      <RealtimeRefresher tables={['financeiro_sinais']} topicos={['agenda']} />
       <FusoProvider fuso={fuso}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <CabecalhoDoPdv basePath={basePath} unidadeId={unidadeId} naRede={unidades.length > 1} vista="fechar"

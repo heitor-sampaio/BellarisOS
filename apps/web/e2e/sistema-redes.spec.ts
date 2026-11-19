@@ -5,6 +5,7 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { criarAtendente, plataformaNoAr, urlDaPlataforma, type AtendenteDeTeste } from './apoio/plataforma'
 import { chamarAcao } from './apoio/acao-direta'
 import { apagarRedeCriada } from './apoio/rede-criada'
+import { leOSinalDaRede } from './apoio/sinais'
 
 /**
  * As REDES no sistema (o app do host admin.*, 2026-10-06) e o portão da rede bloqueada.
@@ -174,14 +175,9 @@ test.describe.serial('redes no sistema', () => {
         [{ userId: gestor.userId, horas: 24 }]).catch(() => null)
     })
     expect((await db().from('support_grants').select('id').eq('target_user_id', gestor.userId)).data ?? []).toHaveLength(0)
-    // ...e o PostgREST com o token do membro não alcança mais a rede.
-    const rest = async () => {
-      const r = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/tenants?select=id&id=eq.${outra.tenantId}`, {
-        headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, Authorization: `Bearer ${gestor.accessToken}` },
-      })
-      const corpo = await r.json().catch(() => [])
-      return Array.isArray(corpo) ? corpo.length : -1
-    }
+    // ...e o PostgREST com o token do membro não alcança mais a rede. Desde 19/11 a sessão só lê SINAIS (o Heitor, "vai na 2"; CLAUDE.md §4):
+    // o alcance se prova pelo sinal da rede (até ali, ler a própria rede).
+    const rest = () => leOSinalDaRede(gestor.accessToken, outra.tenantId)
     expect(await rest(), 'rede bloqueada: o token não lê nada').toBe(0)
 
     await comSessao(browser, admin.estado, async p => {

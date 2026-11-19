@@ -7,6 +7,7 @@ import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { capturarAcao, reenviarAcao } from './apoio/acao'
 import { chamarAcao } from './apoio/acao-direta'
+import { leOSinalDaRede } from './apoio/sinais'
 import QRCode from 'qrcode'
 
 /**
@@ -326,14 +327,17 @@ test.describe.serial('documentos: modelos da rede', () => {
     expect(outraRede.error?.code).toBe('23503')
   })
 
-  test('RLS: o membro lê os modelos da própria rede e nenhum da outra', async () => {
+  test('RLS: o membro não lê os modelos da outra rede (nem os da própria: só o servidor)', async () => {
     const sessao = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
       auth: { persistSession: false },
       global: { headers: { Authorization: `Bearer ${gestor!.accessToken}` } },
     })
+    // O controle: o token vale (lê o sinal da rede). Desde 19/11 a sessão só lê SINAIS (o Heitor, "vai na 2"; CLAUDE.md §4):
+    // os modelos da própria rede também não saem pela sessão.
+    expect(await leOSinalDaRede(gestor!.accessToken, rede!.tenantId), 'o controle: o sinal da própria rede').toBe(1)
     const proprios = await sessao.from('document_templates').select('id').eq('tenant_id', rede!.tenantId)
     expect(proprios.error).toBeNull()
-    expect(proprios.data!.length, 'o controle: a própria rede aparece').toBeGreaterThan(0)
+    expect(proprios.data ?? [], 'nem os da própria rede saem pela sessão').toEqual([])
     const alheios = await sessao.from('document_templates').select('id').eq('id', termoAlheio!)
     expect(alheios.data ?? []).toEqual([])
     const versoesAlheias = await sessao.from('document_template_versions').select('id').eq('template_id', termoAlheio!)

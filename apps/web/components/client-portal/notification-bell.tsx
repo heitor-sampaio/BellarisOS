@@ -3,7 +3,7 @@
 import { useState, useTransition, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Bell, X, BellOff } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
+import { useAvisosNovos } from '@/components/shared/use-avisos-novos'
 import { getClientNotifications, markAllNotificationsReceived, markNotificationRead } from '@/actions/notifications'
 import { saveWebPushSubscription, savePushToken } from '@/actions/push-subscriptions'
 import type { ClientNotification } from '@/actions/notifications'
@@ -108,7 +108,7 @@ interface Props {
   clientId: string
 }
 
-export function NotificationBell({ initialUnread, clientId }: Props) {
+export function NotificationBell({ initialUnread }: Props) {
   const [open,          setOpen]          = useState(false)
   const [notifications, setNotifications] = useState<ClientNotification[] | null>(null)
   const [unread,        setUnread]        = useState(initialUnread)
@@ -140,51 +140,24 @@ export function NotificationBell({ initialUnread, clientId }: Props) {
     return () => { cleanup?.() }
   }, [router])
 
-  // Realtime: set auth token and subscribe to new notifications.
-  // createBrowserClient is a singleton — supabase.channel() returns any existing
-  // channel with the same topic. Since removeChannel() is async, the stale channel
-  // from Effect 1 (React StrictMode double-invoke) is still in the registry when
-  // Effect 2 runs, causing "cannot add callbacks after subscribe()".
-  // Fix: unique per-invocation suffix so channel() always creates a fresh instance.
-  useEffect(() => {
-    const supabase = createClient()
-    let active = true
-    // Generated inside the effect (not a ref) so each invocation gets a different name
-    const suffix = Math.random().toString(36).slice(2)
-
-    const channel = supabase
-      .channel(`notif-bell-${clientId}-${suffix}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'client_notifications', filter: `client_id=eq.${clientId}` },
-        (payload) => {
-          if (!active) return
-          const n = payload.new as ClientNotification
-          setUnread(prev => prev + 1)
-          setNotifications(prev => prev ? [n, ...prev] : null)
-          // No nativo (Capacitor) o FCM já dispara a notificação nativa via
-          // pushNotificationReceived → LocalNotifications. Aqui só mostramos a
-          // Web Notification no BROWSER (onde não há FCM) — senão duplica.
-          const isNative = typeof window !== 'undefined'
-            && !!(window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } })
-              .Capacitor?.isNativePlatform?.()
-          if (!isNative && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-            const webNotif = new Notification(n.title, { body: n.body ?? '', icon: '/icon-192.png' })
-            const link = (n.data as { link?: string } | null)?.link
-            if (link) webNotif.onclick = () => { window.focus(); router.push(link) }
-          }
-        },
-      )
-
-    // O token da pessoa vem do servidor (lib/supabase/client.ts): o cliente o
-    // pede sozinho antes de entrar no canal.
-    channel.subscribe()
-
-    return () => {
-      active = false
-      supabase.removeChannel(channel)
+  // Realtime: o sinal dos avisos DELA (sem conteúdo); o aviso vem do servidor
+  // (getClientNotifications, a ficha da rede do endereço) — o que chega das
+  // outras fichas do mesmo login não entra.
+  useAvisosNovos(getClientNotifications, (n: ClientNotification) => {
+    setUnread(prev => prev + 1)
+    setNotifications(prev => prev ? [n, ...prev.filter(p => p.id !== n.id)] : null)
+    // No nativo (Capacitor) o FCM já dispara a notificação nativa via
+    // pushNotificationReceived → LocalNotifications. Aqui só mostramos a
+    // Web Notification no BROWSER (onde não há FCM) — senão duplica.
+    const isNative = typeof window !== 'undefined'
+      && !!(window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } })
+        .Capacitor?.isNativePlatform?.()
+    if (!isNative && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      const webNotif = new Notification(n.title, { body: n.body ?? '', icon: '/icon-192.png' })
+      const link = (n.data as { link?: string } | null)?.link
+      if (link) webNotif.onclick = () => { window.focus(); router.push(link) }
     }
-  }, [clientId, router])
+  })
 
   // Registra o token de push na montagem — silencioso se a permissão já foi
   // concedida. Cobre o caso da migração: quem já autorizou re-registra o token

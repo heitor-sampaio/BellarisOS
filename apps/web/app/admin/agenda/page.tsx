@@ -201,7 +201,7 @@ export default async function AdminAgendaPage({
 
   return (
     <>
-      <RealtimeRefresher tables={['appointments']} />
+      <RealtimeRefresher topicos={['agenda']} />
       <AdminAgendaView
         view={view}
         selectedDate={selectedStr}

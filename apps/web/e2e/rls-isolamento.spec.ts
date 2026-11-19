@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { banco, tenantId, PREFIXO } from './apoio/banco'
 import { membroComEscopoProprio, type MembroDeTeste } from './apoio/sessao'
+import { leOSinalDaRede } from './apoio/sinais'
 
 /**
  * A RLS separa uma rede da outra — provado COMO um funcionário, não como o
@@ -18,10 +19,11 @@ import { membroComEscopoProprio, type MembroDeTeste } from './apoio/sessao'
  * ficha, foto, termo e conta de fidelidade. Um membro da rede REAL tenta ler,
  * alterar e apagar tudo isso com o próprio token.
  *
- * O controle é o mesmo membro lendo a cliente e a fidelidade `[e2e]` da PRÓPRIA
- * rede: sem ele, "não enxergou a outra" poderia ser só uma sessão que não
- * enxerga nada. (O prontuário, desde 18/11, não se lê pela sessão nem na
- * própria rede.)
+ * O controle é o mesmo membro lendo o SINAL da PRÓPRIA rede: sem ele, "não
+ * enxergou a outra" poderia ser só uma sessão que não enxerga nada. Desde
+ * 19/11 a sessão só lê sinais (o Heitor, "vai na 2"; CLAUDE.md §4): a
+ * cliente, a fidelidade e o prontuário da própria rede também não saem pela
+ * chave pública (até ali o controle era ler a cliente e a fidelidade).
  */
 
 const marca = Date.now().toString(36)
@@ -175,18 +177,14 @@ test.describe.serial('RLS: uma rede não enxerga a outra', () => {
   // (CLAUDE.md §4; a prova é rls-sessao-so-le-prontuario-e-automacoes). O
   // controle de "a sessão alcança algo" fica na cliente e na fidelidade da
   // PRÓPRIA rede, que a sessão lê; e o clínico da própria rede, nada.
-  test('o controle: o membro lê a cliente e a fidelidade da PRÓPRIA rede — e o prontuário nem da própria', async () => {
+  test('o controle: o membro lê o sinal da PRÓPRIA rede — e nada da própria rede pela chave pública', async () => {
     const api = comoMembro(membro!)
-    const doProntuario = new Set(['medical_records', 'medical_record_entries', 'record_photos', 'anamnesis_data', 'consent_terms'])
+    expect(await leOSinalDaRede(membro!.accessToken, await tenantId()), 'o sinal da própria rede — senão a sessão não prova nada').toBe(1)
     const lidas: [string, string][] = [['clients', proprio!.clientId], ...alvos(proprio!).map(([t, id]) => [t, id] as [string, string])]
     for (const [tabela, id] of lidas) {
       const { data, error } = await api.from(tabela).select('id').eq('id', id)
       expect(error, `ler ${tabela} da própria rede`).toBeNull()
-      if (doProntuario.has(tabela)) {
-        expect(data ?? [], `${tabela}: o prontuário não se lê pela sessão, nem o da própria rede`).toHaveLength(0)
-      } else {
-        expect(data?.length, `${tabela}: a própria rede tem de aparecer — senão a sessão não prova nada`).toBe(1)
-      }
+      expect(data ?? [], `${tabela}: nem a própria rede sai pela sessão`).toHaveLength(0)
     }
   })
 

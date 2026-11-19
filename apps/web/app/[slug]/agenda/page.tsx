@@ -1,6 +1,5 @@
 import { notFound } from 'next/navigation'
 import { getTenantContext, assertPermission, isOwnScope, can, alcancaUnidade, podeReceber } from '@/lib/auth'
-import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { normalizarHorario, janelaDaGrade, type Horario, type BlocoOcupado } from '@/lib/agenda/horario'
 import { ler, lerTodas } from '@/lib/db'
@@ -44,10 +43,11 @@ export default async function AgendaPage({ params, searchParams }: {
   const canManageAgenda  = ctx.permissions.agenda === 'MANAGE'
   const professionalOnly = isOwnScope(ctx, 'agenda')
 
-  const supabase = await createSupabase()
-
   const branch = await getCachedBranchBySlug(slug, ctx.tenantId!)
   if (!branch) notFound()
+  // A sessão só lê sinais (o Heitor, 19/11, "vai na 2"): a unidade se lê pelo
+  // servidor, e a abrangência que a RLS conferia se confere aqui.
+  if (!alcancaUnidade(ctx, branch.id as string)) notFound()
 
   const branchId = branch.id
 
@@ -80,7 +80,7 @@ export default async function AgendaPage({ params, searchParams }: {
   // páginas se sobrepõem. As tags da cliente (`clients(tags)`) vêm só para o
   // filtro de tag, na consulta; o nome dela segue saindo de nomesDosRegistros.
   const paginaDaAgenda = (de: number, ate: number) => {
-    let q = supabase
+    let q = createAdminClient()
       .from('appointments')
       .select(`
         id, scheduled_at, duration_min, status, price, professional_id, client_id, room_id, arrived_at, completed_at, procedure_id,
@@ -315,7 +315,7 @@ export default async function AgendaPage({ params, searchParams }: {
 
   return (
     <div>
-      <RealtimeRefresher tables={['appointments']} />
+      <RealtimeRefresher topicos={['agenda']} />
       {(abertos.abertos.total > 0 || abertos.semChegada.total > 0) && <div style={{ marginBottom: 16 }}>{avisoDosAbertos}</div>}
       {eventosDeFora.length > 0 && (
         <div style={{ marginBottom: 16 }}>

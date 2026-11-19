@@ -172,7 +172,7 @@ export default async function BranchStockPage({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* C26: todo saldo muda por um movimento — assinar o saldo e o cadastro
           recarregava a tela três vezes a cada entrada. */}
-      <RealtimeRefresher tables={['stock_movements']} />
+      <RealtimeRefresher topicos={['estoque']} />
 
       {/* Header */}
       {/* Sem `flexWrap`, os botões espremiam o título: no celular o subtítulo

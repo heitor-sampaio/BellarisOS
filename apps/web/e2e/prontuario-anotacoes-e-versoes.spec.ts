@@ -4,6 +4,7 @@ import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
+import { leOSinalDaRede } from './apoio/sinais'
 
 /**
  * Bloco Prontuário do plano de adaptação (a revisão do Heitor, 2026-11-13:
@@ -219,9 +220,9 @@ test.describe.serial('PR2b: a correção guarda a versão de antes', () => {
       tenant_id: rede!.tenantId, client_id: cliente, appointment_id: atendimento, texto: 'pela chave', autor_nome: 'x',
     })
     expect(ins.error, 'a sessão não grava').not.toBeNull()
-    // Controle: a mesma sessão lê o que pode (o atendimento da própria rede).
-    const controle = await sessao.from('appointments').select('id').eq('id', atendimento)
-    expect(controle.data?.length).toBe(1)
+    // Controle: o token vale (lê o sinal da rede). Desde 19/11 a sessão só lê SINAIS (o Heitor, "vai na 2"; CLAUDE.md §4):
+    // até ali o controle era ler o atendimento da própria rede.
+    expect(await leOSinalDaRede(dona!.accessToken, rede!.tenantId), 'a sessão lê o sinal da rede').toBe(1)
   })
 })
 

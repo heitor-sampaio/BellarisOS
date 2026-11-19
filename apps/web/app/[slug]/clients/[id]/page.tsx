@@ -530,7 +530,7 @@ export default async function ClientProfilePage({
 
   return (
     <>
-    <RealtimeRefresher tables={['appointments', 'client_packages']} />
+    <RealtimeRefresher topicos={['agenda', 'pacotes']} />
     <ClientProfile
       client={client}
       pedidoLgpd={pedidoLgpd}

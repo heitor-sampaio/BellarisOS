@@ -5,6 +5,7 @@ import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
 import { apagarDocumentosEmitidos } from './apoio/limpeza'
+import { leOSinalDaRede } from './apoio/sinais'
 
 /**
  * Termos e contratos — fase 2: o documento nasce do agendamento, trava o
@@ -327,12 +328,14 @@ test.describe.serial('documentos: emissão pelo atendimento e assinatura na unid
     })
     expect((await documentos({ id: docAlheio!.id }))[0]!.status).not.toBe('ASSINADO')
 
-    // RLS: o membro lê os documentos da própria rede e nenhum da outra.
+    // RLS: o membro não lê os documentos da outra rede. Desde 19/11 a sessão só lê SINAIS (o Heitor, "vai na 2"; CLAUDE.md §4):
+    // nem os da própria — o controle é o token ler o sinal da rede.
     const sessao = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
       auth: { persistSession: false },
       global: { headers: { Authorization: `Bearer ${gestor!.accessToken}` } },
     })
-    expect((await sessao.from('issued_documents').select('id').eq('client_id', cliente)).data!.length).toBeGreaterThan(0)
+    expect(await leOSinalDaRede(gestor!.accessToken, rede!.tenantId), 'a sessão lê o sinal da rede').toBe(1)
+    expect((await sessao.from('issued_documents').select('id').eq('client_id', cliente)).data ?? [], 'nem os da própria rede saem pela sessão').toEqual([])
     expect((await sessao.from('issued_documents').select('id').eq('id', docAlheio!.id)).data ?? []).toEqual([])
     const assinar = await sessao.rpc('documento_assinar', {
       p_doc: docAlheio!.id, p_tenant: alheia!.tenantId, p_canal: 'CLINICA', p_identidade: 'PRESENCIAL', p_hash_exibido: 'x',

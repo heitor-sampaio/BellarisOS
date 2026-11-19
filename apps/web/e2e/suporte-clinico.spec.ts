@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test'
 import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { leOSinalDaRede } from './apoio/sinais'
 import { criarAtendente, plataformaNoAr, type AtendenteDeTeste } from './apoio/plataforma'
 import { chamarAcao } from './apoio/acao-direta'
 import {
@@ -86,8 +87,9 @@ test.describe.serial('suporte: dado clínico', () => {
 
       const token = (await sessaoDoNavegador(sup.ctx)).access_token
       expect(await rest(token, `medical_records?select=id&client_id=eq.${clienteComFicha}`)).toHaveLength(0)
-      // O resto da rede ele alcança — a trava é só do clínico.
-      expect(await rest(token, `clients?select=id&id=eq.${clienteComFicha}`)).toHaveLength(1)
+      // A rede ele alcança — a trava é só do clínico. Desde 19/11 a sessão só
+      // lê SINAIS (o Heitor, "vai na 2"): o alcance se prova pelo sinal da rede.
+      expect(await leOSinalDaRede(token, outra!.tenantId), 'o token do suporte lê o sinal da rede').toBe(1)
       const gravar = await restBruto(token, 'POST', 'medical_records', { client_id: clienteSemFicha, general_anamnesis: { x: 1 } })
       expect(gravar.status, 'gravar prontuário é recusado').toBeGreaterThanOrEqual(400)
       const alterar = await restBruto(token, 'PATCH', `medical_records?client_id=eq.${clienteComFicha}`, { general_anamnesis: { x: 2 } })

@@ -1,9 +1,8 @@
 import { cargosAcimaDoMeu } from '@/lib/equipe/cargo-acima'
 import { unidadesParaCriar } from '@/lib/unidades/da-tela'
-import { getTenantContext, assertPermission, can, temRecurso } from '@/lib/auth'
+import { getTenantContext, assertPermission, can, temRecurso, unidadesDoContexto } from '@/lib/auth'
 import { contagemDeMembros } from '@/lib/equipe/contagem'
 import { DesativarMembro } from '@/components/admin/desativar-membro'
-import { createClient } from '@/lib/supabase/server'
 import { ComissaoDoMembro } from '@/components/admin/comissao-do-membro'
 import { regrasDaRede, procedimentosParaComissao, procedimentosComComissaoGeral } from '@/lib/comissoes/leitura'
 import { cargosQueVendem, cargosQueVeemAsComissoes } from '@/lib/vendas/equipe-da-venda'
@@ -48,14 +47,17 @@ export default async function AdminTeamPage({
 
   const { q = '', branch = '', role = '', status = '' } = await searchParams
 
-  const supabase = await createClient()
+  const admin = createAdminClient()
+  // A sessão só lê sinais (o Heitor, 19/11, "vai na 2"): a equipe se lê pelo
+  // servidor, e a abrangência que a RLS de `users` aplicava vai na consulta.
+  const minhas = unidadesDoContexto(ctx)
 
   // Dados para os filtros + lista de membros em paralelo
   const [branches, tenantRoles, membersResult] = await Promise.all([
     // Onde a pessoa entra e atende: as unidades ATIVAS (lib/unidades/da-tela).
     unidadesParaCriar<{ horario: unknown }>(ctx.tenantId!, 'horario'),
 
-    ler(supabase
+    ler(admin
       .from('tenant_roles')
       .select('id, key, label, is_system')
       .eq('tenant_id', ctx.tenantId!)
@@ -63,10 +65,11 @@ export default async function AdminTeamPage({
       .order('label'), 'carregar os cargos'),
 
     ler((() => {
-      let query = supabase
+      let query = admin
         .from('users')
         .select('id, name, email, role_id, is_active, branch_id, outras_unidades, provides_services, atende_em, horario, comissao_venda_pct, registro_conselho, branches(name)')
         .eq('tenant_id', ctx.tenantId!)
+      if (minhas) query = query.or(`branch_id.in.(${minhas.join(',')}),outras_unidades.ov.{${minhas.join(',')}}`)
 
       // A unidade do filtro: a principal ou uma das outras (EQ1a). Só um uuid entra no `or`.
       if (/^[0-9a-f-]{36}$/i.test(branch)) query = query.or(`branch_id.eq.${branch},outras_unidades.cs.{${branch}}`)
@@ -144,7 +147,7 @@ export default async function AdminTeamPage({
 
   return (
     <div>
-      <RealtimeRefresher tables={['users']} />
+      <RealtimeRefresher topicos={['equipe']} />
       {/* Header */}
       {/* `flexWrap` para o botão de adicionar descer em vez de espremer o
           título quando a largura não dá para os dois lado a lado. */}

@@ -17,7 +17,7 @@ import {
   salasParaAgendar,
 } from '@/actions/appointments'
 import type { SalaParaAgendar } from '@/lib/appointments/salas'
-import { createClient as createSupabaseClient } from '@/lib/supabase/client'
+import { useSinais } from '@/components/shared/realtime-refresher'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { GradeDeHorarios } from '@/components/shared/grade-de-horarios'
 import type { Horario } from '@/lib/agenda/horario'
@@ -376,32 +376,9 @@ export function TreatmentSessionsModal({
     return () => { vivo = false }
   }, [buscarSessoes])
 
-  // Realtime: re-carrega sessões quando agendamentos ou plano mudarem
-  useEffect(() => {
-    const supabase = createSupabaseClient()
-    const channel  = supabase.channel(`tsm-${planId ?? clientPackageId}`)
-
-    if (planId) {
-      channel.on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'appointments', filter: `treatment_plan_id=eq.${planId}` },
-        () => load(),
-      )
-      // `treatment_plans` não chega pelo Realtime: a sessão não lê planos
-      // (têm a anotação clínica do profissional) — é tudo pelo servidor.
-    }
-
-    if (clientPackageId) {
-      channel.on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'package_sessions', filter: `client_package_id=eq.${clientPackageId}` },
-        () => load(),
-      )
-    }
-
-    channel.subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [planId, clientPackageId, load])
+  // Realtime: re-carrega as sessões (pelo servidor) quando a agenda ou os
+  // pacotes da rede mudam — o sinal, sem conteúdo (o Heitor, 19/11, "vai na 2").
+  useSinais([...(planId ? ['agenda' as const] : []), ...(clientPackageId ? ['pacotes' as const] : [])], load, !!(planId || clientPackageId))
 
   const completedCount = sessions.filter(s => s.status === 'USED' || s.status === 'COMPLETED').length
   const pct = totalSessions > 0 ? Math.round((completedCount / totalSessions) * 100) : 0

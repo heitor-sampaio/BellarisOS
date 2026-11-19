@@ -21,9 +21,11 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  * "permission denied for function clientes_do_login" — e a conversa nova do
  * `inbox-realtime` chegou 38 s depois.
  *
- * O teste fala com o Realtime como um anônimo E como um membro da rede, os
- * dois inscritos em `appointments`, e grava um agendamento: o membro tem de
- * recebê-lo.
+ * O teste fala com o Realtime como um anônimo E como um membro da rede, e
+ * grava um agendamento: o membro tem de receber o SINAL da agenda da rede.
+ * (Até 19/11 o membro assinava `appointments` e recebia a linha; desde o "vai
+ * na 2" do Heitor a sessão só lê sinais — CLAUDE.md §4 —, e o navegador assina
+ * `sinais`, tópico `agenda`.)
  */
 const URL_ = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -75,12 +77,12 @@ test('uma aba sem sessão inscrita no tempo real não apaga o evento de quem est
   await inscrito(anonimo.channel(`anon-${marca}`)
     .on('postgres_changes', { event: '*', schema: 'public' }, () => {}))
 
-  // 2. A recepção logada, inscrita na agenda da unidade dela.
+  // 2. A recepção logada, inscrita no sinal da agenda (o que a tela assina).
   const recebidos: string[] = []
   const logado = clienteDoRealtime(membro!.accessToken)
   await inscrito(logado.channel(`membro-${marca}`)
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'appointments', filter: `branch_id=eq.${rede!.branchId}` },
-      p => { recebidos.push((p.new as { id: string }).id) }))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'sinais', filter: 'topico=eq.agenda' },
+      p => { recebidos.push((p.new as { tenant_id: string }).tenant_id) }))
 
   // 3. Um agendamento novo na unidade.
   const cliente = await rede!.criarCliente('Tempo real')
@@ -91,6 +93,7 @@ test('uma aba sem sessão inscrita no tempo real não apaga o evento de quem est
   }).select('id').single<{ id: string }>()
   expect(error, 'agendar').toBeNull()
 
-  await expect.poll(() => recebidos, { timeout: 30_000, message: 'a recepção logada recebeu o agendamento novo' })
-    .toContain(data!.id)
+  expect(data!.id).toBeTruthy()
+  await expect.poll(() => recebidos, { timeout: 30_000, message: 'a recepção logada recebeu o sinal do agendamento novo' })
+    .toContain(rede!.tenantId)
 })

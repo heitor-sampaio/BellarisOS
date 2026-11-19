@@ -702,9 +702,7 @@ export default async function AdminDashboardPage({
 
   return (
     <>
-      <RealtimeRefresher
-        tables={['appointments', 'financeiro_sinais', 'branch_product_stock']}
-      />
+      <RealtimeRefresher tables={['financeiro_sinais']} topicos={['agenda', 'estoque']} />
       <AdminDashboardView
         permissions={ctx.permissions}
         quadrosDeClientes={quadrosDeClientes}

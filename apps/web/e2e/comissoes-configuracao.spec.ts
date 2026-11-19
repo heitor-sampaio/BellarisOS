@@ -5,6 +5,7 @@ import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
 import { taxasDaPrimeira, taxaDoPix } from './apoio/maquininha'
+import { leOSinalDaRede } from './apoio/sinais'
 
 /**
  * Comissões, fase 1 (2026-09-30): Configurações → Comissões (como a comissão
@@ -226,11 +227,10 @@ test.describe.serial('comissões — configuração e regras', () => {
       auth: { persistSession: false },
       global: { headers: { Authorization: `Bearer ${gestor!.accessToken}` } },
     })
-    // Controle: a sessão alcança a própria rede (lê os procedimentos). As
-    // regras ela não lê mais desde a F63 — só o servidor (rls-sessao-so-le).
-    const { data: lidas, error: eLer } = await api.from('procedures').select('id').eq('id', rede!.procedureId)
-    expect(eLer).toBeNull()
-    expect(lidas).toHaveLength(1)
+    // Controle: a sessão alcança a própria rede. Desde 19/11 a sessão só lê SINAIS (o Heitor, "vai na 2"; CLAUDE.md §4):
+    // o controle é ler o sinal da rede (até ali, ler os procedimentos). As
+    // regras ela não lê desde a F63 — só o servidor (rls-sessao-so-le).
+    expect(await leOSinalDaRede(gestor!.accessToken, rede!.tenantId), 'a sessão lê o sinal da rede').toBe(1)
 
     const ins = await api.from('commission_rules').insert({
       tenant_id: rede!.tenantId, professional_id: gestor!.userId, procedure_id: null, type: 'PERCENTAGE', value: 90, is_active: true,

@@ -1,7 +1,6 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertPermission, can } from '@/lib/auth'
+import { getTenantContext, assertPermission, can, alcancaUnidade } from '@/lib/auth'
 import { CatalogoDeProcedimentos } from '@/app/_shared/catalogo-de-procedimentos'
-import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ProceduresClient } from '@/components/branch/procedures-client'
 import type { ProcedureItem } from '@/components/branch/procedures-client'
@@ -22,16 +21,18 @@ export default async function BranchProceduresPage({
   const ctx      = await getTenantContext()
   assertPermission(ctx, 'procedures', 'VIEW')
 
-  const supabase = await createSupabase()
   const admin    = createAdminClient()
 
-  const branch = await ler(supabase
+  const branch = await ler(createAdminClient()
     .from('branches')
     .select('id, name')
     .eq('slug', slug)
     .eq('tenant_id', ctx.tenantId!)
     .single(), 'buscar a unidade')
   if (!branch) notFound()
+  // A sessão só lê sinais (o Heitor, 19/11, "vai na 2"): a unidade se lê pelo
+  // servidor, e a abrangência que a RLS conferia se confere aqui.
+  if (!alcancaUnidade(ctx, branch.id as string)) notFound()
   // PR1/PR6: Procedimentos em Gerenciar cuida do catálogo daqui — sem ir à rede.
   if (can(ctx, 'procedures', 'MANAGE')) return <CatalogoDeProcedimentos termo={busca} />
 
@@ -96,7 +97,7 @@ export default async function BranchProceduresPage({
   // Aqui chega quem só vê: a consulta, com o preço desta unidade.
   return (
     <>
-      <RealtimeRefresher tables={['procedures']} />
+      <RealtimeRefresher topicos={['procedimentos']} />
       <ProceduresClient
         procedures={items}
         categories={categoriesOrdered}

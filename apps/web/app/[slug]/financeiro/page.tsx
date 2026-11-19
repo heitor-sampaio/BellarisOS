@@ -3,12 +3,11 @@ import { maquininhaDoRotulo } from '@/lib/financeiro/formas'
 import { notaDoEstornoParcial, notaDoUsoDeCredito, type LancamentoParaNota } from '@/lib/financeiro/notas-do-lancamento'
 import { notFound, redirect } from 'next/navigation'
 import { comAviso } from '@/lib/aviso-da-url'
-import { getTenantContext, assertPermission, assertUnidade, ownerFilter, temRecurso } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertUnidade, ownerFilter, temRecurso, alcancaUnidade } from '@/lib/auth'
 import { podeDarBaixa } from '@/lib/financeiro/so-os-meus'
 import { abaDoFinanceiro } from '@/lib/financeiro/abas'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { recorteDosModulos } from '@/lib/metrics/escopo'
-import { createClient as createSupabase } from '@/lib/supabase/server'
 
 import type { ComponentProps } from 'react'
 import { FinancialHub } from '@/components/branch/financial-hub'
@@ -79,12 +78,13 @@ export default async function FinancialPage({
   // Os links antigos (`?aberto=todos|vencidas|a-pagar`) levam à aba nova (FI1).
   if (pedida.destino) redirect(`/${slug}/financeiro${pedida.destino}`)
 
-  const supabase = await createSupabase()
-
-  const branch = await ler(supabase
+  const branch = await ler(createAdminClient()
     .from('branches').select('id, name')
     .eq('slug', slug).eq('tenant_id', ctx.tenantId!).single(), 'buscar a unidade')
   if (!branch) notFound()
+  // A sessão só lê sinais (o Heitor, 19/11, "vai na 2"): a unidade se lê pelo
+  // servidor, e a abrangência que a RLS conferia se confere aqui.
+  if (!alcancaUnidade(ctx, branch.id as string)) notFound()
   // F75: os lançamentos se leem pelo SERVIDOR (a sessão não lê
   // financial_transactions — a política dava o caixa da unidade a todo membro,
   // sem o módulo). Daí o alcance conferido aqui, não pela RLS.

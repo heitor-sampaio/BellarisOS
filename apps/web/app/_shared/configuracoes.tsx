@@ -2,7 +2,6 @@ import { getTenantContext, can, temRecurso } from '@/lib/auth'
 import { lerRecursos, limiteDe, modulosForaDoPlano } from '@estetica-os/nucleo/lib/planos/recursos'
 import { usoDoCopilot } from '@estetica-os/nucleo/lib/planos/uso-do-copilot'
 import { copilotNoPlano } from '@/lib/copilot/disponivel'
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { RolesEditor } from '@/components/admin/roles-editor'
 import type { AppModule, PermissionLevel, PermissionScope, ReportTab } from '@estetica-os/types'
@@ -189,7 +188,7 @@ export async function Configuracoes({
   // Desde 18/11 quem muda é só a Admin da rede ("só pela conta admin").
   const quemMuda = daRedeToda ? await adminsAtivasDaRede(ctx.tenantId!) : []
 
-  const supabase = await createClient()
+  // A sessão só lê sinais (o Heitor, 19/11, "vai na 2"): tudo pelo servidor.
   const admin    = createAdminClient()
 
   // Cada bloco só é buscado quando a aba correspondente está aberta: as demais
@@ -215,13 +214,13 @@ export async function Configuracoes({
     // Matriz e abas de relatório: uma falha aqui mostraria o cargo SEM
     // permissão nenhuma, e salvar gravaria isso por cima do que existe.
     wantsRoles
-      ? ler(supabase
+      ? ler(admin
           .from('role_permissions')
           .select('role_id, module, level, scope')
           .eq('tenant_id', ctx.tenantId!), 'carregar as permissões dos cargos')
       : [],
     wantsRoles
-      ? ler(supabase
+      ? ler(admin
           .from('role_report_tabs')
           .select('role_id, tab')
           .eq('tenant_id', ctx.tenantId!), 'carregar as abas de relatório dos cargos')

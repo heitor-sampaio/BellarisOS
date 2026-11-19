@@ -89,7 +89,7 @@ export function NotificationCampaignsList({ campaigns, totalSent, activeCount, p
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <RealtimeRefresher tables={['notification_campaigns']} />
+      <RealtimeRefresher topicos={['campanhas']} />
 
       {/* -- KPI strip -------------------------------------------- */}
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>

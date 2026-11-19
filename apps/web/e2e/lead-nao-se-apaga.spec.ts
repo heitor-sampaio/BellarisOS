@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { leOSinalDaRede } from './apoio/sinais'
 
 /**
  * Oportunidade não se apaga (decisão do Heitor, 2026-09-28).
@@ -59,7 +60,7 @@ function comoMembro(): SupabaseClient {
   })
 }
 
-test('o membro lê o lead e o histórico, mas não apaga nenhum dos dois', async () => {
+test('o membro não apaga o lead nem o histórico pela chave pública', async () => {
   const sessao = comoMembro()
 
   const { data: apagados } = await sessao.from('leads').delete().eq('id', lead!).select('id')
@@ -71,8 +72,11 @@ test('o membro lê o lead e o histórico, mas não apaga nenhum dos dois', async
   const { count: restaEv }   = await db().from('lead_events').select('id', { count: 'exact', head: true }).eq('lead_id', lead!)
   expect([restaLead, restaEv]).toEqual([1, 1])
 
-  // Controle: a mesma sessão alcança os dois.
+  // Controle: o token vale (lê o sinal da rede). Desde 19/11 a sessão só lê SINAIS (o Heitor, "vai na 2"; CLAUDE.md §4):
+  // o lead e o histórico também não se leem pela sessão (até ali o controle
+  // era lê-los).
+  expect(await leOSinalDaRede(membro!.accessToken, outra!.tenantId), 'a sessão lê o sinal da rede').toBe(1)
   const { data: lido } = await sessao.from('leads').select('id').eq('id', lead!)
   const { data: hist } = await sessao.from('lead_events').select('id').eq('lead_id', lead!)
-  expect([lido?.length, hist?.length]).toEqual([1, 1])
+  expect([lido?.length ?? 0, hist?.length ?? 0]).toEqual([0, 0])
 })

@@ -130,14 +130,17 @@ test('não é da rede: não grava a configuração da rede toda (H7, EQ1b)', asy
   expect((await db().from('tags').select('id').eq('tenant_id', rede!.tenantId).eq('nome', tag)).data?.length).toBe(0)
 })
 
-test('a sessão (RLS) lê as unidades A e B, não a C', async () => {
+// Desde 19/11 a sessão só lê SINAIS (o Heitor, "vai na 2"; CLAUDE.md §4): ela
+// não lê unidade nenhuma pela chave pública — A e B se alcançam pelo servidor
+// (as telas e as actions acima). Até ali, a RLS dava A e B e escondia a C.
+test('a sessão não lê unidade nenhuma pela chave pública — nem as dela', async () => {
   const sessao = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
     auth: { persistSession: false },
     global: { headers: { Authorization: `Bearer ${pessoa!.accessToken}` } },
   })
   const { data, error } = await sessao.from('branches').select('id').eq('tenant_id', rede!.tenantId)
   expect(error).toBeNull()
-  expect(new Set((data ?? []).map(b => b.id as string))).toEqual(new Set([un.A.id, un.B.id]))
+  expect(new Set((data ?? []).map(b => b.id as string))).toEqual(new Set())
 })
 
 test('o login volta à ÚLTIMA unidade usada (PO1)', async ({ browser }) => {

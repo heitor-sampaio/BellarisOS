@@ -215,7 +215,7 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
 
   return (
     <>
-      <RealtimeRefresher tables={['financeiro_sinais', 'appointments']} />
+      <RealtimeRefresher tables={['financeiro_sinais']} topicos={['agenda']} />
       <FusoProvider fuso={fuso}>
         <PdvTela
           basePath={basePath}

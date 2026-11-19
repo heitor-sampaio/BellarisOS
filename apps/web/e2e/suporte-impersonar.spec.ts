@@ -6,6 +6,7 @@ import { criarAtendente, plataformaNoAr, urlDaPlataforma, type AtendenteDeTeste 
 import { chamarAcao } from './apoio/acao-direta'
 import { apagarAgendamentos, apagarClientes } from './apoio/limpeza'
 import { entrarComo, irComASessaoCaindo } from './apoio/suporte'
+import { leOSinalDaRede } from './apoio/sinais'
 
 /**
  * "Entrar como" um membro — o suporte com impersonificação (fase 2, 2026-10-03).
@@ -25,6 +26,9 @@ import { entrarComo, irComASessaoCaindo } from './apoio/suporte'
  * 2026-10-06 o painel (host do suporte) e a conta do membro (host da clínica)
  * são origens diferentes: a conta abre numa aba nova, e o "Sair" volta ao
  * painel no host do suporte.
+ *
+ * Desde 19/11 a sessão só lê SINAIS (o Heitor, "vai na 2"; CLAUDE.md §4): o
+ * "alcança a rede" pelo token se prova lendo o sinal da rede, não uma ficha.
  */
 test.skip(!plataformaNoAr(), 'a plataforma roda em apps próprios: só contra o build (playwright.build.config.ts)')
 const SUP = () => urlDaPlataforma('suporte')
@@ -238,8 +242,10 @@ test.describe.serial('suporte: entrar como', () => {
     expect(await sup!.page.content()).not.toContain(ANAMNESE)
     const token = (await sessaoDoNavegador(sup!.ctx)).access_token
     expect(await rest(token, `medical_records?select=id&client_id=eq.${f!.clienteId}`)).toHaveLength(0)
-    // O resto da rede ele alcança (a sessão é a do membro):
-    expect(await rest(token, `clients?select=id&id=eq.${f!.clienteId}`)).toHaveLength(1)
+    // A rede ele alcança (a sessão é a do membro): lê o sinal dela. A ficha,
+    // nem ele nem o membro leem pela sessão — o servidor lê.
+    expect(await leOSinalDaRede(token, f!.outra.tenantId), 'o token do suporte lê o sinal da rede').toBe(1)
+    expect(await rest(token, `clients?select=id&id=eq.${f!.clienteId}`)).toHaveLength(0)
     // Controle: o próprio membro vê o prontuário na TELA (o servidor lê). Pelo
     // token, nem ele: o prontuário não se lê pela sessão (ATD-P01, 18/11).
     expect(await rest(f!.alvo.accessToken, `medical_records?select=id&client_id=eq.${f!.clienteId}`)).toHaveLength(0)
@@ -281,8 +287,8 @@ test.describe.serial('suporte: entrar como', () => {
     const doSuporte = (await sessaoDoNavegador(sup!.ctx)).access_token
     expect(await patch(doSuporte, `escrito pelo suporte ${marca}`), 'nenhuma linha').toBe(0)
     expect(await notas()).not.toBe(`escrito pelo suporte ${marca}`)
-    // Controle: o membro, com a sessão DELE, LÊ o agendamento — e não grava.
-    expect(await rest(f!.alvo.accessToken, `appointments?select=id&id=eq.${f!.agendamentoId}`), 'o membro lê o agendamento').toHaveLength(1)
+    // Controle: o token do membro vale (lê o sinal da rede) — e não grava.
+    expect(await leOSinalDaRede(f!.alvo.accessToken, f!.outra.tenantId), 'o membro lê o sinal da rede').toBe(1)
     expect(await patch(f!.alvo.accessToken, `escrito pelo membro ${marca}`), 'nem o membro grava pela sessão').toBe(0)
     expect(await notas()).not.toBe(`escrito pelo membro ${marca}`)
   })
@@ -303,7 +309,7 @@ test.describe.serial('suporte: entrar como', () => {
     await expect(sup!.page.getByRole('heading', { level: 1 })).toBeVisible()
     expect(await sessoesAtivas()).toHaveLength(0)
     expect(await renovar(capturada.refresh_token), 'o refresh do membro gerado para o suporte morreu').toBe(false)
-    expect(await rest(capturada.access_token, `clients?select=id&id=eq.${f!.clienteId}`), 'o token restante não alcança a rede').toHaveLength(0)
+    expect(await leOSinalDaRede(capturada.access_token, f!.outra.tenantId), 'o token restante não alcança a rede').toBe(0)
     // Controle da trava de senha: sem sessão de suporte, o próprio membro troca.
     expect(await trocarSenha(f!.alvo.accessToken, `Nova-${marca}-x9!`)).toBe(200)
     await sup!.ctx.close()
@@ -322,7 +328,7 @@ test.describe.serial('suporte: entrar como', () => {
     } finally { await ctx.close() }
     await irComASessaoCaindo(sup.page, `/admin/clients/${f!.clienteId}`)
     await expect(sup.page).toHaveURL(new RegExp(`^${SUP()}/redes/`), { timeout: 30_000 })
-    expect(await rest(capturada.access_token, `clients?select=id&id=eq.${f!.clienteId}`)).toHaveLength(0)
+    expect(await leOSinalDaRede(capturada.access_token, f!.outra.tenantId), 'o token restante não alcança a rede').toBe(0)
     expect(await renovar(capturada.refresh_token)).toBe(false)
     await sup.ctx.close()
     sup = null

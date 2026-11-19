@@ -1,9 +1,8 @@
 import { notFound } from 'next/navigation'
 import { motivosDaRede } from '@/lib/crm/motivos-perda'
 import { origensDaRede } from '@/lib/crm/origens'
-import { getTenantContext, assertPermission, ownerFilter, can, assertRecurso, temRecurso } from '@/lib/auth'
+import { getTenantContext, assertPermission, ownerFilter, can, assertRecurso, temRecurso, alcancaUnidade } from '@/lib/auth'
 import { avisoDosFunis, mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
-import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { seedDefaultFunnel, listAllStages } from '@/lib/crm/funis'
 import { getFunilDoQuadro } from '@/lib/metrics/queries'
@@ -55,12 +54,13 @@ export default async function BranchOportunidadesPage({
   const novoDaPessoa = can(ctx, 'crm', 'MANAGE') && rawContato && UUID.test(rawContato)
     ? await pessoaParaNovoLead(ctx.tenantId!, rawContato) : null
 
-  const supabase = await createSupabase()
-
-  const branch = await ler(supabase
+  const branch = await ler(createAdminClient()
     .from('branches').select('id, name')
     .eq('slug', slug).eq('tenant_id', ctx.tenantId!).single(), 'buscar a unidade')
   if (!branch) notFound()
+  // A sessão só lê sinais (o Heitor, 19/11, "vai na 2"): a unidade se lê pelo
+  // servidor, e a abrangência que a RLS conferia se confere aqui.
+  if (!alcancaUnidade(ctx, branch.id as string)) notFound()
 
   // Funis da rede (seed automático no primeiro acesso) e o funil aberto.
   const funnels      = await seedDefaultFunnel(ctx.tenantId!)
@@ -87,7 +87,7 @@ export default async function BranchOportunidadesPage({
   const stageIds  = stages.map(s => s.id)
 
   // Procedimentos disponíveis nesta unidade
-  const allProcs = await ler(supabase
+  const allProcs = await ler(createAdminClient()
     .from('procedures')
     .select('id, name, procedure_branch_availability(branch_id)')
     .eq('tenant_id', ctx.tenantId!)

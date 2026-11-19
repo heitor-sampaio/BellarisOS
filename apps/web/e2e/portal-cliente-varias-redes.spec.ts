@@ -5,6 +5,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { clienteComSessao, criarMembro, sessaoPorEmail, type ClienteDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { leOSinalDela } from './apoio/sinais'
 import { apagarClientes } from './apoio/limpeza'
 
 /**
@@ -86,7 +87,12 @@ test.describe('a mesma cliente em duas redes', () => {
     await A?.limpar()
   })
 
-  test('com o token dela, o banco mostra as fichas dela nas duas redes — e só as dela', async () => {
+  // Desde 19/11 a sessão só lê SINAIS (o Heitor, "vai na 2"; CLAUDE.md §4):
+  // o token dela não lê ficha, agendamento, aviso, ponto nem crédito — nem os
+  // dela. As fichas dela nas duas redes ela vê pelo PORTAL (o servidor, pela
+  // ficha da rede do endereço: o teste de baixo). Até ali, a RLS mostrava as
+  // dela e só as dela.
+  test('com o token dela, o banco não mostra nada — nem as fichas dela; o sinal dela, sim', async () => {
     const { error: eN } = await db().from('client_notifications').insert([
       { client_id: cliente.clientId, title: 'Aviso da A' },
       { client_id: fichaB, title: 'Aviso da B' },
@@ -106,14 +112,15 @@ test.describe('a mesma cliente em duas redes', () => {
       expect(error, `ler ${tabela} como ela`).toBeNull()
       return ((data ?? []) as unknown as Record<string, string>[]).map(l => l[coluna]).sort()
     }
-    const dela = [cliente.clientId, fichaB].sort()
-
-    expect(await ids('clients'), 'as duas fichas dela, e não a da outra pessoa').toEqual(dela)
-    expect(await ids('appointments'), 'os agendamentos dela nas duas clínicas').toEqual([agA, agB].sort())
-    expect(await ids('client_notifications', 'client_id'), 'os avisos das duas clínicas').toEqual(dela)
-    expect(await ids('loyalty_accounts', 'client_id'), 'as contas de pontos das duas').toEqual(dela)
-    expect(await ids('internal_credits', 'client_id'), 'os créditos das duas').toEqual(dela)
-    expect(agAlheio).toBeTruthy()
+    expect(await ids('clients'), 'nenhuma ficha, nem as dela').toEqual([])
+    expect(await ids('appointments'), 'nenhum agendamento').toEqual([])
+    expect(await ids('client_notifications', 'client_id'), 'nenhum aviso').toEqual([])
+    expect(await ids('loyalty_accounts', 'client_id'), 'nenhuma conta de pontos').toEqual([])
+    expect(await ids('internal_credits', 'client_id'), 'nenhum crédito').toEqual([])
+    expect(agA && agB && agAlheio).toBeTruthy()
+    // O controle: o token vale — ela lê o sinal dela nas duas redes.
+    expect(await leOSinalDela(cliente.accessToken, A.tenantId), 'o sinal dela na A').toBe(1)
+    expect(await leOSinalDela(cliente.accessToken, B.tenantId), 'o sinal dela na B').toBe(1)
 
     // Escrever: o pedido de LGPD só nasce pela action (F63) — e nunca pela
     // ficha de outra pessoa.

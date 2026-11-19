@@ -17,7 +17,7 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { ChevronLeft, ChevronRight, Clock, Plus } from 'lucide-react'
 import { AppointmentModal } from './appointment-modal'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
+import { useSinais } from '@/components/shared/realtime-refresher'
 import { estenderJanela, rolagemDaGrade } from '@/lib/agenda/grade'
 import { ocupacaoDoDia } from '@/lib/metrics/ocupacao'
 import { blocosDosBloqueios, livresEntre } from '@/lib/agenda/horario-livre'
@@ -111,26 +111,9 @@ export function ProfessionalAgendaView({
   const agoraDoRelogio = useAgora()
   const agora = useMemo(() => (agoraDoRelogio != null ? naParede(new Date(agoraDoRelogio), fuso) : today), [agoraDoRelogio, today, fuso])
 
-  // Realtime: atualiza a agenda ao receber qualquer mudança nos agendamentos deste profissional
-  useEffect(() => {
-    if (!professionalId) return
-    const supabase = createClient()
-    const channel  = supabase
-      .channel(`agenda-prof-${professionalId}`)
-      .on(
-        'postgres_changes',
-        {
-          event:  '*',
-          schema: 'public',
-          table:  'appointments',
-          filter: `professional_id=eq.${professionalId}`,
-        },
-        () => router.refresh(),
-      )
-      .subscribe()
-
-    return () => { supabase.removeChannel(channel) }
-  }, [professionalId, router])
+  // Realtime: o sinal da agenda da rede (sem conteúdo — o Heitor, 19/11, "vai
+  // na 2"); a página recarrega pelo servidor, que lê só os agendamentos dela.
+  useSinais(['agenda'], () => router.refresh(), !!professionalId)
 
   const [view,         setView]    = useState<ViewMode>('dia')
   // O dia vem do `?date=` (J-33: o link do aviso ou da ficha abria sempre em

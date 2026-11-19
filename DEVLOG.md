@@ -1774,6 +1774,61 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-19 — A sessão só lê sinais: a leitura também é do servidor
+
+O Heitor (19/11), "vai na 2", à proposta "a sessão não lê nem grava tabela nenhuma; só escuta os sinais do tempo real". A pergunta dele antes ("manter as tabelas assinadas realmente é uma possível falha de segurança?"): é. O Realtime entrega a quem assina tudo o que a política de leitura deixa, e as políticas só conferiam a REDE. Exemplos: `messages` dava toda mensagem de WhatsApp a qualquer membro, sem o CRM e sem o "só as minhas"; `clients`, a ficha com CPF.
+
+- **O que havia** (lido na produção em 19/11):
+  - 71 políticas de leitura pela sessão, em 70 tabelas;
+  - 20 tabelas de conteúdo na publicação do Realtime (uma delas, `installments`, sem ninguém assinando);
+  - 8 funções que a sessão executava pelo `/rpc`.
+- **O sinal** (`20261128200001`, a parte 1, que só acrescenta):
+  - a tabela `public.sinais` (rede, tópico, chave, quando mudou). Ela diz QUE algo mudou, nunca o quê. A chave vazia é da equipe da rede; a chave com o login é de uma pessoa (os avisos dela).
+  - Um gatilho genérico (`private.marcar_sinal`) marca o tópico em 20 tabelas: agenda, estoque, procedimentos, unidades, equipe, clientes, pacotes, planos, inbox, campanhas e avisos.
+  - A trava `e2e_leituras_pela_sessao()` lista o que ainda deixaria a sessão ler: política de leitura fora dos sinais (`public`, `storage`, `realtime`), tabela sem RLS com permissão de leitura, view legível, função exposta e tabela de conteúdo no Realtime.
+  - Ficam de fora, de propósito: `jwt_claim` (as políticas dos sinais dependem dela) e `planos_do_site` (os preços públicos do site).
+- **O app**:
+  - Toda leitura que ainda passava pela sessão (13 telas da unidade, a Equipe, a unidade da rede, as Configurações, as unidades e uma action de procedimentos) foi para o cliente de serviço. A abrangência que a RLS aplicava vai na consulta (`alcancaUnidade` e o `notFound`; `unidadesDoContexto` nas listas).
+  - O cliente da sessão ficou só para entrar, sair e "quem sou eu".
+  - `RealtimeRefresher` ganhou `topicos`, e `useSinais` serve aos componentes que recarregam sozinhos: a agenda do profissional, o plano e as sessões do pacote, o inbox (a conversa aberta e a lista recarregam pelo servidor) e os dois sinos, com `useAvisosNovos`, que busca pelo servidor e mostra só o que é novo.
+  - Os sinais antigos (`crm_quadro_sinais`, `prontuario_sinais`, `comissoes_sinais`, `financeiro_sinais`, `automacoes_sinais`, `support_signals`) ficaram: juntá-los mudaria testes sem regra nova.
+- **O inbox não recarrega a rede inteira a cada recibo** (o Heitor, 19/11: "o que me preocupa é mais o inbox que pode ter muita atualização e vai atualizar toda rede, isso?"; ele aprovou as duas medidas, "blz pode fazer").
+  - Com um tópico só, cada recibo do WhatsApp (enviada, entregue, lida, o grosso do volume) fazia todo inbox aberto da rede recarregar a lista e a conversa.
+  - Agora há o tópico `conversa`, com a chave `c:<id>`: a mensagem, a conversa e a oportunidade marcam o sinal da conversa delas, e só a tela com ela aberta o assina (`useSinalDaConversa`). A lista (`inbox`) se move só pela conversa e pela oportunidade, e o recibo não a toca.
+  - A rajada se junta no navegador (`juntarEmRajada`, `packages/nucleo/src/lib/sinais-em-rajada.ts`): a lista recarrega no máximo uma vez por segundo, e a conversa aberta, a cada 300 ms. O último sinal nunca se perde, porque é ele que dispara.
+  - A PÁGINA do inbox recarregava inteira (todas as oportunidades da rede, as opções dos filtros, os canais) a cada conversa que mudava: era o `RealtimeRefresher` das tabelas `conversations` e `leads`, de antes desta frente. A lista e a conversa já se recarregam sozinhas no `CRMInbox`; a página agora assina só `crm_quadro_sinais` (oportunidades, etapas, funis e tags: o que ela traz além da lista). Uma decisão minha, que não tira nada do que a página atualizava.
+  - Provas: `tests/sinais-em-rajada.test.ts` (TDD: falhou com o módulo inexistente; depois 5/5); o caso novo de `tests/realtime-assina-sinal.test.ts` (a página assina só o sinal do quadro; falhou com `topicos={['inbox']}`); o caso novo de `inbox-realtime` (a mensagem que chega na conversa aberta aparece sem recarregar); e o caso novo de `rls-sessao-so-le-sinais` (o recibo move o sinal da conversa e não o da lista; a equipe lê o sinal da conversa, a cliente e a outra rede não).
+- **O que sai** (`20261128200002`, a parte 2, que vai DEPOIS do código no ar): as 71 políticas, a execução das 8 funções (o serviço segue executando) e as 20 tabelas do Realtime.
+- **A prova**: `e2e/rls-sessao-so-le-sinais.spec.ts` (isolado, rede própria).
+  - A trava tem de voltar vazia.
+  - A Admin da rede, pela chave pública, lê zero linhas de 16 tabelas (rede, unidades, equipe, cargos, fichas, agenda, procedimentos, produtos, estoque, funis, contatos, oportunidades, conversas, planos, avisos e mensagens), e a cliente lê zero das 5 dela.
+  - Mudar o agendamento marca o sinal da agenda; a cliente só lê os sinais dela, e quem é de outra rede, nenhum. As colunas do sinal são só as quatro.
+  - TDD: antes das migrations, a trava listou 99 itens (71 políticas, 8 funções, 20 tabelas do Realtime). A Admin leu as 16 tabelas, a cliente leu a ficha dela, e `sinais` não existia (PGRST205). Três já passavam. Depois: 19/19.
+- **Os testes que já existiam e mudaram** (nenhum apagado), pela regra do Heitor de 19/11 ("vai na 2"). Todos provavam o alcance do token ("não leu a outra rede" não é um token que não vale nada) com a sessão LENDO uma linha da própria rede. Agora o controle é o token ler o SINAL da rede (`e2e/apoio/sinais.ts`), e a linha da própria rede também volta vazia:
+  - `credenciais-fora-da-sessao`;
+  - `equipe-varias-unidades` (a sessão não lê nem as unidades dela);
+  - `portal-cliente-varias-redes` (o controle é o sinal dela, em cada rede);
+  - `rls-cliente-da-rede`, `rls-isolamento`;
+  - `rls-realtime-sem-sessao` (o membro assina `sinais`, não `appointments`);
+  - `rls-sessao-so-le-prontuario-e-automacoes` (procedimento, produto e automações não se leem nem com o módulo);
+  - `rls-sessao-so-le` (cargo, ficha e contato);
+  - `suporte-impersonar`, `suporte-clinico`, `suporte-credenciais`: o token do suporte alcança a rede pelo sinal, e o token morto (sair, revogar, vencer, re-autorizar) não lê nem o sinal.
+  - os que a completa acusou: `comissoes-configuracao` (lia o procedimento), `documentos-atendimento`, `documentos-link-publico` e `documentos-modelos` (liam os documentos e os modelos da própria rede), `lead-nao-se-apaga` (lia o lead e o histórico), `pre-pago` ("mas a equipe lê" a venda), `prontuario-anotacoes-e-versoes` (lia o atendimento) e `sistema-redes` (a rede religada voltava a ler `tenants`; agora o token lê o sinal, e com a rede desligada não lê nem ele).
+  - No Vitest, `sessao-so-le-prontuario-e-automacoes` passou a esperar, na tela do atendimento, o tópico `agenda` ao lado dos dois sinais.
+- **O que fica de fora**:
+  - `planos_do_site` segue pública (o site);
+  - fora a conversa e os avisos, o sinal é da REDE (a agenda da rede mudou, não a de qual unidade): quem assina recarrega à toa, sem ver nada;
+  - o sinal da conversa se lê por toda a equipe da rede, inclusive por quem tem o "só as minhas": não diz nada da conversa, mas mostra QUE uma conversa (pelo id) mudou, e quando;
+  - a lista do inbox ainda marca a mesma linha da rede a cada mensagem nova (os recibos não): numa rajada, os webhooks esperam um pelo outro um instante. Isso fica para o teste de carga medir;
+  - os sinais antigos continuam separados.
+- CLAUDE.md §4: a regra "A sessão só lê SINAIS".
+- **Provas** (banco local zerado pelas migrations, as duas travas em 0):
+  - a completa local, antes da parte do inbox: isolados 1.690 passaram e compartilhados 872.
+    - 8 falhas eram controles de "a sessão lê", ajustados pela regra (lista acima).
+    - `planos-adicionais` (chave estrangeira do plano) e `automacoes-mobile` (o gatilho 57 px fora da tela) falharam só sob a carga e passam sozinhos.
+  - Depois da parte do inbox: o inbox, o CRM, o quadro, os sinais e os oito ajustados, contra o build, 128 + 109 passaram. O caso novo da conversa aberta FALHA com os gatilhos do sinal da conversa desligados e passa com eles. Vitest 3.994; `tsc` e `eslint` limpos.
+  - A completa não rodou de novo depois da parte do inbox: ela mexe no inbox, nos sinais e em duas páginas.
+
 ### 2026-11-19 — A sessão nunca grava: as 21 políticas de escrita que sobravam saíram
 
 O Heitor (19/11): "Qualquer gravação que não passa pela validação do backend ta errada e é uma brecha de segurança." A chave pública está no navegador: o que uma política deixa a sessão gravar, qualquer membro (ou cliente) grava direto no PostgREST, sem a trava da action.

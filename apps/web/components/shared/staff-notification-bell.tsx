@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect, useRef } from 'react'
 import { Bell, X, BellOff } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
+import { useAvisosNovos } from '@/components/shared/use-avisos-novos'
 import {
   getUserNotifications, markAllUserNotificationsReceived, markUserNotificationRead,
   type UserNotification,
@@ -18,7 +18,7 @@ interface Props {
   comAjuda?:      boolean
 }
 
-export function StaffNotificationBell({ internalUserId, initialUnread, comAjuda = true }: Props) {
+export function StaffNotificationBell({ initialUnread, comAjuda = true }: Props) {
   const [open,          setOpen]          = useState(false)
   const [notifications, setNotifications] = useState<UserNotification[] | null>(null)
   const [unread,        setUnread]        = useState(initialUnread)
@@ -27,38 +27,19 @@ export function StaffNotificationBell({ internalUserId, initialUnread, comAjuda 
   const panelRef = useRef<HTMLDivElement>(null)
   const bellRef  = useRef<HTMLButtonElement>(null)
 
-  // Realtime: novas notificações de staff
-  useEffect(() => {
-    const supabase = createClient()
-    let active = true
-    const suffix = Math.random().toString(36).slice(2)
-
-    const channel = supabase
-      .channel(`staff-notif-${internalUserId}-${suffix}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'user_notifications', filter: `user_id=eq.${internalUserId}` },
-        (payload) => {
-          if (!active) return
-          const n = payload.new as UserNotification
-          setUnread(prev => prev + 1)
-          setNotifications(prev => prev ? [n, ...prev] : null)
-          // No nativo o FCM já dispara a notificação nativa — Web Notification só no browser (evita duplicar)
-          const isNative = typeof window !== 'undefined'
-            && !!(window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } })
-              .Capacitor?.isNativePlatform?.()
-          if (!isNative && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-            new Notification(n.title, { body: n.body ?? '', icon: '/icon-192.png' })
-          }
-        },
-      )
-
-    // O token da pessoa vem do servidor (lib/supabase/client.ts): o cliente o
-    // pede sozinho antes de entrar no canal.
-    channel.subscribe()
-
-    return () => { active = false; supabase.removeChannel(channel) }
-  }, [internalUserId])
+  // Realtime: o sinal dos avisos DESTA pessoa (sem conteúdo — o Heitor, 19/11,
+  // "vai na 2"); o aviso vem do servidor (getUserNotifications).
+  useAvisosNovos(getUserNotifications, (n: UserNotification) => {
+    setUnread(prev => prev + 1)
+    setNotifications(prev => prev ? [n, ...prev.filter(p => p.id !== n.id)] : null)
+    // No nativo o FCM já dispara a notificação nativa — Web Notification só no browser (evita duplicar)
+    const isNative = typeof window !== 'undefined'
+      && !!(window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } })
+        .Capacitor?.isNativePlatform?.()
+    if (!isNative && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      new Notification(n.title, { body: n.body ?? '', icon: '/icon-192.png' })
+    }
+  })
 
   // Fecha ao clicar fora / ESC
   useEffect(() => {

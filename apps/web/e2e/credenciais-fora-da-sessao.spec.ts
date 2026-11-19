@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { leOSinalDaRede } from './apoio/sinais'
 
 /**
  * Credencial não chega ao navegador de ninguém (migration 20260928000005).
@@ -17,8 +18,10 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  * o cliente de serviço) e nenhuma está no realtime: a sessão perde o acesso
  * inteiro, e o app não sente.
  *
- * Controle: a mesma sessão lê a própria unidade — sem ele, "não leu" poderia
- * ser só um token que não alcança nada.
+ * Controle: a mesma sessão lê o sinal da própria rede — sem ele, "não leu"
+ * poderia ser só um token que não alcança nada. (Até 19/11 o controle era ler
+ * a própria unidade; desde o "vai na 2" do Heitor a sessão só lê SINAIS —
+ * CLAUDE.md §4.)
  */
 
 const marca = Date.now().toString(36)
@@ -68,7 +71,7 @@ function comoMembro(): SupabaseClient {
   })
 }
 
-test('o membro não lê nem mexe em credencial nenhuma; a unidade dele continua legível', async () => {
+test('o membro não lê nem mexe em credencial nenhuma; o sinal da rede dele continua legível', async () => {
   const sessao = comoMembro()
 
   const { data: integracoes } = await sessao.from('integration_configs').select('config')
@@ -86,7 +89,6 @@ test('o membro não lê nem mexe em credencial nenhuma; a unidade dele continua 
   const { data: linha } = await db().from('whatsapp_numbers').select('label').eq('id', caixa).single()
   expect(linha!.label).toBe(`${PREFIXO} Caixa ${marca}`)
 
-  // Controle: a mesma sessão alcança a própria rede.
-  const { data: unidades } = await sessao.from('branches').select('id').eq('tenant_id', outra!.tenantId)
-  expect((unidades ?? []).length, 'a sessão enxerga a rede dela').toBeGreaterThan(0)
+  // Controle: a mesma sessão alcança a própria rede (o sinal, o que ela ainda lê).
+  expect(await leOSinalDaRede(membro!.accessToken, outra!.tenantId), 'a sessão enxerga a rede dela').toBe(1)
 })

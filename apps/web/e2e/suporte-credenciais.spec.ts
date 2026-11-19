@@ -2,11 +2,12 @@ import { test, expect, type BrowserContext, type Page } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { leOSinalDaRede } from './apoio/sinais'
 import { criarAtendente, plataformaNoAr, urlDaPlataforma, type AtendenteDeTeste } from './apoio/plataforma'
 import { chamarAcao, chamarAcaoComFormulario } from './apoio/acao-direta'
 import { apagarAgendamentos } from './apoio/limpeza'
 import {
-  sessaoDoNavegador, sessaoDoToken, rest, restBruto, authApi, renovar, autorizarPor, entrarComo, irComASessaoCaindo, sessoesAtivasDaRede, limparSuporteDaRede,
+  sessaoDoNavegador, sessaoDoToken, restBruto, authApi, renovar, autorizarPor, entrarComo, irComASessaoCaindo, sessoesAtivasDaRede, limparSuporteDaRede,
 } from './apoio/suporte'
 
 /**
@@ -238,7 +239,8 @@ test.describe.serial('suporte: credenciais e travas', () => {
     const capturada = await sessaoDoNavegador(sup!.ctx)
     await autorizarPor(browser, alvo.estado, alvo.userId, { horas: 72 })
     expect(await sessoesAtivasDaRede(outra!.tenantId)).toHaveLength(0)
-    expect(await rest(capturada.access_token, `clients?select=id&id=eq.${clienteId}`)).toHaveLength(0)
+    // Desde 19/11 a sessão só lê SINAIS (o Heitor, "vai na 2"): o token morto não lê nem o sinal da rede.
+    expect(await leOSinalDaRede(capturada.access_token, outra!.tenantId), 'o token não alcança a rede').toBe(0)
     expect(await renovar(capturada.refresh_token)).toBe(false)
     await irComASessaoCaindo(sup!.page, '/admin/dashboard')
     // De volta ao painel, no host do suporte (ou ao login, sem a sessão de suporte).
@@ -257,7 +259,7 @@ test.describe.serial('suporte: credenciais e travas', () => {
     const { error } = await db().from('support_sessions').update({ expires_at: new Date(Date.now() - 10 * 60_000).toISOString() }).eq('id', sessao.id)
     expect(error).toBeNull()
     // Vencida, a RLS já nega na hora (o estado é lido do banco a cada transação).
-    expect(await rest(capturada.access_token, `clients?select=id&id=eq.${clienteId}`)).toHaveLength(0)
+    expect(await leOSinalDaRede(capturada.access_token, outra!.tenantId), 'o token não alcança a rede').toBe(0)
     // A próxima tela encerra a sessão vencida (o servidor a guarda por até
     // 15 s) e apaga a do Auth: o refresh morre. (O cron faz o mesmo para quem
     // não navega mais — spec isolado não chama cron.)

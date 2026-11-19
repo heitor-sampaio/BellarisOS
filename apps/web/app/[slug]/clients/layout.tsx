@@ -1,8 +1,8 @@
 import { notFound } from 'next/navigation'
 import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { subDays } from 'date-fns'
-import { getTenantContext, can } from '@/lib/auth'
-import { createClient as createSupabase } from '@/lib/supabase/server'
+import { getTenantContext, can, alcancaUnidade } from '@/lib/auth'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { ClientsSidebar } from '@/components/branch/clients-sidebar'
 import { ListaDetalhe } from '@/components/shared/lista-detalhe'
 import { getCachedNetworkClients, getCachedUltimasVisitas } from '@/lib/cached-queries'
@@ -25,14 +25,16 @@ export default async function ClientsLayout({
   // é a trava dela (assertPermission, como toda page.tsx) que diz "sem acesso".
   if (!can(ctx, 'clients', 'VIEW')) return <>{children}</>
 
-  const supabase = await createSupabase()
-  const branch = await ler(supabase
+  const branch = await ler(createAdminClient()
     .from('branches')
     .select('id')
     .eq('slug', slug)
     .eq('tenant_id', ctx.tenantId!)
     .single(), 'buscar a unidade')
   if (!branch) notFound()
+  // A sessão só lê sinais (o Heitor, 19/11, "vai na 2"): a unidade se lê pelo
+  // servidor, e a abrangência que a RLS conferia se confere aqui.
+  if (!alcancaUnidade(ctx, branch.id as string)) notFound()
 
   // O portal da unidade vê TODAS as clientes da rede (CL3 do Bloco Tags,
   // 2026-11-14; H5: "A cliente é da clínica"): não existe tag de unidade para

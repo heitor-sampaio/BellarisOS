@@ -200,7 +200,7 @@ export async function CatalogoDeProcedimentos({ termo }: { termo: string }) {
 
   return (
     <div>
-      <RealtimeRefresher tables={['procedures', 'products']} />
+      <RealtimeRefresher topicos={['procedimentos', 'estoque']} />
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
         <div>

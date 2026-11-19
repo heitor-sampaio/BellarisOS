@@ -1,7 +1,6 @@
-import { getTenantContext, assertPermission, can, temRecurso, unidadesDoContexto } from '@/lib/auth'
+import { getTenantContext, assertPermission, can, temRecurso, unidadesDoContexto, alcancaUnidade } from '@/lib/auth'
 import { contagemDeMembros } from '@/lib/equipe/contagem'
 import { DesativarMembro } from '@/components/admin/desativar-membro'
-import { createClient } from '@/lib/supabase/server'
 import { ComissaoDoMembro } from '@/components/admin/comissao-do-membro'
 import { regrasDaRede, procedimentosParaComissao, procedimentosComComissaoGeral } from '@/lib/comissoes/leitura'
 import { cargosQueVendem, cargosQueVeemAsComissoes } from '@/lib/vendas/equipe-da-venda'
@@ -53,25 +52,29 @@ export default async function TeamPage({
   // A página lista a equipe da unidade e todos os cargos do tenant. Sem este gate
   // bastava a URL direta: o cargo sem acesso a Equipe via tudo, só sem botões.
   assertPermission(ctx, 'team', 'VIEW')
-  const supabase = await createClient()
-
-  const branch = await ler(supabase
+  // A sessão só lê sinais (o Heitor, 19/11, "vai na 2"): tudo se lê pelo
+  // servidor, com a rede e a abrangência conferidas aqui (era a RLS).
+  const admin = createAdminClient()
+  const achada = await ler(admin
     .from('branches')
     .select('id, name, horario')
     .eq('slug', slug)
     .eq('tenant_id', ctx.tenantId!)
     .single(), 'buscar a unidade')
+  // A unidade fora do alcance não se abre (a RLS a escondia): vale a da pessoa.
+  const branch = achada && alcancaUnidade(ctx, achada.id as string) ? achada : null
 
   const branchId = branch?.id ?? ctx.branchId!
 
   const [todosOsMembros, tenantRoles, daRedeQueAtendem, unidadesDaRede] = await Promise.all([
-    ler(supabase
+    ler(admin
       .from('users')
       .select('id, name, email, role_id, branch_id, outras_unidades, is_active, provides_services, atende_em, horario, comissao_venda_pct, registro_conselho')
+      .eq('tenant_id', ctx.tenantId!)
       // Quem tem esta unidade: a principal ou uma das outras (EQ1a).
       .or(`branch_id.eq.${branchId},outras_unidades.cs.{${branchId}}`)
       .order('name'), 'carregar a equipe'),
-    ler(supabase
+    ler(admin
       .from('tenant_roles')
       .select('id, key, label, is_system')
       .eq('tenant_id', ctx.tenantId!)
@@ -136,7 +139,7 @@ export default async function TeamPage({
 
   return (
     <div>
-      <RealtimeRefresher tables={['users']} />
+      <RealtimeRefresher topicos={['equipe']} />
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
         <div>

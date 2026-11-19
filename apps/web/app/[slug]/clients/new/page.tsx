@@ -1,8 +1,8 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
-import { getTenantContext, assertPermission } from '@/lib/auth'
-import { createClient as createSupabase } from '@/lib/supabase/server'
+import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { ClientForm } from '@/components/branch/client-form'
 import { prefillDaBusca } from '@/lib/busca/acoes'
 import { ler } from '@/lib/db'
@@ -18,14 +18,16 @@ export default async function NewClientPage({ params, searchParams }: {
   const ctx      = await getTenantContext()
   assertPermission(ctx, 'clients', 'MANAGE')
 
-  const supabase = await createSupabase()
-  const branch = await ler(supabase
+  const branch = await ler(createAdminClient()
     .from('branches')
     .select('id, name')
     .eq('slug', slug)
     .eq('tenant_id', ctx.tenantId!)
     .single(), 'buscar a unidade')
   if (!branch) notFound()
+  // A sessão só lê sinais (o Heitor, 19/11, "vai na 2"): a unidade se lê pelo
+  // servidor, e a abrangência que a RLS conferia se confere aqui.
+  if (!alcancaUnidade(ctx, branch.id as string)) notFound()
   // Onde a cliente aparece só se explica com outras unidades (J-24, D-19).
   const variasUnidades = !(await redeTemUmaUnidade(ctx.tenantId!))
 

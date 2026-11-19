@@ -39,4 +39,17 @@ describe('o Realtime das telas', () => {
     }
     expect(achados).toEqual([])
   })
+
+  it('a página do inbox não recarrega a cada mensagem: só pelo sinal do quadro (oportunidades, etapas, funis, tags)', () => {
+    // 19/11, ao Heitor ("o inbox que pode ter muita atualização e vai
+    // atualizar toda rede"): a lista e a conversa aberta se recarregam sozinhas
+    // (o tópico `inbox` e o sinal da conversa, no CRMInbox). A PÁGINA relê
+    // tudo — as oportunidades da rede inteira, as opções dos filtros, os
+    // canais —, e só precisa disso quando muda o que o quadro mostra.
+    for (const pagina of ['app/admin/inbox/page.tsx', 'app/[slug]/inbox/page.tsx']) {
+      const texto = readFileSync(join(RAIZ, pagina), 'utf-8')
+      const refresher = texto.match(/<RealtimeRefresher[\s\S]*?\/>/g) ?? []
+      expect(refresher, pagina).toEqual(["<RealtimeRefresher tables={['crm_quadro_sinais']} />"])
+    }
+  })
 })
