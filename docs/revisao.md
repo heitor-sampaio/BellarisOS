@@ -1299,6 +1299,43 @@ Isto troca o "Mantém … os escopos … o refino do inbox" do Bloco: Cargos e o
 "Mantém … o 'só os meus' pela pessoa ou pela conversa" do Bloco: CRM, e a
 D20 do Bloco: Agenda. O plano está no "Bloco: Sem o 'só os meus'".
 
+### Cada passo do atendimento, um módulo (o Heitor, 2026-11-23) ✅ decidido
+
+O Heitor, 2026-11-23: "a questão do atendimento é que um atendimento pode
+passar por diferentes pessoas. pode ter uma recepcionista que faz o checkin e
+recebe, a pessoa que de fato faz o atendimento, e por ai vai. como podemos
+resolver isso com baixa complexidade?"
+
+A proposta do Claude: cada passo pertence a UM módulo, e nenhuma ação pede dois.
+- **Agenda**: agendar, confirmar, marcar a chegada, remarcar, cancelar, marcar
+  a falta.
+- **Atendimento**: abrir a tela do atendimento (Ver), iniciar, concluir,
+  desistir no meio, os insumos, montar o plano — na avaliação ou depois
+  (Gerenciar).
+- **Prontuário**: a evolução, as fotos, a ficha de saúde, os injetáveis — sem
+  precisar atender.
+- **PDV**: receber, a comanda.
+
+"De quem é o atendimento" não é permissão: é o profissional do agendamento
+(a comissão, as vistas pessoais, os números "Meus"). Quem fez cada passo fica
+no histórico e na Auditoria. O "Atende" diz em que unidades a pessoa aparece
+como profissional; não dá permissão nenhuma.
+
+Visto no Clínica Experts (23/11, a pedido do Heitor): o agendamento deles tem
+"Iniciar atendimento" e "Finalizar comanda" separados, a mesma divisão; e o
+"próprio / de outros" deles em cada ação dá ~200 caixas por pessoa — o que o
+"só os meus" evitou ao sair.
+
+O Heitor, 2026-11-23: "concordo, pode anotar, marcar as questões e ajustar o
+codigo".
+
+Isto revê a **PT2** ("quem monta o plano é quem atende, nem precisa de
+permissão"): montar o plano pede o Atendimento em Gerenciar. Responde as
+perguntas Q13 (a tela abre com o Atendimento, não com a Agenda em Ver), Q16,
+Q17 (desistir é do Atendimento) e Q18 (a ficha de saúde pede só o Prontuário
+em Gerenciar) do catálogo do atendimento. O plano está no "Bloco: Cada passo,
+um módulo".
+
 ## Configurações (rede e unidade) ✅
 
 ### O que devia fazer (o Heitor, 2026-11-13)
@@ -2029,7 +2066,7 @@ e Agenda (AG1) com o DC1–DC4.
 
 | # | O que muda | Depende de |
 |---|---|---|
-| PT2 | **Monta quem atende, sem permissão própria** (sai a exigência do Prontuário em Gerenciar): na avaliação (o editor na tela do atendimento) ou DEPOIS, com calma — "Novo plano" na ficha (Planejamento → Tratamentos) e no menu Tratamentos, e "Montar plano desta avaliação" na avaliação concluída (o plano fica ligado a ela). A anotação clínica dentro do plano continua pedindo o Prontuário ✅ 14/11 | — |
+| PT2 | **Monta quem atende, sem permissão própria** (sai a exigência do Prontuário em Gerenciar): na avaliação (o editor na tela do atendimento) ou DEPOIS, com calma — "Novo plano" na ficha (Planejamento → Tratamentos) e no menu Tratamentos, e "Montar plano desta avaliação" na avaliação concluída (o plano fica ligado a ela). A anotação clínica dentro do plano continua pedindo o Prontuário ✅ 14/11. Revisto em 23/11: montar pede o Atendimento em Gerenciar (UM3) | — |
 | PT1a | **A página do plano é o centro**, com os passos à vista: ① Aceite ② Documentos ③ Contrato e pagamento ④ Sessões (X de N agendadas/realizadas). Sai o "Fechar checkout" (os quatro passos numa tela só) ✅ 14/11 | — |
 | PT1b | **"Aceitar plano" é só "quero fazer"**, sem pergunta de dinheiro — na clínica ou **pelo app** (a cliente recebe o plano, analisa e aceita; sai o "O aceite é feito na clínica"). Aceito, os documentos ficam prontos e a comanda do plano nasce no PDV com o valor INTEIRO (a soma das sessões). A equipe é avisada do aceite pelo app ✅ 14/11 (leva 2) | DC1–DC4, PDV |
 | PT1c | **Os termos e os outros documentos** se assinam quando a cliente quiser — no app (até em casa), por link ou no aparelho da clínica. **O CONTRATO e o pagamento andam juntos, no PDV**: escolhe-se a forma (à vista, entrada + parcelas, cartão em N vezes; o desconto e "Quem vendeu") → o contrato sai com ela e a cliente assina → recebe-se. A assinatura vem antes do dinheiro; o PDV não confirma o recebimento do plano sem o contrato assinado ou dispensado (é a ordem do Heitor; o dispensar com motivo segue valendo) ✅ 14/11 (leva 2: o contrato nasce no PDV, com a forma) | PT1b |
@@ -2178,6 +2215,19 @@ implementado.
 | SM5 | **O Copilot** segue: sem o "só os meus" nas ferramentas | SM1 |
 | SM6 | **As regras e os testes**: CLAUDE.md §11 (os três eixos viram dois), `docs/regras/` e o catálogo. Os testes do "só os meus" mudam ou saem com esta decisão como motivo, listados ao Heitor um por um | SM1–SM5 |
 
+### Bloco: Cada passo, um módulo (2026-11-23)
+
+Decidido em "Cargos e permissões" → "Cada passo do atendimento, um módulo".
+Junto do Bloco: Sem o "só os meus".
+
+| # | O que muda | Depende de |
+|---|---|---|
+| UM1 | **A tela do atendimento abre com o Atendimento** (Ver), não com a Agenda em Ver (Q13) | — |
+| UM2 | **Iniciar, concluir e desistir no meio** pedem o Atendimento em Gerenciar, e só ele (Q17) | — |
+| UM3 | **Montar o plano** — na avaliação aberta, na concluída ou pelo "Novo plano" — pede o Atendimento em Gerenciar, nas unidades ao alcance; o "Atende" deixa de ser a trava (revê a PT2, Q16) | SM1 |
+| UM4 | **A parte clínica no atendimento** (ficha de saúde, evolução, fotos, injetáveis) pede o Prontuário em Gerenciar, sem precisar atender (Q18) | — |
+| UM5 | **O "Atende" não dá permissão**: diz só em que unidades a pessoa aparece como profissional (agenda, repasse, comissão, as vistas pessoais) | UM3 |
+
 ## O que já estava pendente, para entrar no módulo dele
 
 **Onde cada item foi parar (fim da revisão, 13/11):**
@@ -2186,7 +2236,7 @@ implementado.
   ✅ Feito em 14/11 (ver "Andamento").
 - D7 e o CSV do Fechamento → CX6: as taxas da maquininha e a planilha vão ao
   Financeiro.
-- D20 → mantido no "Bloco: Agenda" ("só os meus" + Gerenciar remarca o próprio).
+- D20 → mantido no "Bloco: Agenda" ("só os meus" + Gerenciar remarca o próprio). Revisto em 23/11: sai com o "só os meus" (Bloco: Sem o "só os meus").
 - C64 → sai com o FD3. ✅ Saiu em 14/11 (ver "Andamento").
 - A F76 e o teste "dois cliques fecham uma vez" → o "tudo verde" do fim do plano.
 - A política antiga "Operacional acessa financeiro da filial" sai (o Heitor:
