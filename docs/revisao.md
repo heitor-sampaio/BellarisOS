@@ -1278,6 +1278,27 @@ definido".
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Cargos".
 
+### Sai o "só os meus" (o Heitor, 2026-11-23) ✅ decidido
+
+Respondendo as perguntas do catálogo do atendimento, o Heitor: "to achando
+que nosso sistema de permissões está complexo demais". E, em seguida: "E se
+tirar o 'só os meus'?".
+
+O Claude levantou o que se perde e propôs as **vistas pessoais**: o que é da
+pessoa (a Minha agenda, as Minhas comissões, os atendimentos dela) fica aberto
+a quem atende, sem o módulo; o módulo dá TUDO (Ver vê, Gerenciar mexe). Os
+dois casos que perdiam eram quem aluga sala na unidade e a equipe comercial
+que disputa oportunidades.
+
+O Heitor, 2026-11-23: "pode tirar, as vistas pessoais resolvem, no crm acho
+que não se aplica diretamente e talvez o melhor caminho seja pelo filtro de
+dono da oportunidade, quem quer ver só as oportunidades que é dono, aplica o
+filtro".
+
+Isto troca o "Mantém … os escopos … o refino do inbox" do Bloco: Cargos e o
+"Mantém … o 'só os meus' pela pessoa ou pela conversa" do Bloco: CRM, e a
+D20 do Bloco: Agenda. O plano está no "Bloco: Sem o 'só os meus'".
+
 ## Configurações (rede e unidade) ✅
 
 ### O que devia fazer (o Heitor, 2026-11-13)
@@ -2142,6 +2163,20 @@ Vai por ÚLTIMO entre os blocos: os textos descrevem o sistema já adaptado.
 | # | O que muda | Depende de |
 |---|---|---|
 | CP1 | **As ferramentas acompanham o sistema adaptado**: cada mudança da revisão que mexe no que o Copilot lê ou grava (o PDV e as comandas, o aceite do plano, contato e oportunidade, a ficha de saúde, as unidades da pessoa, o link único dos documentos, a Auditoria…) muda a ferramenta junto. A gravação dele entra na Auditoria em nome de quem pediu, com "pelo Copilot". Conferido ferramenta por ferramenta no fim ✅ 16/11 (`via = 'copilot'` e "Nome (pelo Copilot)" na `auditoria`, migration `20261116300001`; o check-in do confirmado, o boleto da despesa, a unidade entre as da pessoa, a comanda nas vendas, a permissão no lugar do cargo — a tabela no DEVLOG) | todos os blocos |
+
+### Bloco: Sem o "só os meus" (2026-11-23)
+
+Decidido em "Cargos e permissões" → "Sai o 'só os meus'". Ainda não
+implementado.
+
+| # | O que muda | Depende de |
+|---|---|---|
+| SM1 | **Sai o escopo** ("só os meus" × "todos") de todos os módulos que o têm: Agenda, Atendimento, Prontuário, Financeiro, CRM e Relatórios. O cargo fica com módulo × nível: Ver vê tudo, Gerenciar mexe em tudo, nas unidades ao alcance da pessoa (a abrangência continua). Sai da tela de Cargos, do resumo "O que essa pessoa vai ver", do contexto e das consultas | — |
+| SM2 | **As vistas pessoais**: a Minha agenda, as Minhas comissões e os atendimentos da pessoa abrem a quem atende (o "Atende" marcado), sem o módulo. Elas só MOSTRAM: o que se faz (iniciar, remarcar, receber…) continua pedindo a permissão do módulo | SM1 |
+| SM3 | **CRM e inbox**: sai o "só os meus" e o refino dele (pela pessoa ou pela conversa). Quem quer ver só as suas usa o filtro de responsável, que o quadro ("Responsável") e o inbox (dono) já têm | SM1 |
+| SM4 | **Relatórios**: sai o "a minha unidade × a rede inteira" do cargo; o que a pessoa vê é o das unidades ao alcance dela (a abrangência). As abas por cargo continuam | SM1 |
+| SM5 | **O Copilot** segue: sem o "só os meus" nas ferramentas | SM1 |
+| SM6 | **As regras e os testes**: CLAUDE.md §11 (os três eixos viram dois), `docs/regras/` e o catálogo. Os testes do "só os meus" mudam ou saem com esta decisão como motivo, listados ao Heitor um por um | SM1–SM5 |
 
 ## O que já estava pendente, para entrar no módulo dele
 
