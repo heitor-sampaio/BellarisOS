@@ -56,26 +56,11 @@ export type AppModule = typeof APP_MODULES[number]
 
 export type PermissionLevel = 'NONE' | 'VIEW' | 'MANAGE'
 
-/**
- * Alcance do que o cargo enxerga dentro do módulo.
- * OWN = só os registros ligados ao próprio usuário; ALL = todos, dentro da
- * abrangência do membro (que continua vindo de `users.branch_id`).
- */
-export type PermissionScope = 'OWN' | 'ALL'
-
-/**
- * Módulos em que o escopo faz diferença. Nos demais o alcance é sempre ALL e a
- * tela de cargos nem mostra o seletor.
- */
-// Em `reports` o escopo não é "os meus registros" e sim "a minha unidade": é o
-// que separa quem acompanha o consolidado da rede de quem só olha a própria.
-// O Atendimento tem o "só os meus" como a Agenda: o atendimento é de quem atende
-// (decisão do Claude pelo princípio 1, 2026-11-18).
-export const SCOPED_MODULES = ['agenda', 'atendimento', 'medical_records', 'financial', 'crm', 'reports'] as const
-export type ScopedModule = typeof SCOPED_MODULES[number]
+// Sem o "só os meus" (o Heitor, 2026-11-23): o cargo tem dois eixos, módulo ×
+// nível e a abrangência da pessoa. O que é da pessoa (a Minha agenda, as
+// Minhas comissões) é uma vista pessoal (`vistaPessoal`, apps/web/lib/auth.ts).
 
 export type ResolvedPermissions = Record<AppModule, PermissionLevel>
-export type ResolvedScopes      = Record<AppModule, PermissionScope>
 
 /**
  * Abas de Relatórios, liberadas uma a uma por cargo.
@@ -142,7 +127,6 @@ export interface TenantContext {
   roleId: string | null          // tenant_roles.id do cargo do usuário
   clientId: string | null
   permissions: ResolvedPermissions  // nível resolvido por módulo
-  scopes: ResolvedScopes            // alcance por módulo (OWN = só os próprios)
   reportTabs: ReportTab[]           // abas de Relatórios liberadas para o cargo
   providesServices: boolean         // atende clientes (profissional) em ALGUMA unidade
   /**
@@ -151,6 +135,8 @@ export interface TenantContext {
    * alcance ela chega só aos agendamentos DELA (`alcancaOAgendamento`).
    */
   atendeEm?: string[]
+  /** Tem comissão de venda: as Minhas comissões abrem para ela, mesmo sem atender (`vistaPessoal`). */
+  comissaoDeVenda?: boolean
   isNetworkAdmin: boolean
   isClient: boolean
   /**

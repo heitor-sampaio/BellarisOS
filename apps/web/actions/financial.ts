@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission, alcancaUnidade, can } from '@/lib/auth'
-import { recusaDoSoOsMeus, podeDarBaixa } from '@/lib/financeiro/so-os-meus'
+import { podeDarBaixa } from '@/lib/financeiro/so-os-meus'
 import { semAcesso } from '@/lib/sem-acesso'
 import { formatBRL } from '@estetica-os/utils'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -53,7 +53,6 @@ async function lancarPeloFormulario(formData: FormData): Promise<{ error?: strin
     const ctx = await getTenantContext()
     assertPermission(ctx, 'financial', 'MANAGE')
     // C35: o Financeiro em "só os meus" não lança (a tela já esconde).
-    { const soOsMeus = recusaDoSoOsMeus(ctx); if (soOsMeus) return { error: soOsMeus } }
 
     const branchId      = str(formData, '_branchId')
     const slug          = str(formData, '_slug') ?? ''
@@ -256,7 +255,6 @@ export async function reverseTransaction(transactionId: string, slug: string, mo
     const ctx = await getTenantContext()
     assertPermission(ctx, 'financial', 'MANAGE')
     // C35: o Financeiro em "só os meus" não estorna (a tela já esconde).
-    { const soOsMeus = recusaDoSoOsMeus(ctx); if (soOsMeus) return { error: soOsMeus } }
     // O motivo é obrigatório e fica gravado nas duas pontas (A36 da simulação
     // de 2026-10-27): o estorno não perguntava por quê.
     const porque = (motivo ?? '').trim().slice(0, 500)
@@ -508,7 +506,6 @@ async function mudarParcelaDaOperadora(
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'financial', 'MANAGE')
-    { const soOsMeus = recusaDoSoOsMeus(ctx); if (soOsMeus) return { error: soOsMeus } }
     if (!/^[0-9a-f-]{36}$/i.test(parcelaId)) return { error: 'Parcela não encontrada.' }
 
     const admin = createAdminClient()
@@ -545,7 +542,6 @@ export async function remarcarVencimento(transactionId: string, dia: string, mot
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'financial', 'MANAGE')
-    { const soOsMeus = recusaDoSoOsMeus(ctx); if (soOsMeus) return { error: soOsMeus } }
     if (typeof dia !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dia)) return { error: 'Escolha o novo vencimento.' }
     const admin = createAdminClient()
     const tx = await ler(admin.from('financial_transactions')

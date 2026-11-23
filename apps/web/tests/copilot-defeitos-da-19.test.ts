@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { TenantContext, ResolvedPermissions } from '@estetica-os/types'
-import { NO_PERMISSIONS, ALL_SCOPES } from '@/lib/permissions'
+import { NO_PERMISSIONS } from '@/lib/permissions'
 import { FUNCIONALIDADES } from '@estetica-os/nucleo/lib/planos/recursos'
 
 // O primeiro import() de uma ferramenta da agenda carrega o Supabase e o núcleo.
@@ -99,7 +99,7 @@ function ctx(over: Partial<TenantContext> = {}): TenantContext {
     userId: 'auth', internalUserId: 'u1', userName: 'Sabrina', roleLabel: 'Coordenação',
     tenantId: 't1', branchId: 'b-ald', unidades: ['b-ald', 'b-mei'], role: 'RECEPTIONIST', roleId: 'r1', clientId: null,
     permissions: { ...NO_PERMISSIONS, copilot: 'MANAGE', agenda: 'MANAGE', clients: 'MANAGE' } as ResolvedPermissions,
-    scopes: ALL_SCOPES, reportTabs: [], providesServices: false, isNetworkAdmin: false, isClient: false,
+    reportTabs: [], providesServices: false, isNetworkAdmin: false, isClient: false,
     plano: { funcionalidades: TODAS, limites: { unidades: null, membros: null, whatsapp: null } },
     ...over,
   } as TenantContext

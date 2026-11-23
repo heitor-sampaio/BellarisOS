@@ -39,7 +39,7 @@ test.beforeAll(async () => {
   const ver = [{ modulo: 'clients' as const, nivel: 'VIEW' as const }]
   daRede = await criarMembro(`dpr${marca}`, { tenant: rede.tenantId, rotulo: 'Recepção da rede', permissoes: ver })
   daUnidade = await criarMembro(`dpu${marca}`, { tenant: rede.tenantId, rotulo: 'Recepção da unidade', permissoes: ver, branchId: rede.branchId })
-  semModulo = await criarMembro(`dps${marca}`, { tenant: rede.tenantId, rotulo: 'Sem clientes', permissoes: [{ modulo: 'agenda', nivel: 'VIEW', escopo: 'ALL' }] })
+  semModulo = await criarMembro(`dps${marca}`, { tenant: rede.tenantId, rotulo: 'Sem clientes', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }] })
   const un = await db().from('branches').insert({ tenant_id: rede.tenantId, name: `${PREFIXO} Norte ${marca}`, slug: `e2e-dp-norte-${marca}` })
     .select('id').single<{ id: string }>()
   expect(un.error).toBeNull()

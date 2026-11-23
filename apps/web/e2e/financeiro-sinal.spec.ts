@@ -37,7 +37,7 @@ test.beforeAll(async () => {
   test.setTimeout(180_000)
   rede = await criarOutraRede(`fsn${marca}`)
   outra = await criarOutraRede(`fso${marca}`)
-  membro = await criarMembro(`fsnm${marca}`, { tenant: rede.tenantId, rotulo: 'Financeiro', permissoes: [{ modulo: 'cashier', nivel: 'MANAGE' }, { modulo: 'financial', nivel: 'VIEW', escopo: 'ALL' }] })
+  membro = await criarMembro(`fsnm${marca}`, { tenant: rede.tenantId, rotulo: 'Financeiro', permissoes: [{ modulo: 'cashier', nivel: 'MANAGE' }, { modulo: 'financial', nivel: 'VIEW' }] })
   deFora = await criarMembro(`fsof${marca}`, { tenant: outra.tenantId, rotulo: 'Caixa', permissoes: [{ modulo: 'cashier', nivel: 'MANAGE' }] })
 })
 

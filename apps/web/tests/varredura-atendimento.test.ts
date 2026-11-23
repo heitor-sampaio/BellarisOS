@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import type { TenantContext, ResolvedPermissions, ResolvedScopes, AppModule } from '@estetica-os/types'
-import { NO_PERMISSIONS, ALL_SCOPES } from '@/lib/permissions'
+import type { TenantContext, ResolvedPermissions, AppModule } from '@estetica-os/types'
+import { NO_PERMISSIONS } from '@/lib/permissions'
 import { FUNCIONALIDADES } from '@estetica-os/nucleo/lib/planos/recursos'
 
 /**
@@ -22,21 +22,21 @@ function corpo(arquivo: string, nome: string): string {
 }
 
 const TODAS = FUNCIONALIDADES.map(f => f.chave)
-function ctx(perm: Partial<Record<AppModule, 'NONE' | 'VIEW' | 'MANAGE'>>, escopos: Partial<ResolvedScopes> = {}, over: Partial<TenantContext> = {}): TenantContext {
+function ctx(perm: Partial<Record<AppModule, 'NONE' | 'VIEW' | 'MANAGE'>>, over: Partial<TenantContext> = {}): TenantContext {
   return {
     userId: 'auth', internalUserId: 'eu', userName: 'Ana', roleLabel: 'Cargo',
     tenantId: 't1', branchId: null, role: 'RECEPTIONIST', roleId: 'r1', clientId: null,
     permissions: { ...NO_PERMISSIONS, copilot: 'MANAGE', ...perm } as ResolvedPermissions,
-    scopes: { ...ALL_SCOPES, ...escopos } as ResolvedScopes,
     reportTabs: [], providesServices: false, isNetworkAdmin: false, isClient: false,
     plano: { funcionalidades: TODAS, limites: { unidades: null, membros: null, whatsapp: null } },
     ...over,
   }
 }
 
-// CLAUDE.md §11 (o Heitor, 18/11): "o módulo `atendimento` (Ver/Gerenciar, com
-// escopo) inicia, conclui, desiste no meio"; atendimento.md, "Quem faz o quê".
-describe('ATD-A01 — desistir no meio é do Atendimento em Gerenciar, com o escopo dele', () => {
+// CLAUDE.md §11 (o Heitor, 18/11): "o módulo `atendimento` (Ver/Gerenciar)
+// inicia, conclui, desiste no meio"; atendimento.md, "Quem faz o quê". Sem o
+// escopo desde 23/11 (SM1; UM2).
+describe('ATD-A01 — desistir no meio é do Atendimento em Gerenciar', () => {
   it('a regra é uma, pura: o Em atendimento pede o Atendimento; o resto, a Agenda', async () => {
     const { recusaDoCancelar, podeCancelarAlgum } = await import('@/lib/appointments/quem-cancela')
     const emAtendimento = (prof: string | null) => ({ status: 'IN_PROGRESS', professional_id: prof })
@@ -55,12 +55,11 @@ describe('ATD-A01 — desistir no meio é do Atendimento em Gerenciar, com o esc
     expect(podeCancelarAlgum(soAgenda)).toBe(true)
     expect(podeCancelarAlgum(ctx({ agenda: 'VIEW', atendimento: 'VIEW' }))).toBe(false)
 
-    // O escopo do Atendimento: "só os meus" desiste só do DELA.
-    const soOsMeus = ctx({ agenda: 'MANAGE', atendimento: 'MANAGE' }, { atendimento: 'OWN' })
-    expect(recusaDoCancelar(soOsMeus, emAtendimento('eu'))).toBeNull()
-    expect(recusaDoCancelar(soOsMeus, emAtendimento('outra'))).toBeTruthy()
-    // …e o "só os meus" do Atendimento não muda o cancelar do agendado.
-    expect(recusaDoCancelar(soOsMeus, agendado('outra'))).toBeNull()
+    // Sem o "só os meus" (SM1, o Heitor, 2026-11-23): o Atendimento em Gerenciar desiste do de qualquer pessoa.
+    const osDois = ctx({ agenda: 'MANAGE', atendimento: 'MANAGE' })
+    expect(recusaDoCancelar(osDois, emAtendimento('eu'))).toBeNull()
+    expect(recusaDoCancelar(osDois, emAtendimento('outra'))).toBeNull()
+    expect(recusaDoCancelar(osDois, agendado('outra'))).toBeNull()
   })
 
   it('o núcleo (cancelarCore) decide pela situação lida e grava só nela', () => {
@@ -73,7 +72,7 @@ describe('ATD-A01 — desistir no meio é do Atendimento em Gerenciar, com o esc
     const s = corpo('actions/appointments.ts', 'cancelAppointmentSessionInterno')
     expect(s).not.toContain("assertPermission(ctx, 'agenda', 'MANAGE')")
     expect(s).toContain('podeCancelarAlgum(ctx)')
-    // A desistência com insumo ou intercorrência confere o escopo do Atendimento.
+    // A desistência com insumo ou intercorrência confere a regra do cancelar.
     expect(s).toContain('recusaDoCancelar(ctx, existente)')
     const u = corpo('actions/appointments.ts', 'updateAppointmentStatusInterno')
     expect(u).toMatch(/status === 'CANCELLED'[\s\S]{0,80}podeCancelarAlgum/)
@@ -115,7 +114,7 @@ describe('ATD-A04 — a janela não oferece "Não compareceu" a quem está em at
 describe('ATD-A02/COP-01 — a matriz das gravações do Copilot é a da tela', () => {
   /**
    * A trava da action da tela, por ferramenta de gravação — a do NÍVEL do
-   * módulo (o escopo pode ser mais estreito no Copilot; ele nunca é mais largo).
+   * módulo (o Copilot nunca é mais largo que a tela).
    */
   const DA_TELA: Record<string, { modulo: AppModule; outra?: (c: TenantContext) => boolean }> = {
     agendar:               { modulo: 'agenda' },        // addAppointment
@@ -173,19 +172,17 @@ describe('ATD-A05 — reassignProfessional pelo alcance do agendamento', () => {
   })
 })
 
-// ATD-A03/ATD-P04/ATD-P06: a ficha do procedimento e a foto dela são do
-// atendimento, como a evolução (`saveDraftNotes`): o Atendimento e o Prontuário
-// em Gerenciar ("Editar registro" — atendimento.md, `canEditRecords`), o
-// alcance do agendamento e o "só os meus" da Agenda e do Atendimento.
+// ATD-A03/ATD-P04/ATD-P06: a ficha do procedimento e a foto dela são clínicas,
+// como a evolução (`saveDraftNotes`): o Prontuário em Gerenciar, e só ele — sem
+// o Atendimento (UM4, o Heitor, 2026-11-23) e sem o "só os meus" (SM1) —, e o
+// alcance do agendamento.
 describe('ATD-A03/P04/P06 — a ficha do procedimento e a foto dela seguem a evolução', () => {
   for (const nome of ['salvarFichaDoProcedimento', 'uploadAnamnesisPhoto']) {
     it(nome, () => {
       const c = corpo('actions/anamnesis.ts', nome)
-      expect(c).toContain("assertPermission(ctx, 'atendimento', 'MANAGE')")
+      expect(c).not.toContain("assertPermission(ctx, 'atendimento', 'MANAGE')")
       expect(c).toContain("assertPermission(ctx, 'medical_records', 'MANAGE')")
       expect(c).toContain('alcancaOAgendamento(')
-      expect(c).toContain('deOutroProfissional(')
-      expect(c).toContain('deOutroNoAtendimento(')
       expect(c).not.toContain('alcancaUnidade(')
     })
   }
@@ -224,42 +221,44 @@ describe('ATD-P07 — a aplicação só nasce num atendimento', () => {
   })
 })
 
-// ATD-P03: eq-02 (revisão de 2026-11-02) — "a cliente DELA" é a de um
-// agendamento com ela NÃO CANCELADO; a falta conta (`clienteAtendidaPor`).
-describe('ATD-P03 — o "só os meus" do Prontuário pela regra única (o cancelado não conta)', () => {
+// ATD-P03: era o "só os meus" do Prontuário (eq-02, revisão de 2026-11-02 — a
+// cliente DELA pela regra única). Sem o "só os meus" (SM1, o Heitor,
+// 2026-11-23): o Prontuário em Ver vê o de todas, nas unidades ao alcance.
+describe('ATD-P03 — o Prontuário em Ver vê o prontuário de todas as clientes', () => {
   for (const pagina of ['app/[slug]/clients/[id]/page.tsx', 'app/admin/clients/[id]/page.tsx']) {
     it(pagina, () => {
-      const f = fonte(pagina)
-      const i = f.indexOf('const canViewRecords')
-      const trecho = f.slice(i, i + 300)
-      expect(trecho).toContain("clienteNoEscopo(admin, ctx, 'medical_records', id)")
-      expect(trecho).not.toContain('.some(')
+      expect(fonte(pagina)).toContain('const canViewRecords = podeVerClinico(ctx)')
     })
   }
   it('recusaDoAnexo', () => {
     const f = fonte('actions/client-documents.ts')
     const r = f.slice(f.indexOf('async function recusaDoAnexo'), f.indexOf('export async function uploadClientDocument'))
-    expect(r).toContain("clienteNoEscopo(admin, ctx, 'medical_records', clientId)")
+    expect(r).toContain("can(ctx, 'medical_records', 'MANAGE') ? null : SEM_ACESSO_CLINICO")
   })
   it('listarMapasDeInjetaveis', () => {
-    expect(corpo('actions/injectable-map.ts', 'listarMapasDeInjetaveis')).toContain(".neq('clients.appointments.status', 'CANCELLED')")
+    const c = corpo('actions/injectable-map.ts', 'listarMapasDeInjetaveis')
+    expect(c).toContain("assertPermission(ctx, 'medical_records', 'VIEW')")
+    expect(c).not.toContain('clients.appointments')
   })
 })
 
-// ATD-P05: a ficha de saúde é prontuário — com "só os meus", só da cliente dela.
-describe('ATD-P05 — salvarAnamneseGeral confere o "só os meus" do Prontuário', () => {
+// ATD-P05: a ficha de saúde é prontuário — o Prontuário em Gerenciar, de qualquer
+// cliente da rede (SM1 e UM4, o Heitor, 2026-11-23).
+describe('ATD-P05 — salvarAnamneseGeral pede o Prontuário em Gerenciar e a cliente da rede', () => {
   it('pela regra única', () => {
-    expect(corpo('actions/pre-atendimento.ts', 'salvarAnamneseGeral')).toContain("clienteNoEscopo(admin, ctx, 'medical_records', dados.data.clientId)")
+    const c = corpo('actions/pre-atendimento.ts', 'salvarAnamneseGeral')
+    expect(c).toContain("assertPermission(ctx, 'medical_records', 'MANAGE')")
+    expect(c).toContain(".eq('id', dados.data.clientId).eq('tenant_id', ctx.tenantId!)")
   })
 })
 
 // ATD-P08: quem VÊ o prontuário vê a foto da ficha (a ficha lida na aba Prontuário).
 describe('ATD-P08 — a foto da ficha se assina com o Prontuário em Ver', () => {
-  it('signAnamnesisPhotos pede Ver e confere o "só os meus" pelo atendimento da foto', () => {
+  it('signAnamnesisPhotos pede Ver e confere a rede pelo atendimento da foto', () => {
     const c = corpo('actions/anamnesis.ts', 'signAnamnesisPhotos')
     expect(c).toContain("assertPermission(ctx, 'medical_records', 'VIEW')")
     expect(c).not.toContain("assertPermission(ctx, 'medical_records', 'MANAGE')")
-    expect(c).toContain('clienteNoEscopo(')
+    expect(c).toContain(".eq('branches.tenant_id', ctx.tenantId!)")
   })
 })
 

@@ -133,11 +133,10 @@ export function vazioDoReativar(comVisita: number, recentesSemVisita: number, de
  * De quais clientes os quadros falam (A10 da 13ª simulação): o "Clientes no
  * mês" e o "Reativar" dizem de quem falam. A cliente é da REDE (24ª
  * simulação — a "atendida na unidade" de T1/H16 era uma leitura do Claude, e
- * saiu): fora o "só os meus", são sempre as da rede.
+ * saiu): são sempre as da rede — também na vista pessoal.
  */
-export function deQuemSaoAsClientes(r: { dela: boolean }): string {
-  // A12 da 16ª: são as com horário com ela (não cancelado), não só as já atendidas.
-  return r.dela ? 'com horário com você' : 'da rede'
+export function deQuemSaoAsClientes(): string {
+  return 'da rede'
 }
 
 /** As clientes sem visita há mais de 90 dias (o total e as há mais tempo sem vir). */

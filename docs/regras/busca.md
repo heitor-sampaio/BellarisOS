@@ -16,11 +16,12 @@ embaixo da topbar. Desde a fase 2 (2026-10-08) também tem AÇÕES (abaixo).
 - **A busca não abre exceção de alcance.** Quem não acha um registro na tela
   própria dele não o acha aqui. O navegador manda só o termo e o slug do
   portal; `buscarTudo` (`actions/busca.ts`) decide os tipos por
-  `tiposPermitidos(ctx.permissions)` (o módulo da tela de cada tipo), o dono
-  por `ownerFilter` (CRM e agenda) e a unidade por `ctx.branchId ?? unidade do
-  slug` com `assertUnidade`. Cliente final é recusado.
+  `tiposPermitidos(ctx.permissions)` (o módulo da tela de cada tipo) e a
+  unidade por `ctx.branchId ?? unidade do slug` com `assertUnidade`. Sem o
+  "só os meus" (SM1, 2026-11-23), não há recorte por dono: quem tem o módulo
+  acha tudo da abrangência. Cliente final é recusado.
 - **Conversas passam por `idsDaPaginaDoInbox`** (`lib/inbox/pagina.ts`), a
-  MESMA conta da lista do inbox (dono, modo pessoa × conversa, caixas do cargo)
+  MESMA conta da lista do inbox (as caixas do cargo; sem dono nem modo desde a SM3)
   — não por uma consulta à parte.
 - **O resto é `busca_universal`** (migration `20261003000001`, só
   `service_role`): sem acento (`private.sem_acento`, também em `inbox_pagina`),

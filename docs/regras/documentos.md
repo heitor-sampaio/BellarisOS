@@ -309,8 +309,8 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
     pelo link, pela conversa, pelo app, montar de novo, revogar o link e
     definir o pagamento do contrato. A tela `/documentos/[id]/assinar` e o PDF
     (`/api/documentos/[id]/pdf`) usam a mesma regra. A trava de cada
-    documento continua sendo chegar a ele (`documentoAoAlcance`: a rede, a
-    unidade ao alcance e o prontuário "só os meus"), com os Documentos no
+    documento continua sendo chegar a ele (`documentoAoAlcance`: a rede e a
+    unidade ao alcance), com os Documentos no
     PLANO da rede (`temRecurso('documentos')`) e, no que manda algo à
     cliente, `bloqueioDoSuporte`.
   - Saíram com a decisão: a exceção do checkout de 2026-10-20 (quem recebe
@@ -399,8 +399,9 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   `DocumentosDaJanela` (`[data-documentos-do-agendamento]`,
   `documentosDaJanela` em `actions/documentos-da-janela.ts`) lista o título e
   a situação — "Assinado", "Falta assinar · bloqueia o início", "Faltam dados
-  do cadastro", "Em preparação" — sem o conteúdo, a quem vê a agenda, com o
-  agendamento da rede, ao alcance da unidade e, no "só os meus", dela. Colher
+  do cadastro", "Em preparação" — sem o conteúdo, a quem vê a agenda (ou, na
+  Minha agenda, no agendamento dela — SM2), com o agendamento da rede e ao
+  alcance da unidade. Colher
   a assinatura é na sessão, na ficha e, desde a A23 da 9ª, pelo link da
   janela (acima). Prova:
   `e2e/agenda-janela-termo.spec.ts`.
@@ -704,28 +705,19 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   - Canal de envio novo grava o seu evento em `issued_document_events` e
     entra na lista de envios da função — senão o documento fica "a enviar".
   - Prova: `e2e/documentos-painel.spec.ts`.
-- **Os documentos emitidos seguem o prontuário "só os meus"** (decisão do
-  Heitor, 2026-10-29). Com `medical_records` OWN, só os documentos das
-  clientes que ela atende — um agendamento com ela NÃO CANCELADO, inclusive
-  futuro (eq-02, 2026-11-02, migration `20261101000708`; `clienteNoEscopo`, `lib/clientes/atendida-por.ts`, a regra do
-  prontuário OWN):
-  - a tela de Documentos e a ferramenta `documentos` do Copilot recortam no
-    banco (`p_professional_id` em `documentos_emitidos_pagina`/`_resumo`,
-    migration `20261029000901`; `profissionalDoRecorte`);
-  - a ficha da cliente que ela não atende não lista os documentos; a sessão
-    de atendimento, idem. **A linha do tempo da ficha, sim** (doc-03, o
-    Heitor em 2026-11-02: "o histórico não é dado clínico, é o histórico de
-    ações feitas no cliente dentro do sistema"): o "Assinado: <título>"
-    aparece a quem vê a ficha, sem o recorte — a linha leva só o título do
-    modelo e o canal, nada do conteúdo. Nenhuma linha do histórico carrega
-    conteúdo clínico (sem título de foto, sem texto de evolução);
-  - pelo id: `documentoAoAlcance` (toda action de `actions/documentos.ts` —
-    abrir, colher, papel, gerar link, pela conversa, revogar, pedir no portal,
-    dispensar, montar de novo, a trilha), a tela `/documentos/[id]/assinar` e o
-    PDF (`/api/documentos/[id]/pdf`) respondem como se o documento não
-    existisse.
-  - Sem o prontuário no cargo (NONE), o escopo não vale (CLAUDE.md §11): quem
-    não tem o prontuário vê todos. Prova: `e2e/documentos-so-os-meus.spec.ts`.
+- **Os documentos emitidos não se recortam por quem atende** (sem o "só os
+  meus", SM1, 2026-11-23; era o "seguem o prontuário 'só os meus'" de
+  29/10): quem chega aos documentos vê os de todas as clientes da
+  abrangência. Pelo id, `documentoAoAlcance` (toda action de
+  `actions/documentos.ts` — abrir, colher, papel, gerar link, pela conversa,
+  revogar, pedir no portal, dispensar, montar de novo, a trilha), a tela
+  `/documentos/[id]/assinar` e o PDF (`/api/documentos/[id]/pdf`) conferem a
+  rede e a unidade ao alcance, e respondem como se o documento não existisse
+  fora delas. **A linha do tempo da ficha** (doc-03, o Heitor em 2026-11-02:
+  "o histórico não é dado clínico, é o histórico de ações feitas no cliente
+  dentro do sistema"): o "Assinado: <título>" leva só o título do modelo e o
+  canal, nada do conteúdo. Nenhuma linha do histórico carrega conteúdo
+  clínico (sem título de foto, sem texto de evolução).
 - **Os atritos dos termos da 11ª simulação** (2026-11-10; princípio 3):
   - **O termo tem a profissional** (A5: o termo de injetável saía com
     "Profissional responsável: ____"): `profissional.nome` ("Profissional que

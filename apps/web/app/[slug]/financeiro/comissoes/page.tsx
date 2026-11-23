@@ -1,10 +1,11 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertPermission, alcancaUnidade, assertRecurso, ownerFilter } from '@/lib/auth'
+import { getTenantContext, alcancaUnidade, assertRecurso, can, vistaPessoal } from '@/lib/auth'
+import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { ComissoesDaEquipe } from '@/app/_shared/comissoes-da-equipe'
 
-/** Financeiro → Comissões, no portal da unidade: só a dela. */
+/** Financeiro → Comissões, no portal da unidade. */
 export default async function ComissoesDaUnidadePage({
   params,
   searchParams,
@@ -16,7 +17,10 @@ export default async function ComissoesDaUnidadePage({
   const ctx = await getTenantContext()
   // A funcionalidade é do PLANO da rede (lib/planos/recursos.ts).
   assertRecurso(ctx, 'comissoes')
-  assertPermission(ctx, 'financial', 'VIEW')
+  // Com o Financeiro em Ver, as de todos; quem atende sem ele, a vista pessoal
+  // ("Minhas comissões": só as dela).
+  const minhas = can(ctx, 'financial', 'VIEW') ? null : vistaPessoal(ctx, 'financial')
+  if (!minhas && !can(ctx, 'financial', 'VIEW')) throw semAcesso()
   const sp = await searchParams
 
   const unidade = await ler(createAdminClient().from('branches').select('id, name')
@@ -25,10 +29,9 @@ export default async function ComissoesDaUnidadePage({
 
   // "Minhas comissões" de quem ATENDE também em outra unidade (decisão 2 da 8ª:
   // a Talita da Água Verde cobre o Batel): as outras unidades em que ela atende
-  // entram no recorte — só as comissões DELA (o "só as próprias"); quem vê as
-  // de todos fica na unidade dele.
-  const minhas = ownerFilter(ctx, 'financial')
-  const outras = minhas && minhas === ctx.internalUserId
+  // entram no recorte — só as comissões DELA (a vista pessoal); quem vê as de
+  // todos fica na unidade dele.
+  const outras = minhas
     ? (ctx.atendeEm ?? []).filter(u => u !== unidade.id) : []
   const deFora = outras.length
     ? ((await ler(createAdminClient().from('branches').select('id, name')

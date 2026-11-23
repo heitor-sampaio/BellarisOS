@@ -69,11 +69,11 @@ test.beforeAll(async () => {
   concluido = c.data!.id
   recepcao = await criarMembro(`fzsr${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Recepcao',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'clients', nivel: 'MANAGE' }],
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }],
   })
   dona = await criarMembro(`fzsd${marca}`, {
     tenant: rede.tenantId, rotulo: 'Dona', permissoes: [
-      { modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'marketing', nivel: 'MANAGE' },
+      { modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'marketing', nivel: 'MANAGE' },
       { modulo: 'automations', nivel: 'MANAGE' },
     ],
   })

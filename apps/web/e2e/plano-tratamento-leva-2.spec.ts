@@ -109,7 +109,8 @@ test.beforeAll(async () => {
   expect((await db().from('users').update({ provides_services: true, branch_id: rede.branchId }).eq('id', rede.professionalId)).error).toBeNull()
   atende = await criarMembro(`pt2a${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Atende', atendeEm: [rede.branchId],
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }],
+    // Monta o plano pelo Atendimento em Gerenciar (UM3, o Heitor, 2026-11-23), não pelo "Atende".
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'atendimento', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }],
   })
   balcao = await criarMembro(`pt2b${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Balcão',

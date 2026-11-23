@@ -30,7 +30,7 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
 
 let rede: OutraRede | null = null
 let dona: MembroDeTeste | null = null
-let soOsMeus: MembroDeTeste | null = null
+let soVe: MembroDeTeste | null = null
 let slug = ''
 let cliente = ''
 let atendimento = ''
@@ -64,10 +64,10 @@ test.beforeAll(async () => {
     tenant: rede.tenantId, rotulo: 'Dona',
     permissoes: [{ modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'medical_records', nivel: 'MANAGE' }, { modulo: 'agenda', nivel: 'MANAGE' }],
   })
-  // O prontuário "só os meus", de quem NÃO atende a cliente: o recorte.
-  soOsMeus = await criarMembro(`pfao${marca}`, {
-    tenant: rede.tenantId, rotulo: 'Só os meus',
-    permissoes: [{ modulo: 'clients', nivel: 'VIEW' }, { modulo: 'medical_records', nivel: 'VIEW', escopo: 'OWN' }],
+  // O Prontuário em Ver, de quem NÃO atende a cliente (sem o "só os meus", SM1).
+  soVe = await criarMembro(`pfao${marca}`, {
+    tenant: rede.tenantId, rotulo: 'Prontuario em Ver',
+    permissoes: [{ modulo: 'clients', nivel: 'VIEW' }, { modulo: 'medical_records', nivel: 'VIEW' }],
   })
   cliente = await rede.criarCliente('Mariana')
   const base = {
@@ -90,7 +90,7 @@ test.beforeAll(async () => {
   exame = await anexo({ category: 'exame', name: `Exame de sangue ${marca}` })
   comum = await anexo({ category: 'outro', name: `Comprovante ${marca}` })
 })
-test.afterAll(async () => { await dona?.limpar(); await soOsMeus?.limpar(); await rede?.limpar() })
+test.afterAll(async () => { await dona?.limpar(); await soVe?.limpar(); await rede?.limpar() })
 
 test.describe.serial('PR1: as fotos e os anexos clínicos moram no Prontuário', () => {
   test('PR1a: a foto aparece no atendimento dela, com o momento, abre grande e vai ao app', async ({ browser }) => {
@@ -168,17 +168,14 @@ test.describe.serial('PR1: as fotos e os anexos clínicos moram no Prontuário',
     })
   })
 
-  test('PR1b: o recorte se diz no Prontuário (o "só os meus" de quem não atende), não nos Documentos', async ({ browser }) => {
-    const { count } = await db().from('client_documents').select('id', { count: 'exact', head: true })
-      .eq('client_id', cliente).is('apagado_em', null).in('category', ['termo_consentimento', 'exame', 'laudo', 'foto_clinica', 'receita'])
-    await como(soOsMeus!, browser, async p => {
+  // Sem o "só os meus" (SM1, o Heitor, 2026-11-23): o Prontuário em Ver não tem recorte.
+  test('PR1b: com o Prontuário em Ver, quem não atende a cliente vê os anexos clínicos no Prontuário, sem aviso de recorte', async ({ browser }) => {
+    await como(soVe!, browser, async p => {
       await p.goto(`/admin/clients/${cliente}?aba=fichas`)
-      const fora = p.locator('[data-anexos-clinicos-fora]')
-      await expect(fora).toBeVisible()
-      await expect(fora).toContainText(`Há ${count} anexos clínicos desta cliente`)
-      await expect(p.getByText(`Exame de sangue ${marca}`), 'nada do conteúdo').toHaveCount(0)
+      await expect(p.locator('[data-anexos-clinicos]').getByText(`Exame de sangue ${marca}`), 'o exame aparece').toBeVisible()
+      await expect(p.locator('[data-anexos-clinicos-fora]'), 'nada fica de fora').toHaveCount(0)
       await p.goto(`/admin/clients/${cliente}?aba=documentos`)
-      await expect(p.locator('[data-anexos-clinicos-fora]'), 'o aviso foi junto para o Prontuário').toHaveCount(0)
+      await expect(p.locator('[data-anexos-clinicos-fora]'), 'nem nos Documentos').toHaveCount(0)
     })
   })
 

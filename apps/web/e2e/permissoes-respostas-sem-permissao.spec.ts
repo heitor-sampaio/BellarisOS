@@ -51,7 +51,7 @@ test.beforeAll(async () => {
 
   dona = await criarMembro(`rspd${marca}`, { tenant: rede.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
   semNada = await criarMembro(`rspn${marca}`, {
-    tenant: rede.tenantId, rotulo: 'Agenda', permissoes: [{ modulo: 'agenda', nivel: 'VIEW', escopo: 'ALL' }],
+    tenant: rede.tenantId, rotulo: 'Agenda', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }],
   })
   caixa = await criarMembro(`rspc${marca}`, {
     tenant: rede.tenantId, rotulo: 'Caixa', permissoes: [{ modulo: 'cashier', nivel: 'MANAGE' }],

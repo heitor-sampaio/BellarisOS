@@ -52,7 +52,7 @@ test.beforeAll(async () => {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Gerente',
     permissoes: [{ modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'automations', nivel: 'MANAGE' }, { modulo: 'marketing', nivel: 'MANAGE' }],
   })
-  caio = await criarMembro(`cfg14c${marca}`, { tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Caio', permissoes: [{ modulo: 'agenda', nivel: 'VIEW', escopo: 'OWN' }] })
+  caio = await criarMembro(`cfg14c${marca}`, { tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Caio', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }] })
   expect((await db().from('users').update({ atende_em: [rede.branchId] }).eq('id', caio.userId)).error).toBeNull()
   nomeDaDona = await nome(dona)
   clienteId = await rede.criarCliente('Ana')

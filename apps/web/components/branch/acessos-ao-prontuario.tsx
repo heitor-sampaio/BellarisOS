@@ -22,11 +22,10 @@ export function AcessosAoProntuario({ itens, total }: { itens: AcessoNaFicha[]; 
           <span>Acessos ao prontuário</span>
           {/* A regra é `podeVerAcessosAoProntuario`: sem unidade fixa e com o
               prontuário em Gerenciar — o texto dizia "só a administração da
-              rede", e o médico da rede via a lista (A43, 2026-11-01). O escopo
-              não muda a regra: com "só os meus" também (A35 da 6ª simulação).
+              rede", e o médico da rede via a lista (A43, 2026-11-01).
               O "o que esta lista mostra" mora na dica (2026-11-16). */}
           <Dica rotulo="Sobre os acessos ao prontuário">
-            Quem viu os dados de saúde desta cliente, e por onde. Esta lista aparece para quem tem o Prontuário em Gerenciar, sem unidade fixa — também com o escopo “só os meus”.
+            Quem viu os dados de saúde desta cliente, e por onde. Esta lista aparece para quem tem o Prontuário em Gerenciar, sem unidade fixa.
           </Dica>
         </h3>
         <span className="chip chip-brand" style={{ marginLeft: 'auto' }}>{total}</span>

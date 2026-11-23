@@ -3,7 +3,8 @@
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { z } from 'zod'
 import { headers } from 'next/headers'
-import { getTenantContext, assertPermission, assertRecurso, alcancaOAgendamento, ownerFilter, can } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertRecurso, alcancaOAgendamento, vistaPessoal, can } from '@/lib/auth'
+import { semAcesso } from '@/lib/sem-acesso'
 import { dayKeyTZ } from '@/lib/datetime'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { origemPublicaDe } from '@/lib/origem'
@@ -21,7 +22,6 @@ import { EVENTOS } from '@estetica-os/types'
 import { mensagemDoLink } from '@/lib/saudacao'
 import { cifrarSegredos, decifrarSegredos, chaveDoAmbiente } from '@/lib/integracoes/cofre'
 import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
-import { clienteNoEscopo } from '@/lib/clientes/atendida-por'
 
 /**
  * O pré-atendimento pela equipe (2026-10-20, decisões do Heitor): a ficha
@@ -93,11 +93,6 @@ export async function salvarAnamneseGeral(input: unknown): Promise<Resultado> {
   const cliente = await ler(admin.from('clients').select('id')
     .eq('id', dados.data.clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'conferir a cliente da ficha de saúde')
   if (!cliente) return { error: 'Cliente não encontrada.' }
-  // A ficha de saúde é prontuário: com o "só os meus", só a da cliente que ela
-  // atende (eq-02 — a regra única de `clienteAtendidaPor`; ATD-P05).
-  if (!(await clienteNoEscopo(admin, ctx, 'medical_records', dados.data.clientId))) {
-    return { error: 'A ficha de saúde é prontuário: com o Prontuário em "só os meus", só da cliente que você atende.' }
-  }
 
   await gravarAnamneseGeral(admin, {
     tenantId: ctx.tenantId!, clientId: dados.data.clientId, respostas: dados.data.respostas,
@@ -111,8 +106,8 @@ export async function salvarAnamneseGeral(input: unknown): Promise<Resultado> {
 // ─── O pré-atendimento de um agendamento: a situação e o link ───────────────
 
 /**
- * O agendamento lido por id, conferido: da rede, ao alcance da unidade e, no
- * escopo "só a minha agenda", do próprio profissional.
+ * O agendamento lido por id, conferido: da rede e ao alcance da unidade. Na
+ * vista pessoal da agenda (SM2), só o do próprio profissional.
  */
 async function agendamentoAoAlcance(ctx: Awaited<ReturnType<typeof getTenantContext>>, appointmentId: string) {
   if (!z.string().uuid().safeParse(appointmentId).success) return null
@@ -121,8 +116,8 @@ async function agendamentoAoAlcance(ctx: Awaited<ReturnType<typeof getTenantCont
     .eq('id', appointmentId).eq('branches.tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o agendamento') as
     { id: string; client_id: string | null; branch_id: string; professional_id: string | null } | null
   if (!ap || !alcancaOAgendamento(ctx, ap.branch_id, ap.professional_id)) return null
-  const dono = ownerFilter(ctx, 'agenda')
-  if (dono && ap.professional_id !== dono) return null
+  const pessoal = vistaPessoal(ctx, 'agenda')
+  if (pessoal && ap.professional_id !== pessoal) return null
   return ap
 }
 
@@ -160,7 +155,7 @@ export interface SituacaoDoPreAtendimento {
  */
 export async function situacaoDoPreAtendimento(appointmentId: string): Promise<SituacaoDoPreAtendimento | { error: string }> {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'agenda', 'VIEW')
+  if (!can(ctx, 'agenda', 'VIEW') && !vistaPessoal(ctx, 'agenda')) throw semAcesso()
   const ap = await agendamentoAoAlcance(ctx, appointmentId)
   if (!ap) return { error: 'Agendamento não encontrado.' }
   if (!ap.client_id) return { estado: null, podeLink: false }

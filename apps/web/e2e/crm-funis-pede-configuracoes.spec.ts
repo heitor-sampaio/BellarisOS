@@ -36,7 +36,7 @@ test.beforeAll(async () => {
   slug = (await db().from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
   operadora = await criarMembro(`cfpo${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'SDR',
-    permissoes: [{ modulo: 'crm', nivel: 'MANAGE', escopo: 'ALL' }],
+    permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }],
   })
   // O funil é configuração da rede toda: só a Admin da rede o muda (o Heitor,
   // 18/11: "Configuração da rede toda só pela conta admin"). Nem quem tem "A
@@ -44,7 +44,7 @@ test.beforeAll(async () => {
   // 2026-11-01 — e2e/permissoes-config-de-quem-tem-uma-unidade.spec.ts).
   gestora = await criarMembro(`cfpg${marca}`, {
     tenant: rede.tenantId, rotulo: 'Gerente',
-    permissoes: [{ modulo: 'crm', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'settings', nivel: 'MANAGE' }],
+    permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }, { modulo: 'settings', nivel: 'MANAGE' }],
   })
   configuradora = await criarMembro(`cfpc${marca}`, { tenant: rede.tenantId, rotulo: 'Admin', donoDaRede: true, permissoes: [] })
 })

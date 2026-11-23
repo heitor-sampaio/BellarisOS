@@ -53,24 +53,23 @@ type Modulo =
 
 export interface Permissao {
   modulo: Modulo
-  /** 'NONE' grava a linha sem acesso — o caso do escopo guardado num módulo que o cargo não tem (D6, 2026-10-29). */
+  /** 'NONE' grava a linha sem acesso. Sem escopo: saiu o "só os meus" (o Heitor, 2026-11-23). */
   nivel:  'NONE' | 'VIEW' | 'MANAGE'
-  escopo?: 'OWN' | 'ALL'
 }
 
 /**
  * O módulo Atendimento (2026-11-18) pela regra da migration
  * `20261123900001`: o cargo de teste que não o diz ganha o que a rede ganhou —
  * Agenda em Ver ou Gerenciar E Prontuário em Gerenciar → Atendimento em
- * Gerenciar; só a Agenda → Atendimento em Ver; o escopo é o da Agenda. Os
- * specs escritos antes do módulo seguem valendo; quem quer outro, diz.
+ * Gerenciar; só a Agenda → Atendimento em Ver. Os specs escritos antes do
+ * módulo seguem valendo; quem quer outro, diz.
  */
 export function comAtendimento(permissoes: Permissao[]): Permissao[] {
   if (permissoes.some(p => p.modulo === 'atendimento')) return permissoes
   const agenda = permissoes.find(p => p.modulo === 'agenda' && p.nivel !== 'NONE')
   if (!agenda) return permissoes
   const prontuario = permissoes.some(p => p.modulo === 'medical_records' && p.nivel === 'MANAGE')
-  return [...permissoes, { modulo: 'atendimento', nivel: prontuario ? 'MANAGE' : 'VIEW', escopo: agenda.escopo ?? 'ALL' }]
+  return [...permissoes, { modulo: 'atendimento', nivel: prontuario ? 'MANAGE' : 'VIEW' }]
 }
 
 /**
@@ -173,8 +172,8 @@ export async function criarMembro(
     cargoDaRede?: string
     /**
      * As unidades em que o membro ATENDE (`users.atende_em`, o "Atende" da
-     * Equipe — não é permissão). O plano de tratamento é montado por quem
-     * atende (PT2, Bloco Plano de tratamento, 2026-11-14).
+     * Equipe — não é permissão: abre só as vistas pessoais, UM5). O plano é
+     * do Atendimento em Gerenciar (UM3, 2026-11-23), não de quem atende.
      */
     atendeEm?: string[]
     /**
@@ -233,7 +232,7 @@ export async function criarMembro(
 
     if (cargoProprio && opcoes.permissoes.length) {
       const { error: erroPerm } = await db.from('role_permissions').insert(comAtendimento(opcoes.permissoes).map(p => ({
-        tenant_id: tenant, role_id: roleId, module: p.modulo, level: p.nivel, scope: p.escopo ?? 'ALL',
+        tenant_id: tenant, role_id: roleId, module: p.modulo, level: p.nivel, scope: 'ALL',
       })))
       if (erroPerm) throw new Error(`gravar a matriz do cargo: ${erroPerm.message}`)
     }
@@ -267,16 +266,16 @@ export async function criarMembro(
 }
 
 /**
- * O SDR de sempre: CRM MANAGE com escopo "só os meus" (ou ALL), de rede.
- * Mantido pelo nome porque é o que os specs de inbox e CRM usam.
+ * O SDR de sempre: CRM em Gerenciar, de rede. (Era `membroComEscopoProprio`,
+ * com o CRM "só os meus" — saiu em 23/11.)
  */
-export async function membroComEscopoProprio(
+export async function membroDoCrm(
   marca: string,
-  opcoes: { escopo?: 'OWN' | 'ALL'; inboxCaixas?: 'todas' | 'minhas' } = {},
+  opcoes: { inboxCaixas?: 'todas' | 'minhas' } = {},
 ): Promise<MembroDeTeste> {
   return criarMembro(`sdr${marca}`, {
     rotulo: 'SDR',
-    permissoes: [{ modulo: 'crm', nivel: 'MANAGE', escopo: opcoes.escopo ?? 'OWN' }],
+    permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }],
     inboxCaixas: opcoes.inboxCaixas,
   })
 }

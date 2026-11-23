@@ -38,7 +38,7 @@ test.beforeAll(async () => {
   }
   pessoa = await criarMembro(`rvvup${marca}`, {
     tenant: rede.tenantId, branchId: un.A, outrasUnidades: [un.B], rotulo: 'Duas unidades',
-    permissoes: [{ modulo: 'reports', nivel: 'VIEW', escopo: 'ALL' }],
+    permissoes: [{ modulo: 'reports', nivel: 'VIEW' }],
   })
   expect((await db().from('role_report_tabs').insert({ tenant_id: rede.tenantId, role_id: pessoa.roleId, tab: 'vendas' })).error).toBeNull()
 

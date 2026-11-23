@@ -66,9 +66,9 @@ test.beforeAll(async () => {
   menino = b!.id
   cliente = await rede.criarCliente('Rosana')
   dona = await criarMembro(`eud${marca}`, { tenant: rede.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
-  priscila = await criarMembro(`eup${marca}`, { tenant: rede.tenantId, branchId: moinhos, rotulo: 'Priscila', permissoes: [{ modulo: 'agenda', nivel: 'VIEW', escopo: 'OWN' }] })
-  michele = await criarMembro(`eum${marca}`, { tenant: rede.tenantId, branchId: moinhos, rotulo: 'Michele', permissoes: [{ modulo: 'agenda', nivel: 'VIEW', escopo: 'OWN' }] })
-  gerente = await criarMembro(`eug${marca}`, { tenant: rede.tenantId, branchId: moinhos, rotulo: 'Gerente', permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }] })
+  priscila = await criarMembro(`eup${marca}`, { tenant: rede.tenantId, branchId: moinhos, rotulo: 'Priscila', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }] })
+  michele = await criarMembro(`eum${marca}`, { tenant: rede.tenantId, branchId: moinhos, rotulo: 'Michele', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }] })
+  gerente = await criarMembro(`eug${marca}`, { tenant: rede.tenantId, branchId: moinhos, rotulo: 'Gerente', permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }] })
   // A Priscila atende nas duas; a Michele, só na Moinhos.
   expect((await db().from('users').update({ atende_em: [moinhos, menino] }).eq('id', priscila.userId)).error).toBeNull()
   expect((await db().from('users').update({ atende_em: [moinhos] }).eq('id', michele.userId)).error).toBeNull()

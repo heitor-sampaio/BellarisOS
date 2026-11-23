@@ -251,12 +251,10 @@ describe('A26: a unidade sem pino no mapa é dita junto do mapa', () => {
 })
 
 describe('A27: o que falta escolher no cargo, junto do "Salvar acessos"', () => {
-  it('o texto diz o módulo', async () => {
+  // Sem o escopo no cargo (SM1, o Heitor, 2026-11-23), o que pode faltar é só o relatório.
+  it('o texto diz o relatório', async () => {
     const { textoDoQueFaltaNoCargo } = await import('@/lib/permissions-copy')
-    expect(textoDoQueFaltaNoCargo(['Prontuário'], false)).toBe('Falta escolher o que o cargo enxerga em Prontuário.')
-    expect(textoDoQueFaltaNoCargo(['Prontuário', 'Agenda'], true))
-      .toBe('Falta escolher o que o cargo enxerga em Prontuário e Agenda, e ao menos um relatório em Relatórios (ou deixe Relatórios em "Sem acesso").')
-    expect(textoDoQueFaltaNoCargo([], true)).toBe('Falta escolher ao menos um relatório em Relatórios (ou deixe Relatórios em "Sem acesso").')
+    expect(textoDoQueFaltaNoCargo()).toBe('Falta escolher ao menos um relatório em Relatórios (ou deixe Relatórios em "Sem acesso").')
   })
   it('a mensagem fica na linha do botão, e o aviso aparece mesmo com a tela rolada', () => {
     const f = ler('components/admin/roles-editor.tsx')

@@ -1,8 +1,6 @@
 import type { TenantContext } from '@estetica-os/types'
 import type { createAdminClient } from '@/lib/supabase/admin'
-import { ownerFilter } from '@/lib/auth'
 import { ler } from '@/lib/db'
-import { lerVisibilidade, type VisibilidadeDoInbox } from '@/lib/inbox/visibilidade'
 import { caixasDoAlcance } from '@/lib/inbox/alcance'
 import type { FiltrosInbox } from '@/components/admin/inbox-filtros'
 
@@ -18,7 +16,7 @@ export interface LinhaDaPagina { id: string; last_message_at: string }
  * Mora fora de `actions/` pelo motivo de sempre (export de `'use server'` é
  * endpoint), e existe para a regra do inbox continuar num lugar só: a busca
  * da topbar acha exatamente as conversas que o inbox mostraria para o mesmo
- * termo, com o mesmo dono, o mesmo modo (pessoa × conversa) e as mesmas caixas.
+ * termo, com as mesmas caixas.
  *
  * Devolve `null` quando o alcance não pôde ser lido: sem saber o alcance, não
  * se mostra nada — mostrar tudo seria vazar. O erro da PÁGINA, esse lança.
@@ -30,19 +28,9 @@ export async function idsDaPaginaDoInbox(admin: Admin, ctx: TenantContext, opcoe
   /** Quantas linhas pedir ao banco (quem pagina pede uma a mais). */
   limite:   number
 }): Promise<LinhaDaPagina[] | null> {
-  let dono: string | null
-  let modo: VisibilidadeDoInbox
   let minhasCaixas: string[] | null
   try {
-    dono = ownerFilter(ctx, 'crm')
-    const [rede, caixas] = await Promise.all([
-      dono
-        ? ler(admin.from('tenants').select('inbox_visibilidade').eq('id', ctx.tenantId!).maybeSingle(), 'ler a visibilidade do inbox')
-        : Promise.resolve(null),
-      caixasDoAlcance(admin, ctx),
-    ])
-    modo = lerVisibilidade((rede as { inbox_visibilidade?: string } | null)?.inbox_visibilidade)
-    minhasCaixas = caixas
+    minhasCaixas = await caixasDoAlcance(admin, ctx)
   } catch (e) {
     console.error('[idsDaPaginaDoInbox] alcance:', e instanceof Error ? e.message : e)
     return null
@@ -52,8 +40,9 @@ export async function idsDaPaginaDoInbox(admin: Admin, ctx: TenantContext, opcoe
   // busca sem acento desde 20261003000001).
   const linhas = await ler(admin.rpc('inbox_pagina', {
     p_tenant:   ctx.tenantId!,
-    p_dono:     dono,
-    p_modo:     modo,
+    // Sem dono: o filtro "só os meus" saiu (SM3, 23/11). A função ainda os recebe.
+    p_dono:     null,
+    p_modo:     'pessoa',
     p_caixas:   minhasCaixas,
     p_filtros:  opcoes.filtros ?? {},
     p_busca:    opcoes.busca ?? '',

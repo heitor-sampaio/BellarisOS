@@ -113,7 +113,7 @@ export const ISOLADOS = [
   'agenda-salas.spec.ts',
   // Os filtros da agenda (profissional, sala e tag — o Heitor, 18/11).
   'agenda-filtros.spec.ts',
-  'agenda-so-os-meus-pelo-id.spec.ts',
+  'agenda-passos-pelo-id.spec.ts',
   'agendar-com-credito.spec.ts',
   'anuncios-integracao.spec.ts',
   'autenticacao.spec.ts',
@@ -167,7 +167,7 @@ export const ISOLADOS = [
   'documentos-link-publico.spec.ts',
   'documentos-modelos.spec.ts',
   'documentos-portal.spec.ts',
-  'documentos-so-os-meus.spec.ts',
+  'documentos-de-todas-as-clientes.spec.ts',
   'documentos-verificacao.spec.ts',
   'equipe-comissao-ao-criar.spec.ts',
   'equipe-desativar-repassa.spec.ts',
@@ -445,10 +445,9 @@ export const ISOLADOS = [
   'atendimento-ficha-e-plano-juntos.spec.ts',
   'atendimento-plano-da-avaliacao-concluida.spec.ts',
   'injetaveis-confirmar-so-no-atendimento.spec.ts',
-  'injetaveis-so-os-meus.spec.ts',
-  'planejamentos-so-os-meus.spec.ts',
+  'injetaveis-de-todas-as-clientes.spec.ts',
+  'planejamentos-de-todas-as-clientes.spec.ts',
   'planejamentos-quem-monta.spec.ts',
-  'relatorios-so-os-meus.spec.ts',
   'permissoes-clientes-sem-acesso.spec.ts',
   'permissoes-escopo-sem-modulo.spec.ts',
   // F4 da 5ª simulação (2026-11-01): o botão só para quem pode, e quem tem só uma unidade só mexe nela.
@@ -513,6 +512,7 @@ export const ISOLADOS = [
   'relatorios-filtro-de-tags.spec.ts',
   // A tag é da pessoa (o Heitor, 18/11): a ficha e o contato iguais, e a conversa que liga sozinha à ficha.
   'tags-da-pessoa.spec.ts',
+  'vistas-pessoais-e-cada-passo.spec.ts',
 ]
 
 /** As quatro regras sobre o texto de um spec. `null` = isolado; senão, o motivo. */

@@ -1,4 +1,4 @@
-import { getTenantContext, temRecurso, can, podeVerRelatorio, isOwnScope } from '@/lib/auth'
+import { getTenantContext, temRecurso, can, podeVerRelatorio } from '@/lib/auth'
 import { ParcelasVencidas } from '@/components/shared/parcelas-vencidas'
 import { getAReceberVencido } from '@/lib/metrics/vencidas'
 import { umaUnidadeSo } from '@/lib/unidades/uma-so'
@@ -26,7 +26,7 @@ import { ler, lerTodas, contar } from '@/lib/db'
 import { resumoDoFunil, rankingDasAvaliacoes } from '@/lib/metrics/resultado'
 import { pontosDaEvolucao } from '@/lib/metrics/evolucao'
 import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
-import { recorteDosModulos } from '@/lib/metrics/escopo'
+import { recortePessoal } from '@/lib/metrics/escopo'
 import { getCoreDosModulos } from '@/lib/metrics/dos-modulos'
 import { abertosDeAntes, SEM_ABERTOS_DE_ANTES } from '@/lib/metrics/abertos-de-antes'
 import { AbertosDeAntes } from '@/components/branch/abertos-de-antes'
@@ -89,30 +89,29 @@ export default async function AdminDashboardPage({
   // das clientes, o LTV por CEP) só vai a quem tem o Financeiro ou a aba
   // Financeiro dos Relatórios — a régua da F7 nos Relatórios e no Copilot (D2
   // da 6ª simulação; CLAUDE.md §11: "o time comercial vê o funil sem ver o
-  // faturamento"). Sem ela, o dado nem sai do servidor: as props vão vazias.
-  const veDinheiro = can(ctx, 'financial', 'VIEW') || podeVerRelatorio(ctx, 'financeiro')
-  // D13 da 9ª: o aviso das parcelas vencidas é de quem vê o financeiro inteiro.
-  const veVencidas = can(ctx, 'financial', 'VIEW') && !isOwnScope(ctx, 'financial')
-  // Queries "core" (analytics internos) só rodam se o cargo tem algum módulo core.
-  const needsCore = canFinancial || canAgenda || canClients || canStock || canProcedures || canTeam || canReports
+  // faturamento") — ou, na vista pessoal (abaixo), o DELA. Sem isso, o dado nem
+  // sai do servidor: as props vão vazias.
+  const veDinheiroDeTodos = can(ctx, 'financial', 'VIEW') || podeVerRelatorio(ctx, 'financeiro')
+  // D13 da 9ª: o aviso das parcelas vencidas é de quem vê o Financeiro.
+  const veVencidas = can(ctx, 'financial', 'VIEW')
 
-  // Cada número segue o escopo do SEU módulo (decisão do Heitor, 2026-10-29;
-  // lib/metrics/escopo). Com a agenda "só os meus", a agenda e as clientes
-  // são as DELA — atendimentos, novos clientes, hoje, os rankings que contam
-  // (procedimentos, recorrência, profissionais, clientes por recorrência), a
-  // demografia e os planos aguardando checkout. Com o financeiro "só os meus",
-  // o dinheiro é o DELA — a receita, a evolução (só a receita), o ticket, os
-  // rankings de valor, o gasto das clientes, o LTV por CEP e o giro (o insumo
-  // é custo). O que não se atribui a ela não é consultado nem mostrado: com o
-  // financeiro dela, o custo, o lucro, a margem do catálogo e a comissão das
-  // outras; com a agenda dela, a ocupação por unidade; com qualquer dos dois, o
-  // ranking de unidades (que mistura o dinheiro e a agenda de cada unidade).
-  // Até aqui qualquer "só os meus" recortava tudo (D7 de 2026-10-28).
-  const recorte        = recorteDosModulos(ctx)
-  const agendaDela     = recorte.agenda
-  const dinheiroDela   = recorte.financeiro
+  // A vista pessoal (lib/metrics/escopo; sem o "só os meus", 2026-11-23):
+  // quem tem o módulo vê os números de todos, nas unidades ao alcance.
+  // - O DINHEIRO: quem ATENDE e não vê o dinheiro de todos (nem o Financeiro,
+  //   nem a aba Financeiro dos Relatórios) vê o DELA — a receita, a evolução
+  //   (só a receita), o ticket, os rankings de valor, o gasto das clientes, o
+  //   LTV por CEP e o giro (o insumo é custo). O que não se atribui a ela não é
+  //   consultado nem mostrado: o custo, o lucro, a margem do catálogo, a
+  //   comissão das outras e o ranking de unidades.
+  // - A AGENDA: o dashboard da rede não tem os cartões "Meus…" da agenda (são
+  //   do da unidade); os quadros de outro módulo que ela tem (Procedimentos,
+  //   Equipe, Clientes) são os de todos.
+  const dinheiroDela   = veDinheiroDeTodos ? null : recortePessoal(ctx).financeiro
+  const veDinheiro     = veDinheiroDeTodos || dinheiroDela !== null
+  const recorte        = { agenda: null, financeiro: dinheiroDela }
   const recorteProprio = dinheiroDela !== null
-  const mesmoRecorte   = agendaDela === dinheiroDela
+  // Queries "core" (analytics internos) só rodam se o cargo tem algum módulo core.
+  const needsCore = canFinancial || canAgenda || canClients || canStock || canProcedures || canTeam || canReports || recorteProprio
 
   const admin = createAdminClient()
   const now   = new Date()
@@ -186,31 +185,30 @@ export default async function AdminDashboardPage({
 
   // -- Queries paralelas ---------------------------------------------
   const janela       = { tenantId: ctx.tenantId!, branchIds: idsDosNumeros, from: startDate, to: endDate }
-  const daAgenda     = { ...janela, professionalId: agendaDela }
+  const daAgenda     = janela
   const doDinheiro   = { ...janela, professionalId: dinheiroDela }
-  /** O ranking pedido no recorte do dinheiro — o mesmo da agenda quando os dois são iguais. */
-  const noDinheiro = <T,>(daAgendaJa: Promise<T>, pedir: () => Promise<T>) => (mesmoRecorte ? daAgendaJa : pedir())
+  /** O ranking pedido no recorte do dinheiro — o mesmo da agenda fora da vista pessoal. */
+  const noDinheiro = <T,>(daAgendaJa: Promise<T>, pedir: () => Promise<T>) => (recorteProprio ? pedir() : daAgendaJa)
 
   const topProceduresDaAgenda     = needsCore ? getTopProcedures({ ...daAgenda, limit: 5 }) : Promise.resolve([])
   const topProfessionalsDaAgenda  = needsCore ? getTopProfessionals({ ...daAgenda, limit: 5 }) : Promise.resolve([])
   const topClientsDaAgenda        = needsCore ? getTopClients({ ...daAgenda, limit: 10 }) : Promise.resolve([])
   // O lucro da evolução desconta o insumo consumido e deixa a compra de
-  // estoque no caixa (2026-10-29). Só existe sem o financeiro "só os meus"
-  // (com ele, a evolução é só a receita dela).
+  // estoque no caixa (2026-10-29). Só existe fora da vista pessoal (nela, a
+  // evolução é só a receita dela).
   const seriesDoResultadoP = needsCore && !recorteProprio
     ? getSeriesDoResultado({ ...janela, granularity: period === 'today' ? 'hour' : 'day' })
     : Promise.resolve([])
   // IND-02 (varredura de 18/11): a lista vem com 20, mas o NÚMERO de planos
   // aguardando é o total — com 31, o alerta dizia 20.
   const totalDePlanosP = needsCore ? (() => {
-    let q = admin.from('treatment_plans')
+    const q = admin.from('treatment_plans')
       .select('id', { count: 'exact', head: true })
       .in('branch_id', branchIds)
       .eq('status', 'PROPOSED')
-    if (agendaDela) q = q.eq('professional_id', agendaDela)
     return contar(q, 'contar os planos aguardando checkout')
   })() : Promise.resolve(0)
-  const demografiaDaAgenda        = needsCore ? getDemografia({ tenantId: ctx.tenantId!, branchIds: idsDosNumeros, to: endDate, professionalId: agendaDela }) : Promise.resolve({ total: 0, idades: [], cidades: [], ceps: [] } as Demografia)
+  const demografiaDaAgenda        = needsCore ? getDemografia({ tenantId: ctx.tenantId!, branchIds: idsDosNumeros, to: endDate }) : Promise.resolve({ total: 0, idades: [], cidades: [], ceps: [] } as Demografia)
 
   const [
     core,
@@ -233,13 +231,13 @@ export default async function AdminDashboardPage({
     ticket,
   ] = needsCore ? await Promise.all([
 
-    // Núcleo agregado no Postgres: o dinheiro do recorte do financeiro e a
-    // agenda (atendimentos, novos clientes, minutos) do recorte da agenda.
+    // Núcleo agregado no Postgres: o dinheiro do recorte do dinheiro (o dela,
+    // na vista pessoal) e a agenda (atendimentos, novos clientes, minutos) de todos.
     getCoreDosModulos({ ...janela, recorte }),
     getCoreDosModulos({ ...janela, from: prevStart, to: prevEnd, recorte }),
-    // Por unidade: o ranking de unidades (dinheiro e agenda de cada unidade, só
-    // sem "só os meus") e a ocupação por unidade (a agenda: sem a agenda dela).
-    agendaDela ? Promise.resolve([]) : getByBranch({ tenantId: ctx.tenantId!, from: startDate, to: endDate })
+    // Por unidade: o ranking de unidades (dinheiro e agenda de cada unidade,
+    // fora da vista pessoal) e a ocupação por unidade.
+    getByBranch({ tenantId: ctx.tenantId!, from: startDate, to: endDate })
       .then(linhas => unidadeId ? linhas.filter(l => l.branchId === unidadeId) : linhas),
     // A série é dinheiro: com o financeiro dela, a receita DELA (só a receita).
     getSeries({ ...doDinheiro, granularity: period === 'today' ? 'hour' : 'day' }),
@@ -254,27 +252,24 @@ export default async function AdminDashboardPage({
     topClientsDaAgenda,
     noDinheiro(topClientsDaAgenda, () => getTopClients({ ...doDinheiro, limit: 10 })),
 
-    // Agendamentos de hoje (exceto cancelados e no-show) — com a agenda "só
-    // os meus", os dela, como o "Meus agendamentos hoje" da unidade.
+    // Agendamentos de hoje (exceto cancelados e no-show).
     (() => {
-      let q = admin.from('appointments')
+      const q = admin.from('appointments')
         .select('id, status, branch_id')
         .in('branch_id', branchIds)
         .gte('scheduled_at', startOfToday.toISOString())
         .lte('scheduled_at', endOfToday.toISOString())
         .neq('status', 'CANCELLED')
         .neq('status', 'NO_SHOW')
-      if (agendaDela) q = q.eq('professional_id', agendaDela)
       return ler(q, 'carregar os agendamentos de hoje')
     })(),
 
-    // Planos de tratamento aguardando checkout — com a agenda "só os meus", os dela.
+    // Planos de tratamento aguardando checkout.
     (() => {
-      let q = admin.from('treatment_plans')
+      const q = admin.from('treatment_plans')
         .select('id, branch_id, created_at, clients(name), branches(name, slug)')
         .in('branch_id', branchIds)
         .eq('status', 'PROPOSED')
-      if (agendaDela) q = q.eq('professional_id', agendaDela)
       return ler(q.order('created_at', { ascending: true }).limit(20), 'carregar os planos aguardando checkout')
     })(),
 
@@ -306,13 +301,12 @@ export default async function AdminDashboardPage({
     // PERÍODO e não "agora": o consumo que acabou de ser baixado nasce com o
     // relógio do Postgres, que está à frente do relógio do app. Somado no
     // banco: em JS, passando de 1000 movimentos, subcontava.
-    // O insumo é CUSTO: segue o financeiro — com ele "só os meus", o gasto
-    // nos atendimentos dela.
+    // O insumo é CUSTO: segue o dinheiro — na vista pessoal, o gasto nos
+    // atendimentos dela.
     getGiroDeEstoque({ branchIds: idsDosNumeros, from: startDate, to: periodInfo.fullTo, professionalId: dinheiroDela }),
 
-    // Demografia — os clientes da rede (com a agenda "só os meus", os que ela
-    // atendeu), contada no banco: o total, idade, cidade e CEP. O LTV por CEP é
-    // dinheiro: vem do recorte do financeiro. Antes vinha a base inteira e era
+    // Demografia — os clientes da rede, contada no banco: o total, idade, cidade e CEP. O LTV por CEP é
+    // dinheiro: vem do recorte do dinheiro. Antes vinha a base inteira e era
     // cortada em 1000.
     demografiaDaAgenda,
     noDinheiro(demografiaDaAgenda, () => getDemografia({ tenantId: ctx.tenantId!, branchIds: idsDosNumeros, to: endDate, professionalId: dinheiroDela })),
@@ -327,9 +321,7 @@ export default async function AdminDashboardPage({
   ]
 
   // D12 da 13ª simulação: o total de clientes do cabeçalho é SEMPRE o da
-  // clínica (as ativas) — o "só os meus" da agenda não recorta a ficha
-  // (Clientes não é módulo escopável). Era a demografia recortada pela agenda
-  // dela: a vendedora que não atende via "0 clientes" com 11 na lista.
+  // rede (as ativas): a vendedora que não atende via "0 clientes" com 11 na lista.
   // D10 da 15ª: sem um módulo do núcleo o total não se lê — e sem o dado não
   // se mostra número (princípio 4): nulo, o cabeçalho não diz "0 clientes".
   const totalClientsEver = needsCore ? (await getClientesAtivos({ tenantId: ctx.tenantId! })).total : null
@@ -497,9 +489,9 @@ export default async function AdminDashboardPage({
 
   // Comissões por profissional. Quanto cada um ganha é do FINANCEIRO, e de
   // todos: o ranking vivia dentro da seção de equipe, e quem só via a equipe
-  // (ou só as próprias comissões) via o de todo mundo. E ordena pela comissão
+  // via o de todo mundo. E ordena pela comissão
   // de verdade — antes era o top 5 por atendimentos, reordenado.
-  // Com qualquer "só os meus", a comissão das outras também não aparece.
+  // Na vista pessoal, a comissão das outras não aparece.
   const verComissoesDaEquipe = canFinancial && !recorteProprio
   const rankingDeComissao = verComissoesDaEquipe && needsCore
     ? await getRankingDeComissao({ ...janela, limit: 5 })
@@ -569,7 +561,7 @@ export default async function AdminDashboardPage({
   const hotmapRawCepCounts: Record<string, number> = {}
   const hotmapRawCepLtv: Record<string, number> = {}
   // Quantas clientes por CEP: a agenda (as clientes); o LTV: o dinheiro — com o
-  // financeiro "só os meus", o que as clientes pagaram pelos atendimentos dela.
+  // vista pessoal, o que as clientes pagaram pelos atendimentos dela.
   for (const c of demografia.ceps) hotmapRawCepCounts[c.cep] = c.n
   for (const c of demografiaDoDinheiro.ceps) if (c.ltv > 0) hotmapRawCepLtv[c.cep] = c.ltv
 
@@ -585,8 +577,6 @@ export default async function AdminDashboardPage({
     tenantId: ctx.tenantId!, branchIds: null,
     from: startDate, to: endDate,
     funnelId,
-    // CRM "só os meus": os leads dela e os sem dono, o recorte do quadro.
-    ownerId: recorte.crm,
   })
   const { funil: funilAtivo, etapas } = canCrm
     ? await funilDoDashboard({ funis: funisAtivos, pedido: rawFunil, lerFunil, total: e => resumoDoFunil(e).total })
@@ -642,7 +632,7 @@ export default async function AdminDashboardPage({
 
   // H3 ("a dona vê tudo, sempre"): o aviso dos atendimentos de dias anteriores
   // ainda abertos e dos agendados sem chegada, das unidades do recorte — só
-  // existia no dashboard da unidade. Quem vê a agenda, com o "só os meus" dela.
+  // existia no dashboard da unidade. Quem vê a agenda.
   const abertos = canAgenda ? await abertosDeAntes(ctx, branches.map(b => b.id as string)) : SEM_ABERTOS_DE_ANTES
 
   // A41 da 7ª simulação: o lote que vence em 30 dias, a quem tem o Estoque — a
@@ -659,8 +649,7 @@ export default async function AdminDashboardPage({
   // F7b (H3): o "Reativar clientes" e o "Clientes no mês" só existiam no
   // dashboard da unidade. A cliente é da REDE (o Heitor, 18/11): as sumidas
   // são as da rede inteira (sem visita em nenhuma unidade há 90 dias), com a
-  // unidade da última visita, também no ?unidade=. Com a agenda
-  // "só os meus", as dela (o recorte da agenda).
+  // unidade da última visita, também no ?unidade=.
   const noventaDias = addDaysTZ(now, -90, fuso)
   // A regra é UMA, a do Copilot também (r3-f13-10): getClientesParaReativarDoRecorte.
   const paraReativar = !canClients
@@ -668,7 +657,7 @@ export default async function AdminDashboardPage({
     : await getClientesParaReativarDoRecorte({
         tenantId: ctx.tenantId!,
         unidade: branches.length === 1 ? { id: branches[0]!.id as string, name: branches[0]!.name as string } : null,
-        desde: noventaDias, professionalId: agendaDela,
+        desde: noventaDias,
       })
   const quadrosDeClientes = canClients ? (
     <div className="grid-stack-md" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
@@ -676,7 +665,7 @@ export default async function AdminDashboardPage({
         titulo="Clientes no período"
         // A10 da 13ª: o quadro diz o seu recorte. "Novos clientes" só na rede (o
         // Heitor, 18/11): no ?unidade= o número não existe, e o quadro fala dos agendamentos dela.
-        subtitulo={`${agendaDela ? (core.newClients === null ? 'Os seus agendamentos' : 'As suas novas clientes e os seus agendamentos') : core.newClients === null ? 'Os agendamentos da unidade' : 'Novas clientes e agendamentos da rede'} · ${periodLabel}, até agora`}
+        subtitulo={`${core.newClients === null ? 'Os agendamentos da unidade' : 'Novas clientes e agendamentos da rede'} · ${periodLabel}, até agora`}
         // A32 da 24ª: sem a Agenda, sem as etapas da agenda (eram zeros).
         etapas={etapasDoQueOCargoVe([
           ...(core.newClients === null ? [] : [{ label: 'Novos clientes', count: core.newClients, color: 'var(--brand)' }]),
@@ -692,7 +681,7 @@ export default async function AdminDashboardPage({
         }))}
         total={paraReativar.total}
         comVisita={paraReativar.comVisita} recentesSemVisita={paraReativar.recentesSemVisita}
-        deQuem={deQuemSaoAsClientes({ dela: !!agendaDela })}
+        deQuem={deQuemSaoAsClientes()}
         hrefAgendar="/admin/agenda"
         // A lista de clientes é da rede (não há "?unidade=" nela).
         hrefVerTodas="/admin/clients"
@@ -766,7 +755,6 @@ export default async function AdminDashboardPage({
         topProfessionalsByCommission={topProfessionalsByCommission}
         verComissoesDaEquipe={verComissoesDaEquipe}
         recorteProprio={recorteProprio}
-        agendaPropria={agendaDela !== null}
         procedureMargins={veDinheiro ? procedureMargins : []}
 
         bestRatedPros={bestRatedPros}

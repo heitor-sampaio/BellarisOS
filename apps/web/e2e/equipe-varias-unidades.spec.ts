@@ -37,7 +37,7 @@ test.describe.configure({ timeout: 180_000 })
 test.use({ storageState: { cookies: [], origins: [] } })
 
 const PERMISSOES: Permissao[] = (['agenda', 'clients', 'settings', 'team', 'stock', 'crm'] as const)
-  .map(modulo => ({ modulo, nivel: 'MANAGE' as const, escopo: 'ALL' as const }))
+  .map(modulo => ({ modulo, nivel: 'MANAGE' as const }))
 
 async function como<T>(browser: Browser, quem: MembroDeTeste, fn: (p: Page) => Promise<T>): Promise<T> {
   const ctx = await browser.newContext({ storageState: quem.estado })
@@ -212,7 +212,7 @@ test('PLAT-02/03: na Equipe da unidade, o cargo acima do dela vem desligado; que
   // encontrado.").
   const acima = await criarMembro(`eqvua${marca}`, {
     tenant: rede!.tenantId, branchId: un.A.id, rotulo: 'Com o Financeiro',
-    permissoes: [{ modulo: 'financial', nivel: 'MANAGE', escopo: 'ALL' }],
+    permissoes: [{ modulo: 'financial', nivel: 'MANAGE' }],
   })
   const deAeC = await criarMembro(`eqvuc${marca}`, {
     tenant: rede!.tenantId, branchId: un.A.id, outrasUnidades: [un.C.id], rotulo: 'A e C', permissoes: PERMISSOES,

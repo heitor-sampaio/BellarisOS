@@ -47,9 +47,10 @@ test.beforeAll(async () => {
   slug = (await db().from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
   profissional = await criarMembro(`iap${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Profissional',
+    // Agenda e Prontuário em Gerenciar: o Atendimento em Gerenciar vem junto (comAtendimento).
     permissoes: [
-      { modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' }, { modulo: 'clients', nivel: 'VIEW' },
-      { modulo: 'medical_records', nivel: 'MANAGE', escopo: 'OWN' },
+      { modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' },
+      { modulo: 'medical_records', nivel: 'MANAGE' },
     ],
   })
   expect((await db().from('users').update({ provides_services: true }).eq('id', profissional.userId)).error).toBeNull()

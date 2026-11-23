@@ -34,7 +34,7 @@ test.beforeAll(async () => {
   slug = (await db().from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
   caixa = await criarMembro(`pdv16c${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Caixa',
-    permissoes: [{ modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'cashier', nivel: 'MANAGE' }, { modulo: 'financial', nivel: 'MANAGE', escopo: 'ALL' }],
+    permissoes: [{ modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'cashier', nivel: 'MANAGE' }, { modulo: 'financial', nivel: 'MANAGE' }],
   })
 })
 test.afterAll(async () => {

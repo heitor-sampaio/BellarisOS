@@ -67,12 +67,7 @@ function Situacao({ item }: { item: ItemDeTermo }) {
   }
 }
 
-export function TermosDoCliente({ itens, slug, podeDispensar = false, compacto = false, pelaConversa = false, temAcessoAoApp = true, recortado = false }: {
-  /**
-   * A35 da 11ª: a lista veio vazia pelo RECORTE (o prontuário "só os meus" de
-   * quem não atende esta cliente) — a tela diz isso, em vez de "Nenhum termo".
-   */
-  recortado?: boolean
+export function TermosDoCliente({ itens, slug, podeDispensar = false, compacto = false, pelaConversa = false, temAcessoAoApp = true }: {
   itens:      ItemDeTermo[]
   /** Unidade do cliente (a rota vem de `lib/rotas`, pelo portal atual). */
   slug:       string
@@ -179,13 +174,11 @@ export function TermosDoCliente({ itens, slug, podeDispensar = false, compacto =
   if (!itens.length) {
     return compacto ? null : (
       <div className="card" style={{ padding: '16px 18px' }}>
-        {/* O estado fica à vista; o "por que" e o "de onde nascem" moram na dica (2026-11-16). */}
-        <p data-termos-recortados={recortado || undefined} style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-          {recortado ? 'Os documentos desta cliente não aparecem para você.' : 'Nenhum termo ou contrato para este cliente.'}{' '}
-          <Dica rotulo={recortado ? 'Por que os documentos não aparecem' : 'De onde nascem os documentos'}>
-            {recortado
-              ? 'Com o prontuário “só os meus”, você vê os das clientes que atende.'
-              : 'Eles nascem do procedimento agendado, conforme o modelo ligado a ele.'}
+        {/* O estado fica à vista; o "de onde nascem" mora na dica (2026-11-16). */}
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+          Nenhum termo ou contrato para este cliente.{' '}
+          <Dica rotulo="De onde nascem os documentos">
+            Eles nascem do procedimento agendado, conforme o modelo ligado a ele.
           </Dica>
         </p>
       </div>

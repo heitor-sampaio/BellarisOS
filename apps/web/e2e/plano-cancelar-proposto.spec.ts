@@ -156,7 +156,7 @@ test('A1a: quem não monta o plano não vê o "Cancelar plano" do proposto, e a 
     await expect(p.locator('[data-cancelar-proposto]')).toHaveCount(0)
     const res = await chamarAcao(p, 'actions/treatment-plans.ts', 'cancelarPlanoProposto', `/${slug}/planejamentos/${planId}`,
       [planId, { motivo: 'tentativa' }])
-    expect(JSON.stringify(res)).toContain('Quem monta o plano é quem atende na unidade dele')
+    expect(JSON.stringify(res)).toContain('Montar o plano é de quem tem o Atendimento em Gerenciar na unidade dele.')
   })
   expect((await db().from('treatment_plans').select('status').eq('id', planId).single()).data!.status).toBe('PROPOSED')
   expect(await pendentes(planId), 'o documento continua esperando assinatura').toBeGreaterThan(0)

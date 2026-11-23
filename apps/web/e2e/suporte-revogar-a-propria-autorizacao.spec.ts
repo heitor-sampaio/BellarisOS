@@ -44,11 +44,11 @@ test.beforeAll(async () => {
   dona = await criarMembro(`srpad${marca}`, { tenant: rede.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
   pessoa = await criarMembro(`srpap${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Agenda da unidade',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }],
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }],
   })
   colega = await criarMembro(`srpac${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Colega',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }],
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }],
   })
 })
 

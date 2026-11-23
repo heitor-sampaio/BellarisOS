@@ -77,25 +77,21 @@ interface Props {
   janela: { inicio: number; fim: number }
   /** Marcar horário daqui. Falso para quem só tem agenda em "Ver". */
   podeAgendar:  boolean
-  /** Cargo com alcance "só a própria agenda": não muda status do agendamento. */
-  escopoProprio: boolean
+  /** A vista pessoal (a Minha agenda): só os horários dela, sem os gestos da recepção. */
+  vistaDela: boolean
   /** O membro logado: no agendamento dele, "Marcar chegada e iniciar" (A25). */
   meuId?: string | null
   /** Conclui o atendimento (o Prontuário em Gerenciar) — sem ele, a janela diz quem conclui antes do Iniciar (A20 da 10ª). */
   podeConcluir?: boolean
-  /** O Atendimento "só os meus": inicia e conclui só os dela. */
-  atendimentoProprio?: boolean
   /** A9 da 20ª: sem iniciar e concluir, quem conclui — o Atendimento em Gerenciar, pelo nome (quemConcluiOAtendimento). */
   quemConclui?: string[] | null
-  /** A9 da 25ª: os ids de quem conclui os PRÓPRIOS (idsQueConcluemOsProprios) — a profissional do agendamento entra em "quem conclui". */
-  concluemOsProprios?: string[] | null
   /** Os bloqueios pontuais (decisão 3 da 7ª), cada um com o rótulo que a grade mostra. */
   bloqueios?: (BloqueioDaAgenda & { rotulo: string })[]
   /** "Bloquear horário" (com uma unidade na tela): quem atende e as salas dela. */
-  paraBloquear?: { branchId: string; profissionais: { id: string; name: string }[]; salas: { id: string; name: string }[]; soEu: { id: string; name: string } | null } | null
+  paraBloquear?: { branchId: string; profissionais: { id: string; name: string }[]; salas: { id: string; name: string }[] } | null
   /** Os filtros da URL (`?profissional=`, `?sala=`, `?tags=`), já aplicados na consulta. */
   filtros?: FiltrosDaAgenda
-  /** As opções: quem atende nas unidades mostradas (null = "só os meus"), as salas da unidade escolhida (null = sem unidade escolhida) e as tags da rede. */
+  /** As opções: quem atende nas unidades mostradas (null = a vista pessoal), as salas da unidade escolhida (null = sem unidade escolhida) e as tags da rede. */
   opcoesDosFiltros?: { profissionais: { id: string; name: string }[] | null; salas: { id: string; name: string }[] | null; tags: string[] }
 }
 
@@ -599,7 +595,7 @@ function StatusLegend() {
 
 // -- Componente principal ------------------------------------------------------
 export function AdminAgendaView({
-  view, selectedDate, todayStr, branches, todasUnidades, unidadeId, appointments, janela, podeAgendar, escopoProprio, meuId = null, podeConcluir = true, atendimentoProprio = false, quemConclui = null, concluemOsProprios = null, bloqueios = [], paraBloquear = null,
+  view, selectedDate, todayStr, branches, todasUnidades, unidadeId, appointments, janela, podeAgendar, vistaDela, meuId = null, podeConcluir = true, quemConclui = null, bloqueios = [], paraBloquear = null,
   filtros = SEM_FILTRO, opcoesDosFiltros = { profissionais: null, salas: null, tags: [] },
 }: Props) {
   const router = useRouter()
@@ -762,7 +758,7 @@ export function AdminAgendaView({
               marcar nada: para isso era preciso entrar no portal de uma delas. */}
           {paraBloquear && (
             <BotaoBloquearHorario branchId={paraBloquear.branchId} profissionais={paraBloquear.profissionais}
-              salas={paraBloquear.salas} soEu={paraBloquear.soEu} dia={new Date(`${selectedDate}T12:00:00`)} />
+              salas={paraBloquear.salas} dia={new Date(`${selectedDate}T12:00:00`)} />
           )}
           {podeAgendar && (
             <button type="button" onClick={() => setAgendando(true)} className="btn-primary"
@@ -852,13 +848,10 @@ export function AdminAgendaView({
             menor:            selecionado.menor ?? null,
           }}
           slug={todasUnidades.find(b => b.id === selecionado.branch_id)?.slug ?? ''}
-          userRole=""
-          escopoProprio={escopoProprio}
+          vistaDela={vistaDela}
           podeGerenciar={podeAgendar}
           podeConcluir={podeConcluir}
-          atendimentoProprio={atendimentoProprio}
           quemConclui={quemConclui}
-          concluemOsProprios={concluemOsProprios}
           meuId={meuId}
           onClose={() => { setSelecionado(null); router.refresh() }}
         />

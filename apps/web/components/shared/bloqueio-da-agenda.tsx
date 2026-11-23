@@ -33,12 +33,10 @@ function local(d: Date) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
 }
 
-export function BotaoBloquearHorario({ branchId, profissionais, salas = [], soEu = null, dia }: {
+export function BotaoBloquearHorario({ branchId, profissionais, salas = [], dia }: {
   branchId: string
   profissionais: Alvo[]
   salas?: Alvo[]
-  /** A agenda "só os meus": o bloqueio é dela, sem escolher pessoa nem sala. */
-  soEu?: Alvo | null
   /** O dia aberto na agenda (o padrão do início). */
   dia: Date
 }) {
@@ -48,20 +46,20 @@ export function BotaoBloquearHorario({ branchId, profissionais, salas = [], soEu
       <button type="button" className="btn-secondary" onClick={() => setAberto(true)}>
         <Lock size={14} aria-hidden="true" /> Bloquear horário
       </button>
-      {aberto && <JanelaDeBloquear branchId={branchId} profissionais={profissionais} salas={salas} soEu={soEu} dia={dia} onFechar={() => setAberto(false)} />}
+      {aberto && <JanelaDeBloquear branchId={branchId} profissionais={profissionais} salas={salas} dia={dia} onFechar={() => setAberto(false)} />}
     </>
   )
 }
 
-function JanelaDeBloquear({ branchId, profissionais, salas, soEu, dia, onFechar }: {
-  branchId: string; profissionais: Alvo[]; salas: Alvo[]; soEu: Alvo | null; dia: Date; onFechar: () => void
+function JanelaDeBloquear({ branchId, profissionais, salas, dia, onFechar }: {
+  branchId: string; profissionais: Alvo[]; salas: Alvo[]; dia: Date; onFechar: () => void
 }) {
   const router = useRouter()
   // O dia aberto e os campos estão no relógio da UNIDADE (F62); o instante sai por `daParede`.
   const fuso = useFuso()
   const instante = (parede: string) => daParede(new Date(parede), fuso).toISOString()
   const [para, setPara] = useState<'PROFISSIONAL' | 'SALA'>('PROFISSIONAL')
-  const [profId, setProfId] = useState(soEu?.id ?? '')
+  const [profId, setProfId] = useState('')
   const [salaId, setSalaId] = useState('')
   // O padrão: a próxima hora cheia do dia aberto (hoje, a partir de agora), por uma hora.
   const [padrao] = useState(() => {
@@ -88,7 +86,7 @@ function JanelaDeBloquear({ branchId, profissionais, salas, soEu, dia, onFechar 
   const ddmm = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`
   const amanha = (() => { const d = new Date(`${diaAberto}T12:00`); d.setDate(d.getDate() + 1); return local(d).slice(0, 10) })()
 
-  const alvoId = soEu ? soEu.id : para === 'PROFISSIONAL' ? profId : salaId
+  const alvoId = para === 'PROFISSIONAL' ? profId : salaId
   function bloquear() {
     setErro(null)
     if (!alvoId) { setErro(para === 'SALA' ? 'Escolha a sala.' : 'Escolha a profissional.'); return }
@@ -101,8 +99,8 @@ function JanelaDeBloquear({ branchId, profissionais, salas, soEu, dia, onFechar 
     iniciar(async () => {
       const r = await bloquearHorario({
         branchId, ...e,
-        professionalId: soEu || para === 'PROFISSIONAL' ? alvoId : null,
-        roomId: !soEu && para === 'SALA' ? alvoId : null,
+        professionalId: para === 'PROFISSIONAL' ? alvoId : null,
+        roomId: para === 'SALA' ? alvoId : null,
       })
       if (r.error) { setErro(r.error); return }
       toast.success('Horário bloqueado.', r.aviso ? { description: r.aviso } : undefined)
@@ -120,20 +118,18 @@ function JanelaDeBloquear({ branchId, profissionais, salas, soEu, dia, onFechar 
             <span>Bloquear horário</span>
             {/* O "o que o bloqueio faz" mora na dica (2026-11-16, "A explicação mora na dica"). */}
             <Dica rotulo="O que o bloqueio faz">
-              {soEu
-                ? `O horário de ${soEu.name} fica bloqueado: o app da cliente e o Copilot não o oferecem. Quem agendar nele pela agenda é avisado.`
-                : 'O app da cliente e o Copilot não oferecem o horário bloqueado. Quem agendar nele pela agenda é avisado, e o encaixe continua permitido.'}
+              O app da cliente e o Copilot não oferecem o horário bloqueado. Quem agendar nele pela agenda é avisado, e o encaixe continua permitido.
             </Dica>
           </h2>
           <button type="button" className="btn-ghost" onClick={onFechar} aria-label="Fechar" style={{ padding: '4px 6px' }}><X size={16} /></button>
         </div>
-        {!soEu && salas.length > 0 && (
+        {salas.length > 0 && (
           <div role="group" aria-label="Bloquear para">
             <SegSelect ariaLabel="Bloquear para" value={para} onSelect={k => setPara(k as 'PROFISSIONAL' | 'SALA')}
               options={[{ key: 'PROFISSIONAL', label: 'Profissional' }, { key: 'SALA', label: 'Sala' }]} />
           </div>
         )}
-        {!soEu && para === 'PROFISSIONAL' && (
+        {para === 'PROFISSIONAL' && (
           <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             <span style={rotulo}>Profissional</span>
             <select className="field" value={profId} onChange={e => setProfId(e.target.value)} aria-label="Profissional">
@@ -142,7 +138,7 @@ function JanelaDeBloquear({ branchId, profissionais, salas, soEu, dia, onFechar 
             </select>
           </label>
         )}
-        {!soEu && para === 'SALA' && (
+        {para === 'SALA' && (
           <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             <span style={rotulo}>Sala</span>
             <select className="field" value={salaId} onChange={e => setSalaId(e.target.value)} aria-label="Sala">

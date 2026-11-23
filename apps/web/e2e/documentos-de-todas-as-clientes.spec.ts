@@ -1,20 +1,19 @@
 import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
-import { criarMembro, type MembroDeTeste, type Permissao } from './apoio/sessao'
+import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { apagarDocumentosEmitidos } from './apoio/limpeza'
 import { chamarAcao } from './apoio/acao-direta'
 
 /**
- * Os documentos emitidos seguem o prontuário "só os meus" (decisão do Heitor,
- * 2026-10-29). Com `medical_records` OWN, a tela de Documentos e a lista de
- * documentos da ficha mostram só os das clientes que ela atende — um
- * agendamento com ela, qualquer um, inclusive futuro (a regra do prontuário).
- * Vale também pelo id: abrir, a trilha, o PDF, gerar link, dispensar.
+ * Os documentos emitidos seguem o prontuário (decisão do Heitor, 2026-10-29).
+ * Sem o "só os meus" (SM1, o Heitor, 2026-11-23): com o Prontuário em Ver, a
+ * tela de Documentos e a lista de documentos da ficha mostram os de TODAS as
+ * clientes da unidade ao alcance — não só os das que ela atende. Vale também
+ * pelo id: a trilha, o PDF, a tela do documento.
  *
  * Numa rede `[e2e]` própria; os documentos são gravados direto (o emitir de
- * verdade é coberto por documentos-atendimento). Controle: o mesmo cargo com
- * o prontuário de todas.
+ * verdade é coberto por documentos-atendimento).
  */
 
 test.describe.configure({ mode: 'serial' })
@@ -23,25 +22,25 @@ const marca = Date.now().toString(36)
 const db = () => banco()
 let rede: OutraRede
 let ela: MembroDeTeste
-let todas: MembroDeTeste
 let slug = ''
 let atendida = ''
 let naoAtendida = ''
 const docs: Record<'dela' | 'deOutra' | 'assinadoDeOutra', string> = {} as never
 const titulo = (r: string) => `${PREFIXO} Termo ${r} ${marca}`
 
-const cargo = (escopo: 'OWN' | 'ALL'): Permissao[] => [
-  { modulo: 'documents', nivel: 'MANAGE' },
-  { modulo: 'clients', nivel: 'VIEW' },
-  { modulo: 'medical_records', nivel: 'VIEW', escopo },
-]
 
 test.beforeAll(async () => {
   test.setTimeout(240_000)
   rede = await criarOutraRede(`dso${marca}`)
   slug = (await db().from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
-  ela = await criarMembro(`dsoe${marca}`, { tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Profissional', permissoes: cargo('OWN') })
-  todas = await criarMembro(`dsot${marca}`, { tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Todas', permissoes: cargo('ALL') })
+  ela = await criarMembro(`dsoe${marca}`, {
+    tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Profissional',
+    permissoes: [
+      { modulo: 'documents', nivel: 'MANAGE' },
+      { modulo: 'clients', nivel: 'VIEW' },
+      { modulo: 'medical_records', nivel: 'VIEW' },
+    ],
+  })
   atendida = await rede.criarCliente('Atendida')
   naoAtendida = await rede.criarCliente('Nao atendida')
   // A cliente dela: um agendamento FUTURO com ela.
@@ -85,7 +84,6 @@ test.afterAll(async () => {
   }
   if (rede) await db().from('appointments').delete().eq('branch_id', rede.branchId)
   await ela?.limpar()
-  await todas?.limpar()
   await rede?.limpar()
 })
 
@@ -94,72 +92,40 @@ async function como(browser: Browser, m: MembroDeTeste, fn: (p: Page) => Promise
   try { await fn(await ctx.newPage()) } finally { await ctx.close() }
 }
 
-test('a tela de Documentos, com o prontuário "só os meus", mostra só os das clientes que ela atende', async ({ browser }) => {
+test('a tela de Documentos, com o Prontuário em Ver, mostra os de todas as clientes — não só os das que ela atende', async ({ browser }) => {
   await como(browser, ela, async p => {
     await p.goto(`/${slug}/documentos`)
     await expect(p.locator(`[data-documento="${docs.dela}"]`), 'o da cliente dela').toBeVisible()
-    await expect(p.locator(`[data-documento="${docs.deOutra}"]`), 'o de cliente que ela não atende').toHaveCount(0)
-    await expect(p.locator(`[data-documento="${docs.assinadoDeOutra}"]`)).toHaveCount(0)
-  })
-  await como(browser, todas, async p => {
-    await p.goto(`/${slug}/documentos`)
-    await expect(p.locator(`[data-documento="${docs.dela}"]`)).toBeVisible()
-    await expect(p.locator(`[data-documento="${docs.deOutra}"]`), 'controle: com o prontuário de todas, aparece').toBeVisible()
+    await expect(p.locator(`[data-documento="${docs.deOutra}"]`), 'o de cliente que ela não atende').toBeVisible()
+    await expect(p.locator(`[data-documento="${docs.assinadoDeOutra}"]`)).toBeVisible()
   })
 })
 
 // doc-03 (o Heitor, 2026-11-02): "o histórico não é dado clínico, é o
-// histórico de ações feitas no cliente dentro do sistema". A lista dos
-// documentos segue o "só os meus"; a linha do tempo mostra TODAS as ações —
-// o "Assinado: …" também, sem conteúdo do documento.
-test('a ficha da cliente que ela não atende não lista os documentos, mas o histórico mostra o assinado (doc-03)', async ({ browser }) => {
+// histórico de ações feitas no cliente dentro do sistema". A linha do tempo
+// mostra TODAS as ações — o "Assinado: …" também, sem conteúdo do documento.
+test('a ficha da cliente que ela não atende lista os documentos, e o histórico mostra o assinado (doc-03)', async ({ browser }) => {
   await como(browser, ela, async p => {
     await p.goto(`/${slug}/clients/${atendida}?aba=documentos`)
     await expect(p.locator(`[data-documento="${docs.dela}"]`), 'a cliente dela: lista').toBeVisible()
     await p.goto(`/${slug}/clients/${naoAtendida}?aba=documentos`)
     await expect(p.getByRole('heading', { level: 1 }).first()).toBeVisible()
-    await expect(p.locator(`[data-documento="${docs.deOutra}"]`), 'a ficha da outra não lista').toHaveCount(0)
-    await expect(p.locator(`[data-documento="${docs.assinadoDeOutra}"]`), 'nem o assinado, na lista').toHaveCount(0)
+    await expect(p.locator(`[data-documento="${docs.deOutra}"]`), 'a ficha da outra também lista').toBeVisible()
+    await expect(p.locator(`[data-documento="${docs.assinadoDeOutra}"]`), 'e o assinado').toBeVisible()
     await p.goto(`/${slug}/clients/${naoAtendida}?aba=historico`)
     await expect(p.getByText(`Assinado: ${titulo('assinadoDeOutra')}`), 'o histórico mostra a ação').toBeVisible()
   })
-  await como(browser, todas, async p => {
-    await p.goto(`/${slug}/clients/${naoAtendida}?aba=documentos`)
-    await expect(p.locator(`[data-documento="${docs.deOutra}"]`), 'controle').toBeVisible()
-  })
 })
 
-test('pelo id: o documento de cliente que ela não atende não abre, não baixa e não se mexe', async ({ browser }) => {
-  const ficha = `/${slug}/clients/${atendida}`
+test('pelo id: o documento de cliente que ela não atende abre — a trilha, o PDF e a tela', async ({ browser }) => {
   await como(browser, ela, async p => {
     await p.goto(`/${slug}/documentos`)
     const trilha = await chamarAcao(p, 'actions/documentos.ts', 'trilhaDoDocumento', `/${slug}/documentos`, [docs.deOutra])
     expect(trilha.texto, 'chegou à action').not.toContain('Server action not found')
-    expect(trilha.texto, 'a trilha').toContain('Documento não encontrado')
-    const minha = await chamarAcao(p, 'actions/documentos.ts', 'trilhaDoDocumento', `/${slug}/documentos`, [docs.dela])
-    expect(minha.texto, 'a trilha do dela abre').toContain(titulo('dela'))
-
-    const link = await chamarAcao(p, 'actions/documentos.ts', 'gerarLinkDeAssinatura', ficha, [docs.deOutra])
-    expect(link.texto, 'gerar link').toContain('Documento não encontrado')
-    const dispensa = await chamarAcao(p, 'actions/documentos.ts', 'dispensarDocumento', ficha, [docs.deOutra, 'invasão'])
-    expect(dispensa.texto, 'dispensar').toContain('Documento não encontrado')
-
+    expect(trilha.texto, 'a trilha abre').toContain(titulo('deOutra'))
     const pdf = await p.request.get(`/api/documentos/${docs.assinadoDeOutra}/pdf`, { maxRedirects: 0 })
-    expect(pdf.status(), 'o PDF').toBe(404)
-
+    expect(pdf.status(), 'o PDF passa da conferência').not.toBe(404)
     await p.goto(`/${slug}/documentos/${docs.deOutra}/assinar`)
-    await expect(p.getByText(titulo('deOutra')), 'a tela do documento').toHaveCount(0)
-  })
-  const { data } = await db().from('issued_documents').select('status').eq('id', docs.deOutra).single<{ status: string }>()
-  expect(data!.status, 'não foi dispensado').toBe('PENDENTE')
-
-  await como(browser, todas, async p => {
-    await p.goto(`/${slug}/documentos`)
-    const trilha = await chamarAcao(p, 'actions/documentos.ts', 'trilhaDoDocumento', `/${slug}/documentos`, [docs.deOutra])
-    expect(trilha.texto, 'controle: a trilha abre').toContain(titulo('deOutra'))
-    const pdf = await p.request.get(`/api/documentos/${docs.assinadoDeOutra}/pdf`, { maxRedirects: 0 })
-    expect(pdf.status(), 'controle: o PDF passa da conferência').not.toBe(404)
-    await p.goto(`/${slug}/documentos/${docs.deOutra}/assinar`)
-    await expect(p.getByText(titulo('deOutra')).first(), 'controle: a tela abre').toBeVisible()
+    await expect(p.getByText(titulo('deOutra')).first(), 'a tela abre').toBeVisible()
   })
 })

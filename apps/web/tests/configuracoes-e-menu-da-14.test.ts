@@ -66,15 +66,20 @@ describe('A1: quem é da rede chega, pelo portal da unidade, ao que só a rede t
   })
 
   it('a trava: TODA entrada do menu da rede chega ao menu da unidade de quem é da rede (pela unidade ou por /admin)', () => {
-    const chaves = new Set(menuDaUnidadeFor(ALL_PERMISSIONS, null, {}, { base: '/x', daRede: true }).flatMap(s => s.entries).map(e => e.key))
+    // As Minhas comissões (SM2, o Heitor, 2026-11-23) são a vista pessoal de quem não tem o
+    // Financeiro: só aparecem sem ele, então a trava soma quem tem tudo e quem só atende.
+    const chaves = new Set([
+      ...menuDaUnidadeFor(ALL_PERMISSIONS, null, {}, { base: '/x', daRede: true }),
+      ...menuDaUnidadeFor(NO_PERMISSIONS, null, { atende: true }, { base: '/x', daRede: true }),
+    ].flatMap(s => s.entries).map(e => e.key))
     for (const e of ADMIN_MENU) expect(chaves.has(e.key), e.key).toBe(true)
     expect(SO_NO_MENU_DA_REDE.every(e => !BRANCH_MENU.some(b => b.key === e.key))).toBe(true)
   })
 
   it('a busca da unidade acha as mesmas entradas de quem é da rede', () => {
-    const paginas = paginasDaBusca('centro', ALL_PERMISSIONS, null, {}, { daRede: true })
+    const paginas = paginasDaBusca('centro', ALL_PERMISSIONS, null, { daRede: true })
     expect(paginas.find(p => p.key === 'automations')?.href).toBe('/admin/automacoes')
-    const fixa = paginasDaBusca('centro', ALL_PERMISSIONS, null, {}, { daRede: false })
+    const fixa = paginasDaBusca('centro', ALL_PERMISSIONS, null, { daRede: false })
     expect(fixa.find(p => p.key === 'automations')).toBeUndefined()
   })
 

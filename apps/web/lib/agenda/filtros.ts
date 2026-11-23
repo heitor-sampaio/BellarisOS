@@ -7,10 +7,11 @@
  * - **Na CONSULTA** (`aplicarFiltrosDaAgenda`), nunca recortando no navegador o
  *   que já veio (CLAUDE.md §14): `?profissional=`, `?sala=` e `?tags=` vão na
  *   URL, como o `?date=`, e o servidor lê só o que passa.
- * - **O pedido não vence o escopo nem a abrangência**: as opções são as da tela
- *   (quem atende nas unidades dela, as salas da unidade, o vocabulário da rede);
- *   o que não está nelas não vira filtro escondido (princípio 3). Com a Agenda
- *   em "só os meus" o filtro de profissional não existe (`profissionais: null`).
+ * - **O pedido não vence a abrangência**: as opções são as da tela (quem
+ *   atende nas unidades dela, as salas da unidade, o vocabulário da rede); o
+ *   que não está nelas não vira filtro escondido (princípio 3). Na vista
+ *   pessoal (a Minha agenda) o filtro de profissional não existe
+ *   (`profissionais: null`).
  * - **A tag filtra PESSOAS**: o agendamento entra se a cliente dele tem TODAS as
  *   tags marcadas (E, como a lista de Clientes e o inbox); sem cliente, sai.
  */
@@ -34,7 +35,7 @@ export interface BuscaDosFiltros {
 }
 
 export interface OpcoesDosFiltros {
-  /** Quem a tela oferece; `null` = o filtro não existe (Agenda "só os meus"). */
+  /** Quem a tela oferece; `null` = o filtro não existe (a vista pessoal da agenda). */
   profissionais: readonly string[] | null
   /** As salas da unidade na tela; `null` = sem filtro de sala (a rede sem unidade escolhida). */
   salas:         readonly string[] | null

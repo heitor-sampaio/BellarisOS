@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { TenantContext, ResolvedPermissions } from '@estetica-os/types'
-import { NO_PERMISSIONS, ALL_PERMISSIONS, ALL_SCOPES } from '@/lib/permissions'
+import { NO_PERMISSIONS, ALL_PERMISSIONS } from '@/lib/permissions'
 import { ferramentasDoCargo, paraOModelo, contextoDoCopilot, canonico, resumoParaOModelo } from '@/lib/copilot/executor'
 import { copilotNoPlano, copilotNoCargo } from '@/lib/copilot/disponivel'
 import { cotaDoCopilot, normalizarRecursos, lerRecursos, FUNCIONALIDADES } from '@estetica-os/nucleo/lib/planos/recursos'
@@ -19,7 +19,7 @@ function ctx(over: Partial<TenantContext> = {}): TenantContext {
   return {
     userId: 'auth', internalUserId: 'u1', userName: 'Ana', roleLabel: 'Recepção',
     tenantId: 't1', branchId: null, role: 'RECEPTIONIST', roleId: 'r1', clientId: null,
-    permissions: SEM_NADA, scopes: ALL_SCOPES, reportTabs: [], providesServices: false,
+    permissions: SEM_NADA, reportTabs: [], providesServices: false,
     isNetworkAdmin: false, isClient: false,
     plano: { funcionalidades: TODAS, limites: { unidades: null, membros: null, whatsapp: null } },
     ...over,
@@ -39,10 +39,12 @@ describe('ferramentasDoCargo', () => {
     expect(n).not.toContain('estoque')
   })
 
-  it('financeiro "só as próprias comissões" não recebe os lançamentos da rede', () => {
+  // Sem o "só os meus" (SM1/SM5, o Heitor, 2026-11-23): o Financeiro em Ver recebe os lançamentos; a
+  // vista pessoal (quem atende sem o Financeiro) só mostra as Minhas comissões, e não os recebe.
+  it('o Financeiro em Ver recebe os lançamentos da rede; quem só atende, sem o Financeiro, não', () => {
     const base = { permissions: { ...SEM_NADA, financial: 'VIEW' } as ResolvedPermissions }
     expect(nomes(ctx(base))).toContain('lancamentos')
-    expect(nomes(ctx({ ...base, scopes: { ...ALL_SCOPES, financial: 'OWN' } }))).not.toContain('lancamentos')
+    expect(nomes(ctx({ providesServices: true, atendeEm: ['b1'] }))).not.toContain('lancamentos')
   })
 
   it('funcionalidade fora do plano tira a ferramenta — para o dono também', () => {

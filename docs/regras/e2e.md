@@ -90,7 +90,7 @@ e a da plataforma não podem se encostar:
 **Apoio do E2E** (`apps/web/e2e/apoio/`). O E2E roda contra o banco da
 produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
 - `sessao.ts` — `criarMembro` (cargo com a matriz que o teste descrever, de
-  rede ou de unidade), `membroComEscopoProprio` (um membro com o CRM em Gerenciar e "só os meus") e `clienteComSessao`
+  rede ou de unidade), `membroDoCrm` (um membro com o CRM em Gerenciar, de rede; era o `membroComEscopoProprio`, que saiu com a SM1) e `clienteComSessao`
   (cliente final no portal). Todos devolvem `estado` (cookies), `accessToken`
   (para falar com o PostgREST como a pessoa) e `destino` do login.
 - `limpeza.ts` — `apagarClientes` / `apagarAgendamentos` na ordem das FKs, e

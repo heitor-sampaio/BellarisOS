@@ -104,17 +104,17 @@ test.beforeAll(async () => {
   gestao = await criarMembro(`tsug${marca}`, {
     tenant: rede.tenantId, rotulo: 'Gestão',
     permissoes: [
-      { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'crm', nivel: 'MANAGE', escopo: 'ALL' },
-      { modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'marketing', nivel: 'MANAGE' },
+      { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'crm', nivel: 'MANAGE' },
+      { modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'marketing', nivel: 'MANAGE' },
     ],
   })
   recepcaoA = await criarMembro(`tsur${marca}`, {
     tenant: rede.tenantId, branchId: unidadeA.id, rotulo: 'Recepção',
-    permissoes: [{ modulo: 'clients', nivel: 'VIEW' }, { modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }],
+    permissoes: [{ modulo: 'clients', nivel: 'VIEW' }, { modulo: 'agenda', nivel: 'MANAGE' }],
   })
   comercialUnica = await criarMembro(`tsuc${marca}`, {
     tenant: unica.tenantId, rotulo: 'Comercial',
-    permissoes: [{ modulo: 'crm', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }],
+    permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'agenda', nivel: 'MANAGE' }],
   })
   // A campanha é configuração da rede toda: só a Admin da rede a monta (o
   // Heitor, 18/11: "Configuração da rede toda só pela conta admin").

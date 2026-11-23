@@ -70,8 +70,8 @@ test.beforeAll(async ({ browser }) => {
   recepcaoDeB = await criarMembro(`r${marca}`, {
     tenant: rede.tenantId, branchId: unidadeB, rotulo: 'Recepção da Pampulha',
     permissoes: [
-      { modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'clients', nivel: 'MANAGE' },
-      { modulo: 'cashier', nivel: 'MANAGE' }, { modulo: 'financial', nivel: 'MANAGE', escopo: 'ALL' },
+      { modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' },
+      { modulo: 'cashier', nivel: 'MANAGE' }, { modulo: 'financial', nivel: 'MANAGE' },
     ],
   })
 

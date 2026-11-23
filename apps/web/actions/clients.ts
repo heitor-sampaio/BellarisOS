@@ -2,7 +2,6 @@
 
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertClient, assertPermission, can } from '@/lib/auth'
-import { recusaDoSoOsMeus } from '@/lib/financeiro/so-os-meus'
 import { SO_CONSULTA_CLIENTES } from '@/lib/clients/so-consulta'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { leadAoAlcance } from '@/lib/crm/alcance'
@@ -522,7 +521,6 @@ export async function grantInternalCredit(
   const ctx = await getTenantContext()
   assertPermission(ctx, 'financial', 'MANAGE')
   // C35: o Financeiro em "só os meus" não dá crédito.
-  { const soOsMeus = recusaDoSoOsMeus(ctx); if (soOsMeus) return { error: soOsMeus } }
   // O mesmo envio (a chave da tela) concede UMA vez (D10, lib/envio-unico.ts).
   return umaVez(ctx.tenantId!, 'grantInternalCredit', chaveDoEnvio(formData), () => concederCredito(ctx, formData))
 }

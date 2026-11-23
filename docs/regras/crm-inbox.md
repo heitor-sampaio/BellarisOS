@@ -478,19 +478,17 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   mês). Até 18/11 as três contas (`metrics_core`, `metrics_by_branch`, `metrics_new_clients_series`)
   filtravam `is_active` (A24), e o número do mês passado mudava ao arquivar; o filtro saiu (migration
   `20261124200005`). Prova: `e2e/clientes-arquivar.spec.ts`, `tests/novos-clientes-arquivar-nao-muda.test.ts`.
-- **O "só os meus" não recorta a ficha da cliente** (o Heitor, 2026-11-07, 9ª simulação: "ve tudo,
+- **A ficha da cliente não se recorta por quem atende** (o Heitor, 2026-11-07, 9ª simulação: "ve tudo,
   só os meus não se aplica para visualização de clientes pq os clientes são da clinica, isso já foi
-  decidido antes"): quem tem a Agenda ou o Prontuário em "só os meus" abre a ficha de
-  qualquer cliente e vê a Visão geral e o Histórico inteiros — os atendimentos de outras
-  profissionais, os valores, o plano e o contrato. O escopo continua valendo onde é do módulo: a
-  aba Prontuário (o dado clínico de quem ela não atendeu), a aba Financeiro (o OWN do Financeiro) e
-  a aba **Oportunidades**, que é dado do CRM, não da ficha (varredura de 18/11, CRM-03; leitura do
-  Claude: a regra acima é sobre a FICHA, e o Heitor, 2026-10-28: "quem tem 'só os meus' vê 'só os
-  meus', em qualquer lugar"; CLAUDE.md §11, `ownerFilter`): com o CRM em "só os meus", só as
-  oportunidades dela ou sem dono, como no quadro e na linha do tempo comercial (`getClientEvents`);
-  sem o CRM (ou sem as oportunidades no plano) a aba some; e a leitura que falha diz "Não consegui
-  ler as oportunidades desta cliente." em vez de "Nenhuma oportunidade" (`oportunidadesDoCliente`,
-  `lib/crm/oportunidades-do-cliente.ts`). Prova: `tests/crm-varredura-de-18-11.test.ts`.
+  decidido antes"; e o "só os meus" saiu de todo módulo, SM1, 2026-11-23): quem abre a ficha vê a
+  Visão geral e o Histórico inteiros — os atendimentos de todas as profissionais, os valores, o plano
+  e o contrato. As abas de módulo seguem o módulo: a aba Prontuário (o Prontuário em Ver), a aba
+  Financeiro (o Financeiro em Ver ou quem recebe — `financeiroDaFicha`) e a aba **Oportunidades**,
+  que é dado do CRM, não da ficha (varredura de 18/11, CRM-03): com o CRM em Ver, todas as
+  oportunidades da cliente; sem o CRM (ou sem as oportunidades no plano) a aba some; e a leitura que
+  falha diz "Não consegui ler as oportunidades desta cliente." em vez de "Nenhuma oportunidade"
+  (`oportunidadesDoCliente`, `lib/crm/oportunidades-do-cliente.ts`). Prova:
+  `tests/crm-varredura-de-18-11.test.ts`.
 - **A ficha monta só a aba aberta** (C77, F65): as duas fichas (`app/[slug]/clients/[id]` e
   `app/admin/clients/[id]`) leem o `?aba=` (`abaDaFicha`, `lib/clientes/aba-da-ficha.ts` — as chaves da
   tela; o resto é a Visão geral) e montam sempre o que a Visão geral e o topo usam; a linha do tempo só
@@ -1062,8 +1060,7 @@ O nome no código e no banco FICA (`leads`, `lead_events`, `leadId`,
 árvore do TypeScript, como a do PR3); os sinônimos de cabeçalho da importação
 ("nome do lead") ficam, porque são como a planilha de outro sistema vem.
 - No quadro: "Nova oportunidade", "Editar oportunidade", "Criar oportunidade",
-  "Ações da oportunidade", "N oportunidades no funil"; o escopo do CRM no
-  cargo é "Só as próprias oportunidades" / "Todas as oportunidades".
+  "Ações da oportunidade", "N oportunidades no funil".
 - **"Cadastrar cliente" em todo lugar** (CR2): o card do quadro diz
   "Cadastrar cliente" e abre "Cadastrar como cliente", como o painel do inbox
   (era "Converter" / "Converter em cliente") — no quadro da unidade E no da
@@ -1201,8 +1198,8 @@ migration `20260928000007`), e o fim da lista busca a próxima pelo cursor
   carregadas: o dono que só aparece na página 5 sumiria do menu.
 - **O realtime recarrega o tanto que já está na tela**, com os filtros de
   agora — recarregar "do zero" encolheria a lista de quem rolou.
-- O alcance entra na mesma consulta: no modo "pela conversa" as oportunidades do dono
-  vêm de `leads_do_dono` (um array só; o select parava em 1000).
+- O alcance entra na mesma consulta: as caixas do cargo (`p_caixas`, de
+  `caixasDoAlcance`). Sem dono nem modo desde a SM3 (2026-11-23).
 - **O filtro "Número"** (r2-cfg-06, 2026-11-03): as conversas de um número
   de WhatsApp — também o REMOVIDO, cujas conversas ficam no inbox
   (`whatsapp-push.md`). `p_filtros.numeros`, `inbox_opcoes.numeros`.
@@ -1222,9 +1219,9 @@ as threads ficou confuso. **A pessoa une as conversas no PAINEL, não na fila.**
 **O cruzamento é o que conserta o handoff.** `getConversationCard` devolve
 `outrasThreads` — as outras conversas da mesma pessoa —, e o painel do inbox as
 mostra na seção do CONTATO (não na das oportunidades: é sobre a pessoa). Clicar
-abre aquela thread. **Respeita o alcance do CRM pela mesma regra da lista**
-(`alcanceDoDono`, ver abaixo): abrir exceção ali seria furar, por uma tela, a
-regra que vale na tela ao lado.
+abre aquela thread. **Respeita o alcance do inbox pela mesma regra da lista**
+(as caixas do cargo, `caixasDoAlcance`, ver abaixo): abrir exceção ali seria
+furar, por uma tela, a regra que vale na tela ao lado.
 
 **A oportunidade é da PESSOA** (`leads.contato_id`, NOT NULL). `leads.conversation_id`
 continua existindo com outro sentido: a thread onde a oportunidade **nasceu**.
@@ -1270,50 +1267,44 @@ pessoa (`lib/crm/atividade-da-pessoa.ts`).
   o histórico junto (`lead_events` em cascata). A que não vai adiante é marcada
   perdida. Não há action, botão nem política de DELETE — e `lead_events` é
   append-only pela sessão (ler e acrescentar). Prova: `e2e/lead-nao-se-apaga.spec.ts`.
-- **Com escopo OWN, o inbox segue a pessoa OU a conversa — escolha da rede**
-  (`tenants.inbox_visibilidade`, Configurações → Cargos, pede `roles: MANAGE`).
-  Decisão do Heitor em 2026-09-26: "pessoa" é o padrão, mas configurável.
-  - **Pela pessoa:** tem oportunidade sua → você vê todas as threads dela; só
-    de outros donos → nenhuma; nenhuma oportunidade → todo mundo vê.
-  - **Pela conversa:** cada thread pela oportunidade ligada a ELA
-    (`conversations.lead_id`); thread sem oportunidade fica no bolo comum —
-    inclusive a thread nova de quem é de outro dono.
-  - A regra mora em UM lugar (`lib/inbox/alcance.ts`: `alcanceDoDono`), usado
-    pela lista e pelos atalhos das outras threads. Quem esconde quem é conta
-    do banco (`contatos_ocultos_do_dono`, só `service_role`), que devolve um
-    array só — ler os leads com dono no app bateria no teto de 1000 linhas.
+- **O inbox não se recorta por dono** (SM3, o Heitor, 2026-11-23: "no crm acho
+  que não se aplica diretamente e talvez o melhor caminho seja pelo filtro de
+  dono da oportunidade, quem quer ver só as oportunidades que é dono, aplica o
+  filtro"): quem tem o CRM em Ver vê as conversas de todas as caixas que o
+  cargo vê (`inbox_caixas`). Saiu o refino "pela pessoa × pela conversa"
+  (`tenants.inbox_visibilidade`, `alcanceDoDono`). Quem quer só as suas usa o
+  filtro de responsável (o dono, no inbox; "Responsável", no quadro).
+  - A regra mora em UM lugar (`lib/inbox/alcance.ts`: `caixasDoAlcance`,
+    `passaNasCaixas`), usado pela lista, pelos atalhos das outras threads e
+    pela abertura por id.
   - Erro ao ler o alcance mostra NADA, nunca tudo.
   - ⚠️ **Esconder da lista não basta: a abertura por id é trancada.** Toda
     action que recebe o id de uma conversa ou de uma mensagem passa por
-    `conversaAoAlcance` / `mensagemAoAlcance` (dono + caixas do cargo) e, fora
+    `conversaAoAlcance` / `mensagemAoAlcance` (o CRM em Ver + as caixas do cargo) e, fora
     do alcance, responde como se a conversa não existisse. Até 2026-09-27
     `/admin/inbox?c=<id>` entregava as mensagens de qualquer conversa da rede.
     Action nova de conversa sem esse portão é o furo de volta. O "Abrir a
     conversa" do card (`openLeadConversation`) também: abre a mais recente
-    das que o cargo VÊ (`passaNoAlcanceDoDono` + `passaNasCaixas`, como o
-    painel), e, se a pessoa só tem conversas fora disso, diz que a conversa é
-    de um número ou de uma pessoa fora do que o cargo vê — não abre nem cria
+    das que o cargo VÊ (`passaNasCaixas`, como o painel), e, se a pessoa só
+    tem conversas fora disso, diz que a conversa é de um número de WhatsApp
+    fora do que o cargo vê — não abre nem cria
     outra (varredura de 18/11, CRM-10).
-  - O mesmo vale para a **oportunidade**: `leadAoAlcance` (`lib/crm/alcance.ts`)
-    aplica a regra do funil (sua ou sem dono) a toda action que recebe o id de
-    uma — inclusive fora do inbox (`createCrmAppointment`, `addClient` com
+  - O mesmo vale para a **oportunidade**: `leadAoAlcance` (`lib/crm/alcance.ts`:
+    a rede, o CRM em Ver e as oportunidades no plano) vale para toda action que
+    recebe o id de uma — inclusive fora do inbox (`createCrmAppointment`, `addClient` com
     `_leadId`). Os dois portões exigem `crm: VIEW`: `clients: MANAGE` não é
     passe para mexer em card nem em conversa.
 
-**O alcance do módulo ligado num cargo nasce SEM ESCOLHA** (A2 da 12ª
-simulação, 2026-11-11; princípio 3 — substitui a A5 da 9ª, que fazia o CRM
-nascer em "Todos" e os outros escopáveis em "só os meus"): na matriz de
-Cargos, o alcance (CRM, agenda, prontuário, financeiro, relatórios) só aparece
-com o módulo ligado, e ligado ele vem sem nenhum dos dois marcado ("Escolha o
-que este cargo enxerga aqui."). Salvar sem escolher não grava um padrão
-escondido: a tela diz o que falta (`[data-falta-escolher]`) e a action recusa
-("Escolha o que o cargo enxerga em …"). O já ligado mantém o escolhido, e o
-"só os meus" guardado do módulo desligado volta ao religar (D6). O Relatórios
-em "Ver" pede ao menos um relatório antes de salvar. `escopoInicial`
-(`lib/cargos/escopo-inicial.ts`). Prova: `tests/cargo-escopo-inicial.test.ts`,
+**O que falta escolher num cargo são as abas de Relatórios** (A2 da 12ª
+simulação, 2026-11-11; princípio 3 — o "só os meus × todos" de cada módulo,
+que também nascia sem escolha, saiu com a SM1, 2026-11-23): o Relatórios em
+"Ver" pede ao menos um relatório antes de salvar. Salvar sem escolher não grava
+um padrão escondido: a tela diz o que falta (`[data-falta-escolher]`,
+`textoDoQueFaltaNoCargo`) e a action recusa ("Marque ao menos uma aba de
+Relatórios — ou deixe Relatórios em “Sem acesso”."). Prova:
 `e2e/configuracoes-atritos-da-12.spec.ts` ("A2"). **E o Salvar leva ao que
 falta** (A14 da 15ª simulação, princípio 7: o aviso morava no pé da página): a
-tela rola até o primeiro módulo sem escolha, na ordem da matriz, e o destaca
+tela rola até o módulo sem escolha e o destaca
 (`[data-destacado="1"]`) até a escolha — com o aviso fixo NO módulo
 (`[data-falta-no-modulo]`, A20 da 19ª: no celular o toast sumia e o aviso do
 Salvar ficava fora da vista). Prova:
@@ -1325,7 +1316,7 @@ histórico é sempre "Responsável", nunca "Dono" (decisão do Heitor: o mesmo
 conceito não pode ter dois nomes) — no código segue `owner`.
 - Nasce de quem cria a oportunidade; o card mostra as iniciais (o nome no `title`), e
   o modal da oportunidade tem o campo "Responsável" (os membros ATIVOS da rede, mais
-  "Sem responsável" — que devolve o card ao bolo comum).
+  "Sem responsável").
 - **A oportunidade nova ABRE com quem a cria, e o vazio só tira o responsável quando
   a tela mostrou o campo** (D1 da 11ª simulação, 2026-11-10; princípio 3: a
   Tatiane criou 6 oportunidades seguidas e 4 nasceram "Sem responsável"). Da 2ª
@@ -1336,11 +1327,9 @@ conceito não pode ter dois nomes) — no código segue `owner`.
   a pessoa escolheu, e o select vai com a marca `_responsavelNaTela`; sem ela,
   o `owner_id` vazio não troca nada (`responsavelDoForm`, `createLead` e
   `updateLead`). Prova: `e2e/crm-defeitos-da-11.spec.ts` ("D1").
-- **Troca só quem tem o CRM em Gerenciar com escopo "todos"**
-  (`podeTrocarResponsavel`, `lib/crm/responsavel.ts`). O "só os meus" vê o
-  nome e não troca: passar o card adiante o tiraria do próprio alcance, e
-  pegar o de outro é o que o escopo impede. O servidor confere de novo — quem
-  não pode e manda `owner_id` no form não muda nada.
+- **Troca quem tem o CRM em Gerenciar** (`podeTrocarResponsavel`,
+  `lib/crm/responsavel.ts`; sem o "só os meus", SM3, 2026-11-23). O servidor
+  confere de novo — quem não pode e manda `owner_id` no form não muda nada.
 - Tela e automação ("Definir responsável") passam pelo MESMO núcleo,
   `trocarResponsavelCore`: a pessoa é da rede e ativa, e a linha do tempo diz
   DE quem PARA quem (até 2026-10-09 a automação gravava sempre "de: —").
@@ -1466,8 +1455,8 @@ da pergunta, as outras etapas do funil (sem a perdida — nela o quadro pede o
 motivo de cada uma) e o "Mover" (`moverOportunidadesDaEtapa`,
 `actions/leads.ts`: Configurações e CRM em Gerenciar, e a Admin da rede —
 CLAUDE.md §11, 18/11 —,
-mesmo funil; uma a uma pelo `moverEtapaCore`, com o "só os meus" do CRM — a
-que é de outra pessoa fica, e a linha diz quantas). **Decisão do Heitor
+mesmo funil; uma a uma pelo `moverEtapaCore` — a que não se move fica, e a
+linha diz quantas). **Decisão do Heitor
 (17/11): se mover à mão dispararia automações, PERGUNTAR se dispara ou não**
 — `automacoesDoMovimento` lista as ligadas que aquela mudança dispararia;
 com alguma, "Mover dispara a automação “X”. Disparar?" com Sim/Não. No
@@ -1725,7 +1714,7 @@ o contato junto.
 ❌ Tratar a conversa como a pessoa — a pessoa é contacts, a conversa é uma thread
 ❌ Editar nome/telefone numa cópia (conversa, oportunidade) sem propagarDadosDaPessoa
 ❌ Buscar oportunidades por leads.conversation_id (é a thread de ORIGEM; a pessoa é contato_id)
-❌ Ler leads pela SESSÃO numa tela que roda na unidade (a política de leitura só deixa passar quem é da rede, e a oportunidade é sempre da rede: o quadro da unidade via "0 leads" até 2026-10-20) — o servidor lê pelo cliente de serviço, com a rede e o ownerFilter na consulta
+❌ Ler leads pela SESSÃO numa tela que roda na unidade (a política de leitura só deixa passar quem é da rede, e a oportunidade é sempre da rede: o quadro da unidade via "0 leads" até 2026-10-20) — o servidor lê pelo cliente de serviço, com a rede na consulta
 ❌ Agrupar a fila do inbox por pessoa — é uma linha por conversa (decisão de 2026-09-26)
 ❌ Ler tags de conversations.tags (é semente; a fonte é contacts.tags)
 ❌ Dar tag própria à oportunidade, ou ler/gravar leads.tags — a tag é da PESSOA (o Heitor, 18/11): o card lê EMBED_TAGS_DA_PESSOA e grava por gravarTagsDaOportunidade

@@ -28,7 +28,7 @@ let sdr: MembroDeTeste
 
 test.beforeAll(async () => {
   rede = await criarOutraRede(`crl${marca}`)
-  sdr = await criarMembro(`crls${marca}`, { tenant: rede.tenantId, rotulo: 'SDR', permissoes: [{ modulo: 'crm', nivel: 'MANAGE', escopo: 'OWN' }] })
+  sdr = await criarMembro(`crls${marca}`, { tenant: rede.tenantId, rotulo: 'SDR', permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }] })
 })
 
 test.afterAll(async () => {

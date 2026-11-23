@@ -13,7 +13,7 @@ import type { Cartao, ResumoDaAcao, ResultadoDaAcao } from '@/lib/copilot/tipos'
  * confere — antes de oferecê-la ao modelo e de novo antes de rodar. Dentro de
  * `executar`/`preparar`/`efetivar` vale tudo o que vale numa action: a rede e
  * a unidade vêm do `ctx`, nunca dos argumentos; registro que chega por id é
- * conferido (rede, `alcancaUnidade`, `ownerFilter`, `leadAoAlcance`).
+ * conferido (rede, `alcancaUnidade`, `leadAoAlcance`).
  *
  * NENHUMA ferramenta lê dado clínico (decisão do Heitor, 2026-10-08): nada de
  * prontuário, evolução, anamnese, foto clínica ou anotação do plano vai à

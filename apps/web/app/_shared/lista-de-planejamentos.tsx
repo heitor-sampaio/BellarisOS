@@ -37,8 +37,8 @@ export async function ListaDePlanejamentos({
     branchId ? Promise.resolve([]) : getCachedNetworkBranches(ctx.tenantId!),
   ])
 
-  // PT2: monta quem ATENDE na unidade (o "Atende" da Equipe — não é permissão).
-  // Na rede, o "Novo plano" oferece só as unidades em que ela atende.
+  // UM3: monta quem tem o Atendimento em Gerenciar na unidade (ao alcance).
+  // Na rede, o "Novo plano" oferece só as unidades em que ela monta.
   const unidadesQueMonta = (unidades as { id: string; name: string }[]).filter(u => montaPlano(ctx, u.id))
 
   return (

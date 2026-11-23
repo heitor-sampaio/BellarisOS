@@ -7,8 +7,9 @@ import { chamarAcao } from './apoio/acao-direta'
 /**
  * O RESPONSÁVEL da oportunidade (pedido do Heitor, 2026-10-09): aparece no
  * card, troca-se no modal, e a linha do tempo diz de quem para quem. Troca
- * quem tem o CRM em Gerenciar com escopo "todos"; o "só os meus" vê e não
- * troca. E a tela diz "Responsável" em todo lugar (era "Dono" no filtro).
+ * quem tem o CRM em Gerenciar; quem o tem em Ver vê e não troca (sem o "só os
+ * meus", SM1/SM3, o Heitor, 2026-11-23). E a tela diz "Responsável" em todo
+ * lugar (era "Dono" no filtro).
  *
  * Numa rede `[e2e]` própria.
  */
@@ -46,12 +47,12 @@ test.beforeAll(async () => {
   expect(f.error).toBeNull(); funil = f.data!.id
   const e = await b.from('crm_stages').insert({ tenant_id: outra.tenantId, funnel_id: funil, name: 'Primeiro contato', position: 0 }).select('id').single<{ id: string }>()
   expect(e.error).toBeNull(); etapa = e.data!.id
-  const m = async (chave: string, escopo?: 'OWN') => {
+  const m = async (chave: string, nivel: 'MANAGE' | 'VIEW' = 'MANAGE') => {
     const x = await criarMembro(`rsp${chave}${marca}`, { tenant: outra.tenantId, rotulo: `Resp ${chave}`,
-      permissoes: [{ modulo: 'crm', nivel: 'MANAGE', ...(escopo ? { escopo } : {}) }] })
+      permissoes: [{ modulo: 'crm', nivel }] })
     membros.push(x); return x
   }
-  gestor = await m('gestor'); outraPessoa = await m('outra'); sdr = await m('sdr', 'OWN')
+  gestor = await m('gestor'); outraPessoa = await m('outra'); sdr = await m('sdr', 'VIEW')
   nomeDoGestor = await nomeDe(gestor); nomeDaOutra = await nomeDe(outraPessoa)
 })
 test.afterAll(async () => {
@@ -114,7 +115,8 @@ test('"Sem responsável" tira o responsável', async ({ browser }) => {
   })
 })
 
-test('quem tem "só os meus" VÊ o responsável, mas não troca', async ({ browser }) => {
+// Sem o "só os meus" (SM1/SM3, o Heitor, 2026-11-23): quem não troca é quem tem o CRM só em Ver.
+test('quem tem o CRM em Ver VÊ o responsável, mas não troca', async ({ browser }) => {
   await lead('Minha Mel', sdr.userId)
   const nomeDoSdr = await nomeDe(sdr)
   await como(browser, sdr, async p => {

@@ -5,7 +5,7 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { diaEmQueAUnidadeAbre } from './apoio/datas'
 
 /**
- * J-33: na "Minha agenda" (agenda "só os meus"), as setas de dia anterior e
+ * J-33: na "Minha agenda" (a vista pessoal), as setas de dia anterior e
  * próximo não tinham nome para o leitor de tela, e o `?date=` da URL era
  * ignorado — o link do aviso ou da ficha abria sempre em hoje.
  * J-31: o "Motivo do cancelamento" da janela do agendamento não era ligado
@@ -34,7 +34,9 @@ test.beforeAll(async () => {
   slug = (await db().from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
   profissional = await criarMembro(`mdp${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Profissional',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' }],
+    // A "Minha agenda" é a vista pessoal (SM2, o Heitor, 2026-11-23): atende e
+    // não tem a Agenda (era a Agenda "só os meus", que saiu — SM1).
+    permissoes: [{ modulo: 'agenda', nivel: 'NONE' }],
   })
   expect((await db().from('users').update({ provides_services: true }).eq('id', profissional.userId)).error).toBeNull()
   recepcao = await criarMembro(`mdr${marca}`, {

@@ -59,7 +59,7 @@ test.beforeAll(async () => {
 
   esteticistaDeA = await criarMembro(`pra${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Esteticista de A',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' }],
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }],
   })
   nomeDeA = `${PREFIXO} Esteticista de A pra${marca}`
   expect((await db().from('users').update({ provides_services: true }).eq('id', esteticistaDeA.userId)).error).toBeNull()
@@ -67,7 +67,7 @@ test.beforeAll(async () => {
   gestora = await criarMembro(`prg${marca}`, {
     tenant: rede.tenantId, rotulo: 'Gestora',
     permissoes: [
-      { modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' },
+      { modulo: 'agenda', nivel: 'MANAGE' },
       { modulo: 'team', nivel: 'MANAGE' },
       { modulo: 'clients', nivel: 'VIEW' },
     ],

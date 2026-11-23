@@ -8,15 +8,9 @@ import { chamarAcaoComFormulario } from './apoio/acao-direta'
  * Os atritos de setup e configuração da 12ª simulação (2026-11-10/11, a Helena
  * da Margarida e a Cláudia da Acácia), numa rede [e2e] própria:
  *
- * - A2: no cargo novo, os alcances vinham pré-marcados ("Só a própria
- *   agenda", "Só as próprias comissões") com o módulo em "Sem acesso", e o
- *   Relatórios ligado vinha sem nenhuma aba — a Contadora foi salva assim por
- *   engano e só "veria Minhas comissões". Princípio 3: o alcance nasce SEM
- *   escolha (pede ao ligar o módulo; com o módulo em "Sem acesso" ele some), e
- *   o Relatórios em "Ver" pede as abas.
- * - A3: o modelo Recepcionista não via as próprias comissões, e a recepção
- *   que vende é o caso comum. Princípio 1: o MODELO da rede nova traz o
- *   Financeiro em "Ver, só as próprias" (cargos já gravados não mudam).
+ * - A2: no cargo novo, o Relatórios ligado vinha sem nenhuma aba. Princípio
+ *   3: o Relatórios em "Ver" pede as abas. (O alcance "só os meus" × "todos"
+ *   que a A2 também tratava saiu do cargo: SM1, o Heitor, 2026-11-23.)
  */
 
 test.setTimeout(180_000)
@@ -44,7 +38,8 @@ test.afterAll(async () => {
   await rede?.limpar()
 })
 
-test('A2: o alcance do cargo novo nasce sem escolha, some sem o módulo, e o Relatórios em "Ver" pede as abas', async ({ browser }) => {
+// Sem o "só os meus" (SM1, o Heitor, 2026-11-23): o cargo é módulo × nível, sem alcance a escolher.
+test('A2: o cargo novo não tem alcance a escolher, e o Relatórios em "Ver" pede as abas', async ({ browser }) => {
   const rotulo = `${PREFIXO} Contadora ${marca}`
   await como(browser, dona, async p => {
     await p.goto('/admin/settings?tab=permissions')
@@ -54,15 +49,12 @@ test('A2: o alcance do cargo novo nasce sem escolha, some sem o módulo, e o Rel
     await expect(p.getByRole('heading', { name: /O que .* acessa/ })).toContainText(rotulo)
 
     const financeiro = p.locator('[data-modulo="financial"]')
-    // Sem acesso: o alcance não aparece (nem esmaecido, nem pré-marcado).
+    // Nem sem acesso nem ligado há alcance a escolher.
     await expect(financeiro.getByRole('button', { name: 'Só as próprias comissões' })).toHaveCount(0)
     await expect(financeiro.getByRole('button', { name: 'Financeiro completo' })).toHaveCount(0)
-
-    // Ligado: o alcance aparece, sem nenhum dos dois marcado, e pede a escolha.
     await financeiro.getByRole('button', { name: 'Ver', exact: true }).click()
-    await expect(financeiro.getByRole('button', { name: 'Só as próprias comissões' })).toHaveAttribute('aria-pressed', 'false')
-    await expect(financeiro.getByRole('button', { name: 'Financeiro completo' })).toHaveAttribute('aria-pressed', 'false')
-    await expect(financeiro.locator('[data-alcance-sem-escolha]')).toBeVisible()
+    await expect(financeiro.getByRole('button', { name: 'Só as próprias comissões' })).toHaveCount(0)
+    await expect(financeiro.getByRole('button', { name: 'Financeiro completo' })).toHaveCount(0)
 
     const relatorios = p.locator('[data-modulo="reports"]')
     await relatorios.getByRole('button', { name: 'Ver', exact: true }).click()
@@ -70,13 +62,11 @@ test('A2: o alcance do cargo novo nasce sem escolha, some sem o módulo, e o Rel
     // Salvar sem escolher: a tela pede, e nada é gravado.
     await p.getByRole('button', { name: 'Salvar acessos' }).click()
     const pedido = p.locator('[data-falta-escolher]')
-    await expect(pedido).toContainText('Financeiro e comissões')
     await expect(pedido).toContainText('Relatórios')
     await expect(pedido).toContainText(/relatório/i)
+    await expect(pedido, 'o Financeiro ligado não pede nada').not.toContainText('Financeiro e comissões')
     await expect(p.getByText('Acessos salvos.')).toHaveCount(0)
 
-    await financeiro.getByRole('button', { name: 'Financeiro completo' }).click()
-    await relatorios.getByRole('button', { name: /^A (rede inteira|clínica toda)$/ }).click()
     await relatorios.getByRole('button', { name: 'Financeiro', exact: true }).click()
     await p.getByRole('button', { name: 'Salvar acessos' }).click()
     await expect(p.getByText('Acessos salvos.')).toBeVisible()
@@ -88,7 +78,8 @@ test('A2: o alcance do cargo novo nasce sem escolha, some sem o módulo, e o Rel
   expect((abas ?? []).length, 'o Relatórios foi salvo com a aba marcada').toBeGreaterThan(0)
 })
 
-test('A2: a action recusa o módulo ligado sem o alcance escolhido', async ({ browser }) => {
+// Sem o "só os meus" (SM1, o Heitor, 2026-11-23): o módulo ligado grava sem alcance nenhum.
+test('A2: a action grava o módulo ligado sem alcance a escolher', async ({ browser }) => {
   const { data: cargo, error } = await db().from('tenant_roles')
     .insert({ tenant_id: rede.tenantId, key: `CFG12_${marca}`.toUpperCase(), label: `Cargo cfg12 ${marca}`, is_system: false })
     .select('id').single<{ id: string }>()
@@ -98,20 +89,11 @@ test('A2: a action recusa o módulo ligado sem o alcance escolhido', async ({ br
     const r = await chamarAcaoComFormulario(p, 'actions/permissions.ts', 'saveRolePermissions',
       '/admin/settings?tab=permissions', [undefined], { roleId: cargo!.id, 'level:agenda': 'MANAGE' })
     expect(r.texto, 'chegou à action').not.toContain('Server action not found')
-    expect(r.texto).toContain('Escolha o que o cargo enxerga')
+    expect(r.texto).not.toContain('Escolha o que o cargo enxerga')
   })
-  const { data: linhas } = await db().from('role_permissions').select('module').eq('role_id', cargo!.id)
-  expect(linhas ?? [], 'nada gravado').toEqual([])
-})
-
-test('A3: o modelo Recepcionista da rede nova vê as próprias comissões (Financeiro em Ver, só as próprias)', async () => {
-  const { data: cargo } = await db().from('tenant_roles').select('id')
-    .eq('tenant_id', rede.tenantId).eq('key', 'RECEPTIONIST').single<{ id: string }>()
-  expect(cargo, 'o modelo Recepcionista da rede nova').not.toBeNull()
-  const { data, error } = await db().from('role_permissions').select('level, scope')
-    .eq('role_id', cargo!.id).eq('module', 'financial').maybeSingle<{ level: string; scope: string }>()
-  expect(error).toBeNull()
-  expect(data).toEqual({ level: 'VIEW', scope: 'OWN' })
+  const { data: agenda } = await db().from('role_permissions').select('level, scope')
+    .eq('role_id', cargo!.id).eq('module', 'agenda').maybeSingle<{ level: string; scope: string }>()
+  expect(agenda, 'gravado, sem recorte').toEqual({ level: 'MANAGE', scope: 'ALL' })
 })
 
 test('A1: "Aberta 24 horas" se desfaz com um toque, e o horário de antes volta', async ({ browser }) => {
@@ -223,7 +205,7 @@ test('A11: quem tem só uma unidade, com Configurações em Gerenciar, lê por q
   }
 })
 
-test('A12: quem não monta o plano lê onde se libera — o "Atende" da Equipe (PT2)', async ({ browser }) => {
+test('A12: quem não monta o plano lê onde se libera — o Atendimento em Gerenciar (UM3)', async ({ browser }) => {
   const cliente = await rede.criarCliente('Plano A12')
   const { data: b } = await db().from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()
   const recepcao = await criarMembro(`cfg12r${marca}`, {
@@ -233,12 +215,11 @@ test('A12: quem não monta o plano lê onde se libera — o "Atende" da Equipe (
   try {
     await como(browser, recepcao, async p => {
       await p.goto(`/${b!.slug}/clients/${cliente}?aba=planejamento`)
-      // PT2 (2026-11-14): quem monta é quem ATENDE na unidade — o texto leva
-      // ao "Atende" da Equipe, não mais ao Prontuário em Cargos.
+      // UM3 (o Heitor, 2026-11-23): quem monta é quem tem o Atendimento em
+      // Gerenciar na unidade — o texto diz a permissão, não mais o "Atende" (PT2).
       // O "quem monta" mora na dica do vazio (2026-11-16).
       await p.getByRole('button', { name: 'Quem monta o plano' }).hover()
-      const texto = p.getByText(/Quem monta o plano é quem atende nesta unidade/)
-      await expect(texto).toContainText('Equipe → "Atende"')
+      await expect(p.getByText(/Quem monta o plano é quem tem o Atendimento em Gerenciar nesta unidade/)).toBeVisible()
     })
   } finally {
     await recepcao.limpar()

@@ -66,13 +66,13 @@ test.beforeAll(async () => {
   gestora = await criarMembro(`sag${marca}`, {
     tenant: rede.tenantId, rotulo: 'Gestora',
     permissoes: [
-      { modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'clients', nivel: 'MANAGE' },
+      { modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' },
       { modulo: 'settings', nivel: 'MANAGE' }, { modulo: 'procedures', nivel: 'MANAGE' },
     ],
   })
   segunda = await criarMembro(`sap${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Segunda profissional',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' }],
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }],
   })
   expect((await db().from('users').update({ provides_services: true }).eq('id', segunda.userId)).error).toBeNull()
   semPermissao = await criarMembro(`sas${marca}`, {

@@ -1,9 +1,8 @@
 import 'server-only'
-import { alcancaUnidade, can, isOwnScope } from '@/lib/auth'
+import { alcancaUnidade, can } from '@/lib/auth'
 import type { TenantContext } from '@estetica-os/types'
 import type { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
-import { clienteNoEscopo } from '@/lib/clientes/atendida-por'
 import type { AnamnesisRow } from '@/lib/anamnesis'
 import {
   planejamentosDaFicha, comRetratos, comOPlanejamentoAplicado, temPlanejadorSemPlanejamento, type PlanejamentoParaRetrato,
@@ -27,36 +26,7 @@ export function mapaAoAlcance(ctx: TenantContext, branchId: string | null): bool
   return branchId === null || alcancaUnidade(ctx, branchId)
 }
 
-/** A cliente é atendida por ela (o "dela" do prontuário OWN)? */
-export async function clienteDaProfissional(admin: Admin, ctx: TenantContext, clientId: string): Promise<boolean> {
-  return clienteNoEscopo(admin, ctx, 'medical_records', clientId)
-}
-
-/**
- * Com o prontuário "só os meus", o mapa é DELA? (Decisão do Heitor,
- * 2026-10-28: "quem tem 'só os meus' vê 'só os meus', em qualquer lugar".)
- *
- * O plano é da CLIENTE, não da profissional: o mapa de uma cliente que ela
- * atende (um agendamento com ela — a regra da ficha e de `recusaDoAnexo`) é
- * dela, quem quer que o tenha desenhado. O avulso (sem cliente) é dela quando
- * foi ela quem o mexeu por último (`updated_by`). Sem o escopo OWN, todo mapa
- * ao alcance.
- */
-export async function mapaDaProfissional(
-  admin: Admin,
-  ctx: TenantContext,
-  mapa: { client_id: string | null; updated_by: string | null },
-): Promise<boolean> {
-  if (!isOwnScope(ctx, 'medical_records')) return true
-  if (!ctx.internalUserId) return false
-  if (!mapa.client_id) return mapa.updated_by === ctx.internalUserId
-  return clienteDaProfissional(admin, ctx, mapa.client_id)
-}
-
-/**
- * Confere que o planejamento é da rede de quem chama, da unidade ao alcance
- * e, com o prontuário "só os meus", dela (§11: o escopo vale pelo id).
- */
+/** Confere que o planejamento é da rede de quem chama e da unidade ao alcance. */
 export async function mapaDoTenant(admin: Admin, mapId: string, ctx: TenantContext) {
   const data = await ler(admin
     .from('injectable_maps')
@@ -64,13 +34,12 @@ export async function mapaDoTenant(admin: Admin, mapId: string, ctx: TenantConte
     .eq('id', mapId)
     .maybeSingle(), 'carregar o planejamento')
   if (!data || data.tenant_id !== ctx.tenantId || !mapaAoAlcance(ctx, data.branch_id as string | null)) return null
-  return (await mapaDaProfissional(admin, ctx, data as { client_id: string | null; updated_by: string | null })) ? data : null
+  return data
 }
 
 /**
  * Os planejamentos DESTA cliente, entre `ids`, que quem age pode abrir: da
- * rede, da unidade ao alcance e, no "só os meus", de cliente que ela atende.
- * Sem o prontuário, nenhum. É o que a ficha lida mostra como link.
+ * rede e da unidade ao alcance. Sem o prontuário, nenhum. É o que a ficha lida mostra como link.
  */
 export async function planejamentosQueAbrem(
   admin: Admin,
@@ -80,7 +49,6 @@ export async function planejamentosQueAbrem(
 ): Promise<PlanejamentoParaRetrato[]> {
   const unicos = [...new Set(ids)].filter(id => /^[0-9a-f-]{36}$/i.test(id))
   if (unicos.length === 0 || !can(ctx, 'medical_records', 'VIEW')) return []
-  if (!(await clienteDaProfissional(admin, ctx, clientId))) return []
   const linhas = await ler(admin
     .from('injectable_maps')
     .select('id, name, view, points, branch_id')

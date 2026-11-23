@@ -8,7 +8,7 @@ import { redeDoCopilot, contraAFalsa, comSessao, falarComOCopilot, esperarRespos
  * As LEITURAS do Copilot (fase 3, 2026-10-08): o que cada ferramenta lê do
  * banco de verdade, e as travas — a mesma régua da tela:
  *  - o cargo sem o módulo nem RECEBE a ferramenta, e a chamada forçada é recusada;
- *  - o escopo "só os meus" da agenda só traz os próprios;
+ *  - a agenda em Ver traz a de todos (sem o "só os meus", SM1/SM5, 2026-11-23);
  *  - quem tem unidade fixa não lê a outra unidade;
  *  - a ficha não leva o CPF inteiro nem as observações livres.
  *
@@ -138,14 +138,16 @@ test('cargo só com clientes: nem recebe agenda, financeiro e estoque — e a ch
   })
 })
 
-test('agenda "só os meus": só a própria agenda, nem pedindo a de outro', async ({ browser }) => {
-  const m = await rede.membro('own', [{ modulo: 'agenda', nivel: 'VIEW', escopo: 'OWN' }])
+// Sem o "só os meus" (SM1/SM5, o Heitor, 2026-11-23): a Agenda em Ver lê a agenda de todos.
+test('agenda em Ver: a agenda de todos, e pedindo a de outro também', async ({ browser }) => {
+  const m = await rede.membro('own', [{ modulo: 'agenda', nivel: 'VIEW' }])
   await comSessao(browser, m.estado, async p => {
     await p.goto('/admin/dashboard')
-    const minhas = await chamar(p, 'agendamentos', { de: AMANHA })
-    expect(minhas.saida!.agendamentos).toEqual([])
+    const todas = await chamar(p, 'agendamentos', { de: AMANHA })
+    expect((todas.saida!.agendamentos as { id: string }[]).map(a => a.id).sort()).toEqual([...agendamentos].sort())
     const doOutro = await chamar(p, 'agendamentos', { de: AMANHA, profissional: `Prof copl${marca}` })
-    expect(String(doOutro.saida?.erro)).toContain('só vê a sua própria agenda')
+    expect(doOutro.saida?.erro).toBeUndefined()
+    expect((doOutro.saida!.agendamentos as { id: string }[]).map(a => a.id).sort()).toEqual([...agendamentos].sort())
   })
 })
 

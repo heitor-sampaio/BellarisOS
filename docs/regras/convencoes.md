@@ -84,9 +84,8 @@ action monta (status, caminho de arquivo, matriz de cargos):
   `(select private.sessao_ve_o_modulo(módulo, recurso do plano, só "A rede
   inteira"?))` — o `can(ctx, módulo, 'VIEW')` do `buildContext` no banco: o
   cargo GRAVADO (a Admin da rede pelo cargo de sistema), o membro ativo e o
-  plano. Módulo ESCOPÁVEL ("só os meus") não se lê pela sessão de jeito
-  nenhum, porque a RLS não aplica o escopo ("Toda leitura de módulo
-  escopável passa ownerFilter", CLAUDE.md §11): o prontuário
+  plano. O prontuário não se lê pela sessão de jeito nenhum (a RLS não
+  aplica o módulo nem a vista pessoal — CLAUDE.md §14): o prontuário
   (`medical_records`, `medical_record_entries`, `injectable_maps`,
   `injectable_applications`) não tem política nenhuma, como as comissões, e
   a tela do atendimento escuta `prontuario_sinais`. Os procedimentos

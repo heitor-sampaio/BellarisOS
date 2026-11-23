@@ -14,7 +14,6 @@ import { z } from 'zod'
 import { alcancaOCaixaDoTratamento } from '@/lib/tratamento/alcance'
 import { getTenantContext, assertPermission, alcancaUnidade, podeReceber, assertRecurso } from '@/lib/auth'
 import { veOsDocumentos } from '@/lib/documentos/acesso'
-import { recusaDoSoOsMeus } from '@/lib/financeiro/so-os-meus'
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
@@ -328,7 +327,6 @@ export async function trazerPacoteDeFora(entrada: unknown): Promise<{ error?: st
     const ctx = await getTenantContext()
     if (ctx.permissions.financial !== 'MANAGE') return { error: 'Seu cargo não traz pacote de fora: é de quem tem o Financeiro em Gerenciar.' }
     // C35: o Financeiro em "só os meus" não traz pacote de fora (a tela já esconde).
-    { const soOsMeus = recusaDoSoOsMeus(ctx); if (soOsMeus) return { error: soOsMeus } }
     const lido = EntradaDoPacoteDeFora.safeParse(entrada)
     if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }
     const e = lido.data
@@ -423,7 +421,6 @@ export async function cancelarPacote(clientPackageId: string, entrada: unknown):
     const ctx = await getTenantContext()
     assertPermission(ctx, 'financial', 'MANAGE')
     // C35: o Financeiro em "só os meus" não cancela (a tela já esconde).
-    { const soOsMeus = recusaDoSoOsMeus(ctx); if (soOsMeus) return { error: soOsMeus } }
     const lido = EntradaDoCancelamento.safeParse(entrada)
     if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }
     const admin = createAdminClient()

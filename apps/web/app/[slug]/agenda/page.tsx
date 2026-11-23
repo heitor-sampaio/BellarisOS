@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertPermission, isOwnScope, can, alcancaUnidade, podeReceber } from '@/lib/auth'
+import { getTenantContext, can, alcancaUnidade, podeReceber, vistaPessoal } from '@/lib/auth'
+import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { normalizarHorario, janelaDaGrade, type Horario, type BlocoOcupado } from '@/lib/agenda/horario'
 import { ler, lerTodas } from '@/lib/db'
@@ -19,7 +20,7 @@ import {
   getCachedBranchProfessionals, getCachedRoomsByBranch, filtroDeQuemAtendeNaUnidade, getCachedNetworkBranches,
 } from '@/lib/cached-queries'
 import { MeusAtendimentosEmOutrasUnidades } from '@/components/branch/meus-de-outras-unidades'
-import { quemConcluiOAtendimento, idsQueConcluemOsProprios } from '@/lib/equipe/quem-desfaz'
+import { quemConcluiOAtendimento } from '@/lib/equipe/quem-desfaz'
 import { filtrosDaAgenda, aplicarFiltrosDaAgenda, SEM_FILTRO } from '@/lib/agenda/filtros'
 import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
 
@@ -36,12 +37,13 @@ export default async function AgendaPage({ params, searchParams }: {
   const comCancelados = busca.cancelados === '1'
   const dataInicial = dataDaUrl && /^\d{4}-\d{2}-\d{2}$/.test(dataDaUrl) ? dataDaUrl : null
   const ctx      = await getTenantContext()
-  assertPermission(ctx, 'agenda', 'VIEW')
+  // A Agenda em Ver abre a agenda da unidade; a "Minha agenda" é a vista
+  // pessoal (SM2): a quem atende e não tem a Agenda, só os dela, só para ver.
+  const pessoal = vistaPessoal(ctx, 'agenda')
+  if (!can(ctx, 'agenda', 'VIEW') && pessoal === null) throw semAcesso()
 
-  // Escopo do cargo decide o alcance; antes era inferido de "atende clientes e
-  // não gerencia a agenda", o que impedia dar gestão da própria agenda a alguém.
   const canManageAgenda  = ctx.permissions.agenda === 'MANAGE'
-  const professionalOnly = isOwnScope(ctx, 'agenda')
+  const professionalOnly = pessoal !== null
 
   const branch = await getCachedBranchBySlug(slug, ctx.tenantId!)
   if (!branch) notFound()
@@ -61,8 +63,8 @@ export default async function AgendaPage({ params, searchParams }: {
   ])
   // Os filtros (o Heitor, 18/11: "Então precisa arrumar"; e a regra das Tags):
   // profissional, sala e tags, na CONSULTA. Só valem entre as opções da tela.
-  // A "Minha agenda" (a Agenda em "só os meus") não tem filtro: ela é a
-  // profissional, e a agenda de uma pessoa cabe na tela (princípio 7).
+  // A "Minha agenda" (a vista pessoal) não tem filtro: ela é a profissional,
+  // e a agenda de uma pessoa cabe na tela (princípio 7).
   const filtros = professionalOnly ? SEM_FILTRO : filtrosDaAgenda(busca, {
     profissionais: ((professionals ?? []) as { id: string }[]).map(p => p.id),
     salas:         ((rooms ?? []) as { id: string }[]).map(r => r.id),
@@ -91,7 +93,7 @@ export default async function AgendaPage({ params, searchParams }: {
       .gte('scheduled_at', from)
       .lte('scheduled_at', to)
     if (!comCancelados) q = q.not('status', 'in', '("CANCELLED","NO_SHOW")')
-    if (professionalOnly && ctx.internalUserId) q = q.eq('professional_id', ctx.internalUserId)
+    if (pessoal) q = q.eq('professional_id', pessoal)
     q = aplicarFiltrosDaAgenda(q, filtros)
     return q.order('scheduled_at').order('id').range(de, ate)
   }
@@ -116,7 +118,7 @@ export default async function AgendaPage({ params, searchParams }: {
       ler(createAdminClient().from('users').select('id, horario').eq('tenant_id', ctx.tenantId!)
         .or(filtroDeQuemAtendeNaUnidade(branchId)).eq('provides_services', true), 'buscar o horário dos profissionais'),
     ]),
-    // Os atendimentos de dias anteriores ainda abertos (J-32), com o "só os meus".
+    // Os atendimentos de dias anteriores ainda abertos (J-32); na vista pessoal, os dela.
     abertosDeAntes(ctx, branchId),
   ])
   const avisoDosAbertos = <AbertosDeAntes base={`/${slug}/agenda`} abertos={abertos.abertos} semChegada={abertos.semChegada} />
@@ -128,7 +130,7 @@ export default async function AgendaPage({ params, searchParams }: {
   // O que esses profissionais têm agendado em OUTRA unidade (o da rede atende
   // em todas — D1): sai da capacidade da ocupação daqui (decisão do Heitor,
   // 2026-10-28). Só o horário, sem cliente nem procedimento.
-  // Na "Minha agenda" (escopo próprio), só o dela: a ocupação de hoje desconta
+  // Na "Minha agenda" (a vista pessoal), só o dela: a ocupação de hoje desconta
   // o que ela tem em outra unidade, como a da agenda da unidade (D11).
   const idsDosProfissionais = professionalOnly
     ? (ctx.internalUserId ? [ctx.internalUserId] : [])
@@ -300,14 +302,12 @@ export default async function AgendaPage({ params, searchParams }: {
           ocupadoFora={ocupadoFora[ctx.internalUserId ?? ''] ?? []}
           dataInicial={dataInicial}
           bloqueios={bloqueios}
-          podeBloquear={canManageAgenda}
-          // A25 da 8ª: com a Agenda em Gerenciar "só os meus", ela agenda — para ela,
-          // quando atende nesta unidade (a lista de quem atende aqui).
-          agendar={canManageAgenda && currentPro
-            ? { procedures: procedures ?? [], rooms: rooms ?? [], professionals: [{ id: currentPro.id, name: currentPro.name }] }
-            : null}
-          // A28 da 12ª: "Minhas comissões" à mão na agenda dela (só o menu tinha).
-          comissoesHref={can(ctx, 'financial', 'VIEW') ? `/${slug}/financeiro/comissoes` : null}
+          // A vista só mostra (SM2): agendar e bloquear são da Agenda em
+          // Gerenciar, que a vista pessoal não tem.
+          // A28 da 12ª: as comissões à mão na agenda dela (só o menu tinha).
+          comissoes={can(ctx, 'financial', 'VIEW')
+            ? { href: `/${slug}/financeiro/comissoes`, rotulo: 'Comissões' }
+            : vistaPessoal(ctx, 'financial') !== null ? { href: `/${slug}/financeiro/comissoes`, rotulo: 'Minhas comissões' } : null}
         />
       </div>
     )
@@ -336,15 +336,11 @@ export default async function AgendaPage({ params, searchParams }: {
         ocupadoForaDosProfissionais={ocupadoFora}
         rooms={rooms ?? []}
         canWrite={canManageAgenda}
-        userRole={ctx.role}
-        escopoProprio={isOwnScope(ctx, 'agenda')}
+        vistaDela={professionalOnly}
         meuId={ctx.internalUserId ?? null}
         podeConcluir={can(ctx, 'atendimento', 'MANAGE')}
-        atendimentoProprio={isOwnScope(ctx, 'atendimento')}
-        // A9 da 20ª: sem iniciar e concluir (o Atendimento em Gerenciar, de todos), a janela diz quem conclui.
-        quemConclui={can(ctx, 'atendimento', 'MANAGE') && !isOwnScope(ctx, 'atendimento') ? null : await quemConcluiOAtendimento(ctx.tenantId!, branchId)}
-        // A9 da 25ª: a profissional do agendamento que conclui os próprios entra em "quem conclui".
-        concluemOsProprios={can(ctx, 'atendimento', 'MANAGE') && !isOwnScope(ctx, 'atendimento') ? null : await idsQueConcluemOsProprios(ctx.tenantId!)}
+        // A9 da 20ª: sem iniciar e concluir (o Atendimento em Gerenciar), a janela diz quem conclui.
+        quemConclui={can(ctx, 'atendimento', 'MANAGE') ? null : await quemConcluiOAtendimento(ctx.tenantId!, branchId)}
         dataInicial={dataInicial}
         comCancelados={comCancelados}
         bloqueios={bloqueios}

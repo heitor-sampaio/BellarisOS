@@ -114,7 +114,6 @@ function construtor(tabela: string) {
 }
 vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: () => ({ from: construtor }) }))
 vi.mock('@/lib/auth', () => ({
-  ownerFilter: (ctx: { scopes?: Record<string, string>; internalUserId: string }, m: string) => (ctx.scopes?.[m] === 'OWN' ? ctx.internalUserId : null),
   can: (ctx: { permissions: Record<string, string> }, m: string, n: string) =>
     n === 'VIEW' ? (ctx.permissions[m] ?? 'NONE') !== 'NONE' : ctx.permissions[m] === 'MANAGE',
   temRecurso: () => true,
@@ -122,30 +121,34 @@ vi.mock('@/lib/auth', () => ({
 
 beforeEach(() => { pedidos.length = 0; respostaDosLeads = { data: [], error: null } })
 
-const ctxDe = (crm: string, escopo: 'OWN' | 'ALL') =>
-  ({ tenantId: 't1', internalUserId: 'u1', permissions: { crm, clients: 'VIEW' }, scopes: { crm: escopo } }) as never
+const ctxDe = (crm: string) =>
+  ({ tenantId: 't1', internalUserId: 'u1', permissions: { crm, clients: 'VIEW' } }) as never
 
-describe('a aba Oportunidades da ficha segue o CRM (CRM-03; CLAUDE.md §11; o Heitor, 28/10: "Quem tem \'só os meus\' vê \'só os meus\', em qualquer lugar")', () => {
-  it('o "só os meus" do CRM recorta as oportunidades da ficha', async () => {
+// Sem o "só os meus" (SM3, o Heitor, 2026-11-23): quem tem o CRM em Ver vê todas;
+// quem quer só as suas usa o filtro de responsável.
+describe('a aba Oportunidades da ficha segue o CRM (CRM-03; CLAUDE.md §11; SM3)', () => {
+  it('com o CRM em Ver, a ficha mostra a oportunidade de outro dono', async () => {
+    respostaDosLeads = { data: [{ id: 'l1', crm_stage_id: null, owner_id: 'u2', created_at: '2026-11-01T12:00:00Z', value: null }], error: null }
     const { oportunidadesDoCliente } = await import('@/lib/crm/oportunidades-do-cliente')
-    await oportunidadesDoCliente(ctxDe('VIEW', 'OWN'), 'c1')
+    const achadas = await oportunidadesDoCliente(ctxDe('VIEW'), 'c1')
+    expect(achadas?.map(o => o.id)).toEqual(['l1'])
     const leads = pedidos.find(p => p.tabela === 'leads')!
-    expect(leads.ops).toContainEqual({ op: 'or', args: ['owner_id.is.null,owner_id.eq.u1'] })
+    expect(leads.ops.some(o => o.op === 'or')).toBe(false)
   })
-  it('o "todos" do CRM vê todas', async () => {
+  it('o CRM vê todas', async () => {
     const { oportunidadesDoCliente } = await import('@/lib/crm/oportunidades-do-cliente')
-    await oportunidadesDoCliente(ctxDe('VIEW', 'ALL'), 'c1')
+    await oportunidadesDoCliente(ctxDe('VIEW'), 'c1')
     expect(pedidos.find(p => p.tabela === 'leads')!.ops.some(o => o.op === 'or')).toBe(false)
   })
   it('sem o CRM, nenhuma oportunidade (nem consulta)', async () => {
     const { oportunidadesDoCliente } = await import('@/lib/crm/oportunidades-do-cliente')
-    expect(await oportunidadesDoCliente(ctxDe('NONE', 'ALL'), 'c1')).toEqual([])
+    expect(await oportunidadesDoCliente(ctxDe('NONE'), 'c1')).toEqual([])
     expect(pedidos.find(p => p.tabela === 'leads')).toBeUndefined()
   })
   it('o erro da leitura não vira "Nenhuma oportunidade" (princípio 3)', async () => {
     respostaDosLeads = { data: null, error: { message: 'caiu' } }
     const { oportunidadesDoCliente } = await import('@/lib/crm/oportunidades-do-cliente')
-    expect(await oportunidadesDoCliente(ctxDe('VIEW', 'ALL'), 'c1')).toBeNull()
+    expect(await oportunidadesDoCliente(ctxDe('VIEW'), 'c1')).toBeNull()
     const ficha = fonte('components/branch/client-profile.tsx')
     expect(ficha).toMatch(/Não consegui ler as oportunidades desta cliente/)
   })
@@ -201,9 +204,11 @@ describe('o modo suporte não libera nada ao app da cliente (CRM-08, CRM-09; CLA
 // --- Abrir a conversa pelo card (CRM-10) -----------------------------------
 
 describe('o card abre só a conversa que o cargo vê no Inbox (CRM-10; crm-inbox.md, "Quais números o cargo vê")', () => {
-  it('openLeadConversation filtra pelo alcance do dono e pelas caixas', () => {
+  // Sem o refino do inbox pelo dono (SM3, o Heitor, 2026-11-23); as caixas por cargo continuam.
+  it('openLeadConversation filtra pelas caixas, sem o alcance do dono', () => {
     const c = corpo(fonte('actions/inbox.ts'), 'openLeadConversation')
-    expect(c).toMatch(/passaNoAlcanceDoDono\(/)
+    expect(c).not.toMatch(/passaNoAlcanceDoDono\(|alcanceDoDono\(/)
+    expect(c).toMatch(/caixasDoAlcance\(admin, ctx\)/)
     expect(c).toMatch(/passaNasCaixas\(/)
     // A conversa achada pelo telefone (o 23505) também.
     expect(c).toMatch(/conversaAoAlcance\(admin, ctx,/)

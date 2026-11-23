@@ -1,6 +1,6 @@
 'use server'
 
-import { getTenantContext, assertPermission, ownerFilter } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { LEAD_EVENT_COLS, type LeadEvent } from '@/lib/lead-events'
 import { conversaAoAlcance } from '@/lib/inbox/alcance'
@@ -17,16 +17,13 @@ export async function getLeadEvents(leadId: string): Promise<LeadEvent[]> {
 
   const admin = createAdminClient()
 
-  // O alcance do cargo vale aqui também: sem esta checagem, "só os próprios
-  // leads" não veria o card na lista mas leria o histórico dele pelo id.
-  const owner = ownerFilter(ctx, 'crm')
-  let dono = admin
+  // A oportunidade tem de ser da rede: o id vem do navegador.
+  const { data: lead, error: erroLead } = await admin
     .from('leads')
     .select('id')
     .eq('id', leadId)
     .eq('tenant_id', ctx.tenantId!)
-  if (owner) dono = dono.or(`owner_id.is.null,owner_id.eq.${owner}`)
-  const { data: lead, error: erroLead } = await dono.maybeSingle()
+    .maybeSingle()
 
   if (erroLead) throw new Error(`Falha ao carregar a oportunidade: ${erroLead.message}`)
   if (!lead) return []
@@ -57,15 +54,11 @@ export async function getClientEvents(clientId: string): Promise<LeadEvent[]> {
 
   const admin = createAdminClient()
 
-  const owner = ownerFilter(ctx, 'crm')
-  let q = admin
+  const { data: leads, error: erroLeads } = await admin
     .from('leads')
     .select('id')
     .eq('tenant_id', ctx.tenantId!)
     .eq('client_id', clientId)
-  if (owner) q = q.or(`owner_id.is.null,owner_id.eq.${owner}`)
-
-  const { data: leads, error: erroLeads } = await q
   if (erroLeads) throw new Error(`Falha ao carregar as oportunidades: ${erroLeads.message}`)
 
   const ids = (leads ?? []).map(l => l.id as string)
@@ -101,13 +94,9 @@ export async function getContactEvents(conversationId: string): Promise<LeadEven
 
   const admin = createAdminClient()
 
-  // A conversa inteira fora do alcance (dono ou caixas do cargo) não tem
+  // A conversa inteira fora do alcance (as caixas do cargo) não tem
   // histórico para quem pede — a mesma regra que tranca abrir as mensagens.
   if (!(await conversaAoAlcance(admin, ctx, conversationId))) return []
-
-  // O alcance do cargo vale aqui como no histórico de um card: sem isto, "só os
-  // próprios leads" leria pelo id da conversa o que não pode ver na lista.
-  const owner = ownerFilter(ctx, 'crm')
 
   // O histórico é da PESSOA: as oportunidades de todas as threads dela, não só
   // as que nasceram nesta. Senão, na thread da unidade que assumiu, o histórico
@@ -122,14 +111,11 @@ export async function getContactEvents(conversationId: string): Promise<LeadEven
   const contatoId = (conv as { contato_id: string | null } | null)?.contato_id
   if (!contatoId) return []
 
-  let q = admin
+  const { data: leads, error: erroLeads } = await admin
     .from('leads')
     .select('id, crm_stage_id')
     .eq('tenant_id', ctx.tenantId!)
     .eq('contato_id', contatoId)
-  if (owner) q = q.or(`owner_id.is.null,owner_id.eq.${owner}`)
-
-  const { data: leads, error: erroLeads } = await q
   if (erroLeads) throw new Error(`Falha ao carregar as oportunidades: ${erroLeads.message}`)
 
   const ids = (leads ?? []).map(l => l.id as string)

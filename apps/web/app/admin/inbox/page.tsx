@@ -1,4 +1,4 @@
-import { getTenantContext, assertPermission, ownerFilter, can, assertRecurso } from '@/lib/auth'
+import { getTenantContext, assertPermission, can, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { unidadesAtivas } from '@/lib/branches'
 import { getConversations, opcoesDoInbox } from '@/actions/inbox'
@@ -35,17 +35,15 @@ export default async function AdminInboxPage({
 
   // Lista para o seletor de "nova conversa". Não passa por etapa nem funil: a
   // caixa de entrada é de contatos, não do funil.
-  const leadOwner = ownerFilter(ctx, 'crm')
   // Todas, em páginas (2026-10-22): com o corte de 1000 do PostgREST, as
   // oportunidades mais antigas não podiam ser escolhidas.
-  const leadsRaw = await lerTodas((de, ate) => {
-    let leadsQuery = admin
+  const leadsRaw = await lerTodas((de, ate) =>
+    admin
       .from('leads')
       .select('id, name, phone')
       .eq('tenant_id', ctx.tenantId!)
-    if (leadOwner) leadsQuery = leadsQuery.or(`owner_id.is.null,owner_id.eq.${leadOwner}`)
-    return leadsQuery.order('created_at', { ascending: false }).order('id').range(de, ate)
-  }, 'carregar as oportunidades')
+      .order('created_at', { ascending: false }).order('id').range(de, ate),
+  'carregar as oportunidades')
 
   const inboxLeads = (leadsRaw ?? []).map(l => ({
     id:          l.id as string,

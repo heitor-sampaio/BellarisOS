@@ -41,7 +41,9 @@ test.beforeAll(async () => {
   expect((await db().from('branches').update({ horario: { dias: todoDia } }).eq('id', rede.branchId)).error).toBeNull()
   profissional = await criarMembro(`gmp${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Profissional',
-    permissoes: [{ modulo: 'agenda', nivel: 'VIEW', escopo: 'OWN' }],
+    // A "Minha agenda" é a vista pessoal (SM2, o Heitor, 2026-11-23): atende e
+    // não tem a Agenda (era a Agenda "só os meus", que saiu — SM1).
+    permissoes: [{ modulo: 'agenda', nivel: 'NONE' }],
   })
   expect((await db().from('users').update({ provides_services: true }).eq('id', profissional.userId)).error).toBeNull()
   gestor = await criarMembro(`gmg${marca}`, { tenant: rede.tenantId, rotulo: 'Gestor da rede', permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }] })

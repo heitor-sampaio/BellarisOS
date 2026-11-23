@@ -93,8 +93,8 @@ test.beforeAll(async () => {
     permissoes: [{ modulo: 'team', nivel: 'MANAGE' }, { modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'crm', nivel: 'MANAGE' }],
   })
   const daUnidade = { tenant: rede.tenantId, branchId: rede.branchId }
-  renata  = await criarMembro(`drr${marca}`, { ...daUnidade, rotulo: 'Renata', permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' }, { modulo: 'crm', nivel: 'MANAGE', escopo: 'OWN' }] })
-  renata2 = await criarMembro(`drs${marca}`, { ...daUnidade, rotulo: 'Vitor', permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' }, { modulo: 'crm', nivel: 'MANAGE', escopo: 'OWN' }] })
+  renata  = await criarMembro(`drr${marca}`, { ...daUnidade, rotulo: 'Renata', permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'crm', nivel: 'MANAGE' }] })
+  renata2 = await criarMembro(`drs${marca}`, { ...daUnidade, rotulo: 'Vitor', permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'crm', nivel: 'MANAGE' }] })
   tatiane = await criarMembro(`drt${marca}`, { ...daUnidade, rotulo: 'Tatiane', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }, { modulo: 'crm', nivel: 'VIEW' }] })
   bianca  = await criarMembro(`drb${marca}`, { ...daUnidade, rotulo: 'Bianca', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }] })
   joana   = await criarMembro(`drj${marca}`, { ...daUnidade, rotulo: 'Joana', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }] })

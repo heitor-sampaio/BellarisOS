@@ -229,7 +229,7 @@ pelo app. Até 2026-09-27 o prontuário e a fidelidade só exigiam
 - **A sessão só lê SINAIS** (o Heitor, 2026-11-19, "vai na 2", à proposta "a
   sessão não lê nem grava tabela nenhuma; só escuta os sinais do tempo real").
   Toda leitura é do servidor, pelo cliente de serviço, depois da trava
-  (permissão, escopo, abrangência), com o filtro da rede explícito; o navegador
+  (permissão, abrangência), com o filtro da rede explícito; o navegador
   só assina as tabelas `*_sinais` (sem conteúdo) e recarrega pelo servidor.
   Tabela nova nasce sem política nenhuma. Isto substitui, para a leitura, as
   regras por módulo abaixo (F63, "módulo com escopo não se lê pela sessão").
@@ -247,7 +247,7 @@ pelo app. Até 2026-09-27 o prontuário e a fidelidade só exigiam
   O quadro de oportunidades assina `crm_quadro_sinais` (uma linha por rede,
   marcada por gatilho em leads, etapas e funis) e recarrega pelo servidor, que
   aplica o alcance. Assinar `leads` exigiria abrir a leitura pela sessão — e a
-  linha inteira iria pelo websocket a quem o "só os meus" esconde. Prova:
+  linha inteira iria pelo websocket a quem as caixas do cargo escondem. Prova:
   `e2e/quadro-tempo-real.spec.ts` (membro da rede e de unidade).
 - ⚠️ Política que compara `auth.jwt() ->> 'x'` está ERRADA: as claims moram em
   `app_metadata` — use `jwt_claim('x')`. A de `leads` era assim e nunca valeu.
@@ -589,17 +589,32 @@ Não existem mais cargos fixos. Cada rede cria seus próprios cargos (`tenant_ro
 e monta a matriz em Configurações → Cargos. A rede nasce com quatro MODELOS
 editáveis (Gerente, Recepcionista, Profissional, Financeiro — matriz inicial em
 `private.cargos_modelo_semear`, 2026-10-21); de sistema só o "Admin da rede" e
-o "Não definido". A autorização tem **três eixos**:
+o "Não definido". A autorização tem **dois eixos**:
 
 | Eixo | Onde mora | O que decide |
 |---|---|---|
 | **Módulo × nível** | `role_permissions.level` (`NONE`/`VIEW`/`MANAGE`) | até onde o cargo mexe |
-| **Escopo** | `role_permissions.scope` (`OWN`/`ALL`) | em quais registros |
 | **Abrangência** | `users.branch_id` (`null` = "A rede inteira") + `users.outras_unidades` | em quais unidades |
 
-Escopo e abrangência são coisas diferentes: o escopo é do **cargo**, a abrangência
-é do **membro**. Um mesmo cargo "Profissional" serve para alguém de uma unidade e
-para alguém da rede.
+O nível é do **cargo**, a abrangência é do **membro**. Um mesmo cargo serve para
+alguém de uma unidade e para alguém da rede.
+
+**Não existe "só os meus"** (o Heitor, 2026-11-23: "pode tirar, as vistas
+pessoais resolvem, no crm acho que não se aplica diretamente e talvez o melhor
+caminho seja pelo filtro de dono da oportunidade"). Quem tem o módulo em Ver vê
+tudo, em Gerenciar mexe em tudo — sempre dentro da abrangência. A coluna
+`role_permissions.scope` ficou no banco e guarda sempre `ALL`: nada a lê
+(`tests/sem-so-os-meus.test.ts` trava a volta de `ownerFilter`, `ctx.scopes`
+e do refino do inbox). Quem quer ver só as suas oportunidades usa o filtro de
+responsável da tela.
+
+**As vistas pessoais** (SM2): quem ATENDE e não tem a Agenda vê a **Minha
+agenda** (só os horários dela); quem atende ou tem comissão de venda e não tem
+o Financeiro vê as **Minhas comissões** (só as dela). `vistaPessoal(ctx,
+'agenda' | 'financial')` (`lib/auth.ts`) devolve o id dela nesses casos (e
+`null` quando ela tem o módulo, que já mostra tudo) — é o filtro da consulta e
+a trava da página (`can(ctx, M, 'VIEW') || vistaPessoal(ctx, M) !== null`). A
+vista só MOSTRA: nenhuma ação passa a valer por ela.
 
 **A abrangência é "A rede inteira" OU as unidades marcadas, uma ou mais**
 (EQ1a/EQ1b, Bloco Equipe, 2026-11-14). No banco: `users.branch_id` nulo = a
@@ -616,21 +631,15 @@ rede. Registro de outra unidade se confere com `alcancaUnidade` (que lê
 `private.minhas_outras_unidades()` (lida pelo `auth.uid()`, uma vez por
 transação). Prova: `e2e/equipe-varias-unidades.spec.ts`.
 
-**O escopo só vale em módulo que o cargo TEM** (D6, 2026-10-29): módulo NONE —
-no cargo, no plano da rede ou Relatórios sem aba — é ALL no contexto
-(`resolveScopes` + `escoposDoQueTem`, no fim do `buildContext`). Quem não
-tinha a Agenda guardava o OWN esmaecido da agenda, e o dashboard a recortava
-("Meu faturamento R$ 0"). O cargo salvo GUARDA o escopo do módulo desligado
-(revisão do Heitor, 2026-10-29): religar devolve o "só os meus" que estava —
-quem lê o escopo é que o ignora enquanto o módulo está em NONE.
-Prova: `e2e/permissoes-escopo-sem-modulo.spec.ts`.
-
-**Agenda é agenda e atendimento é atendimento** (o Heitor, 2026-11-18: "Só
-inicia e conclui atendimento quem tem gerenciar no atendimento"): o módulo
-`atendimento` (Ver/Gerenciar, com escopo) inicia, conclui, desiste no meio e
-gera o plano na avaliação; a Agenda agenda, confirma, remarca, cancela e marca
-a falta; o clínico (evolução, fotos, ficha de saúde) é do Prontuário. Regra em
-`docs/regras/atendimento.md`.
+**Cada passo do atendimento, um módulo** (o Heitor, 2026-11-18: "Só inicia e
+conclui atendimento quem tem gerenciar no atendimento"; 2026-11-23, UM1–UM5:
+"concordo"): a Agenda agenda, confirma, marca a chegada, remarca, cancela e
+marca a falta; o `atendimento` em Ver abre a tela do atendimento, em
+Gerenciar inicia, conclui, desiste no meio e monta o plano (na avaliação ou
+depois, com a unidade do plano ao alcance); o clínico (ficha de saúde,
+evolução, fotos, injetáveis) é do Prontuário em Gerenciar, sem precisar atender;
+receber é do PDV (`podeReceber`). O "Atende" não dá permissão nenhuma. Regra
+em `docs/regras/atendimento.md`.
 
 Os 20 módulos: `agenda`, `atendimento`, `clients`, `loyalty`, `medical_records`, `documents`,
 `procedures`, `stock`, `financial`, `cashier`, `crm`, `marketing`, `reports`, `team`,
@@ -641,9 +650,7 @@ da Admin da rede) entra num grupo
 de `MODULE_GROUPS` (`lib/permissions-copy.ts`) — fora de grupo ele não aparece na
 tela de Cargos (`tests/permissions.test.ts` trava). Nem todo módulo distingue os três níveis — `MODULE_LEVELS`
 (`lib/permissions.ts`) declara o que cada um aceita, e a tela de cargos só
-oferece esses. O escopo aparece apenas em `SCOPED_MODULES`: `agenda`, `atendimento`,
-`medical_records`, `financial`, `crm` e `reports` (em `reports` o escopo é "só
-a minha unidade" × "a rede inteira", não "os meus registros").
+oferece esses.
 
 **Relatórios tem um eixo a mais**: `reports: VIEW` abre a tela, e
 `role_report_tabs` diz QUAIS abas o cargo enxerga — o time comercial vê o funil
@@ -660,7 +667,7 @@ resumo do cargo ("O que essa pessoa vai ver") diz por quê (A5). Ler com
 assertPermission(ctx, 'agenda', 'MANAGE')                    // barra (throw)
 assertAnyPermission(ctx, ['settings', 'roles', 'forms'], 'MANAGE')  // tela multi-módulo
 can(ctx, 'medical_records', 'VIEW')                          // esconde UI
-ownerFilter(ctx, 'agenda')                                   // internalUserId | null → filtro da query
+vistaPessoal(ctx, 'agenda')                                  // internalUserId | null → só a vista pessoal
 ```
 
 Regras:
@@ -673,27 +680,25 @@ Regras:
 - **Ninguém dá um cargo com mais acesso que o próprio** (H7, F70): a Equipe
   mostra o cargo acima desligado e a action recusa (`lib/equipe/cargo-acima.ts`);
   a Admin da rede dá qualquer um. Regra em `docs/regras/plataforma.md`.
-- Toda leitura de módulo escopável passa `ownerFilter` para dentro da query.
-  Filtrar só na renderização deixa o registro acessível pelo id.
+- A vista pessoal passa `vistaPessoal` para dentro da query. Filtrar só na
+  renderização deixa o registro acessível pelo id.
 - **O "Atende" é por unidade** (`users.atende_em`; decisão 2 do Heitor, 8ª
   simulação: "o atende vira um checklist com todas as unidades, as que
   estiverem marcadas ficam disponiveis"): nas unidades marcadas a pessoa
   aparece como profissional (agenda, agendar, repasse, comissão, relatórios).
   `provides_services` = "atende em alguma unidade", mantido junto da lista pelo
-  gatilho `atende_em_sincronizar`. Não é permissão e não deriva escopo nem
-  abrangência: numa unidade marcada fora do alcance, ela chega só aos
+  gatilho `atende_em_sincronizar`. Não é permissão e não deriva nível nem
+  abrangência (abre só as vistas pessoais): numa unidade marcada fora do alcance, ela chega só aos
   agendamentos DELA (`alcancaOAgendamento`). Regra em
   `docs/regras/atendimento.md` §9.1 e `plataforma.md`.
-- **O OWN do CRM, no inbox, tem um refino por rede** — pela pessoa ou pela
-  conversa (§9.2.1). Fica na aba Cargos, logo abaixo da matriz.
 - **Quais números de WhatsApp o cargo vê no inbox é do CARGO**
   (`tenant_roles.inbox_caixas`, na linha do CRM da matriz): `todas` (padrão)
   ou `minhas` — só as caixas a que a pessoa está ligada em
   `whatsapp_number_users`. Sem número ligado, nenhum WhatsApp; conversa sem
-  caixa (Instagram, Messenger) passa sempre. Soma-se ao escopo do CRM. Ligar a
+  caixa (Instagram, Messenger) passa sempre. Soma-se ao CRM em Ver. Ligar a
   pessoa ao número decide por onde ela ENVIA; isto decide o que ela VÊ. A regra
   mora em `caixasDoAlcance` (`lib/inbox/alcance.ts`), usada pela lista, pelas
-  outras threads e pela abertura por id, como `alcanceDoDono`.
+  outras threads e pela abertura por id.
 - **Membro desativado não opera.** `buildContext` confere `users.is_active`
   (via `getCachedMember`) e manda para `/login?acesso=desativado`; desativar
   também bloqueia a conta no Auth (`ban_duration`) e expira o cache do membro
@@ -768,9 +773,9 @@ Regras:
   `createAppointmentCore` confere unidade, profissional, cliente e sala, e quem
   não tem “A rede inteira” só agenda nas unidades dela. É o núcleo da agenda E do comercial — a
   conferência mora nele, não em cada chamador.
-- Teste de regra de alcance precisa de um membro com escopo OWN de verdade:
-  `membroComEscopoProprio` (`e2e/apoio/sessao.ts`). Como admin a tela abre de
-  qualquer jeito, e o teste não prova nada.
+- Teste de regra de permissão ou de alcance precisa de um membro de verdade com
+  o cargo do caso (`criarMembro`, `e2e/apoio/sessao.ts`): como admin a tela
+  abre de qualquer jeito, e o teste não prova nada.
 - **A trava da action é a única**: a RLS recorta por rede, não por módulo — sem
   o `assertPermission`, um membro sem o módulo grava pela action (provado em
   2026-09-27). `e2e/permissoes-acoes.spec.ts` chama uma action por módulo
@@ -841,7 +846,8 @@ do arquivo dele em `docs/regras/` ("O que nunca fazer aqui").
 ❌ Action que recebe id de conversa/mensagem sem conversaAoAlcance (esconder da lista não tranca o id)
 ❌ Action que recebe id de oportunidade sem leadAoAlcance (vale também fora do CRM: agenda, clientes)
 ❌ Policy RLS que confere só o cargo (role <> 'CLIENT') sem conferir a REDE
-❌ Política de leitura pela sessão em tabela de módulo com escopo (prontuário, comissões, lançamentos): a RLS não aplica o "só os meus" — o servidor lê, a tela assina um sinal
+❌ Política de leitura pela sessão em tabela de módulo (prontuário, comissões, lançamentos): a RLS não aplica o módulo nem a vista pessoal — o servidor lê, a tela assina um sinal
+❌ Recortar por "os registros dela" a partir do cargo (ownerFilter, ctx.scopes, "só os meus") — saiu em 23/11; o que é da pessoa é vista pessoal (vistaPessoal)
 ❌ Decidir qualquer coisa por clients.branch_id (é só onde a ficha nasceu; a cliente é da rede)
 ❌ Política de INSERT/UPDATE/DELETE para a sessão em QUALQUER tabela — toda gravação passa pelo servidor (o Heitor, 19/11)
 ❌ Política de ESCRITA em tabela de configuração que confere só eh_da_rede() (sem o módulo, qualquer membro da rede grava) — a sessão lê, o servidor grava

@@ -1,6 +1,6 @@
 'use server'
 
-import { getTenantContext, ownerFilter, assertUnidade, temRecurso, can } from '@/lib/auth'
+import { getTenantContext, assertUnidade, temRecurso, can } from '@/lib/auth'
 import type { ChaveDeFuncionalidade } from '@estetica-os/nucleo/lib/planos/recursos'
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -21,14 +21,14 @@ import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
  * A busca universal da topbar.
  *
  * O navegador manda só o termo e o slug do portal em que a pessoa está. O que
- * procurar (os tipos), com qual dono e em qual unidade é decidido AQUI, pelo
+ * procurar (os tipos) e em qual unidade é decidido AQUI, pelo
  * contexto: a busca não abre exceção de alcance — quem não vê um registro na
  * tela própria dele não o acha por aqui.
  *
- * - conversas: `idsDaPaginaDoInbox`, a mesma conta do inbox (dono, modo e
- *   caixas do cargo);
- * - o resto: `busca_universal` (migration 20261003000001), com o "só os meus"
- *   do CRM e da agenda e a abrangência da unidade.
+ * - conversas: `idsDaPaginaDoInbox`, a mesma conta do inbox (as caixas do
+ *   cargo);
+ * - o resto: `busca_universal` (migration 20261003000001), com a abrangência
+ *   da unidade.
  *
  * Páginas não passam por aqui: o catálogo é montado no navegador
  * (`lib/busca/paginas.ts`), a partir do menu.
@@ -74,8 +74,9 @@ export async function buscarTudo(termo: string, slug: string | null): Promise<
             p_termo:       busca,
             p_tipos:       doBanco,
             p_unidade:     unidade,
-            p_crm_dono:    ownerFilter(ctx, 'crm'),
-            p_agenda_dono: ownerFilter(ctx, 'agenda'),
+            // Sem dono: o "só os meus" saiu (SM1, 23/11). A função ainda os recebe.
+            p_crm_dono:    null,
+            p_agenda_dono: null,
             p_limite:      POR_TIPO,
           }), 'buscar') as Promise<LinhaDaBusca[] | null>
         : Promise.resolve([] as LinhaDaBusca[]),

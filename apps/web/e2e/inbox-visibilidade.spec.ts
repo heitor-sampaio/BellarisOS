@@ -1,21 +1,17 @@
 import { test, expect, type Browser } from '@playwright/test'
 import { banco, tenantId, PREFIXO, apagarConversas } from './apoio/banco'
-import { membroComEscopoProprio, type MembroDeTeste } from './apoio/sessao'
+import { membroDoCrm, type MembroDeTeste } from './apoio/sessao'
 
 /**
- * Com "só os próprios leads", o inbox segue a PESSOA ou a CONVERSA — escolha da
- * clínica em Configurações → Cargos (`tenants.inbox_visibilidade`).
+ * Sem o "só os meus" no inbox (SM3, o Heitor, 2026-11-23: "quem quer ver só
+ * as oportunidades que é dono, aplica o filtro"). Saiu o refino "pela pessoa
+ * ou pela conversa" (`tenants.inbox_visibilidade`) e a escolha dele na aba
+ * Cargos: quem tem o CRM vê as conversas de todos (as caixas do cargo
+ * continuam — `inbox-caixas-do-cargo.spec.ts`).
  *
  * O cenário é o do handoff: a Ana tem duas threads (marketing e unidade) e uma
  * oportunidade de OUTRO dono, aberta na thread do marketing. A Bia não tem
- * oportunidade nenhuma — é o controle: sem ela, uma lista vazia por qualquer
- * outro motivo passaria por "escondeu certo".
- *
- * - Pela pessoa: a Ana some inteira para o SDR; ao ganhar oportunidade dele,
- *   aparece.
- * - Pela conversa: a thread da unidade, sem oportunidade, fica no bolo comum —
- *   a Ana aparece para o SDR mesmo sendo de outro dono. É o vazamento que o
- *   modo "pessoa" fecha, e é exatamente o que a clínica escolhe aceitar.
+ * oportunidade nenhuma — é o controle.
  */
 
 const marca = Date.now().toString(36)
@@ -97,12 +93,6 @@ async function desmontar(c: Cenario) {
   if (c.caixas.length) await db.from('whatsapp_numbers').delete().in('id', c.caixas)
 }
 
-async function modo(valor: 'pessoa' | 'conversa') {
-  const { error } = await banco().from('tenants')
-    .update({ inbox_visibilidade: valor }).eq('id', await tenantId())
-  expect(error, `pôr o inbox em "${valor}"`).toBeNull()
-}
-
 async function inboxDoSdr(browser: Browser, sdr: MembroDeTeste) {
   const ctx  = await browser.newContext({ storageState: sdr.estado })
   const page = await ctx.newPage()
@@ -111,61 +101,33 @@ async function inboxDoSdr(browser: Browser, sdr: MembroDeTeste) {
   return { ctx, page }
 }
 
-test.describe.serial('inbox com "só as próprias oportunidades"', () => {
+test.describe.serial('inbox sem o "só os meus"', () => {
   let sdr: MembroDeTeste | null = null
   let cenario: Cenario | null = null
 
   test.beforeAll(async () => {
-    sdr = await membroComEscopoProprio(marca)
+    sdr = await membroDoCrm(marca)
     cenario = await montar()
   })
 
   test.afterAll(async () => {
-    await modo('pessoa')
     if (cenario) await desmontar(cenario)
     if (sdr) await sdr.limpar()
   })
 
-  test('pela pessoa: quem é de outro dono some inteiro, e aparece ao ganhar oportunidade sua', async ({ browser }) => {
-    await modo('pessoa')
+  // Sem o "só os meus" (SM3, o Heitor, 2026-11-23): quem tem o CRM vê a pessoa de outro dono.
+  test('com o CRM em Gerenciar, a pessoa com oportunidade só de outro dono aparece', async ({ browser }) => {
     const { ctx, page } = await inboxDoSdr(browser, sdr!)
     try {
-      await expect(page.getByText(BIA).first(), 'o controle: sem oportunidade, aparece para todos').toBeVisible()
-      await expect(page.getByText(ANA),
-        'a Ana tem oportunidade só de outro dono — nenhuma thread dela pode aparecer',
-      ).toHaveCount(0)
-
-      // O SDR abre uma oportunidade com ela (sem conversa, como o cadastro
-      // manual): o gatilho a acha pelo telefone, e ela passa a ser dele também.
-      const db = banco()
-      const { data: etapa } = await db.from('crm_stages').select('id')
-        .eq('tenant_id', await tenantId()).eq('outcome', 'OPEN').limit(1).single<{ id: string }>()
-      const { data: minha, error } = await db.from('leads')
-        .insert({
-          tenant_id: await tenantId(), name: ANA, phone: cenario!.foneAna,
-          crm_stage_id: etapa!.id, owner_id: sdr!.userId,
-        })
-        .select('id').single<{ id: string }>()
-      expect(error, 'criar a oportunidade do SDR').toBeNull()
-      cenario!.leadIds.push(minha!.id)
-
-      await page.reload()
-      await page.waitForLoadState('networkidle')
-      await expect(page.getByText(ANA).first(), 'com oportunidade dele, a pessoa aparece').toBeVisible()
-
-      // Tira de novo, para o próximo cenário começar do mesmo lugar.
-      await db.from('lead_events').delete().eq('lead_id', minha!.id)
-      await db.from('leads').delete().eq('id', minha!.id)
-      cenario!.leadIds = cenario!.leadIds.filter(id => id !== minha!.id)
+      await expect(page.getByText(BIA).first(), 'o controle: sem oportunidade, aparece').toBeVisible()
+      await expect(page.getByText(ANA).first(), 'a Ana, de outro dono, também aparece').toBeVisible()
     } finally {
       await ctx.close()
     }
   })
 
-  test('pela pessoa: a thread escondida também não abre pelo id', async ({ browser }) => {
-    // Até 2026-09-27 a regra do dono filtrava só a lista: `/admin/inbox?c=<id>`
-    // chamava `getMessages` e a conversa da Ana saía inteira.
-    await modo('pessoa')
+  // Sem o "só os meus" (SM3, o Heitor, 2026-11-23): a thread de outro dono abre pelo id.
+  test('a thread de outro dono abre pelo id, com as mensagens', async ({ browser }) => {
     const db = banco()
     const texto = `segredo-ana-${marca}`
     const { error } = await db.from('messages').insert({
@@ -176,56 +138,24 @@ test.describe.serial('inbox com "só as próprias oportunidades"', () => {
 
     const ctx  = await browser.newContext({ storageState: sdr!.estado })
     const page = await ctx.newPage()
-    const corpos: Promise<string>[] = []
-    page.on('response', r => {
-      if (r.request().method() === 'POST' && r.request().headers()['next-action']) {
-        corpos.push(r.text().catch(() => ''))
-      }
+    // O corpo pela rota (`route.fetch`): o Chromium às vezes não guarda o da
+    // resposta de uma action (ver `inbox-caixas-do-cargo.spec.ts`).
+    const corpos: string[] = []
+    await page.route('**/admin/inbox**', async route => {
+      const req = route.request()
+      if (req.method() !== 'POST' || !req.headers()['next-action']) return route.continue()
+      const resposta = await route.fetch()
+      const corpo = await resposta.text()
+      corpos.push(corpo)
+      await route.fulfill({ response: resposta, body: corpo })
     })
     try {
       await page.goto(`/admin/inbox?c=${cenario!.threadMkt}`)
       await page.waitForLoadState('networkidle')
       expect(corpos.length, 'a tela tem de ter pedido as mensagens').toBeGreaterThan(0)
-      expect((await Promise.all(corpos)).join('\n'), 'a thread de outro dono não pode sair pelo id')
-        .not.toContain(texto)
+      expect(corpos.join('\n'), 'a thread de outro dono sai pelo id').toContain(texto)
     } finally {
       await ctx.close()
     }
   })
-
-  test('pela conversa: a thread sem oportunidade fica no bolo comum', async ({ browser }) => {
-    await modo('conversa')
-    const { ctx, page } = await inboxDoSdr(browser, sdr!)
-    try {
-      await expect(page.getByText(BIA).first()).toBeVisible()
-      // A thread da unidade não tem oportunidade: aparece, mesmo a Ana sendo de
-      // outro dono. É o que a clínica aceita ao escolher "pela conversa".
-      await expect(page.getByText(ANA).first()).toBeVisible()
-    } finally {
-      await ctx.close()
-    }
-  })
-})
-
-test('a escolha é feita na aba Cargos e fica gravada', async ({ page }) => {
-  const db = banco()
-  const tenant = await tenantId()
-  try {
-    await modo('pessoa')
-    await page.goto('/admin/settings?tab=permissions')
-    await page.waitForLoadState('networkidle')
-
-    const secao = page.getByRole('region', { name: /Inbox de quem vê só as próprias oportunidades/ })
-    await expect(secao).toBeVisible()
-    await expect(secao.getByTestId('explicacao-visibilidade')).toContainText('todas as conversas dela')
-
-    await secao.getByRole('button', { name: 'Pela conversa' }).click()
-    await expect(secao.getByText('Salvo')).toBeVisible()
-    await expect(secao.getByTestId('explicacao-visibilidade')).toContainText('a oportunidade ligada a ela (aberta, ganha ou perdida)')
-
-    const { data } = await db.from('tenants').select('inbox_visibilidade').eq('id', tenant).single()
-    expect(data!.inbox_visibilidade, 'a tela disse "Salvo" — o banco tem de concordar').toBe('conversa')
-  } finally {
-    await modo('pessoa')
-  }
 })

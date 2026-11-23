@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getTenantContext, can, podeReceber, alcancaUnidade, isOwnScope } from '@/lib/auth'
+import { getTenantContext, can, podeReceber, alcancaUnidade } from '@/lib/auth'
 import { getCachedFichasDoLogin } from '@/lib/cached-queries'
 import { buildPdf } from '@/lib/pdf'
 import { lancamentoDoRecibo, reciboDoLancamento } from '@/lib/financeiro/recibo'
@@ -9,7 +9,7 @@ import { lancamentoDoRecibo, reciboDoLancamento } from '@/lib/financeiro/recibo'
  * recibo simples em PDF, pelo app ou impresso").
  *
  * Toda rota de /api se defende sozinha (§6): sessão; da equipe, quem recebe
- * (`cashier`) ou vê o financeiro da unidade inteira, da rede e com a unidade
+ * (`cashier`) ou vê o Financeiro, da rede e com a unidade
  * ao alcance; da cliente, só o pagamento DELA — de qualquer clínica em que
  * tenha ficha (a rota não tem a clínica no endereço). Só do que foi PAGO e não
  * estornado; o resto é 404 (não se diz que existe).
@@ -27,7 +27,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   } catch {
     return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
   }
-  if (!ctx.isClient && !podeReceber(ctx) && !(can(ctx, 'financial', 'VIEW') && !isOwnScope(ctx, 'financial'))) {
+  if (!ctx.isClient && !podeReceber(ctx) && !can(ctx, 'financial', 'VIEW')) {
     return NextResponse.json({ error: 'Sem acesso.' }, { status: 403 })
   }
 

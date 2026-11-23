@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import type { TenantContext } from '@estetica-os/types'
-import { NO_PERMISSIONS, ALL_SCOPES } from '@/lib/permissions'
+import { NO_PERMISSIONS } from '@/lib/permissions'
 
 /**
  * CX2 (o plano de adaptação, aprovado pelo Heitor em 13/11: "Blz pode ser
@@ -13,8 +13,8 @@ import { NO_PERMISSIONS, ALL_SCOPES } from '@/lib/permissions'
  * não recebia. O que passa pelo balcão (a comanda, o check-in do plano) segue
  * no PDV.
  *
- * O "só os meus" do Financeiro não dá baixa (C35: o financeiro dessa pessoa é
- * "Minhas comissões").
+ * As Minhas comissões (a vista pessoal de quem atende ou tem comissão de
+ * venda, sem o Financeiro — SM2, 2026-11-23) só mostram: não dão baixa.
  */
 
 const raiz = path.join(__dirname, '..')
@@ -24,22 +24,20 @@ function ctx(over: Partial<TenantContext> = {}): TenantContext {
   return {
     userId: 'auth-1', internalUserId: 'user-1', userName: 'Fulana', roleLabel: 'Cargo',
     tenantId: 'tenant-1', branchId: null, role: 'BRANCH_ADMIN', roleId: 'role-1', clientId: null,
-    permissions: { ...NO_PERMISSIONS }, scopes: { ...ALL_SCOPES }, reportTabs: [],
+    permissions: { ...NO_PERMISSIONS }, reportTabs: [],
     providesServices: false, isNetworkAdmin: false, isClient: false,
     ...over,
   }
 }
 
 describe('quem dá baixa no Financeiro (CX2)', () => {
-  it('o PDV em Gerenciar, ou o Financeiro em Gerenciar de todos', async () => {
+  it('o PDV em Gerenciar, ou o Financeiro em Gerenciar', async () => {
     const { podeDarBaixa } = await import('@/lib/financeiro/so-os-meus')
     expect(podeDarBaixa(ctx({ permissions: { ...NO_PERMISSIONS, cashier: 'MANAGE' } }))).toBe(true)
     expect(podeDarBaixa(ctx({ permissions: { ...NO_PERMISSIONS, financial: 'MANAGE' } }))).toBe(true)
-    // Financeiro em Ver não dá baixa; "só os meus" também não (C35).
+    // Financeiro em Ver não dá baixa; a vista pessoal (SM2: as Minhas comissões) também não.
     expect(podeDarBaixa(ctx({ permissions: { ...NO_PERMISSIONS, financial: 'VIEW' } }))).toBe(false)
-    expect(podeDarBaixa(ctx({
-      permissions: { ...NO_PERMISSIONS, financial: 'MANAGE' }, scopes: { ...ALL_SCOPES, financial: 'OWN' },
-    }))).toBe(false)
+    expect(podeDarBaixa(ctx({ providesServices: true, comissaoDeVenda: true }))).toBe(false)
     expect(podeDarBaixa(ctx())).toBe(false)
   })
 

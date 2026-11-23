@@ -205,7 +205,9 @@ describe('"Novos clientes" só na rede (o Heitor, 18/11)', () => {
     expect(ler('components/admin/admin-dashboard-view.tsx')).not.toMatch(/Como os novos de cada unidade/)
     expect(ler('components/admin/admin-dashboard-view.tsx')).toMatch(/newClients !== null/)
     expect(ler('components/admin/reports-bi-view.tsx')).toMatch(/core\.newClients !== null/)
-    expect(ler('app/[slug]/dashboard/page.tsx')).toMatch(/core\.newClients === null/)
+    // Na vista pessoal (SM2, 2026-11-23) o quadro de clientes não é o núcleo dela: é o `doQuadro`.
+    expect(ler('app/[slug]/dashboard/page.tsx')).toMatch(/const doQuadro = canClients && professionalOnly \? await getCore\(janela\) : core/)
+    expect(ler('app/[slug]/dashboard/page.tsx')).toMatch(/doQuadro\.newClients === null/)
   })
   it('o Reativar é sempre o da rede — nada de "atendidas na unidade" nem da unidade do cadastro', async () => {
     const unidade = ler('lib/metrics/unidade.ts')

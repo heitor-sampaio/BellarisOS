@@ -3,13 +3,12 @@ import { nomesDasMaquininhas } from '@/lib/financeiro/vezes-da-rede'
 import { maquininhaDoRotulo } from '@/lib/financeiro/formas'
 import { notFound } from 'next/navigation'
 import { idOu404 } from '@/lib/id-da-rota'
-import { getTenantContext, assertAnyPermission, can, isOwnScope, podeReceber, temRecurso } from '@/lib/auth'
+import { getTenantContext, can, podeReceber, podeVerClinico, temRecurso } from '@/lib/auth'
+import { semAcesso } from '@/lib/sem-acesso'
 import { montaPlano } from '@/lib/plano-de-tratamento/quem-monta'
-import { quemDesfazNoCaixa, quemMarcaAChegada, quemRecebeNaUnidade, quemConcluiOAtendimento, idsQueConcluemOsProprios } from '@/lib/equipe/quem-desfaz'
-import { nomesDeQuemConclui } from '@/lib/equipe/textos-de-quem-pode'
+import { quemDesfazNoCaixa, quemMarcaAChegada, quemRecebeNaUnidade, quemConcluiOAtendimento } from '@/lib/equipe/quem-desfaz'
 import { colheOsDocumentos, dispensaDocumentos } from '@/lib/documentos/acesso'
 import { documentosDoAgendamento } from '@/lib/documentos/leitura'
-import { clienteNoEscopo } from '@/lib/clientes/atendida-por'
 import { envioPelaConversaLigado } from '@/lib/documentos/link-pela-conversa'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { notasDosProcedimentos } from '@/lib/avaliacao/leitura'
@@ -17,7 +16,6 @@ import { notasDaAvaliacao } from '@/lib/avaliacao/notas'
 import { getCachedProductsReference, getCachedBranchProfessionals } from '@/lib/cached-queries'
 import { ehInsumo } from '@/lib/estoque/uso'
 import { AppointmentSession } from '@/components/branch/appointment-session'
-import { AtendimentoDeOutraProfissional } from '@/components/branch/atendimento-de-outra-profissional'
 import type { SessionAppointment, SessionClient, SessionProduct, AvailableProduct, SessionProfessional, HistoryEntry, LotesDosInsumos } from '@/components/branch/appointment-session'
 import type { LoteParaBaixa, ParteDaBaixa } from '@/lib/estoque/fefo'
 import { normalizeFormSchema, type AnamnesisRow } from '@/lib/anamnesis'
@@ -33,7 +31,6 @@ import { ler, lerTodas } from '@/lib/db'
 import { registrarAcessoAoProntuario } from '@/lib/prontuario/acessos'
 import { anotacoesEVersoes } from '@/lib/prontuario/anotacoes-e-versoes'
 import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
-import { deOutroProfissional } from '@/lib/appointments/alteracoes'
 import { nomeDaSessao } from '@/lib/plano-de-tratamento/nome'
 import { bloqueiosQueBatem } from '@/lib/agenda/bloqueios'
 import { avisoDoBloqueioNoAtendimento } from '@/lib/agenda/bloqueio'
@@ -62,10 +59,14 @@ export async function SessaoDeAtendimento({
   id:       string
 }) {
   const ctx = await getTenantContext()
-  // A tela do agendamento é também a do atendimento: abre com a Agenda (a
-  // chegada, o cancelar) ou com o Atendimento (o Heitor, 2026-11-18: "Agenda é
-  // agenda e atendimento é atendimento").
-  assertAnyPermission(ctx, ['agenda', 'atendimento'], 'VIEW')
+  // A tela do atendimento abre com o Atendimento em Ver (UM1, o Heitor,
+  // 2026-11-23) — ou, como vista pessoal (SM2), a quem atende e não tem o
+  // módulo, só no agendamento DELA, e só para ver: o que se faz aqui continua
+  // pedindo a permissão de cada passo.
+  const veOAtendimento = can(ctx, 'atendimento', 'VIEW')
+  // Como a vistaPessoal: fora do plano da rede (sem a Agenda), nem a vista.
+  const pessoal = !veOAtendimento && !ctx.isClient && ctx.providesServices && temRecurso(ctx, 'agenda') ? ctx.internalUserId ?? null : null
+  if (!veOAtendimento && !pessoal) throw semAcesso()
   // O id vai a uma coluna uuid: o que não é uuid é 404, não 22P02 (D15).
   idOu404(id)
 
@@ -101,22 +102,7 @@ export async function SessaoDeAtendimento({
   ])
 
   if (!apptRaw) notFound()
-  // A agenda "só os meus" vale também para o id (§11; D4 da simulação de
-  // 2026-10-28): a profissional abria pela URL o atendimento de outra e
-  // marcava o check-in. A recepção (ALL) abre o de todos.
-  // A tela diz de quem é, com o caminho de volta (r2-atd-04, revisão do
-  // Heitor de 2026-11-03: o 404 da A38 parecia defeito; antes dele, "Seu cargo
-  // não libera esta tela" mentia — o cargo libera; o que não é dela é ESTE
-  // atendimento). Continua barrando: só o nome de quem atende vai à tela.
-  if (deOutroProfissional(ctx, apptRaw.professional_id as string | null)) {
-    const daOutra = apptRaw.professional as unknown as { name: string | null } | null
-    // A26 da 23ª: a quem tem o Prontuário, quem conclui o de outra pessoa (os nomes).
-    // A9 da 25ª: a profissional do agendamento, com o Atendimento em Gerenciar "só os meus", conclui o dela.
-    return <AtendimentoDeOutraProfissional slug={slug} profissional={daOutra?.name ?? null}
-      quemConclui={can(ctx, 'atendimento', 'VIEW') ? await quemConcluiOAtendimento(ctx.tenantId!, branchId) : null}
-      profissionalConclui={can(ctx, 'atendimento', 'VIEW') && !!apptRaw.professional_id
-        && (await idsQueConcluemOsProprios(ctx.tenantId!)).includes(apptRaw.professional_id as string)} />
-  }
+  if (pessoal && apptRaw.professional_id !== pessoal) throw semAcesso()
 
   type RawProc   = { id: string; name: string; category: string; duration_min: number }
   type RawProf   = { id: string; name: string }
@@ -240,12 +226,9 @@ export async function SessaoDeAtendimento({
     products:   { name: string; unit: string; consumption_unit: string | null; units_per_package: number | null } | null
   }
 
-  // Dado clínico só para quem tem o módulo. A tela continua abrindo sem ele —
-  // check-in e status são de agenda, não de prontuário.
-  // Com alcance próprio, só o responsável pelo atendimento vê o clínico.
-  const canViewRecords = can(ctx, 'medical_records', 'VIEW') && (
-    !isOwnScope(ctx, 'medical_records') || ctx.internalUserId === apptRaw.professional_id
-  )
+  // Dado clínico só para quem tem o Prontuário em Ver. A tela continua abrindo
+  // sem ele — iniciar, concluir e o status não são de prontuário.
+  const canViewRecords = podeVerClinico(ctx)
   // Quem viu o prontuário fica registrado (lib/prontuario/acessos.ts).
   if (canViewRecords && cli?.id) await registrarAcessoAoProntuario(ctx, cli.id, 'sessao', apptRaw.id as string)
   // A anamnese geral: as perguntas da ficha de pré-atendimento da rede (a
@@ -554,19 +537,18 @@ export async function SessaoDeAtendimento({
   const isResponsibleProfessional = ctx.providesServices && ctx.internalUserId === apptRaw.professional_id
 
   const canCheckin   = ctx.permissions.agenda === 'MANAGE'
-  // Quem inicia e conclui é o Atendimento em Gerenciar (o Heitor, 2026-11-18:
-  // "Só inicia e conclui atendimento quem tem gerenciar no atendimento"), no
-  // ESCOPO dele (D21, C14): com "só os meus", só o próprio; com "todos",
-  // qualquer um da unidade ao alcance (a página já conferiu o alcance).
+  // Quem inicia e conclui é o Atendimento em Gerenciar, e só ele (o Heitor,
+  // 2026-11-18: "Só inicia e conclui atendimento quem tem gerenciar no
+  // atendimento"; UM2), em qualquer atendimento ao alcance (a página já
+  // conferiu o alcance).
   const canManage    = can(ctx, 'atendimento', 'MANAGE')
-    && (isOwnScope(ctx, 'atendimento') || isOwnScope(ctx, 'agenda') ? ctx.internalUserId === apptRaw.professional_id : true)
   const canReassign  = isAdmin
   const canPayment   = ctx.permissions.cashier === 'MANAGE'
   // Editar o clínico (a evolução, as fotos, a ficha de saúde, a ficha) é do
-  // Prontuário em Gerenciar, dentro do atendimento que a pessoa toca: com
-  // `medical_records: Ver` a ficha aparecia preenchível e o salvamento era
+  // Prontuário em Gerenciar, e só dele — sem precisar do Atendimento (UM4):
+  // com `medical_records: Ver` a ficha aparecia preenchível e o salvamento era
   // recusado depois de a pessoa digitar tudo.
-  const canEditRecords = canManage && can(ctx, 'medical_records', 'MANAGE')
+  const canEditRecords = can(ctx, 'medical_records', 'MANAGE')
 
   type RawPayment = { id: string; payment_method: string; amount: number; cartao_vezes: number | null; cartao_bandeira: string | null; maquininha_id: string | null; is_paid: boolean; notes: string | null; estorno_motivo: string | null }
   const lancamentos = (paymentRaw ?? []) as RawPayment[]
@@ -634,8 +616,8 @@ export async function SessaoDeAtendimento({
   return (
     <>
       {/* O prontuário pelo SINAL da rede, não `medical_record_entries`: a
-          evolução ia inteira pelo websocket a quem o Prontuário "só os meus"
-          esconde (ATD-P01, 18/11). A tela recarrega pelo servidor. */}
+          evolução ia inteira pelo websocket a quem não tem o Prontuário
+          (ATD-P01, 18/11). A tela recarrega pelo servidor. */}
       <RealtimeRefresher tables={['prontuario_sinais', 'financeiro_sinais']} topicos={['agenda']} />
       {/* F64 (D6): as horas da tela no relógio da unidade DO ATENDIMENTO — no
           /admin o provedor do layout é o da rede. */}
@@ -677,10 +659,9 @@ export async function SessaoDeAtendimento({
         procedureProductsMap={procedureProductsMap}
         isPartOfPlan={isPartOfPlan}
         podeMontarPlano={temRecurso(ctx, 'planos_de_tratamento')}
-        // PT2: monta o plano quem ATENDE na unidade do atendimento (não é permissão).
-        // PT2: monta quem atende na unidade — dentro do Atendimento (o plano só
-        // existe para quem o tem, ao menos em Ver; generateEvaluationPlan confere).
-        montaPlanoNaUnidade={montaPlano(ctx, branchId) && can(ctx, 'atendimento', 'VIEW')}
+        // UM3: monta o plano quem tem o Atendimento em Gerenciar na unidade do
+        // atendimento (generateEvaluationPlan confere).
+        montaPlanoNaUnidade={montaPlano(ctx, branchId)}
         podeInjetaveis={temRecurso(ctx, 'injetaveis')}
         // D12 da 25ª: o plano da cliente é do Atendimento (os leitores pedem o
         // Atendimento em Ver) — sem ele, nada de "Planejamento" na sessão.
@@ -705,11 +686,8 @@ export async function SessaoDeAtendimento({
         // A8 da 20ª: também na janela do "Finalizar" (em atendimento), e se só a rede recebe.
         quemRecebe={!podeReceber(ctx) && ['IN_PROGRESS', 'COMPLETED'].includes(apptRaw.status as string) && !pago ? await quemRecebeNaUnidade(ctx.tenantId!, branchId) : null}
         // A9 da 20ª: quem não inicia nem conclui (sem o Atendimento em Gerenciar) lê quem faz, pelo nome.
-        // A9 da 25ª: e a profissional do agendamento, quando ela conclui os próprios.
         quemConclui={!canManage && ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(apptRaw.status as string)
-          ? nomesDeQuemConclui(await quemConcluiOAtendimento(ctx.tenantId!, branchId),
-              { id: (apptRaw.professional_id as string | null) ?? null, nome: (apptRaw.professional as unknown as { name: string | null } | null)?.name ?? null },
-              await idsQueConcluemOsProprios(ctx.tenantId!)) : null}
+          ? await quemConcluiOAtendimento(ctx.tenantId!, branchId) : null}
         // A10 da 19ª: sem o check-in no cargo, o agendado diz QUEM marca a chegada.
         quemMarcaAChegada={!canCheckin && apptRaw.status === 'SCHEDULED' ? await quemMarcaAChegada(ctx.tenantId!, branchId) : null}
         // A19 da 14ª: quem estorna (o Financeiro em Gerenciar, de todos — a régua da ficha) estorna daqui, pela mesma janela.
@@ -719,10 +697,7 @@ export async function SessaoDeAtendimento({
         // 2026-11-16: colher não pede o módulo Documentos, que é o dos
         // MODELOS) — com os Documentos no plano da rede.
         documentos={colheOsDocumentos(ctx)
-          // Os documentos seguem o prontuário "só os meus" (2026-10-29): de
-          // cliente que ela não atende, nenhum.
-          ? { itens: cli?.id && await clienteNoEscopo(admin, ctx, 'medical_records', cli.id as string)
-                ? await documentosDoAgendamento(ctx.tenantId!, appointment.id) : [],
+          ? { itens: await documentosDoAgendamento(ctx.tenantId!, appointment.id),
               podeDispensar: dispensaDocumentos(ctx),
             pelaConversa: await envioPelaConversaLigado(ctx.tenantId!),
             // "Pedir no portal" só para quem tem o app (A26 da 7ª simulação) —

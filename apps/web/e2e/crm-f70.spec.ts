@@ -7,10 +7,11 @@ import { chamarAcao, chamarAcaoComFormulario } from './apoio/acao-direta'
 /**
  * F70 — o CRM do levantamento das regras.
  *
- * - C27 (ALTA): `updateLead` não conferia o alcance. A SDR com "só os meus"
- *   mandava o id do card de OUTRA pessoa: a linha do card não mudava (o filtro
- *   do dono estava no update), mas os efeitos rodavam mesmo assim — o nome da
- *   PESSOA, as conversas, os procedimentos de interesse e a linha do tempo.
+ * - C27 (ALTA): `updateLead` não conferia o alcance: a linha do card não
+ *   mudava, mas os efeitos rodavam mesmo assim — o nome da PESSOA, as
+ *   conversas, os procedimentos de interesse e a linha do tempo. Sem o "só os
+ *   meus" (SM1/SM3, o Heitor, 2026-11-23), o CRM em Gerenciar edita o card de
+ *   outra pessoa, e o card e os efeitos vão juntos.
  * - C28 (o telefone do contato e do lead): gravado sem o 55 e sem conferir o
  *   tamanho. A pessoa ficava com "48998761234", e a próxima mensagem do
  *   WhatsApp ("5548998761234") não a achava — nascia outra pessoa.
@@ -41,11 +42,11 @@ test.beforeAll(async () => {
   const rede = await criarOutraRede(`f70crm${marca}`)
   criado.rede = rede
   const gestora = await criarMembro(`f70g${marca}`, {
-    tenant: rede.tenantId, rotulo: 'Gestora', permissoes: [{ modulo: 'crm', nivel: 'MANAGE', escopo: 'ALL' }],
+    tenant: rede.tenantId, rotulo: 'Gestora', permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }],
   })
   criado.membros.push(gestora)
   const sdr = await criarMembro(`f70s${marca}`, {
-    tenant: rede.tenantId, rotulo: 'SDR', permissoes: [{ modulo: 'crm', nivel: 'MANAGE', escopo: 'OWN' }],
+    tenant: rede.tenantId, rotulo: 'SDR', permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }],
   })
   criado.membros.push(sdr)
   const ins = async (tabela: string, linha: Record<string, unknown>) => {
@@ -94,21 +95,24 @@ const formDoLead = (leadId: string, extra: Record<string, string>) => ({
 })
 
 test.describe.serial('F70 — CRM', () => {
-  test('C27: quem tem o CRM com "só os meus" não mexe pelo id no card de outra pessoa — nem na pessoa, nem na linha do tempo', async ({ browser }) => {
+  // Sem o "só os meus" (SM1/SM3, o Heitor, 2026-11-23): o CRM em Gerenciar edita o card de outra pessoa.
+  test('C27: o CRM em Gerenciar edita pelo id o card de outra pessoa — o card, a pessoa e a linha do tempo juntos', async ({ browser }) => {
     const b = db()
     const { count: eventosAntes } = await b.from('lead_events').select('id', { count: 'exact', head: true }).eq('lead_id', f!.leadDaGestora)
     const r = await como(browser, f!.sdr, p => chamarAcaoComFormulario(p, 'actions/leads.ts', 'updateLead', '/admin/oportunidades', [undefined],
       formDoLead(f!.leadDaGestora, { name: `${PREFIXO} Tomada ${marca}`, procedure_ids: JSON.stringify([f!.rede.procedureId]) })))
-    expect(r.texto, 'a recusa diz que não achou').toContain('não encontrada')
+    expect(r.texto, 'sem recusa').toContain('"success":true')
 
+    const { data: card } = await b.from('leads').select('name').eq('id', f!.leadDaGestora).single<{ name: string }>()
+    expect(card!.name, 'o card muda').toBe(`${PREFIXO} Tomada ${marca}`)
     const { data: pessoa } = await b.from('contacts').select('name').eq('id', f!.contato).single<{ name: string }>()
-    expect(pessoa!.name, 'o nome da PESSOA não muda').toBe(`${PREFIXO} Bruna ${marca}`)
+    expect(pessoa!.name, 'a PESSOA acompanha').toBe(`${PREFIXO} Tomada ${marca}`)
     const { data: conv } = await b.from('conversations').select('contact_name').eq('id', f!.conversa).single<{ contact_name: string }>()
-    expect(conv!.contact_name, 'nem o da conversa').toBe(`${PREFIXO} Bruna ${marca}`)
+    expect(conv!.contact_name, 'e a conversa').toBe(`${PREFIXO} Tomada ${marca}`)
     const { count: procs } = await b.from('lead_procedures').select('lead_id', { count: 'exact', head: true }).eq('lead_id', f!.leadDaGestora)
-    expect(procs, 'nem os procedimentos de interesse').toBe(0)
+    expect(procs, 'os procedimentos de interesse').toBe(1)
     const { count: eventosDepois } = await b.from('lead_events').select('id', { count: 'exact', head: true }).eq('lead_id', f!.leadDaGestora)
-    expect(eventosDepois, 'nem a linha do tempo').toBe(eventosAntes)
+    expect(eventosDepois, 'e a linha do tempo').toBeGreaterThan(eventosAntes ?? 0)
   })
 
   test('C28: o telefone digitado no card vira o do WhatsApp, na oportunidade e na pessoa — e o incompleto é recusado', async ({ browser }) => {

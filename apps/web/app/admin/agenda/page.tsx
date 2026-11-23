@@ -1,4 +1,5 @@
-﻿import { getTenantContext, assertPermission, ownerFilter, isOwnScope, can, podeReceber } from '@/lib/auth'
+﻿import { getTenantContext, can, podeReceber, vistaPessoal } from '@/lib/auth'
+import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { lerTodas } from '@/lib/db'
 import type { ComponentProps } from 'react'
@@ -15,7 +16,7 @@ import { getCachedBranchProfessionals, getCachedRoomsByBranch } from '@/lib/cach
 import { ler } from '@/lib/db'
 import { unidadesParaLer, nomeNaTela } from '@/lib/unidades/da-tela'
 import { fusoComum, fusoValido } from '@/lib/unidades/fuso'
-import { quemConcluiOAtendimento, idsQueConcluemOsProprios } from '@/lib/equipe/quem-desfaz'
+import { quemConcluiOAtendimento } from '@/lib/equipe/quem-desfaz'
 import { filtrosDaAgenda, aplicarFiltrosDaAgenda, bloqueioPassaNoFiltro } from '@/lib/agenda/filtros'
 import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
 
@@ -29,7 +30,10 @@ export default async function AdminAgendaPage({
   const { view: rawView, date: rawDate, unidade, ...pedidoDosFiltros } = await searchParams
 
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'agenda', 'VIEW')
+  // A Agenda em Ver abre a agenda inteira; a vista pessoal (SM2), a quem atende
+  // e não tem a Agenda: só os dela, só para ver.
+  const agendaOwner = vistaPessoal(ctx, 'agenda')
+  if (!can(ctx, 'agenda', 'VIEW') && agendaOwner === null) throw semAcesso()
 
   const admin       = createAdminClient()
   const view        = ((rawView ?? 'day') as AgendaView)
@@ -113,14 +117,12 @@ export default async function AdminAgendaPage({
   // O embed de `users` precisa nomear a FK: `appointments` referencia `users`
   // duas vezes (professional_id e created_by_id) e o PostgREST recusa o embed
   // ambíguo com PGRST201. Sem checar o `error`, isso virava uma agenda vazia.
-  // Alcance do cargo vale aqui também: sem isto, um membro de rede com agenda
-  // "só a própria" via a agenda de todo mundo nesta tela.
-  const agendaOwner = ownerFilter(ctx, 'agenda')
+  // Na vista pessoal, só os dela (`agendaOwner`).
 
   // Os filtros (o Heitor, 18/11: "Então precisa arrumar"; e a regra das Tags),
   // na CONSULTA e só entre as opções da tela: quem atende nas unidades
-  // mostradas ("Atende" por unidade, §9.1; com a Agenda em "só os meus", o
-  // filtro de profissional não existe), as salas da unidade escolhida (sem
+  // mostradas ("Atende" por unidade, §9.1; na vista pessoal, o filtro de
+  // profissional não existe), as salas da unidade escolhida (sem
   // unidade escolhida, as salas são de cada uma e o filtro não aparece —
   // princípio 7) e o vocabulário de tags da rede, lido no servidor.
   const umaUnidade = branches.length === 1 ? branches[0]! : null
@@ -170,7 +172,7 @@ export default async function AdminAgendaPage({
   const appointments = brutos.map(a => ({ ...a, ficha: selos[a.id] ?? null, pagoAntes: jaPagos.get(a.id) ?? null, menor: (a.client_id && menores[a.client_id]) || null })) as unknown as ComponentProps<typeof AdminAgendaView>['appointments']
 
   // O bloqueio pontual (decisão 3 da 7ª): cada um na coluna da unidade de onde
-  // foi feito (a da sala), com de quem é. Com "só os meus", só os dela.
+  // foi feito (a da sala), com de quem é. Na vista pessoal, só os dela.
   const todosOsBloqueios = await bloqueiosDoPeriodo(ctx.tenantId!, { de: startDate.toISOString(), ate: endDate.toISOString(), unidades: branchIds })
   const bloqueiosVistos = (agendaOwner ? todosOsBloqueios.filter(b => b.professionalId === agendaOwner) : todosOsBloqueios)
     .filter(b => bloqueioPassaNoFiltro(b, filtros))
@@ -195,7 +197,6 @@ export default async function AdminAgendaPage({
         branchId: umaSo.id,
         profissionais: ((await getCachedBranchProfessionals(umaSo.id, ctx.tenantId!)) ?? []).map(p => ({ id: p.id as string, name: p.name as string })),
         salas: ((await getCachedRoomsByBranch(umaSo.id, ctx.tenantId!)) ?? []).map(r => ({ id: r.id as string, name: r.name as string })),
-        soEu: agendaOwner ? { id: agendaOwner, name: ctx.userName || 'Você' } : null,
       }
     : null
 
@@ -212,14 +213,11 @@ export default async function AdminAgendaPage({
         appointments={appointments}
         janela={janela}
         podeAgendar={ctx.permissions.agenda === 'MANAGE'}
-        escopoProprio={agendaOwner !== null}
+        vistaDela={agendaOwner !== null}
         meuId={ctx.internalUserId ?? null}
         podeConcluir={can(ctx, 'atendimento', 'MANAGE')}
-        atendimentoProprio={isOwnScope(ctx, 'atendimento')}
-        // A9 da 20ª: sem iniciar e concluir (o Atendimento em Gerenciar, de todos), a janela diz quem conclui (os da unidade escolhida, ou os da rede).
-        quemConclui={can(ctx, 'atendimento', 'MANAGE') && !isOwnScope(ctx, 'atendimento') ? null : await quemConcluiOAtendimento(ctx.tenantId!, unidadeId || null)}
-        // A9 da 25ª: a profissional do agendamento que conclui os próprios entra em "quem conclui".
-        concluemOsProprios={can(ctx, 'atendimento', 'MANAGE') && !isOwnScope(ctx, 'atendimento') ? null : await idsQueConcluemOsProprios(ctx.tenantId!)}
+        // A9 da 20ª: sem iniciar e concluir (o Atendimento em Gerenciar), a janela diz quem conclui (os da unidade escolhida, ou os da rede).
+        quemConclui={can(ctx, 'atendimento', 'MANAGE') ? null : await quemConcluiOAtendimento(ctx.tenantId!, unidadeId || null)}
         bloqueios={bloqueios}
         paraBloquear={paraBloquear}
         filtros={filtros}

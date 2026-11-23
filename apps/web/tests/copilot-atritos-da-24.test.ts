@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { TenantContext, ResolvedPermissions } from '@estetica-os/types'
-import { NO_PERMISSIONS, ALL_SCOPES } from '@/lib/permissions'
+import { NO_PERMISSIONS } from '@/lib/permissions'
 import { FUNCIONALIDADES } from '@estetica-os/nucleo/lib/planos/recursos'
 import { DEFINICOES } from '@/lib/metrics/definicoes'
 
@@ -110,7 +110,7 @@ function ctx(permissions: Partial<ResolvedPermissions> = {}): TenantContext {
     userId: 'auth', internalUserId: 'u-henrique', userName: 'Henrique', roleLabel: 'Admin',
     tenantId: 't1', branchId: null, unidades: null, role: 'NETWORK_ADMIN', roleId: 'r1', clientId: null,
     permissions: { ...NO_PERMISSIONS, copilot: 'MANAGE', reports: 'VIEW', financial: 'MANAGE', cashier: 'MANAGE', ...permissions } as ResolvedPermissions,
-    scopes: ALL_SCOPES, reportTabs: ['overview', 'financeiro', 'agenda', 'comercial'], providesServices: false, isNetworkAdmin: true, isClient: false,
+    reportTabs: ['overview', 'financeiro', 'agenda', 'comercial'], providesServices: false, isNetworkAdmin: true, isClient: false,
     plano: { funcionalidades: TODAS, limites: { unidades: null, membros: null, whatsapp: null } },
   } as TenantContext
 }
@@ -145,14 +145,15 @@ describe('D1: a despesa por unidade e por categoria é a despesa (a conta do Fin
     expect(JSON.stringify(d.despesaPorUnidade)).not.toContain(dinheiro(950))
   })
 
-  it('com o financeiro "só os meus", a despesa não vai (não se atribui a ela)', async () => {
+  // Sem o "só os meus" (SM1/SM5, o Heitor, 2026-11-23): o Financeiro em Ver vê a despesa da rede toda.
+  it('com o financeiro em Ver, a despesa vai', async () => {
     const { indicadores } = await import('@/lib/copilot/ferramentas/indicadores')
-    const c = ctx()
-    const r = await indicadores.executar(contexto({ ...c, scopes: { ...c.scopes, financial: 'OWN' } } as TenantContext), { aba: 'financeiro', periodo: 'today' })
+    const { dinheiro } = await import('@/lib/copilot/ferramentas/comum')
+    const r = await indicadores.executar(contexto(ctx({ financial: 'VIEW' })), { aba: 'financeiro', periodo: 'today' })
     const d = r.dados as Record<string, unknown>
-    expect(d).not.toHaveProperty('despesaPorUnidade')
-    expect(d).not.toHaveProperty('despesaPorCategoria')
-    expect(d).not.toHaveProperty('despesas')
+    expect(d.despesas).toBe(dinheiro(234.42))
+    expect(d).toHaveProperty('despesaPorUnidade')
+    expect(d).toHaveProperty('despesaPorCategoria')
   })
 
   it('as descrições dizem onde mora a despesa por unidade e por categoria', async () => {

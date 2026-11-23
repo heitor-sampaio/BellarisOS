@@ -93,11 +93,17 @@ describe('C46/C17: as somas das comissões e a variação vêm de lib/metrics', 
 })
 
 describe('D10: os números "Meus" de quem atende em mais de uma unidade', () => {
-  it('unidadesDoQueEDela: a unidade do endereço e as outras em que ela atende, só no "só os meus"', async () => {
+  // Sem o "só os meus" (SM2, o Heitor, 2026-11-23): os "Meus" são da vista pessoal —
+  // quem atende e não tem o módulo. Aqui: sem a Agenda (vista pessoal) e com o Financeiro.
+  it('unidadesDoQueEDela: a unidade do endereço e as outras em que ela atende, só na vista pessoal', async () => {
     const m = await import('@/lib/metrics/escopo') as Record<string, unknown>
     const f = m.unidadesDoQueEDela as ((ctx: unknown, unidade: string, modulo: 'agenda' | 'financial') => string[]) | undefined
     expect(f, 'unidadesDoQueEDela em lib/metrics/escopo').toBeTypeOf('function')
-    const dela = { scopes: { agenda: 'OWN', financial: 'ALL' }, internalUserId: 'u1', atendeEm: ['B', 'A'] }
+    const { NO_PERMISSIONS } = await import('@/lib/permissions')
+    const dela = {
+      permissions: { ...NO_PERMISSIONS, financial: 'VIEW' }, providesServices: true, isClient: false,
+      internalUserId: 'u1', atendeEm: ['B', 'A'],
+    }
     expect(f!(dela, 'A', 'agenda')).toEqual(['A', 'B'])
     expect(f!(dela, 'A', 'financial')).toEqual(['A'])
     expect(f!({ ...dela, atendeEm: [] }, 'A', 'agenda')).toEqual(['A'])

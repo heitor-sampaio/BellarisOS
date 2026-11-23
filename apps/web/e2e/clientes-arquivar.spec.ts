@@ -39,12 +39,12 @@ test.beforeAll(async () => {
   // O cargo-modelo Recepcionista: agenda e clientes em Gerenciar.
   recepcao = await criarMembro(`arr${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Recepção',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'clients', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'loyalty', nivel: 'VIEW' }],
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'loyalty', nivel: 'VIEW' }],
   })
   // Quem também recebe: é quem vê o Vender.
   caixa = await criarMembro(`arc${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Caixa',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'clients', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'cashier', nivel: 'MANAGE' }],
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'cashier', nivel: 'MANAGE' }],
   })
 })
 test.afterAll(async () => { await recepcao?.limpar(); await caixa?.limpar(); await rede?.limpar() })

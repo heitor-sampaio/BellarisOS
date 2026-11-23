@@ -61,9 +61,9 @@ test.beforeAll(async () => {
   profissional = await criarMembro(`pgsp${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Profissional',
     permissoes: [
-      { modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' },
+      { modulo: 'agenda', nivel: 'MANAGE' },
       { modulo: 'clients', nivel: 'VIEW' },
-      { modulo: 'medical_records', nivel: 'MANAGE', escopo: 'OWN' },
+      { modulo: 'medical_records', nivel: 'MANAGE' },
       { modulo: 'stock', nivel: 'VIEW' },
     ],
   })

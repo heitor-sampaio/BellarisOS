@@ -9,7 +9,9 @@ import { chamarAcao, chamarAcaoComFormulario } from './apoio/acao-direta'
  * - C39 (H2 = a): o estorno avulso do pagamento de um plano reabre a cobrança
  *   — o pagamento volta a ser "a receber" da mesma venda, com o mesmo vencimento.
  * - C34: a baixa do lançamento sem meio exige a forma.
- * - C35: o Financeiro em "só os meus" não estorna, não lança, não cancela.
+ * - C35: o Financeiro em "só os meus" não estorna, não lança, não cancela. Sem o
+ *   "só os meus" (SM1/SM2, o Heitor, 2026-11-23), quem atende sem o Financeiro
+ *   tem só a vista pessoal (as Minhas comissões), que só MOSTRA.
  * - C36: cancelar a unidade pré-paga é do Financeiro em Gerenciar (não de quem só recebe).
  * - C33: o check-in do plano (o balcão) é do PDV. A baixa NO FINANCEIRO, desde
  *   o CX2 (aprovado pelo Heitor em 13/11, "Blz pode ser assim": o Financeiro
@@ -26,7 +28,7 @@ const marca = Date.now().toString(36)
 const db = () => banco()
 let rede: OutraRede | null = null
 let dona: MembroDeTeste | null = null
-let soOsMeus: MembroDeTeste | null = null
+let pessoal: MembroDeTeste | null = null
 let caixa: MembroDeTeste | null = null
 let financeiro: MembroDeTeste | null = null
 
@@ -65,9 +67,10 @@ test.beforeAll(async () => {
   rede = await criarOutraRede(`f67f${marca}`)
   expect((await db().from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede.tenantId)).error).toBeNull()
   dona = await criarMembro(`f67d${marca}`, { tenant: rede.tenantId, donoDaRede: true, permissoes: [] })
-  soOsMeus = await criarMembro(`f67m${marca}`, {
-    tenant: rede.tenantId, rotulo: 'Financeiro só os meus',
-    permissoes: [{ modulo: 'financial', nivel: 'MANAGE', escopo: 'OWN' }, { modulo: 'clients', nivel: 'VIEW' }],
+  // A vista pessoal (SM2): atende e não tem o Financeiro.
+  pessoal = await criarMembro(`f67m${marca}`, {
+    tenant: rede.tenantId, rotulo: 'Atende sem o Financeiro',
+    permissoes: [{ modulo: 'clients', nivel: 'VIEW' }], atendeEm: [rede.branchId],
   })
   caixa = await criarMembro(`f67c${marca}`, {
     tenant: rede.tenantId, rotulo: 'Recepção',
@@ -80,7 +83,7 @@ test.beforeAll(async () => {
 })
 
 test.afterAll(async () => {
-  for (const m of [financeiro, caixa, soOsMeus, dona]) await m?.limpar()
+  for (const m of [financeiro, caixa, pessoal, dona]) await m?.limpar()
   await rede?.limpar()
 })
 
@@ -109,11 +112,11 @@ test('C34: a baixa da parcela sem meio exige a forma', async ({ browser }) => {
   expect((await db().from('financial_transactions').select('is_paid').eq('id', parcela).single()).data?.is_paid).toBe(false)
 })
 
-test('C35: o Financeiro em "só os meus" não estorna pela action', async ({ browser }) => {
+test('C35: quem atende sem o Financeiro (a vista pessoal) não estorna pela action', async ({ browser }) => {
   const { pago } = await planoPago('SoOsMeus')
-  const r = await como(browser, soOsMeus!, p => chamarAcao(p, 'actions/financial.ts', 'reverseTransaction', '/admin/financeiro/comissoes',
+  const r = await como(browser, pessoal!, p => chamarAcao(p, 'actions/financial.ts', 'reverseTransaction', '/admin/financeiro/comissoes',
     [pago, '', 'Teste', null]))
-  expect(r.texto).toContain('só os meus')
+  expect(r.texto).toContain('Você não tem acesso a esta ação.')
   expect((await db().from('financial_transactions').select('notes').eq('id', pago).single()).data?.notes).toBeNull()
 })
 
@@ -154,7 +157,7 @@ test('VF-04: o check-in do plano é de quem recebe — o Financeiro em Gerenciar
   expect(pago).toEqual({ is_paid: true, payment_method: 'PIX' })
 })
 
-test('CX2: o Financeiro em Gerenciar dá baixa no Financeiro (o que entrou sem passar pelo balcão); o "só os meus" não', async ({ browser }) => {
+test('CX2: o Financeiro em Gerenciar dá baixa no Financeiro (o que entrou sem passar pelo balcão); a vista pessoal não', async ({ browser }) => {
   const { cliente, plano } = await planoPago('Transferencia')
   const desc = `${PREFIXO} Transferência ${marca}`
   const aberto = await ins('financial_transactions', {
@@ -168,8 +171,8 @@ test('CX2: o Financeiro em Gerenciar dá baixa no Financeiro (o que entrou sem p
     await expect(p.locator('[data-so-o-em-aberto]')).toContainText('Para receber, use “Receber” na linha.')
     await expect(p.locator(`[data-lancamento="${aberto}"]`).getByRole('button', { name: 'Receber', exact: true })).toBeVisible()
   })
-  // O "só os meus" do Financeiro não dá baixa (C35), nem pela action.
-  const negado = await como(browser, soOsMeus!, p => chamarAcao(p, 'actions/financial.ts', 'markTransactionPaid', '/admin/financeiro/comissoes',
+  // A vista pessoal (sem o Financeiro) não dá baixa (C35, SM2), nem pela action.
+  const negado = await como(browser, pessoal!, p => chamarAcao(p, 'actions/financial.ts', 'markTransactionPaid', '/admin/financeiro/comissoes',
     [aberto, '', null, null, 'PIX']))
   expect(negado.texto).not.toContain('"success":true')
   expect((await db().from('financial_transactions').select('is_paid').eq('id', aberto).single()).data?.is_paid).toBe(false)

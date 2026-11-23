@@ -29,8 +29,8 @@ import {
   extrairVariaveis, montarParametrosEnvio, textoDoEnvio,
 } from '@/lib/templates/core'
 import { gravar, ler, tentar, mensagemDoErro } from '@/lib/db'
-import { passaNasCaixas, passaNoAlcanceDoDono, type AlcanceDoDono } from '@/lib/inbox/visibilidade'
-import { alcanceDoDono, caixasDoAlcance, conversaAoAlcance, mensagemAoAlcance } from '@/lib/inbox/alcance'
+import { passaNasCaixas } from '@/lib/inbox/visibilidade'
+import { caixasDoAlcance, conversaAoAlcance, mensagemAoAlcance } from '@/lib/inbox/alcance'
 import { numeroRemovidoDaConversa, recusaDoNumeroRemovido, SUFIXO_DO_REMOVIDO } from '@/lib/inbox/numero-removido'
 import { leadAoAlcance } from '@/lib/crm/alcance'
 import {
@@ -240,7 +240,7 @@ export async function getConversations(opcoes: {
 
   // A lista era as 200 mais recentes, filtradas no navegador: a 201ª não
   // aparecia nunca, e o filtro só enxergava as 200 (2026-09-28). Agora vem de
-  // 30 em 30, já filtrada e com o alcance (dono e caixas do cargo) aplicado no
+  // 30 em 30, já filtrada e com o alcance (as caixas do cargo) aplicado no
   // banco — `idsDaPaginaDoInbox`, a mesma conta da busca universal.
   const limite = Math.max(1, Math.min(opcoes.limite ?? 30, 500))
   const paginaIds = await idsDaPaginaDoInbox(admin, ctx, {
@@ -872,12 +872,9 @@ async function buscarTagsDoContato(
  * nova precisa chegar ao que foi dito na anterior. Sem ele, o histórico fica
  * partido justamente no momento em que importa.
  *
- * ⚠️ Respeita o `ownerFilter` do CRM pela MESMA regra da lista do inbox
- * (`alcanceDoDono`) — abrir uma exceção aqui seria furar, por uma tela, a regra
- * que vale na tela ao lado. Pela pessoa (o padrão), quem negocia com ela
- * alcança todas as threads, e o handoff funciona mesmo com escopo OWN. Pela
- * conversa, cada thread vale pela oportunidade ligada a ela, e thread SEM
- * oportunidade fica no bolo comum.
+ * ⚠️ Respeita as caixas do cargo pela MESMA regra da lista do inbox
+ * (`caixasDoAlcance`) — abrir uma exceção aqui seria furar, por uma tela, a
+ * regra que vale na tela ao lado.
  */
 async function buscarOutrasThreads(
   admin: ReturnType<typeof createAdminClient>,
@@ -905,20 +902,16 @@ async function buscarOutrasThreads(
   let linhas = (data ?? []) as Linha[]
   if (linhas.length === 0) return []
 
-  // As duas regras da lista, nas linhas já lidas. Pela pessoa, as threads dela
-  // aparecem ou somem JUNTAS (todas têm o mesmo `contato_id`); o atalho também
-  // não pode abrir a thread de um número que a lista ao lado esconde.
-  let alcance: AlcanceDoDono | null
+  // A regra da lista, nas linhas já lidas: o atalho não pode abrir a thread de
+  // um número que a lista ao lado esconde.
   let minhasCaixas: string[] | null
   try {
-    [alcance, minhasCaixas] = await Promise.all([alcanceDoDono(admin, ctx), caixasDoAlcance(admin, ctx)])
+    minhasCaixas = await caixasDoAlcance(admin, ctx)
   } catch (e) {
     console.error('[getConversationCard] alcance:', e instanceof Error ? mensagemDoErro(e) : e)
     return []
   }
-  linhas = linhas.filter(l =>
-    passaNoAlcanceDoDono({ lead_id: l.lead_id, contato_id: contatoId }, alcance)
-    && passaNasCaixas(l.whatsapp_number_id, minhasCaixas))
+  linhas = linhas.filter(l => passaNasCaixas(l.whatsapp_number_id, minhasCaixas))
   if (linhas.length === 0) return []
 
   // O rótulo da caixa numa consulta só, mapeada em memória — nunca por embed do
@@ -1321,8 +1314,8 @@ export async function definirSituacaoOportunidade(
   assertRecurso(ctx, 'oportunidades')
   assertPermission(ctx, 'crm', 'MANAGE')
   const admin = createAdminClient()
-  // Marcar ganho/perdido na oportunidade de outro dono: o funil recusa mover
-  // o card dele, e este botão faz o mesmo movimento por outro caminho.
+  // Marcar ganho/perdido na oportunidade fora do alcance (rede e unidade): o
+  // funil recusa mover o card, e este botão faz o mesmo movimento por outro caminho.
   if (!(await leadAoAlcance(admin, ctx, leadId))) return { ok: false, error: 'Oportunidade não encontrada.' }
 
   const d = await destinoDaSituacao(admin, ctx.tenantId!, leadId, desfecho)
@@ -1348,7 +1341,7 @@ export async function openLeadConversation(
   assertRecurso(ctx, 'oportunidades')
   assertPermission(ctx, 'crm', 'VIEW')
   const admin = createAdminClient()
-  // Sem isto, o card de outro dono abria (e até CRIAVA) a conversa da pessoa.
+  // Sem isto, o card fora do alcance abria (e até CRIAVA) a conversa da pessoa.
   if (!(await leadAoAlcance(admin, ctx, leadId))) return { conversationId: null, error: 'Oportunidade não encontrada.' }
 
   const { data: leadRow, error: erroLead } = await admin
@@ -1369,9 +1362,8 @@ export async function openLeadConversation(
   // tem `lead_id` apontando para este card. No handoff o card nasce na thread
   // do marketing e o atendimento continua em outra; abrir a de origem levaria
   // quem clica para a conversa que já parou.
-  // Só a que o cargo VÊ no Inbox (CRM-10, 18/11): o refino do "só os meus"
-  // (pela pessoa ou pela conversa) e os números do cargo — como o painel da
-  // conversa (`getConversationCard`) e a abertura por id (`conversaAoAlcance`).
+  // Só a que o cargo VÊ no Inbox (CRM-10, 18/11): os números do cargo — como o
+  // painel da conversa (`getConversationCard`) e a abertura por id (`conversaAoAlcance`).
   const { data: existing, error: erroExisting } = await admin
     .from('conversations')
     .select('id, lead_id, contato_id, whatsapp_number_id')
@@ -1384,20 +1376,18 @@ export async function openLeadConversation(
     return { conversationId: null, error: 'Não foi possível abrir a conversa desta oportunidade.' }
   }
   if (existing && existing.length > 0) {
-    let alcance: AlcanceDoDono | null
     let minhasCaixas: string[] | null
     try {
-      [alcance, minhasCaixas] = await Promise.all([alcanceDoDono(admin, ctx), caixasDoAlcance(admin, ctx)])
+      minhasCaixas = await caixasDoAlcance(admin, ctx)
     } catch (e) {
       console.error('[openLeadConversation] alcance:', mensagemDoErro(e))
       return { conversationId: null, error: 'Não foi possível abrir a conversa desta oportunidade.' }
     }
     const vista = (existing as { id: string; lead_id: string | null; contato_id: string | null; whatsapp_number_id: string | null }[])
-      .find(c => passaNoAlcanceDoDono({ lead_id: c.lead_id, contato_id: c.contato_id }, alcance)
-        && passaNasCaixas(c.whatsapp_number_id, minhasCaixas))
+      .find(c => passaNasCaixas(c.whatsapp_number_id, minhasCaixas))
     if (vista) return { conversationId: vista.id }
     // Há conversa, e nenhuma é das que o cargo vê: não se abre (nem se cria outra).
-    return { conversationId: null, error: `A conversa com ${l.name} é de um número de WhatsApp ou de uma pessoa fora do que o seu cargo vê no Inbox.` }
+    return { conversationId: null, error: `A conversa com ${l.name} é de um número de WhatsApp fora do que o seu cargo vê no Inbox.` }
   }
 
   // Cria uma conversa a partir do lead (whatsapp se tem telefone; senão manual)
@@ -1467,7 +1457,7 @@ export async function openLeadConversation(
     if (doTelefone) {
       const id = (doTelefone as { id: string }).id
       if (await conversaAoAlcance(admin, ctx, id)) return { conversationId: id }
-      return { conversationId: null, error: `A conversa com ${l.name} é de um número de WhatsApp ou de uma pessoa fora do que o seu cargo vê no Inbox.` }
+      return { conversationId: null, error: `A conversa com ${l.name} é de um número de WhatsApp fora do que o seu cargo vê no Inbox.` }
     }
   }
 

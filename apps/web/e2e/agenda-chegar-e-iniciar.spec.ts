@@ -12,8 +12,10 @@ import { haMinutosHoje } from './apoio/datas'
  * check-in ela mesma pela tela do atendimento.
  *
  * Agora a janela da agenda oferece a ela "Marcar chegada e iniciar": o MESMO
- * check-in (checkinCore) e depois o MESMO início (startAppointment). Só no
- * agendamento DELA.
+ * check-in (checkinCore) e depois o MESMO início (startAppointment). O botão
+ * aparece no agendamento DELA; a ação é de quem tem a Agenda e o Atendimento
+ * em Gerenciar, de quem for o agendamento (sem o "só os meus" — SM1, UM2,
+ * o Heitor, 2026-11-23).
  */
 
 const marca = Date.now().toString(36)
@@ -48,10 +50,11 @@ test.beforeAll(async () => {
   slug = (await db().from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
   profissional = await criarMembro(`cep${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Profissional',
+    // Agenda e Prontuário em Gerenciar: o Atendimento em Gerenciar vem junto (comAtendimento).
     permissoes: [
-      { modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' },
+      { modulo: 'agenda', nivel: 'MANAGE' },
       { modulo: 'clients', nivel: 'VIEW' },
-      { modulo: 'medical_records', nivel: 'MANAGE', escopo: 'OWN' },
+      { modulo: 'medical_records', nivel: 'MANAGE' },
     ],
   })
   expect((await db().from('users').update({ provides_services: true }).eq('id', profissional.userId)).error).toBeNull()
@@ -79,14 +82,14 @@ test('a profissional marca a chegada e inicia, pela tela do atendimento, o agend
   expect((hist ?? []).map(h => h.action)).toEqual(expect.arrayContaining(['CHECKIN', 'STARTED']))
 })
 
-test('a profissional da REDE ("só os meus") marca a chegada e inicia pela janela da agenda', async ({ browser }) => {
+test('a profissional da REDE marca a chegada e inicia pela janela da agenda', async ({ browser }) => {
   const daRede = await criarMembro(`cer${marca}`, {
     tenant: rede!.tenantId, rotulo: 'Profissional da rede',
     // Iniciar pede o Atendimento em Gerenciar (o Heitor, 18/11: "Só inicia e
-    // conclui atendimento quem tem gerenciar no atendimento"), com o "só os meus".
+    // conclui atendimento quem tem gerenciar no atendimento").
     permissoes: [
-      { modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' },
-      { modulo: 'atendimento', nivel: 'MANAGE', escopo: 'OWN' },
+      { modulo: 'agenda', nivel: 'MANAGE' },
+      { modulo: 'atendimento', nivel: 'MANAGE' },
       { modulo: 'clients', nivel: 'VIEW' },
     ],
   })
@@ -110,11 +113,14 @@ test('a profissional da REDE ("só os meus") marca a chegada e inicia pela janel
   }
 })
 
-test('no agendamento de OUTRA profissional, "só os meus" não marca a chegada nem inicia', async ({ browser }) => {
+test('com a Agenda e o Atendimento em Gerenciar, marca a chegada e inicia também o agendamento de OUTRA profissional', async ({ browser }) => {
+  // Sem o "só os meus" (SM1, o Heitor, 2026-11-23): Gerenciar mexe em todos;
+  // a chegada é da Agenda e o início, do Atendimento (UM2).
   const id = await agendado('Outra', rede!.professionalId)
   await como(browser, async p => {
     const r = await chamarAcao(p, 'actions/appointments.ts', 'chegarEIniciar', `/${slug}/agenda`, [id, slug])
-    expect(r.texto).toMatch(/responsável/)
+    expect(r.status).toBe(200)
   })
-  expect((await situacao(id)).status).toBe('SCHEDULED')
+  await expect.poll(async () => (await situacao(id)).status).toBe('IN_PROGRESS')
+  expect((await situacao(id)).arrived_at, 'passou pelo check-in').toBeTruthy()
 })

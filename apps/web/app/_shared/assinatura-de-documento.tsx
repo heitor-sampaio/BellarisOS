@@ -4,7 +4,6 @@ import { quemCompletaOCadastro } from '@/lib/equipe/quem-desfaz'
 import { assertColheOsDocumentos } from '@/lib/documentos/acesso'
 import { documentoParaExibir } from '@/lib/documentos/leitura'
 import { TelaDeAssinatura } from '@/components/shared/tela-de-assinatura'
-import { clienteNoEscopo } from '@/lib/clientes/atendida-por'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { caminhoInterno } from '@/lib/origem'
@@ -33,8 +32,6 @@ export async function AssinaturaDeDocumento({ id, base, voltar }: {
   const doc = await documentoParaExibir(ctx.tenantId!, id, { montarDeNovo: true })
   // Fora da rede ou da unidade que a pessoa alcança: como se não existisse.
   if (!doc || !alcancaUnidade(ctx, doc.branchId)) notFound()
-  // Com o prontuário "só os meus", só de cliente que ela atende (2026-10-29).
-  if (!(await clienteNoEscopo(createAdminClient(), ctx, 'medical_records', doc.clienteId))) notFound()
 
   const rotaDoCliente = `${base}/clients/${doc.clienteId}`
   // Só caminho interno: um `?voltar=https://…` levaria para fora do sistema,

@@ -126,9 +126,10 @@ comanda (PDV-P1).
     `PLANO` nasce no PDV com o valor do plano — o desconto combinado no editor
     já aplicado aos preços, na mesma transação (22ª A20, abaixo em "Desconto
     em todas as vendas"). Nenhum dinheiro, nenhum agendamento, nenhuma pergunta
-    de forma. Aceita quem monta o plano — quem ATENDE na unidade dele
-    (`montaPlano`, PT2 de 2026-11-14; era o Prontuário em Gerenciar) — ou
-    quem recebe. Na página do plano o botão é o do passo ① ("Aceite", PT1a);
+    de forma. Aceita quem monta o plano — o Atendimento em Gerenciar, com a
+    unidade do plano ao alcance, ou a Admin da rede (`montaPlano`; UM3,
+    2026-11-23, revê a PT2 de 14/11, que era "quem ATENDE na unidade dele") —
+    ou quem recebe (`podeReceber`). Na página do plano o botão é o do passo ① ("Aceite", PT1a);
     na tela do atendimento, "Aceitar plano"; "a cliente vai pensar" deixa o
     plano proposto (PROPOSED), para aceitar depois. Na página do plano, o
     passo ③ ("Contrato e pagamento") leva à comanda do plano no PDV
@@ -1005,11 +1006,11 @@ plano").
   ficha, e antes "Vender pacote"): "A venda é no PDV, em “Nova venda”
   (escolha Pacote)…" (`TEXTO_DA_VENDA_DO_PACOTE`, `lib/permissions-copy.ts`).
 - **A taxa e o líquido da maquininha no Vender são de quem vê o financeiro da
-  rede** (A19 da 12ª simulação, 2026-11-11: a Rita, com o PDV e "só
-  as próprias comissões", via "Taxa da maquininha… a rede recebe R$ …"): o
+  rede** (A19 da 12ª simulação, 2026-11-11: a Rita, com o PDV e sem o
+  financeiro da rede, via "Taxa da maquininha… a rede recebe R$ …"): o
   `[data-liquido-do-cartao]` e o `[data-taxa-do-debito]` com a taxa só aparecem
-  a quem tem o Financeiro com escopo de todos (`mostraOLiquidoDaMaquininha`,
-  `veComissaoDeTodos`) — a régua de "quem vê quanto cada um ganha" e do texto do
+  a quem tem o Financeiro em Ver (`veComissaoDeTodos`; sem o "só os meus",
+  SM1, 2026-11-23) — a régua de "quem vê quanto cada um ganha" e do texto do
   cargo do PDV ("não vê o financeiro da unidade", A39). Quem só recebe
   segue vendo o aviso de taxa NÃO cadastrada (sem valor). Muda a A40 da 8ª,
   que os mostrava a todo mundo que recebe. **Confirmado pelo Heitor no levantamento
@@ -1105,8 +1106,8 @@ o procedimento avulso pago antes.
   pagar, ficou para trás com as decisões do pacote — F2b: a rede escolhe;
   F13/r2-fin-03: no cartão, o pagamento inteiro). Com motivo, só a DISPONÍVEL
   e não agendada, por quem tem o **Financeiro em Gerenciar** (C36 da F67: era
-  de quem recebe, e o caixa devolvia dinheiro por ali; como cancelar o pacote)
-  sem "só os meus", e com a unidade ao alcance:
+  de quem recebe, e o caixa devolvia dinheiro por ali; como cancelar o pacote),
+  com a unidade ao alcance:
   "Cancelar" no card "Procedimentos pagos" abre a janela "Cancelar sessão"
   (`CancelarUnidadePrePaga`; na tela é "sessão" — A6 da 25ª: "unidade" é a
   unidade da rede), com a conta que o BANCO fez
@@ -1429,8 +1430,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     vencidas, `?aberto=a-pagar` → A pagar; `/[slug]/financial` segue para
     `/[slug]/financeiro`. Link novo para o Financeiro é `?aba=`.
   - O período, o filtro de unidade da rede e as permissões não mudaram:
-    quem só vê lê as abas sem lançar, dar baixa nem remarcar; o "só os meus"
-    vai às comissões dele, como antes.
+    quem só vê lê as abas sem lançar, dar baixa nem remarcar; quem atende sem
+    o Financeiro vai às Minhas comissões (a vista pessoal, SM2).
   - **As Tags nas listas** (CLAUDE.md §1, Tags — o Heitor, 13/11: "onde
     tiver for passível de filtro, um dos filtros que ela pode usar são as tags
     … além dos filtros que a gente já apresenta ali fixos em cada página"):
@@ -1471,26 +1472,24 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     com `podeReceber` (o PDV OU o Financeiro em Gerenciar), como o avulso e o
     checkout (VF-04 da varredura de 18/11, decisão do Claude: pedia só o
     PDV). **A baixa NO FINANCEIRO** ("Receber"/"Pagar" da
-    lista, `markTransactionPaid`) é do PDV OU do Financeiro em Gerenciar de
-    todos (`podeDarBaixa`, `lib/financeiro/so-os-meus.ts`) — CX2 do plano de
+    lista, `markTransactionPaid`) é do PDV OU do Financeiro em Gerenciar
+    (`podeDarBaixa`, `lib/financeiro/so-os-meus.ts`) — CX2 do plano de
     adaptação, aprovado pelo Heitor em 13/11 ("Blz pode ser assim"): "O
     Financeiro tem a lista de tudo que falta receber, de todas as clientes, e
     dá baixa só no que entra sem passar pelo balcão (a transferência que caiu
     na conta)". Até a leva seguinte à auditoria de 18/11 a baixa era só do
-    PDV (o texto do C33 dizia "em todo caminho"), contra o CX2. O "só os meus"
-    do Financeiro não dá baixa (C35, decisão do Claude pela regra que já
-    existia: o financeiro dessa pessoa é "Minhas comissões"). A quem não dá
+    PDV (o texto do C33 dizia "em todo caminho"), contra o CX2. A quem não dá
     baixa, a lista diz "Receber é de quem tem o PDV ou o Financeiro em
     Gerenciar." Prova: `tests/financeiro-baixa-cx2.test.ts`,
     `e2e/financeiro-f67.spec.ts` ("CX2").
   - **A baixa do lançamento sem meio exige a forma** (C34), no
     `marcarPagoCore` e no `marcar_pago` do Copilot: "Escolha a forma de
     pagamento." (ficava "Não informado").
-  - **O "só os meus" do Financeiro tranca a ACTION** (C35,
-    `recusaDoSoOsMeus`, `lib/financeiro/so-os-meus.ts`): não estorna, não
-    lança, não cancela pacote, plano nem unidade pré-paga, não dá crédito, não
-    traz pacote de fora, não devolve produto, não remarca nem antecipa — a tela
-    já escondia, e pela action direta gravava em qualquer registro da unidade.
+  - **O C35 saiu** (SM1, 2026-11-23): sem o "só os meus" do Financeiro, o
+    `recusaDoSoOsMeus` saiu; estornar, lançar, cancelar pacote, plano e
+    unidade pré-paga, dar crédito, trazer pacote de fora, devolver produto,
+    remarcar e antecipar seguem só a trava de cada action (o Financeiro em
+    Gerenciar) e a unidade ao alcance, em qualquer registro da abrangência.
   - **O estornado do plano não conta como recebido** (C37,
     `emAbertoDoPlano`): o check-in cobrava a menos.
   - **Com a unidade filtrada, o "Débito no período" do Financeiro da rede é o
@@ -1502,7 +1501,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     (`trg_sinal_financeiro_ins/upd/del`, com tabela de transição: o lote marca
     uma vez); a tela recarrega pelo servidor, que aplica o alcance. A linha do
     lançamento (valor, cliente) não vai mais pelo websocket a quem o cargo
-    deixa ver só "os meus". `financial_transactions` sai da publicação DEPOIS
+    não deixa ver. `financial_transactions` sai da publicação DEPOIS
     do deploy (`20261112006711`). Prova: `e2e/financeiro-sinal.spec.ts`,
     `tests/realtime-assina-sinal.test.ts` (trava a tabela crua num
     `RealtimeRefresher`).
@@ -1511,7 +1510,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     para todo membro da unidade, sem o módulo — um membro sem o
     Financeiro lia o caixa pela chave pública, e qualquer membro gravava um
     recebimento falso. A lista do Financeiro da unidade lê pelo cliente de
-    serviço, depois do `assertPermission`, do "só os meus" e do alcance
+    serviço, depois do `assertPermission` e do alcance
     (`assertUnidade`); a política RESTRITIVA `financeiro_so_pelo_servidor`
     (migration `20261113007503`, depois do deploy) fecha a sessão; a
     política antiga saiu de vez em 2026-11-14 (FI8, migration
@@ -1520,8 +1519,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   - Prova do resto: `e2e/financeiro-f67.spec.ts`, `tests/vendas-f67.test.ts`.
 - **O que era do Fechamento do dia e é do Financeiro** (CX6, fase 4 do PDV,
   2026-11-14): nos dois Financeiros (`/admin/financeiro` e
-  `/[slug]/financeiro`), para quem vê o financeiro de todos
-  (`can(financial, VIEW)` e não "só os próprios"), no período e nas unidades
+  `/[slug]/financeiro`), para quem tem o Financeiro em Ver
+  (`can(financial, VIEW)`), no período e nas unidades
   da tela: o aviso "Sem taxa da maquininha cadastrada…" (`[data-aviso-sem-taxa]`)
   e a linha "Taxas da maquininha no período (estimadas): R$ X — só para
   conferência; não saem do saldo." (`[data-taxas-estimadas]`), as duas de
@@ -1603,14 +1602,12 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
       `estornadoHoje`, de `estornadoNoMesmoDiaPorForma`) — sumir a linha
       escondia o que aconteceu (A4).
   - É o dinheiro da UNIDADE inteira (D6 da simulação de 2026-10-27): vê
-    quem recebe (`cashier`) ou o financeiro com escopo de TODOS
-    (`podeVerFechamento` em `lib/auth.ts`, `veFechamento` em `lib/menu.ts`
-    — a página, o menu e a busca); FECHA quem recebe e vê (`podeReceber` +
-    `podeVerFechamento`, `fecharODia` em `actions/fechamento.ts`). O
-    `financial: Ver, só os próprios` da Profissional (que existe para ela ver
-    as comissões DELA) abria o saldo da unidade. O menu recebe o escopo
-    (`menuSectionsFor(…, scopes)`). É a tela de quem só tem `cashier`.
-    Prova: `e2e/fechamento-escopo-proprio.spec.ts`.
+    quem tem o PDV em Gerenciar ou o Financeiro em Ver (`podeVerFechamento`
+    em `lib/auth.ts`, `veFechamento` em `lib/menu.ts` — a página, o menu e a
+    busca; sem o "só os meus", SM1, 2026-11-23); FECHA quem recebe e vê
+    (`podeReceber` + `podeVerFechamento`, `fecharODia` em
+    `actions/fechamento.ts`). A vista pessoal "Minhas comissões" (SM2) não
+    abre o Fechamento. É a tela de quem só tem `cashier`.
   - Cada fechamento é um REGISTRO em `fechamentos_do_dia` (com o retrato do
     resumo, refeito no servidor; a diferença é coluna gerada). Fechar de novo
     não apaga o anterior — vale o mais recente. Dia futuro não fecha.
@@ -1766,10 +1763,9 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   lançamentos da cliente, os totais do banco (`metrics_financeiro_do_cliente`
   — pago pela regra de receita, a receber = lançamentos em aberto + os
   concluídos a receber sem lançamento, e o crédito interno) e os
-  atendimentos a receber. Com `financial` "só os próprios" e sem `cashier`,
-  só o que é dos atendimentos DELA, totais incluídos, e sem o crédito interno
-  (é da cliente, não de um atendimento) — D6, 2026-10-27. Quem recebe vê
-  tudo. A aba somava na tela as últimas 50 linhas.
+  atendimentos a receber. Abre a quem tem o Financeiro em Ver ou recebe
+  (`podeReceber`), e mostra tudo da cliente (o recorte "só os próprios" da D6
+  de 27/10 saiu com a SM1, 2026-11-23). A aba somava na tela as últimas 50 linhas.
   **As Transações saem em ordem e cabem no celular** (D7 da 10ª simulação,
   2026-11-10; princípio 3): a tabela de cinco colunas rolava de lado a 412 px
   (695 px num espaço de 378), escondendo o valor, a forma e o "Vencida em", e
@@ -1848,8 +1844,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     qualquer vencimento (`metrics_a_receber_em_aberto` → `getAReceberEmAberto`:
     o conjunto do "a receber" de `metrics_em_aberto`, sem a janela; migration
     `20261029001105`). Nos dois financeiros (a rede, cada unidade no recorte e
-    a unidade), no escopo do financeiro ("só os meus": o ligado aos
-    atendimentos dela). Prova: `e2e/financeiro-a-receber-todos-os-vencimentos.spec.ts`.
+    a unidade), nas unidades ao alcance. Prova: `e2e/financeiro-a-receber-todos-os-vencimentos.spec.ts`.
 - **O fluxo de caixa dos PRÓXIMOS meses** (r2-fin-04, o Heitor, 2026-11-03:
   "crie o gráfico"). Nos dois financeiros, o cartão "Fluxo de caixa — próximos
   6 meses" (`FluxoDeCaixa`, `components/shared/fluxo-de-caixa.tsx`) — **3, 6 ou
@@ -1864,8 +1859,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   mês atual. A conta é `metrics_fluxo_de_caixa` → `getFluxoDeCaixa`
   (`lib/metrics/fluxo-de-caixa.ts`; migration `20261103001307`); na rede, o
   do recorte e o de cada unidade (o filtro de unidade troca o gráfico). Os
-  concluídos sem pagamento (sem lançamento, sem vencimento) não entram. Com o
-  financeiro "só os meus", não aparece (é o dinheiro da unidade). Prova:
+  concluídos sem pagamento (sem lançamento, sem vencimento) não entram. Prova:
   `e2e/financeiro-fluxo-de-caixa.spec.ts`.
 - **O total da LISTA do financeiro tem sinal** (J-48, 2026-10-30): "2
   lançamentos · resultado −R$ 2.400,00" — o pago que entrou menos o pago que
@@ -1939,8 +1933,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     plano (`emAbertoDoPlano`).
   - Prova: `e2e/financeiro-vencidas-da-9.spec.ts`, `tests/financeiro-vencida.test.ts`.
 - **Remarcar o vencimento** (A37 da 9ª simulação): a parcela do crediário só
-  tinha "Pagar". Quem tem o Financeiro em Gerenciar (sem "só os meus", com a
-  unidade ao alcance) tem "Remarcar vencimento" na linha em aberto dos dois
+  tinha "Pagar". Quem tem o Financeiro em Gerenciar (com a unidade ao
+  alcance) tem "Remarcar vencimento" na linha em aberto dos dois
   financeiros (`RemarcarVencimento`, `remarcarVencimento` em
   `actions/financial.ts`): o novo dia e um motivo opcional, gravados por
   `lancamento_remarcar_vencimento` (migration `20261107004404`), que guarda o
@@ -1975,8 +1969,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   o botão "CSV do fechamento do dia" (ao lado do "Exportar CSV", nos dois
   portais) abre uma janela com o Dia (e a Unidade, quando há mais de uma) e
   baixa pelo servidor (`csvDoFechamentoDoDia`, `actions/fechamento.ts` — a
-  mesma conta de antes; vê quem tem o Financeiro de todos em Ver,
-  `can(financial, VIEW)` e não "só os próprios"; unidade ao alcance).
+  mesma conta de antes; vê quem tem o Financeiro em Ver,
+  `can(financial, VIEW)`; unidade ao alcance).
   A compra e a perda chegam a quem tem o Financeiro sem o Estoque: embaixo do DRE,
   "Fora do resultado no período: compras no estoque R$ X · perdas R$ Y"
   (`[data-fora-do-resultado]`, `metrics_entradas_de_estoque` →
@@ -2062,7 +2056,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 - **"Remarcar vencimento" com a palavra, também na ficha** (A22 da 10ª; sobra
   da A37 da 9ª): o botão da lista dos dois financeiros diz "Remarcar
   vencimento" (era só o ícone), e a parcela em aberto da aba Financeiro da
-  ficha o tem para quem remarca (o Financeiro em Gerenciar, sem "só os meus").
+  ficha o tem para quem remarca (o Financeiro em Gerenciar).
   Prova: ("A22").
 - **As Vendas fazem a ponte com o caixa** (A30 da 10ª; princípio 5): embaixo
   dos cartões de Relatórios → Vendas, "O Total vendido é a venda, no dia em
@@ -2511,7 +2505,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
       quando vence (`recebiveis_do_cartao_lista` deriva a situação —
       A_RECEBER, RECEBIDA, ANTECIPADA, CANCELADA, ESTORNADA). "Marcar
       recebida" é a antecipação (`anteciparParcelaDaOperadora`, com
-      `financial: MANAGE` sem "só os meus" e a unidade ao alcance;
+      `financial: MANAGE` e a unidade ao alcance;
       `recebivel_do_cartao_receber`). **A antecipada tem "Desfazer"**
       (r2-fin-02, o Heitor, 2026-11-03: "mudar solicitando confirmação antes
       de desfazer"): a janela "Desfazer o recebimento?" confirma, e a parcela
@@ -2530,8 +2524,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
       simulação: o cartão dizia "Em aberto R$ 2.360" e a lista do mês vinha
       vazia, porque tudo vencia no mês seguinte; `recebiveis_do_cartao_da_tela`,
       migration `20261104002003`; prova:
-      `e2e/financeiro-cartao-a-receber-da-operadora.spec.ts`, "D3"). Com o
-      financeiro "só os meus", não aparece.
+      `e2e/financeiro-cartao-a-receber-da-operadora.spec.ts`, "D3").
       **E conta o LÍQUIDO, com o bruto ao lado** (A30 da 9ª simulação,
       2026-11-07; decidido pelo princípio 3): o cartão e o fluxo de caixa
       somavam o bruto e a lista mostrava o líquido (R$ 2.386,82 × R$ 2.289,47).
@@ -3023,7 +3016,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   Helena, no celular, só achava o estorno em Financeiro → Lançamentos, uma
   página de 20 mil px; a parcela do crediário na ficha não tinha ação): na aba
   Financeiro da ficha, o lançamento pago tem "Estornar" para quem estorna (o
-  Financeiro em Gerenciar, sem "só os meus") — a MESMA janela dos financeiros
+  Financeiro em Gerenciar) — a MESMA janela dos financeiros
   (`ConfirmarEstorno`, com os pontos que saem; a venda de crédito abre a dela) —
   e a parcela em aberto tem "Receber" para quem recebe (o PDV), que
   pergunta a forma (`ReceberNoCartao`) — `AcoesDoLancamentoDaFicha`
@@ -3103,8 +3096,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   de receita PAGO e vivo (sem estorno) tem "Recibo" na lista dos dois
   financeiros, e a cliente tem "Recibo" no Financeiro do app. **E também**
   (r2-ven-13, o Heitor, 2026-11-03) na aba Financeiro da ficha da cliente
-  (os dois portais; não para quem tem o financeiro "só os meus" sem receber,
-  que a rota recusa), no Histórico → Pagamentos do app (que passou a dizer
+  (os dois portais; a quem tem o Financeiro em Ver ou recebe — a rota recusa
+  o resto), no Histórico → Pagamentos do app (que passou a dizer
   "Estornado" no estornado, como o Financeiro do app) e na tela do
   atendimento pago, ao lado do "Pagamento confirmado" (para quem recebe). É
   `GET /api/recibos/[id]` (abre o PDF no navegador — imprimir ou baixar):

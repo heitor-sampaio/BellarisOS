@@ -64,11 +64,11 @@ test.beforeAll(async () => {
   dona = await criarMembro(`doc12d${marca}`, { tenant: rede.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
   recepcao = await criarMembro(`doc12r${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Recepcao',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'documents', nivel: 'MANAGE' }],
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'documents', nivel: 'MANAGE' }],
   })
   caixa = await criarMembro(`doc12c${marca}`, {
     tenant: rede.tenantId, rotulo: 'Caixa',
-    permissoes: [{ modulo: 'cashier', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'agenda', nivel: 'VIEW', escopo: 'ALL' }],
+    permissoes: [{ modulo: 'cashier', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'agenda', nivel: 'VIEW' }],
   })
 })
 

@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPodeReceber, podeVerFechamento, alcancaUnidade, can, isOwnScope } from '@/lib/auth'
+import { getTenantContext, assertPodeReceber, podeVerFechamento, alcancaUnidade, can } from '@/lib/auth'
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
@@ -37,7 +37,7 @@ export async function fecharODia(
   try {
     const ctx = await getTenantContext()
     assertPodeReceber(ctx)
-    // Fecha quem recebe E vê a unidade inteira (D6): o financeiro "só os meus" não.
+    // Fecha quem recebe E vê o Fechamento (D6).
     if (!podeVerFechamento(ctx)) throw semAcesso()
     if (typeof dia !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dia)) return { error: 'Dia inválido.' }
     if (!Number.isFinite(contado) || contado < 0) return { error: 'Informe o dinheiro contado.' }
@@ -133,15 +133,15 @@ export async function informarFundoDeTroco(
  * adaptação, 2026-11-14): o mesmo CSV que o Fechamento exportava — as formas,
  * o total, o esperado em espécie, a situação do dia, as bandeiras, os
  * estornos, "Por quem recebeu" e, só a quem vê o financeiro da rede (D7), a
- * taxa e o líquido por maquininha. Quem vê: quem vê o Financeiro da unidade
- * inteira (o "só os meus" não). O servidor monta; o navegador só baixa.
+ * taxa e o líquido por maquininha. Quem vê: quem vê o Financeiro. O servidor
+ * monta; o navegador só baixa.
  */
 export async function csvDoFechamentoDoDia(
   branchId: string, dia: string,
 ): Promise<{ ok: true; csv: string; nome: string } | { error: string }> {
   try {
     const ctx = await getTenantContext()
-    if (!can(ctx, 'financial', 'VIEW') || isOwnScope(ctx, 'financial')) throw semAcesso()
+    if (!can(ctx, 'financial', 'VIEW')) throw semAcesso()
     if (typeof dia !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dia)) return { error: 'Dia inválido.' }
     const admin = createAdminClient()
 
@@ -223,7 +223,7 @@ export async function dinheiroNaGavetaDeHoje(
   try {
     const ctx = await getTenantContext()
     // D6 (VF-03 da varredura de 18/11): o dinheiro da unidade inteira é de quem
-    // recebe ou do Financeiro de TODOS — o "só os meus" é "Minhas comissões".
+    // recebe ou de quem vê o Financeiro.
     if (!podeVerFechamento(ctx)) return null
     if (typeof branchId !== 'string' || !/^[0-9a-f-]{36}$/i.test(branchId)) return null
     const admin = createAdminClient()

@@ -61,13 +61,13 @@ test.beforeAll(async () => {
   expect((await db().from('users').update({ atende_em: [rede.branchId, unidadeB] }).eq('id', rede.professionalId)).error).toBeNull()
   const so = await criarMembro(`pus${marca}`, {
     tenant: rede.tenantId, branchId: unidadeB, rotulo: 'Profissional da B',
-    permissoes: [{ modulo: 'agenda', nivel: 'VIEW', escopo: 'OWN' }],
+    permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }],
   })
   soNaB = so.userId
   expect((await db().from('users').update({ atende_em: [unidadeB] }).eq('id', soNaB)).error).toBeNull()
   gerente = await criarMembro(`pug${marca}`, {
     tenant: rede.tenantId, rotulo: 'Gerente da rede',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'clients', nivel: 'VIEW' }],
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }],
   })
 })
 test.afterAll(async () => {

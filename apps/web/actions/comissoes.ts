@@ -18,7 +18,7 @@ import { maximoDeParcelasDaRede } from '@/lib/financeiro/crediario-da-rede'
  */
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission, alcancaUnidade, ownerFilter, assertRecurso } from '@/lib/auth'
+import { getTenantContext, assertPermission, alcancaUnidade, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { recusaDeMexerNaAdmin } from '@/lib/equipe/admin-da-rede'
@@ -206,8 +206,6 @@ export async function fecharComissoes(
     const ctx = await getTenantContext()
     assertRecurso(ctx, 'comissoes')
     assertPermission(ctx, 'financial', 'MANAGE')
-    // Quem só vê as próprias não fecha nem as próprias.
-    if (ownerFilter(ctx, 'financial')) return { error: 'Seu cargo vê só as próprias comissões: quem fecha é o financeiro.' }
     const uuid = /^[0-9a-f-]{36}$/i
     if (!uuid.test(profissionalId) || !uuid.test(branchId)) return { error: 'Profissional ou unidade inválidos.' }
     if (!(METODOS_DO_FECHAMENTO as readonly string[]).includes(metodo)) return { error: 'Escolha a forma de pagamento.' }
@@ -260,7 +258,6 @@ export async function estornarFechamento(fechamentoId: string, motivo: string): 
     const ctx = await getTenantContext()
     assertRecurso(ctx, 'comissoes')
     assertPermission(ctx, 'financial', 'MANAGE')
-    if (ownerFilter(ctx, 'financial')) return { error: 'Seu cargo vê só as próprias comissões: quem estorna é o financeiro.' }
     if (typeof fechamentoId !== 'string' || !/^[0-9a-f-]{36}$/i.test(fechamentoId)) return { error: 'Fechamento não encontrado.' }
     const texto = typeof motivo === 'string' ? motivo.trim() : ''
     if (!texto) return { error: 'Diga o motivo do estorno.' }

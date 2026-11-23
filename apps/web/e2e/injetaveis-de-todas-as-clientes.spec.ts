@@ -5,24 +5,16 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
 
 /**
- * Os mapas de injetáveis com o prontuário "só os meus" (decisão do Heitor,
- * 2026-10-28: "quem tem 'só os meus' vê 'só os meus', em qualquer lugar").
- *
- * A frente G achou: `listarMapasDeInjetaveis` conferia `medical_records: VIEW`
- * e ignorava o escopo — a profissional via na lista de Injetáveis os mapas
- * (dado clínico) de clientes de outras profissionais, e abria qualquer um
- * pelo id.
- *
- * "Dela" é a regra do resto do prontuário OWN (a ficha, `recusaDoAnexo`): a
- * cliente que ela atende (um agendamento com ela). O mapa avulso (sem
- * cliente) é dela quando foi ela quem o mexeu por último (`updated_by`).
+ * Os mapas de injetáveis sem o "só os meus" (SM1, o Heitor, 2026-11-23): quem
+ * tem o Prontuário vê, na lista de Injetáveis e pelo id, os mapas de TODAS as
+ * clientes da unidade ao alcance — também os de cliente de outra profissional
+ * e os avulsos que outra pessoa mexeu —; em Gerenciar, renomeia.
  */
 
 const marca = Date.now().toString(36)
 const db = () => banco()
 let rede: OutraRede | null = null
 let ela: MembroDeTeste | null = null
-let todos: MembroDeTeste | null = null
 let slug = ''
 const mapas: Record<'dela' | 'deOutra' | 'avulsoDela' | 'avulsoDeOutra', { id: string; nome: string }> = {} as never
 
@@ -37,13 +29,9 @@ test.beforeAll(async () => {
   ela = await criarMembro(`ijp${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Profissional',
     permissoes: [
-      { modulo: 'medical_records', nivel: 'MANAGE', escopo: 'OWN' },
-      { modulo: 'agenda', nivel: 'VIEW', escopo: 'OWN' },
+      { modulo: 'medical_records', nivel: 'MANAGE' },
+      { modulo: 'agenda', nivel: 'VIEW' },
     ],
-  })
-  todos = await criarMembro(`ija${marca}`, {
-    tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Prontuário de todos',
-    permissoes: [{ modulo: 'medical_records', nivel: 'MANAGE', escopo: 'ALL' }],
   })
   const clienteDela  = await rede.criarCliente('Cliente dela')
   const clienteOutra = await rede.criarCliente('Cliente de outra')
@@ -64,8 +52,8 @@ test.beforeAll(async () => {
     expect(error, `mapa ${chave}`).toBeNull()
     mapas[chave] = { id: data!.id, nome }
   }
-  await mapa('dela', clienteDela, todos.userId)
-  await mapa('deOutra', clienteOutra, ela.userId)
+  await mapa('dela', clienteDela, ela.userId)
+  await mapa('deOutra', clienteOutra, rede.professionalId)
   await mapa('avulsoDela', null, ela.userId)
   await mapa('avulsoDeOutra', null, rede.professionalId)
 })
@@ -77,45 +65,29 @@ test.afterAll(async () => {
     if (r.error) falhas.push(`mapas: ${r.error.message}`)
   }
   await ela?.limpar()
-  await todos?.limpar()
   await rede?.limpar()
   expect(falhas).toEqual([])
 })
 
-test('a lista de Injetáveis, com o prontuário "só os meus", mostra só os mapas dela', async ({ browser }) => {
+test('a lista de Injetáveis, com o Prontuário, mostra os mapas de todas — não só os dela', async ({ browser }) => {
   await como(ela!, browser, async p => {
     await p.goto(`/${slug}/injetaveis`)
-    await expect(p.getByText(mapas.dela.nome)).toBeVisible()
-    await expect(p.getByText(mapas.avulsoDela.nome)).toBeVisible()
-    await expect(p.getByText(mapas.deOutra.nome), 'mapa de cliente de outra profissional').toHaveCount(0)
-    await expect(p.getByText(mapas.avulsoDeOutra.nome), 'avulso de outra pessoa').toHaveCount(0)
-  })
-  // Controle: com o prontuário de todos, os quatro.
-  await como(todos!, browser, async p => {
-    await p.goto(`/${slug}/injetaveis`)
-    for (const m of Object.values(mapas)) await expect(p.getByText(m.nome)).toBeVisible()
+    for (const m of Object.values(mapas)) await expect(p.getByText(m.nome), m.nome).toBeVisible()
   })
 })
 
-test('pelo id: não abre nem renomeia o mapa de cliente de outra', async ({ browser }) => {
+test('pelo id: abre e renomeia o mapa de cliente de outra profissional', async ({ browser }) => {
   const tela = `/${slug}/injetaveis/${mapas.dela.id}`
+  const novoNome = `${mapas.deOutra.nome} renomeado`
   await como(ela!, browser, async p => {
     await p.goto(tela)
     const aberto = await chamarAcao(p, 'actions/injectable-map.ts', 'getPlanejamentoInjetavel', tela, [mapas.deOutra.id])
     expect(aberto.texto).not.toContain('Server action not found')
-    expect(aberto.texto).toContain('Planejamento não encontrado')
+    expect(aberto.texto, 'o de cliente de outra abre').toContain(mapas.deOutra.nome)
     const avulso = await chamarAcao(p, 'actions/injectable-map.ts', 'getPlanejamentoInjetavel', tela, [mapas.avulsoDeOutra.id])
-    expect(avulso.texto).toContain('Planejamento não encontrado')
-    await chamarAcao(p, 'actions/injectable-map.ts', 'renomearPlanejamentoInjetavel', tela, [mapas.deOutra.id, 'invasão'])
-    const meu = await chamarAcao(p, 'actions/injectable-map.ts', 'getPlanejamentoInjetavel', tela, [mapas.dela.id])
-    expect(meu.texto, 'o dela abre').toContain(mapas.dela.nome)
+    expect(avulso.texto, 'o avulso de outra pessoa abre').toContain(mapas.avulsoDeOutra.nome)
+    await chamarAcao(p, 'actions/injectable-map.ts', 'renomearPlanejamentoInjetavel', tela, [mapas.deOutra.id, novoNome])
   })
   const { data } = await db().from('injectable_maps').select('name').eq('id', mapas.deOutra.id).single<{ name: string }>()
-  expect(data!.name).toBe(mapas.deOutra.nome)
-  // Controle: com o prontuário de todos, abre o de outra.
-  await como(todos!, browser, async p => {
-    await p.goto(tela)
-    const aberto = await chamarAcao(p, 'actions/injectable-map.ts', 'getPlanejamentoInjetavel', tela, [mapas.deOutra.id])
-    expect(aberto.texto).toContain(mapas.deOutra.nome)
-  })
+  expect(data!.name, 'o Prontuário em Gerenciar renomeia').toBe(novoNome)
 })

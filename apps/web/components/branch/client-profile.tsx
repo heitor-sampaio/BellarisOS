@@ -18,7 +18,6 @@ import { AttendanceRecordCard } from './attendance-record-card'
 import { AnexosClinicos } from './anexos-clinicos'
 import { AnotacoesDoAtendimento, RegistroEditado } from './anotacoes-do-atendimento'
 import { FotosDoAtendimento, type FotoDoAtendimento } from './fotos-do-atendimento'
-import { AvisoDosAnexosClinicosFora } from './client-documents-tab'
 import type { AnotacoesEVersoes } from '@/lib/prontuario/anotacoes-e-versoes'
 import { ExportarLgpdDaFicha } from './exportar-lgpd-da-ficha'
 import { AnamneseGeralCartao } from './anamnese-geral'
@@ -302,8 +301,6 @@ interface Props {
   veFinanceiro?:         boolean
   /** Os totais da aba Financeiro, do banco (lib/clientes/financeiro-da-ficha.ts). */
   totaisFinanceiros?:    { pago: number; aReceber: number; credito: number | null }
-  /** A aba Financeiro recortada pelos atendimentos de quem vê (D6, 2026-10-27). */
-  financeiroSoOsProprios?: boolean
   isNetworkWide:         boolean
   /**
    * A unidade em que o plano NOVO nasce, na ficha da rede (auditoria das
@@ -348,7 +345,7 @@ interface Props {
   podeVerPlanos?:        boolean
   /** D12 da 25ª: o "Iniciar" das sessões do pacote e do plano — o Atendimento em Gerenciar. */
   podeIniciarAtendimento?: boolean
-  /** Cancelar o pacote, o plano e a unidade pré-paga (F2b, C36): `podeEstornar` — o Financeiro em Gerenciar, sem "só os meus". */
+  /** Cancelar o pacote, o plano e a unidade pré-paga (F2b, C36): `podeEstornar` — o Financeiro em Gerenciar. */
   podeCancelarPacote?:   boolean
   /** Item 9 da auditoria: o pacote vencido que a rede deixa cancelar (só com a regra ligada). */
   pacoteVencido?:        PacoteVencidoDaFicha | null
@@ -358,7 +355,7 @@ interface Props {
    * vê já desfaz (ou não recebe).
    */
   quemDesfaz?:           string[] | null
-  /** A22 da 10ª: quem remarca o vencimento (o Financeiro em Gerenciar, sem "só os meus") o faz aqui também. */
+  /** A22 da 10ª: quem remarca o vencimento (o Financeiro em Gerenciar) o faz aqui também. */
   podeRemarcar?:         boolean
   /** A32 da 12ª: o estorno também na ficha (o Financeiro em Gerenciar). */
   podeEstornar?:         boolean
@@ -371,12 +368,12 @@ interface Props {
   /** A aba Oportunidades é do CRM (CRM-03, 18/11): sem ele, ou fora do plano, ela some. */
   veOportunidades?:      boolean
   /** Termos e contratos. Nulo = sem os Documentos no plano da rede: a seção não aparece. */
-  termos?:               { itens: ItemDeTermo[]; podeDispensar: boolean; pelaConversa?: boolean; recortado?: boolean; portalNoPlano?: boolean } | null
+  termos?:               { itens: ItemDeTermo[]; podeDispensar: boolean; pelaConversa?: boolean; portalNoPlano?: boolean } | null
   /** A33 da 11ª: o lote que cada atendimento usou (a baixa), por id do atendimento. */
   lotesDosAtendimentos?: Record<string, LoteDoAtendimento[]>
   /** Abre o "Aplicado em" do lote no Estoque (o Estoque e as Clientes). */
   podeAbrirLote?:        boolean
-  /** A35 da 11ª: quantos anexos clínicos o cargo não abre (o recorte) — só o número. */
+  /** A35 da 11ª: quantos anexos clínicos o cargo não abre (sem o Prontuário) — só o número. */
   anexosClinicosFora?:   number
   /**
    * PR1b: os anexos clínicos (exame, laudo, receita, foto, termo) que quem vê
@@ -384,8 +381,6 @@ interface Props {
    * prontuário aparece no registro dele (PR1a); o resto, em "Anexos clínicos".
    */
   anexosClinicos?:       ClientDocumentItem[]
-  /** O Prontuário em Ver (mesmo no "só os meus" de quem não atende): a aba existe para dizer o recorte. */
-  temModuloProntuario?:  boolean
   /** PR2: as anotações e as versões de antes de cada atendimento do prontuário. */
   anotacoesEVersoes?:    AnotacoesEVersoes
   /** PR2a: acrescentar anotação (o Prontuário em Gerenciar; a action confere o alcance). */
@@ -1204,7 +1199,6 @@ function FinanceiroTab({
   slug,
   unidadesParaCredito = [],
   totais,
-  soOsProprios = false,
   quemDesfaz = null,
   pagoComCredito = 0,
   podeRemarcar = false,
@@ -1221,11 +1215,9 @@ function FinanceiroTab({
   unidadesParaCredito?: { id: string; name: string }[]
   /**
    * Os totais vêm do banco (metrics_financeiro_do_cliente): a aba somava na
-   * tela as últimas 50 linhas. `credito` nulo = "só os próprios" (D6).
+   * tela as últimas 50 linhas. `credito` nulo = sem o financeiro (D6).
    */
   totais:          { pago: number; aReceber: number; credito: number | null }
-  /** Recortado pelos atendimentos de quem vê (o financeiro "só os meus"). */
-  soOsProprios?:   boolean
   /** A33 da 8ª: a quem pedir o estorno, a devolução e o cancelamento do pacote. */
   quemDesfaz?:     string[] | null
   /** A43 da 8ª: o pago com crédito na clínica (fora do "Total pago"). */
@@ -1280,15 +1272,12 @@ function FinanceiroTab({
             <span>Transações</span>
             {/* O que a lista mostra e a quem pedir o estorno moram na dica (2026-11-16 — eram parágrafos fixos).
                 A33 da 8ª: quem não tem o Financeiro em Gerenciar não vê Estornar, Devolver nem Cancelar pacote — a dica diz a quem pedir. */}
-            {(soOsProprios || quemDesfaz) && (
+            {quemDesfaz && (
               <Dica rotulo="Sobre as transações">
-                {soOsProprios && <span style={{ display: 'block' }}>Só os lançamentos dos atendimentos que você fez com esta cliente.</span>}
-                {quemDesfaz && (
-                  <span data-quem-desfaz style={{ display: 'block', marginTop: soOsProprios ? 6 : 0 }}>
-                    Estornar um pagamento, devolver uma venda de produto ou cancelar um pacote é de quem tem o Financeiro em Gerenciar
-                    {quemDesfaz.length > 0 ? `: ${quemDesfaz.join(', ')}.` : ' (ninguém na equipe tem hoje: veja em Configurações → Cargos).'}
-                  </span>
-                )}
+                <span data-quem-desfaz style={{ display: 'block' }}>
+                  Estornar um pagamento, devolver uma venda de produto ou cancelar um pacote é de quem tem o Financeiro em Gerenciar
+                  {quemDesfaz.length > 0 ? `: ${quemDesfaz.join(', ')}.` : ' (ninguém na equipe tem hoje: veja em Configurações → Cargos).'}
+                </span>
               </Dica>
             )}
           </h3>
@@ -1392,7 +1381,7 @@ function FinanceiroTab({
                             <AcoesDoLancamentoDaFicha slug={slug} podeEstornar={podeEstornar} podeReceber={false} forma={f.rotulo}
                               lancamento={{ id: f.id, descricao: t.description, valor: f.valor, pago: true, metodo: f.metodo,
                                 vendaDeProduto: t.vendaDeProduto, vendaDeCredito: t.vendaDeCredito, doAtendimento: t.doAtendimento }} />
-                            {!soOsProprios && (
+                            {(
                               <a href={`/api/recibos/${f.id}`} target="_blank" rel="noopener" title="Recibo (PDF): imprimir ou baixar" aria-label={`Recibo (${f.rotulo})`}
                                 style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)', textDecoration: 'none' }}>
                                 <FileText size={12} aria-hidden /> Recibo
@@ -1404,9 +1393,8 @@ function FinanceiroTab({
                           lancamento={{ id: t.id, descricao: t.description, valor: t.amount, pago: t.isPaid, estornada: t.estornada, estorno: t.estorno, saida: t.saida,
                             metodo: t.paymentMethod, vendaDeProduto: t.vendaDeProduto, vendaDeCredito: t.vendaDeCredito, doAtendimento: t.doAtendimento,
                             adiantada: t.adiantada ?? null }} />}
-                        {/* r2-ven-13: o recibo do pago (PDF), onde a recepção procura. Quem só vê
-                            o dela não tira recibo (a rota pede quem recebe ou vê a unidade inteira). */}
-                        {!t.formas && t.isPaid && !t.estornada && !t.estorno && !t.saida && !soOsProprios && (
+                        {/* r2-ven-13: o recibo do pago (PDF), onde a recepção procura. */}
+                        {!t.formas && t.isPaid && !t.estornada && !t.estorno && !t.saida && (
                           <a href={`/api/recibos/${t.id}`} target="_blank" rel="noopener" title="Recibo (PDF): imprimir ou baixar"
                             style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)', textDecoration: 'none' }}>
                             <FileText size={12} aria-hidden /> Recibo
@@ -1423,7 +1411,7 @@ function FinanceiroTab({
         )}
       </div>
 
-      {/* Crédito interno — é da cliente, não de um atendimento: fora do "só os próprios" (D6). */}
+      {/* Crédito interno — é da cliente, não de um atendimento (D6). */}
       {creditoTotal != null && <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '14px 20px', borderBottom: (showGrantForm || internalCredits.length > 0) ? '1px solid var(--border)' : 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
           <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', flex: 1 }}>Crédito interno</h3>
@@ -1495,11 +1483,11 @@ function FinanceiroTab({
 export function ClientProfile({
   client, branchId, stats, upcomingAppointments, recentAppointments, allAppointments = [],
   fidelidade, activePackage,
-  transactions, internalCredits, documents, recordForms = [], lotesDosAtendimentos = {}, podeAbrirLote = false, anexosClinicosFora = 0, anexosClinicos = [], temModuloProntuario = false, anotacoesEVersoes = { anotacoes: {}, versoes: {} }, podeAnotar = false, pedidoLgpd = null, podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, alergias = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, portalNoPlano = false, veFinanceiro = false, isNetworkWide, unidadeDoPlano, unidadesDoPlano = [], perguntaAUnidade = false, clientHistory, opportunities = [], veOportunidades = true,
+  transactions, internalCredits, documents, recordForms = [], lotesDosAtendimentos = {}, podeAbrirLote = false, anexosClinicosFora = 0, anexosClinicos = [], anotacoesEVersoes = { anotacoes: {}, versoes: {} }, podeAnotar = false, pedidoLgpd = null, podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, alergias = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, portalNoPlano = false, veFinanceiro = false, isNetworkWide, unidadeDoPlano, unidadesDoPlano = [], perguntaAUnidade = false, clientHistory, opportunities = [], veOportunidades = true,
   planProcedures = [], planProducts = [], podeReceber = false, podeMontarPlano = false, termos = null,
   prePagos = [], podeAgendar = false, podeCancelarPacote = false, pacoteVencido = null, quemDesfaz = null, pagoComCredito = 0, podeRemarcar = false, podeEstornar = false, podeReceberParcela = false, podeEditarCadastro = false, quemCompletaOCadastro: quemCompleta = null, podeExportarProntuario = false, podeVerPlanos = false, podeIniciarAtendimento = false,
   aReceber = { itens: [], total: { n: 0, valor: 0 } }, comandaParaReceber = null, planosNaoRecebidos = [], podeReceberAtendimento = false,
-  totaisFinanceiros = { pago: 0, aReceber: 0, credito: null }, financeiroSoOsProprios = false,
+  totaisFinanceiros = { pago: 0, aReceber: 0, credito: null },
 }: Props) {
   const router   = useRouter()
   const pathname = usePathname()
@@ -1560,9 +1548,7 @@ export function ClientProfile({
   // atendimento (a anamnese já está lá): a dona não achava a aba (2026-10-20).
   // O Planejamento é dos planos (Agenda) e dos injetáveis (prontuário): sem
   // nenhum dos dois, a aba ficava em "Carregando planos…" para sempre (D6).
-  // PR1b: com o Prontuário em Ver e anexos clínicos fora do "só os meus", a
-  // aba existe para dizer o recorte (o aviso saiu da aba Documentos).
-  const visibleTabs = TABS.filter(t => (t.key !== 'fichas' || podeVerProntuario || recordForms.length > 0 || (temModuloProntuario && anexosClinicosFora > 0)) && (t.key !== 'financeiro' || veFinanceiro)
+  const visibleTabs = TABS.filter(t => (t.key !== 'fichas' || podeVerProntuario || recordForms.length > 0) && (t.key !== 'financeiro' || veFinanceiro)
     && (t.key !== 'planejamento' || podeVerPlanos || podeVerProntuario) && (t.key !== 'oportunidades' || veOportunidades))
 
   // PR1a: a foto de um atendimento do prontuário aparece no registro dele; a
@@ -1885,7 +1871,7 @@ export function ClientProfile({
       {abaFechada && (
         <p data-aba-sem-acesso={abaFechada.key} role="status"
           style={{ margin: '0 0 10px', padding: '8px 12px', borderRadius: 'var(--radius-field)', background: 'var(--warning-soft)', color: 'var(--text)', fontSize: 'var(--text-sm-sz)' }}>
-          {avisoDaAbaFechada(abaFechada, temModuloProntuario)}
+          {avisoDaAbaFechada(abaFechada)}
         </p>
       )}
       <div className="tabs-bar" role="tablist" aria-label="Abas da ficha" style={{ gap: 0 }}>
@@ -2262,11 +2248,6 @@ export function ClientProfile({
       {/* -- Tab: Fichas ---------------------------------------------- */}
       {tab === 'fichas' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {/* A35 da 11ª, no Prontuário desde o PR1b: o anexo clínico que a
-              permissão não abre não some calado — só o número. */}
-          {anexosClinicosFora > 0 && (
-            <div className="card" style={{ padding: 0 }}><AvisoDosAnexosClinicosFora quantos={anexosClinicosFora} /></div>
-          )}
           {!podeVerProntuario && recordForms.length === 0 ? null : recordForms.length === 0 ? (
             <>
               {generalAnamnesis && (
@@ -2362,7 +2343,6 @@ export function ClientProfile({
           slug={slug}
           unidadesParaCredito={perguntaAUnidade ? branches : []}
           totais={totaisFinanceiros}
-          soOsProprios={financeiroSoOsProprios}
           quemDesfaz={quemDesfaz}
           pagoComCredito={pagoComCredito}
           podeRemarcar={podeRemarcar}
@@ -2375,13 +2355,13 @@ export function ClientProfile({
       {tab === 'documentos' && termos && (
         <section aria-label="Documentos para assinatura" style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
           <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>Documentos para assinatura</h3>
-          <TermosDoCliente itens={termos.itens} slug={slug} podeDispensar={termos.podeDispensar} pelaConversa={termos.pelaConversa} temAcessoAoApp={!!client.temAcesso && termos.portalNoPlano !== false} recortado={!!termos.recortado} />
+          <TermosDoCliente itens={termos.itens} slug={slug} podeDispensar={termos.podeDispensar} pelaConversa={termos.pelaConversa} temAcessoAoApp={!!client.temAcesso && termos.portalNoPlano !== false} />
         </section>
       )}
       {tab === 'documentos' && (
         <ClientDocumentsTab
           documents={documents}
-          anexosClinicosFora={temModuloProntuario ? 0 : anexosClinicosFora}
+          anexosClinicosFora={anexosClinicosFora}
           clientId={client.id}
           branchId={branchId}
           slug={slug}

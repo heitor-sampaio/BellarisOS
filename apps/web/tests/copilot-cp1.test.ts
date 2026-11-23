@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { TenantContext, ResolvedPermissions } from '@estetica-os/types'
-import { ALL_PERMISSIONS, ALL_SCOPES } from '@/lib/permissions'
+import { ALL_PERMISSIONS } from '@/lib/permissions'
 import { instrucoesDoCopilot } from '@/lib/copilot/prompt'
 import { formaDePagamento, FORMA_LEGIVEL } from '@/lib/copilot/ferramentas/gestao-escrita'
 import { indicadores, vendaParaOModelo } from '@/lib/copilot/ferramentas/indicadores'
@@ -17,7 +17,7 @@ function ctx(over: Partial<TenantContext> = {}): TenantContext {
   return {
     userId: 'auth', internalUserId: 'u1', userName: 'Ana (via Copilot)', roleLabel: 'Atendimento',
     tenantId: 't1', branchId: null, role: 'RECEPTIONIST', roleId: 'r1', clientId: null,
-    permissions: ALL_PERMISSIONS as ResolvedPermissions, scopes: ALL_SCOPES, reportTabs: [], providesServices: false,
+    permissions: ALL_PERMISSIONS as ResolvedPermissions, reportTabs: [], providesServices: false,
     isNetworkAdmin: false, isClient: false,
     plano: { funcionalidades: FUNCIONALIDADES.map(f => f.chave), limites: { unidades: null, membros: null, whatsapp: null } },
     ...over,

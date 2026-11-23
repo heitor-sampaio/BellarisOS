@@ -10,7 +10,6 @@ import { ehSituacao, ehTipoDeDocumento } from '@/lib/documentos/situacao'
 import { renderizarPendentes, COLUNAS_DO_DOCUMENTO, type DocumentoEmitido } from '@/lib/documentos/renderizar'
 import { rotuloDoQueFalta } from '@/lib/documentos/leitura'
 import { PainelDeDocumentos } from '@/components/shared/painel-de-documentos'
-import { profissionalDoRecorte } from '@/lib/clientes/atendida-por'
 import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
 
 export interface ParamsDosDocumentos {
@@ -51,11 +50,9 @@ export async function DocumentosEmitidos({
 
   // F62: o período no fuso do recorte (a unidade, o dela; a rede, o comum).
   const periodo = resolvePeriod(params.period ?? 'month', params.from, params.to, new Date(), await fusoDoRecorte(ctx.tenantId, branchIds))
-  // Prontuário "só os meus" (decisão do Heitor, 2026-10-29): os documentos das
-  // clientes que ela atende, recortados no banco.
   const recorte = {
     tenantId: ctx.tenantId!, branchIds, from: periodo.from, to: periodo.fullTo,
-    professionalId: profissionalDoRecorte(ctx, 'medical_records'),
+    professionalId: null,
   }
   const filtros = {
     situacao: ehSituacao(params.situacao) ? params.situacao : null,

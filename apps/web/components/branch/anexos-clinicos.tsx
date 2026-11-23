@@ -22,7 +22,7 @@ export function AnexosClinicos({ anexos, clientId, branchId, slug, podeAnexar, p
   clientId:      string
   branchId:      string
   slug:          string
-  /** O Prontuário em Gerenciar (e a cliente no "só os meus"): anexar, enviar e excluir. */
+  /** O Prontuário em Gerenciar: anexar, enviar e excluir. */
   podeAnexar:    boolean
   portalNoPlano: boolean
 }) {

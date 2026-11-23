@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import type { TenantContext, ResolvedPermissions } from '@estetica-os/types'
-import { NO_PERMISSIONS, ALL_SCOPES } from '@/lib/permissions'
+import { NO_PERMISSIONS } from '@/lib/permissions'
 import { FUNCIONALIDADES } from '@estetica-os/nucleo/lib/planos/recursos'
 
 // O primeiro import() de uma ferramenta carrega o Supabase e o núcleo.
@@ -34,7 +34,7 @@ function ctx(): TenantContext {
     userId: 'auth', internalUserId: 'u-marcos', userName: 'Marcos', roleLabel: 'Dono',
     tenantId: 't1', branchId: null, unidades: null, role: 'NETWORK_ADMIN', roleId: 'r1', clientId: null,
     permissions: { ...NO_PERMISSIONS, copilot: 'MANAGE', agenda: 'MANAGE', clients: 'MANAGE' } as ResolvedPermissions,
-    scopes: ALL_SCOPES, reportTabs: [], providesServices: false, isNetworkAdmin: true, isClient: false,
+    reportTabs: [], providesServices: false, isNetworkAdmin: true, isClient: false,
     plano: { funcionalidades: TODAS, limites: { unidades: null, membros: null, whatsapp: null } },
   } as TenantContext
 }

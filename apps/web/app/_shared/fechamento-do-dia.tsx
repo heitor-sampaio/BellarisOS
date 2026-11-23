@@ -1,5 +1,5 @@
 import type { TenantContext } from '@estetica-os/types'
-import { podeReceber, can, isOwnScope } from '@/lib/auth'
+import { podeReceber, can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { getFechamentoDoDia, getAvisosDoFechamento } from '@/lib/metrics'
@@ -119,8 +119,8 @@ export async function FechamentoDoDia({ ctx, unidades, unidadeId, diaPedido, bas
             porQuemRecebeu={porQuemRecebeu}
             bandeiras={bandeiras}
             daRede={daRede}
-            // A23 da 24ª: o CSV do fechamento é de quem vê o Financeiro da unidade inteira (CX6).
-            linkDoCsv={can(ctx, 'financial', 'VIEW') && !isOwnScope(ctx, 'financial')
+            // A23 da 24ª: o CSV do fechamento é de quem vê o Financeiro (CX6).
+            linkDoCsv={can(ctx, 'financial', 'VIEW')
               ? linkDoCsvDoFechamento(basePath, unidades.length > 1 ? unidadeId : null) : null}
             comandasAbertas={abertas.length}
             avisos={avisos}

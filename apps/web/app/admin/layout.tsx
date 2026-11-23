@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { quantasUnidadesAtivas } from '@/lib/unidades/da-tela'
-import { getTenantContext, isOwnScope } from '@/lib/auth'
+import { getTenantContext, vistaPessoal } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { AdminSidebar } from '@/components/admin/sidebar'
@@ -71,8 +71,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <UmaUnidadeProvider valor={umaUnidade} nome={nomeDaRede}>
     <FusoProvider fuso={fuso}>
     <SidebarProvider>
-      <AdminSidebar permissions={ctx.permissions} scopes={ctx.scopes} plano={ctx.plano ?? null} adminDaRede={mexeNaConfigDaRede(ctx)} />
-      <Topbar userName={ctx.userName || 'Usuário'} userRole={ctx.role} roleLabel={ctx.roleLabel} internalUserId={ctx.internalUserId} initialUnread={initialUnread} slug={null} permissions={ctx.permissions} scopes={ctx.scopes} plano={ctx.plano ?? null} agendaPropria={isOwnScope(ctx, 'agenda')} adminDaRede={mexeNaConfigDaRede(ctx)} suporte={ctx.suporte ?? null} assinatura={await avisoDaAssinatura(ctx)} saudacaoInicial={saudacao(new Date(), fuso)} />
+      <AdminSidebar permissions={ctx.permissions} pessoa={{ atende: ctx.providesServices, comissaoDeVenda: ctx.comissaoDeVenda }} plano={ctx.plano ?? null} adminDaRede={mexeNaConfigDaRede(ctx)} />
+      <Topbar userName={ctx.userName || 'Usuário'} userRole={ctx.role} roleLabel={ctx.roleLabel} internalUserId={ctx.internalUserId} initialUnread={initialUnread} slug={null} permissions={ctx.permissions} pessoa={{ atende: ctx.providesServices, comissaoDeVenda: ctx.comissaoDeVenda }} plano={ctx.plano ?? null} agendaPropria={vistaPessoal(ctx, 'agenda') !== null} adminDaRede={mexeNaConfigDaRede(ctx)} suporte={ctx.suporte ?? null} assinatura={await avisoDaAssinatura(ctx)} saudacaoInicial={saudacao(new Date(), fuso)} />
       <main style={{
         marginLeft:    'var(--sidebar-w)',
         marginTop:     'calc(var(--topbar-h) + env(safe-area-inset-top, 0px))',

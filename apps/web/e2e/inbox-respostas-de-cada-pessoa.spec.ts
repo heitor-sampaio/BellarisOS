@@ -33,7 +33,7 @@ const acao = (p: Page, funcao: string, args: unknown[]) => chamarAcao(p, 'action
 
 test.beforeAll(async () => {
   rede = await criarOutraRede(`qr${marca}`)
-  const crm = [{ modulo: 'crm' as const, nivel: 'MANAGE' as const, escopo: 'ALL' as const }]
+  const crm = [{ modulo: 'crm' as const, nivel: 'MANAGE' as const }]
   ana = await criarMembro(`qra${marca}`, { tenant: rede.tenantId, rotulo: 'Atendente Ana', permissoes: crm })
   bia = await criarMembro(`qrb${marca}`, { tenant: rede.tenantId, rotulo: 'Atendente Bia', permissoes: crm })
 })

@@ -1,5 +1,5 @@
-import type { ResolvedPermissions, ResolvedScopes } from '@estetica-os/types'
-import { ADMIN_MENU, BRANCH_MENU, SO_NO_MENU_DA_REDE, menuEntriesFor, soLeriaAsConfiguracoes } from '@/lib/menu'
+import type { ResolvedPermissions } from '@estetica-os/types'
+import { ADMIN_MENU, BRANCH_MENU, SO_NO_MENU_DA_REDE, menuEntriesFor, soLeriaAsConfiguracoes, type DaPessoa } from '@/lib/menu'
 import { ABAS_DE_CONFIGURACAO, ABAS_DA_REDE, ABAS_DA_UNIDADE, abaNoPlano, abaLiberada } from '@/lib/configuracoes/abas'
 import { casaComTermo } from '@/lib/busca/texto'
 import { semAcento } from '@/lib/texto'
@@ -121,13 +121,13 @@ export function paginasDaBusca(
   slug: string | null, permissions: ResolvedPermissions,
   /** O plano da rede (`ctx.plano`): página de funcionalidade fora dele não é oferecida. */
   plano?: { funcionalidades: readonly string[] } | null,
-  /** O escopo de cada módulo: o Fechamento do dia pede o financeiro de todos (D6). */
-  scopes?: Partial<ResolvedScopes>,
   /**
    * Quem busca é da REDE (`ctx.branchId === null`): no portal da unidade, acha também o que é só da rede.
    * `adminDaRede` (`mexeNaConfigDaRede(ctx)`): a configuração da rede toda que a página só abre à Admin da rede.
+   * `pessoa` (lib/menu): liga as vistas pessoais (a Minha agenda, as Minhas comissões) — lido do contexto,
+   * `{ atende: ctx.providesServices, comissaoDeVenda: ctx.comissaoDeVenda }`.
    */
-  opcoes: { daRede?: boolean; adminDaRede?: boolean } = {},
+  opcoes: { daRede?: boolean; adminDaRede?: boolean; pessoa?: DaPessoa } = {},
 ): PaginaDaBusca[] {
   const naRede = slug === null
   const prefixo = naRede ? '' : `/${slug}`
@@ -136,7 +136,7 @@ export function paginasDaBusca(
   // A26 da 15ª e A-CONF1 da 25ª: quem não é a Admin da rede e só chegaria às abas da rede toda não acha
   // Configurações, em nenhum dos portais (o menu também não a mostra).
   const semConfiguracoes = soLeriaAsConfiguracoes(permissions, !!opcoes.adminDaRede)
-  const menu = menuEntriesFor(naRede ? ADMIN_MENU : BRANCH_MENU, permissions, plano, scopes)
+  const menu = menuEntriesFor(naRede ? ADMIN_MENU : BRANCH_MENU, permissions, plano, opcoes.pessoa)
     .filter(e => !semConfiguracoes || e.key !== 'settings')
   const paginas: PaginaDaBusca[] = menu.map(e => ({
     key:      e.key,
@@ -149,7 +149,7 @@ export function paginasDaBusca(
   // que só o menu da rede tem (Automações, Notificações…), com o endereço da
   // rede — a mesma lista do menu da unidade (`SO_NO_MENU_DA_REDE`).
   if (!naRede && opcoes.daRede) {
-    for (const e of menuEntriesFor(SO_NO_MENU_DA_REDE, permissions, plano, scopes)) {
+    for (const e of menuEntriesFor(SO_NO_MENU_DA_REDE, permissions, plano, opcoes.pessoa)) {
       paginas.push({ key: e.key, titulo: e.label, href: e.href, apelidos: APELIDOS[e.key] ?? [] })
     }
   }

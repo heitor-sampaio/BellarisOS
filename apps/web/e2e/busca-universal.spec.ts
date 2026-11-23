@@ -54,16 +54,16 @@ test.beforeAll(async () => {
     { modulo: 'procedures', nivel: 'VIEW' }, { modulo: 'stock', nivel: 'VIEW' },
     { modulo: 'settings', nivel: 'MANAGE' },
   ])
-  // Só o CRM, "só os meus": não vê cliente nenhum, nem a oportunidade de outro.
-  const sdr = await membro('sdr', [{ modulo: 'crm', nivel: 'MANAGE', escopo: 'OWN' }])
-  // Só a agenda, "só os meus": só os próprios horários.
-  const agenda = await membro('agenda', [{ modulo: 'agenda', nivel: 'VIEW', escopo: 'OWN' }])
+  // Só o CRM: vê todas as oportunidades e conversas, cliente nenhum (SM1/SM3, 2026-11-23).
+  const sdr = await membro('sdr', [{ modulo: 'crm', nivel: 'MANAGE' }])
+  // Só a agenda em Ver: todos os horários (SM1, 2026-11-23).
+  const agenda = await membro('agenda', [{ modulo: 'agenda', nivel: 'VIEW' }])
 
   // Cliente com acento no nome: a busca sem acento tem de achá-lo.
   const clienteId = await outra.criarCliente('João Buscável')
 
   // Duas conversas: uma de todo mundo, outra da pessoa que tem oportunidade
-  // SÓ de outro dono — some do SDR no modo "pela pessoa" (o padrão).
+  // SÓ de outro dono — o SDR vê as duas (sem o "só os meus", SM3).
   const agora = Date.now()
   const foneOculta = '5548' + String(agora).slice(-9)
   const conversa = (nome: string, fone: string) => ({
@@ -219,7 +219,8 @@ test.describe.serial('busca universal', () => {
     })
   })
 
-  test('CRM "só os meus": nem a oportunidade nem a conversa de outro dono; cliente nenhum', async ({ browser }) => {
+  // Sem o "só os meus" (SM1/SM3, o Heitor, 2026-11-23): quem tem o CRM acha as de qualquer dono.
+  test('só o CRM: a oportunidade e a conversa de outro dono também; cliente nenhum', async ({ browser }) => {
     // Controle: o admin acha tudo.
     await comSessao(browser, f!.admin.estado, async p => {
       const tudo = await buscaDireta(p, marca)
@@ -234,15 +235,16 @@ test.describe.serial('busca universal', () => {
       expect(meu).toContain(nomeDe('Lead Meu'))
       expect(meu).toContain(nomeDe('Lead Livre'))
       expect(meu).toContain(nomeDe('Conversa Buscável'))
-      expect(meu).not.toContain(nomeDe('Lead Alheio'))
-      expect(meu).not.toContain(nomeDe('Conversa Oculta'))
+      expect(meu).toContain(nomeDe('Lead Alheio'))
+      expect(meu).toContain(nomeDe('Conversa Oculta'))
       // Sem o módulo de clientes, cliente nenhum — nem a agenda.
       expect(meu).not.toContain(clienteDe('João Buscável'))
       expect(meu).not.toContain(clienteDe('Cliente Outro Horário'))
     })
   })
 
-  test('agenda "só os meus": só os próprios horários', async ({ browser }) => {
+  // Sem o "só os meus" (SM1, o Heitor, 2026-11-23): a Agenda em Ver acha todos os horários.
+  test('só a agenda em Ver: todos os horários', async ({ browser }) => {
     await comSessao(browser, f!.admin.estado, async p => {
       const tudo = await buscaDireta(p, `horario bu${marca}`)
       expect(tudo).toContain(clienteDe('Cliente Meu Horário'))
@@ -251,7 +253,7 @@ test.describe.serial('busca universal', () => {
     await comSessao(browser, f!.agenda.estado, async p => {
       const meu = await buscaDireta(p, `horario bu${marca}`)
       expect(meu).toContain(clienteDe('Cliente Meu Horário'))
-      expect(meu).not.toContain(clienteDe('Cliente Outro Horário'))
+      expect(meu).toContain(clienteDe('Cliente Outro Horário'))
       // O módulo de clientes ele não tem: o cliente não aparece como cliente.
       expect(meu).not.toContain(clienteDe('João Buscável'))
     })

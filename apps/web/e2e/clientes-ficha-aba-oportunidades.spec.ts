@@ -25,7 +25,7 @@ test.beforeAll(async () => {
   rede = await criarOutraRede(`ao${marca}`)
   recepcao = await criarMembro(`ao${marca}`, {
     tenant: rede.tenantId, rotulo: 'Comercial',
-    permissoes: [{ modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'crm', nivel: 'MANAGE', escopo: 'ALL' }],
+    permissoes: [{ modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'crm', nivel: 'MANAGE' }],
   })
   clienteId = await rede.criarCliente('Aba de oportunidades')
   const { data, error } = await db().from('leads').insert({

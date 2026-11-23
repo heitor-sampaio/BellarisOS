@@ -15,6 +15,8 @@ import { venderPacotePelaAcao } from './apoio/contrato-do-pacote'
  *   (comissoes.md): a Rita vê a dela, não a da Paula.
  * - A19: a vendedora com "só as próprias comissões" via a taxa e o líquido da
  *   maquininha da clínica no Vender.
+ *   (Sem o "só os meus", SM1/SM2 do Heitor, 2026-11-23: a Rita não tem o
+ *   Financeiro; a comissão dela é a vista pessoal, pela comissão de venda.)
  * - A21: "Indicada por" pareceu limpar o formulário (não se reproduziu); o Enter
  *   na busca dela enviava o cadastro inteiro.
  * - A22: a sessão do pacote só mostrava os horários depois da profissional e da
@@ -65,12 +67,13 @@ test.beforeAll(async () => {
   expect((await b.from('users').update({ atende_em: [rede.branchId], provides_services: true }).eq('id', rede.professionalId)).error).toBeNull()
   expect((await b.from('payment_fees').insert({ tenant_id: rede.tenantId, metodo: 'CREDIT_CARD', parcelas: 3, taxa_pct: 2.97 })).error).toBeNull()
   dona = await criarMembro(`ven12d${marca}`, { tenant: rede.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
-  // A Rita da simulação: vende e recebe, e vê só as próprias comissões.
+  // A Rita da simulação: vende e recebe, sem o Financeiro — vê só a própria
+  // comissão (a vista pessoal: tem comissão de venda, SM2).
   rita = await criarMembro(`ven12r${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Rita',
     permissoes: [
       { modulo: 'cashier', nivel: 'MANAGE' }, { modulo: 'crm', nivel: 'MANAGE' }, { modulo: 'procedures', nivel: 'MANAGE' },
-      { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'financial', nivel: 'VIEW', escopo: 'OWN' },
+      { modulo: 'clients', nivel: 'MANAGE' },
     ],
   })
   paula = await criarMembro(`ven12p${marca}`, {

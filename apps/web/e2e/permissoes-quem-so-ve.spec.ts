@@ -9,7 +9,7 @@ import { apagarAgendamentos, apagarDocumentosEmitidos } from './apoio/limpeza'
  * "Quem só pode ver só pode ver" (o Heitor, 5ª simulação, 2026-11-01): os
  * botões que apareciam para quem não pode usá-los, e a recusa que derrubava a
  * tela inteira ou chegava em inglês. Cada um com um membro de verdade (o cargo
- * só com Ver, sem o módulo, ou o "só os meus") e o controle de quem pode.
+ * só com Ver ou sem o módulo) e o controle de quem pode.
  *
  * - D4: "Cadastrar cliente" no inbox para Clientes = Ver; ao enviar, 500 e a
  *   página virava "Você não tem acesso".
@@ -67,21 +67,21 @@ test.beforeAll(async () => {
   expect((await db().from('procedures').update({ price: 120 }).eq('id', rede.procedureId)).error).toBeNull()
   cliente = await rede.criarCliente('Cliente só ver')
 
-  sdr = await criarMembro(`pqvs${marca}`, { tenant: t, rotulo: 'SDR', permissoes: [{ modulo: 'crm', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'clients', nivel: 'VIEW' }] })
-  clinico = await criarMembro(`pqvc${marca}`, { tenant: t, rotulo: 'Clínico', permissoes: [{ modulo: 'medical_records', nivel: 'VIEW', escopo: 'ALL' }, { modulo: 'clients', nivel: 'VIEW' }] })
-  contadora = await criarMembro(`pqvf${marca}`, { tenant: t, rotulo: 'Contadora', permissoes: [{ modulo: 'financial', nivel: 'VIEW', escopo: 'ALL' }, { modulo: 'reports', nivel: 'VIEW', escopo: 'ALL' }] })
+  sdr = await criarMembro(`pqvs${marca}`, { tenant: t, rotulo: 'SDR', permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }] })
+  clinico = await criarMembro(`pqvc${marca}`, { tenant: t, rotulo: 'Clínico', permissoes: [{ modulo: 'medical_records', nivel: 'VIEW' }, { modulo: 'clients', nivel: 'VIEW' }] })
+  contadora = await criarMembro(`pqvf${marca}`, { tenant: t, rotulo: 'Contadora', permissoes: [{ modulo: 'financial', nivel: 'VIEW' }, { modulo: 'reports', nivel: 'VIEW' }] })
   medico = await criarMembro(`pqvm${marca}`, {
     tenant: t, rotulo: 'Médico',
     permissoes: [
-      { modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' },
-      { modulo: 'medical_records', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'clients', nivel: 'VIEW' },
+      { modulo: 'agenda', nivel: 'MANAGE' },
+      { modulo: 'medical_records', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' },
     ],
   })
   expect((await db().from('users').update({ provides_services: true }).eq('id', medico.userId)).error).toBeNull()
   gerente = await criarMembro(`pqvg${marca}`, {
     tenant: t, branchId: rede.branchId, rotulo: 'Gerente',
     permissoes: [
-      { modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'medical_records', nivel: 'VIEW', escopo: 'ALL' },
+      { modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'medical_records', nivel: 'VIEW' },
       { modulo: 'cashier', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' },
     ],
   })

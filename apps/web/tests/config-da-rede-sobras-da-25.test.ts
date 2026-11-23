@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { ALL_PERMISSIONS, NO_PERMISSIONS } from '@/lib/permissions'
 import type { ResolvedPermissions } from '@/lib/permissions'
-import { ADMIN_MENU, menuDaUnidadeFor, menuDaRedeFor } from '@/lib/menu'
+import { menuDaUnidadeFor, menuDaRedeFor } from '@/lib/menu'
 import { paginasDaBusca } from '@/lib/busca/paginas'
 import { ABAS_DA_UNIDADE, motivoDaAbaFechada, rotuloDasAbasAlcancadas, ABAS_DA_REDE } from '@/lib/configuracoes/abas'
 import { CONFIG_DA_REDE } from '@/lib/configuracao-da-rede'
@@ -38,12 +38,12 @@ describe('A-CONF1: quem não é a Admin da rede e só chegaria às abas da rede 
     expect(naUnidade(com({ settings: 'MANAGE' }), false)).toBe(true)
   })
   it('a busca não oferece a tela a quem só chegaria a recusas, nos dois portais', () => {
-    const rede = paginasDaBusca(null, soClientesECrm, null, undefined, { adminDaRede: false }).map(p => p.key)
+    const rede = paginasDaBusca(null, soClientesECrm, null, { adminDaRede: false }).map(p => p.key)
     expect(rede).not.toContain('settings')
     expect(rede).not.toContain('settings:tags')
-    const unidade = paginasDaBusca('centro', soClientesECrm, null, undefined, { daRede: true, adminDaRede: false }).map(p => p.key)
+    const unidade = paginasDaBusca('centro', soClientesECrm, null, { daRede: true, adminDaRede: false }).map(p => p.key)
     expect(unidade).not.toContain('settings')
-    expect(paginasDaBusca(null, soClientesECrm, null, undefined, { adminDaRede: true }).map(p => p.key)).toContain('settings')
+    expect(paginasDaBusca(null, soClientesECrm, null, { adminDaRede: true }).map(p => p.key)).toContain('settings')
   })
   it('a barra da rede e a da unidade passam o cargo de sistema, não a abrangência', () => {
     expect(ler('components/admin/sidebar.tsx')).toMatch(/menuDaRedeFor\(/)
@@ -108,14 +108,14 @@ describe('A-CONF5: o cargo acima não conta módulo fora do plano da rede', () =
   it('Copilot fora do plano não entra na lista', () => {
     const ctx = {
       permissions: { ...ALL_PERMISSIONS, copilot: 'NONE' } as ResolvedPermissions,
-      scopes: {}, reportTabs: [],
+      reportTabs: [],
       plano: { funcionalidades: [], limites: { unidades: null, membros: null, whatsapp: null } },
     }
-    expect(modulosAcimaDoMeu(ctx as never, [{ module: 'copilot', level: 'VIEW', scope: 'ALL' }], [])).toEqual([])
+    expect(modulosAcimaDoMeu(ctx as never, [{ module: 'copilot', level: 'VIEW' }], [])).toEqual([])
   })
   it('dentro do plano, segue contando', () => {
-    const ctx = { permissions: { ...ALL_PERMISSIONS, copilot: 'NONE' } as ResolvedPermissions, scopes: {}, reportTabs: [], plano: null }
-    expect(modulosAcimaDoMeu(ctx as never, [{ module: 'copilot', level: 'VIEW', scope: 'ALL' }], [])).toEqual(['Copilot'])
+    const ctx = { permissions: { ...ALL_PERMISSIONS, copilot: 'NONE' } as ResolvedPermissions, reportTabs: [], plano: null }
+    expect(modulosAcimaDoMeu(ctx as never, [{ module: 'copilot', level: 'VIEW' }], [])).toEqual(['Copilot'])
   })
 })
 

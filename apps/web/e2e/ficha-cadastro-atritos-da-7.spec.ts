@@ -62,7 +62,7 @@ test.beforeAll(async () => {
     tenant: rede.tenantId, rotulo: 'Recepção',
     permissoes: [
       { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'crm', nivel: 'VIEW' },
-      { modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'documents', nivel: 'MANAGE' },
+      { modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'documents', nivel: 'MANAGE' },
     ],
   })
   // O termo pede o CPF (A24) — o mesmo modelo serve ao "Pedir no portal" (A26).

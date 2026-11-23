@@ -6,11 +6,11 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 /**
  * Os atritos de cargos da 15ª simulação (2026-11-15), numa rede própria.
  *
- * - A14 (princípio 7): com o CRM ou o Prontuário em Gerenciar e sem "o que
- *   enxerga", o Salvar não salvava, e o aviso que dizia por quê morava no pé
- *   da página — a pessoa lia "Nenhum acesso ainda" e não achava o que faltava.
- *   Ao clicar, a tela rola até o primeiro módulo sem escolha e o destaca. A
- *   regra fica (o alcance nasce sem escolha, A2 da 12ª).
+ * - A14 (princípio 7): com um módulo ligado e sem a escolha que ele pede, o
+ *   Salvar não salvava, e o aviso que dizia por quê morava no pé da página.
+ *   Ao clicar, a tela rola até o módulo sem escolha e o destaca. Sem o "só os
+ *   meus" (SM1, o Heitor, 2026-11-23), o que sobra a escolher é a aba do
+ *   Relatórios em "Ver" (A2 da 12ª).
  */
 
 test.setTimeout(180_000)
@@ -36,7 +36,8 @@ test.afterAll(async () => {
   await rede?.limpar()
 })
 
-test('A14: o Salvar sem "o que enxerga" rola até o módulo que falta e o destaca', async ({ browser }) => {
+// Sem o "só os meus" (SM1, o Heitor, 2026-11-23): o CRM não pede mais "o que enxerga"; o Relatórios pede a aba.
+test('A14: o Salvar com o Relatórios sem aba rola até ele e o destaca', async ({ browser }) => {
   const rotulo = `${PREFIXO} Balcão ${marca}`
   await como(browser, dona, async p => {
     await p.goto('/admin/settings?tab=permissions')
@@ -45,20 +46,19 @@ test('A14: o Salvar sem "o que enxerga" rola até o módulo que falta e o destac
     await p.getByRole('button', { name: 'Criar' }).click()
     await expect(p.getByRole('heading', { name: /O que .* acessa/ })).toContainText(rotulo)
 
-    const crm = p.locator('[data-modulo="crm"]')
-    await crm.getByRole('button', { name: 'Gerenciar', exact: true }).click()
-    await expect(crm.locator('[data-alcance-sem-escolha]')).toBeVisible()
-    // Lá embaixo, no botão: o CRM some da tela.
+    const relatorios = p.locator('[data-modulo="reports"]')
+    await relatorios.getByRole('button', { name: 'Ver', exact: true }).click()
+    // Lá embaixo, no botão: o Relatórios some da tela.
     const salvar = p.getByRole('button', { name: 'Salvar acessos' })
     await salvar.scrollIntoViewIfNeeded()
     await salvar.click()
 
-    await expect(crm).toHaveAttribute('data-destacado', '1')
-    await expect(crm).toBeInViewport()
+    await expect(relatorios).toHaveAttribute('data-destacado', '1')
+    await expect(relatorios).toBeInViewport()
     await expect(p.getByText('Acessos salvos.')).toHaveCount(0)
 
     // Escolhido, o destaque sai.
-    await crm.getByRole('button', { name: 'Todas as oportunidades', exact: true }).click()
-    await expect(crm).not.toHaveAttribute('data-destacado', '1')
+    await relatorios.getByRole('button', { name: 'Financeiro', exact: true }).click()
+    await expect(relatorios).not.toHaveAttribute('data-destacado', '1')
   })
 })

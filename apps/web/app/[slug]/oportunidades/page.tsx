@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { motivosDaRede } from '@/lib/crm/motivos-perda'
 import { origensDaRede } from '@/lib/crm/origens'
-import { getTenantContext, assertPermission, ownerFilter, can, assertRecurso, temRecurso, alcancaUnidade } from '@/lib/auth'
+import { getTenantContext, assertPermission, can, assertRecurso, temRecurso, alcancaUnidade } from '@/lib/auth'
 import { avisoDosFunis, mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { seedDefaultFunnel, listAllStages } from '@/lib/crm/funis'
@@ -71,11 +71,10 @@ export default async function BranchOportunidadesPage({
   const ativos       = funnels.filter(f => f.archived_at === null)
   // A28 da 23ª: sem `?funil=`, o último escolhido (A34) e, sem ele, o padrão
   // — que, vazio, cede ao primeiro funil com oportunidade (a regra do
-  // Dashboard, A30 da 20ª). O recorte é o do quadro ("só os meus").
-  const leadOwner = ownerFilter(ctx, 'crm')
+  // Dashboard, A30 da 20ª).
   const { funil: escolhido, etapas: doQuadro } = await funilDoDashboard({
     funis: ativos, pedido: rawFunil, lembrado: await funilLembrado(),
-    lerFunil: funnelId => getFunilDoQuadro({ tenantId: ctx.tenantId!, funnelId, ownerId: leadOwner }),
+    lerFunil: funnelId => getFunilDoQuadro({ tenantId: ctx.tenantId!, funnelId }),
     total: e => resumoDoFunil(e).total,
   })
   const selecionado = escolhido ?? funnels[0]
@@ -108,15 +107,13 @@ export default async function BranchOportunidadesPage({
   // `.eq('branch_id', branch.id)`, e como nenhum lead tem unidade o quadro da
   // unidade nunca mostrou um lead sequer. Depois filtrou por tag de unidade,
   // escondendo o que estava marcado para outra — o que é decidir distribuição
-  // no código. Quem decide de quem é o lead são as pessoas (tag e dono) e, no
-  // futuro, as automações; a tela só oferece os filtros.
-  //
-  // `ownerFilter` continua valendo: é o alcance do CARGO ("só os próprios
-  // leads"), coisa diferente de recorte por unidade. Funil sem etapa nenhuma
+  // no código. Quem decide de quem é o lead são as pessoas (tag e responsável)
+  // e, no futuro, as automações; a tela só oferece os filtros (o "Responsável"
+  // é o de quem quer ver só as suas — SM3, 23/11). Funil sem etapa nenhuma
   // não tem o que buscar — `.in()` com lista vazia é inválido no PostgREST.
   //
   // ⚠️ Pelo cliente de SERVIÇO, depois do assertPermission e com a rede e o
-  // alcance na própria consulta (como o inbox). A política de leitura de
+  // rede na própria consulta (como o inbox). A política de leitura de
   // `leads` só deixa passar quem é da REDE (claim de unidade nula), e o lead
   // é sempre da rede: pela sessão, todo membro de unidade via "0 leads" — a
   // simulação de um dia de clínica (2026-10-20) achou no SDR e na recepção.
@@ -124,8 +121,8 @@ export default async function BranchOportunidadesPage({
   if (stageIds.length > 0) {
     // Todas, em páginas (2026-10-22): o PostgREST corta em 1000, e os cards
     // mais antigos sumiam das colunas — e os números do topo, contados daqui.
-    leads = (await lerTodas((de, ate) => {
-      let leadsQuery = createAdminClient()
+    leads = (await lerTodas((de, ate) =>
+      createAdminClient()
         .from('leads')
         .select(`
           id, name, phone, email, social_media, source,
@@ -136,19 +133,15 @@ export default async function BranchOportunidadesPage({
         `)
         .eq('tenant_id', ctx.tenantId!)
         .in('crm_stage_id', stageIds)
-      // Lead que chega sozinho pelo WhatsApp nasce sem dono: some para todo cargo
-      // com alcance próprio se o filtro for só `owner_id = eu`. Sem dono é bolo
-      // comum — aparece para todos até alguém assumir.
-      if (leadOwner) leadsQuery = leadsQuery.or(`owner_id.is.null,owner_id.eq.${leadOwner}`)
-      return leadsQuery.order('created_at', { ascending: false }).order('id').range(de, ate)
-    }, 'carregar as oportunidades')) as unknown as LeadLido[]
+        .order('created_at', { ascending: false }).order('id').range(de, ate),
+    'carregar as oportunidades')) as unknown as LeadLido[]
   }
 
   // Os números do topo vêm de lib/metrics — a mesma conta do dashboard e dos
-  // Relatórios (D10, 2026-10-28) —, no recorte do quadro: o funil de agora e,
-  // com "só os meus", os da pessoa e os sem dono. Contados no banco, não na lista.
+  // Relatórios (D10, 2026-10-28) —, no recorte do quadro: o funil de agora.
+  // Contados no banco, não na lista.
   const stats = resumoDoFunil(selecionado && stageIds.length > 0
-    ? doQuadro ?? await getFunilDoQuadro({ tenantId: ctx.tenantId!, funnelId: selecionado.id, ownerId: leadOwner })
+    ? doQuadro ?? await getFunilDoQuadro({ tenantId: ctx.tenantId!, funnelId: selecionado.id })
     : [])
 
   // Métricas de atendimento da PESSOA dona de cada lead — de todas as threads

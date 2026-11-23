@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { TenantContext, ResolvedPermissions } from '@estetica-os/types'
-import { NO_PERMISSIONS, ALL_SCOPES } from '@/lib/permissions'
+import { NO_PERMISSIONS } from '@/lib/permissions'
 import { FUNCIONALIDADES } from '@estetica-os/nucleo/lib/planos/recursos'
 
 vi.setConfig({ testTimeout: 30_000 })
@@ -162,7 +162,7 @@ function ctx(permissions: Partial<ResolvedPermissions>): TenantContext {
     userId: 'auth', internalUserId: 'u1', userName: 'Tânia', roleLabel: 'Coordenação',
     tenantId: 't1', branchId: 'b1', role: 'RECEPTIONIST', roleId: 'r1', clientId: null,
     permissions: { ...NO_PERMISSIONS, copilot: 'MANAGE', ...permissions } as ResolvedPermissions,
-    scopes: ALL_SCOPES, reportTabs: [], providesServices: false, isNetworkAdmin: false, isClient: false,
+    reportTabs: [], providesServices: false, isNetworkAdmin: false, isClient: false,
     plano: { funcionalidades: TODAS, limites: { unidades: null, membros: null, whatsapp: null } },
   } as TenantContext
 }

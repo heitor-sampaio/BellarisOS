@@ -72,16 +72,6 @@ test.describe('Configurações (comissões, integrações, fidelidade): a explic
     await expect(catalogo.getByText(/O que o cliente pode ganhar trocando pontos/)).toBeVisible()
   })
 
-  test('Cargos: o "para quem vale" do inbox de quem vê só os seus mora na dica; a consequência da escolha fica à vista', async ({ page }) => {
-    await page.goto('/admin/settings?tab=permissions')
-    const secao = page.getByRole('region', { name: 'Inbox de quem vê só as próprias oportunidades' })
-    await expect(secao).toBeVisible()
-    await expect(secao.getByTestId('explicacao-visibilidade')).toBeVisible()
-    await expect(secao.getByText(/Quem vê tudo não muda/)).toBeHidden()
-    await secao.getByRole('button', { name: 'Para quem vale esta escolha' }).hover()
-    await expect(secao.getByText(/Quem vê tudo não muda/)).toBeVisible()
-  })
-
   test('Integrações: o texto de ajuda do campo mora na dica ao lado do rótulo', async ({ page }) => {
     await page.goto('/admin/settings?tab=integrations')
     // O Google Ads abre o formulário com qualquer configuração (os campos são sempre os mesmos).

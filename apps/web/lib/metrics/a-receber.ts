@@ -52,7 +52,7 @@ export async function getAtendimentosAReceber(args: {
   unidadeId?:      string | null
   clienteId?:      string | null
   agendamentoId?:  string | null
-  /** O "só os meus" do financeiro: os atendimentos deste profissional. */
+  /** Só os atendimentos deste profissional (nulo: de todos). */
   profissionalId?: string | null
 }): Promise<ListaAReceber> {
   const linhas = await lerTodas<Linha>((de, ate) => createAdminClient()

@@ -127,15 +127,14 @@
     concluídos sem pagamento: R$ 650,00 (1 atendimento)" —, sem se somar
     aos lançamentos: `getTotalDosAtendimentosAReceber`
     (`lib/metrics/a-receber.ts`, o conjunto de `atendimentos_a_receber`,
-    contado no banco), na rede (total e por unidade) e na unidade (com o
-    financeiro "só os meus", os dela). Só aparecia no Fechamento do dia, que
+    contado no banco), na rede (total e por unidade) e na unidade. Só aparecia no Fechamento do dia, que
     passou a citar também as parcelas e lançamentos em aberto da unidade
     (`getAReceberEmAberto`, aviso `parcelas-em-aberto`).
   - **a receber VENCIDO** (D13 da 9ª simulação, 2026-11-07) = o a receber da
     cliente em aberto (o conjunto de `metrics_a_receber_em_aberto`) com o
     vencimento antes de hoje no fuso da unidade (F62) — `metrics_a_receber_vencido` →
     `getAReceberVencido` (`lib/metrics/vencidas.ts`), por unidade e no total,
-    por cliente (o check-in) e no escopo do financeiro. O cartão "A receber
+    por cliente (o check-in), a quem tem o Financeiro em Ver. O cartão "A receber
     da cliente", o dashboard e o check-in dizem esse número
     (`vendas-financeiro.md` §9.6).
   - **O cartão em N vezes conta no dia da VENDA** (decisão do Heitor,
@@ -193,8 +192,7 @@
     antigo "Gasto médio" de Relatórios → Clientes (o mesmo número), que passou
     a se chamar "Ticket médio": dashboards (o cartão e a coluna por unidade),
     financeiro da unidade, Relatórios (Visão geral, Clientes, Procedimentos) e
-    Copilot. Com o financeiro "só os meus", é o DELA (o dinheiro dos
-    atendimentos dela). O subtítulo diz a conta ("pago pelas clientes ÷ 2
+    Copilot. Na vista pessoal do dinheiro (dashboards, SM2), é o DELA. O subtítulo diz a conta ("pago pelas clientes ÷ 2
     clientes que pagaram"). Era `serviceRevenue ÷ atendimentos COBRADOS`
     (2026-10-27: a avaliação de R$ 0 puxava a média para R$ 90). Prova:
     `e2e/indicadores-ticket-medio.spec.ts`, `e2e/indicadores-uma-conta-so.spec.ts`.
@@ -246,7 +244,7 @@
     operacionais − Insumos consumidos = Lucro"), no "Lucro Líquido" do
     financeiro da unidade, no "Resultado líquido" do da rede, na evolução
     (dashboard da rede e Relatórios: o custo do gráfico é o do lucro) e no
-    Copilot. Com o financeiro "só os meus", o lucro não aparece. A margem do
+    Copilot. Na vista pessoal do dinheiro (SM2), o lucro não aparece. A margem do
     catálogo (por procedimento) já descontava o insumo. Até 2026-10-29 o lucro
     era receita − despesa paga, e o consumo era informativo. Prova:
     `e2e/indicadores-lucro-desconta-insumo.spec.ts`, `tests/metrics-resultado.test.ts`.
@@ -256,7 +254,7 @@
     saíram, retratado na venda) sai do lucro na data da venda — é o mesmo caso
     do insumo: o estoque que saiu para gerar a receita. A coluna continua
     `consumo_de_insumo` (em `metrics_resultado` e
-    `metrics_series_do_resultado`; com "só os meus", a venda de quem vendeu), e
+    `metrics_series_do_resultado`; com o profissional, a venda de quem vendeu), e
     o DRE diz "− Insumos e produtos vendidos". A perda (D-7) NÃO entra (não
     gerou receita; a pergunta que ficou aqui ao Heitor ele respondeu na revisão
     de 2026-11-02, est-04/est-05: a perda é métrica, não dinheiro — abaixo, em
@@ -360,7 +358,7 @@
     unidade, na agenda da unidade e na "Minha agenda". "430 min de 4.230 min
     disponíveis" somava as 23 h e meia da Iara bloqueada. Prova:
     `e2e/agenda-defeitos-da-8.spec.ts` ("D15"), `tests/agenda-horario-livre.test.ts`.
-    A **"Minha agenda"** (agenda "só os meus") usa a MESMA conta para a
+    A **"Minha agenda"** (a vista pessoal da agenda, SM2) usa a MESMA conta para a
     "Ocupação hoje": `ocupacaoDoDia` (`lib/metrics/ocupacao.ts`, puro, roda no
     navegador) — os minutos dela no dia de Brasília ÷ o horário unidade ∩
     dela, menos o que ela tem em outra unidade; sem expediente, "—". Era um
@@ -453,8 +451,7 @@
     produto, com o total de cada motivo e o geral — `metrics_perdas`
     (grouping sets; a quantidade só por produto, que unidades diferentes não
     se somam) → `getPerdas` (`lib/metrics/perdas.ts`). É a seção "Perdas no
-    período" de Relatórios → Estoque, que some com o financeiro "só os meus"
-    (como o saldo). A perda não entra no giro nem no lucro. A venda de
+    período" de Relatórios → Estoque. A perda não entra no giro nem no lucro. A venda de
     produto estornada cujo produto NÃO voltou também é perda ali
     (`VENDA_ESTORNADA`, "Venda estornada (não voltou)" — decisão do Claude
     na F3, pelos princípios; a H2 de 01/11 pediu só a pergunta "houve
@@ -503,8 +500,7 @@
     `metrics_transferencias_de_estoque` (grouping sets, só o servidor chama)
     → `getTransferenciasDeEstoque` (`lib/metrics/transferencias.ts`). É a
     seção "Transferências entre unidades" de Relatórios → Estoque
-    (`[data-transferencias]`), que some com o financeiro "só os meus" (como
-    as perdas) e na rede de uma unidade só. É métrica: não entra no lucro
+    (`[data-transferencias]`), que some na rede de uma unidade só. É métrica: não entra no lucro
     nem no financeiro. Prova: `tests/pendencias-pdv-estoque-documentos.test.ts`,
     `e2e/estoque-transferencia-no-relatorio.spec.ts`.
   - **A conversão é da OPORTUNIDADE** (decisão do Heitor, 2026-10-29: "o
@@ -513,8 +509,8 @@
     UMA conta, `conversaoDasOportunidades` (`lib/metrics/resultado.ts`), que
     `resumoDoFunil` usa no dashboard, no funil dos Relatórios e no quadro de
     Oportunidades ("33,3% de conversão (1 de 3 ganhas)"). O quadro a chama no
-    recorte que mostra (`getFunilDoQuadro`): o funil de AGORA, sem período, e
-    com o CRM "só os meus" as oportunidades da pessoa e as sem dono; o dashboard, as
+    recorte que mostra (`getFunilDoQuadro`): o funil de AGORA, sem período,
+    com todas as oportunidades (sem o "só os meus", SM3); o dashboard, as
     criadas no período. **Funil sem etapa de ganho não tem conversão: "—"**
     (num pós-venda ela nasceria 0% ou 100% sem dizer nada).
     - **Onde a tela junta funis, junta as oportunidades deles**: o painel de
@@ -544,7 +540,8 @@
     antes dele** ÷ atendidos no período (`getRetention`). Não confundir com
     recorrência dentro da janela, que em períodos curtos dá zero por construção.
     **"A cliente é da clínica, o atendimento é da profissional"** (decisão do
-    Heitor, 2026-10-29): com a agenda "só os meus", entram as clientes que ELA
+    Heitor, 2026-10-29): com um profissional (a função guarda o parâmetro; os
+    Relatórios não o passam desde a SM4), entram as clientes que ELA
     atendeu no período, e "voltou" é quem a REDE já tinha atendido antes —
     por qualquer profissional, em QUALQUER unidade da rede (ind-08,
     2026-11-02, migration `20261101000706`: era "nas unidades do recorte", e
@@ -817,7 +814,7 @@ geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro — mas
   e `linhas` (quantas linhas a lista tem, a paginação); a tela diz "Fora do total:
   N créditos internos vendidos, R$ X — a venda é o que for pago com ele." (`[data-credito-fora-do-total]`,
   princípio 3; `FORA_DO_TOTAL`, `lib/metrics/vendas-comum.ts`). O crédito não
-  tem quem vendeu: no "só os meus" ele não entra. Prova:
+  tem quem vendeu: no recorte por profissional ("venda dela") ele não entra. Prova:
   `e2e/relatorio-vendas-comandas.spec.ts`, `tests/relatorio-vendas-comandas.test.ts`.
   A dica do Total vendido (`[data-ponte-vendas-caixa]`) diz também que o
   voucher e os pontos pagam parte da venda e não entram no caixa, e que o
@@ -875,11 +872,11 @@ geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro — mas
   inteiro sai. O cancelado antes desta regra (sem `cancelado_em`) segue fora. **É de quem
   VENDEU** (D14 da 8ª simulação, 2026-11-06): a coluna "Profissional" é o
   "Quem vendeu" do checkout (`treatment_plans.vendido_por`). Era sempre a
-  responsável — a "Dra. Paula" no plano que a Marta vendeu. O "só os meus" segue
-  a mesma pessoa (migration `20261106003404`). **Sem "Quem vendeu", a venda não
+  responsável — a "Dra. Paula" no plano que a Marta vendeu. O recorte por
+  profissional ("venda dela") segue a mesma pessoa (migration `20261106003404`). **Sem "Quem vendeu", a venda não
   é de ninguém** (com-06, o Heitor: "Campo vazio não gera comissão para
   ninguém"; o campo nasce sempre vazio, r2-ven-12): fica no total, sem nome na
-  coluna e fora do "só os meus" de todos — como o pacote, o pré-pago e o
+  coluna e fora da "venda dela" de todas — como o pacote, o pré-pago e o
   produto sem `sold_by`. Até a auditoria de 18/11 ia para a responsável pelo
   plano, que ninguém escolheu (migration `20261124250001`). Prova:
   `e2e/relatorio-vendas-plano-de-quem-vendeu.spec.ts`,
@@ -1083,40 +1080,33 @@ a função de `lib/metrics` devolve nulo, como o ticket e a conversão. Prova:
   da rede mora num lugar só, `getClientesParaReativarDoRecorte` (desde a 24ª,
   sempre a da rede)
   (`lib/metrics/unidade.ts`), que os dois dashboards e o "sem visita" do
-  Copilot chamam (com a agenda "só os meus" também lá). O Copilot, sem
+  Copilot chamam (sem recorte por profissional, também na vista pessoal). O Copilot, sem
   unidade, juntava as listas de cada unidade pela tag e deixava de fora a
   cliente sem a tag. Prova: `tests/reativar-clientes-uma-regra.test.ts` (ninguém
   fora de lá chama as duas contas), o caso r3-f13-10 de
-  `e2e/copilot-novidades.spec.ts` (contra o build). Com a agenda "só os meus", as dela. O desenho é um só nos dois
+  `e2e/copilot-novidades.spec.ts` (contra o build). O desenho é um só nos dois
   portais (`components/shared/quadros-de-clientes.tsx`). Prova:
   `e2e/indicadores-reativar-clientes-da-rede.spec.ts`.
 
-**Cada número segue o escopo do SEU módulo** (decisão do Heitor, 2026-10-29 —
-revê o "qualquer OWN recorta tudo" de 28/10): a AGENDA e as CLIENTES seguem o
-escopo da agenda (atendimentos, agendamentos, minutos, novos clientes, a
-base e a demografia, a retenção, as clientes a reativar, os planos aguardando
-checkout, os rankings que CONTAM — procedimentos feitos, recorrência,
-profissionais, clientes por recorrência —, a ocupação e o "Clientes no mês");
-o DINHEIRO segue o do financeiro (receita, a receber, despesa, receita de
-serviço, ticket, comissões, vendas e o CSV, a evolução, os rankings de VALOR,
-o gasto das clientes, o LTV por CEP e o consumo de insumo, que é custo); o
-FUNIL segue o do CRM. "Com a agenda ALL e o financeiro OWN, os atendimentos
-são os da clínica e o faturamento é o dela." Vale nos dois dashboards, nos
-Relatórios e no Copilot. A regra mora em `lib/metrics/escopo.ts`
-(`recorteDosModulos(ctx)` → `{ agenda, financeiro, crm }`, `juntarNucleos`,
-`juntarPorNome`) e em `lib/metrics/dos-modulos.ts`: as funções do banco
-recebem UM profissional, e com os dois recortes diferentes pedem-se os dois e
-juntam-se (`getCoreDosModulos`, `getRelatorioDosModulos`: as tabelas por
-procedimento e por profissional casam pelo nome — execuções da agenda, receita
-do dinheiro). Escondido: com o FINANCEIRO dela, o que não se atribui a ela
-(custo, lucro, margem, DRE, parcelas a receber, saldo e valor do estoque, a
-comissão das outras); com a AGENDA dela, a ocupação por unidade; com qualquer
-dos dois, o ranking de unidades (mistura o dinheiro e a agenda de cada
-unidade). Módulo NONE vale ALL (D6) — com o financeiro NONE, a aba de
-dinheiro dos Relatórios que o cargo tiver marcada mostra a rede. Prova:
-`e2e/indicadores-cada-numero-no-seu-modulo.spec.ts`, `tests/metrics-escopo.test.ts`.
-Os parágrafos abaixo (28/10) descrevem os PREDICADOS de cada recorte, que não
-mudaram; o que mudou é qual módulo decide cada número.
+**Os números seguem a abrangência, não o dono** (SM1 e SM4, 2026-11-23; era
+o "Cada número segue o escopo do SEU módulo" de 29/10): quem tem o módulo vê
+os números de todos, nas unidades ao alcance — as dela, ou a rede toda com
+"A rede inteira". As abas de Relatórios do cargo continuam (`podeVerRelatorio`).
+Os Relatórios e o Copilot não recortam por pessoa nenhuma. **O único recorte
+por pessoa é a vista pessoal dos dashboards** (SM2): `recortePessoal(ctx)`
+(`lib/metrics/escopo.ts`) → `{ agenda, financeiro, crm: null }` — a AGENDA e
+as CLIENTES dela (atendimentos, agendamentos, minutos, clientes) a quem ATENDE
+sem a Agenda (`vistaPessoal(ctx, 'agenda')`); o DINHEIRO dela (receita,
+ticket, comissões, a evolução, os rankings de VALOR, o gasto das clientes, o
+consumo de insumo) a quem atende ou tem comissão de venda sem o Financeiro
+(`vistaPessoal(ctx, 'financial')`); o CRM não tem vista pessoal (quem quer só
+as suas usa o filtro de responsável). A vista só existe com a funcionalidade
+no plano. As funções do banco recebem UM profissional, e com os dois
+recortes diferentes pedem-se os dois e juntam-se (`juntarNucleos`,
+`getCoreDosModulos` em `lib/metrics/dos-modulos.ts`). Escondido na vista
+pessoal do dinheiro: o que não se atribui a ela (custo, lucro, margem, a
+comissão das outras, o ranking de unidades). Os parágrafos abaixo (28/10)
+descrevem os PREDICADOS de "o que é dela", que valem na vista pessoal.
 
 **O dinheiro do dashboard da rede é de quem vê o dinheiro** (D2 da 6ª
 simulação, 2026-11-04; sobra da F7 — o exemplo do CLAUDE.md §11, "o time
@@ -1132,12 +1122,11 @@ quem tinha os Procedimentos, os rankings de receita e margem (`can('procedures')
 da unidade já pedia o Financeiro. Prova:
 `e2e/indicadores-dashboard-dinheiro-so-com-financeiro.spec.ts`.
 
-**Dashboard com "só os meus" (D7 da simulação de 2026-10-28; "quem tem 'só os
-meus' vê 'só os meus', em qualquer lugar", decisão do Heitor no mesmo dia)**:
-com o módulo em OWN — e ABERTO no cargo: o OWN de um módulo NONE não vale (D6
-de 2026-10-29, CLAUDE.md §11; quem não tinha a Agenda via "Meu faturamento
-R$ 0") —, os números DAQUELE módulo nos dois dashboards (rede e
-unidade) são os DELA — o `professionalId` vai a cada função de `lib/metrics`
+**O dashboard na vista pessoal** (SM2, 2026-11-23; era o "Dashboard com 'só
+os meus'", D7 de 28/10): sem o módulo e com a vista pessoal dele (acima), os
+números DAQUELE módulo no dashboard são os DELA — o dinheiro nos dois (rede e
+unidade; na rede, só a quem não vê o dinheiro de todos), a agenda só no da
+unidade — o `professionalId` vai a cada função de `lib/metrics`
 (`metrics_core`, `_series`, `_top_procedures`, `_top_professionals`,
 `_top_clients`, `_demografia`, `_giro_estoque`, `_clientes_para_reativar`, com
 `p_professional_id default null`; migration `20261028000601`). O recorte é
@@ -1170,15 +1159,12 @@ Mostram o dela: receita, atendimentos, ticket, a evolução SÓ DA RECEITA (sem
 custo nem lucro — `EvolutionChart soReceita`), os rankings de procedimentos
 (feitos, recorrência, receita bruta), de profissionais (só a linha dela) e de
 clientes (gasto, recorrência), faixa etária, cidades e mapa, o total e os
-novos clientes, o giro (o insumo dos atendimentos dela), os planos aguardando
-checkout (`treatment_plans.professional_id`), as clientes a reativar (as dela
-que sumiram da UNIDADE — sem visita nela com qualquer profissional) e, no da
-unidade, o "Meu faturamento" dos 6 meses. Fica escondido o que não se atribui
+novos clientes, o giro (o insumo dos atendimentos dela) e, no da
+unidade, o "Meu faturamento" dos 6 meses. Os planos aguardando checkout e as
+clientes a reativar são os de todos (a cliente é da rede). Fica escondido o que não se atribui
 a ela: o custo e o lucro, a margem por procedimento (custo do catálogo), o
-ranking e a ocupação por unidade, e o ranking de comissão (de todas). Com o
-**CRM** "só os meus", o funil do dashboard conta as oportunidades dela e as sem dono
-(`p_owner`, o recorte do quadro). Prova:
-`e2e/indicadores-dashboard-da-rede-so-os-meus.spec.ts`.
+ranking e a ocupação por unidade, e o ranking de comissão (de todas). O funil
+do dashboard é sempre o de todas as oportunidades (SM3).
 
 **O funil do dashboard abre no funil que tem oportunidade** (A30 da 20ª;
 princípio 7): o `?funil=` vale sempre; sem ele, o padrão — e, com o padrão
@@ -1196,11 +1182,12 @@ princípio 4): "Comparecimento 0,0%" era o agendamento comercial de amanhã. Em
 cancelado com `aconteceu_em <= now()`; sem nenhum, "—" (o `comparecimento`
 de `painelComercial` é nulo, e o Copilot diz que não há nenhum).
 
-**O financeiro "só os meus" é "Minhas comissões"** (A52 e A41 da 6ª
-simulação, 2026-11-04; princípio 3): com o financeiro em OWN, a tela de
-Financeiro já era só a das comissões dela (o da rede redireciona; o da unidade
-também, desde então). O menu diz "Minhas comissões" (`rotuloDoFinanceiro`,
-`lib/menu.ts`, pelo escopo — também na pré-visualização do cargo), e o
+**A vista pessoal do financeiro é "Minhas comissões"** (A52 e A41 da 6ª
+simulação, 2026-11-04; princípio 3; desde a SM2, 2026-11-23, é de quem atende
+ou tem comissão de venda e NÃO tem o Financeiro): a tela de Financeiro a leva
+às comissões dela (o da rede e o da unidade redirecionam). O menu tem "Minhas
+comissões" (`veMinhasComissoes`, `lib/menu.ts` — também na pré-visualização
+do cargo), e o
 dashboard da unidade tem como destaque "Minhas comissões · a pagar"
 (`[data-minhas-comissoes]`, o a pagar e o lançado do período de fechamento
 da rede, pelo MESMO `resumoDasComissoes` da tela), que leva a elas. O
@@ -1217,41 +1204,22 @@ comissões e na receita dos atendimentos dos Relatórios."
 (`[data-fora-do-meu-faturamento]`, `DEFINICOES.foraDoMeuFaturamento`). Prova:
 `e2e/comissoes-uso-da-10.spec.ts` ("A33").
 
-O mesmo recorte vale no **Copilot** (`copilot.md`) e nas funções dos
-Relatórios, que ganharam `p_professional_id default null` com os MESMOS
-predicados (migration `20261028000803`): `metrics_receitas_pagas` (o dinheiro
-dela), `metrics_gasto_por_cliente`, `metrics_receita_por_categoria_de_procedimento`,
-`metrics_relatorio` (cada aba: o dinheiro, os atendimentos, as clientes e o
-consumo dela; a comissão dela; o saldo do estoque segue o da unidade — quem
-mostra o esconde) e `metrics_vendas` (+ `_pagina`, `_resumo`). **Venda dela**
-é a pessoa da coluna "Profissional" da venda: quem atendeu o avulso, quem
-vendeu o pacote, o pré-pago, o produto e o plano (sem "Quem vendeu", de
-ninguém — com-06; D14 da 8ª, abaixo).
+As funções dos Relatórios guardam o `p_professional_id default null`, com os
+MESMOS predicados (migration `20261028000803`): `metrics_receitas_pagas`,
+`metrics_gasto_por_cliente`, `metrics_receita_por_categoria_de_procedimento`,
+`metrics_relatorio` e `metrics_vendas` (+ `_pagina`, `_resumo`); os Relatórios
+e o **Copilot** (`copilot.md`) passam sempre nulo (SM4, SM5). **Venda dela**
+(a do "Meu faturamento") é a pessoa da coluna "Profissional" da venda: quem
+atendeu o avulso, quem vendeu o pacote, o pré-pago, o produto e o plano (sem
+"Quem vendeu", de ninguém — com-06; D14 da 8ª, abaixo).
 
-**Os Relatórios com "só os meus"** (`reports-bi-section`, os dois portais):
-cada número da aba no recorte do seu módulo (acima) — o da agenda a
-`getRetention` e `getNewClientsSeries`, o do dinheiro a `getSeries`, ao ticket
-e às vendas (e ao CSV de `/api/relatorios/vendas`), os dois a
-`getCoreDosModulos` e `getRelatorioDosModulos`
-(`metrics_retention`/`metrics_new_clients_series`, migration
-`20261028000804`: as clientes que ELA atendeu; "voltou" = a REDE já a
-tinha atendido antes — `20261029001103`, acima). Com o CRM em OWN, a aba Oportunidades é a das oportunidades
-dela e das sem dono: o funil (`ownerId`), o painel (`metrics_comercial`:
-também os agendamentos que ela marcou) e os motivos de perda
-(`metrics_motivos_de_perda`), todos com `p_owner`. Com o FINANCEIRO em OWN,
-some da tela (`soOsMeus`) o que não se atribui a ela: despesa, lucro, margem e DRE (visão geral e
-financeiro; a evolução só com a receita), as parcelas a receber, a margem por
-faixa etária (custo do catálogo) e o saldo do estoque (valor, giro, críticos,
-zerados, por categoria, por unidade, validades) — fica o consumo dos
-atendimentos dela. A comissão que chega já é a dela e aparece. Prova:
-`e2e/relatorios-so-os-meus.spec.ts`.
-
-**Agenda DELA, dinheiro da rede** (ind-05, revisão de 2026-11-02): as
-tabelas por procedimento e por profissional dos Relatórios juntam as
-execuções dela e a receita da rede. A linha sem execução DELA sai
-(`getRelatorioDosModulos`) — a Renata via "Toxina · 0 execuções · R$ 2.400",
-como se tivesse gerado a receita — e a coluna diz que a receita é de todos (hoje "Receita dos atendimentos
-(de todos)", abaixo). Prova: `e2e/relatorios-procedimentos-agenda-dela.spec.ts`.
+**Os Relatórios não recortam por dono** (SM4, 2026-11-23; `reports-bi-section`,
+os dois portais; era o "Os Relatórios com 'só os meus'" de 28/10 e o "Agenda
+DELA, dinheiro da rede" da ind-05): cada aba mostra os números de todos, nas
+unidades que a página manda — e toda unidade pedida tem de estar ao alcance
+(`alcancaUnidade`; fora dele, sem acesso). A aba que o cargo não tem não abre
+(`podeVerRelatorio`), e as comissões por profissional só vão a quem tem o
+Financeiro em Ver.
 
 **A receita por procedimento e por profissional é a PAGA dos atendimentos**
 (D3 da 5ª simulação, 2026-11-02): o que entrou pela regra única
@@ -1433,15 +1401,15 @@ mudou, pelos princípios (3: o que a tela mostra é o que vale; 4: não chutar):
   receita diz que o estorno sai no dia em que foi feito; a perda e o ajuste
   são métrica (era "já foi pago na compra").
 - **O "Meus…" de quem atende em mais de uma unidade** (D10 da 13ª): no
-  dashboard da unidade, com o módulo em "só os meus", "Minhas comissões",
+  dashboard da unidade, na vista pessoal (SM2), "Minhas comissões",
   "Meus atendimentos", "Meus agendamentos hoje", o "Meu faturamento" e o
   ticket dela contam as unidades em que ela ATENDE (`unidadesDoQueEDela`,
   `lib/metrics/escopo.ts`; só as ativas), e dizem "nas 2 unidades"; o horário
   de fora diz a unidade. Como a Minha agenda e a tela de comissões.
 - **O total de clientes do cabeçalho do dashboard da rede é o da rede inteira**
   (D12 da 13ª): as ativas (`getClientesAtivos`), com "da rede" quando a
-  tela está recortada (unidade ou "só os meus"). O "só os meus" da agenda não
-  recorta a ficha.
+  tela está recortada (unidade ou vista pessoal). A vista pessoal da agenda
+  não recorta a ficha.
 - **Cada quadro de clientes diz o seu recorte** (A10 da 13ª):
   `deQuemSaoAsClientes` — "da rede" ou "com horário com você" (o "atendidas
   na unidade" saiu na 24ª) — no "Reativar", e o subtítulo do "Clientes no

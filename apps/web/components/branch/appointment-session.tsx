@@ -221,11 +221,11 @@ interface Props {
   /** O plano da rede inclui planos de tratamento? Sem ele, a sessão é a simples. */
   podeMontarPlano?:      boolean
   /**
-   * Quem age MONTA o plano nesta unidade (PT2, 2026-11-14): quem atende nela
-   * (o "Atende" da Equipe, `montaPlano` — não é permissão). É o que abre o
-   * "Montar um plano" no atendimento concluído e o aceite do
-   * proposto; na avaliação aberta, gerar o plano grava o prontuário e segue
-   * pedindo o Prontuário em Gerenciar (`canEditRecords`).
+   * Quem age MONTA o plano nesta unidade (UM3, 2026-11-23): o Atendimento em
+   * Gerenciar, com a unidade ao alcance (`montaPlano`). É o que abre o gerar
+   * o plano na avaliação aberta, o "Montar um plano" no atendimento concluído
+   * e o aceite do proposto; o clínico que vai junto segue pedindo o
+   * Prontuário em Gerenciar (`canEditRecords`).
    */
   montaPlanoNaUnidade?:  boolean
   /** E o planejador de injetáveis? Sem ele, o campo da ficha fica só para ver. */
@@ -1302,7 +1302,7 @@ export function AppointmentSession({
   const age       = calcAge(client.birthDate)
   // Somente BRANCH_ADMIN e NETWORK_ADMIN podem desbloquear edição pós-conclusão
   const editLocked = isDone && !isUnlocked
-  // Corrigir o concluído: o Atendimento e o Prontuário em Gerenciar (`canEditRecords`).
+  // Corrigir o concluído: o Prontuário em Gerenciar (`canEditRecords`).
   const registroTravado = textoDoRegistroTravado(status, canEditRecords)
 
   // Observações (controladas, o estado acima) + salvar unificado da ficha
@@ -2209,9 +2209,9 @@ export function AppointmentSession({
                   : registroTravado.texto}
               </p>
             </div>
-            {/* Desbloquear é para editar o prontuário: pede os dois (A39 — o
-                botão aparecia ao lado de "Apenas gerentes podem editar"), e só
-                no concluído (D11: o cancelado não tem registro a editar). */}
+            {/* Desbloquear é para editar o prontuário: o Prontuário em
+                Gerenciar (UM4), e só no concluído (D11: o cancelado não tem
+                registro a editar). */}
             {registroTravado.podeEditar && (
               isUnlocked ? (
                 <button type="button" onClick={() => setIsUnlocked(false)}
@@ -2577,16 +2577,13 @@ export function AppointmentSession({
                       pede o prontuário em Gerenciar): com ele só em Ver, "Fechar agora"
                       respondia "Seu cargo não libera" e a dica mandava a um
                       "Finalizar" que não existe para ela (D9, 2026-11-01). */}
-                  {/* PT2 (2026-11-14): na avaliação CONCLUÍDA só o plano nasce, e
-                      monta quem atende na unidade — "a dra pode realizar a
-                      avaliação e depois com calma montar o plano". */}
-                  {/* 2026-11-18: na avaliação aberta, gera e aceita quem tem o
-                      Atendimento em Gerenciar (PT2: "quem monta o plano é quem
-                      atende"); o clínico que vai junto, só com o Prontuário. Na
-                      CONCLUÍDA, monta quem atende na unidade — sem pedir o
-                      Atendimento em Gerenciar ("nem precisa de permissão pra
-                      isso"), como generateEvaluationPlan (montaPlano). */}
-                  {(status === 'COMPLETED' ? montaPlanoNaUnidade : canManage && !isDone) && (
+                  {/* Na avaliação CONCLUÍDA só o plano nasce — "a dra pode
+                      realizar a avaliação e depois com calma montar o plano".
+                      Na aberta e na concluída, monta quem tem o Atendimento em
+                      Gerenciar na unidade (UM3, `montaPlano`, como
+                      generateEvaluationPlan); o clínico que vai junto, só com o
+                      Prontuário. */}
+                  {montaPlanoNaUnidade && (status === 'COMPLETED' || !isDone) && (
                     <div className="card" style={{ padding: '20px 24px' }}>
                       {status === 'COMPLETED' && (
                         <div data-montar-plano-da-avaliacao style={{ marginBottom: 12 }}>

@@ -85,18 +85,19 @@ test.beforeAll(async () => {
   expect((await db().from('users').update({ atende_em: [rede.branchId] }).eq('id', rede.professionalId)).error).toBeNull()
   vista = await criarMembro(`gsv${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Só vê a agenda',
-    permissoes: [{ modulo: 'agenda', nivel: 'VIEW', escopo: 'ALL' }, { modulo: 'clients', nivel: 'VIEW' }],
+    permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }, { modulo: 'clients', nivel: 'VIEW' }],
   })
   gerente = await criarMembro(`gsg${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Recepção',
     permissoes: [
-      { modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'clients', nivel: 'VIEW' },
-      { modulo: 'medical_records', nivel: 'MANAGE', escopo: 'ALL' },
+      { modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' },
+      { modulo: 'medical_records', nivel: 'MANAGE' },
     ],
   })
   profissional = await criarMembro(`gsp${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Profissional',
-    permissoes: [{ modulo: 'agenda', nivel: 'VIEW', escopo: 'OWN' }, { modulo: 'medical_records', nivel: 'MANAGE', escopo: 'OWN' }],
+    // Agenda em Ver e Prontuário em Gerenciar: o Atendimento em Gerenciar vem junto (comAtendimento).
+    permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }, { modulo: 'medical_records', nivel: 'MANAGE' }],
   })
   expect((await db().from('users').update({ atende_em: [rede.branchId, outraUnidade] }).eq('id', profissional.userId)).error).toBeNull()
 })
@@ -233,7 +234,7 @@ test('C15: não remarca o Em atendimento, e a evolução não se escreve no canc
   expect(entrada?.notes ?? null, 'nada escrito no cancelado').toBeNull()
 })
 
-test('C15: a profissional "só os meus" inicia o DELA numa unidade em que atende, fora da dela', async ({ browser }) => {
+test('C15: a profissional com o Atendimento em Gerenciar inicia o DELA numa unidade em que atende, fora da dela', async ({ browser }) => {
   const dela = await agendado('CONFIRMED', { professionalId: profissional!.userId, branchId: outraUnidade, minutosAtras: 5 })
   await como(browser, profissional!, async p => {
     await acoes(p).status(dela, 'IN_PROGRESS')

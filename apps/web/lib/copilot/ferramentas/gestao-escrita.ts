@@ -1,7 +1,7 @@
 import 'server-only'
 import { z } from 'zod/v4'
 import { revalidatePath } from 'next/cache'
-import { can, isOwnScope, ownerFilter } from '@/lib/auth'
+import { can } from '@/lib/auth'
 import { origensDaRede } from '@/lib/crm/origens'
 import { ler } from '@/lib/db'
 import { dayKeyTZ } from '@/lib/datetime'
@@ -104,7 +104,6 @@ export const lancar: FerramentaDeEscrita<ArgsLancar, PayloadLancar> = {
   nome: 'lancar',
   tipo: 'escrita',
   modulo: 'financial', nivel: 'MANAGE',
-  pode: ctx => !isOwnScope(ctx, 'financial'),
   recurso: 'financeiro',
   // D5 da 16ª (princípios 3 e 4): "Material de limpeza" virou "Compra de
   // estoque" e saiu do resultado. A categoria diz o que é, e na dúvida pergunta.
@@ -198,9 +197,7 @@ export const marcarPago: FerramentaDeEscrita<{ lancamento: string; forma?: strin
   nome: 'marcar_pago',
   tipo: 'escrita',
   // Dar baixa é a régua da tela (markTransactionPaid, CX2): o Caixa em
-  // Gerenciar, ou o Financeiro em Gerenciar sem o "só os meus". Com o
-  // podeReceber, quem só tem o financeiro — até o "só as próprias comissões" —
-  // dava baixa em qualquer lançamento da unidade.
+  // Gerenciar, ou o Financeiro em Gerenciar.
   pode: podeDarBaixa,
   recurso: 'financeiro',
   descricao: 'Dá baixa (marca como pago agora) num lançamento em aberto (id, da ferramenta lancamentos), com a forma de pagamento (dinheiro, Pix, débito, crédito; na despesa, também boleto; obrigatória em toda receita — pergunte como foi pago — e na despesa sem forma) e, no cartão, a bandeira se a pessoa disser (Visa, Mastercard, Elo, Amex, Hipercard, Outras). Na receita recebida no crédito, as vezes se a pessoa disser ("recebeu no crédito em 3x" → vezes=3). No cartão, a maquininha pelo nome (ex.: Stone) quando a rede tem mais de uma — sem ela, a ferramenta pergunta.',
@@ -448,7 +445,7 @@ export const criarOportunidade: FerramentaDeEscrita<ArgsOportunidade, PayloadOpo
   }),
   async preparar(c, a) {
     if (!a.telefone && !a.email) return { erro: 'Qual o telefone ou o e-mail?' }
-    // Escolher o responsável é a mesma trava da tela: CRM em Gerenciar, "todos".
+    // Escolher o responsável é a mesma trava da tela: CRM em Gerenciar.
     let responsavel: { id: string; name: string } | null = null
     if (a.responsavel) {
       if (!podeTrocarResponsavel(c.ctx)) return { erro: 'Sua permissão não escolhe o responsável da oportunidade: ela nasce com você.' }
@@ -592,7 +589,6 @@ export const moverEtapa: FerramentaDeEscrita<{ oportunidade: string; etapa: stri
     }
   },
   async efetivar(c, p, escolha) {
-    if (ownerFilter(c.ctx, 'crm') && !(await leadAoAlcance(c.admin, c.ctx, p.leadId))) return { erro: 'Oportunidade não encontrada.' }
     // O mundo mudou desde o cartão? Uma automação que passou a disparar sem a
     // pessoa ter escolhido não dispara calada: o cartão é refeito.
     const perguntou = !!p.automacoes?.length
@@ -612,7 +608,7 @@ export const trocarResponsavel: FerramentaDeEscrita<{ oportunidade: string; resp
   tipo: 'escrita',
   modulo: 'crm', nivel: 'MANAGE',
   recurso: 'oportunidades',
-  // A trava da tela: o "só os meus" vê o responsável, mas não troca.
+  // A trava da tela (`podeTrocarResponsavel`).
   pode: podeTrocarResponsavel,
   descricao: 'Troca o responsável de uma oportunidade (id, da ferramenta oportunidades) por outro membro ativo da equipe (nome), ou tira o responsável (responsavel = null).',
   parametros: z.object({ oportunidade: UUID, responsavel: z.string().min(2).max(120).nullable() }),

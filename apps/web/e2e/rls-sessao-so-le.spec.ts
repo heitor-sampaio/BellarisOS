@@ -54,9 +54,9 @@ test.beforeAll(async () => {
   unidade = { id: u!.id, slug: u!.slug }
   // A recepcionista da rede: só o CRM — nada de Cargos, Marketing, Estoque.
   daRede = await criarMembro(`ssl${marca}`, { rotulo: 'Recepção da rede', permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }] })
-  // A profissional de uma unidade: só vê a própria agenda.
+  // A profissional de uma unidade: só vê a agenda.
   daUnidade = await criarMembro(`ssu${marca}`, {
-    rotulo: 'Profissional', branchId: unidade.id, permissoes: [{ modulo: 'agenda', nivel: 'VIEW', escopo: 'OWN' }],
+    rotulo: 'Profissional', branchId: unidade.id, permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }],
   })
   cliente = await clienteComSessao(`ssc${marca}`, unidade)
 })

@@ -14,8 +14,7 @@ import {
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { SegSelect } from '@/components/shared/seg-select'
-import { ChevronLeft, ChevronRight, Clock, Plus } from 'lucide-react'
-import { AppointmentModal } from './appointment-modal'
+import { ChevronLeft, ChevronRight, Clock } from 'lucide-react'
 import Link from 'next/link'
 import { useSinais } from '@/components/shared/realtime-refresher'
 import { estenderJanela, rolagemDaGrade } from '@/lib/agenda/grade'
@@ -24,7 +23,7 @@ import { blocosDosBloqueios, livresEntre } from '@/lib/agenda/horario-livre'
 import { intervalosDoDia, diaDaSemana, forasDoHorario, janelaDoDia, type Horario, type BlocoOcupado } from '@/lib/agenda/horario'
 import type { CalendarEvent } from './agenda-month-view'
 import { SeloDoMenor } from '@/components/shared/selo-do-menor'
-import { BotaoBloquearHorario, BlocoDoBloqueio } from '@/components/shared/bloqueio-da-agenda'
+import { BlocoDoBloqueio } from '@/components/shared/bloqueio-da-agenda'
 import { bloqueioNoDia, type BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
 import { useAgora } from '@/lib/use-agora'
 import { useFuso } from '@/components/shared/fuso'
@@ -76,24 +75,19 @@ interface Props {
   dataInicial?:          string | null
   /** Os bloqueios pontuais DELA (decisão 3 da 7ª). */
   bloqueios?:            BloqueioDaAgenda[]
-  /** A agenda em Gerenciar: ela bloqueia o próprio horário (e desfaz). */
-  podeBloquear?:         boolean
   /**
-   * O agendar da "Minha agenda" (A25 da 8ª simulação, decidido pelo princípio 3):
-   * com a Agenda em Gerenciar "só os meus", ela agenda — para ela. A lista de
-   * profissionais é só ela, quando atende nesta unidade.
+   * A28 da 12ª: o atalho para as comissões, no topo da agenda. O rótulo diz o
+   * que a página é: "Comissões" (as de todos) com o Financeiro em Ver,
+   * "Minhas comissões" na vista pessoal.
    */
-  agendar?: { procedures: { id: string; name: string; category: string; duration_min: number; price: string | number }[]; rooms: { id: string; name: string }[]; professionals: { id: string; name: string }[] } | null
-  /** A28 da 12ª: o atalho para as comissões dela (quem tem o Financeiro em Ver), no topo da agenda. */
-  comissoesHref?: string | null
+  comissoes?: { href: string; rotulo: string } | null
 }
 
 export function ProfessionalAgendaView({
-  events: eventosDoServidor, slug, professionalName, branchName, professionalId, branchId, janela,
-  horarioDaUnidade, horarioDaProfissional, ocupadoFora: ocupadoForaDoServidor, dataInicial = null, bloqueios: bloqueiosDoServidor = [], podeBloquear = false, agendar = null,
-  comissoesHref = null,
+  events: eventosDoServidor, slug, professionalName, branchName, professionalId, janela,
+  horarioDaUnidade, horarioDaProfissional, ocupadoFora: ocupadoForaDoServidor, dataInicial = null, bloqueios: bloqueiosDoServidor = [],
+  comissoes = null,
 }: Props) {
-  const [agendando, setAgendando] = useState(false)
   const router = useRouter()
   // F62: a grade desenha no relógio da UNIDADE (os horários "de parede",
   // `naParede`), qualquer que seja o do navegador.
@@ -306,17 +300,6 @@ export function ProfessionalAgendaView({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-      {agendando && agendar && (
-        <AppointmentModal
-          branchId={branchId} slug={slug}
-          procedures={agendar.procedures} professionals={agendar.professionals} rooms={agendar.rooms}
-          defaultDate={!isSameDay(selectedDate, today) ? `${format(selectedDate, 'yyyy-MM-dd')}T09:00` : undefined}
-          profissionalInicialId={professionalId}
-          onClose={() => setAgendando(false)}
-          onSuccess={() => { setAgendando(false); router.refresh() }}
-        />
-      )}
-
       {/* -- Header --------------------------------------------------- */}
       <div className="page-header">
         <div>
@@ -329,19 +312,10 @@ export function ProfessionalAgendaView({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        {comissoesHref && (
-          <Link data-minhas-comissoes href={comissoesHref} className="btn-ghost" style={{ fontSize: 'var(--text-xs-sz)' }}>
-            Minhas comissões
+        {comissoes && (
+          <Link data-minhas-comissoes href={comissoes.href} className="btn-ghost" style={{ fontSize: 'var(--text-xs-sz)' }}>
+            {comissoes.rotulo}
           </Link>
-        )}
-        {/* O bloqueio do próprio horário (decisão 3 da 7ª): o almoço, a folga. */}
-        {podeBloquear && professionalId && (
-          <BotaoBloquearHorario branchId={branchId} profissionais={[]} soEu={{ id: professionalId, name: professionalName || 'Você' }} dia={selectedDate} />
-        )}
-        {podeBloquear && agendar && agendar.professionals.length > 0 && (
-          <button type="button" className="btn-primary" onClick={() => setAgendando(true)}>
-            <Plus size={15} /> Agendar
-          </button>
         )}
         {/* Switcher Dia / Semana / Mês */}
         <SegSelect
@@ -516,7 +490,7 @@ export function ProfessionalAgendaView({
                 const top = Math.max(0, (noDia.de / 60 - DAY_START) * PX_PER_HOUR)
                 const fim = Math.min(gridHeight, (noDia.ate / 60 - DAY_START) * PX_PER_HOUR)
                 if (fim <= top) return null
-                return <BlocoDoBloqueio key={b.id} bloqueio={b} top={top} height={fim - top} esquerda={58} rotulo={`Bloqueado · ${b.motivo}`} podeDesfazer={podeBloquear} />
+                return <BlocoDoBloqueio key={b.id} bloqueio={b} top={top} height={fim - top} esquerda={58} rotulo={`Bloqueado · ${b.motivo}`} podeDesfazer={false} />
               })}
 
               {/* Slots livres */}

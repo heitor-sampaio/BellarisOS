@@ -43,7 +43,7 @@ test.beforeAll(async () => {
   })).error).toBeNull()
   gestor = await criarMembro(`c77g${marca}`, {
     tenant: rede.tenantId, branchId: null, rotulo: 'Gerente',
-    permissoes: [{ modulo: 'clients', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'agenda', nivel: 'VIEW' }],
+    permissoes: [{ modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'agenda', nivel: 'VIEW' }],
   })
 })
 test.afterAll(async () => {

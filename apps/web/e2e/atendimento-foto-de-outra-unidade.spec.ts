@@ -40,9 +40,9 @@ test.beforeAll(async () => {
   profissional = await criarMembro(`fop${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Profissional',
     permissoes: [
-      { modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' },
+      { modulo: 'agenda', nivel: 'MANAGE' },
       { modulo: 'clients', nivel: 'VIEW' },
-      { modulo: 'medical_records', nivel: 'MANAGE', escopo: 'OWN' },
+      { modulo: 'medical_records', nivel: 'MANAGE' },
     ],
   })
   expect((await db().from('users').update({ atende_em: [rede.branchId, unidadeB] }).eq('id', profissional.userId)).error).toBeNull()

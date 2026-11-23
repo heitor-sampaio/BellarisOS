@@ -9,7 +9,7 @@ import { paginasDaBusca, paginasQueCasam } from '@/lib/busca/paginas'
  */
 describe('a busca acha as configurações (A18 da 8ª)', () => {
   // A configuração dos funis é da Admin da rede (CLAUDE.md §11, o Heitor, 18/11).
-  const rede = paginasDaBusca(null, ALL_PERMISSIONS, null, undefined, { adminDaRede: true })
+  const rede = paginasDaBusca(null, ALL_PERMISSIONS, null, { adminDaRede: true })
   const ids = (termo: string, paginas = rede) => paginasQueCasam(paginas, termo).map(r => r.id)
 
   it('"funil" leva à configuração dos funis, além do quadro', () => {
@@ -35,7 +35,7 @@ describe('a busca acha as configurações (A18 da 8ª)', () => {
   })
 
   it('no portal da unidade, quem é da rede acha as taxas (com o endereço da rede); a unidade fixa, não', () => {
-    const daRede = paginasDaBusca('centro', ALL_PERMISSIONS, null, undefined, { daRede: true, adminDaRede: true })
+    const daRede = paginasDaBusca('centro', ALL_PERMISSIONS, null, { daRede: true, adminDaRede: true })
     expect(paginasQueCasam(daRede, 'taxas').map(r => r.href)).toContain('/admin/settings?tab=comissoes')
     expect(paginasQueCasam(daRede, 'funil').map(r => r.href)).toContain('/centro/oportunidades?configurar=funis')
     const fixa = paginasDaBusca('centro', ALL_PERMISSIONS)
@@ -47,12 +47,12 @@ describe('a busca acha as configurações (A18 da 8ª)', () => {
   // tem o CRM em Gerenciar, e a página só abre a janela para a Admin da rede
   // com Configurações em Gerenciar (app/*/oportunidades/page.tsx).
   it('a configuração dos funis é a da página: Admin da rede, com Configurações em Gerenciar', () => {
-    expect(ids('funil', paginasDaBusca(null, { ...NO_PERMISSIONS, crm: 'VIEW' }, null, undefined, { adminDaRede: true }))).not.toContain('oportunidades:funis')
+    expect(ids('funil', paginasDaBusca(null, { ...NO_PERMISSIONS, crm: 'VIEW' }, null, { adminDaRede: true }))).not.toContain('oportunidades:funis')
     // O CRM em Gerenciar, com "A rede inteira", sem ser a Admin da rede: não.
     expect(ids('funil', paginasDaBusca(null, ALL_PERMISSIONS))).not.toContain('oportunidades:funis')
-    expect(ids('funil', paginasDaBusca('centro', ALL_PERMISSIONS, null, undefined, { daRede: true }))).not.toContain('oportunidades:funis')
+    expect(ids('funil', paginasDaBusca('centro', ALL_PERMISSIONS, null, { daRede: true }))).not.toContain('oportunidades:funis')
     // A Admin da rede sem Configurações em Gerenciar: a página não abre a janela, a busca não oferece.
-    expect(ids('funil', paginasDaBusca(null, { ...ALL_PERMISSIONS, settings: 'VIEW' }, null, undefined, { adminDaRede: true }))).not.toContain('oportunidades:funis')
-    expect(ids('funil', paginasDaBusca(null, ALL_PERMISSIONS, null, undefined, { adminDaRede: true }))).toContain('oportunidades:funis')
+    expect(ids('funil', paginasDaBusca(null, { ...ALL_PERMISSIONS, settings: 'VIEW' }, null, { adminDaRede: true }))).not.toContain('oportunidades:funis')
+    expect(ids('funil', paginasDaBusca(null, ALL_PERMISSIONS, null, { adminDaRede: true }))).toContain('oportunidades:funis')
   })
 })

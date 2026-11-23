@@ -49,13 +49,13 @@ test.beforeAll(async () => {
   expect(error).toBeNull()
   lancamento = data!.id
   profissional = await criarMembro(`f75rp${marca}`, {
-    tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Profissional', permissoes: [{ modulo: 'agenda', nivel: 'VIEW', escopo: 'OWN' }],
+    tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Profissional', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }],
   })
   recepcao = await criarMembro(`f75rr${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Recepção', permissoes: [{ modulo: 'cashier', nivel: 'MANAGE' }],
   })
   gestor = await criarMembro(`f75rg${marca}`, {
-    tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Gestora', permissoes: [{ modulo: 'financial', nivel: 'MANAGE', escopo: 'ALL' }],
+    tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Gestora', permissoes: [{ modulo: 'financial', nivel: 'MANAGE' }],
   })
 })
 

@@ -241,17 +241,3 @@ test('o plano cancelado depois de vendido não é venda: a comissão de venda vo
   await expect.poll(async () => (await db().from('treatment_plans').select('status').eq('id', planId).single()).data?.status).toBe('CANCELLED')
   expect(await comissaoDaVenda(planId)).toEqual([expect.objectContaining({ lancado: 0 })])
 })
-
-// A48 da 7ª: o cargo Consultor vende e não via as próprias comissões —
-// "Minhas comissões" é o Financeiro em "Ver, só os próprios" (comissoes.md), e
-// a tela de Cargos não dizia. Decidido pelo princípio 3 (nada de regra
-// escondida) e pelo 1 (a clínica decide pelo cargo): o resumo do cargo diz.
-test('A48: o resumo do cargo sem o Financeiro diz como a pessoa vê as próprias comissões', async ({ browser }) => {
-  await como(browser, async p => {
-    await p.goto('/admin/settings?tab=permissions')
-    await p.getByText(`Consultor cvpc${marca}`).first().click()
-    await expect(p.getByRole('heading', { name: new RegExp(`Consultor cvpc${marca}`) })).toBeVisible()
-    await expect(p.locator('[data-sem-minhas-comissoes]'))
-      .toContainText('Não vê as próprias comissões. Para ver, Financeiro em “Ver”, só os próprios: vira “Minhas comissões”.')
-  })
-})

@@ -95,8 +95,6 @@ export function bloqueioNoDia(b: Periodo, dia: Date): { de: number; ate: number 
   return { de: (ini - inicioDoDia.getTime()) / 60_000, ate: (fim - inicioDoDia.getTime()) / 60_000 }
 }
 
-/** A recusa de quem tem a agenda "só os meus" ao bloquear outra pessoa ou uma sala. */
-export const SO_O_PROPRIO = 'Com a agenda “só os meus”, você bloqueia só o seu horário.'
 
 /**
  * O pedaço do bloqueio num dia, em palavras, para a vista da SEMANA (sobra da

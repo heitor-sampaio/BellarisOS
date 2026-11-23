@@ -251,15 +251,11 @@
     avisa." (`[data-aviso-do-bloqueio]`, `avisoDoBloqueioNoAtendimento`; o da
     profissional, senão o da sala). Só aviso (princípio 2). Prova:
     `e2e/atendimento-atritos-da-8.spec.ts` ("A31").
-  - **Quem bloqueia**: quem tem a Agenda em Gerenciar, na unidade ao alcance;
-    com "só os meus", só o PRÓPRIO horário, sem sala ("Com a agenda “só os
-    meus”, você bloqueia só o seu horário."). A regra do Heitor de 28/10
-    ("quem tem 'só os meus' vê 'só os meus', em qualquer lugar") é sobre o que
-    se VÊ; bloquear só o próprio é decisão do Claude pelo princípio 1
-    (2026-11-18, auditoria das regras: o escopo do cargo recorta também o que
-    ele mexe, e a rede que quiser outra coisa dá "todos").
-    Quem só vê a agenda vê o bloqueio e não bloqueia. Desfazer segue a mesma
-    regra.
+  - **Quem bloqueia**: quem tem a Agenda em Gerenciar, na unidade ao alcance
+    — qualquer pessoa e qualquer sala (o "bloqueia só o seu horário" saiu com
+    o "só os meus", SM1, 23/11). Quem só vê a agenda (ou só tem a Minha
+    agenda, a vista pessoal — SM2) vê o bloqueio e não bloqueia. Desfazer
+    segue a mesma regra.
   - **A vista da SEMANA também mostra** (sobra da F30, 2026-11-05): a célula do
     dia não tem horas, então o bloqueio é uma etiqueta que abre a mesma janela
     (`EtiquetaDoBloqueio`, `[data-bloqueio-da-semana]`; o pedaço do dia por
@@ -309,7 +305,8 @@
     disponíveis" + o acesso continuar o dela): a Talita é da Água Verde e,
     marcada no Batel, alcança no Batel só os agendamentos DELA — ver, marcar a
     chegada, iniciar, concluir, a evolução, o anexo do atendimento e a
-    comissão. A regra é UMA, `alcancaOAgendamento` (`lib/auth.ts`: a unidade
+    comissão, cada passo com a permissão do módulo dele (o "Atende" não dá
+    permissão nenhuma, UM5). A regra é UMA, `alcancaOAgendamento` (`lib/auth.ts`: a unidade
     ao alcance, ou o agendamento dela numa unidade marcada), em
     `agendamentoAoAlcance`, `startAppointment`, `finishSession`, a conclusão,
     a evolução, o histórico, a ficha de saúde e o anexo. A agenda do Batel, os
@@ -330,8 +327,8 @@
     da unidade dele (o portal dela para quem não tem “A rede inteira”), e
     `/[slug]/agenda/[id]` de outra unidade ao alcance redireciona ao endereço
     certo. A lista mostra só o que está EM ABERTO (o concluído de hoje
-    aparecia como pendente). Prova: `e2e/agenda-unidade-da-9.spec.ts` ("D10"). "Minhas comissões" (o
-    financeiro "só as próprias") cobre também as unidades em que ela atende,
+    aparecia como pendente). Prova: `e2e/agenda-unidade-da-9.spec.ts` ("D10"). "Minhas comissões" (a
+    vista pessoal do Financeiro, SM2) cobre também as unidades em que ela atende,
     com o filtro de unidade (`app/[slug]/financeiro/comissoes`).
   - **`provides_services` = "atende em alguma unidade"**, mantido junto da
     lista por um gatilho só (`private.atende_em_sincronizar`): gravar a lista
@@ -470,23 +467,23 @@
   atendimento começa de Confirmado ou de Chegou. Chegar não emite documento
   nenhum: desde o DC4 (2026-11-14) todos nascem ao agendar (`documentos.md`). Lista nova de status "em aberto" inclui ARRIVED.
   Prova: `e2e/agenda-check-in.spec.ts`.
-- **A profissional marca a chegada e inicia num gesto** (A21 da simulação de
+- **A chegada e o início num gesto, no agendamento dela** (A21 da simulação de
   2026-10-27): no agendamento DELA que ainda não chegou (Agendado ou
   Confirmado), a tela do atendimento e a janela da agenda mostram "Marcar
   chegada e iniciar" (`chegarEIniciar`, `actions/appointments.ts`) — o MESMO
   `checkinCore` (o plano em aberto aparece na tela
   como em todo check-in) e depois o MESMO `startAppointment` (a trava dos
-  documentos). Com a agenda "só os meus", só no agendamento dela. Iniciar
-  pede o Atendimento em Gerenciar (desde 2026-11-18, §9.1 "Quem faz o quê na
-  agenda e no atendimento"): sem ele, nem o "Marcar chegada e iniciar" nem o
-  "Iniciar" aparecem (`podeAtenderEste`). Sem o
+  documentos). Cada metade com o seu módulo (UM2): a chegada pede a Agenda em
+  Gerenciar, e iniciar o Atendimento em Gerenciar (desde 2026-11-18, §9.1
+  "Quem faz o quê na agenda e no atendimento"): sem os dois, o "Marcar
+  chegada e iniciar" não aparece, e sem o Atendimento nem o "Iniciar"
+  (`podeAtenderEste`). Sem o
   check-in no cargo, a tela diz que quem tem a Agenda em Gerenciar marca a chegada
-  — e o NOME de quem marca (A10 da 19ª, princípio 3: a Agenda em Gerenciar de
-  TODOS, porque o "só os meus" marca só a dos próprios; `quemMarcaAChegada`,
+  — e o NOME de quem marca (A10 da 19ª, princípio 3; `quemMarcaAChegada`,
   `textoDeQuemMarcaAChegada`). Prova:
-  `e2e/agenda-chegar-e-iniciar.spec.ts`, `tests/atritos-da-19-atendimento.test.ts`. **E quem é a profissional DAQUELE
-  agendamento, qualquer que seja o escopo** (A25 da 6ª simulação,
-  2026-11-04): a Admin da rede que atende, com a agenda de todas, chegava ao dela em
+  `e2e/agenda-chegar-e-iniciar.spec.ts`, `tests/atritos-da-19-atendimento.test.ts`. **E a quem atende AQUELE
+  agendamento** (A25 da 6ª simulação,
+  2026-11-04): a Admin da rede que atende, na agenda da unidade, chegava ao dela em
   quatro cliques e uma confirmação ("Chegou" → "Iniciar" → "mesmo assim"); a
   janela (dos dois portais) oferece "Marcar chegada e iniciar" quando o
   agendamento é do membro logado e ele tem a agenda e o Atendimento em
@@ -501,8 +498,8 @@
   linha diz o que cada um faz ("Confirmar: a cliente confirmou que vem.
   Chegou: ela está na espera. …", `[data-o-que-cada-um-faz]`). **Quem não
   inicia nem conclui lê ANTES de iniciar** (A20): sem o Atendimento em
-  Gerenciar (ou, com o "só os meus" dele, no atendimento de outra pessoa), a
-  janela (`podeConcluir`, `atendimentoProprio`) e a tela do atendimento não
+  Gerenciar, a
+  janela (`podeConcluir`) e a tela do atendimento não
   oferecem o "Iniciar" nem o "Finalizar" e dizem quem faz já no
   agendado/confirmado/chegou — pela PERMISSÃO e com os nomes (A9 da 20ª,
   `textoDeQuemConclui`, `quemConcluiOAtendimento`): "Iniciar e concluir o
@@ -512,45 +509,24 @@
   no topo das ações; na tela, antes do botão). Marcar a chegada continua da
   Agenda em Gerenciar. A regra é a do Heitor, 2026-11-18 ("Agenda é agenda e atendimento é atendimento. Só inicia e conclui atendimento quem tem gerenciar no atendimento.");
   até ali concluir pedia o Prontuário em Gerenciar. **Os nomes são de quem
-  ALCANÇA o atendimento** (D1 da 22ª; princípio 3): o Atendimento em
-  Gerenciar de todos E a Agenda de todos, em Ver ou Gerenciar
-  (`quemConcluiOAtendimento`, `eTambem`) — quem tem a Agenda "só os meus" não
-  abre o atendimento de outra pessoa e não entra na lista. Vale também na
-  janela da agenda dos dois portais (a mesma função). Prova:
-  `tests/atendimento-atritos-da-22.test.ts`. **E a profissional do próprio
-  agendamento entra** (A9 da 25ª; princípio 3): com o Atendimento em
-  Gerenciar "só os meus" (e a Agenda), ela conclui o dela — a sessão, a
-  janela da agenda e a tela do atendimento de outra pessoa ("Quem conclui é
-  Bruna, que atende, ou …") a juntam aos nomes (`idsQueConcluemOsProprios`,
-  `nomesDeQuemConclui`). Prova: `tests/atritos-da-25-atendimento.test.ts`. E
+  tem o Atendimento em Gerenciar** (UM2; `quemConcluiOAtendimento`: ativos,
+  ao alcance da unidade, e a Admin da rede sempre), na janela da agenda dos
+  dois portais e na tela do atendimento (a mesma função). Saíram com o "só
+  os meus" (SM1, 23/11) o "e a Agenda de todos" (D1 da 22ª) e a profissional
+  que concluía só o dela (A9 da 25ª). E
   o concluído A RECEBER não diz "Este agendamento já foi encerrado." embaixo
   do "Receber no PDV" (A14; era o "Receber pagamento" — desde o PDV7 a
   janela leva à comanda do atendimento no PDV, `rotaDaComanda`). Prova:
   `e2e/atendimento-uso-da-10.spec.ts`.
-- **A agenda "só os meus" vale também pelo ID** (D4 da simulação de
-  2026-10-28, decisão do Heitor): com `agenda` OWN, a tela do atendimento
-  (`app/_shared/sessao-de-atendimento.tsx`, os dois portais) de um
-  agendamento de OUTRO profissional diz "Este atendimento é de outra
-  pessoa que atende" (A23 da 22ª: era "de outra profissional", no feminino
-  fixo), com o nome e "Voltar à agenda", e nada do atendimento (a quem tem
-  o Prontuário, também quem conclui: "Quem conclui é quem tem o Atendimento
-  em Gerenciar e a Agenda de todos (nomes)." — A26 da 23ª,
-  `textoDeQuemConcluiODeOutra`; até 2026-11-18 dizia "a Agenda de todos e o
-  Prontuário em Gerenciar" — texto corrigido pelo Claude na varredura de
-  18/11, ATD-A06)
-  (`AtendimentoDeOutraProfissional`; r2-atd-04, revisão do Heitor de
-  2026-11-03: o 404 "Página não encontrada" da A38 parecia defeito — e antes
-  dele era `semAcesso()`, "Seu cargo não libera esta tela", e o cargo libera;
-  o que não é dela é este atendimento), e as actions pelo id o
-  recusam — check-in (`checkinCore`), confirmar, remarcar, cancelar
-  (`confirmarCore`/`remarcarCore`/`cancelarCore`, logo também o Copilot),
-  iniciar pelo status (`updateAppointmentStatus`), trocar o profissional e
-  salvar a evolução. A regra é UMA, `deOutroProfissional`
-  (`lib/appointments/alteracoes.ts`); `startAppointment`, `finishSession` e
-  `chegarEIniciar` já conferiam. Quem vê a agenda de todos (ALL) faz o de todos. Antes a
-  profissional abria pela URL o atendimento de outra e marcava o check-in ("o
-  check-in comum não confere o profissional"). Prova:
-  `e2e/agenda-so-os-meus-pelo-id.spec.ts`.
+- **A tela do atendimento abre com o Atendimento em Ver** (UM1, 2026-11-23;
+  era a Agenda em Ver) — ou, como vista pessoal (SM2), a quem atende e não
+  tem o módulo, só no agendamento DELA (`app/_shared/sessao-de-atendimento.tsx`,
+  os dois portais; o de outra pessoa pelo id é `semAcesso()`). A vista só
+  MOSTRA: o que se faz ali pede a permissão de cada passo. Quem tem o módulo
+  abre o atendimento de qualquer pessoa, na unidade ao alcance. Saiu com o
+  "só os meus" (SM1) a tela "Este atendimento é de outra pessoa que atende"
+  e a recusa pelo id do agendamento de outra pessoa (`deOutroProfissional`,
+  D4 de 28/10).
 - **Iniciar ANTES do horário PERGUNTA** (A32 da 5ª simulação: a
   Tatiane iniciou às 11:07 o das 13:00, sem aviso). Em QUALQUER quantidade de
   tempo antes do horário marcado (r2-age-06, o Heitor em 2026-11-03:
@@ -584,24 +560,16 @@
   marca no dia do agendamento". `chegarEIniciar` confere o dia
   (`ehODiaDoAgendamento`) antes de `perguntaDoInicio`. Prova:
   `e2e/agenda-inicio-adiantado.spec.ts` ("D10").
-- **A "Minha agenda" agenda — para ela** (A25 da 8ª simulação, 2026-11-06;
-  decidido pelo princípio 3): com a Agenda em Gerenciar "só os meus", a Paula
-  não marcava a avaliação nem o retorno — o cargo deixava e a tela escondia.
-  A "Minha agenda" tem "Agendar" (quando ela atende na unidade), o modal de
-  sempre com a profissional = ela, e o servidor recusa outra profissional
-  ("Com a agenda “só os meus”, você agenda só para você." — `addAppointment`;
-  decisão do Claude pelo princípio 1, como no bloqueio: a regra do Heitor de
-  28/10 é sobre o que se VÊ). Prova:
-  `e2e/agenda-atritos-da-8.spec.ts` ("A25").
+- **A "Minha agenda" só mostra** (SM2, 2026-11-23): é a vista pessoal de quem
+  atende e não tem a Agenda — não agenda nem bloqueia; agendar é da Agenda em
+  Gerenciar, para qualquer pessoa que atende na unidade. Saiu com o "só os
+  meus" (SM1) o "Agendar" da Minha agenda só para ela (A25 da 8ª).
 - **Trocar a profissional pela janela, com confirmação e "de quem para quem"**
   (A22 da 8ª simulação, 2026-11-06): só se trocava arrastando, sem
   confirmação, e o histórico dizia "Remarcado". A janela do agendamento tem
   "Trocar profissional" (`TrocarProfissional`, a quem tem a Agenda em
-  Gerenciar de todos — e, com "só os meus", no agendamento DELA: ela passa o
-  próprio atendimento a outra pessoa que atende; o Heitor, 2026-10-28: "a
-  profissional (no que é dela) ou quem gerencia a agenda cancela e passa o
-  atendimento"; a janela escondia até 2026-11-18, e `reassignProfessional`
-  já aceitava): só quem ATENDE na unidade do agendamento, com
+  Gerenciar, UM1–UM5; o "no agendamento DELA" do "só os meus" saiu com o
+  SM1): só quem ATENDE na unidade do agendamento, com
   "(ocupada)" na que tem atendimento no horário (`profissionaisParaTrocar`), e
   "Trocar a profissional de A para B?" antes. Arrastar para a coluna de outra
   profissional pergunta também ("Trocar a profissional de A para B e marcar às
@@ -618,7 +586,7 @@
   Menino Deus exigia cancelar e refazer — o Remarcar só muda o horário e o
   "Trocar profissional" só oferece quem atende na unidade. A janela do
   agendamento em aberto (Agendado/Confirmado), na rede de duas ou mais
-  unidades e para quem tem a Agenda em Gerenciar de todos, tem "Mudar de
+  unidades e para quem tem a Agenda em Gerenciar, tem "Mudar de
   unidade" (`MudarDeUnidade`, `[data-mudar-de-unidade]`): a unidade nova (as
   que quem muda alcança), a profissional que ATENDE lá ("(ocupada)"
   desligada) e a sala (opcional, livre); o horário fica. Confirma antes. O
@@ -631,14 +599,6 @@
   horário … na unidade Menino Deus". A Equipe diz que "Unidade" (o acesso) e
   "Atende clientes em" (onde agenda) são dois controles
   (`[data-atende-e-unidade]`). Prova: `e2e/agenda-unidade-da-9.spec.ts` ("A33").
-- **"Só os meus" cancela e marca a falta do DELA** (agenda-06, revisão do
-  Heitor de 2026-11-02; em 28/10 ele confirmou que a profissional cancela o
-  que é dela): com a agenda em Gerenciar e escopo "só os meus", a janela da
-  agenda (`/admin/agenda`, a da profissional da rede; a da unidade é a "Minha
-  agenda", que abre a tela do atendimento) mostra "Cancelar" e "Não
-  compareceu", e `updateAppointmentStatus` deixa CANCELLED e NO_SHOW no
-  agendamento dela (`deOutroProfissional` recusa o de outra). Confirmar e
-  "Chegou" seguem com quem vê a agenda de todos. Prova: `e2e/agenda-so-os-meus-pelo-id.spec.ts`.
 - **O remarcar da janela AVISA antes de confirmar** (A25 e cli-01, 2026-11-02):
   o horário novo fora do expediente da profissional e o choque (a conta do
   agendar, `avisosDoHorarioCore`, sem o próprio agendamento), e a cliente
@@ -688,10 +648,10 @@
   - **No celular, a "Minha agenda" cabe** (A28): o título do dia não quebra (no
     celular, o dia curto — "qua, 11 de nov" —, `onde-no-celular`), a navegação
     e a legenda quebram a LINHA (`[data-legenda-da-agenda]`), e "Minhas
-    comissões" fica no topo dela para quem tem o Financeiro em Ver
-    (`[data-minhas-comissoes]`).
+    comissões" fica no topo dela para quem tem o Financeiro em Ver ou a vista
+    pessoal das comissões (SM2; `[data-minhas-comissoes]`).
   - Ficou como está: o toque no cartão da "Minha agenda" abre o atendimento, e
-    o da agenda de todas abre a janela de ações (A25) — é o desenho do
+    o da agenda da unidade abre a janela de ações (A25) — é o desenho do
     agenda-06 (a "Minha agenda" abre a tela do atendimento).
   - Prova: `e2e/agenda-atritos-da-12.spec.ts`.
 - **A grade do dia rola a cada troca de dia** (D8): hoje, uma hora antes de
@@ -727,8 +687,8 @@
   marcar falta ou concluir?"); era deixado de fora. O aviso aparece também
   no dashboard da REDE (H3, "a dona vê tudo, sempre": quem tem o cargo Admin da rede, na rede de uma
   unidade só, usa o /admin), das unidades do recorte, com a unidade de cada linha quando
-  há mais de uma e o link para `/admin/agenda/<id>`. Respeita o "só os meus"
-  da agenda. Prova:
+  há mais de uma e o link para `/admin/agenda/<id>`. Na vista pessoal (a
+  Minha agenda, SM2), só os dela (`vistaPessoal(ctx, 'agenda')`). Prova:
   `e2e/agenda-abertos-de-dias-anteriores.spec.ts`.
 - **O de HOJE que passou do horário em aberto é marcado no cartão** (A21 da 9ª
   simulação, 2026-11-07: o órfão das 00:30 da Rosana parecia um agendamento
@@ -1179,12 +1139,12 @@
     `?tags=a,b` vão na URL, como o `?date=`, e o servidor relê a agenda com
     eles (`filtrosDaAgenda` + `aplicarFiltrosDaAgenda`); a tag vai na cliente
     embutida (`clients(tags)` com `clients=not.is.null`, o `!inner`).
-  - **O pedido não vence o escopo nem a abrangência**: só vale o que está nas
+  - **O pedido não vence a abrangência**: só vale o que está nas
     opções da tela — quem ATENDE na(s) unidade(s) da tela (§9.1, "Atende" por
     unidade), as salas da unidade, o vocabulário ATIVO da rede
     (`tagsAtivasDaRede`, lido no servidor: quem só tem a Agenda também filtra
-    por tag); o resto não vira filtro escondido. Com a Agenda em "só os meus"
-    o filtro de profissional não existe.
+    por tag); o resto não vira filtro escondido. Na Minha agenda (a vista
+    pessoal, SM2) o filtro de profissional não existe.
   - **A tag filtra PESSOAS**: o agendamento entra se a cliente dele tem TODAS
     as tags marcadas (E, como Clientes e o inbox); sem cliente, sai. Rede sem
     tag nenhuma: o filtro não aparece.
@@ -1199,7 +1159,7 @@
     `[data-ocupacao-com-filtro]`). O bloqueio segue o filtro: o da
     profissional, o da sala (`bloqueioPassaNoFiltro`). Agendar e bloquear
     seguem com todas.
-  - **A "Minha agenda" (a Agenda em "só os meus") não tem filtro** (decisão
+  - **A "Minha agenda" (a vista pessoal, SM2) não tem filtro** (decisão
     do Claude pelo princípio 7): a profissional é ela, a agenda de uma pessoa
     cabe na tela e cada cartão já diz a cliente e a sala; ela não tem barra de
     filtros fixos à qual a tag se somaria.
@@ -1409,33 +1369,37 @@
 de decisões) — **implementadas na F65 (2026-11-12)**:
 - **Quem faz o quê na agenda e no atendimento** (D20, revisto pelo Heitor em
   2026-11-18: "Agenda é agenda e atendimento é atendimento. Só inicia e conclui atendimento quem tem gerenciar no atendimento.").
-  Iniciar e concluir são do módulo **Atendimento** em Gerenciar, dentro do
-  escopo dele ("só os meus" = só os próprios; "todos" = qualquer um da
-  unidade ao alcance). Nem a Agenda nem o Prontuário iniciam ou concluem:
+  Cada passo, um módulo (UM1–UM5, o Heitor, 2026-11-23: "concordo, pode
+  anotar, marcar as questões e ajustar o codigo"). Iniciar, concluir e
+  desistir no meio são do módulo **Atendimento** em Gerenciar, e só dele
+  (UM2), em qualquer atendimento da unidade ao alcance (sem o "só os meus",
+  SM1). Nem a Agenda nem o Prontuário iniciam ou concluem:
   saíram o "a Agenda em Ver inicia e conclui" e o "concluir também pede o
   Prontuário em Gerenciar". O registro CLÍNICO do atendimento (a evolução, as
   fotos, a ficha de saúde, a ficha de atendimento, as dores, a
-  intercorrência) continua do Prontuário em Gerenciar: sem ele, quem tem o
+  intercorrência) continua do Prontuário em Gerenciar, sem precisar atender
+  (UM4): sem ele, quem tem o
   Atendimento em Gerenciar inicia e conclui, e o clínico não se escreve
   (`registraClinico` em `finishSession`; a tela não mostra os campos). A
   matriz, o resumo do cargo (`conclusaoNoResumo`) e `quemConcluiOAtendimento`
-  dizem isso. A Agenda em Gerenciar confirma, marca a chegada, cancela, marca
-  a falta, remarca e troca a profissional. Com "só os meus" e Gerenciar,
-  cancela, marca a falta e passa a outra pessoa só os próprios.
+  dizem isso. A Agenda em Gerenciar agenda, confirma, marca a chegada,
+  cancela (o que não está em andamento), marca a falta, remarca e troca a
+  profissional. Receber é do PDV (`podeReceber`). O "Atende" não dá
+  permissão nenhuma (UM5).
   **O módulo Atendimento** (2026-11-18; migration `20261123900001`): Ver e
-  Gerenciar, com o escopo como o da Agenda (decisão do Claude pelo princípio
-  1). Ver abre a tela do atendimento (que abre também com a Agenda em Ver) e
-  Tratamentos (os planos); Gerenciar inicia, conclui, baixa os insumos, desiste
-  no meio e gera e aceita o plano na avaliação aberta; "Editar registro" pede
+  Gerenciar. Ver abre a tela do atendimento (UM1; não abre mais com a Agenda
+  em Ver) e Tratamentos (os planos); Gerenciar inicia, conclui, baixa os
+  insumos, desiste no meio e monta o plano — na avaliação aberta, na
+  concluída ou pelo "Novo plano" (UM3); "Editar registro" pede
   ele e o Prontuário em Gerenciar. Segue o recurso Agenda do plano da rede
   (`FUNCIONALIDADES`). Os cargos que existiam e os modelos semeados ganharam o
   Atendimento em Gerenciar onde tinham a Agenda (Ver ou Gerenciar) e o
-  Prontuário em Gerenciar, e em Ver onde tinham só a Agenda, com o escopo da
-  Agenda (decisão do Claude pelo princípio 3: ninguém perdeu o que fazia de
+  Prontuário em Gerenciar, e em Ver onde tinham só a Agenda (decisão do
+  Claude pelo princípio 3: ninguém perdeu o que fazia de
   clínico). ⚠️ O cargo com a Agenda em Gerenciar sem o Prontuário em
   Gerenciar deixou de iniciar — e de abrir a comanda do atendimento pelo
-  início (PDV3); a rede que quiser dá o Atendimento em Gerenciar a ele. A tabela está na `SCOPE_NOTE` de
-  `lib/permissions-copy.ts`. `updateAppointmentStatusInterno` pede Gerenciar
+  início (PDV3); a rede que quiser dá o Atendimento em Gerenciar a ele.
+  `updateAppointmentStatusInterno` pede Gerenciar
   para Confirmado, Chegou, Cancelado e Falta (C10) — o Cancelado do Em
   atendimento é a desistência, do Atendimento em Gerenciar (ATD-A01); o Cancelado passa pelo
   `cancelarCore` (motivo, aviso, histórico — C12), a Falta só sai de
@@ -1444,16 +1408,12 @@ de decisões) — **implementadas na F65 (2026-11-12)**:
   que o cargo faz. Prova: `e2e/agenda-guardas-de-status.spec.ts`,
   `e2e/permissoes-acoes.spec.ts` ("agenda: cancelar agendamento" pede
   Gerenciar).
-  **Com "só os meus" e Gerenciar, a janela mostra o "Remarcar" do PRÓPRIO**
-  (F75): a action (`remarcarCore`) já remarcava o próprio; a janela escondia
-  o botão (`ehMeu` passou a mostrá-lo). ⚠️ É a leitura da F75 (a tarefa da
-  frente), não uma resposta escrita do Heitor: a F65 levou a ele a pergunta
-  "só os meus" + Gerenciar remarcando o próprio, e ela segue aberta para
-  confirmar. Prova: `e2e/agenda-f75-remarcar-o-proprio.spec.ts`.
-- **Quem inicia e conclui o atendimento de outra profissional é o ESCOPO
-  (D21; os três eixos, CLAUDE.md §11),** na tela e no servidor: com "só os
-  meus", só o próprio; com "todos", qualquer um da unidade ao alcance (C14).
-  Prova: `e2e/atendimento-quem-inicia-e-conclui.spec.ts`.
+  O "Remarcar do próprio" com "só os meus" (F75) e a pergunta da D20 saíram
+  com o "só os meus" (SM1; revisao.md: "D20 … Revisto em 23/11").
+- **Quem inicia e conclui o atendimento de outra pessoa que atende** (D21,
+  revista em 23/11): quem tem o Atendimento em Gerenciar, qualquer um da
+  unidade ao alcance (UM2, SM1 — saiu o "só os meus" = só o próprio), na tela
+  e no servidor (C14). Prova: `e2e/atendimento-quem-inicia-e-conclui.spec.ts`.
 - **O "Iniciar" não reabre o que acabou** (C11): só sai de Confirmado ou
   Chegou (a gravação confere a situação); o gatilho do banco recusa sair de
   Concluído ("Atendimento concluído não muda de situação…", migration
@@ -1955,16 +1915,11 @@ const procedures = await ler(
   em Fotos do atendimento, neste registro" (`[data-fotos-na-ficha]`; era "em
   Documentos → Foto clínica" até o PR1a, 2026-11-14) — dizia "Não
   informado". Prova: `e2e/prontuario-atritos-da-11.spec.ts`.
-- **O recorte se diz** (A35 da 11ª): com o prontuário "só os meus", a ficha de
-  quem ela não atende dizia "Nenhum termo ou contrato" e "Nenhum documento
-  anexado" — eles existem. Os Termos dizem "não aparecem para você: com o
-  prontuário “só os meus”…" (`[data-termos-recortados]`), e a aba PRONTUÁRIO
-  (desde o PR1b, 2026-11-14; era a de Documentos) "Há 2 anexos clínicos desta
-  cliente (fotos, exames, laudos) que a sua permissão não abre…"
-  (`[data-anexos-clinicos-fora]`) — só o número, nada do conteúdo. A aba
-  Prontuário aparece para isso a quem tem o Prontuário em Ver e não atende a
-  cliente; sem o módulo, o aviso fica na aba Documentos (não há outra).
-  A regra de quem vê não mudou.
+- **O recorte do prontuário saiu** (SM1, 23/11): sem o "só os meus", quem tem
+  o Prontuário em Ver vê os termos e os anexos clínicos de toda cliente da
+  rede; o aviso "não aparecem para você" (A35 da 11ª) não tem mais caso. Sem
+  o módulo, o aviso dos anexos clínicos fora fica na aba Documentos
+  (`[data-anexos-clinicos-fora]`) — só o número, nada do conteúdo.
 - **O modelo de perguntas de injetáveis** (A30 da 11ª: a ficha de
   saúde padrão não perguntava doença neuromuscular, toxina anterior,
   anticoagulante, herpes): no "Editar perguntas" da ficha de saúde,
@@ -2005,10 +1960,8 @@ const procedures = await ler(
     A regra ficou, e o Heitor a confirmou no levantamento das regras (H13,
     2026-11-11, opção a: pelo princípio 1 a rede decide pelo cargo quem tem
     o Prontuário em Gerenciar, e pela H7 o controle da rede toda é de quem é
-    da rede; quem não tem “A rede inteira” não vê o bloco). O escopo não muda a regra,
-    e o texto diz isso desde a A35 da 6ª simulação (2026-11-04): "… sem
-    unidade fixa — também com o escopo “só os meus”" (o Igor, médico da rede
-    com o prontuário "só os meus", via a lista e o texto parecia excluí-lo).
+    da rede; quem não tem “A rede inteira” não vê o bloco). O "também com o
+    escopo “só os meus”" do texto (A35 da 6ª) sai com o "só os meus" (SM1).
   - Só o servidor lê e grava (RLS sem política); um acesso não se altera
     (gatilho); `user_id` sem chave estrangeira — o registro sobrevive ao
     membro, e o nome é o do ctx (com a marca "via suporte").
@@ -2016,8 +1969,8 @@ const procedures = await ler(
     `e2e/lgpd-exportacao.spec.ts`.
 - **Anexar (e apagar) anexo CLÍNICO é do prontuário, não do cadastro**
   (2026-10-20, `recusaDoAnexo` em `actions/client-documents.ts`):
-  `medical_records: MANAGE` com o alcance da ficha — no "só os meus", só de
-  cliente que o profissional atendeu. O anexo comum (RG, comprovante) segue
+  `medical_records: MANAGE` com o alcance da ficha (a rede; sem o "só os
+  meus", SM1, de qualquer cliente). O anexo comum (RG, comprovante) segue
   `clients: MANAGE`. A ficha oferece a cada um só as categorias dele. Antes
   tudo pedia o cadastro, e a profissional não tinha onde anexar a foto
   clínica (simulação de um dia de operação).
@@ -2101,8 +2054,8 @@ const procedures = await ler(
   `client_documents.enviado_em`/`enviado_por`/`enviado_por_nome` e avisa a
   cliente com texto GENÉRICO ("<unidade> enviou um documento para você" — o
   nome do arquivo pode dizer o procedimento); "Tirar do app" desfaz. Pode
-  quem pode mexer no anexo (`recusaDoAnexo`: o clínico pede o prontuário,
-  com o "só os meus"), com a unidade ao alcance; o suporte não envia
+  quem pode mexer no anexo (`recusaDoAnexo`: o clínico pede o Prontuário em
+  Gerenciar), com a unidade ao alcance; o suporte não envia
   (`bloqueioDoSuporte`). O Histórico do portal filtra `enviado_em` não nulo.
   O termo e o contrato que ela ASSINOU (`issued_documents`) continuam no
   portal como sempre; dos anexos de antes, só o termo/contrato anexado nasceu
@@ -2189,11 +2142,12 @@ const procedures = await ler(
     servidor lê (`retratarInjetaveis`, `lib/injetaveis/alcance.ts`; a conta
     pura em `lib/atendimento/retrato-dos-injetaveis.ts`). Edição do mapa não
     salva no planejamento não entra no retrato (a tela diz isso no campo).
-  - O planejamento tem de ser da cliente DO ATENDIMENTO, da rede, da unidade ao
-    alcance e, no prontuário "só os meus", de cliente que ela atende — senão o
-    salvar e o finalizar recusam ("Planejamento de injetáveis não encontrado
-    para esta cliente."). O plano é da CLIENTE: quem a atende vê e usa os
-    planejamentos dela, quem quer que os tenha desenhado (`mapaDaProfissional`).
+  - O planejamento tem de ser da cliente DO ATENDIMENTO, da rede e da unidade
+    ao alcance (o "de cliente que ela atende" do prontuário "só os meus" saiu,
+    SM1) — senão o salvar e o finalizar recusam ("Planejamento de injetáveis
+    não encontrado para esta cliente."). O plano é da CLIENTE: quem tem o
+    Prontuário vê e usa os planejamentos dela, quem quer que os tenha
+    desenhado.
   - Finalizar sem mexer na ficha já salva com planejamento: o retrato se
     refaz com o planejamento de agora (o resto da ficha fica como foi salvo);
     se o planejamento saiu do alcance, a ficha salva fica como está.
@@ -2270,19 +2224,13 @@ const procedures = await ler(
   saía. A soma do mapa e a comparação juntam as duas, e o texto fala na
   unidade do insumo ("O mapa soma 56 U de Toxina; a baixa está em 40 U.").
   ml e UI seguem sem se comparar. Prova: `tests/injetaveis-dose-u-e-ui.test.ts`.
-- **Os mapas de injetáveis seguem o prontuário "só os meus"** (o Heitor,
-  2026-10-28: "quem tem 'só os meus' vê 'só os meus', em qualquer lugar" —
-  a fala é sobre o que se VÊ; valer também para as actions pelo id é decisão
-  do Claude, pela regra do CLAUDE.md §11: o que se esconde na lista não pode
-  ficar alcançável pelo id). Com `medical_records` OWN, a lista de Injetáveis
-  (`listarMapasDeInjetaveis`), os planejamentos da cliente e TODA action pelo
+- **Os mapas de injetáveis seguem o Prontuário** (sem o "só os meus", SM1,
+  23/11): a lista de Injetáveis (`listarMapasDeInjetaveis`) e os
+  planejamentos da cliente abrem com o Prontuário em Ver, e toda action pelo
   id do mapa (abrir, salvar, renomear, ligar cliente, registrar aplicação —
-  `mapaDoTenant`) só valem para o mapa DELA: da cliente que ela atende (um
-  agendamento com ela — a regra da ficha e de `recusaDoAnexo`) ou, avulso
-  (sem cliente), o que ela mexeu por último (`updated_by`). O filtro da lista
-  é no banco (`!inner` mapa → cliente → agendamento com ela). Antes a lista
-  conferia só `medical_records: VIEW` e mostrava os mapas de todas. Prova:
-  `e2e/injetaveis-so-os-meus.spec.ts`.
+  `mapaDoTenant`) confere a rede e o alcance; gravar pede o Prontuário em
+  Gerenciar (UM4). Saiu o recorte ao mapa DELA (da cliente que ela atende ou,
+  avulso, o que ela mexeu por último).
 - **A sub-aba Planejamento → Injetáveis só existe para quem vê o clínico**
   (D7 da simulação de 2026-10-29): `PainelPlanejamento podeVerInjetaveis` é a
   decisão clínica da tela que o monta — `podeVerProntuario` na ficha,
@@ -2294,10 +2242,10 @@ const procedures = await ler(
   carregando para sempre. Prova: `e2e/injetaveis-sem-prontuario.spec.ts`.
 - **E o plano de tratamento só existe para quem tem o Atendimento** (D6 da
   5ª simulação, 2026-11-01, que pedia a Agenda; desde 2026-11-18 o
-  Atendimento — o plano é de quem atende, PT2, e o Heitor: "Agenda é agenda e
-  atendimento é atendimento"): `getPlanosDoCliente`, `listarPlanejamentos`, as
-  páginas de Tratamentos e o menu pedem `atendimento: VIEW`, com o "só os
-  meus" dele. Na ficha, sem o Atendimento e sem o prontuário, a aba
+  Atendimento — o Heitor: "Agenda é agenda e atendimento é atendimento"; UM3):
+  `getPlanosDoCliente`, `listarPlanejamentos`, as
+  páginas de Tratamentos e o menu pedem `atendimento: VIEW` (todos os planos
+  das unidades ao alcance; sem o "só os meus", SM1). Na ficha, sem o Atendimento e sem o prontuário, a aba
   Planejamento some; com o prontuário e sem o Atendimento, ela é só a de
   injetáveis (`PainelPlanejamento podeVerPlanos`).
   A carga da lista que falha diz "Não foi possível carregar os planos de
@@ -2305,22 +2253,22 @@ const procedures = await ler(
   ficha não oferece "+ Agendar" sem a Agenda em Gerenciar, nem "Adicionar
   primeiro documento" a quem não anexa (A23). Prova:
   `e2e/permissoes-quem-so-ve.spec.ts`.
-  **Quem monta o plano é quem ATENDE na unidade dele** (PT2, Bloco Plano de
-  tratamento, 2026-11-14 — o Heitor: "quem monta o plano é quem atende, nem
-  precisa de permissão pra isso pq isso é proprio atendimento, faz parte").
-  "Quem atende" é o "Atende" da Equipe (`users.atende_em` com a unidade do
-  plano), que NÃO é permissão; a Admin da rede tem tudo. A regra mora num
-  lugar só: `montaPlano` (`lib/plano-de-tratamento/quem-monta.ts`). O
-  Prontuário em Gerenciar saiu da trava de montar — criar, salvar, renomear,
+  **Quem monta o plano é quem tem o Atendimento em Gerenciar, com a unidade
+  do plano ao alcance** (UM3, 2026-11-23 — revê a PT2 de 14/11, "quem monta
+  o plano é quem atende"; o Heitor, 23/11: "concordo, pode anotar, marcar as
+  questões e ajustar o codigo"). O "Atende" da Equipe deixou de ser a trava
+  (UM5: não dá permissão nenhuma); a Admin da rede monta em qualquer unidade.
+  A regra mora num lugar só: `montaPlano(ctx, unidade)`
+  (`lib/plano-de-tratamento/quem-monta.ts`). O Prontuário em Gerenciar não
+  entra na trava de montar — criar, salvar, renomear,
   ligar a cliente, "Cliente vai pensar" e o rascunho da avaliação
   (`criarPlanoDoCliente`, `salvarPlanoDoCliente`, `renomearPlano`,
   `vincularClienteAoPlano`, `proposeTreatmentPlan`, `saveTreatmentPlan`)
-  devolvem `{ error: RECUSA_QUEM_MONTA }` a quem não atende na unidade do
-  plano, depois de conferida a rede, o alcance e o "só os meus".
+  devolvem `{ error: RECUSA_QUEM_MONTA }` a quem não monta na unidade do
+  plano, depois de conferidos a rede e o alcance.
   - **A anotação clínica dentro do plano continua do Prontuário** (as
     "Observações de quem atende", `professional_notes`; A9 da 15ª): só quem tem o
-    Prontuário em Gerenciar (e, no "só os meus" do prontuário, o plano dela —
-    `anotaNoPlano`) a escreve. Para quem monta sem ele, o editor não mostra o
+    Prontuário em Gerenciar (`anotaNoPlano`) a escreve. Para quem monta sem ele, o editor não mostra o
     campo (`podeAnotar`), a action ignora a anotação que chega e a que está
     gravada FICA — nem se apaga (a `gerar_plano_da_avaliacao` só mexe nela
     quando recebe `notas_do_plano`, migration `20261115500001`). E o "envio"
@@ -2343,19 +2291,18 @@ const procedures = await ler(
     saúde: …", com o "Responder aqui" (`avisoDaFichaParaOPlano`,
     `[data-ficha-antes-do-plano]`).
     **As dores dizem no campo** "obrigatório para gerar o plano" (A18). Na avaliação ABERTA,
-    gera e aceita o plano quem ATENDE este atendimento: o Atendimento em
-    Gerenciar, com o "só os meus" dele (PT2; `atendeAAvaliacaoAberta`,
-    `RECUSA_QUEM_ATENDE`: "Gerar e aceitar o plano na avaliação é de quem
-    atende: pede o Atendimento em Gerenciar."). O Prontuário em Gerenciar saiu
+    gera e aceita o plano quem tem o Atendimento em Gerenciar, com a unidade
+    ao alcance (UM3; `montaPlano`, `RECUSA_QUEM_ATENDE`: "Gerar e aceitar o
+    plano na avaliação pede o Atendimento em Gerenciar."). O Prontuário em Gerenciar saiu
     dessa trava na auditoria das regras (2026-11-18). O clínico que a mesma
     gravação escreve (as dores, a ficha, a ficha de saúde, a evolução) só vai
     com o Prontuário em Gerenciar — sem ele, só o plano, como no "Finalizar".
-  - No portal da rede, o "Novo plano" oferece só as unidades em que ela atende.
+  - No portal da rede, o "Novo plano" oferece só as unidades em que ela monta
+    (`montaPlano`: as ao alcance dela; UM3).
   **Sem o "Novo plano", a tela diz quem monta** (A18 da 6ª simulação,
-  2026-11-04, revisto no PT2): a aba Planejamento vazia e a tela Tratamentos
-  dizem "Quem monta o plano é quem atende nesta unidade, na avaliação ou
-  aqui. Para marcar alguém, Equipe → "Atende" nesta unidade."
-  (`TEXTO_QUEM_MONTA`). Prova: `e2e/plano-tratamento-leva-1.spec.ts`,
+  2026-11-04, revisto no UM3): a aba Planejamento vazia e a tela Tratamentos
+  dizem "Quem monta o plano é quem tem o Atendimento em Gerenciar nesta
+  unidade, na avaliação ou aqui." (`TEXTO_QUEM_MONTA`). Prova: `e2e/plano-tratamento-leva-1.spec.ts`,
   `e2e/configuracoes-atritos-da-12.spec.ts` ("A12"). E `/planejamentos/novo` (os dois
   portais) não é 404: leva à lista com `?novo=1`, que abre o "Novo plano"
   para quem monta. Prova: `e2e/planejamentos-quem-monta.spec.ts`.
@@ -2368,7 +2315,8 @@ const procedures = await ler(
   PDV", a quem recebe); as sessões, ao agendar. O passo da vez é o número
   preenchido, na ordem do Heitor: aceitar → assinar → pagar → agendar. As
   contagens das sessões são da fonte única (`metrics_financeiro_do_plano`).
-  Aceita quem monta o plano (quem atende na unidade dele) ou quem recebe.
+  Aceita quem monta o plano (o Atendimento em Gerenciar na unidade dele, UM3)
+  ou quem recebe (`podeReceber`).
 - **O plano ainda não aceito também se cancela** (A1a da 25ª simulação; o
   Heitor, 18/11, à pergunta "o plano proposto e ainda não aceito não tem um
   botão 'Cancelar'. Entra?": "sim"). No rascunho e no PROPOSTO, ao lado do
@@ -2379,7 +2327,7 @@ const procedures = await ler(
   só nasce no aceite). Cancela quem MONTA o plano (`montaPlano`, a permissão
   de quem o edita e o manda à cliente); quem só recebe não vê o botão, e
   `cancelarPlanoProposto` recusa com `{ error: RECUSA_QUEM_MONTA }` depois de
-  conferidos a rede, o alcance e o "só os meus" (`planoDoTenant`). O aceito
+  conferidos a rede e o alcance (`planoDoTenant`). O aceito
   segue com o "Cancelar plano" do Financeiro em Gerenciar, com o dinheiro
   (`vendas-financeiro.md`); a action e a função recusam o aceito, o concluído
   e o já cancelado (`recusaDoCancelamentoSemDinheiro`,
@@ -2421,35 +2369,19 @@ const procedures = await ler(
   recebido vence o documento aberto). O REJECTED antigo é "Cancelado". Sete
   situações: um seletor (`.filtro-select`), não um segmentado. O plano
   proposto se chama "Proposto" em toda tela (era "Aguardando checkout").
-- **Os planos de tratamento seguem o Atendimento "só os meus"** (era a
-  Agenda até 2026-11-18, quando os planos passaram ao módulo Atendimento; o Heitor,
-  2026-10-28: "quem tem 'só os meus' vê 'só os meus', em qualquer lugar" —
-  a fala é sobre o que se VÊ; valer também para as actions pelo id é decisão
-  do Claude, pela regra do CLAUDE.md §11). Com `atendimento` OWN, a tela Planejamentos (`listarPlanejamentos`),
-  os planos da cliente (`getPlanosDoCliente`, o Planejamento da ficha e do
-  atendimento) e TODA action pelo id do plano que passa por `planoDoTenant`
-  (cabeçalho, editar, salvar, renomear, ligar cliente, enviar ao PDV,
-  aceitar o plano — `aceitarPlano` —, receber dele no PDV —
-  `checkoutTreatmentPlan` —, o arquivo do tratamento), mais `getTreatmentPlanSessions`,
-  só valem para o plano DELA (`planoDaProfissional`). Cancelar o plano fechado
-  é do Financeiro em Gerenciar, como o pacote (D4 da 9ª, `vendas-financeiro.md`).
-  **"O plano é da cliente, não da profissional"** (revisão do Heitor,
-  2026-10-29): dela é o plano de toda cliente que ela atende — um agendamento
-  com ela NÃO CANCELADO, inclusive futuro (eq-02, 2026-11-02: UMA regra só, a
-  do dashboard — o cancelado não conta, a falta conta; prova:
-  `e2e/planejamentos-so-os-meus.spec.ts`) (`clienteAtendidaPor`,
-  `lib/clientes/atendida-por.ts`, a regra do prontuário OWN) —, quem quer que o
-  tenha montado, e o plano que ELA montou (`professional_id`), mesmo de
-  cliente sem agendamento com ela. Quem cobre uma sessão precisa ver o que foi
-  feito e o que falta. Até a revisão era só `professional_id`. O filtro da
-  lista é no banco (o `!inner` plano → cliente → agendamento com ela, mais os
-  montados por ela). A anotação do profissional no plano continua do
-  prontuário (`podeVerClinico` com quem montou). Ficam de fora os gestos de
-  quem RECEBE (`getCheckoutPlan`, `cancelCheckout`, `receberDoPlano`, que
-  pedem `cashier`/fechar plano, não a agenda — confirmado pelo Heitor). O
-  recorte dos planos aguardando checkout no dashboard segue
-  `professional_id` (indicador, §13.1). Prova:
-  `e2e/planejamentos-so-os-meus.spec.ts`.
+- **Os planos de tratamento seguem o Atendimento, sem recorte** (era a
+  Agenda até 2026-11-18; sem o "só os meus" desde 23/11, SM1): a tela
+  Tratamentos (`listarPlanejamentos`), os planos da cliente
+  (`getPlanosDoCliente`, o Planejamento da ficha e do atendimento) e toda
+  action pelo id do plano que passa por `planoDoTenant` (cabeçalho, editar,
+  salvar, renomear, ligar cliente, enviar ao PDV, aceitar, receber dele no
+  PDV, o arquivo do tratamento) valem para todo plano da rede, na unidade ao
+  alcance. Saiu o recorte ao plano DELA (`planoDaProfissional`,
+  `clienteAtendidaPor`). Cancelar o plano fechado é do Financeiro em
+  Gerenciar, como o pacote (D4 da 9ª, `vendas-financeiro.md`). A anotação do
+  profissional no plano continua do Prontuário (`podeVerClinico`). Os gestos
+  de quem RECEBE (`getCheckoutPlan`, `cancelCheckout`, `receberDoPlano`)
+  pedem `cashier`/fechar plano, não o Atendimento.
 - **A tela dos planos se chama "Tratamentos", como o menu** (A30 da 8ª
   simulação, 2026-11-06; decidido pelo princípio 3): o menu "Tratamentos"
   abria "Planejamentos". Ficou o nome do menu: o grupo dele é "Planejamento"
@@ -2527,7 +2459,7 @@ const procedures = await ler(
     registrado), com o link assinado só na aba que o mostra.
   - **PR2a — "Acrescentar anotação"**: no atendimento CONCLUÍDO, quem tem o
     Prontuário em Gerenciar, com o alcance de hoje (a rede, a unidade ao
-    alcance ou o atendimento dela, e a cliente no "só os meus"), acrescenta
+    alcance ou o atendimento dela), acrescenta
     um texto datado com o nome do ctx (a marca "via suporte" junto) —
     `acrescentarAnotacao` (`actions/prontuario.ts`), tabela
     `prontuario_anotacoes`. Não se edita nem se apaga: não há botão, e o
@@ -3307,7 +3239,7 @@ arredondamento das embalagens) — e a função `concluir_atendimento` (migratio
 recebe os números prontos. É o desenho do estorno (`estornar_transacao`).
 
 **Quem inicia e conclui é quem tem o Atendimento em Gerenciar** (o Heitor,
-2026-11-18: "Agenda é agenda e atendimento é atendimento. Só inicia e conclui atendimento quem tem gerenciar no atendimento."), dentro do escopo dele — §9.1, "Quem faz o quê na
+2026-11-18: "Agenda é agenda e atendimento é atendimento. Só inicia e conclui atendimento quem tem gerenciar no atendimento."; UM2), em qualquer atendimento da unidade ao alcance (sem o "só os meus", SM1) — §9.1, "Quem faz o quê na
 agenda e no atendimento". O clínico da transação (a linha 2 abaixo) só vai
 com o Prontuário em Gerenciar; sem ele, a entrada do prontuário nasce sem a
 evolução, as dores e as fichas da tela, e a obrigatória em branco continua
@@ -3429,15 +3361,15 @@ O resto do fluxo:
   renove" não via a última sessão gasta assim). Prova:
   `e2e/atendimento-desistencia-evento-do-pacote.spec.ts`,
   `tests/desistencia-emite-sessao-usada.test.ts`. **Desistir — cancelar o Em
-  atendimento, com ou sem insumo — pede o Atendimento em Gerenciar**, com o
-  "só os meus" dele (e o da Agenda, o de ver), não a Agenda (CLAUDE.md §11, o
+  atendimento, com ou sem insumo — pede o Atendimento em Gerenciar**, e só
+  ele (UM2; sem o "só os meus", SM1), não a Agenda (CLAUDE.md §11, o
   Heitor, 2026-11-18: o módulo Atendimento "desiste no meio"; ATD-A01 da
   varredura de 18/11): a regra é UMA, `recusaDoCancelar`
   (`lib/appointments/quem-cancela.ts`), lida no `cancelarCore` e na
   desistência com insumo pela situação do agendamento — o agendado segue com
   a Agenda em Gerenciar —, e a gravação vale só na situação lida. A janela da
-  agenda mostra o "Cancelar" do Em atendimento a quem atende
-  (`podeAtenderEste`), com o aviso da sessão paga, e sem o "Não compareceu"
+  agenda mostra o "Cancelar" do Em atendimento a quem tem o Atendimento em
+  Gerenciar (`podeAtenderEste`), com o aviso da sessão paga, e sem o "Não compareceu"
   (o servidor recusa: "não é falta"); a tela do atendimento, a quem tem o
   Atendimento (`canManage`); o Copilot (`cancelar_agendamento`), pela mesma
   regra, com o aviso no cartão. A intercorrência pede o Prontuário em
@@ -3583,10 +3515,11 @@ O resto do fluxo:
     celular); o planejador da ficha, na rede sem o recurso de injetáveis (o
     campo é só para ver), não barra. O planejamento escolhido vale mesmo sem
     ponto, com a confirmação do atend-12 (§9.4).
-  - **Quem não vê o clínico** (prontuário "só os meus" num atendimento de
-    outra, com a agenda de todas): a tela não tem os campos e não aponta nada;
-    o servidor recusa do mesmo jeito, com só o NOME da pergunta na mensagem.
-    Quem responde é quem atende com o Prontuário em Gerenciar. Quem não o tem
+  - **Quem não vê o clínico** (sem o Prontuário em Ver; o caso do prontuário
+    "só os meus" num atendimento de outra saiu com o SM1): a tela não tem os
+    campos e não aponta nada; o servidor recusa do mesmo jeito, com só o NOME
+    da pergunta na mensagem. Quem responde é quem tem o Prontuário em
+    Gerenciar, sem precisar atender (UM4). Quem não o tem
     conclui com o Atendimento em Gerenciar (2026-11-18), sem o clínico — a
     obrigatória em branco a barra como a qualquer um, e quem responde é quem
     tem o Prontuário; a recusa diz isso, com os nomes: "Quem responde a ficha
@@ -3618,8 +3551,8 @@ O resto do fluxo:
   o pendente dela, que fecha, e o histórico. Falhou um passo, nada
   fica. A função confere que todo procedimento do plano é da rede, recusa o
   agendamento cancelado e o plano já fechado (ACCEPTED/COMPLETED), e só o
-  servidor a chama. A action confere também a agenda "só os meus" pelo id
-  (`deOutroProfissional`). O "Aceitar plano" aceita DEPOIS, em outra action
+  servidor a chama. A action confere quem monta (`montaPlano`, UM3); a
+  conferência da agenda "só os meus" pelo id saiu (SM1). O "Aceitar plano" aceita DEPOIS, em outra action
   (`aceitarPlano`, no `gerarPlano` de `appointment-session.tsx`): falhou o
   aceite, o plano gerado fica proposto e a tela diz "Plano gerado, mas não
   foi aceito: …". Prova: `e2e/atendimento-ficha-e-plano-juntos.spec.ts`.
@@ -3694,12 +3627,13 @@ O resto do fluxo:
   Dizia "Atendimento concluído. Para corrigir, use…". Prova:
   `tests/registro-travado.test.ts`.
 - **Gerar o plano na avaliação ABERTA (o "Aceitar plano" e o "Gerar plano ·
-  a cliente vai pensar") é de quem atende: o Atendimento em Gerenciar** (PT2;
-  `generateEvaluationPlan`). Pedia o Prontuário em Gerenciar (D9 da 5ª
+  a cliente vai pensar") é do Atendimento em Gerenciar** (UM3;
+  `generateEvaluationPlan`, `montaPlano`). Pedia o Prontuário em Gerenciar (D9 da 5ª
   simulação, 2026-11-01) — saiu na auditoria das regras, 2026-11-18; o clínico
   da avaliação só se grava com o Prontuário (ver o plano de tratamento, §9.4).
-  Na avaliação CONCLUÍDA, só o plano nasce: monta quem atende na unidade (PT2,
-  "Montar um plano"). Com o Atendimento só em Ver, o
+  Na avaliação CONCLUÍDA, só o plano nasce: monta quem tem o Atendimento em
+  Gerenciar na unidade (UM3, "Montar um plano"; o "quem atende" da PT2 saiu).
+  Com o Atendimento só em Ver, o
   cartão some inteiro, com a dica do J-35 — que mandava a um "Finalizar
   atendimento" que não existe para ela (o alto da tela já diz quem inicia e
   conclui).
@@ -3847,10 +3781,10 @@ O resto do fluxo:
 ❌ Dizer "respondida" (selo, "algo mudou?", janela de 30 dias) sem anamneseRespondida / respostas não vazias — a ficha gravada vazia não é respondida
 ❌ Aceitar a ficha da CLIENTE (app ou link) sem oQueFaltaNaFicha no servidor
 ❌ Gravar o token do link da ficha em texto (o que confere quem abre é o SHA-256; para mostrar de novo, só CIFRADO pelo cofre, com a chave fora do banco — A22 da 9ª), ou contar tentativas fora de pre_atendimento_link_abrir
-❌ Action ou tela que recebe o id de um agendamento sem deOutroProfissional (a agenda "só os meus" vale pelo id, não só na lista) — na tela, "Este atendimento é de outra pessoa que atende" (AtendimentoDeOutraProfissional), nem 404 nem semAcesso() (o cargo libera; o atendimento é que não é dela)
+❌ Abrir a tela do atendimento pela vista pessoal (quem atende, sem o Atendimento) no agendamento de OUTRA pessoa, ou deixar a vista pessoal fazer alguma coisa — ela só mostra o dela; cada passo pede o módulo dele (SM2, UM1)
 ❌ Botão que grava o prontuário (o clínico da avaliação, "Editar registro") para quem não tem o Prontuário em Gerenciar (canEditRecords)
-❌ Pedir o Prontuário para gerar ou aceitar o plano na avaliação aberta, ou deixá-lo a quem não tem o Atendimento em Gerenciar (atendeAAvaliacaoAberta — PT2)
-❌ Decidir quem monta o plano pelo Prontuário ou por nome de cargo — é montaPlano (quem atende na unidade do plano; a Admin da rede tem tudo — PT2)
+❌ Pedir o Prontuário para gerar ou aceitar o plano na avaliação aberta, ou deixá-lo a quem não tem o Atendimento em Gerenciar (montaPlano — UM3)
+❌ Decidir quem monta o plano pelo Prontuário, pelo "Atende" ou por nome de cargo — é montaPlano (o Atendimento em Gerenciar com a unidade do plano ao alcance; a Admin da rede tem tudo — UM3, UM5)
 ❌ Gravar ou apagar a anotação clínica do plano (professional_notes) sem anotaNoPlano — quem monta sem o Prontuário não a escreve nem a zera
 ❌ Cobrar a sessão do plano (comanda do atendimento, preço no caixa): o plano se paga na comanda dele, no PDV (PT1e)
 ❌ Listar ou conferir "quem atende nesta unidade" com branch_id = unidade, ou com "a da rede atende em todas" — é a unidade marcada no "Atende" (atende_em, filtroDeQuemAtendeNaUnidade)
@@ -3871,7 +3805,7 @@ O resto do fluxo:
 ❌ Gravar a desistência no meio (intercorrência, insumo) fora de desistir_do_atendimento, ou calcular a baixa fora de montarInsumosDaBaixa (A27 da 8ª)
 ❌ Deixar o "Incluído" (era "Já pago") em "Não usar" quando a cliente tem crédito do MESMO procedimento (vem escolhido, com aviso — A20 da 8ª), ou ligar crédito a agendamento já marcado fora de agendamento_usar_credito
 ❌ Ler as anotações da ficha (clients.notes) para decidir alergia: elas aparecem como estão escritas (A28 da 8ª; atend-15)
-❌ Ler ou gravar agenda_bloqueios pela sessão (só o servidor: actions/agenda-bloqueios.ts e lib/agenda/bloqueios.ts), ou deixar quem tem "só os meus" bloquear outra pessoa ou uma sala
+❌ Ler ou gravar agenda_bloqueios pela sessão (só o servidor: actions/agenda-bloqueios.ts e lib/agenda/bloqueios.ts), ou deixar bloquear quem não tem a Agenda em Gerenciar (a Minha agenda só mostra — SM2)
 ❌ Decidir qual sala serve a um procedimento fora de salasParaOProcedimento (lib/agenda/salas.ts), ou gravar sala pela sessão (só o servidor, actions/salas.ts)
 ❌ Remarcar, cancelar ou confirmar fora de remarcarCore/cancelarCore/confirmarCore (lib/appointments/alteracoes.ts) — a tela e o Copilot dividem. A exceção é pacote_cancelar (F2b): cancela as sessões agendadas na MESMA transação do dinheiro, com o status, o motivo e o histórico do cancelarCore, e a action emite o evento e o aviso depois
 ❌ Caminho que cria ou move agendamento (troca de profissional, sessão de plano, checkout do plano…) sem horarioOcupado — no checkout, ANTES do dinheiro
@@ -3907,17 +3841,16 @@ O resto do fluxo:
 ❌ Pôr anexo clínico (exame, laudo, receita, foto, termo) na aba Documentos da ficha — ele mora no Prontuário (PR1b)
 ❌ Trocar a evolução, a intercorrência ou a ficha do atendimento CONCLUÍDO fora de prontuario_corrigir_registro (a versão de antes se perderia — PR2b)
 ❌ Abrir prontuario_anotacoes ou prontuario_versoes à sessão, ou dar UPDATE/DELETE nelas (o gatilho recusa; só o servidor lê e grava)
-❌ Política para a sessão (leitura ou escrita) em medical_records, medical_record_entries, injectable_maps ou injectable_applications — o Prontuário é escopável e a RLS não aplica o "só os meus": lê e grava só o servidor —, ou assinar medical_record_entries no Realtime (é prontuario_sinais); e escrita pela sessão em procedures, procedure_products e products (ATD-P01/P02/E01, 18/11; e2e/rls-sessao-so-le-prontuario-e-automacoes.spec.ts)
+❌ Política para a sessão (leitura ou escrita) em medical_records, medical_record_entries, injectable_maps ou injectable_applications — a RLS não aplica o módulo: lê e grava só o servidor —, ou assinar medical_record_entries no Realtime (é prontuario_sinais); e escrita pela sessão em procedures, procedure_products e products (ATD-P01/P02/E01, 18/11; e2e/rls-sessao-so-le-prontuario-e-automacoes.spec.ts)
 ❌ Escrever "pré-atendimento" ou "anamnese" em texto que se lê — é "ficha de saúde" (tests/ficha-de-saude-no-texto trava)
 ❌ Mostrar no portal da cliente um client_documents sem enviado_em (a rede decide o que vai ao app)
 ❌ Recriar um "Retorno em N dias" (regra, lista ou cron) — é um agendamento novo (aut-04)
 ❌ Usar 40001 para "tente de novo" numa função chamada pelo PostgREST (ele repete sozinho, sem reler) — é PT409
 ❌ Gravar a avaliação da cliente fora de avaliar_atendimento, ou ler a nota de um procedimento fora de metrics_notas_dos_procedimentos (a configuração e a avaliação de antes moram ali)
 ❌ Dar ao procedimento sem nota própria a nota do atendimento no ranking (princípio 4: fica fora da média — migration 20261123900003)
-❌ Iniciar ou concluir (startAppointment, o "Em atendimento", finishSession, generateEvaluationPlan na avaliação aberta) sem o Atendimento em Gerenciar e o escopo dele, ou decidir isso pela Agenda ou pelo Prontuário (o Heitor, 2026-11-18)
+❌ Iniciar, concluir ou desistir no meio (startAppointment, o "Em atendimento", finishSession, o cancelar do Em atendimento, generateEvaluationPlan na avaliação aberta) sem o Atendimento em Gerenciar, ou decidir isso pela Agenda, pelo Prontuário ou pelo "Atende" (o Heitor, 2026-11-18; UM2, UM5)
 ❌ Cancelar o plano proposto ou o rascunho mexendo em dinheiro, comanda ou oportunidade, ou fora de plano_cancelar_proposto (nada foi vendido: "Uma coisa só foi vendida se foi paga." — o Heitor, 18/11; A1a da 25ª)
 ❌ Devolver à cliente a sessão paga (pacote, pré-pago, plano) do atendimento INICIADO e cancelado — a desistência no meio gasta a sessão (o Heitor, 2026-11-18; pre_pago_libera)
-❌ Esconder o "Trocar profissional" do agendamento DELA de quem tem a Agenda em Gerenciar "só os meus" (o Heitor, 2026-10-28: "a profissional (no que é dela) ou quem gerencia a agenda cancela e passa o atendimento")
 ❌ Ação do topo da tela do atendimento numa linha que não quebra, ou a ação principal fora de .sessao-acao-principal (no celular o "Finalizar" saía da tela — D1 da 10ª)
 ❌ Tabela nova com chave estrangeira para appointments E para procedures na chave primária: o PostgREST a lê como junção e TODO embed appointments → procedures(name) quebra com PGRST201 (foi a avaliacoes_dos_procedimentos por ~15 min, 2026-11-04 — migration 20261104001804)
 ```

@@ -40,8 +40,8 @@ test.beforeAll(async () => {
   recepcaoDeB = await criarMembro(`r${marca}`, {
     tenant: rede.tenantId, branchId: unidadeB, rotulo: 'Recepção de B',
     permissoes: [
-      { modulo: 'clients', nivel: 'MANAGE', escopo: 'ALL' },
-      { modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' },
+      { modulo: 'clients', nivel: 'MANAGE' },
+      { modulo: 'agenda', nivel: 'MANAGE' },
     ],
   })
 })

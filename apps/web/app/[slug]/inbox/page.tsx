@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { unidadesParaCriar } from '@/lib/unidades/da-tela'
-import { getTenantContext, assertPermission, ownerFilter, can, assertRecurso, alcancaUnidade } from '@/lib/auth'
+import { getTenantContext, assertPermission, can, assertRecurso, alcancaUnidade } from '@/lib/auth'
 import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getConversations, opcoesDoInbox } from '@/actions/inbox'
@@ -36,8 +36,8 @@ export default async function BranchInboxPage({
 
   // ⚠️ Sem recorte por unidade, igual ao quadro de Oportunidades: lead e
   // conversa são da REDE. Quem responde na unidade vê as mesmas conversas de
-  // quem responde na rede — o que separa é o alcance do cargo (`ownerFilter`,
-  // aplicado dentro de `getConversations`), não a unidade.
+  // quem responde na rede — o que separa são as caixas do cargo (aplicadas
+  // dentro de `getConversations`), não a unidade.
   // `convParam` é o deep-link do card de Oportunidades: a conversa apontada pelo
   // card pode não ter mensagem nenhuma e, sem essa exceção, não estaria na lista.
   const [pagina, opcoesDosFiltros] = await Promise.all([
@@ -51,17 +51,15 @@ export default async function BranchInboxPage({
   // A unidade do contato e do agendar pelo inbox: as ATIVAS (lib/unidades/da-tela).
   const branches = await unidadesParaCriar(ctx.tenantId!)
 
-  const leadOwner = ownerFilter(ctx, 'crm')
   // Todas, em páginas (2026-10-22): com o corte de 1000 do PostgREST, as
   // oportunidades mais antigas não podiam ser escolhidas.
-  const leadsRaw = await lerTodas((de, ate) => {
-    let leadsQuery = admin
+  const leadsRaw = await lerTodas((de, ate) =>
+    admin
       .from('leads')
       .select('id, name, phone')
       .eq('tenant_id', ctx.tenantId!)
-    if (leadOwner) leadsQuery = leadsQuery.or(`owner_id.is.null,owner_id.eq.${leadOwner}`)
-    return leadsQuery.order('created_at', { ascending: false }).order('id').range(de, ate)
-  }, 'carregar as oportunidades')
+      .order('created_at', { ascending: false }).order('id').range(de, ate),
+  'carregar as oportunidades')
 
   const inboxLeads = (leadsRaw ?? []).map(l => ({
     id:          l.id as string,

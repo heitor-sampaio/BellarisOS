@@ -6,8 +6,8 @@ import { responderAnamnese } from './apoio/anamnese'
 import { apagarAgendamentos } from './apoio/limpeza'
 
 /**
- * A52 e A41 da 6ª simulação (2026-11-04): a profissional com o financeiro
- * "só os meus" — que na prática é só "Minhas comissões" — via no menu
+ * A52 e A41 da 6ª simulação (2026-11-04): quem atende sem o financeiro de
+ * todos — que na prática é só "Minhas comissões" — via no menu
  * "Financeiro" (uma tela só de comissões, R$ 0,00) e no dashboard o cartão
  * "Faturamento do mês R$ 0". E os três "faturamentos" dela não diziam o que
  * cada um conta.
@@ -17,6 +17,9 @@ import { apagarAgendamentos } from './apoio/limpeza'
  * número da tela) e o faturamento dela se chama "Meu faturamento do mês", com
  * a dica do que conta (a VENDA dela, no dia do pagamento). Quem vê o financeiro
  * de todos continua com "Financeiro" e "Faturamento do mês".
+ *
+ * Sem o "só os meus" (SM1/SM2, o Heitor, 2026-11-23): "Minhas comissões" é a
+ * vista pessoal de quem atende SEM o Financeiro.
  */
 
 const marca = Date.now().toString(36)
@@ -40,7 +43,7 @@ test.beforeAll(async () => {
   await db().from('commission_configs').upsert({ tenant_id: rede.tenantId, periodo: 'MENSAL' }, { onConflict: 'tenant_id' })
   dela = await criarMembro(`cmmd${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Profissional',
-    permissoes: [{ modulo: 'financial', nivel: 'VIEW', escopo: 'OWN' }, { modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' }],
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }],
   })
   gestor = await criarMembro(`cmmg${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Gerente',
@@ -76,7 +79,7 @@ test.afterAll(async () => {
   await gestor?.limpar(); await dela?.limpar(); await rede?.limpar()
 })
 
-test('a profissional "só as minhas": o menu e o dashboard dizem "Minhas comissões"', async ({ browser }) => {
+test('quem atende sem o Financeiro (a vista pessoal): o menu e o dashboard dizem "Minhas comissões"', async ({ browser }) => {
   await comSessao(browser, dela!, async p => {
     await p.goto(`/${slug}/dashboard`)
     const menu = p.locator('nav, aside').first()

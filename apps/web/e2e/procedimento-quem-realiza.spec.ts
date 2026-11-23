@@ -74,7 +74,7 @@ test.beforeAll(async () => {
     tenant: rede.tenantId, rotulo: 'Gestora',
     permissoes: [
       { modulo: 'procedures', nivel: 'MANAGE' },
-      { modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' },
+      { modulo: 'agenda', nivel: 'MANAGE' },
       { modulo: 'clients', nivel: 'MANAGE' },
       { modulo: 'team', nivel: 'MANAGE' },
     ],

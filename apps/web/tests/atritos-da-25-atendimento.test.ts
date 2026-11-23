@@ -10,9 +10,8 @@ import { join } from 'node:path'
  * o Prontuário para na ficha de saúde obrigatória em branco — e a recusa só
  * dizia o nome da pergunta, não QUEM a responde (quem tem o Prontuário em
  * Gerenciar, ou a cliente).
- * A9 (princípio 3): "quem conclui" deixava de fora a profissional do próprio
- * agendamento que tem o Atendimento em Gerenciar "só os meus" — ela conclui o
- * dela.
+ * A9 saiu com o "só os meus" (SM1, o Heitor, 2026-11-23): quem conclui é o
+ * Atendimento em Gerenciar, de todos.
  * A10 (princípio 3; A6 da 17ª): "Mandada ao app da cliente ao agendar" para a
  * cliente sem acesso ao app.
  * A11 (princípio 3): o motivo do cancelamento vai no aviso à cliente, e o
@@ -68,54 +67,6 @@ describe('A8: a recusa pela ficha de saúde diz quem a responde', () => {
       for (const c of chamadas) expect(c.slice(0, 600), arquivo).toContain('aQuemPedirAFicha: aQuemPedirAFichaDeSaude(ctx')
     }
     expect(ler('lib/atendimento/quem-responde-a-ficha.ts')).toMatch(/can\(ctx, 'medical_records', 'MANAGE'\) \? undefined/)
-  })
-})
-
-describe('A9: a profissional do agendamento, com o Atendimento em Gerenciar "só os meus", conclui o dela', () => {
-  it('os nomes de quem conclui ESTE atendimento incluem a profissional dele', async () => {
-    const { nomesDeQuemConclui } = await import('@/lib/equipe/textos-de-quem-pode')
-    expect(nomesDeQuemConclui(['Carla'], { id: 'p1', nome: 'Bruna' }, ['p1'])).toEqual(['Bruna', 'Carla'])
-    // Sem o Atendimento em Gerenciar, não entra.
-    expect(nomesDeQuemConclui(['Carla'], { id: 'p2', nome: 'Dani' }, ['p1'])).toEqual(['Carla'])
-    // Já está na lista: não repete.
-    expect(nomesDeQuemConclui(['Carla'], { id: 'p1', nome: 'Carla' }, ['p1'])).toEqual(['Carla'])
-    // Nulo: não se aplica (a tela não mostra).
-    expect(nomesDeQuemConclui(null, { id: 'p1', nome: 'Bruna' }, ['p1'])).toBeNull()
-  })
-  it('quem conclui os próprios: o Atendimento em Gerenciar em qualquer escopo, com a Agenda (Ver ou Gerenciar)', async () => {
-    const { idsQueConcluemOsProprios } = await import('@/lib/equipe/quem-desfaz')
-    responder = p => {
-      if (p.tabela === 'role_permissions') {
-        const m = modulosDo(p)
-        if (m?.includes('atendimento')) return { data: [{ role_id: 'so-os-meus' }, { role_id: 'sem-agenda' }], error: null }
-        if (m?.includes('agenda')) return { data: [{ role_id: 'so-os-meus' }], error: null }
-      }
-      if (p.tabela === 'users') return { data: [{ id: 'prof-1' }], error: null }
-      return { data: [], error: null }
-    }
-    expect(await idsQueConcluemOsProprios('rede')).toEqual(['prof-1'])
-    const atd = pedidos.find(p => p.tabela === 'role_permissions' && modulosDo(p)?.includes('atendimento'))!
-    expect(atd.ops.some(o => o.op === 'or')).toBe(false)
-    const cargos = pedidos.filter(p => p.tabela === 'users').flatMap(p => p.ops)
-      .find(o => o.op === 'in' && o.args[0] === 'role_id')?.args[1] as string[]
-    expect(cargos).toEqual(['so-os-meus'])
-  })
-  it('a sessão e a janela da agenda juntam a profissional do agendamento', () => {
-    expect(ler('app/_shared/sessao-de-atendimento.tsx')).toMatch(/quemConclui=\{[^}]*nomesDeQuemConclui\(/)
-    expect(ler('components/branch/appointment-sheet.tsx')).toMatch(/textoDeQuemConclui\(nomesDeQuemConclui\(quemConclui, \{ id: appointment\.professionalId \?\? null, nome: appointment\.professionalName \}, concluemOsProprios\)\)/)
-    for (const p of ['app/[slug]/agenda/page.tsx', 'app/admin/agenda/page.tsx']) {
-      expect(ler(p), p).toMatch(/concluemOsProprios=\{[^\n]*idsQueConcluemOsProprios\(ctx\.tenantId!\)/)
-    }
-    for (const v of ['components/branch/agenda-calendar.tsx', 'components/admin/admin-agenda-view.tsx']) {
-      expect(ler(v), v).toContain('concluemOsProprios={concluemOsProprios}')
-    }
-  })
-  it('o atendimento de outra pessoa diz também a profissional dele', async () => {
-    const { textoDeQuemConcluiODeOutra } = await import('@/lib/equipe/textos-de-quem-pode')
-    expect(textoDeQuemConcluiODeOutra(['Carla'], 'Bruna'))
-      .toBe('Quem conclui é Bruna, que atende, ou quem tem o Atendimento em Gerenciar e a Agenda de todos (Carla).')
-    expect(textoDeQuemConcluiODeOutra(['Carla']))
-      .toBe('Quem conclui é quem tem o Atendimento em Gerenciar e a Agenda de todos (Carla).')
   })
 })
 

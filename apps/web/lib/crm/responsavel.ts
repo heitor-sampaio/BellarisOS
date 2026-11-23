@@ -1,6 +1,6 @@
 import 'server-only'
 import type { TenantContext } from '@estetica-os/types'
-import { can, isOwnScope } from '@/lib/auth'
+import { can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { registrarEventoLead } from '@/lib/lead-events'
@@ -16,13 +16,9 @@ import { registrarEventoLead } from '@/lib/lead-events'
 
 type Admin = ReturnType<typeof createAdminClient>
 
-/**
- * Quem troca o responsável: CRM em Gerenciar com escopo "todos". O "só os
- * meus" vê, mas não troca — passar o card a outra pessoa o tiraria do próprio
- * alcance, e pegar o de outra pessoa é exatamente o que o escopo impede.
- */
+/** Quem troca o responsável: CRM em Gerenciar. */
 export function podeTrocarResponsavel(ctx: TenantContext): boolean {
-  return can(ctx, 'crm', 'MANAGE') && !isOwnScope(ctx, 'crm')
+  return can(ctx, 'crm', 'MANAGE')
 }
 
 export type ResultadoDaTroca =
@@ -32,9 +28,8 @@ export type ResultadoDaTroca =
 /**
  * Troca o responsável e grava na linha do tempo DE quem PARA quem.
  *
- * A pessoa tem de ser da rede E ativa (membro desativado não opera, e um card
- * com ele de responsável sumiria de todos os "só os meus"). `null` tira o
- * responsável. Sem mudança, não grava nada.
+ * A pessoa tem de ser da rede E ativa (membro desativado não opera). `null`
+ * tira o responsável. Sem mudança, não grava nada.
  */
 export async function trocarResponsavelCore(
   admin: Admin,

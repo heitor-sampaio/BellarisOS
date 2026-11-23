@@ -4,7 +4,7 @@ import { camposDaPerda } from '@/lib/crm/motivos-perda'
 import { etapaDeCrm, eventoDoDesfecho, emitirEventoDeLead } from '@/lib/events/lead'
 import type { LeadChange } from '@/lib/lead-events'
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission, ownerFilter, assertRecurso, can, temRecurso } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertRecurso, can, temRecurso } from '@/lib/auth'
 import { recusaDaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { EVENTOS } from '@estetica-os/types'
 import { fichasDoTelefoneDoLead, respostaDaFichaDoTelefone } from '@/lib/crm/ficha-do-telefone'
@@ -225,10 +225,9 @@ export async function updateLead(
     const disparar = str(formData, '_disparar') !== 'nao'
 
     if (!leadId) return { error: 'Oportunidade não identificada.' }
-    // C27 (F70): o alcance ANTES de tudo. O filtro do dono no update segurava
-    // só a linha do card; o resto — o nome e o telefone da PESSOA, as
-    // conversas, os procedimentos de interesse, a linha do tempo — rodava mesmo
-    // assim com o id do card de outra pessoa.
+    // C27 (F70): o alcance ANTES de tudo. O resto — o nome e o telefone da
+    // PESSOA, as conversas, os procedimentos de interesse, a linha do tempo —
+    // rodaria mesmo com o id de um card de outra rede.
     if (!(await leadAoAlcance(createAdminClient(), ctx, leadId))) return { error: 'Oportunidade não encontrada.' }
 
     const name   = str(formData, 'name')
@@ -311,23 +310,19 @@ export async function updateLead(
       mudancaDaPerda = perda.mudanca
     }
 
-    // Alcance "só os próprios leads" entra como filtro da própria query: sem
-    // isso, o cargo não veria o lead na lista mas ainda o editaria pelo id.
     const admin = createAdminClient()
-    let q = admin
+    const { data: gravadas, error } = await admin
       .from('leads')
       .update(patch)
       .eq('id', leadId)
       .eq('tenant_id', ctx.tenantId!)
-    const owner = ownerFilter(ctx, 'crm')
-    if (owner) q = q.or(`owner_id.is.null,owner_id.eq.${owner}`)
-    const { data: gravadas, error } = await q.select('id')
+      .select('id')
 
     if (error) {
       console.error('[updateLead]', error.message)
       return { error: `Erro ao atualizar a oportunidade: ${error.message}` }
     }
-    // Nenhuma linha = fora do alcance (ou apagada no meio): nada do resto roda.
+    // Nenhuma linha = de outra rede (ou apagada no meio): nada do resto roda.
     if (!gravadas?.length) return { error: 'Oportunidade não encontrada.' }
 
     await salvarProcedimentosDeInteresse(admin, ctx.tenantId!, leadId, procedureIds)
@@ -396,7 +391,7 @@ export async function updateLead(
       }
     }
 
-    // O responsável: só quem tem o CRM em Gerenciar com escopo "todos"
+    // O responsável: só quem tem o CRM em Gerenciar
     // (`podeTrocarResponsavel`). O núcleo confere a rede e se a pessoa está
     // ativa, e grava de quem para quem.
     const responsavel = responsavelDoForm(formData)
@@ -492,15 +487,13 @@ async function etapaParaMover(tenantId: string, stageId: string): Promise<EtapaL
     .eq('id', stageId).eq('tenant_id', tenantId).maybeSingle(), 'buscar a etapa') as EtapaLida | null
 }
 
-/** As oportunidades da etapa que a pessoa alcança (o CRM "só os meus": as dela e as sem responsável). */
+/** As oportunidades da etapa. */
 function cardsDaEtapa(ctx: Awaited<ReturnType<typeof getTenantContext>>, deStageId: string, colunas: string) {
   const admin = createAdminClient()
-  const dono = ownerFilter(ctx, 'crm')
-  return lerTodas((ini, fim) => {
-    let q = admin.from('leads').select(colunas).eq('tenant_id', ctx.tenantId!).eq('crm_stage_id', deStageId)
-    if (dono) q = q.or(`owner_id.is.null,owner_id.eq.${dono}`)
-    return q.order('id').range(ini, fim)
-  }, 'ler as oportunidades da etapa')
+  return lerTodas((ini, fim) =>
+    admin.from('leads').select(colunas).eq('tenant_id', ctx.tenantId!).eq('crm_stage_id', deStageId)
+      .order('id').range(ini, fim),
+  'ler as oportunidades da etapa')
 }
 
 /**
@@ -532,8 +525,7 @@ export async function automacoesDoMovimento(
  * tempo, os eventos). `disparar` é a resposta da pessoa à pergunta das
  * automações: no "Não", o movimento se registra e não vai ao motor. A etapa
  * perdida fica fora do destino: ali o quadro pede o motivo de cada uma.
- * Com o CRM "só os meus", movem-se as dela e as sem responsável; as outras
- * ficam, e a tela diz quantas.
+ * As que não se moveram ficam, e a tela diz quantas.
  */
 export async function moverOportunidadesDaEtapa(
   deStageId: string, paraStageId: string, slug: string, disparar: boolean,

@@ -2203,17 +2203,20 @@ Vai por ÚLTIMO entre os blocos: os textos descrevem o sistema já adaptado.
 
 ### Bloco: Sem o "só os meus" (2026-11-23)
 
-Decidido em "Cargos e permissões" → "Sai o 'só os meus'". Ainda não
-implementado.
+Decidido em "Cargos e permissões" → "Sai o 'só os meus'". Implementado em
+23/11 (o DEVLOG, "Sai o só os meus"). Os cargos que já existiam: o Financeiro e a
+Agenda "só os meus" viraram Sem acesso (a vista pessoal mostra o que a pessoa via), o
+resto ficou com o nível (o Heitor, 23/11, à pergunta do Claude; migration
+`20261129000001`).
 
 | # | O que muda | Depende de |
 |---|---|---|
-| SM1 | **Sai o escopo** ("só os meus" × "todos") de todos os módulos que o têm: Agenda, Atendimento, Prontuário, Financeiro, CRM e Relatórios. O cargo fica com módulo × nível: Ver vê tudo, Gerenciar mexe em tudo, nas unidades ao alcance da pessoa (a abrangência continua). Sai da tela de Cargos, do resumo "O que essa pessoa vai ver", do contexto e das consultas | — |
-| SM2 | **As vistas pessoais**: a Minha agenda, as Minhas comissões e os atendimentos da pessoa abrem a quem atende (o "Atende" marcado), sem o módulo. Elas só MOSTRAM: o que se faz (iniciar, remarcar, receber…) continua pedindo a permissão do módulo | SM1 |
-| SM3 | **CRM e inbox**: sai o "só os meus" e o refino dele (pela pessoa ou pela conversa). Quem quer ver só as suas usa o filtro de responsável, que o quadro ("Responsável") e o inbox (dono) já têm | SM1 |
-| SM4 | **Relatórios**: sai o "a minha unidade × a rede inteira" do cargo; o que a pessoa vê é o das unidades ao alcance dela (a abrangência). As abas por cargo continuam | SM1 |
-| SM5 | **O Copilot** segue: sem o "só os meus" nas ferramentas | SM1 |
-| SM6 | **As regras e os testes**: CLAUDE.md §11 (os três eixos viram dois), `docs/regras/` e o catálogo. Os testes do "só os meus" mudam ou saem com esta decisão como motivo, listados ao Heitor um por um | SM1–SM5 |
+| SM1 | **Sai o escopo** ("só os meus" × "todos") de todos os módulos que o têm: Agenda, Atendimento, Prontuário, Financeiro, CRM e Relatórios. O cargo fica com módulo × nível: Ver vê tudo, Gerenciar mexe em tudo, nas unidades ao alcance da pessoa (a abrangência continua). Sai da tela de Cargos, do resumo "O que essa pessoa vai ver", do contexto e das consultas ✅ 23/11 | — |
+| SM2 | **As vistas pessoais**: a Minha agenda, as Minhas comissões e os atendimentos da pessoa abrem a quem atende (o "Atende" marcado), sem o módulo. Elas só MOSTRAM: o que se faz (iniciar, remarcar, receber…) continua pedindo a permissão do módulo ✅ 23/11 | SM1 |
+| SM3 | **CRM e inbox**: sai o "só os meus" e o refino dele (pela pessoa ou pela conversa). Quem quer ver só as suas usa o filtro de responsável, que o quadro ("Responsável") e o inbox (dono) já têm ✅ 23/11 | SM1 |
+| SM4 | **Relatórios**: sai o "a minha unidade × a rede inteira" do cargo; o que a pessoa vê é o das unidades ao alcance dela (a abrangência). As abas por cargo continuam ✅ 23/11 | SM1 |
+| SM5 | **O Copilot** segue: sem o "só os meus" nas ferramentas ✅ 23/11 | SM1 |
+| SM6 | **As regras e os testes**: CLAUDE.md §11 (os três eixos viram dois), `docs/regras/` e o catálogo. Os testes do "só os meus" mudam ou saem com esta decisão como motivo, listados ao Heitor um por um ✅ 23/11 | SM1–SM5 |
 
 ### Bloco: Cada passo, um módulo (2026-11-23)
 
@@ -2222,11 +2225,11 @@ Junto do Bloco: Sem o "só os meus".
 
 | # | O que muda | Depende de |
 |---|---|---|
-| UM1 | **A tela do atendimento abre com o Atendimento** (Ver), não com a Agenda em Ver (Q13) | — |
-| UM2 | **Iniciar, concluir e desistir no meio** pedem o Atendimento em Gerenciar, e só ele (Q17) | — |
-| UM3 | **Montar o plano** — na avaliação aberta, na concluída ou pelo "Novo plano" — pede o Atendimento em Gerenciar, nas unidades ao alcance; o "Atende" deixa de ser a trava (revê a PT2, Q16) | SM1 |
-| UM4 | **A parte clínica no atendimento** (ficha de saúde, evolução, fotos, injetáveis) pede o Prontuário em Gerenciar, sem precisar atender (Q18) | — |
-| UM5 | **O "Atende" não dá permissão**: diz só em que unidades a pessoa aparece como profissional (agenda, repasse, comissão, as vistas pessoais) | UM3 |
+| UM1 | **A tela do atendimento abre com o Atendimento** (Ver), não com a Agenda em Ver (Q13) ✅ 23/11 | — |
+| UM2 | **Iniciar, concluir e desistir no meio** pedem o Atendimento em Gerenciar, e só ele (Q17) ✅ 23/11 | — |
+| UM3 | **Montar o plano** — na avaliação aberta, na concluída ou pelo "Novo plano" — pede o Atendimento em Gerenciar, nas unidades ao alcance; o "Atende" deixa de ser a trava (revê a PT2, Q16) ✅ 23/11 | SM1 |
+| UM4 | **A parte clínica no atendimento** (ficha de saúde, evolução, fotos, injetáveis) pede o Prontuário em Gerenciar, sem precisar atender (Q18) ✅ 23/11 | — |
+| UM5 | **O "Atende" não dá permissão**: diz só em que unidades a pessoa aparece como profissional (agenda, repasse, comissão, as vistas pessoais) ✅ 23/11 | UM3 |
 
 ## O que já estava pendente, para entrar no módulo dele
 

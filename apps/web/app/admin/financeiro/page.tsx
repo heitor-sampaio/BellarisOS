@@ -2,7 +2,7 @@ import { nomesDasMaquininhas } from '@/lib/financeiro/vezes-da-rede'
 import { maquininhaDoRotulo } from '@/lib/financeiro/formas'
 import { notaDoEstornoParcial, notaDoUsoDeCredito, type LancamentoParaNota } from '@/lib/financeiro/notas-do-lancamento'
 import { redirect } from 'next/navigation'
-import { getTenantContext, assertPermission, isOwnScope, temRecurso } from '@/lib/auth'
+import { getTenantContext, assertPermission, temRecurso, can, vistaPessoal } from '@/lib/auth'
 import { podeDarBaixa } from '@/lib/financeiro/so-os-meus'
 import { abaDoFinanceiro } from '@/lib/financeiro/abas'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -65,13 +65,12 @@ export default async function AdminFinanceiroPage({
   // função — e comparava o mês parcial com uma janela de tamanho diferente.
   const ctx = await getTenantContext()
   // Esta tela é do financeiro. `cashier` governa RECEBER — no atendimento e no
-  // checkout do plano —, não ler o consolidado da rede.
+  // checkout do plano —, não ler o consolidado da rede. Quem ATENDE sem o
+  // Financeiro tem a vista pessoal: o financeiro dela é "Minhas comissões" (A52).
+  if (!can(ctx, 'financial', 'VIEW') && vistaPessoal(ctx, 'financial') && temRecurso(ctx, 'comissoes')) {
+    redirect('/admin/financeiro/comissoes')
+  }
   assertPermission(ctx, 'financial', 'VIEW')
-
-
-  // Alcance "só as próprias comissões" não tem como virar um consolidado da
-  // rede meio filtrado — sairiam números com cara de total que não são total.
-  const soAsProprias = isOwnScope(ctx, 'financial')
 
   const admin = createAdminClient()
 
@@ -96,10 +95,6 @@ export default async function AdminFinanceiroPage({
     )
   }
 
-  // Alcance "só as próprias" não vira consolidado meio filtrado: sairiam
-  // números com cara de total que não são total. A pessoa vai para as
-  // comissões dela — a tela para a qual este aviso apontava não existia.
-  if (soAsProprias) redirect('/admin/financeiro/comissoes')
   // Os links antigos (`?aberto=todos|vencidas|a-pagar`) levam à aba nova (FI1).
   if (pedida.destino) redirect(`/admin/financeiro${pedida.destino}`)
   // C45 (F68): os TOTAIS da rede contam todas as unidades — a desativada que

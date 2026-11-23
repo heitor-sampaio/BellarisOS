@@ -23,7 +23,9 @@ test.beforeAll(async () => {
   slug = (await db().from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
   renata = await criarMembro(`r${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Renata',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' }],
+    // A "Minha agenda" é a vista pessoal (SM2, o Heitor, 2026-11-23): atende e
+    // não tem a Agenda (era a Agenda "só os meus", que saiu — SM1).
+    permissoes: [{ modulo: 'agenda', nivel: 'NONE' }],
   })
   // Só as manhãs, de segunda a sábado (a unidade abre 08–20, o padrão).
   const manha = [{ de: '07:00', ate: '12:00' }]

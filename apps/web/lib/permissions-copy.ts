@@ -1,4 +1,4 @@
-import type { AppModule, PermissionLevel, ScopedModule } from '@estetica-os/types'
+import type { AppModule, PermissionLevel } from '@estetica-os/types'
 
 /**
  * Textos da tela de cargos — o que cada escolha significa para quem administra
@@ -83,16 +83,17 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   // atendimento"): iniciar e concluir saíram daqui e são do Atendimento. Sai o
   // D20 ("a Agenda em Ver inicia e conclui").
   agenda: {
-    NONE:   SEM_ACESSO,
+    // Sem escopo no cargo (o Heitor, 2026-11-23): quem atende vê a Minha agenda (a vista pessoal).
+    NONE:   'Não aparece para esta pessoa — a menos que ela atenda: aí vê a Minha agenda, só com os horários dela, sem mexer.',
     VIEW:   'Abre a agenda e vê os horários marcados. Não marca nem remarca horário: isso é Gerenciar.',
     MANAGE: 'Tudo do Ver, mais marcar, confirmar, marcar a chegada, remarcar, cancelar, marcar falta e trocar quem atende no horário.',
   },
   // O Heitor, 2026-11-18: "Só inicia e conclui atendimento quem tem gerenciar no
-  // atendimento."
+  // atendimento." Cada passo, um módulo (2026-11-23, UM1–UM3).
   atendimento: {
     NONE:   SEM_ACESSO,
-    VIEW:   'Abre a tela do atendimento (pela Agenda) e os planos de tratamento, sem iniciar nem concluir.',
-    MANAGE: 'Tudo do Ver, e inicia e conclui o atendimento, lança os insumos usados e monta e aceita o plano de tratamento na avaliação. A evolução, as fotos e a ficha de saúde pedem também o Prontuário em Gerenciar.',
+    VIEW:   'Abre a tela do atendimento e os planos de tratamento, sem iniciar nem concluir.',
+    MANAGE: 'Tudo do Ver, e inicia, conclui e desiste do atendimento no meio, lança os insumos usados e monta o plano de tratamento, na avaliação ou depois. A evolução, as fotos e a ficha de saúde são do Prontuário em Gerenciar.',
   },
   clients: {
     NONE:   SEM_ACESSO,
@@ -128,7 +129,8 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
     MANAGE: 'Tudo do Ver, mais cadastrar produto (as categorias, as marcas e os fornecedores), dar entrada e baixa, ajustar inventário e transferir entre unidades — nas unidades da pessoa.',
   },
   financial: {
-    NONE:   SEM_ACESSO,
+    // A vista pessoal (2026-11-23): quem atende ou tem comissão de venda vê as Minhas comissões.
+    NONE:   'Não aparece para esta pessoa — a menos que ela atenda ou tenha comissão de venda: aí vê as Minhas comissões, só as dela.',
     VIEW:   'Vê faturamento, despesas, extrato de lançamentos e comissões.',
     MANAGE: 'Tudo do Ver, mais lançar receita e despesa, estornar e conceder crédito ao cliente.',
   },
@@ -150,7 +152,7 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   },
   reports: {
     NONE:   SEM_ACESSO,
-    VIEW:   'Abre os relatórios que o cargo libera (as abas marcadas abaixo: financeiro, vendas, oportunidades, agenda, clientes, procedimentos, quem atende, estoque…). O alcance decide se é a rede toda ou uma unidade por vez.',
+    VIEW:   'Abre os relatórios que o cargo libera (as abas marcadas abaixo: financeiro, vendas, oportunidades, agenda, clientes, procedimentos, quem atende, estoque…). Valem as unidades da pessoa: quem tem “A rede inteira” vê a rede toda.',
   },
   team: {
     NONE:   SEM_ACESSO,
@@ -184,24 +186,6 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
     VIEW:   'Conversa com o Copilot para consultar — agenda, clientes, números — só do que o cargo já enxerga. Não prepara gravação nenhuma.',
     MANAGE: 'Tudo do Ver, mais pedir gravações (agendar, cadastrar, lançar…), sempre com o cartão de confirmação. Cada gravação ainda exige o módulo dela em Gerenciar.',
   },
-}
-
-// ─── Alcance ("Enxerga") ─────────────────────────────────────────────────────
-// Nota extra só onde "só os próprios" tem consequência que o rótulo curto não
-// entrega. No financeiro, por exemplo, o alcance próprio não filtra a tela: ela
-// se reduz à lista de comissões.
-
-export const SCOPE_NOTE: Partial<Record<ScopedModule, string>> = {
-  reports:   'Uma unidade por vez: quem não tem “A rede inteira” vê só as unidades dela, uma de cada vez; quem tem escolhe a unidade e vê uma de cada vez. O consolidado da rede fica indisponível.',
-  financial: 'Com alcance próprio a tela vira só "minhas comissões": some faturamento, despesas e extrato — e não dá para lançar, mesmo com Gerenciar.',
-  // A Agenda é agenda (o Heitor, 2026-11-18); o D20 saiu. Com "só os meus" e
-  // Gerenciar, cancela, marca a falta, remarca e passa a outra pessoa os dela
-  // (28/10: "a profissional (no que é dela) ou quem gerencia a agenda cancela e
-  // passa o atendimento a outra pessoa").
-  agenda:    'Com "só os meus", a pessoa vê só os agendamentos dela. Em Gerenciar, também marca a chegada, remarca, cancela, marca a falta e passa a outra pessoa os dela. Confirmar a presença fica com quem tem "todos" e Gerenciar.',
-  // O "só os meus" do Atendimento (decisão do Claude pelo princípio 1, 2026-11-18:
-  // o atendimento é de quem atende, como a Agenda).
-  atendimento: 'Com "só os meus", a pessoa inicia e conclui só os atendimentos dela. Com "todos", qualquer um das unidades dela.',
 }
 
 // ─── Módulos que só existem no portal da rede ────────────────────────────────
@@ -250,17 +234,6 @@ export const SENSITIVE_NOTE: Partial<Record<AppModule, string>> = {
 }
 
 /**
- * "Não vê as próprias comissões…" no resumo do cargo (A48 da 7ª) só para quem
- * PODE ter comissão — quem atende (Agenda, Prontuário) ou vende (CRM,
- * Recebimentos) — e está sem o Financeiro. A16 da 11ª simulação: a Estoquista
- * (só o Estoque) lia o aviso sem nem atender. Princípio 3.
- */
-export function avisaSemMinhasComissoes(niveis: Partial<Record<'agenda' | 'atendimento' | 'medical_records' | 'crm' | 'cashier' | 'financial', string>>): boolean {
-  if ((niveis.financial ?? 'NONE') !== 'NONE') return false
-  return (['agenda', 'atendimento', 'medical_records', 'crm', 'cashier'] as const).some(m => (niveis[m] ?? 'NONE') !== 'NONE')
-}
-
-/**
  * O “Vender” da ficha (pacote, procedimento pré-pago, produto, crédito) é de
  * quem RECEBE — Recebimentos, ou o Financeiro em Gerenciar (`podeReceber`,
  * lib/auth.ts). D1 da 12ª simulação: a Rita, com Procedimentos e CRM em
@@ -299,26 +272,13 @@ export function copilotNoResumo(nivel: PermissionLevel | undefined): string | nu
 }
 
 /**
- * O mesmo aviso no CADASTRO de quem atende (A18 da 17ª simulação; princípio 3):
- * o cargo escolhido não tem o Financeiro, e a pessoa não verá as próprias
- * comissões — o resumo do cargo e a comissão na lista da Equipe já diziam.
- */
-export const SEM_MINHAS_COMISSOES_NO_CADASTRO =
-  'Com este cargo, a pessoa não verá as próprias comissões: falta o Financeiro em “Ver”, só os próprios. Para ver, ajuste o cargo em Configurações → Cargos.'
-
-/**
  * O que falta escolher para salvar o cargo, dito junto do "Salvar acessos"
  * (A27 da 18ª simulação; princípio 3): a tela rolava até o módulo, e o retorno
- * era só o laranja pequeno "Escolha o que este cargo enxerga aqui." nele.
- * `modulos`: os rótulos dos módulos ligados sem o alcance escolhido.
+ * era só o laranja pequeno no módulo. Sem escopo no cargo (2026-11-23), o que
+ * pode faltar é só o relatório.
  */
-export function textoDoQueFaltaNoCargo(modulos: string[], faltaRelatorio: boolean): string {
-  const lista = modulos.length <= 1 ? modulos.join('') : `${modulos.slice(0, -1).join(', ')} e ${modulos[modulos.length - 1]}`
-  const partes = [
-    modulos.length ? `o que o cargo enxerga em ${lista}` : null,
-    faltaRelatorio ? 'ao menos um relatório em Relatórios (ou deixe Relatórios em "Sem acesso")' : null,
-  ].filter(Boolean)
-  return `Falta escolher ${partes.join(', e ')}.`
+export function textoDoQueFaltaNoCargo(): string {
+  return 'Falta escolher ao menos um relatório em Relatórios (ou deixe Relatórios em "Sem acesso").'
 }
 
 /**
@@ -356,9 +316,9 @@ export function nivelDoPdvPeloFinanceiro(niveis: Partial<Record<'cashier' | 'fin
 
 /**
  * De onde vem a entrada Tratamentos do resumo do cargo (A2 da 22ª; princípio
- * 3, como Documentos na A24 da 21ª). Os planos são de quem atende (PT2: "quem
- * monta o plano é quem atende"): o menu a mostra a quem tem o Atendimento (a
- * régua da página, `lib/menu.ts`) — era a Agenda até 2026-11-18.
+ * 3, como Documentos na A24 da 21ª). Os planos são do Atendimento (UM3,
+ * 2026-11-23): o menu a mostra a quem tem o Atendimento (a régua da página,
+ * `lib/menu.ts`).
  */
 export function tratamentosNoResumo(niveis: Partial<Record<'atendimento' | 'agenda' | 'medical_records' | 'cashier' | 'financial', string>>): string | null {
   if ((niveis.atendimento ?? 'NONE') === 'NONE') return null
@@ -368,19 +328,16 @@ export function tratamentosNoResumo(niveis: Partial<Record<'atendimento' | 'agen
 /**
  * Quem inicia e conclui, no resumo do cargo (A2 da 23ª, A1 da 24ª; princípio
  * 3). Desde 2026-11-18 é o Atendimento (o Heitor: "Só inicia e conclui
- * atendimento quem tem gerenciar no atendimento"): em Ver, só vê; em Gerenciar
- * "só os meus", só os próprios; sem o Prontuário em Gerenciar, conclui sem o
- * clínico. Nulo sem o Atendimento, ou com ele em Gerenciar de todos e o
- * Prontuário em Gerenciar.
+ * atendimento quem tem gerenciar no atendimento"): em Ver, só vê; sem o
+ * Prontuário em Gerenciar, conclui sem o clínico. Nulo sem o Atendimento, ou
+ * com ele e o Prontuário em Gerenciar.
  */
 export function conclusaoNoResumo(
   niveis: Partial<Record<'atendimento' | 'agenda' | 'medical_records', string>>,
-  escopos: Partial<Record<'atendimento' | 'agenda' | 'medical_records', string>>,
 ): string | null {
   const nivel = niveis.atendimento ?? 'NONE'
   if (nivel === 'NONE') return null
   if (nivel !== 'MANAGE') return 'Vê os atendimentos, sem iniciar nem concluir: iniciar e concluir pedem o Atendimento em Gerenciar.'
-  if (escopos.atendimento === 'OWN') return 'Inicia e conclui só os próprios atendimentos: o de outra pessoa que atende, quem tem o Atendimento em Gerenciar de todos.'
   if (niveis.medical_records !== 'MANAGE') return 'Inicia e conclui os atendimentos. A evolução, as fotos e a ficha de saúde pedem o Prontuário em Gerenciar.'
   return null
 }

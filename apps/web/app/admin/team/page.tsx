@@ -5,7 +5,7 @@ import { contagemDeMembros } from '@/lib/equipe/contagem'
 import { DesativarMembro } from '@/components/admin/desativar-membro'
 import { ComissaoDoMembro } from '@/components/admin/comissao-do-membro'
 import { regrasDaRede, procedimentosParaComissao, procedimentosComComissaoGeral } from '@/lib/comissoes/leitura'
-import { cargosQueVendem, cargosQueVeemAsComissoes } from '@/lib/vendas/equipe-da-venda'
+import { cargosQueVendem } from '@/lib/vendas/equipe-da-venda'
 import { AdminTeamForm } from '@/components/admin/team-form'
 import { TeamMemberEdit } from '@/components/admin/team-member-edit'
 import { TeamFilters } from '@/components/admin/team-filters'
@@ -91,9 +91,9 @@ export default async function AdminTeamPage({
   // A comissão de cada um é do financeiro, não da equipe: quem gere a equipe
   // sem `financial: MANAGE` não vê nem muda quanto cada um ganha.
   const podeComissao = can(ctx, 'financial', 'MANAGE') && temRecurso(ctx, 'comissoes')
-  const [regras, procedimentos, comGeral, quemVende, veemAsComissoes] = podeComissao
-    ? await Promise.all([regrasDaRede(ctx.tenantId!), procedimentosParaComissao(ctx.tenantId!, ctx.branchId), procedimentosComComissaoGeral(ctx.tenantId!, ctx.branchId), cargosQueVendem(ctx.tenantId!), cargosQueVeemAsComissoes(ctx.tenantId!)])
-    : [null, [], [], new Set<string>(), new Set<string>()]
+  const [regras, procedimentos, comGeral, quemVende] = podeComissao
+    ? await Promise.all([regrasDaRede(ctx.tenantId!), procedimentosParaComissao(ctx.tenantId!, ctx.branchId), procedimentosComComissaoGeral(ctx.tenantId!, ctx.branchId), cargosQueVendem(ctx.tenantId!)])
+    : [null, [], [], new Set<string>()]
 
   // Na rede de uma unidade (PO2), o cargo "Admin da rede" é "Admin".
   const fala = await falaDaTela(ctx.tenantId)
@@ -111,14 +111,7 @@ export default async function AdminTeamPage({
   // desligado, dizendo por quê — a action também recusa.
   const acimaDoMeu = await cargosAcimaDoMeu(createAdminClient(), ctx, assignableRoles.map(r => r.id), souAdmin)
   const comTrava = assignableRoles.map(r => (acimaDoMeu.has(r.id) ? { ...r, acimaDoMeu: true } : r))
-  // A18 da 17ª (princípio 3): o cadastro de quem atende diz quando o cargo não
-  // mostra as próprias comissões (o resumo do cargo e a comissão na lista já
-  // diziam). Só com as comissões no plano.
-  const veemComissoes = temRecurso(ctx, 'comissoes')
-    ? (podeComissao ? veemAsComissoes : await cargosQueVeemAsComissoes(ctx.tenantId!))
-    : null
   const rolesParaDar = (souAdmin && cargoDeAdmin ? [cargoDeAdmin, ...comTrava] : comTrava)
-    .map(r => ({ ...r, naoVeAsComissoes: !!veemComissoes && !veemComissoes.has(r.id) }))
   /** Quem age pode mexer neste membro? A Admin da rede, só outra Admin (ou ela mesma). */
   const podeMexerEm = (m: { id: string; role_id: string | null }) =>
     !cargoDeAdmin || m.role_id !== cargoDeAdmin.id || souAdmin || m.id === ctx.internalUserId
@@ -331,8 +324,7 @@ export default async function AdminTeamPage({
                       {regras && (m.provides_services || regras.has(m.id) || (!!m.role_id && quemVende.has(m.role_id as string)) || (m as { comissao_venda_pct?: number | null }).comissao_venda_pct != null) && podeMexerEm(m) && (
                         <ComissaoDoMembro membro={{ id: m.id, nome: m.name }} regras={regras.get(m.id) ?? []}
                           procedimentos={procedimentos} comGeral={comGeral} atende={!!m.provides_services}
-                        vendaPct={(m as { comissao_venda_pct?: number | null }).comissao_venda_pct ?? null}
-                        naoVeAsProprias={!m.role_id || !veemAsComissoes.has(m.role_id as string)} />
+                        vendaPct={(m as { comissao_venda_pct?: number | null }).comissao_venda_pct ?? null} />
                       )}
                       {canManage && podeMexerEm(m) && <TeamMemberEdit
                         member={{

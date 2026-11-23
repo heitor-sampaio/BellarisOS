@@ -2,7 +2,7 @@ import { cache } from 'react'
 import { redirect } from 'next/navigation'
 import type {
   TenantContext, UserRole, JwtClaims, AppModule,
-  ResolvedPermissions, ResolvedScopes, ReportTab,
+  ResolvedPermissions, ReportTab,
 } from '@estetica-os/types'
 import { createClient } from '@/lib/supabase/server'
 import { getCachedMember, getCachedRede, getCachedRedeDoCliente, getCachedFichasDoLogin, getCachedRolePermissions, getCachedRoleReportTabs, getCachedTodasAsUnidades } from '@/lib/cached-queries'
@@ -12,8 +12,8 @@ import { redeAbreParaCliente, fichasQueAbrem } from '@/lib/clientes/disponibilid
 import { ROTA_DO_SELETOR } from '@/lib/clientes/entrada'
 import { redeBloqueada } from '@/lib/redes/situacao'
 import {
-  resolvePermissions, resolveScopes, resolveReportTabs, hasLevel, escoposDoQueTem,
-  NO_PERMISSIONS, ALL_PERMISSIONS, ALL_SCOPES, ALL_REPORT_TABS, MODULOS_SO_DA_ADMIN,
+  resolvePermissions, resolveReportTabs, hasLevel,
+  NO_PERMISSIONS, ALL_PERMISSIONS, ALL_REPORT_TABS, MODULOS_SO_DA_ADMIN,
 } from '@/lib/permissions'
 import { semAcesso } from '@/lib/sem-acesso'
 import { abasForaDoPlano, modulosForaDoPlano, type ChaveDeFuncionalidade } from '@estetica-os/nucleo/lib/planos/recursos'
@@ -118,15 +118,12 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
   }
 
   let permissions: ResolvedPermissions
-  let scopes: ResolvedScopes
   let reportTabs: ReportTab[]
   if (isClient) {
     permissions = NO_PERMISSIONS
-    scopes      = ALL_SCOPES
     reportTabs  = []
   } else if (isNetworkAdmin) {
     permissions = ALL_PERMISSIONS
-    scopes      = ALL_SCOPES
     reportTabs  = [...ALL_REPORT_TABS]
   } else if (roleId && tenantId) {
     const [rows, tabRows] = await Promise.all([
@@ -134,7 +131,6 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
       getCachedRoleReportTabs(tenantId, roleId),
     ])
     permissions = resolvePermissions(rows)
-    scopes      = resolveScopes(rows)
     reportTabs  = resolveReportTabs(tabRows)
 
     // Relatórios sem nenhuma aba é o mesmo que não ter relatórios: sem esta
@@ -143,7 +139,6 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
     if (reportTabs.length === 0) permissions = { ...permissions, reports: 'NONE' }
   } else {
     permissions = NO_PERMISSIONS
-    scopes      = ALL_SCOPES
     reportTabs  = []
   }
 
@@ -164,10 +159,6 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
   // é a segunda parede.
   if (!isNetworkAdmin) permissions = { ...permissions, ...Object.fromEntries(MODULOS_SO_DA_ADMIN.map(m => [m, 'NONE'])) }
 
-  // O recorte "só os meus" só de módulo que a pessoa TEM (D6, 2026-10-29): o
-  // que ficou NONE acima (plano, Relatórios sem aba) não recorta nada.
-  scopes = escoposDoQueTem(scopes, permissions)
-
   return {
     userId: authId,
     internalUserId: member?.id ?? null,
@@ -180,10 +171,10 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
     roleId,
     clientId,
     permissions,
-    scopes,
     reportTabs,
     providesServices: member?.providesServices ?? false,
     atendeEm: member?.atendeEm ?? [],
+    comissaoDeVenda: member?.comissaoDeVenda ?? false,
     isNetworkAdmin,
     isClient,
     plano,
@@ -380,13 +371,12 @@ export function podeReceber(ctx: TenantContext): boolean {
 }
 
 /**
- * Vê o Fechamento do dia — o dinheiro da UNIDADE inteira (D6 da simulação de
- * 2026-10-27): quem recebe (`cashier`) ou o financeiro com escopo de TODOS.
- * O `financial: Ver, só os próprios` da Profissional (para as comissões dela)
- * abria o saldo da unidade. O `veFechamento` de lib/menu, pelo contexto.
+ * Vê o Fechamento do dia — o dinheiro da UNIDADE inteira: quem recebe
+ * (`cashier`) ou quem vê o Financeiro. O `veFechamento` de lib/menu, pelo
+ * contexto.
  */
 export function podeVerFechamento(ctx: TenantContext): boolean {
-  return can(ctx, 'cashier', 'MANAGE') || (can(ctx, 'financial', 'VIEW') && !isOwnScope(ctx, 'financial'))
+  return can(ctx, 'cashier', 'MANAGE') || can(ctx, 'financial', 'VIEW')
 }
 
 /** Barra quem não pode receber. */
@@ -401,12 +391,9 @@ export function assertPodeReceber(ctx: TenantContext): void {
  * Existe porque esses dados vazavam por telas de outros módulos: a evolução
  * do atendimento saía com `agenda`, o exame e o laudo do cliente com
  * `clients`, a anotação do plano com `agenda` (corrigido em 2026-10-03).
- * Com escopo OWN, só o profissional do registro (`responsavelId`).
  */
-export function podeVerClinico(ctx: TenantContext, responsavelId?: string | null): boolean {
-  if (!can(ctx, 'medical_records', 'VIEW')) return false
-  if (responsavelId === undefined || !isOwnScope(ctx, 'medical_records')) return true
-  return !!responsavelId && ctx.internalUserId === responsavelId
+export function podeVerClinico(ctx: TenantContext): boolean {
+  return can(ctx, 'medical_records', 'VIEW')
 }
 
 /**
@@ -421,23 +408,23 @@ export function podeVerRelatorio(ctx: TenantContext, tab: ReportTab): boolean {
 }
 
 /**
- * O cargo enxerga só os próprios registros neste módulo?
+ * A VISTA PESSOAL (sem o "só os meus", o Heitor, 2026-11-23: "pode tirar, as
+ * vistas pessoais resolvem"): quem não tem o módulo vê o que é dela — a Minha
+ * agenda (`agenda`) quem ATENDE; as Minhas comissões (`financial`) quem atende
+ * ou tem comissão de venda (quem só vende também ganha comissão). Devolve o
+ * id dela para o filtro da consulta, ou `null` quando não é vista pessoal
+ * (quem tem o módulo vê tudo, nas unidades ao alcance; quem não atende não
+ * tem o que é dela).
  *
- * Substitui a heurística `ctx.providesServices && permissions.agenda !== 'MANAGE'`,
- * que estava repetida em seis lugares e tinha um efeito perverso: dar
- * "Gerenciar" agenda ao profissional para ele poder remarcar fazia com que
- * passasse a ver a agenda de todo mundo.
+ * A vista só MOSTRA: o que se faz (iniciar, remarcar, receber) continua
+ * pedindo a permissão do módulo de cada passo.
  */
-export function isOwnScope(ctx: TenantContext, module: AppModule): boolean {
-  return ctx.scopes[module] === 'OWN'
-}
-
-/**
- * `internalUserId` quando o cargo vê só os próprios registros do módulo, `null`
- * quando vê todos — pronto para alimentar o filtro da query.
- */
-export function ownerFilter(ctx: TenantContext, module: AppModule): string | null {
-  return isOwnScope(ctx, module) ? ctx.internalUserId : null
+export function vistaPessoal(ctx: TenantContext, modulo: 'agenda' | 'financial'): string | null {
+  if (ctx.isClient || !ctx.internalUserId || ctx.permissions[modulo] !== 'NONE') return null
+  // Fora do PLANO da rede, nem a vista: o módulo é NONE por isso, não pelo cargo.
+  if (!temRecurso(ctx, modulo === 'agenda' ? 'agenda' : 'financeiro')) return null
+  const temOQueVer = modulo === 'agenda' ? ctx.providesServices : (ctx.providesServices || !!ctx.comissaoDeVenda)
+  return temOQueVer ? ctx.internalUserId : null
 }
 
 /**

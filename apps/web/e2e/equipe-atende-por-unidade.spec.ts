@@ -74,21 +74,22 @@ test.beforeAll(async () => {
   dona = await criarMembro(`atd${marca}`, { tenant: rede.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
   talita = await criarMembro(`atu${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Talita',
+    // Sem o "só os meus" (SM2/UM2, o Heitor, 2026-11-23): a Minha agenda e as Minhas comissões
+    // são as vistas pessoais de quem atende sem a Agenda e sem o Financeiro; iniciar é do Atendimento.
     permissoes: [
-      { modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' },
-      { modulo: 'medical_records', nivel: 'MANAGE', escopo: 'OWN' },
-      { modulo: 'financial', nivel: 'VIEW', escopo: 'OWN' },
+      { modulo: 'atendimento', nivel: 'MANAGE' },
+      { modulo: 'medical_records', nivel: 'MANAGE' },
     ],
   })
   // Ela atende — e, de uma unidade, fica marcada só na dela (a migração do dado).
   expect((await db().from('users').update({ provides_services: true }).eq('id', talita.userId)).error).toBeNull()
   gerenteDoBatel = await criarMembro(`atg${marca}`, {
     tenant: rede.tenantId, branchId: batel, rotulo: 'Gerente do Batel',
-    permissoes: [{ modulo: 'team', nivel: 'MANAGE' }, { modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }],
+    permissoes: [{ modulo: 'team', nivel: 'MANAGE' }, { modulo: 'agenda', nivel: 'MANAGE' }],
   })
   recepcaoDoBatel = await criarMembro(`atr${marca}`, {
     tenant: rede.tenantId, branchId: batel, rotulo: 'Recepcao do Batel',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }],
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }],
   })
 })
 
@@ -190,7 +191,7 @@ test('a Talita vê e inicia o atendimento DELA no Batel pela Água Verde, e não
 test('quem tem só uma unidade, com a Equipe em Gerenciar, marca e desmarca só a unidade dela', async ({ browser }) => {
   // Uma profissional do Batel que a dona também marcou na Água Verde.
   const nome = `${PREFIXO} Bia atb${marca}`
-  const bia = await criarMembro(`atb${marca}`, { tenant: rede!.tenantId, branchId: batel, rotulo: 'Bia', permissoes: [{ modulo: 'agenda', nivel: 'VIEW', escopo: 'OWN' }] })
+  const bia = await criarMembro(`atb${marca}`, { tenant: rede!.tenantId, branchId: batel, rotulo: 'Bia', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }] })
   try {
     expect((await db().from('users').update({ atende_em: [rede!.branchId, batel] }).eq('id', bia.userId)).error).toBeNull()
     expect((await atendeEm(bia.userId))?.provides_services, 'atender em alguma = provides_services').toBe(true)

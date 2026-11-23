@@ -6,8 +6,8 @@ import { chamarAcao } from './apoio/acao-direta'
 
 /**
  * A frente "agenda" da simulação de 2026-10-27: D8, A17, A18, A19, A20, A23
- * e o agenda-06 (a janela de "só os meus" oferece "Cancelar" e "Não
- * compareceu" no agendamento dela — era a sobra da frente 3, ao contrário).
+ * e o agenda-06 (a janela oferece "Cancelar" e "Não compareceu" à
+ * profissional no agendamento dela — era a sobra da frente 3, ao contrário).
  */
 
 const marca = Date.now().toString(36)
@@ -46,7 +46,7 @@ test.beforeAll(async () => {
   })
   propria = await criarMembro(`adp${marca}`, {
     tenant: rede.tenantId, rotulo: 'Profissional da rede',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' }, { modulo: 'clients', nivel: 'VIEW' }],
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }],
   })
   expect((await db().from('users').update({ provides_services: true }).eq('id', propria.userId)).error).toBeNull()
 })
@@ -71,11 +71,12 @@ test('A18: a chegada de outro dia é recusada, e a janela não oferece "Chegou"'
 })
 
 // A regra mudou com o agenda-06 da F6 (59cdcb68, revisão do Heitor de
-// 2026-11-02 — "a profissional cancela o que é dela"): a janela de quem tem
-// "só os meus" mostra "Cancelar" e "Não compareceu" no agendamento DELA. Este
-// caso dizia o contrário (a sobra da frente 3, de quando a action recusava).
-// O "de outra" e a recusa da action estão em agenda-so-os-meus-pelo-id.
-test('agenda-06: "só os meus" vê Cancelar e Não compareceu na janela do agendamento DELA', async ({ browser }) => {
+// 2026-11-02 — "a profissional cancela o que é dela"): a janela mostra
+// "Cancelar" e "Não compareceu" no agendamento DELA. Este caso dizia o
+// contrário (a sobra da frente 3, de quando a action recusava). Sem o "só os
+// meus" (SM1, o Heitor, 2026-11-23), é a Agenda em Gerenciar que dá os dois,
+// no dela e no de outra (agenda-passos-pelo-id).
+test('agenda-06: com a Agenda em Gerenciar, a profissional vê Cancelar e Não compareceu na janela do agendamento DELA', async ({ browser }) => {
   // A falta só é oferecida depois do início: um que começou há uma hora, hoje.
   const umaHoraAtras = new Date(Date.now() - 60 * 60_000)
   const hora = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }).format(umaHoraAtras)

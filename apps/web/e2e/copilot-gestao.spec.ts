@@ -167,15 +167,18 @@ test('oportunidade: cria no funil e move de etapa — com o evento "via Copilot"
   })
 })
 
-test('as travas: quem tem o PDV dá baixa (de verdade) mas não lança; quem tem o Financeiro só com os próprios, sem o PDV, não dá baixa', async ({ browser }) => {
+// Sem o "só os meus" (SM1/SM2, o Heitor, 2026-11-23): as Minhas comissões são a vista pessoal de quem
+// atende, sem o Financeiro — e a vista só mostra: não dá baixa nem lança.
+test('as travas: quem tem o PDV dá baixa (de verdade) mas não lança; quem só tem a vista pessoal das comissões (atende, sem o Financeiro nem o PDV) não dá baixa', async ({ browser }) => {
   const { data: tx, error } = await db().from('financial_transactions').insert({
     branch_id: rede.outra.branchId, type: 'INCOME', category: 'Outro', description: `${PREFIXO} A receber copges${marca}`,
     amount: 80, is_paid: false, created_by: 'e2e',
   }).select('id').single<{ id: string }>()
   expect(error).toBeNull()
 
-  // Só o financeiro (e "só as próprias comissões"): nem baixa nem lançamento.
-  const comissoes = await rede.membro('fin', [{ modulo: 'financial', nivel: 'MANAGE', escopo: 'OWN' }])
+  // Só a vista pessoal (atende, sem o Financeiro): nem baixa nem lançamento.
+  const comissoes = await rede.membro('fin', [])
+  expect((await db().from('users').update({ atende_em: [rede.outra.branchId] }).eq('id', comissoes.userId)).error).toBeNull()
   await comSessao(browser, comissoes.estado, async p => {
     await p.goto('/admin/dashboard')
     await pedir(p, 'marcar_pago', { lancamento: tx!.id })
@@ -219,12 +222,17 @@ test('quem tem o PDV só em OUTRA unidade não dá baixa no lançamento desta', 
   }
 })
 
-test('CRM "só os meus": não move a oportunidade de outra pessoa', async ({ browser }) => {
-  const { data: lead } = await db().from('leads').select('id').eq('tenant_id', rede.outra.tenantId).limit(1).single<{ id: string }>()
-  const sdr = await rede.membro('sdr', [{ modulo: 'crm', nivel: 'MANAGE', escopo: 'OWN' }])
+// Sem o "só os meus" (SM1/SM5, o Heitor, 2026-11-23): o CRM em Gerenciar move a oportunidade de outra pessoa.
+test('CRM em Gerenciar: move a oportunidade de outra pessoa', async ({ browser }) => {
+  const { data: lead } = await db().from('leads').select('id, crm_stage_id').eq('tenant_id', rede.outra.tenantId).limit(1).single<{ id: string; crm_stage_id: string }>()
+  const { data: etapas } = await db().from('crm_stages').select('id, name').eq('tenant_id', rede.outra.tenantId).order('position')
+  const outra = etapas!.find(e => e.id !== lead!.crm_stage_id)!
+  const sdr = await rede.membro('sdr', [{ modulo: 'crm', nivel: 'MANAGE' }])
   await comSessao(browser, sdr.estado, async p => {
     await p.goto('/admin/dashboard')
-    await pedir(p, 'mover_etapa', { oportunidade: lead!.id, etapa: 'qualquer' })
-    expect(ultimaSaida()?.erro).toContain('não encontrada')
+    const mover = await pedir(p, 'mover_etapa', { oportunidade: lead!.id, etapa: outra.name })
+    await mover.getByRole('button', { name: 'Confirmar' }).click()
+    await expect(mover.getByRole('status')).toContainText('Feito')
   })
+  expect((await db().from('leads').select('crm_stage_id').eq('id', lead!.id).single()).data!.crm_stage_id).toBe(outra.id)
 })

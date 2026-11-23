@@ -219,15 +219,17 @@ test('oportunidade com responsável e valor; trocar o responsável grava DE → 
     for (const e of evs!) expect(e.actor_name).toMatch(/\(via Copilot\)$/)
   })
 
-  // O "só os meus" do CRM vê, mas não troca nem escolhe outra pessoa (a regra da tela).
-  const soOsMeus = await rede.membro('own', [{ modulo: 'crm', nivel: 'MANAGE', escopo: 'OWN' }])
-  await comSessao(browser, soOsMeus.estado, async p => {
+  // Sem o "só os meus" (SM1/SM3/SM5, o Heitor, 2026-11-23): o CRM em Gerenciar troca e escolhe
+  // outra pessoa como responsável (a regra da tela, podeTrocarResponsavel).
+  const doCrm = await rede.membro('own', [{ modulo: 'crm', nivel: 'MANAGE' }])
+  await comSessao(browser, doCrm.estado, async p => {
     await p.goto('/admin/oportunidades')
     const { oferecidas } = await chamar(p, 'oportunidades', {})
     expect(oferecidas).toContain('criar_oportunidade')
-    expect(oferecidas).not.toContain('trocar_responsavel')
-    await pedir(p, 'criar_oportunidade', { nome: `${lead} 2`, telefone: '48999990002', responsavel: nomeDono })
-    expect(ultimaSaida()?.erro).toMatch(/responsável/i)
+    expect(oferecidas).toContain('trocar_responsavel')
+    const outra = await pedir(p, 'criar_oportunidade', { nome: `${lead} 2`, telefone: '48999990002', responsavel: nomeDono })
+    expect(ultimaSaida()?.erro).toBeUndefined()
+    await expect(outra.getByText(nomeDono)).toBeVisible()
   })
 })
 

@@ -1,6 +1,6 @@
 import { redirect, notFound } from 'next/navigation'
 import { unidadesParaCriar } from '@/lib/unidades/da-tela'
-import { getTenantContext, isOwnScope, caminhoDaRequisicao, alcancaUnidade, unidadesDoContexto } from '@/lib/auth'
+import { getTenantContext, vistaPessoal, caminhoDaRequisicao, alcancaUnidade, unidadesDoContexto } from '@/lib/auth'
 import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
 import { UmaUnidadeProvider } from '@/components/shared/uma-unidade'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -138,14 +138,14 @@ export default async function BranchLayout({
         slug={branch.slug}
         branchName={branch.name}
         permissions={permissions}
-        scopes={ctx.scopes}
+        pessoa={{ atende: ctx.providesServices, comissaoDeVenda: ctx.comissaoDeVenda }}
         plano={ctx.plano ?? null}
         isNetworkAdmin={daRede}
         adminDaRede={mexeNaConfigDaRede(ctx)}
         allBranches={allBranches}
         umaUnidade={umaUnidade}
       />
-      <Topbar userName={ctx.userName || 'Usuário'} userRole={ctx.role} roleLabel={ctx.roleLabel} internalUserId={ctx.internalUserId} initialUnread={initialUnread} slug={branch.slug} permissions={permissions} scopes={ctx.scopes} plano={ctx.plano ?? null} agendaPropria={isOwnScope(ctx, 'agenda')} daRede={ctx.branchId === null} adminDaRede={mexeNaConfigDaRede(ctx)}
+      <Topbar userName={ctx.userName || 'Usuário'} userRole={ctx.role} roleLabel={ctx.roleLabel} internalUserId={ctx.internalUserId} initialUnread={initialUnread} slug={branch.slug} permissions={permissions} pessoa={{ atende: ctx.providesServices, comissaoDeVenda: ctx.comissaoDeVenda }} plano={ctx.plano ?? null} agendaPropria={vistaPessoal(ctx, 'agenda') !== null} daRede={ctx.branchId === null} adminDaRede={mexeNaConfigDaRede(ctx)}
         unidade={unidadesDoSeletor.length > 1 ? { atual: { slug: branch.slug, name: branch.name }, unidades: unidadesDoSeletor } : null}
         suporte={ctx.suporte ?? null} assinatura={await avisoDaAssinatura(ctx)} saudacaoInicial={saudacao(new Date(), fuso)} />
       <main style={{

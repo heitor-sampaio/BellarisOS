@@ -1,4 +1,4 @@
-import type { ResolvedPermissions, ResolvedScopes } from '@estetica-os/types'
+import type { ResolvedPermissions } from '@estetica-os/types'
 
 /**
  * Definição única dos itens de menu e do que os libera.
@@ -36,12 +36,12 @@ export type MenuEntry = {
   key:     string
   /** Área do menu. Sem grupo = fica solto no topo, antes das categorias. */
   group?:  MenuGroupKey
-  /** Rótulo fixo, ou derivado das permissões (e do escopo) quando ele muda com o acesso. */
-  label:   string | ((p: ResolvedPermissions, s?: Partial<ResolvedScopes>) => string)
+  /** Rótulo fixo, ou derivado das permissões (e da pessoa) quando ele muda com o acesso. */
+  label:   string | ((p: ResolvedPermissions, v?: DaPessoa) => string)
   /** Rota absoluta na rede; sufixo depois de `/[slug]` na unidade. */
   href:    string
-  /** `s`: o escopo de cada módulo, quando o item depende dele (o Fechamento do dia). */
-  visible: (p: ResolvedPermissions, s?: Partial<ResolvedScopes>) => boolean
+  /** `v`: o que é da pessoa, quando o item depende dele (as vistas pessoais). */
+  visible: (p: ResolvedPermissions, v?: DaPessoa) => boolean
   /**
    * A funcionalidade do PLANO a que o item pertence (lib/planos/recursos.ts),
    * quando ela é parte de um módulo: pacotes dentro de procedimentos, a inbox
@@ -50,6 +50,14 @@ export type MenuEntry = {
   recurso?: string
 }
 
+/**
+ * O que é da PESSOA e muda o menu: quem atende tem as vistas pessoais (a
+ * Minha agenda, as Minhas comissões) mesmo sem o módulo (o Heitor,
+ * 2026-11-23: "pode tirar, as vistas pessoais resolvem"). É o
+ * `vistaPessoal` de lib/auth, pelo que o menu recebe.
+ */
+export type DaPessoa = { atende?: boolean; comissaoDeVenda?: boolean }
+
 /** O plano da rede, como o contexto o traz (`ctx.plano`); null = tudo. */
 type PlanoDoMenu = { funcionalidades: readonly string[] } | null | undefined
 const noPlano = (e: MenuEntry, plano: PlanoDoMenu) => !e.recurso || !plano || plano.funcionalidades.includes(e.recurso)
@@ -57,12 +65,13 @@ const noPlano = (e: MenuEntry, plano: PlanoDoMenu) => !e.recurso || !plano || pl
 const has = (p: ResolvedPermissions, m: keyof ResolvedPermissions) => p[m] !== 'NONE'
 
 /**
- * Com o financeiro "só os meus", a tela é só a das comissões dela (o
- * consolidado meio filtrado não existe): o menu diz isso (A52 da 6ª simulação —
- * a profissional via "Financeiro" e achava uma tela de comissões em R$ 0).
+ * A Agenda de quem tem o módulo; a Minha agenda (a vista pessoal) de quem
+ * atende sem ele.
  */
-const rotuloDoFinanceiro = (_p: ResolvedPermissions, s?: Partial<ResolvedScopes>) =>
-  s?.financial === 'OWN' ? 'Minhas comissões' : 'Financeiro'
+const rotuloDaAgenda = (p: ResolvedPermissions) => (has(p, 'agenda') ? 'Agenda' : 'Minha agenda')
+const veAgenda = (p: ResolvedPermissions, v?: DaPessoa) => has(p, 'agenda') || !!v?.atende
+/** As Minhas comissões: a vista pessoal de quem atende (ou tem comissão de venda) sem o Financeiro. */
+const veMinhasComissoes = (p: ResolvedPermissions, v?: DaPessoa) => !has(p, 'financial') && !!(v?.atende || v?.comissaoDeVenda)
 
 /**
  * O rótulo de Configurações: quem só chega pelas abas Tags e Importações
@@ -84,13 +93,10 @@ const rotuloDeConfiguracoes = (comFinanceiro: boolean) => (p: ResolvedPermission
 export const recebe = (p: ResolvedPermissions) => p.cashier === 'MANAGE' || p.financial === 'MANAGE'
 
 /**
- * O Fechamento do dia é o dinheiro da UNIDADE inteira (D6 da simulação de
- * 2026-10-27): quem recebe (`cashier`) ou o financeiro com escopo de TODOS.
- * O `financial: Ver, só os próprios` da Profissional — para ver as comissões
- * DELA — abria o saldo da unidade. O `podeVerFechamento` de lib/auth.
+ * O Fechamento do dia é o dinheiro da UNIDADE inteira: quem recebe
+ * (`cashier`) ou quem vê o Financeiro. O `podeVerFechamento` de lib/auth.
  */
-export const veFechamento = (p: ResolvedPermissions, s?: Partial<ResolvedScopes>) =>
-  p.cashier === 'MANAGE' || (has(p, 'financial') && s?.financial !== 'OWN')
+export const veFechamento = (p: ResolvedPermissions) => p.cashier === 'MANAGE' || has(p, 'financial')
 
 // O CRM era uma tela só com abas "Funil" e "Inbox". Virou duas entradas: as
 // duas coisas têm ritmo diferente — a caixa de entrada se responde o dia
@@ -99,7 +105,7 @@ export const veFechamento = (p: ResolvedPermissions, s?: Partial<ResolvedScopes>
 export const ADMIN_MENU: readonly MenuEntry[] = [
   { key: 'dashboard',    group: undefined,      label: 'Dashboard',     href: '/admin/dashboard',      visible: () => true },
 
-  { key: 'agenda',       group: 'atendimento',  label: 'Agenda',        href: '/admin/agenda',         visible: p => has(p, 'agenda') },
+  { key: 'agenda',       group: 'atendimento',  label: rotuloDaAgenda,  href: '/admin/agenda',         visible: veAgenda },
   { key: 'clients',      group: 'atendimento',  label: 'Clientes',      href: '/admin/clients',        visible: p => has(p, 'clients') },
   // Todo termo e contrato emitido, com a situação (a enviar, enviado, assinado…).
   { key: 'documentos', recurso: 'documentos', group: 'atendimento', label: 'Documentos', href: '/admin/documentos', visible: p => has(p, 'clients') },
@@ -108,8 +114,8 @@ export const ADMIN_MENU: readonly MenuEntry[] = [
   // tarefa sem dono, esperando uma decisão do cliente. O dinheiro passou a ser
   // recebido no check-in do atendimento, e o que sobrava da fila virou o filtro
   // "Aguardando aceite" desta tela.
-  // Os planos são de quem atende (PT2): a página pede o Atendimento em Ver (era a
-  // Agenda até 2026-11-18). D1 da 23ª (princípio 3): segue a página. Abria
+  // A página pede o Atendimento em Ver (era a Agenda até 2026-11-18); montar o
+  // plano é do Atendimento em Gerenciar (UM3). D1 da 23ª (princípio 3): segue a página. Abria
   // também pelo Prontuário e por quem recebe ("ele cobra o plano ali"), e a
   // página barrava; desde o PDV4/PT1c/PDV7 o plano se cobra na comanda do PDV.
   { key: 'planejamentos', recurso: 'planos_de_tratamento',group: 'planejamento', label: 'Tratamentos',   href: '/admin/planejamentos',  visible: p => has(p, 'atendimento') },
@@ -134,8 +140,9 @@ export const ADMIN_MENU: readonly MenuEntry[] = [
   // quem escreve a mensagem é o time comercial — não quem conecta a API.
   { key: 'templates', recurso: 'templates',    group: 'marketing',      label: 'Templates',     href: '/admin/templates',      visible: p => has(p, 'marketing') },
 
-  { key: 'financial',    group: 'dinheiro',     label: rotuloDoFinanceiro, href: '/admin/financeiro',  visible: p => has(p, 'financial') },
-  // O fechamento do dia (2026-10-21): quem recebe fecha; o financeiro de TODOS vê (D6).
+  { key: 'financial',    group: 'dinheiro',     label: 'Financeiro',    href: '/admin/financeiro',     visible: p => has(p, 'financial') },
+  { key: 'minhas-comissoes', recurso: 'comissoes', group: 'dinheiro', label: 'Minhas comissões', href: '/admin/financeiro/comissoes', visible: veMinhasComissoes },
+  // O fechamento do dia (2026-10-21): quem recebe fecha; quem vê o Financeiro vê.
   // Mora no PDV desde a CX4 (2026-11-14): o item abre a vista de fechar dele.
   { key: 'fechamento',   group: 'dinheiro',     label: 'Fechamento do dia', href: '/admin/pdv?fechar=1', visible: veFechamento },
   { key: 'stock',        group: 'dinheiro',     label: 'Estoque',       href: '/admin/estoque',        visible: p => has(p, 'stock') },
@@ -162,7 +169,7 @@ export const ADMIN_MENU: readonly MenuEntry[] = [
 export const BRANCH_MENU: readonly MenuEntry[] = [
   { key: 'dashboard',     group: undefined,     label: 'Dashboard',     href: '/dashboard',     visible: () => true },
 
-  { key: 'agenda',        group: 'atendimento', label: 'Agenda',        href: '/agenda',        visible: p => has(p, 'agenda') },
+  { key: 'agenda',        group: 'atendimento', label: rotuloDaAgenda,  href: '/agenda',        visible: veAgenda },
   { key: 'clients',       group: 'atendimento', label: 'Clientes',      href: '/clients',       visible: p => has(p, 'clients') },
   { key: 'documentos', recurso: 'documentos', group: 'atendimento', label: 'Documentos', href: '/documentos', visible: p => has(p, 'clients') },
   { key: 'planejamentos', recurso: 'planos_de_tratamento', group: 'planejamento', label: 'Tratamentos', href: '/planejamentos', visible: p => has(p, 'atendimento') },
@@ -177,8 +184,9 @@ export const BRANCH_MENU: readonly MenuEntry[] = [
   // Só `financial`. O módulo `cashier` governa RECEBER — no atendimento e no
   // checkout do plano —, e desde que o caixa de abrir/fechar saiu não há mais
   // tela própria dele: quem só recebe entrava aqui e via a tela vazia.
-  { key: 'financial',     group: 'dinheiro',    label: rotuloDoFinanceiro, href: '/financeiro', visible: p => has(p, 'financial') },
-  // A tela de quem RECEBE (cashier): o fechamento do dia (2026-10-21) — e do financeiro de todos (D6).
+  { key: 'financial',     group: 'dinheiro',    label: 'Financeiro',    href: '/financeiro',    visible: p => has(p, 'financial') },
+  { key: 'minhas-comissoes', recurso: 'comissoes', group: 'dinheiro', label: 'Minhas comissões', href: '/financeiro/comissoes', visible: veMinhasComissoes },
+  // A tela de quem RECEBE (cashier): o fechamento do dia (2026-10-21) — e de quem vê o Financeiro.
   // Mora no PDV desde a CX4 (2026-11-14): o item abre a vista de fechar dele.
   { key: 'fechamento',    group: 'dinheiro',    label: 'Fechamento do dia', href: '/pdv?fechar=1', visible: veFechamento },
   { key: 'stock',         group: 'dinheiro',    label: 'Estoque',       href: '/estoque',       visible: p => has(p, 'stock') },
@@ -232,38 +240,38 @@ export function soLeriaAsConfiguracoes(p: ResolvedPermissions, souAdmin: boolean
 export function menuDaUnidadeFor(
   permissions: ResolvedPermissions,
   plano: PlanoDoMenu,
-  scopes: Partial<ResolvedScopes> | undefined,
+  pessoa: DaPessoa | undefined,
   /** `adminDaRede`: o cargo de sistema (`mexeNaConfigDaRede(ctx)`) — é ele, não a abrangência, que vê a configuração da rede toda. */
   o: { base: string; daRede: boolean; adminDaRede?: boolean },
 ): MenuSection[] {
   const daUnidade = BRANCH_MENU
     .filter(e => e.key !== 'settings' || !soLeriaAsConfiguracoes(permissions, !!o.adminDaRede))
     .map(e => ({ ...e, href: `${o.base}${e.href}` }))
-  return menuSectionsFor([...daUnidade, ...(o.daRede ? SO_NO_MENU_DA_REDE : [])], permissions, plano, scopes)
+  return menuSectionsFor([...daUnidade, ...(o.daRede ? SO_NO_MENU_DA_REDE : [])], permissions, plano, pessoa)
 }
 
 /** O menu do portal da REDE: a mesma regra de Configurações do menu da unidade (A-CONF1 da 25ª). */
 export function menuDaRedeFor(
   permissions: ResolvedPermissions,
   plano: PlanoDoMenu,
-  scopes: Partial<ResolvedScopes> | undefined,
+  pessoa: DaPessoa | undefined,
   o: { adminDaRede: boolean },
 ): MenuSection[] {
   const menu = ADMIN_MENU.filter(e => e.key !== 'settings' || !soLeriaAsConfiguracoes(permissions, !!o.adminDaRede))
-  return menuSectionsFor(menu, permissions, plano, scopes)
+  return menuSectionsFor(menu, permissions, plano, pessoa)
 }
 
 export function menuEntriesFor(
   menu: readonly MenuEntry[],
   permissions: ResolvedPermissions,
   plano?: PlanoDoMenu,
-  scopes?: Partial<ResolvedScopes>,
+  pessoa?: DaPessoa,
 ): { key: string; label: string; href: string }[] {
   return menu
-    .filter(e => e.visible(permissions, scopes) && noPlano(e, plano))
+    .filter(e => e.visible(permissions, pessoa) && noPlano(e, plano))
     .map(e => ({
       key:   e.key,
-      label: typeof e.label === 'function' ? e.label(permissions, scopes) : e.label,
+      label: typeof e.label === 'function' ? e.label(permissions, pessoa) : e.label,
       href:  e.href,
     }))
 }
@@ -285,12 +293,12 @@ export function menuSectionsFor(
   menu: readonly MenuEntry[],
   permissions: ResolvedPermissions,
   plano?: PlanoDoMenu,
-  scopes?: Partial<ResolvedScopes>,
+  pessoa?: DaPessoa,
 ): MenuSection[] {
-  const visiveis = menu.filter(e => e.visible(permissions, scopes) && noPlano(e, plano))
+  const visiveis = menu.filter(e => e.visible(permissions, pessoa) && noPlano(e, plano))
   const resolver = (e: MenuEntry) => ({
     key:   e.key,
-    label: typeof e.label === 'function' ? e.label(permissions, scopes) : e.label,
+    label: typeof e.label === 'function' ? e.label(permissions, pessoa) : e.label,
     href:  e.href,
   })
 
@@ -311,7 +319,7 @@ export function menuSectionsFor(
 export function menuLabelsFor(
   menu: readonly MenuEntry[],
   permissions: ResolvedPermissions,
-  scopes?: Partial<ResolvedScopes>,
+  pessoa?: DaPessoa,
 ): string[] {
-  return menuEntriesFor(menu, permissions, undefined, scopes).map(e => e.label)
+  return menuEntriesFor(menu, permissions, undefined, pessoa).map(e => e.label)
 }

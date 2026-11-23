@@ -21,7 +21,7 @@ interface Props {
   data:         ChartPoint[]
   monthLabel:   string
   granularity?: 'hour' | 'day'
-  /** "Só os meus": só a receita DELA — o custo e o lucro são da rede (D7). */
+  /** A vista pessoal: só a receita DELA — o custo e o lucro são da rede (D7). */
   soReceita?:   boolean
 }
 

@@ -8,7 +8,7 @@ import { notFound, redirect } from 'next/navigation'
 import { capacidadeEmMinutos, normalizarHorario, type BlocoOcupado } from '@/lib/agenda/horario'
 import { blocosDosBloqueios } from '@/lib/agenda/horario-livre'
 import { bloqueiosDoPeriodo } from '@/lib/agenda/bloqueios'
-import { getTenantContext, isOwnScope, alcancaUnidade } from '@/lib/auth'
+import { getTenantContext, alcancaUnidade, temRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedBranchBySlug, filtroDeQuemAtendeNaUnidade } from '@/lib/cached-queries'
 import { ALL_MODULES, MODULE_LABELS } from '@/lib/permissions'
@@ -25,7 +25,7 @@ import {
   resolvePeriod, delta, occupancyPct,
   getCore, getSeries, getTopProcedures, getTicketMedio, EMPTY_CORE,
 } from '@/lib/metrics'
-import { recorteDosModulos, unidadesDoQueEDela } from '@/lib/metrics/escopo'
+import { recortePessoal, unidadesDoQueEDela } from '@/lib/metrics/escopo'
 import { totaisDoResumoDasComissoes } from '@/lib/metrics/comissoes'
 import { variacaoDoSemestre } from '@/lib/metrics/evolucao'
 import { configDeComissaoDaRede, resumoDasComissoes } from '@/lib/comissoes/leitura'
@@ -106,18 +106,17 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   const canProcedures = perm.procedures !== 'NONE'
   const canClients    = perm.clients    !== 'NONE'
   const canCheckout   = canProcedures
-  // Profissional que atende e não gerencia a agenda: dashboard escopado a ele.
-  // Escopo do cargo, não mais heurística sobre o nível de agenda.
-  const professionalOnly = isOwnScope(ctx, 'agenda')
-  // Cada número segue o escopo do SEU módulo (decisão do Heitor, 2026-10-29;
-  // lib/metrics/escopo): a agenda e as clientes — agendamentos, atendimentos,
-  // "Clientes no mês", procedimentos mais procurados, a reativar, planos
-  // aguardando checkout — pelo da agenda; o dinheiro — faturamento, o gráfico
-  // dos 6 meses, o ticket — pelo do financeiro. Até aqui qualquer "só os
-  // meus" recortava tudo (D7 de 2026-10-28).
-  const recorte = recorteDosModulos(ctx)
+  // A vista pessoal (lib/metrics/escopo; sem o "só os meus", 2026-11-23):
+  // quem tem o módulo vê os números da unidade; quem ATENDE sem a Agenda vê os
+  // "Meus agendamentos hoje" e os "Meus atendimentos", e sem o Financeiro, o
+  // "Meu faturamento" e as "Minhas comissões". Os quadros de outro módulo que
+  // ela tem (Procedimentos, Clientes) são os da unidade.
+  const recorte = recortePessoal(ctx)
   const proId = recorte.agenda
   const dinheiroDela = recorte.financeiro
+  const professionalOnly = proId !== null
+  const mostraAgenda   = canAgenda || professionalOnly
+  const mostraDinheiro = canFinancial || dinheiroDela !== null
   // D10 da 13ª simulação: o "Meus…" é o que é DELA em todas as unidades em que
   // atende (como a Minha agenda e "Minhas comissões") — não só o desta. Só as
   // unidades de LEITURA (F72: a desativada em que ainda há o que é dela — a
@@ -130,7 +129,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   /** " · nas 2 unidades", quando o número dela soma mais de uma. */
   const nasUnidades = (ids: string[]) => (ids.length > 1 ? ` · nas ${ids.length} unidades` : '')
 
-  const hasAnyWidget = canFinancial || canAgenda || canProcedures || canClients
+  const hasAnyWidget = mostraDinheiro || mostraAgenda || canProcedures || canClients
 
   // Janelas no fuso do negócio. Antes eram montadas no fuso do processo (UTC
   // em produção), então "hoje" e "este mês" começavam 3h cedo demais.
@@ -158,16 +157,16 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   ] = await Promise.all([
     // O núcleo é uma chamada só, agregada no Postgres: receita, atendimentos,
     // novos clientes e comissões saem coerentes entre si por construção.
-    (canFinancial || canAgenda || canClients)
+    (mostraDinheiro || mostraAgenda || canClients)
       ? getCoreDosModulos({ ...janela, recorte, unidadesDaAgenda, unidadesDoDinheiro })
       : Promise.resolve({ ...EMPTY_CORE }),
 
     // O anterior só serve à variação do FATURAMENTO: o recorte do dinheiro.
-    canFinancial
+    mostraDinheiro
       ? getCore({ ...doDinheiro, from: period.prevFrom, to: period.prevTo })
       : Promise.resolve({ ...EMPTY_CORE }),
 
-    canFinancial
+    mostraDinheiro
       ? getSeries({
           tenantId: ctx.tenantId!, branchIds: unidadesDoDinheiro,
           from: sixMonthsAgo, to: period.to, granularity: 'month', professionalId: dinheiroDela,
@@ -176,15 +175,14 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
 
     canCheckout
       ? (() => {
-          let q = admin.from('treatment_plans').select('id', { count: 'exact', head: true })
+          const q = admin.from('treatment_plans').select('id', { count: 'exact', head: true })
             .eq('branch_id', branchId).eq('status', 'PROPOSED')
-          if (proId) q = q.eq('professional_id', proId)
           return contar(q, 'contar os planos a receber')
         })()
       : Promise.resolve(0),
 
     // Agenda do dia: a lista em si, não uma agregação.
-    canAgenda
+    mostraAgenda
       ? (() => {
           let q = admin.from('appointments')
             .select('id, client_id, branch_id, scheduled_at, duration_min, status, price, clients(name), procedures(name), users!appointments_professional_id_fkey(name)')
@@ -198,7 +196,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
         })()
       : Promise.resolve([]),
 
-    (canAgenda && !professionalOnly)
+    canAgenda
       // Os profissionais e o horário de cada um: a capacidade da ocupação.
       ? ler(admin.from('users').select('id, name, horario')
           // Os da unidade e os da rede, que atendem em todas (D1, 2026-10-28).
@@ -209,7 +207,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
     canProcedures
       ? getTopProcedures({
           tenantId: ctx.tenantId!, branchIds: [branchId],
-          from: thirtyDaysAgo, to: now, limit: 4, professionalId: proId,
+          from: thirtyDaysAgo, to: now, limit: 4,
         })
       : Promise.resolve([]),
 
@@ -222,20 +220,20 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
     // A regra é UMA, a do /admin e a do Copilot também (r3-f13-10).
     canClients
       ? getClientesParaReativarDoRecorte({
-          tenantId: ctx.tenantId!, unidade: { id: branchId, name: branch.name }, desde: ninetyDaysAgo, professionalId: proId,
+          tenantId: ctx.tenantId!, unidade: { id: branchId, name: branch.name }, desde: ninetyDaysAgo,
         })
       : Promise.resolve({ total: 0, lista: [], comVisita: 0, recentesSemVisita: 0 }),
 
     // Ticket médio = o pago pelas clientes ÷ as que pagaram (2026-10-29): dinheiro.
-    canFinancial
+    mostraDinheiro
       ? getTicketMedio(doDinheiro)
       : Promise.resolve(null),
   ])
 
-  // Com o financeiro "só os meus", o financeiro DELA é "Minhas comissões" (A52
-  // da 6ª simulação): o cartão de destaque é a comissão a pagar do período de
-  // fechamento da rede — o MESMO número da tela de comissões (resumoDasComissoes).
-  const minhasComissoes = canFinancial && dinheiroDela
+  // Na vista pessoal do dinheiro, o destaque é "Minhas comissões" (A52 da 6ª
+  // simulação): a comissão a pagar do período de fechamento da rede — o MESMO
+  // número da tela de comissões (resumoDasComissoes).
+  const minhasComissoes = dinheiroDela && temRecurso(ctx, 'comissoes')
     ? await (async () => {
         const config = await configDeComissaoDaRede(ctx.tenantId!)
         const periodo = periodosRecentes(config.periodo, now, 1, await fusoDaRede(ctx.tenantId))[0]!
@@ -341,15 +339,18 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   // está agendado ainda não aconteceu, e não se sabe se vai. É o núcleo do mês
   // até agora, o mesmo dos cartões. De 2026-10-28 a 10-29 fechava no fim do
   // mês (D12), com os horários de mais tarde e o cancelado de amanhã.
+  // O quadro é do módulo Clientes: na vista pessoal da agenda (os cartões com
+  // o núcleo dela), ele pede o da unidade.
+  const doQuadro = canClients && professionalOnly ? await getCore(janela) : core
   const funnel = [
     // "Novos clientes" só na rede (o Heitor, 18/11: "o cliente é da rede"): na
     // unidade da rede de duas ou mais o número não existe (nulo) e a etapa sai.
-    ...(core.newClients === null ? [] : [{ label: 'Novos clientes', count: core.newClients, color: 'var(--brand)' }]),
+    ...(doQuadro.newClients === null ? [] : [{ label: 'Novos clientes', count: doQuadro.newClients, color: 'var(--brand)' }]),
     // A12 da 16ª: a conta é até agora; a etapa diz também os de hoje que ainda vêm.
-    { label: 'Agendamentos',      count: core.appointmentsTotal,     color: 'var(--brand-2)',
+    { label: 'Agendamentos',      count: doQuadro.appointmentsTotal,     color: 'var(--brand-2)',
       nota: aindaHoje > 0 ? `${aindaHoje} ainda hoje` : undefined },
-    { label: 'Concluídos',        count: core.appointmentsCompleted, color: 'var(--brand-3)' },
-    { label: 'Cancelados/faltas', count: core.appointmentsCancelled + core.appointmentsNoShow, color: 'var(--border)' },
+    { label: 'Concluídos',        count: doQuadro.appointmentsCompleted, color: 'var(--brand-3)' },
+    { label: 'Cancelados/faltas', count: doQuadro.appointmentsCancelled + doQuadro.appointmentsNoShow, color: 'var(--border)' },
   ]
 
   // -- Reativar clientes -----------------------------------------
@@ -375,8 +376,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
     .filter(m => BRANCH_ROUTES[m] && perm[m] !== 'NONE')
     .map(m => ({ label: MODULE_LABELS[m], href: BRANCH_ROUTES[m]! }))
 
-  // Os atendimentos de dias anteriores ainda abertos (J-32): quem vê a agenda,
-  // com o "só os meus" dela.
+  // Os atendimentos de dias anteriores ainda abertos (J-32): quem vê a agenda.
   const abertos = canAgenda ? await abertosDeAntes(ctx, branchId, now) : SEM_ABERTOS_DE_ANTES
 
   // A41 da 7ª simulação: o lote que vence em 30 dias, a quem tem o Estoque — a
@@ -391,8 +391,8 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   // A39 da 10ª: o que está no mínimo ou abaixo, a quem tem o Estoque (a régua da tela de estoque).
   const abaixoDoMinimo = perm.stock !== 'NONE' ? await itensAbaixoDoMinimo([branchId]) : []
 
-  // D13 da 9ª: as parcelas vencidas da unidade, a quem vê o financeiro dela inteiro.
-  const vencidas = canFinancial && !isOwnScope(ctx, 'financial')
+  // D13 da 9ª: as parcelas vencidas da unidade, a quem vê o Financeiro.
+  const vencidas = canFinancial
     ? (await getAReceberVencido({ tenantId: ctx.tenantId!, branchIds: [branchId] })).total
     : null
 
@@ -453,10 +453,10 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
       )}
 
       {/* -- Row 1: KPI cards ------------------------------------ */}
-      {(canFinancial || canAgenda) && (
+      {(mostraDinheiro || mostraAgenda) && (
       <div className="kpi-grid">
 
-        {/* "Só as minhas": as comissões dela são o destaque (A52) */}
+        {/* Vista pessoal: as comissões dela são o destaque (A52) */}
         {minhasComissoes && (
         <Link href={`/${slug}/financeiro/comissoes`} data-minhas-comissoes style={{ textDecoration: 'none', background: 'var(--brand)', borderRadius: 'var(--radius-card-token)', padding: '22px 24px', boxShadow: 'var(--shadow-brand-card)', color: 'var(--surface)' }}>
           <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.8 }}>
@@ -471,8 +471,8 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
         </Link>
         )}
 
-        {/* Faturamento — brand card (o da equipe); "Meu faturamento do mês" com o financeiro "só os meus" (A41) */}
-        {canFinancial && (
+        {/* Faturamento — brand card (o da equipe); "Meu faturamento do mês" na vista pessoal (A41) */}
+        {mostraDinheiro && (
         <div className={dinheiroDela ? 'card' : undefined} style={dinheiroDela ? undefined : { background: 'var(--brand)', borderRadius: 'var(--radius-card-token)', padding: '22px 24px', boxShadow: 'var(--shadow-brand-card)', color: 'var(--surface)' }}>
           <p className={dinheiroDela ? 'overline' : undefined} style={{ ...(dinheiroDela ? {} : { fontSize: 'var(--text-overline)', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.8 }), display: 'flex', alignItems: 'center', gap: 4 }}>
             <span>{dinheiroDela ? 'Meu faturamento do mês' : 'Faturamento do mês'}</span>
@@ -505,7 +505,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
         )}
 
         {/* Agendamentos hoje */}
-        {canAgenda && (
+        {mostraAgenda && (
         <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <p className="overline">{professionalOnly ? 'Meus agendamentos hoje' : 'Agendamentos hoje'}</p>
           <p style={{ fontSize: 'var(--text-kpi)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)', marginTop: 10 }}>
@@ -518,7 +518,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
         )}
 
         {/* Ocupação (unidade) OU Meus atendimentos (profissional) */}
-        {canAgenda && (professionalOnly ? (
+        {mostraAgenda && (professionalOnly ? (
         <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <p className="overline" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             Meus atendimentos
@@ -551,7 +551,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
         ))}
 
         {/* Ticket médio */}
-        {canFinancial && (
+        {mostraDinheiro && (
         <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <p className="overline" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <span>Ticket médio</span>
@@ -572,11 +572,11 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
       )}
 
       {/* -- Row 2: Gráfico + Agenda ------------------------------ */}
-      {(canFinancial || canAgenda) && (
+      {(mostraDinheiro || mostraAgenda) && (
       <div className="rg-2">
 
         {/* Gráfico */}
-        {canFinancial && (
+        {mostraDinheiro && (
         <div className="card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
             <div>
@@ -607,7 +607,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
         )}
 
         {/* Agenda de hoje */}
-        {canAgenda && (
+        {mostraAgenda && (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '18px 20px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Agenda de hoje</h2>
@@ -706,11 +706,9 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
             titulo="Clientes no mês"
             // A10 da 13ª: o quadro diz o seu recorte. A cliente é da REDE (o Heitor,
             // 18/11): na unidade da rede de duas ou mais não há "novas clientes".
-            subtitulo={proId
-              ? `${core.newClients === null ? 'Os seus agendamentos' : 'As suas novas clientes e os seus agendamentos'} neste mês, até agora${nasUnidades(unidadesDaAgenda)}`
-              : core.newClients === null
-                ? 'Os agendamentos da unidade, neste mês, até agora'
-                : 'Novas clientes da rede e os agendamentos, neste mês, até agora'}
+            subtitulo={doQuadro.newClients === null
+              ? 'Os agendamentos da unidade, neste mês, até agora'
+              : 'Novas clientes da rede e os agendamentos, neste mês, até agora'}
             // A32 da 24ª: sem a Agenda, sem as etapas da agenda (eram zeros).
             etapas={etapasDoQueOCargoVe(funnel, canAgenda)}
           />
@@ -722,7 +720,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
             clientes={toReactivate.map(c => ({ id: c.id, name: c.name, diasSemVir: c.daysSince, antesDoSistema: c.antesDoSistema }))}
             total={inactiveCount}
             comVisita={paraReativar.comVisita} recentesSemVisita={paraReativar.recentesSemVisita}
-            deQuem={deQuemSaoAsClientes({ dela: !!proId })}
+            deQuem={deQuemSaoAsClientes()}
             hrefAgendar={`/${slug}/agenda`}
             hrefVerTodas={`/${slug}/clients?status=active`}
           />

@@ -5,16 +5,13 @@ import { redeDoCopilot, contraAFalsa, comSessao, falarComOCopilot, esperarRespos
 import type { MembroDeTeste, Permissao } from './apoio/sessao'
 
 /**
- * O Copilot com "só os meus" (decisão do Heitor, 2026-10-28: "quem tem 'só os
- * meus' vê 'só os meus', em qualquer lugar").
+ * O Copilot sem o "só os meus" (SM1/SM5, o Heitor, 2026-11-23: "pode tirar, as
+ * vistas pessoais resolvem").
  *
- * A frente G achou: a ferramenta `indicadores` chamava `getCore`, o funil, as
- * vendas e `getRelatorio` sem o profissional — quem tem a agenda "só os meus"
- * perguntava "quanto faturamos" e recebia a rede. O recorte é o do dashboard:
- * agenda ou financeiro OWN → os números DELA (`p_professional_id`, os
- * predicados de metrics_core); CRM OWN → o funil dos leads dela e dos sem
- * dono (`p_owner`). O que não se atribui a ela (despesa, valor em estoque,
- * itens críticos) não vai.
+ * Era o recorte do "só os meus" na ferramenta `indicadores` (2026-10-28). O
+ * escopo saiu: quem tem a Agenda, o Financeiro e o CRM em Ver vê os números
+ * de todos, nas unidades ao alcance — mesmo quem atende. A ferramenta fala
+ * pelos módulos da pessoa; a vista pessoal é dos dashboards, não do Copilot.
  */
 test.skip(!contraAFalsa(), 'só contra o build: o servidor precisa da OpenAI falsa')
 test.describe.configure({ mode: 'serial' })
@@ -23,7 +20,6 @@ const marca = Date.now().toString(36)
 let falsa: OpenaiFalsa
 let rede: RedeDoCopilot
 let ela: MembroDeTeste
-let gestora: MembroDeTeste
 let nomeDela = ''
 let nomeDaOutra = ''
 const leads: string[] = []
@@ -48,19 +44,16 @@ test.beforeAll(async () => {
   expect((await db.from('users').update({ branch_id: o.branchId, provides_services: true }).eq('id', o.professionalId)).error).toBeNull()
   const produto = await o.criarProduto('Insumo', 100)
 
-  // Cada número segue o escopo do SEU módulo (2026-10-29): o dinheiro, o do
-  // financeiro — sem o módulo financeiro (NONE vale ALL), a receita seria a da
-  // clínica. Aqui ela tem os dois "só os meus".
-  const matriz = (escopo: 'OWN' | 'ALL'): Permissao[] => [
-    { modulo: 'agenda', nivel: 'VIEW', escopo },
-    { modulo: 'financial', nivel: 'VIEW', escopo },
-    { modulo: 'crm', nivel: 'VIEW', escopo },
+  // Ela atende e tem os módulos em Ver: sem escopo, vê os números de todos.
+  const matriz: Permissao[] = [
+    { modulo: 'agenda', nivel: 'VIEW' },
+    { modulo: 'financial', nivel: 'VIEW' },
+    { modulo: 'crm', nivel: 'VIEW' },
     { modulo: 'reports', nivel: 'VIEW' },
   ]
-  ela = await rede.membro('own', matriz('OWN'))
-  gestora = await rede.membro('all', matriz('ALL'))
-  for (const m of [ela, gestora]) {
-    const { error } = await db.from('role_report_tabs').insert(ABAS.map(tab => ({ tenant_id: o.tenantId, role_id: m.roleId, tab })))
+  ela = await rede.membro('own', matriz)
+  {
+    const { error } = await db.from('role_report_tabs').insert(ABAS.map(tab => ({ tenant_id: o.tenantId, role_id: ela.roleId, tab })))
     expect(error, 'as abas do relatório').toBeNull()
   }
   expect((await db.from('users').update({ provides_services: true }).eq('id', ela.userId)).error).toBeNull()
@@ -119,7 +112,7 @@ test.afterAll(async () => {
     await db.from('stock_movements').delete().eq('branch_id', o.branchId)
     await db.from('financial_transactions').delete().eq('branch_id', o.branchId)
     await db.from('appointments').delete().eq('branch_id', o.branchId)
-    for (const m of [ela, gestora]) if (m) await db.from('role_report_tabs').delete().eq('role_id', m.roleId)
+    if (ela) await db.from('role_report_tabs').delete().eq('role_id', ela.roleId)
   }
   await rede?.limpar()
   await falsa?.fechar()
@@ -127,43 +120,22 @@ test.afterAll(async () => {
 
 const reais = (v: string) => new RegExp(`R\\$\\s${v.replace('.', '\\.')}`)
 
-test('"só os meus": a visão geral, as vendas, os profissionais e as clientes são os DELA', async ({ browser }) => {
+// Sem o "só os meus" (SM1/SM5, o Heitor, 2026-11-23): com os módulos em Ver, os números de todos.
+test('quem atende e tem os módulos em Ver: a visão geral, os profissionais e o estoque são os da rede', async ({ browser }) => {
   await comSessao(browser, ela.estado, async p => {
     await p.goto('/admin/dashboard')
     const geral = await chamar(p, { aba: 'overview', periodo: 'month' })
-    expect(String(geral.faturamento), 'a receita dela').toMatch(reais('120,00'))
-    expect(geral.atendimentosConcluidos).toBe(1)
-    expect(geral, 'a despesa não se atribui a ela').not.toHaveProperty('despesas')
-
-    const vendas = await chamar(p, { aba: 'vendas', periodo: 'month' })
-    expect(String(vendas.total)).toMatch(reais('120,00'))
-    expect(vendas.vendas).toBe(1)
-
-    const prof = await chamar(p, { aba: 'profissionais', periodo: 'month' })
-    expect((prof.porProfissional as { nome: string }[]).map(x => x.nome)).toEqual([nomeDela])
-
-    const cli = await chamar(p, { aba: 'clientes', periodo: 'month' })
-    expect(cli.ativos, 'as clientes que ela atende').toBe(1)
-    expect(JSON.stringify(cli.quemMaisGasta)).not.toContain('Da outra')
-
-    const est = await chamar(p, { aba: 'estoque', periodo: 'month' })
-    expect(String(est.consumoNoPeriodo), 'o insumo dos atendimentos dela').toMatch(reais('20,00'))
-    expect(est, 'o valor em estoque não se atribui a ela').not.toHaveProperty('valorEmEstoque')
-  })
-  // Controle: a gestora (tudo ALL) vê a rede.
-  await comSessao(browser, gestora.estado, async p => {
-    await p.goto('/admin/dashboard')
-    const geral = await chamar(p, { aba: 'overview', periodo: 'month' })
-    expect(String(geral.faturamento)).toMatch(reais('420,00'))
+    expect(String(geral.faturamento), 'a receita de todas').toMatch(reais('420,00'))
     expect(geral).toHaveProperty('despesas')
     const prof = await chamar(p, { aba: 'profissionais', periodo: 'month' })
     expect((prof.porProfissional as { nome: string }[]).map(x => x.nome).sort()).toEqual([nomeDaOutra, nomeDela].sort())
     const est = await chamar(p, { aba: 'estoque', periodo: 'month' })
-    expect(String(est.consumoNoPeriodo)).toMatch(reais('70,00'))
+    expect(String(est.consumoNoPeriodo), 'o insumo de todos os atendimentos').toMatch(reais('70,00'))
   })
 })
 
-test('"só os meus" no CRM: o funil conta os leads dela e os sem dono', async ({ browser }) => {
+// Sem o "só os meus" no CRM (SM3/SM5, o Heitor, 2026-11-23): o funil conta as oportunidades de todos.
+test('com o CRM em Ver: o funil conta as oportunidades de todos', async ({ browser }) => {
   // C5 da F68: o comercial é o painel da tela — as etapas do funil padrão e o
   // total dos funis ativos (`oportunidades`), o mesmo número da aba Comercial.
   const total = (s: Record<string, unknown>) => {
@@ -172,10 +144,6 @@ test('"só os meus" no CRM: o funil conta os leads dela e os sem dono', async ({
     return s.oportunidades as number
   }
   await comSessao(browser, ela.estado, async p => {
-    await p.goto('/admin/dashboard')
-    expect(total(await chamar(p, { aba: 'comercial', periodo: 'month' }))).toBe(2)
-  })
-  await comSessao(browser, gestora.estado, async p => {
     await p.goto('/admin/dashboard')
     expect(total(await chamar(p, { aba: 'comercial', periodo: 'month' }))).toBe(3)
   })

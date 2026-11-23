@@ -1,7 +1,8 @@
 'use server'
 
 import { z } from 'zod'
-import { getTenantContext, assertPermission, alcancaUnidade, ownerFilter, can } from '@/lib/auth'
+import { getTenantContext, assertPermission, alcancaUnidade, vistaPessoal, can } from '@/lib/auth'
+import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { documentosDoAgendamento } from '@/lib/documentos/leitura'
@@ -13,8 +14,8 @@ import { colheOsDocumentos } from '@/lib/documentos/acesso'
  * Os termos e contratos de um agendamento, para a JANELA da agenda (A34 da 6ª
  * simulação, 2026-11-04): a janela não dizia se o termo que bloqueia o início
  * estava assinado — só a sessão dizia. Só o título, a situação e se bloqueia
- * (nada do conteúdo); o agendamento da rede, ao alcance da unidade e, com a
- * agenda "só os meus", dela.
+ * (nada do conteúdo); o agendamento da rede e ao alcance da unidade. Na vista
+ * pessoal da agenda (SM2), só o dela.
  */
 export interface DocumentoDaJanela {
   id: string; titulo: string; situacao: string; bloqueia: boolean; assinado: boolean
@@ -44,14 +45,14 @@ const SITUACAO: Record<string, string> = {
 
 export async function documentosDaJanela(appointmentId: string): Promise<DocumentoDaJanela[]> {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'agenda', 'VIEW')
+  const pessoal = vistaPessoal(ctx, 'agenda')
+  if (!can(ctx, 'agenda', 'VIEW') && !pessoal) throw semAcesso()
   if (!z.string().uuid().safeParse(appointmentId).success) return []
   const ap = await ler(createAdminClient().from('appointments').select('id, branch_id, client_id, professional_id, branches!inner(tenant_id)')
     .eq('id', appointmentId).eq('branches.tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o agendamento') as
     { id: string; branch_id: string; client_id: string | null; professional_id: string | null } | null
   if (!ap || !alcancaUnidade(ctx, ap.branch_id)) return []
-  const dono = ownerFilter(ctx, 'agenda')
-  if (dono && ap.professional_id !== dono) return []
+  if (pessoal && ap.professional_id !== pessoal) return []
   const docs = await documentosDoAgendamento(ctx.tenantId!, ap.id)
   // Colhe quem está na janela (o Heitor, 2026-11-16: colher não pede o módulo
   // Documentos, que é o dos modelos) — com os Documentos no plano da rede.

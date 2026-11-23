@@ -21,10 +21,13 @@ export function perguntaDasAutomacoes(nomes: string[]): string {
     : `Mover dispara as automações ${lista(nomes)}. Disparar?`
 }
 
-/** O que a tela diz depois de mover. */
+/**
+ * O que a tela diz depois de mover. As que continuam na etapa são as que não
+ * se moveram (erro ao gravar) ou as que entraram nela durante o movimento.
+ */
 export function resultadoDoMover(movidas: number, ficaram: number): string {
   const feitas = movidas === 1 ? '1 oportunidade movida.' : `${movidas} oportunidades movidas.`
   if (!ficaram) return feitas
-  const quem = ficaram === 1 ? '1 ficou: é de outra pessoa' : `${ficaram} ficaram: são de outras pessoas`
-  return `${feitas} ${quem}, e a sua permissão no CRM é “só os meus”.`
+  const quem = ficaram === 1 ? '1 continua na etapa' : `${ficaram} continuam na etapa`
+  return `${feitas} ${quem}: tente mover de novo.`
 }

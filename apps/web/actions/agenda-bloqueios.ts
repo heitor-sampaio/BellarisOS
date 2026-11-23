@@ -5,19 +5,17 @@
  * 2026-11-05: "concordo") — "Bloquear horário", por profissional ou por sala,
  * com início, fim e motivo; e desfazer.
  *
- * Quem bloqueia é quem gerencia a agenda; com "só os meus", só o PRÓPRIO
- * horário, sem sala (decisão desta frente, pelo "quem tem 'só os meus' vê 'só
- * os meus', em qualquer lugar" do Heitor). A abrangência vale: quem tem unidade
+ * Quem bloqueia é quem gerencia a agenda. A abrangência vale: quem tem unidade
  * fixa bloqueia na dela. Todo export é endpoint público — cada um confere a
  * sessão, a permissão, a rede e o alcance antes de gravar.
  */
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { getTenantContext, assertPermission, alcancaUnidade, isOwnScope } from '@/lib/auth'
+import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
-import { recusaDoBloqueio, SO_O_PROPRIO } from '@/lib/agenda/bloqueio'
+import { recusaDoBloqueio } from '@/lib/agenda/bloqueio'
 import { filtroDeQuemAtendeNaUnidade } from '@/lib/cached-queries'
 
 const UUID = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
@@ -50,8 +48,6 @@ export async function bloquearHorario(entrada: unknown): Promise<Resultado> {
     const recusa = recusaDoBloqueio({ inicio: e.inicio, fim: e.fim, motivo: e.motivo })
     if (recusa) return { error: recusa }
 
-    // "Só os meus": o próprio horário, e nada de sala.
-    if (isOwnScope(ctx, 'agenda') && (e.roomId || e.professionalId !== ctx.internalUserId)) return { error: SO_O_PROPRIO }
     if (!alcancaUnidade(ctx, e.branchId)) return { error: 'Você só bloqueia na sua unidade.' }
 
     const admin = createAdminClient()
@@ -101,7 +97,6 @@ export async function desfazerBloqueio(id: unknown): Promise<Resultado> {
       .eq('id', lido.data).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o bloqueio') as
       { id: string; branch_id: string; professional_id: string | null; room_id: string | null } | null
     if (!b) return { error: 'Bloqueio não encontrado.' }
-    if (isOwnScope(ctx, 'agenda') && (b.room_id || b.professional_id !== ctx.internalUserId)) return { error: SO_O_PROPRIO }
     if (!alcancaUnidade(ctx, b.branch_id)) return { error: 'Este bloqueio é de outra unidade.' }
     const apagados = await gravar(admin.from('agenda_bloqueios').delete().eq('id', b.id).select('id'), 'desfazer o bloqueio')
     if (!(apagados as unknown[] | null)?.length) return { error: 'Bloqueio não encontrado.' }

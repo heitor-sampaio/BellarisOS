@@ -1,11 +1,8 @@
-import { APP_MODULES, SCOPED_MODULES, REPORT_TABS } from '@estetica-os/types'
-import type {
-  AppModule, PermissionLevel, PermissionScope, ScopedModule,
-  ResolvedPermissions, ResolvedScopes, ReportTab,
-} from '@estetica-os/types'
+import { APP_MODULES, REPORT_TABS } from '@estetica-os/types'
+import type { AppModule, PermissionLevel, ResolvedPermissions, ReportTab } from '@estetica-os/types'
 
 // Re-export para consumidores que importam de '@/lib/permissions'
-export type { AppModule, PermissionLevel, PermissionScope, ScopedModule, ResolvedPermissions, ResolvedScopes, ReportTab }
+export type { AppModule, PermissionLevel, ResolvedPermissions, ReportTab }
 
 export const ALL_MODULES: readonly AppModule[] = APP_MODULES
 
@@ -20,10 +17,6 @@ export const MODULOS_SO_DA_ADMIN: readonly AppModule[] = ['audit']
 /** Os módulos que um cargo recebe na matriz (Configurações → Cargos). */
 export const MODULOS_DO_CARGO: readonly AppModule[] = APP_MODULES.filter(m => !MODULOS_SO_DA_ADMIN.includes(m))
 
-
-export function isScoped(module: AppModule): module is ScopedModule {
-  return (SCOPED_MODULES as readonly string[]).includes(module)
-}
 
 // Rótulos pt-BR de cada módulo (usados na matriz de cargos e afins)
 export const MODULE_LABELS: Record<AppModule, string> = {
@@ -79,18 +72,6 @@ export const MODULE_HINTS: Partial<Record<AppModule, string>> = {
   audit:           'O que mudou no sistema, quem mudou e quando',
 }
 
-/** Rótulo do escopo, por módulo — o que "só os meus" significa em cada um. */
-export const SCOPE_LABELS: Record<ScopedModule, { own: string; all: string }> = {
-  agenda:          { own: 'Só a própria agenda',      all: 'Agenda de todos' },
-  atendimento:     { own: 'Só os próprios atendimentos', all: 'Atendimentos de todos' },
-  medical_records: { own: 'Só os próprios pacientes', all: 'Todos os pacientes' },
-  financial:       { own: 'Só as próprias comissões', all: 'Financeiro completo' },
-  crm:             { own: 'Só as próprias oportunidades', all: 'Todas as oportunidades' },
-  // C60 (F70; princípio 3): para quem é da rede, o "próprio" de Relatórios é
-  // uma unidade por vez (qualquer uma) — "Só a própria unidade" não dizia isso.
-  reports:         { own: 'Uma unidade por vez',      all: 'A rede inteira' },
-}
-
 /**
  * Níveis que cada módulo realmente distingue. Oferecer "Ver" onde não existe
  * nenhum gate de leitura fazia o item aparecer no menu e dar erro no clique;
@@ -138,12 +119,7 @@ export const ALL_PERMISSIONS: ResolvedPermissions = Object.fromEntries(
   APP_MODULES.map(m => [m, 'MANAGE'] as const),
 ) as ResolvedPermissions
 
-/** Escopo padrão: sem restrição. Usado por NETWORK_ADMIN e por módulo sem linha. */
-export const ALL_SCOPES: ResolvedScopes = Object.fromEntries(
-  APP_MODULES.map(m => [m, 'ALL'] as const),
-) as ResolvedScopes
-
-type PermissionRow = { module: string; level: PermissionLevel; scope?: PermissionScope | null }
+type PermissionRow = { module: string; level: PermissionLevel }
 
 // Resolve os níveis por módulo a partir das linhas de override do banco (por cargo).
 // allAccess = true ⇒ NETWORK_ADMIN (tudo MANAGE). Sem override ⇒ NONE.
@@ -156,41 +132,6 @@ export function resolvePermissions(
   return Object.fromEntries(
     APP_MODULES.map(m => [m, MODULOS_SO_DA_ADMIN.includes(m) ? 'NONE' : map.get(m) ?? 'NONE'] as const),
   ) as ResolvedPermissions
-}
-
-/**
- * Resolve o escopo por módulo. Módulo sem linha, ou não escopável, fica em ALL:
- * o escopo restringe, e restringir por omissão esconderia dado sem o admin ter
- * pedido isso.
- *
- * Módulo com nível NONE também fica em ALL (D6 da simulação de 2026-10-29): o
- * recorte "só os meus" não nasce de um módulo que o cargo não tem. A contadora
- * (financeiro todo, sem agenda) tinha o OWN esmaecido da agenda gravado, e o
- * dashboard a tratava como "só os meus" — R$ 0 com R$ 1.759 no Financeiro.
- */
-export function resolveScopes(
-  overrides: PermissionRow[],
-  opts?: { allAccess?: boolean },
-): ResolvedScopes {
-  if (opts?.allAccess) return { ...ALL_SCOPES }
-  const map = new Map(overrides
-    .filter(o => (o.level ?? 'NONE') !== 'NONE')
-    .map(o => [o.module, o.scope ?? 'ALL']))
-  return Object.fromEntries(
-    APP_MODULES.map(m => [m, (isScoped(m) ? map.get(m) : 'ALL') ?? 'ALL'] as const),
-  ) as ResolvedScopes
-}
-
-/**
- * O escopo só do que a pessoa TEM: o módulo que vale NONE depois do cargo — o
- * PLANO da rede, Relatórios sem aba nenhuma (`buildContext`) — perde o OWN.
- * É o último passo do contexto, para nenhum recorte (`isOwnScope`,
- * `ownerFilter`) sair de um módulo fechado.
- */
-export function escoposDoQueTem(scopes: ResolvedScopes, permissions: ResolvedPermissions): ResolvedScopes {
-  return Object.fromEntries(
-    APP_MODULES.map(m => [m, permissions[m] === 'NONE' ? 'ALL' : scopes[m]] as const),
-  ) as ResolvedScopes
 }
 
 // ─── Abas de Relatórios ──────────────────────────────────────────────────────
@@ -223,8 +164,7 @@ export const REPORT_TAB_HINTS: Record<ReportTab, string> = {
 }
 
 /**
- * Abas liberadas para o cargo. Sem linha nenhuma, sem relatório — o contrário
- * do escopo, que por omissão libera. Aqui a omissão fecha porque a decisão de
+ * Abas liberadas para o cargo. Sem linha nenhuma, sem relatório: a omissão fecha porque a decisão de
  * produto foi começar fechado e abrir aba por aba (2026-09-18).
  */
 export function resolveReportTabs(

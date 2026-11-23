@@ -46,6 +46,8 @@ export type CachedMember = {
    * conta na mão.
    */
   isActive: boolean
+  /** Tem comissão de VENDA (`users.comissao_venda_pct`): as Minhas comissões abrem para ela (a vista pessoal). */
+  comissaoDeVenda: boolean
 }
 
 export function getCachedMember(authId: string) {
@@ -54,7 +56,7 @@ export function getCachedMember(authId: string) {
       const admin = createAdminClient()
       const data = await ler(admin
         .from('users')
-        .select('id, name, role_id, branch_id, outras_unidades, provides_services, atende_em, is_active, tenant_roles(label, key, is_system)')
+        .select('id, name, role_id, branch_id, outras_unidades, provides_services, atende_em, is_active, comissao_venda_pct, tenant_roles(label, key, is_system)')
         .eq('auth_id', authId)
         .maybeSingle(), 'buscar o usuário')
       if (!data) return null
@@ -70,12 +72,13 @@ export function getCachedMember(authId: string) {
         branchId: (data.branch_id as string | null) ?? null,
         outrasUnidades: ((data as { outras_unidades?: string[] | null }).outras_unidades ?? []) as string[],
         isActive: data.is_active !== false,
+        comissaoDeVenda: Number((data as { comissao_venda_pct?: number | string | null }).comissao_venda_pct ?? 0) > 0,
       }
     },
     // `v2`: o formato ganhou o `ehAdminDaRede` (F70) — a entrada antiga, sem
     // ele, valeria "não é Admin" por até uma hora depois do deploy. `v3`: as
-    // `outrasUnidades` (EQ1a), pelo mesmo motivo.
-    [`member-v3-${authId}`],
+    // `outrasUnidades` (EQ1a), pelo mesmo motivo. `v4`: a `comissaoDeVenda` (sem o "só os meus", 23/11).
+    [`member-v4-${authId}`],
     { revalidate: 3600, tags: [`user:${authId}`] },
   )()
 }

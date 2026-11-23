@@ -69,12 +69,12 @@ test.beforeAll(async () => {
   expect((await db().from('procedures').update({ consent_template_id: (m as { id: string }).id }).eq('id', rede.procedureId)).error).toBeNull()
   recepcao = await criarMembro(`doc11r${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Recepcao',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'documents', nivel: 'MANAGE' }],
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'documents', nivel: 'MANAGE' }],
   })
   // O caixa do checkout: recebe, sem o módulo de Termos (a exceção de 2026-10-20).
   caixa = await criarMembro(`doc11c${marca}`, {
     tenant: rede.tenantId, rotulo: 'Caixa',
-    permissoes: [{ modulo: 'cashier', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'agenda', nivel: 'VIEW', escopo: 'ALL' }],
+    permissoes: [{ modulo: 'cashier', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'agenda', nivel: 'VIEW' }],
   })
 })
 

@@ -9,7 +9,7 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  * atendimento ficava aberto para sempre (sem conclusão, sem cobrança, sem
  * falta). Agora a agenda e o dashboard da unidade avisam dos atendimentos de
  * dias anteriores ainda abertos (chegou ou em atendimento), com o link para
- * resolver — e o "só os meus" da agenda vê só os dela.
+ * resolver — e a vista pessoal (quem atende, sem a Agenda) vê só os dela.
  */
 
 const marca = Date.now().toString(36)
@@ -36,7 +36,9 @@ test.beforeAll(async () => {
   expect((await db().from('users').update({ provides_services: true, branch_id: rede.branchId }).eq('id', rede.professionalId)).error).toBeNull()
   profA = await criarMembro(`abp${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Profissional A',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' }],
+    // Sem o "só os meus" (SM1/SM2, o Heitor, 2026-11-23): a que vê só os dela
+    // é a vista pessoal — atende e não tem a Agenda.
+    permissoes: [{ modulo: 'agenda', nivel: 'NONE' }],
   })
   expect((await db().from('users').update({ provides_services: true }).eq('id', profA.userId)).error).toBeNull()
   recepcao = await criarMembro(`abr${marca}`, {
@@ -88,7 +90,7 @@ for (const tela of ['agenda', 'dashboard'] as const) {
   })
 }
 
-test('com a agenda "só os meus", a profissional vê só o atendimento aberto dela', async ({ browser }) => {
+test('na vista pessoal (atende, sem a Agenda), a profissional vê só o atendimento aberto dela', async ({ browser }) => {
   await como(browser, profA!.estado, async p => {
     await p.goto(`/${slug}/agenda`)
     const aviso = p.locator('[data-abertos-de-antes]')

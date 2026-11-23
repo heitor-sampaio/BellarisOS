@@ -8,7 +8,7 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { z } from 'zod'
 import { after } from 'next/server'
 import { alcancaOTratamento } from '@/lib/tratamento/alcance'
-import { getTenantContext, assertClient, assertPermission, isOwnScope, alcancaUnidade, alcancaOAgendamento, can, temRecurso, podeReceber } from '@/lib/auth'
+import { getTenantContext, assertClient, assertPermission, alcancaUnidade, alcancaOAgendamento, can, temRecurso, podeReceber } from '@/lib/auth'
 import { avisoDasVencidasNaChegada } from '@/lib/appointments/vencidas-na-chegada'
 import { recusaDasVezesDoPagamento } from '@/lib/financeiro/vezes-da-rede'
 import { recusaDasParcelasDaRede } from '@/lib/financeiro/crediario-da-rede'
@@ -28,7 +28,6 @@ import { juntarHorarios, escolherQuemAtende } from '@/lib/appointments/sem-prefe
 import { proximoHorarioLivre as procurarHorarioLivre } from '@/lib/agenda/proximo-livre'
 import {
   agendamentoAoAlcance, cancelarCore, checkinCore, confirmarCore, remarcarCore, revalidarAgendamento, mudarUnidadeCore,
-  deOutroProfissional, deOutroNoAtendimento, DE_OUTRO_PROFISSIONAL,
 } from '@/lib/appointments/alteracoes'
 import { comNovaTentativa } from '@/lib/estoque/nova-tentativa'
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
@@ -77,7 +76,6 @@ import {
 } from '@/lib/appointments/avisos'
 
 // --- Criar agendamento --------------------------------------------
-const AGENDA_SO_PARA_VOCE = 'Com a agenda “só os meus”, você agenda só para você.'
 
 export async function addAppointment(
   _prev: { error?: string; success?: boolean; id?: string; jaExiste?: FichaQueJaExiste } | undefined,
@@ -90,13 +88,6 @@ export async function addAppointment(
     const slug = formData.get('_slug') as string
     const branchId = formData.get('_branchId') as string
     const admin = createAdminClient()
-
-    // A "Minha agenda" agenda (A25 da 8ª simulação): com a agenda "só os
-    // meus", o agendamento é DELA — a regra do Heitor de 28/10 ("quem tem 'só
-    // os meus' vê 'só os meus', em qualquer lugar"), como no bloqueio.
-    if (isOwnScope(ctx, 'agenda') && (!ctx.internalUserId || formData.get('professional_id') !== ctx.internalUserId)) {
-      return { error: AGENDA_SO_PARA_VOCE }
-    }
 
     // Quem vai ser atendido: um cliente já cadastrado, ou só um nome e um
     // telefone. Exigir ficha completa (CPF e e-mail, que criam o login do
@@ -207,16 +198,13 @@ async function updateAppointmentStatusInterno(
   // atendimento quem tem gerenciar no atendimento." (o Heitor, 2026-11-18; saiu
   // o D20, "a Agenda em Ver inicia e conclui"). Iniciar e concluir são do
   // Atendimento em Gerenciar; confirmar, marcar a chegada, cancelar e marcar a
-  // falta, da Agenda em Gerenciar (C10). Com "só os meus" e Gerenciar, cancela
-  // e marca a falta só do DELA (agenda-06, revisão do Heitor de 2026-11-02);
-  // confirmar e chegar seguem com quem tem "todos".
+  // falta, da Agenda em Gerenciar (C10).
   const doAtendimento = status === 'IN_PROGRESS' || status === 'COMPLETED'
   // Cancelar o Em atendimento é desistir dele (o Atendimento em Gerenciar): a
   // porta deixa as duas permissões passarem, e o núcleo decide pela situação
   // lida (`recusaDoCancelar`, ATD-A01).
   if (status === 'CANCELLED') { if (!podeCancelarAlgum(ctx)) throw semAcesso() }
   else assertPermission(ctx, doAtendimento ? 'atendimento' : 'agenda', 'MANAGE')
-  if (isOwnScope(ctx, 'agenda') && (status === 'CONFIRMED' || status === 'ARRIVED')) throw semAcesso()
 
   if (status === 'CANCELLED' && !cancellationReason?.trim()) {
     throw new Error('Motivo de cancelamento obrigatório.')
@@ -274,7 +262,6 @@ async function updateAppointmentStatusInterno(
   const admin = createAdminClient()
   const atual = await agendamentoAoAlcance(admin, ctx, appointmentId)
   if (!atual) throw new Error('Agendamento não encontrado.')
-  if (deOutroProfissional(ctx, atual.professional_id)) throw new Error(DE_OUTRO_PROFISSIONAL)
   if (atual.status === 'COMPLETED') {
     throw new Error('Atendimento concluído não pode ser cancelado nem marcado como falta. Para devolver o dinheiro, estorne o pagamento.')
   }
@@ -322,9 +309,6 @@ async function completeAppointment(
   if (!appt || redeDoAppt !== ctx.tenantId || !alcancaOAgendamento(ctx, appt.branch_id as string, appt.professional_id as string | null)) {
     throw new Error('Agendamento não encontrado.')
   }
-
-  if (deOutroProfissional(ctx, appt.professional_id as string | null)) throw new Error(DE_OUTRO_PROFISSIONAL)
-  if (deOutroNoAtendimento(ctx, appt.professional_id as string | null)) throw new Error('Apenas o profissional responsável pode concluir este atendimento.')
 
   // Só se conclui o que foi iniciado, e a conclusão é a transação do
   // "Finalizar" (H5 = a, C13, F65): este caminho só lança o a receber do
@@ -438,9 +422,6 @@ async function checkinAppointmentInterno(
  * do início que ele emite) e depois o MESMO início (`startAppointment`, com a
  * trava dos documentos). Na simulação a Lívia não via "Iniciar" no "Agendado"
  * e contornou pelo check-in da tela.
- *
- * Com a agenda "só os meus", só no agendamento DELA — o check-in comum não
- * confere o profissional (é da recepção).
  */
 export async function chegarEIniciar(
   appointmentId: string, slug: string,
@@ -455,9 +436,6 @@ export async function chegarEIniciar(
     const admin = createAdminClient()
     const ag = await agendamentoAoAlcance(admin, ctx, appointmentId)
     if (!ag) return { error: 'Agendamento não encontrado.' }
-    if ((isOwnScope(ctx, 'agenda') || isOwnScope(ctx, 'atendimento')) && ag.professional_id !== ctx.internalUserId) {
-      return { error: 'Apenas o profissional responsável pode marcar a chegada e iniciar este atendimento.' }
-    }
     // A trava do DIA vem antes da pergunta do horário (D10 da 7ª simulação):
     // numa sessão de amanhã, perguntar "Iniciar mesmo assim?" e recusar no
     // clique não servia de nada. É a mesma regra do checkinCore.
@@ -526,12 +504,6 @@ async function startAppointmentInterno(
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId || !alcancaOAgendamento(ctx, apptBranch.id, appt.professional_id as string | null)) return { error: 'Agendamento não encontrado.' }
     if (appt.status !== 'CONFIRMED' && appt.status !== 'ARRIVED') return { error: 'O cliente precisa estar confirmado ou ter chegado (check-in) antes de iniciar.' }
 
-    // O "só os meus" do Atendimento (o atendimento é de quem atende) e o da
-    // Agenda (quem vê só os dela não chega ao de outra).
-    if ((isOwnScope(ctx, 'atendimento') || isOwnScope(ctx, 'agenda')) && appt.professional_id !== ctx.internalUserId) {
-      return { error: 'Apenas o profissional responsável pode iniciar este atendimento.' }
-    }
-
     // Antes do horário, em qualquer tempo: pergunta (A32, r2-age-06). O servidor só inicia com a resposta.
     if (opcoes?.inicioAdiantadoConfirmado !== true) {
       const pergunta = perguntaDoInicioAdiantado(appt.scheduled_at as string | null, new Date(), await fusoDaUnidade(ctx.tenantId, apptBranch.id))
@@ -579,7 +551,7 @@ export async function profissionaisParaTrocar(appointmentId: string): Promise<{ 
     .eq('id', appointmentId).eq('branches.tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o agendamento') as {
       id: string; status: string; branch_id: string; professional_id: string | null; scheduled_at: string; duration_min: number | null
     } | null
-  if (!a || !alcancaUnidade(ctx, a.branch_id) || deOutroProfissional(ctx, a.professional_id)) return []
+  if (!a || !alcancaUnidade(ctx, a.branch_id)) return []
   if (['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(a.status)) return []
   const equipe = (await getCachedBranchProfessionals(a.branch_id, ctx.tenantId!)) as { id: string; name: string }[]
   const outras = equipe.filter(p => p.id !== a.professional_id)
@@ -613,7 +585,7 @@ export async function opcoesParaMudarDeUnidade(appointmentId: string): Promise<U
     .eq('id', appointmentId).eq('branches.tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o agendamento') as {
       id: string; status: string; branch_id: string; professional_id: string | null; scheduled_at: string; duration_min: number | null
     } | null
-  if (!a || !alcancaUnidade(ctx, a.branch_id) || deOutroProfissional(ctx, a.professional_id)) return []
+  if (!a || !alcancaUnidade(ctx, a.branch_id)) return []
   if (!['SCHEDULED', 'CONFIRMED'].includes(a.status)) return []
   const inicio = new Date(a.scheduled_at)
   const duracaoMin = a.duration_min ?? 60
@@ -698,8 +670,6 @@ async function reassignProfessionalInterno(
     const apptBranch = appt?.branches as unknown as { id: string; tenant_id: string } | null
     // O DELA numa unidade em que atende também (decisão 2 da 8ª; ATD-A05).
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId || !alcancaOAgendamento(ctx, apptBranch.id, appt.professional_id as string | null)) return { error: 'Agendamento não encontrado.' }
-    // "Só os meus" não puxa para si o agendamento de outra (D4, 2026-10-28).
-    if (deOutroProfissional(ctx, appt.professional_id as string | null)) return { error: DE_OUTRO_PROFISSIONAL }
     if (['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(appt.status as string)) {
       return { error: 'Não é possível reatribuir um atendimento já finalizado.' }
     }
@@ -810,8 +780,7 @@ async function cancelAppointmentSessionInterno(
       const existente = await agendamentoAoAlcance(admin, ctx, appointmentId)
       if (!existente) return { error: 'Agendamento não encontrado.' }
       if (existente.status !== 'IN_PROGRESS') return { error: 'A intercorrência e o insumo se registram só no atendimento em andamento.' }
-      // Desistir é do Atendimento em Gerenciar, com o escopo dele (o "só os
-      // meus" do Atendimento e o da Agenda): o insumo entra junto.
+      // Desistir é do Atendimento em Gerenciar: o insumo entra junto.
       const recusa = recusaDoCancelar(ctx, existente)
       if (recusa) return { error: recusa }
       const userName = ctx.userName || await getUserName(admin, ctx.userId)
@@ -924,10 +893,6 @@ async function finishSessionInterno(
     // Agendado, o Confirmado e o Chegou pulavam o termo do início, a pergunta
     // do horário adiantado e a trava dos termos que bloqueiam.
     if (appt.status !== 'IN_PROGRESS') return { error: 'Só se conclui o atendimento que foi iniciado: use “Iniciar” e depois “Finalizar”.' }
-
-    if ((isOwnScope(ctx, 'atendimento') || isOwnScope(ctx, 'agenda')) && appt.professional_id !== ctx.internalUserId) {
-      return { error: 'Apenas o profissional responsável pode concluir este atendimento.' }
-    }
 
     const now = new Date().toISOString()
 
@@ -1355,9 +1320,7 @@ async function saveDraftNotesInterno(
 ): Promise<{ error?: string; success?: boolean }> {
   try {
     const ctx = await getTenantContext()
-    // A evolução é do atendimento (o Atendimento em Gerenciar, 2026-11-18) e é
-    // clínica (o Prontuário em Gerenciar).
-    assertPermission(ctx, 'atendimento', 'MANAGE')
+    // A evolução é clínica: o Prontuário em Gerenciar, e só ele (UM4, 2026-11-23).
     if (!can(ctx, 'medical_records', 'MANAGE')) {
       return { error: 'A evolução é prontuário: é preciso ter o módulo Prontuário para gerenciar.' }
     }
@@ -1376,9 +1339,6 @@ async function saveDraftNotesInterno(
     const apptBranch = appt?.branches as unknown as { id: string; tenant_id: string } | null
     // O DELA numa unidade em que atende também (decisão 2 da 8ª simulação).
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId || !alcancaOAgendamento(ctx, apptBranch.id, appt.professional_id as string | null)) return { error: 'Agendamento não encontrado.' }
-    // A evolução do atendimento de OUTRA, com a agenda "só os meus" (D4, 2026-10-28).
-    if (deOutroProfissional(ctx, appt.professional_id as string | null)) return { error: DE_OUTRO_PROFISSIONAL }
-    if (deOutroNoAtendimento(ctx, appt.professional_id as string | null)) return { error: DE_OUTRO_PROFISSIONAL }
 
     // O cancelado e a falta não tiveram atendimento: não há evolução a
     // escrever (C15, F65). A intercorrência da desistência se grava no próprio
@@ -1387,9 +1347,8 @@ async function saveDraftNotesInterno(
       return { error: 'Este agendamento foi cancelado ou a cliente não compareceu: não há atendimento para escrever a evolução.' }
     }
 
-    // O registro concluído se corrige com o Atendimento e o Prontuário em
-    // Gerenciar (as travas acima). Era a Agenda E o Prontuário (A39 da 5ª); a
-    // Agenda voltou a ser agenda (o Heitor, 2026-11-18).
+    // O registro concluído se corrige com o Prontuário em Gerenciar (a trava
+    // acima; UM4, 2026-11-23).
     const isFinalised = appt.status === 'COMPLETED'
 
     // A correção do concluído guarda a versão de antes (bloco Prontuário,
@@ -2301,7 +2260,7 @@ export async function avisosDoRemarcar(appointmentId: string, scheduledAt: strin
     .eq('id', appointmentId).eq('branches.tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o agendamento') as {
       branch_id: string; professional_id: string | null; procedure_id: string | null; duration_min: number | null; client_id: string
     } | null
-  if (!a || !alcancaOAgendamento(ctx, a.branch_id, a.professional_id) || deOutroProfissional(ctx, a.professional_id)) return nada
+  if (!a || !alcancaOAgendamento(ctx, a.branch_id, a.professional_id)) return nada
   const [avisos, ficha] = await Promise.all([
     a.professional_id
       ? avisosDoHorarioCore(ctx, {
@@ -2397,8 +2356,8 @@ export async function avisoDoPlanoAoAgendar(clientId: string, procedureId: strin
 /**
  * A22 da 23ª simulação (princípio 3): a mesma cliente já tem ESTE procedimento
  * no dia escolhido (a segunda Avaliação da Helena nascia sem aviso). Só aviso:
- * o agendamento segue (princípio 2). Conta os da rede que a pessoa alcança —
- * com a agenda "só os meus", só os dela —, fora os cancelados e as faltas; o dia
+ * o agendamento segue (princípio 2). Conta os da rede que a pessoa alcança,
+ * fora os cancelados e as faltas; o dia
  * e a hora no relógio da unidade escolhida.
  */
 export async function avisoDoMesmoProcedimentoNoDia(
@@ -2427,7 +2386,7 @@ export async function avisoDoMesmoProcedimentoNoDia(
     ])
     if (!cli || !proc) return null
     const horas = (ags ?? [])
-      .filter(a => alcancaOAgendamento(ctx, a.branch_id, a.professional_id) && !deOutroProfissional(ctx, a.professional_id))
+      .filter(a => alcancaOAgendamento(ctx, a.branch_id, a.professional_id))
       .map(a => horaNoFuso(a.scheduled_at, fuso))
     const texto = textoDoMesmoProcedimentoNoDia(cli.name, proc.name, horas)
     return texto ? { texto } : null

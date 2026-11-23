@@ -2,7 +2,7 @@ import 'server-only'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import type { TenantContext } from '@estetica-os/types'
 import { EVENTOS } from '@estetica-os/types'
-import { alcancaOAgendamento, alcancaUnidade, isOwnScope } from '@/lib/auth'
+import { alcancaOAgendamento, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { conferirPecasDoAgendamento, horarioOcupado, primeiroConflito, recusaDoConflito } from '@/lib/appointments/core'
@@ -38,28 +38,6 @@ export interface AgendamentoAoAlcance {
   fuso: string
 }
 
-/** A recusa de quem tem a agenda "só os meus" num agendamento de outro profissional. */
-export const DE_OUTRO_PROFISSIONAL = 'Este agendamento é de outro profissional.'
-
-/**
- * Com a agenda "só os meus" (OWN), o agendamento de OUTRO profissional está
- * fora do escopo também pelo id (§11; D4 da simulação de 2026-10-28: a
- * profissional abria pela URL o atendimento de outra e marcava o check-in).
- * Quem tem ALL — a recepção — segue mexendo no de todos.
- */
-export function deOutroProfissional(ctx: TenantContext, professionalId: string | null | undefined): boolean {
-  return isOwnScope(ctx, 'agenda') && (!ctx.internalUserId || professionalId !== ctx.internalUserId)
-}
-
-/**
- * Com o Atendimento "só os meus" (o módulo do Atendimento, 2026-11-18), o
- * atendimento de OUTRO profissional não se inicia, não se conclui e não ganha
- * evolução. O "só os meus" da Agenda (`deOutroProfissional`) é o de VER.
- */
-export function deOutroNoAtendimento(ctx: TenantContext, professionalId: string | null | undefined): boolean {
-  return isOwnScope(ctx, 'atendimento') && (!ctx.internalUserId || professionalId !== ctx.internalUserId)
-}
-
 /**
  * O agendamento, se for da rede E de uma unidade ao alcance — ou dela mesma,
  * numa unidade em que atende (decisão 2 da 8ª simulação, `alcancaOAgendamento`).
@@ -82,7 +60,6 @@ export async function remarcarCore(admin: Admin, ctx: TenantContext, input: {
 }): Promise<{ ok: true; deAgendadoPara: string } | { error: string }> {
   const existente = await agendamentoAoAlcance(admin, ctx, input.appointmentId)
   if (!existente) return { error: 'Agendamento não encontrado.' }
-  if (deOutroProfissional(ctx, existente.professional_id)) return { error: DE_OUTRO_PROFISSIONAL }
   if (FINALIZADOS.includes(existente.status)) return { error: 'Este agendamento já foi finalizado.' }
   // O atendimento já começou: o horário dele é o que está acontecendo (C15, F65).
   if (existente.status === 'IN_PROGRESS') return { error: 'Este agendamento está em atendimento agora: não se remarca. Para desistir, use "Cancelar" no atendimento.' }
@@ -167,7 +144,6 @@ export async function mudarUnidadeCore(admin: Admin, ctx: TenantContext, input: 
 }): Promise<{ ok: true; de: string; para: string } | { error: string }> {
   const existente = await agendamentoAoAlcance(admin, ctx, input.appointmentId)
   if (!existente || !alcancaUnidade(ctx, existente.branch_id)) return { error: 'Agendamento não encontrado.' }
-  if (deOutroProfissional(ctx, existente.professional_id)) return { error: DE_OUTRO_PROFISSIONAL }
   if (!['SCHEDULED', 'CONFIRMED'].includes(existente.status)) {
     return { error: 'Só o agendamento que ainda não começou muda de unidade.' }
   }
@@ -241,9 +217,9 @@ export async function cancelarCore(admin: Admin, ctx: TenantContext, input: {
   const existente = await agendamentoAoAlcance(admin, ctx, input.appointmentId)
   if (!existente) return { error: 'Agendamento não encontrado.' }
   if (FINALIZADOS.includes(existente.status)) return { error: 'Agendamento já finalizado.' }
-  // Cancelar o Em atendimento é DESISTIR dele: o Atendimento em Gerenciar, com
-  // o escopo dele (CLAUDE.md §11, o Heitor, 18/11); o resto, a Agenda em
-  // Gerenciar com o "só os meus" dela. Quem chama confere só a porta
+  // Cancelar o Em atendimento é DESISTIR dele: o Atendimento em Gerenciar
+  // (CLAUDE.md §11, o Heitor, 18/11); o resto, a Agenda em Gerenciar. Quem
+  // chama confere só a porta
   // (`podeCancelarAlgum`): a regra depende da situação, lida aqui.
   const recusa = recusaDoCancelar(ctx, existente)
   if (recusa) return { error: recusa }
@@ -268,7 +244,6 @@ export async function cancelarCore(admin: Admin, ctx: TenantContext, input: {
 export async function confirmarCore(admin: Admin, ctx: TenantContext, appointmentId: string): Promise<{ ok: true } | { error: string }> {
   const existente = await agendamentoAoAlcance(admin, ctx, appointmentId)
   if (!existente) return { error: 'Agendamento não encontrado.' }
-  if (deOutroProfissional(ctx, existente.professional_id)) return { error: DE_OUTRO_PROFISSIONAL }
   const confirmadas = await gravar(admin.from('appointments')
     .update({ status: 'CONFIRMED', confirmed_at: new Date().toISOString() })
     .eq('id', existente.id).eq('status', 'SCHEDULED').select('id'), 'confirmar o agendamento') as { id: string }[] | null
@@ -305,9 +280,6 @@ export function revalidarAgendamento(ctx: TenantContext, appointmentId: string, 
 export async function checkinCore(admin: Admin, ctx: TenantContext, appointmentId: string): Promise<{ ok: true } | { error: string }> {
   const existente = await agendamentoAoAlcance(admin, ctx, appointmentId)
   if (!existente) return { error: 'Agendamento não encontrado.' }
-  // A recepção (ALL) marca a chegada de todos; quem é "só os meus", só a dos
-  // dela (D4, 2026-10-28) — antes, "o check-in comum não confere o profissional".
-  if (deOutroProfissional(ctx, existente.professional_id)) return { error: DE_OUTRO_PROFISSIONAL }
   if (existente.status !== 'SCHEDULED' && existente.status !== 'CONFIRMED') {
     return { error: 'Check-in só é possível em agendamentos Agendados ou Confirmados.' }
   }

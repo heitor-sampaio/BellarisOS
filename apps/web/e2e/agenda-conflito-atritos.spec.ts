@@ -49,7 +49,7 @@ test.beforeAll(async () => {
   expect((await db().from('users').update({ provides_services: true, branch_id: null }).eq('id', rede.professionalId)).error).toBeNull()
   recepcaoB = await criarMembro(`r${marca}`, {
     tenant: rede.tenantId, branchId: unidadeB, rotulo: 'Recepção ZS',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'clients', nivel: 'VIEW' }],
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }],
   })
   const cliente = await rede.criarCliente('Conflito')
   // Na Moinhos (A): um às 15:00 em aberto, e um às 12:00 concluído às 10:53.

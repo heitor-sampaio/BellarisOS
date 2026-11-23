@@ -14,7 +14,8 @@ import { logoutAction } from '@/actions/auth'
 import { useSidebar } from '@/components/shared/sidebar-context'
 import { useFala } from '@/components/shared/uma-unidade'
 import { menuDaRedeFor } from '@/lib/menu'
-import type { ResolvedPermissions, ResolvedScopes } from '@estetica-os/types'
+import type { ResolvedPermissions } from '@estetica-os/types'
+import type { DaPessoa } from '@/lib/menu'
 
 const SIDEBAR_GRADIENT = 'var(--gradient-brand)'
 
@@ -31,6 +32,7 @@ const ICONS: Record<string, React.ReactNode> = {
   reports:      <BarChart3  size={18} />,
   auditoria:    <ScrollText size={18} />,
   financial:    <CreditCard size={18} />,
+  'minhas-comissoes': <CreditCard size={18} />,
   fechamento: <Wallet size={18} />,
   stock:        <Boxes      size={18} />,
   procedures:   <Sparkles   size={18} />,
@@ -45,7 +47,7 @@ const ICONS: Record<string, React.ReactNode> = {
   automations:  <Workflow   size={18} />,
 }
 
-export function AdminSidebar({ permissions, scopes, plano = null, adminDaRede = false }: { permissions: ResolvedPermissions; scopes?: Partial<ResolvedScopes>; plano?: { funcionalidades: readonly string[] } | null; adminDaRede?: boolean }) {
+export function AdminSidebar({ permissions, pessoa, plano = null, adminDaRede = false }: { permissions: ResolvedPermissions; pessoa?: DaPessoa; plano?: { funcionalidades: readonly string[] } | null; adminDaRede?: boolean }) {
   const { isOpen, close, collapsed, toggleCollapsed } = useSidebar()
   // A clínica de uma unidade lê "Clínica" no lugar de "Rede" (F8).
   const fala = useFala()
@@ -111,7 +113,7 @@ export function AdminSidebar({ permissions, scopes, plano = null, adminDaRede = 
         <MenuComRolagem onClick={close} recolhida={collapsed}>
           {/* Cada categoria recolhe pelo título; com a barra recolhida em
               ícones, o título vira um filete que ainda separa os blocos. */}
-          {menuDaRedeFor(permissions, plano, scopes, { adminDaRede }).map(secao => (
+          {menuDaRedeFor(permissions, plano, pessoa, { adminDaRede }).map(secao => (
             <SecaoDoMenu key={secao.key ?? '_topo'} chave={secao.key} titulo={secao.label}
               entradas={secao.entries} icones={ICONS} recolhida={collapsed} filete={separatorBg} />
           ))}

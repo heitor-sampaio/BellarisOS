@@ -1,4 +1,5 @@
-import { can, ownerFilter } from '@/lib/auth'
+import { can, vistaPessoal } from '@/lib/auth'
+import { semAcesso } from '@/lib/sem-acesso'
 import { totaisDoResumoDasComissoes } from '@/lib/metrics/comissoes'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
@@ -17,8 +18,9 @@ import {
  * unidades da rede (e o filtro); a da unidade, só a dela. O período é o do
  * fechamento que a rede escolheu (Configurações → Comissões).
  *
- * Quem tem `financial` com escopo "só os meus" vê só a própria linha e não
- * fecha — é a tela que o financeiro da rede prometia a essa pessoa.
+ * Abre com o Financeiro em Ver (as de todos, nas unidades ao alcance) ou como
+ * VISTA PESSOAL — quem atende sem o Financeiro vê só a própria linha
+ * ("Minhas comissões") e não fecha.
  */
 export async function ComissoesDaEquipe({ ctx, unidades, unidadeAtual, basePath, voltarPara, periodoPedido, abas }: {
   ctx:           TenantContext
@@ -31,8 +33,8 @@ export async function ComissoesDaEquipe({ ctx, unidades, unidadeAtual, basePath,
   periodoPedido?: string
   /**
    * FI6: a aba Comissões do Financeiro — o `/financeiro` do portal e o título
-   * dele. Quem só vê as próprias comissões não tem as outras abas (o
-   * Financeiro dele é esta tela), e fica sem a barra.
+   * dele. Na vista pessoal não há as outras abas (o Financeiro dela é esta
+   * tela), e fica sem a barra.
    */
   abas?: { base: string; titulo: string }
 }) {
@@ -46,7 +48,9 @@ export async function ComissoesDaEquipe({ ctx, unidades, unidadeAtual, basePath,
   const lista = periodos.some(p => p.chave === periodo.chave) ? periodos : [...periodos, periodo]
 
   const doFiltro = unidadeAtual && unidades.some(u => u.id === unidadeAtual) ? [unidadeAtual] : unidades.map(u => u.id)
-  const soAsProprias = ownerFilter(ctx, 'financial')
+  const soAsProprias = can(ctx, 'financial', 'VIEW') ? null : vistaPessoal(ctx, 'financial')
+  // Sem o Financeiro e sem a vista pessoal, nada (a página já barra).
+  if (!soAsProprias && !can(ctx, 'financial', 'VIEW')) throw semAcesso()
   const recorte = {
     tenantId: ctx.tenantId!, branchIds: doFiltro, inicio: periodo.inicio, fim: periodo.fim,
     profissionalId: soAsProprias,
@@ -96,7 +100,7 @@ export async function ComissoesDaEquipe({ ctx, unidades, unidadeAtual, basePath,
         totais={totais}
         extrato={extrato}
         fechamentos={fechamentos}
-        podeFechar={can(ctx, 'financial', 'MANAGE') && !soAsProprias}
+        podeFechar={can(ctx, 'financial', 'MANAGE')}
         soAsProprias={!!soAsProprias}
         fusoDaRede={fuso}
       />

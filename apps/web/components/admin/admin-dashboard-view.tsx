@@ -153,13 +153,12 @@ export interface AdminDashboardProps {
   /** Ver quanto cada um ganha: financeiro com escopo de todos (o ranking vem vazio sem). */
   verComissoesDaEquipe: boolean
   /**
-   * O FINANCEIRO "só os meus" (cada número segue o seu módulo, 2026-10-29): o
-   * dinheiro é o da pessoa, e o que não se atribui a ela (custo, lucro, margem
-   * do catálogo, o ranking de unidades) não aparece.
+   * A vista pessoal do dinheiro (quem atende ou vende sem o Financeiro —
+   * `vistaPessoal(ctx, 'financial')`): o dinheiro é o da pessoa (a receita, o
+   * ticket, a evolução, os rankings de valor), e o que não se atribui a ela
+   * (custo, lucro, margem do catálogo, o ranking de unidades) não aparece.
    */
   recorteProprio?: boolean
-  /** A AGENDA "só os meus": a ocupação e o ranking por unidade (a agenda de cada unidade) não aparecem. */
-  agendaPropria?: boolean
   procedureMargins:   { name: string; price: number; cost: number; marginPct: number }[]
 
   bestRatedPros:      { name: string; avgRating: number; count: number }[]
@@ -474,7 +473,7 @@ export function AdminDashboardView({
   branchOccupancy,
   avisoDosAbertos,
   quadrosDeClientes,
-  topProcedures, topProceduresByRevenue, topRecurring, topProfessionals, topProfessionalsByRevenue, topProfessionalsByCommission, verComissoesDaEquipe, recorteProprio = false, agendaPropria = false, procedureMargins,
+  topProcedures, topProceduresByRevenue, topRecurring, topProfessionals, topProfessionalsByRevenue, topProfessionalsByCommission, verComissoesDaEquipe, recorteProprio = false, procedureMargins,
   bestRatedPros, worstRatedPros, bestRatedProcedures, worstRatedProcedures,
   topClients, topClientsByRecurrence, clientAgeGroups, topClientsByLocation,
   hotmapRawBranches, hotmapRawCepCounts, hotmapRawCepLtv,
@@ -497,6 +496,8 @@ export function AdminDashboardView({
   const totalDePlanos = Math.max(pendingPlansTotal ?? 0, pendingPlans.length)
 
   const can = (m: AppModule) => permissions[m] !== 'NONE'
+  // Os cartões de dinheiro: o Financeiro, ou a vista pessoal (o número DELA).
+  const veCartoesDeDinheiro = can('financial') || recorteProprio
   const hasAnyWidget = ALL_MODULES.some(m => can(m))
   const maxFunnel = Math.max(1, ...leadFunnel.map(f => f.count))
   const ADMIN_ROUTES: Partial<Record<AppModule, string>> = {
@@ -520,9 +521,9 @@ export function AdminDashboardView({
           </h1>
           {recorteDesativado && <div style={{ marginTop: 6 }}><SeloUnidadeDesativada /></div>}
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)', marginTop: 4 }}>
-            {/* Recortada a uma unidade, ou com o "só os meus", o total segue o da CLÍNICA (H5: a cliente é da
-                clínica; D12 da 13ª: o "só os meus" não recorta a ficha) — e diz (A42). */}
-            {monthLabel}{umaUnidade ? '' : ` · ${branchCount} ${branchCount === 1 ? 'unidade' : 'unidades'}`}{totalClientsEver !== null && <> · {totalClientsEver.toLocaleString('pt-BR')} {totalClientsEver === 1 ? 'cliente' : 'clientes'}{unidadeRecortada || agendaPropria || recorteProprio ? ' da rede' : ''}</>}
+            {/* Recortada a uma unidade, ou na vista pessoal, o total segue o da REDE (H5: a cliente é da
+                rede; D12 da 13ª: a vista pessoal não recorta a ficha) — e diz (A42). */}
+            {monthLabel}{umaUnidade ? '' : ` · ${branchCount} ${branchCount === 1 ? 'unidade' : 'unidades'}`}{totalClientsEver !== null && <> · {totalClientsEver.toLocaleString('pt-BR')} {totalClientsEver === 1 ? 'cliente' : 'clientes'}{unidadeRecortada || recorteProprio ? ' da rede' : ''}</>}
             {unidadeRecortada && (
               <> · <Link href={hrefDaRede} style={{ color: 'var(--brand)', fontWeight: 700 }}>Ver a rede inteira</Link></>
             )}
@@ -548,9 +549,9 @@ export function AdminDashboardView({
       {avisoDosAbertos}
 
       {/* -- KPI cards -- */}
-      {(can('financial') || can('agenda') || can('clients')) && (
+      {(veCartoesDeDinheiro || can('agenda') || can('clients')) && (
       <div className="kpi-grid-auto" style={{ gap: 16 }}>
-        {can('financial') && <KpiCard
+        {veCartoesDeDinheiro && <KpiCard
           brand
           label={recorteProprio ? `Minha receita ${rotulo.doPeriodo}` : `Receita bruta ${rotulo.doPeriodo}`}
           dica={DEFINICOES.receita}
@@ -588,13 +589,13 @@ export function AdminDashboardView({
           label="Novos clientes"
           value={newClients}
           format="int"
-          sub={totalClientsEver === null ? undefined : `${totalClientsEver.toLocaleString('pt-BR')} ${unidadeRecortada || agendaPropria ? 'clientes da rede' : 'no total'}`}
+          sub={totalClientsEver === null ? undefined : `${totalClientsEver.toLocaleString('pt-BR')} ${unidadeRecortada ? 'clientes da rede' : 'no total'}`}
           delta={deltaNewClients}
           semBase={prevNewClients === 0}
           anterior={rotulo.anterior}
           icon={<Users size={16} color="var(--brand)" />}
         />}
-        {can('financial') && <KpiCard
+        {veCartoesDeDinheiro && <KpiCard
           label="Ticket médio"
           dica={DEFINICOES.ticket}
           value={ticketMedio}
@@ -609,8 +610,8 @@ export function AdminDashboardView({
       {(veDinheiro || can('agenda') || can('stock')) && (
       <div className="grid-stack-md" style={{ display: 'grid', gridTemplateColumns: '7fr 3fr', gap: 16 }}>
 
-        {/* "Só os meus": a evolução só da receita DELA — sem o custo, o lucro
-            e o ranking de filiais, que são o dinheiro da rede (D7). */}
+        {/* A vista pessoal: a evolução só da receita DELA — sem o custo, o
+            lucro e o ranking de unidades, que são o dinheiro da rede (D7). */}
         {veDinheiro && recorteProprio && (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <EvolutionChart data={evolutionData} monthLabel={monthLabel} granularity={granularity} soReceita />
@@ -623,9 +624,8 @@ export function AdminDashboardView({
           {/* Gráfico animado */}
           <EvolutionChart data={evolutionData} monthLabel={monthLabel} granularity={granularity} />
 
-          {/* O ranking de unidades mistura o dinheiro e a AGENDA de cada unidade:
-              com a agenda "só os meus", fica de fora (a evolução segue). */}
-          {!agendaPropria && !umaUnidade && (<>
+          {/* O ranking de unidades: o dinheiro e a agenda de cada unidade. */}
+          {!umaUnidade && (<>
           <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             {/* "Novos clientes" só na rede (o Heitor, 18/11: "o cliente é da rede"): o
                 ranking não tem a coluna "Novos" — a cliente não é de uma unidade (A44 da 24ª). */}
@@ -960,7 +960,7 @@ export function AdminDashboardView({
           "Ocupação" do dashboard da unidade é outra conta, horas ocupadas ÷
           horas livres; conta outra, nome outro)
       ══════════════════════════════════════════════════════════════ */}
-      {can('agenda') && !agendaPropria && (<>
+      {can('agenda') && (<>
       <SectionHeader title={umaUnidade ? 'Aproveitamento' : 'Aproveitamento por unidade'} />
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -1096,7 +1096,7 @@ export function AdminDashboardView({
           )}
         </div>
 
-        {/* Receita por procedimento: com "só os meus", a dos atendimentos dela. */}
+        {/* Receita por procedimento: na vista pessoal, a dos atendimentos dela. */}
         {/* Ranking - Procedimentos pela receita PAGA dos atendimentos (D3 da 5ª); só com o dinheiro (D2). */}
         {veDinheiro && <div className="card" style={{ padding: '18px 20px' }}>
           <div style={{ marginBottom: 16 }}>
@@ -1117,7 +1117,7 @@ export function AdminDashboardView({
         </div>}
 
         {/* Ranking - Procedimentos por margem: o custo do catálogo, da rede —
-            fora do "só os meus" (D7). */}
+            fora da vista pessoal (D7). */}
         {veDinheiro && !recorteProprio && (<>
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1266,7 +1266,7 @@ export function AdminDashboardView({
           )}
         </div>
 
-        {/* Ranking — Vendas (a receita de cada um; com "só os meus", só a linha dela). Só com o dinheiro (D2). */}
+        {/* Ranking — Vendas (a receita de cada um; na vista pessoal, só a linha dela). Só com o dinheiro (D2). */}
         {veDinheiro && <div className="card" style={{ padding: '18px 20px' }}>
           <div style={{ marginBottom: 16 }}>
             <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking — Profissionais por receita dos atendimentos<Dica rotulo={DEFINICOES.receitaDosAtendimentos.rotulo}>{DEFINICOES.receitaDosAtendimentos.texto}</Dica></span>
@@ -1371,7 +1371,7 @@ export function AdminDashboardView({
 
       <div className="grid-stack-md" style={{ display: 'grid', gridTemplateColumns: veDinheiro ? '2fr 1fr 1fr 1fr' : '1fr 1fr 1fr', gap: 16 }}>
 
-        {/* Ranking — Valor gasto (com "só os meus", o que as clientes dela pagaram pelos atendimentos dela) */}
+        {/* Ranking — Valor gasto (na vista pessoal, o que as clientes dela pagaram pelos atendimentos dela) */}
         {veDinheiro && <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
             {/* Recortado a uma unidade, o ranking é o que as clientes fizeram NELA

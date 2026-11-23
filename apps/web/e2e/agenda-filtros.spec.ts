@@ -8,7 +8,8 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  * cancelados" e dia/semana/mês: "Então precisa arrumar"; e a regra das Tags,
  * CLAUDE.md §1): profissional, sala e tag, nos dois portais, NA CONSULTA — a
  * URL com `?profissional=` não traz o agendamento de outra pessoa (nem no HTML:
- * não é recorte no navegador), e o pedido não vence o escopo "só os meus".
+ * não é recorte no navegador), e o pedido não vence a vista pessoal (a
+ * "Minha agenda", SM2 — o "só os meus" saiu em 2026-11-23).
  */
 
 const marca = Date.now().toString(36)
@@ -17,7 +18,7 @@ let rede: OutraRede | null = null
 let outra: MembroDeTeste | null = null
 let recepcao: MembroDeTeste | null = null
 let daRede: MembroDeTeste | null = null
-let soOsMeus: MembroDeTeste | null = null
+let pessoal: MembroDeTeste | null = null
 let slug = ''
 let salaRosa = ''
 let salaAzul = ''
@@ -48,9 +49,11 @@ test.beforeAll(async () => {
   daRede = await criarMembro(`filn${marca}`, {
     tenant: rede.tenantId, branchId: null, rotulo: 'Rede', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }],
   })
-  soOsMeus = await criarMembro(`filp${marca}`, {
-    tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Só os meus',
-    permissoes: [{ modulo: 'agenda', nivel: 'VIEW', escopo: 'OWN' }],
+  // A vista pessoal (SM2, o Heitor, 2026-11-23): atende e não tem a Agenda
+  // (era a Agenda em Ver "só os meus", que saiu — SM1).
+  pessoal = await criarMembro(`filp${marca}`, {
+    tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Vista pessoal', atendeEm: [rede.branchId],
+    permissoes: [{ modulo: 'agenda', nivel: 'NONE' }],
   })
 
   const salas = await db().from('rooms').insert([
@@ -77,7 +80,7 @@ test.beforeAll(async () => {
 })
 
 test.afterAll(async () => {
-  for (const m of [soOsMeus, daRede, recepcao, outra]) await m?.limpar()
+  for (const m of [pessoal, daRede, recepcao, outra]) await m?.limpar()
   await rede?.limpar()
 })
 
@@ -123,8 +126,8 @@ test.describe('os filtros da agenda da unidade', () => {
     })
   })
 
-  test('com a Agenda em "só os meus", o ?profissional= de outra pessoa não traz nada dela', async ({ browser }) => {
-    await como(browser, soOsMeus!, async p => {
+  test('na vista pessoal (a "Minha agenda"), o ?profissional= de outra pessoa não traz nada dela', async ({ browser }) => {
+    await como(browser, pessoal!, async p => {
       const resposta = await p.goto(`/${slug}/agenda?date=${AMANHA}&profissional=${outra!.userId}`)
       expect(resposta!.status()).toBeLessThan(400)
       const html = await resposta!.text()

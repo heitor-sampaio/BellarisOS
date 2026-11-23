@@ -24,7 +24,7 @@ test.beforeAll(async () => {
   rede = await criarOutraRede(`tp${marca}`)
   recepcao = await criarMembro(`tp${marca}`, {
     tenant: rede.tenantId, rotulo: 'Recepção',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'clients', nivel: 'MANAGE' }],
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }],
   })
 })
 

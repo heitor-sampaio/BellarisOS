@@ -19,8 +19,7 @@ import { responderAnamnese } from './apoio/anamnese'
  * ficha guarda o id do planejamento usado e um RETRATO dos pontos de quando
  * foi salva ou o atendimento finalizado (na transação da conclusão).
  *
- * A profissional tem a agenda e o prontuário "só os meus": o plano é da
- * cliente, e quem a atende vê os planejamentos dela.
+ * O plano é da cliente: quem tem o Prontuário vê os planejamentos dela.
  */
 
 const marca = Date.now().toString(36)
@@ -64,9 +63,9 @@ test.beforeAll(async () => {
   profissional = await criarMembro(`fpip${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Profissional',
     permissoes: [
-      { modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' },
+      { modulo: 'agenda', nivel: 'MANAGE' },
       { modulo: 'clients', nivel: 'VIEW' },
-      { modulo: 'medical_records', nivel: 'MANAGE', escopo: 'OWN' },
+      { modulo: 'medical_records', nivel: 'MANAGE' },
     ],
   })
   expect((await db().from('users').update({ provides_services: true }).eq('id', profissional.userId)).error).toBeNull()

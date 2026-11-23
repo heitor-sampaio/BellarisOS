@@ -9,7 +9,7 @@ import {
   ALL_MODULES, MODULE_LEVELS, MODULOS_DO_CARGO, MODULOS_SO_DA_ADMIN, resolvePermissions,
 } from '@/lib/permissions'
 import { MODULE_GROUPS } from '@/lib/permissions-copy'
-import { NO_PERMISSIONS, ALL_PERMISSIONS, ALL_SCOPES } from '@/lib/permissions'
+import { NO_PERMISSIONS, ALL_PERMISSIONS } from '@/lib/permissions'
 import { podeVerAuditoria, assertAuditoria } from '@/lib/auth'
 import type { TenantContext } from '@estetica-os/types'
 
@@ -52,8 +52,8 @@ describe('B. o aviso de quem abriu uma unidade fora do alcance não sugere cria�
     expect(motivo).toBe('A aba Comissões e taxas fica nas Configurações da rede. Você está na aba Unidade.')
     expect(motivoDaAbaFechada('nao-existe', { noPortal: [] as never, gerencia: () => true, noPlano: () => true, unidadeFixa: false, nomeDoModulo: m => m, abriu: 'Unidade' }))
       .toBe('A aba “nao-existe” não existe. Você está na aba Unidade.')
-    expect(avisoDaAbaFechada({ key: 'financeiro', label: 'Financeiro' }, true)).toBe('Suas permissões não abrem a aba Financeiro desta ficha. Você está na Visão geral.')
-    expect(avisoDaAbaFechada({ key: 'fichas', label: 'Prontuário' }, true).toLowerCase()).not.toContain('abrimos')
+    expect(avisoDaAbaFechada({ key: 'financeiro', label: 'Financeiro' })).toBe('Suas permissões não abrem a aba Financeiro desta ficha. Você está na Visão geral.')
+    expect(avisoDaAbaFechada({ key: 'fichas', label: 'Prontuário' }).toLowerCase()).not.toContain('abrimos')
   })
   it('os três avisos dizem onde a pessoa está', () => {
     expect(AVISOS_DA_URL['outra-unidade']).toBe('Essa unidade não está entre as suas. Você está na sua unidade.')
@@ -80,7 +80,7 @@ describe('C. a Auditoria é só da Admin da rede', () => {
   it('só a Admin da rede (o cargo de sistema, `isNetworkAdmin`) lê a Auditoria — nem com a linha no contexto', () => {
     const base = {
       userId: 'a1', internalUserId: 'u1', userName: 'F', roleLabel: 'C', tenantId: 't1', branchId: null, role: 'BRANCH_ADMIN',
-      roleId: 'r1', clientId: null, scopes: { ...ALL_SCOPES }, reportTabs: [], providesServices: false, isClient: false,
+      roleId: 'r1', clientId: null, reportTabs: [], providesServices: false, isClient: false,
     } as unknown as TenantContext
     const outroCargo = { ...base, isNetworkAdmin: false, permissions: { ...NO_PERMISSIONS, audit: 'VIEW' } } as TenantContext
     const admin = { ...base, isNetworkAdmin: true, permissions: { ...ALL_PERMISSIONS } } as TenantContext

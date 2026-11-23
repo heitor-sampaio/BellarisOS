@@ -61,14 +61,15 @@ describe('A10: quem atende sem o módulo lê quem pode, pelo nome', () => {
       .toBe('Quem tem a Agenda em Gerenciar marca a chegada (Renan Dias e Patrícia Begônia); depois você inicia.')
     expect(textoDeQuemMarcaAChegada([])).toBe('Quem tem a Agenda em Gerenciar marca a chegada; depois você inicia.')
   })
-  it('quem marca a chegada de OUTRA pessoa é a Agenda em Gerenciar de todos (o "só os meus" marca só a dele)', async () => {
+  // Sem o "só os meus" (SM1, o Heitor, 2026-11-23): a Agenda em Gerenciar marca a chegada de todos, sem escopo.
+  it('quem marca a chegada de OUTRA pessoa é a Agenda em Gerenciar, sem escopo', async () => {
     const { quemMarcaAChegada } = await import('@/lib/equipe/quem-desfaz')
     responder = p => ({ data: p.tabela === 'role_permissions' ? [{ role_id: 'cargo' }] : [], error: null })
     await quemMarcaAChegada('rede', UNIDADE)
     const ins = opsDe('role_permissions', 'in')
     expect(ins).toContainEqual(['module', ['agenda']])
     expect(ins).toContainEqual(['level', ['MANAGE']])
-    expect(opsDe('role_permissions', 'or')).toContainEqual(['scope.is.null,scope.eq.ALL'])
+    expect(opsDe('role_permissions', 'or')).toEqual([])
   })
   it('a tela do atendimento recebe e mostra os nomes', () => {
     const pagina = ler('app/_shared/sessao-de-atendimento.tsx')
@@ -168,7 +169,7 @@ describe('A18: o /setup diz que o bairro veio da busca do CEP', () => {
 })
 
 // ─── A20: o que falta escolher no cargo aparece NO módulo ───────────────────
-describe('A20: o aviso do escopo pendente fica no módulo destacado', () => {
+describe('A20: o que falta escolher no cargo (o relatório) fica no módulo destacado', () => {
   it('a linha do módulo destacado leva o aviso, fixo', () => {
     const f = ler('components/admin/roles-editor.tsx')
     expect(f).toContain('data-falta-no-modulo')

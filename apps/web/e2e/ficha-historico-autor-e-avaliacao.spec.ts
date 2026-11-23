@@ -43,7 +43,7 @@ test.beforeAll(async () => {
   expect((await db().from('users').update({ branch_id: rede.branchId, provides_services: true }).eq('id', rede.professionalId)).error).toBeNull()
   recepcao = await criarMembro(`fhr${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Recepção',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'clients', nivel: 'MANAGE', escopo: 'ALL' }],
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }],
   })
   cliente = await clienteComSessao(`fh${marca}`, { id: rede.branchId, slug }, { tenant: rede.tenantId })
 

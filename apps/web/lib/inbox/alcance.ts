@@ -1,20 +1,14 @@
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { can, ownerFilter, temRecurso } from '@/lib/auth'
+import { can, temRecurso } from '@/lib/auth'
 import { ler } from '@/lib/db'
-import {
-  lerVisibilidade, lerCaixas, passaNasCaixas, passaNoAlcanceDoDono,
-  type AlcanceDoDono,
-} from '@/lib/inbox/visibilidade'
+import { lerCaixas, passaNasCaixas } from '@/lib/inbox/visibilidade'
 
 /**
  * O alcance do inbox: o que cada pessoa pode ver e tocar.
  *
- * São duas regras, e as duas valem juntas:
- *
- * - **o dono** — com CRM "só os meus", pela pessoa ou pela conversa (escolha da
- *   rede, `tenants.inbox_visibilidade`);
- * - **as caixas** — escolha do cargo (`tenant_roles.inbox_caixas`).
+ * Quem tem o CRM em Ver vê as conversas da rede, menos as das caixas de
+ * WhatsApp que o cargo não enxerga (`tenant_roles.inbox_caixas`).
  *
  * Mora aqui, e não em `actions/inbox.ts`, porque todo export de um arquivo
  * `'use server'` vira endpoint público: um `conversaAoAlcance` exportado de lá
@@ -30,48 +24,12 @@ import {
 type Admin = ReturnType<typeof createAdminClient>
 
 /**
- * Regra do dono já lida do banco, ou `null` se o cargo vê tudo no CRM.
- *
- * Erro de leitura LANÇA: quem chama decide, e decidir "mostra tudo" aqui seria
- * vazar em silêncio.
- */
-export async function alcanceDoDono(admin: Admin, ctx: TenantContext): Promise<AlcanceDoDono | null> {
-  const owner = ownerFilter(ctx, 'crm')
-  if (!owner) return null
-  const tenantId = ctx.tenantId!
-
-  const rede = await ler(
-    admin.from('tenants').select('inbox_visibilidade').eq('id', tenantId).maybeSingle(),
-    'ler a visibilidade do inbox',
-  )
-  const modo = lerVisibilidade((rede as { inbox_visibilidade?: string } | null)?.inbox_visibilidade)
-
-  if (modo === 'conversa') {
-    // Num array só, pelo banco: o select direto parava em 1000 linhas (o teto
-    // do PostgREST), e as conversas dos leads além disso sumiam sem aviso.
-    const meus = await ler(
-      admin.rpc('leads_do_dono', { p_tenant: tenantId, p_owner: owner }),
-      'carregar as oportunidades do responsável',
-    )
-    return { modo, meusLeads: (meus ?? []) as string[] }
-  }
-
-  // No banco, e num array só: ler os leads com dono para contar aqui bateria
-  // no teto de 1000 linhas do PostgREST (§13.1), e a pessoa de outro SDR
-  // voltaria a aparecer sem nada acusar.
-  const ocultas = await ler(
-    admin.rpc('contatos_ocultos_do_dono', { p_tenant: tenantId, p_owner: owner }),
-    'calcular quem é de outro responsável',
-  )
-  return { modo, ocultas: (ocultas ?? []) as string[] }
-}
-
-/**
  * As caixas de WhatsApp que a pessoa enxerga, ou `null` para todas.
  *
  * Com "só as da pessoa", são os números a que ela está ligada em
  * `whatsapp_number_users` — e nenhum, se não estiver ligada a nenhum. Erro de
- * leitura LANÇA, pelo mesmo motivo de `alcanceDoDono`.
+ * leitura LANÇA: quem chama decide, e decidir "mostra tudo" aqui seria vazar em
+ * silêncio.
  */
 export async function caixasDoAlcance(admin: Admin, ctx: TenantContext): Promise<string[] | null> {
   // Quem não tem cargo editável (admin da rede, cargo de sistema) vê tudo, como
@@ -114,14 +72,14 @@ export async function conversaAoAlcance(
   try {
     const conv = await ler(
       admin.from('conversations')
-        .select('lead_id, contato_id, whatsapp_number_id')
+        .select('whatsapp_number_id')
         .eq('id', conversationId).eq('tenant_id', ctx.tenantId!).maybeSingle(),
       'conferir a conversa',
-    ) as { lead_id: string | null; contato_id: string | null; whatsapp_number_id: string | null } | null
+    ) as { whatsapp_number_id: string | null } | null
     if (!conv) return false
 
-    const [dono, caixas] = await Promise.all([alcanceDoDono(admin, ctx), caixasDoAlcance(admin, ctx)])
-    return passaNoAlcanceDoDono(conv, dono) && passaNasCaixas(conv.whatsapp_number_id, caixas)
+    const caixas = await caixasDoAlcance(admin, ctx)
+    return passaNasCaixas(conv.whatsapp_number_id, caixas)
   } catch (e) {
     console.error('[conversaAoAlcance]', e instanceof Error ? e.message : e)
     return false

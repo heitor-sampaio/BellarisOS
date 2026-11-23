@@ -13,7 +13,7 @@ import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, mensagemDoErro } from '@/lib/db'
 import { creditosDoCliente, lerCredito, type CreditoParaAgendar } from '@/lib/creditos/credito'
-import { agendamentoAoAlcance, deOutroProfissional, DE_OUTRO_PROFISSIONAL, revalidarAgendamento } from '@/lib/appointments/alteracoes'
+import { agendamentoAoAlcance, revalidarAgendamento } from '@/lib/appointments/alteracoes'
 import { revalidatePath } from 'next/cache'
 
 export async function creditosParaAgendar(clientId: string): Promise<CreditoParaAgendar[]> {
@@ -39,7 +39,7 @@ export async function creditosDoAgendamento(appointmentId: string): Promise<Cred
   if (typeof appointmentId !== 'string' || !/^[0-9a-f-]{36}$/i.test(appointmentId)) return []
   const admin = createAdminClient()
   const a = await agendamentoAoAlcance(admin, ctx, appointmentId)
-  if (!a || deOutroProfissional(ctx, a.professional_id)) return []
+  if (!a) return []
   if (!['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(a.status)) return []
   const ag = await ler(admin.from('appointments').select('client_id, procedure_id, treatment_plan_id')
     .eq('id', appointmentId).maybeSingle(), 'buscar o agendamento') as { client_id: string | null; procedure_id: string | null; treatment_plan_id: string | null } | null
@@ -69,7 +69,6 @@ export async function usarCreditoNoAgendamento(appointmentId: string, credito: s
     const admin = createAdminClient()
     const a = await agendamentoAoAlcance(admin, ctx, appointmentId)
     if (!a) return { error: 'Agendamento não encontrado.' }
-    if (deOutroProfissional(ctx, a.professional_id)) return { error: DE_OUTRO_PROFISSIONAL }
     const { error } = await admin.rpc('agendamento_usar_credito', {
       p_agendamento: appointmentId, p_tenant: ctx.tenantId!, p_tipo: c.tipo, p_credito: c.id,
       p_ator: ctx.internalUserId, p_ator_nome: ctx.userName || 'Equipe',

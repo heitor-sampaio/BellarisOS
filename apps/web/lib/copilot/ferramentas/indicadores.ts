@@ -1,14 +1,13 @@
 import 'server-only'
 import { z } from 'zod/v4'
 import { REPORT_TABS, type ReportTab } from '@estetica-os/types'
-import { alcancaUnidade, can, isOwnScope, podeVerRelatorio } from '@/lib/auth'
+import { alcancaUnidade, can, podeVerRelatorio } from '@/lib/auth'
 import { unidadesParaLer } from '@/lib/unidades/da-tela'
 import { resolvePeriod } from '@/lib/metrics/period'
 import { getTicketMedio, getResultadoDoEstoque, getEmAberto, getByBranch, getComposicaoFinanceira } from '@/lib/metrics/queries'
 import { DEFINICOES } from '@/lib/metrics/definicoes'
 import { painelComercial } from '@/lib/metrics/painel-comercial'
 import { getRelatorioDosModulos, getCoreDosModulos } from '@/lib/metrics/dos-modulos'
-import { recorteDosModulos } from '@/lib/metrics/escopo'
 import { getResumoDeVendas, getVendas, descricaoDaVenda, ROTULO_DO_TIPO } from '@/lib/metrics/vendas'
 import { comandaDaVenda, FORA_DO_TOTAL, type Venda } from '@/lib/metrics/vendas-comum'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
@@ -20,16 +19,13 @@ import { resultadoDoPeriodo, taxaDeConclusao, taxaDeAproveitamento } from '@/lib
  * PROCEDIMENTOS (o catálogo) e INDICADORES.
  *
  * Todo número vem de `lib/metrics` (§13.1) — a ferramenta só escolhe o que
- * mostrar. A aba de relatório segue a permissão (`podeVerRelatorio`), e o
- * escopo "só a minha unidade" dos relatórios obriga a escolher uma unidade.
- *
- * "Só os meus" (decisão do Heitor, 2026-10-28: "quem tem 'só os meus' vê 'só
- * os meus', em qualquer lugar"), com CADA número no escopo do seu módulo
- * (2026-10-29, lib/metrics/escopo): a agenda e as clientes pelo da agenda, o
- * dinheiro pelo do financeiro, o funil pelo do CRM (os leads dela e os sem
- * dono). O que não se atribui a ela com o financeiro OWN (a despesa, o saldo
- * e o valor do estoque, a comissão das outras) não vai ao modelo.
+ * mostrar. A aba de relatório segue a permissão (`podeVerRelatorio`), e as
+ * unidades são as da abrangência da pessoa. Sem recorte por dono: o Copilot
+ * fala pelos módulos da pessoa, não é a vista pessoal dos dashboards.
  */
+
+/** Sem recorte por dono: a agenda e o dinheiro de todos, na abrangência. */
+const SEM_RECORTE = { agenda: null, financeiro: null }
 
 
 /** Uma venda como vai ao modelo: com a comanda do PDV ("Nº 12"), como a lista dos Relatórios (CP1). */
@@ -81,11 +77,6 @@ export const indicadores: FerramentaDeLeitura<{
     }
     const u = await resolverUnidade(c, args.unidade)
     if ('erro' in u) return { dados: { erro: u.erro } }
-    // "Só a minha unidade" nos relatórios: uma unidade por vez, nunca a rede somada.
-    if (!u.unidade && isOwnScope(c.ctx, 'reports')) {
-      const exigida = await resolverUnidade(c, null, { exigir: true })
-      return { dados: { erro: 'erro' in exigida ? exigida.erro : 'Escolha uma unidade.' } }
-    }
     // O período no fuso do recorte (F62b), como o dashboard e os Relatórios.
     const fuso = await fusoDoRecorte(c.ctx.tenantId, await idsDasUnidades(c, u.unidade))
     const periodo = args.periodo === 'custom' || (args.de && args.ate)
@@ -98,57 +89,37 @@ export const indicadores: FerramentaDeLeitura<{
       .filter(x => alcancaUnidade(c.ctx, x.id)).map(x => x.id)
     const branchIds = daLeitura.length ? daLeitura : await idsDasUnidades(c, u.unidade)
     // Como o dashboard e os Relatórios: até AGORA, contra o anterior equivalente.
-    // Cada número no escopo do SEU módulo (2026-10-29, lib/metrics/escopo): a
-    // agenda e as clientes pela agenda, o dinheiro pelo financeiro, o funil
-    // pelo CRM. O que não se atribui a ela com o FINANCEIRO "só os meus" (a
-    // despesa, o saldo e o valor do estoque) não vai ao modelo.
-    const recorte = recorteDosModulos(c.ctx)
-    const recorteProprio = recorte.financeiro !== null
+    const recorte = SEM_RECORTE
     const janela = { tenantId: c.ctx.tenantId!, branchIds, from: periodo.from, to: periodo.to }
-    const doDinheiro = { ...janela, professionalId: recorte.financeiro }
-    const partes = [
-      recorte.agenda ? 'só os seus atendimentos e as suas clientes' : null,
-      recorte.financeiro ? 'só o dinheiro dos seus atendimentos' : null,
-    ].filter(Boolean)
-    const cabecalho = {
-      periodo: periodo.label, unidade: u.unidade?.name ?? 'todas as unidades',
-      ...(partes.length ? { recorte: `${partes.join('; ')} (a sua permissão é "só os meus" nesse módulo)` } : {}),
-    }
+    const cabecalho = { periodo: periodo.label, unidade: u.unidade?.name ?? 'todas as unidades' }
 
     if (aba === 'overview') {
       const [atual, anterior, ticket, estoque, emAberto] = await Promise.all([
         getCoreDosModulos({ ...janela, recorte }),
         getCoreDosModulos({ ...janela, from: periodo.prevFrom, to: periodo.prevTo, recorte }),
-        getTicketMedio(doDinheiro),
+        getTicketMedio(janela),
         // O lucro, como nas telas: desconta o insumo consumido; a compra de
-        // estoque fica nas despesas (o caixa). Não se atribui a ela com o financeiro OWN.
-        recorteProprio ? Promise.resolve(null) : getResultadoDoEstoque(janela),
+        // estoque fica nas despesas (o caixa).
+        getResultadoDoEstoque(janela),
         // C5 (F68): o "A receber" do Financeiro — pelo VENCIMENTO, até o FIM do
         // período (getEmAberto). Era o pendente do núcleo até agora, outro número.
-        // As parcelas a receber são da unidade, não dos atendimentos dela.
-        recorteProprio ? Promise.resolve(null) : getEmAberto({ ...janela, to: periodo.fullTo }),
+        getEmAberto({ ...janela, to: periodo.fullTo }),
       ])
-      const resultado = estoque ? resultadoDoPeriodo({ ...atual, ...estoque.total }) : null
-      // Com o financeiro "só os meus", a comissão do núcleo já é a DELA.
+      const resultado = resultadoDoPeriodo({ ...atual, ...estoque.total })
       const comissoes = can(c.ctx, 'financial', 'VIEW')
       return {
         dados: {
           ...cabecalho,
           faturamento: dinheiro(atual.revenueCash), faturamentoAnterior: dinheiro(anterior.revenueCash),
-          ...(emAberto ? {
-            aReceber: dinheiro(emAberto.aReceber),
-            notaDoAReceber: 'O que vence no período, até o fim dele, e ainda não foi pago (o "A receber" do Financeiro).',
-          } : {}),
-          // A despesa não se atribui a ela (o dashboard esconde o custo).
-          ...(recorteProprio || !resultado ? {} : {
-            despesas: dinheiro(atual.expensesCash),
-            insumoConsumido: dinheiro(resultado.insumoConsumido),
-            taxasDaMaquininha: dinheiro(resultado.taxasDaMaquininha),
-            comissoesLancadas: dinheiro(resultado.comissoes),
-            lucro: dinheiro(resultado.lucro),
-            margem: resultado.margemPct === null ? null : `${resultado.margemPct.toFixed(1).replace('.', ',')}%`,
-            notaDoLucro: 'Lucro = receita paga − despesas pagas (sem a compra de estoque e sem o pagamento das comissões, que ficam no caixa) − insumo consumido e custo do produto vendido − taxas da maquininha − comissões lançadas no período.',
-          }),
+          aReceber: dinheiro(emAberto.aReceber),
+          notaDoAReceber: 'O que vence no período, até o fim dele, e ainda não foi pago (o "A receber" do Financeiro).',
+          despesas: dinheiro(atual.expensesCash),
+          insumoConsumido: dinheiro(resultado.insumoConsumido),
+          taxasDaMaquininha: dinheiro(resultado.taxasDaMaquininha),
+          comissoesLancadas: dinheiro(resultado.comissoes),
+          lucro: dinheiro(resultado.lucro),
+          margem: resultado.margemPct === null ? null : `${resultado.margemPct.toFixed(1).replace('.', ',')}%`,
+          notaDoLucro: 'Lucro = receita paga − despesas pagas (sem a compra de estoque e sem o pagamento das comissões, que ficam no caixa) − insumo consumido e custo do produto vendido − taxas da maquininha − comissões lançadas no período.',
           receitaDeServicos: dinheiro(atual.serviceRevenue),
           atendimentosConcluidos: atual.appointmentsCompleted, atendimentosConcluidosAnterior: anterior.appointmentsCompleted,
           agendamentos: atual.appointmentsTotal, cancelados: atual.appointmentsCancelled, faltas: atual.appointmentsNoShow,
@@ -170,8 +141,8 @@ export const indicadores: FerramentaDeLeitura<{
       // C5 (F68): o MESMO painel da aba Comercial dos Relatórios — o funil do
       // funil padrão, a conversão somando os funis ATIVOS, o comparecimento, os
       // motivos de perda e a conversão por origem, até o FIM do período. Era só
-      // o funil padrão, até agora. CRM "só os meus": os leads dela e os sem dono.
-      const p = await painelComercial({ tenantId: c.ctx.tenantId!, branchIds, from: periodo.from, to: periodo.fullTo, ownerId: recorte.crm })
+      // o funil padrão, até agora.
+      const p = await painelComercial({ tenantId: c.ctx.tenantId!, branchIds, from: periodo.from, to: periodo.fullTo })
       const pct = (v: number | null) => v === null ? null : `${v.toFixed(1).replace('.', ',')}%`
       return {
         dados: {
@@ -191,8 +162,7 @@ export const indicadores: FerramentaDeLeitura<{
 
     if (aba === 'vendas') {
       // A lista fecha no FIM do período, como na tela; o total vem do banco.
-      // A venda é dinheiro: segue o financeiro.
-      const vendas = { ...doDinheiro, to: periodo.fullTo }
+      const vendas = { ...janela, to: periodo.fullTo }
       const [resumo, ultimas] = await Promise.all([getResumoDeVendas(vendas), getVendas({ ...vendas, limite: 30 })])
       return {
         dados: {
@@ -210,16 +180,16 @@ export const indicadores: FerramentaDeLeitura<{
     const [r, ticket, totais, porUnidadeAteAgora, composicao, agendaAteOFim] = await Promise.all([
       // A agenda vai até o FIM do período, como a aba Agenda dos Relatórios (C5, F68).
       getRelatorioDosModulos({ ...janela, to: aba === 'agenda' ? periodo.fullTo : periodo.to, prevFrom: periodo.prevFrom, prevTo: periodo.prevTo, aba, granularidade: periodo.granularity === 'hour' ? 'hour' : 'day', recorte }),
-      aba === 'clientes' ? getTicketMedio(doDinheiro) : Promise.resolve(null),
+      aba === 'clientes' ? getTicketMedio(janela) : Promise.resolve(null),
       // D1 da 24ª [3]: a receita e a despesa do período (a conta do núcleo, a do
       // Financeiro) e, por unidade, a de `getByBranch` — o "Por unidade" do
       // Financeiro da rede. Na agenda, o mesmo núcleo dá o aproveitamento (até agora).
       aba === 'financeiro' || aba === 'agenda' ? getCoreDosModulos({ ...janela, recorte }) : Promise.resolve(null),
-      (aba === 'financeiro' && !recorteProprio) || (aba === 'agenda' && recorte.agenda === null)
+      aba === 'financeiro' || aba === 'agenda'
         ? getByBranch({ tenantId: c.ctx.tenantId!, from: periodo.from, to: periodo.to }).then(l => l.filter(b => noRecorte.has(b.branchId)))
         : Promise.resolve(null),
       // A despesa por categoria: a composição do Financeiro (sem o estorno, F59).
-      aba === 'financeiro' && !recorteProprio ? getComposicaoFinanceira({ tenantId: c.ctx.tenantId!, branchIds, from: periodo.from, to: periodo.to }) : Promise.resolve(null),
+      aba === 'financeiro' ? getComposicaoFinanceira({ tenantId: c.ctx.tenantId!, branchIds, from: periodo.from, to: periodo.to }) : Promise.resolve(null),
       // A41 da 24ª [4]: a taxa de conclusão é a dos Relatórios, até o FIM do período.
       aba === 'agenda' ? getCoreDosModulos({ ...janela, to: periodo.fullTo, recorte }) : Promise.resolve(null),
     ])
@@ -237,8 +207,7 @@ export const indicadores: FerramentaDeLeitura<{
         receitaPorUnidade: r.receitaPorUnidade.map(x => ({ unidade: unidade(x.branchId), atual: dinheiro(x.atual), anterior: dinheiro(x.anterior) })),
         receitaPorFormaDePagamento: r.receitaPorForma.map(x => ({ forma: x.forma, valor: dinheiro(x.valor) })),
         receitaPorCategoria: r.receitaPorCategoria.map(x => ({ categoria: x.categoria, valor: dinheiro(x.valor) })),
-        // A despesa não se atribui a ela com o financeiro "só os meus" (como na visão geral).
-        ...(recorteProprio || !totais ? {} : {
+        ...(!totais ? {} : {
           despesas: dinheiro(totais.expensesCash),
           despesaPorUnidade: (porUnidadeAteAgora ?? []).map(b => ({ unidade: unidade(b.branchId), valor: dinheiro(b.expensesCash) })),
           despesaPorCategoria: (composicao?.despesas ?? []).map(x => ({ categoria: x.chave, valor: dinheiro(x.valor) })),
@@ -277,9 +246,7 @@ export const indicadores: FerramentaDeLeitura<{
           : {}),
       },
       estoque: {
-        // O saldo e o valor do estoque não se atribuem a ela: com "só os meus",
-        // só o insumo dos atendimentos dela.
-        ...(recorteProprio ? {} : { valorEmEstoque: dinheiro(r.estoque.valorEmEstoque), itensCriticos: r.estoque.criticos, zerados: r.estoque.zerados }),
+        valorEmEstoque: dinheiro(r.estoque.valorEmEstoque), itensCriticos: r.estoque.criticos, zerados: r.estoque.zerados,
         consumoNoPeriodo: dinheiro(r.consumoTotal),
         maisConsumidos: top(r.estoque.maisConsumidos, 10).map(x => ({ ...x, valor: dinheiro(x.valor) })),
       },

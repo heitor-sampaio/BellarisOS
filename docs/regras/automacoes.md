@@ -38,7 +38,7 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   com as Automações em Ver e "A rede inteira" (`private.sessao_ve_o_modulo`,
   migration `20261124400002`) — antes qualquer membro da rede lia a corrente
   inteira, com o texto da mensagem recebida (`conversa.mensagem_recebida`)
-  que o "só os meus" do CRM esconde. As telas (`/admin/automacoes` e
+  de quem não tem o CRM. As telas (`/admin/automacoes` e
   `/admin/automacoes/eventos`) escutam `automacoes_sinais` (uma linha por
   rede, sem conteúdo, marcada por gatilho no fato novo, na execução e na
   automação — `20261124400001`) e recarregam pelo servidor; `domain_events` e

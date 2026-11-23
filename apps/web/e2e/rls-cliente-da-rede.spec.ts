@@ -107,9 +107,10 @@ test('e não altera a ficha pela sessão — quem altera é a action, pelo servi
   expect(lida?.city).not.toBe(cidade)
 })
 
-// Os injetáveis são PRONTUÁRIO, módulo escopável: desde 18/11 (ATD-P01) a
-// sessão não os lê de jeito nenhum, nem com o Prontuário — quem lê é o
-// servidor (lib/injetaveis/alcance.ts), que aplica a rede e o "só os meus".
+// Os injetáveis são PRONTUÁRIO: desde 18/11 (ATD-P01) a sessão não os lê de
+// jeito nenhum, nem com o Prontuário — quem lê é o servidor
+// (lib/injetaveis/alcance.ts), que aplica a rede e a permissão (a sessão só
+// lê sinais, o Heitor, 19/11).
 // Prova completa: e2e/rls-sessao-so-le-prontuario-e-automacoes.spec.ts.
 test('as aplicações de injetáveis não se leem pela sessão, nem com o Prontuário (é o servidor)', async () => {
   const { data, error } = await comoMembro(membroDeA!).from('injectable_applications').select('id').eq('client_id', fichaDeB)

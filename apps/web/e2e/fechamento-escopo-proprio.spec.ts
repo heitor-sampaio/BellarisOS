@@ -15,6 +15,11 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  * Decisão do Heitor: o Fechamento (página e menu) pede quem RECEBE (`cashier`)
  * ou o financeiro com escopo de TODOS; a aba Financeiro da ficha, com "só os
  * próprios", mostra só o que é dos atendimentos dela — totais incluídos.
+ *
+ * Sem o "só os meus" (SM1/SM2, o Heitor, 2026-11-23): o Fechamento é de quem
+ * tem o PDV em Gerenciar ou o Financeiro em Ver; quem atende sem o Financeiro
+ * tem só a vista pessoal (as Minhas comissões), que não abre o Fechamento. Na
+ * ficha, o Financeiro em Ver vê os atendimentos de todos.
  */
 
 const marca = Date.now().toString(36)
@@ -52,17 +57,18 @@ async function atendidoEPago(profissionalId: string, valor: number, dias: number
 test.beforeAll(async () => {
   rede = await criarOutraRede(`fp${marca}`)
   slug = (await db().from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
-  // A matriz do cargo-modelo Profissional (private.cargos_modelo_semear).
+  // Atende e não tem o Financeiro: só a vista pessoal dele (SM2).
   profissional = await criarMembro(`fpp${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Profissional',
     permissoes: [
-      { modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' }, { modulo: 'clients', nivel: 'VIEW' },
-      { modulo: 'medical_records', nivel: 'MANAGE', escopo: 'OWN' }, { modulo: 'financial', nivel: 'VIEW', escopo: 'OWN' },
+      { modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' },
+      { modulo: 'medical_records', nivel: 'MANAGE' },
     ],
+    atendeEm: [rede.branchId],
   })
   financeiro = await criarMembro(`fpf${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Financeiro',
-    permissoes: [{ modulo: 'financial', nivel: 'VIEW', escopo: 'ALL' }, { modulo: 'clients', nivel: 'VIEW' }],
+    permissoes: [{ modulo: 'financial', nivel: 'VIEW' }, { modulo: 'clients', nivel: 'VIEW' }],
   })
   cliente = await rede.criarCliente('Mariana')
   await atendidoEPago(profissional.userId, 100, 2)
@@ -76,7 +82,7 @@ test.afterAll(async () => {
 test.describe.serial('o dinheiro da unidade é de quem vê a unidade inteira', () => {
   // A ficha compila na primeira visita do dev: passa do minuto padrão.
   test.setTimeout(150_000)
-  test('a profissional ("só os próprios") não abre o Fechamento do dia, nem pelo menu nem pela URL', async ({ browser }) => {
+  test('quem atende sem o Financeiro (a vista pessoal) não abre o Fechamento do dia, nem pelo menu nem pela URL', async ({ browser }) => {
     await como(profissional!, browser, async p => {
       await p.goto(`/${slug}/dashboard`)
       await expect(p.getByRole('navigation').getByText('Agenda')).toBeVisible()
@@ -87,7 +93,7 @@ test.describe.serial('o dinheiro da unidade é de quem vê a unidade inteira', (
     })
   })
 
-  test('o financeiro com escopo de todos abre', async ({ browser }) => {
+  test('quem tem o Financeiro em Ver abre', async ({ browser }) => {
     await como(financeiro!, browser, async p => {
       await p.goto(`/${slug}/dashboard`)
       await p.getByRole('navigation').getByText('Fechamento do dia').click()
@@ -96,16 +102,10 @@ test.describe.serial('o dinheiro da unidade é de quem vê a unidade inteira', (
     })
   })
 
-  test('na ficha, a aba Financeiro da profissional mostra só os atendimentos dela, com os totais', async ({ browser }) => {
-    await como(profissional!, browser, async p => {
-      await p.goto(`/${slug}/clients/${cliente}?aba=financeiro`)
-      await expect(p.locator(`[data-lancamento="${lancamentos[100]}"]`)).toBeVisible()
-      await expect(p.locator(`[data-lancamento="${lancamentos[250]}"]`)).toHaveCount(0)
-      await expect(p.locator('[data-total="pago"]')).toContainText('100,00')
-    })
-    // O controle: quem vê todos vê os dois.
+  test('na ficha, a aba Financeiro de quem tem o Financeiro em Ver mostra os atendimentos de todos, com os totais', async ({ browser }) => {
     await como(financeiro!, browser, async p => {
       await p.goto(`/${slug}/clients/${cliente}?aba=financeiro`)
+      await expect(p.locator(`[data-lancamento="${lancamentos[100]}"]`)).toBeVisible()
       await expect(p.locator(`[data-lancamento="${lancamentos[250]}"]`)).toBeVisible()
       await expect(p.locator('[data-total="pago"]')).toContainText('350,00')
     })

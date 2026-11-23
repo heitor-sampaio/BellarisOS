@@ -197,20 +197,6 @@ describe('A17: o cargo salvo confirma, e o resumo diz o Copilot', () => {
   })
 })
 
-describe('A18: o cadastro de quem atende diz que o cargo não mostra as comissões', () => {
-  it('o texto', async () => {
-    const { SEM_MINHAS_COMISSOES_NO_CADASTRO } = await import('@/lib/permissions-copy')
-    expect(SEM_MINHAS_COMISSOES_NO_CADASTRO).toContain('a pessoa não verá as próprias comissões')
-  })
-  it('as duas telas de cadastro', () => {
-    for (const f of ['components/admin/team-form.tsx', 'components/branch/team-form.tsx']) {
-      expect(ler(f)).toMatch(/naoVeAsComissoes[\s\S]{0,400}SEM_MINHAS_COMISSOES_NO_CADASTRO/)
-    }
-    expect(ler('app/admin/team/page.tsx')).toContain('naoVeAsComissoes')
-    expect(ler('app/[slug]/team/page.tsx')).toContain('naoVeAsComissoes')
-  })
-})
-
 describe('A19: o card da unidade sem cidade avisa', () => {
   it('o texto', () => {
     expect(ler('components/admin/settings-branches.tsx')).toContain('Sem cidade: complete o endereço.')

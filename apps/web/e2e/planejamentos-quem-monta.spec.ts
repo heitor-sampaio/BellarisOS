@@ -13,7 +13,9 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  *
  * PT2 (Bloco Plano de tratamento, 2026-11-14): quem monta deixou de ser quem
  * tem o Prontuário em Gerenciar — é quem ATENDE na unidade (o "Atende" da
- * Equipe). A "profissional" daqui atende; o texto diz o "Atende".
+ * Equipe). UM3 (o Heitor, 2026-11-23): quem monta é quem tem o Atendimento
+ * em Gerenciar na unidade; o "Atende" não conta. A "profissional" daqui tem o
+ * Atendimento em Gerenciar; o texto diz o Atendimento.
  */
 
 const marca = Date.now().toString(36)
@@ -39,8 +41,7 @@ test.beforeAll(async () => {
   })
   profissional = await criarMembro(`qmp${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Profissional',
-    atendeEm: [rede.branchId],
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'medical_records', nivel: 'MANAGE' }],
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'atendimento', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'medical_records', nivel: 'MANAGE' }],
   })
 })
 test.afterAll(async () => {
@@ -53,10 +54,10 @@ test('A18: quem tem a Agenda sem o Prontuário vê na aba Planejamento quem mont
     await expect(p.getByText('Nenhum plano ainda')).toBeVisible()
     // Quem monta mora na dica do vazio (2026-11-16).
     await p.getByRole('button', { name: 'Quem monta o plano' }).hover()
-    await expect(p.getByText(/Quem monta o plano é quem atende nesta unidade/)).toBeVisible()
+    await expect(p.getByText(/Quem monta o plano é quem tem o Atendimento em Gerenciar nesta unidade/)).toBeVisible()
     await expect(p.getByRole('button', { name: 'Novo plano' })).toHaveCount(0)
   })
-  // Controle: quem atende na unidade vê o botão.
+  // Controle: quem tem o Atendimento em Gerenciar na unidade vê o botão (UM3).
   await como(browser, profissional!, async p => {
     await p.goto(`/${slug}/clients/${cliente}?aba=planejamento`)
     await expect(p.getByRole('button', { name: 'Novo plano' })).toBeVisible()
@@ -74,6 +75,6 @@ test('A18: /planejamentos/novo leva à lista, com o "Novo plano" aberto para que
     await expect(p.getByRole('heading', { name: 'Tratamentos' })).toBeVisible()
     // Quem monta mora na dica do título (2026-11-16).
     await p.getByRole('button', { name: 'Quem monta o plano' }).hover()
-    await expect(p.getByText(/Quem monta o plano é quem atende nesta unidade/)).toBeVisible()
+    await expect(p.getByText(/Quem monta o plano é quem tem o Atendimento em Gerenciar nesta unidade/)).toBeVisible()
   })
 })

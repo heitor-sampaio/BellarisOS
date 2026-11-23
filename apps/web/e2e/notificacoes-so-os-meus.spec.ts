@@ -6,14 +6,11 @@ import { chamarAcaoComFormulario } from './apoio/acao-direta'
 import { diaEmQueAUnidadeAbre } from './apoio/datas'
 
 /**
- * D7 da simulação de 2026-10-28 (o sino): a profissional com a agenda "só os
- * meus" recebia "Novo agendamento" de Luíza, Mariana, Bianca e Helena — todas
- * da Paula. `responsaveisPeloModulo` escolhia quem tem MANAGE no módulo e
- * ignorava o escopo.
- *
- * Decisão: quem tem o módulo em OWN só é avisado do registro DELE (no
- * agendamento, quando o profissional é ele — o "envolvido direto"). Quem tem
- * ALL, como antes. Quem agendou não é avisado do que fez.
+ * O sino do agendamento novo. Era a D7 da simulação de 2026-10-28: quem tinha
+ * a agenda "só os meus" só era avisado do registro DELE. Sem o "só os meus"
+ * (SM1, o Heitor, 2026-11-23), quem tem a Agenda em Gerenciar é responsável
+ * por todos os da unidade e recebe os dois; o profissional do agendamento é
+ * avisado do dele (o "envolvido direto"). Quem agendou não é avisado do que fez.
  */
 
 const marca = Date.now().toString(36)
@@ -40,19 +37,19 @@ test.beforeAll(async () => {
   rede = await criarOutraRede(`no${marca}`)
   slug = (await db().from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
   expect((await db().from('users').update({ branch_id: rede.branchId, provides_services: true }).eq('id', rede.professionalId)).error).toBeNull()
-  // Como a Renata: da rede, agenda MANAGE "só os meus".
+  // Como a Renata: da rede, atende, com a Agenda em Gerenciar.
   propria = await criarMembro(`nop${marca}`, {
     tenant: rede.tenantId, rotulo: 'Profissional',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' }, { modulo: 'clients', nivel: 'VIEW' }],
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }],
   })
   expect((await db().from('users').update({ provides_services: true }).eq('id', propria.userId)).error).toBeNull()
   gerente = await criarMembro(`nog${marca}`, {
     tenant: rede.tenantId, rotulo: 'Gerente',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }],
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }],
   })
   recepcao = await criarMembro(`nor${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Recepção',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'clients', nivel: 'VIEW' }],
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }],
   })
 })
 test.afterAll(async () => {
@@ -65,7 +62,8 @@ test.afterAll(async () => {
   await propria?.limpar(); await gerente?.limpar(); await recepcao?.limpar(); await rede?.limpar()
 })
 
-test('"só os meus" não recebe o aviso do agendamento de outra; recebe o dela; quem tem ALL recebe os dois', async ({ browser }) => {
+// Sem o "só os meus" (SM1, o Heitor, 2026-11-23): a Agenda em Gerenciar é avisada de todos.
+test('quem tem a Agenda em Gerenciar recebe o aviso do agendamento dela e o de outra; quem agendou, não', async ({ browser }) => {
   const agendar = async (p: Page, rotulo: string, professionalId: string, hora: string) => {
     const cliente = await rede!.criarCliente(rotulo)
     const r = await chamarAcaoComFormulario(p, 'actions/appointments.ts', 'addAppointment', `/${slug}/agenda`, [undefined], {
@@ -82,11 +80,11 @@ test('"só os meus" não recebe o aviso do agendamento de outra; recebe o dela; 
     dela    = await agendar(p, 'Helena', propria!.userId, '11:00')
   })
 
-  // O aviso sai em after(): espera o de quem tem ALL, que é o controle.
-  await expect.poll(() => avisos(gerente!.userId, daOutra), { message: 'a gerente (ALL) é avisada' }).toBe(1)
+  // O aviso sai em after(): espera o da gerente, que é o controle.
+  await expect.poll(() => avisos(gerente!.userId, daOutra), { message: 'a gerente é avisada' }).toBe(1)
   await expect.poll(() => avisos(gerente!.userId, dela)).toBe(1)
   await expect.poll(() => avisos(rede!.professionalId, daOutra), { message: 'a profissional do agendamento' }).toBe(1)
-  await expect.poll(() => avisos(propria!.userId, dela), { message: '"só os meus": o dela' }).toBe(1)
-  expect(await avisos(propria!.userId, daOutra), '"só os meus": o de outra não').toBe(0)
+  await expect.poll(() => avisos(propria!.userId, dela), { message: 'o dela' }).toBe(1)
+  await expect.poll(() => avisos(propria!.userId, daOutra), { message: 'o de outra também' }).toBe(1)
   expect(await avisos(recepcao!.userId, daOutra), 'quem agendou não').toBe(0)
 })

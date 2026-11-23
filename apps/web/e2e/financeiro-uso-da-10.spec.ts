@@ -23,7 +23,10 @@ let slug = ''
 let dona: MembroDeTeste | null = null
 let ana = ''
 const ids: Record<string, string> = {}
-const meioDia = (dias: number) => new Date(Date.now() + dias * 86_400_000).toISOString()
+// A lista de "Este mês" mostra o em aberto pelo VENCIMENTO no mês: a parcela vence
+// no mês corrente (até o dia 28), não "daqui a 10 dias" — depois do dia ~20 isso
+// caía no mês seguinte e o A22 falhava pela data, não pelo sistema (23/11).
+const vencimentoNoMes = () => { const d = new Date(); d.setUTCDate(Math.min(d.getUTCDate() + 2, 28)); d.setUTCHours(15, 0, 0, 0); return d.toISOString() }
 
 async function como(browser: Browser, m: { estado: string }, fn: (p: Page) => Promise<void>, viewport?: { width: number; height: number }) {
   const ctx = await browser.newContext({ storageState: m.estado, acceptDownloads: true, ...(viewport ? { viewport } : {}) })
@@ -49,7 +52,7 @@ test.beforeAll(async () => {
   const { data, error } = await b.from('financial_transactions').insert([
     { ...base, client_id: ana, type: 'INCOME', category: 'Atendimento', description: 'Limpeza de pele', amount: 1000, is_paid: true, paid_at: agora, payment_method: 'PIX' },
     { ...base, type: 'EXPENSE', category: 'Folha', description: 'Folha de novembro', amount: 14000, is_paid: true, paid_at: agora, payment_method: 'PIX' },
-    { ...base, client_id: ana, type: 'INCOME', category: 'Plano de tratamento', description: 'Plano de tratamento — parcela 2/3', amount: 200, is_paid: false, due_date: meioDia(10), parcela_numero: 2, parcela_total: 3 },
+    { ...base, client_id: ana, type: 'INCOME', category: 'Plano de tratamento', description: 'Plano de tratamento — parcela 2/3', amount: 200, is_paid: false, due_date: vencimentoNoMes(), parcela_numero: 2, parcela_total: 3 },
     { ...base, client_id: ana, type: 'INCOME', category: 'Atendimento', description: 'Drenagem', amount: 0, loyalty_discount: 180, is_paid: true, paid_at: agora },
   ]).select('id, description')
   expect(error).toBeNull()

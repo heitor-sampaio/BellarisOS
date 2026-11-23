@@ -46,8 +46,8 @@ export function PainelPlanejamento({
   /** A anotação clínica do plano: o Prontuário em Gerenciar (PT2). */
   podeAnotarNoPlano?: boolean
   /**
-   * O mapa de injetáveis é PRONTUÁRIO (§9.4): sem `medical_records: VIEW` — e,
-   * no "só os meus", fora da cliente dela — a sub-aba nem aparece. É a decisão
+   * O mapa de injetáveis é PRONTUÁRIO (§9.4): sem `medical_records: VIEW` a
+   * sub-aba nem aparece. É a decisão
    * clínica da tela que monta o painel (`canViewRecords`). Sem isto, a
    * recepção abria a sub-aba e ficava em "Carregando…" (D7, 2026-10-29).
    */

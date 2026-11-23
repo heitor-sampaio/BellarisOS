@@ -1,11 +1,10 @@
 import 'server-only'
 import { z } from 'zod/v4'
-import { can, ownerFilter, podeReceber, temRecurso, unidadesDoContexto } from '@/lib/auth'
+import { can, podeReceber, temRecurso, unidadesDoContexto } from '@/lib/auth'
 import { ler } from '@/lib/db'
 import { creditosDoCliente } from '@/lib/creditos/credito'
 import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
 import { getClientesParaReativarDoRecorte, getCreditoInternoDoCliente } from '@/lib/metrics/unidade'
-import { recorteDosModulos } from '@/lib/metrics/escopo'
 import { addDaysTZ } from '@/lib/datetime'
 import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
 import { temTag } from '@/lib/tags/escolha'
@@ -61,19 +60,16 @@ export const cliente: FerramentaDeLeitura<{ cliente: string }> = {
     const verAgenda = can(c.ctx, 'agenda', 'VIEW')
     // Os atendimentos nas unidades DELA (EQ1a: uma ou várias); da rede, todos (CP1).
     const minhas = unidadesDoContexto(c.ctx)
-    const dono = ownerFilter(c.ctx, 'agenda')
     const [proximos, ultimos, creditos, internos, pontos] = await Promise.all([
       verAgenda ? (() => {
         let q = c.admin.from('appointments').select('id, scheduled_at, status, procedure_id, professional_id, branch_id')
           .eq('client_id', ficha.id).gte('scheduled_at', agora).in('status', ['SCHEDULED', 'CONFIRMED', 'ARRIVED']).order('scheduled_at').limit(5)
-        if (dono) q = q.eq('professional_id', dono)
         if (minhas) q = q.in('branch_id', minhas)
         return ler(q, 'ler os próximos atendimentos')
       })() : Promise.resolve([]),
       verAgenda ? (() => {
         let q = c.admin.from('appointments').select('id, scheduled_at, status, procedure_id, professional_id, branch_id')
           .eq('client_id', ficha.id).lt('scheduled_at', agora).order('scheduled_at', { ascending: false }).limit(5)
-        if (dono) q = q.eq('professional_id', dono)
         if (minhas) q = q.in('branch_id', minhas)
         return ler(q, 'ler os últimos atendimentos')
       })() : Promise.resolve([]),
@@ -188,11 +184,10 @@ export const clientes: FerramentaDeLeitura<{
       // A MESMA regra do "Reativar clientes" do dashboard (r3-f13-10, o Heitor:
       // "os dois têm de dar a mesma resposta"): sempre a rede inteira — sem
       // visita em NENHUMA unidade —, também com a unidade pedida (copilot.md).
-      // E, como lá, com a agenda "só os meus", as dela.
       const desde = addDaysTZ(new Date(), -(args.dias ?? 90), fuso)
       const r = await getClientesParaReativarDoRecorte({
         tenantId: tenant, unidade: u.unidade ? { id: u.unidade.id, name: u.unidade.name } : null,
-        desde, limite: 50, professionalId: recorteDosModulos(c.ctx).agenda,
+        desde, limite: 50,
       })
       total = r.total
       lista = r.lista.map(x => ({

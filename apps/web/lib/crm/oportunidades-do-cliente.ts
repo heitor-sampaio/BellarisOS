@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { can, ownerFilter, temRecurso } from '@/lib/auth'
+import { can, temRecurso } from '@/lib/auth'
 import type { TenantContext } from '@estetica-os/types'
 import type { ClientOpportunity } from '@/components/branch/client-profile'
 
@@ -15,11 +15,9 @@ import type { ClientOpportunity } from '@/components/branch/client-profile'
  * estourar, e a ficha mostraria "sem funil" para todo mundo, em silêncio.
  *
  * As oportunidades são dado do CRM, não da ficha (CRM-03, varredura de
- * 18/11): sem o CRM (ou sem as oportunidades no plano), nenhuma; e o "só os
- * meus" do CRM recorta como no quadro e na linha do tempo (`ownerFilter`,
- * CLAUDE.md §11; o Heitor, 28/10: "Quem tem 'só os meus' vê 'só os meus', em
- * qualquer lugar"). A falha da leitura é `null` — a aba diz que não leu, em
- * vez de "Nenhuma oportunidade" (princípio 3).
+ * 18/11): sem o CRM (ou sem as oportunidades no plano), nenhuma. A falha da
+ * leitura é `null` — a aba diz que não leu, em vez de "Nenhuma oportunidade"
+ * (princípio 3).
  */
 export async function oportunidadesDoCliente(
   ctx: TenantContext,
@@ -28,14 +26,12 @@ export async function oportunidadesDoCliente(
   if (!can(ctx, 'crm', 'VIEW') || !temRecurso(ctx, 'oportunidades')) return []
   const admin = createAdminClient()
 
-  let q = admin
+  const { data: leads, error } = await admin
     .from('leads')
     .select('id, crm_stage_id, owner_id, created_at, value')
     .eq('tenant_id', ctx.tenantId!)
     .eq('client_id', clientId)
-  const owner = ownerFilter(ctx, 'crm')
-  if (owner) q = q.or(`owner_id.is.null,owner_id.eq.${owner}`)
-  const { data: leads, error } = await q.order('created_at', { ascending: false })
+    .order('created_at', { ascending: false })
 
   if (error) {
     console.error('[oportunidadesDoCliente]', error.message)

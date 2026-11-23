@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getTenantContext, podeVerRelatorio, alcancaUnidade, isOwnScope } from '@/lib/auth'
+import { getTenantContext, podeVerRelatorio, alcancaUnidade } from '@/lib/auth'
 import { unidadesParaLer, periodoDaTela, nomeNaTela } from '@/lib/unidades/da-tela'
 import { resolvePeriod } from '@/lib/metrics'
 import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
-import { recorteDosModulos } from '@/lib/metrics/escopo'
 import { getTodasAsVendas, ehTipoDeVenda } from '@/lib/metrics/vendas'
 import { tagsDaUrl } from '@/lib/metrics/tags-do-relatorio'
 import { nomeDoCsvDeVendas, CABECALHO_DO_CSV_DE_VENDAS, colunasDoCsvDeVendas } from '@/lib/metrics/vendas-comum'
@@ -13,9 +12,8 @@ import { nomeDoCsvDeVendas, CABECALHO_DO_CSV_DE_VENDAS, colunasDoCsvDeVendas } f
  * Vendas — período, unidade e tipo —, sem página.
  *
  * Toda rota de /api se defende sozinha (§6): sessão, `reports: VIEW` com a
- * aba Vendas no cargo, a unidade da rede e ao alcance. Sem unidade, a rede
- * inteira — só para quem é da rede e vê o consolidado (o escopo "só a minha
- * unidade" de relatórios).
+ * aba Vendas no cargo, a unidade da rede e ao alcance. Sem unidade, as
+ * unidades ao alcance da pessoa (a rede inteira, para quem é da rede).
  */
 
 export const dynamic = 'force-dynamic'
@@ -56,7 +54,6 @@ export async function GET(req: NextRequest) {
     }
     branchIds = [pedida]
   } else {
-    if (isOwnScope(ctx, 'reports')) return NextResponse.json({ error: 'Escolha uma unidade.' }, { status: 403 })
     branchIds = [...nomeDe.keys()].filter(id => alcancaUnidade(ctx, id))
   }
 
@@ -67,10 +64,7 @@ export async function GET(req: NextRequest) {
   const vendas = await getTodasAsVendas({
     tenantId: ctx.tenantId, branchIds, from: periodo.from, to: periodo.fullTo,
     tipo: ehTipoDeVenda(tipo) ? tipo : null,
-    // A venda é dinheiro: segue o FINANCEIRO (cada número no seu módulo,
-    // 2026-10-29) — com ele "só os meus", as vendas DELA, o mesmo recorte da
-    // aba. A exportação não abre o que a tela fecha.
-    professionalId: recorteDosModulos(ctx).financeiro,
+    // As vendas de todos, nas unidades ao alcance: o mesmo recorte da aba.
     // O filtro de Tags da aba (a cliente tem todas): a exportação é o que a tela mostra.
     tags: tagsDaUrl(q.get('tags')),
   })

@@ -6,12 +6,12 @@ import { diaEmQueAUnidadeAbre } from './apoio/datas'
 
 /**
  * D20 (atendimento.md, "Quem faz o quê na agenda"): a Agenda em Gerenciar
- * remarca; com "só os meus", só os próprios. A action já remarcava o próprio
- * (`remarcarCore`, pelo escopo), mas a janela escondia o "Remarcar" de quem
- * tem "só os meus" (F75 — a sobra da F65).
+ * remarca. A janela escondia o "Remarcar" da profissional que remarcava o
+ * próprio (F75 — a sobra da F65). Sem o "só os meus" (SM1, o Heitor,
+ * 2026-11-23, que troca a D20): a Agenda em Gerenciar remarca qualquer um.
  *
- * Numa rede [e2e] própria: uma profissional da rede com a Agenda em Gerenciar
- * "só os meus", na agenda da rede.
+ * Numa rede [e2e] própria: uma profissional da rede com a Agenda em
+ * Gerenciar, na agenda da rede.
  */
 
 const marca = `rp${Date.now().toString(36)}`
@@ -31,7 +31,7 @@ test.beforeAll(async () => {
   expect((await db().from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede.tenantId)).error).toBeNull()
   pro = await criarMembro(`p${marca}`, {
     tenant: rede.tenantId, rotulo: 'Profissional',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' }, { modulo: 'clients', nivel: 'VIEW' }],
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }],
   })
   expect((await db().from('users').update({ provides_services: true, atende_em: [rede.branchId] }).eq('id', pro.userId)).error).toBeNull()
 })
@@ -40,7 +40,7 @@ test.afterAll(async () => {
   await pro?.limpar(); await rede?.limpar()
 })
 
-test('D20: com "só os meus" e Gerenciar, a janela mostra o "Remarcar" do próprio, e remarca', async ({ browser }) => {
+test('D20: com a Agenda em Gerenciar, a janela mostra à profissional o "Remarcar" do próprio, e remarca', async ({ browser }) => {
   test.setTimeout(120_000)
   const cliente = await rede!.criarCliente('Remarcada')
   const { data: ag, error } = await db().from('appointments').insert({

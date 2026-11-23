@@ -50,8 +50,8 @@ test.beforeAll(async () => {
   carolina = await criarMembro(`ag9c${marca}`, { tenant: rede.tenantId, donoDaRede: true, rotulo: 'Carolina', permissoes: [] })
   expect((await db().from('users').update({ atende_em: [moinhos, menino] }).eq('id', carolina.userId)).error).toBeNull()
   // A Michele atende só na Menino Deus; a Priscila, só na Moinhos.
-  michele = await criarMembro(`ag9m${marca}`, { tenant: rede.tenantId, branchId: menino, rotulo: 'Michele', permissoes: [{ modulo: 'agenda', nivel: 'VIEW', escopo: 'OWN' }] })
-  priscila = await criarMembro(`ag9p${marca}`, { tenant: rede.tenantId, branchId: moinhos, rotulo: 'Priscila', permissoes: [{ modulo: 'agenda', nivel: 'VIEW', escopo: 'OWN' }] })
+  michele = await criarMembro(`ag9m${marca}`, { tenant: rede.tenantId, branchId: menino, rotulo: 'Michele', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }] })
+  priscila = await criarMembro(`ag9p${marca}`, { tenant: rede.tenantId, branchId: moinhos, rotulo: 'Priscila', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }] })
   expect((await db().from('users').update({ atende_em: [menino] }).eq('id', michele.userId)).error).toBeNull()
   expect((await db().from('users').update({ atende_em: [moinhos] }).eq('id', priscila.userId)).error).toBeNull()
   // A sala da Moinhos, criada antes de qualquer tela (o cache das salas).

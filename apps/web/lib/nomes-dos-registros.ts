@@ -17,7 +17,7 @@ const LOTE = 150
  * profissional da rede (que atende em todas, §9.1) viravam "—".
  *
  * Aqui só os nomes, pelo cliente de serviço, dos ids que vieram dos registros
- * que a sessão já leu (recortados por rede, unidade e `ownerFilter`), e
+ * que a sessão já leu (recortados por rede e unidade), e
  * sempre com a rede: não abre registro nenhum que a tela já não mostrava.
  */
 export async function nomesDosRegistros(

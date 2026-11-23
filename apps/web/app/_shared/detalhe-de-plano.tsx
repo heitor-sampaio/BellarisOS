@@ -59,7 +59,7 @@ export async function DetalheDePlano({
       slug={slug}
       procedures={procs.procedures}
       availableProducts={procs.products}
-      // PT2: monta quem ATENDE na unidade do plano (não é permissão); a
+      // UM3: monta quem tem o Atendimento em Gerenciar na unidade do plano; a
       // anotação clínica dentro dele segue do Prontuário em Gerenciar.
       podeEditar={montaPlano(ctx, plano.unidadeId)}
       podeAnotar={can(ctx, 'medical_records', 'MANAGE')}

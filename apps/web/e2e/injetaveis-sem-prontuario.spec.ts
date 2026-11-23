@@ -31,7 +31,7 @@ async function como(browser: Browser, quem: MembroDeTeste, fn: (p: Page) => Prom
 }
 
 const balcao: Permissao[] = [
-  { modulo: 'agenda',  nivel: 'MANAGE', escopo: 'ALL' },
+  { modulo: 'agenda',  nivel: 'MANAGE' },
   { modulo: 'clients', nivel: 'MANAGE' },
   { modulo: 'cashier', nivel: 'MANAGE' },
 ]
@@ -44,7 +44,7 @@ test.beforeAll(async () => {
   recepcao = await criarMembro(`ispr${marca}`, { tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Recepção', permissoes: balcao })
   comProntuario = await criarMembro(`ispp${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Com prontuário',
-    permissoes: [...balcao, { modulo: 'medical_records', nivel: 'VIEW', escopo: 'ALL' }],
+    permissoes: [...balcao, { modulo: 'medical_records', nivel: 'VIEW' }],
   })
 })
 

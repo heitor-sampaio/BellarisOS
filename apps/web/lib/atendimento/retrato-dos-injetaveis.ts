@@ -9,7 +9,7 @@ import { flattenFields, type AnamnesisRow, type InjectableMapValue } from '@/lib
  * dia, mesmo que o planejamento mude depois.
  *
  * O retrato sai do planejamento GRAVADO, lido no servidor (com a rede, a
- * unidade, a cliente do atendimento e o "só os meus" conferidos): o navegador
+ * unidade e a cliente do atendimento conferidas): o navegador
  * diz qual planejamento, nunca os pontos. A resposta antiga (o mapa solto,
  * sem `planejamento`) fica como está.
  */

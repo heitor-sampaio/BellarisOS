@@ -14,8 +14,8 @@ import type { ResolvedPermissions } from '@estetica-os/types'
  *   o plano se cobra na comanda do PDV. O menu e o resumo seguem a página.
  * - A1 [3]: a linha do PDV ficava com "Sem acesso" marcado com o Financeiro em
  *   Gerenciar, que o abre. Mostra o nível que vale, travado, com o porquê.
- * - A2 [3]: nada dizia, ao montar o cargo, que "Agenda só a própria +
- *   Prontuário de todos" conclui só os próprios atendimentos.
+ * - A2 [3]: o resumo do cargo diz quem inicia e conclui (revisto em 23/11:
+ *   sem o "só os meus", SM1, é o Atendimento em Gerenciar, UM2).
  * - A3 [3]: o "Repassar todos" para quem atende numa unidade só confirmava
  *   "Desativar" com 4 de 5 ficando com a pessoa desativada.
  * - A21 [7]: o Planejamento mandava "Comece em Nova sessão", e quem destrava
@@ -23,7 +23,7 @@ import type { ResolvedPermissions } from '@estetica-os/types'
  * - A22 [3]: a segunda Avaliação da mesma cliente no mesmo dia nascia sem aviso.
  * - A23 [3]: "O procedimento foi realizado com sucesso?" sem resposta.
  * - A25 [7]: ao iniciar, "Aceitar plano" virava o botão grande.
- * - A26 [3]: "Este atendimento é de outra pessoa que atende" sem dizer quem conclui.
+ * - A26 [3]: saiu com o SM1 (23/11): não há mais "atendimento de outra pessoa".
  * - A27 [7]: a "Semana" da Minha agenda não mostrava nenhum atendimento.
  * - A35 [3]: dois "Documentos" no app — a foto ficava no do Histórico.
  * - A36 [3]: o botão do confirmar mudava de rótulo ao marcar as estrelas.
@@ -70,20 +70,21 @@ describe('A1: o PDV aberto pelo Financeiro mostra o nível que vale, travado', (
   })
 })
 
-describe('A2: o resumo diz que conclui só os próprios atendimentos', () => {
+// Sem o "só os meus" (SM1, o Heitor, 2026-11-23): o Atendimento em Gerenciar inicia e conclui todos;
+// o resumo não fala mais em "só os próprios".
+describe('A2: o resumo diz quem inicia e conclui, sem "só os próprios"', () => {
   // Desde 2026-11-18 (o Heitor: "Agenda é agenda e atendimento é atendimento. Só inicia
   // e conclui atendimento quem tem gerenciar no atendimento"): o módulo Atendimento.
-  it('o texto, com o Atendimento em Gerenciar "só os meus"', async () => {
+  it('o texto, com o Atendimento em Gerenciar', async () => {
     const { conclusaoNoResumo } = await import('@/lib/permissions-copy')
-    const texto = 'Inicia e conclui só os próprios atendimentos: o de outra pessoa que atende, quem tem o Atendimento em Gerenciar de todos.'
-    expect(conclusaoNoResumo({ atendimento: 'MANAGE', medical_records: 'MANAGE' }, { atendimento: 'OWN' })).toBe(texto)
-    expect(conclusaoNoResumo({ atendimento: 'MANAGE', medical_records: 'MANAGE' }, { atendimento: 'ALL' })).toBeNull()
+    expect(conclusaoNoResumo({ atendimento: 'MANAGE', medical_records: 'MANAGE' })).toBeNull()
+    expect(conclusaoNoResumo({ atendimento: 'MANAGE' })).not.toContain('próprios')
     // A Agenda e o Prontuário não iniciam nem concluem.
-    expect(conclusaoNoResumo({ agenda: 'MANAGE', medical_records: 'MANAGE' }, { agenda: 'OWN', medical_records: 'ALL' })).toBeNull()
+    expect(conclusaoNoResumo({ agenda: 'MANAGE', medical_records: 'MANAGE' })).toBeNull()
   })
   it('o resumo do cargo mostra', () => {
     const f = fonte('components/admin/roles-editor.tsx')
-    expect(f).toContain('conclusaoNoResumo(levels, escopos)')
+    expect(f).toContain('conclusaoNoResumo(levels)')
     expect(f).toContain('data-resumo-conclui')
   })
 })
@@ -146,21 +147,6 @@ describe('A25: o plano segue opcional durante o atendimento', () => {
     expect(f).toMatch(/const planoDuranteOAtendimento = !isPackageSession && appointment\.status === 'IN_PROGRESS'/)
     expect(f).toMatch(/const planoSecundario = [^\n]*planoDuranteOAtendimento/)
     expect(f).toContain('data-plano-durante-o-atendimento')
-  })
-})
-
-describe('A26: o atendimento de outra pessoa diz quem conclui', () => {
-  it('o texto', async () => {
-    const { textoDeQuemConcluiODeOutra } = await import('@/lib/equipe/textos-de-quem-pode')
-    expect(textoDeQuemConcluiODeOutra(['Carla Acácia']))
-      .toBe('Quem conclui é quem tem o Atendimento em Gerenciar e a Agenda de todos (Carla Acácia).')
-    expect(textoDeQuemConcluiODeOutra([]))
-      .toBe('Quem conclui é quem tem o Atendimento em Gerenciar e a Agenda de todos.')
-  })
-  it('a tela passa os nomes a quem tem o Prontuário', () => {
-    expect(fonte('app/_shared/sessao-de-atendimento.tsx'))
-      .toMatch(/<AtendimentoDeOutraProfissional[^>]*quemConclui=\{/)
-    expect(fonte('components/branch/atendimento-de-outra-profissional.tsx')).toContain('textoDeQuemConcluiODeOutra(')
   })
 })
 

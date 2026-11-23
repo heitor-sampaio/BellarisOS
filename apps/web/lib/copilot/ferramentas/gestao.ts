@@ -1,6 +1,5 @@
 import 'server-only'
 import { z } from 'zod/v4'
-import { isOwnScope, ownerFilter } from '@/lib/auth'
 import { ler } from '@/lib/db'
 import { addDaysTZ, dayKeyTZ } from '@/lib/datetime'
 import { rotaOportunidade } from '@/lib/rotas'
@@ -26,8 +25,6 @@ export const lancamentos: FerramentaDeLeitura<{
   nome: 'lancamentos',
   tipo: 'leitura',
   modulo: 'financial', nivel: 'VIEW',
-  // "Só as próprias comissões" não é financeiro da clínica: a tela também não mostra.
-  pode: ctx => !isOwnScope(ctx, 'financial'),
   descricao: 'Lançamentos financeiros (contas a receber e a pagar): em aberto (padrão), vencidos, pagos ou todos; receita ou despesa; por período (vencimento, ou pagamento quando "pagos"), unidade ou cliente (id). Até 50. Para TOTAIS do período use a ferramenta indicadores — nunca some estas linhas: a despesa e a receita do período na aba overview; por unidade e por categoria na aba financeiro (despesaPorUnidade, despesaPorCategoria; receitaPorUnidade, receitaPorCategoria). O estorno (tipo "estorno") é o contra-lançamento de um pagamento desfeito: não é despesa nem receita, e fica de fora quando o pedido é só despesa ou só receita.',
   parametros: z.object({
     tipo: z.enum(['receita', 'despesa']).optional(),
@@ -260,9 +257,6 @@ export const oportunidades: FerramentaDeLeitura<{ funil?: string; etapa?: string
     let q = c.admin.from('leads').select('id, name, phone, value, owner_id, crm_stage_id, client_id, updated_at')
       .eq('tenant_id', tenant).in('crm_stage_id', alvoEtapas.map(e => e.id))
       .order('updated_at', { ascending: false }).limit(50)
-    // "Só os meus" do CRM: as suas e as sem dono (a regra do quadro, leadAoAlcance).
-    const dono = ownerFilter(c.ctx, 'crm')
-    if (dono) q = q.or(`owner_id.is.null,owner_id.eq.${dono}`)
     if (args.busca) {
       // Sem os caracteres que mexem no filtro do PostgREST (vírgula, parênteses, aspas).
       const t = args.busca.replace(/[%_\\,()"'.:]/g, '').trim()

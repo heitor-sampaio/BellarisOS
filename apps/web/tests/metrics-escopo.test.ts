@@ -1,26 +1,38 @@
 import { describe, it, expect } from 'vitest'
 import type { TenantContext } from '@estetica-os/types'
-import { recorteDosModulos, juntarNucleos, juntarPorNome, NINGUEM } from '@/lib/metrics/escopo'
+import { recortePessoal, juntarNucleos, juntarPorNome } from '@/lib/metrics/escopo'
 import { EMPTY_CORE, type MetricsCore } from '@/lib/metrics/queries'
+import { NO_PERMISSIONS } from '@/lib/permissions'
 
 /**
- * Cada número segue o escopo do SEU módulo (decisão do Heitor, 2026-10-29):
- * agenda e clientes pelo escopo da agenda, dinheiro pelo do financeiro, funil
- * pelo do CRM. "Com a agenda ALL e o financeiro OWN, os atendimentos são os
- * da clínica e o faturamento é o dela."
+ * Cada número segue o SEU módulo (decisão do Heitor, 2026-10-29): agenda e
+ * clientes pela Agenda, dinheiro pelo Financeiro. Sem o "só os meus" (SM1/SM2,
+ * o Heitor, 2026-11-23): quem tem o módulo vê os de todos; quem atende sem ele
+ * vê os dela (a vista pessoal). O CRM não tem vista pessoal (SM3).
  */
-const ctx = (scopes: Partial<TenantContext['scopes']>, internalUserId: string | null = 'ela') =>
-  ({ scopes: { agenda: 'ALL', financial: 'ALL', crm: 'ALL', medical_records: 'ALL', reports: 'ALL', ...scopes }, internalUserId }) as unknown as TenantContext
+const ctx = (over: Partial<TenantContext> = {}) =>
+  ({ permissions: { ...NO_PERMISSIONS }, internalUserId: 'ela', providesServices: true, isClient: false, ...over }) as unknown as TenantContext
 
-describe('recorteDosModulos', () => {
-  it('agenda de todos e financeiro "só os meus": só o dinheiro é recortado', () => {
-    expect(recorteDosModulos(ctx({ financial: 'OWN' }))).toEqual({ agenda: null, financeiro: 'ela', crm: null })
+describe('recortePessoal', () => {
+  it('com a Agenda e sem o Financeiro, quem atende: só o dinheiro é recortado', () => {
+    expect(recortePessoal(ctx({ permissions: { ...NO_PERMISSIONS, agenda: 'VIEW' } }))).toEqual({ agenda: null, financeiro: 'ela', crm: null })
   })
-  it('agenda "só os meus" e financeiro de todos: só a agenda é recortada', () => {
-    expect(recorteDosModulos(ctx({ agenda: 'OWN' }))).toEqual({ agenda: 'ela', financeiro: null, crm: null })
+  it('com o Financeiro e sem a Agenda, quem atende: só a agenda é recortada', () => {
+    expect(recortePessoal(ctx({ permissions: { ...NO_PERMISSIONS, financial: 'VIEW' } }))).toEqual({ agenda: 'ela', financeiro: null, crm: null })
   })
-  it('o CRM tem o seu recorte, e "só os meus" sem membro não acha ninguém (nunca a rede)', () => {
-    expect(recorteDosModulos(ctx({ crm: 'OWN', agenda: 'OWN' }, null))).toEqual({ agenda: NINGUEM, financeiro: null, crm: NINGUEM })
+  it('com os dois módulos, nada é recortado: o módulo dá tudo', () => {
+    expect(recortePessoal(ctx({ permissions: { ...NO_PERMISSIONS, agenda: 'MANAGE', financial: 'VIEW', crm: 'VIEW' } })))
+      .toEqual({ agenda: null, financeiro: null, crm: null })
+  })
+  it('a comissão de venda, sem atender: o dinheiro é dela, a agenda não', () => {
+    expect(recortePessoal(ctx({ providesServices: false, comissaoDeVenda: true }))).toEqual({ agenda: null, financeiro: 'ela', crm: null })
+  })
+  it('o CRM não tem vista pessoal: sempre todos', () => {
+    expect(recortePessoal(ctx()).crm).toBeNull()
+  })
+  it('fora do plano, nem a vista', () => {
+    const plano = { funcionalidades: [] as string[], limites: { unidades: null, membros: null, whatsapp: null } }
+    expect(recortePessoal(ctx({ plano }))).toEqual({ agenda: null, financeiro: null, crm: null })
   })
 })
 

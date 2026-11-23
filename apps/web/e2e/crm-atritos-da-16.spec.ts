@@ -62,7 +62,7 @@ test.beforeAll(async () => {
   }
   joana = await criarMembro(`cr16j${marca}`, {
     tenant: rede.tenantId, rotulo: 'Comercial',
-    permissoes: [{ modulo: 'crm', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'settings', nivel: 'MANAGE' }],
+    permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'settings', nivel: 'MANAGE' }],
   })
   // Criar funil é configuração da rede toda: só a Admin da rede (o Heitor,
   // 18/11: "Configuração da rede toda só pela conta admin").

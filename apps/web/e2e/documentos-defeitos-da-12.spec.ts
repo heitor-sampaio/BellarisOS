@@ -41,7 +41,7 @@ test.beforeAll(async () => {
   expect(error, 'o contrato de plano da rede').toBeNull()
   gestor = await criarMembro(`doc12g${marca}`, {
     tenant: rede.tenantId, rotulo: 'Gestao',
-    permissoes: [{ modulo: 'cashier', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'documents', nivel: 'MANAGE' }, { modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }],
+    permissoes: [{ modulo: 'cashier', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'documents', nivel: 'MANAGE' }, { modulo: 'agenda', nivel: 'MANAGE' }],
   })
 })
 

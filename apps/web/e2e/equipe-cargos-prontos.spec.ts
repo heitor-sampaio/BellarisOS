@@ -11,6 +11,11 @@ import { apagarRedeCriada } from './apoio/rede-criada'
  * atribuí-los. A dona criou os dela do zero. Decisão do Heitor: virarem
  * modelos editáveis. O "Admin da rede" continua o único de sistema (com o
  * "Não definido", o cargo de quem ainda não tem um).
+ *
+ * Sem o "só os meus" (SM1, o Heitor, 2026-11-23, e a resposta dele à pergunta
+ * dos cargos: o Financeiro e a Agenda "só os meus" viram Sem acesso): nenhum
+ * modelo nasce com escopo próprio; a Recepcionista sem o Financeiro, o
+ * Profissional sem a Agenda e com o Atendimento e o Prontuário em Gerenciar.
  */
 
 const marca = Date.now().toString(36)
@@ -43,8 +48,11 @@ test('a rede nova nasce com os quatro cargos destravados e com permissões', asy
   expect(await nivel('RECEPTIONIST', 'agenda')).toBe('MANAGE:ALL')
   expect(await nivel('RECEPTIONIST', 'cashier')).toBe('MANAGE:ALL')
   expect(await nivel('RECEPTIONIST', 'medical_records')).toBe('NONE')
-  expect(await nivel('PROFESSIONAL', 'medical_records')).toBe('MANAGE:OWN')
-  expect(await nivel('PROFESSIONAL', 'agenda')).toBe('MANAGE:OWN')
+  expect(await nivel('RECEPTIONIST', 'financial')).toBe('NONE')
+  expect(await nivel('PROFESSIONAL', 'medical_records')).toBe('MANAGE:ALL')
+  expect(await nivel('PROFESSIONAL', 'atendimento')).toBe('MANAGE:ALL')
+  expect(await nivel('PROFESSIONAL', 'agenda')).toBe('NONE')
+  expect(await nivel('PROFESSIONAL', 'financial')).toBe('NONE')
   expect(await nivel('FINANCIAL', 'financial')).toBe('MANAGE:ALL')
   expect(await nivel('BRANCH_ADMIN', 'team')).toBe('MANAGE:ALL')
   const { data: abas } = await db().from('role_report_tabs').select('tab').eq('role_id', porChave.FINANCIAL!.id)

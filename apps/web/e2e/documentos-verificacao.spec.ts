@@ -111,7 +111,7 @@ test.describe.serial('documentos: PDF assinado e verificação pública', () => 
       expect(r.headers()['location']).toContain('documentos-assinados')
     })
     const soClientes = await criarMembro(`dvs${marca}`, { tenant: rede!.tenantId, rotulo: 'Sem documentos', permissoes: [{ modulo: 'clients', nivel: 'VIEW' }] })
-    const soCrm = await criarMembro(`dvc${marca}`, { tenant: rede!.tenantId, rotulo: 'Só o CRM', permissoes: [{ modulo: 'crm', nivel: 'MANAGE', escopo: 'ALL' }] })
+    const soCrm = await criarMembro(`dvc${marca}`, { tenant: rede!.tenantId, rotulo: 'Só o CRM', permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }] })
     try {
       const ctx = await browser.newContext({ storageState: soClientes.estado })
       try {

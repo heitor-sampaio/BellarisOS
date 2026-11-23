@@ -5,15 +5,12 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
 
 /**
- * Os planejamentos (planos de tratamento) com a agenda "só os meus".
- *
- * A frente H (2026-10-29) os recortou por `treatment_plans.professional_id`.
- * O Heitor reviu (2026-10-29): "o plano é da cliente, não da profissional".
- * Com a agenda OWN ela vê os planos de TODA cliente que atende — que tem um
- * agendamento com ela, qualquer um, inclusive futuro —, quem quer que tenha
- * montado o plano. É a regra do prontuário OWN (`recusaDoAnexo`,
- * `lib/injetaveis/alcance.ts`): quem cobre uma sessão precisa ver o que foi
- * feito e o que falta. O plano que ELA montou continua dela.
+ * Os planejamentos (planos de tratamento) sem o "só os meus" (SM1, o Heitor,
+ * 2026-11-23). "O plano é da cliente, não da profissional" (o Heitor,
+ * 2026-10-29). Com o Atendimento, ela vê os planos de TODAS as clientes da
+ * unidade ao alcance — as que ela atende, as que não atende e a que
+ * desmarcou com ela —, quem quer que tenha montado o plano; com o Atendimento
+ * em Gerenciar, renomeia (UM3).
  *
  * Vale na lista Planejamentos, na aba da cliente e pelo id.
  */
@@ -22,7 +19,6 @@ const marca = Date.now().toString(36)
 const db = () => banco()
 let rede: OutraRede | null = null
 let ela: MembroDeTeste | null = null
-let todos: MembroDeTeste | null = null
 let slug = ''
 let atendida = ''
 let deOutra = ''
@@ -43,13 +39,9 @@ test.beforeAll(async () => {
   ela = await criarMembro(`plp${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Profissional',
     permissoes: [
-      { modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' },
-      { modulo: 'medical_records', nivel: 'MANAGE', escopo: 'OWN' },
+      { modulo: 'agenda', nivel: 'MANAGE' },
+      { modulo: 'medical_records', nivel: 'MANAGE' },
     ],
-  })
-  todos = await criarMembro(`pla${marca}`, {
-    tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Agenda de todos',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }],
   })
   atendida = await rede.criarCliente('Atendida por ela')
   deOutra = await rede.criarCliente('Só de outra')
@@ -60,8 +52,7 @@ test.beforeAll(async () => {
     status: 'SCHEDULED', source: 'INTERNAL', duration_min: 30, price: 100, scheduled_at: amanha,
   })
   expect(eAg, 'agendamento com ela').toBeNull()
-  // eq-02 (revisão de 2026-11-02): a cliente que DESMARCOU com ela (o único
-  // agendamento com ela está cancelado) não é "dela" — a regra do dashboard.
+  // A cliente que DESMARCOU com ela (o único agendamento com ela está cancelado).
   desmarcou = await rede.criarCliente('Desmarcou com ela')
   const { error: eC } = await db().from('appointments').insert({
     branch_id: rede.branchId, client_id: desmarcou, procedure_id: rede.procedureId, professional_id: ela.userId,
@@ -113,40 +104,21 @@ test.afterAll(async () => {
     if (r.error) falhas.push(`agendamentos: ${r.error.message}`)
   }
   await ela?.limpar()
-  await todos?.limpar()
   await rede?.limpar()
   expect(falhas).toEqual([])
 })
 
-test('a lista de Planejamentos, com a agenda "só os meus", mostra os planos das clientes que ela atende', async ({ browser }) => {
+test('a lista de Planejamentos, com o Atendimento, mostra os planos de todas as clientes — não só as que ela atende', async ({ browser }) => {
   await como(ela!, browser, async p => {
     await p.goto(`/${slug}/planejamentos`)
     await expect(p.getByText(planos.daAtendida.nome), 'o plano da cliente dela, montado por outra').toBeVisible()
     await expect(p.getByText(planos.delaSemAgendamento.nome), 'o plano que ela montou').toBeVisible()
-    await expect(p.getByText(planos.naoAtendida.nome), 'cliente que ela não atende').toHaveCount(0)
-  })
-  await como(todos!, browser, async p => {
-    await p.goto(`/${slug}/planejamentos`)
-    for (const k of ['daAtendida', 'naoAtendida', 'delaSemAgendamento'] as const) {
-      await expect(p.getByText(planos[k].nome)).toBeVisible()
-    }
+    await expect(p.getByText(planos.naoAtendida.nome), 'cliente que ela não atende').toBeVisible()
+    await expect(p.getByText(planos.daDesmarcada.nome), 'cliente que desmarcou com ela').toBeVisible()
   })
 })
 
-test('eq-02: a cliente que só tem agendamento CANCELADO com ela não é dela (lista, aba e prontuário)', async ({ browser }) => {
-  await como(ela!, browser, async p => {
-    await p.goto(`/${slug}/planejamentos`)
-    await expect(p.getByText(planos.daAtendida.nome)).toBeVisible()
-    await expect(p.getByText(planos.daDesmarcada.nome), 'o plano da cliente que desmarcou').toHaveCount(0)
-    const tela = `/${slug}/clients/${atendida}`
-    await p.goto(tela)
-    const r = await chamarAcao(p, ARQ, 'getPlanosDoCliente', tela, [desmarcou])
-    expect(r.texto, 'chegou à action').not.toContain('Server action not found')
-    expect(r.texto, 'o plano da cliente que desmarcou').not.toContain(planos.daDesmarcada.id)
-  })
-})
-
-test('a aba da cliente: os planos dela abrem, de quem quer que seja', async ({ browser }) => {
+test('a aba da cliente: os planos dela abrem, de quem quer que seja — também na cliente que ela não atende', async ({ browser }) => {
   const tela = `/${slug}/clients/${atendida}`
   await como(ela!, browser, async p => {
     await p.goto(tela)
@@ -155,15 +127,18 @@ test('a aba da cliente: os planos dela abrem, de quem quer que seja', async ({ b
     expect(r.texto, 'o plano montado por outra').toContain(planos.daAtendida.id)
     const s = await chamarAcao(p, ARQ, 'getTreatmentPlanSessions', tela, [planos.daAtendida.id])
     expect(s.texto, 'as sessões abrem').toContain('"price":100')
-    // A cliente que ela não atende: só o plano que ela mesma montou.
+    // A cliente que ela não atende: os dois planos, o dela e o de outra.
     const outra = await chamarAcao(p, ARQ, 'getPlanosDoCliente', tela, [deOutra])
     expect(outra.texto).toContain(planos.delaSemAgendamento.id)
-    expect(outra.texto, 'o de outra, de cliente que não é dela').not.toContain(planos.naoAtendida.id)
+    expect(outra.texto, 'o de outra, de cliente que ela não atende').toContain(planos.naoAtendida.id)
+    const desmarcada = await chamarAcao(p, ARQ, 'getPlanosDoCliente', tela, [desmarcou])
+    expect(desmarcada.texto, 'o plano da cliente que desmarcou').toContain(planos.daDesmarcada.id)
   })
 })
 
-test('pelo id: o plano da cliente dela abre; o de cliente que ela não atende, não', async ({ browser }) => {
+test('pelo id: o plano de cliente que ela não atende abre e se renomeia', async ({ browser }) => {
   const tela = `/${slug}/planejamentos/${planos.daAtendida.id}`
+  const novoNome = `${planos.naoAtendida.nome} renomeado`
   await como(ela!, browser, async p => {
     await p.goto(tela)
     const meu = await chamarAcao(p, ARQ, 'getCabecalhoDoPlano', tela, [planos.daAtendida.id])
@@ -171,22 +146,18 @@ test('pelo id: o plano da cliente dela abre; o de cliente que ela não atende, n
     expect(meu.texto, 'o plano da cliente dela abre').toContain(planos.daAtendida.nome)
     for (const funcao of ['getCabecalhoDoPlano', 'getPlanoParaEditar']) {
       const r = await chamarAcao(p, ARQ, funcao, tela, [planos.naoAtendida.id])
-      expect(r.texto, funcao).toContain('Plano não encontrado')
+      // O cabeçalho traz o nome; o editor, o plano (o id), sem o nome.
+      expect(r.texto, funcao).not.toContain('Plano não encontrado')
+      expect(r.texto, funcao).toContain(planos.naoAtendida.id)
     }
-    await chamarAcao(p, ARQ, 'renomearPlano', tela, [planos.naoAtendida.id, 'invasão'])
+    await chamarAcao(p, ARQ, 'renomearPlano', tela, [planos.naoAtendida.id, novoNome])
   })
   const { data } = await db().from('treatment_plans').select('name').eq('id', planos.naoAtendida.id).single<{ name: string }>()
-  expect(data!.name, 'o de cliente que não é dela não foi renomeado').toBe(planos.naoAtendida.nome)
+  expect(data!.name, 'o Atendimento em Gerenciar renomeia (UM3)').toBe(novoNome)
 
-  // A página do plano de cliente que ela não atende, pela URL, não mostra o plano.
+  // A página do plano, pela URL, mostra o plano.
   await como(ela!, browser, async p => {
     await p.goto(`/${slug}/planejamentos/${planos.naoAtendida.id}`)
-    await expect(p.getByText(planos.naoAtendida.nome)).toHaveCount(0)
-  })
-  // Controle: com a agenda de todos, abre.
-  await como(todos!, browser, async p => {
-    await p.goto(tela)
-    const r = await chamarAcao(p, ARQ, 'getCabecalhoDoPlano', tela, [planos.naoAtendida.id])
-    expect(r.texto).toContain(planos.naoAtendida.nome)
+    await expect(p.getByText(novoNome).first()).toBeVisible()
   })
 })

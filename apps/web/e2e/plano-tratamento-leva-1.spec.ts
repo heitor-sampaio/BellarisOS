@@ -11,11 +11,11 @@ import { diaEmQueAUnidadeAbre } from './apoio/datas'
  * Bloco Plano de tratamento, LEVA 1 (o plano de adaptação, `docs/revisao.md`,
  * a revisão do Heitor de 2026-11-13).
  *
- * - PT2: "quem monta o plano é quem atende, nem precisa de permissão pra isso
- *   pq isso é proprio atendimento, faz parte" — e "a dra pode realizar a
- *   avaliação e depois com calma montar o plano". Quem atende é o "Atende" da
- *   unidade (`users.atende_em`); sai o Prontuário em Gerenciar da trava. A
- *   anotação clínica dentro do plano continua do Prontuário.
+ * - PT2: "a dra pode realizar a avaliação e depois com calma montar o plano";
+ *   sai o Prontuário em Gerenciar da trava. Revisto em 23/11 (UM3, o Heitor):
+ *   monta quem tem o Atendimento em Gerenciar, com a unidade ao alcance — o
+ *   "Atende" deixou de ser a trava (UM5). A anotação clínica dentro do plano
+ *   continua do Prontuário.
  * - PT1a: a página do plano é o centro, com os passos à vista: ① Aceite
  *   ② Documentos ③ Contrato e pagamento ④ Sessões.
  * - PT1d: [Agendar] em cada sessão e "Agendar todas", a qualquer momento
@@ -30,10 +30,10 @@ const marca = Date.now().toString(36)
 const db = () => banco()
 let rede: OutraRede | null = null
 let slug = ''
-let atende: MembroDeTeste | null = null       // ATENDE na unidade; sem o Prontuário
-let soProntuario: MembroDeTeste | null = null  // Prontuário em Gerenciar; não atende
+let atende: MembroDeTeste | null = null       // Atendimento em Gerenciar, atende na unidade; sem o Prontuário
+let naoMonta: MembroDeTeste | null = null      // atende, com o Prontuário em Gerenciar, e o Atendimento só em Ver
 let balcao: MembroDeTeste | null = null        // recebe (caixa)
-let dela: MembroDeTeste | null = null          // agenda "só os meus", atende na unidade
+let dela: MembroDeTeste | null = null          // Agenda em Gerenciar (o Atendimento em Ver), atende na unidade
 let nomeDoProcedimento = ''
 
 async function como(m: MembroDeTeste, browser: Browser, fn: (p: Page) => Promise<void>) {
@@ -57,32 +57,35 @@ test.beforeAll(async () => {
   nomeDoProcedimento = (await db().from('procedures').select('name').eq('id', rede.procedureId).single<{ name: string }>()).data!.name
   atende = await criarMembro(`ptla${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Atende', atendeEm: [rede.branchId],
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }],
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'atendimento', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }],
   })
-  soProntuario = await criarMembro(`ptlp${marca}`, {
-    tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Prontuário',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'medical_records', nivel: 'MANAGE' }],
+  naoMonta = await criarMembro(`ptlp${marca}`, {
+    tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Prontuário', atendeEm: [rede.branchId],
+    permissoes: [
+      { modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'atendimento', nivel: 'VIEW' },
+      { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'medical_records', nivel: 'MANAGE' },
+    ],
   })
   balcao = await criarMembro(`ptlb${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Balcão',
     permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }, { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'cashier', nivel: 'MANAGE' }],
   })
   dela = await criarMembro(`ptld${marca}`, {
-    tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Só os meus', atendeEm: [rede.branchId],
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' }, { modulo: 'clients', nivel: 'VIEW' }],
+    tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Agenda', atendeEm: [rede.branchId],
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }],
   })
 })
 
 test.afterAll(async () => {
   if (rede) await db().from('treatment_plans').delete().eq('branch_id', rede.branchId)
-  await atende?.limpar(); await soProntuario?.limpar(); await balcao?.limpar(); await dela?.limpar()
+  await atende?.limpar(); await naoMonta?.limpar(); await balcao?.limpar(); await dela?.limpar()
   await rede?.limpar()
 })
 
-test('PT2: monta quem ATENDE — o "Novo plano" e a gravação não pedem o Prontuário em Gerenciar', async ({ browser }) => {
+test('PT2/UM3: monta quem tem o Atendimento em Gerenciar — o "Novo plano" e a gravação não pedem o Prontuário em Gerenciar', async ({ browser }) => {
   const cliente = await rede!.criarCliente('Monta')
 
-  // Quem atende vê o "Novo plano" no menu Tratamentos e na ficha, e grava.
+  // O Atendimento em Gerenciar vê o "Novo plano" no menu Tratamentos e na ficha, e grava.
   await como(atende!, browser, async p => {
     await p.goto(`/${slug}/planejamentos`)
     await expect(p.getByRole('button', { name: 'Novo plano' })).toBeVisible()
@@ -96,27 +99,28 @@ test('PT2: monta quem ATENDE — o "Novo plano" e a gravação não pedem o Pron
   })
   const { data: dela1 } = await db().from('treatment_plans').select('id, professional_id, professional_notes')
     .eq('client_id', cliente)
-  expect(dela1 ?? [], 'quem atende montou o plano').toHaveLength(1)
+  expect(dela1 ?? [], 'o Atendimento em Gerenciar montou o plano').toHaveLength(1)
   expect(dela1![0]!.professional_id).toBe(atende!.userId)
   expect(dela1![0]!.professional_notes, 'a anotação clínica não se grava sem o Prontuário').toBeNull()
 
-  // Quem só tem o Prontuário (e não atende) não monta: nem o botão, nem a action.
-  await como(soProntuario!, browser, async p => {
+  // Quem atende e tem o Prontuário em Gerenciar, com o Atendimento só em Ver,
+  // não monta: nem o botão, nem a action (UM3; o "Atende" não dá permissão, UM5).
+  await como(naoMonta!, browser, async p => {
     await p.goto(`/${slug}/planejamentos`)
     await expect(p.getByRole('heading', { name: 'Tratamentos' })).toBeVisible()
     await expect(p.getByRole('button', { name: 'Novo plano' })).toHaveCount(0)
     // Quem monta mora na dica do título (2026-11-16).
     await p.getByRole('button', { name: 'Quem monta o plano' }).hover()
-    await expect(p.locator('[data-quem-monta]')).toContainText(/atende/i)
+    await expect(p.locator('[data-quem-monta]')).toContainText('Atendimento em Gerenciar')
     const nome = `${PREFIXO} não monta ${marca}`
     await chamarAcao(p, 'actions/treatment-plans.ts', 'criarPlanoDoCliente', `/${slug}/planejamentos`,
       [cliente, rede!.branchId, null, nome])
     const { data } = await db().from('treatment_plans').select('id').eq('name', nome)
-    expect(data ?? [], 'quem não atende não cria plano pela action').toHaveLength(0)
+    expect(data ?? [], 'sem o Atendimento em Gerenciar, não cria plano pela action').toHaveLength(0)
   })
 })
 
-test('PT2: quem atende, sem o Prontuário, salva o plano sem apagar a anotação clínica de quem a escreveu', async ({ browser }) => {
+test('PT2/UM3: o Atendimento em Gerenciar, sem o Prontuário, salva o plano sem apagar a anotação clínica de quem a escreveu', async ({ browser }) => {
   const { planId } = await rede!.criarPlanoProposto('Anotação', { semTermo: true })
   await db().from('treatment_plans').update({ status: 'DRAFT', professional_notes: 'Anotação clínica' }).eq('id', planId)
   await como(atende!, browser, async p => {
@@ -132,7 +136,7 @@ test('PT2: quem atende, sem o Prontuário, salva o plano sem apagar a anotação
     'as sessões ela grava').toBe(120)
 })
 
-test('PT2: "Montar plano desta avaliação" na avaliação concluída — por quem atende, ligado a ela', async ({ browser }) => {
+test('PT2/UM3: "Montar plano desta avaliação" na avaliação concluída — pelo Atendimento em Gerenciar, ligado a ela', async ({ browser }) => {
   const cliente = await rede!.criarCliente('Avaliada')
   const { data: ag, error } = await db().from('appointments').insert({
     branch_id: rede!.branchId, client_id: cliente, professional_id: atende!.userId, procedure_id: rede!.procedureId,
@@ -303,24 +307,17 @@ test('PT1f: Tratamentos filtra por situação — Proposto, Aceito (falta assina
   })
 })
 
-test('"Só os meus": os passos do plano de quem ela não atende não abrem — pelo id também', async ({ browser }) => {
-  const { planId, clientId } = await rede!.criarPlanoProposto('Alheio', { semTermo: true })
+// Sem o "só os meus" (SM1, o Heitor, 2026-11-23): com o Atendimento em Ver, o
+// plano de cliente que ela não atende abre, com os passos.
+test('os passos do plano de cliente que ela não atende abrem a quem tem o Atendimento — pelo id também', async ({ browser }) => {
+  const { planId } = await rede!.criarPlanoProposto('Alheio', { semTermo: true })
   await como(dela!, browser, async p => {
     await p.goto(`/${slug}/planejamentos/${planId}`)
-    await expect(p.getByText('Plano não encontrado.')).toBeVisible()
-    await expect(p.locator('[data-passos-do-plano]')).toHaveCount(0)
-    const r = await chamarAcao(p, 'actions/treatment-plans.ts', 'aceitarPlano', `/${slug}/planejamentos/${planId}`, [planId])
-    expect(r.texto).toContain('Plano não encontrado')
-  })
-  expect((await db().from('treatment_plans').select('status').eq('id', planId).single()).data!.status, 'nada mudou').toBe('PROPOSED')
-  // Controle: a cliente que ela atende — o plano é dela também.
-  await db().from('appointments').insert({
-    branch_id: rede!.branchId, client_id: clientId, professional_id: dela!.userId, procedure_id: rede!.procedureId,
-    scheduled_at: new Date(Date.now() + 86_400_000).toISOString(), duration_min: 30, price: 0, status: 'SCHEDULED',
-  })
-  await como(dela!, browser, async p => {
-    await p.goto(`/${slug}/planejamentos/${planId}`)
+    await expect(p.getByText('Plano não encontrado.')).toHaveCount(0)
     await expect(p.locator('[data-passos-do-plano] [data-passo]')).toHaveCount(4)
+    const r = await chamarAcao(p, 'actions/treatment-plans.ts', 'getPassosDoPlano', `/${slug}/planejamentos/${planId}`, [planId])
+    expect(r.texto, 'chegou à action').not.toContain('Server action not found')
+    expect(r.texto).not.toContain('Plano não encontrado')
   })
 })
 

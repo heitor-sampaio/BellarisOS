@@ -10,6 +10,10 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  * a Bruna vendeu no balcão não entrava em nenhum faturamento "dela". Agora o
  * lançamento da venda de produto (`product_sale_id`) conta para
  * `product_sales.sold_by`, como as Vendas já faziam.
+ *
+ * Sem o "só os meus" (SM1/SM2, o Heitor, 2026-11-23): o "Meu faturamento" é a
+ * vista pessoal de quem não tem o Financeiro e atende ou tem comissão de venda
+ * (`vistaPessoal`). A Bruna não atende: tem a comissão de venda.
  */
 
 const marca = Date.now().toString(36)
@@ -31,8 +35,9 @@ test.beforeAll(async () => {
   slug = (await db().from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
   bruna = await criarMembro(`vpb${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Recepção',
-    permissoes: [{ modulo: 'financial', nivel: 'VIEW', escopo: 'OWN' }],
+    permissoes: [],
   })
+  expect((await db().from('users').update({ comissao_venda_pct: 5 }).eq('id', bruna.userId)).error).toBeNull()
   const cliente = await rede.criarCliente('Carla')
   const { data: prod, error: eP } = await db().from('products')
     .insert({ tenant_id: rede.tenantId, name: `[e2e] Sérum ${marca}`, unit: 'un', cost_price: 40, sale_price: 98 })
@@ -56,7 +61,7 @@ test.afterAll(async () => {
   await bruna?.limpar(); await rede?.limpar()
 })
 
-test('o sérum que a Bruna vendeu entra no faturamento DELA (só os meus)', async ({ browser }) => {
+test('o sérum que a Bruna vendeu entra no faturamento DELA (a vista pessoal)', async ({ browser }) => {
   const p = { p_tenant: rede!.tenantId, p_branch_ids: [rede!.branchId], p_from: de, p_to: ate, p_professional_id: bruna!.userId }
 
   const { data: pagas, error: e1 } = await db().rpc('metrics_receitas_pagas', p)

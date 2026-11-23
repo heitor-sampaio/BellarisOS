@@ -10,10 +10,10 @@ import { chamarAcao, chamarAcaoComFormulario } from './apoio/acao-direta'
  * Heitor, 2026-11-18: "Agenda é agenda e atendimento é atendimento. Só inicia
  * e conclui atendimento quem tem gerenciar no atendimento." — saiu o D20, "a
  * Agenda em Ver inicia e conclui").
- * - C14 (D21 do levantamento das regras, o Heitor, 2026-11-11): o atendimento
- *   de OUTRA profissional é o ESCOPO — com "todos", qualquer um da unidade ao
- *   alcance; com "só os meus", só o próprio. E a agenda em Ver não cancela: o
- *   "Cancelar" aparecia e a action recusava.
+ * - C14: sem o "só os meus" (SM1, o Heitor, 2026-11-23), o Atendimento em
+ *   Gerenciar inicia e conclui o de qualquer profissional da unidade ao
+ *   alcance. E a agenda em Ver não cancela: o "Cancelar" aparecia e a action
+ *   recusava.
  * - A Agenda em Gerenciar sem o Atendimento em Gerenciar marca a chegada, mas
  *   não inicia nem conclui: a janela não oferece o "Iniciar" (diz quem inicia)
  *   e as actions recusam pelo id.
@@ -46,12 +46,12 @@ test.beforeAll(async () => {
   rede = await criarOutraRede(`qi${marca}`)
   slug = (await db().from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
   expect((await db().from('users').update({ atende_em: [rede.branchId] }).eq('id', rede.professionalId)).error).toBeNull()
-  // A colega com o Atendimento em Gerenciar de todos — não é a profissional do atendimento.
+  // A colega com o Atendimento em Gerenciar — não é a profissional do atendimento.
   colega = await criarMembro(`qiv${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Colega',
     permissoes: [
-      { modulo: 'agenda', nivel: 'VIEW', escopo: 'ALL' },
-      { modulo: 'atendimento', nivel: 'MANAGE', escopo: 'ALL' },
+      { modulo: 'agenda', nivel: 'VIEW' },
+      { modulo: 'atendimento', nivel: 'MANAGE' },
       { modulo: 'clients', nivel: 'VIEW' },
     ],
   })
@@ -60,16 +60,16 @@ test.beforeAll(async () => {
   soAgenda = await criarMembro(`qia${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Agenda sem atendimento',
     permissoes: [
-      { modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' },
-      { modulo: 'atendimento', nivel: 'VIEW', escopo: 'ALL' },
-      { modulo: 'medical_records', nivel: 'MANAGE', escopo: 'ALL' },
+      { modulo: 'agenda', nivel: 'MANAGE' },
+      { modulo: 'atendimento', nivel: 'VIEW' },
+      { modulo: 'medical_records', nivel: 'MANAGE' },
       { modulo: 'clients', nivel: 'VIEW' },
     ],
   })
 })
 test.afterAll(async () => { await colega?.limpar(); await soAgenda?.limpar(); await rede?.limpar() })
 
-test('C14: com o Atendimento "todos", a colega inicia e finaliza o atendimento de outra profissional; sem "Cancelar" do agendado na Agenda em Ver, e desiste do Em atendimento', async ({ browser }) => {
+test('C14: com o Atendimento em Gerenciar, a colega inicia e finaliza o atendimento de outra profissional; sem "Cancelar" do agendado na Agenda em Ver, e desiste do Em atendimento', async ({ browser }) => {
   const confirmado = await agendado('CONFIRMED')
   const emCurso    = await agendado('IN_PROGRESS')
   await como(browser, colega!, async p => {

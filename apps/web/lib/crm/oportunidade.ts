@@ -2,7 +2,6 @@ import 'server-only'
 import type { TenantContext } from '@estetica-os/types'
 import { EVENTOS } from '@estetica-os/types'
 import { resolveLeadSource } from '@estetica-os/utils'
-import { ownerFilter } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { seedDefaultFunnel, listStages } from '@/lib/crm/funis'
@@ -16,7 +15,7 @@ import { normalizarTelefone } from '@/lib/importacao/normalizar'
 /**
  * CRIAR uma oportunidade e MOVER de etapa — os núcleos que o quadro (actions/
  * leads.ts) e o Copilot dividem (2026-10-08). Não conferem o módulo nem o
- * recurso (quem chama confere); conferem a rede da etapa e o "só os meus".
+ * recurso (quem chama confere); conferem a rede da etapa e da oportunidade.
  */
 
 type Admin = ReturnType<typeof createAdminClient>
@@ -171,7 +170,7 @@ export async function moverEtapaCore(
    * exige (`exigirMotivo`); o Copilot e as automações movem sem ele.
    */
   opcoes: {
-    perda?: PerdaInformada | null; exigirMotivo?: boolean; semAlcance?: boolean
+    perda?: PerdaInformada | null; exigirMotivo?: boolean
     /** A35 da 22ª: o movimento se registra, mas não dispara automação (a pessoa disse "Não"). */
     semDespachar?: boolean
   } = {},
@@ -188,10 +187,8 @@ export async function moverEtapaCore(
   // Mover para a MESMA etapa não mexe no motivo já registrado.
   const patch = etapaAnterior === stageId ? { crm_stage_id: stageId } : { crm_stage_id: stageId, ...perda.patch }
 
-  let q = admin.from('leads').update(patch).eq('id', leadId).eq('tenant_id', ctx.tenantId!)
-  const owner = opcoes.semAlcance ? null : ownerFilter(ctx, 'crm')
-  if (owner) q = q.or(`owner_id.is.null,owner_id.eq.${owner}`)
-  const { data, error } = await q.select('id')
+  const { data, error } = await admin.from('leads').update(patch)
+    .eq('id', leadId).eq('tenant_id', ctx.tenantId!).select('id')
   if (error) { console.error('[moverEtapaCore]', error.message); return { error: 'Não foi possível mover a oportunidade.' } }
   if (!data?.length) return { error: 'Oportunidade não encontrada.' }
 

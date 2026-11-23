@@ -47,9 +47,8 @@ export interface ResumoDosDocumentos {
 }
 
 /**
- * `professionalId`: o prontuário "só os meus" (decisão do Heitor, 2026-10-29)
- * — só os documentos das clientes que ela atende (um agendamento com ela).
- * Nulo = sem recorte. Obrigatório de propósito: quem chama decide.
+ * `professionalId`: só os documentos das clientes que ela atende (um agendamento
+ * com ela). Nulo = sem recorte — o que vale desde que saiu o "só os meus" (23/11).
  */
 interface Recorte { tenantId: string; branchIds: string[] | null; from: Date; to: Date; professionalId: string | null }
 

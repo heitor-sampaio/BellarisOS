@@ -24,12 +24,9 @@
     18/11; prova: `e2e/notificacoes-interessados.spec.ts`).
   - `VIEW` **não entra**: ver o módulo é poder consultar, não responder
     pelo que acontece nele. Quem só olha não precisa ser interrompido.
-  - **O escopo também conta** (D7 da simulação de 2026-10-28): quem tem o
-    módulo (escopável) em "só os meus" NÃO é responsável — só recebe o aviso
-    do registro DELE, que já chega como envolvido direto (o profissional do
-    agendamento). A profissional da rede recebia "Novo agendamento" de todas
-    as clientes da colega. Módulo sem escopo (estoque) segue como antes.
-    Prova: `e2e/notificacoes-so-os-meus.spec.ts`.
+  - **Sem o "só os meus"** (SM1, 2026-11-23): o Gerenciar do módulo, na
+    abrangência, basta para ser Responsável, em todo módulo. Quem atende sem
+    o módulo recebe só o do registro dela, como envolvida direta.
   - **Quem causou o fato sai da lista.** Sino avisando a pessoa do que ela
     acabou de fazer é ruído, e ruído treina a ignorar o sino.
   - A exceção é o **check-in**: ali a parte interessada é uma só, quem vai
@@ -112,7 +109,7 @@ tabela veio remover.
   `rotuloDaConexao` (`lib/whatsapp/rotulo.ts`). Renomear depois é o "Nome da
   conexão" da lista. Prova: `e2e/whatsapp-nome-do-numero.spec.ts`.
 - **`branch_id` no número é RÓTULO**, não escopo (decisão do Heitor,
-  2026-09-25). Não entra em RLS, não entra em `ownerFilter`, e a conversa
+  2026-09-25). Não entra em RLS nem no alcance do inbox, e a conversa
   continua nascendo com `branch_id` nulo. A unidade NÃO vira tag (o sistema não
   põe tag nenhuma, CLAUDE.md §1, "Tags"; T1 do Bloco Tags, 2026-11-14: não
   existe tag de unidade) — o "vira tag depois" de 2026-09-25 saiu.

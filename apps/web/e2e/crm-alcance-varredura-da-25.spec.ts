@@ -11,9 +11,9 @@ import { chamarAcao } from './apoio/acao-direta'
  * - FID-01 (fidelidade.md, FD3: a unidade do voucher é REGISTRO, não recorte):
  *   quem tem a Fidelidade em Gerenciar numa unidade cancela e entrega o
  *   voucher trocado em outra unidade da rede. Controle: sem a Fidelidade, nada muda.
- * - CRM-03 (CLAUDE.md §11; o Heitor, 28/10: "Quem tem 'só os meus' vê 'só os
- *   meus', em qualquer lugar"): a aba Oportunidades da ficha recorta pelo dono,
- *   como o quadro. Controle: o CRM com "todos" vê as duas.
+ * - CRM-03: a aba Oportunidades da ficha recortava pelo dono, no "só os meus".
+ *   Sem ele (SM1/SM3, o Heitor, 2026-11-23), o CRM em Gerenciar vê as de
+ *   todos os donos, como o quadro.
  * - CRM-10 (crm-inbox.md, os números do cargo no inbox): "Ir para a conversa"
  *   do card abre a conversa que o cargo VÊ — com as caixas "minhas", a da caixa
  *   dela, não a mais recente de outra caixa. Controle: com "todas", a mais recente.
@@ -104,15 +104,12 @@ test('FID-01: o voucher trocado numa unidade se cancela e se entrega em outra, p
   expect(await status(v2)).toBe('USADO')
 })
 
-test('CRM-03: a aba Oportunidades da ficha, com o CRM em "só os meus", mostra só as dela', async ({ browser }) => {
+// Sem o "só os meus" (SM1/SM3, o Heitor, 2026-11-23): o CRM em Gerenciar vê as de todos os donos.
+test('CRM-03: a aba Oportunidades da ficha, com o CRM em Gerenciar, mostra as de todos os donos', async ({ browser }) => {
   const r = rede!
   const minha = await membro(criarMembro(`vac3${marca}`, {
-    tenant: r.tenantId, rotulo: 'Comercial só os meus',
-    permissoes: [{ modulo: 'clients', nivel: 'VIEW' }, { modulo: 'crm', nivel: 'MANAGE', escopo: 'OWN' }],
-  }))
-  const todos = await membro(criarMembro(`vac3t${marca}`, {
-    tenant: r.tenantId, rotulo: 'Comercial todos',
-    permissoes: [{ modulo: 'clients', nivel: 'VIEW' }, { modulo: 'crm', nivel: 'MANAGE', escopo: 'ALL' }],
+    tenant: r.tenantId, rotulo: 'Comercial',
+    permissoes: [{ modulo: 'clients', nivel: 'VIEW' }, { modulo: 'crm', nivel: 'MANAGE' }],
   }))
   const cliente = await r.criarCliente('Oportunidades de dois donos')
   const fone = () => '5548' + String(Date.now() + Math.floor(Math.random() * 1000)).slice(-9)
@@ -128,19 +125,18 @@ test('CRM-03: a aba Oportunidades da ficha, com o CRM em "só os meus", mostra s
     await expect(resumo).toBeVisible({ timeout: 30_000 })
     return (await resumo.textContent())?.trim()
   })
-  expect(await contagem(minha)).toBe('1 em aberto · 1 no total')
-  expect(await contagem(todos)).toBe('2 em aberto · 2 no total')
+  expect(await contagem(minha)).toBe('2 em aberto · 2 no total')
 })
 
 test('CRM-10: "Ir para a conversa" do card abre a conversa de uma caixa que o cargo vê', async ({ browser }) => {
   const r = rede!
   const daCaixa = await membro(criarMembro(`vac10${marca}`, {
     tenant: r.tenantId, rotulo: 'SDR minhas caixas', inboxCaixas: 'minhas',
-    permissoes: [{ modulo: 'crm', nivel: 'MANAGE', escopo: 'ALL' }],
+    permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }],
   }))
   const todas = await membro(criarMembro(`vac10t${marca}`, {
     tenant: r.tenantId, rotulo: 'SDR todas as caixas', inboxCaixas: 'todas',
-    permissoes: [{ modulo: 'crm', nivel: 'MANAGE', escopo: 'ALL' }],
+    permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }],
   }))
   const caixa = async (rotulo: string) => {
     const { data, error } = await db().from('whatsapp_numbers').insert({

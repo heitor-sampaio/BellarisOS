@@ -195,7 +195,7 @@ test.describe('a agenda e o agendar', () => {
     ocupado = data!.id
     recepcao = await criarMembro(`fzr${marca}`, {
       tenant: unidade.tenantId, branchId: unidade.branchId, rotulo: 'Recepcao',
-      permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'clients', nivel: 'MANAGE' }],
+      permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }],
     })
     cliente = await clienteComSessao(`fzc${marca}`, { id: unidade.branchId, slug: slugM }, { tenant: unidade.tenantId })
   })

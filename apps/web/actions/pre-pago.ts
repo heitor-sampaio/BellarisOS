@@ -15,7 +15,7 @@ import { z } from 'zod'
 import { CLIENTE_ARQUIVADA } from '@/lib/clients/arquivada'
 import { alcancaOTratamento, alcancaOCaixaDoTratamento } from '@/lib/tratamento/alcance'
 import { getTenantContext, alcancaUnidade, podeReceber, assertPermission, assertRecurso } from '@/lib/auth'
-import { recusaDoSoOsMeus, podeEstornar } from '@/lib/financeiro/so-os-meus'
+import { podeEstornar } from '@/lib/financeiro/so-os-meus'
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
@@ -233,7 +233,6 @@ export async function cancelarUnidadePrePaga(
     // estornava por aqui).
     assertPermission(ctx, 'financial', 'MANAGE')
     // C35: o Financeiro em "só os meus" não cancela (a tela já esconde).
-    { const soOsMeus = recusaDoSoOsMeus(ctx); if (soOsMeus) return { error: soOsMeus } }
     const lido = EntradaDoCancelamentoDaUnidade.safeParse(entrada)
     if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }
     const admin = createAdminClient()

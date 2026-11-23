@@ -15,7 +15,8 @@ import { diaEmQueAUnidadeAbre } from './apoio/datas'
  * - A11: "Ninguém livre que atenda nesta unidade" não dizia que havia quem
  *   atendesse em outra, nem como incluí-la;
  * - A13: o cargo novo salvou uma vez com a Agenda em Ver depois do clique em
- *   Gerenciar e do escopo (a conferir);
+ *   Gerenciar e do escopo (a conferir; o escopo saiu com o "só os meus", SM1,
+ *   2026-11-23);
  * - A15: "Quem vendeu" trazia a Contadora no meio de quem atende.
  */
 
@@ -72,13 +73,13 @@ test.beforeAll(async () => {
   batel = b!.id
   clienteId = await rede.criarCliente('Ana')
   dona = await criarMembro(`ea8d${marca}`, { tenant: rede.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
-  debora = await criarMembro(`ea8b${marca}`, { tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Debora', permissoes: [{ modulo: 'agenda', nivel: 'VIEW', escopo: 'OWN' }] })
-  talita = await criarMembro(`ea8t${marca}`, { tenant: rede.tenantId, branchId: batel, rotulo: 'Talita', permissoes: [{ modulo: 'agenda', nivel: 'VIEW', escopo: 'OWN' }] })
+  debora = await criarMembro(`ea8b${marca}`, { tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Debora', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }] })
+  talita = await criarMembro(`ea8t${marca}`, { tenant: rede.tenantId, branchId: batel, rotulo: 'Talita', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }] })
   gerenteA = await criarMembro(`ea8g${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Gerente',
-    permissoes: [{ modulo: 'team', nivel: 'MANAGE' }, { modulo: 'financial', nivel: 'MANAGE', escopo: 'ALL' }],
+    permissoes: [{ modulo: 'team', nivel: 'MANAGE' }, { modulo: 'financial', nivel: 'MANAGE' }],
   })
-  contadora = await criarMembro(`ea8c${marca}`, { tenant: rede.tenantId, rotulo: 'Contadora', permissoes: [{ modulo: 'financial', nivel: 'VIEW', escopo: 'ALL' }] })
+  contadora = await criarMembro(`ea8c${marca}`, { tenant: rede.tenantId, rotulo: 'Contadora', permissoes: [{ modulo: 'financial', nivel: 'VIEW' }] })
   // A Débora atende na Água Verde; a Talita, só no Batel. Ninguém mais atende.
   expect((await db().from('users').update({ atende_em: [rede.branchId] }).eq('id', debora.userId)).error).toBeNull()
   expect((await db().from('users').update({ atende_em: [batel] }).eq('id', talita.userId)).error).toBeNull()
@@ -172,7 +173,8 @@ test('A3: o cadastro da unidade pede a comissão, e o Desativar diz o que é', a
   }
 })
 
-test('A13: o cargo novo grava a Agenda em Gerenciar "só a própria" — o clique em Gerenciar e depois o escopo', async ({ browser }) => {
+// Sem o "só os meus" (SM1, o Heitor, 2026-11-23): não há escopo a escolher depois do Gerenciar.
+test('A13: o cargo novo grava a Agenda em Gerenciar logo depois do clique', async ({ browser }) => {
   const rotulo = `${PREFIXO} Cargo ea8${marca}`
   try {
     await como(browser, dona!.estado, async p => {
@@ -184,13 +186,12 @@ test('A13: o cargo novo grava a Agenda em Gerenciar "só a própria" — o cliqu
       const agenda = p.locator('[data-modulo="agenda"]')
       // Logo depois de criar, sem esperar nada: o caso da simulação.
       await agenda.getByRole('button', { name: 'Gerenciar' }).click()
-      await agenda.getByRole('button', { name: 'Só a própria agenda' }).click()
       await p.getByRole('button', { name: 'Salvar acessos' }).click()
       await expect(p.getByText('Acessos salvos.')).toBeVisible()
     })
     const { data: cargo } = await db().from('tenant_roles').select('id').eq('tenant_id', rede!.tenantId).eq('label', rotulo).single<{ id: string }>()
     const { data: perm } = await db().from('role_permissions').select('level, scope').eq('role_id', cargo!.id).eq('module', 'agenda').single()
-    expect(perm).toEqual({ level: 'MANAGE', scope: 'OWN' })
+    expect(perm).toEqual({ level: 'MANAGE', scope: 'ALL' })
   } finally {
     const { data: cargo } = await db().from('tenant_roles').select('id').eq('tenant_id', rede!.tenantId).eq('label', rotulo).maybeSingle()
     if (cargo) {

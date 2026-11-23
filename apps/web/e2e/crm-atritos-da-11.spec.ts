@@ -58,7 +58,7 @@ test.beforeAll(async () => {
   expect((await db().from('users').update({ atende_em: [rede.branchId], provides_services: true }).eq('id', rede.professionalId)).error).toBeNull()
   tatiane = await criarMembro(`cr11t${marca}`, {
     tenant: rede.tenantId, rotulo: 'Comercial',
-    permissoes: [{ modulo: 'crm', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }],
+    permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'agenda', nivel: 'MANAGE' }],
   })
 })
 

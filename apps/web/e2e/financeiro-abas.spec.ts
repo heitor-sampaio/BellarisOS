@@ -19,7 +19,8 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  * - FI7: no topo do Financeiro fica só o "Novo lançamento"; o "Conceder
  *   crédito" é da ficha da cliente, a quem tem o Financeiro em Gerenciar.
  * Quem vê o quê continua pelas permissões: quem só vê não lança nem dá baixa;
- * o Financeiro "só os meus" vai às comissões dele, em qualquer aba.
+ * quem atende sem o Financeiro (a vista pessoal: SM2, o Heitor, 2026-11-23) vai
+ * às comissões dele, em qualquer aba.
  * Numa rede [e2e] própria, de uma unidade.
  */
 
@@ -62,9 +63,10 @@ test.beforeAll(async () => {
     tenant: rede.tenantId, rotulo: 'Financeiro em Ver',
     permissoes: [{ modulo: 'financial', nivel: 'VIEW' }, { modulo: 'clients', nivel: 'VIEW' }],
   })
+  // A vista pessoal (SM2): atende e não tem o Financeiro.
   soOsMeus = await criarMembro(`fabo${marca}`, {
-    tenant: rede.tenantId, rotulo: 'Financeiro so os meus',
-    permissoes: [{ modulo: 'financial', nivel: 'VIEW', escopo: 'OWN' }],
+    tenant: rede.tenantId, rotulo: 'Atende sem o Financeiro',
+    permissoes: [], atendeEm: [rede.branchId],
   })
   const agora = new Date().toISOString()
   const linha = (o: Record<string, unknown>) => ({ branch_id: rede!.branchId, created_by: 'e2e', ...o })
@@ -181,7 +183,7 @@ test('quem só vê: as abas e as listas, sem lançar, dar baixa nem remarcar', a
   })
 })
 
-test('o Financeiro "só os meus": qualquer aba leva às comissões dele, sem a lista da unidade', async ({ browser }) => {
+test('quem atende sem o Financeiro (a vista pessoal): qualquer aba leva às comissões dele, sem a lista da unidade', async ({ browser }) => {
   await como(browser, soOsMeus!, async p => {
     for (const url of [`/${slug}/financeiro?aba=a-receber`, '/admin/financeiro?aba=movimentacoes']) {
       await p.goto(url)

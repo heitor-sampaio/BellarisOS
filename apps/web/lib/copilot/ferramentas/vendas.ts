@@ -1,7 +1,7 @@
 import 'server-only'
 import { z } from 'zod/v4'
 import type { TenantContext } from '@estetica-os/types'
-import { isOwnScope, podeReceber, podeVerFechamento } from '@/lib/auth'
+import { podeReceber, podeVerFechamento } from '@/lib/auth'
 import { ler } from '@/lib/db'
 import { comandasDoPdv } from '@/lib/pdv/comandas'
 import { seloDaComanda } from '@/lib/pdv/situacoes'
@@ -9,7 +9,6 @@ import { diaDoFechamento, janelaDoDia as janelaDoFechamento } from '@/lib/financ
 import { getEmAbertoDasVendas } from '@/lib/metrics/pacote-em-aberto'
 import { situacoesDosPlanos } from '@/lib/plano-de-tratamento/andamento-do-plano'
 import { rotuloDaSituacaoComercial } from '@/lib/plano-de-tratamento/situacao'
-import { clienteAtendidaPor } from '@/lib/clientes/atendida-por'
 import type { ContextoDaFerramenta, FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
 import {
   dinheiro, fusoDe, fusosPorUnidade, idsDasUnidades, nomesPorId, ondeProcurou, quandoLegivel, resolverCliente, resolverUnidade, rota,
@@ -102,22 +101,15 @@ type PlanoLido = {
 
 /**
  * Os planos de tratamento de UMA cliente, lidos para a ficha (`cliente`) e
- * para a ferramenta `plano`. O tratamento é da rede (H5); com o Atendimento "só os
- * meus", os que ela montou e os das clientes que ela atende — a regra da tela
- * (`planoDaProfissional`).
+ * para a ferramenta `plano`. O tratamento é da rede (H5).
  */
 export async function planosDaCliente(c: ContextoDaFerramenta, clientId: string, comSessoes: boolean) {
   const rede = c.ctx.tenantId!
-  let lidos = (await ler(c.admin.from('treatment_plans')
+  const lidos = (await ler(c.admin.from('treatment_plans')
     .select(`id, name, status, created_at, branch_id, professional_id, branches!inner(tenant_id),
       treatment_plan_sessions(sort_order, appointment_id, treatment_plan_session_procedures(price, sort_order, procedures(name)))`)
     .eq('client_id', clientId).eq('branches.tenant_id', rede)
     .order('created_at', { ascending: false }).limit(20), 'ler os planos da cliente') as PlanoLido[] | null) ?? []
-  if (isOwnScope(c.ctx, 'atendimento')) {
-    const eu = c.ctx.internalUserId
-    const atendida = !!eu && await clienteAtendidaPor(c.admin, eu, clientId)
-    lidos = lidos.filter(p => atendida || (!!eu && p.professional_id === eu))
-  }
   if (!lidos.length) return []
 
   const agendamentos = lidos.flatMap(p => p.treatment_plan_sessions.map(s => s.appointment_id)).filter((x): x is string => !!x)

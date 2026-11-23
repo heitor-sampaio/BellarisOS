@@ -13,11 +13,11 @@
 //   passou sem ninguém mexer — "marcar falta ou concluir?". A falta não
 //   registrada distorce a agenda e os números.
 // Só os últimos 30 dias contam; o total é contado no banco (`count: exact`).
-// Respeita o "só os meus" da agenda (`ownerFilter`).
+// Na vista pessoal da agenda (SM2: quem atende, sem a Agenda), só os dela.
 
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { ownerFilter } from '@/lib/auth'
+import { vistaPessoal } from '@/lib/auth'
 import { startOfDayTZ } from '@/lib/datetime'
 import { mensagemDoErro } from '@/lib/db'
 import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
@@ -53,7 +53,7 @@ async function grupo(ctx: TenantContext, unidades: string[], agora: Date, status
     .in('status', [...status])
     .lt('scheduled_at', hoje.toISOString())
     .gte('scheduled_at', desde.toISOString())
-  const dono = ownerFilter(ctx, 'agenda')
+  const dono = vistaPessoal(ctx, 'agenda')
   if (dono) q = q.eq('professional_id', dono)
   const { data, count, error } = await q.order('scheduled_at').order('id').limit(NA_TELA)
   // É aviso: a falha vai ao log e a tela segue sem ele.

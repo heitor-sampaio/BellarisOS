@@ -305,23 +305,3 @@ test('A2 da 13ª: Configurações → Geral, para quem tem só uma unidade, é t
     await expect(p.locator('input[name="name"]')).toHaveCount(0)
   })
 })
-
-test('A3 da 13ª: a comissão de quem não vê as próprias diz por quê', async ({ browser }) => {
-  const b = db()
-  const dona = await criarMembro(`f70cd${marca}`, { tenant: rede!.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
-  const vendedora = await criarMembro(`f70vd${marca}`, {
-    tenant: rede!.tenantId, rotulo: 'Vendedora', permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }],
-  })
-  await b.from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede!.tenantId)
-  const { data: u } = await b.from('users').update({ comissao_venda_pct: 6 }).eq('id', vendedora.userId).select('name').single<{ name: string }>()
-  try {
-    await como(browser, dona.estado, async p => {
-      await p.goto('/admin/team')
-      await p.getByRole('button', { name: `Comissão de ${u!.name}` }).click()
-      await expect(p.getByText(`${u!.name} não vê as próprias comissões`)).toBeVisible()
-    })
-  } finally {
-    await vendedora.limpar()
-    await dona.limpar()
-  }
-})

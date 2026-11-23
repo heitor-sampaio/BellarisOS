@@ -24,14 +24,9 @@ describe('A17: o cartão do cargo salvo diz o que ele abre, sem recarregar', () 
     const antes = {}
     expect(resumoDoCargo(antes)).toBe('Nenhum acesso ainda')
     const levels = { agenda: 'MANAGE', clients: 'MANAGE', cashier: 'MANAGE', financial: 'MANAGE', loyalty: 'VIEW', crm: 'NONE' } as const
-    const scopes = { agenda: 'ALL', financial: 'OWN', crm: null } as const
-    const salvo = acessosDoSalvo(levels, scopes, antes)
-    expect(resumoDoCargo(salvo)).toBe('5 áreas · 1 só os próprios')
-  })
-  it('o módulo desligado sem escolha guarda o escopo que estava (D6)', async () => {
-    const { acessosDoSalvo } = await import('@/lib/cargos/acessos-salvos')
-    const salvo = acessosDoSalvo({ crm: 'NONE' }, { crm: null }, { crm: { level: 'VIEW', scope: 'OWN' } })
-    expect(salvo.crm).toEqual({ level: 'NONE', scope: 'OWN' })
+    const salvo = acessosDoSalvo(levels)
+    // Sem o "só os meus" (SM1, o Heitor, 2026-11-23): o resumo diz só as áreas.
+    expect(resumoDoCargo(salvo)).toBe('5 áreas')
   })
   it('o editor guarda o salvo e passa à lista e à matriz', () => {
     const f = editor()

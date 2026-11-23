@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { banco, tenantId, PREFIXO } from './apoio/banco'
-import { membroComEscopoProprio, type MembroDeTeste } from './apoio/sessao'
+import { membroDoCrm, type MembroDeTeste } from './apoio/sessao'
 import { leOSinalDaRede } from './apoio/sinais'
 
 /**
@@ -127,7 +127,7 @@ test.describe.serial('RLS: uma rede não enxerga a outra', () => {
   test.beforeAll(async () => {
     const db = banco()
     const minha = await tenantId()
-    membro = await membroComEscopoProprio(`rls${marca}`)
+    membro = await membroDoCrm(`rls${marca}`)
 
     // -- A segunda rede, inteira, só para ser alvo --
     const { data: t, error: eT } = await db.from('tenants')
@@ -173,8 +173,8 @@ test.describe.serial('RLS: uma rede não enxerga a outra', () => {
   })
 
   // O controle. Desde a varredura de 18/11 (migrations 20261124400002/3), o
-  // PRONTUÁRIO não se lê pela sessão nem na própria rede — é módulo com escopo
-  // (CLAUDE.md §4; a prova é rls-sessao-so-le-prontuario-e-automacoes). O
+  // PRONTUÁRIO não se lê pela sessão nem na própria rede — a sessão só lê
+  // sinais (CLAUDE.md §4; a prova é rls-sessao-so-le-prontuario-e-automacoes). O
   // controle de "a sessão alcança algo" fica na cliente e na fidelidade da
   // PRÓPRIA rede, que a sessão lê; e o clínico da própria rede, nada.
   test('o controle: o membro lê o sinal da PRÓPRIA rede — e nada da própria rede pela chave pública', async () => {

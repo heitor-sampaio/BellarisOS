@@ -500,8 +500,8 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   pessoa > rede; o pré-pago só a da pessoa; a do produto só no "Por
   produto"). Só a REGRA: o valor em reais é do banco (`comissao_conta`). A
   comissão de OUTRA pessoa só aparece a quem vê a de todos
-  (`veComissaoDeTodos`, `lib/comissoes/quem-ve.ts`; `equipeDaVenda` só manda a
-  da própria pessoa a quem vê "só as próprias") — a regra do pacote, que vence,
+  (`veComissaoDeTodos`, `lib/comissoes/quem-ve.ts`: o Financeiro em Ver;
+  `equipeDaVenda` só manda a da própria pessoa a quem não o tem) — a regra do pacote, que vence,
   aparece sempre. O checkout do plano não mudou. Prova:
   `e2e/vendas-atritos-da-12.spec.ts` ("A18").
 - **O CSV não diz 0,00 do que não sai da base** (A44 da 11ª): "Taxa da
@@ -643,8 +643,8 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   - A tela lê do banco, agregado: `comissoes_resumo` (por profissional e
     unidade: lançado, a pagar, pago) e `comissoes_extrato`. O CSV é o extrato,
     montado no navegador.
-  - "Fechar e pagar" (`fecharComissoes`, `financial: MANAGE`, e nunca com
-    escopo OWN) chama `comissao_fechar`, que numa transação reivindica o que
+  - "Fechar e pagar" (`fecharComissoes`, `financial: MANAGE`; a vista pessoal
+    não fecha) chama `comissao_fechar`, que numa transação reivindica o que
     está ABERTO e não fechado até o fim do período (ou até agora),
     cria `commission_payouts` e a **despesa paga** (categoria "Comissões", na
     unidade) e marca os lançamentos `PAID` com `payout_id`. Trava por
@@ -717,24 +717,22 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   por atendimento e a sessão de plano perdia os outros), `comissao.liberada`
   (banco, em `comissao_acertar_linha`, quando um pagamento libera) e
   `comissao.paga` (banco, em `comissao_fechar`).
-- **Quem vê quanto cada um ganha é o financeiro com escopo de TODOS.** Com
-  OWN, a pessoa vê só a PRÓPRIA comissão — "Minhas comissões" (o financeiro
-  da rede a manda para lá), o destaque do dashboard da unidade, a linha dela
-  na aba Profissionais dos relatórios e no Copilot — e não fecha. O ranking
-  do dashboard (a de cada um) exige `financial` sem OWN; a comissão das
-  outras nunca sai do servidor. Antes ficavam sob `team` e `reports`, e
-  mostravam a de todos. (COM-01 da varredura de 18/11, decisão do Claude: o
-  texto dizia que a aba Profissionais exigia o Financeiro de todos, e o
-  código mostra a linha dela — vale a C35, `vendas-financeiro.md`: o "só os
-  meus" do Financeiro existe para "Minhas comissões", e `indicadores.md`, a
-  comissão no escopo do Financeiro.)
-  **A tela de Cargos diz isso** (A48 da 7ª simulação, 2026-11-05: o cargo
-  Consultor vende e não via as próprias comissões; decidido pelos princípios
-  3 — nada de regra escondida — e 1 — a rede decide no cargo): com o
-  Financeiro em "Sem acesso", o resumo "O que essa pessoa vai ver" diz "Não vê
-  as próprias comissões. Para ver, Financeiro em “Ver”, só os próprios: vira
-  “Minhas comissões”." (`[data-sem-minhas-comissoes]`). A regra de quem vê não
-  mudou. Prova: `e2e/comissoes-venda-do-plano.spec.ts` ("A48").
+- **Quem vê quanto cada um ganha é quem tem o Financeiro em Ver** (sem o "só
+  os meus", SM1, 2026-11-23): vê as comissões de todos, nas unidades ao
+  alcance. **A vista pessoal "Minhas comissões"** (SM2,
+  `vistaPessoal(ctx, 'financial')`) é de quem atende ou tem comissão de venda e
+  NÃO tem o Financeiro: ela vê só a PRÓPRIA comissão — a tela "Minhas
+  comissões" (o financeiro da rede a manda para lá) e o destaque do dashboard
+  da unidade — e não fecha (a vista só mostra). As comissões da aba
+  Profissionais dos relatórios, o ranking do dashboard e as do Copilot exigem
+  o Financeiro em Ver; a comissão das outras nunca sai do servidor. `team` e
+  `reports` não bastam (COM-01 da varredura de 18/11).
+  **A tela de Cargos diz isso**: com o Financeiro em "Sem acesso", a linha
+  diz "Não aparece para esta pessoa — a menos que ela atenda ou tenha comissão
+  de venda: aí vê as Minhas comissões, só as dela." (`LEVEL_COPY`,
+  `lib/permissions-copy.ts`). Saiu o aviso "Não vê as próprias comissões…"
+  (A48 da 7ª, `[data-sem-minhas-comissoes]`): com a vista pessoal, quem vende
+  vê as dela sem o Financeiro.
 - O ranking de comissão é `metrics_ranking_comissao` (ordena pela comissão;
   o dashboard reordenava o top 5 por atendimentos).
 - Prova: `e2e/comissoes-configuracao.spec.ts`, `e2e/comissoes-calculo.spec.ts`,
@@ -763,7 +761,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
 ❌ Zerar a comissão de "R$ fixo por sessão" do pacote de fora por falta do valor de referência — só o percentual depende dele (item 11 da auditoria)
 ❌ Cancelar ou marcar falta num atendimento concluído — o que se desfaz é o pagamento (estorno)
 ❌ Recortar comissão por scheduled_at do atendimento (o período é o do lançamento, released_at)
-❌ Mostrar comissão de outra pessoa sem financial com escopo de todos (team e reports não bastam)
+❌ Mostrar comissão de outra pessoa sem o Financeiro em Ver (team, reports e a vista pessoal não bastam)
 ❌ Gravar a comissão de um procedimento sem recusaDaComissaoDaAdmin (quem não é Admin mexia no valor da Admin)
 ❌ Criar a comissão da responsável do pacote com outra conta que não a da linha PACOTE_VENDA (pacote_responsavel = true) — ela é sobre o pacote pago inteiro e cai com o cancelamento, como a de venda
 ❌ Pagar comissão fora de comissao_fechar / comissao_fechar_escolhidos (a despesa e os lançamentos pagos vão juntos)
@@ -772,6 +770,6 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
 ❌ Estornar a despesa de um fechamento fora de comissao_estornar_fechamento (os lançamentos têm de voltar a "a pagar")
 ❌ Criar comissão de venda sem a precedência item > pessoa > rede, ou sem gravar de onde veio (commission_lines.regra_de — A17 da 11ª)
 ❌ Aceitar em "Quem vendeu" quem não vende (não atende na unidade, não recebe, sem o Comercial no cargo) — A42 da 11ª
-❌ Mandar ao navegador a comissão de venda de outra pessoa a quem vê só as próprias (equipeDaVenda sem veComissaoDeTodos — A18 da 12ª)
+❌ Mandar ao navegador a comissão de venda de outra pessoa a quem não tem o Financeiro (equipeDaVenda sem veComissaoDeTodos — A18 da 12ª)
 ❌ Criar a comissão de venda do plano com outra conta que não a da linha PLANO sem atendimento (plano_comissao_de_venda + comissao_conta), ou deixá-la inteira no plano cancelado (ela vale o usado, na proporção — D4 da 9ª)
 ```

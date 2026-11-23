@@ -38,7 +38,7 @@ test.beforeAll(async () => {
   slugB = b!.slug
   bianca = await criarMembro(`b${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Profissional da Savassi',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' }],
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }],
   })
   expect((await db().from('users').update({ atende_em: [rede.branchId, b!.id] }).eq('id', bianca.userId)).error).toBeNull()
 })

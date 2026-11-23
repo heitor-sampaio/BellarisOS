@@ -127,7 +127,7 @@ const CAMPO: Record<string, string> = {
   is_paid: 'pago', recebido_por: 'quem recebeu', data_de_referencia: 'data de referência', estorno_motivo: 'motivo do estorno',
   loyalty_discount: 'desconto em pontos', estornada_em: 'estorno', estornada_por: 'quem estornou', produto_voltou: 'produto de volta ao estoque',
   devolucao_movement_id: 'devolução ao estoque', stock_movement_id: 'baixa do estoque', custo: 'custo', cost_price: 'custo',
-  inbox_visibilidade: 'quem vê as conversas', inbox_caixas: 'caixas do WhatsApp', pix_taxa_pct: 'taxa do Pix', taxas: 'taxas',
+  inbox_caixas: 'caixas do WhatsApp', pix_taxa_pct: 'taxa do Pix', taxas: 'taxas',
   max_vezes: 'máximo de vezes', portal_prazo_alteracao_horas: 'prazo para a cliente alterar', plano_validade_dias: 'validade do plano',
   pacote_crediario_libera: 'sessões do pacote com valor em aberto', pacote_vencido_cancela: 'cancelar o pacote vencido',
   document: 'CNPJ', onboarding_completed_at: 'configuração inicial', atende_em: 'atende em', outras_unidades: 'outras unidades',

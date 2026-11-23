@@ -6,7 +6,6 @@ import { ler } from '@/lib/db'
 import { getCachedFichasDoLogin } from '@/lib/cached-queries'
 import { getSignedUrl, DOCUMENTOS_ASSINADOS_BUCKET } from '@/lib/storage'
 import { gerarPdfAssinado } from '@/lib/documentos/pdf'
-import { clienteNoEscopo } from '@/lib/clientes/atendida-por'
 
 /**
  * O PDF assinado de um documento, por link temporário.
@@ -44,11 +43,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   }
   const doc = await ler(consulta.maybeSingle(), 'buscar o documento')
   if (!doc || (!ctx.isClient && !alcancaUnidade(ctx, doc.branch_id as string | null)) || doc.status !== 'ASSINADO') {
-    return NextResponse.json({ error: 'Documento não encontrado.' }, { status: 404 })
-  }
-
-  // A equipe com o prontuário "só os meus": só de cliente que ela atende (2026-10-29).
-  if (!ctx.isClient && !(await clienteNoEscopo(admin, ctx, 'medical_records', doc.client_id as string))) {
     return NextResponse.json({ error: 'Documento não encontrado.' }, { status: 404 })
   }
 

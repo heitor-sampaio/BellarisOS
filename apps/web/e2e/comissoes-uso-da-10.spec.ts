@@ -34,9 +34,10 @@ test.beforeAll(async () => {
   expect((await b.from('users').update({ provides_services: true }).eq('id', rede.professionalId)).error).toBeNull()
   expect((await b.from('procedures').update({ name: `${PREFIXO} Limpeza ${marca}`, price: 180 }).eq('id', rede.procedureId)).error).toBeNull()
   dona = await criarMembro(`cu10d${marca}`, { tenant: rede.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
+  // O "Meu faturamento" dela é a vista pessoal: atende e não tem o Financeiro (SM2, o Heitor, 2026-11-23).
   daniela = await criarMembro(`cu10p${marca}`, { tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Profissional', permissoes: [
-    { modulo: 'agenda', nivel: 'VIEW', escopo: 'OWN' }, { modulo: 'financial', nivel: 'VIEW', escopo: 'OWN' },
-  ] })
+    { modulo: 'agenda', nivel: 'VIEW' },
+  ], atendeEm: [rede.branchId] })
   expect((await b.from('commission_configs').upsert({
     tenant_id: rede.tenantId, desconta_insumos: false, desconta_taxa: false, base_com_pontos: 'PRECO', periodo: 'MENSAL',
   }, { onConflict: 'tenant_id' })).error).toBeNull()

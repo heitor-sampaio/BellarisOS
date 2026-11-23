@@ -43,7 +43,7 @@ test.beforeAll(async () => {
   nomeDaProfissional = (await b.from('users').select('name').eq('id', rede.professionalId).single<{ name: string }>()).data!.name
   recepcao = await criarMembro(`ag12r${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Recepcao',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'clients', nivel: 'MANAGE' }],
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }],
   })
 })
 

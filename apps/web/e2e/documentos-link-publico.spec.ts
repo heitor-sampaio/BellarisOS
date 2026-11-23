@@ -300,7 +300,7 @@ test.describe.serial('documentos: link público de assinatura', () => {
     const d = await agendar(clienteCpf, 7)
     const leitor = await criarMembro(`dll${marca}`, {
       tenant: rede!.tenantId, rotulo: 'Só o CRM',
-      permissoes: [{ modulo: 'crm', nivel: 'MANAGE', escopo: 'ALL' }],
+      permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }],
     })
     try {
       await como(browser, leitor.estado, async page => {

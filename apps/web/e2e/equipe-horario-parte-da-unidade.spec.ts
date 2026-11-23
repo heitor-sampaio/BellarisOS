@@ -32,7 +32,7 @@ test.beforeAll(async () => {
   })
   esteticista = await criarMembro(`ehe${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Esteticista',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' }],
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }],
   })
 })
 

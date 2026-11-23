@@ -12,8 +12,10 @@ import { chamarAcaoComFormulario } from './apoio/acao-direta'
  * escopo esmaecido do módulo desligado), e `resolveScopes` o valia sem olhar o
  * nível: quem NÃO tem a agenda era tratada como "só os meus".
  *
- * O recorte não nasce de um módulo que a pessoa não tem. "Quem tem 'só os
- * meus' vê 'só os meus'" continua valendo para o módulo com VIEW/MANAGE.
+ * O recorte não nasce de um módulo que a pessoa não tem. Sem o "só os meus"
+ * (SM1/SM2, o Heitor, 2026-11-23), o único recorte pessoal é a vista pessoal
+ * de quem ATENDE sem o módulo — a contadora não atende, e vê a unidade. E o
+ * cargo não guarda mais escopo nenhum.
  */
 
 const marca = Date.now().toString(36)
@@ -31,12 +33,12 @@ async function como(browser: Browser, quem: MembroDeTeste, fn: (p: Page) => Prom
   try { await fn(await ctx.newPage()) } finally { await ctx.close() }
 }
 
-/** O cargo da contadora: o financeiro inteiro, e o "só os meus" esquecido em módulos que ela NÃO tem. */
+/** O cargo da contadora: o financeiro inteiro, e os módulos que ela NÃO tem. Ela não atende. */
 const contadora: Permissao[] = [
-  { modulo: 'financial',       nivel: 'VIEW', escopo: 'ALL' },
-  { modulo: 'agenda',          nivel: 'NONE', escopo: 'OWN' },
-  { modulo: 'medical_records', nivel: 'NONE', escopo: 'OWN' },
-  { modulo: 'crm',             nivel: 'NONE', escopo: 'OWN' },
+  { modulo: 'financial',       nivel: 'VIEW' },
+  { modulo: 'agenda',          nivel: 'NONE' },
+  { modulo: 'medical_records', nivel: 'NONE' },
+  { modulo: 'crm',             nivel: 'NONE' },
 ]
 
 test.beforeAll(async () => {
@@ -74,7 +76,7 @@ test.afterAll(async () => {
   await daUnidade?.limpar(); await daRede?.limpar(); await rede?.limpar()
 })
 
-test('sem a agenda, o "só os meus" guardado nela não recorta: o dashboard da unidade mostra o faturamento da unidade', async ({ browser }) => {
+test('sem a agenda e sem atender, nada recorta: o dashboard da unidade mostra o faturamento da unidade', async ({ browser }) => {
   await como(browser, daUnidade!, async p => {
     await p.goto(`/${slug}/dashboard`)
     const main = p.locator('main')
@@ -86,7 +88,7 @@ test('sem a agenda, o "só os meus" guardado nela não recorta: o dashboard da u
   })
 })
 
-test('sem a agenda, o dashboard da rede mostra a receita e o custo da rede, sem o recorte "só os meus"', async ({ browser }) => {
+test('sem a agenda e sem atender, o dashboard da rede mostra a receita e o custo da rede, sem recorte', async ({ browser }) => {
   await como(browser, daRede!, async p => {
     await p.goto('/admin/dashboard?period=month')
     await expect(p.getByRole('heading', { name: /^Visão geral/ })).toBeVisible()
@@ -98,12 +100,12 @@ test('sem a agenda, o dashboard da rede mostra a receita e o custo da rede, sem 
 })
 
 /**
- * Revisão do Heitor (2026-10-29), decisão (2) do D6: o cargo salvo GUARDA o
- * "só os meus" do módulo desligado, e religar devolve o que estava. Quem lê
- * continua ignorando esse escopo enquanto o módulo está em NONE (os dois
- * testes acima). A frente 1 gravava ALL ali (`escopoParaGravar`).
+ * Era a decisão (2) do D6 (o Heitor, 2026-10-29): o cargo salvo guardava o
+ * "só os meus" do módulo desligado. Sem o "só os meus" (SM1, o Heitor,
+ * 2026-11-23), o cargo é módulo × nível: o escopo que o formulário mandar
+ * não fica, e a coluna guarda "todos".
  */
-test('salvar o cargo guarda o "só os meus" do módulo desligado', async ({ browser }) => {
+test('salvar o cargo não guarda escopo: o "só os meus" mandado vira "todos", ligado ou desligado', async ({ browser }) => {
   const dona = await criarMembro(`esmd${marca}`, { tenant: rede!.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
   expect((await db().from('tenants').update({ onboarding_completed_at: agora }).eq('id', rede!.tenantId)).error).toBeNull()
   const { data: cargo, error } = await db().from('tenant_roles')
@@ -121,9 +123,9 @@ test('salvar o cargo guarda o "só os meus" do módulo desligado', async ({ brow
         })
       const r = await salvar('NONE')
       expect(r.texto, 'chegou à action').not.toContain('Server action not found')
-      expect(await escopoDaAgenda(), 'desligada, a agenda guarda o "só os meus"').toEqual({ level: 'NONE', scope: 'OWN' })
+      expect(await escopoDaAgenda(), 'desligada, sem o "só os meus"').toEqual({ level: 'NONE', scope: 'ALL' })
       await salvar('VIEW')
-      expect(await escopoDaAgenda(), 'religada, o "só os meus" está lá').toEqual({ level: 'VIEW', scope: 'OWN' })
+      expect(await escopoDaAgenda(), 'religada, sem o "só os meus"').toEqual({ level: 'VIEW', scope: 'ALL' })
     })
   } finally {
     await db().from('role_report_tabs').delete().eq('role_id', cargo!.id)

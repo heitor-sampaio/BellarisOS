@@ -4,19 +4,17 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { recusaDaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { MODULOS_DO_CARGO, MODULE_LEVELS, MODULE_LABELS, isScoped, ALL_REPORT_TABS } from '@/lib/permissions'
-import { falaDaRede } from '@/lib/unidades/uma-so'
+import { MODULOS_DO_CARGO, MODULE_LEVELS, ALL_REPORT_TABS } from '@/lib/permissions'
 import { lerMatrizDoCargo, emitirCargoPermissoesAlteradas } from '@/lib/events/cadastro'
-import type { PermissionLevel, PermissionScope } from '@estetica-os/types'
+import type { PermissionLevel } from '@estetica-os/types'
 import { ler } from '@/lib/db'
 import { lerCaixas } from '@/lib/inbox/visibilidade'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 
-const VALID_SCOPES: PermissionScope[] = ['OWN', 'ALL']
-
 /**
- * Salva a matriz de um único cargo: por módulo, um nível (NONE/VIEW/MANAGE) e,
- * nos módulos escopáveis, o alcance (OWN/ALL).
+ * Salva a matriz de um único cargo: por módulo, um nível (NONE/VIEW/MANAGE).
+ * Sem escopo no cargo (o Heitor, 2026-11-23): a coluna `scope` guarda sempre
+ * `ALL`, que não recorta nada.
  */
 export async function saveRolePermissions(
   _prev: { error: string } | { success: boolean } | undefined,
@@ -59,28 +57,10 @@ export async function saveRolePermissions(
     const allowed = MODULE_LEVELS[module]
     const level = (allowed.includes(raw as PermissionLevel) ? raw : 'NONE') as PermissionLevel
 
-    // Módulo não escopável grava sempre ALL: guardar OWN ali seria um valor sem
-    // leitor, esperando alguém interpretá-lo como restrição de verdade. O
-    // módulo DESLIGADO guarda o escopo escolhido (revisão do Heitor,
-    // 2026-10-29): religar devolve o "só os meus" que estava. Quem lê o ignora
-    // enquanto o módulo está em NONE (`resolveScopes`/`escoposDoQueTem`, D6).
-    // Sem o escopo no formulário (A2 da 12ª: o alcance nasce sem escolha), o
-    // módulo desligado guarda o que já estava gravado.
-    const rawScope = (formData.get(`scope:${module}`) as string | null)
-      ?? antes.find(a => a.modulo === module)?.escopo ?? null
-    const escolhido = isScoped(module) && VALID_SCOPES.includes(rawScope as PermissionScope)
-    const scope: PermissionScope = escolhido ? (rawScope as PermissionScope) : 'ALL'
-
-    return { tenant_id: ctx.tenantId!, role_id: roleId, module, level, scope, semEscolha: isScoped(module) && level !== 'NONE' && !formData.get(`scope:${module}`) }
+    return { tenant_id: ctx.tenantId!, role_id: roleId, module, level, scope: 'ALL' as const }
   })
 
-  // A2 da 12ª simulação (princípio 3): o módulo escopável ligado sem o
-  // alcance escolhido não grava um padrão escondido — a tela pede antes.
-  const semEscolha = rows.filter(r => r.semEscolha).map(r => MODULE_LABELS[r.module])
-  if (semEscolha.length > 0) {
-    return { error: await falaDaRede(ctx.tenantId!, `Escolha o que o cargo enxerga em ${semEscolha.join(', ')} antes de salvar.`) }
-  }
-  const linhas = rows.map(r => ({ tenant_id: r.tenant_id, role_id: r.role_id, module: r.module, level: r.level, scope: r.scope }))
+  const linhas = rows
 
   // -- Abas de Relatórios ------------------------------------------------
   // Vêm no mesmo formulário porque são o mesmo gesto: "o que este cargo
@@ -112,7 +92,7 @@ export async function saveRolePermissions(
   await emitirCargoPermissoesAlteradas(
     roleId, ctx,
     antes,
-    linhas.map(r => ({ modulo: r.module, nivel: r.level, escopo: r.scope })),
+    linhas.map(r => ({ modulo: r.module, nivel: r.level })),
     abas,
   )
 

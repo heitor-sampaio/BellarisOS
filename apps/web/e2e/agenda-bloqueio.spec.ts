@@ -16,8 +16,8 @@ import { diaEmQueAUnidadeAbre } from './apoio/datas'
  *   (princípio 2), como o encaixe fora do horário.
  * - Os livres (o app da cliente, o Copilot, o CRM — `computeAvailableSlots`)
  *   não oferecem o horário bloqueado.
- * - Quem gerencia a agenda bloqueia; com "só os meus", só o próprio horário
- *   (sem sala). Quem só vê, não.
+ * - Quem gerencia a agenda bloqueia. Quem só vê, não; nem a "Minha agenda"
+ *   (a vista pessoal, que só mostra — SM2, 2026-11-23; o "só os meus" saiu).
  *
  * Numa rede [e2e] própria.
  */
@@ -72,7 +72,9 @@ test.beforeAll(async () => {
   })
   propria = await criarMembro(`blqp${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Profissional',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' }],
+    // A "Minha agenda" é a vista pessoal (SM2, o Heitor, 2026-11-23): atende e
+    // não tem a Agenda (era a Agenda em Gerenciar "só os meus", que saiu — SM1).
+    permissoes: [{ modulo: 'agenda', nivel: 'NONE' }],
   })
   expect((await db().from('users').update({ provides_services: true }).eq('id', propria.userId)).error).toBeNull()
   soVe = await criarMembro(`blqv${marca}`, { tenant: rede.tenantId, rotulo: 'Só vê', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }] })
@@ -164,33 +166,29 @@ test('a sala bloqueada aparece na grade e o agendar avisa quando ela é escolhid
   })
 })
 
-test('com "só os meus", a profissional bloqueia só o próprio horário (sem sala) — e quem só vê não bloqueia', async ({ browser }) => {
+test('a "Minha agenda" (a vista pessoal) mostra o bloqueio dela e não bloqueia — e quem só vê também não', async ({ browser }) => {
+  // Sem o "só os meus" (SM1/SM2, o Heitor, 2026-11-23): bloquear é da Agenda
+  // em Gerenciar; a vista pessoal só MOSTRA.
+  expect((await db().from('agenda_bloqueios').insert({
+    tenant_id: rede!.tenantId, branch_id: rede!.branchId, professional_id: propria!.userId, motivo: 'Consulta médica',
+    inicio: em('09:00'), fim: em('10:00'), criado_por_nome: 'e2e',
+  })).error).toBeNull()
   await como(browser, propria!, async p => {
     await p.goto(`/${slug}/agenda?date=${DIA}`)
     await expect(p.getByRole('heading', { name: 'Minha agenda' })).toBeVisible()
-    await p.getByRole('button', { name: 'Bloquear horário' }).click()
-    const janela = p.getByRole('dialog', { name: 'Bloquear horário' })
-    await expect(janela.getByLabel('Profissional'), 'não escolhe outra pessoa').toHaveCount(0)
-    await expect(janela.getByRole('button', { name: 'Sala', exact: true })).toHaveCount(0)
-    await janela.getByLabel('Início').fill(`${DIA}T09:00`)
-    await janela.getByLabel('Fim').fill(`${DIA}T10:00`)
-    await janela.getByLabel('Motivo').fill('Consulta médica')
-    await janela.getByRole('button', { name: 'Bloquear', exact: true }).click()
-    await expect(janela).toBeHidden()
     await expect(p.locator('[data-grade-minha-agenda] [data-rotulo-do-bloqueio]')).toContainText('Consulta médica')
+    await expect(p.getByRole('button', { name: 'Bloquear horário' })).toHaveCount(0)
 
-    // Pela action, o horário de outra pessoa (ou uma sala) é recusado.
-    const outra = await chamarAcao(p, 'actions/agenda-bloqueios.ts', 'bloquearHorario', `/${slug}/agenda`, [{
-      branchId: rede!.branchId, professionalId: rede!.professionalId, inicio: em('17:00'), fim: em('18:00'), motivo: 'Tentativa',
-    }])
-    expect(outra.texto).toContain('Com a agenda “só os meus”, você bloqueia só o seu horário.')
-    const daSala = await chamarAcao(p, 'actions/agenda-bloqueios.ts', 'bloquearHorario', `/${slug}/agenda`, [{
+    // Pela action também não: nem o próprio horário, nem uma sala.
+    await chamarAcao(p, 'actions/agenda-bloqueios.ts', 'bloquearHorario', `/${slug}/agenda`, [{
+      branchId: rede!.branchId, professionalId: propria!.userId, inicio: em('17:00'), fim: em('18:00'), motivo: 'Tentativa',
+    }]).catch(() => null)
+    await chamarAcao(p, 'actions/agenda-bloqueios.ts', 'bloquearHorario', `/${slug}/agenda`, [{
       branchId: rede!.branchId, roomId: sala, inicio: em('17:00'), fim: em('18:00'), motivo: 'Tentativa',
-    }])
-    expect(daSala.texto).toContain('Com a agenda “só os meus”, você bloqueia só o seu horário.')
+    }]).catch(() => null)
   })
   expect(await bloqueiosDe({ professional_id: propria!.userId })).toEqual([expect.objectContaining({ motivo: 'Consulta médica' })])
-  expect((await bloqueiosDe({})).filter(b => b.motivo === 'Tentativa')).toEqual([])
+  expect((await bloqueiosDe({})).filter(b => b.motivo === 'Tentativa'), 'a vista pessoal não grava').toEqual([])
 
   await como(browser, soVe!, async p => {
     await p.goto(`/${slug}/agenda?date=${DIA}`)

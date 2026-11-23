@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { unidadesParaCriar } from '@/lib/unidades/da-tela'
 import { nomesDasSessoesDoPlano } from '@/lib/plano-de-tratamento/nome-da-sessao-no-servidor'
 import { idOu404 } from '@/lib/id-da-rota'
-import { getTenantContext, assertPermission, can, isOwnScope, podeReceber, temRecurso } from '@/lib/auth'
+import { getTenantContext, assertPermission, can, podeReceber, podeVerClinico, temRecurso } from '@/lib/auth'
 import { montaPlano } from '@/lib/plano-de-tratamento/quem-monta'
 import { quemDesfazNoCaixa, quemCompletaOCadastro } from '@/lib/equipe/quem-desfaz'
 import { veOsDocumentos, dispensaDocumentos } from '@/lib/documentos/acesso'
@@ -36,7 +36,6 @@ import type { ClientDocumentItem } from '@/components/branch/client-documents-ta
 import { buildRecordForms, type RawMreEntry } from '@/lib/record-forms'
 import { lotesDosAtendimentos } from '@/lib/prontuario/lotes-dos-atendimentos'
 import { planejamentosAbriveisDasFichas } from '@/lib/injetaveis/alcance'
-import { clienteNoEscopo } from '@/lib/clientes/atendida-por'
 import { alergiasDaAnamnese, paraAnamneseGeral } from '@/lib/anamnese-geral'
 import { fichaDePreAtendimento } from '@/lib/pre-atendimento/ficha'
 import { createAdminClient as clienteDeServico } from '@/lib/supabase/admin'
@@ -312,11 +311,8 @@ export default async function AdminClientProfilePage({
   const mreEntries  = (medRecord?.entries as RawMreEntry[] | null) ?? []
 
   const apptNameById = new Map(allAppointments.map(a => [a.id, a.procedureName]))
-  // Prontuário é dado sensível de saúde: sem o módulo, nem carrega. E com
-  // alcance "só os próprios pacientes", só de quem este profissional atendeu.
-  // Com "só os meus", a regra única (eq-02: o cancelado não conta, a falta
-  // conta; sem o corte das 60 linhas da ficha) — ATD-P03.
-  const canViewRecords = can(ctx, 'medical_records', 'VIEW') && await clienteNoEscopo(admin, ctx, 'medical_records', id)
+  // Prontuário é dado sensível de saúde: sem o módulo, nem carrega.
+  const canViewRecords = podeVerClinico(ctx)
   // Quem viu o prontuário fica registrado (lib/prontuario/acessos.ts) — só
   // quando ele vai à tela; o admin da rede vê o registro na própria ficha.
   // A30 da 15ª (minimização da LGPD, sem mudar quem vê): o prontuário só vai à
@@ -341,8 +337,7 @@ export default async function AdminClientProfilePage({
   const acessosDoProntuario = aba === 'fichas' ? await acessosAoProntuario(ctx, id) : null
 
   // O financeiro da cliente — lançamentos, totais, crédito e os atendimentos a
-  // receber — é UMA leitura (lib/clientes/financeiro-da-ficha.ts), com o "só os
-  // próprios" do financeiro (D6, 2026-10-27).
+  // receber — é UMA leitura (lib/clientes/financeiro-da-ficha.ts).
   const financeiro = await financeiroDaFicha(ctx, id)
   const { veFinanceiro, transactions, internalCredits, aReceber, comandaParaReceber, planosNaoRecebidos } = financeiro
 
@@ -458,12 +453,10 @@ export default async function AdminClientProfilePage({
   }
 
   // Termos e contratos assinados (os novos e o legado do checkout antigo).
-  // A LISTA dos documentos segue o prontuário "só os meus" (decisão do
-  // Heitor, 2026-10-29); a linha do tempo, NÃO (doc-03, 2026-11-02: "o
-  // histórico não é dado clínico, é o histórico de ações feitas no cliente
-  // dentro do sistema"): o "Assinado: <título>" aparece a quem vê a ficha. A
-  // linha leva só o título do modelo e o canal — nada do conteúdo.
-  const veDocumentos = await clienteNoEscopo(admin, ctx, 'medical_records', id)
+  // A linha do tempo (doc-03, 2026-11-02: "o histórico não é dado clínico, é
+  // o histórico de ações feitas no cliente dentro do sistema"): o "Assinado:
+  // <título>" aparece a quem vê a ficha. A linha leva só o título do modelo e
+  // o canal — nada do conteúdo.
   for (const doc of naLinhaDoTempo ? await assinadosDoCliente(ctx.tenantId, id) : []) {
     history.push({ id: uid('ct'), date: doc.assinadoEm, type: 'CONSENT_SIGNED', title: `Assinado: ${doc.titulo}`, subtitle: doc.canal ? SUBTITULO_DO_CANAL[doc.canal] ?? null : null, amount: null, link: null })
   }
@@ -497,7 +490,7 @@ export default async function AdminClientProfilePage({
   const veTermos = veOsDocumentos(ctx)
   const [pedidoLgpd, termosItens, pelaConversa, prePagos, quemDesfaz, pagoComCredito] = await Promise.all([
     pedidoLgpdDaFicha(ctx, id),
-    veTermos && veDocumentos ? documentosDoCliente(ctx.tenantId!, id) : Promise.resolve([]),
+    veTermos ? documentosDoCliente(ctx.tenantId!, id) : Promise.resolve([]),
     veTermos ? envioPelaConversaLigado(ctx.tenantId!) : Promise.resolve(false),
     prePagosDoCliente(ctx.tenantId!, id),
     podeReceber(ctx) && !can(ctx, 'financial', 'MANAGE') ? quemDesfazNoCaixa(ctx.tenantId!, ctx.branchId ?? null) : Promise.resolve(null),
@@ -520,7 +513,6 @@ export default async function AdminClientProfilePage({
         podeAbrirLote={can(ctx, 'stock', 'VIEW') && can(ctx, 'clients', 'VIEW')}
         anexosClinicosFora={anexosClinicosFora}
         anexosClinicos={anexosClinicos}
-        temModuloProntuario={can(ctx, 'medical_records', 'VIEW')}
         anotacoesEVersoes={anotacoesEVersoesDaFicha}
         podeAnotar={can(ctx, 'medical_records', 'MANAGE') && canViewRecords}
         podeVerProntuario={canViewRecords}
@@ -533,26 +525,25 @@ export default async function AdminClientProfilePage({
         transactions={transactions}
         veFinanceiro={veFinanceiro}
         totaisFinanceiros={financeiro.totais}
-        financeiroSoOsProprios={financeiro.soOsProprios}
         internalCredits={internalCredits}
         documents={documents}
         termos={veTermos
-          ? { itens: termosItens, recortado: !veDocumentos, podeDispensar: dispensaDocumentos(ctx), pelaConversa, portalNoPlano: temRecurso(ctx, 'portal') }
+          ? { itens: termosItens, podeDispensar: dispensaDocumentos(ctx), pelaConversa, portalNoPlano: temRecurso(ctx, 'portal') }
           : null}
         canGrantCredit={ctx.permissions.financial === 'MANAGE'}
         branches={(branchesRaw ?? []) as { id: string; name: string }[]}
         currentBranchId={perguntaAUnidade ? '' : branchId}
         slug={slug}
         canManageProcedures={can(ctx, 'medical_records', 'MANAGE')}
-        // Anexo clínico com o alcance da ficha (o "só os meus" do prontuário).
+        // Anexo clínico: o Prontuário em Gerenciar (e em Ver).
         podeAnexarClinico={can(ctx, 'medical_records', 'MANAGE') && canViewRecords}
         podeAnexarComum={can(ctx, 'clients', 'MANAGE')}
         portalNoPlano={temRecurso(ctx, 'portal')}
         planProcedures={planoProcs.procedures}
         planProducts={planoProcs.products}
         podeReceber={podeReceber(ctx)}
-        // PT2: monta o plano quem ATENDE na unidade (o "Atende" — não é permissão);
-        // sem a unidade escolhida, atender em alguma basta, e a gravação confere.
+        // UM3: monta o plano quem tem o Atendimento em Gerenciar na unidade;
+        // sem a unidade escolhida, o Atendimento em Gerenciar basta, e a gravação confere.
         podeMontarPlano={montaPlano(ctx, unidadeDoPlano?.id ?? null)}
         // O plano novo nasce na unidade escolhida (com duas ou mais, a ficha pergunta).
         unidadeDoPlano={unidadeDoPlano?.id ?? ''}
@@ -572,7 +563,7 @@ export default async function AdminClientProfilePage({
         podeIniciarAtendimento={can(ctx, 'atendimento', 'MANAGE')}
       podeCancelarPacote={podeEstornar(ctx)}
       pacoteVencido={pacoteVencido}
-        podeRemarcar={can(ctx, 'financial', 'MANAGE') && !isOwnScope(ctx, 'financial')}
+        podeRemarcar={can(ctx, 'financial', 'MANAGE')}
         // A32 e A35 da 12ª: estornar (o Financeiro em Gerenciar) e receber a parcela na ficha — quem dá baixa (CX2: o PDV ou o Financeiro em Gerenciar, `podeDarBaixa`, a mesma régua de markTransactionPaid).
         podeEstornar={podeEstornar(ctx)}
         podeReceberParcela={podeDarBaixa(ctx)}

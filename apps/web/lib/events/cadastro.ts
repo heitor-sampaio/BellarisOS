@@ -94,7 +94,7 @@ export async function emitirEventoDeMembro(
 }
 
 /** Uma linha de permissão como ela está no banco. */
-export type LinhaDePermissao = { modulo: string; nivel: string; escopo: string }
+export type LinhaDePermissao = { modulo: string; nivel: string }
 
 /**
  * O que mudou entre duas matrizes, módulo a módulo.
@@ -103,7 +103,7 @@ export type LinhaDePermissao = { modulo: string; nivel: string; escopo: string }
  * se o evento sai, e o caso que mais importa — "salvou sem mexer em nada" — é
  * invisível em teste de tela.
  *
- * **Módulo ausente na matriz anterior conta como `NONE/ALL`**, que é o que a
+ * **Módulo ausente na matriz anterior conta como `NONE`**, que é o que a
  * ausência significa: cargo recém-criado não tem linha nenhuma, e sem esse
  * default a primeira gravação apareceria como se tivesse mudado os 14 módulos.
  */
@@ -111,14 +111,14 @@ export function diferencaDaMatriz(
   antes: LinhaDePermissao[],
   depois: LinhaDePermissao[],
 ): { modulo: string; de: string; para: string }[] {
-  const chaveDe = (l: LinhaDePermissao) => `${l.nivel}/${l.escopo}`
+  const chaveDe = (l: LinhaDePermissao) => l.nivel
   const mapaAntes = new Map(antes.map(l => [l.modulo, chaveDe(l)]))
 
   return depois
-    .filter(l => (mapaAntes.get(l.modulo) ?? 'NONE/ALL') !== chaveDe(l))
+    .filter(l => (mapaAntes.get(l.modulo) ?? 'NONE') !== chaveDe(l))
     .map(l => ({
       modulo: l.modulo,
-      de:     mapaAntes.get(l.modulo) ?? 'NONE/ALL',
+      de:     mapaAntes.get(l.modulo) ?? 'NONE',
       para:   chaveDe(l),
     }))
 }
@@ -130,7 +130,7 @@ export async function lerMatrizDoCargo(
 ): Promise<LinhaDePermissao[]> {
   const { data, error } = await createAdminClient()
     .from('role_permissions')
-    .select('module, level, scope')
+    .select('module, level')
     .eq('tenant_id', tenantId)
     .eq('role_id', roleId)
 
@@ -141,7 +141,6 @@ export async function lerMatrizDoCargo(
   return (data ?? []).map(l => ({
     modulo: l.module as string,
     nivel:  l.level  as string,
-    escopo: l.scope  as string,
   }))
 }
 

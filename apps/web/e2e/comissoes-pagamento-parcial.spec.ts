@@ -68,8 +68,9 @@ test.beforeAll(async () => {
   expect(eDr).toBeNull()
   drenagem = dr!.id
   dona = await criarMembro(`cppd${marca}`, { tenant: rede.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
+  // As "Minhas comissões" dela são a vista pessoal: atende e não tem o Financeiro (SM2, o Heitor, 2026-11-23).
   camila = await criarMembro(`cppc${marca}`, { tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Profissional', permissoes: [
-    { modulo: 'agenda', nivel: 'VIEW', escopo: 'OWN' }, { modulo: 'financial', nivel: 'VIEW', escopo: 'OWN' },
+    { modulo: 'agenda', nivel: 'VIEW' },
   ] })
   outra = await criarMembro(`cppo${marca}`, { tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Profissional 2', permissoes: [] })
   expect((await b.from('users').update({ provides_services: true }).in('id', [camila.userId, outra.userId])).error).toBeNull()

@@ -54,7 +54,8 @@ describe('D8: toda entrada do menu lateral tem ícone', () => {
   function chavesDoIcone(arquivo: string): Set<string> {
     const texto = ler(arquivo)
     const bloco = texto.slice(texto.indexOf('const ICONS'), texto.indexOf('\n}', texto.indexOf('const ICONS')))
-    return new Set([...bloco.matchAll(/^\s*(\w+)\s*:\s*</gm)].map(m => m[1]!))
+    // A chave com hífen ('minhas-comissoes', a vista pessoal da SM2) vem entre aspas.
+    return new Set([...bloco.matchAll(/^\s*'?([\w-]+)'?\s*:\s*</gm)].map(m => m[1]!))
   }
 
   it('no portal da rede', () => {
@@ -154,12 +155,13 @@ describe('Vocabulário da 15ª', () => {
     expect(readFileSync(join(RAIZ, 'packages/nucleo/src/lib/db.ts'), 'utf8')).not.toMatch(/Seu cargo não libera/)
   })
 
-  it('a aba Prontuário fechada pelo "só os próprios" diz o motivo', () => {
+  // Sem o "só os meus" (SM1, o Heitor, 2026-11-23): o Prontuário não fecha mais
+  // "pelos próprios"; com o módulo a aba abre, e o aviso é um só.
+  it('a aba fechada diz que é a permissão, não o cargo', () => {
     const prontuario = { key: 'fichas', label: 'Prontuário' }
-    expect(avisoDaAbaFechada(prontuario, true)).toMatch(/só os próprios/)
-    expect(avisoDaAbaFechada(prontuario, true)).not.toMatch(/cargo/i)
-    expect(avisoDaAbaFechada(prontuario, false)).toBe('Suas permissões não abrem a aba Prontuário desta ficha. Você está na Visão geral.')
-    expect(avisoDaAbaFechada({ key: 'financeiro', label: 'Financeiro' }, true)).toBe('Suas permissões não abrem a aba Financeiro desta ficha. Você está na Visão geral.')
+    expect(avisoDaAbaFechada(prontuario)).not.toMatch(/só os próprios|cargo/i)
+    expect(avisoDaAbaFechada(prontuario)).toBe('Suas permissões não abrem a aba Prontuário desta ficha. Você está na Visão geral.')
+    expect(avisoDaAbaFechada({ key: 'financeiro', label: 'Financeiro' })).toBe('Suas permissões não abrem a aba Financeiro desta ficha. Você está na Visão geral.')
     expect(ler('components/branch/client-profile.tsx')).not.toMatch(/Seu cargo não abre a aba/)
   })
 })

@@ -16,6 +16,10 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  *   - Nova: só agora, com a Agnes — primeira vez;
  *   - Alheia: só agora, com a outra — não é da Agnes.
  * A Agnes: 3 atendidas, 2 voltaram (66,7%). Pela regra antiga, 1 (33,3%).
+ *
+ * Sem o "só os meus" (SM1/SM4, o Heitor, 2026-11-23): os Relatórios não
+ * recortam por dono — a tela mostra a retenção da rede (4 atendidas, 2
+ * voltaram). A conta por profissional segue no banco (`metrics_retention`).
  */
 
 const marca = Date.now().toString(36)
@@ -44,7 +48,7 @@ test.beforeAll(async () => {
   expect((await db().from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede.tenantId)).error).toBeNull()
   agnes = await criarMembro(`rta${marca}`, {
     tenant: rede.tenantId, rotulo: 'Agnes',
-    permissoes: [{ modulo: 'agenda', nivel: 'VIEW', escopo: 'OWN' }, { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'reports', nivel: 'VIEW' }],
+    permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }, { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'reports', nivel: 'VIEW' }],
   })
   expect((await db().from('users').update({ provides_services: true }).eq('id', agnes.userId)).error).toBeNull()
   expect((await db().from('role_report_tabs').insert({ tenant_id: rede.tenantId, role_id: agnes.roleId, tab: 'clientes' })).error).toBeNull()
@@ -83,12 +87,13 @@ test('o banco: as clientes que ELA atendeu, e "voltou" é quem a CLÍNICA já ti
   expect([Number(t.clients_served), Number(t.returning_clients)]).toEqual([4, 2])
 })
 
-test('a tela: Relatórios → Clientes da Agnes diz 3 atendidas, 1 primeira vez e 66,7% de retenção', async ({ browser }) => {
+// Os Relatórios valem a abrangência, sem recorte por dono (SM4, o Heitor, 2026-11-23).
+test('a tela: Relatórios → Clientes da Agnes diz a retenção da rede — 4 atendidas, 2 primeira vez e 50,0%', async ({ browser }) => {
   await como(browser, agnes!, async p => {
     await p.goto('/admin/reports?tab=clientes&period=month')
     const card = (rotulo: string) => p.locator('.card').filter({ has: p.getByText(rotulo, { exact: true }) }).first()
-    await expect.poll(async () => (await card('Atendidos no Período').innerText()).match(/\d+/)?.[0], { timeout: 10_000 }).toBe('3')
-    await expect.poll(async () => (await card('Primeira Vez').innerText()).match(/\d+/)?.[0], { timeout: 10_000 }).toBe('1')
-    await expect.poll(async () => card('Taxa de Retenção').innerText(), { timeout: 10_000 }).toContain('66,7%')
+    await expect.poll(async () => (await card('Atendidos no Período').innerText()).match(/\d+/)?.[0], { timeout: 10_000 }).toBe('4')
+    await expect.poll(async () => (await card('Primeira Vez').innerText()).match(/\d+/)?.[0], { timeout: 10_000 }).toBe('2')
+    await expect.poll(async () => card('Taxa de Retenção').innerText(), { timeout: 10_000 }).toContain('50,0%')
   })
 })

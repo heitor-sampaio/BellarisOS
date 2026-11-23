@@ -14,7 +14,8 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  * - A34: o campo "Foto de antes / depois" dizia "Não informado" com duas
  *   fotos anexadas no atendimento.
  * - A35: para a Sofia ("só os meus"), a ficha dizia "Nenhum termo ou
- *   contrato" e "Nenhum documento anexado" quando eles existem.
+ *   contrato" e "Nenhum documento anexado" quando eles existem. Sem o "só os
+ *   meus" (SM1, o Heitor, 2026-11-23), com o Prontuário em Ver ela os vê.
  */
 
 test.setTimeout(180_000)
@@ -42,7 +43,7 @@ test.beforeAll(async () => {
   dona = await criarMembro(`pr11d${marca}`, { tenant: rede.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
   sofia = await criarMembro(`pr11s${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Biomedica',
-    permissoes: [{ modulo: 'clients', nivel: 'VIEW' }, { modulo: 'medical_records', nivel: 'VIEW', escopo: 'OWN' }],
+    permissoes: [{ modulo: 'clients', nivel: 'VIEW' }, { modulo: 'medical_records', nivel: 'VIEW' }],
   })
 
   // A toxina com um lote, e a Helena atendida pela profissional da rede (não a Sofia).
@@ -100,15 +101,15 @@ test('A33 e A34: o prontuário diz o lote aplicado, com o caminho ao "Aplicado e
   })
 })
 
-test('A35: para quem tem o prontuário "só os meus", a ficha diz que os termos e os anexos clínicos ficam de fora', async ({ browser }) => {
+test('A35: com o Prontuário em Ver, a ficha da cliente que ela não atendeu mostra os anexos clínicos e os termos, sem recorte', async ({ browser }) => {
   await como(browser, sofia, async p => {
-    // PR1b: o aviso dos anexos clínicos foi com eles para o Prontuário.
+    // PR1a: as fotos moram no registro do atendimento, e a ficha diz onde.
     await p.goto(`/${slug}/clients/${cliente}?aba=fichas`)
-    await expect(p.locator('[data-anexos-clinicos-fora]')).toContainText('Há 2 anexos clínicos desta cliente')
+    await expect(p.locator('[data-fotos-na-ficha]')).toContainText('2 fotos deste atendimento, em Fotos do atendimento, neste registro')
+    await expect(p.locator('[data-anexos-clinicos-fora]'), 'nenhum anexo clínico fica de fora').toHaveCount(0)
     await p.goto(`/${slug}/clients/${cliente}?aba=documentos`)
-    // O "por que" mora na dica (2026-11-16).
-    await p.locator('[data-termos-recortados]').getByRole('button', { name: 'Por que os documentos não aparecem' }).hover()
-    await expect(p.locator('[data-termos-recortados]')).toContainText('“só os meus”')
+    await expect(p.getByRole('heading', { level: 1 }).first()).toBeVisible()
+    await expect(p.locator('[data-termos-recortados]'), 'os termos não ficam recortados').toHaveCount(0)
   })
 })
 

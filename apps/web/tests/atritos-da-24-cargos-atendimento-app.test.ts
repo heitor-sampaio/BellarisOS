@@ -34,21 +34,22 @@ describe('A1/A2: quem conclui, na matriz e no resumo do cargo', () => {
   // Sem o Prontuário em Gerenciar, conclui sem o clínico (era "não conclui").
   it('A1: o Atendimento em Ver diz que não inicia nem conclui; em Gerenciar sem o Prontuário, que o clínico pede o Prontuário', async () => {
     const { conclusaoNoResumo } = await import('@/lib/permissions-copy')
-    expect(conclusaoNoResumo({ atendimento: 'VIEW', medical_records: 'MANAGE' }, { atendimento: 'ALL' }))
+    expect(conclusaoNoResumo({ atendimento: 'VIEW', medical_records: 'MANAGE' }))
       .toBe('Vê os atendimentos, sem iniciar nem concluir: iniciar e concluir pedem o Atendimento em Gerenciar.')
-    expect(conclusaoNoResumo({ atendimento: 'MANAGE', medical_records: 'VIEW' }, { atendimento: 'ALL' }))
+    expect(conclusaoNoResumo({ atendimento: 'MANAGE', medical_records: 'VIEW' }))
       .toBe('Inicia e conclui os atendimentos. A evolução, as fotos e a ficha de saúde pedem o Prontuário em Gerenciar.')
     // Sem o Atendimento, nada a dizer; com ele de todos e o Prontuário, tudo.
-    expect(conclusaoNoResumo({ agenda: 'MANAGE', medical_records: 'NONE' }, {})).toBeNull()
-    expect(conclusaoNoResumo({ atendimento: 'MANAGE', medical_records: 'MANAGE' }, { atendimento: 'ALL' })).toBeNull()
+    expect(conclusaoNoResumo({ agenda: 'MANAGE', medical_records: 'NONE' })).toBeNull()
+    expect(conclusaoNoResumo({ atendimento: 'MANAGE', medical_records: 'MANAGE' })).toBeNull()
   })
   it('A2: a Agenda em Ver não promete concluir, e diz que não marca horário', async () => {
-    const { LEVEL_COPY, SCOPE_NOTE } = await import('@/lib/permissions-copy')
+    const { LEVEL_COPY } = await import('@/lib/permissions-copy')
     expect(LEVEL_COPY.agenda.VIEW).not.toMatch(/inicia e conclui/)
     expect(LEVEL_COPY.agenda.VIEW).toMatch(/Não marca/)
-    expect(SCOPE_NOTE.agenda).not.toMatch(/Em Ver, inicia e conclui\./)
-    // Iniciar e concluir saíram da Agenda (2026-11-18): é o Atendimento.
-    expect(SCOPE_NOTE.atendimento).toMatch(/inicia e conclui/)
+    // Sem o escopo (SM1, 2026-11-23) saiu a nota do escopo (SCOPE_NOTE): quem diz é o texto do nível.
+    // Iniciar e concluir saíram da Agenda (2026-11-18; UM2): é o Atendimento.
+    expect(LEVEL_COPY.agenda.MANAGE).not.toMatch(/conclui/)
+    expect(LEVEL_COPY.atendimento.MANAGE).toMatch(/inicia, conclui/)
   })
 })
 

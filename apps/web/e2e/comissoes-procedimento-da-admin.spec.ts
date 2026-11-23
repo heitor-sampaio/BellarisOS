@@ -39,7 +39,7 @@ test.beforeAll(async () => {
   expect((await db().from('users').update({ provides_services: true }).eq('id', dona.userId)).error).toBeNull()
   financeiro = await criarMembro(`cpaf${marca}`, {
     tenant: rede.tenantId, rotulo: 'Financeiro',
-    permissoes: [{ modulo: 'financial', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'procedures', nivel: 'MANAGE' }],
+    permissoes: [{ modulo: 'financial', nivel: 'MANAGE' }, { modulo: 'procedures', nivel: 'MANAGE' }],
   })
 })
 

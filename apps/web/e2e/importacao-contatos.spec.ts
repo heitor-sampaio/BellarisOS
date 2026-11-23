@@ -41,8 +41,8 @@ let etapa: string
 let etapa2: string
 let unidadeNorte: string
 const NORTE = `${PREFIXO} Norte ${marca}`
-/** Membro do CRM com "só os meus": não escolhe o responsável de ninguém. */
-let soOsMeus: MembroDeTeste
+/** Outro membro do CRM em Gerenciar (sem ser a Admin da rede): não importa. */
+let doCrm: MembroDeTeste
 const sufixo = String(Date.now()).slice(-7)
 const FONE_ANA = `48 9${sufixo.slice(0, 4)}-${sufixo.slice(-4)}`
 const FONE_ANA_DIG = `55489${sufixo}`
@@ -66,7 +66,7 @@ test.beforeAll(async () => {
   const un = await db().from('branches').insert({ tenant_id: outra.tenantId, name: NORTE, slug: `e2e-norte-${marca}` }).select('id').single<{ id: string }>()
   expect(un.error).toBeNull()
   unidadeNorte = un.data!.id
-  soOsMeus = await criarMembro(`impo${marca}`, { tenant: outra.tenantId, rotulo: 'SDR só os meus', permissoes: [{ modulo: 'crm', nivel: 'MANAGE', escopo: 'OWN' }] })
+  doCrm = await criarMembro(`impo${marca}`, { tenant: outra.tenantId, rotulo: 'SDR do CRM', permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }] })
   // Um funil arquivado: a etapa dele não recebe oportunidade (some do quadro).
   const fa = await db().from('crm_funnels').insert({ tenant_id: outra.tenantId, name: `${PREFIXO} Arquivado ${marca}`, archived_at: new Date().toISOString() }).select('id').single<{ id: string }>()
   const ea = await db().from('crm_stages').insert({ tenant_id: outra.tenantId, funnel_id: fa.data!.id, name: 'Velha', position: 0 }).select('id').single<{ id: string }>()
@@ -99,7 +99,7 @@ test.afterAll(async () => {
     if (cs?.length) { await b.from('loyalty_accounts').delete().in('client_id', cs.map(x => x.id)); await b.from('clients').delete().in('id', cs.map(x => x.id)) }
     if (unidadeNorte) await b.from('branches').delete().eq('id', unidadeNorte)
   }
-  await admin?.limpar(); await soVe?.limpar(); await soCrm?.limpar(); await soOsMeus?.limpar()
+  await admin?.limpar(); await soVe?.limpar(); await soCrm?.limpar(); await doCrm?.limpar()
   await outra?.limpar()
 })
 
@@ -498,10 +498,9 @@ test('clientes com o pacote de antes na unidade de cada linha, e a situação', 
   expect(padrao.ficha.tags ?? [], 'sem tag de unidade (T1)').toEqual([])
 })
 
-test('o CRM com "só os meus" não importa nem distribui leads pela planilha', async ({ browser }) => {
-  // Desde 18/11 a recusa vem antes, pela Admin da rede (a Admin tem o CRM
-  // inteiro, e o "só os meus" não chega mais à importação).
-  await como(browser, soOsMeus, async p => {
+// A importação é só da Admin da rede (18/11); o "só os meus" que este caso também levava saiu (SM1, 2026-11-23).
+test('o CRM em Gerenciar, sem ser a Admin da rede, não importa nem distribui leads pela planilha', async ({ browser }) => {
+  await como(browser, doCrm, async p => {
     const r = await chamarAcao(p, 'actions/importacao.ts', 'importarContatos', '/admin/settings', [{
       destino: 'contatos', nomeArquivo: `distribui-${marca}.csv`, mapeamento: ['name', 'phone', 'op_responsavel'],
       linhas: [['X', '21955550000', `e2e-prof-imp${marca}@bellaris.invalid`]], oportunidade: { etapaId: etapa },

@@ -4,7 +4,7 @@ import { usoDoCopilot } from '@estetica-os/nucleo/lib/planos/uso-do-copilot'
 import { copilotNoPlano } from '@/lib/copilot/disponivel'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { RolesEditor } from '@/components/admin/roles-editor'
-import type { AppModule, PermissionLevel, PermissionScope, ReportTab } from '@estetica-os/types'
+import type { AppModule, PermissionLevel, ReportTab } from '@estetica-os/types'
 import type { ComponentProps } from 'react'
 import type { RoleModulePermission } from '@/components/admin/roles-editor'
 import { SettingsIntegrations } from '@/components/admin/settings-integrations'
@@ -32,8 +32,7 @@ import { listarTagsComUso } from '@/actions/tags'
 import { acoesEmLote } from '@/lib/lotes/acoes'
 import { SettingsGeral } from '@/components/admin/settings-geral'
 import { enderecosDoAppDaRede } from '@/lib/unidades/app-da-cliente'
-import { lerDadosDaRede, lerVisibilidadeDoInbox } from '@/actions/rede'
-import { SettingsVisibilidadeInbox } from '@/components/admin/settings-visibilidade-inbox'
+import { lerDadosDaRede } from '@/actions/rede'
 import { lerCaixas } from '@/lib/inbox/visibilidade'
 import { ler } from '@/lib/db'
 import { mascararSegredos } from '@/lib/integracoes/sem-segredo'
@@ -108,7 +107,6 @@ type PermissionRow = {
   role_id: string | null
   module: string
   level: PermissionLevel
-  scope: PermissionScope | null
 }
 
 export async function Configuracoes({
@@ -216,7 +214,7 @@ export async function Configuracoes({
     wantsRoles
       ? ler(admin
           .from('role_permissions')
-          .select('role_id, module, level, scope')
+          .select('role_id, module, level')
           .eq('tenant_id', ctx.tenantId!), 'carregar as permissões dos cargos')
       : [],
     wantsRoles
@@ -300,7 +298,6 @@ export async function Configuracoes({
   const comissoes = conteudo === 'comissoes'
     ? await Promise.all([configDeComissaoDaRede(ctx.tenantId!), maquininhasDaRede(ctx.tenantId!), profissionaisSemComissao(ctx.tenantId!), taxaDoPixDaRede(ctx.tenantId!), comissoesDosProdutos(ctx.tenantId!), maximoDeParcelasDaRede(ctx.tenantId!)])
     : null
-  const visibilidadeDoInbox = wantsRoles ? await lerVisibilidadeDoInbox() : null
 
   const lotes = conteudo === 'lotes' ? await acoesEmLote(ctx.tenantId!) : null
   const tagsDaRede = conteudo === 'tags' ? await listarTagsComUso() : null
@@ -356,13 +353,12 @@ export async function Configuracoes({
     (tabsByRole[linha.role_id] ??= []).push(linha.tab as ReportTab)
   }
 
-  // Mapa cargo → { módulo: { nível, escopo } } para o editor
+  // Mapa cargo → { módulo: { nível } } para o editor
   const permsByRole: Record<string, Partial<Record<AppModule, RoleModulePermission>>> = {}
   for (const o of (overrides ?? []) as PermissionRow[]) {
     if (!o.role_id) continue
     ;(permsByRole[o.role_id] ??= {})[o.module as AppModule] = {
       level: o.level,
-      scope: o.scope ?? 'ALL',
     }
   }
 
@@ -498,13 +494,6 @@ export async function Configuracoes({
             // a matriz não o oferece à rede que não o tem (2026-10-21).
             foraDoPlano={[...modulosForaDoPlano(lerRecursos(ctx.plano ?? null)), ...(copilotNoPlano(ctx) ? [] : ['copilot' as const])]}
           />
-          {/* Depois da matriz: refina o escopo "só os meus" que se escolhe nela. */}
-          {visibilidadeDoInbox && (
-            <SettingsVisibilidadeInbox
-              inicial={visibilidadeDoInbox}
-              podeEditar={can(ctx, 'roles', 'MANAGE')}
-            />
-          )}
         </div>
       )}
 

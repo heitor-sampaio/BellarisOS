@@ -191,25 +191,19 @@ test.describe.serial('dado clínico só com prontuário', () => {
     })
   })
 
-  test('a profissional (prontuário, sem cadastro) anexa foto clínica de quem ela atende (2026-10-20)', async ({ browser }) => {
-    // Simulação de um dia de clínica: a Dra. Lívia (Clientes = Ver, prontuário
-    // só dos dela) não tinha onde anexar foto — o "Anexar" exigia gerir o
-    // cadastro, e caía em "sem acesso". Anexo clínico é prontuário: é o módulo
-    // dele que decide, com o mesmo alcance da ficha.
+  test('quem tem o Prontuário em Gerenciar, sem o cadastro, anexa foto clínica — de qualquer cliente (2026-10-20)', async ({ browser }) => {
+    // Simulação de um dia de clínica: a Dra. Lívia (Clientes = Ver) não tinha
+    // onde anexar foto — o "Anexar" exigia gerir o cadastro, e caía em "sem
+    // acesso". Anexo clínico é prontuário: é o módulo dele que decide. Sem o
+    // "só os meus" (SM1, o Heitor, 2026-11-23), em qualquer cliente da rede.
     const prof = await criarMembro(`clprof${marca}`, {
       tenant: f!.outra.tenantId, rotulo: 'Clinico profissional',
       permissoes: [
-        { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'agenda', nivel: 'VIEW', escopo: 'OWN' },
-        { modulo: 'medical_records', nivel: 'MANAGE', escopo: 'OWN' },
+        { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'agenda', nivel: 'VIEW' },
+        { modulo: 'medical_records', nivel: 'MANAGE' },
       ],
     })
     criado.membros.push(prof)
-    const { error: eAp } = await db().from('appointments').insert({
-      branch_id: f!.outra.branchId, client_id: f!.clienteId, procedure_id: f!.outra.procedureId,
-      professional_id: prof.userId, status: 'COMPLETED', source: 'INTERNAL',
-      scheduled_at: new Date().toISOString(), duration_min: 30, price: 0,
-    })
-    expect(eAp, 'o atendimento dela').toBeNull()
     const outraCliente = await f!.outra.criarCliente('Paciente de outra profissional')
 
     const NOME = `FOTO-CLINICA-${marca}`
@@ -225,13 +219,13 @@ test.describe.serial('dado clínico só com prontuário', () => {
       await anexos.getByRole('button', { name: 'Anexar documento' }).click()
       await expect.poll(async () => (await db().from('client_documents').select('category').eq('name', NOME).maybeSingle()).data?.category,
         { message: 'a foto clínica foi anexada', timeout: 20_000 }).toBe('foto_clinica')
-      // Só o que é dela: sem o cadastro, nem o "Adicionar documento" dos Documentos.
+      // Só o clínico: sem o cadastro, nem o "Adicionar documento" dos Documentos.
       await p.goto(`/admin/clients/${f!.clienteId}?aba=documentos`)
       await expect(p.getByRole('button', { name: 'Adicionar documento' })).toHaveCount(0)
 
-      // De quem ela NÃO atende, não anexa.
+      // Na de outra cliente também: o Prontuário em Gerenciar mexe em todas (SM1).
       await p.goto(`/admin/clients/${outraCliente}?aba=fichas`)
-      await expect(p.locator('[data-anexos-clinicos]').getByRole('button', { name: 'Anexar' })).toHaveCount(0)
+      await expect(p.locator('[data-anexos-clinicos]').getByRole('button', { name: 'Anexar' })).toBeVisible()
     })
   })
 

@@ -42,9 +42,8 @@ interface Props {
   /** Só o anexo COMUM (RG, comprovante, "outro"): o clínico mora na aba Prontuário (PR1b). */
   documents: ClientDocumentItem[]
   /**
-   * A35 da 11ª: quantos anexos clínicos o cargo não abre. Com o Prontuário
-   * (mesmo no "só os meus") o aviso mora na aba Prontuário (PR1b); aqui, só
-   * para quem não tem o módulo — não há outra aba onde dizê-lo.
+   * A35 da 11ª: quantos anexos clínicos o cargo não abre — só para quem não
+   * tem o Prontuário (quem tem vê todos, na aba Prontuário — PR1b).
    */
   anexosClinicosFora?: number
   clientId:  string
@@ -276,8 +275,8 @@ export function UploadForm({
 
 /**
  * A35 da 11ª: o anexo clínico que o cargo não abre não some calado — diz
- * quantos ficam de fora (só o número, nada do conteúdo). Mora na aba
- * Prontuário (PR1b); na de Documentos só para quem não tem o módulo.
+ * quantos ficam de fora (só o número, nada do conteúdo). Aparece na aba
+ * Documentos, para quem não tem o Prontuário.
  */
 export function AvisoDosAnexosClinicosFora({ quantos }: { quantos: number }) {
   return (
@@ -286,7 +285,7 @@ export function AvisoDosAnexosClinicosFora({ quantos }: { quantos: number }) {
       que a sua permissão não abre.{' '}
       {/* O "de quem é" mora na dica (2026-11-16); à vista, quantos ficam de fora. */}
       <Dica rotulo="Por que os anexos clínicos não abrem">
-        O prontuário é de quem tem o Prontuário — e, no “só os meus”, das clientes que você atende.
+        Os anexos clínicos são prontuário: abrem para quem tem o Prontuário.
       </Dica>
     </p>
   )

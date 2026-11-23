@@ -1,4 +1,4 @@
-import { getTenantContext, assertPermission, ownerFilter, can, assertRecurso, temRecurso } from '@/lib/auth'
+import { getTenantContext, assertPermission, can, assertRecurso, temRecurso } from '@/lib/auth'
 import { motivosDaRede } from '@/lib/crm/motivos-perda'
 import { origensDaRede } from '@/lib/crm/origens'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -74,11 +74,10 @@ export default async function AdminOportunidadesPage({
   const ativos      = funnels.filter(f => f.archived_at === null)
   // A28 da 23ª: sem `?funil=`, o último escolhido (A34) e, sem ele, o padrão
   // — que, vazio, cede ao primeiro funil com oportunidade (a regra do
-  // Dashboard, A30 da 20ª). O recorte é o do quadro ("só os meus").
-  const leadOwner = ownerFilter(ctx, 'crm')
+  // Dashboard, A30 da 20ª).
   const { funil: escolhido, etapas: doQuadro } = await funilDoDashboard({
     funis: ativos, pedido: rawFunil, lembrado: await funilLembrado(),
-    lerFunil: funnelId => getFunilDoQuadro({ tenantId: ctx.tenantId!, funnelId, ownerId: leadOwner }),
+    lerFunil: funnelId => getFunilDoQuadro({ tenantId: ctx.tenantId!, funnelId }),
     total: e => resumoDoFunil(e).total,
   })
   const selecionado = escolhido ?? funnels[0]
@@ -98,8 +97,8 @@ export default async function AdminOportunidadesPage({
   if (stageIds.length > 0) {
     // Todas, em páginas (2026-10-22): o PostgREST corta em 1000, e os cards
     // mais antigos sumiam das colunas — e os números do topo, contados daqui.
-    leadsRaw = (await lerTodas((de, ate) => {
-      let leadsQuery = admin
+    leadsRaw = (await lerTodas((de, ate) =>
+      admin
         .from('leads')
         .select(`
           id, name, phone, email, social_media, source,
@@ -110,10 +109,8 @@ export default async function AdminOportunidadesPage({
         `)
         .eq('tenant_id', ctx.tenantId!)
         .in('crm_stage_id', stageIds)
-      // Lead sem dono fica no bolo comum: aparece para todos até alguém assumir.
-      if (leadOwner) leadsQuery = leadsQuery.or(`owner_id.is.null,owner_id.eq.${leadOwner}`)
-      return leadsQuery.order('created_at', { ascending: false }).order('id').range(de, ate)
-    }, 'carregar as oportunidades')) as unknown as LeadLido[]
+        .order('created_at', { ascending: false }).order('id').range(de, ate),
+    'carregar as oportunidades')) as unknown as LeadLido[]
   }
 
   // A atividade da PESSOA dona de cada lead — de todas as threads dela, não só
@@ -149,10 +146,10 @@ export default async function AdminOportunidadesPage({
   })
 
   // Os números do topo vêm de lib/metrics — a mesma conta do dashboard e dos
-  // Relatórios (D10, 2026-10-28) —, no recorte do quadro: o funil de agora e,
-  // com "só os meus", os da pessoa e os sem dono. Contados no banco, não na lista.
+  // Relatórios (D10, 2026-10-28) —, no recorte do quadro: o funil de agora.
+  // Contados no banco, não na lista.
   const stats = resumoDoFunil(selecionado && stageIds.length > 0
-    ? doQuadro ?? await getFunilDoQuadro({ tenantId: ctx.tenantId!, funnelId: selecionado.id, ownerId: leadOwner })
+    ? doQuadro ?? await getFunilDoQuadro({ tenantId: ctx.tenantId!, funnelId: selecionado.id })
     : [])
 
   return (

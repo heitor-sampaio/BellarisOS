@@ -148,15 +148,50 @@ describe('menuLabelsFor', () => {
   })
 })
 
-// A52 da 6ª simulação: com o financeiro "só os meus", a tela é só a das comissões dela.
-describe('o financeiro "só os meus" se chama "Minhas comissões"', () => {
-  it('nos dois menus e na pré-visualização do cargo; com o de todos, "Financeiro"', () => {
-    const p = com({ financial: 'VIEW' })
+// As vistas pessoais (SM2, o Heitor, 2026-11-23: "pode tirar, as vistas
+// pessoais resolvem"): sem o módulo, quem atende tem a Minha agenda, e quem
+// atende ou tem comissão de venda, as Minhas comissões.
+describe('as vistas pessoais no menu (DaPessoa)', () => {
+  it('Minhas comissões: de quem atende ou tem comissão de venda, sem o Financeiro — nos dois menus e na pré-visualização do cargo', () => {
+    const p = com({})
     for (const menu of [ADMIN_MENU, BRANCH_MENU]) {
-      expect(menuEntriesFor(menu, p, undefined, { financial: 'OWN' }).find(e => e.key === 'financial')?.label).toBe('Minhas comissões')
-      expect(menuEntriesFor(menu, p, undefined, { financial: 'ALL' }).find(e => e.key === 'financial')?.label).toBe('Financeiro')
+      for (const pessoa of [{ atende: true }, { comissaoDeVenda: true }]) {
+        const minhas = menuEntriesFor(menu, p, undefined, pessoa).find(e => e.key === 'minhas-comissoes')
+        expect(minhas?.label).toBe('Minhas comissões')
+        expect(minhas?.href).toMatch(/\/financeiro\/comissoes$/)
+        expect(menuEntriesFor(menu, p, undefined, pessoa).map(e => e.key)).not.toContain('financial')
+      }
+      expect(menuEntriesFor(menu, p, undefined, {}).map(e => e.key)).not.toContain('minhas-comissoes')
+      expect(menuEntriesFor(menu, p).map(e => e.key)).not.toContain('minhas-comissoes')
     }
-    expect(menuLabelsFor(BRANCH_MENU, p, { financial: 'OWN' })).toContain('Minhas comissões')
+    expect(menuLabelsFor(BRANCH_MENU, p, { atende: true })).toContain('Minhas comissões')
+  })
+
+  it('com o Financeiro (Ver ou Gerenciar), é o "Financeiro" e não há Minhas comissões', () => {
+    for (const menu of [ADMIN_MENU, BRANCH_MENU]) {
+      for (const nivel of ['VIEW', 'MANAGE'] as const) {
+        const chaves = menuEntriesFor(menu, com({ financial: nivel }), undefined, { atende: true, comissaoDeVenda: true }).map(e => e.key)
+        expect(chaves).toContain('financial')
+        expect(chaves).not.toContain('minhas-comissoes')
+      }
+    }
+  })
+
+  it('Minha agenda: de quem atende, sem a Agenda; com a Agenda, "Agenda"', () => {
+    for (const menu of [ADMIN_MENU, BRANCH_MENU]) {
+      expect(menuEntriesFor(menu, com({}), undefined, { atende: true }).find(e => e.key === 'agenda')?.label).toBe('Minha agenda')
+      // A comissão de venda não abre a agenda: ela é de quem atende.
+      expect(menuEntriesFor(menu, com({}), undefined, { comissaoDeVenda: true }).map(e => e.key)).not.toContain('agenda')
+      expect(menuEntriesFor(menu, com({})).map(e => e.key)).not.toContain('agenda')
+      expect(menuEntriesFor(menu, com({ agenda: 'VIEW' }), undefined, { atende: true }).find(e => e.key === 'agenda')?.label).toBe('Agenda')
+    }
+    expect(menuLabelsFor(BRANCH_MENU, com({}), { atende: true })).toEqual(['Dashboard', 'Minha agenda', 'Minhas comissões'])
+  })
+
+  it('fora do plano, nem a vista: as Minhas comissões são do recurso de comissões', () => {
+    const plano = { funcionalidades: ['agenda'] }
+    const chaves = menuEntriesFor(BRANCH_MENU, com({}), plano, { atende: true }).map(e => e.key)
+    expect(chaves).not.toContain('minhas-comissoes')
   })
 })
 

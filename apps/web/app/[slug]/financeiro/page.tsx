@@ -3,11 +3,10 @@ import { maquininhaDoRotulo } from '@/lib/financeiro/formas'
 import { notaDoEstornoParcial, notaDoUsoDeCredito, type LancamentoParaNota } from '@/lib/financeiro/notas-do-lancamento'
 import { notFound, redirect } from 'next/navigation'
 import { comAviso } from '@/lib/aviso-da-url'
-import { getTenantContext, assertPermission, assertUnidade, ownerFilter, temRecurso, alcancaUnidade } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertUnidade, temRecurso, alcancaUnidade, can, vistaPessoal } from '@/lib/auth'
 import { podeDarBaixa } from '@/lib/financeiro/so-os-meus'
 import { abaDoFinanceiro } from '@/lib/financeiro/abas'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { recorteDosModulos } from '@/lib/metrics/escopo'
 
 import type { ComponentProps } from 'react'
 import { FinancialHub } from '@/components/branch/financial-hub'
@@ -70,11 +69,12 @@ export default async function FinancialPage({
 
   const ctx = await getTenantContext()
   // `cashier` governa RECEBER — no atendimento e no checkout do plano. Esta
-  // tela é o financeiro da unidade, e pede o módulo dela.
+  // tela é o financeiro da unidade, e pede o módulo dela. Quem ATENDE sem o
+  // Financeiro tem a vista pessoal: o financeiro dela é "Minhas comissões" (A52).
+  if (!can(ctx, 'financial', 'VIEW') && vistaPessoal(ctx, 'financial') && temRecurso(ctx, 'comissoes')) {
+    redirect(`/${slug}/financeiro/comissoes`)
+  }
   assertPermission(ctx, 'financial', 'VIEW')
-  // Com o financeiro "só os meus", o financeiro é só "Minhas comissões" (A52,
-  // como o da rede): o consolidado meio filtrado não existe.
-  if (ownerFilter(ctx, 'financial')) redirect(`/${slug}/financeiro/comissoes`)
   // Os links antigos (`?aberto=todos|vencidas|a-pagar`) levam à aba nova (FI1).
   if (pedida.destino) redirect(`/${slug}/financeiro${pedida.destino}`)
 
@@ -127,20 +127,19 @@ export default async function FinancialPage({
     // O lucro desconta o insumo consumido e deixa a compra de estoque no caixa (2026-10-29).
     getResultadoDoEstoque({ ...argsDoNucleo, from: start, to: end }),
     getResultadoDoEstoque({ ...argsDoNucleo, from: prevStart, to: prevEnd }),
-    // D-14: todo o a receber em aberto, de qualquer vencimento — no escopo do
-    // financeiro (com ele "só os meus", o dos atendimentos dela).
-    getAReceberEmAberto({ ...argsDoNucleo, professionalId: recorteDosModulos(ctx).financeiro }),
+    // D-14: todo o a receber em aberto, de qualquer vencimento.
+    getAReceberEmAberto(argsDoNucleo),
     // F2c: o cartão em N vezes que a OPERADORA ainda deposita, mês a mês, pelo
     // vencimento — separado do a receber da cliente (ela já pagou tudo).
     getAReceberDaOperadora({ ...argsDoNucleo, from: start, to: fimDoPeriodo }),
     getParcelasDaOperadora({ ...argsDoNucleo, from: start, to: fimDoPeriodo })
       .then(ps => parcelasComOProcedimento(ctx.tenantId!, ps)),
     // "Reforça", item 4: os concluídos sem pagamento, separados dos
-    // lançamentos (só apareciam no Fechamento), no escopo do financeiro.
-    getTotalDosAtendimentosAReceber({ tenantId: ctx.tenantId!, unidadeId: branch.id as string, profissionalId: recorteDosModulos(ctx).financeiro }),
+    // lançamentos (só apareciam no Fechamento).
+    getTotalDosAtendimentosAReceber({ tenantId: ctx.tenantId!, unidadeId: branch.id as string }),
   ])
-  // D13 da 9ª: o que já venceu (antes de hoje), no escopo do financeiro.
-  const vencidas = await getAReceberVencido({ ...argsDoNucleo, professionalId: recorteDosModulos(ctx).financeiro })
+  // D13 da 9ª: o que já venceu (antes de hoje).
+  const vencidas = await getAReceberVencido(argsDoNucleo)
 
   // Em páginas (2026-10-22): o PostgREST corta em 1000, e o extrato do período
   // perdia os lançamentos mais antigos — a busca e os filtros da lista também.
@@ -220,14 +219,9 @@ export default async function FinancialPage({
   // `commissions` não tem `created_at` nem `is_paid` — a consulta anterior
   // pedia as duas, o PostgREST devolvia erro 42703, o erro era descartado e o
   // card ficava zerado. O período vem do atendimento e o pagamento, de `status`.
-  // Alcance "só as próprias comissões": o cargo continua entrando na tela, mas
-  // ela se resume ao que é dele. O resto (receita, despesas, lançamentos da
-  // unidade) não é renderizado — ver `ownScope` no hub.
-  const ownFinancial = ownerFilter(ctx, 'financial')
-
   const commissions = (await getCommissionsDetail({
     tenantId: ctx.tenantId!, branchIds: [branch.id], from: start, to: end,
-  })).filter(c => !ownFinancial || c.professionalId === ownFinancial).map(c => ({
+  })).map(c => ({
     id:               c.id,
     professionalId:   c.professionalId,
     professionalName: c.professionalName,
@@ -237,9 +231,9 @@ export default async function FinancialPage({
   }))
 
   // Lançar e estornar são do financeiro. Dar baixa é do PDV ou do Financeiro em
-  // Gerenciar de todos (CX2, o Heitor, 13/11: o Financeiro "dá baixa só no que
+  // Gerenciar (CX2, o Heitor, 13/11: o Financeiro "dá baixa só no que
   // entra sem passar pelo balcão"; era só o PDV, C33).
-  const canWrite   = ctx.permissions.financial === 'MANAGE' && !ownFinancial
+  const canWrite   = ctx.permissions.financial === 'MANAGE'
   const canReverse = canWrite
   const canPay     = podeDarBaixa(ctx)
 
@@ -259,7 +253,7 @@ export default async function FinancialPage({
         concluidosSemPagamento={concluidosSemPagamento}
         aReceberDaOperadora={operadora.total}
         parcelasDaOperadora={parcelasDaOperadora}
-        fluxoDeCaixa={ownFinancial ? undefined : (await getFluxoDeCaixa({ ...argsDoNucleo, meses: 12 })).total}
+        fluxoDeCaixa={(await getFluxoDeCaixa({ ...argsDoNucleo, meses: 12 })).total}
         composicao={composicao}
         branchId={branch.id}
         branchName={branch.name}
@@ -281,9 +275,8 @@ export default async function FinancialPage({
         canReverse={canReverse}
         canWrite={canWrite}
         canPay={canPay}
-        ownScope={!!ownFinancial}
         // CX6 (2026-11-14): as taxas estimadas e a venda sem taxa do período, da unidade.
-        taxasDoPeriodo={ownFinancial ? undefined : (await getTaxasDoPeriodo({ ...argsDoNucleo, from: start, to: end })).total}
+        taxasDoPeriodo={(await getTaxasDoPeriodo({ ...argsDoNucleo, from: start, to: end })).total}
         aba={aba}
         tagsDaRede={tagsDaRede}
         tags={tags}

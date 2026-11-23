@@ -1,42 +1,37 @@
 import type { TenantContext } from '@estetica-os/types'
+import { vistaPessoal, temRecurso } from '@/lib/auth'
 import type { MetricsCore } from './queries'
 
 /**
- * Cada número segue o escopo do SEU módulo (decisão do Heitor, 2026-10-29):
+ * Os números da VISTA PESSOAL nos dashboards (sem o "só os meus", o Heitor,
+ * 2026-11-23: "as vistas pessoais resolvem"). Quem tem o módulo vê os números
+ * de todos, nas unidades ao alcance; quem ATENDE e não tem o módulo vê os
+ * "Meus…" — a agenda e as clientes dela (`vistaPessoal(ctx, 'agenda')`), o
+ * dinheiro dela (`vistaPessoal(ctx, 'financial')`). O CRM não tem vista
+ * pessoal: quem quer só as suas usa o filtro de responsável.
  *
- * - a AGENDA e as CLIENTES seguem o escopo da agenda — atendimentos,
- *   agendamentos, novos clientes, a ocupação, a retenção, as clientes a
- *   reativar, os rankings que contam;
- * - o DINHEIRO segue o do financeiro — receita, a receber, despesa, ticket,
- *   comissão, vendas, o consumo de insumo (é custo) e os rankings de valor;
- * - o FUNIL segue o do CRM.
+ * A vista só existe com a funcionalidade no plano: o módulo cortado pelo plano
+ * também é NONE, e não vira "Meu faturamento".
  *
- * "Com a agenda ALL e o financeiro OWN, os atendimentos são os da clínica e
- * o faturamento é o dela." Até aqui qualquer "só os meus" (agenda OU
- * financeiro) recortava TODOS os números. Módulo NONE já vale ALL no contexto
- * (`resolveScopes` + `escoposDoQueTem`, §11): o recorte só existe no módulo
- * que o cargo tem.
- *
- * Puro (roda no teste): o contexto entra pronto, e as funções que leem o
- * banco recebem o recorte de cada módulo.
+ * As funções que leem o banco recebem UM profissional; com a agenda e o
+ * dinheiro em recortes diferentes, pedem-se os dois e juntam-se aqui.
  */
 
-/** Ninguém: com "só os meus" e sem membro interno, nenhum número (nunca a rede). */
-export const NINGUEM = '00000000-0000-0000-0000-000000000000'
-
-export interface RecorteDosModulos {
+export interface RecortePessoal {
   /** A profissional da agenda (e das clientes) — nulo = todos. */
   agenda:     string | null
-  /** A dona do dinheiro (o financeiro) — nulo = todos. */
+  /** A dona do dinheiro — nulo = todos. */
   financeiro: string | null
-  /** O dono das oportunidades (o CRM; os sem dono entram junto) — nulo = todos. */
-  crm:        string | null
+  /** O CRM não tem vista pessoal: sempre nulo (todos). */
+  crm:        null
 }
 
-export function recorteDosModulos(ctx: Pick<TenantContext, 'scopes' | 'internalUserId'>): RecorteDosModulos {
-  const dele = (modulo: 'agenda' | 'financial' | 'crm') =>
-    ctx.scopes[modulo] === 'OWN' ? (ctx.internalUserId ?? NINGUEM) : null
-  return { agenda: dele('agenda'), financeiro: dele('financial'), crm: dele('crm') }
+export function recortePessoal(ctx: TenantContext): RecortePessoal {
+  return {
+    agenda:     temRecurso(ctx, 'agenda') ? vistaPessoal(ctx, 'agenda') : null,
+    financeiro: temRecurso(ctx, 'financeiro') ? vistaPessoal(ctx, 'financial') : null,
+    crm:        null,
+  }
 }
 
 /**
@@ -62,9 +57,7 @@ export function juntarNucleos(daAgenda: MetricsCore, doDinheiro: MetricsCore): M
  * A tabela que mistura contagem e dinheiro numa linha (por procedimento, por
  * profissional): os campos de DINHEIRO vêm do recorte do financeiro e o resto
  * (as contagens) do recorte da agenda, casados pelo nome. A linha que só um
- * dos dois tem entra com zero no que falta. Assim a profissional com a agenda
- * de todos e o financeiro dela vê quantas limpezas a clínica fez, e quanto
- * delas foi dela.
+ * dos dois tem entra com zero no que falta.
  */
 export function juntarPorNome<T extends { nome: string }>(daAgenda: T[], doDinheiro: T[], camposDeDinheiro: (keyof T)[]): T[] {
   const doNome = new Map(doDinheiro.map(l => [l.nome, l]))
@@ -87,17 +80,18 @@ export function juntarPorNome<T extends { nome: string }>(daAgenda: T[], doDinhe
 }
 
 /**
- * As unidades dos números "Meus…" (D10 da 13ª simulação): com o módulo em
- * "só os meus", a unidade do endereço e as outras em que ela ATENDE
- * (`users.atende_em`) — o que é DELA, onde quer que tenha atendido, como a
- * Minha agenda e "Minhas comissões". Sem o "só os meus", só a do endereço
- * (os números da unidade). A unidade do endereço vem primeiro.
+ * As unidades dos números "Meus…" (D10 da 13ª simulação): na vista pessoal, a
+ * unidade do endereço e as outras em que ela ATENDE (`users.atende_em`) — o
+ * que é DELA, onde quer que tenha atendido, como a Minha agenda e "Minhas
+ * comissões". Fora da vista pessoal, só a do endereço (os números da
+ * unidade). A unidade do endereço vem primeiro.
  */
 export function unidadesDoQueEDela(
-  ctx: Pick<TenantContext, 'scopes' | 'internalUserId' | 'atendeEm'>,
+  ctx: TenantContext,
   unidade: string,
   modulo: 'agenda' | 'financial',
 ): string[] {
-  if (ctx.scopes[modulo] !== 'OWN' || !ctx.internalUserId) return [unidade]
+  const recorte = recortePessoal(ctx)
+  if ((modulo === 'agenda' ? recorte.agenda : recorte.financeiro) === null) return [unidade]
   return [unidade, ...(ctx.atendeEm ?? []).filter(u => u !== unidade).sort()]
 }

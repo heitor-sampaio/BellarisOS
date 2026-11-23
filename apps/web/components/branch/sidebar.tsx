@@ -15,7 +15,7 @@ import { logoutAction } from '@/actions/auth'
 import { useSidebar } from '@/components/shared/sidebar-context'
 import { menuDaUnidadeFor } from '@/lib/menu'
 import type { ResolvedPermissions } from '@/lib/permissions'
-import type { ResolvedScopes } from '@estetica-os/types'
+import type { DaPessoa } from '@/lib/menu'
 
 // Ver o comentário em lib/menu.ts: a lista e os gates são compartilhados com a
 // pré-visualização da tela de cargos.
@@ -32,6 +32,7 @@ const ICONS: Record<string, React.ReactNode> = {
   reports:    <BarChart3  size={18} />,
   auditoria:  <ScrollText size={18} />,
   financial:  <CreditCard size={18} />,
+  'minhas-comissoes': <CreditCard size={18} />,
   fechamento: <Wallet size={18} />,
   procedures: <Sparkles   size={18} />,
   pacotes:      <Ticket     size={18} />,
@@ -50,7 +51,7 @@ interface BranchSidebarProps {
   branchName:      string
   permissions:     ResolvedPermissions
   /** O escopo de cada módulo: o Fechamento do dia pede o financeiro de todos (D6). */
-  scopes?:         Partial<ResolvedScopes>
+  pessoa?:         DaPessoa
   /** O plano da rede (`ctx.plano`): item de funcionalidade fora dele some. */
   plano?:          { funcionalidades: readonly string[] } | null
   isNetworkAdmin?: boolean
@@ -64,7 +65,7 @@ interface BranchSidebarProps {
 const SIDEBAR_GRADIENT = 'var(--gradient-brand)'
 
 export function BranchSidebar({
-  slug, branchName, permissions, scopes, plano = null, isNetworkAdmin, adminDaRede = false, allBranches = [], umaUnidade = false,
+  slug, branchName, permissions, pessoa, plano = null, isNetworkAdmin, adminDaRede = false, allBranches = [], umaUnidade = false,
 }: BranchSidebarProps) {
   const base = `/${slug}`
   const [switcherOpen, setSwitcherOpen] = useState(false)
@@ -200,7 +201,7 @@ export function BranchSidebar({
           {/* Cada categoria recolhe pelo título; com a barra recolhida em
               ícones, o título vira um filete. */}
           {/* A1 da 14ª: quem é da rede vê também as entradas da clínica, levando a /admin. */}
-          {menuDaUnidadeFor(permissions, plano, scopes, { base, daRede: !!isNetworkAdmin, adminDaRede }).map(secao => (
+          {menuDaUnidadeFor(permissions, plano, pessoa, { base, daRede: !!isNetworkAdmin, adminDaRede }).map(secao => (
             <SecaoDoMenu key={secao.key ?? '_topo'} chave={secao.key} titulo={secao.label}
               entradas={secao.entries}
               icones={ICONS} recolhida={collapsed} filete={separatorBg} />

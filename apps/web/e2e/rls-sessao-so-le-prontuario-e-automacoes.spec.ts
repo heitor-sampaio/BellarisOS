@@ -19,11 +19,11 @@ import { leOSinalDaRede } from './apoio/sinais'
  *  - a corrente das AUTOMAÇÕES (domain_events, com o texto das mensagens
  *    recebidas) e as execuções se liam sem as Automações.
  *
- * O prontuário é módulo ESCOPÁVEL ("só os meus") e a RLS não aplica o
- * escopo: ele não se lê pela sessão de jeito nenhum, nem com o Prontuário,
- * nem a Admin ("Toda leitura de módulo escopável passa ownerFilter", §11;
- * "Realtime de tela que mostra dado com escopo assina um SINAL", §4). Quem
- * tem o Prontuário o vê pela TELA, que lê pelo servidor — é o controle.
+ * O prontuário não se lê pela sessão de jeito nenhum, nem com o Prontuário,
+ * nem a Admin (a sessão só lê SINAIS, §4; a tela assina o sinal). Quem tem o
+ * Prontuário o vê pela TELA, que lê pelo servidor — é o controle. (Era por
+ * ser módulo "só os meus"; o escopo saiu em 23/11, SM1, e a regra da sessão
+ * ficou.)
  *
  * Provado COMO o membro (o token dele no PostgREST), numa rede `[e2e]`
  * própria. Cada caso tem o controle: o token LÊ o sinal da rede (ou a tela
@@ -154,8 +154,8 @@ test.beforeAll(async () => {
   expect(eProd, 'criar o produto').toBeNull()
   produto = prod!.id
 
-  // Um fato da corrente, com o texto que o "só os meus" do CRM esconde, e
-  // uma automação (rascunho: nada roda).
+  // Um fato da corrente, com o texto de uma mensagem recebida, e uma
+  // automação (rascunho: nada roda).
   const { data: f, error: eF } = await db().from('domain_events').insert({
     tenant_id: tenant, nome: 'conversa.mensagem_recebida', entidade: 'conversa', dados: { texto: TEXTO_DO_FATO },
     chave: `e2e:${marca}`, despachado_em: new Date().toISOString(),
@@ -198,7 +198,7 @@ test.describe('prontuário: ninguém lê nem grava pela sessão; quem tem o Pron
       ['injectable_maps', mapa], ['injectable_applications', aplicacao],
     ] as const) {
       for (const m of [semNada, veProntuario, gerenciaProntuario, admin]) {
-        expect(await linhas(m, tabela, id), `${tabela}: nada pela sessão (módulo escopável — é o servidor que aplica o escopo)`).toBe(0)
+        expect(await linhas(m, tabela, id), `${tabela}: nada pela sessão (é o servidor que lê, depois da trava)`).toBe(0)
       }
       // O registro existe: quem não o vê é a sessão.
       const { data: noBanco } = await db().from(tabela).select('id').eq('id', id)

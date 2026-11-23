@@ -28,7 +28,7 @@ test.beforeAll(async () => {
   expect((await db().from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede.tenantId)).error).toBeNull()
   await rede.criarCliente('Camila d10')
   await rede.criarCliente('Breno d10')
-  soCrm = await criarMembro(`d10c${marca}`, { tenant: rede.tenantId, rotulo: 'So oportunidades', permissoes: [{ modulo: 'crm', nivel: 'MANAGE', escopo: 'ALL' }] })
+  soCrm = await criarMembro(`d10c${marca}`, { tenant: rede.tenantId, rotulo: 'So oportunidades', permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }] })
   comClientes = await criarMembro(`d10k${marca}`, { tenant: rede.tenantId, rotulo: 'Com clientes', permissoes: [{ modulo: 'clients', nivel: 'VIEW' }] })
 })
 

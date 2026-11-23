@@ -7,9 +7,8 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  * O inbox vem de 30 em 30, filtrado no banco (migration 20260928000007).
  *
  * Era as 200 conversas mais recentes, filtradas no navegador: a 201ª nunca
- * aparecia — nem rolando, nem procurando por ela. E no modo "pela conversa" a
- * lista dos leads do dono vinha de um select cortado em 1000 linhas: as
- * conversas dos leads além disso sumiam do SDR sem aviso.
+ * aparecia — nem rolando, nem procurando por ela. (O caso do modo "pela
+ * conversa" do "só os meus" saiu com ele: SM3, o Heitor, 2026-11-23.)
  *
  * Numa rede `[e2e]` própria, para a contagem ser exata.
  */
@@ -19,7 +18,7 @@ const db = () => banco()
 const nome = (i: number) => `${PREFIXO} Pessoa ${String(i).padStart(2, '0')} ${marca}`
 const TOTAL = 45
 
-interface Fx { outra: OutraRede; rede: MembroDeTeste; sdr: MembroDeTeste; convIds: string[] }
+interface Fx { outra: OutraRede; rede: MembroDeTeste; convIds: string[] }
 let f: Fx | null = null
 const criado: { outra?: OutraRede; membros: MembroDeTeste[]; convIds: string[] } = { membros: [], convIds: [] }
 
@@ -49,13 +48,13 @@ test.beforeAll(async () => {
   expect(error, 'criar as conversas').toBeNull()
   criado.convIds.push(...(data ?? []).map(c => c.id as string))
 
-  const membro = async (chave: string, escopo: 'OWN' | 'ALL') => {
+  const membro = async (chave: string) => {
     const m = await criarMembro(`pg${chave}${marca}`, {
-      tenant: outra.tenantId, rotulo: `CRM ${chave}`, permissoes: [{ modulo: 'crm', nivel: 'VIEW', escopo }],
+      tenant: outra.tenantId, rotulo: `CRM ${chave}`, permissoes: [{ modulo: 'crm', nivel: 'VIEW' }],
     })
     criado.membros.push(m); return m
   }
-  f = { outra, rede: await membro('rede', 'ALL'), sdr: await membro('sdr', 'OWN'), convIds: criado.convIds }
+  f = { outra, rede: await membro('rede'), convIds: criado.convIds }
 })
 
 test.afterAll(async () => {
@@ -123,51 +122,6 @@ test.describe.serial('inbox paginado', () => {
       await p.getByRole('button', { name: 'Não lidas', exact: true }).click()
       await expect(linhas(p)).toHaveCount(1, { timeout: 10_000 })
       await expect(linhas(p).first()).toContainText(nome(TOTAL))
-    })
-  })
-
-  test('pela conversa: quem tem o CRM com "só os meus" vê as conversas dos seus leads mesmo com mais de 1000', async ({ browser }) => {
-    const b = db()
-    const t = f!.outra.tenantId
-    expect((await b.from('tenants').update({ inbox_visibilidade: 'conversa' }).eq('id', t)).error).toBeNull()
-
-    // 1005 oportunidades do SDR — o select antigo parava em 1000.
-    const meus = Array.from({ length: 1005 }, (_, i) => ({
-      tenant_id: t, name: `${PREFIXO} Lead ${i} ${marca}`, owner_id: f!.sdr.userId,
-    }))
-    for (let i = 0; i < meus.length; i += 500) {
-      const { error } = await b.from('leads').insert(meus.slice(i, i + 500))
-      expect(error, 'criar os leads do SDR').toBeNull()
-    }
-    const { data: ids, error: eR } = await b.rpc('leads_do_dono', { p_tenant: t, p_owner: f!.sdr.userId })
-    expect(eR).toBeNull()
-    expect((ids as string[]).length, 'o array não tem teto').toBe(1005)
-
-    // Uma conversa ligada ao último lead dele, outra ao lead de outro dono.
-    const { data: ultimo } = await b.from('leads').select('id').eq('tenant_id', t).eq('owner_id', f!.sdr.userId)
-      .order('created_at', { ascending: false }).order('id', { ascending: false }).limit(1).single<{ id: string }>()
-    const { data: alheio, error: eA } = await b.from('leads')
-      .insert({ tenant_id: t, name: `${PREFIXO} Alheio ${marca}`, owner_id: f!.outra.professionalId })
-      .select('id').single<{ id: string }>()
-    expect(eA).toBeNull()
-    const MEU = `${PREFIXO} Do SDR ${marca}`, DELE = `${PREFIXO} De outro ${marca}`
-    const agora = new Date().toISOString()
-    const conv = (n: string, lead: string, fone: string) => ({
-      tenant_id: t, channel: 'whatsapp', status: 'open', provider: 'uazapi', lead_id: lead,
-      contact_name: n, contact_phone: fone, contact_external_id: fone, contact_aliases: [fone],
-      last_message_at: agora, last_message: 'oi',
-    })
-    const { error: eC } = await b.from('conversations').insert([
-      conv(MEU, ultimo!.id, '5548' + String(Date.now() + 101).slice(-9)),
-      conv(DELE, alheio!.id, '5548' + String(Date.now() + 102).slice(-9)),
-    ])
-    expect(eC).toBeNull()
-
-    await comInbox(browser, f!.sdr, async p => {
-      await expect(linhas(p).filter({ hasText: MEU })).toHaveCount(1)
-      await expect(p.getByText(DELE), 'a do lead de outro dono não aparece').toHaveCount(0)
-      // O bolo comum (sem oportunidade) continua para todo mundo.
-      await expect(linhas(p).filter({ hasText: nome(1) })).toHaveCount(1)
     })
   })
 })

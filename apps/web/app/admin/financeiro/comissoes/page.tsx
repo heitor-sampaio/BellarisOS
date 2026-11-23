@@ -1,4 +1,5 @@
-import { getTenantContext, assertPermission, ownerFilter, assertRecurso } from '@/lib/auth'
+import { getTenantContext, assertRecurso, can, vistaPessoal } from '@/lib/auth'
+import { semAcesso } from '@/lib/sem-acesso'
 import { unidadesParaLer, nomeNaTela } from '@/lib/unidades/da-tela'
 import { ComissoesDaEquipe } from '@/app/_shared/comissoes-da-equipe'
 
@@ -11,7 +12,10 @@ export default async function ComissoesDaRedePage({
   const ctx = await getTenantContext()
   // A funcionalidade é do PLANO da rede (lib/planos/recursos.ts).
   assertRecurso(ctx, 'comissoes')
-  assertPermission(ctx, 'financial', 'VIEW')
+  // Com o Financeiro em Ver, as de todos; quem atende sem ele, a vista pessoal
+  // ("Minhas comissões": só as dela).
+  const minhas = can(ctx, 'financial', 'VIEW') ? null : vistaPessoal(ctx, 'financial')
+  if (!minhas && !can(ctx, 'financial', 'VIEW')) throw semAcesso()
   const sp = await searchParams
 
   // F72 (A32 da 14ª; H6): as unidades de LEITURA — a desativada com comissão a
@@ -30,9 +34,8 @@ export default async function ComissoesDaRedePage({
       unidades={unidades}
       unidadeAtual={sp.unidade}
       basePath="/admin/financeiro/comissoes"
-      // Quem só vê as próprias volta para o início: o financeiro da rede o
-      // manda para cá.
-      voltarPara={ownerFilter(ctx, 'financial') ? '/admin/dashboard' : '/admin/financeiro'}
+      // Na vista pessoal volta para o início: o financeiro da rede a manda para cá.
+      voltarPara={minhas ? '/admin/dashboard' : '/admin/financeiro'}
       periodoPedido={sp.periodo}
       abas={{ base: '/admin/financeiro', titulo: unidades.length > 1 ? 'Financeiro da Rede' : 'Financeiro' }}
     />

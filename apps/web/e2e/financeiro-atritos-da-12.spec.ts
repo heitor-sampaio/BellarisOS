@@ -71,7 +71,7 @@ test.beforeAll(async () => {
     permissoes: [{ modulo: 'cashier', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'agenda', nivel: 'VIEW' }],
   })
   contadora = await criarMembro(`fn12k${marca}`, {
-    tenant: rede.tenantId, rotulo: 'Contadora', permissoes: [{ modulo: 'financial', nivel: 'VIEW', escopo: 'ALL' }],
+    tenant: rede.tenantId, rotulo: 'Contadora', permissoes: [{ modulo: 'financial', nivel: 'VIEW' }],
   })
   carla = await rede.criarCliente('Carla')
 

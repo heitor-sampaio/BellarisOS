@@ -57,15 +57,18 @@ test.beforeAll(async () => {
   dona = await criarMembro(`ag12d${marca}`, { tenant: rede.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
   gabi = await criarMembro(`ag12g${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Gabi',
+    // A "Minha agenda" e as "Minhas comissões" são as vistas pessoais (SM2, o
+    // Heitor, 2026-11-23): ela atende e não tem a Agenda nem o Financeiro (era
+    // o "só os meus" dos dois, que saiu — SM1).
     permissoes: [
-      { modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' }, { modulo: 'medical_records', nivel: 'MANAGE', escopo: 'OWN' },
-      { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'financial', nivel: 'VIEW', escopo: 'OWN' },
+      { modulo: 'agenda', nivel: 'NONE' }, { modulo: 'medical_records', nivel: 'MANAGE' },
+      { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'financial', nivel: 'NONE' },
     ],
   })
   expect((await b.from('users').update({ atende_em: [rede.branchId], provides_services: true }).eq('id', gabi.userId)).error).toBeNull()
   recepcao = await criarMembro(`ag12r${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Recepcao',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'clients', nivel: 'MANAGE' }],
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }],
   })
   cliente = await rede.criarCliente('Juliana')
 })

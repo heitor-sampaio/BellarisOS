@@ -55,19 +55,14 @@ interface AgendaCalendarProps {
   colunasDeQuemNaoAtende?: Professional[]
   rooms:         Room[]
   canWrite:      boolean
-  userRole:      string
-  /** Cargo com agenda "só os meus": a janela mostra só o que a action deixa fazer. */
-  escopoProprio?: boolean
+  /** A vista pessoal (a Minha agenda): a janela sem os gestos da recepção. */
+  vistaDela?: boolean
   /** O membro logado: no agendamento dele, "Marcar chegada e iniciar" (A25). */
   meuId?: string | null
   /** Conclui o atendimento (o Prontuário em Gerenciar) — sem ele, a janela diz quem conclui antes do Iniciar (A20 da 10ª). */
   podeConcluir?: boolean
-  /** O Atendimento "só os meus": inicia e conclui só os dela. */
-  atendimentoProprio?: boolean
   /** A9 da 20ª: sem iniciar e concluir, quem conclui — o Atendimento em Gerenciar, pelo nome (quemConcluiOAtendimento). */
   quemConclui?: string[] | null
-  /** A9 da 25ª: os ids de quem conclui os PRÓPRIOS (idsQueConcluemOsProprios) — a profissional do agendamento entra em "quem conclui". */
-  concluemOsProprios?: string[] | null
   /** O horário de funcionamento da unidade e de cada profissional (nulo = o padrão / segue a unidade). */
   horarioDaUnidade?:          Horario | null
   horariosDosProfissionais?:  Record<string, Horario | null>
@@ -201,7 +196,7 @@ function todayDate(fuso: string): Date {
 // -- Component ----------------------------------------------------------------
 
 export function AgendaCalendar({
-  branchId, slug, events, procedures, professionals, rooms, canWrite, userRole, escopoProprio, meuId = null, podeConcluir = true, atendimentoProprio = false, quemConclui = null, concluemOsProprios = null,
+  branchId, slug, events, procedures, professionals, rooms, canWrite, vistaDela = false, meuId = null, podeConcluir = true, quemConclui = null,
   horarioDaUnidade = null, horariosDosProfissionais = {}, ocupadoForaDosProfissionais = {}, dataInicial = null, comCancelados = false,
   bloqueios = [], colunasDeQuemNaoAtende = [], filtros = SEM_FILTRO, tagsDaRede = [],
 }: AgendaCalendarProps) {
@@ -391,7 +386,7 @@ export function AgendaCalendar({
           </button>
           {/* Os filtros (o Heitor, 18/11): profissional, sala e tag, na consulta. */}
           <FiltrosDaAgendaNaBarra
-            profissionais={escopoProprio ? null : professionals.map(p => ({ id: p.id, name: p.name }))}
+            profissionais={vistaDela ? null : professionals.map(p => ({ id: p.id, name: p.name }))}
             salas={rooms}
             tags={tagsDaRede}
             filtros={filtros}
@@ -546,13 +541,10 @@ export function AgendaCalendar({
         <AppointmentSheet
           appointment={selectedEvent}
           slug={slug}
-          userRole={userRole}
-          escopoProprio={escopoProprio}
+          vistaDela={vistaDela}
           podeGerenciar={canWrite}
           podeConcluir={podeConcluir}
-          atendimentoProprio={atendimentoProprio}
           quemConclui={quemConclui}
-          concluemOsProprios={concluemOsProprios}
           meuId={meuId}
           onClose={() => setSelectedEvent(null)}
         />

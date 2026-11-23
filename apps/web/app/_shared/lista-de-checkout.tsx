@@ -48,7 +48,7 @@ export async function ListaDeCheckout({
   const plansRaw = await lerTodas((de, ate) => admin
     .from('treatment_plans')
     .select(`
-      id, status, professional_notes, professional_id, created_at, branch_id,
+      id, status, professional_notes, created_at, branch_id,
       clients(name, phone),
       branches!branch_id(name),
       treatment_plan_sessions(treatment_plan_session_procedures(price))
@@ -77,7 +77,7 @@ export async function ListaDeCheckout({
       unidade: br?.name ?? null,
       total,
       // A anotação do profissional é prontuário (2026-10-03).
-      notes:   podeVerClinico(ctx, (p.professional_id as string | null) ?? null) ? ((p.professional_notes as string | null) ?? null) : null,
+      notes:   podeVerClinico(ctx) ? ((p.professional_notes as string | null) ?? null) : null,
       waitingSince: p.created_at as string,
     }
   })

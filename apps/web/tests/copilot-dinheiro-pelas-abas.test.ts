@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { TenantContext, ResolvedPermissions } from '@estetica-os/types'
-import { NO_PERMISSIONS, ALL_SCOPES } from '@/lib/permissions'
+import { NO_PERMISSIONS } from '@/lib/permissions'
 import { ferramentasDoCargo } from '@/lib/copilot/executor'
 import { indicadores } from '@/lib/copilot/ferramentas/indicadores'
 import { FUNCIONALIDADES } from '@estetica-os/nucleo/lib/planos/recursos'
@@ -20,7 +20,7 @@ function ctx(permissions: Partial<ResolvedPermissions>, reportTabs: TenantContex
     userId: 'auth', internalUserId: 'u1', userName: 'Ana', roleLabel: 'Contadora',
     tenantId: 't1', branchId: null, role: 'RECEPTIONIST', roleId: 'r1', clientId: null,
     permissions: { ...NO_PERMISSIONS, copilot: 'VIEW', ...permissions } as ResolvedPermissions,
-    scopes: ALL_SCOPES, reportTabs, providesServices: false, isNetworkAdmin: false, isClient: false,
+    reportTabs, providesServices: false, isNetworkAdmin: false, isClient: false,
     plano: { funcionalidades: TODAS, limites: { unidades: null, membros: null, whatsapp: null } },
   }
 }

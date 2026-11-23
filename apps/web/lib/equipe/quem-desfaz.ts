@@ -38,40 +38,15 @@ export async function quemRecebeNaUnidade(tenantId: string, branchId: string | n
 }
 
 /**
- * Quem CONCLUI o atendimento de outra pessoa: o Atendimento em Gerenciar, de
- * todos (o Heitor, 2026-11-18: "Só inicia e conclui atendimento quem tem
- * gerenciar no atendimento"; era o Prontuário em Gerenciar, A9 da 20ª). D1 da
- * 22ª (princípio 3): E a Agenda de todos (em Ver ou Gerenciar) — com a Agenda
- * "só os meus", a pessoa nem abre o atendimento de outra
- * (`deOutroProfissional`). A Admin da rede entra sempre.
+ * Quem INICIA e CONCLUI o atendimento: o Atendimento em Gerenciar, e só ele (o
+ * Heitor, 2026-11-18: "Só inicia e conclui atendimento quem tem gerenciar no
+ * atendimento"; cada passo, um módulo — UM2, 2026-11-23). A Admin da rede
+ * entra sempre.
  */
 export async function quemConcluiOAtendimento(tenantId: string, branchId: string | null): Promise<string[]> {
-  return quemTemNoNivel(tenantId, branchId, 'atendimento', ['MANAGE'], {
-    soDeTodos: true, eTambem: { modulo: 'agenda', niveis: ['VIEW', 'MANAGE'] },
-  })
+  return quemTemEmGerenciar(tenantId, branchId, 'atendimento')
 }
 
-/**
- * A9 da 25ª (princípio 3): quem conclui os PRÓPRIOS atendimentos — o
- * Atendimento em Gerenciar em qualquer escopo, com a Agenda (Ver ou
- * Gerenciar). Os ids dos ativos: a tela junta a profissional do agendamento
- * aos nomes de `quemConcluiOAtendimento` (`nomesDeQuemConclui`).
- */
-export async function idsQueConcluemOsProprios(tenantId: string): Promise<string[]> {
-  const admin = createAdminClient()
-  const cargosCom = (modulo: AppModule, niveis: readonly ('VIEW' | 'MANAGE')[]) => lerTodas((de, ate) =>
-    admin.from('role_permissions').select('role_id')
-      .eq('tenant_id', tenantId).in('module', [modulo]).in('level', [...niveis])
-      .order('role_id').order('module').range(de, ate), 'carregar os cargos com o módulo')
-  const [atendimento, agenda] = await Promise.all([cargosCom('atendimento', ['MANAGE']), cargosCom('agenda', ['VIEW', 'MANAGE'])])
-  const comAgenda = new Set((agenda ?? []).map(p => p.role_id as string))
-  const cargos = [...new Set((atendimento ?? []).map(p => p.role_id as string).filter(id => comAgenda.has(id)))]
-  if (cargos.length === 0) return []
-  const membros = await lerTodas((de, ate) => admin.from('users').select('id')
-    .eq('tenant_id', tenantId).eq('is_active', true).in('role_id', cargos)
-    .order('id').range(de, ate), 'carregar quem conclui os próprios')
-  return (membros ?? []).map(m => m.id as string)
-}
 
 /**
  * A8 da 25ª (princípio 7): quem RESPONDE a ficha de saúde na sessão — o
@@ -110,12 +85,11 @@ export async function adminsAtivasDaRede(tenantId: string): Promise<string[]> {
 }
 
 /**
- * Quem MARCA A CHEGADA de um atendimento que não é dele (A10 da 19ª; D20): a
- * Agenda em Gerenciar de TODOS — com "só os meus", a pessoa marca só a dos
- * próprios, e não a de quem pede. A Admin da rede entra sempre.
+ * Quem MARCA A CHEGADA (A10 da 19ª): a Agenda em Gerenciar. A Admin da rede
+ * entra sempre.
  */
 export async function quemMarcaAChegada(tenantId: string, branchId: string | null): Promise<string[]> {
-  return quemTemNoNivel(tenantId, branchId, 'agenda', ['MANAGE'], { soDeTodos: true })
+  return quemTemEmGerenciar(tenantId, branchId, 'agenda')
 }
 
 /**
@@ -135,31 +109,23 @@ function quemTemEmGerenciar(tenantId: string, branchId: string | null, modulo: A
 async function quemTemNoNivel(
   tenantId: string, branchId: string | null, modulo: AppModule | readonly AppModule[], niveis: readonly ('VIEW' | 'MANAGE')[],
   opcoes: {
-    soDeTodos?: boolean
-    /** O cargo precisa ter TAMBÉM este módulo num destes níveis (com o mesmo `soDeTodos`). */
-    eTambem?: { modulo: AppModule; niveis: readonly ('VIEW' | 'MANAGE')[] }
     /** Só a Admin da rede (o cargo de sistema), sem olhar módulo. */
     soAdmin?: boolean
   } = {},
 ): Promise<string[]> {
   const admin = createAdminClient()
-  const cargosCom = (mods: AppModule[], nvs: readonly ('VIEW' | 'MANAGE')[]) => lerTodas((de, ate) => {
-    let q = admin.from('role_permissions').select('role_id')
+  const cargosCom = (mods: AppModule[], nvs: readonly ('VIEW' | 'MANAGE')[]) => lerTodas((de, ate) =>
+    admin.from('role_permissions').select('role_id')
       .eq('tenant_id', tenantId).in('module', mods).in('level', [...nvs])
-    // O escopo "todos" (sem escolha gravada também vale todos — resolveScopes).
-    if (opcoes.soDeTodos) q = q.or('scope.is.null,scope.eq.ALL')
-    return q.order('role_id').order('module').range(de, ate)
-  }, 'carregar os cargos com o módulo')
+      .order('role_id').order('module').range(de, ate), 'carregar os cargos com o módulo')
   const modulos = typeof modulo === 'string' ? [modulo] : [...modulo]
-  const [perms, tambem, admins] = await Promise.all([
+  const [perms, admins] = await Promise.all([
     opcoes.soAdmin || !modulos.length ? Promise.resolve([] as { role_id: unknown }[]) : cargosCom(modulos, niveis),
-    opcoes.eTambem ? cargosCom([opcoes.eTambem.modulo], opcoes.eTambem.niveis) : Promise.resolve(null),
     lerTodas((de, ate) => admin.from('tenant_roles').select('id')
       .eq('tenant_id', tenantId).eq('key', 'NETWORK_ADMIN').eq('is_system', true)
       .order('id').range(de, ate), 'carregar o cargo de Admin da rede'),
   ])
-  const comOSegundo = tambem ? new Set(tambem.map(p => p.role_id as string)) : null
-  const comOModulo = (perms ?? []).map(p => p.role_id as string).filter(id => !comOSegundo || comOSegundo.has(id))
+  const comOModulo = (perms ?? []).map(p => p.role_id as string)
   const cargos = [...new Set([...comOModulo, ...(admins ?? []).map(a => a.id as string)])]
   if (cargos.length === 0) return []
   const membros = await lerTodas((de, ate) => {

@@ -20,6 +20,13 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  * não se atribui a ela — o custo, o lucro, a margem do catálogo, o ranking e
  * a ocupação por unidade — segue escondido. Com o CRM "só os meus", o funil
  * conta os leads dela e os sem dono, como o quadro.
+ *
+ * Sem o "só os meus" (SM1–SM3, o Heitor, 2026-11-23): o que sobra é a VISTA
+ * PESSOAL de quem atende sem o módulo (lib/metrics/escopo). Sem o Financeiro,
+ * o DINHEIRO é o dela (a receita, a evolução, os rankings de valor, o giro);
+ * sem a Agenda, os "Meus…" da agenda no dashboard da unidade. Os quadros dos
+ * módulos que ela TEM (Procedimentos, Equipe, Clientes, Estoque) contam todos,
+ * e o CRM não tem vista pessoal: o funil é o de todos.
  */
 
 const marca = Date.now().toString(36)
@@ -102,19 +109,21 @@ test.beforeAll(async () => {
   expect(ePr).toBeNull()
   produto = await rede.criarProduto('Insumo', 100)
 
-  const modulos = (escopo: 'OWN' | 'ALL') => [
-    { modulo: 'agenda' as const, nivel: 'MANAGE' as const, escopo },
-    { modulo: 'financial' as const, nivel: 'VIEW' as const, escopo },
-    { modulo: 'crm' as const, nivel: 'VIEW' as const, escopo },
+  const modulos = (comAgendaEFinanceiro: boolean) => [
+    ...(comAgendaEFinanceiro ? [
+      { modulo: 'agenda' as const, nivel: 'MANAGE' as const },
+      { modulo: 'financial' as const, nivel: 'VIEW' as const },
+    ] : []),
+    { modulo: 'crm' as const, nivel: 'VIEW' as const },
     { modulo: 'procedures' as const, nivel: 'VIEW' as const },
     { modulo: 'clients' as const, nivel: 'VIEW' as const },
     { modulo: 'team' as const, nivel: 'VIEW' as const },
     { modulo: 'stock' as const, nivel: 'VIEW' as const },
   ]
-  // Como a Renata: da rede, "só os meus" na agenda, no financeiro e no CRM.
-  propria = await criarMembro(`drp${marca}`, { tenant: rede.tenantId, rotulo: 'Profissional', permissoes: modulos('OWN') })
+  // Como a Renata: da rede, atende, sem a Agenda e sem o Financeiro (a vista pessoal, SM2).
+  propria = await criarMembro(`drp${marca}`, { tenant: rede.tenantId, rotulo: 'Profissional', permissoes: modulos(false) })
   expect((await db().from('users').update({ provides_services: true }).eq('id', propria.userId)).error).toBeNull()
-  gestora = await criarMembro(`drg${marca}`, { tenant: rede.tenantId, rotulo: 'Gestora', permissoes: modulos('ALL') })
+  gestora = await criarMembro(`drg${marca}`, { tenant: rede.tenantId, rotulo: 'Gestora', permissoes: modulos(true) })
   nomeDela = (await db().from('users').select('name').eq('id', propria.userId).single<{ name: string }>()).data!.name
   nomeDaOutra = (await db().from('users').select('name').eq('id', rede.professionalId).single<{ name: string }>()).data!.name
 
@@ -175,7 +184,7 @@ const reativar = (p: Page) => p.locator('[data-reativar-clientes]').first()
 const card = (p: Page, titulo: string, qual: 'first' | 'last' = 'first') =>
   p.locator('.card').filter({ has: p.getByText(titulo, { exact: true }) })[qual]()
 
-test('"só os meus": o dashboard da rede mostra a receita DELA, sem custo, lucro, margem nem o dinheiro das outras', async ({ browser }) => {
+test('a vista pessoal (sem o Financeiro): o dashboard da rede mostra a receita DELA, sem custo, lucro, margem nem o dinheiro das outras', async ({ browser }) => {
   await como(browser, propria!, async p => {
     await p.goto('/admin/dashboard?period=month')
     await expect(p.getByRole('heading', { name: /^Visão geral/ })).toBeVisible()
@@ -194,40 +203,41 @@ test('"só os meus": o dashboard da rede mostra a receita DELA, sem custo, lucro
   })
 })
 
-test('"só os meus": os rankings, a demografia, o giro, os planos e o funil são os DELA', async ({ browser }) => {
+// Sem o "só os meus" (SM1/SM2): só o DINHEIRO é o dela; o que conta segue o
+// módulo que ela tem (todos), e o CRM não tem vista pessoal (SM3).
+test('a vista pessoal: os rankings de valor e o giro são os DELA; os que contam, a demografia, os planos e o funil, os de todos', async ({ browser }) => {
   await como(browser, propria!, async p => {
     await p.goto('/admin/dashboard?period=month')
     await expect(p.getByRole('heading', { name: /^Visão geral/ })).toBeVisible()
     const corpo = p.locator('main')
-    // D12 da 13ª (F68): o total do cabeçalho é o da CLÍNICA — o "só os meus" não
-    // recorta a ficha —, e diz que é ("da clínica"). Era o das clientes que ela atendeu.
+    // D12 da 13ª (F68): o total do cabeçalho é o da CLÍNICA, e diz que é ("da rede").
     const { count: daRede } = await banco().from('clients').select('id', { count: 'exact', head: true })
       .eq('tenant_id', rede!.tenantId).eq('is_active', true)
     await expect.soft(corpo, 'o total: as clientes da clínica').toContainText(new RegExp(` · ${daRede} clientes da rede`))
     await expect.soft(card(p, 'Ranking — Procedimentos realizados'), 'o procedimento dela').toContainText(`Proc dr${marca}`)
-    await expect.soft(card(p, 'Ranking — Procedimentos realizados'), 'não o da outra').not.toContainText(outroProc)
+    await expect.soft(card(p, 'Ranking — Procedimentos realizados'), 'e o da outra (conta: Procedimentos em Ver)').toContainText(outroProc)
     await expect.soft(card(p, 'Ranking — Procedimentos por receita dos atendimentos'), 'a receita por procedimento dela').toContainText('R$ 120,00')
     await expect.soft(card(p, 'Ranking — Procedimentos por receita dos atendimentos')).not.toContainText(outroProc)
-    await expect.soft(card(p, 'Ranking — Mais solicitados'), 'só a linha dela').toContainText(nomeDela)
-    await expect.soft(card(p, 'Ranking — Mais solicitados')).not.toContainText(nomeDaOutra)
+    await expect.soft(card(p, 'Ranking — Mais solicitados'), 'a linha dela').toContainText(nomeDela)
+    await expect.soft(card(p, 'Ranking — Mais solicitados'), 'e a da outra (conta: a Equipe em Ver)').toContainText(nomeDaOutra)
     await expect.soft(card(p, 'Ranking — Profissionais por receita dos atendimentos'), 'as vendas dela').toContainText('R$ 120,00')
     await expect.soft(card(p, 'Ranking — Profissionais por receita dos atendimentos')).not.toContainText(nomeDaOutra)
     await expect.soft(card(p, 'Ranking — Valor gasto'), 'as clientes dela').toContainText(`Dela dr${marca}`)
     await expect.soft(card(p, 'Ranking — Valor gasto')).not.toContainText('Da outra')
-    await expect.soft(card(p, 'Ranking — Recorrência', 'last'), 'a recorrência das clientes dela').not.toContainText('Da outra')
+    await expect.soft(card(p, 'Ranking — Recorrência', 'last'), 'a recorrência de todas (conta)').toContainText('Da outra')
     await expect.soft(card(p, 'Ranking — Localização'), 'a cidade dela').toContainText(`Cidadela ${marca}`)
-    await expect.soft(card(p, 'Ranking — Localização'), 'não a da outra').not.toContainText(`Cidoutra ${marca}`)
+    await expect.soft(card(p, 'Ranking — Localização'), 'e a da outra (Clientes em Ver)').toContainText(`Cidoutra ${marca}`)
     await expect.soft(card(p, 'Faixa etária'), 'a faixa da cliente dela').toContainText('35–44')
-    await expect.soft(card(p, 'Faixa etária'), 'não a da outra').not.toContainText('65+')
+    await expect.soft(card(p, 'Faixa etária'), 'e a da outra (Clientes em Ver)').toContainText('65+')
     await expect.soft(p.getByText('Ranking — Comissão', { exact: true }), 'comissão é de todos').toHaveCount(0)
-    await expect.soft(card(p, 'Estoque'), 'o giro dos atendimentos dela').toContainText('R$ 20,00')
+    await expect.soft(card(p, 'Estoque'), 'o giro (custo) dos atendimentos dela').toContainText('R$ 20,00')
     await expect.soft(corpo, 'o plano dela aguardando checkout').toContainText(`Plano dela dr${marca}`)
-    await expect.soft(corpo, 'não o da outra').not.toContainText('Plano alheio')
-    await expect.soft(corpo, 'o funil: os leads dela e os sem dono').toContainText('0 de 2 oportunidades ganhas')
+    await expect.soft(corpo, 'e o da outra').toContainText('Plano alheio')
+    await expect.soft(corpo, 'o funil: o de todos (SM3)').toContainText('0 de 3 oportunidades ganhas')
   })
 })
 
-test('"só os meus": o dashboard da UNIDADE mostra o faturamento DELA nos 6 meses, e os números dela', async ({ browser }) => {
+test('a vista pessoal: o dashboard da UNIDADE mostra o faturamento DELA nos 6 meses e a agenda dela; os quadros dos módulos que ela tem, os da unidade', async ({ browser }) => {
   await como(browser, propria!, async p => {
     await p.goto(`/${slug}/dashboard`)
     await expect(p.getByText('Meus agendamentos hoje')).toBeVisible()
@@ -239,12 +249,15 @@ test('"só os meus": o dashboard da UNIDADE mostra o faturamento DELA nos 6 mese
     await expect.soft(main, 'a receita dela').toContainText(/Meu faturamento do mês\s*R\$\s*120(?!\d)/)
     await expect.soft(main, 'nem a da unidade no semestre').not.toContainText('R$ 420')
     await expect.soft(card(p, 'Procedimentos mais procurados'), 'o procedimento dela').toContainText(`Proc dr${marca}`)
-    await expect.soft(card(p, 'Procedimentos mais procurados')).not.toContainText(outroProc)
-    await expect.soft(p.locator('[data-etapa="Novos clientes"]'), 'as novas clientes dela').toContainText(/1$/)
-    await expect.soft(p.locator('[data-etapa="Agendamentos"]'), 'os agendamentos dela').toContainText(/1$/)
+    await expect.soft(card(p, 'Procedimentos mais procurados'), 'e o da outra (Procedimentos em Ver)').toContainText(outroProc)
+    // O "Clientes no mês" é do módulo Clientes (SM2: o recorte dela é só a vista
+    // pessoal da agenda): as novas clientes da unidade; sem a Agenda, as etapas da
+    // agenda não aparecem (A32 da 24ª).
+    await expect.soft(p.locator('[data-etapa="Novos clientes"]'), 'as novas clientes da unidade (Clientes em Ver)').toContainText(/4$/)
+    await expect.soft(p.locator('[data-etapa="Agendamentos"]'), 'sem a Agenda, sem as etapas da agenda').toHaveCount(0)
     await expect.soft(reativar(p), 'a cliente dela a reativar').toContainText('Sumida dela')
-    await expect.soft(reativar(p), 'não a da outra').not.toContainText('Sumida da outra')
-    await expect.soft(main, 'o plano dela proposto').toContainText('1 plano proposto')
+    await expect.soft(reativar(p), 'e a da outra (Clientes em Ver)').toContainText('Sumida da outra')
+    await expect.soft(main, 'os planos propostos da unidade').toContainText('2 planos propostos')
   })
   await como(browser, gestora!, async p => {
     await p.goto(`/${slug}/dashboard`)
@@ -258,7 +271,7 @@ test('"só os meus": o dashboard da UNIDADE mostra o faturamento DELA nos 6 mese
   })
 })
 
-test('quem tem ALL segue vendo o dinheiro e os números da rede (controle)', async ({ browser }) => {
+test('quem tem a Agenda e o Financeiro segue vendo o dinheiro e os números da rede (controle)', async ({ browser }) => {
   await como(browser, gestora!, async p => {
     await p.goto('/admin/dashboard?period=month')
     const corpo = p.locator('main')

@@ -20,6 +20,8 @@ import { escolherAUnidadeDaVenda } from './apoio/vender'
  *   seguinte sem dizer.
  * - A24: os cartões de 30 e 40 min cortavam o procedimento.
  * - A25: a "Minha agenda" sem "Agendar", com a Agenda em Gerenciar "só os meus".
+ *   Sem o "só os meus" (SM1/SM2, 2026-11-23), a Minha agenda é a vista pessoal
+ *   e só mostra: agendar é da Agenda em Gerenciar.
  * - A58/A32: o seletor de horários livres só na sessão do pacote (não no modal
  *   Agendar), e a sala da sessão só aparecia depois do horário.
  * - Sobra da F33: o "Vender" do inbox numa rede de duas unidades saía da
@@ -42,7 +44,7 @@ let recepcao: MembroDeTeste | null = null
 let daRede: MembroDeTeste | null = null
 let bia: MembroDeTeste | null = null      // atende na unidade
 let cora: MembroDeTeste | null = null     // atende só no Batel
-let paula: MembroDeTeste | null = null    // "só os meus", atende na unidade
+let paula: MembroDeTeste | null = null    // vista pessoal (sem a Agenda), atende na unidade
 let nomeDaProf = ''
 const nomeBia = `${PREFIXO} Bia a8b${marca}`
 let bruna = ''      // tem pacote do procedimento
@@ -105,11 +107,13 @@ test.beforeAll(async () => {
     tenant: rede.tenantId, rotulo: 'Gisele',
     permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'crm', nivel: 'MANAGE' }, { modulo: 'cashier', nivel: 'MANAGE' }, { modulo: 'procedures', nivel: 'VIEW' }],
   })
-  bia = await criarMembro(`a8b${marca}`, { tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Bia', permissoes: [{ modulo: 'agenda', nivel: 'VIEW', escopo: 'OWN' }] })
-  cora = await criarMembro(`a8c${marca}`, { tenant: rede.tenantId, branchId: batel, rotulo: 'Cora', permissoes: [{ modulo: 'agenda', nivel: 'VIEW', escopo: 'OWN' }] })
+  bia = await criarMembro(`a8b${marca}`, { tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Bia', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }] })
+  cora = await criarMembro(`a8c${marca}`, { tenant: rede.tenantId, branchId: batel, rotulo: 'Cora', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }] })
+  // A "Minha agenda" é a vista pessoal (SM2, o Heitor, 2026-11-23): atende e
+  // não tem a Agenda (era a Agenda em Gerenciar "só os meus", que saiu — SM1).
   paula = await criarMembro(`a8p${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Paula',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' }],
+    permissoes: [{ modulo: 'agenda', nivel: 'NONE' }],
   })
   expect((await db().from('users').update({ atende_em: [rede.branchId] }).eq('id', bia.userId)).error).toBeNull()
   expect((await db().from('users').update({ atende_em: [batel] }).eq('id', cora.userId)).error).toBeNull()
@@ -324,32 +328,22 @@ test('A24: os cartões de 30 e 40 min mostram o procedimento inteiro (agenda da 
   })
 })
 
-test('A25: a "Minha agenda" de quem tem a Agenda em Gerenciar "só os meus" agenda — para ela', async ({ browser }) => {
+test('A25: a "Minha agenda" (a vista pessoal) só mostra — sem "Agendar", e o servidor não agenda por ela', async ({ browser }) => {
+  // Sem o "só os meus" (SM1/SM2, o Heitor, 2026-11-23): a vista pessoal só
+  // MOSTRA; agendar continua pedindo a Agenda em Gerenciar.
   await como(browser, paula!, async p => {
     await p.goto(`/${slug}/agenda?date=${DIA3}`)
-    await p.getByRole('button', { name: 'Agendar', exact: true }).click()
-    const modal = p.getByRole('dialog', { name: 'Novo agendamento' })
-    const prof = modal.locator('#ag-profissional')
-    await expect(prof.locator('option[value]:not([value=""])'), 'só ela').toHaveCount(1)
-    await expect(prof).toHaveValue(paula!.userId)
-    await modal.getByPlaceholder('Buscar cliente por nome ou telefone…').fill(`Agenda a8${marca}`)
-    await modal.getByText(`${PREFIXO} Agenda a8${marca}`).first().click()
-    await modal.locator('#ag-procedimento').selectOption(rede!.procedureId)
-    await modal.locator('#ag-quando').fill(`${DIA3}T15:00`)
-    await modal.getByRole('button', { name: 'Confirmar agendamento' }).click()
-    await expect(modal).toBeHidden()
+    await expect(p.getByRole('heading', { name: 'Minha agenda' })).toBeVisible()
+    await expect(p.getByRole('button', { name: 'Agendar', exact: true })).toHaveCount(0)
 
-    // E o servidor não deixa agendar para outra.
-    const r = await chamarAcaoComFormulario(p, 'actions/appointments.ts', 'addAppointment', `/${slug}/agenda`, [undefined], {
+    // E o servidor não agenda por ela, nem para ela mesma.
+    await chamarAcaoComFormulario(p, 'actions/appointments.ts', 'addAppointment', `/${slug}/agenda`, [undefined], {
       _branchId: rede!.branchId, _slug: slug, client_id: cliente, procedure_id: rede!.procedureId,
-      professional_id: bia!.userId, scheduled_at: em(DIA3, '20:00'),
+      professional_id: paula!.userId, scheduled_at: em(DIA3, '15:00'),
     })
-    expect(r.texto).toContain('só para você')
   })
-  const { data } = await db().from('appointments').select('professional_id').eq('client_id', cliente).eq('scheduled_at', em(DIA3, '15:00')).single<{ professional_id: string }>()
-  expect(data?.professional_id).toBe(paula!.userId)
-  const { data: outra } = await db().from('appointments').select('id').eq('scheduled_at', em(DIA3, '20:00'))
-  expect(outra ?? []).toHaveLength(0)
+  const { data } = await db().from('appointments').select('id').eq('client_id', cliente).eq('scheduled_at', em(DIA3, '15:00'))
+  expect(data ?? []).toHaveLength(0)
 })
 
 test('A32/A58: o agendar da sessão do pacote pede a sala desde o início', async ({ browser }) => {

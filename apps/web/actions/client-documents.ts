@@ -12,26 +12,22 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { CLIENT_DOCS_BUCKET, ensurePrivateBucket } from '@/lib/storage'
 import { gravar, ler, tentar } from '@/lib/db'
 import { logHistory } from '@/lib/appointments/avisos'
-import { clienteNoEscopo } from '@/lib/clientes/atendida-por'
 
 const BUCKET        = CLIENT_DOCS_BUCKET
 const MAX_FILE_SIZE = 20 * 1024 * 1024 // 20 MB
 
 const SEM_ACESSO_COMUM   = 'Seu cargo não libera anexar documentos do cadastro.'
-const SEM_ACESSO_CLINICO = 'Anexo clínico (exame, laudo, foto clínica, receita…) é prontuário: é preciso o Prontuário em Gerenciar — e, com "só os meus", ser cliente que você atende.'
+const SEM_ACESSO_CLINICO = 'Anexo clínico (exame, laudo, foto clínica, receita…) é prontuário: é preciso o Prontuário em Gerenciar.'
 
 /**
- * Quem mexe num anexo: o que é CLÍNICO é prontuário — o módulo dele decide,
- * com o mesmo alcance da ficha ("só os meus" = cliente que este profissional
- * atendeu); o resto é o cadastro (`clients: MANAGE`). Até 2026-10-20 tudo
- * pedia o cadastro, e a profissional (Clientes = Ver) não tinha onde anexar a
- * foto clínica — a simulação de um dia de clínica achou.
+ * Quem mexe num anexo: o que é CLÍNICO é prontuário — o Prontuário em
+ * Gerenciar; o resto é o cadastro (`clients: MANAGE`). Até 2026-10-20 tudo
+ * pedia o cadastro, e quem só via Clientes não tinha onde anexar a foto
+ * clínica — a simulação de um dia de clínica achou.
  */
-async function recusaDoAnexo(ctx: TenantContext, admin: SupabaseClient, categoria: string | null, clientId: string): Promise<string | null> {
+async function recusaDoAnexo(ctx: TenantContext, categoria: string | null): Promise<string | null> {
   if (!ehAnexoClinico(categoria)) return can(ctx, 'clients', 'MANAGE') ? null : SEM_ACESSO_COMUM
-  if (!can(ctx, 'medical_records', 'MANAGE')) return SEM_ACESSO_CLINICO
-  // A regra única do "só os meus" (eq-02: o cancelado não conta, a falta conta).
-  return (await clienteNoEscopo(admin, ctx, 'medical_records', clientId)) ? null : SEM_ACESSO_CLINICO
+  return can(ctx, 'medical_records', 'MANAGE') ? null : SEM_ACESSO_CLINICO
 }
 
 /**
@@ -94,7 +90,7 @@ export async function uploadClientDocument(
   if (!cliente) return { error: 'Cliente não encontrado.' }
 
   // Exame, laudo, foto clínica, receita e termo são prontuário (2026-10-03).
-  const recusa = await recusaDoAnexo(ctx, admin, category, clientId)
+  const recusa = await recusaDoAnexo(ctx, category)
   if (recusa) return { error: recusa }
 
   // O atendimento vem do formulário: é desta cliente, desta rede e de uma
@@ -189,8 +185,8 @@ export async function uploadClientDocument(
 /**
  * Envia (ou tira) um arquivo do app da cliente (decisão do Heitor, 2026-10-30):
  * o portal só lista o que a clínica ENVIOU (`enviado_em`). Quem pode é quem
- * pode mexer no anexo — o clínico é prontuário, com o "só os meus" — e a
- * unidade ao alcance. Mandar algo ao paciente: o suporte não faz.
+ * pode mexer no anexo — o clínico é prontuário — e a unidade ao alcance.
+ * Mandar algo ao paciente: o suporte não faz.
  */
 export async function enviarDocumentoACliente(
   documentId: string,
@@ -214,7 +210,7 @@ export async function enviarDocumentoACliente(
   if (!doc) return { error: 'Documento não encontrado.' }
   const unidade = doc.branches as unknown as { tenant_id: string; slug: string; name: string }
   if (unidade.tenant_id !== ctx.tenantId || !(await alcanceDoAnexo(ctx, admin, doc as { branch_id: string; appointment_id: string | null }))) return { error: 'Documento não encontrado.' }
-  const recusa = await recusaDoAnexo(ctx, admin, doc.category as string, doc.client_id as string)
+  const recusa = await recusaDoAnexo(ctx, doc.category as string)
   if (recusa) return { error: recusa }
 
   const jaEnviado = doc.enviado_em != null
@@ -281,7 +277,7 @@ export async function deleteClientDocument(
   const tenantId = (doc.branches as unknown as { tenant_id: string }).tenant_id
   // E a unidade onde o documento foi posto, ao alcance de quem apaga (§11).
   if (tenantId !== ctx.tenantId || !(await alcanceDoAnexo(ctx, admin, doc as { branch_id: string; appointment_id: string | null }))) return { error: 'Acesso negado.' }
-  if (await recusaDoAnexo(ctx, admin, doc.category as string, doc.client_id as string)) return { error: 'Acesso negado.' }
+  if (await recusaDoAnexo(ctx, doc.category as string)) return { error: 'Acesso negado.' }
 
   // Anexo CLÍNICO é prontuário, e prontuário não se deleta (§14): sai das
   // telas, e a linha e o arquivo ficam, com quem apagou e quando. O nome é o

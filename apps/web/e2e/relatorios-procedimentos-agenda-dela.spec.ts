@@ -9,6 +9,9 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  * A Renata, com a agenda "só os meus" e o financeiro de todos, via
  * "Toxina · 0 execuções · R$ 2.400" — parecia que ela gerou a receita. A linha
  * sem execução DELA sai, e a receita diz que é a da clínica.
+ *
+ * Sem o "só os meus" (SM1/SM4, o Heitor, 2026-11-23): os Relatórios não
+ * recortam por dono — a tabela é a da rede, as execuções e a receita de todos.
  */
 
 const marca = Date.now().toString(36)
@@ -41,8 +44,8 @@ test.beforeAll(async () => {
   renata = await criarMembro(`pdr${marca}`, {
     tenant: rede.tenantId, rotulo: 'Profissional',
     permissoes: [
-      { modulo: 'agenda', nivel: 'VIEW', escopo: 'OWN' },
-      { modulo: 'financial', nivel: 'VIEW', escopo: 'ALL' },
+      { modulo: 'agenda', nivel: 'VIEW' },
+      { modulo: 'financial', nivel: 'VIEW' },
       { modulo: 'reports', nivel: 'VIEW' },
     ],
   })
@@ -63,12 +66,12 @@ test.afterAll(async () => {
   await renata?.limpar(); await rede?.limpar()
 })
 
-test('com a agenda dela e o financeiro da rede, a tabela não mostra "0 execuções" com a receita de outra', async ({ browser }) => {
+test('sem recorte por dono (SM4), a tabela por procedimento tem as execuções e a receita de todos', async ({ browser }) => {
   await como(browser, async p => {
     await p.goto('/admin/reports?period=month&tab=procedimentos')
     const tabela = p.locator('table').filter({ hasText: 'Execuções' })
     await expect(tabela.getByRole('row', { name: `Limpeza ${marca}` })).toBeVisible()
-    await expect(tabela.getByRole('row', { name: `Toxina ${marca}` })).toHaveCount(0)
-    await expect(tabela.getByRole('columnheader', { name: 'Receita dos atendimentos (de todos)' })).toBeVisible()
+    await expect(tabela.getByRole('row', { name: `Toxina ${marca}` })).toBeVisible()
+    await expect(tabela.getByRole('row', { name: `Toxina ${marca}` })).toContainText('2.400')
   })
 })

@@ -113,8 +113,6 @@ interface Props {
   canReverse:       boolean
   canWrite:         boolean
   canPay:           boolean
-  /** Cargo com alcance "só as próprias comissões": some tudo que é da unidade. */
-  ownScope:         boolean
   /** FI1: a aba aberta (Comissões é a página dela). */
   aba:              Exclude<AbaDoFinanceiro, 'comissoes'>
   /** O plano da rede tem comissões: a aba aparece. */
@@ -536,7 +534,6 @@ export function FinancialHub({
   canReverse,
   canWrite,
   canPay,
-  ownScope,
   taxasDoPeriodo,
   aba,
   comComissoes,
@@ -740,7 +737,7 @@ export function FinancialHub({
       <AbasDoFinanceiro base={base} atual={aba} manter={manter} comComissoes={comComissoes} />
 
       {/* -- Resumo (FI2): o período — entrou, saiu, resultado — e, embaixo, o que vem pela frente. */}
-      {aba === 'resumo' && !ownScope && <>
+      {aba === 'resumo' && <>
         <div className="kpi-grid-auto" data-aba-do-financeiro="resumo">
           <KpiCardFull
             chave="lucro"
@@ -866,7 +863,7 @@ export function FinancialHub({
       </>}
 
       {/* -- A receber (FI3): das clientes (as atrasadas primeiro) e da operadora do cartão. */}
-      {aba === 'a-receber' && !ownScope && <>
+      {aba === 'a-receber' && <>
         <div className="rg-2" style={{ gap: 14, alignItems: 'start' }} data-aba-do-financeiro="a-receber">
           {cartaoAReceber(true)}
           {cartaoDaOperadora(true)}
@@ -899,7 +896,7 @@ export function FinancialHub({
       </>}
 
       {/* -- A pagar (FI4): as despesas em aberto, a que vence primeiro no topo. */}
-      {aba === 'a-pagar' && !ownScope && <>
+      {aba === 'a-pagar' && <>
         <div className="rg-3" style={{ gap: 14, alignItems: 'start' }} data-aba-do-financeiro="a-pagar">
           {cartaoAPagar(true)}
         </div>
@@ -918,7 +915,7 @@ export function FinancialHub({
       </>}
 
       {/* -- Movimentações (FI5): o extrato do período, os CSVs e os avisos das taxas (CX6). */}
-      {aba === 'movimentacoes' && !ownScope && <>
+      {aba === 'movimentacoes' && <>
         {/* CX6: a venda sem taxa e as taxas estimadas do período (eram do Fechamento do dia). */}
         <AvisosDasTaxas dados={taxasDoPeriodo} />
         <div id="lancamentos" data-aba-do-financeiro="movimentacoes">

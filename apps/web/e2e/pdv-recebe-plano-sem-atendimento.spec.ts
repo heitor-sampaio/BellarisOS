@@ -36,7 +36,7 @@ test.beforeAll(async () => {
   slug = (await db().from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
   caixa = await criarMembro(`pdvc${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Só o PDV',
-    permissoes: [{ modulo: 'cashier', nivel: 'MANAGE', escopo: 'ALL' }],
+    permissoes: [{ modulo: 'cashier', nivel: 'MANAGE' }],
   })
   cliente = await rede.criarCliente('Plano no PDV')
   const { data, error } = await db().from('treatment_plans').insert({

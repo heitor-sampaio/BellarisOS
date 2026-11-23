@@ -1,17 +1,17 @@
 import 'server-only'
 import { getCore, type MetricsCore } from './queries'
 import { getRelatorio, type Relatorio } from './relatorio'
-import { juntarNucleos, juntarPorNome, type RecorteDosModulos } from './escopo'
+import { juntarNucleos, juntarPorNome, type RecortePessoal } from './escopo'
 
 /**
- * O núcleo e os relatórios com CADA número no escopo do seu módulo (decisão
- * do Heitor, 2026-10-29; a regra em ./escopo). As funções do banco recebem UM
- * profissional (`p_professional_id`); com a agenda e o financeiro em recortes
- * diferentes, pedem-se os dois e juntam-se aqui. Com o mesmo recorte, uma
- * chamada só.
+ * O núcleo e os relatórios com a agenda e o dinheiro em recortes que podem
+ * diferir (a vista pessoal de um módulo e não do outro — ./escopo). As funções
+ * do banco recebem UM profissional (`p_professional_id`); com os dois recortes
+ * diferentes, pedem-se os dois e juntam-se aqui. Com o mesmo recorte (sempre,
+ * nos Relatórios: todos), uma chamada só.
  */
 
-type Recorte = Pick<RecorteDosModulos, 'agenda' | 'financeiro'>
+type Recorte = Pick<RecortePessoal, 'agenda' | 'financeiro'>
 
 export async function getCoreDosModulos(args: {
   tenantId: string; branchIds?: string[] | null; from: Date; to: Date; recorte: Recorte
@@ -67,10 +67,9 @@ export async function getRelatorioDosModulos(
     consumoTotal:        d.consumoTotal,
     receitaPorCategoriaDeProcedimento: d.receitaPorCategoriaDeProcedimento,
     receitaDosAtendimentos: d.receitaDosAtendimentos,
-    // ind-05 (revisão de 2026-11-02): com a agenda DELA e o dinheiro da
-    // clínica, a linha sem execução dela (só a receita de outra) sai — "Toxina ·
-    // 0 execuções · R$ 2.400" parecia receita gerada por ela. A tela diz que a
-    // receita das linhas que ficam é a da clínica (`receitaDeTodos`).
+    // ind-05 (revisão de 2026-11-02): com a agenda DELA e o dinheiro de todos,
+    // a linha sem execução dela (só a receita de outra) sai — "Toxina · 0
+    // execuções · R$ 2.400" parecia receita gerada por ela.
     porProcedimento:     agendaDelaDinheiroDeTodos
       ? juntarPorNome(a.porProcedimento, d.porProcedimento, ['receita']).filter(l => l.execucoes > 0)
       : juntarPorNome(a.porProcedimento, d.porProcedimento, ['receita']),

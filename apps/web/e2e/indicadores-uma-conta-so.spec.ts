@@ -11,7 +11,7 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  *   dashboard e os Relatórios, 66,7% ("2 de 3 leads convertidos"). O quadro
  *   contava só a etapa de GANHO e somava no navegador; a conversão agora é a
  *   de lib/metrics (`converted`: o lead que virou cliente), no recorte que o
- *   quadro mostra (o funil de agora; "só os meus" vê os dele e os sem dono).
+ *   quadro mostra (o funil de agora; sem o "só os meus" desde 23/11, SM3).
  * - D11: o ticket médio dizia "receita ÷ atendimentos", e a conta é a receita
  *   de SERVIÇO ÷ os atendimentos COBRADOS. O rótulo acompanha a conta.
  * - D12: o dashboard da unidade, "Clientes no mês", fechava em "agora" e
@@ -53,7 +53,7 @@ test.beforeAll(async () => {
   gestor = await criarMembro(`ucg${marca}`, { tenant: rede.tenantId, donoDaRede: true, permissoes: [] })
   sdr = await criarMembro(`ucs${marca}`, {
     tenant: rede.tenantId, rotulo: 'SDR',
-    permissoes: [{ modulo: 'crm', nivel: 'MANAGE', escopo: 'OWN' }],
+    permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }],
   })
 
   // -- D10: um funil com ganho e perda, e três oportunidades ----------------
@@ -167,11 +167,12 @@ test.describe('D10: a conversão é da OPORTUNIDADE (ganhas ÷ do funil), uma co
     })
   })
 
-  test('"só os meus" conta o que o quadro mostra: os dele e os sem dono (0 de 2 ganhas)', async ({ browser }) => {
+  // Sem o "só os meus" (SM3, o Heitor, 2026-11-23): quem tem o CRM vê todas.
+  test('com o CRM em Gerenciar, conta o que o quadro mostra: todas (1 de 3 ganhas)', async ({ browser }) => {
     await como(browser, sdr, async p => {
       await p.goto(`/${slug}/oportunidades?funil=${funil}`)
-      await expect(resumoDoQuadro(p)).toContainText('0,0% de conversão')
-      await expect(resumoDoQuadro(p)).toContainText('0 ganhas de 2 oportunidades do funil')
+      await expect(resumoDoQuadro(p)).toContainText('33,3% de conversão')
+      await expect(resumoDoQuadro(p)).toContainText('1 ganha de 3 oportunidades do funil')
     })
   })
 

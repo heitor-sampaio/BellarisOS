@@ -63,7 +63,8 @@ test.beforeAll(async () => {
   expect((await db().from('procedures').update({ name: `${PREFIXO} Laser ${marca}`, price: 300 }).eq('id', proc)).error).toBeNull()
   paula = await criarMembro(`pqvp${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Profissional',
-    permissoes: [{ modulo: 'financial', nivel: 'VIEW', escopo: 'OWN' }, { modulo: 'agenda', nivel: 'VIEW', escopo: 'OWN' }],
+    // O "Meu faturamento" dela é a vista pessoal: atende e não tem o Financeiro (SM2, o Heitor, 2026-11-23).
+    permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }],
   })
   expect((await db().from('users').update({ provides_services: true }).in('id', [paula.userId, rede.professionalId])).error).toBeNull()
   cliente = await rede.criarCliente('Carla')

@@ -1,6 +1,6 @@
 import { test, expect, type Browser } from '@playwright/test'
 import { banco, tenantId, PREFIXO, apagarConversas } from './apoio/banco'
-import { membroComEscopoProprio, type MembroDeTeste } from './apoio/sessao'
+import { membroDoCrm, type MembroDeTeste } from './apoio/sessao'
 
 /**
  * Quais números de WhatsApp um cargo vê no inbox — escolha do CARGO
@@ -9,9 +9,8 @@ import { membroComEscopoProprio, type MembroDeTeste } from './apoio/sessao'
  * O cenário: duas caixas, "Atendimento" e "Comercial", uma conversa em cada, e
  * uma do Instagram (sem caixa). A SDR está ligada só ao Atendimento.
  *
- * O cargo tem CRM com escopo ALL de propósito: com "só os meus", uma conversa
- * sumida poderia ter sumido pela regra do dono, e o teste passaria sem provar
- * nada sobre as caixas.
+ * O cargo tem o CRM em Gerenciar, sem recorte pelo dono (o "só os meus" saiu,
+ * SM3, 2026-11-23): uma conversa sumida só some pelas caixas.
  *
  * O Instagram é o controle: ele não tem caixa e tem de aparecer sempre — sem
  * ele, uma lista vazia por qualquer motivo passaria por "escondeu certo".
@@ -134,7 +133,7 @@ test.describe.serial('caixas que o cargo vê no inbox', () => {
   let cenario: Cenario | null = null
 
   test.beforeAll(async () => {
-    sdr = await membroComEscopoProprio(`cx${marca}`, { escopo: 'ALL', inboxCaixas: 'minhas' })
+    sdr = await membroDoCrm(`cx${marca}`, { inboxCaixas: 'minhas' })
     cenario = await montar()
   })
 

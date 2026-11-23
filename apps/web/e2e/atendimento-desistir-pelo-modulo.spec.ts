@@ -8,8 +8,8 @@ import { chamarAcao, chamarAcaoComFormulario } from './apoio/acao-direta'
  * ATD-A01 (varredura de 18/11): CLAUDE.md §11 (o Heitor, 2026-11-18: "Só inicia
  * e conclui atendimento quem tem gerenciar no atendimento"; o módulo
  * `atendimento` "inicia, conclui, desiste no meio"). Cancelar o Em atendimento
- * é DESISTIR dele: pede o Atendimento em Gerenciar, com o escopo dele — não a
- * Agenda. O agendado segue com a Agenda em Gerenciar.
+ * é DESISTIR dele: pede o Atendimento em Gerenciar — não a Agenda (UM2, o
+ * Heitor, 2026-11-23). O agendado segue com a Agenda em Gerenciar.
  *
  * Até aqui as duas actions barravam pela Agenda em Gerenciar: quem só tinha a
  * Agenda desistia do atendimento de qualquer pessoa, e quem tinha o
@@ -22,7 +22,6 @@ let rede: OutraRede | null = null
 let slug = ''
 let soAgenda: MembroDeTeste | null = null
 let atende: MembroDeTeste | null = null
-let atendeOsMeus: MembroDeTeste | null = null
 const HOJE = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
 let hora = 7
 
@@ -61,25 +60,16 @@ test.beforeAll(async () => {
   expect((await db().from('users').update({ branch_id: rede.branchId, provides_services: true }).eq('id', rede.professionalId)).error).toBeNull()
   soAgenda = await criarMembro(`dsa${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Agenda',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'clients', nivel: 'VIEW' }],
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }],
   })
   atende = await criarMembro(`dst${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Atende',
     permissoes: [
-      { modulo: 'agenda', nivel: 'VIEW', escopo: 'ALL' },
-      { modulo: 'atendimento', nivel: 'MANAGE', escopo: 'ALL' },
+      { modulo: 'agenda', nivel: 'VIEW' },
+      { modulo: 'atendimento', nivel: 'MANAGE' },
       { modulo: 'clients', nivel: 'VIEW' },
     ],
   })
-  atendeOsMeus = await criarMembro(`dso${marca}`, {
-    tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Atende os meus',
-    permissoes: [
-      { modulo: 'agenda', nivel: 'VIEW', escopo: 'ALL' },
-      { modulo: 'atendimento', nivel: 'MANAGE', escopo: 'OWN' },
-      { modulo: 'clients', nivel: 'VIEW' },
-    ],
-  })
-  expect((await db().from('users').update({ provides_services: true }).eq('id', atendeOsMeus.userId)).error).toBeNull()
 })
 test.afterAll(async () => {
   if (rede) {
@@ -87,7 +77,7 @@ test.afterAll(async () => {
     if (ids.length) await db().from('appointment_history').delete().in('appointment_id', ids)
     await db().from('appointments').delete().eq('branch_id', rede.branchId)
   }
-  await soAgenda?.limpar(); await atende?.limpar(); await atendeOsMeus?.limpar(); await rede?.limpar()
+  await soAgenda?.limpar(); await atende?.limpar(); await rede?.limpar()
 })
 
 test('só a Agenda em Gerenciar cancela o agendado, mas não desiste do Em atendimento (pelas duas portas)', async ({ browser }) => {
@@ -118,16 +108,4 @@ test('o Atendimento em Gerenciar (e a Agenda em Ver) desiste do Em atendimento, 
   expect.soft(await situacao(agendado), 'cancelar o agendado é da Agenda').toBe('SCHEDULED')
   expect.soft(await situacao(emCurso1), 'desistir pela sessão').toBe('CANCELLED')
   expect(await situacao(emCurso2), 'desistir pela janela').toBe('CANCELLED')
-})
-
-test('o Atendimento "só os meus" desiste só do DELA', async ({ browser }) => {
-  const daOutra = await agendamento('Gal', 'IN_PROGRESS', rede!.professionalId)
-  const dela    = await agendamento('Hana', 'IN_PROGRESS', atendeOsMeus!.userId)
-  await como(browser, atendeOsMeus!, async p => {
-    const a = acoes(p, `/${slug}/agenda/${dela}`)
-    await a.pelaSessao(daOutra)
-    await a.pelaSessao(dela)
-  })
-  expect.soft(await situacao(daOutra), 'a de outra pessoa').toBe('IN_PROGRESS')
-  expect(await situacao(dela), 'a dela').toBe('CANCELLED')
 })

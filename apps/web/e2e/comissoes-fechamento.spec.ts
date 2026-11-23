@@ -9,8 +9,8 @@ import { chamarAcao } from './apoio/acao-direta'
  * Comissões, fase 3 (2026-09-30): Financeiro → Comissões e o fechamento.
  * Fechar e pagar (`comissao_fechar`) grava o fechamento, a DESPESA paga e os
  * lançamentos pagos numa transação; dois cliques fecham uma vez; o que chega
- * depois (um estorno) cai no próximo; quem só vê as próprias vê só a sua; e o
- * dashboard e os relatórios não mostram a comissão da equipe a quem não vê o
+ * depois (um estorno) cai no próximo; quem atende sem o Financeiro (a vista
+ * pessoal) vê só a sua; e o dashboard e os relatórios não mostram a comissão da equipe a quem não vê o
  * financeiro. Numa rede [e2e] própria.
  */
 
@@ -35,10 +35,10 @@ test.beforeAll(async () => {
     tenant: rede.tenantId, rotulo: 'Financeiro',
     permissoes: [{ modulo: 'financial', nivel: 'MANAGE' }, { modulo: 'team', nivel: 'VIEW' }, { modulo: 'agenda', nivel: 'VIEW' }],
   })
-  // Só as próprias: financeiro VIEW com escopo OWN — e atende.
+  // A vista pessoal (SM2, o Heitor, 2026-11-23): atende e NÃO tem o Financeiro.
   proprio = await criarMembro(`cfp${marca}`, {
     tenant: rede.tenantId, rotulo: 'Profissional',
-    permissoes: [{ modulo: 'financial', nivel: 'VIEW', escopo: 'OWN' }],
+    permissoes: [], atendeEm: [rede.branchId],
   })
   // Vê a equipe e os relatórios de profissionais, mas NÃO o financeiro.
   equipe = await criarMembro(`cfe${marca}`, {
@@ -204,9 +204,8 @@ test.describe.serial('comissões — fechamento e visibilidade', () => {
     expect(await aPagar(P), 'os lançamentos daquele fechamento voltam a pagar').toBe(30)
   })
 
-  test('quem só vê as próprias: vai direto a elas, vê só a sua linha e não fecha', async ({ browser }) => {
+  test('quem atende sem o Financeiro (a vista pessoal): vai direto às Minhas comissões, vê só a sua linha e não fecha', async ({ browser }) => {
     const P = rede!.professionalId
-    await db().from('users').update({ provides_services: true }).eq('id', proprio!.userId)
     await concluido(proprio!.userId, 300)
     await concluido(P, 100)
 

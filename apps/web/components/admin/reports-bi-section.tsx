@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
-import { getTenantContext, podeVerRelatorio, can } from '@/lib/auth'
+import { getTenantContext, podeVerRelatorio, can, alcancaUnidade } from '@/lib/auth'
+import { semAcesso } from '@/lib/sem-acesso'
 import type { ChartPoint } from '@/components/admin/evolution-chart'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { ReportsBiDynamic as ReportsBiView } from '@/components/admin/reports-bi-dynamic'
@@ -9,7 +10,6 @@ import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
 import { lotesVencendoDoRecorte, type LoteVencendo } from '@/lib/estoque/lotes'
 import { getRelatorioDosModulos, getCoreDosModulos } from '@/lib/metrics/dos-modulos'
 import { getAtendimentosSemReceita } from '@/lib/metrics/fechamento-extra'
-import { recorteDosModulos } from '@/lib/metrics/escopo'
 import { SEM_ESTOQUE_NO_RESULTADO } from '@/lib/metrics/resultado'
 import { getPerdas } from '@/lib/metrics/perdas'
 import { getTransferenciasDeEstoque } from '@/lib/metrics/transferencias'
@@ -83,6 +83,8 @@ export async function ReportsBiSection({
   // os dois portais obedecem à mesma regra, e que ninguém carrega dado de uma
   // aba que não pode ver só porque digitou `?tab=` na URL.
   const ctxDoCargo     = await getTenantContext()
+  // A abrangência vale (SM4): só as unidades ao alcance da pessoa.
+  if (branchIds.some(id => !alcancaUnidade(ctxDoCargo, id))) throw semAcesso()
   const abasPermitidas = ctxDoCargo.reportTabs
   if (abasPermitidas.length === 0) {
     return (
@@ -95,20 +97,10 @@ export async function ReportsBiSection({
   // A regra é a de `podeVerRelatorio` (módulo E aba), a mesma testada em tests/auth.
   if (!podeVerRelatorio(ctxDoCargo, tab)) tab = abasPermitidas[0]!
 
-  // -- "Só os meus": cada número no escopo do SEU módulo (decisão do Heitor,
-  // 2026-10-29; lib/metrics/escopo) ------------------------------------------
-  // A agenda e as clientes (atendimentos, agendamentos, retenção, novos
-  // clientes, a base) seguem o escopo da agenda; o dinheiro (faturamento,
-  // ticket, evolução, vendas, comissões, o consumo de insumo) segue o do
-  // financeiro; o comercial, o do CRM (os leads dela e os sem dono). O que não
-  // se atribui a ela quando o FINANCEIRO é "só os meus" (a despesa, o lucro, a
-  // margem, o saldo do estoque, as parcelas a receber) nem é consultado: a tela
-  // o esconde (`soOsMeus`). Até aqui qualquer "só os meus" recortava tudo.
-  const recorte = recorteDosModulos(ctxDoCargo)
-  const soOsMeus = recorte.financeiro !== null
-  const profAgenda = recorte.agenda
-  const profDinheiro = recorte.financeiro
-  const donoNoCrm = recorte.crm
+  // -- Sem recorte por dono (SM4, 2026-11-23) ---------------------------------
+  // Os Relatórios mostram os números de todos, nas unidades que a página manda
+  // (as ao alcance da pessoa); o cargo escolhe só as abas.
+  const recorte = { agenda: null, financeiro: null }
 
   // -- Período -------------------------------------------------------
   // Janela no fuso do RECORTE (F62: a unidade, o dela; a rede, o comum), com
@@ -143,8 +135,8 @@ export async function ReportsBiSection({
   // metade do mês de fora, sem aviso (A38). As outras abas seguem o dinheiro,
   // que só existe até agora.
   const fimDaJanela = tab === 'agenda' ? periodInfo.fullTo : endDate
-  const needBatches = tab === 'estoque' && !soOsMeus
-  const needInstall = tab === 'financeiro' && !soOsMeus
+  const needBatches = tab === 'estoque'
+  const needInstall = tab === 'financeiro'
   const needClientes = tab === 'clientes'
   const comLucro = tab === 'overview' || tab === 'financeiro'
 
@@ -198,14 +190,14 @@ export async function ReportsBiSection({
 
     // Retenção real (quem já era cliente antes do período e voltou)
     needClientes
-      ? getRetention({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate, professionalId: profAgenda, tags })
+      ? getRetention({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate, tags })
       : Promise.resolve({ clientsServed: 0, returningClients: 0, firstTimeClients: 0 }),
 
     // Novos clientes por dia, dentro da janela e no fuso do negócio
     needClientes
       ? getNewClientsSeries({
           tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate,
-          granularity: period === 'all' ? 'month' : 'day', professionalId: profAgenda, tags,
+          granularity: period === 'all' ? 'month' : 'day', tags,
         })
       : Promise.resolve([]),
 
@@ -216,22 +208,21 @@ export async function ReportsBiSection({
     getCoreDosModulos({ tenantId: ctx.tenantId!, branchIds, from: prevStart, to: prevEnd, recorte, tags }),
     getSeries({
       tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate,
-      granularity, professionalId: profDinheiro,
+      granularity,
     }),
 
     // Ticket médio = o pago pelas clientes ÷ as que pagaram (2026-10-29): a
     // Visão geral, Clientes e Procedimentos mostram o MESMO número.
     ['overview', 'clientes', 'procedimentos'].includes(tab)
-      ? getTicketMedio({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate, professionalId: profDinheiro, tags })
+      ? getTicketMedio({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate, tags })
       : Promise.resolve(null),
 
     // O lucro desconta o insumo consumido e deixa a compra de estoque no
     // caixa (2026-10-29): as duas parcelas, no período, no anterior e por fatia.
-    comLucro ? getResultadoDoEstoque({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate, professionalId: profDinheiro }) : Promise.resolve(null),
-    comLucro ? getResultadoDoEstoque({ tenantId: ctx.tenantId!, branchIds, from: prevStart, to: prevEnd, professionalId: profDinheiro }) : Promise.resolve(null),
-    comLucro ? getSeriesDoResultado({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate, granularity, professionalId: profDinheiro }) : Promise.resolve([]),
-    // As perdas do período (D-7): do estoque da unidade, como o saldo — com o
-    // financeiro "só os meus" não se atribuem a ela e nem são consultadas.
+    comLucro ? getResultadoDoEstoque({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate }) : Promise.resolve(null),
+    comLucro ? getResultadoDoEstoque({ tenantId: ctx.tenantId!, branchIds, from: prevStart, to: prevEnd }) : Promise.resolve(null),
+    comLucro ? getSeriesDoResultado({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate, granularity }) : Promise.resolve([]),
+    // As perdas do período (D-7): do estoque da unidade, como o saldo.
     // A31 da 10ª: a aba Financeiro também (o "fora do resultado" do DRE que a contadora exporta).
     needBatches || needInstall ? getPerdas({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: periodInfo.fullTo }) : Promise.resolve(undefined),
     // O "Status dos agendamentos" da Visão geral conta o PERÍODO inteiro, com
@@ -250,9 +241,7 @@ export async function ReportsBiSection({
 
   // Quanto cada um ganha é do FINANCEIRO de todos: a aba Profissionais é de
   // relatórios, e mostrava a comissão da equipe inteira a quem não vê o
-  // financeiro (ou só vê as próprias). O dado nem sai do servidor.
-  // Com o financeiro "só os meus", a comissão que chega já é a DELA (o recorte
-  // do dinheiro, no banco).
+  // Financeiro. O dado nem sai do servidor.
   const verComissoes = can(ctxDoCargo, 'financial', 'VIEW')
   if (!verComissoes) {
     relatorio.comissoesPorProfissional = []
@@ -261,7 +250,7 @@ export async function ReportsBiSection({
 
   // Quem atende (D14): o "Profissionais ativos" e as linhas da tabela da aba.
   const quemAtende = tab === 'profissionais'
-    ? await getQuemAtende({ tenantId, branchIds, professionalId: profAgenda })
+    ? await getQuemAtende({ tenantId, branchIds })
     : undefined
 
   const productBatches: LinhaLote[] = (productBatchesRaw as LoteVencendo[]).map(l => ({
@@ -275,7 +264,7 @@ export async function ReportsBiSection({
   // Vive aqui desde que deixou de ser tela própria (/admin/comercial): o funil
   // e a conversão são relatório, e estavam numa entrada de menu só deles.
   const comercial = tab === 'comercial'
-    ? await painelComercial({ tenantId, branchIds, from: startDate, to: periodInfo.fullTo, rawFunil, funilLembrado: await funilLembrado(), ownerId: donoNoCrm, tags })
+    ? await painelComercial({ tenantId, branchIds, from: startDate, to: periodInfo.fullTo, rawFunil, funilLembrado: await funilLembrado(), tags })
     : undefined
 
   // -- Aba Vendas ----------------------------------------------------
@@ -285,8 +274,7 @@ export async function ReportsBiSection({
   const vendas = tab === 'vendas'
     ? await (async (): Promise<DadosDeVendas> => {
         const tipo   = ehTipoDeVenda(rawTipo) ? rawTipo : null
-        // A venda é dinheiro: segue o financeiro (com ele "só os meus", as dela).
-        const doPeriodo = { tenantId, branchIds, from: startDate, to: periodInfo.fullTo, professionalId: profDinheiro, tags }
+        const doPeriodo = { tenantId, branchIds, from: startDate, to: periodInfo.fullTo, tags }
         const resumo = await getResumoDeVendas(doPeriodo)
         // Sem filtro, a lista tem TODAS as linhas — o crédito também (RL1),
         // que o "Total vendido" não soma.
@@ -341,7 +329,6 @@ export async function ReportsBiSection({
         ticketMedio={ticket?.total.valor ?? null}
         estoqueNoResultado={{ atual: estoque?.total ?? SEM_ESTOQUE_NO_RESULTADO, anterior: estoqueAnterior?.total ?? SEM_ESTOQUE_NO_RESULTADO }}
         verComissoes={verComissoes}
-        soOsMeus={soOsMeus}
         umaUnidade={umaUnidade}
         comercial={comercial}
         vendas={vendas}
@@ -353,9 +340,8 @@ export async function ReportsBiSection({
         quemAtende={quemAtende}
         tagsDaRede={tagsDaRede}
         tagsEscolhidas={tags}
-        receitaDeTodos={profAgenda !== null && profDinheiro === null}
         semReceita={tab === 'procedimentos' || tab === 'profissionais' || tab === 'overview'
-          ? await getAtendimentosSemReceita({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate, professionalId: profAgenda, tags })
+          ? await getAtendimentosSemReceita({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate, tags })
           : null}
       />
     </>

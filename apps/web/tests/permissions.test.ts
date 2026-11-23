@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  hasLevel, resolvePermissions, resolveScopes, isScoped, escoposDoQueTem,
+  hasLevel, resolvePermissions,
   MODULE_LEVELS, ALL_MODULES, MODULOS_DO_CARGO, NO_PERMISSIONS, ALL_PERMISSIONS,
   resolveReportTabs, ALL_REPORT_TABS, REPORT_TAB_LABELS, REPORT_TAB_HINTS,
 } from '@/lib/permissions'
@@ -48,61 +48,6 @@ describe('resolvePermissions', () => {
   it('ignora módulo que não existe mais', () => {
     const p = resolvePermissions([{ module: 'checkout', level: 'MANAGE' }])
     expect(p).toEqual(NO_PERMISSIONS)
-  })
-})
-
-describe('resolveScopes', () => {
-  it('módulo escopável sem linha fica em ALL — restringir por omissão esconderia dado', () => {
-    const s = resolveScopes([])
-    expect(s.agenda).toBe('ALL')
-    expect(s.medical_records).toBe('ALL')
-  })
-
-  it('OWN só vale em módulo escopável', () => {
-    const s = resolveScopes([
-      { module: 'agenda', level: 'MANAGE', scope: 'OWN' },
-      { module: 'stock',  level: 'MANAGE', scope: 'OWN' },
-    ])
-    expect(s.agenda).toBe('OWN')
-    expect(s.stock).toBe('ALL')
-  })
-
-  it('scope nulo no banco vira ALL', () => {
-    const s = resolveScopes([{ module: 'crm', level: 'VIEW', scope: null }])
-    expect(s.crm).toBe('ALL')
-  })
-
-  // D6 da simulação de 2026-10-29: a contadora (agenda NONE com o "só os
-  // meus" que ficou gravado) via o dashboard recortado a ela — R$ 0.
-  it('OWN num módulo NONE não vale: o recorte não nasce de um módulo que o cargo não tem', () => {
-    const s = resolveScopes([
-      { module: 'agenda',          level: 'NONE', scope: 'OWN' },
-      { module: 'medical_records', level: 'NONE', scope: 'OWN' },
-      { module: 'financial',       level: 'VIEW', scope: 'ALL' },
-      { module: 'crm',             level: 'VIEW', scope: 'OWN' },
-    ])
-    expect(s.agenda).toBe('ALL')
-    expect(s.medical_records).toBe('ALL')
-    expect(s.crm).toBe('OWN')
-  })
-})
-
-describe('escoposDoQueTem', () => {
-  it('o módulo que ficou NONE depois do cargo (plano, abas de relatório) perde o OWN', () => {
-    const scopes = resolveScopes([
-      { module: 'agenda',  level: 'MANAGE', scope: 'OWN' },
-      { module: 'reports', level: 'VIEW',   scope: 'OWN' },
-      { module: 'crm',     level: 'VIEW',   scope: 'OWN' },
-    ])
-    const permissions = { ...resolvePermissions([
-      { module: 'agenda',  level: 'MANAGE' },
-      { module: 'reports', level: 'VIEW' },
-      { module: 'crm',     level: 'VIEW' },
-    ]), reports: 'NONE' as const, crm: 'NONE' as const }
-    const s = escoposDoQueTem(scopes, permissions)
-    expect(s.agenda).toBe('OWN')
-    expect(s.reports).toBe('ALL')
-    expect(s.crm).toBe('ALL')
   })
 })
 
@@ -179,14 +124,5 @@ describe('resolveReportTabs', () => {
       expect(REPORT_TAB_LABELS[t]).toBeTruthy()
       expect(REPORT_TAB_HINTS[t]).toBeTruthy()
     }
-  })
-})
-
-describe('isScoped', () => {
-  it('seis módulos têm escopo — os do CLAUDE.md §11, reports e o Atendimento (como a Agenda)', () => {
-    // `reports` entrou depois ("só a própria unidade" × "a rede inteira") e o
-    // CLAUDE.md ainda lista quatro. Quem manda é `SCOPED_MODULES`.
-    const escopaveis = ALL_MODULES.filter(isScoped)
-    expect(escopaveis.sort()).toEqual(['agenda', 'atendimento', 'crm', 'financial', 'medical_records', 'reports'])
   })
 })

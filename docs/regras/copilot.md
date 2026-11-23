@@ -114,12 +114,12 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   varredura de 18/11; a matriz trava em `tests/varredura-atendimento.test.ts`):
   `confirmar_agendamento` pede a Agenda em Gerenciar (estava em Ver);
   `cancelar_agendamento` segue `recusaDoCancelar` — o agendado é da Agenda em
-  Gerenciar, o Em atendimento é DESISTIR, do Atendimento em Gerenciar, cada um
-  com o seu "só os meus", e o cartão diz "Desistir do atendimento" e que a
-  sessão paga conta como usada; `marcar_pago` segue `podeDarBaixa` (o Caixa em
-  Gerenciar, ou o Financeiro em Gerenciar sem o "só os meus" — CX2). O escopo
-  pode ser mais estreito no Copilot (agendar, remarcar e confirmar seguem fora
-  do "só os meus" da Agenda), nunca mais largo.
+  Gerenciar, o Em atendimento é DESISTIR, do Atendimento em Gerenciar (UM2),
+  e o cartão diz "Desistir do atendimento" e que a sessão paga conta como
+  usada; `marcar_pago` segue `podeDarBaixa` (o PDV em Gerenciar, ou o
+  Financeiro em Gerenciar — CX2). Sem o "só os meus" (SM5, 2026-11-23), nenhuma
+  ferramenta recorta por dono; a permissão pode ser mais estreita no Copilot,
+  nunca mais larga.
 - **A unidade de que a ferramenta fala** (`resolverUnidade`, `comum.ts`):
   quem é da rede escolhe qualquer uma; quem tem unidades (EQ1a, uma ou
   várias) escolhe entre AS DELA, e sem escolha fica na unidade em que está (a
@@ -147,8 +147,8 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   pessoa ou na pedida, e de um cliente se pedido; de quem recebe ou vê o
   Fechamento do dia), `plano` (os planos de tratamento de um cliente: a
   situação, as sessões feitas, agendadas e a agendar — a sessão do atendimento
-  iniciado e cancelado conta como feita; o Atendimento em Ver, com o "só os
-  meus" dele, como a tela — era a Agenda até 2026-11-18 —, e a funcionalidade
+  iniciado e cancelado conta como feita; o Atendimento em Ver, como a tela
+  — era a Agenda até 2026-11-18 —, e a funcionalidade
   no plano) e, na `cliente`, os
   planos e o em aberto de cada pacote e pré-pago (`metrics_em_aberto_das_vendas`).
   **O valor só a quem vê o valor** (`mostraOValor`: quem recebe ou vê o
@@ -267,32 +267,26 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
     a parte da fidelidade): `pontosDeFidelidade` só vai quando a rede tem o
     programa ligado (`fidelidade.md`: nenhum sinal de pontos). Prova:
     `e2e/copilot-leituras.spec.ts` (contra o build).
-- **"Só os meus" vale também no Copilot** (decisão do Heitor, 2026-10-28:
-  "quem tem 'só os meus' vê 'só os meus', em qualquer lugar"). A ferramenta
-  `indicadores` usa o recorte do dashboard (`indicadores.md`), com CADA número
-  no escopo do seu módulo (2026-10-29): a agenda e as clientes pelo da agenda,
-  o dinheiro (e as vendas) pelo do financeiro — `getCoreDosModulos`,
-  `getRelatorioDosModulos`, `p_professional_id` (migration `20261028000803`)
-  — e o cabeçalho diz qual recorte vale; com o CRM em OWN, o funil conta os
-  leads dela e os sem dono. Com o FINANCEIRO em OWN, não vai ao modelo o que
-  não se atribui a ela: a despesa, o saldo e o valor do estoque, os itens
-  críticos (o consumo dos atendimentos dela vai). A comissão do núcleo, com
-  o recorte, é a dela e vai. Prova: `e2e/copilot-indicadores-so-os-meus.spec.ts`
-  (contra o build, como todo `copilot-*`).
+- **Sem o "só os meus" no Copilot** (SM5, 2026-11-23; era o "'Só os meus'
+  vale também no Copilot" de 28/10): a ferramenta `indicadores` não recorta
+  por dono — fala pelos módulos e pelas abas de Relatórios da pessoa, com os
+  números de todos nas unidades ao alcance (`getCoreDosModulos`,
+  `getRelatorioDosModulos` sem recorte). Não é a vista pessoal dos
+  dashboards (`recortePessoal`, `indicadores.md`). As comissões (as do
+  núcleo e as por profissional) só vão a quem tem o Financeiro em Ver.
 - **`indicadores` lê pelas MESMAS funções da tela** (C5 da F68, 2026-11-12):
   o "a receber" é o do Financeiro (`getEmAberto`, pelo vencimento, até o FIM
-  do período — era o pendente do núcleo até agora; com o financeiro "só os
-  meus" não vai, como na tela), a aba agenda vai até o fim do período como a
+  do período — era o pendente do núcleo até agora), a aba agenda vai até o fim do período como a
   aba Agenda, e o comercial é o painel da aba Comercial (`painelComercial`,
   `lib/metrics/painel-comercial.ts`: as etapas do funil padrão, a conversão
   somando os funis ATIVOS, o comparecimento, os motivos de perda, a conversão
   por origem e por responsável). Era só o funil padrão, até agora. Prova:
-  `tests/indicadores-f68.test.ts` ("C5"), `e2e/copilot-indicadores-so-os-meus.spec.ts`.
+  `tests/indicadores-f68.test.ts` ("C5").
 - **O dinheiro de Relatórios segue as ABAS do cargo, também no Copilot**
   (decisão do Heitor, 2026-11-01: "concordo"). `indicadores` é a única
   ferramenta com o dinheiro dos Relatórios e recusa a aba que o cargo não tem
-  (`podeVerRelatorio`) antes de ler qualquer número; com a aba e sem o
-  Financeiro, lê o dinheiro dela, como a tela. Os `lancamentos` seguem o
+  (`podeVerRelatorio`) antes de ler qualquer número; com a aba, lê o
+  dinheiro da aba, como a tela (SM4). Os `lancamentos` seguem o
   módulo Financeiro (a tela do Financeiro). Prova:
   `tests/copilot-dinheiro-pelas-abas.test.ts`.
 - **O cartão pode trazer ESCOLHAS no lugar do "Confirmar"** (r2-cli-01, o
@@ -409,8 +403,7 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   chave diz o que é — `receitaPorUnidade`, `receitaPorFormaDePagamento`,
   `receitaPorCategoria` e `despesaPorUnidade` (`getByBranch`, o "Por unidade"
   do Financeiro da rede), `despesaPorCategoria` (`getComposicaoFinanceira`, sem
-  o estorno), com os totais do núcleo. Com o financeiro "só os meus", a despesa
-  não vai. Prova: `tests/copilot-atritos-da-24.test.ts`.
+  o estorno), com os totais do núcleo. Prova: `tests/copilot-atritos-da-24.test.ts`.
 - **As taxas da agenda vão prontas, com o nome** (A41 da 24ª; princípio 4: o
   "comparecimento" era uma conta do Copilot, 2 de 6 com os futuros): a aba
   `agenda` traz a taxa de conclusão (até o fim do período, a dos Relatórios) e

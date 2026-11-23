@@ -14,7 +14,8 @@ describe('textoDoRegistroTravado (D11)', () => {
   it('concluído, a quem não corrige: quem corrige', () =>
     expect(textoDoRegistroTravado('COMPLETED', false)).toEqual({
       titulo: 'Registro bloqueado para edição',
-      texto: 'Atendimento concluído. Corrigir o registro pede o Atendimento e o Prontuário em Gerenciar.',
+      // Corrigir o concluído é do Prontuário em Gerenciar, e só dele (UM4, o Heitor, 2026-11-23).
+      texto: 'Atendimento concluído. Corrigir o registro pede o Prontuário em Gerenciar.',
       podeEditar: false,
     }))
   it('cancelado: diz que foi cancelado, e não há registro a editar', () =>

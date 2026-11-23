@@ -97,11 +97,6 @@ export interface ReportsBiProps {
    */
   relatorio: Relatorio
   /**
-   * A agenda é DELA e o dinheiro é da clínica (ind-05): a receita das tabelas
-   * por procedimento e por profissional é a da clínica, e a tela diz isso.
-   */
-  receitaDeTodos?: boolean
-  /**
    * A47 e A43 da 8ª: por procedimento e por profissional (pelo nome), o que
    * ficou FORA da receita dos atendimentos — o concluído sem pagamento e o
    * pago com crédito na clínica (`getAtendimentosSemReceita`). A regra F18 fica.
@@ -111,13 +106,6 @@ export interface ReportsBiProps {
   quemAtende?: { total: number; nomes: string[] }
   /** Vê a comissão da equipe (financeiro com escopo de todos). Sem, a aba Profissionais não a mostra. */
   verComissoes: boolean
-  /**
-   * "Só os meus" (agenda ou financeiro OWN — decisão do Heitor, 2026-10-28):
-   * os números já chegam DELA; some o que não se atribui a ela — a despesa, o
-   * lucro, a margem (do período e do catálogo), o saldo do estoque e as
-   * parcelas a receber —, como no dashboard.
-   */
-  soOsMeus?: boolean
   /** A rede tem UMA unidade ativa (D-19): "Faturamento por Unidade" e "Saúde do Estoque por Unidade" somem. */
   umaUnidade?: boolean
   installments: LinhaParcela[]
@@ -142,7 +130,7 @@ export interface ReportsBiProps {
   comercial?: DadosComerciais
   /** Só vem preenchido quando a aba Vendas está aberta. */
   vendas?: DadosDeVendas
-  /** As perdas do período (D-7) — nas abas Estoque e Financeiro, e não com o financeiro "só os meus". */
+  /** As perdas do período (D-7) — nas abas Estoque e Financeiro. */
   perdas?: RelatorioDePerdas
   /** As transferências entre unidades no período (A33 da 20ª) — na aba Estoque, com mais de uma unidade. */
   transferencias?: RelatorioDeTransferencias
@@ -411,8 +399,7 @@ function TabOverview(p: ReportsBiProps) {
       {/* KPIs */}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         <KpiCard label="Faturamento"    value={revenue}           format="brl" delta={pctDelta(revenue, prevRevenue)}           showDelta hero dica={DEFINICOES.receita} />
-        {/* A despesa e o lucro não se atribuem a ela ("só os meus"). */}
-        {!p.soOsMeus && <>
+        {<>
           {/* A24 da 10ª: o cartão é o caixa; o gráfico e o lucro usam o "Custo do lucro". */}
           <KpiCard label="Despesas pagas (caixa)" value={expenses} format="brl" accent="var(--danger)" delta={pctDelta(expenses, prevExpenses)}   showDelta dica={DEFINICOES.despesa}
             sobre={<span data-base-das-despesas>Com a compra de estoque e o pagamento das comissões; o lucro e o gráfico usam o Custo do lucro.</span>} />
@@ -427,7 +414,7 @@ function TabOverview(p: ReportsBiProps) {
       {/* Charts grid */}
       <div className="rg-2" style={{ gap: 16 }}>
         <SCard title="Evolução do Período" style={{ gridColumn: '1 / -1' }}>
-          <EvolutionChart data={evolutionData} monthLabel={p.periodLabel} granularity={granularity} soReceita={p.soOsMeus} />
+          <EvolutionChart data={evolutionData} monthLabel={p.periodLabel} granularity={granularity} />
         </SCard>
         {!p.umaUnidade && (
         <SCard title="Faturamento por Unidade">
@@ -531,8 +518,7 @@ function TabFinanceiro(p: ReportsBiProps) {
         {/* O "Desconta do lucro" que vinha embaixo do número já é a definição da dica (2026-11-16). */}
         <KpiCard label="Insumos e produtos vendidos" value={stockCOGS} format="brl" accent="var(--danger)"
           dica={DEFINICOES.insumosEProdutos} />
-        {/* A despesa, o lucro e a margem não se atribuem a ela ("só os meus"). */}
-        {!p.soOsMeus && <>
+        {<>
           {/* A31 da 9ª: a base é o caixa (o que se pagou), outra conta que a despesa operacional do DRE. */}
           <KpiCard label="Despesas pagas (caixa)"  value={opEx}      format="brl" accent="var(--warning)"  delta={pctDelta(opEx, prevOpEx)}     showDelta
             dica={DEFINICOES.despesa}
@@ -542,7 +528,7 @@ function TabFinanceiro(p: ReportsBiProps) {
         </>}
       </div>
       <div className="rg-2" style={{ gap: 16 }}>
-        {!p.soOsMeus && (
+        {(
           // A50 da 7ª simulação: a perda de R$ 380 fora do lucro parecia erro (é a regra F7) — a
           // tela diz, na dica do título (2026-11-16: a explicação mora na dica).
           <SCard title="DRE Simplificado" style={{ gridColumn: '1 / -1' }} rotuloDoSobre="O que fica fora do lucro" sobre={
@@ -589,7 +575,7 @@ function TabFinanceiro(p: ReportsBiProps) {
           <HBarChart data={branchComparePrev} color={CHART_COLORS[5]} />
         </SCard>
         {/* As parcelas a receber são da unidade, não dos atendimentos dela. */}
-        {!p.soOsMeus && (
+        {(
           <SCard title="Parcelas Pendentes" style={{ gridColumn: '1 / -1' }}>
             <SimpleTable
               columns={installCols}
@@ -1054,7 +1040,7 @@ function TabProcedimentos(p: ReportsBiProps) {
     { key: 'name',     label: 'Procedimento'  },
     { key: 'category', label: 'Categoria'     },
     { key: 'count',    label: 'Execuções',    align: 'center' },
-    { key: 'revenue',  label: p.receitaDeTodos ? 'Receita dos atendimentos (de todos)' : 'Receita dos atendimentos', align: 'right',
+    { key: 'revenue',  label: 'Receita dos atendimentos', align: 'right',
       render: (v, row) => <>{fmtBRLFull(Number(v))}<NotaSemReceita s={p.semReceita?.porProcedimento[String(row.name)]} /></> },
     // Receita do procedimento ÷ as execuções dele: não é o ticket médio (que só
     // conta os cobrados), e o nome diz isso (D11).
@@ -1121,8 +1107,7 @@ function TabProcedimentos(p: ReportsBiProps) {
         <SCard title="Top 3 por Faixa de Idade — Volume">
           <AgeRankCard data={topByAgeVolume} />
         </SCard>
-        {/* A margem é do custo do CATÁLOGO: não se atribui a ela ("só os meus"). */}
-        {!p.soOsMeus && (
+        {(
           <SCard title="Top 3 por Faixa de Idade — Margem" rotuloDoSobre="Como a margem é contada"
             sobre="Pelo preço do agendamento (antes do voucher e dos pontos) menos o custo do catálogo.">
 
@@ -1161,7 +1146,7 @@ function TabProfissionais(p: ReportsBiProps) {
   const commCols: TableColumn[] = [
     { key: 'name',    label: 'Profissional'   },
     { key: 'appts',   label: 'Atendimentos',   align: 'center' },
-    { key: 'revenue', label: p.receitaDeTodos ? 'Receita dos atendimentos (de todos)' : 'Receita dos atendimentos', align: 'right',
+    { key: 'revenue', label: 'Receita dos atendimentos', align: 'right',
       render: (v, row) => <>{fmtBRLFull(Number(v))}<NotaSemReceita s={p.semReceita?.porProfissional[String(row.name)]} /></> },
     { key: 'open',    label: 'Comissão Aberta', align: 'right', render: (v) => fmtBRLFull(Number(v)) },
     { key: 'paid',    label: 'Comissão Paga',   align: 'right', render: (v) => fmtBRLFull(Number(v)) },
@@ -1279,9 +1264,7 @@ function TabEstoque(p: ReportsBiProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        {/* "Só os meus": o saldo do estoque não se atribui a ela — só o insumo
-            dos atendimentos dela (o consumo e os mais consumidos). */}
-        {!p.soOsMeus && <KpiCard label="Valor em Estoque" value={totalStockValue} format="brl" />}
+        {<KpiCard label="Valor em Estoque" value={totalStockValue} format="brl" />}
         {/* A37 da 22ª (princípio 3): o mesmo detalhe da tela de Estoque — o produto vendido fica fora. */}
         <KpiCard label="Consumo no Período" value={consumoValue} format="brl" accent="var(--warning)" detalhe={DETALHE_DO_GIRO} />
         {/* est-04/est-05: a perda é MÉTRICA (não entra no lucro nem no caixa — D8
@@ -1292,7 +1275,7 @@ function TabEstoque(p: ReportsBiProps) {
           <KpiCard label="Consumo com perdas" value={consumoComPerdas({ consumo: consumoValue, perdas: p.perdas.total.custo })} format="brl"
             rotuloDoSobre="O que o Consumo com perdas soma" sobre="Insumo consumido + perdas, ao custo do lote" />
         </>}
-        {!p.soOsMeus && <>
+        {<>
           <KpiCard label="Giro (%)" value={giro} format="pct" accent={giro == null ? undefined : giro >= 50 ? 'var(--success)' : 'var(--warning)'} />
           <KpiCard label="Itens Críticos" value={criticos} format="int" accent="var(--warning)" />
           {/* D19 da 8ª: produtos (não pares unidade × produto) — a conta do Estoque e do dashboard. */}
@@ -1305,7 +1288,7 @@ function TabEstoque(p: ReportsBiProps) {
         <SCard title="Top 10 Produtos Mais Consumidos (custo)">
           <HBarChart data={topConsumed} color="var(--warning)" />
         </SCard>
-        {!p.soOsMeus && <>
+        {<>
           {/* A30 da 23ª (princípio 7): com uma categoria só, a pizza era 100% numa fatia — não diz nada. */}
           {byCategory.length > 1 && (
           <SCard title="Valor em Estoque por Categoria">

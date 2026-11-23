@@ -7,7 +7,6 @@ import { O_QUE_A_CLIENTE_AVALIA, oQueAvalia, type OQueAClienteAvalia } from '@/l
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { maskPhone } from '@estetica-os/utils'
-import { lerVisibilidade, type VisibilidadeDoInbox } from '@/lib/inbox/visibilidade'
 import { lerRegrasDoPacote, type RegrasDoPacote } from '@/lib/pacotes/regras'
 
 /** O que a tela de Configurações → Geral mostra da rede. */
@@ -164,47 +163,4 @@ export async function atualizarDadosDaRede(
 /** O telefone da rede no formato da tela; o que não é número nacional fica como veio. */
 function telefoneDaRede(v: string | null): string | null {
   return v ? maskPhone(v) : null
-}
-
-/**
- * Com escopo OWN no CRM, o que decide se uma conversa do inbox aparece: a
- * pessoa ou a thread. Os textos e a regra moram em `lib/inbox/visibilidade.ts`.
- *
- * Pede `roles: MANAGE`, não `settings`: é refino do escopo "só os próprios", e
- * quem decide quem vê o quê é quem monta os cargos.
- */
-export async function lerVisibilidadeDoInbox(): Promise<VisibilidadeDoInbox> {
-  const ctx = await getTenantContext()
-  assertPermission(ctx, 'roles', 'VIEW')
-  const t = await ler(
-    createAdminClient().from('tenants').select('inbox_visibilidade').eq('id', ctx.tenantId!).maybeSingle(),
-    'ler a visibilidade do inbox',
-  )
-  return lerVisibilidade((t as { inbox_visibilidade?: string } | null)?.inbox_visibilidade)
-}
-
-export async function atualizarVisibilidadeDoInbox(
-  modo: string,
-): Promise<{ error: string } | { success: true }> {
-  const ctx = await getTenantContext()
-  assertPermission(ctx, 'roles', 'MANAGE')
-  // Quem vê o inbox é da clínica toda (H7): quem tem unidade fixa não muda.
-  const daRede = recusaDaConfigDaRede(ctx)
-  if (daRede) return { error: daRede }
-
-  if (modo !== 'pessoa' && modo !== 'conversa') return { error: 'Opção inválida.' }
-
-  await gravar(
-    createAdminClient()
-      .from('tenants')
-      .update({ inbox_visibilidade: modo, updated_at: new Date().toISOString() })
-      .eq('id', ctx.tenantId!)
-      .select('id')
-      .single(),
-    'salvar a visibilidade do inbox',
-  )
-
-  revalidatePath('/admin/settings')
-  revalidatePath('/admin/inbox')
-  return { success: true }
 }

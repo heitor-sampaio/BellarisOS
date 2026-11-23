@@ -6,7 +6,6 @@ import { createTeamMember } from '@/actions/team'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { UnidadesDoMembro, AtendeDoMembro, useAtendeDoMembro, type ValorDasUnidades } from '@/components/shared/unidades-do-membro'
 import { toast } from 'sonner'
-import { SEM_MINHAS_COMISSOES_NO_CADASTRO } from '@/lib/permissions-copy'
 import { Dica } from '@/components/shared/dica'
 
 /** O rótulo do campo com a dica ao lado (a explicação mora na dica, 2026-11-16). */
@@ -14,8 +13,6 @@ const rotuloComDica = { display: 'inline-flex', alignItems: 'center', gap: 6, co
 
 interface Role {
   id: string; label: string
-  /** A18 da 17ª: o cargo não mostra as próprias comissões (sem o Financeiro), com as comissões no plano. */
-  naoVeAsComissoes?: boolean
   /** C62 (F70): o cargo tem mais acesso que o de quem cadastra — aparece desligado (PLAT-02 da varredura de 18/11). */
   acimaDoMeu?: boolean
 }
@@ -154,13 +151,6 @@ function NovoMembroDaUnidade({ branchId, slug, roles, unidade = null, unidadesDo
               <AtendeDoMembro id="tm-atende" estado={atendeEstado}
                 unidades={unidadesDoAtende ?? [{ id: branchId, name: unidade ?? 'Esta unidade' }]}
                 unidadesDela={unidadesDela} editaveis={editaveisDoAtende} />
-
-              {/* A18 da 17ª: quem atende num cargo sem o Financeiro não verá as próprias comissões. */}
-              {atendeEm.length > 0 && roles.find(r => r.id === roleId)?.naoVeAsComissoes && (
-                <span data-sem-minhas-comissoes style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-                  {SEM_MINHAS_COMISSOES_NO_CADASTRO}
-                </span>
-              )}
 
               {/* A3 da 8ª simulação: o cadastro da unidade não pedia a comissão. */}
               {/* A4 da 22ª (princípio 7): à vista, desligado até marcar onde atende. */}

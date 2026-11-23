@@ -34,10 +34,10 @@ async function como(browser: Browser, m: MembroDeTeste, rota: string, fn: (p: Pa
 
 test.beforeAll(async () => {
   rede = await criarOutraRede(`mqr${marca}`)
-  const crm = [{ modulo: 'crm' as const, nivel: 'MANAGE' as const, escopo: 'ALL' as const }]
+  const crm = [{ modulo: 'crm' as const, nivel: 'MANAGE' as const }]
   ana = await criarMembro(`mqra${marca}`, { tenant: rede.tenantId, rotulo: 'Atendente Ana', permissoes: crm })
   daUnidade = await criarMembro(`mqru${marca}`, { tenant: rede.tenantId, rotulo: 'Recepção', permissoes: crm, branchId: rede.branchId })
-  soVe = await criarMembro(`mqrv${marca}`, { tenant: rede.tenantId, rotulo: 'Só vê', permissoes: [{ modulo: 'crm', nivel: 'VIEW', escopo: 'ALL' }] })
+  soVe = await criarMembro(`mqrv${marca}`, { tenant: rede.tenantId, rotulo: 'Só vê', permissoes: [{ modulo: 'crm', nivel: 'VIEW' }] })
 })
 
 test.afterAll(async () => {

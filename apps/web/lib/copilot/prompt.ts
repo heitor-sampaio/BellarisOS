@@ -47,7 +47,10 @@ export function contextoDaPagina(pagina: string): string | null {
  * universal). Tela nova entra sozinha: ninguém precisa lembrar do prompt.
  */
 export function telasDaPessoa(ctx: TenantContext, slugDoPortal: string | null): string[] {
-  const paginas = paginasDaBusca(slugDoPortal, ctx.permissions, ctx.plano ?? null, ctx.scopes, { daRede: ctx.branchId === null, adminDaRede: mexeNaConfigDaRede(ctx) })
+  const paginas = paginasDaBusca(slugDoPortal, ctx.permissions, ctx.plano ?? null, {
+    daRede: ctx.branchId === null, adminDaRede: mexeNaConfigDaRede(ctx),
+    pessoa: { atende: ctx.providesServices, comissaoDeVenda: ctx.comissaoDeVenda },
+  })
   return paginas.map(p => `[${p.titulo}](${p.href})`)
 }
 

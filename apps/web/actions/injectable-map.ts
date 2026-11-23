@@ -1,10 +1,10 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission, alcancaUnidade, alcancaOAgendamento, assertRecurso, isOwnScope } from '@/lib/auth'
+import { getTenantContext, assertPermission, alcancaUnidade, alcancaOAgendamento, assertRecurso } from '@/lib/auth'
 import { registrarAcessoAoProntuario } from '@/lib/prontuario/acessos'
-import { mapaAoAlcance, mapaDaProfissional, clienteDaProfissional, mapaDoTenant } from '@/lib/injetaveis/alcance'
-import { agendamentoAoAlcance, deOutroProfissional } from '@/lib/appointments/alteracoes'
+import { mapaAoAlcance, mapaDoTenant } from '@/lib/injetaveis/alcance'
+import { agendamentoAoAlcance } from '@/lib/appointments/alteracoes'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { emitirEventoClinico } from '@/lib/events/clinico'
 import { EVENTOS } from '@estetica-os/types'
@@ -176,8 +176,7 @@ export async function getPlanejamentoInjetavel(mapId: string): Promise<{
     .maybeSingle()
 
   if (error) return { error: `Não foi possível abrir o planejamento: ${error.message}` }
-  if (!data || data.tenant_id !== ctx.tenantId || !mapaAoAlcance(ctx, data.branch_id as string | null)
-    || !(await mapaDaProfissional(admin, ctx, data as { client_id: string | null; updated_by: string | null }))) {
+  if (!data || data.tenant_id !== ctx.tenantId || !mapaAoAlcance(ctx, data.branch_id as string | null)) {
     return { error: 'Planejamento não encontrado.' }
   }
 
@@ -446,8 +445,6 @@ export async function listarPlanejamentosDoCliente(clientId: string, appointment
   if (!(await clienteDoTenant(admin, clientId, ctx.tenantId!))) {
     return { mapas: [], error: 'Cliente não encontrado.' }
   }
-  // Prontuário "só os meus": só da cliente que ela atende (a regra da ficha).
-  if (!(await clienteDaProfissional(admin, ctx, clientId))) return { mapas: [] }
 
   const { data, error } = await admin
     .from('injectable_maps')
@@ -496,41 +493,16 @@ export async function listarMapasDeInjetaveis({ branchId }: { branchId: string |
 
   // Todos, em páginas (2026-10-22): tinha teto de 300, e os mapas editados há
   // mais tempo sumiam da lista.
-  // Prontuário "só os meus" (decisão do Heitor, 2026-10-28): só os mapas das
-  // clientes que ela atende e os avulsos que ela mexeu por último — a regra
-  // de `mapaDaProfissional`, aqui no banco (a lista cresce: o filtro não
-  // pode ser depois de ler).
-  const dela = isOwnScope(ctx, 'medical_records') ? ctx.internalUserId : null
-  if (isOwnScope(ctx, 'medical_records') && !dela) return { mapas: [] }
-
   let linhas: MapaLido[]
   try {
-    const pagina = (deCliente: boolean | null) => lerTodas((de, ate) => {
+    linhas = await lerTodas((de, ate) => {
       let q = admin
         .from('injectable_maps')
-        .select(deCliente
-          // O `!inner` em cadeia (mapa → cliente → agendamento com ela) recorta o
-          // mapa; o agendamento vem limitado a um, só para existir.
-          ? 'id, name, client_id, points, updated_at, clients!inner(name, phone, appointments!inner(id)), branches(name)'
-          : 'id, name, client_id, points, updated_at, clients(name, phone), branches(name)')
+        .select('id, name, client_id, points, updated_at, clients(name, phone), branches(name)')
         .eq('tenant_id', ctx.tenantId!)
       if (recorte) q = q.or(`branch_id.eq.${recorte},branch_id.is.null`)
-      if (deCliente === true) {
-        // A cliente DELA (eq-02): o agendamento cancelado não conta; a falta conta.
-        q = q.eq('clients.appointments.professional_id', dela!).neq('clients.appointments.status', 'CANCELLED')
-          .limit(1, { referencedTable: 'clients.appointments' })
-      }
-      if (deCliente === false) q = q.is('client_id', null).eq('updated_by', dela!)
       return q.order('updated_at', { ascending: false }).order('id').range(de, ate)
-    }, 'carregar os planejamentos') as unknown as Promise<MapaLido[]>
-
-    if (!dela) linhas = await pagina(null)
-    else {
-      const [deCliente, avulsos] = await Promise.all([pagina(true), pagina(false)])
-      // As duas listas já vêm na ordem da tela; aqui só se intercalam.
-      linhas = [...deCliente, ...avulsos].sort((a, b) =>
-        (b.updated_at ?? '').localeCompare(a.updated_at ?? '') || a.id.localeCompare(b.id))
-    }
+    }, 'carregar os planejamentos') as unknown as MapaLido[]
   } catch (e) {
     return { mapas: [], error: `Não foi possível carregar os planejamentos: ${e instanceof Error ? mensagemDoErro(e) : String(e)}` }
   }
@@ -611,7 +583,7 @@ export async function dosesDoMapaDoAtendimento(appointmentId: string, planejamen
     assertPermission(ctx, 'medical_records', 'VIEW')
     const admin = createAdminClient()
     const appt = await agendamentoAoAlcance(admin, ctx, appointmentId)
-    if (!appt || deOutroProfissional(ctx, appt.professional_id)) return { totais: [] }
+    if (!appt) return { totais: [] }
     const cliente = (await ler(admin.from('appointments').select('client_id').eq('id', appointmentId).single(),
       'buscar a cliente do atendimento') as { client_id: string | null } | null)?.client_id ?? null
 

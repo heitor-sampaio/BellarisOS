@@ -7,17 +7,15 @@ import { useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { createRole, updateRole, deleteRole, duplicarCargo } from '@/actions/roles'
 import { saveRolePermissions } from '@/actions/permissions'
-import { escopoInicial } from '@/lib/cargos/escopo-inicial'
 import { cargoEscolhido } from '@/lib/cargos/cargo-escolhido'
 import { acessosDoSalvo, resumoDoCargo } from '@/lib/cargos/acessos-salvos'
 import {
   ALL_MODULES, MODULOS_DO_CARGO, MODULE_LABELS, MODULE_HINTS, MODULE_LEVELS, LEVEL_LABELS,
-  SCOPE_LABELS, isScoped,
   ALL_REPORT_TABS, REPORT_TAB_LABELS, REPORT_TAB_HINTS,
 } from '@/lib/permissions'
 import {
-  MODULE_GROUPS, LEVEL_COPY, SCOPE_NOTE, SENSITIVE_NOTE,
-  NETWORK_ONLY, notaDeAbrangencia, SO_NA_REDE_NOTE, avisaSemMinhasComissoes, quemVendeNoResumo, copilotNoResumo, textoDoQueFaltaNoCargo, documentosNoResumo,
+  MODULE_GROUPS, LEVEL_COPY, SENSITIVE_NOTE,
+  NETWORK_ONLY, notaDeAbrangencia, SO_NA_REDE_NOTE, quemVendeNoResumo, copilotNoResumo, textoDoQueFaltaNoCargo, documentosNoResumo,
   pdvAbertoPeloFinanceiro, tratamentosNoResumo, nivelDoPdvPeloFinanceiro, conclusaoNoResumo,
 } from '@/lib/permissions-copy'
 import { ADMIN_MENU, BRANCH_MENU, menuLabelsFor, soLeriaAsConfiguracoes } from '@/lib/menu'
@@ -27,7 +25,7 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { Fala } from '@/components/shared/uma-unidade'
 import { Dica } from '@/components/shared/dica'
 import type {
-  AppModule, PermissionLevel, PermissionScope, ScopedModule, ResolvedPermissions, ResolvedScopes, ReportTab,
+  AppModule, PermissionLevel, ResolvedPermissions, ReportTab,
 } from '@estetica-os/types'
 import { resumoDoCargoDeSistema, explicacaoDoCargoDeSistema } from '@/lib/cargos/de-sistema'
 
@@ -41,10 +39,9 @@ export interface EditorRole {
   inboxCaixas:  CaixasDoCargo
 }
 
-/** O que um cargo tem em um módulo: até onde mexe (nível) e em quais registros (escopo). */
+/** O que um cargo tem em um módulo: até onde mexe (nível). */
 export interface RoleModulePermission {
   level: PermissionLevel
-  scope: PermissionScope
 }
 
 interface RolesEditorProps {
@@ -59,17 +56,10 @@ interface RolesEditorProps {
 }
 
 type Levels = Record<AppModule, PermissionLevel>
-/** `null` = sem escolha ainda (A2 da 12ª): a tela pede ao ligar o módulo. */
-type Scopes = Record<AppModule, PermissionScope | null>
 
 function buildLevels(perms: Partial<Record<AppModule, RoleModulePermission>>): Levels {
   // O módulo só da Admin da rede (a Auditoria) não é do cargo: fica em Sem acesso.
   return Object.fromEntries(ALL_MODULES.map(m => [m, MODULOS_DO_CARGO.includes(m) ? perms[m]?.level ?? 'NONE' : 'NONE'])) as Levels
-}
-
-/** Escopo inicial de cada módulo: `escopoInicial` (lib/cargos) — sem escolha até alguém escolher (A2 da 12ª). */
-function buildScopes(perms: Partial<Record<AppModule, RoleModulePermission>>): Scopes {
-  return Object.fromEntries(ALL_MODULES.map(m => [m, escopoInicial(m, perms[m])])) as Scopes
 }
 
 export function RolesEditor({ roles, permsByRole, tabsByRole, canSeeTeam, foraDoPlano = [] }: RolesEditorProps) {
@@ -150,8 +140,8 @@ export function RolesEditor({ roles, permsByRole, tabsByRole, canSeeTeam, foraDo
             perms={permsDe(selected.id)}
             tabs={salvos[selected.id]?.tabs ?? tabsByRole[selected.id] ?? []}
             onDirtyChange={setDirty}
-            onSalvo={(levels, scopes, tabs) => setSalvos(s => ({
-              ...s, [selected.id]: { perms: acessosDoSalvo(levels, scopes, permsDe(selected.id)), tabs },
+            onSalvo={(levels, tabs) => setSalvos(s => ({
+              ...s, [selected.id]: { perms: acessosDoSalvo(levels), tabs },
             }))}
             foraDoPlano={foraDoPlano}
           />
@@ -489,15 +479,14 @@ function PermissionMatrix({
   onDirtyChange: (dirty: boolean) => void
   foraDoPlano: AppModule[]
   /** A17 da 21ª: o que acabou de ser salvo, para a lista dizer sem recarregar. */
-  onSalvo?: (levels: Levels, scopes: Scopes, tabs: ReportTab[]) => void
+  onSalvo?: (levels: Levels, tabs: ReportTab[]) => void
 }) {
   const [state, action, pending] = useActionState(saveRolePermissions, undefined)
   const [levels, setLevels] = useState<Levels>(() => buildLevels(perms))
-  const [scopes, setScopes] = useState<Scopes>(() => buildScopes(perms))
   const [reportTabs, setReportTabs] = useState<ReportTab[]>(() => [...tabs])
   const [caixas, setCaixas] = useState<CaixasDoCargo>(role.inboxCaixas)
   const [baseline, setBaseline] = useState(() => ({
-    levels: buildLevels(perms), scopes: buildScopes(perms), reportTabs: [...tabs],
+    levels: buildLevels(perms), reportTabs: [...tabs],
     caixas: role.inboxCaixas,
   }))
   const [dismissed, setDismissed] = useState(false)
@@ -507,13 +496,11 @@ function PermissionMatrix({
   const [destaque, setDestaque] = useState<AppModule | null>(null)
 
   const dirty = useMemo(
-    () => ALL_MODULES.some(m =>
-      levels[m] !== baseline.levels[m] ||
-      (isScoped(m) && levels[m] !== 'NONE' && scopes[m] !== baseline.scopes[m]),
-    ) || reportTabs.length !== baseline.reportTabs.length
+    () => ALL_MODULES.some(m => levels[m] !== baseline.levels[m])
+      || reportTabs.length !== baseline.reportTabs.length
       || reportTabs.some(t => !baseline.reportTabs.includes(t))
       || caixas !== baseline.caixas,
-    [levels, scopes, reportTabs, caixas, baseline],
+    [levels, reportTabs, caixas, baseline],
   )
 
   useEffect(() => { onDirtyChange(dirty) }, [dirty, onDirtyChange])
@@ -525,7 +512,7 @@ function PermissionMatrix({
   if (salvamentoVisto !== state) {
     setSalvamentoVisto(state)
     if (state?.success) {
-      setBaseline({ levels, scopes, reportTabs, caixas })
+      setBaseline({ levels, reportTabs, caixas })
       setDismissed(false)
     }
   }
@@ -533,18 +520,12 @@ function PermissionMatrix({
   // despercebido — o aviso de "deu certo" do sistema é o toast (design.md).
   const avisarSalvo = useEffectEvent(() => {
     toast.success(`Cargo “${role.label}” salvo.`)
-    onSalvo?.(levels, scopes, levels.reports === 'NONE' ? [] : reportTabs)
+    onSalvo?.(levels, levels.reports === 'NONE' ? [] : reportTabs)
   })
   useEffect(() => { if (state?.success) avisarSalvo() }, [state])
 
   function setLevel(module: AppModule, v: PermissionLevel) {
     setLevels(prev => ({ ...prev, [module]: v }))
-    setDismissed(true)
-    setFalta(null)
-    setDestaque(null)
-  }
-  function setScope(module: AppModule, v: PermissionScope) {
-    setScopes(prev => ({ ...prev, [module]: v }))
     setDismissed(true)
     setFalta(null)
     setDestaque(null)
@@ -556,15 +537,11 @@ function PermissionMatrix({
     setDestaque(null)
   }
 
-  // O que o cargo ligou e ainda não escolheu: o alcance de cada módulo
-  // escopável, e as abas do Relatórios em "Ver" (A2 da 12ª, princípio 3).
-  // A27 da 18ª: o texto diz o módulo ("Falta escolher o que o cargo enxerga em Prontuário.").
+  // O que o cargo ligou e ainda não escolheu: as abas do Relatórios em "Ver"
+  // (A2 da 12ª, princípio 3).
   function oQueFalta(): string | null {
-    const modulos = ALL_MODULES
-      .filter(m => !foraDoPlano.includes(m) && isScoped(m) && levels[m] !== 'NONE' && !scopes[m])
-      .map(m => MODULE_LABELS[m])
     const relatorio = !foraDoPlano.includes('reports') && levels.reports !== 'NONE' && reportTabs.length === 0
-    return modulos.length || relatorio ? textoDoQueFaltaNoCargo(modulos, relatorio) : null
+    return relatorio ? textoDoQueFaltaNoCargo() : null
   }
 
   // A16 da 21ª (princípio 3): o que falta escolher fica junto do "Salvar acessos"
@@ -572,14 +549,12 @@ function PermissionMatrix({
   // parecia salvar.
   const faltaAgora = oQueFalta()
 
-  // A14 da 15ª (princípio 7): a tela vai até o primeiro módulo sem escolha, na
-  // ordem da tela, e o destaca. A3 da 22ª: também pelo aviso junto do Salvar —
-  // num cargo longo ele ficava no rodapé, e nada levava à linha.
+  // A14 da 15ª (princípio 7): a tela vai até o módulo sem escolha e o destaca.
+  // A3 da 22ª: também pelo aviso junto do Salvar — num cargo longo ele ficava
+  // no rodapé, e nada levava à linha.
   function irAoQueFalta() {
     setFalta(oQueFalta())
-    const primeiro = MODULE_GROUPS.flatMap(g => g.modules).find(m =>
-      !foraDoPlano.includes(m) && ((isScoped(m) && levels[m] !== 'NONE' && !scopes[m])
-        || (m === 'reports' && levels.reports !== 'NONE' && reportTabs.length === 0))) ?? null
+    const primeiro: AppModule | null = oQueFalta() ? 'reports' : null
     setDestaque(primeiro)
     if (primeiro) document.querySelector(`[data-modulo="${primeiro}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
   }
@@ -602,11 +577,7 @@ function PermissionMatrix({
     >
       <input type="hidden" name="roleId" value={role.id} />
       {MODULOS_DO_CARGO.map(m => (
-        <React.Fragment key={m}>
-          <input type="hidden" name={`level:${m}`} value={levels[m]} />
-          {/* Sem escolha, nada vai: o servidor guarda o que já estava (D6). */}
-          {isScoped(m) && scopes[m] && <input type="hidden" name={`scope:${m}`} value={scopes[m]!} />}
-        </React.Fragment>
+        <input key={m} type="hidden" name={`level:${m}`} value={levels[m]} />
       ))}
       {/* Aba marcada vira `report:<aba>=on`, como um checkbox — a action só
           grava as que chegam. Com Relatórios em "Sem acesso" nenhuma é enviada,
@@ -655,7 +626,6 @@ function PermissionMatrix({
                   key={module}
                   module={module}
                   level={levels[module]}
-                  scope={scopes[module]}
                   last={i === group.modules.length - 1}
                   destacado={destaque === module}
                   // A20 da 19ª: no celular o toast some e o aviso do Salvar fica fora da vista — ele vai no módulo.
@@ -667,7 +637,6 @@ function PermissionMatrix({
                   reportTabs={reportTabs}
                   caixas={caixas}
                   onLevel={v => setLevel(module, v)}
-                  onScope={v => setScope(module, v)}
                   onReportTab={toggleReportTab}
                   onCaixas={v => { setCaixas(v); setDismissed(true) }}
                 />
@@ -684,7 +653,7 @@ function PermissionMatrix({
         </p>
       )}
 
-      <MenuPreview levels={levels} scopes={scopes} reportTabs={reportTabs} />
+      <MenuPreview levels={levels} reportTabs={reportTabs} />
 
       {state?.error && (
         <p style={{
@@ -739,11 +708,10 @@ function PermissionMatrix({
 }
 
 function ModuleRow({
-  module, level, scope, last, destacado, aviso, nota, travadoEm = null, reportTabs, caixas, onLevel, onScope, onReportTab, onCaixas,
+  module, level, last, destacado, aviso, nota, travadoEm = null, reportTabs, caixas, onLevel, onReportTab, onCaixas,
 }: {
   module: AppModule
   level: PermissionLevel
-  scope: PermissionScope | null
   last: boolean
   destacado?: boolean
   /** A20 da 19ª: o que falta escolher, no módulo para onde a tela rolou. */
@@ -755,11 +723,9 @@ function ModuleRow({
   reportTabs: ReportTab[]
   caixas: CaixasDoCargo
   onLevel: (v: PermissionLevel) => void
-  onScope: (v: PermissionScope) => void
   onReportTab: (t: ReportTab) => void
   onCaixas: (v: CaixasDoCargo) => void
 }) {
-  const scoped      = isScoped(module)
   const enabled     = level !== 'NONE'
   const sensitive   = SENSITIVE_NOTE[module]
   const networkOnly = NETWORK_ONLY.includes(module)
@@ -839,39 +805,6 @@ function ModuleRow({
           onChange={onLevel}
         />
       </div>
-
-      {/* O alcance aparece com o módulo ligado, e nasce sem escolha (A2 da 12ª):
-          esmaecido e pré-marcado com o módulo em "Sem acesso", ele era salvo
-          sem ninguém ter escolhido. */}
-      {scoped && enabled && (
-        <div style={{ marginTop: 10 }}>
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap',
-          }}>
-            <span className="overline">Enxerga</span>
-            {/* A consequência do "só os meus" mora na dica (2026-11-16 — era uma linha fixa). */}
-            {scope === 'OWN' && SCOPE_NOTE[module as ScopedModule] && (
-              <Dica rotulo={`Sobre o alcance em ${MODULE_LABELS[module]}`}>
-                <Fala>{SCOPE_NOTE[module as ScopedModule]!}</Fala>
-              </Dica>
-            )}
-            <SegmentedScope
-              module={module as ScopedModule}
-              value={scope}
-              disabled={!enabled}
-              onChange={onScope}
-            />
-          </div>
-          {!scope && (
-            <p data-alcance-sem-escolha style={{
-              fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)',
-              marginTop: 5, textAlign: 'right', lineHeight: 'var(--leading-snug)',
-            }}>
-              Escolha o que este cargo enxerga aqui.
-            </p>
-          )}
-        </div>
-      )}
 
       {/* Quais relatórios, um a um. "Ver relatórios" num nível só entregava o
           faturamento da rede junto com o funil de leads. */}
@@ -983,7 +916,7 @@ function AbasDeRelatorio({
 
 // ─── Pré-visualização ────────────────────────────────────────────────────────
 
-function MenuPreview({ levels, scopes, reportTabs }: { levels: Levels; scopes: Scopes; reportTabs: ReportTab[] }) {
+function MenuPreview({ levels, reportTabs }: { levels: Levels; reportTabs: ReportTab[] }) {
   // A pré-visualização usa o estado NÃO salvo: é para conferir antes de gravar.
   // Relatórios sem nenhuma aba marcada não abre nada — o contexto de
   // autorização faz a mesma conta (`buildContext`), e aqui ela precisa
@@ -997,14 +930,12 @@ function MenuPreview({ levels, scopes, reportTabs }: { levels: Levels; scopes: S
   const gerencia = (m: AppModule) => permissions[m] === 'MANAGE'
   const comAbas = (abas: Parameters<typeof rotuloDasAbasAlcancadas>[0]) => (rotulo: string) =>
     rotulo === 'Configurações' ? (rotuloDasAbasAlcancadas(abas, gerencia, { soAsDela: true }) ?? rotulo) : rotulo
-  // Sem escolha ainda, a prévia lê "todos" (salvar pede a escolha antes).
-  const escopos = Object.fromEntries(ALL_MODULES.map(m => [m, scopes[m] ?? 'ALL'])) as ResolvedScopes
   // A-CONF1 da 25ª: o cargo editável nunca é o de Admin da rede — sem aba que a pessoa use, Configurações
   // não aparece (a configuração da rede toda é só da Admin da rede, CLAUDE.md §11).
   const semConfiguracoes = soLeriaAsConfiguracoes(permissions, false)
   const doMenu = (menu: typeof ADMIN_MENU) => semConfiguracoes ? menu.filter(e => e.key !== 'settings') : menu
-  const network = menuLabelsFor(doMenu(ADMIN_MENU), permissions, escopos).map(comAbas(ABAS_DA_REDE))
-  const branch  = menuLabelsFor(doMenu(BRANCH_MENU), permissions, escopos).map(comAbas(ABAS_DA_UNIDADE))
+  const network = menuLabelsFor(doMenu(ADMIN_MENU), permissions).map(comAbas(ABAS_DA_REDE))
+  const branch  = menuLabelsFor(doMenu(BRANCH_MENU), permissions).map(comAbas(ABAS_DA_UNIDADE))
   const sobreDocumentos = [...network, ...branch].includes('Documentos') ? documentosNoResumo(levels) : null
   // A2 da 22ª: de onde vem Tratamentos, como Documentos.
   const sobreTratamentos = [...network, ...branch].includes('Tratamentos') ? tratamentosNoResumo(levels) : null
@@ -1032,15 +963,6 @@ function MenuPreview({ levels, scopes, reportTabs }: { levels: Levels; scopes: S
           Relatórios não aparece: nenhum relatório está marcado. Marque ao menos um em &quot;Relatórios liberados&quot;.
         </p>
       )}
-      {/* A48 da 7ª simulação: o Consultor vende e não via as próprias
-          comissões — "Minhas comissões" é o Financeiro em Ver, só os próprios
-          (comissoes.md). O resumo diz a regra (princípio 3); a clínica decide
-          no cargo (princípio 1). */}
-      {avisaSemMinhasComissoes(levels) && (
-        <p data-sem-minhas-comissoes style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
-          Não vê as próprias comissões. Para ver, Financeiro em “Ver”, só os próprios: vira “Minhas comissões”.
-        </p>
-      )}
       {/* D1 da 12ª: o “Vender” da ficha é de quem recebe — o resumo diz, para
           o comercial não esperar um botão que o cargo não abre (princípio 3). */}
       {/* A17 da 17ª: o Copilot não é entrada de menu — o resumo diz à parte. */}
@@ -1049,10 +971,10 @@ function MenuPreview({ levels, scopes, reportTabs }: { levels: Levels; scopes: S
           {copilotNoResumo(levels.copilot)}
         </p>
       )}
-      {/* A2 da 23ª: "só os meus" na Agenda ou no Prontuário conclui só os próprios. */}
-      {conclusaoNoResumo(levels, escopos) && (
+      {/* A2 da 23ª: quem inicia e conclui, e o que pede o Prontuário. */}
+      {conclusaoNoResumo(levels) && (
         <p data-resumo-conclui style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
-          {conclusaoNoResumo(levels, escopos)}
+          {conclusaoNoResumo(levels)}
         </p>
       )}
       {quemVendeNoResumo(levels) && (
@@ -1127,31 +1049,6 @@ function SegmentedLevel({ options, value, travado = false, motivo, onChange }: {
           </button>
         )
       })}
-    </div>
-  )
-}
-
-function SegmentedScope({ module, value, disabled, onChange }: {
-  module: ScopedModule
-  value: PermissionScope | null
-  disabled: boolean
-  onChange: (v: PermissionScope) => void
-}) {
-  const labels = SCOPE_LABELS[module]
-  return (
-    <div style={segFrame}>
-      {(['OWN', 'ALL'] as const).map(s => (
-        <button
-          key={s}
-          type="button"
-          disabled={disabled}
-          aria-pressed={value === s}
-          onClick={() => onChange(s)}
-          style={{ ...segItem(value === s), padding: '4px 10px', fontSize: 'var(--text-2xs)' }}
-        >
-          <Fala>{s === 'OWN' ? labels.own : labels.all}</Fala>
-        </button>
-      ))}
     </div>
   )
 }

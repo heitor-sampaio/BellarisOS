@@ -10,7 +10,8 @@ import {
   Search, ShoppingBag, Sparkles, User, UserPlus, UserRound, X,
   RotateCcw, Contact,
 } from 'lucide-react'
-import type { ResolvedPermissions, ResolvedScopes } from '@estetica-os/types'
+import type { ResolvedPermissions } from '@estetica-os/types'
+import type { DaPessoa } from '@/lib/menu'
 import { buscarTudo } from '@/actions/busca'
 import { emitNavStart } from '@/components/shared/navigation-progress'
 import { paginasDaBusca, paginasQueCasam, termoEhDeUmaPagina } from '@/lib/busca/paginas'
@@ -85,18 +86,19 @@ function ehCampoDeTexto(el: EventTarget | null): boolean {
   return el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)
 }
 
-export function BuscaUniversal({ slug, permissions, scopes, plano = null, agendaPropria = false, daRede = false, adminDaRede = false }: {
+export function BuscaUniversal({ slug, permissions, pessoa, plano = null, agendaPropria = false, daRede = false, adminDaRede = false }: {
   /** Quem busca é da rede: no portal da unidade, acha também as configurações só da rede (A18 da 8ª). */
   daRede?: boolean
   /** A Admin da rede (`mexeNaConfigDaRede`): acha o "Configurar funis", que a página só abre a ela (CRM-05, 18/11). */
   adminDaRede?: boolean
   plano?: { funcionalidades: readonly string[] } | null
-  /** A agenda do cargo é "só a própria" (outra tela, sem o modal de criar): sem os atalhos de agendar. */
+  /** A agenda é a vista pessoal (a Minha agenda, sem o modal de criar): sem os atalhos de agendar. */
   agendaPropria?: boolean
   /** Slug do portal da unidade; nulo no portal da rede. */
   slug:        string | null
   permissions: ResolvedPermissions
-  scopes?: Partial<ResolvedScopes>
+  /** Liga as vistas pessoais no catálogo de páginas (lib/menu). */
+  pessoa?: DaPessoa
 }) {
   const pathname = usePathname()
   const router   = useRouter()
@@ -122,7 +124,7 @@ export function BuscaUniversal({ slug, permissions, scopes, plano = null, agenda
   const campoRef   = useRef<HTMLInputElement>(null)
   const campoCelRef = useRef<HTMLInputElement>(null)
 
-  const paginas = useMemo(() => paginasDaBusca(slug, permissions, plano, scopes, { daRede, adminDaRede }), [slug, permissions, plano, scopes, daRede, adminDaRede])
+  const paginas = useMemo(() => paginasDaBusca(slug, permissions, plano, { daRede, adminDaRede, pessoa }), [slug, permissions, plano, daRede, adminDaRede, pessoa])
   const quem = useMemo(() => ({ pathname, slug, permissoes: permissions, agendaPropria }), [pathname, slug, permissions, agendaPropria])
 
   // -- O que aparece -----------------------------------------------------------

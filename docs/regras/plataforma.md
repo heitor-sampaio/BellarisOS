@@ -858,9 +858,10 @@ auditoria das regras, pergunta 8: "só pela conta admin"; antes, H7 de
   (`soLeriaAsConfiguracoes`, `lib/menu.ts`); a aba da rede toda aberta pela
   URL diz "Esta configuração é só da Admin da rede." e quem muda (A-CONF2).
   O menu lateral segue "Configurações" (o rótulo longo
-  cortava, J-16). **E o cartão do cargo não conta Relatórios "só a unidade"
-  como "só os próprios"** (A8): "3 áreas · 1 só os próprios · Relatórios só
-  da unidade" — em Relatórios o escopo é a unidade (CLAUDE.md §11). **A Admin
+  cortava, J-16). **O cartão do cargo diz quantas áreas ele abre** ("3
+  áreas", `resumoDoCargo`, `lib/cargos/acessos-salvos.ts`; o "· 1 só os
+  próprios · Relatórios só da unidade" da A8 saiu com a SM1 e a SM4,
+  2026-11-23). **A Admin
   vem primeiro no seletor de cargo** da Equipe (A9), como na tela de Cargos.
   Prova: `e2e/configuracoes-atritos-da-7.spec.ts` ("A7/A8", "A9"),
   `tests/resumo-do-cargo.test.ts`. **A linha de Configurações na matriz diz o
@@ -878,13 +879,14 @@ auditoria das regras, pergunta 8: "só pela conta admin"; antes, H7 de
   `e2e/configuracoes-atritos-da-10.spec.ts` ("A9").
   **E o resumo diz o que o módulo abre, só a quem cabe** (A15 e A16 da 11ª,
   2026-11-10; princípio 3): a linha do PDV em Gerenciar diz que vê
-  o "Fechamento do dia" (a Comercial ganhou o item no menu sem a tela dizer), e
-  o "Não vê as próprias comissões…" (A48 da 7ª) só aparece a quem PODE ter
-  comissão — atende (Agenda, Prontuário) ou vende (CRM, PDV) — sem o
-  Financeiro (`avisaSemMinhasComissoes`, `lib/permissions-copy.ts`): a
-  Estoquista não o lia mais. Prova: `tests/resumo-do-cargo-da-11.test.ts`.
+  o "Fechamento do dia" (a Comercial ganhou o item no menu sem a tela dizer).
+  O "Não vê as próprias comissões…" (A48 da 7ª, `avisaSemMinhasComissoes`)
+  saiu com a vista pessoal (SM2, 2026-11-23): a linha do Financeiro em "Sem
+  acesso" diz que quem atende ou tem comissão de venda vê as Minhas comissões
+  (`comissoes.md`). Prova: `tests/resumo-do-cargo-da-11.test.ts`.
   **A 21ª simulação** (A16, A17, A24; `tests/cargos-atritos-da-21.test.ts`):
-  o que falta escolher ("Falta escolher o que o cargo enxerga em …") fica
+  o que falta escolher (as abas de Relatórios: "Falta escolher ao menos um
+  relatório em Relatórios…", `textoDoQueFaltaNoCargo`) fica
   junto do "Salvar acessos" enquanto falta, não só depois do clique
   (`[data-falta-escolher]`; com o clique, vira alerta e a tela rola ao
   módulo); o cartão do cargo recém-salvo diz o que ele abre sem recarregar
@@ -897,13 +899,16 @@ auditoria das regras, pergunta 8: "só pela conta admin"; antes, H7 de
   Unidade até a Admin da rede liberar. `private.cargos_modelo_semear` (migration `20261104002101`); as
   redes que já existiam não mudam sozinhas (princípio 6), só as `[e2e]`.
   Prova: `e2e/permissoes-gerente-modelo.spec.ts`.
-- **A Recepcionista modelo nasce vendo as próprias comissões** (A3 da 12ª
-  simulação, 2026-11-11; princípio 1): quem recebe no balcão e vende é o caso comum, e
-  a Admin da rede da Margarida criou um cargo "Recepção com vendas" à mão. O modelo
-  traz o Financeiro em "Ver, só as próprias" — o "Minhas comissões", sem o
-  financeiro da rede (migration `20261111006001`). Só a rede nova; os
-  cargos já gravados não mudam (princípio 6). Prova:
-  `e2e/configuracoes-atritos-da-12.spec.ts` ("A3").
+- **Sem o "só os meus", os modelos nascem sem o Financeiro e o Profissional sem a Agenda**
+  (o Heitor, 2026-11-23, à pergunta do Claude: o Financeiro e a Agenda "só os meus" viram
+  "Sem acesso"). O que a Recepcionista e o Profissional modelo viam do Financeiro eram as
+  próprias comissões — hoje a vista pessoal (SM2), a quem atende ou tem comissão de venda;
+  e a Agenda "só os meus" do Profissional é a Minha agenda. O Profissional nasce com o
+  Atendimento e o Prontuário em Gerenciar de todos (cada passo, um módulo). Valeu também
+  para os cargos que já existiam: o Financeiro e a Agenda "só os meus" foram a "Sem acesso",
+  o resto ficou com o nível, e todo escopo virou "todos" (migration
+  `20261129000001`). Era a A3 da 12ª (a Recepcionista nascia com o Financeiro em "Ver, só as
+  próprias", `20261111006001`), que saiu com o SM1. Prova: `tests/cargos-sem-so-os-meus.test.ts`.
 - Prova: `e2e/permissoes-config-de-quem-tem-uma-unidade.spec.ts` (a action direta de cada
   área recusada para quem não tem “A rede inteira”, com a Admin da rede como controle; a aba Unidade; as
   telas).
@@ -913,13 +918,13 @@ abaixo entraram na F70, 2026-11-12):
 - **Ninguém dá um cargo com mais acesso que o próprio** (H7, opção b; o
   espírito da regra de 29/10, "somente admin promove a admin", aplicado aos
   módulos). Quem tem a Equipe em Gerenciar só dá (ao criar ou editar um
-  membro) um cargo cujos módulos, níveis e escopos não passem dos do próprio
+  membro) um cargo cujos módulos e níveis não passem dos do próprio
   cargo; o que passa aparece desabilitado na lista, "Financeiro (tem módulos
   que você não tem)", com a nota "Só quem tem esses módulos pode dar este
   cargo." A Admin da rede continua dando qualquer cargo. A action recusa
   também. Vale nas DUAS Equipes, a da rede e a da unidade (`/[slug]/team`
-  ganhou a trava na varredura de 18/11, PLAT-02). "Acima" é, em algum módulo: um nível acima, o "todos" onde quem dá
-  tem "só os meus", ou uma aba de Relatórios que ela não vê; manter o cargo
+  ganhou a trava na varredura de 18/11, PLAT-02). "Acima" é, em algum módulo: um nível acima, ou uma aba de Relatórios que
+  ela não vê (o "todos onde quem dá tem 'só os meus'" saiu com a SM1, 2026-11-23); manter o cargo
   que o membro já tem não é dar. Mora em `lib/equipe/cargo-acima.ts`
   (`cargosAcimaDoMeu`, `assertRoleInTenant`). Prova:
   `e2e/permissoes-f70.spec.ts` ("C62").
@@ -1050,9 +1055,8 @@ de uma unidade"):**
   o que se grava segue "Sem acesso"); o menu e o resumo mostram Tratamentos a
   quem tem a Agenda (desde 2026-11-18, o Atendimento) — a régua da página —, não mais a quem tem o Prontuário ou
   recebe (D1; "quem recebe cobra o plano ali" caiu com o PDV4/PT1c/PDV7), e a
-  dica diz "Tratamentos vem da Agenda em “Ver”"; o resumo diz "Conclui só os
-  próprios atendimentos…" quando o cargo tem o Prontuário em Gerenciar e "só
-  os meus" na Agenda ou no Prontuário (A2, `conclusaoNoResumo`); e o
+  dica diz "Tratamentos vem da Agenda em “Ver”"; o "Conclui só os próprios
+  atendimentos…" do resumo (A2) saiu com a SM1 (2026-11-23); e o
   Desativar com o "Repassar todos … para" quem não pegou todos diz "Desativar
   e repassar 1 de 5" (A3, `rotuloDoDesativar`).
   **E a 24ª** (`tests/atritos-da-24-cargos-atendimento-app.test.ts`): sem o
@@ -1067,14 +1071,17 @@ de uma unidade"):**
   **O módulo Atendimento** (o Heitor, 2026-11-18: "Agenda é agenda e
   atendimento é atendimento. Só inicia e conclui atendimento quem tem
   gerenciar no atendimento."): o 20º módulo, no grupo Atendimento logo depois
-  da Agenda (`MODULE_GROUPS`), com Ver e Gerenciar e o escopo "só os meus" ×
-  "todos" como o da Agenda (`SCOPED_MODULES`; decisão do Claude pelo princípio
-  1). Iniciar, concluir, a desistência no meio e o plano da avaliação aberta
-  são dele; Tratamentos vem dele ("Tratamentos vem do Atendimento em “Ver”…",
-  `tratamentosNoResumo`); o clínico continua do Prontuário. O resumo do cargo
+  da Agenda (`MODULE_GROUPS`), com Ver e Gerenciar (o escopo "só os meus" ×
+  "todos" saiu com a SM1, 2026-11-23). Cada passo, um módulo (UM1–UM5,
+  2026-11-23): o Atendimento em Ver abre a tela do atendimento e os planos;
+  em Gerenciar, iniciar, concluir, a desistência no meio e montar o plano (na
+  avaliação aberta, na concluída ou pelo "Novo plano", com a unidade do plano
+  ao alcance — `montaPlano`) são dele; Tratamentos vem dele ("Tratamentos vem
+  do Atendimento em “Ver”…", `tratamentosNoResumo`); o clínico (ficha de
+  saúde, evolução, fotos, injetáveis) é do Prontuário em Gerenciar, sem
+  precisar atender; o "Atende" não dá permissão nenhuma. O resumo do cargo
   diz "Vê os atendimentos, sem iniciar nem concluir: iniciar e concluir pedem
-  o Atendimento em Gerenciar.", "Inicia e conclui só os próprios
-  atendimentos: …" (com "só os meus") e, sem o Prontuário em Gerenciar,
+  o Atendimento em Gerenciar." e, sem o Prontuário em Gerenciar,
   "Inicia e conclui os atendimentos. A evolução, as fotos e a ficha de saúde
   pedem o Prontuário em Gerenciar." (`conclusaoNoResumo`). Saíram o "Não
   conclui atendimentos: concluir pede o Prontuário em Gerenciar." (A1 da 24ª)
@@ -1092,10 +1099,11 @@ de uma unidade"):**
   e a pessoa aparece no repasse. Prova: `tests/pendencias-area-1.test.ts`.
 - **Os textos da Equipe dizem o que vale para ESTA pessoa** (A17, A18, A21 da
   17ª; princípio 3): salvar o cargo confirma ("Cargo “X” salvo."), e "O que
-  essa pessoa vai ver" diz o Copilot pelo nível (`copilotNoResumo`); cadastrar
-  quem atende com um cargo que não vê as próprias comissões avisa
-  (`SEM_MINHAS_COMISSOES_NO_CADASTRO`, por `cargosQueVeemAsComissoes`, só com
-  comissões no plano); desativar quem não atende não diz "e sai da agenda".
+  essa pessoa vai ver" diz o Copilot pelo nível (`copilotNoResumo`); o aviso
+  ao cadastrar quem atende com um cargo que não via as próprias comissões
+  (`SEM_MINHAS_COMISSOES_NO_CADASTRO`) saiu com a vista pessoal (SM2,
+  2026-11-23: quem atende vê as Minhas comissões sem o Financeiro); desativar
+  quem não atende não diz "e sai da agenda".
   Na aba Unidades, a unidade sem cidade diz "Sem cidade: complete o endereço."
   (A19). Prova: `tests/atritos-da-17-cadastros.test.ts`.
 - **A 20ª simulação** (`tests/atritos-da-20-configuracoes.test.ts`): o cargo
@@ -1115,8 +1123,9 @@ disponiveis"):**
 - `provides_services` passou a querer dizer "atende em ALGUMA unidade"; ONDE
   atende é `users.atende_em` (o checklist do "Atende" na Equipe), e o gatilho
   `private.atende_em_sincronizar` mantém os dois juntos. Continua não sendo
-  permissão: diz onde a pessoa aparece como profissional (agenda, agendar,
-  repasse, comissão, relatórios da unidade) — §9.1 de `atendimento.md`.
+  permissão (UM5, 2026-11-23): diz onde a pessoa aparece como profissional
+  (agenda, agendar, repasse, comissão, relatórios da unidade) e abre as vistas
+  pessoais (SM2) — §9.1 de `atendimento.md`.
 - **Uma caixa (EQ1c)**: "Atende clientes" marcada vale em todas as unidades
   DELA (a rede inteira: as ativas na hora de salvar). A unidade aberta (ou
   reativada) depois entra no "Atende" de quem tem "A rede inteira" e já atendia
@@ -1129,8 +1138,9 @@ disponiveis"):**
   fora das unidades dela aparece na lista e não some calada.
 - A ABRANGÊNCIA (`users.branch_id`/`outras_unidades`) não muda com o "Atende": marcar a Talita (da
   Água Verde) no Batel não a põe no Batel. Ela alcança lá só os agendamentos
-  DELA (`alcancaOAgendamento`, `lib/auth.ts`) — ver, iniciar, concluir, a
-  comissão —, e o resto do Batel (agenda, clientes, caixa) continua fora. Quem
+  DELA (`alcancaOAgendamento`, `lib/auth.ts`) — ver, a comissão e, com o
+  Atendimento em Gerenciar, iniciar e concluir (UM2; o "Atende" sozinho não dá
+  permissão, UM5) —, e o resto do Batel (agenda, clientes, caixa) continua fora. Quem
   gere a equipe deixou de precisar dar a rede inteira para alguém cobrir uma unidade (A12).
 - Marca e desmarca quem gere a equipe; quem não tem a rede inteira, só as
   unidades DELA (H7) — as outras aparecem travadas e o servidor as mantém

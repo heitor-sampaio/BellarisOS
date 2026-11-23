@@ -1,6 +1,5 @@
 import 'server-only'
 import { z } from 'zod/v4'
-import { ownerFilter } from '@/lib/auth'
 import { computeAvailableSlots } from '@/lib/appointments/core'
 import { ler } from '@/lib/db'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
@@ -12,8 +11,8 @@ import {
 import { periodoLegivel } from '@/lib/copilot/ferramentas/datas'
 
 /**
- * As leituras da AGENDA. Escopo "só os meus" (ownerFilter) vale aqui como na
- * tela: o profissional que só vê a própria agenda só lê a própria agenda.
+ * As leituras da AGENDA. Quem tem a Agenda em Ver lê a agenda inteira das
+ * unidades ao seu alcance, como na tela.
  */
 
 const STATUS = ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW'] as const
@@ -67,7 +66,7 @@ export const agendamentos: FerramentaDeLeitura<{
     // nome dado como profissional se procura também entre as clientes: de um
     // só lado, vale ele (e a resposta diz como entendeu); dos dois, pergunta.
     let entendido: string | undefined
-    let profissionalId = ownerFilter(c.ctx, 'agenda')
+    let profissionalId: string | null = null
     // D2 da 22ª: o nome dado é de quem atende (ativo ou desativado).
     let deQuemAtende = false
     if (args.profissional) {
@@ -82,7 +81,6 @@ export const agendamentos: FerramentaDeLeitura<{
       // achavam — o Copilot perguntava "quer que eu procure?". Para LER, vale.
       const desativado = 'erro' in p && !cliente && p.erro.includes('não encontrado') ? await membroDesativado(c, args.profissional) : null
       if (desativado) {
-        if (profissionalId && desativado.id !== profissionalId) return { dados: { erro: 'A sua permissão só vê a sua própria agenda.' } }
         profissionalId = desativado.id
         deQuemAtende = true
       } else if ('erro' in p) {
@@ -90,7 +88,6 @@ export const agendamentos: FerramentaDeLeitura<{
         clienteId = cliente.id
         entendido = `Ninguém que atende se chama "${args.profissional}": estes são os agendamentos da cliente ${cliente.name}.`
       } else {
-        if (profissionalId && p.id !== profissionalId) return { dados: { erro: 'A sua permissão só vê a sua própria agenda.' } }
         profissionalId = p.id
         deQuemAtende = true
       }
@@ -201,8 +198,6 @@ export const horariosLivres: FerramentaDeLeitura<{ data: string; profissional: s
     if ('erro' in u) return { dados: { erro: u.erro } }
     const p = await resolverProfissional(c, args.profissional, u.unidade?.id)
     if ('erro' in p) return { dados: { erro: p.erro } }
-    const dono = ownerFilter(c.ctx, 'agenda')
-    if (dono && p.id !== dono) return { dados: { erro: 'A sua permissão só vê a sua própria agenda.' } }
 
     const unidadeId = u.unidade?.id ?? p.branch_id ?? c.ctx.branchId
     if (!unidadeId) {

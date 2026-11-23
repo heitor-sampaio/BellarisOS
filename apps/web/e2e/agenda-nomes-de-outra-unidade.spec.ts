@@ -69,13 +69,15 @@ test.beforeAll(async () => {
   gerenteDeB = await criarMembro(`g${marca}`, {
     tenant: rede.tenantId, branchId: unidadeB, rotulo: 'Gerente de B',
     permissoes: [
-      { modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' },
-      { modulo: 'financial', nivel: 'VIEW', escopo: 'ALL' },
+      { modulo: 'agenda', nivel: 'MANAGE' },
+      { modulo: 'financial', nivel: 'VIEW' },
     ],
   })
   esteticistaDeB = await criarMembro(`e${marca}`, {
     tenant: rede.tenantId, branchId: unidadeB, rotulo: 'Esteticista de B',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' }],
+    // A "Minha agenda" é a vista pessoal (SM2, o Heitor, 2026-11-23): atende e
+    // não tem a Agenda (era a Agenda "só os meus", que saiu — SM1).
+    permissoes: [{ modulo: 'agenda', nivel: 'NONE' }],
   })
   expect((await db().from('users').update({ provides_services: true }).eq('id', esteticistaDeB.userId)).error).toBeNull()
 

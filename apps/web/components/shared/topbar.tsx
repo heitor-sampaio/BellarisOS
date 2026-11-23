@@ -12,7 +12,8 @@ import { BannerDoSuporte } from '@/components/shared/banner-do-suporte'
 import { Ajuda } from '@/components/shared/ajuda'
 import { AvisoDaAssinatura } from '@/components/shared/aviso-da-assinatura'
 import type { AvisoDaAssinatura as AvisoDaAssinaturaDados } from '@/lib/redes/aviso'
-import type { ResolvedPermissions, ResolvedScopes, SuporteNoContexto } from '@estetica-os/types'
+import type { ResolvedPermissions, SuporteNoContexto } from '@estetica-os/types'
+import type { DaPessoa } from '@/lib/menu'
 import { useUmaUnidade } from '@/components/shared/uma-unidade'
 import { useFuso } from '@/components/shared/fuso'
 import { rotuloDoCargo } from '@/lib/unidades/vocabulario'
@@ -29,7 +30,7 @@ interface TopbarProps {
   /** O que o cargo abre: decide as páginas que a busca oferece. */
   permissions:    ResolvedPermissions
   /** O escopo de cada módulo (o Fechamento do dia pede o financeiro de todos). */
-  scopes?:        Partial<ResolvedScopes>
+  pessoa?:        DaPessoa
   /** O plano da rede (`ctx.plano`): a busca não oferece página de funcionalidade fora dele. */
   plano?:         { funcionalidades: readonly string[] } | null
   /** A agenda do cargo é "só a própria": a busca não oferece os atalhos de agendar. */
@@ -78,7 +79,7 @@ const ROLE_LABELS: Record<string, string> = {
   GERENTE_COMERCIAL: 'Gerente comercial',
 }
 
-export function Topbar({ userName, userRole, roleLabel, internalUserId, initialUnread, slug, permissions, scopes, plano = null, suporte = null, assinatura = null, agendaPropria = false, daRede = false, adminDaRede = false, unidade = null, saudacaoInicial }: TopbarProps) {
+export function Topbar({ userName, userRole, roleLabel, internalUserId, initialUnread, slug, permissions, pessoa, plano = null, suporte = null, assinatura = null, agendaPropria = false, daRede = false, adminDaRede = false, unidade = null, saudacaoInicial }: TopbarProps) {
   // "Dra. Lívia", não "Dra."; e a saudação pela hora (era "Bom dia" sempre).
   const firstName  = primeiroNome(userName)
   const fuso       = useFuso()
@@ -145,7 +146,7 @@ export function Topbar({ userName, userRole, roleLabel, internalUserId, initialU
       </p>}
 
       {/* Busca universal — no celular vira a lupa do bloco da direita */}
-      <BuscaUniversal slug={slug} permissions={permissions} scopes={scopes} plano={plano} agendaPropria={agendaPropria} daRede={daRede} adminDaRede={adminDaRede} />
+      <BuscaUniversal slug={slug} permissions={permissions} pessoa={pessoa} plano={plano} agendaPropria={agendaPropria} daRede={daRede} adminDaRede={adminDaRede} />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         {/* Ajuda: chamado com o suporte. No modo suporte quem está aqui é o atendente */}

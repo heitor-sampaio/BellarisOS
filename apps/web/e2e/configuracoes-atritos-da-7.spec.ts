@@ -18,7 +18,8 @@ import { taxasDaPrimeira } from './apoio/maquininha'
  * - A7: o resumo do cargo Financeiro dizia "Configurações", sem dizer que é só
  *   a aba Comissões;
  * - A8: o resumo do SDR contava Relatórios "só a própria unidade" como "só os
- *   próprios";
+ *   próprios" (sem o "só os meus", SM1/SM4 de 2026-11-23, o resumo conta só
+ *   as áreas);
  * - A9: "1 clientes" no dashboard, e "Admin" por último no seletor de cargo.
  * Numa rede [e2e] própria.
  */
@@ -43,13 +44,13 @@ test.beforeAll(async () => {
   dona = await criarMembro(`cf7d${marca}`, { tenant: rede.tenantId, donoDaRede: true, permissoes: [] })
   financeiro = await criarMembro(`cf7f${marca}`, {
     tenant: rede.tenantId, rotulo: `Financeiro cf7${marca}`,
-    permissoes: [{ modulo: 'financial', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'cashier', nivel: 'MANAGE' }],
+    permissoes: [{ modulo: 'financial', nivel: 'MANAGE' }, { modulo: 'cashier', nivel: 'MANAGE' }],
   })
   sdr = await criarMembro(`cf7s${marca}`, {
     tenant: rede.tenantId, rotulo: `SDR cf7${marca}`,
     permissoes: [
-      { modulo: 'crm', nivel: 'MANAGE', escopo: 'OWN' }, { modulo: 'clients', nivel: 'VIEW' },
-      { modulo: 'reports', nivel: 'VIEW', escopo: 'OWN' },
+      { modulo: 'crm', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' },
+      { modulo: 'reports', nivel: 'VIEW' },
     ],
   })
   // A fidelidade ligada, com o ponto a R$ 0,01 (A5).
@@ -112,14 +113,15 @@ test('A6: o produto de revenda sem categoria não entra na sequência dos insumo
   expect(await sku('Revenda A6')).toBe('REV-001')
 })
 
-test('A7/A8: o resumo do cargo diz a aba de Configurações e não conta "só a unidade" como "só os próprios"', async ({ browser }) => {
+// Sem o "só os meus" (SM1/SM4, o Heitor, 2026-11-23): o cartão do cargo conta as áreas, sem alcance.
+test('A7/A8: o resumo do cargo não lista Configurações a quem só chegaria a recusas, e conta só as áreas', async ({ browser }) => {
   await como(browser, dona, async p => {
     await p.goto('/admin/settings?tab=permissions')
-    // A8: o cartão do SDR.
+    // A8: o cartão do SDR (CRM, Clientes e Relatórios).
     const cartaoSdr = p.getByText(`SDR cf7${marca}`).first().locator('xpath=ancestor::div[2]')
-    await expect(cartaoSdr).toContainText('1 só os próprios')
-    await expect(cartaoSdr).toContainText('Relatórios uma unidade por vez')
-    await expect(cartaoSdr).not.toContainText('2 só os próprios')
+    await expect(cartaoSdr).toContainText('3 áreas')
+    await expect(cartaoSdr).not.toContainText('só os próprios')
+    await expect(cartaoSdr).not.toContainText('uma unidade por vez')
 
     // A7 era: o Financeiro alcançava a aba Comissões (com as taxas). Desde 18/11 a
     // comissão e as taxas são configuração da rede, só da Admin (CLAUDE.md §11), e o

@@ -35,9 +35,10 @@ const UNIDADE = '11111111-1111-4111-8111-111111111111'
 
 // Desde 2026-11-18 quem conclui é o Atendimento em Gerenciar (o Heitor: "Só
 // inicia e conclui atendimento quem tem gerenciar no atendimento"); era o
-// Prontuário em Gerenciar. O laço da Agenda de todos (D1) fica.
-describe('D1: quem conclui é quem ALCANÇA o atendimento — o Atendimento em Gerenciar de todos E a Agenda de todos', () => {
-  it('o cargo com o Atendimento de todos e a Agenda só a própria não entra', async () => {
+// Prontuário em Gerenciar. Cada passo, um módulo (UM2, o Heitor, 2026-11-23):
+// o laço da Agenda de todos (D1) sai — concluir pede o Atendimento, e só ele.
+describe('D1: quem conclui é quem tem o Atendimento em Gerenciar, e só ele', () => {
+  it('o cargo com o Atendimento em Gerenciar entra, sem a Agenda; o da Agenda sozinha não', async () => {
     const { quemConcluiOAtendimento } = await import('@/lib/equipe/quem-desfaz')
     responder = p => {
       if (p.tabela === 'role_permissions') {
@@ -49,13 +50,13 @@ describe('D1: quem conclui é quem ALCANÇA o atendimento — o Atendimento em G
       return { data: [], error: null }
     }
     await quemConcluiOAtendimento('rede', UNIDADE)
-    const daAgenda = pedidos.find(p => p.tabela === 'role_permissions' && modulosDo(p)?.includes('agenda'))
-    expect(daAgenda, 'a Agenda também é lida').toBeTruthy()
-    expect(daAgenda!.ops).toContainEqual({ op: 'in', args: ['level', ['VIEW', 'MANAGE']] })
-    expect(daAgenda!.ops).toContainEqual({ op: 'or', args: ['scope.is.null,scope.eq.ALL'] })
+    const lidos = pedidos.filter(p => p.tabela === 'role_permissions')
+    expect(lidos, 'só o Atendimento é lido').toHaveLength(1)
+    expect(modulosDo(lidos[0]!)).toEqual(['atendimento'])
+    expect(lidos[0]!.ops).toContainEqual({ op: 'in', args: ['level', ['MANAGE']] })
     const cargos = pedidos.filter(p => p.tabela === 'users').flatMap(p => p.ops)
       .find(o => o.op === 'in' && o.args[0] === 'role_id')?.args[1] as string[]
-    expect([...cargos].sort()).toEqual(['admin-da-rede', 'os-dois'])
+    expect([...cargos].sort()).toEqual(['admin-da-rede', 'os-dois', 'so-atendimento'])
   })
   it('quem marca a chegada segue só pela Agenda (o mesmo laço, sem o segundo módulo)', async () => {
     const { quemMarcaAChegada } = await import('@/lib/equipe/quem-desfaz')
@@ -112,14 +113,6 @@ describe('A22: as contagens da Minha agenda dizem que somam as unidades dela', (
   })
   it('a Minha agenda usa', () => {
     expect(ler('components/branch/professional-agenda.tsx')).toContain('rotulosDaMinhaAgenda(')
-  })
-})
-
-describe('A23: o atendimento de outra pessoa não fala no feminino fixo', () => {
-  it('o título', () => {
-    const f = ler('components/branch/atendimento-de-outra-profissional.tsx')
-    expect(f).not.toContain('Este atendimento é de outra profissional')
-    expect(f).toContain('Este atendimento é de outra pessoa que atende')
   })
 })
 

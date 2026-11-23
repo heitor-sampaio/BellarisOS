@@ -12,8 +12,8 @@ import { temFiltro, type FiltrosDaAgenda } from '@/lib/agenda/filtros'
  * Quem muda a URL é a tela (o servidor relê a agenda com o filtro): aqui só a
  * escolha.
  *
- * - `profissionais: null` — o filtro não aparece (Agenda "só os meus": ela só
- *   vê os dela).
+ * - `profissionais: null` — o filtro não aparece (a vista pessoal da agenda:
+ *   ela só vê os dela).
  * - `salas: null` ou vazio — não aparece (unidade sem sala; a rede sem unidade
  *   escolhida, onde as salas são de cada unidade).
  * - `tags` vazio — a rede não tem tag nenhuma: não aparece (regra das Tags).

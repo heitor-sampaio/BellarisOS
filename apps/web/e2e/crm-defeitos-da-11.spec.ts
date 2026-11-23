@@ -46,7 +46,7 @@ test.beforeAll(async () => {
   expect((await db().from('crm_stages').insert({ tenant_id: rede.tenantId, funnel_id: f!.id, name: 'Novo', color: '#c34d6b', position: 0, outcome: 'OPEN' })).error).toBeNull()
   gestora = await criarMembro(`cr11g${marca}`, {
     tenant: rede.tenantId, rotulo: 'Comercial',
-    permissoes: [{ modulo: 'crm', nivel: 'MANAGE', escopo: 'ALL' }],
+    permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }],
   })
 })
 

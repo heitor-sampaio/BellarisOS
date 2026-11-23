@@ -19,7 +19,7 @@ import { MudarDeUnidade, TrocarProfissional, UsarOQueJaFoiPago } from './janela-
 import type { MenorDoAgendamento } from '@/components/shared/selo-do-menor'
 import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
-import { textoDeQuemConclui, nomesDeQuemConclui } from '@/lib/equipe/textos-de-quem-pode'
+import { textoDeQuemConclui } from '@/lib/equipe/textos-de-quem-pode'
 import { TEXTO_DA_SESSAO_NA_DESISTENCIA } from '@/lib/atendimento/desistencia'
 import { naParede, daParede } from '@/lib/datetime'
 
@@ -53,22 +53,13 @@ interface AppointmentEvent {
 interface AppointmentSheetProps {
   appointment: AppointmentEvent
   slug:        string
-  userRole:    string
   /**
-   * Cargo com alcance "só a própria agenda". Quem tem esse alcance mexe no
-   * andamento do atendimento (iniciar, concluir), não no ciclo de vida do
-   * agendamento — é o que `updateAppointmentStatus` já confere.
-   *
-   * Existe porque `userRole` virou a chave do cargo dinâmico: comparar com
-   * `'PROFESSIONAL'` deixou de casar com qualquer cargo criado pela rede, e os
-   * botões apareciam para quem a action recusaria.
+   * A janela aberta pela Minha agenda (a vista pessoal, 2026-11-23): quem atende
+   * sem a Agenda vê o dela, sem os gestos da recepção (confirmar, chegada,
+   * contato, pré-atendimento). A vista só mostra.
    */
-  escopoProprio?: boolean
-  /**
-   * A agenda em Gerenciar. Com "só os meus", ela cancela e marca a falta do
-   * agendamento DELA (agenda-06, revisão do Heitor de 2026-11-02) — a janela da
-   * agenda "só os meus" lista só os dela, e a action confere de novo.
-   */
+  vistaDela?: boolean
+  /** A Agenda em Gerenciar: confirmar, chegada, remarcar, cancelar, falta. */
   podeGerenciar?: boolean
   /** O membro logado (users.id): no agendamento DELE, "Marcar chegada e iniciar" (A25). */
   meuId?: string | null
@@ -78,12 +69,8 @@ interface AppointmentSheetProps {
    * atendimento"). Sem ele, a janela não oferece o Iniciar e diz quem inicia.
    */
   podeConcluir?: boolean
-  /** O Atendimento "só os meus": inicia e conclui só os DELA. */
-  atendimentoProprio?: boolean
   /** Sem iniciar, quem inicia e conclui — o Atendimento em Gerenciar, pelo nome (quemConcluiOAtendimento). */
   quemConclui?: string[] | null
-  /** A9 da 25ª: os ids de quem conclui os PRÓPRIOS (idsQueConcluemOsProprios) — a profissional do agendamento entra em "quem conclui". */
-  concluemOsProprios?: string[] | null
   onClose:     () => void
 }
 
@@ -106,20 +93,18 @@ const STATUS_CHIP: Record<string, string> = {
   NO_SHOW:     'chip chip-muted',
 }
 
-export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, podeGerenciar = false, meuId = null, podeConcluir = true, atendimentoProprio = false, quemConclui = null, concluemOsProprios = null, onClose }: AppointmentSheetProps) {
-  const isProfessional = escopoProprio ?? userRole === 'PROFESSIONAL'
-  // A dona (ou a gerente) que atende, no agendamento DELA: o gesto da
-  // profissional, em vez de "Chegou" → "Iniciar" (A25 da 6ª simulação: eram
-  // quatro cliques e uma confirmação). A action é a mesma (chegarEIniciar).
+export function AppointmentSheet({ appointment, slug, vistaDela = false, podeGerenciar = false, meuId = null, podeConcluir = true, quemConclui = null, onClose }: AppointmentSheetProps) {
+  const isProfessional = vistaDela
+  // Quem tem a Agenda em Gerenciar e atende, no agendamento DELA: "Marcar
+  // chegada e iniciar", em vez de "Chegou" → "Iniciar" (A25 da 6ª simulação:
+  // eram quatro cliques e uma confirmação). A action é a mesma (chegarEIniciar).
+  // A vista pessoal (`vistaDela`) nunca vem com `podeGerenciar`: ela só mostra.
   const ehMeu = !!meuId && appointment.professionalId === meuId && podeGerenciar
-  // Cancelar e "Não compareceu": a agenda em Gerenciar — quem tem "todos" e
-  // quem tem "só os meus", no dela (agenda-06). Iniciar e concluir são do
-  // Atendimento em Gerenciar (o Heitor, 2026-11-18; saiu o D20, "a agenda em
-  // Ver inicia e conclui"), com o "só os meus" dele.
-  const podeAtenderEste = podeConcluir && (!atendimentoProprio || (!!meuId && appointment.professionalId === meuId))
-  // Cancelar o Em atendimento é DESISTIR dele: do Atendimento em Gerenciar, com
-  // o escopo dele (CLAUDE.md §11, o Heitor, 2026-11-18) — a mesma regra do
-  // servidor (`recusaDoCancelar`). O "Não compareceu" não vale ali.
+  // Cancelar e "Não compareceu": a Agenda em Gerenciar. Iniciar e concluir são
+  // do Atendimento em Gerenciar, e só dele (o Heitor, 2026-11-18; UM2, 23/11).
+  const podeAtenderEste = podeConcluir
+  // Cancelar o Em atendimento é DESISTIR dele: do Atendimento em Gerenciar —
+  // a mesma regra do servidor (`recusaDoCancelar`). O "Não compareceu" não vale ali.
   const emAtendimento = appointment.status === 'IN_PROGRESS'
   const podeCancelar = emAtendimento ? podeAtenderEste : podeGerenciar
   const router   = useRouter()
@@ -252,7 +237,7 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
   // 10ª: eram três quase iguais, dois em rosé). No agendamento DELA, o gesto
   // dela; chegou, iniciar; confirmado, a chegada; agendado, confirmar.
   const aindaNaoChegou = appointment.status === 'SCHEDULED' || appointment.status === 'CONFIRMED'
-  const mostraChegarEIniciar = aindaNaoChegou && (isProfessional || ehMeu) && ehODia && podeGerenciar && podeAtenderEste
+  const mostraChegarEIniciar = aindaNaoChegou && ehMeu && ehODia && podeAtenderEste
   const mostraConfirmar = appointment.status === 'SCHEDULED' && !isProfessional && podeGerenciar
   const mostraChegou = aindaNaoChegou && !isProfessional && ehODia && podeGerenciar
   const chegaAoInicio = appointment.status === 'ARRIVED' || (appointment.status === 'CONFIRMED' && !isProfessional)
@@ -380,8 +365,8 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
         {isActive && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {/* A20 da 10ª: quem não inicia nem conclui (sem o Atendimento em
-                Gerenciar, ou o de outra pessoa com "só os meus") lê por quê, onde
-                estaria o Iniciar. A9 da 20ª: a permissão e quem conclui, pelo nome.
+                Gerenciar) lê por quê, onde estaria o Iniciar. A9 da 20ª: a
+                permissão e quem conclui, pelo nome.
                 A12 da 21ª: aviso à vista, acima dos botões. */}
             {chegaAoInicio && !podeAtenderEste && (
               <p data-quem-conclui role="note" style={{
@@ -390,7 +375,7 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
                 fontSize: 'var(--text-sm-sz)', fontWeight: 700,
               }}>
                 <Lock size={14} aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
-                <span><strong>Você não inicia nem conclui este atendimento.</strong> <span>{textoDeQuemConclui(nomesDeQuemConclui(quemConclui, { id: appointment.professionalId ?? null, nome: appointment.professionalName }, concluemOsProprios))}</span></span>
+                <span><strong>Você não inicia nem conclui este atendimento.</strong> <span>{textoDeQuemConclui(quemConclui)}</span></span>
               </p>
             )}
             {/* A profissional no agendamento que ainda não chegou: o mesmo
@@ -450,10 +435,9 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
 
             {/* Remarcar existia só no arraste do calendário da unidade — a
                 agenda da rede é por unidade, não por profissional, e ali não há
-                o que arrastar. Aqui o horário novo é digitado. D20 (F75): com
-                "só os meus" e Gerenciar, remarca o PRÓPRIO — como cancela e marca
-                a falta dele; a action (`remarcarCore`) já deixava. */}
-            {(!isProfessional || ehMeu) && podeGerenciar && appointment.status !== 'IN_PROGRESS' && (
+                o que arrastar. Aqui o horário novo é digitado: a Agenda em
+                Gerenciar remarca qualquer um. */}
+            {podeGerenciar && appointment.status !== 'IN_PROGRESS' && (
               <button disabled={loading} onClick={() => setRemarcando(v => !v)} className="btn-secondary"
                 style={{ width: '100%', justifyContent: 'center' }}>
                 <CalendarClock size={14} /> Remarcar
@@ -499,10 +483,9 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
               </form>
             )}
 
-            {/* A22 da 8ª: trocar a profissional pela janela, não só arrastando.
-                Com a Agenda "só os meus" e Gerenciar, passa a outra pessoa o
-                atendimento DELA (o Heitor, 2026-11-18; a action confere). */}
-            {(!isProfessional || ehMeu) && podeGerenciar && (
+            {/* A22 da 8ª: trocar a profissional pela janela, não só arrastando —
+                a Agenda em Gerenciar, em qualquer agendamento. */}
+            {podeGerenciar && (
               <TrocarProfissional appointmentId={appointment.id} slug={slug} atual={appointment.professionalName}
                 onTrocou={() => { onClose(); router.refresh() }} />
             )}
@@ -525,9 +508,9 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
               </div>
             )}
 
-            {/* Falta e cancelamento: a recepção e, com "só os meus" e a agenda em
-                Gerenciar, a profissional no DELA (agenda-06, 2026-11-02). A
-                janela mostra só o que a action deixa fazer. */}
+            {/* Falta e cancelamento: a Agenda em Gerenciar (o Em atendimento,
+                o Atendimento em Gerenciar). A janela mostra só o que a action
+                deixa fazer. */}
             {podeCancelar && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               {jaComecou && !emAtendimento && (

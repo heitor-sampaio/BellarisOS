@@ -17,6 +17,10 @@ import { haMinutosHoje, daquiAMinutosHoje } from './apoio/datas'
  *   do dia diz em qual unidade é o horário de fora.
  * - D12: o total de clientes do cabeçalho da vendedora ("só os meus" na
  *   agenda, não atende) é o da clínica — era "0 clientes".
+ *
+ * Sem o "só os meus" (SM1/SM2, o Heitor, 2026-11-23): o "Meus…" é a vista
+ * pessoal de quem atende sem a Agenda e sem o Financeiro; a vendedora com a
+ * Agenda em Ver vê a rede inteira, sem recorte.
  * - C48: o ticket sem cliente que pagou é "—", não R$ 0,00.
  * - C45: a receita da rede inteira conta a unidade desativada que teve
  *   movimento (o "Por unidade" a mostra; o total não fechava com as linhas).
@@ -58,13 +62,14 @@ test.beforeAll(async () => {
 
   dela = await criarMembro(`f68d${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Profissional',
-    permissoes: [{ modulo: 'financial', nivel: 'VIEW', escopo: 'OWN' }, { modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' }],
+    // A vista pessoal (SM2): atende, sem a Agenda e sem o Financeiro.
+    permissoes: [],
   })
   // Ela atende nas duas unidades (decisão 2 da 8ª: o "Atende" é por unidade).
   expect((await b.from('users').update({ atende_em: [rede.branchId, unidadeB] }).eq('id', dela.userId)).error).toBeNull()
   vendedora = await criarMembro(`f68v${marca}`, {
     tenant: rede.tenantId, branchId: null, rotulo: 'Vendedora',
-    permissoes: [{ modulo: 'agenda', nivel: 'VIEW', escopo: 'OWN' }, { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'crm', nivel: 'MANAGE' }],
+    permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }, { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'crm', nivel: 'MANAGE' }],
   })
   dona = await criarMembro(`f68o${marca}`, { tenant: rede.tenantId, donoDaRede: true, permissoes: [] })
 
@@ -131,8 +136,8 @@ test('D12: o total de clientes do cabeçalho da vendedora é o da rede', async (
   expect(count).toBeGreaterThan(0)
   await comSessao(browser, vendedora!, async p => {
     await p.goto('/admin/dashboard')
-    // "da rede" desde o vocabulário (PO2/V0, 2026-11-16): "da clínica" saiu do sistema.
-    await expect(p.getByText(new RegExp(`· ${count} clientes? da rede`))).toBeVisible({ timeout: 20_000 })
+    // Sem recorte (SM1): o total é o da rede, sem o "da rede" que só o recorte acrescenta.
+    await expect(p.getByText(new RegExp(`· ${count} clientes?\\b`))).toBeVisible({ timeout: 20_000 })
   })
 })
 

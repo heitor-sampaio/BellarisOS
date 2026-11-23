@@ -1,22 +1,17 @@
 import { test, expect } from '@playwright/test'
 import { capturarAcao, reenviarAcao } from './apoio/acao'
 import { banco, tenantId, PREFIXO, apagarConversas } from './apoio/banco'
-import { membroComEscopoProprio, type MembroDeTeste } from './apoio/sessao'
+import { membroDoCrm, type MembroDeTeste } from './apoio/sessao'
 
 /**
- * Com CRM "só os meus", a oportunidade de OUTRO dono não se mexe pelo id.
+ * Sem o "só os meus" (SM1/SM3, o Heitor, 2026-11-23): com o CRM em Gerenciar,
+ * a oportunidade de OUTRO dono também se mexe pelo id.
  *
- * O funil já recusava mover o card alheio (`updateLeadStage`), mas outras
- * actions recebiam o id da oportunidade e não conferiam o dono — marcar
- * ganho/perdido pelo inbox, abrir ou criar a conversa do card, agendar,
- * cadastrar cliente a partir dela. Nenhuma tela oferece o card alheio a quem
- * não o vê, então o furo só aparece fazendo o que um curioso faria: pegar uma
- * chamada legítima e REENVIÁ-LA trocando o id.
- *
- * É o que este teste faz. A SDR marca a oportunidade DELA como ganha pelo
- * painel; a chamada é capturada e reenviada com o id da oportunidade do admin.
- * O controle é a dela ter virado ganha — sem ele, "a alheia não mudou" poderia
- * ser só a chamada que não funciona.
+ * Era a prova de que o CRM "só os meus" não mexia na alheia reenviando a
+ * chamada com o id trocado. O escopo saiu: Gerenciar mexe em todas da rede
+ * (a rede continua conferida por `leadAoAlcance`). A SDR marca a DELA como
+ * ganha pelo painel; a chamada é capturada e reenviada com o id da
+ * oportunidade do admin, que também vira ganha.
  */
 
 const marca = Date.now().toString(36)
@@ -36,7 +31,7 @@ test.describe.serial('oportunidade de outro dono, pelo id', () => {
   let c: Cenario | null = null
 
   test.beforeAll(async () => {
-    sdr = await membroComEscopoProprio(`al${marca}`)
+    sdr = await membroDoCrm(`al${marca}`)
     const db = banco()
     const tenant = await tenantId()
 
@@ -91,7 +86,8 @@ test.describe.serial('oportunidade de outro dono, pelo id', () => {
     if (sdr) await sdr.limpar()
   })
 
-  test('marcar como ganha a oportunidade alheia, reenviando a chamada, não muda nada', async ({ browser }) => {
+  // Sem o "só os meus" (SM1/SM3, o Heitor, 2026-11-23): o CRM em Gerenciar mexe na de outro dono.
+  test('com o CRM em Gerenciar, a mesma chamada com o id da oportunidade alheia também a marca como ganha', async ({ browser }) => {
     const ctx  = await browser.newContext({ storageState: sdr!.estado })
     const page = await ctx.newPage()
     try {
@@ -103,17 +99,20 @@ test.describe.serial('oportunidade de outro dono, pelo id', () => {
       // O card da oportunidade se identifica pelo funil e pela etapa, não pelo
       // nome da pessoa (que é o cabeçalho do painel).
       await painel.getByRole('button', { name: /Funil de vendas/ }).first().click()
-      const capturada = capturarAcao(page, corpo => corpo.includes(c!.meuLead))
+      // O clique faz duas chamadas: a pergunta das automações (`automacoesAoDefinirSituacao`,
+      // [id, "WON"], só lê) e o movimento (`definirSituacaoOportunidade`, [id, "WON", null, disparar]).
+      // Reenvia-se o movimento.
+      const capturada = capturarAcao(page, corpo => corpo.includes(c!.meuLead) && corpo.includes('"WON",null'))
       await painel.getByRole('button', { name: 'Ganha' }).click()
       const req = await capturada
 
       await expect.poll(() => outcomeDo(c!.meuLead), { message: 'o controle: a dela virou ganha' }).toBe('WON')
 
-      // O ataque: a mesma chamada, com o id da oportunidade do admin.
+      // A mesma chamada, com o id da oportunidade do admin.
       await reenviarAcao(page, req, [[c!.meuLead, c!.alheioLead]])
 
-      expect(await outcomeDo(c!.alheioLead), 'a oportunidade de outro dono não pode mudar pelo id')
-        .toBe('OPEN')
+      await expect.poll(() => outcomeDo(c!.alheioLead), { message: 'a de outro dono também muda: o CRM em Gerenciar mexe em todas' })
+        .toBe('WON')
     } finally {
       await ctx.close()
     }

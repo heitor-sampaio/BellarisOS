@@ -11,9 +11,14 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  * "só os meus" (agenda OU financeiro) recortava todos os números do dashboard,
  * dos Relatórios e do Copilot.
  *
+ * Sem o "só os meus" (SM1/SM2, o Heitor, 2026-11-23), o recorte de cada
+ * número é a VISTA PESSOAL do seu módulo: quem atende sem a Agenda vê a agenda
+ * dela; sem o Financeiro, o dinheiro dela. Os Relatórios não recortam por dono
+ * (SM4): valem as unidades ao alcance.
+ *
  * Numa rede `[e2e]` própria, três atendimentos concluídos e pagos agora:
- *   - o da Fernanda (financeiro "só os meus", agenda de todos): R$ 120;
- *   - o da Agnes (agenda "só os meus", financeiro de todos): R$ 50;
+ *   - o da Fernanda (sem o Financeiro, com a Agenda em Ver): R$ 120;
+ *   - o da Agnes (sem a Agenda, com o Financeiro em Ver): R$ 50;
  *   - o da outra profissional: R$ 300.
  * A clínica: 3 atendimentos, R$ 470.
  */
@@ -48,10 +53,11 @@ async function atendidoEPago(rotulo: string, professionalId: string, valor: numb
 
 const ABAS = ['overview', 'agenda', 'clientes'] as const
 
-async function membro(rotulo: string, agenda: 'OWN' | 'ALL', financeiro: 'OWN' | 'ALL') {
+/** Quem atende; sem o módulo, a vista pessoal dele (SM2). */
+async function membro(rotulo: string, tem: { agenda: boolean; financeiro: boolean }) {
   const permissoes: Permissao[] = [
-    { modulo: 'agenda', nivel: 'VIEW', escopo: agenda },
-    { modulo: 'financial', nivel: 'VIEW', escopo: financeiro },
+    ...(tem.agenda ? [{ modulo: 'agenda', nivel: 'VIEW' } as const] : []),
+    ...(tem.financeiro ? [{ modulo: 'financial', nivel: 'VIEW' } as const] : []),
     { modulo: 'clients', nivel: 'VIEW' },
     { modulo: 'procedures', nivel: 'VIEW' },
     { modulo: 'reports', nivel: 'VIEW' },
@@ -70,8 +76,8 @@ test.beforeAll(async () => {
   expect((await db().from('users').update({ branch_id: rede.branchId, provides_services: true }).eq('id', rede.professionalId)).error).toBeNull()
   slug = (await db().from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
 
-  fernanda = await membro('Fernanda', 'ALL', 'OWN')
-  agnes = await membro('Agnes', 'OWN', 'ALL')
+  fernanda = await membro('Fernanda', { agenda: true, financeiro: false })
+  agnes = await membro('Agnes', { agenda: false, financeiro: true })
 
   await atendidoEPago('Cliente da Fernanda', fernanda.userId, 120)
   await atendidoEPago('Cliente da Agnes', agnes.userId, 50)
@@ -92,7 +98,7 @@ const card = (p: Page, rotulo: string) =>
   p.locator('.card').filter({ has: p.getByText(rotulo, { exact: true }) }).first()
 const dinheiro = (t: string) => Number((/R\$\s*([\d.]+(?:,\d{2})?)/.exec(t)?.[1] ?? 'NaN').replace(/\./g, '').replace(',', '.'))
 
-test.describe('agenda de todos, financeiro "só os meus" (a Fernanda)', () => {
+test.describe('a Agenda em Ver, sem o Financeiro (a Fernanda)', () => {
   test('dashboard da unidade: os agendamentos são os da rede; o faturamento e o ticket são os dela', async ({ browser }) => {
     await como(browser, fernanda!, async p => {
       await p.goto(`/${slug}/dashboard`)
@@ -121,49 +127,51 @@ test.describe('agenda de todos, financeiro "só os meus" (a Fernanda)', () => {
     })
   })
 
-  test('Relatórios → Visão geral: o faturamento dela (R$ 120) e os atendimentos da rede (3)', async ({ browser }) => {
+  // Os Relatórios não recortam por dono (SM4, o Heitor, 2026-11-23): os números da rede.
+  test('Relatórios → Visão geral: o faturamento da rede (R$ 470), os atendimentos da rede (3) e a despesa', async ({ browser }) => {
     await como(browser, fernanda!, async p => {
       await p.goto('/admin/reports?tab=overview&period=month')
-      await expect.poll(async () => dinheiro(await card(p, 'Faturamento').innerText()), { timeout: 10_000 }).toBe(120)
+      await expect.poll(async () => dinheiro(await card(p, 'Faturamento').innerText()), { timeout: 10_000 }).toBe(470)
       await expect.poll(async () => (await card(p, 'Atendimentos').innerText()).match(/\d+/)?.[0], { timeout: 10_000 }).toBe('3')
-      await expect(p.getByText('Despesas pagas (caixa)', { exact: true })).toHaveCount(0)
+      await expect(p.getByText('Despesas pagas (caixa)', { exact: true })).toBeVisible()
     })
   })
 })
 
-test.describe('agenda "só os meus", financeiro de todos (a Agnes)', () => {
+test.describe('sem a Agenda, com o Financeiro em Ver (a Agnes)', () => {
   test('dashboard da unidade: os agendamentos são os dela (1); o faturamento é o da rede (R$ 470)', async ({ browser }) => {
     await como(browser, agnes!, async p => {
       await p.goto(`/${slug}/dashboard`)
       const main = p.locator('main')
       await expect(main).toContainText(/Faturamento do mês\s*R\$\s*470(?!\d)/)
       await expect.soft(card(p, 'Meus agendamentos hoje')).toContainText(/hoje\s*1\s*\d+ aguardando/i)
-      await expect.soft(p.locator('[data-etapa="Agendamentos"]'), 'Clientes no mês: os dela').toContainText(/1$/)
+      // Sem a Agenda (SM1/SM2), o "Clientes no mês" não tem as etapas da agenda (A32 da 24ª).
+      await expect.soft(p.locator('[data-etapa="Agendamentos"]'), 'Clientes no mês: sem as etapas da agenda').toHaveCount(0)
       await expect.soft(p.getByText('Faturamento', { exact: true }), 'o gráfico é o da clínica').toBeVisible()
       // R$ 470 ÷ 3 clientes que pagaram.
       await expect.poll(async () => dinheiro(await card(p, 'Ticket médio').innerText()), { timeout: 10_000 }).toBeCloseTo(156.67, 0)
     })
   })
 
-  test('dashboard da rede: a receita da rede (R$ 470) com o custo; os atendimentos dela (1), sem a ocupação por unidade', async ({ browser }) => {
+  // A vista pessoal da agenda é a do dashboard da UNIDADE ("Meus…"); o da rede
+  // não tem os cartões da agenda a quem não tem a Agenda (lib/metrics/escopo).
+  test('dashboard da rede: a receita da rede (R$ 470) com o custo; sem a Agenda, nem os atendimentos nem a ocupação por unidade', async ({ browser }) => {
     await como(browser, agnes!, async p => {
       await p.goto('/admin/dashboard?period=month')
       await expect(p.getByRole('heading', { name: /^Visão geral/ })).toBeVisible()
       await expect(card(p, 'Receita bruta do mês')).toContainText(/R\$\s*470/)
       await expect.soft(p.getByText('Despesas pagas do mês'), 'o financeiro é de todos').toBeVisible()
-      await expect.soft(card(p, 'Atendimentos')).toContainText(/atendimentos\s*1(?!\d)/i)
-      // O "são os concluídos" mora na dica do cartão (2026-11-16).
-      await card(p, 'Atendimentos').locator('[data-dica-botao]').hover()
-      await expect.soft(card(p, 'Atendimentos')).toContainText('Os concluídos')
-      await expect.soft(p.getByText('Aproveitamento', { exact: true }), 'a ocupação é da agenda: só a dela').toHaveCount(0)
+      await expect.soft(card(p, 'Atendimentos'), 'o cartão é da Agenda').toHaveCount(0)
+      await expect.soft(p.getByText('Aproveitamento', { exact: true }), 'a ocupação é da Agenda').toHaveCount(0)
     })
   })
 
-  test('Relatórios → Visão geral: o faturamento da rede (R$ 470), os atendimentos dela (1) e a despesa', async ({ browser }) => {
+  // Os Relatórios não recortam por dono (SM4, o Heitor, 2026-11-23): os atendimentos da rede.
+  test('Relatórios → Visão geral: o faturamento da rede (R$ 470), os atendimentos da rede (3) e a despesa', async ({ browser }) => {
     await como(browser, agnes!, async p => {
       await p.goto('/admin/reports?tab=overview&period=month')
       await expect.poll(async () => dinheiro(await card(p, 'Faturamento').innerText()), { timeout: 10_000 }).toBe(470)
-      await expect.poll(async () => (await card(p, 'Atendimentos').innerText()).match(/\d+/)?.[0], { timeout: 10_000 }).toBe('1')
+      await expect.poll(async () => (await card(p, 'Atendimentos').innerText()).match(/\d+/)?.[0], { timeout: 10_000 }).toBe('3')
       await expect(p.getByText('Despesas pagas (caixa)', { exact: true })).toBeVisible()
     })
   })

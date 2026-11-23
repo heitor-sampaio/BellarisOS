@@ -43,8 +43,8 @@ export function situacaoDaExecucao(status: string, feitas: number, total: number
   return { label: `Em andamento · ${sessoes}`, cor: 'var(--brand)', fundo: 'var(--brand-soft)' }
 }
 
-/** Quem monta o plano: desde o PT2 (2026-11-14), quem ATENDE — `lib/plano-de-tratamento/quem-monta.ts`. */
-export { TEXTO_QUEM_MONTA } from './quem-monta'
+/** Quem monta o plano: o Atendimento em Gerenciar (UM3, 2026-11-23) — `lib/plano-de-tratamento/quem-monta.ts`. */
+export { TEXTO_QUEM_MONTA } from './textos-de-quem-monta'
 
 /**
  * A situação do plano na lista de Tratamentos e no topo da página dele (PT1f,

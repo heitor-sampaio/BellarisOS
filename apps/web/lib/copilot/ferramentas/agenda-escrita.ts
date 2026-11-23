@@ -1,7 +1,6 @@
 import 'server-only'
 import { z } from 'zod/v4'
 import { revalidateTag } from 'next/cache'
-import { isOwnScope } from '@/lib/auth'
 import { ler } from '@/lib/db'
 import { createAppointmentCore, conferirPecasDoAgendamento, horarioOcupado, CREDITO_JA_USADO } from '@/lib/appointments/core'
 import { pagoParaAgendar } from '@/lib/creditos/pago-no-app'
@@ -71,7 +70,6 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
   nome: 'agendar',
   tipo: 'escrita',
   modulo: 'agenda', nivel: 'MANAGE',
-  pode: ctx => !isOwnScope(ctx, 'agenda'),
   descricao: 'Agenda um atendimento: cliente (id, nome ou telefone de quem já é cliente) OU clienteNovo {nome, telefone com DDD} para quem ainda não é; procedimento e profissional (nome ou id — passe o nome que a pessoa disse, "Dr. Caio": a ferramenta acha pelo nome entre quem atende na unidade, sem precisar buscar antes, e sem achar diz quem atende); data (AAAA-MM-DD) e hora (HH:MM, no horário da unidade). Confira os horários livres antes. O cartão diz se a cliente recebe aviso no app.',
   parametros: z.object({
     cliente: z.string().min(2).max(120).optional(),
@@ -246,7 +244,6 @@ export const remarcar: FerramentaDeEscrita<{ agendamento: string; data: string; 
   nome: 'remarcar',
   tipo: 'escrita',
   modulo: 'agenda', nivel: 'MANAGE',
-  pode: ctx => !isOwnScope(ctx, 'agenda'),
   descricao: 'Remarca um agendamento (id, da ferramenta agendamentos) para outra data/hora (no horário da unidade dele) e, opcionalmente, outro profissional (pelo nome que a pessoa disse: a ferramenta acha entre quem atende, sem precisar buscar antes). Também REPASSA o atendimento a outra pessoa que atende ("repasse a Toxina da Neusa para a Bianca", "troque a profissional"): a mesma data e hora, com o profissional novo. O cartão diz se a cliente recebe o aviso no app.',
   parametros: z.object({ agendamento: UUID, data: DATA, hora: HORA, profissional: z.string().max(80).optional() }),
   async preparar(c, a) {
@@ -315,8 +312,8 @@ export const cancelar: FerramentaDeEscrita<{ agendamento: string; motivo: string
   nome: 'cancelar_agendamento',
   tipo: 'escrita',
   // A regra da tela (ATD-A01): cancelar é da Agenda em Gerenciar; o Em
-  // atendimento é DESISTIR, do Atendimento em Gerenciar — cada uma com o seu
-  // "só os meus", conferido no preparo e no núcleo (`recusaDoCancelar`).
+  // atendimento é DESISTIR, do Atendimento em Gerenciar — conferido no preparo
+  // e no núcleo (`recusaDoCancelar`).
   pode: podeCancelarAlgum,
   descricao: 'Cancela um agendamento (id) com o motivo (obrigatório — pergunte se não foi dito). O cartão diz se a cliente recebe o aviso no app.',
   parametros: z.object({ agendamento: UUID, motivo: z.string().min(3).max(300) }),
@@ -355,9 +352,8 @@ export const cancelar: FerramentaDeEscrita<{ agendamento: string; motivo: string
 export const confirmarAgendamento: FerramentaDeEscrita<{ agendamento: string }, { appointmentId: string }> = {
   nome: 'confirmar_agendamento',
   tipo: 'escrita',
-  // Confirmar é da Agenda em Gerenciar, com "todos" (updateAppointmentStatus, C10).
+  // Confirmar é da Agenda em Gerenciar (updateAppointmentStatus, C10).
   modulo: 'agenda', nivel: 'MANAGE',
-  pode: ctx => !isOwnScope(ctx, 'agenda'),
   descricao: 'Marca um agendamento (id) como CONFIRMADO pelo cliente (o "confirmou presença").',
   parametros: z.object({ agendamento: UUID }),
   async preparar(c, a) {

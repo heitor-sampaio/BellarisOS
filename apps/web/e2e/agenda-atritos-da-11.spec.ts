@@ -53,11 +53,13 @@ test.beforeAll(async () => {
   dona = await criarMembro(`ag11d${marca}`, { tenant: rede.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
   recepcao = await criarMembro(`ag11r${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Recepcao',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'clients', nivel: 'VIEW' }],
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }],
   })
   sofia = await criarMembro(`ag11s${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Biomedica',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' }],
+    // A "Minha agenda" é a vista pessoal (SM2, o Heitor, 2026-11-23): atende
+    // e não tem a Agenda (era a Agenda "só os meus", que saiu — SM1).
+    permissoes: [{ modulo: 'agenda', nivel: 'NONE' }],
   })
   expect((await db().from('users').update({ provides_services: true, atende_em: [rede.branchId] }).eq('id', sofia.userId)).error).toBeNull()
 })
@@ -130,6 +132,7 @@ test('A32: a tela de sem acesso fica dentro do portal, com o menu', async ({ bro
   await como(browser, sofia, async p => {
     await p.goto(`/${slug}/clients`)
     await expect(p.getByText('Você não tem acesso a esta área')).toBeVisible()
-    await expect(p.getByRole('link', { name: /Agenda/ }).first()).toBeVisible()
+    // Na vista pessoal o menu diz "Minha agenda" (SM2).
+    await expect(p.getByRole('link', { name: /Minha agenda/ }).first()).toBeVisible()
   })
 })

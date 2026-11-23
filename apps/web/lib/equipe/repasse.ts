@@ -3,7 +3,7 @@ import { after } from 'next/server'
 import { z } from 'zod'
 import type { TenantContext } from '@estetica-os/types'
 import type { createAdminClient } from '@/lib/supabase/admin'
-import { alcancaUnidade, can, isOwnScope } from '@/lib/auth'
+import { alcancaUnidade, can } from '@/lib/auth'
 import { gravar, ler, lerTodas } from '@/lib/db'
 import { conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
 import { logHistory, loadApptCtx, fmtDateTime } from '@/lib/appointments/avisos'
@@ -31,7 +31,7 @@ import { cancelarCore } from '@/lib/appointments/alteracoes'
  * - A oportunidade vai para quem tem o CRM (Ver ou Gerenciar, ou a Admin da
  *   rede), pelo núcleo `trocarResponsavelCore` — que grava o "de → para".
  * - Repassar pede o que a tela pede para o mesmo gesto: a agenda em Gerenciar
- *   com "todos" (o "só os meus" não mexe no de outra) e `podeTrocarResponsavel`.
+ *   e `podeTrocarResponsavel`.
  *   Sem isso, a janela mostra quanto fica e não oferece o repasse.
  *
  * O app CONFERE de novo cada item na hora de gravar (a lista da tela é só
@@ -97,7 +97,7 @@ export const EntradaDoRepasse = z.object({
 export type Repasse = z.infer<typeof EntradaDoRepasse>
 
 export function podeRepassarAgendamentos(ctx: TenantContext): boolean {
-  return can(ctx, 'agenda', 'MANAGE') && !isOwnScope(ctx, 'agenda')
+  return can(ctx, 'agenda', 'MANAGE')
 }
 
 interface LinhaDoAgendamento {

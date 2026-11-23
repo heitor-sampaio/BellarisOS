@@ -198,7 +198,7 @@ export async function duplicarCargo(roleId: string): Promise<{ error: string } |
   }
 
   // A matriz, as caixas e as abas numa transação (a mesma do salvar, C60/F70).
-  const linhas = matriz.map(l => ({ module: l.modulo, level: l.nivel, scope: l.escopo }))
+  const linhas = matriz.map(l => ({ module: l.modulo, level: l.nivel, scope: 'ALL' }))
   const relatorios = (abas ?? []).map(a => a.tab)
   const { error: erroDaMatriz } = await supabase.rpc('salvar_matriz_do_cargo', {
     p_tenant: ctx.tenantId!, p_role: novo.id,

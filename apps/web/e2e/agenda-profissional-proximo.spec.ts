@@ -23,7 +23,9 @@ test.beforeAll(async () => {
   slug = (await db().from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
   profissional = await criarMembro(`pxp${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Profissional',
-    permissoes: [{ modulo: 'agenda', nivel: 'VIEW', escopo: 'OWN' }],
+    // A agenda da profissional é a vista pessoal (SM2, o Heitor, 2026-11-23):
+    // atende e não tem a Agenda (era a Agenda "só os meus", que saiu — SM1).
+    permissoes: [{ modulo: 'agenda', nivel: 'NONE' }],
   })
   expect((await db().from('users').update({ provides_services: true }).eq('id', profissional.userId)).error).toBeNull()
   const base = { branch_id: rede.branchId, procedure_id: rede.procedureId, professional_id: profissional.userId, source: 'INTERNAL', duration_min: 30, price: 100 }

@@ -29,7 +29,7 @@ let slug = ''
 test.describe.configure({ timeout: 180_000 })
 
 const TUDO_EM_GERENCIAR: Permissao[] = (['clients', 'crm', 'settings', 'roles', 'forms', 'documents', 'automations', 'marketing', 'procedures', 'financial', 'agenda'] as const)
-  .map(modulo => ({ modulo, nivel: 'MANAGE' as const, escopo: 'ALL' as const }))
+  .map(modulo => ({ modulo, nivel: 'MANAGE' as const }))
 
 async function como(browser: Browser, quem: MembroDeTeste, fn: (p: Page) => Promise<void>) {
   const ctx = await browser.newContext({ storageState: quem.estado })
@@ -108,10 +108,7 @@ const CASOS: Caso[] = [
       name: nome('Rede', q), email: `e2e-outra-pgu${marca}@bellaris.invalid`, portal_prazo_alteracao_horas: '24', plano_validade_dias: '30',
     }),
     gravou: async q => (await db().from('tenants').select('name').eq('id', rede!.tenantId).single<{ name: string }>()).data?.name === nome('Rede', q) ? 1 : 0 },
-  { nome: 'quem vê o inbox no "só os meus" (Configurações → Cargos)', nada: 'pessoa',
-    chamar: (p, q) => chamarAcao(p, 'actions/rede.ts', 'atualizarVisibilidadeDoInbox', `/${slug}/settings?tab=permissions`, [q === 'dona' ? 'pessoa' : 'conversa']),
-    gravou: async () => (await db().from('tenants').select('inbox_visibilidade').eq('id', rede!.tenantId).single<{ inbox_visibilidade: string }>()).data?.inbox_visibilidade,
-    semControle: 'a dona grava o padrão' },
+  // "Quem vê o inbox no 'só os meus'" saiu com o refino (SM3, o Heitor, 2026-11-23).
   { nome: 'integrações (Configurações → Integrações)', nada: 0,
     chamar: (p, q) => chamarAcao(p, 'actions/integrations.ts', 'saveAdsConfig', `/${slug}/settings?tab=integrations`, ['meta_ads', { adAccountId: `act_${q}` }, false]),
     gravou: async q => {
