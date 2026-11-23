@@ -11,7 +11,7 @@ import { cargoEscolhido } from '@/lib/cargos/cargo-escolhido'
 import { acessosDoSalvo, resumoDoCargo } from '@/lib/cargos/acessos-salvos'
 import {
   ALL_MODULES, MODULOS_DO_CARGO, MODULE_LABELS, MODULE_HINTS, MODULE_LEVELS, LEVEL_LABELS,
-  ALL_REPORT_TABS, REPORT_TAB_LABELS, REPORT_TAB_HINTS,
+  ALL_REPORT_TABS, REPORT_TAB_LABELS, REPORT_TAB_HINTS, abasQueValem, motivoDaAbaFechada,
 } from '@/lib/permissions'
 import {
   MODULE_GROUPS, LEVEL_COPY, SENSITIVE_NOTE,
@@ -489,6 +489,10 @@ function PermissionMatrix({
     levels: buildLevels(perms), reportTabs: [...tabs],
     caixas: role.inboxCaixas,
   }))
+  // As abas marcadas que VALEM com estes níveis: a Financeiro pede o Financeiro
+  // em Ver (o Heitor, 2026-11-23: "financeiro é uma coisa, vendas é outra").
+  // É o que se grava, o que a prévia e o "falta escolher" contam.
+  const abasValendo = levels.reports === 'NONE' ? [] : abasQueValem(reportTabs, levels)
   const [dismissed, setDismissed] = useState(false)
   // A2 da 12ª: o que falta escolher, dito ao tentar salvar (não um padrão escondido).
   const [falta, setFalta] = useState<string | null>(null)
@@ -520,7 +524,7 @@ function PermissionMatrix({
   // despercebido — o aviso de "deu certo" do sistema é o toast (design.md).
   const avisarSalvo = useEffectEvent(() => {
     toast.success(`Cargo “${role.label}” salvo.`)
-    onSalvo?.(levels, levels.reports === 'NONE' ? [] : reportTabs)
+    onSalvo?.(levels, abasValendo)
   })
   useEffect(() => { if (state?.success) avisarSalvo() }, [state])
 
@@ -540,7 +544,7 @@ function PermissionMatrix({
   // O que o cargo ligou e ainda não escolheu: as abas do Relatórios em "Ver"
   // (A2 da 12ª, princípio 3).
   function oQueFalta(): string | null {
-    const relatorio = !foraDoPlano.includes('reports') && levels.reports !== 'NONE' && reportTabs.length === 0
+    const relatorio = !foraDoPlano.includes('reports') && levels.reports !== 'NONE' && abasValendo.length === 0
     return relatorio ? textoDoQueFaltaNoCargo() : null
   }
 
@@ -581,8 +585,9 @@ function PermissionMatrix({
       ))}
       {/* Aba marcada vira `report:<aba>=on`, como um checkbox — a action só
           grava as que chegam. Com Relatórios em "Sem acesso" nenhuma é enviada,
-          senão o cargo guardaria abas que não tem como abrir. */}
-      {levels.reports !== 'NONE' && reportTabs.map(t => (
+          senão o cargo guardaria abas que não tem como abrir; nem a que pede um
+          módulo que o cargo não tem (a Financeiro sem o Financeiro em Ver). */}
+      {abasValendo.map(t => (
         <input key={t} type="hidden" name={`report:${t}`} value="on" />
       ))}
       <input type="hidden" name="inbox_caixas" value={caixas} />
@@ -635,6 +640,7 @@ function PermissionMatrix({
                   // A1 da 23ª: e o seletor mostra o nível que vale, travado.
                   travadoEm={module === 'cashier' ? nivelDoPdvPeloFinanceiro(levels) : null}
                   reportTabs={reportTabs}
+                  levels={levels}
                   caixas={caixas}
                   onLevel={v => setLevel(module, v)}
                   onReportTab={toggleReportTab}
@@ -653,7 +659,7 @@ function PermissionMatrix({
         </p>
       )}
 
-      <MenuPreview levels={levels} reportTabs={reportTabs} />
+      <MenuPreview levels={levels} reportTabs={abasValendo} />
 
       {state?.error && (
         <p style={{
@@ -708,7 +714,7 @@ function PermissionMatrix({
 }
 
 function ModuleRow({
-  module, level, last, destacado, aviso, nota, travadoEm = null, reportTabs, caixas, onLevel, onReportTab, onCaixas,
+  module, level, last, destacado, aviso, nota, travadoEm = null, reportTabs, levels, caixas, onLevel, onReportTab, onCaixas,
 }: {
   module: AppModule
   level: PermissionLevel
@@ -721,6 +727,7 @@ function ModuleRow({
   /** A1 da 23ª: o nível que vale por outro módulo (o PDV pelo Financeiro) — o seletor o mostra, travado. */
   travadoEm?: PermissionLevel | null
   reportTabs: ReportTab[]
+  levels: Levels
   caixas: CaixasDoCargo
   onLevel: (v: PermissionLevel) => void
   onReportTab: (t: ReportTab) => void
@@ -809,7 +816,7 @@ function ModuleRow({
       {/* Quais relatórios, um a um. "Ver relatórios" num nível só entregava o
           faturamento da rede junto com o funil de leads. */}
       {module === 'reports' && enabled && (
-        <AbasDeRelatorio marcadas={reportTabs} onToggle={onReportTab} />
+        <AbasDeRelatorio marcadas={reportTabs} levels={levels} onToggle={onReportTab} />
       )}
 
       {/* O inbox é do CRM. Ligar a pessoa a um número decide por onde ela
@@ -865,16 +872,20 @@ function CaixasDoInbox({
 }
 
 function AbasDeRelatorio({
-  marcadas, onToggle,
+  marcadas, levels, onToggle,
 }: {
   marcadas: ReportTab[]
+  levels: Levels
   onToggle: (t: ReportTab) => void
 }) {
+  // A aba que pede um módulo que o cargo não tem fica desligada, com o motivo à
+  // vista (o Heitor, 2026-11-23: a Financeiro "pede o Financeiro"; princípio 3).
+  const valendo = abasQueValem(marcadas, levels)
   return (
     <div style={{ marginTop: 12 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginBottom: 7 }}>
         <span className="overline">Relatórios liberados</span>
-        {marcadas.length === 0 && (
+        {valendo.length === 0 && (
           <span style={{
             fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)',
           }}>
@@ -885,27 +896,33 @@ function AbasDeRelatorio({
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
         {ALL_REPORT_TABS.map(t => {
-          const on = marcadas.includes(t)
+          const motivo = motivoDaAbaFechada(t, levels)
+          const on = !motivo && marcadas.includes(t)
           return (
             <button
               key={t}
               type="button"
               onClick={() => onToggle(t)}
-              title={REPORT_TAB_HINTS[t]}
+              disabled={!!motivo}
+              title={motivo ? `${REPORT_TAB_LABELS[t]} ${motivo} em Ver.` : REPORT_TAB_HINTS[t]}
               aria-pressed={on}
+              {...(motivo ? { 'data-aba-fechada': t } : {})}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 5,
-                padding: '5px 11px', borderRadius: 999, cursor: 'pointer',
+                padding: '5px 11px', borderRadius: 999, cursor: motivo ? 'not-allowed' : 'pointer',
                 fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)',
                 border: '1.5px solid',
                 transition: 'all 120ms',
-                background:  on ? 'var(--brand)' : 'var(--surface)',
-                color:       on ? 'var(--on-brand)'         : 'var(--text-muted)',
+                background:  on ? 'var(--brand)' : motivo ? 'var(--bg-app)' : 'var(--surface)',
+                color:       on ? 'var(--on-brand)' : motivo ? 'var(--text-faint)' : 'var(--text-muted)',
                 borderColor: on ? 'var(--brand)' : 'var(--border)',
+                ...(motivo ? { opacity: 0.75 } : null),
               }}
             >
               {on && <Check size={11} />}
+              {motivo && <Lock size={11} aria-hidden="true" />}
               <Fala>{REPORT_TAB_LABELS[t]}</Fala>
+              {motivo && <span style={{ fontWeight: 'var(--weight-semibold)' }}>· {motivo}</span>}
             </button>
           )
         })}

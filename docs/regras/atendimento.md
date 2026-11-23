@@ -281,8 +281,8 @@
   checklist com todas as unidades, as que estiverem marcadas ficam
   disponiveis"; até ali, D1 de 2026-10-28: o da REDE atendia em todas e o de
   uma unidade só na dele, e a Talita da Água Verde só cobria o Batel ganhando
-  a rede inteira — A12). O "Atende" da Equipe é a lista das unidades ativas,
-  cada uma marcável (`users.atende_em`, migration `20261106003601`); numa
+  a rede inteira — A12). O "Atende" da Equipe é a lista das unidades ativas
+  DA PESSOA (desde 23/11 — ver abaixo), cada uma marcável (`users.atende_em`, migration `20261106003601`); numa
   rede de uma unidade, a caixa de sempre. Marcada, a pessoa aparece ali na
   agenda, no agendar (equipe, app e Copilot), no horário dos profissionais, na
   ocupação, no "próximo livre", no repasse da desativação, na comissão e nos
@@ -301,17 +301,39 @@
     pessoa como padrão de quem atende sem a lista. A unidade que a rede abrir
     depois entra no "Atende" de quem tem "A rede inteira" e atende em todas
     (EQ1 — ver "A unidade NOVA", abaixo).
-  - **A abrangência NÃO muda com o checklist** (decidido por "ficam
-    disponíveis" + o acesso continuar o dela): a Talita é da Água Verde e,
-    marcada no Batel, alcança no Batel só os agendamentos DELA — ver, marcar a
-    chegada, iniciar, concluir, a evolução, o anexo do atendimento e a
-    comissão, cada passo com a permissão do módulo dele (o "Atende" não dá
-    permissão nenhuma, UM5). A regra é UMA, `alcancaOAgendamento` (`lib/auth.ts`: a unidade
-    ao alcance, ou o agendamento dela numa unidade marcada), em
-    `agendamentoAoAlcance`, `startAppointment`, `finishSession`, a conclusão,
-    a evolução, o histórico, a ficha de saúde e o anexo. A agenda do Batel, os
-    clientes e o caixa de lá seguem fora (o layout de `[slug]` a leva à dela).
-    A "Minha agenda" dela traz os dela de fora como cartões ("Na unidade
+  - **O "Atende" só vale nas unidades DA PESSOA** (o Heitor, 2026-11-23:
+    "não faz o menor sentido a ana ter marcado atende na sul e se a sul nao
+    esta entre as unidades dela. uma pessoa só pode atender nas unidades que
+    faz parte, isso é obvio"). "A rede inteira" cabe qualquer unidade da rede;
+    quem tem unidades, só a principal e as outras dela. Na Equipe, o
+    checklist mostra só as unidades escolhidas no campo "Unidades" (tirada
+    uma, a marca nela sai do que se envia — e o repasse abaixo pergunta, se
+    havia agendamento em aberto ali); no servidor, `createTeamMember` e
+    `updateTeamMember` (e o "Marcar no Atende" do Desativar, pelo mesmo
+    núcleo) recusam com "O “Atende” só vale nas unidades da pessoa. Sul não
+    está entre as unidades dela: marque em “Unidades” ou tire do “Atende”."
+    (`atendeForaDasUnidades`, `ATENDE_SO_NAS_UNIDADES_DA_PESSOA`,
+    `lib/equipe/atende.ts`). Também a troca de abrangência que deixaria o
+    "Atende" de fora é recusada (não se tira a marca calado — princípio 3,
+    decisão do Claude); a marca numa unidade DESATIVADA fora das unidades da
+    pessoa, que a tela não mostra, sai ao salvar (`atendeQueGrava`,
+    `unidadesDaPessoa`). O "Marcar <unidade> no Atende" da janela do
+    Desativar (A11, 18ª A29) só sugere quem tem a unidade entre as suas
+    (`membroAlcancaAUnidade` em `pendenciasDoMembro`). Prova:
+    `tests/atende-so-nas-unidades-da-pessoa.test.ts`,
+    `e2e/equipe-atende-por-unidade.spec.ts`,
+    `e2e/abrangencia-atende-em-outra-unidade-f73.spec.ts`.
+  - **Saiu: alcançar o agendamento DELA numa unidade fora da abrangência**
+    (AG-30, de 06/11 até 23/11; a Talita da Água Verde, marcada no Batel,
+    iniciava e concluía os dela no Batel). `alcancaOAgendamento`
+    (`lib/auth.ts`) é a abrangência e só (`alcancaUnidade`), e segue o nome
+    único que `agendamentoAoAlcance`, `startAppointment`, `finishSession`, a
+    conclusão, a evolução, o histórico, a ficha de saúde e o anexo conferem.
+    O layout de `[slug]` não tem mais o desvio "Os seus atendimentos nessa
+    unidade estão na sua agenda" (F73): a unidade fora é o aviso de sempre.
+    Cada passo continua com a permissão do módulo dele (o "Atende" não dá
+    permissão nenhuma, UM5).
+    A "Minha agenda" de quem tem mais de uma unidade traz os dela das outras como cartões ("Na unidade
     Batel", `[data-outra-unidade]`) — e aí os cartões do topo dizem de onde é
     cada número: "Hoje · suas unidades", "Esta semana · suas unidades" e
     "Ocupação hoje · <a unidade>" (A22 da 22ª, `rotulosDaMinhaAgenda`) —, e a
@@ -328,7 +350,7 @@
     `/[slug]/agenda/[id]` de outra unidade ao alcance redireciona ao endereço
     certo. A lista mostra só o que está EM ABERTO (o concluído de hoje
     aparecia como pendente). Prova: `e2e/agenda-unidade-da-9.spec.ts` ("D10"). "Minhas comissões" (a
-    vista pessoal do Financeiro, SM2) cobre também as unidades em que ela atende,
+    vista pessoal do Financeiro, SM2) cobre também as outras unidades dela em que ela atende,
     com o filtro de unidade (`app/[slug]/financeiro/comissoes`).
   - **`provides_services` = "atende em alguma unidade"**, mantido junto da
     lista por um gatilho só (`private.atende_em_sincronizar`): gravar a lista
@@ -352,10 +374,11 @@
     como o cartão dela em Configurações → Unidades ("N pessoas atendem aqui",
     `[data-quem-atende-na-unidade]`).
   - **Quem não tem “A rede inteira” (com a Equipe em Gerenciar) marca e desmarca só as DELA** (H7): as outras
-    unidades aparecem travadas no checklist, e `updateTeamMember`/
+    unidades do membro aparecem travadas no checklist, e `updateTeamMember`/
     `createTeamMember` mudam só a dela (`atendeQueGrava`, `lib/equipe/atende.ts`).
-    Quem é de fora e atende ali aparece na Equipe da unidade ("Da rede" ou
-    "Da unidade Água Verde"), sem ações.
+    Quem é de fora e atende ali aparece na Equipe da unidade ("Da rede"), sem
+    ações — "Da unidade X" só sobra para dado de antes de 23/11 (o "Atende"
+    só vale nas unidades da pessoa).
   Prova: `e2e/equipe-atende-por-unidade.spec.ts`, `tests/equipe-atende.test.ts`,
   `e2e/agenda-profissional-da-rede.spec.ts` (a da rede marcada nas duas).
 - **O nome de quem está no registro da unidade não vem pelo join da SESSÃO**
@@ -404,6 +427,8 @@
   ninguém livre, diz quem atende em OUTRA unidade** (A11): "Atende em outra
   unidade: Talita (Batel). Para repassar a ela, marque “Água Verde” no “Atende
   clientes em” dela, na Equipe, e abra o Desativar de novo — ou cancele aqui."
+  Só quem tem a unidade do agendamento entre as suas (desde 23/11: o "Atende"
+  só vale nas unidades da pessoa).
   Prova: `e2e/equipe-atritos-da-8.spec.ts` ("A10", "A11").
   **Deixar de atender numa unidade também oferece o repasse** (D3, A8 e A51
   da 9ª simulação, 2026-11-07; decidido pelo princípio 3): a Priscila passou a
@@ -2224,13 +2249,27 @@ const procedures = await ler(
   saía. A soma do mapa e a comparação juntam as duas, e o texto fala na
   unidade do insumo ("O mapa soma 56 U de Toxina; a baixa está em 40 U.").
   ml e UI seguem sem se comparar. Prova: `tests/injetaveis-dose-u-e-ui.test.ts`.
-- **Os mapas de injetáveis seguem o Prontuário** (sem o "só os meus", SM1,
-  23/11): a lista de Injetáveis (`listarMapasDeInjetaveis`) e os
-  planejamentos da cliente abrem com o Prontuário em Ver, e toda action pelo
-  id do mapa (abrir, salvar, renomear, ligar cliente, registrar aplicação —
-  `mapaDoTenant`) confere a rede e o alcance; gravar pede o Prontuário em
-  Gerenciar (UM4). Saiu o recorte ao mapa DELA (da cliente que ela atende ou,
-  avulso, o que ela mexeu por último).
+- **Os injetáveis são de quem realiza o atendimento; ver é do Prontuário**
+  (o Heitor, 2026-11-23: "o mapa de injetaveis é pra quem realiza
+  atendimento"; e "ok" à proposta "criar e editar o plano (planejamento) de
+  injetáveis e registrar a aplicação: Atendimento em Gerenciar; ver os planos
+  e mapas: Prontuário em Ver" — revê o UM4 de 23/11, que punha os injetáveis
+  no Prontuário em Gerenciar). Criar, salvar, renomear, ligar a cliente e
+  registrar a aplicação (`criarPlanejamentoInjetavel`,
+  `salvarPlanejamentoInjetavel`, `renomearPlanejamentoInjetavel`,
+  `vincularClienteAoPlanejamento`, `registrarAplicacao`) pedem o Atendimento
+  em Gerenciar — a permissão, não o "Atende" da Equipe (UM5). A lista de
+  Injetáveis (`listarMapasDeInjetaveis`), o planejamento aberto, os
+  planejamentos da cliente e as doses do mapa abrem com o Prontuário em Ver
+  (sem o "só os meus", SM1). Toda action pelo id do mapa (`mapaDoTenant`)
+  confere a rede e o alcance. A tela só oferece "Novo planejamento", marcar
+  pontos, "Salvar planejamento", renomear, "Ligar a um cliente" e "Registrar
+  aplicação" a quem tem o Atendimento em Gerenciar (`podeEditar` da tela de
+  Injetáveis, `podeEditarInjetaveis` do `PainelPlanejamento` na ficha e no
+  atendimento, `ContextoDosInjetaveis.podeEditar` no campo do planejador da
+  ficha — sem ele, o campo abre e escolhe o planejamento da cliente, sem mexer
+  no mapa). Saiu o recorte ao mapa DELA (da cliente que ela atende ou, avulso,
+  o que ela mexeu por último). Prova: `tests/injetaveis-quem-realiza-atendimento.test.ts`.
 - **A sub-aba Planejamento → Injetáveis só existe para quem vê o clínico**
   (D7 da simulação de 2026-10-29): `PainelPlanejamento podeVerInjetaveis` é a
   decisão clínica da tela que o monta — `podeVerProntuario` na ficha,
@@ -3789,7 +3828,7 @@ O resto do fluxo:
 ❌ Cobrar a sessão do plano (comanda do atendimento, preço no caixa): o plano se paga na comanda dele, no PDV (PT1e)
 ❌ Listar ou conferir "quem atende nesta unidade" com branch_id = unidade, ou com "a da rede atende em todas" — é a unidade marcada no "Atende" (atende_em, filtroDeQuemAtendeNaUnidade)
 ❌ Gravar users.atende_em ou provides_services sem passar pelo gatilho que os mantém juntos (atende_em_sincronizar), ou deixar a unidade nova (ou reativada) fora do "Atende" de quem tem "A rede inteira" e atende em todas (EQ1; trg_atende_na_unidade_nova)
-❌ Abrir a unidade inteira a quem só ATENDE nela (a Talita no Batel): o alcance é dos agendamentos DELA — alcancaOAgendamento, nunca crescer a abrangência
+❌ Marcar o "Atende" numa unidade fora da abrangência da pessoa, ou dar a alguém o agendamento de uma unidade que não é dela por ser DELE (o AG-30 saiu em 23/11 — o Heitor: "uma pessoa só pode atender nas unidades que faz parte"): o "Atende" cabe nas unidades dela (atendeForaDasUnidades), e alcancaOAgendamento é a abrangência, e só
 ❌ Ler o nome da cliente ou do profissional de um registro da unidade por join da sessão (clients(name), users!professional_id(name)) — a cliente de outra unidade e o profissional da rede viram "—"; é nomesDosRegistros
 ❌ Conferir conflito de horário fora de horarioOcupado (lib/appointments/core.ts): a duração de CADA agendamento, e o profissional em qualquer unidade da rede
 ❌ Medir até quando um agendamento ocupa o horário fora de fimDaOcupacao (o concluído adiantado libera o resto — A31)

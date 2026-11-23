@@ -74,7 +74,10 @@ test.beforeAll(async () => {
   clienteId = await rede.criarCliente('Ana')
   dona = await criarMembro(`ea8d${marca}`, { tenant: rede.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
   debora = await criarMembro(`ea8b${marca}`, { tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Debora', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }] })
-  talita = await criarMembro(`ea8t${marca}`, { tenant: rede.tenantId, branchId: batel, rotulo: 'Talita', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }] })
+  // A Talita é do Batel e da Água Verde: o "Marcar no Atende" só vale numa
+  // unidade dela (o Heitor, 2026-11-23: "uma pessoa só pode atender nas
+  // unidades que faz parte"; era só do Batel).
+  talita = await criarMembro(`ea8t${marca}`, { tenant: rede.tenantId, branchId: batel, outrasUnidades: [rede.branchId], rotulo: 'Talita', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }] })
   gerenteA = await criarMembro(`ea8g${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Gerente',
     permissoes: [{ modulo: 'team', nivel: 'MANAGE' }, { modulo: 'financial', nivel: 'MANAGE' }],

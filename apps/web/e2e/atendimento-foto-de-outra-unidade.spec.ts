@@ -11,6 +11,10 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  * outra unidade, e o `ler` lançava dentro do useActionState. Agora a unidade
  * do anexo é a do atendimento (lida pelo servidor, depois da rede e do
  * alcance), e a recusa volta como mensagem, nunca como erro.
+ *
+ * Revisto em 23/11 (o Heitor: "uma pessoa só pode atender nas unidades que faz
+ * parte"): a outra unidade é DELA também (era só o "Atende" marcado lá); o
+ * endereço da unidade A leva ao da unidade do atendimento.
  */
 
 const marca = Date.now().toString(36)
@@ -38,7 +42,7 @@ test.beforeAll(async () => {
   expect(error).toBeNull()
   unidadeB = b!.id
   profissional = await criarMembro(`fop${marca}`, {
-    tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Profissional',
+    tenant: rede.tenantId, branchId: rede.branchId, outrasUnidades: [unidadeB], rotulo: 'Profissional',
     permissoes: [
       { modulo: 'agenda', nivel: 'MANAGE' },
       { modulo: 'clients', nivel: 'VIEW' },

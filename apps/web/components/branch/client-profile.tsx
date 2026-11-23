@@ -289,6 +289,12 @@ interface Props {
   currentBranchId:       string
   slug:                  string
   canManageProcedures:   boolean
+  /**
+   * Cria, edita e registra a aplicação nos injetáveis: o Atendimento em
+   * Gerenciar (o Heitor, 2026-11-23: "o mapa de injetaveis é pra quem realiza
+   * atendimento"). Ver é do Prontuário em Ver.
+   */
+  podeEditarInjetaveis?: boolean
   /** Pode anexar e apagar anexo CLÍNICO (exame, laudo…) — prontuário MANAGE. */
   podeAnexarClinico?:    boolean
   /** Anexar o que não é clínico (RG, comprovante…): o cadastro (`clients: MANAGE`). */
@@ -1484,7 +1490,7 @@ export function ClientProfile({
   client, branchId, stats, upcomingAppointments, recentAppointments, allAppointments = [],
   fidelidade, activePackage,
   transactions, internalCredits, documents, recordForms = [], lotesDosAtendimentos = {}, podeAbrirLote = false, anexosClinicosFora = 0, anexosClinicos = [], anotacoesEVersoes = { anotacoes: {}, versoes: {} }, podeAnotar = false, pedidoLgpd = null, podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, alergias = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, portalNoPlano = false, veFinanceiro = false, isNetworkWide, unidadeDoPlano, unidadesDoPlano = [], perguntaAUnidade = false, clientHistory, opportunities = [], veOportunidades = true,
-  planProcedures = [], planProducts = [], podeReceber = false, podeMontarPlano = false, termos = null,
+  planProcedures = [], planProducts = [], podeReceber = false, podeMontarPlano = false, podeEditarInjetaveis = false, termos = null,
   prePagos = [], podeAgendar = false, podeCancelarPacote = false, pacoteVencido = null, quemDesfaz = null, pagoComCredito = 0, podeRemarcar = false, podeEstornar = false, podeReceberParcela = false, podeEditarCadastro = false, quemCompletaOCadastro: quemCompleta = null, podeExportarProntuario = false, podeVerPlanos = false, podeIniciarAtendimento = false,
   aReceber = { itens: [], total: { n: 0, valor: 0 } }, comandaParaReceber = null, planosNaoRecebidos = [], podeReceberAtendimento = false,
   totaisFinanceiros = { pago: 0, aReceber: 0, credito: null },
@@ -2156,10 +2162,11 @@ export function ClientProfile({
             slug={slug}
             procedures={planProcedures}
             availableProducts={planProducts}
-            podeEditar={canManageProcedures}
+            // O mapa de injetáveis é de quem realiza o atendimento: o
+            // Atendimento em Gerenciar (o Heitor, 2026-11-23); ver, o Prontuário em Ver.
+            podeEditarInjetaveis={podeEditarInjetaveis}
             podeMontarPlano={podeMontarPlano}
             podeAnotarNoPlano={canManageProcedures}
-            // Injetáveis é prontuário: a mesma decisão da aba Prontuário.
             podeVerInjetaveis={podeVerProntuario}
             podeVerPlanos={podeVerPlanos}
             podeReceber={podeReceber}

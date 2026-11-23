@@ -99,7 +99,8 @@ test.beforeAll(async () => {
     // Agenda em Ver e Prontuário em Gerenciar: o Atendimento em Gerenciar vem junto (comAtendimento).
     permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }, { modulo: 'medical_records', nivel: 'MANAGE' }],
   })
-  expect((await db().from('users').update({ atende_em: [rede.branchId, outraUnidade] }).eq('id', profissional.userId)).error).toBeNull()
+  // O "Atende" só nas unidades dela (o Heitor, 2026-11-23); era [a dela, a outra].
+  expect((await db().from('users').update({ atende_em: [rede.branchId] }).eq('id', profissional.userId)).error).toBeNull()
 })
 test.afterAll(async () => {
   if (rede) {
@@ -234,10 +235,14 @@ test('C15: não remarca o Em atendimento, e a evolução não se escreve no canc
   expect(entrada?.notes ?? null, 'nada escrito no cancelado').toBeNull()
 })
 
-test('C15: a profissional com o Atendimento em Gerenciar inicia o DELA numa unidade em que atende, fora da dela', async ({ browser }) => {
+// Revisto em 23/11 (o Heitor: "uma pessoa só pode atender nas unidades que faz
+// parte"): era "inicia o DELA numa unidade em que atende, fora da dela" (AG-30,
+// saiu). Fora das unidades dela, nem o agendamento DELA está ao alcance.
+test('C15: fora das unidades dela, a profissional com o Atendimento em Gerenciar não inicia nem o agendamento DELA', async ({ browser }) => {
   const dela = await agendado('CONFIRMED', { professionalId: profissional!.userId, branchId: outraUnidade, minutosAtras: 5 })
   await como(browser, profissional!, async p => {
-    await acoes(p).status(dela, 'IN_PROGRESS')
+    const r = await acoes(p).status(dela, 'IN_PROGRESS')
+    expect(r.texto, r.texto.slice(0, 300)).toMatch(/não encontrado/)
   })
-  expect((await situacao(dela)).status).toBe('IN_PROGRESS')
+  expect((await situacao(dela)).status).toBe('CONFIRMED')
 })

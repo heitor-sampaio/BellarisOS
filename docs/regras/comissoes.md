@@ -720,8 +720,12 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
 - **Quem vê quanto cada um ganha é quem tem o Financeiro em Ver** (sem o "só
   os meus", SM1, 2026-11-23): vê as comissões de todos, nas unidades ao
   alcance. **A vista pessoal "Minhas comissões"** (SM2,
-  `vistaPessoal(ctx, 'financial')`) é de quem atende ou tem comissão de venda e
-  NÃO tem o Financeiro: ela vê só a PRÓPRIA comissão — a tela "Minhas
+  `vistaPessoal(ctx, 'financial')`) é de quem atende ou tem comissão no nome
+  dela e NÃO tem o Financeiro (comissão no nome dela = o percentual de venda
+  próprio OU alguma comissão gravada: a venda do plano e a do produto pagam pela
+  regra da REDE a quem vendeu, sem percentual no cadastro — decisão do Claude
+  aprovada pelo Heitor em 23/11, "vamos pela sua recomendação"; a primeira
+  comissão aparece no menu quando o cache do membro vence, até 1 h): ela vê só a PRÓPRIA comissão — a tela "Minhas
   comissões" (o financeiro da rede a manda para lá) e o destaque do dashboard
   da unidade — e não fecha (a vista só mostra). As comissões da aba
   Profissionais dos relatórios, o ranking do dashboard e as do Copilot exigem
@@ -729,7 +733,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   `reports` não bastam (COM-01 da varredura de 18/11).
   **A tela de Cargos diz isso**: com o Financeiro em "Sem acesso", a linha
   diz "Não aparece para esta pessoa — a menos que ela atenda ou tenha comissão
-  de venda: aí vê as Minhas comissões, só as dela." (`LEVEL_COPY`,
+  no nome dela: aí vê as Minhas comissões, só as dela." (`LEVEL_COPY`,
   `lib/permissions-copy.ts`). Saiu o aviso "Não vê as próprias comissões…"
   (A48 da 7ª, `[data-sem-minhas-comissoes]`): com a vista pessoal, quem vende
   vê as dela sem o Financeiro.

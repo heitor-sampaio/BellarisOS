@@ -305,7 +305,7 @@ async function completeAppointment(
   // Concluir baixa estoque, lança comissão e pontos: até 2026-09-28 o id
   // bastava, de qualquer rede e de qualquer unidade.
   const redeDoAppt = (appt?.branches as unknown as { tenant_id: string } | null)?.tenant_id
-  // A do agendamento DELA numa unidade em que atende também (decisão 2 da 8ª).
+  // A unidade do agendamento ao alcance (`alcancaOAgendamento`: a abrangência).
   if (!appt || redeDoAppt !== ctx.tenantId || !alcancaOAgendamento(ctx, appt.branch_id as string, appt.professional_id as string | null)) {
     throw new Error('Agendamento não encontrado.')
   }
@@ -500,7 +500,7 @@ async function startAppointmentInterno(
       .single(), 'buscar o agendamento')
 
     const apptBranch = appt?.branches as unknown as { id: string; tenant_id: string } | null
-    // O DELA numa unidade em que atende também (decisão 2 da 8ª simulação).
+    // A unidade do agendamento ao alcance (`alcancaOAgendamento`: a abrangência).
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId || !alcancaOAgendamento(ctx, apptBranch.id, appt.professional_id as string | null)) return { error: 'Agendamento não encontrado.' }
     if (appt.status !== 'CONFIRMED' && appt.status !== 'ARRIVED') return { error: 'O cliente precisa estar confirmado ou ter chegado (check-in) antes de iniciar.' }
 
@@ -668,7 +668,7 @@ async function reassignProfessionalInterno(
       .single(), 'buscar o agendamento')
 
     const apptBranch = appt?.branches as unknown as { id: string; tenant_id: string } | null
-    // O DELA numa unidade em que atende também (decisão 2 da 8ª; ATD-A05).
+    // A unidade do agendamento ao alcance (`alcancaOAgendamento`: a abrangência; ATD-A05).
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId || !alcancaOAgendamento(ctx, apptBranch.id, appt.professional_id as string | null)) return { error: 'Agendamento não encontrado.' }
     if (['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(appt.status as string)) {
       return { error: 'Não é possível reatribuir um atendimento já finalizado.' }
@@ -885,7 +885,7 @@ async function finishSessionInterno(
       .single(), 'buscar o agendamento')
 
     const apptBranch = appt?.branches as unknown as { id: string; tenant_id: string } | null
-    // O DELA numa unidade em que atende também (decisão 2 da 8ª simulação).
+    // A unidade do agendamento ao alcance (`alcancaOAgendamento`: a abrangência).
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId || !alcancaOAgendamento(ctx, apptBranch.id, appt.professional_id as string | null)) return { error: 'Agendamento não encontrado.' }
     if (appt.status === 'COMPLETED')                      return { error: 'Atendimento já concluído.' }
     if (['CANCELLED', 'NO_SHOW'].includes(appt.status as string)) return { error: 'Agendamento já finalizado.' }
@@ -1337,7 +1337,7 @@ async function saveDraftNotesInterno(
       .single(), 'buscar o agendamento')
 
     const apptBranch = appt?.branches as unknown as { id: string; tenant_id: string } | null
-    // O DELA numa unidade em que atende também (decisão 2 da 8ª simulação).
+    // A unidade do agendamento ao alcance (`alcancaOAgendamento`: a abrangência).
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId || !alcancaOAgendamento(ctx, apptBranch.id, appt.professional_id as string | null)) return { error: 'Agendamento não encontrado.' }
 
     // O cancelado e a falta não tiveram atendimento: não há evolução a

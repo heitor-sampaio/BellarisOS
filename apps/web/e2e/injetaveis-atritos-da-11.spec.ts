@@ -30,7 +30,9 @@ test.beforeAll(async () => {
   mapa = data!.id
   renata = await criarMembro(`inj11r${marca}`, {
     tenant: rede.tenantId, rotulo: 'Medica',
-    permissoes: [{ modulo: 'medical_records', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }],
+    // Marcar no mapa é de quem realiza o atendimento: o Atendimento em
+    // Gerenciar (o Heitor, 2026-11-23, injetáveis = quem realiza atendimento).
+    permissoes: [{ modulo: 'medical_records', nivel: 'MANAGE' }, { modulo: 'atendimento', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }],
   })
 })
 

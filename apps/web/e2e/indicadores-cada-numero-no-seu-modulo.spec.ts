@@ -128,12 +128,15 @@ test.describe('a Agenda em Ver, sem o Financeiro (a Fernanda)', () => {
   })
 
   // Os Relatórios não recortam por dono (SM4, o Heitor, 2026-11-23): os números da rede.
-  test('Relatórios → Visão geral: o faturamento da rede (R$ 470), os atendimentos da rede (3) e a despesa', async ({ browser }) => {
+  // Sem o Financeiro, a Visão geral não tem a entrada, a saída nem o lucro (o
+  // Heitor, 2026-11-23: "financeiro é uma coisa, vendas é outra").
+  test('Relatórios → Visão geral: os atendimentos da rede (3); sem o Financeiro, nem o faturamento nem a despesa', async ({ browser }) => {
     await como(browser, fernanda!, async p => {
       await p.goto('/admin/reports?tab=overview&period=month')
-      await expect.poll(async () => dinheiro(await card(p, 'Faturamento').innerText()), { timeout: 10_000 }).toBe(470)
       await expect.poll(async () => (await card(p, 'Atendimentos').innerText()).match(/\d+/)?.[0], { timeout: 10_000 }).toBe('3')
-      await expect(p.getByText('Despesas pagas (caixa)', { exact: true })).toBeVisible()
+      await expect(p.getByText('Faturamento', { exact: true })).toHaveCount(0)
+      await expect(p.getByText('Despesas pagas (caixa)', { exact: true })).toHaveCount(0)
+      await expect(p.getByText('Lucro', { exact: true })).toHaveCount(0)
     })
   })
 })

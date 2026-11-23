@@ -89,11 +89,12 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
     MANAGE: 'Tudo do Ver, mais marcar, confirmar, marcar a chegada, remarcar, cancelar, marcar falta e trocar quem atende no horário.',
   },
   // O Heitor, 2026-11-18: "Só inicia e conclui atendimento quem tem gerenciar no
-  // atendimento." Cada passo, um módulo (2026-11-23, UM1–UM3).
+  // atendimento." Cada passo, um módulo (2026-11-23, UM1–UM3). E os injetáveis
+  // (2026-11-23: "o mapa de injetaveis é pra quem realiza atendimento").
   atendimento: {
     NONE:   SEM_ACESSO,
     VIEW:   'Abre a tela do atendimento e os planos de tratamento, sem iniciar nem concluir.',
-    MANAGE: 'Tudo do Ver, e inicia, conclui e desiste do atendimento no meio, lança os insumos usados e monta o plano de tratamento, na avaliação ou depois. A evolução, as fotos e a ficha de saúde são do Prontuário em Gerenciar.',
+    MANAGE: 'Tudo do Ver, e inicia, conclui e desiste do atendimento no meio, lança os insumos usados, monta o plano de tratamento, na avaliação ou depois, e planeja os injetáveis e registra a aplicação deles. A evolução, as fotos e a ficha de saúde são do Prontuário em Gerenciar.',
   },
   clients: {
     NONE:   SEM_ACESSO,
@@ -107,7 +108,7 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   },
   medical_records: {
     NONE:   SEM_ACESSO,
-    VIEW:   'Lê, no Prontuário, a ficha de saúde, a evolução, as fotos do atendimento e os anexos clínicos (exames, laudos, receitas).',
+    VIEW:   'Lê, no Prontuário, a ficha de saúde, a evolução, as fotos do atendimento, os anexos clínicos (exames, laudos, receitas) e os planejamentos e as aplicações de injetáveis.',
     MANAGE: 'Tudo do Ver, mais preencher a ficha de saúde e a evolução, tirar as fotos do atendimento, anexar exames e laudos, acrescentar anotação ao atendimento concluído e liberar a parte clínica em pedidos de LGPD. O início e o fim do atendimento e o plano de tratamento não pedem o Prontuário: são do Atendimento.',
   },
   // O Heitor, 2026-11-16: "A permissão de gerenciar documentos serve para
@@ -129,8 +130,8 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
     MANAGE: 'Tudo do Ver, mais cadastrar produto (as categorias, as marcas e os fornecedores), dar entrada e baixa, ajustar inventário e transferir entre unidades — nas unidades da pessoa.',
   },
   financial: {
-    // A vista pessoal (2026-11-23): quem atende ou tem comissão de venda vê as Minhas comissões.
-    NONE:   'Não aparece para esta pessoa — a menos que ela atenda ou tenha comissão de venda: aí vê as Minhas comissões, só as dela.',
+    // A vista pessoal (2026-11-23): quem atende ou tem comissão no nome dela vê as Minhas comissões.
+    NONE:   'Não aparece para esta pessoa — a menos que ela atenda ou tenha comissão no nome dela: aí vê as Minhas comissões, só as dela.',
     VIEW:   'Vê faturamento, despesas, extrato de lançamentos e comissões.',
     MANAGE: 'Tudo do Ver, mais lançar receita e despesa, estornar e conceder crédito ao cliente.',
   },

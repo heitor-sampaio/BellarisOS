@@ -50,7 +50,11 @@ test.beforeAll(async () => {
   outra = await criarOutraRede(`vnd${marca}`)
   const reports = [{ modulo: 'reports' as const, nivel: 'VIEW' as const }]
   gestor = await criarMembro(`vndg${marca}`, { tenant: outra.tenantId, rotulo: 'Gestor', permissoes: reports })
-  semVendas = await criarMembro(`vnds${marca}`, { tenant: outra.tenantId, rotulo: 'Financeiro', permissoes: reports })
+  // A aba Financeiro pede o Financeiro em Ver (o Heitor, 2026-11-23: "financeiro é uma coisa, vendas é outra").
+  semVendas = await criarMembro(`vnds${marca}`, {
+    tenant: outra.tenantId, rotulo: 'Financeiro',
+    permissoes: [...reports, { modulo: 'financial', nivel: 'VIEW' }],
+  })
   const abas = await db().from('role_report_tabs').insert([
     { tenant_id: outra.tenantId, role_id: gestor.roleId, tab: 'vendas' },
     { tenant_id: outra.tenantId, role_id: semVendas.roleId, tab: 'financeiro' },

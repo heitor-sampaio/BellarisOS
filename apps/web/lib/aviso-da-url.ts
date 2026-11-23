@@ -9,9 +9,6 @@ export const AVISOS_DA_URL = {
   // para você". Nada se cria: a pessoa pediu uma unidade fora do alcance e
   // está na dela. O aviso diz onde ela está.
   'outra-unidade':  'Essa unidade não está entre as suas. Você está na sua unidade.',
-  // A20 da 14ª (F73): quem ATENDE na outra unidade (§11, o "Atende" é por
-  // unidade) não opera nela, mas os atendimentos de lá estão na agenda dela.
-  'atende-em-outra-unidade': 'Os seus atendimentos nessa unidade estão na sua agenda, aqui. O resto daquela unidade é da equipe de lá.',
   // A23 da 15ª: a pessoa pediu a rede — o aviso diz de quem ela é, pela abrangência.
   'portal-da-rede': 'O portal da rede é de quem tem “A rede inteira”. Você está na sua unidade.',
   // C61 (F70): o primeiro acesso (o /setup) é configuração da rede toda — só da

@@ -1115,7 +1115,8 @@ o ticket, a evolução, o ranking de unidades, os rankings de procedimento e de
 profissional por receita e por margem, o "Valor gasto" das clientes e o LTV
 por CEP vão a quem tem o Financeiro OU a aba Financeiro dos Relatórios
 (`veDinheiro = can(ctx, 'financial') || podeVerRelatorio(ctx, 'financeiro')`,
-a régua dos Relatórios e do Copilot). Sem ela as props vão VAZIAS — o valor
+a régua dos Relatórios e do Copilot). Desde 2026-11-23 a aba Financeiro pede
+o Financeiro em Ver (abaixo), e a conta é, na prática, só o Financeiro. Sem ela as props vão VAZIAS — o valor
 nem chega ao navegador — e a tela esconde os cartões. Quem tinha só a aba
 Oportunidades via o gráfico e o ranking de unidades (`can('reports')`), e
 quem tinha os Procedimentos, os rankings de receita e margem (`can('procedures')`). O dashboard
@@ -1220,6 +1221,28 @@ unidades que a página manda — e toda unidade pedida tem de estar ao alcance
 (`alcancaUnidade`; fora dele, sem acesso). A aba que o cargo não tem não abre
 (`podeVerRelatorio`), e as comissões por profissional só vão a quem tem o
 Financeiro em Ver.
+
+**Financeiro é uma coisa, vendas é outra** (o Heitor, 2026-11-23: "financeiro
+é uma coisa, vendas é outra. financeiro ve entrada/saida/lucro, tudo. vendas é
+sobre performance de vendas."; "ok" à proposta):
+- A aba **Financeiro** só vale com o módulo Financeiro pelo menos em Ver:
+  marcada sem ele, não abre (`podeVerRelatorio` → `abaDeRelatorioVale`,
+  `MODULO_DA_ABA` em `lib/permissions.ts`, a regra num lugar só). A aba
+  **Vendas** é independente: só a marca.
+- Na **Visão geral**, a entrada, a saída e o lucro só com o Financeiro em Ver
+  (`cartoesDaVisaoGeral`/`veOCaixaNosRelatorios`, `lib/metrics/visao-geral.ts`).
+  Decisão do Claude, cartão a cartão, pela fala: saem sem o Financeiro o
+  Faturamento, as Despesas pagas (caixa), o Lucro, a Evolução do Período
+  (receita, custo do lucro e lucro por dia), o Faturamento por Unidade e a
+  Forma de Pagamento; ficam os Atendimentos (o destaque, sem o Faturamento),
+  os Novos Clientes, o Ticket médio (também nas abas Clientes e
+  Procedimentos), os Top 5 Procedimentos e Profissionais (a produção dos
+  atendimentos, como nas abas deles) e o Status dos agendamentos. O que sai
+  nem chega ao navegador (`reports-bi-section` não lê a série e zera o caixa).
+- Na aba Vendas, a ponte "Como o Total vendido se liga ao caixa" só mostra o
+  valor do caixa com o Financeiro.
+- O Copilot segue a mesma divisão (`copilot.md`). Prova:
+  `tests/relatorios-financeiro-pede-o-financeiro.test.ts`.
 
 **A receita por procedimento e por profissional é a PAGA dos atendimentos**
 (D3 da 5ª simulação, 2026-11-02): o que entrou pela regra única

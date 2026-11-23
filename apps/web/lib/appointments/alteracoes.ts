@@ -39,8 +39,8 @@ export interface AgendamentoAoAlcance {
 }
 
 /**
- * O agendamento, se for da rede E de uma unidade ao alcance — ou dela mesma,
- * numa unidade em que atende (decisão 2 da 8ª simulação, `alcancaOAgendamento`).
+ * O agendamento, se for da rede E de uma unidade ao alcance (`alcancaOAgendamento`:
+ * a abrangência, e só — o "Atende" só vale nas unidades da pessoa, o Heitor, 2026-11-23).
  */
 export async function agendamentoAoAlcance(admin: Admin, ctx: TenantContext, id: string): Promise<AgendamentoAoAlcance | null> {
   const a = await ler(admin.from('appointments')

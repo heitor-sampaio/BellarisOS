@@ -568,6 +568,8 @@ export default async function ClientProfilePage({
       podeReceber={podeReceber(ctx)}
       // UM3: monta o plano quem tem o Atendimento em Gerenciar nesta unidade.
       podeMontarPlano={montaPlano(ctx, branch.id)}
+      // Os injetáveis são de quem realiza o atendimento (o Heitor, 2026-11-23).
+      podeEditarInjetaveis={can(ctx, 'atendimento', 'MANAGE')}
       aReceber={aReceber}
       comandaParaReceber={comandaParaReceber}
       planosNaoRecebidos={planosNaoRecebidos}

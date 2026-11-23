@@ -77,6 +77,13 @@ export interface ContextoDosInjetaveis {
    */
   produtos?: string[]
   linkDoPlanejamento?: (mapId: string) => string | null
+  /**
+   * Cria, edita e registra a aplicação no planejamento: o Atendimento em
+   * Gerenciar (o Heitor, 2026-11-23: "o mapa de injetaveis é pra quem realiza
+   * atendimento"). Sem ele, o campo abre e escolhe o planejamento da cliente
+   * (a ficha é do Prontuário), sem mexer no mapa.
+   */
+  podeEditar?: boolean
 }
 
 export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(function AnamnesisFormRenderer(
@@ -437,7 +444,7 @@ function CampoDoPlanejador({ field: f, value, appointmentId, slug, injetaveis, o
         slug={slug}
         appointmentId={appointmentId}
         produtos={injetaveis.produtos?.length ? injetaveis.produtos : (f.options ?? [])}
-        podeEditar
+        podeEditar={injetaveis.podeEditar === true}
         abertoId={plan?.id ?? null}
         onAbrir={id => onChange(id ? { ...emptyInjectableMap(), planejamento: { id, nome: '' } } : emptyInjectableMap())}
         abrirOAplicado={!plan && !(isInjectableMap(value) && value.points.length > 0)}

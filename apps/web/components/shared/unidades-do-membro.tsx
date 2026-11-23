@@ -113,7 +113,9 @@ export function useAtendeDoMembro(inicial: string[], unidadesDela: string[]) {
   // Aberta de saída só quando a lista de hoje não é "as unidades dela".
   const [aberto, setAberto] = useState(inicial.length > 0 && !mesmas(inicial, unidadesDela))
   const [marcadas, setMarcadas] = useState<string[]>(inicial)
-  const efetivo = aberto ? marcadas : (ligado ? unidadesDela : [])
+  // O "Atende" só vale nas unidades da pessoa (o Heitor, 2026-11-23): tirada
+  // uma unidade dela no campo "Unidades", a marca ali sai do que se envia.
+  const efetivo = aberto ? marcadas.filter(u => unidadesDela.includes(u)) : (ligado ? unidadesDela : [])
   return { ligado, setLigado, aberto, setAberto, marcadas, setMarcadas, efetivo }
 }
 
@@ -128,8 +130,9 @@ export function AtendeDoMembro({ estado, unidades, unidadesDela, editaveis = nul
   id?: string
 }) {
   const { ligado, setLigado, aberto, setAberto, marcadas, setMarcadas, efetivo } = estado
-  // A lista: as unidades dela, e a marca de antes fora delas (não some calada).
-  const naLista = unidades.filter(u => unidadesDela.includes(u.id) || marcadas.includes(u.id))
+  // A lista: só as unidades DELA, as escolhidas no campo "Unidades" ("A rede
+  // inteira" = todas) — o "Atende" só vale nelas (o Heitor, 2026-11-23).
+  const naLista = unidades.filter(u => unidadesDela.includes(u.id))
   const podeEscolher = naLista.length > 1
   const pode = (u: string) => editaveis === null || editaveis.includes(u)
   const caixaTravada = editaveis !== null && !unidadesDela.some(pode)
@@ -153,7 +156,7 @@ export function AtendeDoMembro({ estado, unidades, unidadesDela, editaveis = nul
       {podeEscolher && (
         <button type="button" className="btn-ghost" data-escolher-onde-atende aria-expanded={aberto}
           onClick={() => {
-            if (aberto) { setLigado(marcadas.length > 0); setAberto(false); return }
+            if (aberto) { setLigado(efetivo.length > 0); setAberto(false); return }
             setMarcadas(efetivo)
             setAberto(true)
           }}

@@ -22,8 +22,8 @@ export type CachedMember = {
   providesServices: boolean
   /**
    * As unidades em que ele ATENDE (decisão 2 do Heitor, 8ª simulação): o
-   * checklist do "Atende" na Equipe. Não é abrangência — ele alcança nelas só
-   * os agendamentos DELE (`alcancaOAgendamento`, lib/auth.ts).
+   * checklist do "Atende" na Equipe. Não é abrangência, e cabe nela: o
+   * "Atende" só vale nas unidades da pessoa (o Heitor, 2026-11-23).
    */
   atendeEm: string[]
   /**
@@ -46,7 +46,13 @@ export type CachedMember = {
    * conta na mão.
    */
   isActive: boolean
-  /** Tem comissão de VENDA (`users.comissao_venda_pct`): as Minhas comissões abrem para ela (a vista pessoal). */
+  /**
+   * Tem comissão no nome dela: o percentual de venda próprio (`users.comissao_venda_pct`)
+   * OU alguma linha em `commissions` (a venda do plano e a do produto pagam pela regra
+   * da REDE, sem o percentual no cadastro — recomendação do Claude que o Heitor
+   * aprovou em 23/11: "vamos pela sua recomendação"). Abre as Minhas comissões (a vista pessoal). A primeira comissão
+   * de quem não tinha nenhuma aparece no menu quando o cache do membro vence (até 1 h).
+   */
   comissaoDeVenda: boolean
 }
 
@@ -60,6 +66,9 @@ export function getCachedMember(authId: string) {
         .eq('auth_id', authId)
         .maybeSingle(), 'buscar o usuário')
       if (!data) return null
+      const pctDeVenda = Number((data as { comissao_venda_pct?: number | string | null }).comissao_venda_pct ?? 0) > 0
+      const temComissao = pctDeVenda
+        || (await ler(admin.from('commissions').select('id').eq('professional_id', data.id).limit(1), 'ver se ela tem comissão') ?? []).length > 0
       const roleRef = data.tenant_roles as unknown as { label: string; key: string | null; is_system: boolean | null } | null
       return {
         id: data.id,
@@ -72,13 +81,14 @@ export function getCachedMember(authId: string) {
         branchId: (data.branch_id as string | null) ?? null,
         outrasUnidades: ((data as { outras_unidades?: string[] | null }).outras_unidades ?? []) as string[],
         isActive: data.is_active !== false,
-        comissaoDeVenda: Number((data as { comissao_venda_pct?: number | string | null }).comissao_venda_pct ?? 0) > 0,
+        comissaoDeVenda: temComissao,
       }
     },
     // `v2`: o formato ganhou o `ehAdminDaRede` (F70) — a entrada antiga, sem
     // ele, valeria "não é Admin" por até uma hora depois do deploy. `v3`: as
-    // `outrasUnidades` (EQ1a), pelo mesmo motivo. `v4`: a `comissaoDeVenda` (sem o "só os meus", 23/11).
-    [`member-v4-${authId}`],
+    // `outrasUnidades` (EQ1a), pelo mesmo motivo. `v4`: a `comissaoDeVenda` (sem o "só os meus", 23/11). `v5`: ela vale
+    // também para quem tem comissão no nome sem o percentual próprio (23/11).
+    [`member-v5-${authId}`],
     { revalidate: 3600, tags: [`user:${authId}`] },
   )()
 }

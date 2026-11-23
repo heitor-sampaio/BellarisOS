@@ -2,7 +2,7 @@ import 'server-only'
 import type { TenantContext, AppModule, PermissionLevel, ReportTab } from '@estetica-os/types'
 import type { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
-import { MODULE_LABELS } from '@/lib/permissions'
+import { MODULE_LABELS, abasQueValem } from '@/lib/permissions'
 import { abasForaDoPlano, modulosForaDoPlano } from '@estetica-os/nucleo/lib/planos/recursos'
 
 type Admin = ReturnType<typeof createAdminClient>
@@ -43,8 +43,12 @@ export function modulosAcimaDoMeu(
     if (ORDEM[l.level] > ORDEM[meu]) acima.add(MODULE_LABELS[m] ?? m)
   }
   const relatorios = linhas.find(l => l.module === 'reports')
+  // Só a aba que VALE no cargo dado conta (a Financeiro sem o Financeiro não
+  // abre nada — o Heitor, 23/11: "financeiro é uma coisa, vendas é outra").
+  const niveisDoCargo = Object.fromEntries(linhas.map(l => [l.module, l.level])) as Partial<Record<AppModule, PermissionLevel>>
+  const abasQueAbrem = abasQueValem(abas as ReportTab[], niveisDoCargo)
   if (relatorios && relatorios.level !== 'NONE' && !foraDoPlano.has('reports')
-    && abas.some(a => !abasForaDoPlanoDaRede.has(a) && !(ctx.reportTabs ?? []).includes(a as ReportTab))) {
+    && abasQueAbrem.some(a => !abasForaDoPlanoDaRede.has(a) && !(ctx.reportTabs ?? []).includes(a as ReportTab))) {
     acima.add(MODULE_LABELS.reports)
   }
   return [...acima]

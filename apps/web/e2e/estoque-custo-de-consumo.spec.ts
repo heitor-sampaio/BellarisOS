@@ -82,6 +82,9 @@ test.beforeAll(async () => {
       { modulo: 'medical_records', nivel: 'MANAGE' }, { modulo: 'stock', nivel: 'MANAGE' },
       { modulo: 'procedures', nivel: 'VIEW' }, { modulo: 'cashier', nivel: 'MANAGE' },
       { modulo: 'reports', nivel: 'VIEW' },
+      // A despesa, o lucro e a aba Financeiro pedem o Financeiro em Ver (o
+      // Heitor, 2026-11-23: "financeiro é uma coisa, vendas é outra").
+      { modulo: 'financial', nivel: 'VIEW' },
     ],
   })
   const { error: eA } = await db().from('role_report_tabs').insert([

@@ -16,13 +16,36 @@ import { cargoEhAdminDaRede, souAdminDaRede, recusaDeMexerNaAdmin } from '@/lib/
 import { comLoginNovo } from '@/lib/login-novo'
 import { EntradaDoRepasse, aplicarRepasse, pendenciasDoMembro, type PendenciasDoMembro } from '@/lib/equipe/repasse'
 import { falaDaRede } from '@/lib/unidades/uma-so'
-import { atendeDoFormulario, atendeQueGrava, listaDeUnidades } from '@/lib/equipe/atende'
+import { atendeDoFormulario, atendeQueGrava, atendeForaDasUnidades, listaDeUnidades, ATENDE_SO_NAS_UNIDADES_DA_PESSOA } from '@/lib/equipe/atende'
 import { unidadesDoFormulario, unidadesDoMembro, unidadesQueGrava, FORA_DO_ALCANCE_PARA_DESATIVAR, CARGO_DE_QUEM_TEM_OUTRA_UNIDADE } from '@/lib/unidades/do-membro'
 
 /** As unidades ATIVAS da rede (o checklist do "Atende" só marca estas). */
 async function unidadesAtivas(admin: ReturnType<typeof createAdminClient>, tenantId: string): Promise<string[]> {
   return ((await ler(admin.from('branches').select('id').eq('tenant_id', tenantId).eq('is_active', true), 'carregar as unidades da rede')) ?? [])
     .map(b => b.id as string)
+}
+
+/**
+ * A recusa do "Atende" fora das unidades da pessoa (o Heitor, 2026-11-23: "uma
+ * pessoa só pode atender nas unidades que faz parte"), com os nomes das de fora.
+ */
+async function recusaDoAtendeFora(admin: ReturnType<typeof createAdminClient>, tenantId: string, fora: string[]): Promise<string> {
+  const nomes = ((await ler(admin.from('branches').select('name').eq('tenant_id', tenantId).in('id', fora).order('name'),
+    'buscar as unidades do “Atende”')) ?? []).map(b => b.name as string)
+  if (!nomes.length) return ATENDE_SO_NAS_UNIDADES_DA_PESSOA
+  return `${ATENDE_SO_NAS_UNIDADES_DA_PESSOA} ${listaDeUnidades(nomes)} ${nomes.length > 1 ? 'não estão' : 'não está'} entre as unidades dela: marque em “Unidades” ou tire do “Atende”.`
+}
+
+/**
+ * O "Atende" que fica quando o formulário não manda a lista (só
+ * `providesServices`): a que seguia as unidades da pessoa acompanha a mudança
+ * delas no banco (`atende_em_sincronizar`) — nada a conferir; a escolhida à
+ * mão fica como está, e é ela que se confere.
+ */
+function atendeQueSobraSemALista(antes: string[], unidadesDeAntes: string[]): string[] {
+  const seguia = antes.length === 0
+    || (antes.length === new Set(unidadesDeAntes).size && antes.every(u => unidadesDeAntes.includes(u)))
+  return seguia ? [] : antes
 }
 
 /**
@@ -190,8 +213,12 @@ export async function createTeamMember(
   const unidades = pedidas.unidades
   const effectiveBranchId = unidades?.[0] ?? null
   const atendeEm = pedidoDoAtende
-    ? atendeQueGrava({ pedido: pedidoDoAtende, antes: [], ativas: await unidadesAtivas(admin, ctx.tenantId!), unidadeDeQuemEdita: unidadesDoContexto(ctx) })
+    ? atendeQueGrava({ pedido: pedidoDoAtende, antes: [], ativas: await unidadesAtivas(admin, ctx.tenantId!), unidadeDeQuemEdita: unidadesDoContexto(ctx), unidadesDaPessoa: unidades })
     : null
+  // O "Atende" só vale nas unidades da pessoa (o Heitor, 2026-11-23). Sem a
+  // lista (o formulário de antes), o gatilho do banco dá as unidades dela.
+  const foraDoAtende = atendeForaDasUnidades(atendeEm ?? [], unidades)
+  if (foraDoAtende.length) return { error: await recusaDoAtendeFora(admin, ctx.tenantId!, foraDoAtende) }
   if (atendeEm) {
     providesServices = atendeEm.length > 0
     if (!providesServices) comissaoPadrao = null
@@ -373,13 +400,23 @@ export async function updateTeamMember(
   }
   const effectiveBranchId = unidades?.[0] ?? null
 
-  // O checklist (decisão 2 da 8ª): a gerente de unidade fixa muda só a dela.
+  // O checklist (decisão 2 da 8ª): quem tem unidades muda só as dela.
+  const ativas = await unidadesAtivas(admin, ctx.tenantId!)
   const atendeEm = pedidoDoAtende
     ? atendeQueGrava({
         pedido: pedidoDoAtende, antes: ((member as { atende_em?: string[] | null }).atende_em ?? []) as string[],
-        ativas: await unidadesAtivas(admin, ctx.tenantId!), unidadeDeQuemEdita: unidadesDoContexto(ctx),
+        ativas, unidadeDeQuemEdita: unidadesDoContexto(ctx), unidadesDaPessoa: unidades,
       })
     : null
+  // O "Atende" só vale nas unidades da pessoa (o Heitor, 2026-11-23: "uma
+  // pessoa só pode atender nas unidades que faz parte"). Marcar fora delas, ou
+  // tirar dela uma unidade em que segue atendendo, é recusado — a marca não
+  // some calada (princípio 3); a tela já oferece só as unidades dela, e tirar
+  // uma do "Atende" passa pelo repasse abaixo.
+  const atendeQueFica = atendeEm ?? (!providesServices ? [] : atendeQueSobraSemALista(
+    ((member as { atende_em?: string[] | null }).atende_em ?? []) as string[], unidadesAntes ?? ativas))
+  const foraDoAtende = atendeForaDasUnidades(atendeQueFica, unidades)
+  if (foraDoAtende.length) return { error: await recusaDoAtendeFora(admin, ctx.tenantId!, foraDoAtende) }
 
   // Deixar de atender numa unidade com agendamentos em aberto ali (D3 da 9ª
   // simulação; decidido pelo princípio 3): eles sumiam da grade, sem aviso nem
@@ -450,7 +487,8 @@ export async function updateTeamMember(
  * — quem atende em outra unidade passa a atender também nesta, e o repasse a
  * alcança. Pelo NÚCLEO da Equipe (`updateTeamMember`): o mesmo cargo, a lista
  * do "Atende" de antes mais a unidade, e todas as regras de lá (alcance, a
- * Admin da rede, só as unidades de quem edita, só unidades ativas).
+ * Admin da rede, só as unidades de quem edita, só unidades ativas, e o
+ * "Atende" só nas unidades da pessoa — o Heitor, 2026-11-23).
  */
 export async function marcarUnidadeNoAtende(userId: string, branchId: string, redirectPath = '/admin/team'): Promise<{ error?: string }> {
   const ctx = await getTenantContext()

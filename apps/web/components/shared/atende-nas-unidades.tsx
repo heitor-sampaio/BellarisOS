@@ -9,7 +9,8 @@ interface Unidade { id: string; name: string }
  * "Inves de atende também em, o atende vira um checklist com todas as
  * unidades, as que estiverem marcadas ficam disponiveis"). Marcada, a unidade
  * tem a pessoa como profissional: agenda, agendar, repasse, comissão. Não é
- * abrangência — o acesso continua o da unidade (ou da rede) dela.
+ * abrangência, e cabe nela: só as unidades da pessoa entram (o Heitor,
+ * 2026-11-23: "uma pessoa só pode atender nas unidades que faz parte").
  *
  * Numa clínica de UMA unidade é a caixa de sempre ("Atende clientes…"). A
  * lista vai ao servidor num campo só (`atendeEm`, ids separados por vírgula,
@@ -61,8 +62,8 @@ export function AtendeNasUnidades({ unidades, marcadas, aoMudar, editaveis = nul
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
         <span id={titulo} className="field-label">Atende clientes em</span>
         <Dica rotulo="Sobre onde a pessoa atende">
-          Nas unidades marcadas ela aparece na agenda como profissional e gera comissão. O acesso não muda: numa
-          unidade que não é a dela, ela vê só os próprios atendimentos.
+          Nas unidades marcadas ela aparece na agenda como profissional e gera comissão. Só as unidades dela
+          (as do campo Unidades) podem ser marcadas.
         </Dica>
       </span>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px' }}>

@@ -12,6 +12,7 @@ import { notifyUser } from '@/lib/notifications/notify'
 import { podeTrocarResponsavel, trocarResponsavelCore } from '@/lib/crm/responsavel'
 import { quemRealizaOsProcedimentos, realiza } from '@/lib/procedimentos/quem-realiza'
 import { cancelarCore } from '@/lib/appointments/alteracoes'
+import { membroAlcancaAUnidade } from '@/lib/unidades/do-membro'
 
 /**
  * O REPASSE ao desativar um membro (H6, decisão do Heitor, 5ª simulação,
@@ -65,6 +66,8 @@ export interface AgendamentoParaRepassar {
    * Quem realiza o procedimento mas não atende NESTA unidade — e em quais
    * atende (A11 da 8ª: "ninguém livre" não dizia que havia quem atendesse em
    * outra, nem como incluí-la). Não recebe o repasse: a tela diz como marcar.
+   * Só quem tem ESTA unidade entre as suas: o "Atende" só vale nas unidades da
+   * pessoa (o Heitor, 2026-11-23), e marcar fora delas a Equipe recusa.
    */
   emOutraUnidade: { id: string; nome: string; unidades: string[] }[]
   /** Quem atende na unidade e está livre no horário. */
@@ -126,9 +129,9 @@ async function agendamentosDoMembro(admin: Admin, ctx: TenantContext, membroId: 
 
 /** Quem atende (ativo, `provides_services`) na rede, menos o membro que sai. */
 async function quemAtendeNaRede(admin: Admin, tenantId: string, membroId: string) {
-  return ((await ler(admin.from('users').select('id, name, branch_id, atende_em')
+  return ((await ler(admin.from('users').select('id, name, branch_id, outras_unidades, atende_em')
     .eq('tenant_id', tenantId).eq('is_active', true).eq('provides_services', true).neq('id', membroId)
-    .order('name'), 'carregar quem atende')) ?? []) as { id: string; name: string; branch_id: string | null; atende_em: string[] | null }[]
+    .order('name'), 'carregar quem atende')) ?? []) as { id: string; name: string; branch_id: string | null; outras_unidades: string[] | null; atende_em: string[] | null }[]
 }
 
 /** Quem tem o CRM (Ver ou Gerenciar, ou o cargo de sistema Admin da rede), ativo, menos o membro. */
@@ -211,7 +214,7 @@ export async function pendenciasDoMembro(
         id: a.id, quando: a.scheduled_at, duracaoMin: a.duration_min || 60,
         cliente: a.clients?.name ?? 'Cliente', procedimento: a.procedures?.name ?? 'Atendimento', unidade: a.branches?.name ?? '', unidadeId: a.branch_id,
         vencido: fim <= agoraMs,
-        emOutraUnidade: equipe.filter(p => !atendeNaUnidade(p, a.branch_id) && realizaEste(p) && (p.atende_em ?? []).length)
+        emOutraUnidade: equipe.filter(p => !atendeNaUnidade(p, a.branch_id) && realizaEste(p) && (p.atende_em ?? []).length && membroAlcancaAUnidade(p, a.branch_id))
           .map(p => ({ id: p.id, nome: p.name, unidades: (p.atende_em ?? []).map(u => nomeDaUnidade.get(u)).filter((x): x is string => !!x) }))
           .filter(p => p.unidades.length),
         livres:   daUnidade.filter(p => !bate(p)).map(p => ({ id: p.id, nome: p.name })),

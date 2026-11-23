@@ -283,8 +283,8 @@ async function agendamentoDoTenant(
     .eq('id', appointmentId)
     .maybeSingle(), 'buscar o agendamento')
   const rede = (data?.branches as unknown as { tenant_id: string } | null)?.tenant_id
-  // A profissional que ATENDE na unidade alcança o agendamento DELA lá (§11,
-  // o "Atende" por unidade): o plano da avaliação que ela faz na outra unidade.
+  // O agendamento ao alcance (`alcancaOAgendamento`: a abrangência, §11; o
+  // "Atende" só vale nas unidades da pessoa, o Heitor, 2026-11-23).
   if (!data || rede !== ctx.tenantId || !alcancaOAgendamento(ctx, data.branch_id as string, data.professional_id as string | null)) return null
   return {
     id: data.id as string, status: data.status as string, branch_id: data.branch_id as string, client_id: data.client_id as string,

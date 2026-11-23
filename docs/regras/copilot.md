@@ -289,6 +289,16 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   dinheiro da aba, como a tela (SM4). Os `lancamentos` seguem o
   módulo Financeiro (a tela do Financeiro). Prova:
   `tests/copilot-dinheiro-pelas-abas.test.ts`.
+  **Financeiro é uma coisa, vendas é outra** (o Heitor, 2026-11-23): a aba
+  `financeiro` só vale com o Financeiro em Ver — marcada sem ele, a recusa diz
+  "pede o Financeiro em Ver" e as "Abas liberadas" só listam as que valem
+  (`abasQueValem`). Na `overview` sem o Financeiro (`veOCaixaNosRelatorios`)
+  não saem o faturamento (e o anterior), o a receber, as despesas, o insumo
+  consumido, as taxas da maquininha, as comissões lançadas, o lucro nem a
+  margem, e nem se leem; ficam os atendimentos, o aproveitamento, o ticket,
+  os clientes que pagaram, os novos clientes e a receita de serviços, e o
+  `semOFinanceiro` diz ao modelo por quê. Prova:
+  `tests/relatorios-financeiro-pede-o-financeiro.test.ts`.
 - **O cartão pode trazer ESCOLHAS no lugar do "Confirmar"** (r2-cli-01, o
   Heitor em 2026-11-03: "no Copilot, o cartão de confirmação mostra a mesma
   pergunta"): `ResumoDaAcao.escolhas` (`{ chave, rotulo }[]`) vira um botão por

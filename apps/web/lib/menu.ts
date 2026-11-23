@@ -70,7 +70,7 @@ const has = (p: ResolvedPermissions, m: keyof ResolvedPermissions) => p[m] !== '
  */
 const rotuloDaAgenda = (p: ResolvedPermissions) => (has(p, 'agenda') ? 'Agenda' : 'Minha agenda')
 const veAgenda = (p: ResolvedPermissions, v?: DaPessoa) => has(p, 'agenda') || !!v?.atende
-/** As Minhas comissões: a vista pessoal de quem atende (ou tem comissão de venda) sem o Financeiro. */
+/** As Minhas comissões: a vista pessoal de quem atende (ou tem comissão no nome dela) sem o Financeiro. */
 const veMinhasComissoes = (p: ResolvedPermissions, v?: DaPessoa) => !has(p, 'financial') && !!(v?.atende || v?.comissaoDeVenda)
 
 /**

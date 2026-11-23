@@ -64,6 +64,7 @@ const TABS: { key: Tab; label: string }[] = [
 /** Painel comercial (lib/metrics/painel-comercial): o tipo mora lá. */
 export type { DadosComerciais } from '@/lib/metrics/painel-comercial'
 import type { DadosComerciais } from '@/lib/metrics/painel-comercial'
+import type { CartaoDaVisaoGeral } from '@/lib/metrics/visao-geral'
 
 export interface ReportsBiProps {
   /** 'Rede' no portal da rede, nome da unidade no portal dela. */
@@ -106,6 +107,13 @@ export interface ReportsBiProps {
   quemAtende?: { total: number; nomes: string[] }
   /** Vê a comissão da equipe (financeiro com escopo de todos). Sem, a aba Profissionais não a mostra. */
   verComissoes: boolean
+  /**
+   * Vê a entrada, a saída e o lucro: o Financeiro em Ver (o Heitor, 2026-11-23:
+   * "financeiro é uma coisa, vendas é outra"). Sem ele, o valor nem chega aqui.
+   */
+  veCaixa: boolean
+  /** Os cartões da Visão geral que a permissão vê (`cartoesDaVisaoGeral`, lib/metrics/visao-geral). */
+  cartoes: CartaoDaVisaoGeral[]
   /** A rede tem UMA unidade ativa (D-19): "Faturamento por Unidade" e "Saúde do Estoque por Unidade" somem. */
   umaUnidade?: boolean
   installments: LinhaParcela[]
@@ -364,6 +372,8 @@ const porValor = <T extends { value: number }>(a: T, b: T) => b.value - a.value
 function TabOverview(p: ReportsBiProps) {
   const { relatorio: r, core, corePrev, branches, evolutionData, granularity } = p
   const nomeDaUnidade = nomesDasUnidades(branches)
+  // A entrada, a saída e o lucro só com o Financeiro (lib/metrics/visao-geral).
+  const ve = (c: CartaoDaVisaoGeral) => p.cartoes.includes(c)
 
   const revenue      = core.revenueCash
   const prevRevenue  = corePrev.revenueCash
@@ -398,14 +408,13 @@ function TabOverview(p: ReportsBiProps) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* KPIs */}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <KpiCard label="Faturamento"    value={revenue}           format="brl" delta={pctDelta(revenue, prevRevenue)}           showDelta hero dica={DEFINICOES.receita} />
-        {<>
-          {/* A24 da 10ª: o cartão é o caixa; o gráfico e o lucro usam o "Custo do lucro". */}
-          <KpiCard label="Despesas pagas (caixa)" value={expenses} format="brl" accent="var(--danger)" delta={pctDelta(expenses, prevExpenses)}   showDelta dica={DEFINICOES.despesa}
-            sobre={<span data-base-das-despesas>Com a compra de estoque e o pagamento das comissões; o lucro e o gráfico usam o Custo do lucro.</span>} />
-          <KpiCard label="Lucro"          value={profit}            format="brl" accent={profit >= 0 ? 'var(--success)' : 'var(--danger)'} delta={pctDelta(profit, prevProfit)}     showDelta />
-        </>}
-        <KpiCard label="Atendimentos"   value={core.appointmentsCompleted} format="int" delta={pctDelta(core.appointmentsCompleted, corePrev.appointmentsCompleted)} showDelta dica={DEFINICOES.atendimentos} />
+        {ve('faturamento') && <KpiCard label="Faturamento"    value={revenue}           format="brl" delta={pctDelta(revenue, prevRevenue)}           showDelta hero dica={DEFINICOES.receita} />}
+        {/* A24 da 10ª: o cartão é o caixa; o gráfico e o lucro usam o "Custo do lucro". */}
+        {ve('despesas') && <KpiCard label="Despesas pagas (caixa)" value={expenses} format="brl" accent="var(--danger)" delta={pctDelta(expenses, prevExpenses)}   showDelta dica={DEFINICOES.despesa}
+          sobre={<span data-base-das-despesas>Com a compra de estoque e o pagamento das comissões; o lucro e o gráfico usam o Custo do lucro.</span>} />}
+        {ve('lucro') && <KpiCard label="Lucro"          value={profit}            format="brl" accent={profit >= 0 ? 'var(--success)' : 'var(--danger)'} delta={pctDelta(profit, prevProfit)}     showDelta />}
+        {/* Sem o Financeiro, o primeiro cartão é o destaque (hierarquia por preenchimento). */}
+        <KpiCard label="Atendimentos"   value={core.appointmentsCompleted} format="int" delta={pctDelta(core.appointmentsCompleted, corePrev.appointmentsCompleted)} showDelta hero={!ve('faturamento')} dica={DEFINICOES.atendimentos} />
         {/* "Novos clientes" só na rede (o Heitor, 18/11): numa unidade o número não existe (nulo). */}
         {core.newClients !== null && <KpiCard label="Novos Clientes" value={core.newClients} format="int" delta={pctDelta(core.newClients, corePrev.newClients ?? 0)} showDelta />}
         {/* Sem delta: o ticket do período anterior não é carregado. */}
@@ -413,10 +422,12 @@ function TabOverview(p: ReportsBiProps) {
       </div>
       {/* Charts grid */}
       <div className="rg-2" style={{ gap: 16 }}>
+        {ve('evolucao') && (
         <SCard title="Evolução do Período" style={{ gridColumn: '1 / -1' }}>
           <EvolutionChart data={evolutionData} monthLabel={p.periodLabel} granularity={granularity} />
         </SCard>
-        {!p.umaUnidade && (
+        )}
+        {!p.umaUnidade && ve('faturamentoPorUnidade') && (
         <SCard title="Faturamento por Unidade">
           <HBarChart data={byBranch} />
         </SCard>
@@ -429,9 +440,11 @@ function TabOverview(p: ReportsBiProps) {
           <HBarChart data={topProfs} color={CHART_COLORS[1]} />
           <NotasDoTop5 notas={notasDoTop5(topProfs.map(x => x.name), p.semReceita?.porProfissional)} />
         </SCard>
+        {ve('formaDePagamento') && (
         <SCard title="Forma de Pagamento">
           <DonutChart data={byPayment} />
         </SCard>
+        )}
         <SCard title="Status dos agendamentos do período" dica={DEFINICOES.statusDoPeriodo}>
           <DonutChart
             data={byStatus}
@@ -661,8 +674,11 @@ function TabVendas(p: ReportsBiProps) {
         <KpiCard label="Total vendido" value={resumo.geral.total} hero detalhe={vendasNoPlural(resumo.geral.quantidade)}
           rotuloDoSobre="Como o Total vendido se liga ao caixa" sobre={
             <span data-ponte-vendas-caixa>
-              O Total vendido é a venda, no dia do primeiro pagamento dela (o que não foi pago não é venda); o caixa do período é o dinheiro, no dia em que entrou:{' '}
-              <strong style={{ color: 'var(--text)' }}>{fmtBRLFull(p.core.revenueCash)}</strong> (Financeiro). A diferença é a regra: o crédito
+              O Total vendido é a venda, no dia do primeiro pagamento dela (o que não foi pago não é venda); o caixa do período é o dinheiro, no dia em que entrou
+              {/* O valor do caixa só com o Financeiro (o Heitor, 23/11: "financeiro é uma coisa, vendas é outra"). */}
+              {p.veCaixa
+                ? <>:{' '}<strong style={{ color: 'var(--text)' }}>{fmtBRLFull(p.core.revenueCash)}</strong> (Financeiro).</>
+                : <> (no Financeiro, que pede o Financeiro em Ver).</>}{' '}A diferença é a regra: o crédito
               interno vendido entra no caixa e não no Total vendido (ele aparece na lista, com a comanda; a venda é o que for pago com ele, quando a
               cliente usar); o pacote, o pré-pago e o plano parcelados entram aqui
               inteiros, no dia da primeira parcela paga, e no caixa só o que já foi recebido; a sessão de pacote, de plano e a unidade pré-paga não são venda de novo;

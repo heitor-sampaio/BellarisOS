@@ -38,15 +38,36 @@ export function atendeQueGrava(args: {
   pedido: string[]; antes: string[]; ativas: string[]
   /** As unidades de quem edita (EQ1a: podem ser várias); null = a rede inteira. */
   unidadeDeQuemEdita: string | string[] | null
+  /**
+   * As unidades que a PESSOA terá (null = a rede inteira). A marca numa
+   * unidade desativada fora delas sai: a tela não a mostra, e o "Atende" só
+   * vale nas unidades da pessoa (o Heitor, 2026-11-23). Sem isto, fica.
+   */
+  unidadesDaPessoa?: string[] | null
 }): string[] {
   const ativas = new Set(args.ativas)
   const pedido = args.pedido.filter(u => ativas.has(u))
-  const inativas = args.antes.filter(u => !ativas.has(u))
+  const daPessoa = (u: string) => !args.unidadesDaPessoa || args.unidadesDaPessoa.includes(u)
+  const inativas = args.antes.filter(u => !ativas.has(u) && daPessoa(u))
   if (args.unidadeDeQuemEdita === null) return [...new Set([...inativas, ...pedido])].sort()
   const minhas = new Set(typeof args.unidadeDeQuemEdita === 'string' ? [args.unidadeDeQuemEdita] : args.unidadeDeQuemEdita)
   const fora = args.antes.filter(u => !minhas.has(u))
   return [...new Set([...fora, ...pedido.filter(u => minhas.has(u))])].sort()
 }
+
+/**
+ * O "Atende" só vale nas unidades DA PESSOA (o Heitor, 2026-11-23: "uma
+ * pessoa só pode atender nas unidades que faz parte, isso é obvio"). Devolve
+ * as marcas FORA delas — vazio quando cabe. `unidades` nulo = "A rede
+ * inteira": qualquer unidade da rede cabe.
+ */
+export function atendeForaDasUnidades(atende: readonly string[], unidades: readonly string[] | null): string[] {
+  if (unidades === null) return []
+  return atende.filter(u => !unidades.includes(u))
+}
+
+/** A recusa de quem marca o "Atende" fora das unidades da pessoa. */
+export const ATENDE_SO_NAS_UNIDADES_DA_PESSOA = 'O “Atende” só vale nas unidades da pessoa.'
 
 /**
  * O selo "Atende" da linha da Equipe (A24 da 20ª simulação; princípio 3): o

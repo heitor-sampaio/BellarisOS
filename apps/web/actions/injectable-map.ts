@@ -26,6 +26,11 @@ import { ler, lerTodas, mensagemDoErro } from '@/lib/db'
  * E as APLICAÇÕES, que são outra coisa: cópia congelada do que foi aplicado num
  * atendimento, documento de prontuário, nunca reescrita. Por isso registrar
  * aplicação exige cliente, mesmo que planejar não exija.
+ *
+ * Quem grava (criar, salvar, renomear, ligar a cliente, registrar a aplicação)
+ * é quem realiza o atendimento: o Atendimento em Gerenciar (o Heitor,
+ * 2026-11-23: "o mapa de injetaveis é pra quem realiza atendimento"). Ver os
+ * planejamentos e as aplicações é do Prontuário em Ver — o mapa é clínico.
  */
 
 export interface AplicacaoInjetavel {
@@ -97,7 +102,7 @@ export async function criarPlanejamentoInjetavel({
   branchId?: string | null
 }): Promise<{ id?: string; error?: string; reaproveitado?: boolean }> {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'medical_records', 'MANAGE')
+  assertPermission(ctx, 'atendimento', 'MANAGE')
   assertRecurso(ctx, 'injetaveis')
   const admin = createAdminClient()
 
@@ -242,7 +247,7 @@ export async function salvarPlanejamentoInjetavel(
   slug: string,
 ): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'medical_records', 'MANAGE')
+  assertPermission(ctx, 'atendimento', 'MANAGE')
   assertRecurso(ctx, 'injetaveis')
   const admin = createAdminClient()
 
@@ -270,7 +275,7 @@ export async function renomearPlanejamentoInjetavel(
   nome: string,
 ): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'medical_records', 'MANAGE')
+  assertPermission(ctx, 'atendimento', 'MANAGE')
   assertRecurso(ctx, 'injetaveis')
   const admin = createAdminClient()
 
@@ -295,7 +300,7 @@ export async function vincularClienteAoPlanejamento(
   clientId: string,
 ): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'medical_records', 'MANAGE')
+  assertPermission(ctx, 'atendimento', 'MANAGE')
   assertRecurso(ctx, 'injetaveis')
   const admin = createAdminClient()
 
@@ -337,7 +342,7 @@ export async function registrarAplicacao(
   slug: string,
 ): Promise<{ error?: string; id?: string; atualizada?: boolean }> {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'medical_records', 'MANAGE')
+  assertPermission(ctx, 'atendimento', 'MANAGE')
   assertRecurso(ctx, 'injetaveis')
   const admin = createAdminClient()
 

@@ -135,7 +135,7 @@ export async function salvarFichaDoProcedimento(params: {
       .maybeSingle(), 'buscar o agendamento')
 
     const apptBranch = appt?.branches as unknown as { tenant_id: string } | null
-    // O DELA numa unidade em que atende também (decisão 2 da 8ª).
+    // A unidade do agendamento ao alcance (`alcancaOAgendamento`: a abrangência).
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId || !alcancaOAgendamento(ctx, appt.branch_id as string, appt.professional_id as string | null)) {
       return { error: 'Agendamento não encontrado.' }
     }

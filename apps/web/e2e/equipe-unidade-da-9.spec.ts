@@ -66,7 +66,9 @@ test.beforeAll(async () => {
   menino = b!.id
   cliente = await rede.criarCliente('Rosana')
   dona = await criarMembro(`eud${marca}`, { tenant: rede.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
-  priscila = await criarMembro(`eup${marca}`, { tenant: rede.tenantId, branchId: moinhos, rotulo: 'Priscila', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }] })
+  // A Priscila é das duas unidades (o "Atende" só vale nas unidades dela — o
+  // Heitor, 2026-11-23; era só da Moinhos, marcada também na Menino Deus).
+  priscila = await criarMembro(`eup${marca}`, { tenant: rede.tenantId, branchId: moinhos, outrasUnidades: [menino], rotulo: 'Priscila', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }] })
   michele = await criarMembro(`eum${marca}`, { tenant: rede.tenantId, branchId: moinhos, rotulo: 'Michele', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }] })
   gerente = await criarMembro(`eug${marca}`, { tenant: rede.tenantId, branchId: moinhos, rotulo: 'Gerente', permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }] })
   // A Priscila atende nas duas; a Michele, só na Moinhos.
@@ -90,7 +92,7 @@ test('D3: desmarcar a Moinhos com agendamentos ali pergunta e oferece o repasse 
   // O servidor também pergunta: sem a resposta, o "Atende" não muda.
   await como(browser, dona!.estado, async p => {
     const r = await chamarAcaoComFormulario(p, 'actions/team.ts', 'updateTeamMember', '/admin/team', [undefined], {
-      userId: priscila!.userId, roleId: priscila!.roleId, scope: 'branch', branchId: moinhos,
+      userId: priscila!.userId, roleId: priscila!.roleId,
       redirectPath: '/admin/team', _atendeEm: '1', atendeEm: menino,
     })
     expect(r.texto, 'devolve os agendamentos para repassar').toContain('repasseDoAtende')
@@ -101,6 +103,8 @@ test('D3: desmarcar a Moinhos com agendamentos ali pergunta e oferece o repasse 
     await p.goto('/admin/team')
     await p.getByTitle(`Editar ${nomeDaPriscila}`).click()
     const modal = p.getByRole('dialog')
+    // Atende em todas as unidades dela: a lista abre por "Escolher em quais unidades atende".
+    await modal.locator('[data-escolher-onde-atende]').click()
     await modal.getByRole('group', { name: 'Atende clientes em' }).getByRole('checkbox', { name: nomeMoinhos }).uncheck()
     await modal.getByRole('button', { name: 'Salvar' }).click()
     const repasse = modal.locator('[data-repasse-do-atende]')

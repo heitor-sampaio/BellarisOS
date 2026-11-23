@@ -57,8 +57,9 @@ test('A14: o Salvar com o Relatórios sem aba rola até ele e o destaca', async 
     await expect(relatorios).toBeInViewport()
     await expect(p.getByText('Acessos salvos.')).toHaveCount(0)
 
-    // Escolhido, o destaque sai.
-    await relatorios.getByRole('button', { name: 'Financeiro', exact: true }).click()
+    // Escolhido, o destaque sai. A aba Vendas: a Financeiro pede o Financeiro, que
+    // este cargo não tem (o Heitor, 23/11: "financeiro é uma coisa, vendas é outra").
+    await relatorios.getByRole('button', { name: 'Vendas', exact: true }).click()
     await expect(relatorios).not.toHaveAttribute('data-destacado', '1')
   })
 })

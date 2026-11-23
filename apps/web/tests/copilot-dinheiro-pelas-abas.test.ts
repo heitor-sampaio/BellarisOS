@@ -7,11 +7,15 @@ import { FUNCIONALIDADES } from '@estetica-os/nucleo/lib/planos/recursos'
 
 /**
  * O dinheiro de Relatórios segue as ABAS do cargo, e o Copilot também
- * (decisão do Heitor, 2026-11-01: "concordo" — "Quem não tem Financeiro vê o
- * dinheiro nos Relatórios e no Copilot pela aba"). A ferramenta `indicadores`
- * é a única do Copilot com o dinheiro dos Relatórios, e confere a aba
- * (`podeVerRelatorio`) antes de ler qualquer número; os lançamentos seguem o
- * módulo Financeiro, como a tela do Financeiro.
+ * (decisão do Heitor, 2026-11-01). A ferramenta `indicadores` é a única do
+ * Copilot com o dinheiro dos Relatórios, e confere a aba (`podeVerRelatorio`)
+ * antes de ler qualquer número; os lançamentos seguem o módulo Financeiro,
+ * como a tela do Financeiro.
+ *
+ * Mudou em 2026-11-23 (o Heitor: "financeiro é uma coisa, vendas é outra.
+ * financeiro ve entrada/saida/lucro, tudo. vendas é sobre performance de
+ * vendas."): a aba Financeiro só vale com o Financeiro em Ver — sem ele, a aba
+ * marcada não abre, nem na tela nem no Copilot.
  */
 
 const TODAS = FUNCIONALIDADES.map(f => f.chave)
@@ -38,10 +42,12 @@ describe('o dinheiro do Copilot segue as abas de Relatórios', () => {
     }
   })
 
-  it('com a aba e SEM o Financeiro, o Copilot lê o dinheiro dela (como a tela)', () => {
+  it('com as abas e SEM o Financeiro, o Copilot tem os indicadores, mas a aba Financeiro pede o Financeiro (como a tela)', async () => {
     const contadora = ctx({ reports: 'VIEW' }, ['overview', 'financeiro'])
     expect(nomes(contadora)).toContain('indicadores')
     expect(nomes(contadora)).not.toContain('lancamentos')
+    const r = await executar(contadora, 'financeiro')
+    expect(r.dados).toEqual({ erro: expect.stringContaining('pede o Financeiro') })
   })
 
   it('com o Financeiro e SEM Relatórios, os lançamentos (a tela do Financeiro), não os indicadores', () => {

@@ -27,7 +27,7 @@ type Aba = 'tratamento' | 'injetaveis'
 export function PainelPlanejamento({
   clientId, branchId, slug, appointmentId = null,
   procedures, availableProducts = [],
-  podeEditar, podeMontarPlano, podeAnotarNoPlano = true, podeVerInjetaveis, podeVerPlanos = true, podeReceber = false, navegarPorUrl = false, planoNaTela = false,
+  podeEditarInjetaveis, podeMontarPlano, podeAnotarNoPlano = true, podeVerInjetaveis, podeVerPlanos = true, podeReceber = false, navegarPorUrl = false, planoNaTela = false,
   abaInicial = 'tratamento', onIrAoTratamento, faltamAsDores = false, unidadesDoPlano = [],
 }: {
   clientId:       string
@@ -36,13 +36,18 @@ export function PainelPlanejamento({
   appointmentId?: string | null
   procedures:     TreatmentProcedure[]
   availableProducts?: AvailableProduct[]
-  /** O mapa de injetáveis (prontuário): o Prontuário em Gerenciar. */
-  podeEditar:     boolean
   /**
-   * Monta o plano de tratamento: quem ATENDE na unidade (PT2, 2026-11-14 —
-   * "nem precisa de permissão pra isso"). Sem ele, vale `podeEditar`.
+   * Cria, edita e registra a aplicação no mapa de injetáveis: quem realiza o
+   * atendimento — o Atendimento em Gerenciar (o Heitor, 2026-11-23: "o mapa de
+   * injetaveis é pra quem realiza atendimento"). Ver é do Prontuário em Ver
+   * (`podeVerInjetaveis`).
    */
-  podeMontarPlano?: boolean
+  podeEditarInjetaveis: boolean
+  /**
+   * Monta o plano de tratamento: o Atendimento em Gerenciar com a unidade do
+   * plano ao alcance (`montaPlano`, UM3).
+   */
+  podeMontarPlano:  boolean
   /** A anotação clínica do plano: o Prontuário em Gerenciar (PT2). */
   podeAnotarNoPlano?: boolean
   /**
@@ -130,7 +135,7 @@ export function PainelPlanejamento({
           appointmentId={appointmentId}
           procedures={procedures}
           availableProducts={availableProducts}
-          podeEditar={podeMontarPlano ?? podeEditar}
+          podeEditar={podeMontarPlano}
           podeAnotar={podeAnotarNoPlano}
           podeReceber={podeReceber}
           abertoId={aberto}
@@ -147,7 +152,7 @@ export function PainelPlanejamento({
           slug={slug}
           appointmentId={appointmentId}
           produtos={produtosInjetaveis}
-          podeEditar={podeEditar}
+          podeEditar={podeEditarInjetaveis}
           abertoId={aberto}
           onAbrir={abrir}
         />

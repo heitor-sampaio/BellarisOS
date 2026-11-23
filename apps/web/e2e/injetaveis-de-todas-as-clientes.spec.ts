@@ -8,7 +8,8 @@ import { chamarAcao } from './apoio/acao-direta'
  * Os mapas de injetáveis sem o "só os meus" (SM1, o Heitor, 2026-11-23): quem
  * tem o Prontuário vê, na lista de Injetáveis e pelo id, os mapas de TODAS as
  * clientes da unidade ao alcance — também os de cliente de outra profissional
- * e os avulsos que outra pessoa mexeu —; em Gerenciar, renomeia.
+ * e os avulsos que outra pessoa mexeu —; com o Atendimento em Gerenciar,
+ * renomeia (o Heitor, 2026-11-23: injetáveis = quem realiza atendimento).
  */
 
 const marca = Date.now().toString(36)
@@ -31,6 +32,7 @@ test.beforeAll(async () => {
     permissoes: [
       { modulo: 'medical_records', nivel: 'MANAGE' },
       { modulo: 'agenda', nivel: 'VIEW' },
+      { modulo: 'atendimento', nivel: 'MANAGE' },
     ],
   })
   const clienteDela  = await rede.criarCliente('Cliente dela')
@@ -89,5 +91,5 @@ test('pelo id: abre e renomeia o mapa de cliente de outra profissional', async (
     await chamarAcao(p, 'actions/injectable-map.ts', 'renomearPlanejamentoInjetavel', tela, [mapas.deOutra.id, novoNome])
   })
   const { data } = await db().from('injectable_maps').select('name').eq('id', mapas.deOutra.id).single<{ name: string }>()
-  expect(data!.name, 'o Prontuário em Gerenciar renomeia').toBe(novoNome)
+  expect(data!.name, 'o Atendimento em Gerenciar renomeia').toBe(novoNome)
 })

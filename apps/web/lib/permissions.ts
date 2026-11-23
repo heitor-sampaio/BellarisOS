@@ -164,6 +164,34 @@ export const REPORT_TAB_HINTS: Record<ReportTab, string> = {
 }
 
 /**
+ * A aba de Relatórios que pede um MÓDULO além de ser marcada (o Heitor,
+ * 2026-11-23: "financeiro é uma coisa, vendas é outra. financeiro ve
+ * entrada/saida/lucro, tudo. vendas é sobre performance de vendas."): a
+ * Financeiro (entradas, saídas, lucro) só vale com o Financeiro em Ver. A
+ * Vendas e as outras valem só pela marca. É a régua de `podeVerRelatorio` e da
+ * tela de Cargos (a caixa desligada, com o motivo à vista — princípio 3).
+ */
+export const MODULO_DA_ABA: Partial<Record<ReportTab, { modulo: AppModule; motivo: string }>> = {
+  financeiro: { modulo: 'financial', motivo: 'pede o Financeiro' },
+}
+
+/** A aba marcada vale com estes níveis? */
+export function abaDeRelatorioVale(tab: ReportTab, niveis: Partial<Record<AppModule, PermissionLevel>>): boolean {
+  const pede = MODULO_DA_ABA[tab]
+  return !pede || hasLevel(niveis[pede.modulo], 'VIEW')
+}
+
+/** As abas marcadas que valem com estes níveis (as outras não abrem nada). */
+export function abasQueValem(tabs: readonly ReportTab[], niveis: Partial<Record<AppModule, PermissionLevel>>): ReportTab[] {
+  return tabs.filter(t => abaDeRelatorioVale(t, niveis))
+}
+
+/** Por que a aba não vale com estes níveis ("pede o Financeiro"); nulo quando vale. */
+export function motivoDaAbaFechada(tab: ReportTab, niveis: Partial<Record<AppModule, PermissionLevel>>): string | null {
+  return abaDeRelatorioVale(tab, niveis) ? null : MODULO_DA_ABA[tab]!.motivo
+}
+
+/**
  * Abas liberadas para o cargo. Sem linha nenhuma, sem relatório: a omissão fecha porque a decisão de
  * produto foi começar fechado e abrir aba por aba (2026-09-18).
  */

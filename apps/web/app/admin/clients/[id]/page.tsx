@@ -545,6 +545,8 @@ export default async function AdminClientProfilePage({
         // UM3: monta o plano quem tem o Atendimento em Gerenciar na unidade;
         // sem a unidade escolhida, o Atendimento em Gerenciar basta, e a gravação confere.
         podeMontarPlano={montaPlano(ctx, unidadeDoPlano?.id ?? null)}
+        // Os injetáveis são de quem realiza o atendimento (o Heitor, 2026-11-23).
+        podeEditarInjetaveis={can(ctx, 'atendimento', 'MANAGE')}
         // O plano novo nasce na unidade escolhida (com duas ou mais, a ficha pergunta).
         unidadeDoPlano={unidadeDoPlano?.id ?? ''}
         unidadesDoPlano={perguntaAUnidade ? unidadesAtivas.map(u => ({ id: u.id, name: u.name })) : []}

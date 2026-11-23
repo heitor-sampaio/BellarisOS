@@ -838,14 +838,13 @@ auditoria das regras, pergunta 8: "só pela conta admin"; antes, H7 de
   dois portais). O `/admin/settings` de quem não tem “A rede inteira” já levava à
   unidade com o aviso do portal da rede (J-29) — o aviso some da URL depois de
   mostrado. Prova: `e2e/configuracoes-atritos-da-12.spec.ts` ("A11").
-- **Quem ATENDE na outra unidade é levado à própria agenda** (A20 da 14ª,
-  F73; princípio 3): a Bianca, fixa na Savassi e marcada para atender na
-  Pampulha, abria `/pampulha/agenda` e lia "Você não tem acesso a essa
-  unidade". Agora o layout de `[slug]` a leva a `/<a dela>/agenda` com
-  "Os seus atendimentos nessa unidade estão na sua agenda, aqui." (a chave
-  `atende-em-outra-unidade`) — é lá que os dela de fora aparecem (§9.1). Quem
-  não atende ali segue com o aviso de sempre. Prova:
-  `e2e/abrangencia-atende-em-outra-unidade-f73.spec.ts`.
+- **Saiu: quem ATENDIA na outra unidade era levado à própria agenda** (A20
+  da 14ª, F73, até 23/11). O "Atende" só vale nas unidades da pessoa (o
+  Heitor, 2026-11-23: "uma pessoa só pode atender nas unidades que faz parte,
+  isso é obvio"): a Equipe recusa marcar a Pampulha no "Atende" da Bianca, que
+  é só da Savassi, e `/pampulha/agenda` é para ela o aviso de sempre ("Essa
+  unidade não está entre as suas."). A chave `atende-em-outra-unidade` saiu.
+  Prova: `e2e/abrangencia-atende-em-outra-unidade-f73.spec.ts`.
 - **O resumo do cargo diz QUAIS abas de Configurações** (A7 da 7ª simulação,
   2026-11-05; princípio 3): sem Configurações em Gerenciar, a pessoa chega à
   tela só pelas abas dos outros módulos, e "O que essa pessoa vai ver" diz
@@ -886,13 +885,28 @@ auditoria das regras, pergunta 8: "só pela conta admin"; antes, H7 de
   (`comissoes.md`). Prova: `tests/resumo-do-cargo-da-11.test.ts`.
   **A 21ª simulação** (A16, A17, A24; `tests/cargos-atritos-da-21.test.ts`):
   o que falta escolher (as abas de Relatórios: "Falta escolher ao menos um
-  relatório em Relatórios…", `textoDoQueFaltaNoCargo`) fica
+  relatório em Relatórios…", `textoDoQueFaltaNoCargo`; conta só as abas que
+  valem — "O eixo das abas", abaixo) fica
   junto do "Salvar acessos" enquanto falta, não só depois do clique
   (`[data-falta-escolher]`; com o clique, vira alerta e a tela rola ao
   módulo); o cartão do cargo recém-salvo diz o que ele abre sem recarregar
   (`acessosDoSalvo`, `resumoDoCargo`, `lib/cargos/acessos-salvos.ts`), e
   voltar ao cargo mostra o salvo; e o resumo com Documentos diz, na dica,
   que vem de Clientes em “Ver” (`documentosNoResumo`).
+- **O eixo das abas de Relatórios: a Financeiro pede o Financeiro** (o
+  Heitor, 2026-11-23: "financeiro é uma coisa, vendas é outra. financeiro ve
+  entrada/saida/lucro, tudo. vendas é sobre performance de vendas."). A aba
+  marcada vale pela marca, menos a Financeiro, que só vale com o módulo
+  Financeiro pelo menos em Ver (`MODULO_DA_ABA`, `abaDeRelatorioVale`,
+  `lib/permissions.ts`; lida por `podeVerRelatorio`). A aba Vendas é
+  independente. Na tela de Cargos, sem o Financeiro em Ver a pílula
+  "Financeiro" de "Relatórios liberados" fica desligada, com o cadeado e
+  "· pede o Financeiro" à vista (`[data-aba-fechada]`); o que se grava, o
+  "falta escolher" e a prévia contam só as abas que valem (`abasQueValem`).
+  ⚠️ Cargo já gravado com só a aba Financeiro e sem o Financeiro: o
+  `buildContext` ainda deixa `reports` em Ver (conta as abas marcadas, não as
+  que valem) — o menu mostra Relatórios e a tela diz "Nenhum relatório
+  liberado". Prova: `tests/relatorios-financeiro-pede-o-financeiro.test.ts`.
 - **O Gerente modelo nasce com Configurações em Gerenciar** (D15 da 6ª
   simulação, 2026-11-04; princípio 1, o padrão sensato é o que a H7
   descreve): sem o módulo, quem tinha o Gerente numa unidade só não chegava à aba
@@ -1134,14 +1148,21 @@ disponiveis"):**
   6" — saiu na auditoria das regras, 2026-11-18). O gatilho
   `trg_atende_na_unidade_nova` (migration `20261123900002`) acrescenta a
   unidade; quem escolheu à mão um subconjunto fica como escolheu. Com mais de uma unidade, "Escolher em
-  quais unidades atende" (fechado por padrão) abre a lista; a marca de antes
-  fora das unidades dela aparece na lista e não some calada.
-- A ABRANGÊNCIA (`users.branch_id`/`outras_unidades`) não muda com o "Atende": marcar a Talita (da
-  Água Verde) no Batel não a põe no Batel. Ela alcança lá só os agendamentos
-  DELA (`alcancaOAgendamento`, `lib/auth.ts`) — ver, a comissão e, com o
-  Atendimento em Gerenciar, iniciar e concluir (UM2; o "Atende" sozinho não dá
-  permissão, UM5) —, e o resto do Batel (agenda, clientes, caixa) continua fora. Quem
-  gere a equipe deixou de precisar dar a rede inteira para alguém cobrir uma unidade (A12).
+  quais unidades atende" (fechado por padrão) abre a lista — só com as
+  unidades DELA.
+- **O "Atende" só vale nas unidades da pessoa** (o Heitor, 2026-11-23: "não
+  faz o menor sentido a ana ter marcado atende na sul e se a sul nao esta entre
+  as unidades dela. uma pessoa só pode atender nas unidades que faz parte, isso
+  é obvio"). A ABRANGÊNCIA (`users.branch_id`/`outras_unidades`) não muda com
+  o "Atende" — é o "Atende" que cabe nela: "A rede inteira" = qualquer unidade
+  da rede; senão, só as dela. A Equipe só oferece essas, e
+  `createTeamMember`/`updateTeamMember` recusam o resto ("O “Atende” só vale
+  nas unidades da pessoa.", `atendeForaDasUnidades`), inclusive a troca de
+  abrangência que deixaria o "Atende" de fora. Para a Talita (da Água Verde)
+  cobrir o Batel, o Batel entra nas unidades dela (EQ1a) — e aí ela o alcança
+  inteiro, como qualquer unidade dela. Saiu o alcance só dos agendamentos DELA
+  numa unidade fora da abrangência (AG-30, de 06/11 a 23/11):
+  `alcancaOAgendamento` (`lib/auth.ts`) é a abrangência, e só.
 - Marca e desmarca quem gere a equipe; quem não tem a rede inteira, só as
   unidades DELA (H7) — as outras aparecem travadas e o servidor as mantém
   (`atendeQueGrava`, `lib/equipe/atende.ts`).

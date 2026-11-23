@@ -27,6 +27,7 @@ import {
 } from '@/lib/metrics/vendas'
 import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
 import { tagsDaAba, tagsDaUrl } from '@/lib/metrics/tags-do-relatorio'
+import { cartoesDaVisaoGeral, veOCaixaNosRelatorios } from '@/lib/metrics/visao-geral'
 
 
 export type ReportsTab    = 'overview' | 'financeiro' | 'vendas' | 'agenda' | 'clientes' | 'procedimentos' | 'profissionais' | 'estoque' | 'comercial'
@@ -85,7 +86,9 @@ export async function ReportsBiSection({
   const ctxDoCargo     = await getTenantContext()
   // A abrangência vale (SM4): só as unidades ao alcance da pessoa.
   if (branchIds.some(id => !alcancaUnidade(ctxDoCargo, id))) throw semAcesso()
-  const abasPermitidas = ctxDoCargo.reportTabs
+  // Só as abas que VALEM: a Financeiro marcada sem o Financeiro em Ver não abre
+  // (o Heitor, 2026-11-23: "financeiro é uma coisa, vendas é outra").
+  const abasPermitidas = ctxDoCargo.reportTabs.filter(t => podeVerRelatorio(ctxDoCargo, t))
   if (abasPermitidas.length === 0) {
     return (
       <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>
@@ -138,7 +141,12 @@ export async function ReportsBiSection({
   const needBatches = tab === 'estoque'
   const needInstall = tab === 'financeiro'
   const needClientes = tab === 'clientes'
-  const comLucro = tab === 'overview' || tab === 'financeiro'
+  // A entrada, a saída e o lucro são do Financeiro (o Heitor, 2026-11-23): sem
+  // ele em Ver, a Visão geral fica sem esses cartões e o valor nem sai daqui
+  // (lib/metrics/visao-geral — a lista de cada cartão).
+  const veCaixa  = veOCaixaNosRelatorios(ctxDoCargo.permissions)
+  const cartoes  = cartoesDaVisaoGeral(ctxDoCargo.permissions)
+  const comLucro = (tab === 'overview' && veCaixa) || tab === 'financeiro'
 
   const [
     relatorio,
@@ -206,10 +214,12 @@ export async function ReportsBiSection({
     // comissões também saem daqui: recontar na tela era a segunda cópia.
     getCoreDosModulos({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: fimDaJanela, recorte, tags }),
     getCoreDosModulos({ tenantId: ctx.tenantId!, branchIds, from: prevStart, to: prevEnd, recorte, tags }),
-    getSeries({
-      tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate,
-      granularity,
-    }),
+    veCaixa
+      ? getSeries({
+          tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate,
+          granularity,
+        })
+      : Promise.resolve([]),
 
     // Ticket médio = o pago pelas clientes ÷ as que pagaram (2026-10-29): a
     // Visão geral, Clientes e Procedimentos mostram o MESMO número.
@@ -246,6 +256,15 @@ export async function ReportsBiSection({
   if (!verComissoes) {
     relatorio.comissoesPorProfissional = []
     for (const nucleo of [core, corePrev]) { nucleo.commissionsOpen = 0; nucleo.commissionsPaid = 0 }
+  }
+
+  // Sem o Financeiro, a entrada e a saída não chegam ao navegador: nem os
+  // cartões da Visão geral, nem a ponte do caixa na aba Vendas.
+  if (!veCaixa) {
+    for (const nucleo of [core, corePrev]) { nucleo.revenueCash = 0; nucleo.revenuePending = 0; nucleo.expensesCash = 0 }
+    relatorio.receitaPorUnidade = []
+    relatorio.receitaPorForma = []
+    relatorio.receitaPorCategoria = []
   }
 
   // Quem atende (D14): o "Profissionais ativos" e as linhas da tabela da aba.
@@ -292,9 +311,9 @@ export async function ReportsBiSection({
   // estorno fora dos dois lados, eixo em `paid_at`, fuso do negócio. O custo
   // é o do LUCRO (2026-10-29): a despesa paga sem a compra de estoque, mais o
   // insumo consumido — a linha do lucro soma o cartão de lucro.
-  const evolutionData: ChartPoint[] = pontosDaEvolucao(seriesData, {
+  const evolutionData: ChartPoint[] = veCaixa ? pontosDaEvolucao(seriesData, {
     granularidade: granularity, de: startDate, ate: endDate,
-  }, seriesDoResultado, fuso)
+  }, seriesDoResultado, fuso) : []
 
   // -- Render --------------------------------------------------------
   return (
@@ -329,6 +348,8 @@ export async function ReportsBiSection({
         ticketMedio={ticket?.total.valor ?? null}
         estoqueNoResultado={{ atual: estoque?.total ?? SEM_ESTOQUE_NO_RESULTADO, anterior: estoqueAnterior?.total ?? SEM_ESTOQUE_NO_RESULTADO }}
         verComissoes={verComissoes}
+        veCaixa={veCaixa}
+        cartoes={cartoes}
         umaUnidade={umaUnidade}
         comercial={comercial}
         vendas={vendas}

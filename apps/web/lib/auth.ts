@@ -12,7 +12,7 @@ import { redeAbreParaCliente, fichasQueAbrem } from '@/lib/clientes/disponibilid
 import { ROTA_DO_SELETOR } from '@/lib/clientes/entrada'
 import { redeBloqueada } from '@/lib/redes/situacao'
 import {
-  resolvePermissions, resolveReportTabs, hasLevel,
+  resolvePermissions, resolveReportTabs, hasLevel, abaDeRelatorioVale, abasQueValem,
   NO_PERMISSIONS, ALL_PERMISSIONS, ALL_REPORT_TABS, MODULOS_SO_DA_ADMIN,
 } from '@/lib/permissions'
 import { semAcesso } from '@/lib/sem-acesso'
@@ -151,6 +151,15 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
     if (fora.length) permissions = { ...permissions, ...Object.fromEntries(fora.map(m => [m, 'NONE'])) }
     const abasFora = abasForaDoPlano(plano)
     reportTabs = reportTabs.filter(t => !abasFora.includes(t))
+    if (reportTabs.length === 0) permissions = { ...permissions, reports: 'NONE' }
+  }
+
+  // A aba que pede outro módulo só vale com ele (a Financeiro pede o
+  // Financeiro — o Heitor, 23/11: "financeiro é uma coisa, vendas é outra"),
+  // depois do corte do plano: o cargo gravado antes da regra com só a aba
+  // Financeiro não abre os Relatórios vazios (A5).
+  if (!isClient) {
+    reportTabs = abasQueValem(reportTabs, permissions)
     if (reportTabs.length === 0) permissions = { ...permissions, reports: 'NONE' }
   }
 
@@ -402,16 +411,21 @@ export function podeVerClinico(ctx: TenantContext): boolean {
  * `reports` sozinho é grosso demais — liberar relatórios ao time comercial
  * entregava junto o faturamento da rede. A aba é escolhida uma a uma na tela de
  * Cargos; aqui só se lê o que ficou gravado.
+ *
+ * A aba Financeiro (entradas, saídas, lucro) pede também o Financeiro em Ver;
+ * a Vendas, não (o Heitor, 2026-11-23: "financeiro é uma coisa, vendas é
+ * outra") — `abaDeRelatorioVale`, a mesma régua da tela de Cargos.
  */
 export function podeVerRelatorio(ctx: TenantContext, tab: ReportTab): boolean {
-  return can(ctx, 'reports', 'VIEW') && ctx.reportTabs.includes(tab)
+  return can(ctx, 'reports', 'VIEW') && ctx.reportTabs.includes(tab) && abaDeRelatorioVale(tab, ctx.permissions)
 }
 
 /**
  * A VISTA PESSOAL (sem o "só os meus", o Heitor, 2026-11-23: "pode tirar, as
  * vistas pessoais resolvem"): quem não tem o módulo vê o que é dela — a Minha
  * agenda (`agenda`) quem ATENDE; as Minhas comissões (`financial`) quem atende
- * ou tem comissão de venda (quem só vende também ganha comissão). Devolve o
+ * ou tem comissão no nome dela (quem só vende também ganha comissão: o percentual
+ * próprio ou a regra da rede para a venda do plano e do produto). Devolve o
  * id dela para o filtro da consulta, ou `null` quando não é vista pessoal
  * (quem tem o módulo vê tudo, nas unidades ao alcance; quem não atende não
  * tem o que é dela).
@@ -455,19 +469,19 @@ export function alcancaUnidade(ctx: Pick<TenantContext, 'branchId' | 'unidades'>
 }
 
 /**
- * O AGENDAMENTO está ao alcance? A unidade dele (`alcancaUnidade`) — ou é da
- * própria pessoa, numa unidade em que ela ATENDE (decisão 2 do Heitor sobre a
- * 8ª simulação, 2026-11-06: o "atende" vira um checklist das unidades). A
- * Talita é da Água Verde e, marcada no Batel, alcança no Batel só os
- * agendamentos DELA: ver, marcar a chegada, iniciar, concluir. A abrangência
- * não cresce — o resto do Batel continua fora.
+ * O AGENDAMENTO está ao alcance? É a unidade dele (`alcancaUnidade`), e só.
+ * O "Atende" só vale nas unidades da pessoa (o Heitor, 2026-11-23: "uma pessoa
+ * só pode atender nas unidades que faz parte, isso é obvio"): saiu o caminho
+ * de quem atendia numa unidade fora da abrangência e chegava aos agendamentos
+ * DELA de lá (AG-30). Fica com o nome, num lugar só, porque toda action do
+ * atendimento confere o agendamento por aqui; a profissional não muda nada.
  */
 export function alcancaOAgendamento(
-  ctx: TenantContext, branchId: string | null | undefined, professionalId: string | null | undefined,
+  ctx: Pick<TenantContext, 'branchId' | 'unidades'>, branchId: string | null | undefined,
+  professionalId?: string | null,
 ): boolean {
-  if (alcancaUnidade(ctx, branchId)) return true
-  return !!branchId && !!ctx.internalUserId && professionalId === ctx.internalUserId
-    && (ctx.atendeEm ?? []).includes(branchId)
+  void professionalId // quem atende não muda o alcance (o AG-30 saiu)
+  return alcancaUnidade(ctx, branchId)
 }
 
 /** `alcancaUnidade` que barra — mesma resposta de quem não tem o módulo. */

@@ -8,7 +8,7 @@ Heitor aprovou (com a resposta dele), um dos sete princípios de produto, ou
 "decisão do Claude". "Atribuída ao Heitor sem a fala" quer dizer que o texto diz
 que a decisão é dele, mas não traz a fala — está nas Perguntas. "Onde" aponta a
 linha do documento; "Antes" lista os números do rascunho que a regra junta.
-É um RASCUNHO para o Heitor revisar. Contagem: 190 regras (Agenda 68, das quais 8 em "Equipe, como aparece na agenda"; Atendimento 21; Plano de tratamento 23; Prontuário 18; Fichas 15; Procedimentos 15; Estoque 30), 33 perguntas e 19 divergências. Dos 440 números do rascunho, 37 ficaram fora do catálogo e 3 são de outra área (ver os apêndices); todos os outros estão num "Antes". A meta era ~180: passou 10, para não cortar decisão de produto. Em 23/11 saíram três (AT-06, PL-21, PT-03: só descreviam o "só os meus", SM1); os números ficam, com a linha "Saiu".
+É um RASCUNHO para o Heitor revisar. Contagem: 190 regras (Agenda 68, das quais 8 em "Equipe, como aparece na agenda"; Atendimento 21; Plano de tratamento 23; Prontuário 18; Fichas 15; Procedimentos 15; Estoque 30), 33 perguntas e 19 divergências. Dos 440 números do rascunho, 37 ficaram fora do catálogo e 3 são de outra área (ver os apêndices); todos os outros estão num "Antes". A meta era ~180: passou 10, para não cortar decisão de produto. Em 23/11 saíram três (AT-06, PL-21, PT-03: só descreviam o "só os meus", SM1) e, no mesmo dia, a AG-30 (o "Atende" só vale nas unidades da pessoa); os números ficam, com a linha "Saiu".
 
 ## Agenda (AG)
 
@@ -165,10 +165,7 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:1195-1201`, `:1206-1208`
 - Antes: AG-134, AG-136
 
-**AG-30.** Marcar o "Atende" numa unidade não muda a abrangência: fora das unidades dela, a pessoa alcança só os agendamentos DELA (ver, marcar a chegada, iniciar, concluir, a evolução, o anexo e a comissão; "Minhas comissões" cobre também essas unidades, com o filtro de unidade). É alcance, não permissão: cada passo continua pedindo o módulo dele (UM5). A agenda, os clientes e o caixa daquela unidade seguem fora.
-- Fonte: decisão do Claude
-- Onde: `docs/regras/atendimento.md:308-317`, `:333-335`
-- Antes: AG-49, AG-52
+**AG-30.** Saiu em 23/11 — o Heitor: "uma pessoa só pode atender nas unidades que faz parte, isso é obvio". O "Atende" cabe na abrangência (AG-61), e ninguém alcança agendamento de unidade fora das suas.
 
 ### Situações e quem faz o quê na agenda
 
@@ -177,7 +174,7 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:109-110`, `:463-472`, `:717`
 - Antes: AG-16, AG-65, AG-82
 
-**AG-32.** Quem tem a Agenda em Gerenciar agenda, confirma, marca a chegada, cancela (o que não está em andamento: esse é a desistência, AT-20), marca a falta, remarca e troca o profissional do agendamento, em todo agendamento das unidades ao alcance (sem o "só os meus", SM1). Quem atende sem a Agenda não faz nada disso: a Minha agenda só mostra (SM2). A janela do agendamento só mostra o que o cargo pode fazer.
+**AG-32.** Quem tem a Agenda em Gerenciar agenda, confirma, marca a chegada, cancela (o que não está em andamento: esse é a desistência, AT-20), marca a falta, remarca e troca o profissional do agendamento, em todo agendamento das unidades ao alcance (sem o "só os meus", SM1; o Heitor, 23/11: cancelar e remarcar o de qualquer pessoa e desfazer o bloqueio de qualquer pessoa, item 4 "ok"; trocar o profissional, item 7 "ok"). Quem atende sem a Agenda não faz nada disso: a Minha agenda só mostra (SM2). A janela do agendamento só mostra o que o cargo pode fazer.
 - Fonte: o Heitor, 2026-10-28: "a profissional (no que é dela) ou quem gerencia a agenda cancela e passa o atendimento" (o "no que é dela" saiu com o "só os meus": o Heitor, 2026-11-23, docs/revisao.md, SM1: "pode tirar, as vistas pessoais resolvem"); agendar, confirmar, chegada, remarcar, cancelar e falta na Agenda: recomendação do Claude aprovada pelo Heitor, 2026-11-23 (docs/revisao.md, "Cada passo do atendimento, um módulo"): "concordo, pode anotar, marcar as questões e ajustar o codigo"
 - Onde: `docs/regras/atendimento.md:479-482`, `:587-595`, `:601-602`, `:634-641`, `:1422-1424`, `:1438-1452`, `docs/revisao.md:455-457`, `docs/revisao.md:1902`
 - Antes: AG-70, AG-83, AG-86, AG-87, AG-104, AG-105
@@ -330,8 +327,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 
 ### Equipe, como aparece na agenda
 
-**AG-61.** Na Equipe, o "Atende" é uma caixa só: marcada, a pessoa atende em todas as unidades dela (com "A rede inteira", nas ativas ao salvar). Com mais de uma unidade, "Escolher em quais unidades atende" (fechado por padrão) abre a lista. A Equipe diz que "Unidade" (o acesso) e "Atende" (onde agenda) são dois controles.
-- Fonte: decisão do Claude (pelo princípio 7, EQ1c)
+**AG-61.** Na Equipe, o "Atende" é uma caixa só: marcada, a pessoa atende em todas as unidades dela (com "A rede inteira", nas ativas ao salvar). Com mais de uma unidade, "Escolher em quais unidades atende" (fechado por padrão) abre a lista, só com as unidades dela. A Equipe diz que "Unidade" (o acesso) e "Atende" (onde agenda) são dois controles. O "Atende" só vale nas unidades da pessoa ("A rede inteira": qualquer unidade da rede): a Equipe não oferece outra, e o servidor recusa ("O “Atende” só vale nas unidades da pessoa."), também quando a troca de unidades deixaria o "Atende" de fora.
+- Fonte: decisão do Claude (pelo princípio 7, EQ1c); só nas unidades da pessoa: o Heitor, 2026-11-23: "uma pessoa só pode atender nas unidades que faz parte, isso é obvio"
 - Onde: `docs/regras/atendimento.md:298-307`, `:631-633`, `docs/revisao.md:1195-1199`, `docs/revisao.md:2055`
 - Antes: AG-48
 
@@ -464,7 +461,7 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 
 ### Depois de concluído
 
-**AT-18.** O atendimento concluído fica bloqueado: a evolução e a ficha de saúde só se leem. Desbloquear ("Editar registro") pede o Prontuário em Gerenciar, e só ele (UM4), e a tela diz isso a quem não pode. O cancelado e a falta dizem o que são, que não houve atendimento e não há registro a editar.
+**AT-18.** O atendimento concluído fica bloqueado: a evolução e a ficha de saúde só se leem. Desbloquear ("Editar registro") pede o Prontuário em Gerenciar, e só ele (UM4; confirmado pelo Heitor em 23/11, item 3: "ok"), e a tela diz isso a quem não pode. O cancelado e a falta dizem o que são, que não houve atendimento e não há registro a editar.
 - Fonte: decisão do Claude; corrigir só com o Prontuário em Gerenciar: recomendação do Claude aprovada pelo Heitor, 2026-11-23 (docs/revisao.md, UM4; na proposta, nenhuma ação pede dois módulos): "concordo, pode anotar, marcar as questões e ajustar o codigo"
 - Onde: `docs/regras/atendimento.md:1425-1431`, `:3681`, `:3689`, `:3851`
 - Antes: AT-42, AT-43, AG-103
@@ -638,7 +635,7 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:2017`, `:2024`
 - Antes: PT-12, PT-13
 
-**PT-08.** A foto clínica entra pela tela do atendimento ("Fotos do atendimento"), ligada a ele e à cliente (também no atendimento em outra unidade em que a pessoa atende). O cartão aparece a quem vê o prontuário, e anexar, a quem escreve nele. A foto diz o momento — Antes, Durante, Depois — e tem um nome editável que só a equipe lê. O histórico do atendimento registra a foto anexada, enviada à cliente, tirada do app e apagada ("Foto clínica apagada por <nome>"), com quem fez.
+**PT-08.** A foto clínica entra pela tela do atendimento ("Fotos do atendimento"), ligada a ele e à cliente (também no atendimento de outra unidade dela). O cartão aparece a quem vê o prontuário, e anexar, a quem escreve nele. A foto diz o momento — Antes, Durante, Depois — e tem um nome editável que só a equipe lê. O histórico do atendimento registra a foto anexada, enviada à cliente, tirada do app e apagada ("Foto clínica apagada por <nome>"), com quem fez.
 - Fonte: decisão do Claude (o rastro de apagar está atribuído ao Heitor sem a fala, a confirmar)
 - Onde: `docs/regras/atendimento.md:1503-1508`, `:1953`, `:2033`, `:2048-2087`
 - Antes: PT-15, PT-16, PT-17, PT-18, AG-201
@@ -653,7 +650,7 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:2528`, `docs/revisao.md:1978`
 - Antes: PT-21
 
-**PT-11.** Corrigir o registro concluído guarda a versão de antes, com quem corrigiu e quando ("Editado por X em dd/mm — ver a anterior"); sem mudança, nada se grava; a versão não se altera nem se apaga. Corrigir pede o Prontuário em Gerenciar, e só ele (UM4); a ficha do cancelado ou da falta não se preenche. O pacote LGPD leva as anotações e as versões anteriores.
+**PT-11.** Corrigir o registro concluído guarda a versão de antes, com quem corrigiu e quando ("Editado por X em dd/mm — ver a anterior"); sem mudança, nada se grava; a versão não se altera nem se apaga. Corrigir pede o Prontuário em Gerenciar, e só ele (UM4; confirmado em 23/11); a ficha do cancelado ou da falta não se preenche. O pacote LGPD leva as anotações e as versões anteriores.
 - Fonte: recomendação do Claude aprovada pelo Heitor, 13/11: "Concordo com tudo"
 - Onde: `docs/regras/atendimento.md:2539`, `:2557`, `docs/revisao.md:1979-1980`
 - Antes: PT-22, PT-23
@@ -670,7 +667,7 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:2112`, `:2127`, `:2162`
 - Antes: PT-25, PT-26
 
-**PT-14.** O mapa se abre e se cria da tela do atendimento ("Mapa de injetáveis", a quem vê o clínico). O campo "Planejador de injetáveis" da ficha abre o planejamento DA CLIENTE (os dela, ou um novo ligado a ela; o vazio que ela já tem se reaproveita) — não há segundo planejador; as opções do campo são os "Produtos do mapa". Sem esse campo na ficha, o mapa é o do Planejamento.
+**PT-14.** O mapa se abre e se cria da tela do atendimento ("Mapa de injetáveis": abre a quem vê o clínico; criar e mexer no mapa é de quem tem o Atendimento em Gerenciar, PT-16). O campo "Planejador de injetáveis" da ficha abre o planejamento DA CLIENTE (os dela, ou um novo ligado a ela; o vazio que ela já tem se reaproveita) — não há segundo planejador; as opções do campo são os "Produtos do mapa". Sem esse campo na ficha, o mapa é o do Planejamento.
 - Fonte: atribuída ao Heitor sem a fala (a confirmar)
 - Onde: `docs/regras/atendimento.md:2120`, `:2140`, `:2170`, `:2177`, `:2234`
 - Antes: PT-27, PT-28, PT-29
@@ -680,8 +677,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:2184-2240`
 - Antes: PT-30, PT-33
 
-**PT-16.** Os mapas seguem o Prontuário: só existem para quem vê o clínico (nem pela URL), nas unidades ao alcance (sem o "só os meus", SM1). O planejamento da ficha tem de ser da cliente do atendimento e da unidade ao alcance; o atendimento usa os planejamentos da cliente, quem quer que os tenha desenhado.
-- Fonte: o Heitor, 2026-11-23 (docs/revisao.md, SM1): "pode tirar, as vistas pessoais resolvem" (o resto é decisão do Claude)
+**PT-16.** Os injetáveis são de quem realiza o atendimento: criar e editar o planejamento (marcar pontos, salvar, renomear, ligar a cliente) e registrar a aplicação pedem o Atendimento em Gerenciar — a permissão, não o "Atende" da Equipe (UM5); ver os planejamentos, os mapas e as aplicações pede o Prontuário em Ver. Sem o Prontuário em Ver, os mapas não existem para a pessoa (nem pela URL); com ele e sem o Atendimento em Gerenciar, ela abre e lê, sem botão de criar, editar ou registrar. Tudo nas unidades ao alcance (sem o "só os meus", SM1). O planejamento da ficha tem de ser da cliente do atendimento e da unidade ao alcance; o atendimento usa os planejamentos da cliente, quem quer que os tenha desenhado. Revê o UM4 de 23/11, que punha os injetáveis no Prontuário em Gerenciar.
+- Fonte: o Heitor, 2026-11-23: "o mapa de injetaveis é pra quem realiza atendimento"; e, à proposta do Claude "criar e editar o plano (planejamento) de injetáveis e registrar a aplicação: Atendimento em Gerenciar; ver os planos e mapas: Prontuário em Ver", respondeu "ok". O "só os meus" saiu pelo SM1 (o Heitor, 2026-11-23, docs/revisao.md: "pode tirar, as vistas pessoais resolvem"); o resto é decisão do Claude
 - Onde: `docs/regras/atendimento.md:2146`, `:2192`, `:2273`, `:2286`
 - Antes: PT-31, PT-37, PT-38
 

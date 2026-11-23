@@ -15,6 +15,9 @@ import { chamarAcao, chamarAcaoComFormulario } from './apoio/acao-direta'
  *   comissão de venda e não tem o Financeiro vê as Minhas comissões.
  * - UM1/UM2: a tela do atendimento abre com o Atendimento em Ver; iniciar é do
  *   Atendimento em Gerenciar. A Agenda sozinha não abre a tela.
+ * - Quem tem comissão no nome dela vê as Minhas comissões (o Heitor, 23/11,
+ *   "vamos pela sua recomendação": a venda do plano e a do produto dão comissão a
+ *   quem vendeu pela regra da REDE, sem o percentual próprio no cadastro).
  */
 
 const marca = `vp${Date.now().toString(36)}`
@@ -29,6 +32,7 @@ let soAgenda: MembroDeTeste     // Agenda em Gerenciar, sem o Atendimento
 let soVer: MembroDeTeste        // Agenda e Atendimento em Ver
 let vendedora: MembroDeTeste    // não atende, tem comissão de venda
 let ninguem: MembroDeTeste      // não atende, sem comissão, sem módulo
+let vendeuPlano: MembroDeTeste  // não atende, sem percentual próprio, com a comissão da venda do plano
 let daAna = ''
 let deOutra = ''
 
@@ -67,6 +71,13 @@ test.beforeAll(async () => {
   })
   vendedora = await criarMembro(`c${marca}`, { ...base, rotulo: 'Comissão de venda', permissoes: [{ modulo: 'financial', nivel: 'NONE' }] })
   ninguem = await criarMembro(`n${marca}`, { ...base, rotulo: 'Sem nada', permissoes: [{ modulo: 'financial', nivel: 'NONE' }] })
+  vendeuPlano = await criarMembro(`p${marca}`, { ...base, rotulo: 'Vendeu um plano', permissoes: [{ modulo: 'financial', nivel: 'NONE' }] })
+  // A comissão da venda do plano, pela regra da rede (sem o percentual dela).
+  const agora = new Date().toISOString()
+  expect((await db().from('commissions').insert({
+    branch_id: rede.branchId, professional_id: vendeuPlano.userId, amount: 30, type: 'FIXED_AMOUNT', rule_value: 30,
+    status: 'OPEN', period_ref: agora.slice(0, 7), released_at: agora,
+  })).error).toBeNull()
   // Antes da primeira requisição dela: o membro em cache já nasce com a comissão.
   expect((await db().from('users').update({ comissao_venda_pct: 3 }).eq('id', vendedora.userId)).error).toBeNull()
 
@@ -84,7 +95,8 @@ test.beforeAll(async () => {
 })
 
 test.afterAll(async () => {
-  for (const m of [dona, ana, soAgenda, soVer, vendedora, ninguem]) await m?.limpar()
+  if (rede) await db().from('commissions').delete().eq('branch_id', rede.branchId)
+  for (const m of [dona, ana, soAgenda, soVer, vendedora, ninguem, vendeuPlano]) await m?.limpar()
   await rede?.limpar()
 })
 
@@ -144,6 +156,14 @@ test('SM2: a comissão de venda abre as Minhas comissões sem o Financeiro; sem 
   await como(browser, ninguem.estado, async p => {
     await p.goto(`/${slug}/financeiro/comissoes`)
     await expect(p.getByText(SEM_ACESSO)).toBeVisible()
+  })
+})
+
+test('quem tem comissão no nome dela (a venda do plano, sem o percentual próprio) vê as Minhas comissões', async ({ browser }) => {
+  await como(browser, vendeuPlano.estado, async p => {
+    await p.goto(`/${slug}/financeiro/comissoes`)
+    await expect(p.getByRole('heading', { name: 'Minhas comissões' })).toBeVisible()
+    await expect(p.getByRole('link', { name: 'Minhas comissões' }), 'e o menu a oferece').toBeVisible()
   })
 })
 

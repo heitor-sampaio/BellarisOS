@@ -131,8 +131,8 @@ export interface TenantContext {
   providesServices: boolean         // atende clientes (profissional) em ALGUMA unidade
   /**
    * As unidades em que atende (o checklist do "Atende", decisão 2 do Heitor
-   * sobre a 8ª simulação). Não é abrangência: numa unidade marcada fora do
-   * alcance ela chega só aos agendamentos DELA (`alcancaOAgendamento`).
+   * sobre a 8ª simulação). Não é abrangência, e cabe nela: o "Atende" só vale
+   * nas unidades da pessoa (o Heitor, 2026-11-23).
    */
   atendeEm?: string[]
   /** Tem comissão de venda: as Minhas comissões abrem para ela, mesmo sem atender (`vistaPessoal`). */

@@ -13,8 +13,14 @@ import { haMinutosHoje } from './apoio/datas'
  * junto. A desativação da Débora não oferecia a Talita para o repasse.
  *
  * Agora o "atende" é por unidade (`users.atende_em`): marcada numa unidade,
- * ela aparece ali como profissional (agenda, agendar, repasse, comissão). A
- * ABRANGÊNCIA não muda: no Batel ela alcança só os agendamentos DELA.
+ * ela aparece ali como profissional (agenda, agendar, repasse, comissão).
+ *
+ * E só nas unidades DELA (o Heitor, 2026-11-23: "não faz o menor sentido a
+ * ana ter marcado atende na sul e se a sul nao esta entre as unidades dela.
+ * uma pessoa só pode atender nas unidades que faz parte, isso é obvio"): saiu
+ * o caminho de quem atendia fora da abrangência e chegava aos agendamentos
+ * DELA de lá (AG-30). Para a Talita cobrir o Batel, o Batel entra nas
+ * unidades dela.
  */
 
 const marca = Date.now().toString(36)
@@ -118,85 +124,98 @@ test('quem já atendia fica marcado no que alcança: a de uma unidade, na dela; 
   expect([...((await atendeEm(rede!.professionalId))?.atende_em ?? [])].sort()).toEqual([rede!.branchId, batel].sort())
 })
 
-test('o "Atende" é um checklist das unidades: a dona marca a Talita no Batel, ela entra no agendar dele e a abrangência fica a da Água Verde', async ({ browser }) => {
+// Revisto em 23/11 (o Heitor: "uma pessoa só pode atender nas unidades que
+// faz parte"): era "a dona marca a Talita no Batel e a abrangência fica a da
+// Água Verde". Agora o Batel entra nas unidades dela, e aí o "Atende" o oferece.
+test('o "Atende" é um checklist das unidades DELA: com o Batel entre as unidades da Talita, a dona a marca lá e ela entra no agendar dele', async ({ browser }) => {
   await como(browser, dona!.estado, async p => {
     expect(await quemAtendeNa(p, batel), 'antes: a Talita não atende no Batel').not.toContain(nomeDaTalita)
   })
-  // EQ1c (Bloco Equipe, 2026-11-14): o "Atende" da tela virou UMA caixa, nas
-  // unidades DELA — marcar uma unidade fora delas saiu da tela. A marca de
-  // antes continua valendo (o agendar, o alcance do agendamento dela), e a
-  // edição a mostra na lista aberta, sem apagá-la ao salvar (princípio 3).
-  expect((await db().from('users').update({ atende_em: [rede!.branchId, batel] }).eq('id', talita!.userId)).error).toBeNull()
+  // O Batel entra nas unidades dela; o "Atende" fica só na Água Verde (o
+  // gatilho leva junto a lista que seguia as unidades: a segunda gravação a
+  // deixa escolhida à mão).
+  expect((await db().from('users').update({ outras_unidades: [batel] }).eq('id', talita!.userId)).error).toBeNull()
+  expect((await db().from('users').update({ atende_em: [rede!.branchId] }).eq('id', talita!.userId)).error).toBeNull()
+  try {
+    await como(browser, dona!.estado, async p => {
+      await p.goto('/admin/team')
+      await p.getByTitle(`Editar ${nomeDaTalita}`).click()
+      const modal = p.getByRole('dialog')
+      const lista = modal.getByRole('group', { name: 'Atende clientes em' })
+      await expect(lista.getByRole('checkbox', { name: nomeA })).toBeChecked()
+      await expect(lista.getByRole('checkbox', { name: nomeBatel })).not.toBeChecked()
+      await lista.getByRole('checkbox', { name: nomeBatel }).check()
+      await modal.getByRole('button', { name: 'Salvar' }).click()
+      await expect(modal).toHaveCount(0)
+    })
+    await expect.poll(async () => [...((await atendeEm(talita!.userId))?.atende_em ?? [])].sort(), { message: 'a dona marcou o Batel' })
+      .toEqual([rede!.branchId, batel].sort())
+    await como(browser, dona!.estado, async p => {
+      expect(await quemAtendeNa(p, batel), 'agora atende no Batel').toContain(nomeDaTalita)
+      expect(await quemAtendeNa(p, rede!.branchId), 'e continua na Água Verde').toContain(nomeDaTalita)
+      // A lista mostra onde ela atende.
+      await p.goto('/admin/team')
+      const esc = (t: string) => t.replace(/[[\]]/g, '\\$&')
+      await expect(p.getByRole('row', { name: new RegExp(esc(nomeDaTalita)) }).locator('[data-atende-em]'))
+        .toHaveText(new RegExp(`^Atende em (${esc(nomeA)} e ${esc(nomeBatel)}|${esc(nomeBatel)} e ${esc(nomeA)})$`))
+    })
+  } finally {
+    // Os casos seguintes contam com a Talita só da Água Verde.
+    expect((await db().from('users').update({ outras_unidades: [] }).eq('id', talita!.userId)).error).toBeNull()
+    expect((await db().from('users').update({ atende_em: [rede!.branchId] }).eq('id', talita!.userId)).error).toBeNull()
+  }
+})
+
+// Revisto em 23/11 (o Heitor: "uma pessoa só pode atender nas unidades que
+// faz parte"): era "a Talita vê e inicia o atendimento DELA no Batel pela
+// Água Verde" (AG-30, saiu). Agora a Equipe não oferece nem grava o Batel no
+// "Atende" de quem não tem o Batel, e o agendamento dela de lá fica fora.
+test('a Talita, só da Água Verde, não atende no Batel: a Equipe não oferece nem grava, e o agendamento dela de lá fica fora do alcance', async ({ browser }) => {
+  expect((await atendeEm(talita!.userId))?.atende_em).toEqual([rede!.branchId])
   await como(browser, dona!.estado, async p => {
+    // A tela: com uma unidade só, o "Atende" é a caixa — sem a lista, sem o Batel.
     await p.goto('/admin/team')
     await p.getByTitle(`Editar ${nomeDaTalita}`).click()
     const modal = p.getByRole('dialog')
-    const lista = modal.getByRole('group', { name: 'Atende clientes em' })
-    await expect(lista.getByRole('checkbox', { name: nomeA })).toBeChecked()
-    await expect(lista.getByRole('checkbox', { name: nomeBatel }), 'a marca de antes aparece').toBeChecked()
-    await modal.getByRole('button', { name: 'Salvar' }).click()
-    await expect(modal).toHaveCount(0)
+    await expect(modal.getByRole('group', { name: 'Atende clientes em' })).toHaveCount(0)
+    await expect(modal.locator('[data-escolher-onde-atende]')).toHaveCount(0)
+    await p.keyboard.press('Escape')
+    // O servidor: o Batel no "Atende" pelo pedido direto é recusado.
+    const r = await chamarAcaoComFormulario(p, 'actions/team.ts', 'updateTeamMember', '/admin/team', [undefined], {
+      userId: talita!.userId, roleId: talita!.roleId, redirectPath: '/admin/team',
+      _atendeEm: '1', atendeEm: `${rede!.branchId},${batel}`, providesServices: 'on',
+    })
+    expect(r.texto, r.texto.slice(0, 300)).toMatch(/só vale nas unidades da pessoa/)
+    // E o "Marcar no Atende" da janela do Desativar, pelo mesmo núcleo.
+    const m = await chamarAcao(p, 'actions/team.ts', 'marcarUnidadeNoAtende', '/admin/team', [talita!.userId, batel, '/admin/team'])
+    expect(m.texto, m.texto.slice(0, 300)).toMatch(/só vale nas unidades da pessoa/)
   })
-  await expect.poll(async () => [...((await atendeEm(talita!.userId))?.atende_em ?? [])].sort(), { message: 'salvar não apagou o Batel' })
-    .toEqual([rede!.branchId, batel].sort())
-  expect((await atendeEm(talita!.userId))?.branch_id, 'a abrangência continua a Água Verde').toBe(rede!.branchId)
-  await como(browser, dona!.estado, async p => {
-    expect(await quemAtendeNa(p, batel), 'agora atende no Batel').toContain(nomeDaTalita)
-    expect(await quemAtendeNa(p, rede!.branchId), 'e continua na Água Verde').toContain(nomeDaTalita)
-    // A lista mostra onde ela atende.
-    await p.goto('/admin/team')
-    const esc = (t: string) => t.replace(/[[\]]/g, '\\$&')
-    await expect(p.getByRole('row', { name: new RegExp(esc(nomeDaTalita)) }).locator('[data-atende-em]'))
-      .toHaveText(new RegExp(`^Atende em (${esc(nomeA)} e ${esc(nomeBatel)}|${esc(nomeBatel)} e ${esc(nomeA)})$`))
-  })
-  // A Equipe do Batel lista a Talita (de fora, atende aqui), sem deixar o Batel editá-la.
-  await como(browser, gerenteDoBatel!.estado, async p => {
-    await p.goto(`/${slugBatel}/team`)
-    const linha = p.getByRole('row', { name: new RegExp(nomeDaTalita.replace(/[[\]]/g, '\\$&')) })
-    await expect(linha).toContainText(`Da unidade ${nomeA}`)
-    await expect(linha.getByTitle(/^Editar /)).toHaveCount(0)
-  })
-})
+  expect((await atendeEm(talita!.userId))?.atende_em, 'o Batel não entrou').toEqual([rede!.branchId])
 
-test('a Talita vê e inicia o atendimento DELA no Batel pela Água Verde, e não alcança o resto do Batel', async ({ browser }) => {
-  expect((await db().from('users').update({ atende_em: [rede!.branchId, batel] }).eq('id', talita!.userId)).error).toBeNull()
-  const dela   = await agendadoNoBatel(`Patricia atu${marca}`, talita!.userId)
-  const daOutra = await agendadoNoBatel(`Bianca atu${marca}`, rede!.professionalId)
+  // Um agendamento dela no Batel (dado de antes da regra): fora do alcance.
+  const dela = await agendadoNoBatel(`Patricia atu${marca}`, talita!.userId)
   await como(browser, talita!.estado, async p => {
-    // A "Minha agenda" (Água Verde) traz o dela no Batel, com a unidade.
-    await p.goto(`/${slugA}/agenda`)
-    const cartao = p.locator('[data-outra-unidade]').filter({ hasText: `Patricia atu${marca}` })
-    await expect(cartao).toBeVisible()
-    await expect(cartao).toContainText(nomeBatel)
-    // A tela do atendimento abre pelo portal dela.
     await p.goto(`/${slugA}/agenda/${dela}`)
-    await expect(p.getByText(`Patricia atu${marca}`).first()).toBeVisible()
-    await expect(p.getByRole('heading', { name: 'Página não encontrada' })).toHaveCount(0)
-    // O de outra profissional no Batel não abre.
-    await p.goto(`/${slugA}/agenda/${daOutra}`)
-    await expect(p.getByText(`Bianca atu${marca}`)).toHaveCount(0)
-    // E a agenda do Batel continua fora do alcance dela.
-    await p.goto(`/${slugBatel}/agenda`)
-    await expect(p).not.toHaveURL(new RegExp(`/${slugBatel}/agenda`))
-    // Inicia o dela pelo id; o de outra é recusado.
-    const ok = await chamarAcao(p, 'actions/appointments.ts', 'startAppointment', `/${slugA}/agenda/${dela}`, [dela, slugA, { inicioAdiantadoConfirmado: true }])
-    expect(ok.texto, 'inicia o dela').not.toMatch(/não encontrado/)
-    const nao = await chamarAcao(p, 'actions/appointments.ts', 'startAppointment', `/${slugA}/agenda/${dela}`, [daOutra, slugA, { inicioAdiantadoConfirmado: true }])
-    expect(nao.texto, 'recusa o de outra').toMatch(/não encontrado|responsável/)
+    await expect(p.getByText(`Patricia atu${marca}`)).toHaveCount(0)
+    const nao = await chamarAcao(p, 'actions/appointments.ts', 'startAppointment', `/${slugA}/agenda/${dela}`, [dela, slugA, { inicioAdiantadoConfirmado: true }])
+    expect(nao.texto, 'recusa o do Batel').toMatch(/não encontrado/)
   })
-  await expect.poll(async () => (await db().from('appointments').select('status').eq('id', dela).single<{ status: string }>()).data?.status).toBe('IN_PROGRESS')
-  expect((await db().from('appointments').select('status').eq('id', daOutra).single<{ status: string }>()).data?.status).toBe('CONFIRMED')
+  expect((await db().from('appointments').select('status').eq('id', dela).single<{ status: string }>()).data?.status).toBe('CONFIRMED')
 })
 
 test('quem tem só uma unidade, com a Equipe em Gerenciar, marca e desmarca só a unidade dela', async ({ browser }) => {
-  // Uma profissional do Batel que a dona também marcou na Água Verde.
+  // Uma profissional do Batel e da Água Verde, marcada nas duas. Revisto em
+  // 23/11 (o Heitor: "uma pessoa só pode atender nas unidades que faz parte"):
+  // era só do Batel, marcada também na Água Verde.
   const nome = `${PREFIXO} Bia atb${marca}`
-  const bia = await criarMembro(`atb${marca}`, { tenant: rede!.tenantId, branchId: batel, rotulo: 'Bia', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }] })
+  const bia = await criarMembro(`atb${marca}`, {
+    tenant: rede!.tenantId, branchId: batel, outrasUnidades: [rede!.branchId], rotulo: 'Bia', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }],
+  })
   try {
     expect((await db().from('users').update({ atende_em: [rede!.branchId, batel] }).eq('id', bia.userId)).error).toBeNull()
     expect((await atendeEm(bia.userId))?.provides_services, 'atender em alguma = provides_services').toBe(true)
     await como(browser, gerenteDoBatel!.estado, async p => {
-      // Desmarca o Batel e tenta marcar só a Água Verde: a Água Verde não é dela.
+      // Desmarca tudo: a Água Verde não está ao alcance da gerente do Batel, e fica.
       const r = await chamarAcaoComFormulario(p, 'actions/team.ts', 'updateTeamMember', `/${slugBatel}/team`, [undefined], {
         userId: bia.userId, roleId: bia.roleId, scope: 'branch', branchId: batel, redirectPath: `/${slugBatel}/team`,
         _atendeEm: '1', atendeEm: '',
@@ -261,8 +280,19 @@ test('a unidade nova: quem é da rede e atende em todas entra nela; sem ninguém
   }
 })
 
+// Revisto em 23/11 (o Heitor: "uma pessoa só pode atender nas unidades que faz
+// parte"): o Batel entra nas unidades da Talita para ela atender lá — pela
+// Equipe, que expira o contexto dela (era só o "Atende", gravado no banco).
 test('a comissão: "Minhas comissões" da Talita, pela Água Verde, cobre também o Batel em que ela atende', async ({ browser }) => {
-  expect((await db().from('users').update({ atende_em: [rede!.branchId, batel] }).eq('id', talita!.userId)).error).toBeNull()
+  await como(browser, dona!.estado, async p => {
+    const r = await chamarAcaoComFormulario(p, 'actions/team.ts', 'updateTeamMember', '/admin/team', [undefined], {
+      userId: talita!.userId, roleId: talita!.roleId, redirectPath: '/admin/team',
+      _unidades: '1', unidades: `${rede!.branchId},${batel}`,
+      _atendeEm: '1', atendeEm: `${rede!.branchId},${batel}`, providesServices: 'on',
+    })
+    expect(r.texto, r.texto.slice(0, 300)).not.toMatch(/só vale nas unidades da pessoa/)
+  })
+  await expect.poll(async () => [...((await atendeEm(talita!.userId))?.atende_em ?? [])].sort()).toEqual([rede!.branchId, batel].sort())
   await como(browser, talita!.estado, async p => {
     await p.goto(`/${slugA}/financeiro/comissoes`)
     await expect(p.getByRole('heading', { name: 'Minhas comissões' })).toBeVisible()

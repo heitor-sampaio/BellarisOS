@@ -14,6 +14,8 @@ import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
 import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
 import { DATA, dinheiro, idsDasUnidades, nomesPorId, procedimentosDaUnidade, resolverUnidade } from '@/lib/copilot/ferramentas/comum'
 import { resultadoDoPeriodo, taxaDeConclusao, taxaDeAproveitamento } from '@/lib/metrics/resultado'
+import { veOCaixaNosRelatorios } from '@/lib/metrics/visao-geral'
+import { abasQueValem, motivoDaAbaFechada } from '@/lib/permissions'
 
 /**
  * PROCEDIMENTOS (o catálogo) e INDICADORES.
@@ -63,7 +65,7 @@ export const indicadores: FerramentaDeLeitura<{
   nome: 'indicadores',
   tipo: 'leitura',
   modulo: 'reports', nivel: 'VIEW',
-  descricao: 'Os números da rede num período (os mesmos dos Relatórios). aba: overview (faturamento, a receber, despesas, atendimentos e o aproveitamento, novos clientes — só na rede inteira, nula numa unidade —, comissões), financeiro (a receita paga por unidade, por forma de pagamento e por categoria — receitaPorUnidade, receitaPorFormaDePagamento, receitaPorCategoria — e a despesa paga por unidade e por categoria — despesaPorUnidade, despesaPorCategoria —, com os totais), vendas (cada venda, com o número da comanda do PDV: atendimento avulso, pacote, pré-pago, plano, produto e crédito interno — o crédito interno fica fora do total —, com o total por tipo), agenda (por status, dia da semana, origem, a taxa de conclusão e o aproveitamento, cada um com o que conta; o comparecimento é o dos primeiros atendimentos, na aba comercial), clientes (ativos, perfil, quem mais gasta), procedimentos, profissionais, estoque, comercial (a aba Oportunidades: o funil, a conversão, os motivos de perda e a conversão por origem). periodo: today, week, 7d, 15d, 30d, month (padrão), last_month, quarter, ou custom com de/ate. "A semana" sem outra data é week (a semana atual) e "o mês" é month: não pergunte qual; a resposta diz o período ("periodo").',
+  descricao: 'Os números da rede num período (os mesmos dos Relatórios). aba: overview (faturamento, a receber, despesas e lucro — estes só com o Financeiro em Ver —, atendimentos e o aproveitamento, novos clientes — só na rede inteira, nula numa unidade —, comissões), financeiro (pede o Financeiro em Ver: a receita paga por unidade, por forma de pagamento e por categoria — receitaPorUnidade, receitaPorFormaDePagamento, receitaPorCategoria — e a despesa paga por unidade e por categoria — despesaPorUnidade, despesaPorCategoria —, com os totais), vendas (cada venda, com o número da comanda do PDV: atendimento avulso, pacote, pré-pago, plano, produto e crédito interno — o crédito interno fica fora do total —, com o total por tipo), agenda (por status, dia da semana, origem, a taxa de conclusão e o aproveitamento, cada um com o que conta; o comparecimento é o dos primeiros atendimentos, na aba comercial), clientes (ativos, perfil, quem mais gasta), procedimentos, profissionais, estoque, comercial (a aba Oportunidades: o funil, a conversão, os motivos de perda e a conversão por origem). periodo: today, week, 7d, 15d, 30d, month (padrão), last_month, quarter, ou custom com de/ate. "A semana" sem outra data é week (a semana atual) e "o mês" é month: não pergunte qual; a resposta diz o período ("periodo").',
   parametros: z.object({
     aba: z.enum(REPORT_TABS).optional(),
     periodo: z.enum(PERIODOS).optional(),
@@ -73,7 +75,10 @@ export const indicadores: FerramentaDeLeitura<{
   async executar(c, args) {
     const aba = args.aba ?? 'overview'
     if (!podeVerRelatorio(c.ctx, aba)) {
-      return { dados: { erro: `A sua permissão não abre a aba "${aba}" dos relatórios. Abas liberadas: ${c.ctx.reportTabs.join(', ') || 'nenhuma'}.` } }
+      // A aba Financeiro marcada sem o Financeiro em Ver não abre, e diz por quê (o Heitor, 23/11).
+      const motivo = c.ctx.reportTabs.includes(aba) ? motivoDaAbaFechada(aba, c.ctx.permissions) : null
+      const liberadas = abasQueValem(c.ctx.reportTabs, c.ctx.permissions)
+      return { dados: { erro: `A sua permissão não abre a aba "${aba}" dos relatórios${motivo ? ` (${motivo} em Ver)` : ''}. Abas liberadas: ${liberadas.join(', ') || 'nenhuma'}.` } }
     }
     const u = await resolverUnidade(c, args.unidade)
     if ('erro' in u) return { dados: { erro: u.erro } }
@@ -94,32 +99,39 @@ export const indicadores: FerramentaDeLeitura<{
     const cabecalho = { periodo: periodo.label, unidade: u.unidade?.name ?? 'todas as unidades' }
 
     if (aba === 'overview') {
+      // A entrada, a saída e o lucro só com o Financeiro em Ver (o Heitor, 23/11:
+      // "financeiro é uma coisa, vendas é outra"), como os cartões da tela.
+      const caixa = veOCaixaNosRelatorios(c.ctx.permissions)
       const [atual, anterior, ticket, estoque, emAberto] = await Promise.all([
         getCoreDosModulos({ ...janela, recorte }),
         getCoreDosModulos({ ...janela, from: periodo.prevFrom, to: periodo.prevTo, recorte }),
         getTicketMedio(janela),
         // O lucro, como nas telas: desconta o insumo consumido; a compra de
         // estoque fica nas despesas (o caixa).
-        getResultadoDoEstoque(janela),
+        caixa ? getResultadoDoEstoque(janela) : Promise.resolve(null),
         // C5 (F68): o "A receber" do Financeiro — pelo VENCIMENTO, até o FIM do
         // período (getEmAberto). Era o pendente do núcleo até agora, outro número.
-        getEmAberto({ ...janela, to: periodo.fullTo }),
+        caixa ? getEmAberto({ ...janela, to: periodo.fullTo }) : Promise.resolve(null),
       ])
-      const resultado = resultadoDoPeriodo({ ...atual, ...estoque.total })
+      const resultado = estoque ? resultadoDoPeriodo({ ...atual, ...estoque.total }) : null
       const comissoes = can(c.ctx, 'financial', 'VIEW')
       return {
         dados: {
           ...cabecalho,
-          faturamento: dinheiro(atual.revenueCash), faturamentoAnterior: dinheiro(anterior.revenueCash),
-          aReceber: dinheiro(emAberto.aReceber),
-          notaDoAReceber: 'O que vence no período, até o fim dele, e ainda não foi pago (o "A receber" do Financeiro).',
-          despesas: dinheiro(atual.expensesCash),
-          insumoConsumido: dinheiro(resultado.insumoConsumido),
-          taxasDaMaquininha: dinheiro(resultado.taxasDaMaquininha),
-          comissoesLancadas: dinheiro(resultado.comissoes),
-          lucro: dinheiro(resultado.lucro),
-          margem: resultado.margemPct === null ? null : `${resultado.margemPct.toFixed(1).replace('.', ',')}%`,
-          notaDoLucro: 'Lucro = receita paga − despesas pagas (sem a compra de estoque e sem o pagamento das comissões, que ficam no caixa) − insumo consumido e custo do produto vendido − taxas da maquininha − comissões lançadas no período.',
+          ...(resultado && emAberto ? {
+            faturamento: dinheiro(atual.revenueCash), faturamentoAnterior: dinheiro(anterior.revenueCash),
+            aReceber: dinheiro(emAberto.aReceber),
+            notaDoAReceber: 'O que vence no período, até o fim dele, e ainda não foi pago (o "A receber" do Financeiro).',
+            despesas: dinheiro(atual.expensesCash),
+            insumoConsumido: dinheiro(resultado.insumoConsumido),
+            taxasDaMaquininha: dinheiro(resultado.taxasDaMaquininha),
+            comissoesLancadas: dinheiro(resultado.comissoes),
+            lucro: dinheiro(resultado.lucro),
+            margem: resultado.margemPct === null ? null : `${resultado.margemPct.toFixed(1).replace('.', ',')}%`,
+            notaDoLucro: 'Lucro = receita paga − despesas pagas (sem a compra de estoque e sem o pagamento das comissões, que ficam no caixa) − insumo consumido e custo do produto vendido − taxas da maquininha − comissões lançadas no período.',
+          } : {
+            semOFinanceiro: 'A entrada (faturamento, a receber), a saída (despesas) e o lucro pedem o Financeiro em Ver, e a permissão desta pessoa não o tem: diga isso se ela pedir. A performance de vendas está na aba vendas.',
+          }),
           receitaDeServicos: dinheiro(atual.serviceRevenue),
           atendimentosConcluidos: atual.appointmentsCompleted, atendimentosConcluidosAnterior: anterior.appointmentsCompleted,
           agendamentos: atual.appointmentsTotal, cancelados: atual.appointmentsCancelled, faltas: atual.appointmentsNoShow,

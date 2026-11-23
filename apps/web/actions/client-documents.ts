@@ -32,8 +32,8 @@ async function recusaDoAnexo(ctx: TenantContext, categoria: string | null): Prom
 
 /**
  * O anexo de UNIDADE ao alcance de quem age (§11): o do atendimento chega pelo
- * alcance do agendamento — a profissional que atende também na outra unidade
- * (decisão 2 da 8ª), como no anexar (ATD-P06); o da ficha, pela unidade.
+ * alcance do agendamento (a abrangência — o "Atende" só vale nas unidades da
+ * pessoa, o Heitor, 2026-11-23), como no anexar (ATD-P06); o da ficha, pela unidade.
  */
 async function alcanceDoAnexo(ctx: TenantContext, admin: SupabaseClient, doc: { branch_id: string; appointment_id: string | null }): Promise<boolean> {
   if (alcancaUnidade(ctx, doc.branch_id)) return true
@@ -106,8 +106,8 @@ export async function uploadClientDocument(
   }
 
   // A unidade do anexo (D5 da 13ª): a do ATENDIMENTO, quando é pela tela dele
-  // — a profissional que atende também na outra unidade anexa ali, e a sessão
-  // dela não vê aquela unidade (era o `.single()` pela sessão que derrubava a
+  // — quem tem mais de uma unidade anexa na do atendimento, não na do endereço
+  // (era o `.single()` pela sessão que derrubava a
   // tela com 500). Pela ficha, a do contexto vence a do formulário. Lida pelo
   // servidor, depois de conferidos a rede e o alcance; a recusa é mensagem.
   const unidadeDoAnexo = unidadeDoAtendimento ?? ctx.branchId ?? branchId

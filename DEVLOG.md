@@ -1774,6 +1774,41 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-23 (2) — As respostas finais do Heitor: injetáveis, o "Atende", Relatórios e as Minhas comissões
+
+As respostas do Heitor às perguntas que sobraram da entrega anterior (23/11). Cada uma abaixo traz a fala dele.
+- **A Minha agenda fica** ("2 - acho que sim", depois de o Claude explicar que ela só aparece para quem tem o "Atende" e não tem a Agenda). Corrigir o atendimento concluído é só do Prontuário em Gerenciar ("3 - ok"). Quem tem a Agenda em Gerenciar cancela e remarca o agendamento de qualquer pessoa e desfaz o bloqueio de qualquer pessoa ("4 - ok"). Trocar o profissional é da Agenda em Gerenciar ("7 - ok"). Nada disso pediu código: o catálogo (AT-18, PT-11, AG-32) agora cita as falas.
+- **Injetáveis = quem realiza atendimento** ("o mapa de injetaveis é pra quem realiza atendimento"; "injetaveis ok faz sentido"). Isto revê o UM4.
+  - Criar, editar, renomear e ligar o planejamento à cliente, e registrar a aplicação, pedem o Atendimento em Gerenciar (`actions/injectable-map.ts`).
+  - Ver continua com o Prontuário em Ver.
+  - A ficha da cliente, o atendimento, o planejador da ficha e a matriz de Cargos dizem isso.
+  - Prova: `tests/injetaveis-quem-realiza-atendimento.test.ts`.
+- **O "Atende" só nas unidades da pessoa** ("uma pessoa só pode atender nas unidades que faz parte, isso é obvio"). O AG-30 saiu.
+  - A Equipe oferece o "Atende" só entre as unidades marcadas em "Unidades". `createTeamMember`, `updateTeamMember` e `marcarUnidadeNoAtende` recusam o que estiver fora (`atendeForaDasUnidades`, `lib/equipe/atende.ts`).
+  - `alcancaOAgendamento` passou a ser a abrangência, e só. Saiu o desvio F73 do layout (`atende-em-outra-unidade`).
+  - O repasse de quem é desativado sugere só quem já tem a unidade.
+  - Na produção havia 0 membros com o "Atende" fora das unidades, por isso não houve migration.
+  - Prova: `tests/atende-so-nas-unidades-da-pessoa.test.ts`.
+- **Relatórios: Financeiro × Vendas** ("financeiro é uma coisa, vendas é outra. financeiro ve entrada/saida/lucro, tudo. vendas é sobre performance de vendas").
+  - A aba Financeiro só vale com o Financeiro pelo menos em Ver (`abaDeRelatorioVale`/`abasQueValem`, `lib/permissions.ts`). Na tela de Cargos a caixa fica desligada, com "pede o Financeiro".
+  - Na Visão geral, o faturamento, as despesas, o lucro, a evolução, o faturamento por unidade e a forma de pagamento aparecem só com o Financeiro (`lib/metrics/visao-geral.ts`). O valor nem sai do servidor.
+  - A aba Vendas é independente.
+  - O Copilot segue a mesma divisão.
+  - O `buildContext` conta só as abas que valem: um cargo antigo com só a aba Financeiro e sem o Financeiro fica sem Relatórios (A5). O "cargo acima" também compara só as abas que valem.
+  - Prova: `tests/relatorios-financeiro-pede-o-financeiro.test.ts`.
+- **As Minhas comissões para quem tem comissão no nome dela.** Era uma recomendação do Claude; o Heitor respondeu "vamos pela sua recomendação".
+  - A venda do plano e a do produto pagam a quem vendeu pela regra da REDE (`plano_pct`/`produto_pct`), sem percentual no cadastro, e essa pessoa não via as próprias comissões.
+  - Agora a vista vale para quem atende, quem tem o percentual próprio ou quem tem qualquer comissão gravada (`getCachedMember`, chave `member-v5`).
+  - A primeira comissão de quem não tinha nenhuma aparece no menu quando o cache do membro vence (até 1 h).
+- **TDD** (as falhas estão na mensagem do commit):
+  - injetáveis: 10/14 falharam antes;
+  - o "Atende": 7/9;
+  - Relatórios: 6/8, mais 2/2 no `buildContext` e no cargo acima;
+  - Minhas comissões: o caso novo de `e2e/vistas-pessoais-e-cada-passo.spec.ts` falhou contra o build anterior (sem o cabeçalho "Minhas comissões").
+- **Fica para depois** (não é defeito):
+  - o nome `alcancaOAgendamento`, que hoje é só a abrangência;
+  - comentários velhos sobre o AG-30 em `actions/injectable-map.ts` e `tests/varredura-atendimento.test.ts`.
+
 ### 2026-11-23 — Sai o "só os meus" e cada passo do atendimento é um módulo
 
 O Heitor, respondendo o catálogo do atendimento (23/11): "to achando que nosso sistema de permissões está complexo demais" → "pode tirar, as vistas pessoais resolvem" (SM1–SM6) e, sobre o atendimento que passa por várias pessoas, "concordo, pode anotar, marcar as questões e ajustar o codigo" (UM1–UM5). As duas decisões estão em `docs/revisao.md` ("Cargos e permissões").

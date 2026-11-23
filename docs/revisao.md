@@ -2228,8 +2228,15 @@ Junto do Bloco: Sem o "só os meus".
 | UM1 | **A tela do atendimento abre com o Atendimento** (Ver), não com a Agenda em Ver (Q13) ✅ 23/11 | — |
 | UM2 | **Iniciar, concluir e desistir no meio** pedem o Atendimento em Gerenciar, e só ele (Q17) ✅ 23/11 | — |
 | UM3 | **Montar o plano** — na avaliação aberta, na concluída ou pelo "Novo plano" — pede o Atendimento em Gerenciar, nas unidades ao alcance; o "Atende" deixa de ser a trava (revê a PT2, Q16) ✅ 23/11 | SM1 |
-| UM4 | **A parte clínica no atendimento** (ficha de saúde, evolução, fotos, injetáveis) pede o Prontuário em Gerenciar, sem precisar atender (Q18) ✅ 23/11 | — |
+| UM4 | **A parte clínica no atendimento** (ficha de saúde, evolução, fotos; os injetáveis foram revistos abaixo) pede o Prontuário em Gerenciar, sem precisar atender (Q18) ✅ 23/11 | — |
 | UM5 | **O "Atende" não dá permissão**: diz só em que unidades a pessoa aparece como profissional (agenda, repasse, comissão, as vistas pessoais) ✅ 23/11 | UM3 |
+
+**As respostas finais (o Heitor, 23/11), feitas no mesmo dia:**
+- UM4 revista nos injetáveis: planejar, editar e registrar a aplicação pedem o **Atendimento em Gerenciar** ("o mapa de injetaveis é pra quem realiza atendimento"; "injetaveis ok faz sentido"); ver continua com o Prontuário em Ver. ✅
+- O "Atende" só nas unidades da pessoa ("uma pessoa só pode atender nas unidades que faz parte, isso é obvio"): a Equipe só oferece e o servidor recusa fora delas; o AG-30 saiu. ✅
+- Relatórios: a aba Financeiro pede o Financeiro, a de Vendas é independente, e os cartões de dinheiro da Visão geral só com o Financeiro ("financeiro é uma coisa, vendas é outra. financeiro ve entrada/saida/lucro, tudo. vendas é sobre performance de vendas"). ✅
+- As Minhas comissões para quem tem comissão no nome dela, não só o percentual próprio (recomendação do Claude; "vamos pela sua recomendação"). ✅
+- A Minha agenda fica ("acho que sim"); corrigir o concluído é só do Prontuário em Gerenciar ("3 - ok"); a Agenda em Gerenciar cancela, remarca e desfaz o bloqueio de qualquer pessoa ("4 - ok") e troca o profissional ("7 - ok"). ✅
 
 ## O que já estava pendente, para entrar no módulo dele
 

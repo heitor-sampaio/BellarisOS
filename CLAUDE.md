@@ -609,8 +609,9 @@ e do refino do inbox). Quem quer ver só as suas oportunidades usa o filtro de
 responsável da tela.
 
 **As vistas pessoais** (SM2): quem ATENDE e não tem a Agenda vê a **Minha
-agenda** (só os horários dela); quem atende ou tem comissão de venda e não tem
-o Financeiro vê as **Minhas comissões** (só as dela). `vistaPessoal(ctx,
+agenda** (só os horários dela); quem atende ou tem comissão no nome dela (o
+percentual próprio ou uma comissão gravada, 23/11) e não tem o Financeiro vê as
+**Minhas comissões** (só as dela). `vistaPessoal(ctx,
 'agenda' | 'financial')` (`lib/auth.ts`) devolve o id dela nesses casos (e
 `null` quando ela tem o módulo, que já mostra tudo) — é o filtro da consulta e
 a trava da página (`can(ctx, M, 'VIEW') || vistaPessoal(ctx, M) !== null`). A
@@ -637,8 +638,10 @@ conclui atendimento quem tem gerenciar no atendimento"; 2026-11-23, UM1–UM5:
 marca a falta; o `atendimento` em Ver abre a tela do atendimento, em
 Gerenciar inicia, conclui, desiste no meio e monta o plano (na avaliação ou
 depois, com a unidade do plano ao alcance); o clínico (ficha de saúde,
-evolução, fotos, injetáveis) é do Prontuário em Gerenciar, sem precisar atender;
-receber é do PDV (`podeReceber`). O "Atende" não dá permissão nenhuma. Regra
+evolução, fotos) é do Prontuário em Gerenciar, sem precisar atender; os
+injetáveis (planejar, registrar a aplicação) são do Atendimento em Gerenciar, e
+vê-los, do Prontuário em Ver (o Heitor, 2026-11-23: "o mapa de injetaveis é pra
+quem realiza atendimento"); receber é do PDV (`podeReceber`). O "Atende" não dá permissão nenhuma. Regra
 em `docs/regras/atendimento.md`.
 
 Os 20 módulos: `agenda`, `atendimento`, `clients`, `loyalty`, `medical_records`, `documents`,
@@ -657,7 +660,9 @@ oferece esses.
 sem ver o faturamento. Sem nenhuma aba marcada, o módulo vale NONE
 (`buildContext`): a entrada some do menu em vez de abrir uma tela vazia, e o
 resumo do cargo ("O que essa pessoa vai ver") diz por quê (A5). Ler com
-`podeVerRelatorio(ctx, aba)` — é o que a seção de relatórios usa.
+`podeVerRelatorio(ctx, aba)` — é o que a seção de relatórios usa. A aba
+Financeiro só vale com o Financeiro em Ver; a Vendas, não (o Heitor,
+2026-11-23: "financeiro é uma coisa, vendas é outra"; `docs/regras/indicadores.md`).
 
 ```typescript
 // A trava lança semAcesso() (lib/sem-acesso.ts), nunca new Error('Forbidden'):
@@ -688,8 +693,14 @@ Regras:
   aparece como profissional (agenda, agendar, repasse, comissão, relatórios).
   `provides_services` = "atende em alguma unidade", mantido junto da lista pelo
   gatilho `atende_em_sincronizar`. Não é permissão e não deriva nível nem
-  abrangência (abre só as vistas pessoais): numa unidade marcada fora do alcance, ela chega só aos
-  agendamentos DELA (`alcancaOAgendamento`). Regra em
+  abrangência (abre só as vistas pessoais). **E só vale nas unidades da
+  pessoa** (o Heitor, 2026-11-23: "uma pessoa só pode atender nas unidades que
+  faz parte, isso é obvio"): "A rede inteira" = qualquer unidade da rede; senão,
+  só a principal e as outras dela. A Equipe só oferece essas, e
+  `createTeamMember`/`updateTeamMember` recusam o resto
+  (`atendeForaDasUnidades`, `lib/equipe/atende.ts`). Não existe alcançar o
+  agendamento de uma unidade fora da abrangência (saiu o AG-30):
+  `alcancaOAgendamento` é a abrangência, e só. Regra em
   `docs/regras/atendimento.md` §9.1 e `plataforma.md`.
 - **Quais números de WhatsApp o cargo vê no inbox é do CARGO**
   (`tenant_roles.inbox_caixas`, na linha do CRM da matriz): `todas` (padrão)
