@@ -167,9 +167,9 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/revisao.md:403-406`, `:429`, `docs/regras/crm-inbox.md:352`
 - Antes: KA-62, KF-03, KF-04
 
-**TG-04.** A ação das automações se chama "Adicionar tag" e oferece qualquer tag registrada no sistema. Ela só adiciona: o modo "remover" saiu.
+**TG-04.** A ação das automações se chama "Adicionar tag" e oferece qualquer tag registrada no sistema. Ao lado dela há "Remover tag", que tira da pessoa uma das tags cadastradas (sem a tag, o passo não faz nada e diz "O cliente não tinha esta tag."). O nome é do Heitor; o "Remover tag" é decisão do Claude (a auditoria das regras de 18/11 o trouxe de volta, lendo a fala como sobre o nome e pelo princípio 7) — ver a Q12.
 - Fonte: o Heitor, 2026-11-13: "sobre a ação tag do cliente, essa ação ela deve se chamar só adicionar tag, tá? E aí ela permite que se adicione qualquer tag que tenha sido registrada no sistema, tá?"
-- Onde: `docs/revisao.md:427-435`, `docs/regras/crm-inbox.md:357`
+- Onde: `docs/revisao.md:427-435`, `docs/regras/crm-inbox.md:357`, `docs/regras/automacoes.md:452-461`
 - Antes: KA-63, KF-05, KF-06
 
 **TG-05.** A rede nova nasce sem tag nenhuma: o catálogo começa vazio e a rede cria as dela.
@@ -791,7 +791,7 @@ Q10. **IM-04 — o histórico das importações:** importar é só da Admin da r
 
 Q11. **TG-07 — a tag da planilha que não está no catálogo:** nenhuma tela cria tag e criar é só em Configurações → Tags, mas `crm-inbox.md:428` diz que o catálogo "cresce" com toda tag gravada por quem pode marcar. Na Importação, uma tag da planilha que ainda não existe deve ser criada ou recusada?
 
-Q12. **TG-04 — a ação "Adicionar tag" (está no escopo?):** dizer que ela só adiciona, sem o modo "remover", foi leitura do Claude (`docs/revisao.md:435-436`), e pelo princípio 7 simplificar não é tirar recurso: uma automação não pode tirar uma tag?
+Q12. **TG-04 — a automação pode TIRAR uma tag?** A sua fala de 13/11 diz que a ação "deve se chamar só adicionar tag". Em 14/11 o Claude leu isso como "só adiciona" e tirou o "remover"; em 18/11 a auditoria das regras leu a fala como sobre o NOME e, pelo princípio 7 ("simplificar não é reduzir funcionalidade"), trouxe o "Remover tag" de volta — é o que o sistema faz hoje (`docs/regras/automacoes.md:452-461`). Qual vale?
 
 Q13. **OP-02 — "Cadastrar cliente" ou "Cadastrar como cliente"?** A revisão decidiu "Cadastrar como cliente" nos dois lugares (`docs/revisao.md:879`, `:2062`, com o "pode ser" na tabela sem o seu nome ao lado); `crm-inbox.md:1064-1066` diz que o botão é "Cadastrar cliente" e a janela é "Cadastrar como cliente". Qual é o texto do botão? E o "pode ser" é mesmo a sua resposta?
 
@@ -828,6 +828,7 @@ O texto de `docs/regras/` (ou da própria revisão) contra a decisão mais nova 
 - OP-08: `docs/regras/crm-inbox.md:1276` e `docs/revisao.md:2216` chamam o filtro do inbox de "o dono"; a tela já diz "Responsável" (`components/admin/inbox-filtros.tsx:409`). Só o texto está velho.
 - OP-25: "Motivos de perda" da rede inteira (`docs/regras/crm-inbox.md:1518`) está certo — a oportunidade é da pessoa, e a pessoa é da rede; o texto devia dizer por quê.
 - IM-22: `docs/regras/crm-inbox.md:1020` diz que o pacote de antes sem valor de referência "não geram comissão de execução (R$ 0)"; o item 11 das correções da auditoria (18/11, `docs/regras/comissoes.md:380-387`) decidiu que o R$ fixo por sessão é pago e só o percentual fica R$ 0. A tela já diz certo (`components/branch/importador-de-contatos.tsx:374`, `:477`); só o texto está velho.
+- TG-04: `docs/revisao.md:434-435` ainda diz "a ação só adiciona; o modo 'remover' sai" (leitura do Claude de 14/11); a auditoria das regras (18/11, `docs/regras/automacoes.md:452-461`) trouxe o "Remover tag" de volta, e é o que o sistema faz. A Q12 pergunta ao Heitor qual vale.
 
 ## Ficou fora do catálogo
 

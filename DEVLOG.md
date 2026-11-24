@@ -1774,6 +1774,16 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-24 (6) — O catálogo de regras: WhatsApp e push, e Automações (rascunhos para o Heitor)
+
+As áreas sete e oito do catálogo, em paralelo, pelo mesmo método (três leitores cada: as duas metades do arquivo de `docs/regras/` e as decisões de fora dele; um condensador cada).
+- `docs/catalogo/whatsapp-push.md`: 79 regras (WN os números 13, WC conectar 9, WL quem fala por cada número 7, WT templates e a janela de 24 h 12, WH o que chega e o histórico 9, WM o que a Meta cobra 6, WE quando nada sai 2, NA canais, aparelhos e sino 4, NE avisos à equipe 6, NC avisos à cliente 6, IG integrações e credencial 5), de 103 no rascunho; 11 divergências. O "Pode fechar" de 13/11 (`docs/revisao.md:1513`) aprova o levantamento, e as regras dele ganharam essa fonte.
+- `docs/catalogo/automacoes.md`: 84 regras (AU o princípio 2, GT fatos e gatilhos 11, MO modelos 7, ED o editor 10, AX os passos 12, EV espera, limites e fila 12, RX ligar, ensaiar e acompanhar 8, CP campanhas 9, PU o público 7, QM quem vê e mexe 6), de 105 no rascunho; 6 divergências. As escolhas sem palavras ("(a)", "opção d") viraram a fonte 4 com a escolha.
+- 4 perguntas na página: W01 — o aviso do próprio fato à cliente (horário marcado/remarcado/cancelado/concluído, pagamento, "Plano novo") sai sem ninguém ligar, contra o "nada sai sozinho" do levantamento aprovado em 13/11 e a fala de 03/11; W02 e U01 — "estas regras são suas?"; U02 — o Gerenciar das Automações e do Marketing não dá nada além do Ver desde 18/11 (conferido no código), e a tela de Cargos o oferece: tira ou ganha uma ação (o ensaio, o pausar)?
+- A pergunta C12 (Clientes) refeita e a TG-04 corrigida: a auditoria de 18/11 trouxe o "Remover tag" de volta (o sistema faz assim); a C12 pergunta qual leitura da fala de 13/11 vale.
+- Divergências do CÓDIGO/TELA, para a correção (com teste): a tela de Cargos diz que Configurações em Gerenciar "conecta o WhatsApp e as contas de anúncio" (`lib/permissions-copy.ts:174`), e desde 18/11 é só da Admin da rede; os dois "testar conexão" (`actions/integrations.ts:355`, `:439`) não pedem a Admin da rede (a conferir — não gravam); o "Quem receberia hoje" da campanha só com o Marketing em Gerenciar, e é leitura (`app/admin/notificacoes/[id]/page.tsx:60`); as "Clientes específicas" cortadas em 200 em silêncio (`lib/notifications/filtros-da-campanha.ts:7`, princípios 2 e 3); na sessão de suporte o "Ensaiar com o último fato" some, e a regra diz que o ensaio continua (`app/admin/automacoes/[id]/page.tsx:26-31`).
+- Falas citadas conferidas por script (os dois avisos são citações com aspas dentro, conferidas à mão); nenhum dos 208 números do rascunho sumiu. `docs/regras/` não mudou.
+
 ### 2026-11-24 (5) — O catálogo de regras: Documentos (rascunho para o Heitor)
 
 A sexta área do catálogo, pelo mesmo método (três leitores: as duas metades de `docs/regras/documentos.md` e as decisões de fora dele; um condensador). `docs/catalogo/documentos.md`:
