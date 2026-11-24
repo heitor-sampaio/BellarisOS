@@ -181,3 +181,84 @@ describe('a lista de insumos do procedimento é a dos INSUMOS (E2 do Bloco Estoq
     })
   })
 })
+
+// As movimentações do período em Relatórios → Estoque (o Heitor, 18/11: "ok"):
+// data, produto, tipo, quantidade, lote/validade, unidade, quem fez e o custo,
+// paginada no banco; e o lote na tabela de perdas.
+const migracaoDoEstoque = (trecho: string) => {
+  const nome = readdirSync(MIGRATIONS).find(f => f.startsWith('202612011') && f.includes(trecho))
+  return nome ? readFileSync(join(MIGRATIONS, nome), 'utf8') : null
+}
+
+describe('as movimentações do período em Relatórios → Estoque (indicadores.md)', () => {
+  it('a lista é do banco, paginada, no fuso da unidade, só do servidor', () => {
+    const s = migracaoDoEstoque('movimentos_no_relatorio')
+    expect(s, 'a migration 202612011…_estoque_movimentos_no_relatorio.sql').not.toBeNull()
+    expect(s!).toMatch(/create or replace function public\.metrics_movimentos_de_estoque\(\s*p_tenant uuid, p_branch_ids uuid\[\], p_from timestamptz, p_to timestamptz, p_limite integer, p_offset integer\)/)
+    expect(s!).toMatch(/public\.custo_do_movimento\(m, p\)/)
+    expect(s!).toMatch(/public\.fuso_da_unidade\(m\.branch_id\)/)
+    expect(s!).toMatch(/count\(\*\) over \(\)/)
+    expect(s!).toMatch(/limit p_limite offset p_offset/)
+    expect(s!).toMatch(/revoke execute on function public\.metrics_movimentos_de_estoque[^;]+from public, anon, authenticated/)
+    expect(s!.trim()).toMatch(/notify pgrst, 'reload schema';$/)
+  })
+
+  it('cada movimento tem o tipo que se lê: entrada, consumo, venda, perda, ajuste, transferência', async () => {
+    const { tipoDoMovimento } = await import('@/lib/estoque/tipo-do-movimento')
+    const m = (o: Partial<Parameters<typeof tipoDoMovimento>[0]>) =>
+      tipoDoMovimento({ type: 'PURCHASE', quantity: 1, reference: null, correcao: false, motivo: null, ...o })
+    expect(m({})).toEqual({ tipo: 'ENTRADA', rotulo: 'Entrada' })
+    expect(m({ quantity: -1 })).toEqual({ tipo: 'ENTRADA', rotulo: 'Entrada desfeita' })
+    expect(m({ type: 'PROCEDURE_USAGE', quantity: -5 })).toEqual({ tipo: 'CONSUMO', rotulo: 'Consumo em atendimento' })
+    expect(m({ type: 'SALE', quantity: -1 })).toEqual({ tipo: 'VENDA', rotulo: 'Venda' })
+    expect(m({ type: 'SALE_RETURN' })).toEqual({ tipo: 'VENDA', rotulo: 'Devolução de venda' })
+    expect(m({ type: 'LOSS', quantity: -1, motivo: 'Quebrou' })).toEqual({ tipo: 'PERDA', rotulo: 'Perda: Quebrou' })
+    expect(m({ type: 'LOSS', quantity: 1, motivo: 'Quebrou' })).toEqual({ tipo: 'PERDA', rotulo: 'Perda desfeita' })
+    expect(m({ type: 'MANUAL_ADJUSTMENT', quantity: -1 })).toEqual({ tipo: 'AJUSTE', rotulo: 'Ajuste de inventário' })
+    expect(m({ type: 'MANUAL_ADJUSTMENT', quantity: 1, desfaz: true })).toEqual({ tipo: 'AJUSTE', rotulo: 'Ajuste desfeito' })
+    expect(m({ type: 'MANUAL_ADJUSTMENT', quantity: 1, correcao: true })).toEqual({ tipo: 'AJUSTE', rotulo: 'Correção de cadastro' })
+    expect(m({ type: 'MANUAL_ADJUSTMENT', quantity: -1, reference: 'voucher:x' })).toEqual({ tipo: 'PERDA', rotulo: 'Brinde da fidelidade' })
+    expect(m({ type: 'TRANSFER_OUT', quantity: -1 })).toEqual({ tipo: 'TRANSFERENCIA', rotulo: 'Transferência enviada' })
+    expect(m({ type: 'TRANSFER_IN' })).toEqual({ tipo: 'TRANSFERENCIA', rotulo: 'Transferência recebida' })
+  })
+
+  it('lib/metrics monta as linhas e o total sem somar na tela', async () => {
+    const { montarMovimentos } = await import('@/lib/metrics/movimentos-de-estoque')
+    const r = montarMovimentos([{
+      id: 'm1', created_at: '2026-11-18T13:00:00Z', fuso: 'America/Manaus', branch_id: 'b', unidade: 'Centro',
+      product_id: 'p', produto: 'Toxina', type: 'LOSS', quantity: '-30', medida: 'UI', embalagem: 'frasco', embalagens: '-0.3',
+      reference: 'lote:l', correcao_de_cadastro: false, motivo_da_perda: 'Vencido', desfeita: false, desfaz: false,
+      lotes: [{ numero: 'TX-1', validade: '2026-11-15T00:00:00+00:00' }], quem: 'Ana', custo: '195', total: '41',
+    }])
+    expect(r.total).toBe(41)
+    expect(r.linhas).toEqual([{
+      id: 'm1', data: '2026-11-18T13:00:00Z', fuso: 'America/Manaus', branchId: 'b', unidade: 'Centro',
+      produtoId: 'p', produto: 'Toxina', tipo: 'PERDA', rotulo: 'Perda: Vencido', quantidade: -30, medida: 'UI',
+      embalagem: 'frasco', embalagens: -0.3, lotes: [{ numero: 'TX-1', validade: '2026-11-15T00:00:00+00:00' }],
+      quem: 'Ana', custo: 195, desfeita: false,
+    }])
+    expect(montarMovimentos([])).toEqual({ linhas: [], total: 0 })
+  })
+
+  it('a aba Estoque pede a página da lista (com o período e o recorte) e mostra a seção, com a paginação', () => {
+    const secao = ler('components/admin/reports-bi-section.tsx')
+    // O recorte da tela (rede, unidades, período até o fim), e só quando a aba mostra o estoque da unidade.
+    expect(secao).toContain('const doPeriodo = { tenantId: ctx.tenantId!, branchIds, from: startDate, to: periodInfo.fullTo }')
+    expect(secao).toMatch(/const movimentos = needBatches\r?\n\s+\? await/)
+    expect(secao).toMatch(/getMovimentosDeEstoque\(\{ \.\.\.doPeriodo, offset: \(pedida - 1\) \* MOVIMENTOS_POR_PAGINA \}\)/)
+    expect(secao).toContain('movimentos={movimentos}')
+    const vista = ler('components/admin/reports-bi-view.tsx')
+    expect(vista).toContain('data-movimentos-do-estoque')
+    expect(vista).toContain('Movimentações do período')
+    for (const col of ['Data', 'Produto', 'Tipo', 'Quantidade', 'Lote', 'Unidade', 'Quem fez', 'Custo'])
+      expect(vista, col).toContain(`>${col}</th>`)
+    // A data no fuso da UNIDADE do movimento.
+    expect(vista).toMatch(/timeZone: l\.fuso/)
+  })
+
+  it('a tabela de perdas diz os lotes de onde a perda saiu', () => {
+    expect(ler('lib/metrics/perdas.ts')).toMatch(/lotes:\s+\{ numero: string \| null; validade: string \| null \}\[\]/)
+    const vista = ler('components/admin/reports-bi-view.tsx')
+    expect(vista).toMatch(/\{ key: 'lote',\s+label: 'Lote' \}/)
+  })
+})

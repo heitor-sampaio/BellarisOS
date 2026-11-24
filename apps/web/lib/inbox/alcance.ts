@@ -35,6 +35,9 @@ export async function caixasDoAlcance(admin: Admin, ctx: TenantContext): Promise
   // Quem não tem cargo editável (admin da rede, cargo de sistema) vê tudo, como
   // em todo o resto da matriz.
   if (ctx.isNetworkAdmin || !ctx.roleId) return null
+  // O "Não definido" é cargo de sistema, mas não é o "vê tudo": quem está sem
+  // cargo não vê caixa nenhuma (item 20 de 18/11).
+  if (ctx.semCargo) return []
 
   const cargo = await ler(
     admin.from('tenant_roles').select('inbox_caixas, is_system')

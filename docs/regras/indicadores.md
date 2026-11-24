@@ -477,7 +477,9 @@
     `desfeita_em` — sai, e o movimento positivo que a desfaz não conta), ao
     custo do movimento (`custo_do_movimento`; desde a F66 a perda e a venda
     saem ao custo DO LOTE, `custo_do_lote`, também o do ajuste — C20), por motivo e
-    produto, com o total de cada motivo e o geral — `metrics_perdas`
+    produto (o motivo é o da rede, pelo nome de hoje, ou o nome gravado se
+    ele foi excluído — item 7 do escopo de 18/11; e cada produto diz os
+    LOTES de onde saiu, com a validade — item 6), com o total de cada motivo e o geral — `metrics_perdas`
     (grouping sets; a quantidade só por produto, que unidades diferentes não
     se somam) → `getPerdas` (`lib/metrics/perdas.ts`). É a seção "Perdas no
     período" de Relatórios → Estoque. A perda não entra no giro nem no lucro. A venda de
@@ -533,6 +535,21 @@
     (`[data-transferencias]`), que some na rede de uma unidade só. É métrica: não entra no lucro
     nem no financeiro. Prova: `tests/pendencias-pdv-estoque-documentos.test.ts`,
     `e2e/estoque-transferencia-no-relatorio.spec.ts`.
+  - **As movimentações do período** (item 6 do escopo de 18/11, o Heitor:
+    "ok"; migration `20261201100002`): cada movimento de estoque do recorte
+    de unidades e do período, uma linha — data e hora no fuso da UNIDADE do
+    movimento, produto, tipo (entrada, consumo, venda, perda com o motivo,
+    ajuste, transferência; o desfeito marcado), quantidade (na unidade do
+    movimento e em embalagens), lote/validade, unidade (só com mais de uma no
+    recorte), quem fez e o custo (`custo_do_movimento`). O filtro, a ordem, a
+    página (50) e o total são do banco — `metrics_movimentos_de_estoque` (só
+    o servidor chama) → `getMovimentosDeEstoque`
+    (`lib/metrics/movimentos-de-estoque.ts`); o tipo e o rótulo saem de
+    `lib/estoque/tipo-do-movimento.ts`. É a seção "Movimentações do período"
+    de Relatórios → Estoque (`[data-movimentos-do-estoque]`, `?pagina=`), que
+    aparece onde a aba mostra o estoque da unidade (como as perdas). A aba não
+    tem CSV, e a lista não ganhou um. Prova:
+    `tests/pendencias-pdv-estoque-documentos.test.ts`, `e2e/estoque-perda.spec.ts`.
   - **A conversão é da OPORTUNIDADE** (decisão do Heitor, 2026-10-29: "o
     objeto é a oportunidade"): as oportunidades na etapa de GANHO (desfecho
     `WON`) ÷ as oportunidades do funil, sem importar se a pessoa já é cliente.
@@ -1557,6 +1574,7 @@ Prova: `tests/relatorios-filtro-de-tags.test.ts`,
 ## O que nunca fazer aqui
 
 ```
+❌ Montar a lista de movimentações do estoque lendo stock_movements pela tela (corta em 1000, sem total) — é metrics_movimentos_de_estoque, paginada no banco (item 6 do escopo de 18/11)
 ❌ Escrever "lead" num número, rótulo, coluna ou dica da tela (Relatórios, dashboard, Marketing) — é "oportunidade" (CR1/RL2; tests/oportunidade-no-texto trava)
 ❌ Trocar a CHAVE de uma aba de Relatórios para mudar o nome dela (role_report_tabs e a URL guardam a chave) — muda o rótulo em REPORT_TAB_LABELS
 ❌ Filtrar por tag DEPOIS de ler as linhas (no app ou na tela) — a tag vai à função (`p_tags`), senão o corte de 1000 e o total não batem

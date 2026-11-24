@@ -171,7 +171,11 @@ test('a entrada e a perda de estoque: o mesmo envio movimenta UMA vez', async ({
     const entrada = { productId: insumo, branchId: rede!.branchId, quantity: '5', unit_cost: '10', notes: `Compra ${marca}`, _envio: chave() }
     await Promise.all([1, 2].map(() => chamarAcaoComFormulario(p, 'actions/stock.ts', 'adminAddStock', '/admin/estoque', [undefined], entrada)))
     expect(await contar('stock_movements', { product_id: insumo })).toBe(1)
-    const perda = { productId: insumo, branchId: rede!.branchId, quantity: '1', motivo: 'VENCIDO', notes: '', _envio: chave() }
+    // O motivo é o id de um motivo da REDE (os motivos da perda são um cadastro
+    // da rede, que nasce com os quatro de antes — atendimento.md §9.5).
+    const motivo = (await db().from('estoque_motivos_de_perda').select('id').eq('tenant_id', rede!.tenantId).eq('nome', 'Vencido')
+      .single<{ id: string }>()).data!.id
+    const perda = { productId: insumo, branchId: rede!.branchId, quantity: '1', motivo, notes: '', _envio: chave() }
     await Promise.all([1, 2].map(() => chamarAcaoComFormulario(p, 'actions/stock.ts', 'registrarPerda', '/admin/estoque', [undefined], perda)))
     expect(await contar('stock_movements', { product_id: insumo, type: 'LOSS' })).toBe(1)
   })

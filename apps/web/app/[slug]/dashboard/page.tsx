@@ -414,7 +414,8 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
         </p>
       </div>
 
-      {!hasAnyWidget && <DashboardEmptyState userName={ctx.userName} shortcuts={shortcuts} />}
+      {!hasAnyWidget && <DashboardEmptyState userName={ctx.userName} shortcuts={shortcuts}
+        semCargo={!!ctx.semCargo} semAcesso={ALL_MODULES.every(m => perm[m] === 'NONE')} />}
 
       <AbertosDeAntes base={`/${slug}/agenda`} abertos={abertos.abertos} semChegada={abertos.semChegada} />
 

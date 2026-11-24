@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { situacaoDoVencimento, textoDoVencimento } from '@/lib/financeiro/vencimentos'
+import { situacaoDoVencimento, textoDoVencimento, diasAteOVencimento } from '@/lib/financeiro/vencimentos'
+import { vencidaHaEmTexto } from '@/lib/clientes/ordem-das-transacoes'
 
 // D13 da 9ª simulação: a parcela vencida tem um nome em toda tela.
 describe('a parcela vencida (D13 da 9ª)', () => {
@@ -20,5 +21,18 @@ describe('a parcela vencida (D13 da 9ª)', () => {
   })
   it('sem vencimento, nada', () => {
     expect(textoDoVencimento(null, agora)).toBeNull()
+  })
+})
+
+// A vencida na ficha diz há quanto tempo (vendas-financeiro.md, a aba
+// Financeiro da ficha): "Vencida há N dias", de dia a dia no fuso da unidade.
+describe('"Vencida há N dias"', () => {
+  it('a frase, no singular e no plural', () => {
+    expect(vencidaHaEmTexto(1)).toBe('Vencida há 1 dia')
+    expect(vencidaHaEmTexto(13)).toBe('Vencida há 13 dias')
+  })
+  it('os dias são de dia a dia no fuso da unidade (não em horas UTC)', () => {
+    // Venceu em 05/11 (meio-dia de Brasília); às 00:30 de 18/11 em Brasília (03:30Z) são 13 dias.
+    expect(-diasAteOVencimento('2026-11-05T15:00:00Z', new Date('2026-11-18T03:30:00Z'), 'America/Sao_Paulo')).toBe(13)
   })
 })

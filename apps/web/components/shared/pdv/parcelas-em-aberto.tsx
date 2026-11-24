@@ -16,6 +16,8 @@ import { anterioresEmAbertoEmTexto, valorDaParcelaEmTexto } from '@/lib/pdv/situ
 import { OutrasFormas } from '@/components/shared/outras-formas'
 import { recusaDasOutras, valorDaPrincipal, type EstadoDaParte } from '@/lib/checkout/varias-formas'
 import { partesDaBaixa } from '@/lib/financeiro/baixa-em-formas'
+import { CampoDoTroco } from '@/components/shared/campo-do-troco'
+import { emDinheiro, recusaDoTroco } from '@/lib/checkout/troco'
 
 /** "Parcela 2 de 3 do crediário: R$ 1.000,00" — ou "A receber: R$ 300,00". */
 function tituloDaParcela(p: ParcelaEmAberto): string {
@@ -115,6 +117,10 @@ function ReceberAParcela({ parcela, todas, slug, aoFechar }: { parcela: ParcelaE
   const recusaDasFormas = recusaDasOutras(outras, parcela.valor)
   // A primeira forma fica com o que falta das outras: é o valor dela que a taxa e as vezes mostram.
   const valorDaPrimeira = outras.length ? Math.max(0, valorDaPrincipal(parcela.valor, outras)) : parcela.valor
+  // Item 14 do escopo de 18/11: no dinheiro, o "Valor entregue" e o troco (só da tela).
+  const [entregue, setEntregue] = useState('')
+  const noDinheiro = emDinheiro(forma, valorDaPrimeira, outras)
+  const recusaDoEntregue = recusaDoTroco(noDinheiro, entregue)
 
   const receber = () => iniciar(async () => {
     setErro(null)
@@ -157,10 +163,11 @@ function ReceberAParcela({ parcela, todas, slug, aoFechar }: { parcela: ParcelaE
         )}
         {/* A7 da 22ª (princípio 7): o "+ Outra forma" aparece com a janela, sem esperar a primeira forma. */}
         <OutrasFormas metodoPrincipal={forma} total={parcela.valor} outras={outras} aoMudar={setOutras} metodos={FORMAS_DA_BAIXA} />
+        <CampoDoTroco emDinheiro={noDinheiro} entregue={entregue} aoMudar={setEntregue} desligado={pendente} />
         {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600 }}>{erro}</p>}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button type="button" className="btn-secondary" onClick={aoFechar} disabled={pendente}>Cancelar</button>
-          <button type="button" className="btn-primary" onClick={receber} disabled={pendente || !forma || !!faltaAMaquininha || !!recusaDasFormas}
+          <button type="button" className="btn-primary" onClick={receber} disabled={pendente || !forma || !!faltaAMaquininha || !!recusaDasFormas || !!recusaDoEntregue}
             title={faltaAMaquininha ?? undefined}>
             {pendente ? 'Recebendo…' : `Receber ${formatBRL(parcela.valor)}`}
           </button>

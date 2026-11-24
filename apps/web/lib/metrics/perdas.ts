@@ -17,6 +17,8 @@ export interface PerdaPorProduto {
   quantidade: number
   embalagens: number
   custo:      number
+  /** De onde as perdas da linha saíram (item 6 do escopo de 18/11): número e validade de cada lote. */
+  lotes:      { numero: string | null; validade: string | null }[]
 }
 
 export interface RelatorioDePerdas {
@@ -33,6 +35,7 @@ export async function getPerdas(args: {
   type Linha = {
     motivo: string | null; product_id: string | null; produto: string | null; unidade: string | null; embalagem: string | null
     quantidade: number | string | null; embalagens: number | string | null; custo: number | string; movimentos: number | string
+    lotes: { numero: string | null; validade: string | null }[] | null
   }
   const data = (await ler(createAdminClient().rpc('metrics_perdas', {
     p_tenant: args.tenantId, p_branch_ids: args.branchIds,
@@ -42,6 +45,7 @@ export async function getPerdas(args: {
   const linhas = data.filter(l => l.motivo && l.product_id).map(l => ({
     motivo: l.motivo!, produtoId: l.product_id!, produto: l.produto ?? '—', unidade: l.unidade ?? '', embalagem: l.embalagem ?? '',
     quantidade: Number(l.quantidade ?? 0), embalagens: Number(l.embalagens ?? 0), custo: Number(l.custo),
+    lotes: l.lotes ?? [],
   })).sort((a, b) => b.custo - a.custo)
   const motivos = data.filter(l => l.motivo && !l.product_id)
     .map(l => ({ motivo: l.motivo!, custo: Number(l.custo), movimentos: Number(l.movimentos) }))

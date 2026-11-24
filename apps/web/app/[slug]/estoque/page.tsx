@@ -194,6 +194,7 @@ export default async function BranchStockPage({
             <CadastroDoEstoque lista="categorias" itens={listas.categorias} />
             <CadastroDoEstoque lista="marcas" itens={listas.marcas} />
             <CadastroDoEstoque lista="fornecedores" itens={listas.fornecedores} />
+            <CadastroDoEstoque lista="motivos" itens={listas.motivos} />
             {/* Sem produto, o "Novo produto" é o do vazio (A2): dois primários iguais na tela, não. */}
             {products.length > 0 && podeEditarProduto && (
               <StockProductModal
@@ -288,6 +289,7 @@ export default async function BranchStockPage({
         productCategories={listas.categorias}
         marcas={listas.marcas}
         fornecedores={listas.fornecedores}
+        motivosDePerda={listas.motivos}
         defaultBranchId={branchId}
         unidadesDoProduto={unidadesDoProduto}
         readOnly={readOnly}

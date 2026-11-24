@@ -138,6 +138,12 @@ export interface TenantContext {
   /** Tem comissão de venda: as Minhas comissões abrem para ela, mesmo sem atender (`vistaPessoal`). */
   comissaoDeVenda?: boolean
   isNetworkAdmin: boolean
+  /**
+   * O cargo é o de sistema "Não definido" (item 20 de 18/11, o Heitor: "quem
+   * tem cargo não definido não tem permissão de nada"): `permissions` vem toda
+   * em Sem acesso, e o painel diz que ela está sem cargo. Ausente = não é.
+   */
+  semCargo?: boolean
   isClient: boolean
   /**
    * O plano da rede (o retrato). Os módulos fora dele já saíram de

@@ -19,6 +19,8 @@ import { falaDaTela } from '@/lib/unidades/uma-so'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { listaDeUnidades, unidadesDaLinhaDaEquipe, seloDoAtende } from '@/lib/equipe/atende'
 import { Dica } from '@/components/shared/dica'
+import { cargosQueSeDaoPelaEquipe, avisoDoMembroSemAcesso } from '@/lib/cargos/sem-acesso'
+import { cargosSemAcesso } from '@/lib/equipe/cargos-sem-acesso'
 
 function Initials({ name }: { name: string }) {
   const letters = iniciaisDoNome(name)
@@ -101,8 +103,12 @@ export default async function AdminTeamPage({
   // A11 da 26ª: o fuso de cada unidade — a edição diz em que relógio vale o horário próprio.
   const fusos = await fusosDasUnidades(ctx.tenantId)
   const allRoles = (tenantRoles ?? []).map(r => ({ ...r, label: fala(r.label) }))
-  // Cargos atribuíveis pela UI: sem os de sistema (NETWORK_ADMIN)
-  const assignableRoles = allRoles.filter(r => !r.is_system && r.key !== 'NETWORK_ADMIN')
+  // Cargos atribuíveis pela UI: os da rede e o "Não definido" (item 20 de
+  // 18/11, o Heitor: "pode criar, e quem tem cargo não definido não tem
+  // permissão de nada"); o Admin da rede entra abaixo, só para quem o tem.
+  const assignableRoles = cargosQueSeDaoPelaEquipe(allRoles)
+  // Item 21: os cargos que não abrem módulo nenhum (o "Não definido" e o da rede todo em Sem acesso).
+  const semAcesso = await cargosSemAcesso(createAdminClient(), ctx, allRoles)
   // O cargo de SISTEMA Admin da rede (`key` + `is_system`, nunca o rótulo —
   // lib/equipe/admin-da-rede.ts). Revisão do Heitor (2026-10-29): só quem o TEM
   // dá esse cargo e altera quem o tem; a própria Admin edita "atende", comissão
@@ -112,9 +118,10 @@ export default async function AdminTeamPage({
   // A9 da 7ª simulação: a Admin vem PRIMEIRO, como na tela de Cargos (era a última da lista).
   // C62 (F70; H7 = b): o cargo com mais acesso que o de quem age aparece
   // desligado, dizendo por quê — a action também recusa.
-  const acimaDoMeu = await cargosAcimaDoMeu(createAdminClient(), ctx, assignableRoles.map(r => r.id), souAdmin)
+  const acimaDoMeu = await cargosAcimaDoMeu(createAdminClient(), ctx, assignableRoles.filter(r => !r.is_system).map(r => r.id), souAdmin)
   const comTrava = assignableRoles.map(r => (acimaDoMeu.has(r.id) ? { ...r, acimaDoMeu: true } : r))
   const rolesParaDar = (souAdmin && cargoDeAdmin ? [cargoDeAdmin, ...comTrava] : comTrava)
+    .map(r => ({ ...r, semAcesso: semAcesso.has(r.id) }))
   /** Quem age pode mexer neste membro? A Admin da rede, só outra Admin (ou ela mesma). */
   const podeMexerEm = (m: { id: string; role_id: string | null }) =>
     !cargoDeAdmin || m.role_id !== cargoDeAdmin.id || souAdmin || m.id === ctx.internalUserId
@@ -268,6 +275,15 @@ export default async function AdminTeamPage({
                           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 1 }}>
                             {m.email}
                           </p>
+                          {/* Item 21 de 18/11: o cargo dela não abre módulo nenhum — avisa, à vista. */}
+                          {m.is_active && !!m.role_id && semAcesso.has(m.role_id) && (
+                            <p data-sem-acesso style={{
+                              fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)', color: 'var(--warning)',
+                              marginTop: 3, maxWidth: 360,
+                            }}>
+                              {avisoDoMembroSemAcesso(!!m.provides_services)}
+                            </p>
+                          )}
                           {/* Cargo, unidade e "atende" moram AQUI no celular,
                               numa linha só. As colunas próprias existem, mas
                               saem com .so-desktop: repetidas no card elas diziam

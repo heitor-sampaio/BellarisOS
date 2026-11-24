@@ -1,5 +1,5 @@
 import { getTenantContext, can, temRecurso } from '@/lib/auth'
-import { lerRecursos, limiteDe, modulosForaDoPlano } from '@estetica-os/nucleo/lib/planos/recursos'
+import { abasForaDoPlano, lerRecursos, limiteDe, modulosForaDoPlano } from '@estetica-os/nucleo/lib/planos/recursos'
 import { usoDoCopilot } from '@estetica-os/nucleo/lib/planos/uso-do-copilot'
 import { copilotNoPlano } from '@/lib/copilot/disponivel'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -493,6 +493,7 @@ export async function Configuracoes({
             // O Copilot é a única função que "sem plano" NÃO libera (lib/copilot/disponivel):
             // a matriz não o oferece à rede que não o tem (2026-10-21).
             foraDoPlano={[...modulosForaDoPlano(lerRecursos(ctx.plano ?? null)), ...(copilotNoPlano(ctx) ? [] : ['copilot' as const])]}
+            abasForaDoPlano={abasForaDoPlano(lerRecursos(ctx.plano ?? null))}
           />
         </div>
       )}

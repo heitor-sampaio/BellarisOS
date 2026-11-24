@@ -1,19 +1,28 @@
 /**
- * Os motivos da saída por PERDA (D-7, decisão do Heitor, 2026-10-29) — puro:
- * o formulário, o histórico e o relatório usam os mesmos nomes. O banco
- * confere a mesma lista (`stock_movements_motivo_da_perda_check`).
+ * Os motivos da saída por PERDA — puro.
+ *
+ * Até 18/11 eram uma lista fixa (D-7, decisão do Heitor, 2026-10-29: Vencido,
+ * Quebrou, Amostra, Uso interno). Desde o item 7 do escopo de 18/11 (o Heitor:
+ * "motivos de perda configuraveis, poder adicionar/editar/excluir") são um
+ * cadastro da REDE (`estoque_motivos_de_perda`), ao lado das categorias, das
+ * marcas e dos fornecedores; a rede nasce com os quatro de antes, editáveis.
+ * O movimento guarda o NOME do motivo (`stock_movements.motivo_da_perda`):
+ * excluir o motivo não apaga a história.
  */
-export type MotivoDaPerda = 'VENCIDO' | 'QUEBROU' | 'AMOSTRA' | 'USO_INTERNO'
 
-export const MOTIVOS_DA_PERDA: { key: MotivoDaPerda; label: string }[] = [
-  { key: 'VENCIDO',     label: 'Vencido' },
-  { key: 'QUEBROU',     label: 'Quebrou' },
-  { key: 'AMOSTRA',     label: 'Amostra' },
-  { key: 'USO_INTERNO', label: 'Uso interno' },
-]
+/** Os motivos com que a rede nasce (`private.estoque_motivos_de_perda_semear`). */
+export const MOTIVOS_INICIAIS_DA_PERDA = ['Vencido', 'Quebrou', 'Amostra', 'Uso interno'] as const
 
-export function lerMotivoDaPerda(v: unknown): MotivoDaPerda | null {
-  return MOTIVOS_DA_PERDA.some(m => m.key === v) ? v as MotivoDaPerda : null
+/** As chaves da lista fixa de antes — o banco as trocou pelo nome; um movimento lido antes da migration ainda as diz. */
+const CHAVES_DE_ANTES: Record<string, string> = {
+  VENCIDO: 'Vencido', QUEBROU: 'Quebrou', AMOSTRA: 'Amostra', USO_INTERNO: 'Uso interno',
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** O motivo que o formulário manda é o id de um motivo da rede (o banco confere a rede). */
+export function lerMotivoDaPerda(v: unknown): string | null {
+  return typeof v === 'string' && UUID.test(v) ? v : null
 }
 
 /**
@@ -37,9 +46,11 @@ export const MOTIVO_INVENTARIO = 'INVENTARIO'
  */
 export const MOTIVO_BRINDE = 'BRINDE'
 
+/** O que a tela diz do motivo: os do sistema pelo rótulo deles; o da rede, pelo nome gravado. */
 export function rotuloDoMotivo(v: string | null | undefined): string {
   if (v === MOTIVO_VENDA_ESTORNADA) return 'Venda estornada (não voltou)'
   if (v === MOTIVO_INVENTARIO) return 'Inventário'
   if (v === MOTIVO_BRINDE) return 'Brinde da fidelidade'
-  return MOTIVOS_DA_PERDA.find(m => m.key === v)?.label ?? '—'
+  if (!v || !v.trim()) return '—'
+  return CHAVES_DE_ANTES[v] ?? v
 }

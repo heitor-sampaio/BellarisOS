@@ -199,6 +199,7 @@ export default async function AdminEstoquePage({
           {canEdit && <CadastroDoEstoque lista="categorias" itens={listas.categorias} />}
           {canEdit && <CadastroDoEstoque lista="marcas" itens={listas.marcas} />}
           {canEdit && <CadastroDoEstoque lista="fornecedores" itens={listas.fornecedores} />}
+          {canEdit && <CadastroDoEstoque lista="motivos" itens={listas.motivos} />}
           {/* Sem produto, o "Novo produto" é o do vazio (A2): dois primários iguais na tela, não. */}
           {canEdit && products.length > 0 && (
             <StockProductModal
@@ -289,6 +290,7 @@ export default async function AdminEstoquePage({
         productCategories={listas.categorias}
         marcas={listas.marcas}
         fornecedores={listas.fornecedores}
+        motivosDePerda={listas.motivos}
         unidadeInicial={unidadeId}
         unidadesDoProduto={unidadesDoProduto}
         readOnly={!canEdit}

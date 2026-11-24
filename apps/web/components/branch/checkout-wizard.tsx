@@ -2,6 +2,8 @@
 import { FormasDePagamento, FORMAS_DO_BALCAO } from '@/components/shared/formas-de-pagamento'
 import { OutrasFormas } from '@/components/shared/outras-formas'
 import { recusaDasOutras, valorDaParte, valorDaPrincipal, type EstadoDaParte } from '@/lib/checkout/varias-formas'
+import { CampoDoTroco } from '@/components/shared/campo-do-troco'
+import { emDinheiro, recusaDoTroco } from '@/lib/checkout/troco'
 import { useFuso } from '@/components/shared/fuso'
 import { instanteNoFuso, dayKeyTZ, addDaysTZ, BUSINESS_TZ } from '@/lib/datetime'
 
@@ -251,6 +253,14 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   const saldo      = Math.round((liquido - entradaNum) * 100) / 100
   // A20 da 24ª: o que entra agora — o "Total a cobrar" / "Recebido agora" do pagamento e o botão final.
   const valorAgora = Math.round(((formaPgto === 'AVISTA' ? fid.aPagar : formaPgto === 'PARCELADO' ? entradaNum : 0) + (recebeHoje ? precoDeHoje : 0)) * 100) / 100
+  // Item 14 do escopo de 18/11: no dinheiro, o "Valor entregue" e o troco (só da tela). A 1ª forma
+  // leva o atendimento de hoje; dividido, ela fica com o que falta das outras.
+  const [entregue, setEntregue] = useState('')
+  const naPrimeiraForma = formaPgto === 'AVISTA'
+    ? (outras.length ? valorDaPrincipal(fid.aPagar, outras) + (recebeHoje ? precoDeHoje : 0) : valorAgora)
+    : formaPgto === 'PARCELADO' && entradaNum > 0 ? valorAgora : 0
+  const noDinheiro = emDinheiro(paymentMethod, naPrimeiraForma, formaPgto === 'AVISTA' ? outras : [])
+  const recusaDoEntregue = recusaDoTroco(noDinheiro, entregue)
   // D2 da 7ª: as parcelas como serão GRAVADAS ("2x de R$ 890,66 + 1x de R$ 890,68"), não a média.
   const textoDasParcelas = parcelasEmTexto(saldo, parcelas)
 
@@ -966,6 +976,11 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
               metodos={FORMAS_DO_BALCAO} clienteId={plan.clientId} />
           </div>
         )}
+        {podeCobrar && noDinheiro > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <CampoDoTroco emDinheiro={noDinheiro} entregue={entregue} aoMudar={setEntregue} />
+          </div>
+        )}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', borderTop: '1px solid var(--hairline)' }}>
           <span style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', fontWeight: 600 }}>
             {formaPgto === 'AVISTA' ? 'Total a cobrar' : formaPgto === 'PARCELADO' ? 'Recebido agora' : 'Total a receber'}
@@ -1024,7 +1039,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
       )}
 
       <button
-        onClick={() => irParaDocumentos()} disabled={preparando || !!contaDesc.recusa || semForma || !!faltaAMaquininha} title={faltaAMaquininha ?? undefined}
+        onClick={() => irParaDocumentos()} disabled={preparando || !!contaDesc.recusa || semForma || !!faltaAMaquininha || (podeCobrar && !!recusaDoEntregue)} title={faltaAMaquininha ?? undefined}
         style={{ width: '100%', padding: '14px', borderRadius: 'var(--radius-field-token)', background: 'var(--brand)', color: 'var(--surface)', fontWeight: 700, fontSize: 'var(--text-card-title)', border: 'none', cursor: preparando ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: 'var(--shadow-brand-btn)' }}>
         {preparando ? 'Montando os documentos…' : 'Ir para a documentação'} <ChevronRight size={18} />
       </button>

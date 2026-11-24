@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Tags, Award, Truck, Plus, Pencil, Trash2, Check, X } from 'lucide-react'
+import { Tags, Award, Truck, PackageX, Plus, Pencil, Trash2, Check, X } from 'lucide-react'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { Dica } from '@/components/shared/dica'
 import { criarItemDoEstoque, renomearItemDoEstoque, excluirItemDoEstoque, type ListaDoEstoque } from '@/actions/stock'
@@ -25,11 +25,18 @@ const TEXTOS: Record<ListaDoEstoque, { titulo: string; novo: string; exemplo: st
     ajuda: 'O fornecedor é escolhido em cada entrada no estoque (e no estoque inicial), e filtra a lista de produtos.',
     ao_excluir: 'As entradas já feitas guardam o nome; ele só sai das opções e do filtro.', icone: Truck,
   },
+  // Item 7 do escopo de 18/11 (o Heitor: "motivos de perda configuraveis").
+  motivos: {
+    titulo: 'Motivos de perda', novo: 'Novo motivo', exemplo: 'Ex.: Frasco aberto vencido', vazio: 'Nenhum motivo cadastrado ainda: a Perda pede um.',
+    ajuda: 'O motivo é escolhido em cada perda (Movimentar → Perda) e agrupa as Perdas no período dos Relatórios.',
+    ao_excluir: 'As perdas já registradas guardam o nome; ele só sai das opções.', icone: PackageX,
+  },
 }
 
 /**
  * Categorias, Marcas e Fornecedores (E1/E4/E5 do plano de adaptação, o Heitor,
- * 13/11): três cadastros de texto livre da rede, com a mesma janela — criar,
+ * 13/11) e os Motivos de perda (item 7 do escopo de 18/11): cadastros de
+ * texto livre da rede, com a mesma janela — criar,
  * renomear e excluir. Aparece para quem tem o Estoque em Gerenciar (ser da rede
  * deixou de contar).
  */

@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { ArrowUpRight } from 'lucide-react'
+import { textoDoPainelSemAcesso } from '@/lib/cargos/sem-acesso'
 
 export interface DashboardShortcut {
   label: string
@@ -9,13 +10,21 @@ export interface DashboardShortcut {
 /**
  * Estado do dashboard quando o cargo não tem nenhum widget para exibir.
  * Mostra boas-vindas + atalhos para os módulos que o usuário pode acessar.
+ * Sem atalho nenhum, diz por quê (item 20 de 18/11): sem cargo, o cargo que
+ * não abre nada, ou o que abre só o que não tem atalho aqui.
  */
 export function DashboardEmptyState({
   userName,
   shortcuts,
+  semCargo = false,
+  semAcesso = true,
 }: {
   userName:  string
   shortcuts: DashboardShortcut[]
+  /** O cargo é o "Não definido". */
+  semCargo?: boolean
+  /** O cargo não abre módulo nenhum. */
+  semAcesso?: boolean
 }) {
   const first = userName.split(' ')[0] || userName
 
@@ -25,10 +34,10 @@ export function DashboardEmptyState({
       <h1 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>
         Bem-vindo(a){first ? `, ${first}` : ''}
       </h1>
-      <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 6, marginBottom: 24 }}>
+      <p data-painel-sem-acesso={shortcuts.length > 0 ? undefined : ''} style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 6, marginBottom: 24 }}>
         {shortcuts.length > 0
           ? 'Aqui estão os seus atalhos:'
-          : 'Seu cargo ainda não tem acesso a nenhuma área. Fale com o administrador da rede.'}
+          : textoDoPainelSemAcesso({ semCargo, semAcesso: semCargo || semAcesso })}
       </p>
 
       {shortcuts.length > 0 && (

@@ -130,6 +130,8 @@ interface Props {
    */
   unidadesDoProduto?: Branch[]
   fornecedores?:     ItemDaLista[]
+  /** Item 7 do escopo de 18/11: os motivos de perda da rede (a Perda escolhe deles). */
+  motivosDePerda?:   ItemDaLista[]
 }
 
 type ViewMode  = 'consolidado' | 'por-unidade'
@@ -258,7 +260,7 @@ function PencilButton({ onClick }: { onClick: (e: React.MouseEvent) => void }) {
   return <IconButton onClick={onClick} title="Editar produto"><Pencil size={12} /></IconButton>
 }
 
-export function AdminStockView({ products, branches, productCategories = [], marcas = [], defaultBranchId, unidadeInicial = '', unidadesDaRede, readOnly = false, buscaInicial = '', podeVerAplicacoes = false, comLoteEsgotado = [], loteInicial = null, podeEditarProduto = !readOnly, fornecedores = [], unidadesDoProduto }: Props) {
+export function AdminStockView({ products, branches, productCategories = [], marcas = [], defaultBranchId, unidadeInicial = '', unidadesDaRede, readOnly = false, buscaInicial = '', podeVerAplicacoes = false, comLoteEsgotado = [], loteInicial = null, podeEditarProduto = !readOnly, fornecedores = [], motivosDePerda = [], unidadesDoProduto }: Props) {
   const temLoteEsgotado = useMemo(() => new Set(comLoteEsgotado), [comLoteEsgotado])
   // O dia do "vencido" é o da unidade (F62b).
   const fuso = useFuso()
@@ -780,6 +782,7 @@ export function AdminStockView({ products, branches, productCategories = [], mar
           origemSugerida={branchId || undefined}
           marcas={marcas}
           fornecedores={fornecedores}
+          motivosDePerda={motivosDePerda}
           onClose={() => setManaging(null)}
           onSuccess={() => { setManaging(null); router.refresh() }}
         />

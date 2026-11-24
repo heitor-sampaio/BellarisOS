@@ -1,4 +1,4 @@
-import { situacaoDoVencimento, textoDoVencimento } from '@/lib/financeiro/vencimentos'
+import { situacaoDoVencimento, textoDoVencimento, diasAteOVencimento } from '@/lib/financeiro/vencimentos'
 import { anterioresEmAbertoEmTexto, type ParcelaParaAdiantar } from '@/lib/pdv/situacoes'
 import type { TenantContext } from '@estetica-os/types'
 import { can, podeReceber, alcancaUnidade } from '@/lib/auth'
@@ -105,8 +105,12 @@ export async function financeiroDaFicha(ctx: TenantContext, clientId: string): P
     const p = emAberto.find(o => o.id === l.id)
     return p ? anterioresEmAbertoEmTexto(p, emAberto) : null
   }
-  // D7 da 10ª: em ordem pela data que a linha mostra (ordenarTransacoesDaFicha).
+  // D7 da 10ª e item 17 do escopo de 18/11: o em aberto primeiro, pelo vencimento
+  // (a vencida primeiro); o resto pela data que a linha mostra (ordenarTransacoesDaFicha).
   // Limite da 21ª: a parcela recebida em várias formas é UMA linha (o total e cada forma).
+  const agora = new Date()
+  const vencidaNaFicha = (l: Linha) => l.type === 'INCOME' && !l.is_paid && l.notes !== 'Estornada'
+    && situacaoDoVencimento(l.due_date, agora, fusos.get(l.branch_id ?? '')) === 'VENCIDA'
   const transactions: ProfileTransaction[] = ordenarTransacoesDaFicha(juntarAsFormasDaParcela(linhas as Linha[]).map(l => ({
     id:            l.id,
     description:   l.description,
@@ -123,7 +127,9 @@ export async function financeiroDaFicha(ctx: TenantContext, clientId: string): P
     scheduledAt:   l.appointment?.scheduled_at ?? null,
     dueDate:       l.due_date,
     // D13 da 9ª: "Vencida em 05/11" (o dia decidido aqui, no servidor).
-    vencida:       l.type === 'INCOME' && !l.is_paid && l.notes !== 'Estornada' && situacaoDoVencimento(l.due_date, new Date(), fusos.get(l.branch_id ?? '')) === 'VENCIDA',
+    vencida:       vencidaNaFicha(l),
+    // Item 17: "Vencida há N dias", de dia a dia no fuso da unidade do lançamento.
+    diasVencida:   vencidaNaFicha(l) ? -diasAteOVencimento(l.due_date!, agora, fusos.get(l.branch_id ?? '')) : null,
     isCheckout:    !l.appointment_id && l.category !== 'Estorno',
     // O estorno com o sinal certo e o original marcado (D6, 2026-10-28).
     estornada:     l.notes === 'Estornada',

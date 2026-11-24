@@ -687,6 +687,7 @@ export default async function AdminDashboardPage({
       <RealtimeRefresher tables={['financeiro_sinais']} topicos={['agenda', 'estoque']} />
       <AdminDashboardView
         permissions={ctx.permissions}
+        semCargo={!!ctx.semCargo}
         quadrosDeClientes={quadrosDeClientes}
         avisoDosAbertos={<>
           <AbertosDeAntes base="/admin/agenda" abertos={abertos.abertos} semChegada={abertos.semChegada} mostrarUnidade={branches.length > 1} />

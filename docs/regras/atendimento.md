@@ -1148,6 +1148,15 @@
   cruza NA TELA (a altura mínima do cartão) fica lado a lado, e na grade da
   unidade o concluído que liberou o horário vai para a metade direita, como o
   cancelado (`data-liberou`). Trava: `tests/agenda-desenho-ate-a-ocupacao.test.ts`.
+  **O concluído DEPOIS da hora ocupa até o fim marcado** (item 18 do escopo
+  de 18/11 — o Heitor, sobre o concluído liberar o resto: "pode liberar";
+  decisão do Claude, 26ª, pelo princípio 3): a das 10:00 às 11:00 concluída às
+  11:20 ocupa até as 11:00, não até o clique — a hora da conclusão é a de quem
+  apertou "Concluir", que pode vir muito depois, e esticar a ocupação além do
+  bloco que a grade desenha seria um choque que a tela não mostra. A grade e a
+  conta são a mesma `fimDaOcupacao` (o menor entre o fim marcado e a
+  conclusão). O cancelado e a falta não ocupam nada (`IGNORED_STATUS`). Trava:
+  `tests/agenda-desenho-ate-a-ocupacao.test.ts`.
 - **O conflito diz a unidade do outro atendimento** (A30): o profissional da
   rede atende em várias, e quem tem a agenda de uma não vê a da outra. O
   aviso do modal ("…das 15:00 às 16:00, na unidade Moinhos.") e a recusa
@@ -2855,8 +2864,8 @@ const procedures = await ler(
 - **A saída por PERDA** (D-7, decisão do Heitor, 2026-10-29; migrations
   `20261029001303`/`304`): Gerenciar estoque → Movimentações → "Perda", com o
   LOTE (ou "sem lote — sai o que vence primeiro"), a quantidade em
-  EMBALAGENS, o motivo (Vencido, Quebrou, Amostra, Uso interno —
-  `lib/estoque/perda.ts`, o banco confere a mesma lista) e a observação.
+  EMBALAGENS, o motivo (um dos motivos de perda da rede — abaixo; até
+  18/11 era a lista fixa Vencido, Quebrou, Amostra, Uso interno) e a observação.
   `registrarPerda` → `estoque_perda`, uma transação com a linha do saldo
   travada: recusa mais do que o lote tem ("O lote tem só 2 frasco.") e mais
   do que há. O movimento é `LOSS` (em consumo, com `motivo_da_perda`) e diz o
@@ -2867,6 +2876,25 @@ const procedures = await ler(
   para o Heitor). O relatório é a seção "Perdas no período" de Relatórios →
   Estoque (`metrics_perdas` → `getPerdas`, `indicadores.md`). Prova:
   `e2e/estoque-perda.spec.ts`.
+  - **Os motivos da perda são um cadastro da REDE** (item 7 do escopo de
+    18/11, o Heitor: "motivos de perda configuraveis, poder
+    adicionar/editar/excluir"; migration `20261201100001`): a lista fixa saiu.
+    `estoque_motivos_de_perda` fica ao lado das categorias, das marcas e dos
+    fornecedores (botão "Motivos de perda" no Estoque, `CadastroDoEstoque`,
+    as mesmas actions `criar/renomear/excluirItemDoEstoque`), e a rede nasce
+    com os quatro de antes, editáveis (`private.estoque_motivos_de_perda_semear`,
+    pelo gatilho da rede nova). Quem mexe é quem tem o Estoque em Gerenciar
+    (decisão do Claude, 26ª, pela regra das outras três listas). O formulário
+    manda o id; `estoque_perda_em` resolve o motivo pelo id ou pelo nome, da
+    REDE do produto (`private.motivo_da_perda_de`; as chaves de antes,
+    `VENCIDO`…, ainda valem para quem chama por dentro). O movimento grava o
+    NOME (`motivo_da_perda`) e o id (`motivo_da_perda_id`, `on delete set
+    null`): **excluir um motivo usado não apaga a história** (decisão do
+    Claude, 26ª) — ele sai das opções, e a perda guarda o nome; renomear
+    junta no relatório as perdas do motivo sob o nome novo. A tabela nasce sem
+    política nenhuma para a sessão (o Heitor, 19/11: a sessão nunca grava e só
+    lê sinais): o servidor lê e grava. Prova: `e2e/estoque-perda.spec.ts` ("os
+    motivos de perda da rede…"), `tests/estoque-so-pelas-funcoes.test.ts`.
   - **A perda aceita a unidade de CONSUMO** (est-03 da revisão, 2026-11-02:
     "um frasco aberto de toxina vence com 30 UI sobrando; a Bruna precisa
     digitar '0,3 frasco'"). O produto com unidade de consumo mostra "Em:
@@ -3919,6 +3947,7 @@ O resto do fluxo:
 ❌ Corrigir um ajuste errado com outro ajuste (a perda do primeiro fica em Perdas): é "Desfazer ajuste" (estoque_desfazer_ajuste — D5 da 11ª)
 ❌ Corrigir o custo de um lote de onde já saiu algo, ou mexer no unit_cost fora de estoque_corrigir_custo_do_lote: depois da saída é o Ajuste "Correção de cadastro" (estoque_ajuste_de_correcao — A10 da 24ª), que não é perda
 ❌ Corrigir uma perda lançada errada com um ajuste a mais (a perda fica em Perdas e o lote certo não volta): é "Desfazer perda" (estoque_desfazer_perda — C69)
+❌ Lista fixa de motivos de perda na tela ou no banco: os motivos são da REDE (estoque_motivos_de_perda), e a perda grava o nome e o id pelo private.motivo_da_perda_de (item 7 do escopo de 18/11)
 ❌ Conferir o disponível de uma transferência (ou de qualquer saída) pelo current_stock de produto com unidade de consumo — o frasco aberto conta inteiro; é o rendimento (C18)
 ❌ Gravar o custo do produto ao editar o cadastro (o custo vem das entradas — C17)
 ❌ Campo de categoria, marca ou fornecedor em texto livre (ou num select sem busca) numa porta de entrada nova — é CampoDaLista (a lista da rede, com busca e "+ Nova …" — E6)

@@ -1,5 +1,5 @@
 import { test, expect, type Browser, type Page } from '@playwright/test'
-import { banco } from './apoio/banco'
+import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
@@ -146,4 +146,95 @@ test('F33/PDV7: na rede, a "Nova venda" sem a unidade pergunta em qual; trocar a
   } finally {
     await daRede.limpar()
   }
+})
+
+/**
+ * O troco no dinheiro (vendas-financeiro.md; o Heitor, 18/11: "ok"): ao
+ * receber em DINHEIRO, toda tela que recebe pede o "Valor entregue"
+ * (opcional) e mostra o troco; o entregue menor avisa e não deixa confirmar.
+ * O que se grava é o valor do pagamento — o caixa conta o recebido, não o
+ * entregue (o entregue não se guarda: decisão do Claude, princípio 7).
+ * Na mesma rede [e2e] desta venda, com quem tem também o Financeiro (a baixa).
+ */
+test.describe('o troco no dinheiro', () => {
+  let caixa: MembroDeTeste | null = null
+  const daquiA = (dias: number) => new Date(Date.now() + dias * 86_400_000).toISOString()
+
+  test.beforeAll(async () => {
+    caixa = await criarMembro(`trocob${marca}`, {
+      tenant: rede!.tenantId, branchId: rede!.branchId, rotulo: 'Caixa',
+      permissoes: [{ modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'cashier', nivel: 'MANAGE' }, { modulo: 'financial', nivel: 'MANAGE' }],
+    })
+  })
+  test.afterAll(async () => { await caixa?.limpar() })
+
+  test('Nova venda em dinheiro: o entregue menor trava, o maior diz o troco, e grava o valor da venda', async ({ browser }) => {
+    const cliente = await rede!.criarCliente(`Troco ${marca}`)
+    await como(caixa!, browser, async p => {
+      await p.goto(`/${slug}/pdv?nova=1&cliente=${cliente}`)
+      const venda = p.getByRole('region', { name: 'Vender' })
+      await venda.getByLabel('Procedimento', { exact: true }).selectOption(rede!.procedureId)
+      await euVendi(venda)
+      // No Pix, nada de valor entregue.
+      await venda.getByRole('radio', { name: 'Pix', exact: true }).click()
+      await expect(venda.getByLabel('Valor entregue (opcional)')).toHaveCount(0)
+      await venda.getByRole('radio', { name: 'Dinheiro', exact: true }).click()
+      const entregue = venda.getByLabel('Valor entregue (opcional)')
+      await expect(entregue).toBeVisible()
+      const vender = venda.getByRole('button', { name: /^Vender por R\$\s200,00$/ })
+      // Opcional: vazio, vende.
+      await expect(vender).toBeEnabled()
+      await entregue.fill('150')
+      await expect(venda.locator('[data-entregue-menor]')).toContainText(/menor que os R\$\s200,00 em dinheiro: faltam R\$\s50,00/)
+      await expect(vender, 'o entregue menor não deixa vender').toBeDisabled()
+      await entregue.fill('250')
+      await expect(venda.locator('[data-troco]')).toHaveText(/Troco: R\$\s50,00/)
+      await expect(vender).toBeEnabled()
+      await vender.click()
+      await expect(p.getByRole('region', { name: 'Vender' })).toHaveCount(0)
+    })
+    const { data } = await db().from('financial_transactions').select('amount, payment_method, is_paid').eq('client_id', cliente)
+    expect(data, 'um lançamento, do valor da venda — não do entregue').toEqual([{ amount: 200, payment_method: 'CASH', is_paid: true }])
+  })
+
+  test('A parcela no PDV e a baixa no Financeiro: o mesmo campo e a mesma trava', async ({ browser }) => {
+    const cliente = await rede!.criarCliente(`TrocoParcela ${marca}`)
+    const { data: txs } = await db().from('financial_transactions').insert([
+      { branch_id: rede!.branchId, client_id: cliente, type: 'INCOME', category: 'Serviços', description: `${PREFIXO} parcela ${marca} — parcela 1/2`,
+        amount: 120, is_paid: false, due_date: daquiA(10), parcela_numero: 1, parcela_total: 2, created_by: 'e2e' },
+      { branch_id: rede!.branchId, client_id: cliente, type: 'INCOME', category: 'Serviços', description: `${PREFIXO} baixa ${marca}`,
+        amount: 80, is_paid: false, due_date: daquiA(5), created_by: 'e2e' },
+    ]).select('id, amount')
+    expect(txs).toHaveLength(2)
+    await como(caixa!, browser, async p => {
+      // A parcela no PDV.
+      await p.goto(`/${slug}/pdv?nova=1&cliente=${cliente}`)
+      const emAberto = p.getByRole('region', { name: 'Vender' }).locator('[data-em-aberto-da-cliente]')
+      await emAberto.locator('[data-parcela-em-aberto]', { hasText: 'R$ 120,00' }).getByRole('button', { name: /Receber/ }).click()
+      const janela = p.getByRole('dialog', { name: 'Receber a parcela' })
+      await janela.getByRole('radio', { name: 'Dinheiro', exact: true }).click()
+      await janela.getByLabel('Valor entregue (opcional)').fill('100')
+      const receber = janela.getByRole('button', { name: /^Receber R\$\s120,00$/ })
+      await expect(receber).toBeDisabled()
+      await janela.getByLabel('Valor entregue (opcional)').fill('120')
+      await expect(janela.locator('[data-troco]')).toHaveText('Sem troco.')
+      await expect(receber).toBeEnabled()
+      await janela.getByRole('button', { name: 'Cancelar' }).click()
+
+      // A baixa no Financeiro (o "Receber" da lista).
+      await p.goto(`/${slug}/financeiro?aba=a-receber`)
+      await p.locator('tr', { hasText: `baixa ${marca}` }).getByRole('button', { name: 'Receber', exact: true }).click()
+      const baixa = p.getByRole('dialog', { name: 'Receber' })
+      await baixa.getByRole('radio', { name: 'Dinheiro', exact: true }).click()
+      await baixa.getByLabel('Valor entregue (opcional)').fill('50')
+      await expect(baixa.getByRole('button', { name: 'Confirmar recebimento' })).toBeDisabled()
+      await baixa.getByLabel('Valor entregue (opcional)').fill('100')
+      await expect(baixa.locator('[data-troco]')).toHaveText(/Troco: R\$\s20,00/)
+      await baixa.getByRole('button', { name: 'Confirmar recebimento' }).click()
+      await expect(baixa).toHaveCount(0)
+    })
+    const baixa = txs!.find(t => Number(t.amount) === 80)!
+    const { data } = await db().from('financial_transactions').select('amount, is_paid, payment_method').eq('id', baixa.id).single()
+    expect(data).toMatchObject({ amount: 80, is_paid: true, payment_method: 'CASH' })
+  })
 })

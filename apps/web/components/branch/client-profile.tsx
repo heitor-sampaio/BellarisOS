@@ -167,6 +167,8 @@ export interface ProfileTransaction {
   dueDate:       string | null
   /** D13 da 9ª: em aberto com o vencimento antes de hoje. */
   vencida?:      boolean
+  /** Item 17 do escopo de 18/11: há quantos dias venceu (do servidor, no fuso da unidade). */
+  diasVencida?:  number | null
   isCheckout?:   boolean
   /** Cartão de crédito em N vezes (2–12), pago na hora. */
   cartaoVezes?:  number | null
@@ -1325,12 +1327,16 @@ function FinanceiroTab({
             <tbody>
               {transactions.map((t, i) => {
                 const isLast = i === transactions.length - 1
+                // Item 17 do escopo de 18/11: a vencida e não paga em destaque (o fundo de alerta).
+                const vencidaEmDestaque = !!t.vencida && !!t.dueDate && !t.isPaid && !t.estornada
 
                 return (
-                  <tr key={t.id} data-lancamento={t.id} data-transacao-da-ficha style={{ borderBottom: isLast ? 'none' : '1px solid var(--hairline)' }}>
+                  <tr key={t.id} data-lancamento={t.id} data-transacao-da-ficha data-vencida-da-ficha={vencidaEmDestaque ? '' : undefined}
+                    style={{ borderBottom: isLast ? 'none' : '1px solid var(--hairline)', background: vencidaEmDestaque ? 'var(--danger-soft)' : undefined }}>
                     <td data-label="Data" style={{ padding: '12px 16px', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                       {!t.isPaid && t.dueDate
-                        ? `Vence ${new Date(t.dueDate).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`
+                        // O vencimento é a âncora do meio-dia de Brasília: o dia dele se lê por essa régua (formatarNoFuso, o fuso padrão).
+                        ? `Vence ${formatarNoFuso(t.dueDate, 'dd/MM/yyyy')}`
                         : t.scheduledAt
                           ? formatarNoFuso(t.scheduledAt, 'dd/MM/yyyy', fuso)
                           : formatarNoFuso(t.createdAt, 'dd/MM/yyyy', fuso)
@@ -1378,8 +1384,8 @@ function FinanceiroTab({
                     <td data-label="Status" style={{ padding: '12px 16px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                         {/* D13 da 9ª: a vencida não é "Pendente", igual à que vai vencer. */}
-                        {t.vencida && t.dueDate && !t.isPaid && !t.estornada ? (
-                          <SituacaoDoEmAberto vencida vencimento={t.dueDate} />
+                        {vencidaEmDestaque ? (
+                          <SituacaoDoEmAberto vencida vencimento={t.dueDate} diasVencida={t.diasVencida ?? null} />
                         ) : (
                           <span className={t.estornada || t.estorno ? 'chip chip-muted' : t.isPaid ? 'chip chip-success' : 'chip chip-muted'} style={{ fontSize: 'var(--text-overline)' }}>
                             {t.estornada ? 'Estornado' : t.estorno ? 'Estorno' : t.isPaid ? 'Pago' : 'Pendente'}

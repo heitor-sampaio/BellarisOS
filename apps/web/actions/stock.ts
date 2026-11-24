@@ -1241,17 +1241,22 @@ export async function desfazerPerdaDeEstoque(movimentoId: string, motivo: string
 
 // --- Categorias, marcas e fornecedores (E1/E4/E5 do plano de adaptação) ---
 //
-// Três cadastros de texto livre da rede, com a MESMA regra (o Heitor, 13/11:
+// Três cadastros de texto livre da rede (e, desde 18/11, os motivos de perda), com a MESMA regra (o Heitor, 13/11:
 // "é só quem tem permissão de gerenciar, mesma regra para categoria, marca e
 // fornecedor"): criar, renomear, excluir — quem tem o Estoque em Gerenciar, e
 // só isso. Ser da rede deixou de contar (era a recusaDaConfigDaRede, H7).
 
-export type ListaDoEstoque = 'categorias' | 'marcas' | 'fornecedores'
-type DefinicaoDaLista = { tabela: 'product_categories' | 'marcas' | 'fornecedores'; coluna: 'name' | 'nome'; artigo: 'a' | 'o'; nome: string }
+export type ListaDoEstoque = 'categorias' | 'marcas' | 'fornecedores' | 'motivos'
+type DefinicaoDaLista = { tabela: 'product_categories' | 'marcas' | 'fornecedores' | 'estoque_motivos_de_perda'; coluna: 'name' | 'nome'; artigo: 'a' | 'o'; nome: string }
 const LISTAS: Record<ListaDoEstoque, DefinicaoDaLista> = {
   categorias:   { tabela: 'product_categories', coluna: 'name', artigo: 'a', nome: 'categoria' },
   marcas:       { tabela: 'marcas',             coluna: 'nome', artigo: 'a', nome: 'marca' },
   fornecedores: { tabela: 'fornecedores',       coluna: 'nome', artigo: 'o', nome: 'fornecedor' },
+  // Item 7 do escopo de 18/11 (o Heitor: "motivos de perda configuraveis, poder
+  // adicionar/editar/excluir"): a mesma janela e a mesma regra das outras três
+  // (decisão do Claude, 26ª, por analogia ao Bloco Estoque). A perda guarda o
+  // NOME do motivo: renomear e excluir não mexem nas perdas já registradas.
+  motivos:      { tabela: 'estoque_motivos_de_perda', coluna: 'nome', artigo: 'o', nome: 'motivo de perda' },
 }
 const nomeLimpo = (v: unknown) => (typeof v === 'string' ? v.trim().replace(/\s+/g, ' ') : '')
 const chaveDoNome = (v: string) => nomeLimpo(v).toLocaleLowerCase('pt-BR')

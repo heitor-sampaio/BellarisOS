@@ -11,6 +11,7 @@ const NOVO: Record<ListaDoEstoque, string> = {
   categorias: 'Nova categoria',
   marcas: 'Nova marca',
   fornecedores: 'Novo fornecedor',
+  motivos: 'Novo motivo',
 }
 
 const chave = (v: string) => v.trim().replace(/\s+/g, ' ').toLocaleLowerCase('pt-BR')

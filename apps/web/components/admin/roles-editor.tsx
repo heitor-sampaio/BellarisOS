@@ -28,6 +28,7 @@ import type {
   AppModule, PermissionLevel, ResolvedPermissions, ReportTab,
 } from '@estetica-os/types'
 import { resumoDoCargoDeSistema, explicacaoDoCargoDeSistema } from '@/lib/cargos/de-sistema'
+import { cargoSemAcesso, CARGO_SEM_ACESSO, type PlanoDoCargo } from '@/lib/cargos/sem-acesso'
 
 export interface EditorRole {
   id:           string
@@ -53,6 +54,17 @@ interface RolesEditorProps {
   canSeeTeam:  boolean
   /** Módulos que o PLANO da rede não inclui: a matriz não os oferece (lib/planos/recursos.ts). */
   foraDoPlano?: AppModule[]
+  /** As abas de Relatórios fora do plano: sem outra, Relatórios não abre nada (item 21 de 18/11). */
+  abasForaDoPlano?: string[]
+}
+
+/**
+ * O cargo da rede que não abre módulo nenhum, pela mesma conta do contexto
+ * (item 21 de 18/11; `lib/cargos/sem-acesso.ts`).
+ */
+function semAcessoNaMatriz(perms: Partial<Record<AppModule, RoleModulePermission>>, tabs: readonly string[], plano: PlanoDoCargo): boolean {
+  const linhas = Object.entries(perms).map(([module, p]) => ({ module, level: p?.level ?? 'NONE' }))
+  return cargoSemAcesso({ linhas, abas: tabs }, plano)
 }
 
 type Levels = Record<AppModule, PermissionLevel>
@@ -62,7 +74,7 @@ function buildLevels(perms: Partial<Record<AppModule, RoleModulePermission>>): L
   return Object.fromEntries(ALL_MODULES.map(m => [m, MODULOS_DO_CARGO.includes(m) ? perms[m]?.level ?? 'NONE' : 'NONE'])) as Levels
 }
 
-export function RolesEditor({ roles, permsByRole, tabsByRole, canSeeTeam, foraDoPlano = [] }: RolesEditorProps) {
+export function RolesEditor({ roles, permsByRole, tabsByRole, canSeeTeam, foraDoPlano = [], abasForaDoPlano = [] }: RolesEditorProps) {
   // A18 da 20ª (princípio 3): o escolhido mora no endereço (`?cargo=`) —
   // recarregada a tela, a matriz voltava ao primeiro cargo, e o recém-criado
   // ficava só na lista.
@@ -97,6 +109,12 @@ export function RolesEditor({ roles, permsByRole, tabsByRole, canSeeTeam, foraDo
     [permsByRole, salvos],
   )
 
+  // Item 21 de 18/11: a lista diz qual cargo da rede não abre nada (o salvo).
+  const plano: PlanoDoCargo = { foraDoPlano, abasForaDoPlano }
+  const semAcessoIds = new Set(roles
+    .filter(r => !r.is_system && semAcessoNaMatriz(permsDaLista[r.id] ?? {}, salvos[r.id]?.tabs ?? tabsByRole[r.id] ?? [], plano))
+    .map(r => r.id))
+
   // Trocar de cargo com alteração pendente descartava tudo em silêncio.
   function requestSelect(id: string) {
     if (id === selectedId) return
@@ -110,6 +128,7 @@ export function RolesEditor({ roles, permsByRole, tabsByRole, canSeeTeam, foraDo
         roles={roles}
         selectedId={selectedId}
         permsByRole={permsDaLista}
+        semAcessoIds={semAcessoIds}
         canSeeTeam={canSeeTeam}
         dirtyId={dirty ? selectedId : null}
         onSelect={requestSelect}
@@ -144,6 +163,7 @@ export function RolesEditor({ roles, permsByRole, tabsByRole, canSeeTeam, foraDo
               ...s, [selected.id]: { perms: acessosDoSalvo(levels), tabs },
             }))}
             foraDoPlano={foraDoPlano}
+            abasForaDoPlano={abasForaDoPlano}
           />
         )}
 
@@ -172,11 +192,13 @@ export function RolesEditor({ roles, permsByRole, tabsByRole, canSeeTeam, foraDo
 // ─── Lista de cargos ─────────────────────────────────────────────────────────
 
 function RoleListPanel({
-  roles, selectedId, permsByRole, canSeeTeam, dirtyId, onSelect, showForm, setShowForm,
+  roles, selectedId, permsByRole, semAcessoIds, canSeeTeam, dirtyId, onSelect, showForm, setShowForm,
 }: {
   roles: EditorRole[]
   selectedId: string | null
   permsByRole: Record<string, Partial<Record<AppModule, RoleModulePermission>>>
+  /** Os cargos da rede que não abrem módulo nenhum (item 21 de 18/11). */
+  semAcessoIds: Set<string>
   canSeeTeam: boolean
   dirtyId: string | null
   onSelect: (id: string) => void
@@ -281,6 +303,7 @@ function RoleListPanel({
             key={role.id}
             role={role}
             perms={permsByRole[role.id] ?? {}}
+            semAcesso={semAcessoIds.has(role.id)}
             selected={role.id === selectedId}
             unsaved={role.id === dirtyId}
             canSeeTeam={canSeeTeam}
@@ -313,10 +336,11 @@ function RoleListPanel({
 }
 
 function RoleCard({
-  role, perms, selected, unsaved, canSeeTeam, deleting, onSelect, onRename, onDuplicate, onDelete,
+  role, perms, semAcesso, selected, unsaved, canSeeTeam, deleting, onSelect, onRename, onDuplicate, onDelete,
 }: {
   role: EditorRole
   perms: Partial<Record<AppModule, RoleModulePermission>>
+  semAcesso: boolean
   selected: boolean
   unsaved: boolean
   canSeeTeam: boolean
@@ -377,9 +401,15 @@ function RoleCard({
         )}
       </div>
 
-      <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 2 }}>
-        {role.is_system ? <Fala>{resumoDoCargoDeSistema(role.key)}</Fala> : resumoDoCargo(perms)}
-      </p>
+      {semAcesso ? (
+        <p data-cargo-sem-acesso style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)', marginTop: 2 }}>
+          {CARGO_SEM_ACESSO}
+        </p>
+      ) : (
+        <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 2 }}>
+          {role.is_system ? <Fala>{resumoDoCargoDeSistema(role.key)}</Fala> : resumoDoCargo(perms)}
+        </p>
+      )}
 
       {/* A contagem explica por que a exclusão é recusada, então conta ativos e
           inativos — igual ao que `deleteRole` checa. */}
@@ -471,13 +501,14 @@ function SystemRoleCard({ role }: { role: EditorRole }) {
 // ─── Matriz de um cargo ──────────────────────────────────────────────────────
 
 function PermissionMatrix({
-  role, perms, tabs, onDirtyChange, foraDoPlano, onSalvo,
+  role, perms, tabs, onDirtyChange, foraDoPlano, abasForaDoPlano, onSalvo,
 }: {
   role: EditorRole
   perms: Partial<Record<AppModule, RoleModulePermission>>
   tabs: ReportTab[]
   onDirtyChange: (dirty: boolean) => void
   foraDoPlano: AppModule[]
+  abasForaDoPlano: string[]
   /** A17 da 21ª: o que acabou de ser salvo, para a lista dizer sem recarregar. */
   onSalvo?: (levels: Levels, tabs: ReportTab[]) => void
 }) {
@@ -563,7 +594,12 @@ function PermissionMatrix({
     if (primeiro) document.querySelector(`[data-modulo="${primeiro}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
   }
   const avisoDoQueFalta = falta ?? faltaAgora
-  const nothingGranted = ALL_MODULES.every(m => levels[m] === 'NONE')
+  // Item 21 de 18/11: o que está na matriz agora não abre módulo nenhum — pela
+  // conta do contexto (o plano, Relatórios sem aba, a Auditoria).
+  const nothingGranted = cargoSemAcesso(
+    { linhas: ALL_MODULES.map(m => ({ module: m, level: levels[m] })), abas: levels.reports === 'NONE' ? [] : reportTabs },
+    { foraDoPlano, abasForaDoPlano },
+  )
   const showSuccess    = !!state?.success && !dismissed
 
   return (
@@ -604,13 +640,13 @@ function PermissionMatrix({
       </div>
 
       {nothingGranted && (
-        <div style={{
+        <div data-cargo-sem-acesso style={{
           display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 18,
           background: 'var(--warning-soft)', borderRadius: 'var(--radius-field-token)', padding: '10px 12px',
         }}>
           <AlertTriangle size={14} style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 1 }} />
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
-            Este cargo ainda não abre nada. Quem receber ele entra no sistema e só enxerga o Dashboard.
+            {CARGO_SEM_ACESSO}
           </p>
         </div>
       )}

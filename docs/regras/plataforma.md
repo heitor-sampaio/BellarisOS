@@ -959,6 +959,36 @@ abaixo entraram na F70, 2026-11-12):
   rede não duplica um cargo com módulo que ela não tem (`duplicarCargo`,
   `actions/roles.ts`). O cargo de sistema não se duplica. Prova:
   `tests/pendencias-area-3.test.ts`.
+- **O "Não definido" se dá pela Equipe, e não abre nada** (item 20 dos itens
+  de escopo, o Heitor, 18/11: "pode criar, e quem tem cargo não definido não
+  tem permissão de nada"). O cargo de sistema `NAO_DEFINIDO` aparece por
+  último no seletor de cargo das duas Equipes, ao criar e ao editar
+  (`cargosQueSeDaoPelaEquipe`, `lib/cargos/sem-acesso.ts`); está abaixo de
+  todos, então quem tem a Equipe em Gerenciar o dá (não passa pela trava do
+  "acima"). Valem as regras de sempre: o Admin da rede só outra Admin dá e
+  altera, e a última Admin ativa não é rebaixada. O contexto zera tudo para
+  quem o tem (`buildContext`: `NO_PERMISSIONS`, venha a matriz que vier;
+  `ctx.semCargo`), o inbox não abre caixa nenhuma (`caixasDoAlcance`), e o
+  painel diz "Você está sem cargo e ainda não tem acesso a nenhum módulo.
+  Quem tem a Equipe em Gerenciar define o seu cargo." Mantido o cargo, só o
+  da Admin da rede deixa as unidades como estão. **Quem atende segue
+  atendendo** (decisão do Claude, 26ª, pelo princípio 3 e o §11 — o "Atende"
+  não é permissão): ela continua na agenda para receber horários (e na
+  comissão, e no aviso de quem é envolvida direta), sem abrir a agenda nem os
+  atendimentos, e a Equipe diz isso junto do aviso abaixo.
+- **O cargo que não abre módulo nenhum se avisa, não se recusa** (item 21,
+  o Heitor, 18/11: "ok"; princípio 2). "Nenhum" é o que o CONTEXTO deixa
+  (princípio 3): o "Não definido", ou o cargo da rede em que, com o plano,
+  nada sobra — Relatórios sem aba (ou só com abas fora do plano) vale nada, a
+  Auditoria é só da Admin da rede, e o Copilot sem plano não vale
+  (`cargoSemAcesso`; no servidor, `cargosSemAcesso`,
+  `lib/equipe/cargos-sem-acesso.ts`). A linha da Equipe e a janela de criar e
+  de editar dizem "Sem acesso a nenhum módulo: ela entra e não vê nada."
+  (`[data-sem-acesso]`, `[data-cargo-sem-acesso]`; a opção do seletor leva
+  "(sem acesso)"), e salvar confirma com o mesmo aviso. A tela de Cargos diz
+  no cartão e na matriz "Sem acesso a nenhum módulo: quem tem este cargo
+  entra e não vê nada." Prova: `tests/permissions.test.ts`,
+  `e2e/equipe-cargo-nao-definido.spec.ts`.
 - **Desativar uma unidade mostra o que fica e oferece resolver, sem impedir**
   (H6, opção a; a mesma regra da H6 de 01/11 para o membro, e os princípios 2
   e 3). "A unidade Jardins tem 2 pessoas da equipe só nela e 14 agendamentos
@@ -1519,6 +1549,7 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
 ❌ Acrescentar chave ao catálogo de lib/planos/recursos.ts sem migration nova decidindo os planos e retratos que já existem
 ❌ Funcionalidade do plano que cubra o cashier (PDV) ou o audit (Auditoria) — são de todo plano (PL1; tests/planos-pdv-e-auditoria.test.ts trava)
 ❌ Dar a Auditoria a um cargo (matriz, action, seed, modelo) ou abrir a tela/leitura/CSV dela por can(ctx, 'audit') sozinho — é só da Admin da rede: assertAuditoria / podeVerAuditoria (2026-11-16)
+❌ Tratar todo cargo de sistema (is_system) como "vê tudo": o "Não definido" também é de sistema e não abre nada — o "tudo" é só o Admin da rede, pela chave (ehCargoNaoDefinido, cargoEhAdminDaRede; item 20 de 18/11)
 ❌ Gravar retrato (tenant_subscriptions.recursos) fora de definirAssinatura/criarRede/aplicarPlanoAtual
 ❌ Gravar tenant_subscriptions.adicionais fora de assinatura_adicional_definir — nem na troca de plano (quem tira o que não cabe é o gatilho trg_retrato_sem_plano)
 ❌ Deixar a rede (p_valor_centavos null) aumentar adicional com preço especial

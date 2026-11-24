@@ -96,7 +96,8 @@ test('D13: o Financeiro da rede, a ficha e o dashboard dizem a vencida', async (
     await p.goto('/admin/financeiro?aba=a-receber#movimentacoes')
     await expect(p.locator(`[data-lancamento="${vencida}"]`)).toContainText(`Vencida em ${ddmm(venceuEm)}`)
     await p.goto(`/${slug}/clients/${mariana!.clientId}?aba=financeiro`)
-    await expect(p.locator('[data-transacao-da-ficha]', { hasText: 'parcela 1/4' })).toContainText(`Vencida em ${ddmm(venceuEm)}`)
+    // Na ficha, a vencida diz há quanto tempo: "Vencida há N dias" (a data fica na coluna ao lado).
+    await expect(p.locator('[data-transacao-da-ficha]', { hasText: 'parcela 1/4' })).toContainText('Vencida há 2 dias')
     await p.goto(`/${slug}/dashboard`)
     await expect(p.locator('[data-parcelas-vencidas]')).toContainText(/1 parcela vencida da cliente: R\$\s1\.294,00/)
   })

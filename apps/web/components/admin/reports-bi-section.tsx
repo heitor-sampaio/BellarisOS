@@ -13,6 +13,7 @@ import { getAtendimentosSemReceita } from '@/lib/metrics/fechamento-extra'
 import { SEM_ESTOQUE_NO_RESULTADO } from '@/lib/metrics/resultado'
 import { getPerdas } from '@/lib/metrics/perdas'
 import { getTransferenciasDeEstoque } from '@/lib/metrics/transferencias'
+import { getMovimentosDeEstoque, MOVIMENTOS_POR_PAGINA, type MovimentosDoRelatorio } from '@/lib/metrics/movimentos-de-estoque'
 import { getEntradasDeEstoque } from '@/lib/metrics/contadora'
 import { getQuemAtende } from '@/lib/metrics/relatorio'
 import {
@@ -305,6 +306,24 @@ export async function ReportsBiSection({
       })()
     : undefined
 
+  // -- Aba Estoque: as movimentações do período --------------------
+  // Item 6 do escopo de 18/11 (o Heitor: "ok"): cada entrada e saída, uma
+  // linha, da mais recente para a mais antiga, paginada no banco — como as
+  // perdas, do estoque da unidade (o Estoque na aba). Fecha
+  // no FIM do período (fullTo), como as perdas e as transferências.
+  const movimentos = needBatches
+    ? await (async (): Promise<DadosDosMovimentos> => {
+        const doPeriodo = { tenantId: ctx.tenantId!, branchIds, from: startDate, to: periodInfo.fullTo }
+        const pedida = Math.max(1, Number.parseInt(rawPagina ?? '1', 10) || 1)
+        const daPedida = await getMovimentosDeEstoque({ ...doPeriodo, offset: (pedida - 1) * MOVIMENTOS_POR_PAGINA })
+        // A página pedida passou do fim (o período mudou): volta à primeira.
+        const vazia = daPedida.linhas.length === 0 && pedida > 1
+        const lida = vazia ? await getMovimentosDeEstoque(doPeriodo) : daPedida
+        const paginas = Math.max(1, Math.ceil(lida.total / MOVIMENTOS_POR_PAGINA))
+        return { ...lida, pagina: vazia ? 1 : pedida, paginas }
+      })()
+    : undefined
+
   // -- Gráfico de evolução (mesmo padrão do dashboard) ---------------
 
   // Os pontos vêm prontos de lib/metrics, com a MESMA regra do KPI: só pago,
@@ -355,6 +374,7 @@ export async function ReportsBiSection({
         vendas={vendas}
         perdas={perdas}
         transferencias={transferencias}
+        movimentos={movimentos}
         // A31 da 10ª: a compra (as entradas de estoque, com fornecedor e nota) fica fora do
         // resultado, e a contadora não a via (não abre o Estoque).
         comprasNoEstoque={needInstall ? await getEntradasDeEstoque({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: periodInfo.fullTo }) : undefined}
@@ -367,6 +387,12 @@ export async function ReportsBiSection({
       />
     </>
   )
+}
+
+/** A aba Estoque: a página das movimentações do período (item 6 do escopo de 18/11). */
+export interface DadosDosMovimentos extends MovimentosDoRelatorio {
+  pagina:  number
+  paginas: number
 }
 
 /** A aba Vendas, pronta para desenhar. */

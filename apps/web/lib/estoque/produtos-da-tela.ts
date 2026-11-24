@@ -43,24 +43,27 @@ export async function produtosDoEstoque(tenantId: string): Promise<ProdutoDoEsto
     Number(s.current_stock) > 0 || Number(s.current_rendimento ?? 0) > 0))
 }
 
-/** Um item de uma das três listas do Estoque (categorias, marcas, fornecedores). */
+/** Um item de uma das listas do Estoque (categorias, marcas, fornecedores, motivos de perda). */
 export type ItemDaLista = { id: string; nome: string }
 
 /**
  * As três listas do Estoque (E1/E4/E5): categorias, marcas e fornecedores —
- * cadastros de texto livre da rede, com a mesma regra.
+ * cadastros de texto livre da rede, com a mesma regra. E os motivos de perda
+ * (item 7 do escopo de 18/11), na mesma janela.
  */
-export async function listasDoEstoque(tenantId: string): Promise<{ categorias: ItemDaLista[]; marcas: ItemDaLista[]; fornecedores: ItemDaLista[] }> {
+export async function listasDoEstoque(tenantId: string): Promise<{ categorias: ItemDaLista[]; marcas: ItemDaLista[]; fornecedores: ItemDaLista[]; motivos: ItemDaLista[] }> {
   const admin = createAdminClient()
-  const [categorias, marcas, fornecedores] = await Promise.all([
+  const [categorias, marcas, fornecedores, motivos] = await Promise.all([
     lerTodas((de, ate) => admin.from('product_categories').select('id, name')
       .eq('tenant_id', tenantId).order('name').order('id').range(de, ate), 'carregar as categorias') as Promise<{ id: string; name: string }[]>,
     lerTodas((de, ate) => admin.from('marcas').select('id, nome')
       .eq('tenant_id', tenantId).order('nome').order('id').range(de, ate), 'carregar as marcas') as Promise<ItemDaLista[]>,
     lerTodas((de, ate) => admin.from('fornecedores').select('id, nome')
       .eq('tenant_id', tenantId).order('nome').order('id').range(de, ate), 'carregar os fornecedores') as Promise<ItemDaLista[]>,
+    lerTodas((de, ate) => admin.from('estoque_motivos_de_perda').select('id, nome')
+      .eq('tenant_id', tenantId).order('nome').order('id').range(de, ate), 'carregar os motivos de perda') as Promise<ItemDaLista[]>,
   ])
-  return { categorias: categorias.map(c => ({ id: c.id, nome: c.name })), marcas, fornecedores }
+  return { categorias: categorias.map(c => ({ id: c.id, nome: c.name })), marcas, fornecedores, motivos }
 }
 
 /**

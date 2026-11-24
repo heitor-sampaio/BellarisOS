@@ -21,6 +21,8 @@ import { listaDeUnidades, seloDoAtende } from '@/lib/equipe/atende'
 import { cargosAcimaDoMeu } from '@/lib/equipe/cargo-acima'
 import { alcancaTodasAsDoMembro, CARGO_DE_QUEM_TEM_OUTRA_UNIDADE } from '@/lib/unidades/do-membro'
 import { Dica } from '@/components/shared/dica'
+import { cargosQueSeDaoPelaEquipe, avisoDoMembroSemAcesso } from '@/lib/cargos/sem-acesso'
+import { cargosSemAcesso } from '@/lib/equipe/cargos-sem-acesso'
 
 function Initials({ name }: { name: string }) {
   const parts = name.trim().split(' ')
@@ -117,7 +119,10 @@ export default async function TeamPage({
   // Na rede de uma unidade (PO2), o cargo "Admin da rede" é "Admin".
   const fala = await falaDaTela(ctx.tenantId)
   const allRoles = (tenantRoles ?? []).map(r => ({ ...r, label: fala(r.label) }))
-  const assignableRoles = allRoles.filter(r => !r.is_system && r.key !== 'NETWORK_ADMIN')
+  // Os da rede e o "Não definido" (item 20 de 18/11); o Admin da rede, não.
+  const assignableRoles = cargosQueSeDaoPelaEquipe(allRoles)
+  // Item 21: os cargos que não abrem módulo nenhum.
+  const semAcesso = await cargosSemAcesso(createAdminClient(), ctx, allRoles)
   const roleLabel = Object.fromEntries(allRoles.map(r => [r.id, r.label]))
   const canManage = ctx.permissions.team === 'MANAGE'
   // A comissão é do financeiro, não da equipe (ver a página da rede).
@@ -128,9 +133,9 @@ export default async function TeamPage({
   // C62 (F70; H7 = b), como na Equipe da rede: o cargo com mais acesso que o
   // de quem age aparece desligado, dizendo por quê — a action também recusa.
   const acimaDoMeu = canManage
-    ? await cargosAcimaDoMeu(createAdminClient(), ctx, assignableRoles.map(r => r.id), ctx.isNetworkAdmin)
+    ? await cargosAcimaDoMeu(createAdminClient(), ctx, assignableRoles.filter(r => !r.is_system).map(r => r.id), ctx.isNetworkAdmin)
     : new Set<string>()
-  const comTrava = assignableRoles.map(r => (acimaDoMeu.has(r.id) ? { ...r, acimaDoMeu: true } : r))
+  const comTrava = assignableRoles.map(r => ({ ...r, semAcesso: semAcesso.has(r.id), ...(acimaDoMeu.has(r.id) ? { acimaDoMeu: true } : {}) }))
   const cargosDoCadastro = comTrava
   /** EQ1: o cargo e o desativar valem em TODAS as unidades do membro — só quem alcança todas mexe. */
   const alcancaTodas = (m: { branch_id?: string | null; outras_unidades?: string[] | null }) =>
@@ -241,6 +246,15 @@ export default async function TeamPage({
                         <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 1 }}>
                           {m.email}
                         </p>
+                        {/* Item 21 de 18/11: o cargo dela não abre módulo nenhum — avisa, à vista. */}
+                        {m.is_active && !!m.role_id && semAcesso.has(m.role_id) && (
+                          <p data-sem-acesso style={{
+                            fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)', color: 'var(--warning)',
+                            marginTop: 3, maxWidth: 360,
+                          }}>
+                            {avisoDoMembroSemAcesso(!!m.provides_services)}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </td>

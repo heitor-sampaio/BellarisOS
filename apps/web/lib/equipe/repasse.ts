@@ -13,6 +13,7 @@ import { podeTrocarResponsavel, trocarResponsavelCore } from '@/lib/crm/responsa
 import { quemRealizaOsProcedimentos, realiza } from '@/lib/procedimentos/quem-realiza'
 import { cancelarCore } from '@/lib/appointments/alteracoes'
 import { membroAlcancaAUnidade } from '@/lib/unidades/do-membro'
+import { fimDaOcupacao, bateNaOcupacao } from '@/lib/appointments/ocupacao'
 
 /**
  * O REPASSE ao desativar um membro (H6, decisão do Heitor, 5ª simulação,
@@ -186,17 +187,18 @@ export async function pendenciasDoMembro(
     const ultimo = ags[ags.length - 1]!
     const fim = new Date(new Date(ultimo.scheduled_at).getTime() + (ultimo.duration_min || 60) * 60_000).toISOString()
     const agenda = await lerTodas((de, ate) => admin.from('appointments')
-      .select('id, professional_id, scheduled_at, duration_min, branches!inner(tenant_id)')
+      .select('id, professional_id, scheduled_at, duration_min, status, completed_at, branches!inner(tenant_id)')
       .eq('branches.tenant_id', ctx.tenantId!)
       .in('professional_id', equipe.map(p => p.id))
       .not('status', 'in', '("CANCELLED","NO_SHOW")')
       .gte('scheduled_at', inicio).lt('scheduled_at', fim)
       .order('scheduled_at').order('id').range(de, ate), 'carregar a agenda de quem pode receber') as unknown as
-      { professional_id: string; scheduled_at: string; duration_min: number | null }[]
+      { professional_id: string; scheduled_at: string; duration_min: number | null; status: string | null; completed_at: string | null }[]
     for (const a of agenda) {
       const ini = new Date(a.scheduled_at).getTime()
       const lista = ocupados.get(a.professional_id) ?? []
-      lista.push({ ini, fim: ini + (a.duration_min || 60) * 60_000 })
+      // O concluído ocupa só até a conclusão (A31 da 5ª): a mesma régua da agenda.
+      lista.push({ ini, fim: fimDaOcupacao(a) })
       ocupados.set(a.professional_id, lista)
     }
   }
@@ -209,7 +211,7 @@ export async function pendenciasDoMembro(
       const fim = ini + (a.duration_min || 60) * 60_000
       const realizaEste = (p: { id: string }) => realiza(realizam.get(a.procedure_id ?? ''), p.id)
       const daUnidade = equipe.filter(p => atendeNaUnidade(p, a.branch_id) && realizaEste(p))
-      const bate = (p: { id: string }) => (ocupados.get(p.id) ?? []).some(o => ini < o.fim && fim > o.ini)
+      const bate = (p: { id: string }) => (ocupados.get(p.id) ?? []).some(o => bateNaOcupacao(ini, fim, o.ini, o.fim))
       return {
         id: a.id, quando: a.scheduled_at, duracaoMin: a.duration_min || 60,
         cliente: a.clients?.name ?? 'Cliente', procedimento: a.procedures?.name ?? 'Atendimento', unidade: a.branches?.name ?? '', unidadeId: a.branch_id,

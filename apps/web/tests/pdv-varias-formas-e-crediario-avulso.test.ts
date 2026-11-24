@@ -8,6 +8,7 @@ import { estadoDoPagamento, montarPagamento, recusaDoPagamento } from '@/compone
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
 import { formasDaComandaEmTexto, type ComandaDoPdv } from '@/lib/pdv/situacoes'
+import { contaDoTroco, recusaDoTroco, emDinheiro, emDinheiroDoEstado } from '@/lib/checkout/troco'
 
 /**
  * As duas decisões do Heitor de 2026-11-16:
@@ -199,4 +200,85 @@ describe('a comanda do crediário diz a forma da entrada e a maquininha (princí
     })
   })
 
+})
+
+// O troco (vendas-financeiro.md): ao receber em DINHEIRO, toda tela que recebe
+// pede o "Valor entregue" (opcional) e mostra o troco; o entregue menor que o
+// valor avisa e não deixa confirmar. O que se grava continua sendo o valor do
+// pagamento (o entregue não vai ao servidor).
+describe('a conta do troco', () => {
+  it('sem o valor entregue, nada a dizer nem a recusar (o campo é opcional)', () => {
+    expect(contaDoTroco(80, '')).toEqual({ situacao: 'sem-entregue' })
+    expect(recusaDoTroco(80, '  ')).toBeNull()
+  })
+  it('entregue maior: o troco, em centavos', () => {
+    expect(contaDoTroco(80, '100')).toEqual({ situacao: 'troco', troco: 20 })
+    expect(contaDoTroco(79.9, '100,00')).toEqual({ situacao: 'troco', troco: 20.1 })
+    expect(recusaDoTroco(80, '100')).toBeNull()
+  })
+  it('entregue igual: sem troco', () => {
+    expect(contaDoTroco(80, '80,00')).toEqual({ situacao: 'troco', troco: 0 })
+    expect(recusaDoTroco(80, '80')).toBeNull()
+  })
+  it('entregue menor: avisa e recusa, dizendo quanto falta', () => {
+    expect(contaDoTroco(80, '50')).toEqual({ situacao: 'menor', falta: 30 })
+    expect(recusaDoTroco(80, '50')).toMatch(/O valor entregue \(R\$\s50,00\) é menor que os R\$\s80,00 em dinheiro: faltam R\$\s30,00\./)
+  })
+  it('o que não se lê é recusa, não zero', () => {
+    expect(contaDoTroco(80, '1,400.50').situacao).toBe('ilegivel')
+    expect(recusaDoTroco(80, '1,400.50')).toMatch(/Valor não entendido/)
+  })
+  it('sem nada em dinheiro, o entregue não conta', () => {
+    expect(recusaDoTroco(0, '10')).toBeNull()
+    expect(contaDoTroco(0, '10')).toEqual({ situacao: 'sem-entregue' })
+  })
+})
+
+describe('quanto do pagamento é em dinheiro', () => {
+  const parte = (metodo: string, valor: string) => ({ metodo, valor, vezes: 1, bandeira: '', maquininha: '' })
+  it('a 1ª forma em dinheiro com o que falta das outras, mais as outras em dinheiro', () => {
+    expect(emDinheiro('CASH', 80)).toBe(80)
+    expect(emDinheiro('PIX', 80)).toBe(0)
+    expect(emDinheiro('PIX', 50, [parte('CASH', '30')])).toBe(30)
+    expect(emDinheiro('CASH', 50, [parte('PIX', '30'), parte('CASH', '20')])).toBe(70)
+  })
+  it('do estado dos campos: o à vista e a entrada do crediário', () => {
+    const base = { forma: 'AVISTA' as const, metodo: 'CASH', entrada: '', outras: [] }
+    expect(emDinheiroDoEstado(base, 200)).toBe(200)
+    // Com outra forma, a 1ª fica com o que falta.
+    expect(emDinheiroDoEstado({ ...base, outras: [parte('PIX', '120')] }, 200)).toBe(80)
+    expect(emDinheiroDoEstado({ ...base, forma: 'PARCELADO', entrada: '100,00' }, 900)).toBe(100)
+    expect(emDinheiroDoEstado({ ...base, forma: 'PARCELADO', entrada: '' }, 900)).toBe(0)
+    expect(emDinheiroDoEstado({ ...base, forma: 'A_RECEBER', metodo: '' }, 900)).toBe(0)
+    expect(emDinheiroDoEstado({ ...base, metodo: 'PIX' }, 200)).toBe(0)
+  })
+})
+
+// As portas do dinheiro (o comportamento é de tela; sem navegador, o fonte):
+// cada uma mostra o mesmo campo e trava o botão pela mesma recusa.
+describe('toda tela que recebe pede o valor entregue no dinheiro', () => {
+  const fonte = (arq: string) => readFileSync(join(__dirname, '..', arq), 'utf8')
+  const portas = [
+    'components/shared/campos-do-pagamento.tsx',       // comanda do atendimento e a Nova venda
+    'components/shared/receber-no-cartao.tsx',         // receber no Financeiro e na ficha
+    'components/shared/pdv/parcelas-em-aberto.tsx',    // receber a parcela no PDV
+    'components/branch/checkout-wizard.tsx',           // receber o plano no PDV
+    'components/branch/appointment-session.tsx',       // receber o plano no atendimento
+  ]
+  for (const arq of portas) {
+    it(`${arq}: o CampoDoTroco e a recusaDoTroco`, () => {
+      const f = fonte(arq)
+      expect(f).toContain('<CampoDoTroco')
+      expect(f).toMatch(/recusaDoTroco\(/)
+    })
+  }
+  it('o recusaDoPagamento dos campos trava pelo troco (vale para toda tela que os usa)', () => {
+    const f = fonte('components/shared/campos-do-pagamento.tsx')
+    expect(f).toMatch(/recusaDoTroco\(emDinheiroDoEstado\(e, total\), e\.entregue/)
+  })
+  it('o entregue não vai ao servidor: montarPagamento não o lê', () => {
+    const f = fonte('components/shared/campos-do-pagamento.tsx')
+    const montar = f.slice(f.indexOf('export function montarPagamento'), f.indexOf('export function recusaDoPagamento'))
+    expect(montar).not.toContain('entregue')
+  })
 })

@@ -8,6 +8,7 @@ import { UnidadesDoMembro, AtendeDoMembro, useAtendeDoMembro, type ValorDasUnida
 import { toast } from 'sonner'
 import { confirmacaoDoCadastro } from '@/lib/equipe/textos-do-cadastro'
 import { Dica } from '@/components/shared/dica'
+import { MEMBRO_SEM_ACESSO, MEMBRO_SEM_ACESSO_QUE_ATENDE } from '@/lib/cargos/sem-acesso'
 
 interface Branch { id: string; name: string }
 /** O rótulo do campo com a dica ao lado (a explicação mora na dica, 2026-11-16). */
@@ -19,6 +20,8 @@ interface Role   {
   id: string; label: string
   /** C62 (F70): o cargo tem mais acesso que o de quem age — aparece desligado. */
   acimaDoMeu?: boolean
+  /** Item 21 de 18/11: o cargo não abre módulo nenhum (o "Não definido", ou todo em Sem acesso). */
+  semAcesso?: boolean
 }
 
 interface AdminTeamFormProps {
@@ -139,10 +142,21 @@ function NovoMembro({ branches, roles, isNetworkAdmin, podeComissao = false, car
                     <option value="" disabled>Selecione…</option>
                     {roles.map(r => (
                       <option key={r.id} value={r.id} disabled={r.acimaDoMeu}>
-                        {r.acimaDoMeu ? `${r.label} (tem módulos que você não tem)` : r.label}
+                        {r.acimaDoMeu ? `${r.label} (tem módulos que você não tem)` : r.semAcesso ? `${r.label} (sem acesso)` : r.label}
                       </option>
                     ))}
                   </select>
+                  {/* Item 21 de 18/11: o cargo escolhido não abre nada — avisa; salvar não recusa. */}
+                  {roles.find(r => r.id === roleId)?.semAcesso && (
+                    <p data-cargo-sem-acesso role="status" style={{
+                      color: 'var(--warning)', background: 'var(--warning-soft)',
+                      borderRadius: 'var(--radius-field-token)', padding: '8px 12px',
+                      fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)',
+                    }}>
+                      {MEMBRO_SEM_ACESSO}
+                      {atende && <> {MEMBRO_SEM_ACESSO_QUE_ATENDE}</>}
+                    </p>
+                  )}
                   {roles.length === 0 && (
                     <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
                       Crie um cargo em Configurações → Cargos antes de adicionar membros.

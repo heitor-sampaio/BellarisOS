@@ -15,7 +15,7 @@ import { FunnelSelect } from '@/components/shared/funnel-select'
 import { validadeDoLote, type LinhaLote, type LinhaParcela } from './reports-linhas'
 import type { Relatorio } from '@/lib/metrics/relatorio'
 import type { MetricsCore } from '@/lib/metrics'
-import type { DadosDeVendas } from './reports-bi-section'
+import type { DadosDeVendas, DadosDosMovimentos } from './reports-bi-section'
 import type { RelatorioDePerdas } from '@/lib/metrics/perdas'
 import type { RelatorioDeTransferencias } from '@/lib/metrics/transferencias'
 import type { EntradaDeEstoqueDoPeriodo } from '@/lib/metrics/contadora'
@@ -23,6 +23,9 @@ import { csvDoDre } from '@/lib/financeiro/csv-da-contadora'
 import { baixarCsv } from '@/lib/financeiro/csv-dos-lancamentos'
 import { rotuloDoMotivo } from '@/lib/estoque/perda'
 import { medidaNoPlural } from '@/lib/estoque/medidas'
+import { validadeNaTela } from '@/lib/estoque/validade'
+import { MOVIMENTOS_POR_PAGINA } from '@/lib/metrics/movimentos-de-estoque-comum'
+import type { TipoDoMovimento } from '@/lib/estoque/tipo-do-movimento'
 import { DETALHE_DO_GIRO } from '@/lib/estoque/situacao'
 import {
   TIPOS_DE_VENDA, ROTULO_DO_TIPO, POR_PAGINA, descricaoDaVenda, comandaDaVenda,
@@ -142,6 +145,8 @@ export interface ReportsBiProps {
   perdas?: RelatorioDePerdas
   /** As transferências entre unidades no período (A33 da 20ª) — na aba Estoque, com mais de uma unidade. */
   transferencias?: RelatorioDeTransferencias
+  /** As movimentações do período, a página aberta (item 6 do escopo de 18/11) — na aba Estoque. */
+  movimentos?: DadosDosMovimentos
   /** A31 da 10ª: as entradas de estoque do período (ao custo, com fornecedor e nota) — aba Financeiro. */
   comprasNoEstoque?: { linhas: EntradaDeEstoqueDoPeriodo[]; total: number }
   /** O vocabulário de tags da rede (as opções do filtro). Vazio: o filtro não aparece. */
@@ -1360,12 +1365,15 @@ function TabEstoque(p: ReportsBiProps) {
                     columns={[
                       { key: 'motivo',  label: 'Motivo' },
                       { key: 'produto', label: 'Produto' },
+                      { key: 'lote',    label: 'Lote' },
                       { key: 'qtd',     label: 'Quantidade', align: 'right' },
                       { key: 'custo',   label: 'Custo', align: 'right', render: v => fmtBRLFull(Number(v)) },
                     ]}
                     rows={p.perdas.linhas.map(l => ({
                       motivo:  rotuloDoMotivo(l.motivo),
                       produto: l.produto,
+                      // Item 6 (18/11): de qual lote saiu (número e validade).
+                      lote:    textoDosLotes(l.lotes),
                       qtd:     l.unidade !== l.embalagem
                         ? `${l.quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${medidaNoPlural(l.unidade, l.quantidade)} (${l.embalagens.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${medidaNoPlural(l.embalagem, l.embalagens)})`
                         : `${l.quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${medidaNoPlural(l.unidade, l.quantidade)}`,
@@ -1421,7 +1429,121 @@ function TabEstoque(p: ReportsBiProps) {
             </SCard>
           </div>
         )}
+        {/* Item 6 do escopo de 18/11: as entradas e saídas do período, uma linha
+            cada, paginadas no banco (metrics_movimentos_de_estoque). */}
+        {p.movimentos && <MovimentosDoEstoque m={p.movimentos} comUnidade={branches.length > 1} />}
       </div>
+    </div>
+  )
+}
+
+/** O lote de cada linha: "TX-1 · val. 15/11/2026", vários separados por vírgula; sem lote, "—". */
+function textoDosLotes(lotes: { numero: string | null; validade: string | null }[]): string {
+  if (!lotes.length) return '—'
+  return lotes.map(l => {
+    const dia = validadeNaTela(l.validade)
+    return [l.numero ?? 'Sem número', dia ? `val. ${dia}` : null].filter(Boolean).join(' · ')
+  }).join(', ')
+}
+
+const COR_DO_MOVIMENTO: Record<TipoDoMovimento, 'green' | 'amber' | 'red' | 'blue' | 'gray'> = {
+  ENTRADA: 'green', CONSUMO: 'gray', VENDA: 'blue', PERDA: 'red', AJUSTE: 'amber', TRANSFERENCIA: 'blue',
+}
+
+/**
+ * As movimentações do período (item 6 do escopo de 18/11, o Heitor: "ok"): a
+ * data e a hora no fuso da UNIDADE do movimento, o produto, o tipo, a
+ * quantidade (na unidade do movimento e em embalagens), o lote e a validade, a
+ * unidade, quem fez e o custo. A página e o total vêm do banco: a tela não soma.
+ */
+function MovimentosDoEstoque({ m, comUnidade }: { m: DadosDosMovimentos; comUnidade: boolean }) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const ir = (pagina: number) => router.push(mesclarParams(searchParams, { pagina: pagina > 1 ? String(pagina) : null }))
+  const inicio = m.total === 0 ? 0 : (m.pagina - 1) * MOVIMENTOS_POR_PAGINA + 1
+  const fim = (m.pagina - 1) * MOVIMENTOS_POR_PAGINA + m.linhas.length
+  const num = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
+  const quantidade = (l: DadosDosMovimentos['linhas'][number]) => {
+    const sinal = l.quantidade > 0 ? '+' : ''
+    const principal = `${sinal}${num(l.quantidade)} ${medidaNoPlural(l.medida, Math.abs(l.quantidade))}`
+    return l.medida && l.medida !== l.embalagem
+      ? `${principal} (${sinal}${num(l.embalagens)} ${medidaNoPlural(l.embalagem, Math.abs(l.embalagens))})`
+      : principal
+  }
+  const th = (align: 'left' | 'right' = 'left'): CSSProperties => ({
+    padding: '8px 12px', textAlign: align,
+    fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)',
+    textTransform: 'uppercase', letterSpacing: '0.06em',
+    borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap',
+  })
+  const td = (align: 'left' | 'right' = 'left'): CSSProperties => ({ padding: '10px 12px', textAlign: align, color: 'var(--text)' })
+
+  return (
+    <div data-movimentos-do-estoque style={{ gridColumn: '1 / -1' }}>
+      <SCard title="Movimentações do período" rotuloDoSobre="O que esta lista mostra" sobre={
+        <span>
+          Cada entrada e saída do estoque no período, da mais recente para a mais antiga: a entrada, o consumo nos atendimentos, a venda e a
+          devolução, a perda (com o motivo), o ajuste e a transferência. A quantidade está na unidade do movimento (e em embalagens, quando o
+          produto conta em ml, UI…), o lote é o de onde saiu (ou o que a entrada criou) e o custo é o do movimento, ao custo do lote.
+          A data e a hora são as do relógio da unidade.
+        </span>
+      }>
+        {m.linhas.length === 0 ? (
+          <EmptyMsg texto="Nenhuma movimentação no período." />
+        ) : (
+          <div className="table-wrap">
+            {/* Oito colunas não cabem em 390px: no celular cada movimento vira um bloco de rótulo e valor. */}
+            <table className="cards-mobile" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--text-sm-sz)' }}>
+              <thead>
+                <tr>
+                  <th style={th()}>Data</th>
+                  <th style={th()}>Produto</th>
+                  <th style={th()}>Tipo</th>
+                  <th style={th('right')}>Quantidade</th>
+                  <th style={th()}>Lote</th>
+                  {comUnidade && <th style={th()}>Unidade</th>}
+                  <th style={th()}>Quem fez</th>
+                  <th style={th('right')}>Custo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {m.linhas.map((l, i) => (
+                  <tr key={l.id} data-movimento={l.tipo}
+                    style={{ borderBottom: i < m.linhas.length - 1 ? '1px solid var(--hairline)' : 'none' }}>
+                    <td data-label="Data" data-par style={{ ...td(), whiteSpace: 'nowrap' }}>
+                      {new Date(l.data).toLocaleString('pt-BR', { timeZone: l.fuso, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                    <td data-label="" style={{ ...td(), fontWeight: 600, minWidth: 160 }}>{l.produto}</td>
+                    <td data-label="Tipo" style={td()}>
+                      <span style={{ display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
+                        <Badge label={l.rotulo} color={COR_DO_MOVIMENTO[l.tipo]} />
+                        {l.desfeita && <span data-movimento-desfeito style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>desfeito</span>}
+                      </span>
+                    </td>
+                    <td data-label="Quantidade" style={{ ...td('right'), whiteSpace: 'nowrap', fontWeight: 700 }}>{quantidade(l)}</td>
+                    <td data-label="Lote" data-lote style={td()}>{textoDosLotes(l.lotes)}</td>
+                    {comUnidade && <td data-label="Unidade" style={td()}>{l.unidade}</td>}
+                    <td data-label="Quem fez" style={td()}>{l.quem ?? '—'}</td>
+                    <td data-label="Custo" style={{ ...td('right'), whiteSpace: 'nowrap' }}>{fmtBRLFull(l.custo)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {m.paginas > 1 && (
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap',
+            marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--hairline)',
+          }}>
+            <span data-movimentos-pagina style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+              {inicio}–{fim} de {m.total.toLocaleString('pt-BR')}
+            </span>
+            <button type="button" className="btn-ghost" disabled={m.pagina <= 1} onClick={() => ir(m.pagina - 1)}>Anterior</button>
+            <button type="button" className="btn-ghost" disabled={m.pagina >= m.paginas} onClick={() => ir(m.pagina + 1)}>Próxima</button>
+          </div>
+        )}
+      </SCard>
     </div>
   )
 }
@@ -1563,7 +1685,8 @@ export function ReportsBiView(props: ReportsBiProps) {
 
   // Mescla em vez de montar do zero: antes, trocar de aba descartava o período
   // personalizado e vice-versa.
-  const switchTab = (t: Tab) => router.push(mesclarParams(searchParams, { tab: t }))
+  // A página de uma lista (Vendas, as movimentações do Estoque) não passa de uma aba à outra.
+  const switchTab = (t: Tab) => router.push(mesclarParams(searchParams, { tab: t, pagina: null }))
   // O recorte vai em `?unidade=<endereço>` (A57), como o resto da rede; o
   // `?branch=` antigo sai da URL.
   const switchBranch = (id: string) => {

@@ -125,6 +125,12 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
   } else if (isNetworkAdmin) {
     permissions = ALL_PERMISSIONS
     reportTabs  = [...ALL_REPORT_TABS]
+    // Abaixo: o cargo de sistema "Não definido" não tem permissão de NADA (item
+    // 20 de 18/11, o Heitor): nenhuma linha da matriz vale para ele, nem a que
+    // um dia aparecer gravada — a tela de Cargos não o edita, e isto é a parede.
+  } else if (member?.semCargo) {
+    permissions = NO_PERMISSIONS
+    reportTabs  = []
   } else if (roleId && tenantId) {
     const [rows, tabRows] = await Promise.all([
       getCachedRolePermissions(tenantId, roleId),
@@ -185,6 +191,7 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
     atendeEm: member?.atendeEm ?? [],
     comissaoDeVenda: member?.comissaoDeVenda ?? false,
     isNetworkAdmin,
+    semCargo: member?.semCargo === true,
     isClient,
     plano,
   }

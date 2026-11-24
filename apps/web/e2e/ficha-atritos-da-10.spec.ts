@@ -77,10 +77,10 @@ test('D7: no celular, as Transações viram cartões com valor, forma e situaç�
     await p.goto(`/${slug}/clients/${ana}?aba=financeiro`)
     const linhas = p.locator('[data-transacao-da-ficha]')
     await expect(linhas).toHaveCount(4)
-    // A ordem é a da data que a linha mostra, da mais nova para a mais antiga:
-    // o vencimento das parcelas (3/3, 2/3, 1/3) e o pagamento da entrada (hoje).
+    // O em aberto vem primeiro, pelo vencimento (1/3, 2/3, 3/3); depois o pago,
+    // pela data que a linha mostra (a entrada, hoje).
     expect(await linhas.evaluateAll(ls => ls.map(l => l.getAttribute('data-lancamento'))))
-      .toEqual([ids['parcela 3/3'], ids['parcela 2/3'], ids['parcela 1/3'], ids['entrada']])
+      .toEqual([ids['parcela 1/3'], ids['parcela 2/3'], ids['parcela 3/3'], ids['entrada']])
     // Nada rola de lado: a tabela cabe na largura, e o valor e a forma de cada linha estão na tela.
     const tabela = p.locator('table:has([data-transacao-da-ficha])')
     const larguras = await tabela.evaluate(t => ({ tabela: t.scrollWidth, pai: t.parentElement!.clientWidth }))
@@ -90,5 +90,59 @@ test('D7: no celular, as Transações viram cartões com valor, forma e situaç�
     await expect(entrada.getByText('R$ 100,00')).toBeInViewport({ ratio: 1 })
     await expect(entrada.locator('[data-forma-do-lancamento]')).toBeInViewport({ ratio: 1 })
     await expect(entrada.getByText('Pago', { exact: true })).toBeInViewport({ ratio: 1 })
+  })
+})
+
+/**
+ * As parcelas na ficha (vendas-financeiro.md, a aba Financeiro da ficha; o
+ * Heitor, 18/11: "ok"): o que está em aberto vem primeiro, em ordem de
+ * vencimento — a vencida, ou a mais próxima, primeiro —, e a vencida não paga
+ * fica em destaque (o fundo de alerta) com "Vencida há N dias". O pago vem
+ * depois, do mais novo ao mais antigo (D7). Uma cliente só deste caso, na
+ * mesma rede.
+ */
+test.describe('as parcelas da ficha em ordem de vencimento', () => {
+  let membro: MembroDeTeste | null = null
+  let cliente = ''
+  const parcelas: Record<string, string> = {}
+
+  async function como(m: MembroDeTeste, browser: Browser, fn: (p: Page) => Promise<void>) {
+    const ctx = await browser.newContext({ storageState: m.estado })
+    try { await fn(await ctx.newPage()) } finally { await ctx.close() }
+  }
+
+  test.beforeAll(async () => {
+    membro = await criarMembro(`fpvm${marca}`, {
+      tenant: rede!.tenantId, branchId: rede!.branchId, rotulo: 'Financeiro',
+      permissoes: [{ modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'financial', nivel: 'MANAGE' }, { modulo: 'cashier', nivel: 'MANAGE' }],
+    })
+    cliente = await rede!.criarCliente(`Parcelas ${marca}`)
+    const base = { branch_id: rede!.branchId, client_id: cliente, type: 'INCOME', category: 'Pacote', amount: 300, created_by: 'e2e', parcela_total: 3 }
+    // Gravadas fora de ordem: a 3ª, a paga, a 1ª (vencida há 4 dias), a 2ª.
+    const { data, error } = await db().from('financial_transactions').insert([
+      { ...base, description: 'Pacote — parcela 3/3', is_paid: false, due_date: meioDia(56), parcela_numero: 3 },
+      { ...base, description: 'Pacote — entrada', is_paid: true, paid_at: new Date().toISOString(), payment_method: 'PIX', parcela_numero: null, parcela_total: null },
+      { ...base, description: 'Pacote — parcela 1/3', is_paid: false, due_date: meioDia(-4), parcela_numero: 1 },
+      { ...base, description: 'Pacote — parcela 2/3', is_paid: false, due_date: meioDia(26), parcela_numero: 2 },
+    ]).select('id, description')
+    expect(error).toBeNull()
+    for (const l of data ?? []) parcelas[(l.description as string).replace('Pacote — ', '')] = l.id as string
+  })
+  test.afterAll(async () => { await membro?.limpar() })
+
+  test('o em aberto pelo vencimento, a vencida primeiro e em destaque, "Vencida há 4 dias"', async ({ browser }) => {
+    await como(membro!, browser, async p => {
+      await p.goto(`/${slug}/clients/${cliente}?aba=financeiro`)
+      const linhas = p.locator('[data-transacao-da-ficha]')
+      await expect(linhas).toHaveCount(4)
+      expect(await linhas.evaluateAll(ls => ls.map(l => l.getAttribute('data-lancamento'))))
+        .toEqual([parcelas['parcela 1/3'], parcelas['parcela 2/3'], parcelas['parcela 3/3'], parcelas['entrada']])
+      const vencida = p.locator(`[data-lancamento="${parcelas['parcela 1/3']}"]`)
+      await expect(vencida).toHaveAttribute('data-vencida-da-ficha', '')
+      await expect(vencida.locator('[data-vencida]')).toHaveText(/Vencida há 4 dias/)
+      // A que ainda vai vencer não fica em destaque.
+      await expect(p.locator(`[data-lancamento="${parcelas['parcela 2/3']}"]`)).not.toHaveAttribute('data-vencida-da-ficha', '')
+      await expect(p.locator(`[data-lancamento="${parcelas['parcela 2/3']}"]`)).toContainText('Pendente')
+    })
   })
 })

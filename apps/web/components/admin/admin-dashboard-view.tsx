@@ -81,6 +81,8 @@ export interface AdminDashboardProps {
    */
   quadrosDeClientes?: ReactNode
   userName:         string
+  /** O cargo é o "Não definido" (item 20 de 18/11): o painel vazio diz que ela está sem cargo. */
+  semCargo?:        boolean
   leadFunnel:       { name: string; count: number }[]
   funnels:          { id: string; name: string }[]
   activeFunnelId:   string
@@ -461,7 +463,7 @@ function StatusPill({ label, count, colorKey }: { label: string; count: number; 
 // --- Main component -----------------------------------------------------------
 
 export function AdminDashboardView({
-  permissions, userName, leadFunnel, funnels, activeFunnelId,
+  permissions, userName, semCargo = false, leadFunnel, funnels, activeFunnelId,
   leadsTotal, leadsGanhos, conversionRate, funilTemGanho, marketing,
   monthLabel, veDinheiro,
   totalRevenue, totalCost, totalAppointments, newClients, ticketMedio, clientesQuePagaram,
@@ -544,7 +546,7 @@ export function AdminDashboardView({
         <PeriodSelector current={currentPeriod} fromDate={customFrom} toDate={customTo} />
       </div>
 
-      {!hasAnyWidget && <DashboardEmptyState userName={userName} shortcuts={shortcuts} />}
+      {!hasAnyWidget && <DashboardEmptyState userName={userName} shortcuts={shortcuts} semCargo={semCargo} />}
 
       {avisoDosAbertos}
 

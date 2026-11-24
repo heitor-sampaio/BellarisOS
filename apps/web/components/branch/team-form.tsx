@@ -7,6 +7,7 @@ import { JanelaModal } from '@/components/shared/janela-modal'
 import { UnidadesDoMembro, AtendeDoMembro, useAtendeDoMembro, type ValorDasUnidades } from '@/components/shared/unidades-do-membro'
 import { toast } from 'sonner'
 import { Dica } from '@/components/shared/dica'
+import { MEMBRO_SEM_ACESSO, MEMBRO_SEM_ACESSO_QUE_ATENDE } from '@/lib/cargos/sem-acesso'
 
 /** O rótulo do campo com a dica ao lado (a explicação mora na dica, 2026-11-16). */
 const rotuloComDica = { display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' } as const
@@ -15,6 +16,8 @@ interface Role {
   id: string; label: string
   /** C62 (F70): o cargo tem mais acesso que o de quem cadastra — aparece desligado (PLAT-02 da varredura de 18/11). */
   acimaDoMeu?: boolean
+  /** Item 21 de 18/11: o cargo não abre módulo nenhum (o "Não definido", ou todo em Sem acesso). */
+  semAcesso?: boolean
 }
 
 interface TeamFormProps {
@@ -132,10 +135,21 @@ function NovoMembroDaUnidade({ branchId, slug, roles, unidade = null, unidadesDo
                   <option value="" disabled>Selecione…</option>
                   {roles.map(r => (
                     <option key={r.id} value={r.id} disabled={r.acimaDoMeu}>
-                      {r.acimaDoMeu ? `${r.label} (tem módulos que você não tem)` : r.label}
+                      {r.acimaDoMeu ? `${r.label} (tem módulos que você não tem)` : r.semAcesso ? `${r.label} (sem acesso)` : r.label}
                     </option>
                   ))}
                 </select>
+                {/* Item 21 de 18/11: o cargo escolhido não abre nada — avisa; salvar não recusa. */}
+                {roles.find(r => r.id === roleId)?.semAcesso && (
+                  <p data-cargo-sem-acesso role="status" style={{
+                    color: 'var(--warning)', background: 'var(--warning-soft)',
+                    borderRadius: 'var(--radius-field-token)', padding: '8px 12px',
+                    fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)',
+                  }}>
+                    {MEMBRO_SEM_ACESSO}
+                    {atendeEm.length > 0 && <> {MEMBRO_SEM_ACESSO_QUE_ATENDE}</>}
+                  </p>
+                )}
                 {roles.length === 0 && (
                   <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
                     Nenhum cargo disponível. Peça ao admin da rede para criar cargos.

@@ -16,6 +16,8 @@ import { SaldoDoCredito } from '@/components/shared/saldo-do-credito'
 import { limiteDoCrediarioEmTexto, rotuloDaOpcaoDeParcelas } from '@/lib/financeiro/parcelas-do-crediario'
 import { OutrasFormas } from '@/components/shared/outras-formas'
 import { recusaDasOutras, valorDaParte, valorDaPrincipal, type EstadoDaParte } from '@/lib/checkout/varias-formas'
+import { recusaDoTroco, emDinheiroDoEstado } from '@/lib/checkout/troco'
+import { CampoDoTroco } from '@/components/shared/campo-do-troco'
 
 /**
  * Os campos de COMO vai ser pago — o vocabulário do fechamento do plano (no
@@ -54,6 +56,11 @@ export interface EstadoDoPagamento {
    * valor dela; a primeira (o meio de cima) fica com o que falta.
    */
   outras?: EstadoDaParte[]
+  /**
+   * Item 14 do escopo de 18/11: o "Valor entregue" no dinheiro, para o troco
+   * (opcional). Só da tela: `montarPagamento` não o leva ao servidor.
+   */
+  entregue?: string
 }
 
 // O dia de "hoje + N" no relógio da unidade (F62b).
@@ -139,7 +146,8 @@ export function recusaDoPagamento(e: EstadoDoPagamento, total?: number, doQue = 
     if (recusa) return recusa
   }
   if (e.forma === 'PARCELADO' && !e.metodo && temEntrada(e)) return 'Escolha a forma da entrada.'
-  return recusaDaEntradaDoEstado(e, total, doQue)
+  // Item 14: o entregue menor que o dinheiro (ou ilegível) não deixa confirmar.
+  return recusaDaEntradaDoEstado(e, total, doQue) ?? recusaDoTroco(emDinheiroDoEstado(e, total), e.entregue)
 }
 
 /**
@@ -170,6 +178,8 @@ export function useRecusaDoPagamento(): (e: EstadoDoPagamento, total?: number, d
  */
 export function recusaForaDoCampo(e: EstadoDoPagamento, total: number | undefined, recusa: string | null, doQue = 'da venda'): string | null {
   if (!recusa) return null
+  // Item 14: a do troco também já aparece junto do campo dele.
+  if (recusa === recusaDoTroco(emDinheiroDoEstado(e, total), e.entregue)) return null
   return recusa === recusaDaEntradaDoEstado(e, total, doQue) ? null : recusa
 }
 
@@ -319,6 +329,10 @@ export function CamposDoPagamento({ estado, aoMudar, formas, total, doQue = 'da 
       {variasFormas && forma === 'AVISTA' && total !== undefined && total > 0 && (
         <OutrasFormas metodoPrincipal={estado.metodo} total={total} outras={outras} aoMudar={o => mudar({ outras: o })}
           metodos={metodos} clienteId={clienteId} semMaquininha={semMaquininha} />
+      )}
+      {/* Item 14: no dinheiro, o "Valor entregue" e o troco. O contrato (semMaquininha: só vira texto) não recebe nada agora. */}
+      {!semMaquininha && (
+        <CampoDoTroco emDinheiro={emDinheiroDoEstado(estado, total)} entregue={estado.entregue ?? ''} aoMudar={v => mudar({ entregue: v })} />
       )}
       {forma === 'PARCELADO' && (
         <div className="form-2col">

@@ -12,6 +12,8 @@ import { OutrasFormas } from '@/components/shared/outras-formas'
 import { recusaDasOutras, valorDaPrincipal, type EstadoDaParte } from '@/lib/checkout/varias-formas'
 import { partesDaBaixa, type ParteDaBaixa } from '@/lib/financeiro/baixa-em-formas'
 import { FormasDePagamento, FORMAS_DA_BAIXA } from '@/components/shared/formas-de-pagamento'
+import { CampoDoTroco } from '@/components/shared/campo-do-troco'
+import { emDinheiro, recusaDoTroco } from '@/lib/checkout/troco'
 
 /** As formas de quem recebe agora (as do "Novo lançamento" — e as da parcela no PDV). */
 const FORMAS_DE_PAGAMENTO = FORMAS_DA_BAIXA
@@ -67,6 +69,10 @@ export function ReceberNoCartao({ descricao, metodo, valor, cliente = null, adia
   const [outras, setOutras] = useState<EstadoDaParte[]>([])
   const recusaDasFormas = recusaDasOutras(outras, valor)
   const valorDaPrimeira = outras.length ? Math.max(0, valorDaPrincipal(valor, outras)) : valor
+  // Item 14 do escopo de 18/11: no dinheiro, o "Valor entregue" e o troco (só da tela).
+  const [entregue, setEntregue] = useState('')
+  const noDinheiro = emDinheiro(forma, valorDaPrimeira, outras)
+  const recusaDoEntregue = recusaDoTroco(noDinheiro, entregue)
   const titulo = forma === 'CREDIT_CARD' || forma === 'DEBIT_CARD' ? 'Receber no cartão' : 'Receber'
   return (
     <JanelaModal onFechar={aoFechar} rotulo={titulo} largura={420} travado={pending}>
@@ -108,12 +114,13 @@ export function ReceberNoCartao({ descricao, metodo, valor, cliente = null, adia
         )}
         {/* A7 da 22ª (princípio 7): o "+ Outra forma" aparece com a janela, sem esperar a primeira forma. */}
         <OutrasFormas metodoPrincipal={forma} total={valor} outras={outras} aoMudar={setOutras} metodos={FORMAS_DE_PAGAMENTO} />
+        <CampoDoTroco emDinheiro={noDinheiro} entregue={entregue} aoMudar={setEntregue} desligado={pending} />
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button type="button" className="btn-secondary" onClick={aoFechar} disabled={pending}>Cancelar</button>
           <button type="button" className="btn-primary"
             onClick={() => aoConfirmar(bandeira || null, noCredito ? vezes : 1, forma, maquininha || null,
               outras.length ? partesDaBaixa({ forma, bandeira: bandeira || null, vezes: noCredito ? vezes : 1, maquininha: maquininha || null }, valor, outras) : null)}
-            disabled={pending || !forma || !!faltaAMaquininha || !!recusaDasFormas} title={faltaAMaquininha ?? undefined}>
+            disabled={pending || !forma || !!faltaAMaquininha || !!recusaDasFormas || !!recusaDoEntregue} title={faltaAMaquininha ?? undefined}>
             {pending ? 'Recebendo…' : 'Confirmar recebimento'}
           </button>
         </div>

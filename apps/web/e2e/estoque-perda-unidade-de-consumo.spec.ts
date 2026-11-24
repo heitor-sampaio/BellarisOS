@@ -74,7 +74,7 @@ test('a perda em UI: 30 UI do frasco aberto saem exatas, sem conta de cabeça', 
     await modal.getByRole('group', { name: 'Unidade da perda' }).getByRole('button', { name: 'UI', exact: true }).click()
     await modal.getByLabel('Quantidade').fill('30')
     await expect(modal.locator('[data-equivale]')).toContainText('0,3 frasco')
-    await modal.getByLabel('Motivo').selectOption('VENCIDO')
+    await modal.getByLabel('Motivo').selectOption({ label: 'Vencido' })
     await modal.getByRole('button', { name: 'Registrar perda' }).click()
     await expect(modal).toBeHidden()
   })
@@ -93,7 +93,7 @@ test('mais UI do que o lote tem é recusado na unidade escolhida', async ({ brow
     await campo.selectOption(valor ?? '')
     await modal.getByRole('group', { name: 'Unidade da perda' }).getByRole('button', { name: 'UI', exact: true }).click()
     await modal.getByLabel('Quantidade').fill('300')
-    await modal.getByLabel('Motivo').selectOption('QUEBROU')
+    await modal.getByLabel('Motivo').selectOption({ label: 'Quebrou' })
     await modal.getByRole('button', { name: 'Registrar perda' }).click()
     // 30 s: na completa de 03/11 à tarde o banco levou 13 s para responder a
     // recusa (o log do Supabase tem o "O lote tem só 270 UI." chegando depois

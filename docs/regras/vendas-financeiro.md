@@ -524,6 +524,22 @@ comanda (PDV-P1).
   estorno seguem POR FORMA, na própria linha ("Estornar (Pix)"). No CSV, uma
   linha por forma (a contadora concilia assim), com "(forma 1 de 2)" na
   descrição (`posicaoNaParcela`).
+- **O troco no dinheiro** (item 14 do escopo de 18/11; o Heitor: "ok"): em
+  toda tela que recebe — a comanda do atendimento e a Nova venda
+  (`CamposDoPagamento`), a parcela no PDV, o "Receber" do Financeiro e da
+  ficha (`ReceberNoCartao`), o plano no PDV (`CheckoutWizard`) e no
+  atendimento —, com parte do pagamento em DINHEIRO, aparece "Valor entregue
+  (opcional)" (`CampoDoTroco`, `components/shared/campo-do-troco.tsx`), que diz
+  "Troco: R$ X" (`[data-troco]`). O dinheiro é a 1ª forma em Dinheiro (com o
+  que falta das outras) mais as outras em Dinheiro; no crediário, a entrada
+  (`emDinheiro`/`emDinheiroDoEstado`, `lib/checkout/troco.ts`, em centavos). O
+  entregue MENOR (ou ilegível) diz "O valor entregue (R$ 50,00) é menor que os
+  R$ 80,00 em dinheiro: faltam R$ 30,00." (`[data-entregue-menor]`) e o botão
+  não confirma (`recusaDoTroco`, também dentro de `recusaDoPagamento`); vazio,
+  recebe. **O entregue não se grava** (decisão do Claude, 26ª, pelo princípio
+  7): fica só na tela — `montarPagamento` não o leva —, o que se registra é o
+  pagamento, e o caixa e o Fechamento do dia contam o recebido. Prova:
+  `tests/pdv-varias-formas-e-crediario-avulso.test.ts`, `e2e/pdv-nova-venda.spec.ts`.
 - **O avulso tem as formas da venda** (o Heitor, 2026-11-16: "Mesma regra de
   pagamentos dos outros"): a comanda do atendimento oferece à vista (numa
   forma ou em várias), o Crediário com entrada e parcelas (até o limite da
@@ -1776,11 +1792,21 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   (695 px num espaço de 378), escondendo o valor, a forma e o "Vencida em", e
   as parcelas gravadas no mesmo instante saíam embaralhadas (3/3, 1/3, 2/3,
   entrada). No celular cada lançamento é um cartão (`cards-mobile`), e a ordem
-  é a da data que a LINHA MOSTRA, da mais nova para a mais antiga — o
-  vencimento da parcela em aberto, o dia do atendimento, senão o lançamento;
-  no empate, a parcela maior primeiro (`ordenarTransacoesDaFicha`,
-  `lib/clientes/ordem-das-transacoes.ts`). Prova:
+  é a da data que a LINHA MOSTRA, da mais nova para a mais antiga — o dia do
+  atendimento, senão o lançamento; no empate, a parcela maior primeiro
+  (`ordenarTransacoesDaFicha`, `lib/clientes/ordem-das-transacoes.ts`). Prova:
   `e2e/ficha-atritos-da-10.spec.ts` ("D7"), `tests/ordem-das-transacoes.test.ts`.
+  **As parcelas em aberto vêm primeiro, em ordem de vencimento** (item 17 do
+  escopo de 18/11; o Heitor: "ok"): o a receber (nem pago, nem estornado, nem
+  estorno) abre a lista, do vencimento mais antigo ao mais novo — a vencida, ou
+  a mais próxima, primeiro; sem vencimento, depois; no empate, a parcela menor
+  —, e o resto segue a ordem do D7. A vencida e não paga fica em destaque: a
+  linha com o fundo de alerta (`var(--danger-soft)`, `[data-vencida-da-ficha]`)
+  e o chip "Vencida há 4 dias" (`vencidaHaEmTexto`; os dias vêm do servidor,
+  `diasVencida` em `financeiroDaFicha`, de dia a dia no fuso da unidade —
+  `diasAteOVencimento`); a data fica na coluna ao lado ("Vence 14/11/2026").
+  Prova: `tests/ordem-das-transacoes.test.ts`, `tests/financeiro-vencida.test.ts`,
+  `e2e/ficha-atritos-da-10.spec.ts`.
 - **A pergunta "Ninguém foi marcado em “Quem vendeu”… Vender assim?" fica à
   vista** (A1 da 10ª simulação, 2026-11-10): no Vender a 412 px ela nascia no
   fim da janela, abaixo da tela, e o botão parecia morto. Ao aparecer, a
@@ -1920,9 +1946,10 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   servidor, que manda `vencida` à tela) e, para os números,
   `metrics_a_receber_vencido` → `getAReceberVencido` (`lib/metrics/vencidas.ts`;
   migration `20261107004403`).
-  - As listas dos dois financeiros e a aba Financeiro da ficha dizem "Vencida
-    em 05/11" (`SituacaoDoEmAberto`, `[data-vencida]`); a lista da unidade tem
-    a situação "Vencidas" no filtro.
+  - As listas dos dois financeiros dizem "Vencida em 05/11"
+    (`SituacaoDoEmAberto`, `[data-vencida]`), e a aba Financeiro da ficha
+    "Vencida há N dias" (item 17 do escopo de 18/11, acima em "A aba Financeiro
+    da ficha"); a lista da unidade tem a situação "Vencidas" no filtro.
   - O cartão "A receber da cliente" diz "Vencidas: R$ 1.294,00 (1 parcela,
     desde 05/11) · Ver as vencidas" (`[data-vencidas]`), que abre a lista só
     das vencidas, de qualquer mês (`?aba=a-receber&aberto=vencidas`, nos dois financeiros).
@@ -3258,7 +3285,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 ❌ Dar o produto acrescentado na comanda a quem atendeu como quem vendeu: é o "Quem vendeu os produtos", que nasce vazio (com-06, r2-ven-12)
 ❌ Aplicar o voucher antes do desconto comercial, ou numa ordem diferente em algum caminho: é desconto → voucher → pontos em todo lugar (o Heitor, 2026-11-18)
 ❌ Mostrar o a receber vencido como "Pendente", ou decidir no navegador se venceu (o dia é do servidor: situacaoDoVencimento; os números, metrics_a_receber_vencido — D13 da 9ª)
-❌ Tabela de lançamentos sem cards-mobile, ou as Transações da ficha fora da ordem da data que a linha mostra (ordenarTransacoesDaFicha — D7 da 10ª)
+❌ Tabela de lançamentos sem cards-mobile, ou as Transações da ficha fora de ordenarTransacoesDaFicha (o em aberto primeiro, pelo vencimento — item 17 do escopo de 18/11; o resto pela data que a linha mostra — D7 da 10ª)
+❌ Gravar ou mandar ao servidor o "Valor entregue" do troco, ou receber em dinheiro com o entregue menor que o valor (recusaDoTroco — item 14 do escopo de 18/11)
 ❌ Trocar o due_date de um lançamento sem lancamento_remarcar_vencimento (o histórico da remarcação se perde — A37 da 9ª)
 ❌ Calcular a taxa ou o líquido de um lançamento na tela (o CSV) — é metrics_taxa_dos_lancamentos, a conta do lucro (A31 da 10ª)
 ❌ Rotular o cartão do caixa só "Despesas": é "Despesas pagas (caixa)", que tem a compra de estoque e o pagamento das comissões (A24 da 10ª)

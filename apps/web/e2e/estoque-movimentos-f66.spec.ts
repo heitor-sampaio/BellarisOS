@@ -60,7 +60,7 @@ const perdasNasMetricas = async (produto: string) => {
     p_from: new Date(Date.now() - 864e5).toISOString(), p_to: new Date(Date.now() + 864e5).toISOString(),
   })
   return ((data ?? []) as { motivo: string | null; product_id: string | null; quantidade?: number; custo: number }[])
-    .filter(l => l.product_id === produto && l.motivo === 'QUEBROU').reduce((s, l) => s + n(l.custo), 0)
+    .filter(l => l.product_id === produto && l.motivo === 'Quebrou').reduce((s, l) => s + n(l.custo), 0)
 }
 
 test.beforeAll(async () => {

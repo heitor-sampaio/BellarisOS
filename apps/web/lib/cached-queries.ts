@@ -6,6 +6,7 @@ import type { FichaDoLogin } from '@/lib/clientes/ficha-da-requisicao'
 import { unidadeDoPortal } from '@/lib/clientes/unidade-do-portal'
 import { quemRealizaOsProcedimentos } from '@/lib/procedimentos/quem-realiza'
 import { precosDaUnidade, precoNaUnidade } from '@/lib/procedimentos/preco-na-unidade'
+import { ehCargoNaoDefinido } from '@/lib/cargos/sem-acesso'
 
 // ─── Membro por auth_id (usado no getTenantContext) ───────────────────────────
 // Traz id interno + cargo dinâmico + flag de profissional. Fonte de fallback dos
@@ -19,6 +20,12 @@ export type CachedMember = {
    * claim `role` do token: rebaixada, ela seguia com tudo até o token renovar.
    */
   ehAdminDaRede: boolean
+  /**
+   * O cargo é o de SISTEMA "Não definido" (`tenant_roles.key = 'NAO_DEFINIDO'`
+   * com `is_system`): quem o tem não abre módulo nenhum (item 20 de 18/11, o
+   * Heitor: "quem tem cargo não definido não tem permissão de nada").
+   */
+  semCargo: boolean
   providesServices: boolean
   /**
    * As unidades em que ele ATENDE (decisão 2 do Heitor, 8ª simulação): o
@@ -76,6 +83,7 @@ export function getCachedMember(authId: string) {
         roleId: data.role_id ?? null,
         roleLabel: roleRef?.label ?? '',
         ehAdminDaRede: roleRef?.key === 'NETWORK_ADMIN' && roleRef?.is_system === true,
+        semCargo: ehCargoNaoDefinido(roleRef),
         providesServices: data.provides_services ?? false,
         atendeEm: ((data as { atende_em?: string[] | null }).atende_em ?? []) as string[],
         branchId: (data.branch_id as string | null) ?? null,
@@ -87,8 +95,8 @@ export function getCachedMember(authId: string) {
     // `v2`: o formato ganhou o `ehAdminDaRede` (F70) — a entrada antiga, sem
     // ele, valeria "não é Admin" por até uma hora depois do deploy. `v3`: as
     // `outrasUnidades` (EQ1a), pelo mesmo motivo. `v4`: a `comissaoDeVenda` (sem o "só os meus", 23/11). `v5`: ela vale
-    // também para quem tem comissão no nome sem o percentual próprio (23/11).
-    [`member-v5-${authId}`],
+    // também para quem tem comissão no nome sem o percentual próprio (23/11). `v6`: o `semCargo` (o "Não definido").
+    [`member-v6-${authId}`],
     { revalidate: 3600, tags: [`user:${authId}`] },
   )()
 }

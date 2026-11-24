@@ -70,6 +70,8 @@ import { linhaDoInsumo, type UnidadesDoProduto } from '@/lib/estoque/unidade-de-
 import { useAgora } from '@/lib/use-agora'
 import { atrasoDoInicio } from '@/lib/appointments/inicio-adiantado'
 import { useFuso } from '@/components/shared/fuso'
+import { CampoDoTroco } from '@/components/shared/campo-do-troco'
+import { emDinheiro, recusaDoTroco } from '@/lib/checkout/troco'
 
 
 // -- Types ----------------------------------------------------------------------
@@ -661,6 +663,10 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
   const recusaDaEntrada = forma === 'PARCELADO' ? recusaDaEntradaAcimaDoTotal(entrada, plano.emAberto, 'em aberto do plano') : null
   // PDV8: o à vista pede o meio; o crediário, só o da entrada.
   const semForma = forma === 'AVISTA' ? !metodo : entrada > 0 && !metodo
+  // Item 14 do escopo de 18/11: no dinheiro, o "Valor entregue" e o troco (só da tela).
+  const [entregue, setEntregue] = useState('')
+  const noDinheiro = emDinheiro(metodo, forma === 'AVISTA' ? plano.emAberto : entrada)
+  const recusaDoEntregue = recusaDoTroco(noDinheiro, entregue)
 
   async function receber() {
     if (recusaDaEntrada) { setErro(recusaDaEntrada); return }
@@ -801,12 +807,13 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
                 </div>
               )}
               <CampoDaBandeira metodo={metodo} valor={bandeira} aoMudar={setBandeira} maquininha={maquininha} />
+              <CampoDoTroco emDinheiro={noDinheiro} entregue={entregue} aoMudar={setEntregue} desligado={salvando} />
 
               {erro && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{erro}</p>}
 
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4 }}>
                 <button type="button" onClick={() => setAberto(false)} className="btn-secondary"><X size={13} /> Voltar</button>
-                <button type="button" onClick={receber} disabled={salvando || !!recusaDaEntrada || semForma || !!faltaAMaquininha} className="btn-primary"
+                <button type="button" onClick={receber} disabled={salvando || !!recusaDaEntrada || semForma || !!faltaAMaquininha || !!recusaDoEntregue} className="btn-primary"
                   style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', fontSize: 'var(--text-base-sz)', minWidth: 170, justifyContent: 'center' }}>
                   {salvando ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
                   {salvando ? 'Registrando…' : 'Confirmar recebimento'}

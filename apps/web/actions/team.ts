@@ -2,6 +2,8 @@
 
 import { cargosAcimaDoMeu, recusaDoCargoAcima } from '@/lib/equipe/cargo-acima'
 import { avisoDeQuemEntrouSemComissao } from '@/lib/equipe/textos-do-cadastro'
+import { cargoSeDaPelaEquipe, ehCargoNaoDefinido } from '@/lib/cargos/sem-acesso'
+import { avisoDoCargoSemAcesso } from '@/lib/equipe/cargos-sem-acesso'
 import { conferirLimite, limiteDoPlano } from '@estetica-os/nucleo/lib/planos/limites'
 import { erroDoAuth } from '@/lib/erro-do-auth'
 import { normalizarHorario, type Horario } from '@/lib/agenda/horario'
@@ -115,25 +117,30 @@ async function assertRoleInTenant(
   roleId: string,
   /** O cargo que o membro JÁ TEM (editar sem trocar): a regra do "acima" vale para quem DÁ o cargo. */
   opcoes: { jaETeuCargo?: boolean } = {},
-): Promise<{ error: string } | { ok: true; admin: boolean }> {
+): Promise<{ error: string } | { ok: true; admin: boolean; cargo: { id: string; key: string | null; is_system: boolean | null } }> {
   const role = await ler(admin
     .from('tenant_roles')
-    .select('is_system, label')
+    .select('key, is_system, label')
     .eq('id', roleId)
     .eq('tenant_id', ctx.tenantId!)
     .maybeSingle(), 'buscar o cargo')
   if (!role) return { error: 'Cargo inválido.' }
+  const cargo = { id: roleId, key: (role as { key: string | null }).key, is_system: (role as { is_system: boolean | null }).is_system }
   const souAdmin = await souAdminDaRede(admin, ctx)
   if (await cargoEhAdminDaRede(admin, ctx.tenantId!, roleId)) {
     if (!souAdmin) return { error: await falaDaRede(ctx.tenantId, 'Só quem é Admin da rede dá o cargo de Admin da rede.') }
-    return { ok: true, admin: true }
+    return { ok: true, admin: true, cargo }
   }
-  if (role.is_system) return { error: 'Esse cargo não pode ser atribuído pela equipe.' }
+  // O "Não definido" se dá pela Equipe (item 20 de 18/11, o Heitor: "pode
+  // criar, e quem tem cargo não definido não tem permissão de nada"). Ele não
+  // dá nada, então não passa do cargo de ninguém.
+  if (!cargoSeDaPelaEquipe(cargo)) return { error: 'Esse cargo não pode ser atribuído pela equipe.' }
+  if (ehCargoNaoDefinido(cargo)) return { ok: true, admin: false, cargo }
   // Ninguém dá um cargo com mais acesso que o próprio (C62, F70; H7 = b). A
   // Admin da rede dá qualquer um.
   const acima = opcoes.jaETeuCargo ? undefined : (await cargosAcimaDoMeu(admin, ctx, [roleId], souAdmin)).get(roleId)
   if (acima) return { error: recusaDoCargoAcima((role as { label: string }).label, acima) }
-  return { ok: true, admin: false }
+  return { ok: true, admin: false, cargo }
 }
 
 /**
@@ -295,17 +302,20 @@ export async function createTeamMember(
   revalidateTag(`professionals:${ctx.tenantId!}`, { expire: 0 })
   revalidateTag(`user:${authId}`, { expire: 0 })
   if (avisoDaComissao) return { error: avisoDaComissao }
+  // Item 21 de 18/11: o cargo que não abre módulo nenhum se grava (princípio
+  // 2) e se avisa — ela entra e não vê nada.
+  const avisoDoCargo = roleCheck.admin ? null : await avisoDoCargoSemAcesso(admin, ctx, roleCheck.cargo, providesServices)
   // A3 da 8ª simulação: sem a comissão, o chip "Sem comissão" ficava escondido
   // na linha — quem cadastra fica sabendo na hora, e onde se define.
-  if (providesServices && comissaoPadrao === null && can(ctx, 'financial', 'MANAGE') && temRecurso(ctx, 'comissoes')) {
-    return { success: true, aviso: avisoDeQuemEntrouSemComissao(name) }
-  }
-  return { success: true }
+  const avisoSemComissao = providesServices && comissaoPadrao === null && can(ctx, 'financial', 'MANAGE') && temRecurso(ctx, 'comissoes')
+    ? avisoDeQuemEntrouSemComissao(name) : null
+  const aviso = [avisoDoCargo, avisoSemComissao].filter(Boolean).join(' ')
+  return aviso ? { success: true, aviso } : { success: true }
 }
 
 /** O que a janela de editar recebe: erro, sucesso, a pergunta de rebaixar a Admin ou o repasse do "Atende" (D3 da 9ª). */
 export type ResultadoDaEdicaoDoMembro =
-  | { error: string } | { success: boolean } | { pergunta: string }
+  | { error: string } | { success: boolean; aviso?: string } | { pergunta: string }
   | { repasseDoAtende: PendenciasDoMembro & { unidades: string } }
 
 export async function updateTeamMember(
@@ -380,9 +390,12 @@ export async function updateTeamMember(
         `${(member as { name?: string | null }).name ?? 'Esta pessoa'} é Admin da rede: com o cargo novo, deixa de ter acesso total e passa a ver só o que o cargo libera. Trocar o cargo mesmo assim?`) }
     }
   }
-  const mantemCargoDoSistema = !!cargoAtual?.is_system && roleId === member.role_id
+  // Só o cargo de Admin da rede: o "Não definido" (de sistema também) segue
+  // editável nas unidades, e se troca como qualquer outro (item 20 de 18/11).
+  const mantemCargoDoSistema = !!cargoAtual?.is_system && cargoAtual.key === 'NETWORK_ADMIN' && roleId === member.role_id
 
   let unidades = unidadesAntes
+  let cargoDado: { id: string; key: string | null; is_system: boolean | null } | null = null
   if (!mantemCargoDoSistema) {
     // O cargo vale em TODAS as unidades do membro: quem não alcança todas não o
     // troca (H7: "gerente de uma unidade só mexe no que é da unidade").
@@ -392,6 +405,7 @@ export async function updateTeamMember(
     // Dar o cargo de Admin da rede só quem o tem (`assertRoleInTenant`).
     const roleCheck = await assertRoleInTenant(admin, ctx, roleId, { jaETeuCargo: roleId === member.role_id })
     if ('error' in roleCheck) return roleCheck
+    if (!roleCheck.admin) cargoDado = roleCheck.cargo
 
     // A Admin da rede é sempre da rede, peça o formulário o que pedir.
     const pedidas = roleCheck.admin ? { unidades: null } : await unidadesDoPedido(admin, ctx, formData, unidadesAntes)
@@ -479,7 +493,11 @@ export async function updateTeamMember(
   // `updateTag` expira na hora; o perfil 'max' ainda serviria o valor velho na
   // próxima requisição — um cargo rebaixado ganharia mais uma com o acesso antigo.
   revalidateTag(`user:${member.auth_id}`, { expire: 0 })
-  return { success: true }
+  // Item 21 de 18/11: salvo com um cargo que não abre nada, avisa — não recusa (princípio 2).
+  const aviso = cargoDado
+    ? await avisoDoCargoSemAcesso(admin, ctx, cargoDado, atendeEm ? atendeEm.length > 0 : providesServices)
+    : null
+  return aviso ? { success: true, aviso } : { success: true }
 }
 
 /**

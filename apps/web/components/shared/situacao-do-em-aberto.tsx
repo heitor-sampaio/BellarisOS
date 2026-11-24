@@ -1,4 +1,5 @@
 import { Clock, AlertTriangle } from 'lucide-react'
+import { vencidaHaEmTexto } from '@/lib/clientes/ordem-das-transacoes'
 
 const curto = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit' })
 
@@ -7,8 +8,11 @@ const curto = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZ
  * simulação; princípio 3): "Vencida em 05/11" quando o vencimento ficou antes
  * de hoje — `vencida` vem do servidor (`situacaoDoVencimento`), para o
  * navegador não decidir o dia por conta própria —, senão "Pendente".
+ *
+ * Item 17 do escopo de 18/11: na ficha, com `diasVencida` (do servidor, no fuso
+ * da unidade), "Vencida há 13 dias" — a data já está na coluna ao lado.
  */
-export function SituacaoDoEmAberto({ vencida, vencimento }: { vencida?: boolean; vencimento: string | null }) {
+export function SituacaoDoEmAberto({ vencida, vencimento, diasVencida = null }: { vencida?: boolean; vencimento: string | null; diasVencida?: number | null }) {
   const chip = {
     display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap',
     fontSize: 'var(--text-2xs)', fontWeight: 700, padding: '3px 9px', borderRadius: 99,
@@ -16,7 +20,7 @@ export function SituacaoDoEmAberto({ vencida, vencimento }: { vencida?: boolean;
   if (vencida && vencimento) {
     return (
       <span data-vencida style={{ ...chip, background: 'var(--danger-soft)', color: 'var(--danger)', border: '1px solid var(--danger-border)' }}>
-        <AlertTriangle size={10} aria-hidden /> Vencida em {curto(vencimento)}
+        <AlertTriangle size={10} aria-hidden /> {diasVencida != null && diasVencida > 0 ? vencidaHaEmTexto(diasVencida) : `Vencida em ${curto(vencimento)}`}
       </span>
     )
   }

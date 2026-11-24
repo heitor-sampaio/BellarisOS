@@ -12,6 +12,8 @@ import { UnidadesDoMembro, AtendeDoMembro, useAtendeDoMembro, type ValorDasUnida
 import { RepasseDoAtende, repasseDasEscolhas } from '@/components/admin/repasse-do-atende'
 import { Dica } from '@/components/shared/dica'
 import { textoDoRelogioDoHorario } from '@/lib/unidades/hora-da-unidade'
+import { toast } from 'sonner'
+import { MEMBRO_SEM_ACESSO, MEMBRO_SEM_ACESSO_QUE_ATENDE } from '@/lib/cargos/sem-acesso'
 
 interface Branch { id: string; name: string; /** O horário de funcionamento (J-9: de onde parte o do membro). */ horario?: unknown }
 /** C62 (F70): o porquê do cargo desligado (o mesmo texto da recusa da action, `lib/equipe/cargo-acima.ts`). */
@@ -21,6 +23,8 @@ interface Role   {
   id: string; label: string
   /** C62 (F70): o cargo tem mais acesso que o de quem age — aparece desligado. */
   acimaDoMeu?: boolean
+  /** Item 21 de 18/11: o cargo não abre módulo nenhum (o "Não definido", ou todo em Sem acesso). */
+  semAcesso?: boolean
 }
 
 export interface EditableMember {
@@ -161,7 +165,16 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, unidadesDeQue
 
   // Fecha quando chega o resultado de sucesso.
   const sucesso = !!(state && 'success' in state && state.success)
-  useEffect(() => { if (sucesso) onFechar() }, [sucesso, onFechar])
+  // Item 21 de 18/11: salvo com um cargo que não abre nada, a confirmação avisa (não recusa).
+  const avisoAoSalvar = state && 'aviso' in state ? state.aviso ?? null : null
+  useEffect(() => {
+    if (!sucesso) return
+    if (avisoAoSalvar) toast.warning(avisoAoSalvar)
+    onFechar()
+  }, [sucesso, avisoAoSalvar, onFechar])
+  // O cargo que fica (o escolhido, ou o travado) não abre nada: a janela diz, à vista.
+  const cargoQueFica = cargoFixo ? null : cargoTravado ? member.roleId : cargo
+  const ficaSemAcesso = !!cargoQueFica && !!roles.find(r => r.id === cargoQueFica)?.semAcesso
 
   return (
     <>
@@ -248,11 +261,21 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, unidadesDeQue
                         {roles.map(r => (
                           // O cargo que ela JÁ TEM fica escolhível: manter não é dar (C62).
                           <option key={r.id} value={r.id} disabled={r.acimaDoMeu && r.id !== member.roleId}>
-                            {r.acimaDoMeu && r.id !== member.roleId ? `${r.label} (tem módulos que você não tem)` : r.label}
+                            {r.acimaDoMeu && r.id !== member.roleId ? `${r.label} (tem módulos que você não tem)` : r.semAcesso ? `${r.label} (sem acesso)` : r.label}
                           </option>
                         ))}
                       </select>
                     </>
+                  )}
+                  {ficaSemAcesso && (
+                    <p data-cargo-sem-acesso role="status" style={{
+                      color: 'var(--warning)', background: 'var(--warning-soft)',
+                      borderRadius: 'var(--radius-field-token)', padding: '8px 12px',
+                      fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)',
+                    }}>
+                      {MEMBRO_SEM_ACESSO}
+                      {atendeEm.length > 0 && <> {MEMBRO_SEM_ACESSO_QUE_ATENDE}</>}
+                    </p>
                   )}
                 </div>
 

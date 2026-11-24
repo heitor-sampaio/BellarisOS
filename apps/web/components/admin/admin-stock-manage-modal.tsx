@@ -11,7 +11,6 @@ import {
   getProductMovements, desfazerEntradaDeEstoque, desfazerAjusteDeEstoque, desfazerPerdaDeEstoque, type MovimentoDeEstoque,
 } from '@/actions/stock'
 import { JanelaModal } from '@/components/shared/janela-modal'
-import { MOTIVOS_DA_PERDA } from '@/lib/estoque/perda'
 import { validadeNaTela, loteVencido } from '@/lib/estoque/validade'
 import { saldoNaPrateleira } from '@/lib/estoque/saldo-em-texto'
 import { medidaNoPlural as pl } from '@/lib/estoque/medidas'
@@ -70,6 +69,8 @@ interface Props {
   /** E14: as listas de marcas e de fornecedores da rede (a Entrada escolhe das duas). */
   marcas?:         ItemDaLista[]
   fornecedores?:   ItemDaLista[]
+  /** Item 7 do escopo de 18/11: os motivos de perda da rede (a Perda escolhe deles). */
+  motivosDePerda?: ItemDaLista[]
   /** C16: aberto pelo leitor de código de barras — só a Entrada. */
   somenteEntrada?: boolean
   onClose:         () => void
@@ -700,11 +701,13 @@ function AjusteForm({ product, allBranches, defaultBranchId, sugerida, onClose, 
 }
 
 // -- Formulário: Perda -------------------------------------------------
-// D-7 (decisão do Heitor): o que saiu por vencido, quebrou, amostra ou uso
-// interno — pelo LOTE escolhido (o vencido sai dele, não do que vence
+// D-7 (decisão do Heitor): o que saiu sem ser usado num atendimento, com o
+// motivo da rede (item 7 do escopo de 18/11: os motivos são um cadastro da
+// rede, ao lado das marcas) — pelo LOTE escolhido (o vencido sai dele, não do que vence
 // primeiro) e SEM despesa. A quantidade é em embalagens, como a entrada.
-function PerdaForm({ product, allBranches, defaultBranchId, sugerida, onClose, onSuccess }: {
+function PerdaForm({ product, allBranches, defaultBranchId, sugerida, motivosDePerda, onClose, onSuccess }: {
   product: ProductInfo; allBranches: AllBranch[]
+  motivosDePerda: ItemDaLista[]
   defaultBranchId?: string
   sugerida?: string
   onClose: () => void; onSuccess: () => void
@@ -797,8 +800,14 @@ function PerdaForm({ product, allBranches, defaultBranchId, sugerida, onClose, o
           </span>
           <select id="perda-motivo" name="motivo" required className="field" defaultValue="">
             <option value="" disabled>Selecione…</option>
-            {MOTIVOS_DA_PERDA.map(m => <option key={m.key} value={m.key}>{m.label}</option>)}
+            {motivosDePerda.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
           </select>
+          {/* Item 7 (18/11): a rede pode ter excluído todos — a tela diz onde criar. */}
+          {motivosDePerda.length === 0 && (
+            <span data-sem-motivo-de-perda style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 600 }}>
+              Nenhum motivo de perda cadastrado: crie um em “Motivos de perda”, no topo do Estoque.
+            </span>
+          )}
         </FieldWrap>
       </div>
 
@@ -956,7 +965,7 @@ function MinStockTab({ product, allBranches, defaultBranchId }: {
 }
 
 // -- Modal principal ---------------------------------------------------
-export function AdminStockManageModal({ product, allBranches, defaultBranchId, origemSugerida, marcas = [], fornecedores = [], somenteEntrada = false, onClose, onSuccess }: Props) {
+export function AdminStockManageModal({ product, allBranches, defaultBranchId, origemSugerida, marcas = [], fornecedores = [], motivosDePerda = [], somenteEntrada = false, onClose, onSuccess }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const router = useRouter()
   const [tab,   setTab]   = useState<Tab>('movimentacoes')
@@ -1063,7 +1072,7 @@ export function AdminStockManageModal({ product, allBranches, defaultBranchId, o
             {movOp === 'entrada'       && <EntradaForm       product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} sugerida={origemSugerida} marcas={marcas} fornecedores={fornecedores} onClose={onClose} onSuccess={onSuccess} />}
             {movOp === 'transferencia' && <TransferenciaForm product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} origemSugerida={origemSugerida} onClose={onClose} onSuccess={onSuccess} />}
             {movOp === 'ajuste'        && <AjusteForm        product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} sugerida={origemSugerida} onClose={onClose} onSuccess={onSuccess} />}
-            {movOp === 'perda'         && <PerdaForm         product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} sugerida={origemSugerida} onClose={onClose} onSuccess={onSuccess} />}
+            {movOp === 'perda'         && <PerdaForm         product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} sugerida={origemSugerida} motivosDePerda={motivosDePerda} onClose={onClose} onSuccess={onSuccess} />}
           </div>
         ) : tab === 'historico' ? (
           <HistoricoTab product={product} defaultBranchId={defaultBranchId} onAlterou={() => router.refresh()} />
