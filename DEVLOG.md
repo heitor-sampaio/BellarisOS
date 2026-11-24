@@ -1774,6 +1774,15 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-24 (5) — O catálogo de regras: Documentos (rascunho para o Heitor)
+
+A sexta área do catálogo, pelo mesmo método (três leitores: as duas metades de `docs/regras/documentos.md` e as decisões de fora dele; um condensador). `docs/catalogo/documentos.md`:
+- 92 regras (DM tipos, modelos e editor 16, DV variáveis 9, DE onde se liga, quando nasce e o que trava 16, DD faltam dados 7, DG o contrato e o pagamento 6, DA assinar 12, DL o link e o envio 6, DF o PDF e o /verificar 2, DC no app da cliente 5, DT a tela de Documentos 4, DQ quem vê e quem mexe 9), de 136 no rascunho; 9 são de outra área (PC-07, AG-34, PL-14, PL-19, PA-08, PA-10).
+- 1 pergunta na página (D01): o editor completo e a opção de mandar o link pela conversa, escritos como decisão do Heitor sem a fala. Três perguntas dos rascunhos saíram: o "doc-02: fica" de 02/11 é a resposta dele à revisão das 113 decisões (o "Confirmar assinatura" continua fora, DA-06); o módulo Documentos ainda tem o "Dispensar" (DQ-02); a opção "pela conversa" é configuração da rede toda, só da Admin da rede (DQ-01).
+- 16 divergências; as do CÓDIGO/TELA contra a regra, para a correção (com teste): `colheOsDocumentos` (`lib/documentos/acesso.ts:35`) não deixa colher quem só tem o Atendimento em Ver, que desde a UM1 (23/11) abre a tela do atendimento — e aceita o Prontuário em Ver, que nenhuma tela da regra pede (a conferir), e o "quem recebe" passa pelo `podeReceber` (a PV-04); a tela Documentos não tem o filtro de Tags (a regra das Tags, 13/11); o módulo se chama "Modelos de documento" em Cargos, mas o Gerenciar dele só dispensa (a conferir, princípio 3); o "definir o pagamento do contrato" na tela do atendimento contra a PV-13 (a conferir).
+- O catálogo de Vendas (PA-09) corrigido: o aviso do contrato de pacote que pede dado do cadastro vem antes, mas a venda não grava com o contrato aberto (PA-08); o "Só avisa: a venda segue" de `vendas-financeiro.md:320` ficou nas divergências.
+- Falas citadas conferidas por script (45, todas); nenhum dos 136 números do rascunho sumiu. `docs/regras/` não mudou.
+
 ### 2026-11-24 (4) — O catálogo de regras: Comissões (rascunho para o Heitor)
 
 A quinta área do catálogo, pelo mesmo método (três leitores: as duas metades de `docs/regras/comissoes.md` e as decisões de fora dele — a revisão, o CLAUDE.md §11, as menções nos outros arquivos; um condensador). `docs/catalogo/comissoes.md`:

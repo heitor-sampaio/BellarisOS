@@ -349,8 +349,8 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Onde: `docs/regras/vendas-financeiro.md:568-581`; `docs/revisao.md:285`, `:1816-1819`, `:1939`
 - Antes: KB-18, KG-34, KB-19, KG-38
 
-**PA-09.** Escolhida a cliente, se o contrato de pacote ativo da rede pede um dado do cadastro que a ficha não tem, o pacote diz o que falta ("O contrato deste pacote (X) pede Endereço (rua, número e bairro), que falta no cadastro…"), e quem tem Clientes em Gerenciar vê também "Completar o cadastro"; é só um aviso, e a venda segue. A comanda do pacote vendido com contrato a assinar leva ao contrato ("Colher a assinatura"), e logo depois da venda "Colher a assinatura agora" aparece como botão.
-- Fonte: princípio 2
+**PA-09.** Escolhida a cliente, se o contrato de pacote ativo da rede pede um dado do cadastro que a ficha não tem, o pacote diz o que falta ("O contrato deste pacote (X) pede Endereço (rua, número e bairro), que falta no cadastro…"), e quem tem Clientes em Gerenciar vê também "Completar o cadastro". O aviso vem antes de tentar vender; a venda em si não grava enquanto o contrato estiver aberto (PA-08). A comanda do pacote vendido com contrato a assinar leva ao contrato ("Colher a assinatura"), e logo depois da venda "Colher a assinatura agora" aparece como botão.
+- Fonte: princípio 3 (o aviso); a trava é a da PA-08
 - Onde: `docs/regras/vendas-financeiro.md:313-322`, `:448-450`
 - Antes: KA-29, KA-30
 
@@ -1041,6 +1041,7 @@ O texto de `docs/regras/` (ou da própria revisão) contra a decisão mais nova 
 - FN-05: `docs/regras/vendas-financeiro.md:2068` diz que a recusa é "Seu cargo não libera esta ação." — está certo; mas `:1432` ainda manda "quem atende e não tem o Financeiro" às Minhas comissões sem a regra de 23/11 (as Minhas comissões também são de quem tem comissão no nome, CLAUDE.md §11).
 - DP-08: `docs/revisao.md:2077` põe o cancelamento do plano por quem tem o Financeiro em Gerenciar no bloco do Plano de tratamento; a regra é desta área (o dinheiro do plano) e está em DP-08.
 - (sem número; FI8): `docs/revisao.md:2014` registra a saída da política antiga do banco que abria o Financeiro de uma unidade a todo funcionário dela; é detalhe do banco, já coberto pela regra de que a sessão só lê sinais (CLAUDE.md §4).
+- PA-09: `docs/regras/vendas-financeiro.md:320` diz "Só avisa: a venda segue (princípio 2)"; a PA-08 (o Heitor, 13/11: "o ideal era funcionar como no plano de tratamento") e `docs/regras/documentos.md:79-82` dizem que, com o contrato de pacote aberto (a assinar ou faltam dados), a venda não grava nada. O aviso de antes fica; o "a venda segue" está velho.
 
 ## Ficou fora do catálogo
 
