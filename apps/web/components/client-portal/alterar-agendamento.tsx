@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { CalendarClock, XCircle, MessageCircle, Phone } from 'lucide-react'
 import { gruposDeHorario } from '@/lib/appointments/periodos-do-dia'
 import { limiteParaAlterar } from '@/lib/clientes/agenda-do-portal'
-import { useFuso } from '@/components/shared/fuso'
+import { useFuso, NotaDoFuso } from '@/components/shared/fuso'
 import { instanteNoFuso } from '@/lib/datetime'
 import { textoDoRemarcado } from '@/lib/clientes/textos-do-app'
 import { cancelarPelaCliente, remarcarPelaCliente, horariosParaRemarcar, quemAtendeNoRemarcar, quemRealizaNoRemarcar, diasLivresParaRemarcar } from '@/actions/portal-agendamentos'
@@ -70,7 +70,10 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
   const [abertoEm] = useState(() => Date.now())
   const podeAlterar = new Date(scheduledAt).getTime() - abertoEm >= prazoHoras * 3600_000
   // O dia e a hora em que o prazo acaba (J-61): era só "até 24 horas antes".
-  const limite = limiteParaAlterar(scheduledAt, prazoHoras, fuso)
+  // A10 da 26ª (princípio 3): o prazo é do agendamento ORIGINAL — no relógio
+  // dele, não no da unidade escolhida para o horário novo (o "até 10:00" virava
+  // "11:00" ao escolher o Setor Bueno, o mesmo instante sem dizer o relógio).
+  const limite = limiteParaAlterar(scheduledAt, prazoHoras, fusoDoAgendamento)
   const [modo, setModo] = useState<'nada' | 'remarcar' | 'cancelar'>(abrirRemarcando && podeAlterar ? 'remarcar' : 'nada')
   const [dia, setDia] = useState('')
   const [slots, setSlots] = useState<string[] | null>(null)
@@ -137,7 +140,8 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
     return (
       <div data-fora-do-prazo className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-          O prazo para alterar pelo app terminou em {limite} ({prazoHoras} horas antes do horário). A equipe ainda
+          O prazo para alterar pelo app terminou em {limite} ({prazoHoras} horas antes do horário){' '}
+          <NotaDoFuso fuso={fusoDoAgendamento} prefixo="· " />. A equipe ainda
           cancela ou remarca: para isso, fale com ela.
         </p>
         {telefone && (
@@ -198,7 +202,9 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-        Pelo app, você cancela ou remarca até {limite} ({prazoHoras} horas antes do horário).
+        Pelo app, você cancela ou remarca até {limite} ({prazoHoras} horas antes do horário).{' '}
+        {/* A10 da 26ª: o relógio do agendamento, fora do de Brasília. */}
+        <NotaDoFuso fuso={fusoDoAgendamento} />
       </p>
       {feito && <p role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', fontWeight: 700 }}>{feito}</p>}
 
@@ -302,6 +308,8 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
           {slots && slots.length === 0 && (
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Nenhum horário livre neste dia.</p>
           )}
+          {/* A9 da 26ª: os horários novos estão no relógio da unidade escolhida — dito fora do de Brasília. */}
+          {slots && slots.length > 0 && <NotaDoFuso fuso={fuso} />}
           {slots && slots.length > 0 && gruposDeHorario(slots).map(g => (
             <div key={g.periodo} role="group" aria-label={g.periodo} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <span className="overline">{g.periodo}</span>

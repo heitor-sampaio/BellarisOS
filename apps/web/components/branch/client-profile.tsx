@@ -65,6 +65,7 @@ import type { PacoteVencidoDaFicha } from '@/lib/pacotes/regras'
 import { useFuso } from '@/components/shared/fuso'
 import { avisoDaAbaFechada } from '@/lib/clients/aba-fechada'
 import { unidadeNaFicha } from '@/lib/clientes/unidade-na-ficha'
+import { anotacoesParaLer } from '@/lib/clientes/anotacoes'
 
 // -- Types --------------------------------------------------------------------
 
@@ -589,9 +590,17 @@ function NotasDoCliente({
       </div>
       {/* Quem autoriza é o servidor (`assertPermission(ctx, 'clients', 'MANAGE')`
           em `updateClientContactData`), como no resto desta ficha. */}
+      {/* A32 da 26ª: quem só lê vê o texto (ou "Sem anotações."), não um campo que convida a escrever. */}
+      {!podeEditar ? (
+        <p data-anotacoes-so-leitura style={{
+          margin: 0, fontSize: 'var(--text-base-sz)', lineHeight: 1.5, whiteSpace: 'pre-wrap',
+          color: client.notes?.trim() ? 'var(--text)' : 'var(--text-muted)',
+        }}>
+          {anotacoesParaLer(client.notes)}
+        </p>
+      ) : (
       <textarea
         value={texto}
-        readOnly={!podeEditar}
         onChange={e => { setTexto(e.target.value); setEstado('ocioso') }}
         onBlur={salvar}
         rows={2}
@@ -603,6 +612,7 @@ function NotasDoCliente({
           resize: 'vertical', lineHeight: 1.5,
         }}
       />
+      )}
     </div>
   )
 }

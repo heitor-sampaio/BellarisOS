@@ -219,14 +219,52 @@ export const EntradaDasRegras = z.object({
 export type ComissoesGerais = ReadonlyMap<string, Pick<RegraDeComissao, 'tipo' | 'valor'>>
 
 /**
+ * "Descontar a taxa da maquininha" no procedimento (o Heitor, 18/11, ao item
+ * 11: "ok"): "Como a rede" (o padrão — vale Configurações → Comissões e taxas),
+ * "Desconta a taxa" ou "Não desconta". No banco, `procedures.desconta_taxa`
+ * (nulo = como a rede), retratado na linha do atendimento quando ela nasce.
+ */
+export const TAXA_DO_PROCEDIMENTO = [
+  { key: 'REDE', label: 'Como a rede' },
+  { key: 'SIM',  label: 'Desconta a taxa' },
+  { key: 'NAO',  label: 'Não desconta' },
+] as const
+export type TaxaDoProcedimento = typeof TAXA_DO_PROCEDIMENTO[number]['key']
+
+/** A coluna do procedimento → a escolha da tela. */
+export function taxaDoProcedimento(v: boolean | null | undefined): TaxaDoProcedimento {
+  return v === true ? 'SIM' : v === false ? 'NAO' : 'REDE'
+}
+
+/** A escolha da tela → a coluna do procedimento (nulo = como a rede). */
+export function descontaTaxaDaEscolha(e: TaxaDoProcedimento): boolean | null {
+  return e === 'SIM' ? true : e === 'NAO' ? false : null
+}
+
+/** O que a escolha faz, com a regra da rede de hoje quando é "Como a rede" (princípio 3). */
+export function rotuloDaTaxaDoProcedimento(e: TaxaDoProcedimento, redeDescontaTaxa: boolean): string {
+  if (e === 'REDE') {
+    return redeDescontaTaxa
+      ? 'Como a rede: hoje a comissão sai da base sem a taxa da maquininha.'
+      : 'Como a rede: hoje a comissão sai da base cheia, sem descontar a taxa.'
+  }
+  return e === 'SIM'
+    ? 'Neste procedimento a comissão sai da base sem a taxa da maquininha, seja qual for a regra da rede.'
+    : 'Neste procedimento a comissão sai da base cheia, seja qual for a regra da rede.'
+}
+
+const EscolhaDaTaxa = z.enum(['REDE', 'SIM', 'NAO'])
+
+/**
  * A comissão de um procedimento, pelo procedimento: a mesma para todos OU um
  * valor para cada profissional (as exceções de sempre; quem fica sem valor
- * segue o padrão dele).
+ * segue o padrão dele). `descontaTaxa` ausente: a escolha da taxa não muda.
  */
 export const EntradaDaComissaoDoProcedimento = z.discriminatedUnion('modo', [
-  z.object({ modo: z.literal('GERAL'), geral: Regra }),
+  z.object({ modo: z.literal('GERAL'), geral: Regra, descontaTaxa: EscolhaDaTaxa.optional() }),
   z.object({
     modo: z.literal('POR_PROFISSIONAL'),
+    descontaTaxa: EscolhaDaTaxa.optional(),
     profissionais: z.array(Regra.and(z.object({ professional_id: z.string().uuid() }))).max(500)
       .refine(l => new Set(l.map(e => e.professional_id)).size === l.length, 'Há dois valores para o mesmo profissional.'),
   }),

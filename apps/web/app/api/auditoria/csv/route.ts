@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getTenantContext, podeVerAuditoria } from '@/lib/auth'
 import { lerAuditoria } from '@/lib/auditoria/leitura'
 import { linhasDoCsvDaAuditoria } from '@/lib/auditoria/frase'
+import { FUSO_PADRAO, nomeDoFuso } from '@/lib/unidades/fuso'
 import type { FiltrosDaAuditoria, NomesDaAuditoria, RegistroDaAuditoria } from '@/lib/auditoria/tipos'
 
 /**
@@ -47,7 +48,8 @@ export async function GET(req: NextRequest) {
   // A38 da 16ª: a coluna "Gravação" leva a frase da gravação inteira (a da
   // tela). Uma gravação pode cair em duas páginas do banco: lê tudo, junta os
   // nomes, e só então agrupa.
-  const linhas: string[] = ['Quando;Quem;O quê;Gravação;Unidade']
+  // D6 da 26ª: cada linha no fuso da unidade dela; a coluna "Relógio" diz qual (o arquivo não tem nota).
+  const linhas: string[] = ['Quando;Quem;O quê;Gravação;Unidade;Relógio']
   const registros: RegistroDaAuditoria[] = []
   const nomes: NomesDaAuditoria = { clientes: {}, membros: {}, unidades: {} }
   // Com o filtro de unidade, a gravação se completa (A28 da 17ª): a que cai em
@@ -62,6 +64,8 @@ export async function GET(req: NextRequest) {
     for (const reg of r.registros) if (!lidos.has(reg.id)) { lidos.add(reg.id); registros.push(reg) }
     // Todos os nomes de cada página, os que vierem a existir também.
     for (const [chave, valores] of Object.entries(r.nomes) as [keyof NomesDaAuditoria, Record<string, unknown> | undefined][]) {
+      // D6 da 26ª: o fuso da rede é um texto, não um mapa — vai como está.
+      if (chave === 'fusoDaRede') { nomes.fusoDaRede ??= r.nomes.fusoDaRede; continue }
       Object.assign(((nomes as unknown as Record<string, Record<string, unknown>>)[chave] ??= {}), valores ?? {})
     }
     if (!r.temMais) break
@@ -69,7 +73,7 @@ export async function GET(req: NextRequest) {
   }
   registros.sort((a, b) => b.id - a.id)
   for (const l of linhasDoCsvDaAuditoria(registros, nomes, fuso)) {
-    linhas.push([l.quando, l.quem, l.oQue, l.gravacao, l.unidade ?? ''].map(celula).join(';'))
+    linhas.push([l.quando, l.quem, l.oQue, l.gravacao, l.unidade ?? '', l.relogio ?? nomeDoFuso(FUSO_PADRAO)].map(celula).join(';'))
   }
   if (cortou) linhas.push(celula(`Parou em ${POR_PAGINA * PAGINAS_NO_MAXIMO} linhas: escolha um período menor para ver o resto.`))
 

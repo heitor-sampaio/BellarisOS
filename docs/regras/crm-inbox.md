@@ -34,7 +34,10 @@
   `20261105002901`; a de antes, só CPF, ficou sem chamador); outro documento
   com o mesmo e-mail é recusado ("Este e-mail já tem uma conta no BellarisOS
   com outro documento."). A tela de login diz "a senha é o seu CPF (só os
-  números) ou, sem CPF, o número do seu passaporte ou RNE". Prova:
+  números) ou, sem CPF, o número do seu passaporte ou RNE". O perfil do
+  app mostra o documento da ficha (A36 da 26ª, princípio 3: dizia "CPF —"
+  a quem entrou com o passaporte): "Passaporte 19FR54321", "RNE …" ou o
+  CPF (`documentoDoPerfil`, `lib/clientes/textos-do-app.ts`). Prova:
   `e2e/ficha-acesso-sem-cpf.spec.ts`, `tests/textos-do-cadastro.test.ts`.
 - **A menor de idade e o responsável legal** (decisão 2 do Heitor, 7ª
   simulação, 2026-11-05: "concordo" — a Beatriz tinha 16 anos, e a Lia
@@ -667,8 +670,24 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   substituidaEm }]` (o que o "Editar registro" substituiu, com quem corrigiu);
   o PDF, as linhas "Anotação de …" e "Versão anterior: …" sob o atendimento.
   A ficha de saúde sai com o nome "Ficha de saúde" (o retrato velho
-  "Pré-atendimento" também — PR3). Prova:
+  "Pré-atendimento" também — PR3). Cada "Versão anterior" do PDF diz o que
+  AQUELA correção trocou — "a evolução dizia: …", "as intercorrências
+  diziam: …", "a ficha de atendimento dizia: …" (A33 da 26ª: o "Editar
+  registro" grava a ficha e a evolução em dois passos, e as duas linhas
+  repetiam a mesma evolução; `linhasDasVersoesNoPdf`). Prova:
   `e2e/prontuario-anotacoes-e-versoes.spec.ts` ("PR2c").
+- **A ficha de atendimento (a do procedimento) vai legível** (D1 da 26ª, 2026-11-18): a ficha é
+  gravada `{ formId, name, rows, answers }`, e o pacote lia `nome`/`respostas`
+  — o atendimento saía sem resposta nenhuma. `fichaDoProcedimento` (no
+  atendimento e em cada versão) é `{ ficha, respostas[{ pergunta, resposta,
+  pontos? }] }`, lida por um lugar só (`lib/lgpd/prontuario-legivel.ts`,
+  que aceita os dois formatos): o planejador de injetáveis vira o retrato em
+  palavras ("Toxina testa: 3 pontos — Toxina 6 U (planejado)", com cada
+  ponto em `pontos`), a foto vira "Foto anexada" (o caminho do arquivo tem
+  ids) e nada sai "[object Object]". O PDF leva a ficha sob o atendimento,
+  pergunta a pergunta, com os pontos. Prova:
+  `e2e/lgpd-exportacao-pela-equipe.spec.ts`,
+  `tests/lgpd-plano-no-pacote.test.ts`.
 - **O cadastro do pacote leva o responsável legal e o documento estrangeiro**
   (sobra da F29, decisões 1 e 2 da 7ª simulação, 2026-11-05): a menor tem o
   "Responsável legal" na ficha (`clients.responsavel_*`), e o pacote não o
@@ -710,7 +729,14 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   nasce ABAIXO do botão, nunca no lugar dele: trocado debaixo do cursor, o
   mesmo clique liberava), e a aba mostra os pedidos esperando: "LGPD (n)".
   A lista pede Clientes (Ver): sem o módulo, a aba diz o porquê (era a tela
-  inteira em "sem acesso").
+  inteira em "sem acesso"). **O que é "o prontuário" se diz igual nos três
+  lugares** (A35 da 26ª, princípio 3): a caixa do app, a confirmação do
+  Liberar e o PDF dizem "a ficha de saúde respondida e o registro de cada
+  atendimento (evolução, ficha de atendimento, dores, intercorrências,
+  insumos e anotações)" (`CONTEUDO_DO_PRONTUARIO`). E cada pedido do app diz
+  o que é (A34 da 26ª): "Pedido de 18/11/2026, com o prontuário" / "sem o
+  prontuário" (`oQueOPedidoLeva`) — eram dois cartões empilhados sem dizer
+  qual era qual.
 - **O pacote é legível para o titular** (J-65, 2026-10-30): o JSON fala
   português — situações por extenso ("Concluído", "Receita", "Pago", "Pix"),
   a unidade pelo nome, os valores em número — e não leva id nem nome de
@@ -730,7 +756,10 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   atendimento soma `record_photos` e a foto clínica anexada pelo cartão
   "Fotos do atendimento" (`client_documents` com o `appointment_id` dele,
   categoria `foto_clinica`, não apagada) — no JSON e no PDF. Dizia "fotos: 0"
-  com a foto anexada. O arquivo continua listado em "Documentos anexados".
+  com a foto anexada. O arquivo continua listado em "Documentos anexados",
+  com a categoria por extenso ("Foto clínica", não "(foto_clinica)"), como o
+  canal e a situação do termo assinado (A33 da 26ª: J-65, sem nome de
+  coluna nem código).
   Prova: `e2e/lgpd-exportacao.spec.ts`.
 - **Os insumos de cada atendimento vêm do ESTOQUE** (D18 da 8ª simulação,
   2026-11-06): o pacote lia `medical_record_entries.products_used`, que

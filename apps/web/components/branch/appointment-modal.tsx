@@ -2,6 +2,7 @@
 
 import { startTransition, useActionState, useCallback, useEffect, useEffectEvent, useState, useMemo, useRef } from 'react'
 import { addAppointment, dadosParaAgendar, proximoHorarioLivre, buscarClientesParaAgendar, clienteParaAgendar, salasParaAgendar, avisosDoHorario, avisoDoPlanoAoAgendar, avisoDoMesmoProcedimentoNoDia, getSchedulingDaySlots } from '@/actions/appointments'
+import { erroParaTela } from '@/lib/erro-na-tela'
 import { faltaNoCadastroAoAgendar, type FaltaNoCadastroDoTermo } from '@/actions/documentos-da-janela'
 import { GradeDeHorarios } from '@/components/shared/grade-de-horarios'
 import { gradeDoCheckout } from '@/lib/checkout/grade-de-horarios'
@@ -213,6 +214,8 @@ export function AppointmentModal({
   // rede inteira para filtrar aqui para de funcionar quando a base cresce.
   const [resultados, setAchados] = useState<Client[]>([])
   const [procurando, setBuscando] = useState(false)
+  /** A31 da 26ª: a busca recusada ou que falhou diz por quê, em vez do "Procurando…" eterno. */
+  const [erroDaBusca, setErroDaBusca] = useState<string | null>(null)
   const termoRef = useRef('')
 
   // Termo curto não busca: a lista some e o "buscando" também, derivados do
@@ -224,6 +227,7 @@ export function AppointmentModal({
   /** Toda digitação passa por aqui: é onde a busca começa a "buscar". */
   function mudarBusca(texto: string) {
     setClientSearch(texto)
+    setErroDaBusca(null)
     if (texto.trim().length >= 2) setBuscando(true)
     else setAchados([])
   }
@@ -234,11 +238,17 @@ export function AppointmentModal({
     if (termo.length < 2) return
 
     const t = setTimeout(async () => {
-      const res = await buscarClientesParaAgendar(termo)
+      let res: Awaited<ReturnType<typeof buscarClientesParaAgendar>>
+      try {
+        res = await buscarClientesParaAgendar(termo)
+      } catch (e) {
+        res = { clientes: [], error: erroParaTela(e, 'Não foi possível buscar agora. Tente de novo.') }
+      }
       // Resposta atrasada não pode sobrescrever a busca atual: sem esta guarda,
       // o resultado de "De" chegava depois do de "Demo 05".
       if (termoRef.current !== termo) return
       setAchados(res.clientes)
+      setErroDaBusca(res.error ?? null)
       setBuscando(false)
     }, 250)
     return () => clearTimeout(t)
@@ -626,7 +636,11 @@ export function AppointmentModal({
                       boxShadow: 'var(--shadow-popover)',
                       maxHeight: 200, overflow: 'auto',
                     }}>
-                      {buscando ? (
+                      {erroDaBusca && !buscando ? (
+                        <div data-busca-de-cliente-erro role="alert" style={{ padding: '10px 14px', fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>
+                          {erroDaBusca}
+                        </div>
+                      ) : buscando ? (
                         <div style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>
                           <Loader2 size={12} className="animate-spin" /> Procurando…
                         </div>

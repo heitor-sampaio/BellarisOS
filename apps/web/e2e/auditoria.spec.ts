@@ -423,3 +423,73 @@ test.describe('CF3c: só a Admin da rede', () => {
     })
   })
 })
+
+// A entrada da cliente no app e a troca de unidade no portal (colunas de controle) não geram
+// linha; a coluna sai pelo nome ("(outros custos)", não "(other costs)"); e a permissão
+// editada diz o módulo e o nível antes e depois (princípio 3; plataforma.md, Auditoria).
+// Pede a migration 20261130100007 aplicada. Numa rede [e2e] própria.
+test.describe('a frase da Auditoria diz o fato: sem as colunas de controle, a coluna pelo nome, a permissão pelo módulo e o nível', () => {
+  let rede: OutraRede | null = null
+  let admin: MembroDeTeste | null = null
+  let outro: MembroDeTeste | null = null
+  let clienteId = ''
+
+  async function como<T>(browser: Browser, estado: string, fn: (p: Page) => Promise<T>) {
+    const ctx = await browser.newContext({ storageState: estado, viewport: { width: 1440, height: 900 } })
+    try { return await fn(await ctx.newPage()) } finally { await ctx.close() }
+  }
+
+  /** Uma gravação pelo servidor em nome da Admin (o cabeçalho que as actions mandam). */
+  async function gravarEmNomeDaAdmin(tabela: string, filtro: string, corpo: Record<string, unknown>) {
+    const { data: u } = await db().from('users').select('auth_id').eq('id', admin!.userId).single<{ auth_id: string }>()
+    const r = await fetch(`${URL_}/rest/v1/${tabela}?${filtro}`, {
+      method: 'PATCH',
+      headers: {
+        apikey: SERVICO, Authorization: `Bearer ${SERVICO}`, 'content-type': 'application/json',
+        Prefer: 'return=minimal', 'x-bellaris-ator': u!.auth_id,
+      },
+      body: JSON.stringify(corpo),
+    })
+    expect(r.status, await r.clone().text()).toBe(204)
+  }
+
+  test.beforeAll(async () => {
+    test.setTimeout(180_000)
+    rede = await criarOutraRede(`aud${marca}`)
+    expect((await db().from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede.tenantId)).error).toBeNull()
+    admin = await criarMembro(`auda${marca}`, { tenant: rede.tenantId, donoDaRede: true, rotulo: 'Admin', permissoes: [] })
+    outro = await criarMembro(`audo${marca}`, {
+      tenant: rede.tenantId, rotulo: `Só copilot ${marca}`, permissoes: [{ modulo: 'copilot', nivel: 'VIEW' }],
+    })
+    clienteId = await rede.criarCliente(`Controle ${marca}`)
+  })
+
+  test.afterAll(async () => {
+    await outro?.limpar(); await admin?.limpar()
+    await rede?.limpar()
+  })
+
+  test('a entrada da cliente no app e a troca de unidade no portal não geram linha', async () => {
+    const { count: antes } = await db().from('auditoria').select('id', { count: 'exact', head: true })
+      .eq('tenant_id', rede!.tenantId).eq('tabela', 'clients').eq('operacao', 'editou').eq('client_id', clienteId)
+    expect((await db().from('clients').update({
+      last_app_login_at: new Date().toISOString(), portal_ultima_entrada_em: new Date().toISOString(), portal_ultima_unidade: rede!.branchId,
+    }).eq('id', clienteId)).error).toBeNull()
+    const { count: depois } = await db().from('auditoria').select('id', { count: 'exact', head: true })
+      .eq('tenant_id', rede!.tenantId).eq('tabela', 'clients').eq('operacao', 'editou').eq('client_id', clienteId)
+    expect(depois).toBe(antes)
+  })
+
+  test('a coluna sai pelo nome, e a permissão diz o módulo e o nível antes e depois', async ({ browser }) => {
+    await gravarEmNomeDaAdmin('procedures', `id=eq.${rede!.procedureId}`, { other_costs: 12 })
+    await gravarEmNomeDaAdmin('role_permissions', `role_id=eq.${outro!.roleId}&module=eq.copilot`, { level: 'MANAGE' })
+    await como(browser, admin!.estado, async p => {
+      await p.goto('/admin/auditoria')
+      const linhas = p.locator('[data-linha-da-auditoria]')
+      await expect(linhas.filter({ hasText: '(outros custos)' }).first()).toBeVisible({ timeout: 30_000 })
+      await expect(linhas.filter({ hasText: /\(other costs\)/ })).toHaveCount(0)
+      await expect(linhas.filter({ hasText: `Editou a permissão de Copilot do cargo ${PREFIXO} Só copilot ${marca}` })
+        .filter({ hasText: 'nível: Ver → Gerenciar' }).first()).toBeVisible()
+    })
+  })
+})

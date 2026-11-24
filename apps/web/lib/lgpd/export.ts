@@ -9,7 +9,7 @@ import { buildPdf, type PdfSection } from '@/lib/pdf'
 import { ensurePrivateBucket, DOCUMENTOS_ASSINADOS_BUCKET } from '@/lib/storage'
 import { formatBRL, formatDate, formatDateTime, maskCPF, maskPhone } from '@estetica-os/utils'
 import { rotuloDoLancamento } from '@/lib/fidelidade/formato'
-import { flattenFields, type AnamnesisRow } from '@/lib/anamnesis'
+import { respostasLegiveis, fichaDoProcedimentoLegivel, linhasDaFichaNoPdf, linhasDasVersoesNoPdf } from '@/lib/lgpd/prontuario-legivel'
 import { lerTodas } from '@/lib/db'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { planoParaOTitular, linhaDoPlano, linhaDaComunicacao, type PlanoLido } from '@/lib/lgpd/plano'
@@ -92,7 +92,7 @@ function nomeDaFichaDeSaude(nome: string | null | undefined): string {
 }
 
 type AnotacaoLida = { appointment_id: string; texto: string; autor_nome: string; criada_em: string }
-type VersaoLida = { appointment_id: string; evolucao: string | null; intercorrencias: string | null; ficha: { name?: string; rows?: unknown; answers?: unknown } | null; editada_por_nome: string; substituida_em: string }
+type VersaoLida = { appointment_id: string; evolucao: string | null; intercorrencias: string | null; ficha: unknown; editada_por_nome: string; substituida_em: string }
 
 /** O prontuário liberado, legível: cada atendimento por extenso, a ficha pergunta a pergunta. */
 function prontuarioLegivel(medical: Json | null): Json | null {
@@ -109,7 +109,8 @@ function prontuarioLegivel(medical: Json | null): Json | null {
         }
       : anamnese,
     atendimentos: entradas.map(e => {
-      const f = (e.form_data as { ficha?: { nome?: string; rows?: unknown; respostas?: unknown } } | null)?.ficha
+      // D1 da 26ª: a ficha gravada é { name, rows, answers } — lida por um lugar só.
+      const f = (e.form_data as { ficha?: unknown } | null)?.ficha
       return {
         data: e.created_at,
         profissional: (e.users as { name?: string } | null)?.name ?? null,
@@ -118,14 +119,14 @@ function prontuarioLegivel(medical: Json | null): Json | null {
         doresRelatadas: e.queixas ?? null,
         // D18 da 8ª: do estoque do atendimento (era products_used, que nada grava).
         insumos: e.insumos_do_estoque ?? e.products_used ?? null,
-        fichaDoProcedimento: f ? { ficha: f.nome ?? 'Ficha de atendimento', respostas: respostasLegiveis(f, f.respostas) } : null,
+        fichaDoProcedimento: fichaDoProcedimentoLegivel(f),
         fotos: Number(e.fotos_do_atendimento ?? ((e.record_photos ?? []) as unknown[]).length),
         // PR2c (bloco Prontuário): o que se escreveu depois e o que a correção
         // substituiu — o titular tem direito ao registro inteiro, com o rastro.
         anotacoes: ((e.anotacoes_do_atendimento ?? []) as AnotacaoLida[]).map(a => ({ texto: a.texto, por: a.autor_nome, em: a.criada_em })),
         versoesAnteriores: ((e.versoes_do_registro ?? []) as VersaoLida[]).map(v => ({
           evolucao: v.evolucao, intercorrencias: v.intercorrencias,
-          fichaDoProcedimento: v.ficha ? { ficha: v.ficha.name ?? 'Ficha de atendimento', respostas: respostasLegiveis(v.ficha, v.ficha.answers) } : null,
+          fichaDoProcedimento: fichaDoProcedimentoLegivel(v.ficha),
           por: v.editada_por_nome, substituidaEm: v.substituida_em,
         })),
       }
@@ -143,15 +144,6 @@ const SITUACAO_DA_FICHA: Record<string, string> = { PENDENTE: 'Pendente', RESPON
 const TIPO_DA_FICHA: Record<string, string> = { COMPLETO: 'Ficha completa', CONFIRMAR: 'Confirmação ("algo mudou?")' }
 const QUEM_RESPONDEU: Record<string, string> = {
   CLIENTE_APP: 'a cliente, pelo app', CLIENTE_LINK: 'a cliente, pelo link', EQUIPE: 'a equipe',
-}
-
-/** As respostas da ficha, pergunta a pergunta, com o rótulo da ficha do envio. */
-function respostasLegiveis(ficha: unknown, respostas: unknown): { pergunta: string; resposta: string }[] {
-  const rows = ((ficha as { rows?: AnamnesisRow[] } | null)?.rows ?? []) as AnamnesisRow[]
-  const r = (respostas && typeof respostas === 'object' ? respostas : {}) as Record<string, unknown>
-  return flattenFields({ rows })
-    .filter(c => c.type !== 'section' && r[c.id] !== undefined && r[c.id] !== null && r[c.id] !== '')
-    .map(c => ({ pergunta: c.label, resposta: Array.isArray(r[c.id]) ? (r[c.id] as unknown[]).map(String).join(', ') : String(r[c.id]) }))
 }
 
 export type ExportResult = { jsonPath: string; pdfPath: string; expiresAt: Date }
@@ -510,7 +502,7 @@ export async function buildClientExport(
     {
       title: `Documentos anexados (${(documents ?? []).length})`,
       emptyLabel: 'Nenhum documento anexado.',
-      lines: (documents ?? []).map(d => `${fmtDate(d.created_at)} — ${String(d.name ?? d.file_name)} (${String(d.category ?? 'sem categoria')})${d.apagado_em ? ` — apagado da ficha em ${fmtDate(d.apagado_em)}` : ''}`),
+      lines: (documents ?? []).map(d => `${fmtDate(d.created_at)} — ${String(d.name ?? d.file_name)} (${CATEGORIA_DO_ANEXO[d.category as string] ?? 'Outro'})${d.apagado_em ? ` — apagado da ficha em ${fmtDate(d.apagado_em)}` : ''}`),
     },
     {
       title: `Documentos (${(termos ?? []).length})`,
@@ -518,8 +510,9 @@ export async function buildClientExport(
       lines: (termos ?? []).map(t => {
         const assinatura = t.document_signatures as unknown as { channel?: string } | null
         const situacao = t.status === 'ASSINADO'
-          ? `assinado em ${fmtDateTime(t.signed_at as string)}${assinatura?.channel ? ` (${String(assinatura.channel).toLowerCase()})` : ''} — código ${t.verification_code ?? '—'}`
-          : String(t.status).toLowerCase()
+          // A33 da 26ª: o canal e a situação por extenso (era o código, "(clinica)").
+          ? `assinado em ${fmtDateTime(t.signed_at as string)}${assinatura?.channel ? ` (${(CANAL_DA_ASSINATURA[assinatura.channel] ?? 'outro canal').toLowerCase()})` : ''} — código ${t.verification_code ?? '—'}`
+          : (SITUACAO_DO_DOCUMENTO[t.status as string] ?? String(t.status)).toLowerCase()
         return `${fmtDate(t.created_at as string)} — ${String(t.title)} — ${situacao}`
       }),
     },
@@ -567,17 +560,20 @@ export async function buildClientExport(
           const insumos = insumosEmTexto((e.insumos_do_estoque ?? []) as InsumoDoAtendimento[])
           const anotacoes = ((e.anotacoes_do_atendimento ?? []) as AnotacaoLida[])
             .map(a => `${fmtDateTime(a.criada_em)}, por ${a.autor_nome}: ${a.texto.replace(/\s+/g, ' ').trim()}`)
-          const versoes = ((e.versoes_do_registro ?? []) as VersaoLida[])
-            .map(v => `corrigido por ${v.editada_por_nome} em ${fmtDateTime(v.substituida_em)}; antes dizia: ${String(v.evolucao ?? '').replace(/\s+/g, ' ').trim() || '(em branco)'}`
-              + (v.intercorrencias ? ` — intercorrências: ${v.intercorrencias.replace(/\s+/g, ' ').trim()}` : ''))
+          // D1 da 26ª: a ficha do procedimento (e o mapa de aplicação) no PDF.
+          const fichaAtual = (e.form_data as { ficha?: unknown } | null)?.ficha ?? null
+          // A33 da 26ª: cada versão diz o que AQUELA correção trocou.
+          const versoes = linhasDasVersoesNoPdf((e.versoes_do_registro ?? []) as VersaoLida[],
+            { evolucao: (e.notes as string | null) ?? null, intercorrencias: (e.intercurrences as string | null) ?? null, ficha: fichaAtual }, fmtDateTime)
           return [
             `${fmtDate(e.created_at as string)} — profissional: ${prof} — fotos: ${fotos}`
                + (dores ? ` — dores relatadas: ${dores}` : '')
                + (notas ? ` — observações: ${notas}` : '')
                + (inter ? ` — intercorrências: ${inter}` : '')
                + (insumos ? ` — insumos: ${insumos}` : ''),
+            ...linhasDaFichaNoPdf(fichaDoProcedimentoLegivel(fichaAtual)),
             ...anotacoes.map(a => `   Anotação de ${a}`),
-            ...versoes.map(v => `   Versão anterior: ${v}`),
+            ...versoes,
           ]
         }).flat(),
       },

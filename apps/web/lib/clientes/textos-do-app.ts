@@ -155,3 +155,21 @@ export const BOTAO_DE_CONFIRMAR_NO_APP = 'Confirmar que realizei o atendimento'
 export function textoDoConfirmadoNoApp(avaliou: boolean): string {
   return avaliou ? 'Atendimento confirmado; avaliação enviada.' : 'Atendimento confirmado.'
 }
+
+/**
+ * O documento no Perfil do app (A36 da 26ª; CLAUDE.md §5: sem CPF, o
+ * passaporte ou o RNE da ficha, que é também a senha inicial). A estrangeira
+ * via "CPF —", e não o documento dela.
+ */
+export function documentoDoPerfil(c: {
+  document?: string | null; documento_tipo?: string | null; documento_numero?: string | null
+}): { rotulo: string; valor: string } {
+  const cpf = (c.document ?? '').trim()
+  if (cpf) {
+    const d = cpf.replace(/\D/g, '')
+    return { rotulo: 'CPF', valor: d.length === 11 ? `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9, 11)}` : cpf }
+  }
+  const numero = (c.documento_numero ?? '').trim()
+  if (numero) return { rotulo: c.documento_tipo === 'RNE' ? 'RNE' : 'Passaporte', valor: numero }
+  return { rotulo: 'CPF', valor: '—' }
+}

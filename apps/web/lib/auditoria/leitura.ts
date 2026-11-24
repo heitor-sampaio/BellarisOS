@@ -8,6 +8,7 @@ import { OPERACOES, type FiltrosDaAuditoria, type NomesDaAuditoria, type Registr
 import { conferidoDoFechamento, gravacoesDaUnidade } from './frase'
 import { unidadeDoInsumo, type UnidadesDoProduto } from '@/lib/estoque/unidade-de-consumo'
 import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
+import { nomesDosAnexosEDevolucoes } from './nomes-dos-anexos-e-devolucoes'
 import { fusoValido } from '@/lib/unidades/fuso'
 
 /**
@@ -251,7 +252,7 @@ async function nomesDaAuditoria(ctx: TenantContext, registros: readonly Registro
     tipo: l.type, valor: l.amount === null ? null : Number(l.amount), forma: l.payment_method,
     parcela: l.parcela_numero, de: l.parcela_total, agendamento: !!l.appointment_id, vezes: l.cartao_vezes,
   }]))
-  const [extras, da20] = await Promise.all([nomesDa17(ctx, registros), nomesDa20(ctx, registros)])
+  const [extras, da20, anexosEDevolucoes] = await Promise.all([nomesDa17(ctx, registros), nomesDa20(ctx, registros), nomesDosAnexosEDevolucoes(ctx, registros)])
   const [c, m, u, p, cg] = await Promise.all([
     clientes.length
       ? ler(admin.from('clients').select('id, name').eq('tenant_id', ctx.tenantId!).in('id', clientes), 'ler os nomes das clientes')
@@ -288,10 +289,13 @@ async function nomesDaAuditoria(ctx: TenantContext, registros: readonly Registro
     clientes: mapa(c), membros: mapa(m), unidades: mapa(u), embalagensDosProdutos,
     // D2 da 23ª: o fuso de cada unidade, para a hora do agendamento citado.
     fusos: Object.fromEntries(((u ?? []) as { id: string; fuso: string | null }[]).map(b => [b.id, fusoValido(b.fuso)])),
+    // D6 da 26ª: a linha sem unidade sai no fuso da rede (`fusoDaRede` = o recorte sem unidade: o comum das ativas).
+    fusoDaRede: await fusoDoRecorte(ctx.tenantId, null),
     produtos: mapa(p), medidasDosProdutos, cargos: cargosPorPermissao,
     pacotes: mapa(pk as { id: unknown; name: unknown }[] | null), lancamentos: lancamentosLidos,
     ...extras,
     ...da20,
+    ...anexosEDevolucoes,
   }
 }
 

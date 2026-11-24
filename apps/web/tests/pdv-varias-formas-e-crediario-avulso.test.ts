@@ -5,6 +5,9 @@ import { lancamentosDoPagamento, EntradaDoPagamento, recusaDaEntradaDoPagamento 
 import { rotuloDoPagamento, valoresDoPagamento, pagamentoNormalizado, pagamentoDoRetrato, partesQuePagamAgora, type PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import { recusaDasOutras, valorDaPrincipal, parteVazia } from '@/lib/checkout/varias-formas'
 import { estadoDoPagamento, montarPagamento, recusaDoPagamento } from '@/components/shared/campos-do-pagamento'
+import * as nodeFs from 'node:fs'
+import * as nodePath from 'node:path'
+import { formasDaComandaEmTexto, type ComandaDoPdv } from '@/lib/pdv/situacoes'
 
 /**
  * As duas decisões do Heitor de 2026-11-16:
@@ -139,4 +142,61 @@ describe('o banco aceita vários lançamentos vivos do mesmo atendimento', () =>
     expect(sql).not.toMatch(/create unique index[^;]*financial_transactions_appointment_id_key/i)
     expect(sql).toMatch(/create index if not exists financial_transactions_appointment_vivo/)
   })
+})
+
+describe('a comanda do crediário diz a forma da entrada e a maquininha (princípio 3)', () => {
+  const WEB = nodePath.join(__dirname, "..")
+  const MIGRATIONS = nodePath.join(WEB, "..", "..", "supabase", "migrations")
+  const ler = (caminho: string) => nodeFs.readFileSync(nodePath.join(WEB, caminho), "utf8")
+  const sp = (s: string | null | undefined) => s?.replace(/\s/g, " ") ?? null
+  const migrations = () => nodeFs.readdirSync(MIGRATIONS).filter(f => f.endsWith(".sql")).sort()
+  /** A migration mais nova que mexe no que o trecho diz. */
+  const ultimaCom = (trecho: string) => {
+    const achou = migrations().filter(f => nodeFs.readFileSync(nodePath.join(MIGRATIONS, f), "utf8").includes(trecho))
+    return achou.length ? { nome: achou.at(-1)!, sql: nodeFs.readFileSync(nodePath.join(MIGRATIONS, achou.at(-1)!), "utf8") } : null
+  }
+
+  // ─── a comanda do crediário diz a forma da entrada e a maquininha ─────
+  const comanda = (mais: Partial<ComandaDoPdv>): ComandaDoPdv => ({
+    id: 'c', numero: 1, origem: 'VENDA', abertaEm: '2026-11-18T23:00:00Z', canceladaEm: null, canceladaMotivo: null,
+    clienteId: 'cl', cliente: 'Marta', agendamentoId: null, procedimento: 'Limpeza 4x', profissional: 'Sofia', agendadoPara: null,
+    atendimento: null, valor: 3000, paga: true, pagaEm: '2026-11-18T23:00:00Z', recebido: 1000, forma: 'CREDIARIO', estornada: false,
+    planoId: null, emAberto: 2000, parcelasEmAberto: 2, proximaParcela: null, produtos: 0, jaPago: 0,
+    formas: [], desconto: 0, fidelidade: 0, voucher: null, estornoAnterior: null,
+    ...mais,
+  })
+
+  describe('"Crediário" com a forma da entrada e a maquininha', () => {
+    it('a entrada no crédito 3x na Cielo', () => {
+      expect(sp(formasDaComandaEmTexto(comanda({
+        formas: [{ forma: 'CREDIT_CARD', vezes: 3, valor: 1000, maquininha: 'Cielo' }],
+      })))).toBe('Crediário (Crédito 3x · Cielo)')
+    })
+    it('a entrada e uma parcela já recebida, cada uma com o valor', () => {
+      expect(sp(formasDaComandaEmTexto(comanda({
+        formas: [{ forma: 'CREDIT_CARD', vezes: 3, valor: 1000 }, { forma: 'PIX', vezes: 1, valor: 500 }],
+      })))).toBe('Crediário (Crédito 3x R$ 1.000,00 + Pix R$ 500,00)')
+    })
+    it('sem entrada, só "Crediário"', () => {
+      expect(formasDaComandaEmTexto(comanda({ formas: [] }))).toBe('Crediário')
+    })
+    it('a venda paga no cartão diz a maquininha', () => {
+      expect(sp(formasDaComandaEmTexto(comanda({ forma: 'CREDIT_CARD', formas: [{ forma: 'CREDIT_CARD', vezes: 2, valor: 300, maquininha: 'Stone' }] }))))
+        .toBe('Crédito 2x · Stone')
+    })
+    it('o banco devolve as formas da venda no crediário, com a maquininha', () => {
+      const m = ultimaCom('pdv_comandas')
+      expect(m!.nome >= '20261130100001').toBe(true)
+      expect(m!.sql).toContain("'maquininha', x.maquininha")
+      // A venda no crediário também traz as formas do que já entrou (a entrada).
+      expect(m!.sql).toContain("coalesce(s.v_forma, '') <> 'A_RECEBER'")
+      expect(m!.sql.trim().endsWith("notify pgrst, 'reload schema';")).toBe(true)
+    })
+    it('o nome da maquininha vem do servidor, só com mais de uma (maquininhaDoRotulo)', () => {
+      const c = ler('lib/pdv/comandas.ts')
+      expect(c).toContain('nomesDasMaquininhas(')
+      expect(c).toContain('maquininhaDoRotulo(')
+    })
+  })
+
 })

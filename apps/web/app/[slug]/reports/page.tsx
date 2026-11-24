@@ -1,6 +1,7 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { destinoDaAbaPedida } from '@/lib/relatorios/aba-pedida'
 import {
   ReportsBiSection, type ReportsTab, type ReportsPeriod,
 } from '@/components/admin/reports-bi-section'
@@ -28,6 +29,11 @@ export default async function BranchReportsPage({
 
   const ctx = await getTenantContext()
   assertPermission(ctx, 'reports', 'VIEW')
+  // A21 da 26ª: a aba fora da permissão leva à primeira dela, com a URL certa e o aviso.
+  const destino = destinoDaAbaPedida(`/${slug}/reports`, {
+    tab: rawTab, period: rawPeriod, from: rawFrom, to: rawTo, tags: rawTags,
+  }, ctx.reportTabs)
+  if (destino) redirect(destino)
 
   const admin = createAdminClient()
 

@@ -4,6 +4,8 @@ import {
   variaveisDaArvore, chavesMalFormadas,
 } from '@/lib/documentos/marcacao'
 import { validarModelo, ehOpcional } from '@/lib/documentos/variaveis'
+import * as nodeFs from 'node:fs'
+import * as nodePath from 'node:path'
 
 describe('analisarMarcacao', () => {
   it('reconhece título, parágrafo, lista, divisória e assinatura', () => {
@@ -94,4 +96,21 @@ describe('validarModelo', () => {
     expect(validarModelo('{{Nome}}', 'TERMO').erro).toMatch(/mal escrita/)
     expect(validarModelo('   ', 'TERMO').erro).toMatch(/Escreva/)
   })
+})
+
+describe('o que falta no cadastro é dito pelo CAMPO, igual em toda tela (oQueFalta, documentos.md)', () => {
+  const ler = (rel: string) => nodeFs.readFileSync(nodePath.join(__dirname, '..', rel), 'utf8')
+
+  describe('o painel de Documentos e a aba da ficha dizem o CAMPO que falta', () => {
+    it('"Cliente · CPF" vira "CPF", como a janela do agendamento e a venda do pacote (oQueFalta)', async () => {
+      const { oQueFalta } = await import('@/lib/documentos/o-que-falta')
+      const { rotuloDoQueFalta } = await import('@/lib/documentos/leitura')
+      expect(oQueFalta(['cliente.cpf'].map(rotuloDoQueFalta))).toEqual(['CPF'])
+      const f = ler('app/_shared/documentos-emitidos.tsx')
+      expect(f).toMatch(/faltando: oQueFalta\(l\.faltando\.map\(rotuloDoQueFalta\)\)/)
+      // A aba Documentos da ficha também.
+      expect(ler('components/shared/termos-do-cliente.tsx')).toMatch(/Falta no cadastro: \{oQueFalta\(item\.faltando/)
+    })
+  })
+
 })

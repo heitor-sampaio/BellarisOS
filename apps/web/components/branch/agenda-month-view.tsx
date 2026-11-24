@@ -30,6 +30,8 @@ export interface CalendarEvent {
   roomName?:       string | null
   /** A unidade (A29), na janela da agenda da rede. */
   unidade?:        string | null
+  /** O fuso da unidade do agendamento de OUTRA unidade (D3 da 26ª): a hora dele sai no relógio dela. */
+  fusoDaUnidade?:  string | null
   /** A ficha de saúde da cliente para este horário (selo no bloco). */
   fichaDeSaude?:   SeloDaFichaEstado | null
   /** A menor de idade (decisão 2 do Heitor, 2026-11-05): a marca e o responsável. */

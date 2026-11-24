@@ -40,6 +40,8 @@ export interface NomesDaAuditoria {
   unidades: Record<string, string>
   /** D2 da 23ª: o fuso de cada unidade (o id → o fuso), para a hora do agendamento citado. */
   fusos?:   Record<string, string>
+  /** D6 da 26ª: o fuso da rede — o "Quando" da linha sem unidade (a da unidade sai no fuso dela). */
+  fusoDaRede?: string
   /** O produto do movimento de estoque (A28 da 15ª), lido agora. */
   produtos?: Record<string, string>
   /**
@@ -98,6 +100,23 @@ export interface NomesDaAuditoria {
   custosDasEntradas?: Record<string, number>
   /** A36 da 20ª: o nome do procedimento (o id → o nome), lido agora. */
   procedimentos?: Record<string, string>
+  /**
+   * A24 da 26ª: a categoria do anexo da cliente (o id de `client_documents` →
+   * `category`), lida agora — a auditoria grava o anexo como clínico, sem valores.
+   */
+  categoriasDosAnexos?: Record<string, string>
+  /**
+   * A24 da 26ª: o que a devolução devolveu (o id de `product_sale_returns` → os
+   * itens do retrato: o produto, quantas e de quantas), lido agora.
+   */
+  devolucoes?: Record<string, ItemDevolvidoDaAuditoria[]>
+}
+
+export interface ItemDevolvidoDaAuditoria {
+  produto:    string
+  quantidade: number
+  /** Quantas a venda tinha daquele item; nulo = não se sabe. */
+  de:         number | null
 }
 
 export interface ImportacaoDaAuditoria {
@@ -124,7 +143,10 @@ export interface LancamentoDaAuditoria {
 /** Uma linha pronta para a tela e para o CSV. */
 export interface LinhaDaAuditoria {
   id:       number
+  /** D6 da 26ª: no fuso da unidade da linha (sem unidade, o da rede). */
   quando:   string
+  /** O relógio do "Quando" — "horário de Cuiabá" — fora do de Brasília; senão, nulo (princípio 3). */
+  relogio:  string | null
   quem:     string
   tipoDeAtor: TipoDeAtor
   oQue:     string

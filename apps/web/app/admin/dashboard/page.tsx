@@ -14,7 +14,8 @@ import type {
   AlertLowStock,
 } from '@/components/admin/admin-dashboard-view'
 import { AdminDashboardDynamic as AdminDashboardView } from '@/components/admin/admin-dashboard-dynamic'
-import { startOfDayTZ, endOfDayTZ, addDaysTZ } from '@/lib/datetime'
+import { addDaysTZ } from '@/lib/datetime'
+import { agendamentosDeHojeNasUnidades } from '@/lib/metrics/agenda-de-hoje-da-rede'
 import {
   resolvePeriod, percent, EMPTY_CORE,
   getByBranch, getSeries, getTopProcedures, getTopProfessionals,
@@ -168,9 +169,8 @@ export default async function AdminDashboardPage({
     ? (period as typeof SELECTOR_PERIODS[number])
     : 'month'
 
-  // -- Datas fixas (não afetadas pelo seletor) -----------------------
-  const startOfToday = startOfDayTZ(now, fuso)
-  const endOfToday   = endOfDayTZ(now, fuso)
+  // O "Hoje" (os agendamentos de hoje) é o dia de cada unidade, no relógio
+  // dela: `agendamentosDeHojeNasUnidades` (D5 da 26ª).
 
   const vencidasDoRecorte = veVencidas && branchIds.length
     ? (await getAReceberVencido({ tenantId: ctx.tenantId!, branchIds })).total : null
@@ -252,17 +252,10 @@ export default async function AdminDashboardPage({
     topClientsDaAgenda,
     noDinheiro(topClientsDaAgenda, () => getTopClients({ ...doDinheiro, limit: 10 })),
 
-    // Agendamentos de hoje (exceto cancelados e no-show).
-    (() => {
-      const q = admin.from('appointments')
-        .select('id, status, branch_id')
-        .in('branch_id', branchIds)
-        .gte('scheduled_at', startOfToday.toISOString())
-        .lte('scheduled_at', endOfToday.toISOString())
-        .neq('status', 'CANCELLED')
-        .neq('status', 'NO_SHOW')
-      return ler(q, 'carregar os agendamentos de hoje')
-    })(),
+    // Agendamentos de hoje (exceto cancelados e no-show). D5 da 26ª ("O dia é
+    // o da unidade no consolidado"): cada unidade no dia do relógio dela — o
+    // "Hoje" da rede é a soma do "Hoje" das unidades.
+    agendamentosDeHojeNasUnidades({ tenantId: ctx.tenantId!, branchIds, agora: now, fusoDoRecorte: fuso }),
 
     // Planos de tratamento aguardando checkout.
     (() => {

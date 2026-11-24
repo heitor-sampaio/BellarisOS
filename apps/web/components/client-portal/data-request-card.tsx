@@ -1,6 +1,7 @@
 'use client'
 
 import { prazoDeResposta } from '@/lib/lgpd/prazo'
+import { CONTEUDO_DO_PRONTUARIO, oQueOPedidoLeva } from '@/lib/lgpd/situacao-do-prontuario'
 import { useActionState, useState, useTransition } from 'react'
 import { requestDataExport, getExportDownloadUrls, type LgpdRequestRow } from '@/actions/lgpd'
 import { ShieldCheck, Download, FileText, FileJson, Loader2 } from 'lucide-react'
@@ -117,7 +118,7 @@ export function DataRequestCard({ requests }: Props) {
       </div>
 
       {openRequest ? (
-        <div style={{
+        <div data-pedido-lgpd="em-preparo" style={{
           display: 'flex', flexDirection: 'column', gap: 8,
           padding: '14px 16px', borderRadius: 'var(--radius-field-token)',
           background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-border)',
@@ -129,7 +130,8 @@ export function DataRequestCard({ requests }: Props) {
             )}
           </div>
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', margin: 0, lineHeight: 1.5 }}>
-            Solicitado em {fmt(openRequest.requested_at, fuso)}. Estamos reunindo seus dados: costuma ficar
+            {/* A34 da 26ª: com dois pedidos na tela, cada um diz o que é. */}
+            Pedido de {fmt(openRequest.requested_at, fuso)}, {oQueOPedidoLeva(openRequest.include_medical)}. Estamos reunindo seus dados: costuma ficar
             pronto em poucos minutos, e os arquivos aparecem aqui.
             {openRequest.include_medical && openRequest.medical_status === 'pending'
               ? ` A parte do prontuário depende da liberação da equipe, que responde até ${prazoDaEquipe(openRequest.requested_at, fuso)} (15 dias do pedido).`
@@ -150,8 +152,7 @@ export function DataRequestCard({ requests }: Props) {
                 style={{ marginTop: 2, accentColor: 'var(--brand)', width: 15, height: 15 }}
               />
               <span>
-                Incluir também meu prontuário (ficha de saúde, evolução dos atendimentos e
-                termos assinados).
+                Incluir também meu prontuário: {CONTEUDO_DO_PRONTUARIO}.
               </span>
             </label>
             <Dica rotulo="Sobre o prontuário no pedido">
@@ -185,7 +186,7 @@ export function DataRequestCard({ requests }: Props) {
       )}
 
       {latestDone && (
-        <div style={{ borderTop: '1px solid var(--hairline)', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div data-pedido-lgpd="pronto" style={{ borderTop: '1px solid var(--hairline)', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             {prontuarioEmAnalise
               ? <Chip label="Parte geral pronta" color="var(--success)" bg="var(--success-soft)" />
@@ -194,7 +195,7 @@ export function DataRequestCard({ requests }: Props) {
               <Chip {...MEDICAL_CHIP[latestDone.medical_status]!} />
             )}
             <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-              Solicitado em {fmt(latestDone.requested_at, fuso)}
+              Pedido de {fmt(latestDone.requested_at, fuso)}, {oQueOPedidoLeva(latestDone.include_medical)}
             </span>
           </div>
           {prontuarioEmAnalise && (

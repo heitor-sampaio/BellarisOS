@@ -9,6 +9,7 @@ import { getDocumentosDoPainel, getResumoDosDocumentos, DOCUMENTOS_POR_PAGINA } 
 import { ehSituacao, ehTipoDeDocumento } from '@/lib/documentos/situacao'
 import { renderizarPendentes, COLUNAS_DO_DOCUMENTO, type DocumentoEmitido } from '@/lib/documentos/renderizar'
 import { rotuloDoQueFalta } from '@/lib/documentos/leitura'
+import { oQueFalta } from '@/lib/documentos/o-que-falta'
 import { PainelDeDocumentos } from '@/components/shared/painel-de-documentos'
 import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
 
@@ -102,7 +103,8 @@ export async function DocumentosEmitidos({
       resumo={resumo}
       linhas={lista.linhas.map(l => ({
         ...l,
-        faltando: l.faltando.map(rotuloDoQueFalta),
+        // A2 da 26ª: o campo que falta ("CPF"), não "Cliente · CPF" — o oQueFalta da janela e da venda.
+        faltando: oQueFalta(l.faltando.map(rotuloDoQueFalta)),
         unidade: l.branchId ? nomeDe.get(l.branchId) ?? null : null,
         slug:    l.branchId ? slugDe.get(l.branchId) ?? unidade?.slug ?? null : unidade?.slug ?? null,
         // "Completar a ficha" é editar a cliente: só com Clientes em Gerenciar

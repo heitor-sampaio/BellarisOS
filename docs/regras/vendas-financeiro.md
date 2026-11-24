@@ -79,7 +79,11 @@ comanda (PDV-P1).
   dizem "Crediário · R$ 1.800,00 em aberto (3 parcelas, a 1ª em 15/12)", e o
   selo é "A receber", nunca "Paga". O número sai do banco (`pdv_comandas`:
   `em_aberto`, `parcelas_em_aberto`, `proxima_parcela`, migration
-  `20261116500001`), não da tela. A linha da comanda do atendimento diz o
+  `20261116500001`), não da tela. **A comanda do crediário diz como entrou o
+  que já entrou** (A15 da 26ª, princípio 3): "Crediário (Crédito 3x · Cielo)
+  · R$ 1.000,00 recebidos" — as formas do que entrou (`pdv_comandas.formas`,
+  agora também na venda do crediário) e, no cartão, a maquininha quando a
+  rede tem mais de uma (A18 da 14ª; migration `20261130100003`). A linha da comanda do atendimento diz o
   produto que ela leva ("Limpeza de pele + 1 produto", A3). A comanda paga
   diz, a quem não tem o Financeiro em Gerenciar, de quem é o estorno — a
   mesma frase da ficha, com os nomes (A2). Prova: `e2e/pdv-atritos-da-15.spec.ts`.
@@ -792,8 +796,9 @@ plano").
     (`estornar_transacao`, com os pontos dele) e um pagamento NOVO do usado,
     pago agora, na forma que quem cancela escolher ("Forma do pagamento do
     usado", e as vezes no crédito, até o limite da rede), com o pacote
-    (`client_package_id`), os pontos e a comissão pelos gatilhos de sempre.
-    **A forma do usado nasce VAZIA** (decisão do Claude pelo princípio 4,
+    (`client_package_id`) e os pontos pelos gatilhos de sempre; a comissão,
+    uma vez no fim do cancelamento, com o dinheiro do fim (D11 da 26ª,
+    `comissoes.md`). **A forma do usado nasce VAZIA** (decisão do Claude pelo princípio 4,
     auditoria das regras, 2026-11-18 — como toda forma de pagamento, A37 da
     24ª: o sistema não chuta como a cliente paga): escolhido o "inteiro" (no
     cartão, ele já vem), a "Forma do pagamento do usado", as vezes e a
@@ -2145,8 +2150,12 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 - **O "Pagar" da despesa sem forma pergunta a forma** (A15 da 9ª; decidido pelo
   princípio 3 — a parcela da cliente e a comissão já perguntavam): "Pagar
   despesa" (`PagarDespesa`, nos dois financeiros), a forma nasce vazia e é
-  obrigatória, com o Boleto; a despesa que já tem forma baixa direto, como
-  antes. Prova: `e2e/financeiro-atritos-da-9.spec.ts` ("A14", "A15").
+  obrigatória, com o Boleto. **A despesa que já tem forma também abre a
+  janela** (A13 da 26ª; decisão do Claude, princípio 3 — revê a da 9ª, que
+  baixava direto): a forma lançada vem escolhida, e quem paga confirma ou
+  troca, como na baixa da receita; a janela diz quanto e, quando a despesa
+  diz, a quem. Prova: `e2e/financeiro-atritos-da-9.spec.ts` ("A14", "A15"),
+  `e2e/financeiro-a-pagar-vencimento.spec.ts`, `tests/financeiro-baixa-cx2.test.ts`.
 - **A forma nasce VAZIA em toda tela de cobrança** (A37 da 6ª simulação,
   2026-11-04; princípio 3): o recebimento do atendimento (a comanda dele no
   PDV, desde o PDV7; era o "Confirmar pagamento" que o `?receber=1` abria), o "Receber" do plano
@@ -2165,7 +2174,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   forma — o meio combinado no lançamento já escolhido —, a bandeira, a
   maquininha e as vezes. `marcarPagoCore` recusa receita sem forma ("Escolha
   a forma de pagamento."), e o Copilot (`marcar_pago`) pergunta como foi
-  pago. A despesa que já tem forma segue baixando direto. O Pix era o padrão calado: um clique gravou o peeling do Jorge
+  pago. A despesa abre "Pagar despesa" com a forma lançada já escolhida
+  (A13 da 26ª, acima). O Pix era o padrão calado: um clique gravou o peeling do Jorge
   no Pix, que ele pagou no cartão. Nos specs, `pagoNoPix`
   (`e2e/apoio/vender.ts`) escolhe o Pix onde a forma não é o assunto. Prova:
   `e2e/vendas-forma-nasce-vazia.spec.ts`.
@@ -2272,7 +2282,12 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
       - **Na venda com cartão, "Qual maquininha?"** — só quando a rede tem
         mais de uma; com uma, ela vale sem perguntar. A taxa, o líquido, o
         recebível e o prazo saem da maquininha da venda (e da bandeira dentro
-        dela, se ela cobra diferente).
+        dela, se ela cobra diferente). **Com mais de uma e nenhuma escolhida,
+        a tela não diz taxa nenhuma** (A16 da 26ª, princípio 4): o aviso da
+        taxa dizia a da primeira ("Taxa da maquininha (Stone)…") com o campo
+        em "Escolha…" — `maquininhaDoAviso`; o valor já estava guardado, o
+        servidor recusa o cartão sem a escolha ("Escolha a maquininha do
+        cartão.").
       - **O Fechamento do dia separa por maquininha** (e, dentro dela, por
         bandeira quando houver).
         **E o CSV dele leva a taxa e o líquido de cada maquininha** (A28 da

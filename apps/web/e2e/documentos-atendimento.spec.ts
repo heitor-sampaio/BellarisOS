@@ -145,7 +145,8 @@ test.describe.serial('documentos: emissão pelo atendimento e assinatura na unid
       await page.goto(`/admin/clients/${cliente}?aba=documentos`)
       const linha = page.locator(`[data-documento="${doc!.id}"]`)
       await expect(linha.getByText('Faltam dados')).toBeVisible()
-      await expect(linha.getByText('Falta no cadastro: Cliente · CPF.')).toBeVisible()
+      // O campo que falta, dito como em toda tela (oQueFalta, documentos.md), não "Cliente · CPF".
+      await expect(linha.getByText('Falta no cadastro: CPF.')).toBeVisible()
 
       await db().from('clients').update({ document: '52998224725' }).eq('id', cliente)
       await linha.getByRole('button', { name: 'Gerar de novo' }).click()

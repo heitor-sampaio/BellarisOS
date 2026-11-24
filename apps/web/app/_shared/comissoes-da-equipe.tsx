@@ -8,7 +8,7 @@ import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { AbasDoFinanceiro } from '@/components/shared/abas-do-financeiro'
 import { FinanceiroComissoes } from '@/components/shared/financeiro-comissoes'
 import { periodosRecentes, periodoDaChave } from '@/lib/comissoes/periodo'
-import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
+import { fusoDaRede, fusosDasUnidades } from '@/lib/unidades/fuso-da-unidade'
 import {
   configDeComissaoDaRede, resumoDasComissoes, extratoDasComissoes, fechamentosRecentes,
 } from '@/lib/comissoes/leitura'
@@ -103,6 +103,8 @@ export async function ComissoesDaEquipe({ ctx, unidades, unidadeAtual, basePath,
         podeFechar={can(ctx, 'financial', 'MANAGE')}
         soAsProprias={!!soAsProprias}
         fusoDaRede={fuso}
+        // D7 da 26ª: cada lançamento (tela e CSV) no relógio da unidade dele.
+        fusosDasUnidades={await fusosDasUnidades(ctx.tenantId)}
       />
     </>
   )

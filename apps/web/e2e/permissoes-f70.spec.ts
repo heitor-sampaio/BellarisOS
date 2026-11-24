@@ -1,5 +1,5 @@
 import { test, expect, type Browser, type Page } from '@playwright/test'
-import { banco } from './apoio/banco'
+import { banco, PREFIXO } from './apoio/banco'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { criarMembro, sessaoPorEmail, type MembroDeTeste } from './apoio/sessao'
 import { chamarAcao, chamarAcaoComFormulario } from './apoio/acao-direta'
@@ -303,5 +303,65 @@ test('A2 da 13ª: Configurações → Geral, para quem tem só uma unidade, é t
     await p.goto(`/${slug}/settings?tab=general`)
     await expect(p.locator('[data-geral-so-leitura]')).toBeVisible({ timeout: 20_000 })
     await expect(p.locator('input[name="name"]')).toHaveCount(0)
+  })
+})
+
+// A linha da Equipe não diz mais que dá um cargo "mais poderoso que o próprio" (H7/F70), nem a
+// de Cargos que se pode "conceder a si mesmo" qualquer acesso (Cargos é só da Admin da rede,
+// o Heitor, 18/11); e "O que essa pessoa vai ver" diz que "Na rede" é de quem tem “A rede
+// inteira”, e que ali ela só vê (princípio 3). Numa rede [e2e] própria.
+test.describe('a tela de Cargos diz a regra de agora: a Equipe não dá cargo acima do próprio, e Cargos é só da Admin da rede', () => {
+  let rede: OutraRede | null = null
+  let admin: MembroDeTeste | null = null
+  let cargoId = ''
+  const NOME = `${PREFIXO} Equipe e marketing ${marca}`
+
+  async function como<T>(browser: Browser, estado: string, fn: (p: Page) => Promise<T>) {
+    const ctx = await browser.newContext({ storageState: estado, viewport: { width: 1440, height: 900 } })
+    try { return await fn(await ctx.newPage()) } finally { await ctx.close() }
+  }
+
+  test.beforeAll(async () => {
+    test.setTimeout(180_000)
+    rede = await criarOutraRede(`crg${marca}`)
+    expect((await db().from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede.tenantId)).error).toBeNull()
+    admin = await criarMembro(`crga${marca}`, { tenant: rede.tenantId, donoDaRede: true, rotulo: 'Admin', permissoes: [] })
+    const { data: cargo, error } = await db().from('tenant_roles')
+      .insert({ tenant_id: rede.tenantId, key: `E2E_CRG_${marca}`.toUpperCase(), label: NOME }).select('id').single<{ id: string }>()
+    expect(error).toBeNull()
+    cargoId = cargo!.id
+    expect((await db().from('role_permissions').insert([
+      { module: 'team', level: 'MANAGE' }, { module: 'roles', level: 'MANAGE' }, { module: 'marketing', level: 'MANAGE' },
+      { module: 'automations', level: 'MANAGE' }, { module: 'agenda', level: 'VIEW' },
+    ].map(x => ({ tenant_id: rede!.tenantId, role_id: cargoId, scope: 'ALL', ...x })))).error).toBeNull()
+  })
+
+  test.afterAll(async () => {
+    await admin?.limpar()
+    if (cargoId) {
+      await db().from('role_permissions').delete().eq('role_id', cargoId)
+      await db().from('tenant_roles').delete().eq('id', cargoId)
+    }
+    await rede?.limpar()
+  })
+
+  test('as linhas da Equipe e de Cargos e o resumo "Na rede" dizem a regra de agora', async ({ browser }) => {
+    await como(browser, admin!.estado, async p => {
+      await p.goto('/admin/settings?tab=permissions')
+      await p.getByText(NOME).first().click()
+      await expect(p.getByRole('heading', { name: new RegExp(`Equipe e marketing ${marca}`) })).toBeVisible()
+
+      // As linhas da Equipe e de Cargos.
+      await expect(p.getByText(/mais poderoso que o próprio/)).toHaveCount(0)
+      await expect(p.getByText(/conceder a si mesmo/)).toHaveCount(0)
+      await expect(p.locator('[data-modulo="team"]')).toContainText('não passe do próprio')
+      await expect(p.locator('[data-modulo="roles"]')).toContainText('só da Admin da rede')
+
+      // O resumo "Na rede".
+      await expect(p.locator('[data-resumo-na-rede]')).toContainText('Notificações')
+      const nota = p.locator('[data-resumo-da-rede]')
+      await expect(nota).toContainText('“A rede inteira”')
+      await expect(nota).toContainText('só da Admin da rede')
+    })
   })
 })

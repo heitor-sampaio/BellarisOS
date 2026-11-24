@@ -4,7 +4,7 @@ import { criarMembro, clienteComSessao, type MembroDeTeste, type ClienteDeTeste 
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { apagarRedeCriada } from './apoio/rede-criada'
 import { cartaoNaGradeDoDia } from './apoio/agenda'
-import { addDaysTZ, dayKeyTZ, instanteNoFuso } from '../lib/datetime'
+import { addDaysTZ, dayKeyTZ, endOfDayTZ, instanteNoFuso } from '../lib/datetime'
 
 /**
  * F62 — o fuso da clínica (o Heitor, 2026-11-11: "Não, deixa a clinica
@@ -472,5 +472,147 @@ test.describe('os indicadores do dia sem hora (F62b)', () => {
     expect(error).toBeNull()
     const quandos = (data as { tipo: string; extra: { quando: string } }[]).map(r => new Date(r.extra.quando).getTime())
     expect(quandos, 'só o de hoje em Manaus; o das 23:30 de ontem lá já passou').toHaveLength(1)
+  })
+})
+
+// Uma rede [e2e] com duas unidades: a primeira no horário de Brasília (UTC−3), a segunda no
+// de Cuiabá (UTC−4); o navegador em Brasília. O atendimento de outra unidade sai no relógio
+// DELA, com o nome do relógio; no consolidado, o das 23:30 de Cuiabá conta no dia de Cuiabá;
+// o CSV da Auditoria diz o relógio de cada linha; a edição do membro diz em que relógio vale
+// o horário próprio; e o cartão da unidade diz o fuso fora do de Brasília (indicadores.md).
+test.describe('numa rede de dois relógios, cada registro na hora da unidade dele, e a tela diz o relógio (F62)', () => {
+  const SP = 'America/Sao_Paulo'
+  const CB = 'America/Cuiaba'
+
+  let rede: OutraRede | null = null
+  let admin: MembroDeTeste | null = null
+  let profissional: MembroDeTeste | null = null
+  let slugA = ''
+  let unidadeB = ''
+  const nomeA = `${PREFIXO} Unidade fzr${marca}`
+  const nomeB = `${PREFIXO} Cuiabá fzr${marca}`
+  const nomeDaProfissional = `${PREFIXO} Profissional fzrp${marca}`
+  // Daqui a 3 dias, no relógio de Brasília (o da rede, com fusos diferentes).
+  const DIA = dayKeyTZ(addDaysTZ(new Date(), 3, SP), SP)
+
+  async function como<T>(browser: Browser, quem: MembroDeTeste, fn: (p: Page) => Promise<T>) {
+    const ctx = await browser.newContext({ storageState: quem.estado, viewport: { width: 1440, height: 900 }, timezoneId: SP })
+    try { return await fn(await ctx.newPage()) } finally { await ctx.close() }
+  }
+
+  test.beforeAll(async () => {
+    rede = await criarOutraRede(`fzr${marca}`)
+    const b = db()
+    const diaInteiro = [{ de: '00:00', ate: '24:00' }]
+    const horario = { dias: Object.fromEntries([0, 1, 2, 3, 4, 5, 6].map(d => [d, diaInteiro])) }
+    expect((await b.from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede.tenantId)).error).toBeNull()
+    expect((await b.from('branches').update({ name: nomeA, fuso: SP, horario }).eq('id', rede.branchId)).error).toBeNull()
+    const nova = await b.from('branches')
+      .insert({ tenant_id: rede.tenantId, name: nomeB, slug: `e2e-cb-${marca}`, fuso: CB, horario })
+      .select('id').single<{ id: string }>()
+    expect(nova.error, 'criar a unidade de Cuiabá').toBeNull()
+    unidadeB = nova.data!.id
+    slugA = (await b.from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
+
+    admin = await criarMembro(`fzra${marca}`, { tenant: rede.tenantId, rotulo: 'Admin', donoDaRede: true, permissoes: [] })
+    // A profissional é da primeira unidade e atende nas duas.
+    profissional = await criarMembro(`fzrp${marca}`, {
+      tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Profissional', atendeEm: [rede.branchId, unidadeB],
+      permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'atendimento', nivel: 'MANAGE' }],
+    })
+    expect((await b.from('users').update({ provides_services: true, atende_em: [rede.branchId, unidadeB] }).eq('id', profissional.userId)).error).toBeNull()
+
+    const cliente = await rede.criarCliente(`Cliente fzr${marca}`)
+    const base = { client_id: cliente, procedure_id: rede.procedureId, professional_id: profissional.userId, source: 'INTERNAL', duration_min: 30, price: 0, status: 'SCHEDULED' }
+    const ag = await b.from('appointments').insert([
+      // O de outra unidade: 18:55 de Cuiabá = 19:55 de Brasília.
+      { ...base, branch_id: unidadeB, scheduled_at: instanteNoFuso(DIA, '18:55', CB).toISOString() },
+      // O consolidado: 23:30 de Cuiabá = 00:30 do dia seguinte em Brasília — é do DIA em Cuiabá.
+      { ...base, branch_id: unidadeB, scheduled_at: instanteNoFuso(DIA, '23:30', CB).toISOString() },
+      // E um da primeira unidade, às 10:00 de Brasília.
+      { ...base, branch_id: rede.branchId, scheduled_at: instanteNoFuso(DIA, '10:00', SP).toISOString() },
+    ])
+    expect(ag.error, 'criar os agendamentos').toBeNull()
+  })
+
+  test.afterAll(async () => {
+    if (rede) await db().from('appointments').delete().in('branch_id', [rede.branchId, unidadeB].filter(Boolean))
+    await profissional?.limpar()
+    await admin?.limpar()
+    await rede?.limpar()
+  })
+
+  test('o atendimento de Cuiabá sai às 18:55, com o relógio de lá', async ({ browser }) => {
+    await como(browser, profissional!, async p => {
+      await p.goto(`/${slugA}/agenda?date=${DIA}`)
+      const lista = p.locator('[data-meus-de-outras-unidades]')
+      await expect(lista).toBeVisible()
+      const cartao = lista.locator('[data-outra-unidade]').filter({ hasText: '18:55' })
+      await expect(cartao).toHaveCount(1)
+      await expect(cartao.locator('[data-relogio-do-cartao]')).toHaveText('(horário de Cuiabá)')
+      // A hora de Brasília (19:55) não aparece no cartão.
+      await expect(lista.getByText('19:55')).toHaveCount(0)
+    })
+  })
+
+  test('o das 23:30 de Cuiabá conta no dia dele, no consolidado e por unidade', async () => {
+    const de = instanteNoFuso(DIA, '00:00', SP)
+    const ate = endOfDayTZ(de, SP)
+    const b = db()
+    // A régua: 23:30 de Cuiabá (00:30 de Brasília do dia seguinte) é do DIA em Cuiabá.
+    const regua = await b.rpc('metrics_no_dia_da_unidade', {
+      p_instante: instanteNoFuso(DIA, '23:30', CB).toISOString(), p_branch: unidadeB,
+      p_from: de.toISOString(), p_to: ate.toISOString(), p_fuso_do_recorte: SP,
+    })
+    expect(regua.error).toBeNull()
+    expect(regua.data).toBe(true)
+
+    const nucleo = await b.rpc('metrics_core', {
+      p_tenant: rede!.tenantId, p_branch_ids: [rede!.branchId, unidadeB], p_from: de.toISOString(), p_to: ate.toISOString(),
+    })
+    expect(nucleo.error).toBeNull()
+    expect(Number((nucleo.data as { appointments_total: number }[])[0]!.appointments_total)).toBe(3)
+
+    const porUnidade = await b.rpc('metrics_by_branch', { p_tenant: rede!.tenantId, p_from: de.toISOString(), p_to: ate.toISOString() })
+    expect(porUnidade.error).toBeNull()
+    const linhas = porUnidade.data as { branch_id: string; appointments_total: number }[]
+    expect(Number(linhas.find(l => l.branch_id === unidadeB)!.appointments_total)).toBe(2)
+    expect(Number(linhas.find(l => l.branch_id === rede!.branchId)!.appointments_total)).toBe(1)
+  })
+
+  test('o CSV da Auditoria diz o relógio de cada linha', async ({ browser }) => {
+    await como(browser, admin!, async p => {
+      await p.goto('/admin/auditoria')
+      const resposta = await p.request.get('/api/auditoria/csv?period=today')
+      expect(resposta.status()).toBe(200)
+      const linhas = (await resposta.text()).replace(/^﻿/, '').split('\r\n')
+      expect(linhas[0]).toBe('Quando;Quem;O quê;Gravação;Unidade;Relógio')
+      const deCuiaba = linhas.filter(l => l.includes(nomeB))
+      expect(deCuiaba.length).toBeGreaterThan(0)
+      for (const l of deCuiaba) expect(l.endsWith(';horário de Cuiabá')).toBe(true)
+      const daPrimeira = linhas.filter(l => l.includes(nomeA))
+      for (const l of daPrimeira) expect(l.endsWith(';horário de Brasília')).toBe(true)
+    })
+  })
+
+  test('a edição de quem atende nas duas diz o relógio de cada uma', async ({ browser }) => {
+    await como(browser, admin!, async p => {
+      await p.goto('/admin/team')
+      await p.getByRole('button', { name: `Editar ${nomeDaProfissional}` }).click()
+      const relogio = p.locator('[data-relogio-do-horario]')
+      // A ordem é a da lista de unidades da tela; o teste confere cada uma.
+      await expect(relogio).toContainText('Vale no relógio de cada unidade:')
+      await expect(relogio).toContainText(`${nomeA} no horário de Brasília`)
+      await expect(relogio).toContainText(`${nomeB} no horário de Cuiabá`)
+    })
+  })
+
+  test('o cartão da unidade de Cuiabá diz o fuso; o de Brasília, não', async ({ browser }) => {
+    await como(browser, admin!, async p => {
+      await p.goto('/admin/settings?tab=unidades')
+      const fusos = p.locator('[data-fuso-da-unidade]')
+      await expect(fusos).toHaveCount(1)
+      await expect(fusos).toHaveText('Horário de Cuiabá')
+    })
   })
 })

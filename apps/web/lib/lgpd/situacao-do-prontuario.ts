@@ -8,14 +8,27 @@
  */
 export type SituacaoDoProntuario = 'not_requested' | 'pending' | 'denied' | string | null
 
+/**
+ * O que o prontuário do pacote leva DE FATO (A35 da 26ª, princípio 3): as
+ * respostas da ficha de saúde e o registro de cada atendimento
+ * (`prontuarioLegivel`, `lib/lgpd/export.ts`). A caixa do app dizia "termos
+ * assinados" (vão SEMPRE, na parte geral) e o Liberar, "as fotos" (vai só
+ * quantas foram, não o arquivo). Um texto só para a caixa, o Liberar e o PDF.
+ */
+export const CONTEUDO_DO_PRONTUARIO =
+  'a ficha de saúde respondida e o registro de cada atendimento (evolução, ficha de atendimento, dores, intercorrências, insumos e anotações)'
+
+/** Cada pedido diz o que é (A34 da 26ª, princípio 7). */
+export function oQueOPedidoLeva(incluiProntuario: boolean): string {
+  return incluiProntuario ? 'com o prontuário' : 'sem o prontuário'
+}
+
 export function textoDoProntuarioForaDoPacote(situacao: SituacaoDoProntuario): { json: string; pdf: string[] } {
   if (situacao === 'pending') {
     return {
       json: 'Pedido — em análise pela equipe. Quando ela liberar, um pacote novo é preparado com o prontuário.',
       pdf: [
-        'Você pediu também o prontuário (ficha de saúde, evolução dos atendimentos e',
-        'fotos clínicas), e o pedido está em análise pela equipe. Quando ela',
-        'liberar, um pacote novo é preparado já com ele.',
+        `Você pediu também o prontuário (${CONTEUDO_DO_PRONTUARIO}), e o pedido está em análise pela equipe. Quando ela liberar, um pacote novo é preparado já com ele.`,
       ],
     }
   }
@@ -31,9 +44,7 @@ export function textoDoProntuarioForaDoPacote(situacao: SituacaoDoProntuario): {
   return {
     json: 'Não incluído nesta solicitação.',
     pdf: [
-      'Os dados de prontuário (ficha de saúde, evolução dos atendimentos e',
-      'fotos clínicas) não fazem parte deste pacote. Para',
-      'solicitá-los, procure a unidade onde você é atendido.',
+      `O prontuário (${CONTEUDO_DO_PRONTUARIO}) não faz parte deste pacote. Para solicitá-lo, procure a unidade onde você é atendido.`,
     ],
   }
 }

@@ -10,7 +10,7 @@ import { CategoriasDeProcedimento } from '@/components/admin/categorias-de-proce
 import { categoriasAtivasDaRede } from '@/lib/procedimentos/categorias'
 import { ToggleProcedureBtn } from '@/components/admin/toggle-procedure-btn'
 import { ComissaoDoProcedimento, type DadosDaComissao } from '@/components/admin/comissao-do-procedimento'
-import { comissaoDosProcedimentos } from '@/lib/comissoes/leitura'
+import { comissaoDosProcedimentos, configDeComissaoDaRede } from '@/lib/comissoes/leitura'
 import { podeMudarComissaoDoProcedimento } from '@/lib/comissoes/gravacao'
 import { Pencil, Smartphone } from 'lucide-react'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -83,7 +83,7 @@ export async function CatalogoDeProcedimentos({ termo }: { termo: string }) {
     unidadesParaCriar(ctx.tenantId!),
 
     ler(admin.from('procedures')
-      .select('id, name, category, description, duration_min, price, labor_cost, other_costs, visible_on_client_app, is_active, created_at, form_id, consent_template_id, contract_template_id, outros_documentos, loyalty_points, sem_insumo')
+      .select('id, name, category, description, duration_min, price, labor_cost, other_costs, visible_on_client_app, is_active, created_at, form_id, consent_template_id, contract_template_id, outros_documentos, loyalty_points, sem_insumo, desconta_taxa')
       .eq('tenant_id', ctx.tenantId!).is('branch_id', null)
       .order('category').order('name'), 'carregar os procedimentos'),
 
@@ -105,12 +105,20 @@ export async function CatalogoDeProcedimentos({ termo }: { termo: string }) {
       .eq('tenant_id', ctx.tenantId!).eq('is_active', true).eq('provides_services', true)
       .order('name'), 'carregar quem atende'),
   ])
-  const comissao = podeComissao ? await comissaoDosProcedimentos(ctx.tenantId!) : null
+  const [comissao, cfgComissao] = podeComissao
+    ? await Promise.all([comissaoDosProcedimentos(ctx.tenantId!), configDeComissaoDaRede(ctx.tenantId!)])
+    : [null, null]
+  // "Descontar a taxa da maquininha" do procedimento (item 11 da 26ª): a
+  // escolha dele (nulo = como a rede) e o que a rede faz hoje.
+  const redeDescontaTaxa = cfgComissao?.desconta_taxa === true
+  const taxaDe = new Map((procedures ?? []).map(p => [p.id as string, (p as { desconta_taxa?: boolean | null }).desconta_taxa ?? null]))
   // O que o chip e o modal de editar recebem; o de criar começa sem nada.
   const dadosDaComissao = (id: string): DadosDaComissao | undefined => comissao ? {
     geral: comissao.gerais.get(id) ?? null, porProfissional: comissao.porProfissional.get(id) ?? [], profissionais: comissao.profissionais,
+    descontaTaxa: taxaDe.get(id) ?? null, redeDescontaTaxa,
   } : undefined
-  const comissaoNova: DadosDaComissao | undefined = comissao ? { geral: null, porProfissional: [], profissionais: comissao.profissionais } : undefined
+  const comissaoNova: DadosDaComissao | undefined = comissao
+    ? { geral: null, porProfissional: [], profissionais: comissao.profissionais, descontaTaxa: null, redeDescontaTaxa } : undefined
 
   const fichas = (fichaRows ?? []) as { id: string; name: string }[]
   // Termo e contrato que o procedimento pode ligar — só quem edita precisa.

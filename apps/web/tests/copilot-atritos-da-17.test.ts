@@ -97,6 +97,8 @@ describe('A25: o "Continuar a conversa anterior" vem antes do "Olá"', () => {
     const vazio = f.slice(f.indexOf('className="copilot-vazio"><p>Nenhuma') + 10)
     const bloco = vazio.slice(vazio.indexOf('className="copilot-vazio"'))
     expect(bloco.indexOf('data-continuar-conversa')).toBeGreaterThan(-1)
-    expect(bloco.indexOf('data-continuar-conversa')).toBeLessThan(bloco.indexOf('<p>Olá!'))
+    // A regra mudou (princípio 3, copilot.md): o "Olá" sai da permissão (data-abertura-do-copilot), não é mais um texto fixo.
+    expect(bloco.indexOf('data-abertura-do-copilot')).toBeGreaterThan(-1)
+    expect(bloco.indexOf('data-continuar-conversa')).toBeLessThan(bloco.indexOf('data-abertura-do-copilot'))
   })
 })

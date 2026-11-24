@@ -14,7 +14,7 @@ import {
   ALL_REPORT_TABS, REPORT_TAB_LABELS, REPORT_TAB_HINTS, abasQueValem, motivoDaAbaFechada,
 } from '@/lib/permissions'
 import {
-  MODULE_GROUPS, LEVEL_COPY, SENSITIVE_NOTE,
+  MODULE_GROUPS, LEVEL_COPY, notaDoResumoDaRede,
   NETWORK_ONLY, notaDeAbrangencia, SO_NA_REDE_NOTE, quemVendeNoResumo, copilotNoResumo, textoDoQueFaltaNoCargo, documentosNoResumo,
   pdvAbertoPeloFinanceiro, tratamentosNoResumo, nivelDoPdvPeloFinanceiro, conclusaoNoResumo,
 } from '@/lib/permissions-copy'
@@ -734,7 +734,6 @@ function ModuleRow({
   onCaixas: (v: CaixasDoCargo) => void
 }) {
   const enabled     = level !== 'NONE'
-  const sensitive   = SENSITIVE_NOTE[module]
   const networkOnly = NETWORK_ONLY.includes(module)
   const soNaRede    = SO_NA_REDE_NOTE[module]
 
@@ -792,14 +791,6 @@ function ModuleRow({
               marginTop: 5, fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-semibold)', color: 'var(--text-muted)',
             }}>
               <Fala>{nota}</Fala>
-            </div>
-          )}
-          {sensitive && enabled && (
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 5,
-              fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-semibold)', color: 'var(--warning)',
-            }}>
-              <AlertTriangle size={11} /> <Fala>{sensitive}</Fala>
             </div>
           )}
         </div>
@@ -973,6 +964,12 @@ function MenuPreview({ levels, reportTabs }: { levels: Levels; reportTabs: Repor
         <PreviewLine title="Na unidade" items={branch} marca="data-resumo-na-unidade" />
         <PreviewLine title={<Fala>Na rede</Fala>} items={network} marca="data-resumo-na-rede" />
       </div>
+      {/* A27 da 26ª: "Na rede" depende da abrangência de quem recebe o cargo, e a configuração da rede só se vê. */}
+      {notaDoResumoDaRede(network, branch) && (
+        <p data-resumo-da-rede style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
+          {notaDoResumoDaRede(network, branch)}
+        </p>
+      )}
       {/* Relatórios em Ver sem aba nenhuma some do resumo: o resumo diz por
           quê, em vez de só o aviso pequeno ao lado da matriz (A5, 2026-11-01). */}
       {levels.reports !== 'NONE' && reportTabs.length === 0 && (

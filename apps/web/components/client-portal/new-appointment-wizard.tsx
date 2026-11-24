@@ -9,7 +9,7 @@ import { toast } from 'sonner'
 import { iniciaisDoNome } from '@estetica-os/utils'
 import { gruposDeHorario } from '@/lib/appointments/periodos-do-dia'
 import { aUnica } from '@/lib/uma-opcao'
-import { useFuso } from '@/components/shared/fuso'
+import { useFuso, NotaDoFuso } from '@/components/shared/fuso'
 import { instanteNoFuso } from '@/lib/datetime'
 
 /** O dia no relógio da unidade (F62). */
@@ -445,6 +445,8 @@ export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], p
             <div>
               <label style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em', display: 'block', marginBottom: 10 }}>
                 HORÁRIOS DISPONÍVEIS
+                {/* A9 da 26ª: os horários são os da unidade — o relógio dito fora do de Brasília (princípio 3). */}
+                <NotaDoFuso fuso={fuso} prefixo=" · " />
               </label>
               {isPending ? (
                 <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', padding: '16px 0' }}>

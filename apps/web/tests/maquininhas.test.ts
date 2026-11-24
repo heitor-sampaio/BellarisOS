@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { taxaNaMaquininha, maquininhaDaVenda, maximoDaMaquininha, lerMaquininha, EntradaDaMaquininha } from '@/lib/financeiro/maquininhas'
+import { taxaNaMaquininha, maquininhaDaVenda, maximoDaMaquininha, lerMaquininha, EntradaDaMaquininha, maquininhaDoAviso } from '@/lib/financeiro/maquininhas'
 import { csvDoFechamento } from '@/lib/financeiro/csv-da-contadora'
+import * as nodeFs from 'node:fs'
+import * as nodePath from 'node:path'
 
 /**
  * As maquininhas (C75 da F67): a taxa que vale (o espelho de
@@ -72,5 +74,30 @@ describe('o Fechamento por maquininha', () => {
     expect(duas).toContain('Cartão por maquininha e bandeira')
     expect(duas).toContain('Cartão de débito · Stone · Visa;200,00')
     expect(duas).toContain('Cartão de débito · Cielo · Bandeira não informada;100,00')
+  })
+})
+
+describe('sem a maquininha escolhida, a taxa não é a da primeira (princípio 4)', () => {
+  const WEB = nodePath.join(__dirname, "..")
+  const ler = (caminho: string) => nodeFs.readFileSync(nodePath.join(WEB, caminho), "utf8")
+
+  // ─── sem a maquininha escolhida, a taxa não é a da primeira ───────────
+  describe('a taxa da maquininha só com a maquininha certa', () => {
+    const stone = { id: 's', nome: 'Stone' }
+    const cielo = { id: 'c', nome: 'Cielo' }
+    it('com mais de uma e nenhuma escolhida, nenhuma', () => {
+      expect(maquininhaDoAviso([stone, cielo], null)).toBeNull()
+      expect(maquininhaDoAviso([stone, cielo], '')).toBeNull()
+    })
+    it('a escolhida vale; com uma só, ela', () => {
+      expect(maquininhaDoAviso([stone, cielo], 'c')).toBe(cielo)
+      expect(maquininhaDoAviso([stone], null)).toBe(stone)
+      expect(maquininhaDoAviso([], null)).toBeNull()
+    })
+    it('os avisos da taxa usam ela, não a primeira', () => {
+      const a = ler('components/shared/aviso-da-taxa.tsx')
+      expect(a).toContain('maquininhaDoAviso(')
+      expect(a).not.toContain('maquininhaEscolhida(')
+    })
   })
 })

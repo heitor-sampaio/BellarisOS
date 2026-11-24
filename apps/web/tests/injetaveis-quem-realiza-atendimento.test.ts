@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import * as nodeFs from 'node:fs'
+import * as nodePath from 'node:path'
 
 /**
  * Os injetáveis são de quem realiza o atendimento (o Heitor, 2026-11-23: "o
@@ -98,4 +100,25 @@ describe('a matriz de Cargos diz isso', () => {
     expect(LEVEL_COPY.medical_records.VIEW).toMatch(/injetáveis/)
     expect(LEVEL_COPY.medical_records.MANAGE).not.toMatch(/injetáveis/)
   })
+})
+
+describe('escrever o clínico do atendimento é do Prontuário em Gerenciar (cada passo um módulo, 23/11): quem só o vê, lê', () => {
+  const ler = (rel: string) => nodeFs.readFileSync(nodePath.join(__dirname, '..', rel), 'utf8')
+
+  describe('quem só vê o Prontuário vê a ficha de saúde em LEITURA, e o "só leitura" se explica', () => {
+    const f = () => ler('components/branch/appointment-session.tsx')
+    it('a avaliação mostra o formulário da ficha de saúde só a quem escreve o clínico (canEditRecords)', () => {
+      expect(f()).toMatch(/\{\(editLocked \|\| !canEditRecords\) \? \(\s*canViewRecords && <AnamneseGeralCartao [^>]*canEdit=\{false\}/)
+    })
+    it('a legenda diz por quê', async () => {
+      const { TEXTO_DO_CLINICO_SO_LEITURA } = await import('@/lib/atendimento/registro-travado')
+      expect(TEXTO_DO_CLINICO_SO_LEITURA).toBe('Só para ler: escrever a ficha de saúde, as queixas e a evolução pede o Prontuário em Gerenciar.')
+      expect(f()).toMatch(/data-clinico-so-leitura/)
+      expect(f()).toMatch(/\{TEXTO_DO_CLINICO_SO_LEITURA\}/)
+    })
+    it('o plano já gerado também não oferece a evolução editável a quem não escreve o clínico', () => {
+      expect(f()).not.toMatch(/onIntercurrencesChange=\{setIntercurrences\}\s*readonly=\{editLocked\}\s*\/>/)
+    })
+  })
+
 })

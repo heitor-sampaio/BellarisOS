@@ -138,7 +138,7 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
   const [creditoAEstornar, setCreditoAEstornar] = useState<{ id: string; descricao: string } | null>(null)
   const [noCartao, setNoCartao] = useState<{ id: string; descricao: string; metodo: string | null; valor: number; cliente: string | null } | null>(null)
   // A15 da 9ª: a despesa sem forma pergunta a forma na baixa.
-  const [despesaAPagar, setDespesaAPagar] = useState<{ id: string; descricao: string; valor: number } | null>(null)
+  const [despesaAPagar, setDespesaAPagar] = useState<{ id: string; descricao: string; valor: number; forma: string | null; fornecedor: string | null } | null>(null)
   function handleMarkPaid(id: string, bandeira?: string | null, vezes?: number, forma?: string | null, maquininha?: string | null, partes?: ParteDaBaixa[] | null) {
     startTx(async () => {
       const r = await markTransactionPaid(id, slug, bandeira ?? null, vezes ?? null, forma ?? null, maquininha ?? null, partes ?? null)
@@ -207,7 +207,7 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
       <EstornarVendaDeCredito transacaoId={creditoAEstornar.id} descricao={creditoAEstornar.descricao} onFechar={() => setCreditoAEstornar(null)} />
     )}
     {despesaAPagar && (
-      <PagarDespesa descricao={despesaAPagar.descricao} valor={despesaAPagar.valor} pendente={estornando}
+      <PagarDespesa descricao={despesaAPagar.descricao} valor={despesaAPagar.valor} fornecedor={despesaAPagar.fornecedor} formaInicial={despesaAPagar.forma} pendente={estornando}
         aoConfirmar={f => handleMarkPaid(despesaAPagar.id, null, undefined, f)} aoFechar={() => setDespesaAPagar(null)} />
     )}
     {noCartao && (
@@ -464,8 +464,8 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
                           {!tx.is_paid && !isReversed && canPay && (
                             <button type="button" onClick={() => tx.type === 'INCOME'
                               ? setNoCartao({ id: tx.id, descricao: tx.description ?? 'Lançamento', metodo: tx.payment_method ?? null, valor: Number(tx.amount), cliente: tx.cliente?.name ?? null })
-                              : tx.type === 'EXPENSE' && !tx.payment_method
-                              ? setDespesaAPagar({ id: tx.id, descricao: tx.description ?? 'Despesa', valor: Number(tx.amount) })
+                              : tx.type === 'EXPENSE'
+                              ? setDespesaAPagar({ id: tx.id, descricao: tx.description ?? 'Despesa', valor: Number(tx.amount), forma: tx.payment_method ?? null, fornecedor: tx.fornecedor ?? null })
                               : handleMarkPaid(tx.id)} title={tx.type === 'INCOME' ? 'Receber' : 'Marcar como pago'} style={{
                               display: 'inline-flex', alignItems: 'center', gap: 5,
                               fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '5px 10px', borderRadius: 7,

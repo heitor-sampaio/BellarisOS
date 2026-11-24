@@ -1,6 +1,8 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { lerTodas } from '@/lib/db'
+import { nomesDasMaquininhas } from '@/lib/financeiro/vezes-da-rede'
+import { maquininhaDoRotulo } from '@/lib/financeiro/formas'
 
 /**
  * As comandas do PDV (PDV1/PDV2, a revisão do Heitor de 2026-11-13). A
@@ -19,7 +21,7 @@ interface Linha {
   treatment_plan_id: string | null
   em_aberto: number | string | null; parcelas_em_aberto: number | null; proxima_parcela: string | null; produtos: number | null
   ja_pago: number | string | null
-  formas: { forma: string; vezes: number | null; valor: number | string; bandeira?: string | null }[] | null
+  formas: { forma: string; vezes: number | null; valor: number | string; bandeira?: string | null; maquininha?: string | null }[] | null
   desconto: number | string | null; fidelidade: number | string | null; voucher: string | null
   estorno_anterior: {
     quando: string; valor: number | string; forma: string | null; vezes: number | null
@@ -39,6 +41,8 @@ export async function comandasDoPdv(args: {
     })
     .order('aberta_em', { ascending: false }).order('id')
     .range(de, ate), 'carregar as comandas do PDV')
+  // A15 da 26ª: o nome da maquininha do cartão (só com mais de uma na rede).
+  const maquininhas = linhas.some(l => l.formas?.some(f => f.maquininha)) ? await nomesDasMaquininhas(args.tenantId) : null
   return linhas.map(l => ({
     id: l.id, numero: l.numero, origem: l.origem, abertaEm: l.aberta_em, canceladaEm: l.cancelada_em, canceladaMotivo: l.cancelada_motivo,
     clienteId: l.client_id, cliente: l.cliente ?? '—', agendamentoId: l.appointment_id,
@@ -50,7 +54,7 @@ export async function comandasDoPdv(args: {
     jaPago: Number(l.ja_pago ?? 0),
     // D3, A1 e A2 da 17ª: as formas, os descontos e o estorno anterior (do banco).
     // A1 da 19ª: e a bandeira do cartão.
-    formas: (l.formas ?? []).map(f => ({ forma: f.forma, vezes: Number(f.vezes ?? 1), valor: Number(f.valor), bandeira: f.bandeira ?? null })),
+    formas: (l.formas ?? []).map(f => ({ forma: f.forma, vezes: Number(f.vezes ?? 1), valor: Number(f.valor), bandeira: f.bandeira ?? null, maquininha: maquininhaDoRotulo(maquininhas, f.maquininha) })),
     desconto: Number(l.desconto ?? 0), fidelidade: Number(l.fidelidade ?? 0), voucher: l.voucher ?? null,
     estornoAnterior: l.estorno_anterior ? {
       quando: l.estorno_anterior.quando, valor: Number(l.estorno_anterior.valor), forma: l.estorno_anterior.forma,

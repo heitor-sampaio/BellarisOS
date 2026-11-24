@@ -2,10 +2,10 @@
 
 import { Info } from 'lucide-react'
 import { ehBandeira } from '@/lib/financeiro/bandeiras'
-import { taxaNaMaquininha } from '@/lib/financeiro/maquininhas'
+import { taxaNaMaquininha, maquininhaDoAviso } from '@/lib/financeiro/maquininhas'
 import { liquidoNaMaquininha } from '@/lib/metrics/resultado'
 import { formatBRL } from '@estetica-os/utils'
-import { useMaquininhas, maquininhaEscolhida } from '@/components/shared/use-maquininhas'
+import { useMaquininhas } from '@/components/shared/use-maquininhas'
 import { textoDeQuemCadastraATaxa } from '@/lib/financeiro/quem-cadastra-a-taxa'
 
 const pct = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
@@ -22,11 +22,11 @@ export function AvisoDaTaxa({ vezes, bandeira, total, maquininha }: {
   vezes: number; bandeira?: string
   /** O valor no cartão: com a taxa cadastrada, a tela diz a taxa e o líquido (A40 da 8ª). */
   total?: number
-  /** A maquininha escolhida; sem ela, a primeira (a que o banco põe). */
+  /** A maquininha escolhida; sem ela, a única (com mais de uma, nada: A16 da 26ª). */
   maquininha?: string | null
 }) {
   const leitura = useMaquininhas()
-  const m = maquininhaEscolhida(leitura?.lista, maquininha)
+  const m = maquininhaDoAviso(leitura?.lista, maquininha)
   if (!leitura || !m) return null
   const { taxa } = taxaNaMaquininha(m, 'CREDIT_CARD', vezes, ehBandeira(bandeira) ? bandeira : null)
   const rotulo = vezes === 1 ? 'à vista' : `${vezes}x`
@@ -62,7 +62,7 @@ export function AvisoDaTaxa({ vezes, bandeira, total, maquininha }: {
  */
 export function AvisoDaTaxaDoDebito({ bandeira, total, maquininha }: { bandeira?: string; total?: number; maquininha?: string | null }) {
   const leitura = useMaquininhas()
-  const m = maquininhaEscolhida(leitura?.lista, maquininha)
+  const m = maquininhaDoAviso(leitura?.lista, maquininha)
   if (!leitura || !m) return null
   const { taxa, daBandeira } = taxaNaMaquininha(m, 'DEBIT_CARD', 1, ehBandeira(bandeira) ? bandeira : null)
   const naMaquininha = leitura.lista.length > 1 ? ` (${m.nome})` : ''

@@ -2,14 +2,16 @@
 
 import { revalidatePath } from 'next/cache'
 import type { TenantContext } from '@estetica-os/types'
-import { getTenantContext } from '@/lib/auth'
+import { getTenantContext, podeVerRelatorio } from '@/lib/auth'
 import { copilotNoCargo, copilotNoPlano } from '@/lib/copilot/disponivel'
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { mensagemDoErro } from '@/lib/db'
 import { copilotConfigurado } from '@/lib/copilot/openai'
 import { apagarConversa, conversaDaPessoa, listarConversas, mensagensParaATela } from '@/lib/copilot/conversa'
-import { decidirAcao } from '@/lib/copilot/executor'
+import { decidirAcao, ferramentasDoCargo } from '@/lib/copilot/executor'
+import { aberturaDoCopilot, type AberturaDoCopilot } from '@/lib/copilot/abertura'
+import { veOCaixaNosRelatorios } from '@/lib/metrics/visao-geral'
 import type { ConversaNaLista, MensagemNaTela, ResultadoDaAcao, StatusDaAcao } from '@/lib/copilot/tipos'
 
 /**
@@ -25,6 +27,22 @@ async function contextoDoPainel(): Promise<TenantContext> {
   // No modo suporte o Copilot fica desligado (custo e responsabilidade de quem pede).
   if (ctx.suporte) throw semAcesso()
   return ctx
+}
+
+/**
+ * A28 da 26ª: o "Olá" e os atalhos da conversa vazia, pelo que a permissão da
+ * pessoa libera (as mesmas ferramentas que o modelo recebe).
+ */
+export async function aberturaDoCopilotNaTela(): Promise<AberturaDoCopilot> {
+  const ctx = await contextoDoPainel()
+  const ferramentas = ferramentasDoCargo(ctx)
+  return aberturaDoCopilot({
+    ferramentas: ferramentas.map(f => f.nome),
+    // O faturamento da Visão geral pede a aba E o Financeiro em Ver (o Heitor, 23/11:
+    // "financeiro é uma coisa, vendas é outra"), como a ferramenta `indicadores`.
+    veFaturamento: podeVerRelatorio(ctx, 'overview') && veOCaixaNosRelatorios(ctx.permissions),
+    grava: ferramentas.some(f => f.tipo === 'escrita'),
+  })
 }
 
 export async function listarConversasDoCopilot(): Promise<ConversaNaLista[]> {

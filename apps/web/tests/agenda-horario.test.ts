@@ -3,6 +3,8 @@ import {
   HORARIO_PADRAO, normalizarHorario, horarioDeQuemDeixaDeSeguir, textoDosIntervalos, cabeNoHorario, forasDoHorario, intervalosDoDia, slotsDoDia, capacidadeEmMinutos, janelaDaGrade, diaDaSemana, foraDoHorarioDaUnidade,
   type Horario,
 } from '@/lib/agenda/horario'
+import * as nodeFs from 'node:fs'
+import * as nodePath from 'node:path'
 
 // O horário de funcionamento (2026-10-21, decisão do Heitor: por unidade, dia e
 // profissional). Até aqui era fixo em 08–20 nos livres, 07–20 na grade e 8 h
@@ -137,4 +139,33 @@ describe('foraDoHorarioDaUnidade', () => {
     expect(foraDoHorarioDaUnidade(null, '2026-11-08T13:00:00Z', 30)).toBe(true)
     expect(foraDoHorarioDaUnidade(null, '2026-11-09T13:00:00Z', 30)).toBe(false)
   })
+})
+
+describe('o encaixe fora do horário da UNIDADE também diz a unidade (atendimento.md §9.1)', () => {
+  const ler = (rel: string) => nodeFs.readFileSync(nodePath.join(__dirname, '..', rel), 'utf8')
+
+  describe('o aviso do encaixe', () => {
+    const dele = [{ de: '08:00', ate: '17:00' }]
+    const daUnidade = [{ de: '08:00', ate: '22:00' }]
+    it('às 23:30, fora dos dois', async () => {
+      const { avisoForaDoHorario } = await import('@/lib/agenda/horario')
+      expect(avisoForaDoHorario('Henrique', dele, 23 * 60 + 30, 30, daUnidade))
+        .toBe('Fora do horário de atendimento de Henrique (08:00–17:00) e do horário da unidade (08:00–22:00). O encaixe é permitido.')
+    })
+    it('às 18:30, fora só do dele (a unidade está aberta): o aviso de sempre', async () => {
+      const { avisoForaDoHorario } = await import('@/lib/agenda/horario')
+      expect(avisoForaDoHorario('Henrique', dele, 18 * 60 + 30, 30, daUnidade))
+        .toBe('Fora do horário de atendimento de Henrique (08:00–17:00). O encaixe é permitido.')
+    })
+    it('a unidade fechada no dia diz isso', async () => {
+      const { avisoForaDoHorario } = await import('@/lib/agenda/horario')
+      expect(avisoForaDoHorario('Henrique', [], 10 * 60, 30, [])).toBe('A unidade não abre neste dia. O encaixe é permitido.')
+      expect(avisoForaDoHorario('Henrique', [], 23 * 60, 30, daUnidade))
+        .toBe('Henrique não atende neste dia, e é fora do horário da unidade (08:00–22:00). O encaixe é permitido.')
+    })
+    it('o aviso do agendar passa o horário da unidade', () => {
+      expect(ler('lib/appointments/encaixe.ts')).toMatch(/avisoForaDoHorario\(nome, intervalos, inicioMin, duracao, daUnidade\)/)
+    })
+  })
+
 })

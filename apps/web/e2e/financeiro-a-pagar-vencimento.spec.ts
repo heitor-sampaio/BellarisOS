@@ -78,3 +78,49 @@ test('o financeiro da rede: o mesmo', async ({ browser }) => {
     await expect(p.locator('[data-kpi="a-receber"]')).toContainText(`R$ 150,00 em ${ROTULO}`)
   })
 })
+
+// O "Pagar" da despesa com forma lançada não baixa num clique: abre a janela, com a forma
+// escolhida, e a pessoa confirma ou troca (princípio 3). Numa rede [e2e] própria.
+test.describe('o Pagar da despesa que já tem forma abre a janela, com a forma lançada escolhida', () => {
+  let rede: OutraRede | null = null
+  let slug = ''
+  let dona: MembroDeTeste | null = null
+
+  async function como(browser: Browser, m: MembroDeTeste, fn: (p: Page) => Promise<void>) {
+    const ctx = await browser.newContext({ storageState: m.estado })
+    try { await fn(await ctx.newPage()) } finally { await ctx.close() }
+  }
+
+  test.beforeAll(async () => {
+    rede = await criarOutraRede(`fap${marca}`)
+    const b = db()
+    expect((await b.from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede.tenantId)).error).toBeNull()
+    slug = (await b.from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
+    dona = await criarMembro(`fapd${marca}`, { tenant: rede.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
+  })
+
+  test.afterAll(async () => {
+    await dona?.limpar()
+    await rede?.limpar()
+  })
+
+  test('o "Pagar" da despesa com forma abre a janela, com a forma lançada escolhida', async ({ browser }) => {
+    const { data: d, error } = await db().from('financial_transactions').insert({
+      branch_id: rede!.branchId, type: 'EXPENSE', category: 'Contas (energia, água, internet)', description: `Luz fap${marca}`,
+      amount: 320, is_paid: false, payment_method: 'BOLETO', due_date: new Date(Date.now() + 86_400_000).toISOString(), created_by: 'e2e',
+    }).select('id').single<{ id: string }>()
+    expect(error).toBeNull()
+    await como(browser, dona!, async p => {
+      await p.goto(`/${slug}/financeiro?aba=movimentacoes#lancamentos`)
+      await p.locator(`[data-lancamento="${d!.id}"]`).getByRole('button', { name: 'Pagar' }).click()
+      const dlg = p.getByRole('dialog', { name: 'Pagar despesa' })
+      await expect(dlg, 'a janela abre, não baixa num clique').toBeVisible()
+      await expect(dlg.getByLabel('Forma de pagamento')).toHaveValue('BOLETO')
+      await dlg.getByLabel('Forma de pagamento').selectOption('PIX')
+      await dlg.getByRole('button', { name: 'Confirmar pagamento' }).click()
+      await expect(dlg).toBeHidden({ timeout: 15_000 })
+    })
+    await expect.poll(async () => (await db().from('financial_transactions').select('is_paid, payment_method').eq('id', d!.id).single()).data)
+      .toEqual({ is_paid: true, payment_method: 'PIX' })
+  })
+})

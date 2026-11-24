@@ -10,7 +10,7 @@ import { ler } from '@/lib/db'
 import { formatarTelefone } from '@/lib/documentos/valores'
 import { aUnidadeDoEndereco, comMensagem, linkDoWhatsapp } from '@/lib/clientes/a-unidade'
 import { AlterarAgendamento } from '@/components/client-portal/alterar-agendamento'
-import { FusoProvider } from '@/components/shared/fuso'
+import { FusoProvider, NotaDoFuso } from '@/components/shared/fuso'
 import { fusoValido } from '@/lib/unidades/fuso'
 import { getCachedBranchProfessionals } from '@/lib/cached-queries'
 import { quemRealizaOProcedimento, realiza } from '@/lib/procedimentos/quem-realiza'
@@ -142,6 +142,8 @@ export default async function AgendamentoDaClientePage({ params, searchParams }:
         </span>
         <span style={linha}><Clock3 size={15} aria-hidden="true" />
           {quando.toLocaleTimeString('pt-BR', { timeZone: fuso, hour: '2-digit', minute: '2-digit' })} · {a.duration_min} min
+          {/* A9 da 26ª: o relógio da unidade, fora do de Brasília (princípio 3). */}
+          <NotaDoFuso fuso={fuso} prefixo="· " />
         </span>
         <span style={linha}><User size={15} aria-hidden="true" /> {a.profissional?.name ?? 'Profissional'}</span>
         <span style={linha}><MapPin size={15} aria-hidden="true" /> {a.branches.name}</span>

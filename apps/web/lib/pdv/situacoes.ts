@@ -62,7 +62,7 @@ export interface ComandaDoPdv {
    * atendimento paga (o atendimento e os produtos), com o valor. A1 da 19ª: e
    * a bandeira do cartão; e as da venda paga à vista (D1 da 19ª). Vazia nas outras.
    */
-  formas:           { forma: string; vezes: number; valor: number; bandeira?: string | null }[]
+  formas:           { forma: string; vezes: number; valor: number; bandeira?: string | null; maquininha?: string | null }[]
   /** A1 da 17ª: o desconto comercial dado na comanda do atendimento paga. */
   desconto:         number
   /** A1 da 17ª: o desconto da fidelidade (o voucher ou os pontos) da comanda do atendimento paga. */
@@ -167,12 +167,18 @@ export function emAbertoDaComanda(c: ComandaDoPdv, fuso: string): string | null 
  * produto no débito, o atendimento recebido de novo no Pix), ela diz as duas
  * com o valor de cada — "Pix R$ 220,00 + Débito R$ 120,00". Numa forma só, só
  * o nome dela ("Crédito 3x").
+ *
+ * A15 da 26ª: a venda no crediário diz também como entrou o que já entrou —
+ * "Crediário (Crédito 3x · Cielo)" —, e o cartão diz a maquininha quando a
+ * rede tem mais de uma (A18 da 14ª: o nome já vem nulo com uma só).
  */
 export function formasDaComandaEmTexto(c: ComandaDoPdv): string {
   // A1 da 19ª: com a bandeira ("Crédito Mastercard 10x") — a taxa depende dela.
-  if (c.formas.length > 1) return c.formas.map(f => `${rotuloDaForma(f.forma, f.vezes, { bandeira: f.bandeira })} ${brl(f.valor)}`).join(' + ')
-  if (c.formas.length === 1) return rotuloDaForma(c.formas[0]!.forma, c.formas[0]!.vezes, { bandeira: c.formas[0]!.bandeira })
-  return rotuloDaForma(c.forma)
+  const rotulo = (f: ComandaDoPdv['formas'][number]) => rotuloDaForma(f.forma, f.vezes, { bandeira: f.bandeira, maquininha: f.maquininha })
+  const formas = c.formas.length > 1 ? c.formas.map(f => `${rotulo(f)} ${brl(f.valor)}`).join(' + ')
+    : c.formas.length === 1 ? rotulo(c.formas[0]!) : null
+  if (c.forma === 'CREDIARIO') return formas ? `${rotuloDaForma('CREDIARIO')} (${formas})` : rotuloDaForma('CREDIARIO')
+  return formas ?? rotuloDaForma(c.forma)
 }
 
 /**

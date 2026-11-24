@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { responderAnamnese } from './apoio/anamnese'
+import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 
 /**
  * Fidelidade — o ponto nasce no PAGAMENTO (migration 20260929000001).
@@ -162,5 +163,61 @@ test.describe.serial('fidelidade: ganho no pagamento', () => {
     })
     expect(error).toBeNull()
     expect(await extrato(c)).toEqual([])
+  })
+})
+
+// O Heitor, 18/11: "se o programa é ligado no meio não conta ponto". O banco guarda quando
+// o programa foi ligado (fidelidade_ligada), e só o pago depois disso ganha. Numa rede [e2e]
+// própria, com o programa desligado de início.
+test.describe('o pago antes de o programa de fidelidade ser ligado não conta ponto (fidelidade.md)', () => {
+  let rede: OutraRede | null = null
+  let dona: MembroDeTeste | null = null
+  let proc = ''
+
+  test.beforeAll(async () => {
+    rede = await criarOutraRede(`fgl${marca}`)
+    dona = await criarMembro(`fgld${marca}`, { tenant: rede.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
+    proc = rede.procedureId
+  })
+
+  test.afterAll(async () => {
+    await dona?.limpar()
+    await rede?.limpar()
+  })
+
+  test('o pago antes de o programa ser ligado não conta ponto — a parcela de R$ 200 dá 200, não 400', async () => {
+    // O Heitor, 18/11: "se o programa é ligado no meio não conta ponto".
+    const b = db()
+    const { data: pac, error: eP } = await b.rpc('pacote_salvar', {
+      p_tenant: rede!.tenantId, p_id: null, p_nome: `${PREFIXO} Pacote no meio ${marca}`, p_preco: 400, p_validade: null, p_ativo: true,
+      p_itens: [{ procedure_id: proc, quantity: 2 }],
+      p_comissao: { venda: null, execucao: { tipo: 'NENHUMA', valor: null } },
+    })
+    expect(eP, 'criar o pacote').toBeNull()
+    const quem = await rede!.criarCliente('Programa ligado no meio')
+    // A fidelidade da rede ainda desligada: a entrada de R$ 200 entra paga.
+    expect((await b.from('loyalty_configs').select('id').eq('tenant_id', rede!.tenantId).eq('enabled', true)).data ?? []).toHaveLength(0)
+    const { data: cp, error: eV } = await b.rpc('pacote_vender', {
+      p_tenant: rede!.tenantId, p_cliente: quem, p_pacote: pac as string, p_unidade: rede!.branchId, p_ator: dona!.userId,
+      p_lancamentos: [
+        { amount: 200, payment_method: 'PIX', is_paid: true },
+        { amount: 200, payment_method: 'PIX', is_paid: false, parcela_numero: 1, parcela_total: 1 },
+      ],
+      p_sessoes: [{ procedure_id: proc, preco: 200 }, { procedure_id: proc, preco: 200 }],
+    })
+    expect(eV, 'vender no crediário').toBeNull()
+
+    // A rede liga o programa (1 ponto por R$ 1): o banco guarda quando.
+    expect((await b.from('loyalty_configs').upsert({ tenant_id: rede!.tenantId, enabled: true, earn_mode: 'POR_REAL', points_per_real: 1 }, { onConflict: 'tenant_id' })).error).toBeNull()
+    expect((await b.from('fidelidade_ligada').select('ligado_em').eq('tenant_id', rede!.tenantId).single()).data?.ligado_em).toBeTruthy()
+
+    // A parcela entra com o programa ligado.
+    const { data: parcela } = await b.from('financial_transactions').select('id')
+      .eq('client_package_id', cp as string).eq('is_paid', false).single<{ id: string }>()
+    expect((await b.from('financial_transactions').update({ is_paid: true, paid_at: new Date().toISOString() }).eq('id', parcela!.id)).error).toBeNull()
+
+    const { data: conta } = await b.from('loyalty_accounts').select('id').eq('client_id', quem).single<{ id: string }>()
+    const { data: linhas } = await b.from('loyalty_transactions').select('points, kind').eq('loyalty_account_id', conta!.id)
+    expect((linhas ?? []).map(l => [l.kind, Number(l.points)]), 'só a parcela paga com o programa ligado').toEqual([['GANHO', 200]])
   })
 })

@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import type { TenantContext } from '@estetica-os/types'
 import { NO_PERMISSIONS } from '@/lib/permissions'
+import * as nodeFs from 'node:fs'
+import * as nodePath from 'node:path'
 
 /**
  * CX2 (o plano de adaptação, aprovado pelo Heitor em 13/11: "Blz pode ser
@@ -65,5 +67,27 @@ describe('quem dá baixa no Financeiro (CX2)', () => {
       expect(corpo, f).toContain('Receber é de quem tem o PDV ou o Financeiro em Gerenciar.')
       expect(corpo, f).not.toContain('Receber é de quem tem o PDV no cargo.')
     }
+  })
+})
+
+describe('o Pagar da despesa sempre abre a janela (princípio 7)', () => {
+  const WEB = nodePath.join(__dirname, "..")
+  const ler = (caminho: string) => nodeFs.readFileSync(nodePath.join(WEB, caminho), "utf8")
+
+  // ─── o "Pagar" da despesa sempre abre a janela ────────────────────────
+  describe('o "Pagar" da despesa abre a janela, com a forma lançada já escolhida', () => {
+    it('a janela recebe a forma inicial', () => {
+      const j = ler('components/shared/pagar-despesa.tsx')
+      expect(j).toContain('formaInicial')
+      expect(j).toMatch(/useState\(\(\) => .*formaInicial/)
+    })
+    it('os dois financeiros abrem a janela para toda despesa', () => {
+      const unidade = ler('components/branch/financial-table.tsx')
+      const rede = ler('components/admin/admin-financial-view.tsx')
+      expect(unidade).not.toContain("tx.type === 'EXPENSE' && !tx.payment_method")
+      expect(rede).not.toContain("t.type === 'EXPENSE' && !t.payment_method")
+      expect(unidade).toContain('formaInicial={despesaAPagar.forma}')
+      expect(rede).toContain('formaInicial={despesaAPagar.forma}')
+    })
   })
 })

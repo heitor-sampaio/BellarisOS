@@ -666,6 +666,8 @@ export async function SessaoDeAtendimento({
         // D12 da 25ª: o plano da cliente é do Atendimento (os leitores pedem o
         // Atendimento em Ver) — sem ele, nada de "Planejamento" na sessão.
         podeVerPlanos={can(ctx, 'atendimento', 'VIEW')}
+        // D9 da 26ª: o "Enviar o link" da ficha de saúde é da Agenda em Gerenciar.
+        podeGerenciarAgenda={can(ctx, 'agenda', 'MANAGE')}
         isPackageSession={!!sessaoDePacote}
         pacoteDeFora={!!(sessaoDePacote as { client_packages?: { de_fora?: boolean | null } | null } | null)?.client_packages?.de_fora}
         // A7 da 18ª: a faixa "Sessão 1 de 6 do pacote …, já paga".

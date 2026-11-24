@@ -359,7 +359,8 @@ export function AppointmentSheet({ appointment, slug, vistaDela = false, podeGer
         {isActive && <DocumentosDaJanela appointmentId={appointment.id} slug={slug} />}
 
         {/* A ficha de pré-atendimento: pendente (com o link) ou respondida. */}
-        {isActive && <PreAtendimentoDoAgendamento appointmentId={appointment.id} slug={slug} podeMandar={!isProfessional} />}
+        {/* D9 da 26ª: mandar a ficha é da Agenda em Gerenciar (§9.4, envio manual) — quem só vê não vê o bloco. */}
+        {isActive && <PreAtendimentoDoAgendamento appointmentId={appointment.id} slug={slug} podeMandar={podeGerenciar && !isProfessional} />}
 
         {/* Ações de status */}
         {isActive && (

@@ -1,6 +1,6 @@
 import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
-import { criarMembro, type MembroDeTeste } from './apoio/sessao'
+import { criarMembro, type MembroDeTeste, type Permissao } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao, chamarAcaoComFormulario } from './apoio/acao-direta'
 
@@ -188,4 +188,156 @@ test('SM1: a tela de Cargos não tem o "Enxerga", e o escopo que chegar à actio
     await db().from('role_permissions').delete().eq('role_id', cargo!.id)
     await db().from('tenant_roles').delete().eq('id', cargo!.id)
   }
+})
+
+// Cada passo do atendimento, um módulo (o Heitor, 2026-11-23, UM1–UM5: "concordo"): escrever a
+// ficha de saúde na avaliação é do Prontuário em Gerenciar (quem só o vê, lê, e a tela diz por
+// quê); mandar a ficha é da Agenda em Gerenciar (atendimento.md, envio manual: "quem só vê a
+// agenda não vê o bloco nem abre nada"); e o plano de tratamento pede o Atendimento ao menos em
+// Ver — quem atende sem ele abre o atendimento DELA só como vista pessoal, sem o plano. Cada
+// recusa tem um CONTROLE (a mesma tela, quem tem a permissão). Numa rede [e2e] própria (a ficha
+// de saúde padrão nasce com obrigatórias).
+test.describe('no atendimento, cada passo pede o módulo dele: o clínico, o envio da ficha de saúde e o plano', () => {
+  const DIA = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date(Date.now() + 2 * 24 * 3600_000))
+
+  let R: OutraRede | null = null
+  const membros: MembroDeTeste[] = []
+  let soLeProntuario: MembroDeTeste
+  let escreveProntuario: MembroDeTeste
+  let agendaSoVe: MembroDeTeste
+  let agendaGerencia: MembroDeTeste
+  let semAtendimento: MembroDeTeste
+  let comAtendimento: MembroDeTeste
+  let emAndamento = ''
+  let concluido = ''
+  const NOME_AGENDADA = `Agendada pz${marca}`
+
+  async function como(browser: Browser, quem: MembroDeTeste, fn: (p: Page) => Promise<void>) {
+    const ctx = await browser.newContext({ storageState: quem.estado })
+    try { await fn(await ctx.newPage()) } finally { await ctx.close() }
+  }
+
+  async function membro(chave: string, permissoes: Permissao[], atendeEm?: string[]) {
+    const m = await criarMembro(`pz${chave}${marca}`, { tenant: R!.tenantId, rotulo: `Permissao ${chave}`, permissoes, atendeEm })
+    membros.push(m)
+    return m
+  }
+
+  async function agendamento(clienteId: string, status: 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED', quando: string, profissional = R!.professionalId) {
+    const extra = status === 'IN_PROGRESS' ? { started_at: new Date(Date.now() - 20 * 60_000).toISOString() }
+      : status === 'COMPLETED' ? { started_at: quando, completed_at: quando } : {}
+    const { data, error } = await db().from('appointments').insert({
+      branch_id: R!.branchId, client_id: clienteId, procedure_id: R!.procedureId, professional_id: profissional,
+      status, source: 'INTERNAL', scheduled_at: quando, duration_min: 30, price: 0, ...extra,
+    }).select('id').single<{ id: string }>()
+    expect(error, `criar o agendamento ${status}`).toBeNull()
+    return data!.id
+  }
+
+  test.beforeAll(async () => {
+    test.setTimeout(240_000)
+    R = await criarOutraRede(`pz${marca}`)
+
+    soLeProntuario    = await membro('le', [
+      { modulo: 'agenda', nivel: 'VIEW' }, { modulo: 'atendimento', nivel: 'MANAGE' }, { modulo: 'medical_records', nivel: 'VIEW' },
+    ])
+    escreveProntuario = await membro('escreve', [
+      { modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'atendimento', nivel: 'MANAGE' }, { modulo: 'medical_records', nivel: 'MANAGE' },
+    ])
+    agendaSoVe        = await membro('agv', [{ modulo: 'agenda', nivel: 'VIEW' }])
+    agendaGerencia    = await membro('agm', [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }])
+    // Atende, sem o Atendimento: a tela abre só como vista pessoal, no agendamento DELA (UM1, SM2).
+    semAtendimento    = await membro('sem', [
+      { modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'cashier', nivel: 'MANAGE' },
+      { modulo: 'atendimento', nivel: 'NONE' }, { modulo: 'medical_records', nivel: 'NONE' },
+    ], [R.branchId])
+    comAtendimento    = await membro('com', [
+      { modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'cashier', nivel: 'MANAGE' },
+      { modulo: 'atendimento', nivel: 'VIEW' }, { modulo: 'medical_records', nivel: 'NONE' },
+    ])
+
+    // A ficha de saúde da cliente NÃO respondida: a faixa do atendimento aparece.
+    const emAtendimento = await R.criarCliente('Em atendimento')
+    emAndamento = await agendamento(emAtendimento, 'IN_PROGRESS', new Date(Date.now() - 30 * 60_000).toISOString())
+    const atendida = await R.criarCliente('Atendida')
+    concluido = await agendamento(atendida, 'COMPLETED', new Date(Date.now() - 2 * 86_400_000).toISOString(), semAtendimento.userId)
+    const naAgenda = await R.criarCliente(NOME_AGENDADA)
+    await agendamento(naAgenda, 'SCHEDULED', new Date(`${DIA}T10:00:00-03:00`).toISOString())
+  })
+
+  test.afterAll(async () => {
+    for (const m of membros) await m.limpar()
+    await R?.limpar()
+  })
+
+  test.describe('escrever a ficha de saúde na avaliação é do Prontuário em Gerenciar: quem só o vê, lê', () => {
+    test('quem só vê o prontuário: sem campos, e a tela diz por quê', async ({ browser }) => {
+      await como(browser, soLeProntuario, async p => {
+        await p.goto(`/admin/agenda/${emAndamento}`)
+        const nota = p.locator('[data-clinico-so-leitura]')
+        await expect(nota).toBeVisible()
+        await expect(nota).toContainText('Só para ler')
+        await expect(nota).toContainText('pede o Prontuário em Gerenciar')
+        await expect(p.locator('[data-anamnese-geral]').first()).toBeVisible()
+        await expect(p.locator('[data-anamnese-geral]').locator('textarea, select, input[type="radio"], input[type="checkbox"]'),
+          'a ficha de saúde não abre campo para quem não a escreve').toHaveCount(0)
+      })
+    })
+    test('controle: quem escreve o prontuário ganha os campos, sem a nota', async ({ browser }) => {
+      await como(browser, escreveProntuario, async p => {
+        await p.goto(`/admin/agenda/${emAndamento}`)
+        await expect(p.locator('[data-anamnese-geral]').first()).toBeVisible()
+        await expect(p.locator('[data-anamnese-geral]').locator('textarea, select, input[type="radio"], input[type="checkbox"]').first()).toBeVisible()
+        await expect(p.locator('[data-clinico-so-leitura]')).toHaveCount(0)
+      })
+    })
+  })
+
+  test.describe('mandar a ficha de saúde é da Agenda em Gerenciar: quem só vê a agenda não vê o envio', () => {
+    test('no detalhe do agendamento: o bloco não aparece com a Agenda em Ver', async ({ browser }) => {
+      await como(browser, agendaSoVe, async p => {
+        await p.goto(`/admin/agenda?date=${DIA}`)
+        await p.locator(`[title*="${NOME_AGENDADA}"]`).first().click()
+        await expect(p.getByRole('dialog').first()).toBeVisible()
+        await expect(p.locator('[data-pre-atendimento-do-agendamento]')).toHaveCount(0)
+        await expect(p.getByRole('button', { name: 'Enviar a ficha' })).toHaveCount(0)
+      })
+    })
+    test('controle: com a Agenda em Gerenciar, o "Enviar a ficha" está lá', async ({ browser }) => {
+      await como(browser, agendaGerencia, async p => {
+        await p.goto(`/admin/agenda?date=${DIA}`)
+        await p.locator(`[title*="${NOME_AGENDADA}"]`).first().click()
+        await expect(p.locator('[data-pre-atendimento-do-agendamento]').getByRole('button', { name: 'Enviar a ficha' })).toBeVisible()
+      })
+    })
+    test('na faixa do atendimento: sem a Agenda em Gerenciar, sem o "Enviar o link"', async ({ browser }) => {
+      await como(browser, soLeProntuario, async p => {
+        await p.goto(`/admin/agenda/${emAndamento}`)
+        await expect(p.locator('[data-ficha-nao-respondida]')).toBeVisible()
+        await expect(p.locator('[data-enviar-o-link-da-ficha]')).toHaveCount(0)
+      })
+      await como(browser, escreveProntuario, async p => {
+        await p.goto(`/admin/agenda/${emAndamento}`)
+        await expect(p.locator('[data-ficha-nao-respondida]')).toBeVisible()
+        await expect(p.locator('[data-enviar-o-link-da-ficha]'), 'controle: com a Agenda em Gerenciar').toBeVisible()
+      })
+    })
+  })
+
+  test.describe('o plano de tratamento no atendimento pede o Atendimento ao menos em Ver', () => {
+    test('na vista pessoal, sem o Atendimento, o atendimento concluído DELA não mostra o cartão "Tratamento"', async ({ browser }) => {
+      await como(browser, semAtendimento, async p => {
+        await p.goto(`/admin/agenda/${concluido}`)
+        await expect(p.getByText('Atendida').first()).toBeVisible()
+        await expect(p.locator('[data-editor-do-tratamento]')).toHaveCount(0)
+        await expect(p.getByRole('button', { name: 'Nova sessão' })).toHaveCount(0)
+      })
+    })
+    test('controle: com o Atendimento em Ver, o cartão está lá', async ({ browser }) => {
+      await como(browser, comAtendimento, async p => {
+        await p.goto(`/admin/agenda/${concluido}`)
+        await expect(p.locator('[data-editor-do-tratamento]').first()).toBeVisible()
+      })
+    })
+  })
 })

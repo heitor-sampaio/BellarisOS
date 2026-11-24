@@ -2,6 +2,7 @@ import 'server-only'
 import { formatBRL } from '@estetica-os/utils'
 import type { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
+import { fusoValido } from '@/lib/unidades/fuso'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -28,6 +29,8 @@ export interface AvulsoDoPlano {
   procedimento: string
   scheduledAt:  string
   preco:        number
+  /** D4 da 26ª: o fuso da unidade do agendamento — a hora sai no relógio dela. */
+  fuso?:        string
 }
 
 type SessaoLida = { appointment_id: string | null; treatment_plan_session_procedures: { procedure_id: string; price: number | null; procedures: { name: string } | null }[] | null }
@@ -78,12 +81,12 @@ export async function avulsosDoPlano(admin: Admin, tenantId: string, planId: str
   const procs = [...new Set((plano.treatment_plan_sessions ?? []).flatMap(s => (s.treatment_plan_session_procedures ?? []).map(x => x.procedure_id)))]
   if (!procs.length) return []
   const ags = await ler(admin.from('appointments')
-    .select('id, scheduled_at, price, procedures(name), branches!inner(tenant_id)')
+    .select('id, scheduled_at, price, procedures(name), branches!inner(tenant_id, fuso)')
     .eq('client_id', plano.client_id).eq('branches.tenant_id', tenantId).is('treatment_plan_id', null)
     .in('procedure_id', procs).in('status', ['SCHEDULED', 'CONFIRMED', 'ARRIVED'])
     .gte('scheduled_at', new Date(Date.now() - 12 * 3_600_000).toISOString())
     .order('scheduled_at').limit(20), 'buscar os agendamentos avulsos da cliente') as unknown as {
-      id: string; scheduled_at: string; price: number | null; procedures: { name: string } | null
+      id: string; scheduled_at: string; price: number | null; procedures: { name: string } | null; branches: { fuso: string | null } | null
     }[] | null
   if (!ags?.length) return []
   const ids = ags.map(a => a.id)
@@ -94,6 +97,7 @@ export async function avulsosDoPlano(admin: Admin, tenantId: string, planId: str
   const pagos = new Set([...(deP ?? []), ...(dePP ?? [])].map(x => x.appointment_id))
   return ags.filter(a => !pagos.has(a.id)).map(a => ({
     id: a.id, procedimento: a.procedures?.name ?? 'Procedimento', scheduledAt: a.scheduled_at, preco: Number(a.price ?? 0),
+    ...(a.branches?.fuso ? { fuso: fusoValido(a.branches.fuso) } : {}),
   }))
 }
 
@@ -103,5 +107,6 @@ const quando = (iso: string, fuso = 'America/Sao_Paulo') => new Date(iso).toLoca
 
 /** "Bioestimulador agendado à parte em 03/11 às 16:00 (R$ 1.800,00)". */
 export function textoDoAvulso(a: AvulsoDoPlano, fuso?: string): string {
-  return `${a.procedimento} agendado à parte em ${quando(a.scheduledAt, fuso)} (${formatBRL(a.preco)})`
+  // D4 da 26ª: no relógio da unidade do agendamento, quando se sabe qual.
+  return `${a.procedimento} agendado à parte em ${quando(a.scheduledAt, a.fuso ?? fuso)} (${formatBRL(a.preco)})`
 }

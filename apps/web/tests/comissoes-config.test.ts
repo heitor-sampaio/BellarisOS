@@ -2,9 +2,13 @@ import { describe, it, expect } from 'vitest'
 import {
   configDaLinha, CONFIG_PADRAO, EntradaDaConfigDeComissao, EntradaDasTaxas, EntradaDasRegras,
   EntradaDaComissaoDoProcedimento, rotuloDaComissaoDoProcedimento,
+  TAXA_DO_PROCEDIMENTO, taxaDoProcedimento, descontaTaxaDaEscolha, rotuloDaTaxaDoProcedimento,
   regraAplicavel, rotuloDaRegra, linhasDaComissao, precoDaSessaoDePacote, rotuloDaBase,
   type RegraDeComissao, type TaxaDePagamento,
 } from '@/lib/comissoes/config'
+import * as nodeFs from 'node:fs'
+import * as nodePath from 'node:path'
+import { estadoInicialDaComissao, entradaDaComissao } from '@/components/admin/comissao-do-procedimento'
 
 // O VALOR da comissão e a taxa da maquininha são conta do banco
 // (`comissao_alvo`, `comissao_taxa_pct`) — provados em e2e/comissoes-calculo.
@@ -190,5 +194,67 @@ describe('rotuloDaBase com os pontos (A10)', () => {
   it('com a taxa descontada e sobre o preço, diz que os pontos ficam', () => {
     expect(rotuloDaBase({ desconta_taxa: true, desconta_insumos: true, base_com_pontos: 'PRECO' }))
       .toBe('base sem a taxa da maquininha e sem os insumos (os pontos e o voucher usados não saem dela)')
+  })
+})
+
+describe('Descontar a taxa da maquininha por procedimento (o Heitor, 18/11, ao item 11: "ok")', () => {
+  const WEB = nodePath.join(__dirname, "..")
+  const MIGRATIONS = nodePath.join(WEB, "..", "..", "supabase", "migrations")
+  const ler = (caminho: string) => nodeFs.readFileSync(nodePath.join(WEB, caminho), "utf8")
+  const sp = (s: string | null | undefined) => s?.replace(/\s/g, " ") ?? null
+  const migrations = () => nodeFs.readdirSync(MIGRATIONS).filter(f => f.endsWith(".sql")).sort()
+  /** A migration mais nova que mexe no que o trecho diz. */
+  const ultimaCom = (trecho: string) => {
+    const achou = migrations().filter(f => nodeFs.readFileSync(nodePath.join(MIGRATIONS, f), "utf8").includes(trecho))
+    return achou.length ? { nome: achou.at(-1)!, sql: nodeFs.readFileSync(nodePath.join(MIGRATIONS, achou.at(-1)!), "utf8") } : null
+  }
+
+  // ─── "Descontar a taxa da maquininha" por procedimento (o Heitor, 18/11: "ok") ──
+  // O Heitor, 18/11, ao item 11: "ok".
+  describe('Como a rede, Desconta a taxa ou Não desconta', () => {
+    it('três escolhas, e "Como a rede" é o padrão (o nulo)', () => {
+      expect(TAXA_DO_PROCEDIMENTO.map(o => o.label)).toEqual(['Como a rede', 'Desconta a taxa', 'Não desconta'])
+      expect([taxaDoProcedimento(null), taxaDoProcedimento(true), taxaDoProcedimento(false)]).toEqual(['REDE', 'SIM', 'NAO'])
+      expect([descontaTaxaDaEscolha('REDE'), descontaTaxaDaEscolha('SIM'), descontaTaxaDaEscolha('NAO')]).toEqual([null, true, false])
+    })
+    it('"Como a rede" diz o que a rede faz hoje', () => {
+      expect(rotuloDaTaxaDoProcedimento('REDE', true)).toBe('Como a rede: hoje a comissão sai da base sem a taxa da maquininha.')
+      expect(rotuloDaTaxaDoProcedimento('REDE', false)).toBe('Como a rede: hoje a comissão sai da base cheia, sem descontar a taxa.')
+      expect(rotuloDaTaxaDoProcedimento('SIM', false)).toBe('Neste procedimento a comissão sai da base sem a taxa da maquininha, seja qual for a regra da rede.')
+      expect(rotuloDaTaxaDoProcedimento('NAO', true)).toBe('Neste procedimento a comissão sai da base cheia, seja qual for a regra da rede.')
+    })
+    it('a entrada leva a escolha, e recusa o que não é uma das três', () => {
+      expect(EntradaDaComissaoDoProcedimento.safeParse({ modo: 'GERAL', geral: { tipo: 'PERCENTAGE', valor: 10 }, descontaTaxa: 'NAO' }).success).toBe(true)
+      expect(EntradaDaComissaoDoProcedimento.safeParse({ modo: 'POR_PROFISSIONAL', profissionais: [], descontaTaxa: 'SIM' }).success).toBe(true)
+      expect(EntradaDaComissaoDoProcedimento.safeParse({ modo: 'POR_PROFISSIONAL', profissionais: [], descontaTaxa: 'TALVEZ' }).success).toBe(false)
+      const dados = { geral: { tipo: 'PERCENTAGE' as const, valor: 10 }, porProfissional: [], profissionais: [], descontaTaxa: false, redeDescontaTaxa: true }
+      const e = estadoInicialDaComissao(dados)
+      expect(e.taxa).toBe('NAO')
+      const r = entradaDaComissao({ ...e, taxa: 'SIM' }, [])
+      expect('entrada' in r && r.entrada.descontaTaxa).toBe('SIM')
+      expect(estadoInicialDaComissao({ ...dados, descontaTaxa: null }).taxa).toBe('REDE')
+    })
+    it('a gravação passa a escolha à função do banco, e a tela lê a do procedimento e a da rede', () => {
+      expect(ler('lib/comissoes/gravacao.ts')).toMatch(/p_desconta_taxa:\s*entrada\.descontaTaxa \?\? null/)
+      expect(ler('app/_shared/catalogo-de-procedimentos.tsx')).toMatch(/desconta_taxa/)
+      expect(ler('components/admin/comissao-do-procedimento.tsx')).toMatch(/ariaLabel="Descontar a taxa da maquininha neste procedimento"/)
+    })
+    it('o banco retrata a escolha na linha do atendimento, e a função grava só pela Admin (a action)', () => {
+      const m = ultimaCom('p_desconta_taxa')
+      expect(m, 'nenhuma migration grava a escolha do procedimento').not.toBeNull()
+      expect(m!.nome >= '20261130100001').toBe(true)
+      const s = sp(m!.sql)!
+      expect(s).toMatch(/alter table public\.procedures add column if not exists desconta_taxa boolean/)
+      expect(s).toMatch(/before insert on public\.commission_lines/)
+      expect(s).toMatch(/new\.procedure_id is not null and new\.appointment_id is not null/)
+      expect(s).toMatch(/drop function if exists public\.comissao_do_procedimento_definir\(uuid, uuid, jsonb, jsonb, uuid\)/)
+      expect(s).toMatch(/revoke execute on function public\.comissao_do_procedimento_definir\(uuid, uuid, jsonb, jsonb, uuid, text\) from public, anon, authenticated/)
+      expect(m!.sql).toContain('create or replace function pg_temp.trocar_no_corpo')
+      expect(m!.sql.trim().endsWith("notify pgrst, 'reload schema';")).toBe(true)
+    })
+    it('comissoes.md diz a regra e cita o "ok"', () => {
+      const t = sp(nodeFs.readFileSync(nodePath.join(WEB, '..', '..', 'docs', 'regras', 'comissoes.md'), 'utf8'))!
+      expect(t).toMatch(/taxa da maquininha por procedimento[^]*o Heitor, 18\/11, ao item 11: "ok"/)
+    })
   })
 })

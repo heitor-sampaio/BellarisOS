@@ -114,5 +114,7 @@ export async function gravarComissaoDoProcedimento(ctx: TenantContext, procedime
     p_geral: entrada.modo === 'GERAL' ? entrada.geral : null,
     p_profissionais: entrada.modo === 'POR_PROFISSIONAL' ? entrada.profissionais : [],
     p_ator: ctx.internalUserId ?? null,
+    // "Descontar a taxa da maquininha" do procedimento (item 11, 26ª): ausente, não muda.
+    p_desconta_taxa: entrada.descontaTaxa ?? null,
   }), 'salvar a comissão do procedimento')
 }

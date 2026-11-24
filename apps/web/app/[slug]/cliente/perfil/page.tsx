@@ -9,14 +9,8 @@ import { getMyDataRequests } from '@/actions/lgpd'
 import { ler } from '@/lib/db'
 import { iniciaisDoNome } from '@estetica-os/utils'
 import { KeyRound } from 'lucide-react'
+import { documentoDoPerfil } from '@/lib/clientes/textos-do-app'
 import Link from 'next/link'
-
-function maskCpf(cpf: string | null) {
-  if (!cpf) return '—'
-  const d = cpf.replace(/\D/g, '')
-  if (d.length !== 11) return cpf
-  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9, 11)}`
-}
 
 export default async function ClientProfilePage() {
   const ctx = await getTenantContext()
@@ -25,7 +19,7 @@ export default async function ClientProfilePage() {
   const admin = createAdminClient()
   const data = await ler(admin
     .from('clients')
-    .select('name, email, phone, document, birth_date, gender, zip_code, address, address_number, address_complement, neighborhood, city, state')
+    .select('name, email, phone, document, documento_tipo, documento_numero, birth_date, gender, zip_code, address, address_number, address_complement, neighborhood, city, state')
     .eq('id', ctx.clientId!)
     .single(), 'buscar o cliente')
 
@@ -34,6 +28,8 @@ export default async function ClientProfilePage() {
     email:              string | null
     phone:              string | null
     document:           string | null
+    documento_tipo:     string | null
+    documento_numero:   string | null
     birth_date:         string | null
     gender:             string | null
     zip_code:           string | null
@@ -50,6 +46,8 @@ export default async function ClientProfilePage() {
 
   const dataRequests = await getMyDataRequests()
 
+  // A36 da 26ª: sem CPF, o passaporte ou o RNE (CLAUDE.md §5).
+  const documento = documentoDoPerfil(client)
   const genderMap: Record<string, string> = { M: 'Masculino', F: 'Feminino', O: 'Outro' }
 
   return (
@@ -100,7 +98,7 @@ export default async function ClientProfilePage() {
           <Dica rotulo="Como alterar estes dados">Para alterar esses dados, fale com a equipe.</Dica>
         </p>
         <div className="card" style={{ padding: '4px 22px' }}>
-          <StaticRow label="CPF"              value={maskCpf(client.document)} />
+          <StaticRow label={documento.rotulo} value={documento.valor} />
           {client.birth_date && (
             <StaticRow
               label="Data de nascimento"

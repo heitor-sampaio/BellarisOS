@@ -19,8 +19,9 @@ import { DashboardEmptyState } from '@/components/shared/dashboard-empty-state'
 import { format, differenceInDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { getClientesParaReativarDoRecorte } from '@/lib/metrics/unidade'
-import { startOfDayTZ, endOfDayTZ, startOfMonthTZ, addMonthsTZ, addDaysTZ, monthKeyTZ, naParede, horaNoFuso } from '@/lib/datetime'
-import { fusoDaUnidade, fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
+import { startOfDayTZ, endOfDayTZ, startOfMonthTZ, addMonthsTZ, addDaysTZ, monthKeyTZ, naParede } from '@/lib/datetime'
+import { fusoDaUnidade, fusoDaRede, fusosDasUnidades } from '@/lib/unidades/fuso-da-unidade'
+import { horaNaUnidadeDele } from '@/lib/unidades/hora-da-unidade'
 import {
   resolvePeriod, delta, occupancyPct,
   getCore, getSeries, getTopProcedures, getTicketMedio, EMPTY_CORE,
@@ -98,6 +99,8 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   const now = new Date()
   // O relógio da unidade (F62): o "hoje", o mês e os 6 meses saem nele.
   const fuso = await fusoDaUnidade(ctx.tenantId, branchId)
+  // D3 da 26ª: o dela em OUTRA unidade, na "Agenda de hoje", diz a hora no relógio de lá.
+  const fusos = await fusosDasUnidades(ctx.tenantId)
   const admin = createAdminClient()
 
   const perm = ctx.permissions
@@ -629,10 +632,13 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
                 const daUnidade = (a as { branch_id?: string }).branch_id ?? branchId
                 const outraUnidade = daUnidade !== branchId ? (nomeDaUnidade.get(daUnidade) ?? 'outra unidade') : null
                 const isLast    = i === Math.min(validToday.length, 5) - 1
+                // D3 da 26ª (princípio 3): a hora no relógio da unidade dele, e o relógio quando não é o desta.
+                const hora      = horaNaUnidadeDele(a.scheduled_at, fusos[daUnidade] ?? fuso, fuso)
                 return (
                   <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 20px', borderBottom: isLast ? 'none' : '1px solid var(--hairline)' }}>
-                    <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 800, color: 'var(--brand)', minWidth: 38, flexShrink: 0 }}>
-                      {horaNoFuso(a.scheduled_at, fuso)}
+                    <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 800, color: 'var(--brand)', minWidth: 38, flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
+                      {hora.hora}
+                      {hora.relogio && <span data-relogio-do-cartao style={{ fontSize: 'var(--text-overline)', fontWeight: 600, color: 'var(--text-muted)' }}>{hora.relogio}</span>}
                     </span>
                     {client && <Avatar name={client.name} size={32} />}
                     <div style={{ flex: 1, minWidth: 0 }}>

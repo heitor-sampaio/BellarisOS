@@ -37,6 +37,21 @@ recompensas, igual (`salvarConfigFidelidade` e `salvarRecompensa` passam por
   são vários lançamentos — cada um dá o alvo do atendimento na proporção do
   que já foi pago, menos o que já foi dado; o procedimento com pontos fixos
   não os dá duas vezes.
+  **O pago com o programa DESLIGADO não conta** (D12 da 26ª; o Heitor, 18/11:
+  "se o programa é ligado no meio não conta ponto"): a entrada de R$ 200 paga
+  antes de a rede ligar a fidelidade entrava no "já pago" e a parcela de
+  R$ 200 dava 400 pontos. O banco guarda quando o programa foi ligado
+  (`fidelidade_ligada`, pelo gatilho da config: nasceu ligada ou passou de
+  desligada a ligada; o passado, pela Auditoria da config — migration
+  `20261130100004`), e nos quatro ramos cumulativos o alvo e o "já deu"
+  contam só os pagamentos desde então (`paid_at`; o estorno, pelo pagamento
+  que ele estornou): a parcela dá 200. Religado depois de desligar, a conta
+  recomeça do novo "ligado em" — o período ligado de antes já deu os pontos
+  dele, e o intervalo desligado não conta. **No modo "por procedimento"** o
+  alvo segue proporcional (decisão do Claude, 26ª, princípio 3): os pontos ×
+  a parte paga com o programa ligado ÷ o total — o pacote de 10 pontos pago
+  metade antes de ligar dá 5. Prova: `e2e/fidelidade-ganho.spec.ts`,
+  `tests/fidelidade-config.test.ts`.
 - **Os números com fração da configuração** (pontos por R$ 1, valor de 1
   ponto até 4 casas, teto em %) leem como o dinheiro: `parseDecimal`
   (`@estetica-os/utils`, o `parseDinheiro` com N casas). O ambíguo ("0.012")

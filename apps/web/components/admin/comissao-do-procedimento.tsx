@@ -11,6 +11,7 @@ import { salvarComissaoDoProcedimento } from '@/actions/comissoes'
 import { CampoDeValor, paraNumero, paraTexto } from '@/components/admin/comissao-do-membro'
 import {
   rotuloDaComissaoDoProcedimento, rotuloDaRegra, type RegraDeComissao, type TipoDeRegra,
+  TAXA_DO_PROCEDIMENTO, taxaDoProcedimento, rotuloDaTaxaDoProcedimento, type TaxaDoProcedimento,
 } from '@/lib/comissoes/config'
 
 /**
@@ -19,6 +20,10 @@ import {
  * profissional" são as exceções da Equipe vistas pelo procedimento — quem fica
  * no "Padrão" segue a comissão padrão dele. A geral vence tudo, e salvá-la
  * tira os valores por profissional.
+ *
+ * "Descontar a taxa da maquininha" (o Heitor, 18/11, ao item 11: "ok"):
+ * "Como a rede" (o padrão), "Desconta a taxa" ou "Não desconta" — a escolha
+ * vale para as comissões dos atendimentos deste procedimento.
  *
  * Dois lugares, o MESMO editor (`EditorDeComissao`): o chip da tabela, que
  * abre uma janela só dela, e o modal de criar/editar procedimento, que grava
@@ -37,6 +42,10 @@ export interface DadosDaComissao {
   geral:           Pick<RegraDeComissao, 'tipo' | 'valor'> | null
   porProfissional: ValorPorProfissional[]
   profissionais:   ProfissionalDaComissao[]
+  /** A escolha do procedimento (`procedures.desconta_taxa`; nulo = como a rede). */
+  descontaTaxa:     boolean | null
+  /** O que a rede faz hoje (Configurações → Comissões e taxas), para o "Como a rede" dizer. */
+  redeDescontaTaxa: boolean
 }
 
 export interface EstadoDaComissao {
@@ -44,11 +53,12 @@ export interface EstadoDaComissao {
   tipo:   TipoDeRegra
   valor:  string
   linhas: Record<string, { tipo: TipoDaLinha; valor: string }>
+  taxa:   TaxaDoProcedimento
 }
 
 export type EntradaDaComissao =
-  | { modo: 'GERAL'; geral: { tipo: TipoDeRegra; valor: number } }
-  | { modo: 'POR_PROFISSIONAL'; profissionais: ValorPorProfissional[] }
+  | { modo: 'GERAL'; geral: { tipo: TipoDeRegra; valor: number }; descontaTaxa: TaxaDoProcedimento }
+  | { modo: 'POR_PROFISSIONAL'; profissionais: ValorPorProfissional[]; descontaTaxa: TaxaDoProcedimento }
 
 const MODOS = [
   { key: 'GERAL',            label: 'A mesma para todos' },
@@ -60,8 +70,9 @@ const TIPOS = [
 ]
 const TIPOS_DA_LINHA = [{ key: 'PADRAO', label: 'Padrão' }, ...TIPOS]
 
-export function estadoInicialDaComissao({ geral, porProfissional, profissionais }: DadosDaComissao): EstadoDaComissao {
+export function estadoInicialDaComissao({ geral, porProfissional, profissionais, descontaTaxa }: DadosDaComissao): EstadoDaComissao {
   return {
+    taxa:  taxaDoProcedimento(descontaTaxa),
     modo:  geral ? 'GERAL' : 'POR_PROFISSIONAL',
     tipo:  geral?.tipo ?? 'PERCENTAGE',
     valor: geral ? paraTexto(geral.valor) : '',
@@ -84,7 +95,7 @@ export function entradaDaComissao(
   }
   if (estado.modo === 'GERAL') {
     const v = lerValor(estado.tipo, estado.valor, 'da comissão geral')
-    return typeof v === 'string' ? { erro: v } : { entrada: { modo: 'GERAL', geral: { tipo: estado.tipo, valor: v } } }
+    return typeof v === 'string' ? { erro: v } : { entrada: { modo: 'GERAL', geral: { tipo: estado.tipo, valor: v }, descontaTaxa: estado.taxa } }
   }
   const lista: ValorPorProfissional[] = []
   for (const p of profissionais) {
@@ -94,16 +105,18 @@ export function entradaDaComissao(
     if (typeof v === 'string') return { erro: v }
     lista.push({ professional_id: p.id, tipo: l.tipo, valor: v })
   }
-  return { entrada: { modo: 'POR_PROFISSIONAL', profissionais: lista } }
+  return { entrada: { modo: 'POR_PROFISSIONAL', profissionais: lista, descontaTaxa: estado.taxa } }
 }
 
 const ajuda = { fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 } as const
 
 /** O editor: o modo, a geral e a linha de cada profissional. Controlado. */
-export function EditorDeComissao({ estado, onChange, profissionais, inicialComValor }: {
+export function EditorDeComissao({ estado, onChange, profissionais, inicialComValor, redeDescontaTaxa }: {
   estado:          EstadoDaComissao
   onChange:        (e: EstadoDaComissao) => void
   profissionais:   ProfissionalDaComissao[]
+  /** O que a rede faz hoje com a taxa (o "Como a rede" diz). */
+  redeDescontaTaxa: boolean
   /** Quantos tinham valor próprio ao abrir: a geral os apaga, e a tela avisa. */
   inicialComValor: number
 }) {
@@ -164,6 +177,16 @@ export function EditorDeComissao({ estado, onChange, profissionais, inicialComVa
           })}
         </div>
       )}
+
+      {/* Item 11 da 26ª: a taxa da maquininha deste procedimento. */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-semibold)', color: 'var(--text)', margin: 0 }}>
+          Taxa da maquininha
+        </p>
+        <SegSelect ariaLabel="Descontar a taxa da maquininha neste procedimento" value={estado.taxa}
+          onSelect={k => mudar({ taxa: k as TaxaDoProcedimento })} options={TAXA_DO_PROCEDIMENTO.map(o => ({ ...o }))} />
+        <p style={ajuda} data-taxa-do-procedimento={estado.taxa}>{rotuloDaTaxaDoProcedimento(estado.taxa, redeDescontaTaxa)}</p>
+      </div>
     </div>
   )
 }
@@ -220,7 +243,7 @@ function Janela({ procedimento, dados, onFechar }: {
         </div>
 
         <EditorDeComissao estado={estado} onChange={setEstado} profissionais={dados.profissionais}
-          inicialComValor={dados.porProfissional.length} />
+          inicialComValor={dados.porProfissional.length} redeDescontaTaxa={dados.redeDescontaTaxa} />
 
         {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)', margin: 0 }}>{erro}</p>}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>

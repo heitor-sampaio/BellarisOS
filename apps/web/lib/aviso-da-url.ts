@@ -16,6 +16,9 @@ export const AVISOS_DA_URL = {
   'setup-da-rede':  'A configuração inicial da rede é só da Admin da rede. Você está no painel.',
   // A14 da 13ª (F70): "?unidade=" no portal de uma unidade abria esta, calado.
   'filtro-de-unidade': 'Aqui é o portal desta unidade: para ver outra, troque de unidade no menu ou use o portal da rede.',
+  // A21 da 26ª: a aba de Relatórios fora da permissão abria outra, calada (lib/relatorios/aba-pedida).
+  'aba-de-relatorio': 'Essa aba de Relatórios não está na sua permissão. Você está na primeira que ela abre.',
+  'aba-de-relatorio-inexistente': 'Essa aba de Relatórios não existe. Você está na primeira que a sua permissão abre.',
 } as const
 
 export type ChaveDoAviso = keyof typeof AVISOS_DA_URL

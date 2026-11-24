@@ -39,6 +39,15 @@ export async function fusoDoRecorte(tenantId: string | null | undefined, branchI
   return fusoComum(escolhidas.map(b => b.fuso))
 }
 
+/**
+ * O fuso de cada unidade da rede (o id → o fuso), ativas e desativadas: a
+ * hora de cada registro no relógio da unidade dele (26ª simulação).
+ */
+export async function fusosDasUnidades(tenantId: string | null | undefined): Promise<Record<string, string>> {
+  if (!tenantId) return {}
+  return Object.fromEntries((await fusosDaRede(tenantId)).map(b => [b.id, b.fuso]))
+}
+
 /** O fuso da rede: o das unidades ativas, se é um só; senão, o de Brasília. */
 export const fusoDaRede = (tenantId: string | null | undefined) => fusoDoRecorte(tenantId, null)
 

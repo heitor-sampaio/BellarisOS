@@ -8,7 +8,6 @@ import { gruposDaAuditoria } from '@/lib/auditoria/frase'
 import { OPERACOES, type FiltrosDaAuditoria } from '@/lib/auditoria/tipos'
 import { PeriodSelector, type Period } from '@/components/admin/period-selector'
 import { Dica } from '@/components/shared/dica'
-import { NotaDoFuso } from '@/components/shared/fuso'
 
 /**
  * A tela da Auditoria (CF3a, docs/revisao.md — o Heitor, 2026-11-13: "queria
@@ -68,8 +67,7 @@ export async function TelaDaAuditoria({
             O texto clínico nunca aparece aqui.
             {minhas !== null && ' Você vê o que aconteceu nas suas unidades.'}
           </Dica>
-          {/* D2 da 23ª: o relógio das horas, fora do de Brasília (princípio 3). */}
-          <NotaDoFuso fuso={fuso} />
+          {/* O relógio das horas vai em cada linha (D6 da 26ª: cada uma no fuso da unidade dela). */}
         </div>
         <a href={`/api/auditoria/csv${params({})}`} className="btn-ghost" data-auditoria-csv
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 'var(--altura-controle)' }}>
@@ -126,7 +124,11 @@ export async function TelaDaAuditoria({
           </div>
           {linhas.map(l => (
             <div key={l.id} data-linha-da-auditoria className="auditoria-linha">
-              <span className="auditoria-quando">{l.quando}</span>
+              <span className="auditoria-quando">
+                {l.quando}
+                {/* D6 da 26ª: cada linha no relógio da unidade dela, dito fora do de Brasília (princípio 3). */}
+                {l.relogio && <span data-relogio-da-linha style={{ display: 'block', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', fontWeight: 'var(--weight-semibold)' }}>{l.relogio}</span>}
+              </span>
               <span className="auditoria-quem" data-tipo-de-ator={l.tipoDeAtor}>{l.quem}</span>
               <div className="auditoria-o-que">
                 <span data-frase-da-auditoria>{l.href

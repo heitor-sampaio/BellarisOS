@@ -59,12 +59,13 @@ import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { recusaDaEntradaAcimaDoTotal } from '@/lib/checkout/entrada'
 import { parcelasEmTexto } from '@/lib/checkout/resumo-do-pagamento'
 import { avisoDoMenor, ehMenorDeIdade, linhaDoResponsavel, type ResponsavelLegal } from '@/lib/clients/menor'
-import { textoDoRegistroTravado } from '@/lib/atendimento/registro-travado'
+import { textoDoRegistroTravado, TEXTO_DO_CLINICO_SO_LEITURA } from '@/lib/atendimento/registro-travado'
 import { TEXTO_DA_SESSAO_NA_DESISTENCIA } from '@/lib/atendimento/desistencia'
 import { lotesDaBaixa, textoDosLotesDaBaixa, type LoteParaBaixa, type ParteDaBaixa } from '@/lib/estoque/fefo'
 import { textoDoPlanoDoConcluido } from '@/lib/plano-de-tratamento/textos'
 import { mesDeClienteDesde } from '@/lib/clientes/cliente-desde'
 import { textoDaSessaoDoPacote } from '@/lib/appointments/sessao-do-pacote'
+import { textoDoPagamentoAoFinalizar, textoDoPacoteNoConcluido } from '@/lib/atendimento/pagamento-ao-finalizar'
 import { linhaDoInsumo, type UnidadesDoProduto } from '@/lib/estoque/unidade-de-consumo'
 import { useAgora } from '@/lib/use-agora'
 import { atrasoDoInicio } from '@/lib/appointments/inicio-adiantado'
@@ -249,6 +250,8 @@ interface Props {
    * não mostra o "Planejamento" (os leitores do plano recusariam).
    */
   podeVerPlanos?:        boolean
+  /** D9 da 26ª: mandar a ficha de saúde (o link) é da Agenda em Gerenciar (§9.4, envio manual). */
+  podeGerenciarAgenda?:  boolean
   /** A35 da 12ª: quem recebe e não estorna — a quem pedir o estorno (os nomes de quemDesfazNoCaixa). */
   quemEstorna?:          string[] | null
   /**
@@ -435,20 +438,6 @@ function CancelModal({ appointmentId, slug, onClose, desistencia = null }: {
       </div>
     </JanelaModal>
   )
-}
-
-/**
- * De onde vem o pagamento, dito na janela do "Finalizar" (J-40, 2026-10-30).
- * Dizia sempre "O pagamento será confirmado pela recepcionista" — também na
- * sessão do plano já pago, ao lado do "Nada a cobrar agora" do plano.
- */
-function textoDoPagamentoAoFinalizar(t: { plano: boolean; pacote: boolean; pacoteDeFora?: boolean; prePago: boolean; semCobranca: boolean }): string {
-  if (t.plano)       return 'Sessão do plano de tratamento: o pagamento é o do plano, nada a receber neste atendimento.'
-  if (t.pacote && t.pacoteDeFora) return 'Sessão do pacote trazido de fora: já paga antes do sistema, nada a receber.'
-  if (t.pacote)      return 'Sessão de pacote: paga na venda do pacote, nada a receber.'
-  if (t.prePago)     return 'Procedimento pré-pago: pago na venda, nada a receber.'
-  if (t.semCobranca) return 'Sem cobrança: atendimento de R$ 0,00.'
-  return 'O pagamento é recebido no PDV.'
 }
 
 // Modal 1: Profissional confirma conclusão clínica (sem pagamento)
@@ -1084,7 +1073,7 @@ export function AppointmentSession({
   professionals, history, branchId, slug,
   canCheckin, canManage, ehDaProfissional = false, canEditRecords, canViewRecords = true, fotosDoAtendimento = null, anotacoes = null, versoesDoRegistro = [], podeAnotar = false, portalNoPlano = false, canReassign, canPayment, isProfessional, paymentTransaction, pagamentoEstornado = null, comandaId = null,
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
-  isPartOfPlan = false, isPackageSession = false, pacoteDeFora = false, sessaoDoPacote = null, isPrePago = false, podeReceber = false, quemEstorna = null, quemRecebe = null, quemConclui = null, quemMarcaAChegada = null, podeEstornar = false, planoEmAberto = null, documentos = null, podeMontarPlano = true, montaPlanoNaUnidade = false, podeInjetaveis = true, podeVerPlanos = false,
+  isPartOfPlan = false, isPackageSession = false, pacoteDeFora = false, sessaoDoPacote = null, isPrePago = false, podeReceber = false, quemEstorna = null, quemRecebe = null, quemConclui = null, quemMarcaAChegada = null, podeEstornar = false, planoEmAberto = null, documentos = null, podeMontarPlano = true, montaPlanoNaUnidade = false, podeInjetaveis = true, podeVerPlanos = false, podeGerenciarAgenda = false,
 }: Props) {
   const router   = useRouter()
   // Portal de onde se está vendo o atendimento — `slug` é o endereço da
@@ -1293,7 +1282,7 @@ export function AppointmentSession({
   const temAcaoPrincipal     = mostraChegarEIniciar || mostraCheckin || mostraIniciar || mostraFinalizar || aReceber
   const isDone    = ['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(status)
   // 15ª A7: a ficha de saúde nunca respondida (só para quem vê o clínico, antes de concluir).
-  const avisoDaFichaNao = canViewRecords && !isDone ? avisoDaFichaNaoRespondida(nomeParaSaudar(client.name), anamnesis, fichaPreAtendimento.rows) : null
+  const avisoDaFichaNao = canViewRecords && !isDone ? avisoDaFichaNaoRespondida(nomeParaSaudar(client.name), anamnesis, fichaPreAtendimento.rows, anamneseDigitada) : null
   // A36 da 24ª: o bloco do plano diz, antes do clique, o que falta na ficha de saúde.
   const avisoDoPlanoPelaFicha = canViewRecords && appointment.status !== 'COMPLETED'
     ? avisoDaFichaParaOPlano(fichaPreAtendimento.rows, anamneseNaTela?.respostas ?? {})
@@ -1302,6 +1291,13 @@ export function AppointmentSession({
   const age       = calcAge(client.birthDate)
   // Somente BRANCH_ADMIN e NETWORK_ADMIN podem desbloquear edição pós-conclusão
   const editLocked = isDone && !isUnlocked
+  // A3 da 26ª (princípio 3): digitando, o campo do planejador guarda só a ligação
+  // ({ planejamento: { id, nome: '' }, points: [] }); o retrato (o nome e os pontos)
+  // o servidor tira ao concluir. Sem remontar, a ficha lida mostrava o estado
+  // digitado — "Planejamento sem nome / Nenhum ponto marcado" — até recarregar.
+  // Concluído, ela remonta com o que foi gravado, e o rascunho não vale mais.
+  const chaveDaFicha = !isDone && fichaDoRascunho ? 'rascunho' : `gravada-${status}`
+  const respostasIniciaisDaFicha = !isDone && fichaDoRascunho ? fichaDoRascunho : respostasDaFicha
   // Corrigir o concluído: o Prontuário em Gerenciar (`canEditRecords`).
   const registroTravado = textoDoRegistroTravado(status, canEditRecords)
 
@@ -1585,8 +1581,8 @@ export function AppointmentSession({
             ref={fichaRef}
             appointmentId={appointment.id} slug={slug}
             formName={ficha.name} rows={ficha.rows}
-            key={fichaDoRascunho ? 'rascunho' : 'gravada'}
-            initial={(fichaDoRascunho ?? respostasDaFicha) as AnamnesisAnswers} canEdit={canEditRecords}
+            key={chaveDaFicha}
+            initial={respostasIniciaisDaFicha as AnamnesisAnswers} canEdit={canEditRecords}
             saveAction={salvarFicha}
             hideSaveButton={unified}
             semInjetaveis={!podeInjetaveis}
@@ -1615,8 +1611,8 @@ export function AppointmentSession({
           ref={fichaRef}
           appointmentId={appointment.id} slug={slug}
           formName={ficha.name} rows={ficha.rows}
-          key={fichaDoRascunho ? 'rascunho' : 'gravada'}
-          initial={(fichaDoRascunho ?? respostasDaFicha) as AnamnesisAnswers} canEdit={canEditRecords && !editLocked}
+          key={chaveDaFicha}
+          initial={respostasIniciaisDaFicha as AnamnesisAnswers} canEdit={canEditRecords && !editLocked}
           saveAction={salvarFicha}
           semInjetaveis={!podeInjetaveis}
           onAnswersChange={setFichaDigitada}
@@ -1755,7 +1751,7 @@ export function AppointmentSession({
           anamnese={anamneseDigitada}
           ficha={fichaDigitada}
           // A8 da 20ª: a quem não recebe, a janela diz também quem recebe (e se é só a rede).
-          pagamento={textoDoPagamentoAoFinalizar({ plano: isPartOfPlan, pacote: isPackageSession, pacoteDeFora, prePago: isPrePago, semCobranca })
+          pagamento={textoDoPagamentoAoFinalizar({ plano: isPartOfPlan, pacote: isPackageSession, pacoteDeFora, prePago: isPrePago, semCobranca, pacoteEmAberto: sessaoDoPacote?.emAberto })
             + (quemRecebe && !isPartOfPlan && !isPackageSession && !isPrePago && !semCobranca ? ` ${textoDeQuemRecebe(quemRecebe.nomes, { soDaRede: quemRecebe.soDaRede })}` : '')}
           onClose={() => setShowFinish(false)}
           // A36: a dose do mapa de injetáveis (o da ficha, na tela ou salvo) × a baixa.
@@ -2027,7 +2023,7 @@ export function AppointmentSession({
                     Responder aqui
                   </button>
                 )}
-                {!isProfessional && (
+                {!isProfessional && podeGerenciarAgenda && (
                   <button type="button" data-enviar-o-link-da-ficha className="btn-secondary" style={{ fontSize: 'var(--text-sm-sz)' }}
                     aria-expanded={linkDaFichaAberto} onClick={() => setLinkDaFichaAberto(v => !v)}>
                     Enviar o link
@@ -2035,7 +2031,7 @@ export function AppointmentSession({
                 )}
               </span>
             </div>
-            {linkDaFichaAberto && <PreAtendimentoDoAgendamento appointmentId={appointment.id} slug={slug} podeMandar={!isProfessional} />}
+            {linkDaFichaAberto && <PreAtendimentoDoAgendamento appointmentId={appointment.id} slug={slug} podeMandar={podeGerenciarAgenda && !isProfessional} />}
           </div>
         )}
 
@@ -2280,10 +2276,8 @@ export function AppointmentSession({
                     Pagamento realizado no checkout do plano de tratamento.
                   </p>
                 ) : isPackageSession ? (
-                  <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)' }}>
-                    {pacoteDeFora
-                      ? 'Sessão do pacote trazido de fora — já paga antes do sistema, nada a receber.'
-                      : 'Sessão de pacote — paga na venda do pacote.'}
+                  <p data-pagamento-do-pacote style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)' }}>
+                    {textoDoPacoteNoConcluido({ deFora: pacoteDeFora, emAberto: sessaoDoPacote?.emAberto })}
                   </p>
                 ) : isPrePago ? (
                   <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)' }}>
@@ -2452,28 +2446,40 @@ export function AppointmentSession({
                     </div>
                   )}
                   {renderFichaCard()}
-                  <TreatmentPlanEditor
+                  {/* D10 da 26ª: o plano só existe para quem tem o Atendimento (§9.4, PT2). */}
+                  {podeVerPlanos && <TreatmentPlanEditor
                     appointmentId={appointment.id} slug={slug}
                     procedures={treatmentProcedures} servicePackages={treatmentPackages}
                     existingPlan={existingPlan} procedureProductsMap={procedureProductsMap}
                     availableProducts={availableProducts}
-                  />
+                  />}
                   {/* Os insumos de HOJE continuam até concluir (D8): gerar o plano não
                       encerra o atendimento, e quem usou outra dose corrige aqui. */}
                   {canManage && <InsumoCard key={versaoDosInsumos} {...insumoProps} />}
-                  <ObservacoesCard
+                  {/* D8 da 26ª: a evolução é prontuário — só com ele, e escrita só por quem escreve o clínico. */}
+                  {canViewRecords && <ObservacoesCard
                     notes={notes}
                     intercurrences={intercurrences}
                     onNotesChange={setNotes}
                     onIntercurrencesChange={setIntercurrences}
-                    readonly={editLocked}
-                  />
+                    readonly={editLocked || !canEditRecords}
+                  />}
                 </>
               )
 
               // Plano ainda não gerado → formulário unificado
               return (
                 <>
+                  {/* D8 da 26ª: quem vê o prontuário e não o escreve lê — e a tela diz por quê. */}
+                  {canViewRecords && !canEditRecords && !editLocked && (
+                    <p data-clinico-so-leitura role="note" style={{
+                      display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 12px', borderRadius: 'var(--radius-field-token)',
+                      background: 'var(--bg-app)', border: '1px solid var(--hairline)', color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)',
+                    }}>
+                      <Lock size={14} aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
+                      <span>{TEXTO_DO_CLINICO_SO_LEITURA}</span>
+                    </p>
+                  )}
                   {/* As dores são prontuário (D3): sem o módulo, nem aparecem. */}
                   {canViewRecords && <DorasCard
                     value={evalComplaints}
@@ -2484,7 +2490,8 @@ export function AppointmentSession({
 
                   {/* Registro bloqueado (concluído): a anamnese se LÊ, não abre
                       em branco com as obrigatórias marcadas (A30). */}
-                  {editLocked ? (
+                  {/* D8 da 26ª: sem escrever o clínico, também se LÊ (era o formulário editável, e o digitado se perdia). */}
+                  {(editLocked || !canEditRecords) ? (
                     canViewRecords && <AnamneseGeralCartao anamnese={anamnesis} fichaAtual={fichaPreAtendimento} clientId={client.id} canEdit={false} />
                   ) : (
                     // A31 da 6ª simulação: sem o prontuário a anamnese nem é lida
@@ -2496,7 +2503,8 @@ export function AppointmentSession({
 
                   {fichaNaAvaliacao}
 
-                  <TreatmentPlanEditor
+                  {/* D10 da 26ª: o editor do plano só com o Atendimento ao menos em Ver (§9.4: o plano só existe para quem o tem). */}
+                  {podeVerPlanos && <TreatmentPlanEditor
                     appointmentId={appointment.id} slug={slug}
                     ref={evalEditorRef}
                     branchId={branchId}
@@ -2510,7 +2518,7 @@ export function AppointmentSession({
                     // A anotação clínica do plano é do Prontuário (PT2).
                     podeAnotar={canEditRecords}
                     onPlanChange={(_items, notes) => setEvalPlanNotes(notes)}
-                  />
+                  />}
 
                   {/* O que foi USADO hoje. O formulário da avaliação não tinha
                       onde lançar: a profissional lançava no editor do plano e o

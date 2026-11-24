@@ -141,6 +141,25 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   "Sobre o preço", ou "base sem os pontos e o voucher usados…" no "Sobre o valor
   pago" (`rotuloDaBase` com `base_com_pontos`). No extrato vale o retrato da
   linha (`comissoes_extrato_linhas` devolve `base_com_pontos`), em TODA origem.
+  **A taxa da maquininha por procedimento**
+  (o Heitor, 18/11, ao item 11: "ok"): no cadastro do procedimento, junto da
+  comissão dele, "Taxa da maquininha" tem três escolhas — "Como a rede" (o padrão: vale o
+  `desconta_taxa` acima), "Desconta a taxa" e "Não desconta". Mora em
+  `procedures.desconta_taxa` (nulo = como a rede; todo procedimento que já
+  existia nasce assim, e nenhuma conta muda) e se grava com a comissão do
+  procedimento, na mesma função (`comissao_do_procedimento_definir`,
+  `p_desconta_taxa`) — configuração da rede, só da Admin da rede, como a
+  comissão do procedimento. A tela diz o que vale: no "Como a rede", o que a
+  rede faz hoje (`rotuloDaTaxaDoProcedimento`). A linha de comissão do
+  ATENDIMENTO do procedimento (o avulso e as sessões de pacote, plano e
+  pré-pago: com `appointment_id` e `procedure_id`) nasce com a escolha dele
+  retratada em `desconta_taxa` (gatilho `trg_comissao_linha_taxa_do_procedimento`,
+  migration `20261130100005`); a conta no banco e o extrato ("base sem a
+  taxa…" / "base cheia") leem esse retrato, como sempre. A linha que já
+  existe fica como está; a comissão de VENDA (sem atendimento) segue a escolha
+  da rede — é a de quem vende, não a do procedimento (decisão do Claude, 26ª).
+  Prova: `tests/comissoes-config.test.ts` e
+  `e2e/comissoes-calculo.spec.ts`.
   **A escolha da rede vale em toda comissão** (item 10 das correções da
   auditoria das regras — decisão do Claude pelos princípios 2 e 3,
   2026-11-18; era "só no avulso: no pacote, no plano e nas vendas os pontos
@@ -212,6 +231,24 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   (`private.comissao_base_do_pagamento`, em `comissoes_extrato_com_regra`;
   migration `20261118300002`). O resto segue a conta da linha. A conta da
   comissão não mudou. Prova: `tests/pdv-caixa-da-18.test.ts`.
+  **Cada lançamento com o RETRATO da base** (decisão do Claude, 26ª,
+  princípio 3): toda linha é INTEGRAL, e a liberação se conta com a venda
+  inteira (a taxa média de todas as formas, os pontos e o voucher de todos os
+  pagamentos) — a "base do pagamento" de um só mostraria a taxa da última
+  parcela ao lado de um valor contado com todas. Por isso o lançamento NOVO
+  guarda, ao nascer (`private.comissao_acertar_linha`), o que o extrato mostra
+  da base: `commissions.base_retrato` com o preço, o %, a base, o desconto, os
+  pontos e o voucher, a taxa, os insumos e o fator de `comissao_conta_detalhe`
+  naquele instante — a conta que deu o valor dele. O ESTORNO retrata a base da
+  liberação que ele desfaz (a última liberação da linha). Vale para todo tipo
+  (avulso, pacote, plano, pré-pago e produto). O extrato
+  (`comissoes_extrato_com_regra`) e o CSV, que sai dele, usam o retrato quando
+  existe; sem ele — o lançamento de antes da migration `20261130100006`, ou a
+  linha cancelada, sem base —, a conta de hoje, e no avulso ligado a um
+  pagamento a D5 acima. Nada se recalcula. O retrato só se grava ao nascer:
+  fica fora da frase da Auditoria (o gatilho lista colunas só na edição).
+  Prova: `tests/comissoes-extrato-texto.test.ts` e
+  `e2e/comissoes-calculo.spec.ts`.
   **O pagamento em várias formas é UM pagamento** (D1 da 18ª, 2026-11-16;
   migration `20261121000001`): as formas nascem na mesma transação (o mesmo
   `created_at`) e a base do pagamento soma os descontos e os pontos delas; a
@@ -401,8 +438,21 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     É `private.comissao_conta` (o total do pacote é `price − valor_cancelado`,
     e a linha `PACOTE_VENDA` leva o fator `(price − valor_cancelado) ÷ price`
     no valor e no previsto; migration `20261101000252`).
+  - **O acerto do cancelamento é UM, com o dinheiro do fim** (D11 da 26ª;
+    decisão do Claude, princípio 3): o pacote e o plano cancelados acertavam
+    antes de o dinheiro mexer — a linha contava como quitada pelo cartão que
+    o mesmo cancelamento ia estornar ("Liberação — Cancelamento do pacote" de
+    R$ 71,63 = 15% de R$ 477,50, ao lado de "base R$ 500,00 · taxa 0,00"), e
+    o gatilho do pagamento acertava de novo a cada mexida (−R$ 71,63, +R$ 75,00).
+    Agora, enquanto o dinheiro do cancelamento mexe, a marca da transação
+    `bellaris.comissao_adiada` faz o gatilho (`private.comissoes_do_pagamento`)
+    pular a venda; no fim, o cancelamento acerta todas as linhas dela uma vez,
+    com o motivo "Cancelamento do pacote"/"do plano", ligado ao lançamento que
+    gravou agora (o "usado": o `comissao.liberada` segue saindo). O valor e o
+    detalhe do extrato contam a mesma conta. Os lançamentos de antes ficam
+    (migration `20261130100002`).
   - Prova: `e2e/comissoes-pacote.spec.ts`, `e2e/pacote-cancelar.spec.ts` (o
-    cancelamento).
+    cancelamento), `e2e/comissoes-calculo.spec.ts`, `tests/comissoes-base-efetiva.test.ts`.
 - **A comissão de VENDA do PLANO de tratamento** (decisão 4 da 7ª simulação,
   2026-11-05 — o Heitor: "concordo"; o Paulo vendeu o plano de R$ 3.672 e não
   ganhou nada, e o pacote tinha a dele). Configurações → Comissões → "Venda de
@@ -756,6 +806,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
 ❌ Gravar em commissions fora de comissao_acertar_linha, ou calcular valor de comissão no TypeScript (a conta é comissao_alvo)
 ❌ Mostrar o preço da linha (commission_lines.preco) como "base", ou refazer a base no TypeScript — é a de comissao_conta_detalhe (comissoes_extrato_com_base — D3 da 10ª); mudou a conta, muda nela (comissao_conta lê dela)
 ❌ Dizer no lançamento de um pagamento a base de outro (o pagamento de hoje): é a do pagamento dele (private.comissao_base_do_pagamento — D5 da 18ª)
+❌ Mostrar no lançamento com retrato a base de hoje: é a do base_retrato, gravado ao nascer (o estorno, o da liberação que desfaz — 26ª)
 ❌ Escrever no lançamento antigo a base de HOJE (o fator do cancelamento que veio depois dele): é a da hora do lançamento (private.comissao_fator_em — D7 da 11ª)
 ❌ Liberar comissão sobre o que a cliente ainda deve à rede (crediário, avulso sem pagamento) — só com o pagamento integral; o cartão em N vezes JÁ é pago
 ❌ Criar linha de comissão em outro modo que não INTEGRAL (o gatilho trg_comissao_linha_integral garante), ou reescrever o modo de uma linha antiga

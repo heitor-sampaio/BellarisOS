@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync, existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { formatBRL } from '@estetica-os/utils'
+import * as nodeFs from 'node:fs'
+import * as nodePath from 'node:path'
 
 /**
  * As pendências das simulações 15ª–23ª na área do PDV, do financeiro, do
@@ -163,5 +165,19 @@ describe('A32 da 15ª: o "Tornar ativo" do contrato pede confirmação', () => {
     expect(f).toContain('BotaoComConfirmacao')
     expect(f).toContain('confirmacaoDeTornarAtivo(')
     expect(existsSync(join(__dirname, '..', 'lib', 'documentos', 'tornar-ativo.ts'))).toBe(true)
+  })
+})
+
+describe('a lista de insumos do procedimento é a dos INSUMOS (E2 do Bloco Estoque, atendimento.md)', () => {
+  const WEB = nodePath.join(__dirname, "..")
+  const ler = (caminho: string) => nodeFs.readFileSync(nodePath.join(WEB, caminho), "utf8")
+
+  // ─── a lista de insumos vazia fala de insumo ──────────────────────────
+  describe('"Nenhum insumo cadastrado"', () => {
+    it('o procedimento sem insumo no estoque não diz que não há produto', () => {
+      const f = ler('components/admin/procedure-form.tsx')
+      expect(f).toContain('Nenhum insumo cadastrado no estoque ainda.')
+      expect(f).not.toContain('Nenhum produto cadastrado no estoque ainda.')
+    })
   })
 })

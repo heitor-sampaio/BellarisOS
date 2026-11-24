@@ -50,14 +50,22 @@ export function faltaNaFichaDoProcedimento(
  * princípios 3 e 7): o "Finalizar" barra pelas obrigatórias dela, e a tela só
  * avisava da ficha vencida. Diz quantas obrigatórias faltam, para responder
  * ali ou mandar o link antes. Nula com a ficha respondida ou sem pergunta.
+ *
+ * A5 da 26ª (princípio 3): a contagem lia a ficha GRAVADA — digitando aqui,
+ * seguia "4 obrigatórias". Com `naTela` (as respostas digitadas), conta o
+ * que ainda falta nela, e some quando nada obrigatório falta (o Finalizar
+ * leva as respostas e não barra).
  */
 export function avisoDaFichaNaoRespondida(
   nome: string, anamnese: AnamneseGeral | null | undefined, rows: AnamnesisRow[],
+  naTela?: Record<string, unknown> | null,
 ): string | null {
   const respostas = anamnese?.respostas ?? {}
   if (anamneseRespondida(anamnese)) return null
   if (!rows.some(r => (r.fields ?? []).some(f => f.type !== 'section' && !TIPOS_FORA_DO_PRE_ATENDIMENTO.includes(f.type)))) return null
-  const n = rotulosQueFaltamNaAnamnese(rows, respostas).length
+  const digitou = !!naTela && Object.keys(naTela).length > 0
+  const n = rotulosQueFaltamNaAnamnese(rows, digitou && naTela ? naTela : respostas).length
+  if (digitou && n === 0) return null
   const quem = nome || 'quem está sendo atendido'
   return `A ficha de saúde de ${quem} ainda não foi respondida${n ? ` (${n} obrigatória${n > 1 ? 's' : ''})` : ''}.`
 }

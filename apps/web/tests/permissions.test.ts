@@ -5,6 +5,8 @@ import {
   resolveReportTabs, ALL_REPORT_TABS, REPORT_TAB_LABELS, REPORT_TAB_HINTS,
 } from '@/lib/permissions'
 import { MODULE_GROUPS, LEVEL_COPY } from '@/lib/permissions-copy'
+import * as nodeFs from 'node:fs'
+import * as nodePath from 'node:path'
 
 describe('hasLevel', () => {
   it('trata módulo sem linha como NONE', () => {
@@ -124,5 +126,32 @@ describe('resolveReportTabs', () => {
       expect(REPORT_TAB_LABELS[t]).toBeTruthy()
       expect(REPORT_TAB_HINTS[t]).toBeTruthy()
     }
+  })
+})
+
+describe('a matriz de Cargos diz a regra de agora (plataforma.md, Equipe e Cargos)', () => {
+  const ler = (f: string) => nodeFs.readFileSync(nodePath.resolve(__dirname, '..', f), 'utf8')
+
+  describe('a Equipe dá só o cargo que não passa do próprio, e Cargos é só da Admin da rede', () => {
+    it('nada de "cargo mais poderoso" nem de "conceder a si mesmo"', async () => {
+      const copy = ler('lib/permissions-copy.ts')
+      expect(copy).not.toContain('mais poderoso que o próprio')
+      expect(copy).not.toContain('conceder a si mesmo')
+      const { LEVEL_COPY } = await import('@/lib/permissions-copy')
+      expect(LEVEL_COPY.roles.MANAGE).toMatch(/só da Admin da rede/)
+      expect(LEVEL_COPY.team.MANAGE).toMatch(/não passe do (seu|próprio)/)
+    })
+  })
+
+  describe('o resumo do cargo não promete o que a abrangência não dá', () => {
+    it('"Na rede" é de quem tem a rede inteira, e a configuração da rede só se vê', async () => {
+      const { notaDoResumoDaRede } = await import('@/lib/permissions-copy')
+      const nota = notaDoResumoDaRede(['Dashboard', 'Agenda', 'Notificações', 'Anúncios', 'Templates', 'Automações'], ['Dashboard', 'Agenda'])
+      expect(nota).toMatch(/“A rede inteira”/)
+      expect(nota).toMatch(/Notificações, Templates e Automações/)
+      expect(nota).toMatch(/só da Admin da rede/)
+      expect(notaDoResumoDaRede(['Dashboard', 'Agenda'], ['Dashboard', 'Agenda'])).toBeNull()
+      expect(ler('components/admin/roles-editor.tsx')).toContain('data-resumo-da-rede')
+    })
   })
 })

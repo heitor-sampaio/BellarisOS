@@ -110,12 +110,19 @@ export function csvDoExtrato(
   linhas: LancamentoDoExtrato[], nomes: Map<string, string>, unidades: Map<string, string>, fuso?: string,
   /** A17 da 22ª: os pagamentos das comissões (os fechamentos), com o estornado — o extrato só dizia a situação final. */
   fechamentos: readonly Fechamento[] = [],
+  /**
+   * D7 da 26ª (F62b): o fuso de cada unidade (o id → o fuso). Cada linha sai no
+   * relógio da unidade DELA; sem o mapa (ou a unidade nele), `fuso`. Os
+   * pagamentos (os fechamentos) seguem em `fuso`, o da rede (D12, D3 da 23ª).
+   */
+  fusos?: ReadonlyMap<string, string>,
 ): string {
   // A8 da 21ª (princípio 3): a ligação do estorno com a liberação que ele desfaz
   // (a da tela, `vinculosDoExtrato`) e as linhas na ordem do tempo, com a hora —
   // "desfaz a liberação das 13:45" só se acha com a hora de cada linha.
-  const hora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: fuso ?? 'America/Sao_Paulo' })
-  const vinculos = vinculosDoExtrato(linhas, hora)
+  const hora = (iso: string, f = fuso) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: f ?? 'America/Sao_Paulo' })
+  const fusoDe = (l: Pick<LancamentoDoExtrato, 'branchId'>) => fusos?.get(l.branchId) ?? fuso
+  const vinculos = vinculosDoExtrato(linhas, (iso, l) => hora(iso, l ? fusoDe(l) : fuso))
   const quando = (l: LancamentoDoExtrato) => new Date(l.releasedAt).getTime()
   const emOrdem = linhas.map((l, i) => ({ l, i })).sort((a, b) => quando(a.l) - quando(b.l) || a.i - b.i).map(x => x.l)
   // A20 da 23ª (princípio 3): "Desconto 0,00" com o voucher de R$ 30 parecia erro — a coluna é o
@@ -123,8 +130,8 @@ export function csvDoExtrato(
   const tabela = [
     ['Lançamento', 'Hora', 'Profissional', 'Unidade', 'Atendimento', 'Cliente', 'Procedimento', 'Origem', 'Preço', 'Desconto que saiu da base', 'Pontos e voucher que saíram da base', 'Taxa da maquininha', 'Insumos', 'Proporção que ficou', 'Base', 'O que saiu da base', 'Regra', 'Tipo', 'Motivo', 'Ligação', 'Valor', 'Previsto', 'Situação', 'Pago em'],
     ...emOrdem.map(l => [
-      // As datas no dia da unidade (F62b).
-      dia(l.releasedAt, fuso), hora(l.releasedAt), nomes.get(l.professionalId) ?? '', unidades.get(l.branchId) ?? '', dia(l.scheduledAt, fuso),
+      // As datas no dia da unidade DA LINHA (F62b; D7 da 26ª).
+      dia(l.releasedAt, fusoDe(l)), hora(l.releasedAt, fusoDe(l)), nomes.get(l.professionalId) ?? '', unidades.get(l.branchId) ?? '', dia(l.scheduledAt, fusoDe(l)),
       l.cliente ?? '', l.procedimento ?? '', origemDoLancamento(l),
       // A17 da 25ª (princípio 3): os pontos e o voucher não são desconto — cada um na sua coluna.
       reais(l.preco), l.preco == null ? '' : reais(l.baseDesconto - fidelidadeDaBase(l)),
@@ -136,7 +143,7 @@ export function csvDoExtrato(
       TIPO[l.kind], l.motivo ?? '', vinculos.get(l.id) ?? '',
       l.amount.toFixed(2).replace('.', ','), l.previsto == null ? '' : l.previsto.toFixed(2).replace('.', ','), situacaoDoLancamento(l),
       // A21 da 10ª: com o pagamento parcial, o dia em que CADA lançamento foi pago.
-      l.pagoEm ? dia(l.pagoEm, fuso) : '',
+      l.pagoEm ? dia(l.pagoEm, fusoDe(l)) : '',
     ]),
   ]
   // A17 da 22ª (princípio 3): o pagamento estornado e pago de novo aparece — cada
@@ -162,9 +169,12 @@ export function csvDoExtrato(
  * primeira. O estorno se liga à liberação do MESMO pagamento (`transacaoId`;
  * sem ela — o estorno sem lançamento, ou a liberação da conclusão, D3 da 20ª
  * —, a do mesmo atendimento e valor), e a liberação seguinte do mesmo
- * atendimento é "de novo". `hora` escreve a hora no fuso da unidade.
+ * atendimento é "de novo". `hora` escreve a hora no fuso da unidade — D7 da
+ * 26ª: recebe a linha citada, para o relógio da unidade DELA.
  */
-export function vinculosDoExtrato(linhas: readonly LancamentoDoExtrato[], hora: (iso: string) => string): Map<string, string> {
+export function vinculosDoExtrato(
+  linhas: readonly LancamentoDoExtrato[], hora: (iso: string, linha?: LancamentoDoExtrato) => string,
+): Map<string, string> {
   const vinculos = new Map<string, string>()
   const quando = (l: LancamentoDoExtrato) => new Date(l.releasedAt).getTime()
   const estornos = linhas.filter(l => l.kind === 'ESTORNO')
@@ -185,14 +195,14 @@ export function vinculosDoExtrato(linhas: readonly LancamentoDoExtrato[], hora: 
       .sort((a, b) => quando(b) - quando(a))[0]
     if (!alvo) continue
     desfeitas.add(alvo.id)
-    vinculos.set(e.id, `desfaz a liberação das ${hora(alvo.releasedAt)}`)
+    vinculos.set(e.id, `desfaz a liberação das ${hora(alvo.releasedAt, alvo)}`)
   }
   for (const l of liberacoes) {
     if (desfeitas.has(l.id) || !l.appointmentId) continue
     const antes = estornos
       .filter(e => e.appointmentId === l.appointmentId && vinculos.has(e.id) && quando(e) <= quando(l))
       .sort((a, b) => quando(b) - quando(a))[0]
-    if (antes) vinculos.set(l.id, `de novo, depois do estorno das ${hora(antes.releasedAt)}`)
+    if (antes) vinculos.set(l.id, `de novo, depois do estorno das ${hora(antes.releasedAt, antes)}`)
   }
   return vinculos
 }

@@ -28,6 +28,7 @@ import { bloqueioNoDia, type BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
 import { useAgora } from '@/lib/use-agora'
 import { useFuso } from '@/components/shared/fuso'
 import { naParede, isoNaParede, fusoLocal } from '@/lib/datetime'
+import { horaNaUnidadeDele, comORelogio } from '@/lib/unidades/hora-da-unidade'
 import { ROTULO_DO_STATUS } from '@/lib/agenda/rotulo-do-status'
 
 type ViewMode = 'dia' | 'semana' | 'mes'
@@ -98,6 +99,14 @@ export function ProfessionalAgendaView({
   })), [eventosDoServidor, fuso])
   const bloqueios = useMemo(() => bloqueiosDoServidor.map(b => ({ ...b, inicio: isoNaParede(b.inicio, fuso)!, fim: isoNaParede(b.fim, fuso)! })), [bloqueiosDoServidor, fuso])
   const ocupadoFora = useMemo(() => ocupadoForaDoServidor.map(b => ({ ...b, inicio: isoNaParede(b.inicio, fuso)! })), [ocupadoForaDoServidor, fuso])
+  // D3 da 26ª (princípio 3): o dela em OUTRA unidade fica no instante certo da
+  // grade (o relógio deste portal), mas a HORA escrita é a da unidade dele — a
+  // que a agenda de lá mostra —, com o relógio quando não é o desta tela:
+  // "18:55 (horário de Cuiabá)". Era 19:55 aqui e 18:55 lá, sem aviso.
+  const horaDeFora = useMemo(() => new Map(eventosDoServidor
+    .filter(e => e.unidade && e.fusoDaUnidade)
+    .map(e => [e.id, horaNaUnidadeDele(e.start, e.fusoDaUnidade, fuso)] as const)), [eventosDoServidor, fuso])
+  const horaDoCartao = (ev: CalendarEvent) => horaDeFora.get(ev.id) ?? { hora: format(parseISO(ev.start), 'HH:mm') /* parede */, relogio: null }
   const today  = useMemo(() => naParede(new Date(), fuso), [fuso])
   // A26 da 12ª: o "agora" do destaque anda com o relógio (de 30 em 30 s). A tela
   // aberta na véspera congelava o dia e a hora: às 00:3x ela ainda dizia
@@ -358,7 +367,7 @@ export function ProfessionalAgendaView({
                   {heroEvent.ev.clientName}
                 </p>
                 <p style={{ fontSize: 'var(--text-xs-sz)', color: 'rgba(255,255,255,0.75)', marginTop: 2, overflowWrap: 'anywhere' }}>
-                  {format(parseISO(heroEvent.ev.start) /* parede */, 'HH:mm')} · {heroEvent.ev.procedureName}
+                  {comORelogio(horaDoCartao(heroEvent.ev))} · {heroEvent.ev.procedureName}
                 </p>
               </>
             ) : (
@@ -511,7 +520,8 @@ export function ProfessionalAgendaView({
                 const st     = STATUS_COLORS[ev.status] ?? STATUS_COLORS['SCHEDULED']!
                 const top    = evTop(ev)
                 const height = evHeight(ev)
-                const time   = format(parseISO(ev.start), 'HH:mm') // parede
+                const hora   = horaDoCartao(ev)
+                const time   = comORelogio(hora)
                 const isIP   = ev.status === 'IN_PROGRESS'
                 // 23ª A24: UM desenho de cartão — o curto (menos de 1 h, até 72 px:
                 // A24 da 8ª) é o mesmo compactado, com o selo do status e o da
@@ -537,8 +547,13 @@ export function ProfessionalAgendaView({
                       {/* Linha de cima: hora · duração · status · menor · unidade (este encolhe com reticências — A8 da 13ª). */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', minWidth: 0 }}>
                         <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: isIP ? 'var(--brand)' : 'var(--text)', letterSpacing: '-0.01em', flexShrink: 0 }}>
-                          {time}
+                          {hora.hora}
                         </span>
+                        {hora.relogio && (
+                          <span data-relogio-do-cartao style={{ fontSize: 'var(--text-overline)', fontWeight: 600, color: 'var(--text-muted)', flexShrink: 0 }}>
+                            ({hora.relogio})
+                          </span>
+                        )}
                         <span style={{ fontSize: 'var(--text-overline)', fontWeight: 600, color: 'var(--text-faint)', flexShrink: 0 }}>
                           · {ev.durationMin}min
                         </span>
@@ -684,7 +699,7 @@ export function ProfessionalAgendaView({
                       border: '1px solid var(--border)', borderLeft: `3.5px solid ${st.dot}`, background: 'var(--surface)',
                     }}>
                       <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: 'var(--text)' }}>
-                        {format(parseISO(ev.start), 'HH:mm') /* parede */}
+                        {comORelogio(horaDoCartao(ev))}
                       </span>
                       <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', overflowWrap: 'anywhere' }}>{ev.clientName}</span>
                       <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', overflowWrap: 'anywhere' }}>{ev.procedureName}</span>

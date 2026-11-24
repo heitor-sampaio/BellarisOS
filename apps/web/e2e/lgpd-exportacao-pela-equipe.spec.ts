@@ -99,3 +99,102 @@ test('sem o Prontuário em Gerenciar não inclui o prontuário; quem só vê nã
   })
   expect((await pedidos()).length, 'nenhum pedido novo').toBe(antes)
 })
+
+// A ficha do procedimento é gravada como { formId, name, rows, answers }, e o pacote a leva
+// legível: pergunta e resposta, o mapa de injetáveis em palavras (o planejamento, os pontos,
+// o produto e a quantidade), a foto como "Foto anexada" (o caminho, com ids, não vai), e a
+// versão de antes com a ficha DELA. Nada de "[object Object]". Numa rede [e2e] própria.
+test.describe('o pacote da LGPD leva a ficha do procedimento legível, pergunta a pergunta (princípio 3)', () => {
+  let rede: OutraRede | null = null
+  let equipe: MembroDeTeste | null = null
+  let cliente = ''
+
+  const ROWS = [
+    { id: 'r1', fields: [{ id: 'area', type: 'text', label: 'Área tratada' }] },
+    { id: 'r2', fields: [{ id: 'mapa', type: 'injectable_map', label: 'Mapa de aplicação', options: ['Toxina'] }] },
+    { id: 'r3', fields: [{ id: 'foto', type: 'photo', label: 'Foto de antes' }] },
+  ]
+  const FICHA = {
+    formId: null, name: 'Ficha da toxina', rows: ROWS,
+    answers: {
+      area: 'Testa',
+      mapa: {
+        view: 'rosto_f', planejamento: { id: '00000000-0000-0000-0000-000000000001', nome: 'Toxina testa' }, retratoEm: new Date().toISOString(),
+        points: [
+          { x: 0.4, y: 0.2, product: 'Toxina', dose: 2, unit: 'U', applied: null, regiao: 'Frontal' },
+          { x: 0.5, y: 0.2, product: 'Toxina', dose: 2, unit: 'U', applied: null, regiao: 'Frontal' },
+          { x: 0.6, y: 0.2, product: 'Toxina', dose: 2, unit: 'U', applied: null, regiao: 'Frontal' },
+        ],
+      },
+      foto: 'unidade/cliente/foto.jpg',
+    },
+  }
+  const FICHA_DE_ANTES = { ...FICHA, answers: { ...FICHA.answers, area: 'Glabela' } }
+
+  test.beforeAll(async () => {
+    test.setTimeout(150_000)
+    rede = await criarOutraRede(`lgf${marca}`)
+    equipe = await criarMembro(`lgfe${marca}`, {
+      tenant: rede.tenantId, rotulo: 'Equipe LGPD',
+      permissoes: [{ modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'medical_records', nivel: 'MANAGE' }],
+    })
+    cliente = await rede.criarCliente('Helena')
+    const ontem = new Date(Date.now() - 86_400_000).toISOString()
+    const ag = await db().from('appointments').insert({
+      branch_id: rede.branchId, client_id: cliente, procedure_id: rede.procedureId, professional_id: rede.professionalId,
+      status: 'COMPLETED', source: 'INTERNAL', duration_min: 30, price: 0, scheduled_at: ontem, completed_at: ontem,
+    }).select('id').single<{ id: string }>()
+    expect(ag.error).toBeNull()
+    const pr = await db().from('medical_records').upsert({ client_id: cliente }, { onConflict: 'client_id' }).select('id').single<{ id: string }>()
+    expect(pr.error).toBeNull()
+    expect((await db().from('medical_record_entries').insert({
+      medical_record_id: pr.data!.id, appointment_id: ag.data!.id, professional_id: rede.professionalId,
+      notes: 'evolução de agora', form_data: { ficha: FICHA },
+    })).error).toBeNull()
+    // A correção de antes: a versão guarda a ficha como estava.
+    expect((await db().from('prontuario_versoes').insert({
+      tenant_id: rede.tenantId, client_id: cliente, appointment_id: ag.data!.id,
+      evolucao: 'evolução de agora', intercorrencias: null, ficha: FICHA_DE_ANTES,
+      editada_por_nome: 'Profissional e2e', substituida_em: new Date(Date.now() - 3600_000).toISOString(),
+    })).error).toBeNull()
+  })
+
+  test.afterAll(async () => {
+    await db().from('lgpd_requests').delete().eq('client_id', cliente)
+    await equipe?.limpar(); await rede?.limpar()
+  })
+
+  test('o pacote leva a ficha do procedimento legível, com o mapa em palavras', async ({ browser }) => {
+    const ctx = await browser.newContext({ storageState: equipe!.estado })
+    try {
+      const p = await ctx.newPage()
+      const r = await chamarAcao(p, 'actions/lgpd.ts', 'exportarDadosPelaEquipe', `/admin/clients/${cliente}`, [cliente, { incluirProntuario: true }])
+      expect(r.texto).toContain('"ok":true')
+    } finally { await ctx.close() }
+    let caminho = ''
+    await expect.poll(async () => {
+      const { data } = await db().from('lgpd_requests').select('status, export_json_path').eq('client_id', cliente).maybeSingle()
+      caminho = (data?.export_json_path as string | null) ?? ''
+      return data?.status
+    }, { timeout: 60_000 }).toBe('completed')
+    const { data: url } = await db().storage.from('lgpd-exports').createSignedUrl(caminho, 60)
+    const pacote = await (await fetch(url!.signedUrl)).json() as {
+      prontuario: { atendimentos: { fichaDoProcedimento: { ficha: string; respostas: { pergunta: string; resposta: string; pontos?: unknown[] }[] } | null; versoesAnteriores?: { fichaDoProcedimento: { respostas: { pergunta: string; resposta: string }[] } | null }[] }[] }
+    }
+    const texto = JSON.stringify(pacote)
+    expect(texto, 'nada de [object Object]').not.toContain('[object Object]')
+    expect(texto, 'nem o caminho da foto').not.toContain('unidade/cliente/foto.jpg')
+
+    const at = pacote.prontuario.atendimentos[0]!
+    expect(at.fichaDoProcedimento?.ficha).toBe('Ficha da toxina')
+    const respostas = at.fichaDoProcedimento!.respostas
+    expect(respostas.find(x => x.pergunta === 'Área tratada')?.resposta).toBe('Testa')
+    expect(respostas.find(x => x.pergunta === 'Mapa de aplicação')?.resposta).toBe('Toxina testa: 3 pontos — Toxina 6 U (planejado)')
+    expect(respostas.find(x => x.pergunta === 'Mapa de aplicação')?.pontos).toHaveLength(3)
+    expect(respostas.find(x => x.pergunta === 'Foto de antes')?.resposta).toBe('Foto anexada')
+
+    // A versão de antes leva a ficha DELA, legível.
+    const antes = at.versoesAnteriores?.[0]?.fichaDoProcedimento?.respostas ?? []
+    expect(antes.find(x => x.pergunta === 'Área tratada')?.resposta, 'a ficha da versão de antes vai junto').toBe('Glabela')
+  })
+})

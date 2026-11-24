@@ -55,14 +55,17 @@ export async function avisosDoHorarioCore(ctx: TenantContext, a: {
   // No relógio da unidade (F62).
   const fuso = fusoValido((unidade as { fuso?: string | null } | null)?.fuso)
   const dia = dayKeyTZ(inicio, fuso)
+  const horarioDaUnidade = normalizarHorario((unidade as { horario?: unknown } | null)?.horario)
   const intervalos = intervalosDoDia(
-    normalizarHorario((unidade as { horario?: unknown } | null)?.horario),
+    horarioDaUnidade,
     normalizarHorario((prof as { horario?: unknown } | null)?.horario),
     diaDaSemana(dia),
   )
+  // A7 da 26ª: o da unidade no dia, para o aviso dizer também quando é fora dele.
+  const daUnidade = intervalosDoDia(horarioDaUnidade, null, diaDaSemana(dia))
   const p = partsInTZ(inicio, fuso)
   const inicioMin = p.hour * 60 + p.minute
-  const foraDoHorario = avisoForaDoHorario(nome, intervalos, inicioMin, duracao)
+  const foraDoHorario = avisoForaDoHorario(nome, intervalos, inicioMin, duracao, daUnidade)
 
   // A28 da 7ª: TODOS os que batem ("das 10:00 às 10:30 e das 10:30 às 11:00"),
   // e não só o primeiro.

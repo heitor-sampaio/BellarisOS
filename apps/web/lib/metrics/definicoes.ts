@@ -53,13 +53,16 @@ export const DEFINICOES = {
    * A receita por procedimento e por profissional — a da EXECUÇÃO (D3 da 5ª,
    * 2026-11-02; r2-ind-01, 2026-11-03: a sessão de pacote pelo rateio).
    */
-  /** "Meu faturamento" (financeiro "só os meus"): a VENDA dela, pelo pagamento (A41). */
+  /**
+   * "Meu faturamento" (a vista pessoal do Financeiro): a VENDA dela, pelo pagamento (A41).
+   * A sessão de pacote ou de plano que ela atende é dita uma vez, em
+   * `foraDoMeuFaturamento` — a dica mostra as duas juntas (A18 da 26ª).
+   */
   meuFaturamento: {
     rotulo: 'O que o "Meu faturamento" conta',
     texto: 'O que entrou no caixa pelas SUAS vendas e pelos SEUS atendimentos, no dia do PAGAMENTO (no fuso da unidade): '
       + 'o atendimento avulso que você fez e foi pago, e o pacote, o pré-pago e o produto que você vendeu (inteiros; no '
-      + 'crediário, cada parcela quando entra). A sessão de pacote ou de plano que você atende não soma de novo: o dinheiro '
-      + 'é de quem vendeu. Os Relatórios contam outra coisa — a receita dos atendimentos que você FEZ, no dia em que fez —, '
+      + 'crediário, cada parcela quando entra). Os Relatórios contam outra coisa — a receita dos atendimentos que você FEZ, no dia em que fez —, '
       + 'e as comissões são a sua parte, em "Minhas comissões".',
   },
   /**

@@ -63,3 +63,54 @@ test('os Relatórios recortam a unidade do ?unidade= (endereço ou id), e ?branc
     await expect(p.getByText(`✦ ${primeira.name}`)).toBeVisible()
   })
 })
+
+// ?tab= de uma aba que o cargo não abre (ou que não existe) não mostra outra calada: leva à
+// primeira aba da permissão, com a URL dela e o aviso que diz por quê (princípio 3). Numa
+// rede [e2e] própria.
+test.describe('a aba de Relatórios fora da permissão leva à primeira dela, com a URL certa e o aviso (indicadores.md)', () => {
+  let rede: OutraRede | null = null
+  let membro: MembroDeTeste | null = null
+
+  async function como<T>(browser: Browser, estado: string, fn: (p: Page) => Promise<T>) {
+    const ctx = await browser.newContext({ storageState: estado, viewport: { width: 1440, height: 900 } })
+    try { return await fn(await ctx.newPage()) } finally { await ctx.close() }
+  }
+
+  test.beforeAll(async () => {
+    test.setTimeout(180_000)
+    rede = await criarOutraRede(`rab${marca}`)
+    expect((await db().from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede.tenantId)).error).toBeNull()
+    membro = await criarMembro(`rabm${marca}`, {
+      tenant: rede.tenantId, rotulo: 'Vendas e agenda',
+      permissoes: [{ modulo: 'reports', nivel: 'VIEW' }, { modulo: 'financial', nivel: 'VIEW' }],
+    })
+    expect((await db().from('role_report_tabs').insert(['vendas', 'agenda'].map(tab => ({
+      tenant_id: rede!.tenantId, role_id: membro!.roleId, tab,
+    })))).error).toBeNull()
+  })
+
+  test.afterAll(async () => {
+    await membro?.limpar()
+    await rede?.limpar()
+  })
+
+  test('a aba fora da permissão leva à primeira dela, com a URL certa e o aviso', async ({ browser }) => {
+    await como(browser, membro!.estado, async p => {
+      await p.goto('/admin/reports?tab=financeiro&period=7d')
+      await expect(p).toHaveURL(/tab=vendas/)
+      await expect(p).toHaveURL(/period=7d/)
+      await expect(p.getByText('Essa aba de Relatórios não está na sua permissão. Você está na primeira que ela abre.')).toBeVisible()
+      await expect(p).not.toHaveURL(/aviso=/)
+      await expect(p).not.toHaveURL(/tab=financeiro/)
+
+      await p.goto('/admin/reports?tab=nao-existe')
+      await expect(p).toHaveURL(/tab=vendas/)
+      await expect(p.getByText('Essa aba de Relatórios não existe. Você está na primeira que a sua permissão abre.')).toBeVisible()
+
+      // A aba da permissão abre sem aviso.
+      await p.goto('/admin/reports?tab=agenda')
+      await expect(p).toHaveURL(/tab=agenda/)
+      await expect(p.getByText(/Essa aba de Relatórios/)).toHaveCount(0)
+    })
+  })
+})

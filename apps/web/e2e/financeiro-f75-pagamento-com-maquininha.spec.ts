@@ -94,3 +94,51 @@ test('A18: a lista do Financeiro diz a maquininha', async ({ browser }) => {
     await expect(page.getByText(/Débito( Visa)? · Stone/).first()).toBeVisible({ timeout: 30_000 })
   })
 })
+
+// Sem a maquininha escolhida, a tela não chuta a taxa da primeira (princípio 4); escolhida,
+// a taxa (ou a falta dela) é a DELA. Numa rede [e2e] própria.
+test.describe('com mais de uma maquininha e nenhuma escolhida, a tela não diz a taxa de nenhuma (princípio 4)', () => {
+  let rede: OutraRede | null = null
+  let slug = ''
+  let dona: MembroDeTeste | null = null
+
+  async function como(browser: Browser, m: MembroDeTeste, fn: (p: Page) => Promise<void>) {
+    const ctx = await browser.newContext({ storageState: m.estado })
+    try { await fn(await ctx.newPage()) } finally { await ctx.close() }
+  }
+
+  test.beforeAll(async () => {
+    rede = await criarOutraRede(`fmq${marca}`)
+    const b = db()
+    expect((await b.from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede.tenantId)).error).toBeNull()
+    slug = (await b.from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
+    dona = await criarMembro(`fmqd${marca}`, { tenant: rede.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
+  })
+
+  test.afterAll(async () => {
+    await dona?.limpar()
+    await rede?.limpar()
+  })
+
+  test('com duas maquininhas e nenhuma escolhida, a taxa não é a da primeira', async ({ browser }) => {
+    const b = db()
+    for (const nome of [`Stone fmq${marca}`, `Cielo fmq${marca}`]) {
+      expect((await b.from('maquininhas').insert({ tenant_id: rede!.tenantId, nome })).error).toBeNull()
+    }
+    const { data: r, error } = await b.from('financial_transactions').insert({
+      branch_id: rede!.branchId, type: 'INCOME', category: 'Procedimento', description: `A receber fmq${marca}`,
+      amount: 200, is_paid: false, payment_method: 'CREDIT_CARD', due_date: new Date(Date.now() + 86_400_000).toISOString(), created_by: 'e2e',
+    }).select('id').single<{ id: string }>()
+    expect(error).toBeNull()
+    await como(browser, dona!, async p => {
+      await p.goto(`/${slug}/financeiro?aba=movimentacoes#lancamentos`)
+      await p.locator(`[data-lancamento="${r!.id}"]`).getByRole('button', { name: 'Receber' }).click()
+      const dlg = p.getByRole('dialog', { name: 'Receber no cartão' })
+      const qual = dlg.getByLabel('Qual maquininha?')
+      await expect(qual).toHaveValue('')
+      await expect(dlg.locator('[data-aviso-taxa], [data-liquido-do-cartao]'), 'sem a maquininha, nenhuma taxa').toHaveCount(0)
+      await qual.selectOption({ label: `Cielo fmq${marca}` })
+      await expect(dlg.locator('[data-aviso-taxa]'), 'escolhida, a taxa (ou a falta dela) é a DELA').toContainText(`Cielo fmq${marca}`)
+    })
+  })
+})

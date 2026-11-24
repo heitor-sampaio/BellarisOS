@@ -120,7 +120,7 @@ export function cidadesParaBuscar(unidades: UnidadeDoMapa[]): string[] {
 /**
  * O que o mapa diz junto dele (A26; princípio 3): o card da unidade avisava, e
  * o mapa não dizia nada. A unidade cujo CEP não se achou fica no centro da
- * cidade, ou sem pino.
+ * cidade (sem aviso, A37 da 26ª), ou sem pino (com aviso).
  */
 export function avisosDoMapa(unidades: UnidadeDoMapa[], achados: { ceps: Record<string, Coordenada>; cidades: Record<string, Coordenada> }): string[] {
   const avisos: string[] = []
@@ -130,10 +130,11 @@ export function avisosDoMapa(unidades: UnidadeDoMapa[], achados: { ceps: Record<
     if (!onde) { avisos.push(`${u.name} sem localização: cadastre o CEP ou a cidade.`); continue }
     if ('cep' in onde) {
       if (achados.ceps[onde.cep]) continue
+      // A37 da 26ª: com a cidade achada, o pino fica no centro dela e o aviso some — o CEP certo
+      // que o mapa não conhece (29055-000) pedia "confira" para sempre, sem nada a corrigir.
+      if (naCidade) continue
       const cep = `${onde.cep.slice(0, 5)}-${onde.cep.slice(5)}`
-      avisos.push(naCidade
-        ? `${u.name} no centro da cidade: o CEP ${cep} não foi achado, confira.`
-        : `${u.name} sem localização: confira o CEP ${cep}.`)
+      avisos.push(`${u.name} sem localização: confira o CEP ${cep} e a cidade.`)
     } else if (!naCidade) avisos.push(`${u.name} sem localização: confira a cidade e cadastre o CEP.`)
   }
   return avisos

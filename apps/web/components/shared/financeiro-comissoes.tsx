@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useEffect, useMemo, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { SeloUnidadeDesativada } from '@/components/shared/selo-unidade-desativada'
 import { useRouter } from 'next/navigation'
@@ -66,12 +66,22 @@ export interface PropsDaTela {
   dentroDasAbas?: boolean
   /** D3 da 23ª: o fuso da rede, o dos fechamentos (D12). Sem ele, o do portal. */
   fusoDaRede?:   string
+  /**
+   * D7 da 26ª (F62b): o fuso de cada unidade (o id → o fuso). O dia e a hora de
+   * cada lançamento — na tela e no CSV — saem no relógio da unidade DELE.
+   */
+  fusosDasUnidades?: Record<string, string>
 }
+
+/** O fuso do lançamento: o da unidade dele; sem o mapa, o do portal. */
+type FusoDoLancamento = (l: Pick<LancamentoDoExtrato, 'branchId'>) => string
 
 export function FinanceiroComissoes(p: PropsDaTela) {
   const router = useRouter()
   const fuso = useFuso()
   const [aberto, setAberto] = useState<string | null>(null)
+  const fusos = useMemo(() => new Map(Object.entries(p.fusosDasUnidades ?? {})), [p.fusosDasUnidades])
+  const fusoDe: FusoDoLancamento = l => fusos.get(l.branchId) ?? fuso
 
   function navegar(periodo: string, unidade = p.unidadeAtual ?? '') {
     const q = new URLSearchParams({ periodo })
@@ -84,7 +94,8 @@ export function FinanceiroComissoes(p: PropsDaTela) {
     const unidade = new Map(p.resumo.map(r => [r.branchId, r.branchName]))
     // D3 da 10ª, A17 e A44 da 11ª: o CSV mora em lib/comissoes/extrato-texto (a base efetiva,
     // a regra com a origem e o que não sai da base vazio).
-    const csv = csvDoExtrato(p.extrato, nome, unidade, fuso, p.fechamentos)
+    // D7 da 26ª: cada linha no fuso da unidade dela (`fusos`); os pagamentos no da rede, como a tela (D12).
+    const csv = csvDoExtrato(p.extrato, nome, unidade, p.fusoDaRede ?? fuso, p.fechamentos, fusos)
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
     const a = document.createElement('a')
     a.href = url
@@ -199,9 +210,9 @@ export function FinanceiroComissoes(p: PropsDaTela) {
                 </div>
                 {p.podeFechar && r.aPagar > 0 && (
                   <Fechar profissional={r} periodo={p.periodoAtual} rotuloDoPeriodo={p.periodos.find(x => x.chave === p.periodoAtual)?.rotulo ?? ''} emCurso={!!p.periodoEmCurso}
-                    lancamentos={doProfissional.filter(l => l.status === 'OPEN' && l.kind !== 'AGUARDANDO')} />
+                    lancamentos={doProfissional.filter(l => l.status === 'OPEN' && l.kind !== 'AGUARDANDO')} fusoDe={fusoDe} />
                 )}
-                {aberto === chave && <Extrato linhas={doProfissional} nome={r.professionalName} />}
+                {aberto === chave && <Extrato linhas={doProfissional} nome={r.professionalName} fusoDe={fusoDe} />}
               </div>
             )
           })}
@@ -237,12 +248,12 @@ function Numero({ rotulo, valor, forte = false }: { rotulo: string; valor: numbe
  * inteiro ou fica. A soma é da TELA só para mostrar; quem paga é o banco
  * (`comissao_fechar_escolhidos`), pelos ids marcados.
  */
-function Fechar({ profissional, periodo, rotuloDoPeriodo, emCurso, lancamentos }: {
+function Fechar({ profissional, periodo, rotuloDoPeriodo, emCurso, lancamentos, fusoDe }: {
   profissional: ResumoDoProfissional; periodo: string; rotuloDoPeriodo: string; emCurso: boolean
   /** Os lançamentos a pagar desta pessoa nesta unidade (os de antes do período inclusive). */
   lancamentos: LancamentoDoExtrato[]
+  fusoDe:      FusoDoLancamento
 }) {
-  const fuso = useFuso()
   const router = useRouter()
   const [confirmando, setConfirmando] = useState(false)
   const [metodo, setMetodo] = useState('PIX')
@@ -310,13 +321,13 @@ function Fechar({ profissional, periodo, rotuloDoPeriodo, emCurso, lancamentos }
               <li key={l.id} style={{ borderBottom: '1px solid var(--hairline)' }}>
                 <label style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 0', cursor: 'pointer' }}>
                   <input type="checkbox" checked={!desmarcados.has(l.id)} onChange={() => alternar(l.id)} disabled={pendente}
-                    aria-label={`${tituloDoLancamento(l)}${l.cliente ? ` · ${l.cliente}` : ''} · ${data(l.releasedAt, fuso)} · ${formatBRL(l.amount)}`} />
+                    aria-label={`${tituloDoLancamento(l)}${l.cliente ? ` · ${l.cliente}` : ''} · ${data(l.releasedAt, fusoDe(l))} · ${formatBRL(l.amount)}`} />
                   <span style={{ flex: '1 1 auto', minWidth: 0 }}>
                     <span style={{ display: 'block', fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
                       {tituloDoLancamento(l)}{l.cliente ? ` · ${l.cliente}` : ''}
                     </span>
                     <span style={{ display: 'block', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                      {data(l.releasedAt, fuso)} · {TIPO[l.kind]}{l.motivo ? ` — ${l.motivo}` : ''}{l.origem ? ` · ${origemDe(l)}` : ''}
+                      {data(l.releasedAt, fusoDe(l))} · {TIPO[l.kind]}{l.motivo ? ` — ${l.motivo}` : ''}{l.origem ? ` · ${origemDe(l)}` : ''}
                     </span>
                   </span>
                   <strong style={{ fontSize: 'var(--text-sm-sz)', whiteSpace: 'nowrap', color: l.amount < 0 ? 'var(--danger)' : 'var(--text)' }}>
@@ -357,10 +368,11 @@ function Fechar({ profissional, periodo, rotuloDoPeriodo, emCurso, lancamentos }
   )
 }
 
-function Extrato({ linhas, nome }: { linhas: LancamentoDoExtrato[]; nome: string }) {
+function Extrato({ linhas, nome, fusoDe }: { linhas: LancamentoDoExtrato[]; nome: string; fusoDe: FusoDoLancamento }) {
   const fuso = useFuso()
   // A8 da 19ª: "+500, −500, +500" diz o vínculo — o estorno desfaz qual liberação, e qual é de novo.
-  const vinculos = vinculosDoExtrato(linhas, iso => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: fuso }))
+  // D7 da 26ª: a hora citada no relógio da unidade da linha citada.
+  const vinculos = vinculosDoExtrato(linhas, (iso, citada) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: citada ? fusoDe(citada) : fuso }))
   if (!linhas.length) {
     return <p style={{ padding: '0 16px 14px', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Sem lançamentos no período.</p>
   }
@@ -375,7 +387,7 @@ function Extrato({ linhas, nome }: { linhas: LancamentoDoExtrato[]; nome: string
               {tituloDoLancamento(l)}{l.cliente ? ` · ${l.cliente}` : ''}
             </p>
             <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-              {data(l.releasedAt, fuso)} · {l.kind === 'AGUARDANDO' ? (l.motivo ?? SITUACAO.AGUARDANDO) : `${TIPO[l.kind]}${l.motivo ? ` — ${l.motivo}` : ''}`}
+              {data(l.releasedAt, fusoDe(l))} · {l.kind === 'AGUARDANDO' ? (l.motivo ?? SITUACAO.AGUARDANDO) : `${TIPO[l.kind]}${l.motivo ? ` — ${l.motivo}` : ''}`}
               {l.origem && !ehDeVenda(l) ? ` · ${origemDe(l)}` : ''}
               {/* D3 da 10ª: a base EFETIVA (a que a conta usou) e o caminho do preço até ela; A17 da 11ª: de onde veio a regra. */}
               {l.preco != null ? ` · ${textoDaBase(base(l), l)} · ${regraDoLancamento(l, nome)}` : ''}
@@ -385,7 +397,7 @@ function Extrato({ linhas, nome }: { linhas: LancamentoDoExtrato[]; nome: string
           {/* A21 da 10ª: com o pagamento parcial, cada lançamento diz se foi pago (e quando) ou se ficou a pagar. */}
           <span className={CHIP[l.status]}>{l.status === 'AGUARDANDO' ? 'Aguardando'
             // A17 da 22ª: o estorno não é pago — desconta do pagamento.
-            : l.status === 'PAID' && l.pagoEm ? `${l.kind === 'ESTORNO' ? 'Descontada' : 'Paga'} em ${data(l.pagoEm, fuso)}` : situacaoDoLancamento(l)}</span>
+            : l.status === 'PAID' && l.pagoEm ? `${l.kind === 'ESTORNO' ? 'Descontada' : 'Paga'} em ${data(l.pagoEm, fusoDe(l))}` : situacaoDoLancamento(l)}</span>
           {l.kind === 'AGUARDANDO' ? (
             <span style={{ minWidth: 90, textAlign: 'right', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
               previsto {formatBRL(l.previsto ?? 0)}

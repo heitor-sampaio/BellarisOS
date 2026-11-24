@@ -37,6 +37,15 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   sozinho na conversa com o cartão a confirmar** (A25 da 20ª: sem ver a
   linha, um pedido novo deixou o cartão para trás) — uma vez por conversa, e
   não depois de "Nova conversa" (`conversaParaAbrirSozinha`).
+  **O "Olá" e os atalhos saem da permissão** (A28 da 26ª, 2026-11-18): o
+  texto ("Posso consultar a agenda, achar um cliente…") e os botões de atalho
+  vêm das MESMAS ferramentas que o modelo recebe (`ferramentasDoCargo`), por
+  `aberturaDoCopilot` (`lib/copilot/abertura.ts`, puro) e a action
+  `aberturaDoCopilotNaTela`; "Toda gravação passa pela sua confirmação." só
+  com ferramenta de escrita, e "Quanto faturamos este mês?" só com a aba
+  Visão geral dos Relatórios. Era fixo ("cadastrar ou agendar", o atalho do
+  faturamento) para todos. Prova: `tests/copilot-dinheiro-pelas-abas.test.ts`,
+  `e2e/copilot-cargo.spec.ts` (contra o build).
 - **Nada clínico vai à OpenAI**: nenhuma ferramenta lê prontuário, evolução,
   anamnese, foto clínica ou anotação clínica de plano. O prompt manda dizer que
   isso fica na tela, e o painel avisa para não mandar.
@@ -136,7 +145,13 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   `tests/copilot-defeitos-da-18.test.ts`.
 - **O PDV** (CP1): vender (pacote, pré-pago, produto, crédito interno) e
   receber a comanda são do PDV — o Copilot não vende nem recebe comanda, e o
-  prompt manda indicar o PDV. O `marcar_pago` é a baixa do Financeiro
+  prompt manda indicar o PDV — **só a quem tem o PDV** (A29 da 26ª,
+  2026-11-18): sem ele, o prompt diz que a permissão dela não recebe nem vende
+  e que quem tem o PDV (ou o Financeiro em Gerenciar) faz, sem dar o link; e
+  quem não vê dinheiro (`can(financial, VIEW)` ou a aba Financeiro dos
+  Relatórios) não é mandado ao Dashboard, aos Relatórios nem ao Financeiro
+  para ver valor (`instrucoesDoCopilot`, `lib/copilot/prompt.ts`; prova
+  `tests/copilot-dinheiro-pelas-abas.test.ts`). O `marcar_pago` é a baixa do Financeiro
   (`markTransactionPaid`, `podeDarBaixa` — CX2), com o boleto na despesa, como
   a tela; a parcela do crediário em aberto também se baixa por ele (VF2-05 da
   varredura de 18/11, decisão do Claude: o prompt mandava ao PDV o que a

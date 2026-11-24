@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { atendeDoFormulario, atendeQueGrava, listaDeUnidades } from '@/lib/equipe/atende'
+import * as nodeFs from 'node:fs'
+import * as nodePath from 'node:path'
 
 // O "Atende" por unidade (decisão 2 do Heitor sobre a 8ª simulação).
 describe('atendeQueGrava', () => {
@@ -38,4 +40,18 @@ describe('listaDeUnidades', () => {
     expect(listaDeUnidades(['Batel', 'Água Verde'])).toBe('Batel e Água Verde')
     expect(listaDeUnidades(['A', 'B', 'C'])).toBe('A, B e C')
   })
+})
+
+describe('a Equipe da unidade diz onde está quem é da rede, e onde se marca o "Atende" dela (princípio 7)', () => {
+  const ler = (rel: string) => nodeFs.readFileSync(nodePath.join(__dirname, '..', rel), 'utf8')
+
+  describe('o caminho para a Equipe da rede', () => {
+    it('a quem tem "A rede inteira", o caminho para a Equipe da rede', () => {
+      const f = ler('app/[slug]/team/page.tsx')
+      expect(f).toMatch(/data-equipe-da-rede/)
+      expect(f).toMatch(/minhas === null && \(/)
+      expect(f).toMatch(/href="\/admin\/team"/)
+    })
+  })
+
 })

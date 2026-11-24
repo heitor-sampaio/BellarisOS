@@ -204,3 +204,14 @@ describe('C5: o Copilot usa as mesmas funções da tela', () => {
     expect(copilot()).toMatch(/aba === 'agenda' \? periodo\.fullTo/)
   })
 })
+
+describe('cada dica diz a sua conta uma vez (princípio 3)', () => {
+  // ─── a dica do "Meu faturamento" não se repete ────────────────────────
+  describe('a sessão de pacote fora do "Meu faturamento" é dita uma vez', () => {
+    it('a frase mora só no "O que fica fora"', () => {
+      const tudo = `${DEFINICOES.meuFaturamento.texto} ${DEFINICOES.foraDoMeuFaturamento.texto}`
+      expect(tudo.match(/de quem vendeu/g)?.length).toBe(1)
+      expect(DEFINICOES.foraDoMeuFaturamento.texto).toContain('de quem vendeu')
+    })
+  })
+})

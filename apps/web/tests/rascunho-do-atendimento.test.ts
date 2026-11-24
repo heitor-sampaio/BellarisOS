@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { lerRascunho, gravarRascunho, limparRascunho, chaveDoRascunho } from '@/lib/atendimento/rascunho'
+import * as nodeFs from 'node:fs'
+import * as nodePath from 'node:path'
 
 /**
  * A31 da simulação de 2026-10-27: as anotações escritas antes de finalizar se
@@ -127,4 +129,24 @@ describe('rascunho do atendimento', () => {
     expect(lerRascunho('ag-1')).toBeNull()
     expect(() => gravarRascunho('ag-1', { notes: 'x' })).not.toThrow()
   })
+})
+
+describe('concluído o atendimento, a ficha mostra o retrato que o servidor gravou, não o rascunho digitado', () => {
+  const ler = (rel: string) => nodeFs.readFileSync(nodePath.join(__dirname, '..', rel), 'utf8')
+
+  describe('as duas fichas do atendimento', () => {
+    it('as duas fichas remontam ao concluir e, concluído, não leem o rascunho', () => {
+      const s = ler('components/branch/appointment-session.tsx')
+      // O campo do planejador, digitando, guarda só { planejamento: { id, nome: '' }, points: [] }:
+      // sem remontar, a ficha lida mostrava "Planejamento sem nome / Nenhum ponto marcado".
+      expect(s).not.toMatch(/key=\{fichaDoRascunho \? 'rascunho' : 'gravada'\}/)
+      const chaves = s.match(/key=\{chaveDaFicha\}/g) ?? []
+      expect(chaves.length).toBe(2)
+      const iniciais = s.match(/initial=\{respostasIniciaisDaFicha as AnamnesisAnswers\}/g) ?? []
+      expect(iniciais.length).toBe(2)
+      expect(s).toMatch(/const chaveDaFicha = !isDone && fichaDoRascunho \? 'rascunho' : `gravada-\$\{status\}`/)
+      expect(s).toMatch(/const respostasIniciaisDaFicha = !isDone && fichaDoRascunho \? fichaDoRascunho : respostasDaFicha/)
+    })
+  })
+
 })

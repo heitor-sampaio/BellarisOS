@@ -63,13 +63,13 @@ test('A4: catálogo vazio — quem gere vê o botão que cadastra; quem não ger
   })
 })
 
-test('A5: "Insumos utilizados" sem produto leva ao cadastro no Estoque', async ({ browser }) => {
+test('A5: "Insumos utilizados" sem insumo leva ao cadastro no Estoque', async ({ browser }) => {
   await como(browser, gerente, async p => {
     await p.goto('/admin/procedures')
     await p.getByRole('button', { name: 'Novo procedimento' }).first().click()
     const dialogo = p.locator('dialog[open]')
-    await expect(dialogo.getByText('Nenhum produto cadastrado no estoque ainda.')).toBeVisible()
-    await expect(dialogo.getByRole('link', { name: /Cadastrar produto no Estoque/ })).toHaveAttribute('href', '/admin/estoque')
+    await expect(dialogo.getByText('Nenhum insumo cadastrado no estoque ainda.')).toBeVisible()
+    await expect(dialogo.getByRole('link', { name: /Cadastrar insumo no Estoque/ })).toHaveAttribute('href', '/admin/estoque')
   })
 })
 

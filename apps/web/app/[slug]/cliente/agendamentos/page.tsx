@@ -9,6 +9,7 @@ import { separarAgendaDoPortal, limiteParaAlterar, aindaDaParaAlterar, inicioDos
 import { textoDoConcluido } from '@/lib/agenda/hora-real'
 import { textoDoHorarioNoHistorico } from '@/lib/clientes/textos-do-app'
 import { fusoValido } from '@/lib/unidades/fuso'
+import { NotaDoFuso } from '@/components/shared/fuso'
 import { rotuloDoPagoAntes } from '@/lib/appointments/pago-antes-textos'
 import { pagosAntes } from '@/lib/appointments/pago-antes'
 import { valoresCobrados, type ValorCobrado } from '@/lib/appointments/valor-cobrado'
@@ -260,6 +261,8 @@ function AppointmentCard({ appt, slug, highlight = false, prazoHoras, comUnidade
           <span data-hora-real={concluidoEm ? '' : undefined}>
             {textoDoHorarioNoHistorico(dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: fuso }), concluidoEm)}
           </span>
+          {/* A9 da 26ª: o relógio da unidade, fora do de Brasília (princípio 3). */}
+          <NotaDoFuso fuso={fuso} />
         </span>
         {appt.pagoAntes ? (
           <span data-pago-antes style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: rotuloDoPagoAntes(appt.pagoAntes) === 'A receber' ? 'var(--warning)' : 'var(--success)', marginLeft: 'auto' }}>

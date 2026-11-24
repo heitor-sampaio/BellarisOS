@@ -39,6 +39,11 @@
     `cabeNoHorario` e o `primeiroConflito` do núcleo (a mesma conta de
     `horarioOcupado`). O que só passa da meia-noite num dia de 00:00–24:00
     diz "Passa da meia-noite (fim às 00:25)…" (A37 da 24ª, `avisoForaDoHorario`).
+    Fora também do horário da UNIDADE, o aviso diz as duas coisas (A7 da 26ª;
+    o horário é da unidade e, dentro dele, do profissional): "Fora do horário
+    de atendimento de X (08:00–17:00) e do horário da unidade (08:00–22:00).",
+    "X não atende neste dia, e é fora do horário da unidade (…)." ou "A
+    unidade não abre neste dia." (o `daUnidade` de `avisoForaDoHorario`).
     Na grade do dia, a coluna de cada profissional sombreia
     o que é fora do horário DELA (`forasDoHorario`); o clique ali continua
     agendando. Recusado por choque com o aviso na tela, fica UMA mensagem
@@ -340,7 +345,11 @@
     "Semana" dela lista, embaixo da faixa dos dias, os atendimentos de cada dia
     (fora os cancelados), cada um abrindo o atendimento (A27 da 23ª,
     `semanaEmLista`, `[data-semana-em-lista]`: eram só barrinhas) —, e a agenda inteira da unidade, a lista
-    "Seus atendimentos em outras unidades" (`[data-meus-de-outras-unidades]`);
+    "Seus atendimentos em outras unidades" (`[data-meus-de-outras-unidades]`)
+    — nos dois, e na "Agenda de hoje" do dashboard da unidade, a hora do de
+    outra unidade sai no relógio da unidade DELE, com o nome quando não é o da
+    tela ("18:55 (horário de Cuiabá)"; D3 da 26ª, decisão do Claude pelo
+    princípio 3, `horaNaUnidadeDele`; `indicadores.md`);
     os dois abrem a tela do atendimento pelo portal dela
     (`/[slug]/agenda/[id]` resolve a unidade do agendamento). **Quem é da
     rede abre no endereço da unidade DO AGENDAMENTO** (D10 da 9ª simulação,
@@ -464,7 +473,11 @@
   quê): "Equipe da unidade Casa Forte: quem é dela e quem é da rede e atende
   aqui. Quem é da rede e não atende fica na Equipe da rede."
   (`[data-recorte-da-equipe]`); o "Adicionar membro" dela diz "Entra na
-  unidade Casa Forte." (A13). Prova:
+  unidade Casa Forte." (A13). A quem é da rede inteira, ela diz onde a pessoa
+  se acha (A8 da 26ª, princípio 7: a Admin da rede não achava onde marcar o
+  próprio "Atende"): "Quem é da rede inteira (você também) está na Equipe da
+  rede: é lá que se marca o “Atende clientes” de cada um.", com o link
+  (`[data-equipe-da-rede]`; `tests/equipe-atende.test.ts`). Prova:
   `e2e/equipe-dona-que-atende.spec.ts`.
 - **A Admin cadastra outra Admin direto** (eq-01, revisão do Heitor de
   2026-11-02: "oferecer no cadastro; o caminho em dois passos não protege
@@ -1797,8 +1810,17 @@ const procedures = await ler(
     agendamento (`pre_atendimento_abrir_manual`, só o servidor; o modo do
     gatilho, sem a janela de 30 dias — aqui é a equipe que pediu), e gera o
     link. O padrão da rede não muda; quem só vê a agenda não vê o bloco nem
-    abre nada; o suporte não manda (`bloqueioDoSuporte`). Prova:
-    `e2e/ficha-pre-atendimento-envio-manual.spec.ts`. Erro
+    abre nada (D9 da 26ª: a janela do agendamento e o "Enviar o link" da
+    faixa do atendimento conferem a Agenda em Gerenciar, `podeMandar`; quem
+    só via clicava e lia "Você não tem acesso a esta ação."); o suporte não
+    manda (`bloqueioDoSuporte`). Com a ficha de saúde da cliente respondida e
+    VÁLIDA, a janela não diz "não foi enviada" (A1 da 26ª, princípios 3 e 7):
+    "A cliente tem a ficha de saúde válida até 10/05/2027 (respondida em
+    10/11/2026). Enviar a ficha pede que ela responda de novo."
+    (`textoDaFichaValida`, `fichaDeSaudeValidaAte`: a mesma conta do
+    vencimento). Prova:
+    `e2e/ficha-pre-atendimento-envio-manual.spec.ts`,
+    `e2e/vistas-pessoais-e-cada-passo.spec.ts`. Erro
     de validação (no link e nas fichas): rola ao primeiro campo obrigatório
     vazio, foca, destaca e escreve a mensagem junto dele.
     **A janela diz quando a ficha já foi ao app** (A6 da 17ª simulação;
@@ -2194,6 +2216,12 @@ const procedures = await ler(
     calculado na página), o link "Abrir planejamento" para Planejamento →
     Injetáveis da ficha. Nada de confirmar ou registrar aplicação fora do
     atendimento. O pacote LGPD leva o retrato no JSON, como levava o mapa.
+    **Logo depois de concluir, a tela já mostra o retrato** (A3 da 26ª,
+    princípio 3): digitando, o campo guarda só a ligação (`{ planejamento: {
+    id, nome: '' }, points: [] }`), e a ficha concluída mostrava "Planejamento
+    sem nome / Nenhum ponto marcado" até recarregar. A ficha remonta com o que
+    o servidor gravou quando o atendimento se encerra (`chaveDaFicha`), e o
+    rascunho do navegador não vale mais.
   - **A aplicação registrada por Planejamento → Injetáveis chega à ficha**
     (D6 da 7ª simulação, 2026-11-05; princípio 3): a Rita marcou 3 pontos e
     usou "Registrar aplicação" pela sub-aba do atendimento; o campo da ficha
@@ -2442,7 +2470,9 @@ const procedures = await ler(
   recebe, `podeReceber`; aos outros, "que tem parcelas em aberto"); a janela
   da agenda diz "Incluído" no lugar de "Já pago", e a agenda e o app da
   cliente somam o em aberto da venda (`pagosAntes` →
-  `getEmAbertoDasVendas`). Ali o plano é opcional: "Propor um plano novo
+  `getEmAbertoDasVendas`), dizendo de quem ele é: "4 limpezas · sessão 1 de
+  4 · pacote com R$ 400,00 em aberto" (A19 da 26ª, princípio 3; "pré-pago
+  com…", "plano com…"). Ali o plano é opcional: "Propor um plano novo
   (opcional)", e o "Aceitar plano" é o secundário. A linha do insumo diz a
   quantidade com a embalagem do produto (`linhaDoInsumo`, A9).
 - **"Aceitar plano" usa o que está na tela** (A29 da 12ª simulação, 2026-11-11;
@@ -3040,7 +3070,11 @@ const procedures = await ler(
   que a rede PAGOU, se ela quiser no financeiro, é um lançamento manual
   (Financeiro → Novo lançamento, categoria "Compra de estoque": conta no caixa e
   fica FORA do lucro, que já desconta o insumo consumido — 2026-10-29,
-  `indicadores.md`). **A Entrada DIZ isso, e guarda o fornecedor e a nota**
+  `indicadores.md`). **E a despesa também não dá entrada no estoque** (o
+  Heitor, 18/11, sobre a pergunta da 26ª: "fica como esta pq provavelmente sao
+  pessoas diferentes que vao fazer isso, normalmente quem é do financeiro nao
+  controla estoque"): a "Compra de estoque" do Financeiro e a "Entrada" do
+  Estoque são dois registros, cada um na tela de quem cuida dele. **A Entrada DIZ isso, e guarda o fornecedor e a nota**
   (A37 da 10ª, 2026-11-10: a Perda dizia "não gera despesa" e a Entrada não; o
   fornecedor e a nota iam nas Observações): "Não gera despesa: o custo é a
   base…" (`[data-entrada-sem-despesa]`) e os campos "Marca" e "Fornecedor"
@@ -3553,12 +3587,24 @@ O resto do fluxo:
     `lib/atendimento/obrigatorias.ts`; some com a ficha respondida ou sem
     pergunta), com "Responder aqui" (quem escreve no prontuário: rola à ficha)
     e "Enviar o link" (o envio da janela, `PreAtendimentoDoAgendamento`; não a
-    quem só atende). Prova: `tests/pendencias-area-1.test.ts`.
+    quem só atende, e só com a Agenda em Gerenciar — D9 da 26ª). A contagem é
+    a da TELA (A5 da 26ª, princípio 3: seguia "4 obrigatórias" com os 4
+    campos preenchidos): digitando, desce; sem obrigatória faltando, a faixa
+    some (o "Finalizar" leva as respostas). Prova:
+    `tests/pendencias-area-1.test.ts`, `tests/pre-atendimento-aviso.test.ts`.
   - Sem ficha ligada ao procedimento, ou ficha sem obrigatória, nada barra.
     A foto e o planejador ficam fora da ficha de saúde (a cliente responde pelo
     celular); o planejador da ficha, na rede sem o recurso de injetáveis (o
     campo é só para ver), não barra. O planejamento escolhido vale mesmo sem
     ponto, com a confirmação do atend-12 (§9.4).
+  - **Quem vê e não escreve o clínico** (`canEditRecords`: o Prontuário em
+    Gerenciar — cada passo um módulo, UM4 de 23/11; D8 da 26ª): a ficha de
+    saúde, as queixas e as observações se LEEM na avaliação, sem campos, com
+    a nota "Só para ler: escrever a ficha de saúde, as queixas e a evolução
+    pede o Prontuário em Gerenciar." (`TEXTO_DO_CLINICO_SO_LEITURA`,
+    `[data-clinico-so-leitura]`). Ganhava o formulário editável, e o
+    digitado se perdia na conclusão (que grava sem o clínico). Prova:
+    `e2e/vistas-pessoais-e-cada-passo.spec.ts`.
   - **Quem não vê o clínico** (sem o Prontuário em Ver; o caso do prontuário
     "só os meus" num atendimento de outra saiu com o SM1): a tela não tem os
     campos e não aponta nada; o servidor recusa do mesmo jeito, com só o NOME
@@ -3680,8 +3726,11 @@ O resto do fluxo:
   Com o Atendimento só em Ver, o
   cartão some inteiro, com a dica do J-35 — que mandava a um "Finalizar
   atendimento" que não existe para ela (o alto da tela já diz quem inicia e
-  conclui).
-  Prova: `e2e/permissoes-quem-so-ve.spec.ts`.
+  conclui). O editor do plano (o cartão "Tratamento") pede o Atendimento ao
+  menos em Ver, como as actions dele (D10 da 26ª, `podeVerPlanos`): sem o
+  Atendimento, o cartão não aparece — nem no concluído, onde só o recurso
+  do plano decidia.
+  Prova: `e2e/permissoes-quem-so-ve.spec.ts`, `e2e/vistas-pessoais-e-cada-passo.spec.ts`.
 - **Quem recebe, na unidade** (A8 da 20ª, princípio 3): o avulso concluído a
   receber e a janela de finalizar dizem quem recebe NESTA unidade
   (`quemRecebeNaUnidade`); sem ninguém dela, "Ninguém desta unidade tem o PDV
@@ -3780,7 +3829,12 @@ O resto do fluxo:
   pacote TRAZIDO DE FORA (F35) não teve venda: a tela e a janela do
   "Finalizar" dizem "Sessão do pacote trazido de fora: já paga antes do
   sistema, nada a receber." (era "paga na venda do pacote" — A15 da 10ª;
-  prova: `e2e/atendimento-uso-da-10.spec.ts`).
+  prova: `e2e/atendimento-uso-da-10.spec.ts`). A do pacote com parcelas em
+  aberto (o crediário) não é "paga na venda" (A4 da 26ª, princípio 3, como a
+  D4 da 21ª): "Sessão de pacote: incluída no pacote, que tem parcelas em
+  aberto; nada a receber neste atendimento." na janela, e "Sessão de pacote —
+  incluída no pacote, que tem parcelas em aberto; nada a receber nesta
+  sessão." no concluído (`lib/atendimento/pagamento-ao-finalizar.ts`).
 - Pontos: não são do fechamento — nascem quando o atendimento é PAGO (§9.2.2).
 
 ---

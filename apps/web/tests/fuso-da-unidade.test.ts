@@ -9,6 +9,8 @@ import { ehODiaDoAgendamento } from '@/lib/agenda/chegada'
 import { foraDoHorarioDaUnidade } from '@/lib/agenda/horario'
 import { FUSOS, FUSO_PADRAO, fusoPeloEstado, fusoValido, nomeDoFuso, rotuloDoFuso } from '@/lib/unidades/fuso'
 import { resolvePeriod } from '@/lib/metrics/period'
+import fs from 'node:fs'
+import path from 'node:path'
 
 /**
  * F62 — o fuso da clínica (o Heitor, 2026-11-11: "Não, deixa a clinica
@@ -407,5 +409,161 @@ describe('as telas, o recibo e os CSV no relógio da unidade (F62b)', () => {
     expect(idadeDoLead('2026-03-10T15:00:00.000Z', new Date(I))).toBe('ontem')
     const p = resolvePeriod('month', undefined, undefined, new Date('2026-03-15T12:00:00Z'), M)
     expect(nomeDoCsvDeVendas(p.from, p.fullTo, M)).toBe('vendas-2026-03-01-a-2026-03-31.csv')
+  })
+})
+
+describe('no consolidado, cada registro no dia e na hora da unidade dele, e a tela diz o relógio fora do de Brasília (F62; indicadores.md)', () => {
+  // A Rede Mimosa: Setor Bueno e Jardim Goiás no horário de Brasília (UTC−3), Cuiabá Centro no de Cuiabá (UTC−4).
+  const SP = 'America/Sao_Paulo'
+  const CB = 'America/Cuiaba'
+  const WEB = path.resolve(__dirname, '..')
+  const fonte = (...p: string[]) => fs.readFileSync(path.join(WEB, ...p), 'utf8')
+  // 18:55 em Cuiabá = 19:55 em Goiânia (22:55 UTC).
+  const AS_1855_EM_CUIABA = '2026-11-18T22:55:00.000Z'
+
+  describe('o atendimento de outra unidade sai na hora DELA, dizendo o relógio', () => {
+    it('horaNaUnidadeDele: a hora no relógio da unidade do agendamento, e o nome do relógio quando não é o da tela', async () => {
+      const { horaNaUnidadeDele, comORelogio } = await import('@/lib/unidades/hora-da-unidade')
+      expect(horaNaUnidadeDele(AS_1855_EM_CUIABA, CB, SP)).toEqual({ hora: '18:55', relogio: 'horário de Cuiabá' })
+      // No mesmo relógio da tela, nada a dizer.
+      expect(horaNaUnidadeDele(AS_1855_EM_CUIABA, SP, SP)).toEqual({ hora: '19:55', relogio: null })
+      expect(horaNaUnidadeDele(AS_1855_EM_CUIABA, CB, CB)).toEqual({ hora: '18:55', relogio: null })
+      // A tela de Cuiabá olhando um de Goiânia: diz o de Brasília.
+      expect(horaNaUnidadeDele(AS_1855_EM_CUIABA, SP, CB)).toEqual({ hora: '19:55', relogio: 'horário de Brasília' })
+      expect(comORelogio(horaNaUnidadeDele(AS_1855_EM_CUIABA, CB, SP))).toBe('18:55 (horário de Cuiabá)')
+      expect(comORelogio(horaNaUnidadeDele(AS_1855_EM_CUIABA, SP, SP))).toBe('19:55')
+    })
+
+    it('a Minha agenda escreve a hora do cartão de fora pela unidade dele (a grade continua no relógio do portal)', () => {
+      const agenda = fonte('components', 'branch', 'professional-agenda.tsx')
+      expect(agenda).toMatch(/horaNaUnidadeDele\(/)
+      expect(agenda).toMatch(/fusoDaUnidade/)
+      // A página manda o fuso da unidade de cada um de fora.
+      expect(fonte('app', '[slug]', 'agenda', 'page.tsx')).toMatch(/fusoDaUnidade:\s/)
+    })
+
+    it('"Seus atendimentos em outras unidades" sai no relógio de cada uma (era sempre o de Brasília)', () => {
+      const lista = fonte('components', 'branch', 'meus-de-outras-unidades.tsx')
+      expect(lista).not.toMatch(/partsInTZ\(new Date\(e\.start\)\)/)
+      expect(lista).toMatch(/horaNaUnidadeDele\(/)
+    })
+
+    it('a "Agenda de hoje" do dashboard da unidade diz a hora de fora no relógio dela', () => {
+      const dash = fonte('app', '[slug]', 'dashboard', 'page.tsx')
+      expect(dash).toMatch(/horaNaUnidadeDele\(a\.scheduled_at/)
+    })
+  })
+
+  describe('o Início do app da cliente: cada agendamento no fuso da unidade dele', () => {
+    it('o próximo, os para avaliar e as sessões do plano leem o fuso da unidade do agendamento', () => {
+      const home = fonte('app', '[slug]', 'cliente', 'home', 'page.tsx')
+      expect(home).toMatch(/branches\(name, address, city, state, is_active, fuso\)/)
+      expect(home).toMatch(/fmtDateTime\(nextAppt\.scheduled_at, fusoDoAgendamento\(nextAppt\)\)/)
+      expect(home).not.toMatch(/fmtDateTime\(nextAppt\.scheduled_at, fuso\)/)
+    })
+  })
+
+  describe('o "Hoje" da rede é a soma do dia de cada unidade', () => {
+    it('janelasDoDiaNasUnidades: o dia da rede, no relógio de cada unidade', async () => {
+      const { janelasDoDiaNasUnidades } = await import('@/lib/metrics/agenda-do-dia')
+      // 18/11 às 23:45 em Brasília (02:45 UTC de 19/11): o dia da rede é 18/11.
+      const agora = new Date('2026-11-19T02:45:00.000Z')
+      const janelas = janelasDoDiaNasUnidades(agora, SP, [
+        { id: 'bueno', fuso: SP }, { id: 'goias', fuso: SP }, { id: 'cuiaba', fuso: CB },
+      ])
+      expect(janelas).toHaveLength(2)
+      const deSP = janelas.find(j => j.fuso === SP)!
+      const deCB = janelas.find(j => j.fuso === CB)!
+      expect(deSP.ids).toEqual(['bueno', 'goias'])
+      expect(deCB.ids).toEqual(['cuiaba'])
+      expect(deSP.de.toISOString()).toBe('2026-11-18T03:00:00.000Z')
+      expect(deCB.de.toISOString()).toBe('2026-11-18T04:00:00.000Z')
+      // A avaliação das 23:30 de Cuiabá (03:30 UTC de 19/11) cai no 18/11 dela.
+      const avaliacao = new Date('2026-11-19T03:30:00.000Z').getTime()
+      expect(avaliacao >= deCB.de.getTime() && avaliacao <= deCB.ate.getTime()).toBe(true)
+      expect(avaliacao <= deSP.ate.getTime()).toBe(false)
+    })
+
+    it('o dashboard da rede lê os de hoje pela janela de cada unidade', () => {
+      const dash = fonte('app', 'admin', 'dashboard', 'page.tsx')
+      expect(dash).toMatch(/agendamentosDeHojeNasUnidades\(/)
+      expect(dash).not.toMatch(/\.gte\('scheduled_at', startOfToday\.toISOString\(\)\)/)
+    })
+
+    it('a migration põe o agendamento no dia da unidade dele no núcleo, na aba Agenda e no "por unidade"', () => {
+      const dir = path.resolve(WEB, '..', '..', 'supabase', 'migrations')
+      const nome = fs.readdirSync(dir).find(f => f.startsWith('20261130100001_'))
+      expect(nome).toBeTruthy()
+      const sql = fs.readFileSync(path.join(dir, nome!), 'utf8')
+      expect(sql).toMatch(/create or replace function public\.metrics_no_dia_da_unidade/)
+      expect(sql).toMatch(/metrics_core\(uuid,uuid\[\],timestamptz,timestamptz,uuid,text\[\]\)/)
+      expect(sql).toMatch(/metrics_relatorio\(uuid,uuid\[\],timestamptz,timestamptz,timestamptz,timestamptz,text,text,uuid,text\[\]\)/)
+      expect(sql).toMatch(/metrics_by_branch\(uuid,timestamptz,timestamptz\)/)
+      expect(sql).toMatch(/create or replace function pg_temp\./)
+      expect(sql).not.toMatch(/create function pg_temp\./)
+      expect(sql).toMatch(/revoke execute on function public\.metrics_no_dia_da_unidade/)
+      expect(sql.trimEnd().endsWith(`notify pgrst, 'reload schema';`)).toBe(true)
+    })
+  })
+
+})
+
+describe('o app da cliente, a Equipe e as Unidades dizem o relógio fora do de Brasília (F62, princípio 3)', () => {
+  const SP = 'America/Sao_Paulo'
+  const CB = 'America/Cuiaba'
+  const WEB = path.resolve(__dirname, '..')
+  const fonte = (...p: string[]) => fs.readFileSync(path.join(WEB, ...p), 'utf8')
+
+  describe('o app da cliente diz o relógio fora de Brasília', () => {
+    it('Início, Agenda, agendar e remarcar têm a NotaDoFuso', () => {
+      expect(fonte('app', '[slug]', 'cliente', 'home', 'page.tsx')).toMatch(/NotaDoFuso/)
+      expect(fonte('app', '[slug]', 'cliente', 'agendamentos', 'page.tsx')).toMatch(/NotaDoFuso/)
+      expect(fonte('app', '[slug]', 'cliente', 'agendamentos', '[id]', 'page.tsx')).toMatch(/NotaDoFuso/)
+      expect(fonte('components', 'client-portal', 'new-appointment-wizard.tsx')).toMatch(/NotaDoFuso/)
+      expect(fonte('components', 'client-portal', 'alterar-agendamento.tsx')).toMatch(/NotaDoFuso/)
+    })
+  })
+
+  describe('o prazo do remarcar é o do agendamento original, no relógio dele', () => {
+    it('o "até…" não muda com a unidade escolhida', () => {
+      const alterar = fonte('components', 'client-portal', 'alterar-agendamento.tsx')
+      expect(alterar).toMatch(/limiteParaAlterar\(scheduledAt, prazoHoras, fusoDoAgendamento\)/)
+      expect(alterar).toMatch(/<NotaDoFuso fuso=\{fusoDoAgendamento\}/)
+    })
+  })
+
+  describe('o horário próprio diz em que relógio vale', () => {
+    it('textoDoRelogioDoHorario: nada em Brasília; o relógio quando é um só; cada unidade quando são vários', async () => {
+      const { textoDoRelogioDoHorario } = await import('@/lib/unidades/hora-da-unidade')
+      expect(textoDoRelogioDoHorario([{ nome: 'Setor Bueno', fuso: SP }])).toBeNull()
+      expect(textoDoRelogioDoHorario([])).toBeNull()
+      expect(textoDoRelogioDoHorario([{ nome: 'Cuiabá Centro', fuso: CB }])).toBe('No horário de Cuiabá.')
+      expect(textoDoRelogioDoHorario([{ nome: 'Setor Bueno', fuso: SP }, { nome: 'Cuiabá Centro', fuso: CB }]))
+        .toBe('Vale no relógio de cada unidade: Setor Bueno no horário de Brasília, Cuiabá Centro no horário de Cuiabá.')
+    })
+
+    it('a edição do membro mostra o texto pelas unidades em que atende', () => {
+      const edit = fonte('components', 'admin', 'team-member-edit.tsx')
+      expect(edit).toMatch(/textoDoRelogioDoHorario\(/)
+      expect(edit).toMatch(/data-relogio-do-horario/)
+      expect(fonte('app', 'admin', 'team', 'page.tsx')).toMatch(/fusos=\{/)
+      expect(fonte('app', '[slug]', 'team', 'page.tsx')).toMatch(/fusos=\{/)
+    })
+  })
+
+  describe('o cartão da unidade diz o fuso quando não é o de Brasília', () => {
+    it('a lista de Unidades lê o fuso e o mostra só fora de Brasília', () => {
+      const lista = fonte('components', 'admin', 'settings-branches.tsx')
+      expect(lista).toMatch(/is_active, created_at, fuso/)
+      expect(lista).toMatch(/data-fuso-da-unidade/)
+      expect(lista).toMatch(/relogioForaDeBrasilia\(/)
+    })
+
+    it('relogioForaDeBrasilia: o nome, só fora de Brasília', async () => {
+      const { relogioForaDeBrasilia } = await import('@/lib/unidades/hora-da-unidade')
+      expect(relogioForaDeBrasilia(SP)).toBeNull()
+      expect(relogioForaDeBrasilia(null)).toBeNull()
+      expect(relogioForaDeBrasilia(CB)).toBe('Horário de Cuiabá')
+    })
   })
 })

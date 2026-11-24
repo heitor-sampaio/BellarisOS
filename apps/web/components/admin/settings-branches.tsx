@@ -6,7 +6,8 @@ import { BranchForm } from '@/components/admin/branch-form'
 import { toggleBranchStatus } from '@/actions/branches'
 import { semAcesso } from '@/lib/sem-acesso'
 import { origemDoApp, enderecoDoAppDaCliente } from '@/lib/unidades/app-da-cliente'
-import { MapPin, Mail, Phone, Power, PowerOff, ChevronRight } from 'lucide-react'
+import { MapPin, Mail, Phone, Power, PowerOff, ChevronRight, Clock } from 'lucide-react'
+import { relogioForaDeBrasilia } from '@/lib/unidades/hora-da-unidade'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import Link from 'next/link'
 import { ler } from '@/lib/db'
@@ -29,7 +30,7 @@ export async function SettingsBranches() {
   let lendoUnidades = createAdminClient()
     .from('branches')
     .select(`
-      id, name, slug, email, phone, city, state, is_active, created_at,
+      id, name, slug, email, phone, city, state, is_active, created_at, fuso,
       users(id)
     `)
     .eq('tenant_id', ctx.tenantId!)
@@ -182,6 +183,12 @@ export async function SettingsBranches() {
                   {branch.phone && (
                     <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
                       <Phone size={12} style={{ flexShrink: 0 }} /> {maskPhone(branch.phone)}
+                    </span>
+                  )}
+                  {/* A12 da 26ª (princípio 3): o fuso da unidade, só quando não é o de Brasília. */}
+                  {relogioForaDeBrasilia(branch.fuso) && (
+                    <span data-fuso-da-unidade style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+                      <Clock size={12} style={{ flexShrink: 0 }} aria-hidden /> {relogioForaDeBrasilia(branch.fuso)}
                     </span>
                   )}
                 </div>

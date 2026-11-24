@@ -313,7 +313,7 @@ export function AdminFinancialView({
   // D6: a receita SEM meio (a parcela do crediário) pergunta a forma na mesma janela.
   const [noCartao, setNoCartao] = useState<{ id: string; slug: string; descricao: string; metodo: string | null; valor: number; cliente: string | null } | null>(null)
   // A15 da 9ª: a despesa sem forma pergunta a forma na baixa.
-  const [despesaAPagar, setDespesaAPagar] = useState<{ id: string; slug: string; descricao: string; valor: number } | null>(null)
+  const [despesaAPagar, setDespesaAPagar] = useState<{ id: string; slug: string; descricao: string; valor: number; forma: string | null; fornecedor: string | null } | null>(null)
   function marcarPago(id: string, slug: string, bandeira?: string | null, vezes?: number, forma?: string | null, maquininha?: string | null, partes?: ParteDaBaixa[] | null) {
     startT(async () => {
       const r = await markTransactionPaid(id, slug, bandeira ?? null, vezes ?? null, forma ?? null, maquininha ?? null, partes ?? null)
@@ -497,8 +497,8 @@ export function AdminFinancialView({
             {!t.is_paid && !estornada && canPay && (
               <button type="button" onClick={() => t.type === 'INCOME'
                 ? setNoCartao({ id: t.id, slug: slugDaTx, descricao: t.description ?? 'Lançamento', metodo: t.payment_method ?? null, valor: Number(t.amount), cliente: t.clienteNome ?? null })
-                : t.type === 'EXPENSE' && !t.payment_method
-                ? setDespesaAPagar({ id: t.id, slug: slugDaTx, descricao: t.description ?? 'Despesa', valor: Number(t.amount) })
+                : t.type === 'EXPENSE'
+                ? setDespesaAPagar({ id: t.id, slug: slugDaTx, descricao: t.description ?? 'Despesa', valor: Number(t.amount), forma: t.payment_method ?? null, fornecedor: t.fornecedor ?? null })
                 : marcarPago(t.id, slugDaTx)} title={t.type === 'INCOME' ? 'Receber' : 'Marcar como pago'} style={{
                 display: 'inline-flex', alignItems: 'center', gap: 5,
                 fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '5px 10px', borderRadius: 7,
@@ -728,7 +728,7 @@ export function AdminFinancialView({
         <EstornarVendaDeCredito transacaoId={creditoAEstornar.id} descricao={creditoAEstornar.descricao} onFechar={() => setCreditoAEstornar(null)} />
       )}
       {despesaAPagar && (
-        <PagarDespesa descricao={despesaAPagar.descricao} valor={despesaAPagar.valor} pendente={estornando}
+        <PagarDespesa descricao={despesaAPagar.descricao} valor={despesaAPagar.valor} fornecedor={despesaAPagar.fornecedor} formaInicial={despesaAPagar.forma} pendente={estornando}
           aoConfirmar={f => marcarPago(despesaAPagar.id, despesaAPagar.slug, null, undefined, f)} aoFechar={() => setDespesaAPagar(null)} />
       )}
       {noCartao && (

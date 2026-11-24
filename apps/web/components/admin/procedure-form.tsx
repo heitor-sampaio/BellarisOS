@@ -712,10 +712,11 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
 
         {products.length === 0 && (
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', padding: '8px 0' }}>
-            Nenhum produto cadastrado no estoque ainda.{' '}
+            {/* A17 da 26ª: a lista é a dos INSUMOS — o produto de venda direta não entra nela. */}
+            Nenhum insumo cadastrado no estoque ainda.{' '}
             <Link href={rotaNoPortal(pathname, null, '/estoque')} target="_blank" onClick={() => setFoiCriar(true)}
               style={{ color: 'var(--brand)', fontWeight: 'var(--weight-bold)' }}>
-              Cadastrar produto no Estoque
+              Cadastrar insumo no Estoque
             </Link>
             {' '}— o insumo precisa existir lá antes de entrar aqui. {ABRE_EM_OUTRA_ABA}
           </p>
@@ -964,7 +965,8 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
             COMISSÃO
           </p>
           <EditorDeComissao estado={estadoComissao} onChange={e => { setEstadoComissao(e); setErroComissao(null) }}
-            profissionais={comissao.profissionais} inicialComValor={comissao.porProfissional.length} />
+            profissionais={comissao.profissionais} inicialComValor={comissao.porProfissional.length}
+            redeDescontaTaxa={comissao.redeDescontaTaxa} />
           {erroComissao && (
             <p role="alert" style={{ marginTop: 8, fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erroComissao}</p>
           )}

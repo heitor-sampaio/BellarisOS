@@ -942,6 +942,15 @@ abaixo entraram na F70, 2026-11-12):
   que o membro já tem não é dar. Mora em `lib/equipe/cargo-acima.ts`
   (`cargosAcimaDoMeu`, `assertRoleInTenant`). Prova:
   `e2e/permissoes-f70.spec.ts` ("C62").
+  **A matriz diz a regra de agora** (A26/A27 da 26ª; `tests/permissions.test.ts`,
+  `e2e/permissoes-f70.spec.ts`): a linha da Equipe em
+  Gerenciar diz que ela só dá um cargo que não passe do próprio; a de Cargos,
+  que criar e mudar cargo é só da Admin da rede (os avisos de auto-elevação,
+  `SENSITIVE_NOTE`, saíram — o módulo Cargos segue na matriz, e a quem não é a
+  Admin da rede ele não abre gravação nenhuma). O resumo "O que essa pessoa vai
+  ver" diz, quando a rede mostra mais que a unidade, que "Na rede" é de quem
+  tem “A rede inteira” e que em Notificações, Templates e Automações ela só vê
+  (`notaDoResumoDaRede`, `[data-resumo-da-rede]`).
   **"Duplicar" o cargo** (A15 da 15ª, 2026-11-17) passa pela mesma trava:
   "Cópia de X" (`nomeDaCopia`, `lib/cargos/duplicar.ts`; "(2)" se o nome já
   existe) com a matriz, as abas de Relatórios e as caixas do inbox do
@@ -1453,12 +1462,43 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
       `NotaDoFuso`), e a hora que a frase cita ("Agendou … para", "Remarcou …
       para") no fuso da unidade do registro (`nomes.fusos`). Ninguém chama
       `quandoDaAuditoria` sem o fuso (o teste trava);
+    - **26ª simulação, D6 (decisão do Claude, 26ª, para cumprir a regra F62 de
+      `indicadores.md`: "Todo dia e toda hora da unidade saem nele")**: o "Quando" de CADA linha vai no fuso
+      da unidade DELA (`nomes.fusos`); a linha sem unidade (a da rede), no fuso
+      da rede (`nomes.fusoDaRede`, `fusoDaRede`); o da leitura só sobra para
+      quem não tem o mapa. O relógio vai na linha, fora do de Brasília
+      ("horário de Cuiabá", `LinhaDaAuditoria.relogio`) — a nota única do
+      cabeçalho saiu —, e o CSV ganhou a coluna "Relógio", sempre preenchida
+      (o arquivo não tem nota). Tela e CSV dizem a mesma hora. Prova:
+      `tests/fuso-da-auditoria-e-comissoes.test.ts`, `e2e/fuso-da-unidade.spec.ts`;
     - o recebimento em duas formas diz quanto foi em cada ("Recebeu a parcela
       1/3 (R$ 150,00: Dinheiro R$ 50,00 e Pix R$ 100,00)"); a parcela vale
       quando todos os lançamentos da gravação são da mesma parcela;
     - o "−/+" do produto na comanda é "Pôs mais 1 Sérum na comanda (agora 2)"
       / "Tirou 1 Sérum da comanda (agora 2)"; tirar a linha, "Tirou Sérum da
       comanda".
+  - **A 26ª simulação** (A22–A25; `tests/auditoria-e-grupos.test.ts`,
+    `e2e/auditoria.spec.ts`, migration `20261130100007`):
+    - **toda coluna auditada tem nome** (A22): `CAMPO` ou, quando o nome muda
+      com a tabela, `CAMPO_DA_TABELA` (o `notes` da evolução é "texto da
+      evolução"). A trava lista as colunas de todas as tabelas com o gatilho:
+      coluna nova numa tabela auditada entra nela e no `CAMPO`;
+    - **as colunas de controle não geram linha** (A23, decisão do Claude,
+      26ª): `last_app_login_at`, `portal_ultima_entrada_em` e
+      `portal_ultima_unidade` entram na lista que o gatilho ignora (com o
+      `updated_at`) — a entrada da cliente no app e a troca de unidade no
+      portal não são "Editou a ficha";
+    - **o fato, não a tabela** (A24): o anexo da cliente é "Anexou uma foto
+      clínica" / "um anexo clínico (exame)" / "um arquivo" (a categoria lida
+      agora, `nomes.categoriasDosAnexos`); a decisão do prontuário na LGPD é
+      "Liberou" / "Recusou o prontuário no pedido da LGPD de X" (o gatilho
+      guarda `medical_status`); a devolução de parte da venda é "Devolveu 1
+      de 2 Protetor solar (R$ 95,00 · Dinheiro)…" (o retrato lido agora,
+      `nomes.devolucoes`) — "Estornou a venda de produto" fica para a venda
+      estornada inteira;
+    - **a permissão diz o módulo e o antes e depois** (A25): o módulo vai em
+      toda linha (o rótulo do gatilho de `role_permissions`), e a frase é
+      "Editou a permissão de Copilot do cargo X (nível: Ver → Gerenciar)".
   - Prova: `tests/atritos-da-15.test.ts`, `e2e/auditoria-atritos-da-15.spec.ts`.
 - **A falha do registro não derruba a gravação.** O gatilho segura o erro,
   grava uma linha `incompleto` (quando acha a rede) e deixa um WARNING no log:

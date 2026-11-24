@@ -11,6 +11,7 @@ import { useFala } from '@/components/shared/uma-unidade'
 import { UnidadesDoMembro, AtendeDoMembro, useAtendeDoMembro, type ValorDasUnidades } from '@/components/shared/unidades-do-membro'
 import { RepasseDoAtende, repasseDasEscolhas } from '@/components/admin/repasse-do-atende'
 import { Dica } from '@/components/shared/dica'
+import { textoDoRelogioDoHorario } from '@/lib/unidades/hora-da-unidade'
 
 interface Branch { id: string; name: string; /** O horário de funcionamento (J-9: de onde parte o do membro). */ horario?: unknown }
 /** C62 (F70): o porquê do cargo desligado (o mesmo texto da recusa da action, `lib/equipe/cargo-acima.ts`). */
@@ -77,6 +78,12 @@ interface Props {
   unidadesDoAtende?: { id: string; name: string }[]
   /** As que quem edita pode marcar ou desmarcar (a gerente de unidade fixa: só a dela); null = todas. */
   editaveisDoAtende?: string[] | null
+  /**
+   * A11 da 26ª: o fuso de cada unidade (o id → o fuso). O horário próprio é da
+   * parede e vale no relógio de cada unidade em que a pessoa atende; a tela diz
+   * qual, fora do de Brasília (princípio 3). Não muda como o horário é lido.
+   */
+  fusos?: Record<string, string>
 }
 
 /**
@@ -113,7 +120,7 @@ export function TeamMemberEdit(props: Props) {
  * o resultado da última tentativa nascem dos valores do membro a cada abertura,
  * e não do que se mexeu antes de cancelar.
  */
-function EdicaoDoMembro({ member, branches, roles, canChooseScope, unidadesDeQuemEdita = null, redirectPath, cargoFixo, cargoTravado, cargoDeAdminId, unidadesDoAtende, editaveisDoAtende = null, onFechar }: Props & { onFechar: () => void }) {
+function EdicaoDoMembro({ member, branches, roles, canChooseScope, unidadesDeQuemEdita = null, redirectPath, cargoFixo, cargoTravado, cargoDeAdminId, unidadesDoAtende, editaveisDoAtende = null, fusos = {}, onFechar }: Props & { onFechar: () => void }) {
   // As unidades (EQ1a): a rede inteira, ou as dela (a principal primeiro).
   const [unidadesEscolhidas, setUnidades] = useState<ValorDasUnidades>(
     member.branchId ? [member.branchId, ...(member.outrasUnidades ?? []).filter(u => u !== member.branchId)] : 'rede')
@@ -138,6 +145,10 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, unidadesDeQue
   // O "Atende" de UMA caixa (EQ1c): fechada, vale nas unidades dela.
   const atendeEstado = useAtendeDoMembro(member.atendeEm ?? [], unidadesDela)
   const atendeEm = atendeEstado.efetivo
+  // A11 da 26ª: o relógio do horário — o das unidades em que ela atende (sem nenhuma, as dela).
+  const relogioDoHorario = textoDoRelogioDoHorario(
+    todasAsAtivas.filter(b => (atendeEm.length ? atendeEm : unidadesDela).includes(b.id)).map(b => ({ nome: b.name, fuso: fusos[b.id] })),
+  )
   const formRef = useRef<HTMLFormElement>(null)
   // D3 da 9ª: desmarcar a unidade com agendamentos ali devolve o repasse. Ele
   // vale para o "Atende" que foi enviado — mexeu de novo, some (e o servidor pergunta de novo).
@@ -266,6 +277,9 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, unidadesDeQue
 
                 <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <span className="field-label">Horário de atendimento</span>
+                  {relogioDoHorario && (
+                    <p data-relogio-do-horario style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>{relogioDoHorario}</p>
+                  )}
                   <EditorDeHorario nome="horario" valor={normalizarHorario(member.horario)} seguir="Segue o horário da unidade"
                     base={horarioDeQuemDeixaDeSeguir(branches, unidades === 'rede' ? null : (unidades[0] ?? null))} />
                 </div>

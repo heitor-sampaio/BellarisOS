@@ -33,3 +33,13 @@ describe('os marcadores das unidades não se escondem (A19)', () => {
     expect(b!.direcao).not.toBe(a!.direcao)
   })
 })
+
+describe('o CEP que o mapa não acha, com a cidade achada, não pede para conferir (indicadores.md, princípio 7)', () => {
+  it('com a cidade achada, o aviso some', async () => {
+    const { avisosDoMapa } = await import('@/components/admin/hotmap-types')
+    const unidades = [{ id: 'a', name: 'Vitória', cityKey: 'Vitória, ES', cep: '29055-000' }]
+    expect(avisosDoMapa(unidades, { ceps: { '29055000': null }, cidades: { 'Vitória, ES': { lat: 1, lng: 1 } } })).toEqual([])
+    expect(avisosDoMapa(unidades, { ceps: { '29055000': null }, cidades: { 'Vitória, ES': null } }))
+      .toEqual(['Vitória sem localização: confira o CEP 29055-000 e a cidade.'])
+  })
+})

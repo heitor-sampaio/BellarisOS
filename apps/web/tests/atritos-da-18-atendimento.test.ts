@@ -235,12 +235,12 @@ describe('A26: a unidade sem pino no mapa é dita junto do mapa', () => {
       { id: 'c', name: 'Sem nada', cityKey: '', cep: null },
     ]
     expect(cidadesParaBuscar(unidades)).toEqual(['Recife, PE'])
+    // A regra mudou (decisão do Claude, princípio 7, indicadores.md): com a cidade achada, o pino fica no centro dela, sem aviso.
     expect(avisosDoMapa(unidades, { ceps: { '52061000': null }, cidades: { 'Recife, PE': { lat: 1, lng: 1 } } })).toEqual([
-      'Casa Forte no centro da cidade: o CEP 52061-000 não foi achado, confira.',
       'Sem nada sem localização: cadastre o CEP ou a cidade.',
     ])
     expect(avisosDoMapa(unidades.slice(0, 1), { ceps: { '52061000': null }, cidades: { 'Recife, PE': null } })).toEqual([
-      'Casa Forte sem localização: confira o CEP 52061-000.',
+      'Casa Forte sem localização: confira o CEP 52061-000 e a cidade.',
     ])
   })
   it('o mapa mostra os avisos', () => {

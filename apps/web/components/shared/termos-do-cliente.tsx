@@ -7,6 +7,7 @@ import { Copy, FileCheck, FileSignature, FileText, Link2, MessageCircle, ScrollT
 import type { TipoDeDocumento } from '@/lib/documentos/situacao'
 import { formatDate, formatTime } from '@estetica-os/utils'
 import { rotaNoPortal } from '@/lib/rotas'
+import { oQueFalta } from '@/lib/documentos/o-que-falta'
 import { DefinirPagamento } from '@/components/shared/definir-pagamento'
 import type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import {
@@ -312,7 +313,8 @@ export function TermosDoCliente({ itens, slug, podeDispensar = false, compacto =
             )}
             {item.status === 'INCOMPLETO' && item.faltando.some(f => !f.startsWith('Pagamento ·')) && (
               <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
-                Falta no cadastro: {item.faltando.filter(f => !f.startsWith('Pagamento ·')).join(', ')}.
+                {/* A2 da 26ª: o campo ("CPF"), não "Cliente · CPF". */}
+                Falta no cadastro: {oQueFalta(item.faltando.filter(f => !f.startsWith('Pagamento ·'))).join(', ')}.
               </p>
             )}
             {item.pedePagamento && (

@@ -2305,9 +2305,13 @@ export async function clienteParaAgendar(clienteId: string): Promise<{ cliente: 
 
 export async function buscarClientesParaAgendar(termo: string): Promise<{
   clientes: { id: string; name: string; phone: string }[]
+  /** A31 da 26ª: a busca recusada ou que falhou diz por quê (a tela ficava em "Procurando…" para sempre). */
+  error?: string
 }> {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'agenda', 'VIEW')
+  // A31 da 26ª: a Agenda tirada do cargo com o modal aberto — a recusa volta como { error }
+  // (a exceção não chegava à tela e o "Procurando…" não acabava). A trava é a mesma.
+  if (!can(ctx, 'agenda', 'VIEW')) return { clientes: [], error: 'A sua permissão não abre mais a Agenda: feche e recarregue a tela.' }
 
   const busca = termo?.trim() ?? ''
   if (busca.length < 2) return { clientes: [] }
@@ -2318,7 +2322,7 @@ export async function buscarClientesParaAgendar(termo: string): Promise<{
     p_termo:  busca,
     p_limite: 10,
   })
-  if (error) return { clientes: [] }
+  if (error) return { clientes: [], error: 'Não foi possível buscar agora. Tente de novo.' }
 
   return {
     clientes: ((data ?? []) as { id: string; name: string; phone: string | null }[]).map(c => ({

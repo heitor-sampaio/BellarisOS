@@ -23,6 +23,7 @@ import { MeusAtendimentosEmOutrasUnidades } from '@/components/branch/meus-de-ou
 import { quemConcluiOAtendimento } from '@/lib/equipe/quem-desfaz'
 import { filtrosDaAgenda, aplicarFiltrosDaAgenda, SEM_FILTRO } from '@/lib/agenda/filtros'
 import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
+import { fusosDasUnidades } from '@/lib/unidades/fuso-da-unidade'
 
 export default async function AgendaPage({ params, searchParams }: {
   params: Promise<{ slug: string }>
@@ -175,6 +176,8 @@ export default async function AgendaPage({ params, searchParams }: {
     : []
   const unidadesDaRede = meusDeFora.length ? (await getCachedNetworkBranches(ctx.tenantId!)) as { id: string; name: string; slug: string }[] : []
   const nomeDaUnidade = new Map(unidadesDaRede.map(b => [b.id, b.name]))
+  // 26ª (D3): o fuso da unidade de cada um de fora — a hora do cartão sai no relógio dela.
+  const fusosDeFora: Record<string, string> = meusDeFora.length ? await fusosDasUnidades(ctx.tenantId) : {}
   // D10 da 9ª: quem é da rede abre o atendimento no endereço da unidade DELE
   // (era o desta tela, e a página dava 404); quem tem unidade fixa, pelo portal dela.
   const slugDaUnidade = new Map(unidadesDaRede.map(b => [b.id, b.slug]))
@@ -279,6 +282,7 @@ export default async function AgendaPage({ params, searchParams }: {
     clientId:         (a.client_id as string | null) ?? null,
     procedureId:      (a.procedure_id as string | null) ?? null,
     unidade:          nomeDaUnidade.get(a.branch_id as string) ?? 'outra unidade',
+    fusoDaUnidade:    fusosDeFora[a.branch_id as string] ?? null,
     href:             enderecoDoDeFora(a),
     arrivedAt:        (a.arrived_at as string | null) ?? null,
     completedAt:      (a.completed_at as string | null) ?? null,
@@ -319,7 +323,7 @@ export default async function AgendaPage({ params, searchParams }: {
       {(abertos.abertos.total > 0 || abertos.semChegada.total > 0) && <div style={{ marginBottom: 16 }}>{avisoDosAbertos}</div>}
       {eventosDeFora.length > 0 && (
         <div style={{ marginBottom: 16 }}>
-          <MeusAtendimentosEmOutrasUnidades slug={slug} eventos={eventosDeFora} />
+          <MeusAtendimentosEmOutrasUnidades slug={slug} eventos={eventosDeFora} fuso={fusosDeFora[branchId]} />
         </div>
       )}
 

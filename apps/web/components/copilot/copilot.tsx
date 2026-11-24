@@ -7,7 +7,8 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import {
   Sparkles, X, History, Plus, Paperclip, Mic, Square, SendHorizontal, Trash2, Loader2, FileText, Image as ImageIcon, AudioLines,
 } from 'lucide-react'
-import { abrirConversaDoCopilot, apagarConversaDoCopilot, listarConversasDoCopilot } from '@/actions/copilot'
+import { aberturaDoCopilotNaTela, abrirConversaDoCopilot, apagarConversaDoCopilot, listarConversasDoCopilot } from '@/actions/copilot'
+import type { AberturaDoCopilot } from '@/lib/copilot/abertura'
 import { conversaParaAbrirSozinha, conversaParaContinuar, rotuloDoContinuar } from '@/lib/copilot/continuar'
 import { erroParaTela } from '@/lib/erro-na-tela'
 import { TextoDoCopilot } from '@/components/copilot/texto-do-copilot'
@@ -31,12 +32,6 @@ const CHAVE_DA_CONVERSA = 'bellaris:copilot:conversa'
 const CHAVE_DO_PAINEL = 'bellaris:copilot:aberto'
 const ACEITOS = 'image/jpeg,image/png,image/webp,application/pdf,.txt,.csv,.docx,.xlsx'
 
-const SUGESTOES = [
-  'Quais são os horários livres amanhã?',
-  'Quem são os agendamentos de hoje?',
-  'Quanto faturamos este mês?',
-  'Cadastrar uma cliente nova',
-]
 
 function guardado(chave: string): string | null {
   try { return window.sessionStorage.getItem(chave) } catch { return null }
@@ -185,6 +180,8 @@ export function Copilot() {
    * cartão a confirmar vem antes (A28 da 19ª).
    */
   const [anterior, setAnterior] = useState<ConversaNaLista | null>(null)
+  /** A28 da 26ª: o "Olá" e os atalhos vêm do servidor, pela permissão da pessoa (lib/copilot/abertura). */
+  const [abertura, setAbertura] = useState<AberturaDoCopilot | null>(null)
   /** A pessoa pediu "Nova conversa": o painel vazio não volta sozinho ao cartão pendente (A25 da 20ª). */
   const novaDeProposito = useRef(false)
   const abertaSozinha = useRef<string | null>(null)
@@ -256,6 +253,16 @@ export function Copilot() {
       .catch(() => { if (vale) setAnterior(null) })
     return () => { vale = false }
   }, [vazio, carregarConversa])
+
+  // A28 da 26ª: a abertura, uma vez por painel montado (a permissão não muda na conversa).
+  useEffect(() => {
+    if (!vazio || abertura) return
+    let vale = true
+    aberturaDoCopilotNaTela()
+      .then(a => { if (vale) setAbertura(a) })
+      .catch(() => { if (vale) setAbertura({ texto: 'Olá! Peça o que precisar.', sugestoes: [] }) })
+    return () => { vale = false }
+  }, [vazio, abertura])
 
   // Atalho: Ctrl/Cmd + J abre e fecha; Esc fecha.
   useEffect(() => {
@@ -481,8 +488,8 @@ export function Copilot() {
                     {rotuloDoContinuar(anterior)}
                   </button>
                 )}
-                <p>Olá! Peça o que precisar: consultar a agenda, achar um cliente, ver números, cadastrar ou agendar. Toda gravação passa pela sua confirmação.</p>
-                {SUGESTOES.map(s => (
+                {abertura && <p data-abertura-do-copilot>{abertura.texto}</p>}
+                {(abertura?.sugestoes ?? []).map(s => (
                   <button key={s} type="button" className="copilot-sugestao" onClick={() => { setTexto(s); campoRef.current?.focus() }}>{s}</button>
                 ))}
               </div>

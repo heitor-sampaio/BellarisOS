@@ -2,6 +2,8 @@ import { describe, it, expect, vi } from 'vitest'
 import type { TenantContext, ResolvedPermissions, ReportTab } from '@estetica-os/types'
 import { NO_PERMISSIONS } from '@/lib/permissions'
 import { FUNCIONALIDADES } from '@estetica-os/nucleo/lib/planos/recursos'
+import * as nodeFs from 'node:fs'
+import * as nodePath from 'node:path'
 
 // O primeiro import() de uma ferramenta carrega o Supabase e o núcleo.
 vi.setConfig({ testTimeout: 30_000 })
@@ -149,5 +151,33 @@ describe('(e) a aba que não vale não segura os Relatórios abertos', () => {
   it('o "cargo acima" compara as abas que valem no cargo dado', async () => {
     const { readFileSync } = await import('node:fs')
     expect(readFileSync('lib/equipe/cargo-acima.ts', 'utf8')).toContain('abasQueValem(')
+  })
+})
+
+describe('a aba de relatório fora da permissão leva à primeira da permissão, com o aviso (indicadores.md)', () => {
+  const ler = (f: string) => nodeFs.readFileSync(nodePath.resolve(__dirname, '..', f), 'utf8')
+
+  describe('a aba pedida que a permissão não abre', () => {
+    it('leva à primeira aba da permissão, com a URL certa e o aviso', async () => {
+      const { destinoDaAbaPedida } = await import('@/lib/relatorios/aba-pedida')
+      const abas = ['agenda', 'vendas'] as const
+      expect(destinoDaAbaPedida('/admin/reports', { tab: 'financeiro', period: '7d', pagina: '2', tipo: 'PACOTE', unidade: 'b1' }, abas))
+        .toBe('/admin/reports?tab=vendas&period=7d&unidade=b1&aviso=aba-de-relatorio')
+      expect(destinoDaAbaPedida('/lavanda/reports', { tab: 'xyz' }, abas)).toBe('/lavanda/reports?tab=vendas&aviso=aba-de-relatorio-inexistente')
+      // A aba da permissão, sem aba pedida, ou sem aba nenhuma (a tela diz): não redireciona.
+      expect(destinoDaAbaPedida('/admin/reports', { tab: 'agenda' }, abas)).toBeNull()
+      expect(destinoDaAbaPedida('/admin/reports', {}, abas)).toBeNull()
+      expect(destinoDaAbaPedida('/admin/reports', { tab: 'financeiro' }, [])).toBeNull()
+    })
+    it('o aviso existe e as duas páginas redirecionam', async () => {
+      const { textoDoAviso } = await import('@/lib/aviso-da-url')
+      expect(textoDoAviso('aba-de-relatorio')).toMatch(/não está na sua permissão/)
+      expect(textoDoAviso('aba-de-relatorio-inexistente')).toMatch(/não existe/)
+      for (const f of ['app/admin/reports/page.tsx', 'app/[slug]/reports/page.tsx']) {
+        const src = ler(f)
+        expect(src, f).toContain('destinoDaAbaPedida(')
+        expect(src, f).toMatch(/redirect\(/)
+      }
+    })
   })
 })

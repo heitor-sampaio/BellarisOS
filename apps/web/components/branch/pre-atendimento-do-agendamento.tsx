@@ -12,6 +12,7 @@ import {
 } from '@/actions/pre-atendimento'
 import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
+import { textoDaFichaValida } from '@/lib/pre-atendimento/validade'
 
 /**
  * A ficha de pré-atendimento na janela do agendamento (2026-10-20): se a da
@@ -143,7 +144,12 @@ export function PreAtendimentoDoAgendamento({ appointmentId, slug, podeMandar }:
         )}
       </div>
       {naoEnviada && !link && !enviado && (
-        <p className="pre-atendimento-agendamento-texto">A ficha de saúde não foi enviada para este agendamento.</p>
+        <p data-ficha-valida={situacao.fichaValida ? '' : undefined} className="pre-atendimento-agendamento-texto">
+          {/* A1 da 26ª: com a ficha válida, ela é dita (até quando) — não "não foi enviada". */}
+          {situacao.fichaValida
+            ? textoDaFichaValida(situacao.fichaValida, iso => formatDate(iso, fuso))
+            : 'A ficha de saúde não foi enviada para este agendamento.'}
+        </p>
       )}
       {!situacao.podeLink && (
         <p className="pre-atendimento-agendamento-texto">

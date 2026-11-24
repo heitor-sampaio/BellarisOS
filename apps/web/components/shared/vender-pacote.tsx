@@ -75,6 +75,8 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
   const [contrato, setContrato] = useState<ContratoParaAssinar | null>(null)
   const [assinando, setAssinando] = useState<DocumentoNaTela | null>(null)
   const [contratoAssinado, setContratoAssinado] = useState(false)
+  // A14 da 26ª: vendido, o formulário sai da tela (era o "Vender por" preenchido depois do contrato).
+  const [registrada, setRegistrada] = useState<string | null>(null)
   const [docsDaVenda, setDocsDaVenda] = useState<DocumentoDaVenda[]>([])
   // D1 da 15ª: quem vendeu colhe a assinatura (2026-11-16: sem o módulo
   // Documentos); `veNaFicha`, se ela vê a ficha da cliente.
@@ -153,11 +155,22 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
       // A11 da 20ª: o aviso diz "Completado o cadastro…" — quem edita os Clientes ganha o botão junto.
       const completar = docs.some(d => d.status === 'INCOMPLETO') && contratoQuePedeCadastro?.podeCompletar
         ? { label: 'Completar o cadastro', onClick: () => router.push(rotaDosDados) } : undefined
-      toast.success(avisoDaVenda(pacote.name, fid.aPagar, estado.forma),
+      const aviso = avisoDaVenda(pacote.name, fid.aPagar, estado.forma)
+      setRegistrada(aviso)
+      toast.success(aviso,
         docs.length ? { description: avisoDosDocumentosDaVenda(docs, { veNaFicha: naFicha }), action: completar } : undefined)
       onFim()
     })
   }
+
+  if (registrada) return (
+    <div data-venda-registrada role="status" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>{registrada}</p>
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <button type="button" className="btn-secondary" onClick={onFim}>Fechar</button>
+      </div>
+    </div>
+  )
 
   if (assinando && contrato) return (
     <TelaDeAssinatura doc={assinando} podeColher aoTerminar={() => voltarDoContrato(contrato.id)} />

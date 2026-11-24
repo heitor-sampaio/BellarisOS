@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import * as nodeFs from 'node:fs'
+import * as nodePath from 'node:path'
 
 /**
  * A dica abre também na tela só de leitura (2026-11-16). Dentro de um
@@ -42,5 +44,19 @@ describe('a dica', () => {
     const web = ler('apps', 'web', 'components', 'shared', 'dica.tsx')
     expect(web).toMatch(/from '@estetica-os\/nucleo\/components\/dica'/)
     expect(web).not.toMatch(/<button\b|useState/)
+  })
+})
+
+describe('a tela de quem só lê não convida a escrever: as anotações da ficha mostram o texto ou "Sem anotações."', () => {
+  const ler = (f: string) => nodeFs.readFileSync(nodePath.resolve(__dirname, '..', f), 'utf8')
+
+  describe('as anotações de quem só lê', () => {
+    it('o texto ou "Sem anotações."', async () => {
+      const { anotacoesParaLer } = await import('@/lib/clientes/anotacoes')
+      expect(anotacoesParaLer('  ')).toBe('Sem anotações.')
+      expect(anotacoesParaLer(null)).toBe('Sem anotações.')
+      expect(anotacoesParaLer('Alérgica a látex')).toBe('Alérgica a látex')
+      expect(ler('components/branch/client-profile.tsx')).toContain('data-anotacoes-so-leitura')
+    })
   })
 })

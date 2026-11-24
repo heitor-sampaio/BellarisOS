@@ -149,15 +149,28 @@ export function cabeNoHorario(intervalos: Intervalo[], inicioMin: number, fimMin
  * o atendimento que passa da meia-noite num dia de 00:00–24:00 dizia "Fora do
  * horário de atendimento (00:00–24:00)" — o motivo é a virada do dia, e o
  * aviso diz isso.
+ *
+ * `daUnidade` (A7 da 26ª; §9.1, "o horário de funcionamento é da UNIDADE e,
+ * dentro dele, do PROFISSIONAL"): o horário da unidade no dia. Fora dele
+ * também, o aviso diz — o das 23:30 dizia só o do profissional (08:00–17:00),
+ * sem dizer que a unidade fecha às 22:00.
  */
-export function avisoForaDoHorario(nome: string, intervalos: Intervalo[], inicioMin: number, duracaoMin: number): string | null {
+export function avisoForaDoHorario(nome: string, intervalos: Intervalo[], inicioMin: number, duracaoMin: number, daUnidade?: Intervalo[]): string | null {
   const fim = inicioMin + duracaoMin
   if (cabeNoHorario(intervalos, inicioMin, fim)) return null
-  if (!intervalos.length) return `${nome} não atende neste dia. O encaixe é permitido.`
+  const foraDaUnidade = daUnidade !== undefined && !cabeNoHorario(daUnidade, inicioMin, fim)
+  if (daUnidade !== undefined && daUnidade.length === 0) return 'A unidade não abre neste dia. O encaixe é permitido.'
+  if (!intervalos.length) {
+    return foraDaUnidade
+      ? `${nome} não atende neste dia, e é fora do horário da unidade (${textoDosIntervalos(daUnidade!)}). O encaixe é permitido.`
+      : `${nome} não atende neste dia. O encaixe é permitido.`
+  }
   if (fim > 24 * 60 && cabeNoHorario(intervalos, inicioMin, 24 * 60)) {
     return `Passa da meia-noite (fim às ${hhmm(fim - 24 * 60)}): o horário de atendimento de ${nome} vai até 24:00. O encaixe é permitido.`
   }
-  return `Fora do horário de atendimento de ${nome} (${textoDosIntervalos(intervalos)}). O encaixe é permitido.`
+  return foraDaUnidade
+    ? `Fora do horário de atendimento de ${nome} (${textoDosIntervalos(intervalos)}) e do horário da unidade (${textoDosIntervalos(daUnidade!)}). O encaixe é permitido.`
+    : `Fora do horário de atendimento de ${nome} (${textoDosIntervalos(intervalos)}). O encaixe é permitido.`
 }
 
 /**

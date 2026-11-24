@@ -457,7 +457,8 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   tira uma delas — sem a tag, o passo não faz nada e diz "O cliente não tinha
   esta tag.". O T4 do Bloco Tags (2026-11-14) tinha tirado o remover, numa
   leitura do Claude (a fala do Heitor era sobre o nome); voltou na auditoria das
-  regras (2026-11-18: "simplificar não é reduzir funcionalidade", princípio 7).
+  regras (2026-11-18: "simplificar não é reduzir funcionalidade", princípio 7),
+  e o Heitor confirmou (18/11, noite): "automacao pode tirar tag".
   O passo antigo gravado como "Marcar com tag" no modo de remover volta a
   remover. **A tag é da PESSOA** (o Heitor, 18/11, noite: "a tag é da pessoa
   e pode ter mais de uma tag"; `crm-inbox.md`): o "Adicionar tag" grava na

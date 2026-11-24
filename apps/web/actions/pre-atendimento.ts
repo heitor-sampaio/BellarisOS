@@ -14,7 +14,8 @@ import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { recusaDaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { normalizeFormSchema, validateFormSchema, flattenFields } from '@/lib/anamnesis'
 import { TIPOS_FORA_DO_PRE_ATENDIMENTO } from '@/lib/anamnese-geral'
-import { gravarAnamneseGeral, preAtendimentoPendente } from '@/lib/pre-atendimento/ficha'
+import { gravarAnamneseGeral, preAtendimentoPendente, dadosDaOfertaNoApp } from '@/lib/pre-atendimento/ficha'
+import { fichaDeSaudeVencida, fichaDeSaudeValidaAte } from '@/lib/pre-atendimento/validade'
 import { conversaDoCliente, envioPelaConversaLigado } from '@/lib/documentos/link-pela-conversa'
 import { enviarNaConversa } from '@/lib/inbox/enviar'
 import { emitirEventoDeConversa } from '@/lib/events/conversa'
@@ -146,6 +147,11 @@ export interface SituacaoDoPreAtendimento {
    * seu atendimento", que sai ao agendar): quando. Nulo = nenhum aviso saiu.
    */
   noAppEm?: string | null
+  /**
+   * A1 da 26ª: sem ficha mandada para este agendamento, a da cliente que ainda
+   * VALE (a última resposta com conteúdo, dentro da validade da rede).
+   */
+  fichaValida?: { respondidaEm: string; validaAte: string | null } | null
 }
 
 /**
@@ -196,7 +202,12 @@ export async function situacaoDoPreAtendimento(appointmentId: string): Promise<S
   if (deste) return { estado: 'RESPONDIDO', respondidoEm: deste.respondido_em as string | null, podeLink }
   // Nenhuma ficha mandada (o envio automático da rede desligado, ou respondida
   // há pouco): a equipe manda à mão daqui (A49 da 6ª simulação).
-  return { estado: 'NAO_ENVIADA', podeLink, podeCompletarNascimento, pelaConversa, clienteId: ap.client_id as string }
+  // A1 da 26ª: a cliente com ficha válida — a janela diz até quando, em vez de "não foi enviada".
+  const oferta = await dadosDaOfertaNoApp(admin, ctx.tenantId!, ap.client_id as string)
+  const fichaValida = oferta.ultimaResposta && !fichaDeSaudeVencida(oferta.ultimaResposta, oferta.validadeMeses)
+    ? { respondidaEm: oferta.ultimaResposta, validaAte: fichaDeSaudeValidaAte(oferta.ultimaResposta, oferta.validadeMeses) }
+    : null
+  return { estado: 'NAO_ENVIADA', podeLink, podeCompletarNascimento, pelaConversa, clienteId: ap.client_id as string, fichaValida }
 }
 
 /**

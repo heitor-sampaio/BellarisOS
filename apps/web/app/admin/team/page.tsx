@@ -8,6 +8,7 @@ import { regrasDaRede, procedimentosParaComissao, procedimentosComComissaoGeral 
 import { cargosQueVendem } from '@/lib/vendas/equipe-da-venda'
 import { AdminTeamForm } from '@/components/admin/team-form'
 import { TeamMemberEdit } from '@/components/admin/team-member-edit'
+import { fusosDasUnidades } from '@/lib/unidades/fuso-da-unidade'
 import { TeamFilters } from '@/components/admin/team-filters'
 import { ReativarMembro } from '@/components/admin/reativar-membro'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -97,6 +98,8 @@ export default async function AdminTeamPage({
 
   // Na rede de uma unidade (PO2), o cargo "Admin da rede" é "Admin".
   const fala = await falaDaTela(ctx.tenantId)
+  // A11 da 26ª: o fuso de cada unidade — a edição diz em que relógio vale o horário próprio.
+  const fusos = await fusosDasUnidades(ctx.tenantId)
   const allRoles = (tenantRoles ?? []).map(r => ({ ...r, label: fala(r.label) }))
   // Cargos atribuíveis pela UI: sem os de sistema (NETWORK_ADMIN)
   const assignableRoles = allRoles.filter(r => !r.is_system && r.key !== 'NETWORK_ADMIN')
@@ -339,6 +342,7 @@ export default async function AdminTeamPage({
                           registroConselho: (m as { registro_conselho?: string | null }).registro_conselho ?? null,
                         }}
                         branches={branches ?? []}
+                        fusos={fusos}
                         editaveisDoAtende={ctx.branchId === null ? null : [ctx.branchId]}
                         roles={rolesParaDar}
                         canChooseScope={ctx.branchId === null}

@@ -4,6 +4,7 @@ import { useActionState, useState } from 'react'
 import { reviewMedicalData, type LgpdAdminRow } from '@/actions/lgpd'
 import { ShieldCheck, Check, X, AlertTriangle } from 'lucide-react'
 import { prazoDeResposta, DIAS_DO_PRAZO_DA_LGPD } from '@/lib/lgpd/prazo'
+import { CONTEUDO_DO_PRONTUARIO } from '@/lib/lgpd/situacao-do-prontuario'
 import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
 
@@ -81,7 +82,7 @@ function ReviewButtons({ requestId }: { requestId: string }) {
             padding: '10px 12px', borderRadius: 'var(--radius-field-token)', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)',
           }}>
             <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text)', textAlign: 'right', lineHeight: 1.5 }}>
-              O pacote é refeito com a ficha de saúde, a evolução e as fotos, e vai para a cliente. Não se desfaz.
+              O pacote é refeito com o prontuário — {CONTEUDO_DO_PRONTUARIO} — e vai para a cliente. Não se desfaz.
             </span>
             <div style={{ display: 'flex', gap: 8 }}>
               <button type="button" disabled={pending} onClick={() => setConfirmando(false)}

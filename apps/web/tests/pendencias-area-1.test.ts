@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync, existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import type { AnamnesisRow } from '@/lib/anamnesis'
+import * as nodeFs from 'node:fs'
+import * as nodePath from 'node:path'
 
 /**
  * As pendências das simulações 15ª–23ª, área 1 (atendimento, agenda, plano e
@@ -256,5 +258,27 @@ describe('18ª A29 (resto): marcar a unidade no "Atende" pela janela do Desativa
     const d = fonte('components/admin/desativar-membro.tsx')
     expect(d).toContain('data-marcar-no-atende')
     expect(d).toContain('marcarUnidadeNoAtende(')
+  })
+})
+
+describe('a faixa da ficha de saúde não respondida conta o que está na TELA (princípio 3)', () => {
+  const ler = (rel: string) => nodeFs.readFileSync(nodePath.join(__dirname, '..', rel), 'utf8')
+
+  describe('a contagem das obrigatórias', () => {
+    const obrig = (id: string, required = true) => ({ id, type: 'text' as const, label: id.toUpperCase(), required })
+    const linhas = [{ id: 'r1', fields: [obrig('alergia'), obrig('medicamentos'), obrig('obs', false)] }]
+    it('a contagem desce com o que se digita, e some quando nada obrigatório falta', async () => {
+      const { avisoDaFichaNaoRespondida } = await import('@/lib/atendimento/obrigatorias')
+      expect(avisoDaFichaNaoRespondida('Ana', null, linhas)).toBe('A ficha de saúde de Ana ainda não foi respondida (2 obrigatórias).')
+      expect(avisoDaFichaNaoRespondida('Ana', null, linhas, { alergia: 'Nenhuma' }))
+        .toBe('A ficha de saúde de Ana ainda não foi respondida (1 obrigatória).')
+      expect(avisoDaFichaNaoRespondida('Ana', null, linhas, { alergia: 'Nenhuma', medicamentos: 'Nenhum' })).toBeNull()
+      // Nada digitado ainda: como antes.
+      expect(avisoDaFichaNaoRespondida('Ana', null, linhas, {})).toBe('A ficha de saúde de Ana ainda não foi respondida (2 obrigatórias).')
+    })
+    it('a tela passa as respostas digitadas', () => {
+      const s = ler('components/branch/appointment-session.tsx')
+      expect(s).toMatch(/avisoDaFichaNaoRespondida\(nomeParaSaudar\(client\.name\), anamnesis, fichaPreAtendimento\.rows, anamneseDigitada\)/)
+    })
   })
 })

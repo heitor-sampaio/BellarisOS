@@ -79,6 +79,19 @@ export function maquininhaDaVenda<T extends Pick<Maquininha, 'id' | 'arquivada'>
   return lista.find(m => !m.arquivada) ?? lista[0] ?? null
 }
 
+/**
+ * A maquininha cuja taxa a tela pode dizer (A16 da 26ª, princípio 4): a
+ * escolhida; sem escolha, só quando há UMA. Com mais de uma e nada escolhido,
+ * nenhuma — o cartão não segue sem a escolha (`recusaDasVezesDaRede`: "Escolha
+ * a maquininha do cartão."), e a taxa da primeira seria um número chutado.
+ * `lista` são as ativas (as da venda).
+ */
+export function maquininhaDoAviso<T extends { id: string }>(lista: T[] | undefined, escolhida: string | null | undefined): T | null {
+  if (!lista?.length) return null
+  if (escolhida) return lista.find(m => m.id === escolhida) ?? null
+  return lista.length === 1 ? lista[0]! : null
+}
+
 /** As ativas, na ordem da tela. */
 export function ativas<T extends Pick<Maquininha, 'arquivada'>>(lista: T[]): T[] {
   return lista.filter(m => !m.arquivada)

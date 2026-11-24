@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { EntradaDaConfig, configDaLinha, CONFIG_PADRAO } from '@/lib/fidelidade/config'
 import { formatarPontos, pontosEmReais, rotuloDoLancamento } from '@/lib/fidelidade/formato'
+import * as nodeFs from 'node:fs'
+import * as nodePath from 'node:path'
 
 describe('EntradaDaConfig', () => {
   const valida = {
@@ -87,5 +89,44 @@ describe('formato', () => {
     expect(rotuloDoLancamento('BONUS', 'Bônus de aniversário')).toBe('Bônus de aniversário')
     expect(rotuloDoLancamento('BONUS')).toBe('Bônus')
     expect(rotuloDoLancamento('GANHO', 'qualquer')).toBe('Ganho no pagamento')
+  })
+})
+
+describe('o que foi pago com o programa desligado não conta ponto (o Heitor, 18/11: "se o programa é ligado no meio não conta ponto")', () => {
+  const WEB = nodePath.join(__dirname, "..")
+  const MIGRATIONS = nodePath.join(WEB, "..", "..", "supabase", "migrations")
+  const migrations = () => nodeFs.readdirSync(MIGRATIONS).filter(f => f.endsWith(".sql")).sort()
+  /** A migration mais nova que mexe no que o trecho diz. */
+  const ultimaCom = (trecho: string) => {
+    const achou = migrations().filter(f => nodeFs.readFileSync(nodePath.join(MIGRATIONS, f), "utf8").includes(trecho))
+    return achou.length ? { nome: achou.at(-1)!, sql: nodeFs.readFileSync(nodePath.join(MIGRATIONS, achou.at(-1)!), "utf8") } : null
+  }
+
+  // ─── o que foi pago com o programa desligado não conta ────────────────
+  describe('a conta cumulativa dos pontos só com o pago com o programa ligado', () => {
+    // O Heitor, 18/11: "se o programa é ligado no meio não conta ponto".
+    it('a rede guarda quando o programa foi ligado, pelo gatilho da config', () => {
+      const m = ultimaCom('fidelidade_ligada')
+      expect(m, 'nenhuma migration guarda o "ligado em"').not.toBeNull()
+      expect(m!.nome >= '20261130100001').toBe(true)
+      expect(m!.sql).toMatch(/create table if not exists public\.fidelidade_ligada/)
+      expect(m!.sql).toContain('enable row level security')
+      for (const p of ['suporte_sem_escrita_ins', 'suporte_sem_escrita_upd', 'suporte_sem_escrita_del']) expect(m!.sql).toContain(p)
+      expect(m!.sql).toMatch(/after insert or update of enabled on public\.loyalty_configs/)
+      // O passado sai da Auditoria da config (a criação ou a edição que ligou).
+      expect(m!.sql).toContain('public.auditoria')
+    })
+    it('os quatro ramos cumulativos contam o pago e o "já deu" só desde que ligou', () => {
+      const m = ultimaCom('fidelidade_pontos_do_pagamento')!
+      expect(m.nome >= '20261130100001').toBe(true)
+      expect(m.sql).toContain('fidelidade_ligada')
+      expect(m.sql).toContain('v_ligado')
+      expect(m.sql).toMatch(/coalesce\(f\.paid_at, f\.created_at\) >= v_ligado/)
+      expect(m.sql).toMatch(/coalesce\(o\.paid_at, o\.created_at, f\.paid_at, f\.created_at[^)]*\) >= v_ligado/)
+      // O pago aparece em quatro consultas (pacote e pré-pago nos dois modos, plano, avulso).
+      expect(m.sql).toMatch(/array\[1, 1, 4, 3\]/)
+      expect(m.sql).toContain('create or replace function pg_temp.trocar_no_corpo')
+      expect(m.sql.trim().endsWith("notify pgrst, 'reload schema';")).toBe(true)
+    })
   })
 })

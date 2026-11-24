@@ -1,4 +1,6 @@
+import { redirect } from 'next/navigation'
 import { getTenantContext, assertPermission, alcancaUnidade, unidadesDoContexto } from '@/lib/auth'
+import { destinoDaAbaPedida } from '@/lib/relatorios/aba-pedida'
 import { umaUnidadeSo } from '@/lib/unidades/uma-so'
 import { unidadesParaLer, periodoDaTela, nomeNaTela } from '@/lib/unidades/da-tela'
 import {
@@ -14,6 +16,11 @@ export default async function AdminReportsPage({
 
   const ctx = await getTenantContext()
   assertPermission(ctx, 'reports', 'VIEW')
+  // A21 da 26ª: a aba fora da permissão leva à primeira dela, com a URL certa e o aviso.
+  const destino = destinoDaAbaPedida('/admin/reports', {
+    tab: rawTab, period: rawPeriod, from: rawFrom, to: rawTo, unidade: rawUnidade, branch: rawBranch, tags: rawTags,
+  }, ctx.reportTabs)
+  if (destino) redirect(destino)
 
   // A abrangência da pessoa (SM4, 2026-11-23): a "Rede inteira" é de quem é
   // da rede; quem tem unidades vê só as dela.

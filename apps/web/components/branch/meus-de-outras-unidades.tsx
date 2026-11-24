@@ -2,9 +2,13 @@ import Link from 'next/link'
 import { ChevronRight, MapPin } from 'lucide-react'
 import { partsInTZ, startOfDayTZ } from '@/lib/datetime'
 import { Dica } from '@/components/shared/dica'
+import { horaNaUnidadeDele } from '@/lib/unidades/hora-da-unidade'
+import { fusoValido } from '@/lib/unidades/fuso'
 
 interface EventoDeFora {
   id: string; start: string; status?: string; clientName: string; procedureName: string; unidade?: string | null
+  /** D3 da 26ª: o fuso da unidade dele — o dia e a hora saem no relógio de lá. */
+  fusoDaUnidade?: string | null
   /** O endereço do atendimento (D10 da 9ª): o portal da unidade dele para quem é da rede. */
   href?: string
 }
@@ -21,8 +25,12 @@ const dd = (n: number) => String(n).padStart(2, '0')
  * aqui ficam à vista, de hoje em diante, e cada um abre a tela do atendimento
  * por este portal. Na "Minha agenda" eles entram na grade, com a unidade.
  */
-export function MeusAtendimentosEmOutrasUnidades({ slug, eventos }: { slug: string; eventos: EventoDeFora[] }) {
-  const hoje = startOfDayTZ(new Date()).getTime()
+export function MeusAtendimentosEmOutrasUnidades({ slug, eventos, fuso }: {
+  slug: string; eventos: EventoDeFora[]
+  /** O fuso deste portal (F62): o "de hoje em diante" e o relógio que não precisa ser dito. */
+  fuso?: string
+}) {
+  const hoje = startOfDayTZ(new Date(), fuso).getTime()
   const proximos = eventos.filter(e => new Date(e.start).getTime() >= hoje && (!e.status || EM_ABERTO.includes(e.status))).slice(0, 8)
   if (!proximos.length) return null
   return (
@@ -36,7 +44,9 @@ export function MeusAtendimentosEmOutrasUnidades({ slug, eventos }: { slug: stri
       </p>
       <ul style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {proximos.map(e => {
-          const p = partsInTZ(new Date(e.start))
+          // D3 da 26ª (princípio 3): no relógio da unidade dele, e dito quando não é o deste portal.
+          const p = partsInTZ(new Date(e.start), fusoValido(e.fusoDaUnidade ?? fuso))
+          const { relogio } = horaNaUnidadeDele(e.start, e.fusoDaUnidade ?? fuso, fuso)
           return (
             <li key={e.id}>
               <Link href={e.href ?? `/${slug}/agenda/${e.id}`} data-outra-unidade style={{
@@ -44,6 +54,7 @@ export function MeusAtendimentosEmOutrasUnidades({ slug, eventos }: { slug: stri
                 fontSize: 'var(--text-xs-sz)', color: 'var(--text)', textDecoration: 'none',
               }}>
                 <b>{dd(p.day)}/{dd(p.month)} {dd(p.hour)}:{dd(p.minute)}</b>
+                {relogio && <span data-relogio-do-cartao style={{ color: 'var(--text-muted)', fontWeight: 600 }}>({relogio})</span>}
                 <span>{e.clientName} · {e.procedureName}</span>
                 <span className="chip chip-info" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                   <MapPin size={12} /> {e.unidade}

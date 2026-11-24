@@ -1,4 +1,4 @@
-import { test, expect, type Browser } from '@playwright/test'
+import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
@@ -287,5 +287,188 @@ test.describe.serial('comissões — cálculo e extrato', () => {
     expect(await extrato(ap)).toEqual([['LIBERACAO', 10]])
     const { data: linha } = await b.from('commission_lines').select('origem, preco').eq('appointment_id', ap).single()
     expect({ origem: linha!.origem, preco: Number(linha!.preco) }).toEqual({ origem: 'PACOTE', preco: 100 })
+  })
+})
+
+// O cancelamento do pacote acerta a comissão de venda UMA vez, com o dinheiro do fim; a
+// escolha "Descontar a taxa da maquininha" do procedimento (o Heitor, 18/11, ao item 11:
+// "ok") vence a da rede na linha do atendimento; e cada lançamento retrata a base da hora
+// dele (decisão do Claude, 18/11, princípio 3). Numa rede [e2e] própria, de uma unidade.
+test.describe('o cancelamento do pacote, a taxa por procedimento e o retrato da base da comissão (comissoes.md)', () => {
+  const n = (v: unknown) => Number(v ?? 0)
+  const centavos = (v: number) => Math.round(v * 100) / 100
+  let rede: OutraRede | null = null
+  let dona: MembroDeTeste | null = null
+  let cliente = ''
+  let proc = ''
+  let pacote = ''
+
+  async function como(browser: Browser, m: MembroDeTeste, fn: (p: Page) => Promise<void>) {
+    const ctx = await browser.newContext({ storageState: m.estado })
+    try { await fn(await ctx.newPage()) } finally { await ctx.close() }
+  }
+
+  test.beforeAll(async () => {
+    test.setTimeout(150_000)
+    rede = await criarOutraRede(`ccr${marca}`)
+    const b = db()
+    expect((await b.from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede.tenantId)).error).toBeNull()
+    dona = await criarMembro(`ccrd${marca}`, { tenant: rede.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
+    proc = rede.procedureId
+    expect((await b.from('procedures').update({ name: `${PREFIXO} Limpeza ${marca}`, price: 500 }).eq('id', proc)).error).toBeNull()
+    cliente = await rede.criarCliente('Cancelou o pacote')
+    await responderAnamnese(cliente, rede.tenantId)
+    expect((await b.from('users').update({ provides_services: true }).eq('id', rede.professionalId)).error).toBeNull()
+    const { data, error } = await b.rpc('pacote_salvar', {
+      p_tenant: rede.tenantId, p_id: null, p_nome: `${PREFIXO} Pacote 2 limpezas ${marca}`, p_preco: 1000, p_validade: null, p_ativo: true,
+      p_itens: [{ procedure_id: proc, quantity: 2 }],
+      p_comissao: { venda: { tipo: 'PERCENTAGE', valor: 10 }, execucao: { tipo: 'PERCENTAGE', valor: 10 } },
+    })
+    expect(error, 'criar o pacote').toBeNull()
+    pacote = data as string
+  })
+
+  test.afterAll(async () => {
+    await dona?.limpar()
+    await rede?.limpar()
+  })
+
+  test('o pacote cancelado acerta a comissão de venda uma vez, com o dinheiro do fim', async () => {
+    const b = db()
+    // Vendido no crédito (R$ 1.000), 1 de 2 sessões feita (usado R$ 500).
+    const { data: cp, error: eV } = await b.rpc('pacote_vender', {
+      p_tenant: rede!.tenantId, p_cliente: cliente, p_pacote: pacote, p_unidade: rede!.branchId, p_ator: dona!.userId,
+      p_lancamentos: [{ amount: 1000, payment_method: 'CREDIT_CARD', is_paid: true, cartao_vezes: 1 }],
+      p_sessoes: Array.from({ length: 2 }, () => ({ procedure_id: proc, preco: 500 })),
+    })
+    expect(eV, 'vender o pacote').toBeNull()
+    const { data: ap, error: eA } = await b.from('appointments').insert({
+      branch_id: rede!.branchId, client_id: cliente, professional_id: rede!.professionalId, procedure_id: proc,
+      scheduled_at: new Date().toISOString(), duration_min: 30, price: 500, status: 'IN_PROGRESS', source: 'INTERNAL',
+    }).select('id').single<{ id: string }>()
+    expect(eA).toBeNull()
+    expect((await b.from('package_sessions').update({ appointment_id: ap!.id }).eq('client_package_id', cp as string).eq('session_number', 1)).error).toBeNull()
+    expect((await b.rpc('concluir_atendimento', {
+      p_agendamento: ap!.id, p_tenant: rede!.tenantId, p_ator: null, p_ator_nome: null,
+      p_dados: { insumos: [], comissoes: [{ procedure_id: proc, origem: 'PACOTE', treatment_plan_id: null, regra_tipo: 'PERCENTAGE', regra_valor: 10, preco: 500 }] },
+    })).error, 'concluir a sessão').toBeNull()
+
+    const { data: linha } = await b.from('commission_lines').select('id')
+      .eq('client_package_id', cp as string).is('appointment_id', null).single<{ id: string }>()
+    const antes = ((await b.from('commissions').select('id').eq('line_id', linha!.id)).data ?? []).map(c => c.id as string)
+
+    // Cancelar: o cartão volta inteiro, e o usado (R$ 500) entra no Pix.
+    const { error: eC } = await b.rpc('pacote_cancelar_devolvendo', {
+      p_tenant: rede!.tenantId, p_pacote: cp, p_ator: dona!.userId, p_ator_nome: 'e2e', p_motivo: 'desistiu', p_destino: 'ESTORNO',
+      p_agendamentos: null, p_esperado: 500, p_simular: false, p_estorno: 'INTEIRO', p_novo: { metodo: 'PIX' },
+    })
+    expect(eC, 'cancelar estornando o cartão inteiro').toBeNull()
+
+    const { data: todas } = await b.from('commissions').select('id, amount, kind, motivo, transaction_id').eq('line_id', linha!.id)
+    const novas = (todas ?? []).filter(c => !antes.includes(c.id as string))
+    expect(novas.map(c => c.motivo), 'um lançamento só, o do cancelamento').toEqual(['Cancelamento do pacote'])
+    expect(centavos((todas ?? []).reduce((s, c) => s + n(c.amount), 0)), 'a venda: 10% do usado').toBe(50)
+    const { data: usado } = await b.from('financial_transactions').select('id')
+      .eq('client_package_id', cp as string).eq('type', 'INCOME').eq('payment_method', 'PIX').eq('is_paid', true).single<{ id: string }>()
+    expect(novas[0]!.transaction_id, 'ligado ao "usado" que o cancelamento lançou').toBe(usado!.id)
+  })
+
+  test('a escolha "Descontar a taxa da maquininha" do procedimento vence a da rede na linha do atendimento', async ({ browser }) => {
+    // O Heitor, 18/11, ao item 11: "ok".
+    const b = db()
+    // A rede não desconta; o procedimento passa a descontar.
+    expect((await b.from('commission_configs').upsert({ tenant_id: rede!.tenantId, desconta_taxa: false }, { onConflict: 'tenant_id' })).error).toBeNull()
+    const definir = (escolha: string | null) => b.rpc('comissao_do_procedimento_definir', {
+      p_tenant: rede!.tenantId, p_procedimento: proc, p_geral: { tipo: 'PERCENTAGE', valor: 10 }, p_profissionais: [],
+      p_ator: null, p_desconta_taxa: escolha,
+    })
+    expect((await definir('SIM')).error, 'gravar "Desconta a taxa"').toBeNull()
+    expect((await b.from('procedures').select('desconta_taxa').eq('id', proc).single()).data?.desconta_taxa).toBe(true)
+    expect((await definir('TALVEZ')).error, 'só as três escolhas').not.toBeNull()
+    try {
+      const quem = await rede!.criarCliente('Taxa do procedimento')
+      await responderAnamnese(quem, rede!.tenantId)
+      const concluir = async () => {
+        const { data: ap, error } = await b.from('appointments').insert({
+          branch_id: rede!.branchId, client_id: quem, professional_id: rede!.professionalId, procedure_id: proc,
+          scheduled_at: new Date().toISOString(), duration_min: 30, price: 500, status: 'IN_PROGRESS', source: 'INTERNAL',
+        }).select('id').single<{ id: string }>()
+        expect(error).toBeNull()
+        expect((await b.rpc('concluir_atendimento', {
+          p_agendamento: ap!.id, p_tenant: rede!.tenantId, p_ator: null, p_ator_nome: null,
+          p_dados: { insumos: [], comissoes: [{ procedure_id: proc, origem: 'AVULSO', treatment_plan_id: null, regra_tipo: 'PERCENTAGE', regra_valor: 10, preco: 500 }] },
+        })).error, 'concluir').toBeNull()
+        return (await b.from('commission_lines').select('desconta_taxa').eq('appointment_id', ap!.id).single()).data?.desconta_taxa
+      }
+      expect(await concluir(), 'o procedimento desconta: a linha retrata').toBe(true)
+
+      // A tela diz a escolha, e o "Como a rede" diz o que a rede faz.
+      await como(browser, dona!, async p => {
+        await p.goto('/admin/procedures')
+        await p.locator(`[data-comissao-procedimento="${proc}"]`).click()
+        const dlg = p.getByRole('dialog')
+        await expect(dlg.locator('[data-taxa-do-procedimento="SIM"]')).toBeVisible()
+      })
+
+      expect((await definir('REDE')).error).toBeNull()
+      expect((await b.from('procedures').select('desconta_taxa').eq('id', proc).single()).data?.desconta_taxa).toBeNull()
+      expect(await concluir(), '"Como a rede": a da rede (não desconta)').toBe(false)
+    } finally {
+      await definir('REDE')
+      await b.from('commission_rules').delete().eq('procedure_id', proc).is('professional_id', null)
+    }
+  })
+
+  test('cada lançamento retrata a base da hora dele: a liberação e o estorno dizem a base da liberação', async () => {
+    // Decisão do Claude (18/11), princípio 3. Toda linha é INTEGRAL: a comissão de
+    // venda se libera uma vez, com a venda inteira paga.
+    const b = db()
+    const { data: pac, error: eP } = await b.rpc('pacote_salvar', {
+      p_tenant: rede!.tenantId, p_id: null, p_nome: `${PREFIXO} Pacote retrato ${marca}`, p_preco: 1000, p_validade: null, p_ativo: true,
+      p_itens: [{ procedure_id: proc, quantity: 2 }],
+      p_comissao: { venda: { tipo: 'PERCENTAGE', valor: 10 }, execucao: { tipo: 'NENHUMA', valor: null } },
+    })
+    expect(eP, 'criar o pacote').toBeNull()
+    // A base sem a taxa; o Pix a 2%, o dinheiro sem taxa.
+    expect((await b.from('commission_configs').upsert({ tenant_id: rede!.tenantId, desconta_taxa: true }, { onConflict: 'tenant_id' })).error).toBeNull()
+    expect((await b.rpc('comissao_taxas_definir', { p_tenant: rede!.tenantId, p_taxas: [{ metodo: 'PIX', parcelas: 1, taxa_pct: 2 }] })).error).toBeNull()
+    try {
+      const quem = await rede!.criarCliente('Retrato da base')
+      // A entrada de R$ 500 no dinheiro; a parcela de R$ 500 em aberto.
+      const { data: cp, error: eV } = await b.rpc('pacote_vender', {
+        p_tenant: rede!.tenantId, p_cliente: quem, p_pacote: pac as string, p_unidade: rede!.branchId, p_ator: dona!.userId,
+        p_lancamentos: [
+          { amount: 500, payment_method: 'CASH', is_paid: true },
+          { amount: 500, payment_method: 'PIX', is_paid: false, parcela_numero: 1, parcela_total: 1 },
+        ],
+        p_sessoes: [{ procedure_id: proc, preco: 500 }, { procedure_id: proc, preco: 500 }],
+      })
+      expect(eV, 'vender no crediário').toBeNull()
+      const { data: parcela } = await b.from('financial_transactions').select('id')
+        .eq('client_package_id', cp as string).eq('is_paid', false).single<{ id: string }>()
+      // A parcela paga no Pix: a venda inteira paga, a comissão se libera — 10% de 990 (a taxa média de 1%).
+      expect((await b.from('financial_transactions').update({ is_paid: true, paid_at: new Date().toISOString() }).eq('id', parcela!.id)).error).toBeNull()
+      // Depois, a parcela estornada: a comissão volta.
+      expect((await b.rpc('estornar_transacao', { p_transacao: parcela!.id, p_tenant: rede!.tenantId, p_ator: 'e2e' })).error, 'estornar').toBeNull()
+
+      const { data: linha } = await b.from('commission_lines').select('id, modo')
+        .eq('client_package_id', cp as string).eq('origem', 'PACOTE_VENDA').single<{ id: string; modo: string }>()
+      expect(linha!.modo).toBe('INTEGRAL')
+      const { data: lanc } = await b.from('commissions').select('id, amount, kind, base_retrato').eq('line_id', linha!.id).order('released_at')
+      expect((lanc ?? []).map(c => [c.kind, centavos(n(c.amount))]), 'a liberação e o estorno').toEqual([['LIBERACAO', 99], ['ESTORNO', -99]])
+
+      const { data: ext, error: eExt } = await b.rpc('comissoes_extrato_com_regra', {
+        p_tenant: rede!.tenantId, p_branch_ids: null, p_inicio: new Date(Date.now() - 86_400_000).toISOString(),
+        p_fim: new Date(Date.now() + 86_400_000).toISOString(), p_profissional: null,
+      })
+      expect(eExt).toBeNull()
+      const doExtrato = new Map(((ext ?? []) as { id: string; base: number; base_taxa: number }[]).map(l => [l.id, l]))
+      const bases = (lanc ?? []).map(c => [n(doExtrato.get(c.id as string)?.base), n(doExtrato.get(c.id as string)?.base_taxa)])
+      // Sem o retrato, as duas diriam a base de hoje (R$ 1.000: só o dinheiro ficou pago).
+      expect(bases, 'as duas com a base da liberação').toEqual([[990, 10], [990, 10]])
+    } finally {
+      await b.from('commission_configs').update({ desconta_taxa: false }).eq('tenant_id', rede!.tenantId)
+      await b.rpc('comissao_taxas_definir', { p_tenant: rede!.tenantId, p_taxas: [] })
+    }
   })
 })

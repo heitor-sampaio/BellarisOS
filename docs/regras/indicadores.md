@@ -35,10 +35,36 @@
   - **"O dia é o da unidade"** no consolidado: cada lançamento cai no dia do
     relógio da unidade dele (a barra de `metrics_series`; o Fechamento da rede
     com a janela do dia de cada unidade).
+    - **Os agendamentos também** (D5 da 26ª, decisão do Claude para cumprir
+      esta regra): na rede com fusos diferentes a janela é a de Brasília, mas o
+      agendamento conta no dia da unidade DELE — o núcleo (`metrics_core`), a
+      aba Agenda e a Visão geral de `metrics_relatorio` (o status, o dia da
+      semana no relógio da unidade, a origem, por unidade) e `metrics_by_branch`,
+      por `metrics_no_dia_da_unidade` (migration `20261130100001`); o "Hoje"
+      do dashboard da rede, uma janela por fuso (`janelasDoDiaNasUnidades`,
+      `agendamentosDeHojeNasUnidades`). O limite que é a virada do dia (00:00,
+      23:59:59 no relógio do recorte) vale na mesma hora da parede no relógio
+      da unidade; o "até agora" fica como está (é o mesmo instante em todo
+      relógio). Ficam com a janela única, por ora: o dinheiro
+      (`metrics_receitas_pagas` e o que parte dele) e as execuções ligadas à
+      receita (Procedimentos, Profissionais).
+    - **A hora de outra unidade** (D3 da 26ª, decisão do Claude, princípio 3):
+      o agendamento de outra unidade (a Minha agenda, "Seus atendimentos em
+      outras unidades", a "Agenda de hoje" do dashboard da unidade) diz a hora
+      no relógio da unidade DELE e, quando ele não é o da tela, o nome
+      ("18:55 (horário de Cuiabá)" — `horaNaUnidadeDele`,
+      `lib/unidades/hora-da-unidade.ts`). A grade segue no relógio do portal.
   - **No navegador**, o fuso vem do `FusoProvider` dos layouts (`useFuso`); a
     grade da agenda trabalha "na parede" (`naParede`/`daParede`), e a hora
     escolhida vira o instante por `instanteNoFuso`. A tela diz o relógio
-    quando não é o de Brasília (`NotaDoFuso`, princípio 3).
+    quando não é o de Brasília (`NotaDoFuso`, princípio 3). Decisões do
+    Claude, 26ª: o app da cliente diz o relógio no agendar, no remarcar, na
+    Agenda e no Início (A9), cada agendamento no fuso da unidade dele (D4); o
+    prazo do remarcar conta no fuso do agendamento original e diz o relógio
+    (A10); a edição do membro diz em que relógio vale o horário próprio — o
+    de cada unidade em que ela atende (A11, `textoDoRelogioDoHorario`; como o
+    horário é lido não mudou); o cartão da unidade, em Configurações, diz o
+    fuso fora do de Brasília (A12).
   - A campanha (a agendada e a de todo ano) é da REDE (não tem unidade): roda no fuso comum.
   - Helper novo com dia ou hora recebe o fuso como parâmetro opcional (padrão
     o de Brasília) — nunca lê `America/Sao_Paulo` fixo. Componente com data
@@ -53,9 +79,12 @@
     início adiantado, as automações (silêncio, gatilho de horário,
     aniversário) e a rotina da fidelidade (a rede). O que é da REDE sem
     unidade (fidelidade, LGPD, aniversariantes, a campanha) usa `fusoDaRede`.
-    A Auditoria também (D2 da 23ª): a coluna "Quando" no fuso do recorte, a
-    hora do agendamento citado no da unidade dele (`plataforma.md`); e os
-    "Últimos fechamentos" das comissões no fuso da rede (D3 da 23ª).
+    A Auditoria também: cada linha no fuso da unidade dela, a sem unidade no
+    da rede, com o relógio na linha e a coluna "Relógio" no CSV (D6 da 26ª;
+    era o fuso do recorte, D2 da 23ª), e a hora do agendamento citado no da
+    unidade dele (`plataforma.md`); os "Últimos fechamentos" das comissões no
+    fuso da rede (D3 da 23ª), e cada lançamento do extrato — na tela e no CSV —
+    no da unidade dele (D7 da 26ª, `csvDoExtrato(…, fusos)`).
   - **O dia sem hora no banco** (migration `20261111006203`): o "cliente
     desde", a última visita de antes, a faixa etária (`metrics_faixa_etaria`
     com `p_fuso`), o público da campanha, `metrics_by_branch`, os
@@ -474,7 +503,8 @@
     Ajuste) e fica fora de "Perdas no período", do "Consumo com perdas" e do
     giro (`metrics_perdas`: `and not m.correcao_de_cadastro`).
     **A perda é MÉTRICA, não dinheiro** (est-04/est-05, revisão de 2026-11-02:
-    "perdido ou não, o insumo já foi pago na compra … serve como métrica"):
+    "perdido ou não, o insumo já foi pago na compra … serve como métrica";
+    reafirmada em 18/11, sobre o pedido da 26ª de pô-la no lucro: "8 mantém"):
     não entra no lucro nem no financeiro, e o relatório mostra, além da
     quantidade e do valor perdidos por produto (ao custo do lote), os cartões
     "Perdas no período" e "Consumo com perdas" (o insumo consumido + as
@@ -981,6 +1011,23 @@ caíam no mesmo ponto e o mapa abria só na Zona Sul. Prova:
 afastam um pouco em volta dele e o nome diz "(local aproximado)"; as que estão
 perto (~3 km) ficam onde estão, com os nomes em lados diferentes
 (`marcadoresDasUnidades`, puro). Prova: `tests/mapa-unidades-proximas.test.ts`.
+**O CEP que o geocoding não acha, com a cidade achada, não avisa** (A37 da
+26ª, 2026-11-18, decisão do Claude): o marcador fica no centro da cidade
+como sempre, e o aviso "no centro da cidade" saía em toda unidade de CEP
+novo, sem nada a corrigir. Só a unidade que não se localiza nem pela cidade
+avisa: "X sem localização: confira o CEP … e a cidade." (`avisosDoMapa`,
+`components/admin/hotmap-types.ts`). Prova: `tests/mapa-unidades-proximas.test.ts`,
+`tests/atritos-da-18-atendimento.test.ts`.
+
+**A aba fora da permissão leva à primeira dela, com o aviso** (A21 da 26ª,
+2026-11-18): `?tab=` de uma aba que a permissão não abre (ou que não existe)
+abria outra calada, com a URL da pedida. As duas páginas de Relatórios
+redirecionam (`destinoDaAbaPedida`, `lib/relatorios/aba-pedida.ts`) à
+primeira aba da permissão na ordem de `ALL_REPORT_TABS`, mantendo o período,
+a unidade e as tags, com `?aviso=aba-de-relatorio` (ou
+`aba-de-relatorio-inexistente`), que o `<AvisoDaUrl>` mostra e tira da URL.
+Prova: `tests/relatorios-financeiro-pede-o-financeiro.test.ts`,
+`e2e/relatorios-unidade-na-url.spec.ts`.
 
 **A aba do funil se chama "Oportunidades"** (RL2 do bloco Relatórios, com o
 CR1 — a revisão do Heitor de 2026-11-13; antes "Funil comercial", A9 da 6ª

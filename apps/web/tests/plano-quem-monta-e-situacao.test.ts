@@ -3,6 +3,8 @@ import type { ResolvedPermissions } from '@estetica-os/types'
 import { NO_PERMISSIONS } from '@/lib/permissions'
 import { montaPlano, TEXTO_QUEM_MONTA } from '@/lib/plano-de-tratamento/quem-monta'
 import { situacaoComercialDoPlano, SITUACOES_COMERCIAIS, rotuloDaSituacaoComercial } from '@/lib/plano-de-tratamento/situacao'
+import * as nodeFs from 'node:fs'
+import * as nodePath from 'node:path'
 
 /**
  * Bloco Plano de tratamento, leva 1 (o plano de adaptação, `docs/revisao.md`).
@@ -77,4 +79,18 @@ describe('PT1f: a situação do plano na lista de Tratamentos', () => {
       'Rascunho', 'Proposto', 'Aceito (falta assinar)', 'Falta pagar', 'Em andamento', 'Concluído', 'Cancelado',
     ])
   })
+})
+
+describe('o plano de tratamento na sessão só para quem tem o Atendimento ao menos em Ver (podeVerPlanos)', () => {
+  const ler = (rel: string) => nodeFs.readFileSync(nodePath.join(__dirname, '..', rel), 'utf8')
+
+  describe('o editor do plano na sessão', () => {
+    it('o editor do plano ("Nova sessão") só com o Atendimento ao menos em Ver', () => {
+      const s = ler('components/branch/appointment-session.tsx')
+      const editores = s.match(/podeVerPlanos && <TreatmentPlanEditor\s/g) ?? []
+      expect(editores.length).toBe((s.match(/<TreatmentPlanEditor\s/g) ?? []).length)
+      expect(editores.length).toBe(2)
+    })
+  })
+
 })

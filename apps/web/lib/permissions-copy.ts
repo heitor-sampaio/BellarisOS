@@ -158,7 +158,8 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   team: {
     NONE:   SEM_ACESSO,
     VIEW:   'Vê quem trabalha nas unidades, com o cargo, as unidades de cada um e a situação.',
-    MANAGE: 'Tudo do Ver, mais cadastrar e editar pessoas, definir o cargo, as unidades e onde cada uma atende, e desativar quem sai. Quem é Admin da rede só outra Admin da rede altera.',
+    // A26 da 26ª: o aviso de dar um cargo acima do próprio contradizia a H7/F70 (lib/equipe/cargo-acima.ts).
+    MANAGE: 'Tudo do Ver, mais cadastrar e editar pessoas, definir o cargo, as unidades e onde cada uma atende, e desativar quem sai. Só dá um cargo que não passe do próprio (o de cima aparece desligado); quem é Admin da rede só outra Admin da rede altera.',
   },
   forms: {
     NONE:   SEM_ACESSO,
@@ -166,7 +167,8 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   },
   roles: {
     NONE:   SEM_ACESSO,
-    MANAGE: 'Cria cargos e define o que cada um acessa — inclusive o próprio.',
+    // A26 da 26ª: os cargos são configuração da rede toda (o Heitor, 18/11) — "inclusive o próprio" não valia mais.
+    MANAGE: 'Os cargos são configuração da rede toda: criar um cargo e mudar o que ele acessa é só da Admin da rede. A quem não é a Admin da rede, a aba Cargos só diz isso.',
   },
   settings: {
     NONE:   SEM_ACESSO,
@@ -225,13 +227,28 @@ export const SO_NA_REDE_NOTE: Partial<Record<AppModule, string>> = {
   automations: 'É da rede toda: as automações ficam no portal da rede e valem só para quem tem “A rede inteira”; criar e mudar é só da Admin da rede.',
 }
 
-// ─── Cargos sensíveis ────────────────────────────────────────────────────────
-// Dois caminhos de auto-elevação. O aviso é uma linha na própria opção, não um
-// banner: quem está montando o cargo precisa saber, não levar susto.
+// ─── O resumo "Na rede" (A27 da 26ª) ─────────────────────────────────────────
+// Os avisos de auto-elevação da Equipe e de Cargos (SENSITIVE_NOTE) saíram na
+// A26 da 26ª: ninguém dá um cargo acima do próprio (H7, F70) e os cargos são só
+// da Admin da rede — a linha de cada módulo diz a regra de agora.
 
-export const SENSITIVE_NOTE: Partial<Record<AppModule, string>> = {
-  roles: 'Quem tem isto pode conceder a si mesmo qualquer outro acesso.',
-  team:  'Permite atribuir a alguém um cargo mais poderoso que o próprio.',
+/** As telas da rede em que quem não é a Admin da rede só vê (criar e mudar é dela: `mexeNaConfigDaRede`). */
+const SO_VE_NA_REDE = ['Notificações', 'Templates', 'Automações']
+
+/**
+ * A27 da 26ª (princípio 3): o resumo do cargo prometia "Na rede: Notificações,
+ * Anúncios, Templates, Automações" a um cargo de quem tem só unidades. O que
+ * só está no portal da rede é de quem tem “A rede inteira” (a abrangência é do
+ * membro, na Equipe); e nas telas da configuração da rede ela só vê.
+ * Nulo quando a rede não mostra nada a mais que a unidade.
+ */
+export function notaDoResumoDaRede(naRede: readonly string[], naUnidade: readonly string[]): string | null {
+  const soNaRede = naRede.filter(x => !naUnidade.includes(x))
+  if (!soNaRede.length) return null
+  const lista = (xs: readonly string[]) => (xs.length <= 1 ? xs[0] ?? '' : `${xs.slice(0, -1).join(', ')} e ${xs[xs.length - 1]}`)
+  const soVe = soNaRede.filter(x => SO_VE_NA_REDE.includes(x))
+  return `“Na rede” é para quem tem “A rede inteira” na Equipe: quem tem só unidades vê só “Na unidade”.${
+    soVe.length ? ` Em ${lista(soVe)}, ela só vê — criar e mudar é só da Admin da rede.` : ''}`
 }
 
 /**

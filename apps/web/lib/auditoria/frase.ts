@@ -1,4 +1,5 @@
 import { partsInTZ } from '@/lib/datetime'
+import { FUSO_PADRAO, fusoValido, nomeDoFuso } from '@/lib/unidades/fuso'
 import { rotaAtendimento, rotaCliente, rotaNoPortal } from '@/lib/rotas'
 import { rotuloDaForma, rotuloDaFormaDoFechamento } from '@/lib/financeiro/formas'
 import { quantidadeComMedida } from '@/lib/estoque/medidas'
@@ -181,6 +182,77 @@ const CAMPO: Record<string, string> = {
   first_access_bonus: 'bônus do primeiro acesso', birthday_bonus: 'bônus de aniversário', expiry_months: 'validade dos pontos',
   expiry_notice_days: 'aviso antes de os pontos vencerem', client_redeem: 'troca pela cliente', revoked_by_user_id: 'quem revogou',
   motivo_revogacao: 'motivo da revogação', portal_ligado_em: 'acesso ao portal',
+  // "(form data)", "(consent template id)" saíam crus (princípio 3). A trava (tests/auditoria-e-grupos.test.ts):
+  // toda coluna de toda tabela auditada tem nome aqui ou em CAMPO_DA_TABELA.
+  aberta_em: 'abertura', accepted_text: 'texto aceito', acrescentado_em: 'quando entrou', acrescentado_por: 'quem pôs',
+  address_complement: 'complemento', applied_at: 'aplicação', atraso_perdoado_ate: 'atraso perdoado até',
+  audience_rules: 'público', auth_session_id: 'sessão', autor_id: 'autor', autor_nome: 'autor', avaliacao_o_que: 'o que é a avaliação',
+  avisos: 'avisos', base_com_pontos: 'base com pontos', batch_number: 'lote', body: 'texto', body_text: 'texto', bonus: 'bônus',
+  bonus_ref: 'bônus', buttons: 'botões', cancel_reason: 'motivo do cancelamento', cancelled_by: 'quem cancelou',
+  cartao_max_vezes: 'máximo de vezes no cartão', cartao_por_bandeira: 'taxa por bandeira', cartao_prazo_dias: 'prazo do cartão',
+  category_id: 'categoria', channel: 'canal', channels: 'canais', closing_balance: 'saldo no fechamento',
+  cobra_por_bandeira: 'taxa por bandeira', comanda_id: 'comanda', comissao_execucao: 'comissão da execução',
+  comissao_execucao_valor: 'valor da comissão da execução', comissao_responsavel_tipo: 'tipo da comissão do responsável',
+  comissao_responsavel_valor: 'valor da comissão do responsável', comissao_tipo: 'tipo da comissão', comissao_valor: 'valor da comissão',
+  comissao_venda_tipo: 'tipo da comissão de venda', comissao_venda_valor: 'valor da comissão de venda', concedido: 'concedido',
+  conducted_by: 'quem conduziu', conferido: 'conferido', consent_template_id: 'termo de consentimento',
+  consumption_unit: 'medida de consumo', contado_dinheiro: 'dinheiro contado', contract_template_id: 'contrato',
+  conversation_id: 'conversa', created_by_name: 'quem criou', crediario_max_parcelas: 'máximo de parcelas no crediário',
+  criada_em: 'criação', criada_por: 'quem criou', criado_em: 'criação', criado_por: 'quem criou', criado_por_nome: 'quem criou',
+  ctwa_clid: 'anúncio de origem', current_version: 'versão', custo_devolvido: 'custo devolvido', de_fora: 'de antes do sistema',
+  desconta_insumos: 'desconta os insumos', desconta_taxa: 'desconta a taxa', desconto_combinado_por: 'quem combinou o desconto',
+  desconto_combinado_tipo: 'tipo do desconto combinado', desconto_combinado_valor: 'desconto combinado', desligada_em: 'desligamento',
+  desligada_motivo: 'motivo do desligamento', devolvidas: 'devolvidas', discount_value: 'desconto',
+  documentos_excluidos: 'documentos dispensados', documentos_link_pela_conversa: 'link dos documentos pela conversa',
+  earn_mode: 'como ganha pontos', em_atraso_desde: 'em atraso desde', enabled: 'ligada', end_reason: 'motivo do fim', ended_at: 'fim',
+  enforcement: 'exigência', enviado_em: 'envio', enviado_por: 'quem enviou', enviado_por_nome: 'quem enviou',
+  error_message: 'erro', esperado_dinheiro: 'dinheiro esperado', estornado_em: 'estorno', estornado_por_nome: 'quem estornou',
+  estorno: 'estorno', example_values: 'exemplos', fbclid: 'anúncio de origem', fechado_em: 'fechamento', fechado_por: 'quem fechou',
+  fechado_por_nome: 'quem fechou', ficha: 'ficha', file_name: 'arquivo', file_path: 'arquivo', file_size: 'tamanho do arquivo',
+  footer_text: 'rodapé', form_data: 'respostas da ficha', fornecedor_id: 'fornecedor', fundo_de_troco: 'fundo de troco', fuso: 'fuso horário',
+  ganho_lembrado_em: 'lembrete do ganho', gclid: 'anúncio de origem', grant_id: 'liberação', granted_by_user_id: 'quem liberou',
+  header_text: 'cabeçalho', identity_method: 'como confirmou a identidade', include_medical: 'com o prontuário',
+  includes_clinical: 'com o prontuário', indicacao_pontos: 'pontos da indicação', indicacao_premio: 'prêmio da indicação',
+  indicacao_recompensa_id: 'recompensa da indicação', indicada_id: 'indicada', indicada_por: 'indicada por', indicadora_id: 'quem indicou',
+  informado_em: 'quando informou', informado_por: 'quem informou', informado_por_nome: 'quem informou', ip: 'IP', is_system: 'do sistema',
+  issued_document_id: 'documento', item_id: 'item', key: 'chave', labor_cost: 'custo da mão de obra', language: 'idioma',
+  legacy_consent_term_id: 'termo antigo', limites: 'limites', link_id: 'link', logo_url: 'logo', loyalty_account_id: 'conta de pontos',
+  loyalty_points: 'pontos', loyalty_transaction_id: 'lançamento de pontos', managed: 'gerenciado', map_id: 'mapa',
+  mapeamento: 'mapeamento das colunas', marca: 'marca', marca_id: 'marca', medical_record_id: 'prontuário',
+  meta_template_id: 'template na Meta', metodo: 'forma de pagamento', mime_type: 'tipo do arquivo', modo: 'modo', module: 'módulo',
+  moment: 'momento', momento: 'momento', motivo_da_perda: 'motivo da perda', movement_id: 'movimento de estoque',
+  nao_completar: 'não completar', nao_suportado: 'não suportado', notification_type: 'tipo de aviso', number: 'número',
+  numero: 'número', opened_at: 'abertura', opened_by: 'quem abriu', opening_balance: 'saldo na abertura', oportunidade: 'oportunidade',
+  ordem: 'ordem', other_costs: 'outros custos', outros_documentos: 'outros documentos', parcelas: 'parcelas',
+  pdf_attempts: 'tentativas do PDF', periodo: 'período', phone_number_id: 'número na Meta', plan_id: 'plano de tratamento',
+  plano_pct: 'percentual do plano', points_cost: 'custo em pontos', points_per_real: 'pontos por real', pontos: 'pontos',
+  pontua_venda_de_produto: 'pontua a venda de produto', por_bandeira: 'taxas por bandeira', posicao: 'posição', prazo_dias: 'prazo',
+  pre_atendimento_envio: 'envio da ficha de saúde', pre_atendimento_id: 'ficha de saúde',
+  pre_atendimento_validade_meses: 'validade da ficha de saúde', preco_tabela: 'preço de tabela', preco_unitario: 'preço unitário',
+  preco_unitario_tabela: 'preço unitário de tabela', product_id: 'produto', products: 'produtos', products_used: 'produtos usados',
+  produto_modo: 'modo da comissão de produto', produto_pct: 'percentual da comissão de produto', provider: 'provedor',
+  purchased_at: 'compra', received_at: 'recebimento', redeem_max_pct: 'máximo pago com pontos', redeem_min_points: 'mínimo de pontos para trocar',
+  redeem_points_value: 'valor do ponto', referred_by: 'indicada por', registrado_por: 'quem registrou', registrado_por_nome: 'quem registrou',
+  rejection_reason: 'motivo da recusa', removido_em: 'remoção', replaced_by: 'substituído por', requested_at: 'pedido',
+  requested_by: 'quem pediu', requested_by_name: 'quem pediu', requested_via: 'por onde pediu', respondido_por: 'quem respondeu',
+  responsavel_cpf: 'CPF do responsável', responsavel_id: 'responsável', responsavel_nome: 'nome do responsável',
+  responsavel_parentesco: 'parentesco do responsável', responsavel_telefone: 'telefone do responsável', resumo: 'resumo',
+  retorno_avisado_em: 'aviso do retorno', retrato: 'retrato da venda', revoked_by_staff_id: 'quem revogou', reward_id: 'recompensa',
+  sale_id: 'venda', sale_price: 'preço de venda', scan_path: 'documento digitalizado', scan_sha256: 'documento digitalizado',
+  sem_insumo: 'sem insumo', service_package_id: 'pacote', sessions: 'sessões', signature_data: 'assinatura', signature_png: 'assinatura',
+  signature_sha256: 'assinatura', signed_ip: 'IP da assinatura', signed_via: 'por onde assinou', signer_document: 'documento de quem assinou',
+  signer_name: 'quem assinou', slug: 'endereço', sold_at: 'venda', sold_by: 'quem vendeu', staff_id: 'atendente do suporte',
+  state_registration: 'inscrição estadual', submitted_at: 'envio', tab: 'aba', target_auth_id: 'login atendido',
+  target_user_id: 'membro atendido', taxa_pct_retrato: 'taxa', taxa_pct_sem_teto: 'taxa sem teto', template_id: 'modelo',
+  template_version_id: 'versão do modelo', texto: 'texto', ticket_id: 'chamado', token_hash: 'link', total_read: 'lidas',
+  totals: 'totais', transfer_id: 'transferência', trigger_config: 'gatilho', trigger_type: 'gatilho',
+  ultimo_disparo_agenda: 'último disparo', unidades_devolvidas: 'unidades devolvidas', unit_price: 'preço unitário',
+  units_per_package: 'rendimento da embalagem', uploaded_by: 'quem anexou', usadas_antes: 'sessões usadas antes do sistema',
+  used_stock_movement_id: 'baixa do estoque', user_agent: 'navegador', uso: 'uso', utm_campaign: 'campanha de origem',
+  utm_medium: 'meio de origem', utm_source: 'fonte de origem', validity_days: 'validade', valor_devolvido: 'valor devolvido',
+  valor_referencia: 'valor de referência', vencimento_avisado_em: 'aviso do vencimento', via: 'por onde', view: 'vista',
+  voltou: 'voltou ao estoque', voucher_id: 'voucher', waba_id: 'conta do WhatsApp', website: 'site',
+  whatsapp_number_id: 'número de WhatsApp',
 }
 
 /**
@@ -189,12 +261,20 @@ const CAMPO: Record<string, string> = {
  */
 const CAMPO_DA_TABELA: Record<string, Record<string, string>> = {
   clients: { document: 'CPF', documento_tipo: 'tipo de documento', documento_numero: 'documento' },
+  // A22 da 26ª: "Editou a evolução (anotações)" — na evolução, o `notes` é o texto dela.
+  medical_record_entries: { notes: 'texto da evolução' },
+  prontuario_anotacoes: { texto: 'texto da anotação' },
+  crm_stages: { marca: 'marca da etapa' },
+  commission_configs: { modo: 'modo da comissão' },
 }
 const nomeDoCampo = (c: string, tabela?: string) =>
   (tabela ? CAMPO_DA_TABELA[tabela]?.[c] : undefined) ?? CAMPO[c] ?? c.replace(/_/g, ' ')
 
 /** O nome de cada campo na Auditoria (a trava de A30 da 18ª lê daqui). */
 export const CAMPO_DA_AUDITORIA: Readonly<Record<string, string>> = CAMPO
+/** A coluna tem nome na Auditoria (a trava de A22 da 26ª: nenhuma coluna auditada sai crua). */
+export const campoTemNomeNaAuditoria = (c: string, tabela?: string): boolean =>
+  !!(tabela && CAMPO_DA_TABELA[tabela]?.[c]) || c in CAMPO
 
 /**
  * Colunas que o sistema deriva de outras (A26 da 17ª: "quando aconteceu" é a
@@ -503,6 +583,53 @@ function fraseDoRegistroDa20(r: RegistroDaAuditoria, nomes: NomesDaAuditoria, cl
   return null
 }
 
+/** A24 da 26ª: o anexo da cliente pelo que ele é (a auditoria o grava clínico, sem valores; a categoria se lê agora). */
+const ANEXO_DA_CATEGORIA: Record<string, string> = {
+  foto_clinica: 'uma foto clínica', exame: 'um anexo clínico (exame)', laudo: 'um anexo clínico (laudo)',
+  receita: 'um anexo clínico (receita)', termo_consentimento: 'um anexo clínico (termo de consentimento)',
+  foto: 'uma foto', contrato: 'um contrato', anamnese: 'uma ficha de saúde',
+}
+
+const NIVEL_DA_PERMISSAO: Record<string, string> = { NONE: 'Sem acesso', VIEW: 'Ver', MANAGE: 'Gerenciar' }
+
+/**
+ * A25 da 26ª: a permissão editada diz de quanto para quanto ("nível: Ver →
+ * Gerenciar"); "(nível)" quatro vezes não dizia nada. Sem o antes gravado, só o nome.
+ * O alcance (`scope`) não tem antes e depois: sem o "só os meus" (2026-11-23) a
+ * coluna guarda sempre `ALL`, e o registro antigo dela diz só o nome.
+ */
+function camposDaPermissaoEditada(r: RegistroDaAuditoria): string {
+  const partes = r.colunas.map(c => {
+    const nomes = c === 'level' ? NIVEL_DA_PERMISSAO : null
+    const de = texto(r.antes[c])
+    const para = texto(r.depois[c])
+    if (!nomes || !de || !para || de === para) return nomeDoCampo(c, r.tabela)
+    return `${nomeDoCampo(c, r.tabela)}: ${nomes[de] ?? de} → ${nomes[para] ?? para}`
+  })
+  return [...new Set(partes)].join('; ')
+}
+
+/**
+ * A24 da 26ª simulação: o anexo, a liberação do prontuário na LGPD e a
+ * devolução de parte da venda diziam a tabela ("Criou o documento da
+ * cliente", "Editou o pedido de LGPD (conclusão…)"), não o fato.
+ */
+function fraseDoRegistroDa26(r: RegistroDaAuditoria, nomes: NomesDaAuditoria, cliente: string | null): string | null {
+  const daCliente = cliente ? ` — ${cliente}` : ''
+  if (r.tabela === 'client_documents' && r.operacao === 'criou') {
+    const categoria = r.registro_id ? texto(nomes.categoriasDosAnexos?.[r.registro_id]) : null
+    return `Anexou ${(categoria && ANEXO_DA_CATEGORIA[categoria]) || 'um arquivo'}${daCliente}`
+  }
+  if (r.tabela === 'lgpd_requests' && r.operacao === 'editou' && r.colunas.includes('medical_status')) {
+    // O gatilho grava a decisão (desde a 26ª); antes dela, liberar reabria o pedido (a situação mudava) e recusar não.
+    const decisao = texto(r.depois.medical_status)
+    const liberou = decisao ? decisao === 'approved' : r.colunas.includes('status')
+    if (decisao && decisao !== 'approved' && decisao !== 'denied') return null
+    return `${liberou ? 'Liberou' : 'Recusou'} o prontuário no pedido da LGPD${cliente ? ` de ${cliente}` : ''}`
+  }
+  return null
+}
+
 /** "O quê": a frase da linha, sem quem e sem quando. */
 export function fraseDaAuditoria(r: RegistroDaAuditoria, nomes: NomesDaAuditoria): string {
   const cliente = r.client_id ? nomes.clientes[r.client_id] ?? null : null
@@ -580,6 +707,8 @@ export function fraseDaAuditoria(r: RegistroDaAuditoria, nomes: NomesDaAuditoria
 
   const da20 = fraseDoRegistroDa20(r, nomes, cliente)
   if (da20) return da20
+  const da26 = fraseDoRegistroDa26(r, nomes, cliente)
+  if (da26) return da26
 
   let coisa = COISA_DA_AUDITORIA[r.tabela] ?? `um registro (${r.tabela})`
   let nome = r.tabela === 'clients' ? null : nomeDoRegistro(r, nomes)
@@ -597,7 +726,8 @@ export function fraseDaAuditoria(r: RegistroDaAuditoria, nomes: NomesDaAuditoria
   if (r.tabela === 'rooms' && r.branch_id && nomes.unidades[r.branch_id]) frase += ` em ${nomes.unidades[r.branch_id]}`
   if (r.operacao === 'editou') {
     const campos = r.tabela === 'financial_transactions'
-      ? camposDoLancamentoEditado(r, fusoDoRegistro(r, nomes)) : camposMudados(r.colunas, r.tabela)
+      ? camposDoLancamentoEditado(r, fusoDoRegistro(r, nomes))
+      : r.tabela === 'role_permissions' ? camposDaPermissaoEditada(r) : camposMudados(r.colunas, r.tabela)
     if (campos) frase += ` (${campos})`
   }
   return frase
@@ -660,9 +790,15 @@ function quemAgiu(r: RegistroDaAuditoria, nomes: NomesDaAuditoria): { quem: stri
 export function linhaDaAuditoria(
   r: RegistroDaAuditoria, nomes: NomesDaAuditoria, pathname: string, slug: string | null, fuso?: string,
 ): LinhaDaAuditoria {
+  // D6 da 26ª (a regra F62 em docs/regras/indicadores.md: "Todo dia e toda hora da unidade saem nele"): a
+  // linha da unidade no fuso DELA; a sem unidade (a da rede), no fuso da rede.
+  // `fuso` (o da leitura) fica para quem não tem o mapa. O relógio vai junto,
+  // fora do de Brasília — na tela e no CSV, a mesma hora.
+  const doRegistro = fusoDoRegistro(r, nomes) ?? (r.branch_id ? undefined : nomes.fusoDaRede) ?? fuso
   return {
     id:         r.id,
-    quando:     quandoDaAuditoria(r.criado_em, fuso),
+    quando:     quandoDaAuditoria(r.criado_em, doRegistro),
+    relogio:    doRegistro && fusoValido(doRegistro) !== FUSO_PADRAO ? nomeDoFuso(doRegistro) : null,
     ...quemAgiu(r, nomes),
     oQue:       fraseDaAuditoria(r, nomes),
     // A36 da 19ª: a linha sem unidade (a oportunidade, a tag, o cargo) é da rede — o "—" não dizia por quê.
@@ -815,6 +951,10 @@ function fraseDoEstorno(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAu
   const alvo = fechamento ? `o fechamento da comissão${deQuem ? ` de ${deQuem}` : ''}`
     : ALVO.find(([t]) => linhas.some(l => l.tabela === t))?.[1] ?? (doAtendimento ? 'o atendimento' : 'um pagamento')
   const voltas = linhas.filter(l => l.tabela === 'stock_movements' && texto(l.depois.type) === 'SALE_RETURN').map(l => doProduto(l, nomes))
+  // A24 da 26ª: a devolução de PARTE da venda (a venda segue, não foi estornada) é "Devolveu 1 de 2 Protetor".
+  const devolucoes = linhas.filter(l => l.tabela === 'product_sale_returns' && l.operacao === 'criou')
+  const vendaEstornada = linhas.some(l => l.tabela === 'product_sales' && l.colunas.includes('estornada_em'))
+  const devolveu = devolucoes.length && !vendaEstornada && !fechamento ? oQueDevolveu(devolucoes, linhas, nomes) : null
   const volta = voltas.length ? `, e ${emLista(voltas)} ${voltas.length === 1 ? 'voltou' : 'voltaram'} ao estoque` : ''
   // A33 da 19ª: o voucher que o pagamento estornado usou volta a ativo, e a frase diz.
   const vouchers = linhas.map(voucherDevolvido).filter((v): v is string => !!v)
@@ -830,7 +970,24 @@ function fraseDoEstorno(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAu
   const forma = saidas.length === 1 ? (original?.forma ?? texto(saidas[0]!.depois.payment_method)) : null
   const parcela = original?.parcela && original.de && original.de > 1 ? `parcela ${original.parcela}/${original.de}` : null
   const qual = [forma ? rotuloDaForma(forma, original?.vezes ?? null) : null, parcela].filter(Boolean).join(' · ')
-  return `Estornou ${alvo} (${brl(valor)}${qual ? ` · ${qual}` : ''})${volta}${ativos}${cliente ? ` — ${cliente}` : ''}`
+  const fato = devolveu ? `Devolveu ${devolveu}` : `Estornou ${alvo}`
+  return `${fato} (${brl(valor)}${qual ? ` · ${qual}` : ''})${volta}${ativos}${cliente ? ` — ${cliente}` : ''}`
+}
+
+/**
+ * "1 de 2 Protetor solar": o que a devolução devolveu, do retrato lido agora
+ * (`nomes.devolucoes`). Sem ele, a quantidade gravada e o produto do movimento
+ * que voltou ao estoque, sem o "de 2".
+ */
+function oQueDevolveu(devolucoes: readonly RegistroDaAuditoria[], linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria): string {
+  const lidos = devolucoes.flatMap(d => (d.registro_id && nomes.devolucoes?.[d.registro_id]) || [])
+  if (lidos.length) {
+    return emLista(lidos.map(i => `${i.quantidade.toLocaleString('pt-BR')}${i.de && i.de > i.quantidade ? ` de ${i.de.toLocaleString('pt-BR')}` : ''} ${i.produto}`))
+  }
+  const voltas = linhas.filter(l => l.tabela === 'stock_movements' && texto(l.depois.type) === 'SALE_RETURN')
+  if (voltas.length === devolucoes.length) return emLista(voltas.map(l => doProduto(l, nomes)))
+  const q = devolucoes.reduce((t, d) => t + (numero(d.depois.quantidade) ?? 0), 0)
+  return q > 0 ? `${q.toLocaleString('pt-BR')} ${q === 1 ? 'produto' : 'produtos'} da venda` : 'parte da venda de produto'
 }
 
 /** A transferência: a saída de uma unidade e a entrada na outra, na mesma gravação. */

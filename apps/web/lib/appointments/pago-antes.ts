@@ -34,6 +34,8 @@ export async function pagosAntes(
   const textos = new Map<string, string>()
   const vendaDe = new Map<string, string>()
   const planoDe = new Map<string, string>()
+  // A19 da 26ª: de quem é o em aberto (o pacote, o pré-pago, o plano).
+  const deQueDe = new Map<string, 'pacote' | 'pré-pago' | 'plano'>()
   const ids = [...new Set(agendamentos.filter(Boolean))]
   for (let i = 0; i < ids.length; i += 150) {
     const lote = ids.slice(i, i + 150)
@@ -53,6 +55,7 @@ export async function pagosAntes(
       for (const u of doPrePago) {
         textos.set(u.appointment_id, `Pré-pago · ${u.numero} de ${total.get(u.sale_id) ?? u.numero}`)
         vendaDe.set(u.appointment_id, u.sale_id)
+        deQueDe.set(u.appointment_id, 'pré-pago')
       }
     }
     for (const s of (sessoes ?? []) as unknown as {
@@ -61,12 +64,12 @@ export async function pagosAntes(
     }[]) {
       const nome = s.client_packages?.service_packages?.name ?? 'Pacote'
       textos.set(s.appointment_id, `${nome} · sessão ${s.session_number} de ${s.client_packages?.total_sessions ?? s.session_number}`)
-      if (s.client_package_id) vendaDe.set(s.appointment_id, s.client_package_id)
+      if (s.client_package_id) { vendaDe.set(s.appointment_id, s.client_package_id); deQueDe.set(s.appointment_id, 'pacote') }
     }
     for (const a of (planos ?? []) as { id: string; treatment_plan_id: string | null }[]) {
       if (textos.has(a.id)) continue
       textos.set(a.id, 'Sessão do plano de tratamento')
-      if (a.treatment_plan_id) { vendaDe.set(a.id, a.treatment_plan_id); planoDe.set(a.id, a.treatment_plan_id) }
+      if (a.treatment_plan_id) { vendaDe.set(a.id, a.treatment_plan_id); planoDe.set(a.id, a.treatment_plan_id); deQueDe.set(a.id, 'plano') }
     }
   }
   if (emAberto && vendaDe.size) {
@@ -83,7 +86,7 @@ export async function pagosAntes(
       if (plano && semReceber.has(plano)) {
         textos.set(agendamento, textoDoPlanoAReceber(semReceber.get(plano), { mostraOValor: emAberto.mostraOValor, daCliente: emAberto.daCliente }))
       } else {
-        textos.set(agendamento, comOEmAberto(texto, aberto[venda]?.valor, emAberto.mostraOValor))
+        textos.set(agendamento, comOEmAberto(texto, aberto[venda]?.valor, emAberto.mostraOValor, deQueDe.get(agendamento)))
       }
     }
   }

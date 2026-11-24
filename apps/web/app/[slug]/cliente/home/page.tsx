@@ -30,6 +30,8 @@ import { nomeDoPlanoNoApp, descontoDoPlanoNoApp } from '@/lib/plano-de-tratament
 import { combinadoDoPlano, totalComOCombinado } from '@/lib/plano-de-tratamento/desconto-combinado'
 import { textoDoParaAvaliar } from '@/lib/clientes/textos-do-app'
 import { Dica } from '@/components/shared/dica'
+import { NotaDoFuso } from '@/components/shared/fuso'
+import { relogioForaDeBrasilia } from '@/lib/unidades/hora-da-unidade'
 
 // -- Helpers --------------------------------------------------------
 /** No relógio da unidade (F62). */
@@ -54,8 +56,17 @@ type NextAppt = {
   duration_min?: number | null
   /** A hora real do concluído (A30 da 14ª: o cartão "para avaliar" diz a hora). */
   completed_at?: string | null
-  branches?:    { name: string; address: string | null; city: string | null; state: string | null; is_active?: boolean } | null
+  branches?:    { name: string; address: string | null; city: string | null; state: string | null; is_active?: boolean; fuso?: string | null } | null
 }
+
+/**
+ * D4 da 26ª: o relógio do agendamento é o da unidade DELE (a ficha é da rede,
+ * e o agendamento pode ser de outra unidade que não a do endereço). Era o da
+ * unidade do endereço: "08:00" no Início para a avaliação das 09:00 do Setor
+ * Bueno, aberto pelo endereço de Cuiabá. Sem a unidade, o do endereço.
+ */
+const fusoDoAgendamentoOu = (fusoDoEndereco: string) =>
+  (a: { branches?: { fuso?: string | null } | null }) => a.branches?.fuso ? fusoValido(a.branches.fuso) : fusoDoEndereco
 
 type ActivePackage = {
   id:             string
@@ -88,7 +99,7 @@ type ActivePlan = {
   treatment_plan_sessions: Array<{
     sort_order: number | null
     /** O agendamento da sessão (A45: feita, agendada ou a agendar). */
-    appointments?: { status: string; scheduled_at: string; completed_at: string | null } | null
+    appointments?: { status: string; scheduled_at: string; completed_at: string | null; branches?: { fuso?: string | null } | null } | null
     treatment_plan_session_procedures: Array<{ price: number | string | null; sort_order?: number | null; procedures: { name: string; visible_on_client_app?: boolean | null; is_active?: boolean | null } | null }>
   }>
 }
@@ -105,11 +116,12 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
   const unidadeDoEndereco = await ler(admin.from('branches').select('id, fuso').eq('slug', slug).maybeSingle(), 'buscar a unidade do endereço') as { id: string; fuso: string | null } | null
   // O relógio da unidade do endereço (F62): o "hoje" e as horas da tela.
   const fuso = fusoValido(unidadeDoEndereco?.fuso)
+  const fusoDoAgendamento = fusoDoAgendamentoOu(fuso)
 
   const [clientRes, nextApptRes, pendingConfirmRes, packagesRes, plansRes, saldoDePontos, prePagosRes] = await Promise.all([
     ler(admin.from('clients').select('name, tenant_id, gender').eq('id', ctx.clientId!).single(), 'buscar o cliente'),
     ler(admin.from('appointments')
-      .select('id, scheduled_at, status, duration_min, branch_id, branches(name, address, city, state, is_active), procedures(name), professionals:users!professional_id(name)')
+      .select('id, scheduled_at, status, duration_min, branch_id, branches(name, address, city, state, is_active, fuso), procedures(name), professionals:users!professional_id(name)')
       .eq('client_id', ctx.clientId!)
       // A mesma regra dos "Próximos" da Agenda (D14).
       .in('status', [...STATUS_DO_PROXIMO])
@@ -119,7 +131,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
       .limit(1)
       .maybeSingle(), 'buscar o próximo agendamento'),
     ler(admin.from('appointments')
-      .select('id, scheduled_at, completed_at, branch_id, branches(name, address, city, state), procedures(name), professionals:users!professional_id(name)')
+      .select('id, scheduled_at, completed_at, branch_id, branches(name, address, city, state, fuso), procedures(name), professionals:users!professional_id(name)')
       .eq('client_id', ctx.clientId!)
       .eq('status', 'COMPLETED')
       .is('client_confirmed_at', null)
@@ -133,7 +145,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
       .order('purchased_at', { ascending: false })
       .limit(5), 'buscar os pacotes'),
     ler(admin.from('treatment_plans')
-      .select('id, status, created_at, name, desconto, desconto_combinado_tipo, desconto_combinado_valor, treatment_plan_sessions(sort_order, appointments!treatment_plan_sessions_appointment_id_fkey(status, scheduled_at, completed_at), treatment_plan_session_procedures(price, sort_order, procedures(name, visible_on_client_app, is_active)))')
+      .select('id, status, created_at, name, desconto, desconto_combinado_tipo, desconto_combinado_valor, treatment_plan_sessions(sort_order, appointments!treatment_plan_sessions_appointment_id_fkey(status, scheduled_at, completed_at, branches(fuso)), treatment_plan_session_procedures(price, sort_order, procedures(name, visible_on_client_app, is_active)))')
       .eq('client_id', ctx.clientId!)
       .in('status', ['PROPOSED', 'ACCEPTED'])
       .order('created_at', { ascending: false })
@@ -218,7 +230,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
   if (temProposto && redeDoCliente) {
     await Promise.all(activePlans.filter(p => p.status === 'PROPOSED').map(async p => {
       const lista = await avulsosDoPlano(admin, redeDoCliente, p.id)
-      if (lista.length) avulsosPorPlano.set(p.id, lista.map(a => textoDoAvulso(a, fuso)))
+      if (lista.length) avulsosPorPlano.set(p.id, lista.map(a => textoDoAvulso(a, fuso)))  // D4 da 26ª: o do agendamento vence (`a.fuso`)
     }))
   }
 
@@ -376,8 +388,10 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                   </p>
                   <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--brand-deep, var(--brand))', fontWeight: 600 }}>
                     {/* A30 da 14ª: a hora e, com mais de uma unidade, onde — a sessão da Savassi e a da Pampulha eram iguais. */}
-                    {textoDoParaAvaliar({ agendadoEm: a.scheduled_at, concluidoEm: a.completed_at ?? null, unidade: variasUnidades ? a.branches?.name ?? null : null, fuso })}
+                    {textoDoParaAvaliar({ agendadoEm: a.scheduled_at, concluidoEm: a.completed_at ?? null, unidade: variasUnidades ? a.branches?.name ?? null : null, fuso: fusoDoAgendamento(a) })}
                   </p>
+                  {/* A9 da 26ª: o relógio, fora do de Brasília (princípio 3). */}
+                  <NotaDoFuso fuso={fusoDoAgendamento(a)} />
                 </div>
                 <ChevronRight size={18} color="var(--brand)" style={{ flexShrink: 0 }} />
               </Link>
@@ -403,11 +417,13 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                   <CalendarDays size={13} color="var(--brand)" />
                   <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--brand)' }}>
                     {(() => {
-                      const { date, time } = fmtDateTime(nextAppt.scheduled_at, fuso)
+                      const { date, time } = fmtDateTime(nextAppt.scheduled_at, fusoDoAgendamento(nextAppt))
                       return `${date} às ${time}`
                     })()}
                   </span>
                 </div>
+                {/* A9 da 26ª: o relógio do agendamento, fora do de Brasília (princípio 3). */}
+                <NotaDoFuso fuso={fusoDoAgendamento(nextAppt)} />
                 {/* A53 da 8ª: com mais de uma unidade, onde é — e o endereço DELA. */}
                 {variasUnidades && nextAppt.branches?.name && (
                   <p data-unidade-do-agendamento style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 6 }}>
@@ -678,12 +694,16 @@ function PlanoFechado({ plano, financeiro, slug, fuso }: { plano: ActivePlan; fi
   const sessoes = [...(plano.treatment_plan_sessions ?? [])].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
   const { total, feitas, agendadas } = financeiro.sessoes
   const proximo = financeiro.lancamentos.filter(l => !l.pago && l.vencimento).map(l => l.vencimento!).sort()[0] ?? null
-  const dia = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: fuso })
-  const hora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: fuso })
+  // D4 da 26ª: cada sessão no relógio da unidade do agendamento dela.
+  const fusoDe = fusoDoAgendamentoOu(fuso)
+  const dia = (iso: string, f = fuso) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: f })
+  const hora = (iso: string, f = fuso) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: f })
   const situacao = (a: ActivePlan['treatment_plan_sessions'][number]['appointments']) => {
-    if (a?.status === 'COMPLETED') return { texto: `Feita em ${dia(a.completed_at ?? a.scheduled_at)}`, cor: 'var(--success)' }
+    if (a?.status === 'COMPLETED') return { texto: `Feita em ${dia(a.completed_at ?? a.scheduled_at, fusoDe(a))}`, cor: 'var(--success)' }
     if (a && ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(a.status)) {
-      return { texto: `Agendada para ${dia(a.scheduled_at)} às ${hora(a.scheduled_at)}`, cor: 'var(--info)' }
+      // A9 da 26ª: o relógio, fora do de Brasília.
+      const relogio = relogioForaDeBrasilia(fusoDe(a))
+      return { texto: `Agendada para ${dia(a.scheduled_at, fusoDe(a))} às ${hora(a.scheduled_at, fusoDe(a))}${relogio ? ` (${relogio.toLowerCase()})` : ''}`, cor: 'var(--info)' }
     }
     return { texto: 'A agendar', cor: 'var(--text-muted)' }
   }

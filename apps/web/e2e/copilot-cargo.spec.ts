@@ -63,3 +63,39 @@ test('Gerenciar: as gravações do módulo liberado chegam ao modelo', async ({ 
   })
   expect(falsa.ferramentasOferecidas()).toContain('agendar')
 })
+
+// O "Olá" do Copilot ("cadastrar ou agendar") e os atalhos fixos ("Cadastrar uma cliente
+// nova", "Quanto faturamos este mês?") saem das mesmas ferramentas que o modelo recebe:
+// quem não pode, não vê o convite. Na rede do Copilot deste arquivo.
+test.describe('o Olá e os atalhos do Copilot saem do que a permissão libera (princípio 3, copilot.md)', () => {
+  test('só os Clientes em Ver: nada de agendar, cadastrar nem faturamento', async ({ browser }) => {
+    const m = await rede.membro('abcli', [{ modulo: 'clients', nivel: 'VIEW' }, { modulo: 'copilot', nivel: 'VIEW' }])
+    await comSessao(browser, m.estado, async p => {
+      await p.goto('/admin/clients')
+      await p.getByRole('button', { name: 'Copilot', exact: true }).click()
+      const painel = p.getByRole('dialog', { name: 'Copilot' })
+      const ola = painel.locator('[data-abertura-do-copilot]')
+      await expect(ola).toContainText('achar um cliente')
+      await expect(ola).not.toContainText('agendar')
+      await expect(ola).not.toContainText('cadastrar')
+      await expect(ola).not.toContainText('confirmação')
+      await expect(painel.getByRole('button', { name: 'Quanto faturamos este mês?' })).toHaveCount(0)
+      await expect(painel.getByRole('button', { name: 'Cadastrar uma cliente nova' })).toHaveCount(0)
+      await expect(painel.getByRole('button', { name: 'Quem são os agendamentos de hoje?' })).toHaveCount(0)
+    })
+  })
+
+  test('a Agenda e os Clientes em Gerenciar: agendar, cadastrar e os atalhos deles', async ({ browser }) => {
+    const m = await rede.membro('abger', [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }])
+    await comSessao(browser, m.estado, async p => {
+      await p.goto('/admin/agenda')
+      await p.getByRole('button', { name: 'Copilot', exact: true }).click()
+      const painel = p.getByRole('dialog', { name: 'Copilot' })
+      await expect(painel.locator('[data-abertura-do-copilot]')).toContainText('Toda gravação passa pela sua confirmação.')
+      await expect(painel.getByRole('button', { name: 'Cadastrar uma cliente nova' })).toBeVisible()
+      await expect(painel.getByRole('button', { name: 'Quem são os agendamentos de hoje?' })).toBeVisible()
+      // Sem os Relatórios, sem o atalho do faturamento.
+      await expect(painel.getByRole('button', { name: 'Quanto faturamos este mês?' })).toHaveCount(0)
+    })
+  })
+})

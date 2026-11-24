@@ -6,6 +6,7 @@ import { regrasDaRede, procedimentosParaComissao, procedimentosComComissaoGeral 
 import { cargosQueVendem } from '@/lib/vendas/equipe-da-venda'
 import { TeamForm } from '@/components/branch/team-form'
 import { TeamMemberEdit } from '@/components/admin/team-member-edit'
+import { fusosDasUnidades } from '@/lib/unidades/fuso-da-unidade'
 import { ReativarMembro } from '@/components/admin/reativar-membro'
 import { Pencil } from 'lucide-react'
 import Link from 'next/link'
@@ -98,6 +99,8 @@ export default async function TeamPage({
   ])
   const nomeDa = new Map(((unidadesDaRede ?? []) as { id: string; name: string }[]).map(u => [u.id, u.name]))
   const unidadesDoAtende = (unidadesDaRede ?? []) as { id: string; name: string }[]
+  // A11 da 26ª: o fuso de cada unidade — a edição diz em que relógio vale o horário próprio.
+  const fusos = await fusosDasUnidades(ctx.tenantId)
   // Quem tem unidades marca e desmarca só as DELA (H7, EQ1a); quem é da rede, todas.
   const minhas = unidadesDoContexto(ctx)
   const editaveisDoAtende = minhas
@@ -162,6 +165,16 @@ export default async function TeamPage({
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
             {contagemDeMembros(total, termo ? 'encontrados' : 'cadastrados')}
           </p>
+          {/* A8 da 26ª (CLAUDE.md §11, "a própria Admin edita em si o 'atende'"; princípio 7):
+              quem é da rede inteira não aparece aqui até atender nesta unidade, e a Admin
+              não achava onde se marcar. O caminho, a quem abre a rede. */}
+          {minhas === null && (
+            <p data-equipe-da-rede style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 4, maxWidth: 560 }}>
+              {fala('Quem é da rede inteira (você também) está na ')}
+              <Link href="/admin/team" style={{ color: 'var(--brand)', fontWeight: 'var(--weight-bold)', textDecoration: 'none' }}>{fala('Equipe da rede')}</Link>
+              {fala(': é lá que se marca o “Atende clientes” de cada um.')}
+            </p>
+          )}
           {ninguemAtendeAqui && (
             <p data-ninguem-atende role="status" style={{
               marginTop: 8, padding: '8px 12px', borderRadius: 'var(--radius-field-token)', maxWidth: 560,
@@ -274,6 +287,7 @@ export default async function TeamPage({
                         }}
                         branches={[{ id: branchId, name: branch?.name ?? 'Esta unidade', horario: branch?.horario }]}
                         unidadesDoAtende={unidadesDoAtende}
+                        fusos={fusos}
                         editaveisDoAtende={editaveisDoAtende}
                         roles={comTrava}
                         cargoTravado={alcancaTodas(m as { branch_id?: string | null; outras_unidades?: string[] | null }) ? undefined : CARGO_DE_QUEM_TEM_OUTRA_UNIDADE}

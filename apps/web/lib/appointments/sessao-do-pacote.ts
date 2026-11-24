@@ -31,8 +31,16 @@ export function textoDaSessaoDoPacote(s: {
 /**
  * D4 da 21ª: o texto do "incluído" da agenda e do app ("4 limpezas · sessão 2
  * de 4") com o que a venda ainda tem em aberto. Nada em aberto: como está.
+ *
+ * A19 da 26ª (princípio 3): o em aberto é da VENDA, não da sessão — "4
+ * limpezas · sessão 1 de 4 · pacote com R$ 400,00 em aberto" (`deQue`: de
+ * quem é o em aberto; sem ele, o texto de antes).
  */
-export function comOEmAberto(texto: string, emAberto: number | null | undefined, mostraOValor: boolean): string {
+export function comOEmAberto(
+  texto: string, emAberto: number | null | undefined, mostraOValor: boolean, deQue?: 'pacote' | 'pré-pago' | 'plano',
+): string {
   if (emAberto == null || !(Math.round(emAberto * 100) > 0)) return texto
-  return `${texto} · ${mostraOValor ? `${formatBRL(emAberto)} em aberto` : 'com parcelas em aberto'}`
+  const quanto = mostraOValor ? `${formatBRL(emAberto)} em aberto` : 'parcelas em aberto'
+  if (deQue) return `${texto} · ${deQue} com ${quanto}`
+  return `${texto} · ${mostraOValor ? quanto : `com ${quanto}`}`
 }
