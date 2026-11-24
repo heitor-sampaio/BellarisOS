@@ -58,3 +58,10 @@ describe('rotuloDaAcao', () => {
     expect(rotuloDaAcao('RESCHEDULED', 'Reagendado para 07/11, 10:00')).toBe('Remarcado para 07/11, 10:00')
   })
 })
+
+describe('rotuloDaAcao — a remarcação pela cliente no app', () => {
+  it('diz o novo horário (princípio 3): a action do app grava "Remarcado pela cliente no app para …"', () => {
+    expect(rotuloDaAcao('RESCHEDULED', 'Remarcado pela cliente no app para 25/11, 14:00'))
+      .toBe('Remarcado pela cliente no app para 25/11, 14:00')
+  })
+})

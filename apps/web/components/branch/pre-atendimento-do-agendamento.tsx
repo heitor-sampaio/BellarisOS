@@ -177,7 +177,8 @@ export function PreAtendimentoDoAgendamento({ appointmentId, slug, podeMandar }:
           </button>
         </div>
       )}
-      {!situacao.podeLink && situacao.clienteId && (
+      {/* Só a quem edita a cliente (Clientes em Gerenciar): quem só vê não tem o que fazer lá (CLAUDE.md §14). */}
+      {!situacao.podeLink && situacao.podeEditarCadastro && situacao.clienteId && (
         <Link href={`${rotaCliente(pathname, slug, situacao.clienteId)}?aba=dados`} className="btn-secondary pre-atendimento-agendamento-botao" style={{ alignSelf: 'flex-start' }}>
           Editar o cadastro
         </Link>

@@ -614,7 +614,9 @@
   14:00?", `[data-confirmar-arraste]`). O servidor recusa quem não atende na
   unidade (`recusaDeQuemNaoAtende`, em `reassignProfessional` e no
   `remarcarCore` com outra profissional), e o histórico grava "Profissional
-  trocado de A para B" (`textoDaTroca`; a janela o mostra — `rotuloDaAcao`).
+  trocado de A para B" (`textoDaTroca`; a janela o mostra — `rotuloDaAcao`,
+  que diz também o novo horário da remarcação, a da equipe e a da cliente pelo
+  app: "Remarcado pela cliente no app para 25/11, 14:00" — A20 da 27ª).
   Soltar no ocupado diz o porquê, em destaque (8 s). E o horário do arraste é
   o da posição na coluna: somar o `scrollTop` da grade outra vez (o retângulo
   da coluna já anda com a rolagem) jogava o solto para horas depois. Prova:
@@ -2311,7 +2313,10 @@ const procedures = await ler(
   atendimento, `ContextoDosInjetaveis.podeEditar` no campo do planejador da
   ficha — sem ele, o campo abre e escolhe o planejamento da cliente, sem mexer
   no mapa). Saiu o recorte ao mapa DELA (da cliente que ela atende ou, avulso,
-  o que ela mexeu por último). Prova: `tests/injetaveis-quem-realiza-atendimento.test.ts`.
+  o que ela mexeu por último). E o vazio da tela de Injetáveis só convida a
+  "começar um novo" quem grava o mapa (`InjetavelVazio podeEditar`; A6 da
+  27ª). Prova: `tests/injetaveis-quem-realiza-atendimento.test.ts`,
+  `tests/ficha-e-atendimento-o-que-a-tela-oferece.test.ts`.
 - **A sub-aba Planejamento → Injetáveis só existe para quem vê o clínico**
   (D7 da simulação de 2026-10-29): `PainelPlanejamento podeVerInjetaveis` é a
   decisão clínica da tela que o monta — `podeVerProntuario` na ficha,
@@ -3637,7 +3642,10 @@ O resto do fluxo:
     "só os meus" num atendimento de outra saiu com o SM1): a tela não tem os
     campos e não aponta nada; o servidor recusa do mesmo jeito, com só o NOME
     da pergunta na mensagem. Quem responde é quem tem o Prontuário em
-    Gerenciar, sem precisar atender (UM4). Quem não o tem
+    Gerenciar, sem precisar atender (UM4) — também na ficha da cliente, aba
+    Prontuário, com as perguntas atuais da rede (`podeEditarFichaDeSaude`, a
+    permissão de `salvarAnamneseGeral`; no registro mais recente, um
+    formulário só; D2 da 27ª: lá era sempre só leitura). Quem não o tem
     conclui com o Atendimento em Gerenciar (2026-11-18), sem o clínico — a
     obrigatória em branco a barra como a qualquer um, e quem responde é quem
     tem o Prontuário; a recusa diz isso, com os nomes: "Quem responde a ficha
@@ -3731,7 +3739,10 @@ O resto do fluxo:
   `e2e/plano-desconto-combinado-no-aceite.spec.ts`, `tests/pendencias-area-1.test.ts`.
 - **Concluído, o formulário da avaliação fica bloqueado de verdade** (A30 da
   simulação de 2026-10-29): a evolução só se lê e a ficha de saúde aparece como
-  leitura — não em branco com as obrigatórias marcadas. Quem desbloqueia
+  leitura — não em branco com as obrigatórias marcadas. O campo travado tem a
+  cara do só leitura (`CAMPO_SO_LEITURA`: o fundo do app, sem a alça; A7 da
+  27ª, princípio 3) — o que se faz depois é "Editar registro" ou "Acrescentar
+  anotação" (PR2a/PR2b). Quem desbloqueia
   ("Editar registro") tem os campos de volta. **Desbloquear pede o Atendimento
   E o Prontuário em Gerenciar** (`canEditRecords`, que soma os dois; A39 da 5ª
   simulação, 2026-11-01 — era a Agenda até 2026-11-18): o botão aparecia a quem não escreve no prontuário, e
@@ -3757,8 +3768,13 @@ O resto do fluxo:
   conclui). O editor do plano (o cartão "Tratamento") pede o Atendimento ao
   menos em Ver, como as actions dele (D10 da 26ª, `podeVerPlanos`): sem o
   Atendimento, o cartão não aparece — nem no concluído, onde só o recurso
-  do plano decidia.
-  Prova: `e2e/permissoes-quem-so-ve.spec.ts`, `e2e/vistas-pessoais-e-cada-passo.spec.ts`.
+  do plano decidia. **Com o Atendimento só em Ver, o cartão só se LÊ** (UM3;
+  D3 da 27ª): sem "Nova sessão", "Adicionar procedimento" nem as lixeiras — o
+  rascunho que existe aparece como está, e sem plano o cartão diz "Nenhum
+  plano montado." com o `TEXTO_QUEM_MONTA` (`TreatmentPlanEditor podeEditar`
+  = `montaPlano`, no atendimento e na janela Planejamento).
+  Prova: `e2e/permissoes-quem-so-ve.spec.ts`, `e2e/vistas-pessoais-e-cada-passo.spec.ts`,
+  `tests/ficha-e-atendimento-o-que-a-tela-oferece.test.ts`.
 - **Quem recebe, na unidade** (A8 da 20ª, princípio 3): o avulso concluído a
   receber e a janela de finalizar dizem quem recebe NESTA unidade
   (`quemRecebeNaUnidade`); sem ninguém dela, "Ninguém desta unidade tem o PDV

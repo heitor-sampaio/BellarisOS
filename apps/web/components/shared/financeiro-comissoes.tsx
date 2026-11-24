@@ -45,6 +45,8 @@ export interface PropsDaTela {
   titulo:        string
   basePath:      string
   voltarPara:    string
+  /** O nome da tela de volta (padrão "Financeiro"; na vista pessoal, "Dashboard"). */
+  voltarRotulo?: string
   periodos:      { chave: string; rotulo: string }[]
   periodoAtual:  string
   /** A32 da 10ª: o período escolhido ainda corre (o fechamento paga até agora). */
@@ -143,7 +145,8 @@ export function FinanceiroComissoes(p: PropsDaTela) {
           </h2>
         ) : (
           <div>
-            <Link href={p.voltarPara} style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>← Financeiro</Link>
+            {/* A 27ª (princípio 7): na vista pessoal, quem não tem o Financeiro volta ao Dashboard, e o link diz isso. */}
+            <Link href={p.voltarPara} style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>← {p.voltarRotulo ?? 'Financeiro'}</Link>
             <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 'var(--weight-extrabold)', letterSpacing: 'var(--tracking-tight)', color: 'var(--text)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
               <span>{p.titulo}</span>
               {dicaDoTitulo}

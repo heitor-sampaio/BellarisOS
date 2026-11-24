@@ -234,6 +234,27 @@ export async function resolverProcedimento(
   return { erro: `Mais de um procedimento com "${pedido}": ${parecidos.slice(0, 10).map(x => x.name).join(', ')}. Qual?` }
 }
 
+/**
+ * Acha a sala ATIVA da unidade pelo id ou pelo nome (A1 da 27ª; princípio 3:
+ * "agende na Sala 1" ia para a observação, e o agendamento ficava sem sala).
+ * O nome exato (sem caixa nem acento) vence o parecido: "Sala 1" não é a
+ * "Sala 10". Se ela serve ao procedimento, confere `conferirPecasDoAgendamento`.
+ */
+export async function resolverSala(
+  c: ContextoDaFerramenta, pedido: string, unidadeId: string,
+): Promise<{ id: string; name: string } | { erro: string }> {
+  const salas = ((await ler(c.admin.from('rooms').select('id, name')
+    .eq('branch_id', unidadeId).eq('is_active', true).order('name'), 'ler as salas da unidade')) ?? []) as { id: string; name: string }[]
+  const semAcento = (v: string) => v.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim()
+  const p = semAcento(pedido)
+  const exatos = salas.filter(s => s.id === pedido || semAcento(s.name) === p)
+  const parecidos = exatos.length ? exatos : salas.filter(s => semAcento(s.name).includes(p))
+  if (parecidos.length === 1) return { id: parecidos[0]!.id, name: parecidos[0]!.name }
+  if (!salas.length) return { erro: 'Esta unidade não tem sala cadastrada.' }
+  if (!parecidos.length) return { erro: `Sala "${pedido}" não encontrada nesta unidade. As salas daqui: ${salas.map(s => s.name).join(', ')}.` }
+  return { erro: `Mais de uma sala com "${pedido}": ${parecidos.map(s => s.name).join(', ')}. Qual?` }
+}
+
 /** Acha o cliente ativo pelo id, ou pelo nome/telefone (tem de ser um só). */
 export async function resolverCliente(
   c: ContextoDaFerramenta, pedido: string,

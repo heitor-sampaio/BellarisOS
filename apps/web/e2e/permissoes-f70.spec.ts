@@ -296,6 +296,44 @@ test('A1 da 13ª: Cargos → Novo diz que o cargo novo começa sem acesso, sem a
   }
 })
 
+// D5 da 27ª (princípio 3): no Instituto Helicônia, o "Comercial" foi criado logo ao abrir a aba com um cargo
+// escolhido no endereço, o painel seguiu no cargo de antes, e os níveis clicados foram para ele (o Comercial ficou
+// vazio). O cargo novo abre no editor, e o que se clica grava NELE.
+test('D5 da 27ª: criado o cargo, o editor abre nele e o nível clicado grava no cargo novo, não no de antes', async ({ browser }) => {
+  const b = db()
+  const dona = await criarMembro(`f70d5${marca}`, { tenant: rede!.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
+  await b.from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede!.tenantId)
+  const antes = `${PREFIXO} Antes d5 ${marca}`
+  const novo = `${PREFIXO} Comercial d5 ${marca}`
+  const { data: cargoAntes } = await b.from('tenant_roles')
+    .insert({ tenant_id: rede!.tenantId, key: `E2E_D5_${marca}`.toUpperCase(), label: antes }).select('id').single<{ id: string }>()
+  try {
+    await como(browser, dona.estado, async p => {
+      // O cargo de antes escolhido no endereço, e o criar como a primeira ação da tela.
+      await p.goto(`/admin/settings?tab=permissions&cargo=${cargoAntes!.id}`)
+      await expect(p.getByRole('heading', { name: `O que ${antes} acessa` })).toBeVisible({ timeout: 20_000 })
+      await p.getByRole('button', { name: 'Novo' }).click()
+      await p.getByPlaceholder('Ex.: Agenda e caixa').fill(novo)
+      await p.getByRole('button', { name: 'Criar', exact: true }).click()
+      await expect(p.getByRole('heading', { name: `O que ${novo} acessa` })).toBeVisible({ timeout: 20_000 })
+      // A tela de volta do servidor não devolve o painel ao cargo de antes.
+      await p.waitForLoadState('networkidle')
+      await expect(p.getByRole('heading', { name: `O que ${novo} acessa` })).toBeVisible()
+      await p.locator('[data-modulo="crm"]').getByRole('button', { name: 'Gerenciar', exact: true }).click()
+      await p.getByRole('button', { name: 'Salvar acessos' }).click()
+      await expect(p.getByText(`Cargo “${novo}” salvo.`)).toBeVisible({ timeout: 20_000 })
+    })
+    const { data: criado } = await b.from('tenant_roles').select('id').eq('tenant_id', rede!.tenantId).eq('label', novo).single<{ id: string }>()
+    const nivel = async (role: string) => (await b.from('role_permissions').select('level')
+      .eq('role_id', role).eq('module', 'crm').maybeSingle<{ level: string }>()).data?.level ?? 'NONE'
+    expect(await nivel(criado!.id), 'o CRM em Gerenciar foi para o cargo novo').toBe('MANAGE')
+    expect(await nivel(cargoAntes!.id), 'o cargo de antes não mudou').toBe('NONE')
+  } finally {
+    await b.from('tenant_roles').delete().eq('tenant_id', rede!.tenantId).in('label', [antes, novo])
+    await dona.limpar()
+  }
+})
+
 test('A2 da 13ª: Configurações → Geral, para quem tem só uma unidade, é texto — sem campo que parece editável', async ({ browser }) => {
   await db().from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede!.tenantId)
   // A gerente (unidade fixa, Configurações em Gerenciar) lê os dados da clínica: não os edita (H7).

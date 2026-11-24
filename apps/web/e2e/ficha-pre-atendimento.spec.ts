@@ -690,7 +690,7 @@ test.describe('o pré-atendimento: o link para quem não tem o app', () => {
     }
   })
   test('A27: sem CPF nem nascimento, a janela diz o que falta e leva ao cadastro da cliente', async ({ browser }) => {
-    const sem = await agendada('Sem identidade', { document: null, birth_date: null })
+    await agendada('Sem identidade', { document: null, birth_date: null })
     const ctx = await browser.newContext({ storageState: recepcao.estado })
     const page = await ctx.newPage()
     try {
@@ -698,9 +698,26 @@ test.describe('o pré-atendimento: o link para quem não tem o app', () => {
       await page.locator(`[title*="Sem identidade pd${marca}"]`).first().click()
       const ficha = page.locator('[data-pre-atendimento-do-agendamento]')
       await expect(ficha.getByText('Para quem não tem CPF, complete a data de nascimento para enviar o link')).toBeVisible()
+      // A recepção daqui tem Clientes em Ver: o atalho de EDITAR não é dela (o Heitor, 2026-11-01:
+      // "quem só pode ver só pode ver"; CLAUDE.md §14). Quem edita o tem — o caso abaixo.
+      await expect(ficha.getByRole('link', { name: 'Editar o cadastro' })).toHaveCount(0)
+    } finally {
+      await ctx.close()
+    }
+  })
+  test('"Editar o cadastro" na janela, sem CPF nem nascimento: só com Clientes em Gerenciar', async ({ browser }) => {
+    const sem = await agendada('Sem identidade edita', { document: null, birth_date: null })
+    const edita = await criarMembro(`pde${marca}`, { tenant: D.tenantId, permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }] })
+    const ctx = await browser.newContext({ storageState: edita.estado })
+    const page = await ctx.newPage()
+    try {
+      await page.goto(`/admin/agenda?date=${DIA}`)
+      await page.locator(`[title*="Sem identidade edita pd${marca}"]`).first().click()
+      const ficha = page.locator('[data-pre-atendimento-do-agendamento]')
       await expect(ficha.getByRole('link', { name: 'Editar o cadastro' })).toHaveAttribute('href', `/admin/clients/${sem.cliente}?aba=dados`)
     } finally {
       await ctx.close()
+      await edita.limpar()
     }
   })
 

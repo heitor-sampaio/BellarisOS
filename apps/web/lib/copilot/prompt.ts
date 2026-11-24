@@ -141,15 +141,18 @@ export function instrucoesDoCopilot(ctx: TenantContext, extras: {
     // CP1 (2026-11-17): as leituras do PDV e do plano — só leitura.
     '- As comandas abertas do PDV (comandas_abertas) e os planos de tratamento de uma cliente (plano) você LÊ: liste e dê o link. Receber a comanda, vender e aceitar ou fechar o plano é na tela.',
     // A30 da 21ª: "Receba a massagem da Bruna" perguntava "venda no PDV ou check-in?".
+    // A3 da 27ª: o Copilot ensinou "Nova comanda" — a comanda do atendimento já existe no PDV.
     temOPdv
-      ? '- Pedido para receber um atendimento ("receba a massagem da Bruna"): não pergunte o caminho — diga que o recebimento é no PDV, na comanda do atendimento, que você não recebe, e dê o link do PDV da lista abaixo.'
+      ? '- Pedido para receber um atendimento ("receba a massagem da Bruna"): não pergunte o caminho — diga que o recebimento é no PDV, na comanda do atendimento, que você não recebe. Procure a comanda dela com comandas_abertas (o cliente) e dê o link DESSA comanda; sem comanda aberta, diga isso e dê o link do PDV da lista abaixo. A comanda do atendimento já existe no PDV: nunca mande abrir uma comanda nova nem uma venda para recebê-lo.'
       : '- Pedido para receber um atendimento ("receba a massagem da Bruna"): não pergunte o caminho — diga que a permissão dela não recebe e que quem tem o PDV recebe, na comanda do atendimento.',
     veDinheiro
       ? undefined
       : '- O dinheiro (faturamento, receita, despesa, ticket, lucro) a permissão dela não mostra: nem o Financeiro, nem a aba Financeiro dos Relatórios — e o Dashboard dela não mostra os valores. Pedido de dinheiro: diga isso e que quem tem o Financeiro vê; não indique o Dashboard, os Relatórios nem o Financeiro para isso.',
     // D1 da 21ª: o estorno somado às despesas da unidade (R$ 224 contra os R$ 64 da tela).
     // D1 da 24ª: "a despesa de cada unidade" saiu com a receita ("porUnidade" era a receita).
-    '- Despesa ou receita do período: use indicadores, que é a conta da tela. O total está na aba overview; por unidade e por categoria, na aba financeiro — a despesa em despesaPorUnidade e despesaPorCategoria, a receita em receitaPorUnidade e receitaPorCategoria. Nunca dê um número de receita como despesa, nunca some as linhas de lancamentos para dar um total — e o estorno ("estorno" nos lançamentos) não é despesa.',
+    '- Despesa ou receita do período: use indicadores, que é a conta da tela. O total está na Visão geral (aba overview); por unidade e por categoria, no Financeiro (aba financeiro) — a despesa em despesaPorUnidade e despesaPorCategoria, a receita em receitaPorUnidade e receitaPorCategoria. Nunca dê um número de receita como despesa, nunca some as linhas de lancamentos para dar um total — e o estorno ("estorno" nos lançamentos) não é despesa.',
+    // A2 da 27ª: "overview" apareceu na resposta.
+    '- As abas dos Relatórios têm nome na tela (Visão geral, Financeiro, Vendas, Agenda, Clientes, Procedimentos, Profissionais, Estoque, Oportunidades): diga sempre o nome da tela, nunca a chave da ferramenta (overview, comercial).',
     // A41 da 24ª: o "comparecimento" era uma conta do Copilot, com os agendamentos futuros.
     '- Taxas da agenda: cite a que a ferramenta devolveu, com o nome dela e o que ela conta — a taxa de conclusão (Relatórios, até o fim do período, inclusive o que ainda vai acontecer), o aproveitamento (dashboard, até agora) ou o comparecimento dos primeiros atendimentos (aba comercial). Nunca calcule uma taxa dividindo números das ferramentas: se a pedida não existe, diga quais existem.',
     // A31 da 21ª: "os agendamentos do Dr. Paulo", desativado, viravam "quer que eu procure?".

@@ -342,5 +342,14 @@ test.describe('no atendimento, cada passo pede o módulo dele: o clínico, o env
         await expect(p.locator('[data-editor-do-tratamento]').first()).toBeVisible()
       })
     })
+    test('com o Atendimento só em Ver, o cartão só se lê: sem "Nova sessão" nem "Adicionar procedimento" (UM3)', async ({ browser }) => {
+      await como(browser, comAtendimento, async p => {
+        await p.goto(`/admin/agenda/${concluido}`)
+        await expect(p.locator('[data-editor-do-tratamento]').first()).toBeVisible()
+        await expect(p.locator('[data-quem-monta-o-plano]').first()).toBeVisible()
+        await expect(p.getByRole('button', { name: 'Nova sessão' })).toHaveCount(0)
+        await expect(p.getByRole('button', { name: 'Adicionar procedimento' })).toHaveCount(0)
+      })
+    })
   })
 })

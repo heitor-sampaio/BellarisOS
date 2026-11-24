@@ -5,7 +5,7 @@ import { Plus, Trash2, Send, Save, Copy, ChevronDown, ChevronUp, FlaskConical, P
 import { saveTreatmentPlan, proposeTreatmentPlan, pacotesParaODicaDoPlano } from '@/actions/treatment-plans'
 import { pacoteEquivalente, type PacoteParaComparar } from '@/lib/checkout/pacote-equivalente'
 import type { PlanSessionInput } from '@/actions/treatment-plans'
-import { situacaoDoPlano } from '@/lib/plano-de-tratamento/situacao'
+import { situacaoDoPlano, TEXTO_QUEM_MONTA } from '@/lib/plano-de-tratamento/situacao'
 import { Dica } from '@/components/shared/dica'
 import { textoDeQuemConclui } from '@/lib/equipe/textos-de-quem-pode'
 import type { RetratoDoCancelamento } from '@/lib/plano-de-tratamento/retrato-do-cancelamento'
@@ -123,6 +123,12 @@ interface Props {
    * servidor também não a grava.
    */
   podeAnotar?:          boolean
+  /**
+   * Monta o plano: o Atendimento em Gerenciar na unidade (UM3, `montaPlano`).
+   * Sem ele, o editor só mostra o plano que existe — sem "Nova sessão",
+   * "Adicionar procedimento" nem as lixeiras (CLAUDE.md §14).
+   */
+  podeEditar?:          boolean
   /**
    * Os procedimentos de cada sessão, a cada mudança — o bloco "Documentos"
    * do plano (DC1c/PC9b) puxa os documentos deles ao vivo.
@@ -462,7 +468,7 @@ function SessionCard({
 
 export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(function TreatmentPlanEditor({
   appointmentId, slug, procedures, existingPlan, hideActions, availableProducts = [], onSalvarPorPlano, branchId, opcional = false, quemFinaliza = null,
-  podeAnotar = true, onMudarProcedimentos, onMudou,
+  podeAnotar = true, podeEditar = true, onMudarProcedimentos, onMudou,
 }, ref) {
   const [sessions,  setSessions]  = useState<EditorSession[]>(() => fromExisting(existingPlan))
   const avisarProcedimentos = useEffectEvent((lista: EditorSession[]) =>
@@ -496,7 +502,8 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
 
   // D4 da 12ª: o cancelado e o recusado também são só leitura (reabriam como
   // rascunho editável, com "Nova sessão" e as lixeiras).
-  const isPlanLocked = ['PROPOSED', 'ACCEPTED', 'COMPLETED', 'CANCELLED', 'REJECTED'].includes(existingPlan?.status ?? '')
+  // UM3: sem a permissão de montar, o plano também só se lê.
+  const isPlanLocked = !podeEditar || ['PROPOSED', 'ACCEPTED', 'COMPLETED', 'CANCELLED', 'REJECTED'].includes(existingPlan?.status ?? '')
   const situacaoTravada = situacaoDoPlano(existingPlan?.status ?? 'PROPOSED')
 
   const grandTotal = sessions.reduce(
@@ -677,16 +684,24 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
   // -- Render --------------------------------------------------------
 
   if (isPlanLocked) {
-    // Modo leitura: plano já foi enviado/aprovado
+    // Modo leitura: plano já foi enviado/aprovado — ou quem está na tela não
+    // monta o plano (UM3): o cartão "Tratamento" fica, sem nada que edite.
     return (
-      <div className="card" style={{ overflow: 'hidden' }}>
+      <div data-editor-do-tratamento={podeEditar ? undefined : 'leitura'} className="card" style={{ overflow: 'hidden' }}>
         <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Tratamento</h3>
-          <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: situacaoTravada.cor, background: situacaoTravada.fundo, borderRadius: 6, padding: '2px 8px' }}>
-            {situacaoTravada.label}
-          </span>
+          {existingPlan && (
+            <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: situacaoTravada.cor, background: situacaoTravada.fundo, borderRadius: 6, padding: '2px 8px' }}>
+              {situacaoTravada.label}
+            </span>
+          )}
         </div>
         <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {!existingPlan && (
+            <p data-quem-monta-o-plano style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+              Nenhum plano montado. {TEXTO_QUEM_MONTA}
+            </p>
+          )}
           {(existingPlan?.sessions ?? []).map((s, i) => (
             <div key={i} style={{ borderRadius: 10, border: '1px solid var(--hairline)', overflow: 'hidden' }}>
               <div style={{ padding: '10px 14px', background: 'var(--bg-app)', borderBottom: '1px solid var(--hairline)', display: 'flex', alignItems: 'center', gap: 8 }}>

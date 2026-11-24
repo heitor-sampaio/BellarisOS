@@ -15,7 +15,7 @@ import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
 import { DATA, dinheiro, idsDasUnidades, nomesPorId, procedimentosDaUnidade, resolverUnidade } from '@/lib/copilot/ferramentas/comum'
 import { resultadoDoPeriodo, taxaDeConclusao, taxaDeAproveitamento } from '@/lib/metrics/resultado'
 import { veOCaixaNosRelatorios } from '@/lib/metrics/visao-geral'
-import { abasQueValem, motivoDaAbaFechada } from '@/lib/permissions'
+import { abasQueValem, motivoDaAbaFechada, REPORT_TAB_LABELS } from '@/lib/permissions'
 
 /**
  * PROCEDIMENTOS (o catálogo) e INDICADORES.
@@ -65,7 +65,7 @@ export const indicadores: FerramentaDeLeitura<{
   nome: 'indicadores',
   tipo: 'leitura',
   modulo: 'reports', nivel: 'VIEW',
-  descricao: 'Os números da rede num período (os mesmos dos Relatórios). aba: overview (faturamento, a receber, despesas e lucro — estes só com o Financeiro em Ver —, atendimentos e o aproveitamento, novos clientes — só na rede inteira, nula numa unidade —, comissões), financeiro (pede o Financeiro em Ver: a receita paga por unidade, por forma de pagamento e por categoria — receitaPorUnidade, receitaPorFormaDePagamento, receitaPorCategoria — e a despesa paga por unidade e por categoria — despesaPorUnidade, despesaPorCategoria —, com os totais), vendas (cada venda, com o número da comanda do PDV: atendimento avulso, pacote, pré-pago, plano, produto e crédito interno — o crédito interno fica fora do total —, com o total por tipo), agenda (por status, dia da semana, origem, a taxa de conclusão e o aproveitamento, cada um com o que conta; o comparecimento é o dos primeiros atendimentos, na aba comercial), clientes (ativos, perfil, quem mais gasta), procedimentos, profissionais, estoque, comercial (a aba Oportunidades: o funil, a conversão, os motivos de perda e a conversão por origem). periodo: today, week, 7d, 15d, 30d, month (padrão), last_month, quarter, ou custom com de/ate. "A semana" sem outra data é week (a semana atual) e "o mês" é month: não pergunte qual; a resposta diz o período ("periodo").',
+  descricao: 'Os números da rede num período (os mesmos dos Relatórios). aba (a chave; entre parênteses, o nome da aba na tela — na resposta, diga sempre o nome da tela, nunca pela chave): overview (Visão geral: faturamento, a receber, despesas e lucro — estes só com o Financeiro em Ver —, atendimentos e o aproveitamento, novos clientes — só na rede inteira, nula numa unidade —, comissões), financeiro (Financeiro: pede o Financeiro em Ver; a receita paga por unidade, por forma de pagamento e por categoria — receitaPorUnidade, receitaPorFormaDePagamento, receitaPorCategoria — e a despesa paga por unidade e por categoria — despesaPorUnidade, despesaPorCategoria —, com os totais), vendas (Vendas: cada venda, com o número da comanda do PDV: atendimento avulso, pacote, pré-pago, plano, produto e crédito interno — o crédito interno fica fora do total —, com o total por tipo), agenda (Agenda: por status, dia da semana, origem, a taxa de conclusão e o aproveitamento, cada um com o que conta; o comparecimento é o dos primeiros atendimentos, na aba comercial), clientes (Clientes: ativos, perfil, quem mais gasta), procedimentos (Procedimentos), profissionais (Profissionais), estoque (Estoque), comercial (Oportunidades: o funil, a conversão, os motivos de perda e a conversão por origem). periodo: today, week, 7d, 15d, 30d, month (padrão), last_month, quarter, ou custom com de/ate. "A semana" sem outra data é week (a semana atual) e "o mês" é month: não pergunte qual; a resposta diz o período ("periodo").',
   parametros: z.object({
     aba: z.enum(REPORT_TABS).optional(),
     periodo: z.enum(PERIODOS).optional(),
@@ -78,7 +78,8 @@ export const indicadores: FerramentaDeLeitura<{
       // A aba Financeiro marcada sem o Financeiro em Ver não abre, e diz por quê (o Heitor, 23/11).
       const motivo = c.ctx.reportTabs.includes(aba) ? motivoDaAbaFechada(aba, c.ctx.permissions) : null
       const liberadas = abasQueValem(c.ctx.reportTabs, c.ctx.permissions)
-      return { dados: { erro: `A sua permissão não abre a aba "${aba}" dos relatórios${motivo ? ` (${motivo} em Ver)` : ''}. Abas liberadas: ${liberadas.join(', ') || 'nenhuma'}.` } }
+      // A2 da 27ª (princípio 7): a aba pelo nome da tela ("Visão geral"), não pela chave ("overview").
+      return { dados: { erro: `A sua permissão não abre a aba "${aba}" dos relatórios (na tela, ${REPORT_TAB_LABELS[aba]})${motivo ? ` (${motivo} em Ver)` : ''}. Abas liberadas: ${liberadas.map(t => REPORT_TAB_LABELS[t]).join(', ') || 'nenhuma'}. Na resposta, chame cada aba pelo nome da tela.` } }
     }
     const u = await resolverUnidade(c, args.unidade)
     if ('erro' in u) return { dados: { erro: u.erro } }
@@ -96,7 +97,8 @@ export const indicadores: FerramentaDeLeitura<{
     // Como o dashboard e os Relatórios: até AGORA, contra o anterior equivalente.
     const recorte = SEM_RECORTE
     const janela = { tenantId: c.ctx.tenantId!, branchIds, from: periodo.from, to: periodo.to }
-    const cabecalho = { periodo: periodo.label, unidade: u.unidade?.name ?? 'todas as unidades' }
+    // A2 da 27ª: o nome da aba na tela vai junto — é ele que se diz à equipe.
+    const cabecalho = { periodo: periodo.label, unidade: u.unidade?.name ?? 'todas as unidades', relatorio: REPORT_TAB_LABELS[aba] }
 
     if (aba === 'overview') {
       // A entrada, a saída e o lucro só com o Financeiro em Ver (o Heitor, 23/11:
@@ -130,7 +132,7 @@ export const indicadores: FerramentaDeLeitura<{
             margem: resultado.margemPct === null ? null : `${resultado.margemPct.toFixed(1).replace('.', ',')}%`,
             notaDoLucro: 'Lucro = receita paga − despesas pagas (sem a compra de estoque e sem o pagamento das comissões, que ficam no caixa) − insumo consumido e custo do produto vendido − taxas da maquininha − comissões lançadas no período.',
           } : {
-            semOFinanceiro: 'A entrada (faturamento, a receber), a saída (despesas) e o lucro pedem o Financeiro em Ver, e a permissão desta pessoa não o tem: diga isso se ela pedir. A performance de vendas está na aba vendas.',
+            semOFinanceiro: 'A entrada (faturamento, a receber), a saída (despesas) e o lucro pedem o Financeiro em Ver, e a permissão desta pessoa não o tem: diga isso se ela pedir. A performance de vendas está na aba Vendas.',
           }),
           receitaDeServicos: dinheiro(atual.serviceRevenue),
           atendimentosConcluidos: atual.appointmentsCompleted, atendimentosConcluidosAnterior: anterior.appointmentsCompleted,

@@ -991,6 +991,14 @@ function InsumoCard({ items, available, lotes, checkedIds, onToggle, onChangeQty
 
 // -- Observações ---------------------------------------------------------------
 
+/**
+ * O campo que só se LÊ (o registro concluído, ou quem não escreve o clínico):
+ * o fundo do app e sem a alça de redimensionar — com a cara de editável, a
+ * evolução concluída parecia aberta (A30: "a evolução só se lê"; o que se faz
+ * depois é "Editar registro" ou "Acrescentar anotação" — PR2a/PR2b).
+ */
+const CAMPO_SO_LEITURA = { resize: 'none', background: 'var(--bg-app)', cursor: 'default' } as const
+
 function ObservacoesCard({ notes, intercurrences, onNotesChange, onIntercurrencesChange, readonly }: {
   notes: string; intercurrences: string
   onNotesChange: (v: string) => void; onIntercurrencesChange: (v: string) => void
@@ -1006,13 +1014,13 @@ function ObservacoesCard({ notes, intercurrences, onNotesChange, onIntercurrence
           <label htmlFor="atendimento-evolucao" className="field-label">Evolução</label>
           <textarea id="atendimento-evolucao" rows={4} value={notes} onChange={e => onNotesChange(e.target.value)} readOnly={readonly}
             placeholder={readonly ? '—' : 'Descreva técnicas, áreas tratadas, produtos utilizados…'}
-            className="field" style={{ resize: 'vertical', background: readonly ? 'var(--bg-app)' : undefined }} />
+            className="field" style={readonly ? CAMPO_SO_LEITURA : { resize: 'vertical' }} />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <label htmlFor="atendimento-intercorrencias" className="field-label">Intercorrências</label>
           <textarea id="atendimento-intercorrencias" rows={2} value={intercurrences} onChange={e => onIntercurrencesChange(e.target.value)} readOnly={readonly}
             placeholder={readonly ? '—' : 'Reações, intercorrências ou observações…'}
-            className="field" style={{ resize: 'vertical', background: readonly ? 'var(--bg-app)' : undefined }} />
+            className="field" style={readonly ? CAMPO_SO_LEITURA : { resize: 'vertical' }} />
         </div>
       </div>
     </div>
@@ -2459,6 +2467,7 @@ export function AppointmentSession({
                     procedures={treatmentProcedures} servicePackages={treatmentPackages}
                     existingPlan={existingPlan} procedureProductsMap={procedureProductsMap}
                     availableProducts={availableProducts}
+                    podeEditar={montaPlanoNaUnidade}
                   />}
                   {/* Os insumos de HOJE continuam até concluir (D8): gerar o plano não
                       encerra o atendimento, e quem usou outra dose corrige aqui. */}
@@ -2510,10 +2519,13 @@ export function AppointmentSession({
 
                   {fichaNaAvaliacao}
 
-                  {/* D10 da 26ª: o editor do plano só com o Atendimento ao menos em Ver (§9.4: o plano só existe para quem o tem). */}
+                  {/* D10 da 26ª: o editor do plano só com o Atendimento ao menos em Ver (§9.4: o plano só existe para quem o tem).
+                      UM3: monta quem tem o Atendimento em Gerenciar na unidade; com ele só em Ver, o
+                      cartão só se LÊ — sem "Nova sessão" nem "Adicionar procedimento" (CLAUDE.md §14). */}
                   {podeVerPlanos && <TreatmentPlanEditor
                     appointmentId={appointment.id} slug={slug}
                     ref={evalEditorRef}
+                    podeEditar={montaPlanoNaUnidade}
                     branchId={branchId}
                     procedures={treatmentProcedures} servicePackages={treatmentPackages}
                     existingPlan={existingPlan} procedureProductsMap={procedureProductsMap}
@@ -2546,7 +2558,7 @@ export function AppointmentSession({
                           rows={4} value={evalSessionNotes} readOnly={editLocked}
                           onChange={e => setEvalSessionNotes(e.target.value)}
                           placeholder="Técnicas utilizadas, regiões tratadas, evolução do cliente…"
-                          className="field" style={{ resize: 'vertical' }}
+                          className="field" style={editLocked ? CAMPO_SO_LEITURA : { resize: 'vertical' }}
                         />
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -2556,7 +2568,7 @@ export function AppointmentSession({
                           rows={2} value={evalSessionInterc} readOnly={editLocked}
                           onChange={e => setEvalSessionInterc(e.target.value)}
                           placeholder="Reações, intercorrências ou observações…"
-                          className="field" style={{ resize: 'vertical' }}
+                          className="field" style={editLocked ? CAMPO_SO_LEITURA : { resize: 'vertical' }}
                         />
                       </div>
                     </div>

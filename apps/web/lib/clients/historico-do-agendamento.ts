@@ -109,5 +109,8 @@ export function rotuloDaAcao(action: string, descricao: string | null): string {
   // repasse da desativação). A de antes ("…reatribuído para X") fica no rótulo.
   if (action === 'REASSIGNED' && descricao && /^(Profissional trocado|Repassado) /.test(descricao)) return descricao
   if (action === 'RESCHEDULED' && descricao?.startsWith('Reagendado para ')) return `Remarcado para ${descricao.slice('Reagendado para '.length)}`
+  // A remarcação pelo app (actions/portal-agendamentos.ts) já diz o novo
+  // horário: "Remarcado pela cliente no app para 25/11, 14:00" (princípio 3).
+  if (action === 'RESCHEDULED' && descricao?.startsWith('Remarcado ')) return descricao
   return ROTULO_DA_ACAO[action] ?? descricao ?? action
 }

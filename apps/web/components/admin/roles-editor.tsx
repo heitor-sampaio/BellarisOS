@@ -7,7 +7,7 @@ import { useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { createRole, updateRole, deleteRole, duplicarCargo } from '@/actions/roles'
 import { saveRolePermissions } from '@/actions/permissions'
-import { cargoEscolhido } from '@/lib/cargos/cargo-escolhido'
+import { cargoEscolhido, comOsCriados } from '@/lib/cargos/cargo-escolhido'
 import { acessosDoSalvo, resumoDoCargo } from '@/lib/cargos/acessos-salvos'
 import {
   ALL_MODULES, MODULOS_DO_CARGO, MODULE_LABELS, MODULE_HINTS, MODULE_LEVELS, LEVEL_LABELS,
@@ -16,11 +16,11 @@ import {
 import {
   MODULE_GROUPS, LEVEL_COPY, notaDoResumoDaRede,
   NETWORK_ONLY, notaDeAbrangencia, SO_NA_REDE_NOTE, quemVendeNoResumo, copilotNoResumo, textoDoQueFaltaNoCargo, documentosNoResumo,
-  pdvAbertoPeloFinanceiro, tratamentosNoResumo, nivelDoPdvPeloFinanceiro, conclusaoNoResumo,
+  pdvAbertoPeloFinanceiro, tratamentosNoResumo, nivelDoPdvPeloFinanceiro, conclusaoNoResumo, vistasPessoaisNoResumo,
 } from '@/lib/permissions-copy'
 import { ADMIN_MENU, BRANCH_MENU, menuLabelsFor, soLeriaAsConfiguracoes } from '@/lib/menu'
 import { rotuloDasAbasAlcancadas, ABAS_DA_REDE, ABAS_DA_UNIDADE } from '@/lib/configuracoes/abas'
-import { OPCOES_DE_CAIXAS, type CaixasDoCargo } from '@/lib/inbox/visibilidade'
+import { OPCOES_DE_CAIXAS, lerCaixas, type CaixasDoCargo } from '@/lib/inbox/visibilidade'
 import { SegSelect } from '@/components/shared/seg-select'
 import { Fala } from '@/components/shared/uma-unidade'
 import { Dica } from '@/components/shared/dica'
@@ -74,7 +74,23 @@ function buildLevels(perms: Partial<Record<AppModule, RoleModulePermission>>): L
   return Object.fromEntries(ALL_MODULES.map(m => [m, MODULOS_DO_CARGO.includes(m) ? perms[m]?.level ?? 'NONE' : 'NONE'])) as Levels
 }
 
-export function RolesEditor({ roles, permsByRole, tabsByRole, canSeeTeam, foraDoPlano = [], abasForaDoPlano = [] }: RolesEditorProps) {
+/**
+ * O cargo escolhido no endereço (`?cargo=`, A18 da 20ª). D5 da 27ª: o criar e o
+ * duplicar o escrevem ANTES do pedido, com o id do cargo novo — a tela que o
+ * servidor devolve (e a que remonta) já abre nele.
+ */
+function escreverCargoNoEndereco(id: string | null) {
+  const url = new URL(window.location.href)
+  if (id) url.searchParams.set('cargo', id)
+  else url.searchParams.delete('cargo')
+  window.history.replaceState(null, '', url)
+}
+
+export function RolesEditor({ roles: cargosDoServidor, permsByRole, tabsByRole, canSeeTeam, foraDoPlano = [], abasForaDoPlano = [] }: RolesEditorProps) {
+  // D5 da 27ª (princípio 3): o cargo que a action acabou de criar vale na lista
+  // (e abre no editor) sem esperar a lista do servidor.
+  const [criados, setCriados] = useState<EditorRole[]>([])
+  const roles = comOsCriados(cargosDoServidor, criados)
   // A18 da 20ª (princípio 3): o escolhido mora no endereço (`?cargo=`) —
   // recarregada a tela, a matriz voltava ao primeiro cargo, e o recém-criado
   // ficava só na lista.
@@ -82,10 +98,7 @@ export function RolesEditor({ roles, permsByRole, tabsByRole, canSeeTeam, foraDo
   const [selectedId, setSelectedIdNoEstado] = useState<string | null>(() => cargoEscolhido(roles, pedido))
   function setSelectedId(id: string | null) {
     setSelectedIdNoEstado(id)
-    const url = new URL(window.location.href)
-    if (id) url.searchParams.set('cargo', id)
-    else url.searchParams.delete('cargo')
-    window.history.replaceState(null, '', url)
+    escreverCargoNoEndereco(id)
   }
   const [pendingSelect, setPendingSelect] = useState<string | null>(null)
   const [dirty, setDirty] = useState(false)
@@ -122,6 +135,16 @@ export function RolesEditor({ roles, permsByRole, tabsByRole, canSeeTeam, foraDo
     setSelectedId(id)
   }
 
+  // D5 da 27ª: o cargo criado (ou a cópia) entra na lista e abre — a cópia com
+  // os acessos do original, que a action copiou.
+  function aoCriarCargo(role: EditorRole, copiaDe?: string) {
+    setCriados(c => [...c.filter(r => r.id !== role.id), role])
+    if (copiaDe) {
+      setSalvos(s => ({ ...s, [role.id]: { perms: permsDe(copiaDe), tabs: salvos[copiaDe]?.tabs ?? tabsByRole[copiaDe] ?? [] } }))
+    }
+    requestSelect(role.id)
+  }
+
   return (
     <div className="master-detail">
       <RoleListPanel
@@ -132,6 +155,7 @@ export function RolesEditor({ roles, permsByRole, tabsByRole, canSeeTeam, foraDo
         canSeeTeam={canSeeTeam}
         dirtyId={dirty ? selectedId : null}
         onSelect={requestSelect}
+        onCriado={aoCriarCargo}
         showForm={criando}
         setShowForm={setCriando}
       />
@@ -183,7 +207,8 @@ export function RolesEditor({ roles, permsByRole, tabsByRole, canSeeTeam, foraDo
         body="Você mexeu nos acessos deste cargo e ainda não salvou. Trocar de cargo agora descarta o que foi alterado."
         confirmLabel="Descartar e trocar"
         onConfirm={() => { setSelectedId(pendingSelect); setPendingSelect(null); setDirty(false) }}
-        onCancel={() => setPendingSelect(null)}
+        // O endereço volta ao cargo que segue aberto (o criar já o tinha trocado).
+        onCancel={() => { setPendingSelect(null); escreverCargoNoEndereco(selectedId) }}
       />
     </div>
   )
@@ -192,7 +217,7 @@ export function RolesEditor({ roles, permsByRole, tabsByRole, canSeeTeam, foraDo
 // ─── Lista de cargos ─────────────────────────────────────────────────────────
 
 function RoleListPanel({
-  roles, selectedId, permsByRole, semAcessoIds, canSeeTeam, dirtyId, onSelect, showForm, setShowForm,
+  roles, selectedId, permsByRole, semAcessoIds, canSeeTeam, dirtyId, onSelect, onCriado, showForm, setShowForm,
 }: {
   roles: EditorRole[]
   selectedId: string | null
@@ -202,6 +227,8 @@ function RoleListPanel({
   canSeeTeam: boolean
   dirtyId: string | null
   onSelect: (id: string) => void
+  /** O cargo que o criar ou o duplicar acabou de gravar (D5 da 27ª): entra na lista e abre. */
+  onCriado: (role: EditorRole, copiaDe?: string) => void
   /** O formulário do cargo novo aberto (estado do pai: o painel da direita muda junto). */
   showForm: boolean
   setShowForm: (aberto: boolean) => void
@@ -216,22 +243,31 @@ function RoleListPanel({
   // reabrir o form seria fechado na hora enquanto createState.success persiste.
   // Fechar o form e selecionar o cargo novo são estado do PAI (A1 da 13ª: o
   // painel da direita muda junto): ficam no efeito, não no render.
-  const aoCriar = useEffectEvent((id: string | null) => {
+  // D5 da 27ª (princípio 3): o id do cargo novo nasce aqui e vai ao endereço
+  // no envio, antes do pedido — a tela que volta do servidor (e a que remonta
+  // com ela) abre no cargo novo, não no primeiro editável. Um id a cada "Novo".
+  const [novoId, setNovoId] = useState('')
+  const aoCriar = useEffectEvent((role: { id: string; key: string; label: string } | null) => {
     setShowForm(false)
-    if (id) onSelect(id)
+    if (role) onCriado({ ...role, is_system: false, memberCount: 0, inboxCaixas: lerCaixas(null) })
   })
+  // Recusado: o endereço volta ao cargo que segue aberto.
+  const aoRecusar = useEffectEvent(() => escreverCargoNoEndereco(selectedId))
   useEffect(() => {
-    if (createState && 'success' in createState && createState.success) aoCriar(createState.role?.id ?? null)
+    if (createState && 'success' in createState && createState.success) aoCriar(createState.role ?? null)
+    else if (createState && 'error' in createState) aoRecusar()
   }, [createState])
 
   // A15 da 15ª: "Duplicar" — "Cópia de X" com a matriz e as abas; abre a cópia.
   function duplicar(role: EditorRole) {
     setError(null)
+    const id = crypto.randomUUID()
+    escreverCargoNoEndereco(id)
     startTransition(async () => {
-      const res = await duplicarCargo(role.id)
-      if ('error' in res) { setError(res.error); return }
+      const res = await duplicarCargo(role.id, id)
+      if ('error' in res) { setError(res.error); escreverCargoNoEndereco(selectedId); return }
       toast.success(`Cargo “${res.role.label}” criado.`)
-      onSelect(res.role.id)
+      onCriado({ ...res.role, is_system: false, memberCount: 0, inboxCaixas: role.inboxCaixas }, role.id)
     })
   }
 
@@ -257,7 +293,7 @@ function RoleListPanel({
         {!showForm && (
           <button
             className="btn-ghost"
-            onClick={() => setShowForm(true)}
+            onClick={() => { setNovoId(crypto.randomUUID()); setShowForm(true) }}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
           >
             <Plus size={13} /> Novo
@@ -268,12 +304,14 @@ function RoleListPanel({
       {showForm && (
         <form
           action={createAction}
+          onSubmit={() => escreverCargoNoEndereco(novoId)}
           style={{
             padding: 12, background: 'var(--bg-app)',
             border: '1.5px solid var(--brand-soft-border)', borderRadius: 'var(--radius-card-sm)',
             display: 'flex', flexDirection: 'column', gap: 8,
           }}
         >
+          <input type="hidden" name="id" value={novoId} />
           <input
             name="label" type="text" required autoFocus aria-label="Nome do cargo"
             className="field" placeholder="Ex.: Agenda e caixa"
@@ -695,7 +733,7 @@ function PermissionMatrix({
         </p>
       )}
 
-      <MenuPreview levels={levels} reportTabs={abasValendo} />
+      <MenuPreview levels={levels} reportTabs={abasValendo} foraDoPlano={foraDoPlano} />
 
       {state?.error && (
         <p style={{
@@ -960,7 +998,7 @@ function AbasDeRelatorio({
 
 // ─── Pré-visualização ────────────────────────────────────────────────────────
 
-function MenuPreview({ levels, reportTabs }: { levels: Levels; reportTabs: ReportTab[] }) {
+function MenuPreview({ levels, reportTabs, foraDoPlano }: { levels: Levels; reportTabs: ReportTab[]; foraDoPlano: AppModule[] }) {
   // A pré-visualização usa o estado NÃO salvo: é para conferir antes de gravar.
   // Relatórios sem nenhuma aba marcada não abre nada — o contexto de
   // autorização faz a mesma conta (`buildContext`), e aqui ela precisa
@@ -1025,6 +1063,12 @@ function MenuPreview({ levels, reportTabs }: { levels: Levels; reportTabs: Repor
       {conclusaoNoResumo(levels) && (
         <p data-resumo-conclui style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
           {conclusaoNoResumo(levels)}
+        </p>
+      )}
+      {/* A19 da 27ª: a Minha agenda e as Minhas comissões dependem de a pessoa atender (ou ter comissão). */}
+      {vistasPessoaisNoResumo(levels, foraDoPlano) && (
+        <p data-resumo-vistas-pessoais style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
+          {vistasPessoaisNoResumo(levels, foraDoPlano)}
         </p>
       )}
       {quemVendeNoResumo(levels) && (

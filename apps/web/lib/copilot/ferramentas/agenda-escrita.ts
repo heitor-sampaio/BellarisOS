@@ -22,7 +22,7 @@ import { telefoneDoCopilot } from '@/lib/copilot/ferramentas/clientes-escrita'
 import type { ContextoDaFerramenta, FerramentaDeEscrita } from '@/lib/copilot/ferramentas/tipos'
 import {
   DATA, HORA, UUID, dinheiro, fusoDe, instanteDe, quandoLegivel, resolverCliente, resolverProcedimento,
-  resolverProfissional, resolverUnidade, rota, nomesPorId, STATUS_DO_AGENDAMENTO,
+  resolverProfissional, resolverSala, resolverUnidade, rota, nomesPorId, STATUS_DO_AGENDAMENTO,
 } from '@/lib/copilot/ferramentas/comum'
 
 /**
@@ -57,10 +57,14 @@ interface ArgsAgendar {
   data: string
   hora: string
   unidade?: string
+  /** A sala pedida (A1 da 27ª): da unidade, conferida como as outras peças. */
+  sala?: string
   observacao?: string
 }
 interface PayloadAgendar {
   branchId: string; procedureId: string; professionalId: string; scheduledAt: string
+  /** A sala do agendamento (A1 da 27ª); sem pedido, nenhuma — como era. */
+  roomId?: string | null
   clientId: string | null; clienteNovo: { nome: string; telefone: string; jaExisteId?: string } | null; notes: string | null
   /** O que a cliente JÁ PAGOU deste procedimento (C5, F65): o "Já pago" da agenda, escolhido igual. */
   credito?: CreditoDeAgendamento | null
@@ -70,7 +74,7 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
   nome: 'agendar',
   tipo: 'escrita',
   modulo: 'agenda', nivel: 'MANAGE',
-  descricao: 'Agenda um atendimento: cliente (id, nome ou telefone de quem já é cliente) OU clienteNovo {nome, telefone com DDD} para quem ainda não é; procedimento e profissional (nome ou id — passe o nome que a pessoa disse, "Dr. Caio": a ferramenta acha pelo nome entre quem atende na unidade, sem precisar buscar antes, e sem achar diz quem atende); data (AAAA-MM-DD) e hora (HH:MM, no horário da unidade). Confira os horários livres antes. O cartão diz se a cliente recebe aviso no app.',
+  descricao: 'Agenda um atendimento: cliente (id, nome ou telefone de quem já é cliente) OU clienteNovo {nome, telefone com DDD} para quem ainda não é; procedimento e profissional (nome ou id — passe o nome que a pessoa disse, "Dr. Caio": a ferramenta acha pelo nome entre quem atende na unidade, sem precisar buscar antes, e sem achar diz quem atende); data (AAAA-MM-DD) e hora (HH:MM, no horário da unidade); sala (nome ou id, "Sala 1"), quando a pessoa disser a sala — vai na sala, nunca na observação. Confira os horários livres antes. O cartão diz se a cliente recebe aviso no app.',
   parametros: z.object({
     cliente: z.string().min(2).max(120).optional(),
     clienteNovo: z.object({ nome: z.string().min(2).max(120), telefone: z.string().min(8).max(24) }).optional(),
@@ -78,6 +82,7 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
     profissional: z.string().min(2).max(80),
     data: DATA, hora: HORA,
     unidade: z.string().max(80).optional(),
+    sala: z.string().min(1).max(80).optional(),
     observacao: z.string().max(300).optional(),
   }),
   async preparar(c, a) {
@@ -85,12 +90,15 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
     const u = await resolverUnidade(c, a.unidade, { exigir: true })
     if ('erro' in u) return { erro: u.erro }
     const unidade = u.unidade!
-    const [proc, prof] = await Promise.all([
+    const [proc, prof, sala] = await Promise.all([
       resolverProcedimento(c, a.procedimento, unidade.id),
       resolverProfissional(c, a.profissional, unidade.id),
+      a.sala?.trim() ? resolverSala(c, a.sala.trim(), unidade.id) : Promise.resolve(null),
     ])
     if ('erro' in proc) return { erro: proc.erro }
     if ('erro' in prof) return { erro: prof.erro }
+    if (sala && 'erro' in sala) return { erro: sala.erro }
+    const roomId = sala?.id ?? null
 
     let clientId: string | null = null
     let nomeDoCliente: string
@@ -125,7 +133,8 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
     if (inicio.getTime() < Date.now() - 5 * 60_000) return { erro: 'Esse horário já passou.' }
     // Unidade, profissional (e que ela ATENDE nesta unidade — F65), cliente e
     // procedimento feito aqui: o núcleo, o mesmo da tela.
-    const recusa = await conferirPecasDoAgendamento(c.admin, c.ctx, { branchId: unidade.id, professionalId: prof.id, clientId, roomId: null, procedureId: proc.id })
+    // A sala pedida também (A1 da 27ª): ativa, da unidade e, com o procedimento ligado a salas, uma das dele.
+    const recusa = await conferirPecasDoAgendamento(c.admin, c.ctx, { branchId: unidade.id, professionalId: prof.id, clientId, roomId, procedureId: proc.id })
     if (recusa) return { erro: recusa }
 
     // O "Já pago" (C5, F65): o que a cliente já pagou deste procedimento — a
@@ -143,6 +152,10 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
 
     if (!(await livre(c, { professionalId: prof.id, inicio, duracaoMin: duracao }))) {
       return { erro: `${prof.name} já tem agendamento nesse horário. Veja os horários livres.` }
+    }
+    // A sala ocupada, a mesma conta do núcleo (que confere de novo no Confirmar).
+    if (sala && !('erro' in sala) && await horarioOcupado(c.admin, { tenantId: c.ctx.tenantId!, roomId: sala.id, branchId: unidade.id, inicio, duracaoMin: duracao })) {
+      return { erro: `A ${sala.name} já está ocupada nesse horário.` }
     }
     const avisoDoBloqueio = await avisoDoBloqueado(c, { professionalId: prof.id, nome: prof.name, inicio, duracaoMin: duracao, fuso })
 
@@ -162,6 +175,7 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
           { rotulo: 'Profissional', valor: prof.name },
           { rotulo: 'Quando', valor: quandoLegivel(inicio, fuso) },
           { rotulo: 'Unidade', valor: unidade.name },
+          ...(sala && !('erro' in sala) ? [{ rotulo: 'Sala', valor: sala.name }] : []),
           pago
             // A3 da 25ª: "Incluído", não "Já pago" (o crediário tem parcelas em aberto).
             ? { rotulo: 'Incluído', valor: `${pago.texto} · ${dinheiro(pago.preco)}` }
@@ -174,7 +188,7 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
         ...(jaExiste ? { escolhas: escolhasDaFichaQueJaExiste(jaExiste) } : {}),
       },
       payload: {
-        branchId: unidade.id, procedureId: proc.id, professionalId: prof.id, scheduledAt: inicio.toISOString(),
+        branchId: unidade.id, procedureId: proc.id, professionalId: prof.id, scheduledAt: inicio.toISOString(), roomId,
         clientId, clienteNovo, notes: a.observacao?.trim() || null, credito,
       },
     }
@@ -195,7 +209,7 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
     }
     const agendarCom = (credito: CreditoDeAgendamento | null) => createAppointmentCore(c.admin, c.ctx, {
       branchId: p.branchId, clientId: clientId!, procedureId: p.procedureId, professionalId: p.professionalId,
-      scheduledAt: p.scheduledAt, notes: p.notes, source: 'INTERNAL', credito,
+      scheduledAt: p.scheduledAt, roomId: p.roomId ?? null, notes: p.notes, source: 'INTERNAL', credito,
     })
     // O crédito que outro agendamento pegou entre o cartão e o Confirmar: agenda
     // avulso, como o app (a comanda do PDV cobra) — e a mensagem diz.

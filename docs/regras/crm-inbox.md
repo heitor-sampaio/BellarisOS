@@ -587,12 +587,20 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   (`ConversationCard.podeCadastrarCliente`), o quadro não oferece "Converter",
   e a ficha mostra a aba Dados e as anotações só para ler (os campos num
   `fieldset` desligado, sem "Salvar dados" nem "Dar acesso ao app", com a
-  frase "Seu cargo só consulta o cadastro"), sem "Mais ações" (arquivar). As
+  frase "Seu cargo só consulta o cadastro"), sem "Mais ações" (arquivar) — e a
+  janela da ficha de saúde do agendamento não oferece o "Editar o cadastro"
+  (`SituacaoDoPreAtendimento.podeEditarCadastro`; A10 da 27ª). As
   actions `addClient` e `updateClientContactData` devolvem
   `SO_CONSULTA_CLIENTES` (`lib/clients/so-consulta.ts`) em `{ error }`: o
   `semAcesso()` lançado dentro do `useActionState` derrubava o inbox inteiro
   em "Você não tem acesso", e a promessa rejeitada da aba Dados dava 500 mudo.
   Prova: `e2e/permissoes-quem-so-ve.spec.ts`.
+- **O Histórico da ficha diz a hora gravada do fato** (A11 da 27ª, princípio
+  3): o plano aceito é o `aceito_em` (o gatilho `plano_aceito_em`), não o
+  `updated_at` — que muda depois, a cada mexida no plano —, sem o "Checkout
+  realizado" (o aceite é a cliente dizer sim, sem dinheiro: PT1b). A tag do
+  topo é o nome que a rede deu, sem nível inventado (D7 da 27ª: o "VIP"
+  aparecia com um "Ouro"). Prova: `tests/ficha-e-atendimento-o-que-a-tela-oferece.test.ts`.
 - **A aba Financeiro da ficha é do financeiro** (2026-10-20): os pagamentos e
   o crédito interno do cliente só são carregados para `financial: VIEW` ou
   quem recebe (`podeReceber`), e a aba some para os outros. Carregava para
@@ -716,7 +724,11 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   titular pediu e `medical_status` (`not_requested | pending | approved |
   denied`) registra a decisão de quem tem `medical_records: MANAGE`, na aba
   LGPD de `/admin/settings`. Aprovar recoloca o pedido em `pending` e o pacote
-  é regerado com a parte clínica. Sem o prontuário, o pacote diz POR QUÊ
+  é regerado com a parte clínica. Na aba, o pacote pronto com o prontuário
+  ainda a liberar é "Parte geral entregue", não "Entregue" (A15 da 27ª,
+  decisão do Claude pelo princípio 3; o app já dizia "Parte geral pronta" —
+  `situacaoDoPedidoNaAba`, prova `tests/lgpd-situacao-do-pedido-na-aba.test.ts`).
+  Sem o prontuário, o pacote diz POR QUÊ
   (`textoDoProntuarioForaDoPacote`): não pedido, pedido e em análise, ou não
   liberado — era sempre "não incluído", como se não tivesse pedido
   (simulação de 2026-10-20). **E o pedido também** (A56 da 8ª): ao lado do
@@ -1653,6 +1665,20 @@ sem conversa da pessoa e sem WhatsApp conectado (`redeTemWhatsapp`),
 está conectado": diz "Ainda não há conversa com X, e a rede não tem um
 WhatsApp conectado…", com o caminho (Configurações → Integrações, ou pedir a
 quem administra). Prova: `e2e/crm-atritos-da-9.spec.ts` ("A43", "A44").
+**Quem tem o CRM em Ver abre a conversa que existe, e não cria outra** (A16
+da 27ª; CLAUDE.md §14, "quem só pode ver só pode ver"): abrir uma conversa
+nova é gravar, e pede o CRM em Gerenciar — sem ela, "Ainda não há conversa
+com X. Abrir uma conversa nova pede o CRM em Gerenciar."
+(`semConversaParaQuemSoVe`, `lib/crm/conversa-da-oportunidade.ts`). O erro
+do botão fica no cabeçalho preso do modal (`[data-erro-da-conversa]`), e o
+modal de quem só vê diz "Só leitura", com o porquê na dica
+(`[data-oportunidade-so-leitura]`). Prova: `tests/crm-card-conversa-e-pessoa.test.ts`,
+`e2e/crm-atritos-da-9.spec.ts` ("A16 da 27ª").
+**No card, a origem não é tag** (A17 da 27ª; T2, "a origem é a ORIGEM"): a
+origem vem como texto com o ícone (`[data-origem-do-card]`, "Origem: X" no
+title), a pílula é só da tag, e a tag da pessoa aparece sempre — a com o
+nome da origem também (era escondida, do tempo em que a origem virava tag).
+Prova: o mesmo spec ("A17 da 27ª").
 
 **A idade do card é pelo DIA de Brasília** (D12 da 12ª simulação, 2026-11-11;
 princípio 3): a oportunidade criada às 23:20 de 10/11 dizia "hoje" às 00:05 de 11/11 —

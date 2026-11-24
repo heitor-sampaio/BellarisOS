@@ -101,8 +101,9 @@ comanda (PDV-P1).
     R$ 120,00": o atendimento e o produto vendido nela, D3 —
     `formasDaComandaEmTexto`);
   - o desconto, o voucher e os pontos em linhas acima do "Total pago" (A1,
-    `descontosDaComanda`); a lista "Fechadas hoje" mostra o recebido da
-    comanda do atendimento, não o preço (`valorNaLista`);
+    `descontosDaComanda`); a lista "Fechadas hoje" mostra o cobrado da
+    comanda do atendimento, não o preço (`valorNaLista`; com o em aberto do
+    crediário, D6 da 27ª);
   - a quem estorna (`podeEstornar`), os pagamentos da comanda, cada um com o
     "Estornar" da ficha (`AcoesDoLancamentoDaFicha`, a janela de sempre;
     `lancamentosDaComanda`) — A2;
@@ -477,6 +478,28 @@ comanda (PDV-P1).
   - A maquininha de fábrica, ao ser escolhida para preencher, diz "Use esta,
     que ainda não tem taxas: dê o nome e as taxas da sua maquininha, e salve."
     (A7, `AVISO_DA_DE_FABRICA`).
+- **O PDV e o Financeiro da 27ª simulação** (2026-11-24; decisões do Claude
+  pelos princípios 3 e 7; prova: `tests/pdv-total-da-comanda-e-sem-cobranca.test.ts`,
+  `tests/financeiro-lista-vazia-sem-lancar.test.ts`; migration
+  `20261202200001`):
+  - A comanda do atendimento paga no crediário ou no a receber mostra o
+    TOTAL dela — o recebido mais o em aberto, já sem o desconto —, na lista e
+    no "Total" (D6, `valorNaLista`, `rotuloDoTotalDaComanda`): o item de
+    R$ 200 com R$ 100 de entrada dizia "Total R$ 100,00". O recebido se diz
+    em "R$ … recebidos", e o em aberto, ao lado. "Total pago" só quando o
+    total é o pago (com desconto, nada em aberto).
+  - A comanda sem cobrança (cancelada, falta, sessão do pacote, pré-pago) e a
+    estornada vêm à parte no fim da lista, em "Fora do que se recebe", com o
+    valor riscado (A13, `separarAsQueNaoValem`, `[data-comandas-fora-do-recebido]`).
+  - No Fechamento do dia, o título é "Fechamento do dia · PDV" (A14,
+    `tituloDoPdv`), e o cartão diz o dia.
+  - A comanda do PLANO no crediário diz a forma da entrada, como a da venda
+    (A15 da 26ª): "Crediário (Pix) · R$ 1.000,00 recebidos" (`pdv_comandas`
+    lê as formas também pelo `treatment_plan_id`).
+  - O valor em reais do total (a comanda, o "Total:" e o "Total a cobrar" do
+    plano) não quebra em duas linhas.
+  - A lista vazia do Financeiro só sugere o "Novo lançamento" a quem o tem
+    (A12, `vazioDaListaDoFinanceiro`); a quem só vê, "Ajuste os filtros.".
 - **Os pontos e o voucher no PDV** (FD2a, fase 5b): na comanda do atendimento
   valem sobre o TOTAL da comanda (atendimento + produtos: `previaDoPagamento`
   e `confirmPayment` somam `valorDosItensDoAtendimento`); na "Nova venda"

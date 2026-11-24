@@ -177,7 +177,7 @@ export function TermosDoCliente({ itens, slug, podeDispensar = false, compacto =
       <div className="card" style={{ padding: '16px 18px' }}>
         {/* O estado fica à vista; o "de onde nascem" mora na dica (2026-11-16). */}
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-          Nenhum termo ou contrato para este cliente.{' '}
+          Nenhum termo ou contrato nesta ficha.{' '}
           <Dica rotulo="De onde nascem os documentos">
             Eles nascem do procedimento agendado, conforme o modelo ligado a ele.
           </Dica>

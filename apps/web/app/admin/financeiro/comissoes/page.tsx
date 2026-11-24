@@ -36,6 +36,8 @@ export default async function ComissoesDaRedePage({
       basePath="/admin/financeiro/comissoes"
       // Na vista pessoal volta para o início: o financeiro da rede a manda para cá.
       voltarPara={minhas ? '/admin/dashboard' : '/admin/financeiro'}
+      // A 27ª (princípio 7): o link diz para onde volta.
+      voltarRotulo={minhas ? 'Dashboard' : 'Financeiro'}
       periodoPedido={sp.periodo}
       abas={{ base: '/admin/financeiro', titulo: unidades.length > 1 ? 'Financeiro da Rede' : 'Financeiro' }}
     />

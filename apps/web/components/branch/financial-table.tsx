@@ -22,6 +22,7 @@ import { resultadoDaLista } from '@/lib/metrics/resultado'
 import { csvDosLancamentos, linhaDoLancamento, baixarCsv } from '@/lib/financeiro/csv-dos-lancamentos'
 import { juntarAsFormasDaParcela, formasDaParcelaEmTexto, posicaoNaParcela } from '@/lib/financeiro/formas-da-parcela'
 import { useFuso } from '@/components/shared/fuso'
+import { vazioDaListaDoFinanceiro } from '@/lib/financeiro/vazio-da-lista'
 
 export interface Transaction {
   id:             string
@@ -91,6 +92,8 @@ interface Props {
   ordemInicial?: 'asc' | 'desc'
   /** O filtro de Tags (`FiltroDeTags`): a lista já chega filtrada do servidor (`?tags=`). */
   filtroDeTags?: React.ReactNode
+  /** A12 da 27ª: tem o "Novo lançamento" (o Financeiro em Gerenciar) — a lista vazia só sugere lançar a ele. */
+  podeLancar?:  boolean
 }
 
 const PM_COLORS: Record<string, { bg: string; color: string }> = {
@@ -114,7 +117,7 @@ function fmtDatetime(iso: string, fuso = 'America/Sao_Paulo') {
 type FilterType = 'all' | 'INCOME' | 'EXPENSE'
 type SortDir    = 'asc' | 'desc'
 
-export function FinancialTable({ transactions, slug, canReverse, canPay, podeRemarcar = false, nomeDoCsv = 'lancamentos.csv', ordemInicial = 'desc', filtroDeTags }: Props) {
+export function FinancialTable({ transactions, slug, canReverse, canPay, podeRemarcar = false, nomeDoCsv = 'lancamentos.csv', ordemInicial = 'desc', filtroDeTags, podeLancar = false }: Props) {
   const fuso = useFuso()
   const [search,     setSearch]     = useState('')
   const [filterType, setFilterType] = useState<FilterType>('all')
@@ -292,7 +295,7 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
           <div style={{ textAlign: 'center', padding: '52px 24px' }}>
             <p style={{ color: 'var(--text-muted)', fontWeight: 700, fontSize: 'var(--text-base-sz)' }}>Nenhum lançamento encontrado</p>
             <p style={{ color: 'var(--text-faint)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
-              Ajuste os filtros ou lance uma nova transação.
+              {vazioDaListaDoFinanceiro(podeLancar)}
             </p>
           </div>
         ) : (

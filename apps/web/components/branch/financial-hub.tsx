@@ -675,6 +675,7 @@ export function FinancialHub({
       canReverse={canReverse}
       canPay={canPay}
       podeRemarcar={canWrite}
+      podeLancar={canWrite}
       ordemInicial={ordemInicial}
       // As Tags (CLAUDE.md §1), ao lado dos filtros fixos da lista.
       filtroDeTags={<FiltroDeTags tagsDaRede={tagsDaRede} escolhidas={tags}

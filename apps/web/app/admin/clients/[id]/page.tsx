@@ -170,7 +170,7 @@ export default async function AdminClientProfilePage({
 
     ler(admin
       .from('treatment_plans')
-      .select('id, status, created_at, updated_at, name, cancelado_em, cancelamento_motivo, cancelamento')
+      .select('id, status, created_at, updated_at, aceito_em, name, cancelado_em, cancelamento_motivo, cancelamento')
       .eq('client_id', id)
       .order('created_at', { ascending: false }), 'carregar o histórico de planos'),
   ])
@@ -328,7 +328,8 @@ export default async function AdminClientProfilePage({
   const planejamentosQueAbrem = canViewRecords && aba === 'fichas'
     ? await planejamentosAbriveisDasFichas(admin, ctx, id, recordForms.map(r => r.ficha))
     : []
-  const anamneseLida = canViewRecords ? paraAnamneseGeral(medRecord?.general_anamnesis ?? null, await fichaDePreAtendimento(clienteDeServico(), ctx.tenantId!)) : null
+  const fichaDeSaudeDaRede = canViewRecords ? await fichaDePreAtendimento(clienteDeServico(), ctx.tenantId!) : null
+  const anamneseLida = fichaDeSaudeDaRede ? paraAnamneseGeral(medRecord?.general_anamnesis ?? null, fichaDeSaudeDaRede) : null
   const generalAnamnesis = noProntuario ? anamneseLida : null
   // A exceção: o alerta de alergia, em toda aba a quem vê o prontuário — só o
   // TEXTO dela viaja, e mostrá-lo registra o acesso.
@@ -378,7 +379,7 @@ export default async function AdminClientProfilePage({
 
   const appAccountCreatedAt = raw.app_account_created_at as string | null
 
-  type RawHistoryPlan  = { id: string; status: string; created_at: string; updated_at: string | null; name: string | null; cancelado_em: string | null; cancelamento_motivo: string | null; cancelamento: unknown }
+  type RawHistoryPlan  = { id: string; status: string; created_at: string; updated_at: string | null; aceito_em?: string | null; name: string | null; cancelado_em: string | null; cancelamento_motivo: string | null; cancelamento: unknown }
 
   let evIdx = 0
   const uid = (prefix: string) => `${prefix}-${evIdx++}`
@@ -432,7 +433,7 @@ export default async function AdminClientProfilePage({
     if (plan.status === 'DRAFT' || plan.status === 'PROPOSED') {
       history.push({ id: uid('pp'), date: plan.created_at, type: 'PLAN_PROPOSED', title: 'Plano de tratamento proposto', subtitle: null, amount: null, link: null })
     } else if (plan.status === 'ACCEPTED') {
-      history.push({ id: uid('pa'), date: plan.updated_at ?? plan.created_at, type: 'PLAN_ACCEPTED', title: 'Plano de tratamento aceito', subtitle: 'Checkout realizado', amount: null, link: null })
+      history.push({ id: uid('pa'), date: plan.aceito_em ?? plan.updated_at ?? plan.created_at, type: 'PLAN_ACCEPTED', title: 'Plano de tratamento aceito', subtitle: null, amount: null, link: null })
     } else if (plan.cancelado_em) {
       // O plano fechado cancelado (D4 da 9ª): a conta, como o do pacote.
       const cancelado = historicoDoCancelamento(plan, plan.name?.trim() || 'Plano de tratamento', formatBRL, 'Plano')
@@ -519,6 +520,9 @@ export default async function AdminClientProfilePage({
         planejamentosQueAbrem={planejamentosQueAbrem}
         acessosAoProntuario={acessosDoProntuario}
         generalAnamnesis={generalAnamnesis}
+        // UM4: responde a ficha de saúde quem tem o Prontuário em Gerenciar (a permissão de salvarAnamneseGeral).
+        podeEditarFichaDeSaude={can(ctx, 'medical_records', 'MANAGE') && canViewRecords}
+        fichaDeSaudeAtual={noProntuario ? fichaDeSaudeDaRede : null}
         alergias={alergias}
         fidelidade={fidelidade}
         activePackage={activePackage}

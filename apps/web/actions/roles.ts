@@ -14,6 +14,8 @@ import { lerCaixas } from '@/lib/inbox/visibilidade'
 
 // Os cargos gravam pelo cliente de serviço, depois da trava (F63): a sessão
 // só lê a matriz — pela chave pública, quem é da rede se dava Gerenciar.
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 function toKey(label: string): string {
   return label
     .toUpperCase()
@@ -42,17 +44,24 @@ export async function createRole(
   const key = toKey(label)
   if (!key) return { error: 'Nome inválido.' }
   if (key === 'NETWORK_ADMIN' || key === 'CLIENT') return { error: 'Esse nome é reservado.' }
+  // D5 da 27ª (princípio 3): o id do cargo novo nasce na tela, que o põe no
+  // endereço (`?cargo=`) ANTES do pedido — a tela que o servidor manda de volta
+  // já abre nele, e o que se clica a seguir grava nele (os níveis do "Comercial"
+  // iam para o "Financeiro", o primeiro editável). Fora do formato, o banco escolhe.
+  const pedido = formData.get('id')
+  const id = typeof pedido === 'string' && UUID.test(pedido) ? pedido : undefined
 
   const supabase = createAdminClient()
 
   const { data, error } = await supabase
     .from('tenant_roles')
-    .insert({ tenant_id: ctx.tenantId!, key, label, is_system: false })
+    .insert({ ...(id ? { id } : {}), tenant_id: ctx.tenantId!, key, label, is_system: false })
     .select('id, key, label')
     .single()
 
   if (error) {
-    if (error.code === '23505') return { error: 'Já existe um cargo com esse nome.' }
+    // O id repetido (o da tela) não é "o nome já existe".
+    if (error.code === '23505' && !/pkey/.test(error.message ?? '')) return { error: 'Já existe um cargo com esse nome.' }
     return { error: 'Erro ao criar cargo. Tente novamente.' }
   }
 
@@ -157,14 +166,16 @@ export async function deleteRole(roleId: string): Promise<{ error: string } | { 
  * copia um cargo com módulo que ela não tem. O cargo de sistema não se
  * duplica (o "Admin da rede" é um só).
  */
-export async function duplicarCargo(roleId: string): Promise<{ error: string } | { success: true; role: { id: string; key: string; label: string } }> {
+export async function duplicarCargo(roleId: string, novoId?: string): Promise<{ error: string } | { success: true; role: { id: string; key: string; label: string } }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'roles', 'MANAGE')
   const daRede = recusaDaConfigDaRede(ctx)
   if (daRede) return { error: daRede }
   const travado = bloqueioDoSuporte(ctx, 'criar cargo')
   if (travado) return { error: travado }
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(roleId)) return { error: 'Cargo não encontrado.' }
+  if (!UUID.test(roleId)) return { error: 'Cargo não encontrado.' }
+  // D5 da 27ª: o id da cópia vem da tela, que já o pôs no endereço (o mesmo do createRole).
+  const idDaCopia = typeof novoId === 'string' && UUID.test(novoId) ? novoId : undefined
 
   const supabase = createAdminClient()
   const [original, todos] = await Promise.all([
@@ -189,11 +200,11 @@ export async function duplicarCargo(roleId: string): Promise<{ error: string } |
   const label = nomeDaCopia(original.label, (todos ?? []).map(r => r.label))
   const { data: novo, error } = await supabase
     .from('tenant_roles')
-    .insert({ tenant_id: ctx.tenantId!, key: toKey(label), label, is_system: false })
+    .insert({ ...(idDaCopia ? { id: idDaCopia } : {}), tenant_id: ctx.tenantId!, key: toKey(label), label, is_system: false })
     .select('id, key, label')
     .single()
   if (error || !novo) {
-    if (error?.code === '23505') return { error: 'Já existe um cargo com esse nome.' }
+    if (error?.code === '23505' && !/pkey/.test(error.message ?? '')) return { error: 'Já existe um cargo com esse nome.' }
     return { error: 'Erro ao duplicar o cargo. Tente novamente.' }
   }
 

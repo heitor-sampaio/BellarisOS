@@ -1,4 +1,4 @@
-import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertRecurso, can } from '@/lib/auth'
 import { InjetavelVazio } from '@/app/_shared/injetavel-vazio'
 
 /** Nenhum planejamento aberto. O layout cuida da lista. */
@@ -8,5 +8,5 @@ export default async function BranchInjetaveisPage() {
   assertPermission(ctx, 'medical_records', 'VIEW')
   // O planejador é do PLANO da rede (lib/planos/recursos.ts).
   assertRecurso(ctx, 'injetaveis')
-  return <InjetavelVazio />
+  return <InjetavelVazio podeEditar={can(ctx, 'atendimento', 'MANAGE') && can(ctx, 'medical_records', 'VIEW')} />
 }

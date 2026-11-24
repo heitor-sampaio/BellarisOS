@@ -4,7 +4,7 @@ import { useActionState, useState } from 'react'
 import { reviewMedicalData, type LgpdAdminRow } from '@/actions/lgpd'
 import { ShieldCheck, Check, X, AlertTriangle } from 'lucide-react'
 import { prazoDeResposta, DIAS_DO_PRAZO_DA_LGPD } from '@/lib/lgpd/prazo'
-import { CONTEUDO_DO_PRONTUARIO } from '@/lib/lgpd/situacao-do-prontuario'
+import { CONTEUDO_DO_PRONTUARIO, situacaoDoPedidoNaAba } from '@/lib/lgpd/situacao-do-prontuario'
 import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
 
@@ -14,11 +14,15 @@ interface Props {
   canReviewMedical: boolean
 }
 
-const STATUS: Record<string, { label: string; color: string; bg: string }> = {
-  pending:    { label: 'Em preparo', color: 'var(--warning)',    bg: 'var(--warning-soft)' },
-  processing: { label: 'Em preparo', color: 'var(--warning)',    bg: 'var(--warning-soft)' },
-  completed:  { label: 'Entregue',   color: 'var(--success)',    bg: 'var(--success-soft)' },
-  failed:     { label: 'Falhou',     color: 'var(--danger)',           bg: 'var(--danger-soft)' },
+// A15 da 27ª: a situação é a do pedido inteiro (`situacaoDoPedidoNaAba`) — o pacote
+// geral pronto com o prontuário a liberar não está "Entregue".
+const TOM_DO_PEDIDO: Record<'ok' | 'warn' | 'perigo', { color: string; bg: string }> = {
+  ok:     { color: 'var(--success)', bg: 'var(--success-soft)' },
+  warn:   { color: 'var(--warning)', bg: 'var(--warning-soft)' },
+  perigo: { color: 'var(--danger)',  bg: 'var(--danger-soft)' },
+}
+function chipDoPedido(s: ReturnType<typeof situacaoDoPedidoNaAba>) {
+  return { label: s.label, ...TOM_DO_PEDIDO[s.tom] }
 }
 
 const MEDICAL: Record<string, { label: string; color: string; bg: string }> = {
@@ -161,11 +165,11 @@ export function SettingsLgpd({ requests, canReviewMedical }: Props) {
                   {r.client_name}
                 </span>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <Chip {...(STATUS[r.status] ?? STATUS.pending!)} />
+                  <Chip {...chipDoPedido(situacaoDoPedidoNaAba(r.status, r.medical_status))} />
                   <Chip {...(MEDICAL[r.medical_status] ?? MEDICAL.not_requested!)} />
                   <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
                     Pedido em {fmt(r.requested_at, fuso)}
-                    {r.completed_at ? ` · entregue em ${fmt(r.completed_at, fuso)}` : ''}
+                    {r.completed_at ? ` · ${r.status === 'completed' && r.medical_status === 'pending' ? 'parte geral entregue' : 'entregue'} em ${fmt(r.completed_at, fuso)}` : ''}
                   </span>
                 </div>
                 {/* A50 da 8ª: o prazo de resposta (o mesmo que a cliente vê) e,

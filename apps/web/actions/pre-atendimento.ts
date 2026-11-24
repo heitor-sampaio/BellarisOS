@@ -142,6 +142,8 @@ export interface SituacaoDoPreAtendimento {
    * mesmo (A12 da 10ª: a cliente do Agendar, só com nome e telefone).
    */
   podeCompletarNascimento?: boolean
+  /** O atalho "Editar o cadastro": só a quem edita a cliente (Clientes em Gerenciar — CLAUDE.md §14). */
+  podeEditarCadastro?: boolean
   /**
    * A6 da 17ª: a ficha pendente já foi ao app da cliente (o aviso "Antes do
    * seu atendimento", que sai ao agendar): quando. Nulo = nenhum aviso saiu.
@@ -177,6 +179,7 @@ export async function situacaoDoPreAtendimento(appointmentId: string): Promise<S
   ])
   const podeLink = ((cliente?.document as string | null) ?? '').replace(/\D/g, '').length > 0 || !!cliente?.birth_date
   const podeCompletarNascimento = !podeLink && can(ctx, 'clients', 'MANAGE') && can(ctx, 'agenda', 'MANAGE')
+  const cadastro = { podeEditarCadastro: can(ctx, 'clients', 'MANAGE') }
   if (pendente) {
     // O link que já está valendo: gerar outro o cancela, e a tela precisa dizer
     // (2026-10-21; a simulação viu o anterior ser revogado em silêncio).
@@ -193,7 +196,7 @@ export async function situacaoDoPreAtendimento(appointmentId: string): Promise<S
       .gt('expires_at', new Date().toISOString()).order('created_at', { ascending: false }).limit(1).maybeSingle(),
       'buscar o link da ficha') as { expires_at: string; token_cifrado: string | null } | null : null
     return {
-      estado: 'PENDENTE', modo: pendente.modo as 'COMPLETO' | 'CONFIRMAR', podeLink, podeCompletarNascimento, pelaConversa, clienteId: ap.client_id as string,
+      estado: 'PENDENTE', modo: pendente.modo as 'COMPLETO' | 'CONFIRMAR', podeLink, podeCompletarNascimento, ...cadastro, pelaConversa, clienteId: ap.client_id as string,
       linkValidoAte: valendo?.expires_at ?? null, linkDeNovo: !!valendo?.token_cifrado,
       // A10 da 25ª (princípio 3): "Mandada ao app" só para quem tem o acesso ao app.
       noAppEm: cliente?.auth_id ? (noApp?.created_at ?? null) : null,
@@ -207,7 +210,7 @@ export async function situacaoDoPreAtendimento(appointmentId: string): Promise<S
   const fichaValida = oferta.ultimaResposta && !fichaDeSaudeVencida(oferta.ultimaResposta, oferta.validadeMeses)
     ? { respondidaEm: oferta.ultimaResposta, validaAte: fichaDeSaudeValidaAte(oferta.ultimaResposta, oferta.validadeMeses) }
     : null
-  return { estado: 'NAO_ENVIADA', podeLink, podeCompletarNascimento, pelaConversa, clienteId: ap.client_id as string, fichaValida }
+  return { estado: 'NAO_ENVIADA', podeLink, podeCompletarNascimento, ...cadastro, pelaConversa, clienteId: ap.client_id as string, fichaValida }
 }
 
 /**
@@ -292,7 +295,7 @@ export async function enviarFichaPelaConversa(appointmentId: string): Promise<{ 
     }
     const conversa = await conversaDoCliente(ctx.tenantId!, ap.client_id)
     if (!conversa) {
-      return { error: 'Esta cliente não tem conversa aberta no WhatsApp da rede. Use "Enviar a ficha" para copiar ou abrir no WhatsApp do aparelho.' }
+      return { error: 'Esta ficha não tem conversa aberta no WhatsApp da rede. Use "Enviar a ficha" para copiar ou abrir no WhatsApp do aparelho.' }
     }
 
     const criado = await criarLinkDaFicha(ctx, { ...ap, client_id: ap.client_id })

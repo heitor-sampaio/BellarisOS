@@ -749,11 +749,12 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--hairline)' }}>
           {contaDesc.reais > 0 && (
             <>
-              <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text-muted)' }}>Subtotal: {fmtBRL(total)}</span>
-              <span data-desconto-do-plano style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text-muted)' }}>Desconto: −{fmtBRL(contaDesc.reais)}</span>
+              <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Subtotal: {fmtBRL(total)}</span>
+              <span data-desconto-do-plano style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Desconto: −{fmtBRL(contaDesc.reais)}</span>
             </>
           )}
-          <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)' }}>Total: {fmtBRL(contaDesc.liquido)}</span>
+          {/* 27ª (princípio 7): o "Total: R$ …" não quebra em duas linhas. */}
+          <span style={{ fontSize: 'var(--text-name)', fontWeight: 800, color: 'var(--text)', whiteSpace: 'nowrap' }}>Total: {fmtBRL(contaDesc.liquido)}</span>
         </div>
       </div>
 
@@ -981,12 +982,12 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
             <CampoDoTroco emDinheiro={noDinheiro} entregue={entregue} aoMudar={setEntregue} />
           </div>
         )}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', borderTop: '1px solid var(--hairline)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '14px 0', borderTop: '1px solid var(--hairline)' }}>
           <span style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', fontWeight: 600 }}>
             {formaPgto === 'AVISTA' ? 'Total a cobrar' : formaPgto === 'PARCELADO' ? 'Recebido agora' : 'Total a receber'}
             {recebeHoje && ' (com o atendimento de hoje)'}
           </span>
-          <span style={{ fontSize: 'var(--text-name)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>
+          <span style={{ fontSize: 'var(--text-name)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
             {fmtBRL(valorAgora)}
           </span>
         </div>

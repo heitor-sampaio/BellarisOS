@@ -61,3 +61,17 @@ export function prontuarioNaSolicitacao(situacao: SituacaoDoProntuario, incluido
   if (situacao === 'denied') return 'pedido — não liberado pela equipe'
   return 'não pedido'
 }
+
+/**
+ * A situação do pedido na aba LGPD da equipe (A15 da 27ª simulação, princípio
+ * 3): o pacote geral pronto com o prontuário pedido e à espera da liberação
+ * dizia "Entregue", ao lado de "Prontuário a liberar" — o que a cliente pediu
+ * ainda não foi todo. É "Parte geral entregue", como o app diz "Parte geral
+ * pronta"; liberado, o pacote é refeito (e volta a "Em preparo").
+ */
+export function situacaoDoPedidoNaAba(status: string, medicalStatus: SituacaoDoProntuario): { label: string; tom: 'ok' | 'warn' | 'perigo' } {
+  if (status === 'failed') return { label: 'Falhou', tom: 'perigo' }
+  if (status !== 'completed') return { label: 'Em preparo', tom: 'warn' }
+  if (medicalStatus === 'pending') return { label: 'Parte geral entregue', tom: 'warn' }
+  return { label: 'Entregue', tom: 'ok' }
+}

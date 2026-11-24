@@ -5,7 +5,7 @@ import { useState, useTransition, useRef, useEffect, useMemo, useCallback, useSy
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import {
   Plus, ArrowRight, ArrowRightLeft, UserCheck, Phone, Mail, X,
-  MoreHorizontal, Trophy, XCircle, CalendarClock, BellRing, CalendarPlus,
+  MoreHorizontal, Trophy, XCircle, CalendarClock, BellRing, CalendarPlus, Signpost,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { idadeDoLead } from '@/lib/crm/idade-do-lead'
@@ -20,7 +20,6 @@ import { textoDoRetorno } from '@/lib/crm/retorno'
 import { rotaComParams } from '@/lib/query-params'
 import { CRMLeadModal, type Procedure, type CRMLeadModalHandle } from './crm-lead-modal'
 import {
-  sourceStyle,
   secondsSince, agingLevel, AGING_STYLE,
   AWAITING_THRESHOLDS, STALE_THRESHOLDS, formatDurationShort, iniciaisDoNome,
   maskPhone, formatBRL,
@@ -800,12 +799,22 @@ function LeadCard({
         {/* Linha 1: origem + tags + lixeira */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 7 }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, minWidth: 0 }}>
+            {/* A17 da 27ª: a ORIGEM não é tag (T2: "a origem é a ORIGEM"; a
+                tag é o filtro da rede, CLAUDE.md §1). A origem vem como texto
+                com o ícone, sem a pílula; a pílula é só da tag. E a tag da
+                pessoa aparece sempre — esconder a que tinha o nome da origem
+                (o "Instagram Instagram" de quando a origem virava tag) sumia
+                com a tag "Indicação" da origem "Indicação". */}
             {lead.source && (
-              <TagBadge label={lead.source} style={sourceStyle(lead.source)} size="xs" />
+              <span data-origem-do-card title={`Origem: ${lead.source}`} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 3,
+                fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)',
+                whiteSpace: 'nowrap', lineHeight: 1.25, padding: '2px 0',
+              }}>
+                <Signpost size={11} aria-hidden="true" />{lead.source}
+              </span>
             )}
-            {/* A tag igual à origem não se repete: era "Instagram Instagram" (a
-                origem e a tag que a conversa deriva dela). */}
-            {lead.tags?.filter(t => t.toLowerCase() !== (lead.source ?? '').toLowerCase()).map(t => (
+            {lead.tags?.map(t => (
               <TagBadge key={t} label={t} size="xs" />
             ))}
           </div>

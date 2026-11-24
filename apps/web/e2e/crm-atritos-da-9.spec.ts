@@ -135,3 +135,60 @@ test('A42: o lembrete de retorno se marca no card, com o dia e o que fazer, e o 
   const { data } = await db().from('leads').select('retornar_em, retornar_obs, crm_stage_id').eq('id', id).single()
   expect(data).toEqual({ retornar_em: hoje, retornar_obs: 'Ligar para falar do orçamento', crm_stage_id: etapa.novo })
 })
+
+/**
+ * O card e o "Ir para a conversa" (A16 e A17 da 27ª simulação):
+ * - A16 (CLAUDE.md §14; "quem só pode ver só pode ver"): com o CRM em Ver, o
+ *   "Ir para a conversa" criava a conversa; agora diz o que falta, no alto do
+ *   modal, e o modal diz "Só leitura".
+ * - A17 (a origem é a ORIGEM; a tag é o filtro da rede): a origem e a tag eram o
+ *   mesmo chip, a tag com o nome da origem sumia, e o painel das tags era
+ *   cortado pelo modal.
+ */
+test('A16 da 27ª: com o CRM em Ver, "Ir para a conversa" não cria a conversa e diz por quê; o modal diz "Só leitura"', async ({ browser }) => {
+  const id = await lead('Sem conversa A16', { phone: null, email: `a16-${marca}@bellaris.invalid` })
+  const leitor = await criarMembro(`cr9v${marca}`, {
+    tenant: rede.tenantId, rotulo: 'Só vê o CRM',
+    permissoes: [{ modulo: 'crm', nivel: 'VIEW' }],
+  })
+  try {
+    await como(browser, leitor, async p => {
+      await p.goto('/admin/oportunidades')
+      await p.locator(`[data-lead-id="${id}"]`).click()
+      const janela = p.locator('dialog[open]')
+      await expect(janela.locator('[data-oportunidade-so-leitura]')).toContainText('Só leitura')
+      await janela.getByRole('button', { name: 'Ir para a conversa' }).click()
+      const erro = janela.locator('[data-erro-da-conversa]')
+      await expect(erro).toContainText('Abrir uma conversa nova pede o CRM em Gerenciar')
+      await expect(erro).toBeInViewport()
+      await expect(p).toHaveURL(/\/admin\/oportunidades/)
+    })
+    const { data: l } = await db().from('leads').select('contato_id').eq('id', id).single<{ contato_id: string }>()
+    const { data: conversas } = await db().from('conversations').select('id').eq('tenant_id', rede.tenantId).eq('contato_id', l!.contato_id)
+    expect(conversas, 'quem só vê não cria conversa').toEqual([])
+  } finally {
+    await leitor.limpar()
+  }
+})
+
+test('A17 da 27ª: a origem não é o chip da tag, a tag com o nome da origem aparece, e o painel das tags cabe inteiro', async ({ browser }) => {
+  const id = await lead('Indicada A17', { source: 'Indicação' })
+  const { data: l } = await db().from('leads').select('contato_id').eq('id', id).single<{ contato_id: string }>()
+  expect((await db().from('contacts').update({ tags: ['Indicação'] }).eq('id', l!.contato_id)).error).toBeNull()
+  await como(browser, sdr, async p => {
+    await p.goto('/admin/oportunidades')
+    const card = p.locator(`[data-lead-id="${id}"]`)
+    await expect(card.locator('[data-origem-do-card]')).toHaveAttribute('title', 'Origem: Indicação')
+    // A origem (texto com ícone) e a tag (a pílula) — as duas.
+    await expect(card.getByText('Indicação', { exact: true })).toHaveCount(2)
+
+    await card.click()
+    const janela = p.locator('dialog[open]')
+    await janela.getByRole('button', { name: 'Editar tags' }).click()
+    const painel = p.locator('[data-painel-picker]')
+    await expect(painel).toBeVisible()
+    expect(await painel.evaluate(el => el.matches(':popover-open')), 'o painel na camada de cima').toBe(true)
+    await expect(painel).toBeInViewport({ ratio: 1 })
+    await expect(painel.getByRole('button', { name: 'Indicação' })).toBeVisible()
+  })
+})

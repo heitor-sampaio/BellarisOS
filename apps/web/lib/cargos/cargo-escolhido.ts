@@ -10,3 +10,16 @@ export function cargoEscolhido(roles: readonly { id: string; is_system: boolean 
   const editaveis = roles.filter(r => !r.is_system)
   return editaveis[0]?.id ?? roles[0]?.id ?? null
 }
+
+/**
+ * A lista de cargos da tela com os recém-criados (D5 da 27ª simulação;
+ * princípio 3): depois do "Criar", o editor esperava a lista do servidor para
+ * abrir o cargo novo — e, no Instituto Helicônia, o painel seguiu no
+ * "Financeiro" (o primeiro editável), que recebeu os níveis pensados para o
+ * "Comercial". O cargo que a action devolveu vale na lista até o servidor
+ * mandá-la com ele; daí, vale a do servidor. Puro.
+ */
+export function comOsCriados<T extends { id: string }>(doServidor: readonly T[], criados: readonly T[]): T[] {
+  const ja = new Set(doServidor.map(r => r.id))
+  return [...doServidor, ...criados.filter(r => !ja.has(r.id))]
+}

@@ -22,7 +22,7 @@ import {
  * VISTA PESSOAL — quem atende sem o Financeiro vê só a própria linha
  * ("Minhas comissões") e não fecha.
  */
-export async function ComissoesDaEquipe({ ctx, unidades, unidadeAtual, basePath, voltarPara, periodoPedido, abas }: {
+export async function ComissoesDaEquipe({ ctx, unidades, unidadeAtual, basePath, voltarPara, voltarRotulo, periodoPedido, abas }: {
   ctx:           TenantContext
   /** As unidades ao alcance desta tela (no portal da unidade, uma). */
   unidades:      { id: string; name: string; ativa?: boolean }[]
@@ -30,6 +30,8 @@ export async function ComissoesDaEquipe({ ctx, unidades, unidadeAtual, basePath,
   unidadeAtual?: string
   basePath:      string
   voltarPara:    string
+  /** O nome da tela de volta (a 27ª: na vista pessoal, o Dashboard — o Financeiro ela não abre). */
+  voltarRotulo?: string
   periodoPedido?: string
   /**
    * FI6: a aba Comissões do Financeiro — o `/financeiro` do portal e o título
@@ -90,6 +92,7 @@ export async function ComissoesDaEquipe({ ctx, unidades, unidadeAtual, basePath,
         titulo={soAsProprias ? 'Minhas comissões' : 'Comissões'}
         basePath={basePath}
         voltarPara={voltarPara}
+        voltarRotulo={voltarRotulo}
         periodos={lista.map(p => ({ chave: p.chave, rotulo: p.rotulo }))}
         periodoAtual={periodo.chave}
         // A32 da 10ª: o período que ainda corre — o "Fechar e pagar" paga até AGORA, não até o fim dele.

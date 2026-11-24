@@ -1774,6 +1774,49 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-24 (10) — As correções da 27ª simulação
+
+A 27ª (cinco redes, 24/11, HEAD `ea2eff78`) achou 8 defeitos e 24 atritos; o dinheiro bateu nas cinco. Corrigido direto na main, pela regra de cada achado:
+- **Clínico e ficha**:
+  - quem tem o Prontuário em Gerenciar sem o Atendimento responde a ficha de saúde na aba Prontuário da ficha (D2);
+  - o editor do plano só para o Atendimento em Gerenciar (D3);
+  - a tag mostra o nome que a rede deu, sem o "VIP · Ouro" fixo (D7);
+  - a ficha de outra rede pela URL dá o 404 (D8);
+  - os injetáveis só convidam a "começar um novo" quem pode gravar (A6);
+  - a evolução concluída tem cara de só leitura (A7);
+  - "Editar o cadastro" só com Clientes em Gerenciar (A10);
+  - o aceite do plano na linha do tempo usa a hora gravada do aceite (A11);
+  - a remarcação pelo app diz o novo horário no histórico (A20).
+- **PDV, Financeiro e LGPD**:
+  - o "Total" da comanda em crediário é o total, não a entrada (D6);
+  - o cancelado e o estornado ficam num grupo "Fora do que se recebe" (A13);
+  - o título do Fechamento passou a "Fechamento do dia · PDV" (A14);
+  - a lista vazia do Financeiro só sugere lançar a quem lança (A12);
+  - o "Total" não quebra a linha;
+  - o pedido da LGPD com o prontuário a liberar diz "Parte geral entregue" (A15);
+  - a comanda do plano diz a forma da entrada (A15 da 26ª, migration `20261202200001`).
+- **Cargos, vistas pessoais e Copilot**:
+  - o cargo recém-criado abre no editor, e o que se clica grava nele (D5). Na produção, os níveis do "Comercial" tinham ido para o "Financeiro": o id do cargo novo agora nasce na tela;
+  - o resumo do cargo diz as vistas pessoais, como condição (A19);
+  - as Minhas comissões voltam ao Dashboard;
+  - as Configurações dizem por que só aquelas abas aparecem;
+  - o Copilot grava a sala pedida (A1), diz o nome da aba e não a chave "overview" (A2), e leva à comanda do atendimento para receber (A3).
+- **Funil e Documentos**:
+  - "Ir para a conversa" com o CRM em Ver abre a que existe, não cria a conversa, e diz por quê no alto do modal, que diz "Só leitura" (A16);
+  - a origem não é mais o chip da tag, a tag com o mesmo nome da origem aparece, e o seletor dentro do modal não corta (A17; `picker-compacto` na camada de cima);
+  - os textos dos documentos e da ficha de saúde são neutros ("esta ficha") (A22).
+- **Não eram**, com a prova no código:
+  - D1, D4 e o "CPF —" do app (já corrigidos em `fc8b87fd`, depois do HEAD da rodada);
+  - A23 (o "Quem viu" junta em 30 min, pela regra);
+  - A24 (a entrada está nas Movimentações e no caixa do dia);
+  - o segundo "Vender" depois do contrato (é o recebimento, PC2).
+- **Foi ao Heitor**: o A18. Duas oportunidades da mesma pessoa mostram nomes diferentes porque cada uma guarda o nome com que nasceu. Mostrar o nome da pessoa no card quebrava dois testes existentes (`listas-sem-corte`, o D11 da 9ª), que gravam o nome digitado na oportunidade. Ficou como estava, e a pergunta é qual nome vale.
+- **Teste existente alterado**: `e2e/ficha-pre-atendimento.spec.ts` (A27). A pessoa com Clientes em Ver não vê mais "Editar o cadastro", pela regra do Heitor de 01/11, "quem só pode ver só pode ver" (`crm-inbox.md`). O A27 é anterior a ela.
+- A completa local passou depois de três consertos:
+  - o texto da A22 manteve "não tem conversa aberta" e "não tem acesso ao portal", que os testes existentes exigem;
+  - o A18 foi desfeito;
+  - o E2E novo do D5 tinha "[e2e]" dentro de uma expressão regular.
+
 ### 2026-11-24 (9) — Uma linha só: as correções da 26ª e o escopo de 18/11 na main
 
 O Heitor, 24/11: "precisamos unificar isso ai tudo, acabamos abrindo muitas "abas" nessas correções. Precisamos finalizar o que esta em aberto, centralizar, botar main o que ta pronto e seguir uma linha só". Daqui em diante o trabalho é direto na main, uma frente por vez, sem worktree nem branch paralela.

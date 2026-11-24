@@ -825,6 +825,12 @@ auditoria das regras, pergunta 8: "só pela conta admin"; antes, H7 de
     `e2e/permissoes-f70.spec.ts` ("C73").
 - Sem aba pedida, quem não é a Admin da rede abre Configurações na primeira aba que
   é DELA (a Unidade, no portal da unidade).
+- **Sem Configurações em Gerenciar, a tela diz por que só aquelas abas** (27ª,
+  decisão do Claude pelo princípio 7: quem só tinha a LGPD via uma aba, sem
+  saber por quê): "Você vê a aba LGPD (vem de Prontuário em Gerenciar). As
+  outras pedem Configurações da rede em Gerenciar, ou a permissão de cada uma…"
+  (`porQueSoEstasAbas`, `lib/configuracoes/abas-que-faltam.ts`;
+  `[data-abas-do-acesso]`). Prova: `tests/configuracoes-abas-do-acesso.test.ts`.
 - **A aba pedida que não abre diz por quê** (A11 da 12ª simulação, 2026-11-11;
   princípio 3: quem tinha só a Acácia abria `?tab=commissions` e
   `?tab=permissions` e caía nas Tags calada). A tela abre a primeira aba que
@@ -883,6 +889,25 @@ auditoria das regras, pergunta 8: "só pela conta admin"; antes, H7 de
   saiu com a vista pessoal (SM2, 2026-11-23): a linha do Financeiro em "Sem
   acesso" diz que quem atende ou tem comissão de venda vê as Minhas comissões
   (`comissoes.md`). Prova: `tests/resumo-do-cargo-da-11.test.ts`.
+  **E o resumo diz as vistas pessoais, como condição** (A19 da 27ª, decisão do
+  Claude pelo §11 e o princípio 3): sem a Agenda, "Se ela atende, vê também a
+  Minha agenda…"; sem o Financeiro, "…as Minhas comissões" a quem atende ou
+  tem comissão no nome dela; fora do plano, nada (`vistasPessoaisNoResumo`,
+  `lib/permissions-copy.ts`; `[data-resumo-vistas-pessoais]`). O resumo é do
+  cargo, e a vista depende da pessoa. **E as Minhas comissões voltam ao
+  Dashboard** (27ª, princípio 7): o "← Financeiro" levava quem não tem o
+  Financeiro a uma tela que ela não abre. Prova:
+  `tests/resumo-do-cargo-vistas-pessoais.test.ts`,
+  `tests/comissoes-vista-pessoal-volta.test.ts`.
+  **O cargo recém-criado abre no editor, e o que se clica grava nele** (D5 da
+  27ª, princípio 3; no banco, o "Financeiro" do Instituto Helicônia levou os
+  níveis pensados para o "Comercial", que ficou vazio): o id do cargo novo
+  nasce na tela (`createRole` e `duplicarCargo` o aceitam, se for um uuid) e
+  vai ao `?cargo=` ANTES do pedido — a tela que o servidor devolve já abre
+  nele —, e o cargo que a action devolveu vale na lista sem esperar o servidor
+  (`comOsCriados`, `lib/cargos/cargo-escolhido.ts`). Prova:
+  `tests/cargos-editor-cargo-novo.test.ts`, o caso "D5 da 27ª" de
+  `e2e/permissoes-f70.spec.ts`.
   **A 21ª simulação** (A16, A17, A24; `tests/cargos-atritos-da-21.test.ts`):
   o que falta escolher (as abas de Relatórios: "Falta escolher ao menos um
   relatório em Relatórios…", `textoDoQueFaltaNoCargo`; conta só as abas que

@@ -120,6 +120,14 @@ export function PickerCompacto({
     setPos(p => (p && p.left === nova.left && p.top === nova.top && p.bottom === nova.bottom && p.largura === nova.largura ? p : nova))
   }, [aberto, larguraPainel, selecionadas, rotuloBotao])
 
+  // Montado o painel, sobe à camada de cima (popover="manual"; A17 da 27ª).
+  // Sem a API (navegador antigo, o teste sem navegador), fica como era.
+  useLayoutEffect(() => {
+    const el = painelRef.current
+    if (!aberto || !pos || !destino || !el || typeof el.showPopover !== 'function') return
+    if (!el.matches(':popover-open')) el.showPopover()
+  }, [aberto, pos, destino])
+
   // Aberto, acompanha o gatilho se a página rolar ou a janela mudar.
   useEffect(() => {
     if (!aberto) return
@@ -195,9 +203,17 @@ export function PickerCompacto({
 
       {aberto && pos && destino && createPortal(
         <>
-          <div ref={painelRef} data-painel-picker style={{
+          {/* Na CAMADA DE CIMA do navegador (popover="manual", A17 da 27ª):
+              o `<dialog className="modal">` tem `transform` e `overflow`, e o
+              `position: fixed` dentro dele se media pelo modal e era cortado
+              por ele — o painel das tags da oportunidade saía pela metade. No
+              topo, ele se mede pela tela e passa por cima do modal; continua
+              DENTRO do <dialog> no DOM, senão o modal o deixaria inerte. As
+              margens e o `inset` do popover do navegador são desfeitos aqui. */}
+          <div ref={painelRef} data-painel-picker popover="manual" style={{
             position: 'fixed', zIndex: 'calc(var(--z-popover) + 1)',
-            left: pos.left, top: pos.top, bottom: pos.bottom, width: pos.largura,
+            margin: 0, overflow: 'visible', color: 'var(--text)',
+            left: pos.left, right: 'auto', top: pos.top ?? 'auto', bottom: pos.bottom ?? 'auto', width: pos.largura,
             background: 'var(--surface)', boxShadow: 'var(--shadow-popover)',
             border: '1px solid var(--border)', borderRadius: 10, padding: 8,
           }}>

@@ -25,6 +25,7 @@ import { TagPicker } from '@/components/shared/tag-picker'
 import { Dica } from '@/components/shared/dica'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
 import { useOrigensDaRede } from '@/components/shared/use-origens-da-rede'
+import { OPORTUNIDADE_SO_LEITURA } from '@/lib/crm/conversa-da-oportunidade'
 
 export interface Procedure { id: string; name: string }
 
@@ -386,13 +387,14 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
           onClose={() => { setAberto(false); setPessoa(null) }}
           onClick={e => { if (e.target === dialogRef.current) close() }}
         >
-          {/* Header */}
+          {/* Header — preso no alto: o erro do "Ir para a conversa" mora aqui,
+              junto do botão, e não some quando o corpo rola (A16 da 27ª). */}
           <div style={{
             position: 'sticky', top: 0, zIndex: 1,
             background: 'var(--surface)', borderBottom: '1px solid var(--hairline)',
             padding: '18px 24px',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
               <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
                 {somenteLeitura ? 'Oportunidade' : isEdit ? 'Editar oportunidade' : 'Nova oportunidade'}
@@ -400,11 +402,20 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
               <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
                 {isEdit ? existing!.name : 'Adicionar contato ao funil de CRM'}
               </p>
+              {/* A16 da 27ª: o modal de quem tem o CRM em Ver diz que é só
+                  leitura, como a ficha; o porquê mora na dica (2026-11-16). */}
+              {somenteLeitura && (
+                <p data-oportunidade-so-leitura style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 4, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <span>Só leitura</span>
+                  <Dica rotulo="Por que a oportunidade não se edita">{OPORTUNIDADE_SO_LEITURA}</Dica>
+                </p>
+              )}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
               {/* Simétrico ao painel do inbox, que linka de volta para
-                  Oportunidades. A conversa é criada na hora se ainda não
-                  existir — é o mesmo caminho que o card usava antes. */}
+                  Oportunidades. Sem conversa, ela é criada na hora — por quem
+                  tem o CRM em Gerenciar; quem só vê abre a que existe e, sem
+                  ela, lê o porquê logo abaixo (A16 da 27ª). */}
               {isEdit && (
                 <button
                   type="button"
@@ -447,13 +458,15 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
           </div>
 
           {erroConversa && (
-            <p style={{
-              padding: '10px 24px 0', fontSize: 'var(--text-sm-sz)',
-              color: 'var(--warning)', fontWeight: 700,
+            <p data-erro-da-conversa role="alert" style={{
+              marginTop: 10, padding: '8px 12px', borderRadius: 8,
+              background: 'var(--warning-soft)', color: 'var(--warning)',
+              fontSize: 'var(--text-xs-sz)', fontWeight: 700,
             }}>
               {erroConversa}
             </p>
           )}
+          </div>
 
           {/* Body */}
           <div style={{ padding: '24px 24px 28px' }}>

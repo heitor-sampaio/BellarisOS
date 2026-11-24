@@ -168,10 +168,10 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 940 }}>
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div>
-          <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, letterSpacing: 'var(--tracking-tight)', color: 'var(--text)' }}>
-            Fechamento do dia
+          {/* A14 da 27ª: o título "Fechamento do dia" está no topo (`tituloDoPdv`); aqui, o dia. */}
+          <h2 data-dia-do-fechamento style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, letterSpacing: 'var(--tracking-tight)', color: 'var(--text)' }}>
+            {diaLongo(dia).replace(/^./, l => l.toLocaleUpperCase('pt-BR'))}
           </h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>{diaLongo(dia)}</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           {naRede && (

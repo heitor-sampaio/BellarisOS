@@ -16,7 +16,8 @@ import {
   SITUACOES_DO_PDV, seloDaComanda, emAbertoDaComanda, detalheDaComanda, formasDaComandaEmTexto, descontosDaComanda,
   estornoAnteriorEmTexto, valorNaLista, produtosEstornadosEmTexto, pagoJuntoEmTexto, rotuloDoPagamentoDaComanda,
   estornoDaVendaEmTexto, recebidaAgoraEmTexto, voucherDoProdutoEstornadoEmTexto, vendaEstornadaEmTexto, rotuloDoDiaNoPdv, textoDasComValorEmAberto,
-  abertasNasOutrasEmTexto, vazioDasAbertas, hrefDasComValorEmAberto, comandasDoFiltro, FILTRO_COM_VALOR_EM_ABERTO, type AbertasNaOutraUnidade, type SaiDaComanda, type ComandaDoPdv, type SituacaoDoPdv,
+  abertasNasOutrasEmTexto, vazioDasAbertas, hrefDasComValorEmAberto, comandasDoFiltro, FILTRO_COM_VALOR_EM_ABERTO,
+  rotuloDoTotalDaComanda, separarAsQueNaoValem, tituloDoPdv, type AbertasNaOutraUnidade, type SaiDaComanda, type ComandaDoPdv, type SituacaoDoPdv,
 } from '@/lib/pdv/situacoes'
 import { NovaVenda, type VendaDoPdv } from '@/components/shared/pdv/nova-venda'
 import { ProdutosDaComanda } from '@/components/shared/pdv/produtos-da-comanda'
@@ -100,7 +101,7 @@ export function CabecalhoDoPdv({ basePath, unidadeId, naRede, vista, recebidoHoj
   const daUnidade = naRede ? `unidade=${unidadeId}` : ''
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-      <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: 'var(--tracking-tight)', color: 'var(--text)' }}>PDV</h1>
+      <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: 'var(--tracking-tight)', color: 'var(--text)' }}>{tituloDoPdv(vista)}</h1>
       <span data-resumo-do-pdv style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', fontWeight: 600 }}>
         {rotuloDoDiaNoPdv(naRede ? unidadeNome : null)}: <b style={{ color: 'var(--text)' }}>{brl(recebidoHoje)}</b> recebidos · <b style={{ color: 'var(--text)' }}>{abertas}</b> {abertas === 1 ? 'comanda aberta' : 'comandas abertas'}
         {/* A12 da 23ª: a venda fechada com parcelas a receber está em "Fechadas hoje" — o topo leva a ela. */}
@@ -196,6 +197,21 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
     return `${basePath}?${q.toString()}`
   }
 
+  const linhaDaLista = (c: ComandaDoPdv, foraDoRecebido: boolean) => (
+    <Link key={c.id} href={href({ comanda: c.id })} data-comanda={c.id}
+      className={escolhida?.comanda.id === c.id ? 'pdv-linha is-escolhida' : 'pdv-linha'}>
+      <span style={{ fontWeight: 800, fontSize: 'var(--text-base-sz)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.cliente}</span>
+      {/* A1 da 17ª: a comanda do atendimento paga mostra o que foi cobrado. */}
+      {foraDoRecebido
+        ? <span data-valor-na-lista data-valor-fora-do-recebido style={{ fontWeight: 700, textAlign: 'right', whiteSpace: 'nowrap', color: 'var(--text-faint)', textDecoration: 'line-through' }}>{brl(valorNaLista(c))}</span>
+        : <span data-valor-na-lista style={{ fontWeight: 800, textAlign: 'right', whiteSpace: 'nowrap' }}>{brl(valorNaLista(c))}</span>}
+      <span title={detalheDaComanda(c, hora)} style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {detalheDaComanda(c, hora)}
+      </span>
+      <Selo c={c} />
+    </Link>
+  )
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <CabecalhoDoPdv basePath={basePath} unidadeId={unidadeId} naRede={naRede} vista="comandas"
@@ -253,18 +269,19 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
             </div>
           ) : (
             <div style={{ paddingBottom: 8 }}>
-              {visiveis.map(c => (
-                <Link key={c.id} href={href({ comanda: c.id })} data-comanda={c.id}
-                  className={escolhida?.comanda.id === c.id ? 'pdv-linha is-escolhida' : 'pdv-linha'}>
-                  <span style={{ fontWeight: 800, fontSize: 'var(--text-base-sz)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.cliente}</span>
-                  {/* A1 da 17ª: a comanda do atendimento paga mostra o que foi pago. */}
-                  <span data-valor-na-lista style={{ fontWeight: 800, textAlign: 'right' }}>{brl(valorNaLista(c))}</span>
-                  <span title={detalheDaComanda(c, hora)} style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {detalheDaComanda(c, hora)}
-                  </span>
-                  <Selo c={c} />
-                </Link>
-              ))}
+              {/* A13 da 27ª (princípio 3): a sem cobrança e a estornada vêm à parte, com o valor riscado — não somam com as outras. */}
+              {separarAsQueNaoValem(visiveis).valem.map(c => linhaDaLista(c, false))}
+              {separarAsQueNaoValem(visiveis).foraDoRecebido.length > 0 && (
+                <div data-comandas-fora-do-recebido>
+                  <p className="overline" style={{ padding: '12px 14px 6px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    Fora do que se recebe
+                    <Dica rotulo="Por que estas comandas ficam à parte">
+                      Sem cobrança (cancelada, falta, sessão do pacote, pré-pago) ou estornada: o valor riscado não entra no que se recebe.
+                    </Dica>
+                  </p>
+                  {separarAsQueNaoValem(visiveis).foraDoRecebido.map(c => linhaDaLista(c, true))}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -328,7 +345,7 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, hrefDaAssinatura, ao
   const [noReceber, setNoReceber] = useState<{ comanda: string; linhas: SaiDaComanda[]; total: number } | null>(null)
   const saiNoReceber = aReceber && c.agendamentoId && !c.planoId && noReceber?.comanda === c.id && noReceber.linhas.length ? noReceber : null
   const emAberto = emAbertoDaComanda(c, useFuso())
-  // A1 da 17ª (princípio 3): a comanda paga diz o desconto e o voucher, e o total é o que foi pago.
+  // A1 da 17ª (princípio 3): a comanda paga diz o desconto e o voucher, e o total é o cobrado (D6 da 27ª: com o em aberto).
   const descontos = c.origem === 'ATENDIMENTO' ? descontosDaComanda(c) : []
   // A15 da 24ª (princípio 3): a venda com desconto mostra o item cheio e a linha do desconto.
   const descontoDaVenda = c.origem === 'VENDA' ? e.linha?.desconto ?? 0 : 0
@@ -416,9 +433,10 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, hrefDaAssinatura, ao
               <span style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>−{brl(d.valor)}</span>
             </div>
           ))}
-          <div data-total-da-comanda style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 12, marginTop: 8 }}>
-            <span style={{ fontWeight: 700, color: 'var(--text-muted)' }}>{aReceber && c.jaPago > 0 ? 'Falta receber' : totalPago && descontos.length ? 'Total pago' : 'Total'}</span>
-            <b style={{ fontSize: 'var(--text-kpi)', fontWeight: 800, letterSpacing: 'var(--tracking-tight)', color: 'var(--text)' }}>{brl(totalPago ? c.recebido! : saiNoReceber ? saiNoReceber.total : c.valor)}</b>
+          {/* D6 da 27ª (princípio 3): no crediário, o total é o da comanda (o recebido se diz ao lado, em "R$ … recebidos"). */}
+          <div data-total-da-comanda style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, paddingTop: 12, marginTop: 8 }}>
+            <span style={{ fontWeight: 700, color: 'var(--text-muted)' }}>{rotuloDoTotalDaComanda(c, { temDescontos: descontos.length > 0 })}</span>
+            <b style={{ fontSize: 'var(--text-kpi)', fontWeight: 800, letterSpacing: 'var(--tracking-tight)', color: 'var(--text)', whiteSpace: 'nowrap' }}>{brl(totalPago ? valorNaLista(c) : saiNoReceber ? saiNoReceber.total : c.valor)}</b>
           </div>
         </div>
         <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>

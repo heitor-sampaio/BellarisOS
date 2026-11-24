@@ -232,13 +232,53 @@ export function oQueSaiNoReceber({ voucher, desconto, pontos }: {
 }
 
 /**
- * O valor da comanda na lista (A1 da 17ª): a do atendimento paga mostra o que
- * foi PAGO (o Peeling de R$ 280 com R$ 30 de desconto aparecia "R$ 280,00" em
- * "Fechadas hoje"); a aberta, o que falta; a venda e o plano, o valor deles (o
- * em aberto se diz ao lado).
+ * O valor da comanda na lista (A1 da 17ª): a do atendimento paga mostra o
+ * cobrado, depois do desconto (o Peeling de R$ 280 com R$ 30 de desconto
+ * aparecia "R$ 280,00" em "Fechadas hoje"); a aberta, o que falta; a venda e o
+ * plano, o valor deles (o em aberto se diz ao lado).
  */
 export function valorNaLista(c: ComandaDoPdv): number {
-  return c.origem === 'ATENDIMENTO' && c.paga && c.recebido != null ? c.recebido : c.valor
+  // D6 da 27ª (princípio 3): a comanda do atendimento no crediário "fecha" com
+  // a entrada, e o item de R$ 200 aparecia "R$ 100,00" (só o recebido). O total
+  // é o que se cobrou: o recebido mais o que ficou em aberto (já sem o desconto).
+  if (c.origem === 'ATENDIMENTO' && c.paga && c.recebido != null) {
+    return Math.round((c.recebido + Math.max(c.emAberto, 0)) * 100) / 100
+  }
+  return c.valor
+}
+
+/**
+ * O rótulo do total da comanda (D6 da 27ª, princípio 3): "Total pago" só
+ * quando o total é de fato o pago (com o desconto, nada em aberto); a
+ * reaberta com parte paga, "Falta receber"; o resto, "Total".
+ */
+export function rotuloDoTotalDaComanda(c: ComandaDoPdv, { temDescontos }: { temDescontos: boolean }): string {
+  if (!c.paga && !c.canceladaEm && c.jaPago > 0) return 'Falta receber'
+  if (c.origem === 'ATENDIMENTO' && c.paga && !c.estornada && c.recebido != null && temDescontos && !(c.emAberto > 0)) return 'Total pago'
+  return 'Total'
+}
+
+/**
+ * A13 da 27ª (princípio 3): em "Todas", a comanda cancelada (R$ 1.600) ficava
+ * na lista com o valor igual ao das outras, sem nada que a separasse. A que
+ * saiu sem cobrança (o cancelamento, a falta, a sessão do pacote, o pré-pago)
+ * e a venda estornada não entram no que se recebe.
+ */
+export function valeNoRecebido(c: ComandaDoPdv): boolean {
+  return !c.canceladaEm && !c.estornada
+}
+
+export function separarAsQueNaoValem(comandas: readonly ComandaDoPdv[]): { valem: ComandaDoPdv[]; foraDoRecebido: ComandaDoPdv[] } {
+  return { valem: comandas.filter(valeNoRecebido), foraDoRecebido: comandas.filter(c => !valeNoRecebido(c)) }
+}
+
+/**
+ * O título do topo (A14 da 27ª, princípio 7): quem entra pelo "Fechamento do
+ * dia" do menu lia "PDV". O Fechamento mora DENTRO do PDV (CX4), e o título diz
+ * os dois.
+ */
+export function tituloDoPdv(vista: 'comandas' | 'fechar'): string {
+  return vista === 'fechar' ? 'Fechamento do dia · PDV' : 'PDV'
 }
 
 /**

@@ -33,6 +33,7 @@ import { passaNasCaixas } from '@/lib/inbox/visibilidade'
 import { caixasDoAlcance, conversaAoAlcance, mensagemAoAlcance } from '@/lib/inbox/alcance'
 import { numeroRemovidoDaConversa, recusaDoNumeroRemovido, SUFIXO_DO_REMOVIDO } from '@/lib/inbox/numero-removido'
 import { leadAoAlcance } from '@/lib/crm/alcance'
+import { semConversaParaQuemSoVe } from '@/lib/crm/conversa-da-oportunidade'
 import {
   automacoesQueOMovimentoDispara, COLUNAS_DO_CARD_PARA_PREVER, type CardParaPrever,
 } from '@/lib/crm/automacoes-do-movimento'
@@ -1405,6 +1406,25 @@ export async function openLeadConversation(
       conversationId: null,
       error: `Ainda não há conversa com ${l.name}, e a rede não tem um WhatsApp conectado: não há por onde conversar daqui. ${quem}, ou fale pelo canal de onde ela veio.`,
     }
+  }
+
+  // A16 da 27ª (CLAUDE.md §14; "quem só pode ver só pode ver"): abrir a
+  // conversa que JÁ existe é ler — inclusive a do mesmo telefone ainda sem a
+  // pessoa, que o insert abaixo acharia pelo 23505 —, mas abrir uma NOVA é
+  // gravar, e gravar pede o CRM em Gerenciar. Até aqui o CRM em Ver criava.
+  if (!can(ctx, 'crm', 'MANAGE')) {
+    if (contactPhone) {
+      const doTelefone = await ler(admin
+        .from('conversations')
+        .select('id')
+        .eq('tenant_id', ctx.tenantId!)
+        .eq('channel', channel)
+        .eq('contact_phone', contactPhone)
+        .maybeSingle(), 'buscar a conversa')
+      const id = (doTelefone as { id: string } | null)?.id
+      if (id && (await conversaAoAlcance(admin, ctx, id))) return { conversationId: id }
+    }
+    return { conversationId: null, error: semConversaParaQuemSoVe(l.name) }
   }
 
   // ⚠️ Aqui havia um `upsert` com `onConflict: 'tenant_id,channel,contact_phone'`.

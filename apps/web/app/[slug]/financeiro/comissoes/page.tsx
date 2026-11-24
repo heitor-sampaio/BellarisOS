@@ -44,7 +44,9 @@ export default async function ComissoesDaUnidadePage({
       unidades={[{ id: unidade.id as string, name: unidade.name as string }, ...deFora]}
       unidadeAtual={deFora.length ? sp.unidade : undefined}
       basePath={`/${slug}/financeiro/comissoes`}
-      voltarPara={`/${slug}/financeiro`}
+      // A 27ª (princípio 7): a vista pessoal não leva ao Financeiro, que ela não abre.
+      voltarPara={minhas ? `/${slug}/dashboard` : `/${slug}/financeiro`}
+      voltarRotulo={minhas ? 'Dashboard' : 'Financeiro'}
       periodoPedido={sp.periodo}
       abas={{ base: `/${slug}/financeiro`, titulo: 'Financeiro' }}
     />

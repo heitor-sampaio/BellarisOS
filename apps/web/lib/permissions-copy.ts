@@ -359,3 +359,21 @@ export function conclusaoNoResumo(
   if (niveis.medical_records !== 'MANAGE') return 'Inicia e conclui os atendimentos. A evolução, as fotos e a ficha de saúde pedem o Prontuário em Gerenciar.'
   return null
 }
+
+/**
+ * As vistas pessoais no resumo do cargo (A19 da 27ª; CLAUDE.md §11, "as vistas
+ * pessoais"; princípio 3). Sem a Agenda, quem ATENDE vê a Minha agenda; sem o
+ * Financeiro, quem atende ou tem comissão no nome dela vê as Minhas comissões
+ * (`vistaPessoal`, lib/auth.ts). O resumo é do cargo, e a vista depende da
+ * pessoa: vai como condição. Fora do plano, nem a vista. Nulo = nada a dizer.
+ */
+export function vistasPessoaisNoResumo(
+  niveis: Partial<Record<'agenda' | 'financial', string>>, foraDoPlano: readonly AppModule[] = [],
+): string | null {
+  const agenda = (niveis.agenda ?? 'NONE') === 'NONE' && !foraDoPlano.includes('agenda')
+  const comissoes = (niveis.financial ?? 'NONE') === 'NONE' && !foraDoPlano.includes('financial')
+  if (agenda && comissoes) return 'Se ela atende, vê também a Minha agenda (só os horários dela) e as Minhas comissões (só as dela). Sem atender, com comissão no nome dela, vê as Minhas comissões.'
+  if (agenda) return 'Se ela atende, vê também a Minha agenda, só com os horários dela.'
+  if (comissoes) return 'Se ela atende ou tem comissão no nome dela, vê também as Minhas comissões, só as dela.'
+  return null
+}

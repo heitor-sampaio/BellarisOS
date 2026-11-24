@@ -21,7 +21,7 @@ import { FotosDoAtendimento, type FotoDoAtendimento } from './fotos-do-atendimen
 import type { AnotacoesEVersoes } from '@/lib/prontuario/anotacoes-e-versoes'
 import { ExportarLgpdDaFicha } from './exportar-lgpd-da-ficha'
 import { AnamneseGeralCartao } from './anamnese-geral'
-import { alergiasDaAnamnese, type AnamneseGeral } from '@/lib/anamnese-geral'
+import { alergiasDaAnamnese, type AnamneseGeral, type FichaDePreAtendimento } from '@/lib/anamnese-geral'
 import { AlertaDeAlergia } from '@/components/shared/alerta-de-alergia'
 import type { AnamnesisRow } from '@/lib/anamnesis'
 import { TagBadge } from '@/components/shared/tag-badge'
@@ -285,6 +285,13 @@ interface Props {
   /** Quem abriu o prontuário — só para o admin da rede (nulo para os demais). */
   acessosAoProntuario?:  { itens: AcessoNaFicha[]; total: number } | null
   generalAnamnesis?:     AnamneseGeral | null
+  /**
+   * Responde e edita a ficha de saúde na aba Prontuário: o Prontuário em
+   * Gerenciar, sem precisar atender (UM4 — a mesma permissão de
+   * `salvarAnamneseGeral`). Com as perguntas ATUAIS da rede (`fichaDeSaudeAtual`).
+   */
+  podeEditarFichaDeSaude?: boolean
+  fichaDeSaudeAtual?:    FichaDePreAtendimento | null
   /** O texto da alergia (A30 da 15ª): em toda aba, a quem vê o prontuário; a ficha de saúde inteira só vai na aba Prontuário. */
   alergias?:             string | null
   canGrantCredit:        boolean
@@ -1505,7 +1512,7 @@ function FinanceiroTab({
 export function ClientProfile({
   client, branchId, stats, upcomingAppointments, recentAppointments, allAppointments = [],
   fidelidade, activePackage,
-  transactions, internalCredits, documents, recordForms = [], lotesDosAtendimentos = {}, podeAbrirLote = false, anexosClinicosFora = 0, anexosClinicos = [], anotacoesEVersoes = { anotacoes: {}, versoes: {} }, podeAnotar = false, pedidoLgpd = null, podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, alergias = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, portalNoPlano = false, veFinanceiro = false, isNetworkWide, unidadeDoPlano, unidadesDoPlano = [], perguntaAUnidade = false, clientHistory, opportunities = [], veOportunidades = true,
+  transactions, internalCredits, documents, recordForms = [], lotesDosAtendimentos = {}, podeAbrirLote = false, anexosClinicosFora = 0, anexosClinicos = [], anotacoesEVersoes = { anotacoes: {}, versoes: {} }, podeAnotar = false, pedidoLgpd = null, podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, podeEditarFichaDeSaude = false, fichaDeSaudeAtual = null, alergias = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, portalNoPlano = false, veFinanceiro = false, isNetworkWide, unidadeDoPlano, unidadesDoPlano = [], perguntaAUnidade = false, clientHistory, opportunities = [], veOportunidades = true,
   planProcedures = [], planProducts = [], podeReceber = false, podeMontarPlano = false, podeEditarInjetaveis = false, termos = null,
   prePagos = [], podeAgendar = false, podeCancelarPacote = false, pacoteVencido = null, quemDesfaz = null, pagoComCredito = 0, podeRemarcar = false, podeEstornar = false, podeReceberParcela = false, podeEditarCadastro = false, quemCompletaOCadastro: quemCompleta = null, podeExportarProntuario = false, podeVerPlanos = false, podeIniciarAtendimento = false,
   aReceber = { itens: [], total: { n: 0, valor: 0 } }, comandaParaReceber = null, planosNaoRecebidos = [], podeReceberAtendimento = false,
@@ -1570,6 +1577,8 @@ export function ClientProfile({
   // atendimento (a anamnese já está lá): a dona não achava a aba (2026-10-20).
   // O Planejamento é dos planos (Agenda) e dos injetáveis (prontuário): sem
   // nenhum dos dois, a aba ficava em "Carregando planos…" para sempre (D6).
+  // UM4: a ficha de saúde se responde aqui com o Prontuário em Gerenciar (D2 da 27ª).
+  const fichaDeSaudeParaEditar = podeEditarFichaDeSaude && fichaDeSaudeAtual ? fichaDeSaudeAtual : null
   const visibleTabs = TABS.filter(t => (t.key !== 'fichas' || podeVerProntuario || recordForms.length > 0) && (t.key !== 'financeiro' || veFinanceiro)
     && (t.key !== 'planejamento' || podeVerPlanos || podeVerProntuario) && (t.key !== 'oportunidades' || veOportunidades))
 
@@ -1693,12 +1702,9 @@ export function ClientProfile({
                 )}
                 {/* A menor de idade (decisão 2 do Heitor, 2026-11-05). */}
                 {ehMenorDeIdade(client.birthDate) && <span data-menor className="chip chip-brand">Menor de idade</span>}
-                {client.tags.map(tag => {
-                  if (tag === 'VIP') {
-                    return <TagBadge key={tag} label="VIP · Ouro" size="xs" style={{ bg: 'var(--brand-soft)', color: 'var(--brand)' }} />
-                  }
-                  return <TagBadge key={tag} label={tag} size="xs" />
-                })}
+                {/* A tag é da rede e mostra o nome que ela deu (CLAUDE.md §1, Tags):
+                    o "VIP" ganhava um "Ouro", um nível que ninguém criou. */}
+                {client.tags.map(tag => <TagBadge key={tag} label={tag} size="xs" />)}
               </div>
               <div style={{ display: 'flex', gap: 14, marginTop: 5, flexWrap: 'wrap' }}>
                 {client.phone && (
@@ -2273,9 +2279,9 @@ export function ClientProfile({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {!podeVerProntuario && recordForms.length === 0 ? null : recordForms.length === 0 ? (
             <>
-              {generalAnamnesis && (
+              {(generalAnamnesis || fichaDeSaudeParaEditar) && (
                 <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                  <AnamneseGeralCartao embedded anamnese={generalAnamnesis} fichaAtual={generalAnamnesis.ficha} clientId={client.id} canEdit={false} />
+                  <AnamneseGeralCartao embedded anamnese={generalAnamnesis} fichaAtual={fichaDeSaudeParaEditar ?? generalAnamnesis!.ficha} clientId={client.id} canEdit={!!fichaDeSaudeParaEditar} />
                 </div>
               )}
               <div className="card" style={{ padding: '32px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>
@@ -2283,13 +2289,17 @@ export function ClientProfile({
               </div>
             </>
           ) : (
-            recordForms.map(entry => (
+            recordForms.map((entry, i) => (
               <AttendanceRecordCard
                 key={entry.appointmentId}
                 client={{ name: client.name, document: client.document, birthDate: client.birthDate, phone: client.phone }}
                 subtitle={`${entry.procedureName ?? 'Atendimento'} · ${entry.diaDoAtendimento || formatarNoFuso(entry.createdAt, "dd/MM/yyyy", fuso)}`}
                 generalAnamnesis={
-                  <AnamneseGeralCartao embedded anamnese={generalAnamnesis} fichaAtual={generalAnamnesis?.ficha ?? { formId: null, nome: 'Ficha de saúde', rows: [] }} clientId={client.id} canEdit={false} />
+                  // A ficha de saúde é UMA da cliente: responde-se no registro mais
+                  // recente (o primeiro), para não abrir um formulário em cada um.
+                  i === 0 && fichaDeSaudeParaEditar
+                    ? <AnamneseGeralCartao embedded anamnese={generalAnamnesis} fichaAtual={fichaDeSaudeParaEditar} clientId={client.id} canEdit={!!fichaDeSaudeParaEditar} />
+                    : <AnamneseGeralCartao embedded anamnese={generalAnamnesis} fichaAtual={generalAnamnesis?.ficha ?? { formId: null, nome: 'Ficha de saúde', rows: [] }} clientId={client.id} canEdit={false} />
                 }
                 registroId={entry.appointmentId}
                 correcao={(anotacoesEVersoes.versoes[entry.appointmentId] ?? []).length > 0

@@ -338,6 +338,13 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   a profissional que não atende nela são recusados no preparo
   (`conferirPecasDoAgendamento`). Prova: `e2e/copilot-agendar-ja-pago.spec.ts`
   (contra a OpenAI falsa).
+  **A sala pedida vai na sala** (A1 da 27ª, decisão do Claude pelo princípio 3:
+  "agende na Sala 1" ia para a observação, e o agendamento ficava sem sala):
+  `agendar` aceita `sala` (nome ou id, `resolverSala`, `comum.ts`: a ativa da
+  unidade, o nome exato antes do parecido), conferida com as outras peças
+  (`conferirPecasDoAgendamento`: a sala serve ao procedimento) e livre no
+  horário; o cartão diz "Sala". Sem sala no pedido, nenhuma — como era. Prova:
+  `tests/copilot-sala-abas-e-comanda.test.ts`.
 - **O estoque segue as janelas** (C5, F66): a leitura `estoque` diz o saldo
   da prateleira ("1 frasco fechado + 1 aberto com 50 UI",
   `saldoNaPrateleira`), o mínimo na mesma régua (`minimoNaTela`) e a medida
@@ -448,7 +455,16 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   no fuso da unidade) vai no cartão e no payload, e é o que se grava.
 - **"Receba a massagem da Bruna"** (A30 da 21ª): o Copilot não recebe; diz
   que o recebimento é no PDV, na comanda do atendimento, com o link, sem
-  perguntar o caminho.
+  perguntar o caminho. **O link é o da comanda dela** (A3 da 27ª, decisão do
+  Claude pelo princípio 3: o Copilot ensinou "Nova comanda"): o prompt manda
+  achá-la por `comandas_abertas` e dar o link dela — sem comanda aberta, o do
+  PDV —, e nunca mandar abrir comanda nova nem venda para o atendimento (a
+  comanda dele já existe no PDV).
+- **A aba dos Relatórios pelo nome da tela** (A2 da 27ª; princípio 7:
+  "overview" saiu na resposta): a descrição de `indicadores` dá o nome de cada
+  aba ("overview (Visão geral: …)"), a leitura devolve `relatorio` (o nome), a
+  recusa diz o nome e as liberadas pelo nome, e o prompt manda dizer sempre o
+  nome da tela, nunca a chave. Prova: `tests/copilot-sala-abas-e-comanda.test.ts`.
 - **"Confira e confirme no cartão abaixo" só com cartão** (A27 da 21ª): o
   executor devolve ao modelo, no erro do preparo, que nenhum cartão
   apareceu; e, com o cartão, que não pergunte se ela quer gerar outro.

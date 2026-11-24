@@ -411,7 +411,7 @@ export async function pedirAssinaturaNoPortal(id: string): Promise<{ error?: str
     const admin = createAdminClient()
     const cliente = await ler(admin.from('clients').select('auth_id, portal_ultima_unidade').eq('id', doc.client_id).single(), 'buscar o cliente')
     if (!cliente?.auth_id) {
-      return { error: 'Este cliente ainda não tem acesso ao portal. Colha a assinatura na tela.' }
+      return { error: 'Esta ficha ainda não tem acesso ao portal. Colha a assinatura na tela.' }
     }
     // O portal do link: a unidade do DOCUMENTO, senão a do endereço de quem
     // pede, senão a do portal dela (a última usada, ou a primeira ativa).
@@ -424,7 +424,7 @@ export async function pedirAssinaturaNoPortal(id: string): Promise<{ error?: str
     ])
     const pedida = [doc.branch_id, ctx.branchId].find(id => id && (ativas ?? []).some(u => u.id === id)) ?? null
     const unidade = unidadeDoPortal(pedida ?? ((cliente.portal_ultima_unidade as string | null) ?? null), ativas ?? [])
-    if (!unidade?.slug) return { error: 'Não encontrei a unidade do portal deste cliente.' }
+    if (!unidade?.slug) return { error: 'Não encontrei a unidade do portal desta ficha.' }
 
     await notifyClient(admin, doc.client_id, {
       type:  'document_to_sign',
@@ -566,7 +566,7 @@ export async function enviarLinkPelaConversa(id: string): Promise<{ error?: stri
     // Antes de gerar: sem conversa, não se revoga à toa o link que já existe.
     const conversa = await conversaDoCliente(ctx.tenantId!, doc.client_id)
     if (!conversa) {
-      return { error: 'Este cliente não tem conversa aberta no WhatsApp da rede. Use "Enviar link" para copiar ou abrir no WhatsApp do aparelho.' }
+      return { error: 'Esta ficha não tem conversa aberta no WhatsApp da rede. Use "Enviar link" para copiar ou abrir no WhatsApp do aparelho.' }
     }
 
     const criado = await criarLink(ctx, doc)

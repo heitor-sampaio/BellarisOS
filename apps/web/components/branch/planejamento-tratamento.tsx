@@ -600,6 +600,8 @@ export function PlanejamentoTratamento({
         hideActions
         branchId={branchId}
         onSalvarPorPlano={editavel ? salvar : undefined}
+        // UM3: sem montar o plano, o editor só mostra (era "Nova sessão" sem salvar).
+        podeEditar={podeEditar}
         podeAnotar={podeAnotar}
         onMudarProcedimentos={setProcsNaTela}
         onMudou={ehNovo && editavel ? (p => gravarPlanoNaoSalvo(chaveDoNovo, p)) : undefined}
