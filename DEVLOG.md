@@ -1774,6 +1774,15 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-24 — O catálogo de regras: Clientes, CRM e inbox (rascunho para o Heitor)
+
+A segunda área do catálogo (o Heitor, 24/11: "segue com o catálogo"), pelo mesmo método do atendimento. `docs/catalogo/crm-inbox.md`: a ficha e a lista de Clientes, as tags, o portal e o app da cliente (no que é dado dela), a LGPD, as Importações, o contato, a conversa e o inbox, e as oportunidades, os funis e o quadro.
+- 141 regras: Clientes 26, Tags 13, Portal e app da cliente 13, LGPD 13, Importações 23, Contato, conversa e inbox 17, Oportunidades, funis e quadro 36. Saíram de 332 no rascunho (cinco pedaços de `docs/regras/crm-inbox.md` e as seções da revisão); 4 ficaram fora (detalhe de tela) e 2 são de outra área (fidelidade, Cargos).
+- Nenhuma regra usa o "só os meus" (saiu em 23/11): o que o texto ainda diz com ele virou divergência.
+- 15 perguntas ao Heitor (C01–C15 na página de perguntas, junto das 26 do atendimento que seguem em aberto) e 24 divergências. Sete perguntas dos rascunhos saíram porque uma regra dele já as responde (a cliente é da rede, a tag é da pessoa, a fala "plano ou pacote" do PT3) ou eram texto velho (o filtro do inbox já diz "Responsável" na tela; as perdas da rede inteira seguem a oportunidade, que é da pessoa); cada uma virou divergência com o motivo.
+- Conferido por script: as 148 falas citadas existem nos documentos letra por letra; nenhum dos 332 números do rascunho sumiu.
+- `docs/regras/` não mudou: o catálogo é rascunho até a revisão dele.
+
 ### 2026-11-23 (3) — Gravar injetáveis pede também o Prontuário em Ver
 
 As três perguntas que sobraram da entrega (2), com a resposta do Heitor:
