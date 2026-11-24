@@ -262,6 +262,9 @@ test.describe('no atendimento, cada passo pede o módulo dele: o clínico, o env
     const atendida = await R.criarCliente('Atendida')
     concluido = await agendamento(atendida, 'COMPLETED', new Date(Date.now() - 2 * 86_400_000).toISOString(), semAtendimento.userId)
     const naAgenda = await R.criarCliente(NOME_AGENDADA)
+    // O link da ficha confere a identidade pelo CPF ou pela data de nascimento: sem nenhum dos dois, o
+    // bloco pede o cadastro em vez de oferecer o envio.
+    expect((await db().from('clients').update({ birth_date: '1990-05-17' }).eq('id', naAgenda)).error).toBeNull()
     await agendamento(naAgenda, 'SCHEDULED', new Date(`${DIA}T10:00:00-03:00`).toISOString())
   })
 

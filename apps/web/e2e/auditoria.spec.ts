@@ -455,7 +455,7 @@ test.describe('a frase da Auditoria diz o fato: sem as colunas de controle, a co
 
   test.beforeAll(async () => {
     test.setTimeout(180_000)
-    rede = await criarOutraRede(`aud${marca}`)
+    rede = await criarOutraRede(`aud2${marca}`)
     expect((await db().from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede.tenantId)).error).toBeNull()
     admin = await criarMembro(`auda${marca}`, { tenant: rede.tenantId, donoDaRede: true, rotulo: 'Admin', permissoes: [] })
     outro = await criarMembro(`audo${marca}`, {

@@ -145,7 +145,10 @@ test('D5, D6, A23: na ficha, quem só vê não edita os Dados, não agenda, não
     await p.goto(`/admin/clients/${cliente}`)
     await expect(p.getByText(`Cliente só ver pqv${marca}`).first()).toBeVisible()
     await expect(p.getByRole('button', { name: '+ Agendar' }), 'A23: sem a Agenda, sem "+ Agendar"').toHaveCount(0)
-    await expect(p.getByPlaceholder(/Preferências, restrições/), 'as anotações só se leem').not.toBeEditable()
+    // As anotações só se leem: o texto, sem campo (CLAUDE.md §14, "Botão que a pessoa não pode usar
+    // (o módulo em Ver, sem o módulo): a tela esconde" — o campo travado convidava a escrever).
+    await expect(p.locator('[data-anotacoes-so-leitura]'), 'as anotações só se leem').toBeVisible()
+    await expect(p.getByPlaceholder(/Preferências, restrições/), 'sem o campo de escrever').toHaveCount(0)
     // D6: sem a Agenda e sem o prontuário, não há Planejamento.
     await expect(p.getByRole('main').getByRole('tab', { name: 'Planejamento', exact: true })).toHaveCount(0)
 

@@ -136,7 +136,7 @@ alter table public.stock_movements add constraint stock_movements_motivo_da_perd
   check (type <> 'LOSS' or nullif(btrim(coalesce(motivo_da_perda, '')), '') is not null);
 
 -- ─── 4. A perda grava o motivo da rede (trechos no corpo VIVO) ──────────────
-create function pg_temp.trocar_no_corpo(p_fn regprocedure, p_de text[], p_para text[], p_vezes int[])
+create or replace function pg_temp.trocar_no_corpo(p_fn regprocedure, p_de text[], p_para text[], p_vezes int[])
 returns void language plpgsql as $f$
 declare
   d text := pg_get_functiondef(p_fn);

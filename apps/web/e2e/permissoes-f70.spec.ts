@@ -354,8 +354,11 @@ test.describe('a tela de Cargos diz a regra de agora: a Equipe não dá cargo ac
       // As linhas da Equipe e de Cargos.
       await expect(p.getByText(/mais poderoso que o próprio/)).toHaveCount(0)
       await expect(p.getByText(/conceder a si mesmo/)).toHaveCount(0)
-      await expect(p.locator('[data-modulo="team"]')).toContainText('não passe do próprio')
-      await expect(p.locator('[data-modulo="roles"]')).toContainText('só da Admin da rede')
+      // O que o nível libera mora na dica ao lado do nome (2026-11-16).
+      await p.locator('[data-modulo="team"]').getByRole('button', { name: 'Sobre: Equipe' }).hover()
+      await expect(p.getByText(/não passe do próprio/)).toBeVisible()
+      await p.locator('[data-modulo="roles"]').getByRole('button', { name: 'Sobre: Cargos e permissões' }).hover()
+      await expect(p.getByText(/criar um cargo e mudar o que ele acessa é só da Admin/)).toBeVisible()
 
       // O resumo "Na rede".
       await expect(p.locator('[data-resumo-na-rede]')).toContainText('Notificações')

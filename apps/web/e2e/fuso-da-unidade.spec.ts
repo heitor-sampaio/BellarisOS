@@ -515,9 +515,10 @@ test.describe('numa rede de dois relógios, cada registro na hora da unidade del
     slugA = (await b.from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
 
     admin = await criarMembro(`fzra${marca}`, { tenant: rede.tenantId, rotulo: 'Admin', donoDaRede: true, permissoes: [] })
-    // A profissional é da primeira unidade e atende nas duas.
+    // A profissional é das duas unidades (a principal e a outra) e atende nas duas: só se atende nas
+    // unidades que são dela (o Heitor, 2026-11-23: "uma pessoa só pode atender nas unidades que faz parte").
     profissional = await criarMembro(`fzrp${marca}`, {
-      tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Profissional', atendeEm: [rede.branchId, unidadeB],
+      tenant: rede.tenantId, branchId: rede.branchId, outrasUnidades: [unidadeB], rotulo: 'Profissional', atendeEm: [rede.branchId, unidadeB],
       permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'atendimento', nivel: 'MANAGE' }],
     })
     expect((await b.from('users').update({ provides_services: true, atende_em: [rede.branchId, unidadeB] }).eq('id', profissional.userId)).error).toBeNull()

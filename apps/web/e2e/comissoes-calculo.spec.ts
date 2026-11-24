@@ -338,7 +338,7 @@ test.describe('o cancelamento do pacote, a taxa por procedimento e o retrato da 
     // Vendido no crédito (R$ 1.000), 1 de 2 sessões feita (usado R$ 500).
     const { data: cp, error: eV } = await b.rpc('pacote_vender', {
       p_tenant: rede!.tenantId, p_cliente: cliente, p_pacote: pacote, p_unidade: rede!.branchId, p_ator: dona!.userId,
-      p_lancamentos: [{ amount: 1000, payment_method: 'CREDIT_CARD', is_paid: true, cartao_vezes: 1 }],
+      p_lancamentos: [{ amount: 1000, payment_method: 'CREDIT_CARD', is_paid: true }],
       p_sessoes: Array.from({ length: 2 }, () => ({ procedure_id: proc, preco: 500 })),
     })
     expect(eV, 'vender o pacote').toBeNull()
