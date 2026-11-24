@@ -1774,6 +1774,16 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-24 (2) — O catálogo de regras: Fidelidade (rascunho para o Heitor) e a 27ª simulação
+
+A terceira área do catálogo, pelo mesmo método. `docs/catalogo/fidelidade.md`: o programa e quem mexe nele, o ganho do ponto, o estorno e o cancelamento, os pontos e o voucher no PDV, as recompensas e os vouchers, o saldo, o extrato e a validade, os bônus e a indicação, e o que a cliente vê no app.
+- 56 regras: O programa e quem mexe 7, O ganho do ponto 9, Estorno e cancelamento 5, Pontos e voucher no PDV 10, Recompensas e vouchers 6, Saldo, extrato e validade 7, Bônus e indicação 8, O que a cliente vê no app 4. Saíram de 105 no rascunho (`docs/regras/fidelidade.md`, as decisões da revisão e as menções nos outros arquivos); 2 ficaram fora (detalhe de tela) e 5 são de outra área (Vendas, Estoque, Clientes, Comissões).
+- Nenhuma pergunta nova: as cinco dos rascunhos já tinham resposta numa regra existente (o FD1 e o FD2b, aprovados com "concordo" em 13/11; a regra de permissões do CLAUDE.md §11 — cancelar e entregar o voucher é da Fidelidade em Gerenciar, como o código já faz; o princípio 1). Cada uma virou divergência com o motivo; são 13 divergências (entre elas a troca de pontos "só na ficha", que o A50 de 18/11 levou também ao PDV, e o "desconto de fidelidade", que pela A17 não se chama desconto).
+- De quebra, a pergunta C01 do catálogo de Clientes (a CL-16, o "Indicada por") ganhou a referência ao único "sim" dele no assunto ("1 - sim", 10/11, `docs/regras/fidelidade.md:332`, sobre a indicação que premia).
+- Conferido por script: as 32 falas citadas existem letra por letra; nenhum dos 105 números do rascunho sumiu. `docs/regras/` não mudou.
+
+**A 27ª simulação** (o Heitor, 24/11: "simule varios clientes, varias situacoes em um mesmo time, 5 times") está rodando na produção desde ~11:25: cinco redes novas ([sim] Studio Manacá, Rede Açucena com duas unidades em UTC−4, Espaço Frésia, Ateliê Zínia + Studio Papoula, Instituto Helicônia com o Copilot), cada uma com um elenco de 12 a 14 clientes, cada cliente numa situação diferente. As regras que os times conferem já são as de 23/11 (sem "só os meus"). O relatório entra aqui quando terminar.
+
 ### 2026-11-24 — O catálogo de regras: Clientes, CRM e inbox (rascunho para o Heitor)
 
 A segunda área do catálogo (o Heitor, 24/11: "segue com o catálogo"), pelo mesmo método do atendimento. `docs/catalogo/crm-inbox.md`: a ficha e a lista de Clientes, as tags, o portal e o app da cliente (no que é dado dela), a LGPD, as Importações, o contato, a conversa e o inbox, e as oportunidades, os funis e o quadro.
