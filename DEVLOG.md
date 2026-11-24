@@ -1774,6 +1774,14 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-24 (3) — O catálogo de regras: Vendas e financeiro (rascunho para o Heitor)
+
+A quarta área do catálogo, pelo mesmo método (sete leitores: seis pedaços de `docs/regras/vendas-financeiro.md`, que tem 3.268 linhas, e as decisões da revisão; um condensador). `docs/catalogo/vendas-financeiro.md`: o PDV e a comanda, as vendas e o desconto, as formas de pagamento, o crediário, o dinheiro do plano, os pacotes, o pré-pago, a venda de produto, o crédito interno vendido, o estorno e a devolução, as maquininhas e as taxas, o caixa e o fechamento do dia, o Financeiro, o CSV e o que a cliente vê no app.
+- 178 regras (PV 16, VD 10, FP 6, CR 11, DP 10, PA 26, PP 8, PR 8, CI 10, EX 11, MQ 18, FC 15, FN 18, CS 6, AC 5), de 404 no rascunho; 3 ficaram fora (detalhe de tela) e 6 são de outra área (Atendimento, Documentos, Indicadores).
+- 5 perguntas na página (V01–V05): três "estas regras são suas?", a comanda do atendimento que gerou o plano (a DP-04 contra "uma venda, uma comanda") e o "está no escopo?" da venda do pacote pela internet. Sete perguntas dos rascunhos saíram porque uma regra dele já responde (entre elas o "Seu crédito", que é a C06 da página, e o contrato do pacote: o 14/11 era leitura do Claude, o 18/11 aplica a fala dele do PC2).
+- 47 divergências. Uma é do CÓDIGO contra a regra: `podeReceber` (`apps/web/lib/auth.ts:378`) deixa receber quem tem o PDV OU o Financeiro em Gerenciar, e a decisão de 23/11 diz "cada passo pertence a UM módulo, e nenhuma ação pede dois" e "PDV: receber, a comanda". É defeito a corrigir (com o teste) quando as correções voltarem; a regra PV-04 já diz "só o PDV".
+- Conferido por script: as 151 falas citadas existem letra por letra; nenhum dos 404 números do rascunho sumiu. `docs/regras/` não mudou.
+
 ### 2026-11-24 (2) — O catálogo de regras: Fidelidade (rascunho para o Heitor) e a 27ª simulação
 
 A terceira área do catálogo, pelo mesmo método. `docs/catalogo/fidelidade.md`: o programa e quem mexe nele, o ganho do ponto, o estorno e o cancelamento, os pontos e o voucher no PDV, as recompensas e os vouchers, o saldo, o extrato e a validade, os bônus e a indicação, e o que a cliente vê no app.
