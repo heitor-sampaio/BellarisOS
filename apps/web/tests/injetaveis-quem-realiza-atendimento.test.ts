@@ -10,6 +10,12 @@ import { join } from 'node:path'
  * respondeu "ok"). Revê o UM4 de 23/11, que punha os injetáveis no Prontuário
  * em Gerenciar. "Quem realiza atendimento" é a PERMISSÃO — o Atendimento em
  * Gerenciar —, não o "Atende" da Equipe (UM5).
+ *
+ * E gravar pede TAMBÉM o Prontuário em Ver (o Heitor, 2026-11-23, "3 - ok", à
+ * proposta "gravar injetáveis: pedir as duas permissões, o Atendimento em
+ * Gerenciar e o Prontuário em Ver" — quem planeja ou registra a aplicação
+ * precisa ver as anteriores; a tela, que só mostra o mapa com o Prontuário em
+ * Ver, e a action passam a dizer o mesmo).
  */
 
 const fonte = (rel: string) => readFileSync(join(__dirname, '..', rel), 'utf8')
@@ -22,7 +28,7 @@ function corpo(nome: string): string {
   return ACOES.slice(ini, prox === -1 ? undefined : prox)
 }
 
-describe('as actions que GRAVAM os injetáveis pedem o Atendimento em Gerenciar', () => {
+describe('as actions que GRAVAM os injetáveis pedem o Atendimento em Gerenciar e o Prontuário em Ver', () => {
   for (const nome of [
     'criarPlanejamentoInjetavel',
     'salvarPlanejamentoInjetavel',
@@ -33,6 +39,7 @@ describe('as actions que GRAVAM os injetáveis pedem o Atendimento em Gerenciar'
     it(nome, () => {
       const c = corpo(nome)
       expect(c).toContain("assertPermission(ctx, 'atendimento', 'MANAGE')")
+      expect(c, 'e o Prontuário em Ver').toContain("assertPermission(ctx, 'medical_records', 'VIEW')")
       expect(c).not.toContain("'medical_records', 'MANAGE'")
       expect(c).toContain("assertRecurso(ctx, 'injetaveis')")
     })
@@ -58,7 +65,7 @@ describe('a tela oferece criar, editar e registrar a quem tem o Atendimento em G
   it('o detalhe e a lista de Injetáveis', () => {
     for (const arq of ['app/_shared/detalhe-de-injetavel.tsx', 'app/_shared/lista-de-injetaveis.tsx']) {
       const f = fonte(arq)
-      expect(f, arq).toContain("podeEditar={can(ctx, 'atendimento', 'MANAGE')}")
+      expect(f, arq).toContain("podeEditar={can(ctx, 'atendimento', 'MANAGE') && can(ctx, 'medical_records', 'VIEW')}")
       expect(f, arq).not.toContain("'medical_records', 'MANAGE'")
       // E a tela continua abrindo com o Prontuário em Ver.
       expect(f, arq).toContain("'medical_records', 'VIEW'")
@@ -66,15 +73,15 @@ describe('a tela oferece criar, editar e registrar a quem tem o Atendimento em G
   })
   it('a ficha da cliente: o planejamento de injetáveis pelo Atendimento em Gerenciar', () => {
     for (const arq of ['app/[slug]/clients/[id]/page.tsx', 'app/admin/clients/[id]/page.tsx']) {
-      expect(fonte(arq), arq).toContain("podeEditarInjetaveis={can(ctx, 'atendimento', 'MANAGE')}")
+      expect(fonte(arq), arq).toContain("podeEditarInjetaveis={can(ctx, 'atendimento', 'MANAGE') && canViewRecords}")
     }
     expect(fonte('components/branch/client-profile.tsx')).toContain('podeEditarInjetaveis={podeEditarInjetaveis}')
   })
   it('o atendimento: o painel e o campo do planejador da ficha', () => {
     const s = fonte('components/branch/appointment-session.tsx')
-    expect(s).toContain('podeEditarInjetaveis={canManage}')
+    expect(s).toContain('podeEditarInjetaveis={canManage && canViewRecords}')
     expect(s).not.toMatch(/<PainelPlanejamento[\s\S]{0,400}podeEditar=\{canEditRecords\}/)
-    expect(s.match(/injetaveis=\{\{ clientId: client\.id, branchId, produtos: produtosDoMapa, podeEditar: canManage \}\}/g)).toHaveLength(2)
+    expect(s.match(/injetaveis=\{\{ clientId: client\.id, branchId, produtos: produtosDoMapa, podeEditar: canManage && canViewRecords \}\}/g)).toHaveLength(2)
     const r = fonte('components/branch/anamnesis-form-renderer.tsx')
     expect(r).toContain('podeEditar={injetaveis.podeEditar === true}')
   })

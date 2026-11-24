@@ -639,9 +639,10 @@ marca a falta; o `atendimento` em Ver abre a tela do atendimento, em
 Gerenciar inicia, conclui, desiste no meio e monta o plano (na avaliação ou
 depois, com a unidade do plano ao alcance); o clínico (ficha de saúde,
 evolução, fotos) é do Prontuário em Gerenciar, sem precisar atender; os
-injetáveis (planejar, registrar a aplicação) são do Atendimento em Gerenciar, e
-vê-los, do Prontuário em Ver (o Heitor, 2026-11-23: "o mapa de injetaveis é pra
-quem realiza atendimento"); receber é do PDV (`podeReceber`). O "Atende" não dá permissão nenhuma. Regra
+injetáveis (planejar, registrar a aplicação) são do Atendimento em Gerenciar
+com o Prontuário em Ver, e vê-los, do Prontuário em Ver (o Heitor, 2026-11-23:
+"o mapa de injetaveis é pra quem realiza atendimento"; e "ok" a gravar pedir as
+duas); receber é do PDV (`podeReceber`). O "Atende" não dá permissão nenhuma. Regra
 em `docs/regras/atendimento.md`.
 
 Os 20 módulos: `agenda`, `atendimento`, `clients`, `loyalty`, `medical_records`, `documents`,

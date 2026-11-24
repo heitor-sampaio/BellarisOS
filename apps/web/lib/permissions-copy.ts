@@ -94,7 +94,7 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   atendimento: {
     NONE:   SEM_ACESSO,
     VIEW:   'Abre a tela do atendimento e os planos de tratamento, sem iniciar nem concluir.',
-    MANAGE: 'Tudo do Ver, e inicia, conclui e desiste do atendimento no meio, lança os insumos usados, monta o plano de tratamento, na avaliação ou depois, e planeja os injetáveis e registra a aplicação deles. A evolução, as fotos e a ficha de saúde são do Prontuário em Gerenciar.',
+    MANAGE: 'Tudo do Ver, e inicia, conclui e desiste do atendimento no meio, lança os insumos usados, monta o plano de tratamento, na avaliação ou depois, e, com o Prontuário em Ver, planeja os injetáveis e registra a aplicação deles. A evolução, as fotos e a ficha de saúde são do Prontuário em Gerenciar.',
   },
   clients: {
     NONE:   SEM_ACESSO,

@@ -1774,6 +1774,14 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-23 (3) — Gravar injetáveis pede também o Prontuário em Ver
+
+As três perguntas que sobraram da entrega (2), com a resposta do Heitor:
+- **Gravar injetáveis pede o Atendimento em Gerenciar E o Prontuário em Ver** (proposta do Claude; "3 - ok"). Criar, salvar, renomear, ligar à cliente e registrar a aplicação (`actions/injectable-map.ts`) conferem as duas; a tela só oferece editar com as duas (`podeEditar` das telas de Injetáveis, `podeEditarInjetaveis` da ficha e do atendimento, o campo do planejador da ficha). Antes, a chamada direta à action gravava sem o Prontuário em Ver, que a tela já exigia para mostrar o mapa.
+- **O Ticket médio fica** sem o Financeiro ("ticket médio é parametro/metrica, não é algo/operação financeira"). A proposta do Claude (levá-lo ao Financeiro) não vingou; nada mudou.
+- **A receita dos atendimentos e o Top 5 por receita** sem o Financeiro ficam ("acho que ok, ainda nao sei") — em aberto, se ele quiser rever.
+- Teste alterado (a regra mudou, "3 - ok"): `tests/injetaveis-quem-realiza-atendimento.test.ts` passa a exigir o Prontuário em Ver nas cinco actions que gravam e nas telas.
+
 ### 2026-11-23 (2) — As respostas finais do Heitor: injetáveis, o "Atende", Relatórios e as Minhas comissões
 
 As respostas do Heitor às perguntas que sobraram da entrega anterior (23/11). Cada uma abaixo traz a fala dele.

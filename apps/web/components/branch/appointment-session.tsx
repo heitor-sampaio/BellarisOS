@@ -1591,7 +1591,7 @@ export function AppointmentSession({
             hideSaveButton={unified}
             semInjetaveis={!podeInjetaveis}
             onAnswersChange={setFichaDigitada}
-            injetaveis={{ clientId: client.id, branchId, produtos: produtosDoMapa, podeEditar: canManage }}
+            injetaveis={{ clientId: client.id, branchId, produtos: produtosDoMapa, podeEditar: canManage && canViewRecords }}
           />
         ),
       } : null}
@@ -1620,7 +1620,7 @@ export function AppointmentSession({
           saveAction={salvarFicha}
           semInjetaveis={!podeInjetaveis}
           onAnswersChange={setFichaDigitada}
-          injetaveis={{ clientId: client.id, branchId, produtos: produtosDoMapa, podeEditar: canManage }}
+          injetaveis={{ clientId: client.id, branchId, produtos: produtosDoMapa, podeEditar: canManage && canViewRecords }}
         />
       </div>
     </section>
@@ -1684,7 +1684,7 @@ export function AppointmentSession({
               availableProducts={availableProducts}
               // O mapa de injetáveis é de quem realiza o atendimento: o
               // Atendimento em Gerenciar (o Heitor, 2026-11-23); ver, o Prontuário em Ver.
-              podeEditarInjetaveis={canManage}
+              podeEditarInjetaveis={canManage && canViewRecords}
               podeMontarPlano={montaPlanoNaUnidade}
               podeAnotarNoPlano={canEditRecords}
               podeVerInjetaveis={canViewRecords}

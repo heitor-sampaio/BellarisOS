@@ -103,6 +103,8 @@ export async function criarPlanejamentoInjetavel({
 }): Promise<{ id?: string; error?: string; reaproveitado?: boolean }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'atendimento', 'MANAGE')
+  // E o Prontuário em Ver: quem grava vê as aplicações anteriores (o Heitor, 23/11, "3 - ok").
+  assertPermission(ctx, 'medical_records', 'VIEW')
   assertRecurso(ctx, 'injetaveis')
   const admin = createAdminClient()
 
@@ -248,6 +250,8 @@ export async function salvarPlanejamentoInjetavel(
 ): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'atendimento', 'MANAGE')
+  // E o Prontuário em Ver: quem grava vê as aplicações anteriores (o Heitor, 23/11, "3 - ok").
+  assertPermission(ctx, 'medical_records', 'VIEW')
   assertRecurso(ctx, 'injetaveis')
   const admin = createAdminClient()
 
@@ -276,6 +280,8 @@ export async function renomearPlanejamentoInjetavel(
 ): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'atendimento', 'MANAGE')
+  // E o Prontuário em Ver: quem grava vê as aplicações anteriores (o Heitor, 23/11, "3 - ok").
+  assertPermission(ctx, 'medical_records', 'VIEW')
   assertRecurso(ctx, 'injetaveis')
   const admin = createAdminClient()
 
@@ -301,6 +307,8 @@ export async function vincularClienteAoPlanejamento(
 ): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'atendimento', 'MANAGE')
+  // E o Prontuário em Ver: quem grava vê as aplicações anteriores (o Heitor, 23/11, "3 - ok").
+  assertPermission(ctx, 'medical_records', 'VIEW')
   assertRecurso(ctx, 'injetaveis')
   const admin = createAdminClient()
 
@@ -343,6 +351,8 @@ export async function registrarAplicacao(
 ): Promise<{ error?: string; id?: string; atualizada?: boolean }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'atendimento', 'MANAGE')
+  // E o Prontuário em Ver: quem grava vê as aplicações anteriores (o Heitor, 23/11, "3 - ok").
+  assertPermission(ctx, 'medical_records', 'VIEW')
   assertRecurso(ctx, 'injetaveis')
   const admin = createAdminClient()
 

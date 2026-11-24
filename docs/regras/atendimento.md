@@ -2258,7 +2258,12 @@ const procedures = await ler(
   registrar a aplicação (`criarPlanejamentoInjetavel`,
   `salvarPlanejamentoInjetavel`, `renomearPlanejamentoInjetavel`,
   `vincularClienteAoPlanejamento`, `registrarAplicacao`) pedem o Atendimento
-  em Gerenciar — a permissão, não o "Atende" da Equipe (UM5). A lista de
+  em Gerenciar — a permissão, não o "Atende" da Equipe (UM5) — E o Prontuário
+  em Ver (o Heitor, 2026-11-23, "3 - ok", à proposta "gravar injetáveis: pedir
+  as duas permissões": quem planeja ou registra a aplicação vê as anteriores, e
+  a action diz o mesmo que a tela, que só mostra o mapa com o Prontuário em
+  Ver). A tela só oferece editar com as duas (`podeEditar` e
+  `podeEditarInjetaveis` = Atendimento em Gerenciar && Prontuário em Ver). A lista de
   Injetáveis (`listarMapasDeInjetaveis`), o planejamento aberto, os
   planejamentos da cliente e as doses do mapa abrem com o Prontuário em Ver
   (sem o "só os meus", SM1). Toda action pelo id do mapa (`mapaDoTenant`)

@@ -50,7 +50,7 @@ export async function ListaDeInjetaveis({
           mapas={mapas}
           basePath={basePath}
           branchId={branchId ?? ''}
-          podeEditar={can(ctx, 'atendimento', 'MANAGE')}
+          podeEditar={can(ctx, 'atendimento', 'MANAGE') && can(ctx, 'medical_records', 'VIEW')}
         />
       }
     >

@@ -2238,6 +2238,11 @@ Junto do Bloco: Sem o "só os meus".
 - As Minhas comissões para quem tem comissão no nome dela, não só o percentual próprio (recomendação do Claude; "vamos pela sua recomendação"). ✅
 - A Minha agenda fica ("acho que sim"); corrigir o concluído é só do Prontuário em Gerenciar ("3 - ok"); a Agenda em Gerenciar cancela, remarca e desfaz o bloqueio de qualquer pessoa ("4 - ok") e troca o profissional ("7 - ok"). ✅
 
+**As três que sobraram (o Heitor, 23/11):**
+- Gravar injetáveis pede também o **Prontuário em Ver** (proposta do Claude; "3 - ok"): quem planeja ou registra a aplicação vê as anteriores, e a action passa a dizer o mesmo que a tela. ✅
+- O **Ticket médio** continua para quem não tem o Financeiro ("ticket médio é parametro/metrica, não é algo/operação financeira") — a proposta do Claude era levá-lo ao Financeiro; não mudou nada. ✅
+- A **receita dos atendimentos** e o Top 5 por receita sem o Financeiro ficam como estão ("acho que ok, ainda nao sei"): em aberto, se o Heitor quiser rever.
+
 ## O que já estava pendente, para entrar no módulo dele
 
 **Onde cada item foi parar (fim da revisão, 13/11):**
