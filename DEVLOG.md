@@ -1774,6 +1774,15 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-24 (4) — O catálogo de regras: Comissões (rascunho para o Heitor)
+
+A quinta área do catálogo, pelo mesmo método (três leitores: as duas metades de `docs/regras/comissoes.md` e as decisões de fora dele — a revisão, o CLAUDE.md §11, as menções nos outros arquivos; um condensador). `docs/catalogo/comissoes.md`:
+- 93 regras (CM onde fica e quem mexe 9, CA a comissão de quem atende 6, CV a de venda 14, CQ pacote e plano 13, CB a base 12, CT a taxa da maquininha na comissão 6, CN quando sai 4, CE estorno e cancelamento 5, CF extrato e fechamento 19, QV quem vê 2, MC as Minhas comissões 3), de 115 no rascunho; 3 ficaram fora (dado antigo, história, a H9 que perdeu efeito em 18/11) e 3 são de outra área (a comissão do procedimento é a PC-03 do Atendimento, com a Q25).
+- 4 perguntas na página (M01–M04): dois "estas regras são suas?" (a reforma de 30/09 abre com "Decisões do Heitor" sem a fala), o "está no escopo?" da comissão de venda no checkout do plano, e o filtro de Tags em Financeiro → Comissões (a regra das Tags contra o "é por profissional" do Claude). Três perguntas dos rascunhos saíram porque a revisão (PC5, E9) ou o princípio 7 já respondem.
+- 17 divergências. Uma é da TELA contra o princípio 3: o resumo da comissão na Equipe diz "Comissão: nenhuma." a quem não atende e não tem venda própria (`lib/equipe/textos-do-cadastro.ts:19`), e a do pacote, do produto e da rede continua valendo — o mesmo que a A6 da 24ª corrigiu no chip. Fica para a correção, com teste (o `tests/atritos-da-20-configuracoes.test.ts` muda, pela A6 da 24ª e o princípio 3).
+- O catálogo de Clientes (IM-22) passa a dizer que, no pacote de antes sem valor de referência, só a comissão em percentual é R$ 0 (a de R$ fixo por sessão é paga, item 11 de 18/11); a tela já dizia assim, e o texto de `docs/regras/crm-inbox.md:1020` ficou nas divergências.
+- Conferido por script: as falas citadas existem letra por letra (uma tem as aspas escapadas no próprio texto de origem); nenhum dos 115 números do rascunho sumiu. `docs/regras/` não mudou.
+
 ### 2026-11-24 (3) — O catálogo de regras: Vendas e financeiro (rascunho para o Heitor)
 
 A quarta área do catálogo, pelo mesmo método (sete leitores: seis pedaços de `docs/regras/vendas-financeiro.md`, que tem 3.268 linhas, e as decisões da revisão; um condensador). `docs/catalogo/vendas-financeiro.md`: o PDV e a comanda, as vendas e o desconto, as formas de pagamento, o crediário, o dinheiro do plano, os pacotes, o pré-pago, a venda de produto, o crédito interno vendido, o estorno e a devolução, as maquininhas e as taxas, o caixa e o fechamento do dia, o Financeiro, o CSV e o que a cliente vê no app.

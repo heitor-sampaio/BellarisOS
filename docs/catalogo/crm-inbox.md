@@ -468,7 +468,7 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/regras/crm-inbox.md:972-979`, `:1737`
 - Antes: KC-57, KC-58, KE-67
 
-**IM-22.** A coluna "Pacote de antes" ("procedimento; total; usadas", com valor de referência e validade opcionais, vários separados por "|") cria o pacote trazido de fora na unidade da linha ou na da tela; só se oferece a quem tem o Financeiro em Gerenciar, não traz o mesmo pacote duas vezes e deixa de fora, com o motivo, o que não se entende. A prévia mostra o formato e as três primeiras linhas e avisa quantos pacotes estão sem valor de referência (esses não geram comissão de execução nem entram na receita). O Histórico do app mostra o que veio de antes ("Antes do sistema — 5 sessões de…"), sem virar atendimento.
+**IM-22.** A coluna "Pacote de antes" ("procedimento; total; usadas", com valor de referência e validade opcionais, vários separados por "|") cria o pacote trazido de fora na unidade da linha ou na da tela; só se oferece a quem tem o Financeiro em Gerenciar, não traz o mesmo pacote duas vezes e deixa de fora, com o motivo, o que não se entende. A prévia mostra o formato e as três primeiras linhas e avisa quantos pacotes estão sem valor de referência (neles a comissão de execução em percentual é R$ 0 — a de R$ fixo por sessão é paga — e eles não entram na receita). O Histórico do app mostra o que veio de antes ("Antes do sistema — 5 sessões de…"), sem virar atendimento.
 - Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-06: "concordo"
 - Onde: `docs/regras/crm-inbox.md:989-1013`
 - Antes: KC-60, KC-61, KC-63
@@ -827,6 +827,7 @@ O texto de `docs/regras/` (ou da própria revisão) contra a decisão mais nova 
 - TG-10, IN-04: juntar as tags do contato às da ficha ao ligar (`docs/regras/crm-inbox.md:1098`, `:414`) não é o sistema pôr tag: a tag é da PESSOA (o Heitor, 18/11), e contato e ficha são a mesma pessoa. O texto devia dizer isso.
 - OP-08: `docs/regras/crm-inbox.md:1276` e `docs/revisao.md:2216` chamam o filtro do inbox de "o dono"; a tela já diz "Responsável" (`components/admin/inbox-filtros.tsx:409`). Só o texto está velho.
 - OP-25: "Motivos de perda" da rede inteira (`docs/regras/crm-inbox.md:1518`) está certo — a oportunidade é da pessoa, e a pessoa é da rede; o texto devia dizer por quê.
+- IM-22: `docs/regras/crm-inbox.md:1020` diz que o pacote de antes sem valor de referência "não geram comissão de execução (R$ 0)"; o item 11 das correções da auditoria (18/11, `docs/regras/comissoes.md:380-387`) decidiu que o R$ fixo por sessão é pago e só o percentual fica R$ 0. A tela já diz certo (`components/branch/importador-de-contatos.tsx:374`, `:477`); só o texto está velho.
 
 ## Ficou fora do catálogo
 
