@@ -33,7 +33,7 @@ Este é o catálogo das regras de Vendas e financeiro que valem HOJE: o PDV e as
 
 ### A comanda
 
-**PV-06.** Uma venda, uma comanda: o atendimento, o pacote, o procedimento pré-pago, o produto, o crédito interno vendido e o plano, cada um na sua comanda, por qualquer caminho que venda (a tela ou o Copilot). As parcelas seguintes da mesma venda não abrem outra comanda.
+**PV-06.** Uma venda, uma comanda: o atendimento, o pacote, o procedimento pré-pago, o produto, o crédito interno vendido e o plano, cada um na sua comanda, por qualquer caminho que venda (o Copilot não vende: só manda ao PDV). As parcelas seguintes da mesma venda não abrem outra comanda.
 - Fonte: o Heitor, 2026-11-13: "Uma comanda para cada coisa que vai ser vendido, né? … Tudo que for uma venda gera uma comanda."
 - Onde: `docs/regras/vendas-financeiro.md:12-13`, `:70-74`; `docs/revisao.md:555-561`, `:1976`
 - Antes: KA-04, KG-02
@@ -1042,6 +1042,7 @@ O texto de `docs/regras/` (ou da própria revisão) contra a decisão mais nova 
 - DP-08: `docs/revisao.md:2077` põe o cancelamento do plano por quem tem o Financeiro em Gerenciar no bloco do Plano de tratamento; a regra é desta área (o dinheiro do plano) e está em DP-08.
 - (sem número; FI8): `docs/revisao.md:2014` registra a saída da política antiga do banco que abria o Financeiro de uma unidade a todo funcionário dela; é detalhe do banco, já coberto pela regra de que a sessão só lê sinais (CLAUDE.md §4).
 - PA-09: `docs/regras/vendas-financeiro.md:320` diz "Só avisa: a venda segue (princípio 2)"; a PA-08 (o Heitor, 13/11: "o ideal era funcionar como no plano de tratamento") e `docs/regras/documentos.md:79-82` dizem que, com o contrato de pacote aberto (a assinar ou faltam dados), a venda não grava nada. O aviso de antes fica; o "a venda segue" está velho.
+- PV-06: `docs/regras/vendas-financeiro.md:70-73` e o CP1 (`docs/revisao.md:1428-1429`) dizem que o Copilot vende e recebe pela comanda do PDV; as respostas do Heitor de 18/11 (`DEVLOG.md:2201`, sobre 17/11) dizem que ele só lê e manda ao PDV. Vale a mais nova (ver o catálogo do Copilot).
 
 ## Ficou fora do catálogo
 
@@ -1083,7 +1084,7 @@ Detalhe de tela ou implementação, sem decisão de produto.
 - Os números: o plano conta como venda quando é pago; nas Vendas o pacote e o plano cancelados valem o usado; a venda de produto na receita (caixa, faturamento, ticket médio) e o tipo Produto no relatório; a venda estornada e a devolução de parte nas Vendas e no lucro; o crédito interno fora de Relatórios → Vendas; o cartão "Despesas pagas (caixa)" e o DRE (e o "Exportar o DRE (CSV)" e a linha "Fora do resultado no período"); a ponte entre as Vendas e o caixa; o aviso de parcelas vencidas no dashboard; a aba Vendas dos Relatórios que lista as comandas (RL1), `docs/regras/vendas-financeiro.md:187-196`, `:852-853`, `:909-911`, `:1186-1189`, `:1216-1217`, `:1254-1258`, `:1304-1307`, `:1878`, `:1924`, `:1963`, `:1974`, `:2000`, `:2061`; `docs/revisao.md:1152-1154`, `:2099` — área: Indicadores.
 - O "Vender" do inbox, com ou sem ficha, leva ao PDV e some no painel só de leitura, `docs/regras/vendas-financeiro.md:65-67`, `:675-686` — área: CRM e inbox (IN-17, CL-24; aqui fica só o "só se vende pelo PDV", VD-01).
 - O "Vender" da busca leva ao PDV com a cliente escolhida (BU1), `docs/revisao.md:1560-1562`, `:2157` — área: Busca.
-- O Copilot vende e recebe pela comanda do PDV (CP1), `docs/revisao.md:1428-1432`, `:2202` — área: Copilot.
+- O Copilot só lê e manda ao PDV: não vende, não recebe e não aceita o plano (as respostas do Heitor de 18/11, sobre 17/11, `DEVLOG.md:2201`, mais nova que o CP1 de 13/11, `docs/revisao.md:1428-1432`) — área: Copilot, `docs/catalogo/copilot.md`.
 - O menu com Comercial e Marketing separados e os grupos da tela de Cargos, `docs/regras/vendas-financeiro.md:636-643` — área: Cargos e permissões.
 - Cada categoria do menu recolhe pelo título, `docs/regras/vendas-financeiro.md:644-648` — área: Design.
 - O pagamento de novo depois de um estorno não manda outra compra à Meta, `docs/regras/vendas-financeiro.md:3163` — área: Automações / integrações (Meta).

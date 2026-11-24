@@ -1774,6 +1774,16 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-24 (7) — O catálogo de regras: Copilot, e Plataforma, Equipe, Cargos e Configurações (rascunhos para o Heitor)
+
+As áreas nove e dez, em paralelo (Plataforma com cinco leitores, por ter 1.524 linhas; Copilot com três; um condensador cada).
+- `docs/catalogo/copilot.md`: 63 regras (o que é e quem usa, a permissão de quem pergunta, o cartão antes de gravar, o que consulta, como responde, o que grava, o que não faz, o histórico e a cota), de 90 no rascunho; 5 divergências.
+- `docs/catalogo/plataforma.md`: 174 regras (o sistema da plataforma, o suporte, a assinatura, o plano e os adicionais, a criação da rede, as unidades, o login, a Equipe, os Cargos, as Configurações, a Auditoria), de 225 no rascunho; 17 divergências.
+- 7 perguntas na página, escritas sem siglas (o Heitor, 24/11: "vamos evitar siglas e ser descritivos a partir de agora"): no Copilot, as regras dele sem a fala (com o "não vende, não recebe" das respostas de 18/11, mais novo que a aprovação de 13/11), o Copilot pedir dois módulos para agir (contra "nenhuma ação pede dois", 23/11) e o escopo de responder pela Minha agenda e pelas Minhas comissões; na Plataforma, três "estas regras são suas?" e quem vê os chamados de suporte dos colegas.
+- O catálogo de Vendas corrigido: o Copilot não vende nem recebe (só manda ao PDV); o "vende e recebe" do texto ficou nas divergências.
+- Divergências do CÓDIGO/TELA, para a correção (com teste): o Copilot dá baixa na parcela do crediário (`lib/copilot/prompt.ts:132`, `ferramentas/gestao-escrita.ts:196-235`); o Copilot diz que só a Admin da rede muda a comissão de alguém, e a comissão de cada pessoa é de quem tem o Financeiro em Gerenciar (`lib/equipe/quem-desfaz.ts:100`, `lib/copilot/prompt.ts:151-154`); o aviso da assinatura, a fatura na conta suspensa, o sino da assinatura e do suporte e o convite do Copilot avulso ainda vão a quem tem "A rede inteira" com Configurações em Gerenciar, e são só da Admin da rede (`lib/redes/aviso.ts:19`, `app/conta-suspensa/page.tsx:47`, `nucleo/lib/suporte/avisos.ts:12`, `lib/copilot/disponivel.ts:46`); a entrada da cliente no portal não entra na Auditoria (`actions/auth.ts:122`, `api/auth/session/route.ts:77`); mudar a equipe de unidade deixa o "Atende" escolhido à mão na unidade que saiu (`actions/branches.ts:271`) e pede Configurações E Equipe (`:253`); a tela de Cargos diz que o PDV vem também do Financeiro (`lib/permissions-copy.ts:254`, `:261`, `:304`); o cargo só com a aba Financeiro e sem o Financeiro ainda vê Relatórios no menu (`lib/auth.ts:139`); a Equipe diz "o login abre nela" da principal, e o login abre na última usada (`components/shared/unidades-do-membro.tsx:96`).
+- Falas citadas conferidas por script (os avisos restantes são citações de recomendações com aspas internas, conferidas à mão); nenhum dos 315 números do rascunho sumiu. `docs/regras/` não mudou.
+
 ### 2026-11-24 (6) — O catálogo de regras: WhatsApp e push, e Automações (rascunhos para o Heitor)
 
 As áreas sete e oito do catálogo, em paralelo, pelo mesmo método (três leitores cada: as duas metades do arquivo de `docs/regras/` e as decisões de fora dele; um condensador cada).
