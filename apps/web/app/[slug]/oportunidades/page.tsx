@@ -20,6 +20,7 @@ import { CRMStageSettings } from '@/components/branch/crm-stage-settings'
 import { UserPlus } from 'lucide-react'
 import { ler, lerTodas } from '@/lib/db'
 import { atividadeDasPessoas } from '@/lib/crm/atividade-da-pessoa'
+import { nomesDasPessoas, nomeNoCard } from '@/lib/crm/nome-da-pessoa'
 import { sinaisDasClientes, sugereGanho } from '@/lib/crm/sinais-do-card'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -149,6 +150,8 @@ export default async function BranchOportunidadesPage({
   const atividade = await atividadeDasPessoas(
     ctx.tenantId!, leads.map(l => l.contato_id),
   )
+  // A18 da 27ª (o Heitor, 24/11, "1"): o nome do card é o da PESSOA, não a cópia.
+  const nomes = await nomesDasPessoas(ctx.tenantId!, leads.map(l => l.contato_id))
   // A18 da 7ª simulação: o próximo agendamento e a compra da cliente ligada —
   // o card diz "Agendado…" e SUGERE o Ganho (nenhum card anda sozinho).
   const sinais = await sinaisDasClientes(ctx.tenantId!, leads.map(l => l.client_id as string | null).filter((x): x is string => !!x))
@@ -161,6 +164,7 @@ export default async function BranchOportunidadesPage({
     const ativ = atividade.get(pessoa)
     return {
       ...rest,
+      name:                nomeNoCard(nomes.get(pessoa), rest.name as string),
       tags:                tagsDaPessoaDaOportunidade(l),
       owner_name:          dono?.name ?? null,
       owner_ativo:         dono ? dono.is_active : null,

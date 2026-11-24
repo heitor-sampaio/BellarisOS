@@ -1810,11 +1810,11 @@ A 27ª (cinco redes, 24/11, HEAD `ea2eff78`) achou 8 defeitos e 24 atritos; o di
   - A23 (o "Quem viu" junta em 30 min, pela regra);
   - A24 (a entrada está nas Movimentações e no caixa do dia);
   - o segundo "Vender" depois do contrato (é o recebimento, PC2).
-- **Foi ao Heitor**: o A18. Duas oportunidades da mesma pessoa mostram nomes diferentes porque cada uma guarda o nome com que nasceu. Mostrar o nome da pessoa no card quebrava dois testes existentes (`listas-sem-corte`, o D11 da 9ª), que gravam o nome digitado na oportunidade. Ficou como estava, e a pergunta é qual nome vale.
+- **O A18, decidido pelo Heitor** (24/11, "1": o card sempre mostra o nome do contato). Duas oportunidades da mesma pessoa mostravam nomes diferentes, porque cada uma guardava o nome com que nasceu. Agora os dois quadros mostram `contacts.name` (`nomesDasPessoas`, `nomeNoCard`), e a cópia só aparece quando a pessoa não tem nome. Teste alterado por essa regra: `e2e/listas-sem-corte.spec.ts`, onde a pessoa da oportunidade-alvo passa a ter o nome dela (antes eram dois nomes diferentes para a mesma pessoa).
 - **Teste existente alterado**: `e2e/ficha-pre-atendimento.spec.ts` (A27). A pessoa com Clientes em Ver não vê mais "Editar o cadastro", pela regra do Heitor de 01/11, "quem só pode ver só pode ver" (`crm-inbox.md`). O A27 é anterior a ela.
 - A completa local passou depois de três consertos:
   - o texto da A22 manteve "não tem conversa aberta" e "não tem acesso ao portal", que os testes existentes exigem;
-  - o A18 foi desfeito;
+  - o A18, que quebrava o `listas-sem-corte`, entrou depois da decisão do Heitor;
   - o E2E novo do D5 tinha "[e2e]" dentro de uma expressão regular.
 
 ### 2026-11-24 (9) — Uma linha só: as correções da 26ª e o escopo de 18/11 na main

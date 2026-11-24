@@ -1715,7 +1715,11 @@ ficha — pelas oportunidades (`leads.client_id`) e pelas conversas
 **A tela lê o NOME da pessoa, não a cópia** — lista, busca (`inbox_pagina`),
 card do contato, "virar cliente", template, agendamento pelo CRM e o evento da
 conversa (embed `pessoa:contacts!conversations_contato_id_fkey(name)`; a cópia
-só na falta). O **telefone da conversa não é cópia**: é o destino daquela thread,
+só na falta) — e o card do quadro, nos dois portais (A18 da 27ª; o Heitor,
+24/11, "1": o card sempre mostra o nome do contato. Duas oportunidades da
+mesma pessoa mostravam a cópia de cada uma; `nomesDasPessoas` e `nomeNoCard`,
+`lib/crm/nome-da-pessoa.ts`). O e-mail e a rede social do card seguem a cópia
+dele (acima, "Não propagam"). O **telefone da conversa não é cópia**: é o destino daquela thread,
 e é dele que o envio, a lista e o card leem. Prova:
 `e2e/inbox-nome-da-pessoa.spec.ts` (a pessoa renomeada com a cópia velha).
 

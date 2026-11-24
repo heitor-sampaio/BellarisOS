@@ -96,6 +96,25 @@ describe('A17: a origem não é tag, e o painel das tags não corta', () => {
   })
 })
 
+describe('A18: o card mostra o nome da PESSOA (o Heitor, 24/11, "1")', () => {
+  it('o nome do contato vence a cópia da oportunidade; sem ele, a cópia', async () => {
+    expect(existsSync(join(WEB, 'lib/crm/nome-da-pessoa.ts'))).toBe(true)
+    const { nomeNoCard } = await import('@/lib/crm/nome-da-pessoa')
+    expect(nomeNoCard('Betânia Correia', 'Betânia C.')).toBe('Betânia Correia')
+    expect(nomeNoCard('  ', 'Betânia C.')).toBe('Betânia C.')
+    expect(nomeNoCard(null, 'Betânia C.')).toBe('Betânia C.')
+    expect(nomeNoCard(undefined, 'Betânia C.')).toBe('Betânia C.')
+  })
+
+  it('os dois quadros leem o nome das pessoas', () => {
+    for (const p of ['app/[slug]/oportunidades/page.tsx', 'app/admin/oportunidades/page.tsx']) {
+      const f = fonte(p)
+      expect(f, p).toMatch(/nomesDasPessoas\(/)
+      expect(f, p).toMatch(/nomeNoCard\(/)
+    }
+  })
+})
+
 describe('A22: os textos dos documentos não dizem "este cliente"', () => {
   it('nem a action dos documentos nem a lista da ficha', () => {
     for (const p of ['actions/documentos.ts', 'components/shared/termos-do-cliente.tsx']) {

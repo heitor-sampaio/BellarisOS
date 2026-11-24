@@ -10,6 +10,7 @@ import { funilLembrado } from '@/lib/crm/funil-lembrado-no-servidor'
 import { resumoDoFunil } from '@/lib/metrics/resultado'
 import { getCachedNetworkProcedures } from '@/lib/cached-queries'
 import { atividadeDasPessoas } from '@/lib/crm/atividade-da-pessoa'
+import { nomesDasPessoas, nomeNoCard } from '@/lib/crm/nome-da-pessoa'
 import { sinaisDasClientes, sugereGanho } from '@/lib/crm/sinais-do-card'
 import type { ComponentProps } from 'react'
 import { CRMBoard } from '@/components/branch/crm-board'
@@ -118,6 +119,8 @@ export default async function AdminOportunidadesPage({
   const atividade = await atividadeDasPessoas(
     ctx.tenantId!, leadsRaw.map(l => l.contato_id),
   )
+  // A18 da 27ª (o Heitor, 24/11, "1"): o nome do card é o da PESSOA, não a cópia.
+  const nomes = await nomesDasPessoas(ctx.tenantId!, leadsRaw.map(l => l.contato_id))
   // A18 da 7ª simulação: o próximo agendamento e a compra da cliente ligada —
   // o card diz "Agendado…" e SUGERE o Ganho (nenhum card anda sozinho).
   const sinais = await sinaisDasClientes(ctx.tenantId!, leadsRaw.map(l => l.client_id as string | null).filter((x): x is string => !!x))
@@ -130,6 +133,7 @@ export default async function AdminOportunidadesPage({
     const ativ = atividade.get(pessoa)
     return {
       ...rest,
+      name:                nomeNoCard(nomes.get(pessoa), rest.name as string),
       tags:                tagsDaPessoaDaOportunidade(l),
       owner_name:          dono?.name ?? null,
       owner_ativo:         dono ? dono.is_active : null,

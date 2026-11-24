@@ -186,7 +186,10 @@ test('o quadro de oportunidades, o inbox e o relatório comercial veem a 1011ª 
   await abrir(browser, '/admin/oportunidades', async () => {})
   const etapa = (await db().from('crm_stages').select('id, crm_funnels!inner(tenant_id)').eq('crm_funnels.tenant_id', rede!.tenantId)
     .order('position').limit(1).single<{ id: string }>()).data!.id
-  const contatos = await emLotes('contacts', Array.from({ length: LOTE + 1 }, (_, i) => ({ tenant_id: rede!.tenantId, name: `${PREFIXO} Pessoa ${i} ${marca}` })))
+  // O card mostra o nome da PESSOA (o Heitor, 24/11, "1": o card sempre mostra o
+  // nome do contato): a pessoa da alvo tem o nome dela.
+  const contatos = await emLotes('contacts', Array.from({ length: LOTE + 1 }, (_, i) => ({ tenant_id: rede!.tenantId,
+    name: i === 0 ? `${PREFIXO} Zz Oportunidade antiga ${marca}` : `${PREFIXO} Pessoa ${i} ${marca}` })))
   // A mais ANTIGA do mês é a alvo: o quadro e o inbox vêm da mais nova para a
   // mais antiga.
   await emLotes('leads', contatos.map((contato, i) => ({

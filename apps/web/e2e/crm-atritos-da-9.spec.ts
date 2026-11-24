@@ -137,13 +137,15 @@ test('A42: o lembrete de retorno se marca no card, com o dia e o que fazer, e o 
 })
 
 /**
- * O card e o "Ir para a conversa" (A16 e A17 da 27ª simulação):
+ * O card e o "Ir para a conversa" (A16, A17 e A18 da 27ª simulação):
  * - A16 (CLAUDE.md §14; "quem só pode ver só pode ver"): com o CRM em Ver, o
  *   "Ir para a conversa" criava a conversa; agora diz o que falta, no alto do
  *   modal, e o modal diz "Só leitura".
  * - A17 (a origem é a ORIGEM; a tag é o filtro da rede): a origem e a tag eram o
  *   mesmo chip, a tag com o nome da origem sumia, e o painel das tags era
  *   cortado pelo modal.
+ * - A18 (o Heitor, 24/11, "1": o card sempre mostra o nome do contato): duas
+ *   oportunidades do mesmo contato mostravam a cópia de cada uma.
  */
 test('A16 da 27ª: com o CRM em Ver, "Ir para a conversa" não cria a conversa e diz por quê; o modal diz "Só leitura"', async ({ browser }) => {
   const id = await lead('Sem conversa A16', { phone: null, email: `a16-${marca}@bellaris.invalid` })
@@ -190,5 +192,20 @@ test('A17 da 27ª: a origem não é o chip da tag, a tag com o nome da origem ap
     expect(await painel.evaluate(el => el.matches(':popover-open')), 'o painel na camada de cima').toBe(true)
     await expect(painel).toBeInViewport({ ratio: 1 })
     await expect(painel.getByRole('button', { name: 'Indicação' })).toBeVisible()
+  })
+})
+
+test('A18 da 27ª: duas oportunidades do mesmo contato mostram o nome do contato', async ({ browser }) => {
+  const primeira = await lead('Betânia Correia A18')
+  const { data: l } = await db().from('leads').select('contato_id').eq('id', primeira).single<{ contato_id: string }>()
+  expect((await db().from('contacts').update({ name: nome('Betânia Correia') }).eq('id', l!.contato_id)).error).toBeNull()
+  const segunda = await lead('Betânia C. A18', { contato_id: l!.contato_id })
+  await como(browser, sdr, async p => {
+    await p.goto('/admin/oportunidades')
+    for (const id of [primeira, segunda]) {
+      const card = p.locator(`[data-lead-id="${id}"]`)
+      await expect(card).toContainText(nome('Betânia Correia'))
+      await expect(card).not.toContainText('Betânia C. A18')
+    }
   })
 })
