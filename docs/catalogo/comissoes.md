@@ -1,6 +1,6 @@
 # Catálogo de regras — Comissões
 
-Este é o catálogo das regras das Comissões que valem HOJE: onde ficam e quem mexe, a comissão de quem atende, a comissão de venda, o pacote e o plano, a base da comissão, a taxa da maquininha na comissão, quando a comissão sai, o estorno e o cancelamento, o extrato e o fechamento, quem vê e as Minhas comissões. Cada regra diz a fonte: uma fala do Heitor (copiada letra por letra do documento), uma recomendação do Claude que o Heitor aprovou (com a resposta dele), um dos sete princípios de produto, "decisão do Claude", ou "atribuída ao Heitor sem a fala (a confirmar)". "Onde" aponta a linha do documento; "Antes" lista os números do rascunho que a regra junta (KA: `docs/regras/comissoes.md:1-400`; KB: `docs/regras/comissoes.md:400-779`; KC: as decisões de `docs/revisao.md`, do CLAUDE.md §11 e dos outros arquivos de `docs/regras/`). É um RASCUNHO para o Heitor revisar. Contagem: 93 regras (Onde fica e quem mexe 9, A comissão de quem atende 6, A comissão de venda 14, O pacote e o plano 13, A base da comissão 12, A taxa da maquininha na comissão 6, Quando a comissão sai 4, Estorno e cancelamento 5, O extrato e o fechamento 19, Quem vê 2, As Minhas comissões 3), 4 perguntas e 17 divergências. Dos 115 números do rascunho, 3 ficaram fora do catálogo e 3 são de outra área (ver os apêndices); todos os outros estão num "Antes". Das seis perguntas dos rascunhos, três tinham resposta numa regra que já existe (a resposta "ok, mantém"/"mantém" da revisão, o princípio 7 e a regra de 18/11): o motivo de cada uma está em "Divergências".
+Este é o catálogo das regras das Comissões que valem HOJE: onde ficam e quem mexe, a comissão de quem atende, a comissão de venda, o pacote e o plano, a base da comissão, a taxa da maquininha na comissão, quando a comissão sai, o estorno e o cancelamento, o extrato e o fechamento, quem vê e as Minhas comissões. Cada regra diz a fonte: uma fala do Heitor (copiada letra por letra do documento), uma recomendação do Claude que o Heitor aprovou (com a resposta dele), um dos sete princípios de produto, "decisão do Claude". "Onde" aponta a linha do documento; "Antes" lista os números do rascunho que a regra junta (KA: `docs/regras/comissoes.md:1-400`; KB: `docs/regras/comissoes.md:400-779`; KC: as decisões de `docs/revisao.md`, do CLAUDE.md §11 e dos outros arquivos de `docs/regras/`). É um RASCUNHO para o Heitor revisar. Contagem: 93 regras (Onde fica e quem mexe 9, A comissão de quem atende 6, A comissão de venda 14, O pacote e o plano 13, A base da comissão 12, A taxa da maquininha na comissão 6, Quando a comissão sai 4, Estorno e cancelamento 5, O extrato e o fechamento 19, Quem vê 2, As Minhas comissões 3), 4 perguntas e 17 divergências. Dos 115 números do rascunho, 3 ficaram fora do catálogo e 3 são de outra área (ver os apêndices); todos os outros estão num "Antes". Das seis perguntas dos rascunhos, três tinham resposta numa regra que já existe (a resposta "ok, mantém"/"mantém" da revisão, o princípio 7 e a regra de 18/11): o motivo de cada uma está em "Divergências".
 
 ## Onde fica e quem mexe (CM)
 
@@ -52,7 +52,7 @@ Este é o catálogo das regras das Comissões que valem HOJE: onde ficam e quem 
 ## A comissão de quem atende (CA)
 
 **CA-01.** A comissão de execução é da PESSOA, na rede: um padrão (% ou R$ fixo) e exceções por procedimento; quem atende em mais de uma unidade tem a mesma comissão em todas. Vale a exceção do procedimento; sem ela, o padrão; sem os dois, o atendimento conclui sem comissão, e a tela avisa quem atende sem padrão.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar): "Decisões do Heitor" no topo da seção
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele): "Decisões do Heitor" no topo da seção
 - Onde: `docs/regras/comissoes.md:10`, `:63-69`, `:520-522`
 - Antes: KA-09, KB-17
 
@@ -233,7 +233,7 @@ Este é o catálogo das regras das Comissões que valem HOJE: onde ficam e quem 
 - Antes: KA-20
 
 **CB-03.** Na regra em percentual, a base é o preço menos o desconto comercial (sempre), menos os pontos e o voucher (se a rede escolheu "Sobre o valor pago"), menos a taxa do recebimento (se marcada), menos os insumos (se marcados). Na regra em valor fixo, só os pontos e o voucher a reduzem, na proporção; taxa, insumo e desconto não. No pacote e no plano, o desconto já está no preço da sessão e do procedimento.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/comissoes.md:586-590`
 - Antes: KB-25
 
@@ -248,7 +248,7 @@ Este é o catálogo das regras das Comissões que valem HOJE: onde ficam e quem 
 - Antes: KA-22
 
 **CB-06.** A base de cada comissão de execução: no atendimento avulso, o preço do atendimento; na sessão de plano, cada procedimento com o seu preço no plano e a sua regra; na sessão de pacote, a parte dela no rateio da venda (pelo preço de tabela de cada procedimento), com a regra do procedimento ou a execução que o pacote define.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/comissoes.md:570-575`; `docs/revisao.md:271-272`
 - Antes: KB-23
 
@@ -268,7 +268,7 @@ Este é o catálogo das regras das Comissões que valem HOJE: onde ficam e quem 
 - Antes: KA-28
 
 **CB-10.** A comissão guarda a regra e a configuração do dia em que nasceu (percentual, o que sai da base, pontos): mudar a configuração vale para os próximos atendimentos e vendas, não reescreve os já concluídos.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/comissoes.md:567-569`
 - Antes: KB-22
 
@@ -305,7 +305,7 @@ Este é o catálogo das regras das Comissões que valem HOJE: onde ficam e quem 
 - Antes: KA-25
 
 **CT-05.** No plano recebido em vários pagamentos, a taxa da base é a média das taxas, pesada pelo que cada recebimento pagou.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/comissoes.md:606-607`
 - Antes: KB-29
 
@@ -368,7 +368,7 @@ Este é o catálogo das regras das Comissões que valem HOJE: onde ficam e quem 
 ### O extrato
 
 **CF-01.** A comissão devida é uma por procedimento executado (e uma por venda), e o extrato é a soma das mudanças dela: cada liberação, ajuste ou estorno é um lançamento, com o motivo; a soma dos lançamentos é o que a pessoa tem a receber por aquela comissão.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/comissoes.md:10`, `:563-566`
 - Antes: KB-21
 
@@ -398,7 +398,7 @@ Este é o catálogo das regras das Comissões que valem HOJE: onde ficam e quem 
 - Antes: KB-13
 
 **CF-07.** O período de uma comissão é o do LANÇAMENTO (o dia em que foi liberada, ajustada ou estornada), em todo número e no fechamento — não o dia do atendimento: o ajuste de outubro de um atendimento de setembro é de outubro, e o plano no crediário libera no mês em que a última parcela entra.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/comissoes.md:633-638`, `:767`
 - Antes: KB-31
 
@@ -410,12 +410,12 @@ Este é o catálogo das regras das Comissões que valem HOJE: onde ficam e quem 
 ### O fechamento
 
 **CF-09.** As comissões se pagam por fechamento, em Financeiro → Comissões (nos dois portais), no período que a rede configurou: mensal, quinzenal (1–15 e 16–fim do mês) ou semanal (segunda a domingo). A tela mostra, por pessoa e unidade, o lançado, o a pagar e o pago, o extrato de cada uma e o CSV.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/comissoes.md:639-645`
 - Antes: KB-33
 
 **CF-10.** "Fechar e pagar" é de quem tem o Financeiro em Gerenciar (a vista pessoal não fecha): paga o que está a pagar até o fim do período (ou até agora), vira UMA despesa paga "Comissões" no financeiro da unidade e marca os lançamentos como pagos, tudo junto. O fechamento é por pessoa e unidade, e dois cliques fecham uma vez só.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/comissoes.md:646-651`, `:771`
 - Antes: KB-34
 
@@ -445,12 +445,12 @@ Este é o catálogo das regras das Comissões que valem HOJE: onde ficam e quem 
 - Antes: KB-39
 
 **CF-16.** Fechamento não se reabre: o estorno que chega depois dele vira um lançamento negativo para o próximo fechamento, e saldo negativo não fecha.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/comissoes.md:707-708`
 - Antes: KB-40
 
 **CF-17.** Estornar um fechamento é uma janela própria ("Estornar o fechamento?", com quem e quanto, e o motivo), de quem tem o Financeiro em Gerenciar: estorna a despesa e devolve os lançamentos daquele fechamento a "a pagar". É a única porta: o Financeiro comum recusa estornar essa despesa.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/comissoes.md:709-715`, `:774`; `DEVLOG.md:7815-7820`
 - Antes: KB-41
 
@@ -495,13 +495,15 @@ Este é o catálogo das regras das Comissões que valem HOJE: onde ficam e quem 
 
 ## Perguntas ao Heitor
 
-Q01. **A regra e a base da comissão — escritas como decisão sua, sem a sua fala: confirma?** A reforma das comissões de 30/09 abre com "Decisões do Heitor" (`docs/regras/comissoes.md:10`; `DEVLOG.md:7905`, `:7968-7977`), mas sem as suas palavras: CA-01 (a comissão de execução é da pessoa, um padrão e exceções por procedimento; sem os dois, sem comissão), CB-03 (o que sai da base no percentual e no valor fixo), CB-06 (a base de cada caso: avulso, sessão de plano, sessão de pacote), CB-10 (a comissão guarda a regra e a configuração do dia em que nasceu) e CT-05 (no plano pago em vários recebimentos, a taxa é a média pesada).
+Revisão de 24/11 (o Heitor, 24/11: "da uma revisada se as perguntas realmente faz sentido, as vezes tu me perguntas que são coisas obvias e se resolvem fácil com um pouco de logica sobre o contexto"). Fica na página só a Q03 (está no escopo? a comissão de venda no checkout do plano). As outras se resolveram por uma regra dele, um princípio ou a lógica do contexto; cada uma diz como, no começo.
 
-Q02. **O extrato e o fechamento — escritas como decisão sua, sem a sua fala: confirma?** Do mesmo bloco de 30/09 (`docs/regras/comissoes.md:10`; `DEVLOG.md:7815`: "decisão do Heitor: volta para 'a pagar'"): CF-01 (uma comissão por procedimento, e o extrato é a soma das mudanças), CF-07 (o período é o do lançamento, não o do atendimento), CF-09 (o fechamento pelo período que a rede configurou), CF-10 ("Fechar e pagar" vira uma despesa paga "Comissões"), CF-16 (fechamento não se reabre; saldo negativo não fecha) e CF-17 (estornar o fechamento devolve os lançamentos a "a pagar").
+Q01. **Resolvida na revisão de 24/11:** A sua regra (CLAUDE.md §1: "Regra decidida pelo Claude diz que é dele; só se atribui ao Heitor o que a fala dele diz") já responde: sem a fala, a regra é decisão do Claude, e a fonte foi trocada. O conteúdo segue no catálogo para a revisão da área. — *Era:* **A regra e a base da comissão — escritas como decisão sua, sem a sua fala: confirma?** A reforma das comissões de 30/09 abre com "Decisões do Heitor" (`docs/regras/comissoes.md:10`; `DEVLOG.md:7905`, `:7968-7977`), mas sem as suas palavras: CA-01 (a comissão de execução é da pessoa, um padrão e exceções por procedimento; sem os dois, sem comissão), CB-03 (o que sai da base no percentual e no valor fixo), CB-06 (a base de cada caso: avulso, sessão de plano, sessão de pacote), CB-10 (a comissão guarda a regra e a configuração do dia em que nasceu) e CT-05 (no plano pago em vários recebimentos, a taxa é a média pesada).
+
+Q02. **Resolvida na revisão de 24/11:** A sua regra (CLAUDE.md §1: "Regra decidida pelo Claude diz que é dele; só se atribui ao Heitor o que a fala dele diz") já responde: sem a fala, a regra é decisão do Claude, e a fonte foi trocada. O conteúdo segue no catálogo para a revisão da área. — *Era:* **O extrato e o fechamento — escritas como decisão sua, sem a sua fala: confirma?** Do mesmo bloco de 30/09 (`docs/regras/comissoes.md:10`; `DEVLOG.md:7815`: "decisão do Heitor: volta para 'a pagar'"): CF-01 (uma comissão por procedimento, e o extrato é a soma das mudanças), CF-07 (o período é o do lançamento, não o do atendimento), CF-09 (o fechamento pelo período que a rede configurou), CF-10 ("Fechar e pagar" vira uma despesa paga "Comissões"), CF-16 (fechamento não se reabre; saldo negativo não fecha) e CF-17 (estornar o fechamento devolve os lançamentos a "a pagar").
 
 Q03. **Está no escopo? A comissão de venda no checkout do plano.** A Nova venda diz a comissão de venda antes de vender (CV-06), mas o checkout do plano não diz (`docs/regras/comissoes.md:505`: "O checkout do plano não mudou"), e o plano também tem "Quem vendeu" e comissão de venda (CQ-13). Mostrar a frase também no checkout do plano está no escopo?
 
-Q04. **O filtro de Tags em Financeiro → Comissões.** A sua regra das Tags (CLAUDE.md §1, 13/11) diz "onde tiver for passível de filtro, um dos filtros que ela pode usar são as tags". A seção "Tags" da revisão (`docs/revisao.md:378-445`) não diz quais telas ganham o filtro; o Financeiro o pôs em A receber, A pagar e Movimentações (FN-08 do catálogo de Vendas e financeiro) e deixou a aba Comissões de fora por decisão do Claude ("Comissões não: é por profissional", `docs/regras/vendas-financeiro.md:1448`). A tag é da pessoa (a cliente), e cada lançamento de comissão tem uma cliente, mas a aba se organiza por quem recebe a comissão. A aba Comissões ganha o filtro de Tags?
+Q04. **Resolvida na revisão de 24/11:** A sua regra das Tags ("onde tiver for passível de filtro, um dos filtros que ela pode usar são as tags") já decide: a aba Comissões tem filtro, então ganha o de Tags (a tag da cliente da comissão). Defeito a corrigir. — *Era:* **O filtro de Tags em Financeiro → Comissões.** A sua regra das Tags (CLAUDE.md §1, 13/11) diz "onde tiver for passível de filtro, um dos filtros que ela pode usar são as tags". A seção "Tags" da revisão (`docs/revisao.md:378-445`) não diz quais telas ganham o filtro; o Financeiro o pôs em A receber, A pagar e Movimentações (FN-08 do catálogo de Vendas e financeiro) e deixou a aba Comissões de fora por decisão do Claude ("Comissões não: é por profissional", `docs/regras/vendas-financeiro.md:1448`). A tag é da pessoa (a cliente), e cada lançamento de comissão tem uma cliente, mas a aba se organiza por quem recebe a comissão. A aba Comissões ganha o filtro de Tags?
 
 (Sem pergunta nova: a Q25 do catálogo do Atendimento — se a comissão do procedimento é configuração da rede toda, PC-03 — vale igual para CM-03, CQ-02 e CV-09, que aplicam a mesma fala de 18/11 à configuração de Comissões e taxas, ao pacote e ao produto. A resposta de lá decide estas.)
 

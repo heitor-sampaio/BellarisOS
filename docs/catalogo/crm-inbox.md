@@ -7,16 +7,16 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 ### Documento, telefone e o "Novo cliente"
 
 **CL-01.** O "Documento" da ficha tem tipo — CPF, Passaporte ou RNE — e a ficha tem um OU outro. O CPF é único na rede e conferido pelos dígitos verificadores (a sequência repetida, como 11111111111, é recusada) no cadastro, na aba Dados, no "Dar acesso ao app", no Copilot e na importação. O passaporte e o RNE são texto livre de 5 a 20 letras e números, em maiúsculas, e também não se repetem na rede.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/crm-inbox.md:9-10`, `:83`
 - Antes: KA-01, KA-02, KA-17
 
 **CL-02.** A cliente de balcão: o "Novo cliente" pede só nome e telefone. E-mail, CPF e endereço são opcionais (se preenchidos, têm de ser válidos); o endereço fica em "Endereço (opcional)", com o mesmo preenchimento pelo CEP da aba Dados.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/crm-inbox.md:63-65`
 - Antes: KA-11, KA-12
 
-**CL-03.** O telefone do Brasil tem 10 ou 11 dígitos, com o DDD (o 55 do WhatsApp é tirado ao conferir); número incompleto ou sem DDD é recusado — não se adivinha a cidade. O telefone se grava no formato do WhatsApp (55 + DDD + número), e toda tela o mostra formatado, seja qual for o formato gravado.
+**CL-03.** O telefone do Brasil tem 10 ou 11 dígitos, com o DDD (o 55 do WhatsApp é tirado ao conferir); número incompleto ou sem DDD é recusado — não se adivinha a cidade. Na ficha, o telefone se grava formatado, como "(48) 99000-0011" (o cadastro e a conversão da oportunidade, como o balcão); o formato do WhatsApp (55 + DDD + número, só dígitos) é o do contato. Toda tela o mostra formatado, seja qual for o formato gravado.
 - Fonte: decisão do Claude
 - Onde: `docs/regras/crm-inbox.md:86`, `:822-827`, `:1756`
 - Antes: KA-18, KC-32, KC-33, KE-43
@@ -51,7 +51,7 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Antes: KA-23, KA-25, KA-28, KA-29, KE-63
 
 **CL-09.** O "Unificar" nunca muda o NOME da ficha; renomear é editando a ficha.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/crm-inbox.md:118`
 - Antes: KA-24
 
@@ -78,7 +78,7 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 ### A mesma pessoa do CRM
 
 **CL-14.** Se o telefone digitado no cadastro é de uma pessoa do CRM que ainda não é cliente (com oportunidade, até a perdida que voltou, só com conversa, ou só vinda da Importação), a tela pergunta, a quem tem o CRM em Ver, "É a mesma pessoa do contato X?". O "Sim" diz antes o que muda no contato ("Com o Sim: o contato X passa a se chamar Y, com o e-mail Z."), grava no contato o nome e o e-mail da ficha e liga à ficha nova as oportunidades e conversas que quem cadastra alcança; a mais recente conta a conversão (o clique do anúncio, a API de Conversões) e as outras ficam ligadas e convertidas. "Não" cadastra sem ligar.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/crm-inbox.md:146-164`, `:213`, `:1070`
 - Antes: KA-30, KA-31, KA-32, KA-33, KD-03
 
@@ -90,7 +90,7 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 ### Indicação
 
 **CL-16.** "Indicada por" liga a ficha a OUTRA ficha da rede, escolhida pela busca no Novo cliente, no Agendar com cliente nova e na aba Dados; a Visão geral diz "Indicada por: X" e "Indicou: Y (…)". Na importação, liga à ficha cujo nome bate com UMA só; senão guarda o texto e diz que não ligou.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/crm-inbox.md:298-304`
 - Antes: KA-58, KA-59
 
@@ -107,8 +107,8 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Antes: KA-66, KB-03, KB-04, KF-12
 
 **CL-19.** "Novos clientes" só existe na rede, e o "Reativar" é sempre o da rede (não há "atendidas na unidade" nesses números).
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
-- Onde: `docs/regras/crm-inbox.md:349-351`
+- Fonte: o Heitor, 2026-11-18: "Só na rede"
+- Onde: `docs/regras/crm-inbox.md:349-351`; `DEVLOG.md:2202`
 - Antes: KA-67
 
 **CL-20.** A lista filtra por Situação (Ativos, Novos, Inativos ou Aniversariantes do mês — escolha uma) e por Tags (várias); não há segmento fixo "VIP": VIP é uma tag como as outras. "Aniversariantes de <mês>" mostra as ativas que fazem aniversário no mês corrente (horário de Brasília), em ordem de dia, com "Aniversário dia DD/MM", nos dois portais.
@@ -230,7 +230,7 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Antes: KA-04
 
 **PO-03.** O acesso só nasce se quem cadastra marcar "Criar o acesso ao app", que só se marca com o e-mail e o documento; sem a caixa, nenhum login nasce. Depois, a aba Dados dá o acesso, com o e-mail e o documento já salvos. Criado o acesso, a tela confirma o login, a senha inicial e que ela é trocada no primeiro acesso (em texto neutro), e a ficha mostra o selo "Tem acesso ao app".
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/crm-inbox.md:70-75`
 - Antes: KA-13, KA-14, KA-15
 
@@ -265,7 +265,7 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Antes: KA-47, KA-49, KA-50
 
 **PO-10.** O WhatsApp do cartão "A unidade" é o número CONECTADO (o ativo com a unidade do endereço, senão o padrão da rede; sem nenhum, o telefone da unidade ou o da rede), para a conversa cair no inbox; o "Ligar" é sempre o telefone.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/crm-inbox.md:241`
 - Antes: KA-48
 
@@ -356,7 +356,7 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 ### Quem importa e onde
 
 **IM-01.** O importador de planilha (CSV) fica em Configurações → Importações, nos dois portais; saiu de Clientes e de Oportunidades.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/crm-inbox.md:752-753`
 - Antes: KC-14
 
@@ -420,12 +420,12 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Antes: KC-37, KC-39, KC-43
 
 **IM-13.** Quando a ficha sem CPF seria completada pelo telefone, a prévia mostra "Completar a ficha de X" já marcado; desmarcado, a linha vira ficha nova. Pelo mesmo CPF, a linha sempre junta.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/crm-inbox.md:844-849`
 - Antes: KC-38
 
 **IM-14.** O contato entra só com o telefone, só com o e-mail ou com os dois (a oportunidade vai para essa pessoa); a linha sem nenhum é recusada, e a ficha exige o telefone. Nos contatos, o telefone repetido junta as linhas numa pessoa só: a segunda completa o que ficou vazio e junta as tags, mas ficam o nome e o e-mail da primeira, e a prévia avisa qual e-mail se perde.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/crm-inbox.md:854-873`
 - Antes: KC-40, KC-41
 
@@ -525,7 +525,7 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Antes: KF-17, KF-30
 
 **IN-09.** A fila do inbox é de CONVERSAS: a mesma pessoa em duas caixas são duas linhas, cada uma com o nome da caixa quando a rede tem mais de uma. As conversas da pessoa se juntam no painel, não na fila.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/crm-inbox.md:1213`, `:1718`
 - Antes: KD-20, KE-50
 
@@ -584,7 +584,7 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Antes: KD-02, KE-47, KF-15
 
 **OP-03.** Mover os cards, criar e editar oportunidades é de quem tem o CRM em Gerenciar.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/crm-inbox.md:1411`
 - Antes: KE-02
 
@@ -611,7 +611,7 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 ### O responsável
 
 **OP-08.** O dono da oportunidade se chama "Responsável" em toda tela e no histórico, nunca "Dono". A oportunidade nasce com quem a cria como responsável (a janela já abre com ele, e a escolha da pessoa não é trocada pelo que chega depois); o campo lista os membros ativos da rede e "Sem responsável", e o card mostra as iniciais.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/crm-inbox.md:1314-1320`, `:1741`
 - Antes: KD-36, KD-37, KD-38, KE-48
 
@@ -633,7 +633,7 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Antes: KE-01, KE-03
 
 **OP-12.** A rede nova nasce com um funil com as etapas Novo, Em contato, Avaliação, Em negociação, Agendado, Fechado e Perdido; as redes que já existiam não mudaram.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/crm-inbox.md:1372-1374`
 - Antes: KD-47
 
@@ -769,35 +769,37 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 
 ## Perguntas ao Heitor
 
-Q01. **Clientes — escritas como decisão sua, sem a sua fala: confirma?** CL-01 (o documento com tipo CPF, Passaporte ou RNE, `crm-inbox.md:10`); CL-02 e PO-03 (a cliente de balcão e o acesso só com a caixa marcada, "2026-10-21, decisão do Heitor", `:63-76`); CL-04 (o telefone de outro país com "+", frente de cadastro de 29/10, `:87-92` — a sua fala de 02/11 só diz que a estrangeira chega também pelo agendar rápido e pelo Copilot); CL-09 (o "Unificar" nunca muda o nome, `:118`); CL-14 (perguntar "É a mesma pessoa do contato X?" e ligar no "Sim", `:146` — e o texto diz que perguntar só a quem tem o CRM, ligar só o que a pessoa alcança e converter só a mais recente são do Claude, "para revisar"); CL-16 (o "Indicada por", 10/11, `:298-304`, inclusive o que a importação faz quando o nome não bate com uma ficha só — o único "sim" seu é o "1 - sim" de 10/11 sobre a indicação que premia, `docs/regras/fidelidade.md:332`; o vínculo veio junto); CL-19 ("Novos clientes" só na rede e "Reativar" sempre da rede, 18/11, `:349-351`).
+Revisão de 24/11 (o Heitor, 24/11: "da uma revisada se as perguntas realmente faz sentido, as vezes tu me perguntas que são coisas obvias e se resolvem fácil com um pouco de logica sobre o contexto"). Fica na página só a Q12 (a automação pode tirar uma tag?): a sua fala de 13/11 aceita as duas leituras. As outras se resolveram por uma regra dele, um princípio ou a lógica do contexto; cada uma diz como, no começo.
 
-Q02. **Portal — escritas como decisão sua, sem a sua fala: confirma?** PO-05, a parte da LGPD por ficha (`crm-inbox.md:58`; CLAUDE.md §5 diz "decisão do Heitor" — o seu "Concordo" de 13/11 cobre o login único e o seletor); PO-10 (o WhatsApp do cartão "A unidade" ser o número conectado, por-03 de 02/11, `:241`).
+Q01. **Resolvida na revisão de 24/11:** A sua regra (CLAUDE.md §1: "Regra decidida pelo Claude diz que é dele; só se atribui ao Heitor o que a fala dele diz") já responde: sem a fala, a regra é decisão do Claude, e a fonte foi trocada. O conteúdo segue no catálogo para a revisão da área. — *Era:* **Clientes — escritas como decisão sua, sem a sua fala: confirma?** CL-01 (o documento com tipo CPF, Passaporte ou RNE, `crm-inbox.md:10`); CL-02 e PO-03 (a cliente de balcão e o acesso só com a caixa marcada, "2026-10-21, decisão do Heitor", `:63-76`); CL-04 (o telefone de outro país com "+", frente de cadastro de 29/10, `:87-92` — a sua fala de 02/11 só diz que a estrangeira chega também pelo agendar rápido e pelo Copilot); CL-09 (o "Unificar" nunca muda o nome, `:118`); CL-14 (perguntar "É a mesma pessoa do contato X?" e ligar no "Sim", `:146` — e o texto diz que perguntar só a quem tem o CRM, ligar só o que a pessoa alcança e converter só a mais recente são do Claude, "para revisar"); CL-16 (o "Indicada por", 10/11, `:298-304`, inclusive o que a importação faz quando o nome não bate com uma ficha só — o único "sim" seu é o "1 - sim" de 10/11 sobre a indicação que premia, `docs/regras/fidelidade.md:332`; o vínculo veio junto); CL-19 ("Novos clientes" só na rede e "Reativar" sempre da rede, 18/11, `:349-351`).
 
-Q03. **Importações — escritas como decisão sua, sem a sua fala: confirma?** IM-01 (o importador em Configurações → Importações, "pedido do Heitor", `crm-inbox.md:752-753`); IM-13 ("Completar a ficha de X" marcado e desmarcável, cli-07 de 02/11, `:844-849`); IM-14 (o contato que entra só com o e-mail e o telefone repetido que junta numa pessoa só, D-10 de 29/10, `:854-863`).
+Q02. **Resolvida na revisão de 24/11:** A sua regra (CLAUDE.md §1: "Regra decidida pelo Claude diz que é dele; só se atribui ao Heitor o que a fala dele diz") já responde: sem a fala, a regra é decisão do Claude, e a fonte foi trocada. O conteúdo segue no catálogo para a revisão da área. — *Era:* **Portal — escritas como decisão sua, sem a sua fala: confirma?** PO-05, a parte da LGPD por ficha (`crm-inbox.md:58`; CLAUDE.md §5 diz "decisão do Heitor" — o seu "Concordo" de 13/11 cobre o login único e o seletor); PO-10 (o WhatsApp do cartão "A unidade" ser o número conectado, por-03 de 02/11, `:241`).
 
-Q04. **CRM — escritas como decisão sua, sem a sua fala: confirma?** IN-09 (a fila é por conversa, uma linha por caixa, "por decisão do Heitor, vendo um caso real", `crm-inbox.md:1214`); OP-03 (mover os cards e criar e editar oportunidades com o CRM em Gerenciar, D-1 de 29/10, `:1406-1413`); OP-08 ("Responsável", nunca "Dono": "o mesmo conceito não pode ter dois nomes", `:1315`); OP-12 (as sete etapas do funil da rede nova, "Em negociação" em 21/10, `:1374`). OP-07 (oportunidade não se apaga, 28/09 sem fala, `:1266`) ficou com o seu "o resto fica como está" de 13/11, que aprovou o levantamento com essa linha (`docs/revisao.md:864`).
+Q03. **Resolvida na revisão de 24/11:** A sua regra (CLAUDE.md §1: "Regra decidida pelo Claude diz que é dele; só se atribui ao Heitor o que a fala dele diz") já responde: sem a fala, a regra é decisão do Claude, e a fonte foi trocada. O conteúdo segue no catálogo para a revisão da área. — *Era:* **Importações — escritas como decisão sua, sem a sua fala: confirma?** IM-01 (o importador em Configurações → Importações, "pedido do Heitor", `crm-inbox.md:752-753`); IM-13 ("Completar a ficha de X" marcado e desmarcável, cli-07 de 02/11, `:844-849`); IM-14 (o contato que entra só com o e-mail e o telefone repetido que junta numa pessoa só, D-10 de 29/10, `:854-863`).
 
-Q05. **IN-01 — quem escolheu os nomes?** `docs/revisao.md:842-843` diz "Escolha do nome: 'contato e oportunidade'", sem dizer de quem. A sua fala de 13/11 separa a pessoa da oportunidade; foi você que escolheu "Contato" para a pessoa?
+Q04. **Resolvida na revisão de 24/11:** A sua regra (CLAUDE.md §1: "Regra decidida pelo Claude diz que é dele; só se atribui ao Heitor o que a fala dele diz") já responde: sem a fala, a regra é decisão do Claude, e a fonte foi trocada. O conteúdo segue no catálogo para a revisão da área. — *Era:* **CRM — escritas como decisão sua, sem a sua fala: confirma?** IN-09 (a fila é por conversa, uma linha por caixa, "por decisão do Heitor, vendo um caso real", `crm-inbox.md:1214`); OP-03 (mover os cards e criar e editar oportunidades com o CRM em Gerenciar, D-1 de 29/10, `:1406-1413`); OP-08 ("Responsável", nunca "Dono": "o mesmo conceito não pode ter dois nomes", `:1315`); OP-12 (as sete etapas do funil da rede nova, "Em negociação" em 21/10, `:1374`). OP-07 (oportunidade não se apaga, 28/09 sem fala, `:1266`) ficou com o seu "o resto fica como está" de 13/11, que aprovou o levantamento com essa linha (`docs/revisao.md:864`).
 
-Q06. **PO-07 — "clínica" no portal:** você aprovou ("Concordo", `docs/revisao.md:1498-1502`) trocar "clínica" pelo NOME da rede ("Crédito na Estética Bella"). O que ficou registrado como feito (`docs/revisao.md:2147`) é outra coisa: "Seu crédito", "fale com a equipe", "Telefone: …", "A equipe enviou um documento". Qual dos dois vale?
+Q05. **Resolvida na revisão de 24/11:** O nome "Contato" é decisão do Claude e fica. — *Era:* **IN-01 — quem escolheu os nomes?** `docs/revisao.md:842-843` diz "Escolha do nome: 'contato e oportunidade'", sem dizer de quem. A sua fala de 13/11 separa a pessoa da oportunidade; foi você que escolheu "Contato" para a pessoa?
 
-Q07. **LG-01 × LG-02 — a exclusão pelo app:** em 11/11 (H15, "não agora") o sistema deixou de registrar pedido de eliminação (`crm-inbox.md:599`); a sua decisão 3 sobre a 8ª simulação ("mantem do jeito que tá", sem data, `:694-695`) diz que revogar o consentimento e pedir a exclusão pelo app "continuam como estão". O app ainda tem "pedir a exclusão"? E pode dar a data da decisão 3?
+Q06. **Resolvida na revisão de 24/11:** O seu "Concordo" (CA1) vence: o NOME da rede no lugar de "clínica". O que foi feito ("Seu crédito", "a equipe") é defeito a corrigir. — *Era:* **PO-07 — "clínica" no portal:** você aprovou ("Concordo", `docs/revisao.md:1498-1502`) trocar "clínica" pelo NOME da rede ("Crédito na Estética Bella"). O que ficou registrado como feito (`docs/revisao.md:2147`) é outra coisa: "Seu crédito", "fale com a equipe", "Telefone: …", "A equipe enviou um documento". Qual dos dois vale?
 
-Q08. **LG-08 — Ver ou Gerenciar na aba LGPD?** A lista de pedidos pede Clientes em Ver (`crm-inbox.md:712`), mas o levantamento de Configurações diz que "cada aba pede o módulo dela em Gerenciar" (`docs/revisao.md:1373-1374`). Qual nível abre a aba?
+Q07. **Resolvida na revisão de 24/11:** A H15 (11/11, "não agora") é mais nova que a decisão 3 da 8ª simulação (registrada em 06/11): o app só pede a exportação; a eliminação é pelo contato da rede. — *Era:* **LG-01 × LG-02 — a exclusão pelo app:** em 11/11 (H15, "não agora") o sistema deixou de registrar pedido de eliminação (`crm-inbox.md:599`); a sua decisão 3 sobre a 8ª simulação ("mantem do jeito que tá", sem data, `:694-695`) diz que revogar o consentimento e pedir a exclusão pelo app "continuam como estão". O app ainda tem "pedir a exclusão"? E pode dar a data da decisão 3?
 
-Q09. **LG-09 — quem é avisado do pedido:** o aviso vai a quem tem Configurações em Gerenciar "da rede toda" e à Admin da rede (`crm-inbox.md:641`), mas a aba LGPD existe também no portal da unidade (`:612`, D8 da 25ª, mais nova). Quem tem Configurações em Gerenciar só numa unidade também deve ser avisado, já que responde pela aba da unidade?
+Q08. **Resolvida na revisão de 24/11:** Ver vê, Gerenciar mexe: a lista de pedidos abre com Clientes em Ver; responder ao pedido pede Clientes em Gerenciar (como o código já faz). — *Era:* **LG-08 — Ver ou Gerenciar na aba LGPD?** A lista de pedidos pede Clientes em Ver (`crm-inbox.md:712`), mas o levantamento de Configurações diz que "cada aba pede o módulo dela em Gerenciar" (`docs/revisao.md:1373-1374`). Qual nível abre a aba?
 
-Q10. **IM-04 — o histórico das importações:** importar é só da Admin da rede, mas ler as "Importações anteriores", retomar e baixar o relatório (que traz dados pessoais) pedem só o módulo do destino (`crm-inbox.md:929-931`, `:1036-1037`). Quem tem Clientes ou o CRM em Gerenciar e não é a Admin da rede deve ver o histórico e baixar o relatório, ou isso também é só da Admin?
+Q09. **Resolvida na revisão de 24/11:** "A rede toda com Configurações em Gerenciar" é o critério de antes de 18/11. O aviso vai a quem responde ao pedido: Clientes em Gerenciar (a cliente é da rede). Defeito a corrigir. — *Era:* **LG-09 — quem é avisado do pedido:** o aviso vai a quem tem Configurações em Gerenciar "da rede toda" e à Admin da rede (`crm-inbox.md:641`), mas a aba LGPD existe também no portal da unidade (`:612`, D8 da 25ª, mais nova). Quem tem Configurações em Gerenciar só numa unidade também deve ser avisado, já que responde pela aba da unidade?
 
-Q11. **TG-07 — a tag da planilha que não está no catálogo:** nenhuma tela cria tag e criar é só em Configurações → Tags, mas `crm-inbox.md:428` diz que o catálogo "cresce" com toda tag gravada por quem pode marcar. Na Importação, uma tag da planilha que ainda não existe deve ser criada ou recusada?
+Q10. **Resolvida na revisão de 24/11:** As Importações estão na configuração da rede toda (CLAUDE.md §11): a tela inteira, o histórico e o relatório, é só da Admin da rede. Defeito a corrigir. — *Era:* **IM-04 — o histórico das importações:** importar é só da Admin da rede, mas ler as "Importações anteriores", retomar e baixar o relatório (que traz dados pessoais) pedem só o módulo do destino (`crm-inbox.md:929-931`, `:1036-1037`). Quem tem Clientes ou o CRM em Gerenciar e não é a Admin da rede deve ver o histórico e baixar o relatório, ou isso também é só da Admin?
+
+Q11. **Resolvida na revisão de 24/11:** Quem importa é a Admin da rede, a mesma que cria as tags: a tag da planilha é a rede criando a tag dela, não o sistema pondo tag sozinho (princípio 2). A importação cria a tag. — *Era:* **TG-07 — a tag da planilha que não está no catálogo:** nenhuma tela cria tag e criar é só em Configurações → Tags, mas `crm-inbox.md:428` diz que o catálogo "cresce" com toda tag gravada por quem pode marcar. Na Importação, uma tag da planilha que ainda não existe deve ser criada ou recusada?
 
 Q12. **TG-04 — a automação pode TIRAR uma tag?** A sua fala de 13/11 diz que a ação "deve se chamar só adicionar tag". Em 14/11 o Claude leu isso como "só adiciona" e tirou o "remover"; em 18/11 a auditoria das regras leu a fala como sobre o NOME e, pelo princípio 7 ("simplificar não é reduzir funcionalidade"), trouxe o "Remover tag" de volta — é o que o sistema faz hoje (`docs/regras/automacoes.md:452-461`). Qual vale?
 
-Q13. **OP-02 — "Cadastrar cliente" ou "Cadastrar como cliente"?** A revisão decidiu "Cadastrar como cliente" nos dois lugares (`docs/revisao.md:879`, `:2062`, com o "pode ser" na tabela sem o seu nome ao lado); `crm-inbox.md:1064-1066` diz que o botão é "Cadastrar cliente" e a janela é "Cadastrar como cliente". Qual é o texto do botão? E o "pode ser" é mesmo a sua resposta?
+Q13. **Resolvida na revisão de 24/11:** A revisão (CR2) decidiu "Cadastrar como cliente" nos dois lugares: o botão é defeito de texto. — *Era:* **OP-02 — "Cadastrar cliente" ou "Cadastrar como cliente"?** A revisão decidiu "Cadastrar como cliente" nos dois lugares (`docs/revisao.md:879`, `:2062`, com o "pode ser" na tabela sem o seu nome ao lado); `crm-inbox.md:1064-1066` diz que o botão é "Cadastrar cliente" e a janela é "Cadastrar como cliente". Qual é o texto do botão? E o "pode ser" é mesmo a sua resposta?
 
-Q14. **OP-33 — o aviso do retorno:** ele sai de um cron, sempre ligado, para todas as redes (`crm-inbox.md:1582-1595`), por decisão do Claude. Mas você disse em 03/11 que "toda e qualquer automação deve ser feita através dos módulos de automações" (`:1394`), e o "Marque o ganho", que saía do mesmo cron, virou modelo desligado por isso (`:1596`). O aviso do retorno fica como está ou vira um modelo das Automações?
+Q14. **Resolvida na revisão de 24/11:** O retorno é um lembrete que a própria pessoa marcou no card: não se move sozinho e não é automação. Fica. — *Era:* **OP-33 — o aviso do retorno:** ele sai de um cron, sempre ligado, para todas as redes (`crm-inbox.md:1582-1595`), por decisão do Claude. Mas você disse em 03/11 que "toda e qualquer automação deve ser feita através dos módulos de automações" (`:1394`), e o "Marque o ganho", que saía do mesmo cron, virou modelo desligado por isso (`:1596`). O aviso do retorno fica como está ou vira um modelo das Automações?
 
-Q15. **IN-11 — fala sem data:** A fala "a recepção que cuida de dois números vê os dois juntos" (r3-f14-11) não tem data: pode dar?
+Q15. **Resolvida na revisão de 24/11:** A fala está no documento; a data que falta não muda a regra. — *Era:* **IN-11 — fala sem data:** A fala "a recepção que cuida de dois números vê os dois juntos" (r3-f14-11) não tem data: pode dar?
 
 ## Divergências
 

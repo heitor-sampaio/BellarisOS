@@ -1,6 +1,6 @@
 # Catálogo de regras — Plataforma, Equipe, Cargos e Configurações
 
-Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e quem o opera, o suporte e os chamados), a assinatura e a rede bloqueada, o plano e os adicionais, a criação da rede e o /setup, as unidades, o login e a entrada no portal, a Equipe, os Cargos, as Configurações e a Auditoria. Cada regra diz a fonte: uma fala do Heitor (copiada letra por letra do documento), uma recomendação do Claude que o Heitor aprovou (com a resposta ou a escolha dele), um dos sete princípios de produto, "decisão do Claude", ou "atribuída ao Heitor sem a fala (a confirmar)". "Onde" aponta a linha do documento; "Antes" lista os números do rascunho que a regra junta (KA: `docs/regras/plataforma.md:1-439`; KB: `:440-825`; KC: `:804-1187`; KD: `:1188-1524`, com o "O que nunca fazer aqui", que repete regras das seções de cima; KE: as decisões de `docs/revisao.md`, do CLAUDE.md e dos outros arquivos de `docs/regras/`, que repetem várias de `plataforma.md` — juntas aqui, com todos os "Onde"). É um RASCUNHO para o Heitor revisar. Contagem: 174 regras (O sistema 9, O suporte 16, A assinatura 20, O plano 22, A criação da rede 4, As unidades 14, O login e a entrada 6, A Equipe 18, Os Cargos 25, As Configurações 11, A Auditoria 29), 4 perguntas e 17 divergências. Dos 225 números do rascunho, nenhum ficou fora do catálogo e 17 são de outra área (ver os apêndices); todos os outros estão num "Antes". Das perguntas dos rascunhos: as "escritas como suas, sem a fala" viraram a Q01 (plataforma), a Q02 (assinatura) e a Q03 (equipe e cargos); a de quem vê a fatura e o "Pagar" (KA-15) e a da aba Assinatura e do aviso (Q2 da KB) tinham resposta na regra de 18/11 — a aba Assinatura é aba da rede toda e o adicional está na lista dela —, e o que ainda dá isso a quem tem "A rede inteira" com as Configurações em Gerenciar está em "Divergências"; a do "Atende" na unidade nova (KC-20) tinha resposta na caixa única do "Atende" (EQ1) e na regra de 23/11 (UN-12); a da entrada da cliente na Auditoria (KD-05) tinha resposta no CF3 aprovado, que diz "entradas no sistema (login)" sem recorte (AD-04); a dos modelos de cargo (KC-15) continua, porque a revisão não traz a fala (Q03); e só os chamados dos colegas ficaram como pergunta de verdade (Q04), porque a lista da configuração da rede toda não os cita.
+Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e quem o opera, o suporte e os chamados), a assinatura e a rede bloqueada, o plano e os adicionais, a criação da rede e o /setup, as unidades, o login e a entrada no portal, a Equipe, os Cargos, as Configurações e a Auditoria. Cada regra diz a fonte: uma fala do Heitor (copiada letra por letra do documento), uma recomendação do Claude que o Heitor aprovou (com a resposta ou a escolha dele), um dos sete princípios de produto, "decisão do Claude". "Onde" aponta a linha do documento; "Antes" lista os números do rascunho que a regra junta (KA: `docs/regras/plataforma.md:1-439`; KB: `:440-825`; KC: `:804-1187`; KD: `:1188-1524`, com o "O que nunca fazer aqui", que repete regras das seções de cima; KE: as decisões de `docs/revisao.md`, do CLAUDE.md e dos outros arquivos de `docs/regras/`, que repetem várias de `plataforma.md` — juntas aqui, com todos os "Onde"). É um RASCUNHO para o Heitor revisar. Contagem: 174 regras (O sistema 9, O suporte 16, A assinatura 20, O plano 22, A criação da rede 4, As unidades 14, O login e a entrada 6, A Equipe 18, Os Cargos 25, As Configurações 11, A Auditoria 29), 4 perguntas e 17 divergências. Dos 225 números do rascunho, nenhum ficou fora do catálogo e 17 são de outra área (ver os apêndices); todos os outros estão num "Antes". Das perguntas dos rascunhos: as "escritas como suas, sem a fala" viraram a Q01 (plataforma), a Q02 (assinatura) e a Q03 (equipe e cargos); a de quem vê a fatura e o "Pagar" (KA-15) e a da aba Assinatura e do aviso (Q2 da KB) tinham resposta na regra de 18/11 — a aba Assinatura é aba da rede toda e o adicional está na lista dela —, e o que ainda dá isso a quem tem "A rede inteira" com as Configurações em Gerenciar está em "Divergências"; a do "Atende" na unidade nova (KC-20) tinha resposta na caixa única do "Atende" (EQ1) e na regra de 23/11 (UN-12); a da entrada da cliente na Auditoria (KD-05) tinha resposta no CF3 aprovado, que diz "entradas no sistema (login)" sem recorte (AD-04); a dos modelos de cargo (KC-15) continua, porque a revisão não traz a fala (Q03); e só os chamados dos colegas ficaram como pergunta de verdade (Q04), porque a lista da configuração da rede toda não os cita.
 
 ## O app sistema e quem o opera (SI)
 
@@ -15,7 +15,7 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Antes: KA-02
 
 **SI-03.** O papel GERENTE da plataforma vê o sistema inteiro e não edita nada: as telas mostram o aviso "Só para ver", com os controles travados, sem "Nova rede" nem o link para o suporte. O GERENTE não entra no suporte nem abre sessão de suporte numa rede.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar) — "pedido do Heitor, 2026-10-07"
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — "pedido do Heitor, 2026-10-07"
 - Onde: `docs/regras/plataforma.md:38-44`, `:1500-1502`
 - Antes: KA-03, KD-39
 
@@ -25,12 +25,12 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Antes: KA-04
 
 **SI-05.** A verificação em duas etapas da plataforma é uma opção do ADMIN em Configurações do sistema, e nasce desligada. Ligada, todos verificam; desligada, quem já cadastrou um autenticador verifica mesmo assim, e quem não tem entra só com a senha (pode cadastrar quando quiser; "Agora não" volta ao painel). Se o sistema não consegue ler a opção, exige. Mudar a opção fica na auditoria da plataforma.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar) — "decisão do Heitor, 2026-10-06"
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — "decisão do Heitor, 2026-10-06"
 - Onde: `docs/regras/plataforma.md:83-96`
 - Antes: KA-07
 
 **SI-06.** Cada app da plataforma tem a sua sessão: o ADMIN entra nos dois, com uma sessão (e, com autenticador, um código) em cada, e não há atalho de um para o outro — cada um se abre pelo seu endereço.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar) — "o seletor saiu em 2026-10-06, a pedido do Heitor"
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — "o seletor saiu em 2026-10-06, a pedido do Heitor"
 - Onde: `docs/regras/plataforma.md:97-100`
 - Antes: KA-08
 
@@ -154,12 +154,12 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Antes: KA-52
 
 **AS-05.** A equipe da plataforma, no sistema, dá cortesia (de graça) ou desconto a qualquer item da assinatura da rede (o plano, as conexões de WhatsApp extras, o Copilot avulso). O desconto é em percentual (de 1 a 100) ou em reais, e a data de fim é opcional (vale até o fim daquele dia).
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/plataforma.md:440-449`
 - Antes: KB-01
 
 **AS-06.** A rede que tem plano e nada a pagar — por cortesia, por 100% de desconto, por desconto do tamanho do preço ou por preço zero — fica ativa e sem cobrança, nunca suspensa: o atraso que havia é perdoado e a cobrança que estava ligada é pausada (não conta como cancelamento).
-- Fonte: atribuída ao Heitor sem a fala (a confirmar) — "ativa, sem cobrança, nunca suspensa" é dado como dele; contar o 100% e o preço zero como cortesia é decisão do Claude (verificação de 2026-10-07)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — "ativa, sem cobrança, nunca suspensa" é dado como dele; contar o 100% e o preço zero como cortesia é decisão do Claude (verificação de 2026-10-07)
 - Onde: `docs/regras/plataforma.md:442-447`, `:456-464`
 - Antes: KB-02
 
@@ -179,7 +179,7 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Antes: KB-06
 
 **AS-10.** A rede vê cada condição na aba Assinatura, em "Condições do BellarisOS", com o preço cheio riscado e o que fica a pagar.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar) — "a rede vendo a condição"
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — "a rede vendo a condição"
 - Onde: `docs/regras/plataforma.md:443-444`, `:482-483`
 - Antes: KB-08
 
@@ -236,7 +236,7 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 ## O plano, as funcionalidades, os limites e os adicionais (PN)
 
 **PN-01.** O plano define o que a rede usa: as funcionalidades (cada uma ligada ou desligada) e os limites (unidades, membros, números de WhatsApp, a cota do Copilot; de 1 a 10 ou ilimitado). O teste grátis tem tudo, menos o Copilot.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar) — "2026-10-06, decisão do Heitor"; e "Fica como está", revisão de 13/11, fora das aspas
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — "2026-10-06, decisão do Heitor"; e "Fica como está", revisão de 13/11, fora das aspas
 - Onde: `docs/regras/plataforma.md:273-278`; `docs/revisao.md:1572`, `:1587-1594`, `:2165`
 - Antes: KA-28, KE-53
 
@@ -301,7 +301,7 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Antes: KA-42
 
 **PN-14.** Os adicionais são as conexões de WhatsApp além do limite e o Copilot avulso, somados à mensalidade numa assinatura só. O preço de cada adicional mora no plano, e contratam tanto o sistema quanto a rede.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar) — "Do Heitor: o preço de cada adicional mora no plano, contratam o sistema E a rede, o valor soma na mensalidade e o Copilot avulso já se vende"
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — "Do Heitor: o preço de cada adicional mora no plano, contratam o sistema E a rede, o valor soma na mensalidade e o Copilot avulso já se vende"
 - Onde: `docs/regras/plataforma.md:372-376`
 - Antes: KA-43
 
@@ -447,7 +447,7 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Antes: KA-05, KE-16
 
 **LO-02.** O membro criado pela Equipe nasce com senha provisória e tem de trocá-la no primeiro acesso, antes de usar o sistema. (A senha inicial da cliente é a PO-01.)
-- Fonte: atribuída ao Heitor sem a fala (a confirmar) — "2026-10-21, decisão do Heitor"
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — "2026-10-21, decisão do Heitor"
 - Onde: CLAUDE.md §5 (`:315-320`); `docs/revisao.md:1178`, `:2115`
 - Antes: KE-15
 
@@ -606,7 +606,7 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Antes: KC-14
 
 **CG-09.** Sem o "só os meus", nenhum modelo de cargo nasce com o Financeiro, e o modelo "Profissional" nasce sem a Agenda (o que eles viam está nas vistas pessoais: as Minhas comissões e a Minha agenda). Nos cargos que já existiam, o Financeiro e a Agenda que eram "só os meus" viraram "Sem acesso", e o resto ficou com o nível.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar) — "o Heitor, 23/11, à pergunta do Claude"
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — "o Heitor, 23/11, à pergunta do Claude"
 - Onde: `docs/regras/plataforma.md:916-925`; `docs/revisao.md:2206-2210`
 - Antes: KC-15, KE-35
 
@@ -896,13 +896,15 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 
 ## Perguntas ao Heitor
 
-Q01. **Estas regras são suas? Plataforma — escritas como decisão sua, sem a sua fala.** SI-03 (o papel GERENTE da plataforma vê tudo, não edita e não entra no suporte; "pedido do Heitor, 2026-10-07", `docs/regras/plataforma.md:38`); SI-05 (a verificação em duas etapas como opção do ADMIN, nascendo desligada; "decisão do Heitor, 2026-10-06", `:83-85`); SI-06 (uma sessão em cada app, sem atalho entre o sistema e o suporte; "a pedido do Heitor", `:99`); PN-01 (o plano define as funcionalidades e os limites, e o teste grátis tem tudo menos o Copilot; "decisão do Heitor", `:273`, e o "Fica como está" de `docs/revisao.md:1572`, fora das aspas — o único "Sim" ali é o do PL1); PN-14 (os adicionais: o preço no plano, o sistema e a rede contratam, soma na mensalidade, o Copilot avulso; "Do Heitor", `:374-376`). Confirma as cinco?
+Revisão de 24/11 (o Heitor, 24/11: "da uma revisada se as perguntas realmente faz sentido, as vezes tu me perguntas que são coisas obvias e se resolvem fácil com um pouco de logica sobre o contexto"). Nenhuma pergunta fica na página. As outras se resolveram por uma regra dele, um princípio ou a lógica do contexto; cada uma diz como, no começo.
 
-Q02. **Estas regras são suas? Assinatura — escritas como suas, sem a sua fala.** AS-05 (cortesia ou desconto em qualquer item, em percentual OU em reais, com data de fim opcional), AS-06 (a rede com nada a pagar fica ativa e sem cobrança, nunca suspensa) e AS-10 (a rede vê a condição na aba Assinatura, com o preço cheio riscado): `docs/regras/plataforma.md:441-444` dá as três como "Do Heitor". O resto do bloco o texto diz que é decisão do Claude (a cobrança que religa em 3 dias, o mínimo de R$ 5,00, trocar de plano tirar a condição). Confirma as três?
+Q01. **Resolvida na revisão de 24/11:** A sua regra (CLAUDE.md §1: "Regra decidida pelo Claude diz que é dele; só se atribui ao Heitor o que a fala dele diz") já responde: sem a fala, a regra é decisão do Claude, e a fonte foi trocada. O conteúdo segue no catálogo para a revisão da área. — *Era:* **Estas regras são suas? Plataforma — escritas como decisão sua, sem a sua fala.** SI-03 (o papel GERENTE da plataforma vê tudo, não edita e não entra no suporte; "pedido do Heitor, 2026-10-07", `docs/regras/plataforma.md:38`); SI-05 (a verificação em duas etapas como opção do ADMIN, nascendo desligada; "decisão do Heitor, 2026-10-06", `:83-85`); SI-06 (uma sessão em cada app, sem atalho entre o sistema e o suporte; "a pedido do Heitor", `:99`); PN-01 (o plano define as funcionalidades e os limites, e o teste grátis tem tudo menos o Copilot; "decisão do Heitor", `:273`, e o "Fica como está" de `docs/revisao.md:1572`, fora das aspas — o único "Sim" ali é o do PL1); PN-14 (os adicionais: o preço no plano, o sistema e a rede contratam, soma na mensalidade, o Copilot avulso; "Do Heitor", `:374-376`). Confirma as cinco?
 
-Q03. **Estas regras são suas? Equipe e cargos — escritas como suas, sem a sua fala.** LO-02 (o membro criado pela Equipe troca a senha no primeiro acesso; CLAUDE.md §5, `:315`: "2026-10-21, decisão do Heitor"); CG-09 (os modelos de cargo nascem sem o Financeiro e o Profissional sem a Agenda, e nos cargos que já existiam o Financeiro e a Agenda "só os meus" viraram "Sem acesso" em vez de "Ver"; `docs/revisao.md:2207-2210` e `docs/regras/plataforma.md:916-918`: "o Heitor, 23/11, à pergunta do Claude" — a sua fala de 23/11 que está registrada é "pode tirar, as vistas pessoais resolvem", que não diz qual nível o cargo antigo recebe). Confirma as duas?
+Q02. **Resolvida na revisão de 24/11:** A sua regra (CLAUDE.md §1: "Regra decidida pelo Claude diz que é dele; só se atribui ao Heitor o que a fala dele diz") já responde: sem a fala, a regra é decisão do Claude, e a fonte foi trocada. O conteúdo segue no catálogo para a revisão da área. — *Era:* **Estas regras são suas? Assinatura — escritas como suas, sem a sua fala.** AS-05 (cortesia ou desconto em qualquer item, em percentual OU em reais, com data de fim opcional), AS-06 (a rede com nada a pagar fica ativa e sem cobrança, nunca suspensa) e AS-10 (a rede vê a condição na aba Assinatura, com o preço cheio riscado): `docs/regras/plataforma.md:441-444` dá as três como "Do Heitor". O resto do bloco o texto diz que é decisão do Claude (a cobrança que religa em 3 dias, o mínimo de R$ 5,00, trocar de plano tirar a condição). Confirma as três?
 
-Q04. **SU-16 — os chamados dos colegas: quem os vê além de quem abriu?** O texto (`docs/regras/plataforma.md:692-694`) e o código (`apps/web/actions/chamados.ts:30-32`, `veARede`) dão os chamados da rede inteira a "quem administra a rede" — quem tem "A rede inteira" com as Configurações em Gerenciar, o critério de antes de 18/11. A assinatura (AS-15), a autorização do suporte (SU-01) e a aba Suporte (SU-11) já são só da Admin da rede pela sua regra de 18/11, mas a lista da configuração da rede toda não cita os chamados, e ler o chamado de um colega não é configuração. Os chamados dos colegas ficam só com a Admin da rede (como o resto da conta com o BellarisOS), ou com quem tem "A rede inteira" e as Configurações em Gerenciar?
+Q03. **Resolvida na revisão de 24/11:** A sua regra (CLAUDE.md §1: "Regra decidida pelo Claude diz que é dele; só se atribui ao Heitor o que a fala dele diz") já responde: sem a fala, a regra é decisão do Claude, e a fonte foi trocada. O conteúdo segue no catálogo para a revisão da área. — *Era:* **Estas regras são suas? Equipe e cargos — escritas como suas, sem a sua fala.** LO-02 (o membro criado pela Equipe troca a senha no primeiro acesso; CLAUDE.md §5, `:315`: "2026-10-21, decisão do Heitor"); CG-09 (os modelos de cargo nascem sem o Financeiro e o Profissional sem a Agenda, e nos cargos que já existiam o Financeiro e a Agenda "só os meus" viraram "Sem acesso" em vez de "Ver"; `docs/revisao.md:2207-2210` e `docs/regras/plataforma.md:916-918`: "o Heitor, 23/11, à pergunta do Claude" — a sua fala de 23/11 que está registrada é "pode tirar, as vistas pessoais resolvem", que não diz qual nível o cargo antigo recebe). Confirma as duas?
+
+Q04. **Resolvida na revisão de 24/11:** "A rede inteira com Configurações em Gerenciar" é o critério de antes de 18/11, que nas outras coisas da conta com a plataforma (a assinatura, autorizar o suporte, a aba Suporte) virou só a Admin da rede: os chamados dos colegas, também. Defeito a corrigir. — *Era:* **SU-16 — os chamados dos colegas: quem os vê além de quem abriu?** O texto (`docs/regras/plataforma.md:692-694`) e o código (`apps/web/actions/chamados.ts:30-32`, `veARede`) dão os chamados da rede inteira a "quem administra a rede" — quem tem "A rede inteira" com as Configurações em Gerenciar, o critério de antes de 18/11. A assinatura (AS-15), a autorização do suporte (SU-01) e a aba Suporte (SU-11) já são só da Admin da rede pela sua regra de 18/11, mas a lista da configuração da rede toda não cita os chamados, e ler o chamado de um colega não é configuração. Os chamados dos colegas ficam só com a Admin da rede (como o resto da conta com o BellarisOS), ou com quem tem "A rede inteira" e as Configurações em Gerenciar?
 
 ## Divergências
 

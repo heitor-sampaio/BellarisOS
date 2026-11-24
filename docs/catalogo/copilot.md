@@ -1,6 +1,6 @@
 # Catálogo de regras — Copilot
 
-Este é o catálogo das regras do Copilot que valem HOJE: o que ele é e quem usa, a permissão e as unidades de quem pergunta, o cartão antes de gravar, o que ele consulta, como responde, o que grava, o que não faz, e o histórico, a cota e o botão. Cada regra diz a fonte: uma fala do Heitor (copiada letra por letra do documento), uma recomendação do Claude que o Heitor aprovou (com a resposta dele), um dos sete princípios de produto, "decisão do Claude", ou "atribuída ao Heitor sem a fala (a confirmar)". "Onde" aponta a linha do documento; "Antes" lista os números do rascunho que a regra junta (KA: `docs/regras/copilot.md:1-284`; KB: `docs/regras/copilot.md:285-550`; KC: as decisões de `docs/revisao.md`, do CLAUDE.md e dos outros arquivos de `docs/regras/`, que repetem várias de `copilot.md` — juntas aqui, com os dois "Onde"). A regra de um módulo que o Copilot só aplica (a agenda, a ficha, o estoque, o financeiro, as comissões, os documentos, as abas dos Relatórios) fica no catálogo da área dona e está em "É de outra área". É um RASCUNHO para o Heitor revisar. Contagem: 63 regras (O que é e quem usa 7, A permissão e as unidades de quem pergunta 5, O cartão antes de gravar 8, O que ele consulta 16, Como ele responde 5, O que ele grava 11, O que ele não faz 5, O histórico, a cota e o botão 6), 3 perguntas e 5 divergências. Dos 90 números do rascunho, nenhum ficou fora do catálogo e 6 são de outra área (ver os apêndices); todos os outros estão num "Antes". Das sete perguntas dos rascunhos: as de "regras escritas como suas" viraram a Q01; a do "não vende, não recebe" contra o CP1 tinha resposta na regra mais nova (17/11, CY-02) — fica na Q01 só para confirmar as palavras, e o catálogo de Vendas que leu "vende e recebe" está em "Divergências"; a da baixa da parcela do crediário também tinha resposta na mesma regra e no CR-06 ("a parcela se recebe no PDV"): o que o código faz está em "Divergências"; as duas sobre o Copilot em Gerenciar contra o "nenhuma ação pede dois" viraram a Q02; e a da vista pessoal é a Q03 ("está no escopo?"). A divergência das comissões do rascunho KB (que dava tudo à Admin da rede) foi refeita: a comissão de cada pessoa é do Financeiro em Gerenciar (CM-04), só a configuração das comissões é da Admin da rede (CM-03).
+Este é o catálogo das regras do Copilot que valem HOJE: o que ele é e quem usa, a permissão e as unidades de quem pergunta, o cartão antes de gravar, o que ele consulta, como responde, o que grava, o que não faz, e o histórico, a cota e o botão. Cada regra diz a fonte: uma fala do Heitor (copiada letra por letra do documento), uma recomendação do Claude que o Heitor aprovou (com a resposta dele), um dos sete princípios de produto, "decisão do Claude". "Onde" aponta a linha do documento; "Antes" lista os números do rascunho que a regra junta (KA: `docs/regras/copilot.md:1-284`; KB: `docs/regras/copilot.md:285-550`; KC: as decisões de `docs/revisao.md`, do CLAUDE.md e dos outros arquivos de `docs/regras/`, que repetem várias de `copilot.md` — juntas aqui, com os dois "Onde"). A regra de um módulo que o Copilot só aplica (a agenda, a ficha, o estoque, o financeiro, as comissões, os documentos, as abas dos Relatórios) fica no catálogo da área dona e está em "É de outra área". É um RASCUNHO para o Heitor revisar. Contagem: 63 regras (O que é e quem usa 7, A permissão e as unidades de quem pergunta 5, O cartão antes de gravar 8, O que ele consulta 16, Como ele responde 5, O que ele grava 11, O que ele não faz 5, O histórico, a cota e o botão 6), 3 perguntas e 5 divergências. Dos 90 números do rascunho, nenhum ficou fora do catálogo e 6 são de outra área (ver os apêndices); todos os outros estão num "Antes". Das sete perguntas dos rascunhos: as de "regras escritas como suas" viraram a Q01; a do "não vende, não recebe" contra o CP1 tinha resposta na regra mais nova (17/11, CY-02) — fica na Q01 só para confirmar as palavras, e o catálogo de Vendas que leu "vende e recebe" está em "Divergências"; a da baixa da parcela do crediário também tinha resposta na mesma regra e no CR-06 ("a parcela se recebe no PDV"): o que o código faz está em "Divergências"; as duas sobre o Copilot em Gerenciar contra o "nenhuma ação pede dois" viraram a Q02; e a da vista pessoal é a Q03 ("está no escopo?"). A divergência das comissões do rascunho KB (que dava tudo à Admin da rede) foi refeita: a comissão de cada pessoa é do Financeiro em Gerenciar (CM-04), só a configuração das comissões é da Admin da rede (CM-03).
 
 ## O que é e quem usa (CO)
 
@@ -25,12 +25,12 @@ Este é o catálogo das regras do Copilot que valem HOJE: o que ele é e quem us
 - Antes: KA-04, KC-04
 
 **CO-05.** O módulo Copilot do cargo tem três níveis. Sem acesso: não usa. Ver: só consultas (a gravação nem é oferecida). Gerenciar: também pede gravações, e cada gravação ainda exige a permissão dela (agendar pede a Agenda, lançar pede o Financeiro…). O plano diz se a REDE tem o Copilot; o cargo diz QUEM usa.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/copilot.md:72-77`; `docs/revisao.md:1421-1424`; `CLAUDE.md:648-650`
 - Antes: KA-05, KC-03
 
 **CO-06.** O Copilot consulta e grava agenda, clientes, catálogo, indicadores, financeiro, estoque e CRM.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/copilot.md:43-44`; `docs/revisao.md:1416-1417`
 - Antes: KA-16, KC-06
 
@@ -69,7 +69,7 @@ Este é o catálogo das regras do Copilot que valem HOJE: o que ele é e quem us
 ## O cartão antes de gravar (CZ)
 
 **CZ-01.** Consultar é livre, sem cartão. Toda gravação passa por um cartão com "Confirmar" e "Cancelar", e nada se grava antes do "Confirmar".
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/copilot.md:19`, `:88`, `:521`; `docs/revisao.md:1417-1418`
 - Antes: KA-08, KC-07
 
@@ -277,12 +277,12 @@ Este é o catálogo das regras do Copilot que valem HOJE: o que ele é e quem us
 ## O que ele não faz (CY)
 
 **CY-01.** Nada clínico vai ao Copilot. Nenhuma ferramenta lê prontuário, evolução, ficha de saúde, foto clínica nem a anotação clínica do plano. Quando pedem, o Copilot diz que isso fica na tela, e o painel avisa para não mandar material clínico.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/copilot.md:40-42`, `:520`; `docs/revisao.md:1419-1420`; `docs/regras/atendimento.md:1837-1839`
 - Antes: KA-15, KC-08
 
 **CY-02.** O Copilot não vende (pacote, pré-pago, produto, crédito interno), não recebe (nem a comanda, nem a parcela do crediário) e não aceita plano de tratamento: ele só lê e manda ao PDV, com o link. Pedido de receber um atendimento ("receba a massagem da Bruna") é respondido com o PDV, na comanda do atendimento, sem perguntar o caminho. O aceite do plano fica na tela do atendimento e no app da cliente.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar) — 17/11, registrada no DEVLOG entre as respostas dele, sem aspas
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — 17/11, registrada no DEVLOG entre as respostas dele, sem aspas
 - Onde: `docs/regras/copilot.md:137-139`, `:154-158`, `:434-436`; `docs/revisao.md:1428-1430`; `DEVLOG.md:2201`
 - Antes: KA-23, KB-24, KC-09
 
@@ -319,7 +319,7 @@ Este é o catálogo das regras do Copilot que valem HOJE: o que ele é e quem us
 - Antes: KA-14
 
 **CH-04.** O uso do Copilot tem uma cota mensal por rede, que vem do plano (sem número, sem limite). O consumo aparece na Assinatura da rede. Passada a cota, o pedido é recusado.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/copilot.md:45-46`, `:78-79`; `docs/revisao.md:1424`, `:1591-1592`
 - Antes: KA-17, KC-05
 
@@ -335,13 +335,15 @@ Este é o catálogo das regras do Copilot que valem HOJE: o que ele é e quem us
 
 ## Perguntas ao Heitor
 
-Q01. **Estas regras são suas? Escritas como decisão sua, sem a sua fala.** `docs/regras/copilot.md:17-46` e `:72` as põem como "Decisões do Heitor (2026-10-08)" e "pedido do Heitor de 2026-10-08", sem as suas palavras: CZ-01 (toda gravação passa por um cartão e consultar é livre), CY-01 (nada clínico vai ao Copilot), CO-06 (os módulos que ele lê e grava), CH-04 (a cota mensal por rede, no plano) e CO-05 (o módulo Copilot com Ver = só consultas e Gerenciar = também gravações; a outra dúvida dela é a Q02). E CY-02 (o Copilot não vende, não recebe e não aceita plano): o DEVLOG a lista entre as suas respostas de 17–18/11 (`DEVLOG.md:2201`: "O Copilot (17/11): só lê e manda ao PDV; não vende, não recebe e não aceita o plano"), sem aspas. Ela é a mais nova e vale sobre a leitura do CP1 de 13/11 ("vender e receber pela comanda do PDV", que quer dizer que as ferramentas acompanham o PDV); e o "não recebe" vale também para a parcela do crediário, que se recebe no PDV (CR-06) — o que o código faz hoje está em "Divergências". Confirma as seis?
+Revisão de 24/11 (o Heitor, 24/11: "da uma revisada se as perguntas realmente faz sentido, as vezes tu me perguntas que são coisas obvias e se resolvem fácil com um pouco de logica sobre o contexto"). Nenhuma pergunta fica na página. As outras se resolveram por uma regra dele, um princípio ou a lógica do contexto; cada uma diz como, no começo.
 
-Q02. **Gravar pelo Copilot pede dois módulos** (CO-05, CW-01). Hoje, gravar pede o Copilot em Gerenciar E a permissão da gravação (por exemplo, a Agenda em Gerenciar para agendar). A sua regra de 23/11 (`docs/revisao.md:1309`, aprovada em `:1329-1330`: "concordo, pode anotar, marcar as questões e ajustar o codigo") diz que "cada passo pertence a UM módulo, e nenhuma ação pede dois"; e a CW-01 diz que o Copilot pede a mesma permissão da tela. As duas puxam para lados diferentes: o Copilot é o canal, não o passo, mas hoje ele pede um módulo a mais que a tela. Qual fica?
+Q01. **Resolvida na revisão de 24/11:** A sua regra (CLAUDE.md §1: "Regra decidida pelo Claude diz que é dele; só se atribui ao Heitor o que a fala dele diz") já responde: sem a fala, a regra é decisão do Claude, e a fonte foi trocada. O conteúdo segue no catálogo para a revisão da área. — *Era:* **Estas regras são suas? Escritas como decisão sua, sem a sua fala.** `docs/regras/copilot.md:17-46` e `:72` as põem como "Decisões do Heitor (2026-10-08)" e "pedido do Heitor de 2026-10-08", sem as suas palavras: CZ-01 (toda gravação passa por um cartão e consultar é livre), CY-01 (nada clínico vai ao Copilot), CO-06 (os módulos que ele lê e grava), CH-04 (a cota mensal por rede, no plano) e CO-05 (o módulo Copilot com Ver = só consultas e Gerenciar = também gravações; a outra dúvida dela é a Q02). E CY-02 (o Copilot não vende, não recebe e não aceita plano): o DEVLOG a lista entre as suas respostas de 17–18/11 (`DEVLOG.md:2201`: "O Copilot (17/11): só lê e manda ao PDV; não vende, não recebe e não aceita o plano"), sem aspas. Ela é a mais nova e vale sobre a leitura do CP1 de 13/11 ("vender e receber pela comanda do PDV", que quer dizer que as ferramentas acompanham o PDV); e o "não recebe" vale também para a parcela do crediário, que se recebe no PDV (CR-06) — o que o código faz hoje está em "Divergências". Confirma as seis?
+
+Q02. **Resolvida na revisão de 24/11:** A sua regra de 23/11 ("cada passo pertence a UM módulo, e nenhuma ação pede dois") decide: o Copilot liga a ferramenta, e o que ele faz pede só a permissão da ação, como na tela. Defeito a corrigir. — *Era:* **Gravar pelo Copilot pede dois módulos** (CO-05, CW-01). Hoje, gravar pede o Copilot em Gerenciar E a permissão da gravação (por exemplo, a Agenda em Gerenciar para agendar). A sua regra de 23/11 (`docs/revisao.md:1309`, aprovada em `:1329-1330`: "concordo, pode anotar, marcar as questões e ajustar o codigo") diz que "cada passo pertence a UM módulo, e nenhuma ação pede dois"; e a CW-01 diz que o Copilot pede a mesma permissão da tela. As duas puxam para lados diferentes: o Copilot é o canal, não o passo, mas hoje ele pede um módulo a mais que a tela. Qual fica?
 - (a) O Copilot em Ver liga a ferramenta (consultar e agir), e o que ele faz pede só o módulo da ação, como na tela.
 - (b) Fica como está: agir pede o Copilot em Gerenciar e o módulo da ação.
 
-Q03. **Está no escopo? A vista pessoal no Copilot.** Quem atende sem a Agenda (ou sem o Financeiro) vê a Minha agenda e as Minhas comissões nas telas (SM2, `CLAUDE.md` §11), mas nada escrito diz o que o Copilot responde a ela ("meus horários de amanhã", "minha comissão do mês"); `docs/regras/copilot.md:274-275` só diz que os indicadores do Copilot não são a vista pessoal (CW-02). O Copilot deve responder pela vista pessoal?
+Q03. **Resolvida na revisão de 24/11:** A sua fala de 13/11 ("copilot acompanha tudo … acompanha as mudanças") decide: o Copilot responde pela Minha agenda e pelas Minhas comissões de quem só tem a vista pessoal, com os mesmos limites da tela. Defeito a corrigir. — *Era:* **Está no escopo? A vista pessoal no Copilot.** Quem atende sem a Agenda (ou sem o Financeiro) vê a Minha agenda e as Minhas comissões nas telas (SM2, `CLAUDE.md` §11), mas nada escrito diz o que o Copilot responde a ela ("meus horários de amanhã", "minha comissão do mês"); `docs/regras/copilot.md:274-275` só diz que os indicadores do Copilot não são a vista pessoal (CW-02). O Copilot deve responder pela vista pessoal?
 
 ## Divergências
 

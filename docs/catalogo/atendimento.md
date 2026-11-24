@@ -15,12 +15,12 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 ### Horário e encaixe
 
 **AG-01.** O horário de funcionamento é da unidade e, dentro dele, de quem atende (por dia da semana, com pausa). Sem cadastro, a unidade abre de segunda a sábado, 08:00–20:00, e quem atende segue a unidade.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/atendimento.md:9-13`
 - Antes: AG-01
 
 **AG-02.** Os horários livres que o app da cliente, o CRM e o Copilot oferecem ficam dentro do horário da unidade e do de quem atende, cabem inteiros num período (não atravessam a pausa) e, no dia de hoje, nunca começam antes de agora.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/atendimento.md:15-17`
 - Antes: AG-02
 
@@ -85,7 +85,7 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Antes: AG-25, AG-203
 
 **AG-15.** Quem só agenda (sem Clientes em Gerenciar) cria a ficha rápida da cliente nova ao agendar, pela agenda ou pelo CRM. "Unificar com a ficha de X" e "Reativar a ficha de X" pedem Clientes em Gerenciar; sem ele, a pessoa escolhe "Agendar para a ficha de X" (nada se grava na ficha; a arquivada não aparece) ou "Cadastrar mesmo assim". O Copilot segue a mesma regra.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar) — H4, opção b, do levantamento de 11/11
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — H4, opção b, do levantamento de 11/11
 - Onde: `docs/regras/atendimento.md:1473-1485`
 - Antes: AG-110
 
@@ -146,7 +146,7 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Antes: AG-45, AG-46
 
 **AG-26.** A agenda da unidade deixa o cancelado e a falta fora da grade; "Mostrar cancelados" os traz de volta, apagados, riscados e com o motivo. Eles não contam em nada (atendimentos, ocupação, contagem de quem atende) e não se arrastam. A agenda da rede sempre os mostra, apagados e com o motivo.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar) — 2026-10-21
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — 2026-10-21
 - Onde: `docs/regras/atendimento.md:1163-1171`
 - Antes: AG-129
 
@@ -170,7 +170,7 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 ### Situações e quem faz o quê na agenda
 
 **AG-31.** As situações são: Agendado → Confirmado → Chegou → Em atendimento → Concluído, ou Cancelado / Não compareceu, cada uma com um nome só, igual na agenda, no detalhe e no app. Confirmar ("confirmou presença") e Chegou (está na espera) são passos diferentes: a chegada vale de Agendado (e também confirma) ou de Confirmado. A linha do tempo da cliente registra a confirmação e a chegada.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/atendimento.md:109-110`, `:463-472`, `:717`
 - Antes: AG-16, AG-65, AG-82
 
@@ -225,7 +225,7 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Antes: AG-88, AG-109
 
 **AG-42.** Na remarcação, quando a cliente remarca pelo app, o horário novo já nasce Confirmado ("O horário novo fica confirmado."); quando a equipe ou o Copilot remarcam, volta a Agendado e a confirmação é pedida de novo.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar) — H3, opção c, do levantamento de 11/11
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — H3, opção c, do levantamento de 11/11
 - Onde: `docs/regras/atendimento.md:1464-1472`, `docs/revisao.md:462-463`, `docs/revisao.md:1902`
 - Antes: AG-89, AG-179
 
@@ -237,7 +237,7 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Antes: AG-149, AG-150
 
 **AG-44.** As salas da unidade se criam, renomeiam, desativam e reativam, mas não se apagam; o nome é único entre as salas ativas da unidade. Mexe quem tem as Configurações em Gerenciar, na unidade ao seu alcance. Elas ficam na configuração da unidade (com uma unidade só, na própria aba Unidades).
-- Fonte: atribuída ao Heitor sem a fala (a confirmar) — D5, 2026-10-30
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — D5, 2026-10-30
 - Onde: `docs/regras/atendimento.md:1337-1352`
 - Antes: AG-151, AG-152
 
@@ -254,7 +254,7 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 ### O app da cliente
 
 **AG-47.** O agendar e o remarcar do app passam pelas mesmas conferências do agendar da equipe (peças da rede, cliente arquivada, conflito, preço, crédito pré-pago ou pacote, oportunidade aberta e o evento "agendamento criado", com a cliente como autora). A cliente pode mandar observações ao agendar.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar) — por-05, revisão de 2026-11-02
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — por-05, revisão de 2026-11-02
 - Onde: `docs/regras/atendimento.md:1028-1034`, `:1335`, `:1492-1502`
 - Antes: AG-158, AG-168, AG-178
 
@@ -279,12 +279,12 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Antes: AG-143, AG-165, AG-184
 
 **AG-52.** No agendar do app, com mais de um profissional na unidade, há "Sem preferência": a data mostra os horários de todos juntos, e o servidor escolhe quem está livre, com menos atendimentos no dia (no empate, o primeiro pelo nome). A cliente só escolhe (e o "Sem preferência" só sorteia) entre quem realiza o procedimento; outra pessoa é recusada. Com um só profissional, o passo nem aparece. Confirmado, o app diz com quem ficou.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar) — D-16, 2026-10-30
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — D-16, 2026-10-30
 - Onde: `docs/regras/atendimento.md:962-983`, `:1651-1654`
 - Antes: AG-164, AG-165, AG-166, PC-28
 
 **AG-53.** A cliente cancela e remarca pelo app até o prazo da rede (24 horas antes, por padrão; Configurações → Geral), só os agendamentos dela, num dos horários livres do app. O prazo aparece em dia e hora com o dia da semana, e o cartão diz "Alterar até …" (com o "Remarcar" à mão). Passado o prazo, só "Falar com a equipe" (mensagem pronta) e "Ligar". O agendamento feito (ou remarcado) a menos do prazo avisa que nasce sem cancelar nem remarcar pelo app.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar) — 2026-10-21
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — 2026-10-21
 - Onde: `docs/regras/atendimento.md:889-908`, `:942-946`, `:957-961`, `:1093-1094`
 - Antes: AG-169, AG-170, AG-171, AG-172, AG-174
 
@@ -338,7 +338,7 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Antes: AG-53
 
 **AG-63.** Quem não tem "A rede inteira" (com a Equipe em Gerenciar) marca e desmarca no "Atende" só as unidades dele; as outras aparecem travadas.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar) (H7)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) (H7)
 - Onde: `docs/regras/atendimento.md:357-361`
 - Antes: AG-55
 
@@ -404,7 +404,7 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Antes: AG-78, AG-79
 
 **AT-08.** Só se inicia de Confirmado ou Chegou, e só se conclui o que foi iniciado: Agendado, Confirmado e Chegou não se concluem, nem pelo "Concluído" da agenda (quem esqueceu de iniciar clica em Iniciar e depois em Finalizar). O "Concluído" da agenda não conclui nada por fora: só aceita o que o "Finalizar" já concluiu. O concluído não volta: não se cancela, não vira falta; o que se desfaz é o pagamento (estorno).
-- Fonte: atribuída ao Heitor sem a fala (a confirmar) — H5 e C11 do levantamento de 11/11
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — H5 e C11 do levantamento de 11/11
 - Onde: `docs/regras/atendimento.md:1457-1461`, `:3316`, `:3326-3328`, `:3360`, `:3832-3834`
 - Antes: AT-04, AT-05, AT-06, AG-108
 
@@ -443,19 +443,19 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Antes: AT-16, AT-19, AT-20
 
 **AT-15.** Insumo faltando não impede o fechamento: o saldo fica negativo, para a falta aparecer no estoque, e a tela mostra o que faltou.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/atendimento.md:3797`
 - Antes: AT-18
 
 ### O registro na tela
 
 **AT-16.** O "Finalizar" leva o que está escrito NA TELA, sem precisar de "Salvar" antes: a evolução, a intercorrência, as dores, a ficha de saúde que alguém mexeu e a ficha de atendimento que alguém mexeu. A ficha de saúde que a cliente respondeu e ninguém mexeu não vira "respondida pela equipe". A conclusão nunca troca uma evolução ou intercorrência já gravada por vazio, e o escrito continua na tela depois de gerar o plano.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/atendimento.md:3472`, `:3487`, `:3498`, `:3508`
 - Antes: AT-21, AT-22, AT-25
 
 **AT-17.** O que se digita no atendimento fica num rascunho só desta aba: recarregar não perde, fechar a aba apaga, e nada fica guardado no computador da unidade. Concluir, salvar ou gerar o plano apaga o rascunho; no cancelado e na falta ele não se grava. A tela avisa disso a quem escreve no prontuário.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/atendimento.md:1462-1463`, `:3391`, `:3748`
 - Antes: AT-26, AG-109
 
@@ -511,7 +511,7 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Antes: AT-36, PL-07
 
 **PL-06.** Gerar o plano na avaliação grava tudo junto ou nada (o plano e as sessões, a ficha de atendimento, as dores, a evolução, a ficha de saúde). Não se gera plano em agendamento cancelado nem sobre plano já fechado. Gerar o plano não conclui a avaliação: quem conclui é o "Finalizar", e a tela diz "Falta finalizar a avaliação" e onde está o botão.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar) — revisão de 2026-10-29
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — revisão de 2026-10-29
 - Onde: `docs/regras/atendimento.md:3606`, `:3635`, `:3643`, `:3790`, `:3824`
 - Antes: AT-33, AT-35
 
@@ -536,7 +536,7 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Antes: AT-37
 
 **PL-11.** "Novo plano" só grava ao "Salvar plano"; até lá, o plano fica guardado na aba ("Continuar o plano não salvo", com "Descartar"). "Aceitar plano" e "Cliente vai pensar" só aparecem depois de salvo.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/atendimento.md:2478`
 - Antes: PL-10
 
@@ -614,12 +614,12 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 **PT-03.** Saiu em 23/11 (SM1: sem o "só os meus").
 
 **PT-04.** Todo acesso a dado clínico fica registrado (a ficha com os anexos clínicos, a tela do atendimento, o plano com a anotação clínica ou a ficha de saúde, a liberação do prontuário no pacote LGPD, os mapas de injetáveis), só quando o dado vai à tela. A mesma pessoa relendo a mesma cliente no mesmo ponto em 30 minutos é um registro só; falha no registro não trava o atendimento. O registro não se altera, sobrevive ao membro desativado e guarda a marca "via suporte".
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/atendimento.md:1976`, `:1985`, `:1996`, `:2012`
 - Antes: PT-07, PT-09, PT-11
 
 **PT-05.** A lista de quem abriu o prontuário aparece no fim da aba Prontuário a quem tem o Prontuário em Gerenciar e "A rede inteira". A cliente não a recebe no pacote LGPD.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/atendimento.md:1999`, `docs/revisao.md:2054`
 - Antes: PT-10
 
@@ -636,12 +636,12 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Antes: PT-12, PT-13
 
 **PT-08.** A foto clínica entra pela tela do atendimento ("Fotos do atendimento"), ligada a ele e à cliente (também no atendimento de outra unidade dela). O cartão aparece a quem vê o prontuário, e anexar, a quem escreve nele. A foto diz o momento — Antes, Durante, Depois — e tem um nome editável que só a equipe lê. O histórico do atendimento registra a foto anexada, enviada à cliente, tirada do app e apagada ("Foto clínica apagada por <nome>"), com quem fez.
-- Fonte: decisão do Claude (o rastro de apagar está atribuído ao Heitor sem a fala, a confirmar)
+- Fonte: decisão do Claude (o rastro de apagar; o documento o atribuía ao Heitor sem a fala)
 - Onde: `docs/regras/atendimento.md:1503-1508`, `:1953`, `:2033`, `:2048-2087`
 - Antes: PT-15, PT-16, PT-17, PT-18, AG-201
 
 **PT-09.** No app da cliente só aparece o arquivo que a equipe ENVIA: anexar nasce "Só a equipe vê"; "Enviar à cliente" a avisa com texto genérico, e "Tirar do app" desfaz. Envia quem pode mexer no anexo, com a unidade ao alcance; o suporte não envia. Com o app no plano, a foto pode ir já no anexar, como "Uma foto do seu atendimento". O termo e o contrato assinados continuam no app.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/atendimento.md:2068`, `:2096`
 - Antes: PT-19, PT-20
 
@@ -663,12 +663,12 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 ### Injetáveis
 
 **PT-13.** A aplicação de injetáveis só se registra dentro de um atendimento ("Registrar aplicação"); fora dele, o mapa não oferece "Confirmar aplicação" e o registro é recusado. Há UMA aplicação por mapa por atendimento: registrada, o botão vira "Atualizar a aplicação registrada" enquanto o atendimento está aberto; encerrado, ela fica.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/atendimento.md:2112`, `:2127`, `:2162`
 - Antes: PT-25, PT-26
 
 **PT-14.** O mapa se abre e se cria da tela do atendimento ("Mapa de injetáveis": abre a quem vê o clínico; criar e mexer no mapa é de quem tem o Atendimento em Gerenciar, PT-16). O campo "Planejador de injetáveis" da ficha abre o planejamento DA CLIENTE (os dela, ou um novo ligado a ela; o vazio que ela já tem se reaproveita) — não há segundo planejador; as opções do campo são os "Produtos do mapa". Sem esse campo na ficha, o mapa é o do Planejamento.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/atendimento.md:2120`, `:2140`, `:2170`, `:2177`, `:2234`
 - Antes: PT-27, PT-28, PT-29
 
@@ -735,7 +735,7 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Antes: FI-12, AT-30, AT-31
 
 **FI-09.** Mandar a ficha de saúde ao agendar é configuração da rede, desligada por padrão. Ligada, todo agendamento, por qualquer caminho, abre a ficha pendente da cliente (uma por cliente), menos quando ela respondeu ou confirmou há menos de 30 dias. Desligada, o Início do app oferece "Responda a sua ficha de saúde" à cliente com atendimento marcado e sem ficha válida.
-- Fonte: princípio 6 (os 30 dias: atribuída ao Heitor sem a fala, a confirmar)
+- Fonte: princípio 6 (os 30 dias: decisão do Claude; o documento os atribuía ao Heitor sem a fala)
 - Onde: `docs/regras/atendimento.md:1740`, `:1747`, `:1827`
 - Antes: FI-13, FI-14, FI-25
 
@@ -745,7 +745,7 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Antes: FI-15, FI-27
 
 **FI-11.** Quando a cliente responde (app ou link), o profissional do agendamento é avisado no sino e no celular; o aviso diz a alergia, se houver.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/atendimento.md:1751`
 - Antes: FI-16
 
@@ -878,7 +878,7 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Antes: ES-09, PC-25
 
 **ES-06.** O SKU é gerado sozinho e não se edita: começa com as três letras da categoria (sem categoria, "OUT" no só Insumo e "REV" no de Venda direta) e não muda depois. Antes de salvar, a tela mostra "Gerado ao salvar (…)".
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/atendimento.md:2841`, `docs/revisao.md:110`, `docs/revisao.md:148`
 - Antes: ES-14, ES-15
 
@@ -930,14 +930,14 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Antes: ES-32, ES-33
 
 **ES-16.** Desfazer, sempre com motivo obrigatório e sem apagar nada (o original fica marcado "desfeito"), por quem tem o Estoque em Gerenciar e alcança a unidade: "Desfazer entrada", enquanto nada saiu do lote dela (cria "Entrada desfeita", que não é perda nem consumo; o último custo volta ao da entrada anterior); "Desfazer ajuste", enquanto nada saiu do lote que ele mexeu; "Desfazer perda", só na perda mais nova de cada unidade (volta ao mesmo lote). O desfeito sai de "Perdas no período". A entrega do brinde não se desfaz por aqui.
-- Fonte: decisão do Claude (desfazer só a perda mais nova: atribuída ao Heitor sem a fala, H12, a confirmar)
+- Fonte: decisão do Claude (desfazer só a perda mais nova; o documento o atribuía ao Heitor sem a fala, H12)
 - Onde: `docs/regras/atendimento.md:2663`, `:2709`, `:2765`, `:3207`, `:3254`
 - Antes: ES-31, ES-57, ES-60
 
 ### Unidade de consumo, custo e saldo
 
 **ES-17.** O produto com unidade de consumo (ml, UI, g…) registra todo movimento e todo custo nessa unidade (o custo por unidade é o preço da embalagem dividido pelo que ela rende, com até 4 casas). Continuam em embalagens o que se digita na entrada e na transferência, o preço, o saldo, o mínimo e os lotes. O insumo aparece na unidade de consumo em toda tela, e o cadastro do procedimento mostra quanto da embalagem é a dose; a quantidade do insumo no procedimento começa em branco e é obrigatória.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/atendimento.md:2600`, `:2776`, `:2793-2808`
 - Antes: ES-34, ES-35, ES-36, ES-37
 
@@ -990,13 +990,13 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Antes: ES-54, ES-55, ES-56
 
 **ES-27.** A perda (Movimentar → Perda) tem o lote (ou "sem lote", que tira do que vence antes), a quantidade em embalagem ou consumo, o motivo (Vencido, Quebrou, Amostra ou Uso interno) e uma observação; é recusada se pede mais do que o lote ou o saldo têm. A perda não é consumo: fica fora do giro e do lucro, sai ao custo do lote e aparece em "Perdas no período". Entregar o brinde de produto da fidelidade é perda com o motivo "Brinde da fidelidade" (o brinde sem produto não mexe no estoque).
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/atendimento.md:2769`, `:2849-2864`
 - Antes: ES-58, ES-59, ES-61
 
 **ES-28.** O estorno de uma venda de produto pergunta se o produto voltou: se voltou, volta ao saldo e aos mesmos lotes como "Devolução de venda"; se não, o estoque fica e a venda vira perda "Venda estornada". Nenhum dos dois entra no giro.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
-- Onde: `docs/regras/atendimento.md:2874`
+- Fonte: a pergunta "houve devolução?" é decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele); a venda estornada sem devolução virar perda "Venda estornada" é decisão do Claude, pelos princípios
+- Onde: `docs/regras/atendimento.md:2874`; `docs/regras/indicadores.md:455-458`
 - Antes: ES-62
 
 **ES-29.** A transferência entre unidades é imediata, sem confirmação do destino, em embalagens; confere o que há de verdade (o frasco aberto pelo que sobra) e recusa o que passa disso. Quem tem a unidade de origem fixa pode mandar para qualquer unidade da rede, e a tela diz isso. A nota diz os nomes das unidades, e Relatórios → Estoque mostra "Transferências entre unidades", ao custo do lote que saiu.
@@ -1013,71 +1013,73 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 
 ## Perguntas ao Heitor
 
-Q01. **Agenda — escritas como decisão sua, sem a sua fala: confirma?** AG-01 e AG-02 (o horário da unidade e de quem atende, "decisão do Heitor, 2026-10-21", `atendimento.md:9-10`); AG-31 (Confirmar × Chegou, `:465`); AG-15 (ficha rápida, H4 opção b, `:1473-1485`); AG-26 ("Mostrar cancelados", 2026-10-21, `:1163`); AG-32 (D20: o que a Agenda em Gerenciar faz; a falta no próprio, "agenda-06" de 02/11, `:634-636`); AG-42 (H3 opção c, `:1464-1472`); AG-44 (salas, D5, `:1337`); AG-47 (por-05, `:1028`); AG-52 ("Sem preferência", D-16, `:962-963`); AG-53 (prazo do app, 2026-10-21, `:889-891`); AG-63 (H7, `:357`); AG-34 (sessão de pacote e de plano sem documento: `docs/revisao.md:285` tem uma fala no PC2, mas a linha não diz que é sua).
+Revisão de 24/11 (o Heitor, 24/11: "da uma revisada se as perguntas realmente faz sentido, as vezes tu me perguntas que são coisas obvias e se resolvem fácil com um pouco de logica sobre o contexto"). Ficam na página só três: Q09 (o agendamento novo da cliente pelo app nasce Confirmado?), Q11 (o horário que já passou: agendar recusa e remarcar só avisa) e a parte de escopo da Q30 (desativar produto pela tela). Na Q30, editar e desativar seguem a regra de cadastrar (cada passo, um módulo: o Estoque em Gerenciar). As outras se resolveram por uma regra dele, um princípio ou a lógica do contexto; cada uma diz como, no começo.
 
-Q02. **Atendimento e plano — escritas como decisão sua, sem a sua fala: confirma?** AT-08 (só se conclui o iniciado, H5 opção a e C11 de 11/11, `atendimento.md:3316`, `:1457`); AT-15 (insumo faltando não impede, 2026-09-27, `:3797`); AT-16 (o "Finalizar" leva o que está na tela, D3 de 28/10, `:3498`; a parte da ficha de atendimento, D1 de 29/10, `:3508`, não diz de quem é); AT-17 (o rascunho morre com a aba, A31 de 27/10, `:3748`); AT-03 (salvar evolução, ficha e foto pede o Atendimento E o Prontuário, "o Heitor, 2026-11-18", `:1927` — a sua fala de 18/11 fala de iniciar e concluir); PL-06 (o plano da avaliação é uma gravação só, revisão de 29/10, `:3606`); PL-11 ("Novo plano" só grava ao salvar, `:2478`); PL-22 (os gestos de quem recebe fora do "só os meus", `:2449`).
+Q01. **Resolvida na revisão de 24/11:** A sua regra (CLAUDE.md §1: "Regra decidida pelo Claude diz que é dele; só se atribui ao Heitor o que a fala dele diz") já responde: sem a fala, a regra é decisão do Claude, e a fonte foi trocada. O conteúdo segue no catálogo para a revisão da área. — *Era:* **Agenda — escritas como decisão sua, sem a sua fala: confirma?** AG-01 e AG-02 (o horário da unidade e de quem atende, "decisão do Heitor, 2026-10-21", `atendimento.md:9-10`); AG-31 (Confirmar × Chegou, `:465`); AG-15 (ficha rápida, H4 opção b, `:1473-1485`); AG-26 ("Mostrar cancelados", 2026-10-21, `:1163`); AG-32 (D20: o que a Agenda em Gerenciar faz; a falta no próprio, "agenda-06" de 02/11, `:634-636`); AG-42 (H3 opção c, `:1464-1472`); AG-44 (salas, D5, `:1337`); AG-47 (por-05, `:1028`); AG-52 ("Sem preferência", D-16, `:962-963`); AG-53 (prazo do app, 2026-10-21, `:889-891`); AG-63 (H7, `:357`); AG-34 (sessão de pacote e de plano sem documento: `docs/revisao.md:285` tem uma fala no PC2, mas a linha não diz que é sua).
 
-Q03. **Prontuário e fichas — escritas como decisão sua, sem a sua fala: confirma?** PT-04 (todo acesso clínico registrado, 27/10, `atendimento.md:1976`); PT-05 (a lista de quem abriu, H13 opção a, `:2005`); PT-08 (apagar a foto deixa rastro, 02/11, `:2052`); PT-09 (no app só o que a equipe envia, 30/10, `:2096`); PT-13 (a aplicação de injetáveis só no atendimento, D14, `:2113`); PT-14 (o campo planejador abre o planejamento da cliente, 29/10, `:2171`); FI-09 (os 30 dias sem nova pendente, 21/10, `:1747`); FI-11 (o profissional é avisado quando a cliente responde, 21/10, `:1751`).
+Q02. **Resolvida na revisão de 24/11:** A sua regra (CLAUDE.md §1: "Regra decidida pelo Claude diz que é dele; só se atribui ao Heitor o que a fala dele diz") já responde: sem a fala, a regra é decisão do Claude, e a fonte foi trocada. O conteúdo segue no catálogo para a revisão da área. — *Era:* **Atendimento e plano — escritas como decisão sua, sem a sua fala: confirma?** AT-08 (só se conclui o iniciado, H5 opção a e C11 de 11/11, `atendimento.md:3316`, `:1457`); AT-15 (insumo faltando não impede, 2026-09-27, `:3797`); AT-16 (o "Finalizar" leva o que está na tela, D3 de 28/10, `:3498`; a parte da ficha de atendimento, D1 de 29/10, `:3508`, não diz de quem é); AT-17 (o rascunho morre com a aba, A31 de 27/10, `:3748`); AT-03 (salvar evolução, ficha e foto pede o Atendimento E o Prontuário, "o Heitor, 2026-11-18", `:1927` — a sua fala de 18/11 fala de iniciar e concluir); PL-06 (o plano da avaliação é uma gravação só, revisão de 29/10, `:3606`); PL-11 ("Novo plano" só grava ao salvar, `:2478`); PL-22 (os gestos de quem recebe fora do "só os meus", `:2449`).
 
-Q04. **Estoque — escritas como decisão sua, sem a sua fala: confirma?** ES-08 (onde Insumo e Venda direta aparecem, D-6 de 29/10, `atendimento.md:2828`; e o preço e a comissão de venda, E9 "Decidido: mantém", `revisao.md:149`); ES-06 (SKU automático, E8, `revisao.md:148`); ES-17 (tudo na unidade de consumo, D1 de 27/10, `atendimento.md:2600-2601`); ES-27 (a perda com os quatro motivos, D-7 de 29/10, `:2849`); ES-16 ("Desfazer perda" só na mais nova, H12 opção a, `:3138`, `:3254`); ES-28 (a devolução no estorno da venda, H2 de 01/11, `:2874`).
+Q03. **Resolvida na revisão de 24/11:** A sua regra (CLAUDE.md §1: "Regra decidida pelo Claude diz que é dele; só se atribui ao Heitor o que a fala dele diz") já responde: sem a fala, a regra é decisão do Claude, e a fonte foi trocada. O conteúdo segue no catálogo para a revisão da área. — *Era:* **Prontuário e fichas — escritas como decisão sua, sem a sua fala: confirma?** PT-04 (todo acesso clínico registrado, 27/10, `atendimento.md:1976`); PT-05 (a lista de quem abriu, H13 opção a, `:2005`); PT-08 (apagar a foto deixa rastro, 02/11, `:2052`); PT-09 (no app só o que a equipe envia, 30/10, `:2096`); PT-13 (a aplicação de injetáveis só no atendimento, D14, `:2113`); PT-14 (o campo planejador abre o planejamento da cliente, 29/10, `:2171`); FI-09 (os 30 dias sem nova pendente, 21/10, `:1747`); FI-11 (o profissional é avisado quando a cliente responde, 21/10, `:1751`).
 
-Q05. **Procedimentos — estas estão como decisão do Claude, mas vêm de decisões das simulações (D7 da 13ª, D4 da 14ª, A20d da 25ª) e da auditoria de 18/11, sem dizer de quem são: confirma?** PC-09, PC-11, PL-15, AG-52 (a parte do app recusar quem não realiza), AG-67 (o repasse só a quem realiza).
+Q04. **Resolvida na revisão de 24/11:** A sua regra (CLAUDE.md §1: "Regra decidida pelo Claude diz que é dele; só se atribui ao Heitor o que a fala dele diz") já responde: sem a fala, a regra é decisão do Claude, e a fonte foi trocada. O conteúdo segue no catálogo para a revisão da área. — *Era:* **Estoque — escritas como decisão sua, sem a sua fala: confirma?** ES-08 (onde Insumo e Venda direta aparecem, D-6 de 29/10, `atendimento.md:2828`; e o preço e a comissão de venda, E9 "Decidido: mantém", `revisao.md:149`); ES-06 (SKU automático, E8, `revisao.md:148`); ES-17 (tudo na unidade de consumo, D1 de 27/10, `atendimento.md:2600-2601`); ES-27 (a perda com os quatro motivos, D-7 de 29/10, `:2849`); ES-16 ("Desfazer perda" só na mais nova, H12 opção a, `:3138`, `:3254`); ES-28 (a devolução no estorno da venda, H2 de 01/11, `:2874`).
 
-Q06. **Falas sem data:** AG-48 (o "concordo" sobre a cliente arquivada, `atendimento.md:1035`), AG-58 (F17-3, `:799-801`), AG-16 e PL-18 ("decisão 2" da 8ª e da 9ª simulação, CLAUDE.md §11, `:1287-1288`), ES-15 ("As duas", A10 da 24ª, que também não diz a que opções responde — cobre o "Corrigir custo" e a "Correção de cadastro"?). Pode dar as datas?
+Q05. **Resolvida na revisão de 24/11:** A sua regra (CLAUDE.md §1: "Regra decidida pelo Claude diz que é dele; só se atribui ao Heitor o que a fala dele diz") já responde: sem a fala, a regra é decisão do Claude, e a fonte foi trocada. O conteúdo segue no catálogo para a revisão da área. — *Era:* **Procedimentos — estas estão como decisão do Claude, mas vêm de decisões das simulações (D7 da 13ª, D4 da 14ª, A20d da 25ª) e da auditoria de 18/11, sem dizer de quem são: confirma?** PC-09, PC-11, PL-15, AG-52 (a parte do app recusar quem não realiza), AG-67 (o repasse só a quem realiza).
 
-Q07. **AG-32 — o "só os meus" na confirmação e na chegada:** `atendimento.md:641` diz "Confirmar e 'Chegou' seguem com quem vê a agenda de todos", mas `:479` e `:483-486` dizem que com "só os meus" a pessoa marca a chegada dos próprios, e a D20 (`docs/revisao.md:455-457`) resolve por "Gerenciar nos próprios registros". Quem tem a Agenda em Gerenciar "só os meus" confirma e marca a chegada do próprio agendamento? E remarca o próprio (`:1449-1452` ainda diz que isso "segue aberta para confirmar")?
+Q06. **Resolvida na revisão de 24/11:** A fala está no documento; a data que falta não muda a regra. O "As duas" da ES-15 responde às duas opções que a própria ES-15 descreve. — *Era:* **Falas sem data:** AG-48 (o "concordo" sobre a cliente arquivada, `atendimento.md:1035`), AG-58 (F17-3, `:799-801`), AG-16 e PL-18 ("decisão 2" da 8ª e da 9ª simulação, CLAUDE.md §11, `:1287-1288`), ES-15 ("As duas", A10 da 24ª, que também não diz a que opções responde — cobre o "Corrigir custo" e a "Correção de cadastro"?). Pode dar as datas?
 
-Q08. **AG-21 e AG-32 — o "só os meus" no que se FAZ:** o Claude decidiu (princípio 1) que o "só os meus" também recorta a ação (bloquear só o próprio horário, agendar só para si), lendo a sua fala de 28/10 como sendo sobre o que se vê (`atendimento.md:254-260`, `:592-594`). Confirma?
+Q07. **Resolvida na revisão de 24/11:** Saiu o "só os meus" (o Heitor, 23/11). — *Era:* **AG-32 — o "só os meus" na confirmação e na chegada:** `atendimento.md:641` diz "Confirmar e 'Chegou' seguem com quem vê a agenda de todos", mas `:479` e `:483-486` dizem que com "só os meus" a pessoa marca a chegada dos próprios, e a D20 (`docs/revisao.md:455-457`) resolve por "Gerenciar nos próprios registros". Quem tem a Agenda em Gerenciar "só os meus" confirma e marca a chegada do próprio agendamento? E remarca o próprio (`:1449-1452` ainda diz que isso "segue aberta para confirmar")?
+
+Q08. **Resolvida na revisão de 24/11:** Saiu o "só os meus" (o Heitor, 23/11). — *Era:* **AG-21 e AG-32 — o "só os meus" no que se FAZ:** o Claude decidiu (princípio 1) que o "só os meus" também recorta a ação (bloquear só o próprio horário, agendar só para si), lendo a sua fala de 28/10 como sendo sobre o que se vê (`atendimento.md:254-260`, `:592-594`). Confirma?
 
 Q09. **AG-42 — a H3:** além de não ter a fala, `docs/revisao.md:462-463` não diz com clareza se "a cliente pelo app nasce Confirmada" é sobre o agendamento novo ou sobre a remarcação. Qual é a regra?
 
-Q10. **AG-62 — a unidade nova no "Atende":** o seu "Concord." de 14/11 foi à definição de "A rede inteira (todas, inclusive as que vierem)"; pôr a unidade nova também no "Atende" saiu da auditoria de 18/11 (antes era "nasce sem ninguém marcado", princípio 6) (`atendimento.md:345-353`). Aprova a extensão?
+Q10. **Resolvida na revisão de 24/11:** A caixa "Atende clientes" vale em todas as unidades DELA (EQ1c), e as unidades de quem tem "A rede inteira" incluem as que vierem (o Heitor, 14/11, "Concord."): a unidade nova entra porque foi isso que ela marcou. Fica. — *Era:* **AG-62 — a unidade nova no "Atende":** o seu "Concord." de 14/11 foi à definição de "A rede inteira (todas, inclusive as que vierem)"; pôr a unidade nova também no "Atende" saiu da auditoria de 18/11 (antes era "nasce sem ninguém marcado", princípio 6) (`atendimento.md:345-353`). Aprova a extensão?
 
 Q11. **AG-06 × AG-41 — o passado:** o Agendar novo recusa horário no passado (`atendimento.md:46-49`), mas o remarcar para o passado avisa e deixa (`:654-657`). As duas regras ficam diferentes de propósito?
 
-Q12. **AG-23 — de quem é a regra da "Minha agenda" com o horário da pessoa?** Ela vem marcada só como "Reforça", item 8 da 5ª simulação (`atendimento.md:22`); não fica claro se é fala sua.
+Q12. **Resolvida na revisão de 24/11:** A sua regra (CLAUDE.md §1: "Regra decidida pelo Claude diz que é dele; só se atribui ao Heitor o que a fala dele diz") já responde: sem a fala, a regra é decisão do Claude, e a fonte foi trocada. O conteúdo segue no catálogo para a revisão da área. — *Era:* **AG-23 — de quem é a regra da "Minha agenda" com o horário da pessoa?** Ela vem marcada só como "Reforça", item 8 da 5ª simulação (`atendimento.md:22`); não fica claro se é fala sua.
 
-Q13. **AT-02 — o Atendimento em Ver:** o texto diz que a tela do atendimento "abre também com a Agenda em Ver" (`atendimento.md:1427-1428`). Isso bate com "Agenda é agenda e atendimento é atendimento" (18/11)? Não entrou como regra.
+Q13. **Resolvida na revisão de 24/11:** Cada passo, um módulo (o Heitor, 23/11): a tela do atendimento abre com o Atendimento em Ver; a Agenda em Ver não a abre. O texto velho vai a corrigir. — *Era:* **AT-02 — o Atendimento em Ver:** o texto diz que a tela do atendimento "abre também com a Agenda em Ver" (`atendimento.md:1427-1428`). Isso bate com "Agenda é agenda e atendimento é atendimento" (18/11)? Não entrou como regra.
 
-Q14. **AG-45 — unidade sem sala:** `atendimento.md:1341-1342` diz que o Agendar mostra "Sem sala cadastrada nesta unidade"; `:1378-1379` diz que "o campo nem aparece". Qual vale? Não entrou como regra.
+Q14. **Resolvida na revisão de 24/11:** Princípio 7 (o caso comum aparece; o raro fica guardado): sem sala na unidade, o campo da sala não aparece. Decisão do Claude. — *Era:* **AG-45 — unidade sem sala:** `atendimento.md:1341-1342` diz que o Agendar mostra "Sem sala cadastrada nesta unidade"; `:1378-1379` diz que "o campo nem aparece". Qual vale? Não entrou como regra.
 
-Q15. **AG-37 — o motivo do cancelamento:** é "obrigatório ao cancelar" (`atendimento.md:1405`), mas no app é "Motivo (opcional)" (`:908`). O obrigatório é só para a equipe?
+Q15. **Resolvida na revisão de 24/11:** Fica diferente de propósito: o motivo é o registro da equipe; a cliente não é obrigada a se explicar no app (princípio 7). Decisão do Claude. — *Era:* **AG-37 — o motivo do cancelamento:** é "obrigatório ao cancelar" (`atendimento.md:1405`), mas no app é "Motivo (opcional)" (`:908`). O obrigatório é só para a equipe?
 
-Q16. **PL-02 × PL-03 × PL-01 — quem monta o plano:** na PT2 você disse "quem monta o plano é quem atende, nem precisa de permissão" (`docs/revisao.md:979-981`). O texto pede o Atendimento em Gerenciar para gerar e aceitar na avaliação ABERTA (`atendimento.md:2346-2350`, `:3696`, auditoria de 18/11, sem fala sua), basta atender na unidade na avaliação CONCLUÍDA (`:3700`, `:3853`), e pede o Atendimento em Ver para o plano existir (`:2299`). Quem tem o "Atende" marcado e não tem o Atendimento monta o plano ou não?
+Q16. **Resolvida na revisão de 24/11:** Cada passo, um módulo (o Heitor, 23/11, aprovado em UM1–UM5): montar o plano é do Atendimento em Gerenciar; o "Atende" não dá permissão. A fala da PT2 é mais antiga. — *Era:* **PL-02 × PL-03 × PL-01 — quem monta o plano:** na PT2 você disse "quem monta o plano é quem atende, nem precisa de permissão" (`docs/revisao.md:979-981`). O texto pede o Atendimento em Gerenciar para gerar e aceitar na avaliação ABERTA (`atendimento.md:2346-2350`, `:3696`, auditoria de 18/11, sem fala sua), basta atender na unidade na avaliação CONCLUÍDA (`:3700`, `:3853`), e pede o Atendimento em Ver para o plano existir (`:2299`). Quem tem o "Atende" marcado e não tem o Atendimento monta o plano ou não?
 
-Q17. **AT-20 — quem desiste no meio:** o texto atribui a você, 18/11, que o Atendimento "desiste no meio" (`atendimento.md:3433-3435`), mas a sua fala fala só em iniciar e concluir. Desistir é mesmo do Atendimento em Gerenciar?
+Q17. **Resolvida na revisão de 24/11:** Cada passo, um módulo (o Heitor, 23/11): desistir no meio é do Atendimento em Gerenciar. — *Era:* **AT-20 — quem desiste no meio:** o texto atribui a você, 18/11, que o Atendimento "desiste no meio" (`atendimento.md:3433-3435`), mas a sua fala fala só em iniciar e concluir. Desistir é mesmo do Atendimento em Gerenciar?
 
-Q18. **AT-03 — quem responde a ficha de saúde no atendimento:** `atendimento.md:3589` diz "quem atende com o Prontuário em Gerenciar" e, logo depois (e em `:3314`), "quem tem o Prontuário". É preciso também atender, ou basta o Prontuário em Gerenciar?
+Q18. **Resolvida na revisão de 24/11:** Cada passo, um módulo (o Heitor, 23/11): a ficha de saúde é do Prontuário em Gerenciar, sem precisar atender. — *Era:* **AT-03 — quem responde a ficha de saúde no atendimento:** `atendimento.md:3589` diz "quem atende com o Prontuário em Gerenciar" e, logo depois (e em `:3314`), "quem tem o Prontuário". É preciso também atender, ou basta o Prontuário em Gerenciar?
 
-Q19. **PL-10 — o desconto aplicado aos preços no aceite:** o texto diz "decisão do Claude pelo princípio 3, 2026-11-18, levada ao Heitor" (`atendimento.md:3665`), sem resposta registrada. Concorda?
+Q19. **Resolvida na revisão de 24/11:** Princípio 3 (o que a tela mostra é o que vale): o preço da sessão já com o desconto é o que vale. Fica, como decisão do Claude. — *Era:* **PL-10 — o desconto aplicado aos preços no aceite:** o texto diz "decisão do Claude pelo princípio 3, 2026-11-18, levada ao Heitor" (`atendimento.md:3665`), sem resposta registrada. Concorda?
 
-Q20. **PL-22 — receber o plano no PDV, dentro ou fora do "só os meus"?** `atendimento.md:2432-2433` põe o "receber dele no PDV" DENTRO do "só os meus", e `:2447-2449` põe os gestos de quem recebe FORA. Qual vale?
+Q20. **Resolvida na revisão de 24/11:** Saiu o "só os meus" (o Heitor, 23/11). — *Era:* **PL-22 — receber o plano no PDV, dentro ou fora do "só os meus"?** `atendimento.md:2432-2433` põe o "receber dele no PDV" DENTRO do "só os meus", e `:2447-2449` põe os gestos de quem recebe FORA. Qual vale?
 
-Q21. **PL-14 — o contrato no recebimento do plano:** `docs/revisao.md:1016-1018` diz que o PDV que recebe o plano sem o contrato assinado "AVISA … não recusa" (princípio 2), e `:2014` (PT1c, mais novo) diz que "não confirma o recebimento". O catálogo seguiu o mais novo; confirma?
+Q21. **Resolvida na revisão de 24/11:** A decisão mais nova vence (PT1c): sem o contrato assinado ou dispensado com motivo, o PDV não confirma o recebimento. — *Era:* **PL-14 — o contrato no recebimento do plano:** `docs/revisao.md:1016-1018` diz que o PDV que recebe o plano sem o contrato assinado "AVISA … não recusa" (princípio 2), e `:2014` (PT1c, mais novo) diz que "não confirma o recebimento". O catálogo seguiu o mais novo; confirma?
 
-Q22. **AT-13 e PL-05 — a sessão de pacote:** a parte da sessão de pacote (a tela "já paga", o plano opcional na sessão de pacote) estava no trecho do Plano; talvez pertença a Vendas/Pacotes. Fica aqui?
+Q22. **Resolvida na revisão de 24/11:** Onde a regra fica escrita é organização do documento: fica no Atendimento, apontando para Vendas. Decisão do Claude. — *Era:* **AT-13 e PL-05 — a sessão de pacote:** a parte da sessão de pacote (a tela "já paga", o plano opcional na sessão de pacote) estava no trecho do Plano; talvez pertença a Vendas/Pacotes. Fica aqui?
 
-Q23. **PC-09 — dois jeitos de "só nesta unidade":** o procedimento local da unidade (`atendimento.md:1518`, `:1674-1685`) e o "Em quais unidades" (`:1538-1547`). Os dois valem? A consulta descrita em `:1674-1685` não aplica nem "Em quais unidades" nem o preço da unidade.
+Q23. **Resolvida na revisão de 24/11:** Os dois jeitos existem e valem (princípio 1). A consulta que ignora o "Em quais unidades" e o preço da unidade é defeito a corrigir. — *Era:* **PC-09 — dois jeitos de "só nesta unidade":** o procedimento local da unidade (`atendimento.md:1518`, `:1674-1685`) e o "Em quais unidades" (`:1538-1547`). Os dois valem? A consulta descrita em `:1674-1685` não aplica nem "Em quais unidades" nem o preço da unidade.
 
-Q24. **PC-11 — o plano antigo com procedimento que a unidade não faz:** ele fica à vista, mas o servidor recusa gravar o plano com ele (`atendimento.md:1557-1560`). Então ele só se salva tirando o item. Está certo assim?
+Q24. **Resolvida na revisão de 24/11:** Princípio 2 (no máximo, avisar): a marca "(não é feito nesta unidade)" é o aviso, e o plano se salva com ele. O que recusa hoje é defeito a corrigir. — *Era:* **PC-11 — o plano antigo com procedimento que a unidade não faz:** ele fica à vista, mas o servidor recusa gravar o plano com ele (`atendimento.md:1557-1560`). Então ele só se salva tirando o item. Está certo assim?
 
-Q25. **PC-03 — a comissão do procedimento:** a sua fala de 18/11 é geral ("Configuração da rede toda só pela conta admin"); que a comissão do procedimento é configuração da rede toda vem da lista do Claude no CLAUDE.md §11. Confirma?
+Q25. **Resolvida na revisão de 24/11:** O CLAUDE.md §11 põe a comissão do procedimento na configuração da rede toda, e a configuração das comissões é da Admin da rede (CM-03): só a Admin da rede muda. — *Era:* **PC-03 — a comissão do procedimento:** a sua fala de 18/11 é geral ("Configuração da rede toda só pela conta admin"); que a comissão do procedimento é configuração da rede toda vem da lista do Claude no CLAUDE.md §11. Confirma?
 
-Q26. **PC-14 × AG-52 — quem não realiza o procedimento:** na agenda da equipe só avisa; no app da cliente é recusado. A regra é sua ou do Claude?
+Q26. **Resolvida na revisão de 24/11:** Fica diferente de propósito: o app só oferece quem realiza (a cliente não escolhe quem não faz), e a equipe é avisada e decide (princípio 2). Decisão do Claude. — *Era:* **PC-14 × AG-52 — quem não realiza o procedimento:** na agenda da equipe só avisa; no app da cliente é recusado. A regra é sua ou do Claude?
 
-Q27. **PC-07 — onde mora a regra dos documentos do procedimento:** ela não está em `docs/regras/atendimento.md` §9.3, só na revisão (e, presume-se, em `docs/regras/documentos.md`). A §9.3 deve apontar para ela?
+Q27. **Resolvida na revisão de 24/11:** Organização do documento: a seção de Procedimentos aponta para documentos.md. Decisão do Claude. — *Era:* **PC-07 — onde mora a regra dos documentos do procedimento:** ela não está em `docs/regras/atendimento.md` §9.3, só na revisão (e, presume-se, em `docs/regras/documentos.md`). A §9.3 deve apontar para ela?
 
-Q28. **ES-05 — "Seringa" e o rótulo do Novo produto:** estão em §9.3 (Procedimentos, `atendimento.md:1633-1643`), mas são do Estoque. Mudam para §9.5?
+Q28. **Resolvida na revisão de 24/11:** Organização do documento: "Seringa" e o rótulo do Novo produto vão para a seção do Estoque. Decisão do Claude. — *Era:* **ES-05 — "Seringa" e o rótulo do Novo produto:** estão em §9.3 (Procedimentos, `atendimento.md:1633-1643`), mas são do Estoque. Mudam para §9.5?
 
-Q29. **ES-27 — a perda fora do giro e do lucro:** `atendimento.md:2860-2861` diz "(decisão para o Heitor)". Você decidiu, ou a decisão ainda está com você?
+Q29. **Resolvida na revisão de 24/11:** Contar a perda no lucro contaria o insumo duas vezes: ele já saiu como despesa na compra. A perda é métrica, fora do giro e do lucro. — *Era:* **A perda fica fora do giro e do lucro (ES-27):** `atendimento.md:2860-2861` diz "(decisão para o Heitor)". Mas `indicadores.md:476-477` cita, da revisão de 02/11 (perguntas do estoque 4 e 5), a frase "perdido ou não, o insumo já foi pago na compra … serve como métrica", sem dizer de quem é. A frase é sua, e a perda fica como métrica (fora do giro, do lucro e do financeiro)?
 
 Q30. **ES-02 e ES-22 — editar e desativar produto:** a sua fala de 13/11 diz "Quem cadastra é só quem tem permissão de gerenciar"; o texto (`atendimento.md:3102`) estendeu a mesma regra a editar e desativar. Confirma? E, como hoje nenhuma tela desativa produto (`:3235-3238`), desativar produto está no escopo da tela?
 
-Q31. **ES-29 — transferir para fora das próprias unidades:** quem tem a unidade de origem fixa transfere para qualquer unidade da rede, inclusive fora das dela (`atendimento.md:3205-3206`, A12 da 15ª). Confirma?
+Q31. **Resolvida na revisão de 24/11:** O estoque é da rede: quem transfere mexe na unidade de origem, que é dela, e manda a qualquer unidade da rede. Fica. — *Era:* **ES-29 — transferir para fora das próprias unidades:** quem tem a unidade de origem fixa transfere para qualquer unidade da rede, inclusive fora das dela (`atendimento.md:3205-3206`, A12 da 15ª). Confirma?
 
-Q32. **ES-30 — quem recebe o aviso do lote que vence:** quem tem o Estoque em Gerenciar, como no mínimo, ou quem tem o Estoque em Ver? (`atendimento.md:2994` contra `:3005`)
+Q32. **Resolvida na revisão de 24/11:** "Quem responde pelo Estoque" não é permissão: vale a mesma do estoque no mínimo, o Estoque em Gerenciar. — *Era:* **ES-30 — quem recebe o aviso do lote que vence:** quem tem o Estoque em Gerenciar, como no mínimo, ou quem tem o Estoque em Ver? (`atendimento.md:2994` contra `:3005`)
 
-Q33. **Vocabulário nas telas:** os textos "Escolha a profissional e a data para ver os horários livres." (`atendimento.md:124`), "Trocar a profissional de A para B?" (`:606`), o motivo "Profissional desativada (Débora)" (`:404`) e "Esta profissional não realiza este procedimento." (`:1651-1654`) usam "a profissional" no feminino fixo, o que a A23 da 22ª corrigiu em outro texto (`:533-535`). Corrige-se?
+Q33. **Resolvida na revisão de 24/11:** O vocabulário do sistema (sem cargo fixo) já decide: texto neutro ("quem atende"). Defeito de texto a corrigir. — *Era:* **Vocabulário nas telas:** os textos "Escolha a profissional e a data para ver os horários livres." (`atendimento.md:124`), "Trocar a profissional de A para B?" (`:606`), o motivo "Profissional desativada (Débora)" (`:404`) e "Esta profissional não realiza este procedimento." (`:1651-1654`) usam "a profissional" no feminino fixo, o que a A23 da 22ª corrigiu em outro texto (`:533-535`). Corrige-se?
 
 ## Divergências
 

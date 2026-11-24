@@ -112,7 +112,7 @@ Este é o catálogo das regras de Vendas e financeiro que valem HOJE: o PDV e as
 - Antes: KA-25, KB-11, KB-12, KF-56
 
 **VD-04.** Sem ficha, primeiro o cadastro: a venda exige uma cliente cadastrada na rede (sem a ficha, é recusada). No inbox, com o contato ainda sem ficha, o "Vender" (a quem também tem Clientes em Gerenciar) abre o cadastro — o cadastro rápido serve — e, ao salvar, leva ao PDV com a cliente nova.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/vendas-financeiro.md:687-690`, `:1153-1155`
 - Antes: KB-13, KC-14
 
@@ -136,7 +136,7 @@ Este é o catálogo das regras de Vendas e financeiro que valem HOJE: o PDV e as
 ### O desconto
 
 **VD-08.** Toda venda aceita desconto (o pacote, o pré-pago, o produto, o plano e o atendimento avulso no PDV), em R$ ou %, sem teto, e fica registrado quem deu.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/vendas-financeiro.md:2899`
 - Antes: KF-35
 
@@ -207,7 +207,7 @@ Este é o catálogo das regras de Vendas e financeiro que valem HOJE: o PDV e as
 - Antes: KF-09, KA-46, KF-08
 
 **CR-05.** Cada parcela é um lançamento próprio, com o vencimento dela: a entrada ("— entrada") e uma linha por parcela ("— parcela 2/3"); o que se recebe agora e o que fica a receber nunca vão no mesmo lançamento. Pagar e estornar valem por parcela, no pacote, no pré-pago, no plano e na despesa parcelada. A divisão é sempre a mesma: em centavos, a sobra vai na última parcela, e o dia 31 vira o último dia do mês curto.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/vendas-financeiro.md:691-693`, `:1803`
 - Antes: KD-52, KB-14
 
@@ -265,12 +265,12 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Antes: KF-22, KF-31, KF-29
 
 **DP-04.** O pagamento do plano cobra também o atendimento que gerou o plano, se ele está concluído, tem preço, é avulso e não foi recebido: se algo é recebido agora, ele entra junto, à vista, na mesma forma (e nas mesmas vezes); no "a receber", fica para a comanda dele no PDV. A tela diz uma coisa só sobre ele — se entra neste pagamento ou não —, e o total diz que o inclui.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/vendas-financeiro.md:2738`, `:2750`, `:3229`
 - Antes: KF-23
 
 **DP-05.** O pagamento do plano sugere o pacote ativo da unidade com os mesmos procedimentos nas mesmas quantidades, quando sai mais barato (o mais barato, se houver dois), dizendo a economia. "Fechar como pacote" põe a economia no desconto: o plano continua por procedimento e não vira venda de pacote (a dica no editor do plano é a PL-23 do catálogo do Atendimento).
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/vendas-financeiro.md:2813`
 - Antes: KF-27
 
@@ -384,7 +384,7 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Antes: KB-29
 
 **PA-15.** Ao receber no PDV um atendimento avulso já concluído e a receber, se a cliente tem pacote na validade com sessão livre do mesmo procedimento, a comanda oferece "Abater do pacote" (a quem recebe, com a unidade ao alcance). A sessão vira usada, o preço do atendimento passa a ser a parte da sessão, a conta a receber sai, não nasce cobrança nova, e o atendimento vira "Sessão de pacote". Enquanto a comanda tiver produto pendente, o atendimento não se abate, porque ainda há dinheiro a receber.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/vendas-financeiro.md:276-277`, `:738-753`
 - Antes: KB-30, KA-12
 
@@ -452,7 +452,7 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 ### Procedimento pré-pago
 
 **PP-01.** O pré-pago é a venda de várias sessões de UM procedimento, pagas antes (ou a receber) e agendadas depois. É separado do pacote: o pacote é um conjunto vendido por um preço só; o pré-pago é o procedimento avulso pago antes.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/vendas-financeiro.md:1042-1045`, `:3206`
 - Antes: KC-02, KF-52
 
@@ -625,12 +625,12 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Antes: KC-37
 
 **EX-08.** Estornar pela lista um pagamento de pacote, plano ou pré-pago devolve o dinheiro e reabre aquele valor como "a receber" da mesma venda, com o mesmo vencimento; a janela diz isso antes. Desfazer a venda é o "Cancelar" (pacote, plano, sessão do pré-pago).
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/vendas-financeiro.md:3121`
 - Antes: KF-74
 
 **EX-09.** Estornado o pagamento de um atendimento avulso, a cobrança dele reabre: a comanda volta a ficar aberta no PDV, e receber de novo é um pagamento novo. A janela avisa que o atendimento volta a receber; o histórico do agendamento ganha "Pagamento estornado — <motivo>"; na lista do Financeiro a linha é "Estorno" e diz "Anula a receita estornada"; o app mostra o pago estornado como "Estornado", e a ficha mostra o original estornado e o estorno como saída.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/vendas-financeiro.md:3147`, `:3168`
 - Antes: KF-75, KF-76
 
@@ -875,7 +875,7 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Antes: KD-53, KF-84
 
 **FN-10.** O Financeiro da rede também tem os números de A receber e de A pagar, e as listas da rede e da unidade têm a coluna Cliente (sem cliente, "—"), com o nome mesmo quando a cliente foi cadastrada em outra unidade. Com uma unidade filtrada, os números são os dela.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/vendas-financeiro.md:1820`
 - Antes: KD-54
 
@@ -902,7 +902,7 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 ### O lançamento manual e a despesa
 
 **FN-15.** O lançamento manual pago tem "Data do pagamento": hoje por padrão, nunca no futuro; o pagamento de um dia anterior conta no caixa daquele dia.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/vendas-financeiro.md:2075`
 - Antes: KE-14
 
@@ -917,7 +917,7 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Antes: KE-03, KE-18, KF-07, KE-20
 
 **FN-18.** A despesa recorrente guarda em cada lançamento a forma de pagamento escolhida, como a parcelada já guardava.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/vendas-financeiro.md:2140`
 - Antes: KE-19
 
@@ -966,12 +966,12 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Antes: KB-43
 
 **AC-03.** No app, a cliente vê "Seu crédito" (no Financeiro e no Início) só quando o saldo é maior que zero, e só o saldo: os lançamentos do crédito ficam com a equipe. É o saldo da ficha da rede do endereço.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/vendas-financeiro.md:3067`
 - Antes: KF-50
 
 **AC-04.** Ao agendar pelo app, a cliente usa o que já pagou: a sessão livre de um plano vendido ou, sem ela, o crédito de pacote ou de pré-pago (o preço e a duração vêm da sessão). Se outra pessoa usou o crédito ao mesmo tempo, o agendamento fica avulso.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar)
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/vendas-financeiro.md:2831`
 - Antes: KF-59
 
@@ -982,11 +982,13 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 
 ## Perguntas ao Heitor
 
-Q01. **Vendas, pacotes e pré-pago — escritas como decisão sua, sem a sua fala: confirma?** VD-04 (sem ficha, primeiro o cadastro: o "Vender" abre o cadastro e leva ao PDV, "decisão do Heitor, 2026-09-30", `docs/regras/vendas-financeiro.md:687-690`); VD-08 (desconto em toda venda, em R$ ou %, sem teto, com quem deu, 2026-09-30, `:2899`); PA-15 (o "Abater do pacote": o pacote vendido depois paga o avulso já concluído, simulação de 28/10, `:738-740`); PP-01 (o pré-pago é uma venda separada do pacote — "o Heitor recusou reaproveitar `client_packages`", `:1043-1045`, `:3206`).
+Revisão de 24/11 (o Heitor, 24/11: "da uma revisada se as perguntas realmente faz sentido, as vezes tu me perguntas que são coisas obvias e se resolvem fácil com um pouco de logica sobre o contexto"). Fica na página só a Q04 (vender o pacote pela internet está no escopo?). E a pergunta da página sobre o atendimento que gerou o plano (DP-04) se resolveu pela sua fala de 13/11 ("Tudo que for uma venda gera uma comanda", PV-06, mais nova que a DP-04 de 20/10): cada um na sua comanda; o pagamento do plano cobrar o atendimento junto é defeito a corrigir. As outras se resolveram por uma regra dele, um princípio ou a lógica do contexto; cada uma diz como, no começo.
 
-Q02. **Plano e estorno — escritas como decisão sua, sem a sua fala: confirma?** DP-04 (o atendimento que gerou o plano entra no pagamento do plano, 2026-10-20, `docs/regras/vendas-financeiro.md:2738`) — e, com "uma venda, uma comanda" (PV-06), o atendimento avulso tem a comanda dele: ele ainda entra junto no pagamento do plano, ou cada um se recebe na sua comanda?; DP-05 (o pagamento do plano sugere o pacote equivalente e "Fechar como pacote" vira desconto, 2026-10-21, `:2813`); EX-08 (o estorno pela lista reabre o a receber do pacote, plano ou pré-pago, H2 do levantamento das regras, 2026-11-11, opção a, `:3121`); EX-09 (o estorno reabre a cobrança do atendimento avulso, D6 da simulação de 2026-10-28, `:3147`).
+Q01. **Resolvida na revisão de 24/11:** A sua regra (CLAUDE.md §1: "Regra decidida pelo Claude diz que é dele; só se atribui ao Heitor o que a fala dele diz") já responde: sem a fala, a regra é decisão do Claude, e a fonte foi trocada. O conteúdo segue no catálogo para a revisão da área. — *Era:* **Vendas, pacotes e pré-pago — escritas como decisão sua, sem a sua fala: confirma?** VD-04 (sem ficha, primeiro o cadastro: o "Vender" abre o cadastro e leva ao PDV, "decisão do Heitor, 2026-09-30", `docs/regras/vendas-financeiro.md:687-690`); VD-08 (desconto em toda venda, em R$ ou %, sem teto, com quem deu, 2026-09-30, `:2899`); PA-15 (o "Abater do pacote": o pacote vendido depois paga o avulso já concluído, simulação de 28/10, `:738-740`); PP-01 (o pré-pago é uma venda separada do pacote — "o Heitor recusou reaproveitar `client_packages`", `:1043-1045`, `:3206`).
 
-Q03. **Financeiro e app — escritas como decisão sua, sem a sua fala: confirma?** CR-05 (cada parcela é um lançamento, com o seu vencimento, "pedido do Heitor, 2026-09-30", `docs/regras/vendas-financeiro.md:1803`); FN-10 (o Financeiro da rede com A receber e A pagar, e a coluna Cliente nas listas, "2026-10-21, decisão do Heitor", `:1820-1821`); FN-15 (o lançamento manual pago tem a data do pagamento, "2026-10-21, decisão do Heitor", `:2075`); FN-18 (a despesa recorrente guarda a forma, D11 do levantamento das regras, 2026-11-11, `:2140`); AC-03 (o "Seu crédito" no app, só com saldo, D-17 de 2026-10-30, `:3067`); AC-04 (o app usa o que a cliente já pagou ao agendar, 2026-10-21, `:2831`).
+Q02. **Resolvida na revisão de 24/11:** A sua regra (CLAUDE.md §1: "Regra decidida pelo Claude diz que é dele; só se atribui ao Heitor o que a fala dele diz") já responde: sem a fala, a regra é decisão do Claude, e a fonte foi trocada. O conteúdo segue no catálogo para a revisão da área. — *Era:* **Plano e estorno — escritas como decisão sua, sem a sua fala: confirma?** DP-04 (o atendimento que gerou o plano entra no pagamento do plano, 2026-10-20, `docs/regras/vendas-financeiro.md:2738`) — e, com "uma venda, uma comanda" (PV-06), o atendimento avulso tem a comanda dele: ele ainda entra junto no pagamento do plano, ou cada um se recebe na sua comanda?; DP-05 (o pagamento do plano sugere o pacote equivalente e "Fechar como pacote" vira desconto, 2026-10-21, `:2813`); EX-08 (o estorno pela lista reabre o a receber do pacote, plano ou pré-pago, H2 do levantamento das regras, 2026-11-11, opção a, `:3121`); EX-09 (o estorno reabre a cobrança do atendimento avulso, D6 da simulação de 2026-10-28, `:3147`).
+
+Q03. **Resolvida na revisão de 24/11:** A sua regra (CLAUDE.md §1: "Regra decidida pelo Claude diz que é dele; só se atribui ao Heitor o que a fala dele diz") já responde: sem a fala, a regra é decisão do Claude, e a fonte foi trocada. O conteúdo segue no catálogo para a revisão da área. — *Era:* **Financeiro e app — escritas como decisão sua, sem a sua fala: confirma?** CR-05 (cada parcela é um lançamento, com o seu vencimento, "pedido do Heitor, 2026-09-30", `docs/regras/vendas-financeiro.md:1803`); FN-10 (o Financeiro da rede com A receber e A pagar, e a coluna Cliente nas listas, "2026-10-21, decisão do Heitor", `:1820-1821`); FN-15 (o lançamento manual pago tem a data do pagamento, "2026-10-21, decisão do Heitor", `:2075`); FN-18 (a despesa recorrente guarda a forma, D11 do levantamento das regras, 2026-11-11, `:2140`); AC-03 (o "Seu crédito" no app, só com saldo, D-17 de 2026-10-30, `:3067`); AC-04 (o app usa o que a cliente já pagou ao agendar, 2026-10-21, `:2831`).
 
 Q04. **Está no escopo? A venda do pacote pela internet.** Você disse "normalmente isso aí vai ser vendido até online" (`docs/revisao.md:581-583`, resumido em `:595` como "e um dia online"). Hoje o pacote só se vende pelo PDV (PA-06).
 

@@ -1,6 +1,6 @@
 # Catálogo de regras — Documentos
 
-Este é o catálogo das regras dos Documentos que valem HOJE: os tipos, os modelos e o editor, as variáveis, onde o documento se liga, quando nasce e o que trava, o "faltam dados", o contrato e o pagamento, assinar, o link e o envio, o PDF e o `/verificar`, o documento no app da cliente, a tela de Documentos e quem vê e mexe. Cada regra diz a fonte: uma fala do Heitor (copiada letra por letra do documento), uma recomendação do Claude que o Heitor aprovou (com a resposta dele), um dos sete princípios de produto, "decisão do Claude", ou "atribuída ao Heitor sem a fala (a confirmar)". "Onde" aponta a linha do documento; "Antes" lista os números do rascunho que a regra junta (KA: `docs/regras/documentos.md:1-410`; KB: `docs/regras/documentos.md:408-843`; KC: as decisões de `docs/revisao.md`, do CLAUDE.md e dos outros arquivos de `docs/regras/`, que repetem várias de `documentos.md` — juntas aqui, com os dois "Onde"). É um RASCUNHO para o Heitor revisar. Contagem: 92 regras (Os tipos, os modelos e o editor 16, As variáveis 9, Onde se liga, quando nasce e o que trava 16, Faltam dados 7, O contrato e o pagamento 6, Assinar 12, O link e o envio 6, O PDF e o /verificar 2, No app da cliente 5, A tela de Documentos 4, Quem vê e quem mexe 9), 1 pergunta e 16 divergências. Dos 136 números do rascunho, nenhum ficou fora do catálogo e 9 são de outra área (ver os apêndices); todos os outros estão num "Antes". Das cinco perguntas dos rascunhos, duas viraram a Q01 (regras escritas como suas, sem a fala) e três tinham resposta numa regra que já existe (a de 18/11, com o módulo que ainda dispensa; e o "doc-02: fica" de 02/11): o motivo está em "Divergências".
+Este é o catálogo das regras dos Documentos que valem HOJE: os tipos, os modelos e o editor, as variáveis, onde o documento se liga, quando nasce e o que trava, o "faltam dados", o contrato e o pagamento, assinar, o link e o envio, o PDF e o `/verificar`, o documento no app da cliente, a tela de Documentos e quem vê e mexe. Cada regra diz a fonte: uma fala do Heitor (copiada letra por letra do documento), uma recomendação do Claude que o Heitor aprovou (com a resposta dele), um dos sete princípios de produto, "decisão do Claude". "Onde" aponta a linha do documento; "Antes" lista os números do rascunho que a regra junta (KA: `docs/regras/documentos.md:1-410`; KB: `docs/regras/documentos.md:408-843`; KC: as decisões de `docs/revisao.md`, do CLAUDE.md e dos outros arquivos de `docs/regras/`, que repetem várias de `documentos.md` — juntas aqui, com os dois "Onde"). É um RASCUNHO para o Heitor revisar. Contagem: 92 regras (Os tipos, os modelos e o editor 16, As variáveis 9, Onde se liga, quando nasce e o que trava 16, Faltam dados 7, O contrato e o pagamento 6, Assinar 12, O link e o envio 6, O PDF e o /verificar 2, No app da cliente 5, A tela de Documentos 4, Quem vê e quem mexe 9), 1 pergunta e 16 divergências. Dos 136 números do rascunho, nenhum ficou fora do catálogo e 9 são de outra área (ver os apêndices); todos os outros estão num "Antes". Das cinco perguntas dos rascunhos, duas viraram a Q01 (regras escritas como suas, sem a fala) e três tinham resposta numa regra que já existe (a de 18/11, com o módulo que ainda dispensa; e o "doc-02: fica" de 02/11): o motivo está em "Divergências".
 
 ## Os tipos, os modelos e o editor (DM)
 
@@ -50,7 +50,7 @@ Este é o catálogo das regras dos Documentos que valem HOJE: os tipos, os model
 - Antes: KB-15, KC-12
 
 **DM-10.** O editor de modelo é completo: fonte, tamanho, negrito, itálico, sublinhado, tachado, cor, realce, alinhamento, entrelinhas, títulos, listas, tabelas, imagens, cabeçalho e rodapé e quebra de página. A tela e o PDF desenham o mesmo documento, com as mesmas medidas e as mesmas fontes.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar): "decisão do Heitor, 2026-09-29"
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele): "decisão do Heitor, 2026-09-29"
 - Onde: `docs/regras/documentos.md:228-234`, `:269-271`
 - Antes: KA-27
 
@@ -367,7 +367,7 @@ Este é o catálogo das regras dos Documentos que valem HOJE: os tipos, os model
 - Antes: KB-09
 
 **DL-05.** Mandar o link pela conversa do inbox é uma opção da rede, em Configurações → Documentos, que nasce desligada. (Quem a liga e desliga: DQ-01.)
-- Fonte: atribuída ao Heitor sem a fala (a confirmar): "a chave é decisão do Heitor de 2026-09-30"
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele): "a chave é decisão do Heitor de 2026-09-30"
 - Onde: `docs/regras/documentos.md:662-665`; `docs/revisao.md:796`, `:2055`; `docs/regras/atendimento.md:1881-1882`
 - Antes: KB-26, KC-33
 
@@ -486,7 +486,9 @@ Este é o catálogo das regras dos Documentos que valem HOJE: os tipos, os model
 
 ## Perguntas ao Heitor
 
-Q01. **Estas regras são suas? Escritas como decisão sua, sem a sua fala.** DM-10 (o editor completo — fonte, cor, tabelas, imagens, cabeçalho e rodapé —, com a tela e o PDF desenhando o mesmo documento): `docs/regras/documentos.md:228-230` diz "decisão do Heitor, 2026-09-29" (ela substituiu a marcação leve). DL-05 (mandar o link de assinatura pela conversa do inbox é opção da rede, que nasce desligada): `docs/regras/atendimento.md:1881-1882` diz "a chave é decisão do Heitor de 2026-09-30". Confirma as duas?
+Revisão de 24/11 (o Heitor, 24/11: "da uma revisada se as perguntas realmente faz sentido, as vezes tu me perguntas que são coisas obvias e se resolvem fácil com um pouco de logica sobre o contexto"). Nenhuma pergunta fica na página. As outras se resolveram por uma regra dele, um princípio ou a lógica do contexto; cada uma diz como, no começo.
+
+Q01. **Resolvida na revisão de 24/11:** A sua regra (CLAUDE.md §1: "Regra decidida pelo Claude diz que é dele; só se atribui ao Heitor o que a fala dele diz") já responde: sem a fala, a regra é decisão do Claude, e a fonte foi trocada. O conteúdo segue no catálogo para a revisão da área. — *Era:* **Estas regras são suas? Escritas como decisão sua, sem a sua fala.** DM-10 (o editor completo — fonte, cor, tabelas, imagens, cabeçalho e rodapé —, com a tela e o PDF desenhando o mesmo documento): `docs/regras/documentos.md:228-230` diz "decisão do Heitor, 2026-09-29" (ela substituiu a marcação leve). DL-05 (mandar o link de assinatura pela conversa do inbox é opção da rede, que nasce desligada): `docs/regras/atendimento.md:1881-1882` diz "a chave é decisão do Heitor de 2026-09-30". Confirma as duas?
 
 ## Divergências
 

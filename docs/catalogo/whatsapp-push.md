@@ -1,6 +1,6 @@
 # Catálogo de regras — WhatsApp e push
 
-Este é o catálogo das regras de WhatsApp e push que valem HOJE: os números de WhatsApp da rede, como cada um se conecta, quem fala por cada número e por onde a mensagem sai, os templates e a janela de 24 h, o que chega e o histórico, o que a Meta cobra, quando nada sai para a cliente, os avisos no celular (os canais, o sino, a equipe e a cliente) e as integrações com a credencial. Cada regra diz a fonte: uma fala do Heitor (copiada letra por letra do documento), uma recomendação do Claude que o Heitor aprovou (com a resposta dele), um dos sete princípios de produto, "decisão do Claude", ou "atribuída ao Heitor sem a fala (a confirmar)". O bloco "WhatsApp e avisos (push)" da revisão foi fechado com "Pode fechar" (13/11, `docs/revisao.md:1513`): a regra que está no levantamento dele (`docs/revisao.md:1517-1533`) tem essa aprovação como fonte. "Onde" aponta a linha do documento; "Antes" lista os números do rascunho que a regra junta (KA: `docs/regras/whatsapp-push.md:1-261`; KB: `docs/regras/whatsapp-push.md:260-560`; KC: as decisões de `docs/revisao.md`, do CLAUDE.md e dos outros arquivos de `docs/regras/`, que repetem várias de `whatsapp-push.md` — juntas aqui, com os dois "Onde"). É um RASCUNHO para o Heitor revisar. Contagem: 79 regras (Os números 13, Conectar um número 9, Quem fala e por onde sai 7, Os templates e a janela de 24 h 12, O que chega e o histórico 9, O que a Meta cobra 6, Quando nada sai 2, Os canais, os aparelhos e o sino 4, Os avisos à equipe 6, Os avisos à cliente 6, As integrações e a credencial 5), 3 perguntas e 11 divergências. Dos 103 números do rascunho, 1 ficou fora do catálogo e 4 são de outra área (ver os apêndices); todos os outros estão num "Antes". Das seis perguntas dos rascunhos: as duas sobre o aviso do próprio fato à cliente (KA e KC) viraram a Q01; a dos templates (KB) e a lista de regras sem a fala (KC) viraram a Q02 e a Q03 — menos a WT-04, que tem resposta no levantamento aprovado, a automação só na conversa aberta, que foi para as Automações com as regras dela, e a credencial cifrada, que ficou fora do catálogo; a de quem fala por cada número (KA) é decisão do Claude, não pergunta; e a da credencial (KB) é a da regra que ficou fora (os motivos estão em "Divergências" e em "Ficou fora do catálogo").
+Este é o catálogo das regras de WhatsApp e push que valem HOJE: os números de WhatsApp da rede, como cada um se conecta, quem fala por cada número e por onde a mensagem sai, os templates e a janela de 24 h, o que chega e o histórico, o que a Meta cobra, quando nada sai para a cliente, os avisos no celular (os canais, o sino, a equipe e a cliente) e as integrações com a credencial. Cada regra diz a fonte: uma fala do Heitor (copiada letra por letra do documento), uma recomendação do Claude que o Heitor aprovou (com a resposta dele), um dos sete princípios de produto, "decisão do Claude". O bloco "WhatsApp e avisos (push)" da revisão foi fechado com "Pode fechar" (13/11, `docs/revisao.md:1513`): a regra que está no levantamento dele (`docs/revisao.md:1517-1533`) tem essa aprovação como fonte. "Onde" aponta a linha do documento; "Antes" lista os números do rascunho que a regra junta (KA: `docs/regras/whatsapp-push.md:1-261`; KB: `docs/regras/whatsapp-push.md:260-560`; KC: as decisões de `docs/revisao.md`, do CLAUDE.md e dos outros arquivos de `docs/regras/`, que repetem várias de `whatsapp-push.md` — juntas aqui, com os dois "Onde"). É um RASCUNHO para o Heitor revisar. Contagem: 79 regras (Os números 13, Conectar um número 9, Quem fala e por onde sai 7, Os templates e a janela de 24 h 12, O que chega e o histórico 9, O que a Meta cobra 6, Quando nada sai 2, Os canais, os aparelhos e o sino 4, Os avisos à equipe 6, Os avisos à cliente 6, As integrações e a credencial 5), 3 perguntas e 11 divergências. Dos 103 números do rascunho, 1 ficou fora do catálogo e 4 são de outra área (ver os apêndices); todos os outros estão num "Antes". Das seis perguntas dos rascunhos: as duas sobre o aviso do próprio fato à cliente (KA e KC) viraram a Q01; a dos templates (KB) e a lista de regras sem a fala (KC) viraram a Q02 e a Q03 — menos a WT-04, que tem resposta no levantamento aprovado, a automação só na conversa aberta, que foi para as Automações com as regras dela, e a credencial cifrada, que ficou fora do catálogo; a de quem fala por cada número (KA) é decisão do Claude, não pergunta; e a da credencial (KB) é a da regra que ficou fora (os motivos estão em "Divergências" e em "Ficou fora do catálogo").
 
 ## Os números de WhatsApp da rede (WN)
 
@@ -40,7 +40,7 @@ Este é o catálogo das regras de WhatsApp e push que valem HOJE: os números de
 - Antes: KA-20, KC-03
 
 **WN-08.** O plano limita quantos números de WhatsApp a rede tem ativos: ligar um número além do limite é recusado em todos os caminhos (o formulário, o WhatsApp Web, o cadastro pela Meta). O que já está acima do limite não é apagado, só não cresce, e editar um número não confere o limite.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar) — ver a Q02
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — ver a Q02
 - Onde: `docs/regras/plataforma.md:273-276`, `:314-327`; `docs/revisao.md:1590-1592`
 - Antes: KC-11
 
@@ -166,7 +166,7 @@ Este é o catálogo das regras de WhatsApp e push que valem HOJE: os números de
 - Antes: KB-06
 
 **WT-03.** Os templates seguem os números oficiais ligados: sem nenhum número oficial ligado, a tela de templates não mostra nada, não edita e não cria, e só manda conectar um. A lista traz apenas os templates das contas que têm número ligado.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar) — ver a Q02
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — ver a Q02
 - Onde: `docs/regras/whatsapp-push.md:298-301`
 - Antes: KB-07
 
@@ -176,7 +176,7 @@ Este é o catálogo das regras de WhatsApp e push que valem HOJE: os números de
 - Antes: KB-08, KC-05
 
 **WT-05.** Desligar ou remover um número tira do sistema os templates da conta que ficou sem nenhum número ligado. Na Meta nada é apagado, e religar o número os traz de volta; se outro número da mesma conta continua ligado, nada sai. Na Meta, só o botão "Apagar" de um template apaga.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar) — ver a Q02
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — ver a Q02
 - Onde: `docs/regras/whatsapp-push.md:307-310`
 - Antes: KB-09
 
@@ -380,7 +380,7 @@ Este é o catálogo das regras de WhatsApp e push que valem HOJE: os números de
 - Antes: KA-11, KC-17
 
 **NC-04.** O aviso da cliente vai aos aparelhos de todas as fichas do login dela (ela pode ser cliente de várias redes com uma conta só), também os registrados quando ela estava em outra rede, e só dele. O aviso fica registrado na ficha da rede de que ele trata, e o link leva ao portal dessa rede. A campanha segue a mesma regra, e o "vai receber no celular" conta do mesmo jeito.
-- Fonte: atribuída ao Heitor sem a fala (a confirmar) — ver a Q03
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — ver a Q03
 - Onde: `docs/regras/whatsapp-push.md:54-63`; `CLAUDE.md:322`, `:344-345` (§5)
 - Antes: KA-13, KC-18
 
@@ -423,11 +423,13 @@ Este é o catálogo das regras de WhatsApp e push que valem HOJE: os números de
 
 ## Perguntas ao Heitor
 
+Revisão de 24/11 (o Heitor, 24/11: "da uma revisada se as perguntas realmente faz sentido, as vezes tu me perguntas que são coisas obvias e se resolvem fácil com um pouco de logica sobre o contexto"). Fica na página só a Q01 (o aviso do próprio fato à cliente sai sozinho?). As outras se resolveram por uma regra dele, um princípio ou a lógica do contexto; cada uma diz como, no começo.
+
 Q01. **NC-01, NC-02 — o aviso do próprio fato à cliente sai sozinho?** O levantamento que você fechou com "Pode fechar" (13/11, `docs/revisao.md:1513`) diz: "À CLIENTE só vai o que a rede liga (automações, campanhas, o documento enviado, os bônus da fidelidade) — nada sai sozinho." (`docs/revisao.md:1531-1533`). Mas `docs/regras/whatsapp-push.md:38-53` (auditoria de 18/11; A12 de 17/11) e o código (`apps/web/lib/appointments/avisos.ts`, `apps/web/lib/plano-de-tratamento/aviso-do-proposto.ts`) mandam sem ninguém ligar: o horário marcado, remarcado, cancelado e concluído, o pagamento e o "Plano novo" (e, no Atendimento, a "Foto nova" do "Enviar à cliente", PT-09 — esta sai de um clique da equipe, como "o documento enviado" do levantamento). E você disse em 03/11: "toda e qualquer automação deve ser feita através dos módulos de automações" (`docs/regras/crm-inbox.md:1395-1396`). Nenhuma regra sua decide: o princípio 6 fala de automação, e não diz se o aviso do fato é uma. O catálogo escreveu o que o sistema faz hoje. Duas saídas: (a) **fica** — é o aviso do próprio fato (a confirmação do que aconteceu), não automação; o levantamento passa a dizer isso; (b) **vira modelo das Automações, desligado até a rede ligar**, como o lembrete e a confirmação viraram (MK1, NC-03). Qual?
 
-Q02. **Os números e os templates — escritas como decisão sua, sem a sua fala: confirma?** WN-08, o limite de números de WhatsApp no plano, recusado em todos os caminhos de ligar (`docs/regras/plataforma.md:273`: "2026-10-06, decisão do Heitor"); WT-03 e WT-05, os templates que seguem os números oficiais ligados — sem número a tela não mostra nada, e desligar o último número da conta tira os templates dela do sistema (`docs/regras/whatsapp-push.md:298`: "2026-10-09, pedido do Heitor"; o DEVLOG de 2026-10-09 também, sem a fala). Ligar o número trazer os templates (WT-04) está no levantamento que você aprovou e não entra aqui.
+Q02. **Resolvida na revisão de 24/11:** A sua regra (CLAUDE.md §1: "Regra decidida pelo Claude diz que é dele; só se atribui ao Heitor o que a fala dele diz") já responde: sem a fala, a regra é decisão do Claude, e a fonte foi trocada. O conteúdo segue no catálogo para a revisão da área. — *Era:* **Os números e os templates — escritas como decisão sua, sem a sua fala: confirma?** WN-08, o limite de números de WhatsApp no plano, recusado em todos os caminhos de ligar (`docs/regras/plataforma.md:273`: "2026-10-06, decisão do Heitor"); WT-03 e WT-05, os templates que seguem os números oficiais ligados — sem número a tela não mostra nada, e desligar o último número da conta tira os templates dela do sistema (`docs/regras/whatsapp-push.md:298`: "2026-10-09, pedido do Heitor"; o DEVLOG de 2026-10-09 também, sem a fala). Ligar o número trazer os templates (WT-04) está no levantamento que você aprovou e não entra aqui.
 
-Q03. **NC-04 — escrita como decisão sua, sem a sua fala: confirma?** O aviso da cliente ir aos aparelhos de todas as fichas do login dela, ficar registrado na ficha da rede de que fala e levar ao portal dessa rede, também na campanha (`CLAUDE.md:322`: "Um login por pessoa, uma ficha em cada rede (decisão do Heitor)", e `:344-345`; `docs/regras/whatsapp-push.md:54-63`).
+Q03. **Resolvida na revisão de 24/11:** A sua regra (CLAUDE.md §1: "Regra decidida pelo Claude diz que é dele; só se atribui ao Heitor o que a fala dele diz") já responde: sem a fala, a regra é decisão do Claude, e a fonte foi trocada. O conteúdo segue no catálogo para a revisão da área. — *Era:* **NC-04 — escrita como decisão sua, sem a sua fala: confirma?** O aviso da cliente ir aos aparelhos de todas as fichas do login dela, ficar registrado na ficha da rede de que fala e levar ao portal dessa rede, também na campanha (`CLAUDE.md:322`: "Um login por pessoa, uma ficha em cada rede (decisão do Heitor)", e `:344-345`; `docs/regras/whatsapp-push.md:54-63`).
 
 ## Divergências
 
