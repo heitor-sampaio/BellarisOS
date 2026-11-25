@@ -167,7 +167,8 @@ export default async function CampanhaDetailPage({ params }: { params: Promise<{
           )}
           <InfoRow label="Título"   value={campaign.title} />
           <InfoRow label="Mensagem" value={campaign.body} />
-          <InfoRow label="Canal"    value="In-app" />
+          {/* A25 da 30ª: um nome só para o canal — o do aviso acima (CP-04). */}
+          <InfoRow label="Canal"    value="Aviso no celular" />
         </div>
 
         {/* Audience */}

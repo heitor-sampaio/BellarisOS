@@ -89,6 +89,22 @@ describe('D1 da 18ª: a comanda recebe em mais de uma forma', () => {
   })
 })
 
+describe('a outra forma no cartão diz o valor da parcela, e o valor da 1ª não quebra (MQ-17)', () => {
+  const tela = () => ler('components/shared/outras-formas.tsx').replace(/\r/g, '')
+  it('as vezes da 2ª forma têm a dica das vezes, com o valor DELA, como a 1ª', () => {
+    const t = tela()
+    expect(t).toContain("import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'")
+    const vezes = t.slice(t.indexOf('Vezes no cartão da ${numero}ª forma'), t.indexOf('Vezes no cartão da ${numero}ª forma') + 500)
+    expect(vezes).toMatch(/<DicaDasVezes total=\{valor\} vezes=\{parte\.vezes\} opcoes=\{opcoesDeVezes\} \/>/)
+  })
+  it('o valor da 1ª forma fica numa linha (a nota vai para baixo, não o número)', () => {
+    const t = tela()
+    const primeira = t.slice(t.indexOf('data-valor-da-primeira-forma'), t.indexOf('data-valor-da-primeira-forma') + 400)
+    expect(primeira).toMatch(/<b style=\{\{[^}]*whiteSpace: 'nowrap'[^}]*\}\}>\{formatBRL\(Math\.max\(0, principal\)\)\}<\/b>/)
+    expect(t).not.toMatch(/valorFixo = \{[^}]*overflowWrap: 'anywhere'/)
+  })
+})
+
 describe('Crediário no atendimento avulso: a mesma regra das vendas', () => {
   it('o "Receber" da comanda do atendimento oferece o crediário, o a receber e o "+ Outra forma"', () => {
     const tela = ler('components/shared/receber-atendimento.tsx')

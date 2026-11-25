@@ -46,6 +46,17 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   Visão geral dos Relatórios. Era fixo ("cadastrar ou agendar", o atalho do
   faturamento) para todos. Prova: `tests/copilot-dinheiro-pelas-abas.test.ts`,
   `e2e/copilot-cargo.spec.ts` (contra o build).
+  **E toda gravação tem nome nele** (A21 da 30ª; princípio 3): o "Toda gravação
+  passa pela sua confirmação." ia a quem só ouvia "achar um cliente" — a
+  gravação que a permissão dela faz (cancelar, dar baixa) não estava na
+  frase. Cada ferramenta de escrita está num item de `CAPACIDADES_DO_COPILOT`;
+  `semAs` tira o item que outro já cobre (quem agenda também cancela). Prova:
+  `tests/copilot-fala-o-que-a-tela-diz.test.ts`.
+- **O Copilot diz o que a tela diz** (A20 da 30ª; princípio 3): a ferramenta
+  `indicadores` devolve a forma de pagamento (`rotuloDaForma`), o status e a
+  origem do agendamento pelo NOME da tela (`STATUS_DO_AGENDAMENTO`,
+  `ORIGEM_DO_AGENDAMENTO`, `lib/copilot/ferramentas/comum.ts`), nunca a chave
+  do banco ("PIX", "CLIENT_APP"). Prova: `tests/copilot-fala-o-que-a-tela-diz.test.ts`.
 - **Nada clínico vai à OpenAI**: nenhuma ferramenta lê prontuário, evolução,
   anamnese, foto clínica ou anotação clínica de plano. O prompt manda dizer que
   isso fica na tela, e o painel avisa para não mandar.
@@ -81,6 +92,10 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   segue 403. A equipe não ganha um botão que não usa. Prova:
   `e2e/copilot-fora-do-plano.spec.ts` (roda no `next dev`: não precisa da
   OpenAI) e o caso "rede sem o Copilot no plano" de `e2e/copilot-esqueleto.spec.ts`.
+  O selo "fora do plano" fica POR CIMA do botão em toda largura (A22 da 30ª,
+  decisão do Claude, 25/11): na linha, o botão alargava e cobria os botões do
+  rodapé; agora ocupa o mesmo lugar do botão no plano (`.copilot-botao
+  .copilot-botao-selo`, `globals.css`).
 - **O cargo** (o módulo `copilot` da matriz, pedido do Heitor de 2026-10-08):
   Sem acesso ou **Ver**, que LIGA a ferramenta — consultar e agir. Cada
   consulta e cada gravação pedem só a permissão da AÇÃO, como na tela

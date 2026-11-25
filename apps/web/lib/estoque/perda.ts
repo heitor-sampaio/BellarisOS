@@ -1,3 +1,5 @@
+import { formatBRL } from '@estetica-os/utils'
+
 /**
  * Os motivos da saída por PERDA — puro.
  *
@@ -53,4 +55,16 @@ export function rotuloDoMotivo(v: string | null | undefined): string {
   if (v === MOTIVO_BRINDE) return 'Brinde da fidelidade'
   if (!v || !v.trim()) return '—'
   return CHAVES_DE_ANTES[v] ?? v
+}
+
+/**
+ * As perdas do período com o MOTIVO de cada uma (D10 da 30ª; indicadores:ER-04,
+ * "com o motivo certo"): "Brinde da fidelidade R$ 40,00 · Inventário R$ 12,50".
+ * O DRE dizia só "perdas R$ 40,00", e a entrega da recompensa parecia um
+ * sumiço. Os totais vêm de `getPerdas` (o banco soma); aqui só o texto.
+ */
+export function perdasComOMotivo(motivos: { motivo: string; custo: number; movimentos?: number }[]): string {
+  return [...motivos].sort((a, b) => b.custo - a.custo)
+    .map(m => `${rotuloDoMotivo(m.motivo)} ${formatBRL(m.custo)}`)
+    .join(' · ')
 }

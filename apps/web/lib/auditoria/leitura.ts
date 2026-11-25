@@ -9,6 +9,7 @@ import { conferidoDoFechamento, gravacoesDaUnidade } from './frase'
 import { unidadeDoInsumo, type UnidadesDoProduto } from '@/lib/estoque/unidade-de-consumo'
 import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
 import { nomesDosAnexosEDevolucoes } from './nomes-dos-anexos-e-devolucoes'
+import { unidadesDosRegistrosClinicos } from './unidades-dos-registros-clinicos'
 import { fusoValido } from '@/lib/unidades/fuso'
 
 /**
@@ -239,7 +240,7 @@ async function nomesDaAuditoria(ctx: TenantContext, registros: readonly Registro
     const lidos: Record<string, unknown>[] = []
     for (let i = 0; i < lancamentos.length; i += 150) {
       const lote = await ler(admin.from('financial_transactions')
-        .select('id, type, amount, payment_method, parcela_numero, parcela_total, appointment_id, cartao_vezes, branches!inner(tenant_id)')
+        .select('id, type, amount, payment_method, parcela_numero, parcela_total, appointment_id, cartao_vezes, description, category, branches!inner(tenant_id)')
         .eq('branches.tenant_id', ctx.tenantId!).in('id', lancamentos.slice(i, i + 150)), 'ler os lançamentos da auditoria')
       lidos.push(...((lote ?? []) as Record<string, unknown>[]))
     }
@@ -254,11 +255,14 @@ async function nomesDaAuditoria(ctx: TenantContext, registros: readonly Registro
   const lancamentosLidos = Object.fromEntries(((ft ?? []) as {
     id: string; type: string | null; amount: number | string | null; payment_method: string | null
     parcela_numero: number | null; parcela_total: number | null; appointment_id: string | null; cartao_vezes: number | null
+    description: string | null; category: string | null
   }[]).map(l => [l.id, {
     tipo: l.type, valor: l.amount === null ? null : Number(l.amount), forma: l.payment_method,
     parcela: l.parcela_numero, de: l.parcela_total, agendamento: !!l.appointment_id, vezes: l.cartao_vezes,
+    // A6 da 30ª: a despesa paga diz qual (a descrição de quem a lançou, ou a categoria).
+    descricao: l.type === 'EXPENSE' ? l.description?.trim() || null : null, categoria: l.type === 'EXPENSE' ? l.category : null,
   }]))
-  const [extras, da20, anexosEDevolucoes, sl, cm] = await Promise.all([
+  const [extras, da20, anexosEDevolucoes, sl, cm, clinicos] = await Promise.all([
     nomesDa17(ctx, registros), nomesDa20(ctx, registros), nomesDosAnexosEDevolucoes(ctx, registros),
     salas.length
       ? ler(admin.from('rooms').select('id, name, branches!inner(tenant_id)').eq('branches.tenant_id', ctx.tenantId!).in('id', salas), 'ler as salas da auditoria')
@@ -266,6 +270,8 @@ async function nomesDaAuditoria(ctx: TenantContext, registros: readonly Registro
     cargosDeMembro.length
       ? ler(admin.from('tenant_roles').select('id, label, key, is_system').eq('tenant_id', ctx.tenantId!).in('id', cargosDeMembro), 'ler os cargos dos membros da auditoria')
       : Promise.resolve([]),
+    // D13 da 30ª (AD-25): a unidade do registro clínico gravado sozinho (só ids).
+    unidadesDosRegistrosClinicos(ctx, registros),
   ])
   const cargosDosMembros = Object.fromEntries(((cm ?? []) as { id: string; label: string | null; key: string | null; is_system: boolean | null }[])
     .filter(x => x.label).map(x => [x.id, { nome: x.label!, adminDaRede: x.key === 'NETWORK_ADMIN' && x.is_system === true }]))
@@ -313,6 +319,7 @@ async function nomesDaAuditoria(ctx: TenantContext, registros: readonly Registro
     ...extras,
     ...da20,
     ...anexosEDevolucoes,
+    ...clinicos,
   }
 }
 

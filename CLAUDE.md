@@ -87,6 +87,8 @@ regra de negócio que não está clara ou que contraria um deles.
 2. **Não recusar o valor que a rede escolheu** (taxa, percentual, preço,
    prazo): no máximo, avisar. Só o que é impossível (negativo, a rede errada,
    sem permissão) é recusado.
+   (O Heitor, 2026-11-25: "Se não for impossível, ainda que improvável, pode
+   ser feito." O improvável avisa; só o impossível recusa.)
 3. **O que a tela mostra é o que vale na conta.** Nada de regra escondida
    (herdar a taxa de outra faixa, número que a tela não diz).
 4. **Não chutar número.** Faltou o dado (a taxa daquelas vezes), vale zero e

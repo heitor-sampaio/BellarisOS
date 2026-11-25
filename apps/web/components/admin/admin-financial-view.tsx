@@ -58,6 +58,8 @@ interface BranchStat {
   aReceber:    number
   /** D-14: todo o a receber em aberto da unidade, de qualquer vencimento. */
   aReceberEmAberto?: number
+  /** A17 da 30ª: a parte do em aberto da unidade sem cliente (a sublocação). */
+  aReceberSemCliente?: number
   /** D13 da 9ª: o que já venceu na unidade. */
   vencidas?: AReceberVencido
   /** "Reforça", item 4: os concluídos sem pagamento da unidade. */
@@ -144,6 +146,8 @@ interface Props {
   totalAReceber:    number
   /** D-14: todo o a receber em aberto da rede, de qualquer vencimento (getAReceberEmAberto). */
   totalAReceberEmAberto: number
+  /** A17 da 30ª: a parte do em aberto da rede sem cliente (a sublocação), que a nota diz. */
+  totalAReceberSemCliente?: number
   /** D13 da 9ª: o que já venceu na rede (getAReceberVencido). */
   totalVencidas?:   AReceberVencido
   /** "Reforça", item 4: os atendimentos concluídos sem pagamento da rede, separados dos lançamentos. */
@@ -293,7 +297,7 @@ function KpiCard({
 
 export function AdminFinancialView({
   period, periodLabel, customFrom, customTo,
-  totalRevenue, totalExpenses, totalResult, totalConta, totalForaDoLucro, totalCommissions, totalAReceber, totalAReceberEmAberto, totalVencidas, totalConcluidosSemPagamento, totalAPagar, totalAPagarEmAberto = 0, totalMovimentacoes,
+  totalRevenue, totalExpenses, totalResult, totalConta, totalForaDoLucro, totalCommissions, totalAReceber, totalAReceberEmAberto, totalAReceberSemCliente, totalVencidas, totalConcluidosSemPagamento, totalAPagar, totalAPagarEmAberto = 0, totalMovimentacoes,
   aReceberDaOperadora, parcelasDaOperadora, fluxoDeCaixa, debitoNoPeriodo = 0, debitoPorUnidade = {}, taxasDoPeriodo,
   totalProximoAReceber = null, totalProximoAPagar = null,
   prevRevenue, prevExpenses,
@@ -379,6 +383,7 @@ export function AdminFinancialView({
   const commissions = statDaUnidade ? statDaUnidade.commissions : totalCommissions
   const aReceber    = statDaUnidade ? statDaUnidade.aReceber    : totalAReceber
   const aReceberEmAberto = statDaUnidade ? statDaUnidade.aReceberEmAberto ?? 0 : totalAReceberEmAberto
+  const aReceberSemCliente = statDaUnidade ? statDaUnidade.aReceberSemCliente ?? 0 : totalAReceberSemCliente
   const vencidas = statDaUnidade ? statDaUnidade.vencidas : totalVencidas
   const concluidosSemPagamento = statDaUnidade ? statDaUnidade.concluidosSemPagamento : totalConcluidosSemPagamento
   const aPagar      = statDaUnidade ? statDaUnidade.aPagar      : totalAPagar
@@ -585,10 +590,10 @@ export function AdminFinancialView({
       label={ROTULO_DO_A_RECEBER_DA_CLIENTE}
       // A17 da 23ª: o número grande é o em aberto; o que vence no período vai na nota.
       value={fmtBRL(aReceberEmAberto)}
-      nota={<NotaDoVencimento noTopoOEmAberto valor={aReceber} proximo={proximoAReceber} emAbertoTotal={aReceberEmAberto} concluidosSemPagamento={concluidosSemPagamento}
+      nota={<NotaDoVencimento noTopoOEmAberto valor={aReceber} proximo={proximoAReceber} emAbertoTotal={aReceberEmAberto} semCliente={aReceberSemCliente} concluidosSemPagamento={concluidosSemPagamento}
         hrefDaBaixa={naAba ? undefined : daAba('a-receber')} podeDarBaixa={canPay}
         vencidas={vencidas} hrefDasVencidas={naAba && soAsVencidas ? undefined : daAba('a-receber', { aberto: 'vencidas' })} />}
-      dica={<DicaDoVencimento valor={aReceber} emAbertoTotal={aReceberEmAberto} concluidos={(concluidosSemPagamento?.n ?? 0) > 0} />}
+      dica={<DicaDoVencimento valor={aReceber} emAbertoTotal={aReceberEmAberto} concluidos={(concluidosSemPagamento?.n ?? 0) > 0} semCliente={(aReceberSemCliente ?? 0) > 0} />}
       icon={<Clock size={16} color="var(--brand)" />}
     />
   )

@@ -280,6 +280,28 @@ test.describe.serial('dado clínico só com prontuário', () => {
       expect(daUnidade).not.toContain(telefone.slice(-8))
     })
   })
+
+  test('o cartão do atendimento de quem tem o Prontuário sem o Clientes não diz "Não informado" no cadastro que existe (princípio 3)', async ({ browser }) => {
+    // O telefone existe na ficha; ela não o recebe, e o cartão não pode dizer
+    // que ele não existe: as linhas do cadastro somem.
+    const clinico = await criarMembro(`clsocd${marca}`, {
+      tenant: f!.outra.tenantId, rotulo: 'Clinico so prontuario cartao',
+      permissoes: [{ modulo: 'medical_records', nivel: 'MANAGE' }],
+    })
+    criado.membros.push(clinico)
+    await comSessao(browser, clinico.estado, async p => {
+      await conteudo(p, `/admin/clients/${f!.clienteId}`)
+      await expect(p.getByText(EVOLUCAO).first(), 'o cartão do atendimento abriu').toBeVisible()
+      await expect(p.getByText('Ficha de atendimento').first()).toBeVisible()
+      // O bloco da identificação: só o nome. (Os campos da ficha de saúde sem
+      // resposta seguem "Não informado" — ali o dado não existe mesmo.)
+      const identificacao = p.locator('[data-identificacao-do-cliente]').first()
+      await expect(identificacao).toContainText('Nome')
+      await expect(identificacao).not.toContainText('Não informado')
+      await expect(identificacao).not.toContainText('Telefone')
+      await expect(identificacao).not.toContainText('CPF')
+    })
+  })
 })
 
 test.describe.serial('credencial de integração fora da tela', () => {

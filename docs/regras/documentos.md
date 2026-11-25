@@ -520,7 +520,9 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   `contratoSemDocumentoDaCliente`). O checkout segue. Prova: o mesmo spec ("A35").
 - **"Completar o cadastro" é de quem edita os Clientes** (A10 da 20ª): colher
   não pede permissão, mas completar o cadastro pede os Clientes em Gerenciar.
-  Na tela de assinatura e na visão geral da ficha, quem não edita lê "Quem tem
+  Na tela de assinatura, na visão geral da ficha e no aviso do contrato do
+  "Receber o plano" no PDV (A10 da 30ª: `podeCompletarCadastro` no
+  `checkout-wizard.tsx`, `cadastroDoPlano` na comanda), quem não edita lê "Quem tem
   os Clientes em Gerenciar completa o cadastro (…)" (`quemCompletaOCadastro`).
   Depois de vender o pacote, o aviso "Completado o cadastro…" vem com o botão
   (A11, `[data-completar-depois-da-venda]`); a aba Documentos vazia diz

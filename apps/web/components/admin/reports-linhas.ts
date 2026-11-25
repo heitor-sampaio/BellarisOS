@@ -59,4 +59,6 @@ export interface LinhaParcela {
   parcela_numero: number
   parcela_total:  number
   clients:        Embutido<{ name: string }>
+  /** A18 da 30ª: o procedimento do atendimento, para o nome da linha ("Microagulhamento — parcela 2/3"). */
+  appointment?:   { procedures: { name: string } | null } | null
 }

@@ -1,3 +1,6 @@
+import { fusoValido } from '@/lib/unidades/fuso'
+import { relogioSeOutro } from '@/lib/unidades/hora-da-unidade'
+
 /**
  * Os textos do cadastro da cliente — puros, para a tela e o teste dizerem o
  * mesmo (2026-10-30).
@@ -115,15 +118,18 @@ export function avisoDaFichaDaRede(variasUnidades: boolean): string | null {
  * confirmado) daqui para a frente; o próximo com dia e hora em Brasília.
  */
 export function avisoDosAgendamentosAoArquivar(
-  agendamentos: { scheduledAt: string; status: string }[], agora: Date = new Date(), fuso = 'America/Sao_Paulo',
+  agendamentos: { scheduledAt: string; status: string; fuso?: string | null }[], agora: Date = new Date(), fuso = 'America/Sao_Paulo',
 ): string | null {
   const marcados = agendamentos
     .filter(a => (a.status === 'SCHEDULED' || a.status === 'CONFIRMED') && new Date(a.scheduledAt) >= agora)
     .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt))
   if (!marcados.length) return null
+  // D3 da 30ª (FU-02): no relógio da unidade do agendamento, e o relógio quando não é o da tela.
+  const doAgendamento = marcados[0]!.fuso ? fusoValido(marcados[0]!.fuso) : fuso
+  const relogio = relogioSeOutro(doAgendamento, fuso)
   const quando = new Intl.DateTimeFormat('pt-BR', {
-    timeZone: fuso, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
-  }).format(new Date(marcados[0]!.scheduledAt)).replace(', ', ' às ')
+    timeZone: doAgendamento, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+  }).format(new Date(marcados[0]!.scheduledAt)).replace(', ', ' às ') + (relogio ? `, ${relogio}` : '')
   const n = marcados.length
   return n === 1
     ? `Ela tem 1 agendamento marcado (${quando}), que continua na agenda: arquivar não o cancela. Se ela não vem mais, cancele na agenda.`

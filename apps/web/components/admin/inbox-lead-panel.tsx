@@ -729,7 +729,8 @@ export function InboxLeadPanel({
             leadId={card.abertas[0]?.id}
             // O e-mail é o da pessoa; sem ele, o da oportunidade (A16: a cópia do
             // card tinha o e-mail, e o cadastro vinha sem).
-            prefill={{ name: nome, phone: telefone || undefined, email: email || [...card.abertas, ...card.concluidas].find(o => o.email)?.email || undefined }}
+            // TG-10 (princípio 3): as tags do contato chegam à ficha ao ligar a conversa — abrem marcadas e fixas.
+            prefill={{ name: nome, phone: telefone || undefined, email: email || [...card.abertas, ...card.concluidas].find(o => o.email)?.email || undefined, tags, tagsDe: 'contato' }}
             onSuccess={handleConverted}
             showCancelButton
             onCancel={fecharCadastro}
@@ -949,7 +950,7 @@ function OportunidadeItem({
               value={valor}
               disabled={disabled}
               inputMode="decimal"
-              placeholder="Valor negociado"
+              placeholder="Valor estimado"
               onChange={e => setValor(e.target.value)}
               style={{ fontSize: 'var(--text-sm-sz)', padding: '6px 9px' }}
             />

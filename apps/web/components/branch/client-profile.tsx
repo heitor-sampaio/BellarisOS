@@ -37,6 +37,7 @@ import { iniciaisDoNome, maskPhone, TIPOS_DE_DOCUMENTO } from '@estetica-os/util
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
 import { alternarTag, opcoesDeTag, temTag } from '@/lib/tags/escolha'
 import { formatarNoFuso, diaRelativo } from '@/lib/formatar-no-fuso'
+import { quandoNaFicha, diaNaFicha } from '@/lib/clientes/hora-na-ficha'
 import { FidelidadeDoCliente } from '@/components/branch/fidelidade-do-cliente'
 import type { FidelidadeDoPerfil } from '@/lib/fidelidade/leitura'
 import { ProcedimentosPagos } from '@/components/shared/procedimentos-pagos'
@@ -125,6 +126,8 @@ export interface ProfileAppointment {
   professionalName: string
   /** A15 da 25ª: a unidade do agendamento (`unidadeNaFicha`). */
   branchId?:       string | null
+  /** D3 da 30ª (FU-02): o fuso da unidade do agendamento — a hora sai no relógio dela. */
+  fuso?:           string | null
 }
 
 export interface ProfilePackage {
@@ -520,7 +523,7 @@ function AvisosDaVisaoGeral({ menor, faltando, faltas, linkDosDados, linkDoHisto
         <p data-faltas-da-cliente style={{ ...linha, background: 'var(--surface)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
           <XCircle size={15} color="var(--danger)" style={{ flexShrink: 0, marginTop: 2 }} />
           <span style={{ flex: 1, minWidth: 200 }}>
-            {faltas.length === 1 ? 'Não compareceu 1 vez' : `Não compareceu ${faltas.length} vezes`}: a última em {formatarDiaDaFalta(ultima.scheduledAt, fuso)} ({ultima.procedureName}).
+            {faltas.length === 1 ? 'Não compareceu 1 vez' : `Não compareceu ${faltas.length} vezes`}: a última em {formatarDiaDaFalta(ultima.scheduledAt, ultima.fuso ?? fuso)} ({ultima.procedureName}).
           </span>
           <Link href={linkDoHistorico} scroll={false} style={link}>Ver no Histórico</Link>
         </p>
@@ -2113,7 +2116,7 @@ export function ClientProfile({
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{a.procedureName}</p>
                       <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 2 }}>
-                        {formatarNoFuso(a.scheduledAt, "EEE, dd MMM · HH:mm", fuso)}
+                        {quandoNaFicha(a.scheduledAt, a.fuso, fuso, "EEE, dd MMM · HH:mm")}
                         {a.professionalName !== '—' && ` · ${a.professionalName}`}
                         {/* A15 da 25ª (princípio 7): na rede de duas ou mais, ONDE. */}
                         {unidadeNaFicha(a.branchId, branches) && <span data-unidade-do-agendamento>{` · ${unidadeNaFicha(a.branchId, branches)}`}</span>}
@@ -2167,7 +2170,7 @@ export function ClientProfile({
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{a.procedureName}</p>
                       <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 2 }}>
-                        {formatarNoFuso(a.scheduledAt, "dd MMM yyyy", fuso)}
+                        {diaNaFicha(a.scheduledAt, a.fuso ?? fuso, "dd MMM yyyy")}
                         {a.professionalName !== '—' && ` · ${a.professionalName}`}
                       </p>
                     </div>
@@ -2345,6 +2348,7 @@ export function ClientProfile({
             recordForms.map((entry, i) => (
               <AttendanceRecordCard
                 key={entry.appointmentId}
+                semOCadastro={soProntuario}
                 client={{ name: client.name, document: client.document, birthDate: client.birthDate, phone: client.phone }}
                 subtitle={`${entry.procedureName ?? 'Atendimento'} · ${entry.diaDoAtendimento || formatarNoFuso(entry.createdAt, "dd/MM/yyyy", fuso)}`}
                 generalAnamnesis={

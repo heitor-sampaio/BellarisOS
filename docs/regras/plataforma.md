@@ -402,8 +402,12 @@ um muro que não depende de cada trava do código.
   - **Preço especial** (o sistema deu um preço diferente da oferta: cortesia,
     desconto) fica marcado (`especial: true`): a rede cancela, mas não
     aumenta a quantidade dele — senão uma conexão de cortesia virava dez de
-    graça. Com a cobrança ligada, nenhum adicional deixa a mensalidade em
-    R$ 0 (o Asaas não cobra zero; encerrar é com o BellarisOS).
+    graça. Tirar o último adicional pago com o plano a R$ 0 (cortesia ou 100%
+    de desconto) deixa a mensalidade em R$ 0 e é aceito: a rede vira de
+    cortesia (abaixo) e a cobrança no Asaas é pausada (verificação de
+    2026-10-07, migration `20261007000008`; até ali era recusado). Prova:
+    `e2e/planos-adicionais.spec.ts`, "com a cobrança ligada, tirar o único
+    item pago vira cortesia".
   - **No app da rede contrata a Admin da rede** (o cargo de sistema; o
     Heitor, 18/11: a configuração da rede toda é "só pela conta admin" —
     até ali, quem tinha “A rede inteira” com configurações MANAGE; a recusa
@@ -876,6 +880,9 @@ auditoria das regras, pergunta 8: "só pela conta admin"; antes, H7 de
   oferecem Configurações a quem só leria abas da rede toda
   (`soLeriaAsConfiguracoes`, `lib/menu.ts`); a aba da rede toda aberta pela
   URL diz "Esta configuração é só da Admin da rede." e quem muda (A-CONF2).
+  O resumo diz também que Fichas e Cargos em Gerenciar não abrem nada a quem
+  não é a Admin da rede (`configDaRedeNoResumo`; A12 da 30ª, decisão do
+  Claude, 25/11 — o nível segue na matriz: tirá-lo é com o Heitor).
   O menu lateral segue "Configurações" (o rótulo longo
   cortava, J-16). **O cartão do cargo diz quantas áreas ele abre** ("3
   áreas", `resumoDoCargo`, `lib/cargos/acessos-salvos.ts`; o "· 1 só os
@@ -1069,7 +1076,10 @@ abaixo entraram na F70, 2026-11-12):
   `e2e/permissoes-f70.spec.ts` ("C67").
   - **A janela diz TUDO o que fica** (D2 e A32 da 14ª, F72): a equipe fixa,
     os agendamentos futuros, o estoque com saldo (valor e itens), o a receber
-    (e os atendimentos concluídos sem pagamento, à parte) e a comissão a
+    (e os atendimentos concluídos sem pagamento, à parte), o a receber da
+    OPERADORA (os cartões a cair, o "em aberto" do Financeiro,
+    `getAReceberDaOperadora`; decisão do Claude, 25/11, A15 da 30ª: a regra
+    fala do a receber sem distinguir) e a comissão a
     pagar — cada número da MESMA conta da tela que o mostra
     (`oQueFicaNaUnidade`). E leva a resolver cada um na tela que já existe
     (`caminhosDoQueFica`, `components/admin/o-que-ficou.tsx`): "Ver os
@@ -1103,6 +1113,15 @@ abaixo entraram na F70, 2026-11-12):
   - **No app da cliente**, o cartão do agendamento numa unidade desativada
     diz que ela foi desativada (`AvisoUnidadeDesativada`), e remarcar leva às
     ativas ("Em qual unidade?"; o servidor não remarca mantendo a fechada).
+  - **O endereço da desativada não é 404** (decisão do Claude, 25/11; D5 da
+    30ª; princípio 7 e "redirecionar por abrangência leva o motivo", CLAUDE.md
+    §6): quem tem outras unidades vai à principal ATIVA com o aviso "A unidade
+    X foi desativada" (`?desativada=<slug>`: o nome sai das unidades da rede,
+    nunca da URL); quem tem "A rede inteira", ao portal da rede, com o aviso;
+    quem só tinha desativadas, à tela "A unidade X foi desativada. Fale com
+    quem administra a rede.", com "Sair" (`/auth/unidade-desativada`). O
+    login entra na primeira ATIVA das dela. Endereço que não existe segue
+    404. Regra em `lib/unidades/desativada-no-endereco.ts`.
   - Nenhuma tela filtra `is_active` das unidades por conta própria:
     `tests/unidades-da-tela.test.ts` trava. Prova:
     `e2e/unidade-desativada-f72.spec.ts`.
@@ -1449,6 +1468,27 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
     lançamento e o `discount_value` do voucher (migration
     `20261204400001_auditoria_o_dinheiro_da_comanda`); a gravação antiga não
     tem o desconto e segue sem ele (a auditoria não se altera).
+  - **A 30ª simulação** (decisão do Claude, 25/11; princípio 3 e AD-13, AD-16,
+    AD-25; `tests/auditoria-voucher-de-percentual.test.ts`,
+    `tests/auditoria-unidade-do-registro-clinico.test.ts`,
+    `tests/auditoria-o-fato-da-tag-da-situacao-e-do-caixa.test.ts`):
+    - os pontos só aparecem quando a gravação debitou pontos; o voucher só
+      tem valor em reais quando é de valor fixo (o de percentual guarda o
+      percentual — a auditoria passa a guardar o `type` do voucher, migration
+      `20261206500001_auditoria_o_tipo_do_voucher`);
+    - o registro clínico gravado SOZINHO (a anotação, a aplicação) leva a
+      unidade do atendimento dele (ou do mapa, ou do plano), lida agora — só
+      os ids, nunca o conteúdo; o prontuário em si segue "Da rede";
+    - juntar a tag (`renomear_tag`, TG-08) é "Juntou a tag X em Y (2 fichas
+      e 1 contato)", não "Apagou": `renomear_tag` diz o destino ao gatilho
+      (`depois.juntada_em`, migration `20261206600001`); a gravação de antes
+      dela, sem o destino, diz "à que já existia com o mesmo nome";
+    - desativar e reativar (a unidade, o procedimento, a sala, a origem…),
+      arquivar e reativar a ficha e a tag, ligar e desligar a automação e a
+      fidelidade são o fato ("Desativou a unidade X", "Ligou a automação Y");
+    - o fundo de troco é "Informou o fundo de troco de R$ 300,00 (era
+      R$ 200,00)"; a despesa paga diz qual ("Pagou a despesa Conta de luz
+      (R$ 380,00, Pix)", a descrição lida agora).
   - **A oportunidade e o contato pelo nome lido agora** (A27 da 17ª): a
     auditoria grava `{}` em `leads` e `contacts` (minimização, e a gravação
     não muda); a leitura busca o nome, como o da cliente e o do membro —

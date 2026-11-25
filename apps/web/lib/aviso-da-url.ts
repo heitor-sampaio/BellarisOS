@@ -19,6 +19,10 @@ export const AVISOS_DA_URL = {
   // A21 da 26ª: a aba de Relatórios fora da permissão abria outra, calada (lib/relatorios/aba-pedida).
   'aba-de-relatorio': 'Essa aba de Relatórios não está na sua permissão. Você está na primeira que ela abre.',
   'aba-de-relatorio-inexistente': 'Essa aba de Relatórios não existe. Você está na primeira que a sua permissão abre.',
+  // D5 da 30ª (UN-13; decisão do Claude, 25/11): o endereço da unidade desativada dava 404.
+  // Com `?desativada=<slug>`, a faixa troca "Essa unidade" pelo nome dela, lido do banco.
+  'unidade-desativada': 'Essa unidade foi desativada. Você está na sua unidade.',
+  'unidade-desativada-rede': 'Essa unidade foi desativada. O que ficou nela está no portal da rede, no filtro de unidade de cada tela.',
 } as const
 
 export type ChaveDoAviso = keyof typeof AVISOS_DA_URL
@@ -28,6 +32,15 @@ export function comAviso(caminho: string, chave: ChaveDoAviso): string {
   return `${caminho}${caminho.includes('?') ? '&' : '?'}aviso=${chave}`
 }
 
-export function textoDoAviso(chave: string | null): string | null {
-  return chave && Object.hasOwn(AVISOS_DA_URL, chave) ? AVISOS_DA_URL[chave as ChaveDoAviso] : null
+/**
+ * O texto da chave. `nomeDaDesativada` (D5 da 30ª): o nome da unidade
+ * desativada, que a tela resolve pelas unidades da rede (nunca o texto da
+ * URL) — só os avisos da unidade desativada o usam.
+ */
+export function textoDoAviso(chave: string | null, nomeDaDesativada?: string | null): string | null {
+  const texto = chave && Object.hasOwn(AVISOS_DA_URL, chave) ? AVISOS_DA_URL[chave as ChaveDoAviso] : null
+  if (texto && nomeDaDesativada && chave?.startsWith('unidade-desativada')) {
+    return texto.replace(/^Essa unidade/, `A unidade ${nomeDaDesativada}`)
+  }
+  return texto
 }

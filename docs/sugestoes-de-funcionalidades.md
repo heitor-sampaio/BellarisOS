@@ -60,3 +60,20 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 47 | O de → para da troca de forma (estorno e novo lançamento) numa linha só da Auditoria | 29ª, E10 |
 | 48 | A validade e as sessões na linha do pacote de antes, na ficha | 29ª, E02 (ligada ao A24) |
 | 49 | Ver o plano proposto e não aceito na ficha da cliente, com o "propor de novo" | 29ª, E07 |
+| 50 | O resumo do quadro de oportunidades acompanhar os filtros aplicados | 30ª, Time A |
+| 51 | Abrir a oportunidade da aba Oportunidades da ficha sem passar pelo Inbox | 30ª, Time A |
+| 52 | Escolher o funil ao abrir o contato do CRM pela busca | 30ª, A03 |
+| 53 | Escolher a etapa no "Mover para outro funil" | 30ª, A06 |
+| 54 | A busca achar a pessoa cuja oportunidade está em funil arquivado | 30ª, A09 (BA-04) |
+| 55 | O resumo do cargo sem "ela" fixo | 30ª, Time B |
+| 56 | O `?unidade=` aceitar o endereço curto da unidade, ou avisar que não achou | 30ª, Time B |
+| 57 | A agenda "Toda a rede" indicar que as unidades têm fusos diferentes | 30ª, Time B (ligada à nº 3) |
+| 58 | O recibo avisar que sai sem CPF quando a ficha não tem | 30ª, C12 |
+| 59 | O arquivo da DRE com nome em português (não "dre-month.csv") | 30ª, Time C |
+| 60 | O limite de parcelas do crediário também em Configurações → Geral | 30ª, Time C |
+| 61 | O histórico das autorizações do suporte revogadas (por quem, quando) | 30ª, Time D (SU-04) |
+| 62 | A coluna do saldo de pontos (cartão de papel) na importação de clientes | 30ª, Time E |
+| 63 | A prévia da comanda dizer a ordem desconto → voucher → pontos | 30ª, E03 |
+| 64 | Tirar a marca da biblioteca do desenho das automações (depende da licença dela) | 30ª, Time E |
+| 65 | Dividir a comanda entre pago e "A receber" sem passar pelo crediário | 30ª, B13 |
+| 66 | A Equipe mostrar e filtrar quem é da unidade desativada | 30ª, Time B (UN-13) |

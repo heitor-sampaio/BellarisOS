@@ -17,6 +17,7 @@ import {
   MODULE_GROUPS, LEVEL_COPY, notaDoResumoDaRede,
   NETWORK_ONLY, notaDeAbrangencia, SO_NA_REDE_NOTE, quemVendeNoResumo, copilotNoResumo, textoDoQueFaltaNoCargo, documentosNoResumo,
   tratamentosNoResumo, conclusaoNoResumo, vistasPessoaisNoResumo, prontuarioSemClientesNoResumo,
+  fidelidadeNoResumo, configDaRedeNoResumo,
 } from '@/lib/permissions-copy'
 import { ADMIN_MENU, BRANCH_MENU, menuLabelsFor, soLeriaAsConfiguracoes } from '@/lib/menu'
 import { rotuloDasAbasAlcancadas, ABAS_DA_REDE, ABAS_DA_UNIDADE } from '@/lib/configuracoes/abas'
@@ -1023,6 +1024,10 @@ function MenuPreview({ levels, reportTabs, foraDoPlano }: { levels: Levels; repo
   const sobreCopilot = foraDoPlano.includes('copilot') ? null : copilotNoResumo(levels.copilot)
   // A2: o Prontuário sem Clientes — por onde ela chega à cliente.
   const sobreProntuario = foraDoPlano.includes('medical_records') ? null : prontuarioSemClientesNoResumo(levels)
+  // A13 da 30ª: a Fidelidade não é entrada do menu — onde ela aparece.
+  const sobreFidelidade = foraDoPlano.includes('loyalty') ? null : fidelidadeNoResumo(levels)
+  // A12 da 30ª: as Fichas e os Cargos são da Admin da rede (CG-17).
+  const sobreConfigDaRede = configDaRedeNoResumo(levels)
 
   return (
     <div style={{
@@ -1064,6 +1069,16 @@ function MenuPreview({ levels, reportTabs, foraDoPlano }: { levels: Levels; repo
       {sobreProntuario && (
         <p data-resumo-prontuario-sem-clientes style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
           {sobreProntuario}
+        </p>
+      )}
+      {sobreFidelidade && (
+        <p data-resumo-fidelidade style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
+          {sobreFidelidade}
+        </p>
+      )}
+      {sobreConfigDaRede && (
+        <p data-resumo-config-da-rede style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
+          {sobreConfigDaRede}
         </p>
       )}
       {/* A2 da 23ª: quem inicia e conclui, e o que pede o Prontuário. */}

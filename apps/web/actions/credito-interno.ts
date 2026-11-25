@@ -29,6 +29,7 @@ import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { recusaDoPagamentoDoUsado, pagamentoDoUsadoParaOBanco } from '@/lib/financeiro/pagamento-do-usado'
 import { BANDEIRAS } from '@/lib/financeiro/bandeiras'
 import { CLIENTE_ARQUIVADA } from '@/lib/clients/arquivada'
+import { recusaDaVendaNaUnidade } from '@/lib/vendas/unidade-da-venda'
 import { lerPreviaDoEstornoDoCredito, type PreviaDoEstornoDoCredito } from '@/lib/creditos/venda-de-credito'
 
 const UUID = /^[0-9a-f-]{36}$/i
@@ -102,10 +103,13 @@ async function venderUmaVez(
 
     const admin = createAdminClient()
     const [unidade, cliente] = await Promise.all([
-      ler(admin.from('branches').select('id').eq('id', branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade'),
+      ler(admin.from('branches').select('id, is_active').eq('id', branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade'),
       ler(admin.from('clients').select('id, is_active').eq('id', clienteId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a cliente'),
     ])
     if (!unidade || !alcancaUnidade(ctx, branchId)) return { error: 'Unidade não encontrada.' }
+    // D4 da 30ª (UN-14): a unidade desativada não vende.
+    const naDesativada = recusaDaVendaNaUnidade(unidade)
+    if (naDesativada) return { error: naDesativada }
     if (!cliente) return { error: 'Cliente não encontrada.' }
     if (cliente.is_active === false) return { error: CLIENTE_ARQUIVADA }
 

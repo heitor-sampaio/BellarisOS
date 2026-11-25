@@ -17,7 +17,7 @@ import {
   estornoAnteriorEmTexto, valorNaLista, produtosEstornadosEmTexto, pagoJuntoEmTexto, rotuloDoPagamentoDaComanda,
   estornoDaVendaEmTexto, recebidaAgoraEmTexto, voucherDoProdutoEstornadoEmTexto, vendaEstornadaEmTexto, rotuloDoDiaNoPdv, textoDasComValorEmAberto,
   abertasNasOutrasEmTexto, vazioDasAbertas, hrefDasComValorEmAberto, comandasDoFiltro, FILTRO_COM_VALOR_EM_ABERTO,
-  rotuloDoTotalDaComanda, separarAsQueNaoValem, tituloDoPdv, type AbertasNaOutraUnidade, type SaiDaComanda, type ComandaDoPdv, type SituacaoDoPdv,
+  rotuloDoTotalDaComanda, separarAsQueNaoValem, tituloDoPdv, verboDaComandaPaga, type AbertasNaOutraUnidade, type SaiDaComanda, type ComandaDoPdv, type SituacaoDoPdv,
 } from '@/lib/pdv/situacoes'
 import { NovaVenda, type VendaDoPdv } from '@/components/shared/pdv/nova-venda'
 import { ProdutosDaComanda } from '@/components/shared/pdv/produtos-da-comanda'
@@ -55,6 +55,8 @@ export interface ComandaEscolhida {
   produtoNaoPontua?:  boolean
   /** A16 da 24ª: o contrato da venda do pacote que ainda espera a assinatura (a comanda leva até ela). */
   documentosParaColher?: { id: string; titulo: string }[]
+  /** A10 da 30ª: na comanda do plano, quem completa o cadastro (os Clientes em Gerenciar). */
+  cadastroDoPlano?:   { podeCompletar: boolean; quemCompleta: string[] | null } | null
 }
 
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -133,9 +135,10 @@ export function CabecalhoDoPdv({ basePath, unidadeId, naRede, vista, recebidoHoj
  * e o "Receber". Não existe pagamento sem forma (PDV8): o "Receber" espera a
  * forma escolhida.
  */
-export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abertas, abertasNasOutras = [], comValorEmAberto = 0, recebidoHoje, escolhida, slugDaUnidade, novaVenda, podeVerFechamento = true, recebidaAgora = null }: {
+export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abertas, abertasNasOutras = [], comValorEmAberto = 0, recebidoHoje, escolhida, slugDaUnidade, novaVenda, vende = true, podeVerFechamento = true, recebidaAgora = null }: {
   basePath:      string
-  unidades:      { id: string; name: string }[]
+  /** `ativa: false`: a unidade desativada (não entra no "Em qual unidade é a venda?"). */
+  unidades:      { id: string; name: string; ativa?: boolean }[]
   unidadeId:     string
   situacao:      SituacaoDoPdv
   comandas:      ComandaDoPdv[]
@@ -149,6 +152,8 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
   slugDaUnidade: string
   /** A "Nova venda" aberta (`?nova=1`), com a cliente já escolhida ou não. */
   novaVenda:     { dados: VendaDoPdv | null; aviso?: string; perguntaAUnidade?: boolean } | null
+  /** D4 da 30ª (UN-14): a unidade do PDV vende — a desativada só recebe o que ficou. */
+  vende?:        boolean
   /** Vê o Fechamento do dia (`podeVerFechamento`): o "Fechar o dia" do topo. */
   podeVerFechamento?: boolean
   /** A2 da 19ª: a comanda que acabou de ser recebida (`?recebida=`) — a tela diz o que entrou. */
@@ -221,9 +226,12 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
           <SegSelect options={unidades.map(u => ({ key: u.id, label: u.name }))} value={unidadeId}
             onSelect={k => router.push(hrefNaUnidade(k))} ariaLabel="Unidade" />
         )}
-        <Link href={href({ nova: '1' })} className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <Plus size={15} aria-hidden /> Nova venda
-        </Link>
+        {/* D4 da 30ª (UN-14): a unidade desativada não vende — o botão some, e o vazio diz por quê. */}
+        {vende && (
+          <Link href={href({ nova: '1' })} className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <Plus size={15} aria-hidden /> Nova venda
+          </Link>
+        )}
       </CabecalhoDoPdv>
 
       <div className="pdv-duas">
@@ -289,7 +297,7 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
         <div className="card" data-comanda-aberta={!novaVenda && escolhida ? escolhida.comanda.id : undefined}>
           {novaVenda ? (
             <NovaVenda unidadeId={unidadeId} slugDaUnidade={slugDaUnidade} venda={novaVenda.dados} aviso={novaVenda.aviso}
-              unidades={novaVenda.perguntaAUnidade ? unidades.map(u => ({ ...u, href: hrefNaUnidade(u.id) })) : null}
+              unidades={novaVenda.perguntaAUnidade ? unidades.filter(u => u.ativa !== false).map(u => ({ ...u, href: hrefNaUnidade(u.id) })) : null}
               hrefDaCliente={id => href(id ? { nova: '1', cliente: id } : { nova: '1' })}
               hrefCancelar={href({})}
               aoVender={() => { router.push(href({ ver: 'PAGAS' })); router.refresh() }} />
@@ -307,7 +315,13 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
                 </p>
               )}
               {/* A4 da 19ª: no celular a lista fica em cima, não à esquerda. */}
-              <p style={{ fontSize: 'var(--text-sm-sz)' }}>Escolha uma comanda na lista para ver o que está nela e receber, ou comece uma nova venda.</p>
+              {vende ? (
+                <p style={{ fontSize: 'var(--text-sm-sz)' }}>Escolha uma comanda na lista para ver o que está nela e receber, ou comece uma nova venda.</p>
+              ) : (
+                <p data-unidade-nao-vende style={{ fontSize: 'var(--text-sm-sz)' }}>
+                  Esta unidade foi desativada e não vende mais: aqui se recebe o que ficou em aberto. A venda nova é numa unidade ativa.
+                </p>
+              )}
             </div>
           ) : (
             <ComandaNaTela e={escolhida} hora={hora} slugDaUnidade={slugDaUnidade}
@@ -463,7 +477,8 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, hrefDaAssinatura, ao
           ) : c.paga ? (
             <>
               <p data-comanda-paga style={{ color: 'var(--text)', fontSize: 'var(--text-sm-sz)' }}>
-                {c.origem === 'VENDA' ? 'Vendida' : c.origem === 'PLANO' ? 'Recebido' : 'Paga'} às {hora(c.pagaEm)} · {formasDaComandaEmTexto(c)} · <b>{brl(c.recebido ?? 0)}</b> recebidos
+                {/* A9 da 30ª: com dinheiro em aberto, "Fechada" (a regra do selo). */}
+                {verboDaComandaPaga(c)} às {hora(c.pagaEm)} · {formasDaComandaEmTexto(c)} · <b>{brl(c.recebido ?? 0)}</b> recebidos
                 {/* A2 da 15ª: a quem não estorna, de quem é o estorno — a frase da ficha.
                     Mora na dica (2026-11-16 — era uma caixa fixa embaixo dos pagamentos). */}
                 {e.quemEstorna && (
@@ -570,7 +585,7 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, hrefDaAssinatura, ao
             </p>
           )}
           {c.estornada || c.canceladaEm || c.paga ? null : aReceber && c.planoId ? (
-            <ReceberOPlano key={c.id} planoId={c.planoId} slug={slugDaUnidade} aoReceber={aoReceber} />
+            <ReceberOPlano key={c.id} planoId={c.planoId} slug={slugDaUnidade} aoReceber={aoReceber} cadastro={e.cadastroDoPlano ?? null} />
           ) : aReceber && c.agendamentoId ? (
             <FormularioDeReceberAtendimento key={`${c.id}:${c.valor}`} appointmentId={c.agendamentoId} slug={slugDaUnidade} price={c.valor}
               clienteId={c.clienteId} pagamentoCombinado={e.pagamentoCombinado} pacotesParaAbater={e.pacotesParaAbater}

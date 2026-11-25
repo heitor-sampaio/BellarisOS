@@ -11,7 +11,7 @@ import { resumoDoFunil } from '@/lib/metrics/resultado'
 import { getCachedNetworkProcedures } from '@/lib/cached-queries'
 import { atividadeDasPessoas } from '@/lib/crm/atividade-da-pessoa'
 import { nomesDasPessoas, nomeNoCard } from '@/lib/crm/nome-da-pessoa'
-import { sinaisDasClientes, sugereGanho } from '@/lib/crm/sinais-do-card'
+import { sinaisDasClientes, compraNoCard } from '@/lib/crm/sinais-do-card'
 import type { ComponentProps } from 'react'
 import { CRMBoard } from '@/components/branch/crm-board'
 import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
@@ -103,7 +103,7 @@ export default async function AdminOportunidadesPage({
         .from('leads')
         .select(`
           id, name, phone, email, social_media, source,
-          crm_stage_id, notes, client_id, created_at, ${EMBED_TAGS_DA_PESSOA},
+          crm_stage_id, notes, client_id, created_at, value, ${EMBED_TAGS_DA_PESSOA},
           owner_id, users(name, is_active), contato_id,
           motivo_perda_id, motivo_perda_obs, crm_motivos_perda(nome), retornar_em, retornar_obs,
           lead_procedures(procedure_id, procedures(name, price))
@@ -124,13 +124,14 @@ export default async function AdminOportunidadesPage({
   // A18 da 7ª simulação: o próximo agendamento e a compra da cliente ligada —
   // o card diz "Agendado…" e SUGERE o Ganho (nenhum card anda sozinho).
   const sinais = await sinaisDasClientes(ctx.tenantId!, leadsRaw.map(l => l.client_id as string | null).filter((x): x is string => !!x))
-  const abertaNaEtapa = (etapa: unknown) => allStages.find(st => st.id === etapa)?.outcome === 'OPEN'
+  const desfechoDaEtapa = (etapa: unknown) => allStages.find(st => st.id === etapa)?.outcome ?? null
   const leads = leadsRaw.map(l => {
     const { users: dono, contato_id: pessoa, ...rest } = l
     // As tags da pessoa vão em `tags`; os embeds não seguem para a tela.
     delete rest.pessoa_ficha
     delete rest.pessoa_contato
     const ativ = atividade.get(pessoa)
+    const compra = l.client_id ? compraNoCard(l as unknown as { created_at: string }, sinais.get(l.client_id as string), desfechoDaEtapa(l.crm_stage_id)) : null
     return {
       ...rest,
       name:                nomeNoCard(nomes.get(pessoa), rest.name as string),
@@ -141,10 +142,9 @@ export default async function AdminOportunidadesPage({
       awaiting_since:      ativ?.awaiting_since ?? null,
       // A18: o que o card diz da cliente ligada (lib/crm/sinais-do-card).
       proximo_agendamento: l.client_id ? sinais.get(l.client_id as string)?.proximoAgendamento ?? null : null,
-      compra: l.client_id && sugereGanho(l as unknown as { created_at: string }, sinais.get(l.client_id as string), abertaNaEtapa(l.crm_stage_id))
-        ? sinais.get(l.client_id as string)!.compra : null,
-      compra_valor: l.client_id && sugereGanho(l as unknown as { created_at: string }, sinais.get(l.client_id as string), abertaNaEtapa(l.crm_stage_id))
-        ? sinais.get(l.client_id as string)!.compraValor : null,
+      // D2 da 30ª: o vendido vale também com o card GANHO (só a sugestão é do aberto).
+      compra:              compra?.compra ?? null,
+      compra_valor:        compra?.compraValor ?? null,
       branch_slug:         null,
     }
   })

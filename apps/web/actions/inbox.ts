@@ -6,6 +6,7 @@ import { tagsDoVocabulario } from '@/lib/tags/escolha'
 import { expirarCacheDasTags } from '@/lib/tags/da-pessoa'
 import { getTenantContext, assertPermission, podeReceber, assertRecurso, temRecurso, can } from '@/lib/auth'
 import { redeTemWhatsapp } from '@/lib/automacoes/canal-da-rede'
+import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { idsDaPaginaDoInbox } from '@/lib/inbox/pagina'
 import type { FiltrosInbox } from '@/components/admin/inbox-filtros'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -33,7 +34,7 @@ import { passaNasCaixas } from '@/lib/inbox/visibilidade'
 import { caixasDoAlcance, conversaAoAlcance, mensagemAoAlcance } from '@/lib/inbox/alcance'
 import { numeroRemovidoDaConversa, recusaDoNumeroRemovido, SUFIXO_DO_REMOVIDO } from '@/lib/inbox/numero-removido'
 import { leadAoAlcance } from '@/lib/crm/alcance'
-import { semConversaParaQuemSoVe } from '@/lib/crm/conversa-da-oportunidade'
+import { semConversaParaQuemSoVe, semWhatsappParaConversar } from '@/lib/crm/conversa-da-oportunidade'
 import {
   automacoesQueOMovimentoDispara, COLUNAS_DO_CARD_PARA_PREVER, type CardParaPrever,
 } from '@/lib/crm/automacoes-do-movimento'
@@ -1399,13 +1400,8 @@ export async function openLeadConversation(
   // para falar com a pessoa — nascia uma conversa de WhatsApp com o banner "não
   // está conectado" (o lead do Instagram numa clínica sem número). Diz isso.
   if (channel === 'whatsapp' && !(await redeTemWhatsapp(ctx.tenantId!))) {
-    const quem = can(ctx, 'settings', 'MANAGE') && ctx.branchId === null
-      ? 'Conecte o WhatsApp em Configurações → Integrações'
-      : 'Peça a quem tem as Configurações em Gerenciar para conectar o WhatsApp'
-    return {
-      conversationId: null,
-      error: `Ainda não há conversa com ${l.name}, e a rede não tem um WhatsApp conectado: não há por onde conversar daqui. ${quem}, ou fale pelo canal de onde ela veio.`,
-    }
+    // D12 da 30ª: o WhatsApp é configuração só da Admin da rede (CLAUDE.md §11, 18/11).
+    return { conversationId: null, error: semWhatsappParaConversar(l.name, can(ctx, 'settings', 'MANAGE') && mexeNaConfigDaRede(ctx)) }
   }
 
   // A16 da 27ª (CLAUDE.md §14; "quem só pode ver só pode ver"): abrir a

@@ -118,6 +118,13 @@ export interface NomesDaAuditoria {
    * "cargo: Recepção → Admin da rede" e o "Promoveu".
    */
   cargosDosMembros?: Record<string, { nome: string; adminDaRede: boolean }>
+  /**
+   * D13 da 30ª (AD-25): a unidade do registro clínico sem unidade própria (o id
+   * da anotação, da evolução, da aplicação, do mapa, do termo → o id da unidade
+   * do atendimento, do mapa ou do plano dele), lida agora — para a gravação de
+   * uma linha só, que não tem outra linha que a dê. Nunca o conteúdo.
+   */
+  unidadesDosClinicos?: Record<string, string>
 }
 
 export interface ItemDevolvidoDaAuditoria {
@@ -146,6 +153,9 @@ export interface LancamentoDaAuditoria {
   agendamento?: boolean
   /** A38 da 22ª: as vezes no cartão de crédito ("Crédito 8x"); nulo fora dele. */
   vezes?: number | null
+  /** A6 da 30ª: a descrição e a categoria (a despesa paga diz qual; a baixa não as grava). */
+  descricao?: string | null
+  categoria?: string | null
 }
 
 /** Uma linha pronta para a tela e para o CSV. */

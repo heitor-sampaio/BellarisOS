@@ -112,8 +112,12 @@ recompensas, igual (`salvarConfigFidelidade` e `salvarRecompensa` passam por
 - **Saldo = SOMA do extrato** (`saldo_de_pontos`). `loyalty_accounts.balance`
   saiu do banco (fase 4). Extrato e conta só se LEEM pela sessão: quem
   escreve é o gatilho e o servidor, com a trava `fidelidade:<cliente>`.
-- Módulo `loyalty`: VIEW = saldo e extrato; MANAGE = ajustar. Configurar é
-  Configurações. **Quem só vê lê a quem pedir** (A38 da 9ª simulação,
+- Módulo `loyalty`: VIEW = saldo, extrato e vouchers, na ficha da cliente (a
+  ficha pede Clientes em Ver; a Fidelidade não é entrada do menu, e o resumo
+  do cargo diz isso — `fidelidadeNoResumo`, A13 da 30ª, decisão do Claude,
+  25/11); MANAGE = trocar pontos por recompensa (ficha e PDV), cancelar e
+  entregar o voucher e ajustar. Ligar o programa e definir as regras é só da
+  Admin da rede (18/11). **Quem só vê lê a quem pedir** (A38 da 9ª simulação,
   2026-11-07; a regra de cargo fica, como a A33 da 8ª): na ficha, "Trocar
   pontos por recompensa e ajustar pontos é de quem tem a Fidelidade em
   Gerenciar: Lúcia, Fernanda." (`[data-quem-troca]`, `quemTrocaPontos`,
@@ -243,9 +247,20 @@ recompensas, igual (`salvarConfigFidelidade` e `salvarRecompensa` passam por
     indicador): em Relatórios → Estoque, "Perdas no período", pelo custo do
     lote (`metrics_perdas`, motivo `BRINDE`; era "Inventário"). Como toda
     perda, é métrica: não entra no lucro (`indicadores.md`). Prova:
-    `e2e/estoque-atritos-da-12.spec.ts` ("A40").
+    `e2e/estoque-atritos-da-12.spec.ts` ("A40"). **E diz o motivo onde a
+    perda aparece** (D10 da 30ª; indicadores:ER-04, "com o motivo certo"; o
+    texto é decisão do Claude, 25/11): a linha "Fora do resultado" do DRE
+    dizia só "perdas R$ 40,00"; diz cada motivo ("Brinde da fidelidade
+    R$ 40,00 · Inventário R$ 12,50"), pelo `perdasComOMotivo`
+    (`lib/estoque/perda.ts`, sobre os totais do `getPerdas`). Prova:
+    `tests/perdas-com-o-motivo.test.ts`.
   - Cancelar voucher não usado devolve os pontos; vencido (derivado de
     `expires_at`) não vale e não devolve; estorno do pagamento o reativa.
+    **O motivo é obrigatório, e a tela diz antes** (A23 da 30ª; princípio 7):
+    o campo se chama "Motivo do cancelamento (obrigatório)" e o "Confirmar
+    cancelamento" só vale com ele escrito ("Escreva o motivo para
+    confirmar."); o banco segue recusando sem motivo. Prova:
+    `tests/voucher-cancelar-motivo-a-vista.test.ts`.
   - **O formulário diz quanto os pontos valem e de onde vem o procedimento**
     (A5 da 7ª simulação, 2026-11-05; princípio 3): "Procedimento grátis" diz
     que o procedimento precisa estar cadastrado em Procedimentos (com o link;
@@ -253,7 +268,12 @@ recompensas, igual (`salvarConfigFidelidade` e `salvarRecompensa` passam por
     R$ 20,00 pelo valor do ponto (R$ 0,01…) — o procedimento custa R$ 150,00
     na tabela" (`data-valor-dos-pontos`, o `redeem_points_value` da
     configuração). Nada é recusado: a rede decide o custo (princípio 2).
-    Prova: `e2e/configuracoes-atritos-da-7.spec.ts` ("A5"). **O desconto
+    Prova: `e2e/configuracoes-atritos-da-7.spec.ts` ("A5"). **Com o valor do
+    ponto em zero, avisa** (A24 da 30ª; princípio 4): "Os 400 pontos não
+    valem nada em reais: o valor do ponto está em R$ 0,00 na configuração
+    acima." — o texto sumia (`valorDosPontosNoFormulario`,
+    `lib/fidelidade/formato.ts`; sem custo digitado, nada). Prova:
+    `tests/fidelidade-valor-dos-pontos-no-formulario.test.ts`. **O desconto
     acima do que os pontos valem ganha aviso** (A18 da 21ª): "O desconto
     (R$ 30,00) vale 15 vezes o que os 200 pontos valem (R$ 2,00). Confira o
     custo em pontos ou o valor do ponto." (`avisoDaRecompensaAcimaDosPontos`,

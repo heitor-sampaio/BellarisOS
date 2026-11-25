@@ -12,10 +12,10 @@ import { Copilot } from '@/components/copilot/copilot'
 import { CopilotForaDoPlano } from '@/components/copilot/copilot-fora-do-plano'
 import { copilotNaTela, copilotForaDoPlanoNaTela, redeEmTeste } from '@/lib/copilot/disponivel'
 import { comAviso } from '@/lib/aviso-da-url'
-import { AvisoDaUrl } from '@/components/shared/aviso-da-url'
+import { AvisoDaUrl, UnidadesDesativadasProvider } from '@/components/shared/aviso-da-url'
 import { UmaUnidadeProvider } from '@/components/shared/uma-unidade'
 import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
-import { getCachedRede } from '@/lib/cached-queries'
+import { getCachedRede, getCachedTodasAsUnidades } from '@/lib/cached-queries'
 import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { FusoProvider } from '@/components/shared/fuso'
 import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
@@ -66,10 +66,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   // As datas e horas da tela no fuso da rede (F62): o das unidades, se é um só.
   const fuso = await fusoDaRede(ctx.tenantId)
+  // D5 da 30ª: as desativadas da rede (o endereço → o nome), para o aviso de quem abriu uma delas.
+  const desativadas = ctx.tenantId
+    ? Object.fromEntries((await getCachedTodasAsUnidades(ctx.tenantId)).filter(u => !u.is_active).map(u => [u.slug, u.name]))
+    : {}
 
   return (
     <UmaUnidadeProvider valor={umaUnidade} nome={nomeDaRede}>
     <FusoProvider fuso={fuso}>
+    <UnidadesDesativadasProvider nomes={desativadas}>
     <SidebarProvider>
       <AdminSidebar permissions={ctx.permissions} pessoa={{ atende: ctx.providesServices, comissaoDeVenda: ctx.comissaoDeVenda }} plano={ctx.plano ?? null} adminDaRede={mexeNaConfigDaRede(ctx)} />
       <Topbar userName={ctx.userName || 'Usuário'} userRole={ctx.role} roleLabel={ctx.roleLabel} internalUserId={ctx.internalUserId} initialUnread={initialUnread} slug={null} permissions={ctx.permissions} pessoa={{ atende: ctx.providesServices, comissaoDeVenda: ctx.comissaoDeVenda }} plano={ctx.plano ?? null} agendaPropria={vistaPessoal(ctx, 'agenda') !== null} adminDaRede={mexeNaConfigDaRede(ctx)} suporte={ctx.suporte ?? null} assinatura={await avisoDaAssinatura(ctx)} saudacaoInicial={saudacao(new Date(), fuso)} />
@@ -94,6 +99,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <CopilotForaDoPlano emTeste={await redeEmTeste(ctx.tenantId!)} assinaturaHref="/admin/settings?tab=assinatura" />
       )}
     </SidebarProvider>
+    </UnidadesDesativadasProvider>
     </FusoProvider>
     </UmaUnidadeProvider>
   )

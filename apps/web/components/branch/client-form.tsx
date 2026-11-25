@@ -29,7 +29,13 @@ interface ClientFormProps {
   /** As unidades da rede: só dizem se há mais de uma (o aviso de que a cliente é da rede). */
   branches?:  { id: string; name: string }[]
   /** pré-preenchimento na criação (ex.: conversão de lead) */
-  prefill?:   { name?: string; phone?: string; email?: string }
+  /**
+   * As `tags` são as da pessoa do card (A1 da 30ª; crm-inbox:TG-10): a ficha
+   * as recebe ao ligar-se ao contato, então elas abrem marcadas e fixas.
+   * `tagsDe` diz de onde vêm: do card (a oportunidade, o padrão) ou da
+   * conversa do inbox (o contato) — a tag é da pessoa nos dois.
+   */
+  prefill?:   { name?: string; phone?: string; email?: string; tags?: string[]; tagsDe?: 'oportunidade' | 'contato' }
   /** liga o cliente criado a este lead (conversão) */
   leadId?:    string
   /** Contato de onde veio o cadastro: e nele que o vinculo com o cliente fica. */
@@ -80,7 +86,10 @@ export function ClientForm({ branchId, slug, branches, prefill, leadId, conversa
   // Só cadastro. A edição mora na aba Dados da ficha: manter duas telas para a
   // mesma coisa deixava esta aqui sem nenhuma página que a montasse.
   const [state, formAction, pending] = useActionState(addClient, undefined)
-  const [selectedTags, setSelectedTags] = useState<string[]>([])
+  // A1 da 30ª (princípio 3): as tags que a ficha vai receber já vêm marcadas.
+  const [selectedTags, setSelectedTags] = useState<string[]>(prefill?.tags ?? [])
+  const tagsQueVem = prefill?.tags ?? []
+  const deOnde = prefill?.tagsDe === 'contato' ? 'do contato' : 'da oportunidade'
   // A29 da 22ª = A39 da 23ª: o endereço, recolhido (o contrato do pacote precisa dele).
   const [endereco, setEndereco] = useState<EnderecoNaTela>(ENDERECO_VAZIO)
   const [phone, setPhone] = useState(prefill?.phone ? telefoneParaExibir(prefill.phone) : '')
@@ -226,6 +235,8 @@ export function ClientForm({ branchId, slug, branches, prefill, leadId, conversa
   // As tags da rede (Configurações → Tags), não mais uma lista fixa.
   const vocabulario = useTagsDaRede()
   function toggleTag(tag: string) {
+    // A que vem da pessoa não se desmarca: ela chega à ficha de qualquer jeito (TG-10).
+    if (temTag(tagsQueVem, tag)) return
     setSelectedTags(prev => alternarTag(prev, tag))
   }
 
@@ -358,9 +369,14 @@ export function ClientForm({ branchId, slug, branches, prefill, leadId, conversa
 
       {/* Tags */}
       <Field label="Tags" grupo>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
           {opcoesDeTag(vocabulario ?? [], selectedTags).map(tag => {
             const active = temTag(selectedTags, tag)
+            if (temTag(tagsQueVem, tag)) return (
+              <span key={tag} data-tag-que-vem className="chip-filtro is-ativo" title={`Vem ${deOnde}: a tag é da pessoa`}>
+                {tag}
+              </span>
+            )
             return (
               <button
                 key={tag} type="button"
@@ -372,6 +388,9 @@ export function ClientForm({ branchId, slug, branches, prefill, leadId, conversa
               </button>
             )
           })}
+          {tagsQueVem.length > 0 && (
+            <Dica rotulo={`Sobre as tags que vêm ${deOnde}`}>As tags {deOnde} vêm junto para a ficha: a tag é da pessoa.</Dica>
+          )}
         </div>
       </Field>
 

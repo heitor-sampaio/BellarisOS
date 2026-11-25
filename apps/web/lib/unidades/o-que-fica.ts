@@ -11,6 +11,8 @@ import { formatBRL } from '@estetica-os/utils'
  * - `estoque`: os produtos com saldo e o valor (`metrics_valor_em_estoque`);
  * - `aReceber`: o a receber em aberto (`metrics_a_receber_em_aberto`) e os
  *   atendimentos concluídos sem pagamento, à parte, como no Financeiro;
+ * - `aReceberDaOperadora`: o que a operadora do cartão ainda deposita (o "em
+ *   aberto" da operadora no Financeiro; A15 da 30ª, UN-10);
  * - `comissaoAPagar`: a comissão liberada que ainda não foi fechada.
  */
 export interface OQueFicaNaUnidade {
@@ -22,12 +24,14 @@ export interface OQueFicaNaUnidade {
   diaDoPrimeiro: string | null
   estoque:      { itens: number; valor: number }
   aReceber:     number
+  /** A15 da 30ª (UN-10): os cartões a cair — o em aberto da operadora, líquido, como no Financeiro. */
+  aReceberDaOperadora: number
   atendimentosSemPagamento: { n: number; valor: number }
   comissaoAPagar: number
 }
 
 export const NADA_FICA: OQueFicaNaUnidade = {
-  fixos: [], agendamentos: 0, primeiroAgendamento: null, diaDoPrimeiro: null, estoque: { itens: 0, valor: 0 }, aReceber: 0,
+  fixos: [], agendamentos: 0, primeiroAgendamento: null, diaDoPrimeiro: null, estoque: { itens: 0, valor: 0 }, aReceber: 0, aReceberDaOperadora: 0,
   atendimentosSemPagamento: { n: 0, valor: 0 }, comissaoAPagar: 0,
 }
 
@@ -37,7 +41,7 @@ export const NADA_FICA: OQueFicaNaUnidade = {
  * na Equipe, e não é número de tela nenhuma.
  */
 export function temOQueFicou(o: OQueFicaNaUnidade): boolean {
-  return o.agendamentos > 0 || o.estoque.itens > 0 || o.estoque.valor > 0 || o.aReceber > 0
+  return o.agendamentos > 0 || o.estoque.itens > 0 || o.estoque.valor > 0 || o.aReceber > 0 || o.aReceberDaOperadora > 0
     || o.atendimentosSemPagamento.n > 0 || o.comissaoAPagar > 0
 }
 
@@ -50,6 +54,7 @@ export function resumoDoQueFica(nome: string, o: OQueFicaNaUnidade): string | nu
   if (o.agendamentos) partes.push(plural(o.agendamentos, 'agendamento marcado', 'agendamentos marcados'))
   if (o.estoque.itens || o.estoque.valor) partes.push(`${formatBRL(o.estoque.valor)} em estoque (${plural(o.estoque.itens, 'item', 'itens')})`)
   if (o.aReceber) partes.push(`${formatBRL(o.aReceber)} a receber`)
+  if (o.aReceberDaOperadora) partes.push(`${formatBRL(o.aReceberDaOperadora)} a receber da operadora (os cartões a cair)`)
   if (o.atendimentosSemPagamento.n) {
     partes.push(`${plural(o.atendimentosSemPagamento.n, 'atendimento concluído sem pagamento', 'atendimentos concluídos sem pagamento')} (${formatBRL(o.atendimentosSemPagamento.valor)})`)
   }
@@ -92,7 +97,7 @@ export function caminhosDoQueFica(branchId: string, o: OQueFicaNaUnidade): { cha
     rotulo: 'Transferir o estoque',
     href: `/admin/estoque?unidade=${branchId}`,
   })
-  if (o.aReceber > 0 || o.atendimentosSemPagamento.n > 0) c.push({
+  if (o.aReceber > 0 || o.aReceberDaOperadora > 0 || o.atendimentosSemPagamento.n > 0) c.push({
     chave: 'a-receber',
     texto: 'O a receber continua no Financeiro, para dar baixa quando o dinheiro entrar.',
     rotulo: 'Ver o a receber',

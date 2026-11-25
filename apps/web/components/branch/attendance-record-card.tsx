@@ -45,6 +45,12 @@ interface Props {
   fotos?:           React.ReactNode
   /** As anotações depois do atendimento (PR2a), no fim do registro. */
   anotacoes?:       React.ReactNode
+  /**
+   * Quem vê não tem o cadastro (o Prontuário sem o Clientes, `soOProntuarioDaFicha`):
+   * CPF, nascimento e telefone não vêm, e as linhas somem — "Não informado" diria
+   * que o dado não existe (princípio 3; D6 da 30ª).
+   */
+  semOCadastro?:    boolean
 }
 
 function maskCPF(doc: string | null): string | null {
@@ -91,7 +97,7 @@ function TextoClinico({ label, texto }: { label: string; texto: string }) {
   )
 }
 
-export function AttendanceRecordCard({ client, subtitle, generalAnamnesis, procedureNode, insumos, ficha, evolucao, registroId, correcao, fotos, anotacoes }: Props) {
+export function AttendanceRecordCard({ client, subtitle, generalAnamnesis, procedureNode, insumos, ficha, evolucao, registroId, correcao, fotos, anotacoes, semOCadastro = false }: Props) {
   const age = idadeEm(client.birthDate)
   const birth = formatDia(client.birthDate)
 
@@ -112,11 +118,13 @@ export function AttendanceRecordCard({ client, subtitle, generalAnamnesis, proce
         {correcao && <div style={{ marginBottom: 16 }}>{correcao}</div>}
         {/* Seção 1 — Dados do cliente */}
         <SectionOverline label="Dados do cliente" />
-        <div className="form-2col" style={{ gap: '14px 28px', marginBottom: 18 }}>
+        <div className="form-2col" data-identificacao-do-cliente style={{ gap: '14px 28px', marginBottom: 18 }}>
           <IdentityRow label="Nome"       value={client.name} />
-          <IdentityRow label="CPF"        value={maskCPF(client.document)} />
-          <IdentityRow label="Nascimento" value={birth ? `${birth}${age !== null ? ` · ${age} anos` : ''}` : null} />
-          <IdentityRow label="Telefone"   value={client.phone ? maskPhone(client.phone) : client.phone} />
+          {!semOCadastro && (<>
+            <IdentityRow label="CPF"        value={maskCPF(client.document)} />
+            <IdentityRow label="Nascimento" value={birth ? `${birth}${age !== null ? ` · ${age} anos` : ''}` : null} />
+            <IdentityRow label="Telefone"   value={client.phone ? maskPhone(client.phone) : client.phone} />
+          </>)}
         </div>
         {generalAnamnesis}
 

@@ -190,6 +190,24 @@ describe('A10: "Completar o cadastro" é de quem edita os Clientes; os outros le
   })
 })
 
+describe('o "Receber o plano" também: o "Completar o cadastro" só a quem edita os Clientes (CLAUDE.md §14)', () => {
+  it('o assistente do plano esconde o link sem a permissão e diz quem completa', () => {
+    const t = ler('components/branch/checkout-wizard.tsx').replace(/\r/g, '')
+    const aviso = t.slice(t.indexOf('data-contrato-sem-documento'), t.indexOf('data-contrato-sem-documento') + 1400)
+    expect(aviso).toMatch(/podeCompletarCadastro \?[\s\S]*Completar o cadastro<\/Link>[\s\S]*textoDeQuemCompletaOCadastro\(quemCompletaOCadastro\)/)
+    expect(t).toMatch(/podeCompletarCadastro = false/)
+  })
+  it('o PDV manda a permissão e quem completa à comanda do plano', () => {
+    const pdv = ler('app/_shared/pdv.tsx').replace(/\r/g, '')
+    expect(pdv).toMatch(/cadastroDoPlano:[\s\S]{0,200}can\(ctx, 'clients', 'MANAGE'\)[\s\S]{0,200}quemCompletaOCadastro\(ctx\.tenantId!, unidadeId\)/)
+    const tela = ler('components/shared/pdv/pdv-tela.tsx')
+    expect(tela).toMatch(/<ReceberOPlano [^>]*cadastro=\{e\.cadastroDoPlano/)
+    const receber = ler('components/shared/pdv/receber-o-plano.tsx')
+    expect(receber).toMatch(/podeCompletarCadastro=\{cadastro\?\.podeCompletar \?\? false\}/)
+    expect(receber).toMatch(/quemCompletaOCadastro=\{cadastro\?\.quemCompleta \?\? null\}/)
+  })
+})
+
 describe('A11: a ficha não diz "Nenhum documento anexado" ao lado do documento a assinar', () => {
   it('é "Nenhum anexo"', () => {
     const t = ler('components/branch/client-documents-tab.tsx')

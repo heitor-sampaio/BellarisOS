@@ -7,6 +7,7 @@ import { ler, lerTodas } from '@/lib/db'
 import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { formaDoLancamento, rotuloDaForma } from '@/lib/financeiro/formas'
 import { juntarAsFormasDaParcela, formasDaParcelaEmTexto } from '@/lib/financeiro/formas-da-parcela'
+import { nomeDaLinhaDoLancamento } from '@/lib/financeiro/nome-da-parcela'
 import { vendaDeProdutoNaoPontua } from '@/lib/fidelidade/leitura'
 import { ordenarTransacoesDaFicha } from '@/lib/clientes/ordem-das-transacoes'
 import { getAtendimentosAReceber, type ListaAReceber } from '@/lib/metrics/a-receber'
@@ -123,7 +124,8 @@ export async function financeiroDaFicha(ctx: TenantContext, clientId: string): P
     isPaid:        l.is_paid,
     paidAt:        l.paid_at,
     createdAt:     l.created_at,
-    procedureName: l.appointment?.procedures?.name ?? null,
+    // A16 da 30ª (CR-05): o procedimento e a parcela ("Microagulhamento — parcela 2/3").
+    procedureName: nomeDaLinhaDoLancamento(l.appointment?.procedures?.name, { numero: l.parcela_numero, total: l.parcela_total, descricao: l.description }),
     scheduledAt:   l.appointment?.scheduled_at ?? null,
     dueDate:       l.due_date,
     // D13 da 9ª: "Vencida em 05/11" (o dia decidido aqui, no servidor).

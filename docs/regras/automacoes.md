@@ -131,6 +131,9 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   detalhe da campanha diz "Guardada no sino", com a Dica de "Últimos envios"
   (`lib/notifications/envio-da-campanha.ts`; teste
   `tests/campanha-envio-sem-aparelho.test.ts`).
+  **O canal tem um nome só** (A25 da 30ª; princípio 3): o detalhe dizia
+  "In-app" na linha "Canal" e "Aviso no celular" no aviso; é "Aviso no
+  celular" nos dois. Prova: `tests/campanha-canal-e-data-de-todo-ano.test.ts`.
 - **Não há gatilho "Retorno vencendo"** (aut-04, 2026-11-02): o
   `agendamento.retorno_vencendo` e o cron `retornos` saíram com o "Retorno em N
   dias" (`atendimento.md` §10). O retorno é um agendamento novo; o gatilho de
@@ -349,6 +352,22 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   do horário novo; remarcado para menos de um dia, sai na próxima passagem
   do cron (C57b). A espera de duração ("30 dias depois") não muda. O passo a
   passo diz a espera nova. Prova: `tests/automacoes-atritos-da-20.test.ts`.
+- **O prazo do "Esperar até" é da rede, e a tela diz o gravado** (A27 e D8 da
+  30ª, decisão do Claude, 25/11, pelos princípios 1, 2 e 3). O deslocamento é
+  quanto, unidade (minutos, horas, dias) e antes/depois — zero é "no momento
+  exato" (`DeslocamentoDaEspera`; `lib/automacoes/deslocamento.ts`); era uma
+  lista fixa, sem "6 horas antes". O card da lista das Automações diz a espera
+  pela config ("3 horas antes", "Esperar 45 dias" — `caminhoDoFluxo`,
+  `lib/automacoes/caminho-do-fluxo.ts`), nunca pelo nome do passo; e o nome
+  AUTOMÁTICO do passo (o do deslocamento anterior, ou o "Um dia antes" do
+  modelo) acompanha o deslocamento novo, por `renomearPasso`
+  (`nomeQueAcompanhaODeslocamento`); o nome que a rede escreveu fica. Prova:
+  `tests/automacoes-a-espera-escolhida.test.ts`.
+- **O ensaio só aparece com gatilho de fato** (D9 da 30ª; RX-03 e CLAUDE.md
+  §14): o gatilho de relógio não tem fato para repetir. `ensaioCabe`
+  (`lib/automacoes/ensaio.ts`, pelo grafo GRAVADO, o que a action lê) esconde
+  o "Ensaiar com o último fato", e `ensaiarAutomacao` recusa com `{ error }`
+  pela mesma regra. Prova: `tests/automacoes-ensaio-so-com-fato.test.ts`.
 - **A execução que espera diz quando segue** (A14 da 20ª; princípio 3): na
   lista, "Segue em 22/11 às 09:00" — e, se o agendamento dela caiu, "Vai
   reconferir em 18/11 às 09:00: o agendamento foi cancelado."
@@ -576,6 +595,15 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   (O gatilho sem escolha e os "30 dias são sugestão" do Pós-visita — A6 da
   12ª — eram da campanha "Automática", que saiu.) Prova:
   `e2e/campanha-defeitos-da-11.spec.ts`, `tests/campanha-quando-dispara.test.ts`.
+  **E diz de onde vem a data** (A26 da 30ª; CP-02/CP-03; decisão do Claude,
+  25/11): a dica do "Todo ano em" diz que a data é a mesma para todo o público
+  e que o aniversário de cada cliente — a data de nascimento da ficha — é o
+  modelo "Parabéns no aniversário" das Automações (o título deixou de sugerir
+  "Feliz aniversário"). No passo "Buscar clientes" com "Só quem faz
+  aniversário hoje", a dica diz que vale o dia e o mês da data de nascimento
+  da ficha, e o "Hoje, a busca acharia…" diz quantas fichas ativas não têm a
+  data e não entram (`contarBuscaDeClientes`, `semNascimento`). Prova:
+  `tests/campanha-canal-e-data-de-todo-ano.test.ts`.
 - **O construtor fala português, e o modelo dito pronto não avisa à toa** (A18
   da 11ª simulação, 2026-11-10; princípio 3: o "Lembrete antes do agendamento"
   dizia "Esperar até 1d antes de evento.dados.agendadoPara" e "não é nenhum de

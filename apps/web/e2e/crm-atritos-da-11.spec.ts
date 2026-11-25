@@ -141,3 +141,49 @@ test('A4: a cliente comprou um plano depois do lead — o card diz o VENDIDO, n�
     await expect(card).toContainText('vendido')
   })
 })
+
+test('OP-30: o card GANHO segue dizendo o VENDIDO (não volta ao preço do interesse)', async ({ browser }) => {
+  const cliente = await rede.criarCliente('Adriele Ganho')
+  const id = await lead('Adriele Ganho', { client_id: cliente, created_at: new Date(Date.now() - 60_000).toISOString(), crm_stage_id: etapa.ganho })
+  expect((await db().from('lead_procedures').insert({ lead_id: id, procedure_id: bio })).error).toBeNull()
+  const { data: plano, error } = await db().from('treatment_plans').insert({
+    branch_id: rede.branchId, professional_id: rede.professionalId, client_id: cliente, status: 'ACCEPTED',
+    name: nome('Plano Ganho'), aceito_em: new Date().toISOString(),
+  }).select('id').single<{ id: string }>()
+  expect(error).toBeNull()
+  const { data: s } = await db().from('treatment_plan_sessions').insert({ plan_id: plano!.id, sort_order: 0 }).select('id').single<{ id: string }>()
+  expect((await db().from('treatment_plan_session_procedures').insert({ session_id: s!.id, procedure_id: bio, price: 510 })).error).toBeNull()
+  expect((await db().from('financial_transactions').insert({
+    branch_id: rede.branchId, client_id: cliente, treatment_plan_id: plano!.id, type: 'INCOME', category: 'Serviços',
+    description: 'Plano Ganho — entrada', amount: 510, is_paid: true, paid_at: new Date().toISOString(),
+    payment_method: 'PIX', created_by: 'e2e',
+  })).error).toBeNull()
+  await como(browser, tatiane, async p => {
+    await p.goto('/admin/oportunidades')
+    const card = p.locator(`[data-lead-id="${id}"]`)
+    await expect(card.locator('[data-valor-vendido]')).toContainText('R$ 510,00')
+    await expect(card.locator('[data-valor-vendido]')).toContainText('vendido')
+    await expect(card.locator('[data-sugere-ganho]'), 'ganho não sugere mais o ganho').toHaveCount(0)
+  })
+})
+
+test('OP-01: o valor estimado aparece no card e se edita na janela', async ({ browser }) => {
+  const id = await lead('Brisa Estimado', { value: 1600 })
+  expect((await db().from('lead_procedures').insert({ lead_id: id, procedure_id: bio })).error).toBeNull()
+  const semValor = await lead('Franciele Tabela')
+  expect((await db().from('lead_procedures').insert({ lead_id: semValor, procedure_id: bio })).error).toBeNull()
+  await como(browser, tatiane, async p => {
+    await p.goto('/admin/oportunidades')
+    await expect(p.locator(`[data-lead-id="${id}"] [data-valor-do-card="estimado"]`)).toContainText('R$ 1.600,00 estimado')
+    // Sem o estimado, o card diz que é o preço de tabela do procedimento de interesse.
+    await expect(p.locator(`[data-lead-id="${semValor}"] [data-valor-do-card="tabela"]`)).toContainText('R$ 2.600,00 de tabela')
+    await p.locator(`[data-lead-id="${id}"]`).click()
+    const janela = p.locator('dialog[open]')
+    const campo = janela.getByLabel('Valor estimado', { exact: true })
+    await expect(campo).toHaveValue('1600,00')
+    await campo.fill('1.750,00')
+    await janela.getByRole('button', { name: 'Salvar' }).click()
+    await expect.poll(async () => Number((await db().from('leads').select('value').eq('id', id).single<{ value: number }>()).data?.value))
+      .toBe(1750)
+  })
+})

@@ -11,6 +11,7 @@
 
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { CLIENTE_ARQUIVADA } from '@/lib/clients/arquivada'
+import { recusaDaVendaNaUnidade } from '@/lib/vendas/unidade-da-venda'
 import { getTenantContext, alcancaUnidade, podeReceber } from '@/lib/auth'
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -100,12 +101,15 @@ async function venderProdutoUmaVez(
 
     const admin = createAdminClient()
     const [unidade, cliente, lidos] = await Promise.all([
-      ler(admin.from('branches').select('id').eq('id', branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade'),
+      ler(admin.from('branches').select('id, is_active').eq('id', branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade'),
       ler(admin.from('clients').select('id, is_active').eq('id', clienteId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a cliente'),
       ler(admin.from('products').select('id, name, sale_price, uso, is_active')
         .in('id', [...itens.keys()]).eq('tenant_id', ctx.tenantId!), 'buscar os produtos'),
     ])
     if (!unidade || !alcancaUnidade(ctx, branchId)) return { error: 'Unidade não encontrada.' }
+    // D4 da 30ª (UN-14): a unidade desativada não vende.
+    const naDesativada = recusaDaVendaNaUnidade(unidade)
+    if (naDesativada) return { error: naDesativada }
     if (!cliente) return { error: 'Cliente não encontrada.' }
     if (cliente.is_active === false) return { error: CLIENTE_ARQUIVADA }
     const porId = new Map((lidos ?? []).map(p => [p.id as string, p]))

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import {
-  valorNaLista, rotuloDoTotalDaComanda, valeNoRecebido, separarAsQueNaoValem, tituloDoPdv, type ComandaDoPdv,
+  valorNaLista, rotuloDoTotalDaComanda, valeNoRecebido, separarAsQueNaoValem, tituloDoPdv, seloDaComanda, verboDaComandaPaga, type ComandaDoPdv,
 } from '@/lib/pdv/situacoes'
 
 /**
@@ -73,6 +73,30 @@ describe('em "Todas", o cancelado e o estornado não somam como se valessem', ()
     expect(tela).toContain('separarAsQueNaoValem(')
     expect(tela).toContain('data-comandas-fora-do-recebido')
     expect(tela).toMatch(/data-valor-fora-do-recebido[\s\S]{0,200}line-through/)
+  })
+})
+
+describe('a comanda fechada com dinheiro em aberto não diz "Paga" (princípio 3, como o selo)', () => {
+  it('o atendimento fechado "A receber" diz "Fechada", não "Paga"', () => {
+    const c = comanda({ recebido: 0, emAberto: 180, forma: 'A_RECEBER' })
+    expect(seloDaComanda(c).texto).toBe('A receber')
+    expect(verboDaComandaPaga(c)).toBe('Fechada')
+  })
+  it('o crediário com a entrada paga também não é "Paga" enquanto há parcela em aberto', () => {
+    expect(verboDaComandaPaga(comanda({ recebido: 90, emAberto: 360, forma: 'CREDIARIO' }))).toBe('Fechada')
+    expect(verboDaComandaPaga(comanda({ origem: 'PLANO', recebido: 0, emAberto: 520 }))).toBe('Fechada')
+  })
+  it('sem nada em aberto, segue o de antes: Paga, Recebido; a venda é sempre "Vendida"', () => {
+    expect(verboDaComandaPaga(comanda({}))).toBe('Paga')
+    expect(verboDaComandaPaga(comanda({ origem: 'PLANO' }))).toBe('Recebido')
+    expect(verboDaComandaPaga(comanda({ origem: 'VENDA' }))).toBe('Vendida')
+    expect(verboDaComandaPaga(comanda({ origem: 'VENDA', emAberto: 100 }))).toBe('Vendida')
+  })
+  it('o cabeçalho da comanda paga usa a mesma regra', () => {
+    const tela = ler('components/shared/pdv/pdv-tela.tsx')
+    const paga = tela.slice(tela.indexOf('data-comanda-paga'), tela.indexOf('data-comanda-paga') + 400)
+    expect(paga).toContain('{verboDaComandaPaga(c)} às {hora(c.pagaEm)}')
+    expect(paga).not.toContain("'Paga'} às")
   })
 })
 

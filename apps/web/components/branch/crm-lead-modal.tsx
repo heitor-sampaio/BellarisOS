@@ -26,6 +26,7 @@ import { Dica } from '@/components/shared/dica'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
 import { useOrigensDaRede } from '@/components/shared/use-origens-da-rede'
 import { OPORTUNIDADE_SO_LEITURA } from '@/lib/crm/conversa-da-oportunidade'
+import { lerValorEstimado } from '@/lib/crm/valor-do-card'
 
 export interface Procedure { id: string; name: string }
 
@@ -45,6 +46,8 @@ interface ExistingLead {
   /** A42 da 9ª: o lembrete de retorno. */
   retornar_em?:   string | null
   retornar_obs?:  string | null
+  /** D1 da 30ª: o valor estimado (`leads.value`; nulo = ainda sem proposta). */
+  value?:         number | string | null
 }
 
 type Responsaveis = Awaited<ReturnType<typeof responsaveisParaOportunidade>>
@@ -99,6 +102,13 @@ interface CRMLeadModalProps {
  * aparecia cru. Com a máscara de exibição; o que não é número nacional fica.
  */
 const telefoneDoCampo = (v: string | null | undefined) => (v ? telefoneParaExibir(v) : '')
+
+/** O valor digitado, para o card otimista (a mesma leitura do servidor). */
+const valorLido = (texto: string) => { const r = lerValorEstimado(texto); return 'valor' in r ? r.valor : null }
+
+/** O valor gravado, para o campo: "1600.5" vira "1600,50" (a leitura do servidor é a brasileira). */
+const valorDoCampo = (v: number | string | null | undefined) =>
+  v == null || v === '' || !Number.isFinite(Number(v)) ? '' : Number(v).toFixed(2).replace('.', ',')
 
 /** O rótulo LIGADO ao campo pelo id (J-20: "Origem" e "Etapa" eram soltos). */
 function Label({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {
@@ -221,6 +231,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
     const idOrigem      = useId()
     const idEtapa       = useId()
     const idObservacoes = useId()
+    const idValor       = useId()
 
 
     /**
@@ -350,6 +361,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
           tags,
           retornar_em:  campo('retornar_em') || null,
           retornar_obs: campo('retornar_em') ? campo('retornar_obs') || null : null,
+          value:        valorLido(campo('value')),
           lead_procedures: selectedProcs.map(pid => ({
             procedure_id: pid,
             procedures:   procedures.find(p => p.id === pid)
@@ -627,6 +639,20 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                 </div>
               </div>
 
+              {/* D1 da 30ª (OP-01, IM-07): o valor estimado — a importação o
+                  traz, e aqui se informa e se edita. Vazio = ainda sem proposta. */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <Label htmlFor={idValor}>Valor estimado</Label>
+                  <Dica rotulo="Sobre o valor estimado">
+                    Quanto se espera fechar com esta oportunidade. Vazio, o card mostra o preço de tabela dos procedimentos de interesse; quando a cliente compra, mostra o vendido.
+                  </Dica>
+                </span>
+                <input id={idValor} name="value" type="text" inputMode="decimal" className="field"
+                  key={`valor-${existing?.id ?? 'novo'}-${valorDoCampo(existing?.value)}`}
+                  defaultValue={valorDoCampo(existing?.value)} placeholder="R$ 0,00" style={{ maxWidth: 200 }} />
+              </div>
+
               {vaiPerder && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <MotivoDaPerdaCampos motivos={motivos ?? []} motivoId={motivoId} obs={motivoObs}
@@ -677,10 +703,14 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                 {/* D7 da 18ª: escolhe pelo vocabulário da rede, como a ficha e o inbox —
                     a entrada livre criava tag (o gatilho a põe no vocabulário). */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+                  {/* A2 da 30ª (CLAUDE.md §14): com o CRM em Ver, só as tags — sem o "x" nem o "Editar tags". */}
                   {tags.map(t => (
-                    <TagBadge key={t} label={t} size="sm" onRemove={() => removeTag(t)} />
+                    <TagBadge key={t} label={t} size="sm" onRemove={somenteLeitura ? undefined : () => removeTag(t)} />
                   ))}
-                  <TagPicker selecionadas={tags} disponiveis={suggestedTags} onChange={setTags} />
+                  {somenteLeitura && tags.length === 0 && (
+                    <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>Sem tags</span>
+                  )}
+                  {!somenteLeitura && <TagPicker selecionadas={tags} disponiveis={suggestedTags} onChange={setTags} />}
                 </div>
               </div>
 

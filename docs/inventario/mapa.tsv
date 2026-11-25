@@ -1954,7 +1954,7 @@ apps/web/e2e/planos-adicionais.spec.ts	168	plataforma:AS-01	integracao	ok	o MRR 
 apps/web/e2e/planos-adicionais.spec.ts	187	plataforma:PN-19; plataforma:PN-18	integracao	ok	
 apps/web/e2e/planos-adicionais.spec.ts	202	plataforma:PN-15	integracao	ok	
 apps/web/e2e/planos-adicionais.spec.ts	211	plataforma:PN-22	integracao	ok	
-apps/web/e2e/planos-adicionais.spec.ts	223	plataforma:PN-20; plataforma:AS-06	integracao	contradiz	a PN-20 diz que nenhum adicional deixa a mensalidade em R$ 0 com a cobrança ligada; o teste exige aceitar R$ 0 (cortesia, como a AS-06)
+apps/web/e2e/planos-adicionais.spec.ts	223	plataforma:PN-20; plataforma:AS-06	integracao	ok	25/11: era "contradiz" porque a PN-20 estava atrasada (descrevia a recusa de antes de 07/10); a PN-20 foi corrigida pelo que o banco faz, e o teste bate
 apps/web/e2e/planos-adicionais.spec.ts	237	plataforma:PN-15; plataforma:SI-02	tela	ok	
 apps/web/e2e/planos-adicionais.spec.ts	259	plataforma:PN-14; plataforma:PN-18; plataforma:PN-19; plataforma:SI-07	tela	ok	
 apps/web/e2e/planos-adicionais.spec.ts	288	plataforma:PN-22	integracao	ok	

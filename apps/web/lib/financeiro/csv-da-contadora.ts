@@ -1,6 +1,7 @@
 import { rotuloDaForma, rotuloDaFormaDoFechamento, nomeDaBandeira } from '@/lib/financeiro/formas'
 import type { LinhaDaConferencia } from '@/lib/financeiro/conferencia-do-fechamento'
 import { formasSemTaxaEmTexto, type VendaSemTaxa } from '@/lib/financeiro/vendas-sem-taxa'
+import { perdasComOMotivo } from '@/lib/estoque/perda'
 
 /**
  * O DRE e o Fechamento do dia em CSV (A31 da 10ª simulação, 2026-11-10: a
@@ -29,6 +30,8 @@ export interface DreParaCsv {
   /** Fora do resultado: as entradas de estoque do período (ao custo) e as perdas (métrica). */
   compras:            { total: number; linhas: { dia: string; unidade: string; produto: string; embalagens: number; embalagem: string; custo: number; fornecedor: string | null; notaFiscal: string | null }[] }
   perdas:             number | null
+  /** D10 da 30ª (indicadores:ER-04): o custo de cada motivo da perda — a linha diz o motivo, como a tela. */
+  perdasPorMotivo?:   { motivo: string; custo: number }[] | null
   /** A14 da 29ª (princípio 4): as vendas no cartão sem taxa cadastrada (entraram com 0%). */
   semTaxa?:           readonly VendaSemTaxa[] | null
 }
@@ -49,7 +52,8 @@ export function csvDoDre(d: DreParaCsv): string {
     [],
     ['Fora do resultado (não entram no lucro)', ''],
     ['Compras no estoque (entradas, ao custo)', reais(d.compras.total)],
-    ['Perdas no período (métrica)', d.perdas == null ? '' : reais(d.perdas)],
+    ['Perdas no período (métrica)', d.perdas == null ? '' : reais(d.perdas),
+      ...(d.perdas && d.perdasPorMotivo?.length ? [perdasComOMotivo(d.perdasPorMotivo)] : [])],
     [],
     ['Entradas de estoque'],
     ['Data', 'Unidade', 'Produto', 'Quantidade', 'Embalagem', 'Custo', 'Fornecedor', 'Nota fiscal'],

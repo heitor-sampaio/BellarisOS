@@ -10,6 +10,7 @@ import {
 import { toast } from 'sonner'
 import { idadeDoLead } from '@/lib/crm/idade-do-lead'
 import { updateLeadStage, automacoesAoMoverOCard } from '@/actions/leads'
+import { valorDoCard } from '@/lib/crm/valor-do-card'
 import { opcoesDeTagDoQuadro, temTodasAsTags } from '@/lib/crm/filtro-de-tags'
 import { usePerguntaDasAutomacoes } from './pergunta-das-automacoes'
 import { ClientForm } from './client-form'
@@ -426,6 +427,8 @@ export interface Lead {
   compra?: string | null
   /** A4 da 11ª: o VENDIDO dessa compra — o card diz ele no lugar do valor de interesse. */
   compra_valor?: number | null
+  /** D1 da 30ª: o valor estimado da oportunidade (`leads.value`; nulo = sem proposta). */
+  value?: number | string | null
   /** A42 da 9ª: o dia do retorno combinado (yyyy-mm-dd) e o que fazer. */
   retornar_em?: string | null
   retornar_obs?: string | null
@@ -656,13 +659,9 @@ function LeadCard({
     .map(lp => lp.procedures?.name)
     .filter(Boolean) as string[]
 
-  const totalValue = lead.lead_procedures.reduce(
-    (sum, lp) => sum + (lp.procedures?.price ?? 0), 0,
-  )
-  const vendido = lead.compra && lead.compra_valor != null && lead.compra_valor > 0 ? lead.compra_valor : null
-  const formattedValue = totalValue > 0
-    ? totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-    : null
+  // D1 da 30ª (OP-01; princípio 3): o vendido, senão o estimado, senão o preço
+  // de tabela dos procedimentos — e a linha diz qual é (lib/crm/valor-do-card).
+  const valor = valorDoCard(lead)
 
   function handleDragStartCard(e: React.DragEvent) {
     wasDragging.current = true
@@ -707,6 +706,7 @@ function LeadCard({
           lead_procedures: lead.lead_procedures.map(lp => ({ procedure_id: lp.procedure_id })),
           owner_id: lead.owner_id ?? null, owner_name: lead.owner_name ?? null,
           retornar_em: lead.retornar_em ?? null, retornar_obs: lead.retornar_obs ?? null,
+          value: lead.value ?? null,
         }}
         agendar={unidadesParaAgendar ? { unidades: unidadesParaAgendar, clienteId: lead.client_id } : undefined}
         somenteLeitura={somenteLeitura}
@@ -961,25 +961,18 @@ function LeadCard({
                 </span>
               )}
             </div>
-            {formattedValue && vendido == null && (
-              <p style={{
-                marginTop: 5, fontSize: 'var(--text-base-sz)', fontWeight: 800,
-                color: 'var(--brand)', letterSpacing: '-0.01em',
-              }}>
-                {formattedValue}
-              </p>
-            )}
           </div>
         )}
         {/* A4 da 11ª (princípio 3): comprou depois de a oportunidade nascer —
             o card diz o vendido (o plano de R$ 8.400), não o preço de tabela
-            do procedimento de interesse (R$ 2.600). */}
-        {vendido != null && (
-          <p data-valor-vendido style={{
+            do procedimento de interesse (R$ 2.600); D2 da 30ª: também ganho.
+            D1 da 30ª: sem compra, o valor estimado; sem ele, o de tabela. */}
+        {valor && (
+          <p data-valor-do-card={valor.tipo} {...(valor.tipo === 'vendido' ? { 'data-valor-vendido': '' } : {})} style={{
             marginTop: 5, fontSize: 'var(--text-base-sz)', fontWeight: 800,
-            color: 'var(--brand)', letterSpacing: '-0.01em',
+            color: valor.tipo === 'tabela' ? 'var(--text-muted)' : 'var(--brand)', letterSpacing: '-0.01em',
           }}>
-            {formatBRL(vendido)} <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>vendido</span>
+            {formatBRL(valor.valor)} <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>{valor.rotulo}</span>
           </p>
         )}
 
@@ -1131,7 +1124,7 @@ function LeadCard({
               branchId={branchId}
               slug={slug}
               leadId={lead.id}
-              prefill={{ name: lead.name, phone: lead.phone ? maskPhone(lead.phone) : undefined, email: lead.email ?? undefined }}
+              prefill={{ name: lead.name, phone: lead.phone ? maskPhone(lead.phone) : undefined, email: lead.email ?? undefined, tags: lead.tags }}
               onSuccess={(clientId) => {
                 setConvertOpen(false)
                 if (clientId) router.push(rotaCliente(pathname, lead.branch_slug ?? slug, clientId))

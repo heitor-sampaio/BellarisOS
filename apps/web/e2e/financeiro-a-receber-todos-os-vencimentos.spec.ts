@@ -123,3 +123,26 @@ test('ind-11: a unidade DESATIVADA com conta a receber entra no em aberto da red
     await expect(p.locator('[data-kpi="a-receber"]')).toContainText(/em aberto[\s\S]*?R\$\s*650,00/i)
   })
 })
+
+test('FN-11 (princípio 3): o "A receber da cliente" diz a parte SEM cliente (a sublocação) que está no número', async ({ browser }) => {
+  // A sublocação da sala é receita a receber sem cliente: o cartão a soma
+  // (todo o em aberto), e a nota diz quanto disso não é de uma cliente.
+  const b = db()
+  expect((await b.from('financial_transactions').insert({
+    branch_id: rede!.branchId, type: 'INCOME', category: 'Sublocação', description: `[e2e] sublocação da sala ${marca}`,
+    amount: 800, payment_method: 'PIX', is_paid: false, due_date: dia(5), created_by: 'e2e',
+  })).error).toBeNull()
+
+  const { data, error } = await b.rpc('metrics_a_receber_sem_cliente', { p_tenant: rede!.tenantId, p_branch_ids: [rede!.branchId] })
+  expect(error).toBeNull()
+  expect((data as Record<string, unknown>[]).map(r => [r.branch_id, Number(r.valor)]))
+    .toEqual(expect.arrayContaining([[null, 800], [rede!.branchId, 800]]))
+
+  await como(browser, dona!, async p => {
+    await p.goto(`/${slug}/financeiro?period=month`)
+    await expect(p.locator('[data-kpi="a-receber"] [data-a-receber-sem-cliente]')).toContainText(/Inclui sem cliente:\s*R\$\s*800,00/)
+    // Na rede, no recorte da unidade (o total da rede soma a desativada do caso acima).
+    await p.goto(`/admin/financeiro?period=month&unidade=${slug}`)
+    await expect(p.locator('[data-kpi="a-receber"] [data-a-receber-sem-cliente]')).toContainText(/Inclui sem cliente:\s*R\$\s*800,00/)
+  })
+})

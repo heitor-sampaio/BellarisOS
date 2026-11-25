@@ -21,10 +21,11 @@ export default async function PdvDaUnidadePage({ params, searchParams }: {
   const fechar = sp.fechar === '1'
   if (fechar ? !podeVerFechamento(ctx) : !podeReceber(ctx)) throw semAcesso()
 
-  const unidade = await ler(createAdminClient().from('branches').select('id, name')
+  const unidade = await ler(createAdminClient().from('branches').select('id, name, is_active')
     .eq('slug', slug).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade')
   if (!unidade || !alcancaUnidade(ctx, unidade.id as string)) notFound()
-  const unidades = [{ id: unidade.id as string, name: unidade.name as string }]
+  // D4 da 30ª (UN-14): a desativada recebe o que ficou, mas não vende.
+  const unidades = [{ id: unidade.id as string, name: unidade.name as string, ativa: unidade.is_active !== false }]
 
   if (fechar) {
     return <FechamentoDoDia ctx={ctx} unidades={unidades} unidadeId={unidade.id as string} diaPedido={sp.dia} basePath={`/${slug}/pdv`} />

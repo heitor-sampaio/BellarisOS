@@ -11,6 +11,7 @@ import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { dayKeyTZ, startOfDayTZ } from '@/lib/datetime'
 import { situacaoDoVencimento } from '@/lib/financeiro/vencimentos'
 import { getAReceberVencido } from '@/lib/metrics/vencidas'
+import { getAReceberSemCliente } from '@/lib/metrics/a-receber-sem-cliente'
 import { nomeDoCsvDosLancamentos } from '@/lib/financeiro/csv-dos-lancamentos'
 import { resolvePeriod, getCore, getByBranch, getMovimentacoes, getEmAberto, getResultadoDoEstoque, getAReceberEmAberto, getAPagarEmAberto, getComposicaoFinanceira, getTaxasDoPeriodo } from '@/lib/metrics'
 import { extrasDoCsv, type LancamentoParaOCsv } from '@/lib/financeiro/extras-do-csv'
@@ -178,6 +179,8 @@ export default async function AdminFinanceiroPage({
     [b.branchId, (await getComposicaoFinanceira({ ...metricArgs, branchIds: [b.branchId] })).formas.find(f => f.chave === 'DEBIT_CARD')?.valor ?? 0] as const)))
   // D13 da 9ª: o que já venceu (antes de hoje) — o total e cada unidade.
   const vencidas = await getAReceberVencido({ tenantId: ctx.tenantId!, branchIds: null })
+  // A17 da 30ª: a parte do em aberto sem cliente (a sublocação), o total e cada unidade.
+  const aReceberSemCliente = await getAReceberSemCliente({ tenantId: ctx.tenantId!, branchIds: null })
   const emAbertoDaRede = await getEmAberto({ tenantId: ctx.tenantId!, branchIds: null, from: start, to: fimDoPeriodo })
   // A43 da 12ª: todo o a pagar em aberto, de qualquer vencimento — o total e cada unidade.
   const aPagarEmAberto = await getAPagarEmAberto({ tenantId: ctx.tenantId!, branchIds: null })
@@ -220,6 +223,7 @@ export default async function AdminFinanceiroPage({
     commissions: b.commissionsOpen + b.commissionsPaid,
     aReceber:    emAbertoDe[b.branchId]?.aReceber ?? 0,
     aReceberEmAberto: aReceberEmAberto.porUnidade[b.branchId] ?? 0,
+    aReceberSemCliente: aReceberSemCliente.porUnidade[b.branchId] ?? 0,
     vencidas: vencidas.porUnidade[b.branchId],
     concluidosSemPagamento: concluidosSemPagamentoDe[b.branchId],
     aPagar:      emAbertoDe[b.branchId]?.aPagar ?? 0,
@@ -281,6 +285,7 @@ export default async function AdminFinanceiroPage({
         totalCommissions={totalComm}
         totalAReceber={emAbertoDaRede.aReceber}
         totalAReceberEmAberto={aReceberEmAberto.total}
+        totalAReceberSemCliente={aReceberSemCliente.total}
         totalVencidas={vencidas.total}
         totalConcluidosSemPagamento={concluidosSemPagamento}
         totalAPagar={emAbertoDaRede.aPagar}

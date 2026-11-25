@@ -103,8 +103,9 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   },
   loyalty: {
     NONE:   SEM_ACESSO,
-    VIEW:   'Vê o saldo e o extrato de pontos do cliente.',
-    MANAGE: 'Tudo do Ver, mais creditar e debitar pontos à mão, com motivo. Ligar o programa e definir as regras é Configurações.',
+    // A13 da 30ª (PG-05; princípio 3): onde ela aparece, e ligar e definir as regras é só da Admin da rede (18/11).
+    VIEW:   'Vê, na ficha da cliente, o saldo, o extrato de pontos e os vouchers. A ficha pede Clientes em Ver.',
+    MANAGE: 'Tudo do Ver, mais trocar pontos por recompensa (na ficha e no PDV), cancelar e entregar o voucher e creditar e debitar pontos à mão, com motivo. Ligar o programa e definir as regras é só da Admin da rede.',
   },
   medical_records: {
     NONE:   SEM_ACESSO,
@@ -168,7 +169,8 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   },
   forms: {
     NONE:   SEM_ACESSO,
-    MANAGE: 'Monta as fichas de atendimento (as que quem atende preenche) e a ficha de saúde. Preencher a ficha é Prontuário.',
+    // A12 da 30ª (CG-17): as fichas são configuração da rede toda (o Heitor, 18/11) — o Gerenciar não abre nada a mais.
+    MANAGE: 'As fichas são configuração da rede toda: montar as fichas de atendimento (as que quem atende preenche) e a ficha de saúde é só da Admin da rede. Preencher a ficha é Prontuário.',
   },
   roles: {
     NONE:   SEM_ACESSO,
@@ -355,6 +357,31 @@ export function conclusaoNoResumo(
   if (nivel !== 'MANAGE') return 'Vê os atendimentos, sem iniciar nem concluir: iniciar e concluir pedem o Atendimento em Gerenciar.'
   if (niveis.medical_records !== 'MANAGE') return 'Inicia e conclui os atendimentos. A evolução, as fotos e a ficha de saúde pedem o Prontuário em Gerenciar.'
   return null
+}
+
+/**
+ * A13 da 30ª (PG-05, CG-16; princípio 3): a Fidelidade não é entrada do menu —
+ * aparece na ficha da cliente, que pede Clientes em Ver, e (em Gerenciar) no
+ * PDV, na troca de pontos. O resumo diz onde. Nulo sem a Fidelidade.
+ */
+export function fidelidadeNoResumo(niveis: Partial<Record<'loyalty' | 'clients', string>>): string | null {
+  const nivel = niveis.loyalty ?? 'NONE'
+  if (nivel === 'NONE') return null
+  const base = 'A Fidelidade não é entrada do menu: aparece na ficha da cliente'
+  if ((niveis.clients ?? 'NONE') === 'NONE') return `${base}, que pede Clientes em “Ver” — sem ele, a Fidelidade não aparece.`
+  return `${base} (o saldo, o extrato e os vouchers)${nivel === 'MANAGE' ? ' e no PDV, para trocar pontos por recompensa' : ''}.`
+}
+
+/**
+ * A12 da 30ª (CG-17; o Heitor, 18/11: "Configuração da rede toda só pela conta
+ * admin"): as Fichas e os Cargos em Gerenciar não dão nada a quem não é a
+ * Admin da rede (`recusaDaConfigDaRede`). O resumo diz. Nulo sem nenhum dos dois.
+ */
+export function configDaRedeNoResumo(niveis: Partial<Record<'forms' | 'roles', string>>): string | null {
+  const quais = [niveis.forms === 'MANAGE' ? 'Fichas' : null, niveis.roles === 'MANAGE' ? 'Cargos' : null].filter((x): x is string => !!x)
+  if (!quais.length) return null
+  if (quais.length === 2) return 'Fichas e Cargos são configuração da rede toda: só a Admin da rede os muda. A quem não é a Admin da rede, estas permissões não abrem nada.'
+  return `${quais[0]} é configuração da rede toda: só a Admin da rede a muda. A quem não é a Admin da rede, esta permissão não abre nada.`
 }
 
 /**

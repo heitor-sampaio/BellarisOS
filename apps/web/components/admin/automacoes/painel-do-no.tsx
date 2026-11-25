@@ -15,6 +15,7 @@ import {
   type GrupoDeVariaveis, type CampoVisto,
 } from '@/lib/automacoes/disponiveis'
 import { nomeDoPasso } from '@/lib/automacoes/passos'
+import { partesDoDeslocamento, minutosDoDeslocamento, type PartesDoDeslocamento } from '@/lib/automacoes/deslocamento'
 import { semPedirResposta } from '@/lib/automacoes/modelos'
 import { SITUACOES_DO_AGENDAMENTO, ehSituacaoDoAgendamento } from '@/lib/automacoes/resumo'
 import { conferirExpressao, ehCaminhoSimples, NOMES_DE_FUNCAO } from '@/lib/automacoes/expressao'
@@ -87,6 +88,11 @@ export function PainelDoNo({
   // O painel remonta a cada node (`key` no editor), então o rascunho nasce
   // sempre com o nome do passo que está aberto.
   const [rascunhoNome, setRascunhoNome] = useState(nomeDoPasso(no, grafo))
+  // O nome também muda por fora (a espera que acompanha o deslocamento, D8 da
+  // 30ª): o rascunho segue o nome gravado quando ele muda.
+  const nomeGravado = nomeDoPasso(no, grafo)
+  const [nomeVisto, setNomeVisto] = useState(nomeGravado)
+  if (nomeVisto !== nomeGravado) { setNomeVisto(nomeGravado); setRascunhoNome(nomeGravado) }
 
   const variaveis = variaveisDisponiveis(grafo, no.id, { vistos })
 
@@ -513,6 +519,9 @@ export function PainelDoNo({
                 Só quem faz aniversário hoje
               </span>
             </label>
+            {!!c.aniversarioHoje && (
+              <Dica>O dia e o mês da data de nascimento da ficha, no relógio da rede.</Dica>
+            )}
             <Campo rotulo="Pacote vence daqui a (dias)">
               <input
                 type="number" min={1} className="field"
@@ -583,20 +592,14 @@ export function PainelDoNo({
               />
             </Campo>
             <Campo rotulo="Com deslocamento">
-              <select
-                className="field" value={String(c.minutos ?? -1440)}
-                disabled={somenteLeitura}
-                onChange={e => set({ minutos: Number(e.target.value) })}
-              >
-                <option value="-2880">2 dias antes</option>
-                <option value="-1440">1 dia antes</option>
-                <option value="-180">3 horas antes</option>
-                <option value="-60">1 hora antes</option>
-                <option value="0">No momento exato</option>
-                <option value="60">1 hora depois</option>
-                <option value="1440">1 dia depois</option>
-                <option value="4320">3 dias depois</option>
-              </select>
+              {/* A27 da 30ª (princípios 1 e 2: o prazo é da rede): era uma lista
+                  fixa (2 dias, 1 dia, 3 h, 1 h…), sem "6 horas antes". Zero é
+                  "no momento exato". */}
+              <DeslocamentoDaEspera
+                minutos={Number(c.minutos ?? -1440)}
+                somenteLeitura={somenteLeitura}
+                onChange={minutos => set({ minutos })}
+              />
               {/* A11 da 14ª: o motor segue na hora quando o momento já passou
                   (quandoChegarEm, lib/automacoes/tempo.ts), e a tela não dizia —
                   o lembrete de "1 dia antes" do agendamento marcado para hoje. */}
@@ -756,6 +759,44 @@ function Campo({ rotulo, children }: { rotulo: string; children: React.ReactNode
       </span>
       {children}
     </label>
+  )
+}
+
+/**
+ * O deslocamento do "Esperar até": quanto, em que unidade, antes ou depois (A27
+ * da 30ª: o prazo é da rede — era uma lista fixa, sem "6 horas antes"). Zero
+ * é "no momento exato". A unidade escolhida fica enquanto dividir os minutos.
+ */
+function DeslocamentoDaEspera({ minutos, somenteLeitura, onChange }: {
+  minutos: number; somenteLeitura?: boolean; onChange: (minutos: number) => void
+}) {
+  const [unidade, setUnidade] = useState<PartesDoDeslocamento['unidade'] | undefined>(undefined)
+  const p = partesDoDeslocamento(minutos, unidade)
+  const mudar = (patch: Partial<PartesDoDeslocamento>) => {
+    if (patch.unidade) setUnidade(patch.unidade)
+    onChange(minutosDoDeslocamento({ ...p, ...patch }))
+  }
+  return (
+    <div style={{ display: 'flex', gap: 8 }}>
+      <input
+        type="number" min={0} className="field" style={{ width: 80 }}
+        aria-label="Quanto"
+        value={String(p.quantidade)}
+        disabled={somenteLeitura}
+        onChange={e => mudar({ quantidade: Number(e.target.value) })}
+      />
+      <select className="field" aria-label="Unidade do deslocamento" value={p.unidade}
+        disabled={somenteLeitura} onChange={e => mudar({ unidade: e.target.value as PartesDoDeslocamento['unidade'] })}>
+        <option value="minutos">minutos</option>
+        <option value="horas">horas</option>
+        <option value="dias">dias</option>
+      </select>
+      <select className="field" aria-label="Antes ou depois" value={p.sentido}
+        disabled={somenteLeitura || p.quantidade === 0} onChange={e => mudar({ sentido: e.target.value as PartesDoDeslocamento['sentido'] })}>
+        <option value="antes">antes</option>
+        <option value="depois">depois</option>
+      </select>
+    </div>
   )
 }
 
@@ -1156,7 +1197,11 @@ function QuemAchariaHoje({ cfg }: { cfg: Record<string, unknown> }) {
             ? r.error
             : r.quantas === 0 ? 'Hoje, a busca não acharia nenhuma cliente.'
               : `Hoje, a busca acharia ${r.quantas.toLocaleString('pt-BR')} ${r.quantas === 1 ? 'cliente' : 'clientes'}${r.truncado ? ' (o teto deste passo cortou o resto)' : ''}.`
-          setConta({ chave, texto })
+          // A26 da 30ª: o aniversário vem da data de nascimento da ficha; quem não a tem nunca entra.
+          const semNascimento = !('error' in r) && r.semNascimento
+            ? ` ${r.semNascimento.toLocaleString('pt-BR')} ${r.semNascimento === 1 ? 'ficha ativa não tem' : 'fichas ativas não têm'} a data de nascimento e não ${r.semNascimento === 1 ? 'entra' : 'entram'}.`
+            : ''
+          setConta({ chave, texto: texto + semNascimento })
         })
         .catch(() => { /* sem a conta, o passo segue */ })
     }, 600)

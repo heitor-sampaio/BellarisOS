@@ -166,6 +166,25 @@
     por cliente (o check-in), a quem tem o Financeiro em Ver. O cartão "A receber
     da cliente", o dashboard e o check-in dizem esse número
     (`vendas-financeiro.md` §9.6).
+  - **a receber SEM cliente** (A17 da 30ª simulação; princípio 3; decisão do
+    Claude) = a parte do em aberto (o conjunto de
+    `metrics_a_receber_em_aberto`) sem cliente nem atendimento — a sublocação
+    da sala, um aluguel — `metrics_a_receber_sem_cliente` →
+    `getAReceberSemCliente` (`lib/metrics/a-receber-sem-cliente.ts`), por
+    unidade e no total. O cartão "A receber da cliente · em aberto" segue
+    somando todo o em aberto (FN-11), e a nota diz "Inclui sem cliente: R$ …"
+    (a dica diz o que é). Prova: `tests/financeiro-a-receber-sem-cliente.test.ts`,
+    `e2e/financeiro-a-receber-todos-os-vencimentos.spec.ts`.
+  - **Dinheiro na tela com os centavos** (A7 da 30ª; princípio 3): o dashboard
+    da unidade arredondava ao real (as comissões de R$ 192,50 eram "R$ 193
+    lançados"); hoje mostra os centavos, como o da rede. Prova:
+    `tests/dashboard-dinheiro-com-centavos.test.ts`.
+  - **A parcela pendente dos Relatórios diz o prazo em palavras** (A18 da 30ª;
+    princípio 7): a coluna "Prazo" diz "vence em 61 dias", "vence amanhã",
+    "vence hoje" ou "3 dias de atraso" (`prazoDaParcela`), e a linha é o
+    procedimento com a parcela, "Microagulhamento — parcela 2/3"
+    (`nomeDaLinhaDoLancamento`, `lib/financeiro/nome-da-parcela.ts`; sem
+    procedimento, a descrição). Prova: `tests/financeiro-nome-da-parcela.test.ts`.
   - **O cartão em N vezes conta no dia da VENDA** (decisão do Heitor,
     2026-11-01: "conta no mês do dia da venda"): a receita é o lançamento
     pago, inteiro, no `paid_at` dele — a regra única não muda. As parcelas
@@ -1261,12 +1280,14 @@ mês"**, e a dica `DEFINICOES.meuFaturamento` explica os três números — o
 "Meu faturamento" (a VENDA dela, no dia do pagamento), a receita dos
 atendimentos dos Relatórios (a EXECUÇÃO, no dia em que fez) e as comissões (a
 parte dela). Prova: `e2e/comissoes-minhas-no-menu.spec.ts`,
-`tests/menu.test.ts`. **E diz à vista o que fica fora** (A33 da 10ª simulação,
+`tests/menu.test.ts`. **E diz o que fica fora** (A33 da 10ª simulação,
 2026-11-10: a Daniela via a comissão da sessão do plano e não a sessão no
-faturamento): embaixo do número, "A sessão de pacote, de plano ou pré-paga que
-você atende não entra aqui: o dinheiro é de quem vendeu. Ela aparece nas suas
-comissões e na receita dos atendimentos dos Relatórios."
-(`[data-fora-do-meu-faturamento]`, `DEFINICOES.foraDoMeuFaturamento`). Prova:
+faturamento): na dica do rótulo do número (era embaixo dele; a explicação
+mora na dica, o Heitor, 16/11 — `docs/regras/design.md`), "A sessão de pacote,
+de plano ou pré-paga que você atende não entra aqui: o dinheiro é de quem
+vendeu. Ela aparece nas suas comissões e na receita dos atendimentos dos
+Relatórios." (`[data-fora-do-meu-faturamento]`,
+`DEFINICOES.foraDoMeuFaturamento`). Prova:
 `e2e/comissoes-uso-da-10.spec.ts` ("A33").
 
 As funções dos Relatórios guardam o `p_professional_id default null`, com os

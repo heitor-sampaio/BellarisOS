@@ -15,8 +15,14 @@ const diaCurto = (dia: string) => `${dia.slice(8, 10)}/${dia.slice(5, 7)}`
  * Os números vêm de `getEmAberto` e `getAReceberEmAberto` (lib/metrics); aqui
  * só se escreve.
  */
-export function NotaDoVencimento({ valor, proximo, emAbertoTotal, concluidosSemPagamento, hrefDaBaixa, vencidas, hrefDasVencidas, podeDarBaixa = true, despesa = false, noTopoOEmAberto = false }: {
+export function NotaDoVencimento({ valor, proximo, emAbertoTotal, semCliente, concluidosSemPagamento, hrefDaBaixa, vencidas, hrefDasVencidas, podeDarBaixa = true, despesa = false, noTopoOEmAberto = false }: {
   valor: number
+  /**
+   * A17 da 30ª: a parte do em aberto SEM cliente (a sublocação, um aluguel),
+   * de `getAReceberSemCliente`. O "A receber da cliente" a soma (FN-11, todo o
+   * em aberto), e a nota diz (princípio 3).
+   */
+  semCliente?: number
   /**
    * A17 da 23ª: o número grande do cartão é o em aberto — a nota diz o que
    * vence no período ("Vence no período: R$ …"), com o link da lista.
@@ -74,6 +80,11 @@ export function NotaDoVencimento({ valor, proximo, emAbertoTotal, concluidosSemP
           )}
         </span>
       )}
+      {semCliente !== undefined && semCliente > 0 && (
+        <span data-a-receber-sem-cliente style={{ display: 'block', marginTop: 2 }}>
+          Inclui sem cliente: <strong>{formatBRL(semCliente)}</strong>
+        </span>
+      )}
       {concluidosSemPagamento && concluidosSemPagamento.n > 0 && (
         <span data-concluidos-sem-pagamento style={{ display: 'block', marginTop: 2 }}>
           Concluídos sem pagamento: <strong>{formatBRL(concluidosSemPagamento.valor)}</strong>
@@ -89,12 +100,14 @@ export function NotaDoVencimento({ valor, proximo, emAbertoTotal, concluidosSemP
  * pelo VENCIMENTO; o "Em aberto" soma todos os vencimentos (D-14); na
  * operadora, o líquido (o que ela deposita) e o bruto (A30 da 9ª).
  */
-export function DicaDoVencimento({ valor, bruto, emAbertoTotal, concluidos = false }: {
+export function DicaDoVencimento({ valor, bruto, emAbertoTotal, concluidos = false, semCliente = false }: {
   valor: number
   bruto?: { periodo: number; emAberto: number }
   emAbertoTotal?: number
   /** O "A receber da cliente": diz o que é o "Concluídos sem pagamento". */
   concluidos?: boolean
+  /** A17 da 30ª: diz o que é o "Inclui sem cliente". */
+  semCliente?: boolean
 }) {
   return (
     <span data-dica-do-vencimento>
@@ -109,6 +122,11 @@ export function DicaDoVencimento({ valor, bruto, emAbertoTotal, concluidos = fal
       {concluidos && (
         <span style={{ display: 'block', marginTop: 4 }}>
           “Concluídos sem pagamento” são atendimentos feitos e não recebidos: não são lançamento em aberto e não se somam a ele.
+        </span>
+      )}
+      {semCliente && (
+        <span style={{ display: 'block', marginTop: 4 }}>
+          “Inclui sem cliente” é o lançamento a receber que não é de uma cliente (a sublocação de uma sala, um aluguel): está somado no em aberto.
         </span>
       )}
     </span>

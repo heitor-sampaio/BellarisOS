@@ -659,9 +659,9 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/regras/crm-inbox.md:1361-1366`
 - Antes: KD-45, KD-46
 
-**OP-15.** Toda exclusão de etapa pergunta antes ("Excluir a etapa “X”? Não dá para desfazer."). Etapa ou funil com oportunidades não se exclui, e a pergunta já diz isso ("Mova-as para outra etapa no quadro antes de excluir."); nela, "Mover as N para [etapa]" leva as oportunidades a outra etapa do mesmo funil (a perdida não é oferecida), e, movidas todas, volta o "Excluir a etapa".
-- Fonte: princípio 3
-- Onde: `docs/regras/crm-inbox.md:1442-1453`
+**OP-15.** Toda exclusão de etapa pergunta antes ("Excluir a etapa “X”? Não dá para desfazer."). Etapa ou funil com oportunidades não se exclui, e a pergunta já diz isso ("Mova-as para outra etapa no quadro antes de excluir."); nela, "Mover as N para [etapa]" leva as oportunidades a outra etapa do mesmo funil (a perdida não é oferecida), e, movidas todas, volta o "Excluir a etapa". Arquivar um funil com oportunidades abertas também pergunta antes, e não recusa: diz quantas ficam abertas nele e que elas saem do quadro e dos relatórios (FO-02 dos Indicadores; e da busca, BA-04) até o funil ser reativado ("Reativar funil").
+- Fonte: princípio 3; arquivar o funil com oportunidades abertas: decisão do Claude, 25/11 (o Heitor revisa), por esta regra (a etapa com oportunidades pergunta) e pelo princípio 7; arquivar é da Admin da rede (OP-11), e por isso não se recusa (A3 da 30ª simulação: as oportunidades saíam do quadro e dos relatórios em silêncio, 13 no banco e 11 na tela)
+- Onde: `docs/regras/crm-inbox.md:1442-1453`; a pergunta do arquivar entra em `docs/regras/crm-inbox.md` com a correção da A3 (25/11); `apps/web/components/branch/crm-stage-settings.tsx` (o botão "Arquivar funil")
 - Antes: KE-08, KE-10, KE-11
 
 **OP-16.** Tirar do funil a ÚLTIMA etapa de perda (excluir ou mudar o desfecho) avisa, não recusa: "Este funil fica sem etapa de perda…", com "Excluir mesmo assim" / "Mudar mesmo assim".

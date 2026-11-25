@@ -1774,6 +1774,69 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-25 (3) — A 30ª simulação e as correções dela
+
+O laço que o Heitor deixou em 24/11, sem pergunta de regra: a dúvida se decidiu pelo catálogo, por `docs/regras` e pelos
+princípios, marcada "decisão do Claude, 25/11". O que precisa dele está em `docs/para-o-heitor.md` §7. Nesta rodada ele
+voltou e respondeu as seções 2 e 4: "Se não for impossível, ainda que improvável, pode ser feito" entrou no princípio 2
+(CLAUDE.md), e o Agendar segue recusando o horário passado ("recusa, não dá pra agendar no passado"; o catálogo AG-06
+voltou à recusa).
+
+**A simulação (25/11, em produção).** Cinco redes novas, ao mesmo tempo:
+- o Studio Antúrio (Campinas): o comercial — contatos, funis, responsável, tags como filtro, ganho e perda;
+- a Rede Jacarandá: três unidades em três fusos (Caruaru, Fernando de Noronha, Manaus), com Manaus desativada;
+- o Espaço Gerânio (Macapá): o financeiro do mês, as taxas por bandeira e por vezes, o crediário, a DRE e o CSV;
+- o Ateliê Lantana (Ribeirão Preto): as permissões finas, as vistas pessoais, a Auditoria e a configuração da Admin;
+- o Instituto Agapanto (Caxias do Sul): fidelidade, automações, a campanha de todo ano e o Copilot.
+
+O dinheiro gravado fechou nos cinco. Houve 14 defeitos (12 confirmados, 2 prováveis), nenhum alto, e 27 atritos,
+quase todos de texto e organização. Duas regressões da 28ª: "Não informado" no atendimento para o dado que a pessoa só
+não vê, e a Auditoria com "R$ 9,00 em pontos" que ninguém usou (o voucher de 15%).
+
+**As correções.**
+- **Oportunidades:** o card mostra o vendido, senão o valor estimado, senão o de tabela, e diz qual é; o "Valor
+  estimado" se informa e se edita na janela, e a troca vai à linha do tempo; o card ganho segue com o vendido; a linha
+  do tempo diz de quem para quem foi o responsável e o motivo da perda; arquivar o funil com oportunidades pergunta antes.
+- **A unidade desativada:** não vende (as quatro actions recusam, o PDV dela só recebe o que ficou); o endereço dela leva
+  à unidade ativa da pessoa com o aviso, ou ao portal da rede, e quem só tinha desativadas cai numa tela com "Sair"; a
+  janela de desativar cita o a receber da operadora.
+- **Fusos:** a ficha mostra cada agendamento no relógio da unidade dele; o Confirmar do app diz o relógio.
+- **Atendimento:** quem tem o Prontuário sem o Clientes vê só o nome da cliente no registro, sem "Não informado".
+- **Auditoria:** os pontos só com débito de pontos (o tipo do voucher vai no rótulo); desativar, reativar, arquivar,
+  ligar e desligar são o fato; a tag juntada diz em qual; a despesa paga diz qual; o fundo de troco diz o valor; o
+  registro clínico gravado sozinho leva a unidade do atendimento.
+- **Financeiro e PDV:** a parcela diz o procedimento ("Microagulhamento — parcela 2/3"), na ficha, no app e nos
+  Relatórios ("Prazo" em palavras); o "A receber da cliente" diz o que inclui sem cliente; "Fechada às" na comanda com
+  dinheiro em aberto; o "Completar o cadastro" só para quem tem os Clientes em Gerenciar; o vencimento remarcado para o
+  passado avisa; a DRE e o CSV dizem o motivo das perdas; o dashboard da unidade com centavos.
+- **Automações e Copilot:** o prazo da espera é livre (quanto, em que unidade, antes ou depois) e o nome automático
+  acompanha; o ensaio só aparece com gatilho de fato; a busca de aniversário diz quantas fichas não têm a data; o
+  Copilot diz as formas, a situação e a origem pelo nome da tela e oferece tudo o que a permissão grava.
+- **Cargos, fidelidade e tags:** o resumo diz onde a Fidelidade aparece e que Fichas e Cargos são da Admin da rede; o
+  voucher pede o motivo à vista; o formulário da recompensa avisa o ponto em R$ 0; as tags do card e do contato chegam
+  marcadas ao "Cadastrar como cliente".
+- **O catálogo e as regras:** as decisões da rodada (CR-11, UN-10, UN-15, CG-28, OP-15, VP-04, CR-01); a AG-06 voltou
+  à recusa; a PN-20 e `docs/regras/plataforma.md` diziam que a mensalidade não zera com a cobrança ligada — o zero é
+  aceito e vira cortesia desde 07/10, e o texto foi corrigido pelo que o banco faz.
+
+**Migrations (três, na produção):** `20261206200001` (o em aberto sem cliente), `20261206500001` (o tipo do voucher na
+Auditoria) e `20261206600001` (a tag juntada diz o destino).
+
+**Testes.**
+- **Nenhum teste existente foi alterado nem apagado.** 27 arquivos de teste novos e oito que ganharam casos (num deles, o
+  import ganhou dois nomes).
+- **As verificações:** checagem de tipos, lint e Vitest (4799/4799).
+- **A completa contra o build:** 1744 + 892 passaram, 1 pulado de propósito, 6 falharam. As seis eram desta rodada:
+  - um agente trocou o exemplo do título da campanha ("ex: Feliz aniversário…" → "ex: Feliz Dia das Mães…") sem
+    perguntar, e cinco specs que acham o campo por esse texto não o achavam; o arremate disse ter conferido. O exemplo
+    voltou, e a troca dos dois exemplos (nome e título) foi para `docs/para-o-heitor.md` §7;
+  - o caso novo do cartão do atendimento procurava "Não informado" na página inteira, e a ficha de saúde sem resposta
+    diz isso de propósito. O bloco da identificação ganhou a marca `data-identificacao-do-cliente`, e o caso se
+    restringe a ele.
+  Refeito o build, os seis arquivos passaram contra ele (23/23).
+
+**Para conferir.** O selo do Copilot na tela (A22) e a sugestão de importar o `ptBR` de `date-fns/locale/pt-BR`.
+
 ### 2026-11-25 (2) — A 29ª simulação e as correções dela
 
 O laço que o Heitor deixou em 24/11 ("aciona o loop simulação/correção novamente"), sem pergunta de regra: a dúvida se

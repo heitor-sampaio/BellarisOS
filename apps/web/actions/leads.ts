@@ -12,9 +12,9 @@ import { diaDoRetorno } from '@/lib/crm/retorno'
 import { createAdminClient } from '@/lib/supabase/admin'
 import {
   registrarEventoLead, estadoAtualDoLead,
-  diferencas, listaLegivel,
+  diferencas, listaLegivel, valorNoHistorico,
 } from '@/lib/lead-events'
-import { parseDinheiro } from '@estetica-os/utils'
+import { lerValorEstimado } from '@/lib/crm/valor-do-card'
 import { ler, lerTodas, mensagemDoErro } from '@/lib/db'
 import { criarOportunidadeCore, etapaDaRede, moverEtapaCore, salvarProcedimentosDeInteresse } from '@/lib/crm/oportunidade'
 import { pessoaDoNovoLeadValida } from '@/lib/crm/pessoa-para-novo-lead'
@@ -112,6 +112,10 @@ export async function createLead(
 
     if (!name)                       return { error: 'Nome é obrigatório.' }
     if (!phone && !email && !social) return { error: 'Informe pelo menos um contato: telefone, e-mail ou rede social.' }
+    // D1 da 30ª (OP-01, IM-07): o valor estimado se informa já ao criar.
+    const lidoDoValor = lerValorEstimado(str(formData, 'value'))
+    if ('error' in lidoDoValor) return { error: lidoDoValor.error }
+    const valorEstimado = lidoDoValor.valor
     // O incompleto é recusado já aqui (C28, F70): o núcleo grava no formato do WhatsApp.
     if (phone) {
       const t = telefoneParaGravar(phone)
@@ -146,7 +150,7 @@ export async function createLead(
     // O núcleo (lib/crm/oportunidade.ts) é o mesmo do Copilot.
     const r = await criarOportunidadeCore(createAdminClient(), ctx, {
       nome: name, telefone: phone, email, social, origem: source, observacoes: notes,
-      crmStageId, funnelId, procedureIds, tags: manualTags,
+      crmStageId, funnelId, procedureIds, tags: manualTags, valor: valorEstimado,
       fbclid, gclid, utmSource, utmMedium, utmCampaign,
       retornarEm: diaDoRetorno(str(formData, 'retornar_em')), retornarObs: str(formData, 'retornar_obs'),
     }, contatoId || clientId ? { ...(contatoId ? { contatoId } : {}), ...(clientId ? { clientId } : {}) } : undefined)
@@ -248,10 +252,11 @@ export async function updateLead(
     // (o quadro, por exemplo) não pode apagar o que foi negociado. Vazio é
     // NULO e não zero — zero seria "fechado por nada" e sujaria o ticket médio.
     if (formData.has('value')) {
-      const bruto = str(formData, 'value')
-      // A regra de todo campo de dinheiro (D3): "180.50" lia R$ 18.050,00.
-      const numero = bruto ? parseDinheiro(bruto) : null
-      patch.value = numero !== null && Number.isFinite(numero) ? numero : null
+      // A regra de todo campo de dinheiro (D3): "180.50" lia R$ 18.050,00. O
+      // ilegível é recusado (D1 da 30ª): virava nulo e apagava o que estava.
+      const lido = lerValorEstimado(str(formData, 'value'))
+      if ('error' in lido) return { error: lido.error }
+      patch.value = lido.valor
     }
     // Etapa só entra no patch quando o form mandou uma: gravar null aqui tirava
     // o lead de todos os quadros.
@@ -378,6 +383,7 @@ export async function updateLead(
     if (antes) {
       const depois: Record<string, string | null> = {
         name, phone, email, social_media: social, source, notes,
+        ...('value' in patch ? { value: valorNoHistorico(patch.value as number | null) } : {}),
         procedures: listaLegivel(await nomesDeProcedimentos(admin, ctx.tenantId!, procedureIds)),
       }
       // A "Unidade: X" é uma tag como as outras (H16): sem evento próprio.

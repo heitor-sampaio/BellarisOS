@@ -8,6 +8,8 @@ import { formatBRL } from '@estetica-os/utils'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { remarcarVencimento } from '@/actions/financial'
 import { Dica } from '@/components/shared/dica'
+import { useFuso } from '@/components/shared/fuso'
+import { avisoDoNovoVencimento } from '@/lib/financeiro/vencimentos'
 
 /** Uma remarcação do vencimento, como o lançamento guarda (A37 da 9ª). */
 export interface RemarcacaoDoVencimento { de: string | null; para: string; por_nome?: string | null; em: string; motivo?: string | null }
@@ -33,6 +35,7 @@ export function VencimentoRemarcado({ historico }: { historico?: RemarcacaoDoVen
 /** O botão "Remarcar vencimento" e a janela (quem tem o Financeiro em Gerenciar). */
 export function RemarcarVencimento({ lancamento }: { lancamento: { id: string; descricao: string; valor: number; vencimento: string | null } }) {
   const router = useRouter()
+  const fuso = useFuso()
   const [aberta, setAberta] = useState(false)
   const [dia, setDia] = useState(() => lancamento.vencimento
     ? new Date(lancamento.vencimento).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }) : '')
@@ -77,6 +80,12 @@ export function RemarcarVencimento({ lancamento }: { lancamento: { id: string; d
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <span className="field-label">Novo vencimento</span>
               <input className="field" type="date" value={dia} onChange={e => setDia(e.target.value)} disabled={gravando} />
+              {/* Decisão 1 do Claude na 30ª (CR-11; princípio 2): a data que já passou vale — a tela só avisa. */}
+              {avisoDoNovoVencimento(dia, new Date(), fuso) && (
+                <span data-vencimento-no-passado style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 600 }}>
+                  {avisoDoNovoVencimento(dia, new Date(), fuso)}
+                </span>
+              )}
             </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <span className="field-label">Motivo (opcional)</span>

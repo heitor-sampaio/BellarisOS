@@ -6,6 +6,7 @@ import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { CampoDaBandeira, CampoDaMaquininha } from '@/components/shared/campo-da-bandeira'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
 import { SaldoDoCredito } from '@/components/shared/saldo-do-credito'
+import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
 import { MAXIMO_DE_OUTRAS, parteVazia, recusaDasOutras, valorDaParte, valorDaPrincipal, type EstadoDaParte } from '@/lib/checkout/varias-formas'
 
 /**
@@ -30,9 +31,10 @@ export function OutrasFormas({ metodoPrincipal, total, outras, aoMudar, metodos,
   const mudar = (i: number, parte: Partial<EstadoDaParte>) => aoMudar(outras.map((p, j) => (j === i ? { ...p, ...parte } : p)))
   const rotulo = { fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' } as const
   // O valor da 1ª forma não se digita: a mesma altura de um campo, sem cara de campo.
+  // A8 da 30ª: o valor em reais não quebra; a nota ao lado é que desce de linha.
   const valorFixo = {
-    display: 'flex', alignItems: 'center', minHeight: 'var(--altura-controle)', fontSize: 'var(--text-sm-sz)',
-    fontWeight: 'var(--weight-semibold)', overflowWrap: 'anywhere',
+    display: 'flex', flexWrap: 'wrap', alignItems: 'center', minHeight: 'var(--altura-controle)', fontSize: 'var(--text-sm-sz)',
+    fontWeight: 'var(--weight-semibold)',
   } as const
   return (
     <div data-outras-formas style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -53,7 +55,7 @@ export function OutrasFormas({ metodoPrincipal, total, outras, aoMudar, metodos,
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <span style={rotulo}>Valor nesta forma</span>
               <span data-valor-da-primeira-forma style={valorFixo}>
-                <b style={{ color: 'var(--text)' }}>{formatBRL(Math.max(0, principal))}</b>
+                <b style={{ color: 'var(--text)', whiteSpace: 'nowrap' }}>{formatBRL(Math.max(0, principal))}</b>
                 <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)' }}>&nbsp;· o que falta das outras</span>
               </span>
             </div>
@@ -122,6 +124,8 @@ function OutraForma({ parte, numero, metodos, clienteId, semMaquininha, rotulo, 
               <select className="field" value={parte.vezes} onChange={e => aoMudar({ vezes: Number(e.target.value) })} aria-label={`Vezes no cartão da ${numero}ª forma`}>
                 {opcoesDeVezes.map(n => <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x`}</option>)}
               </select>
+              {/* A8 da 30ª (MQ-17): o limite e o valor de cada parcela, junto de todo campo de vezes. */}
+              {valor !== undefined && <DicaDasVezes total={valor} vezes={parte.vezes} opcoes={opcoesDeVezes} />}
             </label>
           )}
           <CampoDaBandeira metodo={parte.metodo} valor={parte.bandeira} aoMudar={v => aoMudar({ bandeira: v })} maquininha={parte.maquininha} total={valor} />

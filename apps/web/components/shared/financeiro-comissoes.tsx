@@ -209,6 +209,8 @@ export function FinanceiroComissoes(p: PropsDaTela) {
                   <div style={{ flex: '1 1 200px', minWidth: 0 }}>
                     <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>{r.professionalName}</p>
                     <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>{r.branchName}</p>
+                    {/* UN-13: o card da unidade desativada diz que é (o do cabeçalho só vale com o filtro). */}
+                    {p.unidades?.find(u => u.id === r.branchId)?.ativa === false && <SeloUnidadeDesativada />}
                     {r.aguardando > 0 && (
                       <p data-aguardando style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
                         {formatBRL(r.aguardando)} aguardando o pagamento integral

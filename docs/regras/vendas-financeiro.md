@@ -68,6 +68,15 @@ comanda (PDV-P1).
   `app/admin/pdv/page.tsx`). A ficha não tem o "Vender"; o "Vender" do inbox
   e o da busca universal levam a `/<portal>/pdv?nova=1&cliente=<id>` (no inbox, a pessoa sem ficha passa
   pelo cadastro e chega lá).
+  **A unidade desativada não vende** (D4 da 30ª; plataforma:UN-14, "de
+  vender: só as ativas"): o PDV dela segue aberto para receber o que ficou
+  (UN-13), sem o botão "Nova venda" e com o vazio dizendo por quê
+  (`[data-unidade-nao-vende]`); o "Em qual unidade é a venda?" lista só as
+  ativas; e as quatro actions de venda (pacote, pré-pago, produto, crédito
+  interno) recusam a desativada — "Esta unidade foi desativada e não vende
+  mais…" (`recusaDaVendaNaUnidade`, `lib/vendas/unidade-da-venda.ts`). Prova:
+  `tests/pdv-unidade-desativada-nao-vende.test.ts`,
+  `e2e/unidade-desativada-f72.spec.ts` ("D4 da 30ª").
   ⚠️ Onde este arquivo ainda diz o "Vender" (da ficha, do inbox), leia a
   "Nova venda" do PDV: o formulário e as regras são os mesmos.
 - **Toda venda é uma comanda** (PDV2): o gatilho `comanda_da_venda`, no
@@ -80,7 +89,14 @@ comanda (PDV-P1).
   **O que ficou em aberto se diz** (A1/A17 da 15ª simulação, princípio 3):
   a venda no crediário ou no a receber nasce paga, mas a linha e a comanda
   dizem "Crediário · R$ 1.800,00 em aberto (3 parcelas, a 1ª em 15/12)", e o
-  selo é "A receber", nunca "Paga". O número sai do banco (`pdv_comandas`:
+  selo é "A receber", nunca "Paga" — nem o cabeçalho da comanda, que diz
+  "Fechada às 09:29 · A receber · R$ 0,00 recebidos" enquanto houver dinheiro
+  em aberto (A9 da 30ª; `verboDaComandaPaga`, `lib/pdv/situacoes.ts`; a venda
+  segue "Vendida às"). **A linha do lançamento diz qual parcela é** (A16 da
+  30ª; CR-05, AC-01): com o procedimento, "Microagulhamento — parcela 2/3"
+  ou "— entrada" (`nomeDaLinhaDoLancamento`,
+  `lib/financeiro/nome-da-parcela.ts`; a aba Financeiro da ficha, pela
+  `lib/clientes/financeiro-da-ficha.ts`). O número sai do banco (`pdv_comandas`:
   `em_aberto`, `parcelas_em_aberto`, `proxima_parcela`, migration
   `20261116500001`), não da tela. **A comanda do crediário diz como entrou o
   que já entrou** (A15 da 26ª, princípio 3): "Crediário (Crédito 3x · Cielo)

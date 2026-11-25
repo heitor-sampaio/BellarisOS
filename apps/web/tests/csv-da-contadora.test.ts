@@ -20,6 +20,16 @@ describe('A31: o CSV para a contabilidade', () => {
     expect(l).toContain('Perdas no período (métrica);640,00')
     expect(l).toContain('10/11/2026;Tulipa Centro;"Ácido; hialurônico";3;frasco;1689,00;Distribuidora Sul;004630')
   })
+  it('a perda diz o motivo, como a tela (indicadores:ER-04, "com o motivo certo")', () => {
+    const csv = csvDoDre({
+      periodo: 'Novembro de 2026', receita: 100, despesaOperacional: 0, insumos: 0, taxas: 0, comissoes: 0, lucro: 100,
+      compras: { total: 0, linhas: [] }, perdas: 40, perdasPorMotivo: [{ motivo: 'BRINDE', custo: 40 }],
+    })
+    const l = csv.slice(1).split('\r\n')
+    const linha = l.find(x => x.startsWith('Perdas no período (métrica);40,00;'))
+    expect(linha, 'a linha das perdas com o motivo').toBeTruthy()
+    expect(linha!.split(';')[2]).toMatch(/^Brinde da fidelidade R\$\s40,00$/)
+  })
   it('o Fechamento: as formas, o total, o esperado e os estornos', () => {
     const csv = csvDoFechamento({
       dia: '2026-11-10', unidade: 'Tulipa Centro',

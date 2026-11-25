@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, type ReactNode } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, Check, Calendar, Clock, User, Users, Sparkles, MapPin } from 'lucide-react'
@@ -511,7 +511,8 @@ export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], p
             <Row label="Procedimento" value={procedure.name} />
             <Row label="Profissional"  value={prof.id ? prof.name : 'A equipe escolhe quem estiver livre'} />
             <Row label="Data"          value={fmtDate(date)} />
-            <Row label="Horário"       value={time} />
+            {/* A19 da 30ª (FU-02): o relógio da unidade, como no passo dos horários. */}
+            <Row label="Horário"       value={time} nota={<NotaDoFuso fuso={fuso} prefixo=" · " />} />
             <Row label="Duração"       value={`${procedure.duration_min} min`} />
             <Row label="Valor"         value={procedure.jaPago ?? fmtPrice(procedure.price)} accent />
           </div>
@@ -559,7 +560,7 @@ export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], p
   )
 }
 
-function Row({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+function Row({ label, value, accent, nota }: { label: string; value: string; accent?: boolean; nota?: ReactNode }) {
   return (
     <div style={{
       display:        'flex',
@@ -575,6 +576,7 @@ function Row({ label, value, accent }: { label: string; value: string; accent?: 
         color:      accent ? 'var(--brand)' : 'var(--text)',
       }}>
         {value}
+        {nota}
       </span>
     </div>
   )

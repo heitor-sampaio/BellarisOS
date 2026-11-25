@@ -12,11 +12,11 @@ import { Suspense } from 'react'
 import { Copilot } from '@/components/copilot/copilot'
 import { CopilotForaDoPlano } from '@/components/copilot/copilot-fora-do-plano'
 import { copilotNaTela, copilotForaDoPlanoNaTela, redeEmTeste } from '@/lib/copilot/disponivel'
-import { getCachedBranchBySlug, getCachedRede } from '@/lib/cached-queries'
+import { getCachedBranchBySlug, getCachedRede, getCachedTodasAsUnidades } from '@/lib/cached-queries'
 import { ler } from '@/lib/db'
 import { ENDERECOS_RESERVADOS } from '@/lib/unidades/endereco'
-import { comAviso } from '@/lib/aviso-da-url'
-import { AvisoDaUrl } from '@/components/shared/aviso-da-url'
+import { AvisoDaUrl, UnidadesDesativadasProvider } from '@/components/shared/aviso-da-url'
+import { saidaDoEndereco } from '@/lib/unidades/desativada-no-endereco'
 import { saudacao } from '@/lib/saudacao'
 import { FusoProvider } from '@/components/shared/fuso'
 import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
@@ -69,28 +69,27 @@ export default async function BranchLayout({
 
   // Usuário operacional (não-cliente). O acesso a cada módulo é gateado por
   // assertPermission nas páginas; aqui só validamos vínculo com a unidade (abaixo).
-  const branch = await getCachedBranchBySlug(slug, ctx.tenantId!)
-
-  if (!branch) notFound()
+  const [branch, todasAsUnidades] = await Promise.all([
+    getCachedBranchBySlug(slug, ctx.tenantId!),
+    getCachedTodasAsUnidades(ctx.tenantId!),
+  ])
 
   // Quem tem unidades só abre as DELAS (EQ1a/PO1, 2026-11-14: a pessoa de A
-  // e B abre as duas; era "a própria", uma só). Fora delas, a dela — a em que
-  // ela está (`ctx.branchId`: aqui, fora das dela, a principal).
-  if (!alcancaUnidade(ctx, branch.id as string)) {
-    // A unidade DO MEMBRO pelo servidor, não pela sessão (D9 da 9ª simulação):
-    // mudada a unidade com a sessão aberta, o token ainda tem a claim velha, a
-    // RLS escondia a unidade nova e o `.single()` lançava — 500 em toda tela.
-    const userBranch = await ler(createAdminClient()
-      .from('branches')
-      .select('slug')
-      .eq('id', ctx.branchId)
-      .eq('tenant_id', ctx.tenantId!)
-      .maybeSingle(), 'buscar a unidade')
-    // Com o aviso (J-29): sem ele, o link "quebrado" voltava calado ao dashboard.
-    // Saiu o desvio de quem ATENDIA naquela unidade (A20 da 14ª, F73): o
-    // "Atende" só vale nas unidades da pessoa (o Heitor, 2026-11-23).
-    redirect(comAviso(`/${userBranch?.slug ?? ''}/dashboard`, 'outra-unidade'))
+  // e B abre as duas; era "a própria", uma só). Fora delas, a dela, com o aviso
+  // (J-29). Saiu o desvio de quem ATENDIA naquela unidade (A20 da 14ª, F73): o
+  // "Atende" só vale nas unidades da pessoa (o Heitor, 2026-11-23).
+  // D5 da 30ª (UN-13; decisão do Claude, 25/11): a unidade DESATIVADA não é
+  // mais 404 — quem tem outras vai à principal ativa com o aviso, quem tem "A
+  // rede inteira" ao portal da rede, e quem só tinha desativadas à tela que diz
+  // o fato, com "Sair" (`lib/unidades/desativada-no-endereco.ts`). As unidades
+  // vêm do servidor (D9 da 9ª: o token pode ter a claim velha).
+  if (!branch || !alcancaUnidade(ctx, branch.id as string)) {
+    const saida = saidaDoEndereco({ slug, todas: todasAsUnidades, unidades: unidadesDoContexto(ctx) })
+    if (saida.tipo === 'redirecionar') redirect(saida.para)
+    if (saida.tipo === 'nao-existe' || !branch) notFound()
   }
+  // As desativadas da rede (o endereço → o nome): a faixa do aviso diz qual foi.
+  const desativadas = Object.fromEntries(todasAsUnidades.filter(u => !u.is_active).map(u => [u.slug, u.name]))
 
   // As unidades para trocar (quem é da REDE, a abrangência — C60, F70: era o
   // nome do cargo, e a sócia da rede com outro cargo não trocava de unidade)
@@ -130,6 +129,7 @@ export default async function BranchLayout({
   return (
     <UmaUnidadeProvider valor={umaUnidade} nome={nomeDaRede}>
     <FusoProvider fuso={fuso}>
+    <UnidadesDesativadasProvider nomes={desativadas}>
     <SidebarProvider>
       <BranchSidebar
         slug={branch.slug}
@@ -166,6 +166,7 @@ export default async function BranchLayout({
         <CopilotForaDoPlano emTeste={await redeEmTeste(ctx.tenantId!)} assinaturaHref="/admin/settings?tab=assinatura" />
       )}
     </SidebarProvider>
+    </UnidadesDesativadasProvider>
     </FusoProvider>
     </UmaUnidadeProvider>
   )

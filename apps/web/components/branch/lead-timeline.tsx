@@ -8,6 +8,7 @@ import { formatDurationLong, secondsSince } from '@estetica-os/utils'
 import { getLeadEvents, getContactEvents, getClientEvents } from '@/actions/lead-events'
 import type { LeadEvent } from '@/lib/lead-events'
 import { useFuso } from '@/components/shared/fuso'
+import { trocaDoResponsavel, motivoDaPerdaNoEvento } from '@/lib/crm/linha-do-tempo'
 
 // No relógio da unidade (F62b): montado com o fuso da tela.
 const dataHoraNoFuso = (fuso: string) => new Intl.DateTimeFormat('pt-BR', {
@@ -56,11 +57,18 @@ function Descricao({ e }: { e: LeadEvent }) {
     // Mudou de funil? Então o nome do funil deixa de ser detalhe e vira a
     // informação principal — senão a linha lê "Novo → Novo".
     const trocouFunil = e.from_funnel_name !== e.to_funnel_name
+    // D11 da 30ª (OP-26): o motivo da perda gravado no movimento.
+    const motivo = motivoDaPerdaNoEvento(e)
     return (
       <span>
         <span style={forte}>{local(e.from_stage_name, e.from_funnel_name, trocouFunil) ?? 'sem etapa'}</span>
         {' → '}
         <span style={forte}>{local(e.to_stage_name, e.to_funnel_name, trocouFunil) ?? 'sem etapa'}</span>
+        {motivo && (
+          <span data-motivo-da-perda-no-historico style={{ display: 'block' }}>
+            <span style={forte}>Motivo da perda</span>: {motivo}
+          </span>
+        )}
       </span>
     )
   }
@@ -69,7 +77,17 @@ function Descricao({ e }: { e: LeadEvent }) {
   // o que ele registra é o cadastro da ficha — que agora não conclui negócio
   // nenhum. Chamar de "convertido" aqui faria parecer venda ganha.
   if (e.type === 'CONVERTED')     return <span style={forte}>Cadastrado como cliente</span>
-  if (e.type === 'OWNER_CHANGED') return <span style={forte}>Responsável alterado</span>
+  if (e.type === 'OWNER_CHANGED') {
+    // D11 da 30ª (OP-09): de quem para quem. O evento antigo, sem o registro, fica como era.
+    const troca = trocaDoResponsavel(e)
+    if (!troca) return <span style={forte}>Responsável alterado</span>
+    return (
+      <span data-troca-de-responsavel>
+        <span style={forte}>Responsável</span>: <span style={{ textDecoration: 'line-through' }}>{troca.de}</span>{' → '}
+        <span style={forte}>{troca.para}</span>
+      </span>
+    )
+  }
 
   // A unidade é tag e pode ser mais de uma, então lê melhor como qualquer
   // outra alteração: "Unidade: Centro → Centro, Jardins".

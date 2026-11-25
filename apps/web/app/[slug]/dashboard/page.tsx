@@ -72,8 +72,10 @@ function StatusChip({ status }: { status: string }) {
   )
 }
 
+// A7 da 30ª (princípio 3): com os centavos — as comissões de R$ 192,50 apareciam
+// como "R$ 193 lançados". O dashboard da rede já os mostra.
 function formatBRL(v: number) {
-  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
+  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
 // -----------------------------------------------------------------

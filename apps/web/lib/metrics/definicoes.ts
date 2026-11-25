@@ -66,8 +66,9 @@ export const DEFINICOES = {
       + 'e as comissões são a sua parte, em "Minhas comissões".',
   },
   /**
-   * A33 da 10ª simulação (2026-11-10): à vista, embaixo do "Meu faturamento" — a
-   * Daniela via a comissão da sessão do plano e não a sessão no faturamento.
+   * A33 da 10ª simulação (2026-11-10): na dica do "Meu faturamento" (era embaixo
+   * do número; a explicação mora na dica — o Heitor, 16/11, docs/regras/design.md)
+   * — a Daniela via a comissão da sessão do plano e não a sessão no faturamento.
    */
   foraDoMeuFaturamento: {
     rotulo: 'O que fica fora do "Meu faturamento"',

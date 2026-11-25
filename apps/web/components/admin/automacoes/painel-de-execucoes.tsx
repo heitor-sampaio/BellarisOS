@@ -44,13 +44,16 @@ const quando = (iso: string, fuso = 'America/Sao_Paulo') =>
   })
 
 export function PainelDeExecucoes({
-  automacaoId, podeEnsaiar, onFechar,
+  automacaoId, podeEnsaiar: podeEnsaiarPelaPermissao, ensaioCabe, onFechar,
 }: {
   automacaoId: string
   /** O ensaio não grava nem manda nada: continua na sessão de suporte (docs/regras/automacoes.md). */
   podeEnsaiar: boolean
+  /** O gatilho é de FATO (ensaioCabe): o de relógio não tem fato para repetir, e o botão só recusaria (D9 da 30ª). */
+  ensaioCabe: boolean
   onFechar: () => void
 }) {
+  const podeEnsaiar = podeEnsaiarPelaPermissao && ensaioCabe
   const fuso = useFuso()
   const [execucoes, setExecucoes] = useState<ExecucaoNaLista[]>([])
   const [ensaios, setEnsaios]     = useState(false)

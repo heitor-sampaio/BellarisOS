@@ -26,7 +26,7 @@ import { linhaDaComandaDoPdv } from '@/lib/pdv/linha-da-comanda-leitura'
 import { fidelidadeParaAVenda } from '@/lib/fidelidade/na-venda'
 import { trocaNaComanda } from '@/lib/fidelidade/troca-na-comanda-leitura'
 import { vendaDeProdutoNaoPontua } from '@/lib/fidelidade/leitura'
-import { quemDesfazNoCaixa } from '@/lib/equipe/quem-desfaz'
+import { quemDesfazNoCaixa, quemCompletaOCadastro } from '@/lib/equipe/quem-desfaz'
 import { podeEstornar } from '@/lib/financeiro/so-os-meus'
 import { lancamentosDaComanda } from '@/lib/pdv/lancamentos-da-comanda'
 import { faltaParaOContratoDoPacote } from '@/lib/documentos/falta-no-cadastro'
@@ -40,7 +40,8 @@ import { faltaParaOContratoDoPacote } from '@/lib/documentos/falta-no-cadastro'
  */
 export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, ver, comandaId, nova, clienteId, recebidaId, unidadeEscolhida = true }: {
   ctx:        TenantContext
-  unidades:   { id: string; name: string }[]
+  /** `ativa: false` — a unidade desativada (D4 da 30ª, UN-14): recebe o que ficou, não vende. */
+  unidades:   { id: string; name: string; ativa?: boolean }[]
   unidadeId:  string
   /** O endereço da unidade: o recebimento revalida as telas dela. */
   slugDaUnidade: string
@@ -153,6 +154,12 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
         ? await lancamentosDaComanda(admin, ctx.tenantId!, unidadeId, comanda.id) : null,
       podeEstornar: podeEstornar(ctx),
       documentosParaColher,
+      // A10 da 30ª (CLAUDE.md §14): o "Completar o cadastro" do receber o plano é de quem
+      // tem os Clientes em Gerenciar; os outros leem quem completa.
+      cadastroDoPlano: comanda.origem === 'PLANO' && aReceber
+        ? (can(ctx, 'clients', 'MANAGE') ? { podeCompletar: true, quemCompleta: null }
+          : { podeCompletar: false, quemCompleta: await quemCompletaOCadastro(ctx.tenantId!, unidadeId) })
+        : null,
       // A32 da 20ª: a linha do produto diz que ele não pontua (a regra da rede).
       produtoNaoPontua: itens.length > 0 ? await vendaDeProdutoNaoPontua(ctx.tenantId!, admin) : false,
       // A1 da 16ª (princípio 7): a comanda do crediário recebe as parcelas dela ali mesmo.
@@ -173,7 +180,13 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
   // A "Nova venda" (PDV2): o catálogo, o estoque e "Quem vendeu" são os da
   // unidade do PDV. A cliente é da rede (H5): o id da URL se confere na rede.
   let novaVenda: { dados: VendaDoPdv | null; aviso?: string; perguntaAUnidade?: boolean } | null = null
-  if (nova === '1' && !unidadeEscolhida) {
+  // D4 da 30ª (plataforma:UN-14, "de vender: só as ativas"): o PDV da unidade
+  // desativada segue recebendo o que ficou (UN-13), sem a "Nova venda"; a tela
+  // diz por quê, e as actions de venda recusam (lib/vendas/unidade-da-venda.ts).
+  const vende = unidades.find(u => u.id === unidadeId)?.ativa !== false
+  if (nova === '1' && !vende && unidadeEscolhida) {
+    novaVenda = null
+  } else if (nova === '1' && !unidadeEscolhida) {
     novaVenda = { dados: null, perguntaAUnidade: true }
   } else if (nova === '1') {
     const admin = createAdminClient()
@@ -230,6 +243,7 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
           escolhida={escolhida}
           slugDaUnidade={slugDaUnidade}
           novaVenda={novaVenda}
+          vende={vende}
           podeVerFechamento={podeVerFechamento(ctx)}
           recebidaAgora={recebida && recebida.paga && recebida.origem === 'ATENDIMENTO' ? recebida : null}
         />

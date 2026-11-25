@@ -4,11 +4,10 @@ import { useId, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Gift, Loader2, Pencil, Plus } from 'lucide-react'
-import { formatBRL } from '@estetica-os/utils'
 import { rotaNoPortal } from '@/lib/rotas'
 import { catalogoDeRecompensas, salvarRecompensa } from '@/actions/fidelidade'
 import { erroParaTela } from '@/lib/erro-na-tela'
-import { avisoDaRecompensaAcimaDosPontos, explicacaoDoCatalogo, formatarPontos } from '@/lib/fidelidade/formato'
+import { avisoDaRecompensaAcimaDosPontos, explicacaoDoCatalogo, formatarPontos, valorDosPontosNoFormulario } from '@/lib/fidelidade/formato'
 import { ROTULO_DO_TIPO, TIPOS_DE_RECOMPENSA, descricaoDoVoucher, type TipoDeRecompensa } from '@/lib/fidelidade/voucher'
 import type { Recompensa } from '@/lib/fidelidade/leitura'
 import { avisoDaValidadeDoVoucher } from '@/lib/fidelidade/recompensa'
@@ -131,9 +130,9 @@ function FormularioDeRecompensa({ recompensa, procedimentos, produtos, valorDoPo
   const idDoProduto = useId()
   // O valor dos pontos em reais (A5): o custo × o valor do ponto, em centavos inteiros.
   const pontosDoCusto = Math.trunc(Number(custo) || 0)
-  const valorEmReais = valorDoPonto != null && valorDoPonto > 0 && pontosDoCusto > 0
-    ? Math.round(pontosDoCusto * valorDoPonto * 100) / 100 : null
   const procEscolhido = tipo === 'PROCEDIMENTO' ? procedimentos.find(p => p.id === proc) ?? null : null
+  // A24 da 30ª: com o valor do ponto em zero, avisa (princípio 4) em vez de sumir.
+  const valorDosPontos = valorDosPontosNoFormulario(pontosDoCusto, valorDoPonto, procEscolhido?.price ?? null)
   // A18 da 21ª (princípio 2): o desconto acima do que os pontos valem ganha aviso, sem recusar.
   const descontoEmReais = tipo === 'DESCONTO_VALOR' ? Number(valor.replace(/\./g, '').replace(',', '.')) || 0 : 0
   const acimaDosPontos = avisoDaRecompensaAcimaDosPontos(descontoEmReais, pontosDoCusto, valorDoPonto)
@@ -222,10 +221,9 @@ function FormularioDeRecompensa({ recompensa, procedimentos, produtos, valorDoPo
           {rotulo('Custo (pontos)')}
           <input name="custo" className="field" type="number" min={1} step={1} inputMode="numeric" value={custo} onChange={e => setCusto(e.target.value)} />
           {/* A5 da 7ª simulação (princípio 3): quanto os pontos valem, pelo valor do ponto da clínica. */}
-          {valorEmReais !== null && (
+          {valorDosPontos !== null && (
             <span data-valor-dos-pontos style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-              {formatarPontos(pontosDoCusto)} valem {formatBRL(valorEmReais)} pelo valor do ponto ({formatBRL(valorDoPonto!)}, na configuração acima)
-              {procEscolhido ? ` — o procedimento custa ${formatBRL(procEscolhido.price)} na tabela.` : '.'}
+              {valorDosPontos}
             </span>
           )}
           {acimaDosPontos && (

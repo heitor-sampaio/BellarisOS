@@ -43,6 +43,7 @@ import { CampoQuemVendeu, PerguntaDaVenda } from '@/components/shared/pergunta-d
 import { textoDaComissaoDaVenda } from '@/lib/comissoes/comissao-da-venda'
 import type { MembroDaVenda } from '@/components/shared/vender'
 import { PERGUNTA_SEM_VENDEDOR } from '@/lib/vendas/pergunta-sem-vendedor'
+import { textoDeQuemCompletaOCadastro } from '@/lib/equipe/textos-de-quem-pode'
 import { unicaOpcao } from '@/lib/uma-opcao'
 import { lerPassoDoCheckout, gravarPassoDoCheckout, limparPassoDoCheckout, type PassoDoCheckout } from '@/lib/checkout/passo-do-checkout'
 import { maskPhone } from '@estetica-os/utils'
@@ -120,6 +121,14 @@ interface Props {
    * para o balcão. A action confere o mesmo.
    */
   podeCobrar?: boolean
+  /**
+   * A10 da 30ª (CLAUDE.md §14; o padrão da A10 da 20ª): o "Completar o cadastro"
+   * do aviso do contrato só a quem tem os Clientes em Gerenciar — a ficha só de
+   * leitura não completa nada. Sem a permissão, o aviso diz quem completa.
+   */
+  podeCompletarCadastro?: boolean
+  /** Sem a permissão, quem completa o cadastro (`quemCompletaOCadastro`); nulo: não diz nomes. */
+  quemCompletaOCadastro?: string[] | null
   /** Fechou tudo: usado quando o wizard roda dentro da tela do atendimento. */
   onDone?: (clientId: string) => void
 }
@@ -156,7 +165,7 @@ const STEPS = [
 
 // -- Componente principal ------------------------------------------------------
 
-export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = true, onDone }: Props) {
+export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = true, podeCompletarCadastro = false, quemCompletaOCadastro = null, onDone }: Props) {
   // A hora escolhida é a do relógio da unidade (F62).
   const fuso = useFuso()
   const router = useRouter()
@@ -551,7 +560,12 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
       <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
         O cadastro de {plan.clientName} não tem CPF (nem passaporte ou RNE): o contrato do plano sai sem esse documento.
         Para incluir, complete o cadastro antes de ir para a documentação.{' '}
-        <Link href={`${rotaCliente(pathname, slug, plan.clientId)}?aba=dados`} style={{ color: 'var(--brand)', fontWeight: 700 }}>Completar o cadastro</Link>
+        {podeCompletarCadastro ? (
+          <Link href={`${rotaCliente(pathname, slug, plan.clientId)}?aba=dados`} style={{ color: 'var(--brand)', fontWeight: 700 }}>Completar o cadastro</Link>
+        ) : (
+          // A10 da 30ª: sem os Clientes em Gerenciar, a ficha não se edita — o aviso diz quem completa.
+          <span data-quem-completa>{textoDeQuemCompletaOCadastro(quemCompletaOCadastro)}</span>
+        )}
       </p>
     </div>
   ) : null

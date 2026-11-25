@@ -18,7 +18,7 @@ import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
 import { ehAnexoClinico, atendimentoDoAnexo } from '@/lib/clientes/anexos'
 import { getCachedBranchBySlug, getCachedClientProfileData } from '@/lib/cached-queries'
 import { formatarNoFuso } from '@/lib/formatar-no-fuso'
-import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
+import { fusoDaUnidade, fusosDasUnidades } from '@/lib/unidades/fuso-da-unidade'
 import { regrasDoPacoteDaRede, pacoteVencidoDaFicha } from '@/lib/pacotes/regras-da-rede'
 import { ClientProfile } from '@/components/branch/client-profile'
 import { pedidoLgpdDaFicha } from '@/lib/lgpd/aviso-do-pedido'
@@ -159,6 +159,8 @@ export default async function ClientProfilePage({
   // A32 da 7ª (sobra da A36 da 6ª): a sessão de plano com dois procedimentos
   // diz os dois ("Criolipólise + Drenagem"), e não só o do agendamento.
   const nomesDasSessoes = await nomesDasSessoesDoPlano(createAdminClient(), (appts ?? []).map(a => a.id as string))
+  // D3 da 30ª (FU-02): a hora de cada agendamento no relógio da unidade dele.
+  const fusos = await fusosDasUnidades(ctx.tenantId)
   const allAppointments: ProfileAppointment[] = (appts ?? []).map(a => ({
     id:               a.id,
     scheduledAt:      a.scheduled_at,
@@ -168,6 +170,7 @@ export default async function ClientProfilePage({
     professionalName: (a.professional as { name?: string } | null)?.name ?? '—',
     // A15 da 25ª: a unidade do agendamento (a ficha a diz na rede de duas ou mais).
     branchId:         (a.branch_id as string | null) ?? null,
+    fuso:             fusos[a.branch_id as string] ?? null,
   }))
 
   const upcomingAppointments = allAppointments.filter(a => UPCOMING_STATUSES.includes(a.status))

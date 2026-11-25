@@ -139,6 +139,11 @@ export const STATUS_DO_AGENDAMENTO: Record<string, string> = {
   COMPLETED: 'concluído', CANCELLED: 'cancelado', NO_SHOW: 'faltou',
 }
 
+/** A origem do agendamento como a tela a diz (Relatórios → Agenda), para o Copilot não repetir o código (A20 da 30ª). */
+export const ORIGEM_DO_AGENDAMENTO: Record<string, string> = {
+  INTERNAL: 'pela equipe', ONLINE: 'online', CLIENT_APP: 'app da cliente', COMMERCIAL: 'comercial',
+}
+
 /**
  * Acha o profissional pelo id ou pelo nome, entre quem atende (`provides_services`)
  * na rede — e, quando a unidade é dada, quem a tem marcada no "Atende" (decisão

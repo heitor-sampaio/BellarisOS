@@ -192,7 +192,8 @@ export async function ReportsBiSection({
       // Com tag, as parcelas das clientes com as tags (a régua da lista do
       // Financeiro, na consulta — Q05 do catálogo, revisão de 24/11).
       ? ler(comAsTags(admin.from('financial_transactions')
-          .select(selectComAsTags('id, amount, due_date, description, branch_id, parcela_numero, parcela_total, clients(name)', tags))
+          // A18 da 30ª: com o procedimento, para o nome da linha (nomeDaLinhaDoLancamento).
+          .select(selectComAsTags('id, amount, due_date, description, branch_id, parcela_numero, parcela_total, clients(name), appointment:appointments!financial_transactions_appointment_id_fkey(procedures(name))', tags))
           .in('branch_id', branchIds), tags)
           .eq('type', 'INCOME')
           .eq('is_paid', false)

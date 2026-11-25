@@ -14,6 +14,7 @@ import { nomeDoPlanoNoApp, descontoDoPlanoNoApp } from '@/lib/plano-de-tratament
 import { fusoValido } from '@/lib/unidades/fuso'
 import { getAtendimentosAReceber } from '@/lib/metrics/a-receber'
 import { Dica } from '@/components/shared/dica'
+import { nomeDaLinhaDoLancamento } from '@/lib/financeiro/nome-da-parcela'
 
 type TxRow = {
   id:             string
@@ -51,6 +52,7 @@ type TxRow = {
 type LancamentoLido = {
   id: string; description: string; amount: number | string; payment_method: string | null; cartao_vezes: number | null
   is_paid: boolean; paid_at: string | null; created_at: string; notes: string | null; parcela_numero: number | null
+  parcela_total: number | null
   due_date: string | null; data_de_referencia: string | null
   cartao_bandeira: string | null; product_sale_id: string | null
   type: string; category: string | null; client_packages: { cancelado_em: string | null } | null
@@ -73,7 +75,7 @@ export default async function ClientFinancialPage({ params }: { params: Promise<
   const data = await ler(admin
     .from('financial_transactions')
     .select(`
-      id, description, amount, payment_method, cartao_vezes, cartao_bandeira, is_paid, paid_at, created_at, notes, parcela_numero, product_sale_id,
+      id, description, amount, payment_method, cartao_vezes, cartao_bandeira, is_paid, paid_at, created_at, notes, parcela_numero, parcela_total, product_sale_id,
       due_date, data_de_referencia, valor_antes_do_estorno,
       type, category, client_packages(cancelado_em), treatment_plans(cancelado_em, name, desconto),
       appointments(procedures(name))
@@ -99,7 +101,8 @@ export default async function ClientFinancialPage({ params }: { params: Promise<
     created_at:     r.created_at,
     vencimento:     r.is_paid || r.notes === 'Estornada' ? null : (r.due_date ?? r.data_de_referencia ?? null),
     referencia:     r.data_de_referencia ?? r.paid_at ?? r.created_at,
-    procedure_name: r.appointments?.procedures?.name ?? null,
+    // A16 da 30ª (CR-05, AC-01): a parcela do crediário diz qual é ("Microagulhamento — parcela 2/3").
+    procedure_name: nomeDaLinhaDoLancamento(r.appointments?.procedures?.name, { numero: r.parcela_numero, total: r.parcela_total, descricao: r.description }),
     estornado:      r.notes === 'Estornada',
     forma:          formaDoLancamento({ metodo: r.payment_method, vezes: r.cartao_vezes, bandeira: r.cartao_bandeira, pago: Boolean(r.is_paid), parcela: r.parcela_numero }),
     semPontos:      produtoNaoPontua && !!r.product_sale_id && Boolean(r.is_paid) && r.notes !== 'Estornada',

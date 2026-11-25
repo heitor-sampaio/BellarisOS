@@ -53,7 +53,8 @@ export const MODULE_HINTS: Partial<Record<AppModule, string>> = {
   agenda:          'Agendamentos, confirmação, chegada e remarcação',
   atendimento:     'A tela do atendimento: iniciar e concluir',
   clients:         'Cadastro e ficha de clientes',
-  loyalty:         'Pontos do cliente: saldo, extrato e ajuste',
+  // PG-05: em Gerenciar também troca pontos por recompensa e cancela e entrega o voucher.
+  loyalty:         'Pontos do cliente: saldo, extrato, troca por recompensa, voucher e ajuste',
   medical_records: 'Ficha de saúde, evolução, fotos e anexos clínicos',
   // Os modelos em si são só da Admin da rede (18/11): o módulo dispensa.
   documents:       'Dispensar um documento obrigatório da cliente (os modelos são só da Admin da rede)',

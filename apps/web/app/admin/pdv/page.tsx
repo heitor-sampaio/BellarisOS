@@ -24,7 +24,8 @@ export default async function PdvDaRedePage({ searchParams }: {
   if (fechar) return <FechamentoNaRede ctx={ctx} dia={sp.dia} unidade={sp.unidade} />
 
   // As unidades de LEITURA (a desativada com comanda aberta ainda recebe), e a
-  // abrangência vence: quem tem unidade fixa, só a dela.
+  // abrangência vence: quem tem unidade fixa, só a dela. Vender, só nas ativas
+  // (UN-14; D4 da 30ª): o `ativa` vai junto, e o PDV da desativada não vende.
   const unidades = (await unidadesParaLer(ctx.tenantId!)).filter(u => alcancaUnidade(ctx, u.id))
   if (unidades.length === 0) {
     return <p style={{ padding: 40, color: 'var(--text-muted)' }}>Nenhuma unidade ativa.</p>
@@ -34,7 +35,7 @@ export default async function PdvDaRedePage({ searchParams }: {
   return (
     <>
       {!atual.ativa && <div style={{ marginBottom: 12 }}><SeloUnidadeDesativada /></div>}
-      <Pdv ctx={ctx} unidades={unidades.map(u => ({ id: u.id, name: nomeNaTela(u) }))}
+      <Pdv ctx={ctx} unidades={unidades.map(u => ({ id: u.id, name: nomeNaTela(u), ativa: u.ativa }))}
         unidadeId={atual.id} slugDaUnidade={atual.slug} basePath="/admin/pdv"
         ver={sp.ver} comandaId={sp.comanda} nova={sp.nova} clienteId={sp.cliente} recebidaId={sp.recebida}
         unidadeEscolhida={unidades.length === 1 || unidades.some(u => u.id === sp.unidade || u.slug === sp.unidade)} />

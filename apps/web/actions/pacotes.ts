@@ -10,6 +10,7 @@
 
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { CLIENTE_ARQUIVADA } from '@/lib/clients/arquivada'
+import { recusaDaVendaNaUnidade } from '@/lib/vendas/unidade-da-venda'
 import { z } from 'zod'
 import { alcancaOCaixaDoTratamento } from '@/lib/tratamento/alcance'
 import { getTenantContext, assertPermission, alcancaUnidade, podeReceber, assertRecurso } from '@/lib/auth'
@@ -194,12 +195,15 @@ async function venderPacoteUmaVez(
 
     const admin = createAdminClient()
     const [unidade, cliente, pacote] = await Promise.all([
-      ler(admin.from('branches').select('id').eq('id', branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade'),
+      ler(admin.from('branches').select('id, is_active').eq('id', branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade'),
       ler(admin.from('clients').select('id, is_active').eq('id', clienteId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o cliente'),
       ler(admin.from('service_packages').select('id, name, price, is_active, comissao_responsavel_tipo')
         .eq('id', pacoteId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o pacote'),
     ])
     if (!unidade || !alcancaUnidade(ctx, branchId)) return { error: 'Unidade não encontrada.' }
+    // D4 da 30ª (UN-14): a unidade desativada não vende.
+    const naDesativada = recusaDaVendaNaUnidade(unidade)
+    if (naDesativada) return { error: naDesativada }
     if (!cliente) return { error: 'Cliente não encontrado.' }
     if (cliente.is_active === false) return { error: CLIENTE_ARQUIVADA }
     if (!pacote) return { error: 'Pacote não encontrado.' }

@@ -111,3 +111,19 @@ export function avisoDaRecompensaAcimaDosPontos(desconto: number, pontos: number
   const osPontos = pontos === 1 ? `o ${formatarPontos(pontos)} vale` : `os ${formatarPontos(pontos)} valem`
   return `O desconto (${reais(desconto)}) vale ${quanto} ${osPontos} (${reais(valem)}). Confira o custo em pontos ou o valor do ponto.`
 }
+
+/**
+ * Quanto os pontos do custo da recompensa valem em reais, no formulário dela
+ * (fidelidade:RV-06; A5 da 7ª). Com o valor do ponto da rede em zero, o texto
+ * sumia sem aviso (A24 da 30ª): pelo princípio 4, a tela diz que os pontos não
+ * valem nada em reais. Sem custo digitado, nada.
+ */
+export function valorDosPontosNoFormulario(pontos: number, valorDoPonto: number | null, precoDoProcedimento: number | null): string | null {
+  if (!Number.isFinite(pontos) || pontos <= 0) return null
+  const osPontos = formatarPontos(pontos)
+  if (valorDoPonto == null || !(valorDoPonto > 0)) {
+    return `${pontos === 1 ? 'O' : 'Os'} ${osPontos} não ${pontos === 1 ? 'vale' : 'valem'} nada em reais: o valor do ponto está em ${reais(0)} na configuração acima.`
+  }
+  const tabela = precoDoProcedimento != null ? ` — o procedimento custa ${reais(precoDoProcedimento)} na tabela.` : '.'
+  return `${osPontos} ${pontos === 1 ? 'vale' : 'valem'} ${reais(pontosEmReais(pontos, valorDoPonto))} pelo valor do ponto (${reais(valorDoPonto)}, na configuração acima)${tabela}`
+}

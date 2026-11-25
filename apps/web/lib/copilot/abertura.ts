@@ -14,15 +14,33 @@ export interface AberturaDoCopilot {
   sugestoes: string[]
 }
 
-const CAPACIDADES: { nome: string; ferramentas: readonly string[] }[] = [
+/**
+ * O que a abertura oferece, cada um pelas ferramentas que o liberam. Toda
+ * ferramenta de GRAVAÇÃO tem nome aqui (A21 da 30ª; copilot CH-07): o "Toda
+ * gravação passa pela sua confirmação." ia a quem só ouvia "achar um cliente"
+ * — a gravação que a permissão dela faz (cancelar, com o Atendimento em
+ * Gerenciar) não estava na frase. `semAs`: o item some quando a pessoa já tem
+ * a ferramenta que o inclui (quem agenda também remarca e cancela, e a frase
+ * fica curta). `tests/copilot-fala-o-que-a-tela-diz.test.ts` trava a lista.
+ */
+export const CAPACIDADES_DO_COPILOT: readonly { nome: string; ferramentas: readonly string[]; semAs?: readonly string[] }[] = [
   { nome: 'consultar a agenda', ferramentas: ['agendamentos', 'horarios_livres'] },
   // A vista pessoal (Q03 da revisão de 24/11): a agenda e as comissões DELA.
   { nome: 'consultar a sua agenda', ferramentas: ['minha_agenda'] },
   { nome: 'ver as suas comissões', ferramentas: ['minhas_comissoes'] },
   { nome: 'achar um cliente', ferramentas: ['cliente', 'clientes'] },
   { nome: 'ver números', ferramentas: ['indicadores'] },
-  { nome: 'cadastrar', ferramentas: ['cadastrar_cliente'] },
-  { nome: 'agendar', ferramentas: ['agendar'] },
+  // Os Clientes em Gerenciar: cadastrar e, junto, atualizar o contato, as tags e o acesso.
+  { nome: 'cadastrar', ferramentas: ['cadastrar_cliente', 'atualizar_contato', 'marcar_tags', 'criar_acesso_ao_app'] },
+  // A Agenda em Gerenciar: agendar e, junto, remarcar, confirmar e marcar a chegada.
+  { nome: 'agendar', ferramentas: ['agendar', 'remarcar', 'confirmar_agendamento', 'fazer_check_in'] },
+  // Sem a Agenda em Gerenciar, o Atendimento em Gerenciar só cancela (quem-cancela.ts).
+  { nome: 'cancelar um agendamento', ferramentas: ['cancelar_agendamento'], semAs: ['agendar'] },
+  { nome: 'lançar no financeiro', ferramentas: ['lancar'] },
+  // O PDV sem o Financeiro em Gerenciar só dá baixa.
+  { nome: 'dar baixa num lançamento', ferramentas: ['marcar_pago'], semAs: ['lancar'] },
+  { nome: 'lançar no estoque', ferramentas: ['entrada_de_estoque', 'ajuste_de_estoque'] },
+  { nome: 'criar e mover oportunidades', ferramentas: ['criar_oportunidade', 'mover_etapa', 'trocar_responsavel'] },
 ]
 
 const ATALHOS: { texto: string; ferramenta: string; comDinheiro?: boolean }[] = [
@@ -48,7 +66,9 @@ export function aberturaDoCopilot(entrada: {
   grava?: boolean
 }): AberturaDoCopilot {
   const tem = (f: string) => entrada.ferramentas.includes(f)
-  const capacidades = CAPACIDADES.filter(c => c.ferramentas.some(tem)).map(c => c.nome)
+  const capacidades = CAPACIDADES_DO_COPILOT
+    .filter(c => c.ferramentas.some(tem) && !(c.semAs ?? []).some(tem))
+    .map(c => c.nome)
   const grava = entrada.grava ?? (tem('cadastrar_cliente') || tem('agendar'))
   const texto = capacidades.length
     ? `Olá! Peça o que precisar: ${emLista(capacidades)}.${grava ? ' Toda gravação passa pela sua confirmação.' : ''}`

@@ -78,6 +78,8 @@ interface Props {
   estoqueNoResultadoAnterior: EstoqueNoResultado
   /** D-14: todo o a receber em aberto, de qualquer vencimento (lib/metrics). */
   aReceberEmAberto: number
+  /** A17 da 30ª: a parte do em aberto sem cliente (a sublocação), que a nota diz. */
+  aReceberSemCliente?: number
   /** "Reforça", item 4: os atendimentos concluídos sem pagamento, separados dos lançamentos. */
   concluidosSemPagamento?: { n: number; valor: number }
   /** F2c: o cartão em N vezes que a operadora ainda deposita (não é dívida da cliente). */
@@ -526,7 +528,7 @@ function CommissionsCard({ entries }: { entries: CommissionEntry[] }) {
 // --- Main Hub -----------------------------------------------------
 
 export function FinancialHub({
-  totais, totaisAnteriores, ticketMedio, estoqueNoResultado, estoqueNoResultadoAnterior, aReceberEmAberto, concluidosSemPagamento, aReceberDaOperadora, parcelasDaOperadora, fluxoDeCaixa, composicao,
+  totais, totaisAnteriores, ticketMedio, estoqueNoResultado, estoqueNoResultadoAnterior, aReceberEmAberto, aReceberSemCliente, concluidosSemPagamento, aReceberDaOperadora, parcelasDaOperadora, fluxoDeCaixa, composicao,
   branchId, branchName, slug,
   period, periodLabel, periodStart,
   customFrom, customTo,
@@ -614,10 +616,10 @@ export function FinancialHub({
     <KpiCardFull
       chave="a-receber"
       // A17 da 23ª: o número grande é o em aberto; o que vence no período vai na nota (sem comparação: é um saldo).
-      nota={<NotaDoVencimento noTopoOEmAberto valor={pendingIncome} proximo={emAberto.proximoAReceber} emAbertoTotal={aReceberEmAberto} concluidosSemPagamento={concluidosSemPagamento}
+      nota={<NotaDoVencimento noTopoOEmAberto valor={pendingIncome} proximo={emAberto.proximoAReceber} emAbertoTotal={aReceberEmAberto} semCliente={aReceberSemCliente} concluidosSemPagamento={concluidosSemPagamento}
         hrefDaBaixa={naAba ? undefined : daAba('a-receber')} podeDarBaixa={canPay}
         vencidas={vencidas} hrefDasVencidas={naAba && soAsVencidas ? undefined : daAba('a-receber', { aberto: 'vencidas' })} />}
-      dica={<DicaDoVencimento valor={pendingIncome} emAbertoTotal={aReceberEmAberto} concluidos={(concluidosSemPagamento?.n ?? 0) > 0} />}
+      dica={<DicaDoVencimento valor={pendingIncome} emAbertoTotal={aReceberEmAberto} concluidos={(concluidosSemPagamento?.n ?? 0) > 0} semCliente={(aReceberSemCliente ?? 0) > 0} />}
       label={ROTULO_DO_A_RECEBER_DA_CLIENTE}
       curr={aReceberEmAberto} prev={0}
       icon={<Clock size={13} style={{ color: 'var(--success)' }} />}

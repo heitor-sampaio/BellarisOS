@@ -32,3 +32,21 @@ export async function sinaisDasClientes(tenantId: string, clientIds: string[]): 
 export function sugereGanho(lead: { created_at: string }, sinais: SinaisDaCliente | undefined, aberta: boolean): boolean {
   return aberta && !!sinais?.compraEm && new Date(sinais.compraEm).getTime() >= new Date(lead.created_at).getTime()
 }
+
+/**
+ * O que o card diz da compra (D2 da 30ª; crm-inbox:OP-30, "o card da cliente
+ * que comprou mostra o valor VENDIDO"): aberto, a sugestão "Comprou X…" e o
+ * vendido; GANHO, só o vendido — o card fechado voltava ao preço do
+ * procedimento de interesse, porque o vendido dependia da sugestão. Perdido,
+ * nada: a compra não foi desta oportunidade (decisão do Claude, 25/11). Uma
+ * função só para as duas páginas do quadro.
+ */
+export function compraNoCard(
+  lead: { created_at: string }, sinais: SinaisDaCliente | undefined, desfecho: string | null | undefined,
+): { compra: string | null; compraValor: number | null } {
+  const depois = sugereGanho(lead, sinais, true)
+  return {
+    compra:      depois && desfecho === 'OPEN' ? sinais!.compra : null,
+    compraValor: depois && (desfecho === 'OPEN' || desfecho === 'WON') ? sinais!.compraValor : null,
+  }
+}

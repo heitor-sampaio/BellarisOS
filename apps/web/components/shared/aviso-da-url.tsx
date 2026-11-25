@@ -1,9 +1,20 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { AlertTriangle, X } from 'lucide-react'
 import { textoDoAviso } from '@/lib/aviso-da-url'
+
+/**
+ * D5 da 30ª: as unidades desativadas da rede (o endereço → o nome), lidas pelo
+ * layout no servidor. O `?desativada=<slug>` do redirecionamento só escolhe
+ * ENTRE elas: o nome nunca sai do texto da URL.
+ */
+const UnidadesDesativadas = createContext<Readonly<Record<string, string>>>({})
+
+export function UnidadesDesativadasProvider({ nomes, children }: { nomes: Readonly<Record<string, string>>; children: ReactNode }) {
+  return <UnidadesDesativadas.Provider value={nomes}>{children}</UnidadesDesativadas.Provider>
+}
 
 /**
  * Mostra o aviso que um redirecionamento do servidor deixou na URL
@@ -16,7 +27,10 @@ import { textoDoAviso } from '@/lib/aviso-da-url'
  * fechar — ou ir para outra tela.
  */
 export function AvisoDaUrl() {
-  const chave = useSearchParams().get('aviso')
+  const busca = useSearchParams()
+  const chave = busca.get('aviso')
+  const desativada = busca.get('desativada')
+  const desativadas = useContext(UnidadesDesativadas)
   const caminho = usePathname()
   const [aviso, setAviso] = useState<{ texto: string; caminho: string } | null>(null)
   // A chave nova (o redirecionamento que acabou de chegar) vira a faixa —
@@ -24,7 +38,7 @@ export function AvisoDaUrl() {
   const [chaveAnterior, setChaveAnterior] = useState<string | null>(null)
   if (chave !== chaveAnterior) {
     setChaveAnterior(chave)
-    const texto = textoDoAviso(chave)
+    const texto = textoDoAviso(chave, desativada && Object.hasOwn(desativadas, desativada) ? desativadas[desativada] : null)
     if (texto) setAviso({ texto, caminho })
   }
 
@@ -32,6 +46,7 @@ export function AvisoDaUrl() {
     if (!chave) return
     const url = new URL(window.location.href)
     url.searchParams.delete('aviso')
+    url.searchParams.delete('desativada')
     window.history.replaceState(null, '', url)
   }, [chave])
 

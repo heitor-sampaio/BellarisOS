@@ -736,6 +736,24 @@ export function fraseDaAuditoria(r: RegistroDaAuditoria, nomes: NomesDaAuditoria
     const resto = camposMudados(r.colunas.filter(c => c !== 'is_active'))
     return `${r.depois.is_active ? 'Reativou' : 'Desativou'} ${quem}${resto ? ` (e editou: ${resto})` : ''}`
   }
+  const situacao = fraseDaSituacao(r, nomes, cliente)
+  if (situacao) return situacao
+  // A4 da 30ª (tags:TG-08, "Não existe apagar tag"): a tag só sai do banco ao
+  // ser juntada a outra de mesmo nome (`renomear_tag`); era "Apagou a tag".
+  // O destino (`depois.juntada_em`) vem de `renomear_tag` desde 20261206600001;
+  // a gravação de antes não o tem, e a frase fica a de então.
+  if (r.tabela === 'tags' && r.operacao === 'apagou') {
+    const nome = nomeDoRegistro(r, nomes)
+    const destino = texto(r.depois.juntada_em)
+    return `Juntou a tag${nome ? ` ${nome}` : ''} ${destino ? `em ${destino}` : 'à que já existia com o mesmo nome'}`
+  }
+  // A6 da 30ª: o fundo de troco é informado ("Criou o fundo de troco" não dizia quanto).
+  if (r.tabela === 'fundos_de_troco' && (r.operacao === 'criou' || r.operacao === 'editou')) {
+    const valor = numero(r.depois.valor)
+    const antes = r.operacao === 'editou' ? numero(r.antes.valor) : null
+    if (r.operacao === 'editou' && valor === null) return 'Informou de novo o fundo de troco'
+    return `Informou o fundo de troco${valor !== null ? ` de ${brl(valor)}` : ''}${antes !== null && antes !== valor ? ` (era ${brl(antes)})` : ''}`
+  }
   const doMembro = fraseDoMembroEditado(r, nomes)
   if (doMembro) return doMembro
   if (r.tabela === 'agenda_bloqueios') {
@@ -833,6 +851,53 @@ export function fraseDaAuditoria(r: RegistroDaAuditoria, nomes: NomesDaAuditoria
     if (campos) frase += ` (${campos})`
   }
   return frase
+}
+
+/** As tabelas em que o ativo/inativo é uma coluna booleana (a do membro tem frase própria, a da rede é da plataforma). */
+const ATIVO_DA_TABELA: Record<string, string> = {
+  branches: 'is_active', procedures: 'is_active', products: 'is_active', rooms: 'is_active', forms: 'is_active',
+  document_templates: 'is_active', loyalty_rewards: 'is_active', service_packages: 'is_active', commission_rules: 'is_active',
+  crm_origens: 'ativo', crm_motivos_perda: 'ativo',
+}
+const LIGADA = (s: string | null) => s === 'ATIVA'
+
+/**
+ * A5 da 30ª (plataforma:AD-13, princípio 3): desativar, reativar, arquivar,
+ * ligar e desligar são o fato — "Desativou a unidade Jacarandá Manaus", "Ligou
+ * a automação Lembrete". Era "Editou a unidade (ativo)", "Editou a automação
+ * (situação)". O que mais mudou na mesma linha vai em "(e editou: …)". Nulo
+ * quando a linha não muda a situação.
+ */
+function fraseDaSituacao(r: RegistroDaAuditoria, nomes: NomesDaAuditoria, cliente: string | null): string | null {
+  if (r.operacao !== 'editou') return null
+  const resto = (coluna: string) => {
+    const outras = camposMudados(r.colunas.filter(c => c !== coluna), r.tabela)
+    return outras ? ` (e editou: ${outras})` : ''
+  }
+  const nome = nomeDoRegistro(r, nomes)
+  const coisa = COISA_DA_AUDITORIA[r.tabela] ?? 'o registro'
+  const ativo = ATIVO_DA_TABELA[r.tabela]
+  if (ativo && r.colunas.includes(ativo) && typeof r.depois[ativo] === 'boolean' && r.antes[ativo] !== r.depois[ativo]) {
+    const naUnidade = r.tabela === 'rooms' && r.branch_id && nomes.unidades[r.branch_id] ? ` em ${nomes.unidades[r.branch_id]}` : ''
+    return `${r.depois[ativo] ? 'Reativou' : 'Desativou'} ${coisa}${nome ? ` ${nome}` : ''}${naUnidade}${resto(ativo)}`
+  }
+  if (r.tabela === 'clients' && r.colunas.includes('is_active') && typeof r.depois.is_active === 'boolean'
+    && r.antes.is_active !== r.depois.is_active) {
+    return `${r.depois.is_active ? 'Reativou' : 'Arquivou'} a ficha${cliente ? ` de ${cliente}` : ' da cliente'}${resto('is_active')}`
+  }
+  if (r.tabela === 'tags' && r.colunas.includes('arquivada_em') && 'arquivada_em' in r.depois && !r.antes.arquivada_em !== !r.depois.arquivada_em) {
+    return `${r.depois.arquivada_em ? 'Arquivou' : 'Reativou'} a tag${nome ? ` ${nome}` : ''}${resto('arquivada_em')}`
+  }
+  if (r.tabela === 'automations' && r.colunas.includes('status')) {
+    const antes = LIGADA(texto(r.antes.status))
+    const depois = LIGADA(texto(r.depois.status))
+    if ('status' in r.depois && antes !== depois) return `${depois ? 'Ligou' : 'Desligou'} a automação${nome ? ` ${nome}` : ''}${resto('status')}`
+  }
+  if (r.tabela === 'loyalty_configs' && r.colunas.includes('enabled') && typeof r.depois.enabled === 'boolean'
+    && r.antes.enabled !== r.depois.enabled) {
+    return `${r.depois.enabled ? 'Ligou' : 'Desligou'} a fidelidade${resto('enabled')}`
+  }
+  return null
 }
 
 /** O endereço do que a linha fala, no portal de quem lê (lib/rotas). Um por linha, ou nenhum. */
@@ -1119,6 +1184,8 @@ interface Recebimento {
   linha: RegistroDaAuditoria; tipo: string | null; valor: number; forma: string | null; categoria: string | null; vezes?: number | null
   /** A20a da 25ª: o desconto da venda (`sale_discount`) e o pago com pontos ou voucher (`loyalty_discount`). */
   desconto?: number; pontos?: number
+  /** A6 da 30ª: a descrição (ou, sem ela, a categoria) da despesa, gravada ou lida agora. */
+  descricao?: string | null
 }
 
 /**
@@ -1154,6 +1221,7 @@ function recebimentosDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: N
       // A38 da 22ª: as vezes do crédito ("Crédito 8x") — a auditoria não as guarda; vêm do lançamento lido.
       vezes: numero(estado.cartao_vezes) ?? lido?.vezes ?? null,
       desconto: numero(estado.sale_discount) ?? 0, pontos: numero(estado.loyalty_discount) ?? 0,
+      descricao: texto(estado.description) ?? lido?.descricao ?? categoria ?? lido?.categoria ?? null,
     })
   }
   return recebidos
@@ -1215,13 +1283,19 @@ function abatimentosDasEntradas(rs: readonly Recebimento[], voucher: VoucherDaGr
   const desconto = soma(x => x.desconto ?? 0)
   // `loyalty_discount` é o voucher MAIS os pontos pagos à parte (A7 da 28ª: a Eloá
   // pagou com o Voucher R$ 30 e 100 pontos, e os pontos sumiam). Com o valor do
-  // voucher gravado, os pontos em reais são a diferença. Sem o valor em reais
-  // (as gravações de antes do gatilho guardá-lo), os pontos debitados na gravação.
+  // voucher em reais, os pontos em reais são a diferença. Sem ele (o voucher de
+  // percentual, de procedimento ou de produto, e as gravações de antes do gatilho
+  // guardá-lo), os pontos debitados na gravação. D7 da 30ª (AD-16, princípio 3):
+  // com voucher, os pontos só entram quando a gravação DEBITOU pontos — o de 15%
+  // (`discount_value` = 15, o percentual) virava "R$ 9,00 em pontos" que ninguém usou.
   const pagoEmPontos = soma(x => x.pontos ?? 0)
-  const semOsReais = voucher ? voucher.valor === null : pagoEmPontos === 0
-  const pontosEmReais = voucher ? (voucher.valor === null ? 0 : Math.round((pagoEmPontos - voucher.valor) * 100) / 100) : pagoEmPontos
-  const pontos = pontosEmReais > 0 ? `${brl(pontosEmReais)} em pontos`
-    : semOsReais && pontosDebitados > 0 ? `${pontosDebitados.toLocaleString('pt-BR')} pontos`
+  const houvePontos = voucher ? pontosDebitados > 0 : pagoEmPontos > 0 || pontosDebitados > 0
+  const pontosEmReais = !houvePontos ? 0
+    : voucher ? (voucher.valor === null ? 0 : Math.round((pagoEmPontos - voucher.valor) * 100) / 100)
+    : pagoEmPontos
+  const pontos = !houvePontos ? null
+    : pontosEmReais > 0 ? `${brl(pontosEmReais)} em pontos`
+    : pontosDebitados > 0 ? `${pontosDebitados.toLocaleString('pt-BR')} pontos`
     : null
   const partes = [
     ...(desconto > 0 ? [`desconto de ${brl(desconto)}`] : []),
@@ -1281,9 +1355,14 @@ function voucherDaGravacao(linhas: readonly RegistroDaAuditoria[]): VoucherDaGra
     && (l.colunas.includes('used_at') || texto(l.depois.status) === 'USADO'))
   const nome = usado ? texto(usado.depois.name) ?? texto(usado.antes.name) : null
   if (!usado || !nome) return null
+  // D7 da 30ª: o `discount_value` só é REAIS no voucher de valor fixo (no de
+  // percentual é o percentual). O tipo vai no rótulo desde a migration
+  // `20261206500001`; sem ele (as gravações de antes), o valor fica como estava,
+  // e os pontos só entram com o débito de pontos na gravação.
+  const tipo = texto(usado.depois.type) ?? texto(usado.antes.type)
   return {
     texto: /^voucher\b/i.test(nome) ? `o ${nome}` : `o voucher ${nome}`,
-    valor: numero(usado.depois.discount_value) ?? numero(usado.antes.discount_value),
+    valor: tipo && tipo !== 'DESCONTO_VALOR' ? null : numero(usado.depois.discount_value) ?? numero(usado.antes.discount_value),
   }
 }
 
@@ -1391,9 +1470,14 @@ function fatoDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAu
       const total = brl(saidasPagas.reduce((t, x) => t + x.valor, 0))
       return { principal: saidasPagas[0]!.linha, frase: `Pagou a comissão${quem ? ` de ${quem}` : ''} (${total}${forma ? `, ${forma}` : ''})` }
     }
+    // A6 da 30ª (princípio 3): a despesa paga diz qual — pela descrição que a
+    // pessoa escreveu (lida agora: a baixa não a grava), ou a categoria.
+    const total = brl(saidasPagas.reduce((t, x) => t + x.valor, 0))
+    const qual = saidasPagas.length === 1 ? saidasPagas[0]!.descricao : null
+    if (qual) return { principal: saidasPagas[0]!.linha, frase: `Pagou a despesa ${qual} (${total}${forma ? `, ${forma}` : ''})` }
     return {
       principal: saidasPagas[0]!.linha,
-      frase: `Pagou ${brl(saidasPagas.reduce((t, x) => t + x.valor, 0))}${forma ? ` (${forma})` : ''}`,
+      frase: `Pagou ${total}${forma ? ` (${forma})` : ''}`,
     }
   }
   return null
@@ -1425,6 +1509,18 @@ export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: Nome
       && texto(so.depois.category) !== 'Estorno'
     const baixa = so.tabela === 'financial_transactions' && (so.operacao === 'editou' || recebidaAoCriar) ? fatoDaGravacao(linhas, nomes) : null
     return baixa?.frase ?? fraseDaAuditoria(so, nomes)
+  }
+
+  // A4 da 30ª (tags:TG-08): juntar a tag a outra troca a tag nas fichas, nos
+  // contatos e nas conversas que a tinham, na mesma gravação; o fato é a junção.
+  const juntada = linhas.find(l => l.tabela === 'tags' && l.operacao === 'apagou')
+  if (juntada && linhas.every(l => l === juntada || (l.operacao === 'editou' && ['clients', 'contacts', 'conversations'].includes(l.tabela)))) {
+    const conta = (t: string, um: string, varios: string) => {
+      const n = linhas.filter(l => l.tabela === t).length
+      return n ? [`${n} ${n === 1 ? um : varios}`] : []
+    }
+    const onde = emLista([...conta('clients', 'ficha', 'fichas'), ...conta('contacts', 'contato', 'contatos'), ...conta('conversations', 'conversa', 'conversas')])
+    return `${fraseDaAuditoria(juntada, nomes)}${onde ? ` (${onde})` : ''}`
   }
 
   // A semente da rede nova: uma gravação de dezenas de registros.
@@ -1542,7 +1638,8 @@ export function gravacoesDaUnidade(
   registros: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria, unidade: string,
 ): RegistroDaAuditoria[] {
   return agruparAuditoria(registros).filter(linhas => {
-    const principal = principalDaGravacao(linhas, nomes)
+    // D13 da 30ª: o registro clínico sozinho leva a unidade do atendimento dele.
+    const principal = principalDaGravacao(comAUnidadeDaGravacao(linhas, nomes), nomes)
     // A ficha é da REDE (auditoria das regras, 18/11; H16): a gravação dela não
     // tem unidade, e o filtro de unidade não a esconde.
     return principal.branch_id === unidade || ehDaFicha(principal)
@@ -1565,10 +1662,16 @@ const CLINICO_SEM_UNIDADE: ReadonlySet<string> = new Set([
  * leva a da gravação; o resto sem unidade (a oportunidade) segue da rede.
  */
 function comAUnidadeDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria): RegistroDaAuditoria[] {
-  if (linhas.length === 1 || !linhas.some(l => !l.branch_id && CLINICO_SEM_UNIDADE.has(l.tabela))) return [...linhas]
-  const unidade = principalDaGravacao(linhas, nomes).branch_id
-  if (!unidade) return [...linhas]
-  return linhas.map(l => (!l.branch_id && CLINICO_SEM_UNIDADE.has(l.tabela) ? { ...l, branch_id: unidade } : l))
+  if (!linhas.some(l => !l.branch_id && CLINICO_SEM_UNIDADE.has(l.tabela))) return [...linhas]
+  // D13 da 30ª (AD-25): gravado SOZINHO (a anotação, a aplicação), o registro
+  // clínico não tem outra linha que dê a unidade — vale a do atendimento dele (ou
+  // a do mapa), lida agora (`nomes.unidadesDosClinicos`). Era "Da rede".
+  const daGravacao = linhas.length === 1 ? null : principalDaGravacao(linhas, nomes).branch_id
+  return linhas.map(l => {
+    if (l.branch_id || !CLINICO_SEM_UNIDADE.has(l.tabela)) return l
+    const unidade = daGravacao ?? (l.registro_id ? nomes.unidadesDosClinicos?.[l.registro_id] : undefined) ?? null
+    return unidade ? { ...l, branch_id: unidade } : l
+  })
 }
 
 /**
@@ -1583,7 +1686,7 @@ export function linhasDoCsvDaAuditoria(
     const gravacao = fraseDoGrupo(linhas, nomes)
     // A7 da 21ª: a gravação de um registro só diz no "O quê" a frase da tela, e a
     // "Gravação" fica vazia; na de vários, a linha que já é a frase dela não a repete.
-    if (linhas.length === 1) return [{ ...linhaDaAuditoria(linhas[0]!, nomes, '/admin/auditoria', null, fuso), oQue: gravacao, gravacao: '' }]
+    if (linhas.length === 1) return [{ ...linhaDaAuditoria(comAUnidadeDaGravacao(linhas, nomes)[0]!, nomes, '/admin/auditoria', null, fuso), oQue: gravacao, gravacao: '' }]
     return comAUnidadeDaGravacao(linhas, nomes).map(l => {
       const linha = linhaDaAuditoria(l, nomes, '/admin/auditoria', null, fuso)
       return { ...linha, gravacao: linha.oQue === gravacao ? '' : gravacao }

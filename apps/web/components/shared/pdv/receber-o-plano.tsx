@@ -18,7 +18,11 @@ const CheckoutWizard = dynamic(() => import('@/components/branch/checkout-wizard
  * ("primeiro colhe assinatura, depois paga") e só então se recebe. As sessões
  * não se agendam aqui: são do plano, a qualquer momento depois do aceite.
  */
-export function ReceberOPlano({ planoId, slug, aoReceber }: { planoId: string; slug: string; aoReceber: () => void }) {
+export function ReceberOPlano({ planoId, slug, aoReceber, cadastro = null }: {
+  planoId: string; slug: string; aoReceber: () => void
+  /** A10 da 30ª: quem tem os Clientes em Gerenciar completa o cadastro; os outros leem quem completa. */
+  cadastro?: { podeCompletar: boolean; quemCompleta: string[] | null } | null
+}) {
   const [plano, setPlano] = useState<CheckoutPlan | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [abrindo, abrir] = useTransition()
@@ -49,6 +53,7 @@ export function ReceberOPlano({ planoId, slug, aoReceber }: { planoId: string; s
               <button type="button" onClick={() => setPlano(null)} className="btn-ghost" style={{ padding: '6px 10px' }}>Fechar</button>
             </div>
             <CheckoutWizard plan={plano} slug={slug} podeAgendar={false}
+              podeCompletarCadastro={cadastro?.podeCompletar ?? false} quemCompletaOCadastro={cadastro?.quemCompleta ?? null}
               onDone={() => { setPlano(null); aoReceber() }} />
           </div>
         </JanelaModal>

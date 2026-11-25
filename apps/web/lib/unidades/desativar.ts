@@ -4,6 +4,7 @@ import { ler } from '@/lib/db'
 import { getValorEmEstoque } from '@/lib/metrics/unidade'
 import { getAReceberEmAberto } from '@/lib/metrics/queries'
 import { getTotalDosAtendimentosAReceber } from '@/lib/metrics/a-receber'
+import { getAReceberDaOperadora } from '@/lib/metrics/operadora'
 import { resumoDasComissoes } from '@/lib/comissoes/leitura'
 import { totaisDoResumoDasComissoes } from '@/lib/metrics/comissoes'
 import type { OQueFicaNaUnidade } from '@/lib/unidades/o-que-fica'
@@ -27,7 +28,7 @@ const ABERTOS = ['SCHEDULED', 'CONFIRMED']
  */
 export async function oQueFicaNaUnidade(admin: Admin, tenantId: string, branchId: string): Promise<OQueFicaNaUnidade> {
   const agora = new Date()
-  const [fixos, primeiro, contagem, itens, valor, aReceber, semPagamento, comissoes] = await Promise.all([
+  const [fixos, primeiro, contagem, itens, valor, aReceber, semPagamento, comissoes, daOperadora] = await Promise.all([
     ler(admin.from('users').select('id, name')
       .eq('tenant_id', tenantId).eq('branch_id', branchId).eq('is_active', true).order('name'), 'carregar a equipe fixa da unidade') as
       Promise<{ id: string; name: string }[] | null>,
@@ -42,6 +43,8 @@ export async function oQueFicaNaUnidade(admin: Admin, tenantId: string, branchId
     getAReceberEmAberto({ tenantId, branchIds: [branchId] }),
     getTotalDosAtendimentosAReceber({ tenantId, unidadeId: branchId }),
     resumoDasComissoes({ tenantId, branchIds: [branchId], inicio: new Date(0), fim: agora, profissionalId: null }),
+    // A15 da 30ª (UN-10): os cartões a cair — o "em aberto" da operadora do Financeiro (de qualquer vencimento).
+    getAReceberDaOperadora({ tenantId, branchIds: [branchId], from: agora, to: agora }),
   ])
   if (contagem.error) throw new Error(`contar os agendamentos da unidade: ${contagem.error.message}`)
   if (itens.error) throw new Error(`contar o estoque da unidade: ${itens.error.message}`)
@@ -54,6 +57,7 @@ export async function oQueFicaNaUnidade(admin: Admin, tenantId: string, branchId
     diaDoPrimeiro,
     estoque: { itens: itens.count ?? 0, valor },
     aReceber: aReceber.total,
+    aReceberDaOperadora: daOperadora.total.emAberto,
     atendimentosSemPagamento: semPagamento,
     comissaoAPagar: totaisDoResumoDasComissoes(comissoes).aPagar,
   }

@@ -13,6 +13,7 @@ import { FinancialHub } from '@/components/branch/financial-hub'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { dayKeyTZ } from '@/lib/datetime'
 import { nomeDoCsvDosLancamentos } from '@/lib/financeiro/csv-dos-lancamentos'
+import { getAReceberSemCliente } from '@/lib/metrics/a-receber-sem-cliente'
 import { resolvePeriod, getCommissionsDetail, getCore, getComposicaoFinanceira, getSeries, getEmAberto, getTicketMedio, getResultadoDoEstoque, getAReceberEmAberto, getAPagarEmAberto, getTaxasDoPeriodo } from '@/lib/metrics'
 import { extrasDoCsv, type LancamentoParaOCsv } from '@/lib/financeiro/extras-do-csv'
 import { granularidadeDoPeriodo } from '@/lib/financeiro/barras'
@@ -109,7 +110,7 @@ export default async function FinancialPage({
   // parcela criada num mês e paga no outro — e o checkout de plano cria
   // exatamente isso.
   const argsDoNucleo = { tenantId: ctx.tenantId!, branchIds: [branch.id as string] }
-  const [totais, totaisAnteriores, composicao, serie, emAberto, emAbertoAnterior, ticket, estoque, estoqueAnterior, aReceberEmAberto, operadora, parcelasDaOperadora, concluidosSemPagamento] = await Promise.all([
+  const [totais, totaisAnteriores, composicao, serie, emAberto, emAbertoAnterior, ticket, estoque, estoqueAnterior, aReceberEmAberto, aReceberSemCliente, operadora, parcelasDaOperadora, concluidosSemPagamento] = await Promise.all([
     getCore({ ...argsDoNucleo, from: start,     to: end }),
     getCore({ ...argsDoNucleo, from: prevStart, to: prevEnd }),
     // Formas de pagamento e categorias: também do banco (a tela somava a lista).
@@ -129,6 +130,8 @@ export default async function FinancialPage({
     getResultadoDoEstoque({ ...argsDoNucleo, from: prevStart, to: prevEnd }),
     // D-14: todo o a receber em aberto, de qualquer vencimento.
     getAReceberEmAberto(argsDoNucleo),
+    // A17 da 30ª: a parte sem cliente (a sublocação), que a nota do cartão diz.
+    getAReceberSemCliente(argsDoNucleo),
     // F2c: o cartão em N vezes que a OPERADORA ainda deposita, mês a mês, pelo
     // vencimento — separado do a receber da cliente (ela já pagou tudo).
     getAReceberDaOperadora({ ...argsDoNucleo, from: start, to: fimDoPeriodo }),
@@ -250,6 +253,7 @@ export default async function FinancialPage({
         estoqueNoResultado={estoque.total}
         estoqueNoResultadoAnterior={estoqueAnterior.total}
         aReceberEmAberto={aReceberEmAberto.total}
+        aReceberSemCliente={aReceberSemCliente.total}
         concluidosSemPagamento={concluidosSemPagamento}
         aReceberDaOperadora={operadora.total}
         parcelasDaOperadora={parcelasDaOperadora}

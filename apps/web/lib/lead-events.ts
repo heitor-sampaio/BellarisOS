@@ -119,6 +119,14 @@ export const CAMPOS_LEAD: Record<string, string> = {
   // A tag é da PESSOA (crm-inbox.md §9.2.1): o card mostra e edita as dela.
   tags:         'Tags da pessoa',
   procedures:   'Procedimentos de interesse',
+  // D1 da 30ª: o valor estimado se edita na janela, e a troca fica na linha do tempo.
+  value:        'Valor estimado',
+}
+
+/** O valor estimado como a linha do tempo o lê ("R$ 1.600,00"); nulo, vazio. */
+export function valorNoHistorico(v: number | string | null | undefined): string | null {
+  if (v == null || v === '' || !Number.isFinite(Number(v))) return null
+  return Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
 /** Estado do lead antes de uma edição, para comparar depois. */
@@ -180,7 +188,7 @@ export async function estadoAtualDoLead(
 
   const { data, error } = await admin
     .from('leads')
-    .select(`crm_stage_id, name, phone, email, social_media, source, notes, client_id, ${EMBED_TAGS_DA_PESSOA}, lead_procedures(procedure_id, procedures(name))`)
+    .select(`crm_stage_id, name, phone, email, social_media, source, notes, client_id, value, ${EMBED_TAGS_DA_PESSOA}, lead_procedures(procedure_id, procedures(name))`)
     .eq('id', leadId)
     .eq('tenant_id', tenantId)
     .maybeSingle()
@@ -193,6 +201,7 @@ export async function estadoAtualDoLead(
     name: string | null; phone: string | null; email: string | null
     social_media: string | null; source: string | null; notes: string | null
     client_id: string | null
+    value: number | string | null
     pessoa_ficha: { tags: string[] | null } | null
     pessoa_contato: { tags: string[] | null } | null
     // O embed aninhado vem como objeto no runtime e como lista no tipo gerado.
@@ -210,6 +219,7 @@ export async function estadoAtualDoLead(
       social_media: l.social_media,
       source:       l.source,
       notes:        l.notes,
+      value:        valorNoHistorico(l.value),
       tags:         listaLegivel(tags),
       // Nome, não id: "Botox → Botox, Preenchimento" se lê; uma lista de UUID não.
       procedures:   listaLegivel((l.lead_procedures ?? []).map(p => {

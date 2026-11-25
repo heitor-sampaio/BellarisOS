@@ -186,9 +186,9 @@ Este é o catálogo das regras de Vendas e financeiro que valem HOJE: o PDV e as
 
 ### O crediário
 
-**CR-01.** No Crediário, a entrada (se houver) pede a forma dela ("Forma da entrada *"); a forma, as vezes e a bandeira escolhidas na venda são as da ENTRADA. Sem entrada, nada entra agora e nenhuma forma é pedida. As parcelas são pagas à rede e não são cartão: nascem sem forma, e a forma de cada uma se pede quando o dinheiro entra (a parcela recebida no PDV ou a baixa no Financeiro). O A receber não tem forma nenhuma. A venda nunca fica sem forma: o contrato diz "no crediário", "no crediário, com a entrada no Pix" ou "a receber", e a ficha e o app mostram a parcela como "Crediário".
-- Fonte: o Heitor, 13/11: "sempre tem que ter forma de pagamento, o crediario é uma forma de pagamento, não existe pagamento sem forma de pagamento"
-- Onde: `docs/regras/vendas-financeiro.md:216-225`, `:2569`, `:3208`; `docs/revisao.md:1982`
+**CR-01.** No Crediário, a entrada (se houver) pede a forma dela ("Forma da entrada *"); a forma, as vezes e a bandeira escolhidas na venda são as da ENTRADA. Sem entrada, nada entra agora e nenhuma forma é pedida. As parcelas são pagas à rede e não são cartão: nascem sem forma, e a forma de cada uma se pede quando o dinheiro entra (a parcela recebida no PDV ou a baixa no Financeiro). O A receber não tem forma nenhuma. A venda nunca fica sem forma: o contrato diz "no crediário", "no crediário, com a entrada no Pix" ou "a receber", e a ficha e o app mostram a parcela como "Crediário". O A receber deixa a comanda INTEIRA a receber e não se junta a outra forma (FP-03): quem recebe uma parte agora e deixa o resto usa o Crediário com entrada (a entrada agora, o resto nas parcelas, CR-05).
+- Fonte: o Heitor, 13/11: "sempre tem que ter forma de pagamento, o crediario é uma forma de pagamento, não existe pagamento sem forma de pagamento"; o A receber inteiro e a parte pelo Crediário com entrada: decisão do Claude, 25/11 (o Heitor revisa), pela FP-03 e pela CR-05 (B13 da 30ª simulação; dividir a comanda entre pago e A receber sem o crediário é a sugestão 65)
+- Onde: `docs/regras/vendas-financeiro.md:216-225`, `:536-537`, `:2569`, `:3208`; `docs/revisao.md:1982`
 - Antes: KA-17, KF-02
 
 **CR-02.** O máximo de parcelas do crediário é configuração da rede (padrão 12) e vale igual em todo caminho que vende no crediário (a venda no PDV, o pagamento do contrato, o pagamento do plano): a tela oferece até o limite e o servidor recusa acima dele. O limite é o número que a rede digita, de 1 para cima: acima de 48 a tela avisa ("Acima do comum (…). Confira: o valor vale como está.") e o valor vale; só o que o registro não guarda (acima de 32.767) é recusado. As parcelas geradas são todas as vendidas, nunca cortadas em silêncio. A despesa não muda: parcelada de 2 a 48, recorrente de 2 a 60.
@@ -240,9 +240,10 @@ Este é o catálogo das regras de Vendas e financeiro que valem HOJE: o PDV e as
 - Onde: `docs/regras/vendas-financeiro.md:1929`; `docs/revisao.md:1992`
 - Antes: KD-64
 
-**CR-11.** Quem tem o Financeiro em Gerenciar, com a unidade ao alcance, pode "Remarcar vencimento" numa linha em aberto (o botão com o nome escrito, na lista dos dois Financeiros e na parcela em aberto da aba Financeiro da ficha): informa o novo dia e, se quiser, um motivo. O histórico do lançamento guarda a remarcação, e a linha mostra "Vencimento remarcado: era 05/11 (Lúcia, em 07/11 — combinado com a cliente)". O que já foi pago ou estornado não se remarca.
-- Fonte: decisão do Claude
-- Onde: `docs/regras/vendas-financeiro.md:1935`, `:2056`, `:3247`
+**CR-11.** Quem tem o Financeiro em Gerenciar, com a unidade ao alcance, pode "Remarcar vencimento" numa linha em aberto (o botão com o nome escrito, na lista dos dois Financeiros e na parcela em aberto da aba Financeiro da ficha): informa o novo dia e, se quiser, um motivo. O histórico do lançamento guarda a remarcação, e a linha mostra "Vencimento remarcado: era 05/11 (Lúcia, em 07/11 — combinado com a cliente)". O que já foi pago ou estornado não se remarca. O novo dia pode ser no passado: não se recusa, e a linha passa na hora a "Vencida em …" (CR-09), como o agendamento no passado (AG-06 do Atendimento); o que pode haver junto do campo é um aviso ("essa data já passou: a parcela fica vencida"), nunca a recusa.
+- Fonte: decisão do Claude; o dia no passado: decisão do Claude, 25/11 (o Heitor revisa), pelo princípio 2: "Não recusar o valor que a rede escolheu (taxa, percentual, preço, prazo): no máximo, avisar." (C06 da 30ª simulação)
+- Onde: `docs/regras/vendas-financeiro.md:1935`, `:2031-2040`, `:2056`, `:3247`; `apps/web/actions/financial.ts` (`remarcarVencimento`: só confere o formato do dia)
+- Estado: o dia no passado já se aceita; o aviso junto do campo ainda não existe (`apps/web/components/shared/remarcar-vencimento.tsx`).
 - Antes: KD-65, KE-21, KF-87
 
 ## O dinheiro do plano (DP)

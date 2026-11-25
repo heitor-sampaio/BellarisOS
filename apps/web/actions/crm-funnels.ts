@@ -168,6 +168,40 @@ export async function setDefaultFunnel(funnelId: string, slug: string): Promise<
   }
 }
 
+/**
+ * A3 da 30ª (decisão do Claude 4, 25/11): quantas oportunidades o funil tem,
+ * e quantas abertas — a tela pergunta antes de arquivar. Só lê; as travas são
+ * as do arquivar.
+ */
+export async function oportunidadesNoFunil(funnelId: string): Promise<{ total: number; abertas: number } | { error: string }> {
+  try {
+    const ctx = await getTenantContext()
+    assertRecurso(ctx, 'oportunidades')
+    assertPermission(ctx, 'settings', 'MANAGE')
+    assertPermission(ctx, 'crm', 'VIEW')
+    const daRede = recusaDaConfigDaRede(ctx)
+    if (daRede) return { error: daRede }
+
+    const admin = createAdminClient()
+    // As etapas do funil, da rede da sessão: o id de outra rede não acha nada.
+    const etapas = await ler(admin.from('crm_stages').select('id, outcome')
+      .eq('tenant_id', ctx.tenantId!).eq('funnel_id', funnelId), 'ler as etapas do funil') as { id: string; outcome: string | null }[] | null
+    const todas = (etapas ?? []).map(e => e.id)
+    const abertas = (etapas ?? []).filter(e => e.outcome === 'OPEN').map(e => e.id)
+    const contar = async (ids: string[]) => {
+      if (!ids.length) return 0
+      const { count, error } = await admin.from('leads').select('id', { count: 'exact', head: true })
+        .eq('tenant_id', ctx.tenantId!).in('crm_stage_id', ids)
+      if (error) throw new Error(`Erro ao contar as oportunidades: ${error.message}`)
+      return count ?? 0
+    }
+    const [total, nasAbertas] = await Promise.all([contar(todas), contar(abertas)])
+    return { total, abertas: nasAbertas }
+  } catch (e) {
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
+  }
+}
+
 export async function setFunnelArchived(
   funnelId: string, archived: boolean, slug: string,
 ): Promise<Resultado> {

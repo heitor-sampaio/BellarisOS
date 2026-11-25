@@ -540,7 +540,10 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   uma lista do que FICA): o nome e o clínico — nada do cadastro (telefone, documento, nascimento,
   endereço, tags, notas), dos números do topo, do financeiro, das outras abas nem das ações. O
   caminho até ela é a busca universal (`TAMBEM_ABRE` em `lib/busca/tipos.ts`), que, sem o Clientes,
-  mostra só o nome (`semOCadastro`). Prova: `tests/ficha-so-do-prontuario.test.ts`,
+  mostra só o nome (`semOCadastro`). **O cartão de cada atendimento não diz "Não informado"** no
+  cadastro que ela não recebe (D6 da 30ª; princípio 3): com `semOCadastro`, o `AttendanceRecordCard`
+  mostra só o nome, e as linhas CPF, Nascimento e Telefone somem; "Não informado" fica para o nulo de
+  verdade. Prova: `tests/ficha-so-do-prontuario.test.ts`, `tests/cartao-do-atendimento-identidade.test.ts`,
   `e2e/clinico-so-com-prontuario.spec.ts`.
 - **A ficha monta só a aba aberta** (C77, F65): as duas fichas (`app/[slug]/clients/[id]` e
   `app/admin/clients/[id]`) leem o `?aba=` (`abaDaFicha`, `lib/clientes/aba-da-ficha.ts` — as chaves da
@@ -1871,6 +1874,52 @@ o contato junto.
 - **LGPD: o nascimento sai como dia** (D5): a exportação grava `AAAA-MM-DD`
   (`diaSemHora`, `lib/lgpd/export.ts`), sem passar por `Date` (a meia-noite
   UTC virava a véspera).
+- **A ficha diz a hora no relógio da unidade do agendamento** (D3 da 30ª,
+  FU-02): os próximos agendamentos, o histórico de procedimentos, a última
+  falta e o aviso do arquivar saem no fuso da unidade de cada um e, quando
+  não é o da tela, dizem qual ("15:00 (horário de Fernando de Noronha)" —
+  `quandoNaFicha`/`diaNaFicha`, `lib/clientes/hora-na-ficha.ts`; a página
+  manda o `fuso` de cada agendamento).
+
+## Correções de 25/11 no card e nos funis (decisões do Claude)
+
+- **O valor do card** (D1 da 30ª; OP-01, IM-07; princípios 3 e 4): o
+  vendido da cliente ligada; senão o valor ESTIMADO da oportunidade
+  (`leads.value` — a importação o traz, e a janela tem o campo "Valor
+  estimado", na criação e na edição); senão a soma dos preços de tabela dos
+  procedimentos de interesse. A linha diz qual é ("R$ 1.600,00 estimado",
+  "R$ 2.600,00 de tabela", "R$ 510,00 vendido"; `valorDoCard`,
+  `lib/crm/valor-do-card.ts`, `[data-valor-do-card]`). O valor ilegível ou
+  negativo é recusado com o motivo (`lerValorEstimado`) — virava nulo e
+  apagava o que estava —, e a troca entra na linha do tempo ("Valor
+  estimado"). Com o CRM em Ver, o campo aparece desligado, como os outros.
+- **O card GANHO segue dizendo o vendido** (D2 da 30ª; OP-30): a sugestão
+  "Comprou X…" é só do card aberto, mas o vendido vale também no ganho
+  (`compraNoCard`, `lib/crm/sinais-do-card.ts`, a mesma nas duas páginas do
+  quadro). No perdido, nada: a compra não foi daquela oportunidade.
+- **A linha do tempo diz o gravado** (D11 da 30ª; OP-09, OP-26): o
+  responsável de quem para quem ("Sem responsável" no vazio) e, no movimento
+  à etapa perdida, o motivo com a observação (`trocaDoResponsavel`,
+  `motivoDaPerdaNoEvento`, `lib/crm/linha-do-tempo.ts`).
+- **"Ir para a conversa" sem WhatsApp** (D12 da 30ª; CLAUDE.md §11, 18/11):
+  a quem não configura, "Peça à Admin da rede para conectar o WhatsApp"; a
+  quem configura (Configurações em Gerenciar e a Admin da rede), o caminho
+  (`semWhatsappParaConversar`, `lib/crm/conversa-da-oportunidade.ts`).
+- **"Cadastrar como cliente" mostra as tags que vêm** (A1 da 30ª; TG-10,
+  princípio 3): as tags da pessoa do card abrem MARCADAS e fixas no
+  formulário (`prefill.tags`, `[data-tag-que-vem]`): elas chegam à ficha ao
+  ligar o contato, então desmarcá-las não as tiraria. O do painel do inbox
+  faz o mesmo com as tags do contato, e o formulário diz "vêm do contato"
+  (`prefill.tagsDe`; decisão do Claude, 25/11). O campo de valor do painel se
+  chama "Valor estimado", o nome do card (princípio 3).
+- **Com o CRM em Ver, o card não oferece editar as tags** (A2 da 30ª;
+  CLAUDE.md §14): só os selos, sem o "x" nem o "Editar tags".
+- **Arquivar funil com oportunidades pergunta antes** (A3 da 30ª; decisão do
+  Claude 4, OP-15 por analogia, princípio 7): "Arquivar o funil “X”? As N
+  oportunidades dele (M abertas) saem do quadro e dos relatórios. Reativar o
+  funil as traz de volta.", com "Arquivar mesmo assim" e "Cancelar"
+  (`perguntaAoArquivarFunil`, `lib/crm/arquivar-funil.ts`;
+  `oportunidadesNoFunil`). Não recusa; o funil vazio arquiva direto.
 
 ## O que nunca fazer aqui
 

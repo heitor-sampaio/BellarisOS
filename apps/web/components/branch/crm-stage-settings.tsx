@@ -17,8 +17,9 @@ import {
 import { moverOportunidadesDaEtapa, automacoesDoMovimento } from '@/actions/leads'
 import { textoDoMoverDaEtapa, perguntaDasAutomacoes, resultadoDoMover } from '@/lib/crm/mover-da-etapa'
 import {
-  createFunnel, renameFunnel, setDefaultFunnel, setFunnelArchived, deleteFunnel, reorderFunnels,
+  createFunnel, renameFunnel, setDefaultFunnel, setFunnelArchived, deleteFunnel, reorderFunnels, oportunidadesNoFunil,
 } from '@/actions/crm-funnels'
+import { perguntaAoArquivarFunil } from '@/lib/crm/arquivar-funil'
 import { Dica } from '@/components/shared/dica'
 import { MotivosDePerdaConfig, type MotivoConfiguravel } from './motivos-de-perda-config'
 import { OrigensDoLeadConfig, type OrigemConfiguravel } from './origens-do-lead-config'
@@ -328,6 +329,20 @@ function FunnelRow({
   const [, start] = useTransition()
   const router = useRouter()
   const arquivado = funnel.archived_at !== null
+  // A3 da 30ª (decisão do Claude 4, 25/11): arquivar com oportunidades pergunta antes.
+  const [perguntaDoArquivar, setPerguntaDoArquivar] = useState<string | null>(null)
+  const [contando, setContando] = useState(false)
+
+  async function arquivar() {
+    onError(null)
+    setContando(true)
+    const n = await oportunidadesNoFunil(funnel.id)
+    setContando(false)
+    if ('error' in n) { onError(n.error); return }
+    const pergunta = perguntaAoArquivarFunil(funnel.name, n)
+    if (pergunta) { setPerguntaDoArquivar(pergunta); return }
+    await rodar(() => setFunnelArchived(funnel.id, true, slug))
+  }
 
   // O funil mudou no servidor: o nome acompanha (ajustado durante o render).
   const versaoDoFunil = `${funnel.id}|${funnel.name}`
@@ -361,6 +376,7 @@ function FunnelRow({
   }
 
   return (
+    <>
     <div
       draggable={!arquivado}
       onDragStart={e => onDragStart(e, funnel.id)}
@@ -427,7 +443,9 @@ function FunnelRow({
         title={arquivado ? 'Reativar funil' : 'Arquivar funil'}
         onClick={e => {
           e.stopPropagation()
-          rodar(() => setFunnelArchived(funnel.id, !arquivado, slug))
+          if (contando) return
+          if (arquivado) rodar(() => setFunnelArchived(funnel.id, false, slug))
+          else void arquivar()
         }}
       >
         {arquivado ? <ArchiveRestore size={12} /> : <Archive size={12} />}
@@ -440,6 +458,21 @@ function FunnelRow({
         <Trash2 size={12} />
       </IconBtn>
     </div>
+    {perguntaDoArquivar && (
+      <div data-pergunta-ao-arquivar-funil role="alert" style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '6px 10px 2px' }}>
+        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 700, margin: 0 }}>{perguntaDoArquivar}</p>
+        <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button type="button" className="btn-secondary" style={{ fontSize: 'var(--text-xs-sz)' }}
+            onClick={() => { setPerguntaDoArquivar(null); void rodar(() => setFunnelArchived(funnel.id, true, slug)) }}>
+            Arquivar mesmo assim
+          </button>
+          <button type="button" className="btn-ghost" style={{ fontSize: 'var(--text-xs-sz)' }} onClick={() => setPerguntaDoArquivar(null)}>
+            Cancelar
+          </button>
+        </span>
+      </div>
+    )}
+    </>
   )
 }
 

@@ -58,11 +58,17 @@ Os limites viraram aviso. Os valores do "comum" acima dos quais se avisa são de
 1. **"Completar a ficha" ou "Completar o cadastro"?** Hoje os dois nomes convivem no checkout. O catálogo diz "o
    cadastro", e os testes exigem "a ficha": `tests/atritos-da-15.test.ts:250` e
    `e2e/documentos-completar-a-ficha-f73.spec.ts:73`.
+   **Decidido pelo Heitor, 25/11: "Completar cadastro".** O nome é "Completar o cadastro"; os dois testes mudam por essa fala.
 2. **O texto "Atende clientes em"** no aviso de desativar alguém da equipe e no agendamento. O controle hoje se chama
    "Atende clientes", e a lista só aparece depois de "Escolher em quais unidades atende". Proposta: citar o botão.
    Teste: `e2e/equipe-atritos-da-8.spec.ts:102`.
+   **O Heitor, 25/11: "Não entendi. Citar o botão no teste?"** Explicado na conversa (25/11): a mudança é no TEXTO das
+   duas telas (o aviso do Desativar e o da janela do agendamento), que mandam procurar um "Atende clientes em" que a
+   ficha não mostra; a proposta é a frase que a Equipe já usa (`app/admin/team/page.tsx:194`). O teste só entra porque
+   confere o texto antigo (`e2e/equipe-atritos-da-8.spec.ts:110`). Espera o sim.
 3. **O resumo do cargo**: três casos testam um jeito de montar o resumo que nenhuma tela usa. Proposta: apagar os três
    casos e o código. Teste: `tests/resumo-do-cargo.test.ts:9`, `:12` e `:15`.
+   **Decidido pelo Heitor, 25/11: "ok mas tenha certeza absoluta que ninguem usa".**
 4. **O Reativar por unidade**: a função do banco `metrics_clientes_para_reativar` (por unidade) é código morto, porque
    a tela usa a da rede (CC-05). Proposta: apagar a função e os seis testes que a usam:
    - `e2e/indicadores-f68-contas:139`
@@ -71,23 +77,41 @@ Os limites viraram aviso. Os valores do "comum" acima dos quais se avisa são de
    - `e2e/indicadores-reativar-clientes:28`
    - `e2e/tags-sem-unidade:207`
    - `tests/tags-so-quem-marca:186`
+   **Decidido pelo Heitor, 25/11: "ok mas tenha certeza absoluta que não é usada".**
 5. **A busca e o "Cadastrar «termo»"**: o seu "Ok" de 13/11 (BU1) diz que a oferta aparece sempre que nenhuma cliente
    bate. Desde 16/11 ela some quando o termo é nome de página, por decisão do Claude. Fica a exceção, ou volta o
    "sempre"? Teste: `tests/atritos-da-15.test.ts:78-93`.
+   **Decidido pelo Heitor, 25/11: "Sim, se o termo for nome de funcionalidade não faz sentido aparecer".** Fica a exceção; nenhum teste muda.
 6. **O produto de revenda nasce com "Insumo" marcado.** Proposta: nasce sem nenhuma caixa marcada; salvar sem nenhuma
    já é recusado com mensagem. Teste: `e2e/estoque-marcas-e-fornecedores.spec.ts:185-206`.
+   **Decidido pelo Heitor, 25/11: "ok".**
 7. **Agendar no passado**: pelo princípio 2, o "+ Agendar" da equipe com horário passado avisaria e deixaria, como o
    remarcar já faz. Hoje recusa. Testes: `tests/validacao-limite-legivel.test.ts` e o E2E da agenda.
+   **Decidido pelo Heitor, 25/11: "recusa, não dá pra agendar no passado".** Fica a recusa; nenhum teste muda. O
+   catálogo (AG-06, Q11) voltou para a recusa. Em aberto, perguntado na conversa (25/11): o REMARCAR para um horário
+   que já passou hoje avisa e deixa (AG-41) — o uso é corrigir a hora de um atendimento que já aconteceu. A recusa
+   vale também para ele?
 8. **O nome do número de WhatsApp**: vindo da Meta, é cortado em 60 caracteres sem aviso; ao renomear, não tem limite.
    Proposta: um limite só, que avisa, ou nenhum. Teste: `tests/whatsapp-rotulo.test.ts:34`.
-9. **O nome da tag** recusa acima de 60 caracteres, e o banco não tem limite. É um limite contra o princípio 2? Teste:
+   **Decidido pelo Heitor, 25/11: "60 pra tudo".** O limite é 60 caracteres, vindo da Meta e ao renomear.
+9. **O nome da tag** recusa acima de 60 caracteres, e o banco não tem limite. Teste:
    `tests/tags.test.ts:31`.
+   **Decidido pelo Heitor, 25/11: "60 caracteres".** Fica o limite de 60; nenhum teste muda.
 10. **Desativar unidade**: a janela segue listando à parte o atendimento concluído sem pagamento, como o Financeiro
     faz? Testes: `tests/unidades-da-tela.test.ts:56`, `:70`, `:83` e `:118`.
+    **O Heitor, 25/11: "nao sei, preciso de mais contexto".** Explicado na conversa (25/11): desde a CX3 (16/11) o
+    atendimento concluído sem pagamento é uma comanda aberta, recebida no PDV, e a janela ainda o chama pelo nome
+    antigo e manda ao "Ver o a receber" do Financeiro. Proposta: "1 comanda aberta no PDV (R$ 150,00)", com o caminho
+    "Receber no PDV" da unidade (que segue recebendo o que ficou). Espera o sim.
 
 ## 3. Outros limites que o princípio 2 talvez alcance
 
 Ninguém mexeu. A pergunta: o "no máximo, avisar" vale para estes também?
+
+**O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito."** Cada limite abaixo passa a avisar,
+salvo o que se provar impossível (conferido um a um: o banco, a operadora, o Asaas). Os 7, 8 e 9 da seção 2 não são
+exceções ao princípio 2: o horário passado é impossível, e o tamanho de um nome não é valor do negócio.
+
 - a validade do pré-pago: de 1 a 3.650 dias;
 - o custo da recompensa: até 10 milhões de pontos;
 - o cartão: em até 12 vezes;
@@ -100,8 +124,15 @@ Ninguém mexeu. A pergunta: o "no máximo, avisar" vale para estes também?
 
 1. **O app Android já está na Play Store?** Se não está, a menção sai do site (`apps/site/lib/perguntas.ts:30`,
    `apps/site/components/conteudo.tsx:253`).
-2. **A trava da mensalidade em R$ 0** só abre para o plano do tipo cortesia. A rede com 100% de desconto no plano recebe
-   a recusa ao tirar o último adicional. A trava deve olhar o total a pagar, como a regra da cortesia?
+   **O Heitor, 25/11: "Sim".** A menção fica.
+2. **A mensalidade em R$ 0.** A pergunta estava errada (erro do Claude): a trava que ela descrevia saiu em 07/10
+   (migration `20261007000008`), e o banco de produção, conferido em 25/11, não a tem. Hoje: o total zero (100% de
+   desconto no plano, sem adicional pago) é aceito e a rede vira cortesia — volta a ativa, o atraso é perdoado e a
+   cobrança no Asaas fica em pausa (`private.cortesia_pela_mensalidade`); voltou a ter valor, a cobrança religa. Só se
+   recusa o total entre R$ 0,01 e R$ 4,99 (o Asaas não cobra abaixo de R$ 5,00: impossível). A PN-20 do catálogo, que
+   citava a trava, está errada.
+   **O Heitor, 25/11: "Precisamos melhorar essa questão".** Respondida com a premissa errada; o Claude perguntou na
+   conversa o que é melhorar aqui. Espera a resposta.
 
 ## 5. As decisões do Claude no catálogo (25/11)
 
@@ -138,3 +169,29 @@ testes cuja regra é só decisão do Claude:
    pago com ele." (ou a marca na descrição da linha). Os testes exigem o CSV sem ela:
    `e2e/relatorio-vendas-comandas.spec.ts:117` (três linhas exatas) e `tests/relatorio-vendas-comandas.test.ts:36` (a
    descrição "Crédito interno"). A correção foi feita, quebrou o primeiro na suíte completa e foi desfeita.
+
+## 7. A 30ª simulação (25/11)
+
+Nas correções da 30ª, nenhum teste existente foi alterado nem apagado (oito ganharam casos novos). Ficaram para você
+estas propostas, que mudariam testes cuja regra é só decisão do Claude, ou que precisam de uma regra sua:
+
+1. **O resumo do cargo com o Atendimento e o Prontuário em Gerenciar** não diz nada sobre iniciar e concluir
+   (`conclusaoNoResumo` devolve nulo quando os dois estão em Gerenciar, que é o caso completo). Proposta: "Inicia e
+   conclui os atendimentos." Testes: `tests/atritos-da-23-cargos-atendimento-app.test.ts:82`,
+   `tests/atritos-da-24-cargos-atendimento-app.test.ts:43`, `tests/auditoria-atendimento-e-permissao.test.ts:74`.
+2. **As Fichas e os Cargos na matriz de Cargos.** São configuração da rede toda, só da Admin da rede (você, 18/11:
+   "Configuração da rede toda só pela conta admin"): o Gerenciar deles não abre nada a quem não é a Admin. A tela de
+   Cargos ainda os oferece, e o resumo agora diz isso. Proposta: tirá-los da matriz, como a Auditoria (só da Admin).
+   Teste: `tests/permissions.test.ts`, "cashier, forms, roles e settings são tudo ou nada".
+3. **O aviso do cargo "Não definido" e do cargo sem módulo** diz "entra e não vê nada" e "não abre a agenda nem os
+   atendimentos" (`lib/cargos/sem-acesso.ts:83`, `:90-94`). Mas quem atende vê a Minha agenda e as Minhas comissões (as
+   vistas pessoais não olham o cargo). Proposta: "entra e vê só a Minha agenda e as Minhas comissões, se atende".
+   Testes: `tests/permissions.test.ts:261-262`, `e2e/equipe-cargo-nao-definido.spec.ts:32`, `:165`.
+4. **O "A receber da cliente" e o lançamento sem cliente.** O cartão soma todo o em aberto (FN-11), inclusive o que
+   não é de cliente nenhuma (a sublocação de uma sala). Agora a nota diz "Inclui sem cliente: R$ …". O nome do cartão
+   diz "da cliente", e a regra diz "todo o em aberto". Fica no número, com a nota, ou sai do número?
+5. **Os exemplos do nome e do título da campanha** são "ex: Aniversariantes de julho" e "ex: Feliz aniversário,
+   {{first_name}}! 🎂", numa campanha de data fixa (o aniversário de cada cliente é a automação). Proposta: "ex: Dia das
+   Mães" e "ex: Feliz Dia das Mães, {{first_name}}!". Seis E2E acham o nome por esse texto (`getByPlaceholder`) e cinco
+   deles acham também o título; mudariam junto. (Nas correções, o título chegou a ser trocado sem perguntar, e a
+   completa pegou: cinco specs não achavam o campo. Voltou ao texto de antes.)

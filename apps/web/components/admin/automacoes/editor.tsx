@@ -25,6 +25,8 @@ import { validarGrafo, ROTULOS, type ProblemaDoGrafo } from '@/lib/automacoes/va
 import { novoIdDeNo, novoIdDeLigacao, configPadrao } from '@/lib/automacoes/ids'
 import { encaixarPasso } from '@/lib/automacoes/encaixe'
 import { nomePadraoDoPasso, renomearPasso } from '@/lib/automacoes/passos'
+import { nomeQueAcompanhaODeslocamento } from '@/lib/automacoes/deslocamento'
+import { ensaioCabe } from '@/lib/automacoes/ensaio'
 import { salvarAutomacao, mudarStatusDaAutomacao, opcoesDoEditor, excluirAutomacao, contarAntesDeLigar } from '@/actions/automacoes'
 import { canaisParaACliente, explicacaoAntesDeLigar, textoAntesDeLigar, limitesAntesDeLigar, silencioNoHorarioDasUnidades } from '@/lib/automacoes/antes-de-ligar'
 import type { OpcoesDoEditor } from '@/actions/automacoes'
@@ -140,10 +142,17 @@ export function EditorDeAutomacao({
 
   function configurar(config: Record<string, unknown>) {
     if (!noSelecionado) return
-    mudarGrafo({
+    const novo = {
       ...grafo,
       nos: grafo.nos.map(n => (n.id === noSelecionado.id ? { ...n, config } : n)),
-    })
+    }
+    // D8 da 30ª (princípio 3): o "Um dia antes" do modelo, com 3 horas escolhidas,
+    // seguia "Um dia antes". O nome AUTOMÁTICO da espera acompanha o deslocamento
+    // (o que a rede escreveu fica) — por renomearPasso, que conserta quem o citava.
+    const nome = typeof config.minutos === 'number'
+      ? nomeQueAcompanhaODeslocamento(noSelecionado, config.minutos, grafo)
+      : null
+    mudarGrafo(nome ? renomearPasso(novo, noSelecionado.id, nome) : novo)
   }
 
   /**
@@ -620,6 +629,7 @@ export function EditorDeAutomacao({
           <PainelDeExecucoes
             automacaoId={automacao.id}
             podeEnsaiar={podeEnsaiar}
+            ensaioCabe={ensaioCabe(automacao.grafo)}
             onFechar={() => setGaveta(null)}
           />
         ) : null}

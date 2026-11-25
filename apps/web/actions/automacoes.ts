@@ -6,18 +6,20 @@ import { semAcesso } from '@/lib/sem-acesso'
 import { recusaDaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { LIMITES_PADRAO, TIPOS_DE_GATILHO, ROTULOS_DE_NO, rotuloDoEvento } from '@estetica-os/types'
+import { LIMITES_PADRAO } from '@estetica-os/types'
 import type {
   GrafoDeAutomacao, StatusDaAutomacao, LimitesDaAutomacao, StatusDaExecucao,
-  NoDoGrafo, TipoDeNo, ConfigBuscarClientes,
+  ConfigBuscarClientes,
 } from '@estetica-os/types'
 import { validarGrafo, podeAtivar, gatilhosDoGrafo } from '@/lib/automacoes/validar'
 import { achatarDados, type CampoVisto } from '@/lib/automacoes/disponiveis'
 import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
 import { modeloDeAutomacao, semWhatsapp } from '@/lib/automacoes/modelos'
 import { deQuemEAExecucao } from '@/lib/automacoes/sobre-da-execucao'
+import { caminhoDoFluxo } from '@/lib/automacoes/caminho-do-fluxo'
+import { ensaioCabe } from '@/lib/automacoes/ensaio'
 import { redeTemWhatsapp } from '@/lib/automacoes/canal-da-rede'
-import { ler, tentar } from '@/lib/db'
+import { ler, tentar, contar } from '@/lib/db'
 import { buscarClientes } from '@/lib/automacoes/tempo'
 import { contarPublico, contarPublicoComConversa, contarPublicoComAparelho } from '@/lib/clientes/publico'
 import type { CanalParaACliente, ContaAntesDeLigar } from '@/lib/automacoes/antes-de-ligar'
@@ -111,43 +113,6 @@ export async function listarAutomacoes(): Promise<{
       passos:       caminhoDoFluxo(a.grafo as GrafoDeAutomacao | null),
     })),
   }
-}
-
-/**
- * O caminho do fluxo, do gatilho para a frente.
- *
- * Segue as ligações a partir do gatilho em vez de listar os nodes na ordem em
- * que foram criados: node solto não entra, e quem montou o fluxo de trás para
- * a frente vê a mesma frase de quem montou na ordem. Na bifurcação segue o
- * primeiro ramo — o card resume, não desenha.
- */
-function caminhoDoFluxo(grafo: GrafoDeAutomacao | null): string[] {
-  const nos = grafo?.nos ?? []
-  if (nos.length === 0) return []
-
-  const inicio = nos.find(n => (TIPOS_DE_GATILHO as readonly string[]).includes(n.tipo))
-  if (!inicio) return []
-
-  const nome = (no: NoDoGrafo): string => {
-    // No gatilho de evento, o evento diz mais que o rótulo do node: entre
-    // "Quando acontecer" e "Mensagem recebida", a segunda é a informação.
-    const evento = (no.config as { evento?: string } | null)?.evento
-    if (evento) return rotuloDoEvento(evento)
-    return no.nome?.trim() || ROTULOS_DE_NO[no.tipo as TipoDeNo] || no.tipo
-  }
-
-  const caminho: string[] = []
-  const vistos = new Set<string>()
-  let atual: NoDoGrafo | undefined = inicio
-
-  // Teto de 4: o card tem uma linha, e "…" já diz que o fluxo continua.
-  while (atual && caminho.length < 4 && !vistos.has(atual.id)) {
-    vistos.add(atual.id)
-    caminho.push(nome(atual))
-    const proxima = (grafo?.ligacoes ?? []).find(l => l.de === atual!.id)
-    atual = proxima ? nos.find(n => n.id === proxima.para) : undefined
-  }
-  return caminho
 }
 
 /**
@@ -857,10 +822,11 @@ export async function ensaiarAutomacao(automationId: string): Promise<{
   if (!auto || auto.tenant_id !== ctx.tenantId) return { error: 'Automação não encontrada.' }
 
   const grafo = auto.grafo as GrafoDeAutomacao
-  const gatilho = grafo?.nos?.find(n => n.tipo === 'gatilho.evento')
-  if (!gatilho) {
+  // A regra do painel (ensaioCabe): a tela nem mostra o botão sem gatilho de fato.
+  if (!ensaioCabe(grafo)) {
     return { error: 'O ensaio precisa de um gatilho de evento — um gatilho de horário não tem fato para repetir.' }
   }
+  const gatilho = grafo.nos.find(n => n.tipo === 'gatilho.evento')!
 
   const nome = (gatilho.config as { evento?: string })?.evento
   if (!nome) return { error: 'Escolha o evento do gatilho antes de ensaiar.' }
@@ -929,14 +895,22 @@ export async function ensaiarAutomacao(automationId: string): Promise<{
  * assistente da campanha contava). Só LÊ: a mesma `buscarClientes` do motor,
  * com o teto do passo.
  */
-export async function contarBuscaDeClientes(cfg: unknown): Promise<{ quantas: number; truncado: boolean } | { error: string }> {
+export async function contarBuscaDeClientes(cfg: unknown): Promise<{ quantas: number; truncado: boolean; semNascimento?: number } | { error: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'automations', 'VIEW')
   assertDaRede(ctx)
   const busca = await buscaDoPasso(ctx.tenantId!, cfg)
   if ('error' in busca) return busca
-  const { clientes, truncado } = await buscarClientes(ctx.tenantId!, busca.cfg, busca.fuso)
-  return { quantas: clientes.length, truncado }
+  const [{ clientes, truncado }, semNascimento] = await Promise.all([
+    buscarClientes(ctx.tenantId!, busca.cfg, busca.fuso),
+    // A26 da 30ª (princípio 3): o aniversário é a data de nascimento da ficha, e
+    // a cliente ativa sem ela nunca entra na busca — a tela diz quantas são.
+    busca.cfg.aniversarioHoje
+      ? contar(createAdminClient().from('clients').select('id', { count: 'exact', head: true })
+          .eq('tenant_id', ctx.tenantId!).eq('is_active', true).is('birth_date', null), 'contar as fichas sem a data de nascimento')
+      : Promise.resolve(undefined),
+  ])
+  return { quantas: clientes.length, truncado, ...(semNascimento === undefined ? {} : { semNascimento }) }
 }
 
 /** A config do passo "Buscar clientes" vinda da tela, conferida. A busca é da rede (sem unidade — T1 do Bloco Tags). */

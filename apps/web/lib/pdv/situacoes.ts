@@ -115,6 +115,18 @@ export function seloDaComanda(c: ComandaDoPdv): { texto: string; tom: Tom } {
 }
 
 /**
+ * O verbo do cabeçalho da comanda paga ("<verbo> às 09:29 · …"). A mesma regra
+ * do selo (A9 da 30ª simulação, princípio 3): com dinheiro em aberto (o "a
+ * receber", a parcela do crediário) a comanda está FECHADA, não "Paga" — dizia
+ * "Paga às 09:29 · A receber · R$ 0,00 recebidos". A venda é sempre "Vendida".
+ */
+export function verboDaComandaPaga(c: ComandaDoPdv): 'Vendida' | 'Fechada' | 'Recebido' | 'Paga' {
+  if (c.origem === 'VENDA') return 'Vendida'
+  if (c.emAberto > 0) return 'Fechada'
+  return c.origem === 'PLANO' ? 'Recebido' : 'Paga'
+}
+
+/**
  * A comanda da venda estornada (A2 da 20ª simulação; princípio 3): dizia "Não
  * há o que receber", e o balcão não sabia como cobrar de novo — é uma Nova
  * venda (a estornada não se reabre).

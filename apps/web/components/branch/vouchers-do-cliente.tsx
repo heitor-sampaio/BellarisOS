@@ -184,11 +184,14 @@ export function VouchersDoCliente({
                     </button>
                   </div>
                 )}
+                {/* A23 da 30ª: o motivo é obrigatório (o banco recusa sem ele) — a tela diz ANTES do clique. */}
                 {cancelando === v.id && (
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <input className="field" name="motivo-cancelamento" value={motivo} onChange={e => setMotivo(e.target.value)}
-                      placeholder="Motivo (os pontos voltam ao cliente)" style={{ flex: 1, minWidth: 180 }} />
-                    <button type="button" className="btn-primary" disabled={ocupado}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <label className="field-label" htmlFor={`motivo-voucher-${v.id}`}>Motivo do cancelamento (obrigatório)</label>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <input className="field" id={`motivo-voucher-${v.id}`} name="motivo-cancelamento" value={motivo} onChange={e => setMotivo(e.target.value)}
+                      placeholder="Os pontos voltam ao cliente" required aria-required="true" style={{ flex: 1, minWidth: 180 }} />
+                    <button type="button" className="btn-primary" disabled={ocupado || !motivo.trim()}
                       onClick={() => depois(async () => {
                         const r = await cancelarVoucher({ voucherId: v.id, motivo })
                         if (!r.error) setCancelando(null)
@@ -197,6 +200,10 @@ export function VouchersDoCliente({
                       Confirmar cancelamento
                     </button>
                     <button type="button" className="btn-ghost" onClick={() => setCancelando(null)}>Voltar</button>
+                    </div>
+                    {!motivo.trim() && (
+                      <p data-motivo-do-voucher-falta style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>Escreva o motivo para confirmar.</p>
+                    )}
                   </div>
                 )}
               </li>

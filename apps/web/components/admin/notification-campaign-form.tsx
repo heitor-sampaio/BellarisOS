@@ -257,7 +257,7 @@ export function NotificationCampaignForm({ procedures, existing, podeVerAutomaco
 
               {todoAno && (
                 <div>
-                  <SectionLabel dica={{ rotulo: 'Sobre a data de todo ano', texto: 'Sai no dia, a partir das 09:00, e fica ativa para o ano que vem.' }}>Todo ano em</SectionLabel>
+                  <SectionLabel dica={{ rotulo: 'Sobre a data de todo ano', texto: 'Sai no dia, a partir das 09:00, para todo o público, e fica ativa para o ano que vem. A data é a mesma para todas (o Dia das Mães). O aniversário de cada cliente — a data de nascimento da ficha — é o modelo “Parabéns no aniversário” das Automações.' }}>Todo ano em</SectionLabel>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                     <input
                       type="number"

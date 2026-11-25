@@ -72,3 +72,14 @@ export function textoDoVencimento(vencimento: string | null | undefined, agora: 
   if (!s || !vencimento) return null
   return s === 'VENCIDA' ? `Vencida em ${curto(vencimento)}` : s === 'HOJE' ? 'Vence hoje' : `Vence ${longo(vencimento)}`
 }
+
+/**
+ * O aviso junto do campo ao remarcar o vencimento (decisão 1 do Claude na 30ª;
+ * vendas-financeiro:CR-11; princípio 2: a data que já passou é aceita, e a tela
+ * só avisa). `dia` é o "2026-11-05" do campo; o hoje é o da unidade, a mesma
+ * régua de `situacaoDoVencimento`. Nulo: hoje, o futuro ou o campo vazio.
+ */
+export function avisoDoNovoVencimento(dia: string, agora: Date = new Date(), fuso: string = BUSINESS_TZ): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dia)) return null
+  return situacaoDoVencimento(vencimentoDoDia(dia), agora, fuso) === 'VENCIDA' ? 'Essa data já passou: a parcela fica vencida.' : null
+}

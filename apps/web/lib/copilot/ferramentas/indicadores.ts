@@ -12,7 +12,8 @@ import { getResumoDeVendas, getVendas, descricaoDaVenda, ROTULO_DO_TIPO } from '
 import { comandaDaVenda, FORA_DO_TOTAL, type Venda } from '@/lib/metrics/vendas-comum'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
 import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
-import { DATA, dinheiro, idsDasUnidades, nomesPorId, procedimentosDaUnidade, resolverUnidade } from '@/lib/copilot/ferramentas/comum'
+import { DATA, dinheiro, idsDasUnidades, nomesPorId, procedimentosDaUnidade, resolverUnidade, STATUS_DO_AGENDAMENTO, ORIGEM_DO_AGENDAMENTO } from '@/lib/copilot/ferramentas/comum'
+import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { resultadoDoPeriodo, taxaDeConclusao, taxaDeAproveitamento } from '@/lib/metrics/resultado'
 import { veOCaixaNosRelatorios } from '@/lib/metrics/visao-geral'
 import { abasQueValem, motivoDaAbaFechada, REPORT_TAB_LABELS } from '@/lib/permissions'
@@ -219,7 +220,8 @@ export const indicadores: FerramentaDeLeitura<{
       financeiro: {
         ...(totais ? { receita: dinheiro(totais.revenueCash) } : {}),
         receitaPorUnidade: r.receitaPorUnidade.map(x => ({ unidade: unidade(x.branchId), atual: dinheiro(x.atual), anterior: dinheiro(x.anterior) })),
-        receitaPorFormaDePagamento: r.receitaPorForma.map(x => ({ forma: x.forma, valor: dinheiro(x.valor) })),
+        // A20 da 30ª: a forma pelo nome da tela — o código ("CASH") o Copilot repetia como "Cash".
+        receitaPorFormaDePagamento: r.receitaPorForma.map(x => ({ forma: rotuloDaForma(x.forma), valor: dinheiro(x.valor) })),
         receitaPorCategoria: r.receitaPorCategoria.map(x => ({ categoria: x.categoria, valor: dinheiro(x.valor) })),
         ...(!totais ? {} : {
           despesas: dinheiro(totais.expensesCash),
@@ -231,7 +233,10 @@ export const indicadores: FerramentaDeLeitura<{
       // A41 da 24ª [4]: as taxas vão prontas, com o nome e o que contam — o
       // Copilot não divide os números da agenda (os futuros entravam).
       agenda: {
-        porStatus: r.agendamentosPorStatus, porDiaDaSemana: r.porDiaDaSemana, porOrigem: r.porOrigem,
+        // A20 da 30ª: a situação e a origem pelo nome, não pelo código do banco.
+        porStatus: r.agendamentosPorStatus.map(x => ({ status: STATUS_DO_AGENDAMENTO[x.status] ?? (x.status === 'ABERTO' ? 'em aberto' : x.status), n: x.n })),
+        porDiaDaSemana: r.porDiaDaSemana,
+        porOrigem: r.porOrigem.map(x => ({ origem: ORIGEM_DO_AGENDAMENTO[x.origem] ?? x.origem, n: x.n })),
         ...(agendaAteOFim ? { taxaDeConclusao: { valor: emPct(taxaDeConclusao({ concluidos: agendaAteOFim.appointmentsCompleted, total: agendaAteOFim.appointmentsTotal })), oQueConta: DEFINICOES.conclusao.texto } } : {}),
         ...(totais ? { aproveitamento: { valor: emPct(taxaDeAproveitamento({ concluidos: totais.appointmentsCompleted, total: totais.appointmentsTotal })), oQueConta: DEFINICOES.aproveitamento.texto } } : {}),
         comparecimento: 'O comparecimento do sistema é o dos primeiros atendimentos do comercial (aba comercial, "primeirosAtendimentos"): só o que já devia ter acontecido.',

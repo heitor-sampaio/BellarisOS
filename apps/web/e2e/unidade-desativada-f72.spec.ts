@@ -159,10 +159,71 @@ test('nada NOVO na desativada: entrada, transferência para ela e agendamento s�
   expect(count, 'só o agendamento que já estava').toBe(1)
 })
 
+test('UN-14: o PDV da desativada não vende — sem a "Nova venda" na tela, e a action recusa', async ({ browser }) => {
+  test.setTimeout(120_000)
+  await desativar()
+  const lancamentos = async () => (await db().from('financial_transactions').select('id', { count: 'exact', head: true })
+    .eq('branch_id', pampulha)).count
+  const antes = await lancamentos()
+  await como(browser, dona!.estado, async p => {
+    // A Pampulha tem o a receber: o PDV dela abre (recebe o que ficou), sem vender.
+    await p.goto(`/admin/pdv?unidade=${pampulha}`)
+    await expect(p.locator('[data-unidade-nao-vende]')).toBeVisible({ timeout: 20_000 })
+    await expect(p.getByRole('link', { name: 'Nova venda' })).toHaveCount(0)
+    await p.goto(`/admin/pdv?unidade=${pampulha}&nova=1&cliente=${cliente!.clientId}`)
+    await expect(p.locator('[data-nova-venda]')).toHaveCount(0, { timeout: 20_000 })
+    await expect(p.locator('[data-unidade-nao-vende]')).toBeVisible()
+    // A action direta, pelo id da unidade: recusa.
+    const r = await chamarAcao(p, 'actions/credito-interno.ts', 'venderCredito', '/admin/pdv',
+      [cliente!.clientId, pampulha, 50, { forma: 'AVISTA', metodo: 'PIX' }, `f72-v-${marca}`])
+    expect(r.texto).toContain('desativada')
+  })
+  expect(await lancamentos(), 'nada entrou na Pampulha').toBe(antes)
+})
+
 test('o app da cliente diz no cartão que a unidade do agendamento foi desativada', async ({ browser }) => {
   await desativar()
   await como(browser, cliente!.estado, async p => {
     await p.goto(`/${slugA}/cliente/agendamentos`)
     await expect(p.locator('[data-unidade-desativada]').first()).toContainText('foi desativada', { timeout: 20_000 })
   })
+})
+
+test('UN-13: o endereço da desativada não é 404 — quem tem outra vai a ela com o aviso; quem só tinha ela lê o fato e sai', async ({ browser }) => {
+  test.setTimeout(150_000)
+  await desativar()
+  const dasDuas = await criarMembro(`f72m${marca}`, { tenant: rede!.tenantId, branchId: pampulha, outrasUnidades: [rede!.branchId], rotulo: 'Duas', permissoes: [] })
+  const soDela = await criarMembro(`f72s${marca}`, { tenant: rede!.tenantId, branchId: pampulha, rotulo: 'Só Pampulha', permissoes: [] })
+  try {
+    // A de duas unidades: a principal desativada → a outra, com o nome no aviso.
+    await como(browser, dasDuas.estado, async p => {
+      await p.goto(`/e2e-f72-pa-${marca}/dashboard`)
+      await expect(p).toHaveURL(new RegExp(`/${slugA}/dashboard`), { timeout: 20_000 })
+      await expect(p.locator('[data-aviso-da-url]')).toContainText(`A unidade ${NOME} foi desativada. Você está na sua unidade.`)
+      await expect(p).not.toHaveURL(/aviso=|desativada=/)
+    })
+    // A dona (a rede inteira): o portal da rede, com o aviso.
+    await como(browser, dona!.estado, async p => {
+      await p.goto(`/e2e-f72-pa-${marca}/agenda`)
+      await expect(p).toHaveURL(/\/admin\/dashboard/, { timeout: 20_000 })
+      await expect(p.locator('[data-aviso-da-url]')).toContainText(`A unidade ${NOME} foi desativada.`)
+    })
+    // Quem só tinha a Pampulha: o endereço e o login levam à tela, com o Sair.
+    await como(browser, soDela.estado, async p => {
+      await p.goto(`/e2e-f72-pa-${marca}/dashboard`)
+      await expect(p).toHaveURL(/\/auth\/unidade-desativada/, { timeout: 20_000 })
+      await expect(p.locator('[data-unidade-desativada]')).toContainText(`A unidade ${NOME} foi desativada. Fale com quem administra a rede.`)
+      await p.goto('/login')
+      await expect(p).toHaveURL(/\/auth\/unidade-desativada/, { timeout: 20_000 })
+      await p.getByRole('button', { name: 'Sair' }).click()
+      await expect(p).toHaveURL(/\/login/, { timeout: 20_000 })
+    })
+    // O endereço que não existe segue 404.
+    await como(browser, dona!.estado, async p => {
+      const r = await p.goto(`/e2e-f72-nada-${marca}/dashboard`)
+      expect(r?.status()).toBe(404)
+    })
+  } finally {
+    await dasDuas.limpar(); await soDela.limpar()
+  }
 })

@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { REPORT_TAB_LABELS } from '@/lib/permissions'
 import { Dica } from '@/components/shared/dica'
@@ -13,6 +13,7 @@ import { FiltroDeTags } from '@/components/shared/filtro-de-tags'
 import { abaTemFiltroDeTags, tagsNaUrl } from '@/lib/metrics/tags-do-relatorio'
 import { FunnelSelect } from '@/components/shared/funnel-select'
 import { validadeDoLote, type LinhaLote, type LinhaParcela } from './reports-linhas'
+import { nomeDaLinhaDoLancamento, prazoDaParcela } from '@/lib/financeiro/nome-da-parcela'
 import type { Relatorio } from '@/lib/metrics/relatorio'
 import type { MetricsCore } from '@/lib/metrics'
 import type { DadosDeVendas, DadosDosMovimentos } from './reports-bi-section'
@@ -22,7 +23,7 @@ import type { EntradaDeEstoqueDoPeriodo } from '@/lib/metrics/contadora'
 import { csvDoDre } from '@/lib/financeiro/csv-da-contadora'
 import { avisoDoDreSemTaxa, type VendaSemTaxa } from '@/lib/financeiro/vendas-sem-taxa'
 import { baixarCsv } from '@/lib/financeiro/csv-dos-lancamentos'
-import { rotuloDoMotivo } from '@/lib/estoque/perda'
+import { rotuloDoMotivo, perdasComOMotivo } from '@/lib/estoque/perda'
 import { medidaNoPlural } from '@/lib/estoque/medidas'
 import { validadeNaTela } from '@/lib/estoque/validade'
 import { MOVIMENTOS_POR_PAGINA } from '@/lib/metrics/movimentos-de-estoque-comum'
@@ -510,10 +511,11 @@ function TabFinanceiro(p: ReportsBiProps) {
     { key: 'due',       label: 'Vencimento', align: 'center' },
     { key: 'branch',    label: 'Unidade'     },
     {
-      key: 'daysLeft', label: 'Dias', align: 'center',
-      // IND-08: a vencida diz há quantos dias (era "0d" para sempre).
+      key: 'daysLeft', label: 'Prazo', align: 'center',
+      // IND-08: a vencida diz há quantos dias (era "0d" para sempre). A18 da
+      // 30ª: em palavras, atraso ou prazo ("vence em 61 dias", "3 dias de atraso").
       render: (v) => (
-        <Badge label={Number(v) < 0 ? `vencida há ${-Number(v)}d` : Number(v) === 0 ? 'hoje' : `${v}d`}
+        <Badge label={prazoDaParcela(Number(v))}
           color={Number(v) <= 3 ? 'red' : Number(v) <= 7 ? 'amber' : 'gray'} />
       ),
     },
@@ -521,7 +523,8 @@ function TabFinanceiro(p: ReportsBiProps) {
   const today = new Date()
   const installRows = installments.map(i => ({
     client:   i.clients?.name ?? '—',
-    what:     i.description,
+    // A18 da 30ª: o procedimento e a parcela ("Microagulhamento — parcela 2/3"), não "Atendimento concluído — …".
+    what:     nomeDaLinhaDoLancamento(i.appointment?.procedures?.name, { numero: i.parcela_numero, total: i.parcela_total, descricao: i.description }) ?? i.description,
     value:    Number(i.amount),
     due:      new Date(i.due_date).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
     branch:   branches.find(b => b.id === i.branch_id)?.name ?? '—',
@@ -574,12 +577,12 @@ function TabFinanceiro(p: ReportsBiProps) {
             <div data-fora-do-resultado style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginTop: 14 }}>
               <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: 0 }}>
                 Fora do resultado no período: compras no estoque (as entradas, ao custo) <strong style={{ color: 'var(--text)' }}>{fmtBRLFull(p.comprasNoEstoque?.total ?? 0)}</strong>
-                {p.perdas ? <> · perdas <strong style={{ color: 'var(--text)' }}>{fmtBRLFull(p.perdas.total.custo)}</strong></> : null}.
+                {p.perdas && p.perdas.total.custo > 0 ? <> · perdas <strong style={{ color: 'var(--text)' }}>{fmtBRLFull(p.perdas.total.custo)}</strong> ({perdasComOMotivo(p.perdas.motivos)})</> : null}.
               </p>
               <button type="button" className="btn-secondary" onClick={() => baixarCsv(`dre-${p.period}.csv`, csvDoDre({
                 periodo: p.periodLabel, receita: revenue, despesaOperacional: resultado.despesaOperacional, insumos: resultado.insumoConsumido,
                 taxas: resultado.taxasDaMaquininha, comissoes: resultado.comissoes, lucro: profit,
-                compras: p.comprasNoEstoque ?? { linhas: [], total: 0 }, perdas: p.perdas?.total.custo ?? null,
+                compras: p.comprasNoEstoque ?? { linhas: [], total: 0 }, perdas: p.perdas?.total.custo ?? null, perdasPorMotivo: p.perdas?.motivos ?? null,
                 semTaxa: p.vendasSemTaxa,
               }))}>
                 <Download size={15} aria-hidden /> Exportar o DRE (CSV)
@@ -1346,8 +1349,12 @@ function TabEstoque(p: ReportsBiProps) {
             </p>
           </SCard>
           )}
+          {/* D14 da 30ª: o "Zerados" de cada linha é o da unidade; o "Produtos zerados" de cima, o de nenhuma
+              unidade (D19 da 8ª) — duas perguntas da mesma conta (metrics_relatorio), e a soma das linhas não é o de cima. */}
           {!p.umaUnidade && (
-          <SCard title="Saúde do Estoque por Unidade" style={{ gridColumn: '1 / -1' }}>
+          <SCard title="Saúde do Estoque por Unidade" rotuloDoSobre="O que conta como zerado aqui"
+            sobre="Zerados: os produtos sem saldo nesta unidade. Um produto zerado aqui e com saldo em outra unidade não entra em “Produtos zerados”, que conta os sem saldo em nenhuma."
+            style={{ gridColumn: '1 / -1' }}>
             <SimpleTable columns={branchHealthCols} rows={branchHealthRows} />
           </SCard>
           )}
