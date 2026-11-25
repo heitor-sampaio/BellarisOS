@@ -137,9 +137,12 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
   }, [isAdminMode, branchId, slug, unica])
   const close = useCallback(() => dialogRef.current?.close(), [])
 
+  // D3 da 28ª: a cada resposta da action (um objeto novo a cada envio), não só
+  // quando o "deu certo" muda — na segunda despesa seguida ele já era `true`, e o
+  // modal ficava aberto com o valor ainda lá.
   useEffect(() => {
     if (state?.success) { envio.renovar(); close() }
-  }, [state?.success, close, envio])
+  }, [state, close, envio])
 
   const categories = type === 'INCOME' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
 

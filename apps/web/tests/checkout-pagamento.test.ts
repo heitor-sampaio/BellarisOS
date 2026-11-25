@@ -8,8 +8,13 @@ const venc = new Date('2026-10-10T12:00:00-03:00').toISOString()
 const parcelado: PagamentoDoPlano = { forma: 'PARCELADO', metodo: 'CREDIT_CARD', entrada: 100, parcelas: 3, primeiroVencimento: venc }
 
 describe('o pagamento no contrato', () => {
+  it('sem a forma escolhida, a linha do tempo diz que se recebe no PDV (PV-01)', () => {
+    expect(rotuloDoPagamento(null)).toBe('em aberto, a receber no PDV')
+  })
+
   it('a frase inteira de cada forma', () => {
-    expect(valoresDoPagamento(null, 400)['pagamento.forma']).toMatch(/R\$\s400,00, a receber no atendimento/)
+    // PV-01 (o Heitor, 2026-11-13: "o pagamento acontece por dentro desse PDV, seja do que for"): era "a receber no atendimento".
+    expect(valoresDoPagamento(null, 400)['pagamento.forma']).toMatch(/R\$\s400,00, a receber no PDV/)
     expect(valoresDoPagamento({ forma: 'AVISTA', metodo: 'PIX' }, 400)['pagamento.forma']).toMatch(/R\$\s400,00 à vista, no Pix/)
     expect(valoresDoPagamento(parcelado, 400)['pagamento.forma'])
       // D6 (6ª simulação): as parcelas são o crediário da CLÍNICA, não o cartão da entrada.

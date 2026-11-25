@@ -284,7 +284,7 @@ export async function ReportsBiSection({
 
   const productBatches: LinhaLote[] = (productBatchesRaw as LoteVencendo[]).map(l => ({
     id: l.id, product_id: l.produtoId, batch_number: l.numero, expires_at: l.validade ?? '',
-    quantity: l.quantidade, products: { name: l.produto, tenant_id: ctx.tenantId! },
+    quantity: l.quantidade, saldo: l.saldo, products: { name: l.produto, tenant_id: ctx.tenantId! },
   }))
   const installments   = ((installmentsRaw  ?? []) as unknown as LinhaParcela[])
     .filter(i => branchIds.includes(i.branch_id))

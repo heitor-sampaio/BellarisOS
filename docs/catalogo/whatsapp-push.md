@@ -362,16 +362,14 @@ Este é o catálogo das regras de WhatsApp e push que valem HOJE: os números de
 
 ## Os avisos à cliente (NC)
 
-**NC-01.** A cliente recebe no celular o aviso do próprio fato, sem a rede ligar nada: o horário marcado, remarcado, cancelado e concluído, e o pagamento.
-- Fonte: decisão do Claude
-- Onde: `docs/regras/whatsapp-push.md:38-40`
-- Pergunta: Q01 (contradiz o levantamento aprovado, `docs/revisao.md:1531-1533`)
+**NC-01.** A cliente recebe no celular o aviso do próprio fato, sem a rede ligar nada: o horário marcado, remarcado, cancelado e concluído, e o pagamento. É a confirmação do que aconteceu, não automação: o lembrete antes do agendamento e a confirmação de presença são modelos das Automações, desligados até a rede ligar (NC-03).
+- Fonte: decisão do Claude (a Q01, decidida em 25/11: fica)
+- Onde: `docs/regras/whatsapp-push.md:38-44`
 - Antes: KA-10, KC-16
 
 **NC-02.** Quando a unidade propõe um plano de tratamento, a cliente recebe "Plano novo" — "<unidade> preparou um plano de tratamento para você." —, com o link para o plano no app. Vai uma vez por plano, mesmo que o plano da avaliação seja salvo de novo.
-- Fonte: decisão do Claude
+- Fonte: decisão do Claude (a Q01, decidida em 25/11: fica — é o aviso do próprio fato, a proposta)
 - Onde: `docs/regras/whatsapp-push.md:46-53`
-- Pergunta: Q01 (a mesma contradição da NC-01)
 - Antes: KA-12
 
 **NC-03.** Fora o aviso do próprio fato (NC-01, NC-02), nada vai à cliente sem a rede ligar: o lembrete antes do agendamento e a confirmação são modelos das Automações, que nascem desligados e a rede liga se quiser; as promoções são campanhas; os bônus da fidelidade só avisam se a rede ligou.
@@ -384,9 +382,9 @@ Este é o catálogo das regras de WhatsApp e push que valem HOJE: os números de
 - Onde: `docs/regras/whatsapp-push.md:54-63`; `CLAUDE.md:322`, `:344-345` (§5)
 - Antes: KA-13, KC-18
 
-**NC-05.** O aviso no celular aparece na tela de bloqueio, então não diz o procedimento nem nada de saúde: o texto é genérico, e o detalhe fica do outro lado do link (o plano novo, o pedido de assinatura, a ficha de saúde, a resposta do chamado).
-- Fonte: decisão do Claude
-- Onde: `docs/regras/whatsapp-push.md:46-49`; `docs/regras/documentos.md:593-594`; `docs/regras/atendimento.md:1740-1741`; `docs/regras/plataforma.md:689-690`
+**NC-05.** O aviso no celular aparece na tela de bloqueio, então o aviso do que é clínico não diz o procedimento nem nada de saúde: o texto é genérico, e o detalhe fica do outro lado do link (o plano novo, o pedido de assinatura, a ficha de saúde, a resposta do chamado). Os avisos do agendamento (marcado, remarcado, cancelado, concluído, o pagamento) dizem o próprio fato, com o procedimento, o dia e a unidade ("Novo horário: Limpeza de pele em …, na unidade …").
+- Fonte: decisão do Claude, 25/11 (o Heitor revisa): o texto do aviso do agendamento é o fato que a própria cliente marcou, e é o que o sistema manda (`docs/regras/whatsapp-push.md:38-40`); o recorte do genérico ao que é clínico, pelo princípio 3
+- Onde: `docs/regras/whatsapp-push.md:38-53`; `docs/regras/documentos.md:593-594`; `docs/regras/atendimento.md:1740-1741`; `docs/regras/plataforma.md:689-690`; `apps/web/lib/appointments/texto-do-aviso.ts`
 - Antes: KC-19
 
 **NC-06.** O WhatsApp não substitui o aviso no celular: a campanha vai como aviso no celular (o app, o navegador e o sino do portal), e a lista, a criação e o detalhe dela dizem que não vai pelo WhatsApp; a cliente sem aparelho registrado fica com o aviso guardado no sino do app, e a automação diz "Guardado no sino do app: a cliente não tem acesso ao app." — não conta como enviada. Mandar pelo WhatsApp é uma automação que a rede monta e liga.
@@ -423,9 +421,9 @@ Este é o catálogo das regras de WhatsApp e push que valem HOJE: os números de
 
 ## Perguntas ao Heitor
 
-Revisão de 24/11 (o Heitor, 24/11: "da uma revisada se as perguntas realmente faz sentido, as vezes tu me perguntas que são coisas obvias e se resolvem fácil com um pouco de logica sobre o contexto"). Fica na página só a Q01 (o aviso do próprio fato à cliente sai sozinho?). As outras se resolveram por uma regra dele, um princípio ou a lógica do contexto; cada uma diz como, no começo.
+Revisão de 24/11 (o Heitor, 24/11: "da uma revisada se as perguntas realmente faz sentido, as vezes tu me perguntas que são coisas obvias e se resolvem fácil com um pouco de logica sobre o contexto"). Fica na página só a Q01 (o aviso do próprio fato à cliente sai sozinho?). As outras se resolveram por uma regra dele, um princípio ou a lógica do contexto; cada uma diz como, no começo. Revisão de 25/11 (o Heitor, 24/11: "Em teoria não é pra ter pergunta de regra e de escopo, as regras já foram definidas e o escopo também."): a Q01 foi decidida pelo Claude, pelos princípios, para o Heitor revisar.
 
-Q01. **NC-01, NC-02 — o aviso do próprio fato à cliente sai sozinho?** O levantamento que você fechou com "Pode fechar" (13/11, `docs/revisao.md:1513`) diz: "À CLIENTE só vai o que a rede liga (automações, campanhas, o documento enviado, os bônus da fidelidade) — nada sai sozinho." (`docs/revisao.md:1531-1533`). Mas `docs/regras/whatsapp-push.md:38-53` (auditoria de 18/11; A12 de 17/11) e o código (`apps/web/lib/appointments/avisos.ts`, `apps/web/lib/plano-de-tratamento/aviso-do-proposto.ts`) mandam sem ninguém ligar: o horário marcado, remarcado, cancelado e concluído, o pagamento e o "Plano novo" (e, no Atendimento, a "Foto nova" do "Enviar à cliente", PT-09 — esta sai de um clique da equipe, como "o documento enviado" do levantamento). E você disse em 03/11: "toda e qualquer automação deve ser feita através dos módulos de automações" (`docs/regras/crm-inbox.md:1395-1396`). Nenhuma regra sua decide: o princípio 6 fala de automação, e não diz se o aviso do fato é uma. O catálogo escreveu o que o sistema faz hoje. Duas saídas: (a) **fica** — é o aviso do próprio fato (a confirmação do que aconteceu), não automação; o levantamento passa a dizer isso; (b) **vira modelo das Automações, desligado até a rede ligar**, como o lembrete e a confirmação viraram (MK1, NC-03). Qual?
+Q01. **Decidida pelo Claude, 25/11 (o Heitor revisa):** (a) Fica. O aviso do próprio fato não é automação: ele não decide nada nem manda nada novo — confirma à cliente o que a equipe (ou ela mesma) acabou de fazer, como o recibo de um pagamento (princípio 3: o que aconteceu com ela, ela vê). O princípio 6 ("Nada se move sozinho: automação nasce como modelo desligado") vale para o que o sistema faria por conta própria, e é o que o MK1 de 14/11 seguiu: o lembrete antes do agendamento e a confirmação viraram modelos desligados (NC-03). O "nada sai sozinho" do levantamento (`docs/revisao.md:1531-1533`) deve dizer isso; o texto do levantamento não é deste catálogo. Nada muda no código. — *Era:* **NC-01, NC-02 — o aviso do próprio fato à cliente sai sozinho?** O levantamento que você fechou com "Pode fechar" (13/11, `docs/revisao.md:1513`) diz: "À CLIENTE só vai o que a rede liga (automações, campanhas, o documento enviado, os bônus da fidelidade) — nada sai sozinho." (`docs/revisao.md:1531-1533`). Mas `docs/regras/whatsapp-push.md:38-53` (auditoria de 18/11; A12 de 17/11) e o código (`apps/web/lib/appointments/avisos.ts`, `apps/web/lib/plano-de-tratamento/aviso-do-proposto.ts`) mandam sem ninguém ligar: o horário marcado, remarcado, cancelado e concluído, o pagamento e o "Plano novo" (e, no Atendimento, a "Foto nova" do "Enviar à cliente", PT-09 — esta sai de um clique da equipe, como "o documento enviado" do levantamento). E você disse em 03/11: "toda e qualquer automação deve ser feita através dos módulos de automações" (`docs/regras/crm-inbox.md:1395-1396`). Nenhuma regra sua decide: o princípio 6 fala de automação, e não diz se o aviso do fato é uma. O catálogo escreveu o que o sistema faz hoje. Duas saídas: (a) **fica** — é o aviso do próprio fato (a confirmação do que aconteceu), não automação; o levantamento passa a dizer isso; (b) **vira modelo das Automações, desligado até a rede ligar**, como o lembrete e a confirmação viraram (MK1, NC-03). Qual?
 
 Q02. **Resolvida na revisão de 24/11:** A sua regra (CLAUDE.md §1: "Regra decidida pelo Claude diz que é dele; só se atribui ao Heitor o que a fala dele diz") já responde: sem a fala, a regra é decisão do Claude, e a fonte foi trocada. O conteúdo segue no catálogo para a revisão da área. — *Era:* **Os números e os templates — escritas como decisão sua, sem a sua fala: confirma?** WN-08, o limite de números de WhatsApp no plano, recusado em todos os caminhos de ligar (`docs/regras/plataforma.md:273`: "2026-10-06, decisão do Heitor"); WT-03 e WT-05, os templates que seguem os números oficiais ligados — sem número a tela não mostra nada, e desligar o último número da conta tira os templates dela do sistema (`docs/regras/whatsapp-push.md:298`: "2026-10-09, pedido do Heitor"; o DEVLOG de 2026-10-09 também, sem a fala). Ligar o número trazer os templates (WT-04) está no levantamento que você aprovou e não entra aqui.
 

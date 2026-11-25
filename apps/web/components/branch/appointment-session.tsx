@@ -1,7 +1,6 @@
 'use client'
 
 import { textoDeQuemMarcaAChegada, textoDeQuemRecebe, textoDeQuemConclui } from '@/lib/equipe/textos-de-quem-pode'
-import { FormasDePagamento, FORMAS_DO_BALCAO } from '@/components/shared/formas-de-pagamento'
 import { AcoesDoLancamentoDaFicha } from '@/components/shared/acoes-do-lancamento-da-ficha'
 import { textoDasNotas, type NotaNaTela } from '@/lib/avaliacao/notas'
 import { useActionState, useState, useRef, useMemo, useEffect, type ReactNode } from 'react'
@@ -24,7 +23,7 @@ import {
   saveDraftNotes,
   reassignProfessional,
 } from '@/actions/appointments'
-import { generateEvaluationPlan, aceitarPlano, receberDoPlano } from '@/actions/treatment-plans'
+import { generateEvaluationPlan, aceitarPlano } from '@/actions/treatment-plans'
 import { PainelPlanejamento } from '@/components/branch/painel-planejamento'
 import { AnamneseGeralCartao, AnamneseNaAvaliacao, type AnamneseNaAvaliacaoHandle, type AnamneseGeralCartaoHandle } from '@/components/branch/anamnese-geral'
 import { alergiasDaAnamnese, anamneseRespondida, type AnamneseGeral, type FichaDePreAtendimento } from '@/lib/anamnese-geral'
@@ -40,7 +39,7 @@ import { avisoDaFichaNaoRespondida, avisoDaFichaParaOPlano } from '@/lib/atendim
 import { PreAtendimentoDoAgendamento } from '@/components/branch/pre-atendimento-do-agendamento'
 import { salvarFichaDoProcedimento } from '@/actions/anamnesis'
 import type { AnamnesisRow } from '@/lib/anamnesis'
-import { rotaAgenda, rotaNoPortal, rotaDaComanda } from '@/lib/rotas'
+import { rotaAgenda, rotaNoPortal, rotaDaComanda, rotaDaClienteNoPdv } from '@/lib/rotas'
 import { TermosDoCliente, type ItemDeTermo } from '@/components/shared/termos-do-cliente'
 import { TreatmentPlanEditor } from '@/components/branch/treatment-plan-editor'
 import type { TreatmentProcedure, TreatmentPackage, ExistingPlan, TreatmentPlanEditorRef } from '@/components/branch/treatment-plan-editor'
@@ -49,15 +48,7 @@ import { dosesDoMapaDoAtendimento } from '@/actions/injectable-map'
 import { divergenciasDaBaixa, textoDaDivergencia, formatarDose, type TotalDoMapa, type DivergenciaDaBaixa } from '@/lib/injetaveis/dose'
 import { planejamentosDaFicha } from '@/lib/atendimento/retrato-dos-injetaveis'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
-import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
-import { CampoDaBandeira, CampoDaMaquininha, useFaltaAMaquininha } from '@/components/shared/campo-da-bandeira'
-import { useOpcoesDeVezes, useOpcoesDeParcelas } from '@/components/shared/use-maximo-de-vezes'
-import { rotuloDaOpcaoDeParcelas } from '@/lib/financeiro/parcelas-do-crediario'
-import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
 import { Dica } from '@/components/shared/dica'
-import { useEnvioUnico } from '@/lib/use-envio-unico'
-import { recusaDaEntradaAcimaDoTotal } from '@/lib/checkout/entrada'
-import { parcelasEmTexto } from '@/lib/checkout/resumo-do-pagamento'
 import { avisoDoMenor, ehMenorDeIdade, linhaDoResponsavel, type ResponsavelLegal } from '@/lib/clients/menor'
 import { textoDoRegistroTravado, TEXTO_DO_CLINICO_SO_LEITURA } from '@/lib/atendimento/registro-travado'
 import { TEXTO_DA_SESSAO_NA_DESISTENCIA } from '@/lib/atendimento/desistencia'
@@ -69,9 +60,8 @@ import { textoDoPagamentoAoFinalizar, textoDoPacoteNoConcluido } from '@/lib/ate
 import { linhaDoInsumo, type UnidadesDoProduto } from '@/lib/estoque/unidade-de-consumo'
 import { useAgora } from '@/lib/use-agora'
 import { atrasoDoInicio } from '@/lib/appointments/inicio-adiantado'
+import { ehODiaDoAgendamento } from '@/lib/agenda/chegada'
 import { useFuso } from '@/components/shared/fuso'
-import { CampoDoTroco } from '@/components/shared/campo-do-troco'
-import { emDinheiro, recusaDoTroco } from '@/lib/checkout/troco'
 
 
 // -- Types ----------------------------------------------------------------------
@@ -313,14 +303,6 @@ const STATUS_OVERLINE: Record<string, { label: string; color: string }> = {
   NO_SHOW:     { label: 'Não compareceu',     color: 'var(--text-faint)' },
 }
 
-const PAYMENT_METHODS = [
-  { value: 'PIX',             label: 'Pix' },
-  { value: 'CASH',            label: 'Dinheiro' },
-  { value: 'DEBIT_CARD',      label: 'Débito' },
-  { value: 'CREDIT_CARD',     label: 'Crédito' },
-  { value: 'INTERNAL_CREDIT', label: 'Crédito interno' },
-]
-
 // -- Modais --------------------------------------------------------------------
 
 /** Um grupo do que falta para finalizar: onde (a anamnese, a ficha) e os rótulos. */
@@ -387,19 +369,22 @@ function CancelModal({ appointmentId, slug, onClose, desistencia = null }: {
   }, [cancelado, onClose, router])
   if (cancelado) return null
   const listaDosInsumos = (desistencia?.insumos ?? []).map(i => `${i.name} ${formatarDose(i.quantity)} ${i.unit}`).join(', ')
+  // Pendente 19 / A9 da 28ª (princípio 7): no Em atendimento o gesto é a
+  // desistência, e a janela diz isso; antes de começar, é o cancelamento.
+  const titulo = desistencia ? 'Desistir do atendimento' : 'Cancelar atendimento'
   return (
-    <JanelaModal onFechar={onClose} rotulo="Cancelar atendimento" largura={460} travado={pending}>
+    <JanelaModal onFechar={onClose} rotulo={titulo} largura={460} travado={pending}>
       <div>
         <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
           <AlertTriangle size={16} style={{ color: 'var(--warning)' }} />
-          <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', flex: 1 }}>Cancelar atendimento</h2>
+          <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', flex: 1 }}>{titulo}</h2>
           <button type="button" onClick={onClose} className="btn-ghost" style={{ padding: '4px 6px' }}><X size={15} /></button>
         </div>
         <form action={action} style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
           <input type="hidden" name="appointment_id" value={appointmentId} />
           <input type="hidden" name="slug" value={slug} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label htmlFor="cancelamento-motivo" className="field-label">Motivo do cancelamento *</label>
+            <label htmlFor="cancelamento-motivo" className="field-label">{desistencia ? 'Motivo da desistência *' : 'Motivo do cancelamento *'}</label>
             <textarea id="cancelamento-motivo" name="cancellation_reason" required rows={3} placeholder="Descreva o motivo…" className="field" style={{ resize: 'vertical' }} />
             {/* A11 da 25ª (princípio 3): o motivo vai no aviso do cancelamento (textoDoCancelado). */}
             <p data-motivo-vai-a-cliente style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 4 }}>Vai também no aviso à cliente.</p>
@@ -433,7 +418,7 @@ function CancelModal({ appointmentId, slug, onClose, desistencia = null }: {
             <button type="button" onClick={onClose} className="btn-secondary"><X size={13} /> Voltar</button>
             <button type="submit" disabled={pending} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', borderRadius: 8, border: 'none', background: 'var(--warning)', color: 'var(--surface)', fontWeight: 700, fontSize: 'var(--text-base-sz)', cursor: 'pointer' }}>
               {pending ? <Loader2 size={13} className="animate-spin" /> : <XCircle size={13} />}
-              {pending ? 'Cancelando…' : 'Confirmar cancelamento'}
+              {pending ? (desistencia ? 'Registrando…' : 'Cancelando…') : desistencia ? 'Confirmar desistência' : 'Confirmar cancelamento'}
             </button>
           </div>
         </form>
@@ -619,211 +604,52 @@ function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences,
   )
 }
 
-// -- Plano em aberto: receber no check-in --------------------------------------
+// -- Plano em aberto: o saldo, e o caminho ao PDV ------------------------------
 
 /**
- * O saldo do plano de tratamento, cobrado quando a pessoa chega.
- *
- * Aceitar o plano e pagar por ele são gestos diferentes: a profissional aceita
- * na sala, o dinheiro entra no balcão. Antes o plano ficava numa fila de
- * checkout esperando alguém da recepção resolver uma decisão que já tinha sido
- * tomada — e podia ficar lá semanas, porque um plano nem sempre nasce no dia da
- * avaliação. Agora o saldo aparece aqui, no atendimento marcado.
+ * O saldo do plano de tratamento na tela do atendimento: só a quem recebe, e
+ * só para dizer. A tela do atendimento não recebe nada (AT-13, PV-13): o
+ * plano se recebe na comanda dele no PDV, e a parcela que venceu aparece no PDV
+ * da cliente ("Receber esta parcela", CR-06; DP-06). Até a 28ª ela tinha a
+ * própria janela de receber o plano, um caminho que o PDV não via.
  */
-function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
-  plano:         { planId: string; nome: string | null; emAberto: number; recebido: number; aVencer: number; proximoVencimento: string | null }
-  appointmentId: string
-  slug:          string
-  podeReceber:   boolean
+function PlanoEmAbertoBanner({ plano, clienteId, branchId, slug, podeReceber }: {
+  plano:     { planId: string; nome: string | null; emAberto: number; recebido: number; aVencer: number; proximoVencimento: string | null }
+  clienteId: string
+  branchId:  string
+  slug:      string
+  podeReceber: boolean
 }) {
-  const router = useRouter()
-  const [aberto,  setAberto]  = useState(false)
-  const [forma,   setForma]   = useState<'AVISTA' | 'PARCELADO'>('AVISTA')
-  // A37: a forma nasce vazia — escolhe-se antes de receber.
-  const [metodo,  setMetodo]  = useState('')
-  const [entrada, setEntrada] = useState(0)
-  const [parcelas, setParcelas] = useState(3)
-  const [vezes,   setVezes]   = useState(1)
-  const [bandeira, setBandeira] = useState('')
-  // C75: "Qual maquininha?" (só com mais de uma na rede).
-  const [maquininha, setMaquininha] = useState('')
-  const faltaAMaquininha = useFaltaAMaquininha(forma === 'AVISTA' || entrada > 0 ? metodo : null, maquininha)
-  const opcoesDeVezes = useOpcoesDeVezes(maquininha)
-  // C38: o crediário até o limite da rede (padrão 12; era até 48, calado).
-  const opcoesDeParcelas = useOpcoesDeParcelas()
-  const [venc,    setVenc]    = useState(() => {
-    const d = new Date(); d.setMonth(d.getMonth() + 1)
-    return d.toISOString().slice(0, 10)
-  })
-  const [salvando, setSalvando] = useState(false)
-  const [erro,     setErro]     = useState<string | null>(null)
-  // A chave do envio (D10): o duplo clique recebe uma vez só.
-  const envio = useEnvioUnico()
-  // A entrada acima do que está em aberto é recusada, não cortada (ven-02).
-  const recusaDaEntrada = forma === 'PARCELADO' ? recusaDaEntradaAcimaDoTotal(entrada, plano.emAberto, 'em aberto do plano') : null
-  // PDV8: o à vista pede o meio; o crediário, só o da entrada.
-  const semForma = forma === 'AVISTA' ? !metodo : entrada > 0 && !metodo
-  // Item 14 do escopo de 18/11: no dinheiro, o "Valor entregue" e o troco (só da tela).
-  const [entregue, setEntregue] = useState('')
-  const noDinheiro = emDinheiro(metodo, forma === 'AVISTA' ? plano.emAberto : entrada)
-  const recusaDoEntregue = recusaDoTroco(noDinheiro, entregue)
-
-  async function receber() {
-    if (recusaDaEntrada) { setErro(recusaDaEntrada); return }
-    const noCartao = metodo === 'CREDIT_CARD' || metodo === 'DEBIT_CARD'
-    const comBandeira = { ...(bandeira && noCartao ? { bandeira } : {}), ...(maquininha && noCartao ? { maquininha } : {}) }
-    setSalvando(true); setErro(null)
-    const res = await receberDoPlano(
-      plano.planId,
-      forma === 'AVISTA'
-        ? (metodo === 'CREDIT_CARD' && vezes > 1 ? { forma: 'AVISTA', metodo, vezes, ...comBandeira } : { forma: 'AVISTA', metodo, ...comBandeira })
-        // D5: a entrada no crédito também em N vezes na maquininha.
-        // PDV8: sem entrada, nenhum meio — nada se recebe agora.
-        : { forma: 'PARCELADO', metodo: entrada > 0 ? metodo : null, entrada, parcelas, primeiroVencimento: new Date(`${venc}T12:00:00`).toISOString(),
-            ...(metodo === 'CREDIT_CARD' && entrada > 0 && vezes > 1 ? { vezes } : {}), ...comBandeira },
-      appointmentId,
-      slug,
-      envio.chave(),
-    )
-    setSalvando(false)
-    if (res.error) { setErro(res.error); return }
-    envio.renovar()
-    setAberto(false)
-    router.refresh()
-  }
-
-  const restante = Math.max(0, Math.round((plano.emAberto - entrada) * 100) / 100)
-
+  const pathname = usePathname()
   return (
-    <>
-      <div data-plano-em-aberto style={{
-        padding: '12px 20px', borderRadius: 'var(--radius-field-token)', background: 'var(--brand-soft)',
-        border: '1.5px solid var(--brand-soft-border)',
-        display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
-      }}>
-        <div style={{ width: 32, height: 32, borderRadius: 8, flexShrink: 0, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <CreditCard size={15} style={{ color: 'var(--brand)' }} />
-        </div>
-        <div style={{ flex: 1, minWidth: 180 }}>
-          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>
-            {plano.nome ?? 'Plano de tratamento'} · {plano.emAberto > 0
-              ? <>em aberto {fmtBRL(plano.emAberto)}</>
-              : <>{fmtBRL(plano.aVencer)} a vencer</>}
-          </p>
-          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
-            {plano.emAberto > 0
-              ? (plano.recebido > 0 || plano.aVencer > 0
-                  ? `Já recebido: ${fmtBRL(plano.recebido)}. O que venceu é cobrado no check-in.`
-                  : 'O plano foi aceito sem cobrança. O valor é recebido agora, no check-in.')
-              : `Parcelas combinadas, recebidas no financeiro${plano.proximoVencimento ? ` — a próxima vence em ${formatDate(plano.proximoVencimento)}` : ''}. Nada a cobrar agora.`}
-            {plano.emAberto > 0 && plano.aVencer > 0 && ` Mais ${fmtBRL(plano.aVencer)} a vencer.`}
-          </p>
-        </div>
-        {podeReceber && plano.emAberto > 0 && (
-          <button type="button" onClick={() => setAberto(true)} className="btn-primary"
-            style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 20px', fontSize: 'var(--text-base-sz)' }}>
-            <CreditCard size={14} /> Receber {fmtBRL(plano.emAberto)}
-          </button>
-        )}
+    <div data-plano-em-aberto style={{
+      padding: '12px 20px', borderRadius: 'var(--radius-field-token)', background: 'var(--brand-soft)',
+      border: '1.5px solid var(--brand-soft-border)',
+      display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+    }}>
+      <div style={{ width: 32, height: 32, borderRadius: 8, flexShrink: 0, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <CreditCard size={15} style={{ color: 'var(--brand)' }} />
       </div>
-
-      {aberto && (
-        <JanelaModal onFechar={() => setAberto(false)} rotulo="Receber o plano de tratamento" largura={460}>
-          <div>
-            <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
-              <CreditCard size={16} style={{ color: 'var(--brand)' }} />
-              <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', flex: 1 }}>Receber o plano de tratamento</h2>
-              <button type="button" onClick={() => setAberto(false)} className="btn-ghost" style={{ padding: '4px 6px' }}><X size={15} /></button>
-            </div>
-
-            <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div style={{ padding: '10px 14px', borderRadius: 10, background: 'var(--bg-app)', border: '1px solid var(--border)' }}>
-                <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-faint)' }}>Em aberto</p>
-                <p style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>{fmtBRL(plano.emAberto)}</p>
-              </div>
-
-              {/* PDV8: o Crediário é uma forma, ao lado dos meios — o bloco de um meio é o à vista nele. */}
-              <FormasDePagamento valor={forma === 'AVISTA' ? metodo : 'CREDIARIO'} formas={[...FORMAS_DO_BALCAO, 'CREDIARIO']}
-                aoMudar={f => {
-                  if (f === 'CREDIARIO') { setForma('PARCELADO'); setMetodo('') } else { setForma('AVISTA'); setMetodo(f) }
-                  setVezes(1); setBandeira(''); setMaquininha('')
-                }} />
-              {forma === 'PARCELADO' && (
-                <>
-                  <div className="form-2col">
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <label className="field-label">Entrada (R$)</label>
-                      <input type="number" className="field" min={0} max={plano.emAberto} step="0.01"
-                        aria-invalid={!!recusaDaEntrada} aria-describedby={recusaDaEntrada ? 'recusa-da-entrada-do-plano' : undefined}
-                        value={entrada} onChange={e => setEntrada(Math.max(0, Number(e.target.value)))} />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <label className="field-label" htmlFor="plano-parcelas-do-saldo">Parcelas</label>
-                      <select id="plano-parcelas-do-saldo" className="field" value={parcelas} onChange={e => setParcelas(Number(e.target.value))}>
-                        {opcoesDeParcelas.map(n => <option key={n} value={n}>{rotuloDaOpcaoDeParcelas(n, entrada > 0)}</option>)}
-                      </select>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <label className="field-label">1º vencimento</label>
-                    <input type="date" className="field" value={venc} onChange={e => setVenc(e.target.value)} />
-                  </div>
-                  {recusaDaEntrada && (
-                    <p id="recusa-da-entrada-do-plano" role="alert" data-recusa-da-entrada
-                      style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 600 }}>{recusaDaEntrada}</p>
-                  )}
-                  <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                    {restante > 0
-                      ? `${fmtBRL(restante)} em ${parcelasEmTexto(restante, parcelas)}.`
-                      : 'Sem saldo a parcelar — a entrada cobre o total.'}
-                  </p>
-                </>
-              )}
-
-              {/* Com entrada, ela pede a forma dela; sem entrada, nada se recebe agora. */}
-              {forma === 'PARCELADO' && entrada > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <label className="field-label" htmlFor="plano-forma-da-entrada">Forma da entrada *</label>
-                  <select id="plano-forma-da-entrada" className="field" value={metodo}
-                    onChange={e => { setMetodo(e.target.value); setVezes(1); setBandeira(''); setMaquininha('') }}>
-                    <option value="">Selecione…</option>
-                    {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                  </select>
-                </div>
-              )}
-
-              {(forma === 'AVISTA' || entrada > 0) && (
-                <CampoDaMaquininha metodo={metodo} valor={maquininha} aoMudar={v => { setMaquininha(v); setVezes(1) }} />
-              )}
-              {metodo === 'CREDIT_CARD' && (forma === 'AVISTA' || entrada > 0) && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {/* D5: na entrada + parcelas, as vezes são da ENTRADA (a maquininha). */}
-                  <label className="field-label" htmlFor="vezes-no-cartao">{forma === 'PARCELADO' ? 'Vezes no cartão (a entrada)' : 'Vezes no cartão'}</label>
-                  <select id="vezes-no-cartao" className="field" value={vezes} onChange={e => setVezes(Number(e.target.value))}>
-                    {opcoesDeVezes.map(n => <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x`}</option>)}
-                  </select>
-                  <DicaDasVezes total={forma === 'PARCELADO' ? entrada : plano.emAberto} vezes={vezes} opcoes={opcoesDeVezes} />
-                  <AvisoDaTaxa vezes={vezes} bandeira={bandeira} maquininha={maquininha} />
-                </div>
-              )}
-              <CampoDaBandeira metodo={metodo} valor={bandeira} aoMudar={setBandeira} maquininha={maquininha} />
-              <CampoDoTroco emDinheiro={noDinheiro} entregue={entregue} aoMudar={setEntregue} desligado={salvando} />
-
-              {erro && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{erro}</p>}
-
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4 }}>
-                <button type="button" onClick={() => setAberto(false)} className="btn-secondary"><X size={13} /> Voltar</button>
-                <button type="button" onClick={receber} disabled={salvando || !!recusaDaEntrada || semForma || !!faltaAMaquininha || !!recusaDoEntregue} className="btn-primary"
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', fontSize: 'var(--text-base-sz)', minWidth: 170, justifyContent: 'center' }}>
-                  {salvando ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
-                  {salvando ? 'Registrando…' : 'Confirmar recebimento'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </JanelaModal>
+      <div style={{ flex: 1, minWidth: 180 }}>
+        <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>
+          {plano.nome ?? 'Plano de tratamento'} · {plano.emAberto > 0
+            ? <>em aberto {fmtBRL(plano.emAberto)}</>
+            : <>{fmtBRL(plano.aVencer)} a vencer</>}
+        </p>
+        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
+          {plano.emAberto > 0
+            ? `${plano.recebido > 0 ? `Já recebido: ${fmtBRL(plano.recebido)}. ` : ''}O que venceu se recebe no PDV, na venda da cliente.`
+            : `Parcelas combinadas${plano.proximoVencimento ? ` — a próxima vence em ${formatDate(plano.proximoVencimento)}` : ''}. Nada a receber agora.`}
+          {plano.emAberto > 0 && plano.aVencer > 0 && ` Mais ${fmtBRL(plano.aVencer)} a vencer.`}
+        </p>
+      </div>
+      {podeReceber && plano.emAberto > 0 && (
+        <Link href={rotaDaClienteNoPdv(pathname, slug, branchId, clienteId)} className="btn-primary"
+          style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 20px', fontSize: 'var(--text-base-sz)', textDecoration: 'none' }}>
+          <CreditCard size={14} /> Receber no PDV
+        </Link>
       )}
-    </>
+    </div>
   )
 }
 
@@ -1282,14 +1108,18 @@ export function AppointmentSession({
   const agoraMs   = useAgora()
   // O horário marcado no relógio da unidade (F62b).
   const fuso      = useFuso()
+  const [abertaEm] = useState(() => Date.now())
   const atrasoAgora = !appointment.startedAt && ['SCHEDULED', 'CONFIRMED', 'ARRIVED'].includes(status) && agoraMs != null
     ? atrasoDoInicio(appointment.scheduledAt, new Date(agoraMs), fuso) : null
   const overline  = STATUS_OVERLINE[status] ?? STATUS_OVERLINE['SCHEDULED']!
   const isActive  = ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(status)
   // As ações principais do topo (uma por estado) — no celular, a barra do rodapé (D1 da 10ª).
   const aChegar              = status === 'SCHEDULED' || status === 'CONFIRMED'
-  const mostraChegarEIniciar = aChegar && canCheckin && canManage && ehDaProfissional
-  const mostraCheckin        = aChegar && canCheckin && !(canManage && ehDaProfissional)
+  // A chegada só se marca no dia do agendamento (A18; D2 da 28ª): o servidor
+  // recusa fora dele, e a tela não oferece o que ele recusaria.
+  const ehODia               = ehODiaDoAgendamento(appointment.scheduledAt, new Date(abertaEm), fuso)
+  const mostraChegarEIniciar = aChegar && ehODia && canCheckin && canManage && ehDaProfissional
+  const mostraCheckin        = aChegar && ehODia && canCheckin && !(canManage && ehDaProfissional)
   const mostraIniciar        = (status === 'ARRIVED' || (status === 'CONFIRMED' && !(canCheckin && ehDaProfissional))) && canManage
   // Finalizar é do Atendimento em Gerenciar (o Heitor, 2026-11-18); o clínico
   // dentro dele (a evolução, a ficha) segue do Prontuário (`canEditRecords`).
@@ -1428,9 +1258,12 @@ export function AppointmentSession({
 
   async function handleCheckin() {
     setCheckingIn(true)
-    await checkinAppointment(appointment.id, slug)
-    router.refresh()
+    setErroAoIniciar(null)
+    const r = await checkinAppointment(appointment.id, slug)
     setCheckingIn(false)
+    // A recusa do servidor aparece (CLAUDE.md §14: o { error } nunca se descarta).
+    if (r?.error) { setErroAoIniciar(r.error); return }
+    router.refresh()
   }
 
   // A profissional no agendamento que ainda não chegou: o mesmo check-in e o
@@ -1940,7 +1773,7 @@ export function AppointmentSession({
             {isActive && (status === 'IN_PROGRESS' ? canManage : canCheckin) && (
               <button type="button" onClick={() => setShowCancel(true)}
                 className="btn-ghost" style={{ padding: '9px 14px', fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)', gap: 5 }}>
-                <XCircle size={14} /> Cancelar
+                <XCircle size={14} /> {status === 'IN_PROGRESS' ? 'Desistir do atendimento' : 'Cancelar'}
               </button>
             )}
           </div>
@@ -2182,14 +2015,15 @@ export function AppointmentSession({
           )}
         </div>
 
-        {/* -- Plano em aberto: a cobrança acontece na chegada ------------- */}
+        {/* -- Plano em aberto: o saldo, recebido no PDV ------------------- */}
         {planoEmAberto && (planoEmAberto.emAberto > 0 || planoEmAberto.aVencer > 0) && (
           <PlanoEmAbertoBanner
             plano={planoEmAberto}
-            appointmentId={appointment.id}
+            clienteId={client.id}
+            branchId={branchId}
             slug={slug}
-            // C33: receber o plano no check-in é de Recebimentos (o mesmo de receber o atendimento no PDV).
-            podeReceber={canPayment}
+            // O PDV recebe (PV-04): o mesmo critério do resto da tela.
+            podeReceber={podeReceber}
           />
         )}
 
@@ -2288,7 +2122,7 @@ export function AppointmentSession({
                   </div>
                 ) : isPartOfPlan ? (
                   <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)' }}>
-                    Pagamento realizado no checkout do plano de tratamento.
+                    O pagamento é o do plano de tratamento, na comanda do plano no PDV.
                   </p>
                 ) : isPackageSession ? (
                   <p data-pagamento-do-pacote style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)' }}>
@@ -2416,10 +2250,13 @@ export function AppointmentSession({
                           Plano aceito · {fmtBRL(totalDoPlano)}
                         </p>
                         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', marginTop: 2 }}>
-                          A comanda do plano está no PDV: lá a cliente assina o contrato e paga.
+                          {/* D8 da 28ª (princípio 3): o plano já recebido não manda pagar de novo. */}
+                          {existingPlan.recebido
+                            ? 'O plano já foi recebido no PDV. As sessões se agendam pelo plano ou pela agenda.'
+                            : 'A comanda do plano está no PDV: lá a cliente assina o contrato e paga.'}
                         </p>
                       </div>
-                      {podeReceber && (
+                      {podeReceber && !existingPlan.recebido && (
                         <Link href={`${rotaNoPortal(pathname, slug, '/pdv')}?unidade=${branchId}`} className="btn-secondary" style={{ textDecoration: 'none' }}>
                           Abrir o PDV
                         </Link>

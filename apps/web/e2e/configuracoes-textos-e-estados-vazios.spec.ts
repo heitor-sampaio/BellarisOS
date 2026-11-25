@@ -91,7 +91,16 @@ test('A8: na unidade, Geral não manda à aba Assinatura — diz que é de quem 
     await expect(p.getByText(/A assinatura fica com quem administra a rede/)).toBeVisible()
     await expect(p.getByText(/aba Assinatura/)).toHaveCount(0)
   })
+  // AS-15: a aba Assinatura é só da Admin da rede (o Heitor, 2026-11-18: "Configuração
+  // da rede toda só pela conta admin"). Quem tem “A rede inteira” e não é a Admin
+  // não é mandada a ela; só a Admin da rede é.
   await como(browser, gerente, async p => {
+    await p.goto('/admin/settings?tab=general')
+    await p.getByRole('button', { name: 'Sobre: Plano' }).hover()
+    await expect(p.getByText(/A assinatura fica com quem administra a rede/)).toBeVisible()
+    await expect(p.getByText(/aba Assinatura/)).toHaveCount(0)
+  })
+  await como(browser, dona, async p => {
     await p.goto('/admin/settings?tab=general')
     await p.getByRole('button', { name: 'Sobre: Plano' }).hover()
     await expect(p.getByText(/Veja faturas e pagamento na aba Assinatura/)).toBeVisible()

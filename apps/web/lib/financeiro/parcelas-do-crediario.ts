@@ -6,9 +6,27 @@
  *
  * Puro: a tela e o servidor leem a mesma conta.
  */
+import { LIMITE_DO_INTEIRO_CURTO, acimaDoRegistro, avisoAcimaDoComum } from '@/lib/acima-do-comum'
+
 export const CREDIARIO_PADRAO = 12
-/** O teto do registro (o mesmo da despesa parcelada). */
-export const TETO_DO_CREDIARIO = 48
+/**
+ * Princípio 2 (o Heitor, 04/11: "no máximo, avisar"): a rede divide em quantas
+ * parcelas quiser. Acima de 48 (o antigo teto, que recusava) a configuração
+ * avisa; só o registro limita (`tenants.crediario_max_parcelas`, smallint).
+ */
+export const CREDIARIO_COMUM = 48
+export const TETO_DO_CREDIARIO = LIMITE_DO_INTEIRO_CURTO
+
+/** A recusa do limite que a rede escolhe, ou `null`: só o impossível (zero, fração, acima do registro). */
+export function recusaDoMaximoDeParcelas(n: number): string | null {
+  if (!Number.isInteger(n) || n < 1) return 'Diga em até quantas parcelas: um número inteiro, de 1 para cima.'
+  return n > TETO_DO_CREDIARIO ? acimaDoRegistro(TETO_DO_CREDIARIO, 'parcelas') : null
+}
+
+/** O limite acima do comum: avisa, e vale como está. */
+export function avisoDoMaximoDeParcelas(n: number): string | null {
+  return avisoAcimaDoComum(n, CREDIARIO_COMUM, 'parcelas')
+}
 
 /** De 1x ao limite da rede. */
 export function opcoesDeParcelas(maximo: number): number[] {

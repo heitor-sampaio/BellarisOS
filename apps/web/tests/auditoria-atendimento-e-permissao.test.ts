@@ -126,8 +126,11 @@ describe('1. O módulo Atendimento', () => {
     const sql = migrationsDoAgenteB()
     expect(sql).toMatch(/'atendimento'/)
     expect(sql).toContain('private.cargos_modelo_semear')
-    // O modelo que hoje atende (a Agenda e o Prontuário em Gerenciar) atende.
-    expect(sql).toMatch(/"atendimento":\["MANAGE","OWN"\]/)
+    // O modelo que hoje atende (a Agenda e o Prontuário em Gerenciar) atende: o
+    // Atendimento em Gerenciar. O escopo do cargo saiu (SM1, o Heitor, 2026-11-23:
+    // "pode tirar, as vistas pessoais resolvem"): o "OWN" que esta migration
+    // gravava virou "ALL" na 20261129000001 (tests/cargos-sem-so-os-meus.test.ts).
+    expect(sql).toMatch(/"atendimento":\["MANAGE",/)
     expect(sql.trimEnd().endsWith("notify pgrst, 'reload schema';")).toBe(true)
   })
 })

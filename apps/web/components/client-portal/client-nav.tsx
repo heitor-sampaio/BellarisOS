@@ -2,14 +2,17 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, CalendarDays, Clock3, UserCircle2 } from 'lucide-react'
+import { Home, CalendarDays, Clock3, Wallet, UserCircle2 } from 'lucide-react'
 
 interface Props { slug: string }
 
+// A12 da 28ª (princípio 7): o Financeiro (o que ela pagou, o que está em aberto,
+// o crédito) tem lugar na barra — só se chegava a ele por Histórico → Pagamentos.
 const TABS = [
   { path: 'home',         Icon: Home,           label: 'Início' },
   { path: 'agendamentos', Icon: CalendarDays,    label: 'Agenda' },
   { path: 'historico',    Icon: Clock3,          label: 'Histórico' },
+  { path: 'financeiro',   Icon: Wallet,          label: 'Financeiro' },
   { path: 'perfil',       Icon: UserCircle2,     label: 'Perfil' },
 ]
 

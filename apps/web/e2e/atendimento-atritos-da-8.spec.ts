@@ -91,12 +91,13 @@ test('A27: a desistência no meio registra a intercorrência e baixa o insumo j�
     const avisos: string[] = []
     p.on('console', m => { if (/Cannot update a component/.test(m.text())) avisos.push(m.text()) })
     await p.goto(`/${slug}/agenda/${id}`)
-    await p.getByRole('button', { name: 'Cancelar', exact: true }).click()
-    const janela = p.getByRole('dialog', { name: 'Cancelar atendimento' })
-    await janela.getByLabel('Motivo do cancelamento *').fill('A cliente passou mal e desistiu')
+    // Pendente 19 da 27ª / A9 da 28ª (princípio 7): no Em atendimento o botão diz o que faz.
+    await p.getByRole('button', { name: 'Desistir do atendimento', exact: true }).click()
+    const janela = p.getByRole('dialog', { name: 'Desistir do atendimento' })
+    await janela.getByLabel('Motivo da desistência *').fill('A cliente passou mal e desistiu')
     await janela.getByLabel('Intercorrência (opcional)').fill('Lipotimia após a aplicação; recuperou em 10 min')
     await janela.getByLabel(/Baixar do estoque o que já foi aplicado/).check()
-    await janela.getByRole('button', { name: 'Confirmar cancelamento' }).click()
+    await janela.getByRole('button', { name: 'Confirmar desistência' }).click()
     await expect(janela).toBeHidden()
     expect(avisos, 'nenhum setState durante a renderização').toEqual([])
   })

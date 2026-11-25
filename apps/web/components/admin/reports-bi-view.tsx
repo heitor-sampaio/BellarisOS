@@ -28,7 +28,7 @@ import { MOVIMENTOS_POR_PAGINA } from '@/lib/metrics/movimentos-de-estoque-comum
 import type { TipoDoMovimento } from '@/lib/estoque/tipo-do-movimento'
 import { DETALHE_DO_GIRO } from '@/lib/estoque/situacao'
 import {
-  TIPOS_DE_VENDA, ROTULO_DO_TIPO, POR_PAGINA, descricaoDaVenda, comandaDaVenda,
+  TIPOS_DE_VENDA, ROTULO_DO_TIPO, POR_PAGINA, descricaoDaVenda, comandaDaVenda, marcaDoCancelamento, quemDaVenda,
 } from '@/lib/metrics/vendas-comum'
 import type { SemReceita } from '@/lib/metrics/fechamento-extra'
 import { notasDoTop5 } from '@/lib/relatorios/nota-do-top5'
@@ -739,9 +739,19 @@ function TabVendas(p: ReportsBiProps) {
                     <td data-label="Data" data-par style={{ ...td(), whiteSpace: 'nowrap' }}>{new Date(l.data).toLocaleDateString('pt-BR', { timeZone: fuso })}</td>
                     <td data-label="Comanda" data-par data-comanda style={{ ...td(), whiteSpace: 'nowrap', color: l.comanda == null ? 'var(--text-faint)' : 'var(--text)' }}>{comandaDaVenda(l)}</td>
                     <td data-label="Tipo" data-par style={td()}><Badge label={ROTULO_DO_TIPO[l.tipo]} color={COR_DO_TIPO[l.tipo]} /></td>
-                    <td data-label="" style={{ ...td(), fontWeight: 600, minWidth: 180 }}>{descricaoDaVenda(l)}</td>
+                    <td data-label="" style={{ ...td(), fontWeight: 600, minWidth: 180 }}>
+                      {descricaoDaVenda(l)}
+                      {/* A10 da 28ª: o cancelado diz que foi (o valor já é o que a rede ficou). */}
+                      {marcaDoCancelamento(l) && <span data-venda-cancelada style={{ marginLeft: 6 }}><Badge label={marcaDoCancelamento(l)!} color="amber" /></span>}
+                    </td>
                     <td data-label="Cliente" style={td()}>{l.cliente ?? '—'}</td>
-                    <td data-label="Profissional" style={td()}>{l.profissional ?? '—'}</td>
+                    {/* Pendente 17 da 27ª: a linha diz se é quem atendeu ou quem vendeu. */}
+                    <td data-label={quemDaVenda(l.tipo)} style={td()}>
+                      {l.profissional ?? '—'}
+                      {l.profissional && l.tipo !== 'CREDITO' && (
+                        <span data-quem-da-venda style={{ display: 'block', fontSize: 'var(--text-overline)', color: 'var(--text-muted)' }}>{quemDaVenda(l.tipo)}</span>
+                      )}
+                    </td>
                     {comUnidade && <td data-label="Unidade" style={td()}>{nomeDaUnidade(l.branchId)}</td>}
                     <td data-label="Valor" style={{ ...td('right'), fontWeight: 700, whiteSpace: 'nowrap' }}>{fmtBRLFull(l.valor)}</td>
                   </tr>
@@ -1276,7 +1286,7 @@ function TabEstoque(p: ReportsBiProps) {
       product: b.products?.name ?? '—',
       batch:   b.batch_number ?? '—',
       expires: validade.dia,
-      qty:     Number(b.quantity),
+      qty:     b.saldo,
       days:    validade.dias,
       rotulo:  validade.rotulo,
     }

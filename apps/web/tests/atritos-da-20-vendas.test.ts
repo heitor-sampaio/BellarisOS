@@ -47,8 +47,11 @@ describe('A1: o seletor do crediário diz quantos pagamentos dá, com a entrada'
     expect(rotuloDaOpcaoDeParcelas(3, true)).toBe('3x + entrada (4 pagamentos)')
     expect(rotuloDaOpcaoDeParcelas(1, true)).toBe('1x + entrada (2 pagamentos)')
   })
-  it('as três telas do crediário usam o rótulo', () => {
-    for (const arquivo of ['components/shared/campos-do-pagamento.tsx', 'components/branch/checkout-wizard.tsx', 'components/branch/appointment-session.tsx']) {
+  // As telas que vendem no crediário. A tela do atendimento saiu da lista na 28ª:
+  // ela não recebe mais o plano (o Heitor, 13/11, PV-01: "o pagamento acontece
+  // por dentro desse PDV, seja do que for"; AT-13 e PV-13).
+  it('as telas do crediário usam o rótulo', () => {
+    for (const arquivo of ['components/shared/campos-do-pagamento.tsx', 'components/branch/checkout-wizard.tsx']) {
       expect(ler(arquivo), arquivo).toContain('rotuloDaOpcaoDeParcelas(')
     }
   })

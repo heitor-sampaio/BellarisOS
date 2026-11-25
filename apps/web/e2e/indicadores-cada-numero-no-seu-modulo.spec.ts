@@ -148,8 +148,9 @@ test.describe('sem a Agenda, com o Financeiro em Ver (a Agnes)', () => {
       const main = p.locator('main')
       await expect(main).toContainText(/Faturamento do mês\s*R\$\s*470(?!\d)/)
       await expect.soft(card(p, 'Meus agendamentos hoje')).toContainText(/hoje\s*1\s*\d+ aguardando/i)
-      // Sem a Agenda (SM1/SM2), o "Clientes no mês" não tem as etapas da agenda (A32 da 24ª).
-      await expect.soft(p.locator('[data-etapa="Agendamentos"]'), 'Clientes no mês: sem as etapas da agenda').toHaveCount(0)
+      // DB-01 (VP-01; o Heitor, 23/11: "as vistas pessoais resolvem"): ela atende sem a Agenda,
+      // e o "Clientes no mês" mostra as etapas da agenda com os números DELA (1), como o "Meus agendamentos hoje".
+      await expect.soft(p.locator('[data-etapa="Agendamentos"]'), 'Clientes no mês: os agendamentos dela').toContainText(/1$/)
       await expect.soft(p.getByText('Faturamento', { exact: true }), 'o gráfico é o da clínica').toBeVisible()
       // R$ 470 ÷ 3 clientes que pagaram.
       await expect.poll(async () => dinheiro(await card(p, 'Ticket médio').innerText()), { timeout: 10_000 }).toBeCloseTo(156.67, 0)

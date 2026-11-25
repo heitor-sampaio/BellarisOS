@@ -75,6 +75,16 @@ export const MODULO_DO_TIPO: Record<TipoDoServidor, AppModule> = {
 }
 
 /**
+ * O outro módulo que também abre a tela própria do tipo. A ficha da cliente
+ * abre com o Prontuário em Ver, só na aba Prontuário
+ * (lib/clientes/ficha-so-do-prontuario.ts; CLAUDE.md §11, o clínico é do
+ * Prontuário): quem o tem acha a cliente aqui, só pelo nome (`semOCadastro`).
+ */
+export const TAMBEM_ABRE: Partial<Record<TipoDoServidor, AppModule>> = {
+  cliente: 'medical_records',
+}
+
+/**
  * A funcionalidade do PLANO que o tipo exige, quando ela é parte de um módulo
  * (lib/planos/recursos.ts). O módulo inteiro fora do plano já saiu das
  * permissões; estas dividem o módulo com outra.
@@ -95,7 +105,8 @@ export function tiposPermitidos(
   noPlano: (chave: string) => boolean = () => true,
 ): TipoDoServidor[] {
   return (Object.keys(MODULO_DO_TIPO) as TipoDoServidor[])
-    .filter(t => (permissions[MODULO_DO_TIPO[t]] ?? 'NONE') !== 'NONE')
+    .filter(t => (permissions[MODULO_DO_TIPO[t]] ?? 'NONE') !== 'NONE'
+      || (!!TAMBEM_ABRE[t] && (permissions[TAMBEM_ABRE[t]!] ?? 'NONE') !== 'NONE'))
     .filter(t => { const r = RECURSO_DO_TIPO[t]; return !r || noPlano(r) })
 }
 

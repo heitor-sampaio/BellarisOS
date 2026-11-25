@@ -263,7 +263,8 @@ describe('toda tela que recebe pede o valor entregue no dinheiro', () => {
     'components/shared/receber-no-cartao.tsx',         // receber no Financeiro e na ficha
     'components/shared/pdv/parcelas-em-aberto.tsx',    // receber a parcela no PDV
     'components/branch/checkout-wizard.tsx',           // receber o plano no PDV
-    'components/branch/appointment-session.tsx',       // receber o plano no atendimento
+    // A tela do atendimento saiu na 28ª: não recebe mais o plano (o Heitor, 13/11,
+    // PV-01: "o pagamento acontece por dentro desse PDV, seja do que for"; AT-13, PV-13).
   ]
   for (const arq of portas) {
     it(`${arq}: o CampoDoTroco e a recusaDoTroco`, () => {

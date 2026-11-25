@@ -156,7 +156,9 @@ export function lancamentosDoPagamento(total: number, p: PagamentoDoPlano, rotul
     // crediário da CLÍNICA, sem meio — o meio se escolhe ao receber (não é
     // o cartão da entrada).
     const grupo = crypto.randomUUID()
-    for (const parcela of dividirEmParcelas(saldo, Math.min(12, p.parcelas), p.primeiroVencimento)) {
+    // CR-02: as parcelas que a venda escolheu, até o limite da rede (conferido antes) —
+    // o `Math.min(12, …)` cortava calado o crediário de 24x em 12 parcelas maiores.
+    for (const parcela of dividirEmParcelas(saldo, p.parcelas, p.primeiroVencimento)) {
       saida.push({
         amount: parcela.amount, payment_method: null, is_paid: false, due_date: parcela.due_date,
         notes: `${rotuloDaParcela(parcela)} — ${rotulo}`, sufixo: rotuloDaParcela(parcela),

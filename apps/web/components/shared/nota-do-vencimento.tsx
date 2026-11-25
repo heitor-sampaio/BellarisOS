@@ -67,7 +67,8 @@ export function NotaDoVencimento({ valor, proximo, emAbertoTotal, concluidosSemP
         <span data-em-aberto style={{ display: 'block', marginTop: 2 }}>
           {noTopoOEmAberto
             ? <span data-vence-no-periodo>Vence no período: <strong>{formatBRL(valor)}</strong></span>
-            : <>Em aberto: <strong>{formatBRL(emAbertoTotal)}</strong></>}
+            // A6 da 28ª: o recorte dito — ao lado do "vence no período" do número grande.
+            : <>Em aberto, de qualquer vencimento: <strong>{formatBRL(emAbertoTotal)}</strong></>}
           {hrefDaBaixa && emAbertoTotal > 0 && (
             <> · <a href={hrefDaBaixa} style={{ color: 'inherit', fontWeight: 700, textDecoration: 'underline' }}>{podeDarBaixa ? (despesa ? 'Ver e pagar' : 'Ver e receber') : 'Ver a lista'}</a></>
           )}

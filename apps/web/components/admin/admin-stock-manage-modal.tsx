@@ -428,6 +428,9 @@ function AjusteForm({ product, allBranches, defaultBranchId, sugerida, onClose, 
   // A10 da 24ª: o tipo do ajuste — a contagem (inventário) ou a correção do que se digitou errado.
   const [tipoDoAjuste, setTipoDoAjuste] = useState<'inventario' | 'correcao_de_cadastro'>('inventario')
   const lotesDaUnidade = (product.lotes ?? []).filter(l => l.unidadeId === branchId)
+  // A1 da 28ª (ES-24): o lote vencido se sinaliza ("venceu"), pelo dia da unidade.
+  const fuso = useFuso()
+  const [agora] = useState(() => new Date())
 
   // D3 da 7ª simulação: a toxina tinha 780 UI e o ajuste mostrava "8 frasco"
   // (a embalagem aberta arredondada); a contagem de 7,7 virava 750 UI. O saldo
@@ -536,7 +539,7 @@ function AjusteForm({ product, allBranches, defaultBranchId, sugerida, onClose, 
                 {delta < 0 && (
                   <Dica rotulo="Sobre a diferença a menos">
                     <span data-ajuste-negativo>
-                      A diferença sai {loteDoAjuste ? 'do lote escolhido (o que faltar nele, do que vence primeiro)' : 'do lote que vence primeiro'} e entra em Relatórios → Estoque, “Perdas no período”, como Inventário, ao custo do lote. Não gera despesa.
+                      A diferença sai {loteDoAjuste ? 'do lote escolhido (o que faltar nele, do válido que vence primeiro; o vencido, por último)' : 'do lote válido que vence primeiro (o vencido, por último)'} e entra em Relatórios → Estoque, “Perdas no período”, como Inventário, ao custo do lote. Não gera despesa.
                       Entrada, ajuste ou perda lançados errados se desfazem no Histórico (“Desfazer entrada”, “Desfazer ajuste”, “Desfazer perda”).
                     </span>
                   </Dica>
@@ -605,7 +608,7 @@ function AjusteForm({ product, allBranches, defaultBranchId, sugerida, onClose, 
               {lotesDaUnidade.map(l => (
                 <option key={l.id} value={l.id}>
                   {l.numero ? `Lote ${l.numero}` : 'Lote sem número'}
-                  {l.validade ? ` · vence ${validadeNaTela(l.validade)}` : ''}
+                  {l.validade ? ` · ${loteVencido(l.validade, agora, fuso) ? 'venceu' : 'vence'} ${validadeNaTela(l.validade)}` : ''}
                   {` · ${fmtQ(l.quantidade)} ${product.unit}`}
                 </option>
               ))}
@@ -624,18 +627,19 @@ function AjusteForm({ product, allBranches, defaultBranchId, sugerida, onClose, 
       {delta !== null && delta < 0 && (
         <>
           {/* A38 da 10ª: o ajuste a menos escolhe o lote (desfazer duas entradas
-              erradas zerou o lote real pelo FEFO). Sem escolha, o que vence primeiro. */}
+              erradas zerou o lote real pelo FEFO). Sem escolha, o válido que vence
+              primeiro, e o vencido por último (ES-24; A1 da 28ª: o texto prometia o contrário). */}
           {lotesDaUnidade.length > 0 && (
             <FieldWrap>
               <label htmlFor="ajuste-lote-saida" style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
                 De qual lote sai a diferença
               </label>
               <select id="ajuste-lote-saida" name="loteId" className="field" value={loteDoAjuste} onChange={e => setLoteDoAjuste(e.target.value)}>
-                <option value="">O que vence primeiro</option>
+                <option value="">O válido que vence primeiro (o vencido, por último)</option>
                 {lotesDaUnidade.map(l => (
                   <option key={l.id} value={l.id}>
                     {l.numero ? `Lote ${l.numero}` : 'Lote sem número'}
-                    {l.validade ? ` · vence ${validadeNaTela(l.validade)}` : ''}
+                    {l.validade ? ` · ${loteVencido(l.validade, agora, fuso) ? 'venceu' : 'vence'} ${validadeNaTela(l.validade)}` : ''}
                     {` · ${fmtQ(l.quantidade)} ${product.unit}`}
                   </option>
                 ))}
@@ -717,6 +721,9 @@ function PerdaForm({ product, allBranches, defaultBranchId, sugerida, motivosDeP
   const [pending,  setPending]  = useState(false)
   const [branchId, setBranchId] = useState(defaultBranchId ?? unidadeSugerida(allBranches, sugerida))
   const lotes = (product.lotes ?? []).filter(l => l.unidadeId === branchId)
+  // A1 da 28ª (ES-24): o lote vencido se sinaliza ("venceu"), pelo dia da unidade.
+  const fuso = useFuso()
+  const [agora] = useState(() => new Date())
   // est-03: com unidade de consumo, a perda também se digita nela ("30 UI").
   const rende = product.consumptionUnit && Number(product.unitsPerPackage) > 0 ? Number(product.unitsPerPackage) : null
   const [emConsumo, setEmConsumo] = useState(false)
@@ -761,11 +768,11 @@ function PerdaForm({ product, allBranches, defaultBranchId, sugerida, motivosDeP
       <FieldWrap>
         <label htmlFor="perda-lote" style={rotulo}>Lote</label>
         <select id="perda-lote" name="loteId" className="field" defaultValue="">
-          <option value="">Sem lote — sai o que vence primeiro</option>
+          <option value="">Sem lote — sai o válido que vence primeiro (o vencido, por último)</option>
           {lotes.map(l => (
             <option key={l.id} value={l.id}>
               {l.numero ? `Lote ${l.numero}` : 'Lote sem número'}
-              {l.validade ? ` · vence ${validadeNaTela(l.validade)}` : ''}
+              {l.validade ? ` · ${loteVencido(l.validade, agora, fuso) ? 'venceu' : 'vence'} ${validadeNaTela(l.validade)}` : ''}
               {` · ${fmt(l.quantidade)} ${product.unit}`}
             </option>
           ))}

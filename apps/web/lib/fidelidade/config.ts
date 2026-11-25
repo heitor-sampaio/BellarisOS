@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { LIMITE_DO_DECIMAL, LIMITE_DO_INTEIRO, LIMITE_DE_DIAS, LIMITE_DE_MESES, acimaDoRegistro, acimaDeCemAnos, avisoAcimaDoComum } from '@/lib/acima-do-comum'
 
 /**
  * A configuração do programa de fidelidade de uma rede (`loyalty_configs`).
@@ -75,15 +76,17 @@ export const CONFIG_PADRAO: ConfigFidelidade = {
 export const EntradaDaConfig = z.object({
   enabled:         z.boolean(),
   earn_mode:       z.enum(MODOS_DE_GANHO),
+  // Princípio 2 (o Heitor, 04/11): acima do comum a tela AVISA (`avisoDaFidelidade`);
+  // só o impossível se recusa — zero, negativo, fracionário, acima do registro.
   points_per_real: z.coerce.number()
     .min(0.01, 'Informe quantos pontos o cliente ganha por R$ 1.')
-    .max(1000, 'No máximo 1.000 pontos por R$ 1.'),
+    .max(LIMITE_DO_DECIMAL, acimaDoRegistro(LIMITE_DO_DECIMAL, 'pontos por R$ 1')),
   // Resgate como desconto no pagamento (fase 2).
   redeem_points_value: z.coerce.number()
     .min(0.0001, 'Informe quanto vale um ponto, em R$.')
-    .max(1000, 'Um ponto vale no máximo R$ 1.000.'),
+    .max(LIMITE_DO_DECIMAL, acimaDoRegistro(LIMITE_DO_DECIMAL, 'reais por ponto')),
   redeem_min_points: z.coerce.number().int('O mínimo é um número inteiro de pontos.')
-    .min(0, 'O mínimo não pode ser negativo.').max(1_000_000, 'Mínimo alto demais.'),
+    .min(0, 'O mínimo não pode ser negativo.').max(LIMITE_DO_INTEIRO, acimaDoRegistro(LIMITE_DO_INTEIRO, 'pontos')),
   redeem_max_pct: z.coerce.number()
     .min(1, 'Os pontos precisam pagar ao menos 1% do valor.')
     .max(100, 'Os pontos pagam no máximo 100% do valor.'),
@@ -92,25 +95,25 @@ export const EntradaDaConfig = z.object({
   expiry_months: z.union([
     z.null(),
     z.coerce.number().int('A validade é um número inteiro de meses.')
-      .min(1, 'A validade é de pelo menos 1 mês.').max(120, 'A validade é de no máximo 120 meses.'),
+      .min(1, 'A validade é de pelo menos 1 mês.').max(LIMITE_DE_MESES, acimaDeCemAnos(LIMITE_DE_MESES, 'meses')),
   ]),
   // Opcionais. Bônus 0 = desligado; aviso nulo = não avisa.
   birthday_bonus: z.coerce.number().int('O bônus é um número inteiro de pontos.')
-    .min(0, 'O bônus não pode ser negativo.').max(1_000_000, 'Bônus alto demais.'),
+    .min(0, 'O bônus não pode ser negativo.').max(LIMITE_DO_INTEIRO, acimaDoRegistro(LIMITE_DO_INTEIRO, 'pontos')),
   first_access_bonus: z.coerce.number().int('O bônus é um número inteiro de pontos.')
-    .min(0, 'O bônus não pode ser negativo.').max(1_000_000, 'Bônus alto demais.'),
+    .min(0, 'O bônus não pode ser negativo.').max(LIMITE_DO_INTEIRO, acimaDoRegistro(LIMITE_DO_INTEIRO, 'pontos')),
   client_redeem: z.boolean(),
   expiry_notice_days: z.union([
     z.null(),
     z.coerce.number().int('O aviso é um número inteiro de dias.')
-      .min(1, 'O aviso sai com pelo menos 1 dia de antecedência.').max(90, 'O aviso sai com no máximo 90 dias de antecedência.'),
+      .min(1, 'O aviso sai com pelo menos 1 dia de antecedência.').max(LIMITE_DE_DIAS, acimaDeCemAnos(LIMITE_DE_DIAS, 'dias')),
   ]),
   // A venda de produto pontua? Sem o campo (chamador antigo), não.
   pontua_venda_de_produto: z.boolean().optional().default(false),
   // O prêmio por indicação. Sem o campo (chamador antigo), desligado.
   indicacao_premio: z.enum(PREMIOS_DE_INDICACAO).optional().default('DESLIGADO'),
   indicacao_pontos: z.coerce.number().int('Os pontos da indicação são um número inteiro.')
-    .min(0, 'Os pontos não podem ser negativos.').max(1_000_000, 'Pontos demais.').optional().default(0),
+    .min(0, 'Os pontos não podem ser negativos.').max(LIMITE_DO_INTEIRO, acimaDoRegistro(LIMITE_DO_INTEIRO, 'pontos')).optional().default(0),
   indicacao_recompensa_id: z.string().uuid().nullable().optional().default(null),
 }).superRefine((c, ctx) => {
   if (c.indicacao_premio === 'PONTOS' && !(c.indicacao_pontos > 0)) {
@@ -121,6 +124,27 @@ export const EntradaDaConfig = z.object({
   }
 })
 export type EntradaDaConfig = z.infer<typeof EntradaDaConfig>
+
+/**
+ * O comum de cada campo (o antigo teto, que recusava — decisão do Claude,
+ * 25/11): acima dele, a tela avisa e o servidor grava (princípio 2).
+ */
+const COMUM_DA_FIDELIDADE = {
+  points_per_real:     { comum: 1000,      unidade: 'pontos por R$ 1' },
+  redeem_points_value: { comum: 1000,      unidade: 'reais por ponto' },
+  redeem_min_points:   { comum: 1_000_000, unidade: 'pontos' },
+  expiry_months:       { comum: 120,       unidade: 'meses' },
+  birthday_bonus:      { comum: 1_000_000, unidade: 'pontos' },
+  first_access_bonus:  { comum: 1_000_000, unidade: 'pontos' },
+  expiry_notice_days:  { comum: 90,        unidade: 'dias' },
+  indicacao_pontos:    { comum: 1_000_000, unidade: 'pontos' },
+} as const
+
+/** O aviso do campo acima do comum, ou `null` (o valor vale como está). */
+export function avisoDaFidelidade(campo: keyof typeof COMUM_DA_FIDELIDADE, valor: number): string | null {
+  const { comum, unidade } = COMUM_DA_FIDELIDADE[campo]
+  return avisoAcimaDoComum(valor, comum, unidade)
+}
 
 /** Uma linha de `loyalty_configs` (numeric chega como string) → a config tipada. */
 export function configDaLinha(linha: Record<string, unknown> | null | undefined): ConfigFidelidade {

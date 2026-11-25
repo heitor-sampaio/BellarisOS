@@ -28,7 +28,8 @@ import { recusaDasParcelasDaRede } from '@/lib/financeiro/crediario-da-rede'
 import { recusaDasVezesDoPagamento } from '@/lib/financeiro/vezes-da-rede'
 import { recusaDoPagamentoDoUsado, pagamentoDoUsadoParaOBanco } from '@/lib/financeiro/pagamento-do-usado'
 import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto, ratear, motivoDoDesconto } from '@/lib/vendas/desconto'
-import { createAppointmentCore, notifyAppointmentCreated } from '@/lib/appointments/core'
+import { createAppointmentCore } from '@/lib/appointments/core'
+import { notifyNewAppointment } from '@/lib/appointments/avisos'
 import { FORMAS_DE_PAGAMENTO } from '@/lib/financeiro/lancamento'
 import { BANDEIRAS } from '@/lib/financeiro/bandeiras'
 import { lerPreviaDaUnidade, type PreviaDoCancelamentoDaUnidade } from '@/lib/pre-pago/cancelamento'
@@ -289,7 +290,7 @@ export async function agendarUnidadePrePaga(p: {
     })
     if ('error' in res) return { error: res.error }
 
-    notifyAppointmentCreated(res.id)
+    notifyNewAppointment(res.id, ctx.internalUserId)
     revalidarFicha()
     revalidatePath('/admin/agenda')
     revalidatePath('/[slug]/agenda', 'page')

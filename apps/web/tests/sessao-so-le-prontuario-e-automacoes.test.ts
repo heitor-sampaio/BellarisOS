@@ -55,14 +55,19 @@ describe('a sessão só lê o prontuário, os procedimentos, os produtos e as au
     ]) expect(POLITICAS).toContain(`drop policy if exists ${nome};`)
   })
 
-  it('o prontuário não ganha política nenhuma (a tabela fecha, como as comissões); as automações se leem com elas e "A rede inteira"', () => {
+  // A sessão só lê SINAIS (o Heitor, 2026-11-19, "vai na 2"; CLAUDE.md §4): a
+  // leitura das automações pela sessão, que esta migration abria com o módulo e
+  // "A rede inteira", saiu na 20261128200002 — as telas leem pelo servidor.
+  it('o prontuário não ganha política nenhuma (a tabela fecha, como as comissões); a leitura das automações pela sessão saiu (a sessão só lê sinais)', () => {
     for (const t of DO_PRONTUARIO) {
       expect(criadas(POLITICAS, t), `${t}: nenhuma política para a sessão`).toEqual([])
       expect(POLITICAS, t).not.toMatch(new RegExp(`(create|alter) policy[^;]*on public\\.${t}\\b`))
     }
+    const SO_SINAIS = readFileSync(join(MIGRATIONS, '20261128200002_a_sessao_so_le_sinais_sem_leitura.sql'), 'utf-8')
     for (const t of AUTOMACOES) {
-      const [leitura] = criadas(POLITICAS, t)
-      expect(leitura?.corpo, t).toContain("(select private.sessao_ve_o_modulo('automations', 'automacoes', true))")
+      for (const p of criadas(POLITICAS, t)) {
+        expect(SO_SINAIS, `${t}.${p.nome}`).toContain(`drop policy if exists ${p.nome} on public.${t};`)
+      }
     }
   })
 

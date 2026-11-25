@@ -1,6 +1,6 @@
 # Catálogo de regras — Fidelidade
 
-Este é o catálogo das regras da Fidelidade que valem HOJE: o programa e quem mexe nele, como o ponto nasce, o estorno e o cancelamento, o uso dos pontos e do voucher no PDV, as recompensas e os vouchers, o saldo, o extrato e a validade, os bônus e o prêmio por indicação, e o que a cliente vê no app. Cada regra diz a fonte: uma fala do Heitor (copiada letra por letra do documento), uma recomendação do Claude que o Heitor aprovou (com a resposta dele), um dos sete princípios de produto, ou "decisão do Claude". "Onde" aponta a linha do documento; "Antes" lista os números do rascunho que a regra junta (KA: `docs/regras/fidelidade.md`; KB: as decisões de `docs/revisao.md`; KC: os outros arquivos de `docs/regras/` e o `DEVLOG.md`). É um RASCUNHO para o Heitor revisar. Contagem: 56 regras (O programa e quem mexe 7, O ganho do ponto 9, Estorno e cancelamento 5, Pontos e voucher no PDV 10, Recompensas e vouchers 6, Saldo, extrato e validade 7, Bônus e indicação 8, O que a cliente vê no app 4), nenhuma pergunta e 13 divergências. Dos 105 números do rascunho, 2 ficaram fora do catálogo e 5 são de outra área (ver os apêndices); todos os outros estão num "Antes". As cinco perguntas dos rascunhos foram respondidas por regras que já existem (a aprovação do FD1 e do FD2b em 13/11, a regra de permissões do CLAUDE.md §11 e o princípio 1); o motivo de cada uma está em "Divergências".
+Este é o catálogo das regras da Fidelidade que valem HOJE: o programa e quem mexe nele, como o ponto nasce, o estorno e o cancelamento, o uso dos pontos e do voucher no PDV, as recompensas e os vouchers, o saldo, o extrato e a validade, os bônus e o prêmio por indicação, e o que a cliente vê no app. Cada regra diz a fonte: uma fala do Heitor (copiada letra por letra do documento), uma recomendação do Claude que o Heitor aprovou (com a resposta dele), um dos sete princípios de produto, ou "decisão do Claude". "Onde" aponta a linha do documento; "Antes" lista os números do rascunho que a regra junta (KA: `docs/regras/fidelidade.md`; KB: as decisões de `docs/revisao.md`; KC: os outros arquivos de `docs/regras/` e o `DEVLOG.md`). É um RASCUNHO para o Heitor revisar. Contagem: 57 regras (O programa e quem mexe 8, O ganho do ponto 9, Estorno e cancelamento 5, Pontos e voucher no PDV 10, Recompensas e vouchers 6, Saldo, extrato e validade 7, Bônus e indicação 8, O que a cliente vê no app 4), nenhuma pergunta e 14 divergências. Dos 105 números do rascunho, 2 ficaram fora do catálogo e 5 são de outra área (ver os apêndices); todos os outros estão num "Antes". As cinco perguntas dos rascunhos foram respondidas por regras que já existem (a aprovação do FD1 e do FD2b em 13/11, a regra de permissões do CLAUDE.md §11 e o princípio 1); o motivo de cada uma está em "Divergências".
 
 ## O programa e quem mexe (PG)
 
@@ -38,6 +38,11 @@ Este é o catálogo das regras da Fidelidade que valem HOJE: o programa e quem m
 - Fonte: decisão do Claude
 - Onde: `docs/regras/crm-inbox.md:297`, `:901`, `:1120`
 - Antes: KC-09
+
+**PG-08.** Nenhum número da configuração da fidelidade é recusado por ser grande: acima do comum, o campo avisa ("Acima do comum (…). Confira: o valor vale como está.") e grava. O comum vai até 1.000 pontos por R$ 1, R$ 1.000 o ponto, 1.000.000 de mínimo, de bônus e da indicação, 120 meses de validade dos pontos, 90 dias de aviso e 365 dias de validade do voucher. Só se recusa o impossível (zero onde não cabe, negativo) e o que o registro não guarda (o tipo da coluna, e 100 anos nos prazos).
+- Fonte: princípio 2 (o Heitor, 2026-11-04: "no máximo, avisar"); os números do aviso: decisão do Claude, 25/11 (o aviso começa no teto de antes)
+- Onde: `docs/regras/fidelidade.md:63-73`, `:457`; `apps/web/lib/acima-do-comum.ts`; `apps/web/tests/tetos-avisam-nao-recusam.test.ts`
+- Antes: (sem número: as regras dos tetos mudaram em 25/11)
 
 ## O ganho do ponto (GA)
 
@@ -292,9 +297,9 @@ Este é o catálogo das regras da Fidelidade que valem HOJE: o programa e quem m
 - Onde: `docs/regras/fidelidade.md:304-313`
 - Antes: KA-53
 
-**AP-03.** O extrato do app diz a recompensa trocada ("Recompensa: Limpeza de pele") e o uso no pagamento ("Desconto no pagamento: R$ …") embaixo do título; o ajuste, o voucher cancelado e o estorno levam o motivo que a equipe escreveu.
-- Fonte: princípio 3
-- Onde: `docs/regras/fidelidade.md:80-85`
+**AP-03.** O extrato do app diz a recompensa trocada ("Recompensa: Limpeza de pele") e o uso no pagamento ("Desconto no pagamento: R$ …") embaixo do título — textos que o sistema escreve. O ajuste, o voucher cancelado e o estorno NÃO levam ao app o motivo que a equipe escreveu: ele é anotação da equipe, não da cliente; no app, só o título do lançamento.
+- Fonte: princípio 3 (A26 da 25ª simulação)
+- Onde: `docs/regras/fidelidade.md:95-100`; `apps/web/lib/fidelidade/formato.ts:41-50`
 - Antes: KA-22
 
 **AP-04.** No app, "Indique uma amiga" aparece só com o prêmio por indicação ligado (e a recompensa ativa), em Meus pontos e no Início, e diz o prêmio ("você ganha 300 pontos" ou "um voucher: …"). A cliente não cadastra a amiga pelo app: "É só ela dizer o seu nome à equipe…".
@@ -323,6 +328,7 @@ O texto de `docs/regras/` (ou da própria revisão) contra a decisão mais nova 
 - PD-03: `docs/regras/vendas-financeiro.md:2896` chama de "**Desconto de fidelidade**" o que foi pago com pontos e voucher, e `docs/regras/fidelidade.md:102-105` e `docs/revisao.md:686` falam em "desconto em pontos"; a decisão mais nova (A17 da 25ª, `docs/regras/comissoes.md:180`, decisão do Claude pelo princípio 3) é que os pontos e o voucher não se chamam "desconto" (`docs/regras/vendas-financeiro.md:392`: "não é desconto").
 - (sem número; a busca): `docs/regras/busca.md:64` leva à aba Fidelidade "quem é da REDE"; desde 18/11 a configuração da rede toda é só da Admin da rede (CLAUDE.md §11).
 - (sem número; Configurações): `docs/revisao.md:1378` (levantamento de Configurações, 13/11) diz que "a configuração da rede toda é de quem é da rede (H7)"; o CLAUDE.md §11 (18/11) a fez só da Admin da rede. É retrato de antes, não regra.
+- AP-03 (texto): `docs/regras/fidelidade.md:98-100` diz que o ajuste, o voucher cancelado e o estorno "não — levam o motivo que a equipe escreveu", que se lê ao contrário do que o código faz; o código (`apps/web/lib/fidelidade/formato.ts:41-50`) não leva o motivo ao app ("que não é para a cliente"). O catálogo foi corrigido em 25/11; o texto da regra deve dizer "não levam ao app o motivo".
 
 ## Ficou fora do catálogo
 

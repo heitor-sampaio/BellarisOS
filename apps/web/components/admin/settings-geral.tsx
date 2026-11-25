@@ -26,8 +26,10 @@ import { useFuso } from '@/components/shared/fuso'
  *   cliente);
  * - **o plano**, que quem define é a assinatura.
  */
-export function SettingsGeral({ rede, podeEditar, naRede = true, appDaCliente = [] }: {
+export function SettingsGeral({ rede, podeEditar, naRede = true, daAdmin = false, appDaCliente = [] }: {
   rede: DadosDaRede; podeEditar: boolean; /** A aba Assinatura só existe no portal da rede. */ naRede?: boolean
+  /** AS-15: a assinatura é só da Admin da rede (o cargo de sistema gravado) — só ela é mandada à aba. */
+  daAdmin?: boolean
   /** O endereço do app da cliente, por unidade ativa (A4) — inteiro, para mandar. */
   appDaCliente?: { unidade: string; url: string }[]
 }) {
@@ -176,7 +178,7 @@ export function SettingsGeral({ rede, podeEditar, naRede = true, appDaCliente = 
         {/* A situação é estado: fica à vista; o "onde se vê / quem cuida" vai para a dica. */}
         <SoLeitura rotulo="Plano" valor={nomeDoPlanoNaTela(rede.planName, rede.planStatus)}
           estado={`${rotuloDaSituacao(rede.planStatus)}.`}
-          porque={naRede ? 'Veja faturas e pagamento na aba Assinatura.' : fala('A assinatura fica com quem administra a rede.')} />
+          porque={naRede && daAdmin ? 'Veja faturas e pagamento na aba Assinatura.' : fala('A assinatura fica com quem administra a rede.')} />
         <SoLeitura rotulo={fala('Rede criada em')}
           valor={new Date(rede.criadaEm).toLocaleDateString('pt-BR', { timeZone: fuso })} />
       </div>

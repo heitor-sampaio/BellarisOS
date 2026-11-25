@@ -202,7 +202,14 @@
     vão (`livresEntre`): a Débora de férias via "Horário livre 02:45 – 04:00".
     A ocupação desconta o bloqueado (`blocosDosBloqueios`, `indicadores.md`).
     Prova: `e2e/agenda-defeitos-da-8.spec.ts` ("D5", "D15"),
-    `tests/agenda-horario-livre.test.ts`.
+    `tests/agenda-horario-livre.test.ts`. **E a grade lê da véspera ao fim do
+    dia SEGUINTE** (D6 da 28ª simulação; decisão do Claude, 25/11, pelo
+    princípio 3): a sessão de 60 min às 23:30 vai até 00:30, e a grade só lia
+    os agendamentos até 23:59:59 do dia — o das 00:00 de amanhã não chegava a
+    ela, o 23:30 aparecia livre e o Confirmar recusava. `getSchedulingDaySlots`
+    lê os agendamentos e os bloqueios pela `janelaDaGrade`
+    (`lib/appointments/janela-da-grade.ts`). Prova:
+    `tests/agenda-janela-da-grade.test.ts`.
   - **O modal Agendar tem a grade dos livres, e o choque diz que não grava**
     (A58 e A21 da 8ª simulação, 2026-11-06; princípio 3): o seletor de
     horários livres só existia no agendar da sessão do pacote. Escolhida a
@@ -564,7 +571,12 @@
   abre o atendimento de qualquer pessoa, na unidade ao alcance. Saiu com o
   "só os meus" (SM1) a tela "Este atendimento é de outra pessoa que atende"
   e a recusa pelo id do agendamento de outra pessoa (`deOutroProfissional`,
-  D4 de 28/10).
+  D4 de 28/10). **A janela do agendamento leva a ela** (A8 da 28ª simulação;
+  decisão do Claude, 25/11, pelo UM1): fora do Em atendimento, quem tem o
+  Atendimento em Ver (ou a vista pessoal, no dela) acha o "Abrir a tela do
+  atendimento" na janela (`[data-abrir-o-atendimento]`) — sem ele, quem só vê
+  não tinha caminho até a tela. Prova:
+  `tests/sessao-do-atendimento-o-que-a-tela-diz.test.ts`.
 - **Iniciar ANTES do horário PERGUNTA** (A32 da 5ª simulação: a
   Tatiane iniciou às 11:07 o das 13:00, sem aviso). Em QUALQUER quantidade de
   tempo antes do horário marcado (r2-age-06, o Heitor em 2026-11-03:
@@ -597,7 +609,13 @@
   perguntava "Iniciar mesmo assim?" e só no clique dizia "A chegada só se
   marca no dia do agendamento". `chegarEIniciar` confere o dia
   (`ehODiaDoAgendamento`) antes de `perguntaDoInicio`. Prova:
-  `e2e/agenda-inicio-adiantado.spec.ts` ("D10").
+  `e2e/agenda-inicio-adiantado.spec.ts` ("D10"). **E a tela do atendimento
+  também não oferece a chegada fora do dia** (D2 da 28ª simulação; decisão do
+  Claude, 25/11, CLAUDE.md §14: o botão que não se pode usar, a tela esconde):
+  o "Check-in" e o "Marcar chegada e iniciar" da tela do atendimento só
+  aparecem no dia (`ehODiaDoAgendamento`, no fuso da unidade), e o `{ error }`
+  do check-in aparece na tela — era descartado, e o clique não fazia nada.
+  Prova: `tests/sessao-do-atendimento-o-que-a-tela-diz.test.ts`.
 - **A "Minha agenda" só mostra** (SM2, 2026-11-23): é a vista pessoal de quem
   atende e não tem a Agenda — não agenda nem bloqueia; agendar é da Agenda em
   Gerenciar, para qualquer pessoa que atende na unidade. Saiu com o "só os
@@ -2460,7 +2478,32 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
   nasce para a sessão de plano; o dinheiro do plano é o da comanda do plano
   no PDV, e a parcela que venceu aparece no PDV da cliente
   (`parcelasEmAbertoDaCliente`, "Receber esta parcela"). Prova:
-  `e2e/plano-tratamento-leva-1.spec.ts` ("PT1e").
+  `e2e/plano-tratamento-leva-1.spec.ts` ("PT1e"). **E a tela do atendimento
+  não recebe o plano** (AT-13, PV-13; o Heitor, 13/11, PV-01: "o pagamento
+  acontece por dentro desse PDV, seja do que for"): saiu a janela de receber o
+  plano no check-in (`receberDoPlano`, 28ª simulação). A tela DIZ o saldo do
+  plano aceito (`[data-plano-em-aberto]`: o que venceu, "Mais R$ X a
+  vencer", ou "Parcelas combinadas — a próxima vence em …. Nada a receber
+  agora.") e, a quem recebe (`podeReceber`) e só com algo vencido, leva ao PDV
+  da cliente ("Receber no PDV", `rotaDaClienteNoPdv`), onde a parcela se
+  recebe. O plano aceito já recebido diz isso no lugar de "assina o contrato e
+  paga" (D8 da 28ª; `andamentoDosPlanos(...).recebido`). A função do banco
+  `plano_receber` fica (os testes de taxa a chamam). Prova:
+  `e2e/plano-recebimento.spec.ts`, `e2e/plano-recebimento-concorrente.spec.ts`,
+  `tests/sessao-do-atendimento-o-que-a-tela-diz.test.ts`.
+- **A página do plano diz o que houve** (D7 e D19 da 28ª simulação; decisão do
+  Claude, 25/11, pelo princípio 3): a sessão feita diz a hora em que foi feita
+  ("Realizada em …", `completed_at`; era a hora marcada), também na janela das
+  sessões do pacote e do plano; e o plano cancelado diz "Cancelado" no passo
+  do pagamento e não fala em "depois do aceite". Prova:
+  `tests/sessao-do-atendimento-o-que-a-tela-diz.test.ts`.
+- **O agendar da sessão (pacote, plano, pré-pago) só oferece as unidades ao
+  alcance** (D18 da 28ª simulação; CLAUDE.md §11 e §14): a lista vinha das
+  unidades do pacote e oferecia uma fora da abrangência da pessoa — escolhida,
+  o Profissional ficava vazio e a Data travada, sem explicação. O
+  `SessionScheduler` filtra pela `unidadesAoAlcance` (`actions/appointments.ts`,
+  `alcancaUnidade`); com uma só, ela vem escolhida. Prova:
+  `tests/sessao-do-atendimento-o-que-a-tela-diz.test.ts`.
 - **Tratamentos filtra pela situação** (PT1f): Rascunho, Proposto, Aceito
   (falta assinar), Falta pagar, Em andamento, Concluído, Cancelado
   (`situacaoComercialDoPlano`, `lib/plano-de-tratamento/situacao.ts`; o banco
@@ -2481,8 +2524,9 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
   `clienteAtendidaPor`). Cancelar o plano fechado é do Financeiro em
   Gerenciar, como o pacote (D4 da 9ª, `vendas-financeiro.md`). A anotação do
   profissional no plano continua do Prontuário (`podeVerClinico`). Os gestos
-  de quem RECEBE (`getCheckoutPlan`, `cancelCheckout`, `receberDoPlano`)
-  pedem `cashier`/fechar plano, não o Atendimento.
+  de quem RECEBE (`getCheckoutPlan`, `cancelCheckout`; o `receberDoPlano`
+  saiu na 28ª, o plano se recebe no PDV) pedem `cashier`/fechar plano, não o
+  Atendimento.
 - **A tela dos planos se chama "Tratamentos", como o menu** (A30 da 8ª
   simulação, 2026-11-06; decidido pelo princípio 3): o menu "Tratamentos"
   abria "Planejamentos". Ficou o nome do menu: o grupo dele é "Planejamento"
@@ -2698,7 +2742,10 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
   - **O ajuste a MENOS escolhe o lote, e a entrada errada se DESFAZ** (A38 da
     10ª, 2026-11-10; o relatório: "desfazer duas entradas erradas zerou o lote
     real AH-2026-0451, pelo FEFO"): a contagem menor pergunta "De qual lote sai
-    a diferença" ("O que vence primeiro" por padrão) — o movimento leva o lote
+    a diferença" ("O válido que vence primeiro (o vencido, por último)" por
+    padrão; era "O que vence primeiro", que prometia o contrário da ES-24 para
+    o lote vencido — A1 da 28ª simulação, decisão do Claude, 25/11; a perda sem
+    lote diz o mesmo, e as opções do lote vencido dizem "venceu") — o movimento leva o lote
     em `reference = 'lote:<id>'` e o gatilho tira dele primeiro, como a perda
     (`estoque_ajuste_com_lote`, migration `20261110005101`). E o Histórico tem
     "Desfazer entrada" na entrada cujo lote não teve saída nenhuma (sem lote:
@@ -2839,7 +2886,11 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
   - **O cadastro do procedimento diz quanto da embalagem a dose é** (A7 da
     17ª simulação): "1 ml (1/100 do frasco)", "2 un (1/2 da seringa)"
     (`parteDaEmbalagem`, `lib/estoque/unidade-de-consumo.ts`); sem unidade de
-    consumo, nada. Prova: `tests/atritos-da-17-cadastros.test.ts`.
+    consumo, nada. Prova: `tests/atritos-da-17-cadastros.test.ts`. **E o
+    custo diz a unidade** (A3 da 28ª simulação; ES-19): "R$ 3,00 /ml" ao lado
+    de "4 ml" (`[data-custo-por-unidade]`; o title "Custo por unidade (ml)") —
+    o custo é por unidade de consumo, e a tela não dizia. Prova:
+    `tests/estoque-o-que-a-tela-diz.test.ts`.
   - **A quantidade do insumo nasce em branco e diz o que falta** (A13 da 15ª,
     princípio 4: o 1 de antes dava a margem errada; A21 da 19ª): a linha vazia
     diz "quanto sai a cada atendimento (obrigatório)"
@@ -3010,9 +3061,12 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
     10ª): a 1440 px saíam cortados (cinco colunas, rótulo e detalhe numa linha
     com reticências). Os dois Estoques usam `CartoesDoEstoque`
     (`components/shared/cartoes-do-estoque.tsx`: a grade se ajusta, o rótulo
-    quebra linha) e o "Validade em 30 dias" lista "Gel — lote GA-1 ·
+    quebra linha) e o "Validade em 30 dias" lista "Gel — lote GA-1 · vence
     15/11/2026", até três, e "e mais N" (`loteNoCartao`). Prova: o mesmo spec
-    ("A40").
+    ("A40"). **O vencido diz "venceu"** (D12 da 28ª simulação; ES-24, "o
+    vencido é sinalizado"): "Hidratante — lote H1 · venceu 14/11/2026", pelo
+    dia da unidade, como o quadro do dashboard. Prova:
+    `tests/estoque-o-que-a-tela-diz.test.ts`.
   - **O mínimo do CADASTRO vale na unidade** (D2 da 11ª simulação,
     2026-11-10; princípio 3: os 5 insumos da Marta, 3/1/2/2/3 no cadastro,
     ficaram com mínimo 0 na unidade, e o "Estoque baixo" dizia 0). A primeira
@@ -3043,7 +3097,12 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
     UNIDADE ganhou o quadro "Estoque no mínimo ou abaixo"
     (`[data-estoque-abaixo-do-minimo]`, `itensAbaixoDoMinimo`,
     `lib/estoque/abaixo-do-minimo.ts`, a régua da tela de estoque) — o da rede já
-    tinha o "Estoque crítico"; e o job `estoque-minimo` (de hora em hora, que já
+    tinha o "Estoque crítico". **O número do quadro conta só o no mínimo ou
+    abaixo**, como o "Estoque baixo" do Estoque (D14 da 28ª simulação; ES-20,
+    "Sem estoque" é separado; decisão do Claude, 25/11, quanto à forma): o
+    zerado com mínimo aparece à parte, em "Sem estoque" (`[data-sem-estoque]`,
+    `semEstoque`), fora da conta (`[data-conta-do-minimo]`), e a lista não se
+    corta antes de contar (`tests/estoque-o-que-a-tela-diz.test.ts`); e o job `estoque-minimo` (de hora em hora, que já
     levava o mínimo ao sino) avisa também o lote que vence em 30 dias, UMA vez
     por lote, a quem responde pelo Estoque na unidade (`avisarLotesVencendo`,
     `lib/estoque/aviso-de-lote.ts`, tipo `batch_expiring`; `?rede=` recorta uma
@@ -3075,7 +3134,12 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
     rede e no da unidade (`[data-lotes-vencendo]`, `LotesVencendo`), com o
     produto, o lote, a validade e o que sobra, e "Ver" leva ao Estoque. A conta
     é a do cartão "Validade em 30 dias" (`lotesVencendoDoRecorte`, sobre
-    `lotesComSaldo` + `lotesVencendo`). Prova: o mesmo spec ("A41").
+    `lotesComSaldo` + `lotesVencendo`). Prova: o mesmo spec ("A41"). **O
+    que sobra se diz na unidade de consumo, com o equivalente em embalagens**
+    (D13 da 28ª simulação; ES-19): "22 ml · 0,73 frasco" — era "0,73 frasco"
+    no dashboard e "0.7334" nos Relatórios. O lote leva o saldo pronto
+    (`LoteVencendo.saldo`, `saldoDoLoteNaTela` em `lib/estoque/situacao.ts`),
+    e o quadro o mostra. Prova: `tests/estoque-o-que-a-tela-diz.test.ts`.
   - **Sem produto nenhum, a tela diz isso** (A2 da 6ª simulação,
     2026-11-04): "Nenhum produto cadastrado", que os insumos vêm antes dos
     procedimentos que os usam, e o "Novo produto" ali mesmo
@@ -3494,12 +3558,17 @@ O resto do fluxo:
   (`lib/appointments/quem-cancela.ts`), lida no `cancelarCore` e na
   desistência com insumo pela situação do agendamento — o agendado segue com
   a Agenda em Gerenciar —, e a gravação vale só na situação lida. A janela da
-  agenda mostra o "Cancelar" do Em atendimento a quem tem o Atendimento em
+  agenda mostra o "Desistir do atendimento" do Em atendimento a quem tem o Atendimento em
   Gerenciar (`podeAtenderEste`), com o aviso da sessão paga, e sem o "Não compareceu"
   (o servidor recusa: "não é falta"); a tela do atendimento, a quem tem o
   Atendimento (`canManage`); o Copilot (`cancelar_agendamento`), pela mesma
   regra, com o aviso no cartão. A intercorrência pede o Prontuário em
-  Gerenciar. Sem nada marcado, é o cancelar de sempre. Prova:
+  Gerenciar. Sem nada marcado, é o cancelar de sempre. **O botão do Em
+  atendimento diz "Desistir do atendimento"** (A9 e Pendente 19 da 28ª
+  simulação; decisão do Claude, 25/11, pelo princípio 7 — o botão diz o que
+  faz): na janela da agenda e na tela do atendimento, com "Motivo da
+  desistência *" e "Confirmar desistência"; antes do início, segue "Cancelar".
+  Prova: `tests/sessao-do-atendimento-o-que-a-tela-diz.test.ts`. Prova:
   `e2e/atendimento-desistir-pelo-modulo.spec.ts`,
   `tests/varredura-atendimento.test.ts`. Prova:
   `e2e/atendimento-atritos-da-8.spec.ts` ("A27"). **E a tela do cancelado

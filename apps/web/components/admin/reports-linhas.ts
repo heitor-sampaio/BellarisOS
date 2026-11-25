@@ -19,6 +19,8 @@ export interface LinhaLote {
   batch_number: string | null
   expires_at:   string
   quantity:     number
+  /** O saldo pronto ("22 ml · 0,73 frasco", `saldoDoLoteNaTela` — D13 da 28ª, ES-19). */
+  saldo:        string
   products:     Embutido<{ name: string; tenant_id: string }>
 }
 

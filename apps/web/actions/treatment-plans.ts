@@ -6,7 +6,7 @@ import { avisarDoPlanoProposto } from '@/lib/plano-de-tratamento/aviso-do-propos
 import { alcancaOTratamento, alcancaOCaixaDoTratamento } from '@/lib/tratamento/alcance'
 import { getTenantContext, assertPermission, assertPodeReceber, podeReceber, can, alcancaUnidade, alcancaOAgendamento, podeVerClinico, assertRecurso, temRecurso } from '@/lib/auth'
 import { recusaDoPagamentoDoUsado, pagamentoDoUsadoParaOBanco } from '@/lib/financeiro/pagamento-do-usado'
-import { recusaDasVezesDaRede, recusaDasVezesDoPagamento } from '@/lib/financeiro/vezes-da-rede'
+import { recusaDasVezesDoPagamento } from '@/lib/financeiro/vezes-da-rede'
 import { bandeiraDoPagamento } from '@/lib/financeiro/bandeiras'
 import { conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
 import { salaUnicaDoHorario } from '@/lib/appointments/salas'
@@ -18,11 +18,8 @@ import { unidadesDosInsumos, procedimentosParaPlano } from '@/lib/checkout/proce
 import { sessoesDoPlanoParaCheckout } from '@/lib/checkout/sessoes-do-plano'
 import { recusaDosProcedimentosDoPlano } from '@/lib/procedimentos/disponivel-na-unidade'
 import { planoCasaComBusca } from '@/lib/busca/cliente'
-import { emAbertoDoPlano } from '@/lib/checkout/em-aberto-do-plano'
-import { recusaDaEntradaAcimaDoTotal } from '@/lib/checkout/entrada'
 import { recusaDaEntradaDoPagamento, comFidelidadeNaPrimeira } from '@/lib/checkout/lancamentos'
 import { recusaDasParcelasDaRede } from '@/lib/financeiro/crediario-da-rede'
-import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { getFinanceiroDoPlano, type FinanceiroDoPlano } from '@/lib/metrics/plano'
 import type { CheckoutPlan } from '@/components/branch/checkout-wizard'
 import { semAcesso } from '@/lib/sem-acesso'
@@ -1696,8 +1693,7 @@ export type SessionScheduleInput = {
 // O pagamento do plano mora em lib/checkout/pagamento.ts: o contrato de plano
 // (lib/documentos) também o lê, e aqui todo export é endpoint público.
 export type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
-import { rotuloDoPagamento, vezesNoCartao, maquininhaDoPagamento, metodoQuePagaAgora, partesQuePagamAgora, temOutrasFormas, type PagamentoDoPlano } from '@/lib/checkout/pagamento'
-import { rotuloDaForma } from '@/lib/financeiro/formas'
+import { rotuloDoPagamento, vezesNoCartao, maquininhaDoPagamento, partesQuePagamAgora, temOutrasFormas, type PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import { recusaDosDocumentosDoPlano, emitirDocumentosDoPlano } from '@/lib/documentos/plano'
 import { precosDoPlano, descontoDoPlano, precosComDesconto } from '@/lib/checkout/desconto-do-plano'
 import { EntradaDoDesconto, motivoDoDesconto } from '@/lib/vendas/desconto'
@@ -2050,200 +2046,13 @@ async function checkoutTreatmentPlanInterno(
   return { transactionId, newAppointmentId, ...(avisosDaSala.length ? { avisoDaSala: avisosDaSala.join(' ') } : {}) }
 }
 
-// -- Receber no check-in -------------------------------------------------------
+// -- O plano se recebe no PDV ---------------------------------------------------
 
-/**
- * Como a recepção recebe o que ficou em aberto de um plano.
- *
- * Não tem `A_RECEBER`: o valor JÁ está a receber — é disto que se trata. Aqui só
- * cabe quitar tudo agora ou receber uma entrada e parcelar o resto.
- */
-export type RecebimentoDoPlano =
-  /** `vezes`: o cartão de crédito em N vezes, pago na hora (2026-10-20). */
-  | { forma: 'AVISTA';    metodo: string; vezes?: number; bandeira?: string; maquininha?: string }
-  /**
-   * `metodo`, `vezes`, `bandeira` e `maquininha` são da entrada (D5); as
-   * parcelas são da clínica, sem meio (D6). PDV8: sem entrada, sem meio (nulo).
-   */
-  | { forma: 'PARCELADO'; metodo: string | null; entrada: number; parcelas: number; primeiroVencimento: string; bandeira?: string; vezes?: number; maquininha?: string }
-
-/**
- * Erro de banco vira mensagem na tela, e não uma exceção nua.
- *
- * As gravações lá dentro passaram a falhar alto (`gravar`). Sem esta
- * captura a exceção subiria até o cliente como rejeição sem tratamento: o
- * log teria o motivo e a tela não mostraria nada — que é o silêncio de
- * novo, só que mais caro de achar.
- */
-export async function receberDoPlano(
-  planId:        string,
-  recebimento:   RecebimentoDoPlano,
-  appointmentId: string | null,
-  slug:          string,
-  /** A chave do envio (D10, lib/envio-unico.ts): o duplo clique recebe UMA vez. */
-  envio?:        string | null,
-): ReturnType<typeof receberDoPlanoInterno> {
-  try {
-    const ctx = await getTenantContext()
-    return await umaVez(ctx.tenantId!, 'receberDoPlano', chaveDoEnvio(envio),
-      () => receberDoPlanoInterno(planId, recebimento, appointmentId, slug))
-  } catch (e) {
-    return { error: mensagemDoErro(e) }
-  }
-}
-
-/**
- * Recebe o saldo em aberto de um plano, no balcão.
- *
- * O gesto é o do check-in: a pessoa chega para a primeira sessão, paga, e segue
- * para o procedimento. Por isso ele mora na tela do atendimento e não numa fila
- * de checkout — a fila era uma tarefa que ninguém tinha, esperando uma decisão
- * que já tinha sido tomada quando o plano foi aceito.
- */
-async function receberDoPlanoInterno(
-  planId:        string,
-  recebimento:   RecebimentoDoPlano,
-  appointmentId: string | null,
-  slug:          string,
-): Promise<{ error?: string; recebido?: number }> {
-  const ctx = await getTenantContext()
-  // Quem recebe é `podeReceber` em todo caminho do recebimento (o PDV, ou o
-  // Financeiro em Gerenciar) — a régua de `confirmPayment` e do banner do plano
-  // na tela do atendimento (VF-04 da varredura de 18/11: era só o PDV).
-  if (!podeReceber(ctx)) throw semAcesso()
-
-  const admin = createAdminClient()
-
-  // Confere a rede antes de escrever: o id sozinho não pode bastar.
-  const plan = await ler(admin
-    .from('treatment_plans')
-    .select('id, branch_id, client_id, branches!inner(tenant_id)')
-    .eq('id', planId)
-    .maybeSingle(), 'buscar o plano')
-
-  const planTenant = (plan?.branches as unknown as { tenant_id: string } | null)?.tenant_id
-  if (!plan || planTenant !== ctx.tenantId || !alcancaUnidade(ctx, plan.branch_id as string)) return { error: 'Plano não encontrado.' }
-  // Até quantas vezes a clínica parcela no crédito (D-15): o servidor recusa acima.
-  const recusaDasVezes = await recusaDasVezesDaRede(ctx.tenantId!, vezesNoCartao(recebimento), maquininhaDoPagamento(recebimento), metodoQuePagaAgora(recebimento))
-  if (recusaDasVezes) return { error: recusaDasVezes }
-  // A37: a forma nasce vazia na tela; sem ela, não se recebe. PDV8: no
-  // crediário a forma é o crediário, e o meio é só o da ENTRADA — sem entrada,
-  // nada se recebe agora (as parcelas pedem a forma quando forem pagas).
-  if (recebimento.forma === 'AVISTA' && !recebimento.metodo) return { error: 'Escolha a forma de pagamento.' }
-  if (recebimento.forma === 'PARCELADO' && recebimento.entrada > 0 && !recebimento.metodo) return { error: 'Escolha a forma da entrada.' }
-  if (recebimento.forma === 'PARCELADO' && !(recebimento.entrada > 0)) recebimento = { ...recebimento, metodo: null, vezes: undefined, bandeira: undefined, maquininha: undefined }
-
-  // O agendamento só serve para registrar o recebimento no histórico dele — e
-  // tem de ser DESTE plano (uma sessão dele ou a avaliação que o gerou). Antes
-  // qualquer id servia, e o histórico de um atendimento de outra rede ganhava
-  // a linha "Plano de tratamento recebido".
-  if (appointmentId) {
-    const doPlano = await ler(admin
-      .from('appointments').select('id')
-      .eq('id', appointmentId)
-      .eq('treatment_plan_id', planId)
-      .maybeSingle(), 'conferir o agendamento do recebimento')
-    const avaliacao = doPlano ? null : await ler(admin
-      .from('treatment_plans').select('id')
-      .eq('id', planId).eq('evaluation_appointment_id', appointmentId)
-      .maybeSingle(), 'conferir a avaliação do plano')
-    if (!doPlano && !avaliacao) return { error: 'Agendamento não pertence a este plano.' }
-  }
-
-  const saldo = await emAbertoDoPlano(planId)
-  if (!saldo || saldo.emAberto <= 0) return { error: 'Não há valor em aberto neste plano.' }
-
-  // O app calcula; `plano_receber` grava tudo numa transação, com o plano
-  // TRAVADO e o saldo conferido de novo (F11): duas chegadas ao mesmo tempo
-  // liam os mesmos R$ 300, e cada uma gravava a sua entrada e as suas parcelas.
-  // A47: a descrição chega à cliente — sem texto interno.
-  const descricao = 'Plano de tratamento'
-  let lancamentos: Record<string, unknown>[] = []
-  if (recebimento.forma === 'PARCELADO') {
-    // A entrada acima do que está em aberto é recusada, não cortada (ven-02).
-    const recusaDaEntrada = recusaDaEntradaAcimaDoTotal(recebimento.entrada, saldo.emAberto, 'em aberto do plano')
-    if (recusaDaEntrada) return { error: recusaDaEntrada }
-    const entrada = Math.max(0, Math.round(recebimento.entrada * 100) / 100)
-    const resto   = Math.round((saldo.emAberto - entrada) * 100) / 100
-    const vezes   = Math.max(1, recebimento.parcelas)
-    // C38: o crediário até o limite da rede (era `Math.min(…, 48)`, calado).
-    const recusaDasParcelas = await recusaDasParcelasDaRede(ctx.tenantId!, recebimento)
-    if (recusaDasParcelas) return { error: recusaDasParcelas }
-    if (entrada <= 0 && resto <= 0) return { error: 'Informe o valor da entrada.' }
-
-    // O saldo anterior sai de cena inteiro e volta partido: o que foi recebido
-    // agora e o que ficou parcelado são lançamentos diferentes, porque o caixa
-    // conta pelo `paid_at` e uma transação só não pode estar nos dois lugares.
-    if (entrada > 0) {
-      lancamentos.push({ amount: entrada, is_paid: true, description: `${descricao} — entrada`, notes: 'Entrada do plano de tratamento' })
-    }
-    // Cada parcela, um lançamento com o seu vencimento (2026-09-30).
-    if (resto > 0) {
-      const grupo = crypto.randomUUID()
-      lancamentos = lancamentos.concat(dividirEmParcelas(resto, vezes, recebimento.primeiroVencimento).map(parcela => ({
-        amount:         parcela.amount,
-        is_paid:        false,
-        due_date:       parcela.due_date,
-        description:    `${descricao} — ${rotuloDaParcela(parcela)}`,
-        notes:          `Saldo do plano em ${vezes}x`,
-        parcela_numero: parcela.numero,
-        parcela_total:  parcela.total,
-        parcela_grupo:  grupo,
-      })))
-    }
-  }
-
-  const { error: erroDoRecebimento } = await admin.rpc('plano_receber', {
-    p_tenant:      ctx.tenantId!,
-    p_plano:       planId,
-    p_pendentes:   saldo.pendentes,
-    p_esperado:    saldo.emAberto,
-    p_forma:       recebimento.forma,
-    p_metodo:      recebimento.metodo,
-    // D5: as vezes do que é pago agora no crédito — o à vista ou a entrada.
-    p_vezes:       vezesNoCartao(recebimento),
-    p_lancamentos: lancamentos,
-    p_ator:        ctx.internalUserId ?? 'sistema',
-    // r3-f13-01 e C75: a bandeira e a maquininha do que é pago agora, na MESMA
-    // transação (VF2-04 da varredura de 18/11: iam num UPDATE depois).
-    p_bandeira:    bandeiraDoPagamento(recebimento.metodo, recebimento.bandeira),
-    p_maquininha:  maquininhaDoPagamento(recebimento),
-  })
-  if (erroDoRecebimento) {
-    // A recusa do banco (o saldo já recebido, o crédito sem saldo) é para a tela.
-    if (erroDoRecebimento.code === 'P0001') return { error: erroDoRecebimento.message }
-    throw new Error(`Não consegui registrar o recebimento: ${erroDoRecebimento.message}`)
-  }
-
-  if (appointmentId) {
-    await tentar(admin.from('appointment_history').insert({
-      appointment_id:  appointmentId,
-      changed_by_id:   ctx.internalUserId,
-      changed_by_name: ctx.userName || ctx.roleLabel || 'Equipe',
-      action:          'PAYMENT_CONFIRMED',
-      // A forma pelo nome da tela (D18, 2026-10-29: dizia "PIX à vista").
-      description:     `Plano de tratamento recebido — R$ ${saldo.emAberto.toFixed(2).replace('.', ',')} — ${
-        recebimento.forma === 'AVISTA'
-          ? (vezesNoCartao(recebimento) > 1 ? rotuloDaForma(recebimento.metodo, vezesNoCartao(recebimento)) : `${rotuloDaForma(recebimento.metodo)} à vista`)
-          : rotuloDoPagamento(recebimento)
-      }`,
-    }), 'registrar no histórico do agendamento')
-  }
-
-  if (slug) {
-    revalidatePath(`/${slug}/agenda`)
-    revalidatePath(`/${slug}/financeiro`)
-    revalidatePath(`/${slug}/dashboard`)
-    revalidatePath(`/${slug}/planejamentos`)
-    if (appointmentId) revalidatePath(`/${slug}/agenda/${appointmentId}`)
-  }
-  revalidatePath('/admin/financeiro')
-  revalidatePath('/admin/dashboard')
-  revalidatePath('/admin/planejamentos')
-  if (appointmentId) revalidatePath(`/admin/agenda/${appointmentId}`)
-
-  return { recebido: saldo.emAberto }
-}
+// Saiu o `receberDoPlano` (o recebimento do saldo do plano pela tela do
+// atendimento, no check-in): o plano se recebe na comanda dele no PDV, e a
+// parcela que venceu, no PDV da cliente (`receberParcelaNoPdv`) — AT-13, PV-01,
+// PV-13 e DP-06; inventário dos testes, 24/11. A função do banco
+// `plano_receber` fica (é a gravação do recebimento em uma transação).
 
 // -- Ficha de tratamento -------------------------------------------------------
 
@@ -2427,6 +2236,8 @@ export interface SessaoDoPasso {
   duracaoMin:    number
   appointmentId: string | null
   scheduledAt:   string | null
+  /** Quando a sessão foi FEITA (D7 da 28ª): "Realizada em" diz a hora real, não a marcada. */
+  completedAt:   string | null
   /** O status do agendamento (nulo: sem agendamento). */
   apptStatus:    string | null
   profissional:  string | null
@@ -2474,13 +2285,13 @@ export async function getPassosDoPlano(planId: string): Promise<{ passos?: Passo
       ler(admin.from('treatment_plan_sessions')
         .select(`id, sort_order, appointment_id,
           treatment_plan_session_procedures(procedure_id, sort_order, procedures(name, duration_min)),
-          appointments:appointment_id(id, status, scheduled_at, professional:users!professional_id(name))`)
+          appointments:appointment_id(id, status, scheduled_at, completed_at, professional:users!professional_id(name))`)
         .eq('plan_id', planId).order('sort_order').order('id'), 'carregar as sessões do plano'),
     ])
     const a = andamento.get(planId)!
 
     type Proc = { procedure_id: string; sort_order: number; procedures: { name: string; duration_min: number | null } | null }
-    type Ag   = { id: string; status: string; scheduled_at: string; professional: { name: string } | null } | null
+    type Ag   = { id: string; status: string; scheduled_at: string; completed_at: string | null; professional: { name: string } | null } | null
     type Sess = { id: string; appointment_id: string | null; treatment_plan_session_procedures: Proc[]; appointments: Ag }
     const sessoes: SessaoDoPasso[] = ((brutas ?? []) as unknown as Sess[]).map((s, i) => {
       const procs = [...(s.treatment_plan_session_procedures ?? [])].sort((x, y) => x.sort_order - y.sort_order)
@@ -2492,6 +2303,7 @@ export async function getPassosDoPlano(planId: string): Promise<{ passos?: Passo
         duracaoMin:    procs.reduce((t, p) => t + (p.procedures?.duration_min ?? 60), 0),
         appointmentId: s.appointment_id ?? null,
         scheduledAt:   s.appointments?.scheduled_at ?? null,
+        completedAt:   s.appointments?.completed_at ?? null,
         apptStatus:    s.appointments?.status ?? null,
         profissional:  s.appointments?.professional?.name ?? null,
       }

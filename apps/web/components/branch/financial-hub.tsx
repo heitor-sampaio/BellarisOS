@@ -29,7 +29,8 @@ import { FluxoDeCaixa } from '@/components/shared/fluxo-de-caixa'
 import type { AReceberVencido } from '@/lib/metrics/vencidas'
 import type { MesDoFluxo } from '@/lib/metrics/fluxo-de-caixa'
 import { AbasDoFinanceiro } from '@/components/shared/abas-do-financeiro'
-import { linkDaAba, ROTULO_DO_A_RECEBER_DA_CLIENTE, type AbaDoFinanceiro } from '@/lib/financeiro/abas'
+import { linkDaAba, ROTULO_DO_A_RECEBER_DA_CLIENTE, ROTULO_DO_A_PAGAR, type AbaDoFinanceiro } from '@/lib/financeiro/abas'
+import { DespesasDoCaixa } from '@/components/shared/despesas-do-caixa'
 import { FiltroDeTags } from '@/components/shared/filtro-de-tags'
 import { tagsParaAUrl } from '@/lib/tags/filtro-na-url'
 
@@ -654,7 +655,7 @@ export function FinancialHub({
       nota={<NotaDoVencimento valor={pendingExpense} proximo={emAberto.proximoAPagar} emAbertoTotal={aPagarEmAberto} despesa podeDarBaixa={canPay}
         hrefDaBaixa={naAba ? undefined : daAba('a-pagar')} />}
       dica={<DicaDoVencimento valor={pendingExpense} emAbertoTotal={aPagarEmAberto} />}
-      label="A Pagar"
+      label={ROTULO_DO_A_PAGAR}
       curr={pendingExpense} prev={prevPendingExpense}
       icon={<Clock size={13} style={{ color: 'var(--warning)' }} />}
       iconBg="var(--warning-soft)"
@@ -763,7 +764,8 @@ export function FinancialHub({
           <KpiCardFull
             chave="despesas"
             label="Despesas pagas (caixa)"
-            dica="O que saiu do caixa no período, com a compra de estoque e o pagamento das comissões. O Lucro Líquido usa a despesa operacional (a conta está na dica dele)."
+            // A5 da 28ª: quanto do caixa fica fora do lucro, com o valor (lib/metrics).
+            dica={<DespesasDoCaixa compraDeEstoque={estoqueNoResultado.compraDeEstoque} despesaDeComissoes={estoqueNoResultado.despesaDeComissoes ?? 0} nomeDoLucro="Lucro Líquido" />}
             curr={expense} prev={prevExpense}
             icon={<TrendingDown size={13} style={{ color: 'var(--danger)' }} />}
             iconBg="var(--danger-soft)"

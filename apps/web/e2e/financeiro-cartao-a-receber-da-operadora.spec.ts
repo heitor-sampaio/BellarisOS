@@ -360,7 +360,8 @@ test.describe.serial('cartão em N vezes: a receber da operadora, mês a mês', 
       const r = await chamarAcao(p, 'actions/maquininhas.ts', 'salvarMaquininha', '/admin/settings', [{
         id: m.id, nome: 'Maquininha', taxas: m.taxas, maxVezes: m.max_vezes, prazoDias: 0, cobraPorBandeira: false, porBandeira: {},
       }])
-      expect(r.texto).toContain('de 1 a 120 dias')
+      // Princípio 2 (o Heitor, 2026-11-04): acima de 120 dias avisa; o zero continua recusado.
+      expect(r.texto).toContain('O prazo da operadora é de pelo menos 1 dia.')
     })
     expect((await db().from('tenants').update({ cartao_prazo_dias: 30 }).eq('id', rede!.tenantId)).error).toBeNull()
   })

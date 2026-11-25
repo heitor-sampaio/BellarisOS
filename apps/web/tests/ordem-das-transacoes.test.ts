@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ordenarTransacoesDaFicha } from '../lib/clientes/ordem-das-transacoes'
+import { ordenarTransacoesDaFicha, isoDaLinha } from '../lib/clientes/ordem-das-transacoes'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 
@@ -72,6 +72,26 @@ describe('as parcelas da ficha em ordem de vencimento', () => {
       linha('com-data', { dueDate: '2027-03-01T15:00:00Z' }),
     ])
     expect(r.map(l => l.id)).toEqual(['com-data', 'sem-data'])
+  })
+})
+
+// D4 da 28ª: o pago aparece no dia em que o dinheiro entrou (RE-01, princípio 5:
+// "o caixa e o faturamento, no dia em que o dinheiro entrou"), não no do atendimento.
+describe('a ficha diz o dia do pagamento', () => {
+  const linha = (id: string, extra: Record<string, unknown>) =>
+    ({ id, isPaid: false, dueDate: null, scheduledAt: null, createdAt: '2026-11-20T12:00:00Z', ...extra })
+  it('o pago vale pelo paid_at, mesmo com o atendimento em outro dia', () => {
+    expect(isoDaLinha(linha('a', { isPaid: true, paidAt: '2026-11-24T15:00:00Z', scheduledAt: '2026-11-25T13:00:00Z' })))
+      .toBe('2026-11-24T15:00:00Z')
+    const r = ordenarTransacoesDaFicha([
+      linha('pago-dia-24-atendido-26', { isPaid: true, paidAt: '2026-11-24T15:00:00Z', scheduledAt: '2026-11-26T13:00:00Z' }),
+      linha('pago-dia-25', { isPaid: true, paidAt: '2026-11-25T15:00:00Z' }),
+    ])
+    expect(r.map(l => l.id)).toEqual(['pago-dia-25', 'pago-dia-24-atendido-26'])
+  })
+  it('a tela mostra a mesma data da ordem (isoDaLinha)', () => {
+    const f = readFileSync(path.resolve(__dirname, '..', 'components/branch/client-profile.tsx'), 'utf8')
+    expect(f).toMatch(/formatarNoFuso\(isoDaLinha\(t\), 'dd\/MM\/yyyy', fuso\)/)
   })
 })
 

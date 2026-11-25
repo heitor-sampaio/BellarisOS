@@ -5,7 +5,7 @@ import { NODES, EVENTOS } from '@estetica-os/types'
 import type { GrafoDeAutomacao, NomeDeEvento } from '@estetica-os/types'
 import { variaveisDisponiveis, achatarDados } from '@/lib/automacoes/disponiveis'
 import { isoNoFuso, dataHoraNoFuso } from '@/lib/datetime'
-import { paraOTitular } from '@/lib/lgpd/export'
+import { paraOTitular, diaSemHora } from '@/lib/lgpd/export'
 
 /**
  * D15, A25 e A24 da 25ª simulação.
@@ -89,6 +89,17 @@ describe('A24: as datas do JSON do titular no fuso da rede', () => {
   it('paraOTitular troca o instante em qualquer nível, e a data sem hora fica', () => {
     const saida = paraOTitular({ criado_em: '2026-11-18T17:30:00.000Z', nascimento: '1990-05-02', itens: [{ quando: '2026-01-02T03:04:00Z' }] }, 'America/Sao_Paulo')
     expect(saida).toEqual({ criadoEm: '2026-11-18T14:30:00-03:00', nascimento: '1990-05-02', itens: [{ quando: '2026-01-02T00:04:00-03:00' }] })
+  })
+  // D5 da 28ª (regressão da A24): o nascimento chega do banco como INSTANTE à meia-noite UTC
+  // ("1993-02-28T00:00:00+00:00") e o isoNoFuso o virava na véspera ("1993-02-27T21:00:00-03:00").
+  // CLAUDE.md §14: data sem hora não passa por fuso. O pacote grava o dia ("1993-02-28").
+  it('o nascimento em instante à meia-noite UTC sai como o DIA, nunca a véspera', () => {
+    expect(diaSemHora('1993-02-28T00:00:00+00:00')).toBe('1993-02-28')
+    expect(diaSemHora('1993-02-28T00:00:00.000Z')).toBe('1993-02-28')
+    expect(diaSemHora('1993-02-28')).toBe('1993-02-28')
+    expect(diaSemHora(null)).toBeNull()
+    expect(paraOTitular({ dataNascimento: diaSemHora('1993-02-28T00:00:00+00:00') }, 'America/Sao_Paulo')).toEqual({ dataNascimento: '1993-02-28' })
+    expect(readFileSync(join(WEB, 'lib/lgpd/export.ts'), 'utf8')).toContain('dataNascimento: diaSemHora(client.birth_date)')
   })
   it('o pacote passa o fuso', () => {
     expect(readFileSync(join(WEB, 'lib/lgpd/export.ts'), 'utf8')).toMatch(/\}, fuso\) as Json/)

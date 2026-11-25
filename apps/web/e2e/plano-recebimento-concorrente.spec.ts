@@ -5,15 +5,15 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
 
 /**
- * Receber o plano no check-in, com DUAS chegadas ao mesmo tempo (sobra da F9,
+ * Receber o saldo do plano com DUAS abas ao mesmo tempo (sobra da F9,
  * 2026-11-02: "dois envios simultâneos ainda leem o mesmo saldo"). É dinheiro:
- * as duas liam os mesmos R$ 300 em aberto, e cada uma gravava a sua entrada e
- * as suas parcelas — R$ 600 combinados de um plano de R$ 300.
+ * as duas liam os mesmos R$ 300 em aberto e cada uma gravava o seu recebimento.
  *
- * - Duas abas (envios DIFERENTES) ao mesmo tempo: uma recebe, a outra ouve
- *   que o saldo já foi recebido. O banco trava o plano e confere o saldo.
- * - O MESMO envio duas vezes (o duplo clique): grava uma, e as duas respostas
- *   dizem o que foi recebido (`umaVez`, lib/envio-unico.ts).
+ * O caminho é o PDV (o Heitor, 13/11, PV-01: "o pagamento acontece por dentro
+ * desse PDV, seja do que for"; AT-13 e PV-13: a tela do atendimento não
+ * recebe). Até a 28ª era o `receberDoPlano` do check-in, que saiu; a prova da
+ * concorrência veio para o `receberParcelaNoPdv`: a baixa tem a guarda
+ * (`is_paid = false` na própria gravação), e a segunda ouve que já está pago.
  * Numa rede [e2e] própria.
  */
 
@@ -29,8 +29,8 @@ async function como<T>(browser: Browser, fn: (p: Page) => Promise<T>) {
   try { return await fn(await ctx.newPage()) } finally { await ctx.close() }
 }
 
-/** Um plano aceito com R$ 300 a receber no check-in e a sessão de hoje. */
-async function planoComSaldo(rotulo: string): Promise<{ plano: string; appt: string }> {
+/** Um plano aceito com R$ 300 a receber (o lançamento) e a sessão de hoje. */
+async function planoComSaldo(rotulo: string): Promise<{ plano: string; appt: string; tx: string; cliente: string }> {
   const cliente = await rede!.criarCliente(`Cliente ${rotulo}`)
   const ins = async (tabela: string, linha: Record<string, unknown>) => {
     const { data, error } = await db().from(tabela).insert(linha).select('id').single<{ id: string }>()
@@ -41,16 +41,15 @@ async function planoComSaldo(rotulo: string): Promise<{ plano: string; appt: str
     branch_id: rede!.branchId, professional_id: rede!.professionalId, client_id: cliente, status: 'ACCEPTED',
     name: `${PREFIXO} Plano ${rotulo} ${marca}`,
   })
-  await ins('financial_transactions', {
+  const tx = await ins('financial_transactions', {
     branch_id: rede!.branchId, client_id: cliente, treatment_plan_id: plano, type: 'INCOME', category: 'Serviços',
-    description: 'Plano de tratamento — checkout novo paciente', amount: 300, is_paid: false,
-    notes: 'Plano aceito — a receber no check-in', created_by: 'e2e',
+    description: 'Plano de tratamento', amount: 300, is_paid: false, created_by: 'e2e',
   })
   const appt = await ins('appointments', {
     branch_id: rede!.branchId, client_id: cliente, procedure_id: rede!.procedureId, professional_id: rede!.professionalId,
     scheduled_at: new Date().toISOString(), duration_min: 30, price: 100, status: 'CONFIRMED', treatment_plan_id: plano,
   })
-  return { plano, appt }
+  return { plano, appt, tx, cliente }
 }
 
 /** Os lançamentos com dinheiro do plano: "valor:pago". */
@@ -60,11 +59,6 @@ async function lancamentos(plano: string) {
   expect(error).toBeNull()
   return (data ?? []).map(t => `${Number(t.amount)}:${t.is_paid}`).sort()
 }
-
-const PARCELADO = () => ({
-  forma: 'PARCELADO', metodo: 'PIX', entrada: 100, parcelas: 2,
-  primeiroVencimento: new Date(Date.now() + 30 * 86_400_000).toISOString(),
-})
 
 test.beforeAll(async () => {
   test.setTimeout(120_000)
@@ -76,48 +70,45 @@ test.beforeAll(async () => {
 })
 
 test.afterAll(async () => {
-  await db().from('envios_unicos').delete().eq('tenant_id', rede?.tenantId ?? '')
   await caixa?.limpar()
   await rede?.limpar()
 })
 
-test('entrada + parcelas por duas abas ao mesmo tempo: só uma recebe', async ({ browser }) => {
-  const { plano, appt } = await planoComSaldo('parcelado')
-  const rota = `/admin/agenda/${appt}`
+const ROTA = '/admin/pdv'
+const JA_PAGO = 'Esse lançamento já está pago (ou foi estornado).'
+
+test('o saldo à vista por duas abas ao mesmo tempo: só uma recebe', async ({ browser }) => {
+  const { plano, tx } = await planoComSaldo('avista')
   const respostas = await como(browser, async p => {
-    await p.goto(rota)
-    return Promise.all([1, 2].map(() => chamarAcao(p, 'actions/treatment-plans.ts', 'receberDoPlano', rota, [plano, PARCELADO(), appt, ''])))
+    await p.goto(ROTA)
+    return Promise.all([1, 2].map(() => chamarAcao(p, 'actions/pdv.ts', 'receberParcelaNoPdv', ROTA, [tx, '', { forma: 'PIX' }])))
   })
   const textos = respostas.map(r => r!.texto)
-  expect(textos.filter(t => t.includes('"recebido":300')), 'uma chegada recebe').toHaveLength(1)
-  expect(textos.filter(t => /já foi recebido|Não há valor em aberto/.test(t)), 'a outra ouve que o saldo já foi recebido').toHaveLength(1)
-  expect(await lancamentos(plano), 'uma entrada e duas parcelas — não duas de cada').toEqual(['100:false', '100:false', '100:true'])
+  expect(textos.filter(t => t.includes('"ok":true')), 'uma aba recebe').toHaveLength(1)
+  expect(textos.filter(t => t.includes(JA_PAGO)), 'a outra ouve que já está pago').toHaveLength(1)
+  expect(await lancamentos(plano), 'um recebimento só').toEqual(['300:true'])
 })
 
-test('à vista por duas abas ao mesmo tempo: só uma recebe', async ({ browser }) => {
-  const { plano, appt } = await planoComSaldo('avista')
-  const rota = `/admin/agenda/${appt}`
+test('a parcela vencida do crediário do plano por duas abas ao mesmo tempo: só uma recebe, e a de depois fica', async ({ browser }) => {
+  const { plano, tx, cliente } = await planoComSaldo('parcelado')
+  // O crediário do plano: a entrada paga (o lançamento do saldo) e duas parcelas, a 1ª vencida.
+  expect((await db().from('financial_transactions').update({ amount: 100, is_paid: true, paid_at: new Date().toISOString(), payment_method: 'PIX' }).eq('id', tx)).error).toBeNull()
+  const ids: string[] = []
+  for (const [n, dias] of [[1, -1], [2, 30]] as const) {
+    const { data, error } = await db().from('financial_transactions').insert({
+      branch_id: rede!.branchId, client_id: cliente, treatment_plan_id: plano, type: 'INCOME', category: 'Serviços',
+      description: `Plano de tratamento — parcela ${n}/2`, amount: 100, is_paid: false,
+      due_date: new Date(Date.now() + dias * 86_400_000).toISOString(), parcela_numero: n, parcela_total: 2, created_by: 'e2e',
+    }).select('id').single<{ id: string }>()
+    expect(error).toBeNull()
+    ids.push(data!.id)
+  }
   const respostas = await como(browser, async p => {
-    await p.goto(rota)
-    return Promise.all([1, 2].map(() => chamarAcao(p, 'actions/treatment-plans.ts', 'receberDoPlano', rota,
-      [plano, { forma: 'AVISTA', metodo: 'PIX' }, appt, ''])))
+    await p.goto(ROTA)
+    return Promise.all([1, 2].map(() => chamarAcao(p, 'actions/pdv.ts', 'receberParcelaNoPdv', ROTA, [ids[0], '', { forma: 'PIX' }])))
   })
   const textos = respostas.map(r => r!.texto)
-  expect(textos.filter(t => t.includes('"recebido":300'))).toHaveLength(1)
-  expect(textos.filter(t => /já foi recebido|Não há valor em aberto/.test(t))).toHaveLength(1)
-  expect(await lancamentos(plano)).toEqual(['300:true'])
-  const { data: hist } = await db().from('appointment_history').select('id').eq('appointment_id', appt).eq('action', 'PAYMENT_CONFIRMED')
-  expect(hist ?? [], 'o histórico ganha UM recebimento').toHaveLength(1)
-})
-
-test('o mesmo envio duas vezes (duplo clique): grava uma, e as duas respostas dizem o recebido', async ({ browser }) => {
-  const { plano, appt } = await planoComSaldo('envio')
-  const rota = `/admin/agenda/${appt}`
-  const chave = crypto.randomUUID()
-  const respostas = await como(browser, async p => {
-    await p.goto(rota)
-    return Promise.all([1, 2].map(() => chamarAcao(p, 'actions/treatment-plans.ts', 'receberDoPlano', rota, [plano, PARCELADO(), appt, '', chave])))
-  })
-  expect(respostas.map(r => r!.texto).filter(t => t.includes('"recebido":300'))).toHaveLength(2)
-  expect(await lancamentos(plano)).toEqual(['100:false', '100:false', '100:true'])
+  expect(textos.filter(t => t.includes('"ok":true'))).toHaveLength(1)
+  expect(textos.filter(t => t.includes(JA_PAGO))).toHaveLength(1)
+  expect(await lancamentos(plano), 'a entrada e a 1ª pagas; a 2ª a vencer — nada em dobro').toEqual(['100:false', '100:true', '100:true'])
 })

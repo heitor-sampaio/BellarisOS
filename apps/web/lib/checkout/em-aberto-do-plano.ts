@@ -6,8 +6,10 @@ import { lerFusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
  * Quanto de um plano de tratamento ainda não foi recebido.
  *
  * Aceitar o plano e pagar por ele viraram dois gestos: quem monta o plano
- * aceita, e o dinheiro é recebido no check-in do primeiro atendimento — quando
- * a pessoa está no balcão. O vínculo entre os dois é
+ * aceita, e o dinheiro é recebido no PDV, na comanda do plano (PV-01, o
+ * Heitor, 2026-11-13: "o pagamento acontece por dentro desse PDV, seja do que
+ * for"; até então era no check-in do primeiro atendimento). A tela do
+ * atendimento só AVISA o que falta, a quem recebe. O vínculo entre os dois é
  * `financial_transactions.treatment_plan_id`.
  *
  * Não é Server Action de propósito: é leitura, usada por componentes de
@@ -17,9 +19,9 @@ export interface EmAbertoDoPlano {
   planId:      string
   nome:        string | null
   /**
-   * O que cobrar NO CHECK-IN: em aberto e já vencido (ou sem data). Parcela que
-   * vence depois já está combinada — cobrá-la de novo aqui era a cobrança em
-   * dobro que a simulação de 2026-10-20 achou. Zero quando não há nada.
+   * O que falta receber AGORA: em aberto e já vencido (ou sem data). Parcela que
+   * vence depois já está combinada — cobrá-la de novo era a cobrança em dobro
+   * que a simulação de 2026-10-20 achou. Zero quando não há nada.
    */
   emAberto:    number
   /** Parcelas combinadas que ainda vão vencer: só informação, não se cobra aqui. */
@@ -37,12 +39,12 @@ interface LinhaDoPlano { id: string; amount: number; is_paid: boolean; due_date:
 /** A conta, pura: o que já venceu (ou não tem data) × o que vai vencer depois de hoje. */
 export function separarOEmAberto(linhas: LinhaDoPlano[], agora: Date, fuso?: string): Omit<EmAbertoDoPlano, 'planId' | 'nome'> {
   // Lançamento zerado é histórico, não dinheiro: é o que sobra quando um saldo
-  // em aberto foi substituído por entrada + parcelas no check-in. Quitá-lo
-  // junto carimbaria um R$ 0,00 no fechamento do caixa.
+  // em aberto foi substituído por entrada + parcelas (era no check-in; hoje, no
+  // PDV). Quitá-lo junto carimbaria um R$ 0,00 no fechamento do caixa.
   // C37 (F67): o pagamento estornado não é dinheiro recebido (o estorno o devolveu).
   const reais = linhas.filter(t => Number(t.amount) > 0 && t.notes !== 'Estornada')
   // O fim de HOJE na unidade do plano (F64, C4): em Manaus às 23:30, o
-  // "hoje" de Brasília já era amanhã, e o check-in cobrava a parcela de amanhã.
+  // "hoje" de Brasília já era amanhã, e a parcela de amanhã entrava no "agora".
   const fimDeHoje = endOfDayTZ(agora, fuso).getTime()
   const abertas = reais.filter(t => !t.is_paid)
   const vencidas = abertas.filter(t => !t.due_date || new Date(t.due_date).getTime() <= fimDeHoje)

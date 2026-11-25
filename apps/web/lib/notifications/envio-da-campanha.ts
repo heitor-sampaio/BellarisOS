@@ -40,7 +40,9 @@ export function aplicarNome(texto: string, nome: string): string {
 
 /**
  * Manda a campanha a estas clientes, uma vez por dia (`dia`, 'AAAA-MM-DD' no
- * relógio da clínica). Devolve quantas ESTA chamada mandou.
+ * relógio da clínica). Devolve quantas ESTA chamada mandou ao celular: a
+ * cliente sem aparelho fica com o aviso no sino e o disparo GUARDADA (D9 da
+ * 28ª) — não conta.
  */
 export async function enviarCampanha(
   admin: Admin,
@@ -77,13 +79,21 @@ export async function enviarCampanha(
     await Promise.all((avisos ?? []).map(a => gravar(admin
       .from('campaign_dispatches').update({ notification_id: a.id }).eq('id', minhas.get(a.client_id)!),
       'ligar o disparo à notificação')))
-    enviadas += alvo.length
 
     // 3. O celular: os aparelhos de todas as fichas do login de cada uma.
     const aparelhos = (await ler(admin.rpc('aparelhos_das_clientes', { p_clientes: alvo.map(c => c.id) }),
       'carregar os aparelhos das clientes') ?? []) as {
         client_id: string; token: string | null; endpoint: string | null; keys: { p256dh: string; auth: string } | null
       }[]
+    // D9 da 28ª (NC-06, princípio 3): sem aparelho registrado, o aviso fica
+    // guardado no sino do app e NÃO conta como enviada — o disparo diz GUARDADA.
+    const comAparelho = new Set(aparelhos.filter(a => a.token || (a.endpoint && a.keys)).map(a => a.client_id))
+    const guardadas = alvo.filter(c => !comAparelho.has(c.id)).map(c => minhas.get(c.id)!)
+    if (guardadas.length) {
+      await gravar(admin.from('campaign_dispatches').update({ status: 'GUARDADA' }).in('id', guardadas),
+        'marcar os avisos guardados no sino')
+    }
+    enviadas += alvo.length - guardadas.length
     await Promise.allSettled(alvo.map(c => {
       const dela = aparelhos.filter(a => a.client_id === c.id)
       if (!dela.length) return Promise.resolve()

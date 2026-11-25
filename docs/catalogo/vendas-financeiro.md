@@ -1,6 +1,6 @@
 # Catálogo de regras — Vendas e financeiro
 
-Este é o catálogo das regras de Vendas e financeiro que valem HOJE: o PDV e as comandas, a Nova venda, quem vendeu e o desconto, as formas de pagamento, o crediário e as parcelas, o dinheiro do plano, os pacotes, o pré-pago, a venda de produto, o crédito interno, o estorno, o cartão e as maquininhas, o Fechamento do dia, o Financeiro, o CSV e o recibo, e o que a cliente vê dos pagamentos no app. Cada regra diz a fonte: uma fala do Heitor (copiada letra por letra do documento), uma recomendação do Claude que o Heitor aprovou (com a resposta dele), um dos sete princípios de produto, ou "decisão do Claude". "Atribuída ao Heitor sem a fala" quer dizer que o texto diz que a decisão é dele, mas não traz a fala — está nas Perguntas. "Onde" aponta a linha do documento; "Antes" lista os números do rascunho que a regra junta (KA: o PDV e as comandas, `docs/regras/vendas-financeiro.md:1-551`; KB: os pacotes, `:552-1039`; KC: o pré-pago, a venda de produto e o crédito interno, `:1040-1391`; KD, KE e KF: o Financeiro, `:1392` ao fim; KG: as decisões de `docs/revisao.md`). É um RASCUNHO para o Heitor revisar. Contagem: 178 regras (O PDV e as comandas 16, A Nova venda, quem vendeu e o desconto 10, As formas de pagamento 6, O crediário e as parcelas 11, O dinheiro do plano 10, Os pacotes 26, O pré-pago e o agendar do que já foi pago 8, A venda de produto 8, O crédito interno 10, O estorno 11, O cartão, as maquininhas e as taxas 18, O Fechamento do dia 15, O Financeiro 18, O CSV e o recibo 6, Os pagamentos no app da cliente 5), 4 perguntas e 46 divergências. Dos 404 números do rascunho, 3 ficaram fora do catálogo e 6 são de outra área, que também lista 29 itens sem número dos rascunhos (ver os apêndices); todos os outros estão num "Antes". Das perguntas dos rascunhos, as que uma regra dele já responde saíram (receber é do PDV pelo `podeReceber`; o contrato de pacote antes do dinheiro; o "ok, mantém" do PC3 e do PC4; a taxa na venda só a quem vê o Financeiro; o "Seu crédito", que já é a Q06 do catálogo de Clientes); o motivo de cada uma está em "Divergências".
+Este é o catálogo das regras de Vendas e financeiro que valem HOJE: o PDV e as comandas, a Nova venda, quem vendeu e o desconto, as formas de pagamento, o crediário e as parcelas, o dinheiro do plano, os pacotes, o pré-pago, a venda de produto, o crédito interno, o estorno, o cartão e as maquininhas, o Fechamento do dia, o Financeiro, o CSV e o recibo, e o que a cliente vê dos pagamentos no app. Cada regra diz a fonte: uma fala do Heitor (copiada letra por letra do documento), uma recomendação do Claude que o Heitor aprovou (com a resposta dele), um dos sete princípios de produto, ou "decisão do Claude". "Atribuída ao Heitor sem a fala" quer dizer que o texto diz que a decisão é dele, mas não traz a fala — está nas Perguntas. "Onde" aponta a linha do documento; "Antes" lista os números do rascunho que a regra junta (KA: o PDV e as comandas, `docs/regras/vendas-financeiro.md:1-551`; KB: os pacotes, `:552-1039`; KC: o pré-pago, a venda de produto e o crédito interno, `:1040-1391`; KD, KE e KF: o Financeiro, `:1392` ao fim; KG: as decisões de `docs/revisao.md`). É um RASCUNHO para o Heitor revisar. Contagem: 180 regras (O PDV e as comandas 16, A Nova venda, quem vendeu e o desconto 10, As formas de pagamento 6, O crediário e as parcelas 11, O dinheiro do plano 11, Os pacotes 26, O pré-pago e o agendar do que já foi pago 8, A venda de produto 8, O crédito interno 10, O estorno 11, O cartão, as maquininhas e as taxas 19, O Fechamento do dia 15, O Financeiro 18, O CSV e o recibo 6, Os pagamentos no app da cliente 5), 4 perguntas e 47 divergências. Dos 404 números do rascunho, 3 ficaram fora do catálogo e 6 são de outra área, que também lista 29 itens sem número dos rascunhos (ver os apêndices); todos os outros estão num "Antes". Das perguntas dos rascunhos, as que uma regra dele já responde saíram (receber é do PDV pelo `podeReceber`; o contrato de pacote antes do dinheiro; o "ok, mantém" do PC3 e do PC4; a taxa na venda só a quem vê o Financeiro; o "Seu crédito", que já é a Q06 do catálogo de Clientes); o motivo de cada uma está em "Divergências".
 
 ## O PDV e as comandas (PV)
 
@@ -70,9 +70,9 @@ Este é o catálogo das regras de Vendas e financeiro que valem HOJE: o PDV e as
 - Onde: `docs/regras/vendas-financeiro.md:281-296`, `:540-542`, `:3267`
 - Antes: KA-13, KA-14, KF-64
 
-**PV-13.** A tela do atendimento não recebe nem tem janela de pagamento: o que ela fazia, o PDV faz (pacote, desconto e motivo, voucher, pontos, maquininha, vezes, bandeira, crédito interno, o combinado do contrato). A ficha da cliente não lista os atendimentos a receber: mostra só "N comanda(s) aberta(s) no PDV · R$ X", com o "Receber no PDV" da comanda mais antiga numa unidade ao alcance para quem recebe, e "Recebe-se no PDV, com quem tem o PDV ou o Financeiro em Gerenciar." para quem não recebe (o resto é a AT-11 do catálogo do Atendimento).
-- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Blz pode ser assim"
-- Onde: `docs/regras/vendas-financeiro.md:1734`, `:1739`, `:1749`; `docs/revisao.md:1994`
+**PV-13.** A tela do atendimento não recebe nem tem janela de pagamento: o que ela fazia, o PDV faz (pacote, desconto e motivo, voucher, pontos, maquininha, vezes, bandeira, crédito interno, o combinado do contrato). A ficha da cliente não lista os atendimentos a receber: mostra só "N comanda(s) aberta(s) no PDV · R$ X", com o "Receber no PDV" da comanda mais antiga numa unidade ao alcance para quem recebe, e "Recebe-se no PDV, com quem tem o PDV em Gerenciar." para quem não recebe (o resto é a AT-11 do catálogo do Atendimento).
+- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Blz pode ser assim"; quem recebe é só o PDV: recomendação do Claude aprovada pelo Heitor, 2026-11-23: "concordo, pode anotar, marcar as questões e ajustar o codigo" (PV-04)
+- Onde: `docs/regras/vendas-financeiro.md:1734`, `:1739`, `:1749`, `:1807-1808`; `docs/revisao.md:1994`; `apps/web/components/shared/comandas-abertas-da-ficha.tsx:66`
 - Antes: KD-45, KD-46
 
 ### O que a comanda mostra
@@ -191,9 +191,9 @@ Este é o catálogo das regras de Vendas e financeiro que valem HOJE: o PDV e as
 - Onde: `docs/regras/vendas-financeiro.md:216-225`, `:2569`, `:3208`; `docs/revisao.md:1982`
 - Antes: KA-17, KF-02
 
-**CR-02.** O máximo de parcelas do crediário é configuração da rede (padrão 12) e vale igual em todo caminho que vende no crediário (a venda no PDV, o pagamento do contrato, o pagamento do plano): a tela oferece até o limite e o servidor recusa acima.
-- Fonte: o Heitor, 2026-11-11: "Decisão da rede"
-- Onde: `docs/regras/vendas-financeiro.md:2626`
+**CR-02.** O máximo de parcelas do crediário é configuração da rede (padrão 12) e vale igual em todo caminho que vende no crediário (a venda no PDV, o pagamento do contrato, o pagamento do plano): a tela oferece até o limite e o servidor recusa acima dele. O limite é o número que a rede digita, de 1 para cima: acima de 48 a tela avisa ("Acima do comum (…). Confira: o valor vale como está.") e o valor vale; só o que o registro não guarda (acima de 32.767) é recusado. As parcelas geradas são todas as vendidas, nunca cortadas em silêncio. A despesa não muda: parcelada de 2 a 48, recorrente de 2 a 60.
+- Fonte: o Heitor, 2026-11-11: "Decisão da rede"; o aviso no lugar do teto: princípio 2 (o Heitor, 2026-11-04: "no máximo, avisar"); o aviso começar no teto de antes (48): decisão do Claude, 25/11
+- Onde: `docs/regras/vendas-financeiro.md:2718-2737`; `apps/web/lib/financeiro/parcelas-do-crediario.ts`
 - Antes: KF-06
 
 **CR-03.** A entrada vazia quer dizer sem entrada; a entrada que não se consegue ler mostra o aviso junto do campo, e a tela não salva. A entrada maior que o total é recusada, nunca cortada calada ("A entrada (R$ 1.000,00) passa do total do plano (R$ 900,00). Corrija a entrada."), na tela e no servidor, em toda venda com entrada; a entrada igual ao total passa (é tudo na entrada). O vencimento do "a receber" é opcional (na venda do pacote e no pagamento do contrato): sem data, o contrato diz "a receber" sem o dia.
@@ -201,7 +201,7 @@ Este é o catálogo das regras de Vendas e financeiro que valem HOJE: o PDV e as
 - Onde: `docs/regras/vendas-financeiro.md:699-702`, `:2110`, `:2117`, `:2874`, `:3232`
 - Antes: KE-25, KF-21, KB-16
 
-**CR-04.** O valor das parcelas que a tela mostra é o que vai ser gravado ("2x de R$ 890,66 + 1x de R$ 890,68"), nunca a média saldo ÷ parcelas, e o contrato lista cada parcela com a data. Antes de vender, a tela mostra o resumo ("Entrada R$ 300,00 + 3× R$ 1.000,00") e diz quantos pagamentos dá ("3x + entrada (4 pagamentos)"), no PDV, no recebimento do plano e na tela do atendimento.
+**CR-04.** O valor das parcelas que a tela mostra é o que vai ser gravado ("2x de R$ 890,66 + 1x de R$ 890,68"), nunca a média saldo ÷ parcelas, e o contrato lista cada parcela com a data. Antes de vender, a tela mostra o resumo ("Entrada R$ 300,00 + 3× R$ 1.000,00") e diz quantos pagamentos dá ("3x + entrada (4 pagamentos)"), no PDV e no recebimento do plano (a tela do atendimento não recebe, PV-13).
 - Fonte: princípio 3
 - Onde: `docs/regras/vendas-financeiro.md:361-363`, `:2661`, `:2670`, `:3203`
 - Antes: KF-09, KA-46, KF-08
@@ -230,9 +230,9 @@ Este é o catálogo das regras de Vendas e financeiro que valem HOJE: o PDV e as
 
 ### A parcela vencida e o vencimento
 
-**CR-09.** Vencida é a parcela a receber, ainda em aberto, com vencimento anterior a hoje no horário de Brasília; a que vence hoje ainda não venceu, e quem decide o dia é o servidor. A regra é a mesma em todo lugar: a vencida aparece como vencida, nunca como "Pendente". As listas dos dois Financeiros, a aba Financeiro da ficha e o app dizem "Vencida em 05/11"; a lista da unidade tem "Vencidas" no filtro; o cartão "A receber da cliente" diz "Vencidas: R$ 1.294,00 (1 parcela, desde 05/11) · Ver as vencidas", que abre o A receber só com as vencidas, de qualquer mês.
-- Fonte: princípio 3
-- Onde: `docs/regras/vendas-financeiro.md:1909`, `:1918`, `:3245`
+**CR-09.** Vencida é a parcela a receber, ainda em aberto, com vencimento anterior a hoje no horário de Brasília; a que vence hoje ainda não venceu, e quem decide o dia é o servidor. A regra é a mesma em todo lugar: a vencida aparece como vencida, nunca como "Pendente". As listas dos dois Financeiros e o app dizem "Vencida em 05/11"; a aba Financeiro da ficha diz "Vencida há N dias" (os dias vêm do servidor, no fuso da unidade), com a linha em destaque de alerta e a data ao lado ("Vence 14/11/2026"); a lista da unidade tem "Vencidas" no filtro; o cartão "A receber da cliente" diz "Vencidas: R$ 1.294,00 (1 parcela, desde 05/11) · Ver as vencidas", que abre o A receber só com as vencidas, de qualquer mês.
+- Fonte: princípio 3; o "Vencida há N dias" da ficha: recomendação do Claude aprovada pelo Heitor, 2026-11-18 (item 17 do escopo): "17 - ok" (`DEVLOG.md:1875`)
+- Onde: `docs/regras/vendas-financeiro.md:1827-1838`, `:1977-1980`, `:3245`
 - Antes: KD-62, KF-85, KD-63
 
 **CR-10.** No check-in, quem recebe é avisado de que a cliente tem parcela vencida ("Mariana tem 1 parcela vencida (R$ 1.294,00, desde 05/11)…"), e a recebe no PDV. O aviso não impede o check-in.
@@ -259,14 +259,14 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Onde: `docs/regras/vendas-financeiro.md:182-186`, `:1463`, `:1493`, `:2868`, `:3228`
 - Antes: KA-49, KD-18, KF-30, KD-19
 
-**DP-03.** O plano aceito com saldo diz "Plano aceito. Falta receber" e que a comanda do plano está no PDV. A tela do plano fechado mostra "Valor do plano", "Recebido" e "A receber", cada lançamento com a situação (pago em tal dia e forma, a vencer, ou vencido — receba no PDV) e as sessões feitas e agendadas; o rodapé diz que o que falta se recebe no PDV — a quem recebe, com o "Receber no PDV"; a quem não recebe, com o nome de quem tem o PDV ou o Financeiro em Gerenciar naquela unidade. O saldo do plano (o em aberto e o a vencer) na tela do atendimento só aparece a quem recebe.
-- Fonte: princípio 3
-- Onde: `docs/regras/vendas-financeiro.md:2734`, `:2862`, `:2875`, `:2884`
+**DP-03.** O plano aceito com saldo diz "Plano aceito. Falta receber" e que a comanda do plano está no PDV; o aceito sem dinheiro nenhum ainda diz "Plano aceito e ainda não recebido: a comanda do plano está no PDV." A tela do plano fechado mostra "Valor do plano", "Recebido" e "A receber", cada lançamento com a situação (pago em tal dia e forma, a vencer, ou vencido — receba no PDV) e as sessões feitas e agendadas; o rodapé diz que o que falta se recebe no PDV — a quem recebe, com o "Receber no PDV"; a quem não recebe, com o nome de quem tem o PDV em Gerenciar naquela unidade — e que, se caiu na conta, a baixa é no Financeiro (FN-06). O saldo do plano (o em aberto e o a vencer) na tela do atendimento só aparece a quem recebe.
+- Fonte: princípio 3; quem recebe é só o PDV: recomendação do Claude aprovada pelo Heitor, 2026-11-23: "concordo, pode anotar, marcar as questões e ajustar o codigo" (PV-04); a baixa do que caiu na conta: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Blz pode ser assim" (CX2)
+- Onde: `docs/regras/vendas-financeiro.md:2734`, `:2803-2806`, `:2862`, `:2875`, `:2884`; `apps/web/lib/plano-de-tratamento/textos.ts:31-59`
 - Antes: KF-22, KF-31, KF-29
 
-**DP-04.** O pagamento do plano cobra também o atendimento que gerou o plano, se ele está concluído, tem preço, é avulso e não foi recebido: se algo é recebido agora, ele entra junto, à vista, na mesma forma (e nas mesmas vezes); no "a receber", fica para a comanda dele no PDV. A tela diz uma coisa só sobre ele — se entra neste pagamento ou não —, e o total diz que o inclui.
-- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
-- Onde: `docs/regras/vendas-financeiro.md:2738`, `:2750`, `:3229`
+**DP-04.** O pagamento do plano cobra só o plano: o atendimento que gerou o plano (a avaliação) tem a comanda dele no PDV, aberta no início do atendimento, e se recebe lá, como qualquer avulso. A comanda do plano não o mostra nem o soma.
+- Fonte: o Heitor, 2026-11-13: "Uma comanda para cada coisa que vai ser vendido, né? … Tudo que for uma venda gera uma comanda." (PV-06; a revisão das perguntas de 24/11 deu por vencida a regra de 20/10, em que o pagamento do plano cobrava junto o "atendimento de hoje")
+- Onde: `docs/regras/vendas-financeiro.md:2807-2815`
 - Antes: KF-23
 
 **DP-05.** O pagamento do plano sugere o pacote ativo da unidade com os mesmos procedimentos nas mesmas quantidades, quando sai mais barato (o mais barato, se houver dois), dizendo a economia. "Fechar como pacote" põe a economia no desconto: o plano continua por procedimento e não vira venda de pacote (a dica no editor do plano é a PL-23 do catálogo do Atendimento).
@@ -283,6 +283,11 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Fonte: decisão do Claude
 - Onde: `docs/regras/vendas-financeiro.md:2906`, `:2912`
 - Antes: KF-37, KF-38
+
+**DP-11.** A sessão do plano que já tem agendamento antes do pagamento (a cliente marcou pelo app ou pela página do plano) fica com ele: o "Receber o plano" não a agenda de novo, e o aviso do fim conta as duas coisas ("Plano fechado: 5 sessões. 1 já agendada, 4 sem data — agende pela ficha…").
+- Fonte: princípio 3
+- Onde: `docs/regras/vendas-financeiro.md:2839-2846`; `apps/web/components/branch/checkout-wizard.tsx:531`
+- Antes: (sem número: `docs/inventario/leitura.md` §4)
 
 ### Cancelar o plano fechado
 
@@ -582,9 +587,9 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Onde: `docs/regras/vendas-financeiro.md:1383-1388`
 - Antes: KC-34
 
-**CI-10.** Nas telas da equipe, o crédito da cliente se chama "Crédito interno" (no app, "Seu crédito"); o crediário se chama "Crediário" / "no crediário".
-- Fonte: decisão do Claude
-- Onde: `docs/revisao.md:1895-1897`, `:2147`; `docs/regras/vendas-financeiro.md:213`
+**CI-10.** Nas telas da equipe, o crédito da cliente se chama "Crédito interno"; no app, "Crédito em <o nome da rede>" ("Crédito em Estética Bella", sem artigo: o gênero do nome não se adivinha). O crediário se chama "Crediário" / "no crediário".
+- Fonte: decisão do Claude (o nome da equipe); o nome da rede no app: recomendação do Claude aprovada pelo Heitor, 13/11: "Concordo" (CA1, `docs/revisao.md:1498-1502`; a Q06 do catálogo de Clientes, revisão de 24/11)
+- Onde: `docs/revisao.md:1895-1897`, `:2147`; `docs/regras/vendas-financeiro.md:213`; `apps/web/lib/clientes/fala-da-rede.ts`
 - Antes: KG-40
 
 ## O estorno (EX)
@@ -653,9 +658,9 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Onde: `docs/regras/vendas-financeiro.md:2172`, `:2179`, `:2502`, `:3215-3216`
 - Antes: KE-27, KF-16, KE-28
 
-**MQ-02.** A parcela k vence na data da venda + k × N dias corridos; N é o prazo de recebimento da maquininha, 30 dias por padrão, e mudar o prazo só vale para as vendas seguintes. Cada parcela tem o seu valor e a sua taxa (a da maquininha para aquele número de vezes); os centavos que sobram da divisão, no valor e na taxa, vão na última parcela, e a soma fecha com a venda.
-- Fonte: o Heitor, 2026-11-03: "como a operadora paga de verdade e configurável o prazo"
-- Onde: `docs/regras/vendas-financeiro.md:2186`, `:2191`, `:2265`
+**MQ-02.** A parcela k vence na data da venda + k × N dias corridos; N é o prazo de recebimento da maquininha, 30 dias por padrão, e mudar o prazo só vale para as vendas seguintes. O prazo é o que a rede digita, de 1 dia para cima: acima de 120 dias a tela avisa ("Acima do comum (mais de 120 dias). Confira: o valor vale como está.") e o valor vale; só o que o registro não guarda é recusado. Cada parcela tem o seu valor e a sua taxa (a da maquininha para aquele número de vezes); os centavos que sobram da divisão, no valor e na taxa, vão na última parcela, e a soma fecha com a venda.
+- Fonte: o Heitor, 2026-11-03: "como a operadora paga de verdade e configurável o prazo"; o aviso no lugar do teto: princípio 2 (o Heitor, 2026-11-04: "no máximo, avisar"); o aviso começar no teto de antes (120 dias): decisão do Claude, 25/11
+- Onde: `docs/regras/vendas-financeiro.md:2186`, `:2191`, `:2265`, `:3341`; `apps/web/lib/financeiro/vezes-do-cartao.ts:43-60`
 - Antes: KE-30, KE-29
 
 **MQ-03.** O crédito à vista (1x) também vira uma parcela da operadora, dentro do prazo. O débito e o Pix contam como recebidos no dia da venda, porque não têm prazo configurado, e o "A receber da operadora" diz isso ("Débito no período: R$ 540,00 — conta como recebido no dia da venda"); no Financeiro da rede com uma unidade filtrada, esse débito é o da unidade.
@@ -742,6 +747,11 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Onde: `docs/regras/vendas-financeiro.md:2461`, `:2475`, `:2590`
 - Antes: KE-58, KE-59, KF-04
 
+**MQ-19.** "Preencher pela taxa por parcela" preenche o crédito de 1x a 12x com a taxa × as vezes, o 1x (à vista) inclusive, e a tela diz isso ("de 1x (à vista, inclusive)"); quando o 1x tinha outro valor, avisa antes de salvar ("O crédito à vista (1x) também mudou: era 1,19%, agora 1,15%. Confira antes de salvar."). Só preenche os campos: grava no "Salvar taxas", e cada campo segue editável.
+- Fonte: princípio 3, sobre a fala do Heitor da MQ-13 ("a taxa é por parcela … então a taxa total é a taxa vezes a quantidade de parcelas")
+- Onde: `docs/regras/vendas-financeiro.md:2409-2423`
+- Antes: (sem número: `docs/inventario/leitura.md` §4)
+
 ## O Fechamento do dia (FC)
 
 **FC-01.** O Fechamento do dia fica dentro do PDV ("Fechar o dia", no topo; o item "Fechamento do dia" do menu leva até ele) e mostra o dinheiro da unidade inteira: o dia por forma de pagamento (entradas, saídas pagas e saldo, com o total), o dinheiro em espécie esperado, a contagem e quem fechou. Vê quem tem o PDV em Gerenciar ou o Financeiro em Ver; fecha quem recebe (PV-04), que também vê. As Minhas comissões não abrem o Fechamento. Quem só tem o PDV não vê a descrição nem o motivo de uma despesa: as saídas aparecem só pela forma.
@@ -789,9 +799,9 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Onde: `docs/regras/vendas-financeiro.md:1639`; `docs/revisao.md:1995`
 - Antes: KD-36, KG-16
 
-**FC-10.** Os estornos do dia aparecem numa linha própria ("Estornos do dia: R$ X"), e nos "Detalhes do dia" cada estorno pago no dia vem com a descrição, a forma e o motivo, e o total. Se um pagamento de hoje foi estornado hoje mesmo, a linha da forma diz isso ("R$ 320,00 estornado de um pagamento de hoje: já fora das entradas"), e a forma continua na tabela, mesmo zerada, para ser conferida.
+**FC-10.** Os estornos do dia aparecem numa linha própria ("Estornos do dia: R$ X"), e nos "Detalhes do dia" cada estorno pago no dia vem com a descrição, a forma e o motivo, e o total. Se um pagamento de hoje foi estornado hoje mesmo, a linha da forma diz isso ("R$ 320,00 estornado de um pagamento de hoje: já fora das entradas") e continua na tabela, zerada — mas não pede conferência, porque não há o que conferir (a forma só com saída, ou zerada, não se confere, a não ser que tenha sido conferida no último fechamento).
 - Fonte: princípio 3
-- Onde: `docs/regras/vendas-financeiro.md:1565`, `:1597`, `:1600`, `:1658`
+- Onde: `docs/regras/vendas-financeiro.md:1565`, `:1597`, `:1610-1618`, `:1658`
 - Antes: KD-37, KD-27
 
 **FC-11.** O estorno conta no dia em que o dinheiro sai: o Fechamento de um dia, fechado ou não, não muda por um estorno feito depois. O estorno de um pagamento de outro dia é saída do dia em que foi feito, na forma do pagamento; o de um pagamento do mesmo dia já fica fora das entradas, porque um anula o outro; o pagamento estornado em parte conta o valor cheio no dia em que entrou. Cada estorno diz em qual caso está ("Pagamento de 10/11: sai nas saídas deste dia." ou "Pagamento deste dia: já fora das entradas."), e o CSV também. Os estornos do dia são só o que voltou às clientes: o estorno de uma DESPESA é dinheiro voltando ao caixa (em outro dia, entrada na forma dele; no mesmo dia, um anula o outro), e a linha que o desfaz diz "Anula a despesa estornada"; o estorno do uso do crédito interno fica fora, porque não é dinheiro do caixa.
@@ -845,19 +855,19 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 
 ### Quem vê e quem mexe
 
-**FN-05.** No topo do Financeiro há só o "Novo lançamento", e só para quem tem o Financeiro em Gerenciar: quem só vê não vê o botão, e a recusa diz "Seu cargo não libera esta ação." Quem tem o Financeiro em Ver lê todas as abas, mas não lança nem remarca, e não recebe instrução de dar baixa ("Ver e dar baixa", "use Pagar na linha"). Quem atende e não tem o Financeiro vai para as Minhas comissões.
-- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Blz pode manter e anotar no plano como voce sugeriu"
-- Onde: `docs/regras/vendas-financeiro.md:1424`, `:1432`, `:2068`, `:3259`; `docs/revisao.md:2013`, `:2015`
+**FN-05.** No topo do Financeiro há só o "Novo lançamento", e só para quem tem o Financeiro em Gerenciar: quem só vê não vê o botão, e a recusa diz "Você não tem acesso a esta ação." (o "sem acesso" genérico não põe a culpa no cargo: pode ser a unidade ou o plano). Quem tem o Financeiro em Ver lê todas as abas, mas não lança nem remarca, e não recebe instrução de dar baixa ("Ver e receber", "use Pagar na linha"). Quem atende ou tem comissão no nome e não tem o Financeiro vê as Minhas comissões (a vista pessoal).
+- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Blz pode manter e anotar no plano como voce sugeriu"; a frase da recusa: decisão do Claude (15ª simulação), pela regra do vocabulário (o Heitor, 2026-11-13: "o que define quem gerencia é permissão, ponto"); a vista pessoal: CLAUDE.md §11 (SM2, 23/11)
+- Onde: `docs/regras/vendas-financeiro.md:1424`, `:1432`, `:2068`, `:3259`; `docs/revisao.md:2013`, `:2015`; `apps/web/lib/erro-na-tela.ts:24`
 - Antes: KD-08, KE-13, KG-26, KD-09, KF-70
 
-**FN-06.** Dar baixa no Financeiro ("Receber" numa receita, "Pagar" numa despesa) é de quem tem o PDV ou o Financeiro em Gerenciar; é para o dinheiro que entra sem passar pelo balcão. A janela diz quanto e de quem ("R$ 200,00 — Paula Neves") e usa as formas em blocos, como no PDV; o cartão da parcela diz "Ver e receber". Quem não pode dar baixa lê "Receber é de quem tem o PDV ou o Financeiro em Gerenciar."
-- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Blz pode ser assim"
-- Onde: `docs/regras/vendas-financeiro.md:469-470`, `:1410`, `:1474`; `docs/revisao.md:1993`
+**FN-06.** Dar baixa no Financeiro ("Receber" numa receita, "Pagar" numa despesa) é de quem tem o PDV ou o Financeiro em Gerenciar; é para o dinheiro que entra sem passar pelo balcão (a transferência que caiu na conta). É a exceção do CX2 ao "receber é do PDV" (PV-04): o que a cliente paga no balcão — a comanda, a parcela que ela veio pagar — segue só no PDV. A janela diz quanto e de quem ("R$ 200,00 — Paula Neves") e usa as formas em blocos, como no PDV; o cartão da parcela diz "Ver e receber". Quem não pode dar baixa lê "Receber é de quem tem o PDV ou o Financeiro em Gerenciar."
+- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Blz pode ser assim" (CX2: "dá baixa só no que entra sem passar pelo balcão (a transferência que caiu na conta)")
+- Onde: `docs/regras/vendas-financeiro.md:469-470`, `:1410`, `:1474`, `:1524-1533`; `docs/revisao.md:1993`; `apps/web/lib/financeiro/so-os-meus.ts:14-24`
 - Antes: KD-15, KG-23, KD-04, KA-56
 
-**FN-07.** A aba Financeiro da ficha é igual nos dois portais e abre para quem tem o Financeiro em Ver ou recebe. Mostra tudo da cliente: os lançamentos, o pago, o a receber (os lançamentos em aberto mais os atendimentos concluídos ainda sem lançamento) e o crédito interno. As transações vêm da mais nova para a mais antiga, pela data que a própria linha mostra (o vencimento da parcela em aberto, o dia do atendimento ou, senão, o dia do lançamento); no empate, a parcela maior vem primeiro; no celular, cada lançamento é um cartão, sem rolar de lado.
-- Fonte: princípio 3
-- Onde: `docs/regras/vendas-financeiro.md:1761`, `:1769`, `:3246`
+**FN-07.** A aba Financeiro da ficha é igual nos dois portais e abre para quem tem o Financeiro em Ver ou recebe. Mostra tudo da cliente: os lançamentos, o pago, o a receber (os lançamentos em aberto mais os atendimentos concluídos ainda sem lançamento) e o crédito interno. As parcelas em aberto vêm primeiro, do vencimento mais antigo ao mais novo (a vencida, ou a mais próxima, primeiro; sem vencimento, depois; no empate, a parcela menor), e a vencida fica em destaque (CR-09). O resto vem da mais nova para a mais antiga, pela data que a própria linha mostra (o dia do atendimento ou, senão, o dia do lançamento); no empate, a parcela maior vem primeiro. No celular, cada lançamento é um cartão, sem rolar de lado.
+- Fonte: princípio 3; o em aberto primeiro, pelo vencimento: recomendação do Claude aprovada pelo Heitor, 2026-11-18 (item 17 do escopo): "17 - ok" (`DEVLOG.md:1875`)
+- Onde: `docs/regras/vendas-financeiro.md:1810-1838`, `:3246`, `:3304`
 - Antes: KD-49, KD-50, KF-86
 
 ### O filtro de tags
@@ -879,9 +889,9 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Onde: `docs/regras/vendas-financeiro.md:1820`
 - Antes: KD-54
 
-**FN-11.** O cartão "A receber da cliente · em aberto" mostra no número grande todo o em aberto, de qualquer vencimento, nas unidades ao alcance, e a nota diz "Vence no período: R$ …"; o "Em aberto, todos os vencimentos" tem o link "Ver e dar baixa", que abre a aba A receber. O cartão "A pagar" conta pelo vencimento, até o fim do período, e diz "Pelo vencimento, no período."; com zero, mostra o próximo vencimento depois do período ("Próximo: R$ 300,00 em 05/11"); o "Em aberto, todos os vencimentos: R$ 5.200,00" tem o "Ver e pagar", que abre a aba A pagar. Para quem não pode dar baixa, o link é "Ver a lista", e a faixa diz de quem é a baixa.
-- Fonte: princípio 3
-- Onde: `docs/regras/vendas-financeiro.md:436-438`, `:1833`, `:1841`, `:1892`, `:1899`, `:1903`
+**FN-11.** O cartão "A receber da cliente · em aberto" mostra no número grande todo o em aberto, de qualquer vencimento, nas unidades ao alcance, e a nota diz "Vence no período: R$ …", com o link "Ver e receber", que abre a aba A receber. O cartão "A pagar · vence no período" diz o recorte no título e conta pelo vencimento, até o fim do período; com zero, mostra o próximo vencimento depois do período ("Próximo: R$ 300,00 em 05/11"); embaixo, "Em aberto, de qualquer vencimento: R$ 5.200,00", com o "Ver e pagar", que abre a aba A pagar. O "pelo vencimento, no período" e o resto da conta moram na dica do cartão (a explicação mora na dica). Para quem não pode dar baixa, o link é "Ver a lista", e a faixa diz de quem é a baixa.
+- Fonte: princípio 3; a explicação na dica: o Heitor, 2026-11-16: "pode tirar esse monte de aviso e explicação, se quiser manter bota em um tooltipzinho que só aparece se passar o mouse em cima. Aproveita e faz esse ajuste pra todo sistema."
+- Onde: `docs/regras/vendas-financeiro.md:436-438`, `:478`, `:1903-1908` (o título do a pagar: A6 de 25/11, decisão do Claude), `:1951-1965`; `docs/regras/design.md:215`; `apps/web/components/shared/nota-do-vencimento.tsx`; `apps/web/lib/financeiro/abas.ts:86`, `:93`
 - Antes: KA-57, KD-56, KD-57, KD-55
 
 **FN-12.** O cartão "Fluxo de caixa — próximos meses", nos dois Financeiros, mostra mês a mês o que vai entrar e o que vai sair, pelo vencimento: o que entra é o a receber das clientes somado ao que a operadora ainda vai depositar, empilhados; o que sai são as despesas a pagar. Há gráfico de barras e tabela com o saldo de cada mês; o que já venceu e continua em aberto conta no mês atual; na rede, o filtro de unidade troca o gráfico; o atendimento concluído sem pagamento não entra, porque não tem vencimento. No próprio cartão, a rede escolhe ver 3, 6 ou 12 meses (6 é o padrão, e o título acompanha).
@@ -889,9 +899,9 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Onde: `docs/regras/vendas-financeiro.md:1848`, `:1850`
 - Antes: KD-58, KD-59
 
-**FN-13.** O total da lista vem com sinal e se chama "caixa da lista", não resultado ("14 lançamentos · caixa da lista −R$ 1.929,00"). Ele conta o dinheiro de verdade: entra o pagamento, pelo valor que entrou, e o estorno, com o sinal dele; não entram o que está em aberto, o uso do crédito interno (e o estorno dele) e o que foi pago todo em pontos. A lista de um dia soma o mesmo saldo do Fechamento daquele dia. Embaixo do Lucro do período, a tela explica a diferença: "É o resultado do período (competência): o insumo conta quando é usado e a comissão quando é lançada. O total da lista de lançamentos é o caixa."
-- Fonte: princípio 3
-- Onde: `docs/regras/vendas-financeiro.md:1864`, `:1871`, `:1881`
+**FN-13.** O total da lista vem com sinal e se chama "caixa da lista", não resultado ("14 lançamentos · caixa da lista −R$ 1.929,00"). Ele conta o dinheiro de verdade: entra o pagamento, pelo valor que entrou, e o estorno, com o sinal dele; não entram o que está em aberto, o uso do crédito interno (e o estorno dele) e o que foi pago todo em pontos. A lista de um dia soma o mesmo saldo do Fechamento daquele dia. A dica do Lucro do período explica a diferença: "É o resultado do período: a receita e a despesa pelo que foi pago; o insumo quando é usado; o custo do produto quando ele é vendido, mesmo a receber; a comissão quando é lançada. O total da lista de lançamentos é o caixa." — sem a palavra "competência" —, e, com despesa em aberto vencendo no período, a tela diz "A pagar no período, fora do resultado: R$ …".
+- Fonte: princípio 3 (a frase sem "competência": D4 da 10ª simulação — a regra é a despesa PAGA, como a receita); a explicação na dica: o Heitor, 2026-11-16 (ver a FN-11)
+- Onde: `docs/regras/vendas-financeiro.md:1864`, `:1871`, `:1881`; `docs/regras/indicadores.md:353-361`; `apps/web/components/shared/conta-do-resultado.tsx:34-38`
 - Antes: KD-60, KD-61
 
 **FN-14.** A descrição do lançamento é para pessoas, porque chega à cliente: nunca leva texto interno da tela (o plano grava "Plano de tratamento — entrada", e o mesmo nome com o número de cada parcela), e o lançamento do atendimento mostra o nome do procedimento ("Preenchimento labial", "Limpeza de pele — saldo") no lugar de "Atendimento concluído", nas Movimentações dos dois Financeiros, no CSV e nas parcelas a receber da operadora.
@@ -911,9 +921,9 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Onde: `docs/regras/vendas-financeiro.md:2081`, `:2085`
 - Antes: KE-15, KE-16
 
-**FN-17.** O "Novo lançamento" pede o Fornecedor (na despesa) e a Nota fiscal. A despesa não segue o limite do crediário: parcelada vai de 2 a 48 vezes, recorrente de 2 a 60, e as duas pedem um vencimento só (o da 1ª parcela, ou o do primeiro lançamento). O "Pagar despesa" de uma despesa sem forma pergunta a forma (o campo começa vazio, é obrigatório e oferece o Boleto); a que já tem forma se paga direto.
-- Fonte: decisão do Claude
-- Onde: `docs/regras/vendas-financeiro.md:1957`, `:2138`, `:2145`, `:2634`
+**FN-17.** O "Novo lançamento" pede o Fornecedor (na despesa) e a Nota fiscal. A despesa não segue o limite do crediário: parcelada vai de 2 a 48 vezes, recorrente de 2 a 60, e as duas pedem um vencimento só (o da 1ª parcela, ou o do primeiro lançamento). O "Pagar despesa" sempre abre a janela: na despesa sem forma, o campo começa vazio, é obrigatório e oferece o Boleto; na que já tem forma, a forma lançada vem escolhida, e quem paga confirma ou troca, como na baixa da receita. A janela diz quanto e, quando a despesa diz, a quem.
+- Fonte: decisão do Claude (a despesa com forma também abre a janela: A13 da 26ª, princípio 3 — revê a da 9ª, que pagava direto)
+- Onde: `docs/regras/vendas-financeiro.md:1957`, `:2138`, `:2145`, `:2205-2213`, `:2634`
 - Antes: KE-03, KE-18, KF-07, KE-20
 
 **FN-18.** A despesa recorrente guarda em cada lançamento a forma de pagamento escolhida, como a parcelada já guardava.
@@ -948,9 +958,9 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Onde: `docs/regras/vendas-financeiro.md:3094`, `:3097`, `:3103`
 - Antes: KF-79, KF-80
 
-**CS-06.** O recibo diz o número, quem pagou (com o CPF, ou o passaporte/RNE), a quantia, o referente, a forma, quando, o desconto e o motivo quando há, e quem recebeu (rede, unidade, CNPJ, endereço, telefone), e avisa que não substitui a nota fiscal. No atendimento, o referente é o procedimento, o dia, a hora e quem atendeu; no crédito em N vezes, as parcelas no cartão ("Parcelas no cartão: 2x de R$ 550,00").
-- Fonte: decisão do Claude
-- Onde: `docs/regras/vendas-financeiro.md:3106`, `:3112`
+**CS-06.** O recibo diz o número, quem pagou (com o CPF, ou o passaporte/RNE), a quantia, o referente, a forma, quando, o desconto e o motivo quando há, e o "Emitente" — a rede e a unidade que receberam (CNPJ, endereço, telefone) —, e avisa que não substitui a nota fiscal ("Este recibo não substitui a nota fiscal."). A seção se chama "Emitente", não "Quem recebeu": no Fechamento do dia, "Quem recebeu" é a pessoa que deu a baixa. No atendimento, o referente é o procedimento, o dia, a hora e quem atendeu; no crédito em N vezes, as parcelas no cartão ("Parcelas no cartão: 2x de R$ 550,00").
+- Fonte: decisão do Claude; o nome "Emitente": decisão do Claude, 25/11, pelo princípio 3 (o mesmo nome não diz duas coisas)
+- Onde: `docs/regras/vendas-financeiro.md:3194-3204`
 - Antes: KF-81
 
 ## Os pagamentos no app da cliente (AC)
@@ -965,9 +975,9 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Onde: `docs/regras/vendas-financeiro.md:858-865`
 - Antes: KB-43
 
-**AC-03.** No app, a cliente vê "Seu crédito" (no Financeiro e no Início) só quando o saldo é maior que zero, e só o saldo: os lançamentos do crédito ficam com a equipe. É o saldo da ficha da rede do endereço.
-- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
-- Onde: `docs/regras/vendas-financeiro.md:3067`
+**AC-03.** No app, a cliente vê "Crédito em <o nome da rede>" (no Financeiro e no Início) só quando o saldo é maior que zero, e só o saldo: os lançamentos do crédito ficam com a equipe. É o saldo da ficha da rede do endereço.
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele); o nome da rede: recomendação do Claude aprovada pelo Heitor, 13/11: "Concordo" (CA1, `docs/revisao.md:1498-1502`)
+- Onde: `docs/regras/vendas-financeiro.md:3067`; `apps/web/app/[slug]/cliente/home/page.tsx:348-354`; `apps/web/lib/clientes/fala-da-rede.ts`
 - Antes: KF-50
 
 **AC-04.** Ao agendar pelo app, a cliente usa o que já pagou: a sessão livre de um plano vendido ou, sem ela, o crédito de pacote ou de pré-pago (o preço e a duração vêm da sessão). Se outra pessoa usou o crédito ao mesmo tempo, o agendamento fica avulso.
@@ -982,7 +992,7 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 
 ## Perguntas ao Heitor
 
-Revisão de 24/11 (o Heitor, 24/11: "da uma revisada se as perguntas realmente faz sentido, as vezes tu me perguntas que são coisas obvias e se resolvem fácil com um pouco de logica sobre o contexto"). Fica na página só a Q04 (vender o pacote pela internet está no escopo?). E a pergunta da página sobre o atendimento que gerou o plano (DP-04) se resolveu pela sua fala de 13/11 ("Tudo que for uma venda gera uma comanda", PV-06, mais nova que a DP-04 de 20/10): cada um na sua comanda; o pagamento do plano cobrar o atendimento junto é defeito a corrigir. As outras se resolveram por uma regra dele, um princípio ou a lógica do contexto; cada uma diz como, no começo.
+Revisão de 25/11 (o Heitor, 24/11: "Em teoria não é pra ter pergunta de regra e de escopo, as regras já foram definidas e o escopo também."): a Q04, que ficava, foi decidida pelo Claude — é de escopo, e vai à lista de sugestões; o Heitor revisa. Revisão de 24/11 (o Heitor, 24/11: "da uma revisada se as perguntas realmente faz sentido, as vezes tu me perguntas que são coisas obvias e se resolvem fácil com um pouco de logica sobre o contexto"). Ficava na página só a Q04 (vender o pacote pela internet está no escopo?). E a pergunta da página sobre o atendimento que gerou o plano (DP-04) se resolveu pela sua fala de 13/11 ("Tudo que for uma venda gera uma comanda", PV-06, mais nova que a DP-04 de 20/10): cada um na sua comanda; o pagamento do plano cobrar o atendimento junto é defeito a corrigir. As outras se resolveram por uma regra dele, um princípio ou a lógica do contexto; cada uma diz como, no começo.
 
 Q01. **Resolvida na revisão de 24/11:** A sua regra (CLAUDE.md §1: "Regra decidida pelo Claude diz que é dele; só se atribui ao Heitor o que a fala dele diz") já responde: sem a fala, a regra é decisão do Claude, e a fonte foi trocada. O conteúdo segue no catálogo para a revisão da área. — *Era:* **Vendas, pacotes e pré-pago — escritas como decisão sua, sem a sua fala: confirma?** VD-04 (sem ficha, primeiro o cadastro: o "Vender" abre o cadastro e leva ao PDV, "decisão do Heitor, 2026-09-30", `docs/regras/vendas-financeiro.md:687-690`); VD-08 (desconto em toda venda, em R$ ou %, sem teto, com quem deu, 2026-09-30, `:2899`); PA-15 (o "Abater do pacote": o pacote vendido depois paga o avulso já concluído, simulação de 28/10, `:738-740`); PP-01 (o pré-pago é uma venda separada do pacote — "o Heitor recusou reaproveitar `client_packages`", `:1043-1045`, `:3206`).
 
@@ -990,17 +1000,17 @@ Q02. **Resolvida na revisão de 24/11:** A sua regra (CLAUDE.md §1: "Regra deci
 
 Q03. **Resolvida na revisão de 24/11:** A sua regra (CLAUDE.md §1: "Regra decidida pelo Claude diz que é dele; só se atribui ao Heitor o que a fala dele diz") já responde: sem a fala, a regra é decisão do Claude, e a fonte foi trocada. O conteúdo segue no catálogo para a revisão da área. — *Era:* **Financeiro e app — escritas como decisão sua, sem a sua fala: confirma?** CR-05 (cada parcela é um lançamento, com o seu vencimento, "pedido do Heitor, 2026-09-30", `docs/regras/vendas-financeiro.md:1803`); FN-10 (o Financeiro da rede com A receber e A pagar, e a coluna Cliente nas listas, "2026-10-21, decisão do Heitor", `:1820-1821`); FN-15 (o lançamento manual pago tem a data do pagamento, "2026-10-21, decisão do Heitor", `:2075`); FN-18 (a despesa recorrente guarda a forma, D11 do levantamento das regras, 2026-11-11, `:2140`); AC-03 (o "Seu crédito" no app, só com saldo, D-17 de 2026-10-30, `:3067`); AC-04 (o app usa o que a cliente já pagou ao agendar, 2026-10-21, `:2831`).
 
-Q04. **Está no escopo? A venda do pacote pela internet.** Você disse "normalmente isso aí vai ser vendido até online" (`docs/revisao.md:581-583`, resumido em `:595` como "e um dia online"). Hoje o pacote só se vende pelo PDV (PA-06).
+Q04. **Decidida pelo Claude, 25/11 (o Heitor revisa):** É escopo, e nenhuma regra pede: hoje o pacote se vende só pelo PDV (PA-06), e a fala ("normalmente isso aí vai ser vendido até online", "e um dia online") fala do futuro. Fica como está, e a venda do pacote pelo app vai à lista de sugestões. — *Era:* **Está no escopo? A venda do pacote pela internet.** Você disse "normalmente isso aí vai ser vendido até online" (`docs/revisao.md:581-583`, resumido em `:595` como "e um dia online"). Hoje o pacote só se vende pelo PDV (PA-06).
 
 ## Divergências
 
 O texto de `docs/regras/` (ou da própria revisão) contra a decisão mais nova — para corrigir o texto depois.
 
-- PV-04 (o CÓDIGO contra a regra): `apps/web/lib/auth.ts:378-379` (`podeReceber`) deixa receber quem tem o PDV OU o Financeiro em Gerenciar, e o resumo do cargo diz "vender é de quem tem o PDV (ou o Financeiro em Gerenciar)"; a decisão de 23/11 (`docs/revisao.md:1309-1330`, "concordo, pode anotar, marcar as questões e ajustar o codigo") diz "cada passo pertence a UM módulo, e nenhuma ação pede dois" e "PDV: receber, a comanda". Pela regra, receber é só do PDV: é defeito a corrigir no código (com o teste), não pergunta. (O condensador tinha lido o "nenhuma ação pede dois" como "não pede os dois ao mesmo tempo" e escrito a regra pelo código — corrigido pelo Claude.)
+- PV-04 (resolvida no código: `podeReceber` é só o PDV em Gerenciar, `apps/web/lib/auth.ts:387-389`; a baixa no Financeiro é a exceção do CX2, FN-06) — era: (o CÓDIGO contra a regra): `apps/web/lib/auth.ts:378-379` (`podeReceber`) deixa receber quem tem o PDV OU o Financeiro em Gerenciar, e o resumo do cargo diz "vender é de quem tem o PDV (ou o Financeiro em Gerenciar)"; a decisão de 23/11 (`docs/revisao.md:1309-1330`, "concordo, pode anotar, marcar as questões e ajustar o codigo") diz "cada passo pertence a UM módulo, e nenhuma ação pede dois" e "PDV: receber, a comanda". Pela regra, receber é só do PDV: é defeito a corrigir no código (com o teste), não pergunta. (O condensador tinha lido o "nenhuma ação pede dois" como "não pede os dois ao mesmo tempo" e escrito a regra pelo código — corrigido pelo Claude.)
 - PV-04 (pergunta removida): o rascunho perguntava se quem tem o Financeiro em Gerenciar e não tem o PDV ainda recebe, porque o "cada passo, um módulo" (`docs/revisao.md:1309-1317`, 23/11) diz "PDV: receber, a comanda" e "nenhuma ação pede dois". A regra do sistema responde: CLAUDE.md §11 diz "receber é do PDV (`podeReceber`)", e `podeReceber` (`apps/web/lib/auth.ts:378-379`) é o PDV em Gerenciar OU o Financeiro em Gerenciar — nenhuma ação pede os dois juntos. A baixa no Financeiro com o mesmo "ou" foi aprovada pelo Heitor em 13/11 (CX2, `docs/revisao.md:1993`, "Blz pode ser assim"). O texto da revisão devia dizer que "receber é do PDV" é o `podeReceber`.
 - PA-08 (pergunta removida): `docs/revisao.md:1816-1818` (14/11) e `:1939` dizem que a venda do pacote "NÃO espera a assinatura (princípios 2 e 6 — o 'assinatura antes do dinheiro' foi dito do plano)" — leitura do Claude. `docs/regras/vendas-financeiro.md:574-581` (auditoria das regras de 18/11, mais nova) aplica a fala do Heitor no PC2 (13/11: "o ideal era funcionar como no plano de tratamento") e a do plano ("primeiro colhe assinatura, depois paga"): o contrato de pacote se assina antes do dinheiro. Não são duas decisões dele que se contradizem; vale a de 18/11, e o "não espera" só continua certo para os termos e os outros documentos (PA-10). A frase da revisão fica velha.
 - PA-04 (pergunta removida): a validade em dias e o "À venda" (PC3, PC4) estão em `docs/revisao.md:289-292` na tabela "O sistema faz e não está na lista do Heitor (ele decide se fica)", com "**Decidido:** ok, mantém" — é a resposta dele à pergunta da revisão, não uma regra sem fonte.
-- CI-10, AC-03: a CA1 que o Heitor aprovou ("Concordo", `docs/revisao.md:1498-1502`) dizia usar o NOME da rede no app ("Crédito na Estética Bella"); o que se fez em 16/11 foi "Seu crédito" (`docs/revisao.md:2147`). É a mesma pergunta já feita no catálogo de Clientes — ver Q06 / PO-07 de `docs/catalogo/crm-inbox.md`; não se repete aqui.
+- CI-10, AC-03 (resolvida: o app diz "Crédito em <o nome da rede>", `apps/web/lib/clientes/fala-da-rede.ts`; o texto das duas regras mudou em 25/11) — era: a CA1 que o Heitor aprovou ("Concordo", `docs/revisao.md:1498-1502`) dizia usar o NOME da rede no app ("Crédito na Estética Bella"); o que se fez em 16/11 foi "Seu crédito" (`docs/revisao.md:2147`). É a mesma pergunta já feita no catálogo de Clientes — ver Q06 / PO-07 de `docs/catalogo/crm-inbox.md`; não se repete aqui.
 - MQ-17 (pergunta removida): `docs/regras/vendas-financeiro.md:2442-2448` mostra, no campo da bandeira das telas de cobrança (o PDV também), "Taxa da maquininha no débito: 1,6% … a rede recebe R$ 186,96", e `:2464-2465` e `:2653` "o aviso da taxa" nas vezes do crédito, sem dizer para quem. A regra aprovada pelo Heitor (CX6, 13/11, "Blz pode ser assim", `docs/revisao.md:1997`) e `:1008-1026` / `:2249-2250` / `:2285-2286` respondem: a taxa e o líquido só aparecem a quem tem o Financeiro em Ver; quem só recebe vê o aviso sem valor. Os trechos de `:2442-2448`, `:2464-2465` e `:2653` deviam dizer isso.
 - MQ-01 (pergunta removida): `docs/regras/vendas-financeiro.md:2172` escreve "Cartão de crédito em N vezes é PAGO na hora PELA CLIENTE" como "decisão do Heitor, 2026-10-20", sem a fala; a regra fica com a fala dele de 01/11 ("no financeiro mês a mês, como a receber" e "conta no mês do dia da venda", `:2179`, `:2502`) e com o princípio 5.
 - MQ-12 (pergunta removida): `docs/regras/vendas-financeiro.md:2400-2402` atribui o Automático do "Parcelar no crédito até" à F18 e à D9 do Heitor (11/11), sem a fala; a fala dele de 29/10 ("A clínica configura 'parcela até Nx'…", `:2607`) já cobre o limite, e `:2613` diz o que vale vazio.
@@ -1031,7 +1041,7 @@ O texto de `docs/regras/` (ou da própria revisão) contra a decisão mais nova 
 - MQ-08: `docs/regras/vendas-financeiro.md:2405-2409` põe a taxa do Pix "na regra geral" (com a nota "o Pix, só se a sua operadora cobrar"); `:2288` (o Heitor, 11/11) decidiu que o Pix tem um campo próprio, fora das maquininhas, com o padrão 0%.
 - MQ-05, FC-14: `docs/regras/vendas-financeiro.md:2534-2536` diz "o aviso do Fechamento diz "R$ X líquido"" (o que a operadora vai depositar); `docs/revisao.md:1997` (CX6) mandou isso para o Financeiro, e `:1996` (CX5) deixou no Fechamento os avisos de "há comanda aberta" e "entrou dinheiro depois do fechamento".
 - DP-06: `docs/regras/vendas-financeiro.md:2649` diz que a regra do crediário vale também para "a caixa do plano no atendimento"; `docs/revisao.md:533` decidiu "O pagamento acontece só pelo PDV", e `:1981` (PDV7) tirou "a janela de pagamento da tela do atendimento".
-- DP-04: `docs/regras/vendas-financeiro.md:2754` manda "receba pela tela do atendimento"; `docs/revisao.md:1981` (PDV7) tirou o pagamento da tela do atendimento — o atendimento se recebe na comanda dele, no PDV.
+- DP-04 (resolvida: o pagamento do plano cobra só o plano, `docs/regras/vendas-financeiro.md:2807-2815`; o texto da regra mudou em 25/11) — era: `docs/regras/vendas-financeiro.md:2754` manda "receba pela tela do atendimento"; `docs/revisao.md:1981` (PDV7) tirou o pagamento da tela do atendimento — o atendimento se recebe na comanda dele, no PDV.
 - DP-06: `docs/regras/vendas-financeiro.md:2856` diz "O check-in só cobra o que VENCEU" e que a parcela que vence depois "se recebe no financeiro" (e o "O que nunca fazer" repete o check-in em `:3227` e `:3228`); `docs/revisao.md:2074` (PT1e) decidiu que a sessão não cobra nada e "a parcela com a clínica que venceu aparece no PDV", e `:1992` (CX1) que o PDV recebe a parcela do crediário.
 - PV-16: `docs/regras/vendas-financeiro.md:3031` fala do aviso do "Vender" e diz que o recibo fica na ficha; `docs/revisao.md:566` (o Heitor, PDV-P3): "O vender da ficha sai…" e "Porque só vende pelo PDV." — o aviso vale para a venda no PDV.
 - VD-06: `docs/regras/vendas-financeiro.md:2812` diz que "Quem vendeu" e "Profissional" seguem "nascendo vazios com mais de uma pessoa"; `:259` (o Heitor, r2-ven-12, auditoria de 18/11): "nasce sempre vazio".
@@ -1040,11 +1050,16 @@ O texto de `docs/regras/` (ou da própria revisão) contra a decisão mais nova 
 - FC-14: `docs/regras/vendas-financeiro.md:1520` e `:1654` ainda descrevem os avisos da taxa como saídos do Fechamento; está certo, mas `docs/revisao.md:1997` chama o CSV de "planilha da contadora" — nome de cargo; devia dizer "para a contabilidade".
 - PV-08: `docs/revisao.md:578-579` diz que "a comanda do plano aparece quando inicia o primeiro atendimento do plano"; `docs/revisao.md:1978` (PDV4 revisto) decidiu que a comanda do plano nasce no aceite (PL-07 do catálogo do Atendimento).
 - PV-13: `docs/regras/vendas-financeiro.md:1739` lista na janela de pagamento do atendimento o "pacote" e "o combinado do contrato" como se ela ainda existisse; desde o PDV7 (`docs/revisao.md:1981`) a tela do atendimento não tem janela de pagamento.
-- FN-05: `docs/regras/vendas-financeiro.md:2068` diz que a recusa é "Seu cargo não libera esta ação." — está certo; mas `:1432` ainda manda "quem atende e não tem o Financeiro" às Minhas comissões sem a regra de 23/11 (as Minhas comissões também são de quem tem comissão no nome, CLAUDE.md §11).
+- FN-05: `docs/regras/vendas-financeiro.md:2068` e `:2132` dizem que a recusa é "Seu cargo não libera esta ação."; desde a 15ª o "sem acesso" genérico é "Você não tem acesso a esta ação." (`apps/web/lib/erro-na-tela.ts:24`; `tests/defeitos-da-15.test.ts:152`) — o texto de `docs/regras/` ficou velho; mas `:1432` ainda manda "quem atende e não tem o Financeiro" às Minhas comissões sem a regra de 23/11 (as Minhas comissões também são de quem tem comissão no nome, CLAUDE.md §11).
 - DP-08: `docs/revisao.md:2077` põe o cancelamento do plano por quem tem o Financeiro em Gerenciar no bloco do Plano de tratamento; a regra é desta área (o dinheiro do plano) e está em DP-08.
 - (sem número; FI8): `docs/revisao.md:2014` registra a saída da política antiga do banco que abria o Financeiro de uma unidade a todo funcionário dela; é detalhe do banco, já coberto pela regra de que a sessão só lê sinais (CLAUDE.md §4).
 - PA-09: `docs/regras/vendas-financeiro.md:320` diz "Só avisa: a venda segue (princípio 2)"; a PA-08 (o Heitor, 13/11: "o ideal era funcionar como no plano de tratamento") e `docs/regras/documentos.md:79-82` dizem que, com o contrato de pacote aberto (a assinar ou faltam dados), a venda não grava nada. O aviso de antes fica; o "a venda segue" está velho.
+- DP-01 × `docs/regras/vendas-financeiro.md:2830-2832` (conferido em 25/11): o texto de lá diz que "agendar no checkout continua opcional"; a DP-01 vale — o "Receber o plano" é o único que monta o checkout, e o monta sem o passo de agendar (`apps/web/components/shared/pdv/receber-o-plano.tsx:51`, `podeAgendar={false}`). O texto de `docs/regras/` ficou velho (o "As sessões 2 e 3 ficam sem data" sobra no aviso do fim, DP-11).
+- FN-13: `docs/regras/vendas-financeiro.md:1934-1936` ainda cita "É o resultado do período (competência)…"; a frase de hoje é a da D4 da 10ª (`docs/regras/indicadores.md:353-361`, `apps/web/components/shared/conta-do-resultado.tsx:34`).
+- FN-11: `docs/regras/vendas-financeiro.md:1954` ainda chama o link de "Ver e dar baixa"; desde a A25 da 24ª é "Ver e receber" (`:478`; `apps/web/components/shared/nota-do-vencimento.tsx:72`).
+- PV-04: `docs/regras/vendas-financeiro.md:1524-1526` diz que o check-in do plano recebe com `podeReceber` "(o PDV OU o Financeiro em Gerenciar)", e `:3071-3073` que a frase é "Quem recebe é quem tem o PDV ou o Financeiro em Gerenciar"; desde 24/11 `podeReceber` é só o PDV, e a frase é "Quem recebe é quem tem o PDV em Gerenciar" (`apps/web/lib/equipe/textos-de-quem-pode.ts:28`).
 - PV-06: `docs/regras/vendas-financeiro.md:70-73` e o CP1 (`docs/revisao.md:1428-1429`) dizem que o Copilot vende e recebe pela comanda do PDV; as respostas do Heitor de 18/11 (`DEVLOG.md:2201`, sobre 17/11) dizem que ele só lê e manda ao PDV. Vale a mais nova (ver o catálogo do Copilot).
+- FN-11 (texto): `docs/regras/vendas-financeiro.md:421-422` (A9 da 22ª) diz que o cartão é "A receber da cliente · vence no período"; o código diz "A receber da cliente · em aberto" (`apps/web/lib/financeiro/abas.ts:86`), com o "Vence no período" na nota, como a FN-11. "vence no período" é o título do A PAGAR (`:93`; `:1903-1908`, A6 de 25/11).
 
 ## Ficou fora do catálogo
 

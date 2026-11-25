@@ -150,9 +150,9 @@ Este é o catálogo das regras das Automações que valem HOJE: o princípio, os
 - Onde: `docs/regras/automacoes.md:485-489`, `:563-572`, `:606-611`
 - Antes: KB-20
 
-**ED-09.** O passo novo já nasce ligado ao anterior, que é o passo aberto no painel ou, se não houver, o último que entrou. A ligação sai da primeira saída livre (no "Se", primeiro o Sim, depois o Não). Se o anterior é o gatilho ou não tem saída livre, o passo nasce solto, sem desfazer nada.
+**ED-09.** O passo novo já nasce ligado ao anterior, que é o passo aberto no painel ou, se não houver, o último que entrou — o gatilho também. A ligação sai da primeira saída livre do anterior (no "Se", primeiro o Sim, depois o Não), e o passo nasce na altura dela. Nasce solto, sem desfazer nada, quando não há como ligar: o passo novo é um gatilho (que não tem entrada), ou a saída do anterior já está usada.
 - Fonte: decisão do Claude (J-14)
-- Onde: `docs/regras/automacoes.md:494-501`
+- Onde: `docs/regras/automacoes.md:494-505`; `apps/web/lib/automacoes/encaixe.ts:57-70`; `apps/web/tests/automacoes-encaixe.test.ts`
 - Antes: KB-23
 
 **ED-10.** O botão "Salvar" fica sempre na barra, desligado quando não há o que salvar, com "Salvo" ou "Não salvo" ao lado. Sair do editor com alteração não salva pergunta "Sair sem salvar?", com "Sair sem salvar", "Continuar editando" e "Salvar e sair". Fechar a aba ou recarregar usa o aviso do navegador.
@@ -396,9 +396,9 @@ Este é o catálogo das regras das Automações que valem HOJE: o princípio, os
 - Onde: `docs/regras/automacoes.md:423-429`, `:535-539`
 - Antes: KB-16
 
-**PU-05.** O público também pode ser de clientes escolhidas uma a uma pela busca, quantas a rede quiser. Elas valem junto com os outros filtros, e o "Revisar" e o detalhe mostram os nomes ("Clientes: Ana, Bia").
-- Fonte: princípio 2 (a escolha uma a uma é o princípio 1)
-- Onde: `docs/regras/automacoes.md:545-552`
+**PU-05.** O público também pode ser de clientes escolhidas uma a uma pela busca, quantas a rede quiser, sem teto. Elas valem junto com os outros filtros, e o "Revisar" e o detalhe mostram os nomes ("Clientes: Ana, Bia").
+- Fonte: princípio 2 (a escolha uma a uma é o princípio 1); o teto de 200 saiu na revisão de 24/11 (ele cortava em silêncio — princípio 3)
+- Onde: `docs/regras/automacoes.md:549-556`
 - Antes: KB-29
 
 **PU-06.** O "Revisar" da campanha diz os filtros do público ("Filtros do público: Tags: VIP · Só quem tem o app"). Sem filtro nenhum, diz "todas as clientes ativas".
@@ -438,9 +438,9 @@ Este é o catálogo das regras das Automações que valem HOJE: o princípio, os
 - Onde: `docs/regras/automacoes.md:392-394`; `docs/regras/plataforma.md:636`; `docs/revisao.md:1105`; `DEVLOG.md:14130`
 - Antes: KB-12, KC-13
 
-**QM-06.** Na sessão de suporte, a automação só se pausa: o suporte não cria, não edita (ligada ou não) e não exclui. O ensaio continua liberado, porque não grava nem manda nada. O editor abre só para leitura e, com a automação ligada, mostra "Desligar".
-- Fonte: decisão do Claude (auditoria das regras, 2026-11-18, pela regra do CLAUDE.md §14 de que nada que chega à cliente sai pela sessão de suporte)
-- Onde: `docs/regras/automacoes.md:394-405`, `:650`; `docs/revisao.md:1105`
+**QM-06.** Na sessão de suporte, a automação só se pausa: o suporte não cria, não edita (ligada ou não) e não exclui. O ensaio continua liberado, na action e na tela ("Ensaiar com o último fato"), porque não grava nem manda nada. O editor abre só para leitura e, com a automação ligada, mostra "Desligar".
+- Fonte: o Heitor, 2026-11-11 (D18 do levantamento das regras, opção a: "o suporte não liga automação nem muda os limites"); o "só pausa": decisão do Claude (auditoria das regras, 2026-11-18, pela regra do CLAUDE.md §14 de que nada que chega à cliente sai pela sessão de suporte)
+- Onde: `docs/regras/automacoes.md:394-406`, `:650`; `docs/revisao.md:1105`; `apps/web/app/admin/automacoes/[id]/page.tsx:31-33`; `apps/web/tests/automacoes-suporte-ensaia.test.ts`
 - Antes: KB-13, KC-13
 
 ## Perguntas ao Heitor
@@ -459,8 +459,8 @@ O texto de `docs/regras/` (ou da própria revisão), e onde se viu também o có
 - CP-01, CP-03: `docs/regras/automacoes.md:129-130` diz "São dois produtos, e nada migra de um para o outro"; o MK1 (`docs/revisao.md:1064-1071`, "mk1 ok") levou os gatilhos da campanha "Automática" para modelos das Automações ("Nada se perde, muda de lugar"). A frase deveria dizer que a campanha automática saiu e os gatilhos dela são modelos.
 - MO-03: `docs/regras/automacoes.md:275` diz que o modelo novo "nasce com tudo ligado" — quer dizer os passos conectados, mas lê-se como "a automação nasce ligada", o contrário do princípio 6 e da linha 273 ("em RASCUNHO"). Trocar a palavra (por exemplo, "com todos os passos conectados").
 - PU-07 (CÓDIGO): `docs/regras/automacoes.md:584` e o código (`apps/web/app/admin/notificacoes/[id]/page.tsx:60`, `mostraQuemReceberia = can(ctx, 'marketing', 'MANAGE')`) mostram o "Quem receberia hoje" da campanha só a quem tem o Marketing em Gerenciar. É só leitura, e pelo CLAUDE.md §11 (23/11, "Quem tem o módulo em Ver vê tudo") vale para quem tem o Marketing em Ver.
-- PU-05 (CÓDIGO, princípio 2; pergunta removida: a segunda da KB): `docs/regras/automacoes.md:547` põe o teto de 200 nas "Clientes específicas", e o código o aplica (`apps/web/lib/notifications/filtros-da-campanha.ts:7`, `MAXIMO_DE_CLIENTES_ESPECIFICAS = 200`; `:30`, o `.slice` que corta em silêncio o que passar de 200 — contra o princípio 3 também; `apps/web/components/admin/notification-campaign-form.tsx:394`). Nenhum documento diz que é impossível passar de 200: o motivo escrito é só "é escolha uma a uma, não lista de importação" (comentário em `filtros-da-campanha.ts:6`). Pelo princípio 2, o sistema não recusa o valor que a rede escolheu; o teto sai.
-- QM-06 (TELA): `docs/regras/automacoes.md:401-402` diz que na sessão de suporte "O ensaio continua (não grava nem manda nada)", e a action deixa (`ensaiarAutomacao`, `apps/web/actions/automacoes.ts:814-822`, sem `bloqueioDoSuporte`); mas a tela esconde o botão "Ensaiar com o último fato" na sessão de suporte: `apps/web/app/admin/automacoes/[id]/page.tsx:26-31` passa `podeEditar = gerencia && !ctx.suporte`, e `apps/web/components/admin/automacoes/painel-de-execucoes.tsx:121` só mostra o ensaio com `podeEditar`.
+- PU-05 (CÓDIGO, princípio 2; pergunta removida: a segunda da KB) — **resolvida**: o teto saiu (`docs/regras/automacoes.md:549-552`, "sem teto"); o texto abaixo é o que se viu antes: `docs/regras/automacoes.md:547` põe o teto de 200 nas "Clientes específicas", e o código o aplica (`apps/web/lib/notifications/filtros-da-campanha.ts:7`, `MAXIMO_DE_CLIENTES_ESPECIFICAS = 200`; `:30`, o `.slice` que corta em silêncio o que passar de 200 — contra o princípio 3 também; `apps/web/components/admin/notification-campaign-form.tsx:394`). Nenhum documento diz que é impossível passar de 200: o motivo escrito é só "é escolha uma a uma, não lista de importação" (comentário em `filtros-da-campanha.ts:6`). Pelo princípio 2, o sistema não recusa o valor que a rede escolheu; o teto sai.
+- QM-06 (TELA) — **resolvida**: a tela passa `podeEnsaiar={gerencia}` (`apps/web/app/admin/automacoes/[id]/page.tsx:33`), e `apps/web/tests/automacoes-suporte-ensaia.test.ts` trava; o texto abaixo é o que se viu antes: `docs/regras/automacoes.md:401-402` diz que na sessão de suporte "O ensaio continua (não grava nem manda nada)", e a action deixa (`ensaiarAutomacao`, `apps/web/actions/automacoes.ts:814-822`, sem `bloqueioDoSuporte`); mas a tela esconde o botão "Ensaiar com o último fato" na sessão de suporte: `apps/web/app/admin/automacoes/[id]/page.tsx:26-31` passa `podeEditar = gerencia && !ctx.suporte`, e `apps/web/components/admin/automacoes/painel-de-execucoes.tsx:121` só mostra o ensaio com `podeEditar`.
 
 ## Ficou fora do catálogo
 

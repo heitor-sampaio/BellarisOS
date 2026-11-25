@@ -14,6 +14,8 @@ export interface LoteNoDashboard {
   validade:   string | null
   quantidade: number
   embalagem:  string
+  /** O saldo pronto ("22 ml · 0,73 frasco", `saldoDoLoteNaTela` — D13 da 28ª); sem ele, a quantidade na embalagem. */
+  saldo?:     string
   /** O nome da unidade, quando o dashboard mostra mais de uma. */
   unidade?:   string | null
   /** O Estoque daquela unidade. */
@@ -48,7 +50,7 @@ export function LotesVencendo({ lotes, agora, fuso }: { lotes: LoteNoDashboard[]
                   {[
                     l.numero ? `Lote ${l.numero}` : 'Lote sem número',
                     l.validade ? `${vencido ? 'venceu' : 'vence'} ${validadeNaTela(l.validade)}` : null,
-                    `${l.quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${l.embalagem}`,
+                    l.saldo ?? `${l.quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${l.embalagem}`,
                     l.unidade ?? null,
                   ].filter(Boolean).join(' · ')}
                 </p>

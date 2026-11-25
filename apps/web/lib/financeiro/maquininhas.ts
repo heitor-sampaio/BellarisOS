@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { lerCartaoPorBandeira, EntradaDoCartaoPorBandeira, semBandeirasVazias, type CartaoPorBandeira, type RegraDaBandeira } from './bandeiras'
-import { maximoDeVezes, PRAZO_PADRAO_DA_OPERADORA, PRAZO_MAXIMO_DA_OPERADORA, TAXA_MAXIMA_DO_REGISTRO, TETO_DE_VEZES } from './vezes-do-cartao'
+import { maximoDeVezes, PRAZO_PADRAO_DA_OPERADORA, PRAZO_MAXIMO_DA_OPERADORA, RECUSA_DO_PRAZO_ZERO, RECUSA_DO_PRAZO_ACIMA_DO_REGISTRO, TAXA_MAXIMA_DO_REGISTRO, TETO_DE_VEZES } from './vezes-do-cartao'
 
 /**
  * As MAQUININHAS da rede (C75 do levantamento das regras, F67 — o Heitor: "Quem
@@ -122,8 +122,9 @@ export const EntradaDaMaquininha = z.object({
     for (const k of Object.keys(obj)) if (!CHAVE_DA_TAXA.test(k)) c.addIssue({ code: 'custom', message: `Taxa desconhecida: ${k}.` })
   }),
   maxVezes: z.number().int().min(1, `Parcelar até: de 1 a ${TETO_DE_VEZES}x.`).max(TETO_DE_VEZES, `Parcelar até: de 1 a ${TETO_DE_VEZES}x.`).nullable(),
-  prazoDias: z.number().int().min(1, `O prazo da operadora vai de 1 a ${PRAZO_MAXIMO_DA_OPERADORA} dias.`)
-    .max(PRAZO_MAXIMO_DA_OPERADORA, `O prazo da operadora vai de 1 a ${PRAZO_MAXIMO_DA_OPERADORA} dias.`),
+  // Princípio 2: acima de 120 dias a tela avisa; só o zero e o registro se recusam.
+  prazoDias: z.number().int(RECUSA_DO_PRAZO_ZERO).min(1, RECUSA_DO_PRAZO_ZERO)
+    .max(PRAZO_MAXIMO_DA_OPERADORA, RECUSA_DO_PRAZO_ACIMA_DO_REGISTRO),
   cobraPorBandeira: z.boolean(),
   porBandeira: EntradaDoCartaoPorBandeira,
 })

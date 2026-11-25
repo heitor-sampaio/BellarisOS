@@ -584,6 +584,15 @@ rola, no `focusin`, o que falta para o grupo do foco (`[role="group"]`,
 `form`, ou o campo) ficar acima do botão, sem levar o topo dele para trás da
 topbar; o modal (camada de cima) fica de fora. Prova: `tests/copilot-atritos-da-23.test.ts`.
 
+## O que a permissão não mostra (D11, decisão do Claude, 25/11)
+
+A ferramenta da ficha devolve, junto dos dados, `foraDaPermissao`
+(`lib/copilot/fora-da-permissao.ts`): os atendimentos sem a Agenda em Ver, o
+crédito interno sem o Financeiro em Ver nem o PDV em Gerenciar, e os pontos
+sem a Fidelidade em Ver (só com a fidelidade da rede ligada e no plano, C5).
+O modelo diz que a permissão não mostra, nunca que a cliente não tem
+(princípio 4, CW-05). Teste: `tests/copilot-o-que-a-permissao-nao-mostra.test.ts`.
+
 ## O que nunca fazer aqui
 
 ```

@@ -39,9 +39,10 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:49-54`
 - Antes: AG-08
 
-**AG-06.** Não se agenda no passado: o Agendar recusa horário que já passou e diz a partir de quando se pode ("Escolha a partir de 01/11/2026 às 10:40."). No dia de hoje, a grade de horários começa em agora, no fuso da unidade.
-- Fonte: decisão do Claude
-- Onde: `docs/regras/atendimento.md:46-49`, `:103-108`
+**AG-06.** O horário que já passou não se recusa: o Agendar da equipe avisa ("O horário (09/11/2026 às 10:00) já passou: o agendamento fica no passado…") e deixa, como o remarcar (AG-41). No dia de hoje, a grade de horários começa em agora, no fuso da unidade, e no app da cliente só se oferece horário de agora em diante.
+- Fonte: decisão do Claude, 25/11 (o Heitor revisa), pelo princípio 2: "Não recusar o valor que a rede escolheu … no máximo, avisar. Só o que é impossível (negativo, a rede errada, sem permissão) é recusado." — ver a Q11. Até 25/11 a regra (decisão do Claude) era recusar com "Escolha a partir de 01/11/2026 às 10:40.".
+- Onde: `docs/regras/atendimento.md:46-49`, `:103-108`, `:654-657`
+- Estado: decidido e ainda não feito — o Agendar ainda recusa (`limiteLegivel`, `ValidacaoEmPortugues`); ver "Divergências".
 - Antes: AG-09, AG-15
 
 **AG-07.** O choque com outro atendimento da mesma pessoa que atende não é encaixe: o servidor recusa. O modal avisa antes ("Não vai ser agendado: X já tem atendimento das…"), cita todos os atendimentos que bloqueiam o horário (e a unidade, quando é outra) e oferece "Usar o próximo livre".
@@ -246,9 +247,9 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:1353-1378`
 - Antes: AG-153, AG-154, AG-156
 
-**AG-46.** O checkout do plano, a unidade pré-paga e o Copilot agendam sem escolher sala; as sessões de pacote e de plano oferecem a escolha (opcional), e a pré-paga segue só com o horário (o crédito decide o procedimento). Quando UMA sala só serve ao procedimento e está livre, o checkout do plano e o remarcar do app a gravam. No remarcar do app, a sala que o agendamento tinha fica se estiver livre; senão a única livre; senão sem sala. A cliente não escolhe sala.
-- Fonte: decisão do Claude
-- Onde: `docs/regras/atendimento.md:110-125`, `:1387-1400`
+**AG-46.** A unidade pré-paga agenda sem escolher sala (o crédito decide o procedimento); as sessões de pacote e de plano oferecem a escolha (opcional). O Copilot agenda na sala que o pedido disser — o nome ou o id de uma sala ativa da unidade, conferida como as outras peças (serve ao procedimento e está livre no horário), e o cartão diz "Sala" —; sem sala no pedido, nenhuma. No remarcar do app, a sala que o agendamento tinha fica se estiver livre; senão, quando UMA sala só serve ao procedimento e está livre, ela; senão sem sala. A cliente não escolhe sala. (O "Receber o plano" não agenda sessão nenhuma, DP-01 de Vendas e financeiro.)
+- Fonte: decisão do Claude; a sala pedida ao Copilot: decisão do Claude pelo princípio 3 (A1 da 27ª: "agende na Sala 1" ia para a observação)
+- Onde: `docs/regras/atendimento.md:110-125`, `:1387-1400`; `docs/regras/copilot.md:371-377`; `apps/web/components/shared/pdv/receber-o-plano.tsx:51`
 - Antes: AG-17, AG-157
 
 ### O app da cliente
@@ -258,9 +259,9 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:1028-1034`, `:1335`, `:1492-1502`
 - Antes: AG-158, AG-168, AG-178
 
-**AG-48.** A cliente arquivada não agenda pelo app: a tela diz "Fale com a equipe para agendar." com o cartão da unidade, e o servidor recusa com a mesma frase.
-- Fonte: recomendação do Claude aprovada pelo Heitor (sem data): "concordo"
-- Onde: `docs/regras/atendimento.md:1035-1038`
+**AG-48.** A cliente arquivada não agenda pelo app: a tela diz "Fale com <o nome da rede> para agendar." com o cartão da unidade, e o servidor recusa com a mesma frase.
+- Fonte: recomendação do Claude aprovada pelo Heitor (sem data): "concordo"; o nome da rede no lugar de "a equipe": recomendação do Claude aprovada pelo Heitor, 13/11: "Concordo" (CA1, `docs/revisao.md:1498-1502`; a Q06 do catálogo de Clientes, revisão de 24/11)
+- Onde: `docs/regras/atendimento.md:1035-1038`; `apps/web/components/client-portal/agendar-com-a-equipe.tsx:26`; `apps/web/lib/clients/arquivada.ts:18-20`
 - Antes: AG-159
 
 **AG-49.** A sessão já comprada (a sessão livre de um plano aceito, ou de um pacote) se agenda pelo app mesmo sem o procedimento marcado para o app; o pré-pago avulso segue a marca do procedimento; só o procedimento inativo fica com a equipe. O cartão do pacote no Início diz "N de M sessões realizadas · restam R" e "Agendar <procedimento>".
@@ -283,9 +284,9 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:962-983`, `:1651-1654`
 - Antes: AG-164, AG-165, AG-166, PC-28
 
-**AG-53.** A cliente cancela e remarca pelo app até o prazo da rede (24 horas antes, por padrão; Configurações → Geral), só os agendamentos dela, num dos horários livres do app. O prazo aparece em dia e hora com o dia da semana, e o cartão diz "Alterar até …" (com o "Remarcar" à mão). Passado o prazo, só "Falar com a equipe" (mensagem pronta) e "Ligar". O agendamento feito (ou remarcado) a menos do prazo avisa que nasce sem cancelar nem remarcar pelo app.
-- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — 2026-10-21
-- Onde: `docs/regras/atendimento.md:889-908`, `:942-946`, `:957-961`, `:1093-1094`
+**AG-53.** A cliente cancela e remarca pelo app até o prazo da rede (24 horas antes, por padrão; Configurações → Geral), só os agendamentos dela, num dos horários livres do app. O prazo aparece em dia e hora com o dia da semana, e o cartão diz "Alterar até …" (com o "Remarcar" à mão). Passado o prazo, só "Falar com <o nome da rede>" (mensagem pronta) e "Ligar". O agendamento feito (ou remarcado) a menos do prazo avisa que nasce sem cancelar nem remarcar pelo app.
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — 2026-10-21; o nome da rede no lugar de "a equipe": recomendação do Claude aprovada pelo Heitor, 13/11: "Concordo" (CA1, `docs/revisao.md:1498-1502`)
+- Onde: `docs/regras/atendimento.md:889-908`, `:942-946`, `:957-961`, `:1093-1094`; `apps/web/lib/clientes/fala-da-rede.ts`
 - Antes: AG-169, AG-170, AG-171, AG-172, AG-174
 
 **AG-54.** O remarcar do app pergunta "Com quem?" quando mais de uma pessoa realiza o procedimento e atende na unidade: "Só com X", "Sem preferência" ou outra pessoa. O agendamento feito em "Sem preferência" guarda isso e o remarcar começa por aí. Os dias com horário livre das próximas duas semanas aparecem em chips. Em "Sem preferência", o app diz quem vai atender ANTES de confirmar, e o próprio agendamento não conta como atendimento do dia de quem o tem.
@@ -327,9 +328,9 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 
 ### Equipe, como aparece na agenda
 
-**AG-61.** Na Equipe, o "Atende" é uma caixa só: marcada, a pessoa atende em todas as unidades dela (com "A rede inteira", nas ativas ao salvar). Com mais de uma unidade, "Escolher em quais unidades atende" (fechado por padrão) abre a lista, só com as unidades dela. A Equipe diz que "Unidade" (o acesso) e "Atende" (onde agenda) são dois controles. O "Atende" só vale nas unidades da pessoa ("A rede inteira": qualquer unidade da rede): a Equipe não oferece outra, e o servidor recusa ("O “Atende” só vale nas unidades da pessoa."), também quando a troca de unidades deixaria o "Atende" de fora.
+**AG-61.** Na Equipe, o "Atende clientes" é uma caixa só: marcada, a pessoa atende em todas as unidades dela (com "A rede inteira", nas ativas ao salvar). Com mais de uma unidade, "Escolher em quais unidades atende" (fechado por padrão) abre a lista, só com as unidades dela. A Equipe diz que "Unidade" (o acesso) e "Atende clientes" (onde agenda) são dois controles, e os avisos das outras telas citam o controle por esse nome ("quem tem a Equipe em Gerenciar marca o “Atende clientes” de quem atende aqui"). O "Atende" só vale nas unidades da pessoa ("A rede inteira": qualquer unidade da rede): a Equipe não oferece outra, e o servidor recusa ("O “Atende” só vale nas unidades da pessoa."), também quando a troca de unidades deixaria o "Atende" de fora.
 - Fonte: decisão do Claude (pelo princípio 7, EQ1c); só nas unidades da pessoa: o Heitor, 2026-11-23: "uma pessoa só pode atender nas unidades que faz parte, isso é obvio"
-- Onde: `docs/regras/atendimento.md:298-307`, `:631-633`, `docs/revisao.md:1195-1199`, `docs/revisao.md:2055`
+- Onde: `docs/regras/atendimento.md:298-307`, `:631-633`, `docs/revisao.md:1195-1199`, `docs/revisao.md:2055`; `apps/web/components/admin/team-form.tsx:173-187`; `apps/web/components/branch/agenda-day-view.tsx:403`
 - Antes: AG-48
 
 **AG-62.** A unidade que a rede abre (ou reabre) entra no "Atende" de quem tem "A rede inteira" e atende em todas as outras unidades ativas. Quem escolheu à mão algumas unidades fica como escolheu, e quem é de unidades não ganha a nova.
@@ -420,9 +421,9 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:3357`, `docs/revisao.md:569`
 - Antes: AT-10
 
-**AT-11.** O atendimento concluído e não pago é uma comanda aberta no PDV: a agenda e a ficha levam a ela ("Receber no PDV"); não há lista à parte de "Concluídos a receber". A tela diz quem recebe NESTA unidade (quem tem o PDV ou o Financeiro em Gerenciar) ou, sem ninguém dali, quem recebe pela rede; com o concluído a receber, receber é o passo da vez.
-- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Blz pode ser assim"
-- Onde: `docs/regras/atendimento.md:525-529`, `:3707`, `docs/revisao.md:611`, `docs/revisao.md:1936`
+**AT-11.** O atendimento concluído e não pago é uma comanda aberta no PDV: a agenda e a ficha levam a ela ("Receber no PDV"); não há lista à parte de "Concluídos a receber". A tela diz quem recebe NESTA unidade (quem tem o PDV em Gerenciar) ou, sem ninguém dali, quem recebe pela rede; com o concluído a receber, receber é o passo da vez.
+- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Blz pode ser assim"; quem recebe é só o PDV: recomendação do Claude aprovada pelo Heitor, 2026-11-23: "concordo, pode anotar, marcar as questões e ajustar o codigo" (PV-04 de Vendas e financeiro)
+- Onde: `docs/regras/atendimento.md:525-529`, `:3707`, `docs/revisao.md:611`, `docs/revisao.md:1936`; `apps/web/lib/equipe/textos-de-quem-pode.ts:20-28`
 - Antes: AT-12, AT-15, AG-76
 
 **AT-12.** A janela do "Finalizar" diz de onde vem o pagamento: sessão do plano, sessão de pacote (a trazida de fora: "já paga antes do sistema"), pré-pago, sem cobrança, ou "O pagamento é recebido no PDV". O atendimento de R$ 0 não tem o que receber: nem conta a receber, nem "aguardando pagamento" ("Sem cobrança").
@@ -821,9 +822,9 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:1580-1606`
 - Antes: PC-12, PC-13, PC-14, PC-15
 
-**PC-11.** O plano oferece o catálogo e o preço da unidade DO PLANO (a do plano aberto, a do atendimento ou, no novo, a do endereço); na ficha aberta pela rede com duas ou mais unidades, escolher a "Unidade do plano" é obrigatório — nunca vale a unidade de cadastro da cliente. O procedimento do plano que a unidade não faz fica à vista, marcado "(não é feito nesta unidade)", e o servidor recusa gravar o plano com ele.
-- Fonte: decisão do Claude
-- Onde: `docs/regras/atendimento.md:1548-1560`, `:1597-1600`
+**PC-11.** O plano oferece o catálogo e o preço da unidade DO PLANO (a do plano aberto, a do atendimento ou, no novo, a do endereço); na ficha aberta pela rede com duas ou mais unidades, escolher a "Unidade do plano" é obrigatório — nunca vale a unidade de cadastro da cliente. O procedimento NOVO que a unidade do plano não faz é recusado ("X não é feito na unidade Y…"; o editor nem o oferece). O que já estava no plano e a unidade não faz mais fica à vista, marcado "(não é feito nesta unidade)" — a marca é o aviso — e o plano se salva com ele; agendar a sessão na unidade que não o faz segue recusado.
+- Fonte: decisão do Claude; o plano antigo se salva com o aviso: princípio 2 ("no máximo, avisar" — a Q24 da revisão de 24/11)
+- Onde: `docs/regras/atendimento.md:1548-1560`, `:1565-1579`, `:1597-1600`
 - Antes: PC-16, PC-17
 
 **PC-12.** Os insumos ligados ao procedimento são o que cada atendimento consome (deles sai a baixa). Com insumo no estoque, o catálogo avisa os procedimentos ativos sem insumo ligado (faixa no topo e selo na linha), só como aviso; a rede pode marcar "Este procedimento não usa insumo", e ele sai do aviso.
@@ -989,9 +990,9 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:2615`, `:2650`, `:2663`, `:2721`, `:2727`
 - Antes: ES-54, ES-55, ES-56
 
-**ES-27.** A perda (Movimentar → Perda) tem o lote (ou "sem lote", que tira do que vence antes), a quantidade em embalagem ou consumo, o motivo (Vencido, Quebrou, Amostra ou Uso interno) e uma observação; é recusada se pede mais do que o lote ou o saldo têm. A perda não é consumo: fica fora do giro e do lucro, sai ao custo do lote e aparece em "Perdas no período". Entregar o brinde de produto da fidelidade é perda com o motivo "Brinde da fidelidade" (o brinde sem produto não mexe no estoque).
-- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
-- Onde: `docs/regras/atendimento.md:2769`, `:2849-2864`
+**ES-27.** A perda (Movimentar → Perda) tem o lote (ou "sem lote", que tira do que vence antes), a quantidade em embalagem ou consumo, o motivo (um dos motivos de perda da rede) e uma observação; é recusada se pede mais do que o lote ou o saldo têm. Os motivos de perda são um cadastro da rede, ao lado das categorias, das marcas e dos fornecedores (o botão "Motivos de perda" no Estoque): a rede nasce com Vencido, Quebrou, Amostra e Uso interno, editáveis, e quem tem o Estoque em Gerenciar cria, renomeia e exclui. Excluir um motivo usado não apaga a história (ele sai das opções, e a perda guarda o nome); renomear junta no relatório as perdas do motivo sob o nome novo. A perda não é consumo: fica fora do giro e do lucro, sai ao custo do lote e aparece em "Perdas no período". Entregar o brinde de produto da fidelidade é perda com o motivo "Brinde da fidelidade" (o brinde sem produto não mexe no estoque).
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele); os motivos como cadastro da rede: o Heitor, 2026-11-18 (item 7 do escopo): "motivos de perda configuraveis, poder adicionar/editar/excluir" (`DEVLOG.md:1875`); quem mexe e o excluir que guarda o nome: decisão do Claude (26ª)
+- Onde: `docs/regras/atendimento.md:2769`, `:2849-2864`, `:2884-2917`
 - Antes: ES-58, ES-59, ES-61
 
 **ES-28.** O estorno de uma venda de produto pergunta se o produto voltou: se voltou, volta ao saldo e aos mesmos lotes como "Devolução de venda"; se não, o estoque fica e a venda vira perda "Venda estornada". Nenhum dos dois entra no giro.
@@ -1013,7 +1014,7 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 
 ## Perguntas ao Heitor
 
-Revisão de 24/11 (o Heitor, 24/11: "da uma revisada se as perguntas realmente faz sentido, as vezes tu me perguntas que são coisas obvias e se resolvem fácil com um pouco de logica sobre o contexto"). Ficam na página só três: Q09 (o agendamento novo da cliente pelo app nasce Confirmado?), Q11 (o horário que já passou: agendar recusa e remarcar só avisa) e a parte de escopo da Q30 (desativar produto pela tela). Na Q30, editar e desativar seguem a regra de cadastrar (cada passo, um módulo: o Estoque em Gerenciar). As outras se resolveram por uma regra dele, um princípio ou a lógica do contexto; cada uma diz como, no começo.
+Revisão de 25/11 (o Heitor, 24/11: "Em teoria não é pra ter pergunta de regra e de escopo, as regras já foram definidas e o escopo também."): as três que ficavam foram decididas pelo Claude, pelo catálogo e pelos princípios — cada uma diz como, e o Heitor revisa; a parte de escopo da Q30 vai à lista de sugestões. Revisão de 24/11 (o Heitor, 24/11: "da uma revisada se as perguntas realmente faz sentido, as vezes tu me perguntas que são coisas obvias e se resolvem fácil com um pouco de logica sobre o contexto"). Ficavam na página só três: Q09 (o agendamento novo da cliente pelo app nasce Confirmado?), Q11 (o horário que já passou: agendar recusa e remarcar só avisa) e a parte de escopo da Q30 (desativar produto pela tela). Na Q30, editar e desativar seguem a regra de cadastrar (cada passo, um módulo: o Estoque em Gerenciar). As outras se resolveram por uma regra dele, um princípio ou a lógica do contexto; cada uma diz como, no começo.
 
 Q01. **Resolvida na revisão de 24/11:** A sua regra (CLAUDE.md §1: "Regra decidida pelo Claude diz que é dele; só se atribui ao Heitor o que a fala dele diz") já responde: sem a fala, a regra é decisão do Claude, e a fonte foi trocada. O conteúdo segue no catálogo para a revisão da área. — *Era:* **Agenda — escritas como decisão sua, sem a sua fala: confirma?** AG-01 e AG-02 (o horário da unidade e de quem atende, "decisão do Heitor, 2026-10-21", `atendimento.md:9-10`); AG-31 (Confirmar × Chegou, `:465`); AG-15 (ficha rápida, H4 opção b, `:1473-1485`); AG-26 ("Mostrar cancelados", 2026-10-21, `:1163`); AG-32 (D20: o que a Agenda em Gerenciar faz; a falta no próprio, "agenda-06" de 02/11, `:634-636`); AG-42 (H3 opção c, `:1464-1472`); AG-44 (salas, D5, `:1337`); AG-47 (por-05, `:1028`); AG-52 ("Sem preferência", D-16, `:962-963`); AG-53 (prazo do app, 2026-10-21, `:889-891`); AG-63 (H7, `:357`); AG-34 (sessão de pacote e de plano sem documento: `docs/revisao.md:285` tem uma fala no PC2, mas a linha não diz que é sua).
 
@@ -1031,11 +1032,11 @@ Q07. **Resolvida na revisão de 24/11:** Saiu o "só os meus" (o Heitor, 23/11).
 
 Q08. **Resolvida na revisão de 24/11:** Saiu o "só os meus" (o Heitor, 23/11). — *Era:* **AG-21 e AG-32 — o "só os meus" no que se FAZ:** o Claude decidiu (princípio 1) que o "só os meus" também recorta a ação (bloquear só o próprio horário, agendar só para si), lendo a sua fala de 28/10 como sendo sobre o que se vê (`atendimento.md:254-260`, `:592-594`). Confirma?
 
-Q09. **AG-42 — a H3:** além de não ter a fala, `docs/revisao.md:462-463` não diz com clareza se "a cliente pelo app nasce Confirmada" é sobre o agendamento novo ou sobre a remarcação. Qual é a regra?
+Q09. **Decidida pelo Claude, 25/11 (o Heitor revisa):** A H3 é sobre a REMARCAÇÃO: o registro da resposta dele diz "H3: a remarcação da cliente pelo app nasce Confirmada; a da equipe e do Copilot volta a Agendado" (`DEVLOG.md:14246`, entre as "De acordo com a recomendação" do levantamento de 11/11), e o item da revisão se chama "Remarcar e a confirmação". O agendamento NOVO da cliente pelo app segue a regra comum: nasce Agendado, como o de qualquer porta, e a confirmação é pedida como para os outros. É o que o sistema faz (`createAppointmentCore` grava `SCHEDULED`); nada muda. — *Era:* **AG-42 — a H3:** além de não ter a fala, `docs/revisao.md:462-463` não diz com clareza se "a cliente pelo app nasce Confirmada" é sobre o agendamento novo ou sobre a remarcação. Qual é a regra?
 
 Q10. **Resolvida na revisão de 24/11:** A caixa "Atende clientes" vale em todas as unidades DELA (EQ1c), e as unidades de quem tem "A rede inteira" incluem as que vierem (o Heitor, 14/11, "Concord."): a unidade nova entra porque foi isso que ela marcou. Fica. — *Era:* **AG-62 — a unidade nova no "Atende":** o seu "Concord." de 14/11 foi à definição de "A rede inteira (todas, inclusive as que vierem)"; pôr a unidade nova também no "Atende" saiu da auditoria de 18/11 (antes era "nasce sem ninguém marcado", princípio 6) (`atendimento.md:345-353`). Aprova a extensão?
 
-Q11. **AG-06 × AG-41 — o passado:** o Agendar novo recusa horário no passado (`atendimento.md:46-49`), mas o remarcar para o passado avisa e deixa (`:654-657`). As duas regras ficam diferentes de propósito?
+Q11. **Decidida pelo Claude, 25/11 (o Heitor revisa):** Pelo princípio 2 ("Só o que é impossível (negativo, a rede errada, sem permissão) é recusado"), o horário que já passou não é impossível — é o registro do que já aconteceu —, e o remarcar já avisa e deixa (A24 da 11ª). O Agendar da equipe passa a fazer o mesmo: avisa ("O horário (09/11/2026 às 10:00) já passou: o agendamento fica no passado…") e deixa. No app da cliente nada muda: a grade dela só oferece horário de agora em diante. A AG-06 muda junto; o código e os testes dela mudam (ver "Divergências"). — *Era:* **AG-06 × AG-41 — o passado:** o Agendar novo recusa horário no passado (`atendimento.md:46-49`), mas o remarcar para o passado avisa e deixa (`:654-657`). As duas regras ficam diferentes de propósito?
 
 Q12. **Resolvida na revisão de 24/11:** A sua regra (CLAUDE.md §1: "Regra decidida pelo Claude diz que é dele; só se atribui ao Heitor o que a fala dele diz") já responde: sem a fala, a regra é decisão do Claude, e a fonte foi trocada. O conteúdo segue no catálogo para a revisão da área. — *Era:* **AG-23 — de quem é a regra da "Minha agenda" com o horário da pessoa?** Ela vem marcada só como "Reforça", item 8 da 5ª simulação (`atendimento.md:22`); não fica claro se é fala sua.
 
@@ -1073,7 +1074,7 @@ Q28. **Resolvida na revisão de 24/11:** Organização do documento: "Seringa" e
 
 Q29. **Resolvida na revisão de 24/11:** Contar a perda no lucro contaria o insumo duas vezes: ele já saiu como despesa na compra. A perda é métrica, fora do giro e do lucro. — *Era:* **A perda fica fora do giro e do lucro (ES-27):** `atendimento.md:2860-2861` diz "(decisão para o Heitor)". Mas `indicadores.md:476-477` cita, da revisão de 02/11 (perguntas do estoque 4 e 5), a frase "perdido ou não, o insumo já foi pago na compra … serve como métrica", sem dizer de quem é. A frase é sua, e a perda fica como métrica (fora do giro, do lucro e do financeiro)?
 
-Q30. **ES-02 e ES-22 — editar e desativar produto:** a sua fala de 13/11 diz "Quem cadastra é só quem tem permissão de gerenciar"; o texto (`atendimento.md:3102`) estendeu a mesma regra a editar e desativar. Confirma? E, como hoje nenhuma tela desativa produto (`:3235-3238`), desativar produto está no escopo da tela?
+Q30. **Decidida pelo Claude, 25/11 (o Heitor revisa):** Editar e desativar seguem a regra de cadastrar (já estava no começo desta seção). Pôr o "Desativar" do produto na tela é escopo: o servidor tem a ação (`toggleProductActive`, `apps/web/actions/stock.ts:345`), mas nenhuma regra pede o botão, e o que saiu da tela (o `AdminProductTable`, sem uso) saiu no Bloco Estoque de 14/11. Fica como está, e o botão vai à lista de sugestões; quando existir, ele avisa quanto fica no estoque, sem recusar (ES-22). — *Era:* **ES-02 e ES-22 — editar e desativar produto:** a sua fala de 13/11 diz "Quem cadastra é só quem tem permissão de gerenciar"; o texto (`atendimento.md:3102`) estendeu a mesma regra a editar e desativar. Confirma? E, como hoje nenhuma tela desativa produto (`:3235-3238`), desativar produto está no escopo da tela?
 
 Q31. **Resolvida na revisão de 24/11:** O estoque é da rede: quem transfere mexe na unidade de origem, que é dela, e manda a qualquer unidade da rede. Fica. — *Era:* **ES-29 — transferir para fora das próprias unidades:** quem tem a unidade de origem fixa transfere para qualquer unidade da rede, inclusive fora das dela (`atendimento.md:3205-3206`, A12 da 15ª). Confirma?
 
@@ -1086,10 +1087,11 @@ Q33. **Resolvida na revisão de 24/11:** O vocabulário do sistema (sem cargo fi
 O texto de `docs/regras/` (ou do CLAUDE.md) contra a decisão mais nova — para corrigir o texto depois.
 
 - AG-16, AG-61: CLAUDE.md §11 ("O 'Atende' é por unidade") e `docs/regras/atendimento.md:283-297` descrevem o "Atende" como um checklist de unidades; `docs/revisao.md:1198-1199` e `:2055` (EQ1c, 14/11) decidiram "o 'Atende' é UMA caixa", com a lista só em "Escolher em quais unidades atende" (`atendimento.md:298-307` já diz a regra nova).
-- AG-61: `docs/regras/atendimento.md:409`, `:416`, `:631-632` e `:1486-1491` chamam o controle de "Atende clientes em", e `:433` de "Atende clientes"; depois do EQ1c o controle é "Atende" + "Escolher em quais unidades atende".
+- AG-61: `docs/regras/atendimento.md:409`, `:416`, `:631-632` e `:1486-1491` chamam o controle de "Atende clientes em", e `:433` de "Atende clientes"; depois do EQ1c o controle é a caixa "Atende clientes" + "Escolher em quais unidades atende" (`apps/web/components/admin/team-form.tsx:173`). O código ainda diz "Atende clientes em" em dois avisos: `apps/web/components/admin/desativar-membro.tsx:307` (o repasse do Desativar, EQ-17 da Plataforma) e `apps/web/components/branch/janela-do-agendamento-acoes.tsx:62`.
 - AG-41: `docs/regras/atendimento.md:642-647` (02/11) diz que o choque no remarcar é "Só aviso: o remarcar continua"; `:212-214` (06/11, mais nova) diz que o remarcar com choque é recusado. O catálogo usou a mais nova.
 - AG-49: `docs/regras/atendimento.md:1042-1044` diz que o cartão do pacote manda "agende com a equipe" quando o procedimento está "fora do app, inativo ou de outra unidade"; `:1305-1315` (14/11) decidiu que a sessão comprada se agenda pelo app mesmo fora do app, e que só o procedimento inativo fica com a equipe.
 - AG-32: `docs/regras/atendimento.md:1449-1452` diz que o "só os meus" + Gerenciar remarcando o próprio "segue aberta para confirmar"; `docs/revisao.md:455-457` e `:1902` a dão por resolvida pela regra das permissões (D20), com a Agenda aprovada em 13/11 ("a pagina da agenda ta boa e as funcoes me parecem boas").
+- AG-06 (CÓDIGO, a Q11 de 25/11): o Agendar da equipe recusa o horário que já passou ("Escolha a partir de …", `docs/regras/atendimento.md:51-53`, `limiteLegivel`); pela decisão da Q11 ele avisa e deixa, como o remarcar (`avisoDoHorarioPassado`, `apps/web/lib/appointments/horario-passado.ts`). Os testes que exigem a recusa (`tests/validacao-limite-legivel.test.ts` e os E2E da agenda que agendam no passado) mudam pela regra — a regra de antes era decisão do Claude, e a mudança vai ao Heitor antes do código.
 - AT-11: `docs/regras/atendimento.md:3364` diz que o concluído a receber aparece "na agenda, no Fechamento do dia e na ficha"; `docs/revisao.md:1936` (CX3, 16/11) decidiu que os "Concluídos a receber" viram as comandas abertas do PDV (sai a lista à parte).
 - AT-08: `docs/regras/atendimento.md:3327` e `:3360` dizem que o "Concluído" da agenda "só lança a conta a receber, se faltar"; pelo PDV3/PDV7/CX3 (`docs/revisao.md:1919`, `:1923`, `:1936`) a cobrança é a comanda nascida no início. O texto devia dizer o que o "Concluído" faz hoje com a comanda.
 - PL-10: `docs/regras/atendimento.md:3672` e `:3677` ainda falam no "checkout do plano" (a dica diz que o desconto "vai pronto ao checkout do plano"); `docs/revisao.md:969-971` (PT1 revisto) e `:1920` (PDV4 revisto) tiraram o "Fechar checkout": o plano se recebe na comanda dele, no PDV.

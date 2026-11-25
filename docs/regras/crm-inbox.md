@@ -528,6 +528,16 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   falha diz "Não consegui ler as oportunidades desta cliente." em vez de "Nenhuma oportunidade"
   (`oportunidadesDoCliente`, `lib/crm/oportunidades-do-cliente.ts`). Prova:
   `tests/crm-varredura-de-18-11.test.ts`.
+- **A ficha abre também com o Prontuário em Ver, sem o Clientes — só na aba Prontuário** (o clínico
+  é do Prontuário: CLAUDE.md §11, "cada passo do atendimento, um módulo", o Heitor, 2026-11-23; a
+  forma é decisão do Claude, 25/11, no arremate da 28ª). As duas fichas travam por `assertAbreAFicha`
+  (o Clientes em Ver, ou o Prontuário em Ver) e, sem o Clientes (`fichaSoDoProntuario`), montam a aba
+  Prontuário e mandam à tela só o que `soOProntuarioDaFicha` deixa (`lib/clientes/ficha-so-do-prontuario.ts`,
+  uma lista do que FICA): o nome e o clínico — nada do cadastro (telefone, documento, nascimento,
+  endereço, tags, notas), dos números do topo, do financeiro, das outras abas nem das ações. O
+  caminho até ela é a busca universal (`TAMBEM_ABRE` em `lib/busca/tipos.ts`), que, sem o Clientes,
+  mostra só o nome (`semOCadastro`). Prova: `tests/ficha-so-do-prontuario.test.ts`,
+  `e2e/clinico-so-com-prontuario.spec.ts`.
 - **A ficha monta só a aba aberta** (C77, F65): as duas fichas (`app/[slug]/clients/[id]` e
   `app/admin/clients/[id]`) leem o `?aba=` (`abaDaFicha`, `lib/clientes/aba-da-ficha.ts` — as chaves da
   tela; o resto é a Visão geral) e montam sempre o que a Visão geral e o topo usam; a linha do tempo só
@@ -1811,6 +1821,20 @@ o contato junto.
 - Prova: `e2e/crm-atritos-da-11.spec.ts`, `tests/crm-sugestao-do-agendar.test.ts`.
 
 ---
+
+## Correções de 25/11 na ficha (decisões do Claude)
+
+- **O Financeiro da ficha mostra o dia do pagamento** (D4, princípio 5): a
+  linha paga diz `paid_at`; a em aberto, o vencimento (`isoDaLinha`,
+  `lib/clientes/ordem-das-transacoes.ts`).
+- **As tags em leitura** (D10): sem poder editar, a ficha mostra só as tags
+  marcadas (selos), não as opções desligadas.
+- **Um cartão por pacote em andamento** (D17, princípio 3): dois pacotes
+  iguais aparecem os dois (`pacotesEmAndamento`/`pacoteDaFicha`,
+  `lib/clientes/pacotes-da-ficha.ts`).
+- **LGPD: o nascimento sai como dia** (D5): a exportação grava `AAAA-MM-DD`
+  (`diaSemHora`, `lib/lgpd/export.ts`), sem passar por `Date` (a meia-noite
+  UTC virava a véspera).
 
 ## O que nunca fazer aqui
 

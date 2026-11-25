@@ -63,43 +63,38 @@ export async function createAppointment(input: unknown) {
 }
 ```
 
-### A sessão só lê — quem grava é o servidor (F63, 2026-11-12)
+### A sessão não grava nada e só lê sinais — o servidor lê e grava (2026-11-19)
 
 A chave pública está no navegador: o que uma política deixa a sessão
-gravar, qualquer membro grava direto no PostgREST, sem o `assertPermission`
-da action. Por isso, em tabela de CONFIGURAÇÃO, de dado sensível ou que a
-action monta (status, caminho de arquivo, matriz de cargos):
-- a sessão tem só política de LEITURA — ou nenhuma, como as credenciais e
-  as comissões —, e a action grava pelo **cliente de serviço**
-  (`createAdminClient`), depois da trava, da recusa da configuração da
-  rede e do `bloqueioDoSuporte`, sempre com o `.eq('tenant_id', ctx.tenantId)`;
-- política de escrita que confere só `eh_da_rede()` (sem o módulo) é a mesma
-  porta aberta: a migration `20261112006302` tirou as dos cargos, campanhas,
-  categorias do estoque, disponibilidade e preço por unidade, o
-  `lgpd_requests_insert`, o `clients_delete` e o ALL de `stock_movements`.
-- **Dado de um módulo se lê só com o módulo** (varredura de 18/11, do
-  Claude, pela regra acima; migrations `20261124400001`/`002`): as
-  automações (`domain_events`, `automation_runs`, `automation_run_steps`,
-  `automations`, `automation_versions`) têm só a política de LEITURA, com
-  `(select private.sessao_ve_o_modulo(módulo, recurso do plano, só "A rede
-  inteira"?))` — o `can(ctx, módulo, 'VIEW')` do `buildContext` no banco: o
-  cargo GRAVADO (a Admin da rede pelo cargo de sistema), o membro ativo e o
-  plano. O prontuário não se lê pela sessão de jeito nenhum (a RLS não
-  aplica o módulo nem a vista pessoal — CLAUDE.md §14): o prontuário
-  (`medical_records`, `medical_record_entries`, `injectable_maps`,
-  `injectable_applications`) não tem política nenhuma, como as comissões, e
-  a tela do atendimento escuta `prontuario_sinais`. Os procedimentos
-  (`procedures`, `procedure_products`) e os produtos (`products`) perderam a
-  escrita: a sessão lê, o servidor grava.
-- Prova com o token de um membro (nunca `service_role`):
+gravar ou ler, qualquer membro grava ou lê direto no PostgREST, sem o
+`assertPermission` da action. Por isso (CLAUDE.md §4):
+- **A sessão NUNCA grava** (o Heitor, 2026-11-19: "Qualquer gravação que não
+  passa pela validação do backend ta errada e é uma brecha de segurança"):
+  toda gravação passa pelo servidor, depois da trava (permissão e alcance, a
+  recusa da configuração da rede, o `bloqueioDoSuporte`), pelo **cliente de
+  serviço** (`createAdminClient`), sempre com o `.eq('tenant_id',
+  ctx.tenantId)`. Nenhuma tabela tem política de INSERT/UPDATE/DELETE para a
+  sessão — as 21 que sobravam saíram em `20261128100001` — e a trava é
+  `e2e_gravacoes_pela_sessao()`, que `e2e/rls-sessao-nunca-grava.spec.ts`
+  exige vazia.
+- **A sessão só lê SINAIS** (o Heitor, 2026-11-19, "vai na 2"): toda
+  leitura é do servidor, pelo cliente de serviço, depois da trava, com o
+  filtro da rede explícito; o navegador só assina as tabelas `*_sinais` (sem
+  conteúdo) e recarrega pelo servidor. Tabela nova nasce sem política
+  nenhuma.
+  As políticas de LEITURA de antes que ficaram (as automações e os eventos
+  com `private.sessao_ve_o_modulo` — o cargo gravado e o plano —, CLAUDE.md
+  §4) não são modelo: tela nova lê pelo servidor e assina um sinal.
+- O caminho até aqui (histórico): a F63 (2026-11-12) tirou a escrita da
+  sessão nas tabelas de configuração e de dado sensível (a migration
+  `20261112006302`: cargos, campanhas, categorias do estoque, disponibilidade
+  e preço por unidade, `lgpd_requests_insert`, `clients_delete`, o ALL de
+  `stock_movements`), a F75 a dos lançamentos, e a varredura de 18/11 a
+  leitura do prontuário e das automações pela sessão (migrations
+  `20261124400001`/`002`). As provas de então seguem valendo:
   `e2e/rls-sessao-so-le.spec.ts` e
-  `e2e/rls-sessao-so-le-prontuario-e-automacoes.spec.ts`, cada caso com a
-  leitura como controle.
-
-As tabelas OPERACIONAIS (agendamentos…) ainda aceitam escrita pela sessão
-dentro da rede e do alcance — o §11 do CLAUDE.md aceita isso ("a trava da
-action é a única"). Os lançamentos (F75) e os produtos (18/11) já fecharam;
-fechar as outras é uma frente à parte.
+  `e2e/rls-sessao-so-le-prontuario-e-automacoes.spec.ts`, com o token de um
+  membro (nunca `service_role`).
 
 ### Queries — filtro obrigatório
 

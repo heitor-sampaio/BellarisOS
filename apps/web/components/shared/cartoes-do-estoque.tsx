@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { validadeNaTela } from '@/lib/estoque/validade'
+import { validadeNaTela, loteVencido } from '@/lib/estoque/validade'
 
 /**
  * Os cartões do topo do Estoque (rede e unidade). A40 da 10ª simulação
@@ -60,11 +60,17 @@ export function CartoesDoEstoque({ cartoes }: { cartoes: CartaoDoEstoque[] }) {
   )
 }
 
-/** "Gel — lote GA-1 · 15/11/2026" (A40 da 10ª): o lote e a data, não só o produto. */
-export function loteNoCartao(produto: string, l: { numero: string | null; validade: string | null }): string {
+/**
+ * "Gel — lote GA-1 · vence 15/11/2026" (A40 da 10ª): o lote e a data, não só o
+ * produto. O vencido diz "venceu" (D12 da 28ª, ES-24: "o vencido é
+ * sinalizado"), pelo dia da unidade, como o quadro do dashboard.
+ */
+export function loteNoCartao(
+  produto: string, l: { numero: string | null; validade: string | null }, agora: Date = new Date(), fuso?: string,
+): string {
   const lote = l.numero ? `lote ${l.numero}` : 'lote sem número'
   const dia = validadeNaTela(l.validade)
-  return `${produto} — ${lote}${dia ? ` · ${dia}` : ''}`
+  return `${produto} — ${lote}${dia ? ` · ${loteVencido(l.validade, agora, fuso) ? 'venceu' : 'vence'} ${dia}` : ''}`
 }
 
 /** As linhas do cartão de validade: até três lotes e "e mais N". */

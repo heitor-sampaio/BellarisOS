@@ -4,6 +4,7 @@ import { can, podeReceber, temRecurso, unidadesDoContexto } from '@/lib/auth'
 import { ler } from '@/lib/db'
 import { creditosDoCliente } from '@/lib/creditos/credito'
 import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
+import { foraDaPermissaoDaFicha } from '@/lib/copilot/fora-da-permissao'
 import { getClientesParaReativarDoRecorte, getCreditoInternoDoCliente } from '@/lib/metrics/unidade'
 import { addDaysTZ } from '@/lib/datetime'
 import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
@@ -60,7 +61,9 @@ export const cliente: FerramentaDeLeitura<{ cliente: string }> = {
     const verAgenda = can(c.ctx, 'agenda', 'VIEW')
     // Os atendimentos nas unidades DELA (EQ1a: uma ou várias); da rede, todos (CP1).
     const minhas = unidadesDoContexto(c.ctx)
-    const [proximos, ultimos, creditos, internos, pontos] = await Promise.all([
+    const veCredito = podeReceber(c.ctx) || can(c.ctx, 'financial', 'VIEW')
+    const vePontos = can(c.ctx, 'loyalty', 'VIEW') && temRecurso(c.ctx, 'fidelidade')
+    const [proximos, ultimos, creditos, internos, pontos, fidelidadeLigada] = await Promise.all([
       verAgenda ? (() => {
         let q = c.admin.from('appointments').select('id, scheduled_at, status, procedure_id, professional_id, branch_id')
           .eq('client_id', ficha.id).gte('scheduled_at', agora).in('status', ['SCHEDULED', 'CONFIRMED', 'ARRIVED']).order('scheduled_at').limit(5)
@@ -76,16 +79,22 @@ export const cliente: FerramentaDeLeitura<{ cliente: string }> = {
       creditosDoCliente(c.admin, c.ctx.tenantId!, ficha.id),
       // O saldo do crédito interno da ficha, do banco (IND-07; indicadores.md:
       // nada se soma na tela) — o crédito é da REDE.
-      podeReceber(c.ctx) || can(c.ctx, 'financial', 'VIEW')
+      veCredito
         ? getCreditoInternoDoCliente(c.ctx.tenantId!, ficha.id)
         : Promise.resolve(null),
       // Os pontos da rede: o saldo é um só, em qualquer unidade (FD3).
-      can(c.ctx, 'loyalty', 'VIEW') && temRecurso(c.ctx, 'fidelidade')
+      vePontos
         // C5: com o programa desligado, nenhum sinal de pontos (fidelidade.md).
         ? configDaRede(c.ctx.tenantId!, c.admin).then(cfg => cfg.enabled
             ? saldoDoCliente(ficha.id, c.admin) : null)
         : Promise.resolve(null),
+      // D11 da 28ª: sem a Fidelidade em Ver, o programa ligado decide se o recado da permissão vai.
+      !vePontos && temRecurso(c.ctx, 'fidelidade')
+        ? configDaRede(c.ctx.tenantId!, c.admin).then(cfg => !!cfg.enabled)
+        : Promise.resolve(false),
     ])
+    // D11 da 28ª (princípio 4, CW-05): o que a permissão não mostra vai dito — o modelo dizia "não encontrei".
+    const foraDaPermissao = foraDaPermissaoDaFicha({ veAgenda: verAgenda, veCredito, vePontos, fidelidadeLigada })
     // CP1 (2026-11-17): os planos de tratamento e o em aberto das vendas — o
     // valor só a quem vê o valor (`mostraOValor`). Só leitura.
     const verPlanos = can(c.ctx, 'atendimento', 'VIEW') && temRecurso(c.ctx, 'planos_de_tratamento')
@@ -147,6 +156,7 @@ export const cliente: FerramentaDeLeitura<{ cliente: string }> = {
         ...(emAbertoDasVendas ? { emAbertoDasVendas } : {}),
         ...(creditoInterno !== undefined ? { creditoInterno: dinheiro(creditoInterno) } : {}),
         ...(pontos !== null ? { pontosDeFidelidade: pontos } : {}),
+        ...(foraDaPermissao ? { foraDaPermissao } : {}),
       },
       cartao: { tipo: 'links', itens: [{ texto: ficha.name, detalhe: [ficha.phone, ficha.email].filter(Boolean).join(' · ') || undefined, href }] },
     }

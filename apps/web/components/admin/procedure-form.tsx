@@ -213,9 +213,10 @@ function fechaDinheiro(v: string) {
  * um campo numérico, e o insumo de R$ 380 aparecia "380", sem centavos. O texto
  * acompanha o produto escolhido (o custo muda com ele) e fecha no formato ao
  * sair do campo. É o custo por unidade de CONSUMO, com até 4 casas (D6 da 11ª:
- * R$ 0,038/g da cera virava R$ 0,04).
+ * R$ 0,038/g da cera virava R$ 0,04). A3 da 28ª (ES-19): o campo diz a unidade
+ * ("/ml") — "R$ 3,00" ao lado de "4 ml" não dizia que era por ml.
  */
-function CustoDoInsumo({ valor, onValor }: { valor: number; onValor: (n: number) => void }) {
+function CustoDoInsumo({ unidade, valor, onValor }: { unidade: string; valor: number; onValor: (n: number) => void }) {
   const [texto, setTexto] = useState(() => custoDoInsumoNoCampo(valor))
   const [visto, setVisto] = useState(valor)
   if (valor !== visto) { setVisto(valor); setTexto(custoDoInsumoNoCampo(valor)) }
@@ -232,7 +233,7 @@ function CustoDoInsumo({ valor, onValor }: { valor: number; onValor: (n: number)
       }}
       onBlur={() => { const n = lerCustoDoInsumo(texto); setTexto(Number.isFinite(n) ? custoDoInsumoNoCampo(n) : texto.trim()) }}
       placeholder="0,00"
-      title="Custo por unidade"
+      title={unidade ? `Custo por unidade (${unidade})` : 'Custo por unidade'}
     />
   )
 }
@@ -751,6 +752,8 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {insumos.map((ins, i) => {
             const prod = products.find(p => p.id === ins.product_id)
+            // A quantidade e o custo são na unidade de CONSUMO ("ml"), quando o produto tem uma (ES-19).
+            const unidadeDoInsumo = (prod?.consumption_unit && prod?.units_per_package) ? prod.consumption_unit : (prod?.unit ?? '')
             return (
               // A22 da 21ª: a linha quebra — o aviso da quantidade espremia o
               // seletor até "Toxina 1 f". O nome guarda uma largura e, inteiro, o title.
@@ -785,7 +788,7 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
                     onChange={e => setInsumos(p => p.map((x, idx) => idx === i ? { ...x, quantity: e.target.value === '' ? null : parseFloat(e.target.value) || 0 } : x))}
                   />
                   <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', minWidth: 24 }}>
-                    {(prod?.consumption_unit && prod?.units_per_package) ? prod.consumption_unit : (prod?.unit ?? '')}
+                    {unidadeDoInsumo}
                   </span>
                   {/* A21 da 19ª (A13 da 15ª, princípio 4): a quantidade nasce em branco — e diz o que falta. */}
                   {ins.quantity == null && (
@@ -802,10 +805,15 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
                 </div>
 
                 {/* Custo unitário */}
-                <div style={{ position: 'relative', flexShrink: 0 }}>
+                <div style={{ position: 'relative', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
                   <span style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', pointerEvents: 'none' }}>R$</span>
-                  <CustoDoInsumo valor={ins.unit_cost}
+                  <CustoDoInsumo unidade={unidadeDoInsumo} valor={ins.unit_cost}
                     onValor={n => setInsumos(p => p.map((x, idx) => idx === i ? { ...x, unit_cost: n } : x))} />
+                  {unidadeDoInsumo && (
+                    <span data-custo-por-unidade style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>
+                      /{unidadeDoInsumo}
+                    </span>
+                  )}
                 </div>
 
                 <button type="button" onClick={() => removeInsumo(i)} style={{

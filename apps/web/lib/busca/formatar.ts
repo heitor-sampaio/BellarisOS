@@ -43,6 +43,16 @@ export function quandoLegivel(iso: string, fuso = 'America/Sao_Paulo'): string {
 const DESFECHO: Record<string, string> = { WON: 'ganha', LOST: 'perdida' }
 
 /**
+ * A linha da cliente para quem a acha pelo Prontuário, sem o Clientes: só o
+ * nome (e "Arquivada"), sem o telefone e o e-mail — a ficha dela também não
+ * os mostra (lib/clientes/ficha-so-do-prontuario.ts).
+ */
+export function semOCadastro(r: ResultadoDaBusca): ResultadoDaBusca {
+  if (r.tipo !== 'cliente') return r
+  return { ...r, subtitulo: r.arquivada ? 'Arquivada' : null }
+}
+
+/**
  * Uma linha do banco → um resultado com o texto pronto para a tela. Tipo que o
  * banco devolver e a tela não conhecer fica de fora (não vira um item mudo).
  */

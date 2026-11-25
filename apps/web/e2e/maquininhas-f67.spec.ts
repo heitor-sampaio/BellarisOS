@@ -148,7 +148,7 @@ test('com mais de uma, a baixa no cartão sem a maquininha é recusada no servid
   expect(data).toEqual({ is_paid: true, maquininha_id: segunda })
 })
 
-test('com mais de uma, todo caminho do cartão pergunta "Qual maquininha?" e espera: o atendimento, o plano, o checkout e o Vender', async ({ browser }) => {
+test('com mais de uma, todo caminho do cartão pergunta "Qual maquininha?" e espera: o atendimento, o plano, o saldo do plano e o Vender', async ({ browser }) => {
   const { data: br } = await db().from('branches').select('slug').eq('id', rede!.branchId).single<{ slug: string }>()
   const slug = br!.slug
   const c = await rede!.criarCliente('Lia')
@@ -193,7 +193,10 @@ test('com mais de uma, todo caminho do cartão pergunta "Qual maquininha?" e esp
     await expect(vender.getByRole('button', { name: /Vender por/ })).toBeEnabled()
   })
 
-  // O "Receber" do plano no check-in.
+  // O saldo do plano: recebido no PDV da cliente (a parcela em aberto). Era o
+  // "Receber" do plano no check-in, que saiu: a tela do atendimento não recebe
+  // (AT-13, PV-13; o Heitor, 13/11, PV-01: "o pagamento acontece por dentro
+  // desse PDV, seja do que for").
   const { data: aceito } = await db().from('treatment_plans').insert({
     branch_id: rede!.branchId, professional_id: rede!.professionalId, client_id: c, status: 'ACCEPTED', name: `Plano aceito ${marca}`,
   }).select('id').single<{ id: string }>()
@@ -201,18 +204,16 @@ test('com mais de uma, todo caminho do cartão pergunta "Qual maquininha?" e esp
     branch_id: rede!.branchId, client_id: c, treatment_plan_id: aceito!.id, type: 'INCOME', category: 'Serviços',
     description: 'Plano de tratamento', amount: 200, is_paid: false, created_by: 'e2e',
   })).error).toBeNull()
-  const { data: chegou } = await db().from('appointments').insert({
-    branch_id: rede!.branchId, client_id: c, procedure_id: rede!.procedureId, professional_id: rede!.professionalId,
-    status: 'ARRIVED', source: 'INTERNAL', duration_min: 30, price: 200, scheduled_at: new Date().toISOString(), treatment_plan_id: aceito!.id,
-  }).select('id').single<{ id: string }>()
   await como(browser, async p => {
-    await p.goto(`/${slug}/agenda/${chegou!.id}`)
-    await p.getByRole('button', { name: /Receber R\$/ }).click()
-    const dlg = p.getByRole('dialog', { name: 'Receber o plano de tratamento' })
+    await p.goto(`/${slug}/pdv?nova=1&cliente=${c}`)
+    const emAberto = p.getByRole('region', { name: 'Vender' }).locator('[data-parcela-em-aberto]', { hasText: 'R$ 200,00' })
+    await emAberto.first().getByRole('button', { name: 'Receber esta parcela' }).click()
+    const dlg = p.getByRole('dialog', { name: 'Receber a parcela' })
     await dlg.getByRole('radio', { name: 'Débito', exact: true }).click()
-    await expect(dlg.getByRole('button', { name: 'Confirmar recebimento' })).toBeDisabled()
+    const receber = dlg.getByRole('button', { name: /^Receber R\$/ })
+    await expect(receber, 'sem a maquininha, espera').toBeDisabled()
     await dlg.getByLabel('Qual maquininha?').selectOption({ label: 'Stone' })
-    await expect(dlg.getByRole('button', { name: 'Confirmar recebimento' })).toBeEnabled()
+    await expect(receber).toBeEnabled()
   })
 })
 

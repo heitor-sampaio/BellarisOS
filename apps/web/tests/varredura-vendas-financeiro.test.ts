@@ -103,20 +103,24 @@ describe('VF-03: o dinheiro na gaveta é de podeVerFechamento', () => {
 })
 
 // VF-04 — vendas-financeiro.md: "Quem recebe é podeReceber em todo caminho do
-// recebimento"; o banner do plano aparece a quem recebe. A action do check-in
-// pedia o PDV: quem tem o Financeiro em Gerenciar via o botão e era barrado.
-// VF2-04 — CLAUDE.md §14: duas gravações juntas, uma transação. A bandeira e a
-// maquininha iam num UPDATE depois de `plano_receber`.
-describe('VF-04 e VF2-04: o recebimento do plano no atendimento', () => {
-  const corpo = () => corpoDe(fonte('actions/treatment-plans.ts'), 'async function receberDoPlanoInterno', '\nexport ')
+// recebimento". VF2-04 — CLAUDE.md §14: duas gravações juntas, uma transação (a
+// bandeira e a maquininha iam num UPDATE depois do recebimento).
+// O CAMINHO mudou (AT-13, PV-01 e PV-13; o inventário dos testes, 24/11): o plano
+// não se recebe mais na tela do atendimento (`receberDoPlano` saiu); o saldo que
+// venceu se recebe no PDV da cliente, pelo `receberParcelaNoPdv`. A prova foi com ele.
+describe('VF-04 e VF2-04: o recebimento do saldo do plano, no PDV', () => {
+  const corpo = () => corpoDe(fonte('actions/pdv.ts'), 'export async function receberParcelaNoPdv', '\nexport ')
+  const baixa = () => corpoDe(fonte('lib/financeiro/lancamento.ts'), 'export async function marcarPagoCore', '\nexport ')
   it('recebe quem podeReceber', () => {
-    expect(corpo()).toMatch(/if \(!podeReceber\(ctx\)\) throw semAcesso\(\)/)
+    expect(corpo()).toMatch(/if \(!podeReceber\(ctx\)\) return \{ error: 'Sem permissão para receber\.' \}/)
     expect(corpo()).not.toMatch(/assertPermission\(ctx, 'cashier', 'MANAGE'\)/)
+    expect(fonte('actions/treatment-plans.ts')).not.toMatch(/export async function receberDoPlano\b/)
   })
-  it('a bandeira e a maquininha vão na mesma chamada de plano_receber', () => {
-    expect(corpo()).toMatch(/p_bandeira:\s*bandeiraDoPagamento\(recebimento\.metodo, recebimento\.bandeira\)/)
-    expect(corpo()).toMatch(/p_maquininha:\s*maquininhaDoPagamento\(recebimento\)/)
-    expect(corpo()).not.toMatch(/gravar a bandeira do recebimento do plano/)
+  it('a bandeira e a maquininha vão na mesma gravação do recebimento', () => {
+    expect(corpo()).toMatch(/marcarPagoCore\(admin, ctx, transactionId, forma, bandeira, vezes, maquininha\)/)
+    expect(baixa()).toMatch(/cartao_bandeira: daBandeira/)
+    expect(baixa()).toMatch(/maquininha_id: daMaquininha/)
+    expect(baixa().match(/\.update\(/g)?.length, 'uma gravação só').toBe(1)
     expect(migracoesDaLeva()).toMatch(/function public\.plano_receber\([\s\S]*?p_bandeira text default null,\s*p_maquininha uuid default null/)
   })
 })

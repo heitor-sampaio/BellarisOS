@@ -1,6 +1,6 @@
 # Catálogo de regras — Copilot
 
-Este é o catálogo das regras do Copilot que valem HOJE: o que ele é e quem usa, a permissão e as unidades de quem pergunta, o cartão antes de gravar, o que ele consulta, como responde, o que grava, o que não faz, e o histórico, a cota e o botão. Cada regra diz a fonte: uma fala do Heitor (copiada letra por letra do documento), uma recomendação do Claude que o Heitor aprovou (com a resposta dele), um dos sete princípios de produto, "decisão do Claude". "Onde" aponta a linha do documento; "Antes" lista os números do rascunho que a regra junta (KA: `docs/regras/copilot.md:1-284`; KB: `docs/regras/copilot.md:285-550`; KC: as decisões de `docs/revisao.md`, do CLAUDE.md e dos outros arquivos de `docs/regras/`, que repetem várias de `copilot.md` — juntas aqui, com os dois "Onde"). A regra de um módulo que o Copilot só aplica (a agenda, a ficha, o estoque, o financeiro, as comissões, os documentos, as abas dos Relatórios) fica no catálogo da área dona e está em "É de outra área". É um RASCUNHO para o Heitor revisar. Contagem: 63 regras (O que é e quem usa 7, A permissão e as unidades de quem pergunta 5, O cartão antes de gravar 8, O que ele consulta 16, Como ele responde 5, O que ele grava 11, O que ele não faz 5, O histórico, a cota e o botão 6), 3 perguntas e 5 divergências. Dos 90 números do rascunho, nenhum ficou fora do catálogo e 6 são de outra área (ver os apêndices); todos os outros estão num "Antes". Das sete perguntas dos rascunhos: as de "regras escritas como suas" viraram a Q01; a do "não vende, não recebe" contra o CP1 tinha resposta na regra mais nova (17/11, CY-02) — fica na Q01 só para confirmar as palavras, e o catálogo de Vendas que leu "vende e recebe" está em "Divergências"; a da baixa da parcela do crediário também tinha resposta na mesma regra e no CR-06 ("a parcela se recebe no PDV"): o que o código faz está em "Divergências"; as duas sobre o Copilot em Gerenciar contra o "nenhuma ação pede dois" viraram a Q02; e a da vista pessoal é a Q03 ("está no escopo?"). A divergência das comissões do rascunho KB (que dava tudo à Admin da rede) foi refeita: a comissão de cada pessoa é do Financeiro em Gerenciar (CM-04), só a configuração das comissões é da Admin da rede (CM-03).
+Este é o catálogo das regras do Copilot que valem HOJE: o que ele é e quem usa, a permissão e as unidades de quem pergunta, o cartão antes de gravar, o que ele consulta, como responde, o que grava, o que não faz, e o histórico, a cota e o botão. Cada regra diz a fonte: uma fala do Heitor (copiada letra por letra do documento), uma recomendação do Claude que o Heitor aprovou (com a resposta dele), um dos sete princípios de produto, "decisão do Claude". "Onde" aponta a linha do documento; "Antes" lista os números do rascunho que a regra junta (KA: `docs/regras/copilot.md:1-284`; KB: `docs/regras/copilot.md:285-550`; KC: as decisões de `docs/revisao.md`, do CLAUDE.md e dos outros arquivos de `docs/regras/`, que repetem várias de `copilot.md` — juntas aqui, com os dois "Onde"). A regra de um módulo que o Copilot só aplica (a agenda, a ficha, o estoque, o financeiro, as comissões, os documentos, as abas dos Relatórios) fica no catálogo da área dona e está em "É de outra área". É um RASCUNHO para o Heitor revisar. Contagem: 72 regras (O que é e quem usa 7, A permissão e as unidades de quem pergunta 5, O cartão antes de gravar 8, O que ele consulta 18, Como ele responde 6, O que ele grava 12, O que ele não faz 7, O histórico, a cota e o botão 9), 3 perguntas e 5 divergências. Dos 90 números do rascunho, nenhum ficou fora do catálogo e 6 são de outra área (ver os apêndices); todos os outros estão num "Antes". Das sete perguntas dos rascunhos: as de "regras escritas como suas" viraram a Q01; a do "não vende, não recebe" contra o CP1 tinha resposta na regra mais nova (17/11, CY-02) — fica na Q01 só para confirmar as palavras, e o catálogo de Vendas que leu "vende e recebe" está em "Divergências"; a da baixa da parcela do crediário também tinha resposta na mesma regra e no CR-06 ("a parcela se recebe no PDV"): o que o código faz está em "Divergências"; as duas sobre o Copilot em Gerenciar contra o "nenhuma ação pede dois" viraram a Q02; e a da vista pessoal é a Q03 ("está no escopo?"). A divergência das comissões do rascunho KB (que dava tudo à Admin da rede) foi refeita: a comissão de cada pessoa é do Financeiro em Gerenciar (CM-04), só a configuração das comissões é da Admin da rede (CM-03).
 
 ## O que é e quem usa (CO)
 
@@ -24,9 +24,9 @@ Este é o catálogo das regras do Copilot que valem HOJE: o que ele é e quem us
 - Onde: `docs/regras/copilot.md:61-71`; `docs/revisao.md:1421-1423`; `docs/regras/plataforma.md:398-401`, `:517-518`
 - Antes: KA-04, KC-04
 
-**CO-05.** O módulo Copilot do cargo tem três níveis. Sem acesso: não usa. Ver: só consultas (a gravação nem é oferecida). Gerenciar: também pede gravações, e cada gravação ainda exige a permissão dela (agendar pede a Agenda, lançar pede o Financeiro…). O plano diz se a REDE tem o Copilot; o cargo diz QUEM usa.
-- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
-- Onde: `docs/regras/copilot.md:72-77`; `docs/revisao.md:1421-1424`; `CLAUDE.md:648-650`
+**CO-05.** O módulo Copilot do cargo tem dois níveis: Sem acesso (não usa) e Ver, que liga a ferramenta — consultar e agir. Cada consulta e cada gravação pedem só a permissão da AÇÃO, como na tela (agendar pede a Agenda em Gerenciar, lançar pede o Financeiro em Gerenciar…): o Copilot é o canal, não o passo. O Gerenciar que já estava gravado num cargo vale Ver. O plano diz se a REDE tem o Copilot; o cargo diz QUEM usa.
+- Fonte: o Heitor, 2026-11-23: "cada passo pertence a UM módulo, e nenhuma ação pede dois" (lida para o Copilot na revisão de 24/11, Q02 desta área — até ali, gravar pedia também o Copilot em Gerenciar); os dois níveis: decisão do Claude
+- Onde: `docs/regras/copilot.md:84-96`; `apps/web/lib/copilot/executor.ts`; `apps/web/tests/copilot-executor.test.ts`
 - Antes: KA-05, KC-03
 
 **CO-06.** O Copilot consulta e grava agenda, clientes, catálogo, indicadores, financeiro, estoque e CRM.
@@ -190,6 +190,16 @@ Este é o catálogo das regras do Copilot que valem HOJE: o que ele é e quem us
 - Onde: `docs/regras/copilot.md:449-455`
 - Antes: KB-27
 
+**CJ-17.** A quem tem só a vista pessoal, o Copilot responde por ela, com os limites da tela: a Minha agenda (quem atende e não tem a Agenda — os agendamentos dela nas unidades ao alcance) e as Minhas comissões (quem atende ou tem comissão no nome dela e não tem o Financeiro). Só leitura, só as DELA, pelo id dela e nunca por um nome do pedido.
+- Fonte: a revisão de 24/11 (Q03 desta área), pela fala do Heitor de 2026-11-13: "copilot acompanha tudo"; a vista pessoal: CLAUDE.md §11 (SM2)
+- Onde: `docs/regras/copilot.md:308-316`
+- Antes: (sem número: `docs/inventario/leitura.md` §4)
+
+**CJ-18.** O dinheiro dos Relatórios segue as abas do cargo, também no Copilot: a leitura dos indicadores recusa a aba que o cargo não tem antes de ler qualquer número, e com a aba lê o dinheiro dela, como a tela. A aba Financeiro só vale com o Financeiro em Ver — marcada sem ele, a recusa diz "pede o Financeiro em Ver", e as abas liberadas só listam as que valem; na Visão geral sem o Financeiro não saem o faturamento, o a receber, as despesas, o insumo, as taxas, as comissões nem o lucro. Os lançamentos seguem o Financeiro (a tela do Financeiro).
+- Fonte: o Heitor, 2026-11-23: "financeiro é uma coisa, vendas é outra. financeiro ve entrada/saida/lucro, tudo. vendas é sobre performance de vendas" (`docs/revisao.md:2237`); as abas do cargo: CLAUDE.md §11 ("Relatórios tem um eixo a mais")
+- Onde: `docs/regras/copilot.md:330-345`; `apps/web/tests/copilot-dinheiro-pelas-abas.test.ts`
+- Antes: (sem número: `docs/inventario/leitura.md` §4)
+
 ## Como ele responde (CK)
 
 **CK-01.** O "agora", o "hoje" e as horas que o Copilot lê e grava seguem o fuso da unidade da tela (no portal da rede, o da rede). Cada registro usa o fuso da unidade dele.
@@ -216,6 +226,11 @@ Este é o catálogo das regras do Copilot que valem HOJE: o que ele é e quem us
 - Fonte: princípio 3
 - Onde: `docs/regras/copilot.md:178-183`
 - Antes: KA-29
+
+**CK-06.** O Copilot diz a aba dos Relatórios pelo nome da tela ("Visão geral", "Financeiro"…), nunca pela chave interna ("overview"): na resposta, na recusa e na lista das abas liberadas.
+- Fonte: princípio 7 (A2 da 27ª simulação)
+- Onde: `docs/regras/copilot.md:493-497`; `apps/web/tests/copilot-sala-abas-e-comanda.test.ts`
+- Antes: (sem número: `docs/inventario/leitura.md` §4)
 
 ## O que ele grava (CX)
 
@@ -274,6 +289,11 @@ Este é o catálogo das regras do Copilot que valem HOJE: o que ele é e quem us
 - Onde: `docs/regras/copilot.md:217-220`, `:224`, `:538-539`
 - Antes: KA-32
 
+**CX-12.** No agendar pelo Copilot, a sala pedida ("agende na Sala 1") vai na sala do agendamento, não na observação: a sala ativa da unidade (o nome exato antes do parecido), conferida com as outras peças (a sala serve ao procedimento) e livre no horário; o cartão diz "Sala". Sem sala no pedido, nenhuma.
+- Fonte: decisão do Claude, pelo princípio 3 (A1 da 27ª simulação)
+- Onde: `docs/regras/copilot.md:371-378`
+- Antes: (sem número: `docs/inventario/leitura.md` §4)
+
 ## O que ele não faz (CY)
 
 **CY-01.** Nada clínico vai ao Copilot. Nenhuma ferramenta lê prontuário, evolução, ficha de saúde, foto clínica nem a anotação clínica do plano. Quando pedem, o Copilot diz que isso fica na tela, e o painel avisa para não mandar material clínico.
@@ -300,6 +320,16 @@ Este é o catálogo das regras do Copilot que valem HOJE: o que ele é e quem us
 - Fonte: decisão do Claude
 - Onde: `docs/regras/copilot.md:482-485`, `:535`
 - Antes: KB-31
+
+**CY-06.** Mandar ao PDV é só para quem tem o PDV: a quem não tem, o Copilot diz que a permissão dela não recebe nem vende e que quem tem o PDV em Gerenciar faz, sem dar o link.
+- Fonte: decisão do Claude (A29 da 26ª simulação), pela regra de que o botão que a pessoa não pode usar não aparece (CLAUDE.md §14)
+- Onde: `docs/regras/copilot.md:155-160`
+- Antes: (sem número: `docs/inventario/leitura.md` §4)
+
+**CY-07.** Ao pedido de receber um atendimento, o link que o Copilot dá é o da comanda dele, achada entre as comandas abertas — sem comanda aberta, o do PDV. Ele nunca manda abrir comanda nova nem uma venda para o atendimento: a comanda dele já existe no PDV.
+- Fonte: decisão do Claude, pelo princípio 3 (A3 da 27ª simulação: o Copilot ensinava "Nova comanda")
+- Onde: `docs/regras/copilot.md:486-492`; `apps/web/tests/copilot-sala-abas-e-comanda.test.ts`
+- Antes: (sem número: `docs/inventario/leitura.md` §4)
 
 ## O histórico, a cota e o botão (CH)
 
@@ -332,6 +362,21 @@ Este é o catálogo das regras do Copilot que valem HOJE: o que ele é e quem us
 - Fonte: decisão do Claude
 - Onde: `docs/regras/copilot.md:504-515`; `docs/regras/design.md:108-114`; `docs/regras/atendimento.md:3762-3768`
 - Antes: KB-33, KC-19
+
+**CH-07.** O "Olá" e os atalhos do painel vazio saem das ferramentas que o cargo libera, as mesmas que o Copilot recebe: o texto ("Posso consultar a agenda, achar um cliente…") e os botões só oferecem o que a pessoa pode fazer; "Toda gravação passa pela sua confirmação." só aparece com alguma ferramenta de escrita, e "Quanto faturamos este mês?" só com a aba Visão geral dos Relatórios.
+- Fonte: decisão do Claude (A28 da 26ª simulação), pelo princípio 3
+- Onde: `docs/regras/copilot.md:40-48`
+- Antes: (sem número: `docs/inventario/leitura.md` §4)
+
+**CH-08.** Cada chamada do Copilot tem o custo estimado em dólar pelo preço do modelo (entrada e saída), somado no uso do mês da rede com os tokens. O sistema (admin.bellarisos.com) mostra em Copilot o mês por rede, a cota, o custo (em US$ e em R$) e os últimos meses. O modelo fora da tabela de preços tem custo "—", nunca um número inventado.
+- Fonte: princípio 4 (o modelo sem preço não ganha número); o custo estimado: decisão do Claude
+- Onde: `docs/regras/copilot.md:223-230`
+- Antes: (sem número: `docs/inventario/leitura.md` §4)
+
+**CH-09.** Com a chave de administração da OpenAI no sistema, a aba Copilot mostra o custo REAL da OpenAI no destaque, com o estimado e a diferença. A OpenAI não separa por rede: o real é rateado na proporção do custo estimado de cada rede.
+- Fonte: decisão do Claude
+- Onde: `docs/regras/copilot.md:231-240`
+- Antes: (sem número: `docs/inventario/leitura.md` §4)
 
 ## Perguntas ao Heitor
 

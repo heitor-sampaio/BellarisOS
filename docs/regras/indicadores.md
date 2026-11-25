@@ -1582,6 +1582,27 @@ Prova: `tests/relatorios-filtro-de-tags.test.ts`,
 
 ---
 
+## Correções de 25/11 (decisões do Claude)
+
+- **O ranking de recorrência conta visitas** (D16): "Mais recorrentes" do
+  dashboard da rede vem de `metrics_recorrencia_das_clientes` (os
+  atendimentos CONCLUÍDOS no período, por `aconteceu_em`, só quem tem ao menos
+  um; migration `20261204300001`) e de `rankingDaRecorrencia`
+  (`lib/metrics/recorrencia.ts`). O `metrics_top_clients` ordena pelo gasto e
+  punha quem não voltou na lista.
+- **O ticket médio por unidade diz a conta** (D15): a coluna do dashboard da
+  rede tem a Dica "Pago pelas clientes ÷ as clientes que pagaram na unidade",
+  e a célula mostra as clientes que pagaram.
+- **A vista pessoal no dashboard da unidade** (DB-01; VP-01, o Heitor, 23/11):
+  quem só tem a Minha agenda vê, nas etapas da agenda do funil, os
+  agendamentos DELA (o `core` da vista pessoal), com o subtítulo "Os seus
+  agendamentos" — não os da unidade, nem zero.
+- **Relatórios → Vendas** (A10, P17): a venda de plano ou pacote cancelado
+  depois diz "Plano cancelado"/"Pacote cancelado" na linha e no CSV
+  (`marcaDoCancelamento`, `lib/metrics/vendas-comum.ts`); a coluna Profissional
+  diz, por linha, "Quem atendeu" (procedimento) ou "Quem vendeu" (o resto,
+  `quemDaVenda`). Teste: `tests/relatorio-vendas-o-que-a-linha-diz.test.ts`.
+
 ## O que nunca fazer aqui
 
 ```

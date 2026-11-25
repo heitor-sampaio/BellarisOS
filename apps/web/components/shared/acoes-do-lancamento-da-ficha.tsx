@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { CheckCircle2, RotateCcw } from 'lucide-react'
 import { markTransactionPaid, reverseTransaction } from '@/actions/financial'
 import { ConfirmarEstorno } from '@/components/shared/confirmar-estorno'
+import { DevolverParteDaVenda } from '@/components/shared/devolver-parte-da-venda'
 import { EstornarVendaDeCredito } from '@/components/shared/estornar-venda-de-credito'
 import { ReceberNoCartao } from '@/components/shared/receber-no-cartao'
 import type { ParteDaBaixa } from '@/lib/financeiro/baixa-em-formas'
@@ -44,6 +45,8 @@ export function AcoesDoLancamentoDaFicha({ lancamento, slug, podeEstornar, podeR
   const [pendente, iniciar] = useTransition()
   const [aEstornar, setAEstornar] = useState(false)
   const [creditoAEstornar, setCreditoAEstornar] = useState(false)
+  // PR-07 e EX-02 (D1 da 28ª): a venda de produto devolve só parte também aqui — a mesma janela dos financeiros.
+  const [aDevolverParte, setADevolverParte] = useState(false)
   const [aReceber, setAReceber] = useState(false)
   const l = lancamento
   const vivo = !l.estornada && !l.estorno && !l.saida
@@ -79,7 +82,11 @@ export function AcoesDoLancamentoDaFicha({ lancamento, slug, podeEstornar, podeR
     <>
       {aEstornar && (
         <ConfirmarEstorno alvo={{ id: l.id, descricao: l.descricao, valor: l.valor, vendaDeProduto: l.vendaDeProduto, doAtendimento: l.doAtendimento }}
-          estornando={pendente} onConfirmar={estornar} onVoltar={() => setAEstornar(false)} />
+          estornando={pendente} onConfirmar={estornar} onVoltar={() => setAEstornar(false)}
+          onDevolverParte={l.vendaDeProduto ? () => { setADevolverParte(true); setAEstornar(false) } : undefined} />
+      )}
+      {aDevolverParte && (
+        <DevolverParteDaVenda transacaoId={l.id} onFechar={() => setADevolverParte(false)} />
       )}
       {creditoAEstornar && (
         <EstornarVendaDeCredito transacaoId={l.id} descricao={l.descricao} onFechar={() => { setCreditoAEstornar(false); if (aoEstornar) aoEstornar(); else router.refresh() }} />

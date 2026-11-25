@@ -1,6 +1,6 @@
 # Catálogo de regras — Plataforma, Equipe, Cargos e Configurações
 
-Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e quem o opera, o suporte e os chamados), a assinatura e a rede bloqueada, o plano e os adicionais, a criação da rede e o /setup, as unidades, o login e a entrada no portal, a Equipe, os Cargos, as Configurações e a Auditoria. Cada regra diz a fonte: uma fala do Heitor (copiada letra por letra do documento), uma recomendação do Claude que o Heitor aprovou (com a resposta ou a escolha dele), um dos sete princípios de produto, "decisão do Claude". "Onde" aponta a linha do documento; "Antes" lista os números do rascunho que a regra junta (KA: `docs/regras/plataforma.md:1-439`; KB: `:440-825`; KC: `:804-1187`; KD: `:1188-1524`, com o "O que nunca fazer aqui", que repete regras das seções de cima; KE: as decisões de `docs/revisao.md`, do CLAUDE.md e dos outros arquivos de `docs/regras/`, que repetem várias de `plataforma.md` — juntas aqui, com todos os "Onde"). É um RASCUNHO para o Heitor revisar. Contagem: 174 regras (O sistema 9, O suporte 16, A assinatura 20, O plano 22, A criação da rede 4, As unidades 14, O login e a entrada 6, A Equipe 18, Os Cargos 25, As Configurações 11, A Auditoria 29), 4 perguntas e 17 divergências. Dos 225 números do rascunho, nenhum ficou fora do catálogo e 17 são de outra área (ver os apêndices); todos os outros estão num "Antes". Das perguntas dos rascunhos: as "escritas como suas, sem a fala" viraram a Q01 (plataforma), a Q02 (assinatura) e a Q03 (equipe e cargos); a de quem vê a fatura e o "Pagar" (KA-15) e a da aba Assinatura e do aviso (Q2 da KB) tinham resposta na regra de 18/11 — a aba Assinatura é aba da rede toda e o adicional está na lista dela —, e o que ainda dá isso a quem tem "A rede inteira" com as Configurações em Gerenciar está em "Divergências"; a do "Atende" na unidade nova (KC-20) tinha resposta na caixa única do "Atende" (EQ1) e na regra de 23/11 (UN-12); a da entrada da cliente na Auditoria (KD-05) tinha resposta no CF3 aprovado, que diz "entradas no sistema (login)" sem recorte (AD-04); a dos modelos de cargo (KC-15) continua, porque a revisão não traz a fala (Q03); e só os chamados dos colegas ficaram como pergunta de verdade (Q04), porque a lista da configuração da rede toda não os cita.
+Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e quem o opera, o suporte e os chamados), a assinatura e a rede bloqueada, o plano e os adicionais, a criação da rede e o /setup, as unidades, o login e a entrada no portal, a Equipe, os Cargos, as Configurações e a Auditoria. Cada regra diz a fonte: uma fala do Heitor (copiada letra por letra do documento), uma recomendação do Claude que o Heitor aprovou (com a resposta ou a escolha dele), um dos sete princípios de produto, "decisão do Claude". "Onde" aponta a linha do documento; "Antes" lista os números do rascunho que a regra junta (KA: `docs/regras/plataforma.md:1-439`; KB: `:440-825`; KC: `:804-1187`; KD: `:1188-1524`, com o "O que nunca fazer aqui", que repete regras das seções de cima; KE: as decisões de `docs/revisao.md`, do CLAUDE.md e dos outros arquivos de `docs/regras/`, que repetem várias de `plataforma.md` — juntas aqui, com todos os "Onde"). É um RASCUNHO para o Heitor revisar. Contagem: 176 regras (O sistema 9, O suporte 16, A assinatura 20, O plano 22, A criação da rede 4, As unidades 14, O login e a entrada 6, A Equipe 18, Os Cargos 27, As Configurações 11, A Auditoria 29), 4 perguntas e 17 divergências. Dos 225 números do rascunho, nenhum ficou fora do catálogo e 17 são de outra área (ver os apêndices); todos os outros estão num "Antes". Das perguntas dos rascunhos: as "escritas como suas, sem a fala" viraram a Q01 (plataforma), a Q02 (assinatura) e a Q03 (equipe e cargos); a de quem vê a fatura e o "Pagar" (KA-15) e a da aba Assinatura e do aviso (Q2 da KB) tinham resposta na regra de 18/11 — a aba Assinatura é aba da rede toda e o adicional está na lista dela —, e o que ainda dá isso a quem tem "A rede inteira" com as Configurações em Gerenciar está em "Divergências"; a do "Atende" na unidade nova (KC-20) tinha resposta na caixa única do "Atende" (EQ1) e na regra de 23/11 (UN-12); a da entrada da cliente na Auditoria (KD-05) tinha resposta no CF3 aprovado, que diz "entradas no sistema (login)" sem recorte (AD-04); a dos modelos de cargo (KC-15) continua, porque a revisão não traz a fala (Q03); e só os chamados dos colegas ficaram como pergunta de verdade (Q04), porque a lista da configuração da rede toda não os cita.
 
 ## O app sistema e quem o opera (SI)
 
@@ -250,9 +250,9 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:283-286`
 - Antes: KA-30
 
-**PN-04.** A rede sem plano tem tudo liberado.
-- Fonte: decisão do Claude
-- Onde: `docs/regras/plataforma.md:279-282`
+**PN-04.** A rede sem plano tem tudo liberado, menos o Copilot: ele custa por uso, e sem ele no plano (ou no adicional contratado) não abre para ninguém (CO-03 do Copilot).
+- Fonte: decisão do Claude; a exceção do Copilot: decisão do Claude ("Liberar o Copilot para rede sem plano (ele custa por uso)" está no "O que nunca fazer" do Copilot)
+- Onde: `docs/regras/plataforma.md:279-284`; `docs/regras/copilot.md:599`
 - Antes: KA-29
 
 **PN-05.** O PDV e a Auditoria são de todo plano: nenhuma funcionalidade do plano os liga ou desliga — nem o teste grátis, nem o retrato da rede bloqueada que volta, os tira. (O PDV em todo plano está também na PV-05, Vendas e financeiro.)
@@ -330,9 +330,9 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:398-402`, `:480-481`, `:1484`
 - Antes: KA-47, KB-07, KD-33
 
-**PN-20.** Com a cobrança ligada, nenhum adicional deixa a mensalidade em R$ 0: encerrar a cobrança é com o BellarisOS.
-- Fonte: decisão do Claude
-- Onde: `docs/regras/plataforma.md:400-402`
+**PN-20.** Com a cobrança ligada, a rede não zera a mensalidade mexendo nos adicionais: a mudança é recusada com "Com a cobrança ligada, a mensalidade ficaria em R$ 0,00. Para encerrar a assinatura, fale com o BellarisOS pela Ajuda." (o Asaas não cobra zero; encerrar a assinatura é com o BellarisOS). A exceção é a rede com o plano em cortesia: ali a mensalidade pode chegar a R$ 0, e então vale a AS-06 — a rede fica ativa e a cobrança é pausada (não cancelada), e religa sozinha quando volta a ter valor.
+- Fonte: decisão do Claude (alinhada à AS-06 em 25/11, pelo que o banco faz)
+- Onde: `docs/regras/plataforma.md:400-404`, `:458-470`; `supabase/migrations/20261007000006_assinatura_cortesia_desconto.sql:184-188`
 - Antes: KA-48
 
 **PN-21.** O que a rede usa é o efetivo: o plano MAIS o que ela contratou — as conexões de WhatsApp extras somam no limite de números, e o Copilot avulso libera o Copilot.
@@ -362,9 +362,9 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:178-182`
 - Antes: KA-18
 
-**RB-04.** O fim do /setup tem o "Acessar o painel →" como botão principal, logo abaixo do "Tudo pronto!", e depois "Ou comece pelos próximos passos", nesta ordem, cada um com o porquê: Outra unidade (se houver) → Equipe → Salas → Estoque → Fichas → Documentos → Procedimentos → Taxas da maquininha → Fidelidade → Funil de oportunidades. Cada passo é um link que conclui o setup e leva à tela (o clique do meio abre em outra aba); o passo de uma funcionalidade fora do plano da rede não aparece.
-- Fonte: decisão do Claude
-- Onde: `docs/regras/plataforma.md:226-249`
+**RB-04.** O fim do /setup tem o "Acessar o painel →" como botão principal, logo abaixo do "Tudo pronto!", e depois "Ou comece pelos próximos passos", nesta ordem, cada um com o porquê: Equipe → Salas → Estoque → Fichas → Documentos → Procedimentos → Taxas da maquininha → Fidelidade → Funil de oportunidades → Outra unidade (se a rede tiver). A outra unidade vem por último: a rede de uma unidade só (o tamanho real do cliente) não começa pelo que não tem. Cada passo é um link que conclui o setup e leva à tela (o clique do meio abre em outra aba); o passo de uma funcionalidade fora do plano da rede não aparece.
+- Fonte: decisão do Claude (a outra unidade por último: A2 da 10ª simulação, pela regra de projeto do CLAUDE.md §1 — "Na dúvida de projeto, otimize para a rede de uma unidade")
+- Onde: `docs/regras/plataforma.md:226-249`; `docs/regras/design.md:205-206`; `apps/web/lib/setup/proximos-passos.ts`
 - Antes: KA-19
 
 ## As unidades e o endereço (UN)
@@ -553,9 +553,9 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:1073-1075`, `:1119-1120`, `:1126-1127`
 - Antes: KC-30
 
-**EQ-17.** No repasse do Desativar, quando ninguém mais atende o agendamento na unidade dele, a linha oferece a quem tem a Equipe em Gerenciar "Marcar <unidade> no Atende de X", só para quem tem aquela unidade entre as suas; a marcação passa pelas mesmas regras da Equipe e, feita, a pessoa aparece no repasse.
-- Fonte: decisão do Claude (a oferta só a quem tem a unidade: o Heitor, 2026-11-23: "uma pessoa só pode atender nas unidades que faz parte, isso é obvio")
-- Onde: `docs/regras/plataforma.md:1106-1113`; `docs/revisao.md:2236`
+**EQ-17.** No repasse do Desativar, quando ninguém mais atende o agendamento na unidade dele, a linha oferece a quem tem a Equipe em Gerenciar "Marcar <unidade> no Atende de X", só para quem tem aquela unidade entre as suas; a marcação passa pelas mesmas regras da Equipe e, feita, a pessoa aparece no repasse. A outra saída que a linha diz (marcar na Equipe) chama o controle pelo nome que a Equipe mostra, "Atende clientes" — uma caixa só (AG-61 do Atendimento) —, não pela lista antiga "Atende clientes em".
+- Fonte: decisão do Claude (a oferta só a quem tem a unidade: o Heitor, 2026-11-23: "uma pessoa só pode atender nas unidades que faz parte, isso é obvio"; o nome do controle: EQ1c, princípio 7)
+- Onde: `docs/regras/plataforma.md:1106-1113`; `docs/revisao.md:2236`; `apps/web/components/admin/desativar-membro.tsx:307`, `:345`
 - Antes: KC-31
 
 **EQ-18.** Reativar confirma o que volta e o que não volta: "X voltou: entra no sistema e atende como antes. O que foi repassado ao desativar continua com quem recebeu."
@@ -690,6 +690,16 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/design.md:160-169`; `docs/revisao.md:1463-1466`, `:2140`
 - Antes: KE-46
 
+**CG-26.** O cargo de sistema "Não definido" se dá pela Equipe e não abre nada: aparece por último no seletor de cargo das duas Equipes, ao criar e ao editar, e quem tem a Equipe em Gerenciar o dá (ele está abaixo de todos). Quem o tem fica sem módulo nenhum, venha a matriz que vier, e sem caixa nenhuma no inbox; o painel diz "Você está sem cargo e ainda não tem acesso a nenhum módulo. Quem tem a Equipe em Gerenciar define o seu cargo." Quem atende segue na agenda para receber horários (o "Atende" não é permissão), sem abrir a agenda nem os atendimentos. Valem as regras de sempre da Admin da rede (só outra Admin dá e altera; a última Admin ativa não é rebaixada).
+- Fonte: o Heitor, 2026-11-18 (item 20 do escopo): "pode criar, e quem tem cargo não definido não tem permissão de nada" (`DEVLOG.md:1875`); quem atende segue atendendo: decisão do Claude (26ª, princípio 3 e CLAUDE.md §11)
+- Onde: `docs/regras/plataforma.md:1010-1024`
+- Antes: (sem número: `docs/inventario/leitura.md` §4)
+
+**CG-27.** Criar um cargo é dar o nome na lista de cargos e clicar em "Criar" — a tela diz isso ("Dê o nome na lista de cargos e clique em Criar"), e o campo do nome tem rótulo.
+- Fonte: princípio 7 (A4 da 24ª simulação)
+- Onde: `docs/regras/plataforma.md:1175-1176`
+- Antes: (sem número: `docs/inventario/leitura.md` §4)
+
 ## As Configurações (CU)
 
 **CU-01.** A configuração da rede toda é só da Admin da rede (o cargo de sistema gravado): nem quem tem "A rede inteira" com tudo em Gerenciar a muda. São as tags, os funis, os cargos, as fichas, os modelos de documento, as integrações, as automações, as campanhas, os templates, as Importações, a comissão do procedimento e a configuração das comissões, a fidelidade, as maquininhas e o Pix, os adicionais do plano e os dados da rede. Para os outros, a aba diz "Esta configuração é só da Admin da rede." sem o editor, e o sistema recusa a gravação.
@@ -727,9 +737,9 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:826-827`
 - Antes: KC-02
 
-**CU-08.** A aba pedida que a pessoa não alcança não abre em silêncio: a tela abre a primeira aba que ela alcança e diz por quê ("A aba Cargos pede Cargos e permissões em Gerenciar no cargo, e o seu não tem. Abrimos Tags.", ou que é da rede toda, que fica nas Configurações da rede, que não está no plano, que não existe). Link antigo com o nome da aba em inglês vale pela aba.
-- Fonte: princípio 3
-- Onde: `docs/regras/plataforma.md:828-835`
+**CU-08.** A aba pedida que a pessoa não alcança não abre em silêncio: a tela abre a primeira aba que ela alcança e diz por quê e onde ela está, sem "abrimos" — "A aba Cargos pede Cargos e permissões em Gerenciar no cargo, e o seu não tem. Você está na aba Tags.", ou que é da rede toda ("A aba X é da rede toda: quem muda é a Admin da rede. Você está na aba Y."), que fica nas Configurações da rede, que não está no plano, que não existe ("A aba “x” não existe. Você está na aba Unidade."). Link antigo com o nome da aba em inglês vale pela aba.
+- Fonte: princípio 3; o "Você está na…" no lugar do "abrimos": decisão do Claude (16/11 — o aviso diz onde a pessoa está, sem a leitura de que algo foi criado)
+- Onde: `docs/regras/plataforma.md:828-835`; `apps/web/lib/configuracoes/abas.ts:233-247`; `apps/web/tests/decisoes-de-16-11.test.ts:43-60`
 - Antes: KC-03
 
 **CU-09.** Quem tem "A rede inteira" e entra pelo portal da unidade chega a tudo o que só a rede tem: o menu da unidade mostra essas entradas (levando ao portal da rede), a busca da topbar as acha, e as Configurações da unidade mostram as abas da rede toda numa linha "Nas Configurações da rede: …" (a aba pedida que só a rede tem vira um link). Quem não tem "A rede inteira" não vê nada disso.
@@ -874,9 +884,9 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:1408-1409`, `:1427-1428`, `:1442-1443`
 - Antes: KD-26
 
-**AD-26.** A hora da coluna "Quando" (na tela e no CSV) vai no fuso da leitura, com a nota do fuso; a hora que a frase cita ("Agendou … para", "Remarcou … para") vai no fuso da unidade do registro.
-- Fonte: decisão do Claude
-- Onde: `docs/regras/plataforma.md:1451-1455`
+**AD-26.** A hora da coluna "Quando" (na tela e no CSV) de CADA linha vai no fuso da unidade dela; a linha sem unidade (a da rede), no fuso da rede. Fora do horário de Brasília, a linha diz o relógio ("horário de Cuiabá"), e o CSV tem a coluna "Relógio", sempre preenchida. A hora que a frase cita ("Agendou … para", "Remarcou … para") vai no fuso da unidade do registro. Tela e CSV dizem a mesma hora.
+- Fonte: decisão do Claude (D6 da 26ª, para cumprir a regra de que "Todo dia e toda hora da unidade saem nele", `docs/regras/indicadores.md`; era o fuso da leitura, com uma nota só no cabeçalho)
+- Onde: `docs/regras/plataforma.md:1549-1563`
 - Antes: KD-27
 
 **AD-27.** O filtro de ação sempre traz "Abriu o prontuário", em qualquer portal.
@@ -917,13 +927,15 @@ O texto de `docs/regras/` (ou da própria revisão e do CLAUDE.md), e onde se vi
 - UN-11 (CÓDIGO): `apps/web/actions/branches.ts:253-255` (`moverEquipeDaUnidade`) pede as Configurações E a Equipe em Gerenciar, e ainda "é de quem é da rede" — "nenhuma ação pede dois" (`docs/revisao.md:1309`, 23/11); mudar a pessoa de unidade é da Equipe (CU-04).
 - CG-16 (CÓDIGO e TEXTO; o mesmo da PV-04 de Vendas e financeiro): `docs/regras/plataforma.md:1061-1062`, `:1066-1069`, `:1082-1084` dizem que o PDV fica "Aberto pelo Financeiro em Gerenciar" na matriz e que a venda e o Fechamento do dia vêm "do PDV, ou do Financeiro em Gerenciar"; a tela de Cargos diz isso em `apps/web/lib/permissions-copy.ts:254`, `:261` e `:304`. "Cada passo pertence a UM módulo, e nenhuma ação pede dois" (`docs/revisao.md:1309`, `:1317`, 23/11) e CLAUDE.md §11 ("receber é do PDV"): vender e receber são do PDV, e só dele.
 - CG-16 (TEXTO): `docs/regras/plataforma.md:1069-1072` diz que Tratamentos aparece "a quem tem a Agenda" ("Tratamentos vem da Agenda em “Ver”"); `:1093-1094` e `docs/revisao.md:2228` (UM1, 23/11) decidiram o Atendimento em Ver (o código já diz isso, `apps/web/lib/permissions-copy.ts:326`).
-- CG-12 (TEXTO): `docs/regras/plataforma.md:1076-1081` (a 24ª: "Não conclui atendimentos: concluir pede o Prontuário em Gerenciar.", "Concluir também pede o Prontuário em Gerenciar") continua escrito como regra, contra `:1100-1104` e o Heitor, 18/11 ("Só inicia e conclui atendimento quem tem gerenciar no atendimento"); e `:1094-1096` põe os injetáveis no Prontuário em Gerenciar, e `docs/revisao.md:2235`, `:2242` (23/11) os deram ao Atendimento em Gerenciar (PT-16, Atendimento).
+- CG-12 (TEXTO; também `docs/regras/plataforma.md:1171-1174`, a 24ª): `docs/regras/plataforma.md:1076-1081` (a 24ª: "Não conclui atendimentos: concluir pede o Prontuário em Gerenciar.", "Concluir também pede o Prontuário em Gerenciar") continua escrito como regra, contra `:1100-1104` e o Heitor, 18/11 ("Só inicia e conclui atendimento quem tem gerenciar no atendimento"); e `:1094-1096` põe os injetáveis no Prontuário em Gerenciar, e `docs/revisao.md:2235`, `:2242` (23/11) os deram ao Atendimento em Gerenciar (PT-16, Atendimento).
 - CG-18 (CÓDIGO): `apps/web/lib/auth.ts:139` (e `:154`, `:163`) zera os Relatórios só sem nenhuma aba MARCADA, não sem aba que VALHA: o cargo gravado com só a aba Financeiro e sem o Financeiro ainda vê Relatórios no menu e a tela "Nenhum relatório liberado" (`docs/regras/plataforma.md:906-908` registra). CLAUDE.md §11 (A5): sem aba que valha, a entrada some do menu.
 - CG-24 (TEXTO): `docs/regras/plataforma.md:950-951` diz "quem não é a Admin da rede não duplica um cargo com módulo que ela não tem", como se outra pessoa duplicasse; cargo é configuração da rede toda (18/11): só a Admin duplica.
 - UN-10 (TEXTO): `docs/regras/plataforma.md:967-968` conta "os atendimentos concluídos sem pagamento, à parte"; `docs/revisao.md:1994` (CX3, 16/11) fez deles as comandas abertas do PDV.
 - EQ-06, LO-03 (TELA e TEXTO): `docs/regras/plataforma.md:1048-1049` e a tela (`apps/web/components/shared/unidades-do-membro.tsx:96`) dizem "Principal: X — o login abre nela."; o PO1 aprovado (`docs/revisao.md:2139`; `docs/regras/plataforma.md:1040-1041`) diz que a pessoa entra na última unidade usada, e só sem ela na principal. CLAUDE.md §11 também chama a principal de "o destino do login".
 - LO-03 (TEXTO): CLAUDE.md §6 (`:391-395`) decide o destino do login pela claim `NETWORK_ADMIN` × "outros"; a regra (PO1, EQ1b) decide pelas unidades. O código já decide pelas unidades.
-- EQ-17 (TEXTO e TELA): `docs/regras/plataforma.md:1107-1109` oferece "Marcar <unidade> no Atende de X" a qualquer pessoa "da equipe [que] atende em outra"; desde 23/11 só a quem tem a unidade entre as suas (o código já filtra, `apps/web/lib/equipe/repasse.ts:216`). A mesma janela ainda chama o "Atende" de "Atende clientes em" (`apps/web/components/admin/desativar-membro.tsx:306-307`), o nome da lista que virou UMA caixa no EQ1 (`docs/revisao.md:2113`) — a mesma divergência de `CLAUDE.md:691-693` e `docs/regras/atendimento.md:279-286`, `:427-429`, `:624-625` (AG-61, Atendimento).
+- EQ-17 (TEXTO e TELA; o texto da regra mudou em 25/11 para dizer o nome do controle): `docs/regras/plataforma.md:1107-1109` oferece "Marcar <unidade> no Atende de X" a qualquer pessoa "da equipe [que] atende em outra"; desde 23/11 só a quem tem a unidade entre as suas (o código já filtra, `apps/web/lib/equipe/repasse.ts:216`). A mesma janela ainda chama o "Atende" de "Atende clientes em" (`apps/web/components/admin/desativar-membro.tsx:306-307`), o nome da lista que virou UMA caixa no EQ1 (`docs/revisao.md:2113`) — a mesma divergência de `CLAUDE.md:691-693` e `docs/regras/atendimento.md:279-286`, `:427-429`, `:624-625` (AG-61, Atendimento).
+- RB-04 (TEXTO): `docs/regras/plataforma.md:244-248` (A1 da 8ª) diz que os próximos passos "começam pela 2ª unidade"; a A2 da 10ª a pôs por último (`apps/web/lib/setup/proximos-passos.ts`; `docs/regras/design.md:205-206`). O texto da regra mudou em 25/11.
+- AD-26 (TEXTO): `docs/regras/plataforma.md:1549-1554` (a 23ª, D2) ainda diz o "Quando" no fuso da leitura com a `NotaDoFuso`; o D6 da 26ª (`:1555-1563`, logo abaixo) o trocou pelo fuso da unidade de cada linha. O texto da regra mudou em 25/11.
 - SI-08 (TEXTO): `docs/regras/plataforma.md:131-132` diz "Os seguintes, o ADMIN cadastra em Equipe (SUPORTE ou ADMIN)"; o papel GERENTE (07/10, `:38-44`) também se cadastra ali.
 - CG-03 (TEXTO): `docs/revisao.md:1254-1259` (levantamento de Cargos) e a linha "Mantém" do Bloco: Cargos (`:2196`: "os escopos… o refino do inbox") ainda contam com o "só os meus"; a troca de 23/11 está em `:1298-1300`, mas a linha do bloco continua velha.
 - PN-05, PN-12 (TEXTO, só a data): `docs/regras/plataforma.md:338-339` data o "Sim" do PL1 em 2026-11-16; `docs/revisao.md:1570-1572` o registra sob "O que devia fazer (o Heitor, 2026-11-13)" (16/11 é a data em que ficou pronto, `:2164`).

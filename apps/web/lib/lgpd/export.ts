@@ -82,6 +82,16 @@ export function paraOTitular(v: unknown, fuso?: string): unknown {
 }
 
 /**
+ * A data SEM hora (o nascimento) no pacote: o dia 'AAAA-MM-DD', como foi
+ * gravado (CLAUDE.md §14). D5 da 28ª: o banco a devolve como instante à
+ * meia-noite UTC, e o `paraOTitular` a levava ao fuso — a véspera.
+ */
+export function diaSemHora(valor: string | null | undefined): string | null {
+  const m = /^(\d{4}-\d{2}-\d{2})/.exec(valor ?? '')
+  return m ? m[1]! : null
+}
+
+/**
  * PR3: o nome da ficha de saúde no retrato. O de fábrica era
  * "Pré-atendimento" (renomeado na migration 20261115100002); o retrato velho
  * guarda o nome de então, e o pacote diz "Ficha de saúde".
@@ -326,7 +336,8 @@ export async function buildClientExport(
       // da menor, que é dado do cadastro dela (sobra da F29, decisão 2).
       documento: documentoNoPacote(client), responsavelLegal: responsavelNoPacote(client).json,
       email: client.email, telefone: client.phone,
-      dataNascimento: client.birth_date, genero: client.gender,
+      // D5 da 28ª: o dia, sem hora — o instante à meia-noite UTC virava a véspera no fuso.
+      dataNascimento: diaSemHora(client.birth_date), genero: client.gender,
       endereco: {
         logradouro: client.address, numero: client.address_number,
         complemento: client.address_complement, bairro: client.neighborhood,

@@ -11,8 +11,9 @@ import { criarMembro, type MembroDeTeste } from './apoio/sessao'
  * forma nasce VAZIA e é obrigatória (princípio 3): nada se confirma sem ela.
  *
  * As telas: o recebimento do atendimento (desde o PDV7, a comanda dele no
- * PDV — a janela "Confirmar pagamento" e o `?receber=1` saíram), o
- * "Receber" do plano no check-in, o checkout do plano e o "Vender" da ficha
+ * PDV — a janela "Confirmar pagamento" e o `?receber=1` saíram), o saldo do
+ * plano (no PDV da cliente desde a 28ª: era o "Receber" do plano no check-in,
+ * que saiu — PV-01, o Heitor, 13/11), o checkout do plano e o "Vender" da ficha
  * (`CamposDoPagamento`: pacote, pré-pago, produto e o pagamento do contrato).
  *
  * Numa rede [e2e] própria.
@@ -104,7 +105,10 @@ test('o receber do plano no PDV e a venda no PDV: o meio nasce vazio e o botão 
   expect((await db().from('financial_transactions').select('id').eq('treatment_plan_id', pl!.id)).data ?? [], 'nada recebido').toEqual([])
 })
 
-test('o "Receber" do plano no check-in: a forma nasce vazia', async ({ browser }) => {
+// O saldo do plano se recebe no PDV da cliente (o Heitor, 13/11, PV-01: "o
+// pagamento acontece por dentro desse PDV, seja do que for"; AT-13 e PV-13: a
+// tela do atendimento não recebe). Era o "Receber" do plano no check-in.
+test('o saldo do plano, no PDV da cliente: a forma nasce vazia', async ({ browser }) => {
   const c = await rede!.criarCliente('Márcia')
   const { data: pl, error } = await db().from('treatment_plans').insert({
     branch_id: rede!.branchId, professional_id: rede!.professionalId, client_id: c, status: 'ACCEPTED', name: `${PREFIXO} Plano aceito ${marca}`,
@@ -114,15 +118,12 @@ test('o "Receber" do plano no check-in: a forma nasce vazia', async ({ browser }
     branch_id: rede!.branchId, client_id: c, treatment_plan_id: pl!.id, type: 'INCOME', category: 'Serviços',
     description: 'Plano de tratamento', amount: 280, is_paid: false, created_by: 'e2e',
   })).error).toBeNull()
-  const { data: ap } = await db().from('appointments').insert({
-    branch_id: rede!.branchId, client_id: c, procedure_id: rede!.procedureId, professional_id: rede!.professionalId,
-    status: 'ARRIVED', source: 'INTERNAL', duration_min: 30, price: 280, scheduled_at: new Date().toISOString(), treatment_plan_id: pl!.id,
-  }).select('id').single<{ id: string }>()
   await como(browser, async p => {
-    await p.goto(`/${slug}/agenda/${ap!.id}`)
-    await p.getByRole('button', { name: /Receber R\$/ }).click()
-    const dlg = p.getByRole('dialog', { name: 'Receber o plano de tratamento' })
+    await p.goto(`/${slug}/pdv?nova=1&cliente=${c}`)
+    const emAberto = p.getByRole('region', { name: 'Vender' }).locator('[data-parcela-em-aberto]', { hasText: 'R$ 280,00' })
+    await emAberto.getByRole('button', { name: 'Receber esta parcela' }).click()
+    const dlg = p.getByRole('dialog', { name: 'Receber a parcela' })
     await expect(dlg.getByRole('radio', { checked: true })).toHaveCount(0)
-    await expect(dlg.getByRole('button', { name: 'Confirmar recebimento' })).toBeDisabled()
+    await expect(dlg.getByRole('button', { name: /^Receber R\$/ })).toBeDisabled()
   })
 })

@@ -114,3 +114,18 @@ describe('a linha do tempo diz a hora do aceite gravada (princípio 3)', () => {
     expect(fonte('lib/cached-queries.ts')).toContain("select('id, status, created_at, updated_at, aceito_em, name, cancelado_em")
   })
 })
+
+// D10 da 28ª: quem só vê o cadastro (Clientes em Ver) lê as tags DA CLIENTE, sem
+// chip para clicar (§14: o que a pessoa não pode usar, a tela esconde; §1 Tags: a
+// tela não pode parecer que pôs uma tag que a cliente não tem).
+describe('as tags na ficha em leitura', () => {
+  it('sem Clientes em Gerenciar, só as tags da cliente, como selo; os chips de escolher só para quem edita', () => {
+    const p = fonte('components/branch/client-profile.tsx')
+    const ini = p.indexOf('{/* Tags */}')
+    const bloco = p.slice(ini, p.indexOf('{/* "Indicada por"', ini))
+    expect(bloco).toContain('data-tags-da-ficha-so-leitura')
+    expect(bloco).toMatch(/!podeEditar \?[\s\S]*selectedTags\.map\(tag => <TagBadge/)
+    expect(bloco).toContain('Nenhuma tag')
+    expect(bloco.indexOf('opcoesDeTag(')).toBeGreaterThan(bloco.indexOf('data-tags-da-ficha-so-leitura'))
+  })
+})

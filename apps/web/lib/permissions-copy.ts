@@ -108,7 +108,8 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   },
   medical_records: {
     NONE:   SEM_ACESSO,
-    VIEW:   'Lê, no Prontuário, a ficha de saúde, a evolução, as fotos do atendimento, os anexos clínicos (exames, laudos, receitas) e os planejamentos e as aplicações de injetáveis.',
+    // Sem o Clientes, a ficha abre só na aba Prontuário (lib/clientes/ficha-so-do-prontuario.ts).
+    VIEW:   'Lê, no Prontuário, a ficha de saúde, a evolução, as fotos do atendimento, os anexos clínicos (exames, laudos, receitas) e os planejamentos e as aplicações de injetáveis. Sem Clientes, acha a cliente pela busca e abre a ficha só no Prontuário, com o nome e sem o cadastro.',
     MANAGE: 'Tudo do Ver, mais preencher a ficha de saúde e a evolução, tirar as fotos do atendimento, anexar exames e laudos, acrescentar anotação ao atendimento concluído e liberar a parte clínica em pedidos de LGPD. O início e o fim do atendimento e o plano de tratamento não pedem o Prontuário: são do Atendimento.',
   },
   // O Heitor, 2026-11-16: "A permissão de gerenciar documentos serve para
@@ -134,7 +135,8 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   financial: {
     // A vista pessoal (2026-11-23): quem atende ou tem comissão no nome dela vê as Minhas comissões.
     NONE:   'Não aparece para esta pessoa — a menos que ela atenda ou tenha comissão no nome dela: aí vê as Minhas comissões, só as dela.',
-    VIEW:   'Vê faturamento, despesas, extrato de lançamentos e comissões.',
+    // A4 da 28ª (FC-01; princípio 3): o Ver também abre o Fechamento do dia, e a linha diz.
+    VIEW:   'Vê faturamento, despesas, extrato de lançamentos e comissões, e o Fechamento do dia (só para ver: fechar o dia é de quem tem o PDV).',
     MANAGE: 'Tudo do Ver, mais lançar receita e despesa, estornar e conceder crédito ao cliente.',
   },
   cashier: {

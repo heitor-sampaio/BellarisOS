@@ -245,6 +245,41 @@ test.describe.serial('dado clínico só com prontuário', () => {
       expect(r.texto).not.toContain(ANAMNESE)
     })
   })
+
+  test('o Prontuário sem o Clientes acha a cliente pela busca e abre a ficha só no Prontuário, sem o cadastro (CLAUDE.md §11, 23/11)', async ({ browser }) => {
+    // "O clínico (ficha de saúde, evolução, fotos) é do Prontuário em Gerenciar,
+    // sem precisar atender": as fichas exigiam o Clientes em Ver, e quem só
+    // tinha o Prontuário não chegava ao clínico da cliente.
+    const clinico = await criarMembro(`clsopr${marca}`, {
+      tenant: f!.outra.tenantId, rotulo: 'Clinico so prontuario',
+      permissoes: [{ modulo: 'medical_records', nivel: 'MANAGE' }],
+    })
+    criado.membros.push(clinico)
+    const { data: cad } = await db().from('clients').select('phone').eq('id', f!.clienteId).single<{ phone: string }>()
+    const telefone = cad!.phone
+    await comSessao(browser, clinico.estado, async p => {
+      // O caminho: a busca universal acha a cliente, só pelo nome.
+      const r = await chamarAcao(p, 'actions/busca.ts', 'buscarTudo', '/admin/dashboard', ['Paciente Clinico', null])
+      expect(r.texto, 'a busca acha a cliente').toContain(f!.clienteId)
+      expect(r.texto, 'sem o telefone').not.toContain(telefone.slice(-8))
+
+      const html = await conteudo(p, `/admin/clients/${f!.clienteId}`)
+      expect(html, 'a ficha abriu').toContain('Paciente Clinico')
+      expect(html, 'com o clínico (a ficha de saúde)').toContain(ANAMNESE)
+      expect(html, 'sem o telefone do cadastro').not.toContain(telefone.slice(-8))
+      await expect(p.getByRole('heading', { name: 'Você não tem acesso a esta área' })).toHaveCount(0)
+      const abas = p.getByRole('tablist', { name: 'Abas da ficha' }).getByRole('tab')
+      await expect(abas).toHaveText(['Prontuário'])
+      // Nem os números do topo (o investido) nem a volta à lista de clientes.
+      await expect(p.getByText('INVESTIDO TOTAL — LTV')).toHaveCount(0)
+
+      // No portal da unidade, a mesma ficha.
+      const { data: un } = await db().from('branches').select('slug').eq('id', f!.outra.branchId).single<{ slug: string }>()
+      const daUnidade = await conteudo(p, `/${un!.slug}/clients/${f!.clienteId}?aba=financeiro`)
+      expect(daUnidade).toContain(ANAMNESE)
+      expect(daUnidade).not.toContain(telefone.slice(-8))
+    })
+  })
 })
 
 test.describe.serial('credencial de integração fora da tela', () => {

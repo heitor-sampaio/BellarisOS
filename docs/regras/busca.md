@@ -20,6 +20,9 @@ embaixo da topbar. Desde a fase 2 (2026-10-08) também tem AÇÕES (abaixo).
   unidade por `ctx.branchId ?? unidade do slug` com `assertUnidade`. Sem o
   "só os meus" (SM1, 2026-11-23), não há recorte por dono: quem tem o módulo
   acha tudo da abrangência. Cliente final é recusado.
+  A ficha da cliente abre também com o Prontuário em Ver, só na aba Prontuário
+  (`crm-inbox.md`): a cliente se acha com ele (`TAMBEM_ABRE`), e a linha, sem
+  o Clientes, leva só o nome (`semOCadastro`), como a ficha.
 - **Conversas passam por `idsDaPaginaDoInbox`** (`lib/inbox/pagina.ts`), a
   MESMA conta da lista do inbox (as caixas do cargo; sem dono nem modo desde a SM3)
   — não por uma consulta à parte.

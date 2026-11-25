@@ -84,3 +84,10 @@ export function linkDaAba(base: string, aba: AbaDoFinanceiro, manter: Record<str
  * nota ("Vence no período: R$ …").
  */
 export const ROTULO_DO_A_RECEBER_DA_CLIENTE = 'A receber da cliente · em aberto'
+
+/**
+ * O "A pagar" (A6 da 28ª; princípio 3): o número grande é o que VENCE NO
+ * PERÍODO, e o rótulo diz — "A pagar R$ 0,00" ao lado de "Em aberto R$ 3.400"
+ * parecia contradição. O em aberto de qualquer vencimento vai na nota.
+ */
+export const ROTULO_DO_A_PAGAR = 'A pagar · vence no período'

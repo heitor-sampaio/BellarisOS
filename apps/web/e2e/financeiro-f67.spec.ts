@@ -129,36 +129,39 @@ test('C36: quem só recebe não cancela a unidade pré-paga', async ({ browser }
   expect(r.texto).toContain('Você não tem acesso a esta ação.')
 })
 
-// VF-04 da varredura de 18/11 (era o C33, que travava no PDV): o check-in do
-// plano recebe por `podeReceber`, como todo recebimento (vendas-financeiro.md,
+// VF-04 da varredura de 18/11 (era o C33, que travava no PDV): o saldo do
+// plano se recebe por `podeReceber`, como todo recebimento (vendas-financeiro.md,
 // "Quem recebe é `podeReceber`"). Desde o PV-04 (catálogo de 24/11; o Heitor,
 // 23/11, à proposta "cada passo pertence a UM módulo, e nenhuma ação pede dois
 // … PDV: receber": "concordo"), receber é só do PDV em Gerenciar — o
 // Financeiro em Gerenciar dá baixa no Financeiro (CX2, abaixo), não recebe.
-test('VF-04: o check-in do plano é de quem recebe — o PDV em Gerenciar recebe; o Financeiro em Gerenciar, não', async ({ browser }) => {
-  const { cliente, plano, appt } = await planoPago('Checkin')
+// O caminho é o PDV (o Heitor, 13/11, PV-01: "o pagamento acontece por dentro
+// desse PDV, seja do que for"): o check-in do atendimento não recebe mais o
+// plano (AT-13, PV-13) — era o `receberDoPlano`, que saiu.
+test('VF-04: o saldo do plano é de quem recebe, no PDV — o PDV em Gerenciar recebe; o Financeiro em Gerenciar, não', async ({ browser }) => {
+  const { cliente, plano } = await planoPago('Checkin')
   const aberto = await ins('financial_transactions', {
     branch_id: rede!.branchId, client_id: cliente, treatment_plan_id: plano, type: 'INCOME', category: 'Serviços',
     description: 'Plano de tratamento', amount: 200, is_paid: false, created_by: 'e2e',
   })
-  const rota = `/admin/agenda/${appt}`
+  const rota = '/admin/pdv'
   const semReceber = await criarMembro(`f67s${marca}`, {
     tenant: rede!.tenantId, rotulo: 'Agenda',
     permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }],
   })
   try {
-    const recusa = await como(browser, semReceber, p => chamarAcao(p, 'actions/treatment-plans.ts', 'receberDoPlano', rota,
-      [plano, { forma: 'AVISTA', metodo: 'PIX' }, appt, '']))
-    expect(recusa.texto).toContain('Você não tem acesso a esta ação.')
+    const recusa = await como(browser, semReceber, p => chamarAcao(p, 'actions/pdv.ts', 'receberParcelaNoPdv', rota,
+      [aberto, '', { forma: 'PIX' }]))
+    expect(recusa.texto).toContain('Sem permissão para receber.')
     expect((await db().from('financial_transactions').select('is_paid').eq('id', aberto).single<{ is_paid: boolean }>()).data!.is_paid).toBe(false)
   } finally { await semReceber.limpar() }
-  const doFinanceiro = await como(browser, financeiro!, p => chamarAcao(p, 'actions/treatment-plans.ts', 'receberDoPlano', rota,
-    [plano, { forma: 'AVISTA', metodo: 'PIX' }, appt, '']))
-  expect(doFinanceiro.texto).toContain('Você não tem acesso a esta ação.')
+  const doFinanceiro = await como(browser, financeiro!, p => chamarAcao(p, 'actions/pdv.ts', 'receberParcelaNoPdv', rota,
+    [aberto, '', { forma: 'PIX' }]))
+  expect(doFinanceiro.texto).toContain('Sem permissão para receber.')
   expect((await db().from('financial_transactions').select('is_paid').eq('id', aberto).single<{ is_paid: boolean }>()).data!.is_paid).toBe(false)
-  const r = await como(browser, caixa!, p => chamarAcao(p, 'actions/treatment-plans.ts', 'receberDoPlano', rota,
-    [plano, { forma: 'AVISTA', metodo: 'PIX' }, appt, '']))
-  expect(r.texto).not.toContain('Você não tem acesso a esta ação.')
+  const r = await como(browser, caixa!, p => chamarAcao(p, 'actions/pdv.ts', 'receberParcelaNoPdv', rota,
+    [aberto, '', { forma: 'PIX' }]))
+  expect(r.texto).not.toContain('Sem permissão para receber.')
   const { data: pago } = await db().from('financial_transactions').select('is_paid, payment_method').eq('id', aberto).single<{ is_paid: boolean; payment_method: string }>()
   expect(pago).toEqual({ is_paid: true, payment_method: 'PIX' })
 })

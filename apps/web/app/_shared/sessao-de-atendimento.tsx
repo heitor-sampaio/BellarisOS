@@ -20,6 +20,7 @@ import type { SessionAppointment, SessionClient, SessionProduct, AvailableProduc
 import type { LoteParaBaixa, ParteDaBaixa } from '@/lib/estoque/fefo'
 import { normalizeFormSchema, type AnamnesisRow } from '@/lib/anamnesis'
 import { emAbertoDoPlano } from '@/lib/checkout/em-aberto-do-plano'
+import { andamentoDosPlanos } from '@/lib/plano-de-tratamento/andamento-do-plano'
 import { unidadesDosInsumos, procedimentosParaPlano } from '@/lib/checkout/procedimentos-do-plano'
 import { unidadeDoInsumo } from '@/lib/estoque/unidade-de-consumo'
 import { paraAnamneseGeral, anamneseRespondida } from '@/lib/anamnese-geral'
@@ -417,9 +418,15 @@ export async function SessaoDeAtendimento({
   type RawPlanProcProduct = { product_id: string; name: string; unit: string; quantity: number }
   type RawPlanSessProc = { procedure_id: string; price: number; sort_order: number; products: RawPlanProcProduct[]; procedures: { name: string } | null }
   type RawPlanSess = { id: string; sort_order: number; treatment_plan_session_procedures: RawPlanSessProc[] }
+  // D8 da 28ª (princípio 3): o plano aceito e já recebido não diz "lá a cliente
+  // paga" — a régua do recebido é a da situação do plano (um lançamento vivo dele).
+  const planoAceitoRecebido = planRaw?.status === 'ACCEPTED'
+    ? (await andamentoDosPlanos(ctx.tenantId!, [planRaw.id as string])).get(planRaw.id as string)?.recebido ?? false
+    : false
   const existingPlan = planRaw ? {
     id:       planRaw.id as string,
     status:   planRaw.status as string,
+    recebido: planoAceitoRecebido,
     notes:    canViewRecords ? ((planRaw.professional_notes as string | null) ?? null) : null,
     // 22ª A20: o desconto do plano combinado no editor (no rascunho e no proposto).
     descontoCombinado: ['DRAFT', 'PROPOSED'].includes(planRaw.status as string)

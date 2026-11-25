@@ -105,7 +105,8 @@ export async function reciboDoLancamento(l: LancamentoDoRecibo): Promise<{ doc: 
     doc: {
       title: 'Recibo',
       subtitle: `${String(rede.name)} — ${String(unidade.name)}`,
-      sections: [{ fields: pagamento }, { title: 'Quem recebeu', fields: emitente }],
+      // "Emitente", não "Quem recebeu" (princípio 7): no Fechamento do dia, "quem recebeu" é a pessoa.
+      sections: [{ fields: pagamento }, { title: 'Emitente', fields: emitente }],
       footer: `Emitido pelo BellarisOS em ${dataHora(new Date().toISOString(), fuso)}. Este recibo não substitui a nota fiscal.`,
     },
   }

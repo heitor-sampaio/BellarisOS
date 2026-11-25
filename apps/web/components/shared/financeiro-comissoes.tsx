@@ -247,7 +247,16 @@ export function FinanceiroComissoes(p: PropsDaTela) {
 
       {p.fechamentos.length > 0 && (
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }} aria-label="Fechamentos">
-          <p className="overline">Últimos fechamentos</p>
+          {/* A11 da 28ª (princípio 3): com tag marcada, o quadro diz que o filtro não vale aqui. */}
+          <p className="overline" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span>Últimos fechamentos</span>
+            {tags.length > 0 && <>
+              <span data-fechamentos-sem-tags style={{ color: 'var(--text-muted)' }}>· sem o filtro de tags</span>
+              <Dica rotulo="Sobre os fechamentos e as tags">
+                O fechamento é da pessoa inteira, com as comissões de todas as clientes: a tag não o recorta. Para fechar e pagar, limpe as tags.
+              </Dica>
+            </>}
+          </p>
           {p.fechamentos.map(f => <LinhaDeFechamento key={f.id} f={f} podeEstornar={p.podeFechar} fusoDaRede={p.fusoDaRede} />)}
         </div>
       )}

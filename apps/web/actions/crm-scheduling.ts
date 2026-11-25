@@ -14,8 +14,8 @@ import { conversaAoAlcance } from '@/lib/inbox/alcance'
 import {
   createAppointmentCore,
   computeAvailableSlots,
-  notifyAppointmentCreated,
 } from '@/lib/appointments/core'
+import { notifyNewAppointment } from '@/lib/appointments/avisos'
 import {
   getCachedBranchProfessionals,
   getCachedBranchProcedures,
@@ -259,7 +259,8 @@ export async function createCrmAppointment(
 
   if ('error' in res) return { error: res.error }
 
-  notifyAppointmentCreated(res.id)
+  // Pendente 13 da 27ª: o mesmo aviso da agenda e do Copilot — as partes interessadas, sem quem marcou.
+  notifyNewAppointment(res.id, ctx.internalUserId)
   revalidatePath('/admin/oportunidades')
   return { id: res.id }
 }

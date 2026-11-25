@@ -8,29 +8,23 @@ import { recusaDoProcedimentoNaUnidade } from '@/lib/procedimentos/disponivel-na
 import { revalidateTag } from 'next/cache'
 import { CLIENTE_ARQUIVADA } from '@/lib/clients/arquivada'
 import { intervalosDoDia, normalizarHorario, slotsDoDia, diaDaSemana } from '@/lib/agenda/horario'
-import { format } from 'date-fns'
-import { instanteNoFuso, naParede } from '@/lib/datetime'
+import { instanteNoFuso } from '@/lib/datetime'
 import { fusoValido } from '@/lib/unidades/fuso'
 import { lerFusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
-import { ptBR } from 'date-fns/locale'
 import type { TenantContext } from '@estetica-os/types'
 import { alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { notificadorDoCliente, notifyUser } from '@/lib/notifications/notify'
 import { enviarEventoCapi } from '@/lib/ads/capi'
 import { cliqueDoCliente, contatoDoCliente } from '@/lib/ads/atribuicao'
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { EVENTOS } from '@estetica-os/types'
 import { ler, tentar } from '@/lib/db'
 import { conferirCredito, ligarCredito, type CreditoDeAgendamento } from '@/lib/creditos/credito'
-import { avisarDoPreAtendimento } from '@/lib/pre-atendimento/ficha'
 import { oportunidadeDoAgendamento, ligarAgendamentoAOportunidade } from '@/lib/crm/liga-agendamento'
 import { filtroDeQuemAtendeNaUnidade } from '@/lib/cached-queries'
 import type { CandidataDoHorario } from '@/lib/appointments/sem-preferencia'
 import { recusaDaSala } from '@/lib/appointments/salas'
 import { quemRealizaOProcedimento, realiza } from '@/lib/procedimentos/quem-realiza'
-import { textoDoHorarioMarcado } from '@/lib/appointments/texto-do-aviso'
-import { unidadeParaOAviso } from '@/lib/appointments/unidade-do-aviso'
 import { bloqueiosQueBatem } from '@/lib/agenda/bloqueios'
 import { precosDaUnidade, precoNaUnidade } from '@/lib/procedimentos/preco-na-unidade'
 import { fimDaOcupacao, bateNaOcupacao } from '@/lib/appointments/ocupacao'
@@ -494,44 +488,6 @@ export async function candidatasDoDia(
   const conta = new Map<string, number>()
   for (const a of (doDia ?? []) as { professional_id: string }[]) conta.set(a.professional_id, (conta.get(a.professional_id) ?? 0) + 1)
   return equipe.map((p, i) => ({ id: p.id, nome: p.name, livres: livres[i] ?? [], atendimentosNoDia: conta.get(p.id) ?? 0 }))
-}
-
-/** Notifica cliente + profissional de um novo agendamento (via after()). */
-export function notifyAppointmentCreated(appointmentId: string): void {
-  const avisarCliente = notificadorDoCliente()
-  after(async () => {
-    const admin = createAdminClient()
-    const data = await ler(admin
-      .from('appointments')
-      .select('client_id, professional_id, branch_id, scheduled_at, clients(name), procedures(name)')
-      .eq('id', appointmentId)
-      .maybeSingle(), 'buscar o agendamento')
-    if (!data) return
-
-    const clientId       = data.client_id as string
-    const professionalId = (data.professional_id ?? null) as string | null
-    const clientName     = (data.clients as unknown as { name?: string } | null)?.name ?? 'Cliente'
-    const procedureName  = (data.procedures as unknown as { name?: string } | null)?.name ?? 'Atendimento'
-    let when = ''
-    // No relógio da unidade (F62), não no do servidor.
-    const fuso = await lerFusoDaUnidade(admin, (data.branch_id ?? null) as string | null)
-    try { when = format(naParede(data.scheduled_at as string, fuso), "dd/MM 'às' HH:mm", { locale: ptBR }) } catch { /* ignore */ }
-
-    const payload = { appointment_id: appointmentId }
-    await avisarCliente(admin, clientId, {
-      // "Marcado", não "confirmado": a clínica ainda não confirmou (simulação de 2026-10-20).
-      type: 'appointment_confirmed', title: 'Horário marcado',
-      // Com mais de uma unidade, diz onde (A28).
-      body: textoDoHorarioMarcado(procedureName, when, await unidadeParaOAviso(admin, (data.branch_id ?? null) as string | null)), data: payload,
-    })
-    await avisarDoPreAtendimento(admin, avisarCliente, appointmentId)
-    if (professionalId) {
-      await notifyUser(admin, professionalId, {
-        type: 'appointment_new', title: 'Novo agendamento',
-        body: `${clientName} — ${procedureName} em ${when}.`, data: payload,
-      })
-    }
-  })
 }
 
 // ─── helpers ──────────────────────────────────────────────────────

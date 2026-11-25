@@ -34,6 +34,8 @@ export interface BranchStat {
   revenue:      number
   appointments: number
   ticketMedio:  number
+  /** D15 da 28ª (TM-02): as clientes que pagaram nesta unidade — a conta do ticket. */
+  clientesQuePagaram?: number
 }
 
 export interface TodayBranchStat {
@@ -650,7 +652,15 @@ export function AdminDashboardView({
                     fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)',
                     letterSpacing: '0.06em', textTransform: 'uppercase',
                     width: i === 0 ? 32 : i === 5 ? 56 : undefined,
-                  }}>{h}</th>
+                  }}>{h === 'Ticket médio' ? (
+                    // D15 da 28ª (TM-02; design.md, "A explicação mora na dica"): a conta da coluna.
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      {h}
+                      <Dica rotulo="Sobre: Ticket médio por unidade">
+                        Pago pelas clientes ÷ as clientes que pagaram na unidade, no período (não é a receita ÷ os atendimentos).
+                      </Dica>
+                    </span>
+                  ) : h}</th>
                 ))}
               </tr>
             </thead>
@@ -683,7 +693,12 @@ export function AdminDashboardView({
                       {b.appointments}
                     </td>
                     <td data-label="Ticket médio" data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                      {b.ticketMedio > 0 ? fmtBRL(b.ticketMedio) : '—'}
+                      {b.ticketMedio > 0 ? (
+                        <span data-conta-do-ticket-por-unidade
+                          title={b.clientesQuePagaram ? `Pago pelas clientes ÷ ${b.clientesQuePagaram} ${b.clientesQuePagaram === 1 ? 'cliente que pagou' : 'clientes que pagaram'}` : undefined}>
+                          {fmtBRL(b.ticketMedio)}
+                        </span>
+                      ) : '—'}
                     </td>
                     <td data-label="" style={{ padding: '13px 16px', textAlign: 'right' }}>
                       {/* A única saída de portal que sobrou, e de propósito: aqui

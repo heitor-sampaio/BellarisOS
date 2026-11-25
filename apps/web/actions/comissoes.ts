@@ -1,6 +1,6 @@
 'use server'
 
-import { CREDIARIO_PADRAO, TETO_DO_CREDIARIO } from '@/lib/financeiro/parcelas-do-crediario'
+import { CREDIARIO_PADRAO, recusaDoMaximoDeParcelas } from '@/lib/financeiro/parcelas-do-crediario'
 import { maximoDeParcelasDaRede } from '@/lib/financeiro/crediario-da-rede'
 
 /**
@@ -75,7 +75,8 @@ export async function salvarMaximoDeParcelas(entrada: unknown): Promise<Resultad
     assertPermission(ctx, 'financial', 'MANAGE')
     if (!mexeNaConfigDaRede(ctx)) return { error: await falaDaRede(ctx.tenantId, 'O crediário vale para a rede inteira: quem muda é a Admin da rede.') }
     const n = entrada === null || entrada === '' ? CREDIARIO_PADRAO : Number(entrada)
-    if (!(Number.isInteger(n) && n >= 1 && n <= TETO_DO_CREDIARIO)) return { error: `Escolha de 1 a ${TETO_DO_CREDIARIO} parcelas.` }
+    // Princípio 2 (o Heitor, 04/11): só o impossível se recusa; acima de 48, a tela avisa.
+    { const recusa = recusaDoMaximoDeParcelas(n); if (recusa) return { error: recusa } }
     const linhas = await gravar(createAdminClient().from('tenants')
       .update({ crediario_max_parcelas: n }).eq('id', ctx.tenantId!).select('id'), 'salvar o limite de parcelas do crediário')
     if (!linhas?.length) return { error: 'Rede não encontrada.' }

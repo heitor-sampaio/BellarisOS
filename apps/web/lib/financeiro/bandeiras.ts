@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { PRAZO_MAXIMO_DA_OPERADORA, TAXA_MAXIMA_DO_REGISTRO, TETO_DE_VEZES } from './vezes-do-cartao'
+import { PRAZO_MAXIMO_DA_OPERADORA, RECUSA_DO_PRAZO_ZERO, RECUSA_DO_PRAZO_ACIMA_DO_REGISTRO, TAXA_MAXIMA_DO_REGISTRO, TETO_DE_VEZES } from './vezes-do-cartao'
 import { taxaQueVale } from './formas'
 
 /**
@@ -58,8 +58,9 @@ const CHAVE_DA_TAXA = /^(DEBIT_CARD:1|CREDIT_CARD:([1-9]|1[0-2]))$/
 
 /** A entrada do "Salvar taxas" da bandeira, conferida no servidor. */
 export const EntradaDoCartaoPorBandeira = z.record(z.string(), z.object({
-  prazo: z.number().int().min(1, `O prazo da operadora vai de 1 a ${PRAZO_MAXIMO_DA_OPERADORA} dias.`)
-    .max(PRAZO_MAXIMO_DA_OPERADORA, `O prazo da operadora vai de 1 a ${PRAZO_MAXIMO_DA_OPERADORA} dias.`).optional(),
+  // Princípio 2: acima de 120 dias a tela avisa; só o zero e o registro se recusam.
+  prazo: z.number().int(RECUSA_DO_PRAZO_ZERO).min(1, RECUSA_DO_PRAZO_ZERO)
+    .max(PRAZO_MAXIMO_DA_OPERADORA, RECUSA_DO_PRAZO_ACIMA_DO_REGISTRO).optional(),
   // F16-3: sem teto — só não negativa (e o limite do registro).
   taxas: z.record(z.string(), z.number().min(0, 'A taxa não pode ser negativa.')
     .max(TAXA_MAXIMA_DO_REGISTRO, 'A taxa vai até 999,99% (o limite do registro).')),

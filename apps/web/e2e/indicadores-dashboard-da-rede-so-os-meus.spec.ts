@@ -252,9 +252,10 @@ test('a vista pessoal: o dashboard da UNIDADE mostra o faturamento DELA nos 6 me
     await expect.soft(card(p, 'Procedimentos mais procurados'), 'e o da outra (Procedimentos em Ver)').toContainText(outroProc)
     // O "Clientes no mês" é do módulo Clientes (SM2: o recorte dela é só a vista
     // pessoal da agenda): as novas clientes da unidade; sem a Agenda, as etapas da
-    // agenda não aparecem (A32 da 24ª).
+    // agenda mostram os agendamentos DELA (a vista pessoal, DB-01: "as vistas
+    // pessoais resolvem", o Heitor, 23/11) — o atendimento dela deste mês.
     await expect.soft(p.locator('[data-etapa="Novos clientes"]'), 'as novas clientes da unidade (Clientes em Ver)').toContainText(/4$/)
-    await expect.soft(p.locator('[data-etapa="Agendamentos"]'), 'sem a Agenda, sem as etapas da agenda').toHaveCount(0)
+    await expect.soft(p.locator('[data-etapa="Agendamentos"]'), 'sem a Agenda, os agendamentos dela').toContainText(/1$/)
     await expect.soft(reativar(p), 'a cliente dela a reativar').toContainText('Sumida dela')
     await expect.soft(reativar(p), 'e a da outra (Clientes em Ver)').toContainText('Sumida da outra')
     await expect.soft(main, 'os planos propostos da unidade').toContainText('2 planos propostos')

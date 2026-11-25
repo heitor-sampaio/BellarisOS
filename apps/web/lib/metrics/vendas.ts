@@ -58,7 +58,30 @@ export async function getVendas(r: Recorte & { tipo?: TipoDeVenda | null; limite
     p_professional_id: r.professionalId ?? null,
     ...paramDeTags(r.tags),
   }), 'carregar as vendas do período') as Linha[] | null
-  return (linhas ?? []).map(daLinha)
+  return marcarAsCanceladas(r.tenantId, (linhas ?? []).map(daLinha))
+}
+
+/**
+ * A10 da 28ª (princípio 3): o plano e o pacote cancelados ficam na lista pelo
+ * que a rede ficou, e a linha diz que foram cancelados. Só os da página.
+ */
+async function marcarAsCanceladas(tenantId: string, vendas: Venda[]): Promise<Venda[]> {
+  const planos = vendas.filter(v => v.tipo === 'PLANO').map(v => v.id)
+  const pacotes = vendas.filter(v => v.tipo === 'PACOTE').map(v => v.id)
+  if (!planos.length && !pacotes.length) return vendas
+  const admin = createAdminClient()
+  const [pl, pc] = await Promise.all([
+    planos.length
+      ? ler(admin.from('treatment_plans').select('id, branches!inner(tenant_id)').in('id', planos)
+          .eq('status', 'CANCELLED').eq('branches.tenant_id', tenantId), 'ver os planos cancelados das vendas')
+      : Promise.resolve([]),
+    pacotes.length
+      ? ler(admin.from('client_packages').select('id, branches!inner(tenant_id)').in('id', pacotes)
+          .not('cancelado_em', 'is', null).eq('branches.tenant_id', tenantId), 'ver os pacotes cancelados das vendas')
+      : Promise.resolve([]),
+  ])
+  const canceladas = new Set([...((pl ?? []) as { id: string }[]), ...((pc ?? []) as { id: string }[])].map(x => x.id))
+  return canceladas.size ? vendas.map(v => canceladas.has(v.id) ? { ...v, cancelada: true } : v) : vendas
 }
 
 /** Todas as vendas do recorte, de mil em mil (o teto do PostgREST) — a exportação. */

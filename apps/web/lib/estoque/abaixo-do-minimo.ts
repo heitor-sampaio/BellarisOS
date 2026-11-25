@@ -11,8 +11,14 @@ import {
  * "abaixo do mínimo" só aparecia no Estoque e no relatório — o dashboard da
  * UNIDADE não tinha o quadro que o da rede tem). A régua é a da tela de
  * estoque (`situacaoDoEstoque`, J-43: no rendimento, com "No mínimo" separado
- * de "Abaixo do mínimo"), só nos saldos com mínimo configurado. É uma lista
- * (até 20), não um número: o quadro diz quais.
+ * de "Abaixo do mínimo"), só nos saldos com mínimo configurado. É uma lista,
+ * não um número: o quadro diz quais.
+ *
+ * D14 da 28ª (ES-20: "Sem estoque" é separado, "uma conta de produtos igual no
+ * Estoque e nos Relatórios"): o Protetor zerado com mínimo 5 contava no
+ * "Estoque no mínimo ou abaixo: 1", e o Estoque dizia "Estoque baixo 0". O
+ * zerado vem marcado (`semEstoque`) e o quadro o mostra à parte, fora da conta;
+ * e a lista não se corta antes de contar (o número é o de todos).
  */
 export interface ItemAbaixoDoMinimo {
   productName: string
@@ -23,6 +29,8 @@ export interface ItemAbaixoDoMinimo {
   minimo:      string
   /** "Abaixo do mínimo", "No mínimo" ou "Sem estoque". */
   situacao:    string
+  /** Zerado (sem saldo positivo): fora da conta do "no mínimo ou abaixo" (ES-20). */
+  semEstoque:  boolean
 }
 
 type Num = number | string
@@ -32,7 +40,7 @@ type Linha = {
   branches: { name: string; slug: string } | null
 }
 
-export async function itensAbaixoDoMinimo(branchIds: string[], limite = 20): Promise<ItemAbaixoDoMinimo[]> {
+export async function itensAbaixoDoMinimo(branchIds: string[]): Promise<ItemAbaixoDoMinimo[]> {
   if (!branchIds.length) return []
   const admin = createAdminClient()
   const linhas = await lerTodas<Linha>((de, ate) => admin.from('branch_product_stock')
@@ -50,7 +58,6 @@ export async function itensAbaixoDoMinimo(branchIds: string[], limite = 20): Pro
       return { b, saldo, medidas, situacao: situacaoDoEstoque(saldo, medidas) }
     })
     .filter(s => s.situacao === 'SEM_ESTOQUE' || estoqueBaixo(s.situacao))
-    .slice(0, limite)
     .map(s => ({
       productName: s.b.products?.name ?? '—',
       branchName:  s.b.branches?.name ?? '—',
@@ -59,5 +66,6 @@ export async function itensAbaixoDoMinimo(branchIds: string[], limite = 20): Pro
       // A15 da 14ª: o mínimo herdado do cadastro diz "(do cadastro)", como no Estoque.
       minimo:      rotuloDoMinimo(minimoParaMostrar(s.saldo, s.medidas), minimoEhDoCadastro(s.saldo.minimo, s.b.products?.min_stock != null ? Number(s.b.products.min_stock) : null)),
       situacao:    ROTULO_DA_SITUACAO[s.situacao],
+      semEstoque:  s.situacao === 'SEM_ESTOQUE',
     }))
 }

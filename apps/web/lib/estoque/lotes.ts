@@ -4,6 +4,7 @@ import { lerTodas, ler } from '@/lib/db'
 import { venceAte } from './validade'
 import { addDaysTZ } from '@/lib/datetime'
 import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
+import { saldoDoLoteNaTela } from './situacao'
 
 /**
  * Os lotes com saldo nas unidades da tela de Estoque (J-45, simulação de
@@ -112,6 +113,8 @@ export interface LoteVencendo extends LoteDoProduto {
   produto:  string
   /** A embalagem do produto ("frasco"): a quantidade do lote é nela. */
   embalagem: string
+  /** O saldo para a tela: "22 ml · 0,73 frasco" (D13 da 28ª, ES-19). */
+  saldo:     string
 }
 
 /**
@@ -140,7 +143,7 @@ export async function lotesVencendoDoRecorte(
   const porId = new Map(produtos.map(p => [p.id, p]))
   return lotesVencendo(lotes, ate, fuso).map(l => {
     const p = porId.get(l.produtoId)!
-    return { ...l, produto: p.name, embalagem: p.unit }
+    return { ...l, produto: p.name, embalagem: p.unit, saldo: saldoDoLoteNaTela(l.quantidade, p) }
   })
 }
 

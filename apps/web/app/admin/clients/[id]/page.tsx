@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { unidadesParaCriar } from '@/lib/unidades/da-tela'
 import { nomesDasSessoesDoPlano } from '@/lib/plano-de-tratamento/nome-da-sessao-no-servidor'
 import { idOu404 } from '@/lib/id-da-rota'
-import { getTenantContext, assertPermission, can, podeReceber, podeVerClinico, temRecurso } from '@/lib/auth'
+import { getTenantContext, can, podeReceber, podeVerClinico, temRecurso } from '@/lib/auth'
 import { montaPlano } from '@/lib/plano-de-tratamento/quem-monta'
 import { quemDesfazNoCaixa, quemCompletaOCadastro } from '@/lib/equipe/quem-desfaz'
 import { veOsDocumentos, dispensaDocumentos } from '@/lib/documentos/acesso'
@@ -12,7 +12,8 @@ import { responsavelDaFicha } from '@/lib/clients/menor'
 import { indicacaoDaFicha } from '@/lib/clientes/indicacao-da-ficha'
 import { unificacoesDaFicha } from '@/lib/clients/unificacoes'
 import { historicoDoCancelamento } from '@/lib/pacotes/cancelamento'
-import { camposDoPacoteDeFora, linhaDoHistoricoDoPacote } from '@/lib/pacotes/de-fora'
+import { linhaDoHistoricoDoPacote } from '@/lib/pacotes/de-fora'
+import { pacotesEmAndamento, pacoteDaFicha, type PacoteLido } from '@/lib/clientes/pacotes-da-ficha'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { getDoCliente } from '@/lib/metrics/unidade'
@@ -51,6 +52,8 @@ import { anotacoesEVersoes } from '@/lib/prontuario/anotacoes-e-versoes'
 import { nomeDosProcedimentos } from '@/lib/plano-de-tratamento/nome'
 import { getEmAbertoDosPacotes } from '@/lib/metrics/pacote-em-aberto'
 import { abaDaFicha } from '@/lib/clientes/aba-da-ficha'
+import { assertAbreAFicha, fichaSoDoProntuario, soOProntuarioDaFicha } from '@/lib/clientes/ficha-so-do-prontuario'
+import type { ClientProfileProps } from '@/components/branch/client-profile'
 import { podeEstornar, podeDarBaixa } from '@/lib/financeiro/so-os-meus'
 
 const UPCOMING_STATUSES = ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS']
@@ -65,13 +68,17 @@ export default async function AdminClientProfilePage({
   // O id vai a uma coluna uuid: o que não é uuid é 404, não 22P02 (D15).
   idOu404(id)
   const ctx     = await getTenantContext()
-  assertPermission(ctx, 'clients', 'VIEW')
+  // A ficha abre com o Clientes em Ver ou o Prontuário em Ver; sem o Clientes,
+  // é só a aba Prontuário (o clínico é do Prontuário — CLAUDE.md §11, o Heitor,
+  // 2026-11-23: "cada passo do atendimento, um módulo").
+  assertAbreAFicha(ctx)
+  const soProntuario = fichaSoDoProntuario(ctx)
   // C77 (F65): o servidor monta o que a aba ABERTA mostra — a Visão geral
   // (o topo da ficha) sempre; a linha do tempo, os links assinados dos
   // documentos, as negociações e o que é só do prontuário, na aba deles. Era
   // tudo a cada abertura, e o anexar esperava a ficha inteira se refazer.
   const sp  = await searchParams
-  const aba = abaDaFicha(sp.aba)
+  const aba = soProntuario ? 'fichas' : abaDaFicha(sp.aba)
 
   const admin = createAdminClient()
 
@@ -245,36 +252,20 @@ export default async function AdminClientProfilePage({
   const pacoteVencido = can(ctx, 'financial', 'MANAGE')
     ? await pacoteVencidoDaFicha(ctx.tenantId!, pkgsArray as unknown as Parameters<typeof pacoteVencidoDaFicha>[1], regrasDoPacote)
     : null
-  const activePkg = pkgsArray.find(p =>
-    !(p as { cancelado_em?: string | null }).cancelado_em &&
-    p.used_sessions < p.total_sessions &&
-    (!p.expires_at || new Date(p.expires_at) > now)
-  )
-  if (activePkg) {
-    const sp   = activePkg.service_packages as { name?: string; procedure_id?: string; price?: number; procedures?: { name?: string; duration_min?: number } | null } | null
-    const proc = sp?.procedures ?? null
-    activePackage = {
-      id:            activePkg.id,
-      name:          sp?.name ?? 'Pacote',
-      totalSessions: activePkg.total_sessions,
-      usedSessions:  activePkg.used_sessions,
-      // As restantes já agendadas (A27): o cartão diz "2 sessões restantes · 1 agendada".
-      scheduledSessions: ((activePkg as { package_sessions?: { status: string; appointment_id: string | null }[] }).package_sessions ?? [])
-        .filter(s => s.status === 'AVAILABLE' && !!s.appointment_id).length,
-      procedureId:   sp?.procedure_id ?? '',
-      procedureName: proc?.name ?? sp?.name ?? '—',
-      price:         Number(sp?.price ?? 0) / (activePkg.total_sessions || 1),
-      durationMin:   proc?.duration_min ?? 60,
-      // O pacote trazido de fora (F35): "Pacote de antes" e as usadas antes do sistema (A57).
-      ...camposDoPacoteDeFora(activePkg as { de_fora?: boolean; usadas_antes?: number; valor_referencia?: number | null }),
-    }
-    // A41 da 11ª: o crediário do pacote ainda em aberto (só a quem recebe — o dinheiro é do caixa, A39 da 7ª).
-    if (podeReceber(ctx)) {
-      const emAberto = (await getEmAbertoDosPacotes(ctx.tenantId!, [activePkg.id as string]))[activePkg.id as string] ?? null
+  // D17 da 28ª: TODOS os pacotes em andamento (dois iguais, os dois) — cada um, um cartão na ficha.
+  const pacotesDaFicha: ProfilePackage[] = pacotesEmAndamento(pkgsArray as unknown as PacoteLido[], now).map(pacoteDaFicha)
+  // A41 da 11ª: o crediário do pacote ainda em aberto (só a quem recebe — o dinheiro é do caixa, A39 da 7ª).
+  if (podeReceber(ctx) && pacotesDaFicha.length > 0) {
+    const emAbertoDos = await getEmAbertoDosPacotes(ctx.tenantId!, pacotesDaFicha.map(p => p.id))
+    for (const pacote of pacotesDaFicha) {
+      const emAberto = emAbertoDos[pacote.id] ?? null
+      const unidade = (pkgsArray.find(p => p.id === pacote.id) as { branch_id?: string | null } | undefined)?.branch_id ?? null
       // CX1: o aviso leva ao PDV da unidade do pacote, onde as parcelas dele estão.
-      activePackage.emAberto = emAberto ? { ...emAberto, unidadeId: (activePkg as { branch_id?: string | null }).branch_id ?? null, liberaAsSessoes: regrasDoPacote.crediarioLibera } : null
+      pacote.emAberto = emAberto ? { ...emAberto, unidadeId: unidade, liberaAsSessoes: regrasDoPacote.crediarioLibera } : null
     }
   }
+  activePackage = pacotesDaFicha[0] ?? null
+  const outrosPacotes = pacotesDaFicha.slice(1)
 
   if (!activePackage && activePlansRaw && activePlansRaw.length > 0) {
     type RawSessProc = { procedure_id: string; price: string; procedures: { name: string; duration_min: number } | null }
@@ -501,90 +492,97 @@ export default async function AdminClientProfilePage({
     getPagoComCreditoDoCliente(ctx.tenantId!, id),
   ])
 
+  // Sem o Clientes, a ficha inteira não chega a ser desenhada: vai só o
+  // nome e o clínico (`soOProntuarioDaFicha`, a lista do que fica).
+  const ficha = (
+    <ClientProfile
+      client={client}
+      abreOAtendimento={abreOAtendimento}
+      pedidoLgpd={pedidoLgpd}
+      branchId={branchId}
+      stats={stats}
+      upcomingAppointments={upcomingAppointments}
+      recentAppointments={recentAppointments}
+      allAppointments={allAppointments}
+      recordForms={recordForms}
+      lotesDosAtendimentos={lotesDosAtendimentosDaFicha}
+      podeAbrirLote={can(ctx, 'stock', 'VIEW') && can(ctx, 'clients', 'VIEW')}
+      anexosClinicosFora={anexosClinicosFora}
+      anexosClinicos={anexosClinicos}
+      anotacoesEVersoes={anotacoesEVersoesDaFicha}
+      podeAnotar={can(ctx, 'medical_records', 'MANAGE') && canViewRecords}
+      podeVerProntuario={canViewRecords}
+      planejamentosQueAbrem={planejamentosQueAbrem}
+      acessosAoProntuario={acessosDoProntuario}
+      generalAnamnesis={generalAnamnesis}
+      // UM4: responde a ficha de saúde quem tem o Prontuário em Gerenciar (a permissão de salvarAnamneseGeral).
+      podeEditarFichaDeSaude={can(ctx, 'medical_records', 'MANAGE') && canViewRecords}
+      fichaDeSaudeAtual={noProntuario ? fichaDeSaudeDaRede : null}
+      alergias={alergias}
+      fidelidade={fidelidade}
+      activePackage={activePackage}
+      outrosPacotes={outrosPacotes}
+      transactions={transactions}
+      veFinanceiro={veFinanceiro}
+      totaisFinanceiros={financeiro.totais}
+      internalCredits={internalCredits}
+      documents={documents}
+      termos={veTermos
+          ? { itens: termosItens, podeDispensar: dispensaDocumentos(ctx), pelaConversa, portalNoPlano: temRecurso(ctx, 'portal') }
+          : null}
+      canGrantCredit={ctx.permissions.financial === 'MANAGE'}
+      branches={(branchesRaw ?? []) as { id: string; name: string }[]}
+      currentBranchId={perguntaAUnidade ? '' : branchId}
+      slug={slug}
+      canManageProcedures={can(ctx, 'medical_records', 'MANAGE')}
+      // Anexo clínico: o Prontuário em Gerenciar (e em Ver).
+      podeAnexarClinico={can(ctx, 'medical_records', 'MANAGE') && canViewRecords}
+      podeAnexarComum={can(ctx, 'clients', 'MANAGE')}
+      portalNoPlano={temRecurso(ctx, 'portal')}
+      planProcedures={planoProcs.procedures}
+      planProducts={planoProcs.products}
+      podeReceber={podeReceber(ctx)}
+      // UM3: monta o plano quem tem o Atendimento em Gerenciar na unidade;
+      // sem a unidade escolhida, o Atendimento em Gerenciar basta, e a gravação confere.
+      podeMontarPlano={montaPlano(ctx, unidadeDoPlano?.id ?? null)}
+      // Os injetáveis são de quem realiza o atendimento (o Heitor, 2026-11-23).
+      podeEditarInjetaveis={can(ctx, 'atendimento', 'MANAGE') && canViewRecords}
+      // O plano novo nasce na unidade escolhida (com duas ou mais, a ficha pergunta).
+      unidadeDoPlano={unidadeDoPlano?.id ?? ''}
+      unidadesDoPlano={perguntaAUnidade ? unidadesAtivas.map(u => ({ id: u.id, name: u.name })) : []}
+      aReceber={aReceber}
+      comandaParaReceber={comandaParaReceber}
+      planosNaoRecebidos={planosNaoRecebidos}
+      podeReceberAtendimento={podeReceber(ctx)}
+      perguntaAUnidade={perguntaAUnidade}
+      prePagos={prePagos}
+      podeAgendar={can(ctx, 'agenda', 'MANAGE')}
+      podeEditarCadastro={can(ctx, 'clients', 'MANAGE')}
+      // A10 da 20ª: sem editar, o aviso do que falta diz quem completa o cadastro.
+      quemCompletaOCadastro={can(ctx, 'clients', 'MANAGE') ? null : await quemCompletaOCadastro(ctx.tenantId!, null)}
+      podeExportarProntuario={can(ctx, 'medical_records', 'MANAGE')}
+      podeVerPlanos={can(ctx, 'atendimento', 'VIEW')}
+      podeIniciarAtendimento={can(ctx, 'atendimento', 'MANAGE')}
+      podeCancelarPacote={podeEstornar(ctx)}
+      pacoteVencido={pacoteVencido}
+      podeRemarcar={can(ctx, 'financial', 'MANAGE')}
+      // A32 e A35 da 12ª: estornar (o Financeiro em Gerenciar) e receber a parcela na ficha — quem dá baixa (CX2: o PDV ou o Financeiro em Gerenciar, `podeDarBaixa`, a mesma régua de markTransactionPaid).
+      podeEstornar={podeEstornar(ctx)}
+      podeReceberParcela={podeDarBaixa(ctx)}
+      quemDesfaz={quemDesfaz}
+      pagoComCredito={pagoComCredito}
+      isNetworkWide={ctx.branchId === null}
+      clientHistory={clientHistory}
+      opportunities={oportunidades}
+      // CRM-03 (18/11): as oportunidades são dado do CRM — sem ele (ou fora do plano), a aba some.
+      veOportunidades={can(ctx, 'crm', 'VIEW') && temRecurso(ctx, 'oportunidades')}
+    />
+  )
+
   return (
     <>
       <RealtimeRefresher topicos={['agenda', 'pacotes']} />
-      <ClientProfile
-        client={client}
-        abreOAtendimento={abreOAtendimento}
-        pedidoLgpd={pedidoLgpd}
-        branchId={branchId}
-        stats={stats}
-        upcomingAppointments={upcomingAppointments}
-        recentAppointments={recentAppointments}
-        allAppointments={allAppointments}
-        recordForms={recordForms}
-        lotesDosAtendimentos={lotesDosAtendimentosDaFicha}
-        podeAbrirLote={can(ctx, 'stock', 'VIEW') && can(ctx, 'clients', 'VIEW')}
-        anexosClinicosFora={anexosClinicosFora}
-        anexosClinicos={anexosClinicos}
-        anotacoesEVersoes={anotacoesEVersoesDaFicha}
-        podeAnotar={can(ctx, 'medical_records', 'MANAGE') && canViewRecords}
-        podeVerProntuario={canViewRecords}
-        planejamentosQueAbrem={planejamentosQueAbrem}
-        acessosAoProntuario={acessosDoProntuario}
-        generalAnamnesis={generalAnamnesis}
-        // UM4: responde a ficha de saúde quem tem o Prontuário em Gerenciar (a permissão de salvarAnamneseGeral).
-        podeEditarFichaDeSaude={can(ctx, 'medical_records', 'MANAGE') && canViewRecords}
-        fichaDeSaudeAtual={noProntuario ? fichaDeSaudeDaRede : null}
-        alergias={alergias}
-        fidelidade={fidelidade}
-        activePackage={activePackage}
-        transactions={transactions}
-        veFinanceiro={veFinanceiro}
-        totaisFinanceiros={financeiro.totais}
-        internalCredits={internalCredits}
-        documents={documents}
-        termos={veTermos
-          ? { itens: termosItens, podeDispensar: dispensaDocumentos(ctx), pelaConversa, portalNoPlano: temRecurso(ctx, 'portal') }
-          : null}
-        canGrantCredit={ctx.permissions.financial === 'MANAGE'}
-        branches={(branchesRaw ?? []) as { id: string; name: string }[]}
-        currentBranchId={perguntaAUnidade ? '' : branchId}
-        slug={slug}
-        canManageProcedures={can(ctx, 'medical_records', 'MANAGE')}
-        // Anexo clínico: o Prontuário em Gerenciar (e em Ver).
-        podeAnexarClinico={can(ctx, 'medical_records', 'MANAGE') && canViewRecords}
-        podeAnexarComum={can(ctx, 'clients', 'MANAGE')}
-        portalNoPlano={temRecurso(ctx, 'portal')}
-        planProcedures={planoProcs.procedures}
-        planProducts={planoProcs.products}
-        podeReceber={podeReceber(ctx)}
-        // UM3: monta o plano quem tem o Atendimento em Gerenciar na unidade;
-        // sem a unidade escolhida, o Atendimento em Gerenciar basta, e a gravação confere.
-        podeMontarPlano={montaPlano(ctx, unidadeDoPlano?.id ?? null)}
-        // Os injetáveis são de quem realiza o atendimento (o Heitor, 2026-11-23).
-        podeEditarInjetaveis={can(ctx, 'atendimento', 'MANAGE') && canViewRecords}
-        // O plano novo nasce na unidade escolhida (com duas ou mais, a ficha pergunta).
-        unidadeDoPlano={unidadeDoPlano?.id ?? ''}
-        unidadesDoPlano={perguntaAUnidade ? unidadesAtivas.map(u => ({ id: u.id, name: u.name })) : []}
-        aReceber={aReceber}
-        comandaParaReceber={comandaParaReceber}
-        planosNaoRecebidos={planosNaoRecebidos}
-        podeReceberAtendimento={podeReceber(ctx)}
-        perguntaAUnidade={perguntaAUnidade}
-        prePagos={prePagos}
-        podeAgendar={can(ctx, 'agenda', 'MANAGE')}
-        podeEditarCadastro={can(ctx, 'clients', 'MANAGE')}
-        // A10 da 20ª: sem editar, o aviso do que falta diz quem completa o cadastro.
-        quemCompletaOCadastro={can(ctx, 'clients', 'MANAGE') ? null : await quemCompletaOCadastro(ctx.tenantId!, null)}
-        podeExportarProntuario={can(ctx, 'medical_records', 'MANAGE')}
-        podeVerPlanos={can(ctx, 'atendimento', 'VIEW')}
-        podeIniciarAtendimento={can(ctx, 'atendimento', 'MANAGE')}
-      podeCancelarPacote={podeEstornar(ctx)}
-      pacoteVencido={pacoteVencido}
-        podeRemarcar={can(ctx, 'financial', 'MANAGE')}
-        // A32 e A35 da 12ª: estornar (o Financeiro em Gerenciar) e receber a parcela na ficha — quem dá baixa (CX2: o PDV ou o Financeiro em Gerenciar, `podeDarBaixa`, a mesma régua de markTransactionPaid).
-        podeEstornar={podeEstornar(ctx)}
-        podeReceberParcela={podeDarBaixa(ctx)}
-        quemDesfaz={quemDesfaz}
-        pagoComCredito={pagoComCredito}
-        isNetworkWide={ctx.branchId === null}
-        clientHistory={clientHistory}
-        opportunities={oportunidades}
-        // CRM-03 (18/11): as oportunidades são dado do CRM — sem ele (ou fora do plano), a aba some.
-        veOportunidades={can(ctx, 'crm', 'VIEW') && temRecurso(ctx, 'oportunidades')}
-      />
+      {soProntuario ? <ClientProfile {...soOProntuarioDaFicha(ficha.props as ClientProfileProps)} /> : ficha}
     </>
   )
 }

@@ -79,7 +79,8 @@ export const temOutrasFormas = (p: PagamentoDoPlano | null | undefined): p is Ex
  * (`rotuloDaForma` — D18, 2026-10-29: dizia "3x em CREDIT_CARD").
  */
 export function rotuloDoPagamento(p: PagamentoDoPlano | null): string {
-  if (!p)                      return 'em aberto, a receber no atendimento'
+  // PV-01 (o Heitor, 2026-11-13): o pagamento acontece no PDV, seja do que for.
+  if (!p)                      return 'em aberto, a receber no PDV'
   // D1 da 18ª: dividido, cada forma com o valor dela ("Crédito 3x R$ 1.000,00 + Pix R$ 596,00").
   if (temOutrasFormas(p))      return partesQuePagamAgora(p).map(x => `${rotuloDaForma(x.metodo, x.vezes)} ${formatBRL(x.valor)}`).join(' + ')
   if (p.forma === 'AVISTA')    return vezesNoCartao(p) > 1 ? rotuloDaForma(p.metodo, vezesNoCartao(p)) : `${rotuloDaForma(p.metodo)} à vista`
@@ -201,7 +202,7 @@ function valoresSemDesconto(p: PagamentoDoPlano | null, total: number): Record<s
     'pagamento.valor_parcela': null, 'pagamento.primeiro_vencimento': null,
   }
   if (!p) {
-    return { ...vazio, 'pagamento.forma': `${formatBRL(total)}, a receber no atendimento` }
+    return { ...vazio, 'pagamento.forma': `${formatBRL(total)}, a receber no PDV` }
   }
   if (temOutrasFormas(p)) {
     const meios = partesQuePagamAgora(p).map(x => metodo(x.metodo)).filter((m, i, xs): m is string => !!m && xs.indexOf(m) === i)

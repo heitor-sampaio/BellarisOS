@@ -345,15 +345,18 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   // O quadro é do módulo Clientes: na vista pessoal da agenda (os cartões com
   // o núcleo dela), ele pede o da unidade.
   const doQuadro = canClients && professionalOnly ? await getCore(janela) : core
+  // DB-01 (VP-01; o Heitor, 23/11: "as vistas pessoais resolvem"): quem atende
+  // sem a Agenda vê as etapas da Agenda com os números DELA (o núcleo dela).
+  const agendaDoQuadro = professionalOnly ? core : doQuadro
   const funnel = [
     // "Novos clientes" só na rede (o Heitor, 18/11: "o cliente é da rede"): na
     // unidade da rede de duas ou mais o número não existe (nulo) e a etapa sai.
     ...(doQuadro.newClients === null ? [] : [{ label: 'Novos clientes', count: doQuadro.newClients, color: 'var(--brand)' }]),
     // A12 da 16ª: a conta é até agora; a etapa diz também os de hoje que ainda vêm.
-    { label: 'Agendamentos',      count: doQuadro.appointmentsTotal,     color: 'var(--brand-2)',
+    { label: 'Agendamentos',      count: agendaDoQuadro.appointmentsTotal,     color: 'var(--brand-2)',
       nota: aindaHoje > 0 ? `${aindaHoje} ainda hoje` : undefined },
-    { label: 'Concluídos',        count: doQuadro.appointmentsCompleted, color: 'var(--brand-3)' },
-    { label: 'Cancelados/faltas', count: doQuadro.appointmentsCancelled + doQuadro.appointmentsNoShow, color: 'var(--border)' },
+    { label: 'Concluídos',        count: agendaDoQuadro.appointmentsCompleted, color: 'var(--brand-3)' },
+    { label: 'Cancelados/faltas', count: agendaDoQuadro.appointmentsCancelled + agendaDoQuadro.appointmentsNoShow, color: 'var(--border)' },
   ]
 
   // -- Reativar clientes -----------------------------------------
@@ -386,7 +389,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   // mesma conta do cartão "Validade em 30 dias" do Estoque.
   const lotesVencendo = perm.stock !== 'NONE'
     ? (await lotesVencendoDoRecorte(ctx.tenantId!, [branchId], 30, now)).map(l => ({
-        id: l.id, produto: l.produto, numero: l.numero, validade: l.validade, quantidade: l.quantidade, embalagem: l.embalagem,
+        id: l.id, produto: l.produto, numero: l.numero, validade: l.validade, quantidade: l.quantidade, embalagem: l.embalagem, saldo: l.saldo,
         href: `/${slug}/estoque`,
       }))
     : []
@@ -713,11 +716,16 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
             titulo="Clientes no mês"
             // A10 da 13ª: o quadro diz o seu recorte. A cliente é da REDE (o Heitor,
             // 18/11): na unidade da rede de duas ou mais não há "novas clientes".
-            subtitulo={doQuadro.newClients === null
-              ? 'Os agendamentos da unidade, neste mês, até agora'
-              : 'Novas clientes da rede e os agendamentos, neste mês, até agora'}
-            // A32 da 24ª: sem a Agenda, sem as etapas da agenda (eram zeros).
-            etapas={etapasDoQueOCargoVe(funnel, canAgenda)}
+            // DB-01: na vista pessoal, os agendamentos são os DELA (e o subtítulo diz).
+            subtitulo={professionalOnly
+              ? (doQuadro.newClients === null
+                ? `Os seus agendamentos${nasUnidades(unidadesDaAgenda)}, neste mês, até agora`
+                : `Novas clientes da rede e os seus agendamentos${nasUnidades(unidadesDaAgenda)}, neste mês, até agora`)
+              : doQuadro.newClients === null
+                ? 'Os agendamentos da unidade, neste mês, até agora'
+                : 'Novas clientes da rede e os agendamentos, neste mês, até agora'}
+            // A32 da 24ª: sem a Agenda (nem a vista pessoal dela), sem as etapas da agenda (eram zeros).
+            etapas={etapasDoQueOCargoVe(funnel, mostraAgenda)}
           />
         )}
 

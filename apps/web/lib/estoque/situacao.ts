@@ -139,6 +139,20 @@ export function formatarQuantidadeComUnidade(q: Quantidade): string {
 }
 
 /**
+ * O saldo de um LOTE como a tela o escreve (D13 da 28ª, ES-19: "o saldo aparece
+ * na unidade de consumo com o equivalente exato em embalagens"): o lote guarda
+ * embalagens (0,7334 frasco), e o dashboard e os Relatórios diziam "0,73 frasco"
+ * e "0.7334", sem os 22 ml. Com unidade de consumo: "22 ml · 0,73 frasco"; sem
+ * ela, só a embalagem ("2 frascos").
+ */
+export function saldoDoLoteNaTela(embalagens: number, p: MedidasDoProduto): string {
+  const emEmbalagem = formatarQuantidadeComUnidade({ quantidade: embalagens, unidade: p.unit })
+  const upp = rendePorEmbalagem(p)
+  if (!upp) return emEmbalagem
+  return `${formatarQuantidadeComUnidade({ quantidade: embalagens * upp, unidade: p.consumption_unit!.trim() })} · ${emEmbalagem}`
+}
+
+/**
  * O que o GIRO do Estoque conta (A13 da 9ª simulação, 2026-11-07): o insumo
  * dos ATENDIMENTOS no mês, ao custo do movimento (`metrics_giro_estoque`). A
  * venda de produto fica de fora — o custo dela entra em "Insumos e produtos

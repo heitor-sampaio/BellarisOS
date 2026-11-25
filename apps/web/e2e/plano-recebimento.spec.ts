@@ -1,30 +1,33 @@
-import { test, expect, type Request } from '@playwright/test'
+import { test, expect } from '@playwright/test'
 import { banco, tenantId, unidadeQueAtende, PREFIXO } from './apoio/banco'
-import { capturarAcao, reenviarAcao } from './apoio/acao'
+import { chamarAcao } from './apoio/acao-direta'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { apagarClientes } from './apoio/limpeza'
 
 /**
- * Receber o plano de tratamento no check-in, pela tela do atendimento.
+ * O saldo do plano de tratamento: a tela do atendimento DIZ, o PDV RECEBE.
  *
- * O plano aceito "a receber" (sem cobrança no checkout) fica em aberto, e é na
- * primeira sessão que a recepção recebe. Até 2026-09-27 nenhum teste passava
- * por aqui. O cenário: R$ 300 em aberto; recebe entrada de R$ 100 + 2× e,
- * depois, quita o saldo à vista.
+ * O plano aceito "a receber" fica em aberto. Até a 28ª simulação a tela do
+ * atendimento tinha a própria janela de receber o plano no check-in (o
+ * `receberDoPlano`); saiu pelas regras do PDV — o Heitor, 13/11 (PV-01): "o
+ * pagamento acontece por dentro desse PDV, seja do que for"; a tela do
+ * atendimento não recebe (AT-13, PV-13); do plano, o PDV cobra só o que venceu
+ * (DP-06). O cenário: R$ 300 em aberto, que a tela do atendimento mostra com o
+ * "Receber no PDV" e o PDV da cliente recebe; depois, duas parcelas combinadas
+ * (a vencer: a tela só informa) e uma que venceu (volta a aparecer).
  *
- * E a trava achada no mapeamento: o agendamento passado junto só serve para o
- * histórico — e tem de ser DESTE plano. Antes, qualquer id servia, e o
- * histórico de um atendimento de outra rede ganhava "Plano recebido".
+ * E a trava: o lançamento de OUTRA rede não se recebe pelo id (era a prova de
+ * que o histórico de um atendimento alheio não ganhava o recebimento — o
+ * caminho novo não escreve histórico; a trava é a do lançamento).
  */
 
 const marca = Date.now().toString(36)
 
-interface Cenario { cliente: string; plano: string; appt: string; apptAlheio: string }
+interface Cenario { cliente: string; plano: string; appt: string; unidade: string; txAlheio: string }
 
-test.describe.serial('receber o plano no atendimento', () => {
+test.describe.serial('o saldo do plano: a tela do atendimento diz, o PDV recebe', () => {
   let c: Cenario | null = null
   let outra: OutraRede | null = null
-  let recebimento: Request | null = null
 
   test.beforeAll(async () => {
     const db = banco()
@@ -43,11 +46,9 @@ test.describe.serial('receber o plano no atendimento', () => {
     const cliente = await ins('clients', { tenant_id: tenant, branch_id: unidade!.id, name: `${PREFIXO} Cliente recebimento ${marca}`, phone: '5548' + String(Date.now()).slice(-9) })
     await db.from('loyalty_accounts').upsert({ client_id: cliente }, { onConflict: 'client_id' })
     const plano = await ins('treatment_plans', { branch_id: unidade!.id, professional_id: prof!.id, client_id: cliente, status: 'ACCEPTED', name: `${PREFIXO} Plano recebimento ${marca}` })
-    // Como o checkout "receber no atendimento" deixa: o total a receber.
     await ins('financial_transactions', {
       branch_id: unidade!.id, client_id: cliente, treatment_plan_id: plano, type: 'INCOME', category: 'Serviços',
-      description: 'Plano de tratamento — checkout novo paciente', amount: 300, is_paid: false,
-      notes: 'Plano aceito — a receber no check-in', created_by: 'e2e',
+      description: 'Plano de tratamento', amount: 300, is_paid: false, created_by: 'e2e',
     })
     const appt = await ins('appointments', {
       branch_id: unidade!.id, client_id: cliente, procedure_id: proc!.id, professional_id: prof!.id,
@@ -56,11 +57,11 @@ test.describe.serial('receber o plano no atendimento', () => {
 
     outra = await criarOutraRede(`rec${marca}`)
     const alheio = await outra.criarCliente('Cliente alheio recebimento')
-    const apptAlheio = await ins('appointments', {
-      branch_id: outra.branchId, client_id: alheio, procedure_id: outra.procedureId, professional_id: outra.professionalId,
-      scheduled_at: new Date().toISOString(), duration_min: 30, price: 0, status: 'SCHEDULED',
+    const txAlheio = await ins('financial_transactions', {
+      branch_id: outra.branchId, client_id: alheio, type: 'INCOME', category: 'Serviços',
+      description: `${PREFIXO} a receber alheio ${marca}`, amount: 50, is_paid: false, created_by: 'e2e',
     })
-    c = { cliente, plano, appt, apptAlheio }
+    c = { cliente, plano, appt, unidade: unidade!.id, txAlheio }
   })
 
   test.afterAll(async () => {
@@ -69,76 +70,55 @@ test.describe.serial('receber o plano no atendimento', () => {
     expect(falhas).toEqual([])
   })
 
-  test('entrada + parcelas; o check-in só cobra o que venceu', async ({ page }) => {
+  test('a tela do atendimento mostra o saldo e leva ao PDV; o PDV recebe; o combinado só se informa', async ({ page }) => {
     const db = banco()
     await page.goto(`/admin/agenda/${c!.appt}`)
-    await expect(page.getByText(/em aberto R\$\s300,00/)).toBeVisible()
+    const saldo = page.locator('[data-plano-em-aberto]')
+    await expect(saldo).toContainText(/em aberto R\$\s300,00/)
+    await expect(page.getByRole('button', { name: /Receber R\$/ }), 'a tela do atendimento não recebe (AT-13)').toHaveCount(0)
+    const ir = saldo.getByRole('link', { name: 'Receber no PDV' })
+    await expect(ir).toHaveAttribute('href', new RegExp(`/pdv\\?.*cliente=${c!.cliente}`))
+    await ir.click()
 
-    await page.getByRole('button', { name: /Receber R\$\s300,00/ }).click()
-    const modal = page.locator('div')
-      .filter({ has: page.getByText('Receber o plano de tratamento') })
-      .filter({ has: page.getByRole('button', { name: 'Confirmar recebimento' }) }).last()
-    await modal.getByRole('radio', { name: 'Crediário', exact: true }).click()
-    const numeros = modal.locator('input[type="number"]')
-    await numeros.nth(0).fill('100')   // Entrada (R$)
-    // A37 (6ª simulação) e PDV8: a forma da entrada nasce vazia.
-    await modal.getByLabel('Forma da entrada').selectOption('PIX')
-    // C38 (F67): as parcelas são um seletor, até o limite do crediário da rede.
-    await modal.getByLabel('Parcelas', { exact: true }).selectOption('2')
-    const chamada = capturarAcao(page, corpo => corpo.includes(c!.plano) && corpo.includes(c!.appt))
-    await modal.getByRole('button', { name: 'Confirmar recebimento' }).click()
-    recebimento = await chamada
-
+    const emAberto = page.getByRole('region', { name: 'Vender' }).locator('[data-parcela-em-aberto]', { hasText: 'R$ 300,00' })
+    await emAberto.getByRole('button', { name: 'Receber esta parcela' }).click()
+    const janela = page.getByRole('dialog', { name: 'Receber a parcela' })
+    await janela.getByRole('radio', { name: 'Pix', exact: true }).click()
+    await janela.getByRole('button', { name: /^Receber R\$\s300,00$/ }).click()
     await expect.poll(async () => {
-      const { data } = await db.from('financial_transactions').select('amount, is_paid')
-        .eq('treatment_plan_id', c!.plano).gt('amount', 0).order('created_at')
-      return (data ?? []).map(t => `${Number(t.amount)}:${t.is_paid}`).sort()
-    }, { message: 'entrada paga e CADA parcela a receber; o lançamento antigo zera' }).toEqual(['100:false', '100:false', '100:true'])
+      const { data } = await db.from('financial_transactions').select('amount, is_paid, payment_method')
+        .eq('treatment_plan_id', c!.plano).gt('amount', 0)
+      return (data ?? []).map(t => `${Number(t.amount)}:${t.is_paid}:${t.payment_method}`)
+    }, { message: 'o PDV recebeu o saldo do plano' }).toEqual(['300:true:PIX'])
 
-    const { data: parcelas } = await db.from('financial_transactions').select('parcela_numero, parcela_total, amount, description')
-      .eq('treatment_plan_id', c!.plano).eq('is_paid', false).gt('amount', 0).order('parcela_numero')
-    expect(parcelas!.map(p => `${p.parcela_numero}/${p.parcela_total}:${Number(p.amount)}`)).toEqual(['1/2:100', '2/2:100'])
-    expect(parcelas!.every(p => /— parcela \d\/2$/.test(p.description as string)), 'a descrição diz qual parcela').toBe(true)
+    // Duas parcelas combinadas, a vencer no mês que vem: a tela só informa.
+    const mesQueVem = new Date(Date.now() + 30 * 86_400_000).toISOString()
+    for (const n of [1, 2]) {
+      expect((await db.from('financial_transactions').insert({
+        branch_id: c!.unidade, client_id: c!.cliente, treatment_plan_id: c!.plano, type: 'INCOME', category: 'Serviços',
+        description: `Plano de tratamento — parcela ${n}/2`, amount: 100, is_paid: false, due_date: mesQueVem,
+        parcela_numero: n, parcela_total: 2, created_by: 'e2e',
+      })).error).toBeNull()
+    }
+    await page.goto(`/admin/agenda/${c!.appt}`)
+    await expect(saldo).toContainText(/R\$\s200,00 a vencer/)
+    await expect(saldo.getByRole('link', { name: 'Receber no PDV' }), 'nada venceu: nada a receber').toHaveCount(0)
 
-    const { data: hist } = await db.from('appointment_history').select('action, description').eq('appointment_id', c!.appt).eq('action', 'PAYMENT_CONFIRMED')
-    expect(hist?.[0]?.description, 'o recebimento entra no histórico da sessão').toMatch(/Plano de tratamento recebido/)
-
-    // As parcelas vencem a partir do mês que vem: já estão COMBINADAS, e o
-    // check-in não as cobra de novo (a simulação de 2026-10-20 viu "Receber
-    // R$ 600" num plano parcelado). O banner só informa o que vai vencer.
-    await page.reload()
-    await expect(page.getByText(/R\$\s200,00 a vencer/)).toBeVisible()
-    await expect(page.getByRole('button', { name: /^Receber R\$/ })).toHaveCount(0)
-
-    // Uma parcela que VENCEU volta a ser cobrada no check-in — só ela.
+    // A parcela que VENCEU volta a aparecer — só ela.
     const ontem = new Date(Date.now() - 86_400_000).toISOString()
     await db.from('financial_transactions').update({ due_date: ontem })
       .eq('treatment_plan_id', c!.plano).eq('parcela_numero', 1).eq('is_paid', false)
     await page.reload()
-    await expect(page.getByText(/em aberto R\$\s100,00/)).toBeVisible()
-    await page.getByRole('button', { name: /Receber R\$\s100,00/ }).click()
-    await page.getByRole('radio', { name: 'Pix', exact: true }).click()
-    await page.getByRole('button', { name: 'Confirmar recebimento' }).click()
-    await expect.poll(async () => {
-      const { data } = await db.from('financial_transactions').select('parcela_numero')
-        .eq('treatment_plan_id', c!.plano).eq('is_paid', false).gt('amount', 0)
-      return (data ?? []).map(t => t.parcela_numero)
-    }, { message: 'à vista quita só o vencido; a parcela de depois continua a vencer' }).toEqual([2])
+    await expect(saldo).toContainText(/em aberto R\$\s100,00/)
+    await expect(saldo).toContainText(/Mais R\$\s100,00 a vencer/)
+    await expect(saldo.getByRole('link', { name: 'Receber no PDV' })).toBeVisible()
   })
 
-  test('o histórico de um atendimento de outra rede não ganha o recebimento', async ({ page }) => {
+  test('o lançamento de outra rede não se recebe pelo id', async ({ page }) => {
     const db = banco()
-    // Volta a haver algo em aberto, para a action passar da conferência de saldo.
-    const { data: base } = await db.from('treatment_plans').select('branch_id, client_id').eq('id', c!.plano).single()
-    await db.from('financial_transactions').insert({
-      branch_id: base!.branch_id, client_id: base!.client_id, treatment_plan_id: c!.plano, type: 'INCOME',
-      category: 'Serviços', description: `${PREFIXO} reaberto`, amount: 50, is_paid: false, created_by: 'e2e',
-    })
-    await page.goto(`/admin/agenda/${c!.appt}`)
-    await reenviarAcao(page, recebimento!, [[c!.appt, c!.apptAlheio]])
-    const { data: histLa } = await db.from('appointment_history').select('id').eq('appointment_id', c!.apptAlheio)
-    expect(histLa ?? [], 'nada no histórico do atendimento de outra rede').toHaveLength(0)
-    const { data: aberto } = await db.from('financial_transactions').select('amount').eq('description', `${PREFIXO} reaberto`).single()
-    expect(Number(aberto!.amount), 'recusado inteiro: o que estava em aberto não mexe').toBe(50)
+    const r = await chamarAcao(page, 'actions/pdv.ts', 'receberParcelaNoPdv', '/admin/pdv', [c!.txAlheio, '', { forma: 'PIX' }])
+    expect(r.texto).toContain('Lançamento não encontrado.')
+    const { data } = await db.from('financial_transactions').select('is_paid, payment_method').eq('id', c!.txAlheio).single()
+    expect(data, 'recusado inteiro: o de outra rede não mexe').toEqual({ is_paid: false, payment_method: null })
   })
 })

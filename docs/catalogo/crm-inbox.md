@@ -1,6 +1,6 @@
 # Catálogo de regras — Clientes, CRM e inbox
 
-Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE: o cadastro e a ficha da cliente, a lista de Clientes, as tags, o portal e o app da cliente (no que é dado e cadastro dela), a LGPD, as Importações, o contato, a conversa e o inbox, e as oportunidades, os funis e o quadro. Cada regra diz a fonte: uma fala do Heitor (copiada letra por letra do documento), uma recomendação do Claude que o Heitor aprovou (com a resposta dele), um dos sete princípios de produto, ou "decisão do Claude". "Atribuída ao Heitor sem a fala" quer dizer que o texto diz que a decisão é dele, mas não traz a fala — está nas Perguntas. "Onde" aponta a linha do documento; "Antes" lista os números do rascunho que a regra junta. É um RASCUNHO para o Heitor revisar. Contagem: 141 regras (Clientes 26, Tags 13, Portal e app da cliente 13, LGPD 13, Importações 23, Contato, conversa e inbox 17, Oportunidades, funis e quadro 36), 15 perguntas e 24 divergências. Dos 332 números do rascunho, 4 ficaram fora do catálogo e 2 são de outra área (ver os apêndices); todos os outros estão num "Antes". A meta era ~140. O "só os meus" saiu em 23/11: nenhuma regra daqui o usa; o que os rascunhos ainda diziam com ele foi reescrito como a regra de hoje (Ver vê tudo, Gerenciar mexe em tudo, dentro da abrangência; quem quer só as suas usa o filtro de responsável).
+Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE: o cadastro e a ficha da cliente, a lista de Clientes, as tags, o portal e o app da cliente (no que é dado e cadastro dela), a LGPD, as Importações, o contato, a conversa e o inbox, e as oportunidades, os funis e o quadro. Cada regra diz a fonte: uma fala do Heitor (copiada letra por letra do documento), uma recomendação do Claude que o Heitor aprovou (com a resposta dele), um dos sete princípios de produto, ou "decisão do Claude". "Atribuída ao Heitor sem a fala" quer dizer que o texto diz que a decisão é dele, mas não traz a fala — está nas Perguntas. "Onde" aponta a linha do documento; "Antes" lista os números do rascunho que a regra junta. É um RASCUNHO para o Heitor revisar. Contagem: 142 regras (Clientes 26, Tags 13, Portal e app da cliente 14, LGPD 13, Importações 23, Contato, conversa e inbox 17, Oportunidades, funis e quadro 36), 15 perguntas e 24 divergências. Dos 332 números do rascunho, 4 ficaram fora do catálogo e 2 são de outra área (ver os apêndices); todos os outros estão num "Antes". A meta era ~140. O "só os meus" saiu em 23/11: nenhuma regra daqui o usa; o que os rascunhos ainda diziam com ele foi reescrito como a regra de hoje (Ver vê tudo, Gerenciar mexe em tudo, dentro da abrangência; quem quer só as suas usa o filtro de responsável).
 
 ## Clientes (CL)
 
@@ -111,9 +111,9 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/regras/crm-inbox.md:349-351`; `DEVLOG.md:2202`
 - Antes: KA-67
 
-**CL-20.** A lista filtra por Situação (Ativos, Novos, Inativos ou Aniversariantes do mês — escolha uma) e por Tags (várias); não há segmento fixo "VIP": VIP é uma tag como as outras. "Aniversariantes de <mês>" mostra as ativas que fazem aniversário no mês corrente (horário de Brasília), em ordem de dia, com "Aniversário dia DD/MM", nos dois portais.
-- Fonte: decisão do Claude
-- Onde: `docs/regras/crm-inbox.md:443`, `:467`
+**CL-20.** A lista filtra por Situação (Ativos, Novos, Arquivadas ou Aniversariantes de <mês> — escolha uma) e por Tags (várias); não há segmento fixo "VIP": VIP é uma tag como as outras. "Arquivadas" é o nome da ação da ficha (era "Inativos"). "Aniversariantes de <mês>" mostra as ativas que fazem aniversário no mês corrente (horário de Brasília), em ordem de dia, com "Aniversário dia DD/MM", nos dois portais.
+- Fonte: decisão do Claude; o "Arquivadas": princípio 3 (J-23 — o filtro tem o nome da ação da ficha)
+- Onde: `docs/regras/crm-inbox.md:443`, `:467`; `apps/web/components/branch/clients-sidebar.tsx:141-148`
 - Antes: KB-05, KB-06
 
 ### A ficha
@@ -128,9 +128,9 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/regras/crm-inbox.md:481`
 - Antes: KB-24
 
-**CL-23.** As abas da ficha seguem a permissão: Prontuário com o Prontuário em Ver; Financeiro (os pagamentos e o crédito interno) com o Financeiro em Ver ou quem pode receber; Oportunidades com o CRM em Ver (e as oportunidades no plano), com todas as da cliente — se a leitura falha, diz "Não consegui ler as oportunidades desta cliente.". Os indicadores da Visão geral (LTV, ticket) ficam para todos. A aba que o cargo não abre avisa em vez de cair calada em outra ("Seu cargo não abre a aba Prontuário desta ficha: abrimos a Visão geral.").
-- Fonte: decisão do Claude
-- Onde: `docs/regras/crm-inbox.md:484-486`, `:593-596`, `:1679`
+**CL-23.** As abas da ficha seguem a permissão: Prontuário com o Prontuário em Ver; Financeiro (os pagamentos e o crédito interno) com o Financeiro em Ver ou quem pode receber; Oportunidades com o CRM em Ver (e as oportunidades no plano), com todas as da cliente — se a leitura falha, diz "Não consegui ler as oportunidades desta cliente.". Os indicadores da Visão geral (LTV, ticket) ficam para todos. A aba que a pessoa não abre avisa em vez de cair calada em outra, e diz onde ela está ("Suas permissões não abrem a aba Prontuário desta ficha. Você está na Visão geral.").
+- Fonte: decisão do Claude; o texto do aviso: decisão do Claude (16/11 — o aviso fala em permissão e diz onde a pessoa está, como o CU-08 das Configurações)
+- Onde: `docs/regras/crm-inbox.md:484-486`, `:593-596`, `:1679`; `apps/web/lib/clients/aba-fechada.ts:6`
 - Antes: KB-25, KB-26, KB-27, KE-39
 
 **CL-24.** Quem tem Clientes só em Ver não cadastra nem edita: o inbox não oferece "Cadastrar cliente" nem o "Vender" de quem não tem ficha, o quadro não oferece o cadastro, e a ficha mostra a aba Dados e as anotações só para ler (sem "Salvar dados", sem "Dar acesso ao app", com a frase "Seu cargo só consulta o cadastro") e sem "Mais ações". Se tentar pela action, recebe a recusa.
@@ -269,9 +269,9 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/regras/crm-inbox.md:241`
 - Antes: KA-48
 
-**PO-11.** No plano, cada sessão "A agendar" diz quem marca — "A agendar · pelo app" ou "A agendar · quem marca é a equipe" — e o resumo separa as duas.
+**PO-11.** No plano, cada sessão "A agendar" diz quem marca — "A agendar · pelo app" ou "A agendar · quem marca é a equipe" — e o resumo separa as duas: "Sessão N: agende pelo app em “Agendar” (faz parte do seu plano)." e "Sessão N: quem marca é a equipe — fale com ela para escolher o dia.".
 - Fonte: princípio 3
-- Onde: `docs/regras/crm-inbox.md:263`
+- Onde: `docs/regras/crm-inbox.md:263`; `apps/web/lib/plano-de-tratamento/textos.ts:108-112`
 - Antes: KA-51
 
 **PO-12.** A sessão do plano ACEITO se agenda pelo app mesmo com o procedimento fora do "Permitir auto agendamento"; só a sessão de procedimento INATIVO fica com a equipe.
@@ -279,10 +279,15 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/regras/crm-inbox.md:273`
 - Antes: KA-52
 
-**PO-13.** No app: o "Confirmar" avisa antes quando o horário fica dentro do prazo de alteração da rede (o agendamento continua permitido); com duas ou mais unidades, o próximo agendamento do Início e cada atendimento do Histórico dizem a unidade; no Histórico a nota dada se lê ("4/5"), "Aguardando sua confirmação" diz que é opcional ("Confirmar e avaliar (opcional)"), e a nota do procedimento tem nome próprio ("Procedimento: <nome>").
-- Fonte: princípio 3
-- Onde: `docs/regras/crm-inbox.md:279-293`
+**PO-13.** No app: o "Confirmar" avisa antes quando o horário fica dentro do prazo de alteração da rede (o agendamento continua permitido); com duas ou mais unidades, o próximo agendamento do Início e cada atendimento do Histórico dizem a unidade; o atendimento já feito, à espera de que a cliente o confirme, fica no Início em "Como foram os seus atendimentos?" (que é opcional está na dica "Sobre a avaliação"); no Histórico a nota dada se lê ("4/5"), o botão diz que é opcional ("Confirmar e avaliar (opcional)"), e a nota do procedimento tem nome próprio ("Procedimento: <nome>").
+- Fonte: princípio 3; o título "Como foram os seus atendimentos?": decisão do Claude (A56 da 12ª — "Aguardando sua confirmação" se lia como confirmar presença)
+- Onde: `docs/regras/crm-inbox.md:279-293`; `apps/web/app/[slug]/cliente/home/page.tsx:370-376`; `apps/web/components/client-portal/historico-tabs.tsx:177`
 - Antes: KA-53, KA-54, KA-55, KA-56
+
+**PO-14.** O documento que o sistema de login recusa como senha (a proteção contra senha vazada recusa o passaporte, o RNE ou o CPF fácil de adivinhar) não impede o acesso: o login nasce com uma senha aleatória forte que ninguém recebe (provisória), a ficha é ligada, e a cliente recebe o e-mail "Defina sua senha" — o caminho do "Esqueci a senha". A tela diz isso a quem cadastrou.
+- Fonte: o Heitor, 2026-11-24, à R1 da 27ª simulação: "E-mail para criar a senha" (registrada em `docs/regras/crm-inbox.md:44-45`)
+- Onde: `docs/regras/crm-inbox.md:42-52`
+- Antes: (sem número: `docs/inventario/leitura.md` §4)
 
 ## LGPD (LG)
 
@@ -326,9 +331,9 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/regras/crm-inbox.md:610-612`, `:711-712`
 - Antes: KB-39, KB-40, KC-07, KC-08
 
-**LG-09.** O pedido feito pelo app avisa no sino quem responde — quem tem Configurações em Gerenciar da rede toda e a Admin da rede — com o prazo e o "Abrir" da aba. A Visão geral da ficha mostra o pedido: o em aberto, com "responder até …"; o entregue nos últimos 30 dias, com "o pacote já está no app dela"; a quem responde, o link para a aba LGPD.
-- Fonte: decisão do Claude
-- Onde: `docs/regras/crm-inbox.md:641-645`
+**LG-09.** O pedido feito pelo app avisa no sino quem responde — quem tem Clientes em Gerenciar e a Admin da rede; com o prontuário no pacote, também quem tem o Prontuário em Gerenciar (é quem o libera) — com o prazo e o "Abrir" da aba LGPD (a da unidade principal, para quem tem só unidades). A Visão geral da ficha mostra o pedido: o em aberto, com "responder até …"; o entregue nos últimos 30 dias, com "o pacote já está no app dela"; a quem responde, o link para a aba LGPD.
+- Fonte: decisão do Claude; quem é avisado: a revisão de 24/11 (Q09 desta área — quem responde é quem tem Clientes em Gerenciar, porque a cliente é da rede)
+- Onde: `docs/regras/crm-inbox.md:641-645`, `:665-673`; `apps/web/lib/lgpd/aviso-do-pedido.ts:22-45`
 - Antes: KB-41, KB-42
 
 **LG-10.** Quem tem Clientes em Gerenciar exporta os dados da cliente pela ficha ("Mais ações" → "Exportar dados (LGPD)"): o mesmo pacote, preparado em segundo plano, com o download na janela (link de 10 minutos); o pedido fica registrado com quem o fez, e não aparece nos pedidos da cliente no app nem na Visão geral. O prontuário só entra com o Prontuário em Gerenciar (o pedido já nasce liberado e o acesso ao prontuário fica registrado; baixar o pacote com prontuário pede o mesmo). A sessão de suporte não exporta.
@@ -370,9 +375,9 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/regras/crm-inbox.md:776`, `:810`, `:1021`
 - Antes: KC-17, KC-28
 
-**IM-04.** Ler, retomar e baixar o relatório de uma importação pedem o módulo do destino dela, sem recorte por unidade, também nas de clientes; a aba mostra as "Importações anteriores" que a pessoa alcança, com o placar e o relatório enquanto ele vale.
-- Fonte: o Heitor, 2026-11-13 (H16): "o cliente não é da unidade, o cliente é da rede"
-- Onde: `docs/regras/crm-inbox.md:929`, `:1036`
+**IM-04.** O histórico das Importações também é só da Admin da rede: ler as "Importações anteriores" (com o placar), acompanhar, retomar e baixar o relatório enquanto ele vale. As Importações são configuração da rede toda, e o relatório traz dados pessoais.
+- Fonte: a revisão de 24/11 (Q10 desta área), pela regra da configuração da rede: o Heitor, 2026-11-18: "Configuração da rede toda só pela conta admin" (CLAUDE.md §11)
+- Onde: `docs/regras/crm-inbox.md:929`, `:1036`; `apps/web/tests/importacao-historico-so-da-admin.test.ts`
 - Antes: KC-18, KC-50
 
 ### O destino e os campos
@@ -769,7 +774,7 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 
 ## Perguntas ao Heitor
 
-Revisão de 24/11 (o Heitor, 24/11: "da uma revisada se as perguntas realmente faz sentido, as vezes tu me perguntas que são coisas obvias e se resolvem fácil com um pouco de logica sobre o contexto"). Fica na página só a Q12 (a automação pode tirar uma tag?): a sua fala de 13/11 aceita as duas leituras. As outras se resolveram por uma regra dele, um princípio ou a lógica do contexto; cada uma diz como, no começo.
+Revisão de 24/11 (o Heitor, 24/11: "da uma revisada se as perguntas realmente faz sentido, as vezes tu me perguntas que são coisas obvias e se resolvem fácil com um pouco de logica sobre o contexto"). Fica na página só a Q12 (a automação pode tirar uma tag?): a sua fala de 13/11 aceita as duas leituras. As outras se resolveram por uma regra dele, um princípio ou a lógica do contexto; cada uma diz como, no começo. Revisão de 25/11 (o Heitor, 24/11: "Em teoria não é pra ter pergunta de regra e de escopo, as regras já foram definidas e o escopo também."): a Q12 foi decidida pelo Claude, pelos princípios, para o Heitor revisar.
 
 Q01. **Resolvida na revisão de 24/11:** A sua regra (CLAUDE.md §1: "Regra decidida pelo Claude diz que é dele; só se atribui ao Heitor o que a fala dele diz") já responde: sem a fala, a regra é decisão do Claude, e a fonte foi trocada. O conteúdo segue no catálogo para a revisão da área. — *Era:* **Clientes — escritas como decisão sua, sem a sua fala: confirma?** CL-01 (o documento com tipo CPF, Passaporte ou RNE, `crm-inbox.md:10`); CL-02 e PO-03 (a cliente de balcão e o acesso só com a caixa marcada, "2026-10-21, decisão do Heitor", `:63-76`); CL-04 (o telefone de outro país com "+", frente de cadastro de 29/10, `:87-92` — a sua fala de 02/11 só diz que a estrangeira chega também pelo agendar rápido e pelo Copilot); CL-09 (o "Unificar" nunca muda o nome, `:118`); CL-14 (perguntar "É a mesma pessoa do contato X?" e ligar no "Sim", `:146` — e o texto diz que perguntar só a quem tem o CRM, ligar só o que a pessoa alcança e converter só a mais recente são do Claude, "para revisar"); CL-16 (o "Indicada por", 10/11, `:298-304`, inclusive o que a importação faz quando o nome não bate com uma ficha só — o único "sim" seu é o "1 - sim" de 10/11 sobre a indicação que premia, `docs/regras/fidelidade.md:332`; o vínculo veio junto); CL-19 ("Novos clientes" só na rede e "Reativar" sempre da rede, 18/11, `:349-351`).
 
@@ -793,7 +798,7 @@ Q10. **Resolvida na revisão de 24/11:** As Importações estão na configuraç�
 
 Q11. **Resolvida na revisão de 24/11:** Quem importa é a Admin da rede, a mesma que cria as tags: a tag da planilha é a rede criando a tag dela, não o sistema pondo tag sozinho (princípio 2). A importação cria a tag. — *Era:* **TG-07 — a tag da planilha que não está no catálogo:** nenhuma tela cria tag e criar é só em Configurações → Tags, mas `crm-inbox.md:428` diz que o catálogo "cresce" com toda tag gravada por quem pode marcar. Na Importação, uma tag da planilha que ainda não existe deve ser criada ou recusada?
 
-Q12. **TG-04 — a automação pode TIRAR uma tag?** A sua fala de 13/11 diz que a ação "deve se chamar só adicionar tag". Em 14/11 o Claude leu isso como "só adiciona" e tirou o "remover"; em 18/11 a auditoria das regras leu a fala como sobre o NOME e, pelo princípio 7 ("simplificar não é reduzir funcionalidade"), trouxe o "Remover tag" de volta — é o que o sistema faz hoje (`docs/regras/automacoes.md:452-461`). Qual vale?
+Q12. **Decidida pelo Claude, 25/11 (o Heitor revisa):** Fica o "Remover tag", como o sistema faz hoje. A fala de 13/11 é sobre o NOME da ação ("deve se chamar só adicionar tag"); o princípio 7 ("simplificar não é reduzir funcionalidade") não tira um recurso que existia, e o princípio 1 deixa a rede decidir: o fluxo é ela que monta e liga, então tirar a tag pelo fluxo não é o sistema mexendo em tag sozinho. `docs/regras/automacoes.md:464` registra uma confirmação sua de 18/11, noite ("automacao pode tirar tag"), que não está no DEVLOG — por isso a decisão não se apoia nela. Nada muda no código. — *Era:* **TG-04 — a automação pode TIRAR uma tag?** A sua fala de 13/11 diz que a ação "deve se chamar só adicionar tag". Em 14/11 o Claude leu isso como "só adiciona" e tirou o "remover"; em 18/11 a auditoria das regras leu a fala como sobre o NOME e, pelo princípio 7 ("simplificar não é reduzir funcionalidade"), trouxe o "Remover tag" de volta — é o que o sistema faz hoje (`docs/regras/automacoes.md:452-461`). Qual vale?
 
 Q13. **Resolvida na revisão de 24/11:** A revisão (CR2) decidiu "Cadastrar como cliente" nos dois lugares: o botão é defeito de texto. — *Era:* **OP-02 — "Cadastrar cliente" ou "Cadastrar como cliente"?** A revisão decidiu "Cadastrar como cliente" nos dois lugares (`docs/revisao.md:879`, `:2062`, com o "pode ser" na tabela sem o seu nome ao lado); `crm-inbox.md:1064-1066` diz que o botão é "Cadastrar cliente" e a janela é "Cadastrar como cliente". Qual é o texto do botão? E o "pode ser" é mesmo a sua resposta?
 
@@ -830,7 +835,7 @@ O texto de `docs/regras/` (ou da própria revisão) contra a decisão mais nova 
 - OP-08: `docs/regras/crm-inbox.md:1276` e `docs/revisao.md:2216` chamam o filtro do inbox de "o dono"; a tela já diz "Responsável" (`components/admin/inbox-filtros.tsx:409`). Só o texto está velho.
 - OP-25: "Motivos de perda" da rede inteira (`docs/regras/crm-inbox.md:1518`) está certo — a oportunidade é da pessoa, e a pessoa é da rede; o texto devia dizer por quê.
 - IM-22: `docs/regras/crm-inbox.md:1020` diz que o pacote de antes sem valor de referência "não geram comissão de execução (R$ 0)"; o item 11 das correções da auditoria (18/11, `docs/regras/comissoes.md:380-387`) decidiu que o R$ fixo por sessão é pago e só o percentual fica R$ 0. A tela já diz certo (`components/branch/importador-de-contatos.tsx:374`, `:477`); só o texto está velho.
-- TG-04: `docs/revisao.md:434-435` ainda diz "a ação só adiciona; o modo 'remover' sai" (leitura do Claude de 14/11); a auditoria das regras (18/11, `docs/regras/automacoes.md:452-461`) trouxe o "Remover tag" de volta, e é o que o sistema faz. A Q12 pergunta ao Heitor qual vale.
+- TG-04: `docs/revisao.md:434-435` ainda diz "a ação só adiciona; o modo 'remover' sai" (leitura do Claude de 14/11); a auditoria das regras (18/11, `docs/regras/automacoes.md:452-461`) trouxe o "Remover tag" de volta, e é o que o sistema faz. A Q12 foi decidida pelo Claude em 25/11: fica o "Remover tag" (o `docs/revisao.md:434-435` é que está velho).
 
 ## Ficou fora do catálogo
 

@@ -154,7 +154,9 @@ export function PassosDoPlano({
     : docs.total === 0 ? <Chip texto="Nenhum a assinar" tom="feito" />
     : <Chip texto={`${docs.assinados} de ${docs.total} ${plural(docs.total, 'assinado', 'assinados')}`} tom={docs.abertos ? 'falta' : 'feito'} />
 
-  const estadoDoPagamento = !aceito ? <Chip texto="Depois do aceite" tom="neutro" />
+  // D19 da 28ª: o plano cancelado diz "Cancelado", como os outros passos (não "Depois do aceite").
+  const estadoDoPagamento = cancelado ? <Chip texto="Cancelado" tom="neutro" />
+    : !aceito ? <Chip texto="Depois do aceite" tom="neutro" />
     : pago ? <Chip texto="Recebido" tom="feito" />
     : <Chip texto="Falta receber" tom="falta" />
 
@@ -193,7 +195,7 @@ export function PassosDoPlano({
       </Passo>
 
       <Passo chave="pagamento" numero={3} titulo="Contrato e pagamento" estado={estadoDoPagamento} atual={atual === 'pagamento'} feito={pago}
-        sobre={!aceito ? 'No aceite, a comanda do plano vai ao PDV: lá se escolhe a forma, a cliente assina o contrato e paga.'
+        sobre={!aceito && !cancelado ? 'No aceite, a comanda do plano vai ao PDV: lá se escolhe a forma, a cliente assina o contrato e paga.'
           : passos.contrato === 'NO_PDV' ? contrato : undefined}>
         {aceito && (
           <>
@@ -216,20 +218,22 @@ export function PassosDoPlano({
       <Passo chave="sessoes" numero={4} titulo="Sessões" atual={atual === 'sessoes'} feito={sessoesFeitas}
         estado={<Chip tom={sessoesFeitas ? 'feito' : 'neutro'}
           texto={`${contagem.agendadas} de ${contagem.total} ${plural(contagem.total, 'agendada', 'agendadas')} · ${contagem.feitas} ${plural(contagem.feitas, 'realizada', 'realizadas')}`} />}
-        sobre={!aceito ? 'As sessões se agendam depois do aceite — a qualquer momento, uma a uma ou todas de uma vez. A sessão não cobra nada: o plano se paga no PDV.'
+        sobre={!aceito && !cancelado ? 'As sessões se agendam depois do aceite — a qualquer momento, uma a uma ou todas de uma vez. A sessão não cobra nada: o plano se paga no PDV.'
           : passos.status === 'ACCEPTED' && !passos.podeAgendar && livres.length > 0 ? 'Agendar as sessões é de quem tem a Agenda em Gerenciar.' : undefined}>
         {aceito && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {passos.sessoes.map(s => {
               const feita = s.apptStatus === 'COMPLETED'
               const quando = s.scheduledAt ? formatarNoFuso(s.scheduledAt, "dd/MM 'às' HH:mm", fuso) : null
+              // D7 da 28ª (princípio 3): a feita diz a hora em que foi feita.
+              const feitaEm = feita && s.completedAt ? formatarNoFuso(s.completedAt, "dd/MM 'às' HH:mm", fuso) : quando
               return (
                 <div key={s.id} data-sessao-do-plano>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', minWidth: 70 }}>Sessão {s.numero}</span>
                     <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', flex: 1, minWidth: 140 }}>{s.procedimentos}</span>
                     <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 600, color: feita ? 'var(--success)' : s.appointmentId ? 'var(--info)' : 'var(--text-faint)' }}>
-                      {feita ? `Realizada${quando ? ` em ${quando}` : ''}`
+                      {feita ? `Realizada${feitaEm ? ` em ${feitaEm}` : ''}`
                         : s.appointmentId ? `Agendada${quando ? ` para ${quando}` : ''}${s.profissional ? ` · ${s.profissional}` : ''}`
                         : 'Não agendada'}
                     </span>

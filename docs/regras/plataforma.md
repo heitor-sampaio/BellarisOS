@@ -241,10 +241,12 @@ um muro que não depende de cada trava do código.
   da unidade diz "O domingo vem fechado. Se a unidade abre aos domingos (ou
   24 horas), marque o domingo…" (`data-domingo-fechado`). Prova: o mesmo spec
   ("A3/A1", "A2").
-  **E começam pela 2ª unidade e passam pelas Salas, com o painel em destaque**
-  (A1 da 8ª simulação, 2026-11-06): "Outra unidade (se houver)" vem antes da
-  Equipe (quem atende se marca em cada unidade — o checklist do "Atende") e
-  "Salas" antes do Estoque e do Procedimento (`/admin/settings?tab=unidades#salas`;
+  **E passam pela 2ª unidade e pelas Salas, com o painel em destaque**
+  (A1 da 8ª simulação, 2026-11-06): "Outra unidade (se a rede tiver)" é o
+  ÚLTIMO passo (A2 da 10ª: era o primeiro, e a rede de uma unidade — o tamanho
+  real do cliente, CLAUDE.md §1 — lia primeiro o que não tem; o porquê dele diz
+  que, cadastrada, se marca na Equipe quem atende nela), e "Salas" vem logo
+  depois da Equipe, antes do Estoque e do Procedimento (`lib/setup/proximos-passos.ts`; o das Salas leva a `/admin/settings?tab=unidades#salas`;
   com duas unidades, as salas ficam no "Ver detalhes" de cada uma, e o passo
   diz). O "Acessar o painel →" é o botão principal, logo abaixo do "Tudo
   pronto!", e a lista vem depois ("Ou comece pelos próximos passos"). Prova:
@@ -523,7 +525,10 @@ um muro que não depende de cada trava do código.
   `settings: MANAGE` — a conta com o BellarisOS é configuração da rede toda, o
   Heitor, 18/11: "Configuração da rede toda só pela conta admin"; catálogo de
   24/11, AS-15/16/17/20) — teste acabando em 7 dias; em atraso, com a data da
-  suspensão e o link da fatura.
+  suspensão e o link da fatura. A dica do Plano em Configurações → Geral só
+  manda à aba Assinatura a Admin da rede (`daAdmin = ctx.isNetworkAdmin`); a
+  quem tem "A rede inteira" e não é a Admin, diz "A assinatura fica com quem
+  administra a rede." (AS-15, A da 28ª; `tests/configuracoes-assinatura-so-da-admin.test.ts`).
   - **O teste diz quantos dias faltam** (A30 da 25ª, o Heitor: "Mostra"):
     "Período de teste até 18/12/2026 — termina em 30 dias"
     (`[data-dias-do-teste]`); no penúltimo dia "termina amanhã", no último
@@ -1167,12 +1172,12 @@ de uma unidade"):**
   atendimentos…" do resumo (A2) saiu com a SM1 (2026-11-23); e o
   Desativar com o "Repassar todos … para" quem não pegou todos diz "Desativar
   e repassar 1 de 5" (A3, `rotuloDoDesativar`).
-  **E a 24ª** (`tests/atritos-da-24-cargos-atendimento-app.test.ts`): sem o
-  Prontuário em Gerenciar, o resumo diz "Não conclui atendimentos: concluir
-  pede o Prontuário em Gerenciar." (A1/A51, `conclusaoNoResumo`), e a Agenda
-  em Ver diz "inicia… Concluir também pede o Prontuário em Gerenciar. Não
-  marca nem remarca horário" (A2; a regra de quem conclui não mudou); o
-  seletor travado mostra só o nível que vale, com o cadeado (A3); "Dê o nome
+  **E a 24ª** (`tests/atritos-da-24-cargos-atendimento-app.test.ts`): o
+  resumo diz quem conclui (A1/A51, `conclusaoNoResumo`) — desde 18/11 é o
+  Atendimento em Gerenciar, e as frases da 24ª ("Não conclui atendimentos:
+  concluir pede o Prontuário em Gerenciar.", "Concluir também pede o
+  Prontuário em Gerenciar", A2) saíram: valem as do módulo Atendimento, logo
+  abaixo; o seletor travado mostra só o nível que vale, com o cadeado (A3); "Dê o nome
   na lista de cargos e clique em Criar" (A4); o resumo diz de onde vêm a venda
   e o Fechamento do dia: a venda, só do PDV (PV-04, 24/11); o Fechamento, do
   PDV ou do Financeiro em Ver (A5, `quemVendeNoResumo`).
@@ -1186,8 +1191,10 @@ de uma unidade"):**
   avaliação aberta, na concluída ou pelo "Novo plano", com a unidade do plano
   ao alcance — `montaPlano`) são dele; Tratamentos vem dele ("Tratamentos vem
   do Atendimento em “Ver”…", `tratamentosNoResumo`); o clínico (ficha de
-  saúde, evolução, fotos, injetáveis) é do Prontuário em Gerenciar, sem
-  precisar atender; o "Atende" não dá permissão nenhuma. O resumo do cargo
+  saúde, evolução, fotos) é do Prontuário em Gerenciar, sem precisar atender;
+  os injetáveis (planejar, registrar a aplicação) são do Atendimento em
+  Gerenciar com o Prontuário em Ver (o Heitor, 2026-11-23: "o mapa de
+  injetaveis é pra quem realiza atendimento"), e vê-los, do Prontuário em Ver; o "Atende" não dá permissão nenhuma. O resumo do cargo
   diz "Vê os atendimentos, sem iniciar nem concluir: iniciar e concluir pedem
   o Atendimento em Gerenciar." e, sem o Prontuário em Gerenciar,
   "Inicia e conclui os atendimentos. A evolução, as fotos e a ficha de saúde
@@ -1419,6 +1426,19 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
     agendamento). "quem pagou" e "pagamento" no lugar de `paid_by` e
     `payout_id`; a coluna derivada `aconteceu_em` sai da frase quando outra
     mudou junto ("Editou o agendamento (horário)").
+  - **O dinheiro da comanda inteiro na frase** (A7 da 28ª; princípio 3 — o
+    texto é decisão do Claude, 25/11; `tests/auditoria-o-dinheiro-da-comanda.test.ts`):
+    o crediário diz a entrada e as parcelas ("Recebeu a entrada de R$ 100,00
+    (Pix) e lançou 3 parcelas no crediário (R$ 300,00) — Graça"); a despesa
+    diz a descrição e a categoria ("Criou a despesa Conta de energia, em
+    Energia (R$ 480,00)"), e a parcelada é UMA frase ("… em 3 parcelas
+    (R$ 900,00)"); o recebimento diz o desconto, o voucher e os pontos ("com
+    desconto de R$ 45,00, o Voucher R$ 30 e R$ 5,00 em pontos"; sem o valor
+    gravado, "e 100 pontos", pelo débito da conta de pontos). Para isso a
+    auditoria passa a guardar `sale_discount` e `loyalty_discount` do
+    lançamento e o `discount_value` do voucher (migration
+    `20261204400001_auditoria_o_dinheiro_da_comanda`); a gravação antiga não
+    tem o desconto e segue sem ele (a auditoria não se altera).
   - **A oportunidade e o contato pelo nome lido agora** (A27 da 17ª): a
     auditoria grava `{}` em `leads` e `contacts` (minimização, e a gravação
     não muda); a leitura busca o nome, como o da cliente e o do membro —
@@ -1547,9 +1567,9 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
     (`nomes.lancamentos`, também do criado). Venda paga à vista: sem acréscimo.
   - **A 23ª simulação** (D2, A31; `tests/fuso-da-auditoria-e-comissoes.test.ts`,
     `tests/atritos-da-23-financeiro.test.ts`):
-    - **a hora é a do fuso** (D2, F62b): a coluna "Quando" da tela e do CSV vai
-      no fuso do recorte da leitura (`fusoDoRecorte`, `pagina.fuso`, com a
-      `NotaDoFuso`), e a hora que a frase cita ("Agendou … para", "Remarcou …
+    - **a hora é a do fuso** (D2, F62b): a coluna "Quando" da tela e do CSV
+      ia no fuso do recorte da leitura, com a `NotaDoFuso` — trocado pelo D6
+      da 26ª, logo abaixo (cada linha no fuso da unidade dela) —, e a hora que a frase cita ("Agendou … para", "Remarcou …
       para") no fuso da unidade do registro (`nomes.fusos`). Ninguém chama
       `quandoDaAuditoria` sem o fuso (o teste trava);
     - **26ª simulação, D6 (decisão do Claude, 26ª, para cumprir a regra F62 de

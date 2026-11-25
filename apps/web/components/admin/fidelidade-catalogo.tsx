@@ -11,6 +11,7 @@ import { erroParaTela } from '@/lib/erro-na-tela'
 import { avisoDaRecompensaAcimaDosPontos, explicacaoDoCatalogo, formatarPontos } from '@/lib/fidelidade/formato'
 import { ROTULO_DO_TIPO, TIPOS_DE_RECOMPENSA, descricaoDoVoucher, type TipoDeRecompensa } from '@/lib/fidelidade/voucher'
 import type { Recompensa } from '@/lib/fidelidade/leitura'
+import { avisoDaValidadeDoVoucher } from '@/lib/fidelidade/recompensa'
 import { Dica } from '@/components/shared/dica'
 
 type Catalogo = Awaited<ReturnType<typeof catalogoDeRecompensas>>
@@ -235,7 +236,13 @@ function FormularioDeRecompensa({ recompensa, procedimentos, produtos, valorDoPo
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           {rotulo('Validade do voucher (dias)')}
-          <input name="validade" className="field" type="number" min={1} max={365} step={1} value={validade} onChange={e => setValidade(e.target.value)} />
+          {/* Princípio 2 (o Heitor, 04/11): acima de 365 dias, avisa — não recusa (era o máximo do campo). */}
+          <input name="validade" className="field" type="number" min={1} step={1} value={validade} onChange={e => setValidade(e.target.value)} />
+          {validade.trim() !== '' && avisoDaValidadeDoVoucher(Number(validade)) && (
+            <span role="status" data-aviso-da-validade style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+              {avisoDaValidadeDoVoucher(Number(validade))}
+            </span>
+          )}
         </label>
       </div>
       <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>

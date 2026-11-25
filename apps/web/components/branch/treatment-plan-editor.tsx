@@ -60,6 +60,8 @@ export interface ExistingPlan {
   cancelamento?: RetratoDoCancelamento | null
   /** 22ª A20: o desconto do plano combinado no editor. */
   descontoCombinado?: DescontoCombinado | null
+  /** D8 da 28ª: o plano aceito já foi recebido (um lançamento vivo dele — `andamentoDosPlanos`). */
+  recebido?: boolean
 }
 
 // Kept for backward compat with appointment-session.tsx state
@@ -762,7 +764,7 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
                 </span>
               )}
               <span data-desconto-no-checkout style={{ display: 'block' }}>
-                O “Desconto do plano” vai pronto ao checkout do plano (no PDV, ou no “Fechar agora”), onde ainda se ajusta. A cliente vê o total com ele.
+                O “Desconto do plano” vai pronto à comanda do plano no PDV, onde ainda se ajusta. A cliente vê o total com ele.
               </span>
             </Dica>
           </h3>

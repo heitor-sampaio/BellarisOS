@@ -418,8 +418,10 @@ comanda (PDV-P1).
     se vai conferir (A12, `diferencaNaTela`).
   - O CSV da contadora diz "Maquininha ou forma" (A16): o dinheiro e o Pix
     não têm maquininha.
-  - O cartão do Financeiro é "A receber da cliente · vence no período" (A9,
-    `ROTULO_DO_A_RECEBER_DA_CLIENTE`): o número é o que vence no período.
+  - O cartão do Financeiro é "A receber da cliente · em aberto" (A9, e a A17
+    da 23ª, `ROTULO_DO_A_RECEBER_DA_CLIENTE`): o número grande é o em aberto
+    (todos os vencimentos), e o que vence no período vai na nota ("Vence no
+    período: R$ …").
   - Prova: `tests/atritos-da-22-caixa.test.ts`; migration
     `20261122600001_pdv_atritos_da_22`.
 - **O PDV e o caixa da 23ª simulação** (2026-11-17; princípios 3 e 7;
@@ -1280,7 +1282,10 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   2026-11-06; decidido pelo princípio 3): a Karina levou 2 séruns e devolveu 1,
   e a Marta estornou a venda inteira e vendeu de novo o que ficou — três
   lançamentos. A janela do "Estornar" de uma venda de produto oferece
-  "Devolver só parte da venda" (`[data-devolver-so-parte]`), que abre
+  "Devolver só parte da venda" (`[data-devolver-so-parte]`) — também no
+  estorno da ficha da cliente
+  (`acoes-do-lancamento-da-ficha.tsx`, D1 de 25/11: a ficha só estornava a
+  venda inteira) —, que abre
   "Devolver parte da venda" (`DevolverParteDaVenda`,
   `components/shared/devolver-parte-da-venda.tsx`; `actions/devolucao-de-produto.ts`,
   a mesma permissão do estorno — o Financeiro em Gerenciar, a unidade ao
@@ -1517,10 +1522,12 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     chegada (duas abas, "tentar de novo") ouve "Este plano já foi fechado.
     Recarregue a tela.". "Quem vendeu" fica no plano (`vendido_por`, A13) e a
     tela o retoma. Prova: `e2e/plano-checkout-uma-transacao.spec.ts`.
-  - **O que passa pelo balcão é do PDV** (C33): o check-in do plano recebe
-    com `podeReceber` (o PDV OU o Financeiro em Gerenciar), como o avulso e o
-    checkout (VF-04 da varredura de 18/11, decisão do Claude: pedia só o
-    PDV). **A baixa NO FINANCEIRO** ("Receber"/"Pagar" da
+  - **O que passa pelo balcão é do PDV** (C33): receber — o atendimento, o
+    plano, a parcela, a venda — é de `podeReceber`, o PDV em Gerenciar e só
+    ele (PV-04, o Heitor, 2026-11-23; até o catálogo de 24/11 o Financeiro em
+    Gerenciar também recebia). O plano não se recebe mais no check-in: é na
+    comanda dele, no PDV (PV-01; o `receberDoPlano` saiu, inventário dos
+    testes, 24/11). **A baixa NO FINANCEIRO** ("Receber"/"Pagar" da
     lista, `markTransactionPaid`) é do PDV OU do Financeiro em Gerenciar
     (`podeDarBaixa`, `lib/financeiro/so-os-meus.ts`) — CX2 do plano de
     adaptação, aprovado pelo Heitor em 13/11 ("Blz pode ser assim"): "O
@@ -1540,7 +1547,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     remarcar e antecipar seguem só a trava de cada action (o Financeiro em
     Gerenciar) e a unidade ao alcance, em qualquer registro da abrangência.
   - **O estornado do plano não conta como recebido** (C37,
-    `emAbertoDoPlano`): o check-in cobrava a menos.
+    `emAbertoDoPlano`): o que falta receber do plano saía a menos (era o
+    check-in que cobrava; hoje o aviso da tela do atendimento e a comanda).
   - **Com a unidade filtrada, o "Débito no período" do Financeiro da rede é o
     da unidade** (D8 da 13ª simulação; era o da rede inteira).
   - **As telas do dinheiro assinam o SINAL `financeiro_sinais`**, não
@@ -1755,7 +1763,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     `financial_transactions.recebido_por` (migration `20261110005601`): no
     lançamento que já nasce pago, quem o lançou (o gatilho
     `trg_lancamento_guarda_o_pagamento`, pelo `created_by`); na baixa depois
-    (a parcela do crediário, o atendimento concluído, o plano no check-in), quem
+    (a parcela do crediário, o atendimento concluído, o plano — hoje no PDV), quem
     deu a baixa (`marcarPagoCore`, `confirmar_pagamento_do_atendimento`,
     `plano_receber`). O recebimento de antes da coluna só é atribuído quando
     nasceu pago; o resto aparece "Quem recebeu não registrado" (princípio 4).
@@ -1897,6 +1905,11 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     período." e, com zero, "Próximo: R$ 300,00 em 05/11"
     (`NotaDoVencimento`). O "A pagar R$ 0" com a conta vencendo no mês
     seguinte parecia conta sumida. Prova: `e2e/financeiro-a-pagar-vencimento.spec.ts`.
+    O cartão do a pagar diz o recorte no TÍTULO, "A pagar · vence no período"
+    (`ROTULO_DO_A_PAGAR`, `lib/financeiro/abas.ts`), e o total de baixo, "Em
+    aberto, de qualquer vencimento: R$ X" — a aba A pagar lista todos, e o
+    cartão com outro número parecia errado (A6 de 25/11; os nomes são decisão
+    do Claude).
   - **O "A receber" diz também todo o crediário** (D-14, decisão do Heitor,
     2026-10-29): o cartão mantém o número do mês e, abaixo, "Em aberto, todos
     os vencimentos: R$ X" — todas as parcelas e recebíveis em aberto, de
@@ -1931,9 +1944,11 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   simulação, 2026-11-07; princípio 3): eram dois "resultados" na tela (o
   "Lucro líquido" de −R$ 4.325,82 e a lista de −R$ 1.929). A lista diz "14
   lançamentos · caixa da lista −R$ 1.929,00", e embaixo da conta do Lucro
-  (e do Resultado da rede) "É o resultado do período (competência): o insumo
-  conta quando é usado e a comissão quando é lançada. O total da lista de
-  lançamentos é o caixa." (`[data-base-do-resultado]`, `ContaDoResultado`).
+  (e do Resultado da rede) "É o resultado do período: a receita e a despesa
+  pelo que foi pago; o insumo quando é usado; o custo do produto quando ele é
+  vendido, mesmo a receber; a comissão quando é lançada. O total da lista de
+  lançamentos é o caixa." (`[data-base-do-resultado]`, `ContaDoResultado`; o
+  "competência" saiu na D4 da 10ª, `indicadores.md`).
   Em Relatórios → Financeiro, o cartão é "Despesas pagas (caixa)", com o
   detalhe de que entram a compra de estoque e o pagamento das comissões (o DRE
   usa só a operacional). Prova: `e2e/financeiro-ficha-e-app-da-9.spec.ts` ("A31").
@@ -1951,14 +1966,15 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 - **O "Em aberto, todos os vencimentos" leva à baixa** (A38 da 8ª simulação,
   2026-11-06): a parcela do crediário que vence no mês que vem não aparecia em
   Lançamentos (a lista é do período, pela data de referência), e não se via
-  onde dar baixa. O cartão "A receber da cliente" diz "Ver e dar baixa", que
+  onde dar baixa. O cartão "A receber da cliente" diz "Ver e receber" (era
+  "Ver e dar baixa" até a A25 da 24ª), que
   abre a lista com TODO o a receber em aberto, de qualquer vencimento
   (desde o FI3, a aba A receber, `?aba=a-receber`; `[data-so-o-em-aberto]`,
   nos dois financeiros), com o "Pagar" na linha.
   **A quem só vê, "Ver a lista"** (A42 da 12ª simulação, 2026-11-11; princípio
   3: a Ivone, que só vê o Financeiro, lia "Ver e dar baixa" e "use “Pagar” na linha" sem
   botão nenhum): sem a baixa (`canPay`), o link é "Ver a lista" e a faixa diz
-  "Dar baixa é de quem tem o PDV no cargo." (`NotaDoVencimento
+  "Receber é de quem tem o PDV ou o Financeiro em Gerenciar." (`NotaDoVencimento
   podeDarBaixa`). **E o a PAGAR também** (A43 da 12ª): o cartão "A pagar" diz
   "Em aberto, todos os vencimentos: R$ 5.200,00 · Ver e pagar" (ou "Ver a
   lista") — `metrics_a_pagar_em_aberto` → `getAPagarEmAberto` (migration
@@ -1988,9 +2004,9 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     situação "Vencida".
   - **O check-in avisa, sem recusar**: quem marca "Chegou" lê
     "Mariana tem 1 parcela vencida (R$ 1.294,00, desde 05/11): receba no
-    Financeiro." (`updateAppointmentStatus`/`checkinAppointment` devolvem
-    `aviso`, só para quem recebe). A cobrança no check-in continua só a do
-    plano (`emAbertoDoPlano`).
+    PDV." (`updateAppointmentStatus`/`checkinAppointment` devolvem
+    `aviso`, só para quem recebe; `lib/appointments/vencidas-na-chegada.ts`).
+    O check-in não cobra nada: a parcela e o plano se recebem no PDV (PV-01).
   - Prova: `e2e/financeiro-vencidas-da-9.spec.ts`, `tests/financeiro-vencida.test.ts`.
 - **Remarcar o vencimento** (A37 da 9ª simulação): a parcela do crediário só
   tinha "Pagar". Quem tem o Financeiro em Gerenciar (com a unidade ao
@@ -2063,7 +2079,13 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   unidade, no da rede ("Despesas pagas da unidade (caixa)" no recorte) e na
   Visão geral dos Relatórios, e diz que tem a compra de estoque e o pagamento
   das comissões, que ficam fora do lucro (o lucro usa a despesa operacional; o
-  gráfico, o "Custo do lucro"). A conta não mudou. E **o valor não parte o
+  gráfico, o "Custo do lucro"). A conta não mudou. A Dica do cartão diz
+  QUANTO de cada (`DespesasDoCaixa`, `components/shared/despesas-do-caixa.tsx`:
+  "Deste valor, R$ X do pagamento das comissões e R$ Y da compra de estoque
+  ficam fora do Lucro Líquido…", pelos números de `estoqueNoResultado`), nos
+  dois financeiros e no recorte de cada unidade — despesas maiores que o
+  faturamento com lucro positivo parecia conta errada (A5 de 25/11; o texto é
+  decisão do Claude). E **o valor não parte o
   sinal** (A25): os valores dos cartões e do DRE são `white-space: nowrap` — o
   "-" de "-R$ 13.020,00" ficava sozinho numa linha. Prova: o mesmo spec ("A24",
   "A25").
@@ -2132,6 +2154,10 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   passa por `mensagemDoErro` ("Seu cargo não libera esta ação."), e o erro cru
   do banco no lançamento parcelado/recorrente virou "Não consegui gravar os
   lançamentos." Prova: `e2e/permissoes-quem-so-ve.spec.ts`.
+  **E fecha a cada lançamento salvo**, o segundo seguido também (D3 de 25/11):
+  o modal fechava pelo `state.success`, que no segundo envio já era `true` e
+  não mudava; agora reage a cada estado novo do `useActionState`
+  (`financial-transaction-modal.tsx`).
 - **O lançamento manual pago tem a DATA do pagamento** (2026-10-21, decisão
   do Heitor): "Data do pagamento" no Novo lançamento (hoje por padrão, nunca no
   futuro — a tela limita e `pagoNoDia`, em `lib/financeiro/lancamento.ts`,
@@ -2180,8 +2206,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     `recusaDaEntradaAcimaDoTotal` (`lib/checkout/entrada.ts`): "A entrada
     (R$ 1.000,00) passa do total do plano (R$ 900,00). Corrija a entrada." —
     junto do campo, e o botão de seguir fica desligado (`recusaDoPagamento(e,
-    total)` em `CamposDoPagamento`; o checkout e o receber do plano no
-    check-in também). O SERVIDOR recusa com a mesma frase
+    total)` em `CamposDoPagamento`; o checkout do plano também — o receber do plano no check-in saiu: o plano se recebe no PDV, PV-01). O SERVIDOR recusa com a mesma frase
     (`recusaDaEntradaDoPagamento`, `lib/checkout/lancamentos.ts`) em
     `venderPacote`, `venderProcedimento`, `venderProduto`,
     `checkoutTreatmentPlan`, `prepararDocumentosDoCheckout`,
@@ -2213,8 +2238,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   `e2e/financeiro-a-pagar-vencimento.spec.ts`, `tests/financeiro-baixa-cx2.test.ts`.
 - **A forma nasce VAZIA em toda tela de cobrança** (A37 da 6ª simulação,
   2026-11-04; princípio 3): o recebimento do atendimento (a comanda dele no
-  PDV, desde o PDV7; era o "Confirmar pagamento" que o `?receber=1` abria), o "Receber" do plano
-  no check-in, o checkout do plano (nenhum meio marcado) e o `CamposDoPagamento`
+  PDV, desde o PDV7; era o "Confirmar pagamento" que o `?receber=1` abria), o checkout do plano
+  (o "Receber o plano" do PDV; nenhum meio marcado) e o `CamposDoPagamento`
   (o "Vender" de pacote, pré-pago e produto, e o pagamento do contrato); o
   "Pagar" de uma receita no Financeiro também. O que se recebe
   agora (à vista, a entrada) não confirma sem ela — o botão espera, e o
@@ -2258,7 +2283,11 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     venda + k × N (r2-fin-01, o Heitor, 2026-11-03: "como a operadora paga de
     verdade e configurável o prazo"; era o mesmo dia de cada mês). O N é da
     rede: Configurações → Comissões → "Prazo da operadora (dias)", junto
-    das taxas (`tenants.cartao_prazo_dias`, 30 por padrão, 1–120;
+    das taxas (`tenants.cartao_prazo_dias`, 30 por padrão, de 1 dia para
+    cima — acima de 120 a tela avisa e o valor vale, princípio 2, o Heitor,
+    2026-11-04; só o zero e o acima do registro, 32.767, são recusados:
+    `recusaDoPrazoDaOperadora`/`avisoDoPrazoDaOperadora`, o mesmo na
+    maquininha; migration `20261204200001`;
     `salvarPrazoDaOperadora`, a mesma permissão e abrangência das taxas). O
     vencimento é retratado na parcela: mudar o prazo vale para as próximas
     vendas. Migration `20261103001301`.
@@ -2298,7 +2327,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
         segue sem ela** — na tela (o botão espera) e no servidor
         (`recusaDasVezesDaRede`: "Escolha a maquininha do cartão."): a
         primeira não vale calada (princípio 3). Todos os caminhos: avulso,
-        check-in do plano, checkout, pacote, pré-pago, produto, crédito
+        checkout do plano (o "Receber o plano" do PDV), pacote, pré-pago, produto, crédito
         interno, Novo lançamento, "Receber no cartão", o Copilot (`lancar`
         e `marcar_pago` pedem o nome; com mais de uma, sem ele, perguntam) e
         o pagamento NOVO do usado — o estorno inteiro de pacote, plano,
@@ -2518,8 +2547,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
       o `total`; sem nenhuma cadastrada, "sai sem desconto (0%)"). Prova:
       `e2e/financeiro-atritos-da-9.spec.ts` ("A34").
     - **O pagamento no cartão diz a bandeira, opcional** ("Bandeira (opcional)",
-      `CampoDaBandeira`): o recebimento do atendimento e do plano no check-in,
-      o checkout do plano, o "Vender" (pacote, pré-pago, produto, contrato —
+      `CampoDaBandeira`): o recebimento do atendimento (a comanda no PDV),
+      o checkout do plano (o "Receber o plano" do PDV), o "Vender" (pacote, pré-pago, produto, contrato —
       `CamposDoPagamento`), o pagamento novo do usado no cancelamento do
       pacote, a baixa no Financeiro de um lançamento no cartão ("Receber no
       cartão", `ReceberNoCartao`), o "Novo lançamento" do Financeiro — a
@@ -2564,8 +2593,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
       (`recebiveis_do_cartao`) e a estimativa do Fechamento do dia —, e o
       prazo no nascimento das parcelas da operadora. O estorno herda a
       bandeira. **Informada ou trocada DEPOIS de pago** (o recebimento do plano
-      no check-in grava a bandeira e a maquininha DENTRO de `plano_receber`
-      desde a VF2-04 da varredura de 18/11 — antes, num update logo depois), o gatilho refaz o
+      no check-in gravava a bandeira e a maquininha DENTRO de `plano_receber`
+      desde a VF2-04 da varredura de 18/11; esse caminho saiu: o plano se recebe no PDV, PV-01), o gatilho refaz o
       prazo e a taxa das parcelas enquanto a operadora não pagou nenhuma, e a
       comissão se acerta pelo gatilho dela. Prova:
       `e2e/financeiro-cartao-por-bandeira.spec.ts`, `tests/cartao-por-bandeira.test.ts`.
@@ -2633,8 +2662,9 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     - Migration `20261101000261`. Prova:
       `e2e/financeiro-cartao-a-receber-da-operadora.spec.ts`. "Entrada + parcelas" é o CREDIÁRIO da própria rede: cada
   parcela a receber, e a comissão espera a última. Vale nas cinco portas: pacote e pré-pago
-  (`lancamentosDoPagamento`), checkout do plano, recebimento do plano no
-  check-in e o pagamento do atendimento avulso (`p_dados.cartao_vezes`).
+  (`lancamentosDoPagamento`), checkout do plano (o "Receber o plano" do PDV)
+  e o pagamento do atendimento avulso (`p_dados.cartao_vezes`); o recebimento
+  do plano no check-in saiu (PV-01).
   Até aqui "3x no cartão" só cabia em entrada + parcelas, a receber.
   - **O crediário NÃO é cartão** (D6 da 6ª simulação, 2026-11-04): as
     parcelas do saldo, que a cliente paga à REDE, nascem SEM meio de
@@ -2660,7 +2690,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   - **A ENTRADA no crédito também tem as vezes** (D5 da 6ª simulação): no
     "Entrada + parcelas" com a entrada no cartão de crédito, "Vezes no cartão
     (a entrada)" — no checkout do plano, no `CamposDoPagamento` (pacote,
-    pré-pago, produto, contrato) e no recebimento do plano no check-in —, com
+    pré-pago, produto, contrato); o recebimento do plano no check-in saiu (PV-01) —, com
     o limite da rede, a dica do valor e o aviso da taxa, como o à vista. A
     entrada é UM lançamento pago com `cartao_vezes`, e a operadora a deposita
     em N (`recebiveis_do_cartao`, com a taxa daquelas vezes e da bandeira).
@@ -2682,11 +2712,11 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     e a venda usa o da maquininha escolhida). Vazio = automático: a maior parcela do CRÉDITO com taxa em
     `payment_fees`; sem nenhuma, 12x (`maximoDeVezes`,
     `lib/financeiro/vezes-do-cartao.ts`). Todo "Vezes no cartão" monta as
-    opções por `useOpcoesDeVezes` (recebimento do avulso, do plano no
-    check-in, checkout do plano, `CamposDoPagamento` — pacote, pré-pago,
+    opções por `useOpcoesDeVezes` (recebimento do avulso, checkout do plano
+    — o "Receber o plano" do PDV —, `CamposDoPagamento` — pacote, pré-pago,
     produto e o pagamento do contrato), e o servidor RECUSA acima do limite
     (`recusaDasVezesDaRede`, `lib/financeiro/vezes-da-rede.ts`) em
-    `confirmPayment`, no checkout e no recebimento do plano, em `venderPacote`,
+    `confirmPayment`, no checkout do plano, em `venderPacote`,
     `venderProcedimento`, `venderProduto`, `definirPagamentoDoContrato`,
     `prepararDocumentosDoCheckout` e o "Novo lançamento" (`lancarCore`,
     F16-5). Vale só para o cartão em N vezes; as
@@ -2696,11 +2726,20 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     das regras, o Heitor, 2026-11-11: "Decisão da rede"; princípio 1). Uma
     configuração da rede — o máximo de parcelas do "entrada + parcelas", padrão
     12 — vale igual em todo caminho que vende no crediário: o Vender (pacote,
-    pré-pago, produto, o pagamento do contrato), o checkout do plano e o
-    check-in do plano. A tela oferece até o limite da rede e o servidor recusa
-    acima dele, nos três (C38, F67: `tenants.crediario_max_parcelas`, no
+    pré-pago, produto, o pagamento do contrato) e o checkout do plano (o
+    "Receber o plano" do PDV; o check-in do plano não recebe mais, PV-01). A
+    tela oferece até o limite da rede e o servidor recusa acima dele, nos
+    dois (C38, F67: `tenants.crediario_max_parcelas`, no
     card "Crediário" da aba de Comissões; o Vender cortava em 12 e
-    o checkout e o check-in em 48, calados — `maximoDeParcelasDaRede`). A
+    o checkout e o check-in em 48, calados — `maximoDeParcelasDaRede`).
+    **O limite é o número que a rede digita, de 1 para cima** (princípio 2, o
+    Heitor, 2026-11-04: "no máximo, avisar"): acima de 48 a tela avisa
+    (`avisoDoMaximoDeParcelas`) e o valor vale; só acima do registro (32.767,
+    o `smallint`) é recusado (`recusaDoMaximoDeParcelas`,
+    `lib/financeiro/parcelas-do-crediario.ts`; migration `20261204200001`
+    tira o teto de 48 do banco). E `lancamentosDoPagamento` não corta mais as
+    parcelas em 12 (gerava 12 lançamentos de uma venda em 24x). Decisão do
+    Claude, 25/11: o aviso começa no teto de antes. A
     DESPESA não muda: parcelada de 2 a 48, recorrente de 2 a 60 (é a rede
     pagando, não vendendo).
   - **O crediário tem UM nome, diz o limite e só pede a forma da entrada**
@@ -2738,8 +2777,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     `e2e/caixa-atritos-da-8.spec.ts` ("A40"), `tests/liquido-na-maquininha.test.ts`.
   - **Uma conta só para a parcela do crediário** (D2 da 7ª simulação,
     2026-11-05; princípio 3): o checkout do plano dizia "3× de R$ 890,67" (o
-    saldo ÷ 3) e o recebimento do plano no check-in "3x de R$ 890,67", e o
-    banco gravou 890,66 + 890,66 + 890,68. As duas telas dizem as parcelas
+    saldo ÷ 3) e o recebimento do plano no check-in (que saiu, PV-01) "3x de
+    R$ 890,67", e o banco gravou 890,66 + 890,66 + 890,68. A tela diz as parcelas
     como serão gravadas — "2x de R$ 890,66 + 1x de R$ 890,68"
     (`parcelasEmTexto`, `lib/checkout/resumo-do-pagamento.ts`, sobre
     `dividirEmParcelas`; `[data-parcelas-do-saldo]` no checkout) —, e o
@@ -2765,8 +2804,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     Crédito 3x", "via Dinheiro" — era "via CREDIT_CARD em 3x". No banco,
     `private.rotulo_da_forma` é o espelho de `rotuloDaForma` (os nomes
     curtos), usado por `confirmar_pagamento_do_atendimento`; no app, o
-    checkout do plano (`rotuloDoPagamento`) e o recebimento do plano no
-    check-in usam `rotuloDaForma`. Forma nova entra NOS DOIS. O histórico
+    checkout do plano (`rotuloDoPagamento`) usa `rotuloDaForma` (o
+    recebimento do plano no check-in, que também usava, saiu — PV-01). Forma nova entra NOS DOIS. O histórico
     gravado antes foi TRADUZIDO em todas as redes (pedido do Heitor, frente
     de cadastro de 2026-10-29; migration `20261029001002`, 6 linhas → 0) por
     `historico_forma_em_portugues`, que troca o código só nos formatos que o
@@ -2828,8 +2867,11 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   `lib/checkout/exigencia-do-modelo.ts`, `[data-exigencia-do-modelo]`). Prova:
   `tests/checkout-exigencia-do-modelo.test.ts`.
 - **O checkout do plano diz o que fica sem data e confirma ao concluir** (A37
-  da 8ª simulação, 2026-11-06; princípio 3 — agendar no checkout continua
-  opcional): no passo do agendamento, "As sessões 2 e 3 ficam sem data: agende
+  da 8ª simulação, 2026-11-06; princípio 3). O "Receber o plano" do PDV — o
+  único que abre o checkout — não agenda as sessões (DP-01: elas se agendam
+  pelo plano ou pela agenda; `podeAgendar={false}` em
+  `components/shared/pdv/receber-o-plano.tsx`; até o PDV4 o checkout tinha o
+  passo de agendar, opcional). Antes de concluir, "As sessões 2 e 3 ficam sem data: agende
   pela ficha da cliente (Tratamentos) quando ela marcar."
   (`[data-sessoes-sem-data]`), e concluir mostra "Plano fechado: 3 sessões. 2
   sem data — agende pela ficha…" (`avisoDoPlanoFechado`,
@@ -2911,10 +2953,11 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   (sessão n de t)", `[data-ja-pago]`; 23ª A38, 2026-11-17: só "Incluído" não
   dizia de quê). Prova: `e2e/portal-cliente-confirmar-ja-pago.spec.ts`,
   `tests/pendencias-area-1.test.ts`.
-- **O check-in só cobra o que VENCEU** (`emAbertoDoPlano` /
+- **O que falta do plano separa o que VENCEU** (`emAbertoDoPlano` /
   `separarOEmAberto`): em aberto sem data ou com vencimento até o fim de hoje
-  (Brasília). Parcela que vence depois já está combinada — aparece no banner
-  como "a vencer", sem botão, e se recebe no financeiro. Antes o banner
+  (no fuso da unidade). Parcela que vence depois já está combinada — aparece
+  no banner como "a vencer", sem botão. O check-in não cobra nada (PV-01): o
+  banner da tela do atendimento só avisa, e a parcela se recebe no PDV. Antes o banner
   oferecia "Receber R$ 600" de um plano parcelado: cobrança em dobro (a
   simulação de 2026-10-20 achou). Prova: `e2e/plano-recebimento.spec.ts`.
   **O saldo do plano aparece a quem RECEBE** (A39 da 7ª simulação,
@@ -2930,6 +2973,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     + parcelas. Duas abas ao mesmo tempo: uma recebe, a outra ouve "Este
     saldo já foi recebido ou mudou". A entrada acima do em aberto é recusada
     (ven-02, abaixo). Prova: `e2e/plano-recebimento-concorrente.spec.ts`.
+    O recebimento do saldo pela tela do atendimento (`receberDoPlano`) saiu
+    (inventário dos testes, 24/11; PV-01); a função `plano_receber` ficou no banco.
 - **A tela do plano FECHADO mostra o dinheiro e as sessões** (J-42,
   2026-10-30): "Valor do plano", "Recebido" e "A receber" (contados no banco,
   `metrics_financeiro_do_plano` → `getFinanceiroDoPlano`,
@@ -2938,7 +2983,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   …" ou "Vencida em … · receba no PDV" (dizia "cobrada no check-in" até
   2026-11-16) — e "1 de 3 sessões feitas · 1
   agendada". Dizia só "O que estiver em aberto é recebido no check-in", e o
-  check-in só cobra o que venceu. Migration `20261029001801`. Prova:
+  check-in cobrava só o que venceu (hoje não cobra nada: é no PDV, PV-01). Migration `20261029001801`. Prova:
   `e2e/plano-tela-mostra-o-pago.spec.ts`. **O rodapé diz com quem fica a
   parcela que vence depois** (A28 da 9ª simulação; a regra de cargo fica): a
   pessoa sem o Financeiro lia "se recebe no financeiro", tela que ela
@@ -3068,8 +3113,9 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   2026-11-11: a Heloísa procurou ali): embaixo do "Pagamento confirmado",
   "Estornar este pagamento é de quem tem o Financeiro em Gerenciar: …"
   (`[data-quem-estorna]`). **E o avulso concluído aguardando o PDV diz quem
-  recebe** (A11 da 19ª), a quem não recebe: "Quem recebe é quem tem o PDV ou o
-  Financeiro em Gerenciar: …" (`[data-quem-recebe]`, `quemRecebeNoPdv`).
+  recebe** (A11 da 19ª), a quem não recebe: "Quem recebe é quem tem o PDV em
+  Gerenciar: …" (`[data-quem-recebe]`, `quemRecebeNoPdv`, `textoDeQuemRecebe`;
+  receber é só do PDV desde 24/11, PV-04).
 - **Estornar e receber na própria ficha** (A32 e A35 da 12ª; princípio 3: a
   Helena, no celular, só achava o estorno em Financeiro → Lançamentos, uma
   página de 20 mil px; a parcela do crediário na ficha não tinha ação): na aba
@@ -3165,7 +3211,9 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   `lib/financeiro/recibo.ts`, pelo gerador simples de `lib/pdf.ts`): nº,
   quem pagou (com o CPF, ou o passaporte/RNE), a quantia, o referente, a
   forma ("Crédito 3x"), quando, o desconto e o motivo quando há, e quem
-  recebeu (rede, unidade, CNPJ, endereço, telefone) — e "Este recibo não
+  recebeu (rede, unidade, CNPJ, endereço, telefone; a seção se chama
+  "Emitente", porque "Quem recebeu" no Fechamento do dia é a PESSOA que deu a
+  baixa — decisão do Claude, 25/11, princípio 3) — e "Este recibo não
   substitui a nota fiscal." Prova: `e2e/financeiro-recibo.spec.ts`.
   **O recibo do ATENDIMENTO diz o que foi pago** (A43 da 7ª simulação,
   2026-11-05: dizia "Atendimento concluído", a descrição do lançamento): o
@@ -3282,8 +3330,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 ❌ Ler ou gravar financial_transactions pela sessão (é o servidor, depois da trava e do alcance — a política restritiva financeiro_so_pelo_servidor recusa)
 ❌ Montar o rótulo de um pagamento de cartão sem a maquininha quando a rede tem mais de uma (é rotuloDaForma com maquininhaDoRotulo; no banco, private.rotulo_do_pagamento)
 ❌ Escrever "Entrada + parcelas" à mão numa tela (é ROTULO_DO_CREDIARIO)
-❌ Cobrar no check-in parcela que ainda não venceu (já está combinada; é emAbertoDoPlano quem separa)
-❌ Receber o plano no check-in fora de plano_receber (o plano travado e o saldo conferido: duas abas recebiam o mesmo saldo duas vezes — F11)
+❌ Contar como "a receber agora" a parcela do plano que ainda não venceu (já está combinada; é emAbertoDoPlano quem separa) — e cobrar o plano fora do PDV (PV-01: o check-in não cobra)
+❌ Receber o saldo do plano sem travar o plano e conferir o saldo na mesma transação (duas abas recebiam o mesmo saldo duas vezes — F11; era o plano_receber do check-in)
 ❌ Fechar o checkout de um plano deixando de fora o atendimento de origem com preço e sem pagamento (atendimentoDeHojeDoPlano)
 ❌ Decidir na tela se um atendimento concluído está "a receber" (é atendimentos_a_receber), ou pedir pagamento de atendimento de R$ 0
 ❌ Gravar texto para pessoas (histórico, descrição) com o código da forma (CASH, CREDIT_CARD) — é rotuloDaForma no app e private.rotulo_da_forma no banco
@@ -3306,6 +3354,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 ❌ Trocar o due_date de um lançamento sem lancamento_remarcar_vencimento (o histórico da remarcação se perde — A37 da 9ª)
 ❌ Calcular a taxa ou o líquido de um lançamento na tela (o CSV) — é metrics_taxa_dos_lancamentos, a conta do lucro (A31 da 10ª)
 ❌ Rotular o cartão do caixa só "Despesas": é "Despesas pagas (caixa)", que tem a compra de estoque e o pagamento das comissões (A24 da 10ª)
+❌ Recusar o prazo da operadora ou o limite do crediário por ser grande (acima do comum é aviso — princípio 2), ou cortar as parcelas em silêncio ao gerar os lançamentos
 ❌ Vender crédito interno pelo "Conceder crédito" (fica fora do caixa) ou por um lançamento manual (o crédito não nasce): é credito_vender, a aba "Crédito interno" da Nova venda (decisão 1 da 9ª)
 ❌ Estornar o lançamento da venda de crédito fora de credito_estornar_venda (o dinheiro voltava e o crédito ficava), ou devolver mais que o saldo que a cliente ainda tem
 ❌ Lançar o bônus do crédito interno como receita, ou deixar o bônus no saldo depois do estorno da venda (ele sai junto, inteiro ou na proporção — a rede escolhe; A20 da 11ª)

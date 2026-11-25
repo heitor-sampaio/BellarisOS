@@ -60,6 +60,17 @@ recompensas, igual (`salvarConfigFidelidade` e `salvarRecompensa` passam por
   gravava 5, e "0.01" no valor do ponto, R$ 1 (frente de cadastro,
   2026-10-29). Os inteiros (mínimo, meses, bônus, dias) continuam lendo o
   ponto como milhar. Prova: `e2e/fidelidade-opcionais.spec.ts` ("0.5").
+- **Acima do comum avisa, não recusa** (princípio 2, o Heitor, 2026-11-04:
+  "no máximo, avisar"). Os tetos de antes (1.000 pontos por R$ 1, R$ 1.000 o
+  ponto, 1.000.000 de mínimo, de bônus e da indicação, 120 meses de validade,
+  90 dias de aviso, 365 dias de validade do voucher) viraram o limite do
+  AVISO: acima deles o campo diz "Acima do comum (…). Confira: o valor vale
+  como está." (`avisoDaFidelidade`, `avisoDaValidadeDoVoucher`,
+  `lib/acima-do-comum.ts`) e grava. Só se recusa o impossível (zero onde não
+  cabe, negativo) e o que o registro não guarda: o tipo da coluna, e 100 anos
+  nos prazos (a conta das datas estoura). O banco perdeu os tetos na
+  migration `20261204200001`. Os números são decisão do Claude, 25/11: o
+  aviso começa no teto de antes. Prova: `tests/tetos-avisam-nao-recusam.test.ts`.
 - **Cartão em N vezes pontua na VENDA, inteiro** (F2c, 2026-11-01): a
   cliente pagou tudo na maquininha. O que a operadora deposita em parcelas
   (`recebiveis_do_cartao`) não é pagamento e não pontua de novo. Prova:
@@ -96,8 +107,8 @@ recompensas, igual (`salvarConfigFidelidade` e `salvarRecompensa` passam por
   princípio 3): a troca ("Recompensa: Limpeza de pele") e o uso no pagamento
   ("Desconto no pagamento: R$ …") levam a descrição que o banco escreve,
   embaixo do título (`descricaoParaACliente`, `[data-descricao-do-lancamento]`);
-  o ajuste, o voucher cancelado e o estorno não — levam o motivo que a equipe
-  escreveu. Prova: `tests/atritos-da-25-ficha-estoque-app.test.ts`.
+  o ajuste, o voucher cancelado e o estorno NÃO levam ao app o motivo nem a
+  descrição que a equipe escreveu (não são para a cliente): só o título. Prova: `tests/atritos-da-25-ficha-estoque-app.test.ts`.
 - **Saldo = SOMA do extrato** (`saldo_de_pontos`). `loyalty_accounts.balance`
   saiu do banco (fase 4). Extrato e conta só se LEEM pela sessão: quem
   escreve é o gatilho e o servidor, com a trava `fidelidade:<cliente>`.
@@ -443,6 +454,7 @@ recompensas, igual (`salvarConfigFidelidade` e `salvarRecompensa` passam por
 ❌ Dar ponto de fidelidade no TypeScript (o ponto nasce no gatilho do pagamento; o saldo é saldo_de_pontos)
 ❌ Calcular vencimento de pontos fora de fidelidade_a_expirar (é a única cópia do FIFO)
 ❌ Mostrar qualquer sinal de pontos com o programa da rede desligado
+❌ Recusar um número da configuração por ser grande (bônus, validade, aviso, pontos por real): acima do comum é aviso — princípio 2
 ❌ Pôr o desconto de pontos em amount (amount é o dinheiro recebido; o desconto é loyalty_discount)
 ❌ Confirmar pagamento de atendimento fora de confirmar_pagamento_do_atendimento, ou confiar no valor que o navegador manda
 ❌ Ler o voucher pela recompensa (o voucher tem o retrato de quando foi trocado) ou deixar o cliente trocar pontos sem client_redeem ligado

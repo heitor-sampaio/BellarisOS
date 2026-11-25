@@ -66,7 +66,11 @@ test('a data de todo ano sai no dia, a partir das 09:00, só ao público, uma ve
 
     const { data: depois } = await db().from('notification_campaigns').select('status, total_sent, last_run_at').eq('id', campanha).single()
     expect(depois!.status, 'a de todo ano não se conclui').toBe('ACTIVE')
-    expect(depois!.total_sent).toBe(1)
+    // D9 da 28ª (NC-06; princípio 3, o Heitor, 04/11): a mãe não tem aparelho — o aviso fica no sino
+    // (acima, ela o recebeu) e não conta como enviada; o disparo diz GUARDADA.
+    expect(depois!.total_sent).toBe(0)
+    const { data: disparos } = await db().from('campaign_dispatches').select('status').eq('campaign_id', campanha)
+    expect((disparos ?? []).map(d => d.status)).toEqual(['GUARDADA'])
     expect(depois!.last_run_at).not.toBeNull()
   } finally {
     await db().from('notification_campaigns').delete().eq('tenant_id', rede.tenantId)

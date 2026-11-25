@@ -9,10 +9,10 @@ import { salvarConfigDeComissao, salvarMaximoDeParcelas } from '@/actions/comiss
 import { salvarMaquininha, arquivarMaquininha, salvarTaxaDoPix } from '@/actions/maquininhas'
 import type { Maquininha, EntradaDaMaquininha } from '@/lib/financeiro/maquininhas'
 import { vaziaDeFabrica, AVISO_DA_DE_FABRICA } from '@/lib/financeiro/maquininha-de-fabrica'
-import { CREDIARIO_PADRAO, opcoesDeParcelas, TETO_DO_CREDIARIO } from '@/lib/financeiro/parcelas-do-crediario'
+import { CREDIARIO_PADRAO, TETO_DO_CREDIARIO, avisoDoMaximoDeParcelas } from '@/lib/financeiro/parcelas-do-crediario'
 import { BANDEIRAS, chaveDaTaxa, creditoPelaTaxaPorParcela, taxasDaTabelaColada, faixaDaOperadora, avisoDaTaxaQueBaixa, type Bandeira, type CartaoPorBandeira } from '@/lib/financeiro/bandeiras'
 import { taxaQueVale } from '@/lib/financeiro/formas'
-import { maximoDeVezes, opcoesDeVezes, TETO_DE_VEZES, PRAZO_PADRAO_DA_OPERADORA, PRAZO_MAXIMO_DA_OPERADORA, recusaDoPrazoDaOperadora, recusaDaTaxaDaMaquininha } from '@/lib/financeiro/vezes-do-cartao'
+import { maximoDeVezes, opcoesDeVezes, TETO_DE_VEZES, PRAZO_PADRAO_DA_OPERADORA, PRAZO_MAXIMO_DA_OPERADORA, recusaDoPrazoDaOperadora, avisoDoPrazoDaOperadora, recusaDaTaxaDaMaquininha } from '@/lib/financeiro/vezes-do-cartao'
 import { rotuloDaBase, OPCOES_DA_BASE_COM_PONTOS, type ConfigDeComissao, type MetodoComTaxa, type ComissaoDoProduto } from '@/lib/comissoes/config'
 import { parseDecimal, NUMERO_INVALIDO, formatBRL } from '@estetica-os/utils'
 import { Fala } from '@/components/shared/uma-unidade'
@@ -28,6 +28,9 @@ import { Dica } from '@/components/shared/dica'
  * Quando a comissão vale não é mais escolha (H4, decisão do Heitor,
  * 2026-11-01): só com o pagamento integral. A tela diz a regra.
  */
+/** Quantos dígitos o campo do prazo aceita: os do limite do registro (eram 3, com o teto de 120). */
+const DIGITOS_DO_PRAZO = String(PRAZO_MAXIMO_DA_OPERADORA).length
+
 const QUANDO_VALE = [
   'A comissão fica a pagar quando a cliente paga tudo o que a gerou: o atendimento pago; no pacote, no plano, no pré-pago e na venda de produto, a venda inteira paga — a comissão da venda e a de cada sessão já feita.',
   'Cartão de crédito em várias vezes conta como pago: quem paga a rede é a operadora. No crediário (entrada + parcelas), a comissão libera quando a última parcela entra.',
@@ -389,12 +392,20 @@ function CrediarioDaRede({ gravado, podeEditar }: { gravado: number; podeEditar:
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 360 }}>
         <RotuloComDica texto="Dividir o crediário em até" sobre="Sobre o limite de parcelas"
           estilo={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>
-          É o “Parcelas do saldo” do “entrada + parcelas” — no Vender, no checkout e no check-in do plano. Acima disso o sistema não deixa passar. A despesa parcelada não muda.
+          É o “Parcelas do saldo” do “entrada + parcelas” — no Vender, no checkout e no check-in do plano. Acima disso o sistema não deixa passar. O padrão é {CREDIARIO_PADRAO} parcelas. A despesa parcelada não muda.
         </RotuloComDica>
-        <select className="field" aria-label="Dividir o crediário em até" disabled={!podeEditar} value={n}
-          onChange={e => { setN(e.target.value); setSalvo(false) }}>
-          {opcoesDeParcelas(TETO_DO_CREDIARIO).map(v => <option key={v} value={String(v)}>{v === 1 ? '1 parcela' : `${v} parcelas`}{v === CREDIARIO_PADRAO ? ' (padrão)' : ''}</option>)}
-        </select>
+        {/* Princípio 2 (o Heitor, 04/11): a rede escolhe o número; acima de 48, avisa — não recusa (era um seletor até 48). */}
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <input className="field" inputMode="numeric" aria-label="Dividir o crediário em até" disabled={!podeEditar} value={n}
+            style={{ maxWidth: 120 }}
+            onChange={e => { setN(e.target.value.replace(/\D/g, '').slice(0, String(TETO_DO_CREDIARIO).length)); setSalvo(false) }} />
+          <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>parcelas</span>
+        </span>
+        {n.trim() !== '' && avisoDoMaximoDeParcelas(Number(n)) && (
+          <span role="status" data-aviso-do-crediario style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+            {avisoDoMaximoDeParcelas(Number(n))}
+          </span>
+        )}
       </div>
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
       {podeEditar && (
@@ -993,16 +1004,22 @@ function TabelaDeTaxas({ maquininhas, pixGravado, podeEditar }: {
         <RotuloComDica texto="Prazo da operadora (dias)" sobre="Sobre o prazo da operadora" estilo={rotuloPequeno}>
           No crédito (à vista ou em várias vezes), a operadora deposita cada parcela a cada {recusaDoPrazoDaOperadora(Number(prazoMostrado)) ? 'N' : prazoMostrado} dias
           corridos contados da venda: em 3x, nos dias {[1, 2, 3].map(k => k * (Number(prazoMostrado) || 0)).join(', ')}. Vale para as próximas
-          vendas; de 1 a {PRAZO_MAXIMO_DA_OPERADORA} dias.
+          vendas; de pelo menos 1 dia.
         </RotuloComDica>
+        {/* Princípio 2 (o Heitor, 04/11): acima de 120 dias, avisa — não recusa. */}
         {bandeira ? (
           <input className="field" inputMode="numeric" aria-label="Prazo da operadora (dias)" disabled={!podeEditar}
             placeholder={`${prazo} (da maquininha)`} value={daBandeira.prazo} style={{ maxWidth: 160 }}
-            onChange={e => mudarNaBandeira({ prazo: e.target.value.replace(/\D/g, '').slice(0, 3) })} />
+            onChange={e => mudarNaBandeira({ prazo: e.target.value.replace(/\D/g, '').slice(0, DIGITOS_DO_PRAZO) })} />
         ) : (
           <input className="field" inputMode="numeric" aria-label="Prazo da operadora (dias)" disabled={!podeEditar} value={prazo}
             style={{ maxWidth: 120 }}
-            onChange={e => { const v = e.target.value.replace(/\D/g, '').slice(0, 3); mudarAtual(() => ({ prazo: v })) }} />
+            onChange={e => { const v = e.target.value.replace(/\D/g, '').slice(0, DIGITOS_DO_PRAZO); mudarAtual(() => ({ prazo: v })) }} />
+        )}
+        {prazoMostrado.trim() !== '' && avisoDoPrazoDaOperadora(Number(prazoMostrado)) && (
+          <span role="status" data-aviso-do-prazo style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+            {avisoDoPrazoDaOperadora(Number(prazoMostrado))}
+          </span>
         )}
       </div>
       {/* C75: guardada até a clínica precisar (princípio 7) — fechada de saída. A dica fica fora do <label>. */}

@@ -13,6 +13,8 @@
  * (`lib/financeiro/vezes-da-rede.ts`).
  */
 
+import { LIMITE_DO_INTEIRO_CURTO, acimaDoRegistro, avisoAcimaDoComum } from '@/lib/acima-do-comum'
+
 export const TETO_DE_VEZES = 12
 
 /**
@@ -38,12 +40,23 @@ export function recusaDaTaxaDaMaquininha(n: number): string | null {
  * Comissões (`tenants.cartao_prazo_dias`); o banco confere o intervalo.
  */
 export const PRAZO_PADRAO_DA_OPERADORA = 30
-export const PRAZO_MAXIMO_DA_OPERADORA = 120
+/**
+ * Princípio 2 (o Heitor, 04/11: "no máximo, avisar"): o prazo é o que a
+ * operadora paga de verdade. Acima de 120 dias (o antigo teto, que recusava)
+ * a tela avisa; só o registro limita (`smallint`).
+ */
+export const PRAZO_COMUM_DA_OPERADORA = 120
+export const PRAZO_MAXIMO_DA_OPERADORA = LIMITE_DO_INTEIRO_CURTO
+export const RECUSA_DO_PRAZO_ZERO = 'O prazo da operadora é de pelo menos 1 dia.'
+export const RECUSA_DO_PRAZO_ACIMA_DO_REGISTRO = acimaDoRegistro(PRAZO_MAXIMO_DA_OPERADORA, 'dias')
 /** A recusa do prazo digitado, ou `null`. */
 export function recusaDoPrazoDaOperadora(n: number): string | null {
-  return Number.isInteger(n) && n >= 1 && n <= PRAZO_MAXIMO_DA_OPERADORA
-    ? null
-    : `O prazo da operadora vai de 1 a ${PRAZO_MAXIMO_DA_OPERADORA} dias.`
+  if (!Number.isInteger(n) || n < 1) return RECUSA_DO_PRAZO_ZERO
+  return n > PRAZO_MAXIMO_DA_OPERADORA ? RECUSA_DO_PRAZO_ACIMA_DO_REGISTRO : null
+}
+/** O prazo acima do comum: avisa, e vale como está. */
+export function avisoDoPrazoDaOperadora(n: number): string | null {
+  return avisoAcimaDoComum(n, PRAZO_COMUM_DA_OPERADORA, 'dias')
 }
 
 const entre = (n: number) => Math.max(1, Math.min(TETO_DE_VEZES, Math.trunc(n)))

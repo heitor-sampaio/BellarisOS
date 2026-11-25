@@ -60,6 +60,7 @@ import { RemarcarVencimento } from '@/components/shared/remarcar-vencimento'
 import { AcoesDoLancamentoDaFicha } from '@/components/shared/acoes-do-lancamento-da-ficha'
 import { textoDaOrigemDoCredito } from '@/lib/creditos/origem'
 import { mesDeClienteDesde } from '@/lib/clientes/cliente-desde'
+import { isoDaLinha } from '@/lib/clientes/ordem-das-transacoes'
 import { AvisoDoPacoteEmAberto } from '@/components/shared/aviso-do-pacote-em-aberto'
 import type { PacoteVencidoDaFicha } from '@/lib/pacotes/regras'
 import { useFuso } from '@/components/shared/fuso'
@@ -264,7 +265,12 @@ export interface ProfileRecordEntry {
   queixas?:        string | null
 }
 
-interface Props {
+export interface ClientProfileProps {
+  /**
+   * Quem tem o Prontuário e não tem o Clientes (lib/clientes/ficha-so-do-prontuario.ts):
+   * a ficha é o nome e a aba Prontuário, sem o cadastro, os números e as ações.
+   */
+  soProntuario?:         boolean
   client:                ProfileClient
   branchId:              string
   stats:                 ProfileStats
@@ -274,6 +280,8 @@ interface Props {
   /** Nulo = programa de fidelidade desligado ou cargo sem o módulo: nada de pontos na ficha. */
   fidelidade:            FidelidadeDoPerfil | null
   activePackage:         ProfilePackage | null
+  /** D17 da 28ª: os OUTROS pacotes em andamento (dois iguais, os dois) — um cartão cada. */
+  outrosPacotes?:        ProfilePackage[]
   transactions:          ProfileTransaction[]
   internalCredits:       ProfileInternalCredit[]
   documents:             ClientDocumentItem[]
@@ -996,6 +1004,14 @@ function DadosTab({ client, slug, podeEditar }: {
       {/* Tags */}
       <div>
         <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Tags</p>
+        {/* D10 da 28ª: quem só vê lê as tags DA CLIENTE, como selo — os chips de toda a rede pareciam postos nela. */}
+        {!podeEditar ? (
+          <div data-tags-da-ficha-so-leitura style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {selectedTags.length > 0
+              ? selectedTags.map(tag => <TagBadge key={tag} label={tag} />)
+              : <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Nenhuma tag</span>}
+          </div>
+        ) : (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {opcoesDeTag(vocabulario ?? [], selectedTags).map(tag => {
             const active = temTag(selectedTags, tag)
@@ -1015,6 +1031,7 @@ function DadosTab({ client, slug, podeEditar }: {
             )
           })}
         </div>
+        )}
       </div>
 
 
@@ -1346,9 +1363,8 @@ function FinanceiroTab({
                       {!t.isPaid && t.dueDate
                         // O vencimento é a âncora do meio-dia de Brasília: o dia dele se lê por essa régua (formatarNoFuso, o fuso padrão).
                         ? `Vence ${formatarNoFuso(t.dueDate, 'dd/MM/yyyy')}`
-                        : t.scheduledAt
-                          ? formatarNoFuso(t.scheduledAt, 'dd/MM/yyyy', fuso)
-                          : formatarNoFuso(t.createdAt, 'dd/MM/yyyy', fuso)
+                        // D4 da 28ª: o pago, no dia em que o dinheiro entrou (RE-01, princípio 5) — a mesma data da ordem.
+                        : formatarNoFuso(isoDaLinha(t), 'dd/MM/yyyy', fuso)
                       }
                     </td>
                     <td data-label="" style={{ padding: '12px 16px', maxWidth: 240 }}>
@@ -1512,14 +1528,14 @@ function FinanceiroTab({
 // -- Main component ------------------------------------------------------------
 
 export function ClientProfile({
-  client, branchId, stats, upcomingAppointments, recentAppointments, allAppointments = [],
-  fidelidade, activePackage,
+  soProntuario = false, client, branchId, stats, upcomingAppointments, recentAppointments, allAppointments = [],
+  fidelidade, activePackage, outrosPacotes = [],
   transactions, internalCredits, documents, recordForms = [], lotesDosAtendimentos = {}, podeAbrirLote = false, anexosClinicosFora = 0, anexosClinicos = [], anotacoesEVersoes = { anotacoes: {}, versoes: {} }, podeAnotar = false, pedidoLgpd = null, podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, podeEditarFichaDeSaude = false, fichaDeSaudeAtual = null, alergias = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, portalNoPlano = false, veFinanceiro = false, isNetworkWide, unidadeDoPlano, unidadesDoPlano = [], perguntaAUnidade = false, clientHistory, opportunities = [], veOportunidades = true,
   planProcedures = [], planProducts = [], podeReceber = false, podeMontarPlano = false, podeEditarInjetaveis = false, termos = null,
   prePagos = [], podeAgendar = false, abreOAtendimento = false, podeCancelarPacote = false, pacoteVencido = null, quemDesfaz = null, pagoComCredito = 0, podeRemarcar = false, podeEstornar = false, podeReceberParcela = false, podeEditarCadastro = false, quemCompletaOCadastro: quemCompleta = null, podeExportarProntuario = false, podeVerPlanos = false, podeIniciarAtendimento = false,
   aReceber = { itens: [], total: { n: 0, valor: 0 } }, comandaParaReceber = null, planosNaoRecebidos = [], podeReceberAtendimento = false,
   totaisFinanceiros = { pago: 0, aReceber: 0, credito: null },
-}: Props) {
+}: ClientProfileProps) {
   const router   = useRouter()
   const pathname = usePathname()
   const fuso     = useFuso()
@@ -1533,12 +1549,18 @@ export function ClientProfile({
 
   // Cancelar o pacote em andamento (F2b): a janela da conta.
   const [cancelandoPacote, setCancelandoPacote] = useState(false)
+  // D17 da 28ª: cada pacote em andamento é um cartão; o aberto (a ficha de tratamento, o cancelar) é o da vez.
+  const pacotesNaFicha = activePackage ? [activePackage, ...outrosPacotes] : []
+  const [pacoteAbertoId, setPacoteAbertoId] = useState<string | null>(null)
+  const pacoteAberto = pacotesNaFicha.find(p => p.id === pacoteAbertoId) ?? activePackage
+  const cancelaPacote = (p: ProfilePackage | null) => podeCancelarPacote && !!p && !p.planId
+  const cancelaPlano = (p: ProfilePackage | null) => podeCancelarPacote && !!p?.planId && p.planStatus === 'ACCEPTED'
   // Item 9: o pacote vencido, quando a rede o cancela.
   const [cancelandoVencido, setCancelandoVencido] = useState(false)
-  const pacoteCancelavel = podeCancelarPacote && !!activePackage && !activePackage.planId
+  const pacoteCancelavel = cancelaPacote(pacoteAberto)
   // Cancelar o plano FECHADO (D4 da 9ª; decisão 2 do Heitor: "usa a mesma coisa
   // do pacote"): a mesma janela e a mesma permissão — o Financeiro em Gerenciar.
-  const planoCancelavel = podeCancelarPacote && !!activePackage?.planId && activePackage.planStatus === 'ACCEPTED'
+  const planoCancelavel = cancelaPlano(pacoteAberto)
 
   // Menu do cabeçalho: desativar e reativar o cliente.
   // `?acao=reativar` (a busca universal acha a arquivada, A19): a ficha abre
@@ -1581,7 +1603,8 @@ export function ClientProfile({
   // nenhum dos dois, a aba ficava em "Carregando planos…" para sempre (D6).
   // UM4: a ficha de saúde se responde aqui com o Prontuário em Gerenciar (D2 da 27ª).
   const fichaDeSaudeParaEditar = podeEditarFichaDeSaude && fichaDeSaudeAtual ? fichaDeSaudeAtual : null
-  const visibleTabs = TABS.filter(t => (t.key !== 'fichas' || podeVerProntuario || recordForms.length > 0) && (t.key !== 'financeiro' || veFinanceiro)
+  // Só o prontuário (o Prontuário sem o Clientes): a aba Prontuário, e só ela.
+  const visibleTabs = soProntuario ? TABS.filter(t => t.key === 'fichas') : TABS.filter(t => (t.key !== 'fichas' || podeVerProntuario || recordForms.length > 0) && (t.key !== 'financeiro' || veFinanceiro)
     && (t.key !== 'planejamento' || podeVerPlanos || podeVerProntuario) && (t.key !== 'oportunidades' || veOportunidades))
 
   // PR1a: a foto de um atendimento do prontuário aparece no registro dele; a
@@ -1606,7 +1629,8 @@ export function ClientProfile({
   const abaPedida = params.get('aba')
   const tab: TabKey = visibleTabs.some(t => t.key === abaPedida)
     ? (abaPedida as TabKey)
-    : 'visao'
+    // Só o prontuário: a ficha abre nele (é a única aba).
+    : soProntuario ? 'fichas' : 'visao'
   // A2 da 11ª: a aba que EXISTE mas o cargo não abre (o Prontuário da
   // Comercial pelo `?aba=fichas`) diz isso — caía calada na Visão geral.
   const abaFechada = TABS.find(t => t.key === abaPedida && !visibleTabs.some(v => v.key === t.key)) ?? null
@@ -1639,7 +1663,8 @@ export function ClientProfile({
 
       {/* Volta para a lista. Só no celular, onde a lista saiu de cena para o
           perfil ocupar a tela — sem isto não há caminho de volta a não ser o
-          botão do navegador. */}
+          botão do navegador. Só o prontuário: a lista de clientes não é dela. */}
+      {!soProntuario && (
       <a
         href={rotaClientes(pathname, slug)}
         className="show-mobile"
@@ -1651,12 +1676,13 @@ export function ClientProfile({
       >
         <ChevronLeft size={14} /> Clientes
       </a>
+      )}
 
       {/* Ficha de tratamento */}
-      {treatmentModalOpen && activePackage && (
+      {treatmentModalOpen && pacoteAberto && (
         <TreatmentFileModal
           client={client}
-          activePackage={activePackage}
+          activePackage={pacoteAberto}
           branches={branches}
           currentBranchId={currentBranchId}
           slug={slug}
@@ -1668,9 +1694,9 @@ export function ClientProfile({
           podeIniciarAtendimento={podeIniciarAtendimento}
         />
       )}
-      {cancelandoPacote && activePackage && (activePackage.planId
-        ? <CancelarPlano planId={activePackage.planId} onFechar={() => setCancelandoPacote(false)} />
-        : <CancelarPacote clientPackageId={activePackage.id} onFechar={() => setCancelandoPacote(false)} />)}
+      {cancelandoPacote && pacoteAberto && (pacoteAberto.planId
+        ? <CancelarPlano planId={pacoteAberto.planId} onFechar={() => setCancelandoPacote(false)} />
+        : <CancelarPacote clientPackageId={pacoteAberto.id} onFechar={() => setCancelandoPacote(false)} />)}
       {cancelandoVencido && pacoteVencido && (
         <CancelarPacote clientPackageId={pacoteVencido.id} onFechar={() => setCancelandoVencido(false)} />
       )}
@@ -1708,6 +1734,8 @@ export function ClientProfile({
                     o "VIP" ganhava um "Ouro", um nível que ninguém criou. */}
                 {client.tags.map(tag => <TagBadge key={tag} label={tag} size="xs" />)}
               </div>
+              {/* Só o prontuário: o nome, e nada do cadastro. */}
+              {!soProntuario && (
               <div style={{ display: 'flex', gap: 14, marginTop: 5, flexWrap: 'wrap' }}>
                 {client.phone && (
                   <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
@@ -1731,6 +1759,7 @@ export function ClientProfile({
                   </span>
                 )}
               </div>
+              )}
             </div>
           </div>
 
@@ -1844,6 +1873,8 @@ export function ClientProfile({
       )}
 
       {/* -- KPI row --------------------------------------------------- */}
+      {/* Só o prontuário: nada do financeiro (nem os números do topo, nem as comandas). */}
+      {!soProntuario && (<>
       <div className="kpi-grid" style={{ gap: 8 }}>
         {[
           { label: 'SESSÕES',          value: String(stats.totalSessions) },
@@ -1888,6 +1919,7 @@ export function ClientProfile({
       {/* O atendido e ainda não pago é comanda aberta do PDV (CX3): sem lista
           à parte — o resumo e o caminho para a comanda. */}
       <ComandasAbertasDaFicha total={aReceber.total} receber={comandaParaReceber} podeReceber={podeReceberAtendimento} planos={planosNaoRecebidos} />
+      </>)}
 
       {/* A alergia em destaque, em toda aba, a quem vê o prontuário (A30 da 15ª: só o texto dela). */}
       <AlertaDeAlergia alergias={alergias ?? alergiasDaAnamnese(generalAnamnesis)} />
@@ -1959,68 +1991,72 @@ export function ClientProfile({
 
           {/* 1. Tratamento em andamento */}
           {activePackage ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }} {...(activePackage.deFora ? { 'data-pacote-de-fora': '' } : {})}>
-            <div role="button" onClick={() => setTreatmentModalOpen(true)} style={{
-              borderRadius: 'var(--radius-card)',
-              background: 'var(--gradient-brand)',
-              padding: '20px 24px', color: 'var(--on-brand)', cursor: 'pointer',
-            }}>
-              <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, letterSpacing: '0.08em', opacity: 0.75, marginBottom: 6 }}>
-                {activePackage.deFora ? 'PACOTE DE ANTES' : 'TRATAMENTO EM ANDAMENTO'}
-              </p>
-              <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, marginBottom: 4 }}>
-                {activePackage.deFora ? activePackage.procedureName : activePackage.name}
-              </p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
-                <div style={{ flex: 1, height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.25)' }}>
-                  <div style={{
-                    height: '100%', borderRadius: 3, background: 'var(--surface)',
-                    width: `${Math.round((activePackage.usedSessions / activePackage.totalSessions) * 100)}%`,
-                    transition: 'width 0.3s',
-                  }} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {pacotesNaFicha.map(pacote => (
+              <div key={pacote.id} data-pacote-da-ficha={pacote.id} style={{ display: 'flex', flexDirection: 'column', gap: 6 }} {...(pacote.deFora ? { 'data-pacote-de-fora': '' } : {})}>
+                <div role="button" onClick={() => { setPacoteAbertoId(pacote.id); setTreatmentModalOpen(true) }} style={{
+                  borderRadius: 'var(--radius-card)',
+                  background: 'var(--gradient-brand)',
+                  padding: '20px 24px', color: 'var(--on-brand)', cursor: 'pointer',
+                }}>
+                  <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, letterSpacing: '0.08em', opacity: 0.75, marginBottom: 6 }}>
+                    {pacote.deFora ? 'PACOTE DE ANTES' : 'TRATAMENTO EM ANDAMENTO'}
+                  </p>
+                  <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, marginBottom: 4 }}>
+                    {pacote.deFora ? pacote.procedureName : pacote.name}
+                  </p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
+                    <div style={{ flex: 1, height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.25)' }}>
+                      <div style={{
+                        height: '100%', borderRadius: 3, background: 'var(--surface)',
+                        width: `${Math.round((pacote.usedSessions / pacote.totalSessions) * 100)}%`,
+                        transition: 'width 0.3s',
+                      }} />
+                    </div>
+                    <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, opacity: 0.95, flexShrink: 0 }}>
+                      {pacote.usedSessions} / {pacote.totalSessions} sessões
+                    </p>
+                  </div>
+                  {pacote.deFora && (
+                    // A57: as usadas antes do sistema aparecem como tal (não somem).
+                    <p style={{ fontSize: 'var(--text-2xs)', opacity: 0.9, marginTop: 6, fontWeight: 700 }}>
+                      {Math.max(0, pacote.totalSessions - pacote.usedSessions)} de {pacote.totalSessions} restantes
+                      {(pacote.usadasAntes ?? 0) > 0 && ` · ${usadasAntesDoSistema(pacote.usadasAntes!)}`}
+                    </p>
+                  )}
+                  {pacote.totalSessions - pacote.usedSessions > 0 && (
+                    <p style={{ fontSize: 'var(--text-2xs)', opacity: 0.7, marginTop: 6 }}>
+                      {textoDasRestantes(pacote.totalSessions - pacote.usedSessions, pacote.scheduledSessions ?? 0)}
+                    </p>
+                  )}
+                  {/* A18 da 9ª: nada dizia que o cartão abre — e é por ele que se agendam as sessões. */}
+                  <p data-tratamento-que-abre style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-xs-sz)', fontWeight: 700, marginTop: 10 }}>
+                    Abrir para ver e agendar as sessões <ChevronRight size={14} aria-hidden="true" />
+                  </p>
                 </div>
-                <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, opacity: 0.95, flexShrink: 0 }}>
-                  {activePackage.usedSessions} / {activePackage.totalSessions} sessões
-                </p>
+                {/* A41 da 11ª: o pacote segue liberando; a ficha diz o que falta pagar dele. */}
+                {pacote.emAberto && <AvisoDoPacoteEmAberto valor={pacote.emAberto.valor} parcelas={pacote.emAberto.parcelas} clienteId={client.id} unidadeId={pacote.emAberto.unidadeId} slug={slug} liberaAsSessoes={pacote.emAberto.liberaAsSessoes ?? true} />}
+                {pacote.deFora && pacote.semValorDeReferencia && (
+                  <p data-pacote-sem-valor style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 600, lineHeight: 1.45 }}>
+                    Sem valor de referência: as sessões deste pacote não entram na receita dos atendimentos, e a comissão de execução em percentual é R$ 0 (a de R$ fixo por sessão é paga).
+                  </p>
+                )}
+                {/* A33 da 8ª: quem recebe e não cancela sabe a quem pedir. */}
+                {!cancelaPacote(pacote) && !cancelaPlano(pacote) && quemDesfaz && quemDesfaz.length > 0
+                  && (!pacote.planId || pacote.planStatus === 'ACCEPTED') && (
+                  <p data-quem-cancela-o-pacote style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
+                    Cancelar o {pacote.planId ? 'plano' : 'pacote'} é de quem tem o Financeiro em Gerenciar: {quemDesfaz.join(', ')}.
+                  </p>
+                )}
+                {/* Cancelar o pacote (F2b) e o plano (D4 da 9ª): fora do cartão, que já é o botão da ficha de tratamento. */}
+                {(cancelaPacote(pacote) || cancelaPlano(pacote)) && (
+                  <button type="button" className="btn-ghost" onClick={() => { setPacoteAbertoId(pacote.id); setCancelandoPacote(true) }}
+                    style={{ alignSelf: 'flex-start' }}>
+                    {cancelaPlano(pacote) ? 'Cancelar plano' : 'Cancelar pacote'}
+                  </button>
+                )}
               </div>
-              {activePackage.deFora && (
-                // A57: as usadas antes do sistema aparecem como tal (não somem).
-                <p style={{ fontSize: 'var(--text-2xs)', opacity: 0.9, marginTop: 6, fontWeight: 700 }}>
-                  {Math.max(0, activePackage.totalSessions - activePackage.usedSessions)} de {activePackage.totalSessions} restantes
-                  {(activePackage.usadasAntes ?? 0) > 0 && ` · ${usadasAntesDoSistema(activePackage.usadasAntes!)}`}
-                </p>
-              )}
-              {activePackage.totalSessions - activePackage.usedSessions > 0 && (
-                <p style={{ fontSize: 'var(--text-2xs)', opacity: 0.7, marginTop: 6 }}>
-                  {textoDasRestantes(activePackage.totalSessions - activePackage.usedSessions, activePackage.scheduledSessions ?? 0)}
-                </p>
-              )}
-              {/* A18 da 9ª: nada dizia que o cartão abre — e é por ele que se agendam as sessões. */}
-              <p data-tratamento-que-abre style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-xs-sz)', fontWeight: 700, marginTop: 10 }}>
-                Abrir para ver e agendar as sessões <ChevronRight size={14} aria-hidden="true" />
-              </p>
-            </div>
-            {/* A41 da 11ª: o pacote segue liberando; a ficha diz o que falta pagar dele. */}
-            {activePackage.emAberto && <AvisoDoPacoteEmAberto valor={activePackage.emAberto.valor} parcelas={activePackage.emAberto.parcelas} clienteId={client.id} unidadeId={activePackage.emAberto.unidadeId} slug={slug} liberaAsSessoes={activePackage.emAberto.liberaAsSessoes ?? true} />}
-            {activePackage.deFora && activePackage.semValorDeReferencia && (
-              <p data-pacote-sem-valor style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 600, lineHeight: 1.45 }}>
-                Sem valor de referência: as sessões deste pacote não entram na receita dos atendimentos, e a comissão de execução em percentual é R$ 0 (a de R$ fixo por sessão é paga).
-              </p>
-            )}
-            {/* A33 da 8ª: quem recebe e não cancela sabe a quem pedir. */}
-            {!pacoteCancelavel && !planoCancelavel && quemDesfaz && quemDesfaz.length > 0
-              && (!activePackage.planId || activePackage.planStatus === 'ACCEPTED') && (
-              <p data-quem-cancela-o-pacote style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-                Cancelar o {activePackage.planId ? 'plano' : 'pacote'} é de quem tem o Financeiro em Gerenciar: {quemDesfaz.join(', ')}.
-              </p>
-            )}
-            {/* Cancelar o pacote (F2b) e o plano (D4 da 9ª): fora do cartão, que já é o botão da ficha de tratamento. */}
-            {(pacoteCancelavel || planoCancelavel) && (
-              <button type="button" className="btn-ghost" onClick={() => setCancelandoPacote(true)}
-                style={{ alignSelf: 'flex-start' }}>
-                {planoCancelavel ? 'Cancelar plano' : 'Cancelar pacote'}
-              </button>
-            )}
+            ))}
             {podeTrazerPacote && (
               <TrazerPacoteDeFora clientId={client.id} procedimentos={planProcedures} unidades={branches} unidadeAtual={currentBranchId ?? ''} />
             )}

@@ -588,10 +588,10 @@ export async function Configuracoes({
 
       {conteudo === 'fidelidade' && configFidelidade && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <FidelidadeConfig inicial={configFidelidade} podeEditar={can(ctx, 'settings', 'MANAGE') && ctx.branchId === null}
+          <FidelidadeConfig inicial={configFidelidade} podeEditar={can(ctx, 'settings', 'MANAGE') && mexeNaConfigDaRede(ctx)}
             recompensas={(catalogo?.recompensas ?? []).map(r => ({ id: r.id, name: r.name, is_active: r.is_active }))} />
           {catalogo && (
-            <FidelidadeCatalogo inicial={catalogo} podeEditar={can(ctx, 'settings', 'MANAGE') && ctx.branchId === null}
+            <FidelidadeCatalogo inicial={catalogo} podeEditar={can(ctx, 'settings', 'MANAGE') && mexeNaConfigDaRede(ctx)}
               trocaPeloPortal={configFidelidade.client_redeem} valorDoPonto={configFidelidade.redeem_points_value} />
           )}
         </div>
@@ -599,12 +599,12 @@ export async function Configuracoes({
 
       {conteudo === 'comissoes' && comissoes && (
         <SettingsComissoes inicial={comissoes[0]} maquininhas={comissoes[1]} taxaDoPix={comissoes[3]} semRegra={comissoes[2]} quantosAtendem={comissoes[2].quantosAtendem} produtos={comissoes[4]} crediarioMax={comissoes[5]}
-          podeEditar={can(ctx, 'financial', 'MANAGE') && ctx.branchId === null} />
+          podeEditar={can(ctx, 'financial', 'MANAGE') && mexeNaConfigDaRede(ctx)} />
       )}
 
       {conteudo === 'general' && (
         dadosDaRede
-          ? <SettingsGeral rede={dadosDaRede} podeEditar={can(ctx, 'settings', 'MANAGE') && mexeNaConfigDaRede(ctx)} naRede={ctx.branchId === null}
+          ? <SettingsGeral rede={dadosDaRede} podeEditar={can(ctx, 'settings', 'MANAGE') && mexeNaConfigDaRede(ctx)} naRede={ctx.branchId === null} daAdmin={ctx.isNetworkAdmin}
               appDaCliente={await enderecosDoAppDaRede(ctx.tenantId!)} />
           : (
             <div className="card">

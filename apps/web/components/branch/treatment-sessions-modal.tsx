@@ -15,6 +15,7 @@ import {
   getSchedulingBranchProfessionals,
   getSchedulingDaySlots,
   salasParaAgendar,
+  unidadesAoAlcance,
 } from '@/actions/appointments'
 import type { SalaParaAgendar } from '@/lib/appointments/salas'
 import { useSinais } from '@/components/shared/realtime-refresher'
@@ -32,6 +33,8 @@ type Session = {
   status:           string
   appointmentId:    string | null
   scheduledAt:      string | null
+  /** Quando foi FEITA (D7 da 28ª): a realizada diz a hora real, não a marcada. */
+  completedAt?:     string | null
   apptStatus:       string | null
   professionalName: string | null
   procedureName:    string | null
@@ -139,6 +142,29 @@ export function SessionScheduler({
   const [roomId,       setRoomId]       = useState('')
   const [saving,       setSaving]       = useState(false)
   const [error,        setError]        = useState<string | null>(null)
+  // D18 da 28ª (CLAUDE.md §11): só as unidades ao alcance de quem agenda — a
+  // do pacote vendido em outra unidade não aparece a quem não a alcança.
+  const [alcance,      setAlcance]      = useState<string[] | null>(null)
+  const chaveDasUnidades = branches.map(b => b.id).join(',')
+  useEffect(() => {
+    let vivo = true
+    unidadesAoAlcance(chaveDasUnidades ? chaveDasUnidades.split(',') : []).then(ids => {
+      if (!vivo) return
+      setAlcance(ids)
+      // A unidade de partida fora do alcance: a única que sobra, ou nenhuma (a pessoa escolhe).
+      if (currentBranchId && !ids.includes(currentBranchId)) {
+        const proxima = ids.length === 1 ? ids[0]! : ''
+        setBranchId(proxima)
+        setLoadingProfs(!!proxima)
+        setProfId('')
+        setDate('')
+        setSlots([])
+        setTime('')
+      }
+    }).catch(() => { if (vivo) setAlcance(null) })
+    return () => { vivo = false }
+  }, [chaveDasUnidades, currentBranchId])
+  const opcoes = alcance ? branches.filter(b => alcance.includes(b.id)) : branches
 
   // Os resets acontecem no handler que muda a escolha; os efeitos só buscam.
   function trocarUnidade(id: string) {
@@ -232,7 +258,7 @@ export function SessionScheduler({
         </p>
       )}
 
-      {branches.length > 1 && (
+      {(opcoes.length > 1 || (opcoes.length === 1 && branchId !== opcoes[0]!.id)) && (
         <div style={{ marginBottom: 12 }}>
           <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 8 }}>UNIDADE</p>
           <select
@@ -243,7 +269,7 @@ export function SessionScheduler({
           >
             {/* Sem unidade escolhida (a ficha da rede — D1 da 8ª), nenhuma vem marcada. */}
             {!branchId && <option value="">Selecione a unidade…</option>}
-            {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+            {opcoes.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
         </div>
       )}
@@ -458,7 +484,7 @@ export function TreatmentSessionsModal({
                         {sess.scheduledAt ? (
                           <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 2 }}>
                             <Calendar size={10} style={{ display: 'inline', marginRight: 3 }} />
-                            {formatarNoFuso(sess.scheduledAt, "EEE, dd MMM · HH:mm", fuso)}
+                            {formatarNoFuso(isDone && sess.completedAt ? sess.completedAt : sess.scheduledAt, "EEE, dd MMM · HH:mm", fuso)}
                             {sess.professionalName && ` · ${sess.professionalName}`}
                           </p>
                         ) : isDone && !sess.appointmentId ? (

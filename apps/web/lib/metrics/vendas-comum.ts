@@ -46,6 +46,25 @@ export interface Venda {
   valor:        number
   /** O número da comanda do PDV; nulo na venda de antes do PDV. */
   comanda:      number | null
+  /** A10 da 28ª: o plano ou o pacote foi cancelado (o valor da linha já é o que a rede ficou). */
+  cancelada?:   boolean
+}
+
+/** A10 da 28ª (princípio 3): "Plano cancelado" / "Pacote cancelado" — a linha diz o que aconteceu. */
+export function marcaDoCancelamento(v: Pick<Venda, 'tipo' | 'cancelada'>): string | null {
+  if (!v.cancelada) return null
+  if (v.tipo === 'PLANO') return 'Plano cancelado'
+  if (v.tipo === 'PACOTE') return 'Pacote cancelado'
+  return null
+}
+
+/**
+ * Pendente 17 da 27ª (princípio 7): quem a coluna "Profissional" mostra nesta
+ * linha — no atendimento avulso, quem atendeu; no pacote, no pré-pago, no
+ * produto e no plano, quem vendeu (o crédito interno não tem).
+ */
+export function quemDaVenda(tipo: TipoDeVenda): string {
+  return tipo === 'PROCEDIMENTO' ? 'Quem atendeu' : 'Quem vendeu'
 }
 
 export interface ResumoDeVendas {
@@ -70,7 +89,7 @@ export function colunasDoCsvDeVendas(v: Venda, o: { fuso?: string; unidade: stri
     dayKeyTZ(v.data, o.fuso).split('-').reverse().join('/'),
     v.comanda == null ? '' : String(v.comanda),
     ROTULO_DO_TIPO[v.tipo],
-    descricaoDaVenda(v),
+    marcaDoCancelamento(v) ? `${descricaoDaVenda(v)} (${marcaDoCancelamento(v)})` : descricaoDaVenda(v),
     v.cliente ?? '',
     v.profissional ?? '',
     o.unidade,

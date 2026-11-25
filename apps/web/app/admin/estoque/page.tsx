@@ -169,7 +169,7 @@ export default async function AdminEstoquePage({
   const validadeProxima = vencendo.length
   const nomeDoProduto   = new Map(products.map(p => [p.id, p.name]))
   // A40 da 10ª: o cartão diz o lote e a data, não só o produto.
-  const quaisVencem     = vencendo.map(l => loteNoCartao(nomeDoProduto.get(l.produtoId) ?? '', l))
+  const quaisVencem     = vencendo.map(l => loteNoCartao(nomeDoProduto.get(l.produtoId) ?? '', l, now, fuso))
   // A36 da 10ª: o "Ver lotes esgotados" só onde há algum.
   const comLoteEsgotado = productIds.length > 0 ? await paresComLoteEsgotado(admin, unidadesDoRecorte) : []
 

@@ -22,6 +22,7 @@ import { comOProcedimento, parcelasComOProcedimento } from '@/lib/financeiro/pro
 import { getFluxoDeCaixa } from '@/lib/metrics/fluxo-de-caixa'
 import { getTotalDosAtendimentosAReceber } from '@/lib/metrics/a-receber'
 import { resultadoDoPeriodo, SEM_ESTOQUE_NO_RESULTADO } from '@/lib/metrics/resultado'
+import { foraDoLucro } from '@/components/shared/despesas-do-caixa'
 import { descontosDosLancamentos, type LancamentoComDesconto } from '@/lib/financeiro/desconto-do-lancamento'
 import { pagosSemDinheiro, type LancamentoSemDinheiro } from '@/lib/financeiro/pago-sem-dinheiro'
 import { getTaxaDosLancamentos } from '@/lib/metrics/contadora'
@@ -214,6 +215,8 @@ export default async function AdminFinanceiroPage({
     revenue:     b.revenueCash,
     expenses:    b.expensesCash,
     ...(conta => ({ result: conta.lucro, conta }))(resultadoDoPeriodo({ ...b, ...(estoquePorUnidade.porUnidade[b.branchId] ?? SEM_ESTOQUE_NO_RESULTADO) })),
+    // A5 da 28ª: o que o caixa tem e o lucro não desconta de novo (a dica das Despesas pagas).
+    foraDoLucro: foraDoLucro(estoquePorUnidade.porUnidade[b.branchId] ?? SEM_ESTOQUE_NO_RESULTADO),
     commissions: b.commissionsOpen + b.commissionsPaid,
     aReceber:    emAbertoDe[b.branchId]?.aReceber ?? 0,
     aReceberEmAberto: aReceberEmAberto.porUnidade[b.branchId] ?? 0,
@@ -274,6 +277,7 @@ export default async function AdminFinanceiroPage({
         totalExpenses={totalExpenses}
         totalResult={totalConta.lucro}
         totalConta={totalConta}
+        totalForaDoLucro={foraDoLucro(estoqueNoResultado.total)}
         totalCommissions={totalComm}
         totalAReceber={emAbertoDaRede.aReceber}
         totalAReceberEmAberto={aReceberEmAberto.total}

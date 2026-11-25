@@ -16,6 +16,7 @@ import { FUSO_PADRAO, nomeDoFuso } from '@/lib/unidades/fuso'
 import { formatarNoFuso } from '@/lib/formatar-no-fuso'
 import { clientesDaCampanha } from '@/lib/notifications/clientes-da-campanha'
 import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
+import { Dica } from '@/components/shared/dica'
 
 export const dynamic = 'force-dynamic'
 
@@ -197,8 +198,12 @@ export default async function CampanhaDetailPage({ params }: { params: Promise<{
       {dispatches.length > 0 && (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--hairline)' }}>
-            <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
+            <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               Últimos envios
+              {/* D9 da 28ª (NC-06): a cliente sem aparelho não conta como enviada. */}
+              <Dica rotulo="Sobre os envios">
+                Guardada no sino: a cliente não tem aparelho com os avisos ligados; o aviso fica no sino do app e não conta como enviada.
+              </Dica>
             </h2>
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -223,6 +228,7 @@ export default async function CampanhaDetailPage({ params }: { params: Promise<{
                       const cfg =
                         d.status === 'READ'   ? { label: 'Lida',    color: 'var(--info)' } :
                         d.status === 'SENT'   ? { label: 'Enviada', color: 'var(--success)' } :
+                        d.status === 'GUARDADA' ? { label: 'Guardada no sino', color: 'var(--text-muted)' } :
                                                 { label: 'Falhou',  color: 'var(--danger)' }
                       return (
                         <span style={{

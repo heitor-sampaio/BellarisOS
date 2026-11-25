@@ -17,8 +17,10 @@ describe('EntradaDaConfig', () => {
     expect(r.points_per_real).toBe(1.5)
   })
 
-  it('recusa taxa zero, negativa ou absurda', () => {
-    for (const taxa of ['0', '-1', '1001', 'abc']) {
+  // Princípio 2 (o Heitor, 2026-11-04: "Não recusar o valor que a rede escolheu ... no máximo, avisar"):
+  // acima de 1.000 pontos por real avisa (tests/tetos-avisam-nao-recusam.test.ts); só o registro limita.
+  it('recusa taxa zero, negativa, ilegível ou acima do registro', () => {
+    for (const taxa of ['0', '-1', '100000000', 'abc']) {
       expect(EntradaDaConfig.safeParse({ ...valida, points_per_real: taxa }).success, taxa).toBe(false)
     }
   })
@@ -30,17 +32,19 @@ describe('EntradaDaConfig', () => {
     expect(EntradaDaConfig.safeParse({ ...valida, redeem_max_pct: '101' }).success).toBe(false)
   })
 
-  it('opcionais: bônus de 0 a 1.000.000 inteiros; aviso nulo ou 1 a 90 dias', () => {
+  // Princípio 2 (o Heitor, 2026-11-04): o bônus acima de 1.000.000 e o aviso acima de 90 dias avisam, não recusam.
+  it('opcionais: bônus inteiro de 0 para cima; aviso nulo ou de 1 dia para cima (até 100 anos)', () => {
     const ok = EntradaDaConfig.parse({ ...valida, birthday_bonus: '200', first_access_bonus: '50', client_redeem: true, expiry_notice_days: '7' })
     expect([ok.birthday_bonus, ok.first_access_bonus, ok.client_redeem, ok.expiry_notice_days]).toEqual([200, 50, true, 7])
-    for (const b of ['-1', '1.5', '1000001']) expect(EntradaDaConfig.safeParse({ ...valida, birthday_bonus: b }).success, b).toBe(false)
-    for (const d of ['0', '91', '2.5']) expect(EntradaDaConfig.safeParse({ ...valida, expiry_notice_days: d }).success, d).toBe(false)
+    for (const b of ['-1', '1.5', '2147483648']) expect(EntradaDaConfig.safeParse({ ...valida, birthday_bonus: b }).success, b).toBe(false)
+    for (const d of ['0', '36501', '2.5']) expect(EntradaDaConfig.safeParse({ ...valida, expiry_notice_days: d }).success, d).toBe(false)
   })
 
-  it('validade: nula (não vence) ou 1 a 120 meses', () => {
+  // Princípio 2 (o Heitor, 2026-11-04): a validade acima de 120 meses avisa, não recusa.
+  it('validade: nula (não vence) ou de 1 mês para cima (até 100 anos)', () => {
     expect(EntradaDaConfig.parse(valida).expiry_months).toBeNull()
     expect(EntradaDaConfig.parse({ ...valida, expiry_months: '6' }).expiry_months).toBe(6)
-    for (const m of ['0', '121', '1.5']) expect(EntradaDaConfig.safeParse({ ...valida, expiry_months: m }).success, m).toBe(false)
+    for (const m of ['0', '1201', '1.5']) expect(EntradaDaConfig.safeParse({ ...valida, expiry_months: m }).success, m).toBe(false)
   })
 
   it('recusa modo de ganho fora da lista', () => {

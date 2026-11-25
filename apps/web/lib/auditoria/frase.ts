@@ -655,7 +655,11 @@ export function fraseDaAuditoria(r: RegistroDaAuditoria, nomes: NomesDaAuditoria
     const categoria = texto(r.depois.category)
     const valor = numero(r.depois.amount)
     const oQue = categoria === 'Estorno' ? 'o estorno' : tipo === 'EXPENSE' ? 'a despesa' : tipo === 'INCOME' ? 'a receita' : 'o lançamento'
-    const nomeDele = categoria && categoria !== 'Estorno' ? ` ${categoria}` : ''
+    // A7 da 28ª (princípio 3): a despesa se lê pelo que a pessoa escreveu, com a categoria ao lado.
+    const descricao = tipo === 'EXPENSE' ? texto(r.depois.description) : null
+    const nomeDele = descricao
+      ? ` ${descricao}${categoria ? `, em ${categoria}` : ''}`
+      : categoria && categoria !== 'Estorno' ? ` ${categoria}` : ''
     return `Criou ${oQue}${nomeDele}${valor != null ? ` (${brl(valor)})` : ''}${cliente ? ` — ${cliente}` : ''}`
   }
   const fato = fraseDoRegistroDa17(r, nomes, cliente)
@@ -1106,19 +1110,53 @@ function pagamentoDaVenda(linhas: readonly RegistroDaAuditoria[], nomes: NomesDa
 
 /**
  * ", com desconto de R$ 20,00 e R$ 30,00 em pontos" (A20a da 25ª; princípio 3):
- * "Recebeu R$ 180,00 (Pix)" calava o que abateu o preço. Com o voucher, os
- * pontos são ele (a frase já o diz).
+ * "Recebeu R$ 180,00 (Pix)" calava o que abateu o preço. O voucher entra na
+ * mesma lista ("com desconto de R$ 45,00, o Voucher R$ 30 e R$ 5,00 em pontos").
  */
-function abatimentosDasEntradas(rs: readonly Recebimento[], comVoucher: boolean): string {
+function abatimentosDasEntradas(rs: readonly Recebimento[], voucher: VoucherDaGravacao | null, pontosDebitados: number): string {
   const soma = (f: (x: Recebimento) => number) => Math.round(rs.reduce((t, x) => t + f(x), 0) * 100) / 100
   const desconto = soma(x => x.desconto ?? 0)
-  const pontos = comVoucher ? 0 : soma(x => x.pontos ?? 0)
+  // `loyalty_discount` é o voucher MAIS os pontos pagos à parte (A7 da 28ª: a Eloá
+  // pagou com o Voucher R$ 30 e 100 pontos, e os pontos sumiam). Com o valor do
+  // voucher gravado, os pontos em reais são a diferença. Sem o valor em reais
+  // (as gravações de antes do gatilho guardá-lo), os pontos debitados na gravação.
+  const pagoEmPontos = soma(x => x.pontos ?? 0)
+  const semOsReais = voucher ? voucher.valor === null : pagoEmPontos === 0
+  const pontosEmReais = voucher ? (voucher.valor === null ? 0 : Math.round((pagoEmPontos - voucher.valor) * 100) / 100) : pagoEmPontos
+  const pontos = pontosEmReais > 0 ? `${brl(pontosEmReais)} em pontos`
+    : semOsReais && pontosDebitados > 0 ? `${pontosDebitados.toLocaleString('pt-BR')} pontos`
+    : null
   const partes = [
     ...(desconto > 0 ? [`desconto de ${brl(desconto)}`] : []),
-    ...(pontos > 0 ? [`${brl(pontos)} em pontos`] : []),
+    ...(voucher ? [voucher.texto] : []),
+    ...(pontos ? [pontos] : []),
   ]
   return partes.length ? `, com ${emLista(partes)}` : ''
 }
+
+/** Os pontos debitados na gravação (os pagos na comanda), em número de pontos. */
+function pontosDebitadosDaGravacao(linhas: readonly RegistroDaAuditoria[]): number {
+  return linhas.filter(l => l.tabela === 'loyalty_transactions' && l.operacao === 'criou')
+    .reduce((t, l) => { const p = numero(l.depois.points); return p !== null && p < 0 ? t - p : t }, 0)
+}
+
+/**
+ * As parcelas do crediário lançadas na gravação do recebimento (A7 da 28ª;
+ * princípio 3): "Recebeu R$ 100,00 (Pix)" não dizia que ficaram 3 parcelas em
+ * aberto. A parcela vem do lançamento (o gatilho a guarda) ou do lido agora.
+ */
+function parcelasDoCrediario(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria): { n: number; total: number } | null {
+  const abertas = linhas.filter(l => l.tabela === 'financial_transactions' && l.operacao === 'criou' && !l.depois.paid_at
+    && (texto(l.depois.type) ?? (l.registro_id ? nomes.lancamentos?.[l.registro_id]?.tipo : null)) === 'INCOME'
+    && texto(l.depois.category) !== 'Estorno'
+    && (numero(l.depois.parcela_numero) ?? (l.registro_id ? nomes.lancamentos?.[l.registro_id]?.parcela ?? null : null)) !== null)
+  if (!abertas.length) return null
+  const total = abertas.reduce((t, l) => t + (numero(l.depois.amount) ?? (l.registro_id ? nomes.lancamentos?.[l.registro_id]?.valor ?? 0 : 0)), 0)
+  return { n: abertas.length, total: Math.round(total * 100) / 100 }
+}
+
+const lancouAsParcelas = (p: { n: number; total: number }) =>
+  ` e lançou ${p.n} ${p.n === 1 ? 'parcela' : 'parcelas'} no crediário (${brl(p.total)})`
 
 /** " — Rita Moura": a cliente da gravação, se for uma só. */
 function clienteDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria, preferida?: RegistroDaAuditoria): string {
@@ -1135,12 +1173,21 @@ const ACONTECEU_NO_ATENDIMENTO: Record<string, string> = {
  * O voucher usado na gravação (A26 da 17ª: "Recebeu R$ 1.160,00" não dizia o
  * voucher de R$ 40), pelo nome que a auditoria guarda: "o Voucher R$ 40".
  */
-function voucherDaGravacao(linhas: readonly RegistroDaAuditoria[]): string | null {
+interface VoucherDaGravacao {
+  texto: string
+  /** O desconto do voucher em reais (A7 da 28ª: o gatilho passa a guardá-lo); nulo nas gravações de antes. */
+  valor: number | null
+}
+
+function voucherDaGravacao(linhas: readonly RegistroDaAuditoria[]): VoucherDaGravacao | null {
   const usado = linhas.find(l => l.tabela === 'loyalty_vouchers' && l.operacao === 'editou'
     && (l.colunas.includes('used_at') || texto(l.depois.status) === 'USADO'))
   const nome = usado ? texto(usado.depois.name) ?? texto(usado.antes.name) : null
-  if (!nome) return null
-  return /^voucher\b/i.test(nome) ? `o ${nome}` : `o voucher ${nome}`
+  if (!usado || !nome) return null
+  return {
+    texto: /^voucher\b/i.test(nome) ? `o ${nome}` : `o voucher ${nome}`,
+    valor: numero(usado.depois.discount_value) ?? numero(usado.antes.discount_value),
+  }
 }
 
 /** O fato da gravação e o registro dele (a frase, a unidade e o link da linha); nulo quando não há um. */
@@ -1151,8 +1198,12 @@ function fatoDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAu
   const totalRecebido = entradas.reduce((t, x) => t + x.valor, 0)
   const voucher = voucherDaGravacao(linhas)
   const formasDaEntrada = formasComValor(entradas)
-  const abatimentos = abatimentosDasEntradas(entradas, !!voucher)
-  const eRecebeu = entradas.length ? ` e recebeu ${brl(totalRecebido)}${formasDaEntrada ? ` (${formasDaEntrada})` : ''}${abatimentos}${voucher ? `, com ${voucher}` : ''}` : ''
+  const abatimentos = abatimentosDasEntradas(entradas, voucher, pontosDebitadosDaGravacao(linhas))
+  // A7 da 28ª: o crediário da comanda (a entrada recebida e as parcelas lançadas na mesma gravação).
+  const crediario = entradas.length ? parcelasDoCrediario(linhas, nomes) : null
+  const eRecebeu = entradas.length
+    ? ` e recebeu ${crediario ? 'a entrada de ' : ''}${brl(totalRecebido)}${formasDaEntrada ? ` (${formasDaEntrada})` : ''}${abatimentos}${crediario ? lancouAsParcelas(crediario) : ''}`
+    : ''
 
   // A venda: o pacote, o pré-pago, o crédito.
   const pacote = criada('client_packages')
@@ -1230,7 +1281,7 @@ function fatoDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAu
     const forma = formasComValor(entradas)
     return {
       principal,
-      frase: `Recebeu ${brl(totalRecebido)}${forma ? ` (${forma})` : ''}${abatimentos}${produtos ? `, com ${produtos}` : ''}${voucher ? `${produtos ? ' e' : ','} com ${voucher}` : ''}${clienteDaGravacao(linhas, nomes, principal)}`,
+      frase: `Recebeu ${crediario ? 'a entrada de ' : ''}${brl(totalRecebido)}${forma ? ` (${forma})` : ''}${abatimentos}${produtos ? `, com ${produtos}` : ''}${crediario ? lancouAsParcelas(crediario) : ''}${clienteDaGravacao(linhas, nomes, principal)}`,
     }
   }
   const saidasPagas = recebidos.filter(x => x.tipo === 'EXPENSE')
@@ -1249,6 +1300,21 @@ function fatoDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAu
     }
   }
   return null
+}
+
+/** "Criou a despesa X, em Categoria, em 3 parcelas (R$ 900,00)": as parcelas de uma despesa criadas juntas; nulo se não for isso. */
+function fraseDaDespesaEmParcelas(linhas: readonly RegistroDaAuditoria[]): string | null {
+  if (linhas.length < 2 || !linhas.every(l => l.tabela === 'financial_transactions' && l.operacao === 'criou'
+    && texto(l.depois.type) === 'EXPENSE' && numero(l.depois.parcela_numero) !== null)) return null
+  const semParcela = (d: string | null) => d?.replace(/\s*—\s*parcela \d+\/\d+\s*$/i, '').trim() || null
+  const descricoes = [...new Set(linhas.map(l => semParcela(texto(l.depois.description))))]
+  const categorias = [...new Set(linhas.map(l => texto(l.depois.category)))]
+  if (descricoes.length !== 1 || categorias.length !== 1) return null
+  const [descricao] = descricoes
+  const [categoria] = categorias
+  const total = Math.round(linhas.reduce((t, l) => t + (numero(l.depois.amount) ?? 0), 0) * 100) / 100
+  const nome = descricao ? ` ${descricao}${categoria ? `, em ${categoria}` : ''}` : categoria ? ` ${categoria}` : ''
+  return `Criou a despesa${nome}, em ${linhas.length} parcelas (${brl(total)})`
 }
 
 /** A frase de uma gravação inteira. */
@@ -1325,6 +1391,9 @@ export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: Nome
 
   // Muitas linhas da mesma tabela: "Criou 3 e apagou 3 insumos do procedimento".
   const tabela = linhas[0]!.tabela
+  // A7 da 28ª (princípio 3): a despesa lançada em parcelas é UMA despesa, pela descrição ("Criou 3 lançamentos" não dizia).
+  const despesaEmParcelas = fraseDaDespesaEmParcelas(linhas)
+  if (despesaEmParcelas) return despesaEmParcelas
   if (linhas.every(l => l.tabela === tabela && ORDEM_DAS_OPERACOES.includes(l.operacao))) {
     let coisas = PLURAL_DA_AUDITORIA[tabela] ?? `registros (${tabela})`
     if (tabela === 'role_permissions' && umCargo) coisas = `permissões do cargo ${umCargo}`

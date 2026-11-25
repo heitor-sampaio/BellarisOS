@@ -3,7 +3,7 @@
 import { useState, useActionState, useCallback, useEffect } from 'react'
 import { rotuloDoPagoAntes } from '@/lib/appointments/pago-antes-textos'
 import { useRouter, usePathname } from 'next/navigation'
-import { X, CheckCircle2, Clock, AlertCircle, AlertTriangle, Ban, Play, CalendarClock, DoorOpen, HandCoins, Lock } from 'lucide-react'
+import { X, CheckCircle2, Clock, AlertCircle, AlertTriangle, Ban, Play, CalendarClock, DoorOpen, HandCoins, Lock, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import { updateAppointmentStatus, rescheduleAppointment, chegarEIniciar, avisosDoRemarcar } from '@/actions/appointments'
 import { situacaoDaCobranca } from '@/actions/a-receber'
@@ -526,7 +526,7 @@ export function AppointmentSheet({ appointment, slug, vistaDela = false, podeGer
                 </button>
               )}
               <button disabled={loading} onClick={() => { setShowCancelReason(true); setConfirmandoFalta(false) }} className="btn-ghost" style={{ flex: 1, justifyContent: 'center', color: 'var(--warning)' }}>
-                <Ban size={14} /> Cancelar
+                <Ban size={14} /> {emAtendimento ? 'Desistir do atendimento' : 'Cancelar'}
               </button>
               {/* A27 da 12ª (princípio 3): a regra fica — a falta é de quem não veio
                   NA HORA —, e a janela diz quando ela aparece: na dica, ao lado do
@@ -545,7 +545,7 @@ export function AppointmentSheet({ appointment, slug, vistaDela = false, podeGer
             {confirmandoFalta && podeCancelar && jaComecou && !emAtendimento && (
               <div data-confirmar-falta role="alert" style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px', background: 'var(--warning-soft)', borderRadius: 'var(--radius-field-token)', border: '1px solid var(--warning-border)' }}>
                 <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text)', fontWeight: 'var(--weight-bold)', lineHeight: 1.5 }}>
-                  Marcar que {appointment.clientName} não compareceu às {timeStr}? Os termos em aberto deste horário são cancelados, e o que estava pago (pacote, plano, pré-pago) volta para ela.
+                  Marcar que {appointment.clientName} não compareceu às {timeStr}? Os documentos deste horário que ela ainda não assinou são cancelados, e o que estava pago (pacote, plano, pré-pago) volta para ela.
                 </p>
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                   <button type="button" className="btn-secondary" disabled={loading} onClick={() => setConfirmandoFalta(false)}>Voltar</button>
@@ -558,7 +558,7 @@ export function AppointmentSheet({ appointment, slug, vistaDela = false, podeGer
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px', background: 'var(--warning-soft)', borderRadius: 'var(--radius-field-token)', border: '1px solid var(--warning)' }}>
                 {/* O rótulo LIGADO ao campo (J-31, design.md). */}
                 <label htmlFor="motivo-do-cancelamento" style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--warning)' }}>
-                  Motivo do cancelamento *
+                  {emAtendimento ? 'Motivo da desistência *' : 'Motivo do cancelamento *'}
                 </label>
                 <input
                   id="motivo-do-cancelamento"
@@ -581,7 +581,7 @@ export function AppointmentSheet({ appointment, slug, vistaDela = false, podeGer
                   className="btn-primary"
                   style={{ justifyContent: 'center' }}
                 >
-                  Confirmar cancelamento
+                  {emAtendimento ? 'Confirmar desistência' : 'Confirmar cancelamento'}
                 </button>
               </div>
             )}
@@ -638,6 +638,15 @@ export function AppointmentSheet({ appointment, slug, vistaDela = false, podeGer
           <p style={{ textAlign: 'center', color: 'var(--text-faint)', fontSize: 'var(--text-xs-sz)' }}>
             Este agendamento já foi encerrado.
           </p>
+        )}
+        {/* UM1 (A8 da 28ª): o Atendimento em Ver abre a tela do atendimento em
+            qualquer estado — antes de começar e depois de concluído também (o
+            "Retomar" cobre o Em atendimento). */}
+        {appointment.status !== 'IN_PROGRESS' && (abreOAtendimento || vistaDela) && (
+          <Link href={rotaAtendimento(pathname, slug, appointment.id)} onClick={onClose} data-abrir-o-atendimento
+            className="btn-ghost" style={{ width: '100%', justifyContent: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 7, marginTop: 8 }}>
+            <ArrowRight size={14} /> Abrir a tela do atendimento
+          </Link>
         )}
 
         {historico.length > 0 && (

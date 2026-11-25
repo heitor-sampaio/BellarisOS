@@ -124,3 +124,16 @@ test.describe('o Pagar da despesa que já tem forma abre a janela, com a forma l
       .toEqual({ is_paid: true, payment_method: 'PIX' })
   })
 })
+
+// A6 de 25/11 (princípio 3): o cartão diz o recorte no título, e o total de
+// baixo diz que é de qualquer vencimento — a aba A pagar lista todos.
+test('o cartão do a pagar diz o recorte: "vence no período" e "de qualquer vencimento"', async ({ browser }) => {
+  await como(browser, async p => {
+    for (const url of [`/${slug}/financeiro?period=month`, '/admin/financeiro?period=month']) {
+      await p.goto(url)
+      const aPagar = p.locator('[data-kpi="a-pagar"]')
+      await expect(aPagar).toContainText('A pagar · vence no período')
+      await expect(aPagar).toContainText(/Em aberto, de qualquer vencimento:\s*R\$\s300,00/)
+    }
+  })
+})

@@ -19,7 +19,7 @@ import { agendamentosDeHojeNasUnidades } from '@/lib/metrics/agenda-de-hoje-da-r
 import {
   resolvePeriod, percent, EMPTY_CORE,
   getByBranch, getSeries, getTopProcedures, getTopProfessionals,
-  getTopClients, getLeadFunnel, getRankingDeComissao, getMargemPorProcedimento, getTicketMedio, getSeriesDoResultado,
+  getTopClients, getRecorrenciaDasClientes, getLeadFunnel, getRankingDeComissao, getMargemPorProcedimento, getTicketMedio, getSeriesDoResultado,
 } from '@/lib/metrics'
 import { getDemografia, getGiroDeEstoque, type Demografia } from '@/lib/metrics/demografia'
 import { seedDefaultFunnel } from '@/lib/crm/funis'
@@ -39,6 +39,7 @@ import { differenceInDays } from 'date-fns'
 import { lotesVencendoDoRecorte } from '@/lib/estoque/lotes'
 import type { LoteNoDashboard } from '@/components/shared/lotes-vencendo'
 import { funilDoDashboard } from '@/lib/crm/funil-do-dashboard'
+import { rankingDaRecorrencia } from '@/lib/metrics/recorrencia'
 import { situacaoDoEstoque, estoqueBaixo, contarSituacoes, saldoParaMostrar, minimoParaMostrar, formatarQuantidadeComUnidade, ROTULO_DA_SITUACAO, minimoEhDoCadastro, rotuloDoMinimo } from '@/lib/estoque/situacao'
 
 
@@ -249,7 +250,8 @@ export default async function AdminDashboardPage({
     getTopProcedures({ ...doDinheiro, limit: 50 }),
     topProfessionalsDaAgenda,
     getTopProfessionals({ ...doDinheiro, limit: 50 }),
-    topClientsDaAgenda,
+    // D16 da 28ª: a recorrência é quem mais voltou (os concluídos), não o ranking de gasto.
+    getRecorrenciaDasClientes({ ...daAgenda, limit: 5 }),
     noDinheiro(topClientsDaAgenda, () => getTopClients({ ...doDinheiro, limit: 10 })),
 
     // Agendamentos de hoje (exceto cancelados e no-show). D5 da 26ª ("O dia é
@@ -345,6 +347,8 @@ export default async function AdminDashboardPage({
     revenue:      b.revenueCash,
     appointments: b.appointmentsCompleted,
     ticketMedio:  ticket?.porUnidade[b.branchId]?.valor ?? 0,
+    // D15 da 28ª (TM-02): a conta da coluna — quantas clientes pagaram nesta unidade.
+    clientesQuePagaram: ticket?.porUnidade[b.branchId]?.clientesQuePagaram ?? 0,
   }))
 
   // -- Hoje por unidade -----------------------------------------------
@@ -513,7 +517,7 @@ export default async function AdminDashboardPage({
     id: c.clientId, name: c.name, totalSpent: c.totalSpent, appointmentCount: c.appointments,
   }))
 
-  const byRecurrence   = [...clientStatsDaAgenda].sort((a, b) => b.appointments - a.appointments).slice(0, 5)
+  const byRecurrence   = rankingDaRecorrencia(clientStatsDaAgenda)
   const maxClientCount = byRecurrence[0]?.appointments ?? 0
   const topClientsByRecurrence = byRecurrence.map(c => ({
     name: c.name, count: c.appointments, pct: barPct(c.appointments, maxClientCount),
@@ -633,7 +637,7 @@ export default async function AdminDashboardPage({
   const lotesVencendo: LoteNoDashboard[] = canStock
     ? (await lotesVencendoDoRecorte(ctx.tenantId!, branchIds)).map(l => {
         const b = branches.find(x => x.id === l.unidadeId)
-        return { id: l.id, produto: l.produto, numero: l.numero, validade: l.validade, quantidade: l.quantidade, embalagem: l.embalagem,
+        return { id: l.id, produto: l.produto, numero: l.numero, validade: l.validade, quantidade: l.quantidade, embalagem: l.embalagem, saldo: l.saldo,
           unidade: branches.length > 1 ? (b?.name as string | undefined) ?? null : null,
           href: '/admin/estoque' + (b?.slug ? '?unidade=' + String(b.slug) : '') }
       })

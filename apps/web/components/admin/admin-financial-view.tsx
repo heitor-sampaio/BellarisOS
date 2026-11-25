@@ -36,7 +36,8 @@ import { useFuso } from '@/components/shared/fuso'
 import { AvisosDasTaxas, CsvDoFechamentoDoDia } from '@/components/shared/caixa-no-financeiro'
 import type { TaxasDoPeriodo } from '@/lib/metrics/queries'
 import { AbasDoFinanceiro } from '@/components/shared/abas-do-financeiro'
-import { linkDaAba, ROTULO_DO_A_RECEBER_DA_CLIENTE, type AbaDoFinanceiro } from '@/lib/financeiro/abas'
+import { linkDaAba, ROTULO_DO_A_RECEBER_DA_CLIENTE, ROTULO_DO_A_PAGAR, type AbaDoFinanceiro } from '@/lib/financeiro/abas'
+import { DespesasDoCaixa, type ForaDoLucro } from '@/components/shared/despesas-do-caixa'
 import { FiltroDeTags } from '@/components/shared/filtro-de-tags'
 import { tagsParaAUrl } from '@/lib/tags/filtro-na-url'
 
@@ -51,6 +52,8 @@ interface BranchStat {
   result:      number
   /** As parcelas do resultado (lib/metrics): a conta embaixo do cartão (D8 da 8ª). */
   conta:       ResultadoDoPeriodo
+  /** A5 da 28ª: o que o caixa tem e o lucro não desconta de novo (a dica das Despesas pagas). */
+  foraDoLucro?: ForaDoLucro
   commissions: number
   aReceber:    number
   /** D-14: todo o a receber em aberto da unidade, de qualquer vencimento. */
@@ -134,6 +137,8 @@ interface Props {
   totalResult:      number
   /** As parcelas do resultado da rede (lib/metrics): a conta embaixo do cartão (D8 da 8ª). */
   totalConta:       ResultadoDoPeriodo
+  /** A5 da 28ª: o que o caixa da rede tem e o resultado não desconta de novo. */
+  totalForaDoLucro?: ForaDoLucro
   totalCommissions: number
   /** A receber e a pagar no período (lib/metrics: revenuePending, metrics_a_pagar). */
   totalAReceber:    number
@@ -288,7 +293,7 @@ function KpiCard({
 
 export function AdminFinancialView({
   period, periodLabel, customFrom, customTo,
-  totalRevenue, totalExpenses, totalResult, totalConta, totalCommissions, totalAReceber, totalAReceberEmAberto, totalVencidas, totalConcluidosSemPagamento, totalAPagar, totalAPagarEmAberto = 0, totalMovimentacoes,
+  totalRevenue, totalExpenses, totalResult, totalConta, totalForaDoLucro, totalCommissions, totalAReceber, totalAReceberEmAberto, totalVencidas, totalConcluidosSemPagamento, totalAPagar, totalAPagarEmAberto = 0, totalMovimentacoes,
   aReceberDaOperadora, parcelasDaOperadora, fluxoDeCaixa, debitoNoPeriodo = 0, debitoPorUnidade = {}, taxasDoPeriodo,
   totalProximoAReceber = null, totalProximoAPagar = null,
   prevRevenue, prevExpenses,
@@ -370,6 +375,7 @@ export function AdminFinancialView({
   const expenses    = statDaUnidade ? statDaUnidade.expenses    : totalExpenses
   const result      = statDaUnidade ? statDaUnidade.result      : totalResult
   const conta       = statDaUnidade ? statDaUnidade.conta       : totalConta
+  const daDespesa   = (statDaUnidade ? statDaUnidade.foraDoLucro : totalForaDoLucro) ?? { compraDeEstoque: 0, despesaDeComissoes: 0 }
   const commissions = statDaUnidade ? statDaUnidade.commissions : totalCommissions
   const aReceber    = statDaUnidade ? statDaUnidade.aReceber    : totalAReceber
   const aReceberEmAberto = statDaUnidade ? statDaUnidade.aReceberEmAberto ?? 0 : totalAReceberEmAberto
@@ -611,7 +617,7 @@ export function AdminFinancialView({
   const cartaoAPagar = (naAba: boolean) => (
     <KpiCard
       chave="a-pagar"
-      label="A pagar"
+      label={ROTULO_DO_A_PAGAR}
       value={fmtBRL(aPagar)}
       nota={<NotaDoVencimento valor={aPagar} proximo={proximoAPagar} emAbertoTotal={aPagarEmAberto} despesa podeDarBaixa={canPay}
         hrefDaBaixa={naAba ? undefined : daAba('a-pagar')} />}
@@ -800,7 +806,8 @@ export function AdminFinancialView({
           <KpiCard
             chave="despesas"
             label={statDaUnidade ? 'Despesas pagas da unidade (caixa)' : 'Despesas pagas (caixa)'}
-            dica="O que saiu do caixa no período, com a compra de estoque e o pagamento das comissões. O Resultado líquido usa a despesa operacional (a conta está na dica dele)."
+            // A5 da 28ª: quanto do caixa fica fora do resultado, com o valor (lib/metrics).
+            dica={<DespesasDoCaixa compraDeEstoque={daDespesa.compraDeEstoque} despesaDeComissoes={daDespesa.despesaDeComissoes} nomeDoLucro="Resultado líquido" />}
             value={fmtBRL(expenses)}
             delta={deltaExpenses}
             icon={<TrendingDown size={16} color="var(--brand)" />}

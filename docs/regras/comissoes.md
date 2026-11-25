@@ -552,7 +552,8 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   comissão de OUTRA pessoa só aparece a quem vê a de todos
   (`veComissaoDeTodos`, `lib/comissoes/quem-ve.ts`: o Financeiro em Ver;
   `equipeDaVenda` só manda a da própria pessoa a quem não o tem) — a regra do pacote, que vence,
-  aparece sempre. O checkout do plano não mudou. Prova:
+  aparece sempre. O "Receber o plano" (`checkout-wizard.tsx`) mostra a mesma
+  frase (C42, F67). Prova:
   `e2e/vendas-atritos-da-12.spec.ts` ("A18").
 - **O CSV não diz 0,00 do que não sai da base** (A44 da 11ª): "Taxa da
   maquininha" e "Insumos" ficam VAZIOS quando a configuração não os desconta
@@ -704,7 +705,10 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     (`p_tags` de `comissoes_resumo` e `comissoes_extrato_com_regra`,
     migration `20261203400003`): o lançado, o a pagar, o aguardando e o
     extrato contam só essas; o pago, só a parte delas em cada fechamento. Os
-    "Últimos fechamentos" são da pessoa inteira e não mudam. Com tag marcada
+    "Últimos fechamentos" são da pessoa inteira e não mudam — e, com tag
+    marcada, o título diz isso ("· sem o filtro de tags",
+    `[data-fechamentos-sem-tags]`, com a explicação na Dica; decisão do
+    Claude, 25/11, princípio 3). Com tag marcada
     o "Fechar e pagar" sai e a linha diz "limpe as tags para fechar e pagar"
     — o fechamento paga TODAS as comissões da pessoa, e o botão ao lado de um
     a pagar filtrado pagaria um valor que a tela não mostra (princípio 3;

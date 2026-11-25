@@ -12,7 +12,7 @@ import {
   type GrupoDaBusca, type ResultadoDaBusca,
 } from '@/lib/busca/tipos'
 import {
-  resultadoDaLinha, subtituloDaConversa, type LinhaDaBusca,
+  resultadoDaLinha, semOCadastro, subtituloDaConversa, type LinhaDaBusca,
 } from '@/lib/busca/formatar'
 import { telefoneLegivel } from '@/lib/busca/texto'
 import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
@@ -93,12 +93,14 @@ export async function buscarTudo(termo: string, slug: string | null): Promise<
         : Promise.resolve([] as Omit<LinhaDaBusca, 'tipo'>[]),
     ])
 
-    const resultados = [
+    const todos = [
       ...(linhas ?? []).map(l => resultadoDaLinha(l, fuso)).filter((r): r is ResultadoDaBusca => r !== null),
       ...(arquivadas ?? []).map(a => resultadoDaLinha({ ...a, tipo: 'cliente' })).filter((r): r is ResultadoDaBusca => r !== null),
       ...conversas,
       ...(pessoas ?? []).map(a => resultadoDaLinha({ ...a, tipo: 'contato' })).filter((r): r is ResultadoDaBusca => r !== null),
     ]
+    // Quem acha a cliente pelo Prontuário, sem o Clientes, vê só o nome (a ficha dela também).
+    const resultados = can(ctx, 'clients', 'VIEW') ? todos : todos.map(semOCadastro)
 
     const grupos = GRUPOS
       .map(g => ({ tipo: g.tipo, itens: resultados.filter(r => r.tipo === g.tipo) }))

@@ -99,7 +99,7 @@ test('A33: com o plano enviado e a avaliação em curso, a tela diz que falta fi
   })
 })
 
-test('A34 e A37: o plano é opcional na tela e diz que o desconto é dado no checkout', async ({ browser }) => {
+test('A34 e A37: o plano é opcional na tela e diz que o desconto vai à comanda do plano', async ({ browser }) => {
   const { id } = await emCurso('Drenagem avulsa')
   await como(browser, profissional!, async p => {
     await p.goto(`/${slug}/agenda/${id}`)
@@ -110,8 +110,10 @@ test('A34 e A37: o plano é opcional na tela e diz que o desconto é dado no che
     await p.getByRole('button', { name: 'Sobre o plano do tratamento' }).hover()
     await expect(p.locator('[data-plano-opcional]')).toContainText('Opcional')
     await expect(p.locator('[data-plano-opcional]')).toContainText('Finalizar atendimento')
-    // 22ª A20: o desconto do plano se combina no editor e vai pronto ao checkout (a regra A34 mudou).
-    await expect(p.locator('[data-desconto-no-checkout]')).toContainText('vai pronto ao checkout do plano')
+    // 22ª A20: o desconto do plano se combina no editor e vai pronto à comanda do plano.
+    // PL-10 (o Heitor, 13/11, PV-01: "tudo que foi relacionado a alguma coisa que tenha
+    // cobrança vira uma comanda"): não há mais "checkout do plano" nem "Fechar agora".
+    await expect(p.locator('[data-desconto-no-checkout]')).toContainText('vai pronto à comanda do plano no PDV')
   })
 })
 

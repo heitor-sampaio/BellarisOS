@@ -231,6 +231,24 @@ export async function getTopClients(args: Args & { limit?: number }): Promise<Cl
   }))
 }
 
+/**
+ * D16 da 28ª: as clientes que mais VOLTARAM no recorte — os atendimentos
+ * concluídos, só quem tem ao menos um (o "Ranking — Recorrência"). Era o
+ * ranking de gasto reordenado.
+ */
+export async function getRecorrenciaDasClientes(args: Args & { limit?: number }): Promise<{ clientId: string; name: string; appointments: number }[]> {
+  const { data, error } = await createAdminClient().rpc('metrics_recorrencia_das_clientes', {
+    ...baseArgs(args), p_limit: args.limit ?? 5,
+    p_professional_id: args.professionalId ?? null,
+  })
+  logRpcError('metrics_recorrencia_das_clientes', error)
+  return ((data as Record<string, unknown>[] | null) ?? []).map(r => ({
+    clientId:     String(r.client_id),
+    name:         String(r.client_name),
+    appointments: n(r.appointments),
+  }))
+}
+
 /** O ticket médio de um recorte: o pago pelas clientes, quantas pagaram e a divisão. */
 export interface TicketMedio { pagoPelasClientes: number; clientesQuePagaram: number; valor: number | null }
 

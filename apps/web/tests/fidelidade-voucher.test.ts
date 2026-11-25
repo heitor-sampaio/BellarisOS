@@ -62,9 +62,10 @@ describe('EntradaDaRecompensa', () => {
     expect(EntradaDaRecompensa.safeParse({ ...base, type: 'DESCONTO_PERCENTUAL', discount_value: 120 }).success).toBe(false)
   })
 
+  // Princípio 2 (o Heitor, 2026-11-04): a validade acima de 365 dias avisa, não recusa; só acima de 100 anos é recusada.
   it('custo e validade nos limites', () => {
     expect(EntradaDaRecompensa.safeParse({ ...base, type: 'DESCONTO_VALOR', discount_value: 10, points_cost: '0' }).success).toBe(false)
-    expect(EntradaDaRecompensa.safeParse({ ...base, type: 'DESCONTO_VALOR', discount_value: 10, validity_days: '400' }).success).toBe(false)
+    expect(EntradaDaRecompensa.safeParse({ ...base, type: 'DESCONTO_VALOR', discount_value: 10, validity_days: '36501' }).success).toBe(false)
   })
 })
 

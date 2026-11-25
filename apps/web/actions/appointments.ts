@@ -23,6 +23,7 @@ import {
 } from '@/lib/cached-queries'
 import { notifyUser } from '@/lib/notifications/notify'
 import { createAppointmentCore, computeAvailableSlots, conferirPecasDoAgendamento, horarioOcupado, candidatasDoDia, fimDaOcupacao, CREDITO_JA_USADO } from '@/lib/appointments/core'
+import { janelaDaGrade } from '@/lib/appointments/janela-da-grade'
 import { conferirCredito } from '@/lib/creditos/credito'
 import { bloqueiosDoPeriodo } from '@/lib/agenda/bloqueios'
 import { juntarHorarios, escolherQuemAtende } from '@/lib/appointments/sem-preferencia'
@@ -37,7 +38,7 @@ import { emitirEventoClinico } from '@/lib/events/clinico'
 import { EVENTOS } from '@estetica-os/types'
 import { garantirClienteRapido } from '@/lib/clients/cliente-rapido'
 import type { FichaQueJaExiste } from '@/lib/clients/ja-existe'
-import { periodRef, dayKeyTZ, partsInTZ, instanteNoFuso, startOfDayTZ, endOfDayTZ, horaNoFuso } from '@/lib/datetime'
+import { periodRef, dayKeyTZ, partsInTZ, startOfDayTZ, endOfDayTZ, horaNoFuso } from '@/lib/datetime'
 import { textoDoMesmoProcedimentoNoDia } from '@/lib/appointments/mesmo-no-dia'
 import { fusoValido } from '@/lib/unidades/fuso'
 import { fusoDaUnidade, fusoDaRede, lerFusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
@@ -1428,6 +1429,21 @@ export async function rescheduleAppointment(
 
 // -- Dados de agendamento pelo checkout ---------------------------------------
 
+/**
+ * Das unidades que a tela oferece para agendar, as que estão ao alcance de
+ * quem agenda (D18 da 28ª; CLAUDE.md §11: quem não tem "A rede inteira" só
+ * agenda nas unidades dela). A lista vem de quem abre o agendar (a unidade do
+ * pacote, do plano, as da rede); o servidor só devolve as ids que a pessoa
+ * alcança — nada além do que veio. Gravar segue conferindo
+ * (`conferirPecasDoAgendamento`).
+ */
+export async function unidadesAoAlcance(ids: string[]): Promise<string[]> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'agenda', 'VIEW')
+  if (!Array.isArray(ids)) return []
+  return ids.filter(id => typeof id === 'string' && alcancaUnidade(ctx, id))
+}
+
 export async function getSchedulingBranchProfessionals(
   branchId: string,
 ): Promise<{ professionals: { id: string; name: string }[] }> {
@@ -1457,6 +1473,8 @@ export async function getPlannedSessionAppointments(planId: string): Promise<{
     status:           string
     appointmentId:    string | null
     scheduledAt:      string | null
+    /** Quando foi FEITA (D7 da 28ª): a sessão realizada diz a hora real. */
+    completedAt:      string | null
     apptStatus:       string | null
     professionalName: string | null
     procedureName:    string | null
@@ -1491,13 +1509,13 @@ export async function getPlannedSessionAppointments(planId: string): Promise<{
     .select(`
       id, sort_order, appointment_id,
       treatment_plan_session_procedures(procedure_id, sort_order, procedures(name, duration_min)),
-      appointments:appointment_id(id, status, scheduled_at, professional:users!professional_id(name))
+      appointments:appointment_id(id, status, scheduled_at, completed_at, professional:users!professional_id(name))
     `)
     .eq('plan_id', planId)
     .order('sort_order'), 'carregar as sessões do plano')
 
   type RawSessProc = { procedure_id: string; sort_order: number; procedures: { name: string; duration_min: number | null } | null }
-  type RawAppt = { id: string; status: string; scheduled_at: string; professional: { name: string } | null } | null
+  type RawAppt = { id: string; status: string; scheduled_at: string; completed_at: string | null; professional: { name: string } | null } | null
   type RawSess = { id: string; sort_order: number; appointment_id: string | null; treatment_plan_session_procedures: RawSessProc[]; appointments: RawAppt }
 
   const sessions = ((rawSessions ?? []) as unknown as RawSess[]).map((s, i) => {
@@ -1515,6 +1533,7 @@ export async function getPlannedSessionAppointments(planId: string): Promise<{
       status,
       appointmentId:    s.appointment_id ?? null,
       scheduledAt:      appt?.scheduled_at ?? null,
+      completedAt:      appt?.completed_at ?? null,
       apptStatus,
       professionalName: appt?.professional?.name ?? null,
       procedureName:    procNames || '—',
@@ -1534,7 +1553,7 @@ interface SessaoDePacoteLida {
   appointment_id: string | null
   procedure_id: string | null
   procedures: { name: string; duration_min: number | null } | null
-  appointments: { status: string; scheduled_at: string; professional: { name: string } | null } | null
+  appointments: { status: string; scheduled_at: string; completed_at: string | null; professional: { name: string } | null } | null
 }
 
 export async function getClientPackageSessions(clientPackageId: string): Promise<{
@@ -1544,6 +1563,8 @@ export async function getClientPackageSessions(clientPackageId: string): Promise
     status:         string
     appointmentId:  string | null
     scheduledAt:    string | null
+    /** Quando foi FEITA (D7 da 28ª). */
+    completedAt:    string | null
     apptStatus:     string | null
     professionalName: string | null
     /** O procedimento DESTA sessão: o pacote é um conjunto de procedimentos. */
@@ -1569,7 +1590,7 @@ export async function getClientPackageSessions(clientPackageId: string): Promise
 
   const data = await ler(admin
     .from('package_sessions')
-    .select('id, session_number, status, appointment_id, procedure_id, procedures(name, duration_min), appointments(status, scheduled_at, professional:users!professional_id(name))')
+    .select('id, session_number, status, appointment_id, procedure_id, procedures(name, duration_min), appointments(status, scheduled_at, completed_at, professional:users!professional_id(name))')
     .eq('client_package_id', clientPackageId)
     .order('session_number'), 'buscar as sessões do pacote')
 
@@ -1580,6 +1601,7 @@ export async function getClientPackageSessions(clientPackageId: string): Promise
       status:          s.status,
       appointmentId:   s.appointment_id,
       scheduledAt:     s.appointments?.scheduled_at ?? null,
+      completedAt:     s.appointments?.completed_at ?? null,
       apptStatus:      s.appointments?.status ?? null,
       professionalName: s.appointments?.professional?.name ?? null,
       procedureId:     s.procedure_id,
@@ -1989,10 +2011,10 @@ export async function getSchedulingDaySlots(
 
   // O dia no relógio da unidade (F62).
   const fuso = fusoValido((branch as { fuso?: string | null }).fuso)
-  const dayStart = instanteNoFuso(date, '00:00', fuso).toISOString()
-  const dayEnd   = instanteNoFuso(date, '23:59:59', fuso).toISOString()
-  // Desde a véspera: o atendimento da noite anterior pode atravessar a meia-noite.
-  const desdeAVespera = new Date(new Date(dayStart).getTime() - 86_400_000).toISOString()
+  // Da véspera ao fim do dia SEGUINTE (D6 da 28ª): o atendimento da noite
+  // anterior pode atravessar a meia-noite, e a sessão das 23:30 também — o das
+  // 00:00 de amanhã a ocupa, e o servidor recusa.
+  const janela = janelaDaGrade(date, fuso)
 
   // D5 da 8ª simulação: os agendamentos DELA em qualquer unidade da rede (a
   // da rede atende em todas — o servidor recusa o choque em qualquer uma, a
@@ -2007,14 +2029,14 @@ export async function getSchedulingDaySlots(
       .select('scheduled_at, duration_min, status, completed_at, branch_id, clients(name), branches!inner(tenant_id)')
       .eq('branches.tenant_id', ctx.tenantId!)
       .eq('professional_id', professionalId)
-      .gte('scheduled_at', desdeAVespera)
-      .lte('scheduled_at', dayEnd)
+      .gte('scheduled_at', janela.desde)
+      .lte('scheduled_at', janela.ate)
       .not('status', 'in', '("CANCELLED","NO_SHOW")')
       .order('scheduled_at'), 'carregar os agendamentos'),
     // O horário do profissional (da rede): sem ele, segue a unidade.
     ler(admin.from('users').select('horario')
       .eq('id', professionalId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o horário do profissional') as Promise<{ horario: unknown } | null>,
-    bloqueiosDoPeriodo(ctx.tenantId!, { de: dayStart, ate: dayEnd, profissionais: [professionalId], salas: sala ? [sala.id] : [] }, admin),
+    bloqueiosDoPeriodo(ctx.tenantId!, { de: janela.dia, ate: janela.ate, profissionais: [professionalId], salas: sala ? [sala.id] : [] }, admin),
   ])
 
   type Linha = { scheduled_at: string; duration_min: number; status: string; completed_at: string | null; branch_id: string; clients: { name: string } | null }

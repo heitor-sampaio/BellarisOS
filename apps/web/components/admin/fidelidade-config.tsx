@@ -6,7 +6,7 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { salvarConfigFidelidade } from '@/actions/fidelidade'
 import { erroParaTela } from '@/lib/erro-na-tela'
 import { parseDecimal, NUMERO_INVALIDO } from '@estetica-os/utils'
-import type { ConfigFidelidade, ModoDeGanho, PremioDeIndicacao } from '@/lib/fidelidade/config'
+import { avisoDaFidelidade, type ConfigFidelidade, type ModoDeGanho, type PremioDeIndicacao } from '@/lib/fidelidade/config'
 import { Fala } from '@/components/shared/uma-unidade'
 import { Dica } from '@/components/shared/dica'
 
@@ -177,7 +177,7 @@ export function FidelidadeConfig({ inicial, podeEditar, recompensas = [] }: {
         {modo === 'POR_REAL' && (
           <div style={{ maxWidth: 260 }}>
             <CampoNumero rotulo="Pontos por R$ 1 pago" nome="points_per_real" valor={taxa} onChange={setTaxa}
-              desabilitado={!podeEditar} casas={CASAS.taxa}
+              desabilitado={!podeEditar} casas={CASAS.taxa} aviso={avisoDaFidelidade('points_per_real', decimalOuNada(taxa, CASAS.taxa))}
               sobre="Exemplo: quanto rende cada real"
               dica="Ex.: 1 = um atendimento de R$ 250 dá 250 pontos. Frações de ponto são descartadas." />
           </div>
@@ -191,9 +191,11 @@ export function FidelidadeConfig({ inicial, podeEditar, recompensas = [] }: {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
           <CampoNumero rotulo="Valor de 1 ponto (R$)" nome="redeem_points_value" valor={valorDoPonto} onChange={setValorDoPonto}
             sobre="Exemplo: quanto vale o ponto"
-            dica={`Ex.: 0,01 = 100 pontos valem R$ 1.`} desabilitado={!podeEditar} casas={CASAS.valorDoPonto} />
+            dica={`Ex.: 0,01 = 100 pontos valem R$ 1.`} desabilitado={!podeEditar} casas={CASAS.valorDoPonto}
+            aviso={avisoDaFidelidade('redeem_points_value', decimalOuNada(valorDoPonto, CASAS.valorDoPonto))} />
           <CampoNumero rotulo="Mínimo para usar (pontos)" nome="redeem_min_points" valor={minimo} onChange={setMinimo}
-            sobre="Sobre o mínimo" dica="0 = qualquer quantidade." desabilitado={!podeEditar} />
+            sobre="Sobre o mínimo" dica="0 = qualquer quantidade." desabilitado={!podeEditar}
+            aviso={avisoDaFidelidade('redeem_min_points', inteiroOuNada(minimo))} />
           <CampoNumero rotulo="Pontos pagam até (%)" nome="redeem_max_pct" valor={teto} onChange={setTeto}
             sobre="Sobre o limite do desconto" dica="100 = pode pagar tudo com pontos." desabilitado={!podeEditar} casas={CASAS.teto} />
         </div>
@@ -218,7 +220,8 @@ export function FidelidadeConfig({ inicial, podeEditar, recompensas = [] }: {
         {vencem && (
           <div style={{ maxWidth: 260 }}>
             <CampoNumero rotulo="Vencem após (meses)" nome="expiry_months" valor={meses} onChange={setMeses}
-              desabilitado={!podeEditar} sobre="Sobre a contagem dos meses" dica="Contados de quando cada ponto entrou." />
+              desabilitado={!podeEditar} sobre="Sobre a contagem dos meses" dica="Contados de quando cada ponto entrou."
+              aviso={avisoDaFidelidade('expiry_months', inteiroOuNada(meses))} />
           </div>
         )}
         {vencem && (
@@ -231,7 +234,8 @@ export function FidelidadeConfig({ inicial, podeEditar, recompensas = [] }: {
               : 'O cliente só vê o que vai vencer quando abrir os pontos no portal.'}
           >
             <CampoNumero rotulo="Dias antes" nome="expiry_notice_days" valor={diasAviso} onChange={setDiasAviso}
-              desabilitado={!podeEditar} sobre="Sobre o prazo do aviso" dica="De 1 a 90 dias." />
+              desabilitado={!podeEditar} sobre="Sobre o prazo do aviso" dica="Quantos dias antes de vencer: de 1 para cima."
+              aviso={avisoDaFidelidade('expiry_notice_days', inteiroOuNada(diasAviso))} />
           </Opcional>
         )}
       </Bloco>
@@ -249,7 +253,7 @@ export function FidelidadeConfig({ inicial, podeEditar, recompensas = [] }: {
             : undefined}
         >
           <CampoNumero rotulo="Pontos no aniversário" nome="birthday_bonus" valor={pontosAniversario} onChange={setPontosAniversario}
-            desabilitado={!podeEditar} />
+            desabilitado={!podeEditar} aviso={avisoDaFidelidade('birthday_bonus', inteiroOuNada(pontosAniversario))} />
         </Opcional>
         <Opcional
           titulo="No primeiro acesso ao portal ou ao app" testId="opcional-primeiro-acesso" sobre="Como o bônus de primeiro acesso funciona"
@@ -260,7 +264,7 @@ export function FidelidadeConfig({ inicial, podeEditar, recompensas = [] }: {
             : undefined}
         >
           <CampoNumero rotulo="Pontos no primeiro acesso" nome="first_access_bonus" valor={pontosPrimeiroAcesso} onChange={setPontosPrimeiroAcesso}
-            desabilitado={!podeEditar} />
+            desabilitado={!podeEditar} aviso={avisoDaFidelidade('first_access_bonus', inteiroOuNada(pontosPrimeiroAcesso))} />
         </Opcional>
       </Bloco>
 
@@ -290,7 +294,7 @@ export function FidelidadeConfig({ inicial, podeEditar, recompensas = [] }: {
           {indicacao === 'PONTOS' && (
             <div style={{ maxWidth: 260 }}>
               <CampoNumero rotulo="Pontos para quem indicou" nome="indicacao_pontos" valor={pontosIndicacao} onChange={setPontosIndicacao}
-                desabilitado={!podeEditar} />
+                desabilitado={!podeEditar} aviso={avisoDaFidelidade('indicacao_pontos', inteiroOuNada(pontosIndicacao))} />
               {/* A6 da 12ª: o 300 é sugestão, não regra (princípio 3). */}
               {!inicial.indicacao_pontos && (
                 <span data-sugestao-de-pontos style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
@@ -397,6 +401,10 @@ function numero(v: string): string {
   return v.trim().replace(/\./g, '').replace(',', '.')
 }
 
+/** O valor do campo para o aviso de "acima do comum" (princípio 2); vazio ou ilegível, NaN (sem aviso). */
+const inteiroOuNada = (v: string) => (v.trim() ? Number(numero(v)) : Number.NaN)
+const decimalOuNada = (v: string, casas: number) => (v.trim() ? parseDecimal(v, casas) : Number.NaN)
+
 /** As casas decimais de cada campo com fração: o valor do ponto vai a 0,0001. */
 const CASAS = { taxa: 2, valorDoPonto: 4, teto: 2 } as const
 
@@ -422,12 +430,14 @@ function AvisoDoNumero({ valor, casas }: { valor: string; casas: number }) {
  * ligaria o botão da dica, não o campo. O `sobre` é o nome da dica — sem o
  * texto do rótulo, para o getByLabel do campo não achar dois.
  */
-function CampoNumero({ rotulo, nome, valor, onChange, dica, sobre, desabilitado, casas }: {
+function CampoNumero({ rotulo, nome, valor, onChange, dica, sobre, desabilitado, casas, aviso }: {
   rotulo: string; nome: string; valor: string; onChange: (v: string) => void; dica?: string; desabilitado?: boolean
   /** O nome acessível da dica. */
   sobre?: string
   /** Campo com fração: lê como o dinheiro e avisa o ambíguo. */
   casas?: number
+  /** Princípio 2: o valor acima do comum — avisa, e salva como está (`avisoDaFidelidade`). */
+  aviso?: string | null
 }) {
   const id = useId()
   return (
@@ -441,6 +451,11 @@ function CampoNumero({ rotulo, nome, valor, onChange, dica, sobre, desabilitado,
       <input id={id} name={nome} className="field" inputMode="decimal" value={valor}
         onChange={e => onChange(e.target.value)} disabled={desabilitado} />
       {casas != null && <AvisoDoNumero valor={valor} casas={casas} />}
+      {aviso && (
+        <span role="status" data-acima-do-comum={nome} style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+          {aviso}
+        </span>
+      )}
     </div>
   )
 }

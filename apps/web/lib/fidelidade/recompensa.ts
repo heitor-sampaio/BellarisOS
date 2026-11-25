@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { TIPOS_DE_RECOMPENSA } from './voucher'
+import { LIMITE_DE_DIAS, acimaDeCemAnos, avisoAcimaDoComum } from '@/lib/acima-do-comum'
 
 /**
  * O que a tela do catálogo manda para salvar uma recompensa. Cada tipo exige o
@@ -15,7 +16,8 @@ export const EntradaDaRecompensa = z.object({
   procedure_id:   z.string().uuid().optional().nullable(),
   product_id:     z.string().uuid().optional().nullable(),
   discount_value: z.coerce.number().optional().nullable(),
-  validity_days:  z.coerce.number().int().min(1, 'Validade de pelo menos 1 dia.').max(365, 'Validade de no máximo 365 dias.'),
+  // Princípio 2 (o Heitor, 04/11): acima de 365 dias, a tela avisa (`avisoDaValidadeDoVoucher`); só o registro limita.
+  validity_days:  z.coerce.number().int().min(1, 'Validade de pelo menos 1 dia.').max(LIMITE_DE_DIAS, acimaDeCemAnos(LIMITE_DE_DIAS, 'dias')),
   is_active:      z.boolean().default(true),
 }).superRefine((r, ctx) => {
   const falta = (campo: string, mensagem: string) => ctx.addIssue({ code: 'custom', path: [campo], message: mensagem })
@@ -34,3 +36,8 @@ export const EntradaDaRecompensa = z.object({
   description:    r.description?.trim() || null,
 }))
 export type EntradaDaRecompensa = z.infer<typeof EntradaDaRecompensa>
+
+/** A validade do voucher acima do comum (365 dias, o antigo teto): avisa, não recusa. */
+export function avisoDaValidadeDoVoucher(dias: number): string | null {
+  return avisoAcimaDoComum(dias, 365, 'dias')
+}

@@ -125,6 +125,12 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   `<CanalDaCampanha>` ("não vai pelo WhatsApp"), e o público mostra os dois
   números — quantas no público e quantas RECEBEM (`publico_com_aparelho`, o
   mesmo critério do disparo). Prova: `e2e/campanha-aviso-no-celular.spec.ts`.
+  **Sem aparelho, não conta como enviada** (D9, decisão do Claude, 25/11;
+  princípio 3 e NC-06): o envio da cliente sem aparelho com os avisos ligados
+  fica `GUARDADA` (no sino), não `SENT`, e não entra no `total_sent`; o
+  detalhe da campanha diz "Guardada no sino", com a Dica de "Últimos envios"
+  (`lib/notifications/envio-da-campanha.ts`; teste
+  `tests/campanha-envio-sem-aparelho.test.ts`).
 - **Não há gatilho "Retorno vencendo"** (aut-04, 2026-11-02): o
   `agendamento.retorno_vencendo` e o cron `retornos` saíram com o "Retorno em N
   dias" (`atendimento.md` §10). O retorno é um agendamento novo; o gatilho de
