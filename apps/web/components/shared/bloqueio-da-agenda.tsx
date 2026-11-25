@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { SegSelect } from '@/components/shared/seg-select'
 import { bloquearHorario, desfazerBloqueio } from '@/actions/agenda-bloqueios'
-import { trechoDoBloqueio, recusaDoBloqueio, type BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
+import { trechoDoBloqueio, recusaDoBloqueio, avisoDoBloqueioLongo, type BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
 import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
 import { naParede, daParede, fusoLocal } from '@/lib/datetime'
@@ -87,13 +87,30 @@ function JanelaDeBloquear({ branchId, profissionais, salas, dia, onFechar }: {
   const amanha = (() => { const d = new Date(`${diaAberto}T12:00`); d.setDate(d.getDate() + 1); return local(d).slice(0, 10) })()
 
   const alvoId = para === 'PROFISSIONAL' ? profId : salaId
+  // O período que vai gravar (o "Dia inteiro" vai da meia-noite do primeiro à
+  // meia-noite depois do último). Nulo enquanto o campo está pela metade.
+  function periodo(): { inicio: string; fim: string } | null {
+    try {
+      const depoisDoUltimo = (() => { const d = new Date(`${ateODia}T00:00`); d.setDate(d.getDate() + 1); return d })()
+      return diaInteiro
+        ? { inicio: instante(`${doDia}T00:00`), fim: daParede(depoisDoUltimo, fuso).toISOString() }
+        : { inicio: instante(inicio), fim: instante(fim) }
+    } catch { return null }
+  }
+  // Acima de um ano, avisa ao lado do fim e grava como está (o Heitor, 25/11:
+  // "Acima de 1 ano avisa").
+  const doPeriodo = periodo()
+  const avisoLongo = doPeriodo ? avisoDoBloqueioLongo(doPeriodo) : null
+  const avisoDoFim = avisoLongo && (
+    <span role="status" data-acima-do-comum="bloqueio" style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+      {avisoLongo}
+    </span>
+  )
   function bloquear() {
     setErro(null)
     if (!alvoId) { setErro(para === 'SALA' ? 'Escolha a sala.' : 'Escolha quem atende.'); return }
-    const depoisDoUltimo = (() => { const d = new Date(`${ateODia}T00:00`); d.setDate(d.getDate() + 1); return d })()
-    const e = diaInteiro
-      ? { inicio: instante(`${doDia}T00:00`), fim: daParede(depoisDoUltimo, fuso).toISOString(), motivo }
-      : { inicio: instante(inicio), fim: instante(fim), motivo }
+    const p = periodo()
+    const e = { inicio: p?.inicio ?? '', fim: p?.fim ?? '', motivo }
     const recusa = recusaDoBloqueio(e)
     if (recusa) { setErro(recusa); return }
     iniciar(async () => {
@@ -161,6 +178,7 @@ function JanelaDeBloquear({ branchId, profissionais, salas, dia, onFechar }: {
             <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
               <span style={rotulo}>Até o dia</span>
               <input type="date" className="field" value={ateODia} min={doDia} aria-label="Até o dia" onChange={e => setAteODia(e.target.value)} />
+              {avisoDoFim}
             </label>
           </div>
         ) : (
@@ -173,6 +191,7 @@ function JanelaDeBloquear({ branchId, profissionais, salas, dia, onFechar }: {
               <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                 <span style={rotulo}>Fim</span>
                 <input type="datetime-local" className="field" value={fim} onChange={e => setFim(e.target.value)} aria-label="Fim" />
+                {avisoDoFim}
               </label>
             </div>
             {diaDoInicio !== diaAberto && (

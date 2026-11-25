@@ -28,6 +28,7 @@ import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { recusaDoPagamentoDoUsado, pagamentoDoUsadoParaOBanco } from '@/lib/financeiro/pagamento-do-usado'
 import { BANDEIRAS } from '@/lib/financeiro/bandeiras'
+import { LIMITE_DE_VEZES_NO_CARTAO } from '@/lib/acima-do-comum'
 import { CLIENTE_ARQUIVADA } from '@/lib/clients/arquivada'
 import { recusaDaVendaNaUnidade } from '@/lib/vendas/unidade-da-venda'
 import { lerPreviaDoEstornoDoCredito, type PreviaDoEstornoDoCredito } from '@/lib/creditos/venda-de-credito'
@@ -39,7 +40,8 @@ const FORMAS: ['PIX', 'CASH', 'DEBIT_CARD', 'CREDIT_CARD'] = ['PIX', 'CASH', 'DE
 const PagamentoDoCredito = z.object({
   forma:    z.literal('AVISTA', { message: 'O crédito interno é pago na hora: escolha "À vista".' }),
   metodo:   z.enum(FORMAS, { message: 'Escolha a forma de pagamento (Pix, dinheiro ou cartão): crédito interno não se paga com crédito.' }),
-  vezes:    z.number().int().min(1).max(12).optional(),
+  // O Heitor, 25/11: acima de 12 vezes avisa; só o impossível (acima de 1.200, decisão do Claude) se recusa.
+  vezes:    z.number().int().min(1).max(LIMITE_DE_VEZES_NO_CARTAO).optional(),
   bandeira: z.enum(BANDEIRAS.map(b => b.value) as [string, ...string[]]).optional().nullable(),
   /** C75: a maquininha do cartão (o banco confere a rede). */
   maquininha: z.string().regex(/^[0-9a-f-]{36}$/i, 'Maquininha inválida.').optional().nullable(),
@@ -171,7 +173,7 @@ export async function previaDoEstornoDoCredito(
 const EntradaDoEstorno = z.object({
   motivo:   z.string().trim().min(1, 'Diga o motivo do estorno.').max(500),
   estorno:  z.enum(['PARCIAL', 'INTEIRO']).nullable().optional(),
-  novo:     z.object({ metodo: z.enum(FORMAS), vezes: z.number().int().min(1).max(12).optional(), bandeira: z.string().nullable().optional(), maquininha: z.string().uuid().nullable().optional() }).nullable().optional(),
+  novo:     z.object({ metodo: z.enum(FORMAS), vezes: z.number().int().min(1).max(LIMITE_DE_VEZES_NO_CARTAO).optional(), bandeira: z.string().nullable().optional(), maquininha: z.string().uuid().nullable().optional() }).nullable().optional(),
   esperado: z.number().min(0),
   /** A20 da 11ª: na venda com bônus, como o bônus sai — a clínica escolhe. */
   bonus:    z.enum(['INTEIRO', 'PROPORCIONAL']).nullable().optional(),

@@ -330,7 +330,7 @@
     lançadas**; a margem acompanha.
     - As taxas são as que o Fechamento do dia mostra, no dia em que a receita
       ENTROU (o conjunto de `metrics_receitas_pagas`): a GRAVADA nas parcelas
-      da operadora (`recebiveis_do_cartao.taxa`, o crédito de 1x a 12x, com a
+      da operadora (`recebiveis_do_cartao.taxa`, o crédito de 1x ao limite da maquininha — até 1.200x, o Heitor, 25/11 —, com a
       sobra do arredondamento na última) e, sem parcelas (débito, Pix, as
       vendas no cartão de antes), o recebimento × a taxa da configuração
       (`private.comissao_taxa_pct`).
@@ -434,6 +434,17 @@
     Caio Brandão atendendo em outra unidade" — "de", não "da/do", e a outra
     unidade só sai pelo nome a quem a alcança (`alcancaUnidade`); a quem não,
     "outra unidade".
+    **Os minutos são o trecho DO DIA** (decisão do Claude, 25/11, pelo
+    princípio 3; o procedimento não tem duração máxima): de cada atendimento
+    conta o que ele ocupa DENTRO do dia (ou do período da agenda) — o mesmo
+    trecho que as agendas desenham, pela duração MARCADA (o concluído conta a
+    duração, também o adiantado: só o recorte é novo). Somava a duração inteira no dia do
+    início: o de 30 h dava mais de 100% num dia e 0% no seguinte. A conta é
+    UMA, `minutosAgendadosNoPeriodo` (`lib/metrics/ocupacao.ts`), na agenda da
+    unidade (era uma soma no componente), no dashboard da unidade (era uma
+    soma na página) e na Minha agenda (`ocupacaoDoDia`). A definição não muda;
+    a contagem dos atendimentos do dia segue pelo dia de início. Prova:
+    `tests/o-dia-conta-o-atendimento-que-continua-de-antes.test.ts`.
     **Na agenda, a base mora na dica** (A15 da 21ª; princípio 7: com os
     descontos, a linha quebrava com parênteses aninhados): o topo diz "3% de
     ocupação" e a dica "Como a ocupação é contada" traz a base e a definição.
@@ -1144,6 +1155,11 @@ a função de `lib/metrics` devolve nulo, como o ticket e a conversão. Prova:
   (T1 do Bloco Tags) saiu com a regra dos novos clientes, acima. Na rede de
   UMA unidade, a unidade de cada linha não aparece (r2-ind-03, D-19).
   Prova: `e2e/indicadores-reativar-clientes-da-rede.spec.ts` ("r2-ind-03").
+  A cliente cadastrada há pouco e sem visita não entra: cliente nova não é
+  cliente sumida (2026-10-20; o caso "cadastrada há pouco" do mesmo spec). A
+  função por unidade (`metrics_clientes_para_reativar`), que nenhuma tela
+  usava, saiu (o Heitor, 25/11: "ok mas tenha certeza absoluta que não é
+  usada"; migration `20261206700001`).
   **O vazio diz o que é** (D16 da 8ª simulação, 2026-11-06): o quadro conta
   quem SUMIU (cadastrada antes dos 90 dias, sem visita neles), e com a base
   importada no dia dizia "Todos os clientes retornaram 🎉" para 30 clientes que
@@ -1212,7 +1228,7 @@ números DAQUELE módulo no dashboard são os DELA — o dinheiro nos dois (rede
 unidade; na rede, só a quem não vê o dinheiro de todos), a agenda só no da
 unidade — o `professionalId` vai a cada função de `lib/metrics`
 (`metrics_core`, `_series`, `_top_procedures`, `_top_professionals`,
-`_top_clients`, `_demografia`, `_giro_estoque`, `_clientes_para_reativar`, com
+`_top_clients`, `_demografia`, `_giro_estoque`, `_clientes_para_reativar_rede`, com
 `p_professional_id default null`; migration `20261028000601`). O recorte é
 UM, o de `metrics_core`:
 - **atendimento dela**: `appointments.professional_id = ela`;

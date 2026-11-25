@@ -182,9 +182,12 @@ test.describe.serial('marcas, fornecedores e categorias', () => {
       await modal.getByRole('option', { name: categoria }).click()
       await expect(modal.locator('[data-campo-escolhido="Categoria"]')).toContainText(categoria)
 
-      // E2: dois checkboxes; o produto novo nasce Insumo.
+      // E2: dois checkboxes; o produto novo nasce sem nenhum marcado (o Heitor,
+      // 25/11: "ok" à proposta — era "nasce Insumo"). Salvar sem nenhum é recusado.
       const onde = modal.getByRole('group', { name: 'Onde o produto está disponível' })
-      await expect(onde.getByRole('checkbox', { name: 'Insumo' })).toBeChecked()
+      await expect(onde.getByRole('checkbox', { name: 'Insumo' })).not.toBeChecked()
+      await expect(onde.getByRole('checkbox', { name: 'Venda direta' })).not.toBeChecked()
+      await onde.getByRole('checkbox', { name: 'Insumo' }).check()
       await onde.getByRole('checkbox', { name: 'Venda direta' }).check()
       await modal.locator('input[name="sale_price"]').fill('120')
 

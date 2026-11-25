@@ -1,14 +1,16 @@
 import { z } from 'zod'
-import { lerCartaoPorBandeira, EntradaDoCartaoPorBandeira, semBandeirasVazias, type CartaoPorBandeira, type RegraDaBandeira } from './bandeiras'
-import { maximoDeVezes, PRAZO_PADRAO_DA_OPERADORA, PRAZO_MAXIMO_DA_OPERADORA, RECUSA_DO_PRAZO_ZERO, RECUSA_DO_PRAZO_ACIMA_DO_REGISTRO, TAXA_MAXIMA_DO_REGISTRO, TETO_DE_VEZES } from './vezes-do-cartao'
+import { lerCartaoPorBandeira, EntradaDoCartaoPorBandeira, semBandeirasVazias, ehChaveDaTaxa, type CartaoPorBandeira, type RegraDaBandeira } from './bandeiras'
+import { maximoDeVezes, PRAZO_PADRAO_DA_OPERADORA, PRAZO_MAXIMO_DA_OPERADORA, RECUSA_DO_PRAZO_ZERO, RECUSA_DO_PRAZO_ACIMA_DO_REGISTRO, TAXA_MAXIMA_DO_REGISTRO, RECUSA_DAS_VEZES_ZERO, RECUSA_DAS_VEZES_ACIMA_DO_LIMITE } from './vezes-do-cartao'
+import { LIMITE_DE_VEZES_NO_CARTAO } from '@/lib/acima-do-comum'
 
 /**
  * As MAQUININHAS da rede (C75 do levantamento das regras, F67 — o Heitor: "Quem
  * escolhe a taxa é a operadora: stone, mercadopago, elo e por ai vai… a rede
  * precisa configurar suas taxas, por operadora").
  *
- * Cada uma tem o nome, as taxas (débito e crédito de 1x a 12x, as chaves
- * "DEBIT_CARD:1" e "CREDIT_CARD:N"), até quantas vezes parcela, o prazo de cada
+ * Cada uma tem o nome, as taxas (débito e crédito de 1x até onde ela parcela —
+ * acima de 12x a tela avisa, o Heitor, 25/11 —, as chaves "DEBIT_CARD:1" e
+ * "CREDIT_CARD:N"), até quantas vezes parcela, o prazo de cada
  * parcela e a opção fechada "cobra diferente em alguma bandeira?". O Pix tem
  * campo próprio (`tenants.pix_taxa_pct`).
  *
@@ -34,8 +36,6 @@ export interface Maquininha {
   arquivada:        boolean
 }
 
-const CHAVE_DA_TAXA = /^(DEBIT_CARD:1|CREDIT_CARD:([1-9]|1[0-2]))$/
-
 /** Lê a linha do banco, sem confiar no formato do JSON. */
 export function lerMaquininha(l: Record<string, unknown>): Maquininha {
   const taxas: Record<string, number> = {}
@@ -43,7 +43,7 @@ export function lerMaquininha(l: Record<string, unknown>): Maquininha {
   if (bruto && typeof bruto === 'object') {
     for (const [k, v] of Object.entries(bruto as Record<string, unknown>)) {
       const n = typeof v === 'number' ? v : typeof v === 'string' ? Number(v) : NaN
-      if (CHAVE_DA_TAXA.test(k) && Number.isFinite(n)) taxas[k] = n
+      if (ehChaveDaTaxa(k) && Number.isFinite(n)) taxas[k] = n
     }
   }
   return {
@@ -101,7 +101,9 @@ export function ativas<T extends Pick<Maquininha, 'arquivada'>>(lista: T[]): T[]
 export function taxaNaMaquininha(
   m: Pick<Maquininha, 'taxas' | 'cobraPorBandeira' | 'porBandeira'>, metodo: 'DEBIT_CARD' | 'CREDIT_CARD', vezes: number, bandeira?: string | null,
 ): { taxa: number | null; daBandeira: boolean } {
-  const chave = metodo === 'DEBIT_CARD' ? 'DEBIT_CARD:1' : `CREDIT_CARD:${Math.max(1, Math.min(TETO_DE_VEZES, Math.trunc(vezes || 1)))}`
+  // Princípio 4: as vezes EXATAS — o 18x sem taxa cadastrada vale nula (0%, e a
+  // tela avisa), nunca a do 12x (era o corte em 12 de antes do 25/11).
+  const chave = metodo === 'DEBIT_CARD' ? 'DEBIT_CARD:1' : `CREDIT_CARD:${Math.max(1, Math.trunc(vezes || 1))}`
   const regra: RegraDaBandeira | undefined = m.cobraPorBandeira && bandeira ? m.porBandeira[bandeira as keyof CartaoPorBandeira] : undefined
   const daBandeira = regra?.taxas[chave]
   if (typeof daBandeira === 'number' && Number.isFinite(daBandeira)) return { taxa: daBandeira, daBandeira: true }
@@ -119,9 +121,13 @@ export const EntradaDaMaquininha = z.object({
   id: ID_DA_MAQUININHA.nullable().optional(),
   nome: z.string().trim().min(1, 'Dê um nome à maquininha (ex.: Stone).').max(60, 'O nome vai até 60 letras.'),
   taxas: z.record(z.string(), TAXA).superRefine((obj, c) => {
-    for (const k of Object.keys(obj)) if (!CHAVE_DA_TAXA.test(k)) c.addIssue({ code: 'custom', message: `Taxa desconhecida: ${k}.` })
+    for (const k of Object.keys(obj)) if (!ehChaveDaTaxa(k)) c.addIssue({ code: 'custom', message: `Taxa desconhecida: ${k}.` })
   }),
-  maxVezes: z.number().int().min(1, `Parcelar até: de 1 a ${TETO_DE_VEZES}x.`).max(TETO_DE_VEZES, `Parcelar até: de 1 a ${TETO_DE_VEZES}x.`).nullable(),
+  // O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser
+  // feito." Acima de 12x a tela avisa; só o impossível (zero, fracionário,
+  // acima de 1.200 — decisão do Claude, 25/11) se recusa.
+  maxVezes: z.number().int(RECUSA_DAS_VEZES_ZERO).min(1, RECUSA_DAS_VEZES_ZERO)
+    .max(LIMITE_DE_VEZES_NO_CARTAO, RECUSA_DAS_VEZES_ACIMA_DO_LIMITE).nullable(),
   // Princípio 2: acima de 120 dias a tela avisa; só o zero e o registro se recusam.
   prazoDias: z.number().int(RECUSA_DO_PRAZO_ZERO).min(1, RECUSA_DO_PRAZO_ZERO)
     .max(PRAZO_MAXIMO_DA_OPERADORA, RECUSA_DO_PRAZO_ACIMA_DO_REGISTRO),

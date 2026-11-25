@@ -166,8 +166,8 @@ describe('WPP-03 — o número removido não se salva, não vira padrão nem gan
 })
 
 // documentos.md (A10 da 20ª) + §14: "Botão que a pessoa não pode usar: a tela
-// esconde". Completar a ficha é editar a cliente (Clientes em Gerenciar).
-describe('DOC-01 — "Completar a ficha" só para quem edita a cliente', () => {
+// esconde". Completar o cadastro é editar a cliente (Clientes em Gerenciar).
+describe('DOC-01 — "Completar o cadastro" só para quem edita a cliente', () => {
   it('o link pede a marca, e a tela a dá por Clientes em Gerenciar', () => {
     expect(fonte('components/shared/painel-de-documentos.tsx')).toMatch(/l\.podeCompletar && l\.clienteId/)
     expect(fonte('app/_shared/documentos-emitidos.tsx')).toMatch(/can\(ctx, 'clients', 'MANAGE'\)/)

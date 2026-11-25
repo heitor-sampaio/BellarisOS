@@ -140,19 +140,19 @@ export const ABAS_DA_REDE_TODA: readonly ChaveDeAba[] =
  * tela só pelas abas dos outros módulos — o Financeiro, só a de Comissões (com
  * as taxas da maquininha). O resumo dizia "Configurações", como se fosse tudo.
  * Nulo = a tela inteira (Configurações em Gerenciar) ou nenhuma aba.
+ *
+ * Conta só as abas que a pessoa USA sem ser a Admin da rede (A-CONF1 da 25ª):
+ * as da rede toda dizem "Esta configuração é só da Admin da rede.", não contam.
+ * Era uma opção (`soAsDela`) que a tela de Cargos sempre ligava; o caminho sem
+ * ela saiu (o Heitor, 25/11: "ok mas tenha certeza absoluta que ninguem usa").
  */
 export function rotuloDasAbasAlcancadas(
   abas: readonly ChaveDeAba[], gerencia: (m: AppModule) => boolean,
-  /**
-   * Só as abas que a pessoa USA sem ser a Admin da rede (A-CONF1 da 25ª): as da
-   * rede toda dizem "Esta configuração é só da Admin da rede.", não contam.
-   */
-  o: { soAsDela?: boolean } = {},
 ): string | null {
   if (gerencia('settings')) return null
   const nomes = ABAS_DE_CONFIGURACAO
     .filter(a => abas.includes(a.key) && abaLiberada(a, gerencia))
-    .filter(a => !o.soAsDela || !ABAS_DA_REDE_TODA.includes(a.key))
+    .filter(a => !ABAS_DA_REDE_TODA.includes(a.key))
     .map(a => a.label)
   if (!nomes.length) return null
   const lista = nomes.length === 1 ? nomes[0] : `${nomes.slice(0, -1).join(', ')} e ${nomes[nomes.length - 1]}`

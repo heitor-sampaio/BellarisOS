@@ -21,7 +21,18 @@ recompensas, igual (`salvarConfigFidelidade` e `salvarRecompensa` passam por
   paga nasce em vários lugares do código. Emite `fidelidade.pontos_ganhos`.
 - **Modo de ganho — a rede escolhe UM:** por real pago (`floor(valor ×
   points_per_real)`) ou por procedimento (`procedures.loyalty_points`, editado
-  no cadastro do procedimento, só nesse modo). Plano é **cumulativo** pelo que
+  no cadastro do procedimento, só nesse modo; sem teto de 1.000.000 — o
+  Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser
+  feito." —: acima disso, o comum por decisão do Claude, 25/11, o cadastro
+  avisa, `[data-acima-do-comum="pontos-do-procedimento"]`, e grava; recusa só
+  o negativo, o fracionário e o acima do `integer`, `lerPontosDoProcedimento`).
+  Os pontos de UM pagamento (os do procedimento × as unidades, ou o valor ×
+  os pontos por real) se contam em bigint, e o que não cabe no registro recusa
+  o pagamento com "Os pontos deste pagamento passam de 2.147.483.647 (o limite
+  do registro)." (`private.pontos_no_registro`); o ganho que passaria o SALDO
+  do `integer` recusa como o ajuste ("O saldo de pontos passaria de
+  2.147.483.647 (o limite do registro)…", `on_transaction_loyalty_earn`) —
+  decisão do Claude, 25/11; migration `20261207400001`. Plano é **cumulativo** pelo que
   já foi pago: entrada + restante somam exatamente os pontos do plano.
   **O pacote e o pré-pago no crediário também** (D14 do levantamento das
   regras, o Heitor, 2026-11-11; a regra do caminho irmão): cada parcela paga dá
@@ -71,6 +82,11 @@ recompensas, igual (`salvarConfigFidelidade` e `salvarRecompensa` passam por
   nos prazos (a conta das datas estoura). O banco perdeu os tetos na
   migration `20261204200001`. Os números são decisão do Claude, 25/11: o
   aviso começa no teto de antes. Prova: `tests/tetos-avisam-nao-recusam.test.ts`.
+  O custo da recompensa também (o Heitor, 25/11: "Se não for impossível,
+  ainda que improvável, pode ser feito."): acima de 10.000.000 de pontos (o
+  teto de antes) o catálogo avisa (`avisoDoCustoDaRecompensa`) e grava; só o
+  zero, o fracionário e o acima do registro (`integer`, 2.147.483.647) são
+  recusados. Prova: `tests/validade-e-custo-acima-do-comum.test.ts`.
 - **Cartão em N vezes pontua na VENDA, inteiro** (F2c, 2026-11-01): a
   cliente pagou tudo na maquininha. O que a operadora deposita em parcelas
   (`recebiveis_do_cartao`) não é pagamento e não pontua de novo. Prova:
@@ -103,6 +119,17 @@ recompensas, igual (`salvarConfigFidelidade` e `salvarRecompensa` passam por
   `e2e/fidelidade-atritos-da-12.spec.ts` ("A30"), `tests/atritos-da-12-f61.test.ts`.
 - **Ajuste manual** pela equipe (`loyalty: MANAGE`), com motivo, por
   `ajustar_pontos` — débito acima do saldo é recusado.
+  **Sem teto de 1.000.000** (o Heitor, 25/11: "Se não for impossível, ainda
+  que improvável, pode ser feito."): acima de 1.000.000 de pontos (o teto de
+  antes, o comum — decisão do Claude, 25/11) a ficha avisa ao lado do campo
+  (`avisoDoAjusteDePontos`, `[data-acima-do-comum="ajuste-de-pontos"]`) e o
+  servidor grava. O impossível é o registro: os pontos são `integer` (até
+  2.147.483.647; `recusaDoAjusteDePontos`, `lib/fidelidade/pontos-acima-do-comum.ts`),
+  o fracionário ("Os pontos são um número inteiro.") e o zero; e o crédito
+  que faria o SALDO passar do integer, recusado no banco com "O saldo passaria
+  de 2.147.483.647 pontos (o limite do registro): o cliente tem N pontos."
+  (migration `20261207400001`). Prova:
+  `tests/pontos-do-ajuste-e-do-procedimento-acima-do-comum.test.ts`.
 - **O extrato do app diz a recompensa trocada** (A26 da 25ª simulação;
   princípio 3): a troca ("Recompensa: Limpeza de pele") e o uso no pagamento
   ("Desconto no pagamento: R$ …") levam a descrição que o banco escreve,

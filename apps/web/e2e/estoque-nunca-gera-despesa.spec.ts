@@ -150,6 +150,8 @@ test.describe('movimentação de estoque nunca gera despesa', () => {
       await modal.locator('input[name="initial_qty"]').fill('3')
       await modal.locator('input[name="initial_cost"]').fill('10')
       await expect(modal.getByRole('checkbox', { name: /despesa/i })).toHaveCount(0)
+      await // O produto nasce sem caixa marcada (o Heitor, 25/11: "ok" à proposta): este é Insumo.
+      await await modal.getByRole('group', { name: 'Onde o produto está disponível' }).getByRole('checkbox', { name: 'Insumo' }).check()
       await modal.getByRole('button', { name: 'Criar produto' }).click()
       await expect.poll(async () => (await db().from('products').select('id').eq('name', novo)).data?.length ?? 0).toBe(1)
     })

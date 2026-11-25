@@ -100,9 +100,13 @@ describe('o que foi pago com o programa desligado não conta ponto (o Heitor, 18
   const WEB = nodePath.join(__dirname, "..")
   const MIGRATIONS = nodePath.join(WEB, "..", "..", "supabase", "migrations")
   const migrations = () => nodeFs.readdirSync(MIGRATIONS).filter(f => f.endsWith(".sql")).sort()
-  /** A migration mais nova que mexe no que o trecho diz. */
-  const ultimaCom = (trecho: string) => {
-    const achou = migrations().filter(f => nodeFs.readFileSync(nodePath.join(MIGRATIONS, f), "utf8").includes(trecho))
+  /**
+   * A migration mais nova que mexe no que os trechos dizem (todos). O Heitor, 25/11, à proposta de achar a
+   * migration pelo "desde que ligou" em vez da mais nova da função (uma troca de trecho posterior, a dos
+   * pontos no limite do registro, passava a ser "a mais nova" sem a regra mudar): "Sim, muda como acha".
+   */
+  const ultimaCom = (...trechos: string[]) => {
+    const achou = migrations().filter(f => { const sql = nodeFs.readFileSync(nodePath.join(MIGRATIONS, f), "utf8"); return trechos.every(t => sql.includes(t)) })
     return achou.length ? { nome: achou.at(-1)!, sql: nodeFs.readFileSync(nodePath.join(MIGRATIONS, achou.at(-1)!), "utf8") } : null
   }
 
@@ -121,7 +125,7 @@ describe('o que foi pago com o programa desligado não conta ponto (o Heitor, 18
       expect(m!.sql).toContain('public.auditoria')
     })
     it('os quatro ramos cumulativos contam o pago e o "já deu" só desde que ligou', () => {
-      const m = ultimaCom('fidelidade_pontos_do_pagamento')!
+      const m = ultimaCom('fidelidade_pontos_do_pagamento', 'v_ligado')!
       expect(m.nome >= '20261130100001').toBe(true)
       expect(m.sql).toContain('fidelidade_ligada')
       expect(m.sql).toContain('v_ligado')

@@ -402,6 +402,68 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   perda "Inventário"; a mais, um lote novo) e avisa a variação de mais da
   metade do saldo. Prova: `e2e/copilot-estoque-f66.spec.ts` (contra a OpenAI
   falsa).
+- **O Copilot recusa o que a tela recusa — nem mais, nem menos** (o Heitor,
+  2026-11-25: "Se não for impossível, ainda que improvável, pode ser feito.";
+  princípio 2). Os tetos que só ele tinha saíram: lançar até R$ 10.000.000, a
+  entrada até 100.000 embalagens e o custo até R$ 1.000.000, o ajuste até
+  1.000.000, a oportunidade até R$ 10.000.000 e com até 5 procedimentos de
+  interesse, e até 10 tags por pedido. E o que a tela aceita ele aceita: o
+  custo zero da entrada e o valor estimado zero da oportunidade (vão ao cartão
+  e ao payload). O impossível, decisão do Claude (25/11), é o zero e o negativo
+  onde a tela recusa (com a frase dela: "Valor deve ser maior que zero.",
+  "Quantidade deve ser maior que zero.", "Novo estoque não pode ser
+  negativo.", "O valor estimado não pode ser negativo.") e o que o REGISTRO
+  não guarda — o tipo da coluna (os limites moram no NÚCLEO, que a action da
+  tela confere no servidor: `lib/financeiro/limites-do-registro.ts`,
+  `lib/estoque/limites-do-registro.ts` e `lib/crm/valor-do-card.ts`; o
+  Copilot lê os mesmos, e `lib/copilot/ferramentas/limites-do-registro.ts` só os
+  reexporta):
+  numeric(10,2) no lançamento e no custo da entrada (`financial_transactions.amount`,
+  `products.cost_price`: R$ 99.999.999,99), numeric(12,2) no valor da
+  oportunidade (`leads.value`), numeric(10,4) na quantidade e no saldo do
+  estoque (`stock_movements.quantity`/`balance_after`, `product_batches.quantity`:
+  999.999,9999 na unidade do MOVIMENTO, que é a de consumo quando o produto tem
+  uma — o frasco de 100 UI vai até 9.999,9999 frascos). A quantidade vezes o
+  fator e o saldo depois se conferem no preparo, com o produto (o saldo só na
+  recusa, nunca no cartão). Toda recusa vai ao modelo em português. O cartão da
+  entrada diz o aviso do custo fora do comum da janela (`avisoDoCustoDaEntrada`,
+  A19 da 19ª), sem recusar. Os limites de CONSULTA (31 dias da agenda, `dias`,
+  `anteriores`, o mês) são técnicos e ficam. Prova:
+  `tests/copilot-recusa-so-o-que-a-tela-recusa.test.ts`.
+  **Os tamanhos de texto também** (decisão do Claude, 25/11, pela mesma fala):
+  o texto que a tela do mesmo gesto grava sem teto o Copilot grava — a
+  observação do `agendar`, o motivo do cancelamento, a descrição do `lancar`, o
+  lote e a observação da entrada, o motivo do ajuste, a observação da
+  oportunidade —, e o mínimo é o da tela (o motivo e a descrição só precisam
+  existir; o nome da cliente, 2 letras, sem teto), com a frase dela ("Informe o
+  motivo do cancelamento.", "Descrição é obrigatória.", "Motivo do ajuste é
+  obrigatório.", "Informe o nome do cliente."). O que tem limite na tela ou no
+  registro mantém o número: a marca e o fornecedor 120 (as listas da rede), a
+  nota fiscal 60, a tag 60, e a origem da oportunidade no registro
+  (`leads.source` varchar(60): "No máximo 60 caracteres (o limite do
+  registro)."); o nome e o e-mail da oportunidade, sem teto (`leads.name` e
+  `leads.email` viraram text, como na ficha — `20261208000001`). Os nomes que a ferramenta PROCURA
+  (cliente, procedimento, profissional, unidade, sala, produto, categoria,
+  funil, etapa) e os campos de formato (telefone, CPF, documento, e-mail)
+  mantêm o limite técnico. Toda recusa de tamanho é em português (`texto`,
+  `comum.ts`: "No máximo N caracteres.", "Pelo menos N caracteres."), nunca o
+  "Too big: expected string…" do zod. Prova:
+  `tests/copilot-remarcar-em-atendimento-e-tamanhos-como-a-tela.test.ts`.
+  **O remarcar recusa o Em atendimento no PREPARO** (decisão do Claude, 25/11,
+  princípio 3): o `remarcarCore` recusava só no Confirmar, e o cartão aparecia
+  para algo que ia falhar. O preparo diz a frase do núcleo
+  (`RECUSA_DO_REMARCAR_EM_ATENDIMENTO`, `agenda-escrita.ts`; o teste confere
+  que é a mesma de `alteracoes.ts`). O finalizado o preparo já recusava. Prova:
+  idem.
+  **O horário que já passou é o da tela** (o Heitor, 25/11: "recusa, não dá pra
+  agendar no passado"; e "remarcar para o passado é possível desde que não
+  tenha passado do horario já, o que tornaria impossível desse atendimento
+  acontecer"): `agendar` e `remarcar` conferem por `recusaDoHorarioPassado`
+  (`lib/appointments/horario-passado.ts`, a dos núcleos), no fuso da unidade,
+  com a mesma mensagem e sem a tolerância de 5 minutos que só o Copilot tinha;
+  no remarcar, só o horário NOVO (trocar só quem atende vale mesmo com o
+  horário marcado já passado, como o `remarcarCore`). Prova:
+  `tests/copilot-horario-passado-como-a-tela.test.ts`.
 - **O cadastro sem CPF** (sobra da F29, decisão 1 do Heitor na 7ª simulação):
   `cadastrar_cliente` aceita `passaporte` ou `rne` no lugar do CPF — um
   documento só, pela regra do cadastro da tela (`documentoDaFicha`, via
@@ -643,5 +705,7 @@ O modelo diz que a permissão não mostra, nunca que a cliente não tem
 ❌ Taxa calculada pelo Copilot com os números das ferramentas (vai pronta de lib/metrics, com o nome — A41 da 24ª)
 ❌ Nome de função para o Copilot na tela ("secretária" — A49 da 24ª)
 ❌ Caminho de tela solto no texto, com ou sem id (o link vai com o nome — A27 da 21ª, A32 da 22ª)
+❌ Teto de valor ou de quantidade na ferramenta de escrita que a tela do mesmo gesto não tem (só o impossível: o limite do registro — 25/11), ou recusa na mensagem padrão do zod, em inglês
+❌ Regra própria do horário que já passou no Copilot (é recusaDoHorarioPassado, a dos núcleos — 25/11)
 ❌ Cortar a chave da escolha do cartão abaixo do tamanho dela ("mesma:<uuid>" tem 42; o corte em 40 fazia o "Sim, é X" nunca valer — CP1)
 ```

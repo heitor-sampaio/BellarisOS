@@ -251,7 +251,7 @@ export interface ConfigGatilhoAgenda {
   intervalo?:   number
   /** 0=domingo. Só em 'semanal'. */
   diaDaSemana?: number
-  /** 1–28. Só em 'mensal' — 29 a 31 não existem todo mês. */
+  /** 1–31. Só em 'mensal' — no mês sem esse dia (o 31 em abril), não dispara. */
   diaDoMes?:    number
 }
 
@@ -265,7 +265,7 @@ export interface ConfigBuscarClientes {
    */
   pacoteVenceEmDias?: number
   tags?:             string[]
-  /** Teto de segurança por execução. */
+  /** Teto de segurança por execução: vale o gravado (200 sem valor; acima de 500 a tela avisa). */
   limite?:           number
 }
 

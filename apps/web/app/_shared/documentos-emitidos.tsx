@@ -114,7 +114,7 @@ export async function DocumentosEmitidos({
         faltando: oQueFalta(l.faltando.map(rotuloDoQueFalta)),
         unidade: l.branchId ? nomeDe.get(l.branchId) ?? null : null,
         slug:    l.branchId ? slugDe.get(l.branchId) ?? unidade?.slug ?? null : unidade?.slug ?? null,
-        // "Completar a ficha" é editar a cliente: só com Clientes em Gerenciar
+        // "Completar o cadastro" é editar a cliente: só com Clientes em Gerenciar
         // (como a janela do agendamento, actions/documentos-da-janela.ts).
         podeCompletar: completaAFicha,
       }))}

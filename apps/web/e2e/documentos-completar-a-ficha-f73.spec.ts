@@ -7,7 +7,8 @@ import { apagarDocumentosEmitidos } from './apoio/limpeza'
 /**
  * F73 — A22 da 14ª simulação (princípio 7: a tela que uma pessoa nova não
  * entende sozinha). Em Documentos, "Faltam dados — Falta: CPF" não dizia onde
- * completar. Agora ao lado vem "Completar a ficha", que leva à aba Dados da
+ * completar. Agora ao lado vem "Completar o cadastro" (o nome: o Heitor, 25/11,
+ * "Completar cadastro"), que leva à aba Dados da
  * cliente — o mesmo caminho que a janela do agendamento já dava
  * (`[data-completar-cadastro]`, A9 da 11ª).
  */
@@ -70,14 +71,14 @@ test('A22: "Faltam dados" em Documentos leva à aba Dados da cliente', async ({ 
     const linha = p.locator(`[data-documento="${doc}"]`)
     await expect(linha).toHaveAttribute('data-situacao', 'FALTAM_DADOS')
     const completar = linha.locator('[data-completar-cadastro]')
-    await expect(completar).toHaveText('Completar a ficha')
+    await expect(completar).toHaveText('Completar o cadastro')
     await expect(completar).toHaveAttribute('href', new RegExp(`/clients/${cliente}\\?aba=dados$`))
     await completar.click()
     await expect(p).toHaveURL(new RegExp(`/clients/${cliente}\\?aba=dados`))
   })
 })
 
-test('DOC-01: quem só vê a cliente não recebe o "Completar a ficha"', async ({ browser }) => {
+test('DOC-01: quem só vê a cliente não recebe o "Completar o cadastro"', async ({ browser }) => {
   await como(browser, soVe, async p => {
     await p.goto('/admin/documentos')
     const linha = p.locator(`[data-documento="${doc}"]`)

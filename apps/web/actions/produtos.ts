@@ -24,6 +24,7 @@ import type { EscolhaDaFidelidade } from '@/lib/fidelidade/conta-na-venda'
 import { recusaDasParcelasDaRede } from '@/lib/financeiro/crediario-da-rede'
 import { recusaDasVezesDoPagamento } from '@/lib/financeiro/vezes-da-rede'
 import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto, motivoDoDesconto } from '@/lib/vendas/desconto'
+import { recusaDaQuantidadeDoProduto, recusaDosItensDaVenda, recusaDoValorDaVenda } from '@/lib/vendas/quantidades'
 
 const UUID = /^[0-9a-f-]{36}$/i
 
@@ -80,16 +81,19 @@ async function venderProdutoUmaVez(
     // O mesmo produto em duas linhas vira uma, somada.
     const pedidos = typeof produtos === 'string' ? [{ produtoId: produtos, quantidade: Number(quantidade) }] : produtos
     if (!Array.isArray(pedidos) || !pedidos.length) return { error: 'Escolha ao menos um produto.' }
-    if (pedidos.length > 20) return { error: 'Uma venda leva até 20 produtos.' }
+    // O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser
+    // feito." — acima de 100 de cada, de 100 unidades e de 20 produtos a tela
+    // avisa; só o impossível recusa (lib/vendas/quantidades.ts).
     const itens = new Map<string, number>()
     for (const p of pedidos) {
       const qtd = Number(p?.quantidade)
       if (typeof p?.produtoId !== 'string' || !UUID.test(p.produtoId)) return { error: 'Dados inválidos.' }
-      if (!Number.isInteger(qtd) || qtd < 1 || qtd > 100) return { error: 'Quantidade inválida (de 1 a 100).' }
+      const recusaDaLinha = recusaDaQuantidadeDoProduto(qtd)
+      if (recusaDaLinha) return { error: recusaDaLinha }
       itens.set(p.produtoId, (itens.get(p.produtoId) ?? 0) + qtd)
     }
-    const total = [...itens.values()].reduce((s, q) => s + q, 0)
-    if (total > 100) return { error: 'Uma venda leva até 100 unidades.' }
+    const recusaDosItens = recusaDosItensDaVenda([...itens.values()])
+    if (recusaDosItens) return { error: recusaDosItens }
     const lido = EntradaDoPagamento.safeParse(pagamento)
     if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Pagamento inválido.' }
     // Até quantas vezes a clínica parcela no crédito (D-15): o servidor recusa acima.
@@ -100,12 +104,17 @@ async function venderProdutoUmaVez(
     if (!d.success) return { error: 'Desconto inválido.' }
 
     const admin = createAdminClient()
-    const [unidade, cliente, lidos] = await Promise.all([
+    // Os produtos em lotes de 100 ids: a lista vai na URL do `.in()`, e sem o
+    // teto de 20 ela pode passar do limite da URL (convencoes.md).
+    const ids = [...itens.keys()]
+    const lotes = Array.from({ length: Math.ceil(ids.length / 100) }, (_, i) => ids.slice(i * 100, i * 100 + 100))
+    const [unidade, cliente, ...lidosPorLote] = await Promise.all([
       ler(admin.from('branches').select('id, is_active').eq('id', branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade'),
       ler(admin.from('clients').select('id, is_active').eq('id', clienteId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a cliente'),
-      ler(admin.from('products').select('id, name, sale_price, uso, is_active')
-        .in('id', [...itens.keys()]).eq('tenant_id', ctx.tenantId!), 'buscar os produtos'),
+      ...lotes.map(lote => ler(admin.from('products').select('id, name, sale_price, uso, is_active')
+        .in('id', lote).eq('tenant_id', ctx.tenantId!), 'buscar os produtos')),
     ])
+    const lidos = lidosPorLote.flatMap(l => l ?? [])
     if (!unidade || !alcancaUnidade(ctx, branchId)) return { error: 'Unidade não encontrada.' }
     // D4 da 30ª (UN-14): a unidade desativada não vende.
     const naDesativada = recusaDaVendaNaUnidade(unidade)
@@ -145,12 +154,16 @@ async function venderProdutoUmaVez(
     if ('error' in vendeu) return { error: vendeu.error }
     if ('pergunta' in vendeu) return { confirmarSemVendedor: vendeu.pergunta }
 
+    const lancamentos = comMotivoDoDesconto(lancamentosDoPagamento(vendido, pagamentoDaVenda, rotulo), motivoDoDesconto(d.data, reais))
+    // Sem o teto da quantidade, o valor pode passar do que o registro guarda: recusa em português.
+    const recusaDoValor = recusaDoValorDaVenda(tabela, lancamentos.map(l => l.amount))
+    if (recusaDoValor) return { error: recusaDoValor }
     const args = {
       p_tenant: ctx.tenantId!, p_cliente: clienteId, p_unidade: branchId,
       p_ator: ctx.internalUserId ?? null, p_vendedor: vendeu.vendedor,
       p_itens: [...itens].map(([id, qtd]) => ({ product_id: id, quantity: qtd })),
       p_desconto: reais,
-      p_lancamentos: comMotivoDoDesconto(lancamentosDoPagamento(vendido, pagamentoDaVenda, rotulo), motivoDoDesconto(d.data, reais)),
+      p_lancamentos: lancamentos,
     }
     const { data, error } = fid.dados
       ? await admin.rpc('venda_com_fidelidade', { p_tenant: ctx.tenantId!, p_tipo: 'PRODUTO', p_args: args, p_fidelidade: fid.dados })

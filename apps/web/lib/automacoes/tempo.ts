@@ -5,7 +5,8 @@ import type {
   ConfigEsperaDuracao, ConfigEsperaAte, ConfigGatilhoAgenda, ConfigBuscarClientes,
 } from '@estetica-os/types'
 import type { ContextoDaExecucao } from './contexto'
-import { lerPublicoAte, type FiltrosDoPublico } from '@/lib/clientes/publico'
+import { lerPublico, lerPublicoAte, type FiltrosDoPublico } from '@/lib/clientes/publico'
+import { conferirLimiteDaBusca } from './busca-do-passo'
 
 /**
  * O tempo — esperas, agenda e busca.
@@ -18,6 +19,8 @@ import { lerPublicoAte, type FiltrosDoPublico } from '@/lib/clientes/publico'
  */
 
 const MINUTO = 60 * 1000
+/** O PostgREST devolve no máximo 1.000 linhas por leitura, e o resto some calado. */
+const POR_PAGINA_DO_POSTGREST = 1000
 
 export function quandoVoltar(cfg: ConfigEsperaDuracao, agora = new Date()): Date {
   const n = Number(cfg.quantidade ?? 0)
@@ -194,10 +197,13 @@ export function filtrosDaBusca(cfg: ConfigBuscarClientes, fuso?: string, agora =
 /**
  * Os clientes que um fluxo de agenda vai percorrer.
  *
- * Teto obrigatório (200 por padrão): um filtro largo demais numa base grande
- * abriria mil execuções de uma vez, e cada uma pode mandar mensagem. O teto é
- * a diferença entre "campanha que eu quis" e "disparo em massa que eu não
- * revisei".
+ * Teto obrigatório (200 sem valor gravado): um filtro largo demais numa base
+ * grande abriria mil execuções de uma vez, e cada uma pode mandar mensagem. O
+ * teto é a diferença entre "campanha que eu quis" e "disparo em massa que eu
+ * não revisei". **Vale o número que a rede gravou** (princípios 2 e 3; o
+ * Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser
+ * feito."): cortava em 500, calado. O impossível (zero, negativo,
+ * fracionário) para o passo com o motivo — `conferirLimiteDaBusca`.
  */
 export async function buscarClientes(
   tenantId: string,
@@ -205,19 +211,27 @@ export async function buscarClientes(
   // O dia do "aniversário hoje" (F62b): o da unidade da busca, senão o comum
   // da rede — quem chama resolve; sem fuso, o de Brasília.
   fuso?: string,
-): Promise<{ clientes: ClienteEncontrado[]; truncado: boolean }> {
-  const limite = Math.min(cfg.limite ?? 200, 500)
+): Promise<{ clientes: ClienteEncontrado[]; truncado: boolean; limite: number }> {
+  const conferido = conferirLimiteDaBusca(cfg.limite)
+  if ('recusa' in conferido) throw new Error(conferido.recusa)
+  const { limite } = conferido
   // Todos os filtros NO BANCO, e o teto DEPOIS deles (2026-10-22). Antes o
   // teto vinha primeiro — 501 clientes quaisquer — e o aniversário e o "sem
   // retorno" filtravam esse lote: a automação de aniversário perdia quase
   // todos os aniversariantes, e o `truncado`, contado depois, não avisava.
   // Uma a mais que o teto, para saber se ele cortou alguém e poder dizer isso
   // no passo, em vez de silenciosamente atender só uma parte.
-  const linhas = await lerPublicoAte(tenantId, filtrosDaBusca(cfg, fuso), limite + 1)
+  // Até 1.000 (o corte do PostgREST), uma leitura com teto; acima disso, em
+  // páginas (`lerPublico`, o `lerTodas`) — o `.limit` passaria a 1.000 calado.
+  const filtros = filtrosDaBusca(cfg, fuso)
+  const linhas = limite + 1 <= POR_PAGINA_DO_POSTGREST
+    ? await lerPublicoAte(tenantId, filtros, limite + 1)
+    : (await lerPublico(tenantId, filtros)).slice(0, limite + 1)
 
   const truncado = linhas.length > limite
   return {
     truncado,
+    limite,
     clientes: linhas.slice(0, limite).map(c => ({
       id:       c.id,
       nome:     c.name,

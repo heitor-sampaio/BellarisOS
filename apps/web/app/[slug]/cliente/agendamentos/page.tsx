@@ -6,7 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
 import { CalendarDays, CalendarClock, ChevronRight, Clock3, User, Plus, MapPin } from 'lucide-react'
 import { ler } from '@/lib/db'
-import { separarAgendaDoPortal, limiteParaAlterar, aindaDaParaAlterar, inicioDosProximos, horarioPassouSemAtender } from '@/lib/clientes/agenda-do-portal'
+import { separarAgendaDoPortal, limiteParaAlterar, aindaDaParaAlterar, horarioPassouSemAtender, prazoDoAppEncerrado } from '@/lib/clientes/agenda-do-portal'
 import { textoDoConcluido } from '@/lib/agenda/hora-real'
 import { textoDoHorarioNoHistorico } from '@/lib/clientes/textos-do-app'
 import { fusoValido } from '@/lib/unidades/fuso'
@@ -90,8 +90,11 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
     ...a, pagoAntes: jaPagos.get(a.id) ?? null, cobrado: cobrados.get(a.id) ?? null,
     procedures: nomesDasSessoes.has(a.id) ? { ...a.procedures, name: nomesDasSessoes.get(a.id)! } : a.procedures,
   }))
-  // A mesma regra da home (D14): o que ainda vai acontecer, em aberto.
-  const { proximos: upcoming, historico: past } = separarAgendaDoPortal(appointments, new Date(), a => fusoValido(a.branches?.fuso))
+  // A mesma regra da home (D14): o que ainda vai acontecer, em aberto. Acima,
+  // o que já começou e não acabou (o Heitor, 25/11: "Um "Em andamento" não
+  // seria melhor?").
+  const { emAndamento: andamento, proximos: upcoming, historico: past } =
+    separarAgendaDoPortal(appointments, new Date(), a => fusoValido(a.branches?.fuso))
 
   return (
     <div>
@@ -120,6 +123,16 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
           Agendar
         </Link>
       </div>
+
+      {/* -- Em andamento (o Heitor, 25/11) ----------------------- */}
+      {andamento.length > 0 && (
+        <section data-em-andamento style={{ marginBottom: 28 }}>
+          <GroupLabel>Em andamento</GroupLabel>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {andamento.map(a => <AppointmentCard key={a.id} appt={a} slug={slug} highlight prazoHoras={prazoHoras} comUnidade={variasUnidades} faleCom={faleCom} />)}
+          </div>
+        </section>
+      )}
 
       {/* -- Próximos --------------------------------------------- */}
       {upcoming.length > 0 && (
@@ -297,9 +310,9 @@ function AppointmentCard({ appt, slug, highlight = false, prazoHoras, comUnidade
           O horário já passou; a equipe ainda vai registrar o atendimento.
         </p>
       )}
-      {/* A53 da 7ª simulação: passado o prazo, o cartão já diz o caminho (a regra do prazo fica). */}
-      {prazoHoras != null && !passou && ['SCHEDULED', 'CONFIRMED'].includes(appt.status) && !aindaDaParaAlterar(appt.scheduled_at, prazoHoras)
-        && new Date(appt.scheduled_at).getTime() > new Date(inicioDosProximos(new Date(), fuso)).getTime() && (
+      {/* A53 da 7ª simulação: passado o prazo, o cartão já diz o caminho (a regra do prazo fica).
+          Também em todo em andamento, mesmo o que começou ontem (decisão do Claude, 25/11). */}
+      {prazoHoras != null && prazoDoAppEncerrado(appt, prazoHoras, new Date(), fuso) && (
         <p data-prazo-encerrado style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
           Prazo do app encerrado: {faleCom} para alterar
         </p>

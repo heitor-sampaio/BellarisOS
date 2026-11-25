@@ -40,6 +40,8 @@ async function novoProduto(p: Page, nome: string, qtd: string) {
   await modal.locator('select[name="unit"]').selectOption({ index: 1 })
   await modal.getByRole('switch', { name: /Adicionar estoque inicial/ }).click()
   await modal.locator('input[name="initial_qty"]').fill(qtd)
+  await // O produto nasce sem caixa marcada (o Heitor, 25/11: "ok" à proposta): este é Insumo.
+  await await modal.getByRole('group', { name: 'Onde o produto está disponível' }).getByRole('checkbox', { name: 'Insumo' }).check()
   await modal.getByRole('button', { name: 'Criar produto' }).click()
   return modal
 }

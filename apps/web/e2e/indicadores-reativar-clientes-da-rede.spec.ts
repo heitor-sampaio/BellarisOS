@@ -147,3 +147,26 @@ test('r2-ind-03: na rede de UMA unidade, o quadro conta todas as clientes ativas
     await umaSo.limpar()
   }
 })
+
+// A regra que o caso da função por unidade provava (2026-10-20: "cliente nova não é
+// cliente sumida"), agora na da rede — a que a tela usa. A por unidade saiu (o Heitor,
+// 25/11: "ok mas tenha certeza absoluta que não é usada").
+test('cadastrada há pouco e sem visita não é "para reativar"; cadastrada há meses e sem visita, é', async () => {
+  const outra = await criarOutraRede(`rcn${marca}`)
+  try {
+    const nova = await outra.criarCliente('Recém-cadastrada')
+    const antiga = await outra.criarCliente('Antiga sem visita')
+    for (const [id, criada] of [[nova, diasAtras(0)], [antiga, diasAtras(200)]] as const) {
+      expect((await db().from('clients').update({ is_active: true, created_at: criada }).eq('id', id)).error).toBeNull()
+    }
+    const { data, error } = await db().rpc('metrics_clientes_para_reativar_rede', {
+      p_tenant: outra.tenantId, p_desde: diasAtras(90), p_limite: 50, p_professional_id: null,
+    })
+    expect(error).toBeNull()
+    const ids = ((data as { lista: { id: string }[] }).lista).map(c => c.id)
+    expect(ids, 'a antiga, sem visita, entra').toContain(antiga)
+    expect(ids, 'a recém-cadastrada não').not.toContain(nova)
+  } finally {
+    await outra.limpar()
+  }
+})

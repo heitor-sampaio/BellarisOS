@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Ban, Banknote, Percent, Plus, Trash2, X } from 'lucide-react'
 import { parseDinheiro } from '@estetica-os/utils'
 import { salvarRegrasDoProfissional } from '@/actions/comissoes'
-import { rotuloDaRegra, type RegraDeComissao, type TipoDeRegra } from '@/lib/comissoes/config'
+import { rotuloDaRegra, recusaDoValorDaComissao, type RegraDeComissao, type TipoDeRegra } from '@/lib/comissoes/config'
 import { chipDaComissao } from '@/lib/comissoes/chip-do-membro'
 import { resumoDaComissaoDoMembro } from '@/lib/equipe/textos-do-cadastro'
 import { Dica } from '@/components/shared/dica'
@@ -133,6 +133,9 @@ function Formulario({ membroId, regras, procedimentos, comGeral, onFim, vendaPct
       const n = paraNumero(texto)
       if (!texto.trim() || !Number.isFinite(n) || n < 0) { setErro(`Informe o valor ${onde}.`); return null }
       if (t === 'PERCENTAGE' && n > 100) { setErro(`Percentual acima de 100% ${onde}.`); return null }
+      // O fixo vai até o limite do registro (o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito.").
+      const recusa = recusaDoValorDaComissao(t, n, onde)
+      if (recusa) { setErro(recusa); return null }
       return n
     }
     let regraPadrao: { tipo: TipoDeRegra; valor: number } | null = null

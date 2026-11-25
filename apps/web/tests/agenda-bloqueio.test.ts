@@ -35,10 +35,11 @@ describe('o texto do bloqueio', () => {
 
 describe('recusaDoBloqueio', () => {
   const agora = new Date('2026-11-05T10:00:00-03:00')
-  it('o fim antes do início, o motivo vazio e mais de um ano são recusados', () => {
+  it('o fim antes do início e o motivo vazio são recusados; mais de um ano, não', () => {
     expect(recusaDoBloqueio({ inicio: '2026-11-10T13:00:00-03:00', fim: '2026-11-10T12:00:00-03:00', motivo: 'x' }, agora)).toBe('O fim do bloqueio tem de ser depois do início.')
     expect(recusaDoBloqueio({ inicio: '2026-11-10T12:00:00-03:00', fim: '2026-11-10T13:00:00-03:00', motivo: '  ' }, agora)).toBe('Diga o motivo do bloqueio (almoço, folga, férias…).')
-    expect(recusaDoBloqueio({ inicio: '2026-11-10T12:00:00-03:00', fim: '2027-12-10T13:00:00-03:00', motivo: 'x' }, agora)).toBe('O bloqueio vai até um ano.')
+    // O Heitor, 25/11, perguntado se o bloqueio acima de um ano recusa ou avisa: escolheu "Acima de 1 ano avisa".
+    expect(recusaDoBloqueio({ inicio: '2026-11-10T12:00:00-03:00', fim: '2027-12-10T13:00:00-03:00', motivo: 'x' }, agora)).toBeNull()
   })
   it('o que já terminou não se bloqueia; o que já começou, sim (o almoço de agora)', () => {
     expect(recusaDoBloqueio({ inicio: '2026-11-05T08:00:00-03:00', fim: '2026-11-05T09:00:00-03:00', motivo: 'x' }, agora)).toBe('Esse período já passou.')

@@ -15,6 +15,9 @@ import { nomesDosRegistros } from '@/lib/nomes-dos-registros'
 import { pagosAntes } from '@/lib/appointments/pago-antes'
 import { AbertosDeAntes } from '@/components/branch/abertos-de-antes'
 import { bloqueiosDoPeriodo } from '@/lib/agenda/bloqueios'
+import { podemOcuparDesde } from '@/lib/appointments/core'
+import { lerEmAndamento } from '@/lib/agenda/ler-em-andamento'
+import { EmAndamentoAgora } from '@/components/shared/em-andamento-agora'
 import {
   getCachedBranchBySlug, getCachedBranchProcedures,
   getCachedBranchProfessionals, getCachedRoomsByBranch, filtroDeQuemAtendeNaUnidade, getCachedNetworkBranches,
@@ -91,7 +94,10 @@ export default async function AgendaPage({ params, searchParams }: {
         procedures(name), clients(tags)
       `)
       .eq('branch_id', branchId)
-      .gte('scheduled_at', from)
+      // Quem se sobrepõe à janela, de qualquer duração (`podemOcuparDesde`,
+      // 25/11): o atendimento longo que começou antes dela também ocupa os dias
+      // dela, e a grade o desenha em cada um (`agendamentosNoDia`).
+      .or(podemOcuparDesde(new Date(from).getTime()))
       .lte('scheduled_at', to)
     if (!comCancelados) q = q.not('status', 'in', '("CANCELLED","NO_SHOW")')
     if (pessoal) q = q.eq('professional_id', pessoal)
@@ -143,7 +149,7 @@ export default async function AgendaPage({ params, searchParams }: {
       .in('professional_id', idsDosProfissionais)
       .neq('branch_id', branchId)
       .not('status', 'in', '("CANCELLED","NO_SHOW")')
-      .gte('scheduled_at', from)
+      .or(podemOcuparDesde(new Date(from).getTime()))
       .lte('scheduled_at', to)
       .order('scheduled_at').order('id').range(de, ate), 'carregar a agenda dos profissionais nas outras unidades')
     // A unidade de cada um (A9 da 13ª): a base da ocupação diz onde ela está.
@@ -171,7 +177,7 @@ export default async function AgendaPage({ params, searchParams }: {
         .eq('professional_id', ctx.internalUserId!)
         .in('branch_id', outrasOndeAtendo)
         .not('status', 'in', '("CANCELLED","NO_SHOW")')
-        .gte('scheduled_at', from).lte('scheduled_at', to), { ...filtros, profissional: null })
+        .or(podemOcuparDesde(new Date(from).getTime())).lte('scheduled_at', to), { ...filtros, profissional: null })
         .order('scheduled_at').order('id').range(de, ate), 'carregar os meus agendamentos nas outras unidades')) ?? [])
     : []
   const unidadesDaRede = meusDeFora.length ? (await getCachedNetworkBranches(ctx.tenantId!)) as { id: string; name: string; slug: string }[] : []
@@ -317,6 +323,11 @@ export default async function AgendaPage({ params, searchParams }: {
     )
   }
 
+  // "Em andamento" acima da grade, no dia e na semana (o Heitor, 25/11): o que
+  // acontece AGORA na unidade, qualquer que seja o dia aberto na tela.
+  const agora = new Date()
+  const emAndamentoAgora = await lerEmAndamento({ tenantId: ctx.tenantId!, unidades: [branchId], agora })
+
   return (
     <div>
       <RealtimeRefresher topicos={['agenda']} />
@@ -351,6 +362,8 @@ export default async function AgendaPage({ params, searchParams }: {
         bloqueios={bloqueios}
         filtros={filtros}
         tagsDaRede={tagsDaRede}
+        emAndamento={<EmAndamentoAgora itens={emAndamentoAgora} agora={agora.toISOString()}
+          base={can(ctx, 'atendimento', 'VIEW') ? `/${slug}/agenda` : null} style={{ marginBottom: 16 }} />}
       />
     </div>
   )

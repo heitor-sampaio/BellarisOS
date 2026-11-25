@@ -1,4 +1,5 @@
 import { partsInTZ, dayKeyTZ } from '@/lib/datetime'
+import { LIMITE_DE_DIAS, acimaDeCemAnos, avisoAcimaDoComum } from '@/lib/acima-do-comum'
 
 /**
  * O bloqueio pontual da agenda (decisão 3 do Heitor, 7ª simulação,
@@ -69,16 +70,40 @@ export function avisoDoBloqueioNoAtendimento(quem: { profissional?: string | nul
   return `${de} ${trechoDoBloqueio(b, fuso)} (${b.motivo}). O atendimento pode seguir: o bloqueio só avisa.`
 }
 
-/** O que se recusa ao bloquear (o resto é da clínica — princípio 2). */
+const UM_DIA_MS = 86_400_000
+
+/**
+ * O que se recusa ao bloquear: só o impossível (o resto é da rede —
+ * princípio 2). Até 25/11 o bloqueio ia até um ano; o Heitor, 25/11,
+ * perguntado se um bloqueio mais longo (uma licença) recusa ou avisa, escolheu
+ * "Acima de 1 ano avisa" (`avisoDoBloqueioLongo`). O impossível é passar de
+ * 100 anos, o limite das datas (decisão do Claude, 25/11: `LIMITE_DE_DIAS`; o
+ * banco tem a mesma faixa, migration `20261207500001`).
+ */
 export function recusaDoBloqueio(e: { inicio: string; fim: string; motivo: string }, agora = new Date()): string | null {
   const ini = new Date(e.inicio).getTime(), fim = new Date(e.fim).getTime()
   if (!Number.isFinite(ini) || !Number.isFinite(fim)) return 'Informe o início e o fim do bloqueio.'
   if (!e.motivo?.trim()) return 'Diga o motivo do bloqueio (almoço, folga, férias…).'
   if (e.motivo.trim().length > 200) return 'O motivo vai até 200 caracteres.'
   if (fim <= ini) return 'O fim do bloqueio tem de ser depois do início.'
-  if (fim - ini > 366 * 86_400_000) return 'O bloqueio vai até um ano.'
+  if (fim - ini > LIMITE_DE_DIAS * UM_DIA_MS) return acimaDeCemAnos(LIMITE_DE_DIAS, 'dias')
   if (fim <= agora.getTime()) return 'Esse período já passou.'
   return null
+}
+
+/**
+ * O aviso do bloqueio acima do comum — o teto de antes, um ano (decisão do
+ * Claude, 25/11): o fim depois do mesmo dia e hora do ano seguinte. O bloqueio
+ * grava como está; a tela diz ao lado do fim. Nulo: até um ano, ou o período
+ * ainda inválido (a recusa é que fala).
+ */
+export function avisoDoBloqueioLongo(e: { inicio: string; fim: string }): string | null {
+  const ini = new Date(e.inicio), fim = new Date(e.fim).getTime()
+  if (!Number.isFinite(ini.getTime()) || !Number.isFinite(fim) || fim <= ini.getTime()) return null
+  const umAnoDepois = new Date(ini)
+  umAnoDepois.setUTCFullYear(umAnoDepois.getUTCFullYear() + 1)
+  const anos = 1 + Math.max(0, fim - umAnoDepois.getTime()) / (365 * UM_DIA_MS)
+  return avisoAcimaDoComum(anos, 1, 'ano')
 }
 
 /**

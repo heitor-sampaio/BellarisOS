@@ -4,6 +4,8 @@ import { alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { saldoNaPrateleira } from '@/lib/estoque/saldo-em-texto'
+import { medidaNoPlural } from '@/lib/estoque/medidas'
+import { recusaDoCustoDaEntrada, recusaDoEstoqueAcimaDoRegistro } from '@/lib/estoque/limites-do-registro'
 
 /**
  * ENTRADA e AJUSTE de estoque — os núcleos que a tela de estoque (actions/
@@ -102,13 +104,66 @@ export async function saldoAgoraEmTexto(admin: Admin, productId: string, branchI
   return saldoNaPrateleira(Number(s?.current_stock ?? 0), 0, unidade, '')
 }
 
+/**
+ * O produto e o saldo da unidade na régua do MOVIMENTO (a de consumo, quando o
+ * produto tem uma: `fator_de_consumo`; senão, a embalagem) — o que o banco grava
+ * em `stock_movements.quantity` e `balance_after`. Para a conferência do registro.
+ */
+async function saldoNoMovimento(admin: Admin, productId: string, branchId: string): Promise<{
+  fator: number; saldo: number; medida: string; consumo: string | null
+}> {
+  const [p, s] = await Promise.all([
+    ler(admin.from('products').select('unit, consumption_unit, units_per_package').eq('id', productId).maybeSingle(), 'ler o produto'),
+    ler(admin.from('branch_product_stock').select('current_stock, current_rendimento').eq('product_id', productId).eq('branch_id', branchId).maybeSingle(), 'ler o saldo'),
+  ]) as [{ unit: string | null; consumption_unit: string | null; units_per_package: number | null } | null, { current_stock: number; current_rendimento: number | null } | null]
+  const rende = p?.consumption_unit?.trim() && Number(p.units_per_package) > 0 ? Number(p.units_per_package) : null
+  const embalagens = Number(s?.current_stock ?? 0)
+  const saldo = rende ? (s?.current_rendimento != null ? Number(s.current_rendimento) : embalagens * rende) : embalagens
+  return { fator: rende ?? 1, saldo, medida: medidaNoPlural(p?.unit ?? '', 2) || 'embalagens', consumo: rende ? p!.consumption_unit!.trim() : null }
+}
+
+/**
+ * A transferência que o registro do DESTINO não guarda (o saldo depois, na
+ * unidade do movimento — numeric(10,4)), ou `null`. A que pede mais do que a
+ * origem tem fica com a recusa do banco ("Estoque insuficiente na unidade de
+ * origem"), que é a que diz o que fazer.
+ */
+export async function recusaDoRegistroNaTransferencia(admin: Admin, t: {
+  productId: string; origem: string; destino: string; quantidade: number
+}): Promise<string | null> {
+  const [de, para] = await Promise.all([
+    saldoNoMovimento(admin, t.productId, t.origem),
+    saldoNoMovimento(admin, t.productId, t.destino),
+  ])
+  if (t.quantidade * de.fator > Math.max(de.saldo, 0)) return null
+  return recusaDoEstoqueAcimaDoRegistro({
+    quantidade: t.quantidade, fator: para.fator, medida: para.medida, consumo: para.consumo,
+    saldoDepois: para.saldo + t.quantidade * para.fator,
+  })
+}
+
 export async function entradaDeEstoqueCore(admin: Admin, ctx: TenantContext, e: EntradaDeEstoque): Promise<{ ok: true; saldo: number } | { error: string }> {
   if (!alcancaUnidade(ctx, e.branchId)) return { error: 'Operação não permitida fora da sua unidade.' }
   if (!(e.quantidade > 0)) return { error: 'Quantidade deve ser maior que zero.' }
+  // O custo negativo é impossível, e o que `products.cost_price` não guarda também
+  // (o Heitor, 19/11: "Qualquer gravação que não passa pela validação do backend ta
+  // errada") — só o min="0" do campo barrava.
+  const recusaDoCusto = recusaDoCustoDaEntrada(e.custoUnitario)
+  if (recusaDoCusto) return { error: recusaDoCusto }
   if (!(await produtoEUnidadesDaRede(admin, ctx.tenantId!, e.productId, [e.branchId]))) {
     return { error: 'Produto ou unidade não encontrado.' }
   }
   if (await unidadeDesativada(admin, ctx.tenantId!, e.branchId)) return { error: RECUSA_DA_UNIDADE_DESATIVADA }
+  // O que o registro não guarda (o Heitor, 25/11: "Se não for impossível, ainda que
+  // improvável, pode ser feito."; o impossível é o tipo da coluna, decisão do Claude,
+  // 25/11): a quantidade em embalagens (o lote), na unidade do movimento, e o saldo
+  // depois — lido na hora de gravar. Voltava do banco "numeric field overflow".
+  const antes = await saldoNoMovimento(admin, e.productId, e.branchId)
+  const acimaDoRegistro = recusaDoEstoqueAcimaDoRegistro({
+    quantidade: e.quantidade, fator: antes.fator, medida: antes.medida, consumo: antes.consumo,
+    saldoDepois: antes.saldo + e.quantidade * antes.fator,
+  })
+  if (acimaDoRegistro) return { error: acimaDoRegistro }
 
   // Numa transação só, com a linha do saldo travada (estoque_entrada): duas
   // entradas ao mesmo tempo (a tela e o Copilot) não se perdem mais.
@@ -160,6 +215,15 @@ export async function ajusteDeEstoqueCore(admin: Admin, ctx: TenantContext, a: {
   if (!(await produtoEUnidadesDaRede(admin, ctx.tenantId!, a.productId, [a.branchId]))) {
     return { error: 'Produto ou unidade não encontrado.' }
   }
+
+  // A contagem é o saldo novo do movimento (`balance_after`, numeric(10,4)): na
+  // unidade de consumo, ela mesma; em embalagens, vezes o que a embalagem rende.
+  // O que o registro não guarda volta em português (decisão do Claude, 25/11).
+  const atual = await saldoNoMovimento(admin, a.productId, a.branchId)
+  const acimaDoRegistro = a.emConsumo && atual.consumo
+    ? recusaDoEstoqueAcimaDoRegistro({ quantidade: a.novoSaldo, fator: 1, medida: atual.consumo })
+    : recusaDoEstoqueAcimaDoRegistro({ quantidade: a.novoSaldo, fator: atual.fator, medida: atual.medida, consumo: atual.consumo })
+  if (acimaDoRegistro) return { error: acimaDoRegistro }
 
   if (a.loteId && !/^[0-9a-f-]{36}$/i.test(a.loteId)) return { error: 'Lote não encontrado nesta unidade.' }
   if (a.loteValidade && !/^\d{4}-\d{2}-\d{2}$/.test(a.loteValidade)) return { error: 'Validade do lote ilegível.' }

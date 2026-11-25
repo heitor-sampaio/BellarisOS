@@ -10,6 +10,7 @@ import {
   type NumeroNaTela, type OpcoesDeVinculo,
 } from '@/actions/integrations'
 import { nomeDoProvedor } from '@/lib/whatsapp/nome-do-provedor'
+import { MAX_ROTULO } from '@/lib/whatsapp/rotulo'
 import { TABELA_DA_META, ROTULO_DA_CATEGORIA, type CobrancaDoNumero } from '@/lib/whatsapp/cobranca'
 import { formatBRL, maskPhone } from '@estetica-os/utils'
 import { useFuso } from '@/components/shared/fuso'
@@ -290,6 +291,7 @@ function LinhaDoNumero({ numero, opcoes, ocupadas, onMudou, onConfigurar }: {
             <input
               className="field"
               value={rotulo}
+              maxLength={MAX_ROTULO}
               onChange={e => setRotulo(e.target.value)}
               placeholder="Principal, Comercial…"
               style={{ fontSize: 'var(--text-base-sz)' }}

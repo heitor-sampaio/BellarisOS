@@ -3,10 +3,10 @@ import { banco } from './apoio/banco'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 
 /**
- * "Reativar clientes" (dashboard da unidade, metrics_clientes_para_reativar):
- * quem não vem há mais de 90 dias. A simulação de um dia de clínica
- * (2026-10-20) viu a lista sugerir uma ficha criada NO DIA — cliente nova
- * não é cliente sumida.
+ * O dashboard da unidade. O caso de "Reativar clientes" pela função por unidade
+ * saiu com ela (o Heitor, 25/11: "ok mas tenha certeza absoluta que não é usada"):
+ * a tela usa a da rede, e "cliente nova não é cliente sumida" (2026-10-20) é
+ * provado em `e2e/indicadores-reativar-clientes-da-rede.spec.ts`.
  */
 
 const marca = Date.now().toString(36)
@@ -15,24 +15,6 @@ let rede: OutraRede | null = null
 
 test.beforeAll(async () => { rede = await criarOutraRede(`rv${marca}`) })
 test.afterAll(async () => { await rede?.limpar() })
-
-test('cadastrada há pouco não é "para reativar"; cadastrada há meses e sem vir, é', async () => {
-  const nova = await rede!.criarCliente('Nova')
-  const antiga = await rede!.criarCliente('Antiga')
-  const haDias = (d: number) => new Date(Date.now() - d * 86_400_000).toISOString()
-  for (const [id, criada] of [[nova, haDias(0)], [antiga, haDias(200)]] as const) {
-    const { error } = await db().from('clients').update({ is_active: true, created_at: criada }).eq('id', id)
-    expect(error).toBeNull()
-  }
-
-  const { data, error } = await db().rpc('metrics_clientes_para_reativar', {
-    p_tenant: rede!.tenantId, p_branch_id: rede!.branchId, p_desde: haDias(90), p_limite: 10,
-  })
-  expect(error).toBeNull()
-  const ids = ((data as { lista: { id: string }[] }).lista).map(c => c.id)
-  expect(ids, 'a antiga, sem visita, entra').toContain(antiga)
-  expect(ids, 'a recém-cadastrada não').not.toContain(nova)
-})
 
 test('o card do mês no dashboard da unidade: clientes no mês (não "funil de leads"), com o número de cada etapa', async ({ browser }) => {
   const { criarMembro } = await import('./apoio/sessao')

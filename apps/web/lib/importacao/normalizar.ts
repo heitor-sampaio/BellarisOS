@@ -2,6 +2,7 @@ import type { ChaveDeCampo, Destino } from './campos'
 import { camposDoDestino } from './campos'
 import { cpfValido, maskPhone, telefoneInternacional, telefoneDoCadastro, idadeEm } from '@estetica-os/utils'
 import { ehMenorDeIdade } from '@/lib/clients/menor'
+import { recusaDasSessoesDoPacote } from '@/lib/pacotes/tamanho-e-valor'
 
 /**
  * Cada valor do CSV no formato que o sistema grava, e a linha validada
@@ -241,10 +242,14 @@ export function lerPacotesDaPlanilha(bruto: string, refs: Referencias = {}): { p
   for (const trecho of bruto.split(/[|\n]/).map(t => t.trim()).filter(Boolean)) {
     const partes = trecho.split(';').map(t => t.trim())
     const [nome, totalTxt, usadasTxt, ...extras] = partes
-    const inteiro = (t: string | undefined) => (t && /^\d{1,3}$/.test(t) ? Number(t) : null)
+    const inteiro = (t: string | undefined) => (t && /^\d{1,9}$/.test(t) ? Number(t) : null)
     const total = inteiro(totalTxt)
     const usadas = inteiro(usadasTxt)
-    if (!nome || total === null || usadas === null || total < 1 || total > 200 || extras.length > 2) { avisos.push(ilegivelDoPacote(trecho)); continue }
+    if (!nome || total === null || usadas === null || total < 1 || extras.length > 2) { avisos.push(ilegivelDoPacote(trecho)); continue }
+    // O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." Sem o teto de 200: o
+    // impossível é o registro, a mesma regra da ficha (`lib/pacotes/tamanho-e-valor.ts`).
+    const acima = recusaDasSessoesDoPacote(total)
+    if (acima) { avisos.push(`Pacote de antes acima do limite ("${trecho}"): ${acima} Importada sem esse pacote.`); continue }
     if (usadas >= total) { avisos.push(`Pacote de antes sem sessão restante ("${trecho}"): importada sem esse pacote.`); continue }
     let valor: number | null = null
     let validade: string | null = null

@@ -51,7 +51,7 @@ Este é o catálogo das regras das Comissões que valem HOJE: onde ficam e quem 
 
 ## A comissão de quem atende (CA)
 
-**CA-01.** A comissão de execução é da PESSOA, na rede: um padrão (% ou R$ fixo) e exceções por procedimento; quem atende em mais de uma unidade tem a mesma comissão em todas. Vale a exceção do procedimento; sem ela, o padrão; sem os dois, o atendimento conclui sem comissão, e a tela avisa quem atende sem padrão.
+**CA-01.** A comissão de execução é da PESSOA, na rede: um padrão (% ou R$ fixo) e exceções por procedimento; quem atende em mais de uma unidade tem a mesma comissão em todas. Vale a exceção do procedimento; sem ela, o padrão; sem os dois, o atendimento conclui sem comissão, e a tela avisa quem atende sem padrão. O valor da regra não tem teto além do registro (o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito."): o percentual vai até 100%, e o R$ fixo até R$ 999.999,99 — o maior valor que a comissão guarda ("No máximo R$ 999.999,99 (o limite do registro)."); vale também na comissão geral, no pacote e no produto, e não há limite de exceções nem de profissionais (o número é decisão do Claude).
 - Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele): "Decisões do Heitor" no topo da seção
 - Onde: `docs/regras/comissoes.md:10`, `:63-69`, `:520-522`
 - Antes: KA-09, KB-17

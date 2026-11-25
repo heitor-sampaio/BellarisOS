@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { FORMAS_DE_PAGAMENTO } from '@/lib/financeiro/lancamento'
 import { BANDEIRAS } from '@/lib/financeiro/bandeiras'
+import { LIMITE_DE_VEZES_NO_CARTAO } from '@/lib/acima-do-comum'
 
 /**
  * O que a janela do cancelamento manda — a do pacote e a do plano (decisão 2
@@ -21,7 +22,8 @@ export const EntradaDoCancelamento = z.object({
   estorno:      z.enum(['PARCIAL', 'INTEIRO']).nullable().optional(),
   novo:         z.object({
     metodo: z.enum(FORMAS_DE_PAGAMENTO),
-    vezes:  z.number().int().min(1).max(12),
+    // O Heitor, 25/11: acima de 12 vezes avisa; só o impossível (acima de 1.200, decisão do Claude) se recusa.
+    vezes:  z.number().int().min(1).max(LIMITE_DE_VEZES_NO_CARTAO),
     /** r3-f13-01: a bandeira do cartão do pagamento novo, opcional. */
     bandeira: z.enum(BANDEIRAS.map(b => b.value) as [string, ...string[]]).nullable().optional(),
     /** C75 (VF-01 da varredura de 18/11): a maquininha do cartão do usado. */

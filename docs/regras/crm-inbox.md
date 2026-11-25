@@ -391,7 +391,8 @@ AG2, MK2; migration `20261114800001_tags_sem_unidade`):**
   vez no total (o ranking diz isso). A tela diz "atendidas na unidade".
   **Desfeito na 24ª simulação** (o Heitor, 2026-11-18): a "atendida na
   unidade" era uma leitura do Claude. "Novos clientes" só existe na rede, e o
-  "Reativar" é sempre o da rede (`indicadores.md`).
+  "Reativar" é sempre o da rede (`indicadores.md`); a função por unidade
+  (`metrics_clientes_para_reativar`) saiu em 25/11 (migration `20261206700001`).
 - **T2** — a conversa que chega de anúncio e a oportunidade criada à mão não
   ganham a origem como tag (`deriveLeadSource`/`resolveLeadSource` não têm
   mais `tags`): a origem é a ORIGEM.
@@ -1123,7 +1124,11 @@ oferece segue o módulo (clientes com `clients`, contatos com `crm`).
     da ficha (`trazerPacoteCore`). Só se oferece a quem traz pacote de fora (o
     Financeiro em Gerenciar; a action recusa a coluna aos outros). Importar de
     novo não o traz duas vezes (o mesmo procedimento, total e usadas). O que
-    não se entende fica de fora com o motivo (D2). **O Histórico do app diz o
+    não se entende fica de fora com o motivo (D2). As sessões seguem a regra
+    da ficha (o Heitor, 25/11: "Se não for impossível, ainda que improvável,
+    pode ser feito."; era até 200): só fica de fora o acima de 32.767, o
+    limite do registro ("Pacote de antes acima do limite…"; decisão do Claude,
+    25/11; `lib/pacotes/tamanho-e-valor.ts`). **O Histórico do app diz o
     que veio de antes** (A42 da 10ª simulação, 2026-11-10: as 5 sessões da
     Ana Clara apareciam só no cartão da home): "Antes do sistema — 5 sessões
     de Limpeza de pele, do pacote que você trouxe · Última visita antes do
@@ -1893,6 +1898,21 @@ o contato junto.
   negativo é recusado com o motivo (`lerValorEstimado`) — virava nulo e
   apagava o que estava —, e a troca entra na linha do tempo ("Valor
   estimado"). Com o CRM em Ver, o campo aparece desligado, como os outros.
+  **E o que o registro não guarda** (o Heitor, 25/11: "Se não for impossível,
+  ainda que improvável, pode ser feito."; o impossível é o tipo da coluna,
+  decisão do Claude, 25/11): acima de R$ 9.999.999.999,99 (`leads.value`,
+  numeric(12,2)) — "No máximo 9.999.999.999,99 reais (o limite do registro).",
+  na janela (`lerValorEstimado`, na criação e na edição) e no núcleo
+  (`criarOportunidadeCore`, que o Copilot e a importação chamam; ele confere
+  também o negativo). Era o "numeric field overflow" do banco, em inglês. A
+  regra é UMA (`recusaDoValorEstimado`, `LIMITE_DO_VALOR_DA_OPORTUNIDADE`),
+  que o Copilot lê. Prova: `tests/nucleo-recusa-o-que-o-registro-nao-guarda.test.ts`.
+  **O nome, o e-mail e o telefone** eram varchar (255, 255, 30), e os da ficha
+  e do contato, de onde vêm, `text`: a janela não os limita, e acima de 255 o
+  banco recusava em inglês (a ficha de nome mais longo não virava
+  oportunidade). Decisão do Claude, 25/11 (princípio 2): viraram `text`, como
+  na ficha (migration `20261208000001`); o Copilot recusa o mesmo que a janela.
+  Prova: `tests/oportunidade-nome-e-contato-cabem.test.ts`.
 - **O card GANHO segue dizendo o vendido** (D2 da 30ª; OP-30): a sugestão
   "Comprou X…" é só do card aberto, mas o vendido vale também no ganho
   (`compraNoCard`, `lib/crm/sinais-do-card.ts`, a mesma nas duas páginas do

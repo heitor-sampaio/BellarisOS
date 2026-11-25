@@ -12,6 +12,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { rotaNoPortal } from '@/lib/rotas'
 import { useUmaUnidade } from '@/components/shared/uma-unidade'
 import { Dica } from '@/components/shared/dica'
+import { avisoDosPontosDoProcedimento } from '@/lib/fidelidade/pontos-acima-do-comum'
 import {
   EditorDeComissao, entradaDaComissao, estadoInicialDaComissao, type DadosDaComissao,
 } from '@/components/admin/comissao-do-procedimento'
@@ -345,6 +346,8 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
   const [laborCost,  setLaborCost]  = useState(existing?.labor_cost  ? formatPrice(existing.labor_cost)  : '')
   const [otherCosts, setOtherCosts] = useState(existing?.other_costs ? formatPrice(existing.other_costs) : '')
   const [marginPct,  setMarginPct]  = useState('')  // % — vinculado ao preço (bidirecional)
+  // Os pontos de fidelidade digitados: só para o aviso de acima do comum (o campo segue não controlado).
+  const [pontosNoCampo, setPontosNoCampo] = useState(String(existing?.loyalty_points ?? ''))
   // Qual dos dois a pessoa digitou por último — é ele que fica fixo quando o
   // custo muda. Estado (e não ref): é lido no render, logo abaixo.
   const [ancora, setAncora] = useState<'margin' | 'price'>('price')
@@ -602,7 +605,14 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
             <input
               name="loyalty_points" type="number" min={0} step={1} inputMode="numeric"
               className="field" defaultValue={existing?.loyalty_points ?? ''} placeholder="0"
+              onChange={e => setPontosNoCampo(e.target.value)}
             />
+            {/* O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." Acima de 1.000.000, avisa. */}
+            {avisoDosPontosDoProcedimento(Number(pontosNoCampo)) && (
+              <span role="status" data-acima-do-comum="pontos-do-procedimento" style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+                {avisoDosPontosDoProcedimento(Number(pontosNoCampo))}
+              </span>
+            )}
           </Field>
         )}
 

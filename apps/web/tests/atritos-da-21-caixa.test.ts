@@ -148,7 +148,8 @@ describe('A1: o Receber do a receber e da parcela divide em formas', () => {
   it('forma sem valor, forma desconhecida e mais de cinco', () => {
     expect(recusaDasFormasDaBaixa([{ forma: 'PIX', valor: 600 }, { forma: 'CASH', valor: 0 }], 600)).toBe('Digite o valor de cada forma (acima de zero).')
     expect(recusaDasFormasDaBaixa([{ forma: 'PIX', valor: 300 }, { forma: 'BOLETO', valor: 300 }], 600)).toBe('Escolha a forma de cada parte.')
-    expect(recusaDasFormasDaBaixa(Array.from({ length: 6 }, () => ({ forma: 'PIX', valor: 100 })), 600)).toBe('Divida em até 5 formas.')
+    // O Heitor, 25/11, sobre o limite de 5 formas: "Não precisa de aviso, essa não é uma ação automatica, o usuario vai precisar clicar em um botão, então ele fez de proposito."
+    expect(recusaDasFormasDaBaixa(Array.from({ length: 6 }, () => ({ forma: 'PIX', valor: 100 })), 600)).toBeNull()
     expect(recusaDasFormasDaBaixa([{ forma: 'PIX', valor: 300 }, { forma: 'CASH', valor: 300, vezes: 3 }], 600))
       .toBe('As vezes no cartão são só no crédito (o débito é 1x).')
   })

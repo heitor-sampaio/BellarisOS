@@ -67,7 +67,8 @@ describe('o que fica na unidade', () => {
     expect(texto).toContain('3 agendamentos marcados')
     expect(texto).toContain('R$ 894,80 em estoque (4 itens)')
     expect(texto).toContain('R$ 330,00 a receber')
-    expect(texto).toContain('1 atendimento concluído sem pagamento')
+    // O Heitor, 25/11, à proposta de dizer "1 comanda aberta no PDV (R$ 150,00)" com o caminho "Receber no PDV" (o concluído sem pagamento é comanda do PDV desde 16/11): "ok".
+    expect(texto).toContain('1 comanda aberta no PDV (R$ 150,00)')
     expect(texto).toContain('R$ 39,00 de comissão a pagar')
   })
 
@@ -115,6 +116,13 @@ describe('os caminhos para resolver o que ficou (as telas que já existem)', () 
 
   it('só o que ficou ganha caminho; nada ficou, nenhum', () => {
     expect(caminhosDoQueFica('u1', NADA_FICA)).toEqual([])
-    expect(caminhosDoQueFica('u1', tudo({ atendimentosSemPagamento: { n: 1, valor: 80 } })).map(x => x.chave)).toEqual(['a-receber'])
+    // O Heitor, 25/11, à proposta de dizer "1 comanda aberta no PDV (R$ 150,00)" com o caminho "Receber no PDV" (o concluído sem pagamento é comanda do PDV desde 16/11): "ok".
+    expect(caminhosDoQueFica('u1', tudo({ atendimentosSemPagamento: { n: 1, valor: 80 } })).map(x => x.chave)).toEqual(['pdv'])
+  })
+
+  it('a comanda aberta se recebe no PDV da unidade (que recebe mesmo desativada)', () => {
+    const [pdv] = caminhosDoQueFica('u1', tudo({ atendimentosSemPagamento: { n: 2, valor: 300 } }))
+    expect(pdv).toEqual({ chave: 'pdv', texto: 'As 2 comandas abertas continuam no PDV da unidade, para receber.', rotulo: 'Receber no PDV', href: '/admin/pdv?unidade=u1' })
+    expect(resumoDoQueFica('Pampulha', tudo({ atendimentosSemPagamento: { n: 2, valor: 300 } }))!.replace(/ /g, ' ')).toBe('A unidade Pampulha tem 2 comandas abertas no PDV (R$ 300,00).')
   })
 })

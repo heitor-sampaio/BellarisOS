@@ -1,5 +1,6 @@
 import { dayKeyTZ, endOfDayTZ, instanteNoFuso } from '@/lib/datetime'
 import { fusoValido } from '@/lib/unidades/fuso'
+import { fimDaOcupacao } from '@/lib/appointments/ocupacao'
 
 /**
  * Os agendamentos de hoje que AINDA vêm (A12 da 16ª simulação; princípio 3).
@@ -19,6 +20,39 @@ export function aindaHojeNaAgenda(
 ): number {
   const t = agora.getTime()
   return agendamentos.filter(a => !JA_NAO_VEM.includes(a.status) && new Date(a.scheduled_at).getTime() > t).length
+}
+
+/** Um agendamento como o banco o devolve, com o que decide até quando ele ocupa. */
+export interface LinhaDaAgenda { scheduled_at: string; duration_min: number | null; status: string; completed_at?: string | null }
+
+/**
+ * O agendamento acontece no período [de, ate] (`ate` é o último instante)?
+ * Começa nele (qualquer situação, como a lista sempre mostrou), ou começou
+ * antes e ainda OCUPA o início dele — o procedimento não tem duração máxima
+ * (25/11), e o que atravessa a meia-noite ocupa o dia seguinte. É a regra do
+ * desenho das agendas (`trechoDoAgendamentoNoDia`): o cancelado e a falta não
+ * continuam; o concluído continua só até a conclusão (`fimDaOcupacao`).
+ */
+export function ocupaOPeriodo(a: LinhaDaAgenda, de: Date, ate: Date): boolean {
+  const ini = new Date(a.scheduled_at).getTime()
+  if (Number.isNaN(ini)) return false
+  if (ini >= de.getTime() && ini <= ate.getTime()) return true
+  if (ini >= de.getTime() || a.status === 'CANCELLED' || a.status === 'NO_SHOW') return false
+  return fimDaOcupacao({ scheduled_at: a.scheduled_at, duration_min: a.duration_min, status: a.status, completed_at: a.completed_at ?? null }) > de.getTime()
+}
+
+/**
+ * A agenda do período (princípio 3): o que acontece nele, na ordem do início —
+ * o que continua de antes vem primeiro, com o início REAL e marcado
+ * (`comecouAntes`), para a tela dizer de quando ele vem. A "Agenda de hoje"
+ * do dashboard e as leituras de agenda do Copilot listavam pelo início: o
+ * atendimento que continua de ontem sumia, e a pessoa parecia livre.
+ */
+export function agendaDoPeriodo<L extends LinhaDaAgenda>(linhas: readonly L[], de: Date, ate: Date): (L & { comecouAntes: boolean })[] {
+  return linhas
+    .filter(l => ocupaOPeriodo(l, de, ate))
+    .map(l => ({ ...l, comecouAntes: new Date(l.scheduled_at).getTime() < de.getTime() }))
+    .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
 }
 
 /**

@@ -2,7 +2,6 @@ import { z } from 'zod'
 import type { PagamentoDoPlano } from './pagamento'
 import { partesQuePagamAgora, temOutrasFormas } from './pagamento'
 import { formatBRL } from '@estetica-os/utils'
-import { MAXIMO_DE_OUTRAS } from './varias-formas'
 import { dividirEmParcelas, rotuloDaParcela } from './parcelas'
 import { vezesNoCartao } from './pagamento'
 import { recusaDaEntradaAcimaDoTotal } from './entrada'
@@ -50,23 +49,32 @@ export function comMotivoDoDesconto(lancamentos: Lancamento[], motivo: string | 
 
 const METODOS = ['PIX', 'CASH', 'DEBIT_CARD', 'CREDIT_CARD', 'INTERNAL_CREDIT'] as const
 import { TETO_DO_CREDIARIO } from '@/lib/financeiro/parcelas-do-crediario'
+import { LIMITE_DE_VEZES_NO_CARTAO } from '@/lib/acima-do-comum'
 const BANDEIRA = z.enum(BANDEIRAS.map(b => b.value) as [string, ...string[]]).optional()
 /** C75: a maquininha do cartão (o banco confere que é da rede). */
 const MAQUININHA = z.string().regex(/^[0-9a-f-]{36}$/i, 'Maquininha inválida.').optional()
 const data = z.string().refine(s => !Number.isNaN(Date.parse(s)), 'Data inválida.')
+/**
+ * As vezes na maquininha. O Heitor, 25/11: "Se não for impossível, ainda que
+ * improvável, pode ser feito." — acima de 12 vezes avisa. Só o impossível se
+ * recusa (decisão do Claude, 25/11: acima de 1.200, 100 anos de parcelas); o
+ * limite da maquininha é `recusaDasVezesDaRede`.
+ */
+const VEZES = z.number().int().min(1).max(LIMITE_DE_VEZES_NO_CARTAO).optional()
 
 /** D1 da 18ª: uma das outras formas do à vista dividido, com o valor dela. */
 const PARTE = z.object({
   metodo: z.enum(METODOS), valor: z.number().min(0),
-  vezes: z.number().int().min(1).max(12).optional(), bandeira: BANDEIRA, maquininha: MAQUININHA,
+  vezes: VEZES, bandeira: BANDEIRA, maquininha: MAQUININHA,
 }).refine(p => !p.vezes || p.vezes === 1 || p.metodo === 'CREDIT_CARD', 'Parcelar na maquininha só no cartão de crédito.')
 
 /** O pagamento como chega do navegador: conferido aqui, antes de virar dinheiro. */
 export const EntradaDoPagamento = z.discriminatedUnion('forma', [
   z.object({
-    forma: z.literal('AVISTA'), metodo: z.enum(METODOS), vezes: z.number().int().min(1).max(12).optional(), bandeira: BANDEIRA, maquininha: MAQUININHA,
-    // D1 da 18ª ("+ Outra forma"): o valor da primeira e as outras, cada uma com o seu.
-    valor: z.number().min(0).optional(), outras: z.array(PARTE).max(MAXIMO_DE_OUTRAS).optional(),
+    forma: z.literal('AVISTA'), metodo: z.enum(METODOS), vezes: VEZES, bandeira: BANDEIRA, maquininha: MAQUININHA,
+    // D1 da 18ª ("+ Outra forma"): o valor da primeira e as outras, cada uma com o seu —
+    // quantas vierem (o Heitor, 25/11: "o usuario vai precisar clicar em um botão, então ele fez de proposito").
+    valor: z.number().min(0).optional(), outras: z.array(PARTE).optional(),
   }),
   z.object({
     // PDV8: o Crediário é a forma; o meio é o da ENTRADA — sem entrada, nenhum
@@ -75,7 +83,7 @@ export const EntradaDoPagamento = z.discriminatedUnion('forma', [
     // C38: o limite é da rede (`recusaDasParcelasDaRede`); aqui, só o teto do registro.
     entrada: z.number().min(0), parcelas: z.number().int().min(1).max(TETO_DO_CREDIARIO), primeiroVencimento: data, bandeira: BANDEIRA, maquininha: MAQUININHA,
     /** D5: as vezes na maquininha da ENTRADA no crédito. */
-    vezes: z.number().int().min(1).max(12).optional(),
+    vezes: VEZES,
   }),
   // PDV8: o "a receber" não tem meio — nada entra agora; a forma se escolhe
   // quando o dinheiro entra (a baixa). Sai o "Meio de pagamento (opcional)".
@@ -103,11 +111,13 @@ export function recusaDaEntradaDoPagamento(p: PagamentoDoPlano | null | undefine
 /**
  * D1 da 18ª: o à vista dividido — cada forma com valor acima de zero, e a soma
  * fechando o total (em centavos). O servidor confere antes de montar os
- * lançamentos; a tela já monta a primeira com o que falta.
+ * lançamentos; a tela já monta a primeira com o que falta. Quantas formas,
+ * não se confere: o Heitor, 25/11, sobre o limite de 5 formas: "Não precisa de
+ * aviso, essa não é uma ação automatica, o usuario vai precisar clicar em um
+ * botão, então ele fez de proposito."
  */
 export function recusaDasPartesDoPagamento(p: PagamentoDoPlano, total: number): string | null {
   if (!temOutrasFormas(p)) return null
-  if (p.outras.length > MAXIMO_DE_OUTRAS) return `Divida em até ${MAXIMO_DE_OUTRAS + 1} formas.`
   const partes = partesQuePagamAgora(p)
   if (partes.some(x => !(Math.round(x.valor * 100) > 0))) return 'Digite o valor de cada forma (acima de zero).'
   const soma = partes.reduce((s, x) => s + Math.round(x.valor * 100), 0)

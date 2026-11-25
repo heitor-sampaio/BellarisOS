@@ -270,6 +270,12 @@ comanda (PDV-P1).
   (`alcancaUnidade`), e a gravação pelas funções `comanda_acrescentar_item` /
   `comanda_tirar_item` (só o servidor; recusam comanda paga ou que não é de
   atendimento, produto que não é de Venda direta e estoque que não basta).
+  - **A quantidade é a que quem recebe escolhe** (o Heitor, 25/11: "Se não for
+    impossível, ainda que improvável, pode ser feito."; era de 1 a 100 de
+    cada, somando o que já estava na comanda, e até 20 produtos): acima de 100
+    de um produto e de 20 produtos a tela avisa e grava; só o impossível
+    (zero, fracionário, acima de 2.147.483.647, o estoque que não cobre) se
+    recusa — a mesma regra da venda (§9.3.3, `lib/vendas/quantidades.ts`).
   - O produto vale o **preço de venda de agora** (o mesmo que
     `produto_vender_itens` usa), entra no total da comanda e na conta dos
     pontos e do voucher. O estoque NÃO se reserva ao acrescentar; confere-se
@@ -539,7 +545,11 @@ comanda (PDV-P1).
 - **A comanda recebe em mais de uma forma** (D1 da 18ª; o Heitor,
   2026-11-16: "Ok"): no à vista, o "+ Outra forma" (`OutrasFormas`,
   `CamposDoPagamento variasFormas`) acrescenta formas, cada uma com o valor
-  dela (até 5 no total, `MAXIMO_DE_OUTRAS`); a de cima fica com o que falta
+  dela, quantas quem recebe quiser — sem teto e sem aviso (o Heitor, 25/11,
+  sobre o limite de 5 formas: "Não precisa de aviso, essa não é uma ação
+  automatica, o usuario vai precisar clicar em um botão, então ele fez de
+  proposito."; o botão segue depois da 5ª, e a action e o banco aceitam
+  quantas vierem — migration `20261207700001`); a de cima fica com o que falta
   ("Pix: R$ 200,00 (o que falta das outras)"). Vale onde houver "Receber": a
   comanda do atendimento, a Nova venda (pacote, procedimento, produto) e o
   plano. **Um lançamento por forma** (`lancamentosDoPagamento`, com as vezes,
@@ -557,8 +567,17 @@ comanda (PDV-P1).
   aberto vira a primeira forma e as outras nascem como cópias pagas dela
   (mesma venda, parcela e vencimento), numa transação só
   (`marcarPagoEmFormasCore` → `lancamento_receber_em_formas`; a conferência
-  em `lib/financeiro/baixa-em-formas.ts`). Até 5 formas, fechando o valor ao
+  em `lib/financeiro/baixa-em-formas.ts`). Quantas formas quem recebe quiser
+  (o Heitor, 25/11, a mesma fala), cada uma acima de zero e fechando o valor ao
   centavo; a linha com desconto ou pontos não se divide.
+  **O crediário na comanda do atendimento** (decisão do Claude, 25/11): o banco
+  recusava mais de 30 lançamentos ("Formas demais neste pagamento.") — e a
+  entrada e cada parcela são um lançamento, então a comanda em 30x com entrada
+  não fechava. As formas pagas agora não têm teto; as parcelas (o que não se
+  paga agora) seguem o teto do crediário, 32.767 (`TETO_DO_CREDIARIO`, uma
+  linha por parcela), com "No máximo 32.767 parcelas (o limite do registro)."
+  (`confirmar_pagamento_do_atendimento`, migration `20261207700001`). Prova:
+  `tests/formas-do-pagamento-sem-limite-de-quantidade.test.ts`.
   **As formas da mesma parcela são UMA linha nas listas** (limite da 21ª,
   2026-11-17; princípio 3: "Parcela 2/4" duas vezes parecia parcela
   repetida): o Financeiro (as duas listas), a ficha e o plano (o da equipe e o
@@ -691,7 +710,29 @@ plano").
 - **Catálogo da rede** em Comercial → Pacotes (`/admin/pacotes` e
   `/[slug]/pacotes`, corpo em `app/_shared/pacotes.tsx`, `PacotesCatalogo`):
   os procedimentos e quantas sessões de cada, preço, validade em dias (vazio =
-  sem validade), à venda ou não. Ver pede `procedures: VIEW`; editar,
+  sem validade), à venda ou não. A validade acima de 3.650 dias (o teto de
+  antes) avisa e grava (o Heitor, 25/11: "Se não for impossível, ainda que
+  improvável, pode ser feito."); só se recusa o zero e o acima de 100 anos,
+  36.500 dias (a validade vira data; decisão do Claude, 25/11) — o mesmo na
+  validade do pré-pago (`recusaDaValidadeEmDias`/`avisoDaValidadeEmDias`,
+  `lib/vendas/validade.ts`; migration `20261207100001`). Prova:
+  `tests/validade-e-custo-acima-do-comum.test.ts`. **As sessões e o preço
+  também só recusam o impossível** (o Heitor, 25/11: "Se não for impossível,
+  ainda que improvável, pode ser feito."): recusavam-se mais de 100 sessões (no
+  total e em cada procedimento), mais de 30 procedimentos e o preço acima de
+  R$ 1.000.000, o preço com a mensagem do zod em inglês. Decisão do Claude,
+  25/11: o "comum" é o antigo teto — acima de 100 sessões e de R$ 1.000.000 a
+  tela avisa ao lado do campo (`[data-acima-do-comum="sessoes-do-pacote"]`,
+  `"preco-do-pacote"`) e o servidor grava; o impossível é o registro — cada
+  sessão vira uma linha em `package_sessions`, então até 32.767 sessões (o
+  limite do crediário), e o preço grava em `service_packages.price`
+  (numeric(10,2)), até R$ 99.999.999,99. Os 30 procedimentos saíram (sem
+  motivo técnico: cada linha tem ao menos uma sessão, e as sessões já têm o
+  limite). Uma regra só, `lib/pacotes/tamanho-e-valor.ts`, lida pela tela, por
+  `salvarPacote`, por `trazerPacoteDeFora` e pela importação; no banco, o
+  CHECK de `service_package_items` e `pacote_salvar` (migration
+  `20261207300001`). Prova: `tests/pacote-sessoes-e-preco-acima-do-comum.test.ts`.
+  Ver pede `procedures: VIEW`; editar,
   `procedures: MANAGE`, e só isso (PC6 do plano de adaptação, 2026-11-13: sai
   a exigência de ser da rede), nos dois portais (`salvarPacote`). **O preço
   nasce com a soma** (PC1): sessões × preço de tabela, e acompanha a soma até
@@ -1037,6 +1078,16 @@ plano").
     janela diz a conta antes de gravar ("Ficam 4 de 6 sessões para agendar ·
     R$ 200,00 por sessão…", `contaDoPacoteDeFora`, `lib/pacotes/de-fora.ts`).
     Também pela importação (a coluna "Pacote de antes", `crm-inbox.md`).
+    **Acima do comum avisa** (o Heitor, 25/11: "Se não for impossível, ainda
+    que improvável, pode ser feito."): eram de 1 a 100 sessões (a importação,
+    até 200) e o valor de referência até R$ 10.000.000, este com a mensagem em
+    inglês. Decisão do Claude, 25/11: acima de 100 sessões e de R$ 10.000.000
+    (os antigos tetos) a janela avisa
+    (`[data-acima-do-comum="sessoes-do-pacote-de-fora"]`, `"valor-de-referencia"`)
+    e o servidor grava; o impossível é o registro — até 32.767 sessões (uma
+    linha por sessão) e R$ 99.999.999,99 (o valor de referência grava também em
+    `service_packages.price`, numeric(10,2)). A mesma regra do catálogo
+    (`lib/pacotes/tamanho-e-valor.ts`; `pacote_trazer`, migration `20261207300001`).
   - **Não é venda**: sem lançamento no caixa, sem pontos, sem comissão de
     venda; fora do catálogo de venda (`catalogoDePacotes` tira o `de_fora`; o
     `pacote_vender` recusa o desativado), do Relatório de Vendas
@@ -1114,13 +1165,24 @@ N unidades de UM procedimento, pagas antes (ou a receber) e agendadas depois.
 o procedimento avulso pago antes.
 
 - **A venda** é `procedure_sales` (retrato: preço unitário e total de tabela,
-  desconto, vendido, validade OPCIONAL, quem vendeu) e as **unidades**,
+  desconto, vendido, validade OPCIONAL — acima de 3.650 dias avisa, até 100
+  anos, como a do pacote —, quem vendeu) e as **unidades**,
   `procedure_sale_units` (uma linha por unidade, com a SUA parte do vendido —
   rateio igual em centavos, a base da comissão dela —, a situação
   `DISPONIVEL | USADA | CANCELADA` e o agendamento que a usa). O dinheiro leva
   `financial_transactions.procedure_sale_id`. Uma transação:
   `procedimento_vender` (`venderProcedimento`, `actions/pre-pago.ts`, para
   quem recebe). Desconto como toda venda (§9.6).
+- **Quantas sessões é o que quem vende escolhe** (o Heitor, 25/11: "Se não
+  for impossível, ainda que improvável, pode ser feito."; era de 1 a 100):
+  acima de 100 a tela avisa ao lado do campo
+  (`[data-acima-do-comum="sessoes-do-pre-pago"]`) e o servidor grava. O
+  impossível (decisão do Claude, 25/11): zero, fracionário e acima de 32.767 —
+  cada sessão é UMA LINHA em `procedure_sale_units`, o limite do crediário
+  (`recusaDasSessoesDoPrePago`, `lib/vendas/quantidades.ts`; no banco,
+  `procedimento_vender*` e o CHECK `procedure_sales_quantity_check`, migration
+  `20261207200001`). O "Pré-pago · 5 de N" da agenda lê o N da venda
+  (`procedure_sales.quantity`), não conta as linhas (que cortavam em 1000).
 - A sessão só LÊ (equipe que alcança a unidade; o cliente, o que é dele).
 - **No atendimento**: o agendamento liga a unidade (`appointment_id`, único);
   `concluir_atendimento` a marca USADA e liga a linha de comissão à venda
@@ -1236,9 +1298,8 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   proporção (sem lote com custo, o custo de consumo do cadastro).
 - **Vários produtos numa venda, um pagamento só** (ven-04 da revisão,
   2026-11-02: "a Carla leva 2 séruns e 1 protetor; a Bruna faz duas vendas
-  e recebe duas vezes"). A janela tem "Adicionar produto" (até 20, cada um
-  de 1 a 100; até 100 unidades na venda) e o resumo "2 × R$ 100,00 + 1 ×
-  R$ 90,00 = R$ 290,00". `venderProduto` recebe a lista de itens (um id
+  e recebe duas vezes"). A janela tem "Adicionar produto" e o resumo "2 ×
+  R$ 100,00 + 1 × R$ 90,00 = R$ 290,00". `venderProduto` recebe a lista de itens (um id
   sozinho ainda vale) e `produto_vender_itens` (migration `20261101001103`)
   grava numa transação: cada saldo travado na ordem do produto, a baixa de
   cada um pelo FEFO, a venda e os itens (`product_sale_items`: produto,
@@ -1252,6 +1313,26 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   a venda estornada que não voltou é perda por produto (`metrics_perdas`).
   As vendas de antes (sem itens) seguem pelo cabeçalho. Prova:
   `e2e/vendas-produto-varios.spec.ts`.
+- **As quantidades são as que quem vende escolhe** (o Heitor, 25/11, sobre os
+  limites que recusavam o valor que a rede escolheu: "Se não for impossível,
+  ainda que improvável, pode ser feito."). Recusava-se mais de 100 de cada
+  produto, mais de 100 unidades e mais de 20 produtos numa venda. Decisão do
+  Claude, 25/11: o "comum" é o teto de antes — acima dele a tela avisa ao lado
+  do campo e do resumo (`[data-acima-do-comum]`) e o servidor grava; o
+  impossível é o zero, o negativo, o fracionário, o acima do registro
+  (`integer`: 2.147.483.647 de cada produto e na venda) e o estoque que não
+  cobre (que já barra antes, "Estoque insuficiente…"). O número de produtos
+  não tem limite próprio: o laço é por produto, e cada um entra uma vez,
+  somado (a leitura dos produtos vai em lotes de 100 ids, por causa da URL do
+  `.in()`). O valor que o registro não guarda — um pagamento acima de
+  R$ 99.999.999,99 (`financial_transactions.amount`, numeric(10,2)) ou a
+  venda acima de R$ 9.999.999.999,99 (`preco_tabela`, numeric(12,2)) — se
+  recusa com a mensagem, em vez de estourar no banco. Uma regra só,
+  `lib/vendas/quantidades.ts`, na tela e nas actions (`venderProduto`,
+  `acrescentarProdutoNaComanda`, `venderProcedimento`, a devolução); no banco,
+  `produto_vender_itens`, `comanda_acrescentar_item`, `procedimento_vender*` e
+  os CHECKs (migration `20261207200001`). Prova:
+  `tests/quantidades-da-venda-acima-do-comum.test.ts`.
 - O dinheiro segue a regra única de receita (`metrics_receitas_pagas`): caixa,
   faturamento e ticket médio. O relatório de vendas ganha o tipo **Produto**
   (`metrics_vendas`: na data da venda, pelo vendido, "quem vendeu" na coluna
@@ -1309,7 +1390,10 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   "Devolver parte da venda" (`DevolverParteDaVenda`,
   `components/shared/devolver-parte-da-venda.tsx`; `actions/devolucao-de-produto.ts`,
   a mesma permissão do estorno — o Financeiro em Gerenciar, a unidade ao
-  alcance): quantas de cada produto voltam, se voltaram ao estoque e a conta
+  alcance): quantas de cada produto voltam (sem teto próprio desde 25/11:
+  segue a venda, e só o que passa do que a cliente ainda tem o banco recusa;
+  acima de 100 restantes o campo é de número, não a lista), se voltaram ao
+  estoque e a conta
   que o BANCO fez (`produto_devolver_itens` com `p_simular`; migration
   `20261106003801`) — o que volta (a parte de cada item no vendido, com o
   desconto rateado pela tabela, como a comissão por produto), o que a venda
@@ -1685,6 +1769,16 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
       `lerConferidoDoCampo`); a tela diz "confira com o sinal de menos"
       (`[data-conferido-negativo]`) e o servidor aceita
       (`conferidoValido`) — nunca um "Sobrou" contra um número recusado (D3);
+    - o conferido de uma forma não tem teto de R$ 10.000.000 (o Heitor, 25/11:
+      "Se não for impossível, ainda que improvável, pode ser feito."; recusava
+      acima, em módulo, com uma mensagem que não dizia o limite): acima de
+      R$ 10.000.000, em módulo (o teto de antes, o comum — decisão do Claude,
+      25/11), a célula avisa (`avisoDoConferido`,
+      `[data-acima-do-comum="conferido"]`) e o servidor grava. O impossível:
+      `conferido` é jsonb (sem tipo), então o limite é o dos centavos exatos
+      na conta (R$ 90.071.992.547.409,91, o maior inteiro seguro do JavaScript
+      em centavos); o vazio que não é número diz "Informe o valor conferido ou
+      deixe em branco.";
     - "Fechar de novo" traz em branco a linha que mudou depois do fechamento
       (`valoresParaFecharDeNovo`): o conferido de antes não vale para o
       registrado de agora (A2);
@@ -1744,6 +1838,20 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     retrato (`fechamentos_do_dia.fundo_de_troco`). Sem fundo, tudo segue
     como antes. Migration `20261101001108`.
     Prova: `e2e/fechamento-do-dia-fundo-de-troco.spec.ts`.
+    **Sem teto de R$ 1.000.000** (o Heitor, 25/11: "Se não for impossível,
+    ainda que improvável, pode ser feito."; o servidor recusava acima com uma
+    mensagem que não dizia o limite): acima de R$ 1.000.000 (o teto de antes,
+    o comum — decisão do Claude, 25/11) o campo avisa
+    (`avisoDoFundoDeTroco`, `[data-acima-do-comum="fundo-de-troco"]`) e o
+    servidor grava. O impossível é o registro do fechamento:
+    `fechamentos_do_dia.esperado_dinheiro`/`contado_dinheiro` são
+    `numeric(12,2)`, até R$ 9.999.999.999,99 (`LIMITE_DO_DINHEIRO_DO_FECHAMENTO`,
+    `recusaDoFundoDeTroco`, `recusaDoDinheiroContado`,
+    `lib/financeiro/conferencia-do-fechamento.ts`); e o "Fechar o dia" cujo
+    esperado (fundo + o dia) passaria disso recusa com "O dinheiro esperado na
+    gaveta passa de R$ 9.999.999.999,99 (o limite do registro): confira o
+    fundo de troco." (`recusaDoEsperadoNaGaveta`). Prova:
+    `tests/fundo-de-troco-e-conferido-acima-do-comum.test.ts`.
   - O que a operadora do cartão ainda vai depositar (A44 da 7ª simulação)
     saiu do fechamento no CX5: mora só no Financeiro
     (`#recebiveis-da-operadora`, F20 D3).
@@ -2258,6 +2366,36 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   ("Boleto é forma de pagar uma despesa.").
 - **A despesa parcelada (ou recorrente) pede UM vencimento** (A14): o da 1ª
   parcela (ou o primeiro); o "Vencimento" do lançamento único não aparece junto.
+- **A despesa parcelada ou recorrente em quantas vezes a rede quiser** (o
+  Heitor, 25/11, à pergunta se o "no máximo, avisar" do princípio 2 vale para
+  os limites da despesa: "Se não for impossível, ainda que improvável, pode ser
+  feito."). Era recusada acima de 48 parcelas e de 60 repetições; agora, acima
+  disso (o comum), a tela avisa ao lado do campo ("Acima do comum (mais de 48
+  parcelas). Confira: o valor vale como está.", `[data-aviso-das-parcelas]`,
+  `[data-aviso-das-repeticoes]`) e o servidor grava. **O impossível** (decisão
+  do Claude, 25/11): menos de 2, fração (o `parseInt` cortava "1.5" em 1,
+  calado) e a última data a mais de 100 anos — cada parcela ou repetição é um
+  lançamento com a sua data: 1.200 parcelas (mensais, `LIMITE_DE_MESES`); as
+  repetições, pela frequência (5.214 semanais, 1.200 mensais, 100 anuais —
+  `limiteDasRepeticoes`). A regra é UMA,
+  `lib/financeiro/despesa-agendada.ts` (`recusaDasParcelasDaDespesa`,
+  `recusaDasRepeticoesDaDespesa` e os avisos), na tela e em
+  `createTransactionAdvanced`; o banco só confere a coerência da parcela
+  (migration `20261206900001`). Prova: `tests/despesa-parcelas-acima-do-comum.test.ts`.
+- **O valor do lançamento até o que o registro guarda, conferido no servidor**
+  (o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser
+  feito."; CLAUDE.md §4, o Heitor, 19/11: "Qualquer gravação que não passa pela
+  validação do backend ta errada"). Sem teto de "comum": o impossível (decisão
+  do Claude, 25/11) é o zero ("Valor deve ser maior que zero.") e o que
+  `financial_transactions.amount` (numeric(10,2)) não guarda — acima de
+  R$ 99.999.999,99, contado nos centavos como o banco: "No máximo
+  99.999.999,99 reais (o limite do registro).". Era o "numeric field overflow"
+  do banco, em inglês, na tela. `lancarCore` confere (a tela e o Copilot passam
+  por ele); na despesa parcelada, cada PARCELA ("Cada parcela: No máximo…" — o
+  total pode passar, dividido), e na recorrente, cada repetição
+  (`createTransactionAdvanced`). A regra é UMA, `lib/financeiro/limites-do-registro.ts`
+  (`LIMITE_DO_DINHEIRO`, `recusaDoDinheiroAcimaDoRegistro`, `passaDoRegistro`),
+  que o Copilot lê. Prova: `tests/nucleo-recusa-o-que-o-registro-nao-guarda.test.ts`.
 - **A despesa recorrente guarda a forma de pagamento, como a parcelada** (D11
   do levantamento das regras, o Heitor, 2026-11-11; princípio 3): a forma
   escolhida ao lançar vai a cada lançamento da recorrência (C70, F67:
@@ -2298,9 +2436,10 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 - **Cartão de crédito em N vezes é PAGO na hora PELA CLIENTE** (decisão do
   Heitor, 2026-10-20): quem paga a rede é a maquininha, então para o
   cliente está quitado. É o "À vista" com o meio Cartão de crédito e "Vezes
-  no cartão" (1–12): UM lançamento pago, com
-  `financial_transactions.cartao_vezes` (2–12, só no crédito — a restrição do
-  banco confere). Para a comissão, é pagamento INTEGRAL (H4, 2026-11-01):
+  no cartão" (1–1.200; acima de 12 a tela avisa — o Heitor, 25/11, abaixo
+  em D-15): UM lançamento pago, com
+  `financial_transactions.cartao_vezes` (2–1.200, só no crédito — a
+  restrição do banco confere). Para a comissão, é pagamento INTEGRAL (H4, 2026-11-01):
   libera na hora.
   - **E a OPERADORA deposita em N parcelas: a receber DELA** (F2c da
     5ª simulação; decisões do Heitor, 2026-11-01: "no financeiro mês a mês,
@@ -2433,7 +2572,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
       configuráveis por bandeira."; migration `20261103001502`). Em
       Configurações → Comissões → "Taxas da maquininha", o seletor "Bandeira"
       (Regra geral, Visa, Mastercard, Elo, Amex, Hipercard, Outras): cada
-      bandeira pode ter o SEU prazo e as SUAS taxas (débito e crédito 1x–12x;
+      bandeira pode ter o SEU prazo e as SUAS taxas (débito e crédito 1x até o limite da maquininha, que pode passar de 12x;
       Pix não tem bandeira), gravados juntos em `tenants.cartao_por_bandeira`
       (`salvarCartaoPorBandeira`, a mesma permissão e abrangência das taxas;
       a tela diz "Com regra própria: Elo"). O de antes é a **REGRA GERAL**:
@@ -2476,7 +2615,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
       vezes a quantidade de parcelas"): em "Taxas da maquininha", na regra
       geral e em cada bandeira, a pessoa digita a taxa por parcela (1,15%) e o
       botão preenche o crédito 1x a 12x com a taxa × as vezes, em duas casas
-      (1x 1,15%, 2x 2,30% … 12x 13,80%; `creditoPelaTaxaPorParcela`). Só
+      (1x 1,15%, 2x 2,30% … 12x 13,80%; `creditoPelaTaxaPorParcela`) — ou
+      até o limite da maquininha, quando ele passa de 12x (o Heitor, 25/11). Só
       preenche os campos — grava no "Salvar taxas" de sempre, cada campo
       segue editável, o débito não muda —, e a tabela continua sendo a verdade
       do cálculo: não há coluna de "taxa por parcela" no banco. **O 1x também
@@ -2532,7 +2672,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
       6x a 12x nem aparecem; o "Preencher pela taxa por parcela" preenche só
       as que aparecem. O seletor do limite fica logo acima do crédito
       parcelado. Com "Só à vista", o crédito parcelado some e a tela diz por
-      quê. No **Automático** todas as linhas aparecem: o limite sai delas (a
+      quê. No **Automático** todas as linhas aparecem (1x a 12x, ou até a maior
+      com taxa quando ela passa de 12): o limite sai delas (a
       maior com taxa) — decisão da F18, confirmada no levantamento das regras
       (D9, o Heitor, 2026-11-11). O que está
       gravado acima do limite NÃO se apaga (fica no formulário e é regravado
@@ -2691,7 +2832,9 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
       ficam sem parcela. ⚠️ A restrição `recebiveis_do_cartao_check` aceita
       `parcela_total` de 1 a 12 desde esta migration: o gatilho com o 1x
       ANTES dela recusa toda venda no crédito à vista (foi o que a
-      `20261104002001` fez por alguns minutos). Prova:
+      `20261104002001` fez por alguns minutos). Desde a `20261206800001`,
+      de 1 a 1.200, e o gatilho gera tantas parcelas quantas as vezes (antes
+      cortava em 12). Prova:
       `e2e/financeiro-cartao-a-receber-da-operadora.spec.ts` ("D4").
     - As vendas antigas no cartão N× (3 na produção em 2026-11-01: Aurora
       R$ 600, Jasmim R$ 150, Lótus R$ 280) ficam como estão, sem parcelas.
@@ -2742,8 +2885,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   - **A rede diz até quantas vezes** (D-15, decisão do Heitor,
     2026-10-29: "A clínica configura 'parcela até Nx'. O padrão é o maior
     número de parcelas com taxa cadastrada."): Configurações → Comissões →
-    "Parcelar no crédito até" (`tenants.cartao_max_vezes`, 1–12, migration
-    `20261029001603`; grava `salvarMaximoDeVezes`, a mesma permissão das
+    "Parcelar no crédito até" (`tenants.cartao_max_vezes`, 1–1.200 desde a
+    `20261206800001`, era 1–12 na migration `20261029001603`; grava `salvarMaximoDeVezes`, a mesma permissão das
     taxas — desde a F67, C75, é de CADA maquininha: `maquininhas.max_vezes`,
     e a venda usa o da maquininha escolhida). Vazio = automático: a maior parcela do CRÉDITO com taxa em
     `payment_fees`; sem nenhuma, 12x (`maximoDeVezes`,
@@ -2758,6 +2901,27 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     F16-5). Vale só para o cartão em N vezes; as
     parcelas do crediário ("entrada + parcelas") têm o limite delas, abaixo. Prova:
     `e2e/financeiro-parcelas-no-credito.spec.ts`, `tests/financeiro-vezes-do-cartao.test.ts`.
+  - **Acima de 12 vezes AVISA, não recusa** (o Heitor, 25/11, perguntado se
+    o "no máximo, avisar" do princípio 2 vale para o limite de 12 vezes: "Se
+    não for impossível, ainda que improvável, pode ser feito."). O "Parcelar
+    no crédito até" oferece Automático, 1x a 12x e "Mais de 12x…", que abre o
+    número digitado; acima de 12 a tela diz "Acima do comum (mais de 12
+    vezes). Confira: o valor vale como está." (`avisoDasVezesNoCartao`,
+    `data-aviso-das-vezes`) e o servidor grava. As linhas do crédito na
+    tabela de taxas vão até esse limite (13x, 14x… com taxa própria); sem a
+    taxa daquelas vezes vale 0% e a venda avisa (princípio 4, F16-2) —
+    nunca a do 12x, que era o que `taxaNaMaquininha` e
+    `private.taxa_da_maquininha` faziam cortando em 12. **O impossível**
+    (decisão do Claude, 25/11): zero, negativo, fracionário e acima de 1.200
+    vezes — cada parcela vira um recebível mensal da operadora, e 1.200
+    meses são 100 anos, o limite das datas (`LIMITE_DE_VEZES_NO_CARTAO` =
+    `LIMITE_DE_MESES`, `lib/acima-do-comum.ts`; `recusaDasVezesNoCartao`,
+    `lib/financeiro/vezes-do-cartao.ts`). O "comum" (12) é o teto de antes,
+    também decisão do Claude. Valem os mesmos 1.200 no pagamento do
+    atendimento, no checkout, nas vendas, no crédito na clínica, nas
+    devoluções, no "Novo lançamento", no Copilot e nas travas do banco
+    (migration `20261206800001_cartao_acima_de_12_vezes.sql`). Prova:
+    `tests/cartao-acima-de-12-vezes.test.ts`.
   - **O crediário em quantas vezes é decisão da REDE** (D10 do levantamento
     das regras, o Heitor, 2026-11-11: "Decisão da rede"; princípio 1). Uma
     configuração da rede — o máximo de parcelas do "entrada + parcelas", padrão
@@ -2775,9 +2939,13 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     `lib/financeiro/parcelas-do-crediario.ts`; migration `20261204200001`
     tira o teto de 48 do banco). E `lancamentosDoPagamento` não corta mais as
     parcelas em 12 (gerava 12 lançamentos de uma venda em 24x). Decisão do
-    Claude, 25/11: o aviso começa no teto de antes. A
-    DESPESA não muda: parcelada de 2 a 48, recorrente de 2 a 60 (é a rede
-    pagando, não vendendo).
+    Claude, 25/11: o aviso começa no teto de antes. A despesa também avisa
+    em vez de recusar (o Heitor, 25/11 — abaixo, em "A despesa parcelada (ou
+    recorrente)"). E o banco não prende mais a parcela em 48
+    (`financial_transactions_parcela_coerente`, migration `20261206900001`:
+    o crediário em 60 vezes era recusado ao gravar), nem a forma do pagamento
+    do contrato do plano (`pagamentoValido`, `actions/documentos.ts`, vai até
+    o registro e o limite da rede vem depois).
   - **O crediário tem UM nome, diz o limite e só pede a forma da entrada**
     (A23 da 14ª simulação, F75; princípio 7; PDV8, 2026-11-14): a
     configuração dizia "Crediário da clínica" e o Vender, "Entrada +
@@ -2830,7 +2998,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     da maquininha de N vezes cadastrada AVISA quem recebe (`AvisoDaTaxa`):
     a venda sai sem desconto da operadora (0%), também na comissão
     (`taxaQueVale`, o espelho de `private.comissao_taxa_pct` — F16-2: nunca
-    a de outras vezes). As taxas vão de à vista a 12x em Configurações →
+    a de outras vezes). As taxas vão de à vista ao limite da maquininha (12x, ou mais — o
+    Heitor, 25/11) em Configurações →
     Comissões. A quem não cadastra a taxa (quem não é a Admin da rede, desde
     18/11), o aviso diz QUEM cadastra, pelo nome das Admins da rede ativas
     (`textoDeQuemCadastraATaxa`, `adminsAtivasDaRede` em
@@ -3180,8 +3349,11 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   plano", acima em "A cliente aceita PELO APP"); até ali o aceite era só na
   unidade. A anotação do profissional (`professional_notes`) e a da sessão
   (`treatment_plan_sessions.notes`) são clínicas e nem são lidas pela tela.
-  A validade é da REDE (`tenants.plano_validade_dias`, 30 por padrão, 1–365,
-  Configurações → Geral; migration `20261029001202`), contada de quando o
+  A validade é da REDE (`tenants.plano_validade_dias`, 30 por padrão, de 1
+  dia para cima — acima de 365 a tela avisa e grava, até 36.500, os 100 anos:
+  o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser
+  feito."; o limite dos 100 anos é decisão do Claude, 25/11 —,
+  Configurações → Geral; migrations `20261029001202` e `20261207000001`), contada de quando o
   plano foi proposto; vencida, o app diz "Proposta vencida em …". É só
   informação: o checkout na unidade não recusa o plano vencido. Prova:
   `e2e/portal-cliente-plano-proposto.spec.ts`, `e2e/configuracoes-geral.spec.ts`.
@@ -3376,6 +3548,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 ❌ Ler "o lançamento do atendimento" (appointment_id) sem tirar o estornado — o atendimento pode ter o estornado e o recebimento novo (maybeSingle quebra; o "pago" mente)
 ❌ Devolver e.message num catch de action (o 'Forbidden' da trava ia em inglês para a tela) — é mensagemDoErro
 ❌ Gravar sold_by como quem registrou a venda quando a tela disse outra pessoa (ou ninguém) em "Quem vendeu" — sold_by é quem vendeu, registrado_por é quem registrou (com-06)
+❌ Recusar a quantidade da venda de produto, da comanda, do pré-pago ou da devolução por ser grande (acima do comum é aviso — o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito."): o impossível é o de lib/vendas/quantidades.ts, e o banco não prende a quantidade em 100 (os CHECKs de 20261207200001)
 ❌ Vender produto fora de produto_vender_itens (a de um produto só, produto_vender, é a versão velha e nada a chama), ou ler os produtos de uma venda pelo product_id do cabeçalho (no kit é só o primeiro: são os product_sale_items)
 ❌ Estornar o lançamento de uma venda de produto fora de produto_estornar_venda (a venda, o estoque e o custo não saberiam), ou contar product_sales sem tirar a estornada (estornada_em)
 ❌ Devolver parte de uma venda de produto estornando a venda inteira e vendendo de novo, ou fora de produto_devolver_itens — e ler o valor, as unidades ou o custo de uma venda de produto sem tirar o devolvido (price − valor_devolvido, custo − custo_devolvido)
@@ -3390,7 +3563,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 ❌ Trocar o due_date de um lançamento sem lancamento_remarcar_vencimento (o histórico da remarcação se perde — A37 da 9ª)
 ❌ Calcular a taxa ou o líquido de um lançamento na tela (o CSV) — é metrics_taxa_dos_lancamentos, a conta do lucro (A31 da 10ª)
 ❌ Rotular o cartão do caixa só "Despesas": é "Despesas pagas (caixa)", que tem a compra de estoque e o pagamento das comissões (A24 da 10ª)
-❌ Recusar o prazo da operadora ou o limite do crediário por ser grande (acima do comum é aviso — princípio 2), ou cortar as parcelas em silêncio ao gerar os lançamentos
+❌ Recusar o prazo da operadora, o limite do crediário ou as parcelas e repetições da despesa por serem grandes (acima do comum é aviso — princípio 2; o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito."), pôr teto na parcela no banco (financial_transactions_parcela_coerente), ou cortar as parcelas em silêncio ao gerar os lançamentos
 ❌ Vender crédito interno pelo "Conceder crédito" (fica fora do caixa) ou por um lançamento manual (o crédito não nasce): é credito_vender, a aba "Crédito interno" da Nova venda (decisão 1 da 9ª)
 ❌ Estornar o lançamento da venda de crédito fora de credito_estornar_venda (o dinheiro voltava e o crédito ficava), ou devolver mais que o saldo que a cliente ainda tem
 ❌ Lançar o bônus do crédito interno como receita, ou deixar o bônus no saldo depois do estorno da venda (ele sai junto, inteiro ou na proporção — a rede escolhe; A20 da 11ª)

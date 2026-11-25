@@ -196,11 +196,17 @@ test.describe('atritos da remarcação (frente 8)', () => {
       await p.goto(`/${slug}/cliente/home`)
       await expect(p.locator('[data-passou-da-hora]')).toHaveCount(0)
     })
-    // Ainda no horário (começou há 10 min, dura 30): "Hoje, já no horário".
+    // Ainda no horário (começou há 10 min, dura 30): é "Em andamento" (o Heitor,
+    // 25/11: "Um "Em andamento" não seria melhor?" e, à definição, "Já começou e
+    // não acabou"). A home mostra "Em andamento" no lugar de "Próximo
+    // agendamento", sem a linha "Hoje, já no horário". Era: [data-passou-da-hora]
+    // com "Hoje, já no horário".
     const agora = await agendado(cliente!.clientId, new Date(haMinutosHoje(10)))
     await como(browser, cliente!, async p => {
       await p.goto(`/${slug}/cliente/home`)
-      await expect(p.locator('[data-passou-da-hora]')).toContainText('Hoje, já no horário')
+      await expect(p.getByText('Em andamento', { exact: true })).toBeVisible()
+      await expect(p.locator('[data-em-andamento]')).toBeVisible()
+      await expect(p.locator('[data-passou-da-hora]')).toHaveCount(0)
     })
     expect((await db().from('appointments').update({ status: 'CANCELLED' }).eq('id', agora)).error).toBeNull()
   })

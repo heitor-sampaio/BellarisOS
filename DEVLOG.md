@@ -1774,6 +1774,77 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-25 (4) — As respostas do Heitor: os limites que avisam, o "Em andamento" e o dia que continua
+
+O Heitor respondeu as seções 2, 3 e 4 de `docs/para-o-heitor.md` e as perguntas de contexto. Cada teste alterado está
+lá, na §8, com a fala dele.
+
+**As respostas da seção 2.**
+- **Os textos.** "Completar o cadastro" no checkout e em Documentos. O aviso do "Atende clientes" cita o que a ficha
+  da Equipe mostra.
+- **O resumo do cargo** deixa sempre de fora as abas da rede toda (a opção `soAsDela`, de um chamador só, saiu).
+- **O "Reativar" por unidade.** A função saiu (migration `20261206700001`), depois de conferido que ninguém a chama: app,
+  banco e três dias de registros da API.
+- **O produto novo** nasce sem caixa marcada.
+- **O nome da conexão de WhatsApp** vai até 60 caracteres, vindo da Meta e ao renomear.
+- **A unidade desativada** diz "comanda aberta no PDV", com "Receber no PDV".
+
+**Os limites que avisam** (o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito."). A conta
+única é `lib/acima-do-comum.ts`: acima do comum (o teto de antes), o campo avisa "Acima do comum (…). Confira: o valor
+vale como está." e grava. Recusa só o que o banco não guarda: o tamanho da coluna, e para os prazos, 100 anos (o limite
+das datas).
+- **Prazos.** O prazo do portal, a validade do plano, a da ficha de saúde e a do pré-pago; o bloqueio da agenda acima de
+  um ano ("Acima de 1 ano avisa").
+- **Vezes e repetições.** O cartão acima de 12 vezes (até 1.200), a despesa parcelada acima de 48 e a recorrente acima
+  de 60; as cinco formas da baixa saíram sem aviso ("o usuario vai precisar clicar em um botão, então ele fez de
+  proposito").
+- **Pontos.** O custo da recompensa e os pontos do ajuste e do procedimento.
+- **Quantidades e valores.** As quantidades do estoque e da venda, as comissões em R$ fixo, o valor do lançamento e o
+  "Pacote de antes" da importação (o teto de 200, de 06/11, saiu).
+- **Copilot.** As ferramentas de escrita deixaram de ter teto que a tela não tem.
+- **No banco** (decisões do Claude): a comissão derivada (R$ fixo × quantidade) alarga a coluna em vez de recusar; os
+  pontos de um pagamento e o saldo recusam em português acima de 2.147.483.647; a entrada e a transferência do estoque
+  conferem o limite dentro da transação (com duas entradas juntas, a segunda estourava em inglês); o nome e o contato
+  da oportunidade viraram `text`, como na ficha; a comanda recusa o valor acima do registro antes de gravar.
+
+**O horário que já passou** ("remarcar para o passado é possível desde que não tenha passado do horario já"). O
+remarcar e o Agendar recusam o horário que já passou ("Escolha a partir de …"); para mais cedo que o marcado, sem ter
+passado, pode.
+
+**O "Em andamento"** (o Heitor, 25/11: "Um "Em andamento" não seria melhor?"; a definição "Já começou e não acabou").
+A regra é uma só, `lib/agenda/em-andamento.ts`: o agendamento em aberto com o início já passado e o fim por vir, de
+qualquer dia.
+- **No app da cliente:** um grupo acima dos "Próximos", e a home troca o "Próximo agendamento" por ele enquanto dura. O
+  que acabou sem ser fechado segue a D14.
+- **Nas telas da equipe** ("seria mais útil para rede/clínica"; ele escolheu o painel da unidade, o da rede, a Agenda e
+  a Minha agenda): um bloco com quem está sendo atendido, por quem, em qual sala, desde quando e até quando. Ele só
+  aparece quando há algo e segue a abrangência e a permissão da Agenda. Na Minha agenda, é o destaque dela.
+
+**O dia que continua** (o procedimento não tem duração máxima). As agendas já desenhavam o atendimento em cada dia que
+ele ocupa; os números e as listas olhavam só o dia do início.
+- **A ocupação do dia** conta o trecho de cada atendimento dentro do dia, pela duração marcada. A definição não muda: o
+  concluído adiantado conta a duração.
+- **As listas e o destaque:** o destaque da Minha agenda, a "Agenda de hoje" do dashboard e as leituras do Copilot
+  trazem o que começou antes e ainda ocupa, com o início real.
+
+**A grade da rede rolava duas vezes.** O "hoje" vinha do relógio do navegador, que é nulo na hidratação: a grade rolava
+para o primeiro atendimento e, depois, para a hora de agora, com a marca "pronta" já posta. O clique num cartão entre
+as duas caía cinco horas abaixo, no "Novo agendamento" (o bloco "Em andamento" fez `e2e/financeiro-vencidas-da-9`
+falhar sempre). O "hoje" agora sai do relógio na hora, como na grade da unidade: uma rolagem só.
+
+**Migrations (na produção, em ordem):** `20261206700001` a `20261207500001`, `20261207700001`, `20261207900001`,
+`20261208000001` e `20261208100001`.
+
+**Testes.**
+- **Alterados, com a fala do Heitor que os permite:** a lista está em `docs/para-o-heitor.md` §8. A completa pegou mais
+  um da resposta 2.6 (`e2e/dicas-estoque-procedimentos.spec.ts`, que contava com o Insumo marcado); entrou na lista.
+- **As verificações:** checagem de tipos, lint e Vitest (556 arquivos, 5.110 testes).
+- **A completa contra o build:** 1.750 + 889 passaram, 1 pulado de propósito, 1 falhou (o da dica do estoque, acima), que
+  passou depois da mudança.
+- **Dependência de ordem, que já existia** (`e2e/oportunidade-da-pessoa`): o teste lê o funil da rede de teste, que só
+  nasce quando alguém abre o CRM. Na completa, outro teste abre antes; numa lista avulsa, não.
+- **A conferência do banco:** depois das migrations, o banco local é IGUAL ao da produção (4.665 objetos).
+
 ### 2026-11-25 (3) — A 30ª simulação e as correções dela
 
 O laço que o Heitor deixou em 24/11, sem pergunta de regra: a dúvida se decidiu pelo catálogo, por `docs/regras` e pelos

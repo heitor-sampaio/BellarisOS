@@ -11,6 +11,8 @@ import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
 import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
 import { Dica } from '@/components/shared/dica'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
+import { LIMITE_DA_DESPESA_AGENDADA, avisoDasParcelasDaDespesa, avisoDasRepeticoesDaDespesa, limiteDasRepeticoes } from '@/lib/financeiro/despesa-agendada'
+import type { FrequenciaRecorrente } from '@/lib/financeiro/vencimentos'
 
 interface Props {
   branchId?:  string
@@ -71,7 +73,7 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
   const [discountVal,    setDiscountVal]    = useState('')
   const [scheduleMode,   setScheduleMode]   = useState<'single' | 'installments' | 'recurring'>('single')
   const [installCount,   setInstallCount]   = useState('2')
-  const [recurringFreq,  setRecurringFreq]  = useState('monthly')
+  const [recurringFreq,  setRecurringFreq]  = useState<FrequenciaRecorrente>('monthly')
   const [recurringCount, setRecurringCount] = useState('6')
   const [firstDueDate,   setFirstDueDate]   = useState('')
   // r4-f15-02: a forma (para saber se é cartão) e a bandeira, opcional.
@@ -480,12 +482,20 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '12px 14px', background: 'var(--bg-app)', borderRadius: 10, border: '1px solid var(--hairline)' }}>
                     <div className="form-2col">
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                        <Label>Número de parcelas</Label>
+                        <Label htmlFor="lanc-parcelas">Número de parcelas</Label>
+                        {/* O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser
+                            feito." Acima de 48 avisa (era o máximo do campo); só o impossível para. */}
                         <input
-                          type="number" min={2} max={48} className="field"
+                          id="lanc-parcelas"
+                          type="number" min={2} max={LIMITE_DA_DESPESA_AGENDADA} step={1} className="field"
                           value={installCount} onChange={e => setInstallCount(e.target.value)}
                           placeholder="Ex: 12"
                         />
+                        {installCount.trim() !== '' && avisoDasParcelasDaDespesa(Number(installCount)) && (
+                          <span role="status" data-aviso-das-parcelas style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+                            {avisoDasParcelasDaDespesa(Number(installCount))}
+                          </span>
+                        )}
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                         <Label>Vencimento da 1ª parcela</Label>
@@ -508,7 +518,7 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
                     <div className="form-2col">
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                         <Label>Frequência</Label>
-                        <select className="field" value={recurringFreq} onChange={e => setRecurringFreq(e.target.value)}>
+                        <select className="field" value={recurringFreq} onChange={e => setRecurringFreq(e.target.value as FrequenciaRecorrente)}>
                           <option value="weekly">Semanal</option>
                           <option value="biweekly">Quinzenal</option>
                           <option value="monthly">Mensal</option>
@@ -518,12 +528,19 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
                         </select>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                        <Label>Repetições</Label>
+                        <Label htmlFor="lanc-repeticoes">Repetições</Label>
+                        {/* O mesmo da parcelada (o Heitor, 25/11): acima de 60 avisa, não para. */}
                         <input
-                          type="number" min={2} max={60} className="field"
+                          id="lanc-repeticoes"
+                          type="number" min={2} max={limiteDasRepeticoes(recurringFreq)} step={1} className="field"
                           value={recurringCount} onChange={e => setRecurringCount(e.target.value)}
                           placeholder="Ex: 12"
                         />
+                        {recurringCount.trim() !== '' && avisoDasRepeticoesDaDespesa(Number(recurringCount)) && (
+                          <span role="status" data-aviso-das-repeticoes style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+                            {avisoDasRepeticoesDaDespesa(Number(recurringCount))}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>

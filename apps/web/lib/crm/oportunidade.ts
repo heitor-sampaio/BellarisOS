@@ -11,6 +11,7 @@ import { camposDaPerda, type PerdaInformada } from '@/lib/crm/motivos-perda'
 import { TELEFONE_INCOMPLETO } from '@/lib/contatos/propagar'
 import { pessoaDaOportunidadeNoBanco, somarTagsNaPessoa } from '@/lib/tags/da-pessoa'
 import { normalizarTelefone } from '@/lib/importacao/normalizar'
+import { recusaDoValorEstimado } from '@/lib/crm/valor-do-card'
 
 /**
  * CRIAR uma oportunidade e MOVER de etapa — os núcleos que o quadro (actions/
@@ -112,6 +113,11 @@ export async function criarOportunidadeCore(
   const nome = o.nome?.trim()
   if (!nome) return { error: 'Nome é obrigatório.' }
   if (!o.telefone && !o.email && !o.social) return { error: 'Informe pelo menos um contato: telefone, e-mail ou rede social.' }
+  // O valor estimado que vem de quem chama (o Copilot, a importação): o negativo
+  // e o que `leads.value` (numeric(12,2)) não guarda — a mesma régua da janela
+  // (`lerValorEstimado`). Ia ao banco e voltava "numeric field overflow".
+  const recusaDoValor = o.valor != null ? recusaDoValorEstimado(o.valor) : null
+  if (recusaDoValor) return { error: recusaDoValor }
   // O telefone no formato do WhatsApp (C28, F70) — é por ele que o gatilho
   // acha a pessoa e que a próxima mensagem a encontra. Quem chama com o que a
   // pessoa DIGITOU (a tela, o Copilot) já recusou o incompleto; aqui o que não

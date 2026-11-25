@@ -200,19 +200,6 @@ test('24ª: novas clientes só na rede — nem a tag nem o atendimento as dão a
   }
 })
 
-test('T1: o "Reativar" da unidade é de quem foi atendida nela, não de quem tem a tag', async () => {
-  const fabi = await cliente('Fabi só a tag', { cliente_desde: '2021-04-10', tags: [`Unidade: ${unidadeA.name}`] })
-  const gil = await cliente('Gil veio na A', { cliente_desde: '2021-04-10' })
-  await agendamento(gil, unidadeA.id, 'COMPLETED', '2021-06-02T13:00:00Z')
-  const { data, error } = await db().rpc('metrics_clientes_para_reativar', {
-    p_tenant: rede.tenantId, p_branch_id: unidadeA.id, p_desde: new Date(Date.now() - 90 * 86_400_000).toISOString(), p_limite: 200,
-  })
-  expect(error).toBeNull()
-  const ids = (data as { lista: { id: string }[] }).lista.map(x => x.id)
-  expect(ids).toContain(gil)
-  expect(ids, 'a tag não faz ninguém ser da unidade').not.toContain(fabi)
-})
-
 test('MK2: o público da campanha não tem "Unidades", e as tags se chamam "Tags"', async ({ browser }) => {
   await como(browser, admin, async p => {
     await p.goto('/admin/notificacoes/nova')

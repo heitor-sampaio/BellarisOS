@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { comissaoNoCadastroDoProduto } from '@/actions/comissoes'
-import type { ComissaoNoCadastroDoProduto, TipoDeRegra } from '@/lib/comissoes/config'
+import { recusaDoValorDaComissao, type ComissaoNoCadastroDoProduto, type TipoDeRegra } from '@/lib/comissoes/config'
 import { parseDecimal, parseDinheiro, NUMERO_INVALIDO, DINHEIRO_INVALIDO } from '@estetica-os/utils'
 import { Dica } from '@/components/shared/dica'
 
@@ -66,6 +66,9 @@ export function ComissaoDoProduto({ productId }: { productId: string | null }) {
   const texto = valor.trim()
   const lido = !texto ? null : tipo === 'FIXED_AMOUNT' ? parseDinheiro(texto) : parseDecimal(texto, 2)
   const invalido = lido != null && Number.isNaN(lido)
+  // O impossível (o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito."):
+  // acima de 100% e o R$ por unidade acima do limite do registro. O servidor recusa o mesmo.
+  const recusa = lido == null || invalido ? null : recusaDoValorDaComissao(tipo, lido)
   const campo = invalido ? 'invalido' : JSON.stringify(lido == null ? { tipo: null, valor: null } : { tipo, valor: lido })
   const geral = info.geralPct != null ? `a regra geral (${pct(info.geralPct)})` : 'a regra geral (hoje, sem comissão)'
 
@@ -96,6 +99,9 @@ export function ComissaoDoProduto({ productId }: { productId: string | null }) {
         <span role="alert" style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger)', fontWeight: 600 }}>
           {tipo === 'FIXED_AMOUNT' ? DINHEIRO_INVALIDO : NUMERO_INVALIDO}
         </span>
+      )}
+      {recusa && (
+        <span role="alert" data-recusa-da-comissao style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger)', fontWeight: 600 }}>{recusa}</span>
       )}
     </div>
   )

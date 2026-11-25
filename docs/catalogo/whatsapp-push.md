@@ -29,7 +29,7 @@ Este é o catálogo das regras de WhatsApp e push que valem HOJE: os números de
 - Onde: `docs/regras/whatsapp-push.md:91-94`
 - Antes: KA-17
 
-**WN-06.** O nome do número se escolhe ao conectar ("Nome do número"), em qualquer dos quatro caminhos (a conexão gerenciada, o WhatsApp Web com conta própria, o cadastro pela Meta, a credencial colada). Sem escolha, fica o nome que a conexão já tem (reconectar ou salvar a credencial não renomeia) e, sem nenhum, o da conta na Meta ("nome verificado · telefone") — nunca o código técnico do número. Renomear depois é o "Nome da conexão" da lista.
+**WN-06.** O nome do número se escolhe ao conectar ("Nome do número"), em qualquer dos quatro caminhos (a conexão gerenciada, o WhatsApp Web com conta própria, o cadastro pela Meta, a credencial colada). Sem escolha, fica o nome que a conexão já tem (reconectar ou salvar a credencial não renomeia) e, sem nenhum, o da conta na Meta ("nome verificado · telefone") — nunca o código técnico do número. Renomear depois é o "Nome da conexão" da lista. O nome tem no máximo 60 caracteres em todo caminho: ao conectar e ao renomear, o campo para em 60, e o nome da conta na Meta é cortado nesse tamanho (o Heitor, 25/11: "60 pra tudo").
 - Fonte: decisão do Claude
 - Onde: `docs/regras/whatsapp-push.md:102-110`
 - Antes: KA-19

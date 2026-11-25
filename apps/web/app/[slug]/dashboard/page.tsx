@@ -2,8 +2,12 @@
 import { unidadesParaLer } from '@/lib/unidades/da-tela'
 import { Dica } from '@/components/shared/dica'
 import { DEFINICOES } from '@/lib/metrics/definicoes'
-import { baseDaOcupacao, descontosDaOcupacao } from '@/lib/metrics/ocupacao'
-import { aindaHojeNaAgenda } from '@/lib/metrics/agenda-do-dia'
+import { baseDaOcupacao, descontosDaOcupacao, minutosAgendadosNoPeriodo } from '@/lib/metrics/ocupacao'
+import { aindaHojeNaAgenda, agendaDoPeriodo } from '@/lib/metrics/agenda-do-dia'
+import { podemOcuparDesde } from '@/lib/appointments/core'
+import { lerEmAndamento } from '@/lib/agenda/ler-em-andamento'
+import { EmAndamentoAgora } from '@/components/shared/em-andamento-agora'
+import { formatarNoFuso } from '@/lib/formatar-no-fuso'
 import { notFound, redirect } from 'next/navigation'
 import { capacidadeEmMinutos, normalizarHorario, type BlocoOcupado } from '@/lib/agenda/horario'
 import { blocosDosBloqueios } from '@/lib/agenda/horario-livre'
@@ -33,7 +37,7 @@ import { configDeComissaoDaRede, resumoDasComissoes } from '@/lib/comissoes/leit
 import { periodosRecentes } from '@/lib/comissoes/periodo'
 import { getCoreDosModulos } from '@/lib/metrics/dos-modulos'
 import { ChevronRight, ClipboardList } from 'lucide-react'
-import { ler, contar } from '@/lib/db'
+import { ler, lerTodas, contar } from '@/lib/db'
 import { abertosDeAntes, SEM_ABERTOS_DE_ANTES } from '@/lib/metrics/abertos-de-antes'
 import { AbertosDeAntes } from '@/components/branch/abertos-de-antes'
 import { ParcelasVencidas } from '@/components/shared/parcelas-vencidas'
@@ -186,19 +190,21 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
         })()
       : Promise.resolve(0),
 
-    // Agenda do dia: a lista em si, não uma agregação.
+    // Agenda do dia: a lista em si, não uma agregação. Quem se sobrepõe ao dia,
+    // de qualquer duração (`podemOcuparDesde`, 25/11): o atendimento longo que
+    // começou ontem também acontece hoje. Em páginas: o "de qualquer duração"
+    // traz os longos de antes, e nada se corta calado.
     mostraAgenda
-      ? (() => {
+      ? lerTodas((de, ate) => {
           let q = admin.from('appointments')
-            .select('id, client_id, branch_id, scheduled_at, duration_min, status, price, clients(name), procedures(name), users!appointments_professional_id_fkey(name)')
+            .select('id, client_id, branch_id, scheduled_at, duration_min, status, completed_at, price, clients(name), procedures(name), users!appointments_professional_id_fkey(name)')
             // "Meus agendamentos hoje": os dela nas unidades em que atende (D10).
             .in('branch_id', unidadesDaAgenda)
-            .gte('scheduled_at', todayStart.toISOString())
+            .or(podemOcuparDesde(todayStart.getTime()))
             .lte('scheduled_at', todayEnd.toISOString())
-            .order('scheduled_at')
           if (proId) q = q.eq('professional_id', proId)
-          return ler(q, 'carregar a agenda do dia')
-        })()
+          return q.order('scheduled_at').order('id').range(de, ate)
+        }, 'carregar a agenda do dia')
       : Promise.resolve([]),
 
     canAgenda
@@ -264,11 +270,29 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   const avgTicket = ticket?.total.valor ?? 0
   const clientesQuePagaram = ticket?.total.clientesQuePagaram ?? 0
 
-  const validToday    = (todayAppts ?? []).filter(a => !['CANCELLED', 'NO_SHOW'].includes(a.status))
-  const aindaHoje     = aindaHojeNaAgenda(todayAppts ?? [], now)
+  // A leitura traz também o que começou antes e pode ocupar hoje (25/11). Os
+  // NÚMEROS do topo ("Agendamentos hoje", "aguardando", "ainda hoje") contam
+  // pelo dia de início, como sempre; a LISTA é o que acontece hoje
+  // (`agendaDoPeriodo`: o que continua de ontem entra, com o início real); e
+  // a ocupação, o que cada um ocupa HOJE (o trecho de hoje, lib/metrics).
+  const lidos         = (todayAppts ?? []) as unknown as {
+    id: string; branch_id: string; scheduled_at: string; duration_min: number | null; status: string; completed_at: string | null
+    clients: unknown; procedures: unknown
+  }[]
+  const comecamHoje   = lidos.filter(a => new Date(a.scheduled_at).getTime() >= todayStart.getTime())
+  const validToday    = comecamHoje.filter(a => !['CANCELLED', 'NO_SHOW'].includes(a.status))
+  const aindaHoje     = aindaHojeNaAgenda(comecamHoje, now)
   const todayCount    = validToday.length
   const awaitingCount = validToday.filter(a => a.status === 'SCHEDULED').length
-  const scheduledMin  = validToday.reduce((s, a) => s + (a.duration_min ?? 0), 0)
+  const agendaDeHoje  = agendaDoPeriodo(lidos, todayStart, todayEnd).filter(a => !['CANCELLED', 'NO_SHOW'].includes(a.status))
+  // "Em andamento" no topo da Agenda de hoje (o Heitor, 25/11): a regra única
+  // (lib/agenda/em-andamento), nas unidades da agenda da tela; na vista pessoal, só os dela.
+  const emAndamentoAgora = mostraAgenda
+    ? await lerEmAndamento({ tenantId: ctx.tenantId!, unidades: unidadesDaAgenda, profissional: proId, agora: now })
+    : []
+  const scheduledMin  = minutosAgendadosNoPeriodo(
+    lidos.map(a => ({ start: a.scheduled_at, durationMin: a.duration_min ?? 0, status: a.status, completedAt: a.completed_at })),
+    todayStart, todayEnd)
 
   // Capacidade do DIA (a agenda mostrada é a de hoje), não do mês.
   // A capacidade do DIA (a agenda mostrada é a de hoje), pelo HORÁRIO da
@@ -276,17 +300,19 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   const professionalsCount = (profissionaisDaUnidade ?? []).length
   const profissionais = (profissionaisDaUnidade ?? []) as { id: string; name: string; horario: unknown }[]
   // O que eles têm agendado HOJE em outra unidade (o da rede atende em todas —
-  // D1) sai da capacidade daqui (decisão do Heitor, 2026-10-28). Desde a
-  // véspera, para o atendimento que atravessa a meia-noite.
+  // D1) sai da capacidade daqui (decisão do Heitor, 2026-10-28). Quem se
+  // sobrepõe a hoje, de qualquer duração (25/11: era "desde a véspera", e o de
+  // mais de 24 h lá fora não saía da capacidade daqui).
   const ocupadoFora: Record<string, BlocoOcupado[]> = {}
   if (profissionais.length) {
-    const fora = await ler(admin.from('appointments')
+    const fora = await lerTodas((de, ate) => admin.from('appointments')
       .select('professional_id, scheduled_at, duration_min, branch_id')
       .in('professional_id', profissionais.map(p => p.id))
       .neq('branch_id', branchId)
       .not('status', 'in', '("CANCELLED","NO_SHOW")')
-      .gte('scheduled_at', addDaysTZ(todayStart, -1, fuso).toISOString())
-      .lte('scheduled_at', todayEnd.toISOString()), 'carregar a agenda dos profissionais nas outras unidades')
+      .or(podemOcuparDesde(todayStart.getTime()))
+      .lte('scheduled_at', todayEnd.toISOString())
+      .order('scheduled_at').order('id').range(de, ate), 'carregar a agenda dos profissionais nas outras unidades')
     // A unidade de cada um (A9 da 13ª): a base da ocupação diz onde ela está.
     const nomes = (fora ?? []).length
       ? new Map(((await ler(admin.from('branches').select('id, name').eq('tenant_id', ctx.tenantId!), 'ler as unidades da rede')) ?? []).map(b => [b.id as string, b.name as string]))
@@ -625,25 +651,33 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
             </Link>
           </div>
 
-          {validToday.length === 0 ? (
+          {/* 25/11: o que está em andamento agora, no topo (só aparece quando há algo). */}
+          <EmAndamentoAgora itens={emAndamentoAgora} agora={now.toISOString()}
+            base={perm.atendimento !== 'NONE' ? `/${slug}/agenda` : null}
+            mostrarUnidade={unidadesDaAgenda.length > 1} style={{ margin: '0 20px 12px' }} />
+
+          {/* 25/11: a lista é o que acontece hoje — o que continua de ontem entra, com o início real. */}
+          {agendaDeHoje.length === 0 ? (
             <p style={{ padding: '16px 20px 24px', color: 'var(--text-faint)', fontSize: 'var(--text-sm-sz)', textAlign: 'center' }}>
               Sem agendamentos hoje
             </p>
           ) : (
             <div>
-              {validToday.slice(0, 5).map((a, i) => {
+              {agendaDeHoje.slice(0, 5).map((a, i) => {
                 const client    = a.clients    as unknown as { name: string } | null
                 const procedure = a.procedures as unknown as { name: string } | null
                 // D10: o dela em OUTRA unidade diz onde é.
-                const daUnidade = (a as { branch_id?: string }).branch_id ?? branchId
+                const daUnidade = a.branch_id ?? branchId
                 const outraUnidade = daUnidade !== branchId ? (nomeDaUnidade.get(daUnidade) ?? 'outra unidade') : null
-                const isLast    = i === Math.min(validToday.length, 5) - 1
+                const isLast    = i === Math.min(agendaDeHoje.length, 5) - 1
                 // D3 da 26ª (princípio 3): a hora no relógio da unidade dele, e o relógio quando não é o desta.
                 const hora      = horaNaUnidadeDele(a.scheduled_at, fusos[daUnidade] ?? fuso, fuso)
                 return (
                   <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 20px', borderBottom: isLast ? 'none' : '1px solid var(--hairline)' }}>
                     <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 800, color: 'var(--brand)', minWidth: 38, flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
                       {hora.hora}
+                      {/* O que continua de antes diz de que dia vem (o início real). */}
+                      {a.comecouAntes && <span data-continua-de-antes style={{ fontSize: 'var(--text-overline)', fontWeight: 600, color: 'var(--text-muted)' }}>{formatarNoFuso(a.scheduled_at, "'desde' dd/MM", fusos[daUnidade] ?? fuso)}</span>}
                       {hora.relogio && <span data-relogio-do-cartao style={{ fontSize: 'var(--text-overline)', fontWeight: 600, color: 'var(--text-muted)' }}>{hora.relogio}</span>}
                     </span>
                     {client && <Avatar name={client.name} size={32} />}
@@ -659,9 +693,9 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
                   </div>
                 )
               })}
-              {validToday.length > 5 && (
+              {agendaDeHoje.length > 5 && (
                 <Link href={`/${slug}/agenda`} style={{ display: 'block', padding: '10px 20px', fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)', textDecoration: 'none', borderTop: '1px solid var(--hairline)' }}>
-                  +{validToday.length - 5} agendamentos →
+                  +{agendaDeHoje.length - 5} agendamentos →
                 </Link>
               )}
             </div>

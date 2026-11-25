@@ -30,6 +30,20 @@ export function ehRevenda(uso: string | null | undefined): boolean {
   return u === 'REVENDA' || u === 'AMBOS'
 }
 
+/**
+ * As caixas ao abrir o formulário. O produto NOVO nasce sem nenhuma marcada (o
+ * Heitor, 25/11: "ok" à proposta — era "nasce Insumo"): a pessoa escolhe, e
+ * salvar sem nenhuma é recusado (`RECUSA_SEM_USO`). O que já existe abre como
+ * está gravado; o lido sem a coluna, pelo preço de venda.
+ */
+export function checkboxesIniciais(
+  produto: { uso?: string | null; sale_price?: number | null } | null | undefined,
+): { insumo: boolean; vendaDireta: boolean } {
+  if (!produto) return { insumo: false, vendaDireta: false }
+  const u = lerUso(produto.uso) ?? ((produto.sale_price ?? null) !== null ? 'AMBOS' : 'INSUMO')
+  return { insumo: u !== 'REVENDA', vendaDireta: u !== 'INSUMO' }
+}
+
 /** Os dois checkboxes viram o uso; nenhum marcado é nulo (a tela e o servidor pedem um). */
 export function usoDosCheckboxes(insumo: boolean, vendaDireta: boolean): UsoDoProduto | null {
   if (insumo && vendaDireta) return 'AMBOS'

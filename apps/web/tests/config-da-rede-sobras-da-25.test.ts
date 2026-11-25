@@ -62,7 +62,7 @@ describe('A-CONF1: quem não é a Admin da rede e só chegaria às abas da rede 
   it('o resumo do cargo ("O que essa pessoa vai ver") não lista Configurações nem "Tags e importações"', () => {
     const editor = ler('components/admin/roles-editor.tsx')
     expect(editor).toMatch(/soLeriaAsConfiguracoes\(permissions, false\)/)
-    expect(rotuloDasAbasAlcancadas(ABAS_DA_REDE, m => m === 'clients' || m === 'medical_records', { soAsDela: true }))
+    expect(rotuloDasAbasAlcancadas(ABAS_DA_REDE, m => m === 'clients' || m === 'medical_records'))
       .toBe('Configurações (só LGPD)')
   })
 })

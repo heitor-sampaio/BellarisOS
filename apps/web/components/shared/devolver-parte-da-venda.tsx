@@ -11,6 +11,7 @@ import { vendaParaDevolver, previaDaDevolucao, devolverParteDaVenda } from '@/ac
 import type { PreviaDaDevolucao, VendaParaDevolver } from '@/lib/produtos/devolucao'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
 import { Dica } from '@/components/shared/dica'
+import { QUANTIDADE_COMUM_DE_UM_PRODUTO } from '@/lib/vendas/quantidades'
 import {
   EscolhaDaDevolucao, ESCOLHA_INICIAL, escolhaCompleta, escolhaParaAAcao, comOPagamentoInteiro, useFaltaAMaquininhaDoUsado, type EscolhaDaDevolucaoEstado,
 } from '@/components/shared/escolha-da-devolucao'
@@ -130,11 +131,20 @@ export function DevolverParteDaVenda({ transacaoId, onFechar }: { transacaoId: s
                         ({i.quantidade} vendida{i.quantidade > 1 ? 's' : ''}{i.devolvidas > 0 ? `, ${i.devolvidas} já devolvida${i.devolvidas > 1 ? 's' : ''}` : ''})
                       </span>
                     </span>
-                    <select className="field" aria-label={`Quantas de ${i.produto} voltam`} style={{ width: 90 }}
-                      value={quantas[i.id] ?? 0} disabled={devolvendo || restam <= 0}
-                      onChange={e => mudarQuantas(i.id, Number(e.target.value))}>
-                      {Array.from({ length: Math.max(restam, 0) + 1 }, (_, n) => <option key={n} value={n}>{n}</option>)}
-                    </select>
+                    {/* A venda passou a levar mais de 100 de cada (o Heitor, 25/11): acima disso,
+                        a lista de opções seria enorme — o campo é de número, até o que resta. */}
+                    {restam > QUANTIDADE_COMUM_DE_UM_PRODUTO ? (
+                      <input className="field" type="number" min={0} max={restam} step={1} inputMode="numeric"
+                        aria-label={`Quantas de ${i.produto} voltam`} style={{ width: 110 }}
+                        value={quantas[i.id] ?? 0} disabled={devolvendo}
+                        onChange={e => mudarQuantas(i.id, Math.max(0, Math.trunc(Number(e.target.value) || 0)))} />
+                    ) : (
+                      <select className="field" aria-label={`Quantas de ${i.produto} voltam`} style={{ width: 90 }}
+                        value={quantas[i.id] ?? 0} disabled={devolvendo || restam <= 0}
+                        onChange={e => mudarQuantas(i.id, Number(e.target.value))}>
+                        {Array.from({ length: Math.max(restam, 0) + 1 }, (_, n) => <option key={n} value={n}>{n}</option>)}
+                      </select>
+                    )}
                   </label>
                 )
               })}

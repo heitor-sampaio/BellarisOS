@@ -8,7 +8,7 @@ import { X, Package, Barcode, Plus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { createProduct, updateProduct } from '@/actions/stock'
 import { MEDIDAS_DO_PRODUTO } from '@/lib/estoque/medidas'
-import { lerUso, usoDosCheckboxes } from '@/lib/estoque/uso'
+import { checkboxesIniciais, usoDosCheckboxes } from '@/lib/estoque/uso'
 import { prefixoDoSku } from '@/lib/estoque/sku'
 import { Fala } from '@/components/shared/uma-unidade'
 import { ComissaoDoProduto } from '@/components/branch/comissao-do-produto'
@@ -104,10 +104,11 @@ function ProductFields({
   const [consumptionUnit,  setConsumptionUnit]  = useState(product?.consumption_unit ?? '')
   // E2 (o Heitor, 13/11: "checkbox de onde o produto está disponivel (Insumo e
   // Venda direta)"): dois checkboxes; o banco guarda o mesmo uso (D-6). O que já
-  // existia sem a coluna vale pelo preço de venda; o produto novo nasce Insumo.
-  const usoInicial = lerUso(product?.uso) ?? ((product?.sale_price ?? null) !== null ? 'AMBOS' : 'INSUMO')
-  const [insumo,           setInsumo]           = useState(usoInicial !== 'REVENDA')
-  const [vendaDireta,      setVendaDireta]      = useState(usoInicial !== 'INSUMO')
+  // existia sem a coluna vale pelo preço de venda; o produto novo nasce sem
+  // nenhuma marcada (o Heitor, 25/11) — `checkboxesIniciais`.
+  const caixasIniciais = checkboxesIniciais(product)
+  const [insumo,           setInsumo]           = useState(caixasIniciais.insumo)
+  const [vendaDireta,      setVendaDireta]      = useState(caixasIniciais.vendaDireta)
   const uso = usoDosCheckboxes(insumo, vendaDireta)
   const [showStock,        setShowStock]        = useState(false)
   // C16: a validade do estoque inicial que já passou avisa (o dia da unidade, F62b).

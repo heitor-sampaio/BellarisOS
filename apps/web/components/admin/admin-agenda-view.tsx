@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { minutosDesenhados, ladoALado } from '@/lib/agenda/desenho'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { SegSelect } from '@/components/shared/seg-select'
@@ -13,6 +13,7 @@ import { AppointmentSheet } from '@/components/branch/appointment-sheet'
 import { SeloDaFicha } from '@/components/shared/selo-da-ficha'
 import { SeloDoMenor, type MenorDoAgendamento } from '@/components/shared/selo-do-menor'
 import { estenderJanela, rolagemDaGrade } from '@/lib/agenda/grade'
+import { agendamentosNoDia, janelaComOsTrechos, textoDoQueContinua, trechoDoAgendamentoNoDia, type TrechoDoAgendamento } from '@/lib/agenda/trecho-do-agendamento'
 import { intervalosDoDia, diaDaSemana, forasDoHorario, foraDoHorarioDaUnidade, type Horario } from '@/lib/agenda/horario'
 import { bloqueioNoDia, trechoNoDia, type BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
 import { BlocoDoBloqueio, BotaoBloquearHorario, EtiquetaDoBloqueio } from '@/components/shared/bloqueio-da-agenda'
@@ -96,6 +97,8 @@ interface Props {
   filtros?: FiltrosDaAgenda
   /** As opções: quem atende nas unidades mostradas (null = a vista pessoal), as salas da unidade escolhida (null = sem unidade escolhida) e as tags da rede. */
   opcoesDosFiltros?: { profissionais: { id: string; name: string }[] | null; salas: { id: string; name: string }[] | null; tags: string[] }
+  /** O bloco "Em andamento" (`EmAndamentoAgora`, 25/11), pronto do servidor: acima da grade, no dia e na semana. */
+  emAndamento?: ReactNode
 }
 
 // -- Constantes visuais --------------------------------------------------------
@@ -185,6 +188,18 @@ function apptHeight(a: Appointment): number {
   return Math.max(24, (minutosDesenhados({ start: a.scheduled_at, durationMin: apptDuration(a), status: a.status, completedAt: a.completed_at }) / 60) * HOUR_H)
 }
 
+// O agendamento na régua da grade (o desenho e o trecho de cada dia).
+const naReguaDaGrade = (a: Appointment) => ({ a, start: a.scheduled_at, durationMin: apptDuration(a), status: a.status, completedAt: a.completed_at })
+
+/**
+ * Os agendamentos que aparecem no dia 'YYYY-MM-DD' (25/11): os que começam
+ * nele e os que continuam de antes — o atendimento que atravessa a meia-noite,
+ * ou dura dias, ocupa cada dia, como o bloqueio de vários dias.
+ */
+function agendamentosDoDia(lista: Appointment[], dia: string): { a: Appointment; trecho: TrechoDoAgendamento }[] {
+  return agendamentosNoDia(lista.map(naReguaDaGrade), new Date(`${dia}T12:00:00`)).map(x => ({ a: x.ev.a, trecho: x.trecho }))
+}
+
 // -- View Dia -----------------------------------------------------------------
 /**
  * Clicar num horário vazio abre o agendamento naquele horário e naquela
@@ -216,12 +231,29 @@ function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioV
   const agoraReal = useAgora()
   const fusoDaTela = useFuso()
   const agoraNa = (f?: string) => agoraReal == null ? null : naParede(new Date(agoraReal), f ?? fusoDaTela).getTime()
-  const { inicio, fim } = estenderJanela(janela, appointments.map(a => ({ start: a.scheduled_at, durationMin: apptDuration(a) })))
+  // Os do dia: os que começam nele e os que continuam de antes (25/11).
+  const doDia = agendamentosDoDia(appointments, dia)
+  const trechos = new Map(doDia.map(x => [x.a.id, x.trecho]))
+  const { inicio, fim } = janelaComOsTrechos(
+    estenderJanela(janela, doDia.filter(x => !x.trecho.continuaDeAntes).map(({ a }) => ({ start: a.scheduled_at, durationMin: apptDuration(a) }))),
+    doDia.map(x => x.trecho),
+  )
   const HOURS  = Array.from({ length: fim - inicio }, (_, i) => i + inicio)
   const GRID_H = HOURS.length * HOUR_H
   const byBranch: Record<string, Appointment[]> = {}
   for (const b of branches) byBranch[b.id] = []
-  for (const a of appointments) byBranch[a.branch_id]?.push(a)
+  for (const { a } of doDia) byBranch[a.branch_id]?.push(a)
+  // O que continua de antes começa no topo da grade (como o bloqueio), e o que
+  // segue amanhã para no fim dela — o resto aparece no dia seguinte.
+  const topoDe = (a: Appointment) => {
+    const tr = trechos.get(a.id)
+    return tr?.continuaDeAntes ? Math.max(0, (tr.de / 60 - inicio) * HOUR_H) : apptTop(a, inicio)
+  }
+  const alturaDe = (a: Appointment) => {
+    const tr = trechos.get(a.id)
+    if (!tr?.continuaDeAntes && !tr?.continuaDepois) return apptHeight(a)
+    return Math.max(24, Math.min(GRID_H, (tr.ate / 60 - inicio) * HOUR_H) - topoDe(a))
+  }
 
   const TIME_COL = 52  // px
 
@@ -230,9 +262,15 @@ function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioV
   // hoje, uma hora antes de agora; outro dia, a abertura ou o primeiro
   // atendimento, o que vier antes. Os horários são "de parede" (F62).
   const rolagemRef = useRef<HTMLDivElement>(null)
-  const ehHoje = agoraReal != null && dia === dayKeyTZ(new Date(agoraReal), fusoDaTela)
-  const primeiroEmMin = appointments.length
-    ? Math.min(...appointments.map(a => { const d = new Date(a.scheduled_at); return d.getHours() * 60 + d.getMinutes() })) // parede
+  // "Hoje" sai do relógio na hora (como na grade da unidade), não do `useAgora`:
+  // ele é nulo na hidratação, e a grade rolava DUAS vezes — para o primeiro
+  // atendimento e, quando o relógio chegava, para a hora de agora —, com a marca
+  // "pronta" já posta na primeira. O clique num cartão entre as duas caía cinco
+  // horas abaixo, no "Novo agendamento". Só a rolagem lê isto, nunca o desenho:
+  // sem erro de hidratação.
+  const ehHoje = dia === dayKeyTZ(new Date(), fusoDaTela)
+  const primeiroEmMin = doDia.length
+    ? Math.min(...doDia.map(({ a, trecho }) => { if (trecho.continuaDeAntes) return 0; const d = new Date(a.scheduled_at); return d.getHours() * 60 + d.getMinutes() })) // parede
     : null
   useEffect(() => {
     if (!rolagemRef.current) return
@@ -305,7 +343,7 @@ function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioV
             // Detecção simples de sobreposição: agrupamos por slots sobrepostos
             // e dividimos a largura
             // (A17 da 14ª: a mesma conta das outras grades, `ladoALado`.)
-            const lados = ladoALado(appts, a => apptTop(a, inicio), apptHeight)
+            const lados = ladoALado(appts, topoDe, alturaDe)
             const positioned: { appt: Appointment; col: number; totalCols: number }[] = appts.map(a => ({
               appt: a, col: lados.get(a.id)?.col ?? 0, totalCols: lados.get(a.id)?.total ?? 1,
             }))
@@ -379,8 +417,10 @@ function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioV
                 {/* Agendamentos */}
                 {positioned.map(({ appt: a, col, totalCols }) => {
                   const st  = STATUS_STYLE[a.status] ?? STATUS_STYLE.SCHEDULED!
-                  const top = apptTop(a, inicio)
-                  const h   = apptHeight(a)
+                  const top = topoDe(a)
+                  const h   = alturaDe(a)
+                  const trecho   = trechos.get(a.id)
+                  const continua = trecho?.continuaDeAntes ? textoDoQueContinua(a.scheduled_at) : null
                   const w   = `calc(${100 / totalCols}% - 6px)`
                   const l   = `calc(${(col / totalCols) * 100}% + 3px)`
                   const encaixe = b.horario !== undefined && !desmarcado(a) && foraDoHorarioDaUnidade(b.horario, a.scheduled_at, apptDuration(a), fusoLocal())
@@ -396,8 +436,10 @@ function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioV
                       type="button"
                       data-agendamento={a.id}
                       data-encaixe={encaixe ? '' : undefined}
+                      data-continua-de-antes={continua ? '' : undefined}
+                      data-continua-depois={trecho?.continuaDepois ? '' : undefined}
                       onClick={() => onSelecionar(a)}
-                      title={`${a.procedures?.name ?? '—'} · ${a.clients?.name ?? '—'} · ${a.users?.name ?? '—'} · ${apptDuration(a)} min${encaixe ? ' · Encaixe: fora do horário da unidade' : ''}${a.cancellation_reason ? ` · ${a.cancellation_reason}` : ''}${passou ? ` · ${TEXTO_DO_PASSOU}` : ''}`}
+                      title={`${continua ? `${continua} · ` : ''}${a.procedures?.name ?? '—'} · ${a.clients?.name ?? '—'} · ${a.users?.name ?? '—'} · ${apptDuration(a)} min${trecho?.continuaDepois ? ' · continua no dia seguinte' : ''}${encaixe ? ' · Encaixe: fora do horário da unidade' : ''}${a.cancellation_reason ? ` · ${a.cancellation_reason}` : ''}${passou ? ` · ${TEXTO_DO_PASSOU}` : ''}`}
                       style={{
                         opacity:      desmarcado(a) ? 0.6 : 1,
                         position: 'absolute',
@@ -429,7 +471,7 @@ function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioV
                       <div style={{ fontSize: 'var(--text-overline)', color: st.text, opacity: 0.6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
                         {desmarcado(a)
                           ? <>{st.label}{a.cancellation_reason ? ` · ${a.cancellation_reason}` : ''}</>
-                          : <>{a.status === 'ARRIVED' && <strong>{chegouEm(a.arrived_at)} · </strong>}{a.status === 'COMPLETED' && textoDoConcluido(a.scheduled_at, a.completed_at, fusoLocal()) && <strong>{textoDoConcluido(a.scheduled_at, a.completed_at, fusoLocal())} · </strong>}{a.users?.name ?? '—'}
+                          : <>{continua && <strong>{continua} · </strong>}{a.status === 'ARRIVED' && <strong>{chegouEm(a.arrived_at)} · </strong>}{a.status === 'COMPLETED' && textoDoConcluido(a.scheduled_at, a.completed_at, fusoLocal()) && <strong>{textoDoConcluido(a.scheduled_at, a.completed_at, fusoLocal())} · </strong>}{a.users?.name ?? '—'}
                             {passou && <span data-passou-sem-fechar style={{ color: 'var(--warning)', whiteSpace: 'nowrap' }}> · passou do horário</span>}</>}
                       </div>
                     </button>
@@ -472,7 +514,8 @@ function WeekGrid({
         {/* Cabeçalho dos dias */}
         {days.map((d, i) => {
           const isToday = d === todayStr
-          const dayAppts = appointments.filter(a => dayKeyTZ(a.scheduled_at, fusoLocal()) === d)
+          // Com o que continua de antes (25/11), como nas células abaixo.
+          const dayAppts = agendamentosDoDia(appointments, d)
           return (
             <div
               key={d}
@@ -508,7 +551,9 @@ function WeekGrid({
 
         {/* Células com agendamentos */}
         {days.map((d, i) => {
-          const dayAppts = appointments.filter(a => dayKeyTZ(a.scheduled_at, fusoLocal()) === d)
+          // Os que começam no dia e os que continuam de antes (25/11): o de vários
+          // dias aparece em cada um, com o início real.
+          const dayAppts = agendamentosDoDia(appointments, d)
           const isToday  = d === todayStr
 
           return (
@@ -534,13 +579,16 @@ function WeekGrid({
               })}
               {dayAppts.length === 0 ? (
                 <div style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', padding: '8px 4px' }}>—</div>
-              ) : dayAppts.map(a => {
+              ) : dayAppts.map(({ a, trecho }) => {
                 const st  = STATUS_STYLE[a.status] ?? STATUS_STYLE.SCHEDULED!
-                const t   = new Date(a.scheduled_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: fusoLocal() })
+                const t   = trecho.continuaDeAntes
+                  ? textoDoQueContinua(a.scheduled_at)
+                  : new Date(a.scheduled_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: fusoLocal() })
                 return (
                   <div
                     key={a.id}
                     data-agendamento={a.id}
+                    data-continua-de-antes={trecho.continuaDeAntes ? '' : undefined}
                     title={`${t} · ${a.procedures?.name ?? '—'} · ${a.clients?.name ?? '—'} · ${a.users?.name ?? '—'}${a.cancellation_reason ? ` · ${a.cancellation_reason}` : ''}${passouSemFechar({ status: a.status, start: a.scheduled_at, durationMin: apptDuration(a) }, agoraNa(a.branch_id)) ? ` · ${TEXTO_DO_PASSOU}` : ''}`}
                     style={{
                       opacity:      desmarcado(a) ? 0.6 : 1,
@@ -599,7 +647,7 @@ function StatusLegend() {
 // -- Componente principal ------------------------------------------------------
 export function AdminAgendaView({
   view, selectedDate, todayStr, branches, todasUnidades, unidadeId, appointments, janela, podeAgendar, vistaDela, meuId = null, podeConcluir = true, abreOAtendimento = false, quemConclui = null, bloqueios = [], paraBloquear = null,
-  filtros = SEM_FILTRO, opcoesDosFiltros = { profissionais: null, salas: null, tags: [] },
+  filtros = SEM_FILTRO, opcoesDosFiltros = { profissionais: null, salas: null, tags: [] }, emAndamento = null,
 }: Props) {
   const router = useRouter()
   const fala = useFala()
@@ -622,13 +670,20 @@ export function AdminAgendaView({
   const fusoDaTela = useFuso()
   const fusoDe = (branchId: string | null | undefined) => branches.find(b => b.id === branchId)?.fuso ?? fusoDaTela
   const diasDaTela = useMemo(() => new Set(view === 'week' ? Array.from({ length: 7 }, (_, i) => addDays(mondayStr, i)) : [selectedDate]), [view, mondayStr, selectedDate])
-  const naGrade = useMemo(() => appointments.map(a => {
+  const naParedeDaGrade = useMemo(() => appointments.map(a => {
     const f = branches.find(b => b.id === a.branch_id)?.fuso ?? fusoDaTela
     return {
       ...a, scheduled_at: isoNaParede(a.scheduled_at, f)!, started_at: isoNaParede(a.started_at, f),
       completed_at: isoNaParede(a.completed_at, f), arrived_at: isoNaParede(a.arrived_at, f),
     }
-  }).filter(a => diasDaTela.has(dayKeyTZ(a.scheduled_at, fusoLocal()))), [appointments, branches, fusoDaTela, diasDaTela])
+  }), [appointments, branches, fusoDaTela])
+  // Os números do topo contam os que COMEÇAM nos dias da tela (como sempre).
+  const naGrade = useMemo(() => naParedeDaGrade.filter(a => diasDaTela.has(dayKeyTZ(a.scheduled_at, fusoLocal()))), [naParedeDaGrade, diasDaTela])
+  // O desenho tem também o que começou antes e ainda ocupa um dia da tela (25/11).
+  const doDesenho = useMemo(() => naParedeDaGrade.filter(a => {
+    const r = naReguaDaGrade(a)
+    return [...diasDaTela].some(d => trechoDoAgendamentoNoDia(r, new Date(`${d}T12:00:00`)) !== null)
+  }), [naParedeDaGrade, diasDaTela])
   const bloqueiosNaGrade = useMemo(() => bloqueios.map(bl => {
     const f = branches.find(b => b.id === bl.branchId)?.fuso ?? fusoDaTela
     return { ...bl, inicio: isoNaParede(bl.inicio, f)!, fim: isoNaParede(bl.fim, f)! }
@@ -798,11 +853,14 @@ export function AdminAgendaView({
         ))}
       </div>
 
+      {/* "Em andamento" (o Heitor, 25/11): acima da grade, no dia e na semana. Vem pronto do servidor. */}
+      {(view === 'day' || view === 'week') && emAndamento}
+
       {/* Grade principal */}
       {view === 'day' ? (
         <DayGrid
           branches={branches}
-          appointments={naGrade}
+          appointments={doDesenho}
           janela={janela}
           dia={selectedDate}
           onSelecionar={abrir}
@@ -815,7 +873,7 @@ export function AdminAgendaView({
           mondayStr={mondayStr}
           todayStr={todayStr}
           branches={branches}
-          appointments={naGrade}
+          appointments={doDesenho}
           onDayClick={d => navigate(d, 'day')}
           bloqueios={bloqueiosNaGrade}
           podeDesfazer={podeAgendar}

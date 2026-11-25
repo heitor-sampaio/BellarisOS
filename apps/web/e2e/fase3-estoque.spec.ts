@@ -45,6 +45,8 @@ test('produto com estoque inicial grava movimento, saldo, lote e custo — sem d
   await dialogo.locator('input[name="initial_qty"]').fill(String(QTD))
   await dialogo.locator('input[name="initial_cost"]').fill(String(CUSTO))
   await dialogo.locator('input[name="initial_batch"]').fill('LOT-E2E')
+  await // O produto nasce sem caixa marcada (o Heitor, 25/11: "ok" à proposta): este é Insumo.
+  await await dialogo.getByRole('group', { name: 'Onde o produto está disponível' }).getByRole('checkbox', { name: 'Insumo' }).check()
   await dialogo.getByRole('button', { name: 'Criar produto' }).click()
   await expect(dialogo).toBeHidden()
 

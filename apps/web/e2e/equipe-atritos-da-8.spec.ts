@@ -107,7 +107,9 @@ test('A11: sem ninguém livre na unidade, o repasse diz quem atende em outra uni
       const linha = janela.locator(`[data-agendamento="${futuro}"]`)
       await expect(linha).toContainText('Ninguém livre que atenda nesta unidade')
       await expect(linha).toContainText(`${await nome(talita!)} (${nomeBatel})`)
-      await expect(linha).toContainText(`marque “${nomeA}” no “Atende clientes em”`)
+      // O Heitor, 25/11, à proposta de o aviso citar o que a ficha da Equipe mostra (a caixa “Atende clientes” e o
+      // “Escolher em quais unidades atende”), em vez do “Atende clientes em”: "ok".
+      await expect(linha).toContainText(`marque o “Atende clientes” (com mais de uma unidade, “${nomeA}” em “Escolher em quais unidades atende”) no lápis dela`)
     })
   } finally {
     await db().from('appointments').delete().eq('id', futuro)

@@ -11,6 +11,7 @@ import {
   type LinhaDoExtrato, type Recompensa, type VoucherDoCliente,
 } from '@/lib/fidelidade/leitura'
 import { EntradaDaRecompensa } from '@/lib/fidelidade/recompensa'
+import { recusaDoAjusteDePontos } from '@/lib/fidelidade/pontos-acima-do-comum'
 import { saidaDoVoucher } from '@/lib/estoque/baixa'
 import { comNovaTentativa } from '@/lib/estoque/nova-tentativa'
 import { voucherEmitido } from '@/lib/events/fidelidade'
@@ -114,10 +115,11 @@ async function ajustarPontosUmaVez(ctx: Awaited<ReturnType<typeof getTenantConte
   clientId: string; branchId: string; pontos: number; motivo: string
 }): Promise<{ error?: string }> {
 
-  const pontos = Math.trunc(Number(entrada?.pontos))
+  const pontos = Number(entrada?.pontos)
   if (!entrada?.clientId || !entrada?.branchId) return { error: 'Dados inválidos.' }
-  if (!Number.isFinite(pontos) || pontos === 0) return { error: 'Informe quantos pontos creditar ou debitar.' }
-  if (Math.abs(pontos) > 1_000_000)            return { error: 'Valor de pontos fora do limite.' }
+  // Só o impossível se recusa (o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser
+  // feito."): zero, fração e acima do integer. Acima de 1.000.000 a tela avisa; o saldo, o banco confere.
+  { const recusa = recusaDoAjusteDePontos(pontos); if (recusa) return { error: recusa } }
   if ((entrada.motivo ?? '').trim().length < 3) return { error: 'O motivo do ajuste é obrigatório.' }
   // A rede do cliente e da unidade a função do banco confere; a abrangência
   // do MEMBRO é daqui (§11): quem é de uma unidade só lança nela.

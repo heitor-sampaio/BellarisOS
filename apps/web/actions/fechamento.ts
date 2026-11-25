@@ -8,7 +8,10 @@ import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { getFechamentoDoDia } from '@/lib/metrics'
 import { janelaDoDia, diaDoFechamento } from '@/lib/financeiro/fechamento'
 import { fusoValido } from '@/lib/unidades/fuso'
-import { conferidoValido, linhasDaConferencia, fechamentoGravadoDaLinha } from '@/lib/financeiro/conferencia-do-fechamento'
+import {
+  conferidoValido, linhasDaConferencia, fechamentoGravadoDaLinha,
+  recusaDoFundoDeTroco, recusaDoDinheiroContado, recusaDoEsperadoNaGaveta,
+} from '@/lib/financeiro/conferencia-do-fechamento'
 import { getEstornosDoDia, getFechamentoPorQuemRecebeu, getFechamentoPorBandeira, getTaxasPorMaquininha } from '@/lib/metrics/fechamento-extra'
 import { csvDoFechamento, juntarCsvsDoFechamento } from '@/lib/financeiro/csv-da-contadora'
 import { unidadesParaLer } from '@/lib/unidades/da-tela'
@@ -40,7 +43,7 @@ export async function fecharODia(
     // Fecha quem recebe E vê o Fechamento (D6).
     if (!podeVerFechamento(ctx)) throw semAcesso()
     if (typeof dia !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dia)) return { error: 'Dia inválido.' }
-    if (!Number.isFinite(contado) || contado < 0) return { error: 'Informe o dinheiro contado.' }
+    { const recusa = recusaDoDinheiroContado(contado); if (recusa) return { error: recusa } }
 
     const admin = createAdminClient()
     const unidade = await ler(admin.from('branches').select('id, fuso')
@@ -60,6 +63,8 @@ export async function fecharODia(
     const conferencia = conferidoValido(conferidos ?? null,
       [...resumo.formas.map(f => f.forma), ...Object.keys(anterior?.conferido ?? {})])
     if ('error' in conferencia) return { error: conferencia.error }
+    // O esperado (o fundo + o dia) grava em numeric(12,2): o que não cabe, diz qual.
+    { const recusa = recusaDoEsperadoNaGaveta(resumo.esperadoDinheiro); if (recusa) return { error: recusa } }
     await gravar(admin.from('fechamentos_do_dia').insert({
       tenant_id:         ctx.tenantId!,
       branch_id:         branchId,
@@ -99,7 +104,9 @@ export async function informarFundoDeTroco(
     assertPodeReceber(ctx)
     if (!podeVerFechamento(ctx)) throw semAcesso()
     if (typeof dia !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dia)) return { error: 'Dia inválido.' }
-    if (typeof valor !== 'number' || !Number.isFinite(valor) || valor < 0 || valor > 1_000_000) return { error: 'Informe o fundo de troco (R$ 0,00 ou mais).' }
+    // O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." Acima de
+    // R$ 1.000.000 a tela avisa; só o negativo e o acima do registro se recusam.
+    { const recusa = recusaDoFundoDeTroco(valor); if (recusa) return { error: recusa } }
     if (typeof branchId !== 'string' || !/^[0-9a-f-]{36}$/i.test(branchId)) return { error: 'Unidade não encontrada.' }
 
     const admin = createAdminClient()

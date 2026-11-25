@@ -30,9 +30,12 @@ describe('a tabela da operadora colada', () => {
     expect(r.ignoradas).toEqual(['Débito 1,99', 'Pix 0,99'])
   })
 
-  it('recusa o que não entende, a vez acima de 12x e a repetida — sem chutar', () => {
+  // O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." — acima de 12 vezes avisa.
+  it('recusa o que não entende, a vez acima de 1.200x e a repetida — sem chutar', () => {
     expect(taxasDaTabelaColada('1x abc').erros[0]).toContain('1x abc')
-    expect(taxasDaTabelaColada('13x 9,99').erros[0]).toContain('13x')
+    // O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." — acima de 12 vezes avisa.
+    expect(taxasDaTabelaColada('13x 9,99').erros).toEqual([])
+    expect(taxasDaTabelaColada('1201x 9,99').erros[0]).toContain('1201x')
     expect(taxasDaTabelaColada('2x 4,09\n2x 4,19').erros[0]).toContain('2x aparece duas vezes')
     expect(taxasDaTabelaColada('1x -2').erros[0]).toContain('negativa')
   })

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { maximoDeParcelasNoCrediario } from '@/actions/comissoes'
-import { opcoesDeVezes, TETO_DE_VEZES } from '@/lib/financeiro/vezes-do-cartao'
+import { opcoesDeVezes, VEZES_SEM_TAXA } from '@/lib/financeiro/vezes-do-cartao'
 import { useMaquininhas, maquininhaEscolhida } from '@/components/shared/use-maquininhas'
 import { opcoesDeParcelas, CREDIARIO_PADRAO } from '@/lib/financeiro/parcelas-do-crediario'
 
@@ -17,7 +17,7 @@ import { opcoesDeParcelas, CREDIARIO_PADRAO } from '@/lib/financeiro/parcelas-do
 export function useOpcoesDeVezes(maquininha?: string | null): number[] {
   const leitura = useMaquininhas()
   const m = maquininhaEscolhida(leitura?.lista, maquininha)
-  return opcoesDeVezes(leitura ? (m?.maximo ?? TETO_DE_VEZES) : 1)
+  return opcoesDeVezes(leitura ? (m?.maximo ?? VEZES_SEM_TAXA) : 1)
 }
 
 /**

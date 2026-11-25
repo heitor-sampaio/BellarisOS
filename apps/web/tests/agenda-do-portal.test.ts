@@ -22,10 +22,15 @@ describe('a agenda do portal da cliente', () => {
     expect(separarAgendaDoPortal(lista, agora).proximos.map(x => x.id)).toEqual(['amanha', 'depois'])
   })
   it('o que já passou vai ao histórico, mesmo sem ter sido fechado — nada some', () => {
-    const { proximos, historico } = separarAgendaDoPortal(lista, agora)
+    const { emAndamento, proximos, historico } = separarAgendaDoPortal(lista, agora)
+    // O Heitor, 25/11: "Em aberto, com o início já passado e o fim ainda por
+    // vir, de qualquer dia (o de 30 horas que começou ontem entra)." O "Na
+    // clínica" das 23:50 (sem duração: 60 minutos) ainda não acabou às 00:20:
+    // é "Em andamento", não histórico. Era: no histórico.
+    expect(emAndamento.map(x => x.id)).toEqual(['passou-na-unidade'])
     expect(historico.map(x => x.id).sort()).toEqual(
-      ['cancelado-futuro', 'concluido', 'passou-agendado', 'passou-em-atendimento', 'passou-na-unidade'].sort())
-    expect(proximos.length + historico.length).toBe(lista.length)
+      ['cancelado-futuro', 'concluido', 'passou-agendado', 'passou-em-atendimento'].sort())
+    expect(emAndamento.length + proximos.length + historico.length).toBe(lista.length)
   })
 })
 
@@ -46,7 +51,12 @@ describe('A51: o de hoje que passou da hora, em aberto, não some', () => {
       a('ontem-aberto', 'ARRIVED', '2026-11-04T23:50:00-03:00'),
       a('hoje-concluido', 'COMPLETED', '2026-11-05T09:00:00-03:00'),
     ]
-    expect(separarAgendaDoPortal(lista, agora).proximos.map(x => x.id)).toEqual(['hoje-passou', 'hoje-em-atendimento', 'depois'])
+    // O Heitor, 25/11: "Em aberto, com o início já passado e o fim ainda por
+    // vir, de qualquer dia". O "Em atendimento" das 14:30 (sem duração: 60
+    // minutos) não acabou às 15:00: sai dos Próximos para o "Em andamento".
+    // Era: ['hoje-passou', 'hoje-em-atendimento', 'depois'] nos Próximos.
+    expect(separarAgendaDoPortal(lista, agora).proximos.map(x => x.id)).toEqual(['hoje-passou', 'depois'])
+    expect(separarAgendaDoPortal(lista, agora).emAndamento.map(x => x.id)).toEqual(['hoje-em-atendimento'])
     expect(ehProximo(a('x', 'NO_SHOW', '2026-11-05T16:00:00-03:00'), agora), 'falta não é próximo').toBe(false)
     // A consulta da home começa no início de HOJE em Brasília (03:00 UTC).
     expect(inicioDosProximos(agora)).toBe('2026-11-05T03:00:00.000Z')

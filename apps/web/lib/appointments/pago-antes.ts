@@ -49,9 +49,11 @@ export async function pagosAntes(
     const doPrePago = (unidades ?? []) as { appointment_id: string; sale_id: string; numero: number }[]
     if (doPrePago.length) {
       const vendas = [...new Set(doPrePago.map(u => u.sale_id))]
-      const todas = ((await ler(admin.from('procedure_sale_units').select('sale_id').in('sale_id', vendas), 'contar as unidades do pré-pago')) ?? []) as { sale_id: string }[]
+      // O total é a quantidade da venda (uma linha por sessão): contar as linhas
+      // cortava em 1000, e o pré-pago passou a levar mais de 100 (o Heitor, 25/11).
+      const todas = ((await ler(admin.from('procedure_sales').select('id, quantity').in('id', vendas), 'contar as sessões do pré-pago')) ?? []) as { id: string; quantity: number }[]
       const total = new Map<string, number>()
-      for (const u of todas) total.set(u.sale_id, (total.get(u.sale_id) ?? 0) + 1)
+      for (const v of todas) total.set(v.id, Number(v.quantity))
       for (const u of doPrePago) {
         textos.set(u.appointment_id, `Pré-pago · ${u.numero} de ${total.get(u.sale_id) ?? u.numero}`)
         vendaDe.set(u.appointment_id, u.sale_id)

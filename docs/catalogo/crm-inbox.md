@@ -480,7 +480,7 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/regras/crm-inbox.md:972-979`, `:1737`
 - Antes: KC-57, KC-58, KE-67
 
-**IM-22.** A coluna "Pacote de antes" ("procedimento; total; usadas", com valor de referência e validade opcionais, vários separados por "|") cria o pacote trazido de fora na unidade da linha ou na da tela; só se oferece a quem tem o Financeiro em Gerenciar, não traz o mesmo pacote duas vezes e deixa de fora, com o motivo, o que não se entende. A prévia mostra o formato e as três primeiras linhas e avisa quantos pacotes estão sem valor de referência (neles a comissão de execução em percentual é R$ 0 — a de R$ fixo por sessão é paga — e eles não entram na receita). O Histórico do app mostra o que veio de antes ("Antes do sistema — 5 sessões de…"), sem virar atendimento.
+**IM-22.** A coluna "Pacote de antes" ("procedimento; total; usadas", com valor de referência e validade opcionais, vários separados por "|") cria o pacote trazido de fora na unidade da linha ou na da tela; só se oferece a quem tem o Financeiro em Gerenciar, não traz o mesmo pacote duas vezes e deixa de fora, com o motivo, o que não se entende e o acima de 32.767 sessões (o limite do registro; sem o teto de 200 de antes — o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito."; o número é decisão do Claude). A prévia mostra o formato e as três primeiras linhas e avisa quantos pacotes estão sem valor de referência (neles a comissão de execução em percentual é R$ 0 — a de R$ fixo por sessão é paga — e eles não entram na receita). O Histórico do app mostra o que veio de antes ("Antes do sistema — 5 sessões de…"), sem virar atendimento.
 - Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-06: "concordo"
 - Onde: `docs/regras/crm-inbox.md:989-1013`
 - Antes: KC-60, KC-61, KC-63
@@ -778,6 +778,11 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Fonte: decisão do Claude
 - Onde: `docs/regras/crm-inbox.md:1286`, `:1621`
 - Antes: KD-33, KE-34
+
+**OP-37.** O valor estimado da oportunidade recusa só o ilegível, o negativo e o que o registro não guarda — acima de R$ 9.999.999.999,99 ("No máximo 9.999.999.999,99 reais (o limite do registro).") —, na janela (criar e editar) e no núcleo que o Copilot e a importação chamam.
+- Fonte: o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito."; o limite (o tipo da coluna, numeric(12,2)) é decisão do Claude, 25/11
+- Onde: `docs/regras/crm-inbox.md` ("Correções de 25/11 no card e nos funis"); `apps/web/lib/crm/valor-do-card.ts`
+- Antes: o erro do banco, em inglês
 
 ## Perguntas ao Heitor
 

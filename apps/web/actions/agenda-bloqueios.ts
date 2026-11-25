@@ -14,8 +14,10 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { gravar, ler, mensagemDoErro } from '@/lib/db'
+import { gravar, ler, lerTodas, mensagemDoErro } from '@/lib/db'
 import { recusaDoBloqueio } from '@/lib/agenda/bloqueio'
+import { DURACAO_COMUM_MIN, podemOcuparDesde } from '@/lib/appointments/core'
+import { fimDaOcupacao, bateNaOcupacao } from '@/lib/appointments/ocupacao'
 import { filtroDeQuemAtendeNaUnidade } from '@/lib/cached-queries'
 
 const UUID = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
@@ -72,11 +74,21 @@ export async function bloquearHorario(entrada: unknown): Promise<Resultado> {
     }).select('id').single(), 'gravar o bloqueio da agenda') as { id: string }
 
     // O que já estava marcado no período continua (princípio 2): a tela diz.
-    let q = admin.from('appointments').select('id', { count: 'exact', head: true })
-      .not('status', 'in', '("CANCELLED","NO_SHOW","COMPLETED")').lt('scheduled_at', fim)
-      .gte('scheduled_at', new Date(new Date(inicio).getTime() - 12 * 3_600_000).toISOString())
-    q = e.professionalId ? q.eq('professional_id', e.professionalId) : q.eq('room_id', e.roomId!)
-    const { count } = await q
+    // "Perto" é o que começou até 12 h antes ou ainda ocupa o período, com
+    // qualquer duração (25/11: o de 30 h de ontem ficava de fora, calado).
+    const iniMs = new Date(inicio).getTime(), fimMs = new Date(fim).getTime()
+    const marcados = await lerTodas((de, ate) => {
+      let q = admin.from('appointments').select('id, scheduled_at, duration_min, status, completed_at, branches!inner(tenant_id)')
+        .eq('branches.tenant_id', ctx.tenantId!)
+        .not('status', 'in', '("CANCELLED","NO_SHOW","COMPLETED")').lt('scheduled_at', fim)
+        .or(podemOcuparDesde(iniMs))
+      q = e.professionalId ? q.eq('professional_id', e.professionalId) : q.eq('room_id', e.roomId!)
+      return q.order('scheduled_at').order('id').range(de, ate)
+    }, 'contar os atendimentos do período') as { scheduled_at: string; duration_min: number | null; status: string; completed_at: string | null }[]
+    const count = marcados.filter(a => {
+      const aIni = new Date(a.scheduled_at).getTime()
+      return aIni >= iniMs - DURACAO_COMUM_MIN * 60_000 || bateNaOcupacao(iniMs, fimMs, aIni, fimDaOcupacao(a))
+    }).length
     const aviso = count ? `${count === 1 ? 'Já há 1 atendimento marcado' : `Já há ${count} atendimentos marcados`} perto desse período: ${count === 1 ? 'ele continua' : 'eles continuam'} na agenda. Remarque se precisar.` : null
 
     revalidar()

@@ -1,5 +1,5 @@
 import { formatBRL } from '@estetica-os/utils'
-import { MAXIMO_DE_OUTRAS, valorDaParte, valorDaPrincipal, type EstadoDaParte } from '@/lib/checkout/varias-formas'
+import { valorDaParte, valorDaPrincipal, type EstadoDaParte } from '@/lib/checkout/varias-formas'
 
 /**
  * O "Receber" do a receber e da parcela do crediário em mais de uma forma (A1
@@ -22,9 +22,13 @@ export const FORMAS_DA_BAIXA_EM_PARTES = ['PIX', 'CASH', 'DEBIT_CARD', 'CREDIT_C
 
 const centavos = (v: number) => Math.round(v * 100)
 
-/** A recusa das partes, ou nulo: cada uma com forma e valor, e a soma fechando o valor do lançamento. */
+/**
+ * A recusa das partes, ou nulo: cada uma com forma e valor, e a soma fechando o
+ * valor do lançamento. Quantas partes, não: o Heitor, 25/11, sobre o limite de
+ * 5 formas: "Não precisa de aviso, essa não é uma ação automatica, o usuario
+ * vai precisar clicar em um botão, então ele fez de proposito."
+ */
 export function recusaDasFormasDaBaixa(partes: readonly ParteDaBaixa[], valor: number): string | null {
-  if (partes.length > MAXIMO_DE_OUTRAS + 1) return `Divida em até ${MAXIMO_DE_OUTRAS + 1} formas.`
   if (partes.some(p => !(FORMAS_DA_BAIXA_EM_PARTES as readonly string[]).includes(p.forma))) return 'Escolha a forma de cada parte.'
   if (partes.some(p => !(typeof p.valor === 'number' && Number.isFinite(p.valor) && centavos(p.valor) > 0))) return 'Digite o valor de cada forma (acima de zero).'
   if (partes.some(p => p.vezes != null && p.vezes > 1 && p.forma !== 'CREDIT_CARD')) return 'As vezes no cartão são só no crédito (o débito é 1x).'
@@ -61,7 +65,7 @@ export function partesDaBaixa(
 
 /** O que chega do navegador → as partes (ou a recusa). Nada além do formato: o resto é `recusaDasFormasDaBaixa`. */
 export function lerPartesDaBaixa(bruto: unknown): ParteDaBaixa[] | { error: string } {
-  if (!Array.isArray(bruto) || bruto.length > MAXIMO_DE_OUTRAS + 1) return { error: 'Formas inválidas.' }
+  if (!Array.isArray(bruto)) return { error: 'Formas inválidas.' }
   const partes: ParteDaBaixa[] = []
   for (const p of bruto as unknown[]) {
     if (!p || typeof p !== 'object') return { error: 'Formas inválidas.' }

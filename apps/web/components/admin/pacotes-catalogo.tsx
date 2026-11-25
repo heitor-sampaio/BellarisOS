@@ -10,10 +10,12 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { Dica } from '@/components/shared/dica'
 import { CampoDeValor, paraTexto } from '@/components/admin/comissao-do-membro'
 import {
-  COMISSAO_DO_PACOTE_PADRAO, rotuloDaComissaoDoPacote,
+  COMISSAO_DO_PACOTE_PADRAO, rotuloDaComissaoDoPacote, recusaDoValorDaComissao,
   type ComissaoDoPacote, type ExecucaoDoPacote, type TipoDeRegra,
 } from '@/lib/comissoes/config'
 import { descontoDoPacote } from '@/lib/pacotes/desconto'
+import { avisoDaValidadeEmDias } from '@/lib/vendas/validade'
+import { avisoDasSessoesDoPacote, avisoDoPrecoDoPacote } from '@/lib/pacotes/tamanho-e-valor'
 import { documentosPuxadosDoPacote, type ModeloAtivo, type ProcedimentoComDocumentos } from '@/lib/pacotes/documentos'
 
 /**
@@ -239,7 +241,7 @@ function Formulario({ inicial, procedimentos, documentos, podeComissao, aoTermin
               <option value="" disabled>Escolha o procedimento</option>
               {procedimentos.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
-            <input className="field" type="number" min={1} max={100} placeholder="Ex.: 5" aria-label={`Sessões do procedimento ${i + 1}`}
+            <input className="field" type="number" min={1} placeholder="Ex.: 5" aria-label={`Sessões do procedimento ${i + 1}`}
               value={it.quantidade} onChange={e => mudarItem(i, { quantidade: e.target.value })} />
             <button type="button" className="btn-ghost" style={{ padding: 6, color: 'var(--text-muted)' }} disabled={r.itens.length === 1}
               aria-label={`Tirar o procedimento ${i + 1}`} onClick={() => mudar({ itens: r.itens.filter((_, j) => j !== i) })}>
@@ -258,6 +260,12 @@ function Formulario({ inicial, procedimentos, documentos, podeComissao, aoTermin
         <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
           {sessoes} sess{sessoes === 1 ? 'ão' : 'ões'} no pacote{avulso > 0 ? ` · avulsas sairiam por ${formatBRL(avulso)}` : ''}.
         </p>
+        {/* O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." Acima do comum, avisa. */}
+        {avisoDasSessoesDoPacote(sessoes) && (
+          <span role="status" data-acima-do-comum="sessoes-do-pacote" style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+            {avisoDasSessoesDoPacote(sessoes)}
+          </span>
+        )}
       </div>
 
       <div className="form-2col">
@@ -270,10 +278,21 @@ function Formulario({ inicial, procedimentos, documentos, podeComissao, aoTermin
             const desconto = descontoDoPacote(numero(precoNaTela), avulso)
             return desconto && <span data-desconto-do-pacote style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{desconto}.</span>
           })()}
+          {avisoDoPrecoDoPacote(numero(precoNaTela)) && (
+            <span role="status" data-acima-do-comum="preco-do-pacote" style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+              {avisoDoPrecoDoPacote(numero(precoNaTela))}
+            </span>
+          )}
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <span style={rotulo}>Validade em dias (vazio = sem validade)</span>
           <input className="field" type="number" min={1} aria-label="Validade do pacote" value={r.validade} onChange={e => mudar({ validade: e.target.value })} />
+          {/* O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." Acima do comum, avisa. */}
+          {r.validade.trim() !== '' && avisoDaValidadeEmDias(Number(r.validade)) && (
+            <span role="status" data-aviso-da-validade style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+              {avisoDaValidadeEmDias(Number(r.validade))}
+            </span>
+          )}
         </label>
       </div>
       {documentos && (
@@ -379,6 +398,9 @@ function comissaoDoRascunho(c: ComissaoDoRascunho): { entrada: ComissaoDoPacote 
     const v = numero(texto)
     if (!texto.trim() || !Number.isFinite(v) || v < 0) return `Informe o valor da comissão de ${qual}.`
     if (tipo === 'PERCENTAGE' && v > 100) return `A comissão de ${qual} é de no máximo 100%.`
+    // O R$ fixo até o limite do registro, a mesma regra das outras telas de comissão (o Heitor, 25/11).
+    const acima = tipo === 'FIXED_AMOUNT' ? recusaDoValorDaComissao(tipo, v, `na comissão de ${qual}`) : null
+    if (acima) return acima
     return v
   }
   let venda: ComissaoDoPacote['venda'] = null

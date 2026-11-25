@@ -165,8 +165,8 @@ Este é o catálogo das regras do Copilot que valem HOJE: o que ele é e quem us
 - Onde: `docs/regras/copilot.md:377-379`
 - Antes: KB-12
 
-**CJ-12.** Na lista de agendamentos do cartão, cada item diz o dia quando o período tem mais de um dia, e a unidade quando a pessoa alcança mais de uma.
-- Fonte: princípio 3
+**CJ-12.** Na lista de agendamentos do cartão, cada item diz o dia quando o período tem mais de um dia, e a unidade quando a pessoa alcança mais de uma. A lista traz também o atendimento que começou antes do período e ainda o ocupa (o que atravessa a meia-noite, o de vários dias), com o início real ("desde qua., 09/12 às 18:00"): nele a pessoa não está livre.
+- Fonte: princípio 3; o que continua de antes: decisão do Claude, 25/11, pelo princípio 3
 - Onde: `docs/regras/copilot.md:381-385`
 - Antes: KB-13
 
@@ -293,6 +293,26 @@ Este é o catálogo das regras do Copilot que valem HOJE: o que ele é e quem us
 - Fonte: decisão do Claude, pelo princípio 3 (A1 da 27ª simulação)
 - Onde: `docs/regras/copilot.md:371-378`
 - Antes: (sem número: `docs/inventario/leitura.md` §4)
+
+**CX-13.** O Copilot recusa o mesmo que a tela do mesmo gesto, nem mais nem menos, e diz o motivo em português. Lançar, a entrada e o ajuste de estoque e a oportunidade não têm teto de valor nem de quantidade; a oportunidade aceita o valor estimado zero e quantos procedimentos de interesse a pessoa disser, a entrada aceita o custo zero, e o marcar tags, quantas tags do vocabulário a pessoa pedir. Recusa só o impossível: o zero e o negativo onde a tela recusa, e o que o registro não guarda — R$ 99.999.999,99 no lançamento e no custo da entrada, R$ 9.999.999.999,99 no valor da oportunidade, 999.999,9999 na quantidade e no saldo do estoque (na unidade de consumo, quando o produto tem uma). O cartão da entrada diz o aviso do custo fora do comum que a janela de Entrada diz, sem recusar.
+- Fonte: o Heitor, 2026-11-25: "Se não for impossível, ainda que improvável, pode ser feito."; o limite de cada campo (o tipo da coluna) é decisão do Claude, 25/11
+- Onde: `docs/regras/copilot.md` ("O Copilot recusa o que a tela recusa"); os limites no núcleo (`apps/web/lib/financeiro/limites-do-registro.ts`, `apps/web/lib/estoque/limites-do-registro.ts`, `apps/web/lib/crm/valor-do-card.ts`), que `apps/web/lib/copilot/ferramentas/limites-do-registro.ts` reexporta
+- Antes: os tetos só do Copilot (R$ 10.000.000, 100.000 embalagens, R$ 1.000.000 de custo, 1.000.000 no ajuste, 5 procedimentos, 10 tags)
+
+**CX-14.** O horário que já passou, no agendar e no remarcar do Copilot, é o da tela: a mesma regra e a mesma mensagem ("Esse horário (…) já passou. Escolha a partir de …"), sem tolerância — o minuto de agora vale. No remarcar, só o horário NOVO se confere: trocar só quem atende (o mesmo horário) vale mesmo com o horário marcado já passado.
+- Fonte: o Heitor, 2026-11-25: "recusa, não dá pra agendar no passado"; e "remarcar para o passado é possível desde que não tenha passado do horario já, o que tornaria impossível desse atendimento acontecer"
+- Onde: `docs/regras/copilot.md` ("O Copilot recusa o que a tela recusa"); `apps/web/lib/appointments/horario-passado.ts`
+- Antes: 5 minutos de tolerância e "Esse horário já passou." só no Copilot
+
+**CX-15.** Os textos das gravações do Copilot seguem a tela do mesmo gesto: o que a tela grava sem teto (a observação do agendar, o motivo do cancelamento, a descrição do lançamento, o lote e a observação da entrada, o motivo do ajuste, a observação da oportunidade) não tem teto, e o mínimo é o da tela, com a frase dela; o que tem limite na tela ou no registro mantém o número (a marca e o fornecedor 120, a nota fiscal 60, a tag 60 e a origem 60; o nome e o e-mail da oportunidade, sem teto, como a janela — `leads.name` e `leads.email` viraram text em `20261208000001`). Os nomes que ele procura e os campos de formato mantêm o limite técnico. Toda recusa de tamanho é em português ("No máximo N caracteres.").
+- Fonte: o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." (copilot.md: "recusa na mensagem padrão do zod, em inglês" é defeito); cada limite: decisão do Claude, 25/11
+- Onde: `docs/regras/copilot.md` ("Os tamanhos de texto também"); `apps/web/lib/copilot/ferramentas/comum.ts` (`texto`)
+- Antes: observação até 300, descrição e motivo até 200, nome até 120 e lote até 60, com o "Too big: expected string…" do zod
+
+**CX-16.** O remarcar do Copilot recusa no preparo o agendamento Em atendimento, com a frase do núcleo da tela ("Este agendamento está em atendimento agora: não se remarca. Para desistir, use "Cancelar" no atendimento."): o cartão não aparece para algo que o Confirmar recusaria.
+- Fonte: decisão do Claude, 25/11, pelo princípio 3
+- Onde: `docs/regras/copilot.md` ("O remarcar recusa o Em atendimento no PREPARO"); `apps/web/lib/copilot/ferramentas/agenda-escrita.ts`
+- Antes: a recusa só no Confirmar
 
 ## O que ele não faz (CY)
 

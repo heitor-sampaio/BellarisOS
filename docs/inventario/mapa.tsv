@@ -1583,7 +1583,7 @@ apps/web/e2e/indicadores-cenario.spec.ts	208	indicadores:DI-01	integracao	ok	A l
 apps/web/e2e/indicadores-cenario.spec.ts	219	indicadores:RA-01; indicadores:RE-03; comissoes:CF-07	integracao	ok	Os rankings de procedimento, profissional, comissão e cliente.
 apps/web/e2e/indicadores-cenario.spec.ts	240	comissoes:CF-07; indicadores:CC-09; indicadores:CC-02	integracao	ok	As comissões em detalhe, a retenção e a série de novos (vazia na unidade).
 apps/web/e2e/indicadores-cenario.spec.ts	254	indicadores:DI-01; indicadores:RE-04; indicadores:RE-07; indicadores:RA-01; indicadores:RA-09; indicadores:OC-08; indicadores:LU-02; indicadores:TM-02; indicadores:RE-03; indicadores:CC-07; indicadores:RA-08; indicadores:LU-15; indicadores:ER-01; indicadores:ER-02	integracao	ok	As abas dos Relatórios (metrics_relatorio) contra valores escritos à mão.
-apps/web/e2e/indicadores-cenario.spec.ts	346	indicadores:CC-05; indicadores:RE-03; indicadores:TM-04; indicadores:ER-01	integracao	contradiz	CC-05: o Reativar é sempre o da rede (quem nunca veio também entra); o caso exige a versão por unidade (metrics_clientes_para_reativar, que o app não usa mais), sem a C3 de outra unidade.
+apps/web/e2e/indicadores-cenario.spec.ts	346	indicadores:CC-05; indicadores:RE-03; indicadores:TM-04; indicadores:ER-01	integracao	contradiz	CC-05: o Reativar é sempre o da rede (quem nunca veio também entra); o caso exige a versão por unidade (metrics_clientes_para_reativar, que o app não usa mais), sem a C3 de outra unidade. Resolvido em 25/11: a função por unidade e este trecho saíram (o Heitor, "ok mas tenha certeza absoluta que não é usada"; migration `20261206700001`).
 apps/web/e2e/indicadores-cenario.spec.ts	380	indicadores:FO-01	integracao	ok	O funil por etapa; o "converted" da função é o "Já é cliente", não a conversão.
 apps/web/e2e/indicadores-concluido-antes-da-hora.spec.ts	38	indicadores:OC-01; indicadores:RA-01; indicadores:VE-02	integracao	ok	Pelas funções de métricas: o concluído antes da hora conta no dia da conclusão.
 apps/web/e2e/indicadores-credito-interno.spec.ts	68	indicadores:RE-02	tela	ok	
@@ -1605,7 +1605,7 @@ apps/web/e2e/indicadores-f68-contas.spec.ts	56	indicadores:TM-01; indicadores:RE
 apps/web/e2e/indicadores-f68-contas.spec.ts	74	indicadores:RE-08; indicadores:LU-04	integracao	ok	
 apps/web/e2e/indicadores-f68-contas.spec.ts	106	indicadores:FO-02	integracao	ok	
 apps/web/e2e/indicadores-f68-contas.spec.ts	124	indicadores:OC-01	integracao	ok	
-apps/web/e2e/indicadores-f68-contas.spec.ts	139	indicadores:CC-05	integracao	contradiz	Exige que o Reativar recortado à unidade A liste a cliente que veio à B há 10 dias (última visita NELA); o CC-05 diz que quem foi a outra unidade não sumiu: o Reativar é sempre o da rede.
+apps/web/e2e/indicadores-f68-contas.spec.ts	139	indicadores:CC-05	integracao	contradiz	Exige que o Reativar recortado à unidade A liste a cliente que veio à B há 10 dias (última visita NELA); o CC-05 diz que quem foi a outra unidade não sumiu: o Reativar é sempre o da rede. Resolvido em 25/11: a função por unidade e este trecho saíram (o Heitor, "ok mas tenha certeza absoluta que não é usada"; migration `20261206700001`).
 apps/web/e2e/indicadores-f68-contas.spec.ts	163	automacoes:PU-02	integracao	ok	
 apps/web/e2e/indicadores-f68-contas.spec.ts	176	indicadores:CC-02	integracao	ok	
 apps/web/e2e/indicadores-f68-telas.spec.ts	118	indicadores:VP-06	tela	ok	
@@ -1632,7 +1632,7 @@ apps/web/e2e/indicadores-reativar-clientes-da-rede.spec.ts	82	indicadores:CC-05;
 apps/web/e2e/indicadores-reativar-clientes-da-rede.spec.ts	99	indicadores:CC-04; indicadores:CC-03	tela	ok	
 apps/web/e2e/indicadores-reativar-clientes-da-rede.spec.ts	113	indicadores:CC-05; indicadores:DB-04	tela	ok	
 apps/web/e2e/indicadores-reativar-clientes-da-rede.spec.ts	124	indicadores:CC-05; indicadores:CC-04	tela	ok	
-apps/web/e2e/indicadores-reativar-clientes.spec.ts	19	indicadores:CC-05	integracao	fraco	Prova na função metrics_clientes_para_reativar (por unidade), que nenhuma tela chama desde a 24ª: o quadro usa a _rede. Passa mesmo que a conta da tela mude.
+apps/web/e2e/indicadores-reativar-clientes.spec.ts	19	indicadores:CC-05	integracao	fraco	Prova na função metrics_clientes_para_reativar (por unidade), que nenhuma tela chama desde a 24ª: o quadro usa a _rede. Passa mesmo que a conta da tela mude. Resolvido em 25/11: a função por unidade e este trecho saíram (o Heitor, "ok mas tenha certeza absoluta que não é usada"; migration `20261206700001`).
 apps/web/e2e/indicadores-reativar-clientes.spec.ts	37	indicadores:CC-03; indicadores:DB-01	tela	ok	
 apps/web/e2e/indicadores-reativar-sem-visita.spec.ts	46	indicadores:CC-06; indicadores:CC-08	tela	ok	
 apps/web/e2e/indicadores-reativar-sem-visita.spec.ts	57	indicadores:CC-06	tela	ok	
@@ -2377,7 +2377,7 @@ apps/web/e2e/tags-sem-unidade.spec.ts	135	crm-inbox:TG-02; crm-inbox:TG-01	integ
 apps/web/e2e/tags-sem-unidade.spec.ts	147	crm-inbox:CL-17	tela	ok	
 apps/web/e2e/tags-sem-unidade.spec.ts	158	crm-inbox:CL-17; crm-inbox:CL-18	tela	ok	
 apps/web/e2e/tags-sem-unidade.spec.ts	173	crm-inbox:CL-19; crm-inbox:TG-01	integracao	ok	
-apps/web/e2e/tags-sem-unidade.spec.ts	203	crm-inbox:TG-01; crm-inbox:CL-19	integracao	fraco	o título diz o "Reativar" da unidade por atendimento, que a CL-19 desfez (é o da rede); a ficha só com a tag não tem visita, e fica fora com ou sem a tag
+apps/web/e2e/tags-sem-unidade.spec.ts	203	crm-inbox:TG-01; crm-inbox:CL-19	integracao	fraco	o título diz o "Reativar" da unidade por atendimento, que a CL-19 desfez (é o da rede); a ficha só com a tag não tem visita, e fica fora com ou sem a tag Resolvido em 25/11: a função por unidade e este trecho saíram (o Heitor, "ok mas tenha certeza absoluta que não é usada"; migration `20261206700001`).
 apps/web/e2e/tags-sem-unidade.spec.ts	216	automacoes:PU-02	tela	ok	
 apps/web/e2e/tags-sem-unidade.spec.ts	232	atendimento:AG-12; crm-inbox:TG-01	tela	ok	
 apps/web/e2e/tags-sem-unidade.spec.ts	252	atendimento:AG-12	tela	ok	
@@ -2771,7 +2771,7 @@ apps/web/tests/atritos-da-15.test.ts	210	plataforma:AD-21	unidade	ok
 apps/web/tests/atritos-da-15.test.ts	217	plataforma:AD-19	unidade	ok	
 apps/web/tests/atritos-da-15.test.ts	230	plataforma:AD-14	unidade	ok	
 apps/web/tests/atritos-da-15.test.ts	242	plataforma:AD-27	unidade	ok	
-apps/web/tests/atritos-da-15.test.ts	250	documentos:DD-02	leitura-do-fonte	contradiz	DD-02 chama o link de "Completar o cadastro"; o teste exige "Completar a ficha" em checkout-wizard.tsx:1052 (o mesmo arquivo usa "Completar o cadastro" na 554)
+apps/web/tests/atritos-da-15.test.ts	250	documentos:DD-02	leitura-do-fonte	contradiz	DD-02 chama o link de "Completar o cadastro"; o teste exige "Completar a ficha" em checkout-wizard.tsx:1052 (o mesmo arquivo usa "Completar o cadastro" na 554) Resolvido em 25/11: o Heitor, "Completar cadastro"; o link e o teste dizem "Completar o cadastro".
 apps/web/tests/atritos-da-15.test.ts	253	CLAUDE.md §1; atendimento:PL-09	leitura-do-fonte	ok	vocabulário
 apps/web/tests/atritos-da-15.test.ts	260	atendimento:FI-14	leitura-do-fonte	ok	
 apps/web/tests/atritos-da-15.test.ts	265	atendimento:ES-29	leitura-do-fonte	ok	o "Movimentar" é a ES-49, que o catálogo deixou fora
@@ -5861,9 +5861,9 @@ apps/web/tests/resumo-do-cargo-vistas-pessoais.test.ts	12	plataforma:CG-16; plat
 apps/web/tests/resumo-do-cargo-vistas-pessoais.test.ts	21	plataforma:CG-16; plataforma:CG-04	unidade	ok	
 apps/web/tests/resumo-do-cargo-vistas-pessoais.test.ts	28	plataforma:CG-16; plataforma:PN-06	unidade	ok	
 apps/web/tests/resumo-do-cargo-vistas-pessoais.test.ts	36	plataforma:CG-15; plataforma:CG-16	leitura-do-fonte	ok	
-apps/web/tests/resumo-do-cargo.test.ts	9	plataforma:CG-17	unidade	contradiz	CG-17 manda o resumo não contar as abas da configuração da rede toda; o teste exige "Configurações (só Comissões e taxas)" no modo sem soAsDela, que a tela (soAsDela:true) não usa
-apps/web/tests/resumo-do-cargo.test.ts	12	plataforma:CG-17	unidade	contradiz	CG-17 manda não contar as abas da rede toda; o teste exige Fichas/Documentos listados no resumo (modo sem soAsDela, que a tela de Cargos não usa)
-apps/web/tests/resumo-do-cargo.test.ts	15	plataforma:CG-17	unidade	contradiz	CG-17 manda não contar as abas da rede toda; o teste exige essas abas no resumo (modo sem soAsDela, que a tela de Cargos não usa)
+apps/web/tests/resumo-do-cargo.test.ts	9	plataforma:CG-17	unidade	contradiz	CG-17 manda o resumo não contar as abas da configuração da rede toda; o teste exige "Configurações (só Comissões e taxas)" no modo sem soAsDela, que a tela (soAsDela:true) não usa Resolvido em 25/11: o caso e o caminho sem `soAsDela` saíram (o Heitor, "ok mas tenha certeza absoluta que ninguem usa").
+apps/web/tests/resumo-do-cargo.test.ts	12	plataforma:CG-17	unidade	contradiz	CG-17 manda não contar as abas da rede toda; o teste exige Fichas/Documentos listados no resumo (modo sem soAsDela, que a tela de Cargos não usa) Resolvido em 25/11: o caso e o caminho sem `soAsDela` saíram (o Heitor, "ok mas tenha certeza absoluta que ninguem usa").
+apps/web/tests/resumo-do-cargo.test.ts	15	plataforma:CG-17	unidade	contradiz	CG-17 manda não contar as abas da rede toda; o teste exige essas abas no resumo (modo sem soAsDela, que a tela de Cargos não usa) Resolvido em 25/11: o caso e o caminho sem `soAsDela` saíram (o Heitor, "ok mas tenha certeza absoluta que ninguem usa").
 apps/web/tests/resumo-do-cargo.test.ts	18	plataforma:CG-17	unidade	ok	
 apps/web/tests/resumo-do-horario.test.ts	11		unidade	sem-regra	Texto do resumo do horário (AG-167, exibição fora do catálogo).
 apps/web/tests/resumo-do-horario.test.ts	16	atendimento:AG-01	unidade	ok	
@@ -6288,4 +6288,4 @@ apps/web/tests/whatsapp-rotulo.test.ts	21	whatsapp-push:WN-06	unidade	ok
 apps/web/tests/whatsapp-rotulo.test.ts	24	whatsapp-push:WN-06	unidade	ok	
 apps/web/tests/whatsapp-rotulo.test.ts	27	whatsapp-push:WN-06	unidade	ok	
 apps/web/tests/whatsapp-rotulo.test.ts	31	whatsapp-push:WN-06	unidade	ok	
-apps/web/tests/whatsapp-rotulo.test.ts	34	whatsapp-push:WN-06	unidade	sem-regra	Corta o nome escolhido em 60 caracteres, sem avisar; nenhuma regra põe esse limite (ver CLAUDE.md §1 princípio 2).
+apps/web/tests/whatsapp-rotulo.test.ts	34	whatsapp-push:WN-06	unidade	sem-regra	Corta o nome escolhido em 60 caracteres, sem avisar; nenhuma regra põe esse limite (ver CLAUDE.md §1 princípio 2). Resolvido em 25/11: 60 é o limite em todo caminho (o Heitor, "60 pra tudo"); ao renomear, o campo para em 60 e a action recusa acima. O caso fica.

@@ -633,7 +633,8 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   `e2e/documentos-pedir-no-portal-sem-plano.spec.ts`,
   `e2e/documentos-anexo-sem-portal-f73.spec.ts`.
   **"Faltam dados" diz onde completar** (A22 da 14ª, F73; princípio 7): em
-  Documentos, ao lado do "Falta: …", "Completar a ficha" leva à aba Dados da
+  Documentos, ao lado do "Falta: …", "Completar o cadastro" (o Heitor, 25/11:
+  "Completar cadastro"; era "Completar a ficha") leva à aba Dados da
   cliente (`[data-completar-cadastro]`, o mesmo da janela do agendamento) —
   só para quem tem Clientes em Gerenciar, como na janela (`podeCompletar`;
   quem só vê lê o "Falta: …" sem o link — DOC-01 da varredura de 18/11, pelo

@@ -42,7 +42,8 @@ São defeitos pelo escopo fechado. O código se corrige pela regra, e o teste qu
   teste aceita R$ 0 como cortesia, como na AS-06. O teste é `planos-adicionais:223`. Decisão do Claude: a cortesia da AS-06
   vale para a mensalidade inteira, dada pela plataforma; a PN-20 vale para o adicional.
 - **Dois textos para o mesmo link.** `checkout-wizard.tsx` diz "Completar a ficha" na linha 1052 e "Completar o cadastro"
-  na 554, e a DD-02 chama o link de "Completar o cadastro". O teste é `atritos-da-15.test:250`.
+  na 554, e a DD-02 chama o link de "Completar o cadastro". O teste é `atritos-da-15.test:250`. **Resolvido em 25/11: o
+  Heitor, "Completar cadastro"; o link e o teste dizem "Completar o cadastro".**
 - **A oferta de "Cadastrar «termo»".** A AO-05 diz que a busca a oferece sempre que nenhuma cliente bate. O código a tira
   quando o termo é o nome de uma página. O teste é `atritos-da-15.test:90`.
 - **Tetos.** O princípio 2 diz "no máximo, avisar", e o código recusa um valor que a rede escolheu:
@@ -52,7 +53,8 @@ São defeitos pelo escopo fechado. O código se corrige pela regra, e o teste qu
   - validade do voucher acima de 365 dias (`fidelidade-voucher.test:65`);
   - prazo da operadora acima de 120 dias (`financeiro-cartao-a-receber-da-operadora:336`);
   - crediário acima de 48 parcelas (`checkout-lancamentos.test:45`; também na migration `20261112006702`);
-  - nome do número de WhatsApp cortado em 60 caracteres sem aviso (`whatsapp-rotulo.test:34`, marcado como sem regra);
+  - nome do número de WhatsApp cortado em 60 caracteres sem aviso (`whatsapp-rotulo.test:34`, marcado como sem regra).
+    **Resolvido em 25/11: o Heitor, "60 pra tudo"; ao renomear, o campo para em 60 e a action recusa acima;**
   - nome da tag acima de 60 caracteres (`tags.test:31`).
 
 ## 2. O catálogo ficou para trás: o teste segue uma regra mais nova
@@ -96,7 +98,10 @@ O teste só muda com a regra que mudou. Cada item diz qual é.
   pela regra citada ao lado dele na seção 1.
 - **Testes de algo que nenhuma tela usa.** São candidatos a sair:
   - `resumo-do-cargo.test:9`, `:12` e `:15`: testam `rotuloDasAbasAlcancadas` sem o `soAsDela`, e a tela de Cargos o chama
-    com `soAsDela: true` (`roles-editor.tsx:1012`);
+    com `soAsDela: true` (`roles-editor.tsx:1012`). **Resolvido em 25/11: os três casos e a opção saíram (o Heitor, "ok mas
+    tenha certeza absoluta que ninguem usa").**
+  - a função `metrics_clientes_para_reativar` (por unidade) e os seis testes que a usavam. **Resolvido em 25/11: saíram (o
+    Heitor, "ok mas tenha certeza absoluta que não é usada"; migration `20261206700001`).**
   - `documentos-marcacao.test`: o formato antigo de marcação e o `validarModelo`, que nada chama;
   - `metrics-escopo.test:59`: prova a função pura. A tela filtra a linha sem execução (`lib/metrics/dos-modulos.ts:74`),
     então não é defeito; o caso fica.

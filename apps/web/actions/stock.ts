@@ -5,7 +5,9 @@ import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, lerTodas, mensagemDoErro } from '@/lib/db'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
-import { ajusteDeEstoqueCore, entradaDeEstoqueCore, produtoEUnidadesDaRede, saldoAgoraEmTexto, unidadeDesativada, RECUSA_DA_UNIDADE_DESATIVADA } from '@/lib/estoque/movimentos'
+import { ajusteDeEstoqueCore, entradaDeEstoqueCore, produtoEUnidadesDaRede, recusaDoRegistroNaTransferencia, saldoAgoraEmTexto, unidadeDesativada, RECUSA_DA_UNIDADE_DESATIVADA } from '@/lib/estoque/movimentos'
+import { recusaDoCustoDaEntrada, recusaDoEstoqueAcimaDoRegistro } from '@/lib/estoque/limites-do-registro'
+import { medidaNoPlural } from '@/lib/estoque/medidas'
 import { lerUso, RECUSA_SEM_USO, type UsoDoProduto } from '@/lib/estoque/uso'
 import { prefixoDoSku } from '@/lib/estoque/sku'
 import { lerMotivoDaPerda, rotuloDoMotivo } from '@/lib/estoque/perda'
@@ -182,8 +184,24 @@ async function createProductInterno(
     // C24: o mínimo não é negativo (ATD-E02) — antes do código, que gasta a sequência.
     const minStock = num(formData, 'min_stock') ?? 0
     if (minStock < 0) return { error: 'O mínimo não pode ser negativo.' }
-    const sku = await nextSku(ctx.tenantId!, categoryName, usoEPreco.uso)
+    // O custo do cadastro e o da entrada inicial, pela régua da Entrada (o negativo
+    // é impossível; o que `products.cost_price` não guarda também) — o negativo
+    // do estoque inicial sumia calado, e o do cadastro ia ao banco.
     const initialCost = num(formData, 'initial_cost')
+    const recusaDoCusto = recusaDoCustoDaEntrada(num(formData, 'cost_price')) ?? recusaDoCustoDaEntrada(initialCost)
+    if (recusaDoCusto) return { error: recusaDoCusto }
+    // A quantidade inicial de cada unidade, que o registro não guarda (numeric(10,4)
+    // no lote e no movimento, este na unidade de consumo; decisão do Claude, 25/11).
+    const upp = num(formData, 'units_per_package')
+    const consumo = str(formData, 'consumption_unit')
+    const fator = consumo && upp && upp > 0 ? upp : 1
+    for (const l of linhas) {
+      const acima = recusaDoEstoqueAcimaDoRegistro({
+        quantidade: l.quantidade, fator, medida: medidaNoPlural(unit, 2) || 'embalagens', consumo: fator !== 1 ? consumo : null,
+      })
+      if (acima) return { error: acima }
+    }
+    const sku = await nextSku(ctx.tenantId!, categoryName, usoEPreco.uso)
 
     // UMA transação (E11; o padrão do projeto: o app calcula, uma função
     // grava): o produto e o estoque inicial de cada unidade — movimento, saldo
@@ -551,6 +569,10 @@ async function adminTransferStockInterno(
       return { error: 'Produto ou unidade não encontrado.' }
     // F72 (H6): da desativada sai (é resolver o que sobrou); para ela, não.
     if (await unidadeDesativada(admin, ctx.tenantId!, toBranchId)) return { error: RECUSA_DA_UNIDADE_DESATIVADA }
+    // O saldo do destino depois, que o registro não guarda (numeric(10,4); decisão do
+    // Claude, 25/11): em português, antes do banco — voltava "numeric field overflow".
+    const acimaDoRegistro = await recusaDoRegistroNaTransferencia(admin, { productId, origem: fromBranchId, destino: toBranchId, quantidade: qty })
+    if (acimaDoRegistro) return { error: acimaDoRegistro }
 
     // As duas pernas, os dois saldos e o rendimento numa transação, com as
     // linhas travadas (estoque_transferir, 2026-10-08). Era ler os dois saldos

@@ -18,7 +18,7 @@ import { enviarEventoCapi } from '@/lib/ads/capi'
 import { cliqueDoCliente, contatoDoCliente } from '@/lib/ads/atribuicao'
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { EVENTOS } from '@estetica-os/types'
-import { ler, tentar } from '@/lib/db'
+import { ler, lerTodas, tentar } from '@/lib/db'
 import { conferirCredito, ligarCredito, type CreditoDeAgendamento } from '@/lib/creditos/credito'
 import { oportunidadeDoAgendamento, ligarAgendamentoAOportunidade } from '@/lib/crm/liga-agendamento'
 import { filtroDeQuemAtendeNaUnidade } from '@/lib/cached-queries'
@@ -28,6 +28,8 @@ import { quemRealizaOProcedimento, realiza } from '@/lib/procedimentos/quem-real
 import { bloqueiosQueBatem } from '@/lib/agenda/bloqueios'
 import { precosDaUnidade, precoNaUnidade } from '@/lib/procedimentos/preco-na-unidade'
 import { fimDaOcupacao, bateNaOcupacao } from '@/lib/appointments/ocupacao'
+import { recusaDoHorarioPassado } from '@/lib/appointments/horario-passado'
+import { O_ATENDE_NA_FICHA } from '@/lib/equipe/atende'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -56,8 +58,26 @@ export interface CreateAppointmentInput {
 
 const IGNORED_STATUS = '("CANCELLED","NO_SHOW")'
 
-/** O agendamento mais longo que a conferência de horário considera (12 h). */
-const DURACAO_MAXIMA_MS = 12 * 60 * 60_000
+/**
+ * A duração comum de um agendamento, em minutos (12 h): a régua da leitura,
+ * não um teto. Até 25/11 a conferência só olhava 12 h para trás (a janela
+ * fixa da "duração máxima") — o procedimento não tem duração máxima, e o atendimento
+ * de 14 h das 08:00 deixava de bloquear quem começava depois das 20:00 dele,
+ * calado (princípio 3).
+ */
+export const DURACAO_COMUM_MIN = 12 * 60
+
+/**
+ * O filtro (`.or()` do PostgREST) dos agendamentos que podem ocupar algum
+ * instante a partir de `desdeMs`, qualquer que seja a duração: os que começaram
+ * até 12 h antes (a duração comum) OU os mais longos que isso, de qualquer data.
+ * Junto do `scheduled_at < fim`, é sobreposição de verdade sem ler a história
+ * inteira — os longos são raros. A conta exata é a de sempre (`fimDaOcupacao`,
+ * `bateNaOcupacao`). A tabela não grava o fim: ele é `scheduled_at + duration_min`.
+ */
+export function podemOcuparDesde(desdeMs: number): string {
+  return `scheduled_at.gt.${new Date(desdeMs - DURACAO_COMUM_MIN * 60_000).toISOString()},duration_min.gt.${DURACAO_COMUM_MIN}`
+}
 
 /**
  * O horário [inicio, inicio + duracaoMin) bate com outro agendamento ativo do
@@ -113,19 +133,22 @@ export async function conflitosDoHorario(admin: Admin, a: ConsultaDeHorario): Pr
   if (!a.professionalId && !a.roomId) return []
   const ini = a.inicio.getTime()
   const fim = ini + Math.max(1, a.duracaoMin) * 60000
-  let q = admin.from('appointments')
-    .select('id, scheduled_at, duration_min, status, completed_at, branch_id, branches!inner(tenant_id, name)')
-    .eq('branches.tenant_id', a.tenantId)
-    .not('status', 'in', IGNORED_STATUS)
-    .lt('scheduled_at', new Date(fim).toISOString())
-    .gt('scheduled_at', new Date(ini - DURACAO_MAXIMA_MS).toISOString())
-  if (a.professionalId) q = q.eq('professional_id', a.professionalId)
-  else q = q.eq('room_id', a.roomId!).eq('branch_id', a.branchId!)
-  if (a.excluir) q = q.neq('id', a.excluir)
-  const candidatos = (await ler(q.order('scheduled_at', { ascending: false }).limit(200), 'conferir o horário') as unknown as {
+  // Qualquer duração (`podemOcuparDesde`), em páginas: nada se corta calado.
+  const candidatos = await lerTodas((de, ate) => {
+    let q = admin.from('appointments')
+      .select('id, scheduled_at, duration_min, status, completed_at, branch_id, branches!inner(tenant_id, name)')
+      .eq('branches.tenant_id', a.tenantId)
+      .not('status', 'in', IGNORED_STATUS)
+      .lt('scheduled_at', new Date(fim).toISOString())
+      .or(podemOcuparDesde(ini))
+    if (a.professionalId) q = q.eq('professional_id', a.professionalId)
+    else q = q.eq('room_id', a.roomId!).eq('branch_id', a.branchId!)
+    if (a.excluir) q = q.neq('id', a.excluir)
+    return q.order('scheduled_at', { ascending: false }).order('id').range(de, ate)
+  }, 'conferir o horário') as unknown as {
     scheduled_at: string; duration_min: number | null; status: string; completed_at: string | null
     branch_id: string; branches: { name: string } | null
-  }[] | null) ?? []
+  }[]
   const batem: ConflitoDeHorario[] = []
   for (const c of candidatos) {
     const oIni = new Date(c.scheduled_at).getTime()
@@ -205,7 +228,7 @@ export async function conferirPecasDoAgendamento(
   // até 2026-11-12 o núcleo gravava a profissional que não atende ali. O
   // encaixe fora do horário dela segue valendo — isto é a unidade, não a hora.
   if (pecas.branchId && pecas.professionalId && !(profissional.atende_em ?? []).includes(pecas.branchId)) {
-    return `${profissional.name || 'Esta profissional'} não atende nesta unidade (o “Atende clientes em” dela, na Equipe).`
+    return `${profissional.name || 'Esta profissional'} não atende nesta unidade: marque ${O_ATENDE_NA_FICHA} no lápis dela, na Equipe.`
   }
   if (procedimentoNaoFeito) return procedimentoNaoFeito
   return null
@@ -247,6 +270,12 @@ export async function createAppointmentCore(
   if (!input.procedureId)                          return { error: 'Selecione um procedimento.' }
   if (!input.professionalId)                        return { error: 'Selecione um profissional.' }
   if (!input.scheduledAt)                           return { error: 'Informe data e hora.' }
+  // Não se agenda no passado (o Heitor, 25/11: "recusa, não dá pra agendar no passado"). A tela já antecipa
+  // ("Escolha a partir de…"); a trava é esta, para todo caminho que agenda (a equipe, as sessões, o app, o CRM,
+  // o Copilot). O minuto de agora vale: a cliente que chegou sem horário (decisão do Claude, 25/11).
+  const passou = recusaDoHorarioPassado(input.scheduledAt)
+  // O fuso só se lê na recusa (a mensagem diz o dia e a hora no relógio da unidade).
+  if (passou) return { error: recusaDoHorarioPassado(input.scheduledAt, new Date(), await lerFusoDaUnidade(admin, input.branchId)) ?? passou }
 
   // As leituras que não dependem uma da outra vão JUNTAS (A33 da 5ª
   // simulação: "Agendando…" passou de 3,5 s com 9 a 12 idas ao banco em
@@ -404,18 +433,20 @@ export async function computeAvailableSlots(
 
   // O profissional em QUALQUER unidade (o da rede atende em várias; o id do
   // profissional já é de uma rede só), e o que começou antes e ainda ocupa o
-  // começo do dia (2026-10-08).
+  // começo do dia (2026-10-08) — com qualquer duração (`podemOcuparDesde`, 25/11:
+  // o de 30 h de ontem ainda ocupa a manhã de hoje), em páginas.
   // E os BLOQUEIOS da profissional (decisão 3 da 7ª simulação): o livre não
   // oferece o horário bloqueado — é a conta do app da cliente, do Copilot e do
   // CRM. A equipe, pela agenda, encaixa com o aviso.
   const [booked, bloqueios] = await Promise.all([
-    ler(admin
+    lerTodas((de, ate) => admin
       .from('appointments')
       .select('id, scheduled_at, duration_min, status, completed_at')
       .eq('professional_id', professionalId)
-      .gte('scheduled_at', new Date(new Date(dayStart).getTime() - DURACAO_MAXIMA_MS).toISOString())
       .lt('scheduled_at', dayEnd)
-      .not('status', 'in', IGNORED_STATUS), 'carregar os agendamentos'),
+      .or(podemOcuparDesde(new Date(dayStart).getTime()))
+      .not('status', 'in', IGNORED_STATUS)
+      .order('scheduled_at').order('id').range(de, ate), 'carregar os agendamentos'),
     bloqueiosQueBatem(admin, { professionalId, inicio: new Date(dayStart), fim: new Date(dayEnd) }),
   ])
 

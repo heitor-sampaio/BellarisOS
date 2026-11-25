@@ -108,6 +108,11 @@ tabela veio remover.
   NUNCA o id técnico do número, que o formulário manual gravava. A regra é
   `rotuloDaConexao` (`lib/whatsapp/rotulo.ts`). Renomear depois é o "Nome da
   conexão" da lista. Prova: `e2e/whatsapp-nome-do-numero.spec.ts`.
+  **O nome tem no máximo 60 caracteres em todo caminho** (o Heitor, 25/11: "60
+  pra tudo"): ao conectar, o campo para em 60 e o nome da Meta é cortado; ao
+  renomear, o campo para em 60 e `atualizarVinculosDoNumero` recusa acima disso
+  ("O nome da conexão tem no máximo 60 caracteres."; `validarNomeDaConexao`).
+  Prova: `tests/whatsapp-nome-ao-renomear.test.ts`.
 - **`branch_id` no número é RÓTULO**, não escopo (decisão do Heitor,
   2026-09-25). Não entra em RLS nem no alcance do inbox, e a conversa
   continua nascendo com `branch_id` nulo. A unidade NÃO vira tag (o sistema não

@@ -307,8 +307,8 @@ export function LinhaDoAgendamento({ a, nome, valor, aviso, estilo, onEscolher, 
                 {equipe && onAtualizar && a.unidadeId && (
                   <MarcarNoAtende pessoas={a.emOutraUnidade} unidade={a.unidade} unidadeId={a.unidadeId} equipe={equipe} onMarcou={onAtualizar} />
                 )}
-                {' '}Ou marque
-                “{a.unidade}” no “Atende clientes em” da ficha dela na{' '}
+                {' '}Ou marque o “Atende clientes” (com mais de uma unidade, “{a.unidade}” em “Escolher em quais
+                unidades atende”) no lápis dela na{' '}
                 {equipe && onAtualizar
                   ? <>
                       <a data-abrir-equipe href={equipe} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand)', fontWeight: 'var(--weight-semibold)' }}>Equipe (abre em outra aba)</a>

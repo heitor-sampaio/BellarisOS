@@ -14,6 +14,7 @@ import { TEXTO_DA_SESSAO_NA_DESISTENCIA } from '@/lib/atendimento/desistencia'
 import { garantirClienteRapido, comPermissaoDeUnificar } from '@/lib/clients/cliente-rapido'
 import { bloqueiosQueBatem } from '@/lib/agenda/bloqueios'
 import { trechoDoBloqueio } from '@/lib/agenda/bloqueio'
+import { recusaDoHorarioPassado } from '@/lib/appointments/horario-passado'
 import { fichasQueJaExistem, textoDaFichaQueJaExiste, type FichaQueJaExiste } from '@/lib/clients/ja-existe'
 import { escolhasDaFichaQueJaExiste } from '@/lib/copilot/ferramentas/clientes-escrita'
 import { avisoDaAgendaParaACliente, type FatoDaAgenda } from '@/lib/copilot/ferramentas/aviso-do-agendar'
@@ -22,8 +23,9 @@ import { telefoneDoCopilot } from '@/lib/copilot/ferramentas/clientes-escrita'
 import type { ContextoDaFerramenta, FerramentaDeEscrita } from '@/lib/copilot/ferramentas/tipos'
 import {
   DATA, HORA, UUID, dinheiro, fusoDe, instanteDe, quandoLegivel, resolverCliente, resolverProcedimento,
-  resolverProfissional, resolverSala, resolverUnidade, rota, nomesPorId, STATUS_DO_AGENDAMENTO,
+  resolverProfissional, resolverSala, resolverUnidade, rota, nomesPorId, STATUS_DO_AGENDAMENTO, texto,
 } from '@/lib/copilot/ferramentas/comum'
+import { TELEFONE_INCOMPLETO } from '@/lib/contatos/propagar'
 
 /**
  * As GRAVAÇÕES da agenda. Cada uma prepara (resolve nomes, confere alcance e
@@ -76,14 +78,16 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
   modulo: 'agenda', nivel: 'MANAGE',
   descricao: 'Agenda um atendimento: cliente (id, nome ou telefone de quem já é cliente) OU clienteNovo {nome, telefone com DDD} para quem ainda não é; procedimento e profissional (nome ou id — passe o nome que a pessoa disse, "Dr. Caio": a ferramenta acha pelo nome entre quem atende na unidade, sem precisar buscar antes, e sem achar diz quem atende); data (AAAA-MM-DD) e hora (HH:MM, no horário da unidade); sala (nome ou id, "Sala 1"), quando a pessoa disser a sala — vai na sala, nunca na observação. Confira os horários livres antes. O cartão diz se a cliente recebe aviso no app.',
   parametros: z.object({
-    cliente: z.string().min(2).max(120).optional(),
-    clienteNovo: z.object({ nome: z.string().min(2).max(120), telefone: z.string().min(8).max(24) }).optional(),
-    procedimento: z.string().min(2).max(80),
-    profissional: z.string().min(2).max(80),
+    cliente: texto({ min: 2, max: 120 }).optional(),
+    // O nome da cliente nova, como o "+ Cliente" da agenda (garantirClienteRapido): 2 letras, sem teto.
+    clienteNovo: z.object({ nome: texto({ min: 2, seCurto: 'Informe o nome de quem será atendido.' }), telefone: texto({ min: 8, max: 24, seCurto: TELEFONE_INCOMPLETO }) }).optional(),
+    procedimento: texto({ min: 2, max: 80 }),
+    profissional: texto({ min: 2, max: 80 }),
     data: DATA, hora: HORA,
-    unidade: z.string().max(80).optional(),
-    sala: z.string().min(1).max(80).optional(),
-    observacao: z.string().max(300).optional(),
+    unidade: texto({ max: 80 }).optional(),
+    sala: texto({ min: 1, max: 80 }).optional(),
+    // A observação da janela "+ Agendar" não tem teto (o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito.").
+    observacao: z.string().optional(),
   }),
   async preparar(c, a) {
     if (!a.cliente && !a.clienteNovo) return { erro: 'Quem vai ser atendido? Informe o cliente (ou nome e telefone de um cliente novo).' }
@@ -130,7 +134,11 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
     // "14:30" é 14:30 NA UNIDADE (F62b): em Manaus, 18:30 UTC — não 14:30 de Brasília.
     const fuso = await fusoDe(c, unidade.id)
     const inicio = instanteDe(a.data, a.hora, fuso)
-    if (inicio.getTime() < Date.now() - 5 * 60_000) return { erro: 'Esse horário já passou.' }
+    // A regra do núcleo (createAppointmentCore), com a mesma mensagem: o que é antes do minuto de agora
+    // não se agenda (o Heitor, 25/11: "recusa, não dá pra agendar no passado"). Eram 5 minutos de
+    // tolerância só no Copilot, que o núcleo recusava no Confirmar.
+    const passou = recusaDoHorarioPassado(inicio.toISOString(), new Date(), fuso)
+    if (passou) return { erro: passou }
     // Unidade, profissional (e que ela ATENDE nesta unidade — F65), cliente e
     // procedimento feito aqui: o núcleo, o mesmo da tela.
     // A sala pedida também (A1 da 27ª): ativa, da unidade e, com o procedimento ligado a salas, uma das dele.
@@ -254,16 +262,26 @@ async function agendamentoParaResumo(c: ContextoDaFerramenta, id: string) {
   }
 }
 
+/**
+ * A frase do `remarcarCore` (`lib/appointments/alteracoes.ts`) para o
+ * agendamento Em atendimento — repetida aqui, a mesma letra por letra
+ * (`tests/copilot-remarcar-em-atendimento-e-tamanhos-como-a-tela.test.ts` trava).
+ */
+export const RECUSA_DO_REMARCAR_EM_ATENDIMENTO = 'Este agendamento está em atendimento agora: não se remarca. Para desistir, use "Cancelar" no atendimento.'
+
 export const remarcar: FerramentaDeEscrita<{ agendamento: string; data: string; hora: string; profissional?: string }, { appointmentId: string; scheduledAt: string; professionalId: string | null; soQuemAtende?: boolean }> = {
   nome: 'remarcar',
   tipo: 'escrita',
   modulo: 'agenda', nivel: 'MANAGE',
   descricao: 'Remarca um agendamento (id, da ferramenta agendamentos) para outra data/hora (no horário da unidade dele) e, opcionalmente, outro profissional (pelo nome que a pessoa disse: a ferramenta acha entre quem atende, sem precisar buscar antes). Também REPASSA o atendimento a outra pessoa que atende ("repasse a Toxina da Neusa para a Bianca", "troque a profissional"): a mesma data e hora, com o profissional novo. O cartão diz se a cliente recebe o aviso no app.',
-  parametros: z.object({ agendamento: UUID, data: DATA, hora: HORA, profissional: z.string().max(80).optional() }),
+  parametros: z.object({ agendamento: UUID, data: DATA, hora: HORA, profissional: texto({ max: 80 }).optional() }),
   async preparar(c, a) {
     const ag = await agendamentoParaResumo(c, a.agendamento)
     if (!ag) return { erro: 'Agendamento não encontrado.' }
     if (['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(ag.status)) return { erro: `Este agendamento está ${STATUS_DO_AGENDAMENTO[ag.status]}.` }
+    // O Em atendimento não se remarca (C15, F65): o remarcarCore recusa, mas só no
+    // Confirmar — o cartão aparecia para algo que ia falhar. Recusa no preparo, com a frase dele.
+    if (ag.status === 'IN_PROGRESS') return { erro: RECUSA_DO_REMARCAR_EM_ATENDIMENTO }
     let professionalId: string | null = null
     let nomeDoProfissional = ag.profissional
     if (a.profissional) {
@@ -275,7 +293,13 @@ export const remarcar: FerramentaDeEscrita<{ agendamento: string; data: string; 
     // A data e a hora no relógio da unidade do agendamento (F62b).
     const fuso = await fusoDe(c, ag.branch_id)
     const inicio = instanteDe(a.data, a.hora, fuso)
-    if (inicio.getTime() < Date.now() - 5 * 60_000) return { erro: 'Esse horário já passou.' }
+    // A regra do núcleo (remarcarCore), com a mesma mensagem: o horário NOVO que já passou não se remarca
+    // (o Heitor, 25/11: "remarcar para o passado é possível desde que não tenha passado do horario já, o
+    // que tornaria impossível desse atendimento acontecer"). Só trocar quem atende não é horário novo.
+    if (inicio.getTime() !== new Date(ag.scheduled_at).getTime()) {
+      const passou = recusaDoHorarioPassado(inicio.toISOString(), new Date(), fuso)
+      if (passou) return { erro: passou }
+    }
     const quem = professionalId ?? ag.professional_id
     if (quem && !(await livre(c, { professionalId: quem, inicio, duracaoMin: ag.duration_min || 60, excluir: ag.id }))) {
       return { erro: `${nomeDoProfissional} já tem agendamento nesse horário.` }
@@ -330,7 +354,8 @@ export const cancelar: FerramentaDeEscrita<{ agendamento: string; motivo: string
   // e no núcleo (`recusaDoCancelar`).
   pode: podeCancelarAlgum,
   descricao: 'Cancela um agendamento (id) com o motivo (obrigatório — pergunte se não foi dito). O cartão diz se a cliente recebe o aviso no app.',
-  parametros: z.object({ agendamento: UUID, motivo: z.string().min(3).max(300) }),
+  // O motivo, como o Cancelar da agenda: só que exista, sem teto.
+  parametros: z.object({ agendamento: UUID, motivo: texto({ min: 1, seCurto: 'Informe o motivo do cancelamento.' }) }),
   async preparar(c, a) {
     const ag = await agendamentoParaResumo(c, a.agendamento)
     if (!ag) return { erro: 'Agendamento não encontrado.' }

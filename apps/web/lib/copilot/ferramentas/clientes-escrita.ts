@@ -11,10 +11,11 @@ import { rotuloDoUsar } from '@/lib/clients/ja-existe-texto'
 import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
 import { temTag } from '@/lib/tags/escolha'
 import type { ContextoDaFerramenta, FerramentaDeEscrita } from '@/lib/copilot/ferramentas/tipos'
-import { DATA, fusoDe, hojeNoFuso, resolverCliente, resolverUnidade, rota } from '@/lib/copilot/ferramentas/comum'
+import { DATA, fusoDe, hojeNoFuso, resolverCliente, resolverUnidade, rota, texto } from '@/lib/copilot/ferramentas/comum'
 import { documentoDoCadastroDoCopilot } from '@/lib/copilot/ferramentas/documento-do-cadastro'
 import { documentoEstrangeiroRepetido } from '@/lib/clients/documento'
 import { avisoDoAcessoCriado } from '@/lib/clients/textos-do-cadastro'
+import { TELEFONE_INCOMPLETO } from '@/lib/contatos/propagar'
 
 /**
  * As GRAVAÇÕES de clientes.
@@ -30,7 +31,9 @@ import { avisoDoAcessoCriado } from '@/lib/clients/textos-do-cadastro'
 
 // O CPF pelos dígitos verificadores: a conta é UMA, `cpfValido` (@estetica-os/utils).
 
-const EMAIL = z.string().max(160).regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'e-mail inválido')
+/** A frase da ficha (`updateClient`) para o nome de menos de 2 letras. */
+const NOME_CURTO = 'Informe o nome do cliente.'
+const EMAIL = texto({ max: 160 }).regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'e-mail inválido')
 
 interface Complemento { email?: string; cpf?: string; nascimento?: string }
 
@@ -120,14 +123,15 @@ export const cadastrarCliente: FerramentaDeEscrita<ArgsCadastro, PayloadCadastro
   modulo: 'clients', nivel: 'MANAGE',
   descricao: 'Cadastra um cliente novo: nome e telefone com DDD (obrigatórios); e-mail, data de nascimento (AAAA-MM-DD) e UM documento (CPF; ou, de quem não tem CPF, passaporte ou rne) se a pessoa der. Com criar_acesso, também cria o acesso ao app do cliente (precisa de e-mail e do documento; a senha inicial é o número dele). Se já existir a ficha (mesmo CPF, mesmo telefone, ou mesmo nome e nascimento), o cartão pergunta à pessoa: cadastrar mesmo assim ou unificar com a ficha que existe.',
   parametros: z.object({
-    nome: z.string().min(2).max(120),
-    telefone: z.string().min(8).max(24),
+    // O nome, como a ficha: 2 letras, sem teto (o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito.").
+    nome: texto({ min: 2, seCurto: NOME_CURTO }),
+    telefone: texto({ min: 8, max: 24, seCurto: TELEFONE_INCOMPLETO }),
     email: EMAIL.optional(),
-    cpf: z.string().max(20).optional(),
-    passaporte: z.string().max(30).optional().describe('Número do passaporte, de quem não tem CPF.'),
-    rne: z.string().max(30).optional().describe('Número do RNE, de quem não tem CPF.'),
+    cpf: texto({ max: 20 }).optional(),
+    passaporte: texto({ max: 30 }).optional().describe('Número do passaporte, de quem não tem CPF.'),
+    rne: texto({ max: 30 }).optional().describe('Número do RNE, de quem não tem CPF.'),
     nascimento: DATA.optional(),
-    unidade: z.string().max(80).optional(),
+    unidade: texto({ max: 80 }).optional(),
     criar_acesso: z.boolean().optional(),
   }),
   async preparar(c, a) {
@@ -222,11 +226,11 @@ export const atualizarContato: FerramentaDeEscrita<ArgsContato, PayloadContato> 
   modulo: 'clients', nivel: 'MANAGE',
   descricao: 'Corrige ou completa os dados de contato de um cliente (id, nome ou telefone): nome, telefone, e-mail, CPF e data de nascimento. Só os campos informados mudam.',
   parametros: z.object({
-    cliente: z.string().min(2).max(120),
-    nome: z.string().min(2).max(120).optional(),
-    telefone: z.string().min(8).max(24).optional(),
+    cliente: texto({ min: 2, max: 120 }),
+    nome: texto({ min: 2, seCurto: NOME_CURTO }).optional(),
+    telefone: texto({ min: 8, max: 24, seCurto: TELEFONE_INCOMPLETO }).optional(),
     email: EMAIL.optional(),
-    cpf: z.string().max(20).optional(),
+    cpf: texto({ max: 20 }).optional(),
     nascimento: DATA.optional(),
   }),
   async preparar(c, a) {
@@ -288,9 +292,12 @@ export const marcarTags: FerramentaDeEscrita<ArgsTags, PayloadTags> = {
   modulo: 'clients', nivel: 'MANAGE',
   descricao: 'Marca e/ou desmarca tags de um cliente (id, nome ou telefone). Só tags que já existem no vocabulário da rede (sem diferença de maiúsculas); tag nova se cria em Configurações → Tags.',
   parametros: z.object({
-    cliente: z.string().min(2).max(120),
-    adicionar: z.array(z.string().min(1).max(60)).max(10).optional(),
-    remover: z.array(z.string().min(1).max(60)).max(10).optional(),
+    cliente: texto({ min: 2, max: 120 }),
+    // O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." A ficha marca
+    // quantas tags do vocabulário a pessoa quiser; o limite de 10 por pedido era só do Copilot.
+    // O nome da tag tem até 60 em Configurações → Tags.
+    adicionar: z.array(texto({ min: 1, max: 60 })).optional(),
+    remover: z.array(texto({ min: 1, max: 60 })).optional(),
   }),
   async preparar(c, a) {
     const cl = await resolverCliente(c, a.cliente, { apenasAtivos: true })
@@ -347,9 +354,9 @@ export const criarAcessoAoApp: FerramentaDeEscrita<ArgsAcesso, PayloadAcesso> = 
   modulo: 'clients', nivel: 'MANAGE',
   descricao: 'Cria o acesso ao app de quem JÁ é cliente (id, nome ou telefone) e ainda não tem: login = e-mail, senha inicial = o CPF — ou, sem CPF, o número do passaporte ou do RNE da ficha. Usa o e-mail e o documento da ficha, ou o e-mail e o CPF informados (que passam para a ficha).',
   parametros: z.object({
-    cliente: z.string().min(2).max(120),
+    cliente: texto({ min: 2, max: 120 }),
     email: EMAIL.optional(),
-    cpf: z.string().max(20).optional(),
+    cpf: texto({ max: 20 }).optional(),
   }),
   async preparar(c, a) {
     const cl = await resolverCliente(c, a.cliente, { apenasAtivos: true })

@@ -7,6 +7,7 @@ import {
 } from 'date-fns'
 import type { SeloDaFicha as SeloDaFichaEstado } from '@/lib/pre-atendimento/selos'
 import { naParede } from '@/lib/datetime'
+import { agendamentosNoDia } from '@/lib/agenda/trecho-do-agendamento'
 import { useFuso } from '@/components/shared/fuso'
 
 export interface CalendarEvent {
@@ -85,9 +86,10 @@ export function AgendaMonthView({ currentDate, events, onDayClick }: Props) {
   const fuso = useFuso()
   const today = naParede(new Date(), fuso)
 
-  const counts = days.map(d =>
-    events.filter(e => !['CANCELLED', 'NO_SHOW'].includes(e.status) && isSameDay(new Date(e.start), d)).length,
-  )
+  // Os do dia: os que começam nele e os que ainda o ocupam, vindos de antes
+  // (25/11: o de vários dias deixava "Sem agenda" nos dias seguintes).
+  const ativos = events.filter(e => !['CANCELLED', 'NO_SHOW'].includes(e.status))
+  const counts = days.map(d => agendamentosNoDia(ativos, d).length)
   const maxCount = Math.max(1, ...counts)
 
   return (

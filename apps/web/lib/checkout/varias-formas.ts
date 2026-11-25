@@ -19,8 +19,12 @@ export interface EstadoDaParte {
   maquininha: string
 }
 
-/** Até quantas outras formas (além da primeira): o balcão não divide em mais. */
-export const MAXIMO_DE_OUTRAS = 4
+/*
+ * Quantas formas: quantas quem recebe quiser. O Heitor, 25/11, sobre o limite
+ * de 5 formas: "Não precisa de aviso, essa não é uma ação automatica, o usuario
+ * vai precisar clicar em um botão, então ele fez de proposito." Sem teto e sem
+ * aviso; o impossível (forma sem valor, soma que não fecha) é `recusaDasOutras`.
+ */
 
 export const parteVazia = (): EstadoDaParte => ({ metodo: '', valor: '', vezes: 1, bandeira: '', maquininha: '' })
 

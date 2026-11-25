@@ -7,7 +7,7 @@ import { CampoDaBandeira, CampoDaMaquininha } from '@/components/shared/campo-da
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
 import { SaldoDoCredito } from '@/components/shared/saldo-do-credito'
 import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
-import { MAXIMO_DE_OUTRAS, parteVazia, recusaDasOutras, valorDaParte, valorDaPrincipal, type EstadoDaParte } from '@/lib/checkout/varias-formas'
+import { parteVazia, recusaDasOutras, valorDaParte, valorDaPrincipal, type EstadoDaParte } from '@/lib/checkout/varias-formas'
 
 /**
  * O "+ Outra forma" do à vista (D1 da 18ª; o Heitor, 2026-11-16: "Ok"): a
@@ -69,12 +69,11 @@ export function OutrasFormas({ metodoPrincipal, total, outras, aoMudar, metodos,
       {recusa && (
         <span role="alert" data-recusa-das-formas style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{recusa}</span>
       )}
-      {outras.length < MAXIMO_DE_OUTRAS && (
-        <button type="button" className="btn-ghost" data-outra-forma onClick={() => aoMudar([...outras, parteVazia()])}
-          style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Plus size={13} aria-hidden /> Outra forma
-        </button>
-      )}
+      {/* Sem teto (o Heitor, 25/11: "o usuario vai precisar clicar em um botão, então ele fez de proposito"). */}
+      <button type="button" className="btn-ghost" data-outra-forma onClick={() => aoMudar([...outras, parteVazia()])}
+        style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <Plus size={13} aria-hidden /> Outra forma
+      </button>
     </div>
   )
 }

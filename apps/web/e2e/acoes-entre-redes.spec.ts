@@ -72,6 +72,8 @@ test.describe.serial('ações de dinheiro e estoque entre redes', () => {
       await page.getByRole('button', { name: 'Novo produto' }).click()
       const novo = page.locator('dialog[open]')
       await novo.locator('input[name="name"]').fill(nome)
+      await // O produto nasce sem caixa marcada (o Heitor, 25/11: "ok" à proposta): este é Insumo.
+      await await novo.getByRole('group', { name: 'Onde o produto está disponível' }).getByRole('checkbox', { name: 'Insumo' }).check()
       await novo.getByRole('button', { name: 'Criar produto' }).click()
       await expect(novo).toBeHidden()
       await expect.poll(async () => {

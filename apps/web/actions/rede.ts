@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { recusaDaConfigDaRede } from '@/lib/configuracao-da-rede'
+import { recusaDoPrazoDoPortal, recusaDaValidadeDoPlano } from '@/lib/configuracoes/prazos-da-rede'
 import { O_QUE_A_CLIENTE_AVALIA, oQueAvalia, type OQueAClienteAvalia } from '@/lib/avaliacao/notas'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
@@ -105,15 +106,16 @@ export async function atualizarDadosDaRede(
     return { error: 'Documento deve ter 11 (CPF) ou 14 (CNPJ) dígitos.' }
   }
 
+  // O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser
+  // feito." Acima do comum (720 horas, 365 dias) a tela avisa e aqui se grava;
+  // só o impossível se recusa (lib/configuracoes/prazos-da-rede.ts).
   const prazo = Number(texto('portal_prazo_alteracao_horas') ?? 24)
-  if (!Number.isInteger(prazo) || prazo < 0 || prazo > 720) {
-    return { error: 'O prazo do portal vai de 0 a 720 horas.' }
-  }
+  const prazoImpossivel = recusaDoPrazoDoPortal(prazo)
+  if (prazoImpossivel) return { error: prazoImpossivel }
 
   const validadeDoPlano = Number(texto('plano_validade_dias') ?? 30)
-  if (!Number.isInteger(validadeDoPlano) || validadeDoPlano < 1 || validadeDoPlano > 365) {
-    return { error: 'A validade do plano proposto vai de 1 a 365 dias.' }
-  }
+  const validadeImpossivel = recusaDaValidadeDoPlano(validadeDoPlano)
+  if (validadeImpossivel) return { error: validadeImpossivel }
 
   // F17-3: o que a cliente avalia no app. Sem o campo (outro formulário), fica como está.
   const oQueAvaliaPedido = texto('avaliacao_o_que')

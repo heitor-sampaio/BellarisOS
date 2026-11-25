@@ -59,6 +59,9 @@ test.describe('Estoque, procedimentos e pacotes: a explicação fica na dica', (
     await expect(janela).toBeVisible()
 
     await moraNaDica(page, janela, 'Sobre o conteúdo da embalagem', /custo por ml = preço ÷ 100/)
+    // O Heitor, 25/11, à proposta de o produto nascer "sem nenhuma caixa marcada": "ok". A dica é de quem tem um uso:
+    // marca o Insumo antes (sem nenhum, é o aviso, conferido abaixo).
+    await janela.getByRole('checkbox', { name: 'Insumo', exact: true }).check()
     await moraNaDica(page, janela, 'Sobre onde o produto aparece', /aparece como insumo do procedimento e da sessão/)
     // Sem Insumo nem Venda direta, o aviso que pede ação aparece à vista (e a dica some).
     await janela.getByRole('checkbox', { name: 'Insumo', exact: true }).uncheck()

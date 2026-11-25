@@ -19,6 +19,8 @@ import { partesDoDeslocamento, minutosDoDeslocamento, type PartesDoDeslocamento 
 import { semPedirResposta } from '@/lib/automacoes/modelos'
 import { SITUACOES_DO_AGENDAMENTO, ehSituacaoDoAgendamento } from '@/lib/automacoes/resumo'
 import { conferirExpressao, ehCaminhoSimples, NOMES_DE_FUNCAO } from '@/lib/automacoes/expressao'
+import { conferirLimiteDaBusca, avisoDoLimiteDaBusca, LIMITE_PADRAO_DA_BUSCA } from '@/lib/automacoes/busca-do-passo'
+import { recusaDoDiaDoMes, dicaDoDiaDoMes } from '@/lib/automacoes/dia-do-mes'
 import { amostraDoEvento, contarBuscaDeClientes } from '@/actions/automacoes'
 import type { OpcoesDoEditor } from '@/actions/automacoes'
 
@@ -469,13 +471,17 @@ export function PainelDoNo({
 
             {c.frequencia === 'mensal' && (
               <Campo rotulo="No dia do mês">
+                {/* De 1 a 31 (princípios 2 e 3; decisão do Claude, 25/11): ia só
+                    até 28. No mês sem o dia, o motor não dispara — e a dica diz. */}
                 <input
-                  type="number" min={1} max={28} className="field"
+                  type="number" min={1} max={31} step={1} className="field"
                   value={String(c.diaDoMes ?? 1)}
                   disabled={somenteLeitura}
                   onChange={e => set({ diaDoMes: Number(e.target.value) })}
                 />
-                <Dica>Até o dia 28: 29, 30 e 31 não existem em todo mês.</Dica>
+                {recusaDoDiaDoMes(c.diaDoMes ?? 1)
+                  ? <Dica>{recusaDoDiaDoMes(c.diaDoMes ?? 1)}</Dica>
+                  : dicaDoDiaDoMes(Number(c.diaDoMes ?? 1)) && <Dica>{dicaDoDiaDoMes(Number(c.diaDoMes ?? 1))}</Dica>}
               </Campo>
             )}
 
@@ -536,12 +542,16 @@ export function PainelDoNo({
               </Dica>
             </Campo>
             <Campo rotulo="No máximo">
+              {/* Vale o número gravado (princípios 2 e 3; o Heitor, 25/11: "Se não
+                  for impossível, ainda que improvável, pode ser feito."): o
+                  teto de 500 era só do HTML, e a prévia e o motor cortavam calados. */}
               <input
-                type="number" min={1} max={500} className="field"
-                value={String(c.limite ?? 200)}
+                type="number" min={1} step={1} className="field"
+                value={String(c.limite ?? LIMITE_PADRAO_DA_BUSCA)}
                 disabled={somenteLeitura}
                 onChange={e => set({ limite: Number(e.target.value) })}
               />
+              <AvisoDoLimite valor={c.limite} />
               <Dica>
                 Cada cliente encontrado vira uma execução própria. O teto é a
                 diferença entre a campanha que você quis e um disparo em massa
@@ -1177,6 +1187,21 @@ function agruparEventos(): [string, string[]][] {
     mapa.set(entidade, [...(mapa.get(entidade) ?? []), nome])
   }
   return [...mapa.entries()]
+}
+
+/**
+ * Ao lado do "No máximo": a recusa do impossível (zero, negativo, fracionário,
+ * acima do registro) ou, acima de 500, o aviso de que o valor vale como está.
+ */
+function AvisoDoLimite({ valor }: { valor: unknown }) {
+  const conferido = conferirLimiteDaBusca(valor)
+  if ('recusa' in conferido) {
+    return <span role="alert" style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{conferido.recusa}</span>
+  }
+  const aviso = avisoDoLimiteDaBusca(valor)
+  return aviso
+    ? <span role="status" data-acima-do-comum="limite-da-busca" style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>{aviso}</span>
+    : null
 }
 
 /**

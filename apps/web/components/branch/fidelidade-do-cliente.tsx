@@ -9,6 +9,7 @@ import { formatarPontos, rotuloDoLancamento, descricaoDoLancamento } from '@/lib
 import type { FidelidadeDoPerfil, LinhaDoExtrato } from '@/lib/fidelidade/leitura'
 import { VouchersDoCliente } from '@/components/branch/vouchers-do-cliente'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
+import { recusaDoAjusteDePontos, avisoDoAjusteDePontos } from '@/lib/fidelidade/pontos-acima-do-comum'
 import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
 
@@ -216,6 +217,8 @@ function FormularioDeAjuste({
     setErro(null)
     const n = Number(pontos)
     if (!Number.isInteger(n) || n <= 0) { setErro('Informe um número inteiro de pontos, maior que zero.'); return }
+    // Só o impossível (acima do registro) se recusa; acima do comum, o aviso ao lado do campo.
+    { const recusa = recusaDoAjusteDePontos(n); if (recusa) { setErro(recusa); return } }
     if (motivo.trim().length < 3)       { setErro('O motivo do ajuste é obrigatório.'); return }
     if (!unidade)                       { setErro('Escolha a unidade do ajuste.'); return }
     iniciar(async () => {
@@ -247,6 +250,12 @@ function FormularioDeAjuste({
           <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>Pontos</span>
           <input name="pontos" className="field" type="number" min={1} step={1} inputMode="numeric"
             value={pontos} onChange={e => setPontos(e.target.value)} />
+          {/* O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." Acima de 1.000.000, avisa. */}
+          {avisoDoAjusteDePontos(Number(pontos)) && (
+            <span role="status" data-acima-do-comum="ajuste-de-pontos" style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+              {avisoDoAjusteDePontos(Number(pontos))}
+            </span>
+          )}
         </label>
         {branches.length > 1 && (
           <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>

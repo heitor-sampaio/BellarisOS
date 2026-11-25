@@ -59,16 +59,18 @@ Os limites viraram aviso. Os valores do "comum" acima dos quais se avisa são de
    cadastro", e os testes exigem "a ficha": `tests/atritos-da-15.test.ts:250` e
    `e2e/documentos-completar-a-ficha-f73.spec.ts:73`.
    **Decidido pelo Heitor, 25/11: "Completar cadastro".** O nome é "Completar o cadastro"; os dois testes mudam por essa fala.
+   **Feito (§8).**
 2. **O texto "Atende clientes em"** no aviso de desativar alguém da equipe e no agendamento. O controle hoje se chama
    "Atende clientes", e a lista só aparece depois de "Escolher em quais unidades atende". Proposta: citar o botão.
    Teste: `e2e/equipe-atritos-da-8.spec.ts:102`.
    **O Heitor, 25/11: "Não entendi. Citar o botão no teste?"** Explicado na conversa (25/11): a mudança é no TEXTO das
    duas telas (o aviso do Desativar e o da janela do agendamento), que mandam procurar um "Atende clientes em" que a
    ficha não mostra; a proposta é a frase que a Equipe já usa (`app/admin/team/page.tsx:194`). O teste só entra porque
-   confere o texto antigo (`e2e/equipe-atritos-da-8.spec.ts:110`). Espera o sim.
+   confere o texto antigo (`e2e/equipe-atritos-da-8.spec.ts:110`).
+   **Decidido pelo Heitor, 25/11: "ok".** **Feito (§8).**
 3. **O resumo do cargo**: três casos testam um jeito de montar o resumo que nenhuma tela usa. Proposta: apagar os três
    casos e o código. Teste: `tests/resumo-do-cargo.test.ts:9`, `:12` e `:15`.
-   **Decidido pelo Heitor, 25/11: "ok mas tenha certeza absoluta que ninguem usa".**
+   **Decidido pelo Heitor, 25/11: "ok mas tenha certeza absoluta que ninguem usa".** **Feito (§8).**
 4. **O Reativar por unidade**: a função do banco `metrics_clientes_para_reativar` (por unidade) é código morto, porque
    a tela usa a da rede (CC-05). Proposta: apagar a função e os seis testes que a usam:
    - `e2e/indicadores-f68-contas:139`
@@ -77,23 +79,26 @@ Os limites viraram aviso. Os valores do "comum" acima dos quais se avisa são de
    - `e2e/indicadores-reativar-clientes:28`
    - `e2e/tags-sem-unidade:207`
    - `tests/tags-so-quem-marca:186`
-   **Decidido pelo Heitor, 25/11: "ok mas tenha certeza absoluta que não é usada".**
+   **Decidido pelo Heitor, 25/11: "ok mas tenha certeza absoluta que não é usada".** **Feito (§8).**
 5. **A busca e o "Cadastrar «termo»"**: o seu "Ok" de 13/11 (BU1) diz que a oferta aparece sempre que nenhuma cliente
    bate. Desde 16/11 ela some quando o termo é nome de página, por decisão do Claude. Fica a exceção, ou volta o
    "sempre"? Teste: `tests/atritos-da-15.test.ts:78-93`.
    **Decidido pelo Heitor, 25/11: "Sim, se o termo for nome de funcionalidade não faz sentido aparecer".** Fica a exceção; nenhum teste muda.
 6. **O produto de revenda nasce com "Insumo" marcado.** Proposta: nasce sem nenhuma caixa marcada; salvar sem nenhuma
    já é recusado com mensagem. Teste: `e2e/estoque-marcas-e-fornecedores.spec.ts:185-206`.
-   **Decidido pelo Heitor, 25/11: "ok".**
+   **Decidido pelo Heitor, 25/11: "ok".** **Feito (§8).**
 7. **Agendar no passado**: pelo princípio 2, o "+ Agendar" da equipe com horário passado avisaria e deixaria, como o
    remarcar já faz. Hoje recusa. Testes: `tests/validacao-limite-legivel.test.ts` e o E2E da agenda.
    **Decidido pelo Heitor, 25/11: "recusa, não dá pra agendar no passado".** Fica a recusa; nenhum teste muda. O
    catálogo (AG-06, Q11) voltou para a recusa. Em aberto, perguntado na conversa (25/11): o REMARCAR para um horário
-   que já passou hoje avisa e deixa (AG-41) — o uso é corrigir a hora de um atendimento que já aconteceu. A recusa
-   vale também para ele?
+   que já passou hoje avisa e deixa (AG-41). A recusa vale também para ele?
+   **Decidido pelo Heitor, 25/11: "remarcar para o passado é possível desde que não tenha passado do horario já, o que
+   tornaria impossível desse atendimento acontecer"**, e confirmado na mesma data: para mais cedo que o marcado pode;
+   para um horário que já passou, recusa. (O exemplo que o Claude deu, corrigir a hora de um atendimento já feito,
+   estava errado: o remarcar não alcança o agendamento em atendimento nem o concluído.) **Feito (§8).**
 8. **O nome do número de WhatsApp**: vindo da Meta, é cortado em 60 caracteres sem aviso; ao renomear, não tem limite.
    Proposta: um limite só, que avisa, ou nenhum. Teste: `tests/whatsapp-rotulo.test.ts:34`.
-   **Decidido pelo Heitor, 25/11: "60 pra tudo".** O limite é 60 caracteres, vindo da Meta e ao renomear.
+   **Decidido pelo Heitor, 25/11: "60 pra tudo".** O limite é 60 caracteres, vindo da Meta e ao renomear. **Feito (§8).**
 9. **O nome da tag** recusa acima de 60 caracteres, e o banco não tem limite. Teste:
    `tests/tags.test.ts:31`.
    **Decidido pelo Heitor, 25/11: "60 caracteres".** Fica o limite de 60; nenhum teste muda.
@@ -102,7 +107,8 @@ Os limites viraram aviso. Os valores do "comum" acima dos quais se avisa são de
     **O Heitor, 25/11: "nao sei, preciso de mais contexto".** Explicado na conversa (25/11): desde a CX3 (16/11) o
     atendimento concluído sem pagamento é uma comanda aberta, recebida no PDV, e a janela ainda o chama pelo nome
     antigo e manda ao "Ver o a receber" do Financeiro. Proposta: "1 comanda aberta no PDV (R$ 150,00)", com o caminho
-    "Receber no PDV" da unidade (que segue recebendo o que ficou). Espera o sim.
+    "Receber no PDV" da unidade (que segue recebendo o que ficou).
+    **Decidido pelo Heitor, 25/11: "ok".** **Feito (§8).**
 
 ## 3. Outros limites que o princípio 2 talvez alcance
 
@@ -120,6 +126,14 @@ exceções ao princípio 2: o horário passado é impossível, e o tamanho de um
 - o prazo para alterar pelo portal: até 720 horas;
 - a validade da ficha de saúde: até 36 meses.
 
+**Feito (§8).** Todos passaram a avisar ("Acima do comum (…). Confira: o valor vale como está.") e a gravar; o impossível, que
+recusa, é o que o banco não guarda (os prazos até 100 anos, o limite das datas; as vezes do cartão até 1.200, os pontos
+até 2.147.483.647). E o princípio alcançou outros limites do mesmo tipo, achados na varredura: as comissões em R$ fixo,
+as quantidades do estoque e da venda, o valor do lançamento, os pontos do ajuste e do procedimento, o "Pacote de antes"
+da importação (o teto de 200 sessões, que você aprovou em 06/11, saiu: vai até 32.767, o limite do registro), o nome e o
+contato da oportunidade (eram 255 caracteres; agora como na ficha) e as ferramentas do Copilot (sem teto que a tela
+não tenha).
+
 ## 4. Fatos que só você sabe
 
 1. **O app Android já está na Play Store?** Se não está, a menção sai do site (`apps/site/lib/perguntas.ts:30`,
@@ -132,7 +146,8 @@ exceções ao princípio 2: o horário passado é impossível, e o tamanho de um
    recusa o total entre R$ 0,01 e R$ 4,99 (o Asaas não cobra abaixo de R$ 5,00: impossível). A PN-20 do catálogo, que
    citava a trava, está errada.
    **O Heitor, 25/11: "Precisamos melhorar essa questão".** Respondida com a premissa errada; o Claude perguntou na
-   conversa o que é melhorar aqui. Espera a resposta.
+   conversa o que é melhorar aqui. **O Heitor, 25/11, com o funcionamento de hoje explicado: "ta acho que ta bom
+   assim".** Nada muda; a PN-20 do catálogo já descreve o de hoje, com a sua confirmação.
 
 ## 5. As decisões do Claude no catálogo (25/11)
 
@@ -195,3 +210,87 @@ estas propostas, que mudariam testes cuja regra é só decisão do Claude, ou qu
    Mães" e "ex: Feliz Dia das Mães, {{first_name}}!". Seis E2E acham o nome por esse texto (`getByPlaceholder`) e cinco
    deles acham também o título; mudariam junto. (Nas correções, o título chegou a ser trocado sem perguntar, e a
    completa pegou: cinco specs não achavam o campo. Voltou ao texto de antes.)
+
+## 8. O que foi feito com as suas respostas de 25/11
+
+Cada teste alterado ou apagado, com a sua fala que o permite (CLAUDE.md §15).
+
+**2.1, "Completar cadastro".** O link do checkout e o de Documentos dizem "Completar o cadastro" (a caixa da importação
+"Completar a ficha de X" é outra ação e ficou).
+- `tests/atritos-da-15.test.ts` (o caso A5): exige "Completar o cadastro" e que "Completar a ficha" não volte.
+- `e2e/documentos-completar-a-ficha-f73.spec.ts`: o texto do link e o título do caso DOC-01.
+- `tests/varredura-plataforma.test.ts`: só o comentário e o título do bloco.
+
+**2.3, "ok mas tenha certeza absoluta que ninguem usa".** Conferido no repositório inteiro (os cinco apps e os
+pacotes): `rotuloDasAbasAlcancadas` tem um chamador só, a tela de Cargos, e ele sempre ligava a opção `soAsDela`. A
+opção saiu; o resumo sempre deixa de fora as abas da rede toda.
+- `tests/resumo-do-cargo.test.ts`: APAGADOS os três casos (`:9`, `:12`, `:15`); fica o de Configurações em Gerenciar.
+- `tests/config-da-rede-sobras-da-25.test.ts:65`: só perdeu o argumento `{ soAsDela: true }`; espera o mesmo resultado.
+
+**2.4, "ok mas tenha certeza absoluta que não é usada".** Conferido: nenhum app chama a função; nenhuma função, view ou
+agendamento do banco a chama; os registros da API de três dias (23 a 25/11, com duas simulações em produção) têm 997
+chamadas à da rede e nenhuma à por unidade. A migration `20261206700001` apaga a função. A regra que só o caso que saiu
+provava ("cliente nova não é cliente sumida", 20/10) ganhou um caso novo, na função da rede:
+`e2e/indicadores-reativar-clientes-da-rede.spec.ts`, "cadastrada há pouco e sem visita…".
+- `e2e/indicadores-reativar-clientes.spec.ts`: APAGADO o caso da função por unidade; fica o do quadro do mês.
+- `e2e/indicadores-f68-contas.spec.ts`: APAGADO o caso C49 do "Reativar" da unidade.
+- `e2e/tags-sem-unidade.spec.ts`: APAGADO o caso T1 do "Reativar" da unidade.
+- `e2e/indicadores-cenario.spec.ts`: saiu só o trecho do "Reativar"; o título do caso perdeu "e clientes para reativar".
+- `e2e/fuso-da-unidade.spec.ts`: saiu só a linha da função por unidade; a da rede segue conferida.
+- `tests/tags-so-quem-marca.test.ts`: saiu só o nome da função da lista.
+
+**2.6, "ok".** O produto novo nasce sem caixa marcada (`checkboxesIniciais`, `lib/estoque/uso.ts`). A proposta citava
+um teste; mudaram NOVE, porque oito E2E contavam com o Insumo já marcado:
+- `e2e/estoque-marcas-e-fornecedores.spec.ts`: exige as duas caixas desmarcadas e marca Insumo e Venda direta.
+- Marcam "Insumo" antes de "Criar produto": `e2e/acoes-entre-redes.spec.ts`, `e2e/atendimento-fechamento.spec.ts`,
+  `e2e/estoque-movimentos.spec.ts`, `e2e/estoque-nunca-gera-despesa.spec.ts`, `e2e/estoque-produto-por-unidades.spec.ts`,
+  `e2e/estoque-unidade-da-9.spec.ts`, `e2e/fase3-estoque.spec.ts`.
+- `e2e/dicas-estoque-procedimentos.spec.ts:62`: marca "Insumo" antes de conferir a dica de onde o produto aparece (a
+  completa pegou; sem nenhuma caixa, a janela mostra o aviso, que o mesmo caso confere logo depois).
+
+**2.8, "60 pra tudo".** Ao renomear ("Nome e vínculos"), o campo para em 60 e a action recusa acima ("O nome da conexão
+tem no máximo 60 caracteres."). Nenhum teste existente mudou; o novo é `tests/whatsapp-nome-ao-renomear.test.ts`.
+
+**2.7, o remarcar para o passado.** Você, 25/11: "remarcar para o passado é possível desde que não tenha passado do
+horario já" e, sobre o Agendar, "recusa, não dá pra agendar no passado". O horário que já passou é recusado nos dois
+(era aviso no remarcar, A24 da 11ª); para mais cedo que o marcado, desde que ainda não tenha passado, pode.
+- `tests/agenda-remarcar-no-passado.test.ts`: o aviso virou a recusa ("Esse horário (…) já passou. Escolha a partir
+  de …"); o minuto de agora vale (decisão do Claude).
+- `tests/fuso-da-unidade.test.ts:385` e `:394`: só o nome da função (`recusaDoHorarioPassado`); o fuso conferido é o
+  mesmo.
+
+**1, o texto do "Atende clientes"** ("ok"). O aviso da Equipe cita o que a ficha mostra.
+- `e2e/equipe-atritos-da-8.spec.ts:110`: o texto novo ("marque o “Atende clientes” (com mais de uma unidade, … em
+  “Escolher em quais unidades atende”) no lápis dela").
+
+**2.10, desativar unidade** ("ok"). "1 comanda aberta no PDV (R$ 150,00)", com "Receber no PDV".
+- `tests/unidades-da-tela.test.ts:70` e `:118`: o texto e o caminho novos (`pdv` no lugar de `a-receber`); um caso
+  novo confere o caminho.
+
+**O bloqueio acima de um ano** ("Acima de 1 ano avisa").
+- `tests/agenda-bloqueio.test.ts:38-41`: mais de um ano deixou de ser recusado; um teste novo confere o aviso.
+
+**As cinco formas da baixa** ("Não precisa de aviso, essa não é uma ação automatica, o usuario vai precisar clicar em
+um botão, então ele fez de proposito.").
+- `tests/atritos-da-21-caixa.test.ts:151`: seis formas deixaram de ser recusadas.
+
+**§3, as vezes do cartão** ("Se não for impossível, ainda que improvável, pode ser feito."). Acima de 12 vezes avisa;
+recusa acima de 1.200 (decisão do Claude: o limite da tabela de taxas).
+- `tests/cartao-por-bandeira.test.ts`, `tests/checkout-crediario-da-rede.test.ts`, `tests/checkout-lancamentos.test.ts`,
+  `tests/financeiro-vezes-do-cartao.test.ts`, `tests/tabela-da-operadora.test.ts`: 13 vezes passou a valer; cada um
+  ganhou a recusa acima de 1.200.
+- `tests/comissoes-base-efetiva.test.ts`: a migration que troca as vezes no corpo das funções de cancelar pacote e
+  plano também conta como a última que mexe nelas (ela troca só o trecho das vezes; o resto conferido é o mesmo).
+
+**§3, os pontos** (a mesma fala; e, à pergunta de mudar o jeito de achar a migration, "Sim, muda como acha").
+- `tests/fidelidade-config.test.ts`: a migration da conta cumulativa se acha por dois trechos juntos
+  (`ultimaCom('fidelidade_pontos_do_pagamento', 'v_ligado')`), porque uma migration nova mexe na mesma função; nenhuma
+  conferência mudou.
+
+**O "Em andamento" no app da cliente** (você, 25/11: "Um "Em andamento" não seria melhor?", e a definição "Já começou e
+não acabou").
+- `tests/agenda-do-portal.test.ts`, os casos D14 e A51: o que já começou e não acabou sai dos "Próximos" e vai ao "Em
+  andamento"; o que acabou sem ser fechado segue a regra de sempre (D14 não mudou).
+- `e2e/portal-cliente-alterar-agendamento.spec.ts`, o fim do caso A51: o agendamento em andamento aparece em "Em
+  andamento", sem o "o horário passou".
+

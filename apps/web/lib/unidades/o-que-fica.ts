@@ -9,8 +9,11 @@ import { formatBRL } from '@estetica-os/utils'
  * - `fixos`: quem da equipe tem a abrangência só nela (sem ela, não entra);
  * - `agendamentos`: os futuros ainda marcados (o primeiro, para o link da agenda);
  * - `estoque`: os produtos com saldo e o valor (`metrics_valor_em_estoque`);
- * - `aReceber`: o a receber em aberto (`metrics_a_receber_em_aberto`) e os
- *   atendimentos concluídos sem pagamento, à parte, como no Financeiro;
+ * - `aReceber`: o a receber em aberto (`metrics_a_receber_em_aberto`);
+ * - `atendimentosSemPagamento`: as comandas abertas (o atendimento concluído
+ *   sem pagamento se recebe no PDV desde 16/11 — "1 comanda aberta no PDV", o
+ *   Heitor, 25/11: "ok"; era "atendimento concluído sem pagamento", com o
+ *   caminho do a receber do Financeiro, que não o recebe);
  * - `aReceberDaOperadora`: o que a operadora do cartão ainda deposita (o "em
  *   aberto" da operadora no Financeiro; A15 da 30ª, UN-10);
  * - `comissaoAPagar`: a comissão liberada que ainda não foi fechada.
@@ -56,7 +59,7 @@ export function resumoDoQueFica(nome: string, o: OQueFicaNaUnidade): string | nu
   if (o.aReceber) partes.push(`${formatBRL(o.aReceber)} a receber`)
   if (o.aReceberDaOperadora) partes.push(`${formatBRL(o.aReceberDaOperadora)} a receber da operadora (os cartões a cair)`)
   if (o.atendimentosSemPagamento.n) {
-    partes.push(`${plural(o.atendimentosSemPagamento.n, 'atendimento concluído sem pagamento', 'atendimentos concluídos sem pagamento')} (${formatBRL(o.atendimentosSemPagamento.valor)})`)
+    partes.push(`${plural(o.atendimentosSemPagamento.n, 'comanda aberta no PDV', 'comandas abertas no PDV')} (${formatBRL(o.atendimentosSemPagamento.valor)})`)
   }
   if (o.comissaoAPagar) partes.push(`${formatBRL(o.comissaoAPagar)} de comissão a pagar`)
   if (!partes.length) return null
@@ -81,7 +84,7 @@ export function escolherUnidadesDeLeitura<T extends { id: string; ativa: boolean
  * Os caminhos para resolver o que ficou (F72; D2/A32 da 14ª): cada um leva à
  * tela que JÁ existe, no recorte da unidade — a agenda no dia do primeiro
  * agendamento, o estoque dela (a transferência abre com ela de origem), o a
- * receber dela e as comissões dela. Nenhum repasse em lote novo (regra 3).
+ * receber dela, o PDV dela (as comandas abertas) e as comissões dela. Nenhum repasse em lote novo (regra 3).
  */
 export function caminhosDoQueFica(branchId: string, o: OQueFicaNaUnidade): { chave: string; texto: string; rotulo: string; href: string }[] {
   const c: { chave: string; texto: string; rotulo: string; href: string }[] = []
@@ -97,7 +100,16 @@ export function caminhosDoQueFica(branchId: string, o: OQueFicaNaUnidade): { cha
     rotulo: 'Transferir o estoque',
     href: `/admin/estoque?unidade=${branchId}`,
   })
-  if (o.aReceber > 0 || o.aReceberDaOperadora > 0 || o.atendimentosSemPagamento.n > 0) c.push({
+  // A comanda aberta se recebe no PDV da unidade — que, desativada, não vende mais e segue recebendo o que ficou.
+  if (o.atendimentosSemPagamento.n > 0) c.push({
+    chave: 'pdv',
+    texto: o.atendimentosSemPagamento.n === 1
+      ? 'A comanda aberta continua no PDV da unidade, para receber.'
+      : `As ${o.atendimentosSemPagamento.n} comandas abertas continuam no PDV da unidade, para receber.`,
+    rotulo: 'Receber no PDV',
+    href: `/admin/pdv?unidade=${branchId}`,
+  })
+  if (o.aReceber > 0 || o.aReceberDaOperadora > 0) c.push({
     chave: 'a-receber',
     texto: 'O a receber continua no Financeiro, para dar baixa quando o dinheiro entrar.',
     rotulo: 'Ver o a receber',

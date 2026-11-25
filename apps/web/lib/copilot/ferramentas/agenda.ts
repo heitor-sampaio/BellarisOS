@@ -1,9 +1,10 @@
 import 'server-only'
 import { z } from 'zod/v4'
-import { computeAvailableSlots } from '@/lib/appointments/core'
+import { computeAvailableSlots, podemOcuparDesde } from '@/lib/appointments/core'
 import { ler } from '@/lib/db'
 import { vistaPessoal } from '@/lib/auth'
-import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
+import { ocupaOPeriodo } from '@/lib/metrics/agenda-do-dia'
+import type { FerramentaDeLeitura, ContextoDaFerramenta } from '@/lib/copilot/ferramentas/tipos'
 import {
   DATA, UUID, STATUS_DO_AGENDAMENTO, fusoDe, fusosPorUnidade, hojeNoFuso, horaAgoraNoFuso, idsDasUnidades, janelaDoDia, membroDesativado, membrosPorId, nomesPorId, ondeProcurou,
   quandoLegivel,
@@ -26,7 +27,7 @@ export const agendamentos: FerramentaDeLeitura<{
   nome: 'agendamentos',
   tipo: 'leitura',
   modulo: 'agenda', nivel: 'VIEW',
-  descricao: 'Lista os agendamentos de um dia ou período (até 31 dias), com cliente, procedimento, profissional e status. Filtros opcionais: profissional (nome ou id), unidade, status, cliente (nome, telefone ou id). "Os agendamentos da Fulana" pode ser de uma cliente ou quem atende: passe o nome em um dos dois — a ferramenta procura nos dois e, se o nome for dos dois, pergunta qual. Sem datas: com a cliente ou quem atende, de hoje em diante (30 dias); sem nenhum dos dois, só hoje. "Em aberto" (o que ainda vai acontecer ou está acontecendo) é emAberto: true — sem o concluído, o cancelado e a falta. Na resposta, diga o período lido ("periodo") — "Encontrei 1" sem o período parece o total. Sem unidade, procura em todas as unidades da pessoa; "procurouEm" diz quais — ao não encontrar, diga onde procurou.',
+  descricao: 'Lista os agendamentos de um dia ou período (até 31 dias), com cliente, procedimento, profissional e status. Filtros opcionais: profissional (nome ou id), unidade, status, cliente (nome, telefone ou id). "Os agendamentos da Fulana" pode ser de uma cliente ou quem atende: passe o nome em um dos dois — a ferramenta procura nos dois e, se o nome for dos dois, pergunta qual. Sem datas: com a cliente ou quem atende, de hoje em diante (30 dias); sem nenhum dos dois, só hoje. "Em aberto" (o que ainda vai acontecer ou está acontecendo) é emAberto: true — sem o concluído, o cancelado e a falta. Na resposta, diga o período lido ("periodo") — "Encontrei 1" sem o período parece o total. Sem unidade, procura em todas as unidades da pessoa; "procurouEm" diz quais — ao não encontrar, diga onde procurou. O atendimento que começou antes do período e ainda o ocupa (o que atravessa a meia-noite, o de vários dias) também vem, com o início real e continuaDeAntes: true — nele a pessoa não está livre.',
   parametros: z.object({
     de: DATA.optional().describe('Primeiro dia (AAAA-MM-DD). Padrão: hoje.'),
     ate: DATA.optional().describe('Último dia (AAAA-MM-DD). Padrão: o mesmo de "de"; com a cliente ou quem atende e sem datas, 30 dias depois de hoje.'),
@@ -113,10 +114,23 @@ export const agendamentos: FerramentaDeLeitura<{
     q = args.emAberto ? q.in('status', [...EM_ABERTO])
       : args.status?.length ? q.in('status', args.status) : q.neq('status', 'CANCELLED')
 
-    const linhas = (await ler(q, 'ler os agendamentos') as {
+    const doPeriodo = (await ler(q, 'ler os agendamentos') as {
       id: string; scheduled_at: string; duration_min: number; status: string
       branch_id: string; client_id: string; procedure_id: string; professional_id: string | null
     }[] | null) ?? []
+    // 25/11 (princípio 3): o que começou ANTES do período e ainda o ocupa (o que
+    // atravessa a meia-noite, o de vários dias) também acontece nele — sem ele,
+    // "os horários da Fulana hoje" a davam como livre.
+    const continuam = await osQueContinuamDeAntes(c, janelaDoDia(de, fuso).inicio, janelaDoDia(ate, fuso).fim,
+      situacoesQueContinuam(args.emAberto ? [...EM_ABERTO] : args.status?.length ? args.status : null),
+      x => {
+        let q2 = x.in('branch_id', unidades)
+        if (profissionalId) q2 = q2.eq('professional_id', profissionalId)
+        if (clienteId) q2 = q2.eq('client_id', clienteId)
+        return q2
+      })
+    const idsQueContinuam = new Set(continuam.map(x => x.id))
+    const linhas = [...continuam, ...doPeriodo.filter(l => !idsQueContinuam.has(l.id))]
 
     const [clientes, procs, profs, nomesDasUnidades, fusos] = await Promise.all([
       nomesPorId(c, 'clients', linhas.map(l => l.client_id)),
@@ -137,13 +151,15 @@ export const agendamentos: FerramentaDeLeitura<{
       unidade: nomesDasUnidades.get(l.branch_id) ?? '—',
       status: STATUS_DO_AGENDAMENTO[l.status] ?? l.status,
       href: rota(c, `/agenda/${l.id}`),
+      // 25/11: começou antes do período e continua nele ("quando" é o início real).
+      ...(idsQueContinuam.has(l.id) ? { continuaDeAntes: true } : {}),
     }))
     // A31 da 21ª: quem tem o acesso desativado e ainda tem agendamento, dito — com o caminho.
     const desativados = [...new Set(linhas.map(l => l.professional_id).filter((id): id is string => !!id && profs.get(id)?.ativo === false))]
       .map(id => profs.get(id)!.name)
     const avisos = [
       ...(desativados.length ? [`${desativados.join(', ')} ${desativados.length === 1 ? 'está' : 'estão'} com o acesso desativado: estes agendamentos seguem no nome ${desativados.length === 1 ? 'dessa pessoa' : 'delas'}. Para passá-los a quem atende, troque quem atende em cada um — na agenda, ou pedindo aqui.`] : []),
-      ...(linhas.length === 80 ? ['Mostrando os 80 primeiros.'] : []),
+      ...(doPeriodo.length === 80 ? ['Mostrando os 80 primeiros.'] : []),
     ]
     // A32 da 23ª (princípio 3): o item dizia só "10:00 · Bianca Lopes" numa
     // lista de 17 a 19/11 nas duas unidades. O dia vai quando o período tem
@@ -156,7 +172,7 @@ export const agendamentos: FerramentaDeLeitura<{
         // A29 da 19ª: o período em dd/mm, como o dia (era "2026-11-16 a 2026-12-16").
         tipo: 'links', titulo: `Agenda · ${de === ate ? quandoLegivel(janelaDoDia(de, fuso).inicio, fuso).split(' às')[0] : periodoLegivel(de, ate)}`,
         itens: lista.slice(0, 12).map(a => ({
-          texto: `${variosDias ? a.quando : (a.quando.split(' às ')[1] ?? a.quando)} · ${a.cliente}`,
+          texto: `${textoDoQuando(a, variosDias)} · ${a.cliente}`,
           detalhe: [a.procedimento, a.profissional, ...(variasUnidades ? [a.unidade] : []), a.status].join(' · '),
           href: a.href,
         })),
@@ -178,7 +194,7 @@ export const minhaAgenda: FerramentaDeLeitura<{ de?: string; ate?: string; unida
   recurso: 'agenda',
   // Só quem tem a vista: quem atende sem a Agenda (com ela, é `agendamentos`).
   pode: ctx => vistaPessoal(ctx, 'agenda') !== null,
-  descricao: 'A Minha agenda: só os agendamentos DESTA pessoa (ela atende e não tem a Agenda) num dia ou período (até 31 dias), com cliente, procedimento, unidade e status. Sem datas, de hoje a 30 dias. "Em aberto" é emAberto: true (sem o concluído, o cancelado e a falta). Só lê: a agenda dos outros não vem, e agendar, remarcar e cancelar pedem a Agenda. Na resposta, diga o período lido ("periodo").',
+  descricao: 'A Minha agenda: só os agendamentos DESTA pessoa (ela atende e não tem a Agenda) num dia ou período (até 31 dias), com cliente, procedimento, unidade e status. Sem datas, de hoje a 30 dias. "Em aberto" é emAberto: true (sem o concluído, o cancelado e a falta). Só lê: a agenda dos outros não vem, e agendar, remarcar e cancelar pedem a Agenda. O dela que começou antes do período e ainda o ocupa também vem, com o início real e continuaDeAntes: true. Na resposta, diga o período lido ("periodo").',
   parametros: z.object({
     de: DATA.optional().describe('Primeiro dia (AAAA-MM-DD). Padrão: hoje.'),
     ate: DATA.optional().describe('Último dia (AAAA-MM-DD). Padrão: o mesmo de "de"; sem datas, 30 dias depois de hoje.'),
@@ -210,9 +226,15 @@ export const minhaAgenda: FerramentaDeLeitura<{ de?: string; ate?: string; unida
       .lte('scheduled_at', janelaDoDia(ate, fuso).fim.toISOString())
       .order('scheduled_at').limit(80)
     q = args.emAberto ? q.in('status', [...EM_ABERTO]) : q.neq('status', 'CANCELLED')
-    const linhas = (await ler(q, 'ler a minha agenda') as {
+    const doPeriodo = (await ler(q, 'ler a minha agenda') as {
       id: string; scheduled_at: string; duration_min: number; status: string; branch_id: string; client_id: string; procedure_id: string
     }[] | null) ?? []
+    // 25/11: o dela que começou antes do período e ainda o ocupa também vem.
+    const continuam = await osQueContinuamDeAntes(c, janelaDoDia(de, fuso).inicio, janelaDoDia(ate, fuso).fim,
+      situacoesQueContinuam(args.emAberto ? [...EM_ABERTO] : null),
+      x => x.eq('professional_id', eu).in('branch_id', unidades))
+    const idsQueContinuam = new Set(continuam.map(x => x.id))
+    const linhas = [...continuam, ...doPeriodo.filter(l => !idsQueContinuam.has(l.id))]
 
     const [clientes, procs, nomesDasUnidades, fusos] = await Promise.all([
       nomesPorId(c, 'clients', linhas.map(l => l.client_id)),
@@ -229,15 +251,16 @@ export const minhaAgenda: FerramentaDeLeitura<{ de?: string; ate?: string; unida
       unidade: nomesDasUnidades.get(l.branch_id) ?? '—',
       status: STATUS_DO_AGENDAMENTO[l.status] ?? l.status,
       href: rota(c, `/agenda/${l.id}`),
+      ...(idsQueContinuam.has(l.id) ? { continuaDeAntes: true } : {}),
     }))
     const variosDias = de !== ate
     const variasUnidades = unidades.length > 1
     return {
-      dados: { periodo, procurouEm, total: lista.length, agendamentos: lista, ...(linhas.length === 80 ? { aviso: 'Mostrando os 80 primeiros.' } : {}) },
+      dados: { periodo, procurouEm, total: lista.length, agendamentos: lista, ...(doPeriodo.length === 80 ? { aviso: 'Mostrando os 80 primeiros.' } : {}) },
       cartao: lista.length ? {
         tipo: 'links', titulo: `Minha agenda · ${de === ate ? quandoLegivel(janelaDoDia(de, fuso).inicio, fuso).split(' às')[0] : periodoLegivel(de, ate)}`,
         itens: lista.slice(0, 12).map(a => ({
-          texto: `${variosDias ? a.quando : (a.quando.split(' às ')[1] ?? a.quando)} · ${a.cliente}`,
+          texto: `${textoDoQuando(a, variosDias)} · ${a.cliente}`,
           detalhe: [a.procedimento, ...(variasUnidades ? [a.unidade] : []), a.status].join(' · '),
           href: a.href,
         })),
@@ -250,6 +273,64 @@ export const minhaAgenda: FerramentaDeLeitura<{ de?: string; ate?: string; unida
 function nomeDeQuemAtende(m: { name: string; ativo: boolean } | undefined): string {
   if (!m) return '—'
   return m.ativo ? m.name : `${m.name} (acesso desativado)`
+}
+
+/** O que a leitura de agenda pega de cada agendamento. */
+const COLUNAS = 'id, scheduled_at, duration_min, status, completed_at, branch_id, client_id, procedure_id, professional_id'
+type LinhaQueContinua = {
+  id: string; scheduled_at: string; duration_min: number; status: string; completed_at: string | null
+  branch_id: string; client_id: string; procedure_id: string; professional_id: string | null
+}
+type ConsultaDaAgenda = ReturnType<ReturnType<ContextoDaFerramenta['admin']['from']>['select']>
+
+/**
+ * As situações em que um agendamento CONTINUA de antes: as pedidas (ou, sem
+ * pedido, todas), sem o cancelado e a falta — eles não ocupam nada fora do
+ * dia deles (a regra do desenho, `trechoDoAgendamentoNoDia`).
+ */
+function situacoesQueContinuam(pedidas: readonly string[] | null): string[] {
+  return (pedidas ?? STATUS).filter(s => s !== 'CANCELLED' && s !== 'NO_SHOW')
+}
+
+const POR_PAGINA = 1000
+
+/**
+ * Os agendamentos que começaram ANTES do período e ainda ocupam o início dele
+ * (25/11; princípio 3). O procedimento não tem duração máxima: a lista pelo
+ * início deixava de fora o atendimento que continua de ontem, e o Copilot dava
+ * a pessoa como livre. A consulta é a de quem pode ocupar (`podemOcuparDesde`,
+ * a régua do choque), em páginas — o "de qualquer duração" traz os longos de
+ * antes, e nada se corta calado (a página seguinte parte do último início lido);
+ * o que de fato ainda ocupa o período decide `ocupaOPeriodo` (lib/metrics).
+ */
+async function osQueContinuamDeAntes(
+  c: ContextoDaFerramenta, inicio: Date, fim: Date, situacoes: string[],
+  recorte: (q: ConsultaDaAgenda) => ConsultaDaAgenda,
+): Promise<LinhaQueContinua[]> {
+  if (!situacoes.length) return []
+  const antesDoInicio = new Date(inicio.getTime() - 1).toISOString()
+  const vistos = new Map<string, LinhaQueContinua>()
+  for (let desde: string | null = null, guarda = 0; guarda < 1000; guarda++) {
+    let q = recorte(c.admin.from('appointments').select(COLUNAS))
+      .or(podemOcuparDesde(inicio.getTime()))
+      .lte('scheduled_at', antesDoInicio)
+      .in('status', situacoes)
+    if (desde) q = q.gte('scheduled_at', desde)
+    const pagina = (await ler(q.order('scheduled_at').order('id').limit(POR_PAGINA), 'ler os agendamentos que continuam de antes') as LinhaQueContinua[] | null) ?? []
+    let novos = 0
+    for (const l of pagina) if (!vistos.has(l.id)) { vistos.set(l.id, l); novos++ }
+    if (pagina.length < POR_PAGINA || !novos) break
+    desde = pagina[pagina.length - 1]!.scheduled_at
+  }
+  return [...vistos.values()]
+    .filter(l => new Date(l.scheduled_at).getTime() < inicio.getTime() && ocupaOPeriodo(l, inicio, fim))
+    .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
+}
+
+/** A hora do item no cartão: no dia, só a hora; em vários dias, ou no que continua de antes, o dia também ("desde"). */
+function textoDoQuando(a: { quando: string; continuaDeAntes?: boolean }, variosDias: boolean): string {
+  if (a.continuaDeAntes) return `desde ${a.quando}`
+  return variosDias ? a.quando : (a.quando.split(' às ')[1] ?? a.quando)
 }
 
 /** "AAAA-MM-DD" + n dias (a data do calendário, sem fuso). */

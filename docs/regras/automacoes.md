@@ -179,6 +179,16 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   que é o ritmo do cron**: prometer menos é prometer o que o relógio não
   entrega. Quem controla a repetição é `automations.ultimo_disparo_agenda`, e a
   marca é gravada ANTES de executar, conferindo quantas linhas mudou.
+  **O dia do mês vai de 1 a 31** (decisão do Claude, 25/11, pelos princípios 2
+  e 3; o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser
+  feito."). Ia só até 28 — escolha do Claude na fase 4 (23/09), sem fala do
+  Heitor —, e só no HTML. O motor (`estaNaHora`) dispara só no dia certo: no
+  mês que não tem aquele dia, não dispara. A tela diz isso no 29, no 30 e no 31
+  (`dicaDoDiaDoMes`, `lib/automacoes/dia-do-mes.ts`: "Fevereiro, abril, junho,
+  setembro e novembro não têm o dia 31: nesses meses a automação não
+  dispara."); só o dia que não existe em mês nenhum (0, 32, fracionário) não
+  liga (`recusaDoDiaDoMes`, na validação). Prova:
+  `tests/automacoes-vale-o-numero-que-a-rede-escolheu.test.ts`.
 - **Cada salvamento deixa um retrato em `automation_versions`** (os últimos 30).
   Voltar para uma versão **carrega** o fluxo dela no editor e não grava nada —
   salvar continua sendo explícito, e o retrato de onde se veio permanece. O
@@ -467,6 +477,23 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   `clientes_do_publico`, migration `20261115700002`). É o modelo de
   vencimento de pacote — o "antes do pacote vencer" da campanha automática.
   Prova: `e2e/automacoes-modelos-da-campanha.spec.ts`.
+- **O "No máximo" do "Buscar clientes" vale o número gravado, e as tags vão
+  todas** (decisão do Claude, 25/11, pelos princípios 2 e 3; o Heitor, 25/11:
+  "Se não for impossível, ainda que improvável, pode ser feito."). A tela tinha
+  o teto de 500 só no HTML; a prévia (`contarBuscaDeClientes`,
+  `contarAntesDeLigar`) e o motor (`buscarClientes`) cortavam em 500, calados, e
+  o passo dizia "O teto de 2000 cortou a lista"; as tags do filtro cortavam em
+  50 (sem motivo técnico: vão no corpo de `clientes_do_publico`, POST). A regra
+  é uma, `lib/automacoes/busca-do-passo.ts`: sem valor, os 200 que a tela
+  mostra; acima de 500 (o comum, o antigo teto) a tela avisa ao lado do campo
+  (`avisoAcimaDoComum`, `[data-acima-do-comum="limite-da-busca"]`); só o
+  impossível se recusa — zero, negativo, fracionário e acima do registro (o
+  grafo é jsonb: o `LIMITE_DO_INTEIRO`) —, na tela, na validação (não liga), na
+  prévia (`{ error }`) e no motor (o passo falha com o motivo, sem chutar outro
+  número). Acima de 1.000 a busca lê em páginas (`lerPublico`, o `lerTodas`) e
+  as execuções filhas se gravam em lotes de 500; o "O teto de N cortou a lista"
+  diz o teto que valeu. Prova:
+  `tests/automacoes-vale-o-numero-que-a-rede-escolheu.test.ts`.
 - **O filtro de Tags do público é E** (o Heitor, 19/11; `crm-inbox.md`, "O filtro de
   Tags é E em todo lugar"): no "Buscar clientes" e no público das campanhas
   (`clientes_do_publico`), com duas tags entra só quem tem as duas — era OU

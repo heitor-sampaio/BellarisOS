@@ -13,18 +13,43 @@ import { startOfDayTZ, endOfDayTZ } from '@/lib/datetime'
  * 2026-10-29). Puro, sem servidor: roda no navegador.
  */
 export function ocupacaoDoDia(
-  eventos: { start: string; durationMin: number; status: string }[],
+  eventos: AgendamentoQueOcupa[],
   horarios: { unidade: Horario | null; profissional: Horario | null; ocupadoFora?: BlocoOcupado[] },
   dia: Date,
   /** O fuso da unidade (F62); sem ele, o de Brasília. */
   fuso?: string,
 ): number | null {
   const de = startOfDayTZ(dia, fuso), ate = endOfDayTZ(dia, fuso)
-  const minutos = eventos
-    .filter(e => !['CANCELLED', 'NO_SHOW'].includes(e.status))
-    .filter(e => { const t = new Date(e.start).getTime(); return t >= de.getTime() && t <= ate.getTime() })
-    .reduce((s, e) => s + e.durationMin, 0)
+  const minutos = minutosAgendadosNoPeriodo(eventos, de, ate)
   return ocupacaoEmPct(minutos, horarios.unidade, [horarios.profissional], de, ate, [horarios.ocupadoFora ?? []], fuso)
+}
+
+/** Um agendamento como as agendas o têm: o início, a duração, a situação e a conclusão. */
+export interface AgendamentoQueOcupa { start: string; durationMin: number; status: string; completedAt?: string | null }
+
+/**
+ * Os minutos que UM agendamento ocupa dentro do período [de, ate] (`ate` é o
+ * último instante, como o de `endOfDayTZ`). O procedimento não tem duração
+ * máxima (25/11): o que atravessa a meia-noite, ou dura dias, ocupa cada dia
+ * um pedaço — o MESMO trecho que as agendas desenham
+ * (`trechoDoAgendamentoNoDia`). A ocupação somava a duração inteira no dia do
+ * início: o de 30 h dava mais de 100% num dia e 0% no seguinte (princípio 3).
+ * Só o RECORTE pelo dia é novo; a definição não muda (§13.1): conta a duração
+ * MARCADA, o concluído inclusive (também o concluído adiantado), e o cancelado
+ * e a falta não ocupam nada.
+ */
+export function minutosNoPeriodo(a: AgendamentoQueOcupa, de: Date, ate: Date): number {
+  if (a.status === 'CANCELLED' || a.status === 'NO_SHOW') return 0
+  const ini = new Date(a.start).getTime()
+  if (Number.isNaN(ini)) return 0
+  const fim = ini + (a.durationMin || 0) * 60_000
+  const dentro = Math.min(fim, ate.getTime() + 1) - Math.max(ini, de.getTime())
+  return dentro > 0 ? dentro / 60_000 : 0
+}
+
+/** Os minutos agendados no período (a parte de cima da ocupação): a soma dos trechos, sem cancelados nem faltas. */
+export function minutosAgendadosNoPeriodo(eventos: readonly AgendamentoQueOcupa[], de: Date, ate: Date): number {
+  return eventos.reduce((s, e) => s + minutosNoPeriodo(e, de, ate), 0)
 }
 
 /**

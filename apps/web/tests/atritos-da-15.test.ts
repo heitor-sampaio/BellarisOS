@@ -247,8 +247,10 @@ describe('A27/A28: a auditoria agrupa a gravação e lê o fato', () => {
 // ─── Os BAIXA de texto (a frase da tela, sem regra nova) ────────────────────
 
 describe('os BAIXA da 15ª: o texto diz o que vale', () => {
-  it('A5: o documento travado pelo cadastro leva à ficha ("Completar a ficha")', () => {
-    expect(ler('components/branch/checkout-wizard.tsx')).toContain('Completar a ficha')
+  // O nome do link: "Completar o cadastro" (o Heitor, 25/11: "Completar cadastro").
+  it('A5: o documento travado pelo cadastro leva à ficha ("Completar o cadastro")', () => {
+    expect(ler('components/branch/checkout-wizard.tsx')).not.toContain('>Completar a ficha<')
+    expect(ler('components/branch/checkout-wizard.tsx')).toMatch(/Falta no cadastro:[\s\S]{0,300}>Completar o cadastro<\/Link>/)
   })
   it('A9: um gênero só, neutro onde dá ("de quem atende")', () => {
     expect(ler('components/branch/appointment-session.tsx')).not.toContain('relatadas pelo cliente')

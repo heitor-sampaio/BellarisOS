@@ -1063,7 +1063,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
                     <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 600 }}>
                       Falta no cadastro: {d.faltando.join(', ')}.{' '}
                       {/* A5 da 15ª: o caminho até o campo, ali mesmo. */}
-                      <Link href={`${rotaCliente(pathname, slug, plan.clientId)}?aba=dados`} style={{ color: 'var(--brand)', fontWeight: 700 }}>Completar a ficha</Link>
+                      <Link href={`${rotaCliente(pathname, slug, plan.clientId)}?aba=dados`} style={{ color: 'var(--brand)', fontWeight: 700 }}>Completar o cadastro</Link>
                     </p>
                   )}
                   {/* D6 da 12ª: o que sai vazio NESTE plano, antes de colher ou mandar o link (só aviso — princípio 2). */}

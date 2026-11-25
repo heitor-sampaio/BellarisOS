@@ -6,6 +6,7 @@ import { Minus, Plus, X } from 'lucide-react'
 import { acrescentarProdutoNaComanda, tirarProdutoDaComanda, tirarUmProdutoDaComanda } from '@/actions/pdv'
 import type { ItemDaComanda } from '@/lib/pdv/itens-da-comanda'
 import { situacaoDoItemDaComanda } from '@/lib/pdv/situacoes'
+import { recusaDaQuantidadeDoProduto, avisoDaQuantidadeDoProduto, avisosDosItensDaVenda } from '@/lib/vendas/quantidades'
 
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
@@ -42,7 +43,9 @@ export function ProdutosDaComanda({ comandaId, slug, itens, produtos, aReceber =
     setErro(null)
     if (!produtoId) { setErro('Escolha o produto.'); return }
     const qtd = Number(quantidade)
-    if (!Number.isInteger(qtd) || qtd < 1 || qtd > 100) { setErro('Quantidade inválida (de 1 a 100).'); return }
+    // O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." — acima de 100 avisa.
+    const recusa = recusaDaQuantidadeDoProduto(qtd)
+    if (recusa) { setErro(recusa); return }
     comecar(async () => {
       const r = await acrescentarProdutoNaComanda(comandaId, produtoId, qtd, slug)
       if ('error' in r) { setErro(r.error); return }
@@ -68,6 +71,9 @@ export function ProdutosDaComanda({ comandaId, slug, itens, produtos, aReceber =
       router.refresh()
     })
   }
+  // Acima do comum (decisão do Claude, 25/11): mais de 20 produtos na comanda avisa, e grava.
+  const avisoDosProdutos = avisosDosItensDaVenda(itens.filter(i => !i.vendido).map(i => i.quantidade)).produtos
+  const avisoDoAcrescentar = avisoDaQuantidadeDoProduto(Number(quantidade))
   const tirar = (itemId: string) => {
     setErro(null)
     comecar(async () => {
@@ -89,6 +95,11 @@ export function ProdutosDaComanda({ comandaId, slug, itens, produtos, aReceber =
             <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 2 }}>
               {situacaoDoItemDaComanda(i, aReceber, naoPontua)}
             </p>
+            {produtos && !i.vendido && avisoDaQuantidadeDoProduto(i.quantidade) && (
+              <span role="status" data-acima-do-comum="quantidade-do-item" style={{ display: 'block', marginTop: 2, fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+                {avisoDaQuantidadeDoProduto(i.quantidade)}
+              </span>
+            )}
             {produtos && !i.vendido && (
               <button type="button" className="btn-ghost" aria-label={`Tirar ${i.nome}`}
                 disabled={pendente} onClick={() => tirar(i.id)}
@@ -119,6 +130,12 @@ export function ProdutosDaComanda({ comandaId, slug, itens, produtos, aReceber =
         </div>
       ))}
 
+      {produtos && avisoDosProdutos && (
+        <span role="status" data-acima-do-comum="produtos-da-comanda" style={{ display: 'block', marginTop: 8, fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+          {avisoDosProdutos}
+        </span>
+      )}
+
       {produtos && !aberto && (
         <button type="button" className="btn-ghost" onClick={() => { setAberto(true); setErro(null) }}
           style={{ marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--brand)', fontWeight: 700 }}>
@@ -145,9 +162,14 @@ export function ProdutosDaComanda({ comandaId, slug, itens, produtos, aReceber =
                   </option>
                 ))}
               </select>
-              <input className="field" type="number" min={1} max={100} step={1} inputMode="numeric" aria-label="Quantidade"
+              <input className="field" type="number" min={1} step={1} inputMode="numeric" aria-label="Quantidade"
                 value={quantidade} onChange={ev => setQuantidade(ev.target.value)} />
             </div>
+          )}
+          {avisoDoAcrescentar && (
+            <span role="status" data-acima-do-comum="quantidade-do-produto" style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+              {avisoDoAcrescentar}
+            </span>
           )}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button type="button" className="btn-secondary" onClick={() => { setAberto(false); setErro(null) }}>Cancelar</button>

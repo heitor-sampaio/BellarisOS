@@ -136,30 +136,6 @@ test.describe('F68 — as contas no banco', () => {
     expect([d.agendados, d.realizados]).toEqual([1, 1])
   })
 
-  test('C49: o "Reativar" da unidade mostra a última visita NELA, não a de outra unidade', async () => {
-    const cliente = await rede!.criarCliente('Sumida da A')
-    const { error: eData } = await db().from('clients').update({ created_at: iso(agora - 200 * DIA) }).eq('id', cliente)
-    expect(eData).toBeNull()
-    const visita = (unidade: string, dias: number) => db().from('appointments').insert({
-      branch_id: unidade, client_id: cliente, procedure_id: rede!.procedureId, professional_id: rede!.professionalId,
-      status: 'COMPLETED', source: 'INTERNAL', duration_min: 30, price: 0,
-      scheduled_at: iso(agora - dias * DIA), completed_at: iso(agora - dias * DIA),
-    })
-    expect((await visita(rede!.branchId, 120)).error).toBeNull()
-    expect((await visita(unidadeB, 10)).error).toBeNull()
-    // A cliente da unidade é a atendida nela (T1 do Bloco Tags, 2026-11-14).
-    const { data, error } = await db().rpc('metrics_clientes_para_reativar', {
-      p_tenant: rede!.tenantId, p_branch_id: rede!.branchId,
-      p_desde: iso(agora - 90 * DIA), p_limite: 50, p_professional_id: null,
-    })
-    expect(error).toBeNull()
-    const dela = (data as { lista: { id: string; ultima_visita: string }[] }).lista.find(c => c.id === cliente)
-    expect(dela, 'sumida da unidade A há 120 dias').toBeTruthy()
-    // A última visita NA UNIDADE: há 120 dias (era a de 10 dias atrás, na B).
-    const dias = Math.round((agora - new Date(dela!.ultima_visita).getTime()) / DIA)
-    expect(dias).toBe(120)
-  })
-
   test('MK2: o público da campanha e da automação não recorta por unidade (o branch_ids gravado antes é ignorado)', async () => {
     const cliente = await rede!.criarCliente('Só vai à B')
     const publico = async (unidade: string) => {

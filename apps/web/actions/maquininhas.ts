@@ -22,7 +22,7 @@ import { gravar, mensagemDoErro } from '@/lib/db'
 import { veComissaoDeTodos } from '@/lib/comissoes/quem-ve'
 import { maquininhasDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { EntradaDaMaquininha, ID_DA_MAQUININHA, linhaDaMaquininha, maximoDaMaquininha } from '@/lib/financeiro/maquininhas'
-import { recusaDaTaxaDaMaquininha, TETO_DE_VEZES } from '@/lib/financeiro/vezes-do-cartao'
+import { recusaDaTaxaDaMaquininha } from '@/lib/financeiro/vezes-do-cartao'
 import type { CartaoPorBandeira } from '@/lib/financeiro/bandeiras'
 
 type Resultado = { error?: string; ok?: true; id?: string }
@@ -138,7 +138,8 @@ export async function maquininhasParaAVenda(): Promise<{ lista: MaquininhaNaVend
   const lista = (await maquininhasDaRede(ctx.tenantId)).filter(m => !m.arquivada).map(m => ({
     id: m.id,
     nome: m.nome,
-    maximo: Math.min(TETO_DE_VEZES, maximoDaMaquininha(m)),
+    // O Heitor, 25/11: o "Parcelar até" que passa de 12 vale na venda (acima de 12, a configuração avisa).
+    maximo: maximoDaMaquininha(m),
     taxas: recebe ? presenca(m.taxas) : {},
     cobraPorBandeira: m.cobraPorBandeira,
     porBandeira: recebe && m.cobraPorBandeira

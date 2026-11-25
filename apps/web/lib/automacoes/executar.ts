@@ -556,7 +556,7 @@ async function rodarNo(
       const cfg = no.config as ConfigBuscarClientes
       // A busca é da rede (T1 do Bloco Tags: a cliente é da rede, sem unidade),
       // e o dia do aniversário, no fuso da rede.
-      const { clientes, truncado } = await buscarClientes(run.tenant_id, cfg, await fusoDaRede(run.tenant_id))
+      const { clientes, truncado, limite } = await buscarClientes(run.tenant_id, cfg, await fusoDaRede(run.tenant_id))
 
       const proximo = ligacaoSaindo(automacao.grafo, no.id)
       if (!proximo) return { parar: true, resumo: { encontrados: clientes.length, motivo: 'Nada ligado depois da busca.' } }
@@ -571,7 +571,8 @@ async function rodarNo(
         parar: true,
         resumo: {
           encontrados: clientes.length, abertas,
-          ...(truncado ? { aviso: `O teto de ${cfg.limite ?? 200} cortou a lista.` } : {}),
+          // O teto que VALEU (o gravado; sem ele, os 200 da tela) — princípio 3.
+          ...(truncado ? { aviso: `O teto de ${limite.toLocaleString('pt-BR')} cortou a lista.` } : {}),
         },
       }
     }
@@ -584,6 +585,9 @@ async function rodarNo(
 }
 
 // ─── Utilidades do grafo e do registro ──────────────────────────────────────
+
+/** Quantas execuções filhas se gravam por vez. */
+const LOTE_DE_EXECUCOES = 500
 
 /**
  * Uma execução por cliente, a partir da busca.
@@ -620,17 +624,23 @@ async function abrirExecucoesFilhas(
     },
   }))
 
-  const { data, error } = await admin.from('automation_runs').insert(linhas).select('id')
-  if (error) throw new Error(`Não consegui abrir as execuções: ${error.message}`)
+  // Em lotes: o "No máximo" vale o número que a rede gravou (sem o 500 de
+  // antes), e a resposta do PostgREST passa de 1.000 linhas calada.
+  const abertas: string[] = []
+  for (let i = 0; i < linhas.length; i += LOTE_DE_EXECUCOES) {
+    const { data, error } = await admin.from('automation_runs').insert(linhas.slice(i, i + LOTE_DE_EXECUCOES)).select('id')
+    if (error) throw new Error(`Não consegui abrir as execuções: ${error.message}`)
+    abertas.push(...(data ?? []).map(l => l.id as string))
+  }
 
   // Rodam JÁ, em sequência. Em paralelo, cem clientes virariam cem envios
   // simultâneos pelo mesmo canal — e o provedor de WhatsApp trata isso como
   // disparo em massa.
-  for (const linha of data ?? []) {
-    await executarRun(linha.id as string)
+  for (const id of abertas) {
+    await executarRun(id)
   }
 
-  return (data ?? []).length
+  return abertas.length
 }
 
 function ligacaoSaindo(

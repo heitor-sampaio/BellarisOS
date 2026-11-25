@@ -7,6 +7,7 @@ import { profissionaisParaTrocar, reassignProfessional, opcoesParaMudarDeUnidade
 import { useUmaUnidade } from '@/components/shared/uma-unidade'
 import { creditosDoAgendamento, usarCreditoNoAgendamento } from '@/actions/creditos'
 import type { CreditoParaAgendar } from '@/lib/creditos/credito'
+import { O_ATENDE_NA_FICHA } from '@/lib/equipe/atende'
 
 /**
  * Trocar quem atende pela janela do agendamento (A22 da 8ª simulação,
@@ -59,7 +60,7 @@ export function TrocarProfissional({ appointmentId, slug, atual, onTrocou }: {
         {(opcoes ?? []).map(o => <option key={o.id} value={o.id} disabled={!o.livre}>{o.livre ? o.name : `${o.name} (ocupada)`}</option>)}
       </select>
       {opcoes && opcoes.length === 0 && (
-        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Ninguém mais atende nesta unidade (o “Atende clientes em”, na Equipe).</p>
+        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Ninguém mais atende nesta unidade: marque {O_ATENDE_NA_FICHA} no lápis de quem atende aqui, na Equipe.</p>
       )}
       {erro && <p role="alert" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 600 }}>{erro}</p>}
       {confirmando && nova ? (
@@ -149,7 +150,7 @@ export function MudarDeUnidade({ appointmentId, unidadeAtual, onMudou }: {
             {nova.profissionais.map(p => <option key={p.id} value={p.id} disabled={!p.livre}>{p.livre ? p.name : `${p.name} (ocupada)`}</option>)}
           </select>
           {nova.profissionais.length === 0 && (
-            <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Ninguém atende em {nova.nome} ainda (o “Atende clientes em”, na Equipe).</p>
+            <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Ninguém atende em {nova.nome} ainda: marque {O_ATENDE_NA_FICHA} no lápis de quem atende lá, na Equipe.</p>
           )}
           {nova.salas.length > 0 && (
             <>

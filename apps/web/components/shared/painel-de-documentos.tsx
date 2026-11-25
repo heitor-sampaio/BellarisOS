@@ -56,7 +56,7 @@ function Situacao({ l }: { l: LinhaDoPainel }) {
         <Link data-completar-cadastro href={`${rotaCliente(pathname, l.slug, l.clienteId)}?aba=dados`}
           onClick={e => e.stopPropagation()}
           style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--brand)', textDecoration: 'none' }}>
-          Completar a ficha
+          Completar o cadastro
         </Link>
       )}
       {(l.situacao === 'DISPENSADO' || l.situacao === 'CANCELADO') && l.motivo && (

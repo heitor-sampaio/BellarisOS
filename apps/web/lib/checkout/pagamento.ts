@@ -2,6 +2,7 @@ import { formatBRL, formatDate } from '@estetica-os/utils'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { dividirEmParcelas } from '@/lib/checkout/parcelas'
 import { parcelasEmTexto } from '@/lib/checkout/resumo-do-pagamento'
+import { LIMITE_DE_VEZES_NO_CARTAO } from '@/lib/acima-do-comum'
 
 /**
  * Como o plano foi pago — e as três leituras dele que o sistema faz.
@@ -66,7 +67,7 @@ export function partesQuePagamAgora(p: PagamentoDoPlano | null | undefined, tota
     ...(p.bandeira ? { bandeira: p.bandeira } : {}), ...(p.maquininha ? { maquininha: p.maquininha } : {}),
   }
   return [primeira, ...outras.map(o => ({
-    ...o, vezes: o.metodo === 'CREDIT_CARD' ? Math.max(1, Math.min(12, Math.round(Number(o.vezes) || 1))) : 1,
+    ...o, vezes: o.metodo === 'CREDIT_CARD' ? Math.max(1, Math.min(LIMITE_DE_VEZES_NO_CARTAO, Math.round(Number(o.vezes) || 1))) : 1,
   }))]
 }
 
@@ -128,7 +129,8 @@ export function vezesNoCartao(p: PagamentoDoPlano | null | undefined): number {
   if (!p || p.metodo !== 'CREDIT_CARD') return 1
   if (p.forma === 'PARCELADO' && !(p.entrada > 0)) return 1
   if (p.forma !== 'AVISTA' && p.forma !== 'PARCELADO') return 1
-  return Math.max(1, Math.min(12, Math.round(Number(p.vezes) || 1)))
+  // O Heitor, 25/11: acima de 12 vezes avisa, não se corta; o teto é o impossível (1.200).
+  return Math.max(1, Math.min(LIMITE_DE_VEZES_NO_CARTAO, Math.round(Number(p.vezes) || 1)))
 }
 
 /** O meio do que é pago AGORA (à vista, ou a entrada do "entrada + parcelas"), ou nulo. */

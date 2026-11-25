@@ -2,6 +2,8 @@ import 'server-only'
 import type { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { saldoDepoisDaSaida } from '@/lib/estoque/baixa'
+import { medidaNoPlural } from '@/lib/estoque/medidas'
+import { recusaDaBaixaAcimaDoRegistro } from '@/lib/estoque/limites-do-registro'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -69,6 +71,15 @@ export async function montarInsumosDaBaixa(
       rendimento:           bps?.current_rendimento != null ? Number(bps.current_rendimento) : null,
       unidadesPorEmbalagem: upp,
     }, quantity)
+
+    // O que o registro não guarda (`stock_movements.quantity` e `balance_after`,
+    // numeric(10,4)): a quantidade digitada e o saldo que falta, para menos. Faltar
+    // não impede; o impossível, sim (o Heitor, 25/11: "Se não for impossível, ainda
+    // que improvável, pode ser feito."; decisão do Claude, 25/11). Lança: a action
+    // da conclusão e a da desistência devolvem a mensagem à tela, e nada se grava.
+    const naUnidade = upp ? (prod.consumption_unit as string) : medidaNoPlural(prod.unit as string, 2)
+    const acimaDoRegistro = recusaDaBaixaAcimaDoRegistro({ quantidade: quantity, saldoDepois: saldoApos, medida: naUnidade })
+    if (acimaDoRegistro) throw new Error(`${prod.name as string}: ${acimaDoRegistro}`)
 
     // O custo não vai daqui: o banco grava o da unidade de CONSUMO
     // (custo_de_consumo — o frasco ÷ o que ele rende).

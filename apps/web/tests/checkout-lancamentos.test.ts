@@ -59,10 +59,13 @@ describe('cartão de crédito em N vezes (2026-10-20)', () => {
       { amount: 600, payment_method: 'CREDIT_CARD', is_paid: true, due_date: null, notes: null, cartao_vezes: 3 },
     ])
   })
-  it('vezes só no crédito, de 1 a 12', () => {
+  // O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." — acima de 12 vezes avisa.
+  it('vezes só no crédito, de 1 a 1.200', () => {
     expect(EntradaDoPagamento.safeParse({ forma: 'AVISTA', metodo: 'CREDIT_CARD', vezes: 3 }).success).toBe(true)
     expect(EntradaDoPagamento.safeParse({ forma: 'AVISTA', metodo: 'PIX', vezes: 3 }).success).toBe(false)
-    expect(EntradaDoPagamento.safeParse({ forma: 'AVISTA', metodo: 'CREDIT_CARD', vezes: 13 }).success).toBe(false)
+    // O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." — acima de 12 vezes avisa.
+    expect(EntradaDoPagamento.safeParse({ forma: 'AVISTA', metodo: 'CREDIT_CARD', vezes: 13 }).success).toBe(true)
+    expect(EntradaDoPagamento.safeParse({ forma: 'AVISTA', metodo: 'CREDIT_CARD', vezes: 1201 }).success).toBe(false)
     expect(EntradaDoPagamento.safeParse({ forma: 'AVISTA', metodo: 'CREDIT_CARD', vezes: 0 }).success).toBe(false)
   })
   it('1x não leva vezes (o à vista de sempre)', () => {

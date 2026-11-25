@@ -12,6 +12,7 @@ import { novoToken, telefoneParaWhatsApp, VALIDADE_DO_LINK_DIAS } from '@/lib/do
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { recusaDaConfigDaRede } from '@/lib/configuracao-da-rede'
+import { EntradaDoEnvioDaFicha } from '@/lib/configuracoes/prazos-da-rede'
 import { normalizeFormSchema, validateFormSchema, flattenFields } from '@/lib/anamnesis'
 import { TIPOS_FORA_DO_PRE_ATENDIMENTO } from '@/lib/anamnese-geral'
 import { gravarAnamneseGeral, preAtendimentoPendente, dadosDaOfertaNoApp, expirarAFichaDaCliente } from '@/lib/pre-atendimento/ficha'
@@ -62,15 +63,16 @@ export async function salvarFichaDePreAtendimento(input: { id?: string; name: st
   return { ok: true }
 }
 
-const EntradaDoEnvio = z.object({ envio: z.boolean(), validadeMeses: z.number().int().min(1).max(36) })
-
 export async function definirEnvioDoPreAtendimento(input: unknown): Promise<Resultado> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'forms', 'MANAGE')
   const daRede = recusaDaConfigDaRede(ctx)
   if (daRede) return { error: daRede }
-  const dados = EntradaDoEnvio.safeParse(input)
-  if (!dados.success) return { error: 'A validade vai de 1 a 36 meses.' }
+  // O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser
+  // feito." Acima de 36 meses a tela avisa e aqui se grava; só o impossível
+  // se recusa (lib/configuracoes/prazos-da-rede.ts).
+  const dados = EntradaDoEnvioDaFicha.safeParse(input)
+  if (!dados.success) return { error: dados.error.issues.find(i => i.path[0] === 'validadeMeses')?.message ?? 'Dados inválidos.' }
 
   await gravar(createAdminClient().from('tenants')
     .update({ pre_atendimento_envio: dados.data.envio, pre_atendimento_validade_meses: dados.data.validadeMeses })

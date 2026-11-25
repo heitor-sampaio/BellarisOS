@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { TIPOS_DE_RECOMPENSA } from './voucher'
-import { LIMITE_DE_DIAS, acimaDeCemAnos, avisoAcimaDoComum } from '@/lib/acima-do-comum'
+import { LIMITE_DE_DIAS, LIMITE_DO_INTEIRO, acimaDeCemAnos, acimaDoRegistro, avisoAcimaDoComum } from '@/lib/acima-do-comum'
 
 /**
  * O que a tela do catálogo manda para salvar uma recompensa. Cada tipo exige o
@@ -12,7 +12,10 @@ export const EntradaDaRecompensa = z.object({
   name:           z.string().trim().min(2, 'Dê um nome à recompensa.').max(120),
   description:    z.string().trim().max(500).optional().nullable(),
   type:           z.enum(TIPOS_DE_RECOMPENSA),
-  points_cost:    z.coerce.number().int('O custo é um número inteiro de pontos.').min(1, 'Informe quantos pontos a recompensa custa.').max(10_000_000),
+  // O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." Acima de 10 milhões (o
+  // antigo teto) a tela avisa (`avisoDoCustoDaRecompensa`); só o registro (`integer`) limita.
+  points_cost:    z.coerce.number().int('O custo é um número inteiro de pontos.').min(1, 'Informe quantos pontos a recompensa custa.')
+    .max(LIMITE_DO_INTEIRO, acimaDoRegistro(LIMITE_DO_INTEIRO, 'pontos')),
   procedure_id:   z.string().uuid().optional().nullable(),
   product_id:     z.string().uuid().optional().nullable(),
   discount_value: z.coerce.number().optional().nullable(),
@@ -36,6 +39,11 @@ export const EntradaDaRecompensa = z.object({
   description:    r.description?.trim() || null,
 }))
 export type EntradaDaRecompensa = z.infer<typeof EntradaDaRecompensa>
+
+/** O custo acima do comum (10 milhões de pontos, o antigo teto): avisa, não recusa. */
+export function avisoDoCustoDaRecompensa(pontos: number): string | null {
+  return avisoAcimaDoComum(pontos, 10_000_000, 'pontos')
+}
 
 /** A validade do voucher acima do comum (365 dias, o antigo teto): avisa, não recusa. */
 export function avisoDaValidadeDoVoucher(dias: number): string | null {

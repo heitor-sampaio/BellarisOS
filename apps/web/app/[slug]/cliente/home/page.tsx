@@ -3,7 +3,7 @@ import { unidadesParaLer } from '@/lib/unidades/da-tela'
 import { AvisoUnidadeDesativada } from '@/components/client-portal/unidade-desativada'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { avulsosDoPlano, textoDoAvulso } from '@/lib/checkout/plano-e-avulso'
-import { ler, contar } from '@/lib/db'
+import { ler, lerTodas, contar } from '@/lib/db'
 import Link from 'next/link'
 import { CalendarDays, ChevronRight, ClipboardList, FileSignature, MapPin, MessageCircle, Sparkles } from 'lucide-react'
 import { formatBRL, formatDia } from '@estetica-os/utils'
@@ -13,7 +13,7 @@ import { preAtendimentoPendente, dadosDaOfertaNoApp } from '@/lib/pre-atendiment
 import { ofereceAFichaNoApp } from '@/lib/pre-atendimento/oferta-no-app'
 import { OfertaDaFichaDeSaude } from '@/components/client-portal/oferta-da-ficha-de-saude'
 import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
-import { STATUS_DO_PROXIMO, inicioDosProximos, jaPassouDaHora, horarioPassouSemAtender } from '@/lib/clientes/agenda-do-portal'
+import { STATUS_DO_PROXIMO, jaPassouDaHora, horarioPassouSemAtender, separarAgendaDoPortal } from '@/lib/clientes/agenda-do-portal'
 import { fusoValido } from '@/lib/unidades/fuso'
 import { boasVindas, nomeParaSaudar } from '@/lib/saudacao'
 import { nomesDasSessoesDoPlano } from '@/lib/plano-de-tratamento/nome-da-sessao-no-servidor'
@@ -70,6 +70,47 @@ type NextAppt = {
 const fusoDoAgendamentoOu = (fusoDoEndereco: string) =>
   (a: { branches?: { fuso?: string | null } | null }) => a.branches?.fuso ? fusoValido(a.branches.fuso) : fusoDoEndereco
 
+type AgendamentoDoCartao = NextAppt & { status: string }
+
+/**
+ * O que pode ir ao cartão do Início: o em aberto que já começou e pode ainda
+ * não ter acabado (o "Em andamento" do Heitor, 25/11: "de qualquer dia (o de
+ * 30 horas que começou ontem entra)"), o de hoje que passou da hora (A51) e o
+ * primeiro que ainda vai começar. Quem decide em qual grupo cada um cai é
+ * `separarAgendaDoPortal`, a regra da Agenda.
+ *
+ * O que já começou vem da janela que alcança o fim mais longe: as últimas 24
+ * horas (o início de hoje em qualquer fuso) ou a maior duração em aberto da
+ * cliente, a que for maior. A janela vai inteira (`lerTodas`): filtrar depois
+ * de um lote cortado perderia o de 30 horas (decisão do Claude, 25/11).
+ */
+async function agendamentosDoCartao(
+  admin: ReturnType<typeof createAdminClient>, clientId: string, agora: Date,
+): Promise<AgendamentoDoCartao[]> {
+  const campos = 'id, scheduled_at, status, duration_min, branch_id, branches(name, address, city, state, is_active, fuso), procedures(name), professionals:users!professional_id(name)'
+  const ate = agora.toISOString()
+  const [futuro, maisLongo] = await Promise.all([
+    ler(admin.from('appointments').select(campos)
+      .eq('client_id', clientId).in('status', [...STATUS_DO_PROXIMO])
+      .gt('scheduled_at', ate)
+      .order('scheduled_at').order('id')
+      .limit(1), 'buscar o próximo agendamento'),
+    ler(admin.from('appointments').select('duration_min')
+      .eq('client_id', clientId).in('status', [...STATUS_DO_PROXIMO])
+      .lte('scheduled_at', ate)
+      .order('duration_min', { ascending: false, nullsFirst: false })
+      .limit(1).maybeSingle(), 'buscar a maior duração em aberto') as Promise<{ duration_min: number | null } | null>,
+  ])
+  const alcance = Math.max(24 * 60, maisLongo?.duration_min || 60) * 60_000
+  const jaComecados = await lerTodas((de, fim) => admin.from('appointments').select(campos)
+    .eq('client_id', clientId).in('status', [...STATUS_DO_PROXIMO])
+    .gte('scheduled_at', new Date(agora.getTime() - alcance).toISOString())
+    .lte('scheduled_at', ate)
+    .order('scheduled_at').order('id')
+    .range(de, fim), 'buscar os agendamentos em andamento')
+  return [...jaComecados, ...(futuro ?? [])] as unknown as AgendamentoDoCartao[]
+}
+
 type ActivePackage = {
   id:             string
   total_sessions: number
@@ -122,18 +163,10 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
   const fuso = fusoValido(unidadeDoEndereco?.fuso)
   const fusoDoAgendamento = fusoDoAgendamentoOu(fuso)
 
-  const [clientRes, nextApptRes, pendingConfirmRes, packagesRes, plansRes, saldoDePontos, prePagosRes] = await Promise.all([
+  const agora = new Date()
+  const [clientRes, candidatosDoCartao, pendingConfirmRes, packagesRes, plansRes, saldoDePontos, prePagosRes] = await Promise.all([
     ler(admin.from('clients').select('name, tenant_id, gender').eq('id', ctx.clientId!).single(), 'buscar o cliente'),
-    ler(admin.from('appointments')
-      .select('id, scheduled_at, status, duration_min, branch_id, branches(name, address, city, state, is_active, fuso), procedures(name), professionals:users!professional_id(name)')
-      .eq('client_id', ctx.clientId!)
-      // A mesma regra dos "Próximos" da Agenda (D14).
-      .in('status', [...STATUS_DO_PROXIMO])
-      // Desde o início de hoje (A51): o de hoje que passou da hora fica até a conclusão.
-      .gte('scheduled_at', inicioDosProximos(new Date(), fuso))
-      .order('scheduled_at')
-      .limit(1)
-      .maybeSingle(), 'buscar o próximo agendamento'),
+    agendamentosDoCartao(admin, ctx.clientId!, agora),
     ler(admin.from('appointments')
       .select('id, scheduled_at, completed_at, branch_id, branches(name, address, city, state, fuso), procedures(name), professionals:users!professional_id(name)')
       .eq('client_id', ctx.clientId!)
@@ -169,12 +202,19 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
   const firstName    = nomeParaSaudar(clientName) || 'você'
   const bemVinda     = boasVindas((clientRes as { gender: string | null } | null)?.gender)
   // A sessão de plano com mais de um procedimento diz todos (A36).
+  // A regra é a da Agenda (D14, A51 e o "Em andamento" do Heitor, 25/11), no
+  // relógio da unidade de cada agendamento (F62, D4 da 26ª).
+  const { emAndamento: andamento, proximos } = separarAgendaDoPortal(candidatosDoCartao, agora, fusoDoAgendamento)
   const nomesDasSessoes = await nomesDasSessoesDoPlano(admin, [
-    (nextApptRes as unknown as NextAppt | null)?.id ?? '', ...((pendingConfirmRes ?? []) as unknown as NextAppt[]).map(a => a.id),
+    andamento[0]?.id ?? '', proximos[0]?.id ?? '', ...((pendingConfirmRes ?? []) as unknown as NextAppt[]).map(a => a.id),
   ])
-  const comONomeDaSessao = (a: NextAppt): NextAppt =>
+  const comONomeDaSessao = <T extends NextAppt>(a: T): T =>
     nomesDasSessoes.has(a.id) ? { ...a, procedures: { ...a.procedures, name: nomesDasSessoes.get(a.id)! } } : a
-  const nextAppt     = nextApptRes ? comONomeDaSessao(nextApptRes as unknown as NextAppt) : null
+  const proximoAppt  = proximos[0] ? comONomeDaSessao(proximos[0]) : null
+  // O Heitor, 25/11: "A home mostra "Em andamento" no lugar de "Próximo
+  // agendamento" enquanto ele dura." O cartão mostra este.
+  const emAndamentoAppt = andamento[0] ? comONomeDaSessao(andamento[0]) : null
+  const nextAppt     = emAndamentoAppt ?? proximoAppt
   const pendingConfirm = ((pendingConfirmRes ?? []) as unknown as NextAppt[]).map(comONomeDaSessao)
   const allPackages  = (packagesRes ?? []) as unknown as ActivePackage[]
   const activePkgs   = allPackages.filter(p => Number(p.used_sessions) < Number(p.total_sessions))
@@ -406,11 +446,12 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
         </section>
       )}
 
-      {/* -- Próximo agendamento ------------------------------------- */}
+      {/* -- Próximo agendamento (ou o "Em andamento", o Heitor, 25/11) -- */}
       <section>
-        <SectionHeader label="Próximo agendamento" />
+        <SectionHeader label={emAndamentoAppt ? 'Em andamento' : 'Próximo agendamento'} />
         {nextAppt ? (
-          <div data-proximo-agendamento className="card" style={{ padding: '16px 18px' }}>
+          <div data-proximo-agendamento={emAndamentoAppt ? undefined : ''} data-em-andamento={emAndamentoAppt ? '' : undefined}
+            className="card" style={{ padding: '16px 18px' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontWeight: 800, color: 'var(--text)', fontSize: 15.5, marginBottom: 4, letterSpacing: '-0.01em' }}>
@@ -447,8 +488,9 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                 )}
                 {/* F72: o próximo agendamento numa unidade que a clínica desativou diz isso. */}
                 {nextAppt.branches?.is_active === false && <AvisoUnidadeDesativada nome={nextAppt.branches.name} aberto faleCom={fala.faleCom} />}
-                {/* A51: o de hoje que passou da hora segue aqui até a clínica concluir. */}
-                {jaPassouDaHora(nextAppt.scheduled_at) && (
+                {/* A51: o de hoje que passou da hora segue aqui até a clínica concluir.
+                    O que está em andamento já diz isso no título (o Heitor, 25/11). */}
+                {!emAndamentoAppt && jaPassouDaHora(nextAppt.scheduled_at) && (
                   // O estado fica à vista; o porquê de ainda estar aqui, na dica (2026-11-16).
                   <p data-passou-da-hora style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
                     {/* A46 da 24ª: o horário que já acabou não é "já no horário". */}

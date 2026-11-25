@@ -7,6 +7,7 @@ import { SeloDoMenor } from '@/components/shared/selo-do-menor'
 import { eventoDesmarcado, type CalendarEvent } from './agenda-month-view'
 import { EtiquetaDoBloqueio } from '@/components/shared/bloqueio-da-agenda'
 import { trechoNoDia, type BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
+import { agendamentosNoDia, textoDoQueContinua } from '@/lib/agenda/trecho-do-agendamento'
 import { naParede } from '@/lib/datetime'
 import { useFuso } from '@/components/shared/fuso'
 import { useAgora, passouSemFechar } from '@/lib/use-agora'
@@ -52,12 +53,13 @@ function shortName(name: string) {
   return `${parts[0] ?? ''} ${(parts[parts.length - 1] ?? '')[0] ?? ''}.`
 }
 
-function EventCard({ ev, onClick }: { ev: CalendarEvent; onClick: () => void }) {
+function EventCard({ ev, onClick, continuaDeAntes = false }: { ev: CalendarEvent; onClick: () => void; continuaDeAntes?: boolean }) {
   // A grade é "de parede" (F62): o agora também, no relógio da unidade.
   const fuso        = useFuso()
   const agoraReal   = useAgora()
   const agora       = agoraReal == null ? null : naParede(new Date(agoraReal), fuso).getTime()
-  const time        = format(new Date(ev.start), 'HH:mm') // parede
+  // O que começou num dia anterior e ainda ocupa este (25/11) diz o início real.
+  const time        = continuaDeAntes ? textoDoQueContinua(ev.start) : format(new Date(ev.start), 'HH:mm') // parede
   if (eventoDesmarcado(ev)) {
     return (
       <div data-agendamento={ev.id} data-cancelado="" title={ev.motivoDoCancelamento ?? undefined}
@@ -87,6 +89,7 @@ function EventCard({ ev, onClick }: { ev: CalendarEvent; onClick: () => void }) 
   return (
     <div
       data-agendamento={ev.id}
+      data-continua-de-antes={continuaDeAntes ? '' : undefined}
       title={passou ? 'Passou do horário sem chegada nem conclusão: marque a falta, a chegada ou conclua' : undefined}
       onClick={e => { e.stopPropagation(); onClick() }}
       style={{
@@ -218,10 +221,10 @@ export function AgendaWeekView({ currentDate, events, professionals, onEventClic
 
                 {/* Day cells */}
                 {weekDays.map((day, di) => {
-                  const dayEvs = events.filter(
-                    // O dia do agendamento no relógio da unidade: a grade é "de parede" (F62).
-                    e => e.professionalId === pro.id && format(new Date(e.start), 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd'), // parede
-                  )
+                  // O dia do agendamento no relógio da unidade: a grade é "de parede" (F62).
+                  // E o que começou antes e ainda ocupa o dia (25/11: o de vários dias
+                  // aparece em cada um, como o bloqueio).
+                  const dayEvs = agendamentosNoDia(events.filter(e => e.professionalId === pro.id), day)
                   const isToday = isSameDay(day, today)
 
                   return (
@@ -247,9 +250,9 @@ export function AgendaWeekView({ currentDate, events, professionals, onEventClic
                         )
                       })}
                       {dayEvs
-                        .sort((a, b) => a.start.localeCompare(b.start))
-                        .map(ev => (
-                          <EventCard key={ev.id} ev={ev} onClick={() => onEventClick(ev)} />
+                        .sort((a, b) => a.ev.start.localeCompare(b.ev.start))
+                        .map(({ ev, trecho }) => (
+                          <EventCard key={ev.id} ev={ev} continuaDeAntes={trecho.continuaDeAntes} onClick={() => onEventClick(ev)} />
                         ))}
                     </td>
                   )

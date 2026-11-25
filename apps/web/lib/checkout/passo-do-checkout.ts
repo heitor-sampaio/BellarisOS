@@ -11,6 +11,8 @@
  * checkout o apaga. Todo acesso é protegido: o armazenamento pode faltar.
  */
 
+import { LIMITE_DE_VEZES_NO_CARTAO } from '@/lib/acima-do-comum'
+
 export interface PassoDoCheckout {
   step:          number
   formaPgto:     'NADA_AGORA' | 'AVISTA' | 'PARCELADO' | 'A_RECEBER'
@@ -51,7 +53,7 @@ export function lerPassoDoCheckout(planId: string): PassoDoCheckout | null {
       paymentMethod: typeof v.paymentMethod === 'string' ? v.paymentMethod : '',
       entrada:       typeof v.entrada === 'string' ? v.entrada : '',
       parcelas:      Number.isInteger(v.parcelas) && v.parcelas! >= 1 && v.parcelas! <= 48 ? v.parcelas! : 3,
-      vezesCartao:   Number.isInteger(v.vezesCartao) && v.vezesCartao! >= 1 && v.vezesCartao! <= 12 ? v.vezesCartao! : 1,
+      vezesCartao:   Number.isInteger(v.vezesCartao) && v.vezesCartao! >= 1 && v.vezesCartao! <= LIMITE_DE_VEZES_NO_CARTAO ? v.vezesCartao! : 1,
       bandeira:      typeof v.bandeira === 'string' ? v.bandeira : '',
       maquininha:    typeof v.maquininha === 'string' ? v.maquininha : '',
       primeiroVenc:  typeof v.primeiroVenc === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v.primeiroVenc) ? v.primeiroVenc : '',

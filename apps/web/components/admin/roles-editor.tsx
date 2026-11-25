@@ -1010,7 +1010,7 @@ function MenuPreview({ levels, reportTabs, foraDoPlano }: { levels: Levels; repo
   // aba dos outros módulos (o Financeiro, só Comissões e taxas) — o resumo diz.
   const gerencia = (m: AppModule) => permissions[m] === 'MANAGE'
   const comAbas = (abas: Parameters<typeof rotuloDasAbasAlcancadas>[0]) => (rotulo: string) =>
-    rotulo === 'Configurações' ? (rotuloDasAbasAlcancadas(abas, gerencia, { soAsDela: true }) ?? rotulo) : rotulo
+    rotulo === 'Configurações' ? (rotuloDasAbasAlcancadas(abas, gerencia) ?? rotulo) : rotulo
   // A-CONF1 da 25ª: o cargo editável nunca é o de Admin da rede — sem aba que a pessoa use, Configurações
   // não aparece (a configuração da rede toda é só da Admin da rede, CLAUDE.md §11).
   const semConfiguracoes = soLeriaAsConfiguracoes(permissions, false)

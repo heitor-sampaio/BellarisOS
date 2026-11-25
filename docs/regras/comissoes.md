@@ -69,6 +69,32 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   "atende" sem padrão). Sem NINGUÉM marcado como "atende clientes", a tela
   diz isso, e não "todos têm comissão" (A12 da 5ª, 2026-11-02; prova:
   `e2e/comissoes-sem-quem-atende.spec.ts`).
+- **O valor da regra até o limite do registro** (o Heitor, 25/11: "Se não for
+  impossível, ainda que improvável, pode ser feito."). O R$ fixo ia até
+  R$ 1.000.000 com mensagens do zod em inglês — e o valor acima de
+  R$ 999.999,99 nem gravava: `commission_rules.value` e
+  `commissions.rule_value` são `numeric(10,4)`. Decisão do Claude, 25/11: o
+  impossível é esse registro, R$ 999.999,99 (`LIMITE_DA_COMISSAO_FIXA`,
+  `recusaDoValorDaComissao`, `lib/comissoes/config.ts`), com "No máximo
+  R$ 999.999,99 (o limite do registro)." — no padrão, na exceção, na geral,
+  no pacote (venda, execução, responsável) e no produto; como o teto de antes
+  passa do registro, não sobra faixa de aviso. O percentual continua até 100%
+  ("Percentual acima de 100%."), e o negativo e o vazio recusam em português
+  ("A comissão não pode ser negativa.", "Informe o valor da comissão."). As
+  telas (Equipe, Procedimentos, pacote, produto) dizem a recusa antes de mandar.
+  **O total que se deriva cabe**: a comissão fixa do produto é POR UNIDADE, e a
+  venda grava a regra vezes a quantidade em `commissions.rule_value` (e o
+  valor em `commissions.amount`). Sem o teto de 100 unidades, R$ 10 em 100.001
+  unidades já não cabia, e o banco recusava a VENDA pela coluna da comissão.
+  Decisão do Claude, 25/11 (princípio 2): cada valor escolhido cabe; as duas
+  colunas do derivado passaram a `numeric(20,4)` e `numeric(20,2)`, com as
+  mesmas casas (migration `20261207900001`). `commission_rules.value` não muda.
+  **Tamanho das listas**: o `.max(200)` das exceções e o `.max(500)` dos
+  profissionais saíram — a lista cresce com a rede (procedimentos e equipe),
+  não é valor escolhido; as taxas ficam até o maior número de linhas sem
+  repetição (Pix, débito e o crédito de 1x a 1.200x; a mensagem do zod em
+  inglês saiu), com "Há taxa repetida para o mesmo meio
+  e parcelas." Prova: `tests/comissao-fixa-ate-o-limite-do-registro.test.ts`.
 - **A comissão do PROCEDIMENTO** (2026-10-15; chip na coluna "Comissão" de
   Procedimentos e seção "Comissão" do modal de criar/editar — o MESMO
   `EditorDeComissao`; o modal só manda o campo `comissao` se ele mudou, e
@@ -257,7 +283,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   `comissao_conta_detalhe`). No modo "sobre o pago" (PAGAMENTO), o avulso
   vale na proporção do que os lançamentos vivos já cobrem do preço.
   **Taxas da maquininha** — desde a F67 (C75), POR MAQUININHA: a tabela
-  `maquininhas` (débito e crédito 1–12x em `taxas`, sem teto desde a F16-3,
+  `maquininhas` (débito e crédito de 1x ao limite da maquininha em `taxas` — até 1.200x, acima de 12 avisa, o Heitor, 25/11 —, sem teto desde a F16-3,
   e a comissão sobre o líquido nunca fica negativa; cada bandeira pode ter
   as suas em `por_bandeira`, quando ela `cobra_por_bandeira`), gravada por
   `salvarMaquininha` (`actions/maquininhas.ts`), e o Pix à parte

@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { minutosDesenhados, ladoALado, liberouOHorario } from '@/lib/agenda/desenho'
-import { rotulosDaMinhaAgenda, semanaEmLista } from '@/lib/agenda/minha-agenda'
+import { rotulosDaMinhaAgenda, semanaEmLista, destaqueDaMinhaAgenda } from '@/lib/agenda/minha-agenda'
 import { iniciaisDoNome } from '@estetica-os/utils'
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -18,7 +18,8 @@ import { ChevronLeft, ChevronRight, Clock } from 'lucide-react'
 import Link from 'next/link'
 import { useSinais } from '@/components/shared/realtime-refresher'
 import { estenderJanela, rolagemDaGrade } from '@/lib/agenda/grade'
-import { ocupacaoDoDia } from '@/lib/metrics/ocupacao'
+import { agendamentosNoDia, janelaComOsTrechos, textoDoQueContinua } from '@/lib/agenda/trecho-do-agendamento'
+import { ocupacaoDoDia, minutosAgendadosNoPeriodo } from '@/lib/metrics/ocupacao'
 import { blocosDosBloqueios, livresEntre } from '@/lib/agenda/horario-livre'
 import { intervalosDoDia, diaDaSemana, forasDoHorario, janelaDoDia, type Horario, type BlocoOcupado } from '@/lib/agenda/horario'
 import type { CalendarEvent } from './agenda-month-view'
@@ -27,9 +28,10 @@ import { BlocoDoBloqueio } from '@/components/shared/bloqueio-da-agenda'
 import { bloqueioNoDia, type BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
 import { useAgora } from '@/lib/use-agora'
 import { useFuso } from '@/components/shared/fuso'
-import { naParede, isoNaParede, fusoLocal } from '@/lib/datetime'
+import { naParede, isoNaParede, fusoLocal, startOfDayTZ, endOfDayTZ } from '@/lib/datetime'
 import { horaNaUnidadeDele, comORelogio } from '@/lib/unidades/hora-da-unidade'
 import { ROTULO_DO_STATUS } from '@/lib/agenda/rotulo-do-status'
+import { fimDaOcupacao } from '@/lib/appointments/ocupacao'
 import { LEGENDA_DA_AGENDA } from '@/lib/agenda/legenda'
 
 type ViewMode = 'dia' | 'semana' | 'mes'
@@ -108,6 +110,13 @@ export function ProfessionalAgendaView({
     .filter(e => e.unidade && e.fusoDaUnidade)
     .map(e => [e.id, horaNaUnidadeDele(e.start, e.fusoDaUnidade, fuso)] as const)), [eventosDoServidor, fuso])
   const horaDoCartao = (ev: CalendarEvent) => horaDeFora.get(ev.id) ?? { hora: format(parseISO(ev.start), 'HH:mm') /* parede */, relogio: null }
+  // O "até" do destaque (25/11): o dela em outra unidade, no relógio de lá (como o início, D3 da 26ª).
+  const ateDoCartao = (ev: CalendarEvent, naParedeDaTela: string) => {
+    const doServidor = horaDeFora.has(ev.id) ? eventosDoServidor.find(e => e.id === ev.id) : undefined
+    if (!doServidor?.fusoDaUnidade) return naParedeDaTela
+    const fim = new Date(fimDaOcupacao({ scheduled_at: doServidor.start, duration_min: doServidor.durationMin })).toISOString()
+    return `até ${horaNaUnidadeDele(fim, doServidor.fusoDaUnidade, fuso).hora}`
+  }
   const today  = useMemo(() => naParede(new Date(), fuso), [fuso])
   // A26 da 12ª: o "agora" do destaque anda com o relógio (de 30 em 30 s). A tela
   // aberta na véspera congelava o dia e a hora: às 00:3x ela ainda dizia
@@ -146,12 +155,16 @@ export function ProfessionalAgendaView({
     return map
   }, [events])
 
-  const dayEvents = useMemo(() =>
-    (eventsByDay.get(format(selectedDate, 'yyyy-MM-dd')) ?? [])
-      .slice()
-      .sort((a, b) => parseISO(a.start).getTime() - parseISO(b.start).getTime()),
-    [eventsByDay, selectedDate],
+  // A grade do dia: os que começam nele e os que continuam de antes (25/11: o
+  // atendimento que atravessa a meia-noite, ou dura dias, ocupa cada dia — o
+  // dia seguinte aparecia "Dia livre", e o choque recusava).
+  const doDiaDaGrade = useMemo(() =>
+    agendamentosNoDia(events, selectedDate)
+      .sort((a, b) => parseISO(a.ev.start).getTime() - parseISO(b.ev.start).getTime()),
+    [events, selectedDate],
   )
+  const dayEvents = useMemo(() => doDiaDaGrade.map(x => x.ev), [doDiaDaGrade])
+  const trechoDoDia = useMemo(() => new Map(doDiaDaGrade.map(x => [x.ev.id, x.trecho])), [doDiaDaGrade])
 
   const todayEvents = useMemo(() =>
     eventsByDay.get(format(agora, 'yyyy-MM-dd')) ?? [],
@@ -159,32 +172,15 @@ export function ProfessionalAgendaView({
   )
 
   // -- KPIs ----------------------------------------------------------
-  const heroEvent = useMemo(() => {
-    const inProgress = todayEvents.find(e => e.status === 'IN_PROGRESS')
-    if (inProgress) return { ev: inProgress, label: 'Em atendimento agora' }
-    const now = agora.getTime()
-    // A26 da 12ª (princípio 3): o horário que já começou e segue em aberto (sem
-    // ninguém iniciar) é o que importa agora — "Atrasado: N min", não o próximo.
-    const atrasado = todayEvents
-      .filter(e => ['SCHEDULED', 'CONFIRMED', 'ARRIVED'].includes(e.status))
-      .filter(e => { const ini = parseISO(e.start).getTime(); return ini <= now && now < ini + e.durationMin * 60_000 })
-      .sort((a, b) => parseISO(a.start).getTime() - parseISO(b.start).getTime())[0]
-    if (atrasado) {
-      const min = Math.max(0, Math.floor((now - parseISO(atrasado.start).getTime()) / 60_000))
-      return { ev: atrasado, label: atrasado.status === 'ARRIVED' ? `Chegou · atrasado ${min} min` : `Atrasado: ${min} min` }
-    }
-    // O já concluído (atendido antes da hora) também sai: o destaque dizia
-    // "Próximo atendimento" de quem já tinha ido embora (simulação, 2026-10-20).
-    const next = todayEvents
-      .filter(e => parseISO(e.start).getTime() > now && !['CANCELLED', 'NO_SHOW', 'COMPLETED'].includes(e.status))
-      .sort((a, b) => parseISO(a.start).getTime() - parseISO(b.start).getTime())[0]
-    if (next) return { ev: next, label: 'Próximo atendimento' }
-    return null
-  }, [todayEvents, agora])
+  // O destaque (em atendimento agora, atrasado, o próximo) olha quem OCUPA hoje
+  // (25/11): o longo em atendimento desde ontem também é "agora" (lib/agenda/minha-agenda).
+  const heroEvent = useMemo(() => destaqueDaMinhaAgenda(events, agora), [events, agora])
 
-  // As horas marcadas hoje ("· 2h35" no cartão Hoje).
+  // As horas de hoje ("· 2h35" no cartão Hoje): o que cada atendimento ocupa
+  // HOJE (25/11: o que continua de ontem conta o trecho de hoje; o que segue
+  // amanhã, só até a meia-noite). A contagem ao lado segue pelo dia de início.
   const todayDuration = useMemo(() =>
-    todayEvents.filter(e => !['CANCELLED', 'NO_SHOW'].includes(e.status)).reduce((s, e) => s + e.durationMin, 0), [todayEvents])
+    minutosAgendadosNoPeriodo(events, startOfDayTZ(agora, fusoLocal()), endOfDayTZ(agora, fusoLocal())), [events, agora])
 
   // A conta de lib/metrics, a mesma da agenda da unidade e do dashboard
   // (§13.1): sobre o horário dela — era um dia fixo de 8 h, na tela (D11 da
@@ -192,13 +188,16 @@ export function ProfessionalAgendaView({
   // O tempo que ela bloqueou sai da capacidade, como o de outra unidade (D15 da 8ª).
   // O dela em OUTRA unidade (decisão 2 da 8ª: `unidade` preenchida) é cartão
   // na grade, mas na ocupação desta unidade conta como "ocupado fora", como antes.
-  const occupancyPct = useMemo(() => ocupacaoDoDia(todayEvents.filter(e => !e.unidade),
+  // 25/11: os de hoje são os que OCUPAM hoje (o que continua de ontem também), e
+  // `ocupacaoDoDia` conta de cada um só o trecho de hoje.
+  const ocupamHoje = useMemo(() => agendamentosNoDia(events, agora).map(x => x.ev), [events, agora])
+  const occupancyPct = useMemo(() => ocupacaoDoDia(ocupamHoje.filter(e => !e.unidade),
     { unidade: horarioDaUnidade, profissional: horarioDaProfissional, ocupadoFora: [
       ...ocupadoFora,
-      ...todayEvents.filter(e => e.unidade && !['CANCELLED', 'NO_SHOW'].includes(e.status)).map(e => ({ inicio: e.start, minutos: e.durationMin })),
+      ...ocupamHoje.filter(e => e.unidade && !['CANCELLED', 'NO_SHOW'].includes(e.status)).map(e => ({ inicio: e.start, minutos: e.durationMin })),
       ...blocosDosBloqueios(bloqueios),
     ] }, agora, fusoLocal()),
-  [todayEvents, horarioDaUnidade, horarioDaProfissional, ocupadoFora, agora, bloqueios])
+  [ocupamHoje, horarioDaUnidade, horarioDaProfissional, ocupadoFora, agora, bloqueios])
 
   const weekStart = startOfWeek(today, { weekStartsOn: 1 })
   const weekEnd   = endOfWeek(today, { weekStartsOn: 1 })
@@ -242,7 +241,10 @@ export function ProfessionalAgendaView({
   // janela da unidade, toda sombreada.
   const intervalosDela = intervalosDoDia(horarioDaUnidade, horarioDaProfissional, diaDaSemana(format(selectedDate, 'yyyy-MM-dd')))
   const naoAtende = intervalosDela.length === 0
-  const { inicio: DAY_START, fim: DAY_END } = estenderJanela(janelaDoDia(intervalosDela) ?? janela, dayEvents)
+  const { inicio: DAY_START, fim: DAY_END } = janelaComOsTrechos(
+    estenderJanela(janelaDoDia(intervalosDela) ?? janela, doDiaDaGrade.filter(x => !x.trecho.continuaDeAntes).map(x => x.ev)),
+    doDiaDaGrade.map(x => x.trecho),
+  )
   const forasDela = forasDoHorario(intervalosDela, DAY_START * 60, DAY_END * 60)
   const gridHeight = (DAY_END - DAY_START) * PX_PER_HOUR
   const hourLines  = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => i + DAY_START)
@@ -254,8 +256,9 @@ export function ProfessionalAgendaView({
   const gradeRef = useRef<HTMLDivElement>(null)
   const diaDaGrade = format(selectedDate, 'yyyy-MM-dd')
   const ehHojeNaGrade = diaDaGrade === format(naParede(new Date(), fuso), 'yyyy-MM-dd')
+  // O que continua de antes conta do topo do dia.
   const primeiroDoDia = dayEvents.length
-    ? Math.min(...dayEvents.map(e => { const d = parseISO(e.start); return getHours(d) * 60 + getMinutes(d) }))
+    ? Math.min(...dayEvents.map(e => { if (trechoDoDia.get(e.id)?.continuaDeAntes) return 0; const d = parseISO(e.start); return getHours(d) * 60 + getMinutes(d) }))
     : null
   const comecoDela = intervalosDela.length
     ? Math.min(...intervalosDela.map(i => { const [h, m] = i.de.split(':').map(Number); return (h ?? 0) * 60 + (m ?? 0) }))
@@ -269,7 +272,11 @@ export function ProfessionalAgendaView({
     gradeRef.current.dataset.rolagem = 'pronta'
   }, [diaDaGrade, ehHojeNaGrade, DAY_START, comecoDela, primeiroDoDia, fuso])
 
+  // O que continua de antes começa no topo da grade (como o bloqueio de vários
+  // dias), e o que segue amanhã para no fim dela (25/11).
   function evTop(ev: CalendarEvent) {
+    const tr = trechoDoDia.get(ev.id)
+    if (tr?.continuaDeAntes) return Math.max(0, (tr.de / 60 - DAY_START) * PX_PER_HOUR)
     const d = parseISO(ev.start)
     return Math.max(0, (getHours(d) - DAY_START + getMinutes(d) / 60) * PX_PER_HOUR)
   }
@@ -277,6 +284,11 @@ export function ProfessionalAgendaView({
   // concluído adiantado é desenhado até a conclusão, e o que ainda se cruza
   // na tela fica lado a lado (`ladoALado`).
   function evHeight(ev: CalendarEvent) {
+    const tr = trechoDoDia.get(ev.id)
+    if (tr?.continuaDeAntes || tr?.continuaDepois) {
+      const topo = evTop(ev)
+      return Math.max(44, Math.min(gridHeight, (tr.ate / 60 - DAY_START) * PX_PER_HOUR) - topo)
+    }
     return Math.max(44, minutosDesenhados(ev) / 60 * PX_PER_HOUR)
   }
   const lados = ladoALado(dayEvents, evTop, evHeight)
@@ -368,8 +380,20 @@ export function ProfessionalAgendaView({
                   {heroEvent.ev.clientName}
                 </p>
                 <p style={{ fontSize: 'var(--text-xs-sz)', color: 'rgba(255,255,255,0.75)', marginTop: 2, overflowWrap: 'anywhere' }}>
-                  {comORelogio(horaDoCartao(heroEvent.ev))} · {heroEvent.ev.procedureName}
+                  {/* 25/11: o que continua de ontem diz de quando vem (o início real), como o cartão da grade. */}
+                  {heroEvent.continuaDeAntes
+                    ? <span data-destaque-continua>{textoDoQueContinua(heroEvent.ev.start)}</span>
+                    : comORelogio(horaDoCartao(heroEvent.ev))} · {heroEvent.ev.procedureName}
+                  {/* O "Em andamento" dela (o Heitor, 25/11), junto do destaque: até quando e em qual sala. */}
+                  {heroEvent.ate && <span data-destaque-ate> · {ateDoCartao(heroEvent.ev, heroEvent.ate)}</span>}
+                  {heroEvent.ate && heroEvent.ev.roomName && <span data-destaque-sala> · {heroEvent.ev.roomName}</span>}
                 </p>
+                {heroEvent.tambemEmAndamento.length > 0 && (
+                  <p data-tambem-em-andamento style={{ fontSize: 'var(--text-2xs)', color: 'rgba(255,255,255,0.75)', marginTop: 4, overflowWrap: 'anywhere' }}>
+                    Também em andamento: {heroEvent.tambemEmAndamento.map(e =>
+                      `${e.clientName} (${format(parseISO(e.start), 'HH:mm') /* parede */}–${format(new Date(fimDaOcupacao({ scheduled_at: e.start, duration_min: e.durationMin })), 'HH:mm') /* parede */})`).join(', ')}
+                  </p>
+                )}
               </>
             ) : (
               // A30 da 7ª: com o de hoje já passado (ou concluído), "Sem
@@ -518,7 +542,9 @@ export function ProfessionalAgendaView({
                 const st     = STATUS_COLORS[ev.status] ?? STATUS_COLORS['SCHEDULED']!
                 const top    = evTop(ev)
                 const height = evHeight(ev)
-                const hora   = horaDoCartao(ev)
+                // O que começou num dia anterior diz o início real (25/11), no relógio da grade.
+                const continua = trechoDoDia.get(ev.id)?.continuaDeAntes ? textoDoQueContinua(ev.start) : null
+                const hora   = continua ? { hora: continua, relogio: null } : horaDoCartao(ev)
                 const time   = comORelogio(hora)
                 const isIP   = ev.status === 'IN_PROGRESS'
                 // 23ª A24: UM desenho de cartão — o curto (menos de 1 h, até 72 px:
@@ -528,7 +554,7 @@ export function ProfessionalAgendaView({
                 const compacto = height - 4 < 76
                 return (
                   <Link key={ev.id} href={`/${slug}/agenda/${ev.id}`} style={{ textDecoration: 'none', display: 'block' }}>
-                    <div data-cartao-minha-agenda={ev.id} data-compacto={compacto ? '' : undefined}
+                    <div data-cartao-minha-agenda={ev.id} data-compacto={compacto ? '' : undefined} data-continua-de-antes={continua ? '' : undefined}
                       data-liberou={ev.status === 'COMPLETED' && liberouOHorario(ev) ? '' : undefined} {...(ev.unidade ? { 'data-outra-unidade': ev.unidade } : {})}
                       title={[time, ev.clientName, ev.procedureName, `${ev.durationMin} min`, ev.unidade ? `Na unidade ${ev.unidade}` : null].filter(Boolean).join(' · ')}
                       style={{
@@ -644,7 +670,8 @@ export function ProfessionalAgendaView({
           <div className="agenda-week-strip" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 10 }}>
             {weekDays.map(day => {
               const key    = format(day, 'yyyy-MM-dd')
-              const dayEvs = eventsByDay.get(key) ?? []
+              // Com o que continua de antes (25/11): o dia ocupado não parece livre.
+              const dayEvs = agendamentosNoDia(events, day).map(x => x.ev)
               const isToday = isSameDay(day, today)
               const isSel   = isSameDay(day, selectedDate)
               return (
@@ -744,8 +771,8 @@ export function ProfessionalAgendaView({
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3 }}>
             {monthCells.map((day, i) => {
-              const key     = format(day, 'yyyy-MM-dd')
-              const dayEvs  = eventsByDay.get(key) ?? []
+              // Com o que continua de antes (25/11): o dia ocupado não parece livre.
+              const dayEvs  = agendamentosNoDia(events, day).map(x => x.ev)
               const inMonth = isSameMonth(day, monthBase)
               const isToday = isSameDay(day, today)
               const isSel   = isSameDay(day, selectedDate)

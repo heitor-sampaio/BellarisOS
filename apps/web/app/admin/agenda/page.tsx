@@ -11,6 +11,9 @@ import { menoresDaAgenda } from '@/lib/clients/menores-da-agenda'
 import { pagosAntes } from '@/lib/appointments/pago-antes'
 import { dayKeyTZ, weekdayTZ, addDaysTZ, startOfDayTZ, endOfDayTZ } from '@/lib/datetime'
 import { bloqueiosDoPeriodo } from '@/lib/agenda/bloqueios'
+import { podemOcuparDesde } from '@/lib/appointments/core'
+import { lerEmAndamento } from '@/lib/agenda/ler-em-andamento'
+import { EmAndamentoAgora } from '@/components/shared/em-andamento-agora'
 import { nomesDosRegistros } from '@/lib/nomes-dos-registros'
 import { getCachedBranchProfessionals, getCachedRoomsByBranch } from '@/lib/cached-queries'
 import { ler } from '@/lib/db'
@@ -152,7 +155,10 @@ export default async function AdminAgendaPage({
       .from('appointments')
       .select('id, scheduled_at, duration_min, started_at, completed_at, arrived_at, cancellation_reason, status, source, branch_id, procedure_id, client_id, professional_id, price, procedures(name), clients(name, tags), users!appointments_professional_id_fkey(name), rooms(name)')
       .in('branch_id', branchIds)
-      .gte('scheduled_at', startDate.toISOString())
+      // Quem se sobrepõe ao período, de qualquer duração (`podemOcuparDesde`,
+      // 25/11): o atendimento que começou antes e continua aparece em cada dia
+      // que ocupa (`agendamentosNoDia`) — sem ele o dia parecia livre.
+      .or(podemOcuparDesde(startDate.getTime()))
       .lte('scheduled_at', endDate.toISOString())
     if (agendaOwner) apptsQuery = apptsQuery.eq('professional_id', agendaOwner)
     apptsQuery = aplicarFiltrosDaAgenda(apptsQuery, filtros)
@@ -200,6 +206,11 @@ export default async function AdminAgendaPage({
       }
     : null
 
+  // "Em andamento" acima da grade (o Heitor, 25/11): as unidades da tela juntas,
+  // AGORA, qualquer que seja o dia aberto; na vista pessoal, só os dela.
+  const agoraDaLeitura = new Date()
+  const emAndamentoAgora = await lerEmAndamento({ tenantId: ctx.tenantId!, unidades: branchIds, profissional: agendaOwner, agora: agoraDaLeitura })
+
   return (
     <>
       <RealtimeRefresher topicos={['agenda']} />
@@ -223,6 +234,8 @@ export default async function AdminAgendaPage({
         paraBloquear={paraBloquear}
         filtros={filtros}
         opcoesDosFiltros={{ profissionais: quemAtende, salas: salasDaTela, tags: tagsDaRede }}
+        emAndamento={<EmAndamentoAgora itens={emAndamentoAgora} agora={agoraDaLeitura.toISOString()}
+          base={can(ctx, 'atendimento', 'VIEW') ? '/admin/agenda' : null} mostrarUnidade={branches.length > 1} style={{ marginBottom: 16 }} />}
       />
     </>
   )

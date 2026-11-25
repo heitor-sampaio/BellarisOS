@@ -1,6 +1,7 @@
 import { parseDinheiro } from '@estetica-os/utils'
 import { rotuloDaFormaDoFechamento } from '@/lib/financeiro/formas'
 import { linkDaAba } from '@/lib/financeiro/abas'
+import { avisoAcimaDoComum } from '@/lib/acima-do-comum'
 
 /**
  * A conferência do Fechamento do dia, uma linha por forma de pagamento (CX4
@@ -34,8 +35,8 @@ import { linkDaAba } from '@/lib/financeiro/abas'
 /** As chaves de forma que não se conferem. */
 export const FORMAS_SEM_CONFERENCIA = ['PONTOS', 'SEM_FORMA'] as const
 
-/** A chave de uma linha do fechamento: CASH, PIX, DEBIT_CARD, CREDIT_CARD:3… */
-export const CHAVE_DE_FORMA = /^[A-Z_]{2,30}(:\d{1,2})?$/
+/** A chave de uma linha do fechamento: CASH, PIX, DEBIT_CARD, CREDIT_CARD:3… (até CREDIT_CARD:1200 — o Heitor, 25/11: acima de 12 vezes avisa). */
+export const CHAVE_DE_FORMA = /^[A-Z_]{2,30}(:\d{1,4})?$/
 
 /** A forma se confere (fora o dinheiro, que tem o campo próprio)? */
 export function formaConferivel(forma: string): boolean {
@@ -239,6 +240,59 @@ export function valoresParaFecharDeNovo(linhas: readonly LinhaDaConferencia[]): 
   return valores
 }
 
+// ─── Os valores do Fechamento: acima do comum avisa, só o impossível se recusa ─
+//
+// O fundo de troco ia até R$ 1.000.000 (recusado acima, com "Informe o fundo de
+// troco (R$ 0,00 ou mais).") e o conferido das outras formas até R$ 10.000.000
+// em módulo ("Informe o valor conferido ou deixe em branco."). O Heitor, 25/11:
+// "Se não for impossível, ainda que improvável, pode ser feito."
+//
+// Decisão do Claude, 25/11: o antigo teto é o comum — acima dele a tela avisa
+// e o servidor grava. O impossível é o registro:
+// - o dinheiro da gaveta grava em `fechamentos_do_dia` (`esperado_dinheiro` e
+//   `contado_dinheiro`, numeric(12,2)): até R$ 9.999.999.999,99. O fundo
+//   (`fundos_de_troco.valor`, numeric sem precisão) entra no esperado: o mesmo
+//   limite, e o esperado (fundo + o dia) também se confere ao fechar;
+// - o conferido das outras formas vai num jsonb, sem tipo: o limite é o dos
+//   centavos exatos (a conta é em centavos, e o número do JavaScript só é
+//   exato até 9.007.199.254.740.991).
+
+/** O maior numeric(12,2): o esperado e o contado do dinheiro no fechamento. */
+export const LIMITE_DO_DINHEIRO_DO_FECHAMENTO = 9_999_999_999.99
+export const FUNDO_DE_TROCO_COMUM = 1_000_000
+export const CONFERIDO_COMUM = 10_000_000
+const RECUSA_DO_REGISTRO = 'No máximo R$ 9.999.999.999,99 (o limite do registro).'
+const RECUSA_DO_CONFERIDO = 'No máximo R$ 90.071.992.547.409,91 (o maior valor com centavos exatos).'
+
+/** A recusa do fundo de troco, ou nulo: negativo, sem número, ou acima do registro. */
+export function recusaDoFundoDeTroco(valor: number): string | null {
+  if (typeof valor !== 'number' || !Number.isFinite(valor) || valor < 0) return 'Informe o fundo de troco (R$ 0,00 ou mais).'
+  return valor > LIMITE_DO_DINHEIRO_DO_FECHAMENTO ? RECUSA_DO_REGISTRO : null
+}
+
+/** Acima de R$ 1.000.000 de fundo de troco: avisa, e vale como está. */
+export function avisoDoFundoDeTroco(valor: number): string | null {
+  return avisoAcimaDoComum(valor, FUNDO_DE_TROCO_COMUM, 'reais')
+}
+
+/** A recusa do dinheiro contado na gaveta, ou nulo: negativo, sem número, ou acima do registro. */
+export function recusaDoDinheiroContado(contado: number): string | null {
+  if (typeof contado !== 'number' || !Number.isFinite(contado) || contado < 0) return 'Informe o dinheiro contado.'
+  return contado > LIMITE_DO_DINHEIRO_DO_FECHAMENTO ? RECUSA_DO_REGISTRO : null
+}
+
+/** O esperado na gaveta (o fundo + o dia) que não cabe no registro do fechamento, ou nulo. */
+export function recusaDoEsperadoNaGaveta(esperado: number): string | null {
+  return Math.abs(esperado) > LIMITE_DO_DINHEIRO_DO_FECHAMENTO
+    ? 'O dinheiro esperado na gaveta passa de R$ 9.999.999.999,99 (o limite do registro): confira o fundo de troco.'
+    : null
+}
+
+/** Acima de R$ 10.000.000 (em módulo) num conferido: avisa, e vale como está. */
+export function avisoDoConferido(valor: number): string | null {
+  return avisoAcimaDoComum(Math.abs(valor), CONFERIDO_COMUM, 'reais')
+}
+
 /**
  * O conferido que chega à action: forma → valor (nulo ou ausente = não
  * conferido). Recusa forma que o dia não tem (ou que não se confere); o valor
@@ -255,9 +309,12 @@ export function conferidoValido(
   for (const [forma, valor] of Object.entries(entrada as Record<string, unknown>)) {
     if (!formaConferivel(forma) || !doDia.has(forma)) return { error: 'Forma de pagamento que este dia não tem.' }
     if (valor == null) continue
-    if (typeof valor !== 'number' || !Number.isFinite(valor) || Math.abs(valor) > 10_000_000) {
+    if (typeof valor !== 'number' || !Number.isFinite(valor)) {
       return { error: 'Informe o valor conferido ou deixe em branco.' }
     }
+    // O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." Acima de
+    // R$ 10.000.000 a tela avisa; o impossível é o que não se conta em centavos exatos.
+    if (Math.abs(centavos(valor)) > Number.MAX_SAFE_INTEGER) return { error: RECUSA_DO_CONFERIDO }
     conferido[forma] = centavos(valor) / 100
   }
   return { ok: true, conferido: Object.keys(conferido).length ? conferido : null }

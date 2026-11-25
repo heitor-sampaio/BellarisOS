@@ -9,6 +9,7 @@ import { JanelaModal } from '@/components/shared/janela-modal'
 import { trazerPacoteDeFora } from '@/actions/pacotes'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { contaDoPacoteDeFora } from '@/lib/pacotes/de-fora'
+import { avisoDasSessoesDoPacote, avisoDoValorDeReferencia } from '@/lib/pacotes/tamanho-e-valor'
 import { Dica } from '@/components/shared/dica'
 
 /**
@@ -120,11 +121,17 @@ function JanelaTrazerPacote({ clientId, procedimentos, unidades, unidadeAtual, o
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             <span className={rotulo}>Sessões do pacote</span>
-            <input className="field" type="number" inputMode="numeric" min={1} max={100} value={total} onChange={e => setTotal(e.target.value)} placeholder="10" />
+            <input className="field" type="number" inputMode="numeric" min={1} value={total} onChange={e => setTotal(e.target.value)} placeholder="10" />
+            {/* O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." Acima do comum, avisa. */}
+            {avisoDasSessoesDoPacote(nTotal) && (
+              <span role="status" data-acima-do-comum="sessoes-do-pacote-de-fora" style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+                {avisoDasSessoesDoPacote(nTotal)}
+              </span>
+            )}
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             <span className={rotulo}>Já usadas antes do sistema</span>
-            <input className="field" type="number" inputMode="numeric" min={0} max={99} value={usadas} onChange={e => setUsadas(e.target.value)} placeholder="0" />
+            <input className="field" type="number" inputMode="numeric" min={0} value={usadas} onChange={e => setUsadas(e.target.value)} placeholder="0" />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             <span className={rotulo}>Válido até (opcional)</span>
@@ -133,6 +140,11 @@ function JanelaTrazerPacote({ clientId, procedimentos, unidades, unidadeAtual, o
           <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             <span className={rotulo}>Valor de referência (opcional)</span>
             <input className="field" type="text" inputMode="decimal" value={valorTexto} onChange={e => setValorTexto(e.target.value)} placeholder="1.500,00" />
+            {valor !== null && !valorIlegivel && avisoDoValorDeReferencia(valor) && (
+              <span role="status" data-acima-do-comum="valor-de-referencia" style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+                {avisoDoValorDeReferencia(valor)}
+              </span>
+            )}
           </label>
         </div>
         {valorIlegivel && <p role="alert" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 600 }}>{DINHEIRO_INVALIDO}</p>}

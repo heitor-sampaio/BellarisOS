@@ -11,6 +11,11 @@
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { CLIENTE_ARQUIVADA } from '@/lib/clients/arquivada'
 import { recusaDaVendaNaUnidade } from '@/lib/vendas/unidade-da-venda'
+import { LIMITE_DE_DIAS, acimaDeCemAnos } from '@/lib/acima-do-comum'
+import {
+  SessoesDoItemDoPacote, PrecoDoPacote, recusaDasSessoesDoPacote, RECUSA_DAS_SESSOES_DO_PACOTE,
+  SessoesDoPacoteDeFora, UsadasDoPacoteDeFora, ValorDeReferenciaDoPacote,
+} from '@/lib/pacotes/tamanho-e-valor'
 import { z } from 'zod'
 import { alcancaOCaixaDoTratamento } from '@/lib/tratamento/alcance'
 import { getTenantContext, assertPermission, alcancaUnidade, podeReceber, assertRecurso } from '@/lib/auth'
@@ -47,13 +52,18 @@ type Resultado = { error?: string; ok?: true }
 /** Um pacote é um conjunto de procedimentos, iguais ou não (decisão do Heitor). */
 const EntradaDoPacote = z.object({
   id:            z.string().uuid().optional(),
-  name:          z.string().trim().min(2, 'Dê um nome ao pacote.').max(120),
+  name:          z.string().trim().min(2, 'Dê um nome ao pacote.').max(120, 'O nome do pacote tem no máximo 120 letras.'),
+  // O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." Acima de 100 sessões e de
+  // R$ 1.000.000 (os antigos tetos) a tela avisa; o impossível é o registro (`lib/pacotes/tamanho-e-valor.ts`).
+  // Os 30 procedimentos saíram: sem motivo técnico, e cada linha tem ao menos uma sessão.
   itens:         z.array(z.object({
     procedure_id: z.string().uuid('Escolha o procedimento.'),
-    quantity:     z.number().int().min(1, 'Cada procedimento entra pelo menos uma vez.').max(100),
-  })).min(1, 'Adicione pelo menos um procedimento ao pacote.').max(30),
-  price:         z.number().min(0).max(1_000_000),
-  validity_days: z.number().int().min(1).max(3650).nullable(),
+    quantity:     SessoesDoItemDoPacote,
+  })).min(1, 'Adicione pelo menos um procedimento ao pacote.'),
+  price:         PrecoDoPacote,
+  // O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." Acima de 3.650 dias a tela
+  // avisa (`avisoDaValidadeEmDias`); o impossível é passar de 100 anos (a validade vira data).
+  validity_days: z.number().int().min(1).max(LIMITE_DE_DIAS, acimaDeCemAnos(LIMITE_DE_DIAS, 'dias')).nullable(),
   is_active:     z.boolean(),
   /** A comissão do pacote (2026-10-30). Ausente = não mexe nela. */
   comissao:      EntradaDaComissaoDoPacote.optional(),
@@ -61,9 +71,10 @@ const EntradaDoPacote = z.object({
    * DC1c/PC9b (leva 2): os documentos puxados dos procedimentos que a rede
    * EXCLUIU deste pacote. Ausente = não mexe neles.
    */
-  documentos_excluidos: z.array(z.string().uuid()).max(100).optional(),
+  // Sem teto (o de 100 recusava em inglês): o banco só guarda os modelos da rede (`pacote_salvar`).
+  documentos_excluidos: z.array(z.string().uuid()).optional(),
 }).refine(p => p.itens.reduce((s, i) => s + i.quantity, 0) >= 2, 'Um pacote tem pelo menos 2 sessões.')
-  .refine(p => p.itens.reduce((s, i) => s + i.quantity, 0) <= 100, 'No máximo 100 sessões num pacote.')
+  .refine(p => !recusaDasSessoesDoPacote(p.itens.reduce((s, i) => s + i.quantity, 0)), RECUSA_DAS_SESSOES_DO_PACOTE)
 
 /** Catálogo da REDE: procedimento e configuração são dados da rede (§ Decisões). */
 export async function salvarPacote(entrada: unknown): Promise<Resultado> {
@@ -308,10 +319,12 @@ const EntradaDoPacoteDeFora = z.object({
   /** A unidade do pacote (na ficha da rede com duas ou mais, a escolhida; senão a da sessão). */
   branchId:    z.string().uuid().nullable().optional(),
   procedureId: z.string().uuid('Escolha o procedimento.'),
-  total:       z.number().int().min(1, 'O pacote tem pelo menos 1 sessão.').max(100, 'No máximo 100 sessões num pacote.'),
-  usadas:      z.number().int().min(0, 'As sessões usadas não podem ser negativas.'),
+  // O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." Acima de 100 sessões e de
+  // R$ 10.000.000 (os antigos tetos) a tela avisa; o impossível é o registro (`lib/pacotes/tamanho-e-valor.ts`).
+  total:       SessoesDoPacoteDeFora,
+  usadas:      UsadasDoPacoteDeFora,
   /** O valor de referência do pacote inteiro (opcional — sem ele, R$ 0 de comissão de execução). */
-  valor:       z.number().min(0, 'O valor de referência não pode ser negativo.').max(10_000_000).nullable(),
+  valor:       ValorDeReferenciaDoPacote,
   /** aaaa-mm-dd (opcional). */
   validade:    z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Validade inválida.').nullable(),
   envio:       z.string().nullable().optional(),

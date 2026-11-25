@@ -163,8 +163,19 @@
   horário" no cabeçalho da agenda da unidade, da "Minha agenda" e da agenda
   da rede com UMA unidade na tela (a rede de uma unidade só vive no `/admin`,
   H3): por PROFISSIONAL ou por SALA, com início e fim (data e hora — o almoço
-  de hoje ou as férias de vários dias, até um ano) e o motivo (obrigatório,
-  até 200 caracteres). `agenda_bloqueios` (migration `20261105003002`; só o
+  de hoje, as férias de vários dias, uma licença) e o motivo (obrigatório,
+  até 200 caracteres). **Acima de um ano AVISA** (o Heitor, 25/11, perguntado
+  se um bloqueio mais longo — uma licença — recusa ou avisa: escolheu "Acima
+  de 1 ano avisa"; era "até um ano"): vale o fim que a pessoa escolher, e a
+  janela diz ao lado do fim "Acima do comum (mais de 1 ano). Confira: o valor
+  vale como está." (`avisoDoBloqueioLongo`, `[data-acima-do-comum="bloqueio"]`).
+  Só se recusa acima de 100 anos, o limite das datas ("No máximo 36.500 dias
+  (100 anos, o limite das datas).", `recusaDoBloqueio`) — decisão do Claude,
+  25/11: o comum é o teto de antes (um ano), o impossível é `LIMITE_DE_DIAS`;
+  o banco tem a mesma faixa (`agenda_bloqueios_periodo`, migration
+  `20261207500001`). A grade, a Semana e os livres leem o bloqueio por
+  sobreposição (`inicio < fim da janela` e `fim > início da janela`), então um
+  bloqueio de anos não pesa. Prova: `tests/bloqueio-acima-de-um-ano-avisa.test.ts`. `agenda_bloqueios` (migration `20261105003002`; só o
   servidor lê e grava, com as restritivas do suporte), gravado por
   `bloquearHorario` e desfeito por `desfazerBloqueio` (`actions/agenda-bloqueios.ts`);
   a conta pura e o texto em `lib/agenda/bloqueio.ts`, a leitura em
@@ -208,14 +219,34 @@
     vão (`livresEntre`): a Débora de férias via "Horário livre 02:45 – 04:00".
     A ocupação desconta o bloqueado (`blocosDosBloqueios`, `indicadores.md`).
     Prova: `e2e/agenda-defeitos-da-8.spec.ts` ("D5", "D15"),
-    `tests/agenda-horario-livre.test.ts`. **E a grade lê da véspera ao fim do
+    `tests/agenda-horario-livre.test.ts`. **Com QUALQUER duração** (decisão do
+    Claude, 25/11, pelo princípio 3; o procedimento não tem duração máxima e o
+    agendamento soma as durações): a conferência do choque
+    (`conflitosDoHorario`, logo `horarioOcupado`), os livres
+    (`computeAvailableSlots`), o "ocupada" do repasse e a contagem do "Bloquear
+    horário" leem quem começou até 12 h antes (a duração comum,
+    `DURACAO_COMUM_MIN`) OU dura mais que isso, de qualquer data
+    (`podemOcuparDesde`, `lib/appointments/core.ts`), em páginas — o
+    agendamento não grava o fim (é `scheduled_at + duration_min`), e os longos
+    são raros. Até ali a janela era fixa em 12 h: o atendimento de 14 h das
+    08:00 deixava de bloquear quem começava às 21:00, calado. E o "próximo
+    livre" procura com a duração inteira (era cortada em 8 h: o atendimento de
+    10 h recebia um horário em que só cabiam 8); a busca termina em 14 dias.
+    Prova: `tests/choque-com-agendamento-de-qualquer-duracao.test.ts`,
+    `tests/proximo-livre-com-a-duracao-inteira.test.ts`. **E a grade lê da véspera ao fim do
     dia SEGUINTE** (D6 da 28ª simulação; decisão do Claude, 25/11, pelo
     princípio 3): a sessão de 60 min às 23:30 vai até 00:30, e a grade só lia
     os agendamentos até 23:59:59 do dia — o das 00:00 de amanhã não chegava a
     ela, o 23:30 aparecia livre e o Confirmar recusava. `getSchedulingDaySlots`
     lê os agendamentos e os bloqueios pela `janelaDaGrade`
     (`lib/appointments/janela-da-grade.ts`). Prova:
-    `tests/agenda-janela-da-grade.test.ts`.
+    `tests/agenda-janela-da-grade.test.ts`. **Para trás, com qualquer duração**
+    (decisão do Claude, 25/11, pelo princípio 3): a véspera fixa (24 h) deixava
+    de fora o atendimento de mais de 24 h que começou antes de ontem — a grade
+    oferecia o horário e o Confirmar recusava. `getSchedulingDaySlots` lê quem
+    pode ocupar o dia (`podemOcuparDesde` desde a meia-noite dele, até o fim do
+    dia seguinte), em páginas, e devolve só o que ainda ocupa o dia. Prova:
+    `tests/agenda-mostra-o-atendimento-de-qualquer-duracao.test.ts`.
   - **O modal Agendar tem a grade dos livres, e o choque diz que não grava**
     (A58 e A21 da 8ª simulação, 2026-11-06; princípio 3): o seletor de
     horários livres só existia no agendar da sessão do pacote. Escolhida a
@@ -683,10 +714,20 @@
     a coluna inteira, e parecia a unidade fechada; `BlocoDoBloqueio estreita`,
     `[data-bloqueio-estreito]`). O da sala segue como era; na agenda da
     unidade, a coluna já é dela.
-  - **Remarcar para um horário que já passou avisa e deixa** (A24): "O horário
-    novo (09/11/2026 às 10:00) já passou: o agendamento fica no passado…"
-    (`avisoDoHorarioPassado`, `lib/appointments/horario-passado.ts`, no
-    `avisosDoRemarcar`).
+  - **Remarcar para um horário que já passou RECUSA** (o Heitor, 25/11:
+    "remarcar para o passado é possível desde que não tenha passado do horario
+    já, o que tornaria impossível desse atendimento acontecer" — confirmado na
+    mesma data: para mais cedo que o marcado pode; para um horário que já
+    passou, recusa. Era aviso desde a A24 da 11ª). A conferência antes de
+    confirmar diz "Não vai ser remarcado: Esse horário (09/11/2026 às 10:00) já
+    passou. Escolha a partir de 10/11/2026 às 10:40." e o núcleo
+    (`remarcarCore`) recusa; só trocar a profissional, com o mesmo horário, não
+    é horário novo. O MESMO vale no Agendar, no SERVIDOR
+    (`createAppointmentCore`, todo caminho que agenda): até 25/11 a recusa da
+    AG-06 era só a do navegador. O minuto de agora vale (a cliente que chegou
+    sem horário; decisão do Claude, 25/11). A regra mora em
+    `recusaDoHorarioPassado` (`lib/appointments/horario-passado.ts`). Prova:
+    `tests/agenda-remarcar-no-passado.test.ts`.
   - **O atraso do início se diz** (A25: começar 57 min depois não dizia nada,
     e antes da hora a tela pergunta): sem perguntar (atrasar não é engano de
     agendamento), a tela do atendimento diz "Atrasado: 57 min depois do horário
@@ -928,13 +969,28 @@
   novo é um dos livres do self-service, para o mesmo profissional. Dentro do
   prazo, só "Falar com <a rede>" (o nome dela, CA1 — `crm-inbox.md`; o WhatsApp da unidade). Prova:
   `e2e/portal-cliente-alterar-agendamento.spec.ts`.
+  **Os prazos acima do comum avisam, não recusam** (o Heitor, 25/11, sobre
+  este prazo, a validade do plano proposto e a da ficha de saúde: "Se não for
+  impossível, ainda que improvável, pode ser feito."): acima do teto de antes
+  (720 horas, 365 dias, 36 meses) o campo diz "Acima do comum (mais de 720
+  horas). Confira: o valor vale como está." e o servidor grava. Só o impossível
+  se recusa (decisão do Claude, 25/11): negativo, zero onde não cabe (a
+  validade do plano e da ficha começam em 1; este prazo aceita 0),
+  fracionário, e acima de 100 anos — cada um vira uma data, e a conta da data
+  estoura no banco: 876.000 horas, 36.500 dias, 1.200 meses
+  (`LIMITE_DE_HORAS`/`_DIAS`/`_MESES`, `lib/acima-do-comum.ts`). A regra mora
+  em `lib/configuracoes/prazos-da-rede.ts` (a tela e as actions); o banco tem a
+  mesma faixa (migration `20261207000001`). Prova:
+  `tests/prazos-da-rede-acima-do-comum.test.ts`.
   O prazo aparece em DIA E HORA (J-61, `limiteParaAlterar`,
   `lib/clientes/agenda-do-portal.ts`, Brasília): "Pelo app, você cancela ou
   remarca até terça-feira, 03/11 às 10:00 (24 horas antes do horário)" — o dia
   da semana por extenso (A58 da 11ª simulação, 2026-11-10: "até ter, 10/11"),
   "O prazo …
   terminou em …", e no cartão da agenda "Alterar até …", com a seta de que o
-  cartão abre. **Fora do prazo, a saída é inteira** (A53 da 7ª simulação,
+  cartão abre. O limite que cai em outro ano que o do horário diz o ano
+  ("terça-feira, 08/12/2026 às 02:00", decisão do Claude, 25/11, pelo princípio
+  3: o prazo pode passar de um ano, e "08/12" se leria como o dezembro seguinte). **Fora do prazo, a saída é inteira** (A53 da 7ª simulação,
   2026-11-05; a regra do prazo fica): o cartão da lista diz "Prazo do app
   encerrado: fale com <a rede> para alterar" (`[data-prazo-encerrado]`; o
   nome da rede, CA1), e o detalhe (`[data-fora-do-prazo]`) diz até quando
@@ -1127,6 +1183,73 @@
   encerrado"; a home, o mesmo texto no lugar de "Hoje, já no horário". **O
   cartão dentro do prazo tem o "Remarcar"** (A47 da 24ª, princípio 7): abre o
   detalhe com o formulário já aberto (`?remarcar=1`, `abrirRemarcando`). Prova: o mesmo teste e `e2e/portal-cliente-alterar-agendamento.spec.ts` ("A51").
+  **Acima dos "Próximos", o "Em andamento"** (o Heitor, 25/11, sobre o
+  atendimento que dura mais de um dia: "Um "Em andamento" não seria
+  melhor?"; e a regra que ele aprovou: "Em aberto, com o início já passado e
+  o fim ainda por vir, de qualquer dia (o de 30 horas que começou ontem
+  entra). Sai dali quando a equipe conclui ou quando o horário acaba. O que
+  acabou sem ser fechado segue a regra de hoje: fica em "Próximos" com "o
+  horário passou" até o fim do dia, depois vai ao Histórico. A home mostra
+  "Em andamento" no lugar de "Próximo agendamento" enquanto ele dura.").
+  Em aberto são os mesmos status do "Próximo" (`STATUS_DO_PROXIMO`); o fim é
+  o da ocupação (`fimDaOcupacao`, a duração nula vale 60), e o que acaba
+  agora já acabou (`emAndamento`, `lib/agenda/em-andamento.ts`: início <=
+  agora < fim; a mesma regra da equipe). A separação é uma
+  só, `separarAgendaDoPortal`, que devolve `emAndamento`, `proximos` e
+  `historico` sem repetir nada. A Agenda mostra o grupo "Em andamento" acima
+  de "Próximos", só quando tem algo (`[data-em-andamento]`); a home troca o
+  título do cartão e marca `[data-em-andamento]` no lugar de
+  `[data-proximo-agendamento]`, sem a linha "Hoje, já no horário". As ações
+  do cartão, o "Alterar até" e os avisos no celular seguem as regras de
+  antes (o que já começou já passou do prazo do app). A home lê a janela que
+  alcança o fim mais longe (as últimas 24 horas ou a maior duração em aberto
+  da cliente) inteira, com `lerTodas`, mais o primeiro que ainda vai começar
+  (decisão do Claude, 25/11). Prova:
+  `tests/agenda-do-portal-em-andamento.test.ts` e
+  `e2e/portal-cliente-alterar-agendamento.spec.ts` ("A51", a parte final).
+  **O "Em andamento" também nas telas da equipe** (o Heitor, 25/11: "Acho que
+  seria mais útil para rede/clínica. A cliente vai estar sendo atendida não
+  vai ficar vendo o app durante o atendimento, mas pode manter lá."; e a
+  proposta que ele aprovou: cada bloco mostra "quem está sendo atendido, por
+  quem, em qual sala, desde quando e até quando; só aparece quando houver
+  algo; segue a abrangência e a permissão da Agenda (na Minha agenda, a vista
+  pessoal: só os dela)"). A regra é a mesma `emAndamento`; a leitura é uma,
+  `lerEmAndamento` (`lib/agenda/ler-em-andamento.ts`: as unidades da tela, os
+  em aberto já começados, de qualquer duração por `podemOcuparDesde`, e a
+  vista pessoal em `profissional`), e o bloco é um, `EmAndamentoAgora`
+  (`components/shared/em-andamento-agora.tsx`, `[data-em-andamento]`), que
+  roda a regra de novo com o relógio andando (o que acabou sai da tela aberta).
+  Cada linha: a cliente, o procedimento, quem atende, a sala, a unidade
+  (com mais de uma na tela) e "desde 14:00 · até 15:00" no relógio da unidade
+  (de outro dia, com a data: "desde 09/12 10:00"); abre o atendimento só a
+  quem tem o Atendimento em Ver. Onde:
+  - **O painel da unidade**: no topo do cartão "Agenda de hoje", a quem vê a
+    agenda; na vista pessoal, só os dela, nas unidades dela.
+  - **O painel da rede**: as unidades do recorte juntas, a quem tem a Agenda,
+    com a unidade em cada linha.
+  - **A Agenda** (da unidade e da rede): uma faixa acima da grade, no dia e na
+    semana (não no mês), com o que acontece AGORA, qualquer que seja o dia
+    aberto na tela; na rede, na vista pessoal, só os dela. Os filtros da
+    agenda (profissional, sala, tag) não recortam a faixa (decisão do Claude,
+    25/11: ela é o "agora" da unidade, não o período da grade).
+  - **A Minha agenda**: no DESTAQUE do topo, não num segundo bloco
+    (`destaqueDaMinhaAgenda`): o "já começou e segue" ("Atrasado", "Chegou ·
+    atrasado") é a regra `emAndamento`; o em andamento diz "até 15:00" e a
+    sala, e os outros dela em andamento ao mesmo tempo aparecem em "Também em
+    andamento" (`[data-tambem-em-andamento]`). O que ela iniciou e não
+    concluiu segue "Em atendimento agora", mesmo passado do horário.
+  Prova: `tests/em-andamento-nas-telas-da-equipe.test.ts`.
+  **O que acabou sem ser fechado segue a D14 e a A51 de sempre, pelo dia do
+  INÍCIO** ("segue a regra de hoje", no texto aprovado pelo Heitor): o que
+  começou hoje fica em "Próximos" até a conclusão; o que começou ontem vai ao
+  Histórico quando o horário acaba, mesmo que tenha acabado hoje (o de 30
+  horas de ontem que acabou hoje às 08:00, o "Na clínica" de ontem 23:30).
+  **O "Prazo do app encerrado" vale para todo em andamento** (decisão do
+  Claude, 25/11, princípio 3: depois do início o prazo já passou, e o mesmo
+  cartão não diz coisas diferentes conforme o dia em que começou): a
+  condição da A53, `prazoDoAppEncerrado`, ganhou o `emAndamento` ao lado do
+  "de hoje em diante". Prova:
+  `tests/agenda-do-portal-prazo-encerrado-em-andamento.test.ts`.
 - **A janela do agendamento diz duração, sala e unidade** (A29 da 5ª
   simulação; `[data-detalhes-do-agendamento]`), o cartão da grade diz a sala,
   e o cancelado (e a falta) ganha "Reagendar" — o novo agendamento já com a
@@ -1185,6 +1308,51 @@
   cruza NA TELA (a altura mínima do cartão) fica lado a lado, e na grade da
   unidade o concluído que liberou o horário vai para a metade direita, como o
   cancelado (`data-liberou`). Trava: `tests/agenda-desenho-ate-a-ocupacao.test.ts`.
+  **E em CADA dia que ocupa** (decisão do Claude, 25/11, pelo princípio 3; o
+  procedimento não tem duração máxima): as agendas punham o agendamento só no
+  dia em que começa, e o que atravessa a meia-noite, ou dura dias, sumia dos
+  dias seguintes — o dia parecia livre e o choque recusava. Como o bloqueio de
+  vários dias (`bloqueioNoDia`): `trechoDoAgendamentoNoDia` e
+  `agendamentosNoDia` (`lib/agenda/trecho-do-agendamento.ts`, puros) dão o
+  pedaço de cada dia, até o fim da OCUPAÇÃO (o cancelado e a falta não
+  continuam). No dia seguinte o cartão começa no topo da grade e diz o início
+  real ("Continua de 09/12 às 08:00"), não se arrasta (soltar remarcaria o
+  atendimento inteiro) e abre a janela do agendamento; no dia em que começa, o
+  que segue amanhã para no fim da grade, que fecha em 24 (`janelaComOsTrechos`).
+  O que acaba antes da abertura abre a grade na última hora dele. Vale no dia,
+  na semana e no mês da unidade, na grade da rede e na "Minha agenda" (a grade
+  do dia, a faixa da semana e o mês); as páginas leem quem se sobrepõe ao
+  período, de qualquer duração (`podemOcuparDesde`). O dentro do dia não muda.
+  A CONTAGEM do topo (atendimentos, "aguardando", o "Hoje: N") segue contando
+  cada agendamento no dia em que começa. Prova:
+  `tests/agenda-mostra-o-atendimento-de-qualquer-duracao.test.ts`.
+  **E o dia conta o que continua de antes** (decisão do Claude, 25/11, pelo
+  princípio 3, completando a de cima): a ocupação do dia, o destaque da Minha
+  agenda, a "Agenda de hoje" do dashboard e as leituras de agenda do Copilot
+  olhavam só o dia em que o atendimento COMEÇA — o de 30 h dava mais de 100%
+  de ocupação num dia e 0% no seguinte, o longo em atendimento desde ontem
+  sumia do "Em atendimento agora", e o Copilot dava a pessoa como livre.
+  - A **ocupação** (a agenda da unidade, a Minha agenda e o dashboard da
+    unidade) conta de cada atendimento o que ele ocupa DENTRO do dia ou do
+    período — o mesmo trecho do desenho, até o fim da ocupação
+    (`minutosAgendadosNoPeriodo`, `lib/metrics/ocupacao.ts`; o "· 2h35" do
+    cartão Hoje da Minha agenda também). A definição não muda (`indicadores.md`).
+  - O **destaque da Minha agenda** ("Em atendimento agora", "Atrasado", o
+    próximo) olha quem ocupa hoje (`destaqueDaMinhaAgenda`,
+    `lib/agenda/minha-agenda.ts`), e o que continua de ontem diz "Continua de
+    09/12 às 18:00" no lugar da hora.
+  - A **"Agenda de hoje" do dashboard da unidade** lista o que acontece hoje
+    (`agendaDoPeriodo`, `lib/metrics/agenda-do-dia.ts`): o que continua de
+    ontem entra, primeiro, com a hora real e "desde 09/12"
+    (`[data-continua-de-antes]`). A leitura é a de quem se sobrepõe ao dia, de
+    qualquer duração (`podemOcuparDesde`), em páginas; o "ocupado fora" da
+    capacidade também (era "desde a véspera").
+  - O **Copilot** (`agendamentos` e `minha_agenda`) traz, além dos que começam
+    no período, os que começaram antes e ainda o ocupam, com o início real e
+    `continuaDeAntes: true` (no cartão, "desde qua., 09/12 às 18:00"). O
+    cancelado e a falta não continuam; o concluído, só até a conclusão
+    (`ocupaOPeriodo`).
+  Prova: `tests/o-dia-conta-o-atendimento-que-continua-de-antes.test.ts`.
   **O concluído DEPOIS da hora ocupa até o fim marcado** (item 18 do escopo
   de 18/11 — o Heitor, sobre o concluído liberar o resto: "pode liberar";
   decisão do Claude, 26ª, pelo princípio 3): a das 10:00 às 11:00 concluída às
@@ -1535,8 +1703,12 @@ de decisões) — **implementadas na F65 (2026-11-12)**:
   `e2e/agenda-ja-existe-sem-clientes.spec.ts`.
 - **O agendamento só nasce com quem ATENDE na unidade** (F65): o
   `conferirPecasDoAgendamento` recusa a profissional sem a unidade no
-  "Atende clientes em" ("X não atende nesta unidade (o “Atende clientes em”
-  dela, na Equipe)") — o encaixe fora do HORÁRIO continua permitido (é
+  "Atende" ("X não atende nesta unidade: marque o “Atende clientes” (com mais
+  de uma unidade, em “Escolher em quais unidades atende”) no lápis dela, na
+  Equipe." — os nomes que a ficha da Equipe mostra, em `O_ATENDE_NA_FICHA`,
+  `lib/equipe/atende.ts`; o Heitor, 25/11, à proposta de usar a frase da
+  Equipe: "ok"; o mesmo nos avisos do Desativar e da janela do agendamento.
+  Prova: `tests/atende-clientes-o-nome-que-a-tela-mostra.test.ts`) — o encaixe fora do HORÁRIO continua permitido (é
   aviso). E só com o procedimento que a unidade FAZ (D7 da 13ª, §9.3).
   Prova: `e2e/agenda-procedimento-e-quem-atende-na-unidade.spec.ts`.
 - **O remarcar do app passa pelo núcleo e pergunta a unidade** (C8, A15 da
@@ -1806,6 +1978,10 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
     do momento. Dentro da validade
     (`tenants.pre_atendimento_validade_meses`, padrão 6) o modo é
     `CONFIRMAR` ("algo mudou?"); fora dela, ou sem resposta, `COMPLETO`.
+    A validade é de 1 mês para cima: acima de 36 meses a tela avisa e grava,
+    até 1.200 (100 anos) — o Heitor, 25/11: "Se não for impossível, ainda que
+    improvável, pode ser feito."; o limite dos 100 anos é decisão do Claude,
+    25/11 (ver "Os prazos acima do comum", no prazo do portal).
     **Respondida (ou confirmada) há menos de 30 dias, o agendamento não abre
     pendente** (decisão do Heitor, 2026-10-21; migration `20261021000008`):
     a última resposta é a mais recente entre a ficha de saúde gravada e os pendentes
@@ -2797,6 +2973,36 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
     produto diz "Em “Movimentar” → Histórico, use “Desfazer entrada” e lance
     de novo" (`[data-desfazer-entrada]`). Prova:
     `tests/atritos-da-19-cadastros.test.ts`, `tests/correcoes-da-24-area3.test.ts`.
+  - **O impossível se recusa no SERVIDOR, em português** (o Heitor, 25/11: "Se
+    não for impossível, ainda que improvável, pode ser feito."; CLAUDE.md §4, o
+    Heitor, 19/11: "Qualquer gravação que não passa pela validação do backend ta
+    errada"). Até aqui o custo negativo só o `min="0"` do campo barrava, e o
+    que o registro não guarda voltava do banco como "numeric field overflow".
+    O impossível (decisão do Claude, 25/11): o custo unitário negativo ("O
+    custo unitário não pode ser negativo."; o zero vale), o custo acima de
+    R$ 99.999.999,99 (`products.cost_price`, numeric(10,2)), e a quantidade e
+    o saldo acima de 999.999,9999 na unidade do MOVIMENTO
+    (`stock_movements.quantity`/`balance_after`, `product_batches.quantity`,
+    `stock_movement_batches.quantity`, numeric(10,4)) — a de consumo quando o
+    produto tem uma: o frasco de 100 UI vai até 9.999,9999 frascos ("No máximo
+    9.999,9999 frascos de uma vez (999.999,9999 UI, o limite do registro).").
+    Onde se confere: a Entrada (`entradaDeEstoqueCore`, com o saldo DEPOIS lido
+    na hora de gravar: "O saldo passaria de…"), o Ajuste (`ajusteDeEstoqueCore`,
+    a contagem), a Transferência (o saldo do DESTINO depois,
+    `recusaDoRegistroNaTransferencia`; o que falta na origem segue com a recusa
+    do banco), o cadastro do produto (o custo e o custo e a quantidade do
+    estoque inicial — o custo inicial negativo sumia calado) e a baixa do
+    atendimento (`montarInsumosDaBaixa`: a quantidade digitada e o saldo que
+    falta, para menos: "O saldo passaria de −999.999,9999 UI…"). A Perda não
+    precisa: ela não tira mais do que há. A regra é UMA,
+    `lib/estoque/limites-do-registro.ts`, que o Copilot lê. Prova:
+    `tests/nucleo-recusa-o-que-o-registro-nao-guarda.test.ts`. O app lê o
+    saldo FORA da transação: duas entradas ao mesmo tempo passavam da
+    conferência, e a segunda voltava do banco em inglês. `estoque_entrada` e
+    `estoque_transferir` (que já travam o saldo) conferem o mesmo limite
+    depois do saldo novo calculado ("O estoque passaria de 999.999,9999 (o
+    limite do registro)."; migration `20261208100001`, decisão do Claude,
+    25/11). Prova: `tests/estoque-limite-do-registro-dentro-da-transacao.test.ts`.
   - **O custo do lote se corrige enquanto nada saiu dele** (A10 da 24ª, o
     Heitor: "As duas"; migration `20261123600001`): "Corrigir custo", na
     linha do lote, para quem tem o Estoque em Gerenciar e a unidade do lote
@@ -2927,8 +3133,10 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
 - **Onde o produto está disponível: Insumo e Venda direta** (E2 do Bloco
   Estoque, 2026-11-14 — o Heitor, 13/11: "checkbox de onde o produto está
   disponivel (Insumo e Venda direta)"). O cadastro tem DOIS checkboxes no
-  grupo "Onde o produto está disponível"; o produto novo nasce com Insumo
-  marcado. Os dois podem estar marcados; nenhum é recusado
+  grupo "Onde o produto está disponível"; o produto novo nasce sem caixa
+  marcada, e a pessoa escolhe (o Heitor, 25/11: "ok" à proposta; era "nasce
+  com Insumo", e o de revenda nascia como insumo; `checkboxesIniciais`). Os
+  dois podem estar marcados; nenhum é recusado
   (`RECUSA_SEM_USO`: o produto não estaria em lugar nenhum). O banco guarda o
   mesmo `products.uso` de antes — é o contrato que o PDV e as listas de
   insumo leem: só Insumo = `INSUMO`, só Venda direta = `REVENDA`, os dois =
@@ -4051,6 +4259,8 @@ O resto do fluxo:
 ❌ Marcar o "Atende" numa unidade fora da abrangência da pessoa, ou dar a alguém o agendamento de uma unidade que não é dela por ser DELE (o AG-30 saiu em 23/11 — o Heitor: "uma pessoa só pode atender nas unidades que faz parte"): o "Atende" cabe nas unidades dela (atendeForaDasUnidades), e alcancaOAgendamento é a abrangência, e só
 ❌ Ler o nome da cliente ou do profissional de um registro da unidade por join da sessão (clients(name), users!professional_id(name)) — a cliente de outra unidade e o profissional da rede viram "—"; é nomesDosRegistros
 ❌ Conferir conflito de horário fora de horarioOcupado (lib/appointments/core.ts): a duração de CADA agendamento, e o profissional em qualquer unidade da rede
+❌ Ler os agendamentos que ocupam um horário com uma janela fixa para trás (as 12 h de antes): é podemOcuparDesde (qualquer duração), e o "próximo livre" com a duração inteira, sem teto (25/11)
+❌ Pôr um agendamento numa grade só pelo dia em que COMEÇA (isSameDay do início, a chave do dia): é agendamentosNoDia (lib/agenda/trecho-do-agendamento), que traz o que continua de antes — e a leitura da agenda pega quem se sobrepõe ao período (podemOcuparDesde), não .gte no início (25/11)
 ❌ Medir até quando um agendamento ocupa o horário fora de fimDaOcupacao (o concluído adiantado libera o resto — A31)
 ❌ Conferir se um agendamento bate num horário fora de bateNaOcupacao (o concluído antes de começar não ocupa nada — D3 da 11ª)
 ❌ Oferecer como livre (app da cliente, Copilot, CRM) um horário bloqueado — é computeAvailableSlots, que já tira o bloqueio; nem RECUSAR o encaixe no bloqueado, na agenda da equipe ou pelo Copilot (é aviso — princípio 2; avisoDoBloqueado)

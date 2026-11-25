@@ -56,6 +56,8 @@ test('transferir, ajustar e o alerta de mínimo — com os eventos do gatilho', 
   await novo.getByText('Adicionar estoque inicial').click()
   await novo.locator('select[name="_branchId"]').selectOption(a.id)
   await novo.locator('input[name="initial_qty"]').fill('7')
+  await // O produto nasce sem caixa marcada (o Heitor, 25/11: "ok" à proposta): este é Insumo.
+  await await novo.getByRole('group', { name: 'Onde o produto está disponível' }).getByRole('checkbox', { name: 'Insumo' }).check()
   await novo.getByRole('button', { name: 'Criar produto' }).click()
   await expect(novo).toBeHidden()
   await expect.poll(async () => {

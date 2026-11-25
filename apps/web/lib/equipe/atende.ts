@@ -83,6 +83,13 @@ export function atendeAoMudarDeUnidade(atende: readonly string[], origem: string
 export const ATENDE_SO_NAS_UNIDADES_DA_PESSOA = 'O “Atende” só vale nas unidades da pessoa.'
 
 /**
+ * Como marcar o "Atende" — com os nomes que a ficha da Equipe MOSTRA: a caixa “Atende clientes” e, com mais de uma
+ * unidade, o “Escolher em quais unidades atende” (o “Atende clientes em” é o título da lista que só aparece depois
+ * dele, e quem seguia o aviso procurava um nome que não via). A frase é a da Equipe (o Heitor, 25/11: "ok").
+ */
+export const O_ATENDE_NA_FICHA = 'o “Atende clientes” (com mais de uma unidade, em “Escolher em quais unidades atende”)'
+
+/**
  * O selo "Atende" da linha da Equipe (A24 da 20ª simulação; princípio 3): o
  * membro desativado seguia com "Atende em Tulipa Nazaré e Tulipa Umarizal". O
  * "Atende" fica guardado (reativar devolve), mas quem está desativado não

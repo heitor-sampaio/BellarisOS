@@ -31,6 +31,8 @@ import { recortePessoal } from '@/lib/metrics/escopo'
 import { getCoreDosModulos } from '@/lib/metrics/dos-modulos'
 import { abertosDeAntes, SEM_ABERTOS_DE_ANTES } from '@/lib/metrics/abertos-de-antes'
 import { AbertosDeAntes } from '@/components/branch/abertos-de-antes'
+import { lerEmAndamento } from '@/lib/agenda/ler-em-andamento'
+import { EmAndamentoAgora } from '@/components/shared/em-andamento-agora'
 import { etapasDoQueOCargoVe } from '@/lib/dashboard/etapas-do-ciclo'
 import { ClientesDoPeriodo, ReativarClientes, deQuemSaoAsClientes } from '@/components/shared/quadros-de-clientes'
 import { intervaloDosAnuncios } from '@/lib/ads/periodo'
@@ -631,6 +633,8 @@ export default async function AdminDashboardPage({
   // ainda abertos e dos agendados sem chegada, das unidades do recorte — só
   // existia no dashboard da unidade. Quem vê a agenda.
   const abertos = canAgenda ? await abertosDeAntes(ctx, branches.map(b => b.id as string)) : SEM_ABERTOS_DE_ANTES
+  // "Em andamento" (o Heitor, 25/11): as unidades do recorte juntas, a quem tem a Agenda.
+  const emAndamentoAgora = canAgenda ? await lerEmAndamento({ tenantId: ctx.tenantId!, unidades: branchIds, agora: now }) : []
 
   // A41 da 7ª simulação: o lote que vence em 30 dias, a quem tem o Estoque — a
   // mesma conta do cartão "Validade em 30 dias" do Estoque.
@@ -694,6 +698,8 @@ export default async function AdminDashboardPage({
         semCargo={!!ctx.semCargo}
         quadrosDeClientes={quadrosDeClientes}
         avisoDosAbertos={<>
+          <EmAndamentoAgora itens={emAndamentoAgora} agora={now.toISOString()}
+            base={can(ctx, 'atendimento', 'VIEW') ? '/admin/agenda' : null} mostrarUnidade={branches.length > 1} />
           <AbertosDeAntes base="/admin/agenda" abertos={abertos.abertos} semChegada={abertos.semChegada} mostrarUnidade={branches.length > 1} />
           {/* D13 da 9ª: as parcelas vencidas, a quem vê o financeiro inteiro. */}
           {vencidasDoRecorte && <ParcelasVencidas vencidas={vencidasDoRecorte}

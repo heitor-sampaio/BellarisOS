@@ -54,8 +54,13 @@ describe('o cancelamento do pacote ou do plano acerta a comissão uma vez, com o
     })
     it('é a migration mais nova das três funções', () => {
       const m = ultimaCom('bellaris.comissao_adiada')!.nome
-      expect(ultimaCom('pacote_cancelar_devolvendo')!.nome).toBe(m)
-      expect(ultimaCom('plano_cancelar_devolvendo')!.nome).toBe(m)
+      // O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." — acima de 12 vezes avisa.
+      // A 20261206800001 troca só o trecho das vezes no corpo VIVO (trocar_no_corpo): o que esta pôs fica.
+      const das12 = '20261206800001_cartao_acima_de_12_vezes.sql'
+      expect([m, das12]).toContain(ultimaCom('pacote_cancelar_devolvendo')!.nome)
+      expect([m, das12]).toContain(ultimaCom('plano_cancelar_devolvendo')!.nome)
+      const sql12 = nodeFs.readFileSync(nodePath.join(MIGRATIONS, das12), 'utf8')
+      expect(sql12).not.toMatch(/create (or replace )?function public\.(pacote|plano)_cancelar_devolvendo/)
       expect(ultimaCom('comissoes_do_pagamento')!.nome).toBe(m)
     })
   })

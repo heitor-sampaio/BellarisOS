@@ -165,6 +165,8 @@ test('E13 + EQ1d: quem é de A e B vê só A e B, com a do endereço escolhida, 
     const segunda = modal.locator('select[name="_branchId"]').nth(1)
     await expect(segunda, 'a outra linha vem com a unidade que sobrou').toHaveValue(un.A.id)
     await modal.locator('input[name="initial_qty"]').nth(1).fill('1')
+    await // O produto nasce sem caixa marcada (o Heitor, 25/11: "ok" à proposta): este é Insumo.
+    await await modal.getByRole('group', { name: 'Onde o produto está disponível' }).getByRole('checkbox', { name: 'Insumo' }).check()
     await modal.getByRole('button', { name: 'Criar produto' }).click()
     await expect(modal).toHaveCount(0, { timeout: 20_000 })
   })

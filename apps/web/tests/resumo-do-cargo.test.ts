@@ -4,17 +4,13 @@ import type { AppModule } from '@estetica-os/types'
 
 const com = (...m: AppModule[]) => (x: AppModule) => m.includes(x)
 
-/** A7 da 7ª simulação: o resumo do cargo Financeiro dizia "Configurações", sem dizer que é a aba Comissões. */
+/**
+ * A7 da 7ª simulação: o resumo do cargo Financeiro dizia "Configurações", sem dizer que é a aba Comissões.
+ * Três casos daqui testavam o resumo que ainda contava as abas da rede toda, que nenhuma tela usava, e saíram
+ * com ele (o Heitor, 25/11: "ok mas tenha certeza absoluta que ninguem usa"). O resumo que a tela usa é provado
+ * em `tests/config-da-rede-sobras-da-25.test.ts`.
+ */
 describe('Configurações no resumo do cargo', () => {
-  it('o Financeiro alcança só Comissões e taxas', () => {
-    expect(rotuloDasAbasAlcancadas(ABAS_DA_REDE, com('financial'))).toBe('Configurações (só Comissões e taxas)')
-  })
-  it('com mais de um módulo, lista as abas', () => {
-    expect(rotuloDasAbasAlcancadas(ABAS_DA_REDE, com('financial', 'forms', 'documents'))).toBe('Configurações (só Fichas, Documentos e Comissões e taxas)')
-  })
-  it('as Fichas e os Documentos são dois módulos (2026-11-16: os modelos de documento são o módulo Documentos)', () => {
-    expect(rotuloDasAbasAlcancadas(ABAS_DA_REDE, com('financial', 'forms'))).toBe('Configurações (só Fichas e Comissões e taxas)')
-  })
   it('com Configurações em Gerenciar, é a tela inteira', () => {
     expect(rotuloDasAbasAlcancadas(ABAS_DA_REDE, com('settings', 'financial'))).toBeNull()
   })

@@ -21,6 +21,21 @@ export const UUID = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a
 export const DATA = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'data no formato AAAA-MM-DD')
 export const HORA = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'hora no formato HH:MM')
 
+/**
+ * Um texto do pedido com a recusa em PORTUGUÊS (a do zod, "Too big: expected
+ * string to have <=80 characters", ia ao modelo — e à pessoa). O limite é o
+ * da tela do mesmo gesto ou do registro; o texto que a tela grava sem limite
+ * não leva `max` (o Heitor, 25/11: "Se não for impossível, ainda que
+ * improvável, pode ser feito."). `seCurto`/`seLongo`: a frase da tela, quando
+ * ela tem uma.
+ */
+export function texto(a: { min?: number; max?: number; seCurto?: string; seLongo?: string } = {}) {
+  let s = z.string()
+  if (a.min) s = s.min(a.min, a.seCurto ?? `Pelo menos ${a.min} ${a.min === 1 ? 'caractere' : 'caracteres'}.`)
+  if (a.max) s = s.max(a.max, a.seLongo ?? `No máximo ${a.max} caracteres.`)
+  return s
+}
+
 export interface Unidade { id: string; name: string }
 
 /** As unidades ativas da rede. */

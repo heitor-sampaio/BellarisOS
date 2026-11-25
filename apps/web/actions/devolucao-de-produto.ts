@@ -16,9 +16,11 @@ import { recusaDoPagamentoDoUsado, pagamentoDoUsadoParaOBanco } from '@/lib/fina
 import { z } from 'zod'
 import { getTenantContext, alcancaUnidade, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { gravar, ler, mensagemDoErro } from '@/lib/db'
+import { gravar, ler, lerTodas, mensagemDoErro } from '@/lib/db'
 import { FORMAS_DE_PAGAMENTO } from '@/lib/financeiro/lancamento'
 import { BANDEIRAS } from '@/lib/financeiro/bandeiras'
+import { LIMITE_DE_VEZES_NO_CARTAO, acimaDeCemAnos } from '@/lib/acima-do-comum'
+import { recusaDaQuantidadeQueVolta } from '@/lib/vendas/quantidades'
 import { lerPreviaDaDevolucao, type PreviaDaDevolucao, type VendaParaDevolver } from '@/lib/produtos/devolucao'
 
 const UUID = /^[0-9a-f-]{36}$/i
@@ -55,9 +57,10 @@ export async function vendaParaDevolver(transacaoId: string): Promise<{ error?: 
       .eq('id', transacaoId).maybeSingle(), 'buscar o lançamento')
     const venda = await vendaAoAlcance(admin, ctx, tx?.product_sale_id)
     if (!venda) return { error: 'Venda não encontrada.' }
-    const itens = await ler(admin.from('product_sale_items')
+    // Sem o teto de 20 produtos, a venda pode passar das 1000 linhas que o PostgREST devolve.
+    const itens = await lerTodas((de, ate) => admin.from('product_sale_items')
       .select('id, quantity, devolvidas, sort_order, products(name)')
-      .eq('sale_id', venda.id).order('sort_order'), 'ler os itens da venda')
+      .eq('sale_id', venda.id).order('sort_order').order('id').range(de, ate), 'ler os itens da venda')
     return {
       venda: {
         id: venda.id, descricao: venda.descricao,
@@ -72,7 +75,16 @@ export async function vendaParaDevolver(transacaoId: string): Promise<{ error?: 
   }
 }
 
-const Itens = z.array(z.object({ item: z.string().regex(UUID), quantidade: z.number().int().min(0).max(100) })).max(20)
+// A devolução segue a venda (o Heitor, 25/11: "Se não for impossível, ainda que
+// improvável, pode ser feito."): sem o teto de 100 de cada e de 20 linhas — o
+// impossível é o registro, e o que passa do que a cliente ainda tem o banco recusa.
+const Itens = z.array(z.object({
+  item: z.string().regex(UUID),
+  quantidade: z.number().superRefine((q, c) => {
+    const recusa = recusaDaQuantidadeQueVolta(q)
+    if (recusa) c.addIssue({ code: 'custom', message: recusa })
+  }),
+}))
 
 /** A conta da devolução ANTES de devolver: a MESMA função que grava, simulando. */
 export async function previaDaDevolucao(vendaId: string, itens: unknown): Promise<{ error?: string; previa?: PreviaDaDevolucao }> {
@@ -108,7 +120,8 @@ const EntradaDaDevolucao = z.object({
   estorno:  z.enum(['PARCIAL', 'INTEIRO']).nullable().optional(),
   novo:     z.object({
     metodo:   z.enum(FORMAS_DE_PAGAMENTO),
-    vezes:    z.number().int().min(1).max(12),
+    // O Heitor, 25/11: acima de 12 vezes avisa; só o impossível (acima de 1.200, decisão do Claude) se recusa.
+    vezes:    z.number().int().min(1).max(LIMITE_DE_VEZES_NO_CARTAO, acimaDeCemAnos(LIMITE_DE_VEZES_NO_CARTAO, 'vezes')),
     bandeira: z.enum(BANDEIRAS.map(b => b.value) as [string, ...string[]]).nullable().optional(),
     /** C75: a maquininha do cartão do usado. */
     maquininha: z.string().uuid().nullable().optional(),

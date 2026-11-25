@@ -11,7 +11,7 @@ import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
 import type { FechamentoDoDia, AvisosDoFechamento } from '@/lib/metrics'
 import type { EstornoDoDia, MovimentoDaUnidade, RecebidoPorPessoa, CartaoPorBandeira } from '@/lib/metrics/fechamento-extra'
-import { textoDoMovimentoDepois, lerConferidoDoCampo, valoresParaFecharDeNovo, diferencaNaTela, avisoDaGavetaNegativa, rotuloDoBotaoDeFechar, pedidoDoMotivoDaDiferenca, motivoDoFechamentoAnterior, type LinhaDaConferencia } from '@/lib/financeiro/conferencia-do-fechamento'
+import { textoDoMovimentoDepois, lerConferidoDoCampo, valoresParaFecharDeNovo, diferencaNaTela, avisoDaGavetaNegativa, rotuloDoBotaoDeFechar, pedidoDoMotivoDaDiferenca, motivoDoFechamentoAnterior, recusaDoFundoDeTroco, avisoDoFundoDeTroco, avisoDoConferido, type LinhaDaConferencia } from '@/lib/financeiro/conferencia-do-fechamento'
 import { rotuloDaForma, rotuloDaFormaDoFechamento, nomeDaBandeira } from '@/lib/financeiro/formas'
 import { parseDinheiro } from '@estetica-os/utils'
 
@@ -270,6 +270,12 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
                             aria-label={dinheiro ? (semDinheiro ? 'Dinheiro contado (R$, opcional)' : 'Dinheiro contado (R$)') : `Conferido em ${rotulo}`}
                             placeholder={dinheiro ? '0,00' : 'Não conferido'} style={{ width: 130, textAlign: 'right' }} />
                           {dinheiro && semDinheiro && <span style={{ ...DETALHE, color: 'var(--text-faint)' }}>Sem espécie hoje: em branco é R$ 0,00.</span>}
+                          {/* O Heitor, 25/11: acima de R$ 10.000.000 o conferido avisa e vale como está. */}
+                          {!dinheiro && avisoDoConferido(lerConferidoDoCampo(valores[l.forma] ?? '') ?? 0) && (
+                            <span role="status" data-acima-do-comum="conferido" style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+                              {avisoDoConferido(lerConferidoDoCampo(valores[l.forma] ?? '') ?? 0)}
+                            </span>
+                          )}
                           {/* D3 da 18ª (princípio 3): o registrado negativo se confere com o sinal de menos. */}
                           {!dinheiro && l.registrado < 0 && (
                             <span data-conferido-negativo style={DETALHE}>Saiu mais do que entrou: confira com o sinal de menos ({noCampoComSinal(l.registrado)}).</span>
@@ -505,7 +511,8 @@ function FundoDeTroco({ unidadeId, dia, valor, informado, podeInformar }: {
 
   function salvar() {
     const v = texto.trim() === '' ? 0 : parseDinheiro(texto)
-    if (!Number.isFinite(v) || v < 0) { setErro('Informe o fundo de troco (R$ 0,00 ou mais).'); return }
+    // Só o impossível se recusa (negativo, acima do registro); acima de R$ 1.000.000, o aviso ao lado do campo.
+    { const recusa = recusaDoFundoDeTroco(v); if (recusa) { setErro(recusa); return } }
     setErro(null)
     start(async () => {
       const r = await informarFundoDeTroco(unidadeId, dia, v)
@@ -542,6 +549,12 @@ function FundoDeTroco({ unidadeId, dia, valor, informado, podeInformar }: {
             </span>
             <input id={idDoCampo} className="field" inputMode="decimal" value={texto} onChange={e => setTexto(e.target.value)} placeholder="0,00" style={{ width: 130 }}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); salvar() } }} />
+            {/* O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." */}
+            {avisoDoFundoDeTroco(parseDinheiro(texto)) && (
+              <span role="status" data-acima-do-comum="fundo-de-troco" style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+                {avisoDoFundoDeTroco(parseDinheiro(texto))}
+              </span>
+            )}
           </div>
           <button type="button" className="btn-secondary" disabled={pendente} onClick={salvar}>{pendente ? 'Salvando…' : 'Salvar fundo'}</button>
           <button type="button" className="btn-ghost" disabled={pendente} onClick={() => { setEditando(false); setErro(null) }}>Cancelar</button>

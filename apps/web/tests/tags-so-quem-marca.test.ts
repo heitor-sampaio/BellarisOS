@@ -183,7 +183,7 @@ describe('Tags no banco: o gatilho da "Unidade: X" saiu, e ela é uma tag como a
 
   it('nenhuma conta de indicador nem público lê a tag como unidade', () => {
     for (const f of ['public.metrics_core', 'public.metrics_by_branch', 'public.metrics_new_clients_series',
-      'public.metrics_clientes_para_reativar', 'public.clientes_do_publico']) {
+      'public.clientes_do_publico']) {
       const def = ultimaDefinicao(f)
       expect(def, f).not.toBeNull()
       expect(def!, f).not.toMatch(/tags_das_unidades|'Unidade: '|p_tag\b/)

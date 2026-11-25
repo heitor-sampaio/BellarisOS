@@ -39,8 +39,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:49-54`
 - Antes: AG-08
 
-**AG-06.** Não se agenda no passado: o Agendar da equipe recusa o horário que já passou e diz a partir de quando se pode ("Escolha a partir de 01/11/2026 às 10:40."). No dia de hoje, a grade de horários começa em agora, no fuso da unidade, e no app da cliente só se oferece horário de agora em diante.
-- Fonte: o Heitor, 2026-11-25: "recusa, não dá pra agendar no passado" (`docs/para-o-heitor.md`, item 7; era decisão do Claude). O remarcar para o passado (AG-41) segue avisando: se a recusa vale também para ele foi perguntado ao Heitor em 25/11.
+**AG-06.** Não se agenda no passado: o Agendar da equipe recusa o horário que já passou e diz a partir de quando se pode ("Escolha a partir de 01/11/2026 às 10:40."), no navegador e no servidor (todo caminho que agenda: a equipe, as sessões de pacote e de plano, o pré-pago, o CRM, o app e o Copilot); o minuto de agora vale. No dia de hoje, a grade de horários começa em agora, no fuso da unidade, e no app da cliente só se oferece horário de agora em diante.
+- Fonte: o Heitor, 2026-11-25: "recusa, não dá pra agendar no passado" (`docs/para-o-heitor.md`, item 7; era decisão do Claude). A recusa no servidor e o minuto de agora: decisão do Claude, 25/11.
 - Onde: `docs/regras/atendimento.md:57`, `:116-117`
 - Antes: AG-09, AG-15
 
@@ -49,8 +49,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:36-37`, `:44-46`, `:207-215`, `:1153-1162`
 - Antes: AG-10, AG-128
 
-**AG-08.** Para a equipe, um horário de N minutos só está livre se o intervalo inteiro não bate em agendamento de quem atende (em qualquer unidade da rede) nem em bloqueio dela. Os livres do app da cliente, do Copilot, do CRM e do "próximo livre" não incluem o horário bloqueado de quem atende (o bloqueio de sala não muda esses livres). O atendimento concluído antes da hora ocupa só até a conclusão (o concluído antes de começar não ocupa nada). A ocupação e o "Horário livre" descontam o bloqueado.
-- Fonte: princípio 3
+**AG-08.** Para a equipe, um horário de N minutos só está livre se o intervalo inteiro não bate em agendamento de quem atende (em qualquer unidade da rede) nem em bloqueio dela. Os livres do app da cliente, do Copilot, do CRM e do "próximo livre" não incluem o horário bloqueado de quem atende (o bloqueio de sala não muda esses livres). O atendimento concluído antes da hora ocupa só até a conclusão (o concluído antes de começar não ocupa nada). A ocupação e o "Horário livre" descontam o bloqueado. Vale com qualquer duração: o atendimento longo (mais de 12 h, a duração comum) bloqueia o horário até o fim dele, na recusa do choque, nos livres e no "próximo livre", que procura com a duração inteira (era cortada em 8 h, e a conferência olhava só 12 h para trás). A grade de horários do Agendar também recebe o atendimento longo que começou antes de ontem (lia só da véspera). E as agendas (dia, semana e mês da unidade, a da rede e a "Minha agenda") mostram o agendamento em CADA dia que ele ocupa: no dia seguinte o cartão começa no topo e diz o início real ("Continua de 09/12 às 08:00"); o cancelado e a falta ficam só no dia deles; a contagem do topo conta cada um no dia em que começa. E o dia conta o que continua de antes: a ocupação do dia conta o trecho de cada atendimento nele; o destaque da Minha agenda ("Em atendimento agora", "Atrasado") mostra o longo que começou ontem e ocupa agora; a "Agenda de hoje" do dashboard da unidade o lista, primeiro, com a hora real e "desde 09/12"; e o Copilot, ao ler a agenda de alguém num período, traz também o que começou antes e ainda o ocupa, com o início real.
+- Fonte: princípio 3; qualquer duração, a grade do Agendar, o desenho em cada dia e o dia que conta o que continua de antes: decisão do Claude, 25/11, pelo princípio 3
 - Onde: `docs/regras/atendimento.md:176-200`, `:1128-1152`
 - Antes: AG-31, AG-33, AG-127
 
@@ -108,8 +108,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 
 ### O bloqueio pontual
 
-**AG-19.** "Bloquear horário" fica no cabeçalho da agenda da unidade e da agenda da rede com uma unidade na tela; a "Minha agenda" (a vista pessoal) só mostra o bloqueio (SM2). Bloqueia-se uma pessoa que atende ou uma sala, com início e fim (até um ano; ou "Dia inteiro") e motivo obrigatório. O bloqueio aparece na grade e na Semana, e abre a janela "Horário bloqueado" com "Desfazer bloqueio".
-- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-05: "concordo"
+**AG-19.** "Bloquear horário" fica no cabeçalho da agenda da unidade e da agenda da rede com uma unidade na tela; a "Minha agenda" (a vista pessoal) só mostra o bloqueio (SM2). Bloqueia-se uma pessoa que atende ou uma sala, com início e fim (ou "Dia inteiro") e motivo obrigatório. Vale o fim que a pessoa escolher: acima de um ano, a janela avisa ao lado do fim ("Acima do comum (mais de 1 ano). Confira: o valor vale como está.") e grava; só se recusa acima de 100 anos ("No máximo 36.500 dias (100 anos, o limite das datas).") — era "até um ano". O bloqueio aparece na grade e na Semana, e abre a janela "Horário bloqueado" com "Desfazer bloqueio".
+- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-05: "concordo"; acima de um ano avisa: o Heitor, 25/11, perguntado se um bloqueio mais longo (uma licença) recusa ou avisa, escolheu "Acima de 1 ano avisa"; o comum (um ano, o teto de antes) e o impossível (acima de 100 anos): decisão do Claude, 25/11
 - Onde: `docs/regras/atendimento.md:149-160`, `:231-233`, `:241-247`
 - Antes: AG-26, AG-34
 
@@ -219,8 +219,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:616-633`
 - Antes: AG-85
 
-**AG-41.** O remarcar avisa antes de confirmar e deixa remarcar: horário fora do expediente de quem atende, horário bloqueado, cliente arquivada e horário que já passou. O choque com outro atendimento de quem atende recusa ("Não vai ser remarcado: …"). O agendamento em atendimento não se remarca.
-- Fonte: o Heitor, 2026-11-02: "avisar ao remarcar, sem recusar"
+**AG-41.** O remarcar avisa antes de confirmar e deixa remarcar: horário fora do expediente de quem atende, horário bloqueado e cliente arquivada. O choque com outro atendimento de quem atende recusa ("Não vai ser remarcado: …"), e o horário novo que já passou também ("Não vai ser remarcado: Esse horário (…) já passou. Escolha a partir de …"); mais cedo que o marcado, mas à frente, pode. O agendamento em atendimento não se remarca.
+- Fonte: o Heitor, 2026-11-02: "avisar ao remarcar, sem recusar"; o horário passado, o Heitor, 2026-11-25: "remarcar para o passado é possível desde que não tenha passado do horario já, o que tornaria impossível desse atendimento acontecer" (confirmado: para um horário que já passou, recusa)
 - Onde: `docs/regras/atendimento.md:212-214`, `:642-647`, `:654-657`, `:1462-1463`
 - Antes: AG-88, AG-109
 
@@ -283,9 +283,9 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:962-983`, `:1651-1654`
 - Antes: AG-164, AG-165, AG-166, PC-28
 
-**AG-53.** A cliente cancela e remarca pelo app até o prazo da rede (24 horas antes, por padrão; Configurações → Geral), só os agendamentos dela, num dos horários livres do app. O prazo aparece em dia e hora com o dia da semana, e o cartão diz "Alterar até …" (com o "Remarcar" à mão). Passado o prazo, só "Falar com <o nome da rede>" (mensagem pronta) e "Ligar". O agendamento feito (ou remarcado) a menos do prazo avisa que nasce sem cancelar nem remarcar pelo app.
-- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — 2026-10-21; o nome da rede no lugar de "a equipe": recomendação do Claude aprovada pelo Heitor, 13/11: "Concordo" (CA1, `docs/revisao.md:1498-1502`)
-- Onde: `docs/regras/atendimento.md:889-908`, `:942-946`, `:957-961`, `:1093-1094`; `apps/web/lib/clientes/fala-da-rede.ts`
+**AG-53.** A cliente cancela e remarca pelo app até o prazo da rede (24 horas antes, por padrão; Configurações → Geral), só os agendamentos dela, num dos horários livres do app. O prazo aparece em dia e hora com o dia da semana (e com o ano, quando o limite cai em outro ano que o do horário), e o cartão diz "Alterar até …" (com o "Remarcar" à mão). Passado o prazo, só "Falar com <o nome da rede>" (mensagem pronta) e "Ligar". O agendamento feito (ou remarcado) a menos do prazo avisa que nasce sem cancelar nem remarcar pelo app. O prazo é o que a rede digita, de 0 hora para cima: acima de 720 horas a tela avisa ("Acima do comum (mais de 720 horas). Confira: o valor vale como está.") e o valor vale; só se recusa o negativo, o fracionário e o que passa de 876.000 horas (100 anos, o limite das datas).
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — 2026-10-21; o nome da rede no lugar de "a equipe": recomendação do Claude aprovada pelo Heitor, 13/11: "Concordo" (CA1, `docs/revisao.md:1498-1502`); o prazo acima de 720 horas avisa e grava: o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito."; o impossível (negativo, fracionário, acima de 100 anos): decisão do Claude, 25/11 (o aviso começa no teto de antes)
+- Onde: `docs/regras/atendimento.md:889-908`, `:942-946`, `:957-961`, `:1093-1094`; `apps/web/lib/clientes/fala-da-rede.ts`; `apps/web/lib/configuracoes/prazos-da-rede.ts`; `apps/web/tests/prazos-da-rede-acima-do-comum.test.ts`
 - Antes: AG-169, AG-170, AG-171, AG-172, AG-174
 
 **AG-54.** O remarcar do app pergunta "Com quem?" quando mais de uma pessoa realiza o procedimento e atende na unidade: "Só com X", "Sem preferência" ou outra pessoa. O agendamento feito em "Sem preferência" guarda isso e o remarcar começa por aí. Os dias com horário livre das próximas duas semanas aparecem em chips. Em "Sem preferência", o app diz quem vai atender ANTES de confirmar, e o próprio agendamento não conta como atendimento do dia de quem o tem.
@@ -293,8 +293,9 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:910-957`
 - Antes: AG-175, AG-176, AG-177
 
-**AG-55.** "Próximo" no portal é o agendamento em aberto de hoje em diante: o de hoje fica até a conclusão, e o de ontem em aberto vai ao histórico. O de hoje que passou da hora diz que a equipe registra quando terminar; o horário que acabou sem registro diz "Horário passou".
-- Fonte: decisão do Claude
+**AG-55.** "Próximo" no portal é o agendamento em aberto de hoje em diante: o de hoje fica até a conclusão, e o de ontem em aberto vai ao histórico. O de hoje que passou da hora diz que a equipe registra quando terminar; o horário que acabou sem registro diz "Horário passou". Acima dos "Próximos", o "Em andamento": o em aberto que já começou e não acabou, de qualquer dia (o fim é o da ocupação; duração nula vale 60); sai quando a equipe conclui ou quando o horário acaba, e a home mostra "Em andamento" no lugar de "Próximo agendamento" enquanto ele dura. Os três grupos não repetem nada. O que acabou sem ser fechado segue a regra de sempre, pelo dia do início: o que começou ontem vai ao histórico quando o horário acaba, mesmo que tenha acabado hoje. Todo em andamento que está agendado ou confirmado diz "Prazo do app encerrado", também o que começou ontem.
+- Fonte: decisão do Claude (também, 25/11, o "Prazo do app encerrado" em todo em andamento, princípio 3); o "Em andamento", o Heitor, 25/11: "Um "Em andamento" não seria melhor?", e a regra aprovada: "Em aberto, com o início já passado e o fim ainda por vir, de qualquer dia (o de 30 horas que começou ontem entra). Sai dali quando a equipe conclui ou quando o horário acaba. O que acabou sem ser fechado segue a regra de hoje: fica em "Próximos" com "o horário passou" até o fim do dia, depois vai ao Histórico. A home mostra "Em andamento" no lugar de "Próximo agendamento" enquanto ele dura."
+- Prova: `tests/agenda-do-portal-em-andamento.test.ts`, `tests/agenda-do-portal-prazo-encerrado-em-andamento.test.ts`
 - Onde: `docs/regras/atendimento.md:1076-1094`
 - Antes: AG-180
 
@@ -371,6 +372,12 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Fonte: o "Atende" não dá permissão: recomendação do Claude aprovada pelo Heitor, 2026-11-23 (UM5, CLAUDE.md §11): "concordo"; o botão: decisão do Claude, 25/11 (o Heitor revisa) (D11 da 29ª simulação: o "Enviar o link" sumia para a Admin da rede que atende)
 - Onde: CLAUDE.md §11; `docs/revisao.md:2232`; `apps/web/components/branch/appointment-session.tsx` (`isProfessional`), `apps/web/app/_shared/sessao-de-atendimento.tsx` (`isProfessional = ctx.providesServices`)
 - Antes: (sem número: D11 da 29ª simulação)
+
+**AG-70.** O "Em andamento" também nas telas da equipe: no topo da "Agenda de hoje" do painel da unidade, no painel da rede (as unidades juntas, com a unidade em cada linha) e numa faixa acima da grade da Agenda, no dia e na semana, na unidade e na rede. Cada linha diz quem está sendo atendido, o procedimento, por quem, em qual sala, desde quando e até quando, no relógio da unidade (de outro dia, com a data). Só aparece quando há algo, segue a abrangência e a permissão da Agenda, e na vista pessoal só os dela. A regra é a mesma do portal (em aberto, início já passado, fim ainda por vir, de qualquer dia: o longo que começou ontem entra), e o bloco roda de novo com o relógio, então o que acabou sai da tela aberta. A linha só abre o atendimento a quem tem o Atendimento em Ver. A faixa da Agenda é o "agora" e não segue os filtros da grade. Na Minha agenda, o em andamento fica no destaque do topo, não num segundo bloco: o "Atrasado" e o "Chegou · atrasado" são essa regra, o destaque diz até quando e a sala, e os outros dela ao mesmo tempo aparecem em "Também em andamento".
+- Fonte: o Heitor, 25/11: "Acho que seria mais útil para rede/clínica. A cliente vai estar sendo atendida não vai ficar vendo o app durante o atendimento, mas pode manter lá."; e a proposta que ele aprovou: cada bloco mostra "quem está sendo atendido, por quem, em qual sala, desde quando e até quando; só aparece quando houver algo; segue a abrangência e a permissão da Agenda (na Minha agenda, a vista pessoal: só os dela)". A faixa fora dos filtros e o "Também em andamento" na Minha agenda: decisão do Claude, 25/11 (princípio 7).
+- Prova: `tests/em-andamento-nas-telas-da-equipe.test.ts`
+- Onde: `docs/regras/atendimento.md` §9.1 ("O "Em andamento" também nas telas da equipe"); `apps/web/lib/agenda/ler-em-andamento.ts`, `apps/web/lib/agenda/em-andamento-da-equipe.ts`, `apps/web/components/shared/em-andamento-agora.tsx`, `apps/web/lib/agenda/minha-agenda.ts` (`destaqueDaMinhaAgenda`)
+- Antes: (nova, 25/11)
 
 ## Atendimento — iniciar, concluir, desistir (AT)
 
@@ -597,9 +604,9 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:2447`
 - Antes: PL-24
 
-**PL-23.** O plano proposto mostra a validade da proposta (da rede), só como informação; o plano sugere o pacote equivalente, se houver; agendar avulso um procedimento que está num plano da cliente avisa ("Agendar pelo plano? Avulso, ele é cobrado à parte.").
-- Fonte: recomendação do Claude aprovada pelo Heitor, 13/11: "faz sentido, pode fechar o plano de tratamento"
-- Onde: `docs/revisao.md:941-944`, `docs/revisao.md:2019`
+**PL-23.** O plano proposto mostra a validade da proposta (da rede), só como informação; a validade é o que a rede digita, de 1 dia para cima: acima de 365 dias a tela avisa ("Acima do comum (mais de 365 dias). Confira: o valor vale como está.") e o valor vale; só se recusa o zero, o negativo, o fracionário e o que passa de 36.500 dias (100 anos); o plano sugere o pacote equivalente, se houver; agendar avulso um procedimento que está num plano da cliente avisa ("Agendar pelo plano? Avulso, ele é cobrado à parte.").
+- Fonte: recomendação do Claude aprovada pelo Heitor, 13/11: "faz sentido, pode fechar o plano de tratamento"; a validade acima de 365 dias avisa e grava: o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito."; o impossível (negativo, fracionário, acima de 100 anos): decisão do Claude, 25/11 (o aviso começa no teto de antes)
+- Onde: `docs/revisao.md:941-944`, `docs/revisao.md:2019`; `apps/web/lib/configuracoes/prazos-da-rede.ts`; `apps/web/tests/prazos-da-rede-acima-do-comum.test.ts`
 - Antes: PL-27, PL-28, PL-29
 
 ## Prontuário (PT)
@@ -734,9 +741,9 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:1707`, `:1816`, `:1838`, `:1856`, `:3524`, `:3541`, `:3557`, `:3581`, `:3821`
 - Antes: AT-27, AT-29, AT-32, FI-05, FI-26
 
-**FI-08.** A ficha de saúde tem validade, da rede (padrão 6 meses). Dentro dela, a cliente só confirma ("algo mudou?"), e confirmar renova a data; fora dela, ou sem resposta, responde a ficha inteira. A ficha vencida continua valendo, e o atendimento avisa a quem vê o prontuário ("…está vencida… Ela continua valendo; peça a atualização."); a nunca respondida também avisa, com "Responder aqui" e "Enviar o link". O "Enviar o link" aparece a quem tem a Agenda em Gerenciar (a regra do "Enviar a ficha", FI-14), atenda ou não (AG-69).
-- Fonte: o Heitor, 2026-11-02: "mantém como está mas com aviso de que a ficha de saúde está vencida"; o "Enviar o link" atenda ou não: decisão do Claude, 25/11 (o Heitor revisa), pela UM5 (AG-69; D11 da 29ª simulação)
-- Onde: `docs/regras/atendimento.md:1739`, `:1744`, `:3562`, `:3572`, `:3699-3707`, `docs/revisao.md:1226`
+**FI-08.** A ficha de saúde tem validade, da rede (padrão 6 meses). A validade é o que a rede digita, de 1 mês para cima: acima de 36 meses a tela avisa ("Acima do comum (mais de 36 meses). Confira: o valor vale como está.") e o valor vale; só se recusa o zero, o negativo, o fracionário e o que passa de 1.200 meses (100 anos). Dentro dela, a cliente só confirma ("algo mudou?"), e confirmar renova a data; fora dela, ou sem resposta, responde a ficha inteira. A ficha vencida continua valendo, e o atendimento avisa a quem vê o prontuário ("…está vencida… Ela continua valendo; peça a atualização."); a nunca respondida também avisa, com "Responder aqui" e "Enviar o link". O "Enviar o link" aparece a quem tem a Agenda em Gerenciar (a regra do "Enviar a ficha", FI-14), atenda ou não (AG-69).
+- Fonte: o Heitor, 2026-11-02: "mantém como está mas com aviso de que a ficha de saúde está vencida"; o "Enviar o link" atenda ou não: decisão do Claude, 25/11 (o Heitor revisa), pela UM5 (AG-69; D11 da 29ª simulação); a validade acima de 36 meses avisa e grava: o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito."; o impossível (negativo, fracionário, acima de 100 anos): decisão do Claude, 25/11 (o aviso começa no teto de antes)
+- Onde: `docs/regras/atendimento.md:1739`, `:1744`, `:3562`, `:3572`, `:3699-3707`, `docs/revisao.md:1226`; `apps/web/lib/configuracoes/prazos-da-rede.ts`; `apps/web/tests/prazos-da-rede-acima-do-comum.test.ts`
 - Antes: FI-12, AT-30, AT-31
 
 **FI-09.** Mandar a ficha de saúde ao agendar é configuração da rede, desligada por padrão. Ligada, todo agendamento, por qualquer caminho, abre a ficha pendente da cliente (uma por cliente), menos quando ela respondeu ou confirmou há menos de 30 dias. Desligada, o Início do app oferece "Responda a sua ficha de saúde" à cliente com atendimento marcado e sem ficha válida.
@@ -892,7 +899,7 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:3169`, `docs/revisao.md:150`, `docs/revisao.md:162`
 - Antes: ES-10
 
-**ES-08.** "Onde o produto está disponível" tem dois checkboxes, Insumo e Venda direta (os dois juntos podem; nenhum é recusado; o novo vem com Insumo). O Insumo aparece nos insumos do procedimento, no "Adicionar insumo" do atendimento e no editor do plano (o já ligado a um procedimento continua lá); a Venda direta aparece na venda de produto, exige preço de venda e mostra a "Comissão na venda deste produto" a quem pode mudar comissão.
+**ES-08.** "Onde o produto está disponível" tem dois checkboxes, Insumo e Venda direta (os dois juntos podem; nenhum é recusado; o novo vem sem nenhum marcado, e a pessoa escolhe — o Heitor, 25/11). O Insumo aparece nos insumos do procedimento, no "Adicionar insumo" do atendimento e no editor do plano (o já ligado a um procedimento continua lá); a Venda direta aparece na venda de produto, exige preço de venda e mostra a "Comissão na venda deste produto" a quem pode mudar comissão.
 - Fonte: o Heitor, 13/11: "checkbox de onde o produto está disponivel(Insumo e Venda direta)"
 - Onde: `docs/regras/atendimento.md:2817`, `:2830-2832`, `docs/revisao.md:137`, `docs/revisao.md:149`, `docs/revisao.md:1854`
 - Antes: ES-11, ES-12, ES-13
@@ -1016,6 +1023,11 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:2955`, `:2988-3019`, `:3289-3292`
 - Antes: ES-67, ES-68
 
+**ES-31.** O estoque recusa, no servidor e em português, só o impossível: o custo unitário negativo (o zero vale) e o que o registro não guarda — o custo acima de R$ 99.999.999,99, e a quantidade e o saldo acima de 999.999,9999 na unidade do movimento (a de consumo, quando o produto tem uma: o frasco de 100 UI vai até 9.999,9999 frascos por vez). Vale na Entrada (com o saldo depois), no Ajuste (a contagem), na Transferência (o saldo do destino depois), no cadastro do produto (o custo e o estoque inicial) e na baixa do atendimento (a quantidade e o saldo que falta, para menos); o Copilot recusa o mesmo.
+- Fonte: o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito."; e, 19/11: "Qualquer gravação que não passa pela validação do backend ta errada"; os limites (o tipo das colunas, numeric(10,2) e numeric(10,4)) são decisão do Claude, 25/11
+- Onde: `docs/regras/atendimento.md` §9.5 ("O impossível se recusa no SERVIDOR"); `apps/web/lib/estoque/limites-do-registro.ts`
+- Antes: o custo negativo só o `min="0"` do campo barrava; o resto voltava do banco em inglês
+
 ## Perguntas ao Heitor
 
 Revisão de 25/11 (o Heitor, 24/11: "Em teoria não é pra ter pergunta de regra e de escopo, as regras já foram definidas e o escopo também."): as três que ficavam foram decididas pelo Claude, pelo catálogo e pelos princípios — cada uma diz como, e o Heitor revisa; a parte de escopo da Q30 vai à lista de sugestões. Revisão de 24/11 (o Heitor, 24/11: "da uma revisada se as perguntas realmente faz sentido, as vezes tu me perguntas que são coisas obvias e se resolvem fácil com um pouco de logica sobre o contexto"). Ficavam na página só três: Q09 (o agendamento novo da cliente pelo app nasce Confirmado?), Q11 (o horário que já passou: agendar recusa e remarcar só avisa) e a parte de escopo da Q30 (desativar produto pela tela). Na Q30, editar e desativar seguem a regra de cadastrar (cada passo, um módulo: o Estoque em Gerenciar). As outras se resolveram por uma regra dele, um princípio ou a lógica do contexto; cada uma diz como, no começo.
@@ -1040,7 +1052,7 @@ Q09. **Decidida pelo Claude, 25/11 (o Heitor revisa):** A H3 é sobre a REMARCA�
 
 Q10. **Resolvida na revisão de 24/11:** A caixa "Atende clientes" vale em todas as unidades DELA (EQ1c), e as unidades de quem tem "A rede inteira" incluem as que vierem (o Heitor, 14/11, "Concord."): a unidade nova entra porque foi isso que ela marcou. Fica. — *Era:* **AG-62 — a unidade nova no "Atende":** o seu "Concord." de 14/11 foi à definição de "A rede inteira (todas, inclusive as que vierem)"; pôr a unidade nova também no "Atende" saiu da auditoria de 18/11 (antes era "nasce sem ninguém marcado", princípio 6) (`atendimento.md:345-353`). Aprova a extensão?
 
-Q11. **Decidida pelo Heitor, 25/11:** "recusa, não dá pra agendar no passado". O Agendar da equipe segue recusando o horário que já passou (AG-06); nada muda no código nem nos testes. Em aberto, perguntado na mesma data: a recusa vale também para o remarcar, que hoje avisa e deixa (AG-41, A24 da 11ª)? — *Era:* **AG-06 × AG-41 — o passado:** o Agendar novo recusa horário no passado (`atendimento.md:46-49`), mas o remarcar para o passado avisa e deixa (`:654-657`). As duas regras ficam diferentes de propósito? (A decisão do Claude de 25/11, avisar e deixar também no Agendar, saiu pela resposta do Heitor.)
+Q11. **Decidida pelo Heitor, 25/11:** "recusa, não dá pra agendar no passado". O Agendar da equipe segue recusando o horário que já passou (AG-06), agora também no servidor. **E o remarcar, decidido pelo Heitor na mesma data:** "remarcar para o passado é possível desde que não tenha passado do horario já, o que tornaria impossível desse atendimento acontecer" — para mais cedo que o marcado pode; para um horário que já passou, recusa (AG-41). — *Era:* **AG-06 × AG-41 — o passado:** o Agendar novo recusa horário no passado (`atendimento.md:46-49`), mas o remarcar para o passado avisa e deixa (`:654-657`). As duas regras ficam diferentes de propósito? (A decisão do Claude de 25/11, avisar e deixar também no Agendar, saiu pela resposta do Heitor.)
 
 Q12. **Resolvida na revisão de 24/11:** A sua regra (CLAUDE.md §1: "Regra decidida pelo Claude diz que é dele; só se atribui ao Heitor o que a fala dele diz") já responde: sem a fala, a regra é decisão do Claude, e a fonte foi trocada. O conteúdo segue no catálogo para a revisão da área. — *Era:* **AG-23 — de quem é a regra da "Minha agenda" com o horário da pessoa?** Ela vem marcada só como "Reforça", item 8 da 5ª simulação (`atendimento.md:22`); não fica claro se é fala sua.
 
@@ -1091,7 +1103,7 @@ Q33. **Resolvida na revisão de 24/11:** O vocabulário do sistema (sem cargo fi
 O texto de `docs/regras/` (ou do CLAUDE.md) contra a decisão mais nova — para corrigir o texto depois.
 
 - AG-16, AG-61: CLAUDE.md §11 ("O 'Atende' é por unidade") e `docs/regras/atendimento.md:283-297` descrevem o "Atende" como um checklist de unidades; `docs/revisao.md:1198-1199` e `:2055` (EQ1c, 14/11) decidiram "o 'Atende' é UMA caixa", com a lista só em "Escolher em quais unidades atende" (`atendimento.md:298-307` já diz a regra nova).
-- AG-61: `docs/regras/atendimento.md:409`, `:416`, `:631-632` e `:1486-1491` chamam o controle de "Atende clientes em", e `:433` de "Atende clientes"; depois do EQ1c o controle é a caixa "Atende clientes" + "Escolher em quais unidades atende" (`apps/web/components/admin/team-form.tsx:173`). O código ainda diz "Atende clientes em" em dois avisos: `apps/web/components/admin/desativar-membro.tsx:307` (o repasse do Desativar, EQ-17 da Plataforma) e `apps/web/components/branch/janela-do-agendamento-acoes.tsx:62`.
+- AG-61: `docs/regras/atendimento.md:409`, `:416`, `:631-632` e `:1486-1491` chamam o controle de "Atende clientes em", e `:433` de "Atende clientes"; depois do EQ1c o controle é a caixa "Atende clientes" + "Escolher em quais unidades atende" (`apps/web/components/admin/team-form.tsx:173`). O código dizia "Atende clientes em" em cinco avisos (o repasse do Desativar, as duas linhas da janela do agendamento e as duas recusas de quem não atende na unidade). **Resolvido em 25/11** (o Heitor, à proposta de usar a frase da Equipe: "ok"): todos citam a caixa "Atende clientes" e o "Escolher em quais unidades atende" (`O_ATENDE_NA_FICHA`, `apps/web/lib/equipe/atende.ts`).
 - AG-41: `docs/regras/atendimento.md:642-647` (02/11) diz que o choque no remarcar é "Só aviso: o remarcar continua"; `:212-214` (06/11, mais nova) diz que o remarcar com choque é recusado. O catálogo usou a mais nova.
 - AG-49: `docs/regras/atendimento.md:1042-1044` diz que o cartão do pacote manda "agende com a equipe" quando o procedimento está "fora do app, inativo ou de outra unidade"; `:1305-1315` (14/11) decidiu que a sessão comprada se agenda pelo app mesmo fora do app, e que só o procedimento inativo fica com a equipe.
 - AG-32: `docs/regras/atendimento.md:1449-1452` diz que o "só os meus" + Gerenciar remarcando o próprio "segue aberta para confirmar"; `docs/revisao.md:455-457` e `:1902` a dão por resolvida pela regra das permissões (D20), com a Agenda aprovada em 13/11 ("a pagina da agenda ta boa e as funcoes me parecem boas").

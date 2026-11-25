@@ -15,16 +15,22 @@ import { automacoesQueOMovimentoDispara, COLUNAS_DO_CARD_PARA_PREVER, type CardP
 import { perguntaDasAutomacoes } from '@/lib/crm/mover-da-etapa'
 import { leadAoAlcance } from '@/lib/crm/alcance'
 import { fichasDoTelefoneDoLead } from '@/lib/crm/ficha-do-telefone'
-import { telefoneParaGravar } from '@/lib/contatos/propagar'
+import { telefoneParaGravar, TELEFONE_INCOMPLETO } from '@/lib/contatos/propagar'
 import { telefoneDaFichaImportada } from '@/lib/importacao/normalizar'
 import { podeTrocarResponsavel, trocarResponsavelCore } from '@/lib/crm/responsavel'
 import { rotaOportunidade } from '@/lib/rotas'
 import type { ContextoDaFerramenta, FerramentaDeEscrita } from '@/lib/copilot/ferramentas/tipos'
-import { DATA, UUID, dinheiro, fusoDe, hojeNoFuso, resolverMembro, resolverProcedimento, resolverUnidade, rota } from '@/lib/copilot/ferramentas/comum'
+import { DATA, UUID, dinheiro, fusoDe, hojeNoFuso, resolverMembro, resolverProcedimento, resolverUnidade, rota, texto } from '@/lib/copilot/ferramentas/comum'
 import { CHAVES_DA_VENDA } from '@/lib/pdv/parcelas-da-cliente'
 import { BANDEIRAS, rotuloDaBandeira } from '@/lib/financeiro/bandeiras'
 import { CATEGORIA_COMPRA_DE_ESTOQUE, CATEGORIA_MATERIAL_DE_CONSUMO, ehCompraDeEstoque } from '@/lib/financeiro/categorias'
 import { maquininhasDaRede } from '@/lib/financeiro/vezes-da-rede'
+import { LIMITE_DE_VEZES_NO_CARTAO, acimaDoRegistro } from '@/lib/acima-do-comum'
+import { avisoDoCustoDaEntrada } from '@/lib/estoque/custo-da-entrada'
+// O que o registro não guarda: a MESMA regra que os núcleos da tela conferem no servidor.
+import { LIMITE_DO_DINHEIRO, RECUSA_DO_DINHEIRO } from '@/lib/financeiro/limites-do-registro'
+import { LIMITE_DO_ESTOQUE, RECUSA_DA_QUANTIDADE_DO_ESTOQUE, recusaDoEstoqueAcimaDoRegistro } from '@/lib/estoque/limites-do-registro'
+import { LIMITE_DO_VALOR_DA_OPORTUNIDADE, RECUSA_DO_VALOR_DA_OPORTUNIDADE } from '@/lib/crm/valor-do-card'
 import { podeDarBaixa } from '@/lib/financeiro/so-os-meus'
 
 /**
@@ -112,19 +118,26 @@ export const lancar: FerramentaDeEscrita<ArgsLancar, PayloadLancar> = {
   descricao: `Lança uma receita ou despesa avulsa (não ligada a atendimento): descrição, valor em reais, categoria (receita: ${CATEGORIAS_DE_RECEITA.join(', ')}; despesa: ${CATEGORIAS_DE_DESPESA.join(', ')}). "${CATEGORIA_COMPRA_DE_ESTOQUE}" é só a mercadoria que entra no estoque (produto de Venda direta ou insumo cadastrado no Estoque): conta no caixa e fica fora do resultado, porque o lucro já desconta o insumo consumido — material de limpeza, de copa ou de consumo da unidade não é compra de estoque: é "${CATEGORIA_MATERIAL_DE_CONSUMO}". Quando nenhuma categoria da lista serve com certeza, pergunte à pessoa qual usar (ou use "Outro" se ela disser); nunca escolha a mais parecida calado. categoriaDaPessoa=true só quando a PESSOA disse a categoria; quando é você quem a escolhe pela descrição, deixe de fora: o cartão a mostra como sugerida e a pessoa troca antes de confirmar. Vencimento (AAAA-MM-DD) se for a pagar/receber, ou pago=true com a forma (dinheiro, Pix, débito, crédito; na despesa, também boleto) e, no cartão, a bandeira se a pessoa disser (Visa, Mastercard, Elo, Amex, Hipercard, Outras). Na receita paga no crédito, as vezes se a pessoa disser ("no crédito em 3x" → vezes=3): é um pagamento só, que a operadora deposita em N. No cartão pago, a maquininha pelo nome (ex.: Stone) quando a rede tem mais de uma — sem ela, a ferramenta pergunta.`,
   parametros: z.object({
     tipo: z.enum(['receita', 'despesa']),
-    descricao: z.string().min(2).max(200),
-    valor: z.number().positive().max(10_000_000),
-    categoria: z.string().min(2).max(60),
+    // A descrição, como o Novo lançamento: só que exista, sem teto.
+    descricao: texto({ min: 1, seCurto: 'Descrição é obrigatória.' }),
+    // O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." A tela (lancarCore)
+    // recusa só o zero; o teto de R$ 10.000.000 era só do Copilot. Sobra o que o registro não guarda.
+    valor: z.number().positive('Valor deve ser maior que zero.').max(LIMITE_DO_DINHEIRO, RECUSA_DO_DINHEIRO),
+    categoria: texto({ min: 2, max: 60 }),
     categoriaDaPessoa: z.boolean().optional(),
     vencimento: DATA.optional(),
     pago: z.boolean().optional(),
-    forma: z.string().max(30).optional(),
-    bandeira: z.string().max(30).optional(),
-    vezes: z.number().int().min(1).max(12).optional(),
-    maquininha: z.string().max(60).optional(),
-    unidade: z.string().max(80).optional(),
+    forma: texto({ max: 30 }).optional(),
+    bandeira: texto({ max: 30 }).optional(),
+    // O Heitor, 25/11: acima de 12 vezes avisa; só o impossível (acima de 1.200, decisão do Claude) se recusa.
+    vezes: z.number().int().min(1).max(LIMITE_DE_VEZES_NO_CARTAO).optional(),
+    maquininha: texto({ max: 60 }).optional(),
+    unidade: texto({ max: 80 }).optional(),
   }),
   async preparar(c, a) {
+    // Os centavos: o que arredonda para zero é o zero que a tela recusa (antes do cartão, não no Confirmar).
+    const valor = Math.round(a.valor * 100) / 100
+    if (!(valor > 0)) return { erro: 'Valor deve ser maior que zero.' }
     const u = await resolverUnidade(c, a.unidade, { exigir: true })
     if ('erro' in u) return { erro: u.erro }
     const cat = categoria(a.tipo, a.categoria)
@@ -143,7 +156,6 @@ export const lancar: FerramentaDeEscrita<ArgsLancar, PayloadLancar> = {
     const recusaDasVezes = pago ? await recusaDasVezesDaBaixa(c.ctx, a.tipo === 'receita' ? 'INCOME' : 'EXPENSE', forma as string | null, a.vezes, maq?.id ?? null) : null
     if (recusaDasVezes) return { erro: recusaDasVezes }
     const vezes = a.vezes && a.vezes > 1 ? a.vezes : null
-    const valor = Math.round(a.valor * 100) / 100
     // A29 da 21ª (princípio 3): o cartão do pago diz o DIA do pagamento — o de
     // hoje na unidade —, e é esse dia que o núcleo grava (pagoNoDia).
     const pagoEm = pago ? hojeNoFuso(await fusoDe(c, u.unidade!.id)) : null
@@ -221,7 +233,7 @@ export const marcarPago: FerramentaDeEscrita<{ lancamento: string; forma?: strin
   pode: podeDarBaixa,
   recurso: 'financeiro',
   descricao: 'Dá baixa (marca como pago agora) num lançamento AVULSO em aberto do financeiro (id, da ferramenta lancamentos) — a parcela do crediário e o a receber de uma venda ou de um atendimento não: esses se recebem no PDV, e a ferramenta devolve o link do PDV. Com a forma de pagamento (dinheiro, Pix, débito, crédito; na despesa, também boleto; obrigatória em toda receita — pergunte como foi pago — e na despesa sem forma) e, no cartão, a bandeira se a pessoa disser (Visa, Mastercard, Elo, Amex, Hipercard, Outras). Na receita recebida no crédito, as vezes se a pessoa disser ("recebeu no crédito em 3x" → vezes=3). No cartão, a maquininha pelo nome (ex.: Stone) quando a rede tem mais de uma — sem ela, a ferramenta pergunta.',
-  parametros: z.object({ lancamento: UUID, forma: z.string().max(30).optional(), bandeira: z.string().max(30).optional(), vezes: z.number().int().min(1).max(12).optional(), maquininha: z.string().max(60).optional() }),
+  parametros: z.object({ lancamento: UUID, forma: texto({ max: 30 }).optional(), bandeira: texto({ max: 30 }).optional(), vezes: z.number().int().min(1).max(LIMITE_DE_VEZES_NO_CARTAO).optional(), maquininha: texto({ max: 60 }).optional() }),
   async preparar(c, a) {
     const tx = await lancamentoAoAlcance(c.admin, c.ctx, a.lancamento)
     if (!tx) return { erro: 'Lançamento não encontrado.' }
@@ -273,10 +285,13 @@ export const marcarPago: FerramentaDeEscrita<{ lancamento: string; forma?: strin
 }
 
 /** O produto da rede, pelo id ou pelo nome (tem de ser um só). */
-type ProdutoAchado = { id: string; name: string; unit: string | null; consumption_unit: string | null; units_per_package: number | null }
+type ProdutoAchado = {
+  id: string; name: string; unit: string | null; consumption_unit: string | null; units_per_package: number | null
+  cost_price?: number | null; sale_price?: number | null
+}
 async function resolverProduto(c: ContextoDaFerramenta, pedido: string): Promise<ProdutoAchado | { erro: string }> {
   const porId = UUID.safeParse(pedido)
-  let q = c.admin.from('products').select('id, name, unit, consumption_unit, units_per_package').eq('tenant_id', c.ctx.tenantId!).eq('is_active', true)
+  let q = c.admin.from('products').select('id, name, unit, consumption_unit, units_per_package, cost_price, sale_price').eq('tenant_id', c.ctx.tenantId!).eq('is_active', true)
   q = porId.success ? q.eq('id', pedido) : q.ilike('name', `%${pedido.replace(/[%_\\]/g, '')}%`)
   const achados = (await ler(q.limit(8), 'procurar o produto') as ProdutoAchado[] | null) ?? []
   const exato = achados.filter(p => p.name.toLowerCase() === pedido.trim().toLowerCase())
@@ -323,16 +338,22 @@ export const entradaDeEstoque: FerramentaDeEscrita<ArgsEntrada, PayloadEntrada> 
   recurso: 'estoque',
   descricao: 'Registra a ENTRADA (compra/recebimento) de um produto numa unidade: quantidade em embalagens, custo unitário opcional, lote e validade (AAAA-MM-DD) opcionais, o fornecedor e a marca (os nomes; entram nas listas de Fornecedores e de Marcas da rede) e a nota fiscal, opcionais.',
   parametros: z.object({
-    produto: z.string().min(2).max(80),
-    quantidade: z.number().positive().max(100_000),
-    custoUnitario: z.number().positive().max(1_000_000).optional(),
-    lote: z.string().max(60).optional(),
+    produto: texto({ min: 2, max: 80 }),
+    // O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." A janela de Entrada
+    // aceita qualquer quantidade acima de zero e o custo a partir de zero; os tetos (100.000 embalagens,
+    // R$ 1.000.000) eram só do Copilot. Sobra o que o registro guarda (a quantidade na unidade de
+    // consumo e o saldo depois se conferem no preparo, com o produto).
+    quantidade: z.number().positive('Quantidade deve ser maior que zero.').max(LIMITE_DO_ESTOQUE, RECUSA_DA_QUANTIDADE_DO_ESTOQUE()),
+    custoUnitario: z.number().min(0, 'O custo unitário não pode ser negativo.').max(LIMITE_DO_DINHEIRO, RECUSA_DO_DINHEIRO).optional(),
+    // O lote e a observação da janela de Entrada não têm teto; a marca e o fornecedor têm
+    // 120 (as listas da rede, criarItemDoEstoque), e a nota fiscal 60, como os campos dela.
+    lote: z.string().optional(),
     validade: DATA.optional(),
-    unidade: z.string().max(80).optional(),
-    observacao: z.string().max(200).optional(),
-    fornecedor: z.string().max(120).optional(),
-    marca: z.string().max(120).optional(),
-    notaFiscal: z.string().max(60).optional(),
+    unidade: texto({ max: 80 }).optional(),
+    observacao: z.string().optional(),
+    fornecedor: texto({ max: 120 }).optional(),
+    marca: texto({ max: 120 }).optional(),
+    notaFiscal: texto({ max: 60 }).optional(),
   }),
   async preparar(c, a) {
     const u = await resolverUnidade(c, a.unidade, { exigir: true })
@@ -343,6 +364,16 @@ export const entradaDeEstoque: FerramentaDeEscrita<ArgsEntrada, PayloadEntrada> 
     // continua valendo (o saldo novo vem na mensagem do resultado).
     const un = p.unit ?? ''
     const rende = p.consumption_unit && Number(p.units_per_package) > 0 ? Number(p.units_per_package) : null
+    // O que o registro não guarda (o mesmo que a janela ouviria do banco): a quantidade na unidade do
+    // movimento e o saldo depois. O saldo serve só à recusa — o cartão não o mostra (ele muda até o Confirmar).
+    const antes = await saldoDoAjuste(c, p.id, u.unidade!.id)
+    const recusaDoRegistro = recusaDoEstoqueAcimaDoRegistro({
+      quantidade: a.quantidade, fator: rende ?? 1, medida: medidaNoPlural(un, 2) || 'embalagens', consumo: p.consumption_unit,
+      saldoDepois: (antes.embalagens + a.quantidade) * (rende ?? 1),
+    })
+    if (recusaDoRegistro) return { erro: recusaDoRegistro }
+    // A19 da 19ª: o custo fora do comum, o aviso da janela de Entrada (avisa; a entrada vale assim).
+    const avisoDoCusto = avisoDoCustoDaEntrada(a.custoUnitario ?? null, { custo: p.cost_price, venda: p.sale_price })
     // C5 (F66): o cartão diz o que a janela de Entrada diz — a quantidade no
     // plural e no que rende, "Não gera despesa", e a validade que já passou
     // (avisa; a entrada vale assim, princípio 2).
@@ -356,7 +387,7 @@ export const entradaDeEstoque: FerramentaDeEscrita<ArgsEntrada, PayloadEntrada> 
         linhas: [
           { rotulo: 'Produto', valor: p.name },
           { rotulo: 'Quantidade', valor: `+${num(a.quantidade)} ${medidaNoPlural(un, a.quantidade)}${rende ? ` (${num(a.quantidade * rende)} ${p.consumption_unit})` : ''}`.trim() },
-          ...(a.custoUnitario ? [{ rotulo: 'Custo unitário', valor: dinheiro(a.custoUnitario) }] : []),
+          ...(a.custoUnitario !== undefined ? [{ rotulo: 'Custo unitário', valor: dinheiro(a.custoUnitario) }] : []),
           ...(a.lote ? [{ rotulo: 'Lote', valor: `${a.lote}${a.validade ? ` · vence ${a.validade.split('-').reverse().join('/')}` : ''}` }] : []),
           ...(marca ? [{ rotulo: 'Marca', valor: marca }] : []),
           ...(fornecedor ? [{ rotulo: 'Fornecedor', valor: fornecedor }] : []),
@@ -364,6 +395,7 @@ export const entradaDeEstoque: FerramentaDeEscrita<ArgsEntrada, PayloadEntrada> 
           { rotulo: 'Unidade', valor: u.unidade!.name },
         ],
         aviso: (vencida ? `Esta validade já passou (${validadeNaTela(a.validade!)}): o lote entra vencido. Confira a data na embalagem — se estiver certa, a entrada vale assim. ` : '')
+          + (avisoDoCusto ? `${avisoDoCusto} ` : '')
           + ENTRADA_SEM_DESPESA,
       },
       payload: {
@@ -390,10 +422,14 @@ export const ajusteDeEstoque: FerramentaDeEscrita<{ produto: string; novoSaldo: 
   recurso: 'estoque',
   descricao: 'Corrige o saldo de um produto numa unidade para o número CONTADO (inventário), com o motivo (obrigatório).',
   parametros: z.object({
-    produto: z.string().min(2).max(80),
-    novoSaldo: z.number().min(0).max(1_000_000),
-    motivo: z.string().min(3).max(200),
-    unidade: z.string().max(80).optional(),
+    produto: texto({ min: 2, max: 80 }),
+    // O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." A janela de Ajuste
+    // recusa só o negativo; o teto de 1.000.000 era só do Copilot. Sobra o que o registro guarda (na
+    // unidade de consumo, conferido no preparo).
+    novoSaldo: z.number().min(0, 'Novo estoque não pode ser negativo.').max(LIMITE_DO_ESTOQUE, RECUSA_DA_QUANTIDADE_DO_ESTOQUE()),
+    // O motivo, como a janela de Ajuste: só que exista, sem teto.
+    motivo: texto({ min: 1, seCurto: 'Motivo do ajuste é obrigatório.' }),
+    unidade: texto({ max: 80 }).optional(),
   }),
   async preparar(c, a) {
     const u = await resolverUnidade(c, a.unidade, { exigir: true })
@@ -401,6 +437,11 @@ export const ajusteDeEstoque: FerramentaDeEscrita<{ produto: string; novoSaldo: 
     const p = await resolverProduto(c, a.produto)
     if ('erro' in p) return { erro: p.erro }
     const s = await saldoDoAjuste(c, p.id, u.unidade!.id)
+    // A contagem é o saldo novo do movimento, na unidade de consumo quando o produto tem uma.
+    const recusaDoRegistro = recusaDoEstoqueAcimaDoRegistro({
+      quantidade: a.novoSaldo, fator: s.rende ?? 1, medida: medidaNoPlural(p.unit ?? '', 2) || 'embalagens', consumo: s.consumo,
+    })
+    if (recusaDoRegistro) return { erro: recusaDoRegistro }
     const saldo = s.embalagens
     if (saldo === a.novoSaldo) return { erro: `O saldo de ${p.name} já é ${saldo}.` }
     // C5 (F66): o cartão diz o que a janela de Ajuste diz — para onde vai a
@@ -458,15 +499,22 @@ export const criarOportunidade: FerramentaDeEscrita<ArgsOportunidade, PayloadOpo
   recurso: 'oportunidades',
   descricao: 'Cria uma oportunidade no funil: nome e ao menos um contato (telefone ou e-mail); origem, procedimentos de interesse, observação, funil (nome), valor estimado em reais e responsável (nome de um membro da equipe) opcionais. Nasce na primeira etapa; sem responsável, você é o responsável.',
   parametros: z.object({
-    nome: z.string().min(2).max(120),
-    telefone: z.string().min(8).max(20).optional(),
-    email: z.string().max(160).optional(),
-    origem: z.string().max(60).optional(),
-    interesse: z.array(z.string().max(80)).max(5).optional(),
-    observacao: z.string().max(300).optional(),
-    funil: z.string().max(80).optional(),
-    valor: z.number().positive().max(10_000_000).optional(),
-    responsavel: z.string().min(2).max(120).optional(),
+    // O nome e o e-mail, como a janela: o nome só que exista, o e-mail sem teto (`leads.name` e
+    // `leads.email` são text, como na ficha — 20261208000001). A origem tem o do registro
+    // (`leads.source`, varchar(60)).
+    nome: texto({ min: 1, seCurto: 'Nome é obrigatório.' }),
+    telefone: texto({ min: 8, max: 20, seCurto: TELEFONE_INCOMPLETO }).optional(),
+    email: z.string().optional(),
+    origem: texto({ max: 60, seLongo: acimaDoRegistro(60, 'caracteres') }).optional(),
+    // O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." A janela da
+    // oportunidade não limita os procedimentos de interesse (eram 5 só no Copilot) e aceita o valor
+    // estimado zero (lerValorEstimado recusa só o negativo). Sobra o que o registro guarda.
+    interesse: z.array(texto({ max: 80 })).optional(),
+    // A observação da janela não tem teto (`leads.notes` é texto).
+    observacao: z.string().optional(),
+    funil: texto({ max: 80 }).optional(),
+    valor: z.number().min(0, 'O valor estimado não pode ser negativo.').max(LIMITE_DO_VALOR_DA_OPORTUNIDADE, RECUSA_DO_VALOR_DA_OPORTUNIDADE).optional(),
+    responsavel: texto({ min: 2, max: 120 }).optional(),
   }),
   async preparar(c, a) {
     if (!a.telefone && !a.email) return { erro: 'Qual o telefone ou o e-mail?' }
@@ -519,7 +567,7 @@ export const criarOportunidade: FerramentaDeEscrita<ArgsOportunidade, PayloadOpo
           ...(procs.length ? [{ rotulo: 'Interesse', valor: procs.map(p => p.name).join(', ') }] : []),
           ...(origem ? [{ rotulo: 'Origem', valor: origem }] : []),
           ...(funil ? [{ rotulo: 'Funil', valor: funil.name }] : []),
-          ...(a.valor ? [{ rotulo: 'Valor', valor: dinheiro(a.valor) }] : []),
+          ...(a.valor !== undefined ? [{ rotulo: 'Valor', valor: dinheiro(a.valor) }] : []),
           ...(responsavel ? [{ rotulo: 'Responsável', valor: responsavel.name }] : []),
         ],
         ...(fichas.length ? {
@@ -535,7 +583,7 @@ export const criarOportunidade: FerramentaDeEscrita<ArgsOportunidade, PayloadOpo
       payload: {
         nome: a.nome.trim(), telefone: digitos || null, fichas: fichas.map(f => f.id), email: a.email?.trim().toLowerCase() || null,
         origem, procedureIds: procs.map(p => p.id), observacoes: a.observacao?.trim() || null, funnelId: funil?.id ?? null,
-        ...(a.valor ? { valor: a.valor } : {}),
+        ...(a.valor !== undefined ? { valor: a.valor } : {}),
         ...(responsavel ? { responsavelId: responsavel.id } : {}),
       },
     }
@@ -586,7 +634,7 @@ export const moverEtapa: FerramentaDeEscrita<{ oportunidade: string; etapa: stri
   modulo: 'crm', nivel: 'MANAGE',
   recurso: 'oportunidades',
   descricao: 'Move uma oportunidade (id, da ferramenta oportunidades) para outra etapa do MESMO funil (nome da etapa — inclusive as de ganho ou perda).',
-  parametros: z.object({ oportunidade: UUID, etapa: z.string().min(2).max(80) }),
+  parametros: z.object({ oportunidade: UUID, etapa: texto({ min: 2, max: 80 }) }),
   async preparar(c, a) {
     if (!(await leadAoAlcance(c.admin, c.ctx, a.oportunidade))) return { erro: 'Oportunidade não encontrada.' }
     const lead = await ler(c.admin.from('leads').select('name, crm_stage_id').eq('id', a.oportunidade).single(), 'ler a oportunidade') as { name: string; crm_stage_id: string | null }
@@ -636,7 +684,7 @@ export const trocarResponsavel: FerramentaDeEscrita<{ oportunidade: string; resp
   // A trava da tela (`podeTrocarResponsavel`).
   pode: podeTrocarResponsavel,
   descricao: 'Troca o responsável de uma oportunidade (id, da ferramenta oportunidades) por outro membro ativo da equipe (nome), ou tira o responsável (responsavel = null).',
-  parametros: z.object({ oportunidade: UUID, responsavel: z.string().min(2).max(120).nullable() }),
+  parametros: z.object({ oportunidade: UUID, responsavel: texto({ min: 2, max: 120 }).nullable() }),
   async preparar(c, a) {
     if (!(await leadAoAlcance(c.admin, c.ctx, a.oportunidade))) return { erro: 'Oportunidade não encontrada.' }
     const lead = await ler(c.admin.from('leads').select('name, owner_id, crm_stages(funnel_id)')

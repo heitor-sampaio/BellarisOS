@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getTenantContext, podeReceber, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { mensagemDoErro } from '@/lib/db'
+import { recusaDaQuantidadeDoProduto } from '@/lib/vendas/quantidades'
 import { lancamentoAoAlcance, marcarPagoCore, marcarPagoEmFormasCore, FORMAS_DE_PAGAMENTO } from '@/lib/financeiro/lancamento'
 import { lerPartesDaBaixa, type ParteDaBaixa } from '@/lib/financeiro/baixa-em-formas'
 
@@ -132,7 +133,10 @@ export async function acrescentarProdutoNaComanda(
     if (typeof comandaId !== 'string' || !ID.test(comandaId)) return { error: 'Comanda não encontrada.' }
     if (typeof produtoId !== 'string' || !ID.test(produtoId)) return { error: 'Escolha o produto.' }
     const qtd = Number(quantidade)
-    if (!Number.isInteger(qtd) || qtd < 1 || qtd > 100) return { error: 'Quantidade inválida (de 1 a 100).' }
+    // O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser
+    // feito." — acima de 100 a tela avisa; só o impossível recusa.
+    const recusaDaQuantidade = recusaDaQuantidadeDoProduto(qtd)
+    if (recusaDaQuantidade) return { error: recusaDaQuantidade }
 
     const admin = createAdminClient()
     const comanda = await comandaAoAlcance(admin, ctx, comandaId)

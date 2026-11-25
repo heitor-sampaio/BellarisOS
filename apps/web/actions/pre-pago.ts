@@ -14,6 +14,9 @@ import { recusaDoProcedimentoNaUnidade } from '@/lib/procedimentos/disponivel-na
 import { z } from 'zod'
 import { CLIENTE_ARQUIVADA } from '@/lib/clients/arquivada'
 import { recusaDaVendaNaUnidade } from '@/lib/vendas/unidade-da-venda'
+import { recusaDaValidadeEmDias } from '@/lib/vendas/validade'
+import { recusaDasSessoesDoPrePago, recusaDoValorDaVenda } from '@/lib/vendas/quantidades'
+import { LIMITE_DE_VEZES_NO_CARTAO, acimaDeCemAnos } from '@/lib/acima-do-comum'
 import { alcancaOTratamento, alcancaOCaixaDoTratamento } from '@/lib/tratamento/alcance'
 import { getTenantContext, alcancaUnidade, podeReceber, assertPermission, assertRecurso } from '@/lib/auth'
 import { podeEstornar } from '@/lib/financeiro/so-os-meus'
@@ -85,9 +88,14 @@ async function venderProcedimentoUmaVez(
     if (!podeReceber(ctx)) throw semAcesso()
     if (![clienteId, procedimentoId, branchId].every(v => typeof v === 'string' && UUID.test(v))) return { error: 'Dados inválidos.' }
     const qtd = Number(quantidade)
-    if (!Number.isInteger(qtd) || qtd < 1 || qtd > 100) return { error: 'Quantidade inválida (de 1 a 100).' }
+    // O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser
+    // feito." — acima de 100 sessões a tela avisa; só o impossível recusa.
+    const recusaDasSessoes = recusaDasSessoesDoPrePago(qtd)
+    if (recusaDasSessoes) return { error: recusaDasSessoes }
     const validade = validadeDias == null || validadeDias === '' ? null : Number(validadeDias)
-    if (validade != null && (!Number.isInteger(validade) || validade < 1 || validade > 3650)) return { error: 'Validade inválida.' }
+    // O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." — só o impossível recusa.
+    const recusaDaValidade = recusaDaValidadeEmDias(validade)
+    if (recusaDaValidade) return { error: recusaDaValidade }
     const lido = EntradaDoPagamento.safeParse(pagamento)
     if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Pagamento inválido.' }
     // Até quantas vezes a clínica parcela no crédito (D-15): o servidor recusa acima.
@@ -142,10 +150,14 @@ async function venderProcedimentoUmaVez(
     if ('pergunta' in vendeu) return { confirmarSemVendedor: vendeu.pergunta }
 
     const rotulo = `${qtd}× ${proc.name as string}`
+    const lancamentos = comMotivoDoDesconto(lancamentosDoPagamento(vendido, pagamentoDaVenda, rotulo), motivoDoDesconto(d.data, reais))
+    // Sem o teto das sessões, o valor pode passar do que o registro guarda: recusa em português.
+    const recusaDoValor = recusaDoValorDaVenda(tabela, lancamentos.map(l => l.amount))
+    if (recusaDoValor) return { error: recusaDoValor }
     const args = {
       p_tenant: ctx.tenantId!, p_cliente: clienteId, p_procedimento: procedimentoId, p_unidade: branchId,
       p_ator: ctx.internalUserId ?? null, p_vendedor: vendeu.vendedor, p_quantidade: qtd, p_desconto: reais, p_validade_dias: validade,
-      p_lancamentos: comMotivoDoDesconto(lancamentosDoPagamento(vendido, pagamentoDaVenda, rotulo), motivoDoDesconto(d.data, reais)),
+      p_lancamentos: lancamentos,
       // Cada unidade com a sua parte do vendido: a base da comissão dela.
       p_unidades: ratear(Array.from({ length: qtd }, () => 1), vendido).map(preco => ({ preco })),
     }
@@ -213,7 +225,8 @@ const EntradaDoCancelamentoDaUnidade = z.object({
   estorno:  z.enum(['PARCIAL', 'INTEIRO']).nullable().optional(),
   novo:     z.object({
     metodo:   z.enum(FORMAS_DE_PAGAMENTO),
-    vezes:    z.number().int().min(1).max(12),
+    // O Heitor, 25/11: acima de 12 vezes avisa; só o impossível (acima de 1.200, decisão do Claude) se recusa.
+    vezes:    z.number().int().min(1).max(LIMITE_DE_VEZES_NO_CARTAO, acimaDeCemAnos(LIMITE_DE_VEZES_NO_CARTAO, 'vezes')),
     bandeira: z.enum(BANDEIRAS.map(b => b.value) as [string, ...string[]]).nullable().optional(),
     /** C75: a maquininha do cartão do usado. */
     maquininha: z.string().uuid().nullable().optional(),

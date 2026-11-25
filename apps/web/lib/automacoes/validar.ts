@@ -6,6 +6,8 @@ import { caminhosDoTexto } from './variaveis'
 import { conferirExpressao, ehCaminhoSimples } from './expressao'
 import { antecessoresDe, CAMPOS_DAS_ENTIDADES } from './disponiveis'
 import { chaveDoPasso, nomeDoPasso } from './passos'
+import { conferirLimiteDaBusca } from './busca-do-passo'
+import { recusaDoDiaDoMes } from './dia-do-mes'
 
 /**
  * A conferência do grafo antes de ativar.
@@ -164,9 +166,16 @@ export function validarGrafo(grafo: GrafoDeAutomacao): ProblemaDoGrafo[] {
           mensagem: `Falta o horário em "${rotuloCurto(no)}".`,
         })
       }
+      // De 1 a 31 (princípio 2): o dia que não existe em mês nenhum nunca
+      // dispararia, calado. O 29, o 30 e o 31 valem — a tela diz o mês sem eles.
+      const recusaDoDia = cfg?.frequencia === 'mensal' && cfg.diaDoMes !== undefined ? recusaDoDiaDoMes(cfg.diaDoMes) : null
+      if (recusaDoDia) problemas.push({ grau: 'erro', noId: no.id, mensagem: `${recusaDoDia} (em "${rotuloCurto(no)}")` })
     }
 
     if (no.tipo === NODES.BUSCAR_CLIENTES) {
+      // O "No máximo" vale o gravado; só o impossível não liga (princípio 2).
+      const limite = conferirLimiteDaBusca((no.config as { limite?: unknown } | undefined)?.limite)
+      if ('recusa' in limite) problemas.push({ grau: 'erro', noId: no.id, mensagem: `${limite.recusa} (em "${rotuloCurto(no)}")` })
       const veioDeAgenda = ligacoes.some(l =>
         l.para === no.id &&
         nos.find(n => n.id === l.de)?.tipo === NODES.GATILHO_AGENDA,

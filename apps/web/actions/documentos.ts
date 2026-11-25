@@ -33,6 +33,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { quemVendeu } from '@/lib/vendas/equipe-da-venda'
 import { recusaDasParcelasDaRede } from '@/lib/financeiro/crediario-da-rede'
+import { TETO_DO_CREDIARIO } from '@/lib/financeiro/parcelas-do-crediario'
 import { ensurePrivateBucket, DOCUMENTOS_ASSINADOS_BUCKET } from '@/lib/storage'
 import { garantirRenderizado, sha256 } from '@/lib/documentos/renderizar'
 import { prepararDocumentosDoPlano, contratoQueSeriaSubstituido } from '@/lib/documentos/plano'
@@ -236,8 +237,10 @@ function pagamentoValido(p: unknown): p is PagamentoDoPlano | null {
   switch (x.forma) {
     case 'AVISTA':    return texto(x.metodo)
     case 'A_RECEBER': return (x.metodo === null || texto(x.metodo)) && (x.vencimento === null || data(x.vencimento))
+    // A forma só (o limite da rede vem depois, `recusaDasParcelasDaRede`): o 48
+    // daqui recusava o crediário que a rede faz em 60 (princípio 2, CR-02).
     case 'PARCELADO': return texto(x.metodo) && Number.isFinite(x.entrada) && (x.entrada as number) >= 0
-      && Number.isInteger(x.parcelas) && (x.parcelas as number) >= 1 && (x.parcelas as number) <= 48 && data(x.primeiroVencimento)
+      && Number.isInteger(x.parcelas) && (x.parcelas as number) >= 1 && (x.parcelas as number) <= TETO_DO_CREDIARIO && data(x.primeiroVencimento)
     default:          return false
   }
 }

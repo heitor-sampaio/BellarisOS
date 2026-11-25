@@ -9,6 +9,7 @@ import { TIPOS_FORA_DO_PRE_ATENDIMENTO } from '@/lib/anamnese-geral'
 import { PERGUNTAS_DE_INJETAVEIS } from '@/lib/pre-atendimento/modelo-de-injetaveis'
 import type { AnamnesisRow } from '@/lib/anamnesis'
 import { Dica } from '@/components/shared/dica'
+import { avisoDoPrazoDaRede } from '@/lib/configuracoes/prazos-da-rede'
 
 /**
  * Configurações → Fichas → a ficha de pré-atendimento (2026-10-20): UMA por
@@ -32,6 +33,9 @@ export function SettingsPreAtendimento({ ficha, envio, validadeMeses, podePerson
   const [salvando, iniciar] = useTransition()
   const [aviso, setAviso] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null)
   const perguntas = (ficha?.rows ?? []).reduce((s, r) => s + r.fields.filter(f => f.type !== 'section').length, 0)
+  // Acima de 36 meses avisa e salva (o Heitor, 25/11: "Se não for impossível,
+  // ainda que improvável, pode ser feito.").
+  const acimaDoComum = avisoDoPrazoDaRede('pre_atendimento_validade_meses', meses.trim() ? Number(meses) : Number.NaN)
 
   function salvarEnvio() {
     setAviso(null)
@@ -97,8 +101,13 @@ export function SettingsPreAtendimento({ ficha, envio, validadeMeses, podePerson
               Dentro da validade, a cliente só confirma se algo mudou; depois dela, responde a ficha inteira.
             </Dica>
           </span>
-          <input id={idValidade} className="field" type="number" inputMode="numeric" min={1} max={36}
+          <input id={idValidade} className="field" type="number" inputMode="numeric" min={1} step={1}
             value={meses} onChange={e => setMeses(e.target.value)} />
+          {acimaDoComum && (
+            <span role="status" data-acima-do-comum="pre_atendimento_validade_meses" style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+              {acimaDoComum}
+            </span>
+          )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <button type="button" className="btn-primary" disabled={salvando} onClick={salvarEnvio}>

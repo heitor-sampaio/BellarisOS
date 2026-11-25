@@ -1,4 +1,23 @@
 import { parseDinheiro } from '@estetica-os/utils'
+import { acimaDoRegistro } from '@/lib/acima-do-comum'
+import { passaDoRegistro } from '@/lib/financeiro/limites-do-registro'
+
+/**
+ * numeric(12,2): `leads.value`, o valor estimado da oportunidade — até
+ * 9.999.999.999,99. Acima disso o banco respondia "numeric field overflow",
+ * em inglês (o Heitor, 25/11: "Se não for impossível, ainda que improvável,
+ * pode ser feito."; o impossível é o tipo da coluna, decisão do Claude, 25/11).
+ * A janela (`lerValorEstimado`), o núcleo (`criarOportunidadeCore`) e o
+ * Copilot leem daqui.
+ */
+export const LIMITE_DO_VALOR_DA_OPORTUNIDADE = 9_999_999_999.99
+export const RECUSA_DO_VALOR_DA_OPORTUNIDADE = acimaDoRegistro(LIMITE_DO_VALOR_DA_OPORTUNIDADE, 'reais')
+
+/** O valor estimado impossível — o negativo e o que o registro não guarda —, ou `null`. */
+export function recusaDoValorEstimado(valor: number): string | null {
+  if (valor < 0) return 'O valor estimado não pode ser negativo.'
+  return passaDoRegistro(valor, LIMITE_DO_VALOR_DA_OPORTUNIDADE, 2) ? RECUSA_DO_VALOR_DA_OPORTUNIDADE : null
+}
 
 /**
  * O valor que o card da oportunidade mostra (D1 da 30ª simulação;
@@ -33,13 +52,14 @@ export function valorDoCard(lead: {
  * O valor estimado digitado na janela: vazio é NULO ("ainda sem proposta" —
  * zero seria "negociado por nada"); o ilegível e o negativo são recusados com
  * o motivo, em vez de virar nulo e apagar o que estava (princípio 2: só o
- * impossível se recusa).
+ * impossível se recusa) — e o que o registro não guarda.
  */
 export function lerValorEstimado(bruto: string | null | undefined): { valor: number | null } | { error: string } {
   const texto = (bruto ?? '').trim()
   if (!texto) return { valor: null }
   const numero = parseDinheiro(texto)
   if (!Number.isFinite(numero)) return { error: 'Valor estimado inválido. Use só números, como 1.500,00.' }
-  if (numero < 0) return { error: 'O valor estimado não pode ser negativo.' }
+  const recusa = recusaDoValorEstimado(numero)
+  if (recusa) return { error: recusa }
   return { valor: numero }
 }

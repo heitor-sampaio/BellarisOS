@@ -21,10 +21,12 @@ describe('até quantas vezes a rede parcela no crédito', () => {
     expect(maximoDeVezes(10, [1, 3])).toBe(10)
   })
 
-  it('fica sempre entre 1 e 12', () => {
-    expect(maximoDeVezes(30, [])).toBe(12)
+  // O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." — acima de 12 vezes avisa.
+  it('fica sempre entre 1 e 1.200', () => {
+    expect(maximoDeVezes(30, [])).toBe(30)
     expect(maximoDeVezes(0, [2])).toBe(2)
-    expect(maximoDeVezes(null, [18])).toBe(12)
+    expect(maximoDeVezes(null, [18])).toBe(18)
+    expect(maximoDeVezes(1201, [])).toBe(1200)
   })
 
   it('as opções do seletor vão de à vista ao máximo', () => {

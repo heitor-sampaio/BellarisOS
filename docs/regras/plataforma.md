@@ -1076,7 +1076,10 @@ abaixo entraram na F70, 2026-11-12):
   `e2e/permissoes-f70.spec.ts` ("C67").
   - **A janela diz TUDO o que fica** (D2 e A32 da 14ª, F72): a equipe fixa,
     os agendamentos futuros, o estoque com saldo (valor e itens), o a receber
-    (e os atendimentos concluídos sem pagamento, à parte), o a receber da
+    (o crediário e o a receber), as comandas abertas ("1 comanda aberta no
+    PDV (R$ 150,00)", com "Receber no PDV" no PDV dela, que recebe mesmo
+    desativada; o Heitor, 25/11: "ok" — era "atendimento concluído sem
+    pagamento", com o caminho do a receber, que não a recebe), o a receber da
     OPERADORA (os cartões a cair, o "em aberto" do Financeiro,
     `getAReceberDaOperadora`; decisão do Claude, 25/11, A15 da 30ª: a regra
     fala do a receber sem distinguir) e a comissão a
@@ -1085,7 +1088,8 @@ abaixo entraram na F70, 2026-11-12):
     (`caminhosDoQueFica`, `components/admin/o-que-ficou.tsx`): "Ver os
     agendamentos" (a agenda dela, no dia do primeiro), "Transferir o estoque"
     (o estoque dela; a transferência abre com ela de origem), "Ver o a
-    receber" (`?aberto=todos` dela), "Fechar as comissões" (as dela). Sem
+    receber" (`?aberto=todos` dela), "Receber no PDV" (o PDV dela, as
+    comandas abertas), "Fechar as comissões" (as dela). Sem
     repasse em lote novo. Depois do clique, o cartão e o detalhe da
     desativada continuam dizendo o que ficou, com os mesmos caminhos
     (`[data-o-que-ficou]`).

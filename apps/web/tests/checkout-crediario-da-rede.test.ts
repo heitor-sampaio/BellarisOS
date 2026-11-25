@@ -35,7 +35,9 @@ describe('D5: as vezes no cartão da entrada', () => {
   it('o navegador só manda as vezes da entrada no crédito', () => {
     expect(EntradaDoPagamento.safeParse({ ...dap }).success).toBe(true)
     expect(EntradaDoPagamento.safeParse({ ...dap, metodo: 'PIX' }).success).toBe(false)
-    expect(EntradaDoPagamento.safeParse({ ...dap, vezes: 13 }).success).toBe(false)
+    // O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." — acima de 12 vezes avisa.
+    expect(EntradaDoPagamento.safeParse({ ...dap, vezes: 13 }).success).toBe(true)
+    expect(EntradaDoPagamento.safeParse({ ...dap, vezes: 1201 }).success).toBe(false)
   })
   it('o retrato do contrato guarda as vezes (e o de antes, sem vezes, não muda)', () => {
     expect(pagamentoNormalizado(dap)).toMatchObject({ forma: 'PARCELADO', metodo: 'CREDIT_CARD', vezes: 3 })

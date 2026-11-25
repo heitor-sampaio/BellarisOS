@@ -4,18 +4,40 @@
  * maior número de parcelas com taxa cadastrada.").
  *
  * É o "Vezes no cartão" do à vista no crédito — pago na hora, a maquininha
- * paga a clínica (§9.6). Sem valor gravado (`tenants.cartao_max_vezes`), vale a
- * maior parcela do crédito com taxa em `payment_fees`; sem nenhuma taxa do
- * crédito, o de antes: 12x. Sempre entre 1 e 12 (o banco confere `cartao_vezes`
- * de 1 a 12).
+ * paga a clínica (§9.6). Sem valor gravado (`maquininhas.max_vezes`), vale a
+ * maior parcela do crédito com taxa; sem nenhuma taxa do crédito, o de antes:
+ * 12x.
+ *
+ * Acima de 12 vezes (o Heitor, 25/11: "Se não for impossível, ainda que
+ * improvável, pode ser feito."): a tela AVISA e o servidor grava. Só o
+ * impossível se recusa — zero, negativo, fracionário e acima de 1.200 vezes
+ * (decisão do Claude, 25/11: cada parcela é um recebível com data mensal, e
+ * 1.200 meses são 100 anos, o limite das datas; o banco confere o mesmo).
  *
  * Puro: a tela monta o seletor por aqui, e o servidor recusa por aqui
  * (`lib/financeiro/vezes-da-rede.ts`).
  */
 
-import { LIMITE_DO_INTEIRO_CURTO, acimaDoRegistro, avisoAcimaDoComum } from '@/lib/acima-do-comum'
+import { LIMITE_DO_INTEIRO_CURTO, LIMITE_DE_VEZES_NO_CARTAO, acimaDoRegistro, acimaDeCemAnos, avisoAcimaDoComum } from '@/lib/acima-do-comum'
 
-export const TETO_DE_VEZES = 12
+/** O comum (o teto de antes): acima dele, a tela avisa. */
+export const VEZES_COMUNS_NO_CARTAO = 12
+/** Sem nenhuma taxa do crédito e sem "Parcelar até", o de sempre (D-15). */
+export const VEZES_SEM_TAXA = 12
+
+export const RECUSA_DAS_VEZES_ZERO = 'As vezes no cartão são um número inteiro, de pelo menos 1.'
+export const RECUSA_DAS_VEZES_ACIMA_DO_LIMITE = acimaDeCemAnos(LIMITE_DE_VEZES_NO_CARTAO, 'vezes')
+
+/** A recusa do impossível (zero, negativo, fracionário, acima de 1.200), ou `null`. */
+export function recusaDasVezesNoCartao(n: number): string | null {
+  if (!Number.isInteger(n) || n < 1) return RECUSA_DAS_VEZES_ZERO
+  return n > LIMITE_DE_VEZES_NO_CARTAO ? RECUSA_DAS_VEZES_ACIMA_DO_LIMITE : null
+}
+
+/** Acima de 12 vezes: avisa, e vale como está. */
+export function avisoDasVezesNoCartao(n: number): string | null {
+  return avisoAcimaDoComum(n, VEZES_COMUNS_NO_CARTAO, 'vezes')
+}
 
 /**
  * A taxa da maquininha não tem teto de negócio (F16-3, o Heitor: "não é pra
@@ -59,12 +81,12 @@ export function avisoDoPrazoDaOperadora(n: number): string | null {
   return avisoAcimaDoComum(n, PRAZO_COMUM_DA_OPERADORA, 'dias')
 }
 
-const entre = (n: number) => Math.max(1, Math.min(TETO_DE_VEZES, Math.trunc(n)))
+const entre = (n: number) => Math.max(1, Math.min(LIMITE_DE_VEZES_NO_CARTAO, Math.trunc(n)))
 
 export function maximoDeVezes(configurado: number | null | undefined, parcelasComTaxa: number[]): number {
   if (configurado != null && Number.isFinite(configurado) && configurado >= 1) return entre(configurado)
   const comTaxa = parcelasComTaxa.filter(n => Number.isFinite(n) && n >= 1)
-  return comTaxa.length ? entre(Math.max(...comTaxa)) : TETO_DE_VEZES
+  return comTaxa.length ? entre(Math.max(...comTaxa)) : VEZES_SEM_TAXA
 }
 
 /** As opções do seletor: de à vista (1) ao máximo. */

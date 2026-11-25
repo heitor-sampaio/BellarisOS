@@ -17,12 +17,12 @@ import { EntradaDoPagamento, lancamentosDoPagamento, recusaDaEntradaDoPagamento 
 import type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import { bandeiraDoPagamento } from '@/lib/financeiro/bandeiras'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { gravar, ler, contar, mensagemDoErro } from '@/lib/db'
+import { gravar, ler, lerTodas, contar, mensagemDoErro } from '@/lib/db'
 import {
   getCachedBranchProfessionals, getCachedBranchProcedures, getCachedRoomsByBranch, filtroDeQuemAtendeNaUnidade, getCachedNetworkBranches,
 } from '@/lib/cached-queries'
 import { notifyUser } from '@/lib/notifications/notify'
-import { createAppointmentCore, computeAvailableSlots, conferirPecasDoAgendamento, horarioOcupado, candidatasDoDia, fimDaOcupacao, CREDITO_JA_USADO } from '@/lib/appointments/core'
+import { createAppointmentCore, computeAvailableSlots, conferirPecasDoAgendamento, horarioOcupado, candidatasDoDia, fimDaOcupacao, podemOcuparDesde, CREDITO_JA_USADO } from '@/lib/appointments/core'
 import { janelaDaGrade } from '@/lib/appointments/janela-da-grade'
 import { conferirCredito } from '@/lib/creditos/credito'
 import { bloqueiosDoPeriodo } from '@/lib/agenda/bloqueios'
@@ -51,6 +51,7 @@ import { calcularDescontoComPontos, maximoDePontos } from '@/lib/fidelidade/resg
 import { descontoDoVoucher, type VoucherParaCalculo } from '@/lib/fidelidade/voucher'
 import { voucherDepoisDoDesconto } from '@/lib/fidelidade/voucher-na-comanda'
 import { quemVendeu } from '@/lib/vendas/equipe-da-venda'
+import { recusaDoValorDaVenda } from '@/lib/vendas/quantidades'
 import { valorDosItensDoAtendimento, jaCobertoDoAtendimento } from '@/lib/pdv/itens-da-comanda'
 import { insumosPorProduto, montarInsumosDaBaixa } from '@/lib/atendimento/insumos-da-baixa'
 import { corrigirRegistro } from '@/lib/prontuario/corrigir'
@@ -70,7 +71,7 @@ import { lerCredito } from '@/lib/creditos/credito'
 import { normalizarHorario, type Horario } from '@/lib/agenda/horario'
 import { salasDoAgendar, type SalaParaAgendar } from '@/lib/appointments/salas'
 import { avisosDoHorarioCore, type AvisosDoHorario } from '@/lib/appointments/encaixe'
-import { avisoDoHorarioPassado } from '@/lib/appointments/horario-passado'
+import { recusaDoHorarioPassado } from '@/lib/appointments/horario-passado'
 import { ehODiaDoAgendamento } from '@/lib/agenda/chegada'
 import { recusaDeQuemNaoAtende, textoDaTroca } from '@/lib/appointments/troca-de-profissional'
 
@@ -1203,6 +1204,10 @@ export async function confirmPayment(
     if (recusaDaEntrada) return { error: recusaDaEntrada }
     // Os lançamentos, pela régua das vendas (o app calcula; o banco grava numa transação).
     const lancamentos = pagamento ? lancamentosDoPagamento(valorFinal, pagamento, 'Atendimento') : []
+    // O que o registro não guarda (o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser
+    // feito." — sem o teto de quantidade, a comanda pode passar dele): recusa em português, a regra da venda.
+    const recusaDoValor = recusaDoValorDaVenda(itens, lancamentos.map(l => l.amount))
+    if (recusaDoValor) return { error: recusaDoValor }
 
     // UMA transação no banco: o pagamento (dar baixa no recebível ou lançar),
     // o resgate dos pontos, a comissão (se a rede a quer sobre o valor pago) e a
@@ -2031,16 +2036,20 @@ export async function getSchedulingDaySlots(
   const sala = roomId && /^[0-9a-f-]{36}$/i.test(roomId)
     ? await ler(admin.from('rooms').select('id, name').eq('id', roomId).eq('branch_id', branchId).maybeSingle(), 'buscar a sala') as { id: string; name: string } | null
     : null
+  // Com QUALQUER duração (`podemOcuparDesde`, 25/11; princípio 3): a véspera
+  // fixa (24 h) deixava de fora o atendimento de mais de 24 h que começou antes
+  // de ontem — a grade oferecia o horário e o Confirmar recusava. Em páginas: os
+  // longos de qualquer data também vêm, e só o que ainda ocupa o dia segue.
   const [data, prof, bloqueios] = await Promise.all([
-    ler(admin
+    lerTodas((de, ate) => admin
       .from('appointments')
-      .select('scheduled_at, duration_min, status, completed_at, branch_id, clients(name), branches!inner(tenant_id)')
+      .select('id, scheduled_at, duration_min, status, completed_at, branch_id, clients(name), branches!inner(tenant_id)')
       .eq('branches.tenant_id', ctx.tenantId!)
       .eq('professional_id', professionalId)
-      .gte('scheduled_at', janela.desde)
+      .or(podemOcuparDesde(new Date(janela.dia).getTime()))
       .lte('scheduled_at', janela.ate)
       .not('status', 'in', '("CANCELLED","NO_SHOW")')
-      .order('scheduled_at'), 'carregar os agendamentos'),
+      .order('scheduled_at').order('id').range(de, ate), 'carregar os agendamentos'),
     // O horário do profissional (da rede): sem ele, segue a unidade.
     ler(admin.from('users').select('horario')
       .eq('id', professionalId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o horário do profissional') as Promise<{ horario: unknown } | null>,
@@ -2049,7 +2058,7 @@ export async function getSchedulingDaySlots(
 
   type Linha = { scheduled_at: string; duration_min: number; status: string; completed_at: string | null; branch_id: string; clients: { name: string } | null }
   return {
-    slots: ((data ?? []) as unknown as Linha[]).map(d => ({
+    slots: ((data ?? []) as unknown as Linha[]).filter(d => fimDaOcupacao(d) > new Date(janela.dia).getTime()).map(d => ({
       scheduledAt: d.scheduled_at,
       // Até quando OCUPA (o concluído adiantado libera o resto — A31).
       durationMin: Math.max(0, Math.round((fimDaOcupacao(d) - new Date(d.scheduled_at).getTime()) / 60_000)),
@@ -2229,7 +2238,10 @@ export async function proximoHorarioLivre(
   if (!alcancaUnidade(ctx, branchId)) return null
   const recusa = await conferirPecasDoAgendamento(admin, ctx, { branchId, professionalId })
   if (recusa) return null
-  const duracao = Number.isFinite(durationMin) && durationMin > 0 ? Math.min(Math.round(durationMin), 480) : 30
+  // A duração INTEIRA (princípio 3): o procedimento não tem duração máxima, e o
+  // corte em 8 h dava ao atendimento de 10 h um "livre" em que só cabiam 8. A
+  // busca termina mesmo assim: são no máximo 14 dias (`procurarHorarioLivre`).
+  const duracao = Number.isFinite(durationMin) && durationMin > 0 ? Math.max(1, Math.round(durationMin)) : 30
   const desde = typeof aPartirDe === 'string' && !Number.isNaN(new Date(aPartirDe).getTime()) && new Date(aPartirDe).getTime() > Date.now()
     ? new Date(aPartirDe) : null
   // No relógio da unidade (F62): o dia e a hora que a tela escreve.
@@ -2280,7 +2292,7 @@ export async function avisosDoHorario(
  * próprio agendamento), e a cliente ARQUIVADA ("avisar ao remarcar, sem
  * recusar" — revisão do Heitor). Só aviso: `remarcarCore` decide.
  */
-export async function avisosDoRemarcar(appointmentId: string, scheduledAt: string): Promise<AvisosDoHorario & { clienteArquivada: string | null; passado?: string | null }> {
+export async function avisosDoRemarcar(appointmentId: string, scheduledAt: string): Promise<AvisosDoHorario & { clienteArquivada: string | null }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'agenda', 'MANAGE')
   const nada = { foraDoHorario: null, conflito: null, clienteArquivada: null }
@@ -2301,10 +2313,12 @@ export async function avisosDoRemarcar(appointmentId: string, scheduledAt: strin
       : Promise.resolve({ foraDoHorario: null, conflito: null }),
     ler(admin.from('clients').select('name, is_active').eq('id', a.client_id).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o cliente') as Promise<{ name: string; is_active: boolean } | null>,
   ])
+  // O horário novo que já passou não se remarca (o Heitor, 25/11; era só aviso desde a A24 da 11ª): a tela diz
+  // "Não vai ser remarcado: …", como no choque, e o núcleo (`remarcarCore`) recusa.
+  const passou = recusaDoHorarioPassado(scheduledAt, new Date(), await fusoDaUnidade(ctx.tenantId, a.branch_id))
   return {
     ...avisos,
-    // A24 da 11ª: o horário novo que já passou avisa (princípio 2: não recusa).
-    passado: avisoDoHorarioPassado(scheduledAt, undefined, await fusoDaUnidade(ctx.tenantId, a.branch_id)),
+    conflito: passou ?? avisos.conflito,
     clienteArquivada: ficha && ficha.is_active === false
       ? `${ficha.name} está arquivada. Remarcar é permitido; para agendar de novo, reative a ficha (em "Mais ações").`
       : null,

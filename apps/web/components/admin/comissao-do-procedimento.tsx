@@ -12,6 +12,7 @@ import { CampoDeValor, paraNumero, paraTexto } from '@/components/admin/comissao
 import {
   rotuloDaComissaoDoProcedimento, rotuloDaRegra, type RegraDeComissao, type TipoDeRegra,
   TAXA_DO_PROCEDIMENTO, taxaDoProcedimento, rotuloDaTaxaDoProcedimento, type TaxaDoProcedimento,
+  recusaDoValorDaComissao,
 } from '@/lib/comissoes/config'
 
 /**
@@ -91,6 +92,9 @@ export function entradaDaComissao(
     const n = paraNumero(texto)
     if (!texto.trim() || !Number.isFinite(n) || n < 0) return `Informe o valor ${onde}.`
     if (t === 'PERCENTAGE' && n > 100) return `Percentual acima de 100% ${onde}.`
+    // O fixo vai até o limite do registro (o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito.").
+    const recusa = recusaDoValorDaComissao(t, n, onde)
+    if (recusa) return recusa
     return n
   }
   if (estado.modo === 'GERAL') {

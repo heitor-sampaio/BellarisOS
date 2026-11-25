@@ -343,22 +343,13 @@ test.describe.serial('indicadores com cenário conhecido', () => {
     expect(nums(estoque.mais_consumidos, ['valor'])).toEqual([{ nome: `${PREFIXO} Insumo ok ${marca}`, valor: 12 }])
   })
 
-  test('telas da unidade: sessões por procedimento e clientes para reativar', async () => {
+  // O trecho do "Reativar" pela função por unidade saiu com ela (o Heitor, 25/11: "ok mas
+  // tenha certeza absoluta que não é usada"); o da rede é provado em indicadores-reativar-clientes-da-rede.
+  test('telas da unidade: sessões por procedimento, ficha do cliente e valor em estoque', async () => {
     const db = banco()
     const { data: sessoes } = await db.rpc('metrics_sessoes_por_procedimento', { p_branch_ids: [c!.unidade] })
     // Desde sempre: a0 (fev) conta junto com a1 e a2.
     expect(nums2(sessoes)).toEqual([[c!.pA, 3]])
-
-    // C1 e C2 foram atendidas na unidade (T1 do Bloco Tags: é o FATO, não a
-    // tag): C2 tem agendamento marcado (a5, SCHEDULED) "desde" 2021-03-13 —
-    // só C1 fica sem visita; a última dela é a1 (10/03). C3 é de outra.
-    const { data: reativar } = await db.rpc('metrics_clientes_para_reativar', {
-      p_tenant: c!.tenant, p_branch_id: c!.unidade, p_desde: '2021-03-13T00:00:00-03:00', p_limite: 3,
-    })
-    const r = reativar as { total: number; lista: { id: string; ultima_visita: string }[] }
-    expect(r.total).toBe(1)
-    expect(r.lista.map(x => x.id)).toEqual([c!.c1])
-    expect(new Date(r.lista[0]!.ultima_visita).toISOString()).toBe(new Date(dia(10)).toISOString())
 
     // Ficha do cliente: LTV = o que PAGOU desde sempre. C2 tem R$ 55 estornado
     // e R$ 70 pendente — nenhum entra. Atendimentos e serviço, desde sempre

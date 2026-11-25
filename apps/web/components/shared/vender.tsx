@@ -4,6 +4,8 @@ import { useEffect, useId, useState, useTransition } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { toast } from 'sonner'
 import { avisoDaVenda } from '@/lib/vendas/aviso-da-venda'
+import { avisoDaValidadeEmDias } from '@/lib/vendas/validade'
+import { recusaDosItensDaVenda, avisoDaQuantidadeDoProduto, avisosDosItensDaVenda, recusaDasSessoesDoPrePago, avisoDasSessoesDoPrePago } from '@/lib/vendas/quantidades'
 import Link from 'next/link'
 import { X, AlertTriangle, Plus } from 'lucide-react'
 import type { AtendimentoAReceber } from '@/lib/metrics/a-receber'
@@ -144,7 +146,11 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe, fid
   })
   const tabela = Math.round(linhas.reduce((s, l) => s + Math.round(l.subtotal * 100), 0)) / 100
   const conta = contaDoDesconto(tabela, desconto)
-  const quantidadesValidas = linhas.every(l => l.qtd >= 1 && l.qtd <= 100)
+  // O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." — acima
+  // de 100 de cada, de 100 unidades e de 20 produtos a tela avisa; só o impossível desliga.
+  const recusaDasQuantidades = recusaDosItensDaVenda(linhas.map(l => l.qtd))
+  const quantidadesValidas = !recusaDasQuantidades
+  const avisosDaVenda = avisosDosItensDaVenda(linhas.map(l => l.qtd))
   // A15 da 23ª: sem estoque, o botão desliga com o motivo e a tela aponta a Entrada.
   const falta = faltaDeEstoqueNaVenda(linhas.map(l => ({ nome: l.prod.name, quantidade: l.qtd, disponivel: l.prod.disponivel, unidade: l.prod.unidade })))
   const pathname = usePathname()
@@ -193,8 +199,13 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe, fid
             </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4, width: 130 }}>
               <span style={rotulo}>Quantidade ({linha.prod.unidade})</span>
-              <input className="field" type="number" min={1} max={100} step={1} inputMode="numeric" aria-label={`Quantidade${sufixo}`}
+              <input className="field" type="number" min={1} step={1} inputMode="numeric" aria-label={`Quantidade${sufixo}`}
                 value={item.quantidade} onChange={e => mudar(n, { quantidade: e.target.value })} />
+              {avisoDaQuantidadeDoProduto(linha.qtd) && (
+                <span role="status" data-acima-do-comum="quantidade-do-produto" style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+                  {avisoDaQuantidadeDoProduto(linha.qtd)}
+                </span>
+              )}
             </label>
             {itens.length > 1 && (
               <button type="button" className="btn-ghost" aria-label={`Tirar o produto${sufixo || ' 1'}`} style={{ padding: 8 }}
@@ -205,7 +216,7 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe, fid
           </div>
         )
       })}
-      {livres.length > 0 && itens.length < 20 && (
+      {livres.length > 0 && (
         <button type="button" className="btn-ghost" style={{ alignSelf: 'flex-start', fontSize: 'var(--text-sm-sz)' }}
           onClick={() => setItens(xs => [...xs, { prodId: livres[0]!.id, quantidade: '1' }])}>
           <Plus size={14} aria-hidden /> Adicionar produto
@@ -214,6 +225,16 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe, fid
       <p data-resumo-do-produto style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)' }}>
         {linhas.map(l => `${l.qtd} × ${formatBRL(l.prod.price)}`).join(' + ')} = {formatBRL(tabela)}{fimDoResumoDoProduto(falta) ? ` · ${fimDoResumoDoProduto(falta)}` : ''}
       </p>
+      {[avisosDaVenda.unidades, avisosDaVenda.produtos].filter(Boolean).map(a => (
+        <span key={a} role="status" data-acima-do-comum="itens-da-venda" style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+          {a}
+        </span>
+      ))}
+      {recusaDasQuantidades && (
+        <p role="alert" data-recusa-da-quantidade style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>
+          {recusaDasQuantidades}
+        </p>
+      )}
       <CampoQuemVendeu equipe={equipe} valor={vendedorId} aoMudar={id => { setVendedorId(id); setPergunta(null) }}
         comissao={comissaoDosProdutos(equipe.find(m => m.id === vendedorId), linhas.map(l => l.prod))} />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
@@ -461,13 +482,30 @@ function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, p
       <div className="form-2col">
         <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <span style={rotulo}>Quantidade</span>
-          <input className="field" type="number" min={1} max={100} step={1} inputMode="numeric" aria-label="Quantidade"
+          <input className="field" type="number" min={1} step={1} inputMode="numeric" aria-label="Quantidade"
             value={quantidade} onChange={e => setQuantidade(e.target.value)} />
+          {/* O Heitor, 25/11: acima de 100 sessões avisa; só o impossível (o registro) desliga. */}
+          {avisoDasSessoesDoPrePago(qtd) && (
+            <span role="status" data-acima-do-comum="sessoes-do-pre-pago" style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+              {avisoDasSessoesDoPrePago(qtd)}
+            </span>
+          )}
+          {qtd >= 1 && recusaDasSessoesDoPrePago(qtd) && (
+            <span role="alert" data-recusa-da-quantidade style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>
+              {recusaDasSessoesDoPrePago(qtd)}
+            </span>
+          )}
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <span style={rotulo}>Validade em dias (opcional)</span>
-          <input className="field" type="number" min={1} max={3650} step={1} inputMode="numeric" aria-label="Validade em dias"
+          <input className="field" type="number" min={1} step={1} inputMode="numeric" aria-label="Validade em dias"
             placeholder="Sem validade" value={validade} onChange={e => setValidade(e.target.value)} />
+          {/* O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." Acima do comum, avisa. */}
+          {validade.trim() !== '' && avisoDaValidadeEmDias(Number(validade)) && (
+            <span role="status" data-aviso-da-validade style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+              {avisoDaValidadeEmDias(Number(validade))}
+            </span>
+          )}
         </label>
       </div>
       {jaAtendido && (
@@ -507,7 +545,7 @@ function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, p
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           <MotivoDoBotao motivo={pendente || erro ? null : recusaForaDoCampo(estado, fid.aPagar, recusaDoPagamento(estado, fid.aPagar))} />
           <button type="button" className="btn-secondary" onClick={onFim} disabled={pendente}>Cancelar</button>
-          <button type="button" className="btn-primary" onClick={() => vender()} disabled={pendente || !!conta.recusa || !!fid.recusa || !!recusaDoPagamento(estado, fid.aPagar) || qtd < 1 || qtd > 100}>
+          <button type="button" className="btn-primary" onClick={() => vender()} disabled={pendente || !!conta.recusa || !!fid.recusa || !!recusaDoPagamento(estado, fid.aPagar) || !!recusaDasSessoesDoPrePago(qtd)}>
             {pendente ? 'Vendendo…' : `Vender por ${formatBRL(fid.aPagar)}`}
           </button>
         </div>

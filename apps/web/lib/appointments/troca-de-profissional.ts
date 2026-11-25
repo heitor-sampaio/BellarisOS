@@ -2,6 +2,7 @@ import 'server-only'
 import type { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { filtroDeQuemAtendeNaUnidade } from '@/lib/cached-queries'
+import { O_ATENDE_NA_FICHA } from '@/lib/equipe/atende'
 export { textoDaTroca } from '@/lib/appointments/texto-da-troca'
 
 type Admin = ReturnType<typeof createAdminClient>
@@ -19,5 +20,5 @@ export async function recusaDeQuemNaoAtende(admin: Admin, tenantId: string, prof
     .or(filtroDeQuemAtendeNaUnidade(branchId)).maybeSingle(), 'conferir quem atende na unidade')
   if (quem) return null
   const nome = (await ler(admin.from('users').select('name').eq('id', professionalId).eq('tenant_id', tenantId).maybeSingle(), 'buscar o profissional') as { name: string } | null)?.name
-  return `${nome ?? 'Esta profissional'} não atende nesta unidade (o “Atende clientes em” dela, na Equipe).`
+  return `${nome ?? 'Esta profissional'} não atende nesta unidade: marque ${O_ATENDE_NA_FICHA} no lápis dela, na Equipe.`
 }

@@ -5,7 +5,7 @@ import type { TenantContext } from '@estetica-os/types'
 import type { createAdminClient } from '@/lib/supabase/admin'
 import { alcancaUnidade, can } from '@/lib/auth'
 import { gravar, ler, lerTodas } from '@/lib/db'
-import { conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
+import { conferirPecasDoAgendamento, horarioOcupado, podemOcuparDesde } from '@/lib/appointments/core'
 import { logHistory, loadApptCtx, fmtDateTime } from '@/lib/appointments/avisos'
 import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { notifyUser } from '@/lib/notifications/notify'
@@ -183,7 +183,8 @@ export async function pendenciasDoMembro(
   // Os horários de quem pode receber, de uma vez (não um por par).
   const ocupados = new Map<string, { ini: number; fim: number }[]>()
   if (ags.length && equipe.length) {
-    const inicio = new Date(new Date(ags[0]!.scheduled_at).getTime() - 12 * 3_600_000).toISOString()
+    // Com qualquer duração (25/11): o de mais de 12 h que começou antes também ocupa.
+    const desde = podemOcuparDesde(new Date(ags[0]!.scheduled_at).getTime())
     const ultimo = ags[ags.length - 1]!
     const fim = new Date(new Date(ultimo.scheduled_at).getTime() + (ultimo.duration_min || 60) * 60_000).toISOString()
     const agenda = await lerTodas((de, ate) => admin.from('appointments')
@@ -191,7 +192,7 @@ export async function pendenciasDoMembro(
       .eq('branches.tenant_id', ctx.tenantId!)
       .in('professional_id', equipe.map(p => p.id))
       .not('status', 'in', '("CANCELLED","NO_SHOW")')
-      .gte('scheduled_at', inicio).lt('scheduled_at', fim)
+      .or(desde).lt('scheduled_at', fim)
       .order('scheduled_at').order('id').range(de, ate), 'carregar a agenda de quem pode receber') as unknown as
       { professional_id: string; scheduled_at: string; duration_min: number | null; status: string | null; completed_at: string | null }[]
     for (const a of agenda) {

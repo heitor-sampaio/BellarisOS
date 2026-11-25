@@ -24,6 +24,16 @@ export const LIMITE_DO_DECIMAL = 99_999_999
  */
 export const LIMITE_DE_DIAS = 36_500
 export const LIMITE_DE_MESES = 1_200
+/** Os 100 anos em horas (100 × 365 × 24): o prazo do portal (decisão do Claude, 25/11). */
+export const LIMITE_DE_HORAS = 876_000
+
+/**
+ * As vezes no cartão de crédito (o Heitor, 25/11: "Se não for impossível,
+ * ainda que improvável, pode ser feito."): cada parcela vira um recebível da
+ * operadora com data mensal, então o impossível é passar de 1.200 vezes — 100
+ * anos, o mesmo limite das datas (decisão do Claude, 25/11).
+ */
+export const LIMITE_DE_VEZES_NO_CARTAO = LIMITE_DE_MESES
 
 const numero = (n: number) => n.toLocaleString('pt-BR')
 

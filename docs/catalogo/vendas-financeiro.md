@@ -55,8 +55,8 @@ Este é o catálogo das regras de Vendas e financeiro que valem HOJE: o PDV e as
 - Onde: `docs/regras/vendas-financeiro.md:22-26`, `:41-45`; `docs/revisao.md:575-576`
 - Antes: KA-06, KA-08
 
-**PV-10.** Enquanto a comanda do atendimento não foi paga, quem recebe acrescenta nela um produto de Venda direta que a cliente leva, com a quantidade ("−" e "+"), e o tira até receber; o estoque não fica reservado e é conferido de novo ao receber, e o sistema recusa o produto que não é de Venda direta e a quantidade que o estoque não cobre. O produto vale o preço de venda do momento e entra no total; ao receber, é vendido junto, nas formas do atendimento (o atendimento primeiro, depois os produtos), e sai do estoque da unidade. Ele não abre comanda própria; o estorno o devolve.
-- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "implementa lá e se eu achar que precisa mudar algo te aviso"
+**PV-10.** Enquanto a comanda do atendimento não foi paga, quem recebe acrescenta nela um produto de Venda direta que a cliente leva, com a quantidade ("−" e "+"), e o tira até receber; o estoque não fica reservado e é conferido de novo ao receber, e o sistema recusa o produto que não é de Venda direta e a quantidade que o estoque não cobre. O produto vale o preço de venda do momento e entra no total; ao receber, é vendido junto, nas formas do atendimento (o atendimento primeiro, depois os produtos), e sai do estoque da unidade. Ele não abre comanda própria; o estorno o devolve. A quantidade é a que quem recebe escolhe: acima de 100 de um produto e de 20 produtos na comanda a tela avisa e grava; só o impossível (zero, fracionário, acima de 2.147.483.647, o estoque que não cobre) é recusado, como na venda (PR-04).
+- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "implementa lá e se eu achar que precisa mudar algo te aviso"; as quantidades: o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." (o "comum" e o impossível: decisão do Claude, 25/11)
 - Onde: `docs/regras/vendas-financeiro.md:238-252`, `:249-268`, `:278-280`, `:399-401`, `:529-531`; `docs/revisao.md:1711-1715`, `:1976`
 - Antes: KA-09, KA-10, KG-04
 
@@ -162,8 +162,8 @@ Este é o catálogo das regras de Vendas e financeiro que valem HOJE: o PDV e as
 - Onde: `docs/regras/vendas-financeiro.md:1485`, `:2150`, `:2162`, `:2581`, `:3188`, `:3209`; `docs/revisao.md:1982`
 - Antes: KE-22, KF-19, KD-16, KE-24, KF-01
 
-**FP-03.** No pagamento à vista dá para usar mais de uma forma, com "+ Outra forma" (até 5 no total), que já aparece quando o diálogo abre. Cada forma tem o seu valor, e a primeira fica com o que falta ("Pix: R$ 200,00 (o que falta das outras)"). As formas precisam fechar o total ao centavo, senão o sistema recusa ("As formas somam … e não fecham o total"). Vale na comanda do atendimento, na Nova venda e no plano. Os pontos e o voucher abatem na primeira forma, até o valor dela. O Crediário e o A receber não se dividem, e o crédito interno vendido se paga numa forma só.
-- Fonte: recomendação do Claude aprovada pelo Heitor, 16/11: "Ok"
+**FP-03.** No pagamento à vista dá para usar mais de uma forma, com "+ Outra forma", que já aparece quando o diálogo abre, quantas vezes quem recebe clicar: sem teto e sem aviso (o botão segue depois da 5ª). Cada forma tem o seu valor, e a primeira fica com o que falta ("Pix: R$ 200,00 (o que falta das outras)"). As formas precisam fechar o total ao centavo, senão o sistema recusa ("As formas somam … e não fecham o total"). Vale na comanda do atendimento, na Nova venda e no plano. Os pontos e o voucher abatem na primeira forma, até o valor dela. O Crediário e o A receber não se dividem, e o crédito interno vendido se paga numa forma só.
+- Fonte: recomendação do Claude aprovada pelo Heitor, 16/11: "Ok"; sem limite de formas: o Heitor, 25/11, sobre o limite de 5 formas: "Não precisa de aviso, essa não é uma ação automatica, o usuario vai precisar clicar em um botão, então ele fez de proposito."
 - Onde: `docs/regras/vendas-financeiro.md:397-398`, `:451-452`, `:491-506`
 - Antes: KA-18
 
@@ -191,7 +191,7 @@ Este é o catálogo das regras de Vendas e financeiro que valem HOJE: o PDV e as
 - Onde: `docs/regras/vendas-financeiro.md:216-225`, `:536-537`, `:2569`, `:3208`; `docs/revisao.md:1982`
 - Antes: KA-17, KF-02
 
-**CR-02.** O máximo de parcelas do crediário é configuração da rede (padrão 12) e vale igual em todo caminho que vende no crediário (a venda no PDV, o pagamento do contrato, o pagamento do plano): a tela oferece até o limite e o servidor recusa acima dele. O limite é o número que a rede digita, de 1 para cima: acima de 48 a tela avisa ("Acima do comum (…). Confira: o valor vale como está.") e o valor vale; só o que o registro não guarda (acima de 32.767) é recusado. As parcelas geradas são todas as vendidas, nunca cortadas em silêncio. A despesa não muda: parcelada de 2 a 48, recorrente de 2 a 60.
+**CR-02.** O máximo de parcelas do crediário é configuração da rede (padrão 12) e vale igual em todo caminho que vende no crediário (a venda no PDV, o pagamento do contrato, o pagamento do plano): a tela oferece até o limite e o servidor recusa acima dele. O limite é o número que a rede digita, de 1 para cima: acima de 48 a tela avisa ("Acima do comum (…). Confira: o valor vale como está.") e o valor vale; só o que o registro não guarda (acima de 32.767) é recusado. As parcelas geradas são todas as vendidas, nunca cortadas em silêncio. A despesa também avisa em vez de recusar (FN-17). O banco não prende a parcela em 48: o crediário em 60 vezes grava.
 - Fonte: o Heitor, 2026-11-11: "Decisão da rede"; o aviso no lugar do teto: princípio 2 (o Heitor, 2026-11-04: "no máximo, avisar"); o aviso começar no teto de antes (48): decisão do Claude, 25/11
 - Onde: `docs/regras/vendas-financeiro.md:2718-2737`; `apps/web/lib/financeiro/parcelas-do-crediario.ts`
 - Antes: KF-06
@@ -218,8 +218,8 @@ Este é o catálogo das regras de Vendas e financeiro que valem HOJE: o PDV e as
 - Onde: `docs/regras/vendas-financeiro.md:86-93`, `:108-109`, `:227-237`, `:419-420`, `:441-443`; `docs/revisao.md:611`, `:1992`
 - Antes: KA-40, KG-15, KA-41, KA-47
 
-**CR-07.** O "Receber" da parcela ou do valor a receber (no PDV, na ficha e no Financeiro) também aceita "+ Outra forma": até 5 formas, que fecham o valor ao centavo; a parcela com desconto ou com pontos não se divide. Nas listas (o Financeiro, a ficha e o plano, na equipe e no app), as formas de uma mesma parcela aparecem numa linha só, com o total e as formas ("Pix R$ 400,00 + Dinheiro R$ 200,00"); o recibo e o estorno continuam por forma ("Estornar (Pix)"), e na planilha cada forma tem a sua linha, marcada "(forma 1 de 2)".
-- Fonte: decisão do Claude
+**CR-07.** O "Receber" da parcela ou do valor a receber (no PDV, na ficha e no Financeiro) também aceita "+ Outra forma": quantas formas quem recebe quiser, sem teto e sem aviso, cada uma acima de zero e fechando o valor ao centavo; a parcela com desconto ou com pontos não se divide. Nas listas (o Financeiro, a ficha e o plano, na equipe e no app), as formas de uma mesma parcela aparecem numa linha só, com o total e as formas ("Pix R$ 400,00 + Dinheiro R$ 200,00"); o recibo e o estorno continuam por forma ("Estornar (Pix)"), e na planilha cada forma tem a sua linha, marcada "(forma 1 de 2)".
+- Fonte: decisão do Claude; sem limite de formas: o Heitor, 25/11, sobre o limite de 5 formas: "Não precisa de aviso, essa não é uma ação automatica, o usuario vai precisar clicar em um botão, então ele fez de proposito."
 - Onde: `docs/regras/vendas-financeiro.md:507-522`
 - Antes: KA-42, KA-43
 
@@ -311,7 +311,7 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 
 ### O pacote e o catálogo
 
-**PA-01.** Pacote é um conjunto de procedimentos já montado antes (iguais ou não, ex.: "5 limpezas + 3 drenagens"), vendido por um preço só e igual a qualquer cliente: é um tipo de produto. O plano, ao contrário, nasce da avaliação, feito para uma cliente. Para montar o pacote, escolhem-se o nome, os procedimentos, quantas sessões de cada um e o preço; o mesmo procedimento posto em duas linhas vira uma linha só, com as sessões somadas.
+**PA-01.** Pacote é um conjunto de procedimentos já montado antes (iguais ou não, ex.: "5 limpezas + 3 drenagens"), vendido por um preço só e igual a qualquer cliente: é um tipo de produto. O plano, ao contrário, nasce da avaliação, feito para uma cliente. Para montar o pacote, escolhem-se o nome, os procedimentos, quantas sessões de cada um e o preço; o mesmo procedimento posto em duas linhas vira uma linha só, com as sessões somadas. Não há limite de procedimentos; acima de 100 sessões e de R$ 1.000.000 a tela avisa e vale; só se recusa o que o registro não guarda — mais de 32.767 sessões (cada sessão é uma linha) e preço acima de R$ 99.999.999,99 (o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito."; os números são decisão do Claude).
 - Fonte: o Heitor, 2026-11-05: "a diferença entre pacote e plano é que um plano é algo personalizado de acordo com a necessidade de cliente e um pacote é um conjunto de procedimentos já estabelecidos previamente"
 - Onde: `docs/regras/vendas-financeiro.md:554-563`, `:590-594`, `:628-630`; `docs/revisao.md:253-256`
 - Antes: KB-01, KB-03, KG-28, KB-05
@@ -326,7 +326,7 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Onde: `docs/regras/vendas-financeiro.md:632-634`; `docs/revisao.md:256-257`, `:284`, `:1935`
 - Antes: KB-06, KG-30
 
-**PA-04.** O pacote tem validade em dias (vazio = sem validade) e a marca "À venda", que tira o pacote da venda sem apagá-lo.
+**PA-04.** O pacote tem validade em dias (vazio = sem validade) e a marca "À venda", que tira o pacote da venda sem apagá-lo. A validade acima de 3.650 dias avisa e vale; só o zero e o acima de 100 anos são recusados — o mesmo na validade do pré-pago (o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito."; os números são decisão do Claude).
 - Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "ok, mantém"
 - Onde: `docs/revisao.md:291-292`, `:1942`; `docs/regras/vendas-financeiro.md:629-630`
 - Antes: KB-04, KG-32, KG-33
@@ -433,7 +433,7 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 
 ### Trazer pacote de fora
 
-**PA-23.** "Trazer pacote de fora" registra o saldo que a cliente já tinha antes do sistema: na ficha (no cartão do tratamento em andamento), com o procedimento, as sessões do pacote, as já usadas antes, a validade (opcional) e um valor de referência (opcional); a janela diz a conta antes de gravar ("Ficam 4 de 6 sessões para agendar · R$ 200,00 por sessão…"). Também entra pela importação (a coluna "Pacote de antes"). Traz quem tem o Financeiro em Gerenciar (quem dá o crédito interno); na ficha da rede com duas ou mais unidades, a janela pergunta a unidade.
+**PA-23.** "Trazer pacote de fora" registra o saldo que a cliente já tinha antes do sistema: na ficha (no cartão do tratamento em andamento), com o procedimento, as sessões do pacote, as já usadas antes, a validade (opcional) e um valor de referência (opcional); a janela diz a conta antes de gravar ("Ficam 4 de 6 sessões para agendar · R$ 200,00 por sessão…"). Também entra pela importação (a coluna "Pacote de antes"). Traz quem tem o Financeiro em Gerenciar (quem dá o crédito interno); na ficha da rede com duas ou mais unidades, a janela pergunta a unidade. Acima de 100 sessões e de R$ 10.000.000 de valor de referência a janela avisa e vale; só se recusa o que o registro não guarda — mais de 32.767 sessões e valor acima de R$ 99.999.999,99 —, na ficha e na importação (o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito."; os números são decisão do Claude).
 - Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-06: "concordo"
 - Onde: `docs/regras/vendas-financeiro.md:955-970`
 - Antes: KB-48, KB-49
@@ -462,8 +462,8 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Onde: `docs/regras/vendas-financeiro.md:1042-1045`, `:3206`
 - Antes: KC-02, KF-52
 
-**PP-02.** A venda do pré-pago guarda o retrato do que foi vendido: preço unitário e total de tabela, desconto, valor vendido, validade (opcional) e quem vendeu; cada sessão fica com a sua parte do valor vendido, dividida por igual em centavos. O atendimento feito com uma sessão do pré-pago não se cobra de novo: concluir marca a sessão como usada, o recebimento recusa cobrar e a tela não mostra o botão de receber.
-- Fonte: decisão do Claude
+**PP-02.** A venda do pré-pago guarda o retrato do que foi vendido: preço unitário e total de tabela, desconto, valor vendido, validade (opcional) e quem vendeu; cada sessão fica com a sua parte do valor vendido, dividida por igual em centavos. Quantas sessões é o que quem vende escolhe: acima de 100 a tela avisa ("Acima do comum (mais de 100 sessões). Confira: o valor vale como está.") e a venda grava; só o impossível é recusado — zero, fracionário e acima de 32.767 sessões (cada sessão é uma linha no registro). O atendimento feito com uma sessão do pré-pago não se cobra de novo: concluir marca a sessão como usada, o recebimento recusa cobrar e a tela não mostra o botão de receber.
+- Fonte: decisão do Claude; as sessões: o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." (o "comum", 100, e o impossível, 32.767: decisão do Claude, 25/11)
 - Onde: `docs/regras/vendas-financeiro.md:1047-1059`
 - Antes: KC-03, KC-04
 
@@ -516,8 +516,8 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Onde: `docs/regras/vendas-financeiro.md:433-435`, `:453-455`, `:1162-1164`, `:1177`
 - Antes: KC-15, KA-27
 
-**PR-04.** Uma venda leva vários produtos com um pagamento só: "Adicionar produto" (até 20 produtos, cada um de 1 a 100 unidades, até 100 unidades na venda) e o resumo "2 × R$ 100,00 + 1 × R$ 90,00 = R$ 290,00"; a descrição da venda ("2× Sérum + 1× Protetor") é o que aparece nas Vendas, no extrato da comissão e no lançamento. A venda guarda o custo do que saiu: o custo de entrada de cada lote de onde o produto saiu, na proporção; sem lote com custo, o custo de consumo do cadastro.
-- Fonte: decisão do Claude
+**PR-04.** Uma venda leva vários produtos com um pagamento só: "Adicionar produto" e o resumo "2 × R$ 100,00 + 1 × R$ 90,00 = R$ 290,00"; a descrição da venda ("2× Sérum + 1× Protetor") é o que aparece nas Vendas, no extrato da comissão e no lançamento. A venda guarda o custo do que saiu: o custo de entrada de cada lote de onde o produto saiu, na proporção; sem lote com custo, o custo de consumo do cadastro. As quantidades são as que quem vende escolhe: acima de 100 de um produto, de 100 unidades na venda e de 20 produtos a tela avisa ("Acima do comum (mais de 100 unidades). Confira: o valor vale como está.") e a venda grava; só o impossível é recusado — quantidade zero, negativa ou fracionária, acima de 2.147.483.647 unidades (o limite do registro) e o estoque que não cobre. O número de produtos não tem limite próprio. O mesmo vale para o produto na comanda do PDV (PV-10) e para a devolução de parte da venda, que só recusa o que passa do que a cliente ainda tem (PR-07). O valor que o registro não guarda (um pagamento acima de R$ 99.999.999,99, a venda acima de R$ 9.999.999.999,99) é recusado com a mensagem, em vez de dar erro.
+- Fonte: decisão do Claude; as quantidades: o Heitor, 25/11, sobre os limites que recusavam o valor que a rede escolheu: "Se não for impossível, ainda que improvável, pode ser feito." O "comum" (o teto de antes: 100 de cada, 100 unidades, 20 produtos) e o impossível (o registro: `integer`; o valor, numeric(10,2) e numeric(12,2)): decisão do Claude, 25/11
 - Onde: `docs/regras/vendas-financeiro.md:1161-1162`, `:1166-1181`
 - Antes: KC-16, KC-17
 
@@ -531,7 +531,7 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Onde: `docs/regras/vendas-financeiro.md:1223-1228`
 - Antes: KC-20
 
-**PR-07.** Dá para devolver só parte da venda de produto, sem estornar a venda inteira: o "Estornar" oferece "Devolver só parte da venda", em que se diz quantas de cada produto voltam e se voltaram ao estoque, com a mesma permissão do estorno. O que volta é a parte de cada item no valor vendido, com o desconto dividido pelo preço de tabela. O a receber que passa do novo valor cai antes; o pago além dele volta como quem devolve escolher: estorno parcial na mesma forma ou crédito interno.
+**PR-07.** Dá para devolver só parte da venda de produto, sem estornar a venda inteira: o "Estornar" oferece "Devolver só parte da venda", em que se diz quantas de cada produto voltam e se voltaram ao estoque, com a mesma permissão do estorno. Não há teto de quantidade nem de produtos: só se recusa o que passa do que a cliente ainda tem (e o limite do registro). O que volta é a parte de cada item no valor vendido, com o desconto dividido pelo preço de tabela. O a receber que passa do novo valor cai antes; o pago além dele volta como quem devolve escolher: estorno parcial na mesma forma ou crédito interno.
 - Fonte: princípio 3
 - Onde: `docs/regras/vendas-financeiro.md:1232-1250`, `:3239`
 - Antes: KC-21, KF-62
@@ -654,8 +654,8 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 
 ### O que a operadora deposita
 
-**MQ-01.** O cartão de crédito em N vezes (de 1 a 12) é UM pagamento da cliente, feito na hora: um lançamento só, pago, e para ela não fica dívida nenhuma. A operadora deposita em N parcelas, que aparecem no Financeiro mês a mês como "a receber da operadora" — não são receita nem dívida da cliente. A receita é da venda: conta inteira no dia em que a venda foi feita, e a parcela recebida não soma receita de novo.
-- Fonte: o Heitor, 2026-11-01: "no financeiro mês a mês, como a receber" e "conta no mês do dia da venda"
+**MQ-01.** O cartão de crédito em N vezes (de 1 a 1.200; acima de 12 a tela avisa) é UM pagamento da cliente, feito na hora: um lançamento só, pago, e para ela não fica dívida nenhuma. A operadora deposita em N parcelas, que aparecem no Financeiro mês a mês como "a receber da operadora" — não são receita nem dívida da cliente. A receita é da venda: conta inteira no dia em que a venda foi feita, e a parcela recebida não soma receita de novo.
+- Fonte: o Heitor, 2026-11-01: "no financeiro mês a mês, como a receber" e "conta no mês do dia da venda"; acima de 12 vezes: o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." (acima de 12 vezes avisa); o impossível (zero, negativo, fracionário, acima de 1.200 vezes — 100 anos de parcelas mensais, o limite das datas) e o aviso começar no teto de antes (12): decisão do Claude, 25/11
 - Onde: `docs/regras/vendas-financeiro.md:2172`, `:2179`, `:2502`, `:3215-3216`
 - Antes: KE-27, KF-16, KE-28
 
@@ -711,12 +711,12 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Onde: `docs/regras/vendas-financeiro.md:2387`, `:2412`, `:3219`
 - Antes: KE-51, KF-14, KE-48
 
-**MQ-12.** A rede diz, em cada maquininha, até quantas vezes se parcela no crédito; em Automático (vazio), vale a maior quantidade de vezes com taxa cadastrada, e sem nenhuma, 12x. Toda tela de cobrança oferece só até esse limite, e o servidor recusa acima dele; vale só para o cartão em N vezes, não para o crediário. Na tela de Taxas, as linhas do crédito só aparecem até o limite (em Automático, todas), e o "Preencher" só preenche as que aparecem; com "Só à vista", o crédito parcelado some, e a tela diz por quê. O que está gravado acima do limite não se apaga, e aumentar o limite traz essas linhas de volta.
-- Fonte: o Heitor, 2026-10-29: "A clínica configura 'parcela até Nx'…"
+**MQ-12.** A rede diz, em cada maquininha, até quantas vezes se parcela no crédito; em Automático (vazio), vale a maior quantidade de vezes com taxa cadastrada, e sem nenhuma, 12x. O limite é o número que a rede escolhe: de 1 a 12 no seletor e, em "Mais de 12x…", digitado; acima de 12 a tela avisa ("Acima do comum (mais de 12 vezes). Confira: o valor vale como está.") e o valor vale; só o impossível (zero, fracionário, acima de 1.200) é recusado. Toda tela de cobrança oferece só até esse limite, e o servidor recusa acima dele; vale só para o cartão em N vezes, não para o crediário. Na tela de Taxas, as linhas do crédito só aparecem até o limite (em Automático, até 12x, ou até a maior com taxa quando ela passa de 12), e o "Preencher" só preenche as que aparecem; a taxa das vezes acima de 12 se cadastra como as outras, e sem ela vale 0% (MQ-10) — nunca a do 12x; com "Só à vista", o crédito parcelado some, e a tela diz por quê. O que está gravado acima do limite não se apaga, e aumentar o limite traz essas linhas de volta.
+- Fonte: o Heitor, 2026-10-29: "A clínica configura 'parcela até Nx'…"; acima de 12 vezes: o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." (acima de 12 vezes avisa); o impossível (zero, negativo, fracionário, acima de 1.200 vezes — 100 anos de parcelas mensais, o limite das datas) e o aviso começar no teto de antes (12): decisão do Claude, 25/11
 - Onde: `docs/regras/vendas-financeiro.md:2393`, `:2400`, `:2607`, `:2613`
 - Antes: KF-05, KE-50, KE-49
 
-**MQ-13.** "Colar a tabela da operadora" é o jeito principal de preencher as taxas: lê a tabela copiada da operadora ou de uma planilha ("6x 6,50%", ou só os números em ordem a partir do 1x), mostra antes o que vai preencher e só preenche os campos (grava-se no "Salvar taxas"); o que ele não entende vira erro, sem chutar. Uma faixa digitada no campo da taxa por parcela ("de 3,1 a 11,9") não vira taxa e não é recusada: a tela diz que é a faixa da tabela da operadora e abre o "colar" só com as pontas (1x e 12x), e as do meio a rede cola ou digita. "Preencher pela taxa por parcela" (o botão secundário) preenche o crédito de 1x até o limite com a taxa por parcela × o número de vezes, em duas casas (1,15% → 1x 1,15%, 2x 2,30%…); antes, mostra o que vai pôr e avisa quando o 1x muda; cada campo segue editável, e o débito não muda.
+**MQ-13.** "Colar a tabela da operadora" é o jeito principal de preencher as taxas: lê a tabela copiada da operadora ou de uma planilha ("6x 6,50%", ou só os números em ordem a partir do 1x), mostra antes o que vai preencher e só preenche os campos (grava-se no "Salvar taxas"); o que ele não entende vira erro, sem chutar. Uma faixa digitada no campo da taxa por parcela ("de 3,1 a 11,9") não vira taxa e não é recusada: a tela diz que é a faixa da tabela da operadora e abre o "colar" só com as pontas (1x e a última linha do crédito), e as do meio a rede cola ou digita. "Preencher pela taxa por parcela" (o botão secundário) preenche o crédito de 1x até o limite com a taxa por parcela × o número de vezes, em duas casas (1,15% → 1x 1,15%, 2x 2,30%…); antes, mostra o que vai pôr e avisa quando o 1x muda; cada campo segue editável, e o débito não muda.
 - Fonte: o Heitor (r4-f15-01, sem data no texto): "a taxa é por parcela, por exemplo 1.15% por parcela, então a taxa total é a taxa vezes a quantidade de parcelas"
 - Onde: `docs/regras/vendas-financeiro.md:2339`, `:2354`, `:2368`, `:2372`, `:2380`
 - Antes: KE-45, KE-46, KE-47
@@ -748,7 +748,7 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Onde: `docs/regras/vendas-financeiro.md:2461`, `:2475`, `:2590`
 - Antes: KE-58, KE-59, KF-04
 
-**MQ-19.** "Preencher pela taxa por parcela" preenche o crédito de 1x a 12x com a taxa × as vezes, o 1x (à vista) inclusive, e a tela diz isso ("de 1x (à vista, inclusive)"); quando o 1x tinha outro valor, avisa antes de salvar ("O crédito à vista (1x) também mudou: era 1,19%, agora 1,15%. Confira antes de salvar."). Só preenche os campos: grava no "Salvar taxas", e cada campo segue editável.
+**MQ-19.** "Preencher pela taxa por parcela" preenche o crédito de 1x até a última linha que aparece (12x, ou o limite da maquininha — que pode passar de 12, o Heitor, 25/11) com a taxa × as vezes, o 1x (à vista) inclusive, e a tela diz isso ("de 1x (à vista, inclusive)"); quando o 1x tinha outro valor, avisa antes de salvar ("O crédito à vista (1x) também mudou: era 1,19%, agora 1,15%. Confira antes de salvar."). Só preenche os campos: grava no "Salvar taxas", e cada campo segue editável.
 - Fonte: princípio 3, sobre a fala do Heitor da MQ-13 ("a taxa é por parcela … então a taxa total é a taxa vezes a quantidade de parcelas")
 - Onde: `docs/regras/vendas-financeiro.md:2409-2423`
 - Antes: (sem número: `docs/inventario/leitura.md` §4)
@@ -760,7 +760,7 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Onde: `docs/regras/vendas-financeiro.md:199-205`, `:1542`, `:1604`, `:1683`; `docs/revisao.md:611`, `:1995`; `apps/web/lib/auth.ts:387-388`
 - Antes: KA-50, KD-23, KG-16, KD-32, KD-40
 
-**FC-02.** A conferência é uma tabela com uma linha por forma: Registrado, Conferido e Diferença. O registrado do Dinheiro é o esperado na gaveta (com o fundo de troco); o das outras formas é o saldo do dia. O Dinheiro é obrigatório, a não ser no dia sem dinheiro esperado e sem movimento em dinheiro (aí é opcional, e em branco fecha com R$ 0,00); as outras formas são opcionais, e em branco quer dizer "não conferido", nunca zero nem o valor registrado.
+**FC-02.** A conferência é uma tabela com uma linha por forma: Registrado, Conferido e Diferença. O registrado do Dinheiro é o esperado na gaveta (com o fundo de troco); o das outras formas é o saldo do dia. O Dinheiro é obrigatório, a não ser no dia sem dinheiro esperado e sem movimento em dinheiro (aí é opcional, e em branco fecha com R$ 0,00); as outras formas são opcionais, e em branco quer dizer "não conferido", nunca zero nem o valor registrado. Acima de R$ 10.000.000 (para mais ou para menos) a célula avisa e o conferido vale; só se recusa o que a conta não guarda em centavos exatos (acima de R$ 90.071.992.547.409,91) (o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito."; os números são decisão do Claude).
 - Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Blz pode ser assim"
 - Onde: `docs/regras/vendas-financeiro.md:1552`, `:1555`, `:1631`; `docs/revisao.md:1995`
 - Antes: KD-24, KD-25
@@ -795,7 +795,7 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Onde: `docs/regras/vendas-financeiro.md:1614`, `:1633`; `docs/revisao.md:1996`
 - Antes: KD-34, KG-17, KD-35
 
-**FC-09.** O fundo de troco é opcional, na linha do dinheiro: quem fecha o dia pode "Informar fundo de troco", o dinheiro que já estava na gaveta no começo do dia — um por unidade e por dia; informar de novo substitui, e zero é sem fundo. Com fundo, o dinheiro esperado é o fundo mais o saldo em dinheiro do dia, e o fechamento guarda o fundo; sem fundo, nada muda.
+**FC-09.** O fundo de troco é opcional, na linha do dinheiro: quem fecha o dia pode "Informar fundo de troco", o dinheiro que já estava na gaveta no começo do dia — um por unidade e por dia; informar de novo substitui, e zero é sem fundo. Com fundo, o dinheiro esperado é o fundo mais o saldo em dinheiro do dia, e o fechamento guarda o fundo; sem fundo, nada muda. Acima de R$ 1.000.000 de fundo a tela avisa e vale; só se recusa o acima de R$ 9.999.999.999,99 (o limite do registro do fechamento), no fundo, no dinheiro contado e no esperado na gaveta (o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito."; os números são decisão do Claude).
 - Fonte: o Heitor, 2026-11-02: "flexibilidade, precisamos dar as opções para que a rede possa operar da maneira que melhor lhe convier"
 - Onde: `docs/regras/vendas-financeiro.md:1639`; `docs/revisao.md:1995`
 - Antes: KD-36, KG-16
@@ -922,7 +922,7 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Onde: `docs/regras/vendas-financeiro.md:2081`, `:2085`
 - Antes: KE-15, KE-16
 
-**FN-17.** O "Novo lançamento" pede o Fornecedor (na despesa) e a Nota fiscal. A despesa não segue o limite do crediário: parcelada vai de 2 a 48 vezes, recorrente de 2 a 60, e as duas pedem um vencimento só (o da 1ª parcela, ou o do primeiro lançamento). O "Pagar despesa" sempre abre a janela: na despesa sem forma, o campo começa vazio, é obrigatório e oferece o Boleto; na que já tem forma, a forma lançada vem escolhida, e quem paga confirma ou troca, como na baixa da receita. A janela diz quanto e, quando a despesa diz, a quem.
+**FN-17.** O "Novo lançamento" pede o Fornecedor (na despesa) e a Nota fiscal. A despesa não segue o limite do crediário: parcelada e recorrente vão de 2 vezes para cima; acima de 48 parcelas ou de 60 repetições a tela avisa ("Acima do comum (…). Confira: o valor vale como está.") e o valor vale (o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito."). Só o impossível é recusado: menos de 2, fração e a última data a mais de 100 anos (cada vez é um lançamento com a sua data: 1.200 parcelas mensais; as repetições pela frequência, 5.214 semanais a 100 anuais — decisão do Claude, 25/11). As duas pedem um vencimento só (o da 1ª parcela, ou o do primeiro lançamento). O "Pagar despesa" sempre abre a janela: na despesa sem forma, o campo começa vazio, é obrigatório e oferece o Boleto; na que já tem forma, a forma lançada vem escolhida, e quem paga confirma ou troca, como na baixa da receita. A janela diz quanto e, quando a despesa diz, a quem.
 - Fonte: decisão do Claude (a despesa com forma também abre a janela: A13 da 26ª, princípio 3 — revê a da 9ª, que pagava direto)
 - Onde: `docs/regras/vendas-financeiro.md:1957`, `:2138`, `:2145`, `:2205-2213`, `:2634`
 - Antes: KE-03, KE-18, KF-07, KE-20
@@ -931,6 +931,11 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
 - Onde: `docs/regras/vendas-financeiro.md:2140`
 - Antes: KE-19
+
+**FN-19.** O valor do lançamento não tem teto de "comum": recusa-se só o zero e o que o registro não guarda — acima de R$ 99.999.999,99 ("No máximo 99.999.999,99 reais (o limite do registro)."), conferido no servidor no lançamento único, em cada parcela da despesa parcelada (o total pode passar, dividido) e em cada repetição da recorrente; o Copilot recusa o mesmo.
+- Fonte: o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito."; e, 19/11: "Qualquer gravação que não passa pela validação do backend ta errada"; o limite (o tipo da coluna, numeric(10,2)) é decisão do Claude, 25/11
+- Onde: `docs/regras/vendas-financeiro.md` ("O valor do lançamento até o que o registro guarda"); `apps/web/lib/financeiro/limites-do-registro.ts`
+- Antes: o erro do banco, em inglês ("numeric field overflow")
 
 ## O CSV e o recibo (CS)
 

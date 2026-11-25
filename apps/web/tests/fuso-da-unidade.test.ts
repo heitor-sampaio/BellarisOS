@@ -382,7 +382,8 @@ describe('as telas, o recibo e os CSV no relógio da unidade (F62b)', () => {
   it('o prêmio da indicação, o prazo da LGPD, o horário passado e a comunicação do pacote LGPD', async () => {
     const { situacaoDoPremio } = await import('@/lib/fidelidade/indicacao')
     const { prazoDeResposta } = await import('@/lib/lgpd/prazo')
-    const { avisoDoHorarioPassado } = await import('@/lib/appointments/horario-passado')
+    // O Heitor, 25/11: o horário passado no remarcar passou de aviso a recusa ("recusa, não dá pra agendar no passado"); o fuso da mensagem é o mesmo.
+    const { recusaDoHorarioPassado } = await import('@/lib/appointments/horario-passado')
     const { linhaDaComunicacao } = await import('@/lib/lgpd/plano')
     const regra = { fidelidadeLigada: true, premio: 'PONTOS' as const }
     const indicada = { id: 'i', nome: 'Ana', premioEm: I, estornadoEm: null, jaPagou: true }
@@ -391,7 +392,7 @@ describe('as telas, o recibo e os CSV no relógio da unidade (F62b)', () => {
     // 15 dias do pedido: 25/03 em Manaus (em Brasília, 26/03 — um dia a mais de prazo que não existe).
     expect(prazoDeResposta(I, true, M)).toBe('25/03/2026')
     expect(prazoDeResposta(I, true)).toBe('26/03/2026')
-    expect(avisoDoHorarioPassado(I, new Date('2026-04-01T12:00:00Z'), M)).toContain('às 23:30)')
+    expect(recusaDoHorarioPassado(I, new Date('2026-04-01T12:00:00Z'), M)).toContain('às 23:30)')
     expect(linhaDaComunicacao({ created_at: I, title: 'Oi' }, M)).toMatch(/^10\/03\/2026.*23:30 — Oi$/)
   })
 

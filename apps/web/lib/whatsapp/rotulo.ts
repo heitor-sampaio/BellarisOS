@@ -8,8 +8,20 @@
  * "1372302949310529" como o número. Puro de propósito (teste unitário).
  */
 
-/** Tamanho que cabe nos selos e listas da tela. */
+/** Tamanho que cabe nos selos e listas da tela — em todo caminho (o Heitor, 25/11: "60 pra tudo"). */
 export const MAX_ROTULO = 60
+
+/**
+ * O nome digitado ao RENOMEAR ("Nome e vínculos"): aparado, nem vazio nem acima
+ * de 60. Ao conectar, o campo já para em 60 e o nome da Meta é cortado
+ * (`rotuloDaConexao`).
+ */
+export function validarNomeDaConexao(bruto: string): { nome: string } | { error: string } {
+  const nome = bruto.trim()
+  if (!nome) return { error: 'O nome da conexão não pode ficar vazio.' }
+  if (nome.length > MAX_ROTULO) return { error: `O nome da conexão tem no máximo ${MAX_ROTULO} caracteres.` }
+  return { nome }
+}
 
 /** "Clínica Bella · +55 48 99999-0000", do que a Graph devolve do número. */
 export function nomeDaMeta(n?: { verified_name?: string | null; display_phone_number?: string | null } | null): string | null {

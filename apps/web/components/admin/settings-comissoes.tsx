@@ -12,7 +12,8 @@ import { vaziaDeFabrica, AVISO_DA_DE_FABRICA } from '@/lib/financeiro/maquininha
 import { CREDIARIO_PADRAO, TETO_DO_CREDIARIO, avisoDoMaximoDeParcelas } from '@/lib/financeiro/parcelas-do-crediario'
 import { BANDEIRAS, chaveDaTaxa, creditoPelaTaxaPorParcela, taxasDaTabelaColada, faixaDaOperadora, avisoDaTaxaQueBaixa, type Bandeira, type CartaoPorBandeira } from '@/lib/financeiro/bandeiras'
 import { taxaQueVale } from '@/lib/financeiro/formas'
-import { maximoDeVezes, opcoesDeVezes, TETO_DE_VEZES, PRAZO_PADRAO_DA_OPERADORA, PRAZO_MAXIMO_DA_OPERADORA, recusaDoPrazoDaOperadora, avisoDoPrazoDaOperadora, recusaDaTaxaDaMaquininha } from '@/lib/financeiro/vezes-do-cartao'
+import { LIMITE_DE_VEZES_NO_CARTAO } from '@/lib/acima-do-comum'
+import { maximoDeVezes, opcoesDeVezes, VEZES_COMUNS_NO_CARTAO, avisoDasVezesNoCartao, recusaDasVezesNoCartao, PRAZO_PADRAO_DA_OPERADORA, PRAZO_MAXIMO_DA_OPERADORA, recusaDoPrazoDaOperadora, avisoDoPrazoDaOperadora, recusaDaTaxaDaMaquininha } from '@/lib/financeiro/vezes-do-cartao'
 import { rotuloDaBase, OPCOES_DA_BASE_COM_PONTOS, type ConfigDeComissao, type MetodoComTaxa, type ComissaoDoProduto } from '@/lib/comissoes/config'
 import { parseDecimal, NUMERO_INVALIDO, formatBRL } from '@estetica-os/utils'
 import { Fala } from '@/components/shared/uma-unidade'
@@ -44,7 +45,11 @@ const PERIODOS = {
   SEMANAL:   { label: 'Semanal', explicacao: 'Um fechamento por semana, de segunda a domingo.' },
 } as const
 
-const PARCELAS_DO_CREDITO = Array.from({ length: 11 }, (_, i) => i + 2)
+/** As linhas do crédito parcelado: de 2x até `ate` (que pode passar de 12 — o Heitor, 25/11). */
+const parcelasDoCredito = (ate: number) =>
+  Array.from({ length: Math.max(0, Math.min(LIMITE_DE_VEZES_NO_CARTAO, Math.trunc(ate) || 0) - 1) }, (_, i) => i + 2)
+/** Os dígitos do "Parcelar no crédito até" digitado (até 1.200). */
+const DIGITOS_DAS_VEZES = String(LIMITE_DE_VEZES_NO_CARTAO).length
 
 /** Os campos de taxa são curtos: em grade, quantos couberem na linha. */
 const grade = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 10 } as const
@@ -433,6 +438,12 @@ interface MaquininhaNaTela {
   nome: string
   valores: Record<string, string>
   maxVezes: string
+  /**
+   * O "Parcelar no crédito até" digitado (mais de 12x): o seletor vai de 1 a
+   * 12, e acima disso a rede digita (o Heitor, 25/11: "Se não for impossível,
+   * ainda que improvável, pode ser feito.") — a tela avisa.
+   */
+  maxVezesDigitado: boolean
   prazo: string
   cobraPorBandeira: boolean
   porBandeira: Partial<Record<Bandeira, BandeiraNaTela>>
@@ -444,6 +455,7 @@ function maquininhaNaTela(m: Maquininha): MaquininhaNaTela {
     chave: m.id, id: m.id, nome: m.nome,
     valores: Object.fromEntries(Object.entries(m.taxas).map(([k, v]) => [k.replace(':', '/'), virgula(v)])),
     maxVezes: m.maxVezes == null ? '' : String(m.maxVezes),
+    maxVezesDigitado: m.maxVezes != null && m.maxVezes > VEZES_COMUNS_NO_CARTAO,
     prazo: String(m.prazoDias),
     cobraPorBandeira: m.cobraPorBandeira,
     porBandeira: Object.fromEntries(Object.entries(m.porBandeira).map(([b, r]) => [b, {
@@ -494,9 +506,15 @@ function entradaDaMaquininha(m: MaquininhaNaTela): EntradaDaMaquininha | { erro:
     if (prazoDela === null && !Object.keys(taxasDela).length) continue
     porBandeira[b.value] = { ...(prazoDela !== null ? { prazo: prazoDela } : {}), taxas: taxasDela }
   }
+  // Mais de 12x: a rede digita o número; vazio não vira o Automático calado.
+  if (m.maxVezesDigitado && !m.maxVezes.trim()) return { erro: 'Diga até quantas vezes esta maquininha parcela no crédito.' }
+  const maxVezes = m.maxVezes.trim() === '' ? null : Number(m.maxVezes)
+  // Só o impossível se recusa (zero, acima de 1.200 — decisão do Claude, 25/11); acima de 12, a tela avisa.
+  const recusaDasVezes = maxVezes === null ? null : recusaDasVezesNoCartao(maxVezes)
+  if (recusaDasVezes) return { erro: `Parcelar no crédito até: ${recusaDasVezes}` }
   return {
     ...(m.id ? { id: m.id } : {}),
-    nome, taxas, maxVezes: m.maxVezes === '' ? null : Number(m.maxVezes), prazoDias: dias,
+    nome, taxas, maxVezes, prazoDias: dias,
     cobraPorBandeira: m.cobraPorBandeira, porBandeira,
   }
 }
@@ -541,7 +559,7 @@ function TabelaDeTaxas({ maquininhas, pixGravado, podeEditar }: {
   const arquivadasNaTela = lista.filter(m => m.arquivada && m.id)
   const [aberta, setAberta] = useState<string>(() => ativasNaTela[0]?.chave ?? lista[0]?.chave ?? '')
   const atual: MaquininhaNaTela = ativasNaTela.find(m => m.chave === aberta) ?? ativasNaTela[0]
-    ?? { chave: '', id: null, nome: 'Maquininha', valores: {}, maxVezes: '', prazo: String(PRAZO_PADRAO_DA_OPERADORA), cobraPorBandeira: false, porBandeira: {}, arquivada: false }
+    ?? { chave: '', id: null, nome: 'Maquininha', valores: {}, maxVezes: '', maxVezesDigitado: false, prazo: String(PRAZO_PADRAO_DA_OPERADORA), cobraPorBandeira: false, porBandeira: {}, arquivada: false }
   const variasMaquininhas = ativasNaTela.length > 1
   const mudarAtual = (f: (m: MaquininhaNaTela) => Partial<MaquininhaNaTela>) => {
     setLista(l => l.map(m => m.chave === atual.chave ? { ...m, ...f(m) } : m))
@@ -585,8 +603,13 @@ function TabelaDeTaxas({ maquininhas, pixGravado, podeEditar }: {
   // das linhas (a maior com taxa), então todas aparecem. O que está gravado
   // acima do limite fica no estado e é regravado no "Salvar taxas": esconder
   // não apaga.
-  const ateQuantasVezes = maxVezes === '' ? TETO_DE_VEZES : Number(maxVezes)
-  const parcelasNaTela = PARCELAS_DO_CREDITO.filter(n => n <= ateQuantasVezes)
+  // Acima de 12 (o Heitor, 25/11): as linhas vão até o limite escolhido; no
+  // Automático, até 12 ou até a maior com taxa, se ela passa de 12.
+  const ateQuantasVezes = maxVezes === '' ? Math.max(VEZES_COMUNS_NO_CARTAO, automatico) : Number(maxVezes)
+  const parcelasNaTela = parcelasDoCredito(ateQuantasVezes)
+  // O colar no Automático aceita toda vez possível (o limite sai das taxas).
+  const limiteDoColar = maxVezes === '' ? LIMITE_DE_VEZES_NO_CARTAO : ateQuantasVezes
+  const avisoDasVezes = maxVezes.trim() === '' ? null : avisoDasVezesNoCartao(Number(maxVezes))
   // O prazo da explicação: o da bandeira escolhida, ou o da maquininha.
   const prazoMostrado = bandeira && daBandeira.prazo.trim() ? daBandeira.prazo : prazo
 
@@ -603,7 +626,7 @@ function TabelaDeTaxas({ maquininhas, pixGravado, podeEditar }: {
 
   // r4-f15-01 (o Heitor: "a taxa é por parcela, por exemplo 1.15% por parcela,
   // então a taxa total é a taxa vezes a quantidade de parcelas"): preenche o
-  // crédito 1x a 12x da tabela aberta (a da maquininha ou a da bandeira) com a
+  // crédito 1x até as linhas que aparecem (o 25/11: pode passar de 12x) da tabela aberta (a da maquininha ou a da bandeira) com a
   // taxa × as vezes. Só os campos: grava no "Salvar taxas" de sempre, e cada um
   // continua editável. O débito não muda.
   const [porParcelaAberto, setPorParcelaAberto] = useState(false)
@@ -617,7 +640,7 @@ function TabelaDeTaxas({ maquininhas, pixGravado, podeEditar }: {
   // a multiplicação deixou 2x 1,98% abaixo do 1x 2,80% sem ninguém ver.
   const pctPorParcela = taxaPorParcela.trim() ? parseDecimal(taxaPorParcela.trim(), 4) : NaN
   const vaiPreencher = Number.isNaN(pctPorParcela) || pctPorParcela < 0
-    ? [] : creditoPelaTaxaPorParcela(pctPorParcela).filter(t => t.parcelas <= ateQuantasVezes)
+    ? [] : creditoPelaTaxaPorParcela(pctPorParcela, ateQuantasVezes)
   const oDe1xAgora = ((bandeira ? daBandeira.valores : valores)[chave('CREDIT_CARD', 1)] ?? '').trim()
   // A2: a tabela com mais vezes mais barata grava e AVISA (princípio 2).
   const [avisoTaxaMenor, setAvisoTaxaMenor] = useState<string[]>([])
@@ -633,7 +656,7 @@ function TabelaDeTaxas({ maquininhas, pixGravado, podeEditar }: {
     // registro, que o 12x não pode passar).
     if (pct < 0) { setErroPorParcela('A taxa por parcela não pode ser negativa.'); return }
     // F17-4: só as linhas que aparecem (até o "Parcelar no crédito até").
-    const preenchido = creditoPelaTaxaPorParcela(pct).filter(t => t.parcelas <= ateQuantasVezes)
+    const preenchido = creditoPelaTaxaPorParcela(pct, ateQuantasVezes)
     const recusa = recusaDaTaxaDaMaquininha(preenchido[preenchido.length - 1]!.taxa)
     if (recusa) { setErroPorParcela(`Em ${preenchido[preenchido.length - 1]!.parcelas}x: ${recusa}`); return }
     const novos = Object.fromEntries(preenchido
@@ -656,8 +679,8 @@ function TabelaDeTaxas({ maquininhas, pixGravado, podeEditar }: {
   const [colarAberto, setColarAberto] = useState(false)
   const [tabelaColada, setTabelaColada] = useState('')
   const lida = tabelaColada.trim() ? taxasDaTabelaColada(tabelaColada) : null
-  const lidaNaTela = lida ? lida.taxas.filter(t => t.parcelas <= ateQuantasVezes) : []
-  const lidaForaDoLimite = lida ? lida.taxas.filter(t => t.parcelas > ateQuantasVezes) : []
+  const lidaNaTela = lida ? lida.taxas.filter(t => t.parcelas <= limiteDoColar) : []
+  const lidaForaDoLimite = lida ? lida.taxas.filter(t => t.parcelas > limiteDoColar) : []
   const taxaNaTela = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4, useGrouping: false })
   // A4 da 9ª: a faixa "de 3,1 a 11,9" vira o começo da tabela colada — o 1x e a
   // última vez; o meio não se inventa (princípio 4): a clínica cola ou digita.
@@ -709,7 +732,7 @@ function TabelaDeTaxas({ maquininhas, pixGravado, podeEditar }: {
     }
     const c = `nova-${novas + 1}`
     setNovas(n => n + 1)
-    setLista(l => [...l, { chave: c, id: null, nome: '', valores: {}, maxVezes: '', prazo: String(PRAZO_PADRAO_DA_OPERADORA), cobraPorBandeira: false, porBandeira: {}, arquivada: false }])
+    setLista(l => [...l, { chave: c, id: null, nome: '', valores: {}, maxVezes: '', maxVezesDigitado: false, prazo: String(PRAZO_PADRAO_DA_OPERADORA), cobraPorBandeira: false, porBandeira: {}, arquivada: false }])
     abrir(c)
     setSalvo(false)
   }
@@ -867,11 +890,31 @@ function TabelaDeTaxas({ maquininhas, pixGravado, podeEditar }: {
         <RotuloComDica texto="Parcelar no crédito até" sobre="Sobre o parcelar no crédito" estilo={rotuloPequeno}>
           É o “Vezes no cartão” do recebimento, do checkout do plano e das vendas{variasMaquininhas ? ', nesta maquininha' : ''}. Acima disso o sistema não deixa passar — e as linhas do crédito abaixo vão só até aqui.
         </RotuloComDica>
-        <select className="field" aria-label="Parcelar no crédito até" disabled={!podeEditar} value={maxVezes}
-          onChange={e => { const v = e.target.value; mudarAtual(() => ({ maxVezes: v })) }}>
+        {/* O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser
+            feito." De 1 a 12 no seletor; acima disso, a rede digita, e a tela avisa. */}
+        <select className="field" aria-label="Parcelar no crédito até" disabled={!podeEditar}
+          value={atual.maxVezesDigitado ? 'DIGITAR' : maxVezes}
+          onChange={e => {
+            const v = e.target.value
+            mudarAtual(() => (v === 'DIGITAR' ? { maxVezesDigitado: true, maxVezes: '' } : { maxVezesDigitado: false, maxVezes: v }))
+          }}>
           <option value="">Automático — até {automatico === 1 ? 'à vista' : `${automatico}x`} (a maior parcela com taxa)</option>
-          {opcoesDeVezes(TETO_DE_VEZES).map(n => <option key={n} value={String(n)}>{n === 1 ? 'Só à vista' : `Até ${n}x`}</option>)}
+          {opcoesDeVezes(VEZES_COMUNS_NO_CARTAO).map(n => <option key={n} value={String(n)}>{n === 1 ? 'Só à vista' : `Até ${n}x`}</option>)}
+          <option value="DIGITAR">Mais de {VEZES_COMUNS_NO_CARTAO}x…</option>
         </select>
+        {atual.maxVezesDigitado && (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <input className="field" inputMode="numeric" aria-label="Quantas vezes no crédito" disabled={!podeEditar}
+              placeholder="Ex.: 18" value={maxVezes} style={{ maxWidth: 120 }} autoFocus
+              onChange={e => { const v = e.target.value.replace(/\D/g, '').slice(0, DIGITOS_DAS_VEZES); mudarAtual(() => ({ maxVezes: v })) }} />
+            <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>vezes</span>
+          </span>
+        )}
+        {avisoDasVezes && (
+          <span role="status" data-aviso-das-vezes style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+            {avisoDasVezes}
+          </span>
+        )}
       </div>}
       {bandeira && maxVezes !== '' && (
         <p style={ajuda}>

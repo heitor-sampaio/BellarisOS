@@ -14,7 +14,7 @@ import { cifrarSegredos, decifrarSegredos } from '@/lib/integracoes/cofre'
 import { conectarPeloCadastro, inscreverContaNosWebhooks } from '@/lib/whatsapp/cadastro-incorporado'
 import type { ModoOficial } from '@/lib/whatsapp/modo-oficial'
 import { acompanharCatalogos } from '@/lib/templates/catalogo'
-import { rotuloDaConexao } from '@/lib/whatsapp/rotulo'
+import { rotuloDaConexao, validarNomeDaConexao } from '@/lib/whatsapp/rotulo'
 import { nomeDoNumeroNaMeta } from '@/lib/whatsapp/nome-na-meta'
 import { dispararHistoricoUazapi } from '@/lib/whatsapp/historico-uazapi'
 import { getCobrancaDoWhatsapp } from '@/lib/metrics/whatsapp'
@@ -720,8 +720,9 @@ export async function atualizarVinculosDoNumero(
   if (recusaDaRede) return { ok: false, error: recusaDaRede }
   const admin = createAdminClient()
 
-  const rotulo = dados.rotulo.trim()
-  if (!rotulo) return { ok: false, error: 'O nome da conexão não pode ficar vazio.' }
+  const validado = validarNomeDaConexao(dados.rotulo)
+  if ('error' in validado) return { ok: false, error: validado.error }
+  const rotulo = validado.nome
   const userIds = [...new Set(dados.userIds)]
 
   // O removido não ganha nome nem pessoas (whatsapp-push.md); a função do

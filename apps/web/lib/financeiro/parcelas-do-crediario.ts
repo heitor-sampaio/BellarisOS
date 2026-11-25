@@ -2,7 +2,8 @@
  * Até quantas parcelas a clínica divide o CREDIÁRIO ("entrada + parcelas")
  * — C38 da F67, a D10 mudada pelo Heitor: "Decisão da rede". Padrão 12, igual
  * em todo caminho que vende no crediário (o Vender, o checkout e o check-in
- * do plano). A despesa não muda (até 48, 60 na recorrente).
+ * do plano). A despesa tem a regra dela (`lib/financeiro/despesa-agendada.ts`:
+ * acima de 48 parcelas ou 60 repetições também avisa — o Heitor, 25/11).
  *
  * Puro: a tela e o servidor leem a mesma conta.
  */

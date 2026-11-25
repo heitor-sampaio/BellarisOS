@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import { PRAZO_MAXIMO_DA_OPERADORA, RECUSA_DO_PRAZO_ZERO, RECUSA_DO_PRAZO_ACIMA_DO_REGISTRO, TAXA_MAXIMA_DO_REGISTRO, TETO_DE_VEZES } from './vezes-do-cartao'
+import { PRAZO_MAXIMO_DA_OPERADORA, RECUSA_DO_PRAZO_ZERO, RECUSA_DO_PRAZO_ACIMA_DO_REGISTRO, TAXA_MAXIMA_DO_REGISTRO, VEZES_COMUNS_NO_CARTAO } from './vezes-do-cartao'
+import { LIMITE_DE_VEZES_NO_CARTAO } from '@/lib/acima-do-comum'
 import { taxaQueVale } from './formas'
 
 /**
@@ -54,7 +55,18 @@ export interface RegraDaBandeira {
 }
 export type CartaoPorBandeira = Partial<Record<Bandeira, RegraDaBandeira>>
 
-const CHAVE_DA_TAXA = /^(DEBIT_CARD:1|CREDIT_CARD:([1-9]|1[0-2]))$/
+/**
+ * A chave de uma taxa que se guarda: o débito ("DEBIT_CARD:1") ou o crédito de
+ * 1x a 1.200x ("CREDIT_CARD:N"). Acima de 12 vezes é o comum de antes, não o
+ * impossível (o Heitor, 25/11: "Se não for impossível, ainda que improvável,
+ * pode ser feito."); acima de 1.200, sim (decisão do Claude, 25/11: 100 anos
+ * de parcelas mensais, o limite das datas).
+ */
+export function ehChaveDaTaxa(k: string): boolean {
+  if (k === 'DEBIT_CARD:1') return true
+  const m = /^CREDIT_CARD:([1-9]\d{0,3})$/.exec(k)
+  return !!m && Number(m[1]) <= LIMITE_DE_VEZES_NO_CARTAO
+}
 
 /** A entrada do "Salvar taxas" da bandeira, conferida no servidor. */
 export const EntradaDoCartaoPorBandeira = z.record(z.string(), z.object({
@@ -68,7 +80,7 @@ export const EntradaDoCartaoPorBandeira = z.record(z.string(), z.object({
   for (const [bandeira, regra] of Object.entries(obj)) {
     if (!ehBandeira(bandeira)) c.addIssue({ code: 'custom', message: `Bandeira desconhecida: ${bandeira}.` })
     for (const chave of Object.keys(regra.taxas)) {
-      if (!CHAVE_DA_TAXA.test(chave)) c.addIssue({ code: 'custom', message: `Taxa desconhecida na bandeira ${bandeira}: ${chave} (débito, ou crédito de 1 a ${TETO_DE_VEZES}x).` })
+      if (!ehChaveDaTaxa(chave)) c.addIssue({ code: 'custom', message: `Taxa desconhecida na bandeira ${bandeira}: ${chave} (débito, ou crédito de 1 a ${LIMITE_DE_VEZES_NO_CARTAO.toLocaleString('pt-BR')}x).` })
     }
   }
 })
@@ -95,7 +107,7 @@ export function lerCartaoPorBandeira(bruto: unknown): CartaoPorBandeira {
     const regra = r as { prazo?: unknown; taxas?: unknown }
     const taxas: Record<string, number> = {}
     if (regra.taxas && typeof regra.taxas === 'object') {
-      for (const [k, v] of Object.entries(regra.taxas as Record<string, unknown>)) if (CHAVE_DA_TAXA.test(k) && typeof v === 'number') taxas[k] = v
+      for (const [k, v] of Object.entries(regra.taxas as Record<string, unknown>)) if (ehChaveDaTaxa(k) && typeof v === 'number') taxas[k] = v
     }
     saida[b] = { ...(typeof regra.prazo === 'number' ? { prazo: regra.prazo } : {}), taxas }
   }
@@ -122,11 +134,14 @@ export function taxaDoCreditoNaBandeira(
 /**
  * "Preencher pela taxa por parcela" (r4-f15-01; o Heitor: "a taxa é por
  * parcela, por exemplo 1.15% por parcela, então a taxa total é a taxa vezes a
- * quantidade de parcelas"): o crédito de 1x a 12x = a taxa × as vezes, em duas
- * casas. Só preenche a tabela da tela; a tabela continua sendo a verdade.
+ * quantidade de parcelas"): o crédito de 1x até `ate` (padrão: 12x) = a taxa ×
+ * as vezes, em duas casas. A tela pede até o "Parcelar no crédito até" da
+ * maquininha, que pode passar de 12 (o Heitor, 25/11). Só preenche a tabela da
+ * tela; a tabela continua sendo a verdade.
  */
-export function creditoPelaTaxaPorParcela(taxaPorParcela: number): { parcelas: number; taxa: number }[] {
-  return Array.from({ length: TETO_DE_VEZES }, (_, i) => {
+export function creditoPelaTaxaPorParcela(taxaPorParcela: number, ate: number = VEZES_COMUNS_NO_CARTAO): { parcelas: number; taxa: number }[] {
+  const n = Math.max(1, Math.min(LIMITE_DE_VEZES_NO_CARTAO, Math.trunc(ate) || 1))
+  return Array.from({ length: n }, (_, i) => {
     const parcelas = i + 1
     return { parcelas, taxa: Math.round(Number((taxaPorParcela * parcelas).toPrecision(12)) * 100) / 100 }
   })
@@ -177,7 +192,7 @@ export function taxasDaTabelaColada(texto: string): {
   const guardar = (vezes: number, taxa: number, linha: string) => {
     if (!Number.isFinite(taxa)) { erros.push(`Não entendi a taxa em "${linha}".`); return }
     if (taxa < 0) { erros.push(`Em ${vezes}x a taxa está negativa ("${linha}").`); return }
-    if (vezes < 1 || vezes > TETO_DE_VEZES) { erros.push(`${vezes}x: o crédito vai de 1x a ${TETO_DE_VEZES}x ("${linha}").`); return }
+    if (vezes < 1 || vezes > LIMITE_DE_VEZES_NO_CARTAO) { erros.push(`${vezes}x: o crédito vai de 1x a ${LIMITE_DE_VEZES_NO_CARTAO.toLocaleString('pt-BR')}x ("${linha}").`); return }
     if (lidas.has(vezes)) { erros.push(`${vezes}x aparece duas vezes na tabela.`); return }
     lidas.set(vezes, taxa)
   }
@@ -185,7 +200,9 @@ export function taxasDaTabelaColada(texto: string): {
     const linha = bruta.trim()
     if (!linha || !/\d/.test(linha)) continue
     if (/d[ée]bito|\bpix\b/i.test(linha)) { ignoradas.push(linha); continue }
-    const comVezes = linha.match(/(\d{1,2})\s*(?:x|vezes|vez|parcelas?)(?![a-z])(.*)$/i)
+    // Até quatro dígitos: o 18x e o 120x também (o Heitor, 25/11 — acima de 12 é
+    // o comum de antes, não o impossível).
+    const comVezes = linha.match(/(?<!\d)(\d{1,4})\s*(?:x|vezes|vez|parcelas?)(?![a-z])(.*)$/i)
     if (comVezes) {
       const vezes = Number(comVezes[1])
       const taxa = comVezes[2]!.match(/-?\d[\d.,]*/)

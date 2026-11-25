@@ -8,8 +8,9 @@ import { dayKeyTZ } from '@/lib/datetime'
 import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { bandeiraDoPagamento, ehBandeira, temBandeira } from '@/lib/financeiro/bandeiras'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
-import { TETO_DE_VEZES } from '@/lib/financeiro/vezes-do-cartao'
+import { recusaDasVezesNoCartao } from '@/lib/financeiro/vezes-do-cartao'
 import { recusaDasFormasDaBaixa, type ParteDaBaixa } from '@/lib/financeiro/baixa-em-formas'
+import { recusaDoDinheiroAcimaDoRegistro } from '@/lib/financeiro/limites-do-registro'
 
 /**
  * LANÇAR (receita ou despesa, à vista ou com vencimento) e DAR BAIXA — os
@@ -82,6 +83,12 @@ export async function lancarCore(admin: Admin, ctx: TenantContext, l: NovoLancam
   if (!l.categoria) return { error: 'Categoria é obrigatória.' }
   if (!l.descricao) return { error: 'Descrição é obrigatória.' }
   if (!l.valor || l.valor <= 0) return { error: 'Valor deve ser maior que zero.' }
+  // O que `financial_transactions.amount` (numeric(10,2)) não guarda é o impossível
+  // (o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito.";
+  // decisão do Claude, 25/11): recusado aqui, em português — ia ao banco e voltava
+  // "numeric field overflow". A tela e o Copilot passam por este núcleo.
+  const acimaDoRegistro = recusaDoDinheiroAcimaDoRegistro(l.valor)
+  if (acimaDoRegistro) return { error: acimaDoRegistro }
   // O "hoje" da unidade do lançamento (F64, C4): em Manaus às 23:30, o dia de
   // Brasília já era amanhã, e "pago hoje" recusava a data de hoje como futura.
   const pagoEm = l.pago ? pagoNoDia(l.pagoEm, new Date(), await fusoDaUnidade(ctx.tenantId, l.branchId)) : null
@@ -91,7 +98,9 @@ export async function lancarCore(admin: Admin, ctx: TenantContext, l: NovoLancam
   // F16-5: o crédito em N vezes da receita paga — até o limite da clínica (D-15).
   const noCreditoPago = l.pago && l.tipo === 'INCOME' && l.formaDePagamento === 'CREDIT_CARD'
   const vezes = noCreditoPago && l.vezes != null ? Math.trunc(l.vezes) : 1
-  if (noCreditoPago && (!Number.isFinite(vezes) || vezes < 1 || vezes > TETO_DE_VEZES)) return { error: `As vezes no cartão vão de 1 a ${TETO_DE_VEZES}.` }
+  // O Heitor, 25/11: acima de 12 vezes não se recusa; só o impossível (decisão do Claude: acima de 1.200).
+  const impossivel = noCreditoPago ? recusaDasVezesNoCartao(vezes) : null
+  if (impossivel) return { error: impossivel }
   // C75: a maquininha do cartão pago (a de outra rede é recusada aqui e no banco).
   const maquininha = l.pago && l.tipo === 'INCOME' && temBandeira(l.formaDePagamento) ? l.maquininha || null : null
   const noCartaoPago = l.pago && l.tipo === 'INCOME' && temBandeira(l.formaDePagamento)
@@ -224,6 +233,7 @@ export async function marcarPagoEmFormasCore(
 export async function recusaDasVezesDaBaixa(ctx: TenantContext, tipo: string, forma: string | null, vezes: number | null | undefined, maquininha?: string | null): Promise<string | null> {
   if (vezes == null || vezes === 1) return tipo === 'INCOME' && temBandeira(forma) ? recusaDasVezesDaRede(ctx.tenantId!, 1, maquininha, forma) : null
   if (tipo !== 'INCOME' || forma !== 'CREDIT_CARD') return 'As vezes no cartão são só no crédito (o débito é 1x).'
-  if (!Number.isInteger(vezes) || vezes < 1 || vezes > TETO_DE_VEZES) return `As vezes no cartão vão de 1 a ${TETO_DE_VEZES}.`
+  const impossivel = recusaDasVezesNoCartao(vezes)
+  if (impossivel) return impossivel
   return recusaDasVezesDaRede(ctx.tenantId!, vezes, maquininha, forma)
 }

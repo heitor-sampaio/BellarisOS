@@ -66,8 +66,8 @@ Este é o catálogo das regras das Automações que valem HOJE: o princípio, os
 - Onde: `docs/regras/automacoes.md:125-128`; `docs/regras/atendimento.md:3742-3745`
 - Antes: KA-14
 
-**GT-11.** O gatilho de tempo tem dois jeitos: de N em N minutos ou horas (a partir do último disparo) ou num horário do dia (todo dia, toda semana, todo mês). O menor intervalo é 5 minutos, o ritmo do relógio do sistema.
-- Fonte: decisão do Claude
+**GT-11.** O gatilho de tempo tem dois jeitos: de N em N minutos ou horas (a partir do último disparo) ou num horário do dia (todo dia, toda semana, todo mês). O menor intervalo é 5 minutos, o ritmo do relógio do sistema. No "todo mês", o dia vai de 1 a 31: no mês que não tem aquele dia (o 31 em abril, o 30 em fevereiro), a automação não dispara, e a tela diz isso ao escolher o 29, o 30 ou o 31. Só o dia que não existe em mês nenhum se recusa.
+- Fonte: decisão do Claude; o dia de 1 a 31, decisão do Claude, 25/11, pelos princípios 2 e 3 (o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito.") — o "até o dia 28" era escolha do Claude (fase 4, 23/09), sem fala do Heitor
 - Onde: `docs/regras/automacoes.md:163-169`
 - Antes: KA-19
 
@@ -218,8 +218,8 @@ Este é o catálogo das regras das Automações que valem HOJE: o princípio, os
 - Onde: `docs/regras/automacoes.md:430-436`; `docs/revisao.md:1086`, `:1112-1116`
 - Antes: KB-17
 
-**AX-12.** O passo "Buscar clientes" diz "Hoje, a busca acharia N clientes", e essa conta não grava nada.
-- Fonte: princípio 3
+**AX-12.** O passo "Buscar clientes" diz "Hoje, a busca acharia N clientes", e essa conta não grava nada. O "No máximo" vale o número que a rede gravou, na conta e no motor (200 sem valor); acima de 500 a tela avisa "Acima do comum (mais de 500 clientes). Confira: o valor vale como está.", e só o impossível (zero, negativo, fracionário, acima do registro) se recusa. As tags do filtro vão todas. Quando o teto corta, o passo diz o teto que valeu.
+- Fonte: princípio 3; o "No máximo" e as tags, decisão do Claude, 25/11, pelos princípios 2 e 3 (o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito.") — cortavam em 500 e em 50, calados
 - Onde: `docs/regras/automacoes.md:581-586`
 - Antes: KB-32
 

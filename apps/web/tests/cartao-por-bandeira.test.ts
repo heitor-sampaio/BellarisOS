@@ -22,12 +22,15 @@ describe('o cartão por bandeira', () => {
     expect(lancamentosDoPagamento(100, { forma: 'AVISTA', metodo: 'PIX', bandeira: 'ELO' }, 'X')[0]!.cartao_bandeira, 'no Pix, nada').toBeUndefined()
   })
 
-  it('a configuração: só as seis bandeiras, prazo de 1 a 120, débito e crédito 1x–12x; a vazia sai', () => {
+  // O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." — acima de 12 vezes avisa.
+  it('a configuração: só as seis bandeiras, prazo de 1 a 120, débito e crédito 1x–1.200x; a vazia sai', () => {
     expect(EntradaDoCartaoPorBandeira.safeParse({ ELO: { prazo: 32, taxas: { 'CREDIT_CARD:3': 3 } } }).success).toBe(true)
     expect(EntradaDoCartaoPorBandeira.safeParse({ XPTO: { taxas: {} } }).success).toBe(false)
     expect(EntradaDoCartaoPorBandeira.safeParse({ ELO: { prazo: 0, taxas: {} } }).success).toBe(false)
     expect(EntradaDoCartaoPorBandeira.safeParse({ ELO: { taxas: { 'PIX:1': 1 } } }).success, 'Pix não tem bandeira').toBe(false)
-    expect(EntradaDoCartaoPorBandeira.safeParse({ ELO: { taxas: { 'CREDIT_CARD:13': 1 } } }).success).toBe(false)
+    // O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." — acima de 12 vezes avisa.
+    expect(EntradaDoCartaoPorBandeira.safeParse({ ELO: { taxas: { 'CREDIT_CARD:13': 1 } } }).success).toBe(true)
+    expect(EntradaDoCartaoPorBandeira.safeParse({ ELO: { taxas: { 'CREDIT_CARD:1201': 1 } } }).success).toBe(false)
     expect(semBandeirasVazias({ ELO: { taxas: {} }, VISA: { prazo: 28, taxas: {} } })).toEqual({ VISA: { prazo: 28, taxas: {} } })
     expect(lerCartaoPorBandeira({ ELO: { prazo: 32, taxas: { 'CREDIT_CARD:3': 3, lixo: 1 } }, XPTO: {} })).toEqual({ ELO: { prazo: 32, taxas: { 'CREDIT_CARD:3': 3 } } })
   })

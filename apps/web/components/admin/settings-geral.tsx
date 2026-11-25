@@ -10,6 +10,7 @@ import { nomeDoPlanoNaTela } from '@/lib/redes/texto-do-plano'
 import { useFala } from '@/components/shared/uma-unidade'
 import { O_QUE_A_CLIENTE_AVALIA, ROTULO_DO_QUE_AVALIA, TEXTO_DA_NOTA_DO_PROCEDIMENTO } from '@/lib/avaliacao/notas'
 import { useFuso } from '@/components/shared/fuso'
+import { avisoDoPrazoDaRede } from '@/lib/configuracoes/prazos-da-rede'
 
 /**
  * Configurações → Geral: os dados da própria rede.
@@ -61,6 +62,11 @@ export function SettingsGeral({ rede, podeEditar, naRede = true, daAdmin = false
   const [telefone, setTelefone] = useState(maskTelefoneDigitando(rede.phone ?? ''))
   // A clínica de uma unidade não fala "rede" (F8).
   const fala = useFala()
+  // Os prazos acima do comum AVISAM e salvam (o Heitor, 25/11: "Se não for
+  // impossível, ainda que improvável, pode ser feito."): o campo guarda o que
+  // se digita para o aviso aparecer ao lado, antes do Salvar.
+  const [prazoPortal, setPrazoPortal] = useState(String(rede.prazoPortalHoras))
+  const [validadePlano, setValidadePlano] = useState(String(rede.validadeDoPlanoDias))
 
   return (
     <form action={enviar} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -119,9 +125,10 @@ export function SettingsGeral({ rede, podeEditar, naRede = true, daAdmin = false
             placeholder="bellaris.com.br" />
         </Campo>
 
-        <Campo rotulo="Prazo do portal (horas)" dica="É o prazo para a cliente remarcar ou cancelar o agendamento pelo app: até quantas horas antes do horário. Depois, só falando com a equipe. Não é a validade do plano proposto, que é em dias.">
-          <input name="portal_prazo_alteracao_horas" type="number" min={0} max={720} step={1} className="field"
-            defaultValue={rede.prazoPortalHoras} disabled={!podeEditar} inputMode="numeric" />
+        <Campo rotulo="Prazo do portal (horas)" dica="É o prazo para a cliente remarcar ou cancelar o agendamento pelo app: até quantas horas antes do horário. Depois, só falando com a equipe. Não é a validade do plano proposto, que é em dias."
+          nome="portal_prazo_alteracao_horas" aviso={avisoDoPrazoDaRede('portal_prazo_alteracao_horas', numeroOuNada(prazoPortal))}>
+          <input name="portal_prazo_alteracao_horas" type="number" min={0} step={1} className="field"
+            value={prazoPortal} onChange={e => setPrazoPortal(e.target.value)} disabled={!podeEditar} inputMode="numeric" />
         </Campo>
 
         <Campo rotulo="O que a cliente avalia" dica={`Ao confirmar o atendimento pelo app. A nota do atendimento vale para quem atendeu. ${TEXTO_DA_NOTA_DO_PROCEDIMENTO}`}>
@@ -130,9 +137,10 @@ export function SettingsGeral({ rede, podeEditar, naRede = true, daAdmin = false
           </select>
         </Campo>
 
-        <Campo rotulo="Validade do plano proposto (dias)" dica="O app da cliente mostra o plano proposto com “Válido até”, contando desde quando foi proposto.">
-          <input name="plano_validade_dias" type="number" min={1} max={365} step={1} className="field"
-            defaultValue={rede.validadeDoPlanoDias} disabled={!podeEditar} inputMode="numeric" />
+        <Campo rotulo="Validade do plano proposto (dias)" dica="O app da cliente mostra o plano proposto com “Válido até”, contando desde quando foi proposto."
+          nome="plano_validade_dias" aviso={avisoDoPrazoDaRede('plano_validade_dias', numeroOuNada(validadePlano))}>
+          <input name="plano_validade_dias" type="number" min={1} step={1} className="field"
+            value={validadePlano} onChange={e => setValidadePlano(e.target.value)} disabled={!podeEditar} inputMode="numeric" />
         </Campo>
 
         {/* Itens 8 e 9 da auditoria (decisões do Claude pelo princípio 1, 2026-11-18): duas
@@ -216,15 +224,22 @@ export function SettingsGeral({ rede, podeEditar, naRede = true, daAdmin = false
 const TEXTO_DO_CREDIARIO = { sim: 'Libera as sessões e avisa o que falta', nao: 'Libera as sessões só depois de pago' } as const
 const TEXTO_DO_VENCIDO   = { nao: 'Não se cancela', sim: 'Pode ser cancelado, com a devolução' } as const
 
+/** O valor digitado para o aviso de "acima do comum"; vazio ou ilegível, NaN (sem aviso). */
+const numeroOuNada = (v: string) => (v.trim() ? Number(v) : Number.NaN)
+
 /**
  * O campo com o rótulo ligado (htmlFor/id). A `dica` (o que o campo faz) mora no
  * "i" ao lado do rótulo (2026-11-16 — era uma linha embaixo do campo), FORA do
  * <label>: dentro dele, o botão da dica seria o primeiro controle e levaria o rótulo.
  */
-function Campo({ rotulo, dica, obrigatorio, children }: {
+function Campo({ rotulo, dica, obrigatorio, nome, aviso, children }: {
   rotulo: string
   dica?: string
   obrigatorio?: boolean
+  /** O nome do campo, na marca do aviso (`data-acima-do-comum`). */
+  nome?: string
+  /** Princípio 2: o valor acima do comum — avisa ao lado do campo, e salva como está. */
+  aviso?: string | null
   children: React.ReactElement<{ id?: string }>
 }) {
   const id = useId()
@@ -240,6 +255,11 @@ function Campo({ rotulo, dica, obrigatorio, children }: {
         {dica && <Dica rotulo={`Sobre: ${rotulo}`}>{dica}</Dica>}
       </span>
       {cloneElement(children, { id })}
+      {aviso && (
+        <span role="status" data-acima-do-comum={nome} style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+          {aviso}
+        </span>
+      )}
     </div>
   )
 }

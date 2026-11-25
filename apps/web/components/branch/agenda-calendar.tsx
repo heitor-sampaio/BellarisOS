@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   format, addDays, subDays, addWeeks, subWeeks, addMonths, subMonths,
@@ -21,14 +21,14 @@ import { AgendaMonthView } from './agenda-month-view'
 import { rescheduleAppointment } from '@/actions/appointments'
 import type { CalendarEvent } from './agenda-month-view'
 import { ocupacaoEmPct, capacidadeEmMinutos, janelaDaGrade, intervalosDoDia, diaDaSemana, type Horario, type BlocoOcupado } from '@/lib/agenda/horario'
-import { baseDaOcupacao, descontosDaOcupacao } from '@/lib/metrics/ocupacao'
+import { baseDaOcupacao, descontosDaOcupacao, minutosAgendadosNoPeriodo } from '@/lib/metrics/ocupacao'
 import { DEFINICOES } from '@/lib/metrics/definicoes'
 import { Dica } from '@/components/shared/dica'
 import { atendimentosPorExtenso } from '@/lib/agenda/grade'
 import { BotaoBloquearHorario } from '@/components/shared/bloqueio-da-agenda'
 import type { BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
 import { blocosDosBloqueios } from '@/lib/agenda/horario-livre'
-import { dayKeyTZ, naParede, daParede, isoNaParede } from '@/lib/datetime'
+import { dayKeyTZ, naParede, daParede, isoNaParede, startOfDayTZ, endOfDayTZ } from '@/lib/datetime'
 import { useFuso, NotaDoFuso } from '@/components/shared/fuso'
 import { LEGENDA_DA_AGENDA } from '@/lib/agenda/legenda'
 import { buscaComFiltro, ocupacaoSeMede, bloqueioPassaNoFiltro, SEM_FILTRO, type FiltrosDaAgenda } from '@/lib/agenda/filtros'
@@ -81,6 +81,8 @@ interface AgendaCalendarProps {
   filtros?: FiltrosDaAgenda
   /** O vocabulário de tags da rede (lido no servidor): as opções do filtro de tag. */
   tagsDaRede?: string[]
+  /** O bloco "Em andamento" (`EmAndamentoAgora`, 25/11), pronto do servidor: acima da grade, no dia e na semana. */
+  emAndamento?: ReactNode
 }
 
 // -- KPI helpers -------------------------------------------------------------
@@ -133,9 +135,12 @@ function calcKPIs(
   // diferentes (D12 da simulação de 2026-10-20).
   // O tempo BLOQUEADO da profissional sai da capacidade, como o que ela tem em
   // outra unidade (D15 da 8ª simulação).
-  const bookedMin    = windowEvs
-    .filter(e => !['CANCELLED', 'NO_SHOW'].includes(e.status))
-    .reduce((s, e) => s + e.durationMin, 0)
+  // Os minutos são o que cada atendimento ocupa DENTRO do período (25/11,
+  // princípio 3): o que atravessa a meia-noite, ou dura dias, conta em cada dia
+  // o trecho que a grade desenha — somava a duração inteira no dia do início
+  // (o de 30 h dava mais de 100% num dia e 0% no seguinte). A contagem acima
+  // segue pelo dia de início.
+  const bookedMin    = minutosAgendadosNoPeriodo(events, startOfDayTZ(from, fuso), endOfDayTZ(to, fuso))
   const horarios = professionals.map(p => horariosDosProfissionais[p.id] ?? null)
   const ocupados = professionals.map(p => [
     ...(ocupadoForaDosProfissionais[p.id] ?? []),
@@ -201,7 +206,7 @@ function todayDate(fuso: string): Date {
 export function AgendaCalendar({
   branchId, slug, events, procedures, professionals, rooms, canWrite, vistaDela = false, meuId = null, podeConcluir = true, abreOAtendimento = false, quemConclui = null,
   horarioDaUnidade = null, horariosDosProfissionais = {}, ocupadoForaDosProfissionais = {}, dataInicial = null, comCancelados = false,
-  bloqueios = [], colunasDeQuemNaoAtende = [], filtros = SEM_FILTRO, tagsDaRede = [],
+  bloqueios = [], colunasDeQuemNaoAtende = [], filtros = SEM_FILTRO, tagsDaRede = [], emAndamento = null,
 }: AgendaCalendarProps) {
   const router = useRouter()
   // F62: a grade desenha no relógio da UNIDADE, qualquer que seja o do
@@ -482,6 +487,9 @@ export function AgendaCalendar({
             </span>
           )}
         </div>
+
+        {/* "Em andamento" (o Heitor, 25/11): acima da grade, no dia e na semana. Vem pronto do servidor. */}
+        {(view === 'dia' || view === 'semana') && emAndamento}
 
         {/* View content */}
         {view === 'dia' && (

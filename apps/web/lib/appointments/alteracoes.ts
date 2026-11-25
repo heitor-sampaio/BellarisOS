@@ -12,6 +12,7 @@ import { ehODiaDoAgendamento } from '@/lib/agenda/chegada'
 import { fusoValido } from '@/lib/unidades/fuso'
 import { recusaDeQuemNaoAtende, textoDaTroca } from '@/lib/appointments/troca-de-profissional'
 import { pagosAntes } from '@/lib/appointments/pago-antes'
+import { recusaDoHorarioPassado } from '@/lib/appointments/horario-passado'
 import { precoDoProcedimentoNaUnidade } from '@/lib/procedimentos/preco-na-unidade'
 import { recusaDoCancelar } from '@/lib/appointments/quem-cancela'
 
@@ -65,6 +66,13 @@ export async function remarcarCore(admin: Admin, ctx: TenantContext, input: {
   if (existente.status === 'IN_PROGRESS') return { error: 'Este agendamento está em atendimento agora: não se remarca. Para desistir, use "Cancelar" no atendimento.' }
   const inicio = new Date(input.scheduledAt)
   if (Number.isNaN(inicio.getTime())) return { error: 'Data inválida.' }
+  // O horário NOVO que já passou não se remarca (o Heitor, 25/11: "remarcar para o passado é possível desde que
+  // não tenha passado do horario já, o que tornaria impossível desse atendimento acontecer"). Mais cedo que o
+  // marcado, mas à frente, pode. Só trocar a profissional (o horário fica) não é horário novo.
+  if (inicio.getTime() !== new Date(existente.scheduled_at).getTime()) {
+    const passou = recusaDoHorarioPassado(inicio.toISOString(), new Date(), existente.fuso)
+    if (passou) return { error: passou }
+  }
 
   // O profissional novo vinha do formulário sem conferência nenhuma.
   const recusa = await conferirPecasDoAgendamento(admin, ctx, { professionalId: input.professionalId || null })

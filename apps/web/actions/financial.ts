@@ -12,6 +12,8 @@ import { dividirEmParcelas, rotuloDaParcela } from '@/lib/checkout/parcelas'
 import { lancarCore, marcarPagoCore, marcarPagoEmFormasCore, FORMAS_DE_PAGAMENTO } from '@/lib/financeiro/lancamento'
 import { lerPartesDaBaixa, type ParteDaBaixa } from '@/lib/financeiro/baixa-em-formas'
 import { vencimentoDoDia, vencimentosRecorrentes, type FrequenciaRecorrente } from '@/lib/financeiro/vencimentos'
+import { lerQuantidadeDaDespesa, recusaDasParcelasDaDespesa, recusaDasRepeticoesDaDespesa } from '@/lib/financeiro/despesa-agendada'
+import { recusaDoDinheiroAcimaDoRegistro } from '@/lib/financeiro/limites-do-registro'
 import { logHistory } from '@/lib/appointments/avisos'
 import { textoDosPontosDoEstorno } from '@/lib/fidelidade/pontos-do-estorno'
 import { textoDaReaberturaDoPacote, textoDaComissaoETaxaDoEstorno, vendaDoEstornoEmTexto } from '@/lib/financeiro/reabertura-do-estorno'
@@ -97,17 +99,25 @@ async function lancarPeloFormulario(formData: FormData): Promise<{ error?: strin
 
     // -- Parcelado -------------------------------------------------
     if (scheduleMode === 'installments' && type === 'EXPENSE') {
-      const count      = parseInt(str(formData, 'installment_count') ?? '2', 10)
+      // O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser
+      // feito." Acima de 48 a tela avisa e aqui grava; só o impossível recusa.
+      const count      = lerQuantidadeDaDespesa(str(formData, 'installment_count') ?? '2')
       const firstDue   = str(formData, 'first_due_date')
-      if (!count || count < 2 || count > 48) return { error: 'Número de parcelas inválido (2–48).' }
+      const recusaDaQuantidade = recusaDasParcelasDaDespesa(count)
+      if (recusaDaQuantidade) return { error: recusaDaQuantidade }
       if (!firstDue) return { error: 'Informe o vencimento da 1ª parcela.' }
 
       // Cada parcela, um lançamento com o seu vencimento (2026-09-30): a despesa
       // inteira num lançamento só aparecia no mês da compra e se pagava de uma vez.
       const grupo = crypto.randomUUID()
       const primeiro = vencimentoDoDia(firstDue)!
+      // O impossível é a PARCELA que `financial_transactions.amount` (numeric(10,2))
+      // não guarda — o total pode passar, dividido (decisão do Claude, 25/11).
+      const parcelas = dividirEmParcelas(amount, count, primeiro)
+      const parcelaAcima = parcelas.map(p => recusaDoDinheiroAcimaDoRegistro(p.amount)).find(Boolean)
+      if (parcelaAcima) return { error: `Cada parcela: ${parcelaAcima}` }
       const { error: txErr } = await admin.from('financial_transactions').insert(
-        dividirEmParcelas(amount, count, primeiro).map(parcela => ({
+        parcelas.map(parcela => ({
           branch_id:      branchId,
           type,
           category,
@@ -130,16 +140,21 @@ async function lancarPeloFormulario(formData: FormData): Promise<{ error?: strin
     // -- Recorrente ------------------------------------------------
     } else if (scheduleMode === 'recurring' && type === 'EXPENSE') {
       const freq       = (str(formData, 'recurring_freq') ?? 'monthly') as FrequenciaRecorrente
-      const count      = parseInt(str(formData, 'recurring_count') ?? '2', 10)
+      // O mesmo da parcelada (o Heitor, 25/11): acima de 60 avisa, não recusa.
+      const count      = lerQuantidadeDaDespesa(str(formData, 'recurring_count') ?? '2')
       const firstDue   = str(formData, 'first_due_date')
-      if (!count || count < 2 || count > 60) return { error: 'Número de repetições inválido (2–60).' }
-      if (!firstDue) return { error: 'Informe o primeiro vencimento.' }
-
       const validFreqs: FrequenciaRecorrente[] = ['weekly', 'biweekly', 'monthly', 'bimonthly', 'quarterly', 'yearly']
       if (!validFreqs.includes(freq)) return { error: 'Frequência inválida.' }
+      // O impossível é a última data a mais de 100 anos: depende da frequência.
+      const recusaDaQuantidade = recusaDasRepeticoesDaDespesa(count, freq)
+      if (recusaDaQuantidade) return { error: recusaDaQuantidade }
+      if (!firstDue) return { error: 'Informe o primeiro vencimento.' }
 
       // Ao meio-dia de Brasília, contando em UTC: era meia-noite UTC, e na tela
       // cada vencimento caía um dia antes (revisão de 2026-10-08).
+      // Cada repetição é um lançamento com o valor inteiro: o registro vale para ele.
+      const repeticaoAcima = recusaDoDinheiroAcimaDoRegistro(amount)
+      if (repeticaoAcima) return { error: repeticaoAcima }
       const vencimentos = vencimentosRecorrentes(firstDue, freq, count)
       const rows = Array.from({ length: count }, (_, i) => ({
         branch_id:   branchId,

@@ -29,7 +29,7 @@ Este é o catálogo das regras da Fidelidade que valem HOJE: o programa e quem m
 - Onde: `docs/regras/fidelidade.md:89-97`, `:419`; `apps/web/lib/permissions.ts:84`; `apps/web/actions/fidelidade.ts:244-248`, `:262`; `apps/web/components/branch/vouchers-do-cliente.tsx:82`, `:174`
 - Antes: KA-03
 
-**PG-06.** O ajuste de pontos à mão pede sempre um motivo; tirar mais do que a cliente tem de saldo é recusado.
+**PG-06.** O ajuste de pontos à mão pede sempre um motivo; tirar mais do que a cliente tem de saldo é recusado. Acima de 1.000.000 de pontos a ficha avisa e o ajuste vale; só se recusa o zero, o fracionário, o acima de 2.147.483.647 e o crédito que faria o saldo passar disso (o limite do registro) (o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito."; os números são decisão do Claude).
 - Fonte: recomendação do Claude aprovada pelo Heitor, 13/11: "concordo"
 - Onde: `docs/revisao.md:677`, `:2028`; `docs/regras/fidelidade.md:78-79`
 - Antes: KA-04, KB-15
@@ -56,7 +56,7 @@ Este é o catálogo das regras da Fidelidade que valem HOJE: o programa e quem m
 - Onde: `docs/revisao.md:2025`; `docs/regras/fidelidade.md:163-167`, `:171-177`; `docs/regras/vendas-financeiro.md:179`, `:265`
 - Antes: KA-33, KA-34, KC-02
 
-**GA-03.** A rede escolhe UM modo de ganho: por real pago (arredondado para baixo) ou por procedimento. No modo por procedimento, os pontos de cada procedimento se editam no cadastro dele, e o campo só aparece nesse modo.
+**GA-03.** A rede escolhe UM modo de ganho: por real pago (arredondado para baixo) ou por procedimento. No modo por procedimento, os pontos de cada procedimento se editam no cadastro dele, e o campo só aparece nesse modo. Acima de 1.000.000 de pontos o cadastro avisa e vale; só se recusa o negativo, o fracionário e o acima de 2.147.483.647 (o limite do registro) (o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito."; os números são decisão do Claude).
 - Fonte: recomendação do Claude aprovada pelo Heitor, 13/11: "concordo"
 - Onde: `docs/revisao.md:666`, `:218`, `:1929`, `:2028`; `docs/regras/fidelidade.md:22-24`
 - Antes: KA-06, KB-04
@@ -197,7 +197,7 @@ Este é o catálogo das regras da Fidelidade que valem HOJE: o programa e quem m
 - Onde: `docs/regras/fidelidade.md:221-222`, `:350-358`
 - Antes: KA-41
 
-**RV-06.** O formulário da recompensa diz quanto os pontos valem ("2.000 pontos valem R$ 20,00 pelo valor do ponto (R$ 0,01…) — o procedimento custa R$ 150,00 na tabela") e, no "Procedimento grátis", que o procedimento precisa estar cadastrado em Procedimentos. O desconto acima do que os pontos valem ganha aviso ("O desconto (R$ 30,00) vale 15 vezes o que os 200 pontos valem (R$ 2,00). Confira o custo em pontos ou o valor do ponto.") e salva igual: a rede decide o custo.
+**RV-06.** O formulário da recompensa diz quanto os pontos valem ("2.000 pontos valem R$ 20,00 pelo valor do ponto (R$ 0,01…) — o procedimento custa R$ 150,00 na tabela") e, no "Procedimento grátis", que o procedimento precisa estar cadastrado em Procedimentos. O desconto acima do que os pontos valem ganha aviso ("O desconto (R$ 30,00) vale 15 vezes o que os 200 pontos valem (R$ 2,00). Confira o custo em pontos ou o valor do ponto.") e salva igual: a rede decide o custo. O custo acima de 10.000.000 de pontos também avisa e salva; só o zero, o fracionário e o acima do registro (2.147.483.647) são recusados (o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito.").
 - Fonte: princípio 2
 - Onde: `docs/regras/fidelidade.md:223-235`
 - Antes: KA-42, KA-43

@@ -9,6 +9,7 @@ import { SeloDoMenor } from '@/components/shared/selo-do-menor'
 import { textoDoConcluido } from '@/lib/agenda/hora-real'
 import { rolagemDaGrade, estenderJanela } from '@/lib/agenda/grade'
 import { minutosDesenhados, liberouOHorario } from '@/lib/agenda/desenho'
+import { agendamentosNoDia, janelaComOsTrechos, textoDoQueContinua, type TrechoDoAgendamento } from '@/lib/agenda/trecho-do-agendamento'
 import { intervalosDoDia, diaDaSemana, forasDoHorario, textoDosIntervalos, type Horario } from '@/lib/agenda/horario'
 import { bloqueioNoDia, trechoDoBloqueio, type BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
 import { BlocoDoBloqueio, JanelaDoBloqueio } from '@/components/shared/bloqueio-da-agenda'
@@ -92,6 +93,8 @@ interface ColProps {
   horarioDoDia: { de: string; ate: string }[] | null
   profColor:    { bg: string; text: string }
   events:       CalendarEvent[]
+  /** O trecho de cada um NESTE dia (o que continua de antes começa no topo). */
+  trechos:      Map<string, TrechoDoAgendamento>
   currentDate:  Date
   isFirst:      boolean
   canWrite:     boolean
@@ -109,7 +112,7 @@ interface ColProps {
 const TEXTO_DO_PASSOU = 'passou do horário sem chegada nem conclusão: marque a falta, a chegada ou conclua'
 
 function ProfColumn({
-  pro, bloqueios, horarioDoDia, events, currentDate, isFirst, canWrite,
+  pro, bloqueios, horarioDoDia, events, trechos, currentDate, isFirst, canWrite,
   draggingId, dropPreviewY,
   onEventClick, onSlotClick, onDragStart, onDragEnd, onDragOver, onDrop,
 }: ColProps) {
@@ -194,9 +197,18 @@ function ProfColumn({
         // tela com quem ocupou o resto do horário, vai para a direita.
         const desmarcado = eventoDesmarcado(ev)
         const solto = (e: CalendarEvent) => eventoDesmarcado(e) || (e.status === 'COMPLETED' && liberouOHorario(e))
+        // O que dura além do dia (25/11): o que continua de antes começa no topo
+        // da grade (como o bloqueio de vários dias), e o que segue amanhã para
+        // no fim dela — o resto aparece no dia seguinte.
         const caixa = (e: CalendarEvent) => {
+          const tr = trechos.get(e.id)
+          if (tr?.continuaDeAntes) {
+            const t = Math.max(0, (tr.de / 60 - g.START_HOUR) * HOUR_PX)
+            return { t, b: Math.max(t + 32, Math.min(g.TOTAL_PX, (tr.ate / 60 - g.START_HOUR) * HOUR_PX) - 4) }
+          }
           const t = Math.max(0, timeToY(e.start, g))
-          return { t, b: t + Math.max(32, (minutosDesenhados(e) / 60) * HOUR_PX - 4) }
+          const b = t + Math.max(32, (minutosDesenhados(e) / 60) * HOUR_PX - 4)
+          return { t, b: tr?.continuaDepois ? Math.max(t + 32, Math.min(b, g.TOTAL_PX)) : b }
         }
         const eu = caixa(ev), euSolto = solto(ev)
         const divide = events.some(o => {
@@ -214,8 +226,12 @@ function ProfColumn({
         const isCompleted = ev.status === 'COMPLETED'
         // A21 da 9ª: passou do horário e segue em aberto — marcado, nada se fecha sozinho.
         const passou      = passouSemFechar(ev, agora)
-        const timeStr   = format(new Date(ev.start), 'HH:mm') // parede
-        const isDraggable = canWrite && !isCompleted && !desmarcado
+        // O que continua de antes diz o início real no lugar da hora (e não se
+        // arrasta: soltar aqui remarcaria o atendimento inteiro para este dia).
+        const trecho    = trechos.get(ev.id)
+        const continua  = trecho?.continuaDeAntes ? textoDoQueContinua(ev.start) : null
+        const timeStr   = continua ?? format(new Date(ev.start), 'HH:mm') // parede
+        const isDraggable = canWrite && !isCompleted && !desmarcado && !continua
         // A24 da 8ª: até 40 min (menos de 56 px) o cartão tem DUAS linhas — a hora e a
         // cliente, o procedimento e a sala —, e as duas cabem; o de 40 cortava o
         // procedimento (eram três linhas em 49 px), e o de 30 o cortava pela metade.
@@ -257,8 +273,10 @@ function ProfColumn({
             key={ev.id}
             data-agendamento={ev.id}
             data-liberou={euSolto ? '' : undefined}
+            data-continua-de-antes={continua ? '' : undefined}
+            data-continua-depois={trecho?.continuaDepois ? '' : undefined}
             // O cartão curto corta o texto (A23): a dica diz tudo.
-            title={[timeStr, ev.clientName, ev.procedureName, ev.roomName, `${ev.durationMin} min`, passou ? TEXTO_DO_PASSOU : null].filter(Boolean).join(' · ')}
+            title={[timeStr, ev.clientName, ev.procedureName, ev.roomName, `${ev.durationMin} min`, trecho?.continuaDepois ? 'continua no dia seguinte' : null, passou ? TEXTO_DO_PASSOU : null].filter(Boolean).join(' · ')}
             draggable={isDraggable}
             onDragStart={isDraggable ? e => { e.stopPropagation(); onDragStart(e, ev.id) } : undefined}
             onDragEnd={isDraggable ? onDragEnd : undefined}
@@ -345,10 +363,19 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
   const [dropTarget,   setDropTarget]   = useState<{ profId: string; y: number } | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  const todayEvents = events.filter(e => isSameDay(new Date(e.start), currentDate))
+  // Os do dia: os que começam nele e os que continuam de antes (25/11: o
+  // atendimento que atravessa a meia-noite, ou dura dias, ocupa cada dia — o
+  // dia seguinte parecia livre, e o choque recusava).
+  const doDia = agendamentosNoDia(events, currentDate)
+  const todayEvents = doDia.map(x => x.ev)
+  const trechos = new Map(doDia.map(x => [x.ev.id, x.trecho]))
   // A grade do horário da unidade, estendida pelos agendamentos do dia que
-  // caem fora dele (um encaixe às 21 h não pode sumir da tela).
-  const { inicio, fim } = estenderJanela({ inicio: janela?.inicio ?? START_PADRAO, fim: janela?.fim ?? END_PADRAO }, todayEvents)
+  // caem fora dele (um encaixe às 21 h não pode sumir da tela) e pelo que
+  // atravessa a meia-noite (`janelaComOsTrechos`).
+  const { inicio, fim } = janelaComOsTrechos(
+    estenderJanela({ inicio: janela?.inicio ?? START_PADRAO, fim: janela?.fim ?? END_PADRAO }, doDia.filter(x => !x.trecho.continuaDeAntes).map(x => x.ev)),
+    doDia.map(x => x.trecho),
+  )
   const g = gradeDe(inicio, fim)
 
   // Hoje, a grade abre na hora de agora (uma hora antes); outro dia, no
@@ -357,8 +384,9 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
   // sumia). Roda a cada troca de dia, e não a cada atualização dos eventos.
   const ehHoje = isSameDay(currentDate, naParede(new Date(), fuso))
   const diaChave = format(currentDate, 'yyyy-MM-dd')
-  const primeiroEmMin = todayEvents.length
-    ? Math.min(...todayEvents.map(e => { const d = new Date(e.start); return d.getHours() * 60 + d.getMinutes() }))
+  // O que continua de antes conta do topo do dia (o trecho dele começa na meia-noite).
+  const primeiroEmMin = doDia.length
+    ? Math.min(...doDia.map(({ ev: e, trecho }) => { if (trecho.continuaDeAntes) return 0; const d = new Date(e.start); return d.getHours() * 60 + d.getMinutes() }))
     : null
   useEffect(() => {
     if (!scrollRef.current) return
@@ -500,6 +528,7 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
                 : null}
               profColor={PROF_COLORS[i % PROF_COLORS.length]!}
               events={proEvs}
+              trechos={trechos}
               currentDate={currentDate}
               isFirst={i === 0}
               canWrite={canWrite}

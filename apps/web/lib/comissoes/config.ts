@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { TAXA_MAXIMA_DO_REGISTRO } from '@/lib/financeiro/vezes-do-cartao'
+import { LIMITE_DE_VEZES_NO_CARTAO } from '@/lib/acima-do-comum'
 
 /**
  * A configuração de comissões da REDE (Configurações → Comissões) e as taxas
@@ -89,9 +90,11 @@ export interface ComissaoDoProduto {
  */
 export const EntradaDaComissaoDoProduto = z.object({
   tipo:      z.enum(['PERCENTAGE', 'FIXED_AMOUNT']).nullable(),
-  valor:     z.number().min(0, 'A comissão não pode ser negativa.').nullable(),
+  valor:     z.number({ message: 'Informe o valor da comissão.' }).min(0, 'A comissão não pode ser negativa.').nullable(),
 }).refine(r => (r.tipo === null) === (r.valor === null), 'Diga o tipo e o valor da comissão do produto.')
   .refine(r => r.tipo !== 'PERCENTAGE' || (r.valor ?? 0) <= 100, 'A comissão é de no máximo 100%.')
+  // O R$ por unidade vai ao lançamento da comissão (`commissions.rule_value`, numeric(10,4)): o limite do registro.
+  .refine(r => r.tipo !== 'FIXED_AMOUNT' || recusaDoValorDaComissao('FIXED_AMOUNT', r.valor ?? 0) === null, 'No máximo R$ 999.999,99 (o limite do registro).')
 
 /** O que o cadastro do produto mostra da comissão dele (nulo: quem abre não muda comissão). */
 export interface ComissaoNoCadastroDoProduto {
@@ -168,11 +171,13 @@ export interface TaxaDePagamento { metodo: MetodoComTaxa; parcelas: number; taxa
 
 export const EntradaDasTaxas = z.array(z.object({
   metodo:   z.enum(METODOS_COM_TAXA),
-  parcelas: z.number().int().min(1).max(12),
+  // O Heitor, 25/11: acima de 12 vezes avisa; só o impossível (acima de 1.200, decisão do Claude) se recusa.
+  parcelas: z.number().int().min(1).max(LIMITE_DE_VEZES_NO_CARTAO),
   // F16-3 (o Heitor: "não é pra recusar nada"): sem teto — só não negativa (e o limite do registro).
   taxa_pct: z.number().min(0, 'A taxa não pode ser negativa.')
     .max(TAXA_MAXIMA_DO_REGISTRO, 'A taxa vai até 999,99% (o limite do registro).'),
-})).max(20).refine(
+  // Pix e débito à vista e o crédito de 1x a 1.200x: a lista mais longa sem repetir. Passou disso, há repetida.
+})).max(LIMITE_DE_VEZES_NO_CARTAO + 2, 'Há taxa repetida para o mesmo meio e parcelas.').refine(
   lista => lista.every(t => t.metodo === 'CREDIT_CARD' || t.parcelas === 1),
   'Só o crédito tem taxa por número de parcelas.',
 ).refine(
@@ -195,14 +200,54 @@ export interface RegraDeComissao {
   valor:        number
 }
 
-const Regra = z.object({
-  tipo:  z.enum(['PERCENTAGE', 'FIXED_AMOUNT']),
-  valor: z.number().min(0).max(1_000_000),
-}).refine(r => r.tipo !== 'PERCENTAGE' || r.valor <= 100, 'Percentual acima de 100%.')
+/**
+ * O maior valor FIXO de uma comissão (o Heitor, 25/11: "Se não for impossível,
+ * ainda que improvável, pode ser feito."). O impossível é o registro (decisão
+ * do Claude, 25/11): a regra grava em `commission_rules.value` e cada
+ * lançamento a copia em `commissions.rule_value`, os dois numeric(10,4) — e o
+ * pacote, o responsável e o produto passam pelo mesmo lançamento. Em
+ * centavos, R$ 999.999,99. O teto de antes (R$ 1.000.000) já era esse limite
+ * (o R$ 1.000.000 em si quebrava no banco): não sobra "comum" a avisar.
+ */
+export const LIMITE_DA_COMISSAO_FIXA = 999_999.99
+const RECUSA_DA_COMISSAO_FIXA = 'No máximo R$ 999.999,99 (o limite do registro).'
+const COMISSAO_SEM_VALOR = 'Informe o valor da comissão.'
+const COMISSAO_NEGATIVA = 'A comissão não pode ser negativa.'
+const PERCENTUAL_ACIMA = 'Percentual acima de 100%.'
+
+/**
+ * A recusa do valor de uma regra de comissão, ou nulo: só o impossível —
+ * negativo, percentual acima de 100% e o fixo acima do registro. A tela e o
+ * servidor leem a mesma. `onde` ("da comissão padrão") entra na frase da tela.
+ */
+export function recusaDoValorDaComissao(tipo: TipoDeRegra, valor: number, onde?: string): string | null {
+  if (typeof valor !== 'number' || !Number.isFinite(valor)) return COMISSAO_SEM_VALOR
+  if (valor < 0) return COMISSAO_NEGATIVA
+  if (tipo === 'PERCENTAGE') return valor > 100 ? (onde ? `Percentual acima de 100% ${onde}.` : PERCENTUAL_ACIMA) : null
+  if (valor <= LIMITE_DA_COMISSAO_FIXA) return null
+  return onde ? `No máximo R$ 999.999,99 ${onde} (o limite do registro).` : RECUSA_DA_COMISSAO_FIXA
+}
+
+const TipoDaRegra = z.enum(['PERCENTAGE', 'FIXED_AMOUNT'], { message: 'Escolha se a comissão é em % ou em R$.' })
+const ValorDaRegra = z.number({ message: COMISSAO_SEM_VALOR }).min(0, COMISSAO_NEGATIVA)
+
+/** A regra (o tipo e o valor), com a recusa do impossível na mensagem dela. */
+function comRecusaDoValor<T extends z.ZodTypeAny>(esquema: T, tipoDe: (r: z.infer<T>) => TipoDeRegra) {
+  return esquema.superRefine((r, ctx) => {
+    const recusa = recusaDoValorDaComissao(tipoDe(r), (r as { valor: number }).valor)
+    if (recusa) ctx.addIssue({ code: z.ZodIssueCode.custom, message: recusa, path: ['valor'] })
+  })
+}
+
+const Regra = comRecusaDoValor(z.object({ tipo: TipoDaRegra, valor: ValorDaRegra }), r => r.tipo)
+
+const IdDoProcedimento = z.string().uuid('Procedimento não encontrado.')
+const IdDoProfissional = z.string().uuid('Profissional não encontrado.')
 
 export const EntradaDasRegras = z.object({
   padrao:   Regra.nullable(),
-  excecoes: z.array(Regra.and(z.object({ procedure_id: z.string().uuid() }))).max(200)
+  // Uma exceção por procedimento: a lista cresce com a rede, e não tem teto (o Heitor, 25/11).
+  excecoes: z.array(Regra.and(z.object({ procedure_id: IdDoProcedimento })))
     .refine(l => new Set(l.map(e => e.procedure_id)).size === l.length, 'Há duas exceções para o mesmo procedimento.'),
   /**
    * A17 da 11ª (decidido pelo princípio 1): a comissão de VENDA da pessoa (%),
@@ -265,7 +310,8 @@ export const EntradaDaComissaoDoProcedimento = z.discriminatedUnion('modo', [
   z.object({
     modo: z.literal('POR_PROFISSIONAL'),
     descontaTaxa: EscolhaDaTaxa.optional(),
-    profissionais: z.array(Regra.and(z.object({ professional_id: z.string().uuid() }))).max(500)
+    // Um valor por profissional: a lista cresce com a rede, e não tem teto (o Heitor, 25/11).
+    profissionais: z.array(Regra.and(z.object({ professional_id: IdDoProfissional })))
       .refine(l => new Set(l.map(e => e.professional_id)).size === l.length, 'Há dois valores para o mesmo profissional.'),
   }),
 ])
@@ -320,10 +366,8 @@ export const EntradaDaComissaoDoPacote = z.object({
   venda:    Regra.nullable(),
   execucao: z.union([
     z.object({ tipo: z.enum(['REGRA', 'NENHUMA']), valor: z.null().optional().default(null) }),
-    z.object({ tipo: z.enum(['PERCENTAGE', 'FIXED_AMOUNT']), valor: z.number().min(0).max(1_000_000) })
-      .refine(r => r.tipo !== 'PERCENTAGE' || r.valor <= 100, 'Percentual acima de 100%.'),
-    z.object({ tipo: z.literal('PACOTE'), valorTipo: z.enum(['PERCENTAGE', 'FIXED_AMOUNT']), valor: z.number().min(0).max(1_000_000) })
-      .refine(r => r.valorTipo !== 'PERCENTAGE' || r.valor <= 100, 'Percentual acima de 100%.'),
+    comRecusaDoValor(z.object({ tipo: TipoDaRegra, valor: ValorDaRegra }), r => r.tipo),
+    comRecusaDoValor(z.object({ tipo: z.literal('PACOTE'), valorTipo: TipoDaRegra, valor: ValorDaRegra }), r => r.valorTipo),
   ]),
 })
 
