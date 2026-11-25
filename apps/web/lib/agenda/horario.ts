@@ -29,6 +29,9 @@ const COMERCIAL: Intervalo[] = [{ de: '08:00', ate: '20:00' }]
 export const HORARIO_PADRAO: Horario = { dias: { 0: [], 1: COMERCIAL, 2: COMERCIAL, 3: COMERCIAL, 4: COMERCIAL, 5: COMERCIAL, 6: COMERCIAL } }
 
 const HORA = /^([01]\d|2[0-3]):([0-5]\d)$|^24:00$/
+/** O fim do dia: gravado 24:00; o campo de hora (que não aceita 24:00) o mostra 23:59. */
+export const MEIA_NOITE = '24:00'
+export const FIM_NO_CAMPO = '23:59'
 const minutos = (h: string) => { const [a, b] = h.split(':').map(Number); return a! * 60 + b! }
 const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
 
@@ -50,7 +53,10 @@ export function normalizarHorario(v: unknown): Horario | null {
       const de = (i as Intervalo | null)?.de, ate = (i as Intervalo | null)?.ate
       if (typeof de !== 'string' || typeof ate !== 'string' || !HORA.test(de) || !HORA.test(ate)) return null
       if (minutos(ate) <= minutos(de)) return null
-      ints.push({ de, ate })
+      // A4 da 29ª (princípios 3 e 7): o campo de hora não aceita "24:00", e quem
+      // atende até a meia-noite digita 23:59 — o fim do dia é um formato só, o 24:00
+      // (decisão do Claude, 25/11).
+      ints.push({ de, ate: ate === FIM_NO_CAMPO ? MEIA_NOITE : ate })
     }
     ints.sort((a, b) => minutos(a.de) - minutos(b.de))
     for (let j = 1; j < ints.length; j++) if (minutos(ints[j]!.de) < minutos(ints[j - 1]!.ate)) return null

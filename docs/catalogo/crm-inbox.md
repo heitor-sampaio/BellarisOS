@@ -1,6 +1,6 @@
 # Catálogo de regras — Clientes, CRM e inbox
 
-Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE: o cadastro e a ficha da cliente, a lista de Clientes, as tags, o portal e o app da cliente (no que é dado e cadastro dela), a LGPD, as Importações, o contato, a conversa e o inbox, e as oportunidades, os funis e o quadro. Cada regra diz a fonte: uma fala do Heitor (copiada letra por letra do documento), uma recomendação do Claude que o Heitor aprovou (com a resposta dele), um dos sete princípios de produto, ou "decisão do Claude". "Atribuída ao Heitor sem a fala" quer dizer que o texto diz que a decisão é dele, mas não traz a fala — está nas Perguntas. "Onde" aponta a linha do documento; "Antes" lista os números do rascunho que a regra junta. É um RASCUNHO para o Heitor revisar. Contagem: 142 regras (Clientes 26, Tags 13, Portal e app da cliente 14, LGPD 13, Importações 23, Contato, conversa e inbox 17, Oportunidades, funis e quadro 36), 15 perguntas e 24 divergências. Dos 332 números do rascunho, 4 ficaram fora do catálogo e 2 são de outra área (ver os apêndices); todos os outros estão num "Antes". A meta era ~140. O "só os meus" saiu em 23/11: nenhuma regra daqui o usa; o que os rascunhos ainda diziam com ele foi reescrito como a regra de hoje (Ver vê tudo, Gerenciar mexe em tudo, dentro da abrangência; quem quer só as suas usa o filtro de responsável).
+Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE: o cadastro e a ficha da cliente, a lista de Clientes, as tags, o portal e o app da cliente (no que é dado e cadastro dela), a LGPD, as Importações, o contato, a conversa e o inbox, e as oportunidades, os funis e o quadro. Cada regra diz a fonte: uma fala do Heitor (copiada letra por letra do documento), uma recomendação do Claude que o Heitor aprovou (com a resposta dele), um dos sete princípios de produto, ou "decisão do Claude". "Atribuída ao Heitor sem a fala" quer dizer que o texto diz que a decisão é dele, mas não traz a fala — está nas Perguntas. "Onde" aponta a linha do documento; "Antes" lista os números do rascunho que a regra junta. É um RASCUNHO para o Heitor revisar. Contagem: 143 regras (Clientes 26, Tags 13, Portal e app da cliente 14, LGPD 14, Importações 23, Contato, conversa e inbox 17, Oportunidades, funis e quadro 36), 15 perguntas e 27 divergências. Dos 332 números do rascunho, 4 ficaram fora do catálogo e 2 são de outra área (ver os apêndices); todos os outros estão num "Antes". A meta era ~140. O "só os meus" saiu em 23/11: nenhuma regra daqui o usa; o que os rascunhos ainda diziam com ele foi reescrito como a regra de hoje (Ver vê tudo, Gerenciar mexe em tudo, dentro da abrangência; quem quer só as suas usa o filtro de responsável).
 
 ## Clientes (CL)
 
@@ -356,6 +356,11 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/regras/crm-inbox.md:1712`
 - Antes: KE-64
 
+**LG-14.** No app, o "Meus dados" diz numa linha que a eliminação dos dados e a revogação do consentimento se pedem à rede, pelo nome dela. Não há botão para isso: o sistema não registra esses pedidos (LG-01), e a rede responde à mão.
+- Fonte: decisão do Claude, 25/11 (o Heitor revisa), pelo princípio 7 e pela LG-01; o nome da rede: a Q06 (o CA1, "Concordo") (A23 da 29ª simulação: a cliente procurou no app onde pedir a exclusão e a revogação)
+- Onde: a regra entra em `docs/regras/crm-inbox.md` com a correção da A23 (25/11); o "Meus dados" do app (`apps/web/components/client-portal/data-request-card.tsx`)
+- Antes: (sem número: A23 da 29ª simulação)
+
 ## Importações (IM)
 
 ### Quem importa e onde
@@ -426,6 +431,7 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 
 **IM-13.** Quando a ficha sem CPF seria completada pelo telefone, a prévia mostra "Completar a ficha de X" já marcado; desmarcado, a linha vira ficha nova. Pelo mesmo CPF, a linha sempre junta.
 - Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
+- Proposta do Claude (29ª, D4), o Heitor decide: com o mesmo telefone e outro nome, a caixa viria desmarcada; os testes e2e/importacao-previa-cruzamento.spec.ts exigem marcada.
 - Onde: `docs/regras/crm-inbox.md:844-849`
 - Antes: KC-38
 
@@ -436,6 +442,7 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 
 **IM-15.** Nas fichas, duas linhas com o mesmo telefone e nomes diferentes mostram a caixa "Juntar Karina com Bianca", marcada (só completa a ficha da primeira); desmarcada, cada linha vira uma ficha, com o mesmo telefone. Linhas com o mesmo nome são "Repetida na planilha" e recusadas. Nos contatos não há escolha: um telefone é uma pessoa, e a prévia diz qual nome fica e orienta importar como clientes quando forem duas pessoas.
 - Fonte: princípios 1 e 3
+- Proposta do Claude (29ª, D4), o Heitor decide: com o mesmo telefone e outro nome, a caixa viria desmarcada; os testes e2e/importacao-previa-cruzamento.spec.ts exigem marcada.
 - Onde: `docs/regras/crm-inbox.md:866`, `:883-891`
 - Antes: KC-44, KC-45
 
@@ -836,6 +843,7 @@ O texto de `docs/regras/` (ou da própria revisão) contra a decisão mais nova 
 - OP-25: "Motivos de perda" da rede inteira (`docs/regras/crm-inbox.md:1518`) está certo — a oportunidade é da pessoa, e a pessoa é da rede; o texto devia dizer por quê.
 - IM-22: `docs/regras/crm-inbox.md:1020` diz que o pacote de antes sem valor de referência "não geram comissão de execução (R$ 0)"; o item 11 das correções da auditoria (18/11, `docs/regras/comissoes.md:380-387`) decidiu que o R$ fixo por sessão é pago e só o percentual fica R$ 0. A tela já diz certo (`components/branch/importador-de-contatos.tsx:374`, `:477`); só o texto está velho.
 - TG-04: `docs/revisao.md:434-435` ainda diz "a ação só adiciona; o modo 'remover' sai" (leitura do Claude de 14/11); a auditoria das regras (18/11, `docs/regras/automacoes.md:452-461`) trouxe o "Remover tag" de volta, e é o que o sistema faz. A Q12 foi decidida pelo Claude em 25/11: fica o "Remover tag" (o `docs/revisao.md:434-435` é que está velho).
+- LG-02, LG-14 (TEXTO): a LG-02 ("Pelo app, revogar o consentimento e pedir a exclusão continuam como estão", a decisão 3 da 8ª) lê como se o app tivesse os dois gestos. O app não tem nenhum: a exclusão saiu com a H15 (Q07), e o app não tem gesto de revogar (`apps/web/app/[slug]/cliente/`, `apps/web/components/client-portal/`). "Como estão" é: os dois se pedem à rede, e o app passa a dizer isso (LG-14). O texto da LG-02 devia dizer isso.
 
 ## Ficou fora do catálogo
 

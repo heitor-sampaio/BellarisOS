@@ -306,6 +306,13 @@ export interface LancamentoDoExtrato {
    * AGUARDANDO e no ajuste.
    */
   transacaoId?: string | null
+  /**
+   * A13 da 29ª (princípio 3): a linha da comissão de UM produto da venda (a
+   * rede comissiona por produto) — o produto e as unidades dele, para o
+   * extrato dizer de qual produto é e a regra que valeu nele. Nulo na regra
+   * sobre o total e nas outras origens.
+   */
+  itemDoProduto?: { nome: string; quantidade: number } | null
 }
 
 export interface Fechamento {
@@ -351,7 +358,7 @@ export async function extratoDasComissoes(r: Recorte): Promise<LancamentoDoExtra
     'ler o extrato das comissões',
   )
   const pagoEm = await diasDosFechamentos(r.tenantId, linhas.map(l => (l.payout_id as string | null) ?? null))
-  const transacoes = await transacoesDasLinhas(linhas)
+  const [transacoes, itens] = await Promise.all([transacoesDasLinhas(linhas), itensDosProdutosDasLinhas(linhas)])
   return linhas.map(l => ({
     id: String(l.id), professionalId: String(l.professional_id), branchId: String(l.branch_id),
     releasedAt: String(l.released_at), kind: l.kind as LancamentoDoExtrato['kind'], motivo: (l.motivo as string | null) ?? null,
@@ -372,7 +379,57 @@ export async function extratoDasComissoes(r: Recorte): Promise<LancamentoDoExtra
     pagoEm: l.status === 'PAID' && l.payout_id ? pagoEm.get(String(l.payout_id)) ?? null : null,
     regraDe: l.regra_de === 'ITEM' || l.regra_de === 'PESSOA' || l.regra_de === 'CLINICA' ? l.regra_de : null,
     transacaoId: transacoes.get(String(l.id)) ?? null,
+    itemDoProduto: itens.get(String(l.id)) ?? null,
   }))
+}
+
+/**
+ * A13 da 29ª simulação (princípio 3): com a comissão POR PRODUTO, cada produto
+ * da venda tem a sua linha (`commission_lines.item` = a ordem do item na venda;
+ * a regra sobre o total é o item 0), e o extrato escrevia as duas com a venda
+ * inteira ("2× Sérum + 1× Protetor"), sem dizer qual era qual. O item de cada
+ * linha, em lotes: o lançamento → a linha → o item da venda. Sem linha de
+ * produto no extrato, nada a ler.
+ */
+async function itensDosProdutosDasLinhas(linhas: Record<string, unknown>[]): Promise<Map<string, { nome: string; quantidade: number }>> {
+  const mapa = new Map<string, { nome: string; quantidade: number }>()
+  const deProduto = linhas.filter(l => l.origem === 'PRODUTO')
+  if (!deProduto.length) return mapa
+  const admin = createAdminClient()
+  const unidades = [...new Set(deProduto.map(l => String(l.branch_id)))]
+  // O lançamento aguardando é a própria linha (o id dela); os outros apontam a linha.
+  const linhaDe = new Map<string, string>()
+  for (const l of deProduto) if (l.kind === 'AGUARDANDO') linhaDe.set(String(l.id), String(l.id))
+  const lancamentos = deProduto.filter(l => l.kind !== 'AGUARDANDO').map(l => String(l.id))
+  for (let i = 0; i < lancamentos.length; i += 150) {
+    const lote = await ler(admin.from('commissions').select('id, line_id')
+      .in('branch_id', unidades).in('id', lancamentos.slice(i, i + 150)), 'ler as linhas das comissões de produto')
+    for (const c of (lote ?? []) as { id: string; line_id: string | null }[]) if (c.line_id) linhaDe.set(c.id, c.line_id)
+  }
+  const idsDasLinhas = [...new Set(linhaDe.values())]
+  const itemDaLinha = new Map<string, { venda: string; item: number }>()
+  for (let i = 0; i < idsDasLinhas.length; i += 150) {
+    const lote = await ler(admin.from('commission_lines').select('id, item, product_sale_id')
+      .in('branch_id', unidades).eq('origem', 'PRODUTO').gt('item', 0).in('id', idsDasLinhas.slice(i, i + 150)), 'ler os itens das comissões de produto')
+    for (const c of (lote ?? []) as { id: string; item: number; product_sale_id: string | null }[]) {
+      if (c.product_sale_id) itemDaLinha.set(c.id, { venda: c.product_sale_id, item: Number(c.item) })
+    }
+  }
+  const vendas = [...new Set([...itemDaLinha.values()].map(x => x.venda))]
+  const doItem = new Map<string, { nome: string; quantidade: number }>()
+  for (let i = 0; i < vendas.length; i += 150) {
+    const lote = await ler(admin.from('product_sale_items').select('sale_id, sort_order, quantity, products(name)')
+      .in('sale_id', vendas.slice(i, i + 150)), 'ler os produtos das vendas das comissões')
+    for (const it of (lote ?? []) as unknown as { sale_id: string; sort_order: number; quantity: number; products: { name: string } | null }[]) {
+      doItem.set(`${it.sale_id}:${it.sort_order}`, { nome: it.products?.name ?? 'Produto', quantidade: Number(it.quantity) })
+    }
+  }
+  for (const [lancamento, linha] of linhaDe) {
+    const x = itemDaLinha.get(linha)
+    const item = x ? doItem.get(`${x.venda}:${x.item}`) : undefined
+    if (item) mapa.set(lancamento, item)
+  }
+  return mapa
 }
 
 /**

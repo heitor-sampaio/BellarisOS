@@ -194,7 +194,6 @@ interface Props {
   portalNoPlano?:     boolean
   canReassign:        boolean
   canPayment:         boolean
-  isProfessional:     boolean
   /** A39: com a bandeira, "Crédito Visa 5x". */
   /** `maquininha`: o NOME, só com mais de uma na rede (A18 da 14ª). */
   paymentTransaction: { id: string; paymentMethod: string; amount: number; cartaoVezes?: number | null; cartaoBandeira?: string | null; maquininha?: string | null } | null
@@ -912,7 +911,7 @@ function DorasCard({ value, onChange, readonly, erro }: {
 export function AppointmentSession({
   appointment, client, anamnesis, fichaDeSaudeVencidaEm = null, fichaPreAtendimento, ficha, respostasDaFicha, products, availableProducts, lotesDosInsumos,
   professionals, history, branchId, slug,
-  canCheckin, canManage, ehDaProfissional = false, canEditRecords, canViewRecords = true, fotosDoAtendimento = null, anotacoes = null, versoesDoRegistro = [], podeAnotar = false, portalNoPlano = false, canReassign, canPayment, isProfessional, paymentTransaction, pagamentoEstornado = null, comandaId = null,
+  canCheckin, canManage, ehDaProfissional = false, canEditRecords, canViewRecords = true, fotosDoAtendimento = null, anotacoes = null, versoesDoRegistro = [], podeAnotar = false, portalNoPlano = false, canReassign, canPayment, paymentTransaction, pagamentoEstornado = null, comandaId = null,
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
   isPartOfPlan = false, isPackageSession = false, pacoteDeFora = false, sessaoDoPacote = null, isPrePago = false, podeReceber = false, quemEstorna = null, quemRecebe = null, quemConclui = null, quemMarcaAChegada = null, podeEstornar = false, planoEmAberto = null, documentos = null, podeMontarPlano = true, montaPlanoNaUnidade = false, podeInjetaveis = true, podeVerPlanos = false, podeGerenciarAgenda = false,
 }: Props) {
@@ -1305,43 +1304,39 @@ export function AppointmentSession({
   // Bloco "Dados do procedimento" (profissional com reassign, horários, sala/valor, duração).
   const procedureNode = (
     <div className="form-2col">
-      {!isProfessional && (
-        <>
-          <div>
-            <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Profissional</p>
-            {editingProf && canReassign ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <select value={selectedProfId} onChange={e => setSelectedProfId(e.target.value)} className="field" style={{ fontSize: 'var(--text-sm-sz)', padding: '4px 8px', height: 30 }} autoFocus>
-                  {professionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-                <button type="button" disabled={savingProf}
-                  onClick={async () => { setSavingProf(true); await reassignProfessional(appointment.id, selectedProfId, slug); setSavingProf(false); setEditingProf(false); router.refresh() }}
-                  style={{ height: 30, padding: '0 10px', borderRadius: 6, border: 'none', background: 'var(--brand)', color: 'var(--surface)', fontSize: 'var(--text-xs-sz)', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-                  {savingProf ? <Loader2 size={11} className="animate-spin" /> : 'Salvar'}
-                </button>
-                <button type="button" onClick={() => { setEditingProf(false); setSelectedProfId(appointment.professionalId) }}
-                  style={{ height: 30, width: 30, borderRadius: 6, border: '1px solid var(--border)', background: 'none', color: 'var(--text-faint)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <X size={12} />
-                </button>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{selectedProfName}</p>
-                {canReassign && !isDone && professionals.length > 1 && (
-                  <button type="button" onClick={() => setEditingProf(true)}
-                    style={{ width: 22, height: 22, borderRadius: 5, border: '1px solid var(--border)', background: 'var(--bg-app)', color: 'var(--text-faint)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Pencil size={10} />
-                  </button>
-                )}
-              </div>
+      <div>
+        <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Profissional</p>
+        {editingProf && canReassign ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <select value={selectedProfId} onChange={e => setSelectedProfId(e.target.value)} className="field" style={{ fontSize: 'var(--text-sm-sz)', padding: '4px 8px', height: 30 }} autoFocus>
+              {professionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+            <button type="button" disabled={savingProf}
+              onClick={async () => { setSavingProf(true); await reassignProfessional(appointment.id, selectedProfId, slug); setSavingProf(false); setEditingProf(false); router.refresh() }}
+              style={{ height: 30, padding: '0 10px', borderRadius: 6, border: 'none', background: 'var(--brand)', color: 'var(--surface)', fontSize: 'var(--text-xs-sz)', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+              {savingProf ? <Loader2 size={11} className="animate-spin" /> : 'Salvar'}
+            </button>
+            <button type="button" onClick={() => { setEditingProf(false); setSelectedProfId(appointment.professionalId) }}
+              style={{ height: 30, width: 30, borderRadius: 6, border: '1px solid var(--border)', background: 'none', color: 'var(--text-faint)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <X size={12} />
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{selectedProfName}</p>
+            {canReassign && !isDone && professionals.length > 1 && (
+              <button type="button" onClick={() => setEditingProf(true)}
+                style={{ width: 22, height: 22, borderRadius: 5, border: '1px solid var(--border)', background: 'var(--bg-app)', color: 'var(--text-faint)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Pencil size={10} />
+              </button>
             )}
           </div>
-          <div>
-            <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Procedimento</p>
-            <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{appointment.procedureName}{appointment.procedureCategory ? ` · ${appointment.procedureCategory}` : ''}</p>
-          </div>
-        </>
-      )}
+        )}
+      </div>
+      <div>
+        <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Procedimento</p>
+        <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{appointment.procedureName}{appointment.procedureCategory ? ` · ${appointment.procedureCategory}` : ''}</p>
+      </div>
 
       <div>
         <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Agendado para</p>
@@ -1357,16 +1352,14 @@ export function AppointmentSession({
         </p>
       </div>
 
-      {!isProfessional && (
-        <div>
-          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{appointment.roomName ? 'Sala / Cabine' : 'Valor'}</p>
-          {appointment.roomName ? (
-            <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{appointment.roomName}</p>
-          ) : (
-            <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>{fmtBRL(appointment.price)}</p>
-          )}
-        </div>
-      )}
+      <div>
+        <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{appointment.roomName ? 'Sala / Cabine' : 'Valor'}</p>
+        {appointment.roomName ? (
+          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{appointment.roomName}</p>
+        ) : (
+          <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>{fmtBRL(appointment.price)}</p>
+        )}
+      </div>
 
 
       {appointment.startedAt && (
@@ -1871,7 +1864,7 @@ export function AppointmentSession({
                     Responder aqui
                   </button>
                 )}
-                {!isProfessional && podeGerenciarAgenda && (
+                {podeGerenciarAgenda && (
                   <button type="button" data-enviar-o-link-da-ficha className="btn-secondary" style={{ fontSize: 'var(--text-sm-sz)' }}
                     aria-expanded={linkDaFichaAberto} onClick={() => setLinkDaFichaAberto(v => !v)}>
                     Enviar o link
@@ -1879,7 +1872,7 @@ export function AppointmentSession({
                 )}
               </span>
             </div>
-            {linkDaFichaAberto && <PreAtendimentoDoAgendamento appointmentId={appointment.id} slug={slug} podeMandar={podeGerenciarAgenda && !isProfessional} />}
+            {linkDaFichaAberto && <PreAtendimentoDoAgendamento appointmentId={appointment.id} slug={slug} podeMandar={podeGerenciarAgenda} />}
           </div>
         )}
 
@@ -1901,7 +1894,7 @@ export function AppointmentSession({
             {/* A8 da 18ª (princípio 7): o bloqueio "Falta assinar" traz a ação ao
                 lado — colher no aparelho da unidade (DC3), ou os documentos,
                 com o link e o pedido pelo app. */}
-            {erroAoIniciar.startsWith('Falta assinar') && (
+            {erroAoIniciar.includes('Falta assinar') && (
               <div data-acao-da-assinatura style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                 {documentos && documentosQueBloqueiam[0] && documentosQueBloqueiam[0].status !== 'INCOMPLETO' && (
                   <Link className="btn-primary" style={{ textDecoration: 'none' }}

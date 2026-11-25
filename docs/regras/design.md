@@ -236,6 +236,11 @@ poluindo tela com um monte de explicaçãozinha."
   O rótulo vai num `<span>` próprio, com a dica ao lado — e FORA do `<label>`
   que envolve um campo (dentro, ela vira o controle do rótulo e o
   `getByLabel` perde o campo): `htmlFor`/`id`.
+- **O painel da dica não corta** (A5 da 29ª: o do "Cancelar", na janela do
+  agendamento, saía pela metade no `overflow` do modal): como o do
+  `PickerCompacto`, sobe à camada de cima (`popover="manual"`), em posição
+  fixa medida do "i" (`posicaoDaDica`: embaixo, ou em cima sem espaço; a 16 px
+  das bordas), e continua no mesmo lugar do DOM. Prova: `tests/dica-nao-corta.test.ts`.
 - Mora no núcleo (`packages/nucleo/src/components/dica.tsx`; o app da rede
   reexporta em `components/shared/dica.tsx`, e o sistema e o suporte importam
   de `@estetica-os/nucleo/components/dica`). O gatilho é um `span

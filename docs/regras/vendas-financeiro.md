@@ -892,7 +892,11 @@ plano").
     10/11/2026, com 4 sessões que sobraram." — com o "Cancelar pacote", que
     abre a janela de sempre (`pacoteVencidoDaFicha`,
     `lib/pacotes/regras-da-rede.ts`; `[data-pacote-vencido]`). Prova:
-    `e2e/pacote-regras-da-rede.spec.ts` ("9").
+    `e2e/pacote-regras-da-rede.spec.ts` ("9"). O cartão explica, na dica, o
+    que é e o que se pode fazer (A24 da 29ª, princípio 7 — só texto): fora do
+    Tratamento em andamento; o "Cancelar pacote" mostra a conta antes de
+    confirmar (o usado, o pago e o que volta, se houver); deixar como está
+    também vale (`SOBRE_O_PACOTE_VENCIDO`, `lib/clientes/pacotes-da-ficha.ts`).
   - Tudo numa transação (`pacote_cancelar_devolvendo`, migration
     `20261103001303`, a partir de `20261101000252`; o valor novo do enum em
     `20261101000251`).
@@ -1307,7 +1311,14 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   unidades), na comissão de quem vendeu (`comissao_conta`: a quitação contra o
   que a venda vale, e a linha do total ou a do item na proporção do que ficou),
   no custo do lucro (`custo − custo_devolvido`) e nas perdas (o que não voltou,
-  no dia da devolução; migration `20261106003802`). O que ainda está com a
+  no dia da devolução; migration `20261106003802`). **E na comanda do PDV**
+  (D9 da 29ª simulação, 2026-11-25; decisão do Claude pela PR-08 e pelo
+  princípio 3): `pdv_comandas` dá à comanda da venda de produto o
+  `price − valor_devolvido` (era o valor de antes do estorno, e a lista dizia
+  R$ 390 da venda que vale R$ 190; migration `20261205200001`), e a tela da
+  comanda mostra o item pelo vendido, a linha "Devolvido: 1× Sérum −R$ X"
+  (`[data-devolvido-da-venda]`, `linhaDaComanda().devolvido`) e o total do que
+  vale. O que ainda está com a
   cliente se devolve de novo (em parte, ou o estorno da venda inteira, que
   devolve só o que restou — `produto_estornar_venda` desconta o já devolvido).
   Devolver tudo o que resta é o estorno da venda ("É a venda inteira…"); a
@@ -1587,6 +1598,15 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   "Exportar CSV" dos lançamentos fica. Componentes em
   `components/shared/caixa-no-financeiro.tsx`. Prova:
   `e2e/pdv-fechar-o-dia.spec.ts` ("CX6"), `e2e/fechamento-do-dia-avisos.spec.ts`.
+  **O DRE também avisa** (A14 da 29ª simulação, 2026-11-25; princípio 4 —
+  decisão do Claude no texto): em Relatórios → Financeiro, embaixo do DRE,
+  "Sem taxa da maquininha cadastrada, a taxa destas vendas é R$ 0,00 (0%) no
+  DRE: Débito: 2 vendas, R$ X. Cadastre a taxa em Configurações → Comissões e
+  taxas." (`[data-dre-sem-taxa]`, `avisoDoDreSemTaxa`,
+  `lib/financeiro/vendas-sem-taxa.ts`), da mesma `getTaxasDoPeriodo`, e o CSV
+  do DRE leva a linha "Sem taxa da maquininha cadastrada (vale 0%)". Com tag
+  no filtro o aviso não sai (a conta das formas sem taxa não tem o filtro, e o
+  aviso não bateria com o DRE). Prova: `tests/vendas-o-valor-que-vale-na-tela.test.ts`.
 - **Não existe caixa de ABRIR** (o fechamento do dia, abaixo, é outra coisa:
   conferência, não gaveta aberta). O caixa de abrir e fechar foi removido em 2026-09-18: quase
   nada é recebido em dinheiro vivo (a rede opera em Pix e cartão), e a

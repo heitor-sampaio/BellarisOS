@@ -64,7 +64,9 @@ import { isoDaLinha } from '@/lib/clientes/ordem-das-transacoes'
 import { AvisoDoPacoteEmAberto } from '@/components/shared/aviso-do-pacote-em-aberto'
 import type { PacoteVencidoDaFicha } from '@/lib/pacotes/regras'
 import { useFuso } from '@/components/shared/fuso'
-import { avisoDaAbaFechada } from '@/lib/clients/aba-fechada'
+import { avisoDaAbaFechada, avisoDaAbaQueNaoExiste } from '@/lib/clients/aba-fechada'
+import { chaveDaAbaPedida } from '@/lib/clientes/aba-da-ficha'
+import { SOBRE_O_PACOTE_VENCIDO } from '@/lib/clientes/pacotes-da-ficha'
 import { unidadeNaFicha } from '@/lib/clientes/unidade-na-ficha'
 import { anotacoesParaLer } from '@/lib/clientes/anotacoes'
 
@@ -1626,7 +1628,8 @@ export function ClientProfile({
    * existe (link velho, cargo sem a ficha) cai na primeira, em vez de deixar
    * a tela sem conteúdo.
    */
-  const abaPedida = params.get('aba')
+  // A8 da 29ª: o nome da aba também a abre (`?aba=prontuario` é o Prontuário).
+  const abaPedida = chaveDaAbaPedida(params.get('aba'))
   const tab: TabKey = visibleTabs.some(t => t.key === abaPedida)
     ? (abaPedida as TabKey)
     // Só o prontuário: a ficha abre nele (é a única aba).
@@ -1634,6 +1637,8 @@ export function ClientProfile({
   // A2 da 11ª: a aba que EXISTE mas o cargo não abre (o Prontuário da
   // Comercial pelo `?aba=fichas`) diz isso — caía calada na Visão geral.
   const abaFechada = TABS.find(t => t.key === abaPedida && !visibleTabs.some(v => v.key === t.key)) ?? null
+  // A8 da 29ª: a aba que NÃO EXISTE (link velho, digitado) também diz — caía calada.
+  const abaInexistente = abaPedida && !TABS.some(t => t.key === abaPedida) ? abaPedida : null
 
   /** Link de uma aba, preservando o resto da URL e limpando o que era da aba anterior. */
   function linkDaAba(key: TabKey) {
@@ -1933,7 +1938,13 @@ export function ClientProfile({
       {abaFechada && (
         <p data-aba-sem-acesso={abaFechada.key} role="status"
           style={{ margin: '0 0 10px', padding: '8px 12px', borderRadius: 'var(--radius-field)', background: 'var(--warning-soft)', color: 'var(--text)', fontSize: 'var(--text-sm-sz)' }}>
-          {avisoDaAbaFechada(abaFechada)}
+          {avisoDaAbaFechada(abaFechada, tab)}
+        </p>
+      )}
+      {abaInexistente && (
+        <p data-aba-inexistente role="status"
+          style={{ margin: '0 0 10px', padding: '8px 12px', borderRadius: 'var(--radius-field)', background: 'var(--warning-soft)', color: 'var(--text)', fontSize: 'var(--text-sm-sz)' }}>
+          {avisoDaAbaQueNaoExiste(abaInexistente, tab)}
         </p>
       )}
       <div className="tabs-bar" role="tablist" aria-label="Abas da ficha" style={{ gap: 0 }}>
@@ -1983,6 +1994,10 @@ export function ClientProfile({
           <div className="card" data-pacote-vencido style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', flex: '1 1 260px', minWidth: 0 }}>
               <strong>{pacoteVencido.nome}</strong> venceu em {pacoteVencido.venceuEm}, com {pacoteVencido.restantes === 1 ? '1 sessão que sobrou' : `${pacoteVencido.restantes} sessões que sobraram`}.
+              {/* A24 da 29ª (princípio 7): o que é, e o que se pode fazer. */}
+              {' '}<Dica rotulo="Sobre o pacote vencido">
+                {SOBRE_O_PACOTE_VENCIDO}
+              </Dica>
             </p>
             <button type="button" className="btn-ghost" onClick={() => setCancelandoVencido(true)}>Cancelar pacote</button>
           </div>

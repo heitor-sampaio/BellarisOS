@@ -8,7 +8,7 @@ Heitor aprovou (com a resposta dele), um dos sete princípios de produto, ou
 "decisão do Claude". "Atribuída ao Heitor sem a fala" quer dizer que o texto diz
 que a decisão é dele, mas não traz a fala — está nas Perguntas. "Onde" aponta a
 linha do documento; "Antes" lista os números do rascunho que a regra junta.
-É um RASCUNHO para o Heitor revisar. Contagem: 190 regras (Agenda 68, das quais 8 em "Equipe, como aparece na agenda"; Atendimento 21; Plano de tratamento 23; Prontuário 18; Fichas 15; Procedimentos 15; Estoque 30), 33 perguntas e 19 divergências. Dos 440 números do rascunho, 37 ficaram fora do catálogo e 3 são de outra área (ver os apêndices); todos os outros estão num "Antes". A meta era ~180: passou 10, para não cortar decisão de produto. Em 23/11 saíram três (AT-06, PL-21, PT-03: só descreviam o "só os meus", SM1) e, no mesmo dia, a AG-30 (o "Atende" só vale nas unidades da pessoa); os números ficam, com a linha "Saiu".
+É um RASCUNHO para o Heitor revisar. Contagem: 191 regras (Agenda 69, das quais 9 em "Equipe, como aparece na agenda"; Atendimento 21; Plano de tratamento 23; Prontuário 18; Fichas 15; Procedimentos 15; Estoque 30), 33 perguntas e 22 divergências. Dos 440 números do rascunho, 37 ficaram fora do catálogo e 3 são de outra área (ver os apêndices); todos os outros estão num "Antes". A meta era ~180: passou 10, para não cortar decisão de produto. Em 23/11 saíram três (AT-06, PL-21, PT-03: só descreviam o "só os meus", SM1) e, no mesmo dia, a AG-30 (o "Atende" só vale nas unidades da pessoa); os números ficam, com a linha "Saiu".
 
 ## Agenda (AG)
 
@@ -368,6 +368,11 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:411-430`
 - Antes: AG-59, AG-60
 
+**AG-69.** O "Atende" não esconde nem mostra botão nenhum. Ele só diz em que unidades a pessoa aparece como profissional (a agenda, o agendar, o repasse, a comissão, os relatórios) e abre as vistas pessoais, que só mostram. Cada botão aparece pela permissão do gesto — o "Enviar o link" e o "Enviar a ficha" da ficha de saúde a quem tem a Agenda em Gerenciar (FI-08, FI-14), o colher dos documentos a quem colhe (DQ-06 do catálogo de Documentos) —, para quem atende e para quem não atende.
+- Fonte: o "Atende" não dá permissão: recomendação do Claude aprovada pelo Heitor, 2026-11-23 (UM5, CLAUDE.md §11): "concordo"; o botão: decisão do Claude, 25/11 (o Heitor revisa) (D11 da 29ª simulação: o "Enviar o link" sumia para a Admin da rede que atende)
+- Onde: CLAUDE.md §11; `docs/revisao.md:2232`; `apps/web/components/branch/appointment-session.tsx` (`isProfessional`), `apps/web/app/_shared/sessao-de-atendimento.tsx` (`isProfessional = ctx.providesServices`)
+- Antes: (sem número: D11 da 29ª simulação)
+
 ## Atendimento — iniciar, concluir, desistir (AT)
 
 ### Quem inicia, conclui e desiste
@@ -614,9 +619,9 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 
 **PT-03.** Saiu em 23/11 (SM1: sem o "só os meus").
 
-**PT-04.** Todo acesso a dado clínico fica registrado (a ficha com os anexos clínicos, a tela do atendimento, o plano com a anotação clínica ou a ficha de saúde, a liberação do prontuário no pacote LGPD, os mapas de injetáveis), só quando o dado vai à tela. A mesma pessoa relendo a mesma cliente no mesmo ponto em 30 minutos é um registro só; falha no registro não trava o atendimento. O registro não se altera, sobrevive ao membro desativado e guarda a marca "via suporte".
-- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
-- Onde: `docs/regras/atendimento.md:1976`, `:1985`, `:1996`, `:2012`
+**PT-04.** Todo acesso a dado clínico fica registrado (a ficha com os anexos clínicos, a tela do atendimento, o plano com a anotação clínica ou a ficha de saúde, a liberação do prontuário no pacote LGPD, os mapas de injetáveis), só quando o dado vai à tela. A mesma pessoa relendo a mesma cliente no mesmo ponto em 30 minutos é um registro só — conta a pessoa, a cliente e o ponto, e não o que o ponto abriu (qual atendimento, qual plano) —, também quando a tela monta duas partes ao mesmo tempo (as duas leituras entram uma vez); falha no registro não trava o atendimento. O registro não se altera, sobrevive ao membro desativado e guarda a marca "via suporte".
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele); o que conta nos 30 minutos e as leituras ao mesmo tempo: decisão do Claude, 25/11 (o Heitor revisa), pelo princípio 3 (D7 da 29ª simulação: o acesso saía em dobro)
+- Onde: `docs/regras/atendimento.md:1976`, `:1985`, `:1996`, `:2012`, `:2042-2044`; `prontuario_registrar_acesso` (migration `20261118500001`)
 - Antes: PT-07, PT-09, PT-11
 
 **PT-05.** A lista de quem abriu o prontuário aparece no fim da aba Prontuário a quem tem o Prontuário em Gerenciar e "A rede inteira". A cliente não a recebe no pacote LGPD.
@@ -730,9 +735,9 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:1707`, `:1816`, `:1838`, `:1856`, `:3524`, `:3541`, `:3557`, `:3581`, `:3821`
 - Antes: AT-27, AT-29, AT-32, FI-05, FI-26
 
-**FI-08.** A ficha de saúde tem validade, da rede (padrão 6 meses). Dentro dela, a cliente só confirma ("algo mudou?"), e confirmar renova a data; fora dela, ou sem resposta, responde a ficha inteira. A ficha vencida continua valendo, e o atendimento avisa a quem vê o prontuário ("…está vencida… Ela continua valendo; peça a atualização."); a nunca respondida também avisa, com "Responder aqui" e "Enviar o link".
-- Fonte: o Heitor, 2026-11-02: "mantém como está mas com aviso de que a ficha de saúde está vencida"
-- Onde: `docs/regras/atendimento.md:1739`, `:1744`, `:3562`, `:3572`, `docs/revisao.md:1226`
+**FI-08.** A ficha de saúde tem validade, da rede (padrão 6 meses). Dentro dela, a cliente só confirma ("algo mudou?"), e confirmar renova a data; fora dela, ou sem resposta, responde a ficha inteira. A ficha vencida continua valendo, e o atendimento avisa a quem vê o prontuário ("…está vencida… Ela continua valendo; peça a atualização."); a nunca respondida também avisa, com "Responder aqui" e "Enviar o link". O "Enviar o link" aparece a quem tem a Agenda em Gerenciar (a regra do "Enviar a ficha", FI-14), atenda ou não (AG-69).
+- Fonte: o Heitor, 2026-11-02: "mantém como está mas com aviso de que a ficha de saúde está vencida"; o "Enviar o link" atenda ou não: decisão do Claude, 25/11 (o Heitor revisa), pela UM5 (AG-69; D11 da 29ª simulação)
+- Onde: `docs/regras/atendimento.md:1739`, `:1744`, `:3562`, `:3572`, `:3699-3707`, `docs/revisao.md:1226`
 - Antes: FI-12, AT-30, AT-31
 
 **FI-09.** Mandar a ficha de saúde ao agendar é configuração da rede, desligada por padrão. Ligada, todo agendamento, por qualquer caminho, abre a ficha pendente da cliente (uma por cliente), menos quando ela respondeu ou confirmou há menos de 30 dias. Desligada, o Início do app oferece "Responda a sua ficha de saúde" à cliente com atendimento marcado e sem ficha válida.
@@ -1106,6 +1111,8 @@ O texto de `docs/regras/` (ou do CLAUDE.md) contra a decisão mais nova — para
 - ES-08: `docs/regras/atendimento.md:2838-2840` e `:2843-2844` ainda falam em "produto de revenda" e em "revenda e 'os dois'"; `docs/revisao.md:137` e `:1854` (E2) trocaram para os checkboxes "Insumo" e "Venda direta".
 - ES-30: `docs/regras/atendimento.md:2994` diz que o lote vencendo avisa "a quem responde pelo Estoque na unidade", que não é uma permissão (CLAUDE.md §1, 13/11); a linha 3005 usa "quem tem o Estoque em Gerenciar" para o mínimo (ver Q32).
 - ES-25: `docs/regras/atendimento.md:2931` diz "a profissional" (nome de cargo) e "o dia e a hora marcados", mas o próprio texto, em `:2943-2949`, mudou isso para a hora da conclusão.
+- PT-04 (TEXTO e CÓDIGO, o D7 da 29ª): `docs/regras/atendimento.md:2042-2044` diz "no mesmo ponto (e referência) em 30 min"; pela decisão de 25/11 a referência não entra na conta. A função `prontuario_registrar_acesso` (migration `20261118500001`) compara a `referencia` e faz o `insert … where not exists` sem trava, e as leituras ao mesmo tempo (o layout e a página) entram as duas. A correção do D7 muda a função e o texto.
+- AG-69, FI-08, FI-14 (CÓDIGO, TESTE e TEXTO, o D11 da 29ª): o código esconde botões de quem atende — `apps/web/components/branch/appointment-session.tsx` (o `!isProfessional` do "Enviar o link" e do `podeMandar` do bloco da ficha, e outros dois `!isProfessional` no mesmo arquivo) e `apps/web/components/branch/appointment-sheet.tsx` (`podeMandar={podeGerenciar && !isProfessional}`, o "Enviar a ficha" da janela). O teste `apps/web/tests/pre-atendimento-aviso.test.ts:36` exige esse `!isProfessional` na janela. A regra que o contraria é a UM5 (o Heitor, 23/11: "concordo" — "O 'Atende' não dá permissão"), então o teste muda por ela. E `docs/regras/atendimento.md:3706-3707` ("não a quem só atende, e só com a Agenda em Gerenciar — D9 da 26ª") lê como se atender escondesse o botão; devia dizer "a quem tem a Agenda em Gerenciar, atenda ou não".
 
 ## Ficou fora do catálogo
 

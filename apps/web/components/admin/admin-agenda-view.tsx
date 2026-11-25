@@ -8,6 +8,7 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { AppointmentModal } from '@/components/branch/appointment-modal'
 import { SeloUnidadeDesativada } from '@/components/shared/selo-unidade-desativada'
 import { useNovoAgendamentoDaUrl, type PedidoDeAgendamento } from '@/components/shared/novo-agendamento-da-url'
+import { useAgendamentoDaUrl } from '@/components/shared/agendamento-da-url'
 import { AppointmentSheet } from '@/components/branch/appointment-sheet'
 import { SeloDaFicha } from '@/components/shared/selo-da-ficha'
 import { SeloDoMenor, type MenorDoAgendamento } from '@/components/shared/selo-do-menor'
@@ -634,6 +635,8 @@ export function AdminAgendaView({
   }), [bloqueios, branches, fusoDaTela])
   // A janela recebe o agendamento de verdade (o instante), não o da grade.
   const abrir = (a: Appointment) => setSelecionado(appointments.find(x => x.id === a.id) ?? a)
+  // `?agendamento=<id>`: a busca abre a agenda com ele aberto (D5 da 29ª).
+  useAgendamentoDaUrl(appointments, abrir)
 
   // O recorte por unidade acompanha a navegação de data e de modo: quem veio do
   // dashboard olhando uma unidade não deve perdê-la ao virar o dia.

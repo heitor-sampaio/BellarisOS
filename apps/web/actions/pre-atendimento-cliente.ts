@@ -1,11 +1,12 @@
 'use server'
 
+import { after } from 'next/server'
 import { z } from 'zod'
 import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, gravar, mensagemDoErro } from '@/lib/db'
 import { paraAnamneseGeral, respostasDaFicha, oQueFaltaNaFicha, anamneseRespondida } from '@/lib/anamnese-geral'
-import { gravarAnamneseGeral, preAtendimentoPendente, dadosDaOfertaNoApp } from '@/lib/pre-atendimento/ficha'
+import { gravarAnamneseGeral, preAtendimentoPendente, dadosDaOfertaNoApp, expirarAFichaDaCliente } from '@/lib/pre-atendimento/ficha'
 import { ofereceAFichaNoApp } from '@/lib/pre-atendimento/oferta-no-app'
 
 /**
@@ -23,6 +24,13 @@ import { ofereceAFichaNoApp } from '@/lib/pre-atendimento/oferta-no-app'
  * pendente e troca a tela por "Nada para responder agora" — some o
  * "Respostas enviadas" (a completa de 2026-10-20 pegou). A tela inicial é
  * dinâmica: o cartão sai sozinho na próxima navegação.
+ *
+ * A ficha que a EQUIPE lê (`client:<id>`, 60 s) expira no `after()` (D6 da
+ * 29ª; princípio 3): o `revalidateTag(…, { expire: 0 })` dentro da action
+ * marcaria a página da cliente para recarregar na resposta (o mesmo efeito do
+ * revalidatePath, acima); no `after()` ele roda depois de a resposta sair
+ * (Next 16.3.4, `after-context.js`: os callbacks correm no fim do request, e
+ * `withExecuteRevalidates` aplica as tags que eles marcaram).
  */
 
 type Resultado = { ok: true } | { error: string }
@@ -46,6 +54,7 @@ export async function responderPreAtendimento(input: unknown): Promise<Resultado
     tenantId: pendente.tenantId, clientId: ctx.clientId!, respostas: dados.data.respostas,
     origem: 'CLIENTE_APP', porUsuario: null, ficha: pendente.ficha,
   })
+  after(() => expirarAFichaDaCliente(ctx.clientId!))
   return { ok: true }
 }
 
@@ -72,6 +81,7 @@ export async function confirmarQueNadaMudou(): Promise<Resultado> {
     tenantId: pendente.tenantId, clientId: ctx.clientId!, respostas: atual.respostas,
     origem: 'CLIENTE_APP', porUsuario: null, ficha: pendente.ficha,
   })
+  after(() => expirarAFichaDaCliente(ctx.clientId!))
   return { ok: true }
 }
 

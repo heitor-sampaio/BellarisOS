@@ -17,3 +17,8 @@ export function RedeDoPortal({ nome, children }: { nome: string | null; children
 export function useFalaDaRede(): FalaDaRede {
   return falaDaRede(useContext(Contexto))
 }
+
+/** O nome da rede, para a frase que o põe no meio ("Conte a Estética Bella o porquê"); nulo sem ele. */
+export function useNomeDaRede(): string | null {
+  return useContext(Contexto)?.trim() || null
+}

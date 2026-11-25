@@ -105,6 +105,37 @@ test('cli-07 e A15: a prévia diz quem completa qual ficha, e desmarcar "complet
   expect(mae).toEqual({ name: MARLENE, document: null })
 })
 
+test('D4: duas fichas sem CPF no telefone, a linha completa a do mesmo nome (sem acento nem caixa), não a mais antiga', async ({ browser }) => {
+  const fone = `(48) 9${fim}-4444`
+  const edna = `${PREFIXO} Edna ${marca}`
+  const filomena = `${PREFIXO} Filomena Sá ${marca}`
+  // A Edna é a mais antiga do telefone; a Filomena, a do nome da linha.
+  const e = await db().from('clients').insert({ tenant_id: rede.tenantId, branch_id: rede.branchId, name: edna, phone: fone, is_active: true, tags: [] })
+    .select('id').single<{ id: string }>()
+  expect(e.error).toBeNull()
+  const f = await db().from('clients').insert({ tenant_id: rede.tenantId, branch_id: rede.branchId, name: filomena, phone: fone, is_active: true, tags: [] })
+    .select('id').single<{ id: string }>()
+  expect(f.error).toBeNull()
+  const conteudo = [
+    'Nome,Celular,E-mail',
+    `${PREFIXO} FILOMENA SA ${marca.toUpperCase()},${fone},filomena-${marca}@exemplo.com`,
+  ].join('\n')
+  await como(browser, admin, async p => {
+    const previa = await ateAPrevia(p, `mesmo-nome-${marca}.csv`, conteudo, 'Como clientes')
+    await expect(previa).toContainText('1 linha pronta')
+    // A caixa segue a regra de sempre (marcada), com a ficha do mesmo nome.
+    await expect(previa.getByRole('checkbox', { name: `Completar a ficha de ${filomena}` })).toBeChecked({ timeout: 15_000 })
+    await expect(previa.getByRole('checkbox', { name: `Completar a ficha de ${edna}` })).toHaveCount(0)
+    await p.getByRole('button', { name: /Importar 1 linha/ }).click()
+    await expect(p.locator('[data-importacao]')).toContainText('Concluída', { timeout: 60_000 })
+  })
+  const { data: fichas } = await db().from('clients').select('id, name, email').eq('tenant_id', rede.tenantId).in('id', [e.data!.id, f.data!.id]).order('name')
+  expect(fichas).toEqual([
+    { id: e.data!.id, name: edna, email: null },
+    { id: f.data!.id, name: filomena, email: `filomena-${marca}@exemplo.com` },
+  ])
+})
+
 test('A15: nos contatos, a prévia diz quem junta pelo telefone e quem entra sem telefone', async ({ browser }) => {
   const conteudo = [
     'Nome,WhatsApp,E-mail',

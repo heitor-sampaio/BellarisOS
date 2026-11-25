@@ -1,4 +1,4 @@
-import { subDays } from 'date-fns'
+import { ehNovaNaLista, type FichaDoSelo } from '@/lib/clientes/selo-novo'
 import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { getTenantContext, can } from '@/lib/auth'
 import { ClientsSidebar } from '@/components/branch/clients-sidebar'
@@ -31,7 +31,7 @@ export default async function AdminClientsLayout({
 
   const lastVisitMap = new Map(ultimasVisitas.map(v => [v.client_id, v.ultima]))
 
-  const thirtyDaysAgo = subDays(new Date(), 30)
+  const agora = new Date()
 
   // A cliente é da REDE (CL1 do Bloco Tags, 2026-11-14): a linha não diz unidade.
   const clients = (rawClients ?? []).map(c => ({
@@ -40,8 +40,9 @@ export default async function AdminClientsLayout({
     phone:      c.phone as string,
     tags:       (c.tags ?? []) as string[],
     isActive:   c.is_active as boolean,
-    // F35: a importada com "cliente desde" de antes não é nova.
-    isNew:      new Date((c as { cliente_desde?: string | null }).cliente_desde ?? c.created_at) >= thirtyDaysAgo,
+    // F35 e D2 da 29ª: a importada com "cliente desde" ou a última visita de
+    // antes não é nova (IM-20, IM-21) — a régua dos dois portais.
+    isNew:      ehNovaNaLista(c as FichaDoSelo, agora),
     lastVisit:  lastVisitMap.get(c.id) ?? null,
   }))
 

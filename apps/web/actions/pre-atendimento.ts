@@ -14,7 +14,7 @@ import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { recusaDaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { normalizeFormSchema, validateFormSchema, flattenFields } from '@/lib/anamnesis'
 import { TIPOS_FORA_DO_PRE_ATENDIMENTO } from '@/lib/anamnese-geral'
-import { gravarAnamneseGeral, preAtendimentoPendente, dadosDaOfertaNoApp } from '@/lib/pre-atendimento/ficha'
+import { gravarAnamneseGeral, preAtendimentoPendente, dadosDaOfertaNoApp, expirarAFichaDaCliente } from '@/lib/pre-atendimento/ficha'
 import { fichaDeSaudeVencida, fichaDeSaudeValidaAte } from '@/lib/pre-atendimento/validade'
 import { conversaDoCliente, envioPelaConversaLigado } from '@/lib/documentos/link-pela-conversa'
 import { enviarNaConversa } from '@/lib/inbox/enviar'
@@ -99,6 +99,7 @@ export async function salvarAnamneseGeral(input: unknown): Promise<Resultado> {
     tenantId: ctx.tenantId!, clientId: dados.data.clientId, respostas: dados.data.respostas,
     origem: 'EQUIPE', porUsuario: ctx.internalUserId,
   })
+  expirarAFichaDaCliente(dados.data.clientId)
   revalidatePath('/admin/clients')
   revalidatePath('/admin/agenda')
   return { ok: true }

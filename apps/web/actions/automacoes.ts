@@ -15,6 +15,7 @@ import { validarGrafo, podeAtivar, gatilhosDoGrafo } from '@/lib/automacoes/vali
 import { achatarDados, type CampoVisto } from '@/lib/automacoes/disponiveis'
 import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
 import { modeloDeAutomacao, semWhatsapp } from '@/lib/automacoes/modelos'
+import { deQuemEAExecucao } from '@/lib/automacoes/sobre-da-execucao'
 import { redeTemWhatsapp } from '@/lib/automacoes/canal-da-rede'
 import { ler, tentar } from '@/lib/db'
 import { buscarClientes } from '@/lib/automacoes/tempo'
@@ -746,9 +747,36 @@ export async function listarExecucoes(
     for (const a of ags ?? []) situacoes.set(a.id, a.status)
   }
 
+  // A18 da 29ª: a linha diz de quem é — sem o nome no contexto (o lembrete
+  // que espera), a cliente do fato ou a do agendamento dele, na rede da sessão.
+  const alvos = new Map((data ?? []).map(r => [r.id as string, deQuemEAExecucao(r.contexto)]))
+  const semNome = [...alvos.values()]
+  const idsDosAgendamentos = [...new Set(semNome.map(a => a.agendamentoId).filter((id): id is string => !!id))]
+  const clienteDoAgendamento = new Map<string, string>()
+  if (idsDosAgendamentos.length) {
+    const ags = await ler(admin.from('appointments').select('id, client_id, branches!inner(tenant_id)')
+      .eq('branches.tenant_id', ctx.tenantId!).in('id', idsDosAgendamentos), 'ler a cliente dos agendamentos das execuções') as { id: string; client_id: string | null }[] | null
+    for (const a of ags ?? []) if (a.client_id) clienteDoAgendamento.set(a.id, a.client_id)
+  }
+  const clienteDe = (a: { clienteId: string | null; agendamentoId: string | null }) =>
+    a.clienteId ?? (a.agendamentoId ? clienteDoAgendamento.get(a.agendamentoId) ?? null : null)
+  const idsDasClientes = [...new Set(semNome.map(clienteDe).filter((id): id is string => !!id))]
+  const nomeDaCliente = new Map<string, string>()
+  if (idsDasClientes.length) {
+    const cs = await ler(admin.from('clients').select('id, name').eq('tenant_id', ctx.tenantId!).in('id', idsDasClientes),
+      'ler o nome das clientes das execuções') as { id: string; name: string | null }[] | null
+    for (const c of cs ?? []) if (c.name) nomeDaCliente.set(c.id, c.name)
+  }
+  const sobreDa = (id: string): string | null => {
+    const a = alvos.get(id)
+    if (!a) return null
+    if (a.nome) return a.nome
+    const cliente = clienteDe(a)
+    return cliente ? nomeDaCliente.get(cliente) ?? null : null
+  }
+
   return {
     execucoes: (data ?? []).map(r => {
-      const contexto = r.contexto as Contexto
       const agendamento = doAgendamento(r)
       return {
         id:        r.id as string,
@@ -757,7 +785,7 @@ export async function listarExecucoes(
         erro:      (r.erro as string | null) ?? null,
         criadaEm:  r.created_at as string,
         fimEm:     (r.fim_em as string | null) ?? null,
-        sobre:     contexto?.cliente?.nome ?? contexto?.lead?.nome ?? null,
+        sobre:     sobreDa(r.id as string),
         retomaEm:  r.status === 'esperando' ? ((r.rodar_apos as string | null) ?? null) : null,
         situacaoDoAgendamento: agendamento ? (situacoes.get(agendamento) ?? null) : null,
       }

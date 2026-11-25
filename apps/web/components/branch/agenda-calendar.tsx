@@ -12,6 +12,7 @@ import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 
 import { AppointmentModal } from './appointment-modal'
 import { useNovoAgendamentoDaUrl, type PedidoDeAgendamento } from '@/components/shared/novo-agendamento-da-url'
+import { useAgendamentoDaUrl } from '@/components/shared/agendamento-da-url'
 import { AppointmentSheet } from './appointment-sheet'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { AgendaDayView } from './agenda-day-view'
@@ -29,7 +30,7 @@ import type { BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
 import { blocosDosBloqueios } from '@/lib/agenda/horario-livre'
 import { dayKeyTZ, naParede, daParede, isoNaParede } from '@/lib/datetime'
 import { useFuso, NotaDoFuso } from '@/components/shared/fuso'
-import { ROTULO_DO_STATUS } from '@/lib/agenda/rotulo-do-status'
+import { LEGENDA_DA_AGENDA } from '@/lib/agenda/legenda'
 import { buscaComFiltro, ocupacaoSeMede, bloqueioPassaNoFiltro, SEM_FILTRO, type FiltrosDaAgenda } from '@/lib/agenda/filtros'
 import { FiltrosDaAgendaNaBarra } from '@/components/shared/filtros-da-agenda'
 
@@ -263,6 +264,8 @@ export function AgendaCalendar({
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
   // A janela recebe o agendamento de verdade (o instante), não o da grade.
   const abrirEvento = useCallback((ev: CalendarEvent) => setSelectedEvent(events.find(e => e.id === ev.id) ?? ev), [events])
+  // `?agendamento=<id>`: a busca abre a agenda com ele aberto (D5 da 29ª).
+  useAgendamentoDaUrl(events, abrirEvento)
   const [dropError,     setDropError]     = useState<string | null>(null)
 
   const { totalCount, waitingCount, occupancy, base: baseDaOcupacaoDaTela } = calcKPIs(events, daGrade, view, currentDate, horarioDaUnidade, horariosDosProfissionais, ocupadoForaDosProfissionais, bloqueiosDaGrade, fuso)
@@ -462,14 +465,11 @@ export function AgendaCalendar({
           {/* Legend (day view only) */}
           {view === 'dia' && (
             <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-              {[
-                { color: 'var(--success)', label: 'Confirmado' },
-                { color: 'var(--brand)', label: 'Em atendimento' },
-                { color: 'var(--text-faint)', label: ROTULO_DO_STATUS.SCHEDULED },
-              ].map(l => (
-                <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: l.color }} />
-                  <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', fontWeight: 600 }}>{l.label}</span>
+              {/* A6 da 29ª: com o Concluído, e o Agendado tracejado como o cartão. */}
+              {LEGENDA_DA_AGENDA.map(l => (
+                <div key={l.rotulo} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', ...(l.tracejado ? { border: `1.5px dashed ${l.cor}` } : { background: l.cor }) }} />
+                  <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', fontWeight: 600 }}>{l.rotulo}</span>
                 </div>
               ))}
             </div>

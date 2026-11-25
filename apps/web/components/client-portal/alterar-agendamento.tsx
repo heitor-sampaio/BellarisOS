@@ -10,7 +10,7 @@ import { instanteNoFuso } from '@/lib/datetime'
 import { textoDoRemarcado } from '@/lib/clientes/textos-do-app'
 import { cancelarPelaCliente, remarcarPelaCliente, horariosParaRemarcar, quemAtendeNoRemarcar, quemRealizaNoRemarcar, diasLivresParaRemarcar } from '@/actions/portal-agendamentos'
 import { Dica } from '@/components/shared/dica'
-import { useFalaDaRede } from '@/components/client-portal/rede-do-portal'
+import { useFalaDaRede, useNomeDaRede } from '@/components/client-portal/rede-do-portal'
 
 /** O dia no relógio da unidade (F62). */
 const diaNoFuso = (ms: number, fuso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: fuso }).format(new Date(ms))
@@ -61,6 +61,8 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
   const router = useRouter()
   // CA1: o NOME da rede no lugar de "clínica".
   const fala = useFalaDaRede()
+  // D13 (CA1): o motivo se conta à rede, pelo nome.
+  const nomeDaRede = useNomeDaRede()
   // A unidade do horário novo (A15): a do agendamento, até a cliente escolher outra.
   const [unidade, setUnidade] = useState(unidadeInicial ?? unidadeDoAgendamento)
   const escolhida = unidades.find(u => u.id === unidade) ?? null
@@ -353,7 +355,7 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>
             Motivo (opcional)
-            <input className="field" value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Conte à equipe o porquê, se quiser" />
+            <input className="field" value={motivo} onChange={e => setMotivo(e.target.value)} placeholder={`Conte ${nomeDaRede ? `a ${nomeDaRede}` : 'à rede'} o porquê, se quiser`} />
           </label>
           <div style={{ display: 'flex', gap: 8 }}>
             <button type="button" className="btn-secondary" disabled={enviando} onClick={() => setModo('nada')}>Voltar</button>

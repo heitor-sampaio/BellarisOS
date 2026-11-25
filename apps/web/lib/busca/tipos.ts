@@ -29,6 +29,15 @@ export interface ResultadoDaBusca {
   acoes?:    AcaoDaBusca[]
   /** Só o cliente: a ficha está ARQUIVADA (A19) — a linha oferece "Reativar". */
   arquivada?: boolean
+  /** Só o agendamento: o dia dele no fuso da unidade (AAAA-MM-DD) e a unidade. */
+  dia?:       string | null
+  unidadeId?: string | null
+  /**
+   * Só o agendamento: quem achou não abre a tela do atendimento (sem o
+   * Atendimento em Ver) — ele abre na agenda, no dia (D5 da 29ª; AL-01).
+   * Decide o servidor (`buscarTudo`).
+   */
+  abreNaAgenda?: boolean
 }
 
 export interface GrupoDaBusca {

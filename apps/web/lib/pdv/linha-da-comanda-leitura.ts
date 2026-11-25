@@ -22,13 +22,20 @@ export async function linhaDaComandaDoPdv(admin: Admin, tenantId: string, comand
       ler(admin.from('product_sales').select('quantity, preco_unitario, price, desconto')
         .eq('id', c.product_sale_id).eq('tenant_id', tenantId).maybeSingle(), 'ler a venda de produto da comanda') as
         Promise<{ quantity: number | null; preco_unitario: number | string | null; price: number | string | null; desconto: number | string | null } | null>,
-      ler(admin.from('product_sale_items').select('id').eq('sale_id', c.product_sale_id).eq('tenant_id', tenantId),
-        'contar os produtos da venda') as Promise<{ id: string }[] | null>,
+      // D9 da 29ª: e o que voltou de cada um (a devolução de parte, PR-08). O valor_devolvido da
+      // venda é a soma do dos itens (`produto_devolver_itens` grava os dois juntos).
+      ler(admin.from('product_sale_items').select('id, devolvidas, valor_devolvido, products(name)').eq('sale_id', c.product_sale_id).eq('tenant_id', tenantId)
+        .order('sort_order'), 'contar os produtos da venda') as
+        Promise<{ id: string; devolvidas: number | null; valor_devolvido: number | string | null; products: { name: string } | null }[] | null>,
     ])
+    const devolvidos = (itens ?? []).filter(i => Number(i.devolvidas ?? 0) > 0)
+      .map(i => `${Number(i.devolvidas)}× ${i.products?.name ?? 'Produto'}`)
+    const valorDevolvido = Math.round((itens ?? []).reduce((s, i) => s + Number(i.valor_devolvido ?? 0) * 100, 0)) / 100
     if (v) venda = {
       tipo: 'PRODUTO', quantidade: Number(v.quantity ?? 1), total: Number(v.price ?? 0), itens: (itens ?? []).length,
       precoUnitario: v.preco_unitario == null ? null : Number(v.preco_unitario),
       desconto: v.desconto == null ? undefined : Number(v.desconto),
+      devolvido: { valor: valorDevolvido, itens: devolvidos.length ? devolvidos.join(' + ') : null },
     }
   } else if (c.procedure_sale_id) {
     const v = await ler(admin.from('procedure_sales').select('quantity, preco_unitario_tabela, price, desconto')

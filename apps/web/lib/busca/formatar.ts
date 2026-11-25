@@ -91,6 +91,9 @@ export function resultadoDaLinha(l: LinhaDaBusca, fuso?: string): ResultadoDaBus
           texto(x.profissional),
           texto(x.unidade),
         ]),
+        // D5 da 29ª: para abrir na agenda, no dia (o do banco, no fuso da unidade).
+        dia: texto(x.dia),
+        unidadeId: texto(x.unidade_id),
       }
     }
 

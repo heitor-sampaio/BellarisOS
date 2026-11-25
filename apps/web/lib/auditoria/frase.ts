@@ -631,6 +631,97 @@ function fraseDoRegistroDa26(r: RegistroDaAuditoria, nomes: NomesDaAuditoria, cl
   return null
 }
 
+/**
+ * "em 26/11/2026, das 14:00 às 16:00" (o mesmo dia) ou "de 26/11/2026 08:00 a
+ * 27/11/2026 18:00", no relógio da unidade; nulo sem as duas pontas.
+ */
+function periodoDoBloqueio(inicio: string | null, fim: string | null, fuso?: string): string | null {
+  if (!inicio || !fim) return null
+  const de = quandoDaAuditoria(inicio, fuso)
+  const ate = quandoDaAuditoria(fim, fuso)
+  const [diaDe, horaDe] = de.split(' ')
+  const [diaAte, horaAte] = ate.split(' ')
+  return diaDe === diaAte ? `em ${diaDe}, das ${horaDe} às ${horaAte}` : `de ${de} a ${ate}`
+}
+
+/**
+ * A16 (plataforma:AD-13): o bloqueio da agenda pelo fato — de quem (ou de qual
+ * sala), o horário e o motivo ("Criou o bloqueio da agenda" não dizia). O
+ * gatilho guarda o início, o fim e o motivo; quem e a sala, desde a migration
+ * `20261205400001` (o nome se lê agora). Sem eles, a frase sai sem o "de quem".
+ */
+function fraseDoBloqueio(r: RegistroDaAuditoria, nomes: NomesDaAuditoria): string | null {
+  const fuso = fusoDoRegistro(r, nomes)
+  if (r.operacao === 'editou') {
+    const partes = r.colunas.map(c => {
+      const nome = nomeDoCampo(c, r.tabela)
+      if (!(c in r.antes) || !(c in r.depois)) return nome
+      const valor = (v: unknown) => {
+        const s = texto(v)
+        if (!s) return '—'
+        return c === 'inicio' || c === 'fim' ? quandoDaAuditoria(s, fuso) : s
+      }
+      return `${nome}: ${valor(r.antes[c])} → ${valor(r.depois[c])}`
+    })
+    return partes.length ? `Editou o bloqueio da agenda (${[...new Set(partes)].join('; ')})` : null
+  }
+  if (r.operacao !== 'criou' && r.operacao !== 'apagou') return null
+  const x = r.operacao === 'apagou' ? r.antes : r.depois
+  const prof = texto(x.professional_id)
+  const sala = texto(x.room_id)
+  const nomeDaSala = sala ? nomes.salas?.[sala] || null : null
+  const deQuem = prof && nomes.membros[prof] ? ` de ${nomes.membros[prof]}` : ''
+  const periodo = periodoDoBloqueio(texto(x.inicio), texto(x.fim), fuso)
+  const motivo = texto(x.motivo)
+  const resto = `${periodo ? ` ${periodo}` : ''}${motivo ? ` (motivo: ${motivo})` : ''}`
+  if (r.operacao === 'criou') return `Bloqueou ${nomeDaSala ? `a sala ${nomeDaSala}` : `a agenda${deQuem}`}${resto}`
+  return `Tirou o bloqueio ${nomeDaSala ? `da sala ${nomeDaSala}` : `da agenda${deQuem}`}${resto}`
+}
+
+/** As unidades pelo nome ("Batel e Savassi"; vazia, "nenhuma"); nulo quando alguma não se lê. */
+function unidadesPeloNome(v: unknown, nomes: NomesDaAuditoria): string | null {
+  if (!Array.isArray(v)) return v === null ? 'nenhuma' : null
+  const ditas = v.map(id => (typeof id === 'string' ? nomes.unidades[id] || null : null))
+  if (ditas.some(d => !d)) return null
+  return ditas.length ? emLista(ditas as string[]) : 'nenhuma'
+}
+
+/** Um valor do membro como a tela o diz (o cargo, a unidade principal, as outras); nulo = não se sabe dizer. */
+function valorDoMembro(c: string, v: unknown, nomes: NomesDaAuditoria): string | null {
+  if (c === 'role_id') return typeof v === 'string' ? nomes.cargosDosMembros?.[v]?.nome || null : null
+  if (c === 'branch_id') return v === null ? 'a rede inteira' : typeof v === 'string' ? nomes.unidades[v] || null : null
+  if (c === 'outras_unidades') return unidadesPeloNome(v, nomes)
+  return null
+}
+
+const NOME_DO_CAMPO_DO_MEMBRO: Record<string, string> = { role_id: 'cargo', branch_id: 'unidade principal', outras_unidades: 'outras unidades' }
+const ORDEM_DO_MEMBRO: readonly string[] = ['role_id', 'branch_id', 'outras_unidades']
+
+/**
+ * A17 (plataforma:AD-13 e AD-21): o cargo e as unidades do membro dizem o de →
+ * para ("cargo: Recepção → Admin da rede; unidade principal: Moinhos → a rede
+ * inteira"); a promoção a Admin da rede é o fato ("Promoveu Fulana a Admin da
+ * rede"). As outras unidades vão na auditoria desde a migration
+ * `20261205400001`; o registro de antes diz só o nome do campo.
+ */
+function fraseDoMembroEditado(r: RegistroDaAuditoria, nomes: NomesDaAuditoria): string | null {
+  if (r.tabela !== 'users' || r.operacao !== 'editou' || !r.colunas.some(c => ORDEM_DO_MEMBRO.includes(c))) return null
+  const colunas = [...ORDEM_DO_MEMBRO.filter(c => r.colunas.includes(c)), ...r.colunas.filter(c => !ORDEM_DO_MEMBRO.includes(c) && !DERIVADAS.has(c))]
+  const partes = colunas.map(c => {
+    if (!ORDEM_DO_MEMBRO.includes(c) || !(c in r.antes) || !(c in r.depois)) return { nome: nomeDoCampo(c, r.tabela), dePara: false }
+    const de = valorDoMembro(c, r.antes[c], nomes)
+    const para = valorDoMembro(c, r.depois[c], nomes)
+    if (de == null || para == null || de === para) return { nome: nomeDoCampo(c, r.tabela), dePara: false }
+    return { nome: `${NOME_DO_CAMPO_DO_MEMBRO[c]}: ${de} → ${para}`, dePara: true }
+  })
+  const quem = nomeDoRegistro(r, nomes) ?? 'um membro da equipe'
+  const campos = partes.some(p => p.dePara) ? [...new Set(partes.map(p => p.nome))].join('; ') : camposMudados(r.colunas, r.tabela)
+  const cargoDe = typeof r.antes.role_id === 'string' ? nomes.cargosDosMembros?.[r.antes.role_id] : undefined
+  const cargoPara = typeof r.depois.role_id === 'string' ? nomes.cargosDosMembros?.[r.depois.role_id] : undefined
+  if (cargoPara?.adminDaRede && cargoDe && !cargoDe.adminDaRede) return `Promoveu ${quem} a Admin da rede (${campos})`
+  return `Editou o membro da equipe ${quem}${campos ? ` (${campos})` : ''}`
+}
+
 /** "O quê": a frase da linha, sem quem e sem quando. */
 export function fraseDaAuditoria(r: RegistroDaAuditoria, nomes: NomesDaAuditoria): string {
   const cliente = r.client_id ? nomes.clientes[r.client_id] ?? null : null
@@ -644,6 +735,12 @@ export function fraseDaAuditoria(r: RegistroDaAuditoria, nomes: NomesDaAuditoria
     const quem = nomeDoRegistro(r, nomes) ?? 'um membro da equipe'
     const resto = camposMudados(r.colunas.filter(c => c !== 'is_active'))
     return `${r.depois.is_active ? 'Reativou' : 'Desativou'} ${quem}${resto ? ` (e editou: ${resto})` : ''}`
+  }
+  const doMembro = fraseDoMembroEditado(r, nomes)
+  if (doMembro) return doMembro
+  if (r.tabela === 'agenda_bloqueios') {
+    const bloqueio = fraseDoBloqueio(r, nomes)
+    if (bloqueio) return bloqueio
   }
   if (r.tabela === 'stock_movements') {
     const movimento = fraseDoMovimento(r, nomes)
@@ -1320,9 +1417,13 @@ function fraseDaDespesaEmParcelas(linhas: readonly RegistroDaAuditoria[]): strin
 /** A frase de uma gravação inteira. */
 export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria): string {
   // A baixa sozinha de um lançamento (D7 da 16ª): "Recebeu a parcela 1/4 (R$ 200,00, Pix)".
+  // D10 (AD-13/AD-16; decisão do Claude, 25/11): também a receita CRIADA já paga, sozinha
+  // na gravação (o recebimento de quem atende sem comissão) — era "Criou a receita".
   if (linhas.length === 1) {
     const so = linhas[0]!
-    const baixa = so.tabela === 'financial_transactions' && so.operacao === 'editou' ? fatoDaGravacao(linhas, nomes) : null
+    const recebidaAoCriar = so.operacao === 'criou' && texto(so.depois.type) === 'INCOME' && !!so.depois.paid_at
+      && texto(so.depois.category) !== 'Estorno'
+    const baixa = so.tabela === 'financial_transactions' && (so.operacao === 'editou' || recebidaAoCriar) ? fatoDaGravacao(linhas, nomes) : null
     return baixa?.frase ?? fraseDaAuditoria(so, nomes)
   }
 

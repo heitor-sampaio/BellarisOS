@@ -15,6 +15,7 @@ import { importarContatos, andamentoDaImportacao, cruzamentoDaImportacao, type A
 import type { ImportacaoAnterior } from '@/lib/importacao/historico'
 import { avisoSemClienteDesde, linhasQueJuntamNaPlanilha, textoDoBotaoDeImportar, colunasQueNaoEntram, colunasQueAOportunidadeLeva, avisoDasColunasDaOportunidade, ondeEstaoOsImportados, placarDaImportacao, rotuloDaEtapaDaImportacao } from '@/lib/importacao/o-que-entra'
 import { abrirABusca } from '@/lib/busca/abrir'
+import { FORMATO_DO_PACOTE_DE_ANTES, pacoteDeAntesLegivel } from '@/lib/importacao/pacote-legivel'
 import { ehPortalDaRede, rotaClientes, rotaOportunidades } from '@/lib/rotas'
 import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
@@ -167,6 +168,7 @@ export function ImportadorDeContatos(p: Props) {
       }).filter(l => l.avisos.length)
     : validadas.filter(l => !l.erros.length && (l.avisos ?? []).length)
   const nomeDe = (l: LinhaValidada) => (l.dados.name as string | undefined) || 'sem nome'
+  const nomeDoProcedimento = (id: string) => p.procedimentos.find(x => x.id === id)?.name ?? 'Procedimento'
 
   // O que vai ser FUNDIDO (A15 da 5ª simulação): quem cada linha pronta
   // encontra na rede, pela regra da importação — antes só o resultado final
@@ -183,6 +185,7 @@ export function ImportadorDeContatos(p: Props) {
       phone: (l.dados.phone as string | undefined) ?? undefined,
       document: (l.dados.document as string | undefined) ?? undefined,
       email: (l.dados.email as string | undefined) ?? undefined,
+      name: (l.dados.name as string | undefined) ?? undefined,
     }))
     cruzamentoDaImportacao({ destino, linhas })
       .then(r => { if (vivo && 'itens' in r) setCruzamento({ chave: chaveDoCruzamento, itens: r.itens }) })
@@ -369,8 +372,9 @@ export function ImportadorDeContatos(p: Props) {
           {/* A7 da 10ª: o formato do pacote, antes da prévia (o aviso só vinha depois, na ficha). */}
           {mapa.includes('pacote') && (
             <p data-formato-do-pacote style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
-              Pacote de antes: <strong style={{ color: 'var(--text)' }}>procedimento; total; usadas</strong> e, se tiver, o valor de referência e a
-              validade — ex.: “Limpeza de pele; 10; 7; R$ 1.500,00; 31/12/2027”. Mais de um na mesma célula, separados por “|”. Sem o
+              {/* A22 da 29ª (IM-22): o formato com as cinco partes — as duas últimas, opcionais. */}
+              Pacote de antes: <strong style={{ color: 'var(--text)' }}>{FORMATO_DO_PACOTE_DE_ANTES}</strong> (o valor de referência e a
+              validade, se tiver) — ex.: “Limpeza de pele; 10; 7; R$ 1.500,00; 31/12/2027”. Mais de um na mesma célula, separados por “|”. Sem o
               valor de referência, as sessões trazidas não entram na receita dos atendimentos, e a comissão de execução em percentual é R$ 0 (a de R$ fixo por sessão é paga).
             </p>
           )}
@@ -460,6 +464,14 @@ export function ImportadorDeContatos(p: Props) {
                           pacotes.length ? plural(pacotes.length, 'pacote de antes', 'pacotes de antes') : null,
                         ].filter(Boolean).map(t => ` · ${t}`).join('')}
                         <span style={{ color: 'var(--text-faint)' }}> (linha {l.numero})</span>
+                        {/* A22 da 29ª (IM-22): o que foi lido de cada pacote, com a validade e o valor. */}
+                        {pacotes.length > 0 && (
+                          <ul data-pacotes-da-amostra style={{ margin: '2px 0 0', paddingLeft: 16, color: 'var(--text-muted)' }}>
+                            {pacotes.map((pc, i) => (
+                              <li key={i}>{pacoteDeAntesLegivel(pc, nomeDoProcedimento(pc.procedimentoId))}</li>
+                            ))}
+                          </ul>
+                        )}
                       </li>
                     )
                   })}

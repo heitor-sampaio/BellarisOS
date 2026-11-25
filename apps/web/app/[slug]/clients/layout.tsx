@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
-import { subDays } from 'date-fns'
+import { ehNovaNaLista, type FichaDoSelo } from '@/lib/clientes/selo-novo'
 import { getTenantContext, can, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ClientsSidebar } from '@/components/branch/clients-sidebar'
@@ -48,15 +48,16 @@ export default async function ClientsLayout({
   // A última visita na REDE, agregada no banco.
   const lastVisitMap = new Map(ultimasVisitas.map(v => [v.client_id, v.ultima]))
 
-  const thirtyDaysAgo = subDays(new Date(), 30)
+  const agora = new Date()
   const clients = (rawClients ?? []).map(c => ({
     id:        c.id as string,
     name:      c.name as string,
     phone:     c.phone as string,
     tags:      (c.tags ?? []) as string[],
     isActive:  c.is_active as boolean,
-    // F35: a importada com "cliente desde" de antes não é nova.
-    isNew:     new Date((c as { cliente_desde?: string | null }).cliente_desde ?? c.created_at) >= thirtyDaysAgo,
+    // F35 e D2 da 29ª: a importada com "cliente desde" ou a última visita de
+    // antes não é nova (IM-20, IM-21) — a régua dos dois portais.
+    isNew:     ehNovaNaLista(c as FichaDoSelo, agora),
     lastVisit: lastVisitMap.get(c.id) ?? null,
   }))
 

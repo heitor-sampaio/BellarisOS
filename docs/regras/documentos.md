@@ -278,6 +278,15 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   - ⚠️ **O foco volta ao texto na HORA** (`view.focus()` na barra): o `focus()`
     do Tiptap espera o próximo quadro, e o que se digitava logo depois de
     escolher numa lista ia para a própria lista.
+- **O assinado mostra o nome com que a pessoa ASSINOU** (D1 da 29ª, decisão
+  do Claude, 25/11; "assinado, não muda" e o princípio 3): corrigido o nome
+  da ficha depois, a linha de assinatura da tela segue com
+  `document_signatures.signer_name` — o mesmo do PDF e do `/verificar` (as
+  iniciais) —, e o corpo é o conteúdo gravado (o assinado não se monta de
+  novo, `garantirRenderizado`). O cabeçalho da tela mostra o nome de hoje e,
+  quando difere, "· assinado como <nome>" (`[data-assinado-como]`,
+  `nomesDaAssinatura`, `lib/documentos/nome-de-quem-assinou.ts`). A assinar,
+  vale o nome de hoje. Prova: `tests/documentos-nome-de-quem-assinou.test.ts`.
 - **Versão é retrato**: `documento_modelo_salvar` grava modelo + versão numa
   transação, e só abre versão nova quando o CONTEÚDO muda. Versão não se
   altera (gatilho); modelo não se apaga (desativa).

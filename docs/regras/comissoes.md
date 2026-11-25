@@ -521,6 +521,16 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     (`regraDoLancamento`, `lib/comissoes/extrato-texto.ts`; o extrato é
     `comissoes_extrato_com_regra` — o `comissoes_extrato_com_base` ficou sem
     chamador no app). As linhas de antes dizem só a regra.
+  - **A linha de cada produto diz o produto e a regra dele** (A13 da 29ª
+    simulação, 2026-11-25; princípio 3 — decisão do Claude no texto): na
+    venda com regra por produto, o extrato dizia "Venda de produto: 2× Sérum +
+    1× Protetor" em toda linha e "10% — do produto" sem dizer sobre o quê.
+    Agora a linha do item diz "Venda de produto: 2× Sérum" e "10% do vendido —
+    do produto" ou "R$ 5,00 por unidade × 2 — do produto"; o CSV, o mesmo
+    (`itemDoProduto` em `extratoDasComissoes`, lido de `commission_lines.item`
+    → `product_sale_items.sort_order`; `regraDoLancamento`). A linha da regra
+    sobre o total (item 0) fica como era. Prova:
+    `tests/vendas-o-valor-que-vale-na-tela.test.ts`.
   - **O "De venda" do pacote diz que vence** (A5 da 12ª simulação,
     2026-11-11; princípio 3: o pacote com 5% não dizia que valia no lugar do
     3% da Paula e do 8% da Rita): "Vale no lugar da comissão de venda de cada

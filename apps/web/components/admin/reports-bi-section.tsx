@@ -19,7 +19,7 @@ import { getEntradasDeEstoque } from '@/lib/metrics/contadora'
 import { getQuemAtende } from '@/lib/metrics/relatorio'
 import {
   resolvePeriod, getRetention, getNewClientsSeries,
-  getSeries, getTicketMedio, getResultadoDoEstoque, getSeriesDoResultado,
+  getSeries, getTicketMedio, getResultadoDoEstoque, getSeriesDoResultado, getTaxasDoPeriodo,
 } from '@/lib/metrics'
 import { painelComercial } from '@/lib/metrics/painel-comercial'
 import { funilLembrado } from '@/lib/crm/funil-lembrado-no-servidor'
@@ -387,6 +387,9 @@ export async function ReportsBiSection({
         // A31 da 10ª: a compra (as entradas de estoque, com fornecedor e nota) fica fora do
         // resultado, e a contadora não a via (não abre o Estoque).
         comprasNoEstoque={!needInstall ? undefined : semPessoa ? { linhas: [], total: 0 } : await getEntradasDeEstoque({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: periodInfo.fullTo })}
+        // A14 da 29ª (princípio 4): as vendas no cartão sem taxa cadastrada (vale 0%), o aviso do DRE.
+        // Com tag, não sai: a conta das formas sem taxa não tem o filtro, e o aviso não bateria com o DRE.
+        vendasSemTaxa={needInstall && !semPessoa ? (await getTaxasDoPeriodo({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate })).total.vendasSemTaxa : undefined}
         quemAtende={quemAtende}
         tagsDaRede={tagsDaRede}
         tagsEscolhidas={tags}

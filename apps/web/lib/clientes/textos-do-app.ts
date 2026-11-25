@@ -173,3 +173,14 @@ export function documentoDoPerfil(c: {
   if (numero) return { rotulo: c.documento_tipo === 'RNE' ? 'RNE' : 'Passaporte', valor: numero }
   return { rotulo: 'CPF', valor: '—' }
 }
+
+/**
+ * O cartão do pré-pago na home do app (A19; princípio 7): "3 já pagos · 1 usado · 2
+ * para agendar" — "2 já pagos · 1 para agendar" não dizia quantos já foram usados.
+ * `paraAgendar` é o texto de `textoDoParaAgendar` (lib/pre-pago/contagem).
+ */
+export function textoDoPrePagoNoApp(pagos: number, usados: number, paraAgendar: string): string {
+  const pagosTexto = `${pagos} já pago${pagos === 1 ? '' : 's'}`
+  const usadosTexto = usados > 0 ? ` · ${usados} usado${usados === 1 ? '' : 's'}` : ''
+  return `${pagosTexto}${usadosTexto} · ${paraAgendar}`
+}

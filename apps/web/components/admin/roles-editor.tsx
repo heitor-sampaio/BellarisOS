@@ -16,7 +16,7 @@ import {
 import {
   MODULE_GROUPS, LEVEL_COPY, notaDoResumoDaRede,
   NETWORK_ONLY, notaDeAbrangencia, SO_NA_REDE_NOTE, quemVendeNoResumo, copilotNoResumo, textoDoQueFaltaNoCargo, documentosNoResumo,
-  tratamentosNoResumo, conclusaoNoResumo, vistasPessoaisNoResumo,
+  tratamentosNoResumo, conclusaoNoResumo, vistasPessoaisNoResumo, prontuarioSemClientesNoResumo,
 } from '@/lib/permissions-copy'
 import { ADMIN_MENU, BRANCH_MENU, menuLabelsFor, soLeriaAsConfiguracoes } from '@/lib/menu'
 import { rotuloDasAbasAlcancadas, ABAS_DA_REDE, ABAS_DA_UNIDADE } from '@/lib/configuracoes/abas'
@@ -1019,6 +1019,10 @@ function MenuPreview({ levels, reportTabs, foraDoPlano }: { levels: Levels; repo
   const sobreDocumentos = [...network, ...branch].includes('Documentos') ? documentosNoResumo(levels) : null
   // A2 da 22ª: de onde vem Tratamentos, como Documentos.
   const sobreTratamentos = [...network, ...branch].includes('Tratamentos') ? tratamentosNoResumo(levels) : null
+  // A1 (CG-16, princípio 3): fora do plano da rede, o Copilot não existe — o resumo não o promete.
+  const sobreCopilot = foraDoPlano.includes('copilot') ? null : copilotNoResumo(levels.copilot)
+  // A2: o Prontuário sem Clientes — por onde ela chega à cliente.
+  const sobreProntuario = foraDoPlano.includes('medical_records') ? null : prontuarioSemClientesNoResumo(levels)
 
   return (
     <div style={{
@@ -1052,9 +1056,14 @@ function MenuPreview({ levels, reportTabs, foraDoPlano }: { levels: Levels; repo
       {/* D1 da 12ª: o “Vender” da ficha é de quem recebe — o resumo diz, para
           o comercial não esperar um botão que o cargo não abre (princípio 3). */}
       {/* A17 da 17ª: o Copilot não é entrada de menu — o resumo diz à parte. */}
-      {copilotNoResumo(levels.copilot) && (
+      {sobreCopilot && (
         <p data-resumo-copilot style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
-          {copilotNoResumo(levels.copilot)}
+          {sobreCopilot}
+        </p>
+      )}
+      {sobreProntuario && (
+        <p data-resumo-prontuario-sem-clientes style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
+          {sobreProntuario}
         </p>
       )}
       {/* A2 da 23ª: quem inicia e conclui, e o que pede o Prontuário. */}

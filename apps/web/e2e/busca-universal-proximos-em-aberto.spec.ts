@@ -57,3 +57,13 @@ test('D17: a busca acha só os agendamentos em aberto de hoje em diante — a fa
   expect(achados).not.toContain(ids['Concluido hoje'])
   expect(achados).not.toContain(ids['Cancelado amanha'])
 })
+
+test('D5: o agendamento achado traz o dia no fuso da unidade e a unidade — a agenda abre nele, para quem não tem o Atendimento', async () => {
+  const { data, error } = await db().rpc('busca_universal', {
+    p_tenant: rede.tenantId, p_termo: `Prox Confirmado`, p_tipos: ['agendamento'], p_limite: 20,
+  })
+  expect(error).toBeNull()
+  const achado = ((data ?? []) as { tipo: string; id: string; extra: Record<string, unknown> | null }[])
+    .find(r => r.tipo === 'agendamento' && r.id === ids['Confirmado amanha'])
+  expect(achado?.extra).toMatchObject({ dia: amanha(), unidade_id: rede.branchId })
+})

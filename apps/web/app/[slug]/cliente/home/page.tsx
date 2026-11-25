@@ -28,7 +28,7 @@ import { validoAteDaProposta, avisoDaPropostaVencida } from '@/lib/plano-de-trat
 import { textoDoIndiqueUmaAmiga } from '@/lib/fidelidade/indicacao'
 import { nomeDoPlanoNoApp, descontoDoPlanoNoApp } from '@/lib/plano-de-tratamento/nome'
 import { combinadoDoPlano, totalComOCombinado } from '@/lib/plano-de-tratamento/desconto-combinado'
-import { textoDoParaAvaliar } from '@/lib/clientes/textos-do-app'
+import { textoDoParaAvaliar, textoDoPrePagoNoApp } from '@/lib/clientes/textos-do-app'
 import { Dica } from '@/components/shared/dica'
 import { NotaDoFuso } from '@/components/shared/fuso'
 import { relogioForaDeBrasilia } from '@/lib/unidades/hora-da-unidade'
@@ -206,7 +206,9 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
 
   const prePagos = ((prePagosRes ?? []) as unknown as {
     id: string; quantity: number; expires_at: string | null; procedures: { name: string } | null; procedure_sale_units: { status: string; appointment_id: string | null }[]
-  }[]).map(v => ({ ...v, contagem: contagemDoPago((v.procedure_sale_units ?? []).map(u => ({ status: u.status, agendada: !!u.appointment_id }))) }))
+  }[]).map(v => ({ ...v, contagem: contagemDoPago((v.procedure_sale_units ?? []).map(u => ({ status: u.status, agendada: !!u.appointment_id }))),
+    // A19: quantos já foram usados (o cartão dizia só os pagos e os para agendar).
+    usadas: (v.procedure_sale_units ?? []).filter(u => u.status === 'USADA').length }))
     // A agendada não está "para agendar" (A27), mas o cartão fica enquanto houver alguma em aberto.
     .filter(v => v.contagem.paraAgendar + v.contagem.agendadas > 0)
 
@@ -541,7 +543,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                       {v.procedures?.name ?? 'Procedimento'}
                     </p>
                     <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                      {v.quantity} já pago{v.quantity > 1 ? 's' : ''} · {textoDoParaAgendar(v.contagem)}
+                      {textoDoPrePagoNoApp(v.quantity, v.usadas, textoDoParaAgendar(v.contagem))}
                       {v.expires_at ? ` · válido até ${new Date(v.expires_at).toLocaleDateString('pt-BR', { timeZone: fuso })}` : ''}
                     </p>
                   </div>

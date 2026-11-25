@@ -183,12 +183,13 @@ export function getCachedNetworkClients(tenantId: string) {
       // A cliente é da REDE (H16): é esta a lista dos dois portais (CL3).
       return lerTodas((de, ate) => admin
         .from('clients')
-        .select('id, name, phone, tags, is_active, created_at, cliente_desde')
+        // A visita de antes vai junto: ela também tira o selo "Novo" (IM-21, D2 da 29ª).
+        .select('id, name, phone, tags, is_active, created_at, cliente_desde, ultima_visita_antes')
         .eq('tenant_id', tenantId)
         .order('name').order('id')
         .range(de, ate), 'carregar os clientes')
     },
-    [`network-clients-v3-${tenantId}`],
+    [`network-clients-v4-${tenantId}`],
     { revalidate: 120, tags: [`clients:${tenantId}`] },
   )()
 }

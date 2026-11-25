@@ -107,3 +107,34 @@ Ninguém mexeu. A pergunta: o "no máximo, avisar" vale para estes também?
 
 As 10 perguntas que tinham ficado foram decididas pelo Claude, com a regra, e estão no catálogo como "Decidida pelo
 Claude, 25/11 (o Heitor revisa)". Duas delas viraram sugestão, na lista `docs/sugestoes-de-funcionalidades.md`.
+
+## 6. A 29ª simulação (25/11)
+
+Nas correções da 29ª, nenhum teste existente foi alterado nem apagado. Ficaram para você cinco propostas, que mudariam
+testes cuja regra é só decisão do Claude:
+
+1. **Importação, o mesmo telefone sem CPF e outro nome.** Hoje a prévia já vem marcada para juntar (ou completar a
+   ficha) quando duas pessoas sem CPF dividem o telefone, mesmo com nomes diferentes (IM-13, IM-15). Proposta: vir
+   desmarcada ("Mesmo telefone de <nome>") e só marcar quando o nome também casa (princípio 4, não chutar). Testes:
+   `e2e/importacao-previa-cruzamento.spec.ts`, casos "cli-07 e A15…" e "A14: na ficha, o mesmo telefone com outro
+   nome…". A causa do caso da 29ª (a linha achava a ficha mais antiga do telefone, mesmo havendo a de mesmo nome) foi
+   corrigida sem mexer nesses testes.
+2. **"A equipe" no app da cliente.** Onde a rede fala com a cliente, o app agora diz o nome da rede; onde é a equipe que
+   age ("a equipe ainda vai registrar o atendimento"), fica "a equipe", como diz `docs/regras/crm-inbox.md` (decisão do
+   Claude). Três textos que testes exigem ficaram como estão; com o nome da rede, mudariam:
+   - "A equipe já foi avisada. O pagamento é combinado na unidade…" (`tests/atritos-da-22-montar-crm-app.test.ts:105-113`);
+   - a dica "Esta parte passa por liberação da equipe…" no pedido de dados (`e2e/dicas-portal-da-cliente.spec.ts:63-73`),
+     enquanto o parágrafo do mesmo cartão já diz "da liberação de <rede>";
+   - "Confira as respostas que a equipe preencheu" (`e2e/ficha-pre-atendimento.spec.ts:771`).
+3. **A comissão de venda na linha da Equipe** diz "Venda: a do pacote, produto ou rede", sem dizer quanto. Proposta:
+   "Venda: a do pacote ou produto vendido (sem ela, a da rede: X%)". Testes: `tests/atritos-da-19-cadastros.test.ts:62`,
+   `tests/atritos-da-24-cargos-atendimento-app.test.ts:80`.
+4. **A linha da LGPD no app.** O "Meus dados" ganhou uma linha: "Para apagar os seus dados ou retirar o seu
+   consentimento, fale com <rede>." Sem botão: a sua decisão da 8ª ("mantem do jeito que tá") segue valendo. Confira se
+   a linha cabe nela.
+5. **O CSV de Relatórios → Vendas e o crédito interno.** A tela diz que o crédito interno vendido está fora do "Total
+   vendido"; o CSV traz a linha dele sem dizer, e quem soma a coluna acha o crédito dentro (A21 da 29ª, VE-05 com o
+   princípio 3). Proposta: uma linha no fim, "Fora do total: 1 crédito interno vendido, R$ 300,00 — a venda é o que for
+   pago com ele." (ou a marca na descrição da linha). Os testes exigem o CSV sem ela:
+   `e2e/relatorio-vendas-comandas.spec.ts:117` (três linhas exatas) e `tests/relatorio-vendas-comandas.test.ts:36` (a
+   descrição "Crédito interno"). A correção foi feita, quebrou o primeiro na suíte completa e foi desfeita.

@@ -8,7 +8,22 @@ export type AbaDaFicha = 'visao' | 'historico' | 'oportunidades' | 'planejamento
 
 const ABAS: readonly AbaDaFicha[] = ['visao', 'historico', 'oportunidades', 'planejamento', 'fichas', 'financeiro', 'documentos', 'dados']
 
+/**
+ * O NOME da aba também abre a aba (A8 da 29ª): a chave do Prontuário é
+ * "fichas" (os links velhos com `?aba=fichas` seguem valendo), e quem escreve
+ * `?aba=prontuario` quer o Prontuário — caía na Visão geral, calado.
+ */
+const APELIDOS: Record<string, AbaDaFicha> = { prontuario: 'fichas' }
+
+const semAcento = (v: string) => v.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
+
+/** A chave pedida pela URL, com os apelidos já trocados (null sem pedido). */
+export function chaveDaAbaPedida(pedida: string | null | undefined): string | null {
+  if (!pedida?.trim()) return null
+  return APELIDOS[semAcento(pedida)] ?? pedida
+}
+
 export function abaDaFicha(pedida: string | string[] | undefined): AbaDaFicha {
-  const aba = Array.isArray(pedida) ? pedida[0] : pedida
+  const aba = chaveDaAbaPedida(Array.isArray(pedida) ? pedida[0] : pedida)
   return ABAS.includes(aba as AbaDaFicha) ? (aba as AbaDaFicha) : 'visao'
 }

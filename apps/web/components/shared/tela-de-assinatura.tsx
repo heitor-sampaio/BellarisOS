@@ -14,6 +14,7 @@ import { assinarNaTela, assinarJuntosNaTela, marcarAssinadoEmPapel, montarDocume
 import { AssinarJuntos } from '@/components/shared/assinar-juntos'
 import { assinarNoPortal } from '@/actions/documentos-portal'
 import { nomeParaSaudar } from '@/lib/saudacao'
+import { nomesDaAssinatura } from '@/lib/documentos/nome-de-quem-assinou'
 import { useFuso } from '@/components/shared/fuso'
 import { textoDeQuemCompletaOCadastro } from '@/lib/equipe/textos-de-quem-pode'
 
@@ -139,6 +140,8 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, podeC
 
   const aberto = doc.status === 'PENDENTE'
   const assinante = doc.cliente.assinante ?? doc.cliente.nome
+  // D1 da 29ª: assinado, a linha é o nome com que assinou (o do PDF e do /verificar).
+  const nomes = nomesDaAssinatura({ assinanteDeHoje: assinante, assinatura: doc.assinatura })
   const textoDoAceite = `Eu, ${assinante}, li e concordo com este documento.`
   const faltaParaAssinar = [
     ...(aceite ? [] : ['marcar que leu e concorda']),
@@ -197,7 +200,7 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, podeC
           documento={arvore}
           imagens={doc.imagens}
           assinatura={doc.assinatura?.png ?? (modo === 'cliente' ? assinatura : null)}
-          nomeDoAssinante={assinante}
+          nomeDoAssinante={nomes.linha}
         />
       )}
       {!arvore && pdf && <VisualizadorDePdf bytes={pdf} />}
@@ -306,6 +309,7 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, podeC
             {rotaDoCliente
               ? <Link href={rotaDoCliente} style={{ color: 'var(--brand)', fontWeight: 'var(--weight-bold)' }}>{doc.cliente.nome}</Link>
               : doc.cliente.nome}
+            {nomes.assinadoComo && <span data-assinado-como> · assinado como {nomes.assinadoComo}</span>}
           </p>
         </div>
       </div>

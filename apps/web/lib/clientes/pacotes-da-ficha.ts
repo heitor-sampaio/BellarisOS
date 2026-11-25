@@ -50,3 +50,14 @@ export function pacoteDaFicha(pkg: PacoteLido): ProfilePackage {
     ...camposDoPacoteDeFora(pkg),
   }
 }
+
+/**
+ * O que o cartão do pacote VENCIDO explica (A24 da 29ª simulação, o princípio
+ * 7 — só texto): o que é e o que se pode fazer. O "Cancelar pacote" é a conta
+ * de sempre (vendas-financeiro:PA-16), oferecida porque a rede escolheu
+ * "Pode ser cancelado, com a devolução" (PA-21).
+ */
+export const SOBRE_O_PACOTE_VENCIDO =
+  'O pacote passou da validade: ele e as sessões que sobraram ficam aqui, fora do Tratamento em andamento. ' +
+  'A rede deixa cancelar o pacote vencido (Configurações → Geral → Pacote vencido): o “Cancelar pacote” mostra a conta antes de confirmar — ' +
+  'o usado, o pago e o que volta à cliente, se houver; sem nada a devolver, ele só encerra o pacote. Deixar como está também vale: o pacote segue na ficha, vencido.'

@@ -356,6 +356,8 @@ async function gravarCliente(
   if (!existente && !naoCompletarPeloTelefone) {
     const { data: id, error } = await admin.rpc('cliente_por_telefone', {
       p_tenant: p.tenant_id, p_digitos: digitos as string, p_sem_cpf: true,
+      // Duas fichas sem CPF no telefone: vale a de mesmo nome; sem ela, a mais antiga (D4 da 29ª).
+      p_nome: (dados.name as string | undefined) ?? null,
     })
     if (error) throw new Error(`Procurar o cliente pelo telefone: ${error.message}`)
     if (id) existente = await ler(admin.from('clients').select('*').eq('id', id as string).maybeSingle(), 'buscar o cliente')

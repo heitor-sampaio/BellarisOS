@@ -148,6 +148,10 @@ export function DesativarMembro({ membroId, nome, redirectPath, atende = true }:
             <p style={texto}>
               <strong style={{ color: 'var(--text)' }}>{nome}</strong> não entra mais no sistema{atende ? ', e sai da agenda' : ''}. Dá para reativar depois.
             </p>
+            {/* A11 (princípio 3): a comissão não se repassa — fica no nome da pessoa, a pagar, e a linha diz onde se vê. */}
+            <p data-comissao-em-aberto style={texto}>
+              A comissão em aberto continua no nome de {nome}, a pagar: aparece em Financeiro → Comissões.
+            </p>
 
             {!dados && !erroCarga && <p style={texto}>Conferindo o que fica com {nome}…</p>}
             {erroCarga && <p role="alert" style={{ ...texto, color: 'var(--danger)' }}>{erroCarga}</p>}

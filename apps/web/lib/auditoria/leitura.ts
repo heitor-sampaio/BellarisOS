@@ -209,7 +209,13 @@ async function nomesDaAuditoria(ctx: TenantContext, registros: readonly Registro
   const membros = [...new Set([
     ...registros.filter(r => r.tabela === 'users' && r.registro_id && UUID.test(r.registro_id)).map(r => r.registro_id!),
     ...registros.filter(r => r.tabela === 'appointments').map(r => doRegistro(r, 'professional_id')).filter((v): v is string => !!v),
+    // A16: de quem é o bloqueio da agenda ("Bloqueou a agenda de Dra. Paula …").
+    ...registros.filter(r => r.tabela === 'agenda_bloqueios').map(r => doRegistro(r, 'professional_id')).filter((v): v is string => !!v),
   ])]
+  // A16: a sala do bloqueio; A17: o cargo do membro editado (o de → para e o "Promoveu").
+  const salas = [...new Set(registros.filter(r => r.tabela === 'agenda_bloqueios').map(r => doRegistro(r, 'room_id')).filter((v): v is string => !!v))]
+  const cargosDeMembro = [...new Set(registros.filter(r => r.tabela === 'users')
+    .flatMap(r => [r.antes?.role_id, r.depois?.role_id]).filter((v): v is string => typeof v === 'string' && UUID.test(v)))]
   const produtos = [...new Set(registros.filter(r => r.tabela === 'stock_movements').map(r => doRegistro(r, 'product_id')).filter((v): v is string => !!v))]
   // A7 da 21ª: a aba de relatório também diz de qual cargo é (a auditoria não guarda o `role_id` dela).
   const cargosDaPermissao = new Map<string, string>()
@@ -252,7 +258,17 @@ async function nomesDaAuditoria(ctx: TenantContext, registros: readonly Registro
     tipo: l.type, valor: l.amount === null ? null : Number(l.amount), forma: l.payment_method,
     parcela: l.parcela_numero, de: l.parcela_total, agendamento: !!l.appointment_id, vezes: l.cartao_vezes,
   }]))
-  const [extras, da20, anexosEDevolucoes] = await Promise.all([nomesDa17(ctx, registros), nomesDa20(ctx, registros), nomesDosAnexosEDevolucoes(ctx, registros)])
+  const [extras, da20, anexosEDevolucoes, sl, cm] = await Promise.all([
+    nomesDa17(ctx, registros), nomesDa20(ctx, registros), nomesDosAnexosEDevolucoes(ctx, registros),
+    salas.length
+      ? ler(admin.from('rooms').select('id, name, branches!inner(tenant_id)').eq('branches.tenant_id', ctx.tenantId!).in('id', salas), 'ler as salas da auditoria')
+      : Promise.resolve([]),
+    cargosDeMembro.length
+      ? ler(admin.from('tenant_roles').select('id, label, key, is_system').eq('tenant_id', ctx.tenantId!).in('id', cargosDeMembro), 'ler os cargos dos membros da auditoria')
+      : Promise.resolve([]),
+  ])
+  const cargosDosMembros = Object.fromEntries(((cm ?? []) as { id: string; label: string | null; key: string | null; is_system: boolean | null }[])
+    .filter(x => x.label).map(x => [x.id, { nome: x.label!, adminDaRede: x.key === 'NETWORK_ADMIN' && x.is_system === true }]))
   const [c, m, u, p, cg] = await Promise.all([
     clientes.length
       ? ler(admin.from('clients').select('id, name').eq('tenant_id', ctx.tenantId!).in('id', clientes), 'ler os nomes das clientes')
@@ -293,6 +309,7 @@ async function nomesDaAuditoria(ctx: TenantContext, registros: readonly Registro
     fusoDaRede: await fusoDoRecorte(ctx.tenantId, null),
     produtos: mapa(p), medidasDosProdutos, cargos: cargosPorPermissao,
     pacotes: mapa(pk as { id: unknown; name: unknown }[] | null), lancamentos: lancamentosLidos,
+    salas: mapa(sl as { id: unknown; name: unknown }[] | null), cargosDosMembros,
     ...extras,
     ...da20,
     ...anexosEDevolucoes,

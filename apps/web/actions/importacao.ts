@@ -163,10 +163,11 @@ export interface CruzamentoDaLinha { numero: number; nome: string; como: 'cpf' |
  * telefone — só o resultado dizia "1 completado"). Quem cada linha encontra,
  * com a regra da importação (`importacao_cruzamento`, a de
  * `lib/importacao/processar.ts`). Só lê. As linhas vêm da prévia (já
- * normalizadas); a importação valida tudo de novo.
+ * normalizadas); a importação valida tudo de novo. O nome vai junto: entre as
+ * fichas sem CPF do telefone, vale a de mesmo nome (D4 da 29ª).
  */
 export async function cruzamentoDaImportacao(entrada: {
-  destino: Destino; linhas: { numero: number; phone?: string; document?: string; email?: string }[]
+  destino: Destino; linhas: { numero: number; phone?: string; document?: string; email?: string; name?: string }[]
 }): Promise<{ itens: CruzamentoDaLinha[] } | { error: string }> {
   const ctx = await getTenantContext()
   const destino: Destino = entrada?.destino === 'contatos' ? 'contatos' : 'clientes'
@@ -177,7 +178,7 @@ export async function cruzamentoDaImportacao(entrada: {
     .filter(l => Number.isInteger(l?.numero))
     .map(l => {
       const fone = texto(l.phone).replace(/\D/g, '')
-      return { numero: l.numero, cpf: texto(l.document).replace(/\D/g, ''), fone, fones: fone ? variantesDoTelefone(fone) : [], email: texto(l.email) }
+      return { numero: l.numero, cpf: texto(l.document).replace(/\D/g, ''), fone, fones: fone ? variantesDoTelefone(fone) : [], email: texto(l.email), nome: texto(l.name) }
     })
   if (!corpo.length) return { itens: [] }
   try {
@@ -232,7 +233,13 @@ export async function andamentoDaImportacao(id: string): Promise<AndamentoDaImpo
   // Terminou: a lista de clientes (cache, lib/cached-queries) precisa ver o que
   // entrou. Do `after()` a invalidação não chega à tela; daqui, sim — e a tela
   // recarrega ao ver "concluída".
-  if (a.status === 'concluida' || a.status === 'falhou') revalidateTag(`clients:${ctx.tenantId!}`, { expire: 0 })
+  // D3 da 29ª: a "Última visita" importada mora no cache das últimas visitas
+  // (`getCachedUltimasVisitas`, tag `appointments:`) — a lista oscilava até 5
+  // minutos entre "Sem visitas" e a data de antes.
+  if (a.status === 'concluida' || a.status === 'falhou') {
+    revalidateTag(`clients:${ctx.tenantId!}`, { expire: 0 })
+    revalidateTag(`appointments:${ctx.tenantId!}`, { expire: 0 })
+  }
   return {
     status: a.status, total: a.total, processadas: a.processadas, novas: a.novas, completadas: a.completadas,
     sem_mudanca: a.sem_mudanca, com_erro: a.com_erro, oportunidades: a.oportunidades, erro: a.erro,

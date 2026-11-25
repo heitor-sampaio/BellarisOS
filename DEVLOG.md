@@ -1774,6 +1774,60 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-25 (2) — A 29ª simulação e as correções dela
+
+O laço que o Heitor deixou em 24/11 ("aciona o loop simulação/correção novamente"), sem pergunta de regra: a dúvida se
+decidiu pelo catálogo, por `docs/regras` e pelos princípios, marcada "decisão do Claude, 25/11". Recurso novo foi para
+`docs/sugestoes-de-funcionalidades.md` (agora 49 itens). O que precisa dele está em `docs/para-o-heitor.md` §6.
+
+**A simulação (25/11, 5h05 a 7h10, em produção).** Cinco redes novas, ao mesmo tempo:
+- o Studio Estrelítzia (Boa Vista, UTC−4): a rede do zero, a importação, os cargos e o primeiro dia;
+- o Espaço Sálvia (Aracaju): a agenda pesada e o app da cliente;
+- o Instituto Melissa (Palmas): o prontuário, os injetáveis e a LGPD pelo lado da cliente;
+- a Rede Camomila (Joinville, duas unidades): as comissões e a vida da equipe;
+- o Ateliê Lisianto (Uberlândia): pacotes, planos, crédito interno, pré-pago e devolução.
+
+O dinheiro fechou nas cinco, centavo a centavo. Houve 13 defeitos, um grave: o termo assinado mostrava o nome que a ficha
+tem hoje, e não o nome com que a cliente assinou. Houve também 24 atritos, quase todos de texto e organização.
+
+**As correções.**
+- **Documentos:** o assinado mostra o nome da assinatura, e "assinado como" quando a ficha mudou de nome depois.
+- **Prontuário:** o acesso entra uma vez por pessoa, cliente e ponto em 30 minutos, mesmo com as renderizações em
+  paralelo; a ficha de saúde salva aparece na hora (o cache expira também quando a cliente responde pelo app).
+- **O "Atende" não esconde botão** (CLAUDE.md §11): o "Enviar o link" da ficha é de quem tem a Agenda em Gerenciar.
+- **Agenda:** o que falta assinar vem antes de "Iniciar mesmo assim?"; o fim do dia é um formato só (24:00); a legenda
+  tem o Concluído; a dica não sai cortada (componente do núcleo, vale para o sistema inteiro).
+- **PDV:** os planos propostos com o desconto; a comanda devolvida em parte vale o vendido menos o devolvido;
+  "Venda direta" em toda parte.
+- **Comissões e DRE:** cada linha de produto do extrato diz a regra que valeu; a DRE avisa as vendas sem taxa cadastrada.
+- **Clientes e importação:** a ficha importada só com a última visita de antes não é "Nova"; as últimas visitas
+  aparecem na hora; sem CPF, a linha completa a ficha do mesmo nome no telefone, e não a mais antiga.
+- **Busca:** quem acha um agendamento e não tem o Atendimento vai à agenda no dia dele, com ele aberto.
+- **Auditoria:** "Recebeu R$ X (forma)" também na gravação de uma linha; o bloqueio com o horário e o motivo; o de →
+  para do membro e a promoção a Admin da rede.
+- **App da cliente:** o nome da rede onde ela fala com a cliente; o prazo da LGPD com o ano; o pré-pago diz os usados;
+  o "Meus dados" diz a quem se pede a eliminação.
+- **Cargos e Equipe:** o resumo não promete o Copilot fora do plano; diz por onde chega à cliente quem tem só o
+  Prontuário; a comissão em aberto ao desativar.
+- **O catálogo** recebeu as decisões desta rodada (DA-13, BA-08, AG-69, LG-14, PT-04, AD-13, FI-08).
+
+**O que foi desfeito.** A nota do crédito interno no fim do CSV das Vendas (A21) quebrou, na completa,
+`e2e/relatorio-vendas-comandas.spec.ts:117`, que exige o CSV com três linhas exatas. A regra era só decisão do Claude:
+a nota saiu e virou proposta ao Heitor.
+
+**Migrations (sete, na produção):** `20261205100001` (o acesso ao prontuário), `20261205200001` (a comanda devolvida em
+parte), `20261205200002` (as recusas da venda), `20261205300001` (as últimas visitas), `20261205300002` (a busca),
+`20261205400001` (a Auditoria) e `20261205500001` (a importação). O banco local é IGUAL ao da produção (4664 objetos).
+
+**Testes.**
+- **Nenhum teste existente foi alterado nem apagado.** Houve só casos acrescentados a arquivos que já existiam.
+- **As verificações:** lint 8/8; Vitest 4651/4651 (depois de tirar o A21).
+- **A completa contra o build:** a metade isolada teve 1745 testes passando e 1 falhando (o do CSV). Desfeito o A21, o spec
+  rodou de novo contra o build: 2/2. A metade compartilhada teve 889 passando e 2 pulados.
+
+**Para conferir depois.** O script do Time E preencheu o campo errado: o prazo do portal da rede de teste dele ficou,
+provavelmente, em 15 h (é dado de teste).
+
 ### 2026-11-25 — A 28ª simulação e as correções dela e do inventário
 
 O Heitor saiu em 24/11 e deixou: "Quando acabar o inventario, aciona o loop simulação/correção novamente". E também: "Em

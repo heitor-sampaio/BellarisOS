@@ -937,6 +937,13 @@ auditoria das regras, pergunta 8: "só pela conta admin"; antes, H7 de
   (`acessosDoSalvo`, `resumoDoCargo`, `lib/cargos/acessos-salvos.ts`), e
   voltar ao cargo mostra o salvo; e o resumo com Documentos diz, na dica,
   que vem de Clientes em “Ver” (`documentosNoResumo`).
+  **A 29ª simulação** (A1, A2; `tests/cargos-e-equipe-o-que-o-resumo-diz.test.ts`;
+  princípio 3): o Copilot fora do plano da rede não entra no resumo, como os
+  outros módulos fora do plano (`[data-resumo-copilot]` lê o `foraDoPlano`);
+  e o cargo com o Prontuário sem Clientes diz por onde ela chega à cliente —
+  "Sem Clientes, ela acha a cliente pela busca (só pelo nome), e na ficha abre
+  só a aba Prontuário." (`prontuarioSemClientesNoResumo`,
+  `[data-resumo-prontuario-sem-clientes]`).
 - **O eixo das abas de Relatórios: a Financeiro pede o Financeiro** (o
   Heitor, 2026-11-23: "financeiro é uma coisa, vendas é outra. financeiro ve
   entrada/saida/lucro, tudo. vendas é sobre performance de vendas."). A aba
@@ -1218,7 +1225,10 @@ de uma unidade"):**
   ao cadastrar quem atende com um cargo que não via as próprias comissões
   (`SEM_MINHAS_COMISSOES_NO_CADASTRO`) saiu com a vista pessoal (SM2,
   2026-11-23: quem atende vê as Minhas comissões sem o Financeiro); desativar
-  quem não atende não diz "e sai da agenda".
+  quem não atende não diz "e sai da agenda". **E o desativar diz a comissão** (A11
+  da 29ª, princípio 3): "A comissão em aberto continua no nome de X, a pagar:
+  aparece em Financeiro → Comissões." (`[data-comissao-em-aberto]`) — a
+  comissão não se repassa (o repasse dela é a sugestão 46).
   Na aba Unidades, a unidade sem cidade diz "Sem cidade: complete o endereço."
   (A19). Prova: `tests/atritos-da-17-cadastros.test.ts`.
 - **A 20ª simulação** (`tests/atritos-da-20-configuracoes.test.ts`): o cargo
@@ -1609,6 +1619,23 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
     - **a permissão diz o módulo e o antes e depois** (A25): o módulo vai em
       toda linha (o rótulo do gatilho de `role_permissions`), e a frase é
       "Editou a permissão de Copilot do cargo X (nível: Ver → Gerenciar)".
+  - **O recebimento de uma linha só, o bloqueio e o membro** (D10, A16, A17 da
+    29ª; `tests/auditoria-o-fato-do-recebimento-do-bloqueio-e-do-membro.test.ts`,
+    migration `20261205400001`):
+    - a receita CRIADA já paga, sozinha na gravação (o recebimento de quem
+      atende sem comissão), é "Recebeu R$ 280,00 (Dinheiro) — Georgina", como a
+      de várias linhas (decisão do Claude, 25/11); a criada em aberto segue
+      "Criou a receita";
+    - o bloqueio da agenda diz de quem (ou a sala), o horário e o motivo:
+      "Bloqueou a agenda de Dra. Paula em 26/11/2026, das 14:00 às 16:00
+      (motivo: Curso)", "Tirou o bloqueio …"; o gatilho passa a guardar
+      `professional_id` e `room_id` (o nome se lê agora);
+    - o cargo e as unidades do membro dizem o de → para ("cargo: Recepção →
+      Financeiro; unidade principal: Moinhos → a rede inteira; outras
+      unidades: nenhuma → Batel"), e a promoção é o fato: "Promoveu Fulana a
+      Admin da rede (…)" — o cargo de sistema pela chave no banco, lido agora.
+      O gatilho de `users` passa a guardar `outras_unidades`; o registro de
+      antes diz só o nome do campo.
   - Prova: `tests/atritos-da-15.test.ts`, `e2e/auditoria-atritos-da-15.spec.ts`.
 - **A falha do registro não derruba a gravação.** O gatilho segura o erro,
   grava uma linha `incompleto` (quando acha a rede) e deixa um WARNING no log:

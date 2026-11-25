@@ -1,5 +1,6 @@
 import { rotuloDaForma, rotuloDaFormaDoFechamento, nomeDaBandeira } from '@/lib/financeiro/formas'
 import type { LinhaDaConferencia } from '@/lib/financeiro/conferencia-do-fechamento'
+import { formasSemTaxaEmTexto, type VendaSemTaxa } from '@/lib/financeiro/vendas-sem-taxa'
 
 /**
  * O DRE e o Fechamento do dia em CSV (A31 da 10ª simulação, 2026-11-10: a
@@ -28,6 +29,8 @@ export interface DreParaCsv {
   /** Fora do resultado: as entradas de estoque do período (ao custo) e as perdas (métrica). */
   compras:            { total: number; linhas: { dia: string; unidade: string; produto: string; embalagens: number; embalagem: string; custo: number; fornecedor: string | null; notaFiscal: string | null }[] }
   perdas:             number | null
+  /** A14 da 29ª (princípio 4): as vendas no cartão sem taxa cadastrada (entraram com 0%). */
+  semTaxa?:           readonly VendaSemTaxa[] | null
 }
 
 /** O DRE como a tela o mostra, e embaixo o que fica fora do resultado — a compra (com fornecedor e nota) e a perda. */
@@ -39,6 +42,8 @@ export function csvDoDre(d: DreParaCsv): string {
     ['Despesas operacionais', reais(-d.despesaOperacional)],
     ['Insumos e produtos vendidos', reais(-d.insumos)],
     ['Taxas da maquininha', reais(-d.taxas)],
+    // A14 da 29ª: a taxa que entrou como zero por falta do cadastro se diz (princípio 4).
+    ...(d.semTaxa?.length ? [['Sem taxa da maquininha cadastrada (vale 0%)', formasSemTaxaEmTexto(d.semTaxa)]] : []),
     ['Comissões lançadas', reais(-d.comissoes)],
     ['Lucro', reais(d.lucro)],
     [],

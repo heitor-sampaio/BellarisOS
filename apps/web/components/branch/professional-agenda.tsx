@@ -30,6 +30,7 @@ import { useFuso } from '@/components/shared/fuso'
 import { naParede, isoNaParede, fusoLocal } from '@/lib/datetime'
 import { horaNaUnidadeDele, comORelogio } from '@/lib/unidades/hora-da-unidade'
 import { ROTULO_DO_STATUS } from '@/lib/agenda/rotulo-do-status'
+import { LEGENDA_DA_AGENDA } from '@/lib/agenda/legenda'
 
 type ViewMode = 'dia' | 'semana' | 'mes'
 
@@ -450,14 +451,11 @@ export function ProfessionalAgendaView({
 
             {/* Legenda */}
             <div data-legenda-da-agenda style={{ display: 'flex', alignItems: 'center', columnGap: 14, rowGap: 4, flexWrap: 'wrap' }}>
-              {[
-                { dot: 'var(--success)',      label: 'Confirmado'      },
-                { dot: 'var(--brand)', label: 'Em atendimento'  },
-                { dot: 'var(--text-faint)',      label: ROTULO_DO_STATUS.SCHEDULED },
-              ].map(({ dot, label }) => (
-                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: dot }} />
-                  <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', fontWeight: 500 }}>{label}</span>
+              {/* A6 da 29ª: com o Concluído, e o Agendado tracejado como o cartão. */}
+              {LEGENDA_DA_AGENDA.map(l => (
+                <div key={l.rotulo} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <div style={{ width: 7, height: 7, borderRadius: '50%', ...(l.tracejado ? { border: `1.5px dashed ${l.cor}` } : { background: l.cor }) }} />
+                  <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', fontWeight: 500 }}>{l.rotulo}</span>
                 </div>
               ))}
             </div>

@@ -115,7 +115,7 @@ async function venderProdutoUmaVez(
       if (!produto) return { error: 'Produto não encontrado.' }
       if (produto.is_active === false) return { error: `${produto.name as string} está desativado.` }
       if ((produto.uso !== 'REVENDA' && produto.uso !== 'AMBOS') || produto.sale_price == null) {
-        return { error: `${produto.name as string} não é de revenda: marque o uso e o preço de venda no cadastro.` }
+        return { error: `${produto.name as string} não é de Venda direta: marque o uso e o preço de venda no cadastro.` }
       }
       tabelaCentavos += Math.round(Number(produto.sale_price) * 100) * qtd
     }

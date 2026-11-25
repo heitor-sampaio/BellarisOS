@@ -62,6 +62,7 @@ import { retratarInjetaveis, planejamentoAplicadoNoAtendimento } from '@/lib/inj
 import { oQueFaltaParaSeguir } from '@/lib/atendimento/obrigatorias-no-servidor'
 import { aQuemPedirAFichaDeSaude } from '@/lib/atendimento/quem-responde-a-ficha'
 import { perguntaDoInicioAdiantado } from '@/lib/appointments/inicio-adiantado'
+import { faltaAssinarParaIniciar } from '@/lib/appointments/documentos-do-inicio'
 import { planosComOProcedimento, textoDoPlano } from '@/lib/checkout/plano-e-avulso'
 import { nomeParaSaudar } from '@/lib/saudacao'
 import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto } from '@/lib/vendas/desconto'
@@ -444,7 +445,9 @@ export async function chegarEIniciar(
     if (!ehODiaDoAgendamento(ag.scheduled_at, new Date(), ag.fuso)) return { error: 'A chegada só se marca no dia do agendamento.' }
     // O início adiantado pergunta ANTES da chegada (A32): sem a resposta, nem
     // a chegada se marca — senão ficaria "chegou" sem ter começado.
-    if (opcoes?.inicioAdiantadoConfirmado !== true) {
+    // A7 da 29ª: faltando assinar, não pergunta do horário — a chegada se marca
+    // e o início diz o que falta (o "Colher assinatura" da tela).
+    if (opcoes?.inicioAdiantadoConfirmado !== true && !(await faltaAssinarParaIniciar(admin, appointmentId))) {
       const pergunta = await perguntaDoInicio(appointmentId)
       if (pergunta) return { error: pergunta, confirmarInicioAdiantado: true }
     }
@@ -505,6 +508,11 @@ async function startAppointmentInterno(
     // A unidade do agendamento ao alcance (`alcancaOAgendamento`: a abrangência).
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId || !alcancaOAgendamento(ctx, apptBranch.id, appt.professional_id as string | null)) return { error: 'Agendamento não encontrado.' }
     if (appt.status !== 'CONFIRMED' && appt.status !== 'ARRIVED') return { error: 'O cliente precisa estar confirmado ou ter chegado (check-in) antes de iniciar.' }
+
+    // A7 da 29ª (princípio 7): o que falta assinar vem ANTES da pergunta do
+    // horário — respondida a pergunta, o banco recusaria pelo termo do mesmo jeito.
+    const faltaAssinar = await faltaAssinarParaIniciar(admin, appointmentId)
+    if (faltaAssinar) return { error: faltaAssinar }
 
     // Antes do horário, em qualquer tempo: pergunta (A32, r2-age-06). O servidor só inicia com a resposta.
     if (opcoes?.inicioAdiantadoConfirmado !== true) {

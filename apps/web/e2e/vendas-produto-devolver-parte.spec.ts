@@ -131,6 +131,28 @@ test('A34: devolver 1 de 2 séruns pagos no Pix — o estoque volta 1, o Pix fic
   expect((extrato ?? []).reduce((s, e) => s + n(e.amount), 0), '10% de R$ 190').toBeCloseTo(19, 2)
 })
 
+// D9 da 29ª simulação (PR-08: "passa a valer o vendido menos o devolvido … em
+// tudo o que a usa"): a comanda da venda seguia com o Total de R$ 290 e a lista
+// do PDV também. Agora vale R$ 190, e o devolvido tem a linha dele.
+test('D9: a comanda da venda devolvida em parte vale o vendido menos o devolvido, na lista e na tela do PDV', async ({ browser }) => {
+  test.setTimeout(90_000)
+  const { data: comanda } = await db().from('comandas').select('id').eq('product_sale_id', vendaPix).single<{ id: string }>()
+  const { data: lidas, error } = await db().rpc('pdv_comandas', {
+    p_tenant: rede!.tenantId, p_branch: rede!.branchId, p_situacao: 'TODAS',
+    p_de: new Date(Date.now() - 86_400_000).toISOString(), p_ate: new Date(Date.now() + 86_400_000).toISOString(),
+  })
+  expect(error).toBeNull()
+  const c = (lidas as { id: string; valor: number }[]).find(x => x.id === comanda!.id)
+  expect(n(c!.valor), 'a comanda vale R$ 290 − R$ 100').toBe(190)
+  await como(browser, async p => {
+    await p.goto(`/${slug}/pdv?ver=TODAS&comanda=${comanda!.id}`)
+    const aberta = p.locator('[data-comanda-aberta]')
+    await expect(aberta.locator('[data-devolvido-da-venda]')).toContainText(`Devolvido: 1× ${nomeSerum}`)
+    await expect(aberta.locator('[data-devolvido-da-venda]')).toContainText(/−R\$\s100,00/)
+    await expect(aberta.locator('[data-total-da-comanda]')).toContainText(/R\$\s190,00/)
+  })
+})
+
 test('A34 + forma do usado vazia: no cartão, o pagamento volta inteiro e o que fica é lançado de novo na forma que quem devolve escolhe', async ({ browser }) => {
   test.setTimeout(120_000)
   let venda = ''

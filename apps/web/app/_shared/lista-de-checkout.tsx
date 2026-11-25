@@ -7,6 +7,7 @@ import { ClipboardList, ChevronRight, User } from 'lucide-react'
 import { lerTodas } from '@/lib/db'
 import { falaDaTela } from '@/lib/unidades/uma-so'
 import { Dica } from '@/components/shared/dica'
+import { combinadoDoPlano, totalDoPlanoNaLista } from '@/lib/plano-de-tratamento/desconto-combinado'
 
 /**
  * Os planos de tratamento PROPOSTOS — "a cliente vai pensar" (PDV4, fase 3:
@@ -49,6 +50,7 @@ export async function ListaDeCheckout({
     .from('treatment_plans')
     .select(`
       id, status, professional_notes, created_at, branch_id,
+      desconto_combinado_tipo, desconto_combinado_valor,
       clients(name, phone),
       branches!branch_id(name),
       treatment_plan_sessions(treatment_plan_session_procedures(price))
@@ -66,10 +68,13 @@ export async function ListaDeCheckout({
     const cli      = p.clients  as unknown as RawClient | null
     const br       = p.branches as unknown as RawBranch | null
     const sessoes  = (p.treatment_plan_sessions as unknown as RawSess[]) ?? []
-    const total    = sessoes.reduce(
+    // D8 da 29ª (princípio 3): o plano proposto vale COM o desconto combinado —
+    // o que o plano, a cliente no app e as outras listas dizem (a mesma conta,
+    // `totalDoPlanoNaLista`). A lista dizia R$ 720 do plano de R$ 680.
+    const total    = totalDoPlanoNaLista(p.status as string, sessoes.reduce(
       (s, sess) => s + (sess.treatment_plan_session_procedures ?? []).reduce((t, pr) => t + Number(pr.price), 0),
       0,
-    )
+    ), combinadoDoPlano(p as { desconto_combinado_tipo?: string | null; desconto_combinado_valor?: number | string | null }))
     return {
       id:      p.id as string,
       name:    cli?.name ?? '—',

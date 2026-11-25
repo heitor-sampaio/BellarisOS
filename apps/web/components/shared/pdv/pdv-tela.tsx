@@ -349,6 +349,10 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, hrefDaAssinatura, ao
   const descontos = c.origem === 'ATENDIMENTO' ? descontosDaComanda(c) : []
   // A15 da 24ª (princípio 3): a venda com desconto mostra o item cheio e a linha do desconto.
   const descontoDaVenda = c.origem === 'VENDA' ? e.linha?.desconto ?? 0 : 0
+  // D9 da 29ª (PR-08): a venda devolvida em parte vale o vendido menos o devolvido
+  // (`c.valor`, do banco); o item segue dizendo o vendido, e o devolvido tem a linha dele.
+  const devolvido = c.origem === 'VENDA' ? e.linha?.devolvido ?? null : null
+  const devolvidoDaVenda = devolvido?.valor ?? 0
   const totalPago = c.origem === 'ATENDIMENTO' && c.paga && !c.estornada && c.recebido != null
   // A2 da 17ª: a comanda reaberta diz o pagamento estornado de antes.
   const estornoAnterior = aReceber ? estornoAnteriorEmTexto(c, hora) : null
@@ -400,7 +404,7 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, hrefDaAssinatura, ao
               )}
             </div>
             <span data-quantidade-da-linha style={{ color: 'var(--text-muted)', textAlign: 'center', fontWeight: 600 }}>{e.linha?.quantidade ?? 1}</span>
-            <span style={{ textAlign: 'right', fontWeight: 800, color: 'var(--text)' }}>{brl((e.valorDoAtendimento ?? c.valor) + descontoDaVenda)}</span>
+            <span style={{ textAlign: 'right', fontWeight: 800, color: 'var(--text)' }}>{brl((e.valorDoAtendimento ?? c.valor) + descontoDaVenda + devolvidoDaVenda)}</span>
           </div>
           {c.origem === 'ATENDIMENTO' && (
             <ProdutosDaComanda comandaId={c.id} slug={slugDaUnidade} itens={e.itens} aReceber={aReceber} naoPontua={!!e.produtoNaoPontua}
@@ -425,6 +429,12 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, hrefDaAssinatura, ao
             <div data-desconto-da-venda style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 10, color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
               <span>Desconto</span>
               <span style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>−{brl(descontoDaVenda)}</span>
+            </div>
+          )}
+          {devolvido && devolvidoDaVenda > 0 && (
+            <div data-devolvido-da-venda style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, paddingTop: 10, color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
+              <span>{devolvido.itens ? `Devolvido: ${devolvido.itens}` : 'Devolvido'}</span>
+              <span style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>−{brl(devolvidoDaVenda)}</span>
             </div>
           )}
           {saiNoReceber?.linhas.map(d => (

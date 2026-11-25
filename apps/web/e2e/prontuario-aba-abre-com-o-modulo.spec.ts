@@ -38,3 +38,15 @@ test('com o Prontuário em Ver, a aba Prontuário da cliente que ela não atende
     await expect(p.locator('[data-aba-sem-acesso="fichas"]'), 'sem o aviso de aba fechada').toHaveCount(0)
   } finally { await ctx.close() }
 })
+
+test('A8: ?aba=prontuario abre o Prontuário, e a aba que não existe diz que não existe', async ({ browser }) => {
+  const ctx = await browser.newContext({ storageState: comProntuario!.estado })
+  try {
+    const p = await ctx.newPage()
+    await p.goto(`/admin/clients/${cliente}?aba=prontuario`)
+    await expect(p.getByRole('tab', { name: 'Prontuário', exact: true })).toHaveAttribute('aria-selected', 'true', { timeout: 30_000 })
+    await expect(p.locator('[data-aba-inexistente]')).toHaveCount(0)
+    await p.goto(`/admin/clients/${cliente}?aba=xyz`)
+    await expect(p.locator('[data-aba-inexistente]')).toHaveText('A aba “xyz” não existe nesta ficha. Você está na Visão geral.', { timeout: 30_000 })
+  } finally { await ctx.close() }
+})

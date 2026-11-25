@@ -294,6 +294,17 @@ export function copilotNoResumo(nivel: PermissionLevel | undefined): string | nu
 }
 
 /**
+ * A2 (CG-16; princípio 7): o cargo com o Prontuário e sem Clientes não tem a
+ * lista de clientes no menu — ela acha a cliente pela busca, só pelo nome, e a
+ * ficha abre só na aba Prontuário (`TAMBEM_ABRE`, lib/busca/tipos.ts;
+ * lib/clientes/ficha-so-do-prontuario.ts). O resumo diz por onde. Nulo nos outros casos.
+ */
+export function prontuarioSemClientesNoResumo(niveis: Partial<Record<'medical_records' | 'clients', string>>): string | null {
+  if ((niveis.medical_records ?? 'NONE') === 'NONE' || (niveis.clients ?? 'NONE') !== 'NONE') return null
+  return 'Sem Clientes, ela acha a cliente pela busca (só pelo nome), e na ficha abre só a aba Prontuário.'
+}
+
+/**
  * O que falta escolher para salvar o cargo, dito junto do "Salvar acessos"
  * (A27 da 18ª simulação; princípio 3): a tela rolava até o módulo, e o retorno
  * era só o laranja pequeno no módulo. Sem escopo no cargo (2026-11-23), o que

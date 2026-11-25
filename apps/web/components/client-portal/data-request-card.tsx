@@ -7,6 +7,7 @@ import { requestDataExport, getExportDownloadUrls, type LgpdRequestRow } from '@
 import { ShieldCheck, Download, FileText, FileJson, Loader2 } from 'lucide-react'
 import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
+import { useFalaDaRede, useNomeDaRede } from '@/components/client-portal/rede-do-portal'
 
 interface Props {
   requests: LgpdRequestRow[]
@@ -36,8 +37,11 @@ function Chip({ label, color, bg }: { label: string; color: string; bg: string }
   )
 }
 
-/** O prazo da clínica para responder sobre o prontuário (A60): a conta de `lib/lgpd/prazo`. */
-const prazoDaEquipe = (iso: string, fuso?: string) => prazoDeResposta(iso, false, fuso)
+/**
+ * O prazo da rede para responder sobre o prontuário (A60): a conta de `lib/lgpd/prazo`,
+ * com o ano (D12; crm-inbox:LG-05, DD/MM/AAAA — como a aba LGPD da rede).
+ */
+const prazoDaRede = (iso: string, fuso?: string) => prazoDeResposta(iso, true, fuso)
 
 function fmt(iso: string | null, fuso = 'America/Sao_Paulo') {
   if (!iso) return '—'
@@ -92,6 +96,10 @@ function DownloadRow({ request }: { request: LgpdRequestRow }) {
 export function DataRequestCard({ requests }: Props) {
   const fuso = useFuso()
   const [state, action, pending] = useActionState(requestDataExport, null)
+  // D13 (CA1): a liberação do prontuário é da rede, pelo nome; A23: a quem pedir para apagar os dados.
+  const fala = useFalaDaRede()
+  const nomeDaRede = useNomeDaRede()
+  const daRede = nomeDaRede ? `de ${nomeDaRede}` : 'da rede'
 
   const openRequest = requests.find(r => r.status === 'pending' || r.status === 'processing')
   const latestDone  = requests.find(r => r.status === 'completed' && r.has_files)
@@ -134,7 +142,7 @@ export function DataRequestCard({ requests }: Props) {
             Pedido de {fmt(openRequest.requested_at, fuso)}, {oQueOPedidoLeva(openRequest.include_medical)}. Estamos reunindo seus dados: costuma ficar
             pronto em poucos minutos, e os arquivos aparecem aqui.
             {openRequest.include_medical && openRequest.medical_status === 'pending'
-              ? ` A parte do prontuário depende da liberação da equipe, que responde até ${prazoDaEquipe(openRequest.requested_at, fuso)} (15 dias do pedido).`
+              ? ` A parte do prontuário depende da liberação ${daRede}, que responde até ${prazoDaRede(openRequest.requested_at, fuso)} (15 dias do pedido).`
               : ''}
           </p>
         </div>
@@ -200,7 +208,7 @@ export function DataRequestCard({ requests }: Props) {
           </div>
           {prontuarioEmAnalise && (
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', margin: 0, lineHeight: 1.5 }}>
-              Você já pode baixar o cadastro, os agendamentos, os pagamentos e os pontos. O prontuário depende da liberação da equipe, que responde até {prazoDaEquipe(latestDone.requested_at, fuso)} (15 dias do pedido): quando ela decidir, o arquivo é refeito aqui.
+              Você já pode baixar o cadastro, os agendamentos, os pagamentos e os pontos. O prontuário depende da liberação {daRede}, que responde até {prazoDaRede(latestDone.requested_at, fuso)} (15 dias do pedido): quando ela decidir, o arquivo é refeito aqui.
             </p>
           )}
           <DownloadRow request={latestDone} />
@@ -212,6 +220,12 @@ export function DataRequestCard({ requests }: Props) {
           A última tentativa não foi concluída. Você pode solicitar novamente.
         </p>
       )}
+
+      {/* A23 (LG-01, LG-03; decisão do Claude, 25/11): apagar os dados e retirar o consentimento
+          não se pedem pelo app — a linha diz a quem pedir, pelo nome da rede. */}
+      <p data-lgpd-a-rede style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
+        Para apagar os seus dados ou retirar o seu consentimento, {fala.faleCom}.
+      </p>
     </div>
   )
 }

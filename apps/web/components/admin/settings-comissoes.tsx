@@ -287,7 +287,7 @@ function ComoAcontece({ inicial, podeEditar, produtos }: { inicial: ConfigDeComi
               </p>
               {produtos.length === 0 ? (
                 <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-                  Nenhum produto de revenda ativo. Marque o uso “Revenda” e o preço de venda no cadastro do produto (Estoque).
+                  Nenhum produto de venda direta ativo. Marque “Venda direta” e o preço de venda no cadastro do produto (Estoque).
                 </p>
               ) : produtos.map(p => {
                 const regra = regraDoProduto(p)

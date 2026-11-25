@@ -11,7 +11,13 @@
   (jsonb, por dia da semana, com pausa), editados em Configurações → Unidades e
   na Equipe ("segue o horário da unidade"). Sem cadastro, a unidade é segunda a
   sábado 08–20 e o profissional segue a unidade. A conta é UMA, pura, em
-  `lib/agenda/horario.ts` (`normalizarHorario` confere o que vem da tela):
+  `lib/agenda/horario.ts` (`normalizarHorario` confere o que vem da tela).
+  **O fim do dia é UM formato, o 24:00** (A4 da 29ª, princípios 3 e 7;
+  decisão do Claude, 25/11): o campo de hora não aceita "24:00", e quem atende
+  até a meia-noite digita 23:59 — `normalizarHorario` grava o fim às 23:59
+  como 24:00 (o último horário das 23:30 cabe, como na unidade 24 h), e o
+  editor mostra 23:59 com "meia-noite (24:00)" (`[data-ate-a-meia-noite]`) e o
+  "Fica assim" já com 24:00. Prova: `tests/horario-ate-a-meia-noite.test.ts`:
   - os livres (`computeAvailableSlots`: app da cliente, CRM, Copilot) só
     dentro de unidade ∩ profissional, inteiros num período (não atravessam a
     pausa) e, hoje, nunca antes de agora;
@@ -87,7 +93,7 @@
   - **O editor diz o horário em texto antes de salvar** (A25 da 19ª,
     princípio 3: o "Repetir o horário de segunda em todos os dias (domingo
     incluído)" abriu o domingo, e quem repetiu achava que ele seguia fechado):
-    "Fica assim: Seg a dom, 09:00–23:59", com os dias fechados ditos ("Seg a
+    "Fica assim: Seg a dom, 09:00–24:00", com os dias fechados ditos ("Seg a
     sáb, 09:00–18:00. Domingo fechado") — o mesmo resumo de quem agenda
     (`resumoDoEditorDeHorario`, `lib/unidades/horario-no-editor.ts`,
     `[data-resumo-do-horario]`). Prova: `tests/atritos-da-19-cadastros.test.ts`.
@@ -600,6 +606,14 @@
   como feito hoje, 07/11: confira se é este o agendamento da cliente. Iniciar
   mesmo assim?" ("falta 1 dia" amanhã). A regra — perguntar sempre — fica.
   Prova: `tests/inicio-adiantado.test.ts` ("A24").
+  **O que falta assinar vem ANTES da pergunta** (A7 da 29ª, princípio 7: a
+  pergunta vinha primeiro e, respondida, o banco recusava pelo termo): com
+  documento que BLOQUEIA aberto, `startAppointment` responde "Falta assinar: …
+  Colha a assinatura antes de iniciar o atendimento." (a frase da trava do
+  banco, `faltaAssinarParaIniciar`, `lib/appointments/documentos-do-inicio.ts`)
+  sem perguntar do horário, e o "Marcar chegada e iniciar" marca a chegada sem
+  perguntar e diz o que falta, com o "Colher assinatura neste aparelho". A
+  trava continua sendo o gatilho. Prova: `tests/inicio-diz-antes-o-que-falta.test.ts`.
 - **A chegada é do DIA do agendamento** (A18, 2026-10-27): `checkinCore`
   recusa fora do dia (Brasília, `ehODiaDoAgendamento`) — vale para a agenda, o
   Copilot e "Marcar chegada e iniciar" — e a janela não oferece "Chegou". O
@@ -705,7 +719,9 @@
     (`[data-falta-depois-do-horario]`).
   - **No celular, a "Minha agenda" cabe** (A28): o título do dia não quebra (no
     celular, o dia curto — "qua, 11 de nov" —, `onde-no-celular`), a navegação
-    e a legenda quebram a LINHA (`[data-legenda-da-agenda]`), e "Minhas
+    e a legenda quebram a LINHA (`[data-legenda-da-agenda]`; a legenda é uma
+    só nas duas agendas, com o Concluído e o Agendado tracejado —
+    `LEGENDA_DA_AGENDA`, `lib/agenda/legenda.ts`, A6 da 29ª), e "Minhas
     comissões" fica no topo dela para quem tem o Financeiro em Ver ou a vista
     pessoal das comissões (SM2; `[data-minhas-comissoes]`).
   - Ficou como está: o toque no cartão da "Minha agenda" abre o atendimento, e
@@ -1261,8 +1277,12 @@
   app, e o cartão do pacote/plano "2 sessões restantes · 1 agendada"
   (`contagemDoPago`, `textoDoParaAgendar`, `textoDasRestantes`,
   `lib/pre-pago/contagem.ts`: a unidade/sessão disponível com agendamento
-  ligado é agendada). Era "3 para agendar" até a conclusão. Prova:
-  `e2e/pre-pago-agendados.spec.ts`, `tests/pre-pago-contagem.test.ts`.
+  ligado é agendada). Era "3 para agendar" até a conclusão. Na home do app,
+  o cartão do pré-pago diz também os já usados: "3 já pagos · 1 usado · 2
+  para agendar" (`textoDoPrePagoNoApp`, `lib/clientes/textos-do-app.ts`; o
+  "· N usados" só aparece com algum usado). Prova:
+  `e2e/pre-pago-agendados.spec.ts`, `tests/pre-pago-contagem.test.ts`,
+  `tests/portal-textos-da-rede-e-do-pre-pago.test.ts`.
 - **A ficha de tratamento diz o ANDAMENTO** (A22 da 6ª simulação,
   2026-11-04): o plano fechado no checkout aparecia "FECHADO" com 0 de 2
   sessões feitas. O selo da ficha (`[data-situacao-do-tratamento]`) é
@@ -2039,9 +2059,13 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
     alergia (regra própria: na ficha e no atendimento, para quem vê o
     prontuário): nas outras abas vai só o TEXTO da alergia, e mostrá-lo
     registra o acesso. Prova: `e2e/prontuario-acessos.spec.ts` ("A30").
-  - A mesma pessoa relendo a mesma cliente no mesmo ponto (e referência) em
-    30 min é uma linha só (`prontuario_registrar_acesso`): a tela recarrega
-    sozinha. Falha no registro vai ao log e não tranca o atendimento.
+  - A mesma pessoa relendo a mesma cliente no mesmo ponto em 30 min é uma
+    linha só (`prontuario_registrar_acesso`): a tela recarrega sozinha. A
+    referência (o plano, o agendamento) fica gravada e não entra na conta, e a
+    gravação trava por pessoa e cliente (`pg_advisory_xact_lock`): o layout e a
+    página renderizam em paralelo e entravam os dois (D7 da 29ª, decisão do
+    Claude, 25/11; migration `20261205100001`,
+    `tests/prontuario-acesso-uma-vez.test.ts`). Falha no registro vai ao log e não tranca o atendimento.
   - Quem VÊ é o admin da REDE (`ctx.branchId === null` e
     `medical_records: MANAGE`), no fim da aba Prontuário da ficha. A cliente
     não o recebe no pacote LGPD (expõe nomes da equipe). O texto da seção diz
@@ -3703,8 +3727,11 @@ O resto do fluxo:
     (`[data-ficha-nao-respondida]`, `avisoDaFichaNaoRespondida` em
     `lib/atendimento/obrigatorias.ts`; some com a ficha respondida ou sem
     pergunta), com "Responder aqui" (quem escreve no prontuário: rola à ficha)
-    e "Enviar o link" (o envio da janela, `PreAtendimentoDoAgendamento`; não a
-    quem só atende, e só com a Agenda em Gerenciar — D9 da 26ª). A contagem é
+    e "Enviar o link" (o envio da janela, `PreAtendimentoDoAgendamento`; só
+    com a Agenda em Gerenciar — D9 da 26ª —, atenda a pessoa ou não: o
+    "Atende" não esconde nem mostra botão, CLAUDE.md §11; D11 da 29ª, decisão
+    do Claude, 25/11 — a tela do atendimento escondia o link, e o bloco do
+    profissional com o "trocar", de quem atende; `tests/atende-nao-esconde-botao.test.ts`). A contagem é
     a da TELA (A5 da 26ª, princípio 3: seguia "4 obrigatórias" com os 4
     campos preenchidos): digitando, desce; sem obrigatória faltando, a faixa
     some (o "Finalizar" leva as respostas). Prova:
@@ -3728,7 +3755,12 @@ O resto do fluxo:
     da pergunta na mensagem. Quem responde é quem tem o Prontuário em
     Gerenciar, sem precisar atender (UM4) — também na ficha da cliente, aba
     Prontuário, com as perguntas atuais da rede (`podeEditarFichaDeSaude`, a
-    permissão de `salvarAnamneseGeral`; no registro mais recente, um
+    permissão de `salvarAnamneseGeral`, que expira na hora a ficha da cliente —
+    `expirarAFichaDaCliente`, tag `client:<id>`; a ficha aparecia vazia logo
+    depois de salva, D6 da 29ª; o link público também expira; o app da
+    cliente expira no `after()`, depois da resposta — dentro da action
+    recarregaria a tela dela e tiraria o "Respostas enviadas"; prova:
+    `tests/ficha-de-saude-expira-o-cache.test.ts`; no registro mais recente, um
     formulário só; D2 da 27ª: lá era sempre só leitura). Quem não o tem
     conclui com o Atendimento em Gerenciar (2026-11-18), sem o clínico — a
     obrigatória em branco a barra como a qualquer um, e quem responde é quem

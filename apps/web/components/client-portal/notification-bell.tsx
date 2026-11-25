@@ -324,7 +324,7 @@ export function NotificationBell({ initialUnread }: Props) {
                 <BellOff size={20} color="var(--text-faint)" />
               </div>
               <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4 }}>Tudo em dia</p>
-              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', lineHeight: 1.5 }}>Nenhuma notificacao por aqui.</p>
+              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', lineHeight: 1.5 }}>Nenhuma notificação por aqui.</p>
             </div>
           )}
           {notifications && notifications.length > 0 && (

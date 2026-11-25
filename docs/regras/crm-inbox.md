@@ -267,7 +267,11 @@
   (`lib/clientes/fala-da-rede.ts`): na página, `falaDaRedeDoPortal(slug)`; no
   componente do navegador, `useFalaDaRede()` (o layout do portal põe o nome).
   "A equipe" fica onde é quem age ("a equipe registra o atendimento", "peça
-  um novo à equipe"). As recusas das actions do portal também (a troca pelo
+  um novo à equipe"). Onde a REDE fala com a cliente — pede a assinatura,
+  enviou as fotos e os arquivos, libera o prontuário na LGPD, recebe o motivo
+  do cancelamento —, o nome (D13 da 29ª; o "A clínica enviou um documento" do
+  CA1; decisão do Claude, 25/11, da linha entre os dois; no navegador,
+  `useNomeDaRede()`). As recusas das actions do portal também (a troca pelo
   app, o prazo do remarcar, a arquivada, o plano cancelado — `falaDaRedeDoId`)
   e os links públicos de assinatura e da ficha, com o remetente que a página
   mostra (`mensagemDoEstado`, `mensagemDoLinkDaFicha`; sem ele, "a equipe").
@@ -767,7 +771,8 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   `e2e/lgpd-responsavel-legal.spec.ts`, `tests/lgpd-responsavel-no-pacote.test.ts`.
 - **O pedido diz o PRAZO** (A60 da 5ª simulação; `data-request-card.tsx`): em
   preparo, "costuma ficar pronto em poucos minutos"; com o prontuário à espera
-  da liberação, "responde até DD/MM (15 dias do pedido)" — o prazo da LGPD
+  da liberação de <a rede> (o nome, CA1), "responde até DD/MM/AAAA (15 dias do
+  pedido)" — com o ano, como a aba da rede (D12 da 29ª; LG-05) — o prazo da LGPD
   (art. 19, II). Prova: `e2e/lgpd-exportacao.spec.ts`. **A aba LGPD da rede
   diz o MESMO prazo** (A50 da 8ª simulação, 2026-11-06: a cliente via "até
   21/11" e a equipe não via nada): "Responder até 21/11/2026 (15 dias do
@@ -779,6 +784,12 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   (`lib/lgpd/prazo.ts`), no portal e na aba. Prova: `e2e/lgpd-atritos-da-8.spec.ts`.
   (A decisão 3 do Heitor sobre a 8ª: revogar o consentimento e pedir a exclusão
   pelo app ficam como estão — "mantem do jeito que tá".)
+  **E o cartão diz a quem pedir** (A23 da 29ª; decisão do Claude, 25/11; LG-01,
+  LG-03, princípio 7): uma linha no fim do "Meus dados pessoais" — "Para
+  apagar os seus dados ou retirar o seu consentimento, fale com <a rede>."
+  (`[data-lgpd-a-rede]`, `falaDaRede`). Só o texto: o pedido pelo app segue
+  fora (a decisão 3 acima; a sugestão 45). Prova:
+  `tests/portal-textos-da-rede-e-do-pre-pago.test.ts`.
 - **Prontuário no pacote depende de liberação**: `include_medical` marca o que o
   titular pediu e `medical_status` (`not_requested | pending | approved |
   denied`) registra a decisão de quem tem `medical_records: MANAGE`, na aba
@@ -934,8 +945,15 @@ oferece segue o módulo (clientes com `clients`, contatos com `crm`).
   troca o que a rede tem; importar de novo é seguro. Cliente: pelo CPF; sem
   achar, a ficha SEM CPF do mesmo telefone (`cliente_por_telefone`,
   `p_sem_cpf`) — a regra do cadastro manual (telefone de ficha com CPF pode
-  ser de outra pessoa). Contato: pelo telefone exato; sem telefone, pelo
-  e-mail (sem caixa).
+  ser de outra pessoa). **Com mais de uma ficha sem CPF no telefone, vale a de
+  MESMO NOME** (sem acento, caixa nem espaço a mais); sem ela, a mais antiga
+  (D4 da 29ª, decisão do Claude, 25/11, pelo princípio 3: a linha da Filomena
+  completava a ficha da Edna, com a da Filomena ali; `p_nome` em
+  `cliente_por_telefone` e o nome da linha em `importacao_cruzamento`,
+  migration `20261205500001`). A caixa "Completar a ficha de X" não muda.
+  Prova: `tests/importacao-ficha-do-mesmo-nome-no-telefone.test.ts`,
+  `e2e/importacao-previa-cruzamento.spec.ts` ("D4"). Contato: pelo telefone
+  exato; sem telefone, pelo e-mail (sem caixa).
 - **A prévia diz o que vai JUNTAR** (A15 da 5ª simulação: "10 linhas prontas",
   e a "Renata Quintas" sumiu na Luana Prado pelo telefone — só o resultado
   dizia "1 completado"): quem cada linha pronta encontra na rede, pela regra
@@ -1082,6 +1100,13 @@ oferece segue o módulo (clientes com `clients`, contatos com `crm`).
     do Claude pelo princípio 3): o "é cliente antes do corte" é o mais antigo
     entre o "cliente desde" (ou o cadastro) e a visita de antes — migration
     `20261125000001`; prova: `e2e/importacao-migracao.spec.ts` ("D7").
+    **E no selo "Novo" da lista de Clientes** (D2 da 29ª): os dois layouts
+    usam a mesma régua, `ehNovaNaLista` (`lib/clientes/selo-novo.ts`). A
+    importação concluída expira `clients:` e `appointments:` (a "Última
+    visita" da lista mora no cache das últimas visitas — D3 da 29ª), e
+    `ultimas_visitas` não recorta a visita de antes por `clients.branch_id`
+    (migration `20261205300001`). Prova: `tests/selo-novo-da-lista-de-clientes.test.ts`,
+    `tests/importacao-ultimas-visitas-na-hora.test.ts`.
     **A prévia avisa quando falta a coluna "Cliente desde"** (A22 da 25ª,
     princípio 3): "Sem uma coluna em “Cliente desde”, as fichas novas contam
     como clientes novas a partir de hoje (em “Novos clientes” e no selo
@@ -1122,6 +1147,12 @@ oferece segue o módulo (clientes com `clients`, contatos com `crm`).
   (`[data-pacotes-sem-valor]`, `pacotesDaLinha`). **Com UMA unidade, a
   unidade dos pacotes não se pergunta** (A2 da 10ª, `design.md`). Prova:
   `e2e/configuracoes-atritos-da-10.spec.ts` ("A7").
+  **O formato diz as cinco partes, e a amostra diz o que leu** (A22 da 29ª,
+  IM-22): "procedimento; total; usadas; valor de referência; validade"
+  (`FORMATO_DO_PACOTE_DE_ANTES`), e cada pacote da amostra sai com as sessões, o
+  valor e a validade — ou "sem valor de referência", "sem validade", "vencido em
+  …" (`pacoteDeAntesLegivel`, `lib/importacao/pacote-legivel.ts`;
+  `[data-pacotes-da-amostra]`). Prova: `tests/importacao-pacote-de-antes-com-o-formato.test.ts`.
 - Roda em `after()` (`lib/importacao/processar.ts`), no padrão do histórico do
   WhatsApp: `importacoes` reivindicada com uma `execucao` nova, e TODO sinal de
   vida e a gravação final filtram por ela — a passagem que perdeu a vez para de
@@ -1801,7 +1832,12 @@ o contato junto.
 - **A aba que o cargo não abre avisa** (A2: `?aba=fichas` da Comercial caía calado
   na Visão geral): "Seu cargo não abre a aba Prontuário desta ficha: abrimos a
   Visão geral." (`[data-aba-sem-acesso]`, `ClientProfile`). A regra de quem vê
-  não mudou.
+  não mudou. **E diz onde a pessoa ficou, e também a aba que não existe** (A8
+  da 29ª; o análogo do `comAviso`, CLAUDE.md §6): quem só tem o Prontuário ouve
+  "Você está na aba Prontuário" (era "na Visão geral"); `?aba=` que a ficha não
+  tem diz "A aba “x” não existe nesta ficha." (`[data-aba-inexistente]`); e
+  `?aba=prontuario` (o nome da aba) é o Prontuário (`chaveDaAbaPedida`,
+  `lib/clientes/aba-da-ficha.ts`). Prova: `tests/ficha-aba-pedida-diz-por-que.test.ts`.
 - **O menu "…" do card move de etapa** (A3: só tinha ganho e perdido; no celular
   arrastar pesa): "Mover para a etapa" lista as outras etapas ABERTAS do funil
   (`[data-mover-para-etapa]`), pelo `updateLeadStage` de sempre — e a recusa

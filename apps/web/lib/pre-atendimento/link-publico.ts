@@ -7,7 +7,7 @@ import {
   paraAnamneseGeral, respostasDaFicha, oQueFaltaNaFicha, anamneseRespondida,
   type FichaDePreAtendimento, type RespostaDaAnamnese,
 } from '@/lib/anamnese-geral'
-import { gravarAnamneseGeral, preAtendimentoPendente, preAtendimentoDoLink } from './ficha'
+import { gravarAnamneseGeral, preAtendimentoPendente, preAtendimentoDoLink, expirarAFichaDaCliente } from './ficha'
 
 /**
  * O link do pré-atendimento, do lado de quem o ABRE — sem sessão (2026-10-20).
@@ -160,5 +160,7 @@ export async function responderPorLink(input: IdentidadeDaFicha & { respostas?: 
     }).eq('id', c.pre).eq('client_id', c.cliente).eq('status', 'RESPONDIDO'), 'registrar a conferência da ficha')
   }
   await gravar(admin.from('pre_atendimento_links').update({ used_at: new Date().toISOString() }).eq('id', c.link), 'fechar o link da ficha')
+  // D6 da 29ª: a equipe vê na hora o que a cliente respondeu pelo link.
+  expirarAFichaDaCliente(c.cliente)
   return {}
 }

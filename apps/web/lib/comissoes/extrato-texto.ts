@@ -38,6 +38,8 @@ export const ehDeVenda = (l: LancamentoDoExtrato) => !!l.origem && DE_VENDA.has(
  */
 export function tituloDoLancamento(l: LancamentoDoExtrato): string {
   if (!ehDeVenda(l)) return l.procedimento ?? 'Procedimento'
+  // A13 da 29ª: a linha de UM produto da venda diz o produto dela, não a venda inteira.
+  if (l.origem === 'PRODUTO' && l.itemDoProduto) return `Venda de produto: ${produtoDaLinha(l.itemDoProduto)}`
   if (l.origem === 'PRODUTO') return l.procedimento ? `Venda de produto: ${l.procedimento}` : 'Venda de produto'
   // A20 da 12ª: a venda de procedimento avulso é "Venda de procedimento" (o nome do Vender), não "pré-pago".
   if (l.origem === 'PRE_PAGO_VENDA') return l.procedimento ? `Venda de procedimento: ${l.procedimento}` : 'Venda de procedimento'
@@ -50,13 +52,31 @@ export function regraEmTexto(l: LancamentoDoExtrato): string {
   return l.regraTipo === 'PERCENTAGE' ? `${String(l.regraValor).replace('.', ',')}%` : `${formatBRL(l.regraValor ?? 0)} fixo`
 }
 
+/** "2× Sérum" — o produto da linha e as unidades dele (A13 da 29ª). */
+const produtoDaLinha = (i: { nome: string; quantidade: number }) => `${i.quantidade}× ${i.nome}`
+
+/**
+ * A13 da 29ª simulação (princípio 3): na comissão POR PRODUTO, o Sérum (10%
+ * do vendido) e o Protetor (R$ 5 por unidade) saíam com a mesma cara. A regra
+ * da linha de um produto diz como valeu: "10% do vendido" (a parte dele no
+ * vendido), ou "R$ 5,00 por unidade × 2" — o fixo é por unidade
+ * (`produto_vender_itens` grava o valor × as unidades em `regra_valor`).
+ */
+function regraDoProdutoEmTexto(l: LancamentoDoExtrato, item: { nome: string; quantidade: number }): string {
+  if (l.regraTipo == null) return '—'
+  if (l.regraTipo === 'PERCENTAGE') return `${String(l.regraValor).replace('.', ',')}% do vendido`
+  const q = Math.max(1, item.quantidade)
+  const porUnidade = Math.round(((l.regraValor ?? 0) / q) * 100) / 100
+  return `${formatBRL(porUnidade)} por unidade${q > 1 ? ` × ${q}` : ''}`
+}
+
 /**
  * A17 da 11ª: de onde veio o percentual da comissão de VENDA — "3% — da
  * Tatiane" (a da pessoa), "10% — do pacote" / "do produto" (a do item), "5% —
  * da clínica". A linha de antes (sem a origem gravada) diz só a regra.
  */
 export function regraDoLancamento(l: LancamentoDoExtrato, nomeDaPessoa: string | null): string {
-  const regra = regraEmTexto(l)
+  const regra = l.origem === 'PRODUTO' && l.itemDoProduto ? regraDoProdutoEmTexto(l, l.itemDoProduto) : regraEmTexto(l)
   if (l.regraDe === 'PESSOA') return `${regra} — da ${nomeDaPessoa ?? 'pessoa'}`
   if (l.regraDe === 'ITEM') return `${regra} — ${l.origem === 'PRODUTO' ? 'do produto' : 'do pacote'}`
   if (l.regraDe === 'CLINICA') return `${regra} — da rede`
@@ -132,7 +152,8 @@ export function csvDoExtrato(
     ...emOrdem.map(l => [
       // As datas no dia da unidade DA LINHA (F62b; D7 da 26ª).
       dia(l.releasedAt, fusoDe(l)), hora(l.releasedAt, fusoDe(l)), nomes.get(l.professionalId) ?? '', unidades.get(l.branchId) ?? '', dia(l.scheduledAt, fusoDe(l)),
-      l.cliente ?? '', l.procedimento ?? '', origemDoLancamento(l),
+      // A13 da 29ª: a linha de um produto diz o produto dela.
+      l.cliente ?? '', l.origem === 'PRODUTO' && l.itemDoProduto ? produtoDaLinha(l.itemDoProduto) : l.procedimento ?? '', origemDoLancamento(l),
       // A17 da 25ª (princípio 3): os pontos e o voucher não são desconto — cada um na sua coluna.
       reais(l.preco), l.preco == null ? '' : reais(l.baseDesconto - fidelidadeDaBase(l)),
       l.preco == null ? '' : reais(fidelidadeDaBase(l)),

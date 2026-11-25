@@ -1,4 +1,5 @@
 import 'server-only'
+import { revalidateTag } from 'next/cache'
 import type { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { normalizeFormSchema } from '@/lib/anamnesis'
@@ -8,6 +9,18 @@ import { notifyUser } from '@/lib/notifications/notify'
 import { lerFusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 
 type Admin = ReturnType<typeof createAdminClient>
+
+/**
+ * A ficha da cliente (`getCachedClientProfileData`, tag `client:<id>`, 60 s)
+ * expira NA HORA depois de gravar a ficha de saúde: sem isso, a tela mostrava
+ * a ficha vazia logo depois de salva (D6 da 29ª; princípio 3; CLAUDE.md §14).
+ * Fica fora de `gravarAnamneseGeral` de propósito: na action do APP da
+ * cliente, expirar faria a página recarregar e trocar o "Respostas enviadas"
+ * por "Nada para responder agora" (actions/pre-atendimento-cliente.ts).
+ */
+export function expirarAFichaDaCliente(clientId: string): void {
+  revalidateTag(`client:${clientId}`, { expire: 0 })
+}
 
 /**
  * A ficha de pré-atendimento da rede (forms.tipo = PRE_ATENDIMENTO, uma por

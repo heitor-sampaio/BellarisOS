@@ -20,6 +20,7 @@ import type { RelatorioDePerdas } from '@/lib/metrics/perdas'
 import type { RelatorioDeTransferencias } from '@/lib/metrics/transferencias'
 import type { EntradaDeEstoqueDoPeriodo } from '@/lib/metrics/contadora'
 import { csvDoDre } from '@/lib/financeiro/csv-da-contadora'
+import { avisoDoDreSemTaxa, type VendaSemTaxa } from '@/lib/financeiro/vendas-sem-taxa'
 import { baixarCsv } from '@/lib/financeiro/csv-dos-lancamentos'
 import { rotuloDoMotivo } from '@/lib/estoque/perda'
 import { medidaNoPlural } from '@/lib/estoque/medidas'
@@ -32,7 +33,7 @@ import {
 } from '@/lib/metrics/vendas-comum'
 import type { SemReceita } from '@/lib/metrics/fechamento-extra'
 import { notasDoTop5 } from '@/lib/relatorios/nota-do-top5'
-import { Download } from 'lucide-react'
+import { AlertTriangle, Download } from 'lucide-react'
 import {
   HBarChart, WeekBarChart, DonutChart, MiniAreaChart,
   DreWaterfall, SimpleTable, Badge,
@@ -149,6 +150,8 @@ export interface ReportsBiProps {
   movimentos?: DadosDosMovimentos
   /** A31 da 10ª: as entradas de estoque do período (ao custo, com fornecedor e nota) — aba Financeiro. */
   comprasNoEstoque?: { linhas: EntradaDeEstoqueDoPeriodo[]; total: number }
+  /** A14 da 29ª: as vendas no cartão sem taxa cadastrada no período (lib/metrics) — o aviso do DRE. */
+  vendasSemTaxa?: VendaSemTaxa[]
   /** O vocabulário de tags da rede (as opções do filtro). Vazio: o filtro não aparece. */
   tagsDaRede?: string[]
   /** As tags que valem na aba aberta (`?tags=`; nas abas sem o filtro, nenhuma). */
@@ -560,6 +563,13 @@ function TabFinanceiro(p: ReportsBiProps) {
                 caixa), os insumos, as taxas da maquininha e as comissões lançadas: todos descontam do lucro. */}
             <DreWaterfall receita={revenue} despesas={resultado.despesaOperacional} insumos={resultado.insumoConsumido}
               taxas={resultado.taxasDaMaquininha} comissoes={resultado.comissoes} lucro={profit} />
+            {/* A14 da 29ª (princípio 4): a venda no cartão sem taxa cadastrada entrou com 0% — o DRE diz, como o PDV. */}
+            {avisoDoDreSemTaxa(p.vendasSemTaxa) && (
+              <p data-dre-sem-taxa role="note" style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: '14px 0 0' }}>
+                <AlertTriangle size={14} aria-hidden style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 2 }} />
+                <span>{avisoDoDreSemTaxa(p.vendasSemTaxa)}</span>
+              </p>
+            )}
             {/* A31 da 10ª: o que fica fora do resultado chega a quem não abre o Estoque (a contadora), e o DRE se exporta. */}
             <div data-fora-do-resultado style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginTop: 14 }}>
               <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: 0 }}>
@@ -570,6 +580,7 @@ function TabFinanceiro(p: ReportsBiProps) {
                 periodo: p.periodLabel, receita: revenue, despesaOperacional: resultado.despesaOperacional, insumos: resultado.insumoConsumido,
                 taxas: resultado.taxasDaMaquininha, comissoes: resultado.comissoes, lucro: profit,
                 compras: p.comprasNoEstoque ?? { linhas: [], total: 0 }, perdas: p.perdas?.total.custo ?? null,
+                semTaxa: p.vendasSemTaxa,
               }))}>
                 <Download size={15} aria-hidden /> Exportar o DRE (CSV)
               </button>

@@ -7,6 +7,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { fusoValido } from '@/lib/unidades/fuso'
 import { linkDoDocumentoNoApp, ROTULO_DOS_ARQUIVOS_NO_APP } from '@/lib/clientes/textos-do-app'
+import { nomeDaRedeDoPortal } from '@/lib/clientes/nome-da-rede'
 
 /**
  * Portal do cliente → Documentos: os termos e contratos que pedem a assinatura
@@ -34,6 +35,8 @@ export default async function DocumentosDoClientePage({
   const doAgendamento = agendamento ? paraAssinar.filter(d => d.agendamentoId === agendamento) : []
   // CA4/DC3: com dois ou mais prontos, "Assinar todos" — uma assinatura para todos.
   const prontos = paraAssinar.filter(d => d.status === 'PENDENTE').length
+  // D13 (CA1: "A clínica enviou um documento" passa a usar o NOME da rede): quem pede e quem enviou é a rede.
+  const rede = (await nomeDaRedeDoPortal(slug)) ?? 'A rede'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -43,7 +46,7 @@ export default async function DocumentosDoClientePage({
         <div className="card-brand" style={{ padding: '14px 18px', borderRadius: 'var(--radius-card-token)' }}>
           <p style={{ fontWeight: 'var(--weight-extrabold)' }}>Agendamento feito!</p>
           <p style={{ fontSize: 'var(--text-sm-sz)', marginTop: 2 }}>
-            Para este atendimento, a equipe pede a sua assinatura {doAgendamento.length === 1 ? 'no documento abaixo' : 'nos documentos abaixo'}. Você pode assinar agora mesmo.
+            Para este atendimento, {rede} pede a sua assinatura {doAgendamento.length === 1 ? 'no documento abaixo' : 'nos documentos abaixo'}. Você pode assinar agora mesmo.
           </p>
         </div>
       )}
@@ -71,7 +74,7 @@ export default async function DocumentosDoClientePage({
         </section>
       )}
 
-      {/* A35 da 23ª (princípio 3): a foto que a equipe enviou mora no Histórico
+      {/* A35 da 23ª (princípio 3): a foto enviada pela rede mora no Histórico
           ("Fotos e arquivos"); a cliente a procurava aqui, nos documentos. */}
       <Link href={linkDoDocumentoNoApp(slug)} data-fotos-e-arquivos className="card"
         style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none' }}>
@@ -80,7 +83,7 @@ export default async function DocumentosDoClientePage({
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ fontWeight: 'var(--weight-bold)', color: 'var(--text)', fontSize: 'var(--text-base-sz)' }}>{ROTULO_DOS_ARQUIVOS_NO_APP}</p>
-          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>As fotos e os arquivos que a equipe enviou, no Histórico</p>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>As fotos e os arquivos que {rede} enviou, no Histórico</p>
         </div>
         <ChevronRight size={16} color="var(--text-faint)" />
       </Link>

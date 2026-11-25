@@ -656,7 +656,6 @@ export async function SessaoDeAtendimento({
         ehDaProfissional={isResponsibleProfessional}
         canReassign={canReassign}
         canPayment={canPayment}
-        isProfessional={ctx.providesServices}
         paymentTransaction={paymentTransaction}
         pagamentoEstornado={pagamentoEstornado}
         comandaId={comandaId}

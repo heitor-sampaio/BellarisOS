@@ -40,3 +40,23 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 27 | O botão "Desativar produto" na tela do Estoque (a action já existe) | pergunta do catálogo do Atendimento, decidida em 25/11 |
 | 28 | O "a receber" ao lado da situação do plano de tratamento | correções da 28ª (plano no crediário) |
 | 29 | A busca não achar a cliente pelo telefone ou CPF para quem só tem o Prontuário (a linha já não mostra esses dados) | correções da 28ª (a ficha só do prontuário) |
+| 30 | Gravar o "valor entregue" e o troco do dinheiro, e não só mostrar na tela | 29ª, A07 e B05 |
+| 31 | O aviso da AG-53 também quando a equipe agenda | 29ª, B08 |
+| 32 | O recibo do PDV para a cliente | 29ª, Times A e C |
+| 33 | Filtro por tag e por forma no PDV | 29ª, Time B |
+| 34 | O "pagador" (outra pessoa que pagou) na comanda | 29ª, C06 |
+| 35 | Importar procedimentos de planilha | 29ª, Time A |
+| 36 | Os próximos passos do /setup também no dashboard da rede nova | 29ª, Time A (RB-03) |
+| 37 | Converter a dose do injetável em UI para o frasco pelo rendimento, e avisar a diferença | 29ª, C01 (PT-18) |
+| 38 | Um termo avulso para a menor, sem o procedimento ter documento | 29ª, C06 (DA-11) |
+| 39 | A prévia da importação com todas as colunas, além das 3 primeiras linhas | 29ª, Time A (IM-22) |
+| 40 | Salas e CEP da unidade dentro do /setup | 29ª, Time A (ligada à nº 11) |
+| 41 | A Equipe da unidade mostrar a Admin da rede que atende ali | 29ª, Time D |
+| 42 | O histórico do agendamento cancelado (quem, quando, o de → para) na janela dele | 29ª, B12 |
+| 43 | O app ativar os avisos com um botão "Receber avisos no celular" | 29ª, B14 (ligada ao A20) |
+| 44 | O "retorno em N dias" propor o horário na conclusão, sem agendar sozinho | 29ª, C01 (AT-19) |
+| 45 | Revogar o consentimento e pedir a exclusão pelo app | 29ª, C09 e C11 (LG-01/LG-03) |
+| 46 | A comissão em aberto da pessoa no repasse do desativar | 29ª, Time D (ligada ao A11) |
+| 47 | O de → para da troca de forma (estorno e novo lançamento) numa linha só da Auditoria | 29ª, E10 |
+| 48 | A validade e as sessões na linha do pacote de antes, na ficha | 29ª, E02 (ligada ao A24) |
+| 49 | Ver o plano proposto e não aceito na ficha da cliente, com o "propor de novo" | 29ª, E07 |

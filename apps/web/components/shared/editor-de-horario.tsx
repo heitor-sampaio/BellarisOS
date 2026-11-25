@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Plus, X } from 'lucide-react'
-import { HORARIO_PADRAO, type Horario, type Intervalo } from '@/lib/agenda/horario'
+import { HORARIO_PADRAO, MEIA_NOITE, FIM_NO_CAMPO, type Horario, type Intervalo } from '@/lib/agenda/horario'
 import { resumoDoEditorDeHorario } from '@/lib/unidades/horario-no-editor'
 import { Dica } from '@/components/shared/dica'
 
@@ -22,6 +22,17 @@ const DIAS: { chave: string; nome: string }[] = [
 /** O dia inteiro: da meia-noite à meia-noite (o `24:00` que `normalizarHorario` aceita). */
 const DIA_INTEIRO: Intervalo = { de: '00:00', ate: '24:00' }
 const diaInteiro = (lista: Intervalo[]) => lista.length === 1 && lista[0]!.de === '00:00' && lista[0]!.ate === '24:00'
+
+/**
+ * A4 da 29ª (princípios 3 e 7): o campo de hora não aceita "24:00". O fim à
+ * meia-noite aparece nele como 23:59, e a linha diz que é a meia-noite; ao
+ * gravar, 23:59 no fim vira 24:00 (`normalizarHorario`) — um formato só.
+ */
+const noCampo = (ate: string) => (ate === MEIA_NOITE ? FIM_NO_CAMPO : ate)
+const ehAMeiaNoite = (ate: string) => ate === MEIA_NOITE || ate === FIM_NO_CAMPO
+/** O resumo "Fica assim" diz o fim à meia-noite como será gravado: 24:00. */
+const comAMeiaNoite = (dias: Record<string, Intervalo[]>): Record<string, Intervalo[]> =>
+  Object.fromEntries(Object.entries(dias).map(([k, l]) => [k, l.map(i => (ehAMeiaNoite(i.ate) ? { ...i, ate: MEIA_NOITE } : i))]))
 
 const copiar = (h: Horario): Record<string, Intervalo[]> =>
   Object.fromEntries(DIAS.map(d => [d.chave, (h.dias[d.chave] ?? []).map(i => ({ ...i }))]))
@@ -129,8 +140,11 @@ export function EditorDeHorario({ nome, valor, seguir, base }: {
                 <input type="time" className="field" style={{ width: 110 }} value={i.de} aria-label={`${nomeDoDia}, abre às`}
                   onChange={e => mudar(chave, lista.map((x, k) => k === n ? { ...x, de: e.target.value } : x))} />
                 <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>às</span>
-                <input type="time" className="field" style={{ width: 110 }} value={i.ate} aria-label={`${nomeDoDia}, fecha às`}
+                <input type="time" className="field" style={{ width: 110 }} value={noCampo(i.ate)} aria-label={`${nomeDoDia}, fecha às`}
                   onChange={e => mudar(chave, lista.map((x, k) => k === n ? { ...x, ate: e.target.value } : x))} />
+                {ehAMeiaNoite(i.ate) && (
+                  <span data-ate-a-meia-noite style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>meia-noite (24:00)</span>
+                )}
                 {/* O X tira ESTE período (A7 da 5ª simulação): era "Tirar a pausa", que
                     juntava os dois — a profissional de 07–12 e 18–22 ficava 07–22. */}
                 {n > 0 && (
@@ -163,7 +177,7 @@ export function EditorDeHorario({ nome, valor, seguir, base }: {
           abre o domingo, e quem repetiu achava que ele seguia fechado. */}
       {!segue && (
         <p data-resumo-do-horario aria-live="polite" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 'var(--weight-semibold)' }}>
-          {resumoDoEditorDeHorario(dias)}
+          {resumoDoEditorDeHorario(comAMeiaNoite(dias))}
         </p>
       )}
     </div>

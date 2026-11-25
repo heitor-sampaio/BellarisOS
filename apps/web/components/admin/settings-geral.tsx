@@ -84,7 +84,7 @@ export function SettingsGeral({ rede, podeEditar, naRede = true, daAdmin = false
           <SoLeitura rotulo="Telefone" valor={telefone || '—'} />
           <SoLeitura rotulo="Site" valor={rede.website || '—'} />
           <SoLeitura rotulo="Prazo do portal" valor={`${rede.prazoPortalHoras} ${rede.prazoPortalHoras === 1 ? 'hora' : 'horas'}`}
-            porque="Até quantas horas antes a cliente cancela ou remarca pelo app." />
+            porque="É o prazo para a cliente remarcar ou cancelar o agendamento pelo app: até quantas horas antes do horário." />
           <SoLeitura rotulo="O que a cliente avalia" valor={ROTULO_DO_QUE_AVALIA[rede.oQueAClienteAvalia]} />
           <SoLeitura rotulo="Validade do plano proposto" valor={`${rede.validadeDoPlanoDias} ${rede.validadeDoPlanoDias === 1 ? 'dia' : 'dias'}`} />
           <SoLeitura rotulo="Pacote com valor em aberto" valor={TEXTO_DO_CREDIARIO[rede.regrasDoPacote.crediarioLibera ? 'sim' : 'nao']} />
@@ -119,7 +119,7 @@ export function SettingsGeral({ rede, podeEditar, naRede = true, daAdmin = false
             placeholder="bellaris.com.br" />
         </Campo>
 
-        <Campo rotulo="Prazo do portal (horas)" dica="Até quantas horas antes a cliente cancela ou remarca pelo app. Depois, só falando com a equipe.">
+        <Campo rotulo="Prazo do portal (horas)" dica="É o prazo para a cliente remarcar ou cancelar o agendamento pelo app: até quantas horas antes do horário. Depois, só falando com a equipe. Não é a validade do plano proposto, que é em dias.">
           <input name="portal_prazo_alteracao_horas" type="number" min={0} max={720} step={1} className="field"
             defaultValue={rede.prazoPortalHoras} disabled={!podeEditar} inputMode="numeric" />
         </Campo>

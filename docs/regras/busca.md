@@ -38,6 +38,13 @@ embaixo da topbar. Desde a fase 2 (2026-10-08) também tem AÇÕES (abaixo).
   passado; a falta e o concluído de hoje saem (só o cancelado saía). Migration
   `20261125000002`. Prova: `e2e/busca-universal-proximos-em-aberto.spec.ts`,
   `tests/atritos-da-25-migracao.test.ts`.
+- **O agendamento abre onde a pessoa abre** (D5 da 29ª simulação; decisão do
+  Claude, 25/11, pela AL-01 e o princípio 7): ele se acha pela Agenda; quem tem
+  o Atendimento em Ver vai à tela do atendimento, e quem não tem vai à AGENDA,
+  no dia dele, com ele aberto (`…/agenda?date=&agendamento=`; no portal da rede,
+  com `&unidade=`). Decide o servidor (`abreNaAgenda` em `buscarTudo`); o dia
+  vem do banco, no fuso da unidade (`busca_universal`, migration
+  `20261205300002`). Prova: `tests/busca-agendamento-sem-o-atendimento.test.ts`.
 - **As páginas que não são do menu** entram em `paginasDaBusca` partindo da
   entrada do menu de que dependem (a mesma visibilidade): o "Automações → O que
   já aconteceu" (CF2, 2026-11-16) só aparece com as Automações no menu, e

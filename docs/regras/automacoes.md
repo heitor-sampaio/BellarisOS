@@ -354,6 +354,11 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   reconferir em 18/11 às 09:00: o agendamento foi cancelado."
   (`fraseDaEspera`, `lib/automacoes/frase-da-espera.ts`; a situação vem de
   `listarExecucoes`). O passo "Esperar" diz "Esperando até 22/11 às 09:00".
+- **Cada linha da lista diz de quem é a execução** (A18 da 29ª; princípio 7):
+  o nome que o fluxo leu (a cliente ou a oportunidade) e, sem ele — o lembrete
+  que ainda espera —, a cliente do fato: o `clienteId` do evento, ou a do
+  agendamento dele, lida pelo servidor na rede da sessão (`deQuemEAExecucao`,
+  `lib/automacoes/sobre-da-execucao.ts`). Prova: `tests/execucoes-dizem-a-cliente.test.ts`.
 - **O aviso no celular de quem não tem acesso ao app não é "enviada"** (A13
   da 20ª; princípio 3): fica no sino, e o passo diz "Guardado no sino do app:
   a cliente não tem acesso ao app." (`enviada: false`, `guardada: true`).

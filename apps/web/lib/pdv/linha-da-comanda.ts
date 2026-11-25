@@ -18,10 +18,18 @@ import { formatBRL } from '@estetica-os/utils'
  * Puro: a leitura mora em `./linha-da-comanda-leitura` (servidor).
  */
 export type VendaDaLinha =
-  | { tipo: 'PRODUTO'; quantidade: number; precoUnitario: number | null; total: number; itens: number; desconto?: number }
+  | { tipo: 'PRODUTO'; quantidade: number; precoUnitario: number | null; total: number; itens: number; desconto?: number; devolvido?: DevolvidoDaVenda }
   | { tipo: 'PRE_PAGO'; quantidade: number; precoUnitario: number | null; total: number; desconto?: number }
   | { tipo: 'PLANO'; sessoes: { procedimentos: string[] }[] }
   | { tipo: 'PACOTE'; desconto: number }
+
+/**
+ * D9 da 29ª (PR-08: depois da devolução de parte, a venda "passa a valer o
+ * vendido menos o devolvido … em tudo o que a usa"): o que já voltou da venda
+ * de produto — o valor (`product_sales.valor_devolvido`) e o que voltou
+ * ("1× Sérum", de `product_sale_items.devolvidas`).
+ */
+export interface DevolvidoDaVenda { valor: number; itens: string | null }
 
 export interface LinhaDaComanda {
   quantidade: number
@@ -29,6 +37,11 @@ export interface LinhaDaComanda {
   detalhe:    string | null
   /** O desconto da venda, em reais (só quando há). */
   desconto?:  number
+  /**
+   * D9 da 29ª: a venda de produto devolvida em parte — a linha segue dizendo o
+   * vendido, e a comanda mostra o devolvido numa linha própria (só quando há).
+   */
+  devolvido?: DevolvidoDaVenda
 }
 
 const centavos = (v: number) => Math.round(v * 100)
@@ -46,6 +59,8 @@ function descontoDaVenda(quantidade: number, preco: number | null, total: number
 }
 
 const comDesconto = (l: LinhaDaComanda, desconto: number): LinhaDaComanda => (desconto > 0 ? { ...l, desconto } : l)
+const comDevolvido = (l: LinhaDaComanda, d: DevolvidoDaVenda | undefined): LinhaDaComanda =>
+  (d && centavos(d.valor) > 0 ? { ...l, devolvido: { valor: centavos(d.valor) / 100, itens: d.itens } } : l)
 
 export function linhaDaComanda(v: VendaDaLinha | null): LinhaDaComanda {
   if (!v) return { quantidade: 1, detalhe: null }
@@ -58,7 +73,12 @@ export function linhaDaComanda(v: VendaDaLinha | null): LinhaDaComanda {
     const itens = [...conta].sort((a, b) => b[1] - a[1]).map(([nome, q]) => `${q} × ${nome}`)
     return { quantidade: n, detalhe: `${n} ${n === 1 ? 'sessão' : 'sessões'}${itens.length ? `: ${itens.join(', ')}` : ''}` }
   }
-  if (v.tipo === 'PRODUTO' && v.itens > 1) return comDesconto({ quantidade: 1, detalhe: null }, Math.max(0, centavos(v.desconto ?? 0)) / 100)
+  const devolvido = v.tipo === 'PRODUTO' ? v.devolvido : undefined
+  if (v.tipo === 'PRODUTO' && v.itens > 1) {
+    return comDevolvido(comDesconto({ quantidade: 1, detalhe: null }, Math.max(0, centavos(v.desconto ?? 0)) / 100), devolvido)
+  }
   const quantidade = Math.max(1, Math.trunc(v.quantidade) || 1)
-  return comDesconto({ quantidade, detalhe: unitario(quantidade, v.precoUnitario) }, descontoDaVenda(quantidade, v.precoUnitario, v.total, v.desconto))
+  return comDevolvido(
+    comDesconto({ quantidade, detalhe: unitario(quantidade, v.precoUnitario) }, descontoDaVenda(quantidade, v.precoUnitario, v.total, v.desconto)),
+    devolvido)
 }

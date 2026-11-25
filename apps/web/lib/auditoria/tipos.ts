@@ -110,6 +110,14 @@ export interface NomesDaAuditoria {
    * itens do retrato: o produto, quantas e de quantas), lido agora.
    */
   devolucoes?: Record<string, ItemDevolvidoDaAuditoria[]>
+  /** A16 (AD-13): a sala do bloqueio da agenda (o id → o nome), lida agora. */
+  salas?: Record<string, string>
+  /**
+   * A17 (AD-13, AD-21): o cargo do membro editado (o id do cargo → o nome e se é
+   * o cargo de SISTEMA Admin da rede, pela chave no banco), lido agora — para o
+   * "cargo: Recepção → Admin da rede" e o "Promoveu".
+   */
+  cargosDosMembros?: Record<string, { nome: string; adminDaRede: boolean }>
 }
 
 export interface ItemDevolvidoDaAuditoria {

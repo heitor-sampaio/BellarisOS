@@ -100,7 +100,13 @@ export async function buscarTudo(termo: string, slug: string | null): Promise<
       ...(pessoas ?? []).map(a => resultadoDaLinha({ ...a, tipo: 'contato' })).filter((r): r is ResultadoDaBusca => r !== null),
     ]
     // Quem acha a cliente pelo Prontuário, sem o Clientes, vê só o nome (a ficha dela também).
-    const resultados = can(ctx, 'clients', 'VIEW') ? todos : todos.map(semOCadastro)
+    const comCadastro = can(ctx, 'clients', 'VIEW') ? todos : todos.map(semOCadastro)
+    // D5 da 29ª (AL-01, decisão do Claude): o agendamento se acha pela Agenda;
+    // sem o Atendimento em Ver, a tela do atendimento não abre — ele abre na
+    // agenda, no dia dele (lib/busca/destino.ts).
+    const abreOAtendimento = can(ctx, 'atendimento', 'VIEW')
+    const resultados = abreOAtendimento ? comCadastro
+      : comCadastro.map(r => r.tipo === 'agendamento' ? { ...r, abreNaAgenda: true } : r)
 
     const grupos = GRUPOS
       .map(g => ({ tipo: g.tipo, itens: resultados.filter(r => r.tipo === g.tipo) }))

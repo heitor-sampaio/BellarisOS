@@ -1,5 +1,5 @@
 import {
-  rotaAtendimento, rotaCliente, rotaInbox, rotaNoPortal, rotaOportunidade, rotaOportunidades,
+  ehPortalDaRede, rotaAgenda, rotaAtendimento, rotaCliente, rotaInbox, rotaNoPortal, rotaOportunidade, rotaOportunidades,
 } from '@/lib/rotas'
 import type { ResultadoDaBusca } from '@/lib/busca/tipos'
 
@@ -24,10 +24,21 @@ export function destinoDoResultado(
     case 'oportunidade': return rotaOportunidade(pathname, slug, r.id, r.funilId)
     // A pessoa sem oportunidade (A15): o "Novo lead" do quadro, com os dados dela.
     case 'contato':      return `${rotaOportunidades(pathname, slug)}?contato=${encodeURIComponent(r.id)}`
-    case 'agendamento':  return rotaAtendimento(pathname, slug, r.id)
+    // D5 da 29ª (AL-01): quem tem a Agenda e não o Atendimento abre o
+    // agendamento na agenda, no dia dele (no portal da rede, na unidade dele).
+    case 'agendamento':  return r.abreNaAgenda ? naAgenda(pathname, slug, r) : rotaAtendimento(pathname, slug, r.id)
     case 'membro':       return filtrada('/team')
     case 'procedimento': return filtrada('/procedures')
     case 'pacote':       return filtrada('/pacotes')
     case 'produto':      return filtrada('/estoque')
   }
+}
+
+/** A agenda no dia do agendamento, com ele aberto (`?agendamento=`). */
+function naAgenda(pathname: string, slug: string | null, r: ResultadoDaBusca): string {
+  const q = new URLSearchParams()
+  if (r.dia) q.set('date', r.dia)
+  if (ehPortalDaRede(pathname) && r.unidadeId) q.set('unidade', r.unidadeId)
+  q.set('agendamento', r.id)
+  return `${rotaAgenda(pathname, slug)}?${q.toString()}`
 }
