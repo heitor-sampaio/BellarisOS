@@ -1774,6 +1774,31 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-24 (12) — O inventário dos testes contra o catálogo de regras
+
+O que o Heitor pediu em 19/11: "a gente só sabe o que ta errado por causa dos testes. … o teste só pode ser alterado se a
+regra foi alterada. … Precisamos limpar isso". O inventário liga cada caso de teste (Vitest e Playwright) à regra do
+catálogo que ele prova, diz a camada em que o caso mora e marca o que precisa de decisão. **Nenhum teste mudou.**
+- 29 partes, um leitor por parte, com instruções comuns. O resultado tem 6.290 casos: os 6.270 da extração e mais 20 em
+  laço, que a extração perdeu. Por camada: 2.823 de unidade, 1.732 de tela, 932 de leitura do fonte e 803 de integração.
+- Achados: 5.742 ok, 360 sem regra, 60 contradizem a regra, 50 testam a infraestrutura, 43 repetem outro caso e 35 são
+  fracos. Das 1.354 regras do catálogo, 97 não têm nenhum caso que as prove.
+- `docs/inventario/README.md` lista tudo por achado, e `mapa.tsv` traz um caso por linha. `docs/inventario/leitura.md`
+  separa o que cada achado pede:
+  - **defeitos do código.** O principal é o plano que ainda se recebe na tela do atendimento, contra a AT-13 e a PV-13.
+    Há também a entrada acima do total cortada com `Math.min`, contra a CR-03, os tetos que contrariam o princípio 2, as
+    etapas da Agenda para quem tem a vista pessoal (DB-01), entre outros;
+  - **o catálogo que ficou para trás.** É a maioria dos "contradiz": regras mais novas que o texto do catálogo, como a
+    dica de 16/11, a Q02 do Copilot e a ordem do setup;
+  - **os testes que mudariam, para o Heitor.**
+- Conferido no código por mim:
+  - o `podeReceber` é só o PDV;
+  - `metrics-escopo:59` não é defeito, porque a tela filtra a linha sem execução;
+  - o `resumo-do-cargo` testa um modo que a tela não usa;
+  - a NC-05 do catálogo generalizou além das fontes dela.
+- As correções da seção 1 entram no laço de simulação e correção, a começar pela 28ª. O teste que muda vai à lista do
+  Heitor, com a regra.
+
 ### 2026-11-24 (11) — As correções do catálogo de regras e a senha recusada
 
 As divergências do CÓDIGO/TELA contra a regra que o catálogo (entradas 3 a 8) e a revisão das perguntas acharam, corrigidas direto na main, cada uma com o teste visto falhando antes:
