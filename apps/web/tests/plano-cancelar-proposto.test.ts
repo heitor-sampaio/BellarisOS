@@ -65,7 +65,8 @@ describe('A1a: quais planos se cancelam sem dinheiro', () => {
 
   it('a cliente que tenta aceitar o cancelado recebe a recusa clara', () => {
     expect(RECUSA_DO_PLANO_CANCELADO).toMatch(/^Este plano foi cancelado e não pode mais ser aceito\./)
-    expect(RECUSA_DO_PLANO_CANCELADO_NO_APP).toMatch(/^Este plano foi cancelado e não pode mais ser aceito\..*Fale com a equipe/)
+    // CA1 (o Heitor, 13/11, "Concordo"; a revisão de 24/11, Q06): a action completa com o nome da rede.
+    expect(RECUSA_DO_PLANO_CANCELADO_NO_APP).toMatch(/^Este plano foi cancelado e não pode mais ser aceito\./)
   })
 })
 

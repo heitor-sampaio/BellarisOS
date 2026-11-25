@@ -43,5 +43,9 @@ export const AVISO_DO_CANCELAMENTO_PROPOSTO =
 /** O aceite (da equipe) do plano cancelado. A frase do banco (`plano_aceitar`) começa igual. */
 export const RECUSA_DO_PLANO_CANCELADO = 'Este plano foi cancelado e não pode mais ser aceito. Para tratar de novo, monte um plano novo.'
 
-/** O aceite PELO APP do plano cancelado (era "Plano não encontrado."). */
-export const RECUSA_DO_PLANO_CANCELADO_NO_APP = 'Este plano foi cancelado e não pode mais ser aceito. Fale com a equipe se quiser retomar o tratamento.'
+/**
+ * O aceite PELO APP do plano cancelado (era "Plano não encontrado."). A action
+ * completa com o nome da rede (CA1): "… Fale com Estética Bella se quiser
+ * retomar o tratamento."
+ */
+export const RECUSA_DO_PLANO_CANCELADO_NO_APP = 'Este plano foi cancelado e não pode mais ser aceito.'

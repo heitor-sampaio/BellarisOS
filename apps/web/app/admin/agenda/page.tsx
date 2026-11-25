@@ -216,6 +216,7 @@ export default async function AdminAgendaPage({
         vistaDela={agendaOwner !== null}
         meuId={ctx.internalUserId ?? null}
         podeConcluir={can(ctx, 'atendimento', 'MANAGE')}
+        abreOAtendimento={can(ctx, 'atendimento', 'VIEW')}
         // A9 da 20ª: sem iniciar e concluir (o Atendimento em Gerenciar), a janela diz quem conclui (os da unidade escolhida, ou os da rede).
         quemConclui={can(ctx, 'atendimento', 'MANAGE') ? null : await quemConcluiOAtendimento(ctx.tenantId!, unidadeId || null)}
         bloqueios={bloqueios}

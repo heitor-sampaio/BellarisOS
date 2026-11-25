@@ -115,8 +115,10 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   // alguém poder criar/editar/excluir os modelos de documentos." Ver os
   // documentos da cliente é de quem vê a cliente; colher é de quem está na tela.
   documents: {
-    NONE:   'Não mexe nos modelos de documento. Vê os documentos da cliente e colhe a assinatura do mesmo jeito (isso vem de Clientes, da Agenda e do PDV).',
-    MANAGE: 'Cria, edita e desativa os modelos de documento (termos, contratos e os outros que a cliente assina, em Configurações → Documentos) e dispensa um documento obrigatório da cliente, com motivo. Colher a assinatura não pede esta permissão: é de quem está com a cliente — na ficha, no atendimento ou no PDV.',
+    NONE:   'Não mexe nos modelos de documento. Vê os documentos da cliente e colhe a assinatura do mesmo jeito (isso vem de Clientes, do Atendimento, da Agenda e do PDV).',
+    // Os modelos são configuração da rede toda: só da Admin da rede (o Heitor,
+    // 18/11: "Configuração da rede toda só pela conta admin"). O Gerenciar dispensa.
+    MANAGE: 'Dispensa um documento obrigatório da cliente, com motivo. Criar, editar e desativar os modelos de documento é só da Admin da rede (Configurações → Documentos). Colher a assinatura não pede esta permissão: é de quem está com a cliente — na ficha, no atendimento, na agenda ou no PDV.',
   },
   procedures: {
     NONE:   SEM_ACESSO,
@@ -136,8 +138,8 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
     MANAGE: 'Tudo do Ver, mais lançar receita e despesa, estornar e conceder crédito ao cliente.',
   },
   cashier: {
-    // A1 da 22ª: o Financeiro em Gerenciar também abre o PDV (PDV1, `podeReceber`).
-    NONE:   'Não aparece para esta pessoa — a menos que o cargo tenha o Financeiro em Gerenciar, que também abre o PDV: vende, recebe e faz o Fechamento do dia.',
+    // Receber é só do PDV (PV-04; cada passo, um módulo — o Heitor, 23/11): o Financeiro não abre o PDV.
+    NONE:   SEM_ACESSO,
     // A15 da 11ª: o PDV abre o "Fechamento do dia" no menu — a linha diz.
     MANAGE: 'Abre o PDV: faz a venda nova (procedimento, pacote, produto e crédito), recebe a comanda do atendimento e do plano de tratamento e as parcelas que a cliente veio pagar, e faz o Fechamento do dia (o que entrou, por forma de pagamento). Não lança despesa, não estorna e não vê o financeiro da unidade — isso é Financeiro.',
   },
@@ -148,8 +150,9 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   },
   marketing: {
     NONE:   SEM_ACESSO,
-    VIEW:   'Vê o painel de anúncios: quanto foi investido, retorno e as oportunidades que vieram de cada campanha.',
-    MANAGE: 'Tudo do Ver, mais criar, ativar, pausar e arquivar as campanhas de notificação.',
+    // Só Sem acesso e Ver (Q02 do catálogo de Automações, revisão de 24/11): as campanhas e os
+    // templates são só da Admin da rede desde 18/11.
+    VIEW:   'Vê o painel de anúncios (quanto foi investido, retorno e as oportunidades que vieram de cada campanha), as campanhas de notificação e os templates. Criar e mudar campanha e template é só da Admin da rede.',
   },
   reports: {
     NONE:   SEM_ACESSO,
@@ -172,13 +175,15 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   },
   settings: {
     NONE:   SEM_ACESSO,
-    // A10 da 10ª: as Integrações vêm junto, e a tela tem de dizer.
-    MANAGE: 'Cadastra e edita unidades e salas, as integrações (conecta o WhatsApp e as contas de anúncio, na aba Integrações), monta os funis do CRM (etapas e motivos de perda) e trata os pedidos de LGPD.',
+    // A10 da 10ª disse as Integrações; desde 18/11 elas, os funis e o resto da rede toda são só da
+    // Admin da rede (o Heitor: "só pela conta admin") — IG-02 do catálogo de 24/11.
+    MANAGE: 'Edita os dados, o horário e as salas das unidades da pessoa (a aba Unidade) e trata os pedidos de LGPD. Criar unidade, as integrações (o WhatsApp e as contas de anúncio), os funis do CRM e o resto da configuração da rede toda são só da Admin da rede.',
   },
   automations: {
     NONE:   SEM_ACESSO,
-    VIEW:   'Abre as automações e vê o que cada uma fez — sem poder mudar nem ligar.',
-    MANAGE: 'Tudo do Ver, mais montar o fluxo, escolher o que ele faz e ligar ou desligar. Automação ligada manda mensagem e mexe no CRM sozinha.',
+    // Só Sem acesso e Ver (Q02 do catálogo de Automações, revisão de 24/11): montar,
+    // ligar e desligar é só da Admin da rede desde 18/11, e o Gerenciar não dava nada além disto.
+    VIEW:   'Abre as automações e vê o que cada uma fez — sem poder mudar nem ligar: montar o fluxo e ligar ou desligar é só da Admin da rede.',
   },
   // Só da Admin da rede (MODULOS_SO_DA_ADMIN): fora da matriz de Cargos.
   audit: {
@@ -186,8 +191,9 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   },
   copilot: {
     NONE:   'O Copilot não aparece para esta pessoa.',
-    VIEW:   'Conversa com o Copilot para consultar — agenda, clientes, números — só do que o cargo já enxerga. Não prepara gravação nenhuma.',
-    MANAGE: 'Tudo do Ver, mais pedir gravações (agendar, cadastrar, lançar…), sempre com o cartão de confirmação. Cada gravação ainda exige o módulo dela em Gerenciar.',
+    // Revisão de 24/11 (Q02; "nenhuma ação pede dois", 23/11): o Ver liga a
+    // ferramenta; cada gravação pede só a permissão dela, e o Gerenciar saiu.
+    VIEW:   'Conversa com o Copilot para consultar e pedir gravações (agendar, cadastrar, lançar…) — só o que a permissão já faz na tela, sempre com o cartão de confirmação.',
   },
 }
 
@@ -253,8 +259,8 @@ export function notaDoResumoDaRede(naRede: readonly string[], naUnidade: readonl
 
 /**
  * O “Vender” da ficha (pacote, procedimento pré-pago, produto, crédito) é de
- * quem RECEBE — Recebimentos, ou o Financeiro em Gerenciar (`podeReceber`,
- * lib/auth.ts). D1 da 12ª simulação: a Rita, com Procedimentos e CRM em
+ * quem RECEBE — o PDV em Gerenciar, e só ele (`podeReceber`, lib/auth.ts;
+ * PV-04: cada passo, um módulo — o Heitor, 23/11). D1 da 12ª simulação: a Rita, com Procedimentos e CRM em
  * Gerenciar, lia “fechar a venda do pacote” e não via o botão. O resumo do cargo
  * diz a regra (princípio 3); quem vende segue decidido pelo cargo (princípio 1).
  * Nulo para quem nem vende nem mexe no comercial.
@@ -264,18 +270,15 @@ export function quemVendeNoResumo(niveis: Partial<Record<'procedures' | 'crm' | 
   if (niveis.cashier === 'MANAGE') {
     return 'Vende no PDV (procedimento, pacote, produto e crédito) e faz o Fechamento do dia: os dois vêm do PDV.'
   }
-  if (niveis.financial === 'MANAGE') {
-    return 'Vende no PDV (procedimento, pacote, produto e crédito) e faz o Fechamento do dia: os dois vêm do Financeiro em Gerenciar.'
-  }
-  if ((['procedures', 'crm', 'clients'] as const).some(m => niveis[m] === 'MANAGE')) {
-    return 'Não vende no PDV: vender é de quem tem o PDV (ou o Financeiro em Gerenciar).'
+  if ((['procedures', 'crm', 'clients', 'financial'] as const).some(m => niveis[m] === 'MANAGE')) {
+    return 'Não vende no PDV: vender é de quem tem o PDV.'
   }
   return null
 }
 
 /** O texto da tela de Pacotes (D1 da 12ª): onde se vende, e quem vende. */
 export const TEXTO_DA_VENDA_DO_PACOTE =
-  'A venda é no PDV, em “Nova venda” (escolha Pacote). O PDV aparece a quem tem o PDV no cargo (ou o Financeiro em Gerenciar).'
+  'A venda é no PDV, em “Nova venda” (escolha Pacote). O PDV aparece a quem tem o PDV no cargo.'
 
 /**
  * O Copilot no resumo do cargo (A17 da 17ª simulação; princípio 3): o resumo
@@ -284,9 +287,8 @@ export const TEXTO_DA_VENDA_DO_PACOTE =
  */
 export function copilotNoResumo(nivel: PermissionLevel | undefined): string | null {
   if (!nivel || nivel === 'NONE') return null
-  return nivel === 'MANAGE'
-    ? 'E o Copilot (o botão no canto da tela), para consultar e pedir gravações.'
-    : 'E o Copilot (o botão no canto da tela), para consultar.'
+  // O Ver já pede gravações (revisão de 24/11, Q02); o Gerenciar gravado vale o mesmo.
+  return 'E o Copilot (o botão no canto da tela), para consultar e pedir gravações.'
 }
 
 /**
@@ -307,30 +309,12 @@ export function textoDoQueFaltaNoCargo(): string {
  */
 export function documentosNoResumo(niveis: Partial<Record<'clients' | 'documents', string>>): string | null {
   if (!niveis.clients || niveis.clients === 'NONE') return null
-  return 'Documentos vem de Clientes em “Ver”: ver e colher os documentos da cliente. Criar e editar os modelos é de quem tem Modelos de documento.'
+  return 'Documentos vem de Clientes em “Ver”: ver e colher os documentos da cliente. Criar e editar os modelos é só da Admin da rede.'
 }
 
-/**
- * A1 da 22ª simulação (princípio 3): a linha do PDV na matriz mostrava "Sem
- * acesso" num cargo que abre o PDV, a Nova venda e o Fechamento — porque tem
- * o Financeiro em Gerenciar (PDV1, `podeReceber`). A linha diz, à vista.
- * Nulo quando o PDV está ligado ou o Financeiro não está em Gerenciar.
- */
-export function pdvAbertoPeloFinanceiro(niveis: Partial<Record<'cashier' | 'financial', string>>): string | null {
-  if ((niveis.cashier ?? 'NONE') !== 'NONE' || niveis.financial !== 'MANAGE') return null
-  return 'Aberto pelo Financeiro em Gerenciar'
-}
-
-/**
- * A1 da 23ª simulação (princípio 3): com o PDV em "Sem acesso" e o Financeiro
- * em Gerenciar, o seletor da linha ficava em "Sem acesso" — o botão marcado
- * contradizia o que vale. A linha mostra o nível que VALE ("Gerenciar"),
- * travado, com o porquê (`pdvAbertoPeloFinanceiro`). O que se grava não muda:
- * o PDV segue em "Sem acesso" no cargo, e volta a valer se o Financeiro descer.
- */
-export function nivelDoPdvPeloFinanceiro(niveis: Partial<Record<'cashier' | 'financial', string>>): 'MANAGE' | null {
-  return pdvAbertoPeloFinanceiro(niveis) ? 'MANAGE' : null
-}
+// O "Aberto pelo Financeiro em Gerenciar" da linha do PDV (A1 da 22ª) e o
+// seletor travado nele (A1 da 23ª) saíram com a PV-04 (catálogo de 24/11):
+// receber é só do PDV, e o Financeiro não abre o PDV.
 
 /**
  * De onde vem a entrada Tratamentos do resumo do cargo (A2 da 22ª; princípio

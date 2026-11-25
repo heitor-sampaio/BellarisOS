@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import type { TenantContext } from '@estetica-os/types'
 import { getTenantContext, can } from '@/lib/auth'
-import { quemMudaAsComissoes } from '@/lib/equipe/quem-desfaz'
+import { quemDesfazNoCaixa, quemMudaAsComissoes } from '@/lib/equipe/quem-desfaz'
 import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { copilotNoCargo, copilotNoPlano } from '@/lib/copilot/disponivel'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -57,6 +57,20 @@ function origemConfere(req: NextRequest): boolean {
 function slugDaPagina(pagina: string): string | null {
   const primeiro = pagina.split('?')[0]!.split('/').filter(Boolean)[0] ?? 'admin'
   return primeiro === 'admin' ? null : primeiro
+}
+
+/**
+ * Quem muda a comissão de CADA PESSOA (CM-04): o Financeiro em Gerenciar — os
+ * da rede e, a quem é de uma unidade, os de lá (CM-05) —, com a Admin da rede.
+ * É a mesma lista de quem desfaz no caixa (`quemDesfazNoCaixa`: o Financeiro em
+ * Gerenciar, ativos e ao alcance).
+ */
+async function quemTemOFinanceiroEmGerenciar(ctx: TenantContext): Promise<string[]> {
+  const [daRede, daUnidade] = await Promise.all([
+    quemDesfazNoCaixa(ctx.tenantId!, null),
+    ctx.branchId ? quemDesfazNoCaixa(ctx.tenantId!, ctx.branchId) : Promise.resolve([]),
+  ])
+  return [...new Set([...daUnidade, ...daRede])]
 }
 
 export async function POST(req: NextRequest) {
@@ -164,9 +178,14 @@ export async function POST(req: NextRequest) {
         const unidades = ctx.unidades && ctx.unidades.length > 1
           ? (() => { const nomes = new Map(todasAsUnidades.map(u => [u.id, u.name])); return ctx.unidades!.map(id => nomes.get(id)).filter((n): n is string => !!n) })()
           : undefined
-        // A24 da 17ª: a quem não muda as comissões, o prompt leva quem muda (pelo nome).
-        const quemMuda = can(ctx, 'financial', 'MANAGE') && mexeNaConfigDaRede(ctx) ? undefined : await quemMudaAsComissoes(ctx.tenantId!).catch(() => undefined)
-        const instrucoes = instrucoesDoCopilot(ctx, { rede: rede?.nome ?? null, unidade: unidade?.name ?? null, unidades, pagina, slugDoPortal, fuso, quemMudaAsComissoes: quemMuda })
+        // A24 da 17ª e CY-04 (catálogo, 24/11): a quem não muda, o prompt diz quem muda, pelo nome —
+        // a comissão de cada pessoa é do Financeiro em Gerenciar (CM-04); a configuração
+        // das comissões, só da Admin da rede (CM-03).
+        const [quemMuda, quemMudaAComissaoDasPessoas] = await Promise.all([
+          mexeNaConfigDaRede(ctx) ? undefined : quemMudaAsComissoes(ctx.tenantId!).catch(() => undefined),
+          can(ctx, 'financial', 'MANAGE') ? undefined : quemTemOFinanceiroEmGerenciar(ctx).catch(() => undefined),
+        ])
+        const instrucoes = instrucoesDoCopilot(ctx, { rede: rede?.nome ?? null, unidade: unidade?.name ?? null, unidades, pagina, slugDoPortal, fuso, quemMudaAsComissoes: quemMuda, quemMudaAComissaoDasPessoas })
         const disponiveis = ferramentasDoCargo(ctx)
         const ferramentas = paraOModelo(disponiveis)
         const cf = { ctx, admin, pagina, slugDoPortal, conversaId: conversa.id }

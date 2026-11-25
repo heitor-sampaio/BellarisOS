@@ -39,7 +39,7 @@ test.beforeAll(async () => {
   cliente = await rede.criarCliente('Venda')
   gestor = await criarMembro(`vrpg${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Recepção',
-    permissoes: [{ modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'financial', nivel: 'MANAGE' }, { modulo: 'procedures', nivel: 'VIEW' }],
+    permissoes: [{ modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'financial', nivel: 'MANAGE' }, { modulo: 'cashier', nivel: 'MANAGE' }, { modulo: 'procedures', nivel: 'VIEW' }],
   })
 })
 test.afterAll(async () => {

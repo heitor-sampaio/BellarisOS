@@ -9,7 +9,7 @@ import { creditosDoAgendamento, usarCreditoNoAgendamento } from '@/actions/credi
 import type { CreditoParaAgendar } from '@/lib/creditos/credito'
 
 /**
- * Trocar a profissional pela janela do agendamento (A22 da 8ª simulação,
+ * Trocar quem atende pela janela do agendamento (A22 da 8ª simulação,
  * 2026-11-06): só se fazia arrastando, sem confirmação, e o histórico dizia só
  * "Remarcado". Só quem ATENDE na unidade do agendamento é oferecida (o
  * "Atende" por unidade, decisão 2), com "(ocupada)" na que tem atendimento no
@@ -65,7 +65,7 @@ export function TrocarProfissional({ appointmentId, slug, atual, onTrocou }: {
       {confirmando && nova ? (
         <div data-confirmar-troca role="alert" style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 12px', borderRadius: 'var(--radius-field-token)', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)' }}>
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text)', fontWeight: 700 }}>
-            Trocar a profissional de {atual} para {nova.name}? O horário fica o mesmo, e as duas são avisadas.
+            Trocar quem atende de {atual} para {nova.name}? O horário fica o mesmo, e as duas pessoas são avisadas.
           </p>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button type="button" className="btn-secondary" disabled={gravando} onClick={() => setConfirmando(false)}>Voltar</button>

@@ -154,8 +154,10 @@ um muro que não depende de cada trava do código.
     `getCachedRedeDoCliente`). `getCachedRede` tem tag `rede:<id>`: quem muda a
     situação EXPIRA a marca (actions, webhook, cron); sem isso vale até 60 s.
   - `/conta-suspensa` fica fora dos layouts e não chama `getTenantContext`
-    (voltaria para ela): lê pelos claims. Quem administra a rede vê a fatura em
-    aberto e o "Pagar"; o paciente vê "Portal indisponível".
+    (voltaria para ela): lê pelos claims. A Admin da rede (o cargo de sistema
+    gravado, `ehAdminDaRede` do membro em cache) vê a fatura em aberto e o
+    "Pagar"; os outros membros, só que a conta está suspensa; o paciente vê
+    "Portal indisponível".
   - **A RLS também barra**: `jwt_claim` devolve nulo para o token de membro de
     rede bloqueada (o estado da rede é lido uma vez por transação, GUC
     `bellaris.rede`, em `private.rede_estado`) — sem isso o membro seguia
@@ -512,12 +514,16 @@ um muro que não depende de cada trava do código.
   GRAVA o evento pela chave do Asaas (o repetido bate no 23505), responde 200
   na hora e processa em `after()`; o cron recolhe o que ficou parado.
 - **Depois de cada mudança** (`depoisDaMudanca`): expira a marca da rede,
-  avisa no sino quem administra a rede (tipo `assinatura`) e registra as
-  automáticas em `platform_audit_log` sem pessoa.
-- **O lado da rede**: Configurações → Assinatura (rede + `settings:
-  MANAGE`; o "Pagar" some no modo suporte) e o aviso no topo para quem
-  administra a rede (teste acabando em 7 dias; em atraso, com a data da
-  suspensão e o link da fatura).
+  avisa no sino a Admin da rede (tipo `assinatura`; `quemAvisar` lê só o
+  cargo de sistema `NETWORK_ADMIN`) e registra as automáticas em
+  `platform_audit_log` sem pessoa.
+- **O lado da rede**: Configurações → Assinatura (só da Admin da rede; o
+  "Pagar" some no modo suporte) e o aviso no topo para a Admin da rede
+  (`administraARede`, `lib/redes/aviso.ts`: o cargo gravado, nunca o
+  `settings: MANAGE` — a conta com o BellarisOS é configuração da rede toda, o
+  Heitor, 18/11: "Configuração da rede toda só pela conta admin"; catálogo de
+  24/11, AS-15/16/17/20) — teste acabando em 7 dias; em atraso, com a data da
+  suspensão e o link da fatura.
   - **O teste diz quantos dias faltam** (A30 da 25ª, o Heitor: "Mostra"):
     "Período de teste até 18/12/2026 — termina em 30 dias"
     (`[data-dias-do-teste]`); no penúltimo dia "termina amanhã", no último
@@ -689,9 +695,12 @@ um muro que não depende de cada trava do código.
   resposta do suporte atribui o chamado e avisa no sino — com texto genérico
   (o push aparece na tela de bloqueio). O "Ver a resposta" do sino abre a Ajuda
   no chamado (evento `bellaris:ajuda`).
-- **O chamado é de quem abriu e de quem administra a rede** (rede + `settings:
-  MANAGE`); o colega recebe "não encontrado", também pela action. Cliente final
-  e contexto sem membro nunca alcançam.
+- **O chamado é de quem abriu e da Admin da rede** (`veARede` em
+  `actions/chamados.ts` lê `ctx.isNetworkAdmin`, o cargo gravado; o
+  `settings: MANAGE` não abre os chamados dos colegas — Q04 do catálogo de
+  Plataforma, resolvida na revisão de 24/11); o colega recebe "não
+  encontrado", também pela action. Cliente final e contexto sem membro nunca
+  alcançam.
 - **A fila se atualiza pelo SINAL** `support_signals` (uma linha sem dado, só
   a plataforma lê — o padrão de `crm_quadro_sinais`) e por um refresh a cada
   minuto. O Realtime do painel pega o access token no `/api/auth/token` DO
@@ -871,8 +880,13 @@ auditoria das regras, pergunta 8: "só pela conta admin"; antes, H7 de
   Prova: `e2e/configuracoes-atritos-da-7.spec.ts` ("A7/A8", "A9"),
   `tests/resumo-do-cargo.test.ts`. **A linha de Configurações na matriz diz o
   que vem junto e o que as unidades da pessoa alcançam** (A10 da 10ª, 2026-11-10;
-  princípio 3): o Gerenciar cita as integrações (o WhatsApp e as contas de
-  anúncio, na aba Integrações), e a nota deixou de dizer "Só funciona para
+  princípio 3): o Gerenciar diz o que dá (a aba Unidade e os pedidos de LGPD)
+  e que criar unidade, as integrações (o WhatsApp e as contas de anúncio), os
+  funis e o resto da rede toda são só da Admin da rede (IG-02 do catálogo de
+  24/11: dizer que "conecta o WhatsApp" prometia o que a H7 de 18/11 tirou;
+  o "testar conexão" também é só da Admin, `recusaDaConfigDaRede` — usa a
+  credencial guardada e diz qual conta respondeu; decisão do Claude, catálogo
+  de 24/11, princípio 3), e a nota deixou de dizer "Só funciona para
   quem tem abrangência de rede" — falso desde a H7: "Quem não tem “A rede
   inteira” mexe só na aba Unidade (os dados, o horário e as salas das
   unidades dela): as integrações, os funis, as fichas, os documentos e o
@@ -928,10 +942,19 @@ auditoria das regras, pergunta 8: "só pela conta admin"; antes, H7 de
   "Financeiro" de "Relatórios liberados" fica desligada, com o cadeado e
   "· pede o Financeiro" à vista (`[data-aba-fechada]`); o que se grava, o
   "falta escolher" e a prévia contam só as abas que valem (`abasQueValem`).
-  ⚠️ Cargo já gravado com só a aba Financeiro e sem o Financeiro: o
-  `buildContext` ainda deixa `reports` em Ver (conta as abas marcadas, não as
-  que valem) — o menu mostra Relatórios e a tela diz "Nenhum relatório
-  liberado". Prova: `tests/relatorios-financeiro-pede-o-financeiro.test.ts`.
+  Cargo já gravado com só a aba Financeiro e sem o Financeiro: o
+  `buildContext` conta só as abas que valem (`abasQueValem`, depois do corte
+  do plano) e, sem nenhuma, põe `reports` em Sem acesso — o menu não mostra
+  Relatórios. Prova: `tests/relatorios-financeiro-pede-o-financeiro.test.ts`
+  ("(e) a aba que não vale não segura os Relatórios abertos").
+- **Automações, Marketing e o Copilot têm só "Sem acesso" e "Ver"** (Q02 do
+  catálogo de 24/11; o Heitor, 18/11: "Configuração da rede toda só pela conta
+  admin", e 23/11, "nenhuma ação pede dois": "concordo"). Mexer em automação,
+  campanha e template é só da Admin da rede, e o Copilot em Ver já pede
+  gravações — cada uma pede só a permissão dela. O Gerenciar não dava nada
+  além do Ver; o que está gravado assim vale como Ver (`nivelAceito`,
+  `lib/permissions.ts`: a tela mostra, o salvar grava e o "cargo acima"
+  compara "Ver"). Prova: `tests/cargos-automacoes-e-marketing-so-ver.test.ts`.
 - **O Gerente modelo nasce com Configurações em Gerenciar** (D15 da 6ª
   simulação, 2026-11-04; princípio 1, o padrão sensato é o que a H7
   descreve): sem o módulo, quem tinha o Gerente numa unidade só não chegava à aba
@@ -1022,8 +1045,14 @@ abaixo entraram na F70, 2026-11-12):
   confirmação. A janela é `DesativarUnidade`
   (`components/admin/desativar-unidade.tsx`, com `lib/unidades/desativar.ts`):
   "Mudar a equipe de unidade" é `moverEquipeDaUnidade` — leva quem é fixo nela
-  para outra unidade ATIVA (a abrangência e os claims; o "Atende" de cada
-  pessoa não muda, e nunca "para a rede", que daria mais acesso); "Ver os
+  para outra unidade ATIVA (a abrangência e os claims; nunca "para a rede", que
+  daria mais acesso). Pede só a Equipe em Gerenciar ("nenhuma ação pede dois",
+  23/11; UN-11 do catálogo de 24/11), e quem atendia na unidade que sai passa
+  a atender na de destino — o "Atende" só vale nas unidades da pessoa (o
+  Heitor, 23/11: "uma pessoa só pode atender nas unidades que faz parte"), e o
+  resto da lista dela não muda (`atendeAoMudarDeUnidade`,
+  `lib/equipe/atende.ts`; decisão do Claude, catálogo de 24/11, princípio 3:
+  ficar "atendendo" numa unidade fora da abrangência é o que a tela não diz); "Ver os
   agendamentos" abre a agenda dela, onde se remarca ou cancela. Prova:
   `e2e/permissoes-f70.spec.ts` ("C67").
   - **A janela diz TUDO o que fica** (D2 e A32 da 14ª, F72): a equipe fixa,
@@ -1110,7 +1139,8 @@ de uma unidade"):**
   aviso. Quem tem a rede inteira segue no portal da rede.
 - Prova: `e2e/equipe-varias-unidades.spec.ts`, `tests/unidades-do-membro.test.ts`.
 - **A tela diz a principal** (A20 da 17ª): com mais de uma unidade marcada,
-  "Principal: X — o login abre nela." (`principalDasMarcadas`, a mesma escolha
+  "Principal: X — o login abre na última unidade que ela usou; sem uma, nesta."
+  (o login entra na última usada, PO1 — EQ-06 do catálogo de 24/11; `principalDasMarcadas`, a mesma escolha
   de `unidadesQueGrava`: a de antes, se segue marcada). Prova: `tests/atritos-da-17-cadastros.test.ts`.
   A linha da Equipe também: "Derby (principal) e Casa Forte"
   (`unidadesDaLinhaDaEquipe`, A28 da 18ª); com uma só, só o nome. Na tabela,
@@ -1122,15 +1152,15 @@ de uma unidade"):**
   que não volta — "X voltou: entra no sistema e atende como antes. O que foi
   repassado ao desativar continua com quem recebeu." (A6, `textoDoReativado`);
   a "Comissão padrão (%)" do Novo membro fica à vista, desligada até o
-  "Atende clientes" (A4). Na matriz de Cargos, o PDV em "Sem acesso" com o
-  Financeiro em Gerenciar diz "Aberto pelo Financeiro em Gerenciar" (A1, PDV1,
-  `pdvAbertoPeloFinanceiro`); o resumo tem a dica "De onde vem Tratamentos"
+  "Atende clientes" (A4). Na matriz de Cargos, o PDV é só o PDV: o
+  "Aberto pelo Financeiro em Gerenciar" (A1, PDV1) saiu com o PV-04 (receber é
+  só do PDV — o Heitor, 23/11, "nenhuma ação pede dois … PDV: receber":
+  "concordo"); o resumo tem a dica "De onde vem Tratamentos"
   (A2, `tratamentosNoResumo`); e o aviso do que falta escolher, junto do
   Salvar, tem o "Ir até lá", que rola até a primeira linha pendente (A3).
-  **E a 23ª** (`tests/atritos-da-23-cargos-atendimento-app.test.ts`): o PDV
-  aberto pelo Financeiro em Gerenciar mostra no seletor o nível que vale,
-  "Gerenciar", travado, com o porquê ao lado (A1, `nivelDoPdvPeloFinanceiro`;
-  o que se grava segue "Sem acesso"); o menu e o resumo mostram Tratamentos a
+  **E a 23ª** (`tests/atritos-da-23-cargos-atendimento-app.test.ts`): o
+  seletor do PDV travado em "Gerenciar" pelo Financeiro (A1) saiu com o PV-04
+  — o seletor do PDV é só o do PDV; o menu e o resumo mostram Tratamentos a
   quem tem a Agenda (desde 2026-11-18, o Atendimento) — a régua da página —, não mais a quem tem o Prontuário ou
   recebe (D1; "quem recebe cobra o plano ali" caiu com o PDV4/PT1c/PDV7), e a
   dica diz "Tratamentos vem da Agenda em “Ver”"; o "Conclui só os próprios
@@ -1144,8 +1174,8 @@ de uma unidade"):**
   marca nem remarca horário" (A2; a regra de quem conclui não mudou); o
   seletor travado mostra só o nível que vale, com o cadeado (A3); "Dê o nome
   na lista de cargos e clique em Criar" (A4); o resumo diz de onde vêm a venda
-  e o Fechamento do dia: do PDV, ou do Financeiro em Gerenciar (A5,
-  `quemVendeNoResumo`).
+  e o Fechamento do dia: a venda, só do PDV (PV-04, 24/11); o Fechamento, do
+  PDV ou do Financeiro em Ver (A5, `quemVendeNoResumo`).
   **O módulo Atendimento** (o Heitor, 2026-11-18: "Agenda é agenda e
   atendimento é atendimento. Só inicia e conclui atendimento quem tem
   gerenciar no atendimento."): o 20º módulo, no grupo Atendimento logo depois
@@ -1262,7 +1292,12 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
   por registro que um comando mudou (`criou`, `editou`, `apagou`), mais a
   abertura do prontuário (`abriu`, o insert em `prontuario_acessos`) e a
   entrada no sistema (`entrou`, `auditoria_registrar_entrada` no
-  `loginAction` e no `/api/auth/session`; só membro).
+  `loginAction` e no `/api/auth/session`). A da cliente no portal e no app
+  também (AD-04: o CF3 aprovado diz "entradas no sistema (login)", sem
+  recorte; era só a do membro): na rede em que ela
+  entra — a ficha do destino do login, ou a que ela escolhe no seletor
+  (`auditoria_registrar_entrada_da_cliente`, `lib/clientes/entrada-na-auditoria.ts`;
+  decisão do Claude, catálogo de 24/11: cada rede só vê a sua).
 - **Quem grava é o gatilho** `private.auditar`, por COMANDO (`for each
   statement`, com as tabelas de transição): um insert por comando, por mais
   linhas que o comando mude. A lista das tabelas (e as que ficam de fora, com

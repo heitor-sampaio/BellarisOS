@@ -57,12 +57,14 @@ export function abaDoFinanceiro(sp: Record<string, string | undefined>): AbaPedi
 /**
  * O link de uma aba, com o período e a unidade da tela. `base` é o
  * `/financeiro` do portal (`/admin/financeiro` ou `/<slug>/financeiro`).
- * Comissões leva só a unidade (o período de lá é o do fechamento).
+ * Comissões leva a unidade e as tags (o filtro de Tags de lá, Q04 do catálogo
+ * das Comissões, revisão de 24/11), não o período: o de lá é o do fechamento.
  */
 export function linkDaAba(base: string, aba: AbaDoFinanceiro, manter: Record<string, string | undefined>, extra: Record<string, string> = {}): string {
   const q = new URLSearchParams()
   if (aba === 'comissoes') {
     if (manter.unidade) q.set('unidade', manter.unidade)
+    if (manter.tags) q.set('tags', manter.tags)
     const s = q.toString()
     return `${base}/comissoes${s ? `?${s}` : ''}`
   }

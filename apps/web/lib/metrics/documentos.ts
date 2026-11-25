@@ -1,6 +1,7 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
+import { paramDeTags } from './tags-do-relatorio'
 import type { SituacaoDoDocumento, TipoDeDocumento } from '@/lib/documentos/situacao'
 
 /**
@@ -49,8 +50,10 @@ export interface ResumoDosDocumentos {
 /**
  * `professionalId`: só os documentos das clientes que ela atende (um agendamento
  * com ela). Nulo = sem recorte — o que vale desde que saiu o "só os meus" (23/11).
+ * `tags`: só os documentos das clientes com TODAS as tags marcadas (DT-01; a
+ * régua é a dos Relatórios, TF-02). Vazio = sem recorte.
  */
-interface Recorte { tenantId: string; branchIds: string[] | null; from: Date; to: Date; professionalId: string | null }
+interface Recorte { tenantId: string; branchIds: string[] | null; from: Date; to: Date; professionalId: string | null; tags?: readonly string[] }
 
 type Linha = Record<string, unknown> & { total?: number | string }
 
@@ -72,7 +75,7 @@ export async function getDocumentosDoPainel(r: Recorte & {
 }): Promise<{ linhas: DocumentoNoPainel[]; total: number }> {
   const linhas = await ler(createAdminClient().rpc('documentos_emitidos_pagina', {
     p_tenant: r.tenantId, p_branch_ids: r.branchIds, p_from: r.from.toISOString(), p_to: r.to.toISOString(),
-    p_professional_id: r.professionalId,
+    p_professional_id: r.professionalId, ...paramDeTags(r.tags),
     p_situacao: r.situacao ?? null, p_tipo: r.tipo ?? null, p_busca: r.busca?.trim() || null,
     p_limite: DOCUMENTOS_POR_PAGINA, p_offset: r.offset ?? 0,
   }), 'carregar os documentos') as Linha[] | null
@@ -82,7 +85,7 @@ export async function getDocumentosDoPainel(r: Recorte & {
 export async function getResumoDosDocumentos(r: Recorte): Promise<ResumoDosDocumentos> {
   const linhas = await ler(createAdminClient().rpc('documentos_emitidos_resumo', {
     p_tenant: r.tenantId, p_branch_ids: r.branchIds, p_from: r.from.toISOString(), p_to: r.to.toISOString(),
-    p_professional_id: r.professionalId,
+    p_professional_id: r.professionalId, ...paramDeTags(r.tags),
   }), 'resumir os documentos') as Record<string, number | string>[] | null
   const l = linhas?.[0] ?? {}
   const n = (k: string) => Number(l[k] ?? 0)

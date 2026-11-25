@@ -12,10 +12,9 @@ export interface ClienteEscolhida { id: string; name: string }
  * 2026-11-17): a busca por nome ou telefone, e cada achada vira um chip. É o
  * mesmo desenho do "Indicada por" (`campo-indicada-por.tsx`), com várias.
  */
-export function EscolherClientes({ escolhidas, aoMudar, maximo }: {
+export function EscolherClientes({ escolhidas, aoMudar }: {
   escolhidas: ClienteEscolhida[]
   aoMudar: (lista: ClienteEscolhida[]) => void
-  maximo: number
 }) {
   const [termo, setTermo] = useState('')
   const [achados, setAchados] = useState<{ id: string; nome: string; telefone: string }[]>([])
@@ -43,14 +42,13 @@ export function EscolherClientes({ escolhidas, aoMudar, maximo }: {
   }
 
   function escolher(c: { id: string; nome: string }) {
-    if (!escolhidas.some(e => e.id === c.id) && escolhidas.length < maximo) aoMudar([...escolhidas, { id: c.id, name: c.nome }])
+    if (!escolhidas.some(e => e.id === c.id)) aoMudar([...escolhidas, { id: c.id, name: c.nome }])
     pedido.current++
     if (espera.current) clearTimeout(espera.current)
     setTermo('')
     setAberto(false)
   }
 
-  const cheio = escolhidas.length >= maximo
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {escolhidas.length > 0 && (
@@ -71,8 +69,8 @@ export function EscolherClientes({ escolhidas, aoMudar, maximo }: {
         <input
           type="text" className="field campo-busca" style={{ paddingLeft: 30 }}
           aria-label="Buscar cliente" role="combobox" aria-expanded={aberto && termo.trim().length >= 2} aria-controls={lista}
-          placeholder={cheio ? `Até ${maximo} clientes` : 'Buscar a cliente (nome ou telefone)…'}
-          value={termo} disabled={cheio}
+          placeholder="Buscar a cliente (nome ou telefone)…"
+          value={termo}
           onChange={e => mudarTermo(e.target.value)}
           onFocus={() => setAberto(true)}
           onKeyDown={e => { if (e.key === 'Escape') setAberto(false) }}

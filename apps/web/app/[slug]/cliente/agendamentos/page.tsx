@@ -1,6 +1,7 @@
 ﻿import { getTenantContext, assertClient } from '@/lib/auth'
 import { unidadesParaLer } from '@/lib/unidades/da-tela'
 import { AvisoUnidadeDesativada } from '@/components/client-portal/unidade-desativada'
+import { falaDaRedeDoPortal } from '@/lib/clientes/nome-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
 import { CalendarDays, CalendarClock, ChevronRight, Clock3, User, Plus, MapPin } from 'lucide-react'
@@ -70,6 +71,8 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
         'ler o prazo do portal') as { portal_prazo_alteracao_horas: number } | null
     : null
   const prazoHoras = rede?.portal_prazo_alteracao_horas ?? 24
+  // CA1: o NOME da rede no lugar de "clínica".
+  const { faleCom } = await falaDaRedeDoPortal(slug)
   // A clínica de mais de uma unidade: cada cartão diz ONDE (A65). O agendamento
   // da Zona Sul aparecia sob o cabeçalho da Moinhos, sem dizer a unidade.
   // A desativada que ainda tem agendamento conta (F72, lib/unidades/da-tela).
@@ -123,10 +126,10 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
         <section style={{ marginBottom: 28 }}>
           <GroupLabel>Próximos</GroupLabel>
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: '-4px 0 10px' }}>
-            Toque no agendamento para cancelar ou remarcar — pelo app, até {prazoHoras} horas antes. Depois disso, fale com a equipe.
+            Toque no agendamento para cancelar ou remarcar — pelo app, até {prazoHoras} horas antes. Depois disso, {faleCom}.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {upcoming.map(a => <AppointmentCard key={a.id} appt={a} slug={slug} highlight prazoHoras={prazoHoras} comUnidade={variasUnidades} />)}
+            {upcoming.map(a => <AppointmentCard key={a.id} appt={a} slug={slug} highlight prazoHoras={prazoHoras} comUnidade={variasUnidades} faleCom={faleCom} />)}
           </div>
         </section>
       )}
@@ -136,7 +139,7 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
         <section>
           <GroupLabel>Histórico</GroupLabel>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {past.map(a => <AppointmentCard key={a.id} appt={a} slug={slug} comUnidade={variasUnidades} />)}
+            {past.map(a => <AppointmentCard key={a.id} appt={a} slug={slug} comUnidade={variasUnidades} faleCom={faleCom} />)}
           </div>
         </section>
       )}
@@ -183,7 +186,7 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
 }
 
 // O cartão abre o agendamento (2026-10-21: não abria — nem detalhe, nem cancelar).
-function AppointmentCard({ appt, slug, highlight = false, prazoHoras, comUnidade = false }: { appt: Appt; slug: string; highlight?: boolean; prazoHoras?: number; comUnidade?: boolean }) {
+function AppointmentCard({ appt, slug, highlight = false, prazoHoras, comUnidade = false, faleCom }: { appt: Appt; slug: string; highlight?: boolean; prazoHoras?: number; comUnidade?: boolean; faleCom: string }) {
   const dt    = new Date(appt.scheduled_at)
   // O dia e a hora no relógio da unidade do agendamento (F62).
   const fuso  = fusoValido(appt.branches?.fuso)
@@ -279,9 +282,9 @@ function AppointmentCard({ appt, slug, highlight = false, prazoHoras, comUnidade
           </span>
         )}
       </div>
-      {/* F72: o agendamento numa unidade que a clínica desativou diz isso no cartão. */}
+      {/* F72: o agendamento numa unidade que a rede desativou diz isso no cartão. */}
       {appt.branches?.is_active === false && (
-        <AvisoUnidadeDesativada nome={appt.branches.name} aberto={['SCHEDULED', 'CONFIRMED'].includes(appt.status)} />
+        <AvisoUnidadeDesativada nome={appt.branches.name} aberto={['SCHEDULED', 'CONFIRMED'].includes(appt.status)} faleCom={faleCom} />
       )}
       {prazoHoras != null && !passou && ['SCHEDULED', 'CONFIRMED'].includes(appt.status) && aindaDaParaAlterar(appt.scheduled_at, prazoHoras) && (
         <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
@@ -298,7 +301,7 @@ function AppointmentCard({ appt, slug, highlight = false, prazoHoras, comUnidade
       {prazoHoras != null && !passou && ['SCHEDULED', 'CONFIRMED'].includes(appt.status) && !aindaDaParaAlterar(appt.scheduled_at, prazoHoras)
         && new Date(appt.scheduled_at).getTime() > new Date(inicioDosProximos(new Date(), fuso)).getTime() && (
         <p data-prazo-encerrado style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
-          Prazo do app encerrado: fale com a equipe para alterar
+          Prazo do app encerrado: {faleCom} para alterar
         </p>
       )}
     </Link>

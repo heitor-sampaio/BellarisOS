@@ -4,7 +4,7 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { recusaDaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { MODULOS_DO_CARGO, MODULE_LEVELS, ALL_REPORT_TABS } from '@/lib/permissions'
+import { MODULOS_DO_CARGO, ALL_REPORT_TABS, nivelAceito } from '@/lib/permissions'
 import { lerMatrizDoCargo, emitirCargoPermissoesAlteradas } from '@/lib/events/cadastro'
 import type { PermissionLevel } from '@estetica-os/types'
 import { ler } from '@/lib/db'
@@ -53,9 +53,10 @@ export async function saveRolePermissions(
   const rows = MODULOS_DO_CARGO.map(module => {
     // Cada módulo declara os níveis que distingue: gravar "Ver" num módulo só
     // de MANAGE deixaria o cargo com um acesso que nenhum gate reconhece.
+    // O Gerenciar que o módulo não oferece mais vale Ver (`nivelAceito`): a
+    // Automação e o Marketing gravados em Gerenciar não perdem o Ver ao salvar.
     const raw = (formData.get(`level:${module}`) as string) ?? 'NONE'
-    const allowed = MODULE_LEVELS[module]
-    const level = (allowed.includes(raw as PermissionLevel) ? raw : 'NONE') as PermissionLevel
+    const level = (['NONE', 'VIEW', 'MANAGE'].includes(raw) ? nivelAceito(module, raw as PermissionLevel) : 'NONE') as PermissionLevel
 
     return { tenant_id: ctx.tenantId!, role_id: roleId, module, level, scope: 'ALL' as const }
   })

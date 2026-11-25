@@ -4,7 +4,6 @@ import { sessoesDoPlanoParaCheckout } from '@/lib/checkout/sessoes-do-plano'
 import type { CheckoutPlan } from '@/components/branch/checkout-wizard'
 import { ler } from '@/lib/db'
 import { precosDoPlano } from '@/lib/checkout/desconto-do-plano'
-import { atendimentoDeHojeDoPlano } from '@/lib/checkout/atendimento-de-hoje'
 import { pacoteEquivalente } from '@/lib/checkout/pacote-equivalente'
 import { catalogoDePacotes } from '@/lib/pacotes/leitura'
 import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
@@ -61,7 +60,7 @@ export async function montarCheckoutPlan(
   type RawClient = { name: string; document: string | null; documento_numero: string | null; phone: string | null }
   const cli = planRaw.clients as unknown as RawClient | null
 
-  const [sessions, precos, professionalsRaw, medRecordRaw, branchesRaw, atendimentoDeHoje, pacotes, equipe, contratoAssinado, contratoSemDocumento, configDaComissao] = await Promise.all([
+  const [sessions, precos, professionalsRaw, medRecordRaw, branchesRaw, pacotes, equipe, contratoAssinado, contratoSemDocumento, configDaComissao] = await Promise.all([
     // D3 da 25ª: sem a trava do Atendimento — quem chama já conferiu quem recebe.
     // D2 da 25ª: ao preço de TABELA, que fecha com o subtotal; o desconto aparece à parte.
     sessoesDoPlanoParaCheckout(tenantId, planId, { precoDeTabela: true }),
@@ -72,7 +71,6 @@ export async function montarCheckoutPlan(
     getCachedBranchProfessionals(branchId, tenantId),
     ler(admin.from('medical_records').select('id').eq('client_id', planRaw.client_id).maybeSingle(), 'buscar o prontuário do cliente'),
     ler(admin.from('branches').select('id, name').eq('tenant_id', tenantId).eq('is_active', true).order('name'), 'carregar as unidades'),
-    atendimentoDeHojeDoPlano(admin, planId),
     // Os pacotes à venda na unidade, para sugerir o equivalente (2026-10-21).
     redeTemRecurso(tenantId, 'pacotes').then(tem => tem ? catalogoDePacotes(tenantId, { branchId, soAtivos: true }) : []),
     // "Quem vendeu" (decisão 4 da 7ª): a equipe que alcança a unidade, como nas outras vendas.
@@ -103,7 +101,6 @@ export async function montarCheckoutPlan(
       professionals:    ((professionalsRaw ?? []) as { id: string; name: string }[]).map(p => ({ id: p.id, name: p.name })),
       branches:         ((branchesRaw      ?? []) as { id: string; name: string }[]).map(b => ({ id: b.id, name: b.name })),
       currentBranchId:  branchId,
-      atendimentoDeHoje,
       pacoteEquivalente: pacoteEquivalente(sessions, precos.subtotal, pacotes),
       equipe,
       // A13 da 13ª: quem vendeu, guardado desde a documentação, volta em outra aba.

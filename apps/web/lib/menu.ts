@@ -84,13 +84,13 @@ const veMinhasComissoes = (p: ResolvedPermissions, v?: DaPessoa) => !has(p, 'fin
 const rotuloDeConfiguracoes = (comFinanceiro: boolean) => (p: ResolvedPermissions) =>
   has(p, 'settings') || has(p, 'roles') || has(p, 'forms') || has(p, 'documents') || (comFinanceiro && p.financial === 'MANAGE')
     // D8 da 25ª: quem libera o prontuário chega à aba LGPD — não é "Tags e importações".
-    || p.medical_records === 'MANAGE'
+    // E quem responde ao pedido de dados, Clientes em Gerenciar (revisão de 24/11, Q09).
+    || p.medical_records === 'MANAGE' || p.clients === 'MANAGE'
     ? 'Configurações'
     : 'Tags e importações'
 
-/** Pode receber dinheiro do cliente — caixa ou financeiro. Igual a lib/auth. */
-/** Recebe pagamento (caixa ou financeiro em Gerenciar) — o `podeReceber` de lib/auth, pelas permissões. */
-export const recebe = (p: ResolvedPermissions) => p.cashier === 'MANAGE' || p.financial === 'MANAGE'
+/** Recebe pagamento: o PDV em Gerenciar, e só ele (PV-04) — o `podeReceber` de lib/auth, pelas permissões. */
+export const recebe = (p: ResolvedPermissions) => p.cashier === 'MANAGE'
 
 /**
  * O Fechamento do dia é o dinheiro da UNIDADE inteira: quem recebe
@@ -124,7 +124,7 @@ export const ADMIN_MENU: readonly MenuEntry[] = [
   { key: 'injetaveis', recurso: 'injetaveis',   group: 'planejamento', label: 'Injetáveis',    href: '/admin/injetaveis',     visible: p => has(p, 'medical_records') },
 
   // O PDV (PDV1, a revisão do Heitor de 2026-11-13): vender e receber, seja do que for.
-  // De quem recebe (o PDV ou o Financeiro em Gerenciar — `recebe`); de todo plano (PL1).
+  // De quem recebe (o PDV em Gerenciar — `recebe`); de todo plano (PL1).
   { key: 'pdv',          group: 'vendas',       label: 'PDV',           href: '/admin/pdv',            visible: recebe },
   { key: 'inbox', recurso: 'inbox',        group: 'vendas',       label: 'Inbox',         href: '/admin/inbox',          visible: p => has(p, 'crm') },
   { key: 'oportunidades', recurso: 'oportunidades',group: 'vendas',       label: 'Oportunidades', href: '/admin/oportunidades',  visible: p => has(p, 'crm') },
@@ -223,12 +223,13 @@ export const SO_NO_MENU_DA_REDE: readonly MenuEntry[] =
  * da 15ª, que olhava a abrangência). O item sai do menu, da busca e do resumo
  * do cargo (CLAUDE.md §14, "botão que a pessoa não pode usar: a tela
  * esconde"). Fica para quem usa alguma aba: Configurações em Gerenciar (a
- * Unidade, a LGPD, a Geral para ler) ou o Prontuário em Gerenciar (a LGPD,
- * D8 da 25ª). A tela continua de pé pela URL, com a frase.
+ * Unidade, a Geral para ler), o Prontuário em Gerenciar (a LGPD, D8 da 25ª)
+ * ou Clientes em Gerenciar (a LGPD: quem responde ao pedido de dados, revisão
+ * de 24/11, Q09). A tela continua de pé pela URL, com a frase.
  * `souAdmin`: o cargo de sistema (`mexeNaConfigDaRede(ctx)`).
  */
 export function soLeriaAsConfiguracoes(p: ResolvedPermissions, souAdmin: boolean): boolean {
-  return !souAdmin && !(p.settings === 'MANAGE' || p.medical_records === 'MANAGE')
+  return !souAdmin && !(p.settings === 'MANAGE' || p.medical_records === 'MANAGE' || p.clients === 'MANAGE')
 }
 
 /**

@@ -105,3 +105,39 @@ test('a Agenda em Gerenciar sem o Atendimento em Gerenciar não inicia nem concl
   expect(await situacao(confirmado), 'não iniciou').toBe('CONFIRMED')
   expect(await situacao(emCurso), 'não concluiu').toBe('IN_PROGRESS')
 })
+
+// UM1 (o Heitor, 2026-11-23; Q13 da revisão de 24/11): a tela do atendimento abre
+// com o Atendimento em Ver, e a Agenda em Ver não a abre — nem a janela da agenda
+// leva a ela (o "Retomar atendimento" dava em "sem acesso").
+test('a Agenda em Ver sem o Atendimento não abre a tela do atendimento, e a janela não leva a ela', async ({ browser }) => {
+  const emCurso = await agendado('IN_PROGRESS')
+  const soVeAAgenda = await criarMembro(`qiw${marca}`, {
+    tenant: rede!.tenantId, branchId: rede!.branchId, rotulo: 'Só vê a agenda',
+    permissoes: [
+      { modulo: 'agenda', nivel: 'VIEW' },
+      { modulo: 'atendimento', nivel: 'NONE' },
+      { modulo: 'clients', nivel: 'VIEW' },
+    ],
+  })
+  try {
+    await como(browser, soVeAAgenda, async p => {
+      const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+      await p.goto(`/${slug}/agenda?date=${hoje}`)
+      await p.locator(`[data-agendamento="${emCurso}"]`).first().click()
+      const janela = p.getByRole('dialog', { name: 'Agendamento' })
+      await expect(janela).toBeVisible()
+      await expect(janela.getByRole('link', { name: 'Retomar atendimento' })).toHaveCount(0)
+      // Pela URL: a tela não abre.
+      await p.goto(`/${slug}/agenda/${emCurso}`)
+      await expect(p.getByRole('button', { name: 'Finalizar atendimento' })).toHaveCount(0)
+      await expect(p.getByText(/sem acesso|não tem acesso/i).first()).toBeVisible()
+    })
+    // Controle: com o Atendimento em Ver, a janela leva à tela.
+    await como(browser, soAgenda!, async p => {
+      const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+      await p.goto(`/${slug}/agenda?date=${hoje}`)
+      await p.locator(`[data-agendamento="${emCurso}"]`).first().click()
+      await expect(p.getByRole('dialog', { name: 'Agendamento' }).getByRole('link', { name: 'Retomar atendimento' })).toBeVisible()
+    })
+  } finally { await soVeAAgenda.limpar() }
+})

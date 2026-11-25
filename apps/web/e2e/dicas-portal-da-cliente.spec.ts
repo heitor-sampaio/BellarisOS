@@ -58,13 +58,13 @@ test('Perfil: os dados à vista; quem altera e o que é o pedido de cópia, na d
     await expect(p.getByRole('button', { name: 'Solicitar meus dados' })).toBeVisible()
 
     // Nenhum parágrafo de explicação à vista.
-    await expect(p.getByText('Para alterar esses dados, fale com a equipe.')).toBeHidden()
+    await expect(p.getByText(/^Para alterar esses dados, fale com (?!a equipe).+\.$/)).toBeHidden()
     await expect(p.getByText(/Você pode pedir uma cópia de tudo/)).toBeHidden()
     await expect(p.getByText(/passa por liberação da equipe/)).toBeHidden()
 
     // Cada um aparece ao passar o mouse na dica dele.
     await p.getByRole('button', { name: 'Como alterar estes dados' }).hover()
-    await expect(p.getByText('Para alterar esses dados, fale com a equipe.')).toBeVisible()
+    await expect(p.getByText(/^Para alterar esses dados, fale com (?!a equipe).+\.$/)).toBeVisible()
     await p.getByRole('button', { name: 'Sobre a cópia dos seus dados' }).hover()
     await expect(p.getByText(/Você pode pedir uma cópia de tudo/)).toBeVisible()
     await p.getByRole('button', { name: 'Sobre o prontuário no pedido' }).hover()
@@ -111,8 +111,8 @@ test('Financeiro e ficha de saúde: o saldo e o vazio à vista; o "como usar" e 
 test('no celular (o app), a dica abre no toque', async ({ browser }) => {
   await como(browser, async p => {
     await p.goto(`/${slug}/cliente/perfil`)
-    await expect(p.getByText('Para alterar esses dados, fale com a equipe.')).toBeHidden()
+    await expect(p.getByText(/^Para alterar esses dados, fale com (?!a equipe).+\.$/)).toBeHidden()
     await p.getByRole('button', { name: 'Como alterar estes dados' }).tap()
-    await expect(p.getByText('Para alterar esses dados, fale com a equipe.')).toBeVisible()
+    await expect(p.getByText(/^Para alterar esses dados, fale com (?!a equipe).+\.$/)).toBeVisible()
   }, { viewport: { width: 390, height: 844 }, hasTouch: true })
 })

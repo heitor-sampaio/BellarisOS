@@ -44,8 +44,13 @@ const quando = (iso: string, fuso = 'America/Sao_Paulo') =>
   })
 
 export function PainelDeExecucoes({
-  automacaoId, podeEditar, onFechar,
-}: { automacaoId: string; podeEditar: boolean; onFechar: () => void }) {
+  automacaoId, podeEnsaiar, onFechar,
+}: {
+  automacaoId: string
+  /** O ensaio não grava nem manda nada: continua na sessão de suporte (docs/regras/automacoes.md). */
+  podeEnsaiar: boolean
+  onFechar: () => void
+}) {
   const fuso = useFuso()
   const [execucoes, setExecucoes] = useState<ExecucaoNaLista[]>([])
   const [ensaios, setEnsaios]     = useState(false)
@@ -118,7 +123,7 @@ export function PainelDeExecucoes({
         </div>
       </div>
 
-      {podeEditar && (
+      {podeEnsaiar && (
         <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--hairline)', display: 'flex', alignItems: 'center', gap: 6 }}>
           <button
             type="button" onClick={ensaiar} disabled={carregando}

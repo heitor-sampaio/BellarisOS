@@ -343,6 +343,7 @@ export default async function AgendaPage({ params, searchParams }: {
         vistaDela={professionalOnly}
         meuId={ctx.internalUserId ?? null}
         podeConcluir={can(ctx, 'atendimento', 'MANAGE')}
+        abreOAtendimento={can(ctx, 'atendimento', 'VIEW')}
         // A9 da 20ª: sem iniciar e concluir (o Atendimento em Gerenciar), a janela diz quem conclui.
         quemConclui={can(ctx, 'atendimento', 'MANAGE') ? null : await quemConcluiOAtendimento(ctx.tenantId!, branchId)}
         dataInicial={dataInicial}

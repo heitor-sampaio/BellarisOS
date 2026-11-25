@@ -12,6 +12,8 @@ import { fusoDaRede, fusosDasUnidades } from '@/lib/unidades/fuso-da-unidade'
 import {
   configDeComissaoDaRede, resumoDasComissoes, extratoDasComissoes, fechamentosRecentes,
 } from '@/lib/comissoes/leitura'
+import { tagsDaUrl, tagsParaAUrl } from '@/lib/tags/filtro-na-url'
+import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
 
 /**
  * Financeiro → Comissões, o corpo dos dois portais. A página da rede passa as
@@ -22,7 +24,7 @@ import {
  * VISTA PESSOAL — quem atende sem o Financeiro vê só a própria linha
  * ("Minhas comissões") e não fecha.
  */
-export async function ComissoesDaEquipe({ ctx, unidades, unidadeAtual, basePath, voltarPara, voltarRotulo, periodoPedido, abas }: {
+export async function ComissoesDaEquipe({ ctx, unidades, unidadeAtual, basePath, voltarPara, voltarRotulo, periodoPedido, tagsPedidas, abas }: {
   ctx:           TenantContext
   /** As unidades ao alcance desta tela (no portal da unidade, uma). */
   unidades:      { id: string; name: string; ativa?: boolean }[]
@@ -33,6 +35,8 @@ export async function ComissoesDaEquipe({ ctx, unidades, unidadeAtual, basePath,
   /** O nome da tela de volta (a 27ª: na vista pessoal, o Dashboard — o Financeiro ela não abre). */
   voltarRotulo?: string
   periodoPedido?: string
+  /** `?tags=` da URL (Q04 do catálogo das Comissões, revisão de 24/11). */
+  tagsPedidas?: string
   /**
    * FI6: a aba Comissões do Financeiro — o `/financeiro` do portal e o título
    * dele. Na vista pessoal não há as outras abas (o Financeiro dela é esta
@@ -56,11 +60,14 @@ export async function ComissoesDaEquipe({ ctx, unidades, unidadeAtual, basePath,
   const recorte = {
     tenantId: ctx.tenantId!, branchIds: doFiltro, inicio: periodo.inicio, fim: periodo.fim,
     profissionalId: soAsProprias,
+    // A tag é da cliente da comissão (a do atendimento ou da venda), filtrada no banco.
+    tags: tagsDaUrl(tagsPedidas),
   }
-  const [resumoLido, extrato, fechamentos] = await Promise.all([
+  const [resumoLido, extrato, fechamentos, tagsDaRede] = await Promise.all([
     resumoDasComissoes(recorte),
     extratoDasComissoes(recorte),
     fechamentosRecentes(ctx.tenantId!, doFiltro, soAsProprias),
+    tagsAtivasDaRede(ctx.tenantId!),
   ])
   // Quem foi desativado segue com a comissão dele, MARCADO (A43 da 6ª
   // simulação: a Nina desativada aparecia como qualquer outra) — "(inativo)",
@@ -84,7 +91,7 @@ export async function ComissoesDaEquipe({ ctx, unidades, unidadeAtual, basePath,
       {comAbas && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 20 }}>
           <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>{abas.titulo}</h1>
-          <AbasDoFinanceiro base={abas.base} atual="comissoes" manter={{ unidade: unidadeAtual }} />
+          <AbasDoFinanceiro base={abas.base} atual="comissoes" manter={{ unidade: unidadeAtual, tags: recorte.tags.length ? tagsParaAUrl(recorte.tags) : undefined }} />
         </div>
       )}
       <FinanceiroComissoes
@@ -106,6 +113,8 @@ export async function ComissoesDaEquipe({ ctx, unidades, unidadeAtual, basePath,
         podeFechar={can(ctx, 'financial', 'MANAGE')}
         soAsProprias={!!soAsProprias}
         fusoDaRede={fuso}
+        tagsDaRede={tagsDaRede}
+        tagsEscolhidas={recorte.tags}
         // D7 da 26ª: cada lançamento (tela e CSV) no relógio da unidade dele.
         fusosDasUnidades={await fusosDasUnidades(ctx.tenantId)}
       />

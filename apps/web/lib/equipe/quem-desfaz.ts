@@ -18,17 +18,17 @@ export async function quemDesfazNoCaixa(tenantId: string, branchId: string | nul
 
 /**
  * Quem RECEBE no PDV (PDV1/CX1, a revisão do Heitor de 2026-11-13): a régua da
- * página do PDV (`podeReceber`) — o PDV ou o Financeiro em Gerenciar. Para quem
- * não recebe ler com quem fica a parcela (A28 da 9ª). A Admin da rede entra
- * sempre.
+ * página do PDV (`podeReceber`) — o PDV em Gerenciar, e só ele (PV-04). Para
+ * quem não recebe ler com quem fica a parcela (A28 da 9ª). A Admin da rede
+ * entra sempre.
  */
 export async function quemRecebeNoPdv(tenantId: string, branchId: string | null): Promise<string[]> {
-  return quemTemEmGerenciar(tenantId, branchId, ['cashier', 'financial'])
+  return quemTemEmGerenciar(tenantId, branchId, 'cashier')
 }
 
 /**
  * A8 da 20ª simulação (princípio 3): quem recebe NA unidade — e se são só os
- * da rede (ninguém da unidade tem o PDV nem o Financeiro em Gerenciar). A
+ * da rede (ninguém da unidade tem o PDV em Gerenciar). A
  * comanda do Umarizal esperava alguém de lá, e só a rede recebia.
  */
 export async function quemRecebeNaUnidade(tenantId: string, branchId: string | null): Promise<{ nomes: string[]; soDaRede: boolean }> {

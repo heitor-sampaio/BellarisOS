@@ -10,6 +10,7 @@ import { instanteNoFuso } from '@/lib/datetime'
 import { textoDoRemarcado } from '@/lib/clientes/textos-do-app'
 import { cancelarPelaCliente, remarcarPelaCliente, horariosParaRemarcar, quemAtendeNoRemarcar, quemRealizaNoRemarcar, diasLivresParaRemarcar } from '@/actions/portal-agendamentos'
 import { Dica } from '@/components/shared/dica'
+import { useFalaDaRede } from '@/components/client-portal/rede-do-portal'
 
 /** O dia no relógio da unidade (F62). */
 const diaNoFuso = (ms: number, fuso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: fuso }).format(new Date(ms))
@@ -58,6 +59,8 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
   telefone:      string | null
 }) {
   const router = useRouter()
+  // CA1: o NOME da rede no lugar de "clínica".
+  const fala = useFalaDaRede()
   // A unidade do horário novo (A15): a do agendamento, até a cliente escolher outra.
   const [unidade, setUnidade] = useState(unidadeInicial ?? unidadeDoAgendamento)
   const escolhida = unidades.find(u => u.id === unidade) ?? null
@@ -129,7 +132,7 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
       .catch(() => { if (vivo) setQuemAtendeDe({ chave: chaveDoHorario, nome: null, mesma: false }) })
     return () => { vivo = false }
   }, [chaveDoHorario, dia, hora, appointmentId, unidade])
-  // A57 da 11ª: o horário novo dentro do prazo do app — depois de remarcar, só a clínica muda.
+  // A57 da 11ª: o horário novo dentro do prazo do app — depois de remarcar, só a equipe muda.
   const novoDentroDoPrazo = !!dia && !!hora && prazoHoras > 0
     && instanteNoFuso(dia, hora, fuso).getTime() - abertoEm < prazoHoras * 3_600_000
 
@@ -146,13 +149,13 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
         </p>
         {telefone && (
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 600 }}>
-            Telefone: {telefone}
+            {fala.telefone}: {telefone}
           </p>
         )}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {zap && (
             <a href={zap} target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ justifyContent: 'center', flex: '1 1 180px' }}>
-              <MessageCircle size={14} aria-hidden="true" /> Falar com a equipe
+              <MessageCircle size={14} aria-hidden="true" /> {fala.falarCom}
             </a>
           )}
           {ligar && (
@@ -257,9 +260,9 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
                   profissional podia mudar. O que significa mora na dica (2026-11-16); com quem
                   fica o horário novo aparece à vista antes de confirmar (A56 da 11ª). Fora do
                   grupo: o nome dela não pode conter "Sem preferência". */}
-              <Dica rotulo="Sobre a escolha da profissional">
+              <Dica rotulo="Sobre a escolha de quem atende">
                 <span data-o-que-e-sem-preferencia>
-                  Sem preferência: {profissional ? `hoje o agendamento é com ${profissional}; no` : 'no'} horário novo, fica com quem estiver livre — pode ser outra profissional.
+                  Sem preferência: {profissional ? `hoje o agendamento é com ${profissional}; no` : 'no'} horário novo, fica com quem estiver livre — pode ser outra pessoa.
                   {profissional ? ` Para ficar com ${profissional}, escolha “Só com ${profissional}”.` : ''}
                 </span>
               </Dica>
@@ -333,7 +336,7 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
               color: 'var(--text)', background: 'var(--warning-soft)', borderRadius: 'var(--radius-field-token)',
               padding: '10px 14px', fontSize: 'var(--text-sm-sz)', lineHeight: 1.45,
             }}>
-              Este horário fica a menos de {prazoHoras} horas: depois de remarcar, para mudar de novo ou cancelar, fale com a equipe.
+              Este horário fica a menos de {prazoHoras} horas: depois de remarcar, para mudar de novo ou cancelar, {fala.faleCom}.
             </p>
           )}
           <div style={{ display: 'flex', gap: 8 }}>

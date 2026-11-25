@@ -454,7 +454,7 @@ interface CRMBoardProps {
    * entra no card). Fora da lista carregada (alcance, outro funil), nada abre.
    */
   leadAberto?:  string | null
-  /** "Cadastrar cliente" (CR2; era "Converter") pede Clientes em Gerenciar (D4, 2026-11-01). */
+  /** "Cadastrar como cliente" (CR2, revisão de 24/11; era "Converter") pede Clientes em Gerenciar (D4, 2026-11-01). */
   podeCadastrarCliente?: boolean
   /** "Agendar" no card (A16 da 6ª simulação): o CRM em Gerenciar e a agenda no plano. */
   podeAgendar?: boolean
@@ -1117,7 +1117,7 @@ function LeadCard({
                 borderRadius: 6, padding: '3px 8px', cursor: 'pointer',
               }}
             >
-              <UserCheck size={10} /> Cadastrar cliente
+              <UserCheck size={10} /> Cadastrar como cliente
             </button>
           )}
         </div>

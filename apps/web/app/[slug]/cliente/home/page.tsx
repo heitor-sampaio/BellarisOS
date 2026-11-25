@@ -32,6 +32,8 @@ import { textoDoParaAvaliar } from '@/lib/clientes/textos-do-app'
 import { Dica } from '@/components/shared/dica'
 import { NotaDoFuso } from '@/components/shared/fuso'
 import { relogioForaDeBrasilia } from '@/lib/unidades/hora-da-unidade'
+import { falaDaRedeDoPortal } from '@/lib/clientes/nome-da-rede'
+import type { FalaDaRede } from '@/lib/clientes/fala-da-rede'
 
 // -- Helpers --------------------------------------------------------
 /** No relógio da unidade (F62). */
@@ -109,6 +111,8 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
   const { slug } = await params
   const ctx = await getTenantContext()
   assertClient(ctx)
+  // CA1: o NOME da rede no lugar de "clínica".
+  const fala = await falaDaRedeDoPortal(slug)
 
   const admin = createAdminClient()
   // A unidade do endereço (o slug é único no sistema, §5): o procedimento do
@@ -341,13 +345,13 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
         </section>
       )}
 
-      {/* -- Crédito na clínica (A46 da 9ª) ----------------------------- */}
+      {/* -- Crédito na rede (A46 da 9ª) ----------------------------- */}
       {creditoInterno > 0 && (
         <Link href={`/${slug}/cliente/financeiro`} prefetch={false} data-credito-interno-no-inicio className="card" style={{
           padding: '14px 18px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
         }}>
           <div>
-            <p className="overline">Seu crédito</p>
+            <p className="overline">{fala.credito}</p>
             <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>{formatBRL(creditoInterno)}</p>
             <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Use em qualquer atendimento ou produto.</p>
             {bonusDoCredito.map((b, i) => (
@@ -440,7 +444,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                   </p>
                 )}
                 {/* F72: o próximo agendamento numa unidade que a clínica desativou diz isso. */}
-                {nextAppt.branches?.is_active === false && <AvisoUnidadeDesativada nome={nextAppt.branches.name} aberto />}
+                {nextAppt.branches?.is_active === false && <AvisoUnidadeDesativada nome={nextAppt.branches.name} aberto faleCom={fala.faleCom} />}
                 {/* A51: o de hoje que passou da hora segue aqui até a clínica concluir. */}
                 {jaPassouDaHora(nextAppt.scheduled_at) && (
                   // O estado fica à vista; o porquê de ainda estar aqui, na dica (2026-11-16).
@@ -546,7 +550,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
             ))}
 
             {activePlans.filter(p => p.status === 'PROPOSED').map(plan => (
-              <PlanoProposto key={plan.id} plano={plan} slug={slug} validadeDias={validadeDias} fuso={fuso} whatsapp={aUnidade?.whatsapp ?? null} telefone={aUnidade?.telefone ?? null}
+              <PlanoProposto key={plan.id} plano={plan} slug={slug} fala={fala} validadeDias={validadeDias} fuso={fuso} whatsapp={aUnidade?.whatsapp ?? null} telefone={aUnidade?.telefone ?? null}
                 avulsos={avulsosPorPlano.get(plan.id) ?? []} />
             ))}
 
@@ -616,7 +620,9 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
  * procedimentos, o valor e a validade, e "Falar com a clínica". O app não
  * aceita: o aceite (e o pagamento) é na clínica.
  */
-function PlanoProposto({ plano, slug, validadeDias, fuso, whatsapp, telefone, avulsos = [] }: {
+function PlanoProposto({ plano, slug, fala, validadeDias, fuso, whatsapp, telefone, avulsos = [] }: {
+  /** As frases com o nome da rede (CA1). */
+  fala: FalaDaRede
   plano: ActivePlan; slug: string; validadeDias: number; whatsapp: string | null; telefone: string | null
   /** O fuso da unidade (F64; IND-03 da varredura de 18/11): a validade no relógio dela. */
   fuso: string
@@ -660,24 +666,24 @@ function PlanoProposto({ plano, slug, validadeDias, fuso, whatsapp, telefone, av
       )}
       <p style={{ fontSize: 'var(--text-sm-sz)', color: vencido ? 'var(--warning)' : 'var(--text-muted)', fontWeight: 600 }}>
         {/* PT1b (2026-11-14): a cliente aceita pelo app, na página do plano. */}
-        {vencido ? avisoDaPropostaVencida(dia) : `Válido até ${dia}.`}
+        {vencido ? avisoDaPropostaVencida(dia, fala) : `Válido até ${dia}.`}
       </p>
       <Link href={`/${slug}/cliente/planos/${plano.id}`} prefetch={false} className="btn-primary" style={{ justifyContent: 'center' }}>
         Ver o plano <ChevronRight size={14} aria-hidden="true" />
       </Link>
       {avulsos.length > 0 && (
         <p data-avulso-do-plano style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>
-          {avulsos.join('; ')}: ele não faz parte deste plano. Fale com a equipe se ele deveria ser uma sessão do plano.
+          {avulsos.join('; ')}: ele não faz parte deste plano. {fala.FaleCom} se ele deveria ser uma sessão do plano.
         </p>
       )}
       {whatsapp ? (
         // A66: o WhatsApp abre com a mensagem pronta sobre ESTE plano.
         <a href={comMensagem(whatsapp, `Olá! Vi no app o plano de tratamento proposto (${sessoes.length} ${sessoes.length === 1 ? 'sessão' : 'sessões'}, ${formatBRL(valor)}) e quero conversar sobre ele.`)!}
           target="_blank" rel="noopener noreferrer" className="btn-secondary" style={{ justifyContent: 'center' }}>
-          <MessageCircle size={14} aria-hidden="true" /> Falar com a equipe
+          <MessageCircle size={14} aria-hidden="true" /> {fala.falarCom}
         </a>
       ) : telefone ? (
-        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 600 }}>Telefone: {telefone}</p>
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 600 }}>{fala.telefone}: {telefone}</p>
       ) : null}
     </div>
   )

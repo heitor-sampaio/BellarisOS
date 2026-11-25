@@ -231,7 +231,7 @@ async function venderPacoteUmaVez(
     const responsavelId = typeof equipe?.responsavelId === 'string' && equipe.responsavelId ? equipe.responsavelId : null
     if (pacote.comissao_responsavel_tipo) {
       if (responsavelId) {
-        const recusa = await recusaDoMembroDaVenda(ctx.tenantId!, responsavelId, branchId, { atende: true, papel: 'A profissional responsável' })
+        const recusa = await recusaDoMembroDaVenda(ctx.tenantId!, responsavelId, branchId, { atende: true, papel: 'A pessoa responsável' })
         if (recusa) return { error: recusa }
       } else if (equipe?.semResponsavel !== true) {
         return { confirmarSemResponsavel: PERGUNTA_SEM_RESPONSAVEL }

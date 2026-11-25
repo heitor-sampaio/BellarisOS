@@ -1,7 +1,8 @@
 import 'server-only'
 import type { Ferramenta } from '@/lib/copilot/ferramentas/tipos'
 import { buscar } from '@/lib/copilot/ferramentas/buscar'
-import { agendamentos, horariosLivres } from '@/lib/copilot/ferramentas/agenda'
+import { agendamentos, horariosLivres, minhaAgenda } from '@/lib/copilot/ferramentas/agenda'
+import { minhasComissoes } from '@/lib/copilot/ferramentas/comissoes'
 import { cliente, clientes } from '@/lib/copilot/ferramentas/clientes'
 import { procedimentos, indicadores } from '@/lib/copilot/ferramentas/indicadores'
 import { lancamentos, estoque, oportunidades } from '@/lib/copilot/ferramentas/gestao'
@@ -20,6 +21,8 @@ export const FERRAMENTAS: Ferramenta[] = [
   // Leitura
   buscar,
   agendamentos, horariosLivres,
+  // A vista pessoal (SM2; Q03 da revisão de 24/11): só leitura, só as dela.
+  minhaAgenda, minhasComissoes,
   cliente, clientes,
   procedimentos, indicadores,
   lancamentos, estoque, oportunidades,

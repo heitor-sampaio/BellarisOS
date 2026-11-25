@@ -243,3 +243,30 @@ describe('9. O bloqueio pelo Copilot avisa e pede confirmação', () => {
     expect(f).toContain('avisoDoBloqueado')
   })
 })
+
+// UM1 (o Heitor, 2026-11-23, "concordo, pode anotar, marcar as questões e
+// ajustar o codigo"; Q13 da revisão de 24/11): a tela do atendimento abre com o
+// Atendimento em Ver; a Agenda em Ver não a abre. A janela da agenda não leva
+// à tela quem não a abre (o "Retomar atendimento" dava em "sem acesso").
+describe('a Agenda em Ver não leva à tela do atendimento', () => {
+  it('o "Retomar atendimento" da janela só aparece a quem abre a tela', () => {
+    const folha = fonte('components/branch/appointment-sheet.tsx')
+    expect(folha).toMatch(/abreOAtendimento\?: boolean/)
+    expect(folha).toMatch(/appointment\.status === 'IN_PROGRESS' && \(abreOAtendimento \|\| vistaDela\) && \(\s*<Link/)
+  })
+
+  it('as duas agendas dizem à janela se a pessoa abre a tela (o Atendimento em Ver)', () => {
+    for (const p of ['app/[slug]/agenda/page.tsx', 'app/admin/agenda/page.tsx']) {
+      expect(fonte(p), p).toContain("abreOAtendimento={can(ctx, 'atendimento', 'VIEW')}")
+    }
+    for (const c of ['components/branch/agenda-calendar.tsx', 'components/admin/admin-agenda-view.tsx']) {
+      expect(fonte(c), c).toMatch(/abreOAtendimento=\{abreOAtendimento\}/)
+    }
+  })
+
+  it('a tela não abre pela Agenda', () => {
+    const sessao = fonte('app/_shared/sessao-de-atendimento.tsx')
+    const trava = sessao.slice(sessao.indexOf('export async function SessaoDeAtendimento'), sessao.indexOf('idOu404(id)'))
+    expect(trava).not.toMatch(/can\(ctx, 'agenda'/)
+  })
+})

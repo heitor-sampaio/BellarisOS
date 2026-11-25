@@ -66,6 +66,24 @@ test('A51: fora do teste, diz que o Copilot não faz parte do plano da rede', as
   }
 })
 
+// O convite é só da Admin da rede (o Heitor, 18/11: "Configuração da rede toda só
+// pela conta admin"; DEVLOG 2026-11-24 (7)): "A rede inteira" com Configurações em
+// Gerenciar não basta.
+test('A51: da rede com Configurações em Gerenciar, sem ser a Admin da rede, não vê o aviso', async ({ browser }) => {
+  const daRede = await criarMembro(`cfg${marca}`, {
+    tenant: rede!.tenantId, branchId: null, rotulo: 'Coordenação', permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }],
+  })
+  try {
+    await como(browser, daRede, async p => {
+      await p.goto('/admin/dashboard')
+      await expect(p.getByRole('heading').first()).toBeVisible()
+      await expect(p.getByRole('button', { name: /Copilot/ })).toHaveCount(0)
+    })
+  } finally {
+    await daRede.limpar()
+  }
+})
+
 test('A51: quem não administra a rede não vê o aviso', async ({ browser }) => {
   await como(browser, recepcao!, async p => {
     await p.goto(`/${slug}/agenda`)

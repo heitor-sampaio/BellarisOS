@@ -17,21 +17,22 @@ import { join } from 'node:path'
 const ler = (rel: string) => readFileSync(join(__dirname, '..', rel), 'utf8')
 const editor = () => ler('components/admin/roles-editor.tsx')
 
-describe('A1: a linha do PDV diz que o Financeiro em Gerenciar o abre', () => {
-  it('o texto, só com o PDV fechado e o Financeiro em Gerenciar', async () => {
-    const { pdvAbertoPeloFinanceiro } = await import('@/lib/permissions-copy')
-    expect(pdvAbertoPeloFinanceiro({ cashier: 'NONE', financial: 'MANAGE' })).toBe('Aberto pelo Financeiro em Gerenciar')
-    expect(pdvAbertoPeloFinanceiro({ cashier: 'MANAGE', financial: 'MANAGE' })).toBeNull()
-    expect(pdvAbertoPeloFinanceiro({ cashier: 'NONE', financial: 'VIEW' })).toBeNull()
+// A1 da 22ª mudou com a regra: receber é só do PDV (PV-04 do catálogo de 24/11;
+// o Heitor, 23/11, à proposta "cada passo pertence a UM módulo, e nenhuma ação
+// pede dois … PDV: receber, a comanda": "concordo, pode anotar, marcar as
+// questões e ajustar o codigo"). O Financeiro em Gerenciar não abre o PDV, e a
+// linha não diz que abre.
+describe('A1: a linha do PDV não diz que o Financeiro em Gerenciar o abre', () => {
+  it('não há "Aberto pelo Financeiro em Gerenciar"', async () => {
+    const copia = await import('@/lib/permissions-copy')
+    expect('pdvAbertoPeloFinanceiro' in copia).toBe(false)
   })
-  it('a dica do PDV em "Sem acesso" diz a exceção', async () => {
+  it('a dica do PDV em "Sem acesso" não promete o PDV pelo Financeiro', async () => {
     const { LEVEL_COPY } = await import('@/lib/permissions-copy')
-    expect(LEVEL_COPY.cashier.NONE).toContain('Financeiro em Gerenciar')
+    expect(LEVEL_COPY.cashier.NONE).not.toContain('Financeiro em Gerenciar')
   })
-  it('a linha do PDV mostra', () => {
-    const f = editor()
-    expect(f).toContain('pdvAbertoPeloFinanceiro(')
-    expect(f).toContain('data-pdv-pelo-financeiro')
+  it('a linha do PDV não mostra', () => {
+    expect(editor()).not.toContain('pdvAbertoPeloFinanceiro(')
   })
 })
 

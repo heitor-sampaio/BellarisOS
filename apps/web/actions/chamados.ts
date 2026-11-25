@@ -1,6 +1,6 @@
 'use server'
 
-import { getTenantContext, can } from '@/lib/auth'
+import { getTenantContext } from '@/lib/auth'
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, mensagemDoErro } from '@/lib/db'
@@ -16,8 +16,8 @@ import {
 /**
  * Os chamados de suporte, do lado da CLÍNICA (o botão "Ajuda" da topbar).
  *
- * - Quem abriu vê os seus; quem é da rede com `settings: MANAGE` vê os da
- *   rede inteira (é quem responde pela conta).
+ * - Quem abriu vê os seus; a Admin da rede vê os da rede inteira (é quem
+ *   responde pela conta).
  * - Nota interna do suporte nunca sai daqui (`comInternas: false`).
  * - A sessão de suporte não abre nem responde chamado: seria o atendente
  *   conversando consigo mesmo em nome da clínica.
@@ -27,8 +27,14 @@ import {
 type Resultado<T = object> = ({ ok: true } & T) | { ok: false; error: string }
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
+/**
+ * Os chamados dos colegas: só a Admin da rede (o cargo de sistema gravado),
+ * como o resto da conta com o BellarisOS (Q04 do catálogo de Plataforma,
+ * resolvida na revisão de 24/11). Era "A rede inteira" com Configurações em
+ * Gerenciar, o critério de antes de 18/11.
+ */
 function veARede(ctx: TenantContext): boolean {
-  return ctx.branchId === null && can(ctx, 'settings', 'MANAGE')
+  return ctx.isNetworkAdmin
 }
 
 async function chamadoAoAlcance(ctx: TenantContext, chamadoId: string): Promise<ChamadoCompleto | null> {

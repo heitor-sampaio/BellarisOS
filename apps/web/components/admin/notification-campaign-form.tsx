@@ -10,7 +10,6 @@ import {
 import { createCampaign, updateCampaign, activateCampaign } from '@/actions/notification-campaigns'
 import { AudiencePreview } from '@/components/admin/audience-preview'
 import { EscolherClientes, type ClienteEscolhida } from '@/components/admin/escolher-clientes'
-import { MAXIMO_DE_CLIENTES_ESPECIFICAS } from '@/lib/notifications/filtros-da-campanha'
 import { CanalDaCampanha } from '@/components/admin/canal-da-campanha'
 import { TagPicker } from '@/components/shared/tag-picker'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
@@ -391,7 +390,7 @@ export function NotificationCampaignForm({ procedures, existing, podeVerAutomaco
             <SectionLabel dica={{ rotulo: 'Sobre as clientes específicas', texto: 'Só as clientes escolhidas aqui recebem. Os outros filtros, se houver, valem junto: a cliente precisa passar por todos.' }}>
               Clientes específicas
             </SectionLabel>
-            <EscolherClientes escolhidas={clientes} aoMudar={setClientes} maximo={MAXIMO_DE_CLIENTES_ESPECIFICAS} />
+            <EscolherClientes escolhidas={clientes} aoMudar={setClientes} />
           </div>
 
           {/* Gender */}

@@ -17,7 +17,7 @@ import { getAtendimentosAReceber } from '@/lib/metrics/a-receber'
  * - `SEM_COBRANCA`: R$ 0 (a avaliação) — nada a receber;
  * - `RESOLVIDO`: pago, ou pago em outro lugar (plano, pacote, pré-pago).
  *
- * `podeReceber` é quem recebe (o PDV ou o Financeiro em Gerenciar), o de
+ * `podeReceber` é quem recebe (o PDV em Gerenciar, PV-04), o de
  * `confirmPayment`. O A_RECEBER traz a comanda do atendimento: o recebimento
  * é no PDV (PDV7/CX3, a revisão do Heitor de 2026-11-13), e a janela leva a ela.
  */

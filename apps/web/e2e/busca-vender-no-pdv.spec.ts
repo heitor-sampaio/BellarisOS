@@ -8,7 +8,7 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  * 2026-11-13: "Ok"): o "Vender" na linha da cliente achada pela busca
  * universal leva ao PDV, com ela escolhida (`…/pdv?nova=1&cliente=<id>`), nos
  * dois portais. Aparece a quem vende no PDV — a mesma regra da tela do PDV
- * (`podeReceber`: o PDV ou o Financeiro em Gerenciar) — e a quem não vende,
+ * (`podeReceber`: o PDV em Gerenciar; PV-04, 24/11) — e a quem não vende,
  * não. A página do PDV confere o id da URL: uuid de verdade e da rede da
  * sessão; o resto abre a venda sem cliente, sem a tela de erro.
  *

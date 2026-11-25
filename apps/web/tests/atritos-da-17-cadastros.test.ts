@@ -187,7 +187,8 @@ describe('A17: o cargo salvo confirma, e o resumo diz o Copilot', () => {
   it('o Copilot no resumo', async () => {
     const { copilotNoResumo } = await import('@/lib/permissions-copy')
     expect(copilotNoResumo('NONE')).toBeNull()
-    expect(copilotNoResumo('VIEW')).toBe('E o Copilot (o botão no canto da tela), para consultar.')
+    // O Ver já pede gravações (revisão de 24/11, Q02; "nenhuma ação pede dois" — o Heitor, 23/11: "concordo").
+    expect(copilotNoResumo('VIEW')).toBe('E o Copilot (o botão no canto da tela), para consultar e pedir gravações.')
     expect(copilotNoResumo('MANAGE')).toBe('E o Copilot (o botão no canto da tela), para consultar e pedir gravações.')
   })
   it('o resumo e o aviso de salvo', () => {

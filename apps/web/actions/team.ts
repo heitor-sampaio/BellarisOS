@@ -443,7 +443,7 @@ export async function updateTeamMember(
   if (saem.length) {
     const nomes = listaDeUnidades(((await ler(admin.from('branches').select('name')
       .eq('tenant_id', ctx.tenantId!).in('id', saem).order('name'), 'buscar as unidades que saem')) ?? []).map(b => b.name as string))
-    const quem = { id: member.id as string, nome: ((member as { name?: string | null }).name ?? '') || 'A profissional' }
+    const quem = { id: member.id as string, nome: ((member as { name?: string | null }).name ?? '') || 'Esta pessoa' }
     const resposta = formData.get('_repasseDoAtende')
     if (typeof resposta !== 'string' || !resposta) {
       const pendencias = await pendenciasDoMembro(admin, ctx, quem, { unidades: saem })

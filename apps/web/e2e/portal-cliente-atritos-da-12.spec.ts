@@ -106,9 +106,9 @@ test('A50 e A51: o "Sem preferência" do remarcar diz o que significa, e o remar
     const grupo = p.getByRole('group', { name: 'Com quem?' })
     await expect(grupo.getByRole('button', { name: 'Sem preferência' })).toHaveAttribute('aria-pressed', 'true')
     // A50: a escolha diz o que é — hoje é com ela, e no horário novo pode mudar (na dica, 2026-11-16).
-    await p.getByRole('button', { name: 'Sobre a escolha da profissional' }).hover()
+    await p.getByRole('button', { name: 'Sobre a escolha de quem atende' }).hover()
     await expect(p.locator('[data-o-que-e-sem-preferencia]')).toContainText(`hoje o agendamento é com ${comQuem}`)
-    await expect(p.locator('[data-o-que-e-sem-preferencia]')).toContainText('pode ser outra profissional')
+    await expect(p.locator('[data-o-que-e-sem-preferencia]')).toContainText('pode ser outra pessoa')
     await expect(grupo.getByRole('button', { name: `Só com ${comQuem}` })).toBeVisible()
     await p.getByLabel('Novo dia').fill(dia(4))
     await p.getByRole('button', { name: '11:00', exact: true }).click()

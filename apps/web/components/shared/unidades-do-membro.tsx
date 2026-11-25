@@ -90,10 +90,11 @@ export function UnidadesDoMembro({ unidades, editaveis, valor, aoMudar, id = 'un
               </label>
             ))}
           </div>
-          {/* A20 da 17ª (princípio 3): a principal é o destino do login, e a tela não dizia qual era. */}
+          {/* A20 da 17ª (princípio 3): a tela não dizia qual era a principal. O login abre na
+              última unidade usada, e na principal só quando não há uma (PO1; EQ-06 do catálogo de 24/11). */}
           {marcadas.length > 1 && principal && (
             <span data-unidade-principal style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-              Principal: <b style={{ color: 'var(--text)' }}>{principal}</b> — o login abre nela.
+              Principal: <b style={{ color: 'var(--text)' }}>{principal}</b> — o login abre na última unidade que ela usou; sem uma, nesta.
             </span>
           )}
         </>

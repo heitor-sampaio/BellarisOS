@@ -98,9 +98,10 @@ test('o topo das Configurações diz o que a pessoa vê, não "cargos e integra�
     await p.getByRole('button', { name: 'Sobre as Configurações' }).hover()
     await expect(p.locator('[data-subtitulo-da-tela]')).toBeVisible()
     await expect(p.getByText(/Cargos, modelos de ficha e integrações/)).toHaveCount(0)
-    // No topo da tela (o subtítulo do título): desde o J-16 o item do menu também
-    // se chama "Tags e importações", e o texto solto acha os dois.
-    await expect(p.getByRole('main').getByText(/Tags e importações/)).toBeVisible()
+    // No topo da tela (o subtítulo do título). Clientes em Gerenciar abre também a
+    // LGPD desde a revisão de 24/11 (Q09 do catálogo de Clientes: quem responde
+    // ao pedido de dados), e o topo diz as três (na ordem das abas).
+    await expect(p.locator('[data-subtitulo-da-tela]')).toHaveText(/LGPD, tags e importações/)
   })
 })
 

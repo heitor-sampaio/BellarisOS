@@ -38,7 +38,7 @@ export async function buscarClientesParaVender(termo: string): Promise<{
  *
  * É a MESMA baixa do Financeiro (`marcarPagoCore`): confere a rede e a unidade
  * ao alcance do lançamento pelo id, e grava num UPDATE só, com a guarda do
- * já pago. Quem recebe: `podeReceber` (o Caixa ou o Financeiro em Gerenciar).
+ * já pago. Quem recebe: `podeReceber` (o PDV em Gerenciar, PV-04).
  */
 export async function receberParcelaNoPdv(
   transactionId: string, slug: string,

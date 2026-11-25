@@ -51,7 +51,7 @@ test.beforeAll(async () => {
   gestor = await criarMembro(`pvg${marca}`, {
     tenant: rede.tenantId, rotulo: 'Recepção e gestão',
     permissoes: [
-      { modulo: 'procedures', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'financial', nivel: 'MANAGE' },
+      { modulo: 'procedures', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'financial', nivel: 'MANAGE' }, { modulo: 'cashier', nivel: 'MANAGE' },
       { modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'medical_records', nivel: 'MANAGE' }, { modulo: 'stock', nivel: 'VIEW' },
       { modulo: 'crm', nivel: 'MANAGE' },
     ],

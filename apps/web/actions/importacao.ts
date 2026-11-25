@@ -11,7 +11,7 @@ import { variantesDoTelefone } from '@/lib/importacao/normalizar'
 import { podeTrocarResponsavel } from '@/lib/crm/responsavel'
 import type { LinhaDoRelatorio } from '@/lib/importacao/processar'
 import { podeTrazerPacoteDeFora } from '@/lib/pacotes/de-fora'
-import { recusaDaConfigDaRede } from '@/lib/configuracao-da-rede'
+import { mexeNaConfigDaRede, recusaDaConfigDaRede } from '@/lib/configuracao-da-rede'
 
 /**
  * O importador de contatos (CSV), 2026-10-13. O navegador lê o arquivo, mapeia
@@ -203,7 +203,9 @@ type ImportacaoLida = AndamentoDaImportacao & {
 }
 
 /**
- * A importação desta rede que ESTA pessoa alcança: o módulo do destino em
+ * A importação desta rede que ESTA pessoa alcança: só a Admin da rede (as
+ * Importações são configuração da rede toda — o histórico e o relatório
+ * inclusive, revisão de 24/11), com o módulo do destino em
  * Gerenciar. Sem recorte por unidade, nem nos clientes: a ficha é da REDE
  * (H16), e importar é configuração da rede toda, só da Admin da rede (o
  * Heitor, 18/11) — auditoria das regras, 18/11. O relatório de erros já
@@ -214,6 +216,7 @@ async function importacaoAoAlcance(ctx: Ctx, id: string): Promise<ImportacaoLida
     .select('id, destino, branch_id, status, total, processadas, novas, completadas, sem_mudanca, com_erro, oportunidades, erro, erros, erros_expiram_em, com_aviso, avisos')
     .eq('id', id).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'ler a importação') as ImportacaoLida | null
   if (!imp) return null
+  if (!mexeNaConfigDaRede(ctx)) return null
   if (!can(ctx, imp.destino === 'clientes' ? 'clients' : 'crm', 'MANAGE')) return null
   if (imp.erros_expiram_em && imp.erros_expiram_em < new Date().toISOString()) { imp.erros = []; imp.avisos = [] }
   return imp

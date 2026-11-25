@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getTenantContext, can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
+import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 import type { LinhaDoRelatorio } from '@/lib/importacao/processar'
 
 /**
@@ -10,7 +11,7 @@ import type { LinhaDoRelatorio } from '@/lib/importacao/processar'
  * Traz as RECUSADAS e as IMPORTADAS COM AVISO (D2/A6 da 8ª simulação,
  * 2026-11-06: a Isabela entra sem o CPF, e a dona precisa saber disso).
  *
- * Toda rota de /api se defende sozinha (§6): sessão, o módulo do destino
+ * Toda rota de /api se defende sozinha (§6): sessão, a Admin da rede, o módulo do destino
  * (`clients` ou `crm` em Gerenciar) e a rede. O relatório guarda o valor
  * errado — dado pessoal —, e some depois de 7 dias.
  */
@@ -31,6 +32,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
   }
   if (ctx.isClient) return NextResponse.json({ error: 'Sem acesso.' }, { status: 403 })
+  // Só da Admin da rede: as Importações são configuração da rede toda, o
+  // relatório inclusive (revisão de 24/11, Q10 do catálogo de Clientes).
+  if (!mexeNaConfigDaRede(ctx)) return NextResponse.json({ error: 'Sem acesso.' }, { status: 403 })
   if (!/^[0-9a-f-]{36}$/i.test(id)) return NextResponse.json({ error: 'Importação não encontrada.' }, { status: 404 })
 
   const imp = await ler(createAdminClient().from('importacoes')

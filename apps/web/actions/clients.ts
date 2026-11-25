@@ -17,7 +17,7 @@ import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { atualizarClienteCore } from '@/lib/clients/atualizar'
 import { pessoaDoCrmDoTelefone, ligarPessoaDoCrmAoCliente, type PessoaDoCrm } from '@/lib/clients/pessoa-do-crm'
-import { criarLoginDoCliente, darAcessoAoCliente, desfazerLogin, ligarLoginAoCliente, documentoDoAcesso, type DocumentoDoAcesso } from '@/lib/clients/acesso'
+import { criarLoginDoCliente, darAcessoAoCliente, desfazerLogin, ligarLoginAoCliente, documentoDoAcesso, type DocumentoDoAcesso, type EmailParaCriarSenha } from '@/lib/clients/acesso'
 import { CPF_INVALIDO, documentoDaFicha, documentoEstrangeiroRepetido } from '@/lib/clients/documento'
 import { colunasDoResponsavel } from '@/lib/clients/menor'
 import { conferirIndicadaPor } from '@/lib/clients/indicada-por'
@@ -77,8 +77,10 @@ export type PerguntaDoJaExiste = FichaQueJaExiste & { telefone: string }
 
 export type ResultadoDoCadastro = {
   error?: string; success?: boolean; clientId?: string; acessoCriado?: boolean
-  /** O acesso entrou na conta que ela JÁ tinha em outra clínica: a senha continua a dela (J-22). */
+  /** O acesso entrou na conta que ela JÁ tinha em outra rede: a senha continua a dela (J-22). */
   contaLigada?: boolean
+  /** O documento foi recusado como senha: a cliente cria a senha pelo e-mail (24/11, R1 da 27ª). */
+  emailParaCriarSenha?: EmailParaCriarSenha
   arquivada?: AvisoDeArquivada
   jaExiste?: PerguntaDoJaExiste
   mesmaPessoaDoLead?: PerguntaDoLead
@@ -267,7 +269,7 @@ async function addClientInterno(ctx: TenantContext, formData: FormData): Promise
   }
 
   // 3) Claims do cliente + conta de fidelidade
-  if (login && !('error' in login)) await ligarLoginAoCliente(admin, login, client.id)
+  const enviado = login && !('error' in login) ? await ligarLoginAoCliente(admin, login, client.id, email!) : {}
   // A conta de pontos: pela função do banco, que não duplica e não cala erro.
   await gravar(admin.rpc('fidelidade_conta', { p_cliente: client.id }), 'abrir a conta de fidelidade')
 
@@ -332,7 +334,7 @@ async function addClientInterno(ctx: TenantContext, formData: FormData): Promise
   // `acessoCriado`: a tela confirma o login e lembra a senha inicial (A13) —
   // ou, na conta que ela já tinha (`contaLigada`), que a senha é a dela (J-22).
   const contaLigada = !!login && !('error' in login) && !login.novo
-  return { success: true, clientId: client.id as string, acessoCriado: !!login, contaLigada }
+  return { success: true, clientId: client.id as string, acessoCriado: !!login, contaLigada, ...enviado }
 }
 
 type RespostasDoTelefone = { jaExiste: string; pessoaDoCrm: string; arquivada: string }
@@ -434,6 +436,7 @@ async function atualizarPeloCadastro(
   if (r.error) return { error: r.error }
   let acessoCriado = false
   let contaLigada = false
+  let emailParaCriarSenha: EmailParaCriarSenha | undefined
   if (de.comAcesso && de.email && de.documento) {
     const ficha = await ler(admin.from('clients').select('auth_id').eq('id', clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(),
       'buscar o acesso da ficha') as { auth_id: string | null } | null
@@ -442,11 +445,12 @@ async function atualizarPeloCadastro(
       if ('error' in acesso) return { error: `A ficha foi atualizada, mas o acesso ao app não saiu: ${acesso.error}` }
       acessoCriado = true
       contaLigada = acesso.contaLigada
+      emailParaCriarSenha = acesso.emailParaCriarSenha
     }
   }
   const ligado = await reativarPeloCadastro(ctx, clientId, { leadId: de.leadId, conversationId: de.conversationId, slug: de.slug })
   if (ligado.error) return ligado
-  return { success: true, clientId, acessoCriado, contaLigada }
+  return { success: true, clientId, acessoCriado, contaLigada, ...(emailParaCriarSenha ? { emailParaCriarSenha } : {}) }
 }
 
 /** "Reativar a ficha de X" pelo cadastro (A20): a ficha volta como está, ligada ao card ou à conversa. */
@@ -486,7 +490,7 @@ async function reativarPeloCadastro(
  * aba Dados da ficha: login = o e-mail da ficha, senha inicial = o CPF — o
  * núcleo de sempre (`darAcessoAoCliente`, o mesmo do Copilot).
  */
-export async function darAcessoAoApp(clientId: string): Promise<{ ok: true; contaLigada: boolean } | { error: string }> {
+export async function darAcessoAoApp(clientId: string): Promise<{ ok: true; contaLigada: boolean; emailParaCriarSenha?: EmailParaCriarSenha } | { error: string }> {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'clients', 'MANAGE')
@@ -507,7 +511,7 @@ export async function darAcessoAoApp(clientId: string): Promise<{ ok: true; cont
     revalidatePath('/admin/clients/[id]', 'page')
     revalidatePath('/[slug]/clients/[id]', 'page')
     revalidateTag(`clients:${ctx.tenantId!}`, { expire: 0 })
-    return { ok: true, contaLigada: r.contaLigada }
+    return { ok: true, contaLigada: r.contaLigada, ...(r.emailParaCriarSenha ? { emailParaCriarSenha: r.emailParaCriarSenha } : {}) }
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }

@@ -74,10 +74,11 @@ describe('entradas com mais de uma porta', () => {
 
   it('quem só chega por Tags e Importações vê isso no rótulo, curto o bastante para não sair cortado no menu (A11, J-16)', () => {
     for (const menu of [ADMIN_MENU, BRANCH_MENU]) {
-      for (const modulo of ['clients', 'crm'] as const) {
-        const e = menuEntriesFor(menu, com({ [modulo]: 'MANAGE' })).find(x => x.key === 'settings')
-        expect(e?.label).toBe('Tags e importações')
-      }
+      // Só o CRM: Clientes em Gerenciar também abre a LGPD desde a revisão de
+      // 24/11 (Q09 do catálogo de Clientes) — e aí é "Configurações".
+      const e = menuEntriesFor(menu, com({ crm: 'MANAGE' })).find(x => x.key === 'settings')
+      expect(e?.label).toBe('Tags e importações')
+      expect(menuEntriesFor(menu, com({ clients: 'MANAGE' })).find(x => x.key === 'settings')?.label).toBe('Configurações')
       // com um módulo de configuração de verdade, é Configurações
       const completa = menuEntriesFor(menu, com({ clients: 'MANAGE', settings: 'MANAGE' })).find(x => x.key === 'settings')
       expect(completa?.label).toBe('Configurações')
@@ -197,11 +198,13 @@ describe('as vistas pessoais no menu (DaPessoa)', () => {
 
 // PDV1 (a revisão do Heitor, 2026-11-13: "vamos fazer um PDV"): a tela de
 // vender e de receber, de quem recebe pagamento (`podeReceber`: o PDV em
-// Gerenciar ou o Financeiro em Gerenciar) — nos dois portais.
+// Gerenciar, e só ele — PV-04 do catálogo de 24/11; o Heitor, 23/11, à proposta
+// "cada passo pertence a UM módulo, e nenhuma ação pede dois … PDV: receber, a
+// comanda": "concordo") — nos dois portais.
 describe('o PDV', () => {
   it('aparece a quem recebe, em Vendas, nos dois portais', () => {
     for (const [menu, href] of [[ADMIN_MENU, '/admin/pdv'], [BRANCH_MENU, '/pdv']] as const) {
-      for (const p of [com({ cashier: 'MANAGE' }), com({ financial: 'MANAGE' })]) {
+      for (const p of [com({ cashier: 'MANAGE' })]) {
         const pdv = menuEntriesFor(menu, p).find(e => e.key === 'pdv')
         expect(pdv?.href).toBe(href)
         expect(pdv?.label).toBe('PDV')
@@ -209,9 +212,9 @@ describe('o PDV', () => {
     }
   })
 
-  it('não aparece a quem não recebe (o financeiro só em Ver, a agenda)', () => {
+  it('não aparece a quem não recebe (o financeiro, mesmo em Gerenciar; a agenda)', () => {
     for (const menu of [ADMIN_MENU, BRANCH_MENU]) {
-      for (const p of [com({ financial: 'VIEW' }), com({ agenda: 'MANAGE', clients: 'MANAGE' })]) {
+      for (const p of [com({ financial: 'VIEW' }), com({ financial: 'MANAGE' }), com({ agenda: 'MANAGE', clients: 'MANAGE' })]) {
         expect(menuEntriesFor(menu, p).map(e => e.key)).not.toContain('pdv')
       }
     }

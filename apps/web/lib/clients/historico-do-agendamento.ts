@@ -114,3 +114,12 @@ export function rotuloDaAcao(action: string, descricao: string | null): string {
   if (action === 'RESCHEDULED' && descricao?.startsWith('Remarcado ')) return descricao
   return ROTULO_DA_ACAO[action] ?? descricao ?? action
 }
+
+/**
+ * O link do evento do histórico à tela do atendimento: só a quem tem o
+ * Atendimento em Ver (UM1, 23/11 — abrir a tela do atendimento é desse
+ * módulo). Sem ele, o evento fica sem link (o texto continua).
+ */
+export function linkDoAtendimento(abreOAtendimento: boolean, base: string, id: string): string | null {
+  return abreOAtendimento ? `${base}/agenda/${id}` : null
+}

@@ -303,70 +303,38 @@ test.describe.serial('checkout de plano', () => {
     })
   })
 
-  test('o atendimento de hoje vai junto: o checkout mostra e recebe os dois (2026-10-20)', async ({ browser }) => {
-    // A simulação de um dia de clínica: a limpeza de R$ 180 da Joana, concluída,
-    // gerou um plano — e o checkout ("Novo paciente") cobrou SÓ o plano. O
-    // atendimento ficou sem receber, e o caixa achou que tinha cobrado a limpeza.
+  // Uma venda, uma comanda (o Heitor, 13/11: "Tudo que for uma venda gera uma
+  // comanda"; a revisão das perguntas de 24/11 deu por vencida a regra de
+  // 20/10, em que o checkout do plano cobrava junto o "atendimento de hoje"):
+  // o atendimento que gerou o plano tem a comanda dele no PDV.
+  test('uma venda, uma comanda: o pagamento do plano não recebe o atendimento que o gerou', async ({ browser }) => {
     const { planId, cliente } = await plano('hoje')
     const { data: ap, error: eAp } = await db().from('appointments').insert({
       branch_id: rede!.branchId, client_id: cliente, professional_id: rede!.professionalId, procedure_id: procs.P1,
       scheduled_at: new Date().toISOString(), duration_min: 30, price: 180, status: 'COMPLETED', source: 'INTERNAL',
     }).select('id').single<{ id: string }>()
-    expect(eAp, 'o atendimento de hoje').toBeNull()
+    expect(eAp, 'o atendimento que gerou o plano').toBeNull()
     await db().from('treatment_plans').update({ evaluation_appointment_id: ap!.id }).eq('id', planId)
 
     const avista = { forma: 'AVISTA', metodo: 'PIX' }
     await como(browser, async page => {
       const rota = PDV
       const janela = await receberPlanoNoPdv(page, '/admin', planId)
-      await expect(janela.getByTestId('atendimento-de-hoje')).toContainText(/R\$\s180,00/)
+      await expect(janela.getByText(/Atendimento de hoje/)).toHaveCount(0)
+      await janela.getByRole('button', { name: 'Confirmar plano' }).click()
+      await janela.getByRole('radio', { name: 'Pix', exact: true }).click()
+      await expect(janela.getByText(/com o atendimento de hoje|Entra neste checkout/)).toHaveCount(0)
 
       await chamarAcao(page, 'actions/documentos.ts', 'prepararDocumentosDoCheckout', rota, [planId, avista])
       for (const d of await docsDoPlano(planId)) await assinarNoPapel(d.id)
-      // O que a action devolve vem no meio do payload da página: a prova é o financeiro, abaixo.
       await chamarAcao(page, 'actions/treatment-plans.ts', 'checkoutTreatmentPlan', rota, [planId, avista, [], slug])
     })
 
-    const { data: doAtendimento } = await db().from('financial_transactions')
-      .select('amount, is_paid, payment_method').eq('appointment_id', ap!.id)
-    expect((doAtendimento ?? []).map(t => [Number(t.amount), t.is_paid, t.payment_method]), 'o atendimento recebido, com o seu id')
-      .toEqual([[180, true, 'PIX']])
     const { data: doPlano } = await db().from('financial_transactions').select('amount, is_paid').eq('treatment_plan_id', planId)
-    expect((doPlano ?? []).map(t => [Number(t.amount), t.is_paid]), 'o plano, separado').toEqual([[TOTAL, true]])
-  })
-
-  // A38 da 6ª simulação: o checkout dizia três coisas sobre o Botox de hoje —
-  // "entram juntos", "fica fora deste checkout" e "entra junto". Diz UMA, a
-  // que o sistema faz com a forma escolhida.
-  test('A38: o checkout diz uma coisa só sobre o atendimento de hoje — a que acontece com a forma escolhida', async ({ browser }) => {
-    const { planId, cliente } = await plano('A38')
-    const { data: ap, error: eAp } = await db().from('appointments').insert({
-      branch_id: rede!.branchId, client_id: cliente, professional_id: rede!.professionalId, procedure_id: procs.P1,
-      scheduled_at: new Date().toISOString(), duration_min: 30, price: 180, status: 'COMPLETED', source: 'INTERNAL',
-    }).select('id').single<{ id: string }>()
-    expect(eAp).toBeNull()
-    await db().from('treatment_plans').update({ evaluation_appointment_id: ap!.id }).eq('id', planId)
-    await como(browser, async page => {
-      const janela = await receberPlanoNoPdv(page, '/admin', planId)
-      const hoje = janela.getByTestId('atendimento-de-hoje')
-      await expect(hoje).toContainText('Ainda não foi recebido')
-      await expect(hoje, 'o plano não promete nada antes da forma').not.toContainText(/entram juntos|entra junto|fica fora/)
-      await janela.getByRole('button', { name: 'Confirmar plano' }).click()
-      const frase = janela.getByTestId('atendimento-de-hoje-no-pagamento').locator('[data-hoje-entra]')
-      // PT1b: no PDV a forma nasce "À vista" (sai o "Receber no atendimento"): entra, e o total diz.
-      await expect(frase).toHaveAttribute('data-hoje-entra', 'sim')
-      await expect(frase).toContainText(/Entra neste checkout: R\$\s180,00 cobrados junto/)
-      await expect(janela.getByText('(com o atendimento de hoje)')).toBeVisible()
-      // "A receber": não entra, e diz onde receber.
-      await janela.getByRole('radio', { name: 'A receber', exact: true }).click()
-      await expect(frase).toHaveAttribute('data-hoje-entra', 'nao')
-      await expect(frase).toHaveText('Não entra neste checkout: receba pela tela do atendimento.')
-      // De volta ao à vista (o bloco de um meio — PDV8): entra de novo.
-      await janela.getByRole('radio', { name: 'Pix', exact: true }).click()
-      await expect(frase).toHaveAttribute('data-hoje-entra', 'sim')
-      await expect(janela.getByTestId('atendimento-de-hoje-no-pagamento')).toHaveCount(1)
-      await expect(janela.getByText(/fica fora deste checkout|entra junto, à vista/)).toHaveCount(0)
-    })
+    expect((doPlano ?? []).map(t => [Number(t.amount), t.is_paid]), 'só o plano').toEqual([[TOTAL, true]])
+    const { data: doAtendimento } = await db().from('financial_transactions')
+      .select('id').eq('appointment_id', ap!.id).eq('is_paid', true)
+    expect(doAtendimento ?? [], 'o atendimento segue na comanda dele, sem receber').toEqual([])
   })
 
   test('quem tem o PDV sem permissão de documento colhe a assinatura do checkout — e as outras também (2026-11-16)', async ({ browser }) => {

@@ -100,7 +100,9 @@ describe('A21: a unidade sem UF avisa (não recusa) [2]', () => {
 describe('A22: a comissão de quem não atende não fala em atendimento, e a janela só existe aberta [7]', () => {
   it('quem não atende: só a de venda', async () => {
     const { resumoDaComissaoDoMembro } = await import('@/lib/equipe/textos-do-cadastro')
-    expect(resumoDaComissaoDoMembro({ tipo: 'NENHUMA', valor: '', venda: '', atende: false })).toBe('Comissão: nenhuma.')
+    // Princípio 3 e a A6 da 24ª (o chip): sem a de venda dela, valem a do pacote,
+    // a do produto e a da rede — "Comissão: nenhuma." as escondia (catálogo de Comissões, 24/11).
+    expect(resumoDaComissaoDoMembro({ tipo: 'NENHUMA', valor: '', venda: '', atende: false })).toBe('Comissão: a de venda do pacote, do produto ou da rede.')
     expect(resumoDaComissaoDoMembro({ tipo: 'NENHUMA', valor: '', venda: '10', atende: false })).toBe('Comissão: 10% de cada venda.')
     // Quem atende segue como era.
     expect(resumoDaComissaoDoMembro({ tipo: 'NENHUMA', valor: '', venda: '', atende: true })).toBe('Comissão: nenhuma por atendimento.')

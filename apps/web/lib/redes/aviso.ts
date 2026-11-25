@@ -6,8 +6,8 @@ import { faturaEmAberto, lerAssinatura } from '@/lib/redes/assinatura'
 import { diasDoTeste } from '@/lib/redes/dias-do-teste'
 
 /**
- * O aviso da assinatura no topo — só para quem administra a rede (a equipe
- * não precisa saber da cobrança do sistema). Dois casos:
+ * O aviso da assinatura no topo — só para a Admin da rede (a equipe não
+ * precisa saber da cobrança do sistema). Dois casos:
  *  - teste acabando (7 dias ou menos);
  *  - em atraso: até quando regulariza antes da suspensão, e o link da fatura.
  * Suspensa não chega aqui: o portão manda para `/conta-suspensa`.
@@ -16,12 +16,17 @@ export type AvisoDaAssinatura =
   | { tipo: 'teste'; dias: number }
   | { tipo: 'atraso'; suspendeEm: string | null; url: string | null }
 
-export function administraARede(ctx: Pick<TenantContext, 'tenantId' | 'isClient' | 'branchId' | 'permissions'>): boolean {
-  // Pela abrangência e pelo módulo (§11) — o cargo de admin da rede já tem tudo.
-  return !!ctx.tenantId && !ctx.isClient && ctx.branchId === null && ctx.permissions.settings === 'MANAGE'
+/**
+ * Quem responde pela conta com o BellarisOS: a Admin da rede, e só ela — o
+ * cargo de SISTEMA gravado (`ctx.isNetworkAdmin`), como a aba Assinatura e
+ * contratar o adicional (o Heitor, 18/11: a configuração da rede toda é "só
+ * pela conta admin"). Era "A rede inteira" com Configurações em Gerenciar.
+ */
+export function administraARede(ctx: Pick<TenantContext, 'tenantId' | 'isClient' | 'isNetworkAdmin'>): boolean {
+  return !!ctx.tenantId && !ctx.isClient && ctx.isNetworkAdmin === true
 }
 
-export async function avisoDaAssinatura(ctx: Pick<TenantContext, 'tenantId' | 'isClient' | 'branchId' | 'permissions' | 'suporte'>): Promise<AvisoDaAssinatura | null> {
+export async function avisoDaAssinatura(ctx: Pick<TenantContext, 'tenantId' | 'isClient' | 'isNetworkAdmin' | 'suporte'>): Promise<AvisoDaAssinatura | null> {
   if (!administraARede(ctx) || ctx.suporte) return null
   try {
     const t = await ler(createAdminClient().from('tenants').select('plan_status, trial_ends_at, em_atraso_desde')

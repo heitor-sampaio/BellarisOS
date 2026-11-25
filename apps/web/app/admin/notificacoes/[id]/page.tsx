@@ -57,7 +57,7 @@ export default async function CampanhaDetailPage({ params }: { params: Promise<{
   const statusCfg = STATUS_CFG[campaign.status] ?? STATUS_CFG.DRAFT
   // D10 da 12ª: na de todo ano, "Quem receberia hoje" é a DATA de hoje (a
   // escolha do cron) — o público inteiro fica numa linha à parte.
-  const mostraQuemReceberia = can(ctx, 'marketing', 'MANAGE') && !['ARCHIVED', 'COMPLETED'].includes(campaign.status)
+  const mostraQuemReceberia = can(ctx, 'marketing', 'VIEW') && !['ARCHIVED', 'COMPLETED'].includes(campaign.status)
   // Editar, ativar, pausar, arquivar e excluir: só a Admin da rede (a campanha é
   // configuração da rede toda — o Heitor, 18/11).
   const podeEditar = can(ctx, 'marketing', 'MANAGE') && mexeNaConfigDaRede(ctx)

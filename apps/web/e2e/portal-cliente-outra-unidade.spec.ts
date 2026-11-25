@@ -145,14 +145,15 @@ test.describe.serial('a cliente agenda em outra unidade da rede pelo app', () =>
     try {
       await como(browser, async p => {
         await p.goto(`/${slugB}/cliente/agendamentos/novo`)
-        await expect(p.getByText('Fale com a equipe para agendar')).toBeVisible()
+        await expect(p.getByText(/^Fale com (?!a equipe).+ para agendar\.$/)).toBeVisible()
         await expect(p.getByRole('button', { name: nomeProc })).toHaveCount(0)
 
         const r = await chamarAcao(p, 'actions/appointments.ts', 'createClientAppointment', `/${slugB}/cliente/agendamentos/novo`, [{
           branchId: unidadeB, procedureId: procB, professionalId: profB!.userId,
           scheduledAt: new Date(`${dia(3)}T10:00:00-03:00`).toISOString(), slug: slugB,
         }])
-        expect(r.texto).toContain('Fale com a equipe para agendar')
+        // CA1 (o Heitor, 13/11, "Concordo"; a revisão de 24/11, Q06): o nome da rede, como a tela.
+        expect(r.texto).toMatch(/Fale com (?!a equipe)[^"]+ para agendar/)
       })
       const { data } = await db().from('appointments').select('id').eq('client_id', cliente!.clientId)
         .eq('scheduled_at', new Date(`${dia(3)}T10:00:00-03:00`).toISOString())

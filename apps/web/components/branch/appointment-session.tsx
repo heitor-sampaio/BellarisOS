@@ -1100,8 +1100,8 @@ export function AppointmentSession({
   const [showFinish,    setShowFinish]    = useState(false)
   // O que falta para finalizar, a lista inteira (A30): a janela diz, a página marca.
   const [oQueFalta,     setOQueFalta]     = useState<GrupoQueFalta[] | null>(null)
-  // O concluído a receber, para quem recebe (o PDV ou o Financeiro em
-  // Gerenciar): o "Receber no PDV" leva à comanda dele. A tela do atendimento
+  // O concluído a receber, para quem recebe (o PDV em Gerenciar,
+  // PV-04): o "Receber no PDV" leva à comanda dele. A tela do atendimento
   // não tem mais janela de pagamento própria (PDV7, a revisão do Heitor de
   // 2026-11-13: "Sai a cobrança da conclusão do atendimento como porta
   // própria (vira a comanda)").

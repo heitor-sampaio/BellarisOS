@@ -14,7 +14,10 @@ comanda (PDV-P1).
 
 - **A tela**: `/[slug]/pdv` e `/admin/pdv` (uma unidade por vez,
   `?unidade=`), corpo em `app/_shared/pdv.tsx`. No menu, em Comercial, para quem
-  RECEBE (`podeReceber`: o caixa ou o Financeiro em Gerenciar). À esquerda as
+  RECEBE (`podeReceber`: o PDV em Gerenciar, e só ele — PV-04 do catálogo de
+  24/11; o Heitor, 23/11, "cada passo pertence a UM módulo … PDV: receber":
+  "concordo". A baixa de um lançamento no Financeiro segue `podeDarBaixa`,
+  CX2). À esquerda as
   comandas (Abertas / Fechadas hoje / Todas, busca pela cliente); à direita a
   comanda escolhida, com o "Receber" em blocos de forma de pagamento
   (`FormasDePagamento`). No topo, o que entrou hoje (`getFechamentoDoDia`) e
@@ -149,7 +152,7 @@ comanda (PDV-P1).
     regras, 2026-11-18: a validade da proposta é "só informação", como diz o
     bloco do plano aprovado, e o checkout na unidade já não recusava; o app
     recusava): "Proposta vencida em …: os valores podem ter mudado. Na dúvida,
-    fale com a equipe antes de aceitar." (`avisoDaPropostaVencida`,
+    fale com <a rede> antes de aceitar." (o nome dela, CA1; `avisoDaPropostaVencida`,
     `[data-proposta-vencida]`, prova: `e2e/vendas-auditoria-c-dinheiro.spec.ts`),
     com o "Aceitar o plano" —, não a arquivada, não na sessão de
     suporte (`bloqueioDoSuporte`). **A equipe é avisada** (sino e push,
@@ -1071,11 +1074,11 @@ plano").
 - **Quem vende é quem RECEBE, e a tela diz** (D1 da 12ª simulação, 2026-11-11;
   princípio 3 — quem vende segue decidido pelo cargo, princípio 1): a Rita, com
   Procedimentos, CRM e Clientes em Gerenciar, lia "fechar a venda do pacote" na
-  linha de Procedimentos e não via o "Vender" (`podeReceber`: o PDV, ou o
-  Financeiro em Gerenciar). A linha de Procedimentos em Gerenciar não promete mais
+  linha de Procedimentos e não via o "Vender" (`podeReceber`: o PDV — desde o
+  PV-04, 24/11, só ele). A linha de Procedimentos em Gerenciar não promete mais
   a venda ("Vender é no PDV, de quem tem o PDV."), o resumo do cargo
   ("O que essa pessoa vai ver") diz "Não vende no PDV: vender é de quem tem o
-  PDV (ou o Financeiro em Gerenciar)." — ou "Vende no PDV (procedimento,
+  PDV." — ou "Vende no PDV (procedimento,
   pacote, produto e crédito)." — (`quemVendeNoResumo`, `[data-quem-vende]`), e a tela de Pacotes diz o
   mesmo (`TEXTO_DA_VENDA_DO_PACOTE`, `lib/permissions-copy.ts`). A trava não mudou.
   Prova: `tests/defeitos-da-12.test.ts` ("D1").
@@ -1489,15 +1492,17 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     embed INNER e o `cs` do PostgREST (`comAsTags`/`selectComAsTags`,
     `lib/financeiro/filtro-de-tags.ts`), lido em páginas, nunca recortando
     um lote já lido —; mora na URL (`?tags=`, `lib/tags/filtro-na-url.ts`), e
-    as abas e a troca de período ou de unidade o levam junto (Comissões não:
-    é por profissional); as opções são o vocabulário da rede, lido no
+    as abas e a troca de período ou de unidade o levam junto (a aba Comissões
+    também, desde que ganhou o filtro — Q04 do catálogo das Comissões,
+    revisão de 24/11; `linkDaAba`, `lib/financeiro/abas.ts`); as opções são o vocabulário da rede, lido no
     servidor (`tagsAtivasDaRede`), e sem tag nenhuma na rede o filtro não
     aparece; o "Exportar CSV" e o "caixa da lista" são os da lista filtrada.
     **Os cartões e números não mudam com a tag** — o Resumo não tem o
     filtro, e os cartões do A receber e do A pagar seguem os da unidade (ou
     do recorte da rede): misturam despesa sem pessoa, e a tag recortaria só
-    um lado da conta (como nas abas Visão geral e Financeiro dos
-    Relatórios). A dica do filtro diz isso. As parcelas da operadora
+    um lado da conta. (Nos Relatórios, a Visão geral e a aba Financeiro têm o
+    filtro desde a Q05 da revisão de 24/11, e lá o lucro é o das mesmas
+    linhas — `indicadores.md`.) A dica do filtro diz isso. As parcelas da operadora
     (embaixo do A receber) também não mudam. Prova:
     `tests/financeiro-filtro-de-tags.test.ts`,
     `e2e/financeiro-filtro-de-tags.spec.ts`.
@@ -1795,11 +1800,11 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     `[data-comandas-abertas]`) e, a quem recebe, o "Receber no PDV" para a
     comanda mais antiga numa unidade ao alcance (`comandaParaReceber`, em
     `financeiroDaFicha`); a quem não recebe, "Recebe-se no PDV, com quem tem o
-    PDV ou o Financeiro em Gerenciar.";
+    PDV em Gerenciar." (PV-04);
   - a "Nova venda" do PDV (aba Procedimento, `aReceber`; era o "Vender" da
     ficha), que avisa quando há um a receber do MESMO procedimento (cobraria
     duas vezes) e leva à comanda dele.
-  Quem recebe é quem tem o PDV ou o Financeiro em Gerenciar (`podeReceber`),
+  Quem recebe é quem tem o PDV em Gerenciar (`podeReceber`; PV-04, 24/11),
   na ficha, na agenda, na tela do atendimento e em `confirmPayment`.
   Prova: `e2e/financeiro-a-receber-concluido.spec.ts`.
 - **A aba Financeiro da ficha da cliente** é UMA leitura nos dois portais
@@ -2660,8 +2665,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     entrada é UM lançamento pago com `cartao_vezes`, e a operadora a deposita
     em N (`recebiveis_do_cartao`, com a taxa daquelas vezes e da bandeira).
     `PagamentoDoPlano` PARCELADO ganhou `vezes`; `vezesNoCartao` devolve as
-    da entrada (o servidor recusa acima do limite em todas as portas, e o
-    atendimento de hoje que entra junto no checkout vai nas mesmas vezes); o
+    da entrada (o servidor recusa acima do limite em todas as portas); o
     retrato do contrato as guarda só quando passam de 1. Prova:
     `e2e/checkout-entrada-no-cartao.spec.ts`.
   - **A descrição não leva texto interno** (A47 da 6ª simulação): o plano
@@ -2800,26 +2804,15 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   aceito com saldo diz "Plano aceito. Falta receber: a comanda do plano está
   no PDV…" e, a quem recebe, "Receber no PDV" (`passos-do-plano.tsx`,
   `ResumoDoPlano`). Prova: `e2e/plano-f75-aceitar.spec.ts`.
-- **O checkout do plano cobra também o "atendimento de hoje"** (decisão do
-  Heitor, 2026-10-20): o atendimento que GEROU o plano
-  (`evaluation_appointment_id`), quando está concluído, tem preço, é avulso e
-  ainda não foi recebido (`atendimentoDeHojeDoPlano`,
-  `lib/checkout/atendimento-de-hoje.ts`). O wizard o mostra como item; se algo
-  é recebido agora (à vista ou entrada + parcelas), ele entra junto, à vista e
-  no mesmo meio, por `confirmar_pagamento_do_atendimento` — com o
-  `appointment_id`, como qualquer avulso (comissão e métricas iguais). "A
-  receber" e "no atendimento" o deixam para a comanda dele no PDV (era o
-  "Confirmar pagamento" da tela dele, até o PDV7). Na simulação, a limpeza de R$ 180 que gerou um plano nunca foi
-  cobrada: o checkout ("Novo paciente") cobrava só o plano. Prova:
+- **O pagamento do plano cobra só o plano** (uma venda, uma comanda — o
+  Heitor, 13/11: "Tudo que for uma venda gera uma comanda"; a revisão das
+  perguntas de 24/11 deu a regra de 20/10 por vencida): o atendimento que
+  GEROU o plano (`evaluation_appointment_id`) tem a comanda dele no PDV,
+  aberta no início (PDV3), e se recebe lá, como qualquer avulso. A comanda do
+  plano não o mostra nem o soma. Saíram o "atendimento de hoje" do checkout
+  (`atendimentoDeHojeDoPlano`, de 2026-10-20) e as frases dele (A38 da 6ª).
+  Prova: `tests/plano-uma-venda-uma-comanda.test.ts`,
   `e2e/checkout-de-plano.spec.ts`.
-  - **A tela diz UMA coisa sobre ele** (A38 da 6ª simulação, 2026-11-04): o
-    passo do plano diz só "Ainda não foi recebido"; o do pagamento diz o que
-    acontece com a forma escolhida — "Entra neste checkout: R$ 900,00
-    cobrados junto com o que se recebe agora, no mesmo meio (e nas mesmas
-    3x)" ou "Não entra neste checkout: receba pela tela do atendimento."
-    (`data-hoje-entra`) —, e o total diz "(com o atendimento de hoje)". Eram
-    três frases: "entram juntos", "fica fora deste checkout" e "entra
-    junto". Prova: `e2e/checkout-de-plano.spec.ts` ("A38").
   - **Recarregar não volta ao passo "Plano"** (A45 da 7ª simulação, 2026-11-05):
     o passo e o pagamento escolhidos ficam no sessionStorage, por plano (morrem
     com a aba; `lib/checkout/passo-do-checkout.ts`), e ao recarregar a tela volta
@@ -2952,10 +2945,10 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   não abre. Desde o PDV (PDV1/CX1, 2026-11-16), o lugar é o PDV: "Plano
   fechado. O que falta (as parcelas em aberto) se recebe no PDV." e, a quem
   recebe, o "Receber no PDV" (a "Nova venda" com a cliente, `rotaDaClienteNoPdv`);
-  a quem não recebe, "…se recebe no PDV, com quem tem o PDV ou o Financeiro em
-  Gerenciar: Lúcia, Fernanda." (`rodapeDoPlanoFechado`,
+  a quem não recebe, "…se recebe no PDV, com quem tem o PDV em
+  Gerenciar: Lúcia, Fernanda." (PV-04) (`rodapeDoPlanoFechado`,
   `lib/plano-de-tratamento/textos.ts`; os nomes de `quemRecebeNoPdv`,
-  `lib/equipe/quem-desfaz.ts` — `cashier` ou `financial` em Gerenciar —, pela
+  `lib/equipe/quem-desfaz.ts` — `cashier` em Gerenciar, PV-04 —, pela
   unidade do plano; `[data-rodape-do-plano]`). Prova: `e2e/plano-atritos-da-9.spec.ts` ("A28"),
   `tests/textos-do-plano-da-9.test.ts`.
 - **Desconto de fidelidade** fica em `loyalty_discount`, FORA de `amount`: o
@@ -3099,7 +3092,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 - **O plano PROPOSTO no app** (D-18, decisão do Heitor, 2026-10-30): a home
   do portal mostra o plano proposto (`data-plano-proposto`) com as sessões e
   os procedimentos, o valor (a soma dos preços das sessões, em centavos), a
-  validade e "Falar com a equipe" (o WhatsApp da unidade do endereço,
+  validade e "Falar com <a rede>" (o nome dela, CA1; o WhatsApp da unidade do endereço,
   `aUnidadeDoEndereco`). Desde o PT1b (2026-11-14, o Heitor: "A cliente
   recebe o plano no app, analisa e aceita.") o app também ACEITA ("Aceitar o
   plano", acima em "A cliente aceita PELO APP"); até ali o aceite era só na
@@ -3130,14 +3123,14 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   Só aviso: nada se liga sozinho nem se bloqueia; quem fecha cancela o avulso
   e agenda pela sessão, ou ajusta o plano. Prova: `e2e/plano-e-avulso.spec.ts`.
 - **A cliente vê o saldo do crédito no app** (D-17, decisão do Heitor,
-  2026-10-30): o Financeiro do portal mostra "Seu crédito" com o saldo
+  2026-10-30): o Financeiro do portal mostra "Crédito em <a rede>" (o nome, CA1) com o saldo
   da ficha da rede do ENDEREÇO (`ctx.clientId`), só quando é maior que
   zero — `getCreditoInternoDoCliente` (`lib/metrics/unidade.ts`, a conta de
   `metrics_financeiro_do_cliente`, a mesma da ficha). Só o saldo: os
   lançamentos do crédito (com a descrição interna) ficam com a equipe.
   Prova: `e2e/portal-cliente-credito-interno.spec.ts`. **E o Início também**
   (A46 da 9ª simulação: a Rosana, sem plano, só chegou ao Financeiro pela URL —
-  o único link ficava no detalhe de um plano): o cartão "Seu crédito ·
+  o único link ficava no detalhe de um plano): o cartão "Crédito em <a rede> ·
   R$ 181,00 · Use em qualquer atendimento ou produto. · Ver no Financeiro"
   (`[data-credito-interno-no-inicio]`), com o mesmo saldo. Prova:
   `e2e/financeiro-ficha-e-app-da-9.spec.ts` ("A46").

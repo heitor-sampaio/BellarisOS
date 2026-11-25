@@ -172,6 +172,8 @@ export async function getSeries(
   const { data, error } = await createAdminClient().rpc('metrics_series', {
     ...baseArgs(args), p_granularity: args.granularity ?? 'day',
     p_professional_id: args.professionalId ?? null,
+    // A Visão geral e o Financeiro dos Relatórios com o filtro de Tags (Q05, revisão de 24/11).
+    ...paramDeTags(args.tags),
   })
   logRpcError('metrics_series', error)
   return ((data as Record<string, unknown>[] | null) ?? []).map(r => ({
@@ -300,7 +302,7 @@ export async function getAReceberEmAberto(args: { tenantId: string; branchIds?: 
  */
 export async function getResultadoDoEstoque(args: Args): Promise<{ total: EstoqueNoResultado; porUnidade: Record<string, EstoqueNoResultado> }> {
   const admin = createAdminClient()
-  const params = { ...baseArgs(args), p_professional_id: args.professionalId ?? null }
+  const params = { ...baseArgs(args), p_professional_id: args.professionalId ?? null, ...paramDeTags(args.tags) }
   // E as taxas da maquininha e as comissões (o Heitor, 2026-11-04: "pode
   // descontar as duas"), com a despesa do fechamento das comissões, que sai
   // do lucro (`metrics_custos_da_venda`).
@@ -332,7 +334,7 @@ export async function getSeriesDoResultado(
   args: Args & { granularity?: 'hour' | 'day' | 'week' | 'month' },
 ): Promise<FatiaDoResultado[]> {
   const admin = createAdminClient()
-  const params = { ...baseArgs(args), p_granularity: args.granularity ?? 'day', p_professional_id: args.professionalId ?? null }
+  const params = { ...baseArgs(args), p_granularity: args.granularity ?? 'day', p_professional_id: args.professionalId ?? null, ...paramDeTags(args.tags) }
   const [{ data, error }, { data: custos, error: erroCustos }] = await Promise.all([
     admin.rpc('metrics_series_do_resultado', params),
     admin.rpc('metrics_series_dos_custos_da_venda', params),

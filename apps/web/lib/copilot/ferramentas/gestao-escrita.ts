@@ -20,7 +20,8 @@ import { telefoneDaFichaImportada } from '@/lib/importacao/normalizar'
 import { podeTrocarResponsavel, trocarResponsavelCore } from '@/lib/crm/responsavel'
 import { rotaOportunidade } from '@/lib/rotas'
 import type { ContextoDaFerramenta, FerramentaDeEscrita } from '@/lib/copilot/ferramentas/tipos'
-import { DATA, UUID, dinheiro, fusoDe, hojeNoFuso, resolverMembro, resolverProcedimento, resolverUnidade } from '@/lib/copilot/ferramentas/comum'
+import { DATA, UUID, dinheiro, fusoDe, hojeNoFuso, resolverMembro, resolverProcedimento, resolverUnidade, rota } from '@/lib/copilot/ferramentas/comum'
+import { CHAVES_DA_VENDA } from '@/lib/pdv/parcelas-da-cliente'
 import { BANDEIRAS, rotuloDaBandeira } from '@/lib/financeiro/bandeiras'
 import { CATEGORIA_COMPRA_DE_ESTOQUE, CATEGORIA_MATERIAL_DE_CONSUMO, ehCompraDeEstoque } from '@/lib/financeiro/categorias'
 import { maquininhasDaRede } from '@/lib/financeiro/vezes-da-rede'
@@ -193,6 +194,25 @@ export const lancar: FerramentaDeEscrita<ArgsLancar, PayloadLancar> = {
   },
 }
 
+/**
+ * A receita que se recebe no PDV, e não pela baixa do Copilot (CY-02, CR-06):
+ * a parcela do crediário e o a receber de uma venda (pacote, pré-pago, produto,
+ * crédito interno, plano) ou de um atendimento — as chaves da comanda
+ * (`CHAVES_DA_VENDA`, `parcelasEmAbertoDaCliente`). Devolve a recusa com o link
+ * do PDV da cliente, na unidade do lançamento; null para o lançamento avulso.
+ */
+async function recebimentoDoPdv(c: ContextoDaFerramenta, id: string): Promise<string | null> {
+  const tx = await ler(c.admin.from('financial_transactions')
+    .select(['branch_id, client_id, appointment_id, parcela_total, parcela_grupo', ...CHAVES_DA_VENDA].join(', '))
+    .eq('id', id).maybeSingle(), 'ver se o lançamento é do PDV') as Record<string, unknown> | null
+  if (!tx) return null
+  const daVenda = CHAVES_DA_VENDA.some(k => !!tx[k]) || !!tx.appointment_id || !!tx.parcela_grupo || Number(tx.parcela_total ?? 0) > 1
+  if (!daVenda) return null
+  const cliente = typeof tx.client_id === 'string' ? `&nova=1&cliente=${tx.client_id}` : ''
+  const href = rota(c, `/pdv?unidade=${tx.branch_id as string}${cliente}`)
+  return `Este lançamento é ${tx.parcela_grupo || Number(tx.parcela_total ?? 0) > 1 ? 'a parcela do crediário' : 'o a receber de uma venda ou de um atendimento'}: ele se recebe no PDV, e o Copilot não recebe. Diga isso e dê o link: [Receber no PDV](${href}).`
+}
+
 export const marcarPago: FerramentaDeEscrita<{ lancamento: string; forma?: string; bandeira?: string; vezes?: number; maquininha?: string }, { transactionId: string; forma: string | null; bandeira?: string | null; vezes?: number | null; maquininha?: string | null }> = {
   nome: 'marcar_pago',
   tipo: 'escrita',
@@ -200,13 +220,18 @@ export const marcarPago: FerramentaDeEscrita<{ lancamento: string; forma?: strin
   // Gerenciar, ou o Financeiro em Gerenciar.
   pode: podeDarBaixa,
   recurso: 'financeiro',
-  descricao: 'Dá baixa (marca como pago agora) num lançamento em aberto (id, da ferramenta lancamentos), com a forma de pagamento (dinheiro, Pix, débito, crédito; na despesa, também boleto; obrigatória em toda receita — pergunte como foi pago — e na despesa sem forma) e, no cartão, a bandeira se a pessoa disser (Visa, Mastercard, Elo, Amex, Hipercard, Outras). Na receita recebida no crédito, as vezes se a pessoa disser ("recebeu no crédito em 3x" → vezes=3). No cartão, a maquininha pelo nome (ex.: Stone) quando a rede tem mais de uma — sem ela, a ferramenta pergunta.',
+  descricao: 'Dá baixa (marca como pago agora) num lançamento AVULSO em aberto do financeiro (id, da ferramenta lancamentos) — a parcela do crediário e o a receber de uma venda ou de um atendimento não: esses se recebem no PDV, e a ferramenta devolve o link do PDV. Com a forma de pagamento (dinheiro, Pix, débito, crédito; na despesa, também boleto; obrigatória em toda receita — pergunte como foi pago — e na despesa sem forma) e, no cartão, a bandeira se a pessoa disser (Visa, Mastercard, Elo, Amex, Hipercard, Outras). Na receita recebida no crédito, as vezes se a pessoa disser ("recebeu no crédito em 3x" → vezes=3). No cartão, a maquininha pelo nome (ex.: Stone) quando a rede tem mais de uma — sem ela, a ferramenta pergunta.',
   parametros: z.object({ lancamento: UUID, forma: z.string().max(30).optional(), bandeira: z.string().max(30).optional(), vezes: z.number().int().min(1).max(12).optional(), maquininha: z.string().max(60).optional() }),
   async preparar(c, a) {
     const tx = await lancamentoAoAlcance(c.admin, c.ctx, a.lancamento)
     if (!tx) return { erro: 'Lançamento não encontrado.' }
     if (tx.is_paid) return { erro: 'Esse lançamento já está pago.' }
     if (tx.notes === 'Estornada') return { erro: 'Esse lançamento foi estornado.' }
+    // CY-02 (o Copilot não vende nem recebe — 17/11; a parcela se recebe no
+    // PDV, CR-06): a parcela do crediário e o a receber da venda ou do
+    // atendimento vão ao PDV, com o link. Só o lançamento avulso tem baixa aqui.
+    const doPdv = tx.type === 'INCOME' ? await recebimentoDoPdv(c, tx.id) : null
+    if (doPdv) return { erro: doPdv }
     const forma = formaDePagamento(a.forma, tx.type === 'EXPENSE' ? 'EXPENSE' : 'INCOME')
     if (forma && typeof forma !== 'string') return forma
     // C34 (F67): sem meio no lançamento, a baixa pede a forma — como a tela.

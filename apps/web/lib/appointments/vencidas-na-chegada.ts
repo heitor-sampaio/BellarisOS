@@ -10,7 +10,7 @@ import { textoDasVencidasNaChegada } from '@/lib/appointments/texto-das-vencidas
  * D13 da 9ª simulação (decidido pelo princípio 3): o check-in de quem tem
  * parcela VENCIDA avisa — "Mariana tem 1 parcela vencida (R$ 1.294,00, desde
  * 05/11): receba no PDV." —, sem recusar a chegada. Só para quem recebe
- * (`podeReceber`: o PDV ou o Financeiro em Gerenciar; a A39 da 7ª: o saldo é
+ * (`podeReceber`: o PDV em Gerenciar, PV-04; a A39 da 7ª: o saldo é
  * de quem cuida do dinheiro). A conta é a de `getAReceberVencido` (a do
  * cartão "A receber da cliente"). Acessório: se a leitura falha, a chegada
  * vale e o motivo vai ao log.

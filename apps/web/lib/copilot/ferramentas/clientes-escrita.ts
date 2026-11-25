@@ -14,6 +14,7 @@ import type { ContextoDaFerramenta, FerramentaDeEscrita } from '@/lib/copilot/fe
 import { DATA, fusoDe, hojeNoFuso, resolverCliente, resolverUnidade, rota } from '@/lib/copilot/ferramentas/comum'
 import { documentoDoCadastroDoCopilot } from '@/lib/copilot/ferramentas/documento-do-cadastro'
 import { documentoEstrangeiroRepetido } from '@/lib/clients/documento'
+import { avisoDoAcessoCriado } from '@/lib/clients/textos-do-cadastro'
 
 /**
  * As GRAVAÇÕES de clientes.
@@ -101,10 +102,17 @@ export function escolhasDaFichaQueJaExiste(f: FichaQueJaExiste) {
 }
 
 // Quem já usa o app em outra clínica (mesmo e-mail e CPF) entra na conta que tem (lib/clients/acesso.ts).
+// O documento recusado como senha pelo sistema de login (o Heitor, 24/11, R1
+// da 27ª — "E-mail para criar a senha"): o cartão diz o caminho de antes.
 const linhaDoAcesso = (email: string, tipo: 'CPF' | 'PASSAPORTE' | 'RNE' = 'CPF') => ({
   rotulo: 'Acesso ao app',
-  valor: `login ${email}, senha inicial = ${tipo === 'CPF' ? 'o CPF' : tipo === 'RNE' ? 'o número do RNE' : 'o número do passaporte'} (se ela já usa o app em outra rede, a senha continua a dela)`,
+  valor: `login ${email}, senha inicial = ${tipo === 'CPF' ? 'o CPF' : tipo === 'RNE' ? 'o número do RNE' : 'o número do passaporte'} (se ela já usa o app em outra rede, a senha continua a dela; se o sistema de login não aceitar o documento como senha, ela recebe o e-mail para criar a senha)`,
 })
+
+/** O e-mail para criar a senha (o documento recusado): o mesmo aviso da tela (`avisoDoAcessoCriado`). */
+function avisoDaSenhaPorEmail(email: string, documento: DocumentoDoAcesso, emailParaCriarSenha?: 'enviado' | 'falhou'): string | null {
+  return emailParaCriarSenha ? avisoDoAcessoCriado({ contaLigada: false, email, documento, emailParaCriarSenha }).descricao : null
+}
 
 export const cadastrarCliente: FerramentaDeEscrita<ArgsCadastro, PayloadCadastro> = {
   nome: 'cadastrar_cliente',
@@ -194,9 +202,10 @@ export const cadastrarCliente: FerramentaDeEscrita<ArgsCadastro, PayloadCadastro
       const acesso = await darAcessoAoCliente(c.admin, c.ctx, r.clientId, p.email, docDoAcesso)
       // A34 da 16ª: "Ficha de X criada" — sem o gênero do "cadastrado".
       if ('error' in acesso) return { mensagem: `Ficha de ${p.nome} criada, mas o acesso ao app não saiu: ${acesso.error}`, ...ficha }
+      const porEmail = acesso.contaLigada ? null : avisoDaSenhaPorEmail(p.email, docDoAcesso, acesso.emailParaCriarSenha)
       return { mensagem: acesso.contaLigada
         ? `Ficha de ${p.nome} criada, e ela entrou na conta que a cliente já tem no app (a senha continua a dela).`
-        : `Ficha de ${p.nome} criada, com acesso ao app.`, ...ficha }
+        : porEmail ? `Ficha de ${p.nome} criada, com acesso ao app. ${porEmail}` : `Ficha de ${p.nome} criada, com acesso ao app.`, ...ficha }
     }
     return { mensagem: `Ficha de ${p.nome} criada.`, ...ficha }
   },
@@ -376,6 +385,10 @@ export const criarAcessoAoApp: FerramentaDeEscrita<ArgsAcesso, PayloadAcesso> = 
     const r = await darAcessoAoCliente(c.admin, c.ctx, p.clientId, p.email, p.documento)
     if ('error' in r) return { erro: r.error }
     revalidateTag(`clients:${c.ctx.tenantId!}`, { expire: 0 })
-    return { mensagem: r.contaLigada ? 'A ficha entrou na conta que ela já tem no app (a senha continua a dela).' : 'Acesso ao app criado.', href: rota(c, `/clients/${p.clientId}`), rotuloDoLink: 'Abrir a ficha' }
+    const porEmail = r.contaLigada ? null : avisoDaSenhaPorEmail(p.email, p.documento, r.emailParaCriarSenha)
+    return {
+      mensagem: r.contaLigada ? 'A ficha entrou na conta que ela já tem no app (a senha continua a dela).' : porEmail ? `Acesso ao app criado. ${porEmail}` : 'Acesso ao app criado.',
+      href: rota(c, `/clients/${p.clientId}`), rotuloDoLink: 'Abrir a ficha',
+    }
   },
 }

@@ -1774,6 +1774,31 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-24 (11) — As correções do catálogo de regras e a senha recusada
+
+As divergências do CÓDIGO/TELA contra a regra que o catálogo (entradas 3 a 8) e a revisão das perguntas acharam, corrigidas direto na main, cada uma com o teste visto falhando antes:
+- **Receber é só do PDV em Gerenciar** (PV-04; o Heitor, 23/11: "nenhuma ação pede dois"): `podeReceber` não aceita mais o Financeiro, e o menu, a busca, a venda, a tela de Cargos e os textos ("com quem tem o PDV em Gerenciar") seguem. A baixa no Financeiro (`podeDarBaixa`) não mudou.
+- **Automações, Marketing e Copilot só têm "Sem acesso" e "Ver"** (Q02): o Gerenciar já gravado vale como Ver (`nivelAceito`), e a tela de Cargos não o oferece mais.
+- **Só da Admin da rede**: o aviso da assinatura, a fatura na conta suspensa, o sino da assinatura e do suporte, o convite do Copilot avulso, os "testar conexão" das integrações e os chamados dos colegas.
+- **Equipe**: mudar a equipe de unidade pede só a Equipe em Gerenciar e leva junto o "Atende"; o resumo da comissão não diz mais "nenhuma" quando a do pacote, do produto ou da rede vale (A6 da 24ª, princípio 3); a Equipe não diz mais que "o login abre" na principal.
+- **Copilot**: pede só a permissão da ação (não o Copilot em Gerenciar); responde pela Minha agenda (30 dias) e pelas Minhas comissões (`minhas_comissoes`); não dá baixa em nada que seja do PDV (parcela, atendimento, venda), leva ao PDV; quem muda a comissão das pessoas é quem tem o Financeiro em Gerenciar.
+- **Atendimento**: o pagamento do plano não cobra junto o atendimento que o gerou ("Tudo que for uma venda gera uma comanda", 13/11; `lib/checkout/atendimento-de-hoje.ts` saiu); o plano com procedimento que a unidade não faz mais se salva (só o NOVO é recusado); o Agendar sem sala na unidade não mostra o campo; a tela do atendimento abre só com o Atendimento em Ver (UM1); colhe os documentos quem tem Clientes, Atendimento ou Agenda em Ver, ou recebe.
+- **Clientes e portal**:
+  - "Cadastrar como cliente" no quadro e na conversa (CR2);
+  - o portal fala o NOME da rede, não "a clínica" nem "a equipe" (CA1, o "Concordo" de 13/11), nas recusas das actions e nos links de assinatura e de ficha;
+  - a entrada da cliente no portal vai à Auditoria da rede em que ela entra (`20261203400002`);
+  - as "Clientes específicas" da campanha não cortam mais em 200;
+  - o "Quem receberia hoje" e o ensaio da automação são leitura (Marketing/Automações em Ver; o ensaio vale na sessão de suporte);
+  - o histórico das Importações é só da Admin da rede;
+  - os links do histórico da ficha levam ao atendimento.
+- **Tags** (a regra das Tags, 13/11): o filtro entra na Visão geral e no Financeiro dos Relatórios (`20261203400001`), nas Comissões e nos Documentos (`20261203400003`); a aba Comissões mantém a tag ao trocar de aba.
+- **LGPD**: a aba abre para quem tem Clientes ou Prontuário em Gerenciar (quem responde o pedido), não para quem tem Configurações.
+- **Texto neutro**: "a profissional" virou "quem atende" / "a pessoa responsável" nas telas (agenda, pacotes, portal, documentos).
+- **A senha recusada** (o Heitor, 24/11: "E-mail para criar a senha"): quando o sistema de login recusa o CPF, o passaporte ou o RNE como senha (a proteção contra senha vazada), o login nasce com uma senha aleatória que ninguém recebe (provisória), a ficha é ligada, e a cliente recebe o e-mail para criar a própria senha (o caminho do "Esqueci a senha"). A tela, o Copilot e o cartão de confirmação dizem à equipe que foi assim; se o e-mail falhar, dizem o caminho do "Esqueci a senha". `lib/clients/acesso.ts`.
+- **Não eram**: `procedimentosParaComissao` ignorar o "Em quais unidades" (a regra de comissão é da pessoa, na rede); os pushes com o nome da unidade (NA-04/NC-02).
+- As regras em `docs/regras/` que estavam velhas (automações, Copilot, documentos, vendas e financeiro, atendimento) agora dizem o que o sistema faz.
+- **Testes existentes alterados**, cada um pela regra que mudou (a lista foi ao Heitor): PV-04 (23/11), Q02, a configuração da rede só da Admin (18/11), A6 da 24ª, CR2, CA1 (13/11), Q04/Q05/Q09 (revisão de 24/11), "Tudo que for uma venda gera uma comanda" (13/11), UM1 (23/11), "nenhuma ação pede dois" (23/11), "Só ler e mandar ao PDV" (18/11) e o texto neutro (24/11).
+
 ### 2026-11-24 (10) — As correções da 27ª simulação
 
 A 27ª (cinco redes, 24/11, HEAD `ea2eff78`) achou 8 defeitos e 24 atritos; o dinheiro bateu nas cinco. Corrigido direto na main, pela regra de cada achado:

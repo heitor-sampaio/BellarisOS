@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { unidadesParaCriar } from '@/lib/unidades/da-tela'
 import { AvisoUnidadeDesativada } from '@/components/client-portal/unidade-desativada'
+import { falaDaRedeDoPortal } from '@/lib/clientes/nome-da-rede'
 import { idOu404 } from '@/lib/id-da-rota'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, CalendarDays, Clock3, User, MapPin } from 'lucide-react'
@@ -118,6 +119,7 @@ export default async function AgendamentoDaClientePage({ params, searchParams }:
   // O WhatsApp é o conectado da unidade (por-03), com a mensagem pronta sobre
   // ESTE agendamento (A66).
   const aUnidade = await aUnidadeDoEndereco(slug)
+  const fala = await falaDaRedeDoPortal(slug)
   // Fora do prazo do app (A53 da 7ª), a mensagem já diz o que ela quer.
   const quandoTexto = quando.toLocaleString('pt-BR', { timeZone: fuso, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
   const whatsappParaAlterar = comMensagem(aUnidade?.whatsapp ?? linkDoWhatsapp(telefone),
@@ -148,7 +150,7 @@ export default async function AgendamentoDaClientePage({ params, searchParams }:
         <span style={linha}><User size={15} aria-hidden="true" /> {a.profissional?.name ?? 'Profissional'}</span>
         <span style={linha}><MapPin size={15} aria-hidden="true" /> {a.branches.name}</span>
         {/* F72: a unidade foi desativada — o remarcar leva às ativas. */}
-        {!a.branches.is_active && <AvisoUnidadeDesativada nome={a.branches.name} aberto={aberto} />}
+        {!a.branches.is_active && <AvisoUnidadeDesativada nome={a.branches.name} aberto={aberto} faleCom={fala.faleCom} />}
         {a.status === 'CANCELLED' && (
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600 }}>
             Cancelado{a.cancellation_reason ? ` — ${a.cancellation_reason}` : ''}

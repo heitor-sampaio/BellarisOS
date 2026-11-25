@@ -227,8 +227,8 @@ function ProcRow({
           }}
         >
           <option value="">Selecionar procedimento…</option>
-          {/* O que já estava no plano e a unidade dele não faz (D4 da 14ª):
-              continua à vista, dizendo por que o salvar vai pedir a troca. */}
+          {/* O que já estava no plano e a unidade dele não faz mais (D4 da 14ª):
+              continua à vista, com o aviso, e o plano se salva com ele (princípio 2). */}
           {proc.procedureId && !procedures.some(p => p.id === proc.procedureId) && (
             <option value={proc.procedureId} data-fora-da-unidade>{proc.name} (não é feito nesta unidade)</option>
           )}

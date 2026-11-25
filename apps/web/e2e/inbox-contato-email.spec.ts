@@ -75,7 +75,7 @@ test('A16: o cadastro pelo inbox traz o e-mail do lead, e o telefone do contato 
     await page.goto(`/admin/inbox?c=${conv!.id}`)
     const telefone = page.getByPlaceholder('Telefone', { exact: true })
     await expect(telefone).toHaveValue(`(51) ${fone.slice(2, 7)}-${fone.slice(7)}`, { timeout: 15_000 })
-    await page.getByRole('button', { name: 'Cadastrar cliente' }).first().click()
+    await page.getByRole('button', { name: 'Cadastrar como cliente' }).first().click()
     await expect(page.locator('dialog input[name="email"]')).toHaveValue(`lead-a16-${marca}@exemplo.com`)
     // Mostrar formatado não regrava o número da pessoa.
     expect((await db.from('contacts').select('phone').eq('id', conv!.contato_id).single<{ phone: string | null }>()).data!.phone).toBe(fone)

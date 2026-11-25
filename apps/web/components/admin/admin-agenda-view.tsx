@@ -83,6 +83,8 @@ interface Props {
   meuId?: string | null
   /** Conclui o atendimento (o Prontuário em Gerenciar) — sem ele, a janela diz quem conclui antes do Iniciar (A20 da 10ª). */
   podeConcluir?: boolean
+  /** Abre a tela do atendimento: o Atendimento em Ver (UM1, 23/11) — a Agenda em Ver não a abre. */
+  abreOAtendimento?: boolean
   /** A9 da 20ª: sem iniciar e concluir, quem conclui — o Atendimento em Gerenciar, pelo nome (quemConcluiOAtendimento). */
   quemConclui?: string[] | null
   /** Os bloqueios pontuais (decisão 3 da 7ª), cada um com o rótulo que a grade mostra. */
@@ -595,7 +597,7 @@ function StatusLegend() {
 
 // -- Componente principal ------------------------------------------------------
 export function AdminAgendaView({
-  view, selectedDate, todayStr, branches, todasUnidades, unidadeId, appointments, janela, podeAgendar, vistaDela, meuId = null, podeConcluir = true, quemConclui = null, bloqueios = [], paraBloquear = null,
+  view, selectedDate, todayStr, branches, todasUnidades, unidadeId, appointments, janela, podeAgendar, vistaDela, meuId = null, podeConcluir = true, abreOAtendimento = false, quemConclui = null, bloqueios = [], paraBloquear = null,
   filtros = SEM_FILTRO, opcoesDosFiltros = { profissionais: null, salas: null, tags: [] },
 }: Props) {
   const router = useRouter()
@@ -851,6 +853,7 @@ export function AdminAgendaView({
           vistaDela={vistaDela}
           podeGerenciar={podeAgendar}
           podeConcluir={podeConcluir}
+          abreOAtendimento={abreOAtendimento}
           quemConclui={quemConclui}
           meuId={meuId}
           onClose={() => { setSelecionado(null); router.refresh() }}

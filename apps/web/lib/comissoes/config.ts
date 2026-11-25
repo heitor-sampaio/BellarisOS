@@ -353,7 +353,7 @@ export function rotuloDaComissaoDoPacote(c: ComissaoDoPacote): string {
   const e = c.execucao
   const execucao = e.tipo === 'REGRA' ? 'regra de cada profissional'
     : e.tipo === 'NENHUMA' ? 'nenhuma'
-    : e.tipo === 'PACOTE' ? `${rotuloDaRegra({ tipo: e.valorTipo ?? 'PERCENTAGE', valor: e.valor ?? 0 })} do pacote, para a profissional responsável`
+    : e.tipo === 'PACOTE' ? `${rotuloDaRegra({ tipo: e.valorTipo ?? 'PERCENTAGE', valor: e.valor ?? 0 })} do pacote, para a pessoa responsável`
     : e.tipo === 'PERCENTAGE' ? `${rotuloDaRegra({ tipo: 'PERCENTAGE', valor: e.valor ?? 0 })} da sessão`
     : `${rotuloDaRegra({ tipo: 'FIXED_AMOUNT', valor: e.valor ?? 0 })} por sessão`
   return `Venda: ${venda} · Execução: ${execucao}`

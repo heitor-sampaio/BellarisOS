@@ -20,7 +20,11 @@ const ler = (rel: string) => readFileSync(join(WEB, rel), 'utf8')
 const com = (p: Partial<ResolvedPermissions>): ResolvedPermissions => ({ ...NO_PERMISSIONS, ...p })
 
 describe('A-CONF1: quem não é a Admin da rede e só chegaria às abas da rede toda não vê Configurações', () => {
-  const soClientesECrm = com({ clients: 'MANAGE', crm: 'MANAGE' })
+  // Só o CRM: as abas dele (Tags, Importações) são da rede toda. Clientes em
+  // Gerenciar saiu do caso: desde a revisão de 24/11 (Q09 do catálogo de
+  // Clientes, "o aviso vai a quem responde ao pedido: Clientes em Gerenciar")
+  // ela responde ao pedido de dados na aba LGPD, e a tela é dela.
+  const soClientesECrm = com({ crm: 'MANAGE' })
   const naUnidade = (p: ResolvedPermissions, adminDaRede: boolean) =>
     menuDaUnidadeFor(p, null, undefined, { base: '/centro', daRede: true, adminDaRede }).flatMap(s => s.entries).some(e => e.key === 'settings')
   const naRede = (p: ResolvedPermissions, adminDaRede: boolean) =>
@@ -36,6 +40,10 @@ describe('A-CONF1: quem não é a Admin da rede e só chegaria às abas da rede 
     expect(naUnidade(ALL_PERMISSIONS, true)).toBe(true)
     expect(naRede(ALL_PERMISSIONS, true)).toBe(true)
     expect(naUnidade(com({ settings: 'MANAGE' }), false)).toBe(true)
+  })
+  it('quem responde ao pedido de dados (Clientes em Gerenciar) vê Configurações: a aba LGPD é dela', () => {
+    expect(naUnidade(com({ clients: 'MANAGE', crm: 'MANAGE' }), false)).toBe(true)
+    expect(naRede(com({ clients: 'MANAGE' }), false)).toBe(true)
   })
   it('a busca não oferece a tela a quem só chegaria a recusas, nos dois portais', () => {
     const rede = paginasDaBusca(null, soClientesECrm, null, { adminDaRede: false }).map(p => p.key)

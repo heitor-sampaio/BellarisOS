@@ -50,7 +50,7 @@ export async function avisosDoHorarioCore(ctx: TenantContext, a: {
   ])
   const duracao = Number((proc as { duration_min?: number } | null)?.duration_min)
     || (Number.isFinite(a.durationMin) && a.durationMin > 0 ? Math.min(Math.round(a.durationMin), 720) : 60)
-  const nome = (prof as { name?: string } | null)?.name ?? 'A profissional'
+  const nome = (prof as { name?: string } | null)?.name ?? 'Quem atende'
 
   // No relógio da unidade (F62).
   const fuso = fusoValido((unidade as { fuso?: string | null } | null)?.fuso)

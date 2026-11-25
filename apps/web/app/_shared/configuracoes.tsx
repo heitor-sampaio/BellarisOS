@@ -15,7 +15,7 @@ import { CONFIG_DA_REDE, mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { Lock } from 'lucide-react'
 import { Dica } from '@/components/shared/dica'
 import { MODULE_LABELS } from '@/lib/permissions'
-import { porQueSoEstasAbas } from '@/lib/configuracoes/abas-que-faltam'
+import { porQueSoEstasAbas, abasDoTopo } from '@/lib/configuracoes/abas-que-faltam'
 import { SettingsFichas, type ItemDeFicha } from '@/components/admin/settings-fichas'
 import { SettingsPreAtendimento } from '@/components/admin/settings-pre-atendimento'
 import { SettingsDocumentos } from '@/components/admin/settings-documentos'
@@ -132,10 +132,9 @@ export async function Configuracoes({
 
   // O topo diz o que a pessoa vê: a SDR, que só mexe em Tags e Importações,
   // lia "Cargos, modelos de ficha e integrações" (2026-10-21).
-  const listaPt = (xs: string[]) => xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} e ${xs.at(-1)}`
   const subtituloDaTela = fala(tabs.some(t => t.key === 'permissions')
     ? subtitulo
-    : `${listaPt(tabs.map(t => t.label.toLowerCase())).replace(/^./, c => c.toUpperCase())} da rede`)
+    : abasDoTopo(tabs.map(t => t.label)))
 
   if (tabs.length === 0) {
     return (

@@ -55,7 +55,8 @@ export const MODULE_HINTS: Partial<Record<AppModule, string>> = {
   clients:         'Cadastro e ficha de clientes',
   loyalty:         'Pontos do cliente: saldo, extrato e ajuste',
   medical_records: 'Ficha de saúde, evolução, fotos e anexos clínicos',
-  documents:       'Os modelos dos termos, contratos e documentos que a cliente assina',
+  // Os modelos em si são só da Admin da rede (18/11): o módulo dispensa.
+  documents:       'Dispensar um documento obrigatório da cliente (os modelos são só da Admin da rede)',
   procedures:      'Catálogo de procedimentos e pacotes',
   stock:           'Produtos, movimentações e transferências',
   financial:       'Lançamentos, relatórios, estorno e comissões',
@@ -91,14 +92,20 @@ export const MODULE_LEVELS: Record<AppModule, readonly PermissionLevel[]> = {
   financial:       ['NONE', 'VIEW', 'MANAGE'],
   cashier:         ['NONE', 'MANAGE'],
   crm:             ['NONE', 'VIEW', 'MANAGE'],
-  marketing:       ['NONE', 'VIEW', 'MANAGE'],
+  // Automações e Marketing: só Sem acesso e Ver (Q02 do catálogo de Automações,
+  // revisão de 24/11). Criar e mudar campanha, template e automação é só da
+  // Admin da rede desde 18/11, e o Gerenciar não dava nada além do Ver. O
+  // Gerenciar já gravado vale como Ver (`nivelAceito`; MANAGE ≥ VIEW no `can`).
+  marketing:       ['NONE', 'VIEW'],
   reports:         ['NONE', 'VIEW'],
   team:            ['NONE', 'VIEW', 'MANAGE'],
   forms:           ['NONE', 'MANAGE'],
   roles:           ['NONE', 'MANAGE'],
   settings:        ['NONE', 'MANAGE'],
-  automations:     ['NONE', 'VIEW', 'MANAGE'],
-  copilot:         ['NONE', 'VIEW', 'MANAGE'],
+  automations:     ['NONE', 'VIEW'],
+  // O Copilot também (revisão de 24/11, Q02; "nenhuma ação pede dois", 23/11):
+  // o Ver liga a ferramenta, e cada gravação pede só a permissão dela.
+  copilot:         ['NONE', 'VIEW'],
   // Só da Admin da rede (MODULOS_SO_DA_ADMIN): um cargo só a tem em Sem acesso.
   audit:           ['NONE'],
 }
@@ -108,6 +115,20 @@ const LEVEL_RANK: Record<PermissionLevel, number> = { NONE: 0, VIEW: 1, MANAGE: 
 
 export function hasLevel(level: PermissionLevel | undefined, required: PermissionLevel): boolean {
   return LEVEL_RANK[level ?? 'NONE'] >= LEVEL_RANK[required]
+}
+
+/**
+ * O nível que VALE para o módulo, entre os que ele oferece (`MODULE_LEVELS`):
+ * o gravado, se o módulo o oferece; o Gerenciar gravado num módulo que só vai
+ * até o Ver vale Ver (as Automações e o Marketing, revisão de 24/11 — o cargo
+ * não perde o que via); o resto, Sem acesso, como sempre foi ao salvar.
+ * É o que a tela de Cargos mostra, o que se grava e o que o "cargo acima" compara.
+ */
+export function nivelAceito(modulo: AppModule, nivel: PermissionLevel): PermissionLevel {
+  const aceita = MODULE_LEVELS[modulo] ?? ['NONE']
+  if (aceita.includes(nivel)) return nivel
+  if (nivel === 'MANAGE' && aceita.includes('VIEW')) return 'VIEW'
+  return 'NONE'
 }
 
 

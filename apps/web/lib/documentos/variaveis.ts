@@ -118,7 +118,7 @@ export const VARIAVEIS_DE_DOCUMENTO = {
   // E no contrato de plano (A14 da 12ª): a profissional do plano (`treatment_plans.professional_id`).
   'profissional.nome':     { grupo: 'Atendimento', rotulo: 'Profissional que atende', tipos: COM_PROFISSIONAL, exemplo: 'Dra. Helena Prado' },
   // A13 da 12ª (princípio 1): o registro no conselho (CRM, COREN…), opcional no cadastro da pessoa.
-  'profissional.registro': { grupo: 'Atendimento', rotulo: 'Registro no conselho da profissional (CRM, COREN…)', tipos: COM_PROFISSIONAL, exemplo: 'CRM-SC 12345', opcional: true, vaziaQuando: 'sem o registro no cadastro da profissional (Equipe)' },
+  'profissional.registro': { grupo: 'Atendimento', rotulo: 'Registro no conselho de quem atende (CRM, COREN…)', tipos: COM_PROFISSIONAL, exemplo: 'CRM-SC 12345', opcional: true, vaziaQuando: 'sem o registro no cadastro de quem atende (Equipe)' },
 
   'procedimentos.lista':   { grupo: 'Plano',       rotulo: 'Procedimentos do plano (sessões e valor)', tipos: SO_PLANO, exemplo: 'Toxina botulínica — 2 sessões — R$ 2.400,00' },
   'plano.total':           { grupo: 'Plano',       rotulo: 'Valor total do plano', tipos: SO_PLANO, exemplo: 'R$ 4.800,00' },

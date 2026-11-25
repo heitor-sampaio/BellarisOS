@@ -1,5 +1,6 @@
 import { situacaoDoVencimento, textoDoVencimento } from '@/lib/financeiro/vencimentos'
 import { getTenantContext, assertClient } from '@/lib/auth'
+import { falaDaRedeDoPortal } from '@/lib/clientes/nome-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { getDoCliente, getCreditoInternoDoCliente } from '@/lib/metrics/unidade'
@@ -60,6 +61,7 @@ type LancamentoLido = {
 
 export default async function ClientFinancialPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
+  const { credito: creditoNaRede } = await falaDaRedeDoPortal(slug)
   const ctx = await getTenantContext()
   assertClient(ctx)
 
@@ -160,7 +162,7 @@ export default async function ClientFinancialPage({ params }: { params: Promise<
           <div style={{ minWidth: 0 }}>
             {/* O uso do crédito mora na dica (docs/regras/design.md). */}
             <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 600, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span>Seu crédito</span>
+              <span>{creditoNaRede}</span>
               <Dica rotulo="Como usar o crédito">Use como forma de pagamento nos próximos atendimentos.</Dica>
             </p>
             {bonus.map((b, i) => (

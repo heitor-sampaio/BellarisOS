@@ -50,7 +50,7 @@ export function GradeDeHorarios({
   const jaPassou = !!limite && grade.length === 0 && gradeDoCheckout(horarioDaUnidade, horarioDoProfissional, data).length > 0
   const temEncaixe = grade.some(h => !h.doProfissional)
   const foraDaGrade = !!selecionado && !grade.some(h => h.hora === selecionado)
-  const quem = nomeDoProfissional?.trim() || 'a profissional'
+  const quem = nomeDoProfissional?.trim() || 'quem atende'
 
   return (
     <div data-grade-de-horarios style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -60,7 +60,7 @@ export function GradeDeHorarios({
           {/* A legenda de uso mora na dica (2026-11-16, "A explicação mora na dica"). */}
           {!carregando && temEncaixe && (
             <Dica rotulo="Como se lê a grade de horários">
-              Contorno rosé: o horário de {quem}. Tracejado: encaixe, fora do horário dela.
+              Contorno rosé: o horário de {quem}. Tracejado: encaixe, fora desse horário.
             </Dica>
           )}
         </p>

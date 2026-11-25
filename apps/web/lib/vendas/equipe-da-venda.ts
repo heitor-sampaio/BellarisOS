@@ -13,8 +13,8 @@ import { filtroDosMembrosDaUnidade, membroAlcancaAUnidade } from '@/lib/unidades
  * unidade, decisão 2 da 8ª simulação). O servidor confere de novo na venda.
  *
  * A ordem (A15 da 8ª simulação: "Quem vendeu" trazia a Contadora, que só vê,
- * no meio da lista): quem ATENDE aqui, depois quem RECEBE (o caixa ou o
- * financeiro em Gerenciar — `podeReceber`), depois quem tem VENDAS no cargo.
+ * no meio da lista): quem ATENDE aqui, depois quem RECEBE (o PDV em
+ * Gerenciar — `podeReceber`), depois quem tem VENDAS no cargo.
  *
  * A42 da 11ª: a lista trazia a estoquista, e dava para pôr comissão de venda em
  * quem nem entra em Vendas. Só fica quem VENDE: atende aqui, recebe, ou tem o
@@ -78,12 +78,12 @@ async function vendeNaUnidade(tenantId: string, membroId: string, branchId: stri
   return !!data.role_id && (await cargosQueVendem(tenantId)).has(data.role_id as string)
 }
 
-/** Os cargos da rede que RECEBEM (caixa ou financeiro em Gerenciar, ou a Admin da rede) — o `podeReceber`. */
+/** Os cargos da rede que RECEBEM (o PDV em Gerenciar, ou a Admin da rede) — o `podeReceber` (PV-04). */
 async function cargosQueRecebem(tenantId: string): Promise<Set<string>> {
   const admin = createAdminClient()
   const [perms, admins] = await Promise.all([
     lerTodas((de, ate) => admin.from('role_permissions').select('role_id')
-      .eq('tenant_id', tenantId).in('module', ['cashier', 'financial']).eq('level', 'MANAGE')
+      .eq('tenant_id', tenantId).eq('module', 'cashier').eq('level', 'MANAGE')
       .order('role_id').range(de, ate), 'carregar os cargos que recebem'),
     lerTodas((de, ate) => admin.from('tenant_roles').select('id')
       .eq('tenant_id', tenantId).eq('key', 'NETWORK_ADMIN').eq('is_system', true)

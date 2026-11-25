@@ -7,7 +7,7 @@ import { ComissoesDaEquipe } from '@/app/_shared/comissoes-da-equipe'
 export default async function ComissoesDaRedePage({
   searchParams,
 }: {
-  searchParams: Promise<{ periodo?: string; unidade?: string }>
+  searchParams: Promise<{ periodo?: string; unidade?: string; tags?: string }>
 }) {
   const ctx = await getTenantContext()
   // A funcionalidade é do PLANO da rede (lib/planos/recursos.ts).
@@ -39,6 +39,7 @@ export default async function ComissoesDaRedePage({
       // A 27ª (princípio 7): o link diz para onde volta.
       voltarRotulo={minhas ? 'Dashboard' : 'Financeiro'}
       periodoPedido={sp.periodo}
+      tagsPedidas={sp.tags}
       abas={{ base: '/admin/financeiro', titulo: unidades.length > 1 ? 'Financeiro da Rede' : 'Financeiro' }}
     />
   )

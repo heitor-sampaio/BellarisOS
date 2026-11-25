@@ -163,6 +163,25 @@ test.describe.serial('chamados de suporte', () => {
     }
   })
 
+  // Q04 do catálogo de Plataforma (resolvida na revisão de 24/11): o chamado dos
+  // colegas é só da Admin da rede — Configurações em Gerenciar, com "A rede
+  // inteira", não o abre.
+  test('o chamado do colega não se abre com Configurações em Gerenciar: só a Admin da rede', async ({ browser }) => {
+    const comConfig = await criarMembro(`chset${marca}`, {
+      tenant: outra!.tenantId, rotulo: 'Configurações sem ser a Admin', permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }],
+    })
+    const ctx = await browser.newContext({ storageState: comConfig.estado })
+    try {
+      const p = await ctx.newPage()
+      const r = await chamarAcao(p, 'actions/chamados.ts', 'verChamado', '/admin/dashboard', [chamadoId])
+      expect(r.texto).toContain('Chamado não encontrado')
+      expect(r.texto).not.toContain(ASSUNTO)
+    } finally {
+      await ctx.close()
+      await comConfig.limpar()
+    }
+  })
+
   test('o sinal da fila só é lido pela plataforma', async () => {
     expect(await rest(atendente!.accessToken, 'support_signals?select=id')).toHaveLength(1)
     expect(await rest(alvo.accessToken, 'support_signals?select=id')).toHaveLength(0)

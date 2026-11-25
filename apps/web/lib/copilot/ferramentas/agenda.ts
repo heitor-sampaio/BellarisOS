@@ -2,6 +2,7 @@ import 'server-only'
 import { z } from 'zod/v4'
 import { computeAvailableSlots } from '@/lib/appointments/core'
 import { ler } from '@/lib/db'
+import { vistaPessoal } from '@/lib/auth'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
 import {
   DATA, UUID, STATUS_DO_AGENDAMENTO, fusoDe, fusosPorUnidade, hojeNoFuso, horaAgoraNoFuso, idsDasUnidades, janelaDoDia, membroDesativado, membrosPorId, nomesPorId, ondeProcurou,
@@ -157,6 +158,87 @@ export const agendamentos: FerramentaDeLeitura<{
         itens: lista.slice(0, 12).map(a => ({
           texto: `${variosDias ? a.quando : (a.quando.split(' às ')[1] ?? a.quando)} · ${a.cliente}`,
           detalhe: [a.procedimento, a.profissional, ...(variasUnidades ? [a.unidade] : []), a.status].join(' · '),
+          href: a.href,
+        })),
+      } : undefined,
+    }
+  },
+}
+
+/**
+ * A MINHA AGENDA (a vista pessoal, SM2 — CLAUDE.md §11), no Copilot desde a
+ * revisão de 24/11 (docs/catalogo/copilot.md, Q03): quem atende e não tem a
+ * Agenda pergunta pelos horários DELA. Só lê, e só os dela — o filtro é o id
+ * dela (`vistaPessoal`), nunca um nome do pedido. Nas unidades ao alcance dela;
+ * sem datas, de hoje a 30 dias (como "os agendamentos de quem atende", CJ-09).
+ */
+export const minhaAgenda: FerramentaDeLeitura<{ de?: string; ate?: string; unidade?: string; emAberto?: boolean }> = {
+  nome: 'minha_agenda',
+  tipo: 'leitura',
+  recurso: 'agenda',
+  // Só quem tem a vista: quem atende sem a Agenda (com ela, é `agendamentos`).
+  pode: ctx => vistaPessoal(ctx, 'agenda') !== null,
+  descricao: 'A Minha agenda: só os agendamentos DESTA pessoa (ela atende e não tem a Agenda) num dia ou período (até 31 dias), com cliente, procedimento, unidade e status. Sem datas, de hoje a 30 dias. "Em aberto" é emAberto: true (sem o concluído, o cancelado e a falta). Só lê: a agenda dos outros não vem, e agendar, remarcar e cancelar pedem a Agenda. Na resposta, diga o período lido ("periodo").',
+  parametros: z.object({
+    de: DATA.optional().describe('Primeiro dia (AAAA-MM-DD). Padrão: hoje.'),
+    ate: DATA.optional().describe('Último dia (AAAA-MM-DD). Padrão: o mesmo de "de"; sem datas, 30 dias depois de hoje.'),
+    unidade: z.string().max(80).optional(),
+    emAberto: z.boolean().optional(),
+  }),
+  async executar(c, args) {
+    const eu = vistaPessoal(c.ctx, 'agenda')
+    if (!eu) return { dados: { erro: 'A Minha agenda é de quem atende e não tem a Agenda.' } }
+    const u = await resolverUnidade(c, args.unidade, { paraLer: true })
+    if ('erro' in u) return { dados: { erro: u.erro } }
+    const unidades = await idsDasUnidades(c, u.unidade)
+    if (!unidades.length) return { dados: { agendamentos: [] } }
+    const procurouEm = await ondeProcurou(c, unidades)
+    const fuso = await fusoDe(c, u.unidade?.id ?? (unidades.length === 1 ? unidades[0] : null))
+    const hoje = hojeNoFuso(fuso)
+    const de = args.de ?? hoje
+    const ate = args.ate ?? (args.de ? de : maisDias(de, 30))
+    if (ate < de) return { dados: { erro: '"ate" antes de "de".' } }
+    const dias = (janelaDoDia(ate, fuso).fim.getTime() - janelaDoDia(de, fuso).inicio.getTime()) / 86_400_000
+    if (dias > 31.5) return { dados: { erro: 'Período de no máximo 31 dias.' } }
+    const periodo = de === ate ? `${de === hoje ? 'hoje, ' : ''}${diaLegivel(de)}` : `de ${periodoLegivel(de, ate)}`
+
+    let q = c.admin.from('appointments')
+      .select('id, scheduled_at, duration_min, status, branch_id, client_id, procedure_id')
+      .eq('professional_id', eu)
+      .in('branch_id', unidades)
+      .gte('scheduled_at', janelaDoDia(de, fuso).inicio.toISOString())
+      .lte('scheduled_at', janelaDoDia(ate, fuso).fim.toISOString())
+      .order('scheduled_at').limit(80)
+    q = args.emAberto ? q.in('status', [...EM_ABERTO]) : q.neq('status', 'CANCELLED')
+    const linhas = (await ler(q, 'ler a minha agenda') as {
+      id: string; scheduled_at: string; duration_min: number; status: string; branch_id: string; client_id: string; procedure_id: string
+    }[] | null) ?? []
+
+    const [clientes, procs, nomesDasUnidades, fusos] = await Promise.all([
+      nomesPorId(c, 'clients', linhas.map(l => l.client_id)),
+      nomesPorId(c, 'procedures', linhas.map(l => l.procedure_id)),
+      nomesPorId(c, 'branches', linhas.map(l => l.branch_id)),
+      fusosPorUnidade(c, linhas.map(l => l.branch_id)),
+    ])
+    const lista = linhas.map(l => ({
+      id: l.id,
+      quando: quandoLegivel(l.scheduled_at, fusos.get(l.branch_id) ?? fuso),
+      duracaoMin: l.duration_min,
+      cliente: clientes.get(l.client_id) ?? '—',
+      procedimento: procs.get(l.procedure_id) ?? '—',
+      unidade: nomesDasUnidades.get(l.branch_id) ?? '—',
+      status: STATUS_DO_AGENDAMENTO[l.status] ?? l.status,
+      href: rota(c, `/agenda/${l.id}`),
+    }))
+    const variosDias = de !== ate
+    const variasUnidades = unidades.length > 1
+    return {
+      dados: { periodo, procurouEm, total: lista.length, agendamentos: lista, ...(linhas.length === 80 ? { aviso: 'Mostrando os 80 primeiros.' } : {}) },
+      cartao: lista.length ? {
+        tipo: 'links', titulo: `Minha agenda · ${de === ate ? quandoLegivel(janelaDoDia(de, fuso).inicio, fuso).split(' às')[0] : periodoLegivel(de, ate)}`,
+        itens: lista.slice(0, 12).map(a => ({
+          texto: `${variosDias ? a.quando : (a.quando.split(' às ')[1] ?? a.quando)} · ${a.cliente}`,
+          detalhe: [a.procedimento, ...(variasUnidades ? [a.unidade] : []), a.status].join(' · '),
           href: a.href,
         })),
       } : undefined,

@@ -89,3 +89,72 @@ describe('o servidor recusa o procedimento que a unidade do plano não faz', () 
     expect(quem).toEqual([])
   })
 })
+
+/**
+ * Princípio 2 (não recusar o que a rede escolheu; no máximo, avisar — a
+ * revisão das perguntas de 24/11, Q24 do catálogo de Atendimento): o plano com
+ * procedimento que a unidade não faz MAIS (já estava no plano) se salva; a
+ * marca "(não é feito nesta unidade)" do editor é o aviso. O procedimento NOVO
+ * que a unidade não faz o editor nem oferece, e o servidor segue recusando
+ * (`e2e/plano-unidade-do-plano-f73.spec.ts`); o de outra rede também.
+ */
+describe('o plano com procedimento que a unidade não faz mais se salva, com o aviso', () => {
+  type Linhas = Record<string, unknown>
+  function adminFalso(tabelas: Linhas) {
+    return {
+      from(tabela: string) {
+        const data = tabelas[tabela] ?? []
+        const q: Record<string, unknown> = {}
+        for (const m of ['select', 'in', 'eq']) q[m] = () => q
+        q.maybeSingle = () => Promise.resolve({ data: Array.isArray(data) ? data[0] ?? null : data, error: null })
+        q.then = (ok: (v: unknown) => unknown, erro: (e: unknown) => unknown) => Promise.resolve({ data, error: null }).then(ok, erro)
+        return q
+      },
+    } as never
+  }
+  const LASER = { id: 'p1', name: 'Laser', branch_id: null, procedure_branch_availability: [{ branch_id: 'savassi' }] }
+
+  it('o que já estava no plano e a unidade não faz mais não recusa a gravação', async () => {
+    const { recusaDosProcedimentosDoPlano } = await import('@/lib/procedimentos/disponivel-na-unidade')
+    const admin = adminFalso({
+      procedures: [LASER], branches: { name: 'Pampulha' },
+      treatment_plan_session_procedures: [{ procedure_id: 'p1' }],
+    })
+    expect(await recusaDosProcedimentosDoPlano(admin, 'rede', 'pampulha', ['p1'], { planoId: 'plano' })).toBeNull()
+  })
+
+  it('no rascunho da avaliação também (o plano achado pelo atendimento)', async () => {
+    const { recusaDosProcedimentosDoPlano } = await import('@/lib/procedimentos/disponivel-na-unidade')
+    const admin = adminFalso({
+      procedures: [LASER], branches: { name: 'Pampulha' },
+      treatment_plans: [{ id: 'plano' }], treatment_plan_session_procedures: [{ procedure_id: 'p1' }],
+    })
+    expect(await recusaDosProcedimentosDoPlano(admin, 'rede', 'pampulha', ['p1'], { avaliacaoId: 'ag' })).toBeNull()
+  })
+
+  it('o NOVO que a unidade não faz segue recusado', async () => {
+    const { recusaDosProcedimentosDoPlano } = await import('@/lib/procedimentos/disponivel-na-unidade')
+    const admin = adminFalso({ procedures: [LASER], branches: { name: 'Pampulha' }, treatment_plan_session_procedures: [] })
+    expect(await recusaDosProcedimentosDoPlano(admin, 'rede', 'pampulha', ['p1'], { planoId: 'plano' }))
+      .toBe('Laser não é feito na unidade Pampulha. Escolha outra unidade ou outro procedimento.')
+  })
+
+  it('o procedimento que não é da rede segue recusado', async () => {
+    const { recusaDosProcedimentosDoPlano } = await import('@/lib/procedimentos/disponivel-na-unidade')
+    const admin = adminFalso({ procedures: [], branches: { name: 'Pampulha' } })
+    expect(await recusaDosProcedimentosDoPlano(admin, 'rede', 'pampulha', ['p-de-fora'])).toBe('Procedimento do plano não encontrado.')
+  })
+
+  it('as duas gravações dizem o que já estava no plano', () => {
+    const t = fs.readFileSync(path.join(RAIZ, 'actions/treatment-plans.ts'), 'utf8')
+    expect(corpo('actions/treatment-plans.ts', 'gravarSessoes')).toMatch(/recusaDosProcedimentosDoPlano\([^;]*planoId: planId/)
+    expect(corpo('actions/treatment-plans.ts', 'generateEvaluationPlanInterno')).toMatch(/recusaDosProcedimentosDoPlano\([^;]*avaliacaoId: appointmentId/)
+    expect(t).toBeTruthy()
+  })
+
+  it('o editor diz o aviso, sem prometer que o salvar vai recusar', () => {
+    const editor = fs.readFileSync(path.join(RAIZ, 'components/branch/treatment-plan-editor.tsx'), 'utf8')
+    expect(editor).toContain('(não é feito nesta unidade)')
+    expect(editor).not.toContain('o salvar vai pedir a troca')
+  })
+})

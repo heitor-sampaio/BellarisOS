@@ -23,12 +23,14 @@ export default async function AutomacaoPage({
   // Mexer na automação é configuração da rede toda: só a Admin da rede (18/11,
   // "só pela conta admin"). Na sessão de suporte o editor só lê, e a automação
   // ligada mostra "Desligar": o suporte só pausa (auditoria das regras, 18/11).
+  // O ensaio continua (não grava nem manda nada — docs/regras/automacoes.md).
   const gerencia = can(ctx, 'automations', 'MANAGE') && mexeNaConfigDaRede(ctx)
   return (
     <EditorDeAutomacao
       automacao={automacao}
       podeEditar={gerencia && !ctx.suporte}
       soPausa={gerencia && !!ctx.suporte}
+      podeEnsaiar={gerencia}
     />
   )
 }

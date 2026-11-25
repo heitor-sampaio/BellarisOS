@@ -11,6 +11,8 @@ import { getCachedFichasDoLogin } from '@/lib/cached-queries'
 import { registrarEntradaNoPortal } from '@/lib/clientes/destino'
 import { ROTA_DO_SELETOR } from '@/lib/clientes/entrada'
 import { bonusDePrimeiroAcesso } from '@/lib/fidelidade/bonus'
+import { nomeDaRedeDoPortal } from '@/lib/clientes/nome-da-rede'
+import { RedeDoPortal } from '@/components/client-portal/rede-do-portal'
 
 export default async function ClientPortalLayout({
   children,
@@ -52,6 +54,8 @@ export default async function ClientPortalLayout({
   await registrarEntradaNoPortal(ctx.clientId!, { unidadeId: (branch as { id: string } | null)?.id ?? null })
 
   const branchName = (branch as { name: string } | null)?.name ?? 'BellarisOS'
+  // O nome da rede nas frases do portal (CA1: o NOME da rede no lugar de "clínica").
+  const nomeDaRede = await nomeDaRedeDoPortal(slug)
   // O contador do sino é acessório: a falha fica no log e ele começa em zero.
   if (unread.error) console.error('[cliente/layout] contar as notificações:', unread.error.message)
   const initialUnread = unread.count ?? 0
@@ -103,7 +107,7 @@ export default async function ClientPortalLayout({
         paddingBottom: 'calc(76px + env(safe-area-inset-bottom, 0px))',
         minHeight:     'calc(100dvh - 52px)',
       }}>
-        {children}
+        <RedeDoPortal nome={nomeDaRede}>{children}</RedeDoPortal>
       </main>
 
       {/* -- Bottom nav -------------------------------------------- */}

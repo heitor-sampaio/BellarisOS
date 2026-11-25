@@ -56,17 +56,19 @@ describe('D1: Tratamentos segue a página — o Atendimento em Ver (era a Agenda
   })
 })
 
-describe('A1: o PDV aberto pelo Financeiro mostra o nível que vale, travado', () => {
-  it('o nível que vale', async () => {
-    const { nivelDoPdvPeloFinanceiro } = await import('@/lib/permissions-copy')
-    expect(nivelDoPdvPeloFinanceiro({ cashier: 'NONE', financial: 'MANAGE' })).toBe('MANAGE')
-    expect(nivelDoPdvPeloFinanceiro({ cashier: 'MANAGE', financial: 'MANAGE' })).toBeNull()
-    expect(nivelDoPdvPeloFinanceiro({ cashier: 'NONE', financial: 'VIEW' })).toBeNull()
+// A1 da 23ª mudou com a regra: receber é só do PDV (PV-04 do catálogo de 24/11;
+// o Heitor, 23/11, à proposta "cada passo pertence a UM módulo, e nenhuma ação
+// pede dois … PDV: receber, a comanda": "concordo, pode anotar, marcar as
+// questões e ajustar o codigo"). O Financeiro não abre o PDV, e o seletor do
+// PDV não fica travado em "Gerenciar" por ele.
+describe('A1: o PDV não é aberto pelo Financeiro, e o seletor não trava nele', () => {
+  it('o nível que vale é o do próprio PDV', async () => {
+    const copia = await import('@/lib/permissions-copy')
+    expect('nivelDoPdvPeloFinanceiro' in copia).toBe(false)
   })
-  it('a linha passa o nível travado ao seletor', () => {
+  it('a linha do PDV não passa nível travado ao seletor', () => {
     const f = fonte('components/admin/roles-editor.tsx')
-    expect(f).toContain('travadoEm={module === \'cashier\' ? nivelDoPdvPeloFinanceiro(levels) : null}')
-    expect(f).toContain('data-nivel-travado')
+    expect(f).not.toContain('nivelDoPdvPeloFinanceiro')
   })
 })
 

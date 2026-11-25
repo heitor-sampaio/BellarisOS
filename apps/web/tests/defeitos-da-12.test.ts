@@ -16,13 +16,16 @@ describe('D1 da 12ª: a venda é de Recebimentos, e a tela diz', () => {
     expect(LEVEL_COPY.procedures.MANAGE).toMatch(/de quem tem o PDV/)
   })
   const nada = { procedures: 'NONE', crm: 'NONE', clients: 'NONE', cashier: 'NONE', financial: 'NONE' } as const
+  // PV-04 (catálogo de 24/11; o Heitor, 23/11, à proposta "cada passo pertence a
+  // UM módulo, e nenhuma ação pede dois … PDV: receber, a comanda": "concordo"):
+  // vender é só do PDV — o Financeiro em Gerenciar deixou de vender.
   it('o resumo do cargo diz que o comercial sem Recebimentos não vende', () => {
     expect(quemVendeNoResumo({ ...nada, procedures: 'MANAGE', crm: 'MANAGE', clients: 'MANAGE' }))
-      .toBe('Não vende no PDV: vender é de quem tem o PDV (ou o Financeiro em Gerenciar).')
+      .toBe('Não vende no PDV: vender é de quem tem o PDV.')
   })
-  it('com Recebimentos (ou o Financeiro em Gerenciar), vende', () => {
+  it('com Recebimentos vende; com o Financeiro em Gerenciar, não', () => {
     expect(quemVendeNoResumo({ ...nada, cashier: 'MANAGE' })).toMatch(/^Vende no PDV/)
-    expect(quemVendeNoResumo({ ...nada, financial: 'MANAGE' })).toMatch(/^Vende no PDV/)
+    expect(quemVendeNoResumo({ ...nada, financial: 'MANAGE' })).toMatch(/^Não vende no PDV/)
   })
   it('quem nem vende nem mexe no comercial não lê nada', () => {
     expect(quemVendeNoResumo({ ...nada })).toBeNull()

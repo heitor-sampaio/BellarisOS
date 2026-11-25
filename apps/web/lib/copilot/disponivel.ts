@@ -18,8 +18,10 @@ export function copilotNoPlano(ctx: TenantContext): boolean {
 
 /**
  * O CARGO desta pessoa tem o Copilot? O módulo `copilot` da matriz de Cargos
- * (pedido do Heitor, 2026-10-08): Ver só consulta; Gerenciar também prepara
- * gravações (o executor confere). O plano decide se a rede tem; o cargo, quem usa.
+ * (pedido do Heitor, 2026-10-08): Ver liga a ferramenta — consultar e agir —,
+ * e cada ação pede só a permissão dela, como na tela ("nenhuma ação pede
+ * dois", 2026-11-23; o executor confere). O plano decide se a rede tem; o
+ * cargo, quem usa.
  */
 export function copilotNoCargo(ctx: TenantContext): boolean {
   return can(ctx, 'copilot', 'VIEW')
@@ -36,21 +38,23 @@ export function copilotNaTela(ctx: TenantContext): boolean {
 }
 
 /**
- * O Copilot fora do PLANO aparece EXPLICADO para quem administra a clínica
- * (A51 da 6ª simulação; princípio 3: ele sumia calado, e a dona em teste
- * grátis — "tudo, menos o Copilot", J-7 — não sabia por quê). Só para quem
- * pode contratar (`administraARede`: da rede, com Configurações em
- * Gerenciar); a equipe não ganha um botão que não usa. Nada se libera: a
- * rota e as actions seguem recusando.
+ * O Copilot fora do PLANO aparece EXPLICADO para a Admin da rede (A51 da 6ª
+ * simulação; princípio 3: ele sumia calado, e a dona em teste grátis — "tudo,
+ * menos o Copilot", J-7 — não sabia por quê). Só para quem contrata: a
+ * Assinatura e os adicionais são configuração da rede toda, só da Admin da
+ * rede (o Heitor, 18/11: "Configuração da rede toda só pela conta admin") —
+ * pelo cargo gravado (`ctx.isNetworkAdmin`), não por "A rede inteira" com
+ * Configurações em Gerenciar. A equipe não ganha um botão que não usa. Nada
+ * se libera: a rota e as actions seguem recusando.
  */
 export function copilotForaDoPlanoNaTela(ctx: TenantContext): boolean {
   return !ctx.isClient && !!ctx.tenantId && !!ctx.internalUserId && !ctx.suporte
-    && !copilotNoPlano(ctx) && ctx.branchId === null && ctx.permissions.settings === 'MANAGE'
+    && !copilotNoPlano(ctx) && ctx.isNetworkAdmin
 }
 
 /**
  * A rede está no TESTE grátis? Lido na hora (não no cache da rede): só para o
- * aviso do Copilot fora do plano, que só quem administra a clínica vê.
+ * aviso do Copilot fora do plano, que só a Admin da rede vê.
  */
 export async function redeEmTeste(tenantId: string): Promise<boolean> {
   const { data, error } = await createAdminClient().from('tenants').select('plan_status').eq('id', tenantId).maybeSingle()

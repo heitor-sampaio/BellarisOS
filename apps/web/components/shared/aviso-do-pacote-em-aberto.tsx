@@ -14,7 +14,7 @@ import { textoDoPacoteEmAberto } from '@/lib/pacotes/regras'
  * Desde o PDV (PDV1/CX1, a revisão do Heitor de 2026-11-13), a parcela se
  * recebe no PDV: o aviso diz isso e leva a cliente ao PDV da unidade do
  * pacote, onde as parcelas dela aparecem. Só chega aqui para quem recebe (o
- * PDV ou o Financeiro em Gerenciar — a página só lê o em aberto a ela).
+ * PDV em Gerenciar, PV-04 — a página só lê o em aberto a ela).
  *
  * Liberar as sessões antes de pago é da REDE desde o item 8 da auditoria
  * (decisão do Claude pelo princípio 1, 2026-11-18; Configurações → Geral): sem

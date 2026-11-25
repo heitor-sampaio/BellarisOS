@@ -61,6 +61,8 @@ interface AgendaCalendarProps {
   meuId?: string | null
   /** Conclui o atendimento (o Prontuário em Gerenciar) — sem ele, a janela diz quem conclui antes do Iniciar (A20 da 10ª). */
   podeConcluir?: boolean
+  /** Abre a tela do atendimento: o Atendimento em Ver (UM1, 23/11) — a Agenda em Ver não a abre. */
+  abreOAtendimento?: boolean
   /** A9 da 20ª: sem iniciar e concluir, quem conclui — o Atendimento em Gerenciar, pelo nome (quemConcluiOAtendimento). */
   quemConclui?: string[] | null
   /** O horário de funcionamento da unidade e de cada profissional (nulo = o padrão / segue a unidade). */
@@ -196,7 +198,7 @@ function todayDate(fuso: string): Date {
 // -- Component ----------------------------------------------------------------
 
 export function AgendaCalendar({
-  branchId, slug, events, procedures, professionals, rooms, canWrite, vistaDela = false, meuId = null, podeConcluir = true, quemConclui = null,
+  branchId, slug, events, procedures, professionals, rooms, canWrite, vistaDela = false, meuId = null, podeConcluir = true, abreOAtendimento = false, quemConclui = null,
   horarioDaUnidade = null, horariosDosProfissionais = {}, ocupadoForaDosProfissionais = {}, dataInicial = null, comCancelados = false,
   bloqueios = [], colunasDeQuemNaoAtende = [], filtros = SEM_FILTRO, tagsDaRede = [],
 }: AgendaCalendarProps) {
@@ -291,7 +293,7 @@ export function AgendaCalendar({
     if (ev && ev.professionalId && newProfId && ev.professionalId !== newProfId) {
       setArraste({
         eventId, inicio: newStart, profId: newProfId,
-        de: ev.professionalName, para: professionals.find(p => p.id === newProfId)?.name ?? 'outra profissional',
+        de: ev.professionalName, para: professionals.find(p => p.id === newProfId)?.name ?? 'outra pessoa',
       })
       return
     }
@@ -318,10 +320,10 @@ export function AgendaCalendar({
   return (
     <>
       {arraste && (
-        <JanelaModal onFechar={() => setArraste(null)} rotulo="Trocar a profissional" largura={420} papel="alertdialog">
+        <JanelaModal onFechar={() => setArraste(null)} rotulo="Trocar quem atende" largura={420} papel="alertdialog">
           <div data-confirmar-arraste style={{ padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 14 }}>
             <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text)', fontWeight: 700, lineHeight: 1.5 }}>
-              Trocar a profissional de {arraste.de} para {arraste.para} e marcar às {format(arraste.inicio, 'HH:mm')} de {format(arraste.inicio, 'dd/MM')}?
+              Trocar quem atende de {arraste.de} para {arraste.para} e marcar às {format(arraste.inicio, 'HH:mm')} de {format(arraste.inicio, 'dd/MM')}?
             </p>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button type="button" className="btn-secondary" onClick={() => setArraste(null)}>Voltar</button>
@@ -544,6 +546,7 @@ export function AgendaCalendar({
           vistaDela={vistaDela}
           podeGerenciar={canWrite}
           podeConcluir={podeConcluir}
+          abreOAtendimento={abreOAtendimento}
           quemConclui={quemConclui}
           meuId={meuId}
           onClose={() => setSelectedEvent(null)}

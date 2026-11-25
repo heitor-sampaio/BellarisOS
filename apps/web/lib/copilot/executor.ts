@@ -34,8 +34,11 @@ export function contextoDoCopilot(ctx: TenantContext): TenantContext {
 }
 
 export function ferramentaLiberada(ctx: TenantContext, f: Ferramenta): boolean {
-  // O cargo tem o Copilot (Ver = consultas; Gerenciar = também gravações).
-  if (!can(ctx, 'copilot', f.tipo === 'escrita' ? 'MANAGE' : 'VIEW')) return false
+  // O cargo tem o Copilot (Ver liga a ferramenta: consultar e agir). Cada
+  // consulta e cada gravação pedem só a permissão da AÇÃO, como na tela — o
+  // Copilot é o canal, não o passo ("nenhuma ação pede dois", o Heitor,
+  // 2026-11-23; docs/catalogo/copilot.md, Q02 da revisão de 24/11).
+  if (!can(ctx, 'copilot', 'VIEW')) return false
   if (f.modulo && !can(ctx, f.modulo, f.nivel ?? 'VIEW')) return false
   if (f.recurso && !temRecurso(ctx, f.recurso)) return false
   if (f.pode && !f.pode(ctx)) return false

@@ -44,8 +44,10 @@ describe('acoesDoCliente', () => {
       ['vender', '/admin/pdv?nova=1&cliente=c1'],
     ])
   })
-  it('vender é de quem recebe (o PDV ou o Financeiro em Gerenciar)', () => {
-    expect(acoesDoCliente({ pathname: REDE, slug: null, permissoes: com({ financial: 'MANAGE' }), agendaPropria: false }, 'c1').map(x => x.id)).toEqual(['vender'])
+  // PV-04 (catálogo de 24/11; o Heitor, 23/11: "cada passo pertence a UM módulo … PDV: receber" — "concordo").
+  it('vender é de quem recebe (o PDV em Gerenciar, e não o Financeiro)', () => {
+    expect(acoesDoCliente({ pathname: REDE, slug: null, permissoes: com({ cashier: 'MANAGE' }), agendaPropria: false }, 'c1').map(x => x.id)).toEqual(['vender'])
+    expect(acoesDoCliente({ pathname: REDE, slug: null, permissoes: com({ financial: 'MANAGE' }), agendaPropria: false }, 'c1')).toEqual([])
     expect(acoesDoCliente({ pathname: REDE, slug: null, permissoes: com({ financial: 'VIEW' }), agendaPropria: false }, 'c1')).toEqual([])
   })
   it('no portal da unidade, o PDV da unidade; sem o PDV nem o Financeiro em Gerenciar, nada de vender (BU1)', () => {

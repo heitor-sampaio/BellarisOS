@@ -12,15 +12,16 @@
  *   marcadas (E, sem distinguir a caixa, como a lista de Clientes); a linha
  *   sem cliente sai quando há tag. A conta mora no banco
  *   (`public.metrics_tem_as_tags`, `metrics_cliente_tem_as_tags`);
- * - o filtro só existe nas abas de PESSOAS. Nas sem pessoa (Estoque) e nas que
- *   misturam dinheiro sem pessoa (Visão geral e Financeiro: a despesa, o DRE e
- *   o lucro) ele não aparece — o lucro "filtrado por tag" seria um número que
- *   não é de ninguém.
+ * - o filtro existe em toda aba com pessoa; no Estoque (sem pessoa), não. A
+ *   Visão geral e o Financeiro o ganharam na revisão de 24/11 (Q05 do catálogo
+ *   dos Indicadores: "têm filtros, então ganham o de Tags"): com tag, a
+ *   despesa, a compra de estoque e as perdas (sem cliente) saem, e o lucro e o
+ *   DRE são das mesmas linhas que os cartões.
  */
 
 import { tagsDaUrl, tagsParaAUrl } from '@/lib/tags/filtro-na-url'
 
-export const ABAS_COM_FILTRO_DE_TAGS = ['vendas', 'agenda', 'clientes', 'procedimentos', 'profissionais', 'comercial'] as const
+export const ABAS_COM_FILTRO_DE_TAGS = ['overview', 'financeiro', 'vendas', 'agenda', 'clientes', 'procedimentos', 'profissionais', 'comercial'] as const
 
 export function abaTemFiltroDeTags(aba: string): boolean {
   return (ABAS_COM_FILTRO_DE_TAGS as readonly string[]).includes(aba)

@@ -290,22 +290,29 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   para o cliente assinar e isso não representa risco.").
   - **`documents` aceita só NONE/MANAGE** ("Modelos de documento" na tela de
     Cargos, no grupo Gestão ao lado dos "Modelos de ficha" — `forms`, que
-    ficou só com as fichas). MANAGE cria, edita e desativa os modelos
-    (Configurações → Documentos, `actions/modelos-de-documento.ts`, a aba é do
-    módulo `documents`) e DISPENSA um documento obrigatório da cliente, com
-    motivo (`dispensarDocumento`; a tela só mostra "Dispensar" a quem pode —
-    `dispensaDocumentos`). Ligar o modelo ao procedimento é `procedures`. E os
-    modelos são da REDE: quem não tem “A rede inteira” não os cria nem muda
-    (H7, 2026-11-01; `recusaDaConfigDaRede`, `plataforma.md`).
+    ficou só com as fichas). MANAGE só DISPENSA um documento obrigatório da
+    cliente (DQ-02 do catálogo, 24/11), com motivo (`dispensarDocumento`; a tela só mostra "Dispensar" a
+    quem pode — `dispensaDocumentos`), e abre a aba Configurações → Documentos
+    (a aba é do módulo `documents`). Criar, editar e desativar os modelos é
+    configuração da rede toda: só a Admin da rede (o Heitor, 2026-11-18:
+    "Configuração da rede toda só pela conta admin"; `recusaDaConfigDaRede` em
+    `actions/modelos-de-documento.ts`, `plataforma.md`) — a quem tem o módulo e
+    não é ela, a aba diz "Esta configuração é só da Admin da rede." e quem muda.
+    O nome e a cópia do módulo na tela de Cargos dizem isso (princípio 3; DQ-02
+    do catálogo, 24/11). Ligar o modelo ao procedimento é `procedures`.
     Nenhum modelo de cargo nasce com ele (o Heitor, 2026-11-16, sobre o
-    Gerente: "Pode deixar sem"): de saída, só a Admin da rede mexe nos
-    modelos; a rede dá a quem quiser.
+    Gerente: "Pode deixar sem"): de saída, só a Admin da rede dispensa; a
+    rede dá o dispensar a quem quiser. Os modelos ficam sempre com ela.
   - **Ver os documentos da cliente é de quem vê a cliente** (`clients: VIEW`,
     `veOsDocumentos` em `lib/documentos/acesso.ts`): a aba Documentos da
     ficha, o painel `/documentos` (e a entrada do menu), a trilha, o Copilot.
   - **Colher é de quem está com a cliente na tela** (`colheOsDocumentos`):
-    Clientes, Agenda ou Prontuário em Ver, ou quem recebe (`podeReceber`) — a
-    ficha, o atendimento, a janela do agendamento e o PDV. Na tela, no papel,
+    Clientes em Ver (a ficha), o Atendimento em Ver (a tela do atendimento,
+    que ele abre desde a UM1 — o Heitor, 2026-11-23), a Agenda em Ver (a
+    janela do agendamento) ou quem recebe (`podeReceber`, o PDV). O Prontuário
+    em Ver saiu: sozinho, não abre nenhuma dessas telas (DQ-06 do catálogo de
+    Documentos, 24/11; decisão do Claude). A vista pessoal só mostra, não
+    colhe. Prova: `tests/documentos-assinar-sem-permissao.test.ts`. Na tela, no papel,
     pelo link, pela conversa, pelo app, montar de novo, revogar o link e
     definir o pagamento do contrato. A tela `/documentos/[id]/assinar` e o PDF
     (`/api/documentos/[id]/pdf`) usam a mesma regra. A trava de cada
@@ -514,6 +521,11 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   pagamento só é recebido depois do atendimento, então quem colhe a assinatura
   o DEFINE antes dela (`definirPagamentoDoContrato`, ficha e painel da sessão;
   o mesmo `PagamentoDoPlano` do checkout, guardado em `payment_snapshot`).
+  Definir o combinado é um dado do CONTRATO, não um recebimento: grava só o
+  retrato do documento, e por isso fica na tela do atendimento, que não recebe
+  nem tem janela de pagamento (PV-13 do catálogo de Vendas): o contrato que
+  BLOQUEIA precisa do combinado antes do início, e a comanda só nasce no
+  início. O PDV recebe partindo dele.
   - Sem retrato, o pagamento está "não combinado" — diferente de "no
     atendimento" (`{ forma: 'NADA_AGORA' }`): as variáveis ficam vazias e a
     obrigatória (`pagamento.forma`) deixa o contrato INCOMPLETO — não assina,
@@ -661,8 +673,8 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
     `tests/saudacao-da-cliente.test.ts`.
   - **Pela conversa do inbox é escolha da REDE**, desligada de nascença
     (`tenants.documentos_link_pela_conversa`, Configurações → Documentos;
-    muda só quem tem os Modelos de documento — `documents: MANAGE` — e
-    abrangência de rede). Ligada, a ficha
+    muda só a Admin da rede — configuração da rede toda, o Heitor, 18/11;
+    `definirEnvioDoLinkPelaConversa` com `recusaDaConfigDaRede`, DL-05). Ligada, a ficha
     ganha "Enviar pela conversa" (`enviarLinkPelaConversa`): gera um link
     NOVO e o manda por `enviarNaConversa` na conversa de WhatsApp aberta em
     que o cliente falou por último (`conversaDoCliente`: `client_id`, senão o
@@ -684,6 +696,13 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   - É só LEITURA, de quem vê a cliente (`clients: VIEW`, desde 2026-11-16); quem não tem “A rede inteira” vê as dela. A
     janela do documento mostra a trilha (`trilhaDoDocumento`, sem o CPF de
     quem assinou), o PDF e "Abrir na ficha" — as ações ficam na ficha.
+  - **O filtro de Tags** (DT-01 do catálogo dos Documentos; CLAUDE.md §1,
+    Tags): ao lado da busca, da situação, do tipo e da unidade, na URL
+    (`?tags=`; trocar a tag volta à primeira página). Entra o documento cuja
+    cliente tem TODAS as tags marcadas (a régua dos Relatórios, TF-02), no
+    banco (`p_tags` de `documentos_emitidos_pagina` e
+    `documentos_emitidos_resumo`, migration `20261203400003`): a lista, o
+    total e os números do topo seguem o filtro.
   - O A_GERAR da página é montado ao listar (`renderizarPendentes`), como na
     ficha: sem isso ele não saberia se falta dado.
 - **Salvar o cadastro da cliente monta de novo os documentos INCOMPLETOS

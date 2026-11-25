@@ -149,7 +149,7 @@ test.describe('atritos da remarcação (frente 8)', () => {
       await expect(p.getByText(/terminou em .* \(24 horas antes do horário\)/i)).toBeVisible()
       await expect(p.getByText('(11) 98765-4321')).toBeVisible()
       // A66: "Falar com a equipe" abre com a mensagem pronta sobre este agendamento.
-      await expect(p.getByRole('link', { name: /Falar com a equipe/ })).toHaveAttribute('href', /\?text=.*agendamento/)
+      await expect(p.getByRole('link', { name: /Falar com (?!a equipe)/ })).toHaveAttribute('href', /\?text=.*agendamento/)
     })
   })
 
@@ -161,13 +161,13 @@ test.describe('atritos da remarcação (frente 8)', () => {
     const id = await agendado(cliente!.clientId, new Date(Date.now() + 3 * 3600_000))
     await como(browser, cliente!, async p => {
       await p.goto(`/${slug}/cliente/agendamentos`)
-      await expect(p.locator(`a[href$="/agendamentos/${id}"] [data-prazo-encerrado]`)).toContainText('Prazo do app encerrado: fale com a equipe para alterar')
+      await expect(p.locator(`a[href$="/agendamentos/${id}"] [data-prazo-encerrado]`)).toContainText(/Prazo do app encerrado: fale com (?!a equipe).+ para alterar/)
 
       await p.goto(`/${slug}/cliente/agendamentos/${id}`)
       const saida = p.locator('[data-fora-do-prazo]')
       await expect(saida).toContainText(/O prazo para alterar pelo app terminou em .* \(24 horas antes do horário\)/)
       await expect(saida.getByRole('link', { name: /^Ligar$/ })).toHaveAttribute('href', 'tel:+5511987654321')
-      await expect(saida.getByRole('link', { name: /Falar com a equipe/ })).toHaveAttribute('href', /cancelar%20ou%20remarcar/)
+      await expect(saida.getByRole('link', { name: /Falar com (?!a equipe)/ })).toHaveAttribute('href', /cancelar%20ou%20remarcar/)
     })
   })
 

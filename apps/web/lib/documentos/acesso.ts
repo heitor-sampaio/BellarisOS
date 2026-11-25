@@ -24,15 +24,18 @@ export function veOsDocumentos(ctx: TenantContext): boolean {
 }
 
 /**
- * Colhe a assinatura: quem está com a cliente na tela — a ficha (Clientes), o
- * atendimento e a janela do agendamento (Agenda, Prontuário), a venda e o
- * recebimento (o PDV, ou o Financeiro em Gerenciar). Na tela, no papel, pelo
- * link, pela conversa, pelo app, montar de novo, revogar o link, o pagamento
- * do contrato.
+ * Colhe a assinatura: quem está com a cliente na tela em que ela é pedida — a
+ * ficha (Clientes em Ver), a tela do atendimento (o Atendimento em Ver, que a
+ * abre desde a UM1 — o Heitor, 2026-11-23), a janela do agendamento (a Agenda)
+ * e a venda e o recebimento (quem recebe, `podeReceber`). Na tela, no papel,
+ * pelo link, pela conversa, pelo app, montar de novo, revogar o link, o
+ * pagamento do contrato. O Prontuário em Ver sozinho não abre nenhuma dessas
+ * telas, e saiu (DQ-06 do catálogo de Documentos, 24/11). A vista pessoal só
+ * mostra: não colhe.
  */
 export function colheOsDocumentos(ctx: TenantContext): boolean {
   if (ctx.isClient || !temRecurso(ctx, 'documentos')) return false
-  return can(ctx, 'clients', 'VIEW') || can(ctx, 'agenda', 'VIEW') || can(ctx, 'medical_records', 'VIEW') || podeReceber(ctx)
+  return can(ctx, 'clients', 'VIEW') || can(ctx, 'atendimento', 'VIEW') || can(ctx, 'agenda', 'VIEW') || podeReceber(ctx)
 }
 
 export function assertColheOsDocumentos(ctx: TenantContext): void {

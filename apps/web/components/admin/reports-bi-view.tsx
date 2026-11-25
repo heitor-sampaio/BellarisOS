@@ -1773,8 +1773,9 @@ export function ReportsBiView(props: ReportsBiProps) {
               limpar={['pagina']}
               sobre={'A tag filtra pessoas: entra no relatório só o que é de uma cliente com TODAS as tags marcadas '
                 + '(maiúscula ou minúscula, tanto faz). O que não tem cliente sai enquanto houver tag marcada. Na aba Comercial vale a tag da pessoa da oportunidade '
-                + '(a cliente; sem ela, o contato); nos atendimentos comerciais, a da cliente. A equipe (Profissionais ativos) não muda. Visão geral, '
-                + 'Financeiro e Estoque não têm este filtro: a despesa e o lucro não são de uma cliente.'}
+                + '(a cliente; sem ela, o contato); nos atendimentos comerciais, a da cliente. A equipe (Profissionais ativos) não muda. Na Visão geral '
+                + 'e no Financeiro, a despesa, a compra de estoque e as perdas não são de uma cliente: saem, e o lucro e o DRE são só das clientes marcadas. '
+                + 'O Estoque não tem este filtro.'}
             />
           )}
           <PeriodSelector

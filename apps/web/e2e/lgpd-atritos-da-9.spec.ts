@@ -18,6 +18,8 @@ const marca = Date.now().toString(36)
 const db = () => banco()
 let rede: OutraRede
 let dona: MembroDeTeste
+let deClientes: MembroDeTeste
+let soConfig: MembroDeTeste
 let cliente: ClienteDeTeste
 
 async function como(browser: Browser, estado: string, fn: (p: Page) => Promise<void>) {
@@ -29,12 +31,17 @@ test.beforeAll(async () => {
   rede = await criarOutraRede(`lg9${marca}`)
   expect((await db().from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede.tenantId)).error).toBeNull()
   dona = await criarMembro(`lg9d${marca}`, { tenant: rede.tenantId, donoDaRede: true, permissoes: [] })
+  // Revisão de 24/11 (Q09 do catálogo de Clientes): responde quem tem Clientes em Gerenciar.
+  deClientes = await criarMembro(`lg9k${marca}`, { tenant: rede.tenantId, permissoes: [{ modulo: 'clients', nivel: 'MANAGE' }] })
+  soConfig = await criarMembro(`lg9s${marca}`, { tenant: rede.tenantId, permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }] })
   cliente = await clienteComSessao(`lg9c${marca}`, { id: rede.branchId, slug: `e2e-un-lg9${marca}` }, { tenant: rede.tenantId })
 })
 
 test.afterAll(async () => {
   await cliente?.limpar()
   await dona?.limpar()
+  await deClientes?.limpar()
+  await soConfig?.limpar()
   await rede?.limpar()
 })
 
@@ -57,5 +64,32 @@ test('A49: o pedido de dados feito pelo app avisa a rede no sino, e a ficha apon
     await expect(aviso).toContainText('Pedido de dados (LGPD) feito pelo app')
     await expect(aviso).toContainText('responder até')
     await expect(aviso.getByRole('link', { name: /Configurações → LGPD/ })).toHaveAttribute('href', '/admin/settings?tab=lgpd')
+  })
+})
+
+// Revisão de 24/11 (Q09 do catálogo de Clientes): o aviso vai a quem responde —
+// Clientes em Gerenciar (a cliente é da rede) —, não a quem tem Configurações em
+// Gerenciar ("o critério de antes de 18/11"). Corre depois do A49, que fez o pedido.
+test('o aviso do pedido de dados vai a quem tem Clientes em Gerenciar, não a quem só tem Configurações', async () => {
+  const avisos = async (userId: string) => ((await db().from('user_notifications').select('type, data').eq('user_id', userId)).data ?? [])
+    .filter(n => n.type === 'lgpd.pedido').map(n => (n.data as { caminho?: string }).caminho)
+  await expect.poll(() => avisos(deClientes.userId), { message: 'quem tem Clientes em Gerenciar é avisado' }).toEqual(['/admin/settings?tab=lgpd'])
+  expect(await avisos(soConfig.userId), 'quem só tem Configurações não').toEqual([])
+})
+
+// A aba abre para quem responde (o agente S, catálogo de 24/11; Q09): o aviso e
+// a ficha levavam quem tem Clientes em Gerenciar a uma aba que só abria com
+// Configurações (ou o Prontuário) em Gerenciar. Quem só tem Configurações não a vê.
+test('a aba LGPD abre para quem tem Clientes em Gerenciar, e não para quem só tem Configurações', async ({ browser }) => {
+  const nome = (await db().from('clients').select('name').eq('id', cliente.clientId).single<{ name: string }>()).data!.name
+  await como(browser, deClientes.estado, async p => {
+    await p.goto('/admin/settings?tab=lgpd')
+    await expect(p.getByRole('link', { name: /^LGPD/ })).toBeVisible()
+    await expect(p.getByText(nome).first()).toBeVisible()
+  })
+  await como(browser, soConfig.estado, async p => {
+    await p.goto('/admin/settings?tab=general')
+    await expect(p.getByRole('heading', { name: 'Configurações' })).toBeVisible()
+    await expect(p.getByRole('link', { name: /^LGPD/ })).toHaveCount(0)
   })
 })

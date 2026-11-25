@@ -62,7 +62,7 @@ const EXECUTAVEIS: TipoDeNo[] = [
 ]
 
 export function EditorDeAutomacao({
-  automacao, podeEditar, soPausa = false,
+  automacao, podeEditar, soPausa = false, podeEnsaiar = podeEditar,
 }: {
   automacao: AutomacaoCompleta; podeEditar: boolean
   /**
@@ -71,6 +71,8 @@ export function EditorDeAutomacao({
    * também recusa (`bloqueioDoSuporte`).
    */
   soPausa?: boolean
+  /** O ensaio não grava nem manda nada: na sessão de suporte, continua (docs/regras/automacoes.md). */
+  podeEnsaiar?: boolean
 }) {
   const router = useRouter()
   const [nome, setNome]         = useState(automacao.nome)
@@ -617,7 +619,7 @@ export function EditorDeAutomacao({
         ) : gaveta === 'execucoes' ? (
           <PainelDeExecucoes
             automacaoId={automacao.id}
-            podeEditar={podeEditar}
+            podeEnsaiar={podeEnsaiar}
             onFechar={() => setGaveta(null)}
           />
         ) : null}

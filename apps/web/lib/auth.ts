@@ -374,16 +374,18 @@ export function assertAuditoria(ctx: TenantContext): void {
 /**
  * O cargo pode RECEBER dinheiro do cliente?
  *
- * Dois módulos, o mesmo gesto: `cashier` recebe na recepção, `financial` lança
- * e estorna. Quem tem qualquer um dos dois pode fechar uma venda — é o mesmo
- * critério do "Receber no PDV" (a comanda do atendimento).
+ * Só o PDV em Gerenciar (PV-04): "cada passo pertence a UM módulo, e nenhuma
+ * ação pede dois … PDV: receber, a comanda" — o Heitor, 2026-11-23:
+ * "concordo, pode anotar, marcar as questões e ajustar o codigo". Até o
+ * catálogo de 24/11 o Financeiro em Gerenciar também recebia. A BAIXA no
+ * Financeiro (o que entrou sem passar pelo balcão, CX2) é outra ação:
+ * `podeDarBaixa` (lib/financeiro/so-os-meus.ts).
  *
- * Existe porque o checkout do plano de tratamento exigia `procedures: MANAGE`,
- * o módulo do CATÁLOGO: a recepção precisava poder editar preço de procedimento
- * da rede para receber um plano, e na prática não conseguia fechar nada.
+ * Vale em todo caminho do recebimento: vender, a comanda, a parcela, o plano,
+ * o Fechamento do dia — no PDV, na agenda, na ficha e no atendimento.
  */
 export function podeReceber(ctx: TenantContext): boolean {
-  return can(ctx, 'cashier', 'MANAGE') || can(ctx, 'financial', 'MANAGE')
+  return can(ctx, 'cashier', 'MANAGE')
 }
 
 /**

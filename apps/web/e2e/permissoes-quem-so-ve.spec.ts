@@ -11,7 +11,7 @@ import { apagarAgendamentos, apagarDocumentosEmitidos } from './apoio/limpeza'
  * tela inteira ou chegava em inglês. Cada um com um membro de verdade (o cargo
  * só com Ver ou sem o módulo) e o controle de quem pode.
  *
- * - D4: "Cadastrar cliente" no inbox para Clientes = Ver; ao enviar, 500 e a
+ * - D4: "Cadastrar como cliente" (era "Cadastrar cliente"; Q13 de 24/11) no inbox para Clientes = Ver; ao enviar, 500 e a
  *   página virava "Você não tem acesso".
  * - D5: a aba Dados editável para quem só vê, e o "Salvar" dava 500 mudo.
  * - D6: a aba Planejamento em "Carregando planos…" para sempre, sem Agenda.
@@ -124,12 +124,12 @@ test.afterAll(async () => {
   await rede?.limpar()
 })
 
-test('D4: quem tem o CRM e Clientes em Ver não vê "Cadastrar cliente" no inbox, e a action recusa com { error }', async ({ browser }) => {
+test('D4: quem tem o CRM e Clientes em Ver não vê "Cadastrar como cliente" no inbox, e a action recusa com { error }', async ({ browser }) => {
   await como(browser, sdr!, async p => {
     await p.goto('/admin/inbox')
     await p.locator('button.inbox-conversa').filter({ hasText: `Lead do inbox ${marca}` }).click()
     await expect(p.getByPlaceholder('Nome').first(), 'o painel do contato abriu').toBeVisible()
-    await expect(p.getByRole('button', { name: 'Cadastrar cliente' }), 'sem o botão').toHaveCount(0)
+    await expect(p.getByRole('button', { name: 'Cadastrar como cliente' }), 'sem o botão').toHaveCount(0)
 
     const r = await chamarAcaoComFormulario(p, 'actions/clients.ts', 'addClient', '/admin/inbox', [undefined], {
       name: `${PREFIXO} Cadastro furado ${marca}`, phone: '(48) 99123-4567', _branchId: rede!.branchId, _slug: slug,

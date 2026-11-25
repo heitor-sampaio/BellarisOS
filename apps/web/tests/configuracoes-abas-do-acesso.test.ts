@@ -31,3 +31,15 @@ describe('Configurações diz por que aparecem só aquelas abas [7]', () => {
     expect(tela).toMatch(/data-abas-do-acesso/)
   })
 })
+
+describe('o topo das Configurações diz as abas da pessoa', () => {
+  // Clientes em Gerenciar abre a LGPD desde a revisão de 24/11 (Q09): a sigla
+  // não vira "lgpd" no meio da frase.
+  it('em minúsculas, menos a sigla', async () => {
+    const { abasDoTopo } = await import('@/lib/configuracoes/abas-que-faltam')
+    expect(abasDoTopo(['Tags', 'Importações', 'LGPD'])).toBe('Tags, importações e LGPD da rede')
+    expect(abasDoTopo(['Tags', 'Importações'])).toBe('Tags e importações da rede')
+    expect(abasDoTopo(['LGPD'])).toBe('LGPD da rede')
+    expect(fonte('app/_shared/configuracoes.tsx')).toMatch(/abasDoTopo\(tabs\.map\(t => t\.label\)\)/)
+  })
+})

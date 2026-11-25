@@ -350,8 +350,8 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   atendimento").
   Prova: `e2e/vendas-quem-vendeu.spec.ts`. **A lista vem em grupos** (A15 da
   8ª simulação, 2026-11-06: quem tinha só o Financeiro em Ver aparecia no meio): "Quem
-  atende" (nesta unidade), "Quem recebe" (o PDV ou o Financeiro em
-  Gerenciar, ou a Admin) e "Quem tem o Comercial no cargo" (`equipeDaVenda`).
+  atende" (nesta unidade), "Quem recebe" (o PDV em Gerenciar, PV-04,
+  ou a Admin) e "Quem tem o Comercial no cargo" (`equipeDaVenda`).
   **E só quem VENDE** (A42 da 11ª simulação, 2026-11-10 — a frente F56: "a
   lista 'Quem vendeu' só com quem tem Vendas" — o grupo hoje se chama Comercial; a lista trazia quem só tinha o Estoque, e
   dava para pôr comissão de venda em quem nem entra no Comercial; até aqui era
@@ -383,7 +383,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     sessão) ou `NENHUMA` (sem linha). `linhasDoAtendimento` lê o retrato
     (`regraDaSessaoDePacote`) — vale também para quem não tem regra nenhuma —,
     e ela também só libera com o pacote pago inteiro (H4).
-  - **Ou sobre o VALOR DO PACOTE, para a profissional responsável** (com-04
+  - **Ou sobre o VALOR DO PACOTE, para a pessoa responsável** (com-04
     da revisão, 2026-11-02; o Heitor: "se foi vendido um pacote de 900,
     Renata recebe a comissão sobre o valor do pacote, no momento em que o
     pagamento integral do pacote foi realizado (...) mas devemos manter o
@@ -693,6 +693,22 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   - A tela lê do banco, agregado: `comissoes_resumo` (por profissional e
     unidade: lançado, a pagar, pago) e `comissoes_extrato`. O CSV é o extrato,
     montado no navegador.
+  - **O filtro de Tags** (Q04 do catálogo das Comissões, revisão de 24/11: "a
+    aba Comissões tem filtro, então ganha o de Tags (a tag da cliente da
+    comissão)"): ao lado do período e da unidade, na URL (`?tags=`, que a
+    troca de período, de unidade e as abas do Financeiro levam). A régua é a
+    dos Relatórios (TF-02): entra a comissão cuja cliente tem TODAS as tags
+    marcadas — a cliente da comissão mora num lugar só,
+    `public.cliente_da_comissao` (a do atendimento, a do lançamento e, sem os
+    dois, a da venda da linha: produto, pacote, plano, pré-pago). No banco
+    (`p_tags` de `comissoes_resumo` e `comissoes_extrato_com_regra`,
+    migration `20261203400003`): o lançado, o a pagar, o aguardando e o
+    extrato contam só essas; o pago, só a parte delas em cada fechamento. Os
+    "Últimos fechamentos" são da pessoa inteira e não mudam. Com tag marcada
+    o "Fechar e pagar" sai e a linha diz "limpe as tags para fechar e pagar"
+    — o fechamento paga TODAS as comissões da pessoa, e o botão ao lado de um
+    a pagar filtrado pagaria um valor que a tela não mostra (princípio 3;
+    decisão do Claude, catálogo de 24/11).
   - "Fechar e pagar" (`fecharComissoes`, `financial: MANAGE`; a vista pessoal
     não fecha) chama `comissao_fechar`, que numa transação reivindica o que
     está ABERTO e não fechado até o fim do período (ou até agora),

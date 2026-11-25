@@ -13,15 +13,16 @@ type Admin = ReturnType<typeof createAdminClient>
 export const CAMINHO_DA_ABA_LGPD = '/admin/settings?tab=lgpd'
 
 /**
- * Quem responde ao pedido de dados: quem abre a aba LGPD — Configurações em
- * Gerenciar — e a Admin da rede (o cargo de sistema, que tem tudo). Com a
+ * Quem responde ao pedido de dados: quem tem Clientes em Gerenciar (a cliente
+ * é da rede; revisão de 24/11 — Configurações em Gerenciar era o critério de
+ * antes de 18/11) e a Admin da rede (o cargo de sistema, que tem tudo). Com a
  * aba também no portal da unidade (D8 da 25ª), quem tem só unidades entra:
  * o aviso a leva à aba da unidade principal dela.
  */
 async function quemResponde(admin: Admin, tenantId: string, comProntuario: boolean): Promise<{ id: string; caminho: string }[]> {
   // Com o prontuário no pacote, também quem o LIBERA (Prontuário em Gerenciar,
   // que abre a aba LGPD — C31, F70): a parte clínica espera por essa pessoa.
-  const modulos = comProntuario ? ['settings', 'medical_records'] : ['settings']
+  const modulos = comProntuario ? ['clients', 'medical_records'] : ['clients']
   const cargos = await ler(admin.from('role_permissions').select('role_id')
     .eq('tenant_id', tenantId).in('module', modulos).eq('level', 'MANAGE'), 'listar os cargos que respondem à LGPD') as { role_id: string }[] | null
   const roleIds = (cargos ?? []).map(c => c.role_id)

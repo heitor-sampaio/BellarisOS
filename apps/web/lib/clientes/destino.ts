@@ -13,6 +13,17 @@ import { unidadeDoPortal } from '@/lib/clientes/unidade-do-portal'
  * Sem ficha com unidade: null (quem chama segue o caminho de reserva).
  */
 export async function destinoDaCliente(authId: string): Promise<string | null> {
+  const entrada = await entradaDaCliente(authId)
+  if (!entrada) return null
+  return entrada.tipo === 'seletor' ? ROTA_DO_SELETOR : `/${entrada.ficha.slug}/cliente`
+}
+
+/**
+ * A entrada da cliente: o portal de UMA ficha (a rede do destino) ou o
+ * seletor — a regra do `destinoDaCliente`, com a ficha. A Auditoria registra a
+ * entrada na rede em que ela entra (`lib/clientes/entrada-na-auditoria.ts`).
+ */
+export async function entradaDaCliente(authId: string) {
   const admin = createAdminClient()
   const linhas = await ler(admin
     .from('clients')
@@ -36,9 +47,7 @@ export async function destinoDaCliente(authId: string): Promise<string | null> {
   // Clínica fechada (bloqueada, sem o portal no plano) fica fora da escolha —
   // a não ser que nenhuma abra: aí a de sempre, e o portão mostra o aviso.
   const abertas = await fichasQueAbrem(fichas)
-  const entrada = escolherEntrada(abertas.length ? abertas : fichas)
-  if (!entrada) return null
-  return entrada.tipo === 'seletor' ? ROTA_DO_SELETOR : `/${entrada.ficha.slug}/cliente`
+  return escolherEntrada(abertas.length ? abertas : fichas)
 }
 
 /**

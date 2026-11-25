@@ -1,12 +1,13 @@
 import { test, expect } from '@playwright/test'
 import { subirOpenaiFalsa, type OpenaiFalsa } from './apoio/openai-falsa'
 import { redeDoCopilot, contraAFalsa, comSessao, falarComOCopilot, esperarResposta, type RedeDoCopilot } from './apoio/copilot'
+import { banco } from './apoio/banco'
 
 /**
  * O acesso ao Copilot é do CARGO (pedido do Heitor, 2026-10-08): o módulo
- * `copilot` na matriz de Cargos, com Sem acesso, Ver (só consultas) e
- * Gerenciar (consultas e gravações, cada gravação ainda exigindo o módulo
- * dela). O plano decide se a REDE tem o Copilot; o cargo, quem o usa.
+ * `copilot` na matriz de Cargos: Sem acesso, ou Ver, que liga a ferramenta
+ * (consultar e agir — cada ação pede só a permissão dela, desde a revisão de
+ * 24/11). O plano decide se a REDE tem o Copilot; o cargo, quem o usa.
  */
 test.skip(!contraAFalsa(), 'só contra o build: o servidor precisa da OpenAI falsa')
 test.describe.configure({ mode: 'serial' })
@@ -40,9 +41,14 @@ test('cargo SEM o Copilot: nem o botão, nem a rota', async ({ browser }) => {
   expect(falsa.respostas(), 'nada chegou ao modelo').toHaveLength(0)
 })
 
-test('Ver: o modelo só recebe as consultas — a agenda em Gerenciar não abre o "agendar"', async ({ browser }) => {
+// A regra mudou: "cada passo pertence a UM módulo, e nenhuma ação pede dois" (o
+// Heitor, 2026-11-23, docs/revisao.md:1309, aprovada em :1329-1330), lida para o
+// Copilot na revisão de 24/11 (docs/catalogo/copilot.md, Q02): o Copilot em Ver
+// liga a ferramenta, e a gravação pede só a permissão da ação. Era: "Ver: o
+// modelo só recebe as consultas — a agenda em Gerenciar não abre o agendar".
+test('Ver: com a Agenda em Gerenciar, o "agendar" chega ao modelo — a ação pede só a permissão dela', async ({ browser }) => {
   const m = await rede.membro('ver', [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'copilot', nivel: 'VIEW' }])
-  falsa.roteiro.push({ texto: 'Só consulto.' })
+  falsa.roteiro.push({ texto: 'Posso agendar.' })
   await comSessao(browser, m.estado, async p => {
     await p.goto('/admin/agenda')
     await falarComOCopilot(p, 'agende a Maria amanhã')
@@ -50,6 +56,27 @@ test('Ver: o modelo só recebe as consultas — a agenda em Gerenciar não abre 
   })
   const oferecidas = falsa.ferramentasOferecidas()
   expect(oferecidas).toContain('agendamentos')
+  expect(oferecidas).toContain('agendar')
+  expect(oferecidas, 'sem o Financeiro, nada de lançar').not.toContain('lancar')
+})
+
+// A vista pessoal (SM2) no Copilot — Q03 da revisão de 24/11: quem atende sem a
+// Agenda e sem o Financeiro pergunta pela Minha agenda e pelas Minhas comissões;
+// só leitura, só as dela.
+test('quem atende sem a Agenda: o modelo recebe minha_agenda e minhas_comissoes, e não a agenda de todos', async ({ browser }) => {
+  const m = await rede.membro('vista', [{ modulo: 'copilot', nivel: 'VIEW' }])
+  // O "Atende" na unidade da rede (o gatilho mantém o provides_services).
+  expect((await banco().from('users').update({ atende_em: [rede.outra.branchId] }).eq('id', m.userId)).error).toBeNull()
+  falsa.roteiro.push({ texto: 'Vejo a sua agenda.' })
+  await comSessao(browser, m.estado, async p => {
+    await p.goto('/admin/dashboard')
+    await falarComOCopilot(p, 'quais são os meus horários de amanhã?')
+    await esperarResposta(p)
+  })
+  const oferecidas = falsa.ferramentasOferecidas()
+  expect(oferecidas).toContain('minha_agenda')
+  expect(oferecidas).toContain('minhas_comissoes')
+  expect(oferecidas).not.toContain('agendamentos')
   expect(oferecidas).not.toContain('agendar')
 })
 

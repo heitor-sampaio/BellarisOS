@@ -14,6 +14,7 @@ import { bonusDePrimeiroAcesso } from '@/lib/fidelidade/bonus'
 import { semearRede, fimDoTesteParaHoje } from '@/lib/redes/criar'
 import { comLoginNovo } from '@/lib/login-novo'
 import { registrarEntradaNaAuditoria } from '@/lib/auditoria/entrada'
+import { registrarEntradaDaClienteNaAuditoria } from '@/lib/clientes/entrada-na-auditoria'
 
 export async function registerAction(
   _prevState: { error: string } | { needsConfirmation: boolean } | undefined,
@@ -118,8 +119,10 @@ export async function loginAction(
     return { error: 'Esta conta não tem acesso a nenhuma rede.' }
   }
 
-  // A entrada fica na auditoria (CF3b) — só a do membro; acessória, nunca impede.
+  // A entrada fica na auditoria (CF3b), a do membro e a da cliente (AD-04, CF3
+  // aprovado: na rede em que ela entra); acessória, nunca impede.
   if (user && !clienteId) await registrarEntradaNaAuditoria(user.id)
+  if (user && clienteId) await registrarEntradaDaClienteNaAuditoria(user.id)
 
   // A senha dada por outra pessoa se troca antes de tudo (o proxy também leva lá).
   if ((user?.app_metadata as { senha_provisoria?: boolean } | undefined)?.senha_provisoria === true) {

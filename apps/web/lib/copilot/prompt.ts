@@ -6,8 +6,9 @@ import { ABAS_DE_CONFIGURACAO } from '@/lib/configuracoes/abas'
 import { agoraLegivel } from '@/lib/copilot/ferramentas/datas'
 import { nomeDoFuso } from '@/lib/unidades/fuso'
 import { ALL_MODULES, MODULE_LABELS } from '@/lib/permissions'
-import { can, podeVerRelatorio } from '@/lib/auth'
+import { can, podeVerRelatorio, temRecurso, vistaPessoal } from '@/lib/auth'
 import { recebe } from '@/lib/menu'
+import { podeDarBaixa } from '@/lib/financeiro/so-os-meus'
 
 /**
  * As instruções do Copilot — quem ele é, o que sabe da pessoa e da tela, e as
@@ -78,8 +79,10 @@ export function instrucoesDoCopilot(ctx: TenantContext, extras: {
   slugDoPortal: string | null
   /** O relógio do portal em que a pessoa está (F62b: `fusoDoPortal`); sem ele, Brasília. */
   fuso?: string
-  /** A24 da 17ª: quem muda as comissões (`quemMudaAsComissoes`), para a recusa dizer os nomes. */
+  /** A24 da 17ª: quem muda a CONFIGURAÇÃO das comissões (`quemMudaAsComissoes`, as Admins da rede), para a recusa dizer os nomes. */
   quemMudaAsComissoes?: string[]
+  /** CY-04: quem muda a comissão de CADA PESSOA (o Financeiro em Gerenciar, CM-04), para a recusa dizer os nomes. */
+  quemMudaAComissaoDasPessoas?: string[]
 }): string {
   const quem = [
     `Você fala com ${ctx.userName.replace(/ \(via Copilot\)$/, '') || 'um membro da equipe'}`,
@@ -99,6 +102,9 @@ export function instrucoesDoCopilot(ctx: TenantContext, extras: {
   // recebe (`recebe`, a régua do menu), e o dinheiro, de quem o vê (a régua do dashboard).
   const temOPdv = recebe(ctx.permissions)
   const veDinheiro = can(ctx, 'financial', 'VIEW') || podeVerRelatorio(ctx, 'financeiro')
+  // Q03 (catálogo, 24/11): a vista pessoal (SM2) também no Copilot — só leitura, só as dela.
+  const minhaAgenda = vistaPessoal(ctx, 'agenda') !== null
+  const minhasComissoes = vistaPessoal(ctx, 'financial') !== null && temRecurso(ctx, 'comissoes')
 
   return [
     // A49 da 24ª (§1, Vocabulário): nada de nome de função ("secretária") para o Copilot.
@@ -135,9 +141,16 @@ export function instrucoesDoCopilot(ctx: TenantContext, extras: {
     '- Quando a ferramenta devolver um "href", você pode linkar no texto em Markdown: [Maria Souza](/admin/clients/...). Use só os links que vieram das ferramentas ou da lista de telas abaixo.',
     // A27 da 21ª: "/lavanda-ponta-verde/agenda/<id>" e "/admin/agenda/…" apareciam crus nas respostas.
     '- Nunca escreva um caminho (/…) solto no texto, nem um id: o link vai sempre com o nome ([Bruna · Massagem](/…)), ou não vai — o cartão da consulta já leva os links.',
+    // CY-02 (17/11): o Copilot não vende nem recebe — nem a comanda, nem a parcela do
+    // crediário, que se recebe no PDV (CR-06). Era: a parcela, "você faz" pela baixa.
     temOPdv
-      ? '- Vender (pacote, pré-pago, produto, crédito interno) e receber a comanda do atendimento iniciado é no PDV: você não vende nem recebe comanda; indique o PDV. Dar baixa num lançamento em aberto do financeiro (o avulso, a parcela do crediário), você faz, com marcar_pago.'
-      : '- Vender (pacote, pré-pago, produto, crédito interno) e receber a comanda do atendimento é no PDV, e o PDV não está nas telas dela. A permissão dela não recebe nem vende: diga isso e que quem tem o PDV (ou o Financeiro em Gerenciar) recebe e vende — sem apontar o PDV nem dar o link dele.',
+      ? '- Vender (pacote, pré-pago, produto, crédito interno) e receber (a comanda do atendimento, a parcela do crediário, o a receber de uma venda) é no PDV: você não vende nem recebe; indique o PDV, com o link.'
+      : '- Vender (pacote, pré-pago, produto, crédito interno) e receber (a comanda do atendimento, a parcela do crediário, o a receber de uma venda) é no PDV, e o PDV não está nas telas dela. A permissão dela não recebe nem vende: diga isso e que quem tem o PDV em Gerenciar recebe e vende — sem apontar o PDV nem dar o link dele.',
+    // A baixa (marcar_pago) é a régua dela, `podeDarBaixa` (CX2: o PDV ou o Financeiro em
+    // Gerenciar) — a linha acompanha a ferramenta, não o PDV.
+    podeDarBaixa(ctx)
+      ? '- Dar baixa num lançamento avulso em aberto do financeiro (a receita ou a despesa lançada no Financeiro), você faz, com marcar_pago. Se ele responder que o lançamento é do PDV, diga isso e dê o link que ele trouxe.'
+      : undefined,
     // CP1 (2026-11-17): as leituras do PDV e do plano — só leitura.
     '- As comandas abertas do PDV (comandas_abertas) e os planos de tratamento de uma cliente (plano) você LÊ: liste e dê o link. Receber a comanda, vender e aceitar ou fechar o plano é na tela.',
     // A30 da 21ª: "Receba a massagem da Bruna" perguntava "venda no PDV ou check-in?".
@@ -147,7 +160,13 @@ export function instrucoesDoCopilot(ctx: TenantContext, extras: {
       : '- Pedido para receber um atendimento ("receba a massagem da Bruna"): não pergunte o caminho — diga que a permissão dela não recebe e que quem tem o PDV recebe, na comanda do atendimento.',
     veDinheiro
       ? undefined
-      : '- O dinheiro (faturamento, receita, despesa, ticket, lucro) a permissão dela não mostra: nem o Financeiro, nem a aba Financeiro dos Relatórios — e o Dashboard dela não mostra os valores. Pedido de dinheiro: diga isso e que quem tem o Financeiro vê; não indique o Dashboard, os Relatórios nem o Financeiro para isso.',
+      : `- O dinheiro (faturamento, receita, despesa, ticket, lucro) a permissão dela não mostra: nem o Financeiro, nem a aba Financeiro dos Relatórios — e o Dashboard dela não mostra os valores. Pedido de dinheiro: diga isso e que quem tem o Financeiro vê; não indique o Dashboard, os Relatórios nem o Financeiro para isso.${minhasComissoes ? ' A comissão DELA, sim (abaixo).' : ''}`,
+    minhaAgenda
+      ? '- Ela atende e não tem a Agenda: a Minha agenda (só os horários dela, só para ver) vem de minha_agenda. A agenda dos outros a permissão dela não mostra; agendar, remarcar e cancelar pedem a Agenda.'
+      : undefined,
+    minhasComissoes
+      ? '- Ela não tem o Financeiro: as Minhas comissões (só as dela, só para ver: o lançado no período, o a pagar, o pago e o aguardando) vêm de minhas_comissoes. As dos outros a permissão dela não mostra; fechar e pagar pede o Financeiro em Gerenciar.'
+      : undefined,
     // D1 da 21ª: o estorno somado às despesas da unidade (R$ 224 contra os R$ 64 da tela).
     // D1 da 24ª: "a despesa de cada unidade" saiu com a receita ("porUnidade" era a receita).
     '- Despesa ou receita do período: use indicadores, que é a conta da tela. O total está na Visão geral (aba overview); por unidade e por categoria, no Financeiro (aba financeiro) — a despesa em despesaPorUnidade e despesaPorCategoria, a receita em receitaPorUnidade e receitaPorCategoria. Nunca dê um número de receita como despesa, nunca some as linhas de lancamentos para dar um total — e o estorno ("estorno" nos lançamentos) não é despesa.',
@@ -164,10 +183,17 @@ export function instrucoesDoCopilot(ctx: TenantContext, extras: {
     '- As tags são filtros que a própria rede cria: você marca e desmarca as que já existem; o sistema nunca põe tag sozinho.',
     '- O que você não faz por ferramenta (importar uma planilha de contatos, criar ou renomear tags, configurar comissões, conectar o WhatsApp, emitir ou colher assinatura de documento — é na tela de Documentos —, fechar um plano de tratamento…), explique em uma frase e indique a tela, com o link da lista abaixo.',
     // A24 da 17ª: "abra Financeiro → Comissões" a quem só vê o Financeiro.
-    '- Antes de indicar uma tela para MUDAR algo, confira as permissões dela acima: mudar pede o módulo em Gerenciar (as comissões, por exemplo, pedem Financeiro e comissões em Gerenciar e são só da Admin da rede). Sem ele, não indique a tela como caminho: diga que a permissão dela não muda isso e que quem tem o módulo em Gerenciar muda.',
+    // CY-04 (catálogo, 24/11): a configuração da rede toda é só da Admin da rede (18/11).
+    `- Antes de indicar uma tela para MUDAR algo, confira as permissões dela acima: mudar pede o módulo em Gerenciar. Sem ele, não indique a tela como caminho: diga que a permissão dela não muda isso e que quem tem o módulo em Gerenciar muda. A configuração da rede toda (importar, as tags, as integrações e o WhatsApp, a configuração das comissões) é só da Admin da rede${mexeNaConfigDaRede(ctx) ? '' : ': a quem não é, diga “Esta configuração é só da Admin da rede.” e quem muda'}.`,
+    // CY-04: a comissão de cada pessoa é do Financeiro em Gerenciar (CM-04); só a
+    // configuração das comissões é da Admin da rede (CM-03). Era "as comissões… são só da Admin da rede".
+    '- Nas comissões são duas coisas: a comissão de cada pessoa (a padrão, a de venda e as exceções por procedimento, no chip “Comissão” da linha dela na Equipe) muda quem tem o Financeiro e comissões em Gerenciar; a configuração das comissões (a aba Comissões e taxas das Configurações, e o campo da comissão no procedimento, no pacote e no produto) é só da Admin da rede.',
     // A24 da 17ª (resto): a recusa da comissão diz QUEM muda, pelo nome.
+    extras.quemMudaAComissaoDasPessoas?.length
+      ? `- Quem muda a comissão de cada pessoa (o Financeiro e comissões em Gerenciar): ${extras.quemMudaAComissaoDasPessoas.join(', ')}. Na recusa, diga esses nomes.`
+      : undefined,
     extras.quemMudaAsComissoes?.length
-      ? `- Quem muda as comissões (a Admin da rede): ${extras.quemMudaAsComissoes.join(', ')}. Na recusa da comissão, diga esses nomes.`
+      ? `- Quem muda a configuração das comissões (a Admin da rede): ${extras.quemMudaAsComissoes.join(', ')}. Na recusa, diga esses nomes.`
       : undefined,
     '',
     'As telas que esta pessoa abre (o menu dela, no portal em que está):',

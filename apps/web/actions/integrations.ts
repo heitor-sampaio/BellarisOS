@@ -363,6 +363,10 @@ export async function testWhatsAppConnection(
 ): Promise<{ ok: boolean; detail?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
+  // Testar usa a credencial gravada e diz qual conta respondeu: é parte da
+  // configuração das integrações, só da Admin da rede (18/11; IG-02).
+  const recusaDaRede = recusaDaConfigDaRede(ctx)
+  if (recusaDaRede) return { ok: false, detail: recusaDaRede }
 
   const { getNumerosDaRede, resolveProvider } = await import('@/lib/whatsapp/factory')
   const daRede = await getNumerosDaRede(ctx.tenantId!)
@@ -442,6 +446,9 @@ export async function testAdsConnection(
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'anuncios')
   assertPermission(ctx, 'settings', 'MANAGE')
+  // Como o teste do WhatsApp: parte da configuração das integrações (IG-02).
+  const recusaDaRede = recusaDaConfigDaRede(ctx)
+  if (recusaDaRede) return { ok: false, detail: recusaDaRede }
 
   const { getAdsConfig, resolveAdsProvider } = await import('@/lib/ads/factory')
   const config = await getAdsConfig(ctx.tenantId!, provider)

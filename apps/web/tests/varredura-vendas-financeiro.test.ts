@@ -161,10 +161,16 @@ describe('VF2-05: o Copilot e a baixa do Financeiro', () => {
     expect(corpo).toMatch(/pode:\s*podeDarBaixa/)
     expect(corpo).not.toMatch(/modulo: 'cashier'/)
   })
-  it('o prompt diz que a parcela do crediário se baixa pelo Copilot', () => {
+  // A regra mudou: o Copilot não vende nem recebe — nem a comanda, nem a parcela
+  // do crediário, que se recebe no PDV (o Heitor, 17–18/11, DEVLOG.md:2201: "O
+  // Copilot (17/11): só lê e manda ao PDV; não vende, não recebe e não aceita o
+  // plano"; CR-06; confirmada na revisão de 24/11, docs/catalogo/copilot.md
+  // Q01 e "Divergências"). Era: "o prompt diz que a parcela do crediário se
+  // baixa pelo Copilot" (VF2-05, decisão do Claude de 18/11).
+  it('o prompt manda a parcela do crediário ao PDV; o marcar_pago é só a baixa do lançamento avulso', () => {
     const p = fonte('lib/copilot/prompt.ts')
-    expect(p).not.toMatch(/receber uma comanda \(o atendimento iniciado, a parcela do crediário\) é no PDV/)
-    expect(p).toMatch(/parcela do crediário[^']*marcar_pago/)
+    expect(p).not.toMatch(/parcela do crediário[^']*marcar_pago/)
+    expect(p).toMatch(/a parcela do crediário[^']*é no PDV: você não vende nem recebe/)
   })
 })
 

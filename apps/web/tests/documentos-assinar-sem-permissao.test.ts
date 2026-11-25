@@ -4,6 +4,9 @@ import { join } from 'node:path'
 import { MODULE_LEVELS, MODULE_LABELS } from '@/lib/permissions'
 import { MODULE_GROUPS, LEVEL_COPY } from '@/lib/permissions-copy'
 import { ABAS_DE_CONFIGURACAO, MODULOS_DAS_ABAS } from '@/lib/configuracoes/abas'
+import { NO_PERMISSIONS } from '@/lib/permissions'
+import { colheOsDocumentos } from '@/lib/documentos/acesso'
+import type { TenantContext } from '@estetica-os/types'
 
 /**
  * A decisão do Heitor de 2026-11-16 sobre os Documentos: "A permissão de
@@ -38,13 +41,20 @@ describe('o módulo Documentos é o dos MODELOS', () => {
   it('só tem Sem acesso e Gerenciar', () => {
     expect(MODULE_LEVELS.documents).toEqual(['NONE', 'MANAGE'])
   })
-  it('a tela de Cargos diz que Gerenciar é criar, editar e desativar os modelos — e que colher não pede', () => {
+  // Mudou com a regra do Heitor de 18/11 ("Configuração da rede toda só pela
+  // conta admin"): os modelos são só da Admin da rede (`recusaDaConfigDaRede`),
+  // e o Gerenciar do módulo só DISPENSA. A tela diz isso (princípio 3).
+  it('a tela de Cargos diz que Gerenciar dispensa, que os modelos são só da Admin da rede — e que colher não pede', async () => {
     expect(MODULE_LABELS.documents).toMatch(/modelos de documento/i)
     const manage = LEVEL_COPY.documents.MANAGE ?? ''
-    expect(manage).toMatch(/cria, edita e desativa os modelos de documento/i)
-    expect(manage).toMatch(/dispensa/i)
+    expect(manage).not.toMatch(/cria, edita e desativa os modelos de documento/i)
+    expect(manage).toMatch(/^Dispensa um documento obrigatório da cliente, com motivo\./)
+    expect(manage).toMatch(/os modelos de documento é só da Admin da rede/i)
     expect(manage).toMatch(/colher a assinatura não pede/i)
+    expect(LEVEL_COPY.documents.NONE).toMatch(/de Clientes, do Atendimento, da Agenda e do PDV/)
     expect(LEVEL_COPY.documents.VIEW).toBeUndefined()
+    const { documentosNoResumo } = await import('@/lib/permissions-copy')
+    expect(documentosNoResumo({ clients: 'VIEW' })).toMatch(/Criar e editar os modelos é só da Admin da rede\.$/)
   })
   it('fica em Gestão, ao lado das fichas', () => {
     const gestao = MODULE_GROUPS.find(g => g.modules.includes('forms'))!
@@ -111,5 +121,38 @@ describe('nenhuma tela manda falar com quem tem os Documentos', () => {
   it('quemColheOsDocumentos e a contagem dos que esperam saíram', () => {
     expect(ler('lib/equipe/quem-desfaz.ts')).not.toContain('quemColheOsDocumentos')
     expect(existsSync(join(WEB, 'lib/documentos/esperando.ts'))).toBe(false)
+  })
+})
+
+/**
+ * Quem colhe a assinatura (DQ-06 do catálogo de Documentos): quem está com a
+ * cliente na tela em que a assinatura é pedida — a ficha (Clientes em Ver), a
+ * tela do atendimento (o Atendimento em Ver: desde a UM1, o Heitor, 23/11, é ele
+ * que abre a tela), a janela do agendamento (a Agenda) e o PDV (quem recebe). O
+ * Prontuário em Ver sozinho não abre tela nenhuma dessas, e saiu.
+ */
+describe('colhe quem está com a cliente na tela', () => {
+  const base = {
+    isClient: false, plano: null, isNetworkAdmin: false,
+    permissions: { ...NO_PERMISSIONS },
+  } as unknown as TenantContext
+  const com = (p: Partial<Record<string, string>>) => ({ ...base, permissions: { ...NO_PERMISSIONS, ...p } }) as unknown as TenantContext
+
+  it('o Atendimento em Ver colhe (a tela do atendimento)', () => {
+    expect(colheOsDocumentos(com({ atendimento: 'VIEW' }))).toBe(true)
+  })
+  it('Clientes, a Agenda e o PDV colhem', () => {
+    expect(colheOsDocumentos(com({ clients: 'VIEW' }))).toBe(true)
+    expect(colheOsDocumentos(com({ agenda: 'VIEW' }))).toBe(true)
+    expect(colheOsDocumentos(com({ cashier: 'MANAGE' }))).toBe(true)
+  })
+  it('o Prontuário em Ver sozinho não colhe (não abre nenhuma dessas telas)', () => {
+    expect(colheOsDocumentos(com({ medical_records: 'VIEW' }))).toBe(false)
+    expect(colheOsDocumentos(com({ medical_records: 'MANAGE' }))).toBe(false)
+  })
+  it('sem nada, a cliente e o plano sem Documentos não colhem', () => {
+    expect(colheOsDocumentos(com({}))).toBe(false)
+    expect(colheOsDocumentos({ ...com({ clients: 'VIEW' }), isClient: true } as TenantContext)).toBe(false)
+    expect(colheOsDocumentos({ ...com({ clients: 'VIEW' }), plano: { funcionalidades: [] } } as unknown as TenantContext)).toBe(false)
   })
 })

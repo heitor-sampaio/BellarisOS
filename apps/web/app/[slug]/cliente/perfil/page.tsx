@@ -10,11 +10,14 @@ import { ler } from '@/lib/db'
 import { iniciaisDoNome } from '@estetica-os/utils'
 import { KeyRound } from 'lucide-react'
 import { documentoDoPerfil } from '@/lib/clientes/textos-do-app'
+import { falaDaRedeDoPortal } from '@/lib/clientes/nome-da-rede'
 import Link from 'next/link'
 
-export default async function ClientProfilePage() {
+export default async function ClientProfilePage({ params }: { params: Promise<{ slug: string }> }) {
   const ctx = await getTenantContext()
   assertClient(ctx)
+  // CA1: o NOME da rede no lugar de "clínica".
+  const { faleCom } = await falaDaRedeDoPortal((await params).slug)
 
   const admin = createAdminClient()
   const data = await ler(admin
@@ -95,7 +98,7 @@ export default async function ClientProfilePage() {
         }}>
           <span>Dados pessoais</span>
           {/* Quem altera estes dados mora na dica (docs/regras/design.md). */}
-          <Dica rotulo="Como alterar estes dados">Para alterar esses dados, fale com a equipe.</Dica>
+          <Dica rotulo="Como alterar estes dados">{`Para alterar esses dados, ${faleCom}.`}</Dica>
         </p>
         <div className="card" style={{ padding: '4px 22px' }}>
           <StaticRow label={documento.rotulo} value={documento.valor} />

@@ -15,6 +15,8 @@ import { origemDoLancamento as origemDe, tituloDoLancamento, regraDoLancamento, 
 import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
 import { JanelaModal } from '@/components/shared/janela-modal'
+import { FiltroDeTags } from '@/components/shared/filtro-de-tags'
+import { tagsParaAUrl } from '@/lib/tags/filtro-na-url'
 
 /**
  * Financeiro → Comissões (os dois portais). Por profissional e unidade: o que
@@ -73,6 +75,12 @@ export interface PropsDaTela {
    * cada lançamento — na tela e no CSV — saem no relógio da unidade DELE.
    */
   fusosDasUnidades?: Record<string, string>
+  /**
+   * O filtro de Tags (Q04 do catálogo das Comissões, revisão de 24/11): o
+   * vocabulário da rede, lido no servidor, e as marcadas na URL (`?tags=`).
+   */
+  tagsDaRede?:   string[]
+  tagsEscolhidas?: string[]
 }
 
 /** O fuso do lançamento: o da unidade dele; sem o mapa, o do portal. */
@@ -84,10 +92,17 @@ export function FinanceiroComissoes(p: PropsDaTela) {
   const [aberto, setAberto] = useState<string | null>(null)
   const fusos = useMemo(() => new Map(Object.entries(p.fusosDasUnidades ?? {})), [p.fusosDasUnidades])
   const fusoDe: FusoDoLancamento = l => fusos.get(l.branchId) ?? fuso
+  const tags = p.tagsEscolhidas ?? []
+  // Com tag marcada a tela mostra só parte das comissões de cada pessoa, e o
+  // "Fechar e pagar" paga TODAS: sai, e a linha diz por quê (princípio 3; decisão
+  // do Claude, catálogo de 24/11).
+  const comTag = tags.length > 0
 
   function navegar(periodo: string, unidade = p.unidadeAtual ?? '') {
     const q = new URLSearchParams({ periodo })
     if (unidade) q.set('unidade', unidade)
+    // As tags marcadas seguem com a troca de período e de unidade.
+    if (tags.length) q.set('tags', tagsParaAUrl(tags))
     router.push(`${p.basePath}?${q.toString()}`)
   }
 
@@ -164,6 +179,9 @@ export function FinanceiroComissoes(p: PropsDaTela) {
               {p.unidades.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
             </select>
           )}
+          {/* As Tags (CLAUDE.md §1), ao lado dos filtros fixos: vão à URL e o servidor filtra. */}
+          <FiltroDeTags tagsDaRede={p.tagsDaRede ?? []} escolhidas={tags}
+            sobre="Só as comissões das clientes com TODAS as tags marcadas (a cliente do atendimento ou da venda). Os últimos fechamentos são da pessoa inteira e não mudam; para fechar e pagar, limpe as tags." />
           <button type="button" className="btn-secondary" onClick={exportarCsv} disabled={!p.extrato.length}>
             <Download size={15} aria-hidden /> Exportar CSV
           </button>
@@ -211,7 +229,12 @@ export function FinanceiroComissoes(p: PropsDaTela) {
                     </button>
                   </div>
                 </div>
-                {p.podeFechar && r.aPagar > 0 && (
+                {p.podeFechar && r.aPagar > 0 && comTag && (
+                  <p data-fechar-sem-tag style={{ padding: '0 16px 14px', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+                    O fechamento paga todas as comissões da pessoa: limpe as tags para fechar e pagar.
+                  </p>
+                )}
+                {p.podeFechar && r.aPagar > 0 && !comTag && (
                   <Fechar profissional={r} periodo={p.periodoAtual} rotuloDoPeriodo={p.periodos.find(x => x.chave === p.periodoAtual)?.rotulo ?? ''} emCurso={!!p.periodoEmCurso}
                     lancamentos={doProfissional.filter(l => l.status === 'OPEN' && l.kind !== 'AGUARDANDO')} fusoDe={fusoDe} />
                 )}

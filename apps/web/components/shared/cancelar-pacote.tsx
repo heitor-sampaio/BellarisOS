@@ -213,7 +213,7 @@ function CancelarConjunto({ tipo, id, onFechar, onCancelado }: { tipo: 'PACOTE' 
                 <label style={opcao}>
                   <input type="radio" name="cancelar-pacote-agendadas" checked={agendamentos === 'CANCELAR'} disabled={cancelando}
                     onChange={() => setAgendamentos('CANCELAR')} style={{ accentColor: 'var(--brand)', marginTop: 3 }} />
-                  <span>Cancelar os agendamentos <span style={{ color: 'var(--text-muted)' }}>— a cliente e a profissional são avisadas</span></span>
+                  <span>Cancelar os agendamentos <span style={{ color: 'var(--text-muted)' }}>— a cliente e quem atende recebem o aviso</span></span>
                 </label>
                 <label style={opcao}>
                   <input type="radio" name="cancelar-pacote-agendadas" checked={agendamentos === 'SOLTAR'} disabled={cancelando}

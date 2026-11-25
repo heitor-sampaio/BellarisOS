@@ -394,7 +394,7 @@ export async function previewAudienceCount(
   rules: AudienceRules,
 ): Promise<{ count: number; comAparelho: number }> {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'marketing', 'MANAGE')
+  assertPermission(ctx, 'marketing', 'VIEW') // só conta (PU-07, revisão de 24/11)
 
   // Contado no banco, com o MESMO filtro do disparo (lib/clientes/publico.ts).
   // Com procedimento, a conta era o mínimo entre o público e os 400 primeiros

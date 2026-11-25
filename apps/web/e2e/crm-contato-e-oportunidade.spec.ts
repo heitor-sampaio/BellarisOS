@@ -10,7 +10,7 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  * texto que se lê (o nome da tabela fica).
  * - CR1: o quadro diz "Nova oportunidade", "1 oportunidade no funil",
  *   "Editar oportunidade" — nenhum "lead" na tela;
- * - CR2: o card do quadro diz "Cadastrar cliente" e a janela "Cadastrar como
+ * - CR2: o card do quadro diz "Cadastrar como cliente" (revisão de 24/11, Q13) e a janela "Cadastrar como
  *   cliente", como o inbox (era "Converter" / "Converter em cliente");
  * - RL2: a aba "Funil comercial" dos Relatórios se chama "Oportunidades" — na
  *   tela e nos relatórios liberados do cargo. A chave (`comercial`) fica.
@@ -74,7 +74,7 @@ test('CR1 e CR2: o quadro fala em oportunidade, e o card cadastra como cliente',
 
     // CR2: o mesmo nome do inbox.
     await expect(card.getByRole('button', { name: 'Converter' })).toHaveCount(0)
-    await card.getByRole('button', { name: 'Cadastrar cliente' }).click()
+    await card.getByRole('button', { name: 'Cadastrar como cliente' }).click()
     const janela = p.getByRole('dialog', { name: 'Cadastrar como cliente' })
     await expect(janela).toBeVisible()
     await expect(janela.getByRole('heading', { name: 'Cadastrar como cliente' })).toBeVisible()

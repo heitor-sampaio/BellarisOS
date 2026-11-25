@@ -18,12 +18,13 @@ import { logHistory, notifyCancelledAppointment, notifyRescheduledAppointment } 
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { dayKeyTZ, partsInTZ } from '@/lib/datetime'
 import { lerFusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
+import { falaDaRede, type FalaDaRede } from '@/lib/clientes/fala-da-rede'
 
 /**
  * A cliente cancela e remarca pelo portal (2026-10-21, decisão do Heitor): até
  * o prazo da rede (`tenants.portal_prazo_alteracao_horas`, 24h por padrão);
- * depois dele, só falando com a clínica. Só a ficha DELA (ctx.clientId, a da
- * clínica do endereço), só o que ainda vai acontecer, e o horário novo tem de
+ * depois dele, só falando com a rede. Só a ficha DELA (ctx.clientId, a da
+ * rede do endereço), só o que ainda vai acontecer, e o horário novo tem de
  * ser um dos que o self-service oferece (os livres do mesmo profissional).
  */
 
@@ -45,15 +46,16 @@ async function agendamentoDaCliente(appointmentId: string) {
       clients: { name: string; tenant_id: string }; branches: { tenant_id: string }
     } | null
   if (!a) return null
-  const rede = await ler(admin.from('tenants').select('portal_prazo_alteracao_horas').eq('id', a.clients.tenant_id).single(),
-    'ler o prazo do portal') as { portal_prazo_alteracao_horas: number } | null
-  return { ctx, admin, a, prazoHoras: rede?.portal_prazo_alteracao_horas ?? 24 }
+  const rede = await ler(admin.from('tenants').select('portal_prazo_alteracao_horas, name').eq('id', a.clients.tenant_id).single(),
+    'ler o prazo do portal') as { portal_prazo_alteracao_horas: number; name: string | null } | null
+  // CA1: as recusas dizem o nome da rede ("fale com Estética Bella"), não "a equipe".
+  return { ctx, admin, a, prazoHoras: rede?.portal_prazo_alteracao_horas ?? 24, fala: falaDaRede(rede?.name) }
 }
 
-function recusaDoPrazo(scheduledAt: string, prazoHoras: number): string | null {
+function recusaDoPrazo(scheduledAt: string, prazoHoras: number, fala: FalaDaRede): string | null {
   const falta = new Date(scheduledAt).getTime() - Date.now()
   if (falta < prazoHoras * 3600_000) {
-    return `Pelo app, só até ${prazoHoras} horas antes do horário. Para mudar agora, fale com a equipe.`
+    return `Pelo app, só até ${prazoHoras} horas antes do horário. Para mudar agora, ${fala.faleCom}.`
   }
   return null
 }
@@ -62,9 +64,9 @@ export async function cancelarPelaCliente(appointmentId: string, motivo: string)
   try {
     const achado = await agendamentoDaCliente(appointmentId)
     if (!achado) return { error: 'Agendamento não encontrado.' }
-    const { ctx, admin, a, prazoHoras } = achado
+    const { ctx, admin, a, prazoHoras, fala } = achado
     if (!ABERTOS.includes(a.status)) return { error: 'Este agendamento não pode mais ser cancelado.' }
-    const recusa = recusaDoPrazo(a.scheduled_at, prazoHoras)
+    const recusa = recusaDoPrazo(a.scheduled_at, prazoHoras, fala)
     if (recusa) return { error: recusa }
     // A61: sem motivo digitado, "Pela cliente no app" — era "Pela cliente no
     // app: Cancelado pela cliente no app".
@@ -133,13 +135,13 @@ export async function remarcarPelaCliente(
   try {
     const achado = await agendamentoDaCliente(appointmentId)
     if (!achado) return { error: 'Agendamento não encontrado.' }
-    const { ctx, admin, a, prazoHoras } = achado
+    const { ctx, admin, a, prazoHoras, fala } = achado
     if (!ABERTOS.includes(a.status)) return { error: 'Este agendamento não pode mais ser remarcado.' }
-    const recusa = recusaDoPrazo(a.scheduled_at, prazoHoras)
+    const recusa = recusaDoPrazo(a.scheduled_at, prazoHoras, fala)
     if (recusa) return { error: recusa }
     const outraPessoa = !semPreferencia && !!profissionalId && profissionalId !== a.professional_id
     if (outraPessoa && !UUID.safeParse(profissionalId).success) return { error: 'Escolha com quem de novo.' }
-    if (!a.professional_id && !semPreferencia && !outraPessoa) return { error: 'Fale com a equipe para remarcar este horário.' }
+    if (!a.professional_id && !semPreferencia && !outraPessoa) return { error: `${fala.FaleCom} para remarcar este horário.` }
     const unidade = await unidadeDoRemarcar(admin, a, branchId)
     if (!unidade) return { error: 'Esta unidade não atende este procedimento agora. Escolha outra.' }
     const mudaDeUnidade = unidade !== a.branch_id

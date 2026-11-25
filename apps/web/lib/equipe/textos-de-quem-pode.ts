@@ -17,14 +17,15 @@ export function textoDeQuemMarcaAChegada(quem: string[] | null | undefined): str
 /**
  * A11: o avulso concluído "Aguardando o pagamento no PDV", a quem não recebe.
  * A8 da 20ª (princípio 3): quando só quem é da REDE recebe (ninguém da unidade
- * tem o PDV nem o Financeiro em Gerenciar), a frase diz — a comanda ficava
+ * tem o PDV em Gerenciar), a frase diz — a comanda ficava
  * parada esperando alguém da unidade.
  */
 export function textoDeQuemRecebe(quem: string[] | null | undefined, opcoes: { soDaRede?: boolean } = {}): string {
   if (opcoes.soDaRede && quem?.length) {
-    return `Ninguém desta unidade tem o PDV ou o Financeiro em Gerenciar; quem recebe, pela rede: ${emLista(quem)}.`
+    return `Ninguém desta unidade tem o PDV em Gerenciar; quem recebe, pela rede: ${emLista(quem)}.`
   }
-  return `Quem recebe é quem tem o PDV ou o Financeiro em Gerenciar${quem?.length ? `: ${emLista(quem)}` : ''}.`
+  // Receber é só do PDV (PV-04; cada passo, um módulo — o Heitor, 23/11).
+  return `Quem recebe é quem tem o PDV em Gerenciar${quem?.length ? `: ${emLista(quem)}` : ''}.`
 }
 
 /**

@@ -6,7 +6,8 @@ import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, mensagemDoErro } from '@/lib/db'
 import { ehUuid } from '@/lib/id-da-rota'
-import { CLIENTE_ARQUIVADA_NO_APP } from '@/lib/clients/arquivada'
+import { clienteArquivadaNoApp } from '@/lib/clients/arquivada'
+import { falaDaRedeDoId } from '@/lib/clientes/nome-da-rede'
 import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { emitirEventoDePlano } from '@/lib/events/plano'
@@ -30,7 +31,8 @@ import { RECUSA_DO_PLANO_CANCELADO_NO_APP } from '@/lib/plano-de-tratamento/canc
  * `ctx.clientId`), e só o PROPOSTO — o rascunho é da equipe; o vencido, a tela
  * avisa e aceita (a validade é só informação). Quem é avisado é quem
  * responde pelo que vem a seguir, pela PERMISSÃO: quem agenda (Agenda em
- * Gerenciar), quem recebe (Caixa ou Financeiro em Gerenciar), na unidade do
+ * Gerenciar), quem recebe (o PDV em Gerenciar, PV-04 — e o Financeiro em Gerenciar, que
+ * cuida do dinheiro), na unidade do
  * plano ou na rede inteira, e quem atende o plano.
  */
 export async function aceitarPlanoPelaCliente(planId: string): Promise<{ error?: string; ok?: true }> {
@@ -45,7 +47,9 @@ export async function aceitarPlanoPelaCliente(planId: string): Promise<{ error?:
     const cliente = await ler(admin.from('clients').select('tenant_id, is_active, name')
       .eq('id', ctx.clientId!).maybeSingle(), 'buscar o cadastro') as { tenant_id: string; is_active: boolean | null; name: string | null } | null
     if (!cliente) return { error: 'Cadastro não encontrado.' }
-    if (cliente.is_active === false) return { error: CLIENTE_ARQUIVADA_NO_APP }
+    // CA1: as recusas dizem o nome da rede da ficha.
+    const fala = await falaDaRedeDoId(cliente.tenant_id)
+    if (cliente.is_active === false) return { error: clienteArquivadaNoApp(fala) }
 
     const plano = await ler(admin.from('treatment_plans')
       .select('id, status, created_at, branch_id, professional_id, desconto_combinado_tipo, desconto_combinado_valor, branches!inner(tenant_id, slug), treatment_plan_sessions(treatment_plan_session_procedures(price))')
@@ -59,7 +63,7 @@ export async function aceitarPlanoPelaCliente(planId: string): Promise<{ error?:
     if (!plano) return { error: 'Plano não encontrado.' }
     if (plano.status === 'ACCEPTED' || plano.status === 'COMPLETED') return { error: 'Este plano já foi aceito.' }
     // A1a da 25ª: o plano que a unidade cancelou (com a página aberta no app) recusa com a frase clara.
-    if (plano.status === 'CANCELLED' || plano.status === 'REJECTED') return { error: RECUSA_DO_PLANO_CANCELADO_NO_APP }
+    if (plano.status === 'CANCELLED' || plano.status === 'REJECTED') return { error: `${RECUSA_DO_PLANO_CANCELADO_NO_APP} ${fala.FaleCom} se quiser retomar o tratamento.` }
     if (plano.status !== 'PROPOSED') return { error: 'Plano não encontrado.' }
     if (!(await redeTemRecurso(cliente.tenant_id, 'planos_de_tratamento'))) return { error: 'Plano não encontrado.' }
 

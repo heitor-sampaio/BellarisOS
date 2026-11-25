@@ -106,11 +106,11 @@ test('o cadastro do pacote: a comissão de quem atende "Valor do pacote", em %',
     await comissao.getByRole('group', { name: 'Comissão de execução' }).getByRole('button', { name: 'Valor do pacote' }).click()
     // O que cada escolha faz mora na dica do "De execução" (2026-11-16).
     await comissao.getByRole('button', { name: 'Sobre a comissão de execução do pacote' }).hover()
-    await expect(comissao.getByText(/profissional responsável/)).toBeVisible()
+    await expect(comissao.getByText(/pessoa responsável/)).toBeVisible()
     await comissao.getByRole('group', { name: 'Comissão sobre o pacote' }).getByRole('button', { name: 'Percentual' }).click()
     await comissao.getByLabel('Valor da comissão sobre o pacote').fill('10')
     await card.getByRole('button', { name: 'Salvar pacote' }).click()
-    await expect(card.locator('[data-pacote]', { hasText: NOME })).toContainText('Execução: 10% do pacote, para a profissional responsável')
+    await expect(card.locator('[data-pacote]', { hasText: NOME })).toContainText('Execução: 10% do pacote, para a pessoa responsável')
   }, dona!)
   const { data, error } = await db().from('service_packages')
     .select('id, comissao_execucao, comissao_responsavel_tipo, comissao_responsavel_valor').eq('tenant_id', rede!.tenantId).eq('name', NOME).single()

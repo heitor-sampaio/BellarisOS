@@ -14,6 +14,7 @@ import { nomeDaSessao, nomeDoPlanoNoApp, descontoDoPlanoNoApp } from '@/lib/plan
 import { combinadoDoPlano, totalComOCombinado } from '@/lib/plano-de-tratamento/desconto-combinado'
 import { propostaVencida, validoAteDaProposta, avisoDaPropostaVencida } from '@/lib/plano-de-tratamento/validade'
 import { quemMarcaAsSessoes } from '@/lib/plano-de-tratamento/textos'
+import { falaDaRedeDoPortal } from '@/lib/clientes/nome-da-rede'
 import { redeTemContratoDePlano } from '@/lib/documentos/plano'
 import { avisoDoContratoDoPlanoNoApp, textoDoPlanoAceitoNoApp } from '@/lib/clientes/textos-do-app'
 import { AceitarPlano } from '@/components/client-portal/aceitar-plano'
@@ -90,6 +91,8 @@ export default async function PlanoDaClientePage({ params, searchParams }: {
   const combinado = proposto ? totalComOCombinado(valor, combinadoDoPlano(plano)) : { reais: 0, total: valor }
   const vencido = proposto && propostaVencida(plano.created_at, validade)
   const diaDaValidade = validoAteDaProposta(plano.created_at, validade).toLocaleDateString('pt-BR', { timeZone: fuso })
+  // CA1: o aviso do vencido diz o nome da rede.
+  const fala = await falaDaRedeDoPortal(slug)
 
   // PT3: a sessão em aberto do plano aceito se agenda pelo app, mesmo de
   // procedimento fora do "Permitir auto agendamento" (`agendavelPeloApp`);
@@ -182,7 +185,7 @@ export default async function PlanoDaClientePage({ params, searchParams }: {
           {/* A validade é só informação (princípio 2, 2026-11-18): o vencido avisa e se aceita. */}
           {vencido ? (
             <p data-proposta-vencida style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>
-              {avisoDaPropostaVencida(diaDaValidade)}
+              {avisoDaPropostaVencida(diaDaValidade, fala)}
             </p>
           ) : (
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Válido até {diaDaValidade}.</p>

@@ -347,6 +347,8 @@ interface Props {
   prePagos?:             PrePagoDoCliente[]
   /** Pode agendar (agenda: MANAGE): a unidade pré-paga se agenda da ficha, e o "+ Agendar" (A23). */
   podeAgendar?:          boolean
+  /** Abre a tela do atendimento (o Atendimento em Ver, UM1): o anexo do atendimento vira link. */
+  abreOAtendimento?:     boolean
   /**
    * Editar o cadastro (Clientes em Gerenciar): a aba Dados, as anotações e o
    * arquivar. Quem só vê lê tudo isso e não edita (D5, 2026-11-01: "quem só
@@ -407,7 +409,7 @@ interface Props {
   comandaParaReceber?:   { comandaId: string | null; unidadeId: string; slug: string } | null
   /** A2 da 25ª: os planos aceitos e ainda não recebidos (fora do "A receber"; a ficha diz). */
   planosNaoRecebidos?:   PlanoNaoRecebido[]
-  /** Quem recebe (`podeReceber`: o PDV ou o Financeiro em Gerenciar), a régua do PDV. */
+  /** Quem recebe (`podeReceber`: o PDV em Gerenciar, PV-04), a régua do PDV. */
   podeReceberAtendimento?: boolean
 }
 
@@ -1091,8 +1093,8 @@ function AcessoAoApp({ temAcesso, email, clientId, documento }: {
     const r = await darAcessoAoApp(clientId)
     setDando(false)
     if ('error' in r) { setErro(r.error); return }
-    // Na conta que ela já tinha (outra clínica), a senha é a dela, não o documento (J-22).
-    setFeito(avisoDoAcessoCriado({ contaLigada: r.contaLigada, email, documento }))
+    // Na conta que ela já tinha (outra rede), a senha é a dela, não o documento (J-22); o documento recusado vai pelo e-mail (24/11).
+    setFeito(avisoDoAcessoCriado({ contaLigada: r.contaLigada, email, documento, emailParaCriarSenha: r.emailParaCriarSenha }))
     router.refresh()
   }
 
@@ -1514,7 +1516,7 @@ export function ClientProfile({
   fidelidade, activePackage,
   transactions, internalCredits, documents, recordForms = [], lotesDosAtendimentos = {}, podeAbrirLote = false, anexosClinicosFora = 0, anexosClinicos = [], anotacoesEVersoes = { anotacoes: {}, versoes: {} }, podeAnotar = false, pedidoLgpd = null, podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, podeEditarFichaDeSaude = false, fichaDeSaudeAtual = null, alergias = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, portalNoPlano = false, veFinanceiro = false, isNetworkWide, unidadeDoPlano, unidadesDoPlano = [], perguntaAUnidade = false, clientHistory, opportunities = [], veOportunidades = true,
   planProcedures = [], planProducts = [], podeReceber = false, podeMontarPlano = false, podeEditarInjetaveis = false, termos = null,
-  prePagos = [], podeAgendar = false, podeCancelarPacote = false, pacoteVencido = null, quemDesfaz = null, pagoComCredito = 0, podeRemarcar = false, podeEstornar = false, podeReceberParcela = false, podeEditarCadastro = false, quemCompletaOCadastro: quemCompleta = null, podeExportarProntuario = false, podeVerPlanos = false, podeIniciarAtendimento = false,
+  prePagos = [], podeAgendar = false, abreOAtendimento = false, podeCancelarPacote = false, pacoteVencido = null, quemDesfaz = null, pagoComCredito = 0, podeRemarcar = false, podeEstornar = false, podeReceberParcela = false, podeEditarCadastro = false, quemCompletaOCadastro: quemCompleta = null, podeExportarProntuario = false, podeVerPlanos = false, podeIniciarAtendimento = false,
   aReceber = { itens: [], total: { n: 0, valor: 0 } }, comandaParaReceber = null, planosNaoRecebidos = [], podeReceberAtendimento = false,
   totaisFinanceiros = { pago: 0, aReceber: 0, credito: null },
 }: Props) {
@@ -2353,7 +2355,7 @@ export function ClientProfile({
               atendimento que não está acima — moram aqui, não em Documentos. */}
           {podeVerProntuario && (
             <AnexosClinicos anexos={anexosSemRegistro} clientId={client.id} branchId={branchId} slug={slug}
-              podeAnexar={podeAnexarClinico} portalNoPlano={portalNoPlano} />
+              podeAnexar={podeAnexarClinico} portalNoPlano={portalNoPlano} abreOAtendimento={abreOAtendimento} />
           )}
           {/* Quem abriu o prontuário — o servidor só manda ao admin da rede. */}
           {acessosAoProntuario && <AcessosAoProntuario {...acessosAoProntuario} />}
@@ -2400,6 +2402,7 @@ export function ClientProfile({
           slug={slug}
           podeAnexarComum={podeAnexarComum}
           portalNoPlano={portalNoPlano}
+          abreOAtendimento={abreOAtendimento}
         />
       )}
     </div>

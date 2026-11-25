@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getTenantContext, assertClient, assertRecurso } from '@/lib/auth'
+import { falaDaRedeDoPortal } from '@/lib/clientes/nome-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { fusoValido } from '@/lib/unidades/fuso'
@@ -23,6 +24,7 @@ import { Dica } from '@/components/shared/dica'
  */
 export default async function FidelidadeDoClientePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
+  const { faleCom } = await falaDaRedeDoPortal(slug)
   const ctx = await getTenantContext()
   assertClient(ctx)
   // A fidelidade é do PLANO da rede (lib/planos/recursos.ts).
@@ -70,7 +72,7 @@ export default async function FidelidadeDoClientePage({ params }: { params: Prom
         <Dica rotulo="Sobre os pontos">
           {cfg.client_redeem
             ? 'Você ganha pontos a cada pagamento. Troque por uma recompensa aqui mesmo, ou use como desconto ao pagar.'
-            : 'Você ganha pontos a cada pagamento. Para usar ou trocar por uma recompensa, fale com a equipe.'}
+            : `Você ganha pontos a cada pagamento. Para usar ou trocar por uma recompensa, ${faleCom}.`}
         </Dica>
       </div>
 

@@ -132,3 +132,23 @@ test('D4: o servidor recusa gravar o Laser da Savassi no plano da Pampulha', asy
   })
   void slugB
 })
+
+// Princípio 2 (no máximo, avisar — a revisão das perguntas de 24/11, Q24 do
+// catálogo de Atendimento): o plano que JÁ tinha o procedimento que a unidade
+// não faz mais se salva com ele; a marca "(não é feito nesta unidade)" é o
+// aviso. O novo continua recusado (o caso acima).
+test('o plano que já tinha o Laser (a Pampulha não o faz mais) se salva com ele, com o aviso no editor', async ({ browser }) => {
+  const b = db()
+  const { data: ss } = await b.from('treatment_plan_sessions').insert({ plan_id: plano, sort_order: 5 }).select('id').single<{ id: string }>()
+  expect((await b.from('treatment_plan_session_procedures').insert({ session_id: ss!.id, procedure_id: laserSoNaA, price: 400 })).error).toBeNull()
+  await como(browser, gestor, async p => {
+    const rota = `/admin/planejamentos/${plano}`
+    await p.goto(rota)
+    const r = await chamarAcao(p, 'actions/treatment-plans.ts', 'salvarPlanoDoCliente', rota, [plano, [
+      { procedures: [{ procedureId: rede.procedureId, price: 120, products: [] }] },
+      { procedures: [{ procedureId: laserSoNaA, price: 400, products: [] }] },
+    ], ''])
+    expect(r.texto).not.toContain('não é feito na unidade')
+    expect((await procedimentosGravados()).sort()).toEqual([rede.procedureId, laserSoNaA].sort())
+  })
+})

@@ -33,8 +33,8 @@ export function textoDoPlanoNaTela({ faltamAsDores }: { faltamAsDores: boolean }
  * 9ª: quem não abre a tela de receber lia "se recebe no financeiro" — diz com
  * quem fica. Desde o PDV (PDV1/CX1, a revisão do Heitor de 2026-11-13: "o
  * pagamento acontece por dentro desse PDV, seja do que for"), a parcela do
- * crediário se recebe no PDV, e quem recebe é quem tem o PDV ou o Financeiro em
- * Gerenciar (`podeReceber`, a régua da página do PDV): `quem` são os nomes
+ * crediário se recebe no PDV, e quem recebe é quem tem o PDV em Gerenciar
+ * (`podeReceber`, PV-04: a régua da página do PDV): `quem` são os nomes
  * (`quemRecebeNoPdv`); nulo, quem lê já recebe.
  */
 export function rodapeDoPlanoFechado(
@@ -48,8 +48,8 @@ export function rodapeDoPlanoFechado(
   // A14 da 25ª: a transferência que caiu na conta tem baixa no Financeiro (CX2).
   if (!quem) return `${base}. ${BAIXA_NO_FINANCEIRO}`
   return quem.length
-    ? `${base}, com quem tem o PDV ou o Financeiro em Gerenciar: ${quem.join(', ')}. ${BAIXA_NO_FINANCEIRO}`
-    : `${base}, com quem tem o PDV ou o Financeiro em Gerenciar. ${BAIXA_NO_FINANCEIRO}`
+    ? `${base}, com quem tem o PDV em Gerenciar: ${quem.join(', ')}. ${BAIXA_NO_FINANCEIRO}`
+    : `${base}, com quem tem o PDV em Gerenciar. ${BAIXA_NO_FINANCEIRO}`
 }
 
 /**

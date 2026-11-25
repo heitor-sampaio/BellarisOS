@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import type { TenantContext, ResolvedPermissions } from '@estetica-os/types'
 import { NO_PERMISSIONS, ALL_PERMISSIONS } from '@/lib/permissions'
 import { ferramentasDoCargo, paraOModelo, contextoDoCopilot, canonico, resumoParaOModelo } from '@/lib/copilot/executor'
-import { copilotNoPlano, copilotNoCargo } from '@/lib/copilot/disponivel'
+import { copilotNoPlano, copilotNoCargo, copilotForaDoPlanoNaTela } from '@/lib/copilot/disponivel'
 import { cotaDoCopilot, normalizarRecursos, lerRecursos, FUNCIONALIDADES } from '@estetica-os/nucleo/lib/planos/recursos'
 
 /**
@@ -64,18 +64,83 @@ describe('o acesso ao Copilot pelo cargo (módulo copilot)', () => {
     expect(nomes(agenda('NONE'))).toEqual([])
   })
 
-  it('Ver: só as consultas — nenhuma gravação, mesmo com a agenda em Gerenciar', () => {
+  // A regra mudou: "cada passo pertence a UM módulo, e nenhuma ação pede dois"
+  // (o Heitor, 2026-11-23, docs/revisao.md:1309, aprovada em :1329-1330:
+  // "concordo, pode anotar, marcar as questões e ajustar o codigo"), lida para
+  // o Copilot na revisão de 24/11 (docs/catalogo/copilot.md, Q02): o Copilot em
+  // Ver liga a ferramenta, e a gravação pede só a permissão da ação, como na
+  // tela. Era: "Ver: só as consultas — nenhuma gravação".
+  it('Ver: consulta e age — cada gravação pede só a permissão da ação, como na tela', () => {
     expect(copilotNoCargo(agenda('VIEW'))).toBe(true)
     const n = nomes(agenda('VIEW'))
     expect(n).toEqual(expect.arrayContaining(['agendamentos', 'horarios_livres', 'cliente']))
-    expect(n).not.toContain('agendar')
-    expect(n).not.toContain('cadastrar_cliente')
+    expect(n).toContain('agendar')
+    expect(n).toContain('cadastrar_cliente')
+    expect(n, 'sem o Financeiro em Gerenciar, nada de lançar').not.toContain('lancar')
   })
 
   it('Gerenciar: consultas e gravações (cada gravação ainda exige o módulo dela)', () => {
     const n = nomes(agenda('MANAGE'))
     expect(n).toEqual(expect.arrayContaining(['agendamentos', 'agendar', 'cadastrar_cliente']))
     expect(n).not.toContain('lancar')
+  })
+})
+
+// A vista pessoal (SM2, CLAUDE.md §11) no Copilot — decidida na revisão de 24/11
+// (docs/catalogo/copilot.md, Q03): quem atende sem a Agenda (ou sem o
+// Financeiro) pergunta pela Minha agenda e pelas Minhas comissões. A vista só
+// MOSTRA: só leitura, só as dela.
+describe('a vista pessoal no Copilot (Minha agenda, Minhas comissões)', () => {
+  const quemAtende = (over: Partial<ResolvedPermissions> = {}, mais: Partial<TenantContext> = {}) =>
+    ctx({ providesServices: true, atendeEm: ['b1'], permissions: { ...NO_PERMISSIONS, copilot: 'VIEW', ...over } as ResolvedPermissions, ...mais })
+
+  it('quem atende sem a Agenda e sem o Financeiro recebe minha_agenda e minhas_comissoes — e não a agenda de todos', () => {
+    const n = nomes(quemAtende())
+    expect(n).toContain('minha_agenda')
+    expect(n).toContain('minhas_comissoes')
+    expect(n).not.toContain('agendamentos')
+    expect(n).not.toContain('lancamentos')
+  })
+
+  it('as duas são só de LEITURA', () => {
+    const vistas = ferramentasDoCargo(quemAtende()).filter(f => ['minha_agenda', 'minhas_comissoes'].includes(f.nome))
+    expect(vistas).toHaveLength(2)
+    for (const f of vistas) expect(f.tipo).toBe('leitura')
+  })
+
+  it('com a Agenda ou o Financeiro, a vista não vem: o módulo já mostra tudo', () => {
+    const n = nomes(quemAtende({ agenda: 'VIEW', financial: 'VIEW' }))
+    expect(n).not.toContain('minha_agenda')
+    expect(n).not.toContain('minhas_comissoes')
+    expect(n).toContain('agendamentos')
+  })
+
+  it('quem não atende nem tem comissão no nome não tem vista nenhuma', () => {
+    const n = nomes(quemAtende({}, { providesServices: false, atendeEm: [] }))
+    expect(n).not.toContain('minha_agenda')
+    expect(n).not.toContain('minhas_comissoes')
+  })
+
+  it('sem as Comissões no plano, nada de Minhas comissões', () => {
+    const semComissoes = { funcionalidades: TODAS.filter(f => f !== 'comissoes'), limites: { unidades: null, membros: null, whatsapp: null } }
+    expect(nomes(quemAtende({}, { plano: semComissoes }))).not.toContain('minhas_comissoes')
+  })
+})
+
+// O convite do Copilot avulso (o "Copilot: fora do plano") é de quem contrata,
+// e a configuração da rede toda é só da Admin da rede (o Heitor, 18/11:
+// "Configuração da rede toda só pela conta admin"; DEVLOG 2026-11-24 (7)).
+describe('o Copilot fora do plano: o aviso só à Admin da rede', () => {
+  const semCopilot = { funcionalidades: TODAS.filter(f => f !== 'copilot'), limites: { unidades: null, membros: null, whatsapp: null } }
+  it('da rede com Configurações em Gerenciar, sem ser a Admin da rede: não vê', () => {
+    const c = ctx({ plano: semCopilot, permissions: { ...NO_PERMISSIONS, settings: 'MANAGE' } as ResolvedPermissions })
+    expect(copilotForaDoPlanoNaTela(c)).toBe(false)
+  })
+  it('a Admin da rede (o cargo gravado) vê', () => {
+    expect(copilotForaDoPlanoNaTela(ctx({ plano: semCopilot, permissions: ALL_PERMISSIONS, isNetworkAdmin: true }))).toBe(true)
+  })
+  it('com o Copilot no plano, nem a Admin vê o aviso', () => {
+    expect(copilotForaDoPlanoNaTela(ctx({ permissions: ALL_PERMISSIONS, isNetworkAdmin: true }))).toBe(false)
   })
 })
 

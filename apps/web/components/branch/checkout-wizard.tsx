@@ -69,11 +69,8 @@ export interface CheckoutPlan {
   professionals:    { id: string; name: string }[]
   branches:         { id: string; name: string }[]
   currentBranchId:  string
-  /**
-   * O atendimento que gerou o plano, com preço e ainda não recebido: vai junto
-   * quando algo é recebido agora (2026-10-20 — o checkout cobrava só o plano).
-   */
-  atendimentoDeHoje: { appointmentId: string; procedimento: string; preco: number } | null
+  // O atendimento que gerou o plano não entra aqui: uma venda, uma comanda (o
+  // Heitor, 13/11). Ele se recebe na comanda dele, no PDV.
   /**
    * O pacote do catálogo com a mesma composição, mais barato (2026-10-21):
    * "Fechar como pacote" põe a economia como desconto do plano.
@@ -215,9 +212,6 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   const opcoesDeVezes = useOpcoesDeVezes(maquininha)
   // C38: o crediário até o limite da rede (padrão 12).
   const opcoesDeParcelas = useOpcoesDeParcelas()
-  // O atendimento que gerou o plano entra junto quando algo é recebido agora.
-  const recebeHoje   = !!plan.atendimentoDeHoje && (formaPgto === 'AVISTA' || formaPgto === 'PARCELADO')
-  const precoDeHoje  = plan.atendimentoDeHoje?.preco ?? 0
   // Daqui a 30 dias no relógio da unidade (F64), não no do aparelho.
   const [primeiroVenc,  setPrimeiroVenc]  = useState(() =>
     dayKeyTZ(addDaysTZ(new Date(), 30, fuso), fuso),
@@ -252,12 +246,12 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   const entradaNum = Math.max(0, Math.min('valor' in entradaLida ? entradaLida.valor : 0, liquido))
   const saldo      = Math.round((liquido - entradaNum) * 100) / 100
   // A20 da 24ª: o que entra agora — o "Total a cobrar" / "Recebido agora" do pagamento e o botão final.
-  const valorAgora = Math.round(((formaPgto === 'AVISTA' ? fid.aPagar : formaPgto === 'PARCELADO' ? entradaNum : 0) + (recebeHoje ? precoDeHoje : 0)) * 100) / 100
-  // Item 14 do escopo de 18/11: no dinheiro, o "Valor entregue" e o troco (só da tela). A 1ª forma
-  // leva o atendimento de hoje; dividido, ela fica com o que falta das outras.
+  const valorAgora = Math.round((formaPgto === 'AVISTA' ? fid.aPagar : formaPgto === 'PARCELADO' ? entradaNum : 0) * 100) / 100
+  // Item 14 do escopo de 18/11: no dinheiro, o "Valor entregue" e o troco (só da tela).
+  // Dividido, a 1ª forma fica com o que falta das outras.
   const [entregue, setEntregue] = useState('')
   const naPrimeiraForma = formaPgto === 'AVISTA'
-    ? (outras.length ? valorDaPrincipal(fid.aPagar, outras) + (recebeHoje ? precoDeHoje : 0) : valorAgora)
+    ? (outras.length ? valorDaPrincipal(fid.aPagar, outras) : valorAgora)
     : formaPgto === 'PARCELADO' && entradaNum > 0 ? valorAgora : 0
   const noDinheiro = emDinheiro(paymentMethod, naPrimeiraForma, formaPgto === 'AVISTA' ? outras : [])
   const recusaDoEntregue = recusaDoTroco(noDinheiro, entregue)
@@ -490,7 +484,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
     const base: PagamentoDoPlano = paymentMethod === 'CREDIT_CARD' && vezesCartao > 1
       ? { forma: 'AVISTA', metodo: paymentMethod, vezes: vezesCartao, ...comBandeira }
       : { forma: 'AVISTA', metodo: paymentMethod, ...comBandeira }
-    // D1 da 18ª: dividido, a primeira forma fica com o que falta das outras (do plano; o atendimento de hoje vai na primeira).
+    // D1 da 18ª: dividido, a primeira forma fica com o que falta das outras.
     if (!outras.length) return base
     return {
       ...base, valor: valorDaPrincipal(fid.aPagar, outras),
@@ -529,10 +523,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
       if (result.error) { setError(result.error); return }
       // O servidor pergunta o mesmo que a tela (a pergunta já foi respondida no pagamento).
       if ('confirmarSemVendedor' in result && result.confirmarSemVendedor) { setError(result.confirmarSemVendedor); return }
-      // O plano fechou; só o atendimento de hoje não foi recebido — a pessoa precisa saber.
-      // O plano fechou (com ou sem o aviso do atendimento de hoje): o passo guardado não serve mais.
+      // O plano fechou: o passo guardado não serve mais.
       limparPassoDoCheckout(plan.id)
-      if ('aviso' in result && result.aviso) { setError(result.aviso); return }
       // D8 da 12ª: a sala única do procedimento estava ocupada — a sessão foi sem sala.
       if ('avisoDaSala' in result && result.avisoDaSala) toast.warning(result.avisoDaSala, { duration: 10_000 })
       // A37 da 8ª: concluir caía na ficha sem confirmação nenhuma.
@@ -758,21 +750,6 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
         </div>
       </div>
 
-      {plan.atendimentoDeHoje && (
-        <div data-testid="atendimento-de-hoje" className="card" style={{ padding: '14px 20px', marginBottom: 20 }}>
-          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span>Atendimento de hoje — {plan.atendimentoDeHoje.procedimento} · {fmtBRL(plan.atendimentoDeHoje.preco)}</span>
-            {/* O "por que está aqui" mora na dica (2026-11-16); o estado fica à vista. */}
-            <Dica rotulo="Sobre o atendimento de hoje">O plano acima é das PRÓXIMAS sessões.</Dica>
-          </p>
-          {/* A38 da 6ª simulação: aqui só o fato — se ele entra no checkout, quem
-              diz é o passo do pagamento, pela forma escolhida (uma frase só). */}
-          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
-            Ainda não foi recebido.
-          </p>
-        </div>
-      )}
-
       {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-base-sz)', fontWeight: 600, marginBottom: 12 }}>{error}</p>}
 
       <button onClick={() => { setError(null); setStep(1) }}
@@ -841,20 +818,6 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
         </div>
         {podeCobrar && fid.bloco && (
           <div style={{ marginBottom: 16, maxWidth: 420 }}>{fid.bloco}</div>
-        )}
-
-        {plan.atendimentoDeHoje && (
-          <div data-testid="atendimento-de-hoje-no-pagamento" style={{ marginBottom: 16, padding: '12px 16px', borderRadius: 'var(--radius-field-token)', background: 'var(--bg-app)', border: '1px solid var(--border)' }}>
-            <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>
-              Atendimento de hoje — {plan.atendimentoDeHoje.procedimento} · {fmtBRL(plan.atendimentoDeHoje.preco)}
-            </p>
-            {/* A38: UMA frase, a do que o sistema faz com a forma escolhida. */}
-            <p data-hoje-entra={recebeHoje ? 'sim' : 'nao'} style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
-              {recebeHoje
-                ? `Entra neste checkout: ${fmtBRL(precoDeHoje)} cobrados junto com o que se recebe agora, no mesmo meio${paymentMethod === 'CREDIT_CARD' && vezesCartao > 1 ? ` e nas mesmas ${vezesCartao}x` : ''}.`
-                : 'Não entra neste checkout: receba pela tela do atendimento.'}
-            </p>
-          </div>
         )}
 
         {formaPgto === 'PARCELADO' && (
@@ -961,8 +924,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
                 ))}
               </select>
             </label>
-            <DicaDasVezes total={(formaPgto === 'PARCELADO' ? entradaNum : liquido) + (recebeHoje ? precoDeHoje : 0)} vezes={vezesCartao} opcoes={opcoesDeVezes} />
-            <AvisoDaTaxa vezes={vezesCartao} bandeira={bandeira} maquininha={maquininha} total={(formaPgto === 'PARCELADO' ? entradaNum : liquido) + (recebeHoje ? precoDeHoje : 0)} />
+            <DicaDasVezes total={formaPgto === 'PARCELADO' ? entradaNum : liquido}vezes={vezesCartao} opcoes={opcoesDeVezes} />
+            <AvisoDaTaxa vezes={vezesCartao} bandeira={bandeira} maquininha={maquininha} total={formaPgto === 'PARCELADO' ? entradaNum : liquido} />
           </div>
         )}
         {(formaPgto === 'AVISTA' || formaPgto === 'PARCELADO') && (
@@ -970,7 +933,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
             <CampoDaBandeira metodo={paymentMethod} valor={bandeira} aoMudar={setBandeira} maquininha={maquininha} />
           </div>
         )}
-        {/* D1 da 18ª: o "+ Outra forma" do à vista (o plano; o atendimento de hoje vai na primeira). */}
+        {/* D1 da 18ª: o "+ Outra forma" do à vista. */}
         {podeCobrar && formaPgto === 'AVISTA' && fid.aPagar > 0 && (
           <div style={{ marginBottom: 16 }}>
             <OutrasFormas metodoPrincipal={paymentMethod} total={fid.aPagar} outras={outras} aoMudar={setOutras}
@@ -985,7 +948,6 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '14px 0', borderTop: '1px solid var(--hairline)' }}>
           <span style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', fontWeight: 600 }}>
             {formaPgto === 'AVISTA' ? 'Total a cobrar' : formaPgto === 'PARCELADO' ? 'Recebido agora' : 'Total a receber'}
-            {recebeHoje && ' (com o atendimento de hoje)'}
           </span>
           <span style={{ fontSize: 'var(--text-name)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
             {fmtBRL(valorAgora)}

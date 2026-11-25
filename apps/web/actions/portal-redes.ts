@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { getTenantContext, assertClient } from '@/lib/auth'
 import { getCachedFichasDoLogin } from '@/lib/cached-queries'
 import { registrarEntradaNoPortal } from '@/lib/clientes/destino'
+import { registrarEntradaNaAuditoriaDaFicha } from '@/lib/clientes/entrada-na-auditoria'
 import { redeAbreParaCliente } from '@/lib/clientes/disponibilidade'
 
 /**
@@ -23,5 +24,7 @@ export async function entrarNaRede(clientId: unknown): Promise<{ error: string }
   if (!(await redeAbreParaCliente(ficha.tenantId))) return { error: 'Esta rede está indisponível no momento.' }
 
   await registrarEntradaNoPortal(ficha.clientId, { escolheuAgora: true })
+  // A entrada na Auditoria, na rede escolhida (AD-04; com o seletor o login não a registrou).
+  await registrarEntradaNaAuditoriaDaFicha(ficha.clientId)
   redirect(`/${ficha.slug}/cliente`)
 }

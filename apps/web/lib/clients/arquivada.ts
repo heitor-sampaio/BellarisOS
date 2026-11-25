@@ -1,3 +1,5 @@
+import type { FalaDaRede } from '@/lib/clientes/fala-da-rede'
+
 /**
  * A cliente ARQUIVADA (`clients.is_active = false`, J-23 — 2026-10-30): não se
  * agenda nem se vende para ela até reativar. A ficha desliga os botões, e o
@@ -9,7 +11,10 @@ export const CLIENTE_ARQUIVADA = 'Esta cliente está arquivada. Reative a ficha 
 
 /**
  * A arquivada no APP dela (o Heitor: "concordo", F6 da 5ª simulação,
- * 2026-11-02): o agendar mostra esta frase e o cartão da clínica, e
- * `createClientAppointment` recusa com ela.
+ * 2026-11-02): o agendar mostra esta frase e o cartão da unidade, e
+ * `createClientAppointment` recusa com ela. Com o NOME da rede (CA1, o
+ * "Concordo" de 13/11): "Fale com Estética Bella para agendar."
  */
-export const CLIENTE_ARQUIVADA_NO_APP = 'Fale com a equipe para agendar.'
+export function clienteArquivadaNoApp(fala: FalaDaRede): string {
+  return `${fala.FaleCom} para agendar.`
+}

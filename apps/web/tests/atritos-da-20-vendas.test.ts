@@ -144,10 +144,11 @@ describe('A7: o estorno diz o que acontece com a comissão e a taxa', () => {
 
 describe('A8: o avulso de uma unidade sem ninguém que recebe diz que é a rede', () => {
   it('só quem é da rede recebe: a tela diz', () => {
+    // PV-04 (catálogo de 24/11; o Heitor, 23/11: "cada passo pertence a UM módulo … PDV: receber" — "concordo").
     expect(textoDeQuemRecebe(['Fábio Tulipa'], { soDaRede: true }))
-      .toBe('Ninguém desta unidade tem o PDV ou o Financeiro em Gerenciar; quem recebe, pela rede: Fábio Tulipa.')
+      .toBe('Ninguém desta unidade tem o PDV em Gerenciar; quem recebe, pela rede: Fábio Tulipa.')
     expect(textoDeQuemRecebe(['Sabrina Lima', 'Vítor Azaleia']))
-      .toBe('Quem recebe é quem tem o PDV ou o Financeiro em Gerenciar: Sabrina Lima e Vítor Azaleia.')
+      .toBe('Quem recebe é quem tem o PDV em Gerenciar: Sabrina Lima e Vítor Azaleia.')
   })
   it('a janela de finalizar também diz quem recebe', () => {
     const t = ler('components/branch/appointment-session.tsx')

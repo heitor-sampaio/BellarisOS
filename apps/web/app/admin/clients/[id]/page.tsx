@@ -24,7 +24,7 @@ import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { regrasDoPacoteDaRede, pacoteVencidoDaFicha } from '@/lib/pacotes/regras-da-rede'
 import { ClientProfile } from '@/components/branch/client-profile'
 import { pedidoLgpdDaFicha } from '@/lib/lgpd/aviso-do-pedido'
-import { eventosDeConfirmacaoEChegada, eventoDaAvaliacao, comAutores } from '@/lib/clients/historico-do-agendamento'
+import { eventosDeConfirmacaoEChegada, eventoDaAvaliacao, comAutores, linkDoAtendimento } from '@/lib/clients/historico-do-agendamento'
 import { notasDosProcedimentos } from '@/lib/avaliacao/leitura'
 import { historicoDosAgendamentos } from '@/lib/clients/autores-do-historico'
 import { prePagosDoCliente } from '@/lib/pre-pago/leitura'
@@ -392,6 +392,9 @@ export default async function AdminClientProfilePage({
   }
 
   // F17-3: as notas que a cliente deu a cada procedimento, dos atendimentos que ela confirmou.
+  // Abrir a tela do atendimento é do Atendimento em Ver (UM1, 23/11): sem ele, o
+  // histórico e o anexo do atendimento ficam sem o link (o texto continua).
+  const abreOAtendimento = can(ctx, 'atendimento', 'VIEW')
   const naLinhaDoTempo = aba === 'historico'
   const notasDasAvaliacoes = !naLinhaDoTempo ? new Map<string, never[]>() : await notasDosProcedimentos(admin,
     ((appts ?? []) as { id: string; client_confirmed_at?: string | null }[]).filter(a => a.client_confirmed_at).map(a => a.id))
@@ -405,21 +408,21 @@ export default async function AdminClientProfilePage({
     const prof   = (a.professional as { name?: string } | null)?.name ?? '—'
     const label  = proc
     history.push(...eventosDeConfirmacaoEChegada(
-      { id: a.id, procedureName: proc, confirmed_at: a.confirmed_at ?? null, arrived_at: a.arrived_at ?? null }, `/admin/agenda/${a.id}`))
+      { id: a.id, procedureName: proc, confirmed_at: a.confirmed_at ?? null, arrived_at: a.arrived_at ?? null }, linkDoAtendimento(abreOAtendimento, '/admin', a.id)))
     // A avaliação que a cliente deixou no app, com o comentário (J-26).
     const avaliacao = eventoDaAvaliacao({ id: a.id, procedureName: proc, client_confirmed_at: a.client_confirmed_at,
       procedure_rating: a.procedure_rating, client_rating: a.client_rating, client_feedback: a.client_feedback,
-      notas_dos_procedimentos: notasDasAvaliacoes.get(a.id) ?? [] }, `/admin/agenda/${a.id}`)
+      notas_dos_procedimentos: notasDasAvaliacoes.get(a.id) ?? [] }, linkDoAtendimento(abreOAtendimento, '/admin', a.id))
     if (avaliacao) history.push(avaliacao)
 
     if (a.status === 'COMPLETED' && a.completed_at) {
-      history.push({ id: uid('ac'), date: a.completed_at, type: 'APPOINTMENT_COMPLETED', title: `Atendimento: ${label}`, subtitle: `com ${prof}`, amount: parseFloat(String(a.price ?? 0)), link: `/admin/agenda/${a.id}` })
+      history.push({ id: uid('ac'), date: a.completed_at, type: 'APPOINTMENT_COMPLETED', title: `Atendimento: ${label}`, subtitle: `com ${prof}`, amount: parseFloat(String(a.price ?? 0)), link: linkDoAtendimento(abreOAtendimento, '/admin', a.id) })
     } else if (a.status === 'CANCELLED' && a.cancelled_at) {
-      history.push({ id: uid('ax'), date: a.cancelled_at, type: 'APPOINTMENT_CANCELLED', title: `Cancelado: ${label}`, subtitle: null, amount: null, link: `/admin/agenda/${a.id}` })
+      history.push({ id: uid('ax'), date: a.cancelled_at, type: 'APPOINTMENT_CANCELLED', title: `Cancelado: ${label}`, subtitle: null, amount: null, link: linkDoAtendimento(abreOAtendimento, '/admin', a.id) })
     } else if (a.status === 'NO_SHOW') {
-      history.push({ id: uid('an'), date: a.scheduled_at, type: 'APPOINTMENT_NO_SHOW', title: `Não compareceu: ${label}`, subtitle: null, amount: null, link: `/admin/agenda/${a.id}` })
+      history.push({ id: uid('an'), date: a.scheduled_at, type: 'APPOINTMENT_NO_SHOW', title: `Não compareceu: ${label}`, subtitle: null, amount: null, link: linkDoAtendimento(abreOAtendimento, '/admin', a.id) })
     } else {
-      history.push({ id: uid('as'), date: a.created_at ?? a.scheduled_at, type: 'APPOINTMENT_SCHEDULED', title: `Agendamento: ${label}`, subtitle: `${formatarNoFuso(a.scheduled_at, "dd/MM/yyyy 'às' HH:mm", fusoDoAgendamento.get((a as { branch_id?: string | null }).branch_id ?? ''))} · ${prof}`, amount: null, link: `/admin/agenda/${a.id}` })
+      history.push({ id: uid('as'), date: a.created_at ?? a.scheduled_at, type: 'APPOINTMENT_SCHEDULED', title: `Agendamento: ${label}`, subtitle: `${formatarNoFuso(a.scheduled_at, "dd/MM/yyyy 'às' HH:mm", fusoDoAgendamento.get((a as { branch_id?: string | null }).branch_id ?? ''))} · ${prof}`, amount: null, link: linkDoAtendimento(abreOAtendimento, '/admin', a.id) })
     }
   }
 
@@ -503,6 +506,7 @@ export default async function AdminClientProfilePage({
       <RealtimeRefresher topicos={['agenda', 'pacotes']} />
       <ClientProfile
         client={client}
+        abreOAtendimento={abreOAtendimento}
         pedidoLgpd={pedidoLgpd}
         branchId={branchId}
         stats={stats}

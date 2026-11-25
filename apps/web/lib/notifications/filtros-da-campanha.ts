@@ -3,8 +3,6 @@ import type { FiltrosDoPublico } from '@/lib/clientes/publico'
 
 const DIA_MS = 24 * 3600 * 1000
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-/** O teto das "Clientes específicas": é escolha uma a uma, não lista de importação. */
-export const MAXIMO_DE_CLIENTES_ESPECIFICAS = 200
 
 /**
  * As regras gravadas da campanha (`audience_rules`) viram os filtros do
@@ -26,8 +24,8 @@ export function filtrosDaCampanha(regras: AudienceRules, agora: Date = new Date(
     ? new Date(agora.getTime() - regras.max_days_since_visit * DIA_MS).toISOString()
     : undefined
   // A37 da 15ª: as fichas escolhidas uma a uma (só id; a rede o banco confere).
+  // Sem teto (PU-05; decisão do Claude, catálogo de 24/11 — princípio 2): eram cortadas em 200, em silêncio.
   const fichas = [...new Set((regras.client_ids ?? []).filter(id => typeof id === 'string' && UUID.test(id)))]
-    .slice(0, MAXIMO_DE_CLIENTES_ESPECIFICAS)
   return {
     ...(regras.genders?.length       && { genders: regras.genders }),
     ...(regras.tags?.length          && { tags: regras.tags }),

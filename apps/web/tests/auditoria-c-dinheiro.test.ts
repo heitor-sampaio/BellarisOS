@@ -123,7 +123,8 @@ describe('item 7: a validade da proposta é só informação, também no app', (
   })
   it('a página avisa e mantém o "Aceitar o plano"', async () => {
     const { avisoDaPropostaVencida } = await import('@/lib/plano-de-tratamento/validade')
-    expect(avisoDaPropostaVencida('10/11/2026')).toBe('Proposta vencida em 10/11/2026: os valores podem ter mudado. Na dúvida, fale com a equipe antes de aceitar.')
+    // CA1 (o Heitor, 13/11, "Concordo"; a revisão de 24/11, Q06): o nome da rede no lugar de "a equipe".
+    expect(avisoDaPropostaVencida('10/11/2026', { faleCom: 'fale com Estética Bella' })).toBe('Proposta vencida em 10/11/2026: os valores podem ter mudado. Na dúvida, fale com Estética Bella antes de aceitar.')
     const pagina = ler('app/[slug]/cliente/planos/[id]/page.tsx')
     expect(pagina).toContain('avisoDaPropostaVencida(')
     expect(pagina.match(/<AceitarPlano /g)?.length).toBe(1)

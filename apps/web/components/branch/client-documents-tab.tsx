@@ -56,6 +56,8 @@ interface Props {
    * cliente" não aparece — a action recusa (F73, a sobra da F69).
    */
   portalNoPlano:      boolean
+  /** O Atendimento em Ver (UM1, 23/11): o anexo do atendimento vira link à tela dele. */
+  abreOAtendimento?:  boolean
 }
 
 // -- Constants -----------------------------------------------------------------
@@ -294,9 +296,11 @@ export function AvisoDosAnexosClinicosFora({ quantos }: { quantos: number }) {
 // -- Document row --------------------------------------------------------------
 
 export function DocumentRow({
-  doc, slug, clientId, podeApagar, onDelete, portalNoPlano, clinico = false,
+  doc, slug, clientId, podeApagar, onDelete, portalNoPlano, clinico = false, abreOAtendimento = false,
 }: {
   doc: ClientDocumentItem; slug: string; clientId: string; podeApagar: boolean; onDelete: (id: string) => void; portalNoPlano: boolean
+  /** O Atendimento em Ver (UM1): o atendimento de onde veio vira link à tela dele. */
+  abreOAtendimento?: boolean
   /** O anexo clínico, na aba Prontuário (PR1b): apagar só MARCA (fica o rastro). */
   clinico?: boolean
 }) {
@@ -356,7 +360,8 @@ export function DocumentRow({
           {` · ${formatarNoFuso(doc.createdAt, "dd/MM/yyyy", fuso)}`}
           {doc.uploadedBy && ` · por ${doc.uploadedBy}`}
         </p>
-        {doc.atendimento && (
+        {/* Abrir a tela do atendimento é do Atendimento em Ver (UM1, 23/11): sem ele, o texto fica sem o link. */}
+        {doc.atendimento && abreOAtendimento ? (
           <Link
             data-documento-atendimento
             href={rotaAtendimento(pathname, slug, doc.atendimento.id)}
@@ -364,7 +369,11 @@ export function DocumentRow({
           >
             {doc.atendimento.rotulo}
           </Link>
-        )}
+        ) : doc.atendimento ? (
+          <span data-documento-atendimento style={{ display: 'inline-block', fontSize: 'var(--text-2xs)', fontWeight: 600, color: 'var(--text-muted)', marginTop: 2 }}>
+            {doc.atendimento.rotulo}
+          </span>
+        ) : null}
         <p data-envio-a-cliente style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 'var(--text-2xs)', marginTop: 4 }}>
           {doc.enviadoEm ? (
             <span style={{ color: 'var(--success)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
@@ -433,7 +442,7 @@ export function DocumentRow({
 
 // -- Main component ------------------------------------------------------------
 
-export function ClientDocumentsTab({ documents, clientId, branchId, slug, podeAnexarComum = false, anexosClinicosFora = 0, portalNoPlano }: Props) {
+export function ClientDocumentsTab({ documents, clientId, branchId, slug, podeAnexarComum = false, anexosClinicosFora = 0, portalNoPlano, abreOAtendimento = false }: Props) {
   const router = useRouter()
   const [showForm, setShowForm]   = useState(false)
   // A lista vem das PROPS a cada render; localmente só se guarda o que acabou
@@ -578,6 +587,7 @@ export function ClientDocumentsTab({ documents, clientId, branchId, slug, podeAn
                   podeApagar={!ehAnexoClinico(doc.category) && podeAnexarComum}
                   onDelete={handleDelete}
                   portalNoPlano={portalNoPlano}
+                  abreOAtendimento={abreOAtendimento}
                 />
               ))}
             </div>

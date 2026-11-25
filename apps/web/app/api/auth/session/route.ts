@@ -8,6 +8,7 @@ import { destinoDaCliente } from '@/lib/clientes/destino'
 import { slugDaUnidadeDeEntrada } from '@/lib/unidades/de-entrada'
 import { bonusDePrimeiroAcesso } from '@/lib/fidelidade/bonus'
 import { registrarEntradaNaAuditoria } from '@/lib/auditoria/entrada'
+import { registrarEntradaDaClienteNaAuditoria } from '@/lib/clientes/entrada-na-auditoria'
 
 // Troca um par de tokens por cookies de sessão (httpOnly) e devolve o destino.
 // Era a volta do espelho nativo do app (saiu em 2026-10-06); hoje serve ao
@@ -73,8 +74,10 @@ export async function POST(req: NextRequest) {
     await supabase.auth.signOut({ scope: 'local' })
     return NextResponse.json({ error: 'A equipe da plataforma entra pelos apps dela.' }, { status: 403 })
   }
-  // A entrada fica na auditoria (CF3b) — só a do membro; acessória, nunca impede.
+  // A entrada fica na auditoria (CF3b), a do membro e a da cliente (AD-04, CF3
+  // aprovado: na rede em que ela entra); acessória, nunca impede.
   if (!claims.client_id) await registrarEntradaNaAuditoria(usuario.id)
+  if (claims.client_id) await registrarEntradaDaClienteNaAuditoria(usuario.id)
   try {
     if (claims.client_id) {
       // Uma clínica, várias, o seletor ou a última usada (lib/clientes/entrada.ts).

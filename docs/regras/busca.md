@@ -125,9 +125,8 @@ URL — a busca não grava nada, e a tela de destino confere tudo de novo:
 - **Só aparece para quem a tela de destino libera**: agendar é `agenda:
   MANAGE` sem a agenda "só a própria" (`agendaPropria`, da topbar — aquela
   agenda é outra tela, sem o modal de criar); cadastrar é `clients: MANAGE`;
-  vender é quem vende no PDV (`recebe`, `lib/menu.ts`: o PDV ou o Financeiro
-  em Gerenciar — o `podeReceber` de `lib/auth`, a MESMA trava da página do
-  PDV).
+  vender é quem vende no PDV (`recebe`, `lib/menu.ts`: o PDV em Gerenciar,
+  PV-04 — o `podeReceber` de `lib/auth`, a MESMA trava da página do PDV).
 - **As portas por URL**: `useNovoAgendamentoDaUrl`
   (`components/shared/novo-agendamento-da-url.ts`) nas duas agendas; o
   `?nova=1&cliente=` do PDV (`app/_shared/pdv.tsx`, nos dois portais); o

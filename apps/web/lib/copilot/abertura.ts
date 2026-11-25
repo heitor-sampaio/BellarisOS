@@ -16,6 +16,9 @@ export interface AberturaDoCopilot {
 
 const CAPACIDADES: { nome: string; ferramentas: readonly string[] }[] = [
   { nome: 'consultar a agenda', ferramentas: ['agendamentos', 'horarios_livres'] },
+  // A vista pessoal (Q03 da revisão de 24/11): a agenda e as comissões DELA.
+  { nome: 'consultar a sua agenda', ferramentas: ['minha_agenda'] },
+  { nome: 'ver as suas comissões', ferramentas: ['minhas_comissoes'] },
   { nome: 'achar um cliente', ferramentas: ['cliente', 'clientes'] },
   { nome: 'ver números', ferramentas: ['indicadores'] },
   { nome: 'cadastrar', ferramentas: ['cadastrar_cliente'] },
@@ -25,6 +28,8 @@ const CAPACIDADES: { nome: string; ferramentas: readonly string[] }[] = [
 const ATALHOS: { texto: string; ferramenta: string; comDinheiro?: boolean }[] = [
   { texto: 'Quais são os horários livres amanhã?', ferramenta: 'horarios_livres' },
   { texto: 'Quem são os agendamentos de hoje?', ferramenta: 'agendamentos' },
+  { texto: 'Quais são os meus horários de amanhã?', ferramenta: 'minha_agenda' },
+  { texto: 'Quanto tenho de comissão neste período?', ferramenta: 'minhas_comissoes' },
   { texto: 'Quanto faturamos este mês?', ferramenta: 'indicadores', comDinheiro: true },
   { texto: 'Cadastrar uma cliente nova', ferramenta: 'cadastrar_cliente' },
 ]
@@ -39,7 +44,7 @@ export function aberturaDoCopilot(entrada: {
   ferramentas: readonly string[]
   /** Vê o faturamento: a Visão geral dos Relatórios (a aba que o "quanto faturamos" lê) com o Financeiro em Ver. */
   veFaturamento: boolean
-  /** Alguma ferramenta liberada grava (o Copilot em Gerenciar e o módulo dela). */
+  /** Alguma ferramenta liberada grava (o módulo dela em Gerenciar; o Copilot em Ver já liga). */
   grava?: boolean
 }): AberturaDoCopilot {
   const tem = (f: string) => entrada.ferramentas.includes(f)

@@ -56,3 +56,13 @@ export const MENSAGEM_DO_ESTADO: Record<Exclude<EstadoDoLink, 'valido'>, string>
   vencido:      'Este link venceu. Peça um novo à equipe.',
   indisponivel: 'Este documento não está mais esperando assinatura. Fale com a equipe.',
 }
+
+/**
+ * A frase do estado, na página do link: com o remetente que a página já
+ * mostra (CA1: o nome, não "a equipe" — "Fale com Studio Manacá."). Sem ele
+ * (o link que não existe), "a equipe". "Peça … à equipe" fica: é ela quem age.
+ */
+export function mensagemDoEstado(estado: Exclude<EstadoDoLink, 'valido'>, remetente: string | null): string {
+  const m = MENSAGEM_DO_ESTADO[estado]
+  return remetente ? m.replace('Fale com a equipe.', `Fale com ${remetente}.`) : m
+}

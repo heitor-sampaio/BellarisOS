@@ -89,7 +89,7 @@ function JanelaDeBloquear({ branchId, profissionais, salas, dia, onFechar }: {
   const alvoId = para === 'PROFISSIONAL' ? profId : salaId
   function bloquear() {
     setErro(null)
-    if (!alvoId) { setErro(para === 'SALA' ? 'Escolha a sala.' : 'Escolha a profissional.'); return }
+    if (!alvoId) { setErro(para === 'SALA' ? 'Escolha a sala.' : 'Escolha quem atende.'); return }
     const depoisDoUltimo = (() => { const d = new Date(`${ateODia}T00:00`); d.setDate(d.getDate() + 1); return d })()
     const e = diaInteiro
       ? { inicio: instante(`${doDia}T00:00`), fim: daParede(depoisDoUltimo, fuso).toISOString(), motivo }

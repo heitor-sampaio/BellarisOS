@@ -113,7 +113,7 @@ test('com o avulso agendado, o checkout do plano e o app da cliente avisam que e
     await p.goto(`/${slug}/cliente/home`)
     const aviso = p.locator('[data-plano-proposto] [data-avulso-do-plano]')
     await expect(aviso).toContainText(`${procNome} agendado à parte em ${dia} às 16:00`)
-    await expect(aviso).toContainText('Fale com a equipe')
+    await expect(aviso).toContainText(/Fale com (?!a equipe).+ se ele deveria ser uma sessão do plano/)
   })
   // O receber do plano é no PDV (fase 3, PT1b): aceito, a janela "Receber o
   // plano" avisa do avulso antes do dinheiro.

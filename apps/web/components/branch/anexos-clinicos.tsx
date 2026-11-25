@@ -17,7 +17,7 @@ import { Dica } from '@/components/shared/dica'
  * ficou de fora (o atendimento ainda aberto) vem para cá, com o caminho ao
  * atendimento.
  */
-export function AnexosClinicos({ anexos, clientId, branchId, slug, podeAnexar, portalNoPlano }: {
+export function AnexosClinicos({ anexos, clientId, branchId, slug, podeAnexar, portalNoPlano, abreOAtendimento = false }: {
   anexos:        ClientDocumentItem[]
   clientId:      string
   branchId:      string
@@ -25,6 +25,8 @@ export function AnexosClinicos({ anexos, clientId, branchId, slug, podeAnexar, p
   /** O Prontuário em Gerenciar: anexar, enviar e excluir. */
   podeAnexar:    boolean
   portalNoPlano: boolean
+  /** O Atendimento em Ver (UM1, 23/11): o atendimento de onde veio vira link. */
+  abreOAtendimento?: boolean
 }) {
   const router = useRouter()
   const [anexando, setAnexando] = useState(false)
@@ -76,6 +78,7 @@ export function AnexosClinicos({ anexos, clientId, branchId, slug, podeAnexar, p
           podeApagar={podeAnexar}
           onDelete={id => { setRemovidos(prev => new Set(prev).add(id)); router.refresh() }}
           portalNoPlano={portalNoPlano}
+          abreOAtendimento={abreOAtendimento}
           clinico
         />
       ))}

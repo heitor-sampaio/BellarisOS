@@ -14,7 +14,7 @@ import type { PlanoNaoRecebido } from '@/lib/clientes/financeiro-da-ficha'
  * (sai a lista à parte na agenda, no Fechamento e na ficha)"). Não é lista: é
  * o resumo — quantos atendimentos concluídos ainda a receber, e o total
  * (contados no banco, `atendimentos_a_receber`) — e o caminho para a comanda
- * no PDV, a quem recebe (`podeReceber`: o PDV ou o Financeiro em Gerenciar).
+ * no PDV, a quem recebe (`podeReceber`: o PDV em Gerenciar, PV-04).
  * Quem não recebe lê com quem fica.
  *
  * A2 da 25ª (princípio 3): e o plano ACEITO e ainda não recebido — não está
@@ -63,7 +63,7 @@ export function ComandasAbertasDaFicha({ total, receber, podeReceber, planos = [
         )}
         {!podeReceber && (
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
-            Recebe-se no PDV, com quem tem o PDV ou o Financeiro em Gerenciar.
+            Recebe-se no PDV, com quem tem o PDV em Gerenciar.
           </p>
         )}
       </div>

@@ -66,6 +66,19 @@ export function atendeForaDasUnidades(atende: readonly string[], unidades: reado
   return atende.filter(u => !unidades.includes(u))
 }
 
+/**
+ * "Mudar a equipe de unidade" (a janela de desativar a unidade, H6): a pessoa
+ * sai da unidade `origem` e entra na `destino`. O "Atende" só vale nas
+ * unidades dela (o Heitor, 2026-11-23), então a marca na `origem` vai para a
+ * `destino` — o que ela fazia na que sai, faz na nova (decisão do Claude,
+ * catálogo de 24/11, princípio 3; o resto do "Atende" fica como ela escolheu).
+ * Nulo quando a `origem` não está no "Atende": nada a regravar.
+ */
+export function atendeAoMudarDeUnidade(atende: readonly string[], origem: string, destino: string): string[] | null {
+  if (!atende.includes(origem)) return null
+  return [...new Set([...atende.filter(u => u !== origem), destino])].sort()
+}
+
 /** A recusa de quem marca o "Atende" fora das unidades da pessoa. */
 export const ATENDE_SO_NAS_UNIDADES_DA_PESSOA = 'O “Atende” só vale nas unidades da pessoa.'
 

@@ -27,7 +27,7 @@ const EntradaDoBloqueio = z.object({
   inicio:         z.string().min(10).max(40),
   fim:            z.string().min(10).max(40),
   motivo:         z.string().max(400),
-}).refine(e => !!e.professionalId !== !!e.roomId, 'Escolha a profissional ou a sala do bloqueio.')
+}).refine(e => !!e.professionalId !== !!e.roomId, 'Escolha quem atende ou a sala do bloqueio.')
 
 
 

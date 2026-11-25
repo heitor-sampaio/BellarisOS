@@ -26,14 +26,15 @@ const migrations = path.join(raiz, '..', '..', 'supabase', 'migrations')
 const ler = (...p: string[]) => readFileSync(path.join(raiz, ...p), 'utf8')
 
 describe('as abas com o filtro de tags', () => {
+  // A Visão geral e o Financeiro entraram na revisão de 24/11 (Q05 do catálogo
+  // dos Indicadores: "têm filtros, então ganham o de Tags. Defeito a corrigir").
   it('são as de pessoas, e só elas', () => {
-    expect([...ABAS_COM_FILTRO_DE_TAGS].sort()).toEqual(['agenda', 'clientes', 'comercial', 'procedimentos', 'profissionais', 'vendas'])
-    for (const aba of ['overview', 'financeiro', 'estoque']) expect(abaTemFiltroDeTags(aba)).toBe(false)
+    expect([...ABAS_COM_FILTRO_DE_TAGS].sort()).toEqual(['agenda', 'clientes', 'comercial', 'financeiro', 'overview', 'procedimentos', 'profissionais', 'vendas'])
+    for (const aba of ['estoque']) expect(abaTemFiltroDeTags(aba)).toBe(false)
     for (const aba of ABAS_COM_FILTRO_DE_TAGS) expect(abaTemFiltroDeTags(aba)).toBe(true)
   })
   it('numa aba sem o filtro, a tag da URL não chega à conta', () => {
-    expect(tagsDaAba('financeiro', ['VIP'])).toEqual([])
-    expect(tagsDaAba('overview', ['VIP'])).toEqual([])
+    expect(tagsDaAba('estoque', ['VIP'])).toEqual([])
     expect(tagsDaAba('vendas', ['VIP'])).toEqual(['VIP'])
   })
 })

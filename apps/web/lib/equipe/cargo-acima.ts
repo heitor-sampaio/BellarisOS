@@ -2,7 +2,7 @@ import 'server-only'
 import type { TenantContext, AppModule, PermissionLevel, ReportTab } from '@estetica-os/types'
 import type { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
-import { MODULE_LABELS, abasQueValem } from '@/lib/permissions'
+import { MODULE_LABELS, abasQueValem, nivelAceito } from '@/lib/permissions'
 import { abasForaDoPlano, modulosForaDoPlano } from '@estetica-os/nucleo/lib/planos/recursos'
 
 type Admin = ReturnType<typeof createAdminClient>
@@ -39,8 +39,10 @@ export function modulosAcimaDoMeu(
   for (const l of linhas) {
     const m = l.module as AppModule
     if (foraDoPlano.has(m)) continue
-    const meu = (ctx.permissions?.[m] ?? 'NONE') as PermissionLevel
-    if (ORDEM[l.level] > ORDEM[meu]) acima.add(MODULE_LABELS[m] ?? m)
+    // O nível que VALE dos dois lados (`nivelAceito`): o Gerenciar gravado das
+    // Automações e do Marketing é o Ver (revisão de 24/11), e não fica "acima".
+    const meu = nivelAceito(m, (ctx.permissions?.[m] ?? 'NONE') as PermissionLevel)
+    if (ORDEM[nivelAceito(m, l.level)] > ORDEM[meu]) acima.add(MODULE_LABELS[m] ?? m)
   }
   const relatorios = linhas.find(l => l.module === 'reports')
   // Só a aba que VALE no cargo dado conta (a Financeiro sem o Financeiro não

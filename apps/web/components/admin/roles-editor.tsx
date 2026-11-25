@@ -11,12 +11,12 @@ import { cargoEscolhido, comOsCriados } from '@/lib/cargos/cargo-escolhido'
 import { acessosDoSalvo, resumoDoCargo } from '@/lib/cargos/acessos-salvos'
 import {
   ALL_MODULES, MODULOS_DO_CARGO, MODULE_LABELS, MODULE_HINTS, MODULE_LEVELS, LEVEL_LABELS,
-  ALL_REPORT_TABS, REPORT_TAB_LABELS, REPORT_TAB_HINTS, abasQueValem, motivoDaAbaFechada,
+  ALL_REPORT_TABS, REPORT_TAB_LABELS, REPORT_TAB_HINTS, abasQueValem, motivoDaAbaFechada, nivelAceito,
 } from '@/lib/permissions'
 import {
   MODULE_GROUPS, LEVEL_COPY, notaDoResumoDaRede,
   NETWORK_ONLY, notaDeAbrangencia, SO_NA_REDE_NOTE, quemVendeNoResumo, copilotNoResumo, textoDoQueFaltaNoCargo, documentosNoResumo,
-  pdvAbertoPeloFinanceiro, tratamentosNoResumo, nivelDoPdvPeloFinanceiro, conclusaoNoResumo, vistasPessoaisNoResumo,
+  tratamentosNoResumo, conclusaoNoResumo, vistasPessoaisNoResumo,
 } from '@/lib/permissions-copy'
 import { ADMIN_MENU, BRANCH_MENU, menuLabelsFor, soLeriaAsConfiguracoes } from '@/lib/menu'
 import { rotuloDasAbasAlcancadas, ABAS_DA_REDE, ABAS_DA_UNIDADE } from '@/lib/configuracoes/abas'
@@ -71,7 +71,9 @@ type Levels = Record<AppModule, PermissionLevel>
 
 function buildLevels(perms: Partial<Record<AppModule, RoleModulePermission>>): Levels {
   // O módulo só da Admin da rede (a Auditoria) não é do cargo: fica em Sem acesso.
-  return Object.fromEntries(ALL_MODULES.map(m => [m, MODULOS_DO_CARGO.includes(m) ? perms[m]?.level ?? 'NONE' : 'NONE'])) as Levels
+  // O nível gravado que o módulo não oferece mais aparece como o que vale (o
+  // Gerenciar das Automações e do Marketing é "Ver", revisão de 24/11).
+  return Object.fromEntries(ALL_MODULES.map(m => [m, MODULOS_DO_CARGO.includes(m) ? nivelAceito(m, perms[m]?.level ?? 'NONE') : 'NONE'])) as Levels
 }
 
 /**
@@ -709,10 +711,6 @@ function PermissionMatrix({
                   destacado={destaque === module}
                   // A20 da 19ª: no celular o toast some e o aviso do Salvar fica fora da vista — ele vai no módulo.
                   aviso={destaque === module ? falta : null}
-                  // A1 da 22ª: o PDV em "Sem acesso" que o Financeiro em Gerenciar abre.
-                  nota={module === 'cashier' ? pdvAbertoPeloFinanceiro(levels) : null}
-                  // A1 da 23ª: e o seletor mostra o nível que vale, travado.
-                  travadoEm={module === 'cashier' ? nivelDoPdvPeloFinanceiro(levels) : null}
                   reportTabs={reportTabs}
                   levels={levels}
                   caixas={caixas}

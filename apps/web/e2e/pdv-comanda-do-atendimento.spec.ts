@@ -20,7 +20,7 @@ import { haMinutosHoje } from './apoio/datas'
  * - O PDV recebe a comanda, com a forma de pagamento obrigatória — e antes de
  *   concluir o atendimento também.
  * - O atendimento cancelado no meio tira a comanda; o de R$ 0 não tem comanda.
- * - O PDV é de quem recebe (o PDV ou o Financeiro em Gerenciar).
+ * - O PDV é de quem recebe (o PDV em Gerenciar, PV-04).
  */
 
 const marca = Date.now().toString(36)
@@ -165,14 +165,14 @@ test('CX3: o atendimento concluído sem pagamento é uma comanda aberta do PDV',
   })
 })
 
-test('o PDV é de quem recebe: sem o PDV nem o Financeiro em Gerenciar, a tela é fechada; a rede abre pelo /admin', async ({ browser }) => {
+test('o PDV é de quem recebe: sem o PDV em Gerenciar, a tela é fechada; a rede abre pelo /admin', async ({ browser }) => {
   const soAgenda = await criarMembro(`pdva${marca}`, {
     tenant: rede!.tenantId, branchId: rede!.branchId, rotulo: 'Só agenda',
     permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'financial', nivel: 'VIEW' }],
   })
   const daRede = await criarMembro(`pdvf${marca}`, {
-    tenant: rede!.tenantId, rotulo: 'Financeiro da rede',
-    permissoes: [{ modulo: 'financial', nivel: 'MANAGE' }],
+    tenant: rede!.tenantId, rotulo: 'PDV da rede',
+    permissoes: [{ modulo: 'cashier', nivel: 'MANAGE' }],
   })
   try {
     await como(soAgenda, browser, async p => {

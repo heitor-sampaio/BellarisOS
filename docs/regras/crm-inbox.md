@@ -39,6 +39,22 @@
   a quem entrou com o passaporte): "Passaporte 19FR54321", "RNE …" ou o
   CPF (`documentoDoPerfil`, `lib/clientes/textos-do-app.ts`). Prova:
   `e2e/ficha-acesso-sem-cpf.spec.ts`, `tests/textos-do-cadastro.test.ts`.
+  **O documento que o sistema de login recusa como senha** (a proteção contra
+  senha vazada do Supabase recusa o passaporte, o RNE ou o CPF fácil de
+  adivinhar; decisão do Heitor, 24/11, à R1 da 27ª: "E-mail para criar a
+  senha"): o login nasce mesmo assim, com uma senha aleatória forte que
+  ninguém recebe (provisória, `senha_provisoria`), a ficha é ligada, e a
+  cliente recebe o e-mail "Defina sua senha" — o caminho do "Esqueci a
+  senha" (`/auth/confirm` → `/update-password`), mandado pelo cliente de
+  serviço depois de a ficha ligar (`ligarLoginAoCliente`). Nenhuma senha
+  aparece; o aviso diz à equipe que o documento não foi aceito e que o
+  e-mail saiu — ou, se não saiu, que o "Esqueci a senha" o manda de novo
+  (`avisoDoAcessoCriado` com `emailParaCriarSenha`). Vale no cadastro, na aba
+  Dados e no Copilot (`criarLoginDoCliente`, `lib/clients/acesso.ts`; o
+  Copilot responde com o mesmo aviso, e o cartão diz que, recusado o
+  documento, vai o e-mail — `avisoDaSenhaPorEmail`, catálogo de 24/11). Prova:
+  `tests/acesso-da-cliente-senha-recusada.test.ts`,
+  `tests/copilot-acesso-senha-por-email.test.ts`.
 - **A menor de idade e o responsável legal** (decisão 2 do Heitor, 7ª
   simulação, 2026-11-05: "concordo" — a Beatriz tinha 16 anos, e a Lia
   escreveu o nome da mãe nas Anotações). Com `idadeEm` < 18
@@ -225,8 +241,8 @@
     ficha de X". Prova: `e2e/ficha-cadastro-uma-vez.spec.ts`;
   - o erro do Auth vai à tela em português (`erroDoAuth`,
     `lib/erro-do-auth.ts`; também na Equipe e na troca de senha). A senha
-    fraca, na cliente, é o CPF: a tela diz isso. Nunca a mensagem crua do
-    Supabase.
+    fraca, na cliente, é o documento: o acesso sai com o e-mail para ela
+    criar a senha (acima, 24/11). Nunca a mensagem crua do Supabase.
   - O formulário não se apaga com o erro nem com o aviso (`onSubmit` em vez
     do reset automático da action).
   Prova: `e2e/ficha-cadastro-validacao.spec.ts`,
@@ -237,16 +253,36 @@
   EQUIPE diz (o fim da ficha, a assinatura recebida) é neutro ("Tudo certo!",
   não "Obrigada!"). Texto novo do portal no feminino fixo é o defeito de
   volta. Prova: `e2e/portal-cliente-tratamento.spec.ts`.
+- **Quem atende não tem gênero na tela** (a revisão de 24/11): rótulo, dica
+  e mensagem dizem "quem atende" ou "a pessoa" ("Trocar quem atende de A para
+  B?", "Escolha quem atende.", "para a pessoa responsável"), nunca "a
+  profissional" — o feminino fixo de um cargo. "Profissional" sem artigo (o
+  nome do campo) fica. Prova: `tests/textos-neutros-de-quem-atende.test.ts`.
+- **O portal diz o NOME da rede, não "clínica"** (CA1, a recomendação que o
+  Heitor aprovou em 13/11 com "Concordo"; a revisão de 24/11 tomou o "a
+  equipe" do 16/11 por defeito): "Crédito em Estética Bella", "fale com
+  Estética Bella", "Falar com Estética Bella" (o WhatsApp), "Telefone de
+  Estética Bella: …" — sem artigo, porque o gênero do nome não se adivinha
+  (decisão do Claude, catálogo de 24/11). As frases saem de `falaDaRede`
+  (`lib/clientes/fala-da-rede.ts`): na página, `falaDaRedeDoPortal(slug)`; no
+  componente do navegador, `useFalaDaRede()` (o layout do portal põe o nome).
+  "A equipe" fica onde é quem age ("a equipe registra o atendimento", "peça
+  um novo à equipe"). As recusas das actions do portal também (a troca pelo
+  app, o prazo do remarcar, a arquivada, o plano cancelado — `falaDaRedeDoId`)
+  e os links públicos de assinatura e da ficha, com o remetente que a página
+  mostra (`mensagemDoEstado`, `mensagemDoLinkDaFicha`; sem ele, "a equipe").
+  Os avisos no celular dizem o nome da unidade (NA-04). Prova:
+  `tests/portal-nome-da-rede.test.ts`.
 - **O cartão "A unidade" do app** (J-66, 2026-10-30): o fim da home do
   portal mostra a unidade do ENDEREÇO (o slug) — nome, endereço, telefone,
   horário (`resumoDoHorario` da unidade) e os botões WhatsApp e Ligar. A
   leitura é UMA, `aUnidadeDoEndereco` (`lib/clientes/a-unidade.ts`), a mesma
-  do "Falar com a equipe" do plano proposto. **O WhatsApp é o número
+  do "Falar com <a rede>" do plano proposto. **O WhatsApp é o número
   CONECTADO** (por-03, revisão do Heitor de 2026-11-02: a conversa cai no
   inbox e fica registrada): o ativo rotulado com a unidade do endereço, senão
   o padrão da rede; sem nenhum, o telefone da unidade (ou o da rede). Só o
   número sai de `whatsapp_numbers`, pelo servidor — nunca a credencial. O
-  "Ligar" é sempre o telefone. **"Falar com a equipe" abre com a mensagem
+  "Ligar" é sempre o telefone. **"Falar com <a rede>" abre com a mensagem
   pronta** (A66, `comMensagem`): o plano proposto ("Vi no app o plano de
   tratamento proposto (N sessões, R$ X)…") e o agendamento ("Quero falar
   sobre o meu agendamento de X em DD/MM HH:MM"). Sem nenhum dado cadastrado,
@@ -414,7 +450,7 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
     (`gravarTagsDaOportunidade`, `lib/tags/da-pessoa.ts`). `leads.tags` saiu
     (`20261125500002`); a coluna "Tags da oportunidade" da importação virou a
     de Tags (da pessoa).
-  - **Quando a ficha e o contato se encontram** (o "Cadastrar cliente" do
+  - **Quando a ficha e o contato se encontram** (o "Cadastrar como cliente" do
     card, o "É a mesma pessoa", a conversa da ficha, a ligação automática
     abaixo), as tags dos dois se JUNTAM, sem repetir e sem distinguir a caixa.
     A ligação é posta pelo banco, num lugar só (`private.ligar_contato_a_ficha`,
@@ -583,7 +619,7 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   ela fez, J-26). Prova: `e2e/ficha-cadastro-atritos-da-7.spec.ts`.
 - **Quem só vê os clientes não cadastra nem edita** (D4/D5 da 5ª simulação,
   2026-11-01; o Heitor: "quem só pode ver só pode ver"). Com Clientes em Ver,
-  o inbox não oferece "Cadastrar cliente" nem o "Vender" de quem não tem ficha
+  o inbox não oferece "Cadastrar como cliente" nem o "Vender" de quem não tem ficha
   (`ConversationCard.podeCadastrarCliente`), o quadro não oferece "Converter",
   e a ficha mostra a aba Dados e as anotações só para ler (os campos num
   `fieldset` desligado, sem "Salvar dados" nem "Dar acesso ao app", com a
@@ -595,6 +631,13 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   `semAcesso()` lançado dentro do `useActionState` derrubava o inbox inteiro
   em "Você não tem acesso", e a promessa rejeitada da aba Dados dava 500 mudo.
   Prova: `e2e/permissoes-quem-so-ve.spec.ts`.
+- **A ficha só leva à tela do atendimento quem tem o Atendimento em Ver**
+  (UM1, o Heitor, 23/11: abrir a tela do atendimento é desse módulo; a agenda
+  já escondia o "Retomar atendimento", `abreOAtendimento`): sem ele, os
+  eventos do Histórico e o "Atendimento de …" do anexo (Documentos e Anexos
+  clínicos) ficam como texto, sem o link a `/agenda/<id>`
+  (`linkDoAtendimento`, `lib/clients/historico-do-agendamento.ts`). Prova:
+  `tests/ficha-link-do-atendimento.test.ts`.
 - **O Histórico da ficha diz a hora gravada do fato** (A11 da 27ª, princípio
   3): o plano aceito é o `aceito_em` (o gatilho `plano_aceito_em`), não o
   `updated_at` — que muda depois, a cada mexida no plano —, sem o "Checkout
@@ -622,8 +665,13 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   em Gerenciar, e a aba LGPD abre para ela — é quem libera o prontuário
   (`quemResponde`, `lib/lgpd/aviso-do-pedido.ts`). A aba LGPD está nos DOIS
   portais (D8 da 25ª): quem tem só unidades abre a da unidade, o aviso e a
-  ficha a levam lá (`caminhoDaAbaLgpd`, `lib/lgpd/caminho-da-aba.ts`), e o
-  menu mostra Configurações a quem tem o Prontuário em Gerenciar. Fluxo: o cliente solicita
+  ficha a levam lá (`caminhoDaAbaLgpd`, `lib/lgpd/caminho-da-aba.ts`). **A aba
+  abre para quem responde** (a revisão de 24/11, Q09: Clientes em Gerenciar) e
+  para quem libera o prontuário (o Prontuário em Gerenciar) — não para quem só
+  tem Configurações (`ABAS_DE_CONFIGURACAO`: o módulo `clients`, com o
+  `medical_records`); e o menu mostra Configurações a quem tem um dos dois
+  (`soLeriaAsConfiguracoes`). Prova: `tests/lgpd-quem-responde.test.ts`,
+  `e2e/lgpd-atritos-da-9.spec.ts`. Fluxo: o cliente solicita
   em `/[slug]/cliente/perfil`, `actions/lgpd.ts` grava o pedido e processa em
   `after()` (não há fila no projeto) — e SÓ a action grava: até a F63 a
   política `lgpd_requests_insert` deixava a cliente gravar pela chave pública
@@ -649,8 +697,9 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
 - **O pedido feito pelo app avisa a equipe, e a ficha aponta onde responder**
   (A49 da 9ª simulação, 2026-11-07: a Beatriz procurou o pedido da Marina na
   ficha e no sino; ele estava em Configurações → LGPD). O `requestDataExport`
-  avisa no sino, no `after()`, quem responde — Configurações em Gerenciar da
-  rede toda e a Admin da rede (`avisarPedidoDaCliente`,
+  avisa no sino, no `after()`, quem responde — Clientes em Gerenciar (a
+  cliente é da rede; revisão de 24/11: "Configurações em Gerenciar da rede
+  toda" era o critério de antes de 18/11) e a Admin da rede (`avisarPedidoDaCliente`,
   `lib/lgpd/aviso-do-pedido.ts`): "Pedido de dados (LGPD): Marina — … Responder
   até 22/11/2026 (15 dias do pedido), em Configurações → LGPD", com o "Abrir"
   da aba (`data.caminho`). A Visão geral da ficha diz o pedido do app
@@ -968,8 +1017,9 @@ oferece segue o módulo (clientes com `clients`, contatos com `crm`).
   (`/api/importacoes/[id]/erros`, "Baixar o relatório") traz "Linha; Nome;
   Situação; Motivo" — as recusadas e as importadas com aviso. A aba mostra
   "Importações anteriores" (`importacoesAnteriores`,
-  `lib/importacao/historico.ts`; `[data-importacao-anterior]`): as que a
-  pessoa alcança (a régua de `importacaoAoAlcance`), com o placar e o
+  `lib/importacao/historico.ts`; `[data-importacao-anterior]`): só à Admin da
+  rede (revisão de 24/11: as Importações são configuração da rede toda — a
+  tela inteira, o histórico e o relatório), com o placar e o
   relatório enquanto ele vale (7 dias). **O placar soma as linhas** (A5 da
   23ª; princípio 3: "8 novos · 0 completados · 1 sem mudança · 1 com aviso ·
   1 recusada" eram 11 de 10): "com aviso" é das que entraram — "8 novos · 0
@@ -1074,8 +1124,10 @@ oferece segue o módulo (clientes com `clients`, contatos com `crm`).
   `tests/importacao-andamento.test.ts`. Interrompida, "Tentar de novo" continua de
   onde parou; upload que falha no meio apaga a importação inteira (retomar uma
   truncada importaria meio arquivo em silêncio).
-- **Ler, retomar e baixar os erros** conferem o módulo do DESTINO
-  (`importacaoAoAlcance`), sem recorte por unidade — nem nos clientes: a
+- **Ler, retomar e baixar os erros** são só da Admin da rede (revisão de
+  24/11; `mexeNaConfigDaRede` em `importacaoAoAlcance`, no histórico e no
+  `/api/importacoes/[id]/erros`; prova `tests/importacao-historico-so-da-admin.test.ts`)
+  e conferem o módulo do DESTINO, sem recorte por unidade — nem nos clientes: a
   ficha é da REDE (o Heitor: "o cliente não é da unidade, o cliente é da
   rede" — H16), e importar é configuração da rede toda, só da Admin da rede
   (o Heitor, 2026-11-18). Até 18/11 a importação de clientes sumia para quem
@@ -1102,9 +1154,10 @@ O nome no código e no banco FICA (`leads`, `lead_events`, `leadId`,
 ("nome do lead") ficam, porque são como a planilha de outro sistema vem.
 - No quadro: "Nova oportunidade", "Editar oportunidade", "Criar oportunidade",
   "Ações da oportunidade", "N oportunidades no funil".
-- **"Cadastrar cliente" em todo lugar** (CR2): o card do quadro diz
-  "Cadastrar cliente" e abre "Cadastrar como cliente", como o painel do inbox
-  (era "Converter" / "Converter em cliente") — no quadro da unidade E no da
+- **"Cadastrar como cliente" em todo lugar** (CR2; o botão, revisão de 24/11,
+  Q13: era "Cadastrar cliente"): o card do quadro e o painel do inbox dizem
+  "Cadastrar como cliente" e abrem a janela "Cadastrar como cliente", cujo
+  envio é "Cadastrar cliente" (era "Converter" / "Converter em cliente") — no quadro da unidade E no da
   rede, para quem tem Clientes em Gerenciar (varredura de 18/11, CRM-04: o da
   rede escondia o botão para "escolher a unidade de cadastro", que saiu com a
   H5; a ficha nasce da rede).
@@ -1190,7 +1243,7 @@ mesmo sem oportunidade, e o painel do inbox os mostra e edita na seção do
 contato (`atualizarContato`). Não propagam: a oportunidade tem a SUA cópia
 (`leads.email`, `social_media`), que é o card e se edita no card. Prova:
 `e2e/inbox-contato-email.spec.ts`.
-- O "Cadastrar cliente" do inbox vem com o e-mail da pessoa e, sem ele, o da
+- O "Cadastrar como cliente" do inbox vem com o e-mail da pessoa e, sem ele, o da
   oportunidade (A16 da 5ª simulação: a cópia do card tinha o e-mail e o
   cadastro vinha sem); o telefone do painel aparece FORMATADO (`maskPhone`) e,
   ao editar, como está gravado — formatar o valor faria o salvamento
@@ -1788,7 +1841,7 @@ o contato junto.
 ❌ Mostrar o nome da conversa (contact_name) em vez do da pessoa (contacts.name)
 ❌ Oferecer apagar oportunidade (lead) — a que não vai adiante é marcada perdida
 ❌ Escrever "lead" em texto que se lê (tela, aviso, erro da action, o "Não consegui ___", rótulo, relatório, Copilot) — a pessoa é o "contato", o card é a "oportunidade" (CR1; tests/oportunidade-no-texto trava)
-❌ Chamar o cadastro da pessoa do card de "Converter" — é "Cadastrar cliente" / "Cadastrar como cliente", no quadro e no inbox (CR2)
+❌ Chamar o cadastro da pessoa do card de "Converter" — é "Cadastrar como cliente", o botão e a janela, no quadro e no inbox (CR2; revisão de 24/11, Q13 — o envio do formulário segue "Cadastrar cliente")
 ❌ Mover o card sozinho por um fato do sistema (agendar, concluir, pagar) — "não existe movimento automático padrão nos funis": é a automação da rede (crm-05)
 ❌ Levar oportunidade a etapa perdida pela tela sem o motivo, ou gravar crm_stage_id fora de moverEtapaCore / camposDaPerda (o motivo e o perdido_em ficam velhos)
 ❌ Importar (planilha, lote) emitindo evento de domínio, ou trocando dado que a ficha já tem

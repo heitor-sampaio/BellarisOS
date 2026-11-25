@@ -609,9 +609,9 @@
   Gerenciar, UM1–UM5; o "no agendamento DELA" do "só os meus" saiu com o
   SM1): só quem ATENDE na unidade do agendamento, com
   "(ocupada)" na que tem atendimento no horário (`profissionaisParaTrocar`), e
-  "Trocar a profissional de A para B?" antes. Arrastar para a coluna de outra
-  profissional pergunta também ("Trocar a profissional de A para B e marcar às
-  14:00?", `[data-confirmar-arraste]`). O servidor recusa quem não atende na
+  "Trocar quem atende de A para B?" antes. Arrastar para a coluna de outra
+  profissional pergunta também ("Trocar quem atende de A para B e marcar às
+  14:00?", `[data-confirmar-arraste]`; o texto neutro é da revisão de 24/11). O servidor recusa quem não atende na
   unidade (`recusaDeQuemNaoAtende`, em `reassignProfessional` e no
   `remarcarCore` com outra profissional), e o histórico grava "Profissional
   trocado de A para B" (`textoDaTroca`; a janela o mostra — `rotuloDaAcao`,
@@ -892,7 +892,7 @@
   (`/[slug]/cliente/agendamentos/[id]`, só a ficha DELA), e
   `actions/portal-agendamentos.ts` confere de novo o prazo e o status; o horário
   novo é um dos livres do self-service, para o mesmo profissional. Dentro do
-  prazo, só "Falar com a equipe" (WhatsApp da unidade). Prova:
+  prazo, só "Falar com <a rede>" (o nome dela, CA1 — `crm-inbox.md`; o WhatsApp da unidade). Prova:
   `e2e/portal-cliente-alterar-agendamento.spec.ts`.
   O prazo aparece em DIA E HORA (J-61, `limiteParaAlterar`,
   `lib/clientes/agenda-do-portal.ts`, Brasília): "Pelo app, você cancela ou
@@ -902,8 +902,9 @@
   terminou em …", e no cartão da agenda "Alterar até …", com a seta de que o
   cartão abre. **Fora do prazo, a saída é inteira** (A53 da 7ª simulação,
   2026-11-05; a regra do prazo fica): o cartão da lista diz "Prazo do app
-  encerrado: fale com a equipe para alterar" (`[data-prazo-encerrado]`), e o
-  detalhe (`[data-fora-do-prazo]`) diz até quando era, "Falar com a equipe"
+  encerrado: fale com <a rede> para alterar" (`[data-prazo-encerrado]`; o
+  nome da rede, CA1), e o detalhe (`[data-fora-do-prazo]`) diz até quando
+  era, "Falar com <a rede>"
   com a mensagem "Preciso cancelar ou remarcar o meu agendamento de X em
   DD/MM HH:MM (o prazo do app já passou)" e "Ligar" (`tel:`). O motivo do cancelamento é "Motivo (opcional)" (J-64). Prova:
   `e2e/portal-cliente-prazo-na-tela.spec.ts`, `tests/agenda-do-portal.test.ts`.
@@ -941,7 +942,7 @@
   o tem (`candidatasDoDia` com `ignorarAgendamentoId` tira ele da contagem —
   contava, e a escolha pendia para a outra). **O horário novo dentro do prazo
   avisa** (A57 da 11ª): "Este horário fica a menos de 24 horas: depois de
-  remarcar, para mudar de novo ou cancelar, fale com a equipe."
+  remarcar, para mudar de novo ou cancelar, fale com <a rede>." (o nome, CA1)
   (`[data-dentro-do-prazo]`), como o Confirmar do agendar (A52 da 8ª, que já
   valia para qualquer dia). Prova: `e2e/portal-cliente-atritos-da-11.spec.ts`.
   **E o "Sem preferência" diz o que é, e o remarcado diz com quem** (A50 e A51
@@ -949,7 +950,7 @@
   marcado ao lado de "Com Helena" e não sabia se a profissional podia mudar; a
   Sabrina passou da Eva à Fernanda e o "Agendamento remarcado." não dizia):
   marcado, "Sem preferência: hoje o agendamento é com Helena; no horário novo,
-  fica com quem estiver livre — pode ser outra profissional. Para ficar com
+  fica com quem estiver livre — pode ser outra pessoa. Para ficar com
   Helena, escolha “Só com Helena”." (`[data-o-que-e-sem-preferencia]`; o outro
   botão é "Só com X"); o "Confirmar novo horário" espera a conta de quem atende
   ("Conferindo quem atende…"; a falha libera, o servidor confere ao gravar); e
@@ -1033,9 +1034,9 @@
   oportunidade aberta e o evento "agendamento criado" (com o ator `cliente`),
   que o app não emitia. Só a sessão livre do PLANO se liga depois, no app.
 - **A cliente ARQUIVADA não agenda pelo app** (o Heitor: "concordo"): o
-  agendar mostra "Fale com a equipe para agendar." e o cartão da unidade
-  (`AgendarComAEquipe`), e `createClientAppointment` recusa com a mesma frase
-  (`CLIENTE_ARQUIVADA_NO_APP`). Prova: o mesmo spec.
+  agendar mostra "Fale com <a rede> para agendar." (o nome dela, CA1) e o
+  cartão da unidade (`AgendarComAEquipe`), e `createClientAppointment` recusa
+  com a mesma frase (`clienteArquivadaNoApp`, `lib/clients/arquivada.ts`). Prova: o mesmo spec.
 - **O cartão do pacote leva ao agendamento DELE** (A63 da 5ª simulação): na
   home do app, o pacote diz "N de M sessões realizadas · restam R" e, pela
   próxima sessão livre, "Agendar <procedimento>" — o agendar abre já na
@@ -1347,8 +1348,10 @@
   `20261029001401`): Configurações → Unidades → a unidade, cartão "Salas"
   (`components/admin/salas-da-unidade.tsx`, `actions/salas.ts`): criar,
   renomear, desativar e reativar — não se apaga (agendamentos apontam para
-  ela). A unidade SEM sala: o Agendar diz "Sem sala cadastrada nesta
-  unidade", com o caminho na dica (A52 da 24ª; o agendamento segue sem sala).
+  ela). A unidade SEM sala: o Agendar não mostra o campo nem fala de sala, e o
+  agendamento segue sem sala (princípio 7 — a revisão das perguntas de 24/11,
+  Q14 do catálogo; decisão do Claude: saiu a linha "Sem sala cadastrada nesta
+  unidade" da A52 da 24ª). Prova: `tests/atritos-da-24-cargos-atendimento-app.test.ts`.
   Quem tem `settings: MANAGE`, na unidade ao alcance; o nome é único
   entre as ATIVAS da unidade (`rooms_nome_unico_na_unidade`). A sessão não
   grava sala pelo PostgREST (as políticas de escrita saíram): só o servidor.
@@ -1563,11 +1566,16 @@ de decisões) — **implementadas na F65 (2026-11-12)**:
   na ficha da REDE com duas ou mais unidades, a escolhida em "Unidade do
   plano *" (`?unidadeDoPlano=`; o "Novo plano" espera a escolha), nunca a de
   cadastro da cliente (auditoria das regras, 2026-11-18; `criarPlanoDoCliente`
-  sem unidade recusa "Selecione a unidade do plano."). O que já estava no plano e a unidade não faz continua à vista
-  ("X (não é feito nesta unidade)"). E o servidor recusa:
+  sem unidade recusa "Selecione a unidade do plano."). O servidor recusa o
+  procedimento NOVO que a unidade do plano não faz (o editor nem o oferece):
   `recusaDosProcedimentosDoPlano`, em `gravarSessoes` (antes de apagar as
-  sessões antigas) e antes do `gerar_plano_da_avaliacao`. Prova:
-  `e2e/plano-unidade-do-plano-f73.spec.ts`, `tests/catalogo-do-plano.test.ts`.
+  sessões antigas) e antes do `gerar_plano_da_avaliacao`. **O que já estava no
+  plano e a unidade não faz mais se salva com ele** (princípio 2, "no máximo,
+  avisar" — a revisão das perguntas de 24/11, Q24 do catálogo; decisão do
+  Claude): fica à vista, "X (não é feito nesta unidade)", e essa marca é o
+  aviso; até 24/11 o plano antigo só se salvava tirando o item. Agendar a
+  sessão na unidade que não o faz segue recusado (`conferirPecasDoAgendamento`).
+  Prova: `e2e/plano-unidade-do-plano-f73.spec.ts`, `tests/catalogo-do-plano.test.ts`.
 - **O plano se grava numa transação só, e o fechado não volta a rascunho**
   (A20d da 25ª; §14): `gravarSessoes` confere e monta, e `plano_gravar_sessoes`
   (só o servidor) grava o cabeçalho (o rascunho da avaliação; as observações e
@@ -1681,16 +1689,23 @@ de decisões) — **implementadas na F65 (2026-11-12)**:
   `e2e/categorias-de-procedimento.spec.ts`.
 
 Query correta para buscar procedimentos de uma unidade — o catálogo base da
-rede (`branch_id` nulo) MAIS o que é local da unidade:
+rede (`branch_id` nulo) MAIS o que é local da unidade, só o que ela FAZ ("Em
+quais unidades", `ofereceNaUnidade`) e com o preço DELA (`comPrecoDaUnidade`).
+O `branch_id` sozinho listava o que a unidade não faz, ao preço da rede (a
+revisão das perguntas de 24/11, Q23 do catálogo). Na agenda, é
+`getCachedBranchProcedures`; no plano, `procedimentosParaPlano` com a unidade.
+Prova: `tests/preco-na-unidade.test.ts`.
 ```typescript
-const procedures = await ler(
+const lidos = await ler(
   admin.from('procedures')
-    .select('*')
+    .select(`id, name, duration_min, price, ${COLUNAS_DA_OFERTA}`)
     .eq('tenant_id', ctx.tenantId)
     .eq('is_active', true)
-    .or(`branch_id.is.null,branch_id.eq.${ctx.branchId}`),
+    .or(`branch_id.is.null,branch_id.eq.${unidadeId}`),
   'listar os procedimentos da unidade',
 )
+const procedures = await comPrecoDaUnidade(admin, unidadeId,
+  (lidos ?? []).filter(p => ofereceNaUnidade(p, unidadeId)))
 ```
 
 ---
@@ -3778,7 +3793,7 @@ O resto do fluxo:
 - **Quem recebe, na unidade** (A8 da 20ª, princípio 3): o avulso concluído a
   receber e a janela de finalizar dizem quem recebe NESTA unidade
   (`quemRecebeNaUnidade`); sem ninguém dela, "Ninguém desta unidade tem o PDV
-  ou o Financeiro em Gerenciar; quem recebe, pela rede: …". O concluído a
+  em Gerenciar; quem recebe, pela rede: …" (PV-04). O concluído a
   receber deixa o "Aceitar plano" como secundário (A16): o passo da vez é
   receber.
 - **A avaliação concluída gera o plano** (revisão do Heitor, 2026-10-29: "é
@@ -3885,11 +3900,12 @@ O resto do fluxo:
 
 ## O que nunca fazer aqui
 
-❌ Pedir o catálogo do editor do plano sem a unidade do plano (procedimentosParaPlano com unidade nula) ou gravar sessões de plano sem recusaDosProcedimentosDoPlano (F73, D4 da 14ª; tests/catalogo-do-plano trava)
+❌ Pedir o catálogo do editor do plano sem a unidade do plano (procedimentosParaPlano com unidade nula) ou gravar sessões de plano sem recusaDosProcedimentosDoPlano (F73, D4 da 14ª; tests/catalogo-do-plano trava) — nem recusar o que JÁ estava no plano e a unidade não faz mais (é aviso, princípio 2: o jaGravado da recusa)
 
 ```
 ❌ Atualizar currentStock diretamente sem criar StockMovement
 ❌ Alterar price de um procedimento sem criar ProcedurePriceHistory
+❌ Listar os procedimentos de uma unidade só pelo branch_id (o da rede + o local dela): falta o "Em quais unidades" (ofereceNaUnidade) e o preço dela (comPrecoDaUnidade) — Q23 de 24/11; tests/preco-na-unidade trava
 ❌ Ler o preço de um procedimento para uma UNIDADE direto de procedures.price — é precoNaUnidade/comPrecoDaUnidade (lib/procedimentos/preco-na-unidade.ts; no banco, private.preco_na_unidade): o preço próprio da unidade vale (D2 da 9ª)
 ❌ Baixar lote no TypeScript (é o gatilho trg_lote_do_movimento; senão o próximo caminho esquece) — a tela só PREVÊ o lote pela mesma ordem (lotesDaBaixa, lib/estoque/fefo.ts); mudou a ordem do gatilho, muda a dela (A11 da 9ª)
 ❌ Gravar parte da conclusão do atendimento fora de concluir_atendimento (é uma transação só) — inclusive as dores, a ficha de saúde e a ficha de atendimento do "Finalizar"

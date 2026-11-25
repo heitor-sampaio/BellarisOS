@@ -6,6 +6,7 @@ import {
   type ConfigDeComissao, type RegraDeComissao, type TipoDeRegra,
   type ItemExecutado, type LinhaDeComissao, type ComissoesGerais, type ComissaoDoProduto,
 } from './config'
+import { paramDeTags } from '@/lib/metrics/tags-do-relatorio'
 
 /** A configuração de comissões da rede (os padrões, se ela nunca salvou). */
 export async function configDeComissaoDaRede(tenantId: string): Promise<ConfigDeComissao> {
@@ -314,11 +315,17 @@ export interface Fechamento {
   estornadoAt: string | null; estornoMotivo: string | null
 }
 
-interface Recorte { tenantId: string; branchIds: string[]; inicio: Date; fim: Date; profissionalId: string | null }
+/**
+ * `tags`: só as comissões das clientes com TODAS as tags marcadas (Q04 do
+ * catálogo das Comissões, revisão de 24/11; a régua é a dos Relatórios, TF-02).
+ * Vazio = sem recorte, e a chamada é a de antes.
+ */
+interface Recorte { tenantId: string; branchIds: string[]; inicio: Date; fim: Date; profissionalId: string | null; tags?: readonly string[] }
 
 const argsDoRecorte = (r: Recorte) => ({
   p_tenant: r.tenantId, p_branch_ids: r.branchIds, p_inicio: r.inicio.toISOString(), p_fim: r.fim.toISOString(),
   p_profissional: r.profissionalId,
+  ...paramDeTags(r.tags),
 })
 
 /** Por profissional e unidade, agregado no banco (§13.1). */

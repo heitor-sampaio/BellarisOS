@@ -43,6 +43,8 @@ let unidadeNorte: string
 const NORTE = `${PREFIXO} Norte ${marca}`
 /** Outro membro do CRM em Gerenciar (sem ser a Admin da rede): não importa. */
 let doCrm: MembroDeTeste
+/** Clientes e o CRM em Gerenciar, sem ser a Admin da rede: o histórico não é dela (revisão de 24/11). */
+let deClientes: MembroDeTeste
 const sufixo = String(Date.now()).slice(-7)
 const FONE_ANA = `48 9${sufixo.slice(0, 4)}-${sufixo.slice(-4)}`
 const FONE_ANA_DIG = `55489${sufixo}`
@@ -67,6 +69,7 @@ test.beforeAll(async () => {
   expect(un.error).toBeNull()
   unidadeNorte = un.data!.id
   doCrm = await criarMembro(`impo${marca}`, { tenant: outra.tenantId, rotulo: 'SDR do CRM', permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }] })
+  deClientes = await criarMembro(`impk${marca}`, { tenant: outra.tenantId, rotulo: 'Clientes e CRM', permissoes: [{ modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'crm', nivel: 'MANAGE' }] })
   // Um funil arquivado: a etapa dele não recebe oportunidade (some do quadro).
   const fa = await db().from('crm_funnels').insert({ tenant_id: outra.tenantId, name: `${PREFIXO} Arquivado ${marca}`, archived_at: new Date().toISOString() }).select('id').single<{ id: string }>()
   const ea = await db().from('crm_stages').insert({ tenant_id: outra.tenantId, funnel_id: fa.data!.id, name: 'Velha', position: 0 }).select('id').single<{ id: string }>()
@@ -99,7 +102,7 @@ test.afterAll(async () => {
     if (cs?.length) { await b.from('loyalty_accounts').delete().in('client_id', cs.map(x => x.id)); await b.from('clients').delete().in('id', cs.map(x => x.id)) }
     if (unidadeNorte) await b.from('branches').delete().eq('id', unidadeNorte)
   }
-  await admin?.limpar(); await soVe?.limpar(); await soCrm?.limpar(); await doCrm?.limpar()
+  await admin?.limpar(); await soVe?.limpar(); await soCrm?.limpar(); await doCrm?.limpar(); await deClientes?.limpar()
   await outra?.limpar()
 })
 
@@ -360,6 +363,26 @@ test('a importação de clientes não se lê por quem só tem o CRM', async ({ b
     expect(resp.texto).not.toContain('CPF inválido')
     expect(resp.texto).not.toContain('"status"')
     expect((await p.request.get(`/api/importacoes/${r!.id}/erros`)).status()).toBe(403)
+  })
+})
+
+// Revisão de 24/11 (Q10 do catálogo de Clientes): as Importações são configuração da
+// rede toda — a tela inteira, o histórico e o relatório são só da Admin da rede.
+test('o histórico e o relatório das Importações são só da Admin da rede, mesmo com Clientes e o CRM em Gerenciar', async ({ browser }) => {
+  const r = await importacao(`clientes-${marca}.csv`)
+  await como(browser, deClientes, async p => {
+    const resp = await chamarAcao(p, 'actions/importacao.ts', 'andamentoDaImportacao', '/admin/settings', [r!.id])
+    expect(resp.texto).not.toContain('"status"')
+    expect((await p.request.get(`/api/importacoes/${r!.id}/erros`)).status()).toBe(403)
+    await p.goto('/admin/settings?tab=importacoes')
+    await expect(p.getByText('Esta configuração é só da Admin da rede.')).toBeVisible()
+    await expect(p.locator('[data-importacao-anterior]')).toHaveCount(0)
+  })
+  // Controle: a Admin da rede vê o histórico e baixa o relatório.
+  await como(browser, admin, async p => {
+    expect((await p.request.get(`/api/importacoes/${r!.id}/erros`)).status()).toBe(200)
+    await p.goto('/admin/settings?tab=importacoes')
+    await expect(p.locator('[data-importacao-anterior]').first()).toBeVisible()
   })
 })
 

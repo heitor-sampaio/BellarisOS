@@ -113,23 +113,27 @@ describe('A26: "Tags e importações" sai do menu de quem só leria as duas abas
   const temConfiguracoes = (p: ResolvedPermissions, daRede: boolean, adminDaRede = false) =>
     menuDaUnidadeFor(p, null, undefined, { base: '/centro', daRede, adminDaRede }).flatMap(s => s.entries).some(e => e.key === 'settings')
 
-  it('quem tem unidades e só chega pelas Clientes ou pelo CRM não vê o item', () => {
-    expect(temConfiguracoes(com({ clients: 'MANAGE' }), false)).toBe(false)
+  // Desde a revisão de 24/11 (Q09), Clientes em Gerenciar abre a aba LGPD (quem responde): não "só
+  // leria" as duas abas, e vê o item. Quem só leria as duas é quem chega pelo CRM.
+  it('quem tem unidades e só chega pelo CRM não vê o item; Clientes em Gerenciar vê (a LGPD, Q09)', () => {
+    expect(temConfiguracoes(com({ clients: 'MANAGE' }), false)).toBe(true)
     expect(temConfiguracoes(com({ crm: 'MANAGE' }), false)).toBe(false)
   })
   it('quem tem "A rede inteira" sem ser a Admin também não; a Admin da rede vê, e quem tem as Configurações também', () => {
-    expect(temConfiguracoes(com({ clients: 'MANAGE' }), true)).toBe(false)
-    expect(temConfiguracoes(com({ clients: 'MANAGE' }), true, true)).toBe(true)
+    expect(temConfiguracoes(com({ crm: 'MANAGE' }), true)).toBe(false)
+    expect(temConfiguracoes(com({ crm: 'MANAGE' }), true, true)).toBe(true)
     expect(temConfiguracoes(com({ settings: 'MANAGE' }), false)).toBe(true)
   })
   it('a busca também não oferece a tela nem as duas abas', () => {
-    const keys = paginasDaBusca('centro', com({ clients: 'MANAGE', crm: 'MANAGE' }), null, { daRede: false }).map(p => p.key)
+    const keys = paginasDaBusca('centro', com({ crm: 'MANAGE' }), null, { daRede: false }).map(p => p.key)
     expect(keys).not.toContain('settings')
     expect(keys).not.toContain('settings:tags')
     expect(keys).not.toContain('settings:importacoes')
-    expect(paginasDaBusca('centro', com({ clients: 'MANAGE' }), null, { daRede: true }).map(p => p.key)).not.toContain('settings')
-    const admin = paginasDaBusca('centro', com({ clients: 'MANAGE' }), null, { daRede: true, adminDaRede: true }).map(p => p.key)
+    expect(paginasDaBusca('centro', com({ crm: 'MANAGE' }), null, { daRede: true }).map(p => p.key)).not.toContain('settings')
+    const admin = paginasDaBusca('centro', com({ crm: 'MANAGE' }), null, { daRede: true, adminDaRede: true }).map(p => p.key)
     expect(admin).toContain('settings')
+    // Clientes em Gerenciar acha a LGPD (Q09).
+    expect(paginasDaBusca('centro', com({ clients: 'MANAGE' }), null, { daRede: false }).map(p => p.key)).toContain('settings:lgpd')
   })
 })
 

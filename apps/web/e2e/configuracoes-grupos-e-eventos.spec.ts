@@ -101,7 +101,7 @@ test('CF1: o grupo sem nenhuma aba visível some — quem só tem Clientes vê s
   await como(browser, soClientes, async p => {
     await p.goto('/admin/settings')
     const grupos = await gruposDaTela(p)
-    expect(grupos).toEqual([['Clientes', ['Tags', 'Importações']]])
+    expect(grupos).toEqual([['Clientes', ['Tags', 'Importações', 'LGPD']]])
   })
 })
 

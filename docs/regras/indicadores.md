@@ -1554,19 +1554,30 @@ Decisões do Claude (princípios 3 e 7) — e a do Heitor, onde a fala dele vem 
   núcleo (`metrics_core`: o dinheiro, os atendimentos, as novas, as comissões)
   e o período anterior da comparação no mesmo filtro. "Profissionais ativos"
   (a equipe) não muda: não é de uma cliente.
-- **Não aparece no Estoque** (não há pessoa) **nem na Visão geral e no
-  Financeiro**, que misturam o dinheiro com a despesa, o DRE e o lucro: o
-  lucro "filtrado por tag" seria um número que não é de ninguém. Nessas abas a
-  tag da URL nem chega à conta (`tagsDaAba`).
+- **Não aparece no Estoque** (não há pessoa): ali a tag da URL nem chega à
+  conta (`tagsDaAba`).
+- **A Visão geral e o Financeiro têm o filtro** (Q05 do catálogo dos
+  Indicadores, revisão de 24/11: "a Visão geral e a aba Financeiro dos
+  Relatórios têm filtros, então ganham o de Tags"; antes, o Claude as deixava
+  de fora). A régua é a de cima: a receita, os atendimentos, o ticket, o status
+  do período, a receita por unidade, forma e categoria, as parcelas pendentes,
+  o insumo consumido e o produto vendido, a taxa da maquininha e as comissões
+  vão pela cliente; a despesa, a compra de estoque, o fechamento das comissões,
+  as perdas e as compras no estoque (sem cliente) saem enquanto houver tag — e
+  o lucro, a margem, o DRE e o gráfico de evolução são dessas mesmas linhas
+  (princípio 3). A dica do filtro diz isso. Migration `20261203400001`.
 - Funções com `p_tags`: `metrics_vendas_pagina`, `metrics_vendas_resumo`,
   `metrics_core`, `metrics_relatorio`, `metrics_retention`,
   `metrics_new_clients_series`, `metrics_ticket_medio`,
   `metrics_atendimentos_sem_receita`,
   `metrics_receita_por_categoria_de_procedimento`, `metrics_comercial`,
   `metrics_lead_funnel`, `metrics_conversao_por_origem`,
-  `metrics_motivos_de_perda` — a assinatura nova fica só com o
+  `metrics_motivos_de_perda`, `metrics_series`, `metrics_resultado`,
+  `metrics_series_do_resultado`, `metrics_custos_da_venda` e
+  `metrics_series_dos_custos_da_venda` — a assinatura nova fica só com o
   `service_role`, como as vizinhas.
 Prova: `tests/relatorios-filtro-de-tags.test.ts`,
+`tests/relatorios-tags-na-visao-geral-e-no-financeiro.test.ts`,
 `e2e/relatorios-filtro-de-tags.spec.ts`.
 
 ---

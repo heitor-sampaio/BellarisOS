@@ -72,7 +72,7 @@ test('o plano proposto mostra procedimentos, valor e validade, e leva a falar co
     // cartão leva até ela, e não diz mais "O aceite é feito na clínica".
     await expect(cartao).not.toContainText('O aceite é feito na clínica')
     await expect(cartao.getByRole('link', { name: /Ver o plano/ })).toHaveAttribute('href', new RegExp(`/cliente/planos/${plano}`))
-    const falar = cartao.getByRole('link', { name: /Falar com a equipe/ })
+    const falar = cartao.getByRole('link', { name: /Falar com (?!a equipe)/ })
     await expect(falar).toHaveAttribute('href', /wa\.me\/5541998765432/)
     // A66: o WhatsApp abre com a mensagem pronta sobre o plano.
     await expect(falar).toHaveAttribute('href', /\?text=.*plano/)

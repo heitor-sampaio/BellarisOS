@@ -122,7 +122,7 @@ export function SettingsGeral({ rede, podeEditar, naRede = true, appDaCliente = 
             defaultValue={rede.prazoPortalHoras} disabled={!podeEditar} inputMode="numeric" />
         </Campo>
 
-        <Campo rotulo="O que a cliente avalia" dica={`Ao confirmar o atendimento pelo app. A nota do atendimento vale para a profissional. ${TEXTO_DA_NOTA_DO_PROCEDIMENTO}`}>
+        <Campo rotulo="O que a cliente avalia" dica={`Ao confirmar o atendimento pelo app. A nota do atendimento vale para quem atendeu. ${TEXTO_DA_NOTA_DO_PROCEDIMENTO}`}>
           <select name="avaliacao_o_que" className="field" defaultValue={rede.oQueAClienteAvalia} disabled={!podeEditar}>
             {O_QUE_A_CLIENTE_AVALIA.map(o => <option key={o} value={o}>{ROTULO_DO_QUE_AVALIA[o]}</option>)}
           </select>

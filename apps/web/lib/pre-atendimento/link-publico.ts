@@ -34,6 +34,12 @@ export const MENSAGEM_DO_LINK_DA_FICHA: Record<Exclude<EstadoDoLinkDaFicha, 'val
   indisponivel: 'Esta ficha não está mais esperando resposta. Fale com a equipe.',
 }
 
+/** A frase do estado com o remetente que a página mostra (CA1), como `mensagemDoEstado` do link de assinatura. */
+export function mensagemDoLinkDaFicha(estado: Exclude<EstadoDoLinkDaFicha, 'valido' | 'conferir'>, remetente: string | null): string {
+  const m = MENSAGEM_DO_LINK_DA_FICHA[estado]
+  return remetente ? m.replace('Fale com a equipe.', `Fale com ${remetente}.`) : m
+}
+
 export interface EspiadaDaFicha {
   estado:  EstadoDoLinkDaFicha
   remetente: string | null

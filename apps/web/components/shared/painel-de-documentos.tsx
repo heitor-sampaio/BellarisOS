@@ -10,6 +10,7 @@ import { PeriodSelector, type Period } from '@/components/admin/period-selector'
 import { PickerCompacto } from '@/components/shared/picker-compacto'
 import { BuscaNaUrl } from '@/components/shared/busca-na-url'
 import { JanelaModal } from '@/components/shared/janela-modal'
+import { FiltroDeTags } from '@/components/shared/filtro-de-tags'
 import { trilhaDoDocumento, type TrilhaDoDocumento } from '@/actions/documentos'
 import type { DocumentoNoPainel, ResumoDosDocumentos } from '@/lib/metrics/documentos'
 import {
@@ -204,6 +205,9 @@ export function PainelDeDocumentos(p: {
   resumo:   ResumoDosDocumentos
   linhas:   LinhaDoPainel[]
   comUnidade: boolean
+  /** O filtro de Tags (DT-01): o vocabulário da rede, lido no servidor, e as marcadas na URL. */
+  tagsDaRede?:     string[]
+  tagsEscolhidas?: string[]
 }) {
   const { dia } = datasNo(useFuso())
   const router = useRouter()
@@ -271,11 +275,14 @@ export function PainelDeDocumentos(p: {
               onEscolher={v => ir({ unidade: v || null })}
             />
           )}
+          {/* As Tags (CLAUDE.md §1), ao lado dos filtros fixos: vão à URL e o servidor filtra. */}
+          <FiltroDeTags tagsDaRede={p.tagsDaRede ?? []} escolhidas={p.tagsEscolhidas ?? []} limpar={['pagina']}
+            sobre="Só os documentos das clientes com TODAS as tags marcadas. Os números acima seguem o filtro." />
         </div>
 
         {p.linhas.length === 0 ? (
           <p style={{ padding: '24px 16px', margin: 0, color: 'var(--text-faint)', fontSize: 'var(--text-base-sz)' }}>
-            Nenhum documento {p.filtros.situacao || p.filtros.tipo || p.filtros.busca ? 'com esses filtros' : 'emitido no período'}.
+            Nenhum documento {p.filtros.situacao || p.filtros.tipo || p.filtros.busca || p.tagsEscolhidas?.length ? 'com esses filtros' : 'emitido no período'}.
           </p>
         ) : (
           <div className="table-wrap">

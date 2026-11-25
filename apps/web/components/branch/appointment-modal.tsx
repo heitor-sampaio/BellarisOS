@@ -202,7 +202,7 @@ export function AppointmentModal({
   // Quem realiza o procedimento escolhido (por-01): o nome da escolhida que NÃO realiza.
   const procDoAgendamento = dados.procedures.find(p => p.id === (credito?.procedureId ?? procId))
   const naoRealiza = profId && procDoAgendamento?.realizam?.length && !procDoAgendamento.realizam.includes(profId)
-    ? (dados.professionals.find(p => p.id === profId)?.name ?? 'A profissional')
+    ? (dados.professionals.find(p => p.id === profId)?.name ?? 'Quem atende')
     : null
 
   const aoAgendar = useEffectEvent(() => { onSuccess(); onClose() })
@@ -328,7 +328,7 @@ export function AppointmentModal({
   }, [chaveDaAbertura, unidadeId, profId, duracaoMin, instanteDe])
   const conferindoAAbertura = !!chaveDaAbertura && abertura?.chave !== chaveDaAbertura
   const avisoDaTroca = abertura && abertura.chave === chaveDaAbertura && !horaTocada && abertura.para && localDT === abertura.para
-    ? textoDoProximoLivre(abertura.de, abertura.para, dados.professionals.find(p => p.id === profId)?.name ?? 'a profissional', dayKeyTZ(new Date(agora), fuso))
+    ? textoDoProximoLivre(abertura.de, abertura.para, dados.professionals.find(p => p.id === profId)?.name ?? 'quem atende', dayKeyTZ(new Date(agora), fuso))
     : null
 
   // Ao mudar o defaultDate (novo clique no calendário), reseta — ajustado
@@ -803,8 +803,9 @@ export function AppointmentModal({
               )}
             </Field>
 
-            {/* Unidade sem sala: o campo nem aparece (D5). Com sala, só as que
-                servem ao procedimento, com a livre já escolhida. */}
+            {/* Unidade sem sala: o campo nem aparece, e a janela não fala de sala
+                (D5; princípio 7, revisão de 24/11 — saiu a linha da A52 da 24ª).
+                Com sala, só as que servem ao procedimento, com a livre já escolhida. */}
             {temSalas && (
               <Field label="Sala / Cabine" htmlFor="ag-sala">
                 <select id="ag-sala" name="room_id" className="field" disabled={carregandoUnidade}
@@ -824,16 +825,6 @@ export function AppointmentModal({
               </Field>
             )}
           </div>
-          {/* A52 da 24ª: a unidade sem sala cadastrada — o agendamento segue sem
-              sala (D5), e a janela diz isso numa linha, com o caminho na dica. */}
-          {!temSalas && !!unidadeId && !carregandoUnidade && (
-            <p data-unidade-sem-sala style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: -4 }}>
-              <span>Sem sala cadastrada nesta unidade</span>
-              <Dica rotulo="Sobre a unidade sem sala">
-                O agendamento segue sem sala. As salas se cadastram nas Configurações da unidade.
-              </Dica>
-            </p>
-          )}
 
           <Field label="Data e hora *" htmlFor="ag-quando">
             <input

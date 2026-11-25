@@ -89,6 +89,28 @@ test.describe.serial('API oficial com credencial colada à mão', () => {
     expect(r.texto, 'não o padrão da rede').not.toContain('3333-0101')
   })
 
+  // O "Testar conexão" usa a credencial guardada e diz qual conta respondeu: é
+  // parte da integração, configuração da rede toda — só da Admin da rede (o
+  // Heitor, 18/11; decisão do Claude, catálogo de 24/11, princípio 3). Quem tem
+  // Configurações em Gerenciar sem ser a Admin recebe a recusa, e a Meta não é chamada.
+  test('"Testar conexão" é só da Admin da rede: Configurações em Gerenciar recebe a recusa', async ({ browser }) => {
+    const comConfig = await criarMembro(`cmset${marca}`, {
+      tenant: rede!.tenantId, rotulo: 'Configurações sem ser a Admin', permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }],
+    })
+    const antes = graph!.terminadasEm(`/${FONE_NOVO}`).length
+    const ctx = await browser.newContext({ storageState: comConfig.estado })
+    try {
+      const p = await ctx.newPage()
+      const r = await chamarAcao(p, 'actions/integrations.ts', 'testWhatsAppConnection', '/admin/settings', ['official', novo])
+      expect(r.texto).toContain('Esta configuração é só da Admin da rede.')
+      expect(r.texto, 'não diz qual conta respondeu').not.toContain(`Novo ${marca}`)
+      expect(graph!.terminadasEm(`/${FONE_NOVO}`).length, 'a Meta não foi chamada').toBe(antes)
+    } finally {
+      await ctx.close()
+      await comConfig.limpar()
+    }
+  })
+
   test('salvar ligado inscreve a conta nos webhooks com o token informado', async ({ browser }) => {
     const r = await como(browser, p => salvar(p, { wabaId: WABA_NOVO, accessToken: 'tok-manual' }, true))
     expect(r.texto).toContain('"ok":true')

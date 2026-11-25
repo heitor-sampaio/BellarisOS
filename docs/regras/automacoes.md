@@ -25,9 +25,12 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   Ver — `listarEventosDeDominio` e `resumoDoCatalogo` conferem isso — e "A
   rede inteira": essas duas e todas as leituras de `actions/automacoes.ts`
   passam por `assertDaRede`, pela D-2 abaixo; AUT-02 da varredura de 18/11,
-  prova `e2e/automacoes-so-da-rede.spec.ts`). Quem só vê abre, no editor,
-  Execuções, Versões e Limites (só leitura; o ensaio, o voltar versão,
-  salvar e ligar são de Gerenciar — AUT-03 da varredura de 18/11). Era a
+  prova `e2e/automacoes-so-da-rede.spec.ts`). Quem vê abre, no editor,
+  Execuções, Versões e Limites (só leitura — AUT-03 da varredura de 18/11);
+  o ensaio, o voltar versão, salvar e ligar são só da Admin da rede (o
+  Heitor, 18/11: "Configuração da rede toda só pela conta admin"). As
+  Automações e o Marketing têm só "Sem acesso" e "Ver" (Q02, revisão de
+  24/11): o Gerenciar gravado vale Ver (`nivelAceito`, `plataforma.md`). Era a
   aba Eventos de Configurações (`settings` em Gerenciar); `?tab=eventos` nos
   dois portais leva para lá (`redirect`), e a busca acha "Automações → O que
   já aconteceu". Prova: `e2e/configuracoes-grupos-e-eventos.spec.ts`.
@@ -545,7 +548,8 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   de todo ano pelo cron: `e2e/campanha-data-anual.spec.ts`.
 - **"Clientes específicas"** (A37 da 15ª, 2026-11-17; princípio 1): o público
   também mira clientes escolhidas uma a uma, pela busca (`buscarClientesParaCampanha`,
-  a regra única `buscar_clientes`), até 200. Gravadas em
+  a regra única `buscar_clientes`), sem teto (PU-05; decisão do Claude, catálogo de 24/11,
+  pelo princípio 2, o teto de 200 saiu — ele cortava em silêncio). Gravadas em
   `audience_rules.client_ids`, viram o `client_ids` do público em
   `filtrosDaCampanha` (só uuid; a rede, o `clientes_do_publico` recorta) e
   valem JUNTO com os outros filtros. O "Revisar" e o detalhe dizem os nomes
@@ -582,7 +586,7 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
 - **Quem receberia hoje, fora do assistente** (A21 da 11ª): o detalhe da
   campanha (rascunho, ativa ou pausada) mostra o público e quantos recebem
   (`AudiencePreview`, a conta do disparo — `[data-quem-receberia-hoje]`, a quem
-  tem o Marketing em Gerenciar); o passo "Buscar clientes" da automação diz
+  tem o Marketing em Ver — só lê; PU-07, revisão de 24/11); o passo "Buscar clientes" da automação diz
   "Hoje, a busca acharia N clientes" (`contarBuscaDeClientes`, só LÊ, a
   `buscarClientes` do motor — `[data-quem-acharia-hoje]`). E a prévia do título
   da campanha diz que "Ana" é um nome de EXEMPLO (`[data-previa-do-titulo]`).

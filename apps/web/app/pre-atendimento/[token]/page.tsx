@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { BadgeCheck, CircleAlert } from 'lucide-react'
-import { espiarLinkDaFicha, MENSAGEM_DO_LINK_DA_FICHA } from '@/lib/pre-atendimento/link-publico'
+import { espiarLinkDaFicha, mensagemDoLinkDaFicha } from '@/lib/pre-atendimento/link-publico'
 import { formatarTelefone } from '@/lib/documentos/valores'
 import { telefoneParaWhatsApp } from '@/lib/documentos/link'
 import { MolduraDaVerificacao } from '@/app/verificar/moldura'
@@ -45,7 +45,7 @@ export default async function FichaPeloLinkPage({ params }: { params: Promise<{ 
               {espiada.estado === 'usado' ? 'Ficha já respondida' : 'Link indisponível'}
             </h1>
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }} data-estado={espiada.estado}>
-              {MENSAGEM_DO_LINK_DA_FICHA[espiada.estado]}
+              {mensagemDoLinkDaFicha(espiada.estado, espiada.remetente)}
             </p>
             {espiada.estado === 'usado' && (
               <p data-contato-da-equipe style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>

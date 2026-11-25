@@ -485,7 +485,7 @@ export function InboxLeadPanel({
               <button type="button" className="btn-ghost"
                 style={{ fontSize: 'var(--text-2xs)', padding: '4px 7px' }}
                 onClick={() => setConvertOpen(true)}>
-                <UserCheck size={12} /> Cadastrar cliente
+                <UserCheck size={12} /> Cadastrar como cliente
               </button>
             ) : null}
             {/* Só se vende pelo PDV (PDV7, a revisão do Heitor de 2026-11-13: "o do

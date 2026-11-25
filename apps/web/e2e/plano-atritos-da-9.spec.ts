@@ -19,7 +19,7 @@ import { receberPlanoNoPdv } from './apoio/vender'
  *   pacote), e o cartão "Tratamento em andamento" diz que abre.
  * - A28: o rodapé do plano fechado diz onde se recebe o que falta — no PDV
  *   (PDV1/CX1: o dinheiro entra pelo PDV) —, com o link a quem recebe, e a quem
- *   não recebe, com quem fica (quem tem o PDV ou o Financeiro em Gerenciar).
+ *   não recebe, com quem fica (quem tem o PDV em Gerenciar, PV-04).
  * - A35: o checkout avisa, antes de emitir, que o contrato vai sem o documento
  *   da cliente (sem recusar — princípio 2).
  * - A36: reabrir o checkout com o contrato assinado traz o pagamento assinado
@@ -179,7 +179,7 @@ test.describe.serial('o plano e o pacote da 9ª', () => {
       await expect(rodape.getByRole('link', { name: 'Receber no PDV' }))
         .toHaveAttribute('href', `/admin/pdv?unidade=${rede!.branchId}&nova=1&cliente=${cliente!.clientId}`)
     })
-    // Quem só tem a Agenda: com quem fica (quem tem o PDV ou o Financeiro em Gerenciar), sem link.
+    // Quem só tem a Agenda: com quem fica (quem tem o PDV em Gerenciar, PV-04), sem link.
     const soAgenda = await criarMembro(`pla9a${marca}`, {
       tenant: rede!.tenantId, rotulo: 'Só agenda', permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }],
     })
@@ -187,7 +187,7 @@ test.describe.serial('o plano e o pacote da 9ª', () => {
       await comSessao(browser, soAgenda.estado, async p => {
         await p.goto(`/admin/planejamentos/${plano}`)
         const rodape = p.locator('[data-resumo-do-plano] [data-rodape-do-plano]')
-        await expect(rodape).toContainText('se recebe no PDV, com quem tem o PDV ou o Financeiro em Gerenciar:')
+        await expect(rodape).toContainText('se recebe no PDV, com quem tem o PDV em Gerenciar:')
         await expect(rodape).toContainText(`${PREFIXO} Gestão pla9g${marca}`)
         await expect(rodape).toContainText(`${PREFIXO} Recepção pla9r${marca}`)
         await expect(rodape.getByRole('link', { name: 'Receber no PDV' })).toHaveCount(0)

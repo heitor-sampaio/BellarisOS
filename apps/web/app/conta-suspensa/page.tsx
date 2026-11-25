@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation'
 import { lerClaims, marcaDaPlataforma } from '@/lib/plataforma/contexto'
-import { getCachedMember, getCachedRede, getCachedRedeDoCliente, getCachedRolePermissions } from '@/lib/cached-queries'
-import { resolvePermissions } from '@/lib/permissions'
+import { getCachedMember, getCachedRede, getCachedRedeDoCliente } from '@/lib/cached-queries'
 import { motivoDoBloqueio } from '@/lib/redes/situacao'
 import { lerAssinatura, faturaEmAberto } from '@/lib/redes/assinatura'
 import { reaisDe } from '@/lib/redes/valor'
@@ -15,7 +14,7 @@ import { temFuncionalidade } from '@estetica-os/nucleo/lib/planos/recursos'
  * cá). Fora dos layouts das redes, e sem `getTenantContext` (que mandaria de
  * volta para cá): lê a pessoa pelos claims, no servidor.
  *
- * Quem administra a rede vê a fatura em aberto e o "Pagar"; os outros, o
+ * A Admin da rede vê a fatura em aberto e o "Pagar"; os outros, o
  * aviso. O paciente vê que a clínica está indisponível. Rede que voltou a
  * ficar em dia sai daqui sozinha.
  */
@@ -40,18 +39,11 @@ export default async function ContaSuspensaPage() {
   const portalForaDoPlano = ehCliente && !!rede && !temFuncionalidade(rede.recursos, 'portal')
   if (!rede || (!motivo && !portalForaDoPlano)) redirect('/auth/redirect')
 
-  // Quem administra a rede: o cargo de admin, ou rede + configurações MANAGE.
-  // O cargo de admin é o de SISTEMA gravado no membro, nunca a claim `role`
-  // (CLAUDE.md §11, C58/F70: a Admin rebaixada seguia com tudo até o token renovar).
-  let administra = false
-  if (!ehCliente) {
-    const membro = await getCachedMember(claims.sub)
-    if (membro?.ehAdminDaRede) administra = true
-    else if (membro && membro.branchId === null && membro.roleId && tenantId) {
-      const perms = resolvePermissions(await getCachedRolePermissions(tenantId, membro.roleId))
-      administra = perms.settings === 'MANAGE'
-    }
-  }
+  // A conta com o BellarisOS (a fatura, o "Pagar") é só da Admin da rede: o
+  // cargo de SISTEMA gravado no membro, nunca a claim `role` (CLAUDE.md §11,
+  // C58/F70) — e não mais "A rede inteira" com Configurações em Gerenciar (o
+  // Heitor, 18/11: "só pela conta admin"; AS-20 do catálogo de 24/11).
+  const administra = !ehCliente && (await getCachedMember(claims.sub))?.ehAdminDaRede === true
   // O atendente do suporte entrando na conta não paga pela clínica.
   const doSuporte = !!(await sessaoDeSuporteAtual())
   const fatura = administra && !doSuporte && motivo === 'suspensa' ? faturaEmAberto(await lerAssinatura(rede.id)) : null

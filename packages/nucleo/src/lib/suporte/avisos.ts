@@ -5,26 +5,24 @@ import { notifyUser } from '../notifications/notify'
 type Admin = ReturnType<typeof createAdminClient>
 
 /**
- * Quem a clínica avisa quando o suporte entra numa conta: o próprio membro e
- * quem administra a rede (abrangência de rede com `settings: MANAGE`, ou o
- * cargo de admin da rede, que tem tudo sem linha na matriz).
+ * Quem a rede avisa (a assinatura; o suporte entrando numa conta): o próprio
+ * membro e a Admin da rede — o cargo de SISTEMA (`tenant_roles.key =
+ * 'NETWORK_ADMIN'` com `is_system`). A conta com o BellarisOS é só dela (o
+ * Heitor, 18/11: a configuração da rede toda é "só pela conta admin"); era
+ * também quem tinha "A rede inteira" com Configurações em Gerenciar.
  */
 async function quemAvisar(admin: Admin, tenantId: string, alvoId: string): Promise<string[]> {
-  const [cargosAdmin, cargosSettings] = await Promise.all([
-    ler(admin.from('tenant_roles').select('id').eq('tenant_id', tenantId).eq('key', 'NETWORK_ADMIN'), 'achar o cargo de admin da rede'),
-    ler(admin.from('role_permissions').select('role_id').eq('tenant_id', tenantId).eq('module', 'settings').eq('level', 'MANAGE'),
-      'achar quem gerencia as configurações'),
-  ])
-  const cargos = [...(cargosAdmin ?? []).map(c => c.id as string), ...(cargosSettings ?? []).map(c => c.role_id as string)]
+  const cargos = ((await ler(admin.from('tenant_roles').select('id').eq('tenant_id', tenantId)
+    .eq('key', 'NETWORK_ADMIN').eq('is_system', true), 'achar o cargo de Admin da rede')) ?? []).map(c => c.id as string)
   const admins = cargos.length
     ? await ler(admin.from('users').select('id').eq('tenant_id', tenantId).eq('is_active', true)
-        .is('branch_id', null).in('role_id', cargos), 'listar quem administra a rede')
+        .in('role_id', cargos), 'listar as Admins da rede')
     : []
   return [...new Set([alvoId, ...(admins ?? []).map(u => u.id as string)])]
 }
 
 /**
- * Avisa no sino quem administra a rede (a assinatura em atraso, suspensa,
+ * Avisa no sino a Admin da rede (a assinatura em atraso, suspensa,
  * reativada; a rede desligada). Acessório: falhar não desfaz o que aconteceu.
  */
 export async function avisarQuemAdministraARede(tenantId: string, p: { title: string; body: string; url?: string }): Promise<void> {

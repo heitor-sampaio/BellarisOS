@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
+import { comAsTags, selectComAsTags } from '@/lib/financeiro/filtro-de-tags'
 import { getTenantContext, podeVerRelatorio, can, alcancaUnidade } from '@/lib/auth'
 import { semAcesso } from '@/lib/sem-acesso'
 import type { ChartPoint } from '@/components/admin/evolution-chart'
@@ -118,13 +119,16 @@ export async function ReportsBiSection({
   const periodLabel = periodInfo.label
 
   // -- Tags (CLAUDE.md §1: a tag é o filtro personalizado da rede) ----------
-  // Só nas abas de PESSOAS (`tagsDaAba`): a linha entra se a cliente dela — na
-  // aba Comercial, a pessoa da oportunidade — tem TODAS as marcadas. Na Visão geral, no
-  // Financeiro e no Estoque a tag da URL não chega à conta (princípio 3: o
-  // lucro "filtrado por tag" não é de ninguém). As opções são o vocabulário da
+  // Nas abas com o filtro (`tagsDaAba`): a linha entra se a cliente dela — na
+  // aba Comercial, a pessoa da oportunidade — tem TODAS as marcadas. No Estoque
+  // a tag da URL não chega à conta (não há pessoa); a Visão geral e o Financeiro
+  // têm o filtro desde a revisão de 24/11 (Q05). As opções são o vocabulário da
   // rede, lido aqui; sem tag nenhuma, a tela nem mostra o filtro.
   const tagsDaRede = await tagsAtivasDaRede(tenantId)
   const tags = tagsDaAba(tab, tagsDaUrl(rawTags))
+  // Com tag, o que não é de uma cliente (a compra de estoque, as perdas) sai da
+  // conta (TF-02) — na Visão geral e no Financeiro também (Q05, revisão de 24/11).
+  const semPessoa = tags.length > 0
 
   // -- O que a aba precisa ----------------------------------------------
   // Os NÚMEROS vêm agregados do Postgres (`metrics_relatorio`, só a aba
@@ -185,9 +189,11 @@ export async function ReportsBiSection({
     // 2026-09-30. Lia `installments`, que não sabia de baixa nem de estorno — a
     // parcela quitada pelo "Pagar" continuava na lista.
     needInstall
-      ? ler(admin.from('financial_transactions')
-          .select('id, amount, due_date, description, branch_id, parcela_numero, parcela_total, clients(name)')
-          .in('branch_id', branchIds)
+      // Com tag, as parcelas das clientes com as tags (a régua da lista do
+      // Financeiro, na consulta — Q05 do catálogo, revisão de 24/11).
+      ? ler(comAsTags(admin.from('financial_transactions')
+          .select(selectComAsTags('id, amount, due_date, description, branch_id, parcela_numero, parcela_total, clients(name)', tags))
+          .in('branch_id', branchIds), tags)
           .eq('type', 'INCOME')
           .eq('is_paid', false)
           .not('parcela_total', 'is', null)
@@ -218,7 +224,7 @@ export async function ReportsBiSection({
     veCaixa
       ? getSeries({
           tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate,
-          granularity,
+          granularity, tags,
         })
       : Promise.resolve([]),
 
@@ -230,17 +236,20 @@ export async function ReportsBiSection({
 
     // O lucro desconta o insumo consumido e deixa a compra de estoque no
     // caixa (2026-10-29): as duas parcelas, no período, no anterior e por fatia.
-    comLucro ? getResultadoDoEstoque({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate }) : Promise.resolve(null),
-    comLucro ? getResultadoDoEstoque({ tenantId: ctx.tenantId!, branchIds, from: prevStart, to: prevEnd }) : Promise.resolve(null),
-    comLucro ? getSeriesDoResultado({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate, granularity }) : Promise.resolve([]),
+    // Com tag, das mesmas linhas que os cartões (Q05, revisão de 24/11; TF-02):
+    // a compra de estoque, sem cliente, sai; o insumo e a taxa vão pela cliente.
+    comLucro ? getResultadoDoEstoque({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate, tags }) : Promise.resolve(null),
+    comLucro ? getResultadoDoEstoque({ tenantId: ctx.tenantId!, branchIds, from: prevStart, to: prevEnd, tags }) : Promise.resolve(null),
+    comLucro ? getSeriesDoResultado({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate, granularity, tags }) : Promise.resolve([]),
     // As perdas do período (D-7): do estoque da unidade, como o saldo.
     // A31 da 10ª: a aba Financeiro também (o "fora do resultado" do DRE que a contadora exporta).
-    needBatches || needInstall ? getPerdas({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: periodInfo.fullTo }) : Promise.resolve(undefined),
+    // Com tag, as perdas não são de uma cliente: saem (TF-02), como as compras.
+    needBatches || (needInstall && !semPessoa) ? getPerdas({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: periodInfo.fullTo }) : Promise.resolve(undefined),
     // O "Status dos agendamentos" da Visão geral conta o PERÍODO inteiro, com
     // os que ainda vão acontecer (J-57): o núcleo até o fim dele, a janela da
     // aba Agenda. As outras contas da Visão geral seguem o dinheiro (até agora).
     tab === 'overview'
-      ? getCoreDosModulos({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: periodInfo.fullTo, recorte })
+      ? getCoreDosModulos({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: periodInfo.fullTo, recorte, tags })
       : Promise.resolve(null),
     // As transferências entre unidades (A33 da 20ª): o que saiu e o que entrou
     // em cada unidade do recorte, com o custo — como as perdas, do estoque da
@@ -377,7 +386,7 @@ export async function ReportsBiSection({
         movimentos={movimentos}
         // A31 da 10ª: a compra (as entradas de estoque, com fornecedor e nota) fica fora do
         // resultado, e a contadora não a via (não abre o Estoque).
-        comprasNoEstoque={needInstall ? await getEntradasDeEstoque({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: periodInfo.fullTo }) : undefined}
+        comprasNoEstoque={!needInstall ? undefined : semPessoa ? { linhas: [], total: 0 } : await getEntradasDeEstoque({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: periodInfo.fullTo })}
         quemAtende={quemAtende}
         tagsDaRede={tagsDaRede}
         tagsEscolhidas={tags}

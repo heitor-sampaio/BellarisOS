@@ -14,6 +14,7 @@ import { slugDoTexto, candidatosDeEndereco, escolherEndereco } from '@/lib/unida
 import { maskCPF, maskCNPJ } from '@estetica-os/utils'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { FUSOS } from '@/lib/unidades/fuso'
+import { atendeAoMudarDeUnidade } from '@/lib/equipe/atende'
 
 /**
  * O fuso do formulário (F62): sem o campo, nada muda (undefined); fora da
@@ -242,15 +243,17 @@ export async function toggleBranchStatus(branchId: string, isActive: boolean): P
 /**
  * Muda a equipe FIXA de uma unidade para outra (C67 do levantamento das
  * regras, F70; H6 = a): é o que a janela de desativar oferece antes de tirar a
- * unidade do ar. Só quem é da rede, com Configurações e Equipe em Gerenciar.
- * Move a abrangência (a unidade de quem entra só nela) e reemite os claims; o
- * "Atende" de cada pessoa não muda (é uma decisão por pessoa, em Equipe).
+ * unidade do ar. Mudar a pessoa de unidade é da Equipe em Gerenciar, e só dela
+ * (cada passo, um módulo — "nenhuma ação pede dois", 23/11; pedia também as
+ * Configurações), e de quem é da rede. Move a abrangência (a unidade de quem
+ * entra só nela) e reemite os claims. O "Atende" só vale nas unidades da
+ * pessoa (o Heitor, 2026-11-23): a marca na unidade que sai vai para a que
+ * entra (`atendeAoMudarDeUnidade`); o resto do "Atende" fica como estava.
  */
 export async function moverEquipeDaUnidade(
   origemId: string, destinoId: string,
 ): Promise<{ error: string } | { ok: true; movidos: number }> {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'settings', 'MANAGE')
   assertPermission(ctx, 'team', 'MANAGE')
   if (ctx.branchId !== null) return { error: 'Mudar a equipe de unidade é de quem é da rede.' }
   const travado = bloqueioDoSuporte(ctx, 'mudar a equipe de unidade')
@@ -264,11 +267,15 @@ export async function moverEquipeDaUnidade(
   if (!(unidades ?? []).some(u => u.id === origemId) || !destino) return { error: 'Unidade não encontrada.' }
   if (!destino.is_active) return { error: 'A unidade escolhida está desativada.' }
 
-  const fixos = await ler(admin.from('users').select('id, auth_id, role_id')
+  const fixos = await ler(admin.from('users').select('id, auth_id, role_id, atende_em')
     .eq('tenant_id', ctx.tenantId!).eq('branch_id', origemId).eq('is_active', true), 'carregar a equipe da unidade') as
-    { id: string; auth_id: string | null; role_id: string | null }[] | null
+    { id: string; auth_id: string | null; role_id: string | null; atende_em: string[] | null }[] | null
   for (const m of fixos ?? []) {
-    await gravar(admin.from('users').update({ branch_id: destinoId })
+    // A unidade e o "Atende" no MESMO update: o gatilho do "Atende" só segue
+    // as unidades novas quando a lista era "todas as dela"; a escolhida à mão
+    // ficava com a unidade que saiu, fora das unidades da pessoa.
+    const atende = atendeAoMudarDeUnidade(m.atende_em ?? [], origemId, destinoId)
+    await gravar(admin.from('users').update({ branch_id: destinoId, ...(atende ? { atende_em: atende } : {}) })
       .eq('id', m.id).eq('tenant_id', ctx.tenantId!).eq('branch_id', origemId), 'mudar a pessoa de unidade')
     if (m.auth_id) {
       await gravar(admin.rpc('set_user_claims', {

@@ -97,9 +97,11 @@ describe('A9: a contagem à parte saiu', () => {
 describe('A11: "Aguardando o pagamento no PDV" diz quem recebe, a quem não recebe', () => {
   it('o texto', async () => {
     const { textoDeQuemRecebe } = await import('@/lib/equipe/textos-de-quem-pode')
+    // PV-04 (catálogo de 24/11; o Heitor, 23/11: "cada passo pertence a UM módulo … PDV: receber" — "concordo"):
+    // receber é só do PDV, e o texto deixou de citar o Financeiro em Gerenciar.
     expect(textoDeQuemRecebe(['Sabrina Lima', 'Vítor Azaleia']))
-      .toBe('Quem recebe é quem tem o PDV ou o Financeiro em Gerenciar: Sabrina Lima e Vítor Azaleia.')
-    expect(textoDeQuemRecebe([])).toBe('Quem recebe é quem tem o PDV ou o Financeiro em Gerenciar.')
+      .toBe('Quem recebe é quem tem o PDV em Gerenciar: Sabrina Lima e Vítor Azaleia.')
+    expect(textoDeQuemRecebe([])).toBe('Quem recebe é quem tem o PDV em Gerenciar.')
   })
   it('a página lê quem recebe e a tela mostra', () => {
     // A8 da 20ª: lê quem recebe NA UNIDADE (quemRecebeNaUnidade, que parte de quemRecebeNoPdv) e diz quando só a rede recebe.

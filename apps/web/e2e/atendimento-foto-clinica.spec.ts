@@ -39,8 +39,11 @@ test.beforeAll(async () => {
   slug = (await db().from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
   profissional = await criarMembro(`fcp${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Profissional',
+    // Abrir a tela do atendimento (e o link para ela na ficha) é do
+    // Atendimento em Ver (UM1, o Heitor, 23/11: "concordo").
     permissoes: [
       { modulo: 'agenda', nivel: 'MANAGE' },
+      { modulo: 'atendimento', nivel: 'VIEW' },
       { modulo: 'clients', nivel: 'VIEW' },
       { modulo: 'medical_records', nivel: 'MANAGE' },
     ],
@@ -48,7 +51,8 @@ test.beforeAll(async () => {
   expect((await db().from('users').update({ provides_services: true }).eq('id', profissional.userId)).error).toBeNull()
   recepcao = await criarMembro(`fcr${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Recepção',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }],
+    // Sem o prontuário; a tela do atendimento abre pelo Atendimento em Ver (UM1, 23/11).
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'atendimento', nivel: 'VIEW' }, { modulo: 'clients', nivel: 'MANAGE' }],
   })
   cliente = await rede.criarCliente('Mariana')
   outraCliente = await rede.criarCliente('Outra')
@@ -110,8 +114,8 @@ test.describe.serial('a foto clínica pela tela do atendimento', () => {
   // J-41 e J-36 (ajustes J, 2026-10-30): o nome dado à foto era ignorado — a
   // miniatura mostrava o nome do ARQUIVO — e a foto não entrava no histórico
   // do atendimento. O histórico diz só "Foto clínica anexada": o título é
-  // escrito pela profissional e pode dizer o que a foto mostra, e o histórico
-  // aparece para quem tem só a agenda.
+  // escrito por quem atende e pode dizer o que a foto mostra, e o histórico
+  // aparece para quem abre o atendimento sem o prontuário.
   const TITULO = `Antes — região malar ${marca}`
   test('o título dado à foto aparece no cartão e no Prontuário, e o histórico registra a foto sem o título', async ({ browser }) => {
     const antes = (await fotosDo(atendimento)).length
@@ -136,7 +140,7 @@ test.describe.serial('a foto clínica pela tela do atendimento', () => {
     const daFoto = (linhas ?? []).filter(l => l.action === 'FOTO_CLINICA')
     expect(daFoto.length, 'uma linha por foto anexada').toBe((await fotosDo(atendimento)).length)
     for (const l of daFoto) expect(l.description).toBe('Foto clínica anexada')
-    // Quem tem só a agenda vê o histórico — e nada do título.
+    // Quem abre o atendimento sem o prontuário vê o histórico — e nada do título.
     await como(recepcao!, browser, async p => {
       await p.goto(`/${slug}/agenda/${atendimento}`)
       await expect(p.locator('[data-historico-do-atendimento]').getByText('Foto clínica anexada').first()).toBeVisible()

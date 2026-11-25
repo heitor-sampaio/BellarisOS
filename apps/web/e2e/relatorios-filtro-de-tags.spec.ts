@@ -13,7 +13,7 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  * é a da PESSOA da oportunidade (o Heitor, 18/11: "a tag é da pessoa e pode
  * ter mais de uma tag"): a cliente ligada e, sem ela, o contato — `leads.tags`
  * não conta. O filtro vai na consulta (`p_tags`), e o CSV o segue.
- * Visão geral, Financeiro e Estoque não têm o filtro.
+ * O Estoque não tem o filtro (a Visão geral e o Financeiro o ganharam na revisão de 24/11, Q05).
  *
  * Numa rede [e2e] própria: Ana (VIP, Noivas) pagou R$ 300; Bia (vip) pagou
  * R$ 100; Caio (sem tag) pagou R$ 50.
@@ -167,9 +167,43 @@ test('na tela: o gatilho "Tags" nas abas de pessoas, a URL guarda a escolha, e o
     expect(csv).not.toContain('Bia')
     expect(csv).not.toContain('Caio')
 
-    // Na Visão geral o filtro não existe (o lucro não é de uma cliente).
+    // A Visão geral tem o filtro desde a revisão de 24/11 (Q05 do catálogo dos
+    // Indicadores: "têm filtros, então ganham o de Tags"); era "não existe".
     await p.goto('/admin/reports?tab=overview&period=today&tags=Noivas')
     await expect(p.getByRole('button', { name: 'Visão Geral', exact: true })).toBeVisible({ timeout: 30_000 })
-    await expect(p.locator('[data-filtro-de-tags]')).toHaveCount(0)
+    await expect(p.locator('[data-filtro-de-tags]')).toContainText('Tags · 1')
+  })
+})
+
+// Q05 (revisão de 24/11): a Visão geral e o Financeiro com o filtro de Tags. A
+// régua é a das outras abas (TF-02): a receita pela cliente, e a despesa sem
+// cliente sai enquanto houver tag — o lucro é das mesmas linhas.
+test('Visão geral e Financeiro: a receita é das clientes marcadas, e a despesa sem cliente sai', async ({ browser }) => {
+  const doCaixa = await criarMembro(`rftf${marca}`, {
+    tenant: rede.tenantId, rotulo: 'Relatórios e Financeiro',
+    permissoes: [{ modulo: 'reports', nivel: 'VIEW' }, { modulo: 'financial', nivel: 'VIEW' }],
+  })
+  expect((await db().from('role_report_tabs').insert(['overview', 'financeiro'].map(tab => ({
+    tenant_id: rede.tenantId, role_id: doCaixa.roleId, tab,
+  })))).error, 'as abas').toBeNull()
+  expect((await db().from('financial_transactions').insert({
+    branch_id: rede.branchId, type: 'EXPENSE', category: 'Aluguel', description: `${PREFIXO} Aluguel ${marca}`,
+    amount: 80, is_paid: true, paid_at: deHoje(0.6), payment_method: 'PIX', created_by: 'e2e',
+  })).error, 'a despesa sem cliente').toBeNull()
+
+  await como(browser, doCaixa, async p => {
+    await p.goto('/admin/reports?tab=financeiro&period=today')
+    const receita = p.locator('.card', { hasText: 'Receita Bruta' }).first()
+    const despesa = p.locator('.card', { hasText: 'Despesas pagas' }).first()
+    await expect(receita).toContainText('450', { timeout: 30_000 })
+    await expect(despesa).toContainText('80')
+
+    await p.goto('/admin/reports?tab=financeiro&period=today&tags=Noivas')
+    await expect(p.locator('[data-filtro-de-tags]')).toContainText('Tags · 1', { timeout: 30_000 })
+    await expect(receita).toContainText('300')
+    await expect(despesa).not.toContainText('80')
+
+    await p.goto('/admin/reports?tab=overview&period=today&tags=Noivas')
+    await expect(p.locator('.card', { hasText: 'Faturamento' }).first()).toContainText('300', { timeout: 30_000 })
   })
 })

@@ -68,7 +68,9 @@ describe('A3/A4/A5: a tela de Cargos', () => {
   it('A5: o resumo diz de onde vêm a venda e o Fechamento do dia', async () => {
     const { quemVendeNoResumo } = await import('@/lib/permissions-copy')
     expect(quemVendeNoResumo({ cashier: 'MANAGE' })).toBe('Vende no PDV (procedimento, pacote, produto e crédito) e faz o Fechamento do dia: os dois vêm do PDV.')
-    expect(quemVendeNoResumo({ cashier: 'NONE', financial: 'MANAGE' })).toBe('Vende no PDV (procedimento, pacote, produto e crédito) e faz o Fechamento do dia: os dois vêm do Financeiro em Gerenciar.')
+    // PV-04 (catálogo de 24/11; o Heitor, 23/11: "cada passo pertence a UM módulo … PDV: receber" — "concordo"):
+    // o Financeiro em Gerenciar não vende nem fecha o dia.
+    expect(quemVendeNoResumo({ cashier: 'NONE', financial: 'MANAGE' })).toBe('Não vende no PDV: vender é de quem tem o PDV.')
   })
 })
 
@@ -208,8 +210,14 @@ describe('A48: o sino não corta o texto', () => {
   })
 })
 
-describe('A52: a unidade sem sala tem a dica', () => {
-  it('o Agendar diz', () => {
-    expect(fonte('components/branch/appointment-modal.tsx')).toContain('data-unidade-sem-sala')
+// A regra mudou na revisão das perguntas de 24/11 (Q14 do catálogo de Atendimento;
+// princípio 7, decisão do Claude): o caso comum aparece, o raro fica guardado.
+describe('A52, revisto em 24/11: a unidade sem sala não mostra o campo nem fala dele', () => {
+  it('o Agendar não diz nada sobre sala', () => {
+    const modal = fonte('components/branch/appointment-modal.tsx')
+    expect(modal).not.toContain('data-unidade-sem-sala')
+    expect(modal).not.toContain('Sem sala cadastrada nesta unidade')
+    // Com sala, o campo segue (só ele depende de temSalas).
+    expect(modal).toMatch(/\{temSalas && \(\s*<Field label="Sala \/ Cabine"/)
   })
 })

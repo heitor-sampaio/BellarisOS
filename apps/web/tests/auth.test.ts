@@ -49,8 +49,11 @@ describe('podeReceber', () => {
     expect(podeReceber(ctx({ permissions: { ...NO_PERMISSIONS, cashier: 'MANAGE' } }))).toBe(true)
   })
 
-  it('financeiro sozinho basta', () => {
-    expect(podeReceber(ctx({ permissions: { ...NO_PERMISSIONS, financial: 'MANAGE' } }))).toBe(true)
+  // PV-04 (catálogo de 24/11): receber é só do PDV — o Heitor, 2026-11-23, à
+  // proposta "cada passo pertence a UM módulo, e nenhuma ação pede dois … PDV:
+  // receber, a comanda": "concordo, pode anotar, marcar as questões e ajustar o codigo".
+  it('o Financeiro em Gerenciar sozinho não recebe (receber é do PDV)', () => {
+    expect(podeReceber(ctx({ permissions: { ...NO_PERMISSIONS, financial: 'MANAGE' } }))).toBe(false)
   })
 
   it('financeiro só em VIEW não recebe', () => {

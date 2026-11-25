@@ -2,7 +2,8 @@
 
 import { pagoParaAgendar } from '@/lib/creditos/pago-no-app'
 import { agendavelPeloApp } from '@/lib/clientes/agendavel-no-app'
-import { CLIENTE_ARQUIVADA, CLIENTE_ARQUIVADA_NO_APP } from '@/lib/clients/arquivada'
+import { CLIENTE_ARQUIVADA, clienteArquivadaNoApp } from '@/lib/clients/arquivada'
+import { falaDaRedeDoId } from '@/lib/clientes/nome-da-rede'
 import { NAO_REALIZA, quemRealizaOProcedimento, realiza } from '@/lib/procedimentos/quem-realiza'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { z } from 'zod'
@@ -618,7 +619,7 @@ export async function mudarUnidadeDoAgendamento(appointmentId: string, entrada: 
     assertPermission(ctx, 'agenda', 'MANAGE')
     if (typeof appointmentId !== 'string' || !/^[0-9a-f-]{36}$/i.test(appointmentId)) return { error: 'Agendamento não encontrado.' }
     const lido = EntradaDaMudancaDeUnidade.safeParse(entrada)
-    if (!lido.success) return { error: 'Escolha a unidade e a profissional.' }
+    if (!lido.success) return { error: 'Escolha a unidade e quem atende.' }
     const admin = createAdminClient()
     const r = await mudarUnidadeCore(admin, ctx, { appointmentId, ...lido.data })
     if ('error' in r) return { error: r.error }
@@ -1067,8 +1068,8 @@ export async function confirmPayment(
 ): Promise<{ error?: string }> {
   try {
     const ctx = await getTenantContext()
-    // Quem recebe no PDV: o PDV ou o Financeiro em Gerenciar (`podeReceber`,
-    // 2026-11-13) — o critério da tela, que a action não seguia (era só o PDV).
+    // Quem recebe no PDV: o PDV em Gerenciar (`podeReceber`, PV-04 — o
+    // Heitor, 2026-11-23) — o critério da tela.
     if (!podeReceber(ctx)) return { error: 'Seu cargo não recebe pagamentos.' }
 
     const appointmentId = (formData.get('appointment_id') as string)?.trim()
@@ -1819,8 +1820,8 @@ export async function createClientAppointment(params: {
       .from('clients').select('tenant_id, is_active').eq('id', ctx.clientId!).maybeSingle(), 'buscar o cliente')
     if (!cliente) return { error: 'Cadastro não encontrado.' }
     // A arquivada não agenda pelo app (o Heitor: "concordo", F6 da 5ª
-    // simulação): a tela já mostra "Fale com a clínica", e a action recusa.
-    if (cliente.is_active === false) return { error: CLIENTE_ARQUIVADA_NO_APP }
+    // simulação): a tela já mostra "Fale com <a rede>" (CA1), e a action recusa.
+    if (cliente.is_active === false) return { error: clienteArquivadaNoApp(await falaDaRedeDoId(cliente.tenant_id as string)) }
 
     // A unidade é QUALQUER ativa da clínica da ficha, não só a de cadastro (H5).
     const branch = await ler(admin
@@ -1941,7 +1942,7 @@ export async function createClientAppointment(params: {
     })
     let criado = await agendar(creditoDoPago)
     if ('error' in criado && creditoDoPago && criado.error === CREDITO_JA_USADO) criado = await agendar(null)
-    if ('error' in criado) return { error: criado.error === CLIENTE_ARQUIVADA ? CLIENTE_ARQUIVADA_NO_APP : criado.error }
+    if ('error' in criado) return { error: criado.error === CLIENTE_ARQUIVADA ? clienteArquivadaNoApp(await falaDaRedeDoId(cliente.tenant_id as string)) : criado.error }
     const appt = criado
 
     revalidatePath(`/${params.slug}/cliente/agendamentos`)

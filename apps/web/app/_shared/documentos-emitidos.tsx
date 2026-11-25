@@ -12,10 +12,14 @@ import { rotuloDoQueFalta } from '@/lib/documentos/leitura'
 import { oQueFalta } from '@/lib/documentos/o-que-falta'
 import { PainelDeDocumentos } from '@/components/shared/painel-de-documentos'
 import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
+import { tagsDaUrl } from '@/lib/tags/filtro-na-url'
+import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
 
 export interface ParamsDosDocumentos {
   period?: string; from?: string; to?: string
   situacao?: string; tipo?: string; q?: string; pagina?: string; unidade?: string
+  /** DT-01: as tags da cliente do documento (`?tags=`). */
+  tags?: string
 }
 
 /**
@@ -54,6 +58,8 @@ export async function DocumentosEmitidos({
   const recorte = {
     tenantId: ctx.tenantId!, branchIds, from: periodo.from, to: periodo.fullTo,
     professionalId: null,
+    // DT-01: só os documentos das clientes com todas as tags marcadas (a lista e os números).
+    tags: tagsDaUrl(params.tags),
   }
   const filtros = {
     situacao: ehSituacao(params.situacao) ? params.situacao : null,
@@ -66,6 +72,7 @@ export async function DocumentosEmitidos({
     getDocumentosDoPainel({ ...recorte, ...filtros, offset: (pagina - 1) * DOCUMENTOS_POR_PAGINA }),
     getResumoDosDocumentos(recorte),
   ])
+  const tagsDaRede = await tagsAtivasDaRede(ctx.tenantId!)
 
   // O documento que o gatilho acabou de criar (A_GERAR) ainda não tem texto:
   // monta como a ficha monta, e lê de novo — senão ele não saberia se falta dado.
@@ -112,6 +119,8 @@ export async function DocumentosEmitidos({
         podeCompletar: completaAFicha,
       }))}
       comUnidade={!unidade && !ctx.branchId && !escolhida && unidades.length > 1}
+      tagsDaRede={tagsDaRede}
+      tagsEscolhidas={recorte.tags}
     />
   )
 }

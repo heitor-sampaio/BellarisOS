@@ -1,3 +1,5 @@
+import type { FalaDaRede } from '@/lib/clientes/fala-da-rede'
+
 /**
  * A validade da proposta (`tenants.plano_validade_dias`, contada da criação do
  * plano): o cartão do app diz "Válido até" ou "Proposta vencida". É SÓ
@@ -14,7 +16,10 @@ export function propostaVencida(criadoEm: string, validadeDias: number, agora = 
   return validoAteDaProposta(criadoEm, validadeDias).getTime() < agora
 }
 
-/** O aviso do plano vencido no app: avisa, não recusa (princípio 2). */
-export function avisoDaPropostaVencida(dia: string): string {
-  return `Proposta vencida em ${dia}: os valores podem ter mudado. Na dúvida, fale com a equipe antes de aceitar.`
+/**
+ * O aviso do plano vencido no app: avisa, não recusa (princípio 2). Com o
+ * NOME da rede (CA1): "… Na dúvida, fale com Estética Bella antes de aceitar."
+ */
+export function avisoDaPropostaVencida(dia: string, fala: Pick<FalaDaRede, 'faleCom'>): string {
+  return `Proposta vencida em ${dia}: os valores podem ter mudado. Na dúvida, ${fala.faleCom} antes de aceitar.`
 }

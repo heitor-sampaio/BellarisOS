@@ -11,7 +11,7 @@ export default async function ComissoesDaUnidadePage({
   searchParams,
 }: {
   params:       Promise<{ slug: string }>
-  searchParams: Promise<{ periodo?: string; unidade?: string }>
+  searchParams: Promise<{ periodo?: string; unidade?: string; tags?: string }>
 }) {
   const { slug } = await params
   const ctx = await getTenantContext()
@@ -48,6 +48,7 @@ export default async function ComissoesDaUnidadePage({
       voltarPara={minhas ? `/${slug}/dashboard` : `/${slug}/financeiro`}
       voltarRotulo={minhas ? 'Dashboard' : 'Financeiro'}
       periodoPedido={sp.periodo}
+      tagsPedidas={sp.tags}
       abas={{ base: `/${slug}/financeiro`, titulo: 'Financeiro' }}
     />
   )

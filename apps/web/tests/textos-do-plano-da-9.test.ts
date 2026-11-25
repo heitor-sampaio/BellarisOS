@@ -25,17 +25,17 @@ describe('A28: o rodapé do plano fechado', () => {
     expect(rodapeDoPlanoFechado(0, ['Lúcia'])).toBe('Plano fechado e pago.')
   })
   // PDV1/CX1 (a revisão do Heitor de 2026-11-13): o dinheiro entra pelo PDV —
-  // a parcela do crediário também. O PDV é de quem tem o PDV ou o Financeiro
-  // em Gerenciar (`podeReceber`).
-  it('quem recebe (o PDV ou o Financeiro em Gerenciar): o que falta se recebe no PDV', () => {
+  // a parcela do crediário também. O PDV é de quem tem o PDV em Gerenciar
+  // (`podeReceber`; PV-04, o Heitor, 2026-11-23 — era também o Financeiro).
+  it('quem recebe (o PDV em Gerenciar): o que falta se recebe no PDV', () => {
     expect(rodapeDoPlanoFechado(414, null))
       .toBe('Plano fechado. O que falta (as parcelas em aberto) se recebe no PDV. Se caiu na conta, a baixa é no Financeiro.')
   })
   it('quem não recebe: diz com quem fica, pela permissão do PDV', () => {
     expect(rodapeDoPlanoFechado(414, ['Lúcia', 'Fernanda']))
-      .toBe('Plano fechado. O que falta (as parcelas em aberto) se recebe no PDV, com quem tem o PDV ou o Financeiro em Gerenciar: Lúcia, Fernanda. Se caiu na conta, a baixa é no Financeiro.')
+      .toBe('Plano fechado. O que falta (as parcelas em aberto) se recebe no PDV, com quem tem o PDV em Gerenciar: Lúcia, Fernanda. Se caiu na conta, a baixa é no Financeiro.')
     expect(rodapeDoPlanoFechado(414, []))
-      .toBe('Plano fechado. O que falta (as parcelas em aberto) se recebe no PDV, com quem tem o PDV ou o Financeiro em Gerenciar. Se caiu na conta, a baixa é no Financeiro.')
+      .toBe('Plano fechado. O que falta (as parcelas em aberto) se recebe no PDV, com quem tem o PDV em Gerenciar. Se caiu na conta, a baixa é no Financeiro.')
   })
   // A14 da 25ª: o lugar de receber é o PDV; o Financeiro só entra na baixa da
   // transferência que caiu na conta (CX2) — nunca "receber no Financeiro".

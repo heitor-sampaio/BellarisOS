@@ -33,10 +33,12 @@ export const ABAS_DE_CONFIGURACAO = [
   // crediário, e o próximo passo do setup ("Taxas da maquininha") levava a uma
   // aba de outro nome. O nome diz as duas coisas; nada saiu da aba.
   { key: 'comissoes',     label: 'Comissões e taxas', module: 'financial', recurso: 'comissoes' },
-  // Quem libera o prontuário do pacote (Prontuário em Gerenciar) também abre
-  // a aba (C31, F70): o pedido com o prontuário avisava só Configurações, e
-  // quem podia liberar não chegava ao botão.
-  { key: 'lgpd',          label: 'LGPD',         module: 'settings',  alternativas: ['medical_records'] },
+  // A LGPD é de quem RESPONDE ao pedido: Clientes em Gerenciar (a cliente é
+  // da rede; revisão de 24/11, Q09 do catálogo de Clientes — "Configurações em
+  // Gerenciar" era o critério de antes de 18/11) — e de quem libera o
+  // prontuário do pacote, o Prontuário em Gerenciar (C31, F70). O aviso e a
+  // ficha levam a ela (`caminhoDaAbaLgpd`).
+  { key: 'lgpd',          label: 'LGPD',         module: 'clients',   alternativas: ['medical_records'] },
   // A assinatura do BellarisOS (plano, faturas, pagar). Da rede.
   { key: 'assinatura',    label: 'Assinatura',   module: 'settings' },
   // O suporte do BellarisOS: autorizar o acesso e ver o que ele fez. Da rede.

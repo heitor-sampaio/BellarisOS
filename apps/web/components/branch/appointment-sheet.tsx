@@ -69,6 +69,11 @@ interface AppointmentSheetProps {
    * atendimento"). Sem ele, a janela não oferece o Iniciar e diz quem inicia.
    */
   podeConcluir?: boolean
+  /**
+   * Abre a tela do atendimento: o Atendimento em Ver (UM1, o Heitor, 23/11) — a
+   * Agenda em Ver não a abre. A vista pessoal (`vistaDela`) abre a dela (SM2).
+   */
+  abreOAtendimento?: boolean
   /** Sem iniciar, quem inicia e conclui — o Atendimento em Gerenciar, pelo nome (quemConcluiOAtendimento). */
   quemConclui?: string[] | null
   onClose:     () => void
@@ -93,7 +98,7 @@ const STATUS_CHIP: Record<string, string> = {
   NO_SHOW:     'chip chip-muted',
 }
 
-export function AppointmentSheet({ appointment, slug, vistaDela = false, podeGerenciar = false, meuId = null, podeConcluir = true, quemConclui = null, onClose }: AppointmentSheetProps) {
+export function AppointmentSheet({ appointment, slug, vistaDela = false, podeGerenciar = false, meuId = null, podeConcluir = true, abreOAtendimento = false, quemConclui = null, onClose }: AppointmentSheetProps) {
   const isProfessional = vistaDela
   // Quem tem a Agenda em Gerenciar e atende, no agendamento DELA: "Marcar
   // chegada e iniciar", em vez de "Chegou" → "Iniciar" (A25 da 6ª simulação:
@@ -423,7 +428,8 @@ export function AppointmentSheet({ appointment, slug, vistaDela = false, podeGer
                 <Play size={14} /> Iniciar atendimento
               </button>
             )}
-            {appointment.status === 'IN_PROGRESS' && (
+            {/* UM1: só a quem abre a tela do atendimento (a Agenda em Ver não abre). */}
+            {appointment.status === 'IN_PROGRESS' && (abreOAtendimento || vistaDela) && (
               <Link
                 href={rotaAtendimento(pathname, slug, appointment.id)}
                 onClick={onClose}

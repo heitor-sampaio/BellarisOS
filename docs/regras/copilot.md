@@ -67,23 +67,32 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   das outras funcionalidades: ele custa por uso —, o Copilot NO CARGO, a
   `OPENAI_API_KEY` configurada e fora da sessão de suporte. A rota, as actions
   e o layout conferem o mesmo.
-- **Fora do plano, ele aparece EXPLICADO a quem administra a clínica** (A51
-  da 6ª simulação, 2026-11-04; princípio 3: no teste grátis — "tudo, menos o
-  Copilot", J-7 — ele sumia calado). Da rede e com Configurações em
-  Gerenciar (`copilotForaDoPlanoNaTela`): o mesmo lugar do botão, sem o
+- **Fora do plano, ele aparece EXPLICADO à Admin da rede** (A51 da 6ª
+  simulação, 2026-11-04; princípio 3: no teste grátis — "tudo, menos o
+  Copilot", J-7 — ele sumia calado). Só à Admin da rede, pelo cargo gravado
+  (`ctx.isNetworkAdmin`, `copilotForaDoPlanoNaTela`): contratar é
+  configuração da rede toda (o Heitor, 18/11: "Configuração da rede toda só
+  pela conta admin"; era quem tinha "A rede inteira" com Configurações em
+  Gerenciar — catálogo de 24/11). O mesmo lugar do botão, sem o
   preenchimento de marca ("Copilot: fora do plano"), abre só o aviso — "O
   Copilot não está no seu plano de teste." (`redeEmTeste`, lido na hora) ou
-  "O Copilot não faz parte do plano da clínica." — e o link para
+  "O Copilot não faz parte do plano da rede." — e o link para
   Configurações → Assinatura (`CopilotForaDoPlano`). Nada se libera: a rota
   segue 403. A equipe não ganha um botão que não usa. Prova:
   `e2e/copilot-fora-do-plano.spec.ts` (roda no `next dev`: não precisa da
   OpenAI) e o caso "rede sem o Copilot no plano" de `e2e/copilot-esqueleto.spec.ts`.
 - **O cargo** (o módulo `copilot` da matriz, pedido do Heitor de 2026-10-08):
-  Sem acesso, **Ver** (só as consultas: o modelo nem recebe as gravações) e
-  **Gerenciar** (também as gravações — cada uma ainda exige o módulo dela). O
-  plano diz se a REDE tem; o cargo, QUEM usa. Os cargos que já existiam
-  ficaram em Gerenciar (menos o "Não definido"), para ninguém perder o que
-  usava (migration `20261008000007`).
+  Sem acesso ou **Ver**, que LIGA a ferramenta — consultar e agir. Cada
+  consulta e cada gravação pedem só a permissão da AÇÃO, como na tela
+  (agendar, a Agenda em Gerenciar; lançar, o Financeiro em Gerenciar): o
+  Copilot é o canal, não o passo (o Heitor, 2026-11-23: "cada passo pertence
+  a UM módulo, e nenhuma ação pede dois"; lida para o Copilot na revisão de
+  24/11, `docs/catalogo/copilot.md` Q02 — até ali, gravar pedia também o
+  Copilot em Gerenciar). O módulo só oferece Sem acesso e Ver
+  (`MODULE_LEVELS`; o Gerenciar já gravado vale Ver — `nivelAceito`,
+  `ferramentaLiberada`, `lib/copilot/executor.ts`). O plano diz se a REDE
+  tem; o cargo, QUEM usa. Prova: `tests/copilot-executor.test.ts`,
+  `e2e/copilot-cargo.spec.ts`.
 - **A rota `POST /api/copilot`** (SSE): sessão (401), Origin da clínica (403),
   plano, suporte, configuração, cota (429). Laço "modelo → ferramentas →
   modelo" de até 8 voltas (4 com anexo). Grava a fala, as chamadas (sem o id do
@@ -147,15 +156,22 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   receber a comanda são do PDV — o Copilot não vende nem recebe comanda, e o
   prompt manda indicar o PDV — **só a quem tem o PDV** (A29 da 26ª,
   2026-11-18): sem ele, o prompt diz que a permissão dela não recebe nem vende
-  e que quem tem o PDV (ou o Financeiro em Gerenciar) faz, sem dar o link; e
+  e que quem tem o PDV em Gerenciar faz (PV-04), sem dar o link; e
   quem não vê dinheiro (`can(financial, VIEW)` ou a aba Financeiro dos
   Relatórios) não é mandado ao Dashboard, aos Relatórios nem ao Financeiro
   para ver valor (`instrucoesDoCopilot`, `lib/copilot/prompt.ts`; prova
   `tests/copilot-dinheiro-pelas-abas.test.ts`). O `marcar_pago` é a baixa do Financeiro
-  (`markTransactionPaid`, `podeDarBaixa` — CX2), com o boleto na despesa, como
-  a tela; a parcela do crediário em aberto também se baixa por ele (VF2-05 da
-  varredura de 18/11, decisão do Claude: o prompt mandava ao PDV o que a
-  ferramenta faz). As vendas dos indicadores levam o número da comanda.
+  (`markTransactionPaid`, `podeDarBaixa` — CX2; a frase do prompt que o oferece
+  segue a mesma régua, não o PDV — catálogo de 24/11), com o boleto na despesa, como
+  a tela — só no lançamento AVULSO. **A parcela do crediário e o a receber de
+  uma venda ou de um atendimento não**: o Copilot não recebe (17/11), e eles
+  se recebem no PDV (CR-06). O preparo recusa o que tem chave de venda
+  (`CHAVES_DA_VENDA`), atendimento ou parcela (`recebimentoDoPdv`,
+  `ferramentas/gestao-escrita.ts`) e devolve o link do PDV da cliente, na
+  unidade do lançamento ("Receber no PDV"). Era a VF2-05 da varredura de
+  18/11 (decisão do Claude, contra a regra de 17/11; corrigida no catálogo de
+  24/11). Prova: `tests/copilot-pdv-comissoes-e-vistas.test.ts`. As vendas
+  dos indicadores levam o número da comanda.
   **As leituras de venda** (as pendências das simulações 15ª–23ª,
   2026-11-17), SÓ LEITURA (`lib/copilot/ferramentas/vendas.ts`):
   `comandas_abertas` (as abertas do PDV, `comandasDoPdv`, nas unidades da
@@ -289,6 +305,20 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   `getRelatorioDosModulos` sem recorte). Não é a vista pessoal dos
   dashboards (`recortePessoal`, `indicadores.md`). As comissões (as do
   núcleo e as por profissional) só vão a quem tem o Financeiro em Ver.
+- **A vista pessoal no Copilot** (SM2, CLAUDE.md §11; decidida na revisão de
+  24/11, `docs/catalogo/copilot.md` Q03, pela fala de 13/11: "copilot
+  acompanha tudo"): a quem `vistaPessoal` devolve o id, duas leituras — só
+  leitura, só as DELA, pelo id dela e nunca por um nome do pedido.
+  `minha_agenda` (`ferramentas/agenda.ts`; quem atende e não tem a Agenda): os
+  agendamentos dela nas unidades ao alcance, sem datas de hoje a 30 dias.
+  `minhas_comissoes` (`ferramentas/comissoes.ts`; sem o Financeiro, com as
+  Comissões no plano): os números da tela "Minhas comissões" — o resumo do
+  banco (`resumoDasComissoes`) somado em `lib/metrics`, no período de
+  fechamento da rede (o atual ou um anterior), nas unidades de leitura ao
+  alcance dela. Com a Agenda ou o Financeiro, a vista não vem (o módulo já
+  mostra tudo). O prompt e o "Olá" dizem as duas a quem as tem. Prova:
+  `tests/copilot-executor.test.ts`, `tests/copilot-pdv-comissoes-e-vistas.test.ts`,
+  `e2e/copilot-cargo.spec.ts`.
 - **`indicadores` lê pelas MESMAS funções da tela** (C5 da F68, 2026-11-12):
   o "a receber" é o do Financeiro (`getEmAberto`, pelo vencimento, até o FIM
   do período — era o pendente do núcleo até agora), a aba agenda vai até o fim do período como a
@@ -488,10 +518,19 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   `permissoesDaPessoa`): "abra Financeiro → Comissões" ia a quem tem o
   Financeiro só em Ver, que também não muda nada lá. Para MUDAR algo sem o
   módulo em Gerenciar, o Copilot não indica a tela: diz que a permissão dela
-  não muda isso e que quem tem o módulo em Gerenciar muda. Nas comissões, o
-  prompt leva os NOMES de quem muda (`quemMudaAsComissoes`, de
-  `lib/equipe/quem-desfaz.ts`: o Financeiro em Gerenciar, na rede; a Admin
-  da rede sempre), lidos pela rota só para quem não muda (A24 da 17ª, resto).
+  não muda isso e que quem tem o módulo em Gerenciar muda; a configuração da
+  rede toda (importar, tags, integrações e o WhatsApp, a configuração das
+  comissões) é só da Admin da rede, e a quem não é ele diz "Esta configuração
+  é só da Admin da rede." e quem muda. **Nas comissões são duas coisas**
+  (CY-04 do catálogo de 24/11; CM-03 e CM-04): a comissão de CADA PESSOA (o
+  chip "Comissão" da Equipe) muda quem tem o Financeiro em Gerenciar; a
+  CONFIGURAÇÃO das comissões (Comissões e taxas, o campo no procedimento, no
+  pacote e no produto), só a Admin da rede. O prompt leva os NOMES de cada
+  uma, lidos pela rota só para quem não muda: `quemMudaAComissaoDasPessoas`
+  (o Financeiro em Gerenciar da rede e da unidade dela, com a Admin) a quem
+  não tem o Financeiro em Gerenciar, e `quemMudaAsComissoes` (as Admins da
+  rede) a quem não é a Admin (A24 da 17ª, resto). Era "as comissões… são só
+  da Admin da rede". Prova: `tests/copilot-pdv-comissoes-e-vistas.test.ts`.
 - **"Compra de estoque" é só a mercadoria que entra no estoque** (D5 da 16ª):
   a descrição do `lancar` diz que ela conta no caixa e fica fora do
   resultado (material de limpeza, de copa ou de consumo não é), e que, sem
@@ -560,7 +599,10 @@ topbar; o modal (camada de cima) fica de fora. Prova: `tests/copilot-atritos-da-
 ❌ Liberar o Copilot para rede sem plano (ele custa por uso)
 ❌ router.refresh() dentro da transição que mostra o "Gravando…" do cartão (o pendente espera a tela de trás inteira — F46)
 ❌ Criar exclusão/anonimização de cliente (LGPD) sem levar as conversas do Copilot que o citam (copilot_mensagens, copilot_acoes) — hoje não há exclusão, e a retenção de 90 dias é o limite
-❌ Liberar o Copilot (ou uma gravação dele) sem conferir o módulo copilot do cargo (Ver / Gerenciar)
+❌ Liberar o Copilot sem conferir o módulo copilot do cargo (Ver)
+❌ Pedir à gravação do Copilot um módulo a mais que a tela (o Copilot em Gerenciar): cada ação pede só a permissão dela (23/11; catálogo, 24/11)
+❌ Baixa pelo Copilot na parcela do crediário ou no a receber de venda ou atendimento (é o PDV, com o link — o Copilot não recebe)
+❌ Vista pessoal no Copilot que lê por um nome do pedido (é o id de vistaPessoal) ou que grava
 ❌ Chamar a OpenAI (resposta, transcrição) sem somar o gasto na cota — também quando falha ou cai
 ❌ Trocar OPENAI_MODEL / OPENAI_MODELO_DE_VOZ sem o preço do modelo em custo-do-copilot.ts (o custo some da tela)
 ❌ Devolver ao modelo documento (CPF) que ele não precisa reler — o resumo vai por resumoParaOModelo

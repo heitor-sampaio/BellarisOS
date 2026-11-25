@@ -3,11 +3,13 @@ import type { TenantContext } from '@estetica-os/types'
 import { can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
+import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 
 /**
  * As importações anteriores, na própria aba Importações (A6 da 8ª simulação,
  * 2026-11-06: a aba voltava ao passo 1 sem histórico, e a dona só descobriu a
- * Isabela recusada pela ausência dela). As que esta pessoa alcança — o módulo
+ * Isabela recusada pela ausência dela). Só da Admin da rede (revisão de 24/11),
+ * com o módulo
  * do destino em Gerenciar, sem recorte por unidade (a régua de
  * `importacaoAoAlcance`; a ficha é da REDE — auditoria das regras, 18/11) —, com as contagens e o relatório (as recusadas e as
  * importadas com aviso) enquanto ele vale (7 dias: guarda o valor errado).
@@ -23,6 +25,9 @@ export interface ImportacaoAnterior {
 }
 
 export async function importacoesAnteriores(ctx: TenantContext, limite = 10): Promise<ImportacaoAnterior[]> {
+  // Só da Admin da rede: as Importações são configuração da rede toda, o
+  // histórico e o relatório inclusive (revisão de 24/11, Q10 do catálogo).
+  if (!mexeNaConfigDaRede(ctx)) return []
   const destinos = (['clientes', 'contatos'] as const).filter(d => can(ctx, d === 'clientes' ? 'clients' : 'crm', 'MANAGE'))
   if (!destinos.length) return []
   const linhas = await ler(createAdminClient().from('importacoes')

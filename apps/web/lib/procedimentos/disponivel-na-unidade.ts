@@ -49,12 +49,21 @@ export async function recusaDoProcedimentoNaUnidade(
  * da 14ª simulação, F73) — nula quando todos são feitos lá. Uma leitura só,
  * para as sessões inteiras: o editor do plano já lista só o catálogo da
  * unidade do plano (`procedimentosParaPlano` com a unidade), e o servidor que
- * grava as sessões confere de novo, porque a sessão que entra num plano
- * precisa se agendar na unidade dele. O procedimento que não é da rede
- * responde como inexistente.
+ * grava as sessões confere de novo. O procedimento que não é da rede responde
+ * como inexistente.
+ *
+ * O que JÁ estava no plano e a unidade deixou de fazer NÃO se recusa: fica à
+ * vista no editor com a marca "(não é feito nesta unidade)", e o plano se salva
+ * com ele — a marca é o aviso (princípio 2, "no máximo, avisar"; a revisão das
+ * perguntas de 24/11, Q24 do catálogo de Atendimento — decisão do Claude). Até
+ * 24/11 o plano antigo só se salvava tirando o item. `jaGravado` diz onde ler o
+ * que estava: o plano (`planoId`) ou o rascunho da avaliação (`avaliacaoId`);
+ * quem chama já conferiu a rede dele. Agendar a sessão numa unidade que não faz
+ * o procedimento segue recusado pelo núcleo (`conferirPecasDoAgendamento`).
  */
 export async function recusaDosProcedimentosDoPlano(
   admin: Admin, tenantId: string, unidadeId: string, procedureIds: string[],
+  jaGravado: { planoId?: string | null; avaliacaoId?: string | null } = {},
 ): Promise<string | null> {
   const ids = [...new Set(procedureIds.filter(Boolean))]
   if (!ids.length) return null
@@ -66,7 +75,26 @@ export async function recusaDosProcedimentosDoPlano(
   ])
   const lidos = procs ?? []
   if (lidos.length < ids.length) return 'Procedimento do plano não encontrado.'
-  const fora = lidos.find(p => !ofereceNaUnidade(p, unidadeId))
-  if (!fora) return null
-  return `${fora.name} não é feito na unidade ${unidade?.name ?? 'do plano'}. Escolha outra unidade ou outro procedimento.`
+  const fora = lidos.filter(p => !ofereceNaUnidade(p, unidadeId))
+  if (!fora.length) return null
+  const jaNoPlano = await procedimentosJaNoPlano(admin, jaGravado)
+  const novo = fora.find(p => !jaNoPlano.has(p.id))
+  if (!novo) return null
+  return `${novo.name} não é feito na unidade ${unidade?.name ?? 'do plano'}. Escolha outra unidade ou outro procedimento.`
+}
+
+/** Os procedimentos que o plano já tem gravados (o plano, ou o rascunho da avaliação). */
+async function procedimentosJaNoPlano(
+  admin: Admin, de: { planoId?: string | null; avaliacaoId?: string | null },
+): Promise<Set<string>> {
+  const planos = de.planoId ? [de.planoId]
+    : de.avaliacaoId
+      ? ((await ler(admin.from('treatment_plans').select('id').eq('evaluation_appointment_id', de.avaliacaoId),
+          'buscar o plano da avaliação')) as { id: string }[] | null ?? []).map(p => p.id)
+      : []
+  if (!planos.length) return new Set()
+  const linhas = await ler(admin.from('treatment_plan_session_procedures')
+    .select('procedure_id, treatment_plan_sessions!inner(plan_id)')
+    .in('treatment_plan_sessions.plan_id', planos), 'ler os procedimentos que o plano já tem') as { procedure_id: string }[] | null
+  return new Set((linhas ?? []).map(l => l.procedure_id))
 }

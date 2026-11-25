@@ -445,7 +445,7 @@ function CamposDaComissao({ c, mudar }: { c: ComissaoDoRascunho; mudar: (parte: 
               {c.execucao === 'REGRA' ? 'Cada sessão paga a comissão de quem atende, pela regra dele (Equipe ou Procedimentos).'
                 : c.execucao === 'PERCENTAGE' ? 'Sobre a parte da sessão no preço do pacote.'
                 : c.execucao === 'FIXED_AMOUNT' ? 'O mesmo valor a cada sessão atendida.'
-                : c.execucao === 'PACOTE' ? 'Uma comissão só, sobre o valor vendido do pacote, para a profissional responsável escolhida na venda — quando o pacote estiver pago por inteiro (no cartão em várias vezes, na hora). As sessões não geram comissão.'
+                : c.execucao === 'PACOTE' ? 'Uma comissão só, sobre o valor vendido do pacote, para a pessoa responsável escolhida na venda — quando o pacote estiver pago por inteiro (no cartão em várias vezes, na hora). As sessões não geram comissão.'
                 : 'As sessões deste pacote não geram comissão para quem atende.'}
             </Dica>
           </span>

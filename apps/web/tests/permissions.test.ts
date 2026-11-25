@@ -84,11 +84,14 @@ describe('MODULE_LEVELS', () => {
     expect(MODULE_GROUPS.flatMap(g => [...g.modules])).not.toContain('audit')
   })
 
-  it('o Copilot é um módulo do cargo: Sem acesso, Ver (consultas) e Gerenciar (gravações)', () => {
+  // Revisão de 24/11 (Q02; o Heitor, 23/11, à proposta "cada passo pertence a UM
+  // módulo, e nenhuma ação pede dois": "concordo"): o Ver liga a ferramenta e
+  // cada gravação pede só a permissão dela — o Gerenciar do Copilot saiu.
+  it('o Copilot é um módulo do cargo: Sem acesso e Ver (consultas e pedidos de gravação)', () => {
     expect(ALL_MODULES).toContain('copilot')
-    expect(MODULE_LEVELS.copilot).toEqual(['NONE', 'VIEW', 'MANAGE'])
+    expect(MODULE_LEVELS.copilot).toEqual(['NONE', 'VIEW'])
     expect(LEVEL_COPY.copilot.VIEW).toBeTruthy()
-    expect(LEVEL_COPY.copilot.MANAGE).toBeTruthy()
+    expect(LEVEL_COPY.copilot.MANAGE).toBeUndefined()
   })
 })
 

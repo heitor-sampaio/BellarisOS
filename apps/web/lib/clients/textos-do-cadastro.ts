@@ -9,15 +9,31 @@
  * CPF — `login_de_cliente_para_ligar`) ganha a ficha desta clínica, e a senha
  * continua a que ela já usa (CLAUDE.md §5). O aviso dizia sempre o primeiro.
  */
-export function avisoDoAcessoCriado({ contaLigada, email, documento }: {
+export function avisoDoAcessoCriado({ contaLigada, email, documento, emailParaCriarSenha }: {
   contaLigada: boolean; email: string
   /**
    * O documento que virou a senha inicial (decisão 1 do Heitor, 2026-11-05):
    * sem CPF, o número do passaporte ou do RNE da ficha. Sem ele, o CPF.
    */
   documento?: { tipo: 'CPF' | 'PASSAPORTE' | 'RNE'; numero: string } | null
+  /**
+   * O documento foi recusado como senha pelo sistema de login (decisão do
+   * Heitor, 24/11, R1 da 27ª — "E-mail para criar a senha"): a cliente cria a
+   * senha pelo e-mail, e o aviso diz isso — sem senha nenhuma.
+   */
+  emailParaCriarSenha?: 'enviado' | 'falhou'
 }): { titulo: string; descricao: string } {
   const login = email.trim() ? ` (${email.trim().toLowerCase()})` : ''
+  if (!contaLigada && emailParaCriarSenha) {
+    const doc = !documento || documento.tipo === 'CPF' ? 'o CPF' : `o número do ${documento.tipo === 'RNE' ? 'RNE' : 'passaporte'}`
+    const porque = `O sistema de login não aceitou ${doc} como senha (curto ou fácil de adivinhar)`
+    return {
+      titulo: 'Acesso ao app criado',
+      descricao: emailParaCriarSenha === 'enviado'
+        ? `O login é o e-mail${login}. ${porque}: enviamos a ele o e-mail para criar a senha.`
+        : `O login é o e-mail${login}. ${porque}, e o e-mail para criar a senha não saiu agora: na entrada do app, “Esqueci a senha”, com esse e-mail, manda o link de novo.`,
+    }
+  }
   // O passaporte e o RNE se digitam como estão na ficha, em maiúsculas: a
   // senha diferencia, e a recepção dita o número.
   const senha = documento && documento.tipo !== 'CPF'

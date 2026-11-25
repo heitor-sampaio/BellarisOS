@@ -263,7 +263,7 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <span className="overline">Profissional responsável</span>
             {/* 2026-11-16: era uma linha fixa embaixo do seletor. */}
-            <Dica rotulo="Sobre o profissional responsável">
+            <Dica rotulo="Sobre a pessoa responsável">
               Recebe a comissão de quem atende sobre o valor do pacote, quando ele estiver pago por inteiro.
             </Dica>
           </span>

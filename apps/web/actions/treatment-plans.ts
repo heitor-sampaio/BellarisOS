@@ -24,7 +24,6 @@ import { recusaDaEntradaDoPagamento, comFidelidadeNaPrimeira } from '@/lib/check
 import { recusaDasParcelasDaRede } from '@/lib/financeiro/crediario-da-rede'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { getFinanceiroDoPlano, type FinanceiroDoPlano } from '@/lib/metrics/plano'
-import { atendimentoDeHojeDoPlano } from '@/lib/checkout/atendimento-de-hoje'
 import type { CheckoutPlan } from '@/components/branch/checkout-wizard'
 import { semAcesso } from '@/lib/sem-acesso'
 import { catalogoDePacotes } from '@/lib/pacotes/leitura'
@@ -170,7 +169,8 @@ export interface PlanSessionForCheckout {
 /**
  * Regrava as sessões de um plano.
  *
- * Só com o procedimento que a unidade DO PLANO faz (D4 da 14ª, F73): o editor
+ * Só com o procedimento que a unidade DO PLANO faz (D4 da 14ª, F73) — fora o que
+ * já estava no plano, que se salva com o aviso (princípio 2): o editor
  * já lista só esses, e a conferência mora aqui — antes de `plano_gravar_sessoes`
  * apagar as antigas —, porque toda gravação de sessões de plano passa por esta função
  * (a da avaliação, `gerar_plano_da_avaliacao`, confere antes do rpc).
@@ -198,8 +198,9 @@ async function gravarSessoes(
   // A1(b) da 25ª: a sessão vazia não se grava (quem chama já recusou antes).
   const vazia = recusaDaSessaoVazia(sessions)
   if (vazia) return { error: vazia }
+  // O que já estava no plano e a unidade não faz mais se salva, com o aviso (princípio 2, Q24 de 24/11).
   const naoFeito = await recusaDosProcedimentosDoPlano(admin, plano.tenantId, plano.unidadeId,
-    sessions.flatMap(s => s.procedures.map(p => p.procedureId)))
+    sessions.flatMap(s => s.procedures.map(p => p.procedureId)), { planoId: planId, avaliacaoId: cabecalho.avaliacao ?? null })
   if (naoFeito) return { error: naoFeito }
 
   // A20d da 25ª (CLAUDE.md §14): apagar as antigas e inserir as novas vale junto. Eram chamadas
@@ -787,7 +788,7 @@ export async function getResumoDoPlano(planId: string): Promise<{
   quemRecebe?: string[] | null
   /**
    * A28 da 9ª, desde o PDV (CX1): a quem pedir o que falta receber — quem tem
-   * o PDV ou o Financeiro em Gerenciar (`quemRecebeNoPdv`). Nulo: quem lê recebe.
+   * o PDV em Gerenciar (`quemRecebeNoPdv`, PV-04). Nulo: quem lê recebe.
    */
   quemRecebeNoPdv?: string[] | null
   /** Quem lê recebe: o PDV da unidade do plano com a cliente (as parcelas dela, CX1). */
@@ -1066,7 +1067,7 @@ async function recusaDoEnvioDoPlano(
   // 1. Observações da profissional
   if (anota && !plan.professional_notes?.trim()) {
     // A29 da 12ª: o botão é "Aceitar plano" (ou "Cliente vai pensar") — a frase diz os dois.
-    return 'Preencha as observações da profissional antes de aceitar o plano ou mandá-lo à cliente.'
+    return 'Preencha as observações de quem atende antes de aceitar o plano ou mandá-lo à cliente.'
   }
 
   // 2. Pelo menos 1 sessão
@@ -1585,8 +1586,9 @@ async function generateEvaluationPlanInterno(
   if (combinado && 'error' in combinado) return combinado
 
   // Só o que a unidade do atendimento (a do plano que nasce) faz (D4 da 14ª, F73).
+  // O que o rascunho dela já tinha e a unidade não faz mais se salva, com o aviso (princípio 2, Q24 de 24/11).
   const naoFeito = await recusaDosProcedimentosDoPlano(admin, ctx.tenantId!, appt.branch_id as string,
-    sessions.flatMap(s => s.procedures.map(p => p.procedureId)))
+    sessions.flatMap(s => s.procedures.map(p => p.procedureId)), { avaliacaoId: appointmentId })
   if (naoFeito) return { error: naoFeito }
 
   // ─── Grava, tudo ou nada ──────────────────────────────────────────────
@@ -2024,22 +2026,9 @@ async function checkoutTreatmentPlanInterno(
     }), 'registrar o checkout no histórico')
   }
 
-  // 5. O atendimento de hoje (o que GEROU o plano), se tem preço e não foi
-  //    recebido: vai junto, pelo caminho do avulso — com o appointment_id, a
-  //    comissão e as métricas o leem como sempre. Só quando algo é recebido
-  //    agora; "a receber" e "no atendimento" o deixam para a tela dele.
-  let aviso: string | undefined
-  if (pagamento && pagamento.forma !== 'A_RECEBER') {
-    const hoje = await atendimentoDeHojeDoPlano(admin, planId)
-    if (hoje) {
-      const { error } = await admin.rpc('confirmar_pagamento_do_atendimento', {
-        p_agendamento: hoje.appointmentId, p_tenant: ctx.tenantId, p_ator: ctx.internalUserId,
-        p_ator_nome:   ctx.userName || ctx.roleLabel || 'Equipe',
-        p_dados:       { metodo: pagamento.metodo, pontos: 0, desconto: 0, valor_final: hoje.preco, cartao_vezes: vezesNoCartao(pagamento), cartao_bandeira: bandeiraDoPagamento(pagamento.metodo, pagamento.bandeira), maquininha_id: maquininhaDoPagamento(pagamento) },
-      })
-      if (error) aviso = `O plano foi fechado, mas o atendimento de hoje não foi recebido (${error.message}). Receba pela tela do atendimento.`
-    }
-  }
+  // 5. O atendimento que GEROU o plano não entra aqui: uma venda, uma comanda
+  //    (o Heitor, 13/11: "Tudo que for uma venda gera uma comanda"). Ele tem a
+  //    comanda dele no PDV, aberta no início (PDV3), e se recebe lá.
 
   if (slug) {
     revalidatePath(`/${slug}/agenda`)
@@ -2058,7 +2047,7 @@ async function checkoutTreatmentPlanInterno(
     revalidatePath(`/admin/agenda/${plan.evaluation_appointment_id}`)
   }
 
-  return { transactionId, newAppointmentId, ...(aviso ? { aviso } : {}), ...(avisosDaSala.length ? { avisoDaSala: avisosDaSala.join(' ') } : {}) }
+  return { transactionId, newAppointmentId, ...(avisosDaSala.length ? { avisoDaSala: avisosDaSala.join(' ') } : {}) }
 }
 
 // -- Receber no check-in -------------------------------------------------------

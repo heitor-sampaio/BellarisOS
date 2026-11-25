@@ -206,10 +206,10 @@ export function ClientForm({ branchId, slug, branches, prefill, leadId, conversa
     envio.renovar()
     const clientId = (state as unknown as { clientId?: string }).clientId
     // A confirmação sai antes de a tela mudar: o formulário some no modal ou na navegação.
-    const r = state as unknown as { acessoCriado?: boolean; contaLigada?: boolean }
+    const r = state as unknown as { acessoCriado?: boolean; contaLigada?: boolean; emailParaCriarSenha?: 'enviado' | 'falhou' }
     if (r.acessoCriado) {
-      // Quem já tinha conta em outra clínica NÃO tem a senha = CPF (J-22).
-      const aviso = avisoDoAcessoCriado({ contaLigada: !!r.contaLigada, email,
+      // Quem já tinha conta em outra rede NÃO tem a senha = CPF (J-22); o documento recusado vai pelo e-mail (24/11).
+      const aviso = avisoDoAcessoCriado({ contaLigada: !!r.contaLigada, email, emailParaCriarSenha: r.emailParaCriarSenha,
         documento: { tipo: tipoDoc as 'CPF' | 'PASSAPORTE' | 'RNE', numero: tipoDoc === 'CPF' ? document : (documentoEstrangeiro(document) ?? document) } })
       toast.success(aviso.titulo, { description: aviso.descricao, duration: 9000 })
     }

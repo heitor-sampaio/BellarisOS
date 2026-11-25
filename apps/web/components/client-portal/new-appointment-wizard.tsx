@@ -11,6 +11,7 @@ import { gruposDeHorario } from '@/lib/appointments/periodos-do-dia'
 import { aUnica } from '@/lib/uma-opcao'
 import { useFuso, NotaDoFuso } from '@/components/shared/fuso'
 import { instanteNoFuso } from '@/lib/datetime'
+import { useFalaDaRede } from '@/components/client-portal/rede-do-portal'
 
 /** O dia no relógio da unidade (F62). */
 const diaNoFuso = (ms: number, fuso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: fuso }).format(new Date(ms))
@@ -72,6 +73,8 @@ const SEM_PREFERENCIA: Professional = { id: '', name: 'Sem preferência' }
 
 export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], procedimentoInicial = null, unidadeEscolhida = false, procedures, professionals, prazoHoras = null }: Props) {
   const router = useRouter()
+  // CA1: o NOME da rede no lugar de "clínica".
+  const fala = useFalaDaRede()
   const inicial = procedures.find(p => p.id === procedimentoInicial) ?? null
   // Só quem REALIZA o procedimento (por-01; sem ninguém marcado, todas).
   const realizam = (p: Procedure | null) => p?.realizam?.length
@@ -157,7 +160,7 @@ export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], p
       const noPrazo = prazoHoras != null && prazoHoras > 0 && new Date(scheduledAt).getTime() - Date.now() < prazoHoras * 3_600_000
       toast.success('Horário marcado', {
         description: `${res.quemAtende ? `Com ${res.quemAtende}, ` : ''}${fmtDate(date)} às ${time}.`
-          + (noPrazo ? ` Fica a menos de ${prazoHoras} horas: para cancelar ou remarcar, fale com a equipe.` : ''),
+          + (noPrazo ? ` Fica a menos de ${prazoHoras} horas: para cancelar ou remarcar, ${fala.faleCom}.` : ''),
       })
       if (res.documentosParaAssinar) {
         // O procedimento pede termo ou contrato: direto para ele.
@@ -523,7 +526,7 @@ export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], p
             }}>
               {/* A52 da 12ª: a Sabrina leu e não entendeu — a frase diz o que acontece com ESTE agendamento. */}
               Este horário fica a menos de {prazoHoras} horas: o agendamento nasce sem cancelar nem remarcar pelo app (pelo app, só até {prazoHoras} horas antes).
-              Depois de confirmar, para mudar, fale com a equipe.
+              Depois de confirmar, para mudar, {fala.faleCom}.
             </p>
           )}
 

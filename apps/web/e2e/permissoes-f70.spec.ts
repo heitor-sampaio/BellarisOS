@@ -215,6 +215,47 @@ test('C67 (H6 = a): desativar a unidade oferece mudar a equipe fixa dela para ou
   }
 })
 
+// UN-11/UN-12 do catálogo de 24/11: mudar a equipe de unidade pede só a Equipe
+// em Gerenciar ("nenhuma ação pede dois", 23/11), e quem atendia na unidade que
+// sai passa a atender na de destino — o "Atende" só vale nas unidades da pessoa
+// (o Heitor, 23/11), e o resto da lista dela fica.
+test('mudar a equipe de unidade: a Equipe em Gerenciar basta, e o "Atende" vai junto', async ({ browser }) => {
+  const b = db()
+  await b.from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede!.tenantId)
+  const { data: fecha } = await b.from('branches')
+    .insert({ tenant_id: rede!.tenantId, name: `[e2e] Fecha at ${marca}`, slug: `e2e-f70-fecha-at-${marca}` })
+    .select('id').single<{ id: string }>()
+  const { data: outra } = await b.from('branches')
+    .insert({ tenant_id: rede!.tenantId, name: `[e2e] Destino at ${marca}`, slug: `e2e-f70-dest-at-${marca}` })
+    .select('id').single<{ id: string }>()
+  const { data: terceira } = await b.from('branches')
+    .insert({ tenant_id: rede!.tenantId, name: `[e2e] Terceira at ${marca}`, slug: `e2e-f70-terc-at-${marca}` })
+    .select('id').single<{ id: string }>()
+  // Só a Equipe em Gerenciar, com "A rede inteira" — sem Configurações.
+  const daEquipe = await criarMembro(`f70eq${marca}`, {
+    tenant: rede!.tenantId, rotulo: 'Só a Equipe', permissoes: [{ modulo: 'team', nivel: 'MANAGE' }],
+  })
+  const fixa = await criarMembro(`f70at${marca}`, {
+    tenant: rede!.tenantId, branchId: fecha!.id, outrasUnidades: [terceira!.id], rotulo: 'Atende na que fecha',
+    permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }], atendeEm: [fecha!.id, terceira!.id],
+  })
+  try {
+    // A prova é o banco: sem Configurações, a página de destino pode levar a
+    // pessoa a outra tela depois da action.
+    await como(browser, daEquipe.estado, p => chamarAcao(p, 'actions/branches.ts', 'moverEquipeDaUnidade',
+      '/admin/settings?tab=unidades', [fecha!.id, outra!.id]))
+    const { data: u } = await b.from('users').select('branch_id, atende_em').eq('id', fixa.userId)
+      .single<{ branch_id: string; atende_em: string[] | null }>()
+    expect(u!.branch_id, 'quem tem só a Equipe em Gerenciar mudou a pessoa de unidade').toBe(outra!.id)
+    expect([...(u!.atende_em ?? [])].sort(), 'atende na de destino no lugar da que fecha; a outra fica')
+      .toEqual([outra!.id, terceira!.id].sort())
+  } finally {
+    await fixa.limpar()
+    await daEquipe.limpar()
+    await b.from('branches').delete().in('id', [fecha!.id, outra!.id, terceira!.id])
+  }
+})
+
 test('C73 (H8): as Importações são de quem é da rede — quem tem unidade fixa não importa', async ({ browser }) => {
   const b = db()
   const fixa = await criarMembro(`f70im${marca}`, {

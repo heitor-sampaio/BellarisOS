@@ -15,8 +15,10 @@ export function resumoDaComissaoDoMembro(c: { tipo: 'PERCENTAGE' | 'FIXED_AMOUNT
   const pct = (t: string) => `${t.trim().replace('.', ',')}%`
   const temVenda = c.venda.trim() && Number.isFinite(parseDinheiro(c.venda)) && parseDinheiro(c.venda) > 0
   // A22 da 20ª (princípio 7): quem não atende e não tem a de atendimento — o
-  // resumo falava em "nenhuma por atendimento" a quem só vende.
-  if (c.atende === false && c.tipo === 'NENHUMA') return temVenda ? `Comissão: ${pct(c.venda)} de cada venda.` : 'Comissão: nenhuma.'
+  // resumo falava em "nenhuma por atendimento" a quem só vende. E sem a de venda
+  // dela vale a do pacote, a do produto e a da rede (princípio 3; o mesmo que a
+  // A6 da 24ª corrigiu no chip): "Comissão: nenhuma." as escondia.
+  if (c.atende === false && c.tipo === 'NENHUMA') return temVenda ? `Comissão: ${pct(c.venda)} de cada venda.` : 'Comissão: a de venda do pacote, do produto ou da rede.'
   let atendimento: string
   if (c.tipo === 'NENHUMA') atendimento = 'nenhuma por atendimento'
   else if (!c.valor.trim() || !Number.isFinite(parseDinheiro(c.valor))) {

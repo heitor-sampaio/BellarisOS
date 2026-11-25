@@ -67,11 +67,16 @@ describe('o filtro de Tags vai na consulta dos lançamentos', () => {
 })
 
 describe('as abas do Financeiro levam as tags junto', () => {
-  it('o link de A receber, A pagar e Movimentações guarda ?tags=; o de Comissões não (é por profissional)', () => {
+  // Q04 do catálogo das Comissões (resolvida na revisão de 24/11: "a aba
+  // Comissões tem filtro, então ganha o de Tags"): o link de Comissões também
+  // guarda ?tags= (era "não, é por profissional"). O período, não: o de lá é o
+  // do fechamento.
+  it('o link de A receber, A pagar, Movimentações e Comissões guarda ?tags=', () => {
     const manter = { period: 'month', tags: 'VIP' }
     expect(linkDaAba('/x/financeiro', 'a-receber', manter)).toBe('/x/financeiro?aba=a-receber&period=month&tags=VIP')
     expect(linkDaAba('/x/financeiro', 'movimentacoes', manter)).toBe('/x/financeiro?aba=movimentacoes&period=month&tags=VIP')
-    expect(linkDaAba('/x/financeiro', 'comissoes', manter)).toBe('/x/financeiro/comissoes')
+    expect(linkDaAba('/x/financeiro', 'comissoes', manter)).toBe('/x/financeiro/comissoes?tags=VIP')
+    expect(linkDaAba('/x/financeiro', 'comissoes', { ...manter, unidade: 'u1' })).toBe('/x/financeiro/comissoes?unidade=u1&tags=VIP')
   })
 })
 

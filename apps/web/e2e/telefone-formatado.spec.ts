@@ -59,7 +59,7 @@ test.describe.serial('o telefone formatado', () => {
       await p.goto(`/${slug}/oportunidades`)
       const card = p.locator('[data-lead-card]').filter({ hasText: nome })
       await expect(card.getByText('(48) 99000-0022')).toBeVisible()
-      await card.getByRole('button', { name: 'Cadastrar cliente' }).click()
+      await card.getByRole('button', { name: 'Cadastrar como cliente' }).click()
       await expect(p.getByRole('dialog', { name: 'Cadastrar como cliente' }).locator('input[name="phone"]')).toHaveValue('(48) 99000-0022')
       await p.getByRole('dialog', { name: 'Cadastrar como cliente' }).getByRole('button', { name: 'Cadastrar cliente' }).click()
       await expect.poll(async () => (await db().from('clients').select('phone').eq('tenant_id', rede!.tenantId).eq('name', nome).maybeSingle()).data?.phone).toBe('(48) 99000-0022')
