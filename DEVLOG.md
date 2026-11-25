@@ -1774,6 +1774,51 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-25 — A 28ª simulação e as correções dela e do inventário
+
+O Heitor saiu em 24/11 e deixou: "Quando acabar o inventario, aciona o loop simulação/correção novamente". E também: "Em
+teoria não é pra ter pergunta de regra e de escopo". Por isso a dúvida de regra se decidiu pelo catálogo, por
+`docs/regras` e pelos princípios, sempre marcada "decisão do Claude, 25/11". O recurso novo foi para
+`docs/sugestoes-de-funcionalidades.md` (29 itens). O que precisa dele está em `docs/para-o-heitor.md`, arquivo novo, que
+traz os testes alterados com a fala que permite cada um, dez testes que o Claude propõe mudar, os limites que o princípio 2
+talvez alcance, dois fatos que só ele sabe e as decisões do Claude no catálogo.
+
+**A simulação (24/11, 22h28, a 25/11, 2h35, em produção).** Cinco redes rodaram ao mesmo tempo:
+- o Studio Lírio: estoque e venda de produto;
+- o Espaço Alfazema: o dinheiro;
+- o Instituto Quaresmeira: documentos, planos, ficha de saúde e LGPD;
+- a Rede Malva: três unidades;
+- o Estúdio Cravo: fidelidade, automações, campanha e Copilot.
+
+O dinheiro fechou nas cinco, sem divergência. Houve 19 defeitos (12 confirmados), nenhum que mude dinheiro, e uma
+regressão: o nascimento na exportação da LGPD saía na véspera.
+
+**As correções (commit 258043b8).**
+- **O plano não se recebe mais na tela do atendimento.** O aviso mostra o saldo e leva ao PDV (PV-01).
+- **A agenda:** a chegada só no dia, com o erro à vista, e a grade lê da véspera ao fim do dia seguinte.
+- **O estoque:** o saldo do lote aparece pronto nos dashboards e nos Relatórios.
+- **Os tetos viraram aviso.** Valem para a fidelidade, o voucher, o prazo da operadora e o crediário, pelo princípio 2.
+  Junto saiu o corte de parcelas em 12, que acontecia sem aviso.
+- **Devolver só parte** agora também na ficha.
+- **A campanha** à cliente sem aparelho fica guardada e não conta como enviada.
+- **O ranking de recorrência** conta quem mais voltou.
+- **As etapas da Agenda no dashboard da unidade:** quem atende sem a Agenda vê os agendamentos dela (DB-01).
+- **A Auditoria** diz o desconto, o voucher e os pontos da comanda.
+- **A ficha abre a quem tem o Prontuário sem o Clientes**, só com a aba do Prontuário.
+- **Os avisos de agendamento:** o agendar do CRM e o do pré-pago avisam as mesmas pessoas que o "+ Agendar".
+- **Os textos:** os de `docs/regras` estavam velhos e foram corrigidos. O catálogo foi alinhado, e entrou
+  `docs/catalogo/sistema.md`.
+
+**Migrations.** São três, já na produção: `20261204200001` (tetos), `20261204300001` (recorrência) e `20261204400001`
+(Auditoria).
+
+**Testes.**
+- **Os testes alterados** estão todos em `docs/para-o-heitor.md` §1, com a fala de cada um. Um caso foi apagado: o duplo
+  clique no recebimento do plano, que no PDV responde com erro na segunda vez.
+- **As verificações:** Vitest 4536/4536 e lint 8/8.
+- **A completa contra o build:** a metade isolada teve 1743 testes passando e 1 falhando. A falha era o spec do dashboard,
+  que ainda exigia a etapa sumida. Alinhado ao DB-01, passou 4/4. A metade compartilhada teve 887 passando.
+
 ### 2026-11-24 (12) — O inventário dos testes contra o catálogo de regras
 
 O que o Heitor pediu em 19/11: "a gente só sabe o que ta errado por causa dos testes. … o teste só pode ser alterado se a
