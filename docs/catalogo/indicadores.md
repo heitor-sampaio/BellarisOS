@@ -14,12 +14,12 @@ Este é o catálogo das regras dos indicadores que valem HOJE: todo número na t
 - Onde: `docs/regras/indicadores.md:24-28`, `:49-54`
 - Antes: KA-04
 
-**FU-03.** No portal da rede, o dia e a hora são os do fuso comum das unidades na tela; com unidades em fusos diferentes, o de Brasília. Mesmo assim, no número somado da rede cada lançamento e cada atendimento cai no dia do relógio da unidade dele: as barras dos gráficos (também os do resultado e dos custos da venda) e o Fechamento da rede, com o dia de cada unidade. A grade da agenda da rede desenha cada coluna no relógio da unidade dela e diz qual é (FU-04). Desenhar a grade inteira no relógio de Brasília segue como pergunta ao Heitor.
+**FU-03.** No portal da rede, o dia e a hora são os do fuso comum das unidades na tela; com unidades em fusos diferentes, o de Brasília. Mesmo assim, no número somado da rede cada lançamento e cada atendimento cai no dia do relógio da unidade dele: as barras dos gráficos (também os do resultado e dos custos da venda) e o Fechamento da rede, com o dia de cada unidade. A grade da agenda da rede desenha cada coluna no relógio da unidade dela e diz qual é (FU-04; R16, o Heitor, 26/11: "Cada coluna no relógio da sua unidade, dizendo qual é (como ficou)").
 - Fonte: decisão do Claude; a grade da agenda da rede: decisão do Claude, 26/11 (33ª simulação, D4), pela FU-04 e pelo princípio 3
 - Onde: `docs/regras/indicadores.md:29-37`, `:90-92`, `:57-67`
 - Antes: KA-05; antes de 26/11: a grade da rede não dizia o relógio de cada coluna
 
-**FU-04.** Quando a unidade não está no horário de Brasília, a tela diz qual é o relógio ("Horário de Manaus"); no de Brasília, não diz nada. Na agenda da rede com unidades em fusos diferentes, o cabeçalho de cada coluna do dia diz o relógio dela (também o de Brasília) e a nota acima da grade, no dia e na semana, o de cada unidade ("Cada unidade no relógio dela: Barra do Garças no horário de Cuiabá; Aragarças no horário de Brasília."); com um fuso só fora de Brasília, a nota de sempre.
+**FU-04.** Quando a unidade não está no horário de Brasília, a tela diz qual é o relógio ("Horário de Manaus"); no de Brasília, não diz nada. Na agenda da rede com unidades em fusos diferentes, o cabeçalho de cada coluna do dia diz o relógio dela (também o de Brasília), sem nota acima da grade (R16, o Heitor, 26/11: "Cada coluna no relógio da sua unidade, dizendo qual é (como ficou)"; "Mas não precisa da explicação"); com um fuso só fora de Brasília, a nota de sempre.
 - Fonte: princípio 3; a agenda da rede: decisão do Claude, 26/11 (33ª simulação, D4), pelo princípio 3
 - Onde: `docs/regras/indicadores.md:38-41`, `:85-87`; `DEVLOG.md:13755`, `:57-67`
 - Antes: KA-06; antes de 26/11: a grade da rede não dizia o relógio (era a sugestão nº 57)
@@ -44,11 +44,10 @@ Este é o catálogo das regras dos indicadores que valem HOJE: todo número na t
 - Onde: `docs/regras/indicadores.md:72-75`
 - Antes: KA-10
 
-**FU-09.** (Proposta, PARA O HEITOR.) A hora de um fechamento de comissão sai no fuso da unidade dele, como a de cada lançamento: a comissão de Barra do Garças paga às 13:13 de lá é "13:13 (horário de Cuiabá)" na aba Comissões, nos "Últimos fechamentos" e no CSV, como já é nas linhas do extrato (na tela e no CSV), na Auditoria (AD-26 de Plataforma) e nas Movimentações. O mês da comissão e os limites do fechamento seguem no fuso da rede (CF-08 das Comissões): muda só a hora que a tela e o CSV escrevem.
-- Fonte: proposta do Claude, 26/11 (33ª simulação, Decisão C), PARA O HEITOR. O relatório da 33ª a dava como a FU-02 "da fala do Heitor de 11/11", mas a fala ("Não, deixa a clinica configurar o seu fuso", a resposta à recomendação "o fuso por unidade, escolhido pelo estado do CEP, com Brasília como padrão", `DEVLOG.md:14272-14273`) decide que o fuso se configura; não diz qual relógio vale no portal da rede com unidades em fusos diferentes, nem fala dos CSV. As regras em jogo são todas do Claude: a FU-02 na parte da hora e dos CSV; a FU-03 (no portal da rede com fusos diferentes, o de Brasília); a "D3 da 23ª" (17/11: as três datas do fechamento no fuso da rede, `docs/regras/comissoes.md:785-789`); e a D7 da 26ª (cada lançamento do extrato no fuso da unidade dele, `docs/regras/indicadores.md:85-87`). A proposta fica com a FU-02 e a D7 da 26ª, pelo princípio 3: o mesmo pagamento não pode ter duas horas na mesma tela e no mesmo CSV (D8 da 33ª: 14:13 no fechamento, 13:13 na linha)
-- Onde: hoje, o fuso da rede: `docs/regras/comissoes.md:785-789`, `apps/web/lib/comissoes/extrato-texto.ts` (`textoDoFechamento`); o teste que o trava: `apps/web/tests/fuso-da-auditoria-e-comissoes.test.ts`
-- Estado: proposta, PARA O HEITOR (26/11)
-- Antes: (nova, 26/11)
+**FU-09.** A hora de um fechamento de comissão sai no fuso da unidade dele, como a de cada lançamento: a comissão de Barra do Garças paga às 13:13 de lá é "13:13 (horário de Cuiabá)" nos "Últimos fechamentos" de uma tela em outro relógio, e "13:13" no CSV. O mês da comissão e os limites do fechamento seguem no fuso da rede (CF-08 das Comissões).
+- Fonte: o Heitor, 26/11, na página de perguntas (R17): "No fuso da unidade, com o nome do relógio ao lado (a proposta)"
+- Onde: `docs/regras/comissoes.md` ("As três datas"), `apps/web/lib/comissoes/extrato-texto.ts` (`textoDoFechamento`, `csvDoExtrato`)
+- Antes: (nova, 26/11; era proposta do Claude da 33ª)
 
 ## O período e a comparação (PI)
 
@@ -468,7 +467,7 @@ Este é o catálogo das regras dos indicadores que valem HOJE: todo número na t
 - Onde: `docs/regras/indicadores.md:1180-1184`
 - Antes: KE-02
 
-**FO-07.** As oportunidades são da rede (a cliente é da rede): o recorte por unidade não vale para elas. Na aba Oportunidades dos Relatórios, com uma unidade escolhida numa rede de mais de uma, a tela diz "As oportunidades são da rede: o recorte por unidade não vale para elas. Os agendamentos do comercial e o comparecimento são os da unidade escolhida."; o recorte fica, e recorta os agendamentos. O quadro de oportunidades também não tem recorte por unidade.
+**FO-07.** As oportunidades são da rede (a cliente é da rede): o recorte por unidade não vale para elas. Na aba Oportunidades dos Relatórios, com uma unidade escolhida numa rede de mais de uma, os dois cartões que não seguem o recorte se chamam "Conversão (rede)" e "Oportunidades recebidas (rede)", sem nota que explique (o Heitor, 26/11: "intuitivo não é explicativo"); o recorte fica, e recorta os agendamentos. O quadro de oportunidades também não tem recorte por unidade.
 - Fonte: decisão do Claude, 26/11 (33ª simulação, A10), pelo princípio 3
 - Onde: `docs/regras/indicadores.md:1592-1601`; `docs/regras/crm-inbox.md` (a oportunidade é da rede)
 - Antes: (nova, 26/11); antes de 26/11: com uma unidade escolhida, a aba mostrava as oportunidades da rede sem dizer

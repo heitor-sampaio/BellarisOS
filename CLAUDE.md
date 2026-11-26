@@ -106,6 +106,13 @@ regra de negócio que não está clara ou que contraria um deles.
    experiencia do usuario, melhorar interface"): tudo o que a tela faz
    continua; muda a organização, os nomes, a ordem e o que fica à vista.
    Opções, botões e comandos fáceis de achar e de entender.
+   **Intuitivo não é explicativo** (o Heitor, 2026-11-26: "isso não é ser
+   intuitivo, é ser explicativo e não isso que eu quero. Ser intuitivo é
+   justamente o contrario, ser facil de usar mesmo sem muitas explicações.").
+   Atrito não se corrige com nota, frase ou parágrafo explicando a tela: o
+   que resolve é a tela ficar óbvia (o nome certo, a ordem, o que aparece e
+   o que não aparece). Rótulo curto e mensagem de recusa continuam; texto
+   que explica como a tela funciona, não.
 
 **Escopo fechado** (o Heitor, 2026-11-18: "Estamos construindo um sistema, de
 escopo fechado, com regras definidas, então NÃO EXISTE isso de não zerar

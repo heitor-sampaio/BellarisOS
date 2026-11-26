@@ -259,7 +259,7 @@ export function FinanceiroComissoes(p: PropsDaTela) {
               </Dica>
             </>}
           </p>
-          {p.fechamentos.map(f => <LinhaDeFechamento key={f.id} f={f} podeEstornar={p.podeFechar} fusoDaRede={p.fusoDaRede} />)}
+          {p.fechamentos.map(f => <LinhaDeFechamento key={f.id} f={f} podeEstornar={p.podeFechar} fusoDaRede={p.fusoDaRede} fusoDaUnidade={f.branchId ? fusos.get(f.branchId) : undefined} />)}
         </div>
       )}
     </div>
@@ -451,7 +451,7 @@ function Extrato({ linhas, nome, fusoDe }: { linhas: LancamentoDoExtrato[]; nome
 }
 
 /** Um fechamento da lista; quem fecha também estorna (com motivo). */
-function LinhaDeFechamento({ f, podeEstornar, fusoDaRede: daRede }: { f: Fechamento; podeEstornar: boolean; fusoDaRede?: string }) {
+function LinhaDeFechamento({ f, podeEstornar, fusoDaRede: daRede, fusoDaUnidade }: { f: Fechamento; podeEstornar: boolean; fusoDaRede?: string; fusoDaUnidade?: string }) {
   const doPortal = useFuso()
   const fusoDaRede = daRede ?? doPortal
   const router = useRouter()
@@ -475,7 +475,7 @@ function LinhaDeFechamento({ f, podeEstornar, fusoDaRede: daRede }: { f: Fechame
       <div style={{ display: 'flex', gap: 12, justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', fontSize: 'var(--text-sm-sz)' }}>
         <span style={{ color: 'var(--text)' }}>{f.professionalName} · {f.branchName}</span>
         {/* A32 da 10ª: "de 10/11 a 10/11" não dizia que era até a hora do pagamento. */}
-        <span style={{ color: 'var(--text-muted)' }}>{textoDoFechamento(f, fusoDaRede)}</span>
+        <span style={{ color: 'var(--text-muted)' }}>{textoDoFechamento(f, fusoDaRede, fusoDaUnidade)}</span>
         <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {f.estornadoAt && <span className="chip chip-muted">Estornado</span>}
           <strong style={{ color: 'var(--text)', textDecoration: f.estornadoAt ? 'line-through' : undefined }}>{formatBRL(f.total)}</strong>

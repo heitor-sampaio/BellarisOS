@@ -782,9 +782,12 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     o próximo fechamento."; e cada fechamento diz "lançamentos de 10/11/2026
     até 10/11/2026 às 02:30" (o primeiro lançamento e o fim, que é a hora do
     pagamento). A regra não mudou. Prova: `e2e/comissoes-uso-da-10.spec.ts` ("A32").
-    As três datas (o início, o fim com a hora e o pago) vão no fuso da rede
-    (`textoDoFechamento`, `lib/comissoes/extrato-texto.ts`; D3 da 23ª: a tela
-    dizia a hora de Brasília e o CSV a da rede). O pago diz também a HORA
+    As três datas (o início, o fim com a hora e o pago) vão no fuso da
+    UNIDADE do fechamento, e o nome do relógio ao lado quando não é o da tela
+    (R17, o Heitor, 26/11, na página: "No fuso da unidade, com o nome do
+    relógio ao lado"; `textoDoFechamento`, `lib/comissoes/extrato-texto.ts`),
+    também no CSV ("Pagamentos das comissões"). O mês da comissão e os
+    limites do período seguem no fuso da rede. O pago diz também a HORA
     ("pago em 18/11/2026 às 10:05" — A29 da 24ª): dois fechamentos do mesmo
     dia se distinguem.
   - **Pagar só parte: marcar e desmarcar os lançamentos** (A21 da 10ª

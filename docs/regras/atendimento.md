@@ -259,14 +259,9 @@
     (`foraDoHorarioDeQuemAtende`, `lib/agenda/horario.ts`, dentro de
     `indisponibilidadeNoHorario`, o motivo `'fora_do_horario'`). O encaixe
     segue permitido (o servidor aceita, com o aviso), mas só pelo campo de
-    horário: a lista não o oferece. Com o horário digitado antes da pessoa e
-    TODOS só fora do horário (ninguém ocupado nem bloqueado), a lista vazia do
-    Agendar diz, ao lado do "Ninguém está livre nesse horário. Escolha outro
-    horário para ver quem atende.", o caminho do encaixe: "Para um encaixe fora
-    do horário, apague o horário, escolha primeiro quem atende e depois digite
-    o horário." (`encaixeDaListaVazia`, `lib/agenda/so-o-que-esta-livre.ts`;
-    decisão do Claude, 26/11, princípio 7; prova
-    `tests/agenda-lista-vazia-diz-o-encaixe.test.ts`). As salas não têm horário próprio: a unidade
+    horário: a lista não o oferece. A lista vazia diz "Ninguém está livre nesse
+    horário. Escolha outro horário para ver quem atende.", sem ensinar o
+    caminho do encaixe (o Heitor, 26/11: "isso não é ser intuitivo, é ser explicativo e não isso que eu quero"); prova `tests/telas-sem-texto-que-explica.test.ts`. As salas não têm horário próprio: a unidade
     fechada não as tira (decisão do Claude, 26/11). Quem não atende na unidade
     já não aparecia. Valem:
     - a grade de horários (`GradeDeHorarios`: o Agendar, as sessões do
@@ -3040,10 +3035,8 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
     atendimento e no registro da aba Prontuário. A avaliação concluída
     destravada ganhou o "Salvar" (não tinha: destravar não gravava nada).
     **Os insumos não se corrigem ali** (A2 da 33ª, Decisão A — decisão do
-    Claude, 26/11, princípio 7): a baixa é movimento do estoque, e a faixa do
-    registro destravado diz "Os insumos não se editam aqui: o ajuste é no
-    Estoque, por quem tem o Estoque em Gerenciar."
-    (`TEXTO_DOS_INSUMOS_NO_EDITAR_REGISTRO`). Prova: `tests/registro-travado.test.ts`.
+    Claude, 26/11): a baixa é movimento do estoque, e se ajusta no Estoque. A
+    tela não explica isso (o Heitor, 26/11: "isso não é ser intuitivo, é ser explicativo e não isso que eu quero"); prova `tests/telas-sem-texto-que-explica.test.ts`.
     Corrigir pede o Prontuário em Gerenciar, e só ele (UM4 de 23/11; de 18/11
     a 23/11 pedia também o Atendimento, e antes a Agenda), também a ficha do
     procedimento e a foto dela; a ficha cancelada ou de falta não se preenche

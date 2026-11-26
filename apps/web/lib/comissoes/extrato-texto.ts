@@ -1,6 +1,7 @@
 import { formatBRL } from '@estetica-os/utils'
 import type { LancamentoDoExtrato, Fechamento } from '@/lib/comissoes/leitura'
 import { rotuloDaBase } from '@/lib/comissoes/config'
+import { relogioSeOutro } from '@/lib/unidades/hora-da-unidade'
 
 /**
  * Como o extrato das comissões escreve cada lançamento — na tela e no CSV
@@ -113,12 +114,16 @@ const fidelidadeDaBase = (l: LancamentoDoExtrato) => Math.min(Math.max(l.baseFid
 
 /**
  * A linha do fechamento em "Últimos fechamentos" (A32 da 10ª: até a hora do
- * pagamento). D3 da 23ª: as três datas no fuso da REDE (D12), como o CSV.
+ * pagamento). As três datas no fuso da UNIDADE do fechamento (R17, o Heitor,
+ * 26/11: "No fuso da unidade, com o nome do relógio ao lado"); quando não é o
+ * relógio da tela (`fuso`), o nome dele no fim. Sem a unidade, o fuso da tela.
  */
-export function textoDoFechamento(f: Pick<Fechamento, 'inicio' | 'fim' | 'paidAt'>, fuso?: string): string {
-  const hora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: fuso ?? 'America/Sao_Paulo' })
+export function textoDoFechamento(f: Pick<Fechamento, 'inicio' | 'fim' | 'paidAt'>, fuso?: string, fusoDaUnidade?: string): string {
+  const z = fusoDaUnidade ?? fuso
+  const hora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: z ?? 'America/Sao_Paulo' })
+  const relogio = fusoDaUnidade ? relogioSeOutro(fusoDaUnidade, fuso) : null
   // A29 da 24ª (princípio 3): a hora do pagamento também (o CSV já trazia).
-  return `lançamentos de ${dia(f.inicio, fuso)} até ${dia(f.fim, fuso)}${f.fim ? ` às ${hora(f.fim)}` : ''}, pago em ${dia(f.paidAt, fuso)}${f.paidAt ? ` às ${hora(f.paidAt)}` : ''}`
+  return `lançamentos de ${dia(f.inicio, z)} até ${dia(f.fim, z)}${f.fim ? ` às ${hora(f.fim)}` : ''}, pago em ${dia(f.paidAt, z)}${f.paidAt ? ` às ${hora(f.paidAt)}` : ''}${relogio ? ` (${relogio})` : ''}`
 }
 const campo = (v: string) => /[";\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v
 
@@ -135,7 +140,8 @@ export function csvDoExtrato(
   /**
    * D7 da 26ª (F62b): o fuso de cada unidade (o id → o fuso). Cada linha sai no
    * relógio da unidade DELA; sem o mapa (ou a unidade nele), `fuso`. Os
-   * pagamentos (os fechamentos) seguem em `fuso`, o da rede (D12, D3 da 23ª).
+   * pagamentos (os fechamentos) também, no da unidade de cada um (R17, o
+   * Heitor, 26/11: "No fuso da unidade").
    */
   fusos?: ReadonlyMap<string, string>,
 ): string {
@@ -171,14 +177,15 @@ export function csvDoExtrato(
   ]
   // A17 da 22ª (princípio 3): o pagamento estornado e pago de novo aparece — cada
   // fechamento com quando foi pago e, estornado, quando e por quê.
-  const quandoFoi = (iso: string) => `${dia(iso, fuso)} ${hora(iso)}`
+  const fusoDoFechamento = (f: Pick<Fechamento, 'branchId'>) => (f.branchId && fusos?.get(f.branchId)) || fuso
+  const quandoFoi = (iso: string, f: Pick<Fechamento, 'branchId'>) => `${dia(iso, fusoDoFechamento(f))} ${hora(iso, fusoDoFechamento(f))}`
   if (fechamentos.length) tabela.push(
     [],
     ['Pagamentos das comissões'],
     ['Profissional', 'Unidade', 'Pago em', 'Valor', 'Situação'],
     ...[...fechamentos].sort((a, b) => new Date(a.paidAt).getTime() - new Date(b.paidAt).getTime()).map(f => [
-      f.professionalName, f.branchName, quandoFoi(f.paidAt), reais(f.total),
-      f.estornadoAt ? `Estornado em ${quandoFoi(f.estornadoAt)}${f.estornoMotivo ? ` — ${f.estornoMotivo}` : ''}` : 'Pago',
+      f.professionalName, f.branchName, quandoFoi(f.paidAt, f), reais(f.total),
+      f.estornadoAt ? `Estornado em ${quandoFoi(f.estornadoAt, f)}${f.estornoMotivo ? ` — ${f.estornoMotivo}` : ''}` : 'Pago',
     ]),
   )
   // BOM + ponto e vírgula: é o que o Excel em pt-BR abre certo.

@@ -23,9 +23,12 @@ describe('o relógio da grade da rede', () => {
     expect(relogioDaGradeDaRede([{ name: 'A' }])).toEqual({ nota: null, porColuna: false }))
   it('um fuso só, fora de Brasília: a nota de sempre', () =>
     expect(relogioDaGradeDaRede([{ name: 'A', fuso: MN }, { name: 'B', fuso: MN }])).toEqual({ nota: 'Horário de Manaus', porColuna: false }))
-  it('fusos diferentes: cada coluna diz o seu, e a nota diz o de cada unidade', () =>
+  // R16, o Heitor, 26/11, na página: "Cada coluna no relógio da sua unidade, dizendo qual é (como ficou)" e
+  // "Mas não precisa da explicação. […] Ser intuitivo é justamente o contrario, ser facil de usar mesmo sem
+  // muitas explicações." Fica o rótulo de cada coluna; a nota acima da grade sai.
+  it('fusos diferentes: cada coluna diz o seu, sem nota acima da grade', () =>
     expect(relogioDaGradeDaRede([{ name: 'Barra do Garças', fuso: CB }, { name: 'Aragarças', fuso: SP }])).toEqual({
-      nota: 'Cada unidade no relógio dela: Barra do Garças no horário de Cuiabá; Aragarças no horário de Brasília.',
+      nota: null,
       porColuna: true,
     }))
   it('o rótulo da coluna diz o relógio, também o de Brasília', () => {

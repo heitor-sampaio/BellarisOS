@@ -32,21 +32,6 @@ export const NINGUEM_LIVRE_NO_HORARIO = 'Ninguém está livre nesse horário.'
  */
 export type Indisponivel = 'ocupada' | 'bloqueada' | 'fora_do_horario'
 
-/**
- * A frase a mais da lista vazia do Agendar. Quando a causa é SÓ o expediente
- * (todos fora do horário, ninguém ocupado nem bloqueado), a tela diz também o
- * caminho do encaixe, que a R15 deixa só pelo campo de horário (decisão do
- * Claude, 26/11; princípio 7): sem o horário, a lista tem todo mundo, e a
- * escolhida fica quando o horário volta. Senão, null (o encaixe não resolve o
- * choque nem o bloqueio).
- */
-export function encaixeDaListaVazia(motivos: (Indisponivel | null)[]): string | null {
-  const soOExpediente = motivos.length > 0 && motivos.every(m => m === 'fora_do_horario')
-  return soOExpediente
-    ? 'Para um encaixe fora do horário, apague o horário, escolha primeiro quem atende e depois digite o horário.'
-    : null
-}
-
 const ROTULO: Record<Indisponivel, string> = { ocupada: 'ocupada', bloqueada: 'bloqueada', fora_do_horario: 'fora do horário' }
 
 /** O rótulo da opção JÁ escolhida que deixou de estar livre: "Sala Rosa (bloqueada)", "Gabi (fora do horário)". */

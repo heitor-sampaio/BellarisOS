@@ -7,17 +7,16 @@ import { FUSO_PADRAO, fusoValido, nomeDoFuso } from '@/lib/unidades/fuso'
  * A grade desenha cada coluna no relógio da unidade dela (F62). Com unidades
  * em fusos diferentes, as 21:00 de Barra do Garças ficam na mesma altura das
  * 21:00 de Aragarças sem que a tela diga que são relógios diferentes. Então
- * (decisão do Claude, 26/11): com fusos diferentes, cada coluna diz o relógio
- * dela, também o de Brasília, e a nota acima da grade diz o de cada unidade;
- * com um fuso só, a nota de sempre ("Horário de Manaus", a `NotaDoFuso`); em
+ * (R16, o Heitor, 26/11: "Cada coluna no relógio da sua unidade, dizendo qual
+ * é"): com fusos diferentes, cada coluna diz o relógio dela, também o de
+ * Brasília, sem nota acima da grade ("não precisa da explicação"); com um fuso só, a nota de sempre ("Horário de Manaus", a `NotaDoFuso`); em
  * Brasília, nada (o caso comum não ganha texto, princípio 7).
  */
 export function relogioDaGradeDaRede(unidades: readonly { name: string; fuso?: string | null }[]): { nota: string | null; porColuna: boolean } {
   const fusos = new Set(unidades.map(u => fusoValido(u.fuso)))
-  if (fusos.size > 1) {
-    const cada = unidades.map(u => `${u.name} no ${nomeDoFuso(u.fuso)}`).join('; ')
-    return { nota: `Cada unidade no relógio dela: ${cada}.`, porColuna: true }
-  }
+  // R16 (o Heitor, 26/11): cada coluna no relógio da sua unidade, dizendo qual — e "não precisa da
+  // explicação": o rótulo da coluna basta, sem nota acima da grade.
+  if (fusos.size > 1) return { nota: null, porColuna: true }
   const unico = [...fusos][0] ?? FUSO_PADRAO
   return { nota: unico === FUSO_PADRAO ? null : relogioDaColuna(unico), porColuna: false }
 }

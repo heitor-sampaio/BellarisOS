@@ -50,7 +50,7 @@ import { planejamentosDaFicha } from '@/lib/atendimento/retrato-dos-injetaveis'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { Dica } from '@/components/shared/dica'
 import { avisoDoMenor, ehMenorDeIdade, linhaDoResponsavel, type ResponsavelLegal } from '@/lib/clients/menor'
-import { textoDoRegistroTravado, TEXTO_DO_CLINICO_SO_LEITURA, TEXTO_DOS_INSUMOS_NO_EDITAR_REGISTRO } from '@/lib/atendimento/registro-travado'
+import { textoDoRegistroTravado, TEXTO_DO_CLINICO_SO_LEITURA } from '@/lib/atendimento/registro-travado'
 import { TEXTO_DA_SESSAO_NA_DESISTENCIA } from '@/lib/atendimento/desistencia'
 import { lotesDaBaixa, textoDosLotesDaBaixa, type LoteParaBaixa, type ParteDaBaixa } from '@/lib/estoque/fefo'
 import { textoDoPlanoDoConcluido } from '@/lib/plano-de-tratamento/textos'
@@ -2076,12 +2076,6 @@ export function AppointmentSession({
                   // D11 da 8ª: o cancelado e a falta não dizem "Atendimento concluído".
                   : registroTravado.texto}
               </p>
-              {/* A2 da 33ª (Decisão A): o "Editar registro" não mexe nos insumos — diz onde se corrigem. */}
-              {isUnlocked && (
-                <p data-insumos-no-editar style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
-                  {TEXTO_DOS_INSUMOS_NO_EDITAR_REGISTRO}
-                </p>
-              )}
             </div>
             {/* Desbloquear é para editar o prontuário: o Prontuário em
                 Gerenciar (UM4), e só no concluído (D11: o cancelado não tem

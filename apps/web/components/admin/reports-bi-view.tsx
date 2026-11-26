@@ -35,7 +35,7 @@ import {
 } from '@/lib/metrics/vendas-comum'
 import type { SemReceita } from '@/lib/metrics/fechamento-extra'
 import { notasDoTop5 } from '@/lib/relatorios/nota-do-top5'
-import { AlertTriangle, Download, Info } from 'lucide-react'
+import { AlertTriangle, Download } from 'lucide-react'
 import {
   HBarChart, WeekBarChart, DonutChart, MiniAreaChart,
   DreWaterfall, SimpleTable, Badge,
@@ -559,16 +559,6 @@ function TabFinanceiro(p: ReportsBiProps) {
               <p data-dre-sem-taxa role="note" style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: '14px 0 0' }}>
                 <AlertTriangle size={14} aria-hidden style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 2 }} />
                 <span>{avisoDoDreSemTaxa(p.vendasSemTaxa)}</span>
-              </p>
-            )}
-            {/* A11 da 33ª (princípio 3): o cartão do caixa tem mais que a linha das despesas operacionais —
-                o DRE diz de que ele se compõe, com os números de lib/metrics (a soma é a do cartão). */}
-            {opEx !== resultado.despesaOperacional && (
-              <p data-despesas-do-cartao style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: '14px 0 0' }}>
-                As despesas pagas no caixa ({fmtBRLFull(opEx)}, no cartão acima) são {fmtBRLFull(resultado.despesaOperacional)} de despesas operacionais
-                {' '}(a linha do DRE), {fmtBRLFull(p.estoqueNoResultado.atual.despesaDeComissoes ?? 0)} do pagamento das comissões
-                {' '}e {fmtBRLFull(p.estoqueNoResultado.atual.compraDeEstoque)} da compra de estoque. No lucro, a comissão entra quando é
-                {' '}lançada (a linha das comissões), e a compra fica fora.
               </p>
             )}
             {/* A31 da 10ª: o que fica fora do resultado chega a quem não abre o Estoque (a contadora), e o DRE se exporta. */}
@@ -1577,6 +1567,9 @@ function MovimentosDoEstoque({ m, comUnidade }: { m: DadosDosMovimentos; comUnid
 function TabComercial(p: ReportsBiProps) {
   const c = p.comercial
   if (!c) return <SCard title={REPORT_TAB_LABELS.comercial}><EmptyMsg /></SCard>
+  // A oportunidade é da rede (a cliente é da rede): com uma unidade escolhida, o
+  // rótulo dos dois cartões que não seguem o recorte diz "(rede)".
+  const daRede = p.selectedBranchId && (p.allBranches ?? p.branches).length > 1 ? ' (rede)' : ''
 
   const fmtInt = (n: number) => new Intl.NumberFormat('pt-BR').format(n)
   const fmtPct = (n: number) => `${n.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`
@@ -1599,20 +1592,11 @@ function TabComercial(p: ReportsBiProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-        <KpiCard label="Conversão"             value={c.conversao} format="pct" />
-        <KpiCard label="Oportunidades recebidas" value={c.totalLeads} format="int" accent="var(--text)" />
+        <KpiCard label={`Conversão${daRede}`} value={c.conversao} format="pct" />
+        <KpiCard label={`Oportunidades recebidas${daRede}`} value={c.totalLeads} format="int" accent="var(--text)" />
         <KpiCard label="Agendados pelo comercial" value={c.comerciaisAgendados} format="int" accent="var(--text)" />
         <KpiCard label="Comparecimento"           value={c.comparecimento} format="pct" accent="var(--text)" />
       </div>
-
-      {/* A10 da 33ª (princípio 3): a oportunidade não tem unidade (a cliente é da rede); o recorte
-          só vale para os agendamentos do comercial (`painelComercial`) — a tela diz. */}
-      {p.selectedBranchId && (p.allBranches ?? p.branches).length > 1 && (
-        <p data-oportunidades-da-rede role="note" style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: 0 }}>
-          <Info size={14} aria-hidden style={{ color: 'var(--text-faint)', flexShrink: 0, marginTop: 2 }} />
-          <span>As oportunidades são da rede: o recorte por unidade não vale para elas. Os agendamentos do comercial e o comparecimento são os da unidade escolhida.</span>
-        </p>
-      )}
 
       <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', margin: 0 }}>
         {c.temGanho

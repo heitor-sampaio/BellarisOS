@@ -1774,6 +1774,39 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-26 (5) — As respostas R16 a R18 e "intuitivo não é explicativo"
+
+As respostas do Heitor na página, 26/11.
+
+- **R16** ("Cada coluna no relógio da sua unidade, dizendo qual é"; e "Mas não precisa da explicação"): a agenda da
+  rede com unidades de fusos diferentes fica com cada coluna no relógio da sua unidade, com o nome do relógio no topo
+  da coluna. A nota acima da grade saiu (`lib/agenda/relogio-da-grade.ts`). A FU-03 do catálogo passou a ser regra dele.
+- **R17** ("No fuso da unidade, com o nome do relógio ao lado"): o fechamento da comissão paga numa unidade de outro
+  fuso sai no relógio da unidade, com "(horário de Cuiabá)" ao lado, na aba Comissões, nos "Últimos fechamentos" e no
+  CSV (`textoDoFechamento`, `csvDoExtrato`; `fechamentosRecentes` lê a unidade). O mês e os limites seguem no fuso
+  da rede. Ele perguntou por que a hora do pagamento importa. A hora veio da A29 da 24ª (decisão do Claude): ela
+  distingue dois fechamentos do mesmo dia e diz até quando os lançamentos entraram. A explicação foi dada no chat.
+- **R18** ("Não sei se entendi o problema"): volta à página como R19, em palavras simples, com uma terceira opção
+  (dispensar documentos também só com a Admin da rede).
+- **A regra nova** (o Heitor, 26/11: "isso não é ser intuitivo, é ser explicativo e não isso que eu quero. Ser
+  intuitivo é justamente o contrario, ser facil de usar mesmo sem muitas explicações."): entrou no princípio 7 do
+  CLAUDE.md. As quatro notas que a 33ª tinha posto como correção de atrito saíram: a composição do "Despesas pagas
+  (caixa)" no DRE (A11), a nota das oportunidades da rede na aba Comercial (A10; no lugar dela, os dois cartões que
+  não seguem o recorte se chamam "Conversão (rede)" e "Oportunidades recebidas (rede)"), "Os insumos não se editam
+  aqui…" no "Editar registro" (A2) e o caminho do encaixe na lista vazia do Agendar (R15). A trava é
+  `tests/telas-sem-texto-que-explica.test.ts`.
+
+**Testes alterados ou apagados, com a regra:**
+- `tests/agenda-da-rede-diz-o-relogio.test.ts`: o caso dos fusos diferentes espera a nota nula (R16).
+- `tests/fuso-da-auditoria-e-comissoes.test.ts`: o fechamento passa o fuso da unidade, e o título do caso do CSV
+  mudou (R17).
+- `tests/relatorios-o-que-o-recorte-e-o-caixa-somam.test.ts` e `tests/agenda-lista-vazia-diz-o-encaixe.test.ts`:
+  apagados; e `tests/registro-travado.test.ts` perdeu o caso do texto dos insumos. Todos travavam as notas que
+  saíram ("intuitivo não é explicativo", 26/11).
+
+**Em aberto:** R19 na página. A varredura dos textos explicativos mais antigos (as notas de tela anteriores à 33ª)
+fica como frente: as correções de atrito das próximas rodadas já não põem texto que explica a tela.
+
 ### 2026-11-26 (4) — A 33ª simulação, as correções dela e a R15
 
 O laço segue (o Heitor, 25/11: "quando acabar essa roda já segue as outras e assim vai"). Cinco redes novas, sem conta
@@ -1816,8 +1849,7 @@ dinheiro das cinco bateu em todas as telas. 18 defeitos, 14 atritos, nenhuma reg
 
 **Sugestões novas:** nº 95–109 (`docs/sugestoes-de-funcionalidades.md`); a nº 57 foi feita pelo D4.
 
-**Em aberto, na página:** R16 (o relógio da agenda da rede com fusos diferentes), R17 (a hora da comissão paga numa
-unidade de outro fuso), R18 (o nome da permissão "Modelos de documento").
+**Em aberto, na página:** R16, R17 e R18 (respondidas no mesmo dia: entrada 5).
 
 ### 2026-11-26 (3) — As respostas do Heitor de 26/11 (a página de perguntas, R01 a R11)
 

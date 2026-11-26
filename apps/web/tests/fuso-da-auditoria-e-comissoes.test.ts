@@ -67,10 +67,12 @@ describe('D3: os "Últimos fechamentos" no fuso da rede', () => {
     expect(sp(texto)).toBe('lançamentos de 17/11/2026 até 17/11/2026 às 18:37, pago em 17/11/2026 às 18:37')
   })
 
+  // R17 (o Heitor, 26/11, na página: "No fuso da unidade, com o nome do relógio ao lado"): a tela passa
+  // também o fuso da unidade do fechamento (tests/comissoes-fechamento-no-fuso-da-unidade.test.ts).
   it('a linha do fechamento usa o texto com o fuso', () => {
     const tela = fs.readFileSync(path.resolve(__dirname, '..', 'components', 'shared', 'financeiro-comissoes.tsx'), 'utf8')
     expect(tela).not.toMatch(/data\(f\.(inicio|fim)\)|hora\(f\.fim\)/)
-    expect(tela).toMatch(/textoDoFechamento\(f, fusoDaRede\)/)
+    expect(tela).toMatch(/textoDoFechamento\(f, fusoDaRede, fusoDaUnidade\)/)
   })
 })
 
@@ -120,7 +122,8 @@ describe('numa rede de dois relógios, cada linha da Auditoria e do CSV das comi
   })
 
   describe('o CSV das comissões: cada linha no fuso da unidade dela', () => {
-    it('a Hora e as datas da linha de Cuiabá saem no relógio de Cuiabá; o fechamento, no da rede', async () => {
+    // R17 (o Heitor, 26/11): o fechamento também no fuso da unidade dele (tests/comissoes-fechamento-no-fuso-da-unidade.test.ts).
+    it('a Hora e as datas da linha de Cuiabá saem no relógio de Cuiabá', async () => {
       const { csvDoExtrato } = await import('@/lib/comissoes/extrato-texto')
       const linha = {
         id: 'x', professionalId: 'p', branchId: 'cuiaba', releasedAt: '2026-11-18T22:21:00.000Z', kind: 'LIBERACAO', motivo: null, amount: 10, status: 'OPEN',
@@ -135,7 +138,7 @@ describe('numa rede de dois relógios, cada linha da Auditoria e do CSV das comi
 
     it('a tela manda o fuso de cada unidade ao CSV e às datas da linha', () => {
       const tela = fonte('components', 'shared', 'financeiro-comissoes.tsx')
-      // Os pagamentos (os fechamentos) no fuso da rede, como a tela (D3 da 23ª); as linhas pelo mapa.
+      // As linhas e os pagamentos (os fechamentos) pelo mapa do fuso de cada unidade (R17, o Heitor, 26/11).
       expect(tela).toMatch(/csvDoExtrato\(p\.extrato, nome, unidade, p\.fusoDaRede \?\? fuso, p\.fechamentos, fusos\)/)
       expect(tela).toMatch(/data\(l\.releasedAt, fusoDe\(l\)\)/)
       expect(fonte('app', '_shared', 'comissoes-da-equipe.tsx')).toMatch(/fusosDasUnidades=/)

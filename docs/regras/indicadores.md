@@ -54,16 +54,14 @@
       no relógio da unidade DELE e, quando ele não é o da tela, o nome
       ("18:55 (horário de Cuiabá)" — `horaNaUnidadeDele`,
       `lib/unidades/hora-da-unidade.ts`). A grade segue no relógio do portal.
-    - **A grade da agenda da REDE diz o relógio** (D4 da 33ª, FU-04 e o
-      princípio 3; decisão do Claude, 26/11): ela desenha cada coluna no
-      relógio da unidade dela (F62). Com unidades em fusos diferentes, o
-      cabeçalho de cada coluna do dia diz o relógio dela (também o de
-      Brasília), e a nota acima da grade, no dia e na semana, o de cada unidade
-      ("Cada unidade no relógio dela: Barra do Garças no horário de Cuiabá;
-      Aragarças no horário de Brasília."); com um fuso só fora de Brasília, a
-      nota de sempre ("Horário de Manaus"); em Brasília, nada
-      (`relogioDaGradeDaRede`, `lib/agenda/relogio-da-grade.ts`). Desenhar a
-      grade inteira no relógio de Brasília (FU-03) é pergunta ao Heitor.
+    - **A grade da agenda da REDE diz o relógio** (D4 da 33ª, FU-04; R16, o
+      Heitor, 26/11: "Cada coluna no relógio da sua unidade, dizendo qual é" e
+      "não precisa da explicação"): ela desenha cada coluna no relógio da
+      unidade dela (F62). Com unidades em fusos diferentes, o cabeçalho de cada
+      coluna do dia diz o relógio dela (também o de Brasília), sem nota acima
+      da grade; com um fuso só fora de Brasília, a nota de sempre ("Horário de
+      Manaus"); em Brasília, nada (`relogioDaGradeDaRede`,
+      `lib/agenda/relogio-da-grade.ts`).
       Prova: `tests/agenda-da-rede-diz-o-relogio.test.ts`.
   - **No navegador**, o fuso vem do `FusoProvider` dos layouts (`useFuso`); a
     grade da agenda trabalha "na parede" (`naParede`/`daParede`), e a hora
@@ -848,14 +846,8 @@ KPI que não fazia nenhum dos dois.
   dica). O nome e a conta não mudaram. Prova: o mesmo spec. O cartão do caixa no Financeiro
   (unidade e rede) e na Visão geral dos Relatórios é "Despesas pagas (caixa)",
   com a compra de estoque e o pagamento das comissões, que o lucro não desconta
-  (A24 da 10ª simulação, 2026-11-10; `vendas-financeiro.md` §9.6). **No Financeiro dos
-  Relatórios, o DRE diz de que se compõe o cartão** (A11 da 33ª, princípio 3: o cartão
-  dizia R$ 367 e o DRE "Despesas operacionais R$ 0"): quando o caixa tem mais que a despesa
-  operacional, "As despesas pagas no caixa (R$ 367,00, no cartão acima) são R$ 0,00 de
-  despesas operacionais (a linha do DRE), R$ 367,00 do pagamento das comissões e R$ 0,00 da
-  compra de estoque…" (`[data-despesas-do-cartao]`; os três números de `lib/metrics`, a soma
-  é a do cartão). O nome do cartão não mudou. Prova:
-  `tests/relatorios-o-que-o-recorte-e-o-caixa-somam.test.ts`. **E o cartão diz o que soma, e
+  (A24 da 10ª simulação, 2026-11-10; `vendas-financeiro.md` §9.6). O DRE não explica de que se compõe o cartão: a nota da A11 da 33ª saiu em 26/11
+  (o Heitor, 26/11: "isso não é ser intuitivo, é ser explicativo e não isso que eu quero"); prova `tests/telas-sem-texto-que-explica.test.ts`. **E o cartão diz o que soma, e
   a tela diz o que fica fora** (A50 da 7ª simulação, 2026-11-05: "Insumos e
   produtos R$ 495" sem legenda, e a perda de R$ 380 fora do lucro parecia
   erro — é a regra F7): o cartão tem a dica `DEFINICOES.insumosEProdutos` (o
@@ -1589,14 +1581,13 @@ mudou, pelos princípios (3: o que a tela mostra é o que vale; 4: não chutar):
   e o comercial é o painel da aba Oportunidades (`painelComercial`, que saiu da
   tela para `lib/metrics/painel-comercial.ts`: o funil padrão, a conversão dos
   funis ativos, os motivos e a conversão por origem).
-- **As oportunidades são da rede, e a aba diz no recorte por unidade** (A10 da 33ª,
+- **As oportunidades são da rede, e o rótulo diz no recorte por unidade** (A10 da 33ª,
   princípio 3; decisão do Claude, 26/11): a oportunidade não tem unidade (a cliente é da
   rede), e só os agendamentos do comercial (e o comparecimento) respeitam o recorte
-  (`painelComercial`). Com uma unidade escolhida, numa rede de mais de uma, a aba diz "As
-  oportunidades são da rede: o recorte por unidade não vale para elas. Os agendamentos do
-  comercial e o comparecimento são os da unidade escolhida." (`[data-oportunidades-da-rede]`).
-  O recorte fica: ele recorta os agendamentos. Prova:
-  `tests/relatorios-o-que-o-recorte-e-o-caixa-somam.test.ts`. O QUADRO de
+  (`painelComercial`). Com uma unidade escolhida, numa rede de mais de uma, os dois cartões
+  que não seguem o recorte se chamam "Conversão (rede)" e "Oportunidades recebidas (rede)".
+  Sem nota explicando o recorte (o Heitor, 26/11: "isso não é ser intuitivo, é ser explicativo e não isso que eu quero"). O recorte fica: ele recorta os agendamentos. Prova:
+  `tests/telas-sem-texto-que-explica.test.ts`. O QUADRO de
   oportunidades não tem recorte por unidade: as duas páginas não leem `?unidade=`
   (o arremate da 33ª conferiu: o A10 é só da aba dos Relatórios).
 Prova: `e2e/indicadores-f68-contas.spec.ts`, `e2e/indicadores-f68-telas.spec.ts`,

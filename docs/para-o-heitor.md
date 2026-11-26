@@ -580,3 +580,26 @@ O que você precisa saber:
 
 Na página, para você: R16 (o relógio da agenda da rede com unidades de fusos diferentes), R17 (a hora da comissão
 paga numa unidade de outro fuso) e R18 (o nome da permissão "Modelos de documento").
+
+## 14. As suas respostas R16 a R18 (26/11) e a sua regra "intuitivo não é explicativo"
+
+**R16** feita: cada coluna da agenda da rede no relógio da sua unidade, com o nome do relógio no topo da coluna. A nota
+acima da grade saiu, como você disse.
+
+**R17** feita: a hora do fechamento sai no relógio da unidade, com "(horário de Cuiabá)" ao lado. Você perguntou por
+que a hora importa. Ela entrou numa rodada anterior (decisão do Claude) por dois motivos: dois fechamentos no mesmo
+dia ficavam iguais na lista, e a hora diz até quando os lançamentos entraram naquele fechamento. Se preferir só a
+data, é uma linha.
+
+**R18**: está de novo na página como R19, contada de outro jeito.
+
+**A sua regra** entrou no princípio 7 do CLAUDE.md. Saíram as quatro notas que a 33ª tinha posto: a explicação do
+"Despesas pagas (caixa)" no DRE; a nota "As oportunidades são da rede…" na aba Comercial (no lugar dela, os dois
+cartões que não seguem o filtro de unidade se chamam "Conversão (rede)" e "Oportunidades recebidas (rede)"); "Os
+insumos não se editam aqui…" no "Editar registro"; e a frase do encaixe na lista vazia do Agendar.
+
+Testes alterados ou apagados, com a regra que mudou:
+- `tests/agenda-da-rede-diz-o-relogio.test.ts`: o caso dos fusos diferentes, sem a nota (R16).
+- `tests/fuso-da-auditoria-e-comissoes.test.ts`: o fechamento no fuso da unidade (R17).
+- Apagados `tests/relatorios-o-que-o-recorte-e-o-caixa-somam.test.ts` e `tests/agenda-lista-vazia-diz-o-encaixe.test.ts`,
+  e um caso de `tests/registro-travado.test.ts`: travavam as notas que saíram (a sua fala de 26/11).
