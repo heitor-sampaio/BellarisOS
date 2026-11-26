@@ -15,6 +15,7 @@ import { pagosAntes } from '@/lib/appointments/pago-antes'
 import { recusaDoHorarioPassado } from '@/lib/appointments/horario-passado'
 import { precoDoProcedimentoNaUnidade } from '@/lib/procedimentos/preco-na-unidade'
 import { recusaDoCancelar } from '@/lib/appointments/quem-cancela'
+import { textoDaRemarcacao } from '@/lib/appointments/texto-da-remarcacao'
 
 /**
  * REMARCAR e CANCELAR um agendamento — os núcleos que a agenda (actions/
@@ -118,9 +119,10 @@ export async function remarcarCore(admin: Admin, ctx: TenantContext, input: {
   if (!remarcadas?.length) return { error: 'Este agendamento já foi finalizado.' }
 
   const userName = ctx.userName || await getUserName(admin, ctx.userId)
-  const dtStr = inicio.toLocaleString('pt-BR', { timeZone: existente.fuso, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+  // A2 da 31ª (princípio 3): de quando para quando — o horário de antes fica gravado.
   await logHistory(admin, existente.id, ctx.internalUserId, userName, 'RESCHEDULED',
-    `Reagendado para ${dtStr}`, { scheduled_at: inicio.toISOString() })
+    textoDaRemarcacao({ de: existente.scheduled_at, para: inicio.toISOString(), fuso: existente.fuso }),
+    { scheduled_at: inicio.toISOString(), de_scheduled_at: existente.scheduled_at })
   // A troca de profissional junto (o arraste para outra coluna): o histórico
   // diz de quem para quem (A22 da 8ª), não só "Remarcado".
   if (trocaDe) {

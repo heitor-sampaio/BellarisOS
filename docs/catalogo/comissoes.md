@@ -282,6 +282,11 @@ Este é o catálogo das regras das Comissões que valem HOJE: onde ficam e quem 
 - Onde: `docs/regras/comissoes.md:204-214`
 - Antes: KA-24
 
+**CB-13.** O crédito interno usado para pagar — o vendido e o concedido sem dinheiro (a cortesia, a compensação: CI-02 do catálogo de Vendas e financeiro) — é forma de pagamento, não desconto nem pontos e voucher: não sai da base. A Drenagem de R$ 140 paga com R$ 100 de crédito de cortesia e R$ 40 no Pix tem a base de R$ 140.
+- Fonte: decisão do Claude, 26/11 (31ª simulação, C10) — o desconto que sai da base é só o comercial (CB-03), e a base é a que a tela mostra (princípio 3)
+- Onde: (ainda não está em `docs/regras/comissoes.md`; o sistema já faz isso, visto na 31ª simulação); CV-13
+- Antes: (nova, 26/11)
+
 ## A taxa da maquininha na comissão (CT)
 
 **CT-01.** Quando a rede manda descontar a taxa, a taxa que sai da base é a da MAQUININHA usada no recebimento e, se a maquininha cobra diferente por bandeira, a da bandeira. A comissão sobre o líquido nunca fica negativa, mesmo com taxa alta.
@@ -463,6 +468,11 @@ Este é o catálogo das regras das Comissões que valem HOJE: onde ficam e quem 
 - Fonte: decisão do Claude
 - Onde: `docs/regras/comissoes.md:745-749`
 - Antes: KB-45
+
+**CF-20.** A comissão de quem foi desativado que ainda espera o pagamento integral (o crediário da cliente em aberto) segue no nome dele, "aguardando o pagamento integral", com o "(inativo)"; sai quando a cliente quitar e é paga no fechamento seguinte, como a de quem está ativo. A janela de desativar diz isso.
+- Fonte: decisão do Claude, 26/11 (31ª simulação, B09) — a comissão nasce do atendimento feito (princípio 5), e desativar não apaga o que é devido (CF-19, CN-04)
+- Onde: (ainda não está em `docs/regras/comissoes.md`; o sistema já faz isso, visto na 31ª simulação); CN-03, CN-04, CF-19
+- Antes: (nova, 26/11)
 
 ## Quem vê (QV)
 

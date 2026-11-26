@@ -54,7 +54,12 @@
   Copilot responde com o mesmo aviso, e o cartão diz que, recusado o
   documento, vai o e-mail — `avisoDaSenhaPorEmail`, catálogo de 24/11). Prova:
   `tests/acesso-da-cliente-senha-recusada.test.ts`,
-  `tests/copilot-acesso-senha-por-email.test.ts`.
+  `tests/copilot-acesso-senha-por-email.test.ts`. Esse login leva também a
+  marca `senha_por_email` (`app_metadata`), e enquanto a pessoa não entra no
+  app a ficha diz que o acesso espera a pessoa criar a senha pelo e-mail (ou,
+  com a senha inicial, que ainda não entrou): `lerAcessoPendente`,
+  `lib/clients/acesso-pendente.ts` (A4 da 31ª, decisão do Claude, 26/11, pelos
+  princípios 3 e 7). Prova: `tests/acesso-pendente-na-ficha.test.ts`.
 - **A menor de idade e o responsável legal** (decisão 2 do Heitor, 7ª
   simulação, 2026-11-05: "concordo" — a Beatriz tinha 16 anos, e a Lia
   escreveu o nome da mãe nas Anotações). Com `idadeEm` < 18
@@ -318,11 +323,18 @@
     pelo app mesmo com o procedimento fora do "Permitir auto agendamento", e
     só a de procedimento INATIVO (o primeiro da sessão) fica com a equipe — o
     laser e a criolipólise do A51 e do A47 também. Prova: `e2e/plano-atritos-da-9.spec.ts`
-    ("A47"), `tests/textos-do-plano-da-9.test.ts`.
+    ("A47"), `tests/textos-do-plano-da-9.test.ts`. A tela do plano ("Ver o
+    plano") diz o mesmo em cada sessão a agendar (D19 da 31ª,
+    `textoDaSessaoAAgendarNoApp`; prova `tests/plano-no-app-quem-marca-a-sessao.test.ts`).
   - **O Confirmar avisa ANTES quando o horário fica dentro do prazo do app**
     (A52; `tenants.portal_prazo_alteracao_horas`): "Este horário fica a menos
     de 12 horas: pelo app, a remarcação e o cancelamento vão até 12 horas
     antes…" (`[data-dentro-do-prazo]`). O agendamento continua permitido.
+  - **O Confirmar diz quando o crédito interno vale** (A6 da 31ª, decisão do
+    Claude, 26/11, pelo princípio 3 e CI-04): com saldo e sem o "já pago",
+    "Crédito em <a rede>: R$ X. Agendar não usa o crédito: ele pode pagar este
+    atendimento na hora do pagamento." (`textoDoCreditoNoConfirmar`,
+    `[data-credito-no-confirmar]`). Prova: `tests/agendar-no-app-diz-o-credito.test.ts`.
   - **O Início e o Histórico dizem a unidade** (A53): com duas ou mais
     unidades, o próximo agendamento mostra o nome e o endereço da unidade
     DELE (`[data-unidade-do-agendamento]`) — a drenagem da Água Verde aparecia
@@ -805,7 +817,10 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   Sem o prontuário, o pacote diz POR QUÊ
   (`textoDoProntuarioForaDoPacote`): não pedido, pedido e em análise, ou não
   liberado — era sempre "não incluído", como se não tivesse pedido
-  (simulação de 2026-10-20). **E o pedido também** (A56 da 8ª): ao lado do
+  (simulação de 2026-10-20). O não pedido diz que ela não pediu e como pedir
+  (um novo pedido no app, em Perfil, com "Incluir também meu prontuário"), e
+  não "procure a unidade" (D18 da 31ª, decisão do Claude, 26/11, por LG-07).
+  **E o pedido também** (A56 da 8ª): ao lado do
   `solicitacao.incluiProntuario`, `solicitacao.prontuario` diz "pedido —
   pendente de liberação pela equipe", "pedido — liberado e incluído neste
   pacote", "pedido — não liberado pela equipe" ou "não pedido"
@@ -824,11 +839,15 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   prontuário" (`oQueOPedidoLeva`) — eram dois cartões empilhados sem dizer
   qual era qual.
 - **O pacote é legível para o titular** (J-65, 2026-10-30): o JSON fala
-  português — situações por extenso ("Concluído", "Receita", "Pago", "Pix"),
+  português — situações por extenso ("Concluído", "Receita", "Pago", "Pix",
+  o gênero "Feminino" e não "F": `generoNoPacote`, D18 da 31ª),
   a unidade pelo nome, os valores em número — e não leva id nem nome de
   coluna: as listas são montadas campo a campo e `paraOTitular`
   (`lib/lgpd/export.ts`) é a rede de segurança (tira `id`/`…_id`/`…Id`,
   `snake_case` → camelCase, em qualquer nível). O id do pedido saiu.
+  `contaNoApp.primeiroAcesso` é `clients.app_account_created_at` — a hora da
+  primeira entrada, e não a da criação: o PDF diz "primeiro acesso em" (A3 da
+  31ª, decisão do Claude, 26/11, pelo princípio 3; era "criada em").
   `contaNoApp.ultimoAcesso` é `clients.last_app_login_at`, gravado na entrada
   do portal junto com `portal_ultima_entrada_em` (`registrarEntradaNoPortal`;
   as fichas de antes herdaram a última entrada, migration `20261029001203`).

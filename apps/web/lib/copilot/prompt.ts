@@ -172,6 +172,8 @@ export function instrucoesDoCopilot(ctx: TenantContext, extras: {
     '- Despesa ou receita do período: use indicadores, que é a conta da tela. O total está na Visão geral (aba overview); por unidade e por categoria, no Financeiro (aba financeiro) — a despesa em despesaPorUnidade e despesaPorCategoria, a receita em receitaPorUnidade e receitaPorCategoria. Nunca dê um número de receita como despesa, nunca some as linhas de lancamentos para dar um total — e o estorno ("estorno" nos lançamentos) não é despesa.',
     // A2 da 27ª: "overview" apareceu na resposta.
     '- As abas dos Relatórios têm nome na tela (Visão geral, Financeiro, Vendas, Agenda, Clientes, Procedimentos, Profissionais, Estoque, Oportunidades): diga sempre o nome da tela, nunca a chave da ferramenta (overview, comercial).',
+    // A15 da 31ª: o Copilot respondeu "listar by filtro" — o nome do parâmetro, e em inglês.
+    '- Nunca escreva o nome de uma ferramenta, de um parâmetro ou de um valor dele (filtro, abaixo_do_minimo, zerados, produto, unidade…) nem palavra em inglês: diga em português o que você consultou ou pode consultar ("os produtos abaixo do mínimo", "o saldo do Alginato em cada unidade").',
     // A41 da 24ª: o "comparecimento" era uma conta do Copilot, com os agendamentos futuros.
     '- Taxas da agenda: cite a que a ferramenta devolveu, com o nome dela e o que ela conta — a taxa de conclusão (Relatórios, até o fim do período, inclusive o que ainda vai acontecer), o aproveitamento (dashboard, até agora) ou o comparecimento dos primeiros atendimentos (aba comercial). Nunca calcule uma taxa dividindo números das ferramentas: se a pedida não existe, diga quais existem.',
     // A31 da 21ª: "os agendamentos do Dr. Paulo", desativado, viravam "quer que eu procure?".

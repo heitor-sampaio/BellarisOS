@@ -88,8 +88,10 @@ export async function criarLoginDoCliente(
     if (texto !== SENHA_FRACA) return { error: texto }
     // O documento recusado (24/11, R1 da 27ª): uma senha que ninguém recebe,
     // e a cliente cria a dela pelo e-mail, depois de a ficha ligar.
+    // `senha_por_email`: a ficha diz que o acesso espera a pessoa criar a
+    // senha (A4 da 31ª; `lib/clients/acesso-pendente.ts`).
     const aleatoria = randomBytes(24).toString('base64url')
-    const segunda = await admin.auth.admin.createUser({ email, password: aleatoria, email_confirm: true, app_metadata: { senha_provisoria: true } })
+    const segunda = await admin.auth.admin.createUser({ email, password: aleatoria, email_confirm: true, app_metadata: { senha_provisoria: true, senha_por_email: true } })
     if (segunda.error || !segunda.data?.user) {
       console.error('[acesso] criar o login da cliente (senha aleatória):', segunda.error?.code, segunda.error?.message)
       return { error: /already|registered|exists/i.test(segunda.error?.message ?? '') ? RECUSA.equipe! : erroDoAuth(segunda.error) }

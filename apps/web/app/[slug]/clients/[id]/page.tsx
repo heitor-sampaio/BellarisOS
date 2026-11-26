@@ -22,9 +22,11 @@ import { fusoDaUnidade, fusosDasUnidades } from '@/lib/unidades/fuso-da-unidade'
 import { regrasDoPacoteDaRede, pacoteVencidoDaFicha } from '@/lib/pacotes/regras-da-rede'
 import { ClientProfile } from '@/components/branch/client-profile'
 import { pedidoLgpdDaFicha } from '@/lib/lgpd/aviso-do-pedido'
-import { eventosDeConfirmacaoEChegada, eventoDaAvaliacao, comAutores, linkDoAtendimento } from '@/lib/clients/historico-do-agendamento'
+import { eventosDeConfirmacaoEChegada, eventoDaAvaliacao, eventosDeRemarcacao, comAutores, linkDoAtendimento } from '@/lib/clients/historico-do-agendamento'
 import { notasDosProcedimentos } from '@/lib/avaliacao/leitura'
 import { historicoDosAgendamentos } from '@/lib/clients/autores-do-historico'
+import { BUSINESS_TZ } from '@/lib/datetime'
+import { marcarOsDeAntes } from '@/lib/clientes/proximos-da-ficha'
 import { prePagosDoCliente } from '@/lib/pre-pago/leitura'
 import { oportunidadesDoCliente } from '@/lib/crm/oportunidades-do-cliente'
 import { procedimentosParaPlano } from '@/lib/checkout/procedimentos-do-plano'
@@ -53,6 +55,7 @@ import { nomeDosProcedimentos } from '@/lib/plano-de-tratamento/nome'
 import { getEmAbertoDosPacotes } from '@/lib/metrics/pacote-em-aberto'
 import { abaDaFicha } from '@/lib/clientes/aba-da-ficha'
 import { assertAbreAFicha, fichaSoDoProntuario, soOProntuarioDaFicha } from '@/lib/clientes/ficha-so-do-prontuario'
+import { lerAcessoPendente } from '@/lib/clients/acesso-pendente'
 import type { ClientProfileProps } from '@/components/branch/client-profile'
 import { podeEstornar, podeDarBaixa } from '@/lib/financeiro/so-os-meus'
 
@@ -119,6 +122,8 @@ export default async function ClientProfilePage({
     city:              raw.city ?? null,
     state:             raw.state ?? null,
     temAcesso:         !!raw.auth_id,
+    // A4 da 31ª (princípios 3 e 7): o acesso que ainda espera a pessoa (a senha pelo e-mail, ou não entrou).
+    acessoPendente:    soProntuario ? null : await lerAcessoPendente(admin, { authId: raw.auth_id ?? null, primeiroAcessoEm: raw.app_account_created_at ?? null }),
     // O responsável legal da menor (decisão 2 do Heitor, 2026-11-05).
     responsavel:       responsavelDaFicha(raw),
     // A indicação (decisão do Heitor, 2026-11-10): quem a indicou e quem ela indicou, com o prêmio.
@@ -173,7 +178,8 @@ export default async function ClientProfilePage({
     fuso:             fusos[a.branch_id as string] ?? null,
   }))
 
-  const upcomingAppointments = allAppointments.filter(a => UPCOMING_STATUSES.includes(a.status))
+  // A16 da 31ª (AG-55): o em aberto de um dia anterior sai dos próximos (marcado; a ficha o mostra à parte).
+  const upcomingAppointments = marcarOsDeAntes(allAppointments.filter(a => UPCOMING_STATUSES.includes(a.status)), new Date(), BUSINESS_TZ)
     .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt))  // próximo primeiro
   // O "Histórico de procedimentos" é o que ela FEZ (J-26): o cancelado (o
   // em duplicidade, inclusive) e a falta ficam na linha do tempo.
@@ -341,7 +347,7 @@ export default async function ClientProfilePage({
   if (appAccountCreatedAt) {
     history.push({
       id: uid('aa'), date: appAccountCreatedAt,
-      type: 'APP_ACCOUNT', title: 'Conta criada no app',
+      type: 'APP_ACCOUNT', title: 'Primeiro acesso ao app',
       subtitle: null, amount: null, link: null,
     })
   }
@@ -379,6 +385,7 @@ export default async function ClientProfilePage({
         subtitle: `com ${prof}`,
         amount: parseFloat(String(a.price ?? 0)),
         link: linkDoAtendimento(abreOAtendimento, `/${slug}`, a.id),
+        agendamentoId: a.id,
       })
     } else if (a.status === 'CANCELLED' && a.cancelled_at) {
       history.push({
@@ -387,6 +394,7 @@ export default async function ClientProfilePage({
         title: `Cancelado: ${label}`,
         subtitle: null, amount: null,
         link: linkDoAtendimento(abreOAtendimento, `/${slug}`, a.id),
+        agendamentoId: a.id,
       })
     } else if (a.status === 'NO_SHOW') {
       history.push({
@@ -395,6 +403,7 @@ export default async function ClientProfilePage({
         title: `Não compareceu: ${label}`,
         subtitle: null, amount: null,
         link: linkDoAtendimento(abreOAtendimento, `/${slug}`, a.id),
+        agendamentoId: a.id,
       })
     } else {
       const evDate = a.created_at ?? a.scheduled_at
@@ -405,6 +414,7 @@ export default async function ClientProfilePage({
         subtitle: `${formatarNoFuso(a.scheduled_at, "dd/MM/yyyy 'às' HH:mm", fusoDoAgendamento.get((a as { branch_id?: string | null }).branch_id ?? ''))} · ${prof}`,
         amount: null,
         link: linkDoAtendimento(abreOAtendimento, `/${slug}`, a.id),
+        agendamentoId: a.id,
       })
     }
   }
@@ -495,8 +505,13 @@ export default async function ClientProfilePage({
     history.push({ id: uid('un'), date: u.date, type: 'CLIENT_UNIFIED', title: 'Ficha unificada pelo cadastro', subtitle: u.subtitle, amount: null, link: null, autor: u.autor })
   }
 
-  // Quem fez cada ação (J-27): o nome que appointment_history guardou.
-  const clientHistory = !naLinhaDoTempo ? [] : comAutores(history, await historicoDosAgendamentos(admin, (appts ?? []).map(a => a.id as string)))
+  // Quem fez cada ação (J-27): o nome que appointment_history guardou. E as
+  // remarcações, de quando para quando, com quem remarcou (A2 da 31ª).
+  const historicoDosAg = !naLinhaDoTempo ? [] : await historicoDosAgendamentos(admin, (appts ?? []).map(a => a.id as string))
+  history.push(...eventosDeRemarcacao(historicoDosAg,
+    new Map((appts ?? []).map(a => [a.id as string, (a.procedures as { name?: string } | null)?.name ?? '—'])),
+    id => linkDoAtendimento(abreOAtendimento, `/${slug}`, id)))
+  const clientHistory = !naLinhaDoTempo ? [] : comAutores(history, historicoDosAg)
     .sort((a, b) => b.date.localeCompare(a.date))
 
   // Procedimentos e insumos do editor de plano — a aba Planejamento monta o

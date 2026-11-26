@@ -11,6 +11,7 @@ import { rolagemDaGrade, estenderJanela } from '@/lib/agenda/grade'
 import { minutosDesenhados, liberouOHorario } from '@/lib/agenda/desenho'
 import { agendamentosNoDia, janelaComOsTrechos, textoDoQueContinua, type TrechoDoAgendamento } from '@/lib/agenda/trecho-do-agendamento'
 import { intervalosDoDia, diaDaSemana, forasDoHorario, textoDosIntervalos, type Horario } from '@/lib/agenda/horario'
+import { pausasDoDia, textoDaPausa } from '@/lib/agenda/intervalos-da-grade'
 import { bloqueioNoDia, trechoDoBloqueio, type BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
 import { BlocoDoBloqueio, JanelaDoBloqueio } from '@/components/shared/bloqueio-da-agenda'
 import { useAgora, passouSemFechar } from '@/lib/use-agora'
@@ -125,6 +126,9 @@ function ProfColumn({
   // O fora do horário dela, sombreado (J-30). O clique continua marcando ali:
   // o encaixe é permitido (§9.1) — o modal avisa.
   const foras = horarioDoDia ? forasDoHorario(horarioDoDia, g.START_HOUR * 60, g.END_HOUR * 60) : []
+  // A8 da 31ª (princípio 3): a pausa entre dois períodos dela diz o nome — o
+  // sombreado sozinho era o mesmo do fora do horário, e quem olhava não via.
+  const pausas = horarioDoDia ? pausasDoDia(horarioDoDia) : []
 
   return (
     <div
@@ -151,6 +155,23 @@ function ProfColumn({
           left: 0, right: 0, background: 'var(--bg-app)', pointerEvents: 'none',
         }} />
       ))}
+
+      {pausas.map(p => {
+        const [hd, md] = p.de.split(':').map(Number), [ha, ma] = p.ate.split(':').map(Number)
+        const de = (hd ?? 0) * 60 + (md ?? 0), ate = (ha ?? 0) * 60 + (ma ?? 0)
+        const top = Math.max(0, (de / 60 - g.START_HOUR) * HOUR_PX)
+        const fim = Math.min(g.TOTAL_PX, (ate / 60 - g.START_HOUR) * HOUR_PX)
+        if (fim <= top) return null
+        return (
+          <div key={`pausa-${p.de}`} data-intervalo-do-horario style={{
+            position: 'absolute', top, height: fim - top, left: 0, right: 0, pointerEvents: 'none',
+            padding: '4px 8px', overflow: 'hidden',
+            fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-semibold)', color: 'var(--text-muted)',
+          }}>
+            {textoDaPausa(p)}
+          </div>
+        )
+      })}
 
       {/* O bloqueio pontual dela (decisão 3 da 7ª): a faixa não segura o
           clique — agendar ali abre o modal, que avisa (o encaixe é permitido). */}

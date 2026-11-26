@@ -12,6 +12,8 @@ import { aUnica } from '@/lib/uma-opcao'
 import { useFuso, NotaDoFuso } from '@/components/shared/fuso'
 import { instanteNoFuso } from '@/lib/datetime'
 import { useFalaDaRede } from '@/components/client-portal/rede-do-portal'
+import { formatBRL } from '@estetica-os/utils'
+import { textoDoCreditoNoConfirmar } from '@/lib/clientes/textos-do-app'
 
 /** O dia no relógio da unidade (F62). */
 const diaNoFuso = (ms: number, fuso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: fuso }).format(new Date(ms))
@@ -63,6 +65,8 @@ interface Props {
    * avisa antes (A52 da 8ª).
    */
   prazoHoras?:   number | null
+  /** O saldo do crédito interno (lib/metrics): o Confirmar diz que ele vale no pagamento, não no agendar (A6 da 31ª). */
+  creditoInterno?: number
 }
 
 type Step = 1 | 2 | 3 | 4
@@ -71,7 +75,7 @@ type Step = 1 | 2 | 3 | 4
 const SEM_PREFERENCIA: Professional = { id: '', name: 'Sem preferência' }
 
 
-export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], procedimentoInicial = null, unidadeEscolhida = false, procedures, professionals, prazoHoras = null }: Props) {
+export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], procedimentoInicial = null, unidadeEscolhida = false, procedures, professionals, prazoHoras = null, creditoInterno = 0 }: Props) {
   const router = useRouter()
   // CA1: o NOME da rede no lugar de "clínica".
   const fala = useFalaDaRede()
@@ -516,6 +520,13 @@ export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], p
             <Row label="Duração"       value={`${procedure.duration_min} min`} />
             <Row label="Valor"         value={procedure.jaPago ?? fmtPrice(procedure.price)} accent />
           </div>
+
+          {/* A6 da 31ª (CI-04, princípio 3): o crédito é forma de pagamento — agendar não o usa. */}
+          {!procedure.jaPago && creditoInterno > 0 && (
+            <p data-credito-no-confirmar style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: -12, marginBottom: 16, lineHeight: 1.45 }}>
+              {textoDoCreditoNoConfirmar({ rotulo: fala.credito, saldo: formatBRL(creditoInterno) })}
+            </p>
+          )}
 
           {/* A52 da 8ª: o agendamento dentro do prazo do app nascia "Prazo do
               app encerrado" — o Confirmar avisa ANTES. */}

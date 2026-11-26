@@ -3,7 +3,7 @@
 import React, { useActionState, useEffect, useEffectEvent, useState, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { Phone, Mail, Calendar, ChevronLeft, ChevronRight, MoreHorizontal, Stethoscope, Plus, X, Loader2, Clock, CheckCircle2, Receipt, Check, UserPlus, Smartphone, Star, CalendarPlus, CalendarCheck, DoorOpen, XCircle, AlertCircle, CreditCard, ClipboardList, ClipboardCheck, Package, FileCheck, FileText, FileDown, ShieldCheck, type LucideIcon } from 'lucide-react'
+import { Phone, Mail, Calendar, ChevronLeft, ChevronRight, MoreHorizontal, Stethoscope, Plus, X, Loader2, Clock, CheckCircle2, Receipt, Check, UserPlus, Smartphone, Star, CalendarPlus, CalendarCheck, CalendarClock, DoorOpen, XCircle, AlertCircle, CreditCard, ClipboardList, ClipboardCheck, Package, FileCheck, FileText, FileDown, ShieldCheck, type LucideIcon } from 'lucide-react'
 import { grantInternalCredit, updateClientContactData, lookupClientByCpf, toggleClientStatus, darAcessoAoApp } from '@/actions/clients'
 import { avisoDoAcessoCriado, avisoDosAgendamentosAoArquivar } from '@/lib/clients/textos-do-cadastro'
 import { BotaoComConfirmacao } from '@/components/shared/botao-com-confirmacao'
@@ -17,6 +17,7 @@ import { AnamnesisFormRenderer, type AnamnesisAnswers } from './anamnesis-form-r
 import { AttendanceRecordCard } from './attendance-record-card'
 import { AnexosClinicos } from './anexos-clinicos'
 import { AnotacoesDoAtendimento, RegistroEditado } from './anotacoes-do-atendimento'
+import { CorrecaoDoRegistro } from './correcao-do-registro'
 import { FotosDoAtendimento, type FotoDoAtendimento } from './fotos-do-atendimento'
 import type { AnotacoesEVersoes } from '@/lib/prontuario/anotacoes-e-versoes'
 import { ExportarLgpdDaFicha } from './exportar-lgpd-da-ficha'
@@ -99,6 +100,8 @@ export interface ProfileClient {
   state:              string | null
   /** A ficha tem login no app (o acesso pode ser dado depois do cadastro). */
   temAcesso?:         boolean
+  /** O acesso que ainda espera a pessoa (A4 da 31ª; `lerAcessoPendente`): a senha a criar pelo e-mail, ou ainda não entrou. */
+  acessoPendente?:    string | null
   /** O responsável legal da menor (decisão 2 do Heitor, 2026-11-05). */
   responsavel?:       ResponsavelDaFicha | null
   /** A indicação (decisão do Heitor, 2026-11-10): quem a indicou e quem ela indicou, com o prêmio. */
@@ -128,6 +131,11 @@ export interface ProfileAppointment {
   branchId?:       string | null
   /** D3 da 30ª (FU-02): o fuso da unidade do agendamento — a hora sai no relógio dela. */
   fuso?:           string | null
+  /**
+   * A16 da 31ª (AG-55): em aberto e de um dia anterior ao de hoje (no relógio da
+   * unidade dele) — sai dos "Próximos" e fica em "Em aberto de dias anteriores".
+   */
+  emAbertoDeAntes?: boolean
 }
 
 export interface ProfilePackage {
@@ -231,6 +239,8 @@ export interface ClientHistoryEvent {
     | 'APPOINTMENT_COMPLETED'
     | 'APPOINTMENT_CANCELLED'
     | 'APPOINTMENT_NO_SHOW'
+    /** A remarcação, de quando para quando (A2 da 31ª). */
+    | 'APPOINTMENT_RESCHEDULED'
     | 'PAYMENT'
     | 'PLAN_PROPOSED'
     | 'PLAN_ACCEPTED'
@@ -247,6 +257,8 @@ export interface ClientHistoryEvent {
   link:     string | null
   /** Quem fez (appointment_history, J-27) — com a marca "via suporte", quando foi o suporte. */
   autor?:   string | null
+  /** O agendamento do evento: o autor sai dele, também sem o link (A2 da 31ª). */
+  agendamentoId?: string | null
 }
 
 export interface ProfileFormSnapshot {
@@ -268,6 +280,8 @@ export interface ProfileRecordEntry {
   intercorrencias: string | null
   /** As dores do cliente registradas no atendimento (D3, 2026-10-28). */
   queixas?:        string | null
+  /** O atendimento foi concluído: só o registro dele se corrige aqui (D4 da 31ª, PT-11). */
+  concluido?:      boolean
 }
 
 export interface ClientProfileProps {
@@ -695,6 +709,7 @@ const HISTORY_CONFIG: Record<ClientHistoryEvent['type'], HistoryCfg> = {
   APPOINTMENT_COMPLETED: { dotColor: 'var(--success)', bgColor: 'var(--success-soft)', Icon: CheckCircle2 },
   APPOINTMENT_CANCELLED: { dotColor: 'var(--text-faint)', bgColor: 'var(--bg-app)', Icon: XCircle },
   APPOINTMENT_NO_SHOW:   { dotColor: 'var(--danger)', bgColor: 'var(--danger-soft)', Icon: AlertCircle },
+  APPOINTMENT_RESCHEDULED: { dotColor: 'var(--info)', bgColor: 'var(--info-soft)', Icon: CalendarClock },
   PAYMENT:               { dotColor: 'var(--success)', bgColor: 'var(--success-soft)', Icon: CreditCard },
   PLAN_PROPOSED:         { dotColor: 'var(--cat-4)', bgColor: 'var(--cat-4-soft)', Icon: ClipboardList },
   PLAN_ACCEPTED:         { dotColor: 'var(--brand)', bgColor: 'var(--brand-soft)', Icon: ClipboardCheck },
@@ -1591,6 +1606,10 @@ export function ClientProfile({
   const motivoDoArquivo = 'Cliente arquivada: reative em "Mais ações" para agendar ou vender.'
   // Arquivar não cancela o que ela tem marcado: a confirmação diz (A19).
   const agendamentosAoArquivar = avisoDosAgendamentosAoArquivar(upcomingAppointments, undefined, fuso)
+  // A16 da 31ª (AG-55; princípio 3): os próximos são de hoje em diante; o de um
+  // dia anterior ainda em aberto fica à parte, até a equipe fechá-lo na agenda.
+  const proximosDeHoje = upcomingAppointments.filter(a => !a.emAbertoDeAntes)
+  const emAbertoDeAntes = upcomingAppointments.filter(a => a.emAbertoDeAntes)
 
   // O `?acao=reativar` sai da URL (recarregar não reabre o menu).
   const acaoDaUrl = params.get('acao')
@@ -1742,6 +1761,12 @@ export function ClientProfile({
                     o "VIP" ganhava um "Ouro", um nível que ninguém criou. */}
                 {client.tags.map(tag => <TagBadge key={tag} label={tag} size="xs" />)}
               </div>
+              {/* A4 da 31ª: "Tem acesso ao app" e o acesso ainda espera a pessoa — a ficha diz. */}
+              {client.temAcesso && client.acessoPendente && (
+                <p data-acesso-pendente style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.45 }}>
+                  {client.acessoPendente}
+                </p>
+              )}
               {/* Só o prontuário: o nome, e nada do cadastro. */}
               {!soProntuario && (
               <div style={{ display: 'flex', gap: 14, marginTop: 5, flexWrap: 'wrap' }}>
@@ -2091,20 +2116,20 @@ export function ClientProfile({
           )}
 
           {/* 2. Próximos agendamentos */}
-          {upcomingAppointments.length > 0 ? (
+          {proximosDeHoje.length > 0 ? (
             <div className="card" data-proximos-agendamentos style={{ padding: '18px 20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
                 <Clock size={14} style={{ color: 'var(--brand)' }} />
                 <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Próximos agendamentos</h3>
                 <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, padding: '2px 7px', borderRadius: 10, background: 'var(--brand-soft)', color: 'var(--brand)', marginLeft: 'auto' }}>
-                  {upcomingAppointments.length}
+                  {proximosDeHoje.length}
                 </span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {upcomingAppointments.map((a, i) => (
+                {proximosDeHoje.map((a, i) => (
                   <div key={a.id} style={{
                     display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0',
-                    borderBottom: i < upcomingAppointments.length - 1 ? '1px solid var(--hairline)' : 'none',
+                    borderBottom: i < proximosDeHoje.length - 1 ? '1px solid var(--hairline)' : 'none',
                   }}>
                     <div style={{
                       width: 36, height: 36, borderRadius: 10, flexShrink: 0,
@@ -2133,6 +2158,38 @@ export function ClientProfile({
             <div className="card" style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
               <Clock size={14} style={{ color: 'var(--text-faint)' }} />
               <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)' }}>Nenhum agendamento futuro.</p>
+            </div>
+          )}
+
+          {/* A16 da 31ª: o de dias anteriores que segue em aberto — não é "próximo",
+              e não some: fica aqui até a equipe registrar a falta, a chegada ou a conclusão. */}
+          {emAbertoDeAntes.length > 0 && (
+            <div className="card" data-em-aberto-de-antes style={{ padding: '18px 20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <AlertCircle size={14} style={{ color: 'var(--warning)' }} />
+                <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Em aberto de dias anteriores</h3>
+                <Dica rotulo="Por que estão aqui">O horário já passou e ninguém registrou o que aconteceu. Na agenda, marque a falta, a chegada ou conclua o atendimento.</Dica>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {emAbertoDeAntes.map((a, i) => (
+                  <div key={a.id} style={{
+                    display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0',
+                    borderBottom: i < emAbertoDeAntes.length - 1 ? '1px solid var(--hairline)' : 'none',
+                  }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>{a.procedureName}</p>
+                      <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 2 }}>
+                        {quandoNaFicha(a.scheduledAt, a.fuso, fuso, "EEE, dd MMM · HH:mm")}
+                        {a.professionalName !== '—' && ` · ${a.professionalName}`}
+                        {unidadeNaFicha(a.branchId, branches) && <span data-unidade-do-agendamento>{` · ${unidadeNaFicha(a.branchId, branches)}`}</span>}
+                      </p>
+                    </div>
+                    <span className="chip chip-warning" style={{ fontSize: 'var(--text-overline)' }}>
+                      {STATUS_LABEL[a.status] ?? a.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -2359,9 +2416,18 @@ export function ClientProfile({
                     : <AnamneseGeralCartao embedded anamnese={generalAnamnesis} fichaAtual={generalAnamnesis?.ficha ?? { formId: null, nome: 'Ficha de saúde', rows: [] }} clientId={client.id} canEdit={false} />
                 }
                 registroId={entry.appointmentId}
-                correcao={(anotacoesEVersoes.versoes[entry.appointmentId] ?? []).length > 0
-                  ? <RegistroEditado versoes={anotacoesEVersoes.versoes[entry.appointmentId]!} appointmentId={entry.appointmentId} slug={slug} />
-                  : undefined}
+                correcao={(anotacoesEVersoes.versoes[entry.appointmentId] ?? []).length > 0 || (podeAnotar && entry.concluido) ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {(anotacoesEVersoes.versoes[entry.appointmentId] ?? []).length > 0 && (
+                      <RegistroEditado versoes={anotacoesEVersoes.versoes[entry.appointmentId]!} appointmentId={entry.appointmentId} slug={slug} />
+                    )}
+                    {/* D4 da 31ª (PT-11): corrigir o concluído é do Prontuário em Gerenciar, sem precisar atender. */}
+                    {podeAnotar && entry.concluido && (
+                      <CorrecaoDoRegistro appointmentId={entry.appointmentId} slug={slug}
+                        evolucao={entry.evolucao} intercorrencias={entry.intercorrencias} ficha={entry.ficha} />
+                    )}
+                  </div>
+                ) : undefined}
                 fotos={fotosDoRegistro(entry.appointmentId).length > 0 ? (
                   <FotosDoAtendimento embutido
                     fotos={fotosDoRegistro(entry.appointmentId)}

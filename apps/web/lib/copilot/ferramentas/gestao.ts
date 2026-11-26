@@ -1,14 +1,14 @@
 import 'server-only'
 import { z } from 'zod/v4'
-import { ler } from '@/lib/db'
+import { ler, lerTodas } from '@/lib/db'
 import { addDaysTZ, dayKeyTZ } from '@/lib/datetime'
 import { rotaOportunidade } from '@/lib/rotas'
 import { loteVencido } from '@/lib/estoque/validade'
 import { medidaNoPlural } from '@/lib/estoque/medidas'
 import { saldoNaPrateleira } from '@/lib/estoque/saldo-em-texto'
-import { formatarQuantidade, minimoEhDoCadastro } from '@/lib/estoque/situacao'
-import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
-import { DATA, UUID, dinheiro, fusoDe, fusosPorUnidade, hojeNoFuso, idsDasUnidades, janelaDoDia, nomesPorId, ondeProcurou, resolverUnidade } from '@/lib/copilot/ferramentas/comum'
+import { formatarQuantidade, minimoEhDoCadastro, saldoDoLoteNaTela, situacaoDoEstoque } from '@/lib/estoque/situacao'
+import type { ContextoDaFerramenta, FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
+import { DATA, UUID, dinheiro, fusoDe, fusosPorUnidade, hojeNoFuso, idsDasUnidades, janelaDoDia, nomesPorId, ondeProcurou, resolverUnidade, unidadesDaRede, type Unidade } from '@/lib/copilot/ferramentas/comum'
 
 /**
  * As leituras de FINANCEIRO, ESTOQUE e OPORTUNIDADES.
@@ -129,7 +129,8 @@ export const estoque: FerramentaDeLeitura<{
   tipo: 'leitura',
   modulo: 'stock', nivel: 'VIEW',
   recurso: 'estoque',
-  descricao: 'O estoque por unidade: "abaixo_do_minimo" (padrão), "zerados", "vencendo" (lotes que vencem em N dias; padrão 30) ou "produto" (o saldo de um produto pelo nome).',
+  // A15 da 31ª: "Alginato de Itajaí" ia inteiro como nome do produto — a descrição ensina a separar.
+  descricao: 'O estoque por unidade: "abaixo_do_minimo" (padrão), "zerados" (sem saldo na unidade, também o produto que nunca entrou nela), "vencendo" (lotes que vencem em N dias; padrão 30) ou "produto" (o saldo de um produto pelo nome em cada unidade, com 0 onde não há, e os lotes com saldo). Sem unidade, procura em todas as da pessoa: para "o produto X em cada unidade", passe só o produto. O nome da unidade vai separado do produto: "Alginato de Itajaí" é produto "Alginato" e unidade "Itajaí".',
   parametros: z.object({
     filtro: z.enum(['abaixo_do_minimo', 'zerados', 'vencendo', 'produto']).optional(),
     produto: z.string().max(80).optional(),
@@ -198,30 +199,141 @@ export const estoque: FerramentaDeLeitura<{
       }
     }
 
-    let q = c.admin.from('branch_product_stock')
-      .select('current_stock, current_rendimento, min_stock, branch_id, products!inner(id, name, unit, consumption_unit, units_per_package, tenant_id, is_active, min_stock)')
-      .in('branch_id', unidades).eq('products.tenant_id', c.ctx.tenantId!).eq('products.is_active', true)
-      .order('current_stock').limit(60)
-    if (filtro === 'produto') {
-      if (!args.produto) return { dados: { erro: 'Qual produto?' } }
-      q = q.ilike('products.name', `%${args.produto.replace(/[%_\\]/g, '')}%`)
+    if (filtro === 'zerados') {
+      // D24 da 31ª (D10 da 6ª, atendimento.md): sem estoque na unidade é não ter
+      // saldo positivo NELA — o produto ativo que nunca entrou lá também conta.
+      // Só as linhas que existiam (`current_stock <= 0`) deixavam a unidade de fora.
+      const produtos = await lerTodas<ProdutoLido>((de, ate) => c.admin.from('products')
+        .select('id, name, unit, consumption_unit, units_per_package, min_stock')
+        .eq('tenant_id', c.ctx.tenantId!).eq('is_active', true)
+        .order('name').order('id').range(de, ate), 'ler os produtos ativos')
+      const saldos = produtos.length ? await saldosDosProdutos(c, produtos.map(p => p.id), unidades) : new Map<string, SaldoLido>()
+      const itens = produtos.flatMap(p => unidades.flatMap(u => {
+        const s = saldos.get(`${p.id}:${u}`)
+        const situacao = situacaoDoEstoque(
+          { embalagens: Number(s?.current_stock ?? 0), rendimento: s?.current_rendimento != null ? Number(s.current_rendimento) : (s ? null : 0), minimo: Number(s?.min_stock ?? 0) },
+          { unit: p.unit ?? '', consumption_unit: p.consumption_unit, units_per_package: p.units_per_package })
+        return situacao === 'SEM_ESTOQUE' ? [itemDoSaldo(p, u, s, nomesDasUnidades)] : []
+      }))
+      return {
+        dados: {
+          filtro, procurouEm, quantidade: itens.length, itens: itens.slice(0, 60),
+          ...(itens.length > 60 ? { aviso: `Mostrando 60 de ${itens.length}.` } : {}),
+        },
+      }
     }
-    if (filtro === 'zerados') q = q.lte('current_stock', 0)
-    const linhas = (await ler(q, 'ler o estoque') as unknown as {
-      current_stock: number; current_rendimento: number | null; min_stock: number | null; branch_id: string
-      products: { id: string; name: string } & MedidasLidas
-    }[] | null) ?? []
+
+    // filtro === 'produto': o saldo do produto em CADA unidade ao alcance (D24
+    // da 31ª) — a unidade sem linha diz 0, como a janela do Ajuste — com os lotes
+    // que têm saldo (CX-05: o Copilot fala como as janelas do Estoque).
+    if (!args.produto) return { dados: { erro: 'Qual produto?' } }
+    let pedido = { produto: args.produto, unidades, procurouEm }
+    let produtos = await produtosPeloNome(c, pedido.produto)
+    let entendido: { produto: string; unidade: string } | undefined
+    if (!produtos.length && !args.unidade) {
+      // A15 da 31ª: "Alginato de Itajaí" — sem produto com o nome inteiro e com
+      // o nome de uma unidade no pedido, é o produto "Alginato" na unidade Itajaí.
+      const separado = separarUnidadeDoProduto(args.produto, await unidadesDaRede(c))
+      if (separado) {
+        const u2 = await resolverUnidade(c, separado.unidade.id, { paraLer: true })
+        if ('erro' in u2) return { dados: { erro: u2.erro } }
+        const ids = await idsDasUnidades(c, u2.unidade)
+        pedido = { produto: separado.produto, unidades: ids, procurouEm: await ondeProcurou(c, ids) }
+        produtos = await produtosPeloNome(c, separado.produto)
+        entendido = { produto: separado.produto, unidade: separado.unidade.name }
+      }
+    }
+    if (!produtos.length) return { dados: { filtro, procurouEm: pedido.procurouEm, itens: [], erro: `Nenhum produto ativo com "${pedido.produto}" no nome.` } }
+    const ids = produtos.map(p => p.id)
+    const [saldos, lotes, nomes] = await Promise.all([
+      saldosDosProdutos(c, ids, pedido.unidades),
+      ler(c.admin.from('product_batches')
+        .select('product_id, branch_id, batch_number, expires_at, quantity')
+        .in('product_id', ids).in('branch_id', pedido.unidades).gt('quantity', 0)
+        .order('expires_at', { ascending: true, nullsFirst: false }).limit(200), 'ler os lotes do produto') as Promise<{
+          product_id: string; branch_id: string; batch_number: string | null; expires_at: string | null; quantity: number
+        }[] | null>,
+      nomesPorId(c, 'branches', pedido.unidades),
+    ])
+    const itens = produtos.flatMap(p => {
+      // A unidade com o produto primeiro; a que não tem nada (0), depois.
+      const ordem = [...pedido.unidades].sort((a, b) => Number(!saldos.has(`${p.id}:${a}`)) - Number(!saldos.has(`${p.id}:${b}`)))
+      return ordem.map(u => ({
+        ...itemDoSaldo(p, u, saldos.get(`${p.id}:${u}`), nomes),
+        lotes: (lotes ?? []).filter(l => l.product_id === p.id && l.branch_id === u).map(l => ({
+          lote: l.batch_number, vence: l.expires_at ? l.expires_at.slice(0, 10) : null,
+          saldo: saldoDoLoteNaTela(Number(l.quantity), { unit: p.unit ?? '', consumption_unit: p.consumption_unit, units_per_package: p.units_per_package }),
+        })),
+      }))
+    })
     return {
       dados: {
-        filtro, procurouEm,
-        itens: linhas.map(l => ({
-          produto: l.products.name, produtoId: l.products.id, unidade: nomesDasUnidades.get(l.branch_id) ?? null,
-          saldo: saldoDaPrateleira(l, l.products), minimo: l.min_stock != null ? Number(l.min_stock) : null,
-          ...(l.min_stock != null && Number(l.min_stock) > 0 ? { minimoNaTela: minimoNaRegua(Number(l.min_stock), l.products) } : {}),
-        })),
+        filtro, procurouEm: pedido.procurouEm, ...(entendido ? { entendido } : {}),
+        itens: itens.slice(0, 60), ...(itens.length > 60 ? { aviso: `Mostrando 60 de ${itens.length}.` } : {}),
       },
     }
   },
+}
+
+type ProdutoLido = { id: string; name: string } & MedidasLidas
+type SaldoLido = { product_id: string; branch_id: string; current_stock: number; current_rendimento: number | null; min_stock: number | null }
+
+/** Os produtos ATIVOS da rede com o texto no nome (até 20). */
+async function produtosPeloNome(c: ContextoDaFerramenta, nome: string): Promise<ProdutoLido[]> {
+  return (await ler(c.admin.from('products')
+    .select('id, name, unit, consumption_unit, units_per_package, min_stock')
+    .eq('tenant_id', c.ctx.tenantId!).eq('is_active', true)
+    .ilike('name', `%${nome.replace(/[%_\\]/g, '').trim()}%`)
+    .order('name').limit(20), 'ler os produtos pelo nome') as ProdutoLido[] | null) ?? []
+}
+
+/** Os saldos dos produtos nas unidades, por `produto:unidade` (a linha que não existe não está no mapa). */
+async function saldosDosProdutos(c: ContextoDaFerramenta, produtos: string[], unidades: string[]): Promise<Map<string, SaldoLido>> {
+  const linhas = await lerTodas<SaldoLido>((de, ate) => c.admin.from('branch_product_stock')
+    .select('product_id, branch_id, current_stock, current_rendimento, min_stock')
+    .in('product_id', produtos).in('branch_id', unidades)
+    .order('product_id').order('branch_id').range(de, ate), 'ler os saldos do estoque')
+  return new Map(linhas.map(l => [`${l.product_id}:${l.branch_id}`, l]))
+}
+
+/** Uma linha da resposta: o saldo da prateleira (0 sem linha na unidade) e o mínimo da unidade. */
+function itemDoSaldo(p: ProdutoLido, unidade: string, s: SaldoLido | undefined, nomes: Map<string, string>) {
+  const minimo = s?.min_stock != null ? Number(s.min_stock) : null
+  return {
+    produto: p.name, produtoId: p.id, unidade: nomes.get(unidade) ?? null,
+    saldo: saldoDaPrateleira({ current_stock: Number(s?.current_stock ?? 0), current_rendimento: s ? s.current_rendimento : 0 }, p),
+    minimo,
+    ...(minimo != null && minimo > 0 ? { minimoNaTela: minimoNaRegua(minimo, p) } : {}),
+    ...(s ? {} : { semEntradaNaUnidade: true }),
+  }
+}
+
+const semAcento = (t: string) => t.normalize('NFC').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
+const escapar = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/**
+ * "Alginato de Itajaí" → o produto "Alginato" e a unidade Itajaí (A15 da 31ª).
+ * A unidade se reconhece pelo nome inteiro ou por uma palavra dele que só ela
+ * tem (de 4 letras ou mais: "Itajaí" em "Lobélia Itajaí"), com o "de/da/do/em/
+ * na/no" antes. Sem unidade no texto, ou sem sobrar produto, nulo.
+ */
+export function separarUnidadeDoProduto(texto: string, unidades: Unidade[]): { produto: string; unidade: Unidade } | null {
+  const original = texto.normalize('NFC')
+  const norm = semAcento(original)
+  const palavras = (n: string) => semAcento(n).split(/[^\p{L}\p{N}]+/u).filter(p => p.length >= 4)
+  for (const u of unidades) {
+    const outras = unidades.filter(x => x.id !== u.id).flatMap(x => palavras(x.name))
+    const chaves = [semAcento(u.name), ...palavras(u.name).filter(p => !outras.includes(p))]
+    for (const chave of chaves) {
+      const re = new RegExp(`(^|\\s)(?:(?:de|da|do|das|dos|em|na|no|nas|nos)\\s+)?${escapar(chave)}(?=$|[\\s,.;:!?])`, 'u')
+      const m = re.exec(norm)
+      if (!m) continue
+      const inicio = m.index + m[1]!.length
+      const produto = `${original.slice(0, inicio)} ${original.slice(m.index + m[0].length)}`.replace(/\s+/g, ' ').trim()
+      if (produto) return { produto, unidade: u }
+    }
+  }
+  return null
 }
 
 export const oportunidades: FerramentaDeLeitura<{ funil?: string; etapa?: string; busca?: string; incluirFechadas?: boolean }> = {

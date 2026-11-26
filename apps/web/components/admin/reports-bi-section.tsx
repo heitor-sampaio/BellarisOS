@@ -1,5 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
+import { nomeDaLinhaDoPlano } from '@/lib/financeiro/nome-da-parcela'
+import { procedimentosDosPlanos } from '@/lib/financeiro/procedimentos-do-plano'
 import { comAsTags, selectComAsTags } from '@/lib/financeiro/filtro-de-tags'
 import { getTenantContext, podeVerRelatorio, can, alcancaUnidade } from '@/lib/auth'
 import { semAcesso } from '@/lib/sem-acesso'
@@ -287,8 +289,21 @@ export async function ReportsBiSection({
     id: l.id, product_id: l.produtoId, batch_number: l.numero, expires_at: l.validade ?? '',
     quantity: l.quantidade, saldo: l.saldo, products: { name: l.produto, tenant_id: ctx.tenantId! },
   }))
-  const installments   = ((installmentsRaw  ?? []) as unknown as LinhaParcela[])
+  const parcelasLidas = ((installmentsRaw  ?? []) as unknown as LinhaParcela[])
     .filter(i => branchIds.includes(i.branch_id))
+  // A5 da 31ª (princípio 3): a parcela do plano diz os procedimentos dele, como
+  // na ficha e no PDV. O plano de cada linha numa leitura à parte (as linhas
+  // são no máximo 50), e a descrição chega à tabela já com o nome.
+  const planosDasParcelas = parcelasLidas.length
+    ? ((await ler(admin.from('financial_transactions').select('id, treatment_plan_id').in('id', parcelasLidas.map(i => i.id))
+        .in('branch_id', branchIds).not('treatment_plan_id', 'is', null), 'ler o plano das parcelas a receber')) ?? []) as { id: string; treatment_plan_id: string }[]
+    : []
+  const planoDa = new Map(planosDasParcelas.map(p => [p.id, p.treatment_plan_id]))
+  const dosPlanos = planoDa.size ? await procedimentosDosPlanos([...planoDa.values()]) : new Map<string, string[]>()
+  const installments: LinhaParcela[] = parcelasLidas.map(i => ({
+    ...i,
+    description: (planoDa.get(i.id) ? nomeDaLinhaDoPlano(dosPlanos.get(planoDa.get(i.id)!) ?? [], i.description) : null) ?? i.description,
+  }))
 
   // -- Aba Comercial -------------------------------------------------
   // Vive aqui desde que deixou de ser tela própria (/admin/comercial): o funil

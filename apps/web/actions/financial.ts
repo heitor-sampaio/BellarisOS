@@ -460,30 +460,49 @@ export async function comissaoETaxaDoEstorno(transactionId: string): Promise<{ t
     const cartao = tx.payment_method === 'CREDIT_CARD' || tx.payment_method === 'DEBIT_CARD'
     const chave = (['product_sale_id', 'appointment_id', 'client_package_id', 'treatment_plan_id', 'procedure_sale_id'] as const)
       .find(k => typeof tx[k] === 'string')
-    const liberadas: { pessoa: string; centavos: number }[] = []
+    // D5 da 31ª (CF-16): o que já foi pago num fechamento (status PAID) não
+    // "volta a aguardar" — o estorno o desconta no próximo fechamento. Do
+    // liberado agora (a soma do extrato), a parte a pagar é o saldo ainda
+    // aberto; o resto já saiu num fechamento.
+    const liberadas: { pessoa: string; centavos: number; paga: boolean }[] = []
     if (chave) {
       const linhas = await ler(admin.from('commission_lines').select('id, professional_id')
         .eq('tenant_id', ctx.tenantId!).eq(chave, tx[chave] as string), 'ler as comissões da venda') as { id: string; professional_id: string }[] | null
       const ids = (linhas ?? []).map(l => l.id)
       if (ids.length) {
-        const extrato = await ler(admin.from('commissions').select('line_id, amount').in('line_id', ids),
-          'ler o extrato das comissões') as { line_id: string; amount: number | string }[] | null
-        const porPessoa = new Map<string, number>()
+        const extrato = await ler(admin.from('commissions').select('line_id, amount, status').in('line_id', ids),
+          'ler o extrato das comissões') as { line_id: string; amount: number | string; status: string | null }[] | null
+        const porPessoa = new Map<string, { total: number; aberto: number }>()
         for (const e of extrato ?? []) {
           const pessoa = (linhas ?? []).find(l => l.id === e.line_id)?.professional_id
-          if (pessoa) porPessoa.set(pessoa, (porPessoa.get(pessoa) ?? 0) + Math.round(Number(e.amount) * 100))
+          if (!pessoa) continue
+          const soma = porPessoa.get(pessoa) ?? { total: 0, aberto: 0 }
+          const centavos = Math.round(Number(e.amount) * 100)
+          soma.total += centavos
+          if (e.status !== 'PAID') soma.aberto += centavos
+          porPessoa.set(pessoa, soma)
         }
-        for (const [pessoa, centavos] of porPessoa) if (centavos > 0) liberadas.push({ pessoa, centavos })
+        for (const [pessoa, { total, aberto }] of porPessoa) {
+          if (total <= 0) continue
+          const aPagar = Math.min(total, Math.max(0, aberto))
+          if (aPagar > 0) liberadas.push({ pessoa, centavos: aPagar, paga: false })
+          if (total - aPagar > 0) liberadas.push({ pessoa, centavos: total - aPagar, paga: true })
+        }
       }
     }
     let comissoes: { nome: string; valor: number }[] | 'OCULTA' = []
-    if (liberadas.length && !veComissaoDeTodos(ctx)) comissoes = 'OCULTA'
-    else if (liberadas.length) {
+    let pagas: { nome: string; valor: number }[] | 'OCULTA' = []
+    if (liberadas.length && !veComissaoDeTodos(ctx)) {
+      if (liberadas.some(l => !l.paga)) comissoes = 'OCULTA'
+      if (liberadas.some(l => l.paga)) pagas = 'OCULTA'
+    } else if (liberadas.length) {
       const nomes = await ler(admin.from('users').select('id, name').eq('tenant_id', ctx.tenantId!)
-        .in('id', liberadas.map(l => l.pessoa)), 'ler quem recebe a comissão') as { id: string; name: string | null }[] | null
-      comissoes = liberadas.map(l => ({ nome: nomes?.find(n => n.id === l.pessoa)?.name ?? 'Sem nome', valor: l.centavos / 100 }))
+        .in('id', [...new Set(liberadas.map(l => l.pessoa))]), 'ler quem recebe a comissão') as { id: string; name: string | null }[] | null
+      const comNome = (l: { pessoa: string; centavos: number }) => ({ nome: nomes?.find(n => n.id === l.pessoa)?.name ?? 'Sem nome', valor: l.centavos / 100 })
+      comissoes = liberadas.filter(l => !l.paga).map(comNome)
+      pagas = liberadas.filter(l => l.paga).map(comNome)
     }
-    return { texto: textoDaComissaoETaxaDoEstorno({ cartao, comissoes, produto: chave === 'product_sale_id' }) }
+    return { texto: textoDaComissaoETaxaDoEstorno({ cartao, comissoes, pagas, produto: chave === 'product_sale_id' }) }
   } catch {
     return { texto: null }
   }

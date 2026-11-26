@@ -246,3 +246,36 @@ test('PR2c: o pacote LGPD leva as anotações e as versões de antes', async ({ 
   expect(comAnotacao?.anotacoes?.[0]?.por).toBe(nomeDaDona)
   expect(comAnotacao?.versoesAnteriores?.map(v => v.evolucao)).toEqual([EVOLUCAO_ANTES, `Evolução corrigida ${marca}`])
 })
+
+// D4 da 31ª simulação (PT-11; o Heitor, 23/11: corrigir o concluído é só do
+// Prontuário em Gerenciar, "3 - ok"): o "Editar registro" só existia na tela do
+// atendimento, que abre com o Atendimento. Quem tem o Prontuário em Gerenciar
+// sem o Atendimento corrige na aba Prontuário da ficha. Depois do PR2c, que
+// conta as versões.
+test('o Prontuário em Gerenciar, sem o Atendimento, corrige o registro na aba Prontuário da ficha', async ({ browser }) => {
+  const soProntuario = await criarMembro(`pavp${marca}`, {
+    tenant: rede!.tenantId, rotulo: 'Só o prontuário',
+    permissoes: [{ modulo: 'clients', nivel: 'VIEW' }, { modulo: 'medical_records', nivel: 'MANAGE' }],
+  })
+  try {
+    const nome = (await db().from('users').select('name').eq('id', soProntuario.userId).single<{ name: string }>()).data!.name
+    const NOVA = `Evolução corrigida pela ficha ${marca}`
+    const antes = (await versoes(atendimento)).length
+    await como(soProntuario, browser, async p => {
+      await p.goto(`/admin/clients/${cliente}?aba=fichas`)
+      const registro = p.locator(`[data-registro-do-atendimento="${atendimento}"]`)
+      await registro.getByRole('button', { name: 'Corrigir o registro' }).click()
+      await registro.getByLabel('Evolução', { exact: true }).fill(NOVA)
+      await registro.getByRole('button', { name: 'Salvar correção' }).click()
+      await expect.poll(async () => (await db().from('medical_record_entries').select('notes').eq('appointment_id', atendimento).single()).data?.notes).toBe(NOVA)
+      await expect(registro.locator('[data-registro-editado]')).toContainText(`Editado por ${nome} em`)
+      // O atendimento em andamento não tem a correção (só o concluído se corrige).
+      await expect(p.locator(`[data-registro-do-atendimento="${emAndamento}"]`).getByRole('button', { name: 'Corrigir o registro' })).toHaveCount(0)
+    })
+    const vs = await versoes(atendimento)
+    expect(vs).toHaveLength(antes + 1)
+    expect(vs[vs.length - 1]).toMatchObject({ evolucao: `Evolução corrigida ${marca}`, editada_por_nome: nome })
+  } finally {
+    await soProntuario.limpar()
+  }
+})

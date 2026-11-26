@@ -375,6 +375,56 @@ test('D5 da 27ª: criado o cargo, o editor abre nele e o nível clicado grava no
   }
 })
 
+// A10 da 31ª (princípio 7): no banco (25/11), duplicado e renomeado o "Comercial", os níveis foram para o
+// "Financeiro" — o primeiro editável. Criar dois seguidos, duplicar e renomear: o editor fica no último criado.
+test('criar dois seguidos e duplicar com renomear — o editor fica no cargo novo, e o nível grava nele', async ({ browser }) => {
+  const b = db()
+  const dona = await criarMembro(`f70a10${marca}`, { tenant: rede!.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
+  await b.from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede!.tenantId)
+  const primeiro = `${PREFIXO} A10 um ${marca}`
+  const segundo = `${PREFIXO} A10 dois ${marca}`
+  const renomeado = `${PREFIXO} A10 copia ${marca}`
+  const nivel = async (label: string) => {
+    const { data: r } = await b.from('tenant_roles').select('id').eq('tenant_id', rede!.tenantId).eq('label', label).single<{ id: string }>()
+    return (await b.from('role_permissions').select('level').eq('role_id', r!.id).eq('module', 'crm').maybeSingle<{ level: string }>()).data?.level ?? 'NONE'
+  }
+  try {
+    await como(browser, dona.estado, async p => {
+      await p.goto('/admin/settings?tab=permissions')
+      for (const nome of [primeiro, segundo]) {
+        await p.getByRole('button', { name: 'Novo' }).click()
+        await p.getByPlaceholder('Ex.: Agenda e caixa').fill(nome)
+        await p.getByRole('button', { name: 'Criar', exact: true }).click()
+        await expect(p.getByRole('heading', { name: `O que ${nome} acessa` })).toBeVisible({ timeout: 20_000 })
+      }
+      await p.waitForLoadState('networkidle')
+      await expect(p.getByRole('heading', { name: `O que ${segundo} acessa` }), 'o editor segue no último criado').toBeVisible()
+      await p.locator('[data-modulo="crm"]').getByRole('button', { name: 'Gerenciar', exact: true }).click()
+      await p.getByRole('button', { name: 'Salvar acessos' }).click()
+      await expect(p.getByText(`Cargo “${segundo}” salvo.`)).toBeVisible({ timeout: 20_000 })
+
+      // Duplicar o segundo e renomear a cópia: o editor abre na cópia e fica nela.
+      await p.getByRole('button', { name: `Duplicar o cargo ${segundo}` }).click()
+      const copia = `Cópia de ${segundo}`
+      await expect(p.getByRole('heading', { name: `O que ${copia} acessa` })).toBeVisible({ timeout: 20_000 })
+      await p.locator('[data-cargo]', { hasText: copia }).getByTitle('Renomear').click()
+      await p.getByLabel('Nome do cargo').fill(renomeado)
+      await p.getByTitle('Salvar').click()
+      await p.waitForLoadState('networkidle')
+      await expect(p.getByRole('heading', { name: `O que ${renomeado} acessa` }), 'o editor segue na cópia renomeada').toBeVisible({ timeout: 20_000 })
+      await p.locator('[data-modulo="crm"]').getByRole('button', { name: 'Ver', exact: true }).click()
+      await p.getByRole('button', { name: 'Salvar acessos' }).click()
+      await expect(p.getByText(`Cargo “${renomeado}” salvo.`)).toBeVisible({ timeout: 20_000 })
+    })
+    expect(await nivel(primeiro), 'o primeiro criado não recebeu o que era do segundo').toBe('NONE')
+    expect(await nivel(segundo), 'o segundo ficou com o CRM em Gerenciar').toBe('MANAGE')
+    expect(await nivel(renomeado), 'a cópia renomeada ficou com o CRM em Ver').toBe('VIEW')
+  } finally {
+    await b.from('tenant_roles').delete().eq('tenant_id', rede!.tenantId).in('label', [primeiro, segundo, renomeado, `Cópia de ${segundo}`])
+    await dona.limpar()
+  }
+})
+
 test('A2 da 13ª: Configurações → Geral, para quem tem só uma unidade, é texto — sem campo que parece editável', async ({ browser }) => {
   await db().from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede!.tenantId)
   // A gerente (unidade fixa, Configurações em Gerenciar) lê os dados da clínica: não os edita (H7).

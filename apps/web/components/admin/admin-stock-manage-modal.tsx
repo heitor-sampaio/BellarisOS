@@ -13,7 +13,7 @@ import {
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { validadeNaTela, loteVencido } from '@/lib/estoque/validade'
 import { saldoNaPrateleira } from '@/lib/estoque/saldo-em-texto'
-import { medidaNoPlural as pl } from '@/lib/estoque/medidas'
+import { medidaNoPlural as pl, recusaDaEmbalagem } from '@/lib/estoque/medidas'
 import { minimoEhDoCadastro } from '@/lib/estoque/situacao'
 import { lerNotaDaEntradaAnterior, guardarNotaDaEntrada } from '@/lib/estoque/nota-da-entrada'
 import { erroParaTela } from '@/lib/erro-na-tela'
@@ -174,6 +174,13 @@ function EntradaForm({ product, allBranches, defaultBranchId, sugerida, marcas =
   // A54 da 11ª: a nota com vários produtos — a próxima entrada traz a nota e o
   // fornecedor da anterior (na mesma aba, por 2 horas), e diz que dá para apagar.
   const [notaAnterior] = useState(() => lerNotaDaEntradaAnterior())
+  // D2 da 31ª (princípio 3): a quantidade é de EMBALAGENS — com conteúdo, a tela
+  // diz quanto ela vale nele ("= 999.000 g"); 999 potes passavam calados. E o
+  // produto gravado com "1 g com 1000 g" avisa o que a quantidade conta.
+  const [quantidade, setQuantidade] = useState('')
+  const rendeNaEntrada = product.consumptionUnit && Number(product.unitsPerPackage) > 0 ? Number(product.unitsPerPackage) : null
+  const qtdLida = Number(quantidade.replace(',', '.'))
+  const cadastroImpossivel = recusaDaEmbalagem(product.unit, product.unitsPerPackage, product.consumptionUnit)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault(); setPending(true); setError(undefined)
@@ -212,9 +219,14 @@ function EntradaForm({ product, allBranches, defaultBranchId, sugerida, marcas =
           <Label htmlFor="entrada-quantidade">Quantidade *</Label>
           <div style={{ position: 'relative' }}>
             <input id="entrada-quantidade" name="quantity" type="number" step="0.001" min="0.001" required className="field"
-              placeholder="0" style={{ paddingRight: 36 }} />
+              placeholder="0" style={{ paddingRight: 36 }} value={quantidade} onChange={e => setQuantidade(e.target.value)} />
             <UnitSuffix unit={product.unit} />
           </div>
+          {rendeNaEntrada && qtdLida > 0 && (
+            <span data-entrada-equivale style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
+              {`= ${(qtdLida * rendeNaEntrada).toLocaleString('pt-BR', { maximumFractionDigits: 4 })} ${product.consumptionUnit} (${rendeNaEntrada.toLocaleString('pt-BR', { maximumFractionDigits: 4 })} ${product.consumptionUnit} em cada ${product.unit})`}
+            </span>
+          )}
         </FieldWrap>
         <FieldWrap>
           {/* A37 da 10ª: a Entrada diz a regra, como a Perda (D13 revisto, decisão do
@@ -239,6 +251,11 @@ function EntradaForm({ product, allBranches, defaultBranchId, sugerida, marcas =
           </div>
         </FieldWrap>
       </div>
+      {cadastroImpossivel && (
+        <p data-cadastro-da-embalagem role="alert" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)', lineHeight: 1.45 }}>
+          {`O cadastro deste produto diz “1 ${product.unit} com ${Number(product.unitsPerPackage).toLocaleString('pt-BR', { maximumFractionDigits: 4 })} ${product.consumptionUnit}”: a quantidade aqui conta embalagens, cada uma com ${Number(product.unitsPerPackage).toLocaleString('pt-BR', { maximumFractionDigits: 4 })} ${product.consumptionUnit}. Corrija a embalagem no cadastro do produto (o lápis da linha) — os números não mudam, só o nome.`}
+        </p>
+      )}
       {custoForaDoComum && (
         <p data-custo-fora-do-comum role="alert" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)', lineHeight: 1.45 }}>
           {custoForaDoComum}
@@ -1219,6 +1236,13 @@ function HistoricoTab({ product, defaultBranchId, podeDesfazer = true, onAlterou
               {(lotes || custo) && (
                 <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 1 }}>
                   {[lotes, custo ? `custo ${custo}` : null].filter(Boolean).join(' · ')}
+                </p>
+              )}
+              {/* A13 da 31ª: o "Corrigir custo" do lote diz de quanto para quanto (por embalagem, como se corrige). */}
+              {m.custoCorrigido && (
+                <p data-custo-corrigido style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 700, marginTop: 1 }}>
+                  Custo corrigido de {fmtBRL(m.custoCorrigido.de)} para {fmtBRL(m.custoCorrigido.para)}/{m.embalagem}
+                  {m.custoCorrigido.em ? ` em ${new Date(m.custoCorrigido.em).toLocaleDateString('pt-BR', { timeZone: fuso })}` : ''}
                 </p>
               )}
             </div>

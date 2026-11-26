@@ -30,6 +30,12 @@ export interface DivergenciaDaBaixa {
   doMapa:    number
   /** A dose na baixa; `null` quando o produto do mapa não está entre os insumos marcados. */
   naBaixa:   number | null
+  /**
+   * D10 da 31ª: o estoque conta o produto noutra medida (o frasco, a seringa) e
+   * o mapa em UI ou ml — a dose do mapa (`doMapa`) está NESTA medida, e não se
+   * converte (princípio 4). Só no produto fora da baixa: a tela avisa, sem botão.
+   */
+  medidaDoMapa?: string
 }
 
 const chave = (t: string) => t.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
@@ -71,6 +77,15 @@ export function divergenciasDaBaixa(
     const doCatalogo = doEstoque.find(p => chave(p.name) === chave(t.product) && chaveDaUnidade(p.unit) === chaveDaUnidade(t.unit))
     if (doCatalogo && !marcados.some(i => i.productId === doCatalogo.id)) {
       saida.push({ productId: doCatalogo.id, nome: doCatalogo.name, unidade: doCatalogo.unit, doMapa: t.total, naBaixa: null })
+      continue
+    }
+    // D10 da 31ª (PT-18: o Finalizar AVISA): o produto do mapa no estoque em
+    // OUTRA medida (30 UI no mapa, o frasco no estoque) e fora da baixa — antes
+    // sumia calado. Não se converte nem se sugere a dose (princípio 4).
+    const emOutraMedida = doEstoque.find(p => chave(p.name) === chave(t.product))
+    if (!doCatalogo && emOutraMedida && !marcados.some(i => i.productId === emOutraMedida.id)
+      && !saida.some(d => d.productId === emOutraMedida.id)) {
+      saida.push({ productId: emOutraMedida.id, nome: emOutraMedida.name, unidade: emOutraMedida.unit, doMapa: t.total, naBaixa: null, medidaDoMapa: t.unit })
     }
   }
   return saida
@@ -78,6 +93,9 @@ export function divergenciasDaBaixa(
 
 /** A frase da divergência, na tela. */
 export function textoDaDivergencia(d: DivergenciaDaBaixa): string {
+  if (d.medidaDoMapa) {
+    return `O mapa soma ${formatarDose(d.doMapa)} ${d.medidaDoMapa} de ${d.nome}, que não está nos insumos da baixa. O estoque conta este produto em ${d.unidade}: inclua no cartão de insumos quanto foi usado.`
+  }
   const mapa = `${formatarDose(d.doMapa)} ${d.unidade}`
   return d.naBaixa === null
     ? `O mapa soma ${mapa} de ${d.nome}, que não está nos insumos da baixa.`

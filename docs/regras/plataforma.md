@@ -65,6 +65,12 @@ um muro que não depende de cada trava do código.
   `buildContext` (ANTES do padrão CLIENT — sem `role`, o atendente viraria
   cliente final), o `loginAction`, `/auth/redirect`, `/conta-suspensa` e
   `/api/auth/session` recusam também.
+- **A sessão salva de quem foi desativada também chega a
+  `/login?acesso=desativado`** (CLAUDE.md §11; D25 da 31ª, decisão do Claude,
+  26/11, sobre o caminho): com o token vivo barra o `buildContext`; com o
+  token vencido, o Auth recusa a renovação da conta bloqueada (`user_banned`),
+  e o proxy leva ao aviso (só no GET; o POST do login é outra pessoa entrando).
+  Prova: `tests/proxy-sessao-de-desativado.test.ts`.
 - **Nenhum login do app da rede sem vínculo** (o Heitor, 5ª simulação,
   2026-11-01: "não deve ter como ter um login sem vínculo, ou é rede ou é
   unidade"): todo login do app da rede é membro de uma rede (abrangência rede ou
@@ -939,7 +945,15 @@ auditoria das regras, pergunta 8: "só pela conta admin"; antes, H7 de
   nele —, e o cargo que a action devolveu vale na lista sem esperar o servidor
   (`comOsCriados`, `lib/cargos/cargo-escolhido.ts`). Prova:
   `tests/cargos-editor-cargo-novo.test.ts`, o caso "D5 da 27ª" de
-  `e2e/permissoes-f70.spec.ts`.
+  `e2e/permissoes-f70.spec.ts`. **O endereço manda** (A10 da 31ª, princípio 7;
+  decisão do Claude, 26/11 — no banco, em 25/11, o duplicado e renomeado
+  "Comercial" teve os níveis gravados de novo no "Financeiro", o primeiro
+  editável): o cargo que o `?cargo=` pede e a lista ainda não tem fica
+  esperando, e a tela abre nele quando a lista o traz
+  (`cargoPedidoPeloEndereco`) — menos com alteração por salvar (o "Descartar
+  alterações?" decide) ou se a pessoa já escolheu outro. Prova:
+  `tests/cargos-o-endereco-escolhe-o-cargo-novo.test.ts`, o caso "A10 da 31ª"
+  de `e2e/permissoes-f70.spec.ts` (escrito, não rodado).
   **A 21ª simulação** (A16, A17, A24; `tests/cargos-atritos-da-21.test.ts`):
   o que falta escolher (as abas de Relatórios: "Falta escolher ao menos um
   relatório em Relatórios…", `textoDoQueFaltaNoCargo`; conta só as abas que
@@ -1686,6 +1700,28 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
       Admin da rede (…)" — o cargo de sistema pela chave no banco, lido agora.
       O gatilho de `users` passa a guardar `outras_unidades`; o registro de
       antes diz só o nome do campo.
+  - **A regra de comissão** (A9 da 31ª, decisão do Claude, 26/11, pelo
+    princípio 3; `tests/auditoria-a-regra-de-comissao.test.ts`, migration
+    `20261209500001`): diz de quê, de quem e quanto — "Criou a comissão de
+    Limpeza de pele, a mesma para todos (30%)", "… para Marcela (R$ 50,00)",
+    "Criou a comissão padrão de Tamires (35%)"; salvar o procedimento ou as
+    regras da pessoa é "Criou 2 e apagou 1 regras de comissão de Limpeza de
+    pele (Marcela: R$ 50,00; Tamires: 40%)". O gatilho passa a guardar
+    `procedure_id` e `professional_id`; a gravação de antes diz o valor.
+  - **O pedido de assinatura no portal** (D21 da 31ª, decisão do Claude,
+    26/11; migration `20261209100001`, `issued_documents.pedido_no_portal_em`):
+    "Pediu a assinatura do documento X no portal — Cliente", não "Editou o
+    documento". Prova: `tests/auditoria-pedido-no-portal.test.ts`.
+  - **O estoque diz o que aconteceu** (D9 da 31ª, decisão do Claude, 26/11;
+    migrations `20261209600001`/`20261209600002`): a transferência, a perda e o
+    inventário gravam o lote junto e não são "Editou o lote" — "Transferiu 1.000
+    g de Alginato de Blumenau para Itajaí", "Registrou a perda de 2 Sérum C
+    (Vencido)", "Ajustou o estoque de Alginato (inventário): de 970 para 950 g";
+    o custo que o gatilho do lote acerta no movimento recém-criado não é
+    "Corrigiu o custo"; o produto novo com estoque inicial é "Cadastrou o
+    produto X com o estoque inicial de N em <unidade>", na unidade do
+    movimento (era "Da rede"). Prova:
+    `tests/auditoria-o-estoque-diz-o-que-aconteceu.test.ts`.
   - Prova: `tests/atritos-da-15.test.ts`, `e2e/auditoria-atritos-da-15.spec.ts`.
 - **A falha do registro não derruba a gravação.** O gatilho segura o erro,
   grava uma linha `incompleto` (quando acha a rede) e deixa um WARNING no log:

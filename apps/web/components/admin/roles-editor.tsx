@@ -7,7 +7,7 @@ import { useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { createRole, updateRole, deleteRole, duplicarCargo } from '@/actions/roles'
 import { saveRolePermissions } from '@/actions/permissions'
-import { cargoEscolhido, comOsCriados } from '@/lib/cargos/cargo-escolhido'
+import { cargoEscolhido, cargoPedidoPeloEndereco, comOsCriados } from '@/lib/cargos/cargo-escolhido'
 import { acessosDoSalvo, resumoDoCargo } from '@/lib/cargos/acessos-salvos'
 import {
   ALL_MODULES, MODULOS_DO_CARGO, MODULE_LABELS, MODULE_HINTS, MODULE_LEVELS, LEVEL_LABELS,
@@ -99,7 +99,13 @@ export function RolesEditor({ roles: cargosDoServidor, permsByRole, tabsByRole, 
   // ficava só na lista.
   const pedido = useSearchParams().get('cargo')
   const [selectedId, setSelectedIdNoEstado] = useState<string | null>(() => cargoEscolhido(roles, pedido))
+  // A10 da 31ª (princípio 7): o cargo que o endereço pede e a lista ainda não
+  // tem (a tela montou antes de a lista chegar com o criado) fica esperando —
+  // o escolhido caía no primeiro editável e ficava nele.
+  const [esperando, setEsperando] = useState<string | null>(() => (pedido && pedido !== cargoEscolhido(roles, pedido) ? pedido : null))
+  const [pedidoVisto, setPedidoVisto] = useState(pedido)
   function setSelectedId(id: string | null) {
+    setEsperando(null)
     setSelectedIdNoEstado(id)
     escreverCargoNoEndereco(id)
   }
@@ -110,6 +116,13 @@ export function RolesEditor({ roles: cargosDoServidor, permsByRole, tabsByRole, 
   // parecia que o novo nascia como cópia. Agora o painel diz como ele nasce.
   // A matriz do selecionado fica montada (escondida): o que foi mexido não se perde.
   const [criando, setCriando] = useState(false)
+
+  // A10 da 31ª: o endereço manda. O pedido que muda nele passa a esperar; quando
+  // a lista traz o cargo pedido (e nada está por salvar), a tela abre nele.
+  if (pedido !== pedidoVisto) { setPedidoVisto(pedido); setEsperando(pedido) }
+  const trocarPeloEndereco = cargoPedidoPeloEndereco({ roles, esperando, selecionado: selectedId, ocupado: dirty || !!pendingSelect })
+  if (trocarPeloEndereco) { setEsperando(null); setSelectedIdNoEstado(trocarPeloEndereco) }
+  else if (esperando && esperando === selectedId) setEsperando(null)
 
   const selected = roles.find(r => r.id === selectedId) ?? null
 

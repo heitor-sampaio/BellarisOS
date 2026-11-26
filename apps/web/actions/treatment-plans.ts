@@ -24,6 +24,7 @@ import { recusaDasParcelasDaRede } from '@/lib/financeiro/crediario-da-rede'
 import { getFinanceiroDoPlano, type FinanceiroDoPlano } from '@/lib/metrics/plano'
 import type { CheckoutPlan } from '@/components/branch/checkout-wizard'
 import { semAcesso } from '@/lib/sem-acesso'
+import { textoDaValidadeNaEquipe } from '@/lib/plano-de-tratamento/validade'
 import { catalogoDePacotes } from '@/lib/pacotes/leitura'
 import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
 import type { PacoteParaComparar } from '@/lib/checkout/pacote-equivalente'
@@ -634,6 +635,8 @@ export async function getCabecalhoDoPlano(planId: string): Promise<{
     /** A unidade DO plano: o catálogo do editor é o dela (D4 da 14ª). */
     unidadeId: string | null
     slug:    string
+    /** PL-23 (D16 da 31ª): no proposto, a validade da proposta, só informação. */
+    validadeDaProposta?: string | null
   }
   error?: string
 }> {
@@ -646,7 +649,7 @@ export async function getCabecalhoDoPlano(planId: string): Promise<{
 
   const { data, error } = await admin
     .from('treatment_plans')
-    .select('id, name, status, branch_id, clients(id, name), branches!branch_id(name, slug)')
+    .select('id, name, status, branch_id, created_at, clients(id, name), branches!branch_id(name, slug)')
     .eq('id', planId)
     .maybeSingle()
   // Erro de consulta não é "plano não existe": sem checar, a tela mandaria de
@@ -656,6 +659,16 @@ export async function getCabecalhoDoPlano(planId: string): Promise<{
 
   const cli    = data.clients  as unknown as { id: string; name: string } | null
   const branch = data.branches as unknown as { name: string; slug: string } | null
+  // PL-23 (D16 da 31ª): o proposto mostra a validade da proposta (da rede), só informação.
+  let validadeDaProposta: string | null = null
+  if (data.status === 'PROPOSED' && data.created_at) {
+    const [rede, fuso] = await Promise.all([
+      ler(admin.from('tenants').select('plano_validade_dias').eq('id', ctx.tenantId!).maybeSingle(), 'ler a validade do plano proposto'),
+      fusoDaUnidade(ctx.tenantId, (data.branch_id as string | null) ?? null),
+    ])
+    const dias = Number((rede as { plano_validade_dias?: number | null } | null)?.plano_validade_dias ?? 30)
+    validadeDaProposta = textoDaValidadeNaEquipe(data.created_at as string, dias, fuso)
+  }
 
   return {
     plano: {
@@ -666,6 +679,7 @@ export async function getCabecalhoDoPlano(planId: string): Promise<{
       unidade: branch?.name ?? null,
       unidadeId: (data.branch_id as string | null) ?? null,
       slug:    branch?.slug ?? '',
+      validadeDaProposta,
     },
   }
 }
@@ -2268,6 +2282,8 @@ export interface PassosDoPlano {
   documentos:  DocumentosDoPlano
   contrato:    SituacaoDoContrato
   recebido:    boolean
+  /** D7 da 31ª (DP-03): o que falta receber do plano (`metrics_financeiro_do_plano`). */
+  aReceber:    number
   /** A comanda do plano no PDV (nasce no aceite). */
   comandaId:   string | null
   podeReceber: boolean
@@ -2338,6 +2354,7 @@ export async function getPassosDoPlano(planId: string): Promise<{ passos?: Passo
         documentos:  a.documentos,
         contrato:    a.contrato,
         recebido:    a.recebido,
+        aReceber:    financeiro.aReceber,
         comandaId:   (comanda?.id as string | undefined) ?? null,
         podeReceber: podeReceber(ctx),
         podeAgendar: can(ctx, 'agenda', 'MANAGE'),

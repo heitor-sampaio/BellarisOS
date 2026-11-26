@@ -169,14 +169,28 @@ export interface CreditoParaAgendar {
   total?:       number
   /** A duração do agendamento, quando não é a do procedimento (a sessão do plano: a soma da sessão). */
   duracaoMin?:  number
+  /**
+   * PA-14 (D15 da 31ª): o que ainda está em aberto do PACOTE desta sessão — só
+   * a quem recebe (`veOEmAberto`). O agendar mostra o `AvisoDoPacoteEmAberto`
+   * com ele (a unidade do pacote é o PDV das parcelas).
+   */
+  emAberto?:    { valor: number; parcelas: number; unidadeId: string | null; liberaAsSessoes: boolean } | null
+  /** PA-13: a rede libera só depois de pago e o pacote tem valor em aberto — a sessão não se agenda (o porquê). */
+  recusa?:      string | null
 }
 
 /**
  * O que o cliente tem para agendar: por venda de pré-pago e por procedimento
  * de cada pacote, a próxima unidade/sessão livre (sem agendamento e dentro da
  * validade) e quantas restam.
+ *
+ * D15 da 31ª (PA-13, PA-14): a sessão do pacote com valor em aberto diz o que
+ * falta (`emAberto`, a quem recebe — `veOEmAberto`) e, na rede que libera só
+ * depois de pago, por que não se agenda (`recusa`, a mesma de `conferirCredito`).
  */
-export async function creditosDoCliente(admin: Admin, tenantId: string, clientId: string): Promise<CreditoParaAgendar[]> {
+export async function creditosDoCliente(
+  admin: Admin, tenantId: string, clientId: string, opcoes: { veOEmAberto?: boolean } = {},
+): Promise<CreditoParaAgendar[]> {
   const agora = Date.now()
   const valido = (vence: string | null) => !vence || new Date(vence).getTime() >= agora
   const [vendas, pacotes, planos] = await Promise.all([
@@ -184,7 +198,7 @@ export async function creditosDoCliente(admin: Admin, tenantId: string, clientId
       .select('procedure_id, expires_at, sold_at, procedures(name), procedure_sale_units(id, numero, preco, status, appointment_id)')
       .eq('tenant_id', tenantId).eq('client_id', clientId).order('sold_at'), 'buscar os pré-pagos do cliente'),
     ler(admin.from('client_packages')
-      .select('id, expires_at, price, total_sessions, purchased_at, branches!inner(tenant_id), service_packages(name, procedure_id), package_sessions(id, session_number, procedure_id, preco, status, appointment_id, procedures(name))')
+      .select('id, branch_id, expires_at, price, total_sessions, purchased_at, branches!inner(tenant_id), service_packages(name, procedure_id), package_sessions(id, session_number, procedure_id, preco, status, appointment_id, procedures(name))')
       .eq('client_id', clientId).eq('branches.tenant_id', tenantId).order('purchased_at'), 'buscar os pacotes do cliente'),
     // A18 da 9ª: as sessões livres dos planos FECHADOS (o "+ Agendar" da ficha as oferecia só pelo cartão do tratamento).
     ler(admin.from('treatment_plans')
@@ -207,7 +221,7 @@ export async function creditosDoCliente(admin: Admin, tenantId: string, clientId
 
   type S = { id: string; session_number: number; procedure_id: string | null; preco: number | null; status: string; appointment_id: string | null; procedures: { name: string } | null }
   for (const p of (pacotes ?? []) as unknown as {
-    id: string; expires_at: string | null; price: number | null; total_sessions: number
+    id: string; branch_id?: string | null; expires_at: string | null; price: number | null; total_sessions: number
     service_packages: { name: string; procedure_id: string | null } | null; package_sessions: S[]
   }[]) {
     if (!valido(p.expires_at)) continue
@@ -226,9 +240,11 @@ export async function creditosDoCliente(admin: Admin, tenantId: string, clientId
         preco: primeira.preco != null ? Number(primeira.preco) : Math.round(Number(p.price ?? 0) * 100 / Math.max(1, p.total_sessions)) / 100,
         restantes: sessoes.length, venceEm: p.expires_at,
         numero: primeira.session_number, total: p.total_sessions,
-      })
+        pacoteId: p.id, unidadeDoPacote: p.branch_id ?? null,
+      } as CreditoParaAgendar & { pacoteId: string; unidadeDoPacote?: string | null })
     }
   }
+  await comOEmAbertoDosPacotes(admin, tenantId, saida as (CreditoParaAgendar & { pacoteId?: string; unidadeDoPacote?: string | null })[], opcoes.veOEmAberto === true)
 
   // Os planos: por procedimento principal, a próxima sessão livre (a ordem do plano).
   type SP = { procedure_id: string; price: number; sort_order: number; procedures: { name: string; duration_min: number | null } | null }
@@ -254,4 +270,33 @@ export async function creditosDoCliente(admin: Admin, tenantId: string, clientId
     }
   }
   return saida
+}
+
+/**
+ * PA-13/PA-14 (D15 da 31ª): o em aberto de cada pacote das sessões oferecidas
+ * (`metrics_em_aberto_dos_pacotes`, contado no banco) e, na rede que só libera
+ * depois de pago, a recusa — antes de a pessoa escolher a sessão, não só ao
+ * salvar. Tira os campos de trabalho (`pacoteId`, `unidadeDoPacote`).
+ */
+async function comOEmAbertoDosPacotes(
+  admin: Admin, tenantId: string, saida: (CreditoParaAgendar & { pacoteId?: string; unidadeDoPacote?: string | null })[], veOEmAberto: boolean,
+): Promise<void> {
+  const ids = [...new Set(saida.filter(c => c.tipo === 'PACOTE' && c.pacoteId).map(c => c.pacoteId!))]
+  if (ids.length) {
+    const [regrasLidas, emAberto] = await Promise.all([
+      ler(admin.from('tenants').select('pacote_crediario_libera, pacote_vencido_cancela').eq('id', tenantId).maybeSingle(), 'ler as regras do pacote da rede'),
+      admin.rpc('metrics_em_aberto_dos_pacotes', { p_tenant: tenantId, p_pacotes: ids }),
+    ])
+    if (emAberto.error) throw new Error(`Não consegui ler o em aberto dos pacotes: ${emAberto.error.message}`)
+    const regras = lerRegrasDoPacote(regrasLidas)
+    const porPacote = new Map(((emAberto.data ?? []) as { client_package_id: string; em_aberto: number | string; parcelas: number }[])
+      .map(l => [l.client_package_id, { valor: Number(l.em_aberto), parcelas: Number(l.parcelas) }]))
+    for (const c of saida) {
+      const aberto = c.pacoteId ? porPacote.get(c.pacoteId) : undefined
+      if (c.tipo !== 'PACOTE' || !aberto || !(aberto.valor > 0)) continue
+      if (veOEmAberto) c.emAberto = { ...aberto, unidadeId: c.unidadeDoPacote ?? null, liberaAsSessoes: regras.crediarioLibera }
+      c.recusa = recusaDaSessaoNaoLiberada(regras, aberto.valor)
+    }
+  }
+  for (const c of saida) { delete c.pacoteId; delete c.unidadeDoPacote }
 }

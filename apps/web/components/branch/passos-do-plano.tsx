@@ -11,6 +11,7 @@ import { rotaCliente, rotaNoPortal } from '@/lib/rotas'
 import { formatarNoFuso } from '@/lib/formatar-no-fuso'
 import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
+import { rotuloDoPassoDoPagamento } from '@/lib/plano-de-tratamento/textos'
 
 /**
  * Os passos do plano (PT1a, Bloco Plano de tratamento — a revisão do Heitor de
@@ -154,11 +155,12 @@ export function PassosDoPlano({
     : docs.total === 0 ? <Chip texto="Nenhum a assinar" tom="feito" />
     : <Chip texto={`${docs.assinados} de ${docs.total} ${plural(docs.total, 'assinado', 'assinados')}`} tom={docs.abertos ? 'falta' : 'feito'} />
 
+  // D7 da 31ª (DP-03): com o crediário em aberto, o passo diz quanto falta.
+  const doPagamento = rotuloDoPassoDoPagamento({ recebido: pago, aReceber: passos.aReceber ?? 0 })
   // D19 da 28ª: o plano cancelado diz "Cancelado", como os outros passos (não "Depois do aceite").
   const estadoDoPagamento = cancelado ? <Chip texto="Cancelado" tom="neutro" />
     : !aceito ? <Chip texto="Depois do aceite" tom="neutro" />
-    : pago ? <Chip texto="Recebido" tom="feito" />
-    : <Chip texto="Falta receber" tom="falta" />
+    : <Chip texto={doPagamento.texto} tom={doPagamento.falta ? 'falta' : 'feito'} />
 
   const contrato = {
     SEM_CONTRATO:  null,

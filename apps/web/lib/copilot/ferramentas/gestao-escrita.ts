@@ -8,7 +8,7 @@ import { dayKeyTZ } from '@/lib/datetime'
 import { lancarCore, marcarPagoCore, lancamentoAoAlcance, recusaDasVezesDaBaixa, CATEGORIAS_DE_DESPESA, CATEGORIAS_DE_RECEITA, FORMAS_DE_PAGAMENTO } from '@/lib/financeiro/lancamento'
 import { entradaDeEstoqueCore, ajusteDeEstoqueCore, saldoAgoraEmTexto } from '@/lib/estoque/movimentos'
 import { loteVencido, validadeNaTela } from '@/lib/estoque/validade'
-import { medidaNoPlural } from '@/lib/estoque/medidas'
+import { medidaNoPlural, recusaDaEmbalagem } from '@/lib/estoque/medidas'
 import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { criarOportunidadeCore, moverEtapaCore } from '@/lib/crm/oportunidade'
 import { automacoesQueOMovimentoDispara, COLUNAS_DO_CARD_PARA_PREVER, type CardParaPrever } from '@/lib/crm/automacoes-do-movimento'
@@ -306,16 +306,16 @@ async function resolverProduto(c: ContextoDaFerramenta, pedido: string): Promise
  * (D3 da 7ª: 780 UI são 7,8 frascos, não o "8" arredondado do current_stock).
  * O ajuste conta a fração como o frasco aberto (`estoque_ajuste_em`).
  */
-async function saldoDoAjuste(c: ContextoDaFerramenta, productId: string, branchId: string): Promise<{ embalagens: number; consumo: string | null; rende: number | null }> {
+async function saldoDoAjuste(c: ContextoDaFerramenta, productId: string, branchId: string): Promise<{ embalagens: number; consumo: string | null; rende: number | null; rendimento: number | null }> {
   const [linha, prod] = await Promise.all([
     ler(c.admin.from('branch_product_stock').select('current_stock, current_rendimento').eq('product_id', productId).eq('branch_id', branchId).maybeSingle(), 'ler o saldo') as Promise<{ current_stock: number; current_rendimento: number | null } | null>,
     ler(c.admin.from('products').select('consumption_unit, units_per_package').eq('id', productId).maybeSingle(), 'ler o produto') as Promise<{ consumption_unit: string | null; units_per_package: number | null } | null>,
   ])
   const rende = prod?.consumption_unit && Number(prod.units_per_package) > 0 ? Number(prod.units_per_package) : null
   const embalagens = Number(linha?.current_stock ?? 0)
-  if (!rende) return { embalagens, consumo: null, rende: null }
+  if (!rende) return { embalagens, consumo: null, rende: null, rendimento: null }
   const rend = linha?.current_rendimento != null ? Number(linha.current_rendimento) : embalagens * rende
-  return { embalagens: Math.round(rend / rende * 10_000) / 10_000, consumo: prod!.consumption_unit!, rende }
+  return { embalagens: Math.round(rend / rende * 10_000) / 10_000, consumo: prod!.consumption_unit!, rende, rendimento: rend }
 }
 
 interface ArgsEntrada { produto: string; quantidade: number; custoUnitario?: number; lote?: string; validade?: string; unidade?: string; observacao?: string; fornecedor?: string; marca?: string; notaFiscal?: string }
@@ -415,12 +415,70 @@ export const entradaDeEstoque: FerramentaDeEscrita<ArgsEntrada, PayloadEntrada> 
   },
 }
 
-export const ajusteDeEstoque: FerramentaDeEscrita<{ produto: string; novoSaldo: number; motivo: string; unidade?: string }, { productId: string; branchId: string; novoSaldo: number; motivo: string }> = {
+/** Para onde vai a diferença do ajuste (o que a janela de Ajuste diz). */
+const destinoDaDiferenca = (delta: number) => [
+  delta < 0
+    ? 'A diferença sai do lote que vence primeiro e entra em Relatórios → Estoque, “Perdas no período”, como Inventário, ao custo do lote. Não gera despesa.'
+    : 'A diferença entra num lote novo, sem número. Não gera despesa.',
+  'Errado, se desfaz no Histórico (“Desfazer ajuste”).',
+]
+
+/**
+ * D2 da 31ª (decisão do Claude, 26/11): o produto gravado com a embalagem e o
+ * conteúdo que não fecham ("1 g com 1000 g") — a contagem em "g" pode ser das
+ * duas. O cartão diz o que ela conta, e onde se corrige.
+ */
+function avisoDoCadastroDaEmbalagem(p: ProdutoAchado): string | null {
+  if (!recusaDaEmbalagem(p.unit, p.units_per_package, p.consumption_unit)) return null
+  const n = num(Number(p.units_per_package))
+  return `O cadastro deste produto diz “1 ${p.unit} com ${n} ${p.consumption_unit}”: em embalagens, cada uma tem ${n} ${p.consumption_unit}. Se a contagem é na medida de uso, conte em consumo. Corrija a embalagem no cadastro do produto.`
+}
+
+/**
+ * O ajuste contado na medida de uso — o "Contar em: g" da janela de Ajuste
+ * (`ajusteDeEstoqueCore` com `emConsumo`: a contagem exata nela).
+ */
+function ajusteEmConsumo(
+  p: ProdutoAchado, unidade: { id: string; name: string },
+  s: { embalagens: number; consumo: string; rende: number; rendimento: number },
+  a: { novoSaldo: number; motivo: string },
+) {
+  const recusaDoRegistro = recusaDoEstoqueAcimaDoRegistro({ quantidade: a.novoSaldo, fator: 1, medida: s.consumo })
+  if (recusaDoRegistro) return { erro: recusaDoRegistro }
+  const saldo = s.rendimento
+  if (Math.abs(saldo - a.novoSaldo) < 1e-9) return { erro: `O saldo de ${p.name} já é ${num(saldo)} ${s.consumo}.` }
+  const delta = a.novoSaldo - saldo
+  const pct = saldo > 0 ? Math.abs(delta) / saldo * 100 : null
+  const un = p.unit ?? ''
+  const emEmbalagens = (q: number) => num(Math.round(q / s.rende * 10_000) / 10_000)
+  const aviso = [
+    avisoDoCadastroDaEmbalagem(p),
+    pct !== null && pct > 50
+      ? `A contagem muda o saldo em ${num(pct, 0)}%. Confira se contou na unidade certa: a contagem está em ${s.consumo} (${num(a.novoSaldo)} ${s.consumo} são ${emEmbalagens(a.novoSaldo)} ${medidaNoPlural(un, a.novoSaldo / s.rende)}).`
+      : null,
+    ...destinoDaDiferenca(delta),
+  ].filter(Boolean).join(' ')
+  return {
+    resumo: {
+      titulo: 'Ajustar estoque',
+      linhas: [
+        { rotulo: 'Produto', valor: p.name },
+        { rotulo: 'Saldo', valor: `${num(saldo)} → ${num(a.novoSaldo)} ${s.consumo} (${emEmbalagens(saldo)} → ${emEmbalagens(a.novoSaldo)} ${un})`.trim() },
+        { rotulo: 'Motivo', valor: a.motivo.trim() },
+        { rotulo: 'Unidade', valor: unidade.name },
+      ],
+      aviso,
+    },
+    payload: { productId: p.id, branchId: unidade.id, novoSaldo: a.novoSaldo, motivo: a.motivo.trim(), emConsumo: true },
+  }
+}
+
+export const ajusteDeEstoque: FerramentaDeEscrita<{ produto: string; novoSaldo: number; motivo: string; unidade?: string; contarEm?: 'embalagem' | 'consumo' }, { productId: string; branchId: string; novoSaldo: number; motivo: string; emConsumo?: boolean }> = {
   nome: 'ajuste_de_estoque',
   tipo: 'escrita',
   modulo: 'stock', nivel: 'MANAGE',
   recurso: 'estoque',
-  descricao: 'Corrige o saldo de um produto numa unidade para o número CONTADO (inventário), com o motivo (obrigatório).',
+  descricao: 'Corrige o saldo de um produto numa unidade para o número CONTADO (inventário), com o motivo (obrigatório). Como o "Contar em" da janela de Ajuste, a contagem vale em embalagens (frasco, caixa…: o padrão) ou, com contarEm="consumo", na medida de uso do produto (g, ml, UI…): quando a pessoa disser a medida ("950 g"), conte nela.',
   parametros: z.object({
     produto: texto({ min: 2, max: 80 }),
     // O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." A janela de Ajuste
@@ -430,6 +488,8 @@ export const ajusteDeEstoque: FerramentaDeEscrita<{ produto: string; novoSaldo: 
     // O motivo, como a janela de Ajuste: só que exista, sem teto.
     motivo: texto({ min: 1, seCurto: 'Motivo do ajuste é obrigatório.' }),
     unidade: texto({ max: 80 }).optional(),
+    // D2 da 31ª (princípio 3): a medida da contagem, a mesma escolha da janela ("Contar em: pote | g").
+    contarEm: z.enum(['embalagem', 'consumo']).optional(),
   }),
   async preparar(c, a) {
     const u = await resolverUnidade(c, a.unidade, { exigir: true })
@@ -437,6 +497,10 @@ export const ajusteDeEstoque: FerramentaDeEscrita<{ produto: string; novoSaldo: 
     const p = await resolverProduto(c, a.produto)
     if ('erro' in p) return { erro: p.erro }
     const s = await saldoDoAjuste(c, p.id, u.unidade!.id)
+    // D2 da 31ª: "ajusta para 950 g" é a contagem em g — 950 potes viravam 950.000 g.
+    if (a.contarEm === 'consumo' && s.rende && s.consumo && s.rendimento != null) {
+      return ajusteEmConsumo(p, u.unidade!, { embalagens: s.embalagens, consumo: s.consumo, rende: s.rende, rendimento: s.rendimento }, a)
+    }
     // A contagem é o saldo novo do movimento, na unidade de consumo quando o produto tem uma.
     const recusaDoRegistro = recusaDoEstoqueAcimaDoRegistro({
       quantidade: a.novoSaldo, fator: s.rende ?? 1, medida: medidaNoPlural(p.unit ?? '', 2) || 'embalagens', consumo: s.consumo,
@@ -452,13 +516,11 @@ export const ajusteDeEstoque: FerramentaDeEscrita<{ produto: string; novoSaldo: 
     const un = p.unit ?? ''
     const naOutra = s.rende ? ` (${num(a.novoSaldo)} ${medidaNoPlural(un, a.novoSaldo)} são ${num(a.novoSaldo * s.rende)} ${s.consumo})` : ''
     const aviso = [
+      avisoDoCadastroDaEmbalagem(p),
       pct !== null && pct > 50
         ? `A contagem muda o saldo em ${num(pct, 0)}%. Confira se contou na unidade certa: a contagem está em ${medidaNoPlural(un, 2)}${naOutra}.`
         : null,
-      delta < 0
-        ? 'A diferença sai do lote que vence primeiro e entra em Relatórios → Estoque, “Perdas no período”, como Inventário, ao custo do lote. Não gera despesa.'
-        : 'A diferença entra num lote novo, sem número. Não gera despesa.',
-      'Errado, se desfaz no Histórico (“Desfazer ajuste”).',
+      ...destinoDaDiferenca(delta),
     ].filter(Boolean).join(' ')
     return {
       resumo: {

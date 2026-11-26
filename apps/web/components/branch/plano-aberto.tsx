@@ -28,6 +28,8 @@ export function PlanoAberto({
     id: string; nome: string; status: string
     cliente: { id: string; name: string } | null
     unidade: string | null
+    /** PL-23 (D16 da 31ª): no proposto, a validade da proposta (só informação). */
+    validadeDaProposta?: string | null
   }
   basePath:  string
   /** Unidade da tela; vazio no portal da rede. */
@@ -130,6 +132,11 @@ export function PlanoAberto({
             )}
             {plano.unidade && ` · ${plano.unidade}`}
           </p>
+          {plano.status === 'PROPOSED' && plano.validadeDaProposta && (
+            <p data-validade-da-proposta style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 4 }}>
+              {plano.validadeDaProposta}
+            </p>
+          )}
         </div>
       </div>
 

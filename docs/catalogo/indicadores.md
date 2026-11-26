@@ -506,7 +506,7 @@ Este é o catálogo das regras dos indicadores que valem HOJE: todo número na t
 - Onde: `docs/regras/indicadores.md:778-800`, `:822-833`, `:858-869`; `DEVLOG.md:1998`, `:2209`
 - Antes: KC-14
 
-**VE-03.** O valor de cada venda é o vendido menos o cancelado, o devolvido e o desconto comercial. O parcelado é UMA venda e entra inteiro no dia da primeira parcela paga (ver a Q03). O plano vale a soma dos procedimentos dele, já com o desconto rateado. Pontos e voucher são forma de pagamento, não desconto.
+**VE-03.** O valor de cada venda é o vendido menos o cancelado, o devolvido e o desconto comercial. O parcelado (o cartão em várias vezes, a entrada + parcelas e o crediário) é UMA venda e entra inteiro no dia da primeira parcela paga (ver a Q03). O plano vale a soma dos procedimentos dele, já com o desconto rateado. Pontos e voucher são forma de pagamento, não desconto.
 - Fonte: decisão do Claude
 - Onde: `docs/regras/indicadores.md:790-793`, `:825-830`, `:868-869`
 - Antes: KC-15
@@ -555,6 +555,11 @@ Este é o catálogo das regras dos indicadores que valem HOJE: todo número na t
 - Fonte: decisão do Claude
 - Onde: `docs/regras/indicadores.md:884-891`
 - Antes: KC-24
+
+**VE-13.** O crédito interno concedido sem dinheiro (a cortesia, a compensação: CI-02 do catálogo de Vendas e financeiro) não é venda: não aparece nas Vendas nem conta no "Total vendido". Usado para pagar, sai da linha da venda como o crédito vendido (VE-05) e não é receita (RE-02): a Drenagem de R$ 140 paga com R$ 100 de cortesia e R$ 40 no Pix vale R$ 40 nas Vendas e no caixa.
+- Fonte: decisão do Claude, 26/11 (31ª simulação, C10) — pela fala do Heitor da VE-05 (25/11: "não conta é quando só usa"); a cortesia não entrou como dinheiro nem foi vendida
+- Onde: (ainda não está em `docs/regras/indicadores.md`; o sistema já faz isso, visto na 31ª simulação); VE-05, RE-02
+- Antes: (nova, 26/11)
 
 ## O dinheiro só com o Financeiro (FV)
 

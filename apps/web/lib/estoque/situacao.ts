@@ -160,3 +160,12 @@ export function saldoDoLoteNaTela(embalagens: number, p: MedidasDoProduto): stri
  * Financeiro (R$ 288) pareciam não bater. O cartão diz isso.
  */
 export const DETALHE_DO_GIRO = 'insumos dos atendimentos, sem a venda de produto'
+
+/**
+ * A14 da 31ª simulação (2026-11-26; princípio 7): as dicas dos cartões Valor em
+ * estoque e Giro — quem só vê não sabia o que contam. O Valor é a conta de
+ * `valor_do_saldo` (o saldo ao custo dos lotes com saldo; o resto, ao último
+ * custo); o Giro, a de `metrics_giro_estoque` (o consumo dos atendimentos).
+ */
+export const DICA_DO_VALOR = 'Quanto vale o que está na prateleira: o saldo de cada produto ao custo do lote de onde ele veio (o custo da entrada). A parte que nenhum lote com custo cobre vale o último custo do produto. Não é o preço de venda.'
+export const DICA_DO_GIRO = 'O custo dos insumos usados nos atendimentos deste mês, ao custo de cada movimento. Não entram a venda de produto (o custo dela está em “Insumos e produtos vendidos”, no Financeiro e nos Relatórios), a perda, o ajuste nem a transferência entre unidades.'

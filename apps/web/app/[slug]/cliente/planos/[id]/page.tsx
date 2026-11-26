@@ -16,7 +16,7 @@ import { propostaVencida, validoAteDaProposta, avisoDaPropostaVencida } from '@/
 import { quemMarcaAsSessoes } from '@/lib/plano-de-tratamento/textos'
 import { falaDaRedeDoPortal } from '@/lib/clientes/nome-da-rede'
 import { redeTemContratoDePlano } from '@/lib/documentos/plano'
-import { avisoDoContratoDoPlanoNoApp, textoDoPlanoAceitoNoApp } from '@/lib/clientes/textos-do-app'
+import { avisoDoContratoDoPlanoNoApp, textoDoPlanoAceitoNoApp, textoDaSessaoAAgendarNoApp } from '@/lib/clientes/textos-do-app'
 import { AceitarPlano } from '@/components/client-portal/aceitar-plano'
 
 type Sessao = {
@@ -152,7 +152,8 @@ export default async function PlanoDaClientePage({ params, searchParams }: {
                   {nomeDaSessao(s.treatment_plan_session_procedures) ?? '—'}
                 </span>
                 <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 600, color: proposto ? 'var(--text-muted)' : sit.cor }}>
-                  {proposto ? formatBRL(precoDa(s)) : sit.texto}
+                  {/* PO-11 (D19 da 31ª): a sessão a agendar diz quem marca, como no cartão do início. */}
+                  {proposto ? formatBRL(precoDa(s)) : plano.status === 'ACCEPTED' && sit.aAgendar ? textoDaSessaoAAgendarNoApp(peloApp) : sit.texto}
                 </span>
               </div>
               {peloApp && principal && (

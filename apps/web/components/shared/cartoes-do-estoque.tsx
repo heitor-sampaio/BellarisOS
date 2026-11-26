@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Dica } from '@/components/shared/dica'
 import { validadeNaTela, loteVencido } from '@/lib/estoque/validade'
 
 /**
@@ -15,6 +16,8 @@ export interface CartaoDoEstoque {
   value:      string
   /** Uma linha ou várias embaixo do número. */
   detalhe?:   string | string[]
+  /** A14 da 31ª: o que o cartão conta, na dica ao lado do rótulo. */
+  dica?:      string
   icon:       ReactNode
   iconBg:     string
   color:      string
@@ -41,8 +44,9 @@ export function CartoesDoEstoque({ cartoes }: { cartoes: CartaoDoEstoque[] }) {
               {k.icon}
             </div>
             <div style={{ minWidth: 0, flex: 1 }}>
-              <p className="kpi-rotulo" style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: k.labelColor, letterSpacing: '0.05em', overflowWrap: 'anywhere' }}>
+              <p className="kpi-rotulo" style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: k.labelColor, letterSpacing: '0.05em', overflowWrap: 'anywhere', display: 'flex', alignItems: 'center', gap: 4 }}>
                 {k.label}
+                {k.dica && <Dica rotulo={`O que conta: ${k.label.toLocaleLowerCase('pt-BR')}`}>{k.dica}</Dica>}
               </p>
               <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, letterSpacing: '-0.02em', color: k.color, marginTop: 3, whiteSpace: 'nowrap' }}>
                 {k.value}

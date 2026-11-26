@@ -284,7 +284,7 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/regras/crm-inbox.md:279-293`; `apps/web/app/[slug]/cliente/home/page.tsx:370-376`; `apps/web/components/client-portal/historico-tabs.tsx:177`
 - Antes: KA-53, KA-54, KA-55, KA-56
 
-**PO-14.** O documento que o sistema de login recusa como senha (a proteção contra senha vazada recusa o passaporte, o RNE ou o CPF fácil de adivinhar) não impede o acesso: o login nasce com uma senha aleatória forte que ninguém recebe (provisória), a ficha é ligada, e a cliente recebe o e-mail "Defina sua senha" — o caminho do "Esqueci a senha". A tela diz isso a quem cadastrou.
+**PO-14.** O documento que o sistema de login recusa como senha (o curto demais para a senha mínima, como um RNE curto, e o que a proteção contra senha vazada recusa: o passaporte, o RNE ou o CPF fácil de adivinhar) não impede o acesso: o login nasce com uma senha aleatória forte que ninguém recebe (provisória), a ficha é ligada, e a cliente recebe o e-mail "Defina sua senha" — o caminho do "Esqueci a senha". A tela diz isso a quem cadastrou. Nesse caso a senha inicial NÃO é o documento: entrar com ele é recusado, e a cliente entra depois de criar a senha pelo e-mail.
 - Fonte: o Heitor, 2026-11-24, à R1 da 27ª simulação: "E-mail para criar a senha" (registrada em `docs/regras/crm-inbox.md:44-45`)
 - Onde: `docs/regras/crm-inbox.md:42-52`
 - Antes: (sem número: `docs/inventario/leitura.md` §4)
@@ -412,8 +412,8 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/regras/crm-inbox.md:804`, `:907`, `:1736`
 - Antes: KC-26, KC-48, KE-66
 
-**IM-10.** De quem já existe, só se completa o que está vazio (inclusive as datas e o responsável legal) e as tags se juntam: nada do que a rede tem é trocado, então importar de novo é seguro. A coluna de situação (ativo/inativo) só vale para quem é criado agora.
-- Fonte: decisão do Claude
+**IM-10.** De quem já existe, só se completa o que está vazio (inclusive as datas e o responsável legal) e as tags se juntam: as da planilha se somam às que a ficha já tem, sem tirar nenhuma, também na linha que completa a ficha. Nada do que a rede tem é trocado, então importar de novo é seguro. A coluna de situação (ativo/inativo) só vale para quem é criado agora.
+- Fonte: decisão do Claude; a tag na linha que completa a ficha: decisão do Claude, 26/11 (31ª simulação) — quem põe a tag é a rede, na planilha, e a prévia mostra a coluna mapeada (IM-16): não é o sistema pondo tag sozinho
 - Onde: `docs/regras/crm-inbox.md:809`, `:833`, `:1010`
 - Antes: KC-27, KC-35
 

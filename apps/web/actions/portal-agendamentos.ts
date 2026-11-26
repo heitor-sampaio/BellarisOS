@@ -9,6 +9,7 @@ import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { computeAvailableSlots, candidatasDoDia, conferirPecasDoAgendamento, horarioOcupado, quemRealizaNaUnidade } from '@/lib/appointments/core'
 import { proximosDias, DIAS_DO_REMARCAR } from '@/lib/appointments/dias-livres'
 import { textoDaTroca } from '@/lib/appointments/troca-de-profissional'
+import { textoDaRemarcacao } from '@/lib/appointments/texto-da-remarcacao'
 import { pagosAntes } from '@/lib/appointments/pago-antes'
 import { precoDoProcedimentoNaUnidade } from '@/lib/procedimentos/preco-na-unidade'
 import { ofereceNaUnidade, COLUNAS_DA_OFERTA } from '@/lib/procedimentos/disponivel-na-unidade'
@@ -222,9 +223,11 @@ export async function remarcarPelaCliente(
     if (!remarcadas?.length) return { error: 'Este agendamento não pode mais ser remarcado.' }
 
     const quem = `${a.clients.name} (app)`
-    const quando = inicio.toLocaleString('pt-BR', { timeZone: fuso, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
-    await logHistory(admin, a.id, null, quem, 'RESCHEDULED', `Remarcado pela cliente no app para ${quando}`,
-      { scheduled_at: inicio.toISOString() })
+    // A2 da 31ª (princípio 3): de quando para quando — o de antes no relógio da unidade de antes.
+    const fusoDeAntes = mudaDeUnidade ? await lerFusoDaUnidade(admin, a.branch_id) : fuso
+    await logHistory(admin, a.id, null, quem, 'RESCHEDULED',
+      textoDaRemarcacao({ de: a.scheduled_at, fusoDeAntes, para: inicio.toISOString(), fuso, pelaCliente: true }),
+      { scheduled_at: inicio.toISOString(), de_scheduled_at: a.scheduled_at })
     const ids = [...new Set([a.professional_id, profissional].filter(Boolean))] as string[]
     const [nomes, unidades] = await Promise.all([
       ids.length

@@ -25,6 +25,7 @@ import { textoDoProximoLivre } from '@/lib/agenda/proximo-livre'
 import { unicaOpcao } from '@/lib/uma-opcao'
 import { CampoIndicadaPor } from '@/components/shared/campo-indicada-por'
 import { Dica } from '@/components/shared/dica'
+import { AvisoDoPacoteEmAberto } from '@/components/shared/aviso-do-pacote-em-aberto'
 
 /** "“A”", "“A” e “B”", "“A”, “B” e “C”". */
 const emListaDeNomes = (nomes: readonly string[]) => {
@@ -724,6 +725,16 @@ export function AppointmentModal({
                   <Dica rotulo="Por que já veio escolhido">Escolhido porque o procedimento é o mesmo.</Dica>
                 </p>
               )}
+              {/* D15 da 31ª (PA-14): a sessão do pacote no crediário diz o que falta
+                  pagar (só a quem recebe); PA-13: na rede que libera só depois de
+                  pago, diz por que não se agenda, e o salvar se desliga. */}
+              {credito?.emAberto && <AvisoDoPacoteEmAberto valor={credito.emAberto.valor} parcelas={credito.emAberto.parcelas} clienteId={selectedClient?.id ?? null} unidadeId={credito.emAberto.unidadeId} slug={dados.slug} liberaAsSessoes={credito.emAberto.liberaAsSessoes} />}
+              {credito?.recusa && (
+                <p data-recusa-da-sessao role="alert" style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>
+                  <Ban size={13} aria-hidden style={{ flexShrink: 0, marginTop: 1 }} />
+                  <span>{credito.recusa}</span>
+                </p>
+              )}
             </Field>
           )}
 
@@ -923,7 +934,7 @@ export function AppointmentModal({
             <button type="button" onClick={onClose} className="btn-secondary">Cancelar</button>
             <button
               type="submit"
-              disabled={pending || !podeAgendar || carregandoSalas || conferindoOHorario || conferindoAAbertura}
+              disabled={pending || !podeAgendar || carregandoSalas || conferindoOHorario || conferindoAAbertura || !!credito?.recusa}
               className="btn-primary"
               style={{ opacity: podeAgendar ? 1 : 0.5 }}
             >

@@ -12,6 +12,7 @@ import { quemRealizaOsProcedimentos } from '@/lib/procedimentos/quem-realiza'
 import { AgendarComAEquipe } from '@/components/client-portal/agendar-com-a-equipe'
 import { jaPagoNoApp, procedimentosComSessaoComprada } from '@/lib/creditos/pago-no-app'
 import { comPrecoDaUnidade } from '@/lib/procedimentos/preco-na-unidade'
+import { getCreditoInternoDoCliente } from '@/lib/metrics/unidade'
 
 export default async function NewClientAppointmentPage({ params, searchParams }: {
   params: Promise<{ slug: string }>
@@ -80,10 +81,12 @@ export default async function NewClientAppointmentPage({ params, searchParams }:
     ((rawProcedures ?? []) as { id: string; name: string; price: number; duration_min: number; branch_id: string | null; procedure_branch_availability: { branch_id: string }[] | null }[])
       .filter(p => ofereceNaUnidade(p, branchTyped.id))
       .map(({ id, name, price, duration_min }) => ({ id, name, price, duration_min })))
-  const [realizam, jaPago] = await Promise.all([
+  const [realizam, jaPago, creditoInterno] = await Promise.all([
     quemRealizaOsProcedimentos(admin, lidos.map(p => p.id)),
     // O que ela já pagou de cada um (D10 da 8ª): o Confirmar diz "Já pago pelo pacote X (sessão 2 de 3)".
     jaPagoNoApp(admin, branchTyped.tenant_id, ctx.clientId!, lidos.map(p => p.id)),
+    // A6 da 31ª: o saldo do crédito interno, para o Confirmar dizer quando ele vale (no pagamento).
+    getCreditoInternoDoCliente(branchTyped.tenant_id, ctx.clientId!),
   ])
   const procedures = lidos.map(p => ({ ...p, realizam: realizam.get(p.id) ?? [], jaPago: jaPago[p.id] ?? null }))
   const equipe        = (rawProfessionals ?? []) as { id: string; name: string }[]
@@ -111,6 +114,7 @@ export default async function NewClientAppointmentPage({ params, searchParams }:
       unidadeEscolhida={unidadeDaUrl === 'escolhida'}
       professionals={professionals}
       prazoHoras={rede?.portal_prazo_alteracao_horas ?? 24}
+      creditoInterno={creditoInterno}
     />
   )
 }

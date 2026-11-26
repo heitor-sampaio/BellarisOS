@@ -34,7 +34,14 @@
     um atendimento de hoje já passado ou concluído, diz "Nenhum outro
     atendimento hoje" — "Sem atendimentos" contradizia o "Hoje 1 atendimento"
     ao lado (A30 da 7ª simulação; prova: `e2e/agenda-atritos-da-7.spec.ts`);
-  - a capacidade da ocupação (`capacidadeEmMinutos`, §13.1).
+  - a capacidade da ocupação (`capacidadeEmMinutos`, §13.1);
+  - **o intervalo de quem atende aparece pelo nome** (A8 da 31ª; decisão do
+    Claude, 26/11, pelo princípio 3): a pausa entre dois períodos do dia
+    (`pausasDoDia`, `lib/agenda/intervalos-da-grade.ts`) diz "Intervalo
+    01:20–03:20" na coluna dela na vista do dia e no dia dela na vista da
+    semana (`[data-intervalo-do-horario]`), a quem vê a agenda dela — o
+    sombreado sozinho era o mesmo do fora do horário, e a semana não mostrava
+    nada. Prova: `tests/agenda-intervalo-na-grade.test.ts`.
   A equipe ainda marca fora do horário (encaixe): os seletores do checkout e
   das sessões do plano continuam livres.
   - **O encaixe é permitido, mas AVISADO** (J-30, 2026-10-30): o modal de
@@ -1207,6 +1214,11 @@
   (decisão do Claude, 25/11). Prova:
   `tests/agenda-do-portal-em-andamento.test.ts` e
   `e2e/portal-cliente-alterar-agendamento.spec.ts` ("A51", a parte final).
+  O "Em andamento" diz, à vista, quem registra o fim: "A equipe registra
+  quando o atendimento terminar." (`TEXTO_DO_EM_ANDAMENTO_NO_APP`,
+  `[data-em-andamento-registra]`), no cartão da home e no grupo da Agenda
+  (D20 da 31ª, AG-55; o texto só existia na dica do "passou da hora"). Prova:
+  `tests/em-andamento-no-app-diz-quem-registra.test.ts`.
   **O "Em andamento" também nas telas da equipe** (o Heitor, 25/11: "Acho que
   seria mais útil para rede/clínica. A cliente vai estar sendo atendida não
   vai ficar vendo o app durante o atendimento, mas pode manter lá."; e a
@@ -1474,7 +1486,15 @@
   `e2e/agenda-atritos-da-7.spec.ts` ("A32"). **E dizem a unidade** na rede de
   duas ou mais (A15 da 25ª; princípio 7): "… · Dra. Ana · Moinhos"
   (`unidadeNaFicha`, `[data-unidade-do-agendamento]`). Prova:
-  `tests/atritos-da-25-ficha-estoque-app.test.ts`. **E a duração prevista é a do
+  `tests/atritos-da-25-ficha-estoque-app.test.ts`. **E são de hoje em diante**
+  (A16 da 31ª; a regra dos próximos do app, AG-55; princípio 3): o em aberto
+  de um dia anterior (no relógio da unidade dele; o Em atendimento fica) sai
+  dos próximos e aparece à parte, "Em aberto de dias anteriores"
+  (`[data-em-aberto-de-antes]`), até a equipe registrar a falta, a chegada ou
+  a conclusão — decisão do Claude, 26/11: o "Histórico de procedimentos" é o
+  que ela fez (J-26), e sumir com ele esconderia o que está em aberto
+  (`marcarOsDeAntes`, `lib/clientes/proximos-da-ficha.ts`). Prova:
+  `tests/ficha-proximos-de-hoje-em-diante.test.ts`. **E a duração prevista é a do
   AGENDAMENTO** (D5 da 7ª simulação, 2026-11-05; princípio 3): a sessão
   Criolipólise + Drenagem gravava 110 min e a tela do atendimento dizia "60
   min", a do procedimento principal. `sessao-de-atendimento.tsx` lê
@@ -1687,9 +1707,24 @@ de decisões) — **implementadas na F65 (2026-11-12)**:
   `confirmed_at` nem `arrived_at`) e a confirmação é pedida de novo, como a de
   qualquer agendamento. **O app diz** (A12 da 19ª): "Agendamento remarcado: …
   O horário novo fica como Agendado até ser confirmado." (`textoDoRemarcado`,
-  `lib/clientes/textos-do-app.ts`; o texto é decisão do Claude, 25/11). Prova:
+  `lib/clientes/textos-do-app.ts`; o texto é decisão do Claude, 25/11), e o
+  diz ANTES de confirmar, com o horário escolhido (`AVISO_DO_HORARIO_NOVO_NO_APP`;
+  A1 da 31ª, decisão do Claude, 26/11, pelo princípio 3). Prova:
+  `tests/remarcar-no-app-avisa-antes.test.ts`,
   `e2e/portal-cliente-remarcar-pelo-nucleo.spec.ts`,
   `tests/remarcar-pelo-app-volta-a-agendado.test.ts`.
+- **A remarcação diz de quando para quando** (A2 da 31ª; decisão do Claude,
+  26/11, pelo princípio 3): o histórico do agendamento grava "Remarcado de
+  28/11, 10:00 para 29/11, 14:00" (pelo app, "Remarcado pela cliente no app de
+  … para …"), cada horário no relógio da sua unidade, e o metadata guarda o
+  `de_scheduled_at` (`textoDaRemarcacao`, `lib/appointments/texto-da-remarcacao.ts`,
+  no `remarcarCore` e no `remarcarPelaCliente`). O registro de antes (só
+  "para") fica como está: o horário de antes não estava gravado. A linha do
+  tempo da ficha registra cada remarcação ("Remarcado: <procedimento>", com o
+  texto e "por Fulana (app)" — `eventosDeRemarcacao`), e o "por …" de todo
+  evento de agendamento sai do id do agendamento, não do link: sem o
+  Atendimento em Ver o link é nulo (UM1), e o autor sumia de quem só tem a
+  Agenda ou os Clientes. Prova: `tests/agenda-remarcacao-de-quando-para-quando.test.ts`.
 - **Quem só agenda cria a ficha, mas não mexe na que existe (H4, opção b;
   princípio 3: a mesma ação não muda conforme a porta).** O "+ Agendar" com
   nome e telefone, e o agendar pelo CRM (cujos horários se chamam "Horários
@@ -2174,8 +2209,8 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
   profissional no plano e a ficha de saúde no arquivo do tratamento (só `agenda`).
   Concluir o atendimento pede o Atendimento em Gerenciar (o clínico dele, o
   Prontuário em Gerenciar); salvar a evolução, a ficha do procedimento e a
-  foto dela pede os dois (gravam prontuário; o Heitor, 2026-11-18 — era só o
-  Prontuário; ATD-A03). Prova: `e2e/clinico-so-com-prontuario.spec.ts`.
+  foto dela pede o Prontuário em Gerenciar, sem precisar atender (UM4 de
+  23/11; de 18/11 a 23/11 pedia os dois — ATD-A03). Prova: `e2e/clinico-so-com-prontuario.spec.ts`.
 - **A aba Prontuário lista TODO atendimento com registro clínico** (D4 da
   simulação de 2026-10-27): a evolução (`medical_record_entries.notes`), a
   intercorrência ou a ficha de atendimento — basta um dos três
@@ -2523,6 +2558,14 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
   saía. A soma do mapa e a comparação juntam as duas, e o texto fala na
   unidade do insumo ("O mapa soma 56 U de Toxina; a baixa está em 40 U.").
   ml e UI seguem sem se comparar. Prova: `tests/injetaveis-dose-u-e-ui.test.ts`.
+  **O insumo do mapa contado em outra medida também avisa** (D10 da 31ª;
+  decisão do Claude, 26/11, princípios 3 e 4): o produto do mapa que não está
+  na baixa e que o estoque conta noutra medida (a toxina em frasco, o ácido em
+  seringa, sem a medida de consumo) passava calado. Agora: "O mapa soma 30 UI
+  de Toxina, que não está nos insumos da baixa. O estoque conta este produto
+  em frasco: inclua no cartão de insumos quanto foi usado." — sem botão (o
+  sistema não converte UI em frasco: não chuta número). O mapa continua sem
+  dar baixa sozinho. Prova: `tests/injetaveis-dose-em-outra-medida.test.ts`.
 - **Os injetáveis são de quem realiza o atendimento; ver é do Prontuário**
   (o Heitor, 2026-11-23: "o mapa de injetaveis é pra quem realiza
   atendimento"; e "ok" à proposta "criar e editar o plano (planejamento) de
@@ -2828,9 +2871,20 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
     a anterior" (`[data-registro-editado]`, `[data-versao-anterior]`), no
     atendimento e no registro da aba Prontuário. A avaliação concluída
     destravada ganhou o "Salvar" (não tinha: destravar não gravava nada).
-    Corrigir pede o Atendimento e o Prontuário em Gerenciar (era a Agenda até
-    2026-11-18), também a ficha do procedimento e a foto dela; a ficha cancelada ou
-    de falta não se preenche mais.
+    Corrigir pede o Prontuário em Gerenciar, e só ele (UM4 de 23/11; de 18/11
+    a 23/11 pedia também o Atendimento, e antes a Agenda), também a ficha do
+    procedimento e a foto dela; a ficha cancelada ou de falta não se preenche
+    mais. **E se corrige na ficha da cliente** (D4 da 31ª; decisão do Claude,
+    26/11, princípio 7): sem precisar atender, quem tem o Prontuário em
+    Gerenciar corrige na aba Prontuário — no registro do atendimento
+    CONCLUÍDO, "Corrigir o registro" (`CorrecaoDoRegistro`,
+    `[data-corrigir-registro]`) abre a evolução, a intercorrência e a ficha de
+    atendimento e salva pelas mesmas actions (`saveDraftNotes`, que no
+    concluído chama a `prontuario_corrigir_registro`, e
+    `salvarFichaDoProcedimento`); o acesso já fica registrado pela aba. Só
+    existia na tela do atendimento, que pede o Atendimento em Ver. Prova:
+    `tests/prontuario-correcao-na-ficha.test.ts`,
+    `e2e/prontuario-anotacoes-e-versoes.spec.ts` ("D4").
   - **As duas tabelas são só do servidor**: RLS ligada sem política
     permissiva (a sessão não lê nem grava — prova com o token de um membro no
     spec), as restritivas `suporte_sem_clinico` e `suporte_sem_escrita_*`,
@@ -3405,6 +3459,10 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
     recorte" nos Relatórios, e "SEM ESTOQUE — produtos sem saldo em nenhuma
     unidade" (ou "nesta unidade", com o filtro) no Estoque. Prova:
     `e2e/estoque-zerados-uma-conta.spec.ts`.
+    O "críticos" segue a mesma régua (D22 da 31ª, decisão do Claude, 26/11):
+    o cartão de Relatórios → Estoque se chama "Produtos críticos" e conta o
+    PRODUTO no mínimo ou abaixo dele uma vez; a linha de cada unidade, o
+    produto crítico NELA.
 - **Movimentação de estoque NUNCA gera despesa** (D13 revisto, decisão do
   Heitor, 2026-10-28: "tanto entrada quanto saída, não gera despesa. Os
   valores são informados apenas para base de cálculo de insumos, custo,
@@ -3651,6 +3709,54 @@ indicada é a do consolidado do levantamento):
   Prova: `e2e/estoque-lote-vencendo-no-sino.spec.ts` ("C25").
 - O "críticos" de `metrics_relatorio` conta PRODUTOS pela régua da tela (o
   rendimento contra o mínimo × o que a embalagem rende).
+
+**Corrigidas na 31ª simulação** (2026-11-26):
+- **A transferência vale o custo do lote que saiu** (D1; ES-18, ES-29): as
+  duas pernas gravam o `unit_cost` dos lotes que a saída tira, pelo mesmo
+  FEFO do gatilho do lote (`private.custo_da_saida_pelos_lotes`, lido antes
+  do insert), e `metrics_transferencias_de_estoque` multiplica a ligação ao
+  lote (em embalagens) pelo rendimento. 1 pote de 1000 g a R$ 0,11/g vale
+  R$ 110,00, não R$ 119,99. As de antes ganham o custo dos lotes ligados
+  quando eles cobrem a quantidade inteira e todos têm custo; a outra fica com
+  o último custo (decisão do Claude, 26/11; princípio 4). Prova:
+  `e2e/estoque-transferencia-no-relatorio.spec.ts` ("D1 da 31ª").
+- **A embalagem é o que se compra, o conteúdo é quanto ela tem** (D2;
+  decisão do Claude, 26/11, princípios 2 e 3): "1 g com 1000 g" é impossível
+  e o cadastro recusa (`recusaDaEmbalagem`, `lib/estoque/medidas.ts`: a
+  embalagem e o conteúdo da mesma grandeza só com o fator certo — 1 kg com
+  1000 g vale). Uma medida como embalagem com o conteúdo em outra grandeza é
+  improvável e só avisa (`avisoDaEmbalagem`); a medida como embalagem sem
+  conteúdo continua valendo. O produto já gravado assim se lê como está, e o
+  cadastro, a Entrada e o cartão do ajuste do Copilot avisam ("a quantidade
+  aqui conta embalagens"); corrigir a embalagem não muda número nenhum. A
+  Entrada diz a conta em consumo (`[data-entrada-equivale]`). O ajuste do
+  Copilot conta em embalagem (padrão) ou na medida de uso (`contarEm`), como
+  o "Contar em" da tela. Prova: `tests/estoque-embalagem-e-conteudo.test.ts`.
+- **A Auditoria do movimento guarda o motivo da perda e o saldo depois**
+  (D9): os valores do gatilho de `stock_movements` ganham `motivo_da_perda` e
+  `balance_after`, para a frase dizer "perda de 2 frascos (Vencido)" e "o
+  inventário ajustou de 970 g para 950 g". A frase é da Auditoria
+  (`plataforma.md`).
+- **O inventário é por unidade** (D24, NÃO ERA): o "saldo nas duas unidades"
+  da ES-26 são as duas MEDIDAS (a embalagem e a de uso, "780 UI · 7,8
+  frasco"), não duas unidades da rede.
+- **O nome repetido de uma lista diz que já existe** (A12; princípios 3 e 7):
+  "solares " com a "Solares" cadastrada é o mesmo item (sem caixa nem
+  espaços); a janela da lista diz "já está na lista" (`[data-ja-existe]`) e
+  nada se cria, e o campo com busca diz "já existe: escolha da lista". Prova:
+  `e2e/estoque-marcas-e-fornecedores.spec.ts` ("A12 da 31ª").
+- **O "Corrigir custo" fica no Histórico** (A13; princípio 3): a entrada
+  guarda o custo com que foi gravada e quando foi corrigida
+  (`custo_corrigido_de`, `custo_corrigido_em`), e o Histórico diz "Custo
+  corrigido de R$ 520,00 para R$ 52,00/un em …" (`[data-custo-corrigido]`).
+  O "de" é o custo da entrada, não o da correção do meio (decisão do Claude,
+  26/11; as do meio estão na Auditoria). As corrigidas antes ganham o de
+  antes da Auditoria. Prova: `e2e/estoque-custo-de-consumo.spec.ts` ("A13 da 31ª").
+- **O Valor em estoque e o Giro têm dica** (A14; princípio 7): o Valor é o
+  saldo ao custo do lote de onde veio (o que nenhum lote com custo cobre, ao
+  último custo), não o preço de venda (`DICA_DO_VALOR`); o Giro, os insumos
+  dos atendimentos do mês (`DICA_DO_GIRO`). Nos dois portais, também para
+  quem só vê. Prova: `e2e/estoque-lotes-da-9.spec.ts` ("A14 da 31ª").
 
 ---
 
@@ -3959,7 +4065,15 @@ O resto do fluxo:
     pede o Prontuário em Gerenciar." (`TEXTO_DO_CLINICO_SO_LEITURA`,
     `[data-clinico-so-leitura]`). Ganhava o formulário editável, e o
     digitado se perdia na conclusão (que grava sem o clínico). Prova:
-    `e2e/vistas-pessoais-e-cada-passo.spec.ts`.
+    `e2e/vistas-pessoais-e-cada-passo.spec.ts`. No "Finalizar" com a ficha de
+    saúde obrigatória em branco, a janela do que falta diz por que trava e
+    quem responde — "Você lê a ficha de saúde, mas não a responde. Quem
+    responde a ficha de saúde é quem tem o Prontuário em Gerenciar (…), ou a
+    cliente, pelo app ou pelo link." (`[data-quem-responde-a-ficha]`, os nomes
+    de `quemRespondeAFichaDeSaude`) —, com "Entendi" no lugar do "Responder
+    agora", que levava a campos que ela não escreve (A17 da 31ª; decisão do
+    Claude, 26/11, princípio 7; a trava fica). Prova:
+    `tests/atendimento-ficha-de-saude-quem-responde.test.ts`.
   - **Quem não vê o clínico** (sem o Prontuário em Ver; o caso do prontuário
     "só os meus" num atendimento de outra saiu com o SM1): a tela não tem os
     campos e não aponta nada; o servidor recusa do mesmo jeito, com só o NOME

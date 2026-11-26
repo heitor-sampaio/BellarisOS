@@ -113,3 +113,14 @@ export function quemMarcaAsSessoes(aAgendar: { numero: number; peloApp: boolean 
   }
   return saida
 }
+
+/**
+ * O estado do passo "Contrato e pagamento" do plano (D7 da 31ª; DP-03,
+ * princípio 3): com o crediário em aberto, "Recebido" sozinho escondia os
+ * R$ 900 a receber. O a receber é o da fonte única (`metrics_financeiro_do_plano`).
+ */
+export function rotuloDoPassoDoPagamento(p: { recebido: boolean; aReceber: number }): { texto: string; falta: boolean } {
+  if (!p.recebido) return { texto: 'Falta receber', falta: true }
+  if (p.aReceber > 0) return { texto: `Recebido em parte · ${formatBRL(p.aReceber)} a receber`, falta: true }
+  return { texto: 'Recebido', falta: false }
+}

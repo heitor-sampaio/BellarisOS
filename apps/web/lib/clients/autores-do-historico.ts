@@ -13,7 +13,7 @@ export async function historicoDosAgendamentos(
 ): Promise<LinhaDoHistorico[]> {
   if (ids.length === 0) return []
   return ((await ler(admin.from('appointment_history')
-    .select('appointment_id, action, changed_by_name, created_at')
+    .select('appointment_id, action, changed_by_name, created_at, description')
     .in('appointment_id', ids)
     .order('created_at')
     .limit(1000), 'ler quem fez cada ação nos agendamentos')) ?? []) as LinhaDoHistorico[]

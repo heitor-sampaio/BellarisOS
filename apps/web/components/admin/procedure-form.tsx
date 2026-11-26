@@ -984,7 +984,7 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
           </p>
           <EditorDeComissao estado={estadoComissao} onChange={e => { setEstadoComissao(e); setErroComissao(null) }}
             profissionais={comissao.profissionais} inicialComValor={comissao.porProfissional.length}
-            redeDescontaTaxa={comissao.redeDescontaTaxa} />
+            redeDescontaTaxa={comissao.redeDescontaTaxa} atual={comissao} />
           {erroComissao && (
             <p role="alert" style={{ marginTop: 8, fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erroComissao}</p>
           )}

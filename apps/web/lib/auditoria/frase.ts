@@ -3,6 +3,7 @@ import { FUSO_PADRAO, fusoValido, nomeDoFuso } from '@/lib/unidades/fuso'
 import { rotaAtendimento, rotaCliente, rotaNoPortal } from '@/lib/rotas'
 import { rotuloDaForma, rotuloDaFormaDoFechamento } from '@/lib/financeiro/formas'
 import { quantidadeComMedida } from '@/lib/estoque/medidas'
+import { MOTIVO_BRINDE, rotuloDoMotivo } from '@/lib/estoque/perda'
 import { REPORT_TAB_LABELS } from '@/lib/permissions'
 import type { ReportTab } from '@estetica-os/types'
 import type { LinhaDaAuditoria, NomesDaAuditoria, RegistroDaAuditoria } from './tipos'
@@ -122,7 +123,7 @@ const CAMPO: Record<string, string> = {
   arrived_at: 'chegada', started_at: 'início', cancelled_at: 'cancelamento', cancellation_reason: 'motivo do cancelamento',
   aconteceu_em: 'data do atendimento', client_feedback: 'avaliação da cliente', client_rating: 'nota da cliente',
   app_account_created_at: 'acesso ao app', last_app_login_at: 'última entrada no app', portal_ultima_entrada_em: 'última entrada no portal',
-  rendered_at: 'geração', content: 'conteúdo', content_text: 'conteúdo', content_sha256: 'conteúdo', missing_fields: 'campos que faltam',
+  rendered_at: 'geração', pedido_no_portal_em: 'pedido no portal', content: 'conteúdo', content_text: 'conteúdo', content_sha256: 'conteúdo', missing_fields: 'campos que faltam',
   verification_code: 'código de verificação', signed_at: 'assinatura', signed_pdf_path: 'PDF assinado', signed_pdf_sha256: 'PDF assinado',
   payment_snapshot: 'pagamento combinado', revoked_at: 'revogação', used_at: 'uso', expires_at: 'validade',
   grafo: 'fluxo', versao: 'versão', gatilhos: 'gatilhos', last_run_at: 'última execução', total_sent: 'enviadas',
@@ -428,13 +429,29 @@ function fraseDoMovimento(r: RegistroDaAuditoria, nomes: NomesDaAuditoria): stri
       const custo = r.registro_id ? numero(nomes.custosDasEntradas?.[r.registro_id]) : null
       return `Deu entrada em ${p}${custo ? ` (${brl(custo)})` : ''}`
     }
-    case 'LOSS':              return `Registrou a perda de ${p}`
+    // D9 da 31ª: a perda diz o motivo (o gatilho o guarda desde a migration 20261209600002).
+    case 'LOSS': {
+      const motivo = texto(r.depois.motivo_da_perda)
+      return `Registrou a perda de ${p}${motivo ? ` (${rotuloDoMotivo(motivo)})` : ''}`
+    }
     case 'SALE':              return `Baixou ${p} na venda`
     case 'SALE_RETURN':       return `Devolveu ao estoque ${p}`
     case 'PROCEDURE_USAGE':   return `Baixou ${p} no atendimento`
     // A10 da 24ª: o ajuste da correção de cadastro diz o motivo (não é perda).
-    case 'MANUAL_ADJUSTMENT': return r.depois.correcao_de_cadastro === true
-      ? `Ajustou o estoque (correção de cadastro): ${p}` : `Ajustou o estoque: ${p}`
+    case 'MANUAL_ADJUSTMENT': {
+      if (r.depois.correcao_de_cadastro === true) return `Ajustou o estoque (correção de cadastro): ${p}`
+      // D9 da 31ª: o inventário diz de quanto para quanto (o saldo antes é o depois menos a quantidade).
+      const saldo = numero(r.depois.balance_after)
+      const q = numero(r.depois.quantity)
+      if (saldo != null && q != null && texto(r.depois.motivo_da_perda) !== MOTIVO_BRINDE) {
+        const id = texto(r.depois.product_id)
+        const produto = (id && nomes.produtos?.[id]) || 'produto'
+        const medida = id ? texto(nomes.medidasDosProdutos?.[id]) : null
+        const n = (v: number) => v.toLocaleString('pt-BR', { maximumFractionDigits: 3 })
+        return `Ajustou o estoque de ${produto} (inventário): de ${n(saldo - q)} para ${medida ? quantidadeComMedida(saldo, medida) : n(saldo)}`
+      }
+      return `Ajustou o estoque: ${p}`
+    }
     case 'TRANSFER_OUT':      return `Mandou ${p}${unidade ? ` de ${unidade}` : ''}`
     case 'TRANSFER_IN':       return `Recebeu ${p}${unidade ? ` em ${unidade}` : ''}`
     default:                  return null
@@ -722,6 +739,61 @@ function fraseDoMembroEditado(r: RegistroDaAuditoria, nomes: NomesDaAuditoria): 
   return `Editou o membro da equipe ${quem}${campos ? ` (${campos})` : ''}`
 }
 
+/**
+ * A9 da 31ª (princípio 3; AD-13): a regra de comissão diz de quê, de quem e
+ * quanto ("Criou a regra de comissão" saía sete vezes igual). O procedimento e
+ * a pessoa vão na gravação desde a migration `20261209500001` (o nome se lê
+ * agora); o tipo e o valor sempre foram — a gravação de antes diz o valor.
+ */
+const valorDaRegra = (x: Record<string, unknown>): string | null => {
+  const v = numero(x.value)
+  if (v === null) return null
+  return texto(x.type) === 'FIXED_AMOUNT' ? brl(v) : `${v.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%`
+}
+const ladoDaRegra = (r: RegistroDaAuditoria) => (r.operacao === 'apagou' ? r.antes : r.depois)
+
+function fraseDaRegraDeComissao(r: RegistroDaAuditoria, nomes: NomesDaAuditoria): string | null {
+  if (r.tabela !== 'commission_rules' || (r.operacao !== 'criou' && r.operacao !== 'apagou')) return null
+  const x = ladoDaRegra(r)
+  const proc = texto(x.procedure_id)
+  const prof = texto(x.professional_id)
+  const procedimento = proc ? nomes.procedimentos?.[proc] || null : null
+  const pessoa = prof ? nomes.membros[prof] || null : null
+  const valor = valorDaRegra(x)
+  const quanto = valor ? ` (${valor})` : ''
+  const verbo = VERBO[r.operacao]!
+  if (procedimento && !prof) return `${verbo} a comissão de ${procedimento}, a mesma para todos${quanto}`
+  if (procedimento && pessoa) return `${verbo} a comissão de ${procedimento} para ${pessoa}${quanto}`
+  if (!proc && pessoa) return `${verbo} a comissão padrão de ${pessoa}${quanto}`
+  return `${verbo} a regra de comissão${quanto}`
+}
+
+/**
+ * Salvar a comissão do procedimento (ou as regras da pessoa) apaga e grava de
+ * novo, numa gravação só: "Criou 2 e apagou 1 regras de comissão de Limpeza de
+ * pele (Marcela: R$ 50,00; Tamires: 40%)" — o que ficou, pelo que varia.
+ */
+function fraseDasRegrasDeComissao(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria): string | null {
+  if (linhas.length < 2 || !linhas.every(l => l.tabela === 'commission_rules' && (l.operacao === 'criou' || l.operacao === 'apagou'))) return null
+  const procs = [...new Set(linhas.map(l => texto(ladoDaRegra(l).procedure_id)))]
+  const profs = [...new Set(linhas.map(l => texto(ladoDaRegra(l).professional_id)))]
+  const doProcedimento = procs.length === 1 && procs[0] ? nomes.procedimentos?.[procs[0]] || null : null
+  const daPessoa = !doProcedimento && profs.length === 1 && profs[0] ? nomes.membros[profs[0]] || null : null
+  const deQue = doProcedimento ?? daPessoa
+  if (!deQue) return null
+  const ficou = linhas.filter(l => l.operacao === 'criou').map(l => {
+    const x = l.depois
+    const valor = valorDaRegra(x)
+    const proc = texto(x.procedure_id)
+    const prof = texto(x.professional_id)
+    const quem = doProcedimento
+      ? (prof ? nomes.membros[prof] || 'outra pessoa' : 'a mesma para todos')
+      : (proc ? nomes.procedimentos?.[proc] || 'outro procedimento' : 'padrão')
+    return valor ? `${quem}: ${valor}` : quem
+  })
+  return `${contagemDasOperacoes(linhas)} regras de comissão de ${deQue}${ficou.length ? ` (${ficou.join('; ')})` : ''}`
+}
+
 /** "O quê": a frase da linha, sem quem e sem quando. */
 export function fraseDaAuditoria(r: RegistroDaAuditoria, nomes: NomesDaAuditoria): string {
   const cliente = r.client_id ? nomes.clientes[r.client_id] ?? null : null
@@ -738,6 +810,8 @@ export function fraseDaAuditoria(r: RegistroDaAuditoria, nomes: NomesDaAuditoria
   }
   const situacao = fraseDaSituacao(r, nomes, cliente)
   if (situacao) return situacao
+  const daRegra = fraseDaRegraDeComissao(r, nomes)
+  if (daRegra) return daRegra
   // A4 da 30ª (tags:TG-08, "Não existe apagar tag"): a tag só sai do banco ao
   // ser juntada a outra de mesmo nome (`renomear_tag`); era "Apagou a tag".
   // O destino (`depois.juntada_em`) vem de `renomear_tag` desde 20261206600001;
@@ -805,6 +879,11 @@ export function fraseDaAuditoria(r: RegistroDaAuditoria, nomes: NomesDaAuditoria
   // A33 da 19ª: o voucher devolvido (o estorno do pagamento que o usou) diz que voltou a ativo.
   const devolvido = voucherDevolvido(r)
   if (devolvido) return `Devolveu ${devolvido} (voltou a ativo)${cliente ? ` — ${cliente}` : ''}`
+  // D21 da 31ª: o "Pedir no portal" marca o documento (`pedido_no_portal_em`) — o pedido é o fato.
+  if (r.tabela === 'issued_documents' && r.operacao === 'editou' && r.colunas.includes('pedido_no_portal_em')) {
+    const nome = nomeDoRegistro(r, nomes)
+    return `Pediu a assinatura do documento${nome ? ` ${nome}` : ''} no portal${cliente ? ` — ${cliente}` : ''}`
+  }
   // A35 da 19ª: a geração do documento é o fato ("Editou o documento (conteúdo, pagamento combinado, geração…)").
   if (r.tabela === 'issued_documents' && r.operacao === 'editou' && r.colunas.includes('rendered_at')) {
     const nome = nomeDoRegistro(r, nomes)
@@ -1159,10 +1238,16 @@ function oQueDevolveu(devolucoes: readonly RegistroDaAuditoria[], linhas: readon
 
 /** A transferência: a saída de uma unidade e a entrada na outra, na mesma gravação. */
 function fraseDaTransferencia(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria): string | null {
-  if (!linhas.every(l => l.tabela === 'stock_movements' && l.operacao === 'criou')) return null
-  const saidas = linhas.filter(l => texto(l.depois.type) === 'TRANSFER_OUT')
-  const entradas = linhas.filter(l => texto(l.depois.type) === 'TRANSFER_IN')
-  if (!saidas.length || !entradas.length || saidas.length + entradas.length !== linhas.length) return null
+  // D9 da 31ª: o lote (a saída tira dele, a entrada cria o da outra unidade) e o
+  // custo que o gatilho do lote acerta no movimento recém-criado vêm na mesma
+  // gravação — não são "Editou o lote" nem "Corrigiu o custo". Pernas, só as criadas.
+  const doCusto = (l: RegistroDaAuditoria) => l.tabela === 'stock_movements' && l.operacao === 'editou'
+    && l.colunas.length > 0 && l.colunas.every(c => c === 'unit_cost')
+  if (!linhas.every(l => l.tabela === 'product_batches' || doCusto(l) || (l.tabela === 'stock_movements' && l.operacao === 'criou'))) return null
+  const pernas = linhas.filter(l => l.tabela === 'stock_movements' && l.operacao === 'criou')
+  const saidas = pernas.filter(l => texto(l.depois.type) === 'TRANSFER_OUT')
+  const entradas = pernas.filter(l => texto(l.depois.type) === 'TRANSFER_IN')
+  if (!saidas.length || !entradas.length || saidas.length + entradas.length !== pernas.length) return null
   const de = saidas[0]!.branch_id ? nomes.unidades[saidas[0]!.branch_id] ?? null : null
   const para = entradas[0]!.branch_id ? nomes.unidades[entradas[0]!.branch_id] ?? null : null
   return `Transferiu ${emLista(entradas.map(l => doProduto(l, nomes)))}${de ? ` de ${de}` : ''}${para ? ` para ${para}` : ''}`
@@ -1543,7 +1628,22 @@ export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: Nome
   if (estorno) return estorno
   // A35 da 20ª: a entrada e o desfazer gravam o lote e o custo do produto junto (o lote podia sair primeiro: "Editou o lote").
   const entrada = linhas.find(l => l.tabela === 'stock_movements' && l.operacao === 'criou' && texto(l.depois.type) === 'PURCHASE')
-  if (entrada && linhas.every(l => ['stock_movements', 'product_batches', 'products'].includes(l.tabela))) return fraseDaAuditoria(entrada, nomes)
+  const doEstoque = (tabelas: string[]) => linhas.every(l => tabelas.includes(l.tabela))
+  // D9 da 31ª: o produto novo com estoque inicial é o cadastro, com o estoque e a unidade (era só "Deu entrada").
+  const cadastrado = linhas.find(l => l.tabela === 'products' && l.operacao === 'criou')
+  if (entrada && cadastrado && (numero(entrada.depois.quantity) ?? 0) > 0 && doEstoque(['stock_movements', 'product_batches', 'products'])) {
+    const id = texto(entrada.depois.product_id) ?? cadastrado.registro_id
+    const nome = texto(cadastrado.depois.name) ?? ((id && nomes.produtos?.[id]) || 'produto')
+    const q = numero(entrada.depois.quantity) ?? 0
+    const medida = id ? texto(nomes.medidasDosProdutos?.[id]) : null
+    const unidade = entrada.branch_id ? nomes.unidades[entrada.branch_id] ?? null : null
+    return `Cadastrou o produto ${nome} com o estoque inicial de ${medida ? quantidadeComMedida(q, medida) : q.toLocaleString('pt-BR')}${unidade ? ` em ${unidade}` : ''}`
+  }
+  if (entrada && doEstoque(['stock_movements', 'product_batches', 'products'])) return fraseDaAuditoria(entrada, nomes)
+  // D9 da 31ª: a perda e o inventário gravam o lote junto (que vinha primeiro: "Editou o lote (quantidade)").
+  const perdaOuAjuste = linhas.find(l => l.tabela === 'stock_movements' && l.operacao === 'criou'
+    && ['LOSS', 'MANUAL_ADJUSTMENT'].includes(texto(l.depois.type) ?? ''))
+  if (perdaOuAjuste && doEstoque(['stock_movements', 'product_batches'])) return fraseDaAuditoria(perdaOuAjuste, nomes)
   // A36 da 16ª: a resposta da ficha grava o link e o prontuário junto; o fato é a resposta.
   const resposta = linhas.find(l => l.tabela === 'pre_atendimentos' && l.operacao === 'editou' && l.colunas.includes('respondido_em'))
   if (resposta) return fraseDaAuditoria(resposta, nomes)
@@ -1591,6 +1691,9 @@ export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: Nome
   // A7 da 28ª (princípio 3): a despesa lançada em parcelas é UMA despesa, pela descrição ("Criou 3 lançamentos" não dizia).
   const despesaEmParcelas = fraseDaDespesaEmParcelas(linhas)
   if (despesaEmParcelas) return despesaEmParcelas
+  // A9 da 31ª: salvar a comissão do procedimento ou as regras da pessoa.
+  const regrasDeComissao = fraseDasRegrasDeComissao(linhas, nomes)
+  if (regrasDeComissao) return regrasDeComissao
   if (linhas.every(l => l.tabela === tabela && ORDEM_DAS_OPERACOES.includes(l.operacao))) {
     let coisas = PLURAL_DA_AUDITORIA[tabela] ?? `registros (${tabela})`
     if (tabela === 'role_permissions' && umCargo) coisas = `permissões do cargo ${umCargo}`
@@ -1625,7 +1728,9 @@ function principalDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: Nome
   if (linhas.length === 1) return linhas[0]!
   const estorno = linhas.some(l => l.tabela === 'financial_transactions' && l.operacao === 'criou' && texto(l.depois.category) === 'Estorno')
   const fato = linhas.some(l => l.tabela === 'tenants' && l.operacao === 'criou') || estorno ? null : fatoDaGravacao(linhas, nomes)
-  return fato?.principal ?? paiDaGravacao(linhas) ?? linhas.find(l => l.client_id) ?? linhas[linhas.length - 1]!
+  // D9 da 31ª: a gravação do estoque é da unidade do movimento (o produto novo é da rede, e a linha dizia "Da rede").
+  return fato?.principal ?? paiDaGravacao(linhas) ?? linhas.find(l => l.client_id)
+    ?? linhas.find(l => l.tabela === 'stock_movements' && l.branch_id) ?? linhas[linhas.length - 1]!
 }
 
 /**

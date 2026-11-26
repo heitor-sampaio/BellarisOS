@@ -7,7 +7,7 @@ import { useId,
 import { X, Package, Barcode, Plus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { createProduct, updateProduct } from '@/actions/stock'
-import { MEDIDAS_DO_PRODUTO } from '@/lib/estoque/medidas'
+import { MEDIDAS_DO_PRODUTO, recusaDaEmbalagem, avisoDaEmbalagem } from '@/lib/estoque/medidas'
 import { checkboxesIniciais, usoDosCheckboxes } from '@/lib/estoque/uso'
 import { prefixoDoSku } from '@/lib/estoque/sku'
 import { Fala } from '@/components/shared/uma-unidade'
@@ -102,6 +102,13 @@ function ProductFields({
   const [costPriceStr,     setCostPriceStr]     = useState(product?.cost_price != null ? String(product.cost_price) : '')
   const [unitsPerPkgStr,   setUnitsPerPkgStr]   = useState(product?.units_per_package != null ? String(product.units_per_package) : '')
   const [consumptionUnit,  setConsumptionUnit]  = useState(product?.consumption_unit ?? '')
+  // D2 da 31ª (decisão do Claude, 26/11): a embalagem é o que se conta na
+  // prateleira; "1 g com 1000 g" não fecha (o servidor recusa) e a medida com o
+  // conteúdo noutra grandeza avisa. O produto gravado assim antes já abre avisando.
+  const [embalagem,        setEmbalagem]        = useState(product?.unit ?? 'un')
+  const conteudoLido = unitsPerPkgStr.trim() ? Number(unitsPerPkgStr) : null
+  const embalagemImpossivel = recusaDaEmbalagem(embalagem, conteudoLido, consumptionUnit)
+  const embalagemImprovavel = embalagemImpossivel ? null : avisoDaEmbalagem(embalagem, conteudoLido, consumptionUnit)
   // E2 (o Heitor, 13/11: "checkbox de onde o produto está disponivel (Insumo e
   // Venda direta)"): dois checkboxes; o banco guarda o mesmo uso (D-6). O que já
   // existia sem a coluna vale pelo preço de venda; o produto novo nasce sem
@@ -227,7 +234,9 @@ function ProductFields({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           <Label htmlFor={id('embalagem')}>Embalagem *</Label>
           <select id={id('embalagem')} name="unit" required className="field"
-            defaultValue={product?.unit ?? 'un'}>
+            value={embalagem} onChange={e => setEmbalagem(e.target.value)}>
+            {/* A embalagem gravada fora da lista segue escolhida (salvar não a troca calado pela primeira). */}
+            {product?.unit && !(UNITS as readonly string[]).includes(product.unit) && <option value={product.unit}>{product.unit}</option>}
             {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
           </select>
         </div>
@@ -260,6 +269,16 @@ function ProductFields({
             </select>
           </div>
         </div>
+        {embalagemImpossivel && (
+          <p data-embalagem-impossivel role="alert" style={{ marginTop: 10, fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)', lineHeight: 1.45 }}>
+            {embalagemImpossivel}
+          </p>
+        )}
+        {embalagemImprovavel && (
+          <p data-embalagem-improvavel role="alert" style={{ marginTop: 10, fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)', lineHeight: 1.45 }}>
+            {embalagemImprovavel}
+          </p>
+        )}
       </div>
 
       {/* Onde o produto está disponível (E2): Insumo — aparece no atendimento e no

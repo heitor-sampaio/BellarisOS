@@ -11,8 +11,8 @@ export interface EventoDoAgendamento {
 }
 
 export function eventosDeConfirmacaoEChegada(a: EventoDoAgendamento, link: string | null) {
-  const base = { subtitle: null, amount: null, link }
-  const eventos: { id: string; date: string; type: 'APPOINTMENT_CONFIRMED' | 'APPOINTMENT_ARRIVED'; title: string; subtitle: null; amount: null; link: string | null }[] = []
+  const base = { subtitle: null, amount: null, link, agendamentoId: a.id }
+  const eventos: { id: string; date: string; type: 'APPOINTMENT_CONFIRMED' | 'APPOINTMENT_ARRIVED'; title: string; subtitle: null; amount: null; link: string | null; agendamentoId: string }[] = []
   if (a.confirmed_at) eventos.push({ id: `${a.id}-conf`, date: a.confirmed_at, type: 'APPOINTMENT_CONFIRMED', title: `Confirmado: ${a.procedureName}`, ...base })
   if (a.arrived_at) eventos.push({ id: `${a.id}-cheg`, date: a.arrived_at, type: 'APPOINTMENT_ARRIVED', title: `Chegou: ${a.procedureName}`, ...base })
   return eventos
@@ -46,13 +46,15 @@ export function eventoDaAvaliacao(a: AvaliacaoDoAgendamento, link: string | null
   ].filter(Boolean)
   return {
     id: `${a.id}-aval`, date: a.client_confirmed_at, type: 'APPOINTMENT_RATED' as const,
-    title: `Avaliou: ${a.procedureName}`, subtitle: partes.join(' · '), amount: null, link,
+    title: `Avaliou: ${a.procedureName}`, subtitle: partes.join(' · '), amount: null, link, agendamentoId: a.id,
   }
 }
 
 /** Uma linha de `appointment_history`: quem fez o quê, e quando. */
 export interface LinhaDoHistorico {
   appointment_id: string; action: string; changed_by_name: string | null; created_at: string
+  /** O texto gravado (a remarcação diz de quando para quando — A2 da 31ª). */
+  description?: string | null
 }
 
 /**
@@ -74,7 +76,7 @@ const ACAO_DO_EVENTO: Record<string, readonly string[]> = {
  * suporte. Vale a última vez que a ação aconteceu. O agendamento do evento sai
  * do link dele (`…/agenda/<id>`).
  */
-export function comAutores<E extends { type: string; link: string | null; autor?: string | null }>(
+export function comAutores<E extends { type: string; link: string | null; autor?: string | null; agendamentoId?: string | null }>(
   eventos: E[], historico: readonly LinhaDoHistorico[],
 ): E[] {
   const ultima = new Map<string, LinhaDoHistorico>()
@@ -85,11 +87,31 @@ export function comAutores<E extends { type: string; link: string | null; autor?
   }
   return eventos.map(ev => {
     const acoes = ACAO_DO_EVENTO[ev.type]
-    const id = /\/agenda\/([0-9a-f-]{36})$/.exec(ev.link ?? '')?.[1]
+    // O agendamento do evento: o id dele (A2 da 31ª — sem o Atendimento em Ver
+    // o link é nulo, UM1, e o "por Fulana" sumia); o link, no evento de antes.
+    const id = ev.agendamentoId ?? /\/agenda\/([0-9a-f-]{36})$/.exec(ev.link ?? '')?.[1]
     if (!acoes || !id) return ev
     const quem = acoes.map(a => ultima.get(`${id}:${a}`)).find(Boolean)?.changed_by_name ?? null
     return quem ? { ...ev, autor: quem } : ev
   })
+}
+
+/**
+ * As remarcações na linha do tempo da ficha (A2 da 31ª; princípio 3): ela não
+ * as registrava — só o agendamento, no horário novo. Uma por linha
+ * RESCHEDULED do histórico, com o texto gravado (de quando para quando) e quem
+ * remarcou ("Fulana (app)", a marca "via suporte").
+ */
+export function eventosDeRemarcacao(
+  historico: readonly LinhaDoHistorico[], nomeDoProcedimento: ReadonlyMap<string, string>,
+  link: (agendamentoId: string) => string | null,
+) {
+  return historico.filter(h => h.action === 'RESCHEDULED' && nomeDoProcedimento.has(h.appointment_id)).map((h, i) => ({
+    id: `${h.appointment_id}-remarc-${i}`, date: h.created_at, type: 'APPOINTMENT_RESCHEDULED' as const,
+    title: `Remarcado: ${nomeDoProcedimento.get(h.appointment_id)}`,
+    subtitle: rotuloDaAcao(h.action, h.description ?? null), amount: null,
+    link: link(h.appointment_id), autor: h.changed_by_name, agendamentoId: h.appointment_id,
+  }))
 }
 
 /** O nome de cada ação do histórico, na janela do agendamento (J-27). */

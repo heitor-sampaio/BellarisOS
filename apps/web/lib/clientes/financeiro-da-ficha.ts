@@ -7,7 +7,8 @@ import { ler, lerTodas } from '@/lib/db'
 import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { formaDoLancamento, rotuloDaForma } from '@/lib/financeiro/formas'
 import { juntarAsFormasDaParcela, formasDaParcelaEmTexto } from '@/lib/financeiro/formas-da-parcela'
-import { nomeDaLinhaDoLancamento } from '@/lib/financeiro/nome-da-parcela'
+import { nomeDaLinhaDoLancamento, nomeDaLinhaDoPlano } from '@/lib/financeiro/nome-da-parcela'
+import { procedimentosDosPlanos } from '@/lib/financeiro/procedimentos-do-plano'
 import { vendaDeProdutoNaoPontua } from '@/lib/fidelidade/leitura'
 import { ordenarTransacoesDaFicha } from '@/lib/clientes/ordem-das-transacoes'
 import { getAtendimentosAReceber, type ListaAReceber } from '@/lib/metrics/a-receber'
@@ -90,6 +91,8 @@ export async function financeiroDaFicha(ctx: TenantContext, clientId: string): P
   // pontuar (a regra de padrão, D4), o lançamento da venda diz por quê — a
   // ficha mostrava o pago e nada sobre os pontos que não vieram.
   const produtoNaoPontua = await vendaDeProdutoNaoPontua(ctx.tenantId!, admin)
+  // A5 da 31ª (princípio 3): a parcela do plano diz os procedimentos dele, como no PDV.
+  const dosPlanos = await procedimentosDosPlanos((linhas as Linha[]).map(l => l.treatment_plan_id))
   // O "hoje" do vencimento é o da unidade do lançamento (F64, C4).
   const fusos = new Map<string, string>()
   for (const b of new Set((linhas as Linha[]).map(l => l.branch_id ?? ''))) fusos.set(b, await fusoDaUnidade(ctx.tenantId, b || null))
@@ -125,7 +128,8 @@ export async function financeiroDaFicha(ctx: TenantContext, clientId: string): P
     paidAt:        l.paid_at,
     createdAt:     l.created_at,
     // A16 da 30ª (CR-05): o procedimento e a parcela ("Microagulhamento — parcela 2/3").
-    procedureName: nomeDaLinhaDoLancamento(l.appointment?.procedures?.name, { numero: l.parcela_numero, total: l.parcela_total, descricao: l.description }),
+    procedureName: nomeDaLinhaDoLancamento(l.appointment?.procedures?.name, { numero: l.parcela_numero, total: l.parcela_total, descricao: l.description })
+      ?? (l.treatment_plan_id ? nomeDaLinhaDoPlano(dosPlanos.get(l.treatment_plan_id) ?? [], l.description) : null),
     scheduledAt:   l.appointment?.scheduled_at ?? null,
     dueDate:       l.due_date,
     // D13 da 9ª: "Vencida em 05/11" (o dia decidido aqui, no servidor).

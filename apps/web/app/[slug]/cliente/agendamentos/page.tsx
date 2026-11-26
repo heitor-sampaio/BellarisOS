@@ -8,7 +8,7 @@ import { CalendarDays, CalendarClock, ChevronRight, Clock3, User, Plus, MapPin }
 import { ler } from '@/lib/db'
 import { separarAgendaDoPortal, limiteParaAlterar, aindaDaParaAlterar, horarioPassouSemAtender, prazoDoAppEncerrado } from '@/lib/clientes/agenda-do-portal'
 import { textoDoConcluido } from '@/lib/agenda/hora-real'
-import { textoDoHorarioNoHistorico } from '@/lib/clientes/textos-do-app'
+import { textoDoHorarioNoHistorico, TEXTO_DO_EM_ANDAMENTO_NO_APP } from '@/lib/clientes/textos-do-app'
 import { fusoValido } from '@/lib/unidades/fuso'
 import { NotaDoFuso } from '@/components/shared/fuso'
 import { rotuloDoPagoAntes } from '@/lib/appointments/pago-antes-textos'
@@ -128,6 +128,8 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
       {andamento.length > 0 && (
         <section data-em-andamento style={{ marginBottom: 28 }}>
           <GroupLabel>Em andamento</GroupLabel>
+          {/* D20 da 31ª (AG-55): quem registra o fim, à vista. */}
+          <p data-em-andamento-registra style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: '-4px 0 10px' }}>{TEXTO_DO_EM_ANDAMENTO_NO_APP}</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {andamento.map(a => <AppointmentCard key={a.id} appt={a} slug={slug} highlight prazoHoras={prazoHoras} comUnidade={variasUnidades} faleCom={faleCom} />)}
           </div>

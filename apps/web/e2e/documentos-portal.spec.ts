@@ -89,6 +89,25 @@ test.describe.serial('documentos: portal do cliente', () => {
     expect(ev).toHaveLength(1)
   })
 
+  // D21 da 31ª simulação (DC-02, AD-04; princípio 3): depois do pedido, a linha
+  // seguia "Para assinar · bloqueia", com os mesmos botões, e a Auditoria não
+  // tinha o pedido.
+  test('a linha diz que foi pedido no portal, e o pedido entra na Auditoria', async ({ browser }) => {
+    await como(browser, gestor!.estado, async page => {
+      await page.goto(`/admin/clients/${cliente!.clientId}?aba=documentos`)
+      const linha = page.locator(`[data-documento="${doc}"]`)
+      await expect(linha.locator('[data-pedido-no-portal]')).toContainText(/Pedido no portal em \d{2}\/\d{2}\/\d{4} às \d{2}:\d{2}: a cliente foi avisada no app\./)
+      await expect(linha.getByRole('button', { name: 'Pedir de novo no portal' })).toBeVisible()
+    })
+    const { data: marcado } = await db().from('issued_documents').select('pedido_no_portal_em').eq('id', doc).single()
+    expect(marcado?.pedido_no_portal_em, 'o pedido marca o documento').toBeTruthy()
+    const { data: linhas } = await db().from('auditoria').select('operacao, colunas, ator_user_id')
+      .eq('tenant_id', rede!.tenantId).eq('tabela', 'issued_documents').eq('registro_id', doc).eq('operacao', 'editou')
+    const doPedido = (linhas ?? []).filter(l => (l.colunas as string[]).includes('pedido_no_portal_em'))
+    expect(doPedido, 'o pedido está na Auditoria').toHaveLength(1)
+    expect(doPedido[0]!.ator_user_id, 'em nome de quem pediu').toBe(gestor!.userId)
+  })
+
   test('o cliente vê o pedido na home, lê e assina pelo portal — e baixa o PDF', async ({ browser }) => {
     await como(browser, cliente!.estado, async page => {
       await page.goto(`/${slug}/cliente/home`)

@@ -23,3 +23,15 @@ export function propostaVencida(criadoEm: string, validadeDias: number, agora = 
 export function avisoDaPropostaVencida(dia: string, fala: Pick<FalaDaRede, 'faleCom'>): string {
   return `Proposta vencida em ${dia}: os valores podem ter mudado. Na dúvida, ${fala.faleCom} antes de aceitar.`
 }
+
+/**
+ * PL-23 (D16 da 31ª): a tela do plano da EQUIPE também mostra a validade da
+ * proposta, só como informação — o app da cliente a mostrava, a equipe não.
+ * O dia no fuso da unidade do plano. Puro.
+ */
+export function textoDaValidadeNaEquipe(criadoEm: string, validadeDias: number, fuso: string, agora = Date.now()): string {
+  const dia = validoAteDaProposta(criadoEm, validadeDias).toLocaleDateString('pt-BR', { timeZone: fuso })
+  return propostaVencida(criadoEm, validadeDias, agora)
+    ? `Proposta vencida em ${dia}: os valores podem ter mudado. A validade é só informação — o plano ainda se aceita.`
+    : `Proposta válida até ${dia} (a validade da rede é só informação).`
+}

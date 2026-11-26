@@ -382,3 +382,30 @@ confirmado." (o texto é decisão do Claude).
 o Atendimento em Gerenciar." 3: a série do fluxo de caixa é "A receber · em aberto", e a dica diz "O que entra (o a
 receber em aberto e o que a operadora do cartão deposita)". 1 e 4 ficam como estão.
 - `e2e/financeiro-dicas.spec.ts:49` e `:51`: a dica do fluxo diz "o a receber em aberto" (era "o a receber da cliente").
+
+## 10. A 31ª simulação (26/11)
+
+Nas correções da 31ª, nenhum teste existente foi alterado nem apagado. Ficaram para você estas, que mudariam testes cuja
+regra é só decisão do Claude, ou que pedem uma regra sua:
+
+1. **O "— da <nome>" de quem tem a regra de comissão** ("3% — da Tatiane"). Com um nome de homem fica "5% — da
+   Gilberto". Proposta: "— de <nome>" ("3% — de Tatiane", "3% — de Gilberto"); "— da rede", "— do pacote" e "— do
+   produto" ficam. Testes: `tests/comissoes-extrato-texto.test.ts:33`, `tests/vendas-atritos-da-12.test.ts:14`, `:17` e
+   `:27`, `tests/vendas-f67.test.ts:9`.
+2. **O texto do acesso criado sem documento** (`lib/clients/textos-do-cadastro.ts:36`) diz "enviamos a ele o e-mail para
+   criar a senha" — "ele" para qualquer pessoa. Proposta: "enviamos para esse e-mail o link para criar a senha". Teste:
+   `tests/copilot-acesso-senha-por-email.test.ts:37` e `:64`.
+3. **"Pote" na lista de embalagens do estoque — está no escopo?** A lista é fixa (ES-05, 13 medidas), sem "pote"; na
+   simulação, o pote de alginato virou "g" com conteúdo 1.000 g, e foi isso que levou à conta errada da embalagem.
+4. **O "Dar entrada no Estoque" na venda de produto sem estoque** aparece a quem não tem o Estoque (o link leva a uma
+   tela que ela não abre). A regra de esconder o botão que a pessoa não pode usar (CLAUDE.md §14) diria que some; mas o
+   teste da 23ª exige o link para quem só tem o Caixa (`e2e/vendas-produto.spec.ts:198`). A correção foi feita e
+   desfeita (a completa pegou). Proposta: o link só com o Estoque em Gerenciar; o aviso da falta segue a todos.
+5. **O teste do filtro de tags do Financeiro falha de 26 a 30/11, e não é o sistema** (`e2e/financeiro-filtro-de-tags.spec.ts:121-127`,
+   nos dois portais; falha igual sem as correções da 31ª). Ele clica em "A pagar" e confere o endereço com um padrão
+   (`tags=VIP`) que já valia ANTES do clique; 50 ms depois desmarca a tag com a navegação ainda pendente, e a tela volta a
+   Movimentações. Ali a despesa que vence em 5 dias só aparece se for do mês corrente: até o dia 25 ela aparecia e o caso
+   passava; do 26 ao fim do mês, cai no mês seguinte e o caso falha. A regra FN-04 o sistema cumpre (a aba A pagar lista
+   todo o em aberto). Proposta: o caso esperar o `aba=a-pagar` no endereço antes de mexer na tag — muda só a montagem do
+   teste, não o que ele exige. Enquanto você não disser, ele fica como está (e falha até 30/11).
+

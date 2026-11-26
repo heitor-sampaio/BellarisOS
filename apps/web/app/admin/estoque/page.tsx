@@ -15,7 +15,7 @@ import { unidadesParaLer, nomeNaTela } from '@/lib/unidades/da-tela'
 import { SeloUnidadeDesativada } from '@/components/shared/selo-unidade-desativada'
 import { lotesComSaldo, lotesVencendo, paresComLoteEsgotado, type LoteDoProduto } from '@/lib/estoque/lotes'
 import { CartoesDoEstoque, linhasDaValidade, loteNoCartao, type CartaoDoEstoque } from '@/components/shared/cartoes-do-estoque'
-import { contarSituacoes, DETALHE_DO_GIRO } from '@/lib/estoque/situacao'
+import { contarSituacoes, DETALHE_DO_GIRO, DICA_DO_GIRO, DICA_DO_VALOR } from '@/lib/estoque/situacao'
 import { produtosDoEstoque, listasDoEstoque, marcasEFornecedoresDosProdutos, type ProdutoDoEstoque } from '@/lib/estoque/produtos-da-tela'
 import { CadastroDoEstoque } from '@/components/admin/cadastro-do-estoque'
 
@@ -222,6 +222,7 @@ export default async function AdminEstoquePage({
       <CartoesDoEstoque cartoes={[
           {
             label:   'VALOR EM ESTOQUE',
+            dica:    DICA_DO_VALOR,
             value:   fmtBRL(valorEstoque),
             icon:    <ShoppingCart size={18} style={{ color: 'var(--on-brand)' }} />,
             iconBg:  'rgba(255,255,255,0.2)',
@@ -232,6 +233,7 @@ export default async function AdminEstoquePage({
           {
             id:      'giro',
             detalhe: DETALHE_DO_GIRO as string | undefined,
+            dica:    DICA_DO_GIRO,
             label:   'GIRO MENSAL',
             value:   fmtBRL(valorGiro),
             icon:    <ShoppingCart size={18} style={{ color: 'var(--brand)' }} />,

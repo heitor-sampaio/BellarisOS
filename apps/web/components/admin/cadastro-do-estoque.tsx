@@ -49,19 +49,24 @@ export function CadastroDoEstoque({ lista, itens }: { lista: ListaDoEstoque; ite
   const [editando, setEditando] = useState<Item | null>(null)
   const [excluindo, setExcluindo] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
+  // A12 da 31ª (26/11): o nome que já existe (sem caixa nem espaços) é o mesmo
+  // item — a tela diz, em vez de limpar o campo como se tivesse criado.
+  const [jaExiste, setJaExiste] = useState<string | null>(null)
   const [gravando, iniciar] = useTransition()
 
-  function fazer(acao: () => Promise<{ error?: string }>, depois?: () => void) {
+  function fazer(acao: () => Promise<{ error?: string; item?: Item; jaExistia?: boolean }>, depois?: () => void) {
     setErro(null)
+    setJaExiste(null)
     iniciar(async () => {
       const r = await acao()
       if (r.error) { setErro(r.error); return }
+      if (r.jaExistia && r.item) setJaExiste(r.item.nome)
       depois?.()
       router.refresh()
     })
   }
 
-  function fechar() { setAberta(false); setErro(null); setEditando(null); setExcluindo(null); setNovo('') }
+  function fechar() { setAberta(false); setErro(null); setJaExiste(null); setEditando(null); setExcluindo(null); setNovo('') }
 
   return (
     <>
@@ -84,12 +89,17 @@ export function CadastroDoEstoque({ lista, itens }: { lista: ListaDoEstoque; ite
               }}>
               <label htmlFor={`novo-${lista}`} className="field-label">{t.novo}</label>
               <div style={{ display: 'flex', gap: 8 }}>
-                <input id={`novo-${lista}`} className="field" maxLength={120} value={novo} onChange={e => setNovo(e.target.value)}
+                <input id={`novo-${lista}`} className="field" maxLength={120} value={novo} onChange={e => { setNovo(e.target.value); setJaExiste(null) }}
                   placeholder={t.exemplo} autoComplete="off" disabled={gravando} />
                 <button type="submit" className="btn-primary" disabled={gravando || !novo.trim()} style={{ flexShrink: 0, gap: 5 }}>
                   <Plus size={14} aria-hidden /> Adicionar
                 </button>
               </div>
+              {jaExiste && (
+                <p data-ja-existe role="status" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-bold)' }}>
+                  “{jaExiste}” já está na lista — é o mesmo nome (maiúsculas e espaços não contam). Nada foi criado.
+                </p>
+              )}
             </form>
 
             {itens.length === 0

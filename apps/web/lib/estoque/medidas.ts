@@ -10,6 +10,56 @@
 export const MEDIDAS_DO_PRODUTO = ['un', 'U', 'UI', 'ml', 'L', 'g', 'kg', 'cx', 'par', 'rolo', 'ampola', 'frasco', 'seringa'] as const
 
 /**
+ * As medidas que são QUANTIDADE — massa, volume e a dose —, e quanto cada uma
+ * vale na base da grandeza dela (1 kg = 1000 g). Não são um formato de
+ * embalagem (frasco, pote, caixa): servem de embalagem só para contar direto
+ * nelas, sem conteúdo.
+ */
+const GRANDEZAS: Record<string, { grandeza: string; base: number }> = {
+  g: { grandeza: 'massa', base: 1 }, kg: { grandeza: 'massa', base: 1000 },
+  ml: { grandeza: 'volume', base: 1 }, l: { grandeza: 'volume', base: 1000 },
+  u: { grandeza: 'U', base: 1 }, ui: { grandeza: 'UI', base: 1 },
+}
+const grandezaDe = (medida: string | null | undefined) => GRANDEZAS[(medida ?? '').trim().toLowerCase()] ?? null
+const emTexto = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 4 })
+
+/**
+ * A embalagem e o conteúdo que não fecham — o IMPOSSÍVEL (D2 da 31ª simulação,
+ * decisão do Claude, 26/11; princípio 2: só o impossível se recusa). A
+ * embalagem é o que se compra e se conta na prateleira; o conteúdo, quanto ela
+ * tem na medida de uso (ES-17). "1 g com 1000 g" não existe: o alginato
+ * cadastrado assim chamava o pote de "g" na Entrada, no lote, no dashboard e
+ * no Copilot. A mesma grandeza só fecha pela conta dela ("1 kg com 1000 g",
+ * "1 L com 1000 ml"); sem conteúdo, a medida como embalagem vale (conta-se
+ * direto em g). Devolve a recusa, ou `null`.
+ */
+export function recusaDaEmbalagem(embalagem: string | null | undefined, conteudo: number | null | undefined, medida: string | null | undefined): string | null {
+  const de = grandezaDe(embalagem)
+  const para = grandezaDe(medida)
+  if (!de || !para || de.grandeza !== para.grandeza || !(Number(conteudo) > 0)) return null
+  const certo = de.base / para.base
+  if (Math.abs(Number(conteudo) - certo) < 1e-9 * Math.max(1, certo)) return null
+  const emb = (embalagem ?? '').trim()
+  const med = (medida ?? '').trim()
+  const conta = emb.toLowerCase() === med.toLowerCase() ? '' : ` (1 ${emb} tem ${emTexto(certo)} ${med})`
+  return `“1 ${emb} com ${emTexto(Number(conteudo))} ${med}” não fecha${conta}: a embalagem é o que se compra e se conta na prateleira `
+    + `(frasco, seringa, caixa…; “un” quando nenhuma serve), e o conteúdo é quanto ela tem. Troque a embalagem, ou apague o conteúdo para contar direto em ${emb}.`
+}
+
+/**
+ * A medida como embalagem com o conteúdo noutra grandeza ("ml com 50 g") — o
+ * improvável, que avisa sem recusar (princípio 2; decisão do Claude, 26/11).
+ */
+export function avisoDaEmbalagem(embalagem: string | null | undefined, conteudo: number | null | undefined, medida: string | null | undefined): string | null {
+  const de = grandezaDe(embalagem)
+  const para = grandezaDe(medida)
+  if (!de || !(medida ?? '').trim() || !(Number(conteudo) > 0)) return null
+  if (para && para.grandeza === de.grandeza) return null
+  const emb = (embalagem ?? '').trim()
+  return `“${emb}” é uma medida, não o que se compra: confira se a embalagem não é um frasco, uma caixa ou “un”. A entrada, a transferência e o saldo contam em ${emb}. Se estiver certa, vale assim.`
+}
+
+/**
  * A medida no plural (A49 da 12ª simulação, 2026-11-11: "3 frasco", "Saem
  * 13.500 ml (27 frasco)"). As siglas (un, ml, g, cx, U, UI…) não mudam; a
  * palavra vai ao plural a partir de 2 — "1,5 frasco", como "1,5 litro".

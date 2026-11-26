@@ -2,6 +2,8 @@ import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { textoDoVencimento } from '@/lib/financeiro/vencimentos'
+import { nomeDaLinhaDoPlano } from '@/lib/financeiro/nome-da-parcela'
+import { procedimentosDosPlanos } from '@/lib/financeiro/procedimentos-do-plano'
 
 /**
  * O que a cliente tem em aberto NO CAIXA desta unidade (CX1, o plano de
@@ -81,11 +83,16 @@ export async function parcelasEmAbertoDaCliente({ branchId, clienteId, fuso, daV
       id: string; amount: number | string; parcela_numero: number | null; parcela_total: number | null; parcela_grupo: string | null
       description: string | null; due_date: string | null; appointment_id: string | null
     } & VendaDaComanda)[] | null
-  const pagos = await pagoDasParcelas(branchId, (linhas ?? []).map(l => l.parcela_grupo))
+  const [pagos, dosPlanos] = await Promise.all([
+    pagoDasParcelas(branchId, (linhas ?? []).map(l => l.parcela_grupo)),
+    // A5 da 31ª (princípio 3): a parcela do plano diz os procedimentos dele.
+    procedimentosDosPlanos((linhas ?? []).map(l => l.treatment_plan_id)),
+  ])
   return (linhas ?? []).map(l => {
     const vencimento = textoDoVencimento(l.due_date, new Date(), fuso)
     return {
-      id: l.id, valor: Number(l.amount), numero: l.parcela_numero, total: l.parcela_total, descricao: l.description,
+      id: l.id, valor: Number(l.amount), numero: l.parcela_numero, total: l.parcela_total,
+      descricao: (l.treatment_plan_id ? nomeDaLinhaDoPlano(dosPlanos.get(l.treatment_plan_id) ?? [], l.description) : null) ?? l.description,
       vencimento, vencida: !!vencimento?.startsWith('Vencida'),
       venda: CHAVES_DA_VENDA.map(k => l[k]).find(v => !!v) ?? l.appointment_id ?? null,
       pago: l.parcela_grupo && l.parcela_numero != null ? (pagos.get(`${l.parcela_grupo}:${l.parcela_numero}`) ?? 0) : 0,

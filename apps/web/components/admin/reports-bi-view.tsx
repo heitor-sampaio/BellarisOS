@@ -3,7 +3,7 @@
 import { REPORT_TAB_LABELS } from '@/lib/permissions'
 import { Dica } from '@/components/shared/dica'
 import { DEFINICOES, type DefinicaoDoNumero } from '@/lib/metrics/definicoes'
-import { useState, useEffect, useRef, type ReactNode, type CSSProperties } from 'react'
+import { type ReactNode, type CSSProperties } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { mesclarParams } from '@/lib/query-params'
 import { EvolutionChart, type ChartPoint } from './evolution-chart'
@@ -159,30 +159,17 @@ export interface ReportsBiProps {
   tagsEscolhidas?: string[]
 }
 
-// -- Animated number -----------------------------------------------------------
-function useCountUp(target: number, duration = 900): number {
-  const [val, setVal] = useState(0)
-  const frameRef = useRef<number>(0)
-  useEffect(() => {
-    // Sem `setVal(0)` aqui: o primeiro quadro já parte de ~0 (t≈0).
-    const start = performance.now()
-    const tick = (now: number) => {
-      const t = Math.min((now - start) / duration, 1)
-      const eased = 1 - Math.pow(1 - t, 3)
-      setVal(target * eased)
-      if (t < 1) frameRef.current = requestAnimationFrame(tick)
-    }
-    frameRef.current = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(frameRef.current)
-  }, [target, duration])
-  return val
-}
-
+// -- O número ------------------------------------------------------------------
+/**
+ * O número com o valor da conta, desde o primeiro quadro (D3 da 31ª; princípio
+ * 3): contava de 0 até o valor, e quem olhava no meio lia um número que não
+ * existe. O design system não tem animação de entrada (lumiere-design).
+ */
 function AnimatedNum({ value, format = 'brl' }: {
   value: number
   format?: 'brl' | 'brl-short' | 'int' | 'pct'
 }) {
-  const n = useCountUp(value)
+  const n = value
   if (format === 'brl')       return <>{n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</>
   if (format === 'brl-short') return <>{fmtBRLShort(n)}</>
   if (format === 'pct')       return <>{n.toFixed(1).replace('.', ',')}%</>
@@ -1313,7 +1300,13 @@ function TabEstoque(p: ReportsBiProps) {
         </>}
         {<>
           <KpiCard label="Giro (%)" value={giro} format="pct" accent={giro == null ? undefined : giro >= 50 ? 'var(--success)' : 'var(--warning)'} />
-          <KpiCard label="Itens Críticos" value={criticos} format="int" accent="var(--warning)" />
+          {/* D22 da 31ª (princípio 3): conta PRODUTOS, como o "Produtos zerados" (D19 da 8ª) — a linha de cada
+              unidade, na tabela abaixo, conta o produto NELA, e a soma das linhas não é este número. */}
+          <KpiCard label="Produtos críticos" value={criticos} format="int" accent="var(--warning)"
+            rotuloDoSobre="O que conta como produto crítico"
+            sobre={e.porUnidade.length > 1
+              ? 'Os produtos no mínimo ou abaixo dele em alguma unidade do recorte (o zerado que tem mínimo também). O mesmo produto em duas unidades conta uma vez.'
+              : 'Os produtos no mínimo ou abaixo dele na unidade (o zerado que tem mínimo também).'} />
           {/* D19 da 8ª: produtos (não pares unidade × produto) — a conta do Estoque e do dashboard. */}
           <KpiCard label="Produtos zerados" value={zerados} format="int" accent="var(--danger)"
             rotuloDoSobre="O que conta como produto zerado"
@@ -1343,8 +1336,8 @@ function TabEstoque(p: ReportsBiProps) {
           {/* D14 da 30ª: o "Zerados" de cada linha é o da unidade; o "Produtos zerados" de cima, o de nenhuma
               unidade (D19 da 8ª) — duas perguntas da mesma conta (metrics_relatorio), e a soma das linhas não é o de cima. */}
           {!p.umaUnidade && (
-          <SCard title="Saúde do Estoque por Unidade" rotuloDoSobre="O que conta como zerado aqui"
-            sobre="Zerados: os produtos sem saldo nesta unidade. Um produto zerado aqui e com saldo em outra unidade não entra em “Produtos zerados”, que conta os sem saldo em nenhuma."
+          <SCard title="Saúde do Estoque por Unidade" rotuloDoSobre="O que conta como zerado e crítico aqui"
+            sobre="Zerados: os produtos sem saldo nesta unidade. Um produto zerado aqui e com saldo em outra unidade não entra em “Produtos zerados”, que conta os sem saldo em nenhuma. Críticos: os produtos no mínimo ou abaixo dele nesta unidade. O mesmo produto crítico em duas unidades conta nas duas linhas e uma vez em “Produtos críticos”."
             style={{ gridColumn: '1 / -1' }}>
             <SimpleTable columns={branchHealthCols} rows={branchHealthRows} />
           </SCard>

@@ -30,7 +30,7 @@ import { assertColheOsDocumentos, veOsDocumentos } from '@/lib/documentos/acesso
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { gravar, ler, mensagemDoErro } from '@/lib/db'
+import { gravar, ler, mensagemDoErro, tentar } from '@/lib/db'
 import { quemVendeu } from '@/lib/vendas/equipe-da-venda'
 import { recusaDasParcelasDaRede } from '@/lib/financeiro/crediario-da-rede'
 import { TETO_DO_CREDIARIO } from '@/lib/financeiro/parcelas-do-crediario'
@@ -438,6 +438,12 @@ export async function pedirAssinaturaNoPortal(id: string): Promise<{ error?: str
     await gravar(admin.from('issued_document_events').insert({
       issued_document_id: doc.id, tenant_id: ctx.tenantId!, kind: 'NOTIFICADO_PORTAL', actor_user_id: ctx.internalUserId ?? null,
     }), 'registrar o pedido no portal')
+    // D21 da 31ª (AD-04): o pedido é o que alguém FAZ e entra na Auditoria. O
+    // evento acima fica fora dela (andamento); a marca no documento — tabela
+    // auditada — é a linha "pedido no portal". O pedido já aconteceu (a
+    // cliente foi avisada): a marca que falha vai ao log e não o desfaz (AD-10).
+    await tentar(admin.from('issued_documents').update({ pedido_no_portal_em: new Date().toISOString() })
+      .eq('id', doc.id).eq('tenant_id', ctx.tenantId!), 'marcar o pedido no portal no documento')
     return { ok: true }
   } catch (e) {
     return { error: mensagemDoErro(e) }

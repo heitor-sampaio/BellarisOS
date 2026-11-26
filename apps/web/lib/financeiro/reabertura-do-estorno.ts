@@ -48,18 +48,30 @@ const emLista = (itens: string[]) => itens.length <= 1 ? (itens[0] ?? '') : `${i
  * - `comissoes`: a comissão que este pagamento deixou liberada, por pessoa;
  *   'OCULTA' quando há, mas quem estorna não vê quanto cada um ganha.
  * - `produto`: a venda de produto estornada inteira — a comissão sai junto.
+ * - `pagas`: a parte dessa comissão que JÁ FOI PAGA num fechamento (CF-16,
+ *   comissoes.md: "Fechamento não se reabre: estorno depois dele vira
+ *   lançamento negativo no próximo") — o estorno a desconta no próximo
+ *   fechamento; fora da venda de produto, ela volta a aguardar o pagamento
+ *   (D5 da 31ª: a janela dizia só "volta a aguardar", e o banco fazia −90).
  * - `cartao`: o pagamento no cartão — a taxa da maquininha dele sai da conta.
  * Nada a dizer: nulo.
  */
 export function textoDaComissaoETaxaDoEstorno(e: {
   cartao: boolean
   comissoes: { nome: string; valor: number }[] | 'OCULTA'
+  pagas?: { nome: string; valor: number }[] | 'OCULTA'
   produto: boolean
 }): string | null {
   const partes: string[] = []
   const destino = e.produto ? 'sai junto' : 'volta a aguardar o pagamento'
   if (e.comissoes === 'OCULTA') partes.push(`A comissão que este pagamento liberou ${destino}.`)
   else if (e.comissoes.length) partes.push(`A comissão de ${emLista(e.comissoes.map(c => `${c.nome} (${formatBRL(c.valor)})`))} ${destino}.`)
+  const depois = e.produto ? '' : ', e ela volta a aguardar o pagamento'
+  if (e.pagas === 'OCULTA') partes.push(`A comissão que este pagamento liberou já foi paga: o estorno a desconta no próximo fechamento${depois}.`)
+  else if (e.pagas?.length) {
+    const total = e.pagas.reduce((s, c) => s + Math.round(c.valor * 100), 0) / 100
+    partes.push(`A comissão de ${emLista(e.pagas.map(c => `${c.nome} (${formatBRL(c.valor)})`))} já foi paga: o estorno a desconta no próximo fechamento (−${formatBRL(total)})${depois}.`)
+  }
   if (e.cartao) partes.push('A taxa da maquininha deste pagamento sai da conta.')
   return partes.length ? partes.join(' ') : null
 }

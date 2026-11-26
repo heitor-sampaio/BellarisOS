@@ -5,6 +5,7 @@ import { dataDeClienteDesde } from '@/lib/clientes/cliente-desde'
 import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 import { isoNoFuso } from '@/lib/datetime'
 import { textoDoProntuarioForaDoPacote, prontuarioNaSolicitacao, type SituacaoDoProntuario } from '@/lib/lgpd/situacao-do-prontuario'
+import { generoNoPacote, linhaDaContaNoApp } from '@/lib/lgpd/cadastro-legivel'
 import { buildPdf, type PdfSection } from '@/lib/pdf'
 import { ensurePrivateBucket, DOCUMENTOS_ASSINADOS_BUCKET } from '@/lib/storage'
 import { formatBRL, formatDate, formatDateTime, maskCPF, maskPhone } from '@estetica-os/utils'
@@ -337,7 +338,7 @@ export async function buildClientExport(
       documento: documentoNoPacote(client), responsavelLegal: responsavelNoPacote(client).json,
       email: client.email, telefone: client.phone,
       // D5 da 28ª: o dia, sem hora — o instante à meia-noite UTC virava a véspera no fuso.
-      dataNascimento: diaSemHora(client.birth_date), genero: client.gender,
+      dataNascimento: diaSemHora(client.birth_date), genero: generoNoPacote(client.gender),
       endereco: {
         logradouro: client.address, numero: client.address_number,
         complemento: client.address_complement, bairro: client.neighborhood,
@@ -349,7 +350,8 @@ export async function buildClientExport(
       tags: client.tags,
       clienteDesde: client.created_at,
       contaNoApp: {
-        criadaEm: client.app_account_created_at,
+        // A3 da 31ª: é a hora do primeiro acesso, não a da criação.
+        primeiroAcesso: client.app_account_created_at,
         ultimoAcesso: client.last_app_login_at,
       },
     },
@@ -454,12 +456,12 @@ export async function buildClientExport(
         ['E-mail', String(client.email ?? '—')],
         ['Telefone', client.phone ? maskPhone(String(client.phone)) : '—'],
         ['Data de nascimento', formatDia(client.birth_date) ?? '—'],
-        ['Gênero', String(client.gender ?? '—')],
+        ['Gênero', generoNoPacote(client.gender) ?? '—'],
         ['Endereço', [client.address, client.address_number, client.address_complement, client.neighborhood, client.city, client.state, client.zip_code].filter(Boolean).join(', ') || '—'],
         // D6 da 10ª: o da planilha importada (cliente_desde), senão o cadastro; com os dois, o cadastro também.
         ['Cliente desde', dataDeClienteDesde({ clienteDesde: client.cliente_desde, createdAt: client.created_at }, fuso) ?? '—'],
         ...(client.cliente_desde ? [['Cadastro no sistema', fmtDate(client.created_at)] as [string, string]] : []),
-        ['Conta no aplicativo', client.app_account_created_at ? `criada em ${fmtDate(client.app_account_created_at)}` : 'não possui'],
+        ['Conta no aplicativo', linhaDaContaNoApp({ primeiroAcessoEm: client.app_account_created_at ? fmtDate(client.app_account_created_at) : null, temLogin: !!client.auth_id })],
       ],
     },
     {

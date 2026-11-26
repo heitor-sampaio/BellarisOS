@@ -41,6 +41,8 @@ export interface ItemDeTermo {
   codigo:        string | null
   motivo:        string | null
   linkAte?:      string | null
+  /** D21 da 31ª: o pedido de assinatura no portal mais recente (quando), no documento que espera assinatura. */
+  pedidoNoPortalEm?: string | null
   /** Contrato do procedimento que cita o pagamento — a recepção o define antes da assinatura. */
   pedePagamento?: boolean
   pagamento?:    { rotulo: string; valor: PagamentoDoPlano | null; desconto?: number } | null
@@ -120,8 +122,10 @@ export function TermosDoCliente({ itens, slug, podeDispensar = false, compacto =
     setErro(null); setAviso(null)
     iniciar(async () => {
       const r = await pedirAssinaturaNoPortal(id)
-      if (r.error) setErro(r.error)
-      else setAviso('Pedido enviado: o documento está no portal do cliente, e ele foi avisado.')
+      if (r.error) { setErro(r.error); return }
+      setAviso('Pedido enviado: o documento está no portal do cliente, e ele foi avisado.')
+      // D21 da 31ª: a linha passa a dizer que foi pedido, e quando.
+      router.refresh()
     })
   }
 
@@ -237,7 +241,7 @@ export function TermosDoCliente({ itens, slug, podeDispensar = false, compacto =
                 {aberto && item.status !== 'INCOMPLETO' && temAcessoAoApp && (
                   <button type="button" className="btn-secondary" disabled={ocupado} onClick={() => pedirNoPortal(item.id)}
                     style={{ padding: '6px 12px', fontSize: 'var(--text-xs-sz)' }}>
-                    Pedir no portal
+                    {item.pedidoNoPortalEm && item.status === 'PENDENTE' ? 'Pedir de novo no portal' : 'Pedir no portal'}
                   </button>
                 )}
                 {item.status === 'PENDENTE' && (
@@ -301,6 +305,11 @@ export function TermosDoCliente({ itens, slug, podeDispensar = false, compacto =
                   </button>
                 </div>
               </div>
+            )}
+            {item.pedidoNoPortalEm && item.status === 'PENDENTE' && (
+              <p data-pedido-no-portal style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+                Pedido no portal em {formatDate(item.pedidoNoPortalEm, fuso)} às {formatTime(item.pedidoNoPortalEm, fuso)}: a cliente foi avisada no app.
+              </p>
             )}
             {item.linkAte && link?.id !== item.id && item.status === 'PENDENTE' && (
               <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>

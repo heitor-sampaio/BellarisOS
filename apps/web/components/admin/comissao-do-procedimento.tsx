@@ -12,7 +12,7 @@ import { CampoDeValor, paraNumero, paraTexto } from '@/components/admin/comissao
 import {
   rotuloDaComissaoDoProcedimento, rotuloDaRegra, type RegraDeComissao, type TipoDeRegra,
   TAXA_DO_PROCEDIMENTO, taxaDoProcedimento, rotuloDaTaxaDoProcedimento, type TaxaDoProcedimento,
-  recusaDoValorDaComissao,
+  recusaDoValorDaComissao, avisoDaGeralParaAsAdmins,
 } from '@/lib/comissoes/config'
 
 /**
@@ -35,7 +35,8 @@ import {
 type Modo = 'GERAL' | 'POR_PROFISSIONAL'
 type TipoDaLinha = TipoDeRegra | 'PADRAO'
 
-export interface ProfissionalDaComissao { id: string; nome: string; padrao: RegraDeComissao | null }
+/** `admin`: tem o cargo de sistema Admin da rede (a geral nova vale para ela, e a janela avisa — CA-04). */
+export interface ProfissionalDaComissao { id: string; nome: string; padrao: RegraDeComissao | null; admin?: boolean }
 export interface ValorPorProfissional { professional_id: string; tipo: TipoDeRegra; valor: number }
 
 /** O que a tela precisa para editar a comissão de um procedimento. */
@@ -115,7 +116,7 @@ export function entradaDaComissao(
 const ajuda = { fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 } as const
 
 /** O editor: o modo, a geral e a linha de cada profissional. Controlado. */
-export function EditorDeComissao({ estado, onChange, profissionais, inicialComValor, redeDescontaTaxa }: {
+export function EditorDeComissao({ estado, onChange, profissionais, inicialComValor, redeDescontaTaxa, atual }: {
   estado:          EstadoDaComissao
   onChange:        (e: EstadoDaComissao) => void
   profissionais:   ProfissionalDaComissao[]
@@ -123,8 +124,15 @@ export function EditorDeComissao({ estado, onChange, profissionais, inicialComVa
   redeDescontaTaxa: boolean
   /** Quantos tinham valor próprio ao abrir: a geral os apaga, e a tela avisa. */
   inicialComValor: number
+  /** O que vale hoje no procedimento (a geral e os valores próprios), para o aviso da Admin da rede (CA-04). */
+  atual?: Pick<DadosDaComissao, 'geral' | 'porProfissional'>
 }) {
   const mudar = (parte: Partial<EstadoDaComissao>) => onChange({ ...estado, ...parte })
+  // CA-04 (D12 da 31ª): a geral nova muda o que uma Admin da rede ganha? A janela diz antes de salvar.
+  const valorDaGeral = paraNumero(estado.valor)
+  const avisoDaAdmin = estado.modo === 'GERAL' && estado.valor.trim() && Number.isFinite(valorDaGeral) && valorDaGeral >= 0
+    ? avisoDaGeralParaAsAdmins({ tipo: estado.tipo, valor: valorDaGeral }, { geral: atual?.geral ?? null, porProfissional: atual?.porProfissional ?? [], profissionais })
+    : null
   const mudarLinha = (id: string, parte: Partial<{ tipo: TipoDaLinha; valor: string }>) =>
     mudar({ linhas: { ...estado.linhas, [id]: { ...estado.linhas[id]!, ...parte } } })
 
@@ -152,6 +160,7 @@ export function EditorDeComissao({ estado, onChange, profissionais, inicialComVa
               Salvar tira o valor próprio de {inicialComValor} {inicialComValor === 1 ? 'profissional' : 'profissionais'} neste procedimento.
             </p>
           )}
+          {avisoDaAdmin && <p data-aviso-da-admin style={{ ...ajuda, color: 'var(--warning)' }}>{avisoDaAdmin}</p>}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -247,7 +256,7 @@ function Janela({ procedimento, dados, onFechar }: {
         </div>
 
         <EditorDeComissao estado={estado} onChange={setEstado} profissionais={dados.profissionais}
-          inicialComValor={dados.porProfissional.length} redeDescontaTaxa={dados.redeDescontaTaxa} />
+          inicialComValor={dados.porProfissional.length} redeDescontaTaxa={dados.redeDescontaTaxa} atual={dados} />
 
         {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)', margin: 0 }}>{erro}</p>}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>

@@ -1,6 +1,6 @@
 'use client'
 
-import { textoDeQuemMarcaAChegada, textoDeQuemRecebe, textoDeQuemConclui } from '@/lib/equipe/textos-de-quem-pode'
+import { textoDeQuemMarcaAChegada, textoDeQuemRecebe, textoDeQuemConclui, textoDeQuemRespondeAFicha } from '@/lib/equipe/textos-de-quem-pode'
 import { AcoesDoLancamentoDaFicha } from '@/components/shared/acoes-do-lancamento-da-ficha'
 import { textoDasNotas, type NotaNaTela } from '@/lib/avaliacao/notas'
 import { useActionState, useState, useRef, useMemo, useEffect, type ReactNode } from 'react'
@@ -253,6 +253,8 @@ interface Props {
   quemRecebe?:           { nomes: string[]; soDaRede: boolean } | null
   /** A9 da 20ª: quem não conclui (sem o Prontuário em Gerenciar) lê quem conclui (quemConcluiOAtendimento). Nulo: não se aplica. */
   quemConclui?:          string[] | null
+  /** A17 da 31ª: quem vê o clínico e não o escreve lê, na falta da ficha de saúde, quem a responde. Nulo: não se aplica. */
+  quemRespondeAFicha?:   string[] | null
   /** A10 da 19ª: quem não marca a chegada lê quem marca (quemMarcaAChegada). Nulo: não se aplica. */
   quemMarcaAChegada?:    string[] | null
   /** A19 da 14ª: quem estorna (o Financeiro em Gerenciar, de todos) vê o "Estornar" ao lado do Recibo — a janela do Financeiro. */
@@ -313,8 +315,18 @@ interface GrupoQueFalta { onde: string; rotulos: string[] }
  * o "Confirmar conclusão" ("tudo que é obrigatório barra"). Os campos já estão
  * marcados na página; "Responder agora" fecha e deixa a tela no primeiro.
  */
-function OQueFaltaParaFinalizar({ grupos, onFechar }: { grupos: GrupoQueFalta[]; onFechar: () => void }) {
+function OQueFaltaParaFinalizar({ grupos, onFechar, quemResponde = null }: {
+  grupos: GrupoQueFalta[]; onFechar: () => void
+  /**
+   * A17 da 31ª (princípio 7): quem LÊ o prontuário e não o escreve (sem o
+   * Prontuário em Gerenciar) não responde a ficha de saúde — a trava fica, e a
+   * janela diz quem responde (os nomes, `quemRespondeAFichaDeSaude`), sem o
+   * "Responder agora". Nulo: quem vê a janela é quem responde.
+   */
+  quemResponde?: string[] | null
+}) {
   const total = grupos.reduce((n, g) => n + g.rotulos.length, 0)
+  const naoResponde = quemResponde !== null
   return (
     <JanelaModal onFechar={onFechar} rotulo="O que falta para finalizar" largura={460}>
       <div data-o-que-falta>
@@ -327,8 +339,15 @@ function OQueFaltaParaFinalizar({ grupos, onFechar }: { grupos: GrupoQueFalta[];
         </div>
         <div style={{ padding: '18px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-            O atendimento só se finaliza com elas respondidas. Os campos estão marcados na página.
+            {naoResponde
+              ? 'O atendimento só se finaliza com elas respondidas.'
+              : 'O atendimento só se finaliza com elas respondidas. Os campos estão marcados na página.'}
           </p>
+          {naoResponde && (
+            <p data-quem-responde-a-ficha role="note" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', lineHeight: 'var(--leading-snug)' }}>
+              Você lê a ficha de saúde, mas não a responde. {textoDeQuemRespondeAFicha(quemResponde)}
+            </p>
+          )}
           {grupos.map(g => (
             <div key={g.onde}>
               <p className="field-label">{g.onde}</p>
@@ -338,7 +357,7 @@ function OQueFaltaParaFinalizar({ grupos, onFechar }: { grupos: GrupoQueFalta[];
             </div>
           ))}
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button type="button" className="btn-primary" onClick={onFechar}>Responder agora</button>
+            <button type="button" className="btn-primary" onClick={onFechar}>{naoResponde ? 'Entendi' : 'Responder agora'}</button>
           </div>
         </div>
       </div>
@@ -567,13 +586,16 @@ function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences,
                 <AlertTriangle size={15} aria-hidden="true" style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 1 }} />
                 {textoDaDivergencia(d)}
               </p>
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <button type="button" className="btn-secondary" onClick={() => onAjustarInsumo?.(d)}>
-                  {d.naBaixa === null
-                    ? `Incluir ${formatarDose(d.doMapa)} ${d.unidade} na baixa`
-                    : `Baixar ${formatarDose(d.doMapa)} ${d.unidade}, a dose do mapa`}
-                </button>
-              </div>
+              {/* D10 da 31ª: em outra medida (30 UI no mapa, o frasco no estoque), sem botão — a dose não se converte (princípio 4). */}
+              {!d.medidaDoMapa && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button type="button" className="btn-secondary" onClick={() => onAjustarInsumo?.(d)}>
+                    {d.naBaixa === null
+                      ? `Incluir ${formatarDose(d.doMapa)} ${d.unidade} na baixa`
+                      : `Baixar ${formatarDose(d.doMapa)} ${d.unidade}, a dose do mapa`}
+                  </button>
+                </div>
+              )}
             </div>
           ))}
           {state?.error && !state.confirmarPlanejamentoVazio && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{state.error}</p>}
@@ -913,7 +935,7 @@ export function AppointmentSession({
   professionals, history, branchId, slug,
   canCheckin, canManage, ehDaProfissional = false, canEditRecords, canViewRecords = true, fotosDoAtendimento = null, anotacoes = null, versoesDoRegistro = [], podeAnotar = false, portalNoPlano = false, canReassign, canPayment, paymentTransaction, pagamentoEstornado = null, comandaId = null,
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
-  isPartOfPlan = false, isPackageSession = false, pacoteDeFora = false, sessaoDoPacote = null, isPrePago = false, podeReceber = false, quemEstorna = null, quemRecebe = null, quemConclui = null, quemMarcaAChegada = null, podeEstornar = false, planoEmAberto = null, documentos = null, podeMontarPlano = true, montaPlanoNaUnidade = false, podeInjetaveis = true, podeVerPlanos = false, podeGerenciarAgenda = false,
+  isPartOfPlan = false, isPackageSession = false, pacoteDeFora = false, sessaoDoPacote = null, isPrePago = false, podeReceber = false, quemEstorna = null, quemRecebe = null, quemConclui = null, quemRespondeAFicha = null, quemMarcaAChegada = null, podeEstornar = false, planoEmAberto = null, documentos = null, podeMontarPlano = true, montaPlanoNaUnidade = false, podeInjetaveis = true, podeVerPlanos = false, podeGerenciarAgenda = false,
 }: Props) {
   const router   = useRouter()
   // Portal de onde se está vendo o atendimento — `slug` é o endereço da
@@ -1575,7 +1597,7 @@ export function AppointmentSession({
         <CancelModal appointmentId={appointment.id} slug={slug} onClose={() => setShowCancel(false)}
           desistencia={status === 'IN_PROGRESS' && canManage ? { insumos: confirmedInsumos, registraClinico: canEditRecords } : null} />
       )}
-      {oQueFalta   && <OQueFaltaParaFinalizar grupos={oQueFalta} onFechar={() => setOQueFalta(null)} />}
+      {oQueFalta   && <OQueFaltaParaFinalizar grupos={oQueFalta} onFechar={() => setOQueFalta(null)} quemResponde={canEditRecords ? null : quemRespondeAFicha ?? []} />}
       {showFinish  && (
         <FinishModal
           appointmentId={appointment.id} slug={slug}

@@ -23,3 +23,22 @@ export function comOsCriados<T extends { id: string }>(doServidor: readonly T[],
   const ja = new Set(doServidor.map(r => r.id))
   return [...doServidor, ...criados.filter(r => !ja.has(r.id))]
 }
+
+/**
+ * O cargo que o endereço (`?cargo=`) pede e a tela ainda não abriu (A10 da 31ª
+ * simulação; princípio 7). Montada a tela sem o cargo pedido na lista (o criado
+ * ou o duplicado, antes de a lista do servidor chegar com ele), `cargoEscolhido`
+ * cai no primeiro editável — e foi nele, o "Financeiro", que os níveis pensados
+ * para o cargo novo se gravaram (24/11 e 25/11). O pedido fica esperando, e
+ * abre quando a lista o traz. Não troca com alteração por salvar (o "Descartar
+ * alterações?" decide) nem quando já está nele. Puro.
+ */
+export function cargoPedidoPeloEndereco({ roles, esperando, selecionado, ocupado }: {
+  roles: readonly { id: string }[]
+  esperando: string | null
+  selecionado: string | null
+  ocupado: boolean
+}): string | null {
+  if (!esperando || ocupado || esperando === selecionado) return null
+  return roles.some(r => r.id === esperando) ? esperando : null
+}

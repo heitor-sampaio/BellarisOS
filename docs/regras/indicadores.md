@@ -1649,6 +1649,29 @@ Prova: `tests/relatorios-filtro-de-tags.test.ts`,
   diz, por linha, "Quem atendeu" (procedimento) ou "Quem vendeu" (o resto,
   `quemDaVenda`). Teste: `tests/relatorio-vendas-o-que-a-linha-diz.test.ts`.
 
+## Correções de 26/11 (decisões do Claude)
+
+- **O número aparece com o valor da conta** (D3 da 31ª; princípio 3): o
+  dashboard da rede e os Relatórios contavam cada número de 0 até o valor em
+  0,9 s (`useCountUp`), e o servidor desenhava R$ 0,00. O "Giro do mês" de
+  R$ 14,10 foi lido como R$ 12,53 e R$ 12,70 por quem olhou no meio — parecia
+  outra conta para outra pessoa, e a conta (`metrics_giro_estoque`) é uma só.
+  Agora o número sai pronto (o design system já não tem animação de entrada).
+  Teste: `tests/indicadores-o-numero-da-tela-e-o-da-conta.test.ts`.
+- **"Produtos críticos" conta produtos; a linha da unidade, o produto nela**
+  (D22 da 31ª; ES-30; a mesma régua do D19 da 8ª, `atendimento.md`): o cartão
+  de Relatórios → Estoque (era "Itens Críticos") conta o produto no mínimo ou
+  abaixo dele em alguma unidade do recorte UMA vez, e a dica diz isso; a dica
+  da "Saúde do Estoque por Unidade" diz o "Críticos" de cada linha (o mesmo
+  produto em duas unidades conta nas duas). No dashboard da rede, a lista
+  "Estoque crítico" diz na dica que cada linha é um produto numa unidade, e o
+  número dela é o de TODAS as linhas (a página manda só as 20 primeiras, e o
+  número dizia 20). No mínimo é crítico nas duas contas (`estoqueBaixo`,
+  `saldo <= mínimo`). Teste: `tests/estoque-critico-diz-o-que-conta.test.ts`.
+- **Dashboard × Relatórios na agenda** (D6 da 31ª, não era defeito): "Clientes
+  no mês" conta até agora (o Heitor, 29/10) e Relatórios → Agenda, o período
+  inteiro; a dica do quadro já diz isso (`[data-recorte-dos-cancelados]`).
+
 ## O que nunca fazer aqui
 
 ```
@@ -1657,4 +1680,6 @@ Prova: `tests/relatorios-filtro-de-tags.test.ts`,
 ❌ Trocar a CHAVE de uma aba de Relatórios para mudar o nome dela (role_report_tabs e a URL guardam a chave) — muda o rótulo em REPORT_TAB_LABELS
 ❌ Filtrar por tag DEPOIS de ler as linhas (no app ou na tela) — a tag vai à função (`p_tags`), senão o corte de 1000 e o total não batem
 ❌ Contar como venda o que não tem recebimento pago (D6) — a régua é a do primeiro lançamento de receita pago, a mesma dos seis tipos
+❌ Número que conta de 0 até o valor na tela (quem olha no meio lê um número que não existe — D3 da 31ª)
+❌ Número de uma lista cortada (as 20 primeiras) no lugar do total dela
 ```

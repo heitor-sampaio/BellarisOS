@@ -47,6 +47,9 @@ export function CampoDaLista({ lista, rotulo, nome, itens, inicial = null, podeC
   const [ativo, setAtivo] = useState(0)
   const [criando, setCriando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  // A12 da 31ª (26/11): o "+ Nova" que encontra o mesmo nome (outra aba criou)
+  // escolhe o que já existe — e diz.
+  const [jaExistia, setJaExistia] = useState<string | null>(null)
   const idCampo = useId()
   const idLista = useId()
   const campo = useRef<HTMLInputElement>(null)
@@ -65,6 +68,7 @@ export function CampoDaLista({ lista, rotulo, nome, itens, inicial = null, podeC
     setTermo('')
     setAberto(false)
     setErro(null)
+    setJaExistia(null)
     aoMudar?.(item)
     if (!item) requestAnimationFrame(() => campo.current?.focus())
   }
@@ -79,6 +83,7 @@ export function CampoDaLista({ lista, rotulo, nome, itens, inicial = null, podeC
     const novo = r.item
     setCriados(c => (c.some(x => x.id === novo.id) ? c : [...c, novo]))
     escolher(novo)
+    if (r.jaExistia) setJaExistia(novo.nome)
   }
 
   function teclar(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -154,6 +159,11 @@ export function CampoDaLista({ lista, rotulo, nome, itens, inicial = null, podeC
                   {NOVO[lista]} “{busca}”
                 </button>
               )}
+              {podeCriar && mesmoNome && (
+                <p data-ja-existe style={{ padding: '8px 14px', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+                  “{mesmoNome.nome}” já existe: escolha da lista (maiúsculas e espaços não contam).
+                </p>
+              )}
               {opcoes === 0 && (
                 <p style={{ padding: '10px 14px', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
                   {busca ? `Nada com “${busca}”.` : 'A lista está vazia.'}
@@ -164,6 +174,11 @@ export function CampoDaLista({ lista, rotulo, nome, itens, inicial = null, podeC
         </div>
       )}
       {erro && <p role="alert" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)' }}>{erro}</p>}
+      {jaExistia && !erro && (
+        <p data-ja-existe role="status" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+          “{jaExistia}” já existe: escolhi o que já estava na lista.
+        </p>
+      )}
     </div>
   )
 }

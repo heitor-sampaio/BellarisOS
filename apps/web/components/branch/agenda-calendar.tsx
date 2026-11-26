@@ -519,6 +519,8 @@ export function AgendaCalendar({
             onSlotClick={handleSlotClick}
             bloqueios={bloqueiosNaParede}
             salas={rooms}
+            horarioDaUnidade={horarioDaUnidade}
+            horariosDosProfissionais={horariosDosProfissionais}
           />
         )}
         {view === 'mes' && (

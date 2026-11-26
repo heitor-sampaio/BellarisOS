@@ -8,7 +8,8 @@ import { agendarUnidadePrePaga } from '@/actions/pre-pago'
 import { CancelarUnidadePrePaga } from '@/components/shared/cancelar-unidade-pre-paga'
 import { SessionScheduler } from '@/components/branch/treatment-sessions-modal'
 import type { PrePagoDoCliente, UnidadePrePaga } from '@/lib/pre-pago/leitura'
-import { textoDoParaAgendar } from '@/lib/pre-pago/contagem'
+import { textoDoParaAgendar, valorDoPrePagoNaFicha, SESSAO_AGENDADA_SE_CANCELA_NA_AGENDA } from '@/lib/pre-pago/contagem'
+import { Dica } from '@/components/shared/dica'
 import { useFuso } from '@/components/shared/fuso'
 
 const TZ = 'America/Sao_Paulo'
@@ -58,7 +59,8 @@ function Venda({ venda: v, podeCancelar, agenda }: { venda: PrePagoDoCliente; po
           {textoDoParaAgendar({ paraAgendar: v.disponiveis, agendadas: v.agendadas })}
         </span>
         <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginLeft: 'auto' }}>
-          {formatBRL(v.price)}{v.desconto > 0 ? ` (desconto de ${formatBRL(v.desconto)})` : ''} · {dia(v.vendidoEm, fuso)}
+          {/* D8 da 31ª (PP-03): o que a venda vale agora, com as sessões canceladas fora. */}
+          {valorDoPrePagoNaFicha(v)} · {dia(v.vendidoEm, fuso)}
           {v.venceEm ? ` · ${v.vencida ? 'venceu' : 'vale até'} ${dia(v.venceEm, fuso)}` : ''}
         </span>
       </button>
@@ -84,6 +86,8 @@ function Unidade({ unidade: u, podeCancelar, agenda }: { unidade: UnidadePrePaga
   const [agendando, setAgendando] = useState(false)
   const [aviso, setAviso] = useState<string | null>(null)
   const livre = u.status === 'DISPONIVEL' && !u.agendamentoEm
+  // A11 da 31ª: a agendada não se cancela aqui — a ficha diz onde (a quem pode cancelar).
+  const agendada = u.status === 'DISPONIVEL' && !!u.agendamentoEm
 
   return (
     <li data-unidade-pre-paga style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 'var(--text-xs-sz)' }}>
@@ -92,6 +96,11 @@ function Unidade({ unidade: u, podeCancelar, agenda }: { unidade: UnidadePrePaga
         <span style={{ fontWeight: 700, color: 'var(--text)' }}>Sessão {u.numero}</span>
         <span style={{ color: 'var(--text-muted)' }}>{formatBRL(u.preco)}</span>
         <span style={{ color: u.status === 'DISPONIVEL' ? 'var(--success)' : 'var(--text-muted)' }}>{situacao(u, fuso)}</span>
+        {agendada && podeCancelar && (
+          <span data-agendada-se-cancela-na-agenda style={{ display: 'inline-flex', color: 'var(--text-muted)' }}>
+            <Dica rotulo="Por que esta sessão não se cancela aqui">{SESSAO_AGENDADA_SE_CANCELA_NA_AGENDA}</Dica>
+          </span>
+        )}
         {livre && !cancelando && !agendando && (
           <span style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
             {agenda.podeAgendar && (

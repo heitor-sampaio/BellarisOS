@@ -7,7 +7,7 @@ import { gruposDeHorario } from '@/lib/appointments/periodos-do-dia'
 import { limiteParaAlterar } from '@/lib/clientes/agenda-do-portal'
 import { useFuso, NotaDoFuso } from '@/components/shared/fuso'
 import { instanteNoFuso } from '@/lib/datetime'
-import { textoDoRemarcado } from '@/lib/clientes/textos-do-app'
+import { textoDoRemarcado, AVISO_DO_HORARIO_NOVO_NO_APP } from '@/lib/clientes/textos-do-app'
 import { cancelarPelaCliente, remarcarPelaCliente, horariosParaRemarcar, quemAtendeNoRemarcar, quemRealizaNoRemarcar, diasLivresParaRemarcar } from '@/actions/portal-agendamentos'
 import { Dica } from '@/components/shared/dica'
 import { useFalaDaRede, useNomeDaRede } from '@/components/client-portal/rede-do-portal'
@@ -339,6 +339,12 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
               padding: '10px 14px', fontSize: 'var(--text-sm-sz)', lineHeight: 1.45,
             }}>
               Este horário fica a menos de {prazoHoras} horas: depois de remarcar, para mudar de novo ou cancelar, {fala.faleCom}.
+            </p>
+          )}
+          {/* A1 da 31ª (AG-42, princípio 3): o efeito à vista ANTES de confirmar. */}
+          {hora && (
+            <p data-remarcar-fica-agendado style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.45 }}>
+              {AVISO_DO_HORARIO_NOVO_NO_APP}
             </p>
           )}
           <div style={{ display: 'flex', gap: 8 }}>

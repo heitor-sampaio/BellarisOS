@@ -41,10 +41,12 @@ export function textoDoProntuarioForaDoPacote(situacao: SituacaoDoProntuario): {
       ],
     }
   }
+  // D18 da 31ª (LG-07: o pacote diz por quê): não pedido é escolha da pessoa,
+  // e o caminho de pedir é o app — "procure a unidade" parecia falta da rede.
   return {
     json: 'Não incluído nesta solicitação.',
     pdf: [
-      `O prontuário (${CONTEUDO_DO_PRONTUARIO}) não faz parte deste pacote. Para solicitá-lo, procure a unidade onde você é atendido.`,
+      `Você não pediu o prontuário (${CONTEUDO_DO_PRONTUARIO}) nesta solicitação, por isso ele não faz parte deste pacote. Para recebê-lo, faça um novo pedido no app, em Perfil, marcando “Incluir também meu prontuário”.`,
     ],
   }
 }

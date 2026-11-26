@@ -414,3 +414,15 @@ export function linkDoCsvDoFechamento(basePathDoPdv: string, unidadeId: string |
   const base = basePathDoPdv.replace(/\/pdv$/, '/financeiro')
   return linkDaAba(base, 'movimentacoes', { unidade: unidadeId ?? undefined })
 }
+
+/**
+ * O rodapé dos campos do Fechamento do dia (A7 da 31ª, princípio 3; vendas-financeiro.md: "O Dinheiro é
+ * obrigatório (em branco = R$ 0 quando não houve dinheiro, A50)"). No dia sem espécie, a célula dizia
+ * "em branco é R$ 0,00" e o rodapé "O dinheiro é obrigatório": a tela diz a regra do dia.
+ */
+export function regraDosCamposDoFechamento(semDinheiro: boolean): string {
+  const outras = 'As outras formas são opcionais: em branco, a linha fica “não conferido”.'
+  return semDinheiro
+    ? 'Sem dinheiro em espécie hoje: o dinheiro em branco fecha em R$ 0,00. ' + outras
+    : 'O dinheiro é obrigatório. ' + outras
+}

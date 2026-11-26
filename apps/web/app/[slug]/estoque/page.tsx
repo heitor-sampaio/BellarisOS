@@ -14,7 +14,7 @@ import { termoDaUrl } from '@/lib/texto'
 import { ler } from '@/lib/db'
 import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { lotesComSaldo, lotesVencendo, paresComLoteEsgotado, type LoteDoProduto } from '@/lib/estoque/lotes'
-import { contarSituacoes, DETALHE_DO_GIRO } from '@/lib/estoque/situacao'
+import { contarSituacoes, DETALHE_DO_GIRO, DICA_DO_GIRO, DICA_DO_VALOR } from '@/lib/estoque/situacao'
 import { CartoesDoEstoque, linhasDaValidade, loteNoCartao, type CartaoDoEstoque } from '@/components/shared/cartoes-do-estoque'
 import { produtosDoEstoque, listasDoEstoque, marcasEFornecedoresDosProdutos, type ProdutoDoEstoque } from '@/lib/estoque/produtos-da-tela'
 import { CadastroDoEstoque } from '@/components/admin/cadastro-do-estoque'
@@ -226,6 +226,7 @@ export default async function BranchStockPage({
           ...([
             {
               label: 'VALOR EM ESTOQUE',
+              dica:  DICA_DO_VALOR,
               value: fmtBRL(valorEstoque),
               icon:  <ShoppingCart size={18} style={{ color: 'var(--on-brand)' }} />,
               iconBg: 'rgba(255,255,255,0.2)', color: 'var(--on-brand)',
@@ -234,6 +235,7 @@ export default async function BranchStockPage({
             {
               id:      'giro',
               detalhe: DETALHE_DO_GIRO as string | undefined,
+              dica:    DICA_DO_GIRO,
               label: `GIRO — ${now.toLocaleDateString('pt-BR', { timeZone: fuso, month: 'short', year: '2-digit' }).toUpperCase()}`,
               value: fmtBRL(valorGiro),
               icon:  <ShoppingCart size={18} style={{ color: 'var(--brand)' }} />,

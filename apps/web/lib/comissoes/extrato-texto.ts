@@ -87,10 +87,11 @@ export function regraDoLancamento(l: LancamentoDoExtrato, nomeDaPessoa: string |
  * "base cheia (sem taxa nem insumo descontados; os pontos…)" ou o que saiu dela
  * (J-46, A10). Os pontos seguem o retrato da linha em TODA origem — o pacote, o
  * plano e as vendas também (item 10 das correções da auditoria, decisão do
- * Claude pelos princípios 2 e 3, 2026-11-18; era só no avulso).
+ * Claude pelos princípios 2 e 3, 2026-11-18; era só no avulso). No R$ fixo, a
+ * frase do fixo (D11 da 31ª, CB-03).
  */
 export const rotuloDaBaseDoLancamento = (l: LancamentoDoExtrato) =>
-  rotuloDaBase({ desconta_taxa: l.descontaTaxa, desconta_insumos: l.descontaInsumos, base_com_pontos: l.baseComPontos })
+  rotuloDaBase({ desconta_taxa: l.descontaTaxa, desconta_insumos: l.descontaInsumos, base_com_pontos: l.baseComPontos, regra_tipo: l.regraTipo })
 
 const TIPO: Record<LancamentoDoExtrato['kind'], string> = { LIBERACAO: 'Liberação', AJUSTE: 'Ajuste', ESTORNO: 'Estorno', AGUARDANDO: 'Aguardando' }
 const SITUACAO: Record<LancamentoDoExtrato['status'], string> = { OPEN: 'A pagar', PAID: 'Paga', AGUARDANDO: 'Aguardando o pagamento integral' }

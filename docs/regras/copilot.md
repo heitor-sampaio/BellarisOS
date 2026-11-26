@@ -402,7 +402,23 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   `ajuste_de_estoque`: o cartão diz para onde vai a diferença (a menos é
   perda "Inventário"; a mais, um lote novo) e avisa a variação de mais da
   metade do saldo. Prova: `e2e/copilot-estoque-f66.spec.ts` (contra a OpenAI
-  falsa).
+  falsa). Conta como o "Contar em" da janela (D2 da 31ª, decisão do Claude,
+  26/11): em embalagens por padrão, ou na medida de uso com `contarEm:
+  'consumo'` ("ajusta para 950 g"); com o cadastro da embalagem impossível
+  ("1 g com 1.000 g"), o cartão diz o que a contagem conta e que a embalagem
+  se corrige no cadastro do produto.
+  **E em cada unidade ao alcance** (D24 e A15 da 31ª, decisões do Claude,
+  26/11; CW-04, D10 da 6ª): o `produto` diz o saldo do produto em CADA unidade
+  da consulta — a unidade em que ele nunca entrou diz 0 (`semEntradaNaUnidade`),
+  como a janela do Ajuste — e os lotes com saldo de cada uma; o `zerados` conta
+  também o produto ativo sem linha na unidade (era só `current_stock <= 0`, e
+  a unidade sumia da resposta). Sem produto com o nome inteiro e com o nome de
+  uma unidade no pedido ("Alginato de Itajaí"), a ferramenta separa o produto
+  da unidade (`separarUnidadeDoProduto`: o nome inteiro, ou a palavra que só
+  aquela unidade tem), dentro do alcance, e devolve `entendido`; a descrição
+  ensina o mesmo. O prompt proíbe o nome de ferramenta, de parâmetro ou de
+  valor dele na resposta, e palavra em inglês ("listar by filtro"). Teste:
+  `tests/copilot-estoque-em-cada-unidade.test.ts`.
 - **O Copilot recusa o que a tela recusa — nem mais, nem menos** (o Heitor,
   2026-11-25: "Se não for impossível, ainda que improvável, pode ser feito.";
   princípio 2). Os tetos que só ele tinha saíram: lançar até R$ 10.000.000, a
@@ -709,4 +725,5 @@ O modelo diz que a permissão não mostra, nunca que a cliente não tem
 ❌ Teto de valor ou de quantidade na ferramenta de escrita que a tela do mesmo gesto não tem (só o impossível: o limite do registro — 25/11), ou recusa na mensagem padrão do zod, em inglês
 ❌ Regra própria do horário que já passou no Copilot (é recusaDoHorarioPassado, a dos núcleos — 25/11)
 ❌ Cortar a chave da escolha do cartão abaixo do tamanho dela ("mesma:<uuid>" tem 42; o corte em 40 fazia o "Sim, é X" nunca valer — CP1)
+❌ Leitura de estoque por unidade que devolve só as linhas de branch_product_stock que existem (a unidade em que o produto nunca entrou some da resposta — D24 da 31ª)
 ```

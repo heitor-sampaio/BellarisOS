@@ -11,7 +11,7 @@ import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
 import type { FechamentoDoDia, AvisosDoFechamento } from '@/lib/metrics'
 import type { EstornoDoDia, MovimentoDaUnidade, RecebidoPorPessoa, CartaoPorBandeira } from '@/lib/metrics/fechamento-extra'
-import { textoDoMovimentoDepois, lerConferidoDoCampo, valoresParaFecharDeNovo, diferencaNaTela, avisoDaGavetaNegativa, rotuloDoBotaoDeFechar, pedidoDoMotivoDaDiferenca, motivoDoFechamentoAnterior, recusaDoFundoDeTroco, avisoDoFundoDeTroco, avisoDoConferido, type LinhaDaConferencia } from '@/lib/financeiro/conferencia-do-fechamento'
+import { textoDoMovimentoDepois, lerConferidoDoCampo, valoresParaFecharDeNovo, diferencaNaTela, avisoDaGavetaNegativa, rotuloDoBotaoDeFechar, pedidoDoMotivoDaDiferenca, motivoDoFechamentoAnterior, recusaDoFundoDeTroco, avisoDoFundoDeTroco, avisoDoConferido, regraDosCamposDoFechamento, type LinhaDaConferencia } from '@/lib/financeiro/conferencia-do-fechamento'
 import { rotuloDaForma, rotuloDaFormaDoFechamento, nomeDaBandeira } from '@/lib/financeiro/formas'
 import { parseDinheiro } from '@estetica-os/utils'
 
@@ -367,7 +367,8 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
           )}
           {conferindo && (
             <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-              O dinheiro é obrigatório. As outras formas são opcionais: em branco, a linha fica “não conferido”.
+              {/* A7 da 31ª: uma regra só — no dia sem espécie, o dinheiro em branco é R$ 0,00. */}
+              {regraDosCamposDoFechamento(semDinheiro)}
             </p>
           )}
           {podeFechar && !conferindo && (

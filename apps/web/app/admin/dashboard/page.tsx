@@ -390,8 +390,12 @@ export default async function AdminDashboardPage({
     const medidas = { unit: b.products?.unit ?? '', consumption_unit: b.products?.consumption_unit ?? null, units_per_package: b.products?.units_per_package ?? null }
     return { b, saldo, medidas, situacao: situacaoDoEstoque(saldo, medidas) }
   })
-  const lowStockItems: AlertLowStock[] = comSituacao
+  // D22 da 31ª: cada linha é um produto numa unidade; o número da lista é o de
+  // TODAS as linhas — a página manda só as 20 primeiras, e o número dizia 20.
+  const linhasDoEstoqueCritico = comSituacao
     .filter(s => Number(s.b.min_stock) > 0 && (s.situacao === 'SEM_ESTOQUE' || estoqueBaixo(s.situacao)))
+  const totalDoEstoqueCritico = linhasDoEstoqueCritico.length
+  const lowStockItems: AlertLowStock[] = linhasDoEstoqueCritico
     .slice(0, 20)
     .map(s => ({
       productName:  s.b.products?.name ?? '—',
@@ -743,6 +747,7 @@ export default async function AdminDashboardPage({
         pendingPlans={pendingPlans}
         pendingPlansTotal={pendingPlansTotal}
         lowStockItems={lowStockItems}
+        totalDoEstoqueCritico={totalDoEstoqueCritico}
         lotesVencendo={lotesVencendo}
         agora={new Date().toISOString()}
         stockStatus={stockStatus}

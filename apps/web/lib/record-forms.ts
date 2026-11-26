@@ -85,6 +85,8 @@ export function buildRecordForms(
         evolucao,
         intercorrencias,
         queixas,
+        // D4 da 31ª (PT-11): só o registro do CONCLUÍDO se corrige na ficha.
+        concluido:     concluidos.has(appointmentId),
       }]
     })
     .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))

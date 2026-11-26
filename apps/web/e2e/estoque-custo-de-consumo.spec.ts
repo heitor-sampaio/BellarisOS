@@ -295,3 +295,42 @@ test.describe.serial('o custo do insumo, na unidade de consumo', () => {
     } finally { await ctx.close() }
   })
 })
+
+/**
+ * A13 da 31ª simulação (2026-11-26; princípio 3): depois do "Corrigir custo" do
+ * lote, o Histórico da entrada mostrava só o custo novo. Agora diz que foi
+ * corrigido, de quanto para quanto (por embalagem, como se corrige).
+ */
+test('o Histórico da entrada diz "Custo corrigido de R$ 520,00 para R$ 52,00"', async ({ browser }) => {
+  test.setTimeout(120_000)
+  const seringa = await rede!.criarProduto('Seringa corrigida', 0)
+  const e = await db().rpc('estoque_entrada', {
+    p_produto: seringa, p_unidade: rede!.branchId, p_quantidade: 2, p_custo: 520, p_observacao: 'e2e', p_lote: `A13${marca}`, p_validade: null, p_autor: 'e2e',
+  })
+  expect(e.error).toBeNull()
+  const lote = await db().from('product_batches').select('id').eq('product_id', seringa).single<{ id: string }>()
+  expect(lote.error).toBeNull()
+  const c = await db().rpc('estoque_corrigir_custo_do_lote', { p_tenant: rede!.tenantId, p_lote: lote.data!.id, p_custo_embalagem: 52 })
+  expect(c.error).toBeNull()
+
+  const { data: entrada } = await db().from('stock_movements').select('unit_cost, custo_corrigido_de, custo_corrigido_em')
+    .eq('product_id', seringa).eq('type', 'PURCHASE').single()
+  expect({ custo: n(entrada?.unit_cost), de: n(entrada?.custo_corrigido_de), em: !!entrada?.custo_corrigido_em }).toEqual({ custo: 52, de: 520, em: true })
+
+  const ctx = await browser.newContext({ storageState: gestor!.estado })
+  try {
+    const p = await ctx.newPage()
+    await p.goto('/admin/estoque')
+    const engrenagem = p.locator('tr, [role="row"], div').filter({ hasText: `Seringa corrigida cq${marca}` })
+      .filter({ has: p.getByTitle('Gerenciar estoque') }).last()
+      .getByTitle('Gerenciar estoque')
+    const modal = p.locator('dialog[open]').filter({ hasText: 'Gerenciar estoque' })
+    await expect(async () => {
+      await engrenagem.click()
+      await expect(modal).toBeVisible({ timeout: 2_000 })
+    }).toPass({ timeout: 30_000 })
+    await modal.getByRole('button', { name: 'Histórico', exact: true }).click()
+    const compra = modal.locator('[data-movimento]').filter({ hasText: 'Entrada' })
+    await expect(compra.locator('[data-custo-corrigido]')).toContainText('Custo corrigido de R$ 520,00 para R$ 52,00/un')
+  } finally { await ctx.close() }
+})

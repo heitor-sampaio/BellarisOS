@@ -139,13 +139,26 @@ export const OPCOES_DA_BASE_COM_PONTOS = {
  * que a comissão descontava taxa e insumo, e o padrão é a base CHEIA. A
  * configuração e o extrato dizem a mesma frase.
  */
-export function rotuloDaBase(c: { desconta_taxa: boolean; desconta_insumos: boolean; base_com_pontos?: BaseComPontos | null }): string {
+export function rotuloDaBase(c: {
+  desconta_taxa: boolean; desconta_insumos: boolean; base_com_pontos?: BaseComPontos | null
+  /** O tipo da regra da linha (o extrato): no R$ fixo, a taxa e os insumos não saem da base (CB-03). */
+  regra_tipo?: string | null
+}): string {
   // A10 da 7ª simulação: a frase também diz o que acontece com os PONTOS (e o
   // voucher), pela regra `base_com_pontos` — a Tânia lia R$ 480 (40% de 1.200)
   // sobre R$ 1.180 pagos e achava erro. Sem a regra (um chamador de antes), a
   // frase de sempre.
   const pontos = c.base_com_pontos
   const saemOsPontos = pontos === 'VALOR_PAGO'
+  // D11 da 31ª (CB-03/CB-04; decisão do Claude, 26/11): "Na regra em valor
+  // fixo, só os pontos e o voucher a reduzem, na proporção; taxa, insumo e
+  // desconto não". O extrato do fixo dizia "base sem a taxa da maquininha" —
+  // a configuração da rede, que só vale no percentual. No fixo, a frase é a de
+  // quem não desconta taxa nem insumo (o "R$ 90,00 fixo" vem na regra, ao lado).
+  if (c.regra_tipo === 'FIXED_AMOUNT') {
+    if (saemOsPontos) return 'base sem os pontos e o voucher usados (sem taxa nem insumo descontados)'
+    return `base cheia (sem taxa nem insumo descontados${pontos === 'PRECO' ? '; os pontos e o voucher usados não saem dela' : ''})`
+  }
   if (c.desconta_taxa && c.desconta_insumos) {
     if (saemOsPontos) return 'base sem a taxa da maquininha, sem os insumos e sem os pontos e o voucher usados'
     return `base sem a taxa da maquininha e sem os insumos${pontos === 'PRECO' ? ' (os pontos e o voucher usados não saem dela)' : ''}`
@@ -468,4 +481,38 @@ export function rotuloDaRegra(regra: Pick<RegraDeComissao, 'tipo' | 'valor'> | n
   return regra.tipo === 'PERCENTAGE'
     ? `${String(regra.valor).replace('.', ',')}%`
     : `R$ ${regra.valor.toFixed(2).replace('.', ',')} fixo`
+}
+
+/**
+ * CA-04 (comissoes.md, "Com o aviso"; princípio 3; D12 da 31ª): a regra geral
+ * nova ("a mesma para todos") vence o padrão e as exceções — também os da Admin
+ * da rede que atende. Quando ela muda o que uma Admin ganha neste procedimento,
+ * a janela diz antes de salvar: "A mesma para todos: 30%. Vale também para
+ * Lúcia (Admin da rede), que hoje recebe 50% pelo padrão." O que ela ganha hoje:
+ * a geral de agora, senão o valor próprio no procedimento, senão o padrão. A
+ * frase não flexiona o gênero (a equipe não tem gênero gravado). Nulo quando
+ * nenhuma Admin muda.
+ */
+export function avisoDaGeralParaAsAdmins(
+  nova: Pick<RegraDeComissao, 'tipo' | 'valor'>,
+  d: {
+    geral: Pick<RegraDeComissao, 'tipo' | 'valor'> | null
+    porProfissional: { professional_id: string; tipo: TipoDeRegra; valor: number }[]
+    profissionais: { id: string; nome: string; padrao: Pick<RegraDeComissao, 'tipo' | 'valor'> | null; admin?: boolean }[]
+  },
+): string | null {
+  const igual = (a: Pick<RegraDeComissao, 'tipo' | 'valor'> | null) => !!a && a.tipo === nova.tipo && Number(a.valor) === Number(nova.valor)
+  const frases: string[] = []
+  for (const p of d.profissionais.filter(x => x.admin)) {
+    const propria = d.porProfissional.find(r => r.professional_id === p.id) ?? null
+    const hoje = d.geral ?? propria ?? p.padrao
+    if (igual(hoje)) continue
+    const como = d.geral ? `recebe ${rotuloDaRegra(d.geral)} pela comissão geral deste procedimento`
+      : propria ? `recebe ${rotuloDaRegra(propria)} pelo valor próprio neste procedimento`
+      : p.padrao ? `recebe ${rotuloDaRegra(p.padrao)} pelo padrão`
+      : 'não recebe comissão neste procedimento'
+    frases.push(`${p.nome} (Admin da rede), que hoje ${como}`)
+  }
+  if (!frases.length) return null
+  return `A mesma para todos: ${rotuloDaRegra(nova)}. Vale também para ${frases.join('; e para ')}.`
 }

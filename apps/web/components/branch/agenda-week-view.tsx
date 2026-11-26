@@ -11,6 +11,8 @@ import { agendamentosNoDia, textoDoQueContinua } from '@/lib/agenda/trecho-do-ag
 import { naParede } from '@/lib/datetime'
 import { useFuso } from '@/components/shared/fuso'
 import { useAgora, passouSemFechar } from '@/lib/use-agora'
+import { intervalosDoDia, diaDaSemana, type Horario } from '@/lib/agenda/horario'
+import { pausasDoDia, textoDaPausa } from '@/lib/agenda/intervalos-da-grade'
 
 /** `foraDoAtende`: tem agendamento aqui e não atende mais aqui (D3 da 9ª) — a linha fica, marcada. */
 interface Professional { id: string; name: string; foraDoAtende?: boolean }
@@ -28,6 +30,9 @@ interface Props {
    */
   bloqueios?:    BloqueioDaAgenda[]
   salas?:        { id: string; name: string }[]
+  /** A8 da 31ª: os horários de trabalho — o intervalo de cada pessoa aparece no dia dela. */
+  horarioDaUnidade?:         Horario | null
+  horariosDosProfissionais?: Record<string, Horario | null>
 }
 
 // A semana inteira, de segunda a DOMINGO (D3 da 8ª simulação): era até o sábado,
@@ -129,7 +134,7 @@ function EventCard({ ev, onClick, continuaDeAntes = false }: { ev: CalendarEvent
   )
 }
 
-export function AgendaWeekView({ currentDate, events, professionals, onEventClick, onSlotClick, canWrite, bloqueios = [], salas = [] }: Props) {
+export function AgendaWeekView({ currentDate, events, professionals, onEventClick, onSlotClick, canWrite, bloqueios = [], salas = [], horarioDaUnidade = null, horariosDosProfissionais }: Props) {
   const monday   = startOfWeek(currentDate, { weekStartsOn: 1 })
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(monday, i))
   const fuso     = useFuso()
@@ -226,6 +231,10 @@ export function AgendaWeekView({ currentDate, events, professionals, onEventClic
                   // aparece em cada um, como o bloqueio).
                   const dayEvs = agendamentosNoDia(events.filter(e => e.professionalId === pro.id), day)
                   const isToday = isSameDay(day, today)
+                  // A8 da 31ª (princípio 3): o intervalo dela neste dia, pelo nome.
+                  const pausas = horariosDosProfissionais
+                    ? pausasDoDia(intervalosDoDia(horarioDaUnidade, horariosDosProfissionais[pro.id] ?? null, diaDaSemana(format(day, 'yyyy-MM-dd'))))
+                    : []
 
                   return (
                     <td
@@ -242,6 +251,13 @@ export function AgendaWeekView({ currentDate, events, professionals, onEventClic
                       }}
                       onClick={() => canWrite && onSlotClick(day, pro.id)}
                     >
+                      {pausas.map(p => (
+                        <div key={`pausa-${p.de}`} data-intervalo-do-horario style={{
+                          fontSize: 'var(--text-overline)', fontWeight: 'var(--weight-semibold)', color: 'var(--text-muted)', marginBottom: 4,
+                        }}>
+                          {textoDaPausa(p)}
+                        </div>
+                      ))}
                       {bloqueios.filter(b => b.professionalId === pro.id).map(b => {
                         const trecho = trechoNoDia(b, day)
                         return trecho && (

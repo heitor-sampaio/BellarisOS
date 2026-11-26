@@ -36,6 +36,8 @@ export interface ResumoDeDocumento {
   motivo:        string | null
   /** Link público de assinatura ainda valendo: até quando. */
   linkAte:       string | null
+  /** D21 da 31ª: o pedido de assinatura no portal mais recente (o evento `NOTIFICADO_PORTAL`), no pendente. */
+  pedidoNoPortalEm: string | null
   /**
    * Contrato do procedimento que cita o pagamento: a recepção o define antes
    * da assinatura (`definirPagamentoDoContrato`). `pagamento` é a frase do que
@@ -67,7 +69,7 @@ export async function resumirDocumentos(tenantId: string, docs: DocumentoEmitido
   const procedimentos = [...new Set(montados.map(d => d.procedure_id).filter((x): x is string => !!x))]
   const assinados = montados.filter(d => d.status === 'ASSINADO').map(d => d.id)
   const pendentes = montados.filter(d => d.status === 'PENDENTE').map(d => d.id)
-  const [ags, procs, assins, links] = await Promise.all([
+  const [ags, procs, assins, links, pedidos] = await Promise.all([
     agendamentos.length
       ? ler(admin.from('appointments').select('id, scheduled_at, price').in('id', agendamentos), 'buscar os agendamentos dos documentos')
       : Promise.resolve([]),
@@ -82,7 +84,17 @@ export async function resumirDocumentos(tenantId: string, docs: DocumentoEmitido
           .in('issued_document_id', pendentes).is('used_at', null).is('revoked_at', null)
           .gt('expires_at', new Date().toISOString()), 'buscar os links de assinatura')
       : Promise.resolve([]),
+    pendentes.length
+      ? ler(admin.from('issued_document_events').select('issued_document_id, created_at')
+          .in('issued_document_id', pendentes).eq('tenant_id', tenantId).eq('kind', 'NOTIFICADO_PORTAL')
+          .order('created_at', { ascending: false }), 'buscar os pedidos no portal')
+      : Promise.resolve([]),
   ])
+  // O mais recente de cada documento (a lista vem do mais novo ao mais velho).
+  const pedidoEm = new Map<string, string>()
+  for (const p of (pedidos ?? []) as { issued_document_id: string; created_at: string }[]) {
+    if (!pedidoEm.has(p.issued_document_id)) pedidoEm.set(p.issued_document_id, p.created_at)
+  }
   const linkAte = new Map((links ?? []).map(l => [l.issued_document_id as string, l.expires_at as string]))
   const quando = new Map((ags ?? []).map(a => [a.id as string, a.scheduled_at as string]))
   const precoDoAg = new Map((ags ?? []).map(a => [a.id as string, Number(a.price)]))
@@ -108,6 +120,7 @@ export async function resumirDocumentos(tenantId: string, docs: DocumentoEmitido
     codigo:        d.verification_code,
     motivo:        d.closed_reason,
     linkAte:       linkAte.get(d.id) ?? null,
+    pedidoNoPortalEm: pedidoEm.get(d.id) ?? null,
     vazias:        d.vazias ?? [],
     pedePagamento: d.kind === 'CONTRATO' && !!d.appointment_id
       && (d.payment_snapshot != null || (d.missing_fields ?? []).some(v => v.startsWith('pagamento.'))),

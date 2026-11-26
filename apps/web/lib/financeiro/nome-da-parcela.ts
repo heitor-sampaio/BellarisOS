@@ -22,6 +22,29 @@ export function nomeDaLinhaDoLancamento(
   return parte ? `${nome} — ${parte}` : nome
 }
 
+/**
+ * O nome da linha de um lançamento do PLANO (A5 da 31ª; o mesmo CR-05 e AC-01,
+ * princípio 3): a 30ª deu o procedimento à parcela do atendimento, e a do
+ * plano seguia "Plano de tratamento — parcela 1/2", sem dizer de quê. A
+ * descrição gravada não muda (`plano_checkout`); a linha diz os procedimentos
+ * do plano, com as vezes, na ordem dele: "Plano de tratamento (4× Drenagem +
+ * 2× Radiofrequência) — parcela 1/2". `procedimentos` é um nome por
+ * procedimento de cada sessão. Sem procedimento, ou descrição que não é a do
+ * plano (o estorno), nulo: a tela mostra a descrição. Puro.
+ */
+export function nomeDaLinhaDoPlano(procedimentos: string[], descricao: string | null | undefined): string | null {
+  const PREFIXO = 'Plano de tratamento'
+  if (!descricao?.startsWith(PREFIXO)) return null
+  const vezes = new Map<string, number>()
+  for (const p of procedimentos) {
+    const nome = p?.trim()
+    if (nome) vezes.set(nome, (vezes.get(nome) ?? 0) + 1)
+  }
+  if (!vezes.size) return null
+  const lista = [...vezes].map(([nome, n]) => `${n}× ${nome}`).join(' + ')
+  return `${PREFIXO} (${lista})${descricao.slice(PREFIXO.length)}`
+}
+
 /** "parcela 2/3", "entrada" — ou nulo, o lançamento sem parcelas. */
 export function parteDaVenda(l: { numero?: number | null; total?: number | null; descricao?: string | null }): string | null {
   const gravada = l.descricao?.match(/\s—\s(parcela \d+\/\d+|entrada)\s*$/i)?.[1]

@@ -13,10 +13,20 @@ import { BUSINESS_TZ, partsInTZ } from '@/lib/datetime'
  * "Ela já desmarcou uma vez, pode acabar desmarcando de novo, melhor
  * reconfirmar."; era "fica confirmado", a H3).
  */
+/** AG-42, dito ANTES de confirmar a remarcação também (A1 da 31ª, princípio 3). */
+/**
+ * D20 da 31ª (AG-55): o "Em andamento" do app (o que já começou e não acabou,
+ * o Heitor, 25/11) diz, à vista, que quem registra o fim é a equipe — na home e
+ * no grupo da Agenda.
+ */
+export const TEXTO_DO_EM_ANDAMENTO_NO_APP = 'A equipe registra quando o atendimento terminar.'
+
+export const AVISO_DO_HORARIO_NOVO_NO_APP ='O horário novo fica como Agendado até ser confirmado.'
+
 export function textoDoRemarcado(p: { quemAtende: string | null; dia: string; hora: string; unidadeNova: string | null }): string {
   const com = p.quemAtende ? `: com ${p.quemAtende}` : ''
   const onde = p.unidadeNova ? `, na ${p.unidadeNova} (outro endereço)` : ''
-  return `Agendamento remarcado${com}, ${p.dia} às ${p.hora}${onde}. O horário novo fica como Agendado até ser confirmado.`
+  return `Agendamento remarcado${com}, ${p.dia} às ${p.hora}${onde}. ${AVISO_DO_HORARIO_NOVO_NO_APP}`
 }
 
 function diaEHora(iso: string, fuso: string): { dia: string; hora: string } {
@@ -185,4 +195,22 @@ export function textoDoPrePagoNoApp(pagos: number, usados: number, paraAgendar: 
   const pagosTexto = `${pagos} já pago${pagos === 1 ? '' : 's'}`
   const usadosTexto = usados > 0 ? ` · ${usados} usado${usados === 1 ? '' : 's'}` : ''
   return `${pagosTexto}${usadosTexto} · ${paraAgendar}`
+}
+
+/**
+ * A sessão "A agendar" do plano diz quem a marca (PO-11; D19 da 31ª): o cartão
+ * do início dizia, e a tela do plano mostrava só "A agendar". Um texto só para
+ * as duas.
+ */
+export function textoDaSessaoAAgendarNoApp(peloApp: boolean): string {
+  return `A agendar · ${peloApp ? 'pelo app' : 'quem marca é a equipe'}`
+}
+
+/**
+ * O crédito interno no Confirmar do agendamento (A6 da 31ª, princípio 3): é
+ * forma de pagamento (CI-04), e agendar não o usa — a tela diz quando ele vale.
+ * `rotulo` é o `fala.credito` ("Crédito em <a rede>", CI-10).
+ */
+export function textoDoCreditoNoConfirmar(p: { rotulo: string; saldo: string }): string {
+  return `${p.rotulo}: ${p.saldo}. Agendar não usa o crédito: ele pode pagar este atendimento na hora do pagamento.`
 }

@@ -131,6 +131,8 @@ export interface AdminDashboardProps {
   /** Quantos planos aguardam (a lista traz só os primeiros — IND-02). */
   pendingPlansTotal?: number
   lowStockItems:      AlertLowStock[]
+  /** D22 da 31ª: quantas linhas (produto numa unidade) a lista tem — a lista traz só as 20 primeiras. */
+  totalDoEstoqueCritico?: number
   /** Os lotes que vencem em 30 dias (A41 da 7ª), a quem tem o Estoque. */
   lotesVencendo?:     LoteNoDashboard[]
   /** O instante do servidor, para o "venceu" da lista não depender do relógio do navegador. */
@@ -199,26 +201,12 @@ const AGE_PIE_COLORS = ['var(--brand)', 'var(--cat-4)', 'var(--info)', 'var(--su
 
 // --- Animation primitives -----------------------------------------------------
 
-function useCountUp(target: number, duration = 900): number {
-  const [val, setVal] = useState(0)
-  useEffect(() => {
-    // Zero não anima: o retorno abaixo já o mostra, sem setState no efeito.
-    if (target === 0) return
-    let raf: number
-    let start: number | null = null
-    const step = (ts: number) => {
-      if (!start) start = ts
-      const p = Math.min((ts - start) / duration, 1)
-      setVal(target * (1 - Math.pow(1 - p, 3)))
-      if (p < 1) raf = requestAnimationFrame(step)
-      else setVal(target)
-    }
-    raf = requestAnimationFrame(step)
-    return () => cancelAnimationFrame(raf)
-  }, [target, duration])
-  return target === 0 ? 0 : val
-}
-
+/**
+ * O número com o valor da conta, desde o primeiro quadro (D3 da 31ª; princípio
+ * 3). Contava de 0 até o valor em 0,9 s: o "Giro do mês" de R$ 14,10 foi lido
+ * como R$ 12,53 e R$ 12,70 por quem olhou no meio, e o servidor desenhava
+ * R$ 0,00. O design system não tem animação de entrada (lumiere-design).
+ */
 function AnimatedNum({
   value, format = 'int', style,
 }: {
@@ -226,7 +214,7 @@ function AnimatedNum({
   format?: 'brl' | 'brl-short' | 'int' | 'pct'
   style?:  React.CSSProperties
 }) {
-  const v = useCountUp(value)
+  const v = value
   const display =
     format === 'brl'       ? fmtBRL(v) :
     format === 'brl-short' ? fmtShort(v) :
@@ -472,7 +460,7 @@ export function AdminDashboardView({
   totalClientsEver, branchCount, umaUnidade = false, unidadeRecortada = null, recorteDesativado = false, hrefDaRede = '/admin/dashboard',
   prevRevenue, prevAppointments, prevNewClients,
   branchStats, todayTotal, todayByBranch,
-  pendingPlans, pendingPlansTotal, lowStockItems, lotesVencendo = [], agora = new Date().toISOString(), stockStatus, zeroStockCount, lowStockCount, stockTurnover,
+  pendingPlans, pendingPlansTotal, lowStockItems, totalDoEstoqueCritico = lowStockItems.length, lotesVencendo = [], agora = new Date().toISOString(), stockStatus, zeroStockCount, lowStockCount, stockTurnover,
   evolutionData,
   branchOccupancy,
   avisoDosAbertos,
@@ -926,12 +914,17 @@ export function AdminDashboardView({
                 <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--danger)' }}>
                   Estoque crítico
                 </span>
+                {/* D22 da 31ª (princípio 3): o "Estoque baixo" do quadro Estoque conta PRODUTOS; esta lista,
+                    um produto em cada unidade — o mesmo produto em duas unidades são duas linhas. */}
+                <Dica rotulo="O que a lista conta">
+                  Cada linha é um produto numa unidade, no mínimo, abaixo dele ou sem estoque (com mínimo cadastrado). O mesmo produto em duas unidades aparece duas vezes; o “Estoque baixo” e os “Produtos zerados” do quadro Estoque contam cada produto uma vez.
+                </Dica>
                 <span style={{
                   marginLeft: 'auto', fontSize: 'var(--text-2xs)', fontWeight: 800,
                   background: 'var(--danger)', color: 'var(--surface)',
                   padding: '2px 8px', borderRadius: 10,
                 }}>
-                  {lowStockItems.length}
+                  {totalDoEstoqueCritico}
                 </span>
               </div>
               <div>
@@ -960,9 +953,9 @@ export function AdminDashboardView({
                     </a>
                   </div>
                 ))}
-                {lowStockItems.length > 5 && (
+                {totalDoEstoqueCritico > 5 && (
                   <div style={{ padding: '10px 18px', borderTop: '1px solid var(--hairline)', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', textAlign: 'center' }}>
-                    +{lowStockItems.length - 5} mais
+                    +{totalDoEstoqueCritico - 5} mais
                   </div>
                 )}
               </div>

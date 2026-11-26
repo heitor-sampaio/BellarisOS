@@ -862,6 +862,20 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   quem está ativo (`ComissoesDaEquipe`). Prova:
   `e2e/comissoes-minhas-no-menu.spec.ts` ("A43").
 
+- **A 31ª simulação (decisão do Claude, 26/11):**
+  - **O estorno diz a comissão já PAGA** (D5, CF-16): a janela não diz que ela
+    "volta a aguardar o pagamento" — diz que o estorno a desconta no próximo
+    fechamento, com o nome e o valor a quem vê a comissão de todos
+    (`textoDaComissaoETaxaDoEstorno`, o `pagas`).
+  - **O rótulo da base segue o tipo da regra** (D11, CB-03/CB-04): no R$ fixo
+    a base não diz "sem a taxa da maquininha" — é "base cheia" ou "base sem
+    os pontos e o voucher usados", e o "R$ X fixo" vem ao lado
+    (`rotuloDaBase` com `regra_tipo`). O texto "base cheia (sem taxa nem
+    insumo descontados…)" fica, porque `e2e/comissoes-pacote.spec.ts` o confere.
+  - **"A mesma para todos" avisa da Admin da rede** (D12, CA-04): a janela da
+    comissão do procedimento diz o que muda para cada Admin da rede que atende
+    (`avisoDaGeralParaAsAdmins`, `[data-aviso-da-admin]`).
+
 ---
 
 ## O que nunca fazer aqui

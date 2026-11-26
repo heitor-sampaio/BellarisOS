@@ -3515,6 +3515,29 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     dos dois financeiros, o contra-lançamento é "Estorno" (não "Despesa") e
     diz "Anula a receita estornada". Prova: `e2e/financeiro-estorno-atritos.spec.ts`.
 
+- **A 31ª simulação (decisão do Claude, 26/11):**
+  - **O agendar da Agenda sabe do pacote em aberto** (D15, PA-13/PA-14):
+    `creditosDoCliente` traz, por sessão de pacote, o em aberto (só a quem
+    recebe, `podeReceber`) e a recusa da rede que libera só depois de pago
+    (`recusaDaSessaoNaoLiberada`, a todos).
+  - **O plano proposto mostra a validade na tela da equipe** (D16, PL-23):
+    "Proposta válida até…" / "Proposta vencida em…: … o plano ainda se aceita"
+    (`textoDaValidadeNaEquipe`, `[data-validade-da-proposta]`).
+  - **O passo "Contrato e pagamento" diz o saldo** (D7, DP-03): "Recebido em
+    parte · R$ X a receber" quando o plano tem a receber
+    (`rotuloDoPassoDoPagamento`); a situação do plano não muda (PL-20).
+  - **A ficha do pré-pago vale o vendido menos as canceladas** (D8, PP-03):
+    "R$ 170,00 (vendido por R$ 340,00; 1 sessão cancelada, R$ 170,00)"
+    (`valorDoPrePagoNaFicha`); a sessão agendada diz que se cancela antes o
+    agendamento, na agenda (A11, `[data-agendada-se-cancela-na-agenda]`).
+  - **A parcela do plano diz os procedimentos** (A5, CR-05/AC-01): a descrição
+    gravada segue "Plano de tratamento — parcela 1/2"; a linha mostra
+    "Plano de tratamento (3× Microagulhamento) — parcela 1/2"
+    (`nomeDaLinhaDoPlano` com `procedimentosDosPlanos`): no PDV, na ficha, no app e em Relatórios → Parcelas pendentes.
+  - **O rodapé do Fechamento do dia diz a regra do dia** (A7): sem espécie no
+    dia, "o dinheiro em branco fecha em R$ 0,00"; com espécie, "O dinheiro é
+    obrigatório" (`regraDosCamposDoFechamento`).
+
 ---
 
 ## O que nunca fazer aqui

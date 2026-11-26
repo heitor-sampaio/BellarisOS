@@ -1774,6 +1774,68 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-26 — A 31ª simulação e as correções dela
+
+O laço que o Heitor deixou correndo (25/11: "quando acabar essa roda já segue as outras e assim vai"). Cinco redes de
+teste novas: o app da cliente (Studio Ixora, São José dos Campos), comissões e equipe (Espaço Buganvília, Juiz de Fora),
+pacotes, pré-pago, planos e crédito (Instituto Astromélia, Feira de Santana), prontuário e documentos (Ateliê Clívia,
+Dourados, UTC−4) e estoque, importação e Copilot em duas unidades (Rede Lobélia, Blumenau e Itajaí). As decisões são do
+Claude, 26/11, pelos princípios; as que pedem o Heitor estão em `docs/para-o-heitor.md` §10. Nenhum teste existente foi
+alterado nem apagado.
+
+**O que mudou no sistema.**
+- **Estoque.** A transferência vale o custo do lote que saiu, nas duas pernas e no relatório (era o último custo; migration
+  `20261209600001`, com a correção da transferência antiga que os lotes cobrem por inteiro). A embalagem impossível ("1 g
+  com 1.000 g") se recusa no servidor; outra grandeza só avisa. O Histórico diz "Custo corrigido de R$ 520,00 para R$
+  52,00" (`20261209600003`, colunas `custo_corrigido_de`/`_em`). A categoria repetida diz que já existe. O Valor em
+  estoque e o Giro têm dica. O Copilot ajusta na medida de uso (`contarEm`) e responde o saldo em CADA unidade, com 0 onde
+  o produto nunca entrou, e entende "Alginato de Itajaí".
+- **Auditoria.** A perda diz o motivo, o inventário diz de quanto para quanto (`20261209600002`), o produto novo diz o
+  estoque inicial e a unidade, a transferência é uma frase só; a regra de comissão diz o procedimento, de quem e o valor
+  (`20261209500001`); o "Pedir no portal" entra nela (`20261209100001`, `issued_documents.pedido_no_portal_em`) e a linha
+  do documento diz quando foi pedido.
+- **Agenda e ficha.** A remarcação diz de quando para quando, e a ficha a registra; o "por Fulana (app)" aparece a quem
+  não tem o Atendimento. O intervalo de quem atende aparece pelo nome na grade. Os Próximos agendamentos são de hoje em
+  diante, e o em aberto de dia anterior fica num cartão à parte. A ficha diz o acesso ao app que espera a pessoa, e a
+  linha do tempo diz "Primeiro acesso ao app". A janela de agendar mostra o pacote em aberto e recusa a sessão que a rede
+  só libera depois de pago.
+- **Prontuário.** Quem tem o Prontuário em Gerenciar, sem o Atendimento, corrige o registro concluído na aba Prontuário da
+  ficha. O mapa de injetáveis avisa quando a dose está numa medida que o estoque não conta. Quem lê a ficha de saúde e não
+  a escreve vê quem responde.
+- **Vendas, financeiro e comissões.** O estorno com a comissão já paga diz que ela se desconta no próximo fechamento. A
+  regra em R$ fixo não diz mais "sem a taxa". A comissão "a mesma para todos" avisa o que muda para cada Admin da rede
+  que atende. O plano proposto diz a validade; o passo do pagamento diz "Recebido em parte · R$ X a receber"; a parcela do
+  plano diz os procedimentos (PDV, ficha, app e Relatórios). O pré-pago com sessão cancelada explica o valor. O fechamento
+  do dia sem espécie diz que o dinheiro em branco é R$ 0,00.
+- **Indicadores.** Os números do dashboard da rede e dos Relatórios aparecem direto com o valor da conta (a contagem
+  animada mostrava valores que não existem). "Itens Críticos" virou "Produtos críticos", com a dica do que conta, e o
+  número da lista do dashboard é o total.
+- **App da cliente e LGPD.** O "Em andamento" diz que a equipe registra quando terminar; a remarcação avisa antes de
+  confirmar que fica Agendado; o agendar diz que o crédito paga na hora do pagamento; a sessão do plano diz quem marca. O
+  pacote da LGPD diz por que o prontuário não veio e como pedir, o gênero por extenso e o primeiro acesso.
+- **Login e Cargos.** A sessão guardada de quem foi desativada leva ao aviso "Seu acesso foi desativado" (o proxy, quando
+  a renovação é recusada por `user_banned`). Nos Cargos, o endereço manda: o cargo pedido pelo `?cargo=` que a lista
+  ainda não tem fica esperando (a causa do nível gravado no cargo errado não se reproduziu; o caso E2E novo mostra).
+
+**Não era defeito:** a contagem do dashboard × Relatórios → Agenda (regra de 29/10), a pergunta da gestação (tem "Não se
+aplica" desde 29/10), o pacote que não cobre o plano inteiro (DP-05), o contrato do pacote na venda (DE-05), o
+inventário "nas duas unidades" (as de medida).
+
+**A completa** (contra o build): 2640 passaram e 3 falharam.
+- `e2e/vendas-produto.spec.ts:198` exige o "Dar entrada no Estoque" para quem só tem o Caixa; a correção que o escondia
+  (D23, pela regra do botão do CLAUDE.md §14, que não é fala do Heitor) foi DESFEITA e virou a proposta 4 de
+  `docs/para-o-heitor.md` §10. O spec passa inteiro (11).
+- `e2e/financeiro-filtro-de-tags.spec.ts:127`, nos dois portais: falha igual SEM as correções (conferido com o build do
+  commit anterior). O caso clica em "A pagar" e mexe na tag antes de a navegação terminar (a conferência do endereço já
+  valia antes do clique), e volta a Movimentações; ali a despesa de +5 dias só aparece no mês corrente — de 26 a 30/11,
+  não. O sistema cumpre a FN-04. Proposta 5 da §10 (o caso esperar a aba); o teste não mudou.
+
+Migrations na produção, uma por vez (a `20261209600003` antes do deploy: o Histórico lê as colunas novas):
+`20261209100001`, `20261209500001`, `20261209600001`, `20261209600002`, `20261209600003`. Conferir: IGUAL, 4670.
+
+**Sugestões novas** (`docs/sugestoes-de-funcionalidades.md`, 67–81 e as do V): sugerir um pacote que cubra parte do
+plano; mostrar na venda do pacote os termos que vão nascer.
+
 ### 2026-11-25 (5) — As respostas da página de perguntas: o crédito vendido conta, Fichas e Cargos em Ver, o "Cancelar" volta
 
 O Heitor respondeu as 12 perguntas da 29ª e da 30ª e reviu 11 decisões, numa página só (o artefato "o que eu preciso

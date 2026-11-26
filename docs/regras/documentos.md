@@ -632,6 +632,17 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   continua). Prova:
   `e2e/documentos-pedir-no-portal-sem-plano.spec.ts`,
   `e2e/documentos-anexo-sem-portal-f73.spec.ts`.
+  **O pedido fica na linha e na Auditoria** (D21 da 31ª; decisão do Claude,
+  26/11, princípio 3 e AD-04): depois do "Pedir no portal", a linha do
+  documento pendente diz "Pedido no portal em dd/mm/aaaa às hh:mm: a cliente
+  foi avisada no app." (`[data-pedido-no-portal]`; o NOTIFICADO_PORTAL mais
+  recente, `pedidoNoPortalEm` em `lib/documentos/leitura.ts`) e o botão vira
+  "Pedir de novo no portal". O pedido marca o documento
+  (`issued_documents.pedido_no_portal_em`, migration `20261209100001`), e é a
+  marca que o põe na Auditoria — o evento é andamento e fica fora dela; os
+  pedidos de antes da migration não ganham a marca. Prova:
+  `tests/documentos-pedido-no-portal.test.ts`, `e2e/documentos-portal.spec.ts`
+  ("D21").
   **"Faltam dados" diz onde completar** (A22 da 14ª, F73; princípio 7): em
   Documentos, ao lado do "Falta: …", "Completar o cadastro" (o Heitor, 25/11:
   "Completar cadastro"; era "Completar a ficha") leva à aba Dados da

@@ -212,6 +212,8 @@ async function nomesDaAuditoria(ctx: TenantContext, registros: readonly Registro
     ...registros.filter(r => r.tabela === 'appointments').map(r => doRegistro(r, 'professional_id')).filter((v): v is string => !!v),
     // A16: de quem é o bloqueio da agenda ("Bloqueou a agenda de Dra. Paula …").
     ...registros.filter(r => r.tabela === 'agenda_bloqueios').map(r => doRegistro(r, 'professional_id')).filter((v): v is string => !!v),
+    // A9 da 31ª: de quem é a regra de comissão ("a comissão de Limpeza de pele para Marcela").
+    ...registros.filter(r => r.tabela === 'commission_rules').map(r => doRegistro(r, 'professional_id')).filter((v): v is string => !!v),
   ])]
   // A16: a sala do bloqueio; A17: o cargo do membro editado (o de → para e o "Promoveu").
   const salas = [...new Set(registros.filter(r => r.tabela === 'agenda_bloqueios').map(r => doRegistro(r, 'room_id')).filter((v): v is string => !!v))]
@@ -339,8 +341,11 @@ async function nomesDa20(ctx: TenantContext, registros: readonly RegistroDaAudit
   const pacotes = ids(r => r.tabela === 'client_packages' && r.operacao === 'editou' && r.colunas.includes('cancelado_em'))
   const importacoes = ids(r => r.tabela === 'importacoes')
   const entradas = ids(r => r.tabela === 'stock_movements' && r.operacao === 'criou' && r.depois?.type === 'PURCHASE')
-  const procedimentos = [...new Set(registros.filter(r => r.tabela === 'appointments' && r.operacao === 'criou')
-    .map(r => r.depois?.procedure_id).filter((v): v is string => typeof v === 'string' && UUID.test(v)))]
+  const procedimentos = [...new Set([
+    ...registros.filter(r => r.tabela === 'appointments' && r.operacao === 'criou').map(r => r.depois?.procedure_id),
+    // A9 da 31ª: o procedimento da regra de comissão (a apagada o tem no `antes`).
+    ...registros.filter(r => r.tabela === 'commission_rules').map(r => r.depois?.procedure_id ?? r.antes?.procedure_id),
+  ].filter((v): v is string => typeof v === 'string' && UUID.test(v)))]
   const nada = Promise.resolve([] as Record<string, unknown>[])
 
   const [dc, ss, pk, im, en, pr] = await Promise.all([

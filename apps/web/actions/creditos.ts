@@ -8,7 +8,7 @@
  * Todo export é endpoint público: confere permissão e a rede do cliente.
  */
 
-import { getTenantContext, can } from '@/lib/auth'
+import { getTenantContext, can, podeReceber } from '@/lib/auth'
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, mensagemDoErro } from '@/lib/db'
@@ -23,7 +23,8 @@ export async function creditosParaAgendar(clientId: string): Promise<CreditoPara
   const admin = createAdminClient()
   const cliente = await ler(admin.from('clients').select('id').eq('id', clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o cliente')
   if (!cliente) return []
-  return creditosDoCliente(admin, ctx.tenantId!, clientId)
+  // D15 da 31ª (PA-14): o em aberto do pacote, só a quem recebe; a recusa da rede que libera só depois de pago, a todos.
+  return creditosDoCliente(admin, ctx.tenantId!, clientId, { veOEmAberto: podeReceber(ctx) })
 }
 
 /**

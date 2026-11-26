@@ -6,7 +6,7 @@ import { idOu404 } from '@/lib/id-da-rota'
 import { getTenantContext, can, podeReceber, podeVerClinico, temRecurso } from '@/lib/auth'
 import { semAcesso } from '@/lib/sem-acesso'
 import { montaPlano } from '@/lib/plano-de-tratamento/quem-monta'
-import { quemDesfazNoCaixa, quemMarcaAChegada, quemRecebeNaUnidade, quemConcluiOAtendimento } from '@/lib/equipe/quem-desfaz'
+import { quemDesfazNoCaixa, quemMarcaAChegada, quemRecebeNaUnidade, quemConcluiOAtendimento, quemRespondeAFichaDeSaude } from '@/lib/equipe/quem-desfaz'
 import { colheOsDocumentos, dispensaDocumentos } from '@/lib/documentos/acesso'
 import { documentosDoAgendamento } from '@/lib/documentos/leitura'
 import { envioPelaConversaLigado } from '@/lib/documentos/link-pela-conversa'
@@ -696,6 +696,9 @@ export async function SessaoDeAtendimento({
         // A9 da 20ª: quem não inicia nem conclui (sem o Atendimento em Gerenciar) lê quem faz, pelo nome.
         quemConclui={!canManage && ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(apptRaw.status as string)
           ? await quemConcluiOAtendimento(ctx.tenantId!, branchId) : null}
+        // A17 da 31ª: quem lê o clínico e não o escreve lê, na ficha de saúde em branco, quem a responde.
+        quemRespondeAFicha={canViewRecords && !canEditRecords && ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(apptRaw.status as string)
+          ? await quemRespondeAFichaDeSaude(ctx.tenantId!, branchId) : null}
         // A10 da 19ª: sem o check-in no cargo, o agendado diz QUEM marca a chegada.
         quemMarcaAChegada={!canCheckin && apptRaw.status === 'SCHEDULED' ? await quemMarcaAChegada(ctx.tenantId!, branchId) : null}
         // A19 da 14ª: quem estorna (o Financeiro em Gerenciar, de todos — a régua da ficha) estorna daqui, pela mesma janela.

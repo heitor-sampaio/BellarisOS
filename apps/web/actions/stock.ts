@@ -7,7 +7,7 @@ import { gravar, ler, lerTodas, mensagemDoErro } from '@/lib/db'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { ajusteDeEstoqueCore, entradaDeEstoqueCore, produtoEUnidadesDaRede, recusaDoRegistroNaTransferencia, saldoAgoraEmTexto, unidadeDesativada, RECUSA_DA_UNIDADE_DESATIVADA } from '@/lib/estoque/movimentos'
 import { recusaDoCustoDaEntrada, recusaDoEstoqueAcimaDoRegistro } from '@/lib/estoque/limites-do-registro'
-import { medidaNoPlural } from '@/lib/estoque/medidas'
+import { medidaNoPlural, recusaDaEmbalagem } from '@/lib/estoque/medidas'
 import { lerUso, RECUSA_SEM_USO, type UsoDoProduto } from '@/lib/estoque/uso'
 import { prefixoDoSku } from '@/lib/estoque/sku'
 import { lerMotivoDaPerda, rotuloDoMotivo } from '@/lib/estoque/perda'
@@ -122,6 +122,12 @@ async function createProductInterno(
     if (!name) return { error: 'Nome é obrigatório.' }
     const unit = str(formData, 'unit')
     if (!unit) return { error: 'Unidade é obrigatória.' }
+    // D2 da 31ª (decisão do Claude, 26/11): "1 g com 1000 g" não existe — a
+    // embalagem é o que se conta na prateleira, o conteúdo é quanto ela tem.
+    const upp = num(formData, 'units_per_package')
+    const consumo = str(formData, 'consumption_unit')
+    const embalagemImpossivel = recusaDaEmbalagem(unit, upp, consumo)
+    if (embalagemImpossivel) return { error: embalagemImpossivel }
 
     const usoEPreco = usoEPrecoDoFormulario(formData)
     if ('error' in usoEPreco) return { error: usoEPreco.error }
@@ -192,8 +198,6 @@ async function createProductInterno(
     if (recusaDoCusto) return { error: recusaDoCusto }
     // A quantidade inicial de cada unidade, que o registro não guarda (numeric(10,4)
     // no lote e no movimento, este na unidade de consumo; decisão do Claude, 25/11).
-    const upp = num(formData, 'units_per_package')
-    const consumo = str(formData, 'consumption_unit')
     const fator = consumo && upp && upp > 0 ? upp : 1
     for (const l of linhas) {
       const acima = recusaDoEstoqueAcimaDoRegistro({
@@ -266,6 +270,13 @@ export async function updateProduct(
     if (!name) return { error: 'Nome é obrigatório.' }
     const unit = str(formData, 'unit')
     if (!unit) return { error: 'Unidade é obrigatória.' }
+    // D2 da 31ª: a mesma régua do cadastro. O produto gravado assim antes se
+    // corrige aqui: trocar a embalagem não mexe em número nenhum (o saldo e os
+    // lotes já são embalagens, os movimentos já estão no conteúdo).
+    const upp = num(formData, 'units_per_package')
+    const consumo = str(formData, 'consumption_unit')
+    const embalagemImpossivel = recusaDaEmbalagem(unit, upp, consumo)
+    if (embalagemImpossivel) return { error: embalagemImpossivel }
 
     const usoEPreco = usoEPrecoDoFormulario(formData)
     if ('error' in usoEPreco) return { error: usoEPreco.error }
@@ -785,6 +796,11 @@ export interface MovimentoDeEstoque {
   brinde: boolean
   /** A10 da 24ª: o ajuste da "Correção de cadastro" — não é perda. */
   correcao: boolean
+  /**
+   * A13 da 31ª: o "Corrigir custo" do lote mudou o custo desta entrada — de
+   * quanto (o custo com que foi gravada) para quanto, por EMBALAGEM, e quando.
+   */
+  custoCorrigido: { de: number; para: number; em: string | null } | null
 }
 
 /**
@@ -811,7 +827,7 @@ export async function getProductMovements(
   const admin = createAdminClient()
   let query = admin
     .from('stock_movements')
-    .select('id, type, quantity, balance_after, notes, reference, created_at, unit_cost, motivo_da_perda, fornecedor, marca, nota_fiscal, desfeita_em, desfeita_motivo, desfeita_pelo, correcao_de_cadastro, branch_id, branches!inner(name, tenant_id), stock_movement_batches(quantity, product_batches(id, batch_number, expires_at, quantity))')
+    .select('id, type, quantity, balance_after, notes, reference, created_at, unit_cost, motivo_da_perda, fornecedor, marca, nota_fiscal, desfeita_em, desfeita_motivo, desfeita_pelo, correcao_de_cadastro, custo_corrigido_de, custo_corrigido_em, branch_id, branches!inner(name, tenant_id), stock_movement_batches(quantity, product_batches(id, batch_number, expires_at, quantity))')
     .eq('product_id', productId)
     .eq('branches.tenant_id', ctx.tenantId!)
     .order('created_at', { ascending: false })
@@ -847,6 +863,8 @@ export async function getProductMovements(
     fornecedor: string | null; marca: string | null; nota_fiscal: string | null; desfeita_em: string | null; desfeita_motivo: string | null
     desfeita_pelo: string | null
     correcao_de_cadastro: boolean | null
+    custo_corrigido_de: number | string | null
+    custo_corrigido_em: string | null
     branch_id: string
     stock_movement_batches: { quantity: number | string; product_batches: { id: string; batch_number: string | null; expires_at: string | null; quantity: number | string } | null }[] | null
   }
@@ -963,6 +981,9 @@ export async function getProductMovements(
       : null,
     brinde: m.type === 'MANUAL_ADJUSTMENT' && (m.reference ?? '').startsWith('voucher:'),
     correcao: m.type === 'MANUAL_ADJUSTMENT' && m.correcao_de_cadastro === true,
+    custoCorrigido: m.custo_corrigido_de != null && m.unit_cost != null
+      ? { de: Math.round(Number(m.custo_corrigido_de) * fator * 100) / 100, para: Math.round(Number(m.unit_cost) * fator * 100) / 100, em: m.custo_corrigido_em }
+      : null,
   }))
 }
 

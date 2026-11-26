@@ -60,7 +60,7 @@ export async function updateSession(request: NextRequest) {
     // servidor de Auth em toda request. Quando o access token expira, o
     // getSession() interno renova via refresh token (7 dias) e o setAll acima
     // grava os novos cookies. Substitui o antigo getUser() (rede por request).
-    const { data: claimsData } = await supabase.auth.getClaims()
+    const { data: claimsData, error: erroDaSessao } = await supabase.auth.getClaims()
     const user = claimsData?.claims ?? null
 
     const pathname = request.nextUrl.pathname
@@ -105,6 +105,23 @@ export async function updateSession(request: NextRequest) {
       // identidade conferida pelo banco antes de qualquer pergunta.
       || pathname.startsWith('/pre-atendimento/')
       || pathname.startsWith('/api/')
+
+    // A sessão SALVA de quem foi desativada (D25 da 31ª; CLAUDE.md §11): com o
+    // token vencido, a renovação é recusada pela conta bloqueada no Auth
+    // (`user_banned`, o bloqueio que desativar põe). Sem isto, a pessoa caía no
+    // /login puro, sem saber por quê. Só o GET: o POST do login é outra pessoa
+    // entrando no mesmo aparelho, e não se desvia. Os cookies apagados vão junto.
+    const contaBloqueada = !user && (erroDaSessao as { code?: string } | null)?.code === 'user_banned'
+    const avisoJaNaTela = pathname === '/login' && request.nextUrl.searchParams.get('acesso') === 'desativado'
+    if (contaBloqueada && !isPublicRoute && request.method === 'GET' && !avisoJaNaTela
+        && (!isAuthRoute || pathname === '/login')) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      url.search = '?acesso=desativado'
+      const resposta = redirecionar(url)
+      supabaseResponse.cookies.getAll().forEach(c => resposta.cookies.set(c))
+      return resposta
+    }
 
     if (!user && !isAuthRoute && !isPublicRoute) {
       const url = request.nextUrl.clone()

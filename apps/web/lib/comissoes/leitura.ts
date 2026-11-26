@@ -7,6 +7,7 @@ import {
   type ItemExecutado, type LinhaDeComissao, type ComissoesGerais, type ComissaoDoProduto,
 } from './config'
 import { paramDeTags } from '@/lib/metrics/tags-do-relatorio'
+import { adminsDaRede } from '@/lib/equipe/admin-da-rede'
 
 /** A configuração de comissões da rede (os padrões, se ela nunca salvou). */
 export async function configDeComissaoDaRede(tenantId: string): Promise<ConfigDeComissao> {
@@ -102,18 +103,23 @@ export interface ComissaoDosProcedimentos {
   gerais:        ComissoesGerais
   /** As exceções de cada procedimento: o valor de cada profissional. */
   porProfissional: Map<string, { professional_id: string; tipo: TipoDeRegra; valor: number }[]>
-  /** Quem atende (e quem já tem valor em algum procedimento), com o padrão dele. */
-  profissionais: { id: string; nome: string; padrao: RegraDeComissao | null }[]
+  /**
+   * Quem atende (e quem já tem valor em algum procedimento), com o padrão dele.
+   * `admin`: tem o cargo de sistema Admin da rede — a geral nova também vale
+   * para ela, e a janela avisa (CA-04, D12 da 31ª).
+   */
+  profissionais: { id: string; nome: string; padrao: RegraDeComissao | null; admin: boolean }[]
 }
 
 /** Para Procedimentos: a geral e os valores por profissional de cada um. */
 export async function comissaoDosProcedimentos(tenantId: string): Promise<ComissaoDosProcedimentos> {
   const admin = createAdminClient()
-  const [gerais, regras, quemAtende] = await Promise.all([
+  const [gerais, regras, quemAtende, admins] = await Promise.all([
     comissoesGeraisDaRede(tenantId),
     regrasDaRede(tenantId),
     ler(admin.from('users').select('id, name').eq('tenant_id', tenantId)
       .eq('provides_services', true).eq('is_active', true).order('name'), 'listar quem atende'),
+    adminsDaRede(admin, tenantId),
   ])
   const porProfissional: ComissaoDosProcedimentos['porProfissional'] = new Map()
   for (const [profissional, lista] of regras) {
@@ -133,7 +139,7 @@ export async function comissaoDosProcedimentos(tenantId: string): Promise<Comiss
     ? await ler(admin.from('users').select('id, name').eq('tenant_id', tenantId).in('id', faltam), 'listar quem tem comissão')
     : []
   const profissionais = [...(quemAtende ?? []), ...(outros ?? [])]
-    .map(u => ({ id: u.id as string, nome: u.name as string, padrao: regras.get(u.id as string)?.find(r => r.procedure_id === null) ?? null }))
+    .map(u => ({ id: u.id as string, nome: u.name as string, padrao: regras.get(u.id as string)?.find(r => r.procedure_id === null) ?? null, admin: admins.has(u.id as string) }))
     .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
   return { gerais, porProfissional, profissionais }
 }

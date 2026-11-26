@@ -28,7 +28,7 @@ import { validoAteDaProposta, avisoDaPropostaVencida } from '@/lib/plano-de-trat
 import { textoDoIndiqueUmaAmiga } from '@/lib/fidelidade/indicacao'
 import { nomeDoPlanoNoApp, descontoDoPlanoNoApp } from '@/lib/plano-de-tratamento/nome'
 import { combinadoDoPlano, totalComOCombinado } from '@/lib/plano-de-tratamento/desconto-combinado'
-import { textoDoParaAvaliar, textoDoPrePagoNoApp } from '@/lib/clientes/textos-do-app'
+import { textoDoParaAvaliar, textoDoPrePagoNoApp, textoDaSessaoAAgendarNoApp, TEXTO_DO_EM_ANDAMENTO_NO_APP } from '@/lib/clientes/textos-do-app'
 import { Dica } from '@/components/shared/dica'
 import { NotaDoFuso } from '@/components/shared/fuso'
 import { relogioForaDeBrasilia } from '@/lib/unidades/hora-da-unidade'
@@ -488,6 +488,10 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                 )}
                 {/* F72: o próximo agendamento numa unidade que a clínica desativou diz isso. */}
                 {nextAppt.branches?.is_active === false && <AvisoUnidadeDesativada nome={nextAppt.branches.name} aberto faleCom={fala.faleCom} />}
+                {/* D20 da 31ª (AG-55): o "Em andamento" diz, à vista, quem registra o fim. */}
+                {emAndamentoAppt && (
+                  <p data-em-andamento-registra style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 6 }}>{TEXTO_DO_EM_ANDAMENTO_NO_APP}</p>
+                )}
                 {/* A51: o de hoje que passou da hora segue aqui até a clínica concluir.
                     O que está em andamento já diz isso no título (o Heitor, 25/11). */}
                 {!emAndamentoAppt && jaPassouDaHora(nextAppt.scheduled_at) && (
@@ -794,7 +798,7 @@ function PlanoFechado({ plano, financeiro, slug, fuso }: { plano: ActivePlan; fi
         <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
           {sessoes.map((s, i) => {
             const sit = situacao(s.appointments)
-            const texto = sit.texto === 'A agendar' ? `A agendar · ${peloApp(s) ? 'pelo app' : 'quem marca é a equipe'}` : sit.texto
+            const texto = sit.texto === 'A agendar' ? textoDaSessaoAAgendarNoApp(peloApp(s)) : sit.texto
             return (
               <li key={i} data-sessao-do-plano={i + 1} style={{ display: 'flex', flexDirection: 'column', gap: 1, fontSize: 'var(--text-sm-sz)' }}>
                 <span style={{ color: 'var(--text-soft)', overflowWrap: 'anywhere' }}>

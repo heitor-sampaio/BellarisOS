@@ -128,3 +128,32 @@ test('A13: o giro do Estoque diz que conta só os insumos dos atendimentos', asy
     await expect(p.locator('[data-kpi="giro"]')).toContainText('insumos dos atendimentos')
   })
 })
+
+/**
+ * A14 da 31ª simulação (2026-11-26; princípio 7): o Valor em estoque e o Giro não
+ * tinham dica — quem só vê não sabia o que contam —, e o Valor não dizia que é a
+ * custo de lote. Os dois ganham a dica, também para quem tem o Estoque em Ver.
+ */
+test('o Valor em estoque e o Giro dizem na dica o que contam, a quem só vê', async ({ browser }) => {
+  const quemVe = await criarMembro(`l9v${marca}`, {
+    tenant: rede!.tenantId, rotulo: 'Estoque em Ver', permissoes: [{ modulo: 'stock', nivel: 'VIEW' }],
+  })
+  try {
+    await como(browser, quemVe, async p => {
+      await p.goto('/admin/estoque')
+      const cartoes = p.locator('[data-kpis-do-estoque]')
+      for (const [rotulo, texto] of [
+        ['O que conta: valor em estoque', /ao custo do lote de onde ele veio/],
+        ['O que conta: giro mensal', /insumos usados nos atendimentos deste mês/],
+      ] as const) {
+        const botao = cartoes.getByRole('button', { name: rotulo })
+        await expect(botao, rotulo).toBeVisible({ timeout: 20_000 })
+        await botao.hover()
+        await expect(p.getByRole('tooltip').filter({ hasText: texto }), rotulo).toBeVisible()
+        await p.mouse.move(0, 0)
+      }
+      // O detalhe do Giro continua à vista (A13 da 9ª).
+      await expect(p.locator('[data-kpi="giro"]')).toContainText('insumos dos atendimentos')
+    })
+  } finally { await quemVe.limpar() }
+})

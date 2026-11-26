@@ -291,4 +291,25 @@ test.describe.serial('marcas, fornecedores e categorias', () => {
       await expect(p.getByRole('row').filter({ hasText: nomeGel })).toHaveCount(0)
     })
   })
+
+  /**
+   * A12 da 31ª simulação (2026-11-26; princípios 3 e 7): "solares " (com espaço)
+   * na janela das Categorias, com a "Solares" já cadastrada, sumia do campo sem
+   * mensagem. A janela diz que já está na lista, e nada se cria.
+   */
+  test('a categoria repetida (outra caixa, espaço no fim) diz que já está na lista, e não cria outra', async ({ browser }) => {
+    const nome = `${PREFIXO} Solares ${marca}`
+    await criarNaLista('categorias', nome)
+    await como(browser, gerente, async p => {
+      await p.goto(rota())
+      await p.getByRole('button', { name: 'Categorias', exact: true }).click()
+      const janela = p.getByRole('dialog', { name: 'Categorias' })
+      await janela.getByLabel('Nova categoria').fill(`${nome.toLocaleLowerCase('pt-BR')} `)
+      await janela.getByRole('button', { name: 'Adicionar' }).click()
+      await expect(janela.locator('[data-ja-existe]')).toContainText(`“${nome}” já está na lista`)
+    })
+    const { count } = await db().from('product_categories').select('id', { count: 'exact', head: true })
+      .eq('tenant_id', rede.tenantId).ilike('name', nome)
+    expect(count).toBe(1)
+  })
 })
