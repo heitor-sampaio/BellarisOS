@@ -18,6 +18,7 @@ import { SituacaoDoEmAberto } from '@/components/shared/situacao-do-em-aberto'
 import { PagarDespesa } from '@/components/shared/pagar-despesa'
 import { RemarcarVencimento, VencimentoRemarcado, type RemarcacaoDoVencimento } from '@/components/shared/remarcar-vencimento'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
+import { diaSemHora } from '@/lib/financeiro/vencimentos'
 import { resultadoDaLista } from '@/lib/metrics/resultado'
 import { csvDosLancamentos, linhaDoLancamento, baixarCsv } from '@/lib/financeiro/csv-dos-lancamentos'
 import { juntarAsFormasDaParcela, formasDaParcelaEmTexto, posicaoNaParcela } from '@/lib/financeiro/formas-da-parcela'
@@ -108,6 +109,9 @@ function fmtBRL(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 function fmtDatetime(iso: string, fuso = 'America/Sao_Paulo') {
+  // A24 da 32ª: o pago só com a data mostra só a data — a hora da âncora (meio-dia de Brasília) ninguém registrou.
+  const dia = diaSemHora(iso)
+  if (dia) return `${dia.slice(8, 10)}/${dia.slice(5, 7)}`
   return new Date(iso).toLocaleString('pt-BR', {
     timeZone: fuso, day: '2-digit', month: '2-digit',
     hour: '2-digit', minute: '2-digit',

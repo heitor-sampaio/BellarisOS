@@ -1975,6 +1975,53 @@ o contato junto.
   (`perguntaAoArquivarFunil`, `lib/crm/arquivar-funil.ts`;
   `oportunidadesNoFunil`). Não recusa; o funil vazio arquiva direto.
 
+## Correções de 26/11 no inbox e no CRM (decisões do Claude)
+
+- **A resposta que não saiu não conta** (D2 da 32ª, a Decisão A; princípio
+  3): só a mensagem de saída ACEITA pelo provedor (`sent`, `delivered`,
+  `read`) tira a conversa de "aguardando" e conta a 1ª resposta. A "Não
+  enviada" (e a que ainda está "enviando") deixa `awaiting_since` como
+  estava; a que é aceita DEPOIS conta quando passa a aceita
+  (`on_new_message` no INSERT e `on_mensagem_aceita` no UPDATE da situação,
+  migration `20261210100001`). Os dados de antes que o banco prova (a
+  falhada entre a mensagem da cliente e a primeira aceita) foram
+  recalculados na mesma migration (princípio 4: o resto fica). A tela segue
+  a coluna. Prova: `tests/inbox-resposta-nao-enviada.test.ts`,
+  `e2e/mensagens-saida.spec.ts`.
+- **A recusa do servidor não zera a janela da oportunidade** (D3 da 32ª;
+  princípio 3): o envio passa pelo `onSubmit` (sem o reset automático do
+  `<form action>` do React 19), e cada abertura da janela começa do zero
+  (a chave do formulário muda a cada abertura). Prova:
+  `tests/crm-oportunidade-recusa-mantem-o-formulario.test.ts`.
+- **Sem número ligado, o inbox diz por quê** (A1 da 32ª; IN-15): quando o
+  cargo mostra só as caixas da pessoa (`inbox_caixas = 'minhas'`) e nenhuma
+  está ligada a ela (`caixasDoAlcance` devolve `[]`), a lista diz que só
+  aparecem as conversas sem número e quem liga (a Admin da rede, em
+  Configurações → Integrações; ligar a pessoa ao número é configuração da
+  rede, CLAUDE.md §11). `AVISO_SEM_NUMERO_LIGADO`,
+  `lib/inbox/aviso-sem-numero.ts`, `[data-inbox-sem-numero]`.
+- **A bolha enviada diz por qual número saiu** (A2 da 32ª; WL-06): só quando
+  a rede tem mais de um número (o removido não conta para "mais de um", mas
+  segue nomeando as dele): "pelo número Comercial", também na "Não enviada"
+  (o número por onde tentou). `comNumeroDeSaida`,
+  `lib/inbox/numero-da-bolha.ts`, `[data-numero-de-saida]`.
+- **A bolha que falhou aparece uma vez** (A3 da 32ª; princípio 3): na falha,
+  a otimista dá lugar à mensagem gravada que a action devolve, com o id real
+  (`trocarOtimista`, `lib/inbox/bolha-otimista.ts`).
+- **O painel da conversa acompanha a linha do tempo** (A4 da 32ª; AG-18):
+  a linha nova de `lead_events` marca o sinal de cada conversa da pessoa da
+  oportunidade (`private.sinal_da_linha_do_tempo`, migration
+  `20261210100002`), e o painel, ao sinal, recarrega o card e a linha do
+  tempo pelo servidor; o "Agendar" do painel também recarrega a linha do tempo.
+- **O "Só leitura" da oportunidade parece leitura** (A5 da 32ª; princípio
+  7): os campos do fieldset desligado têm o fundo do card, a linha fina e o
+  cursor comum (`CSS_SO_LEITURA`, no modal).
+- **O filtro "Etapa" do inbox não mistura os funis** (A5 da 32ª; princípio
+  7): cada etapa da conversa leva o funil DELA (`stage_funnel_ids`, alinhado
+  a `stage_ids`); escolhido o funil, só as etapas dele; com mais de um funil
+  e nenhum escolhido, a etapa diz o funil ("Vendas · Novo" — `rotuloDaEtapa`,
+  `lib/inbox/rotulo-da-etapa.ts`).
+
 ## O que nunca fazer aqui
 
 ```

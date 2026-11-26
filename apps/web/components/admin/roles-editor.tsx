@@ -15,7 +15,7 @@ import {
 } from '@/lib/permissions'
 import {
   MODULE_GROUPS, LEVEL_COPY, notaDoResumoDaRede,
-  NETWORK_ONLY, notaDeAbrangencia, SO_NA_REDE_NOTE, quemVendeNoResumo, copilotNoResumo, textoDoQueFaltaNoCargo, documentosNoResumo,
+  NETWORK_ONLY, notaDeAbrangencia, SO_NA_REDE_NOTE, quemVendeNoResumo, fechamentoNoResumo, copilotNoResumo, textoDoQueFaltaNoCargo, documentosNoResumo,
   tratamentosNoResumo, conclusaoNoResumo, vistasPessoaisNoResumo, prontuarioSemClientesNoResumo,
   fidelidadeNoResumo, configDaRedeNoResumo,
 } from '@/lib/permissions-copy'
@@ -1104,6 +1104,11 @@ function MenuPreview({ levels, reportTabs, foraDoPlano }: { levels: Levels; repo
       {vistasPessoaisNoResumo(levels, foraDoPlano) && (
         <p data-resumo-vistas-pessoais style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
           {vistasPessoaisNoResumo(levels, foraDoPlano)}
+        </p>
+      )}
+      {fechamentoNoResumo(levels) && (
+        <p data-resumo-fechamento style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
+          {fechamentoNoResumo(levels)}
         </p>
       )}
       {quemVendeNoResumo(levels) && (

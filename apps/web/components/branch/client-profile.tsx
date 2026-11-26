@@ -729,7 +729,11 @@ function fmtHistoryDate(dateStr: string, fuso: string): string {
   return formatarNoFuso(dateStr, "dd 'de' MMM 'de' yyyy", fuso)
 }
 
-function HistoryEventRow({ ev, isLast }: { ev: ClientHistoryEvent; isLast: boolean }) {
+function HistoryEventRow({ ev, isLast, unidade = null }: {
+  ev: ClientHistoryEvent; isLast: boolean
+  /** D13 da 32ª (AG-51): a unidade do agendamento do evento, na rede de duas ou mais (`unidadeNaFicha`). */
+  unidade?: string | null
+}) {
   const fuso = useFuso()
   const cfg = HISTORY_CONFIG[ev.type]
 
@@ -767,6 +771,12 @@ function HistoryEventRow({ ev, isLast }: { ev: ClientHistoryEvent; isLast: boole
             <>
               <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--hairline)' }}>·</span>
               <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{ev.subtitle}</span>
+            </>
+          )}
+          {unidade && (
+            <>
+              <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--hairline)' }}>·</span>
+              <span data-unidade-do-agendamento style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{unidade}</span>
             </>
           )}
         </div>
@@ -1559,6 +1569,10 @@ export function ClientProfile({
   const router   = useRouter()
   const pathname = usePathname()
   const fuso     = useFuso()
+  // D13 da 32ª (AG-51; a cliente é da rede): na linha do tempo, o evento de um
+  // agendamento diz em qual unidade foi, na rede de duas ou mais unidades.
+  const unidadeDoAgendamento = new Map([...allAppointments, ...upcomingAppointments, ...recentAppointments].map(a => [a.id, a.branchId ?? null]))
+  const unidadeDoEvento = (ev: ClientHistoryEvent) => ev.agendamentoId ? unidadeNaFicha(unidadeDoAgendamento.get(ev.agendamentoId), branches) : null
   /*
    * `slug` é a unidade DO CLIENTE, não o portal: serve às actions e ao que só
    * existe na unidade. Para onde navegar quem decide é `lib/rotas`, pelo
@@ -2229,6 +2243,8 @@ export function ClientProfile({
                       <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 2 }}>
                         {diaNaFicha(a.scheduledAt, a.fuso ?? fuso, "dd MMM yyyy")}
                         {a.professionalName !== '—' && ` · ${a.professionalName}`}
+                        {/* D13 da 32ª (AG-51): onde foi, na rede de duas ou mais unidades. */}
+                        {unidadeNaFicha(a.branchId, branches) && <span data-unidade-do-agendamento>{` · ${unidadeNaFicha(a.branchId, branches)}`}</span>}
                       </p>
                     </div>
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -2280,6 +2296,7 @@ export function ClientProfile({
                   key={ev.id}
                   ev={ev}
                   isLast={i === clientHistory.length - 1}
+                  unidade={unidadeDoEvento(ev)}
                 />
               ))}
             </div>

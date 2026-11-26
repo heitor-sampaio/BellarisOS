@@ -43,6 +43,9 @@ import {
 } from '@estetica-os/utils'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { agruparPorDia } from '@/lib/inbox/dias-da-conversa'
+import { AVISO_SEM_NUMERO_LIGADO } from '@/lib/inbox/aviso-sem-numero'
+import { textoDoNumeroDeSaida } from '@/lib/inbox/numero-da-bolha'
+import { trocarOtimista } from '@/lib/inbox/bolha-otimista'
 import { useFuso } from '@/components/shared/fuso'
 
 // --- Gesto de puxar (só no celular) ---------------------------------------------
@@ -600,6 +603,12 @@ function Bubble({
               {msg.sent_by_name}
             </span>
           )}
+          {/* A2 da 32ª (WL-06): por qual número saiu (ou tentou sair), quando a rede tem mais de um. */}
+          {out && msg.saiu_por && (
+            <span data-numero-de-saida style={{ fontSize: 'var(--text-overline)', color: falhou ? 'color-mix(in srgb, var(--danger) 60%, transparent)' : 'rgba(255,255,255,0.55)' }}>
+              {textoDoNumeroDeSaida(msg.saiu_por)}
+            </span>
+          )}
           {falhou && (
             <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--danger)' }}>
               Não enviada
@@ -898,6 +907,8 @@ interface CRMInboxProps {
    * um número que não conhece, numa conversa nova do lado dele.
    */
   numeroDoUsuario?:     { id: string; label: string; provider: string } | null
+  /** A1 da 32ª (IN-15): o cargo vê só os números ligados à pessoa, e ela não tem nenhum. */
+  semNumeroLigado?:     boolean
   /** conversa pré-selecionada (deep-link ?c= vindo do card do funil) */
   initialSelectedId?:   string | null
   /**
@@ -953,7 +964,10 @@ function mesclarMensagem(lista: Message[], entrada: Message): Message[] {
     : entrada
 
   if (lista.some(m => m.id === nova.id)) {
-    return lista.map(m => (m.id === nova.id ? nova : m))
+    // O retorno das actions não traz o número de saída (A2 da 32ª): fica o que a releitura trouxe.
+    return lista.map(m => (m.id === nova.id
+      ? (nova.saiu_por === undefined ? { ...nova, saiu_por: m.saiu_por } : nova)
+      : m))
   }
 
   if (nova.direction === 'outbound') {
@@ -977,7 +991,7 @@ export function CRMInbox({
   initialConversations, initialTemMais = false, initialCursor = null, opcoesDosFiltros = null,
   leads, canEdit, branches,
   slug = '', initialSelectedId = null, canaisConectados = [], podeConfigurarIntegracoes = false,
-  numeroDoUsuario = null, telaCheia = false,
+  numeroDoUsuario = null, telaCheia = false, semNumeroLigado = false,
 }: CRMInboxProps) {
   // O dia das mensagens no relógio da unidade (F62b).
   const fuso = useFuso()
@@ -1335,6 +1349,12 @@ export function CRMInbox({
       // Sem isto a bolha ficava eternamente em 'sending' e parecia enviada —
       // o mesmo engano que a rodada veio corrigir, só que na tela.
       setSendError(res.error ?? 'Falha ao enviar a mensagem.')
+      // A3 da 32ª: com a mensagem gravada ("Não enviada", com o motivo), ela toma o lugar da
+      // otimista — marcar só a otimista deixava as duas na tela depois da releitura do sinal.
+      if (res.message) {
+        setMessages(prev => trocarOtimista(prev, optimistic.id, res.message!))
+        return
+      }
       setMessages(prev => prev.map(m =>
         m.id === optimistic.id ? { ...m, status: 'failed' } : m,
       ))
@@ -1729,6 +1749,18 @@ export function CRMInbox({
               />
             </div>
           </div>
+
+          {/* A1 da 32ª (IN-15): sem número ligado, nenhuma conversa de WhatsApp aparece — a tela diz por quê. */}
+          {semNumeroLigado && (
+            <p data-inbox-sem-numero style={{
+              flexShrink: 0, margin: 0, padding: '8px 14px',
+              borderBottom: '1px solid var(--hairline)',
+              fontSize: 'var(--text-xs-sz)', lineHeight: 1.5,
+              color: 'var(--info)', background: 'var(--info-soft)',
+            }}>
+              {AVISO_SEM_NUMERO_LIGADO}
+            </p>
+          )}
 
           {/* Awaiting-response counter */}
           {awaitingCount > 0 && (

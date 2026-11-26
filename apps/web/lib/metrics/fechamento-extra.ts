@@ -4,6 +4,9 @@ import { lerTodas } from '@/lib/db'
 import { getFechamentoDoDia } from '@/lib/metrics/queries'
 import { estornadoNoMesmoDiaPorForma } from '@/lib/metrics/estornos-por-forma'
 import { paramDeTags } from '@/lib/metrics/tags-do-relatorio'
+import { nomesDasMaquininhas } from '@/lib/financeiro/vezes-da-rede'
+import { maquininhaDosEstornos } from '@/lib/financeiro/maquininha-do-estorno'
+import { maquininhaDoRotulo } from '@/lib/financeiro/formas'
 
 /**
  * O que o Fechamento do dia mostra AO LADO do resumo por forma (8ª simulação,
@@ -21,6 +24,8 @@ export interface EstornoDoDia {
   pagoEm:    string | null
   /** O pagamento é deste mesmo dia: um anula o outro, e ele já está fora das entradas. */
   mesmoDia:  boolean
+  /** A24 da 32ª: a maquininha do pagamento estornado (nula com uma maquininha só na rede). */
+  maquininha?: string | null
 }
 
 /**
@@ -38,9 +43,14 @@ export async function getEstornosDoDia(args: { tenantId: string; branchId: strin
     id: string; descricao: string | null; forma: string | null; vezes: number | null; valor: number | string; motivo: string | null
     pago_em: string | null; mesmo_dia: boolean; total: number | string; total_de_outros_dias: number | string
   }[]
+  // A24 da 32ª: a linha do estorno diz a maquininha do pagamento estornado.
+  const [maquininhas, doEstorno] = (linhas ?? []).length
+    ? await Promise.all([nomesDasMaquininhas(args.tenantId), maquininhaDosEstornos(args.tenantId, (linhas ?? []).map(t => t.id))])
+    : [null, {} as Record<string, string>]
   const itens = (linhas ?? []).map(t => ({
     id: t.id, descricao: String(t.descricao ?? 'Estorno'), forma: t.forma ?? null, vezes: t.vezes ?? null,
     valor: Number(t.valor ?? 0), motivo: t.motivo ?? null, pagoEm: t.pago_em ?? null, mesmoDia: Boolean(t.mesmo_dia),
+    maquininha: maquininhaDoRotulo(maquininhas, doEstorno[t.id]),
   }))
   // A3 da 16ª: o de hoje, por forma, para a linha da forma dizer o que já saiu das entradas.
   return { itens, total: Number(linhas?.[0]?.total ?? 0), deOutrosDias: Number(linhas?.[0]?.total_de_outros_dias ?? 0), mesmoDiaPorForma: estornadoNoMesmoDiaPorForma(itens) }

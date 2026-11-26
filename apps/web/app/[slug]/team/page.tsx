@@ -266,8 +266,8 @@ export default async function TeamPage({
                     <span className="chip chip-brand">
                       {(m.role_id ? roleLabel[m.role_id] : null) ?? '—'}
                     </span>
-                    {/* A24 da 20ª: o desativado não leva o selo. */}
-                    {seloDoAtende({ ativo: !!m.is_active, atende: !!m.provides_services, onde: [], variasUnidades: false }) && (
+                    {/* A24 da 20ª: o desativado não leva o selo. A29 da 32ª: o selo é de quem atende NESTA unidade. */}
+                    {seloDoAtende({ ativo: !!m.is_active, atende: (m.atende_em ?? []).includes(branchId), onde: [], variasUnidades: false }) && (
                       <span className="chip chip-success" style={{ marginLeft: 6 }}>Atende</span>
                     )}
                   </td>

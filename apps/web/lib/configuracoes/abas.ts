@@ -241,15 +241,16 @@ export function motivoDaAbaFechada(pedida: string, o: {
 }): string | null {
   const aba = ABAS_DE_CONFIGURACAO.find(a => a.key === pedida)
   if (!aba) return `A aba “${pedida}” não existe. Você está na aba ${o.abriu}.`
+  // A-CONF2 da 25ª: quem muda, pelo nome. A22 da 32ª: também na aba que fica só na rede.
+  const nomes = o.quemMuda ?? []
+  const quem = nomes.length ? ` Quem muda: ${nomes.length === 1 ? nomes[0] : `${nomes.slice(0, -1).join(', ')} e ${nomes[nomes.length - 1]}`}.` : ''
   if (!o.noPortal.includes(aba.key)) {
     return o.unidadeFixa
-      ? `A aba ${aba.label} é da rede toda: quem muda é a Admin da rede. Você está na aba ${o.abriu}.`
+      ? `A aba ${aba.label} é da rede toda: quem muda é a Admin da rede.${quem} Você está na aba ${o.abriu}.`
       : `A aba ${aba.label} fica nas Configurações da rede. Você está na aba ${o.abriu}.`
   }
   if (!o.noPlano(aba)) return `A aba ${aba.label} não está no plano da rede. Você está na aba ${o.abriu}.`
   if (o.souAdmin === false && ABAS_DA_REDE_TODA.includes(aba.key)) {
-    const nomes = o.quemMuda ?? []
-    const quem = nomes.length ? ` Quem muda: ${nomes.length === 1 ? nomes[0] : `${nomes.slice(0, -1).join(', ')} e ${nomes[nomes.length - 1]}`}.` : ''
     return `A aba ${aba.label}: ${CONFIG_DA_REDE}${quem} Você está na aba ${o.abriu}.`
   }
   if (!abaLiberada(aba, o.gerencia)) {

@@ -50,6 +50,27 @@ export function interpolarTexto(texto: string, contexto: Record<string, unknown>
 }
 
 /**
+ * As variáveis do texto que, neste contexto, saem VAZIAS — escritas como a
+ * pessoa as escreveu (`{{cliente.nome}}`). D15 da 32ª simulação (princípio 4:
+ * faltou o dado, não se manda): o "Mandar mensagem" não sai com o buraco
+ * (", sentimos sua falta…") — o passo diz o que faltou. O `interpolarTexto`
+ * continua trocando por vazio para os outros textos (o aviso à equipe, a
+ * anotação), que não vão à cliente.
+ */
+export function variaveisSemDado(texto: string, contexto: Record<string, unknown>): string[] {
+  const vazias: string[] = []
+  for (const m of (texto ?? '').matchAll(RE_VARIAVEL)) {
+    const dentro = m[1]!
+    if (!dentro.trim()) continue
+    if (interpolarTexto(`{{${dentro}}}`, contexto).trim() === '') {
+      const escrita = `{{${dentro.trim()}}}`
+      if (!vazias.includes(escrita)) vazias.push(escrita)
+    }
+  }
+  return vazias
+}
+
+/**
  * "24/09/2026 às 11:30" — no fuso da UNIDADE (F62: o lembrete das 09:00 de
  * Manaus diz 09:00); sem ele, o de Brasília.
  *

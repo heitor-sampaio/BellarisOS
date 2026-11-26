@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Ban, Lock, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { SegSelect } from '@/components/shared/seg-select'
-import { bloquearHorario, desfazerBloqueio } from '@/actions/agenda-bloqueios'
+import { bloquearHorario, desfazerBloqueio, marcadosNoBloqueio } from '@/actions/agenda-bloqueios'
 import { trechoDoBloqueio, recusaDoBloqueio, avisoDoBloqueioLongo, type BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
 import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
@@ -106,6 +106,27 @@ function JanelaDeBloquear({ branchId, profissionais, salas, dia, onFechar }: {
       {avisoLongo}
     </span>
   )
+  // A10 da 32ª (AG-20): os atendimentos que continuam no período, ANTES de
+  // gravar — só vinham no toast, depois. A conta é do servidor (a mesma do
+  // bloquear); o resultado vale para o período e o alvo em que foi pedido.
+  const chaveDoPeriodo = alvoId && doPeriodo ? `${para}|${alvoId}|${doPeriodo.inicio}|${doPeriodo.fim}` : ''
+  const [marcados, setMarcados] = useState<{ chave: string; aviso: string | null } | null>(null)
+  useEffect(() => {
+    if (!chaveDoPeriodo) return
+    const [qual, alvo, ini, ate] = chaveDoPeriodo.split('|')
+    let valendo = true
+    const espera = setTimeout(() => {
+      marcadosNoBloqueio({
+        branchId, inicio: ini, fim: ate, motivo: '',
+        professionalId: qual === 'PROFISSIONAL' ? alvo : null,
+        roomId: qual === 'SALA' ? alvo : null,
+      }).then(r => { if (valendo) setMarcados({ chave: chaveDoPeriodo, aviso: r.aviso ?? null }) })
+        .catch(() => { /* sem o aviso de antes, o toast de depois ainda diz */ })
+    }, 350)
+    return () => { valendo = false; clearTimeout(espera) }
+  }, [chaveDoPeriodo, branchId])
+  const avisoDosMarcados = marcados && marcados.chave === chaveDoPeriodo ? marcados.aviso : null
+
   function bloquear() {
     setErro(null)
     if (!alvoId) { setErro(para === 'SALA' ? 'Escolha a sala.' : 'Escolha quem atende.'); return }
@@ -208,6 +229,14 @@ function JanelaDeBloquear({ branchId, profissionais, salas, dia, onFechar }: {
           <input className="field" value={motivo} maxLength={200} onChange={e => setMotivo(e.target.value)} aria-label="Motivo"
             placeholder="Almoço, folga, férias, manutenção…" />
         </label>
+        {avisoDosMarcados && (
+          <p role="status" data-marcados-no-bloqueio style={{
+            fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)',
+            background: 'var(--warning-soft)', borderRadius: 'var(--radius-field-token)', padding: '8px 12px',
+          }}>
+            {avisoDosMarcados}
+          </p>
+        )}
         {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <button type="button" className="btn-secondary" onClick={onFechar} disabled={gravando}>Cancelar</button>
@@ -343,10 +372,16 @@ export function JanelaDoBloqueio({ bloqueio, titulo, podeDesfazer, onFechar }: {
         </p>
         {bloqueio.criadoPorNome && <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Bloqueado por {bloqueio.criadoPorNome}.</p>}
         {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
-        {podeDesfazer && (
+        {podeDesfazer ? (
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
             <button type="button" className="btn-secondary" onClick={onFechar} disabled={desfazendo}>Fechar</button>
             <button type="button" className="btn-primary" onClick={desfazer} disabled={desfazendo}>{desfazendo ? 'Desfazendo…' : 'Desfazer bloqueio'}</button>
+          </div>
+        ) : (
+          // A13 da 32ª (princípio 7): quem tem a Agenda em Ver vê o bloqueio e fecha
+          // pelo botão, como os outros — era só o X do canto.
+          <div data-bloqueio-so-de-leitura style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
+            <button type="button" className="btn-secondary" onClick={onFechar}>Fechar</button>
           </div>
         )}
       </div>

@@ -136,6 +136,54 @@ test.describe.serial('mensagens de saída', () => {
     expect(msgs.at(-1)).toMatchObject({ content: `${PREFIXO} vai falhar ${marca}`, status: 'failed', external_id: null })
   })
 
+  // D2 da 32ª (Decisão A, decisão do Claude, 26/11; princípio 3): a resposta
+  // que não saiu não tira de "aguardando" nem conta como 1ª resposta; a que o
+  // provedor aceita depois, sim (migration 20261210100001).
+  test('a resposta "Não enviada" não tira de aguardando nem vira a 1ª resposta', async ({ browser }) => {
+    const b = db()
+    const tenant = await tenantId()
+    const telefone = '5548' + String(Date.now() + 13).slice(-9)
+    const { data: conv, error } = await b.from('conversations').insert({
+      tenant_id: tenant, status: 'open', channel: 'whatsapp', provider: 'uazapi',
+      whatsapp_number_id: f!.caixa, contact_name: `${PREFIXO} Aguardando ${marca}`,
+      contact_phone: telefone, contact_external_id: telefone, contact_aliases: [telefone],
+    }).select('id').single<{ id: string }>()
+    expect(error, 'criar a conversa').toBeNull()
+    const conversa = conv!.id
+    const estado = async () => (await b.from('conversations')
+      .select('awaiting_since, first_response_seconds').eq('id', conversa).single()).data!
+    try {
+      // A cliente escreve: o gatilho abre o "aguardando".
+      const { error: e1 } = await b.from('messages').insert({
+        conversation_id: conversa, tenant_id: tenant, direction: 'inbound', content: 'oi, tem horário?',
+        channel: 'whatsapp', status: 'delivered', external_id: `in-${marca}`, whatsapp_number_id: f!.caixa,
+        created_at: new Date(Date.now() - 60_000).toISOString(),
+      })
+      expect(e1, 'a mensagem da cliente').toBeNull()
+      const aguardando = (await estado()).awaiting_since
+      expect(aguardando, 'aguardando desde a mensagem dela').not.toBeNull()
+
+      // A resposta falha no provedor: segue aguardando, sem 1ª resposta.
+      f!.falsa.modo = 'erro'
+      let sdr = await comoSdr(browser)
+      try { await sdr.enviar(conversa, `${PREFIXO} não sai ${marca}`) } finally { await sdr.fechar(); f!.falsa.modo = 'ok' }
+      expect((await mensagensDa(conversa)).at(-1)).toMatchObject({ status: 'failed' })
+      const depoisDaFalha = await estado()
+      expect(depoisDaFalha.awaiting_since, 'a não enviada não tira de aguardando').toBe(aguardando)
+      expect(depoisDaFalha.first_response_seconds, 'nem conta como 1ª resposta').toBeNull()
+
+      // A resposta aceita: sai de aguardando e mede a 1ª resposta.
+      sdr = await comoSdr(browser)
+      try { await sdr.enviar(conversa, `${PREFIXO} agora sai ${marca}`) } finally { await sdr.fechar() }
+      expect((await mensagensDa(conversa)).at(-1)).toMatchObject({ status: 'sent' })
+      const depoisDaAceita = await estado()
+      expect(depoisDaAceita.awaiting_since, 'a aceita responde').toBeNull()
+      expect(depoisDaAceita.first_response_seconds, 'a 1ª resposta é a aceita').toBeGreaterThanOrEqual(59)
+    } finally {
+      await apagarConversas([conversa])
+    }
+  })
+
   test('editar sai pela caixa que enviou e troca o id da mensagem', async ({ browser }) => {
     const [primeira] = await mensagensDa(f!.conversa)
     const antes = f!.falsa.para('/message/edit').length

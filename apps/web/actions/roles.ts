@@ -6,7 +6,7 @@ import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, contar } from '@/lib/db'
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { nomeDaCopia } from '@/lib/cargos/duplicar'
+import { copiaDoCargo, chaveDoCargo, chaveDoCargoNovo, nomeJaUsado } from '@/lib/cargos/duplicar'
 import { cargosAcimaDoMeu, recusaDoCargoAcima } from '@/lib/equipe/cargo-acima'
 import { souAdminDaRede } from '@/lib/equipe/admin-da-rede'
 import { lerMatrizDoCargo, emitirCargoPermissoesAlteradas } from '@/lib/events/cadastro'
@@ -15,16 +15,6 @@ import { lerCaixas } from '@/lib/inbox/visibilidade'
 // Os cargos gravam pelo cliente de serviço, depois da trava (F63): a sessão
 // só lê a matriz — pela chave pública, quem é da rede se dava Gerenciar.
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-function toKey(label: string): string {
-  return label
-    .toUpperCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^A-Z0-9]/g, '_')
-    .replace(/_+/g, '_')
-    .replace(/^_|_$/g, '')
-}
 
 export async function createRole(
   _prev: { error: string } | { success: boolean; role?: { id: string; key: string; label: string } } | undefined,
@@ -41,9 +31,9 @@ export async function createRole(
   const label = (formData.get('label') as string)?.trim()
   if (!label || label.length < 2) return { error: 'Nome do cargo deve ter pelo menos 2 caracteres.' }
 
-  const key = toKey(label)
-  if (!key) return { error: 'Nome inválido.' }
-  if (key === 'NETWORK_ADMIN' || key === 'CLIENT') return { error: 'Esse nome é reservado.' }
+  const base = chaveDoCargo(label)
+  if (!base) return { error: 'Nome inválido.' }
+  if (base === 'NETWORK_ADMIN' || base === 'CLIENT') return { error: 'Esse nome é reservado.' }
   // D5 da 27ª (princípio 3): o id do cargo novo nasce na tela, que o põe no
   // endereço (`?cargo=`) ANTES do pedido — a tela que o servidor manda de volta
   // já abre nele, e o que se clica a seguir grava nele (os níveis do "Comercial"
@@ -52,6 +42,14 @@ export async function createRole(
   const id = typeof pedido === 'string' && UUID.test(pedido) ? pedido : undefined
 
   const supabase = createAdminClient()
+
+  // A mesma colisão do D1 da 32ª: o cargo renomeado guarda a chave do nome de
+  // nascença. A chave nasce livre (_2, _3…); a recusa pelo nome, só com o RÓTULO tomado.
+  const todos = await ler(supabase.from('tenant_roles').select('label, key').eq('tenant_id', ctx.tenantId!),
+    'ler os cargos da rede') as { label: string; key: string }[] | null
+  const chave = chaveDoCargoNovo(label, todos ?? [])
+  if ('error' in chave) return { error: chave.error }
+  const { key } = chave
 
   const { data, error } = await supabase
     .from('tenant_roles')
@@ -96,6 +94,12 @@ export async function updateRole(
     .maybeSingle(), 'buscar o cargo')
   if (!role) return { error: 'Cargo não encontrado.' }
   if (role.is_system) return { error: 'Cargos do sistema não podem ser renomeados.' }
+
+  const cargosDaRede = await ler(supabase
+    .from('tenant_roles')
+    .select('id, label')
+    .eq('tenant_id', ctx.tenantId!), 'ler os cargos da rede')
+  if (nomeJaUsado(label, roleId, cargosDaRede ?? [])) return { error: 'Já existe um cargo com esse nome.' }
 
   // `.select().single()`: sem policy de UPDATE a gravação atingia zero linhas
   // sem erro, e a tela dizia "renomeado" com o nome antigo lá. Conferir a
@@ -182,7 +186,8 @@ export async function duplicarCargo(roleId: string, novoId?: string): Promise<{ 
     ler(supabase.from('tenant_roles').select('id, label, is_system, inbox_caixas')
       .eq('id', roleId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o cargo') as Promise<
         { id: string; label: string; is_system: boolean; inbox_caixas: string | null } | null>,
-    ler(supabase.from('tenant_roles').select('label').eq('tenant_id', ctx.tenantId!), 'ler os cargos da rede') as Promise<{ label: string }[] | null>,
+    // D1 da 32ª: as CHAVES também — a do cargo renomeado segue a do nome de nascença.
+    ler(supabase.from('tenant_roles').select('label, key').eq('tenant_id', ctx.tenantId!), 'ler os cargos da rede') as Promise<{ label: string; key: string }[] | null>,
   ])
   if (!original) return { error: 'Cargo não encontrado.' }
   if (original.is_system) return { error: 'Cargos do sistema não se duplicam.' }
@@ -197,10 +202,10 @@ export async function duplicarCargo(roleId: string, novoId?: string): Promise<{ 
       'ler as abas de relatórios do cargo') as Promise<{ tab: string }[] | null>,
   ])
 
-  const label = nomeDaCopia(original.label, (todos ?? []).map(r => r.label))
+  const { label, key } = copiaDoCargo(original.label, todos ?? [])
   const { data: novo, error } = await supabase
     .from('tenant_roles')
-    .insert({ ...(idDaCopia ? { id: idDaCopia } : {}), tenant_id: ctx.tenantId!, key: toKey(label), label, is_system: false })
+    .insert({ ...(idDaCopia ? { id: idDaCopia } : {}), tenant_id: ctx.tenantId!, key, label, is_system: false })
     .select('id, key, label')
     .single()
   if (error || !novo) {

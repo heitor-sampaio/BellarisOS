@@ -41,7 +41,15 @@
     01:20–03:20" na coluna dela na vista do dia e no dia dela na vista da
     semana (`[data-intervalo-do-horario]`), a quem vê a agenda dela — o
     sombreado sozinho era o mesmo do fora do horário, e a semana não mostrava
-    nada. Prova: `tests/agenda-intervalo-na-grade.test.ts`.
+    nada. Prova: `tests/agenda-intervalo-na-grade.test.ts`. A Minha agenda
+    também (D4 da 32ª): a pausa dela diz "Intervalo", e o "Horário livre" não
+    cai na pausa nem fora do horário dela (`foraDoHorarioComoCortes`);
+  - **o dia sem horário diz** (A6 da 32ª; decisão do Claude, 26/11, pelo
+    princípio 3): a unidade não abre → "Fechado" (no cabeçalho do dia da
+    semana e acima da grade do dia, `[data-dia-fechado]`); abre e a pessoa não
+    atende → "Não atende neste dia" (`[data-nao-atende-no-dia]`), no estilo do
+    "Intervalo" (`rotuloDoDiaSemHorario`). Prova:
+    `tests/agenda-fechado-bloqueio-e-horario-que-parte-da-unidade.test.ts`.
   A equipe ainda marca fora do horário (encaixe): os seletores do checkout e
   das sessões do plano continuam livres.
   - **O encaixe é permitido, mas AVISADO** (J-30, 2026-10-30): o modal de
@@ -201,7 +209,11 @@
     e, com a sala escolhida, "Sala X está bloqueada das …" (`avisosDoHorarioCore`,
     o `bloqueio` dos avisos). Ao bloquear um período com atendimento já
     marcado, ele continua, e o aviso diz quantos ("…continuam na agenda.
-    Remarque se precisar.").
+    Remarque se precisar.") — na janela, ANTES de gravar
+    (`marcadosNoBloqueio`, `[data-marcados-no-bloqueio]`; A10 da 32ª), e no
+    toast depois. O aviso junto dos bloqueios no agendar termina em "Confirme
+    só se for isso mesmo." (`avisoDosBloqueios`, A9 da 32ª; a frase de cada
+    bloqueio fica como está).
   - **Os livres não oferecem o bloqueado**: `computeAvailableSlots` tira o
     bloqueio da profissional — logo o app da cliente (agendar, "Sem
     preferência", remarcar), o Copilot (os livres), o CRM e a sugestão do
@@ -357,6 +369,15 @@
     pessoa como padrão de quem atende sem a lista. A unidade que a rede abrir
     depois entra no "Atende" de quem tem "A rede inteira" e atende em todas
     (EQ1 — ver "A unidade NOVA", abaixo).
+  - **A unidade acrescentada às "Unidades" não entra sozinha no "Atende"** (D9
+    da 32ª, decisão do Claude, 26/11, pela regra do Heitor da 8ª: "as que
+    estiverem marcadas ficam disponiveis"). Na edição de quem já atende, a
+    lista dela fica; a unidade nova aparece desmarcada, com a lista à vista
+    (`estadoDoAtende`, `lib/equipe/atende.ts`), e desmarcar antes de salvar
+    vale. A caixa só acompanha as "Unidades" quando quem edita a liga ali (ou
+    pede "Atender em todas as unidades dela"), e no cadastro novo. A lista
+    mandada pela Equipe vai com o cabeçalho `x-bellaris-atende-escolhido`, e o
+    gatilho `atende_em_sincronizar` não a estende (migration `20261210500001`).
   - **O "Atende" só vale nas unidades DA PESSOA** (o Heitor, 2026-11-23:
     "não faz o menor sentido a ana ter marcado atende na sul e se a sul nao
     esta entre as unidades dela. uma pessoa só pode atender nas unidades que

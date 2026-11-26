@@ -25,6 +25,7 @@ import { PickerCompacto } from '@/components/shared/picker-compacto'
 import { useOrigensDaRede } from '@/components/shared/use-origens-da-rede'
 import { StageOptions } from '@/components/branch/stage-options'
 import { LeadTimeline } from '@/components/branch/lead-timeline'
+import { useSinalDaConversa } from '@/components/shared/realtime-refresher'
 import {
   getConversationCard, criarOportunidade, atualizarContato, definirSituacaoOportunidade, automacoesAoDefinirSituacao,
   type Conversation,
@@ -328,6 +329,19 @@ export function InboxLeadPanel({
     const t = setTimeout(() => { salvarContato(dados, estadoAtual) }, 500)
     return () => clearTimeout(t)
   }, [estadoAtual, loading, card, canEdit])
+
+  // A4 da 32ª (AG-18): o agendamento feito em outra tela (a agenda, a ficha, o Copilot) entra na
+  // linha do tempo da oportunidade e marca o sinal desta conversa (migration 20261210100002). A
+  // sessão só lê sinais: ao sinal, o painel recarrega pelo servidor a linha do tempo e o card — o
+  // card só sem edição do contato por salvar (relê-lo apagaria o que se está digitando).
+  const estadoRef = useRef(estadoAtual)
+  useEffect(() => { estadoRef.current = estadoAtual }, [estadoAtual])
+  const aoSinalDoPainel = useCallback(() => {
+    setHistoricoKey(k => k + 1)
+    if (pendenteRef.current || estadoRef.current !== salvoRef.current) return
+    void recarregar()
+  }, [recarregar])
+  useSinalDaConversa(conversation.id, aoSinalDoPainel, 1000)
 
   // Trocar de conversa no meio do intervalo não pode engolir a alteração.
   useEffect(() => {
@@ -707,7 +721,7 @@ export function InboxLeadPanel({
           procedimentosDeInteresse={(card.abertas.find(o => o.id === (scheduling || card.abertas[0]?.id))?.procedure_ids) ?? []}
           branches={branches}
           onClose={() => setScheduling(null)}
-          onScheduled={() => { setScheduling(null); void recarregar(); onLeadChanged?.() }}
+          onScheduled={() => { setScheduling(null); void recarregar(); setHistoricoKey(k => k + 1); onLeadChanged?.() }}
         />
       )}
 

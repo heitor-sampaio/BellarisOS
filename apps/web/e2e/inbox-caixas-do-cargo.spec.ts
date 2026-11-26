@@ -186,6 +186,28 @@ test.describe.serial('caixas que o cargo vê no inbox', () => {
     }
   })
 
+  // A1 da 32ª (IN-15; princípio 7): a tela diz por que não há WhatsApp, e quem liga.
+  test('sem número ligado, o inbox diz por quê; com número, não', async ({ browser }) => {
+    await ligar(sdr!, null)
+    let aberto = await inboxDe(browser, sdr!)
+    try {
+      const aviso = aberto.page.locator('[data-inbox-sem-numero]')
+      await expect(aviso).toBeVisible()
+      await expect(aviso).toContainText('números de WhatsApp ligados a você')
+      await expect(aviso).toContainText('Configurações → Integrações')
+    } finally {
+      await aberto.ctx.close()
+    }
+    await ligar(sdr!, cenario!.caixas[0]!)
+    aberto = await inboxDe(browser, sdr!)
+    try {
+      await expect(aberto.page.getByText(DO_ATENDIMENTO).first()).toBeVisible()
+      await expect(aberto.page.locator('[data-inbox-sem-numero]'), 'com número ligado, sem o aviso').toHaveCount(0)
+    } finally {
+      await aberto.ctx.close()
+    }
+  })
+
   test('"todas as caixas": vê as duas, com ou sem número ligado', async ({ browser }) => {
     await cargoVe(sdr!, 'todas')
     await ligar(sdr!, cenario!.caixas[0]!)

@@ -65,6 +65,14 @@ const valorNaTela = (v: unknown) => (typeof v === 'string' && VALOR_TEXTO[v]) ||
 /** As situações do agendamento, para o "Se" escolher pelo nome (A18 da 11ª). */
 export const SITUACOES_DO_AGENDAMENTO = ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW']
   .map(valor => ({ valor, rotulo: VALOR_TEXTO[valor]! }))
+/**
+ * O desfecho da etapa, para o "Se" escolher pelo nome (A27 da 32ª): o motor
+ * compara o código gravado na etapa (`OPEN`, `WON`, `LOST`).
+ */
+export const DESFECHOS_DA_ETAPA = ['OPEN', 'WON', 'LOST'].map(valor => ({ valor, rotulo: VALOR_TEXTO[valor]! }))
+/** O campo é o desfecho da etapa do fato de oportunidade. */
+export const ehDesfechoDaEtapa = (campo: string) => campo === 'evento.dados.desfecho'
+
 /** O campo é a situação de um agendamento (do contexto ou do fato). */
 export const ehSituacaoDoAgendamento = (campo: string) => campo === 'agendamento.status' || campo === 'evento.dados.status'
 
@@ -152,8 +160,11 @@ export function resumoDoNo(tipo: TipoDeNo, config: Record<string, unknown>, fuso
       return `${quanto} ${min < 0 ? 'antes de' : 'depois de'} ${campo}`
     }
 
-    case NODES.ACAO_MENSAGEM:
-      return `${CANAL_TEXTO[(c.canal as string) ?? ''] ?? (c.canal as string) ?? 'canal'}: ${trecho(c.texto as string)}`
+    case NODES.ACAO_MENSAGEM: {
+      const base = `${CANAL_TEXTO[(c.canal as string) ?? ''] ?? (c.canal as string) ?? 'canal'}: ${trecho(c.texto as string)}`
+      // AX-06 (D6 da 32ª): o card diz que quem não tem conversa recebe no celular.
+      return c.canal !== 'push' && c.semConversa === 'aviso_no_celular' ? `${base} · sem conversa: aviso no celular` : base
+    }
 
     case NODES.ACAO_NOTIFICAR_EQUIPE: {
       const alvo = { usuario: 'uma pessoa', cargo: 'um cargo', unidade: 'a unidade', responsavel: 'quem cuida da oportunidade' }[

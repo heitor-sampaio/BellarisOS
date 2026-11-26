@@ -11,7 +11,7 @@ import { rolagemDaGrade, estenderJanela } from '@/lib/agenda/grade'
 import { minutosDesenhados, liberouOHorario } from '@/lib/agenda/desenho'
 import { agendamentosNoDia, janelaComOsTrechos, textoDoQueContinua, type TrechoDoAgendamento } from '@/lib/agenda/trecho-do-agendamento'
 import { intervalosDoDia, diaDaSemana, forasDoHorario, textoDosIntervalos, type Horario } from '@/lib/agenda/horario'
-import { pausasDoDia, textoDaPausa } from '@/lib/agenda/intervalos-da-grade'
+import { pausasDoDia, textoDaPausa, rotuloDoDiaSemHorario } from '@/lib/agenda/intervalos-da-grade'
 import { bloqueioNoDia, trechoDoBloqueio, type BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
 import { BlocoDoBloqueio, JanelaDoBloqueio } from '@/components/shared/bloqueio-da-agenda'
 import { useAgora, passouSemFechar } from '@/lib/use-agora'
@@ -476,6 +476,14 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
       <JanelaDoBloqueio bloqueio={salaAberta} titulo={`${nomeDaSala(salaAberta.roomId)} bloqueada · ${salaAberta.motivo}`}
         podeDesfazer={canWrite} onFechar={() => setSalaAberta(null)} />
     )}
+    {/* A6 da 32ª (AG-22; princípio 3): o dia em que a unidade não abre dizia só
+        pelo sombreado. No estilo do "Intervalo"; o clique segue agendando (o
+        encaixe é permitido — o modal avisa). */}
+    {horariosDosProfissionais && rotuloDoDiaSemHorario(horarioDaUnidade ?? null, null, diaDaSemana(diaChave)) === 'Fechado' && (
+      <p data-dia-fechado style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-semibold)', color: 'var(--text-muted)', marginBottom: 8 }}>
+        Fechado: a unidade não abre neste dia.
+      </p>
+    )}
     <div className="table-wrap">
     {/* A26 da 11ª: a largura mínima é a das colunas que há (era 500 fixo — no
         celular de 412 px a coluna da segunda profissional saía cortada). */}
@@ -506,6 +514,10 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
                 <div>
                   <div style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{pro.name}</div>
                   {pro.foraDoAtende && <div data-nao-atende-aqui style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 600, marginTop: 1 }}>Não atende mais nesta unidade</div>}
+                  {/* A6 da 32ª: a unidade abre e ela não atende neste dia. */}
+                  {horariosDosProfissionais && rotuloDoDiaSemHorario(horarioDaUnidade ?? null, horariosDosProfissionais[pro.id] ?? null, diaDaSemana(diaChave)) === 'Não atende neste dia' && (
+                    <div data-nao-atende-no-dia style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', fontWeight: 'var(--weight-semibold)', marginTop: 1 }}>Não atende neste dia</div>
+                  )}
                   <div style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 1 }}>
                     {proEvs.length} atendimento{proEvs.length !== 1 ? 's' : ''}
                   </div>

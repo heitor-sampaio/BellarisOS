@@ -11,13 +11,13 @@ import { ROTULOS } from '@/lib/automacoes/validar'
 import { RelogioDaRede } from '@/components/shared/fuso'
 import { Dica as DicaDoTexto } from '@/components/shared/dica'
 import {
-  variaveisDisponiveis, eventoDoGatilhoDe, rotulosUnicos, CAMPOS_DE_PROCEDIMENTO,
+  variaveisDisponiveis, eventoDoGatilhoDe, rotulosUnicos, CAMPOS_DE_PROCEDIMENTO, CAMPOS_DE_ETAPA,
   type GrupoDeVariaveis, type CampoVisto,
 } from '@/lib/automacoes/disponiveis'
 import { nomeDoPasso } from '@/lib/automacoes/passos'
 import { partesDoDeslocamento, minutosDoDeslocamento, type PartesDoDeslocamento } from '@/lib/automacoes/deslocamento'
 import { semPedirResposta } from '@/lib/automacoes/modelos'
-import { SITUACOES_DO_AGENDAMENTO, ehSituacaoDoAgendamento } from '@/lib/automacoes/resumo'
+import { SITUACOES_DO_AGENDAMENTO, ehSituacaoDoAgendamento, DESFECHOS_DA_ETAPA, ehDesfechoDaEtapa } from '@/lib/automacoes/resumo'
 import { conferirExpressao, ehCaminhoSimples, NOMES_DE_FUNCAO } from '@/lib/automacoes/expressao'
 import { conferirLimiteDaBusca, avisoDoLimiteDaBusca, LIMITE_PADRAO_DA_BUSCA } from '@/lib/automacoes/busca-do-passo'
 import { recusaDoDiaDoMes, dicaDoDiaDoMes } from '@/lib/automacoes/dia-do-mes'
@@ -175,6 +175,7 @@ export function PainelDoNo({
             grupo={(c.grupo as GrupoDeCondicao) ?? { juncao: 'e', regras: [] }}
             variaveis={variaveis}
             procedimentos={opcoes?.procedimentos ?? []}
+            etapas={opcoes?.etapas ?? []}
             onChange={g => set({ grupo: g })}
             somenteLeitura={somenteLeitura}
           />
@@ -317,6 +318,27 @@ export function PainelDoNo({
                     Mandar como aviso no celular
                   </button>
                 )}
+              </div>
+            )}
+            {/* AX-06 (o Heitor, 2026-11-11, H1; D6 da 32ª): desligado por padrão
+                (princípio 6). A automação não abre conversa nova (AX-05). */}
+            {c.canal && c.canal !== 'push' && (
+              <div data-sem-conversa>
+                <Campo rotulo="Para quem não tem conversa aberta">
+                  <select
+                    className="field" value={(c.semConversa as string) ?? 'nao_mandar'}
+                    disabled={somenteLeitura}
+                    onChange={e => set({ semConversa: e.target.value === 'nao_mandar' ? undefined : e.target.value })}
+                  >
+                    <option value="nao_mandar">Não mandar</option>
+                    <option value="aviso_no_celular">Mandar como aviso no celular</option>
+                  </select>
+                </Campo>
+                <Dica>
+                  {c.semConversa === 'aviso_no_celular'
+                    ? 'A cliente sem conversa aberta recebe o texto como aviso no celular (o app e os avisos do navegador), sem o pedido de resposta: a resposta não chegaria ao inbox.'
+                    : 'A cliente sem conversa aberta não recebe nada, e a execução diz que não mandou e por quê.'}
+                </Dica>
               </div>
             )}
             <Campo rotulo="Mensagem">
@@ -993,12 +1015,14 @@ function TextoComVariaveis({
 }
 
 function EditorDeGrupo({
-  grupo, variaveis, onChange, somenteLeitura, procedimentos = [],
+  grupo, variaveis, onChange, somenteLeitura, procedimentos = [], etapas = [],
 }: {
   grupo: GrupoDeCondicao
   variaveis: GrupoDeVariaveis[]
   /** Os procedimentos da rede: o valor de uma regra de procedimento sai daqui (A14). */
   procedimentos?: string[]
+  /** As etapas dos funis da rede: o valor de uma regra de etapa sai daqui (A27 da 32ª). */
+  etapas?: { nome: string; funil: string }[]
   onChange: (g: GrupoDeCondicao) => void
   somenteLeitura?: boolean
 }) {
@@ -1058,6 +1082,38 @@ function EditorDeGrupo({
               >
                 <option value="">Escolha a situação…</option>
                 {SITUACOES_DO_AGENDAMENTO.map(s => <option key={s.valor} value={s.valor}>{s.rotulo}</option>)}
+              </select>
+            ) : !op?.semValor && ehDesfechoDaEtapa(r.campo) && ['igual', 'diferente'].includes(r.operador) ? (
+              // A27 da 32ª: "Aberta, Ganha, Perdida" — o campo dizia
+              // "(OPEN, WON, LOST)". O valor gravado é o código que o motor compara.
+              <select
+                className="field" value={String(r.valor ?? '')} disabled={somenteLeitura}
+                aria-label={`Valor da regra ${i + 1}`}
+                onChange={e => mudarRegra(i, { valor: e.target.value })}
+              >
+                <option value="">Escolha o desfecho…</option>
+                {DESFECHOS_DA_ETAPA.map(d => <option key={d.valor} value={d.valor}>{d.rotulo}</option>)}
+              </select>
+            ) : !op?.semValor && CAMPOS_DE_ETAPA.has(r.campo) && ['igual', 'diferente'].includes(r.operador) ? (
+              // A27 da 32ª: a etapa era texto livre (o nome exato). Sai da lista
+              // dos funis da rede; o valor gravado é o nome, o que o motor
+              // compara. O salvo que não está mais na lista continua visível.
+              <select
+                className="field" value={String(r.valor ?? '')} disabled={somenteLeitura}
+                aria-label={`Valor da regra ${i + 1}`}
+                onChange={e => mudarRegra(i, { valor: e.target.value })}
+              >
+                <option value="">Escolha a etapa…</option>
+                {r.valor && !etapas.some(e => e.nome === String(r.valor)) && (
+                  <option value={String(r.valor)}>{String(r.valor)} (fora da lista)</option>
+                )}
+                {[...new Set(etapas.map(e => e.funil))].map(funil => (
+                  <optgroup key={funil} label={funil}>
+                    {etapas.filter(e => e.funil === funil).map(e => (
+                      <option key={`${funil}:${e.nome}`} value={e.nome}>{e.nome}</option>
+                    ))}
+                  </optgroup>
+                ))}
               </select>
             ) : !op?.semValor && (CAMPOS_DE_PROCEDIMENTO.has(r.campo) && ['igual', 'diferente'].includes(r.operador) ? (
               // A14: o procedimento era texto livre — "botox" não casava com

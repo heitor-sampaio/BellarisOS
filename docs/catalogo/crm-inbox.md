@@ -1,6 +1,6 @@
 # Catálogo de regras — Clientes, CRM e inbox
 
-Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE: o cadastro e a ficha da cliente, a lista de Clientes, as tags, o portal e o app da cliente (no que é dado e cadastro dela), a LGPD, as Importações, o contato, a conversa e o inbox, e as oportunidades, os funis e o quadro. Cada regra diz a fonte: uma fala do Heitor (copiada letra por letra do documento), uma recomendação do Claude que o Heitor aprovou (com a resposta dele), um dos sete princípios de produto, ou "decisão do Claude". "Atribuída ao Heitor sem a fala" quer dizer que o texto diz que a decisão é dele, mas não traz a fala — está nas Perguntas. "Onde" aponta a linha do documento; "Antes" lista os números do rascunho que a regra junta. É um RASCUNHO para o Heitor revisar. Contagem: 143 regras (Clientes 26, Tags 13, Portal e app da cliente 14, LGPD 14, Importações 23, Contato, conversa e inbox 17, Oportunidades, funis e quadro 36), 15 perguntas e 27 divergências. Dos 332 números do rascunho, 4 ficaram fora do catálogo e 2 são de outra área (ver os apêndices); todos os outros estão num "Antes". A meta era ~140. O "só os meus" saiu em 23/11: nenhuma regra daqui o usa; o que os rascunhos ainda diziam com ele foi reescrito como a regra de hoje (Ver vê tudo, Gerenciar mexe em tudo, dentro da abrangência; quem quer só as suas usa o filtro de responsável).
+Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE: o cadastro e a ficha da cliente, a lista de Clientes, as tags, o portal e o app da cliente (no que é dado e cadastro dela), a LGPD, as Importações, o contato, a conversa e o inbox, e as oportunidades, os funis e o quadro. Cada regra diz a fonte: uma fala do Heitor (copiada letra por letra do documento), uma recomendação do Claude que o Heitor aprovou (com a resposta dele), um dos sete princípios de produto, ou "decisão do Claude". "Atribuída ao Heitor sem a fala" quer dizer que o texto diz que a decisão é dele, mas não traz a fala — está nas Perguntas. "Onde" aponta a linha do documento; "Antes" lista os números do rascunho que a regra junta. É um RASCUNHO para o Heitor revisar. Contagem: 144 regras (Clientes 26, Tags 13, Portal e app da cliente 14, LGPD 14, Importações 23, Contato, conversa e inbox 18, Oportunidades, funis e quadro 36), 15 perguntas e 27 divergências. Dos 332 números do rascunho, 4 ficaram fora do catálogo e 2 são de outra área (ver os apêndices); todos os outros estão num "Antes". A meta era ~140. O "só os meus" saiu em 23/11: nenhuma regra daqui o usa; o que os rascunhos ainda diziam com ele foi reescrito como a regra de hoje (Ver vê tudo, Gerenciar mexe em tudo, dentro da abrangência; quem quer só as suas usa o filtro de responsável).
 
 ## Clientes (CL)
 
@@ -578,6 +578,11 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Fonte: decisão do Claude
 - Onde: `docs/revisao.md:870`, `:1981`
 - Antes: KF-29
+
+**IN-18.** A resposta que não saiu não é resposta. A mensagem enviada pela rede que o provedor não aceitou fica na conversa como "Não enviada", com o motivo em português (WM-06 do catálogo de WhatsApp), o "Tentar de novo" e o número por onde tentou sair (WL-06). Ela não tira a conversa do "aguardando" nem conta como 1ª resposta: a conversa segue aguardando desde a mensagem da cliente, e a 1ª resposta conta quando uma mensagem é de fato aceita pelo provedor (também a do "Tentar de novo" que dá certo, no momento em que dá certo).
+- Fonte: decisão do Claude, 26/11 (32ª simulação, Decisão A) — pelo princípio 3: a fila não pode dizer que respondeu quem não recebeu nada (D2 da 32ª: a resposta falhada tirava a conversa do "aguardando" e contava como 1ª resposta)
+- Onde: (ainda não está em `docs/regras/crm-inbox.md`); WL-06, WM-06 e WH-07 do catálogo de WhatsApp; `apps/web/components/admin/crm-inbox.tsx`
+- Antes: (nova, 26/11)
 
 ## Oportunidades, funis e quadro (OP)
 

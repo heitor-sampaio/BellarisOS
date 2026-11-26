@@ -28,7 +28,7 @@ import { nomePadraoDoPasso, renomearPasso } from '@/lib/automacoes/passos'
 import { nomeQueAcompanhaODeslocamento } from '@/lib/automacoes/deslocamento'
 import { ensaioCabe } from '@/lib/automacoes/ensaio'
 import { salvarAutomacao, mudarStatusDaAutomacao, opcoesDoEditor, excluirAutomacao, contarAntesDeLigar } from '@/actions/automacoes'
-import { canaisParaACliente, explicacaoAntesDeLigar, textoAntesDeLigar, limitesAntesDeLigar, silencioNoHorarioDasUnidades } from '@/lib/automacoes/antes-de-ligar'
+import { canaisParaACliente, semConversaVaiNoCelular, explicacaoAntesDeLigar, textoAntesDeLigar, limitesAntesDeLigar, silencioNoHorarioDasUnidades } from '@/lib/automacoes/antes-de-ligar'
 import type { OpcoesDoEditor } from '@/actions/automacoes'
 import type { AutomacaoCompleta } from '@/actions/automacoes'
 
@@ -424,7 +424,7 @@ export function EditorDeAutomacao({
               Ligar a automação?
             </p>
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-              {explicacaoAntesDeLigar(canaisDaCliente)}
+              {explicacaoAntesDeLigar(canaisDaCliente, { semConversaNoCelular: semConversaVaiNoCelular(grafo) })}
             </p>
             <p role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 'var(--weight-bold)', lineHeight: 1.5 }}>
               {antesDeLigar.erro ?? antesDeLigar.texto ?? 'Contando as clientes…'}
@@ -621,6 +621,7 @@ export function EditorDeAutomacao({
         ) : gaveta === 'versoes' ? (
           <PainelDeVersoes
             automacaoId={automacao.id}
+            status={status}
             podeEditar={podeEditar}
             onFechar={() => setGaveta(null)}
             onRestaurar={restaurarVersao}

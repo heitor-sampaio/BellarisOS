@@ -64,6 +64,17 @@ export const comandasAbertas: FerramentaDeLeitura<{ unidade?: string; cliente?: 
     }))
     const todas = porUnidade.flat().filter(x => !clienteId || x.k.clienteId === clienteId)
     const valor = mostraOValor(c.ctx)
+    // A31 da 32ª (CY-07, princípio 3): "receba a Limpeza da Isabela", já
+    // recebida, respondia "Não há comanda aberta" — sem dizer que ela já foi
+    // recebida. Sem aberta da cliente, as dela recebidas nos últimos 30 dias.
+    const jaRecebidas = clienteId && !todas.length
+      ? (await Promise.all(unidades.map(async b => {
+          const fuso = fusos.get(b) ?? await fusoDe(c, b)
+          const hoje = janelaDoFechamento(diaDoFechamento(undefined, new Date(), fuso), new Date(), fuso)!
+          const lista = await comandasDoPdv({ tenantId: c.ctx.tenantId!, branchId: b, situacao: 'PAGAS', de: new Date(hoje.from.getTime() - 30 * 86_400_000), ate: hoje.to })
+          return lista.filter(k => k.clienteId === clienteId && k.paga).map(k => ({ k, b, fuso }))
+        }))).flat().sort((x, y) => (y.k.pagaEm ?? '').localeCompare(x.k.pagaEm ?? '')).slice(0, 5)
+      : []
     const itens = todas.slice(0, 50).map(({ k, b, fuso }) => ({
       id: k.id, numero: k.numero, origem: ORIGEM[k.origem] ?? k.origem, situacao: seloDaComanda(k).texto,
       cliente: k.cliente, procedimento: k.procedimento, profissional: k.profissional,
@@ -76,6 +87,15 @@ export const comandasAbertas: FerramentaDeLeitura<{ unidade?: string; cliente?: 
     return {
       dados: {
         procurouEm, quantidade: todas.length, comandas: itens,
+        ...(jaRecebidas.length ? {
+          jaRecebidas: jaRecebidas.map(({ k, b, fuso }) => ({
+            numero: k.numero, cliente: k.cliente, procedimento: k.procedimento ?? ORIGEM[k.origem] ?? k.origem,
+            recebidaEm: k.pagaEm ? quandoLegivel(k.pagaEm, fuso) : null, unidade: nomes.get(b) ?? null,
+            ...(valor ? { valor: dinheiro(k.recebido ?? k.valor) } : {}),
+            href: rota(c, `/pdv?unidade=${b}&comanda=${k.id}`),
+          })),
+          nota: 'Nenhuma comanda aberta desta cliente: a comanda dela já foi recebida (jaRecebidas). Diga isso, com o número e quando, e dê o link dela — não diga só que não há comanda aberta.',
+        } : {}),
         ...(todas.length > 50 ? { aviso: `Mostrando 50 de ${todas.length}.` } : {}),
         ...(valor ? {} : { semValor: 'O valor das comandas fica no PDV, para quem recebe.' }),
       },

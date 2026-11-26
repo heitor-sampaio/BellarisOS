@@ -12,6 +12,7 @@ import {
 } from '@/actions/automacoes'
 import { ROTULOS } from '@/lib/automacoes/validar'
 import { fraseDaEspera, esperaDoPasso } from '@/lib/automacoes/frase-da-espera'
+import { descreverResumo, erroDaExecucao } from '@/lib/automacoes/em-portugues'
 import type { TipoDeNo } from '@estetica-os/types'
 import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
@@ -167,7 +168,11 @@ export function PainelDeExecucoes({
             {carregando ? 'Carregando…' : 'Esta automação ainda não rodou.'}
           </p>
         ) : execucoes.map(ex => {
-          const s = ICONE_STATUS[ex.status] ?? ICONE_STATUS.parado!
+          // A28, D6 e D15 da 32ª: a que terminou sem fazer o que o fluxo pedia
+          // diz "Parou"/"Não mandou", com o motivo — não "Concluída".
+          const s = ex.fim
+            ? { ...ICONE_STATUS.parado!, cor: ex.fim.rotulo === 'Parou' ? 'var(--text-muted)' : 'var(--warning)', rotulo: ex.fim.rotulo }
+            : ICONE_STATUS[ex.status] ?? ICONE_STATUS.parado!
           const expandida = aberta === ex.id
 
           return (
@@ -203,9 +208,15 @@ export function PainelDeExecucoes({
                       {fraseDaEspera(ex, fuso)}
                     </p>
                   )}
+                  {ex.fim && (
+                    <p data-fim-da-execucao style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-soft)', marginTop: 3, lineHeight: 1.45 }}>
+                      {ex.fim.motivo}
+                    </p>
+                  )}
                   {ex.erro && (
                     <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', marginTop: 3, lineHeight: 1.45 }}>
-                      {ex.erro}
+                      {/* A17 da 32ª: o erro em português ("acao.mensagem: fetch failed" não). */}
+                      {erroDaExecucao(ex.erro)}
                     </p>
                   )}
                 </div>
@@ -251,7 +262,7 @@ function Passos({ passos, fuso }: { passos: PassoDaExecucao[]; fuso: string }) {
                 fontSize: 'var(--text-overline)', color: 'var(--text-muted)', lineHeight: 1.5, marginTop: 1,
                 wordBreak: 'break-word',
               }}>
-                {esperaDoPasso(p.resumo, fuso) ?? descrever(p.resumo)}
+                {esperaDoPasso(p.resumo, fuso) ?? descreverResumo(p.tipo, p.resumo)}
                 {p.ms != null && p.ms > 400 ? ` · ${p.ms}ms` : ''}
               </p>
             </div>
@@ -260,23 +271,4 @@ function Passos({ passos, fuso }: { passos: PassoDaExecucao[]; fuso: string }) {
       })}
     </ol>
   )
-}
-
-/** O resumo de um passo em linguagem de gente. */
-function descrever(resumo: Record<string, unknown>): string {
-  if (!resumo || !Object.keys(resumo).length) return '—'
-
-  // Os campos que carregam a decisão vêm primeiro e sozinhos: despejar o JSON
-  // inteiro transferiria para quem lê a tarefa de garimpar o que importa.
-  if (resumo.erro)     return String(resumo.erro)
-  if (resumo.motivo)   return String(resumo.motivo)
-  if (resumo.faria)    return `Faria: ${resumo.faria}`
-  if (resumo.pulou)    return `Esperaria ${resumo.pulou}`
-  if (resumo.resultado) return `Resultado: ${resumo.resultado}`
-  if (resumo.saida)    return `Seguiu por "${resumo.saida}"`
-
-  return Object.entries(resumo)
-    .filter(([, v]) => v !== null && v !== undefined && v !== '')
-    .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : String(v)}`)
-    .join(' · ') || '—'
 }

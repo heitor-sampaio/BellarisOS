@@ -33,8 +33,7 @@ export default async function BranchDetailPage({ params }: Props) {
     .select(`
       id, name, slug, document, state_registration,
       email, phone, address, city, state, zip_code, horario, fuso,
-      is_active, created_at,
-      users(id, name, is_active)
+      is_active, created_at
     `)
     .eq('id', id)
     .eq('tenant_id', ctx.tenantId!)
@@ -59,8 +58,16 @@ export default async function BranchDetailPage({ params }: Props) {
     ? (await unidadesParaCriar(ctx.tenantId!)).filter(b => b.id !== id).map(b => ({ id: b.id, nome: b.name }))
     : []
 
-  const members = (Array.isArray(branch.users) ? branch.users : []) as { id: string; name: string; is_active: boolean }[]
+  // A29 da 32ª (princípio 3): quem é da unidade é quem a tem entre as unidades
+  // dela (a principal ou uma das outras — a régua da Equipe da unidade), e quem
+  // atende NELA é o "Atende" (`atende_em`, a régua do cartão em Configurações).
+  // Contava só a principal: "0 membros ativos" ao lado de "1 pessoa atende aqui".
+  const members = ((await ler(createAdminClient().from('users').select('id, name, is_active')
+    .eq('tenant_id', ctx.tenantId!).or(`branch_id.eq.${id},outras_unidades.cs.{${id}}`), 'carregar a equipe da unidade')) ?? []) as
+    { id: string; name: string; is_active: boolean }[]
   const activeMembers = members.filter(u => u.is_active).length
+  const atendemAqui = ((await ler(createAdminClient().from('users').select('id')
+    .eq('tenant_id', ctx.tenantId!).eq('is_active', true).contains('atende_em', [id]), 'carregar quem atende na unidade')) ?? []).length
 
   return (
     <div style={{ maxWidth: 760 }}>
@@ -146,6 +153,11 @@ export default async function BranchDetailPage({ params }: Props) {
             {members.length > activeMembers ? ` · ${members.length - activeMembers} inativo${members.length - activeMembers !== 1 ? 's' : ''}` : ''}
           </span>
         </span>
+        {branch.is_active && (
+          <span data-quem-atende-na-unidade style={{ fontSize: 'var(--text-xs-sz)', color: atendemAqui ? 'var(--text-muted)' : 'var(--warning)' }}>
+            {atendemAqui === 0 ? 'Ninguém atende nesta unidade ainda' : atendemAqui === 1 ? '1 pessoa atende aqui' : `${atendemAqui} pessoas atendem aqui`}
+          </span>
+        )}
       </div>
 
       {/* Formulário de edição */}

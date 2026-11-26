@@ -130,7 +130,10 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   fica `GUARDADA` (no sino), não `SENT`, e não entra no `total_sent`; o
   detalhe da campanha diz "Guardada no sino", com a Dica de "Últimos envios"
   (`lib/notifications/envio-da-campanha.ts`; teste
-  `tests/campanha-envio-sem-aparelho.test.ts`).
+  `tests/campanha-envio-sem-aparelho.test.ts`). A coluna "Enviadas" da lista
+  tem a mesma dica (A18 da 32ª; princípio 7), da mesma fonte
+  (`DICA_DOS_ENVIOS`, `lib/notifications/dica-dos-envios.ts`; teste
+  `tests/campanha-lista-explica-enviadas.test.ts`).
   **O canal tem um nome só** (A25 da 30ª; princípio 3): o detalhe dizia
   "In-app" na linha "Canal" e "Aviso no celular" no aviso; é "Aviso no
   celular" nos dois. Prova: `tests/campanha-canal-e-data-de-todo-ano.test.ts`.
@@ -279,6 +282,11 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   sempre vazio). Regra do responsável em `crm-inbox.md`.
 - O node guarda o desfecho em português (`ganho`/`perdido`); a etapa, no
   código do banco (`WON`/`LOST`). Comparar os dois direto nunca acha etapa.
+  No "Se", o desfecho da etapa do fato se escolhe pelo nome (Aberta, Ganha,
+  Perdida — `DESFECHOS_DA_ETAPA`) e grava o código; a etapa (`etapaNome`,
+  `deEtapaNome`, `lead.etapa`) sai da lista das etapas da rede, por funil, e
+  grava o nome (A27 da 32ª; princípio 7; `CAMPOS_DE_ETAPA`). Prova:
+  `tests/automacoes-se-em-portugues.test.ts`.
 - **O seletor mostra o que está NA CONFIG** (D16, 2026-10-28): o passo "Mandar mensagem" nasce
   com `canal: 'whatsapp'` gravado (`configPadrao`, `lib/automacoes/ids.ts`); o salvo sem canal mostra
   "Escolha o canal…" — nunca um WhatsApp que a config não tem (a validação continua exigindo o canal).
@@ -342,8 +350,19 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   `lib/automacoes/antes-de-ligar.ts` (`canaisParaACliente`, o texto e a frase
   de cada canal); "Agora não" não liga. Prova:
   `e2e/automacoes-antes-de-ligar-push.spec.ts`,
-  `tests/automacoes-antes-de-ligar.test.ts`. (C65 entregue na F69; o
-  "Depois" segue em aberto.) O "padrão da rede" de
+  `tests/automacoes-antes-de-ligar.test.ts`. (C65 entregue na F69.)
+  **O "Depois", em parte (D6 da 32ª simulação, 26/11):** o passo em
+  WhatsApp, Instagram ou Messenger tem "Para quem não tem conversa aberta"
+  (`ConfigAcaoMensagem.semConversa`): **Não mandar** (o padrão, princípio 6)
+  ou **Mandar como aviso no celular** — a cliente sem a conversa recebe o
+  texto pelo `notifyClient`, sem o "É só responder" (`semPedirResposta`), e
+  sem acesso ao app fica guardado no sino (`mandarMensagem`,
+  `lib/automacoes/acoes-mensagem.ts`). O card do passo diz "sem conversa:
+  aviso no celular", e a janela de ligar diz "Quem não tem conversa aberta
+  recebe como aviso no celular" (`semConversaVaiNoCelular`). O "Abrir pelo
+  número padrão" ainda não existe (pede o envio de modelo aprovado na
+  automação, que não foi construído). Prova:
+  `tests/automacoes-sem-conversa-aberta.test.ts`. O "padrão da rede" de
   `whatsapp-push.md` §9.8.0 ("é por ele que sai tudo que o SISTEMA inicia")
   não abre conversa pela automação enquanto essa opção estiver desligada.
 - **O lembrete antes do agendamento lembra o agendado E o confirmado** (D15
@@ -388,6 +407,38 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   reconferir em 18/11 às 09:00: o agendamento foi cancelado."
   (`fraseDaEspera`, `lib/automacoes/frase-da-espera.ts`; a situação vem de
   `listarExecucoes`). O passo "Esperar" diz "Esperando até 22/11 às 09:00".
+  A situação que É o gatilho da automação não "caiu" (D7 da 32ª, decisão do
+  Claude, 26/11, pelo princípio 3 e a RX-05): o "Retorno depois do
+  atendimento" (gatilho: atendimento concluído) segue — "Segue em …" —, e
+  igual para o cancelado e a falta quando o gatilho é o deles (o `gatilho`
+  da execução, `listarExecucoes`). Prova: `tests/automacoes-execucao-diz-o-que-houve.test.ts`.
+- **A execução que não fez o que o fluxo pedia não é "Concluída"** (A28, D6 e
+  D15 da 32ª; decisão do Claude, 26/11, pelo princípio 3). No banco ela segue
+  `ok` (nada falhou); o motor guarda no contexto o fim (`fimDaExecucao`,
+  `fimDoPasso` em `lib/automacoes/em-portugues.ts`) e a lista diz **"Parou"**
+  — "A condição “Se o procedimento” não valeu." (o "Se" deu "Não" e o caminho
+  termina ali) — ou **"Não mandou"** / **"Guardada no sino"**, com o motivo
+  do passo da mensagem. A execução filha da busca não herda o fim da mãe.
+- **A variável que a automação não conhece não liga, e a vazia não sai** (D15
+  da 32ª; princípio 4). A validação recusa o `{{…}}` cujo começo não é do
+  contexto (o fato, os passos e as entidades que o motor carrega —
+  `RAIZES_DO_CONTEXTO`, `validar.ts`, junto de `ONDE_ACHAR`): `{{first_name}}`
+  é das campanhas, "use {{cliente.nome}}". E no "Mandar mensagem" a variável
+  que sai vazia não vai em branco: a mensagem não sai, e o passo diz "Faltou
+  o dado de {{cliente.nome}}: a mensagem não saiu." (`variaveisSemDado`,
+  `lib/automacoes/variaveis.ts`; o aviso à equipe e a anotação seguem
+  trocando por vazio). Em 26/11 havia uma automação na produção com variável
+  desconhecida (ligada, `{{first_name}}`): a partir daqui ela não manda vazio,
+  e a tela acusa o erro. Prova: `tests/automacoes-variavel-desconhecida.test.ts`.
+- **O detalhe da execução fala português** (A17 da 32ª; princípio 7): o erro
+  técnico do provedor vira "Mandar mensagem: não conseguiu mandar a mensagem
+  (o número não respondeu)."; o passo diz "Aviso no celular: enviado",
+  "WhatsApp: enviada · “…”", o gatilho pelo nome do catálogo de eventos
+  ("Atendimento concluído"), "Avisou 2 pessoas" — nunca "chave: valor" do
+  código (`descreverResumo`, `erroDaExecucao`, `lib/automacoes/em-portugues.ts`).
+  E a versão atual só diz "no ar" com a automação ligada (A16 da 32ª; RX-04):
+  em rascunho ou desligada, "atual · rascunho, não está no ar"
+  (`rotuloDaVersaoAtual`).
 - **Cada linha da lista diz de quem é a execução** (A18 da 29ª; princípio 7):
   o nome que o fluxo leu (a cliente ou a oportunidade) e, sem ele — o lembrete
   que ainda espera —, a cliente do fato: o `clienteId` do evento, ou a do
@@ -728,4 +779,6 @@ o fato se grava e não vai ao motor (`emitirEvento` com `semDespachar`).
 ❌ Filtro de unidade no público da campanha ou no "Buscar clientes" (a cliente é da rede — MK2/T1 do Bloco Tags)
 ❌ Assinar domain_events ou automation_runs no Realtime, ou abrir a leitura delas pela sessão sem o módulo (é automacoes_sinais e sessao_ve_o_modulo — AUT-01, 18/11)
 ❌ Remarcar um agendamento sem emitir agendamento.remarcado (é ele que reprograma o lembrete que espera o horário antigo — D1 da 20ª)
+❌ Mandar à cliente a mensagem com a variável vazia, ou aceitar variável fora do contexto da automação ({{first_name}} é das campanhas — D15 da 32ª)
+❌ Abrir conversa nova pela automação para quem não tem uma — o "Para quem não tem conversa aberta" manda como aviso no celular, e só se a rede escolheu (AX-06)
 ```

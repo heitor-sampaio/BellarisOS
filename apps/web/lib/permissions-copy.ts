@@ -261,6 +261,22 @@ export function notaDoResumoDaRede(naRede: readonly string[], naUnidade: readonl
     soVe.length ? ` Em ${lista(soVe)}, ela só vê — criar e mudar é só da Admin da rede.` : ''}`
 }
 
+/** Quem confere e fecha o dia — a mesma frase no resumo do cargo e na tela do Fechamento (A26 da 32ª). */
+const QUEM_FECHA_O_DIA = 'conferir e fechar o dia é de quem tem o PDV.'
+/** A tela do Fechamento de quem não pode fechar (o Financeiro em Ver, sem o PDV). */
+export const FECHAMENTO_SO_PARA_VER = `Só para ver: ${QUEM_FECHA_O_DIA}`
+
+/**
+ * A26 da 32ª (FC-14/PV-05, princípio 3): o Fechamento do dia que vem do
+ * Financeiro (sem o PDV) é só para ver — a tela não confere nem fecha. A linha
+ * do PDV (`quemVendeNoResumo`) já diz o de quem tem o PDV. Nulo nos outros.
+ */
+export function fechamentoNoResumo(niveis: Partial<Record<'cashier' | 'financial', string>>): string | null {
+  if (niveis.cashier === 'MANAGE') return null
+  if (niveis.financial !== 'VIEW' && niveis.financial !== 'MANAGE') return null
+  return `O Fechamento do dia, só para ver: ${QUEM_FECHA_O_DIA}`
+}
+
 /**
  * O “Vender” da ficha (pacote, procedimento pré-pago, produto, crédito) é de
  * quem RECEBE — o PDV em Gerenciar, e só ele (`podeReceber`, lib/auth.ts;

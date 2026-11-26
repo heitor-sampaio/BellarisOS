@@ -425,9 +425,9 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:960-963`
 - Antes: KC-20
 
-**UN-12.** Quem muda de unidade (por "Mudar a equipe de unidade" ou na Equipe) leva o "Atende" junto, porque ele só vale nas unidades da pessoa: com a caixa marcada para todas as unidades dela, ela passa a atender nas novas; com a escolha feita à mão ("Escolher em quais unidades atende"), a unidade que saiu sai do "Atende" e a nova não entra sozinha.
-- Fonte: decisão do Claude, aplicando a regra do Heitor de 2026-11-23: "uma pessoa só pode atender nas unidades que faz parte, isso é obvio" (a caixa única que vale em todas as unidades dela é o EQ1, AG-61; a escolha à mão que fica como está é a mesma regra da AG-62)
-- Onde: `docs/regras/plataforma.md:960-963`, `:1153-1160`; `docs/revisao.md:1189-1199`, `:2236`
+**UN-12.** O "Atende" só vale nas unidades da pessoa, então acompanha a troca de unidade. Por "Mudar a equipe de unidade" (a janela de desativar a unidade), quem atendia na unidade que sai passa a atender na que entra, e o resto do "Atende" fica como estava; quem não atendia na que sai não ganha a que entra. Na Equipe, a unidade tirada das "Unidades" sai do "Atende", e a acrescentada não entra sozinha: quem edita a marca se ela atende lá (AG-72).
+- Fonte: decisão do Claude, aplicando a regra do Heitor de 2026-11-23: "uma pessoa só pode atender nas unidades que faz parte, isso é obvio" (a escolha que fica como está é a mesma regra da AG-62); revista em 26/11 (32ª, D9): na Equipe, a unidade acrescentada não entra sozinha nem com a caixa marcada (AG-72), e "Mudar a equipe de unidade" leva a marca da que sai para a que entra (`atendeAoMudarDeUnidade`)
+- Onde: `docs/regras/plataforma.md:960-963`, `:1153-1160`; `docs/revisao.md:1189-1199`, `:2236`; `apps/web/lib/equipe/atende.ts` (`atendeAoMudarDeUnidade`, `estadoDoAtende`); `apps/web/actions/branches.ts` (`moverEquipeDaUnidade`)
 - Antes: KC-20
 
 **UN-13.** A unidade desativada continua contada e alcançável, com o selo "Unidade desativada", enquanto tiver o que ficou (agenda futura, estoque com saldo, a receber, comissão a pagar) ou movimento no período da tela: o dashboard, os Relatórios, a agenda, o estoque, o Financeiro, as Comissões, o Fechamento e os Documentos da rede a contam e o filtro de unidade a alcança. Com dado dela, a rede de uma unidade ativa não é "uma unidade só" nos números.

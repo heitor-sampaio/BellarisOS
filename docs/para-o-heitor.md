@@ -409,3 +409,38 @@ regra é só decisão do Claude, ou que pedem uma regra sua:
    todo o em aberto). Proposta: o caso esperar o `aba=a-pagar` no endereço antes de mexer na tag — muda só a montagem do
    teste, não o que ele exige. Enquanto você não disser, ele fica como está (e falha até 30/11).
 
+
+## 11. A 32ª simulação (26/11)
+
+Nas correções da 32ª, nenhum teste existente foi alterado nem apagado (só saiu o nome da rodada do título dos casos NOVOS
+desta rodada). Ficaram para você estas — as que mudariam testes cuja regra é só decisão do Claude, e as que pedem saber
+se está no escopo:
+
+1. **O "Confirmar" do agendamento com o choque na tela.** Quando a tela já diz "Não vai ser agendado" (o horário bate
+   com outro), o "Confirmar" segue ligado, e o servidor recusa ao clicar. Desligar o botão quebraria três testes que
+   clicam nele e esperam a recusa: `e2e/agenda-encaixe-avisa.spec.ts:97-99`, `e2e/agenda-modal-erro-mantem-campos.spec.ts:66-69`
+   e `e2e/fase2-agenda.spec.ts:230-232`. Proposta: desligar, e os três passam a conferir o botão desligado.
+2. **O texto exato do aviso do bloqueio.** O catálogo (AG-20) pede "O encaixe é permitido: confirme só se for isso
+   mesmo."; a tela agora diz "O encaixe é permitido. Confirme só se for isso mesmo." (o mesmo sentido, numa frase à
+   parte), porque `tests/agenda-bloqueio.test.ts:29-31`, `tests/agenda-bloqueio-dia-inteiro.test.ts:12` e
+   `e2e/agenda-bloqueio.spec.ts:134` travam a frase de cada bloqueio. Proposta: fica como está.
+3. **O porquê do estorno parcial no cartão, no pacote e no plano.** No pré-pago, na devolução de produto e na parcela da
+   operadora, a recusa agora diz "No cartão, o estorno é do pagamento inteiro (a operadora não estorna só uma parte):".
+   No cancelamento do pacote e do plano ficou a frase antiga, porque `tests/comissoes-base-efetiva.test.ts:55-65` exige
+   que a migration mais nova que cita essas duas funções seja a da comissão. Proposta: o teste aceitar também uma
+   migration que só troca texto, e as duas dizerem o mesmo.
+4. **O link do CSV no Fechamento do dia.** A FC-14 (a CX6 que você aprovou em 13/11: "Blz pode ser assim") diz que o CSV
+   do fechamento mora no Financeiro e que "nada disso aparece no Fechamento". Mas o Fechamento mostra "Baixar o CSV do
+   fechamento · no Financeiro → Movimentações" (um link para lá, decisão do Claude da 24ª), e
+   `tests/atritos-da-24-caixa.test.ts:213-216` exige esse link. Fica ou sai?
+5. **"Abrir pelo número padrão" nas automações — está no escopo?** A AX-06 tem três escolhas para quem não tem conversa
+   aberta. As duas primeiras estão feitas ("Não mandar", o padrão, e "Mandar como aviso no celular"). A terceira, abrir
+   a conversa pelo número padrão, depende de a automação mandar modelo de mensagem aprovado pela Meta, que a própria
+   regra diz que ainda falta construir.
+6. **O "Tentar de novo" da mensagem que não saiu — está no escopo?** A decisão da 32ª sobre a resposta "Não enviada"
+   (ela não conta como resposta, e a conversa segue aguardando) cita um "Tentar de novo" na bolha, que não existe no
+   inbox. Hoje a pessoa manda de novo escrevendo. Se a mensagem for aceita depois, o sistema já conta a resposta nesse
+   momento.
+
+O que mais ficou da rodada: a única automação em produção com a variável `{{first_name}}` (das campanhas, que a
+automação não conhece) é da rede da simulação; ela deixa de ser aceita ao salvar, e a mensagem com o nome vazio não sai.

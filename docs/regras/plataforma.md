@@ -195,7 +195,12 @@ um muro que não depende de cada trava do código.
   `enderecoComNumero`, `lib/unidades/endereco-com-numero.ts`; também no "Nova
   unidade"). O `id="br-phone"` em dobro não se reproduziu: o passo 1 usa
   `net-phone`, e o setup tem um campo só. Prova: `e2e/setup-atritos-da-9.spec.ts`,
-  `tests/endereco-com-numero.test.ts`. **O bairro que veio do CEP se confere**
+  `tests/endereco-com-numero.test.ts`. **O sentido da numeração vai depois do
+  número** (A32 da 32ª, decisão do Claude, 26/11): em Chapecó os Correios (e o
+  ViaCEP) escrevem "Avenida Getúlio Dorneles Vargas - N"; a letra é dado, e com o
+  número a unidade grava "Avenida Getúlio Dorneles Vargas, 123-N — Centro" (sem
+  número, como os Correios escrevem). Prova: `tests/endereco-sentido-da-numeracao.test.ts`.
+  **O bairro que veio do CEP se confere**
   (A18 da 19ª: o CEP geral pôs "Centro" na unidade da Aldeota): "O bairro
   “Centro” veio da busca do CEP e entrou no logradouro: confira." embaixo do
   logradouro (A9 da 23ª: a unidade não tem campo de bairro, e o aviso pedia
@@ -1046,6 +1051,14 @@ abaixo entraram na F70, 2026-11-12):
   rede não duplica um cargo com módulo que ela não tem (`duplicarCargo`,
   `actions/roles.ts`). O cargo de sistema não se duplica. Prova:
   `tests/pendencias-area-3.test.ts`.
+  **A chave do cargo nasce livre** (`tenant_roles.key`, única na rede; D1 da
+  32ª e a mesma colisão no "Novo cargo", decisão do Claude, 26/11, princípio
+  3): o cargo renomeado guarda a chave do nome de nascença, então a cópia
+  (`copiaDoCargo`) e o cargo novo (`chaveDoCargoNovo`, `createRole`) escolhem
+  uma chave livre (o sufixo _2, _3…). "Já existe um cargo com esse nome." só
+  quando o RÓTULO já existe na rede (sem diferença de acento e maiúscula).
+  Prova: `tests/cargos-duplicar-chave-livre.test.ts`,
+  `tests/cargos-criar-chave-livre.test.ts`.
 - **O "Não definido" se dá pela Equipe, e não abre nada** (item 20 dos itens
   de escopo, o Heitor, 18/11: "pode criar, e quem tem cargo não definido não
   tem permissão de nada"). O cargo de sistema `NAO_DEFINIDO` aparece por
@@ -1595,6 +1608,20 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
       (", com Fulano", se quem atende mudou junto) e quem atende mudado é
       "Repassou o agendamento de X a Fulano" — também numa gravação com
       outros registros;
+    - a unidade mudada é "Mudou de unidade o agendamento de X: de Chapecó
+      para Passo Fundo, com Fulano" (A30 da 32ª, decisão do Claude, 26/11: o
+      gatilho de `appointments` guarda a unidade desde `20261210500002`; o
+      registro de antes só tem a de destino, "para Passo Fundo");
+    - abrir a unidade é "Criou a unidade X (Fulana passou a atender nela)", e
+      a gravação é da unidade criada — o "Atende" de quem atende em todas,
+      gravado junto, não a esconde nem a põe "Da rede" (D12 da 32ª, decisão do
+      Claude, 26/11);
+    - a parcela da operadora (A21 da 32ª, decisão do Claude, 26/11; o gatilho
+      de UPDATE de `recebiveis_do_cartao`, `20261210400002`) é "Marcou como
+      recebida a parcela 2/3 da operadora (R$ 100,00) — X" e "Voltou para a
+      receber a parcela 2/3 da operadora"; no estorno, as parcelas canceladas
+      entram na frase do estorno, que diz "(motivo: …)", lido na hora de
+      mostrar (AD-08);
     - a geração do documento é "Gerou o documento X"; a do contrato que a
       MESMA pessoa criou há até 5 min entra na gravação que o criou (a venda
       do pacote: `comAGeracaoNaVenda`); a ficha é "Criou a ficha de X";

@@ -330,13 +330,23 @@ export function estornoDaVendaEmTexto(c: ComandaDoPdv, hora: (iso: string | null
 }
 
 /**
+ * Por que o receber fora do à vista não tem pontos nem voucher (PD-06): a
+ * mesma frase na venda e no receber da comanda (D16 da 32ª).
+ */
+export const TEXTO_PONTOS_SO_A_VISTA = 'Os pontos e o voucher se usam no pagamento à vista.'
+
+/**
  * O que acabou de ser recebido (A2 da 19ª simulação; princípio 3): depois de
  * "Receber", a comanda sai das abertas, e a tela ficava em "Nenhuma comanda
  * aberta", sem dizer o que entrou. Diz o valor e a forma, e onde ela está.
  */
-export function recebidaAgoraEmTexto(c: ComandaDoPdv): string | null {
+export function recebidaAgoraEmTexto(c: ComandaDoPdv, fuso = 'America/Sao_Paulo'): string | null {
   if (!c.paga || c.recebido == null) return null
-  return `Recebido ${brl(c.recebido)} (${formasDaComandaEmTexto(c)}). A comanda saiu das abertas e está em “Fechadas hoje”.`
+  const ondeEsta = 'A comanda saiu das abertas e está em “Fechadas hoje”.'
+  // A23 da 32ª (PV-14, princípio 3): no "A receber" e no crediário, diz o que ficou em aberto e quando vence.
+  const emAberto = emAbertoDaComanda(c, fuso)
+  if (emAberto && !(c.recebido > 0)) return `Nada recebido agora (${formasDaComandaEmTexto(c)}): ${emAberto}. ${ondeEsta}`
+  return `Recebido ${brl(c.recebido)} (${formasDaComandaEmTexto(c)}).${emAberto ? ` Ficou ${emAberto}.` : ''} ${ondeEsta}`
 }
 
 /**
@@ -407,10 +417,18 @@ export function voucherDoProdutoEstornadoEmTexto(c: ComandaDoPdv, itens: readonl
 export interface PagamentoDaComandaNaTela {
   valor: number; metodo: string | null; vezes: number | null
   doAtendimento: boolean; vendaDeProduto: boolean; vendaDeCredito: boolean
+  /** A parcela do crediário que este pagamento é (1 de 2); nulo: não é parcela. */
+  parcela?: { numero: number; total: number } | null
 }
 
-/** O que o pagamento é, para a linha dele (A1 da 18ª): "Atendimento", "Produto"; nulo = a descrição dele. */
-export function rotuloDoPagamentoDaComanda(l: PagamentoDaComandaNaTela): string | null {
+/**
+ * O que o pagamento é, para a linha dele (A1 da 18ª): "Atendimento", "Produto"; nulo = a descrição dele.
+ * A30 da 32ª: a parcela do crediário diz que é parcela, e de quê — "Parcela 1/2 de Peeling".
+ */
+export function rotuloDoPagamentoDaComanda(l: PagamentoDaComandaNaTela, deQue?: string | null): string | null {
+  if (l.doAtendimento && l.parcela && l.parcela.total > 1) {
+    return `Parcela ${l.parcela.numero}/${l.parcela.total} ${deQue ? `de ${deQue}` : 'do atendimento'}`
+  }
   if (l.doAtendimento) return 'Atendimento'
   if (l.vendaDeProduto) return 'Produto'
   if (l.vendaDeCredito) return 'Crédito interno'

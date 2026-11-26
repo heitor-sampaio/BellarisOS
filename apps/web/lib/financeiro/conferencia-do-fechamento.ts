@@ -1,5 +1,5 @@
 import { parseDinheiro } from '@estetica-os/utils'
-import { rotuloDaFormaDoFechamento } from '@/lib/financeiro/formas'
+import { rotuloDaFormaDoFechamento, nomeDaBandeira } from '@/lib/financeiro/formas'
 import { linkDaAba } from '@/lib/financeiro/abas'
 import { avisoAcimaDoComum } from '@/lib/acima-do-comum'
 
@@ -425,4 +425,60 @@ export function regraDosCamposDoFechamento(semDinheiro: boolean): string {
   return semDinheiro
     ? 'Sem dinheiro em espécie hoje: o dinheiro em branco fecha em R$ 0,00. ' + outras
     : 'O dinheiro é obrigatório. ' + outras
+}
+
+/**
+ * A24 da 32ª (princípio 3): o dinheiro sem espécie no dia — "hoje" só quando
+ * o dia aberto é hoje; o fechamento de um dia passado diz o dia.
+ */
+export function textoDoSemEspecie(dia: string, hoje: string): string {
+  return comODia('Sem espécie hoje: em branco é R$ 0,00.', dia, hoje)
+}
+
+/**
+ * O "espécie hoje" de um texto do fechamento, no fechamento de outro dia: "em
+ * 25/11" (A24 da 32ª). Hoje, o texto fica como está.
+ */
+export function comODia(texto: string, dia: string, hoje: string): string {
+  const [, m, d] = dia.split('-')
+  return dia === hoje || !m || !d ? texto : texto.replace('espécie hoje', `espécie em ${d}/${m}`)
+}
+
+/**
+ * A30 da 32ª: a forma de pagamento só com saída no dia não se confere (FC-10),
+ * e a linha diz por quê. A zerada pelo estorno de hoje já diz o estorno, e a
+ * que nunca se confere (os pontos, o "sem forma") segue com o traço.
+ */
+export function porQueNaoSeConfere(l: LinhaDaConferencia): string | null {
+  if (l.conferivel || !formaConferivel(l.forma) || l.entradas > 0 || !(l.saidas > 0)) return null
+  return 'Só saída neste dia: não há entrada a conferir.'
+}
+
+/** Uma linha de cartão por maquininha e bandeira (`CartaoPorBandeira` de lib/metrics). */
+export interface LinhaDaBandeira { forma: string; maquininha: string | null; bandeira: string | null; entradas: number; saidas: number }
+
+/**
+ * O cartão por bandeira, embaixo da forma (A44 da 12ª). A24 da 32ª: onde a
+ * forma (ou a maquininha) não tem bandeira nenhuma, não se escreve "Bandeira
+ * não informada" — com várias maquininhas, fica só o valor dela; numa só,
+ * nada. Entre bandeiras, a não informada segue dita. Nulo: nada a mostrar.
+ */
+export function detalheDasBandeirasEmTexto(forma: string, bandeiras: readonly LinhaDaBandeira[], variasMaquininhas: boolean): string | null {
+  const daForma = bandeiras.filter(b => b.forma === forma)
+  if (!daForma.length) return null
+  const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  const saidas = (v: number) => v > 0 ? ` (saídas ${brl(v)})` : ''
+  const texto = (b: LinhaDaBandeira) => `${nomeDaBandeira(b.bandeira)} ${brl(b.entradas)}${saidas(b.saidas)}`
+  const doGrupo = (linhas: readonly LinhaDaBandeira[]): string | null => {
+    if (linhas.some(b => b.bandeira)) return linhas.map(texto).join(variasMaquininhas ? ', ' : ' · ')
+    if (!variasMaquininhas) return null
+    const soma = (f: (b: LinhaDaBandeira) => number) => linhas.reduce((t, b) => t + Math.round(f(b) * 100), 0) / 100
+    return `${brl(soma(b => b.entradas))}${saidas(soma(b => b.saidas))}`
+  }
+  if (!variasMaquininhas) return doGrupo(daForma)
+  const partes = [...new Set(daForma.map(b => b.maquininha))].map(m => {
+    const g = doGrupo(daForma.filter(b => b.maquininha === m))
+    return g ? `${m ?? 'Cartão'}: ${g}` : null
+  }).filter(Boolean)
+  return partes.length ? partes.join(' · ') : null
 }

@@ -23,6 +23,8 @@ export interface LancamentoDaComanda {
   vendaDeProduto: boolean
   vendaDeCredito: boolean
   doAtendimento:  boolean
+  /** A30 da 32ª: a parcela do crediário que ele é (1 de 2); nulo: não é parcela. */
+  parcela:        { numero: number; total: number } | null
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -48,16 +50,18 @@ export async function lancamentosDaComanda(
   }
   if (!partes.length) return []
   const linhas = await ler(admin.from('financial_transactions')
-    .select('id, description, amount, payment_method, cartao_vezes, cartao_bandeira, appointment_id, product_sale_id, credito_vendido_id')
+    .select('id, description, amount, payment_method, cartao_vezes, cartao_bandeira, appointment_id, product_sale_id, credito_vendido_id, parcela_numero, parcela_total')
     .eq('branch_id', branchId).eq('type', 'INCOME').eq('is_paid', true).is('estorno_de', null)
     .or('notes.is.null,notes.neq.Estornada')
     .or(partes.join(','))
     .order('paid_at', { ascending: true }).order('id'), 'ler os pagamentos da comanda') as {
       id: string; description: string | null; amount: number | string; payment_method: string | null; cartao_vezes: number | null; cartao_bandeira: string | null
       appointment_id: string | null; product_sale_id: string | null; credito_vendido_id: string | null
+      parcela_numero: number | null; parcela_total: number | null
     }[] | null
   return (linhas ?? []).map(l => ({
     id: l.id, descricao: l.description ?? 'Pagamento', valor: Number(l.amount), metodo: l.payment_method, vezes: l.cartao_vezes, bandeira: l.cartao_bandeira,
     vendaDeProduto: !!l.product_sale_id, vendaDeCredito: !!l.credito_vendido_id, doAtendimento: !!l.appointment_id,
+    parcela: l.parcela_numero && l.parcela_total ? { numero: l.parcela_numero, total: l.parcela_total } : null,
   }))
 }

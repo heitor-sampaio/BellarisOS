@@ -1817,7 +1817,10 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     busca; sem o "só os meus", SM1, 2026-11-23); FECHA quem recebe e vê
     (`podeReceber` + `podeVerFechamento`, `fecharODia` em
     `actions/fechamento.ts`). A vista pessoal "Minhas comissões" (SM2) não
-    abre o Fechamento. É a tela de quem só tem `cashier`.
+    abre o Fechamento. É a tela de quem só tem `cashier`. Quem vê e não
+    fecha lê na tela "Só para ver: conferir e fechar o dia é de quem tem o
+    PDV." — a mesma frase do resumo do cargo (`FECHAMENTO_SO_PARA_VER`,
+    `fechamentoNoResumo`; A26 da 32ª, princípio 3).
   - Cada fechamento é um REGISTRO em `fechamentos_do_dia` (com o retrato do
     resumo, refeito no servidor; a diferença é coluna gerada). Fechar de novo
     não apaga o anterior — vale o mais recente. Dia futuro não fecha.
@@ -3540,6 +3543,19 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 
 ---
 
+### O que a tela do dinheiro diz (decisões do Claude, 26/11 — 32ª simulação)
+
+- A janela do estorno diz o voucher usado no pagamento, que volta a valer, em todo estorno que o devolve — não só no de R$ 0 (ES-01/ES-02; `textoDosPontosDoEstorno`).
+- A recusa do estorno parcial no cartão diz o porquê: "No cartão, o estorno é do pagamento inteiro (a operadora não estorna só uma parte): …" (EX-06) — no pré-pago, na devolução de produto e no gatilho da parcela da operadora; o cancelamento do pacote e o do plano ainda dizem a frase antiga.
+- Todo campo de vezes no cartão avisa acima de 12x e deixa (MQ-01; `DicaDasVezes`, princípio 2).
+- O receber da comanda fora do à vista diz "Os pontos e o voucher se usam no pagamento à vista." (PD-06; `TEXTO_PONTOS_SO_A_VISTA`, a mesma da venda).
+- O aviso depois de receber diz o que ficou em aberto e quando vence ("Nada recebido agora (A receber): R$ 200,00 em aberto, vence em 06/12.").
+- Na comanda, a parcela do crediário recebida é "Parcela 1/2 de <procedimento>", não "Atendimento".
+- O pago só com a data (gravado no meio-dia de Brasília) mostra só a data (`diaSemHora`).
+- O Fechamento do dia de outro dia diz o dia ("Sem espécie em 25/11"); a forma só com saída diz por que não se confere (FC-10); a forma sem bandeira nenhuma não lista "Bandeira não informada"; o estorno diz a maquininha do pagamento estornado (`maquininhaDosEstornos`; a saída não leva maquininha); no portal da rede, o fechamento diz a unidade.
+- Relatórios → Financeiro, "A receber em aberto": a régua do cartão "A receber · em aberto" (FN-11) — as parcelas e o "A receber", fora o estorno.
+- A mudança da parcela da operadora (marcada como recebida, desfeita) entra na Auditoria (AD-04): só o UPDATE de `recebiveis_do_cartao` (a criação vem com o pagamento).
+
 ## O que nunca fazer aqui
 
 ❌ Prender ver ou agendar as sessões do pacote, do plano ou do pré-pago à unidade da VENDA (é alcancaOTratamento; o dinheiro é alcancaOCaixaDoTratamento — lib/tratamento/alcance.ts, F73)
@@ -3629,4 +3645,5 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 ❌ Ler "os membros da unidade" em users com branch_id.eq sozinho: as outras unidades ficam de fora — é filtroDosMembrosDaUnidade / membroAlcancaAUnidade (D1 da 17ª)
 ❌ Dizer "Bateu" no fechamento com o registrado de agora e o conferido de um fechamento em que ele era outro (D2 da 17ª: "a conferir")
 ❌ Somar no valor da comanda da venda o lançamento "Estornada" que ganhou o reaberto (estornar_e_reabrir): o reaberto é ele de novo (D1 da 19ª)
+❌ Mostrar a hora da âncora (meio-dia de Brasília) de um pagamento gravado só com a data: é a data só (diaSemHora — A24 da 32ª)
 ```

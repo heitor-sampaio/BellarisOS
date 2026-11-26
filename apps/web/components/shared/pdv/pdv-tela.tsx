@@ -165,7 +165,8 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
   const clienteDaUrl = parametros.get('cliente')
   // A14 da 24ª: `?so=a-receber` — só as vendas com parcelas a receber (o link do topo).
   const so = situacao === 'PAGAS' && parametros.get('so') === FILTRO_COM_VALOR_EM_ABERTO ? FILTRO_COM_VALOR_EM_ABERTO : null
-  const hora = horaNo(useFuso())
+  const fuso = useFuso()
+  const hora = horaNo(fuso)
   const [busca, setBusca] = useState('')
 
   const naRede = unidades.length > 1
@@ -188,7 +189,7 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
     }
     return `${basePath}?${q.toString()}`
   }
-  const textoDaRecebida = recebidaAgora ? recebidaAgoraEmTexto(recebidaAgora) : null
+  const textoDaRecebida = recebidaAgora ? recebidaAgoraEmTexto(recebidaAgora, fuso) : null
   const visiveis = useMemo(() => {
     const t = busca.trim().toLocaleLowerCase('pt-BR')
     const doFiltro = comandasDoFiltro(comandas, so)
@@ -535,7 +536,7 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, hrefDaAssinatura, ao
                       }}>
                         {/* A14 da 22ª (design): o texto quebra em vez de cortar, e o valor fica inteiro ao lado. */}
                         <span title={l.descricao} style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                          <b style={{ color: 'var(--text)', fontWeight: 'var(--weight-bold)' }}>{rotuloDoPagamentoDaComanda(l) ?? l.descricao}</b> · {rotuloDaForma(l.metodo, l.vezes, { bandeira: l.bandeira })}
+                          <b style={{ color: 'var(--text)', fontWeight: 'var(--weight-bold)' }}>{rotuloDoPagamentoDaComanda(l, c.procedimento) ?? l.descricao}</b> · {rotuloDaForma(l.metodo, l.vezes, { bandeira: l.bandeira })}
                         </span>
                         <span data-valor-do-pagamento style={{ whiteSpace: 'nowrap', fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>{brl(l.valor)}</span>
                         {e.podeEstornar && (

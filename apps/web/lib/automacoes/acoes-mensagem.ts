@@ -6,6 +6,8 @@ import { EVENTOS } from '@estetica-os/types'
 import { notifyClient } from '@/lib/notifications/notify'
 import { ler } from '@/lib/db'
 import type { ChannelKind } from '@/lib/channels/types'
+import type { ConfigAcaoMensagem } from '@estetica-os/types'
+import { semPedirResposta } from './modelos'
 import type { ContextoDaExecucao } from './contexto'
 import type { AtorDaAutomacao } from './acoes-crm'
 
@@ -33,6 +35,11 @@ export interface PedidoDeMensagem {
   canal:       ChannelKind | 'push'
   texto:       string
   templateId?: string | null
+  /**
+   * AX-06 (D6 da 32ª): para quem não tem conversa aberta no canal, o que a
+   * rede escolheu no passo. Sem nada, "Não mandar" (princípio 6).
+   */
+  semConversa?: ConfigAcaoMensagem['semConversa']
 }
 
 export interface ResultadoDaMensagem {
@@ -102,7 +109,17 @@ export async function mandarMensagem(
   if (pedido.canal === 'push') return avisoNoCelular(ator, contexto, texto)
 
   const alvo = await conversaPara(ator.tenantId, contexto, pedido.canal)
-  if ('motivo' in alvo) return { resumo: { enviada: false, motivo: alvo.motivo } }
+  if ('motivo' in alvo) {
+    // AX-06 (o Heitor, 2026-11-11, H1): a rede escolheu mandar como aviso no
+    // celular a quem não tem conversa aberta. A automação continua sem abrir
+    // conversa (AX-05); o aviso não se responde, e o pedido de resposta do
+    // texto sai (AX-03).
+    if (pedido.semConversa === 'aviso_no_celular') {
+      const r = await avisoNoCelular(ator, contexto, semPedirResposta(texto))
+      return { resumo: { ...r.resumo, semConversa: true } }
+    }
+    return { resumo: { enviada: false, motivo: alvo.motivo } }
+  }
 
   const r = await enviarNaConversa(ator.tenantId, alvo.id, texto, {
     id:   null,

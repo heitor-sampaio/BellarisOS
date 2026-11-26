@@ -12,7 +12,7 @@ import { naParede } from '@/lib/datetime'
 import { useFuso } from '@/components/shared/fuso'
 import { useAgora, passouSemFechar } from '@/lib/use-agora'
 import { intervalosDoDia, diaDaSemana, type Horario } from '@/lib/agenda/horario'
-import { pausasDoDia, textoDaPausa } from '@/lib/agenda/intervalos-da-grade'
+import { pausasDoDia, textoDaPausa, rotuloDoDiaSemHorario } from '@/lib/agenda/intervalos-da-grade'
 
 /** `foraDoAtende`: tem agendamento aqui e não atende mais aqui (D3 da 9ª) — a linha fica, marcada. */
 interface Professional { id: string; name: string; foraDoAtende?: boolean }
@@ -171,6 +171,12 @@ export function AgendaWeekView({ currentDate, events, professionals, onEventClic
                   <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.02em', color: isToday ? 'var(--brand)' : 'var(--text)' }}>
                     {format(day, 'd')}
                   </div>
+                  {/* A6 da 32ª (AG-22): o dia em que a unidade não abre diz, no estilo do "Intervalo". */}
+                  {horariosDosProfissionais && rotuloDoDiaSemHorario(horarioDaUnidade, null, diaDaSemana(format(day, 'yyyy-MM-dd'))) === 'Fechado' && (
+                    <div data-dia-fechado style={{ fontSize: 'var(--text-overline)', fontWeight: 'var(--weight-semibold)', color: 'var(--text-muted)', marginTop: 2 }}>
+                      Fechado
+                    </div>
+                  )}
                 </th>
               )
             })}
@@ -235,6 +241,10 @@ export function AgendaWeekView({ currentDate, events, professionals, onEventClic
                   const pausas = horariosDosProfissionais
                     ? pausasDoDia(intervalosDoDia(horarioDaUnidade, horariosDosProfissionais[pro.id] ?? null, diaDaSemana(format(day, 'yyyy-MM-dd'))))
                     : []
+                  // A6 da 32ª: a unidade abre e ela não atende neste dia — a célula diz
+                  // (o "Fechado" da unidade fica no cabeçalho do dia).
+                  const naoAtende = !!horariosDosProfissionais
+                    && rotuloDoDiaSemHorario(horarioDaUnidade, horariosDosProfissionais[pro.id] ?? null, diaDaSemana(format(day, 'yyyy-MM-dd'))) === 'Não atende neste dia'
 
                   return (
                     <td
@@ -251,6 +261,13 @@ export function AgendaWeekView({ currentDate, events, professionals, onEventClic
                       }}
                       onClick={() => canWrite && onSlotClick(day, pro.id)}
                     >
+                      {naoAtende && (
+                        <div data-nao-atende-no-dia style={{
+                          fontSize: 'var(--text-overline)', fontWeight: 'var(--weight-semibold)', color: 'var(--text-muted)', marginBottom: 4,
+                        }}>
+                          Não atende neste dia
+                        </div>
+                      )}
                       {pausas.map(p => (
                         <div key={`pausa-${p.de}`} data-intervalo-do-horario style={{
                           fontSize: 'var(--text-overline)', fontWeight: 'var(--weight-semibold)', color: 'var(--text-muted)', marginBottom: 4,

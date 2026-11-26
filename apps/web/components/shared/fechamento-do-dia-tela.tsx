@@ -11,9 +11,10 @@ import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
 import type { FechamentoDoDia, AvisosDoFechamento } from '@/lib/metrics'
 import type { EstornoDoDia, MovimentoDaUnidade, RecebidoPorPessoa, CartaoPorBandeira } from '@/lib/metrics/fechamento-extra'
-import { textoDoMovimentoDepois, lerConferidoDoCampo, valoresParaFecharDeNovo, diferencaNaTela, avisoDaGavetaNegativa, rotuloDoBotaoDeFechar, pedidoDoMotivoDaDiferenca, motivoDoFechamentoAnterior, recusaDoFundoDeTroco, avisoDoFundoDeTroco, avisoDoConferido, regraDosCamposDoFechamento, type LinhaDaConferencia } from '@/lib/financeiro/conferencia-do-fechamento'
-import { rotuloDaForma, rotuloDaFormaDoFechamento, nomeDaBandeira } from '@/lib/financeiro/formas'
+import { textoDoMovimentoDepois, lerConferidoDoCampo, valoresParaFecharDeNovo, diferencaNaTela, avisoDaGavetaNegativa, rotuloDoBotaoDeFechar, pedidoDoMotivoDaDiferenca, motivoDoFechamentoAnterior, recusaDoFundoDeTroco, avisoDoFundoDeTroco, avisoDoConferido, regraDosCamposDoFechamento, textoDoSemEspecie, comODia, porQueNaoSeConfere, detalheDasBandeirasEmTexto, type LinhaDaConferencia } from '@/lib/financeiro/conferencia-do-fechamento'
+import { rotuloDaForma, rotuloDaFormaDoFechamento } from '@/lib/financeiro/formas'
 import { parseDinheiro } from '@estetica-os/utils'
+import { FECHAMENTO_SO_PARA_VER } from '@/lib/permissions-copy'
 
 export interface FechamentoFeito {
   id: string; esperado: number; contado: number; diferenca: number
@@ -151,18 +152,12 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
     : null
 
   const detalheDasBandeiras = (forma: string) => {
-    if (!bandeiras.some(b => b.forma === forma)) return null
-    const texto = (b: CartaoPorBandeira) => `${nomeDaBandeira(b.bandeira)} ${brl(b.entradas)}${b.saidas > 0 ? ` (saídas ${brl(b.saidas)})` : ''}`
-    return (
-      // A44 da 12ª: o cartão por bandeira — a conciliação com a operadora.
-      <span data-bandeiras-da-forma style={DETALHE}>
-        {variasMaquininhas
-          ? [...new Set(bandeiras.filter(b => b.forma === forma).map(b => b.maquininha))].map(m =>
-              `${m ?? 'Cartão'}: ${bandeiras.filter(b => b.forma === forma && b.maquininha === m).map(texto).join(', ')}`).join(' · ')
-          : bandeiras.filter(b => b.forma === forma).map(texto).join(' · ')}
-      </span>
-    )
+    // A44 da 12ª: o cartão por bandeira — a conciliação com a operadora. A24 da 32ª: sem bandeira, nada de "não informada".
+    const texto = detalheDasBandeirasEmTexto(forma, bandeiras, variasMaquininhas)
+    return texto ? <span data-bandeiras-da-forma style={DETALHE}>{texto}</span> : null
   }
+  // A30 da 32ª: no portal da rede, o detalhe diz de que unidade é.
+  const nomeDaUnidade = naRede ? unidades.find(u => u.id === unidadeId)?.name ?? null : null
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 940 }}>
@@ -172,6 +167,9 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
           <h2 data-dia-do-fechamento style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, letterSpacing: 'var(--tracking-tight)', color: 'var(--text)' }}>
             {diaLongo(dia).replace(/^./, l => l.toLocaleUpperCase('pt-BR'))}
           </h2>
+          {nomeDaUnidade && (
+            <p data-unidade-do-fechamento style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>{nomeDaUnidade}</p>
+          )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           {naRede && (
@@ -262,14 +260,18 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
                     </td>
                     <td data-label="Conferido" data-par style={{ padding: '11px 16px', textAlign: 'right' }}>
                       {!l.conferivel ? (
-                        <span style={{ color: 'var(--text-faint)' }}>—</span>
+                        <>
+                          <span style={{ color: 'var(--text-faint)' }}>—</span>
+                          {/* A30 da 32ª (FC-10): a forma sem entrada não se confere, e a linha diz por quê. */}
+                          {porQueNaoSeConfere(l) && <span data-sem-conferencia style={DETALHE}>{porQueNaoSeConfere(l)}</span>}
+                        </>
                       ) : conferindo ? (
                         <>
                           <input className="field" inputMode="decimal" value={valores[l.forma] ?? ''}
                             onChange={e => setValores(v => ({ ...v, [l.forma]: e.target.value }))}
                             aria-label={dinheiro ? (semDinheiro ? 'Dinheiro contado (R$, opcional)' : 'Dinheiro contado (R$)') : `Conferido em ${rotulo}`}
                             placeholder={dinheiro ? '0,00' : 'Não conferido'} style={{ width: 130, textAlign: 'right' }} />
-                          {dinheiro && semDinheiro && <span style={{ ...DETALHE, color: 'var(--text-faint)' }}>Sem espécie hoje: em branco é R$ 0,00.</span>}
+                          {dinheiro && semDinheiro && <span style={{ ...DETALHE, color: 'var(--text-faint)' }}>{textoDoSemEspecie(dia, hoje)}</span>}
                           {/* O Heitor, 25/11: acima de R$ 10.000.000 o conferido avisa e vale como está. */}
                           {!dinheiro && avisoDoConferido(lerConferidoDoCampo(valores[l.forma] ?? '') ?? 0) && (
                             <span role="status" data-acima-do-comum="conferido" style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
@@ -342,6 +344,12 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
               {ultimo.observacao && <span>· “{ultimo.observacao}”</span>}
             </p>
           )}
+          {/* A26 da 32ª (FC-14/PV-05, princípio 3): sem poder fechar, a tela diz o mesmo que o resumo do cargo. */}
+          {!podeFechar && (
+            <p data-fechamento-so-para-ver style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+              {FECHAMENTO_SO_PARA_VER}
+            </p>
+          )}
           {/* A50: fechar antes do fim do expediente vale, mas avisa. */}
           {podeFechar && atendeAte && (
             <p data-dia-aberto role="note" style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>
@@ -368,7 +376,7 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
           {conferindo && (
             <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
               {/* A7 da 31ª: uma regra só — no dia sem espécie, o dinheiro em branco é R$ 0,00. */}
-              {regraDosCamposDoFechamento(semDinheiro)}
+              {comODia(regraDosCamposDoFechamento(semDinheiro), dia, hoje)}
             </p>
           )}
           {podeFechar && !conferindo && (
@@ -406,7 +414,7 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
       {(porQuemRecebeu.length > 0 || (estornos && estornos.itens.length > 0)) && (
         <details data-detalhes-do-dia className="card" style={{ padding: '12px 18px' }}>
           <summary style={{ cursor: 'pointer', fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>
-            Detalhes do dia
+            Detalhes do dia{nomeDaUnidade ? ` de ${nomeDaUnidade}` : ''}
             <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}>
               {' '}· {porQuemRecebeu.length > 0 ? 'por quem recebeu' : ''}{porQuemRecebeu.length > 0 && estornos && estornos.itens.length > 0 ? ' e ' : ''}{estornos && estornos.itens.length > 0 ? 'os estornos' : ''}
             </span>
@@ -472,7 +480,7 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
                   {estornos.itens.map(e => (
                     <li key={e.id} data-estorno-do-dia data-de-outro-dia={e.mesmoDia ? undefined : 'true'} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 'var(--text-sm-sz)' }}>
                       <span style={{ color: 'var(--text)', minWidth: 0, overflowWrap: 'anywhere' }}>
-                        {e.descricao}{e.forma ? ` · ${rotuloDaForma(e.forma, e.vezes)}` : ''}
+                        {e.descricao}{e.forma ? ` · ${rotuloDaForma(e.forma, e.vezes, { maquininha: e.maquininha })}` : ''}
                         <span style={DETALHE}>
                           {e.mesmoDia ? 'Pagamento deste dia: já fora das entradas.' : e.pagoEm ? `Pagamento de ${diaCurto(e.pagoEm)}: sai nas saídas deste dia.` : null}
                         </span>

@@ -2,8 +2,7 @@ import 'server-only'
 import type { TenantContext } from '@estetica-os/types'
 import { can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { gravar, ler } from '@/lib/db'
-import { registrarEventoLead } from '@/lib/lead-events'
+import { ler } from '@/lib/db'
 
 /**
  * O RESPONSÁVEL da oportunidade (`leads.owner_id`) — o núcleo que a tela (o
@@ -58,15 +57,17 @@ export async function trocarResponsavelCore(
     nomeDepois = (membro as { name: string }).name
   }
 
-  await gravar(admin
-    .from('leads').update({ owner_id: usuarioId }).eq('id', leadId).eq('tenant_id', tenantId),
-  'trocar o responsável')
-
-  await registrarEventoLead({
-    tenantId, leadId, type: 'OWNER_CHANGED',
-    actorUserId: autor.actorUserId ?? null,
-    actorName:   autor.actorName ?? null,
-    changes:     [{ campo: 'Responsável', de: nomeAntes, para: nomeDepois }],
-  })
+  // A troca e o evento da linha do tempo numa transação só (o app calcula, uma
+  // função grava): eram duas gravações, e o responsável novo aparecia antes do
+  // "de X para Y" (migration 20261210600001).
+  const gravou = await ler(admin.rpc('lead_trocar_responsavel', {
+    p_tenant:     tenantId,
+    p_lead:       leadId,
+    p_usuario:    usuarioId,
+    p_actor_user: autor.actorUserId ?? null,
+    p_actor_name: autor.actorName ?? null,
+    p_changes:    [{ campo: 'Responsável', de: nomeAntes, para: nomeDepois }],
+  }), 'trocar o responsável')
+  if (!gravou) return { trocado: false, motivo: 'Oportunidade não encontrada.' }
   return { trocado: true, de: nomeAntes, para: nomeDepois }
 }

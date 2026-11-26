@@ -8,6 +8,8 @@ import type { NotificationCampaign, CampaignStatus, CampaignType } from '@/actio
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { SegSelect } from '@/components/shared/seg-select'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
+import { DICA_DOS_ENVIOS } from '@/lib/notifications/dica-dos-envios'
 
 // -- Constants ----------------------------------------------------------
 
@@ -152,7 +154,13 @@ export function NotificationCampaignsList({ campaigns, totalSent, activeCount, p
                       textAlign: h === 'Campanha' ? 'left' : 'center',
                       whiteSpace: 'nowrap', background: 'var(--surface-raised, var(--bg-app))',
                     }}>
-                      {h}
+                      {h === 'Enviadas' ? (
+                        // A18 da 32ª (NC-06): a mesma dica do detalhe — o guardado no sino não conta.
+                        <span data-dica-das-enviadas style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          {h}
+                          <Dica rotulo="Sobre as enviadas">{DICA_DOS_ENVIOS}</Dica>
+                        </span>
+                      ) : h}
                     </th>
                   ))}
                 </tr>

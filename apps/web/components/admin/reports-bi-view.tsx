@@ -493,7 +493,7 @@ function TabFinanceiro(p: ReportsBiProps) {
   // Pending installments table
   const installCols: TableColumn[] = [
     { key: 'client',    label: 'Cliente'    },
-    { key: 'what',      label: 'Parcela'    },
+    { key: 'what',      label: 'Descrição'  },
     { key: 'value',     label: 'Valor',      align: 'right',  render: (v) => fmtBRLFull(Number(v)) },
     { key: 'due',       label: 'Vencimento', align: 'center' },
     { key: 'branch',    label: 'Unidade'     },
@@ -501,7 +501,7 @@ function TabFinanceiro(p: ReportsBiProps) {
       key: 'daysLeft', label: 'Prazo', align: 'center',
       // IND-08: a vencida diz há quantos dias (era "0d" para sempre). A18 da
       // 30ª: em palavras, atraso ou prazo ("vence em 61 dias", "3 dias de atraso").
-      render: (v) => (
+      render: (v) => v === '' ? '—' : (
         <Badge label={prazoDaParcela(Number(v))}
           color={Number(v) <= 3 ? 'red' : Number(v) <= 7 ? 'amber' : 'gray'} />
       ),
@@ -513,10 +513,10 @@ function TabFinanceiro(p: ReportsBiProps) {
     // A18 da 30ª: o procedimento e a parcela ("Microagulhamento — parcela 2/3"), não "Atendimento concluído — …".
     what:     nomeDaLinhaDoLancamento(i.appointment?.procedures?.name, { numero: i.parcela_numero, total: i.parcela_total, descricao: i.description }) ?? i.description,
     value:    Number(i.amount),
-    due:      new Date(i.due_date).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
+    due:      i.due_date ? new Date(i.due_date).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—',
     branch:   branches.find(b => b.id === i.branch_id)?.name ?? '—',
     // Dia a dia, no dia da unidade (lib/financeiro/vencimentos; IND-08 da varredura de 18/11).
-    daysLeft: diasAteOVencimento(i.due_date, today, fuso),
+    daysLeft: i.due_date ? diasAteOVencimento(i.due_date, today, fuso) : '',
   }))
 
   return (
@@ -595,11 +595,11 @@ function TabFinanceiro(p: ReportsBiProps) {
         </SCard>
         {/* As parcelas a receber são da unidade, não dos atendimentos dela. */}
         {(
-          <SCard title="Parcelas Pendentes" style={{ gridColumn: '1 / -1' }}>
+          <SCard title="A receber em aberto" style={{ gridColumn: '1 / -1' }}>
             <SimpleTable
               columns={installCols}
               rows={installRows}
-              emptyMsg="Sem parcelas pendentes."
+              emptyMsg="Nada a receber em aberto."
             />
           </SCard>
         )}

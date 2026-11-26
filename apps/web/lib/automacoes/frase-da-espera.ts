@@ -15,6 +15,18 @@ const CAIU: Record<string, string> = {
   COMPLETED: 'o atendimento já foi concluído',
 }
 
+/**
+ * O fato de cada situação (D7 da 32ª; RX-05). Quando o gatilho da automação É
+ * essa situação — o "Retorno depois do atendimento" espera a partir da
+ * conclusão —, o agendamento não "caiu": é dele que a espera começou, e ela
+ * segue.
+ */
+const GATILHO_DA_SITUACAO: Record<string, string> = {
+  CANCELLED: 'agendamento.cancelado',
+  NO_SHOW:   'agendamento.nao_compareceu',
+  COMPLETED: 'agendamento.concluido',
+}
+
 /** "22/11 às 09:00" no fuso da tela. */
 function diaEHora(iso: string, fuso: string): string {
   const d = new Date(iso)
@@ -24,12 +36,14 @@ function diaEHora(iso: string, fuso: string): string {
 }
 
 export function fraseDaEspera(
-  e: { retomaEm: string | null; situacaoDoAgendamento: string | null },
+  e: { retomaEm: string | null; situacaoDoAgendamento: string | null; gatilho?: string | null },
   fuso: string = FUSO_DE_BRASILIA,
 ): string | null {
   if (!e.retomaEm) return null
   const quando = diaEHora(e.retomaEm, fuso)
-  const caiu = e.situacaoDoAgendamento ? CAIU[e.situacaoDoAgendamento] : undefined
+  const situacao = e.situacaoDoAgendamento
+  const ehOGatilho = !!situacao && !!e.gatilho && GATILHO_DA_SITUACAO[situacao] === e.gatilho
+  const caiu = situacao && !ehOGatilho ? CAIU[situacao] : undefined
   return caiu ? `Vai reconferir em ${quando}: ${caiu}.` : `Segue em ${quando}.`
 }
 

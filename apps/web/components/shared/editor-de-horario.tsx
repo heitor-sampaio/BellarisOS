@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Plus, X } from 'lucide-react'
-import { HORARIO_PADRAO, MEIA_NOITE, FIM_NO_CAMPO, type Horario, type Intervalo } from '@/lib/agenda/horario'
+import { HORARIO_PADRAO, MEIA_NOITE, FIM_NO_CAMPO, periodoAoAbrirODia, type Horario, type Intervalo } from '@/lib/agenda/horario'
 import { resumoDoEditorDeHorario } from '@/lib/unidades/horario-no-editor'
 import { Dica } from '@/components/shared/dica'
 
@@ -119,7 +119,7 @@ export function EditorDeHorario({ nome, valor, seguir, base }: {
           <div key={chave} data-dia={chave} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minHeight: 'var(--altura-controle)' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, width: 120, cursor: 'pointer', ...rotulo }}>
               <input type="checkbox" checked={aberto} aria-label={`${nomeDoDia} abre`}
-                onChange={e => mudar(chave, e.target.checked ? [{ de: '08:00', ate: '20:00' }] : [])} />
+                onChange={e => mudar(chave, e.target.checked ? periodoAoAbrirODia(base, chave) : [])} />
               {nomeDoDia}
             </label>
             {!aberto && <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>Fechado</span>}
@@ -129,7 +129,7 @@ export function EditorDeHorario({ nome, valor, seguir, base }: {
                 24 horas
                 <button type="button" className="btn-ghost" style={{ fontSize: 'var(--text-xs-sz)' }}
                   aria-label={`Escolher o horário de ${nomeDoDia}`}
-                  onClick={() => mudar(chave, [{ de: '08:00', ate: '20:00' }])}>
+                  onClick={() => mudar(chave, periodoAoAbrirODia(base, chave, { semDiaInteiro: true }))}>
                   Escolher o horário
                 </button>
               </span>

@@ -462,7 +462,7 @@ export async function updateTeamMember(
     }
   }
 
-  const { error } = await admin
+  const atualizar = admin
     .from('users')
     .update({
       ...(mantemCargoDoSistema ? {} : { role_id: roleId, branch_id: effectiveBranchId, outras_unidades: unidades?.slice(1) ?? [] }),
@@ -473,6 +473,10 @@ export async function updateTeamMember(
     })
     .eq('id', userId)
     .eq('tenant_id', ctx.tenantId!)
+  // D9 da 32ª: a lista do formulário é a que fica — sem a marca, o gatilho
+  // (`atende_em_sincronizar`) estendia a lista igual à de antes para a unidade
+  // acrescentada às "Unidades" (migration 20261210500001).
+  const { error } = await (atendeEm ? atualizar.setHeader('x-bellaris-atende-escolhido', '1') : atualizar)
   if (error) return { error: 'Erro ao atualizar membro.' }
 
   // Reemite os claims do JWT. O app já lê cargo e abrangência do banco (com a

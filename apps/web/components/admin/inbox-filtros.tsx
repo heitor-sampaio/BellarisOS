@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { SlidersHorizontal, X } from 'lucide-react'
 import type { Conversation, InboxChannel, ConvStatus, OpcoesDoInbox } from '@/actions/inbox'
+import { rotuloDaEtapa } from '@/lib/inbox/rotulo-da-etapa'
 
 /**
  * Filtros da caixa de entrada.
@@ -149,7 +150,7 @@ function derivarOpcoes(conversas: Conversation[]): Opcoes {
     c.owner_ids.forEach((id, i) => donos.set(id, c.owner_names[i] ?? 'Sem nome'))
     c.funnel_ids.forEach((id, i) => funis.set(id, c.funnel_names[i] ?? 'Funil'))
     c.stage_ids.forEach((id, i) => {
-      etapas.set(id, { nome: c.stage_names[i] ?? 'Etapa', funil: c.funnel_ids[0] ?? '' })
+      etapas.set(id, { nome: c.stage_names[i] ?? 'Etapa', funil: c.stage_funnel_ids[i] ?? '' })
     })
     if (c.branch_id) unidades.set(c.branch_id, c.branch_name ?? 'Unidade')
     else             unidades.set(SEM_UNIDADE, 'Rede (sem unidade)')
@@ -445,7 +446,7 @@ export function InboxFiltros({
                 >
                   <option value="todas">Todas as etapas</option>
                   {etapasVisiveis.map(e => (
-                    <option key={e.id} value={e.id}>{e.nome}</option>
+                    <option key={e.id} value={e.id}>{rotuloDaEtapa(e, opcoes.funis, filtros.funil)}</option>
                   ))}
                 </select>
               </Secao>
@@ -569,7 +570,7 @@ export function ChipsDeFiltro({
   }
   if (filtros.etapa !== 'todas') {
     chips.push({
-      rotulo: opcoes.etapas.find(e => e.id === filtros.etapa)?.nome ?? 'Etapa',
+      rotulo: (e => (e ? rotuloDaEtapa(e, opcoes.funis, filtros.funil) : 'Etapa'))(opcoes.etapas.find(e => e.id === filtros.etapa)),
       limpar: () => onChange({ ...filtros, etapa: 'todas' }),
     })
   }

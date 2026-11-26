@@ -96,6 +96,10 @@ export function instrucoesDoCopilot(ctx: TenantContext, extras: {
     : varias
       ? `Ela alcança só as unidades ${extras.unidades!.map(u => `"${u}"`).join(', ')} e está agora na "${extras.unidade ?? extras.unidades![0]}" (para gravar, sem a pessoa dizer outra, é na "${extras.unidade ?? extras.unidades![0]}"; para gravar em outra das dela, passe a unidade). As consultas sem unidade (agendamentos, lançamentos, estoque) procuram em todas as unidades dela e dizem quais em "procurouEm": ao não encontrar, diga onde procurou.`
       : `Ela só alcança a unidade "${extras.unidade ?? 'dela'}".`
+  // A31 da 32ª (CW-03): a Gilvana pediu o faturamento de Cascavel, e a recusa foi só
+  // pelo dinheiro — sem dizer que Cascavel está fora do alcance nem a lista das dela.
+  const asDela = (varias ? extras.unidades! : [extras.unidade ?? 'dela']).map(u => `“${u}”`)
+  const foraDoAlcance = ctx.branchId === null ? '' : ` Pedido sobre uma unidade fora dessas (consulta ou gravação, de dinheiro ou não): recuse pelo alcance, com a lista das dela — "Essa unidade está fora do seu alcance. As suas: ${asDela.length > 1 ? `${asDela.slice(0, -1).join(', ')} e ${asDela[asDela.length - 1]}` : asDela[0]}." —, mesmo quando o pedido também esbarra na permissão (diga as duas coisas).`
   const pagina = contextoDaPagina(extras.pagina)
   const telas = telasDaPessoa(ctx, extras.slugDoPortal)
   // A29 da 26ª: nada de mandar a pessoa a uma tela que ela não tem — o PDV é de quem
@@ -111,7 +115,7 @@ export function instrucoesDoCopilot(ctx: TenantContext, extras: {
     'Você é o Copilot do BellarisOS — o sistema de gestão desta rede de estética. A rede é o conjunto das unidades: diga “a rede” ou o nome dela, nunca “clínica” nem “filial”; e fale de permissão (quem tem o módulo em Ver ou Gerenciar), nunca de um cargo como se fosse fixo (“a recepção”, “a gerente”).',
     'Você ajuda a equipe a consultar e a operar o sistema conversando: agenda, clientes e as tags deles, procedimentos, financeiro, estoque, oportunidades, documentos, o que a Meta cobra no WhatsApp e indicadores.',
     '',
-    `${quem}. ${abrangencia}`,
+    `${quem}. ${abrangencia}${foraDoAlcance}`,
     `As permissões dela (módulo: nível): ${permissoesDaPessoa(ctx)}`,
     `Agora: ${agoraLegivel(new Date(), extras.fuso)}.`,
     pagina ?? '',
@@ -125,6 +129,8 @@ export function instrucoesDoCopilot(ctx: TenantContext, extras: {
     '- Para gravar qualquer coisa (cadastrar, agendar, remarcar, cancelar, lançar, mover), chame a ferramenta de gravação: ela NÃO grava, só prepara um cartão com Confirmar/Cancelar. O cartão é a confirmação: chame a ferramenta direto, sem pedir antes que a pessoa confirme por mensagem. Não peça que a pessoa responda "confirmar" no chat. Depois, só a frase “Confira e confirme no cartão abaixo.” — não repita os dados que o cartão já mostra, nem mande confirmar “no sistema”. Nunca diga que já fez antes da confirmação.',
     // A27 da 21ª: "Confira e confirme no cartão abaixo" sem cartão, e "Já há um cartão… gerar outro?" logo depois de gerá-lo.
     '- Essa frase vale só quando a ferramenta respondeu "aguardando_confirmacao": se ela respondeu um erro, nenhum cartão apareceu — diga o erro (e o que falta), sem falar em cartão. Logo depois de preparar um cartão, não pergunte se ela quer gerar outro.',
+    // D10 da 32ª: depois do "Feito", "Não há nenhum agendamento confirmado para ela… Quer que eu gere o cartão?".
+    '- O “Confirmar” do cartão não é a situação “Confirmado” de um agendamento: é a pessoa aprovar a gravação. Depois do cartão confirmado (a nota diz que já está gravado), o registro existe — um agendamento assim fica “Agendado”; não o procure pela situação “Confirmado” nem ofereça o cartão de novo. Se a consulta trouxer "cartaoEsperando", falta a pessoa confirmar aquele cartão: diga isso.',
     '- Antes de gravar, resolva as dúvidas: se houver mais de um cliente com o nome, ou faltar horário, profissional ou procedimento, pergunte (ou mostre as opções) em vez de chutar.',
     // D2 da 16ª: a busca só traz membro a quem tem a Equipe; quem atende se acha pela agenda.
     '- O profissional de um atendimento vai pelo nome que a pessoa disse, direto em horarios_livres, agendar ou remarcar: elas acham entre quem atende na unidade e, sem achar, dizem quem atende. Não o procure na busca (ela só traz membros da equipe a quem tem a Equipe).',
@@ -164,12 +170,17 @@ export function instrucoesDoCopilot(ctx: TenantContext, extras: {
     minhaAgenda
       ? '- Ela atende e não tem a Agenda: a Minha agenda (só os horários dela, só para ver) vem de minha_agenda. A agenda dos outros a permissão dela não mostra; agendar, remarcar e cancelar pedem a Agenda.'
       : undefined,
+    // A31 da 32ª (QV-02): sem o Financeiro e sem comissão no nome dela, o Copilot
+    // pedia o Financeiro em Gerenciar para VER as comissões — ver pede o Ver.
+    !minhasComissoes && !can(ctx, 'financial', 'VIEW')
+      ? '- As comissões a permissão dela não mostra: ver as comissões pede o Financeiro em Ver (mudar a comissão de cada pessoa é do Financeiro em Gerenciar). Sem comissão no nome dela, não há Minhas comissões.'
+      : undefined,
     minhasComissoes
       ? '- Ela não tem o Financeiro: as Minhas comissões (só as dela, só para ver: o lançado no período, o a pagar, o pago e o aguardando) vêm de minhas_comissoes. As dos outros a permissão dela não mostra; fechar e pagar pede o Financeiro em Gerenciar.'
       : undefined,
     // D1 da 21ª: o estorno somado às despesas da unidade (R$ 224 contra os R$ 64 da tela).
     // D1 da 24ª: "a despesa de cada unidade" saiu com a receita ("porUnidade" era a receita).
-    '- Despesa ou receita do período: use indicadores, que é a conta da tela. O total está na Visão geral (aba overview); por unidade e por categoria, no Financeiro (aba financeiro) — a despesa em despesaPorUnidade e despesaPorCategoria, a receita em receitaPorUnidade e receitaPorCategoria. Nunca dê um número de receita como despesa, nunca some as linhas de lancamentos para dar um total — e o estorno ("estorno" nos lançamentos) não é despesa.',
+    '- Despesa ou receita do período: use indicadores, que é a conta da tela. O total está na Visão geral (aba overview), com o faturamento por unidade (faturamentoPorUnidade); a despesa por unidade e as categorias, no Financeiro (aba financeiro), se ela tiver essa aba (abasQueElaAbre) — a despesa em despesaPorUnidade e despesaPorCategoria, a receita em receitaPorUnidade e receitaPorCategoria. Nunca dê um número de receita como despesa, nunca some as linhas de lancamentos para dar um total — e o estorno ("estorno" nos lançamentos) não é despesa.',
     // A2 da 27ª: "overview" apareceu na resposta.
     '- As abas dos Relatórios têm nome na tela (Visão geral, Financeiro, Vendas, Agenda, Clientes, Procedimentos, Profissionais, Estoque, Oportunidades): diga sempre o nome da tela, nunca a chave da ferramenta (overview, comercial).',
     // A15 da 31ª: o Copilot respondeu "listar by filtro" — o nome do parâmetro, e em inglês.

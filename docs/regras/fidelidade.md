@@ -104,6 +104,12 @@ recompensas, igual (`salvarConfigFidelidade` e `salvarRecompensa` passam por
   "pelo dinheiro pago"; não há aprovação dele registrada para a A20): os pontos são sobre o PAGO (R$ 500
   de R$ 500 + R$ 50 de bônus), pelo lançamento; o bônus é concessão sem
   dinheiro. Prova: `e2e/vendas-credito-bonus.spec.ts`.
+  **A tela diz isso** (A15 da 32ª; princípio 3): em Configurações →
+  Fidelidade, o "Pontos por R$ 1 pago" fica à vista também no modo "Por
+  procedimento" — sumia, e o crédito e o produto pontuam por ele —, e a dica
+  diz que ali ele vale para o crédito interno vendido e, se ligada, a venda
+  de produto (`fidelidade-config.tsx`; teste
+  `tests/fidelidade-pontos-por-real-no-modo-procedimento.test.ts`).
 - **Estorno** (`estornar_transacao`) tira exatamente o que aquele pagamento deu
   (lê o GANHO). Saldo pode ficar **negativo**, como estoque. **E a janela do
   estorno diz ANTES** (A30 da 12ª simulação, 2026-11-11; princípio 3: a Helena

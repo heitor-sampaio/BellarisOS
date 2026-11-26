@@ -387,9 +387,9 @@ Este é o catálogo das regras de WhatsApp e push que valem HOJE: os números de
 - Onde: `docs/regras/whatsapp-push.md:38-53`; `docs/regras/documentos.md:593-594`; `docs/regras/atendimento.md:1740-1741`; `docs/regras/plataforma.md:689-690`; `apps/web/lib/appointments/texto-do-aviso.ts`
 - Antes: KC-19
 
-**NC-06.** O WhatsApp não substitui o aviso no celular: a campanha vai como aviso no celular (o app, o navegador e o sino do portal), e a lista, a criação e o detalhe dela dizem que não vai pelo WhatsApp; a cliente sem aparelho registrado fica com o aviso guardado no sino do app, e a automação diz "Guardado no sino do app: a cliente não tem acesso ao app." — não conta como enviada. Mandar pelo WhatsApp é uma automação que a rede monta e liga.
+**NC-06.** O WhatsApp não substitui o aviso no celular: a campanha vai como aviso no celular (o app, o navegador e o sino do portal), e a lista, a criação e o detalhe dela dizem que não vai pelo WhatsApp; a cliente sem aparelho registrado fica com o aviso guardado no sino do app, e a automação diz "Guardado no sino do app: a cliente não tem acesso ao app." — não conta como enviada. Na campanha também: o "Enviadas" (na lista e no detalhe) conta só o aviso que saiu para um aparelho; o guardado no sino fica como "Guardada no sino" e fica fora dessa conta, então a campanha que só guardou mostra "Enviadas 0". Mandar pelo WhatsApp é uma automação que a rede monta e liga.
 - Fonte: o Heitor, 2026-10-29: "O WhatsApp fica para o futuro."
-- Onde: `docs/regras/whatsapp-push.md:72-78`; `docs/regras/automacoes.md:118-124`, `:348-350`; `docs/revisao.md:1048-1050`, `:2085`
+- Onde: `docs/regras/whatsapp-push.md:72-78`; `docs/regras/automacoes.md:118-124`, `:348-350`; `docs/revisao.md:1048-1050`, `:2085`; `apps/web/lib/notifications/envio-da-campanha.ts` (o "Enviadas" da campanha, D9 da 28ª)
 - Antes: KA-15, KC-21, KC-22
 
 ## As integrações e a credencial (IG)

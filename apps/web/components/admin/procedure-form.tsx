@@ -649,8 +649,19 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
         </div>
       </div>}
 
-      {/* -- Quem realiza (por-01) -- */}
-      {profissionais.length > 0 && (
+      {/* -- Quem realiza (por-01) --
+          A11 da 32ª (PC-14; princípio 3): sem ninguém que atende, a seção sumia
+          sem dizer por quê. Ela fica, e diz. */}
+      {profissionais.length === 0 ? (
+        <div>
+          <TituloDaSecao dica={['Sobre quem realiza', 'A lista mostra quem tem o “Atende clientes” marcado na Equipe. Sem ninguém marcado, todos que atendem realizam este procedimento.']}>
+            QUEM REALIZA
+          </TituloDaSecao>
+          <p data-quem-realiza-sem-ninguem style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+            Ninguém atende ainda: quem tiver o “Atende clientes” marcado na Equipe aparece aqui. Sem ninguém marcado, todos que atendem realizam este procedimento.
+          </p>
+        </div>
+      ) : (
         <div>
           <TituloDaSecao dica={['Sobre quem realiza', quemRealiza.length
             ? 'O app da cliente e o "Sem preferência" oferecem só quem está marcado; a agenda avisa quando quem foi escolhido não realiza.'

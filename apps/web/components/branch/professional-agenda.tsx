@@ -33,6 +33,9 @@ import { horaNaUnidadeDele, comORelogio } from '@/lib/unidades/hora-da-unidade'
 import { ROTULO_DO_STATUS } from '@/lib/agenda/rotulo-do-status'
 import { fimDaOcupacao } from '@/lib/appointments/ocupacao'
 import { LEGENDA_DA_AGENDA } from '@/lib/agenda/legenda'
+import { foraDoHorarioComoCortes, pausasDoDia, textoDaPausa } from '@/lib/agenda/intervalos-da-grade'
+import { DEFINICOES } from '@/lib/metrics/definicoes'
+import { Dica } from '@/components/shared/dica'
 
 type ViewMode = 'dia' | 'semana' | 'mes'
 
@@ -246,6 +249,8 @@ export function ProfessionalAgendaView({
     doDiaDaGrade.map(x => x.trecho),
   )
   const forasDela = forasDoHorario(intervalosDela, DAY_START * 60, DAY_END * 60)
+  // D4 da 32ª (princípio 3): a pausa dela diz o nome, como na grade da equipe (A8 da 31ª).
+  const pausasDela = pausasDoDia(intervalosDela)
   const gridHeight = (DAY_END - DAY_START) * PX_PER_HOUR
   const hourLines  = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => i + DAY_START)
 
@@ -255,6 +260,11 @@ export function ProfessionalAgendaView({
   // (`rolagemDaGrade`, a régua da agenda da unidade).
   const gradeRef = useRef<HTMLDivElement>(null)
   const diaDaGrade = format(selectedDate, 'yyyy-MM-dd')
+  // D4 da 32ª (princípio 3): o que não é horário dela no dia (a pausa, o antes e
+  // o depois do expediente) não é "Horário livre".
+  const foraDela = useMemo(
+    () => foraDoHorarioComoCortes(diaDaGrade, intervalosDoDia(horarioDaUnidade, horarioDaProfissional, diaDaSemana(diaDaGrade))),
+    [diaDaGrade, horarioDaUnidade, horarioDaProfissional])
   const ehHojeNaGrade = diaDaGrade === format(naParede(new Date(), fuso), 'yyyy-MM-dd')
   // O que continua de antes conta do topo do dia.
   const primeiroDoDia = dayEvents.length
@@ -301,13 +311,15 @@ export function ProfessionalAgendaView({
   // Slots livres ≥ 30 min entre atendimentos — tirado o que ela BLOQUEOU (D15
   // da 8ª simulação: a Débora de férias via "Horário livre 02:45 – 04:00"
   // dentro do bloqueio). A régua é a de lib/agenda/horario-livre.
+  // D4 da 32ª (princípio 3): e tirado o que não é horário dela (a pausa, o
+  // antes e o depois do expediente) — a Lauriane via "Horário livre" na pausa.
   const freeSlots = useMemo(() => {
     if (dayEvents.length < 2) return []
     return dayEvents.slice(0, -1).flatMap((ev, i) => {
       // A17 da 14ª: o concluído adiantado libera o resto (a mesma régua do desenho).
       const endMs  = parseISO(ev.start).getTime() + minutosDesenhados(ev) * 60000
       const nextMs = parseISO(dayEvents[i + 1]!.start).getTime()
-      return livresEntre(endMs, nextMs, bloqueios).map(([de, ate]) => {
+      return livresEntre(endMs, nextMs, [...bloqueios, ...foraDela]).map(([de, ate]) => {
         const deDate  = new Date(de)
         const ateDate = new Date(ate)
         return {
@@ -317,7 +329,7 @@ export function ProfessionalAgendaView({
         }
       })
     })
-  }, [dayEvents, DAY_START, bloqueios])
+  }, [dayEvents, DAY_START, bloqueios, foraDela])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -431,7 +443,11 @@ export function ProfessionalAgendaView({
 
         {/* Ocupação hoje */}
         <div className="card" style={{ padding: '18px 20px' }}>
-          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-faint)', marginBottom: 8 }}>{rotulos.ocupacao}</p>
+          {/* D14 da 32ª (OC-05): a definição mora na dica, com o texto da fonte única. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, color: 'var(--text-faint)' }}>
+            <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-faint)' }}>{rotulos.ocupacao}</p>
+            <Dica rotulo={DEFINICOES.ocupacao.rotulo}>{DEFINICOES.ocupacao.texto}</Dica>
+          </div>
           <p style={{ fontSize: 'var(--text-display)', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text)', lineHeight: 1, marginBottom: 10 }}>
             {occupancyPct === null ? '—' : `${occupancyPct}%`}
           </p>
@@ -513,6 +529,23 @@ export function ProfessionalAgendaView({
                   left: 58, right: 0, background: 'var(--bg-app)', pointerEvents: 'none',
                 }} />
               ))}
+
+              {/* A pausa dela, pelo nome (D4 da 32ª): o sombreado sozinho é o mesmo do fora do horário. */}
+              {pausasDela.map(p => {
+                const [hd, md] = p.de.split(':').map(Number), [ha, ma] = p.ate.split(':').map(Number)
+                const top = Math.max(0, ((hd ?? 0) + (md ?? 0) / 60 - DAY_START) * PX_PER_HOUR)
+                const fim = Math.min(gridHeight, ((ha ?? 0) + (ma ?? 0) / 60 - DAY_START) * PX_PER_HOUR)
+                if (fim <= top) return null
+                return (
+                  <div key={`pausa-${p.de}`} data-intervalo-do-horario style={{
+                    position: 'absolute', top, height: fim - top, left: 58, right: 0, pointerEvents: 'none',
+                    padding: '4px 14px', overflow: 'hidden',
+                    fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-semibold)', color: 'var(--text-muted)',
+                  }}>
+                    {textoDaPausa(p)}
+                  </div>
+                )
+              })}
 
               {/* Os bloqueios dela no dia (decisão 3 da 7ª). */}
               {bloqueios.map(b => {

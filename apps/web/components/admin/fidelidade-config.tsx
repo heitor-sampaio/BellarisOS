@@ -174,14 +174,17 @@ export function FidelidadeConfig({ inicial, podeEditar, recompensas = [] }: {
           <strong style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>{modoAtual.label}</strong>
         )}
 
-        {modo === 'POR_REAL' && (
-          <div style={{ maxWidth: 260 }}>
-            <CampoNumero rotulo="Pontos por R$ 1 pago" nome="points_per_real" valor={taxa} onChange={setTaxa}
-              desabilitado={!podeEditar} casas={CASAS.taxa} aviso={avisoDaFidelidade('points_per_real', decimalOuNada(taxa, CASAS.taxa))}
-              sobre="Exemplo: quanto rende cada real"
-              dica="Ex.: 1 = um atendimento de R$ 250 dá 250 pontos. Frações de ponto são descartadas." />
-          </div>
-        )}
+        {/* A15 da 32ª (GA-07, GA-08; princípio 3): à vista nos dois modos — no
+            "por procedimento", o crédito interno vendido e a venda de produto
+            (se ligada) pontuam por esta conta, e o campo sumia. */}
+        <div style={{ maxWidth: 260 }} data-pontos-por-real-no-modo-procedimento={modo === 'POR_PROCEDIMENTO' || undefined}>
+          <CampoNumero rotulo="Pontos por R$ 1 pago" nome="points_per_real" valor={taxa} onChange={setTaxa}
+            desabilitado={!podeEditar} casas={CASAS.taxa} aviso={avisoDaFidelidade('points_per_real', decimalOuNada(taxa, CASAS.taxa))}
+            sobre={modo === 'POR_PROCEDIMENTO' ? 'Para que vale no modo por procedimento' : 'Exemplo: quanto rende cada real'}
+            dica={modo === 'POR_PROCEDIMENTO'
+              ? 'No modo por procedimento, esta conta vale para o crédito interno vendido e, se ligada abaixo, para a venda de produto: eles não têm os pontos de um procedimento. Ex.: 1 = R$ 500 de crédito dão 500 pontos.'
+              : 'Ex.: 1 = um atendimento de R$ 250 dá 250 pontos. Frações de ponto são descartadas.'} />
+        </div>
       </Bloco>
 
       <Bloco titulo="Usar pontos como desconto" sobre={{

@@ -11,6 +11,21 @@ export function vencimentoDoDia(dia?: string | null): string | null {
   return /^\d{4}-\d{2}-\d{2}$/.test(dia) ? new Date(`${dia}T12:00:00-03:00`).toISOString() : new Date(dia).toISOString()
 }
 
+/**
+ * O dia de um pagamento gravado SÓ com a data (A24 da 32ª, princípio 3): o dia
+ * escolhido se grava no meio-dia de Brasília (`vencimentoDoDia`), e a lista o
+ * mostrava com essa hora ("25/11, 10:00" em Rio Branco) — hora que ninguém
+ * registrou. Devolve o dia (AAAA-MM-DD) quando o instante é exatamente a
+ * âncora; senão, nulo (o pagamento tem hora de verdade).
+ */
+export function diaSemHora(iso?: string | null): string | null {
+  if (!iso) return null
+  const t = Date.parse(iso)
+  if (!Number.isFinite(t)) return null
+  const dia = dayKeyTZ(new Date(t), BUSINESS_TZ)
+  return Date.parse(`${dia}T12:00:00-03:00`) === t ? dia : null
+}
+
 export type FrequenciaRecorrente = 'weekly' | 'biweekly' | 'monthly' | 'bimonthly' | 'quarterly' | 'yearly'
 
 const MESES: Partial<Record<FrequenciaRecorrente, number>> = { monthly: 1, bimonthly: 2, quarterly: 3, yearly: 12 }

@@ -1774,6 +1774,75 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-26 (2) — A 32ª simulação e as correções dela
+
+O laço segue (o Heitor, 25/11: "quando acabar essa roda já segue as outras e assim vai"). Cinco redes de teste novas: CRM,
+inbox com caixas de WhatsApp falsas e oportunidades (Studio Alamanda, Sorocaba), a agenda pesada com três salas (Espaço
+Celósia, Maringá), fidelidade, automações e campanha (Instituto Vinca, Pelotas), o dinheiro do dia com duas maquininhas
+(Ateliê Amaranto, Cruzeiro do Sul, UTC−5) e três unidades, uma desativada e reaberta, com o Copilot (Rede Ninfeia,
+Chapecó, Passo Fundo e Cascavel). O dinheiro bateu centavo a centavo nas cinco. As decisões são do Claude, 26/11, pelos
+princípios; as que pedem o Heitor estão em `docs/para-o-heitor.md` §11. Nenhum teste existente foi alterado nem apagado.
+
+**O que mudou no sistema.**
+- **Inbox e CRM.** A resposta "Não enviada" não tira a conversa de "aguardando" nem conta como 1ª resposta; conta quando o
+  provedor aceita (`20261210100001`: o `on_new_message` só conta a saída aceita, e o gatilho novo `trg_mensagem_aceita`
+  conta a aceita depois; corrige as conversas de antes que o banco prova). A bolha que falhou aparece uma vez só e diz
+  por qual número saiu (rede com mais de um). O inbox de quem vê só as caixas dela, sem número ligado, diz por quê. O
+  painel da conversa mostra o agendamento sem recarregar (`20261210100002`: `lead_events` marca o sinal da conversa). A
+  recusa do valor não zera a janela da oportunidade; o "Só leitura" parece leitura; o filtro "Etapa" não mistura funis.
+- **Agenda.** A Minha agenda mostra a pausa como "Intervalo" (não "Horário livre") e explica a ocupação. Depois da recusa
+  do choque, o "Usar o próximo livre" continua. O dia fechado diz "Fechado"; o dia sem horário da pessoa, "Não atende neste
+  dia". O bloqueio diz antes de gravar quais atendimentos continuam e termina em "Confirme só se for isso mesmo.". O
+  "Quem realiza" do procedimento aparece mesmo sem ninguém que atende, dizendo por quê. O horário pessoal parte do da
+  unidade. "Mostrar cancelados e faltas". A ficha diz a unidade de cada agendamento.
+- **Automações e fidelidade.** A AX-06: "Para quem não tem conversa aberta: não mandar / mandar como aviso no celular"
+  (desligada por padrão). A execução diz o que houve em português ("Parou", "Não mandou", "Guardada no sino"), e não
+  "Concluída" quando nada saiu. A variável que a automação não conhece (`{{first_name}}`, das campanhas) se recusa ao
+  salvar, e a mensagem com o dado vazio não sai. O "Retorno" diz "Segue em…". As versões só dizem "no ar" com a automação
+  ativa. O "Se" fala em Aberta/Ganha/Perdida e escolhe a etapa numa lista. A campanha explica "Enviadas". No modo "Por
+  procedimento", o "Pontos por R$ 1" fica à vista (vale para produto e crédito).
+- **Vendas e financeiro.** O estorno diz que o voucher usado volta a valer, e no cartão diz por que é do pagamento
+  inteiro (`20261210400001`; no pacote e no plano ficou a frase antiga — §11, 3). O receber no crediário diz que pontos e
+  voucher são do pagamento à vista. Acima de 12x a tela avisa. O "A receber" diz quanto ficou em aberto e quando vence. O
+  lançamento só com data não mostra hora; o fechamento de dia passado diz o dia; o estorno diz a maquininha; o
+  fechamento da rede diz a unidade; a parcela recebida diz "Parcela 1/2 de <procedimento>". Relatórios → "A receber em
+  aberto" usa a régua do cartão. A aba da rede diz quem muda pelo nome.
+- **A rede, a Equipe e o Copilot.** Acrescentar uma unidade às "Unidades" da pessoa não liga o "Atende" nela sozinho: a
+  lista escolhida na Equipe é a que fica (`20261210500001`, o cabeçalho `x-bellaris-atende-escolhido`; AG-61, UN-12 e
+  AG-72 do catálogo revistas). O "Duplicar" e o "Novo cargo" pegam uma chave livre, e o renomear recusa o nome de outro
+  cargo (a recusa por 23505 nunca disparava). A desativação leva a todos os agendamentos pendentes. A Auditoria diz
+  "Criou a unidade X" na unidade nova, "Mudou de unidade… de A para B" (`20261210500002`), a parcela da operadora
+  marcada como recebida (`20261210400002`) e o motivo do estorno. O resumo do cargo e a tela do Fechamento dizem "só para
+  ver". A Equipe da unidade conta quem é dela e quem atende NELA pela mesma régua. O Copilot não se contradiz depois do
+  cartão, quebra o faturamento por unidade, lista as unidades da pessoa na recusa, diz quando a comanda já foi recebida
+  e vê comissões com o Financeiro em Ver. O endereço do CEP com o sentido da numeração ("- N") vira "123-N".
+
+**Não era defeito:** os 22 enganos do relatório (explicações que moram na dica, regras já decididas); o "Despesas pagas
+(caixa)" × a DRE (números diferentes, LU-07/09/10); a forma só com saída que não se confere (FC-10); as fichas "Da rede"
+no filtro da unidade da Auditoria (AD-24, H16).
+
+**Fora do relatório, achado no caminho.** A troca do responsável da oportunidade e o evento "de X para Y" eram duas
+gravações seguidas, e a completa pegou o responsável trocado sem o evento (`e2e/crm-responsavel.spec.ts:103`, que passou
+em todas as completas anteriores; sob carga, a janela entre as duas cresceu com o gatilho novo de `lead_events`). Agora é
+uma função, uma transação (`lead_trocar_responsavel`, `20261210600001`; CLAUDE.md §14).
+
+**A completa** (contra o build): 2654 passaram e 4 falharam.
+- `e2e/financeiro-filtro-de-tags.spec.ts:89`, nos dois portais: a falha conhecida de 26 a 30/11 (`docs/para-o-heitor.md`
+  §10, proposta 5); o teste não mudou.
+- `e2e/crm-responsavel.spec.ts:90`: a corrida acima, corrigida no código; o spec e os vizinhos (o quadro, o repasse do
+  desativar, o Copilot) passam contra o build novo.
+- `e2e/crm-atritos-da-9.spec.ts:253`, um caso NOVO desta rodada: o seletor achava três selects; apertado pelo nome da
+  opção, o spec passa inteiro (9).
+
+Migrations na produção, uma por vez (duas foram juntas por engano, as duas independentes e certas): `20261210100001`,
+`20261210100002`, `20261210400001`, `20261210400002`, `20261210500001`, `20261210500002`, `20261210600001`. Conferir:
+IGUAL, 4676.
+
+**Sugestões novas** (`docs/sugestoes-de-funcionalidades.md`, 85–94): fechar a unidade um dia só (feriado); o app dizer que
+a unidade não abre no dia; a origem da oportunidade criada pelo inbox; a hora da unidade no topo; o antes e depois da taxa
+da maquininha na Auditoria; avisar o horário de silêncio ao ligar a automação; o fim às 24:00 digitado; o Copilot listar as
+unidades; o gatilho por etapa; as "guardadas no sino" na lista de campanhas.
+
 ### 2026-11-26 — A 31ª simulação e as correções dela
 
 O laço que o Heitor deixou correndo (25/11: "quando acabar essa roda já segue as outras e assim vai"). Cinco redes de

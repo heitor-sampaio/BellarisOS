@@ -33,6 +33,7 @@ import { gravar, ler, tentar, mensagemDoErro } from '@/lib/db'
 import { passaNasCaixas } from '@/lib/inbox/visibilidade'
 import { caixasDoAlcance, conversaAoAlcance, mensagemAoAlcance } from '@/lib/inbox/alcance'
 import { numeroRemovidoDaConversa, recusaDoNumeroRemovido, SUFIXO_DO_REMOVIDO } from '@/lib/inbox/numero-removido'
+import { comNumeroDeSaida, type NumeroDaRede } from '@/lib/inbox/numero-da-bolha'
 import { leadAoAlcance } from '@/lib/crm/alcance'
 import { semConversaParaQuemSoVe, semWhatsappParaConversar } from '@/lib/crm/conversa-da-oportunidade'
 import {
@@ -109,7 +110,10 @@ export interface Conversation {
   owner_ids:    string[]
   owner_names:  string[]
   stage_ids:    string[]
+  /** Alinhado a `stage_ids`: o nome de cada etapa (A5 da 32ª). */
   stage_names:  string[]
+  /** Alinhado a `stage_ids`: o funil de cada etapa — o filtro "Etapa" não mistura os funis (A5 da 32ª). */
+  stage_funnel_ids: string[]
   funnel_ids:   string[]
   funnel_names: string[]
   /** Quantas em andamento. Zero = conversa sem negócio, que é o normal. */
@@ -146,6 +150,10 @@ export interface Message {
   anuncio?:        AnuncioDaMensagem | null
   /** Por que não saiu (status `failed`): o texto de `lib/inbox/falhas`. */
   erro_texto?:     string | null
+  /** A caixa por onde saiu (ou tentou sair) — pode não ser a da conversa. */
+  whatsapp_number_id?: string | null
+  /** O nome dessa caixa, quando a rede tem mais de um número (A2 da 32ª, WL-06). */
+  saiu_por?:       string | null
 }
 
 /**
@@ -190,7 +198,7 @@ export interface ReplyPreview {
 /** A conversa crua: o que `anexarDadosDoCard` completa para virar `Conversation`. */
 type LinhaDeConversa = Omit<Conversation,
   | 'branch_name' | 'lead_tags' | 'eh_cliente' | 'veio_de_anuncio' | 'numero_provider' | 'numero_label' | 'numero_removido'
-  | 'owner_ids' | 'owner_names' | 'stage_ids' | 'stage_names' | 'funnel_ids' | 'funnel_names' | 'abertas'
+  | 'owner_ids' | 'owner_names' | 'stage_ids' | 'stage_names' | 'stage_funnel_ids' | 'funnel_ids' | 'funnel_names' | 'abertas'
 > & {
   branches?:    { name?: string } | null
   attribution?: Record<string, unknown> | null
@@ -380,7 +388,7 @@ async function anexarDadosDoCard(conversas: LinhaDeConversa[], tenantId: string)
       numero_provider: caixa?.provider ?? null,
       numero_label:    caixa?.label    ?? null,
       numero_removido: caixa?.removido ?? false,
-      owner_ids: [], owner_names: [], stage_ids: [], stage_names: [],
+      owner_ids: [], owner_names: [], stage_ids: [], stage_names: [], stage_funnel_ids: [],
       funnel_ids: [], funnel_names: [], abertas: 0,
     }
   }
@@ -455,8 +463,13 @@ async function anexarDadosDoCard(conversas: LinhaDeConversa[], tenantId: string)
         if (nome && !agregado.owner_names.includes(nome)) agregado.owner_names.push(nome)
       }
       if (etapa) {
-        if (!agregado.stage_ids.includes(etapa.id)) agregado.stage_ids.push(etapa.id)
-        if (etapa.name && !agregado.stage_names.includes(etapa.name)) agregado.stage_names.push(etapa.name)
+        // A5 da 32ª: id, nome e funil da etapa ALINHADOS (o nome sem repetição
+        // desalinhava, e o filtro dava a toda etapa o primeiro funil da pessoa).
+        if (!agregado.stage_ids.includes(etapa.id)) {
+          agregado.stage_ids.push(etapa.id)
+          agregado.stage_names.push(etapa.name ?? 'Etapa')
+          agregado.stage_funnel_ids.push(etapa.funnel_id ?? '')
+        }
         if (etapa.funnel_id && !agregado.funnel_ids.includes(etapa.funnel_id)) {
           agregado.funnel_ids.push(etapa.funnel_id)
           const nomeFunil = porFunil.get(etapa.funnel_id)
@@ -567,13 +580,24 @@ export async function getMessages(conversationId: string): Promise<Message[]> {
 
   const data = await ler(admin
     .from('messages')
-    .select('id, conversation_id, direction, content, channel, status, sent_by_name, is_read, created_at, media_type, media_path, external_id, reply_to_external_id, edited_at, ad_referral, erro_texto')
+    .select('id, conversation_id, direction, content, channel, status, sent_by_name, is_read, created_at, media_type, media_path, external_id, reply_to_external_id, edited_at, ad_referral, erro_texto, whatsapp_number_id')
     .eq('conversation_id', conversationId)
     .eq('tenant_id', ctx.tenantId!)
     .order('created_at', { ascending: true })
     .limit(500), 'carregar as mensagens')
 
-  const linhas = (data ?? []) as unknown as Omit<MensagemLida, 'media_url'>[]
+  // A2 da 32ª (WL-06): por qual número cada mensagem saiu, quando a rede tem
+  // mais de um. Só o id, o nome e se foi removido — nunca a credencial. Nunca
+  // derruba a conversa: sem a leitura, a bolha só não diz o número.
+  const { data: numeros, error: erroDosNumeros } = await admin
+    .from('whatsapp_numbers').select('id, label, removido_em')
+    .eq('tenant_id', ctx.tenantId!)
+  if (erroDosNumeros) console.error('[getMessages] os números da rede:', erroDosNumeros.message)
+
+  const linhas = comNumeroDeSaida(
+    (data ?? []) as unknown as Omit<MensagemLida, 'media_url'>[],
+    (numeros ?? []) as NumeroDaRede[],
+  )
 
   // O bucket é privado: a foto de uma cliente não pode ficar acessível por
   // URL adivinhável. Cada mídia vira um link assinado na leitura.

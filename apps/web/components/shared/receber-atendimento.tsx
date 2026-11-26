@@ -13,7 +13,7 @@ import { formatarPontos } from '@/lib/fidelidade/formato'
 import { CampoDoDesconto, LembreteDoMotivo, contaDoDesconto, descontoDoEstado, estadoDoDesconto } from '@/components/shared/campo-do-desconto'
 import { FORMAS_DO_BALCAO } from '@/components/shared/formas-de-pagamento'
 import { Dica } from '@/components/shared/dica'
-import { oQueSaiNoReceber, type SaiDaComanda } from '@/lib/pdv/situacoes'
+import { oQueSaiNoReceber, TEXTO_PONTOS_SO_A_VISTA, type SaiDaComanda } from '@/lib/pdv/situacoes'
 import { voucherDepoisDoDesconto } from '@/lib/fidelidade/voucher-na-comanda'
 import { CampoQuemVendeu, PerguntaDaVenda } from '@/components/shared/pergunta-da-venda'
 import { PERGUNTA_SEM_VENDEDOR } from '@/lib/vendas/pergunta-sem-vendedor'
@@ -282,6 +282,10 @@ export function FormularioDeReceberAtendimento({
         </div>
       )}
       {aVista && troca && <TrocarPontos troca={troca} aoTrocar={v => { void depoisDaTroca(v) }} />}
+      {/* D16 da 32ª (PD-06): fora do à vista, diz por que os pontos e o voucher sumiram — a frase da venda. */}
+      {!aVista && previa && (previa.vouchers.length > 0 || (previa.saldo > 0 && base > 0) || !!troca) && (
+        <p data-pontos-so-a-vista style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>{TEXTO_PONTOS_SO_A_VISTA}</p>
+      )}
       {comProdutos && (
         <>
           <input type="hidden" name="vendedor_dos_produtos" value={vendedorId} />

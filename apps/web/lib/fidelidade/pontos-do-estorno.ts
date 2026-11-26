@@ -28,6 +28,12 @@ export interface PontosDoEstorno {
     /** Ela tem outro pagamento que vale: o prêmio passa para ele (sai e volta). */
     passaParaOutro: boolean
   } | null
+  /**
+   * O voucher usado NESTE pagamento: o estorno o devolve a ativo
+   * (`estornar_transacao`, pelo `used_transaction_id`). A janela diz que ele
+   * volta a valer em todo estorno, não só no de R$ 0 (ES-01/ES-02).
+   */
+  voucherDoPagamento?: string | null
 }
 
 export function textoDosPontosDoEstorno(p: PontosDoEstorno): string | null {
@@ -55,6 +61,9 @@ export function textoDosPontosDoEstorno(p: PontosDoEstorno): string | null {
     } else if (pr.pontos > 0) {
       partes.push(`${partes.length ? 'E saem' : 'Saem'} os ${formatarPontos(pr.pontos)} do prêmio de ${pr.indicadora} ${daIndicacao}.`)
     }
+  }
+  if (p.voucherDoPagamento) {
+    partes.push(`O voucher “${p.voucherDoPagamento}”, usado neste pagamento, volta a valer para ${p.cliente}.`)
   }
   return partes.length ? partes.join(' ') : null
 }

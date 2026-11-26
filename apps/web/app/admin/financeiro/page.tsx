@@ -1,5 +1,6 @@
 import { nomesDasMaquininhas } from '@/lib/financeiro/vezes-da-rede'
 import { maquininhaDoRotulo } from '@/lib/financeiro/formas'
+import { maquininhaDosEstornos } from '@/lib/financeiro/maquininha-do-estorno'
 import { notaDoEstornoParcial, notaDoUsoDeCredito, type LancamentoParaNota } from '@/lib/financeiro/notas-do-lancamento'
 import { redirect } from 'next/navigation'
 import { getTenantContext, assertPermission, temRecurso, can, vistaPessoal } from '@/lib/auth'
@@ -237,19 +238,21 @@ export default async function AdminFinanceiroPage({
   const descontos = await descontosDosLancamentos(txs)
   // A23 e A31 da 10ª: o pago com voucher/pontos e a taxa e o líquido de cada receita (do banco).
   // A44 da 12ª: o desconto em reais e a profissional de cada lançamento, para o CSV.
-  const [semDinheiro, taxas, extras, maquininhas] = await Promise.all([
+  const [semDinheiro, taxas, extras, maquininhas, maquininhaDoEstorno] = await Promise.all([
     pagosSemDinheiro(txs as unknown as LancamentoSemDinheiro[]),
     getTaxaDosLancamentos(ctx.tenantId!, txs.map(t => t.id)),
     extrasDoCsv(ctx.tenantId!, txs as unknown as LancamentoParaOCsv[]),
     // A18 da 14ª: com mais de uma maquininha, a lista e o CSV dizem qual.
     nomesDasMaquininhas(ctx.tenantId!),
+    // A24 da 32ª: o estorno (uma saída, sem maquininha) diz a do pagamento estornado.
+    maquininhaDosEstornos(ctx.tenantId!, txs.filter(t => t.category === 'Estorno' && !t.maquininha_id).map(t => t.id)),
   ])
   // As opções do filtro de Tags: o vocabulário da rede, lido aqui (quem só tem
   // o Financeiro também as vê); o Resumo não tem o filtro.
   const tagsDaRede = aba === 'resumo' ? [] : await tagsAtivasDaRede(ctx.tenantId!)
   const transactions = txs.map(({ maquininha_id, ...t }) => ({
     ...t,
-    maquininha_nome: maquininhaDoRotulo(maquininhas, maquininha_id),
+    maquininha_nome: maquininhaDoRotulo(maquininhas, maquininha_id ?? maquininhaDoEstorno[t.id]),
     desconto_texto: descontos[t.id] ?? null,
     pago_sem_dinheiro: semDinheiro[t.id] ?? null,
     // A36 e A37 da 11ª: o pago e o estornado em parte; o uso do crédito não é receita.

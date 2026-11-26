@@ -1,5 +1,6 @@
 import { nomesDasMaquininhas } from '@/lib/financeiro/vezes-da-rede'
 import { maquininhaDoRotulo } from '@/lib/financeiro/formas'
+import { maquininhaDosEstornos } from '@/lib/financeiro/maquininha-do-estorno'
 import { notaDoEstornoParcial, notaDoUsoDeCredito, type LancamentoParaNota } from '@/lib/financeiro/notas-do-lancamento'
 import { notFound, redirect } from 'next/navigation'
 import { comAviso } from '@/lib/aviso-da-url'
@@ -184,20 +185,22 @@ export default async function FinancialPage({
   // A23 e A31 da 10ª: o pago com voucher/pontos e a taxa e o líquido de cada receita (do banco).
   // A44 da 12ª: o desconto em reais e a profissional de cada lançamento, para o CSV;
   // A43: todo o a pagar em aberto da unidade.
-  const [semDinheiro, taxas, extras, aPagarEmAberto, maquininhas] = await Promise.all([
+  const [semDinheiro, taxas, extras, aPagarEmAberto, maquininhas, maquininhaDoEstorno] = await Promise.all([
     pagosSemDinheiro((lancamentos ?? []) as unknown as LancamentoSemDinheiro[]),
     getTaxaDosLancamentos(ctx.tenantId!, (lancamentos ?? []).map(t => t.id as string)),
     extrasDoCsv(ctx.tenantId!, (lancamentos ?? []) as unknown as LancamentoParaOCsv[]),
     getAPagarEmAberto({ tenantId: ctx.tenantId!, branchIds: [unidadeId] }),
     // A18 da 14ª: com mais de uma maquininha, a lista e o CSV dizem qual.
     nomesDasMaquininhas(ctx.tenantId!),
+    // A24 da 32ª: o estorno (uma saída, sem maquininha) diz a do pagamento estornado.
+    maquininhaDosEstornos(ctx.tenantId!, (lancamentos ?? []).filter(t => t.category === 'Estorno' && !t.maquininha_id).map(t => t.id as string)),
   ])
   // As opções do filtro de Tags: o vocabulário da rede, lido aqui (quem só tem
   // o Financeiro também as vê); o Resumo não tem o filtro.
   const tagsDaRede = aba === 'resumo' ? [] : await tagsAtivasDaRede(ctx.tenantId!)
   const transactions = (lancamentos ?? []).map(({ client_id, maquininha_id, ...t }) => ({
     ...t,
-    maquininha_nome: maquininhaDoRotulo(maquininhas, maquininha_id as string | null),
+    maquininha_nome: maquininhaDoRotulo(maquininhas, (maquininha_id as string | null) ?? maquininhaDoEstorno[t.id as string]),
     desconto_texto: descontos[t.id as string] ?? null,
     pago_sem_dinheiro: semDinheiro[t.id as string] ?? null,
     // A36 e A37 da 11ª: o pago e o estornado em parte; o uso do crédito não é receita.

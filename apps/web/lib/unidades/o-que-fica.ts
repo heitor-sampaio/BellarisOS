@@ -25,6 +25,8 @@ export interface OQueFicaNaUnidade {
   primeiroAgendamento: string | null
   /** O dia dele (AAAA-MM-DD) no relógio da unidade — o `&date=` do link da agenda. */
   diaDoPrimeiro: string | null
+  /** D11 da 32ª: o dia do ÚLTIMO (AAAA-MM-DD), no relógio da unidade — em outro dia, a agenda abre na semana. */
+  diaDoUltimo?: string | null
   estoque:      { itens: number; valor: number }
   aReceber:     number
   /** A15 da 30ª (UN-10): os cartões a cair — o em aberto da operadora, líquido, como no Financeiro. */
@@ -34,7 +36,7 @@ export interface OQueFicaNaUnidade {
 }
 
 export const NADA_FICA: OQueFicaNaUnidade = {
-  fixos: [], agendamentos: 0, primeiroAgendamento: null, diaDoPrimeiro: null, estoque: { itens: 0, valor: 0 }, aReceber: 0, aReceberDaOperadora: 0,
+  fixos: [], agendamentos: 0, primeiroAgendamento: null, diaDoPrimeiro: null, diaDoUltimo: null, estoque: { itens: 0, valor: 0 }, aReceber: 0, aReceberDaOperadora: 0,
   atendimentosSemPagamento: { n: 0, valor: 0 }, comissaoAPagar: 0,
 }
 
@@ -88,12 +90,19 @@ export function escolherUnidadesDeLeitura<T extends { id: string; ativa: boolean
  */
 export function caminhosDoQueFica(branchId: string, o: OQueFicaNaUnidade): { chave: string; texto: string; rotulo: string; href: string }[] {
   const c: { chave: string; texto: string; rotulo: string; href: string }[] = []
-  if (o.agendamentos > 0) c.push({
-    chave: 'agenda',
-    texto: `${o.agendamentos === 1 ? 'O agendamento continua marcado' : `Os ${o.agendamentos} agendamentos continuam marcados`}: remarque para outra unidade ou cancele na agenda.`,
-    rotulo: 'Ver os agendamentos',
-    href: `/admin/agenda?unidade=${branchId}${o.diaDoPrimeiro ? `&date=${o.diaDoPrimeiro}` : ''}`,
-  })
+  if (o.agendamentos > 0) {
+    // D11 da 32ª (UN-10, princípio 3): eram 27 e 28/11, e o link abria só o 27.
+    // Em dias diferentes, a semana do primeiro; o texto diz os dias.
+    const ultimo = o.diaDoUltimo && o.diaDoPrimeiro && o.diaDoUltimo !== o.diaDoPrimeiro ? o.diaDoUltimo : null
+    const dias = !o.diaDoPrimeiro ? '' : ultimo ? ` (de ${diaCurto(o.diaDoPrimeiro)} a ${diaCurto(ultimo)})` : ` (em ${diaCurto(o.diaDoPrimeiro)})`
+    const outraSemana = !!ultimo && segundaDe(ultimo) !== segundaDe(o.diaDoPrimeiro!)
+    c.push({
+      chave: 'agenda',
+      texto: `${o.agendamentos === 1 ? 'O agendamento continua marcado' : `Os ${o.agendamentos} agendamentos continuam marcados`}${dias}: remarque para outra unidade ou cancele na agenda.${outraSemana ? ' A agenda abre na semana do primeiro: avance a semana para ver os outros.' : ''}`,
+      rotulo: 'Ver os agendamentos',
+      href: `/admin/agenda?unidade=${branchId}${o.diaDoPrimeiro ? `&date=${o.diaDoPrimeiro}` : ''}${ultimo ? '&view=week' : ''}`,
+    })
+  }
   if (o.estoque.itens > 0 || o.estoque.valor > 0) c.push({
     chave: 'estoque',
     texto: `${formatBRL(o.estoque.valor)} em estoque (${plural(o.estoque.itens, 'item', 'itens')}) continua contado no total: transfira para outra unidade, ou registre a perda.`,
@@ -122,4 +131,18 @@ export function caminhosDoQueFica(branchId: string, o: OQueFicaNaUnidade): { cha
     href: `/admin/financeiro/comissoes?unidade=${branchId}`,
   })
   return c
+}
+
+/** "2026-11-27" → "27/11". */
+function diaCurto(dia: string): string {
+  const [, m, d] = dia.split('-')
+  return `${d}/${m}`
+}
+
+/** A segunda-feira da semana do dia (a semana da agenda), "AAAA-MM-DD". */
+function segundaDe(dia: string): string {
+  const d = new Date(`${dia}T12:00:00Z`)
+  const dow = d.getUTCDay()
+  d.setUTCDate(d.getUTCDate() + (dow === 0 ? -6 : 1 - dow))
+  return d.toISOString().slice(0, 10)
 }

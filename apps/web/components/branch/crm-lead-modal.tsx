@@ -2,7 +2,7 @@
 
 import {
   useRef, useCallback, useActionState, useEffect, useEffectEvent, useMemo,
-  useState, forwardRef, useImperativeHandle, useId,
+  useState, forwardRef, useImperativeHandle, useId, startTransition,
 } from 'react'
 import { flushSync } from 'react-dom'
 import { useRouter, usePathname } from 'next/navigation'
@@ -57,6 +57,22 @@ export interface CRMLeadModalHandle {
   /** A29 da 20ª: o "Agendar" do menu do card, sem passar pelo editor. */
   agendar: () => void
 }
+
+/**
+ * A5 da 32ª: no "Só leitura" (o CRM em Ver), os campos desligados pelo fieldset
+ * ficavam com a cara de campo para digitar. Aqui ganham a aparência de leitura:
+ * o fundo do card, a linha fina e o cursor comum. Só tokens.
+ */
+const CSS_SO_LEITURA = `
+fieldset[data-somente-leitura] :is(.field, input, select, textarea) {
+  background: var(--surface);
+  border-color: var(--hairline);
+  color: var(--text);
+  cursor: default;
+  opacity: 1;
+}
+fieldset[data-somente-leitura] :is(.field, input, select, textarea)::placeholder { color: transparent; }
+`
 
 export interface CRMBranch { id: string; name: string; slug: string }
 
@@ -272,7 +288,11 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
     const [abrindoConversa, setAbrindoConversa] = useState(false)
     const [erroConversa,    setErroConversa]    = useState<string | null>(null)
 
+    // D3 da 32ª: a chave do formulário — cada abertura começa do zero (sem o reset automático da action).
+    const [aberturas, setAberturas] = useState(0)
+
     const open = useCallback(() => {
+      setAberturas(n => n + 1)
       setPhone(telefoneDoCampo(existing?.phone ?? pessoa?.telefone))
       setSelectedProcs(existing?.lead_procedures?.map(lp => lp.procedure_id) ?? [])
       setStageId(existing?.crm_stage_id ?? initialStageId ?? stages[0]?.id ?? '')
@@ -483,21 +503,26 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
           {/* Body */}
           <div style={{ padding: '24px 24px 28px' }}>
             {perguntaDasAutomacoes}
-            <form ref={formRef} key={pessoa?.id ?? 'novo'} action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+            <form ref={formRef} key={`${pessoa?.id ?? 'novo'}-${aberturas}`} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
               onSubmit={e => {
-                // D11: sem a resposta do "É a mesma pessoa?", não envia (o envio limparia o formulário) e diz o que falta.
-                if (fichaDoFone && !resposta) { e.preventDefault(); setFaltaResponder(true); return }
+                // D3 da 32ª: sem o reset automático da action (o `action=` do React 19 zerava a janela também
+                // na recusa do servidor — o nome, o valor, o retorno e o Responsável). Cada abertura começa do zero pela chave.
+                e.preventDefault()
+                // D11: sem a resposta do "É a mesma pessoa?", não envia e diz o que falta.
+                if (fichaDoFone && !resposta) { setFaltaResponder(true); return }
                 setFaltaResponder(false)
                 // A35 da 22ª: a etapa mudou e ainda não se perguntou para esta etapa.
                 if (mudouEtapa && respostaDasAutomacoes?.etapa !== stageId) {
-                  e.preventDefault()
                   const etapa = stageId
                   void perguntar(() => automacoesAoMoverOCard(existing!.id, etapa)).then(disparar => {
                     if (disparar === null) return
                     flushSync(() => setRespostaDasAutomacoes({ etapa, disparar }))
                     formRef.current?.requestSubmit()
                   })
+                  return
                 }
+                const dados = new FormData(e.currentTarget)
+                startTransition(() => formAction(dados))
               }}>
               {mudouEtapa && (
                 <input type="hidden" name="_disparar"
@@ -511,6 +536,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
               {isEdit && <input type="hidden" name="_leadId" value={existing!.id} />}
 
               {/* D13 da 25ª: com o CRM em Ver, os campos ficam desligados (o fieldset desliga todos). */}
+              {somenteLeitura && <style>{CSS_SO_LEITURA}</style>}
               <fieldset disabled={somenteLeitura} data-somente-leitura={somenteLeitura ? '' : undefined}
                 style={{ border: 0, padding: 0, margin: 0, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
               {/* Nome */}

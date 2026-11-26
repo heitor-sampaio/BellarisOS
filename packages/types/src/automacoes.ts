@@ -312,7 +312,16 @@ export interface ConfigAcaoMensagem {
   templateId?: string | null
   /** Valores das variáveis do template, também interpolados. */
   variaveisDoTemplate?: Record<string, string>
+  /**
+   * "Para quem não tem conversa aberta" (AX-06; o Heitor, 2026-11-11, H1):
+   * `nao_mandar` (o padrão, princípio 6) ou `aviso_no_celular` — a cliente
+   * sem conversa no canal recebe a mensagem como aviso no celular. Só vale nos
+   * canais de conversa (não no `push`).
+   */
+  semConversa?: SemConversaAberta
 }
+
+export type SemConversaAberta = 'nao_mandar' | 'aviso_no_celular'
 
 export interface ConfigAcaoNotificarEquipe {
   /**

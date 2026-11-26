@@ -89,6 +89,7 @@ export const COISA_DA_AUDITORIA: Record<string, string> = {
   product_sales: 'a venda de produto',
   products: 'o produto',
   prontuario_anotacoes: 'a anotação do prontuário',
+  recebiveis_do_cartao: 'a parcela da operadora',
   role_permissions: 'a permissão do cargo',
   role_report_tabs: 'a aba de relatório do cargo',
   rooms: 'a sala',
@@ -268,6 +269,12 @@ const CAMPO_DA_TABELA: Record<string, Record<string, string>> = {
   prontuario_anotacoes: { texto: 'texto da anotação' },
   crm_stages: { marca: 'marca da etapa' },
   commission_configs: { modo: 'modo da comissão' },
+  // A21 da 32ª: a parcela da operadora (a antecipação e o estorno).
+  recebiveis_do_cartao: {
+    recebida_em: 'recebimento', recebida_por: 'quem marcou como recebida', cancelada_em: 'cancelamento',
+    estornada_em: 'estorno', vencimento: 'vencimento', valor: 'valor', liquido: 'líquido', valor_original: 'valor original',
+    estornado: 'valor estornado', taxa: 'taxa', taxa_pct: 'taxa', taxa_sobra: 'sobra da taxa',
+  },
 }
 const nomeDoCampo = (c: string, tabela?: string) =>
   (tabela ? CAMPO_DA_TABELA[tabela]?.[c] : undefined) ?? CAMPO[c] ?? c.replace(/_/g, ' ')
@@ -808,6 +815,8 @@ export function fraseDaAuditoria(r: RegistroDaAuditoria, nomes: NomesDaAuditoria
     const resto = camposMudados(r.colunas.filter(c => c !== 'is_active'))
     return `${r.depois.is_active ? 'Reativou' : 'Desativou'} ${quem}${resto ? ` (e editou: ${resto})` : ''}`
   }
+  const daOperadora = fraseDaParcelaDaOperadora(r, nomes, cliente)
+  if (daOperadora) return daOperadora
   const situacao = fraseDaSituacao(r, nomes, cliente)
   if (situacao) return situacao
   const daRegra = fraseDaRegraDeComissao(r, nomes)
@@ -870,6 +879,17 @@ export function fraseDaAuditoria(r: RegistroDaAuditoria, nomes: NomesDaAuditoria
     const prof = r.colunas.includes('professional_id') ? texto(r.depois.professional_id) : null
     const quemAtende = prof ? nomes.membros[prof] ?? null : null
     const de = cliente ? ` de ${cliente}` : ''
+    // A30 da 32ª: o "Mudar de unidade" — de onde e para onde (o gatilho guarda a
+    // unidade desde 20261210500002; o registro de antes só tem a de destino).
+    if (r.colunas.includes('branch_id')) {
+      const origem = texto(r.antes.branch_id)
+      const destino = texto(r.depois.branch_id) ?? r.branch_id
+      const nomeDe = (b: string | null) => (b && nomes.unidades[b]) || null
+      const deOnde = origem && nomeDe(origem) ? `de ${nomeDe(origem)} ` : ''
+      const paraOnde = nomeDe(destino) ? `para ${nomeDe(destino)}` : 'para outra unidade'
+      const quando = novo ? `, em ${quandoDaAuditoria(novo, fusoDoRegistro(r, nomes))}` : ''
+      return `Mudou de unidade o agendamento${de}: ${deOnde}${paraOnde}${quando}${quemAtende ? `, com ${quemAtende}` : ''}`
+    }
     if (novo) return `Remarcou o agendamento${de} para ${quandoDaAuditoria(novo, fusoDoRegistro(r, nomes))}${quemAtende ? `, com ${quemAtende}` : ''}`
     if (prof) {
       const resto = camposMudados(r.colunas.filter(c => c !== 'professional_id'))
@@ -1077,6 +1097,7 @@ const FILHAS: Record<string, string> = {
 }
 /** O plural de cada coisa, sem o artigo. Fora daqui: "registros". */
 export const PLURAL_DA_AUDITORIA: Record<string, string> = {
+  recebiveis_do_cartao: 'parcelas da operadora',
   role_permissions: 'permissões dos cargos', role_report_tabs: 'abas de relatório dos cargos', tenant_roles: 'cargos',
   tags: 'tags', crm_origens: 'origens', crm_motivos_perda: 'motivos de perda', crm_stages: 'etapas do funil', crm_funnels: 'funis',
   procedure_categories: 'categorias de procedimento', product_categories: 'categorias de produto', forms: 'fichas',
@@ -1179,6 +1200,27 @@ function resumoDasTabelas(linhas: readonly RegistroDaAuditoria[]): string {
   return partes.length > 5 ? `${partes.slice(0, 5).join(', ')}…` : partes.join(', ')
 }
 
+/**
+ * A21 da 32ª (AD-04): a parcela da operadora — o "Marcar como recebida" e o
+ * "Voltar para a receber" são de quem clicou. O gatilho grava só o UPDATE, com
+ * o número da parcela (o rótulo) e o que mudou; o valor, sem mudar, vem do
+ * retrato lido agora (`nomes.recebiveis`). A cliente vem do pagamento.
+ */
+function fraseDaParcelaDaOperadora(r: RegistroDaAuditoria, nomes: NomesDaAuditoria, cliente: string | null): string | null {
+  if (r.tabela !== 'recebiveis_do_cartao' || r.operacao !== 'editou') return null
+  const n = numero(r.depois.parcela_numero ?? r.antes.parcela_numero)
+  const t = numero(r.depois.parcela_total ?? r.antes.parcela_total)
+  const parcela = `a parcela${n !== null && t !== null ? ` ${n}/${t}` : ''} da operadora`
+  const valor = numero(r.depois.valor) ?? numero(r.antes.valor) ?? (r.registro_id ? nomes.recebiveis?.[r.registro_id]?.valor ?? null : null)
+  const quanto = valor !== null ? ` (${brl(valor)})` : ''
+  const deQuem = cliente ? ` — ${cliente}` : ''
+  if (r.colunas.includes('cancelada_em') || r.colunas.includes('estornada_em')) return `Cancelou ${parcela} no estorno${quanto}${deQuem}`
+  if (r.colunas.includes('recebida_em')) {
+    return `${texto(r.depois.recebida_em) ? 'Marcou como recebida' : 'Voltou para a receber'} ${parcela}${quanto}${deQuem}`
+  }
+  return `Editou ${parcela} (${camposMudados(r.colunas, r.tabela)})${deQuem}`
+}
+
 /** O estorno lido como o fato: o que foi estornado, quanto, e o que voltou ao estoque. */
 function fraseDoEstorno(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria): string | null {
   const saidas = linhas.filter(l => l.tabela === 'financial_transactions' && l.operacao === 'criou' && texto(l.depois.category) === 'Estorno')
@@ -1217,7 +1259,10 @@ function fraseDoEstorno(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAu
   const parcela = original?.parcela && original.de && original.de > 1 ? `parcela ${original.parcela}/${original.de}` : null
   const qual = [forma ? rotuloDaForma(forma, original?.vezes ?? null) : null, parcela].filter(Boolean).join(' · ')
   const fato = devolveu ? `Devolveu ${devolveu}` : `Estornou ${alvo}`
-  return `${fato} (${brl(valor)}${qual ? ` · ${qual}` : ''})${volta}${ativos}${cliente ? ` — ${cliente}` : ''}`
+  // A21 da 32ª (AD-08): o motivo do estorno, lido na hora de mostrar (o do estorno ou o do lançamento estornado).
+  const motivo = linhas.filter(l => l.tabela === 'financial_transactions' && l.registro_id)
+    .map(l => nomes.lancamentos?.[l.registro_id!]?.motivoDoEstorno).find((m): m is string => !!m)
+  return `${fato} (${brl(valor)}${qual ? ` · ${qual}` : ''})${volta}${ativos}${motivo ? ` (motivo: ${motivo})` : ''}${cliente ? ` — ${cliente}` : ''}`
 }
 
 /**
@@ -1454,6 +1499,21 @@ function voucherDaGravacao(linhas: readonly RegistroDaAuditoria[]): VoucherDaGra
 /** O fato da gravação e o registro dele (a frase, a unidade e o link da linha); nulo quando não há um. */
 function fatoDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria): { frase: string; principal: RegistroDaAuditoria } | null {
   const criada = (tabela: string) => [...linhas].reverse().find(l => l.tabela === tabela && l.operacao === 'criou') ?? null
+  // D12 da 32ª (AD-15, AD-23): abrir a unidade grava, junto, o "Atende" de quem
+  // atende em todas (o membro, sem unidade) — a frase caía no membro ("Editou o
+  // membro… (atende em)") e a linha ficava "Da rede". O fato é a unidade criada.
+  const unidadeCriada = criada('branches')
+  if (unidadeCriada) {
+    const nome = nomeDoRegistro(unidadeCriada, nomes)
+    const atende = linhas.filter(l => l.tabela === 'users' && l.operacao === 'editou' && l.colunas.includes('atende_em'))
+    const quem = [...new Set(atende.map(l => nomeDoRegistro(l, nomes)).filter((x): x is string => !!x))]
+    const resto = linhas.filter(l => l !== unidadeCriada && !atende.includes(l))
+    const partes = [
+      ...(resto.length ? [resumoDasTabelas(resto)] : []),
+      ...(quem.length ? [`${emLista(quem)} ${quem.length === 1 ? 'passou' : 'passaram'} a atender nela`] : []),
+    ]
+    return { frase: `Criou a unidade${nome ? ` ${nome}` : ''}${partes.length ? ` (${partes.join('; ')})` : ''}`, principal: unidadeCriada }
+  }
   const recebidos = recebimentosDaGravacao(linhas, nomes)
   const entradas = recebidos.filter(x => x.tipo === 'INCOME')
   const totalRecebido = entradas.reduce((t, x) => t + x.valor, 0)
@@ -1653,7 +1713,7 @@ export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: Nome
   if (fato) return fato.frase
   // A34 da 19ª: o remarcar, o repasse e o cancelamento gravados com outros registros.
   const doAgendamento = linhas.map(l => (l.tabela === 'appointments' && l.operacao === 'editou' ? fraseDaAuditoria(l, nomes) : null))
-    .find(f => f && /^(Remarcou|Repassou|Cancelou|Marcou a falta) /.test(f))
+    .find(f => f && /^(Remarcou|Repassou|Mudou de unidade|Cancelou|Marcou a falta) /.test(f))
   if (doAgendamento) return doAgendamento
   // A36 da 20ª: o agendamento criado com outros registros (o link da ficha, a oportunidade) é o fato.
   const agendou = [...linhas].reverse().find(l => l.tabela === 'appointments' && l.operacao === 'criou')

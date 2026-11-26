@@ -20,6 +20,7 @@ import { modeloDeAutomacao, semWhatsapp } from '@/lib/automacoes/modelos'
 import { deQuemEAExecucao } from '@/lib/automacoes/sobre-da-execucao'
 import { caminhoDoFluxo } from '@/lib/automacoes/caminho-do-fluxo'
 import { ensaioCabe } from '@/lib/automacoes/ensaio'
+import type { FimDaExecucao } from '@/lib/automacoes/em-portugues'
 import { redeTemWhatsapp } from '@/lib/automacoes/canal-da-rede'
 import { ler, tentar, contar } from '@/lib/db'
 import { buscarClientes } from '@/lib/automacoes/tempo'
@@ -665,6 +666,14 @@ export interface ExecucaoNaLista {
   retomaEm:   string | null
   /** A que espera um agendamento: a situação dele AGORA (o cancelado vai só reconferir). */
   situacaoDoAgendamento: string | null
+  /** O fato que a disparou (D7 da 32ª: o gatilho que É a conclusão não "caiu"). */
+  gatilho:    string | null
+  /**
+   * A que terminou sem fazer o que o fluxo pedia (A28, D6 e D15 da 32ª;
+   * princípio 3): "Parou" (a condição não valeu) ou "Não mandou" (a mensagem
+   * não saiu), com o motivo — no lugar do "Concluída".
+   */
+  fim:        FimDaExecucao | null
 }
 
 export interface PassoDaExecucao {
@@ -700,7 +709,11 @@ export async function listarExecucoes(
   const { data, error } = await q
   if (error) return { execucoes: [], error: error.message }
 
-  type Contexto = { cliente?: { nome?: string }; lead?: { nome?: string }; evento?: { entidade?: string; entidadeId?: string } } | null
+  type Contexto = {
+    cliente?: { nome?: string }; lead?: { nome?: string }
+    evento?: { nome?: string; entidade?: string; entidadeId?: string }
+    fimDaExecucao?: FimDaExecucao | null
+  } | null
   // A14 da 20ª: a que espera um agendamento diz se ele ainda está de pé.
   const doAgendamento = (r: { status: unknown; contexto: unknown }) => {
     const e = (r.contexto as Contexto)?.evento
@@ -755,6 +768,8 @@ export async function listarExecucoes(
         sobre:     sobreDa(r.id as string),
         retomaEm:  r.status === 'esperando' ? ((r.rodar_apos as string | null) ?? null) : null,
         situacaoDoAgendamento: agendamento ? (situacoes.get(agendamento) ?? null) : null,
+        gatilho:   (r.contexto as Contexto)?.evento?.nome ?? null,
+        fim:       r.status === 'ok' ? ((r.contexto as Contexto)?.fimDaExecucao ?? null) : null,
       }
     }),
   }

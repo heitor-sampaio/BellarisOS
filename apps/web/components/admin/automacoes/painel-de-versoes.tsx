@@ -9,6 +9,7 @@ import {
 import type { GrafoDeAutomacao, LimitesDaAutomacao } from '@estetica-os/types'
 import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
+import { rotuloDaVersaoAtual } from '@/lib/automacoes/em-portugues'
 
 /**
  * O histórico do grafo.
@@ -30,9 +31,11 @@ const quando = (iso: string, fuso = 'America/Sao_Paulo') =>
   })
 
 export function PainelDeVersoes({
-  automacaoId, podeEditar, onFechar, onRestaurar,
+  automacaoId, status, podeEditar, onFechar, onRestaurar,
 }: {
   automacaoId: string
+  /** A situação da automação: a versão atual só está "no ar" ligada (A16 da 32ª; RX-04). */
+  status: string
   podeEditar: boolean
   onFechar: () => void
   onRestaurar: (v: { nome: string; grafo: GrafoDeAutomacao; limites: LimitesDaAutomacao }) => void
@@ -112,11 +115,11 @@ export function PainelDeVersoes({
               <span style={{ fontWeight: 'var(--weight-bold)', fontSize: 'var(--text-xs-sz)' }}>
                 Versão {v.versao}
                 {v.atual && (
-                  <span style={{
+                  <span data-versao-atual style={{
                     marginLeft: 6, fontSize: 'var(--text-overline)', fontWeight: 'var(--weight-bold)',
-                    color: 'var(--success)',
+                    color: status === 'ATIVA' ? 'var(--success)' : 'var(--text-muted)',
                   }}>
-                    no ar
+                    {rotuloDaVersaoAtual(status)}
                   </span>
                 )}
               </span>

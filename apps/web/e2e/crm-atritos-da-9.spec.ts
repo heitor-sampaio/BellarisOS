@@ -209,3 +209,66 @@ test('A18 da 27ª: duas oportunidades do mesmo contato mostram o nome do contato
     }
   })
 })
+
+/**
+ * A5 da 32ª simulação (princípio 7):
+ * - no modal de quem tem o CRM em Ver ("Só leitura"), os campos desligados
+ *   tinham a cara de campo para digitar — agora têm o fundo do card e a linha fina;
+ * - o filtro "Etapa" do inbox misturava as etapas de funis diferentes; com
+ *   mais de um funil e nenhum escolhido, a etapa diz o funil ("Funil · Etapa"),
+ *   e escolhido o funil, só as dele.
+ */
+test('no "Só leitura", os campos da oportunidade têm a aparência de leitura', async ({ browser }) => {
+  const id = await lead('Só leitura A5')
+  const leitor = await criarMembro(`cr9l${marca}`, {
+    tenant: rede.tenantId, rotulo: 'Só vê o CRM (A5)',
+    permissoes: [{ modulo: 'crm', nivel: 'VIEW' }],
+  })
+  try {
+    await como(browser, leitor, async p => {
+      await p.goto('/admin/oportunidades')
+      await p.locator(`[data-lead-id="${id}"]`).click()
+      const janela = p.locator('dialog[open]')
+      await expect(janela.locator('[data-oportunidade-so-leitura]')).toContainText('Só leitura')
+      const campo = janela.getByLabel('Nome *')
+      await expect(campo).toBeDisabled()
+      const aparencia = await campo.evaluate(el => {
+        const ref = document.createElement('div')
+        ref.style.background = 'var(--surface)'
+        ref.style.borderColor = 'var(--hairline)'
+        document.body.appendChild(ref)
+        const r = getComputedStyle(ref)
+        const c = getComputedStyle(el)
+        const out = { fundo: c.backgroundColor === r.backgroundColor, borda: c.borderTopColor === r.borderTopColor, cursor: c.cursor }
+        ref.remove()
+        return out
+      })
+      expect(aparencia).toEqual({ fundo: true, borda: true, cursor: 'default' })
+    })
+  } finally {
+    await leitor.limpar()
+  }
+})
+
+test('o filtro "Etapa" do inbox diz o funil de cada etapa e, com o funil escolhido, mostra só as dele', async ({ browser }) => {
+  const { data: f2, error } = await db().from('crm_funnels').insert({ tenant_id: rede.tenantId, name: 'Corporal', is_default: false, position: 1 }).select('id').single<{ id: string }>()
+  expect(error, 'o segundo funil').toBeNull()
+  const { error: e2 } = await db().from('crm_stages').insert({ tenant_id: rede.tenantId, funnel_id: f2!.id, name: 'Novo', color: '#c34d6b', position: 0, outcome: 'OPEN' })
+  expect(e2, 'a etapa do segundo funil').toBeNull()
+  try {
+    await como(browser, sdr, async p => {
+      await p.goto('/admin/inbox')
+      await p.getByTitle('Filtrar conversas').click()
+      const etapaSel = p.locator('select.filtro-select', { has: p.getByRole('option', { name: 'Todas as etapas', exact: true }) })
+      await expect(etapaSel.locator('option', { hasText: 'Vendas · Novo' })).toHaveCount(1)
+      await expect(etapaSel.locator('option', { hasText: 'Corporal · Novo' })).toHaveCount(1)
+
+      await p.locator('select.filtro-select', { has: p.getByRole('option', { name: 'Todos os funis', exact: true }) }).selectOption({ label: 'Corporal' })
+      const nomes = await etapaSel.locator('option').allTextContents()
+      expect(nomes).toEqual(['Todas as etapas', 'Novo'])
+    })
+  } finally {
+    await db().from('crm_stages').delete().eq('funnel_id', f2!.id)
+    await db().from('crm_funnels').delete().eq('id', f2!.id)
+  }
+})

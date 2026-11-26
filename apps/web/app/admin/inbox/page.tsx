@@ -8,6 +8,8 @@ import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { TravaRolagem } from '@/components/shared/trava-rolagem'
 import { lerTodas } from '@/lib/db'
 import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
+import { caixasDoAlcance } from '@/lib/inbox/alcance'
+import { semNumeroLigado } from '@/lib/inbox/aviso-sem-numero'
 
 export default async function AdminInboxPage({
   searchParams,
@@ -32,6 +34,9 @@ export default async function AdminInboxPage({
     opcoesDoInbox(),
   ])
   const canais = await canaisConectados(ctx.tenantId!, ctx.internalUserId)
+  // A1 da 32ª (IN-15): sem número ligado, a tela diz por que não há WhatsApp. O erro de
+  // leitura não avisa (a lista já não mostra nada nesse caso — IN-16).
+  const caixas = await caixasDoAlcance(createAdminClient(), ctx).catch(() => null)
 
   // Lista para o seletor de "nova conversa". Não passa por etapa nem funil: a
   // caixa de entrada é de contatos, não do funil.
@@ -83,6 +88,7 @@ export default async function AdminInboxPage({
         podeConfigurarIntegracoes={can(ctx, 'settings', 'MANAGE') && mexeNaConfigDaRede(ctx)}
         numerosDaRede={canais.numeros}
         numeroDoUsuario={canais.numeroDoUsuario}
+        semNumeroLigado={!ctx.semCargo && semNumeroLigado(caixas)}
       />
     </div>
   )

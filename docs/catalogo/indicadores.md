@@ -9,8 +9,8 @@ Este é o catálogo das regras dos indicadores que valem HOJE: todo número na t
 - Onde: `docs/regras/indicadores.md:21-24`; `DEVLOG.md:13713`, `:13755`
 - Antes: KA-03
 
-**FU-02.** Todo dia e toda hora de uma unidade saem no fuso dela: a agenda e o agendar (também no app), o "hoje", o horário de funcionamento, o Fechamento do dia, os indicadores, as telas (ficha, atendimento, Financeiro, parcelas, CRM, inbox, portal da cliente), o recibo (no fuso da unidade que recebeu), os CSV, o texto do lembrete e as datas dos documentos.
-- Fonte: o Heitor, 2026-11-11: "Não, deixa a clinica configurar o seu fuso"
+**FU-02.** Todo dia e toda hora de uma unidade saem no fuso dela: a agenda e o agendar (também no app), o "hoje", o horário de funcionamento, o Fechamento do dia, os indicadores, as telas (ficha, atendimento, Financeiro, parcelas, CRM, inbox, portal da cliente), o recibo (no fuso da unidade que recebeu), os CSV, o texto do lembrete e as datas dos documentos. O recebimento perto da meia-noite conta no dia local da unidade, no caixa, no Fechamento do dia, no faturamento e no fluxo: R$ 100 recebidos às 23:30 de Rio Branco (01:30 de Brasília do dia seguinte) são do dia de Rio Branco; na rede, cada lançamento vale pelo dia da sua unidade (FU-03).
+- Fonte: o Heitor, 2026-11-11: "Não, deixa a clinica configurar o seu fuso"; o recebimento perto da meia-noite: decisão do Claude, 26/11 (32ª simulação, Decisão D) — é esta regra aplicada ao dinheiro, e o dia do caixa é o dia em que o dinheiro entrou ali (princípio 5)
 - Onde: `docs/regras/indicadores.md:24-28`, `:49-54`
 - Antes: KA-04
 

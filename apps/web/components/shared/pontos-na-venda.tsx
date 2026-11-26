@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatarPontos } from '@/lib/fidelidade/formato'
 import { Dica } from '@/components/shared/dica'
+import { TEXTO_PONTOS_SO_A_VISTA } from '@/lib/pdv/situacoes'
 import { TrocarPontos } from '@/components/shared/trocar-pontos'
 import { descontoDoVoucher } from '@/lib/fidelidade/voucher'
 import { SEM_FIDELIDADE, contaDaFidelidade, type ContaDaFidelidade, type EscolhaDaFidelidade, type FidelidadeDaVenda } from '@/lib/fidelidade/conta-na-venda'
@@ -55,7 +56,7 @@ export function PontosNaVenda({ fidelidade, vendido, escolha, conta, aVista, aoM
       </div>
       {!aVista ? (
         <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-          Os pontos e o voucher se usam no pagamento à vista.
+          {TEXTO_PONTOS_SO_A_VISTA}
         </p>
       ) : (
         <>

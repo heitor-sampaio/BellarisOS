@@ -13,7 +13,7 @@ import {
   contextoDoEvento, hidratarParaCaminhos,
   type ContextoDaExecucao, type EventoDoGatilho,
 } from './contexto'
-import { interpolarTexto, caminhosDoTexto } from './variaveis'
+import { interpolarTexto, caminhosDoTexto, variaveisSemDado } from './variaveis'
 import { fusoDaUnidade, fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 import { notificarEquipe, anotarNaLinhaDoTempo } from './acoes'
 import {
@@ -26,6 +26,7 @@ import { retidaPeloSilencio, reconferirDepoisDoSilencio } from './silencio'
 import { quandoVoltar, quandoChegarEm, buscarClientes } from './tempo'
 import { resumoDoNo } from './resumo'
 import { chaveDoPasso } from './passos'
+import { fimDoPasso } from './em-portugues'
 import { gravar, ler, contar } from '@/lib/db'
 import { redeEstaBloqueada } from '@/lib/redes/bloqueio'
 import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
@@ -310,11 +311,20 @@ export async function executarRun(
 
     await gravarPasso(run.id, ordem++, atual, 'ok', resultado.resumo ?? {}, Date.now() - comecou)
 
+    const proximo = resultado.parar ? null : ligacaoSaindo(automacao.grafo, atual.id, resultado.saida)
+
+    // A28, D6 e D15 da 32ª (princípio 3): a condição que deu "Não" e termina
+    // o caminho, e a mensagem que não saiu, ficam no contexto — a lista diz
+    // "Parou"/"Não mandou" com o motivo, e não "Concluída". Vai no contexto
+    // porque ele atravessa as esperas (a mensagem que não saiu antes de um
+    // "Esperar" continua sendo o fim a dizer).
+    const fim = fimDoPasso(atual, automacao.grafo, resultado.resumo, resultado.saida, !!proximo)
+    if (fim) contexto.fimDaExecucao = fim
+
     if (resultado.parar) {
       return await encerrar(run.id, 'ok', null, contexto, null)
     }
 
-    const proximo = ligacaoSaindo(automacao.grafo, atual.id, resultado.saida)
     atual = proximo ? porId.get(proximo) : undefined
   }
 
@@ -459,6 +469,14 @@ async function rodarNo(
         ...caminhosDoTexto(cfg.texto ?? ''), 'cliente', 'conversa',
       ])
 
+      // D15 da 32ª (princípio 4): a variável sem o dado não sai em branco
+      // (", sentimos sua falta…"). A mensagem não sai, e o passo diz o que
+      // faltou.
+      const semDado = variaveisSemDado(cfg.texto ?? '', contexto)
+      if (semDado.length) {
+        return { resumo: { enviada: false, motivo: `Faltou o dado de ${semDado.join(', ')}: a mensagem não saiu.` } }
+      }
+
       // Só o que FALA COM O CLIENTE passa pelos limites. Avisar a equipe não
       // acorda ninguém, e travá-lo faria a recepção descobrir de manhã um
       // no-show da véspera.
@@ -482,6 +500,8 @@ async function rodarNo(
         canal: cfg.canal,
         texto: interpolarTexto(cfg.texto ?? '', contexto, await fusoDaMensagem(run.tenant_id, contexto, evento)),
         templateId: cfg.templateId ?? null,
+        // AX-06 (D6 da 32ª): sem conversa aberta, o que a rede escolheu.
+        semConversa: cfg.semConversa ?? 'nao_mandar',
       })
       return { resumo: r.resumo, esperarAte: r.esperarAte }
     }
@@ -621,6 +641,8 @@ async function abrirExecucoesFilhas(
     contexto: {
       ...pai.contexto,
       cliente: { id: c.id, nome: c.nome, telefone: c.telefone },
+      // Cada filha diz o próprio fim (A28/D6 da 32ª), não o da mãe.
+      fimDaExecucao: undefined,
     },
   }))
 

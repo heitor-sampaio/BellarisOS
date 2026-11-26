@@ -392,7 +392,8 @@ export function AgendaCalendar({
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <button type="button" onClick={alternarCancelados} aria-pressed={comCancelados}
             className={comCancelados ? 'filtro-toggle is-ativo' : 'filtro-toggle'}>
-            {comCancelados ? 'Esconder cancelados' : 'Mostrar cancelados'}
+            {/* A14 da 32ª (princípio 7): o filtro traz as faltas também — o nome diz. */}
+            {comCancelados ? 'Esconder cancelados e faltas' : 'Mostrar cancelados e faltas'}
           </button>
           {/* Os filtros (o Heitor, 18/11): profissional, sala e tag, na consulta. */}
           <FiltrosDaAgendaNaBarra

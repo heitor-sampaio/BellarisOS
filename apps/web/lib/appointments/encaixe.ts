@@ -13,7 +13,7 @@ import { fusoValido } from '@/lib/unidades/fuso'
 import { normalizarHorario, intervalosDoDia, diaDaSemana, avisoForaDoHorario } from '@/lib/agenda/horario'
 import { conferirPecasDoAgendamento, conflitosDoHorario } from '@/lib/appointments/core'
 import { bloqueiosQueBatem } from '@/lib/agenda/bloqueios'
-import { avisoDoBloqueioDaProfissional, avisoDoBloqueioDaSala } from '@/lib/agenda/bloqueio'
+import { avisoDoBloqueioDaProfissional, avisoDoBloqueioDaSala, avisoDosBloqueios } from '@/lib/agenda/bloqueio'
 
 export interface AvisosDoHorario {
   foraDoHorario: string | null; conflito: string | null
@@ -86,9 +86,10 @@ export async function avisosDoHorarioCore(ctx: TenantContext, a: {
     bloqueiosQueBatem(admin, { professionalId: a.professionalId, inicio, fim: fimDoHorario }),
     sala ? bloqueiosQueBatem(admin, { roomId: sala.id, inicio, fim: fimDoHorario }) : Promise.resolve([]),
   ])
-  const bloqueio = [
+  // A9 da 32ª (AG-20): o aviso pede para confirmar ("confirme só se for isso mesmo").
+  const bloqueio = avisoDosBloqueios([
     ...daProfissional.map(b => avisoDoBloqueioDaProfissional(nome, b, fuso)),
     ...daSala.map(b => avisoDoBloqueioDaSala(sala!.name, b, fuso)),
-  ].join(' ') || null
+  ])
   return { foraDoHorario, conflito, bloqueio }
 }

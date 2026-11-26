@@ -102,6 +102,9 @@ export function AppointmentModal({
   unidades, defaultDate, diaInicial = null, clienteInicialId = null, procedimentoInicialId = null, profissionalInicialId = null, onClose, onSuccess,
 }: AppointmentModalProps) {
   const [state, formAction, pending] = useActionState(addAppointment, undefined)
+  // D5 da 32ª: o horário do envio — a recusa do choque vale para ELE; trocado o
+  // horário (o "Usar o próximo livre"), a recusa de antes não fica na tela.
+  const [chaveDoEnvio, setChaveDoEnvio] = useState('')
   // A resposta a "Já existe a ficha de X" do agendar com nome e telefone
   // (r2-cli-01): vai em todo envio seguinte, como no cadastro de cliente.
   const formRef = useRef<HTMLFormElement>(null)
@@ -110,6 +113,7 @@ export function AppointmentModal({
     if (!formRef.current) return
     const dados = new FormData(formRef.current)
     dados.set('_jaExiste', resposta)
+    setChaveDoEnvio(chaveDosAvisos)
     startTransition(() => formAction(dados))
   }
   const [clientSearch, setClientSearch] = useState('')
@@ -461,13 +465,18 @@ export function AppointmentModal({
   // mensagem: a recusa, com o detalhe do aviso (horário e unidade).
   const conflitoDoAviso = avisos && avisos.chave === chaveDosAvisos ? avisos.conflito : null
   const recusadoPorChoque = !!state?.error?.startsWith('Este profissional já tem agendamento') && !!conflitoDoAviso
+  // A recusa do choque de um horário que já não é o da tela (a pessoa trocou o
+  // horário depois de recusada): não se repete — o horário novo tem o aviso dele.
+  const recusaDeOutroHorario = !!state?.error?.startsWith('Este profissional já tem agendamento') && !!chaveDoEnvio && chaveDoEnvio !== chaveDosAvisos
   const avisosDoMomento = avisos && avisos.chave === chaveDosAvisos
     ? [avisos.bloqueio ?? null, avisos.foraDoHorario].filter((x): x is string => !!x) : []
   // A21 da 8ª simulação: o choque não é encaixe — o servidor RECUSA. A janela
   // diz "Não vai ser agendado" e oferece o próximo livre dela a partir do
   // horário escolhido (a régua de `computeAvailableSlots`, a do "próximo livre").
   const choque = recusadoPorChoque ? null : conflitoDoAviso
-  const chaveDoProximo = choque ? chaveDosAvisos : ''
+  // D5 da 32ª (AG-07): o "Usar o próximo livre" segue ali depois da recusa — a
+  // conta parte do choque do aviso, com a recusa na tela ou não.
+  const chaveDoProximo = conflitoDoAviso ? chaveDosAvisos : ''
   const [proximoLivre, setProximoLivre] = useState<{ chave: string; quando: string | null } | null>(null)
   useEffect(() => {
     if (!chaveDoProximo) return
@@ -542,6 +551,7 @@ export function AppointmentModal({
             if (conferindoOHorario || carregandoSalas) return
             const dados = new FormData(e.currentTarget)
             if (respostaJaExiste) dados.set('_jaExiste', respostaJaExiste)
+            setChaveDoEnvio(chaveDosAvisos)
             startTransition(() => formAction(dados))
           }}
           style={{ display: 'flex', flexDirection: 'column', gap: 14 }}
@@ -884,7 +894,9 @@ export function AppointmentModal({
                 {localDT.slice(11, 16)} fica fora da grade de 30 em 30 minutos: é um encaixe (permitido).
               </p>
             )}
-            {gradeDoDia && (
+            {/* A7 da 32ª: no dia em que a unidade não abre, o aviso do horário já
+                diz "A unidade não abre neste dia" — a grade vazia o repetia. */}
+            {gradeDoDia && horasDaGrade.length > 0 && (
               <div style={{ marginTop: 6 }}>
                 <GradeDeHorarios
                   data={diaEscolhido}
@@ -919,10 +931,17 @@ export function AppointmentModal({
             />
           )}
 
-          {state?.error && (
-            <p role="alert" style={{ color: 'var(--warning)', background: 'var(--warning-soft)', borderRadius: 'var(--radius-field-token)', padding: '8px 12px', fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)' }}>
-              {recusadoPorChoque ? `Não foi agendado: ${conflitoDoAviso}` : state.error}
-            </p>
+          {state?.error && !recusaDeOutroHorario && (
+            <div role="alert" style={{ display: 'flex', flexDirection: 'column', gap: 6, color: 'var(--warning)', background: 'var(--warning-soft)', borderRadius: 'var(--radius-field-token)', padding: '8px 12px', fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)' }}>
+              <span>{recusadoPorChoque ? `Não foi agendado: ${conflitoDoAviso}` : state.error}</span>
+              {/* D5 da 32ª (AG-07): recusado o choque, o próximo livre continua à mão. */}
+              {recusadoPorChoque && rotuloDoProximo && proximo && (
+                <button type="button" data-proximo-livre-da-recusa className="btn-secondary" style={{ alignSelf: 'flex-start', fontSize: 'var(--text-xs-sz)' }}
+                  onClick={() => escolherHora(proximo)}>
+                  Usar o próximo livre: {rotuloDoProximo}
+                </button>
+              )}
+            </div>
           )}
 
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4, alignItems: 'center' }}>

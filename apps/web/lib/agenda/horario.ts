@@ -114,6 +114,21 @@ export function lerHorarioDoForm(formData: FormData): Horario | null | undefined
   return h ?? { erro: 'Horário inválido: confira se cada período fecha depois de abrir e se não há períodos sobrepostos.' }
 }
 
+/**
+ * O período que o editor de horário põe ao abrir um dia (marcar o dia, ou o
+ * "Escolher o horário" que sai das 24 horas): o da BASE nesse dia — na Equipe,
+ * o horário da unidade (A12 da 32ª; princípio 3: abria 08:00–20:00, que a
+ * unidade não tinha). A base fechada nesse dia, ou o dia inteiro quando se sai
+ * das 24 horas (`semDiaInteiro`): o comercial. Sem base, o padrão. Uma cópia.
+ * Decisão do Claude, 26/11. Puro.
+ */
+export function periodoAoAbrirODia(base: Horario | null | undefined, chave: string, opcoes: { semDiaInteiro?: boolean } = {}): Intervalo[] {
+  const doDiaNaBase = (base ?? HORARIO_PADRAO).dias[chave] ?? []
+  const inteiro = doDiaNaBase.length === 1 && doDiaNaBase[0]!.de === '00:00' && doDiaNaBase[0]!.ate === MEIA_NOITE
+  if (doDiaNaBase.length === 0 || (opcoes.semDiaInteiro && inteiro)) return COMERCIAL.map(i => ({ ...i }))
+  return doDiaNaBase.map(i => ({ ...i }))
+}
+
 /** Os períodos em que se atende naquele dia da semana: a unidade ∩ o profissional. */
 export function intervalosDoDia(unidade: Horario | null, profissional: Horario | null, dia: number): Intervalo[] {
   const daUnidade = doDia(unidade ?? HORARIO_PADRAO, dia) ?? (unidade ? [] : doDia(HORARIO_PADRAO, dia) ?? [])

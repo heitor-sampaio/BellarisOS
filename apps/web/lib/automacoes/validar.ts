@@ -3,6 +3,7 @@ import type {
   GrafoDeAutomacao, NoDoGrafo, TipoDeNo, GrupoDeCondicao, ConfigGatilhoAgenda, ConfigCondicaoSe,
 } from '@estetica-os/types'
 import { caminhosDoTexto } from './variaveis'
+import { caminhosDoCampo } from './condicoes'
 import { conferirExpressao, ehCaminhoSimples } from './expressao'
 import { antecessoresDe, CAMPOS_DAS_ENTIDADES } from './disponiveis'
 import { chaveDoPasso, nomeDoPasso } from './passos'
@@ -278,6 +279,31 @@ function conferirReferencias(grafo: GrafoDeAutomacao): ProblemaDoGrafo[] {
     }
   }
 
+  // D15 da 32ª (princípio 4): a variável que a automação não conhece sai
+  // vazia na mensagem. `{{first_name}}` é das campanhas; aqui é `{{cliente.nome}}`.
+  for (const no of nos) {
+    const c = (no.config ?? {}) as Record<string, unknown>
+    const jaDitas = new Set<string>()
+    for (const chave of ['titulo', 'corpo', 'texto']) {
+      const v = c[chave]
+      if (typeof v !== 'string') continue
+      for (const m of v.matchAll(/\{\{([^}]*)\}\}/g)) {
+        const dentro = m[1]!.trim()
+        if (!dentro || jaDitas.has(dentro)) continue
+        const desconhecida = caminhosDoCampo(dentro).some(caminho => !RAIZES_DO_CONTEXTO.has(caminho.split('.')[0]!))
+        if (!desconhecida) continue
+        jaDitas.add(dentro)
+        const certa = VARIAVEIS_DAS_CAMPANHAS[dentro]
+        problemas.push({
+          grau: 'erro', noId: no.id,
+          mensagem: certa
+            ? `Em "${nomeDoPasso(no, grafo)}", {{${dentro}}} é variável das campanhas, e a automação não a conhece: use ${certa}.`
+            : `Em "${nomeDoPasso(no, grafo)}", a variável {{${dentro}}} não existe nas automações: escolha uma pela lista de variáveis do campo (ex.: {{cliente.nome}}).`,
+        })
+      }
+    }
+  }
+
   for (const no of nos) {
     const antes = new Set(antecessoresDe(grafo, no.id).map(a => chaveDoPasso(a, grafo)))
     for (const caminho of caminhosCitados(no)) {
@@ -294,6 +320,19 @@ function conferirReferencias(grafo: GrafoDeAutomacao): ProblemaDoGrafo[] {
 
   return problemas
 }
+
+/**
+ * O começo de todo caminho que o contexto da execução tem: o fato, o que os
+ * passos deixaram e as entidades que o motor sabe carregar (`ONDE_ACHAR`, em
+ * `contexto.ts` — `tests/automacoes-variavel-desconhecida.test.ts` confere
+ * que as duas listas andam juntas).
+ */
+const RAIZES_DO_CONTEXTO = new Set([
+  'evento', 'passos', 'cliente', 'agendamento', 'lead', 'conversa', 'plano', 'produto', 'membro',
+])
+
+/** As variáveis das campanhas, e a da automação que diz o mesmo. */
+const VARIAVEIS_DAS_CAMPANHAS: Record<string, string> = { first_name: '{{cliente.nome}}' }
 
 /** Todo caminho de contexto que este node cita — em texto ou em condição. */
 function caminhosCitados(no: NoDoGrafo): string[] {

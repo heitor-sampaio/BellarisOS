@@ -318,3 +318,9 @@ export function rotuloDoCaminho(caminho: string): string {
  * "botox" não casava com "Botox").
  */
 export const CAMPOS_DE_PROCEDIMENTO = new Set(['evento.dados.procedimentoNome', 'agendamento.procedimento'])
+/**
+ * Os campos de etapa (A27 da 32ª): com "é" / "não é", o valor sai da lista
+ * das etapas da rede (era texto livre, o nome exato). O valor gravado é o
+ * nome da etapa, o que o motor compara.
+ */
+export const CAMPOS_DE_ETAPA = new Set(['evento.dados.etapaNome', 'evento.dados.deEtapaNome', 'lead.etapa'])

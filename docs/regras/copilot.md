@@ -687,6 +687,26 @@ sem a Fidelidade em Ver (só com a fidelidade da rede ligada e no plano, C5).
 O modelo diz que a permissão não mostra, nunca que a cliente não tem
 (princípio 4, CW-05). Teste: `tests/copilot-o-que-a-permissao-nao-mostra.test.ts`.
 
+## Depois do cartão, o alcance e o já recebido (D10 e A31 da 32ª, decisão do Claude, 26/11)
+
+- **O "Confirmar" do cartão não é a situação "Confirmado"** (D10): a nota da
+  decisão (`notaDaDecisao`, `lib/copilot/executor.ts`) diz que a pessoa aprovou
+  o cartão e já está gravado, que o agendamento gravado assim fica "Agendado",
+  e que não se prepara o mesmo cartão de novo. Enquanto o cartão espera, a
+  leitura devolve `cartaoEsperando` (o que ele grava ainda não existe).
+- **A unidade fora da abrangência se recusa pelo alcance** (A31, CW-03), com a
+  lista das unidades dela, mesmo quando o pedido também esbarra na permissão
+  (diga as duas coisas). Ver as comissões pede o Financeiro em Ver (QV-02).
+- **A Visão geral traz o faturamento por unidade** quando a tela o mostra (o
+  Financeiro em Ver e mais de uma unidade: `faturamentoPorUnidade`), e
+  `abasQueElaAbre` diz quais abas dos Relatórios indicar: nunca uma que ela
+  não tem.
+- **"Receba a comanda" já recebida diz que já foi recebida**: sem comanda
+  aberta da cliente, `comandas_abertas` devolve `jaRecebidas` (os últimos 30
+  dias), com o número e o link.
+
+Teste: `tests/copilot-depois-do-cartao.test.ts`, `tests/copilot-o-alcance-e-o-ja-recebido.test.ts`.
+
 ## O que nunca fazer aqui
 
 ```

@@ -62,6 +62,26 @@ export function avisoDoBloqueioDaSala(nome: string, b: Periodo & { motivo: strin
 }
 
 /**
+ * O aviso dos bloqueios que o agendar e o remarcar mostram (A9 da 32ª; AG-20:
+ * "…O encaixe é permitido: confirme só se for isso mesmo.", como o Copilot já
+ * diz): as frases de cada bloqueio, juntas, e o pedido de confirmar uma vez no
+ * fim. Nulo sem bloqueio.
+ */
+export function avisoDosBloqueios(frases: string[]): string | null {
+  return frases.length ? `${frases.join(' ')} Confirme só se for isso mesmo.` : null
+}
+
+/**
+ * O que já estava marcado perto do período do bloqueio continua na agenda
+ * (princípio 2): o aviso, com a contagem. O "Bloquear horário" o mostra ANTES
+ * de gravar (A10 da 32ª; AG-20) e no toast depois. Nulo sem nenhum.
+ */
+export function avisoDosMarcadosNoBloqueio(quantos: number): string | null {
+  if (!quantos) return null
+  return `${quantos === 1 ? 'Já há 1 atendimento marcado' : `Já há ${quantos} atendimentos marcados`} perto desse período: ${quantos === 1 ? 'ele continua' : 'eles continuam'} na agenda. Remarque se precisar.`
+}
+
+/**
  * Na tela do atendimento (A31 da 8ª simulação): iniciar dentro das férias da
  * Débora dizia só "faltam 3 h 57 min". Só aviso — o atendimento segue.
  */

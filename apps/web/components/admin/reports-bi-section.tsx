@@ -199,8 +199,10 @@ export async function ReportsBiSection({
           .in('branch_id', branchIds), tags)
           .eq('type', 'INCOME')
           .eq('is_paid', false)
-          .not('parcela_total', 'is', null)
+          // A25 da 32ª: a régua do cartão "A receber · em aberto" (FN-11,
+          // `metrics_a_receber_em_aberto`) — as parcelas E o "A receber", fora o estorno.
           .or('notes.is.null,notes.neq.Estornada')
+          .or('category.is.null,category.neq.Estorno')
           .gt('amount', 0)
           .order('due_date', { ascending: true })
           .limit(50), 'carregar as parcelas a receber')

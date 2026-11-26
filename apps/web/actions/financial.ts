@@ -386,6 +386,9 @@ export async function pontosDoEstorno(transactionId: string): Promise<{ texto: s
       }[] | null
     const l = (linhas ?? [])[0]
     if (!l) return { texto: null }
+    // O voucher usado neste pagamento, o mesmo que `estornar_transacao` devolve a ativo.
+    const voucher = await ler(admin.from('loyalty_vouchers').select('name')
+      .eq('tenant_id', ctx.tenantId!).eq('used_transaction_id', transactionId).eq('status', 'USADO').limit(1).maybeSingle(), 'ler o voucher do pagamento')
     const temPremio = !!l.indicadora && (Number(l.premio_pontos) > 0 || (!!l.premio_voucher && l.premio_voucher_status !== 'CANCELADO'))
     return { texto: textoDosPontosDoEstorno({
       ligada: !!l.ligada, cliente: l.cliente ?? 'a cliente', ganhos: Number(l.ganhos), usados: Number(l.usados), saldo: Number(l.saldo),
@@ -393,6 +396,7 @@ export async function pontosDoEstorno(transactionId: string): Promise<{ texto: s
         indicadora: l.indicadora!, pontos: Number(l.premio_pontos), voucher: l.premio_voucher,
         voucherUsado: l.premio_voucher_status === 'USADO', passaParaOutro: !!l.premio_passa,
       } : null,
+      voucherDoPagamento: (voucher?.name as string | null | undefined) ?? null,
     }) }
   } catch {
     return { texto: null }

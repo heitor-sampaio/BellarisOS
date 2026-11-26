@@ -17,6 +17,7 @@ import { formatarNoFuso } from '@/lib/formatar-no-fuso'
 import { clientesDaCampanha } from '@/lib/notifications/clientes-da-campanha'
 import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { Dica } from '@/components/shared/dica'
+import { DICA_DOS_ENVIOS } from '@/lib/notifications/dica-dos-envios'
 
 export const dynamic = 'force-dynamic'
 
@@ -202,9 +203,7 @@ export default async function CampanhaDetailPage({ params }: { params: Promise<{
             <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               Últimos envios
               {/* D9 da 28ª (NC-06): a cliente sem aparelho não conta como enviada. */}
-              <Dica rotulo="Sobre os envios">
-                Guardada no sino: a cliente não tem aparelho com os avisos ligados; o aviso fica no sino do app e não conta como enviada.
-              </Dica>
+              <Dica rotulo="Sobre os envios">{DICA_DOS_ENVIOS}</Dica>
             </h2>
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>

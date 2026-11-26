@@ -78,6 +78,11 @@ export interface NomesDaAuditoria {
   itensDaComanda?: Record<string, string>
   /** De quem é a comissão paga (o id do pagamento → quem atende). */
   pagamentosDeComissao?: Record<string, string>
+  /**
+   * A21 da 32ª: o valor da parcela da operadora (o id → o valor), lido agora — o
+   * "Marcar como recebida" grava só as datas, e a frase diz quanto.
+   */
+  recebiveis?: Record<string, { valor: number | null }>
   /** A cliente do lançamento de pontos (o id do lançamento → a cliente; a tabela não tem `client_id`). */
   clientesDosPontos?: Record<string, string>
   /** O fechamento do dia que veio depois de outro do mesmo dia e unidade (o "Fechar de novo"). */
@@ -156,6 +161,8 @@ export interface LancamentoDaAuditoria {
   /** A6 da 30ª: a descrição e a categoria (a despesa paga diz qual; a baixa não as grava). */
   descricao?: string | null
   categoria?: string | null
+  /** A21 da 32ª (AD-08): o motivo do estorno, lido na hora de mostrar. */
+  motivoDoEstorno?: string | null
 }
 
 /** Uma linha pronta para a tela e para o CSV. */

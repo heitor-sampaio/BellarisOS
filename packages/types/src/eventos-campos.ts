@@ -160,7 +160,9 @@ export const CAMPOS_DO_EVENTO: Record<NomeDeEvento, CampoDeEvento[]> = {
   [EVENTOS.LEAD_ETAPA_MUDOU]: [
     ...LEAD,
     campo('deEtapaNome', 'Etapa anterior'),
-    campo('desfecho',    'Desfecho da etapa (OPEN, WON, LOST)'),
+    // A27 da 32ª: em português; o "Se" escolhe Aberta, Ganha ou Perdida, e o
+    // valor gravado é o código da etapa (OPEN, WON, LOST), o que o motor compara.
+    campo('desfecho',    'Desfecho da etapa (aberta, ganha ou perdida)'),
   ],
   [EVENTOS.LEAD_GANHO]:   [...LEAD, campo('desfecho', 'Desfecho')],
   [EVENTOS.LEAD_PERDIDO]: [...LEAD, campo('desfecho', 'Desfecho')],

@@ -8,7 +8,7 @@ Heitor aprovou (com a resposta dele), um dos sete princípios de produto, ou
 "decisão do Claude". "Atribuída ao Heitor sem a fala" quer dizer que o texto diz
 que a decisão é dele, mas não traz a fala — está nas Perguntas. "Onde" aponta a
 linha do documento; "Antes" lista os números do rascunho que a regra junta.
-É um RASCUNHO para o Heitor revisar. Contagem: 191 regras (Agenda 69, das quais 9 em "Equipe, como aparece na agenda"; Atendimento 21; Plano de tratamento 23; Prontuário 18; Fichas 15; Procedimentos 15; Estoque 30), 33 perguntas e 21 divergências. Dos 440 números do rascunho, 37 ficaram fora do catálogo e 3 são de outra área (ver os apêndices); todos os outros estão num "Antes". A meta era ~180: passou 10, para não cortar decisão de produto. Em 23/11 saíram três (AT-06, PL-21, PT-03: só descreviam o "só os meus", SM1) e, no mesmo dia, a AG-30 (o "Atende" só vale nas unidades da pessoa); os números ficam, com a linha "Saiu".
+É um RASCUNHO para o Heitor revisar. Contagem: 193 regras (Agenda 71, das quais 11 em "Equipe, como aparece na agenda"; Atendimento 21; Plano de tratamento 23; Prontuário 18; Fichas 15; Procedimentos 15; Estoque 30), 33 perguntas e 21 divergências. Dos 440 números do rascunho, 37 ficaram fora do catálogo e 3 são de outra área (ver os apêndices); todos os outros estão num "Antes". A meta era ~180: passou 10, para não cortar decisão de produto. Em 23/11 saíram três (AT-06, PL-21, PT-03: só descreviam o "só os meus", SM1) e, no mesmo dia, a AG-30 (o "Atende" só vale nas unidades da pessoa); os números ficam, com a linha "Saiu".
 
 ## Agenda (AG)
 
@@ -140,12 +140,12 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:755-771`
 - Antes: AG-44, AG-187
 
-**AG-25.** Nada se fecha sozinho: o agendamento de hoje, Agendado ou Confirmado, com o fim já passado, ganha "· passou do horário", com a dica de marcar a falta, a chegada ou concluir. A agenda e os dashboards avisam os atendimentos de dias anteriores ainda abertos (últimos 30 dias), com o link para cada um, e os que passaram sem chegada vêm num grupo à parte; na Minha agenda (a vista pessoal, SM2), só os dela.
+**AG-25.** Nada se fecha sozinho: o agendamento de hoje, Agendado ou Confirmado, com o fim já passado, ganha "· passou do horário", e a dica do cartão (ao passar o mouse) diz o que fazer: "passou do horário sem chegada nem conclusão: marque a falta, a chegada ou conclua". A agenda e os dashboards avisam os atendimentos de dias anteriores ainda abertos (últimos 30 dias), com o link para cada um, e os que passaram sem chegada vêm num grupo à parte; na Minha agenda (a vista pessoal, SM2), só os dela.
 - Fonte: princípio 6
 - Onde: `docs/regras/atendimento.md:718-742`
 - Antes: AG-45, AG-46
 
-**AG-26.** A agenda da unidade deixa o cancelado e a falta fora da grade; "Mostrar cancelados" os traz de volta, apagados, riscados e com o motivo. Eles não contam em nada (atendimentos, ocupação, contagem de quem atende) e não se arrastam. A agenda da rede sempre os mostra, apagados e com o motivo.
+**AG-26.** A agenda da unidade deixa o cancelado e a falta fora da grade; "Mostrar cancelados" traz de volta os dois (o cancelado e a falta), apagados, riscados e com o motivo. Eles não contam em nada (atendimentos, ocupação, contagem de quem atende) e não se arrastam. A agenda da rede sempre os mostra, apagados e com o motivo.
 - Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — 2026-10-21
 - Onde: `docs/regras/atendimento.md:1163-1171`
 - Antes: AG-129
@@ -194,7 +194,7 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/revisao.md:467-471`, `docs/revisao.md:1900`
 - Antes: AG-67, AG-202
 
-**AG-36.** A falta ("Não compareceu") só se marca a partir do horário marcado (antes, a janela diz que o caminho é "Cancelar"), só em Agendado, Confirmado ou Chegou, e nunca vira Cancelado. Antes de gravar, pergunta, dizendo que os termos em aberto do horário são cancelados e o que estava pago volta para a cliente.
+**AG-36.** A falta ("Não compareceu") só se marca a partir do horário marcado (antes, a janela não mostra o "Não compareceu", e a dica "Sobre a falta", ao lado do "Cancelar", diz que antes do horário o caminho é "Cancelar", com o motivo), só em Agendado, Confirmado ou Chegou, e nunca vira Cancelado. Marcada, a falta sai da grade do dia e volta com o "Mostrar cancelados" (AG-26). Antes de gravar, pergunta, dizendo que os termos em aberto do horário são cancelados e o que estava pago volta para a cliente.
 - Fonte: decisão do Claude
 - Onde: `docs/regras/atendimento.md:683-687`, `:772-777`, `:1438-1443`
 - Antes: AG-81, AG-107, AG-120
@@ -304,6 +304,11 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:1210-1237`
 - Antes: AG-137, AG-138, AG-139, AG-140
 
+**AG-71.** A cliente remarca e cancela pelo app todo agendamento dela, dentro do prazo da rede (AG-53), também o do procedimento que não está marcado para o app (o que só a equipe agenda): quem escolheu o procedimento foi a equipe, e a cliente só muda o dia ou desiste. O "Remarcar" oferece quem realiza o procedimento (PC-14; sem ninguém marcado, todos que atendem na unidade).
+- Fonte: decisão do Claude, 26/11 (32ª simulação, Decisão B) — a AG-53 vale para "os agendamentos dela", sem recorte pelo procedimento, e a marca do app decide só o que a cliente agenda sozinha (B09 da 32ª: a Isadora remarcou o laser pelo app, e está certo)
+- Onde: (ainda não está em `docs/regras/atendimento.md`; o sistema já faz isso, visto na 32ª simulação); AG-53, AG-54, PC-14
+- Antes: (nova, 26/11)
+
 ### A avaliação pela cliente
 
 **AG-57.** A cliente avalia no app ao confirmar o atendimento concluído: estrelas opcionais e comentário, num botão só ("Confirmar que realizei o atendimento"). Só a cliente da ficha avalia, só o atendimento concluído e ainda não confirmado, e só o que a rede pede; procedimento que não foi feito naquele atendimento é recusado.
@@ -328,8 +333,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 
 ### Equipe, como aparece na agenda
 
-**AG-61.** Na Equipe, o "Atende clientes" é uma caixa só: marcada, a pessoa atende em todas as unidades dela (com "A rede inteira", nas ativas ao salvar). Com mais de uma unidade, "Escolher em quais unidades atende" (fechado por padrão) abre a lista, só com as unidades dela. A Equipe diz que "Unidade" (o acesso) e "Atende clientes" (onde agenda) são dois controles, e os avisos das outras telas citam o controle por esse nome ("quem tem a Equipe em Gerenciar marca o “Atende clientes” de quem atende aqui"). O "Atende" só vale nas unidades da pessoa ("A rede inteira": qualquer unidade da rede): a Equipe não oferece outra, e o servidor recusa ("O “Atende” só vale nas unidades da pessoa."), também quando a troca de unidades deixaria o "Atende" de fora.
-- Fonte: decisão do Claude (pelo princípio 7, EQ1c); só nas unidades da pessoa: o Heitor, 2026-11-23: "uma pessoa só pode atender nas unidades que faz parte, isso é obvio"
+**AG-61.** Na Equipe, o "Atende clientes" é uma caixa só: marcada no cadastro, ou ligada na edição (e com "Atender em todas as unidades dela"), a pessoa atende em todas as unidades dela (com "A rede inteira", nas ativas ao salvar). Na edição de quem já atende, vale a lista que ela tem: a unidade acrescentada às "Unidades" não entra sozinha (AG-72). Com mais de uma unidade, "Escolher em quais unidades atende" (fechado por padrão) abre a lista, só com as unidades dela. A Equipe diz que "Unidade" (o acesso) e "Atende clientes" (onde agenda) são dois controles, e os avisos das outras telas citam o controle por esse nome ("quem tem a Equipe em Gerenciar marca o “Atende clientes” de quem atende aqui"). O "Atende" só vale nas unidades da pessoa ("A rede inteira": qualquer unidade da rede): a Equipe não oferece outra, e o servidor recusa ("O “Atende” só vale nas unidades da pessoa."), também quando a troca de unidades deixaria o "Atende" de fora.
+- Fonte: decisão do Claude (pelo princípio 7, EQ1c), revista em 26/11 (32ª, D9: a caixa acompanha as "Unidades" só quando é ligada ali — AG-72); só nas unidades da pessoa: o Heitor, 2026-11-23: "uma pessoa só pode atender nas unidades que faz parte, isso é obvio"
 - Onde: `docs/regras/atendimento.md:298-307`, `:631-633`, `docs/revisao.md:1195-1199`, `docs/revisao.md:2055`; `apps/web/components/admin/team-form.tsx:173-187`; `apps/web/components/branch/agenda-day-view.tsx:403`
 - Antes: AG-48
 
@@ -378,6 +383,11 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Prova: `tests/em-andamento-nas-telas-da-equipe.test.ts`
 - Onde: `docs/regras/atendimento.md` §9.1 ("O "Em andamento" também nas telas da equipe"); `apps/web/lib/agenda/ler-em-andamento.ts`, `apps/web/lib/agenda/em-andamento-da-equipe.ts`, `apps/web/components/shared/em-andamento-agora.tsx`, `apps/web/lib/agenda/minha-agenda.ts` (`destaqueDaMinhaAgenda`)
 - Antes: (nova, 25/11)
+
+**AG-72.** O "Atende" não cresce sozinho quando cresce a abrangência. Para quem é de unidades, a caixa "Atende clientes" marcada vale para as unidades que ela tinha ao marcar: acrescentar uma unidade às "Unidades" da pessoa não liga o "Atende" nela, e quem a edita marca a nova se ela atende lá (desmarcar antes de salvar vale). Só quem tem "A rede inteira" e atende em todas entra sozinho na unidade nova ou reativada (AG-62). Na unidade desativada que volta, quem tinha a lista escolhida à mão fica com o que tinha: a reativada volta ao "Atende" dela só se já estava marcada antes da desativação. A TROCA de unidade ("Mudar a equipe de unidade") não é crescer: é a UN-12.
+- Fonte: a unidade nova e a reaberta: AG-62 (recomendação do Claude aprovada pelo Heitor, 2026-11-14: "Concord."); a unidade acrescentada à pessoa e a reativada de quem escolheu à mão: decisão do Claude, 26/11 (32ª simulação, Decisão E e D9) — pela AG-62 (quem escolheu à mão fica como escolheu) e pela AG-61 ("Unidade", o acesso, e "Atende clientes", onde agenda, são dois controles: mexer num não muda o outro)
+- Onde: AG-61, AG-62; `docs/regras/atendimento.md:345-353`; `apps/web/components/shared/unidades-do-membro.tsx`
+- Antes: (nova, 26/11)
 
 ## Atendimento — iniciar, concluir, desistir (AT)
 
@@ -848,9 +858,9 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:1628-1640`
 - Antes: PC-23, PC-24
 
-**PC-14.** O cadastro do procedimento, na criação e na edição, marca quem o realiza, entre quem atende na rede; sem ninguém marcado, todos que atendem realizam. Na agenda da equipe, escolher quem não realiza só avisa (o encaixe é decisão da rede); no app, é recusado (AG-52); no repasse, só entra quem realiza (AG-67).
-- Fonte: o Heitor, 2026-11-02: "já deveria ter um cadastro das profissionais que podem realizar o procedimento. Isso já deve estar na hora da criação de um procedimento e disponível também na edição"
-- Onde: `docs/regras/atendimento.md:1644-1657`
+**PC-14.** O cadastro do procedimento, na criação e na edição, marca quem o realiza, entre quem atende na rede; sem ninguém marcado, todos que atendem realizam (o chip "Todos que atendem"), também no agendar e no remarcar do app (AG-71). A seção "Quem realiza" lista quem tem o "Atende"; enquanto ninguém atende, ela continua à vista e diz por que está vazia e que, sem ninguém marcado, todos realizam. Na agenda da equipe, escolher quem não realiza só avisa (o encaixe é decisão da rede); no app, é recusado (AG-52); no repasse, só entra quem realiza (AG-67).
+- Fonte: o Heitor, 2026-11-02: "já deveria ter um cadastro das profissionais que podem realizar o procedimento. Isso já deve estar na hora da criação de um procedimento e disponível também na edição"; a seção à vista quando ninguém atende: decisão do Claude, 26/11 (32ª simulação, A11), pelo princípio 7 — ela sumia sem dizer por quê, e os times da 32ª acharam que o cadastro não existia
+- Onde: `docs/regras/atendimento.md:1644-1657`; `apps/web/components/admin/procedure-form.tsx` ("Quem realiza")
 - Antes: PC-26, PC-27, PC-29
 
 **PC-15.** Cada rede tem a sua lista de categorias; a rede nova nasce com dezesseis (entre elas "Avaliação"), e a categoria usada num procedimento entra na lista. Renomear troca o nome em todos os procedimentos (com nome que já existe, junta as duas); arquivar tira das opções, mas o cadastro sempre oferece a categoria atual do procedimento.

@@ -86,6 +86,40 @@ function comAvisoDoCartao(dados: unknown, cartao: Cartao | undefined): unknown {
   }
 }
 
+/**
+ * D10 da 32ª (princípio 3): a consulta feita com um cartão ainda esperando o
+ * "Confirmar" não acha o que ele vai gravar — e o modelo dizia "não há nenhum
+ * agendamento". O recado vai junto dos dados.
+ */
+async function comOCartaoEsperando(c: ContextoDaFerramenta & { conversaId: string }, dados: unknown): Promise<unknown> {
+  if (!dados || typeof dados !== 'object' || Array.isArray(dados)) return dados
+  let esperando: { resumo: ResumoDaAcao | null }[] = []
+  try {
+    const { data } = await c.admin.from('copilot_acoes').select('resumo')
+      .eq('conversa_id', c.conversaId).eq('tenant_id', c.ctx.tenantId!).eq('status', 'pendente')
+      .gt('expira_em', new Date().toISOString())
+    esperando = (data as { resumo: ResumoDaAcao | null }[] | null) ?? []
+  } catch { return dados }
+  const titulos = esperando.map(a => a.resumo?.titulo).filter((t): t is string => !!t)
+  if (!titulos.length) return dados
+  return {
+    ...dados,
+    cartaoEsperando: `O cartão ${titulos.map(t => `"${t}"`).join(', ')} ainda não foi confirmado: o que ele grava ainda não existe e não aparece nesta consulta. Não diga que não existe nem prepare outro cartão igual — diga que falta confirmar no cartão.`,
+  }
+}
+
+/**
+ * A nota que o turno seguinte lê depois do "Confirmar" (D10 da 32ª): o
+ * "CONFIRMOU" se lia como a situação "Confirmado" do agendamento, e o Copilot
+ * procurava os confirmados, não achava o que acabara de gravar e oferecia o
+ * cartão de novo. Pura.
+ */
+export function notaDaDecisao(titulo: string, status: 'feita' | 'falhou', mensagem: string): string {
+  return status === 'feita'
+    ? `A pessoa aprovou o cartão (o botão Confirmar) e já está gravado: "${titulo}". ${mensagem} O “Confirmar” do cartão não é a situação de nenhum registro (um agendamento gravado assim fica “Agendado”). Não prepare o mesmo cartão de novo; se ela pedir para ver, consulte sem filtrar pela situação.`
+    : `A pessoa confirmou "${titulo}", mas NÃO foi gravado: ${mensagem}`
+}
+
 export async function executarChamada(
   c: ContextoDaFerramenta & { conversaId: string },
   chamada: { nome: string; argumentos: string },
@@ -107,7 +141,7 @@ export async function executarChamada(
   try {
     if (ferramenta.tipo === 'leitura') {
       const r = await ferramenta.executar(c, args.data)
-      return { paraOModelo: comAvisoDoCartao(r.dados, r.cartao), cartao: r.cartao }
+      return { paraOModelo: await comOCartaoEsperando(c, comAvisoDoCartao(r.dados, r.cartao)), cartao: r.cartao }
     }
 
     const preparo = await ferramenta.preparar(c, args.data)
@@ -226,9 +260,7 @@ export async function decidirAcao(
   await tentar(admin.from('copilot_mensagens').insert({
     conversa_id: atual.conversa_id, tenant_id: ctx.tenantId!, papel: 'nota',
     conteudo: {
-      texto: resultado.status === 'feita'
-        ? `A pessoa CONFIRMOU e foi gravado: "${atual.resumo.titulo}". ${resultado.resultado.mensagem}`
-        : `A pessoa confirmou "${atual.resumo.titulo}", mas NÃO foi gravado: ${resultado.resultado.mensagem}`,
+      texto: notaDaDecisao(atual.resumo.titulo, resultado.status, resultado.resultado.mensagem),
     },
   }), 'anotar o resultado na conversa')
   return resultado

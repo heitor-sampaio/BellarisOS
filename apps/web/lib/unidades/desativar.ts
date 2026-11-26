@@ -28,13 +28,17 @@ const ABERTOS = ['SCHEDULED', 'CONFIRMED']
  */
 export async function oQueFicaNaUnidade(admin: Admin, tenantId: string, branchId: string): Promise<OQueFicaNaUnidade> {
   const agora = new Date()
-  const [fixos, primeiro, contagem, itens, valor, aReceber, semPagamento, comissoes, daOperadora] = await Promise.all([
+  const [fixos, primeiro, ultimo, contagem, itens, valor, aReceber, semPagamento, comissoes, daOperadora] = await Promise.all([
     ler(admin.from('users').select('id, name')
       .eq('tenant_id', tenantId).eq('branch_id', branchId).eq('is_active', true).order('name'), 'carregar a equipe fixa da unidade') as
       Promise<{ id: string; name: string }[] | null>,
     ler(admin.from('appointments').select('scheduled_at')
       .eq('branch_id', branchId).in('status', ABERTOS).gte('scheduled_at', agora.toISOString())
       .order('scheduled_at').limit(1), 'achar o próximo agendamento da unidade') as Promise<{ scheduled_at: string }[] | null>,
+    // D11 da 32ª: e o último — em outro dia, o "Ver os agendamentos" abre a semana.
+    ler(admin.from('appointments').select('scheduled_at')
+      .eq('branch_id', branchId).in('status', ABERTOS).gte('scheduled_at', agora.toISOString())
+      .order('scheduled_at', { ascending: false }).limit(1), 'achar o último agendamento da unidade') as Promise<{ scheduled_at: string }[] | null>,
     admin.from('appointments').select('id', { count: 'exact', head: true })
       .eq('branch_id', branchId).in('status', ABERTOS).gte('scheduled_at', agora.toISOString()),
     admin.from('branch_product_stock').select('product_id', { count: 'exact', head: true })
@@ -49,12 +53,16 @@ export async function oQueFicaNaUnidade(admin: Admin, tenantId: string, branchId
   if (contagem.error) throw new Error(`contar os agendamentos da unidade: ${contagem.error.message}`)
   if (itens.error) throw new Error(`contar o estoque da unidade: ${itens.error.message}`)
   const primeiroEm = primeiro?.[0]?.scheduled_at ?? null
-  const diaDoPrimeiro = primeiroEm ? dayKeyTZ(primeiroEm, await fusoDaUnidade(tenantId, branchId)) : null
+  const ultimoEm = ultimo?.[0]?.scheduled_at ?? null
+  const fuso = primeiroEm ? await fusoDaUnidade(tenantId, branchId) : null
+  const diaDoPrimeiro = primeiroEm && fuso ? dayKeyTZ(primeiroEm, fuso) : null
+  const diaDoUltimo = ultimoEm && fuso ? dayKeyTZ(ultimoEm, fuso) : null
   return {
     fixos: (fixos ?? []).map(f => ({ id: f.id, nome: f.name })),
     agendamentos: contagem.count ?? 0,
     primeiroAgendamento: primeiroEm,
     diaDoPrimeiro,
+    diaDoUltimo,
     estoque: { itens: itens.count ?? 0, valor },
     aReceber: aReceber.total,
     aReceberDaOperadora: daOperadora.total.emAberto,

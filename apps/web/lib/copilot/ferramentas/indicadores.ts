@@ -105,7 +105,11 @@ export const indicadores: FerramentaDeLeitura<{
       // A entrada, a saída e o lucro só com o Financeiro em Ver (o Heitor, 23/11:
       // "financeiro é uma coisa, vendas é outra"), como os cartões da tela.
       const caixa = veOCaixaNosRelatorios(c.ctx.permissions)
-      const [atual, anterior, ticket, estoque, emAberto] = await Promise.all([
+      // A31 da 32ª: o "Faturamento por unidade" da Visão geral (o cartão da tela,
+      // com o Financeiro e mais de uma unidade no recorte) — o Copilot mandava
+      // abrir a aba Financeiro, que a pessoa não tinha.
+      const porUnidade = caixa && branchIds.length > 1
+      const [atual, anterior, ticket, estoque, emAberto, doRelatorio] = await Promise.all([
         getCoreDosModulos({ ...janela, recorte }),
         getCoreDosModulos({ ...janela, from: periodo.prevFrom, to: periodo.prevTo, recorte }),
         getTicketMedio(janela),
@@ -115,7 +119,14 @@ export const indicadores: FerramentaDeLeitura<{
         // C5 (F68): o "A receber" do Financeiro — pelo VENCIMENTO, até o FIM do
         // período (getEmAberto). Era o pendente do núcleo até agora, outro número.
         caixa ? getEmAberto({ ...janela, to: periodo.fullTo }) : Promise.resolve(null),
+        porUnidade
+          ? getRelatorioDosModulos({ ...janela, prevFrom: periodo.prevFrom, prevTo: periodo.prevTo, aba: 'overview', granularidade: periodo.granularity === 'hour' ? 'hour' : 'day', recorte })
+          : Promise.resolve(null),
       ])
+      const nomesDoFaturamento = doRelatorio ? await nomesPorId(c, 'branches', doRelatorio.receitaPorUnidade.map(x => x.branchId)) : null
+      // As abas que ela abre, pelo nome da tela: só estas se indicam (A31 da 32ª).
+      const abasQueElaAbre = abasQueValem(c.ctx.reportTabs, c.ctx.permissions).map(t => REPORT_TAB_LABELS[t])
+      const temVendas = podeVerRelatorio(c.ctx, 'vendas')
       const resultado = estoque ? resultadoDoPeriodo({ ...atual, ...estoque.total }) : null
       const comissoes = can(c.ctx, 'financial', 'VIEW')
       return {
@@ -123,6 +134,11 @@ export const indicadores: FerramentaDeLeitura<{
           ...cabecalho,
           ...(resultado && emAberto ? {
             faturamento: dinheiro(atual.revenueCash), faturamentoAnterior: dinheiro(anterior.revenueCash),
+            ...(doRelatorio ? {
+              faturamentoPorUnidade: doRelatorio.receitaPorUnidade.map(x => ({
+                unidade: nomesDoFaturamento?.get(x.branchId) ?? x.branchId, atual: dinheiro(x.atual), anterior: dinheiro(x.anterior),
+              })),
+            } : {}),
             aReceber: dinheiro(emAberto.aReceber),
             notaDoAReceber: 'O que vence no período, até o fim dele, e ainda não foi pago (o "A receber" do Financeiro).',
             despesas: dinheiro(atual.expensesCash),
@@ -133,7 +149,7 @@ export const indicadores: FerramentaDeLeitura<{
             margem: resultado.margemPct === null ? null : `${resultado.margemPct.toFixed(1).replace('.', ',')}%`,
             notaDoLucro: 'Lucro = receita paga − despesas pagas (sem a compra de estoque e sem o pagamento das comissões, que ficam no caixa) − insumo consumido e custo do produto vendido − taxas da maquininha − comissões lançadas no período.',
           } : {
-            semOFinanceiro: 'A entrada (faturamento, a receber), a saída (despesas) e o lucro pedem o Financeiro em Ver, e a permissão desta pessoa não o tem: diga isso se ela pedir. A performance de vendas está na aba Vendas.',
+            semOFinanceiro: `A entrada (faturamento, a receber), a saída (despesas) e o lucro pedem o Financeiro em Ver, e a permissão desta pessoa não o tem: diga isso se ela pedir.${temVendas ? ' A performance de vendas está na aba Vendas.' : ''}`,
           }),
           receitaDeServicos: dinheiro(atual.serviceRevenue),
           atendimentosConcluidos: atual.appointmentsCompleted, atendimentosConcluidosAnterior: anterior.appointmentsCompleted,
@@ -147,6 +163,7 @@ export const indicadores: FerramentaDeLeitura<{
           // IND-09 (varredura de 18/11): o nulo vai com o porquê, como a tela diz.
           ...(atual.newClients === null ? { notaDosNovosClientes: '"Novos clientes" só existe na rede inteira: a cliente é da rede, e nenhuma unidade tem clientes novas só dela.' } : {}),
           ...(comissoes ? { comissoesEmAberto: dinheiro(atual.commissionsOpen), comissoesPagas: dinheiro(atual.commissionsPaid) } : {}),
+          abasQueElaAbre: `${abasQueElaAbre.join(', ') || 'nenhuma'}: indique só estas abas dos Relatórios.`,
           nota: 'O período anterior é o equivalente (mesmo tamanho), não o mês inteiro.',
         },
       }

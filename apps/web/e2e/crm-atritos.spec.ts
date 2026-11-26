@@ -84,6 +84,46 @@ test.describe.serial('o CRM', () => {
     }
   })
 
+  // D3 da 32ª (OP-37: diz o limite e deixa corrigir; princípio 7): a recusa do
+  // servidor zerava a janela — o nome, o valor, o retorno e o Responsável.
+  test('a recusa do valor não zera a janela da "Nova oportunidade"', async ({ browser }) => {
+    const nome = `${PREFIXO} Recusa ${marca}`
+    const telefone = '489' + String(Date.now() + 3).slice(-8)
+    await como(browser, async p => {
+      await p.goto(`/${slug}/oportunidades`)
+      await expect(async () => {
+        await p.getByRole('button', { name: /^Nova oportunidade em / }).first().click({ timeout: 1000 })
+        await expect(p.locator('dialog[open] input[name="name"]')).toBeVisible({ timeout: 1000 })
+      }).toPass()
+      const modal = p.locator('dialog[open]')
+      await modal.locator('input[name="name"]').fill(nome)
+      await modal.locator('input[name="phone"]').fill(telefone)
+      await modal.locator('input[name="value"]').fill('-500')
+      await modal.locator('input[name="retornar_em"]').fill('2027-01-15')
+      const responsavel = modal.locator('select[name="owner_id"]')
+      await expect(responsavel.locator('option').nth(1)).toBeAttached()
+      const escolhido = await responsavel.locator('option').nth(1).getAttribute('value')
+      await responsavel.selectOption(escolhido!)
+      await modal.getByRole('button', { name: 'Criar oportunidade' }).click()
+      // A recusa aparece, e nada se apagou.
+      await expect(modal.getByText(/negativ/i)).toBeVisible()
+      await expect(modal.locator('input[name="name"]')).toHaveValue(nome)
+      await expect(modal.locator('input[name="value"]')).toHaveValue('-500')
+      await expect(modal.locator('input[name="retornar_em"]')).toHaveValue('2027-01-15')
+      await expect(responsavel, 'o Responsável não volta a "Sem responsável"').toHaveValue(escolhido!)
+      // Corrigido o valor, cria.
+      await modal.locator('input[name="value"]').fill('500')
+      await modal.getByRole('button', { name: 'Criar oportunidade' }).click()
+      await expect(p.locator('dialog[open]'), 'o modal fecha').toHaveCount(0)
+      // A próxima "Nova oportunidade" começa do zero.
+      await p.getByRole('button', { name: /^Nova oportunidade em / }).first().click()
+      await expect(p.locator('dialog[open] input[name="name"]')).toHaveValue('')
+      await expect(p.locator('dialog[open] input[name="value"]')).toHaveValue('')
+    })
+    const { data } = await db().from('leads').select('value, owner_id').eq('tenant_id', rede!.tenantId).eq('name', nome).single()
+    expect(Number(data!.value)).toBe(500)
+  })
+
   test('a origem não aparece duas vezes no card, e "Telefone" é uma origem', async ({ browser }) => {
     const { data: etapa } = await db().from('crm_stages').select('id').eq('tenant_id', rede!.tenantId).order('position').limit(1).single<{ id: string }>()
     const nome = `${PREFIXO} Insta ${marca}`

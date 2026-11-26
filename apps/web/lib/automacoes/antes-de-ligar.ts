@@ -62,11 +62,27 @@ export function textoAntesDeLigar(r: ContaAntesDeLigar): string {
   return `${base}, e ${partes.join(', e ')}.`
 }
 
+/**
+ * Algum passo de conversa manda como aviso no celular a quem não tem conversa
+ * aberta (AX-06, D6 da 32ª)? A janela de ligar diz isso.
+ */
+export function semConversaVaiNoCelular(grafo: Pick<GrafoDeAutomacao, 'nos'>): boolean {
+  return (grafo.nos ?? []).some(n => n.tipo === NODES.ACAO_MENSAGEM
+    && (n.config as { canal?: string; semConversa?: string } | null)?.canal !== 'push'
+    && (n.config as { semConversa?: string } | null)?.semConversa === 'aviso_no_celular')
+}
+
 /** Por onde a mensagem chega, e a quem — uma frase por canal do fluxo. */
-export function explicacaoAntesDeLigar(canais: CanalParaACliente[]): string {
+export function explicacaoAntesDeLigar(
+  canais: CanalParaACliente[],
+  opcoes: { semConversaNoCelular?: boolean } = {},
+): string {
   const frases: string[] = []
   if (canais.includes('whatsapp')) {
     frases.push('Ela manda mensagem pelo WhatsApp, e a mensagem só chega a quem tem conversa aberta com a rede: a automação não abre conversa nova.')
+  }
+  if (opcoes.semConversaNoCelular) {
+    frases.push('Quem não tem conversa aberta recebe como aviso no celular (o app ou os avisos do navegador).')
   }
   if (canais.includes('push')) {
     frases.push('O aviso no celular só chega a quem tem o app ou os avisos ligados no navegador.')

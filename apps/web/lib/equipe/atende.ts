@@ -99,3 +99,35 @@ export function seloDoAtende(m: { ativo: boolean; atende: boolean; onde: readonl
   if (!m.ativo || !m.atende) return null
   return m.variasUnidades && m.onde.length ? `Atende em ${listaDeUnidades([...m.onde])}` : 'Atende'
 }
+
+/**
+ * O que o "Atende" do cadastro envia (D9 da 32ª, 2026-11-26). A regra é a do
+ * Heitor (8ª simulação: "o atende vira um checklist com todas as unidades, as
+ * que estiverem marcadas ficam disponiveis"): vale onde está MARCADO. Por isso
+ * a caixa fechada só acompanha as "Unidades" da pessoa (`acompanha`) quando
+ * isso foi pedido na tela — a caixa ligada agora, no cadastro novo ou na
+ * edição, ou "Atender em todas as unidades dela". Na edição de quem já atende,
+ * a lista que ela tinha fica: a unidade acrescentada aparece desmarcada, com a
+ * lista à vista (`listaAVista`), e a tirada sai (o Heitor, 23/11: "uma pessoa
+ * só pode atender nas unidades que faz parte"). Decisão do Claude, 26/11. Puro.
+ */
+export function estadoDoAtende(o: {
+  ligado: boolean
+  /** A lista aberta por quem edita ("Escolher em quais unidades atende"). */
+  aberto: boolean
+  /** Segue as "Unidades" da pessoa (pedido na tela). */
+  acompanha: boolean
+  marcadas: readonly string[]
+  unidadesDela: readonly string[]
+}): { efetivo: string[]; listaAVista: boolean; caixa: boolean } {
+  const nasDela = o.marcadas.filter(u => o.unidadesDela.includes(u))
+  const com = (efetivo: string[], listaAVista: boolean) => ({ efetivo, listaAVista, caixa: efetivo.length > 0 })
+  if (o.aberto) return com(nasDela, true)
+  if (!o.ligado) return com([], false)
+  if (o.acompanha) return com([...o.unidadesDela], false)
+  // A lista dela não cobre todas as unidades dela: a tela a mostra, para quem
+  // edita ver (e marcar) a unidade nova. A caixa marcada sem unidade nenhuma
+  // dela no que se envia aparece desmarcada (princípio 3).
+  const falta = o.unidadesDela.some(u => !nasDela.includes(u))
+  return com(nasDela, falta && o.unidadesDela.length > 1 && nasDela.length > 0)
+}

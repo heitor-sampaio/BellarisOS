@@ -222,6 +222,48 @@ test('a vista da SEMANA também desenha o bloqueio: a da unidade, a da rede e a 
   })
 })
 
+test('quem tem a Agenda em Ver abre o bloqueio só para ler, e fecha pelo "Fechar" (princípio 7)', async ({ browser }) => {
+  await como(browser, soVe!, async p => {
+    await p.goto(`/${slug}/agenda?date=${DIA}`)
+    await p.locator(`[data-coluna-do-profissional="${nomeDaProf}"] [data-rotulo-do-bloqueio]`).first().click()
+    const janela = p.getByRole('dialog', { name: 'Horário bloqueado' })
+    await expect(janela).toContainText('Almoço')
+    await expect(janela.getByRole('button', { name: 'Desfazer bloqueio' }), 'quem só vê não desfaz').toHaveCount(0)
+    await janela.locator('[data-bloqueio-so-de-leitura]').getByRole('button', { name: 'Fechar' }).click()
+    await expect(janela).toBeHidden()
+  })
+})
+
+test('o "Bloquear horário" diz, antes de gravar, os atendimentos que continuam no período (AG-20)', async ({ browser }) => {
+  const cliente = await rede!.criarCliente('Continua')
+  const marcado = await db().from('appointments').insert({
+    branch_id: rede!.branchId, client_id: cliente, procedure_id: rede!.procedureId, professional_id: rede!.professionalId,
+    // Às 06:00: o encaixe das 12:00 (o teste de cima) fica depois do período.
+    status: 'SCHEDULED', source: 'INTERNAL', duration_min: 30, price: 0, scheduled_at: em('06:00'),
+  }).select('id').single<{ id: string }>()
+  expect(marcado.error).toBeNull()
+  try {
+    await como(browser, recepcao!, async p => {
+      await p.goto(`/${slug}/agenda?date=${DIA}`)
+      await p.getByRole('button', { name: 'Bloquear horário' }).click()
+      const janela = p.getByRole('dialog', { name: 'Bloquear horário' })
+      await janela.getByLabel('Profissional').selectOption(rede!.professionalId)
+      await janela.getByLabel('Início').fill(`${DIA}T06:00`)
+      await janela.getByLabel('Fim').fill(`${DIA}T07:00`)
+      await expect(janela.locator('[data-marcados-no-bloqueio]'))
+        .toHaveText('Já há 1 atendimento marcado perto desse período: ele continua na agenda. Remarque se precisar.')
+      // Fora do período, nada a dizer.
+      await janela.getByLabel('Início').fill(`${DIA}T04:00`)
+      await janela.getByLabel('Fim').fill(`${DIA}T05:00`)
+      await expect(janela.locator('[data-marcados-no-bloqueio]')).toHaveCount(0)
+      await janela.getByRole('button', { name: 'Cancelar' }).click()
+    })
+    expect((await bloqueiosDe({ professional_id: rede!.professionalId })).map(b => b.motivo), 'contar não grava').toEqual(['Almoço'])
+  } finally {
+    await db().from('appointments').delete().eq('id', marcado.data!.id)
+  }
+})
+
 test('desfazer o bloqueio devolve o horário aos livres', async ({ browser }) => {
   await como(browser, recepcao!, async p => {
     await p.goto(`/${slug}/agenda?date=${DIA}`)

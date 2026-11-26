@@ -6,6 +6,7 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { useFala } from '@/components/shared/uma-unidade'
 import { AtendeNasUnidades } from '@/components/shared/atende-nas-unidades'
 import { principalDasMarcadas } from '@/lib/unidades/do-membro'
+import { estadoDoAtende } from '@/lib/equipe/atende'
 import { Dica } from '@/components/shared/dica'
 
 interface Unidade { id: string; name: string }
@@ -105,19 +106,33 @@ export function UnidadesDoMembro({ unidades, editaveis, valor, aoMudar, id = 'un
 
 /**
  * O estado do "Atende" (EQ1c): UMA caixa — marcada, a pessoa atende em todas
- * as unidades dela. "Escolher em quais unidades atende" abre a lista; fechada,
- * vale nas unidades dela (e acompanha a mudança das unidades).
+ * as unidades dela. "Escolher em quais unidades atende" abre a lista.
+ * D9 da 32ª (decisão do Claude, 26/11; a regra é a do Heitor, 8ª: "as que
+ * estiverem marcadas ficam disponiveis"): a caixa fechada só acompanha a
+ * mudança das unidades quando quem edita a ligou agora (ou pediu "Atender em
+ * todas as unidades dela"); na edição de quem já atende, a lista dela fica, e a
+ * unidade acrescentada aparece desmarcada na lista (`estadoDoAtende`).
  */
 export function useAtendeDoMembro(inicial: string[], unidadesDela: string[]) {
   const mesmas = (a: string[], b: string[]) => a.length === b.length && a.every(x => b.includes(x))
-  const [ligado, setLigado] = useState(inicial.length > 0)
+  const [ligadoNaCaixa, setLigado] = useState(inicial.length > 0)
   // Aberta de saída só quando a lista de hoje não é "as unidades dela".
-  const [aberto, setAberto] = useState(inicial.length > 0 && !mesmas(inicial, unidadesDela))
+  const [abertoPedido, setAberto] = useState(inicial.length > 0 && !mesmas(inicial, unidadesDela))
   const [marcadas, setMarcadas] = useState<string[]>(inicial)
+  // Quem ainda não atende (o cadastro novo) acompanha as unidades ao ligar a caixa.
+  const [acompanha, setAcompanha] = useState(inicial.length === 0)
   // O "Atende" só vale nas unidades da pessoa (o Heitor, 2026-11-23): tirada
   // uma unidade dela no campo "Unidades", a marca ali sai do que se envia.
-  const efetivo = aberto ? marcadas.filter(u => unidadesDela.includes(u)) : (ligado ? unidadesDela : [])
-  return { ligado, setLigado, aberto, setAberto, marcadas, setMarcadas, efetivo }
+  const e = estadoDoAtende({ ligado: ligadoNaCaixa, aberto: abertoPedido, acompanha, marcadas, unidadesDela })
+  const aberto = e.listaAVista
+  // A lista que se abriu sozinha (a unidade nova) parte do que se envia.
+  const marcadasNaTela = aberto && !abertoPedido ? e.efetivo : marcadas
+  // Mexer na lista (a aberta sozinha também) a deixa aberta: ela não fecha no meio do clique.
+  const marcarNaLista = (v: string[]) => { setMarcadas(v); setAberto(true) }
+  return {
+    ligado: e.caixa || (ligadoNaCaixa && acompanha), setLigado,
+    aberto, setAberto, marcadas: marcadasNaTela, setMarcadas, marcarNaLista, efetivo: e.efetivo, setAcompanha,
+  }
 }
 
 export function AtendeDoMembro({ estado, unidades, unidadesDela, editaveis = null, id = 'atende' }: {
@@ -130,7 +145,7 @@ export function AtendeDoMembro({ estado, unidades, unidadesDela, editaveis = nul
   editaveis?: string[] | null
   id?: string
 }) {
-  const { ligado, setLigado, aberto, setAberto, marcadas, setMarcadas, efetivo } = estado
+  const { ligado, setLigado, aberto, setAberto, marcadas, setMarcadas, marcarNaLista, efetivo, setAcompanha } = estado
   // A lista: só as unidades DELA, as escolhidas no campo "Unidades" ("A rede
   // inteira" = todas) — o "Atende" só vale nelas (o Heitor, 2026-11-23).
   const naLista = unidades.filter(u => unidadesDela.includes(u.id))
@@ -143,11 +158,11 @@ export function AtendeDoMembro({ estado, unidades, unidadesDela, editaveis = nul
       <input type="hidden" name="_atendeEm" value="1" />
       <input type="hidden" name="atendeEm" value={efetivo.join(',')} />
       {aberto && podeEscolher ? (
-        <AtendeNasUnidades id={id} unidades={naLista} marcadas={marcadas} aoMudar={setMarcadas} editaveis={editaveis} semCampos />
+        <AtendeNasUnidades id={id} unidades={naLista} marcadas={marcadas} aoMudar={marcarNaLista} editaveis={editaveis} semCampos />
       ) : (
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: caixaTravada ? 'default' : 'pointer' }}>
           <input type="checkbox" checked={ligado} disabled={caixaTravada}
-            onChange={e => { setLigado(e.target.checked); setMarcadas(e.target.checked ? unidadesDela : []) }}
+            onChange={e => { setLigado(e.target.checked); setAcompanha(e.target.checked); setMarcadas(e.target.checked ? unidadesDela : []) }}
             style={{ width: 16, height: 16, accentColor: 'var(--brand)' }} />
           <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
             Atende clientes (aparece na agenda como profissional e gera comissão)
@@ -157,7 +172,8 @@ export function AtendeDoMembro({ estado, unidades, unidadesDela, editaveis = nul
       {podeEscolher && (
         <button type="button" className="btn-ghost" data-escolher-onde-atende aria-expanded={aberto}
           onClick={() => {
-            if (aberto) { setLigado(efetivo.length > 0); setAberto(false); return }
+            // "Atender em todas as unidades dela": a caixa volta e acompanha as unidades.
+            if (aberto) { setLigado(efetivo.length > 0); setAcompanha(true); setAberto(false); return }
             setMarcadas(efetivo)
             setAberto(true)
           }}
