@@ -18,6 +18,7 @@ import { voucherDepoisDoDesconto } from '@/lib/fidelidade/voucher-na-comanda'
 import { CampoQuemVendeu, PerguntaDaVenda } from '@/components/shared/pergunta-da-venda'
 import { PERGUNTA_SEM_VENDEDOR } from '@/lib/vendas/pergunta-sem-vendedor'
 import type { MembroDaVenda } from '@/components/shared/vender'
+import { motivoDaFaltaNoBotao } from '@/lib/vendas/falta-de-estoque'
 import {
   CamposDoPagamento, MotivoDoBotao, estadoDoPagamento, montarPagamento, recusaForaDoCampo, useRecusaDoPagamento,
   type EstadoDoPagamento,
@@ -104,6 +105,12 @@ export interface ReceberAtendimentoProps {
    * "Quem vendeu os produtos" (com-06; nasce VAZIO, r2-ven-12). Nulo, sem produto.
    */
   equipeDosProdutos?: MembroDaVenda[] | null
+  /**
+   * R04 (o Heitor, 26/11: "e tb não deixa realizar a venda de produto sem
+   * estoque"): o produto da comanda que passou do que há na unidade — o
+   * "Receber" desliga com o motivo (o aviso mora nos produtos da comanda).
+   */
+  faltaDeEstoque?: string | null
 }
 
 /**
@@ -112,7 +119,7 @@ export interface ReceberAtendimentoProps {
  */
 export function FormularioDeReceberAtendimento({
   appointmentId, slug, price, pagamentoCombinado, pacotesParaAbater = [], clienteId, onFeito, onVoltar, onPendente, aoMudarOQueSai,
-  equipeDosProdutos = null,
+  equipeDosProdutos = null, faltaDeEstoque = null,
 }: ReceberAtendimentoProps & {
   /** A10 da 23ª: o que sai do valor (o voucher, o desconto, os pontos) e o total, para a comanda os mostrar. */
   aoMudarOQueSai?: (linhas: SaiDaComanda[], total: number) => void
@@ -315,9 +322,9 @@ export function FormularioDeReceberAtendimento({
       )}
       {state?.error && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{state.error}</p>}
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4, flexWrap: 'wrap' }}>
-        <MotivoDoBotao motivo={pending || state?.error ? null : recusaForaDoCampo(estado, total, recusa, 'da comanda')} />
+        <MotivoDoBotao motivo={pending || state?.error ? null : motivoDaFaltaNoBotao(faltaDeEstoque) ?? recusaForaDoCampo(estado, total, recusa, 'da comanda')} />
         {onVoltar && <button type="button" onClick={onVoltar} className="btn-secondary"><X size={13} /> Voltar</button>}
-        <button type="submit" disabled={pending || !!doDesconto.recusa || !!recusa} className="btn-primary"
+        <button type="submit" disabled={pending || !!faltaDeEstoque || !!doDesconto.recusa || !!recusa} className="btn-primary"
           style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', fontSize: 'var(--text-base-sz)', minWidth: 170, justifyContent: 'center', flex: 1 }}>
           {pending ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
           {/* No crediário e no a receber, nada (ou só a entrada) entra agora: o botão fecha a comanda. */}

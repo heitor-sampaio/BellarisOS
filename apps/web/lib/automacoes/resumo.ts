@@ -162,8 +162,10 @@ export function resumoDoNo(tipo: TipoDeNo, config: Record<string, unknown>, fuso
 
     case NODES.ACAO_MENSAGEM: {
       const base = `${CANAL_TEXTO[(c.canal as string) ?? ''] ?? (c.canal as string) ?? 'canal'}: ${trecho(c.texto as string)}`
-      // AX-06 (D6 da 32ª): o card diz que quem não tem conversa recebe no celular.
-      return c.canal !== 'push' && c.semConversa === 'aviso_no_celular' ? `${base} · sem conversa: aviso no celular` : base
+      // AX-06 (D6 da 32ª; R10): o card diz o que acontece com quem não tem conversa.
+      if (c.canal !== 'push' && c.semConversa === 'aviso_no_celular') return `${base} · sem conversa: aviso no celular`
+      if (c.canal === 'whatsapp' && c.semConversa === 'abrir_pelo_padrao') return `${base} · sem conversa: abre pelo número padrão`
+      return base
     }
 
     case NODES.ACAO_NOTIFICAR_EQUIPE: {

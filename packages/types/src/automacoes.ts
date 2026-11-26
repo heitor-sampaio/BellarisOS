@@ -306,22 +306,30 @@ export interface ConfigAcaoMensagem {
   /** Texto com `{{variaveis}}`, usado dentro da janela de 24h. */
   texto: string
   /**
-   * Template aprovado, usado FORA da janela. Sem ele, o passo falha com
-   * motivo — mandar texto livre fora da janela é "enviado" que não chega.
+   * Modelo (template) APROVADO da Cloud API (R10 — o Heitor, 26/11, na página
+   * de perguntas: "construir (com os modelos aprovados pela Meta na
+   * automação)"): o que sai ao abrir a conversa pelo número padrão oficial e,
+   * na conversa aberta, fora da janela de 24 h. Sem ele, nesses casos o passo
+   * não manda e diz por quê.
    */
   templateId?: string | null
-  /** Valores das variáveis do template, também interpolados. */
+  /**
+   * O valor de cada variável do modelo (`{ nome: '{{cliente.nome}}' }`),
+   * com as variáveis da automação — interpolado na hora de mandar.
+   */
   variaveisDoTemplate?: Record<string, string>
   /**
-   * "Para quem não tem conversa aberta" (AX-06; o Heitor, 2026-11-11, H1):
-   * `nao_mandar` (o padrão, princípio 6) ou `aviso_no_celular` — a cliente
-   * sem conversa no canal recebe a mensagem como aviso no celular. Só vale nos
-   * canais de conversa (não no `push`).
+   * "Para quem não tem conversa aberta" (AX-06; o Heitor, 2026-11-11, H1;
+   * R10, 26/11): `nao_mandar` (o padrão, princípio 6), `aviso_no_celular` — a
+   * cliente sem conversa no canal recebe a mensagem como aviso no celular — ou
+   * `abrir_pelo_padrao` — a conversa abre pelo número padrão da rede (só no
+   * WhatsApp; na Cloud API, com o modelo). Só vale nos canais de conversa (não
+   * no `push`).
    */
   semConversa?: SemConversaAberta
 }
 
-export type SemConversaAberta = 'nao_mandar' | 'aviso_no_celular'
+export type SemConversaAberta = 'nao_mandar' | 'aviso_no_celular' | 'abrir_pelo_padrao'
 
 export interface ConfigAcaoNotificarEquipe {
   /**

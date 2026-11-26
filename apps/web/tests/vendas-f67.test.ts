@@ -6,7 +6,7 @@ import { textoDaComissaoDaVenda } from '@/lib/comissoes/comissao-da-venda'
 describe('C42: o checkout do plano diz a comissão de venda antes de vender', () => {
   it('a da pessoa vence a "Venda de plano" da rede; sem ela, vale a da rede', () => {
     expect(textoDaComissaoDaVenda({ tipo: 'PLANO', itens: [{ regra: null }], pessoa: { nome: 'Rita', pct: 8 }, redePct: 5 }))
-      .toBe('Comissão de venda de Rita: 8% do vendido — da Rita. Sai quando a venda estiver paga inteira.')
+      .toBe('Comissão de venda de Rita: 8% do vendido — de Rita. Sai quando a venda estiver paga inteira.')
     expect(textoDaComissaoDaVenda({ tipo: 'PLANO', itens: [{ regra: null }], pessoa: { nome: 'Rita', pct: null }, redePct: 5 }))
       .toBe('Comissão de venda de Rita: 5% do vendido — da rede. Sai quando a venda estiver paga inteira.')
   })

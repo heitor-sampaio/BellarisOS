@@ -34,7 +34,7 @@ describe('criar_acesso_ao_app: o documento recusado como senha', () => {
     resposta = { ok: true, contaLigada: false, emailParaCriarSenha: 'enviado' }
     const { criarAcessoAoApp } = await import('@/lib/copilot/ferramentas/clientes-escrita')
     const r = await criarAcessoAoApp.efetivar(c(), { clientId: 'cl1', email: 'sophie@x.com', documento: DOC }) as { mensagem: string }
-    expect(r.mensagem).toContain('enviamos a ele o e-mail para criar a senha')
+    expect(r.mensagem).toContain('enviamos para esse e-mail o link para criar a senha')
     expect(r.mensagem).not.toMatch(/senha inicial/)
   })
 
@@ -61,7 +61,7 @@ describe('cadastrar_cliente com o acesso: o documento recusado como senha', () =
       estrangeiro: DOC, criarAcesso: true,
     }) as { mensagem: string }
     expect(r.mensagem).toMatch(/^Ficha de Sophie criada/)
-    expect(r.mensagem).toContain('enviamos a ele o e-mail para criar a senha')
+    expect(r.mensagem).toContain('enviamos para esse e-mail o link para criar a senha')
   })
 
   it('o cartão diz que, recusado o documento, vai o e-mail para criar a senha', async () => {

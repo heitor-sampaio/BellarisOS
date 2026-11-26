@@ -77,7 +77,7 @@ const ABA_DO_CREDITO = { key: 'CREDITO', label: 'Crédito interno' }
  * sem a janela, numa unidade só (a do PDV). Toda venda vira a comanda dela no
  * banco (o gatilho `comanda_da_venda`).
  */
-export function VendaNaTela({ clienteId, branchId, pacotes, procedimentos, produtos, equipe, podeAgendar = false, aReceber = [], fidelidade = null, contratoDoPacote = null, onFim }: {
+export function VendaNaTela({ clienteId, branchId, pacotes, procedimentos, produtos, equipe, podeAgendar = false, podeDarEntradaNoEstoque = false, aReceber = [], fidelidade = null, contratoDoPacote = null, onFim }: {
   clienteId:     string
   branchId:      string
   pacotes:       PacoteAVenda[]
@@ -85,6 +85,8 @@ export function VendaNaTela({ clienteId, branchId, pacotes, procedimentos, produ
   produtos:      ProdutoAVenda[]
   equipe:        MembroDaVenda[]
   podeAgendar?:  boolean
+  /** R04 (o Heitor, 26/11): o "Dar entrada no Estoque" da falta só para quem tem o Estoque em Gerenciar. */
+  podeDarEntradaNoEstoque?: boolean
   aReceber?:     AtendimentoAReceber[]
   /** FD2a: os pontos e os vouchers de desconto da cliente, para a venda à vista. */
   fidelidade?:   FidelidadeDaVenda | null
@@ -108,7 +110,7 @@ export function VendaNaTela({ clienteId, branchId, pacotes, procedimentos, produ
       {aba === 'CREDITO'
         ? <FormularioDoCredito key={aba} clienteId={clienteId} branchId={branchId} onFim={onFim} />
         : aba === 'PRODUTO' && produtos.length > 0
-        ? <FormularioDoProduto key={aba} clienteId={clienteId} branchId={branchId} produtos={produtos} onFim={onFim} equipe={equipe} fidelidade={fidelidade} />
+        ? <FormularioDoProduto key={aba} clienteId={clienteId} branchId={branchId} produtos={produtos} onFim={onFim} equipe={equipe} fidelidade={fidelidade} podeDarEntradaNoEstoque={podeDarEntradaNoEstoque} />
         : aba === 'PROCEDIMENTO' && procedimentos.length > 0
         ? <FormularioDoProcedimento key={aba} clienteId={clienteId} branchId={branchId} procedimentos={procedimentos} onFim={onFim} podeAgendar={podeAgendar} aReceber={aReceber} equipe={equipe} fidelidade={fidelidade} />
         : <FormularioDoPacote key={aba} clienteId={clienteId} branchId={branchId} pacotes={pacotes} onFim={onFim} equipe={equipe} podeAgendar={podeAgendar} fidelidade={fidelidade} contratoQuePedeCadastro={contratoDoPacote} />}
@@ -123,9 +125,9 @@ export function VendaNaTela({ clienteId, branchId, pacotes, procedimentos, produ
  * protetor"). O estoque baixa na hora, pelo lote que vence primeiro; sem
  * estoque suficiente de um deles, o servidor recusa a venda inteira.
  */
-function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe, fidelidade }: {
+function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe, fidelidade, podeDarEntradaNoEstoque }: {
   clienteId: string; branchId: string; produtos: ProdutoAVenda[]; onFim: () => void; equipe: MembroDaVenda[]
-  fidelidade: FidelidadeDaVenda | null
+  fidelidade: FidelidadeDaVenda | null; podeDarEntradaNoEstoque: boolean
 }) {
   const fuso = useFuso()
   // "Quem vendeu" (com-06): nasce VAZIO (r2-ven-12); vazio, a venda pergunta.
@@ -266,8 +268,11 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe, fid
           padding: '8px 12px', fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-semibold)',
         }}>
           {falta}{' '}
-          {/* A18 da 24ª: a Entrada tem cara de botão (era um link da cor do texto). */}
+          {/* A18 da 24ª: a Entrada tem cara de botão (era um link da cor do texto). R04 (o Heitor,
+              26/11: "O link só para quem tem o Estoque em Gerenciar; o aviso da falta para todos"). */}
+          {podeDarEntradaNoEstoque && (
           <Link href={rotaNoPortal(pathname, pathname.split('/')[1], '/estoque')} className="btn-secondary" style={{ marginTop: 6 }}>Dar entrada no Estoque</Link>
+          )}
         </p>
       )}
       {pergunta ? (

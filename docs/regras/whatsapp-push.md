@@ -177,7 +177,9 @@ tabela veio remover.
 3. o **padrão da rede** — é por ele que sai tudo que o SISTEMA inicia. A
    automação NÃO abre conversa por ele, a não ser que a rede ligue no passo
    "Para quem não tem conversa aberta: abrir pelo número padrão" (H1 do
-   levantamento das regras, 2026-11-11; `automacoes.md` §9.9).
+   levantamento das regras, 2026-11-11; construído em 26/11, o Heitor, página
+   de perguntas, R10; `automacoes.md` §9.9): no WhatsApp Web sai o texto do
+   passo; na Cloud API, o modelo aprovado do passo, da conta do padrão.
 
 **A conversa de WhatsApp da cliente é UMA régua** (C55, F69):
 `conversa_de_whatsapp_da_cliente(rede, ficha)` no banco

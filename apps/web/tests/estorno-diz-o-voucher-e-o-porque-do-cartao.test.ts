@@ -13,7 +13,9 @@ import { textoDosPontosDoEstorno } from '@/lib/fidelidade/pontos-do-estorno'
  * estorno que o devolve.
  *
  * A19 (EX-06: "No cartão, a operadora estorna o pagamento inteiro"): a recusa
- * do banco ao estorno parcial do cartão dizia o que fazer, não o porquê.
+ * do banco ao estorno parcial do cartão dizia o que fazer, não o porquê. A 32ª
+ * pôs o porquê; o Heitor, 26/11, na página de perguntas (R08): "Não precisa
+ * dessa explicação." — a frase volta à de antes.
  */
 
 const WEB = join(__dirname, '..')
@@ -42,21 +44,34 @@ describe('D8: a janela do estorno diz o voucher que volta a valer', () => {
   })
 })
 
-describe('A19: a recusa do estorno parcial no cartão diz o porquê', () => {
+// R08 (o Heitor, 26/11, na página de perguntas: "Não precisa dessa explicação."): a recusa do
+// estorno parcial no cartão volta a "No cartão, o estorno é do pagamento inteiro:", sem o porquê.
+describe('R08: a recusa do estorno parcial no cartão NÃO diz o porquê', () => {
   const pasta = join(WEB, '../../supabase/migrations')
-  const nome = readdirSync(pasta).find(f => /^202612104\d{5}_estorno_do_cartao_diz_o_porque\.sql$/.test(f))
+  const PORQUE = 'a operadora não estorna só uma parte'
+  const nome = readdirSync(pasta).find(f => /^202612111\d{5}_estorno_do_cartao_sem_o_porque\.sql$/.test(f))
   const sql = nome ? readFileSync(join(pasta, nome), 'utf8').replace(/\r/g, '') : ''
   it('a migration existe, na faixa da área', () => {
-    expect(nome, 'supabase/migrations/202612104…_estorno_do_cartao_diz_o_porque.sql').toBeTruthy()
+    expect(nome, 'supabase/migrations/202612111…_estorno_do_cartao_sem_o_porque.sql').toBeTruthy()
   })
-  it('troca a frase nas funções que recusam, sem tirar o começo (os E2E o conferem)', () => {
-    // O pacote e o plano ficam de fora: tests/comissoes-base-efetiva.test.ts trava a migration mais nova que os cita.
+  it('volta a frase de antes nas três funções que recusam, pelo corpo vivo', () => {
     for (const f of ['public.procedimento_cancelar_unidade_devolvendo(', 'private.recebiveis_do_cartao_acompanham(',
       'public.produto_devolver_itens(']) {
       expect(sql, f).toContain(`'${f}`)
     }
-    expect(sql).toContain('No cartão, o estorno é do pagamento inteiro (a operadora não estorna só uma parte):')
-    expect(sql).toMatch(/trocar_no_corpo/)
+    expect(sql).toContain(`de   text := 'No cartão, o estorno é do pagamento inteiro (${PORQUE}):';`)
+    expect(sql).toContain(`para text := 'No cartão, o estorno é do pagamento inteiro:';`)
+    expect(sql).toMatch(/create or replace function pg_temp\.trocar_no_corpo/)
     expect(sql.trimEnd()).toMatch(/notify pgrst, 'reload schema';$/)
+  })
+  it('é a última migration que cita o porquê (nenhuma depois o põe de volta)', () => {
+    const citam = readdirSync(pasta).filter(f => f.endsWith('.sql')).sort()
+      .filter(f => readFileSync(join(pasta, f), 'utf8').includes(PORQUE))
+    expect(citam.at(-1)).toBe(nome)
+  })
+  it('nem o código nem a regra dizem o porquê', () => {
+    for (const arq of ['components/shared/escolha-da-devolucao.tsx', '../../docs/regras/vendas-financeiro.md', '../../docs/catalogo/vendas-financeiro.md']) {
+      expect(ler(arq), arq).not.toContain(PORQUE)
+    }
   })
 })

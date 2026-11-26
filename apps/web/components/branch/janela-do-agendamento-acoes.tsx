@@ -8,20 +8,22 @@ import { useUmaUnidade } from '@/components/shared/uma-unidade'
 import { creditosDoAgendamento, usarCreditoNoAgendamento } from '@/actions/creditos'
 import type { CreditoParaAgendar } from '@/lib/creditos/credito'
 import { O_ATENDE_NA_FICHA } from '@/lib/equipe/atende'
+import { NINGUEM_LIVRE_NO_HORARIO } from '@/lib/agenda/so-o-que-esta-livre'
 
 /**
  * Trocar quem atende pela janela do agendamento (A22 da 8ª simulação,
  * 2026-11-06): só se fazia arrastando, sem confirmação, e o histórico dizia só
- * "Remarcado". Só quem ATENDE na unidade do agendamento é oferecida (o
- * "Atende" por unidade, decisão 2), com "(ocupada)" na que tem atendimento no
- * horário; trocar pergunta antes, e o histórico diz "de Fulana para Beltrana"
- * (`reassignProfessional`, que confere tudo de novo).
+ * "Remarcado". Só quem ATENDE na unidade do agendamento e está LIVRE no horário
+ * é oferecida — sem choque e sem bloqueio (R13, o Heitor, 26/11, na página de
+ * perguntas: "Só mostra os horarios, salas e pessoas que estão livres"; era
+ * "ocupada" desligada). Trocar pergunta antes, e o histórico diz "de Fulana
+ * para Beltrana" (`reassignProfessional`, que confere tudo de novo).
  */
 export function TrocarProfissional({ appointmentId, slug, atual, onTrocou }: {
   appointmentId: string; slug: string; atual: string; onTrocou: () => void
 }) {
   const [aberto, setAberto] = useState(false)
-  const [opcoes, setOpcoes] = useState<{ id: string; name: string; livre: boolean }[] | null>(null)
+  const [lidas, setLidas] = useState<{ livres: { id: string; name: string }[]; atendem: number } | null>(null)
   const [escolhida, setEscolhida] = useState('')
   const [confirmando, setConfirmando] = useState(false)
   const [gravando, setGravando] = useState(false)
@@ -29,9 +31,10 @@ export function TrocarProfissional({ appointmentId, slug, atual, onTrocou }: {
   useEffect(() => {
     if (!aberto) return
     let vivo = true
-    profissionaisParaTrocar(appointmentId).then(r => { if (vivo) setOpcoes(r) }).catch(() => { if (vivo) setOpcoes([]) })
+    profissionaisParaTrocar(appointmentId).then(r => { if (vivo) setLidas(r) }).catch(() => { if (vivo) setLidas({ livres: [], atendem: 0 }) })
     return () => { vivo = false }
   }, [aberto, appointmentId])
+  const opcoes = lidas?.livres ?? null
   const nova = opcoes?.find(o => o.id === escolhida) ?? null
 
   async function trocar() {
@@ -57,10 +60,15 @@ export function TrocarProfissional({ appointmentId, slug, atual, onTrocou }: {
       <select id="troca-de-profissional" className="field" style={{ background: 'var(--surface)' }} value={escolhida}
         disabled={!opcoes} onChange={e => { setEscolhida(e.target.value); setConfirmando(false) }}>
         <option value="">{opcoes ? 'Selecione…' : 'Carregando…'}</option>
-        {(opcoes ?? []).map(o => <option key={o.id} value={o.id} disabled={!o.livre}>{o.livre ? o.name : `${o.name} (ocupada)`}</option>)}
+        {(opcoes ?? []).map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
       </select>
-      {opcoes && opcoes.length === 0 && (
-        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Ninguém mais atende nesta unidade: marque {O_ATENDE_NA_FICHA} no lápis de quem atende aqui, na Equipe.</p>
+      {/* A lista vazia diz por quê: ninguém mais atende aqui, ou ninguém está livre no horário. */}
+      {lidas && opcoes && opcoes.length === 0 && (
+        <p data-ninguem-para-trocar style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+          {lidas.atendem === 0
+            ? <>Ninguém mais atende nesta unidade: marque {O_ATENDE_NA_FICHA} no lápis de quem atende aqui, na Equipe.</>
+            : `${NINGUEM_LIVRE_NO_HORARIO} Para trocar em outro horário, remarque antes.`}
+        </p>
       )}
       {erro && <p role="alert" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 600 }}>{erro}</p>}
       {confirmando && nova ? (
@@ -86,8 +94,9 @@ export function TrocarProfissional({ appointmentId, slug, atual, onTrocou }: {
 /**
  * MUDAR A UNIDADE do agendamento pela janela (A33 da 9ª simulação, 2026-11-07;
  * H5: "a cliente é da clínica"): mover a sessão da Luana para a Menino Deus
- * exigia cancelar e refazer. A unidade nova, a profissional que ATENDE lá
- * ("(ocupada)" desligada) e a sala (opcional); o horário fica. Confirma antes,
+ * exigia cancelar e refazer. A unidade nova, a profissional que ATENDE lá e a
+ * sala (opcional), só as LIVRES no horário (R13, o Heitor, 26/11: "Só mostra os
+ * horarios, salas e pessoas que estão livres"); o horário fica. Confirma antes,
  * e o servidor confere tudo de novo (`mudarUnidadeDoAgendamento`). Na clínica
  * de uma unidade, nem aparece.
  */
@@ -147,19 +156,29 @@ export function MudarDeUnidade({ appointmentId, unidadeAtual, onMudou }: {
           <select id="mudar-profissional" className="field" style={{ background: 'var(--surface)' }} value={profissional}
             onChange={e => { setProfissional(e.target.value); setConfirmando(false) }}>
             <option value="">Selecione…</option>
-            {nova.profissionais.map(p => <option key={p.id} value={p.id} disabled={!p.livre}>{p.livre ? p.name : `${p.name} (ocupada)`}</option>)}
+            {nova.profissionais.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
+          {/* A lista vazia diz por quê: ninguém atende lá, ou ninguém está livre no horário. */}
           {nova.profissionais.length === 0 && (
-            <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Ninguém atende em {nova.nome} ainda: marque {O_ATENDE_NA_FICHA} no lápis de quem atende lá, na Equipe.</p>
+            <p data-ninguem-na-unidade-nova style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+              {nova.quemAtende === 0
+                ? <>Ninguém atende em {nova.nome} ainda: marque {O_ATENDE_NA_FICHA} no lápis de quem atende lá, na Equipe.</>
+                : `${NINGUEM_LIVRE_NO_HORARIO} Para mudar para ${nova.nome} em outro horário, remarque antes.`}
+            </p>
           )}
           {nova.salas.length > 0 && (
             <>
               <label htmlFor="mudar-sala" className="field-label">Sala (opcional)</label>
               <select id="mudar-sala" className="field" style={{ background: 'var(--surface)' }} value={sala} onChange={e => setSala(e.target.value)}>
                 <option value="">Sem sala</option>
-                {nova.salas.map(s => <option key={s.id} value={s.id} disabled={!s.livre}>{s.livre ? s.name : `${s.name} (ocupada)`}</option>)}
+                {nova.salas.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             </>
+          )}
+          {nova.salas.length === 0 && nova.salasQueServem > 0 && (
+            <p data-nenhuma-sala-livre style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+              Nenhuma sala de {nova.nome} está livre nesse horário: o agendamento vai sem sala.
+            </p>
           )}
           <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>O horário fica o mesmo; para mudar o horário, use o Remarcar.</p>
         </>

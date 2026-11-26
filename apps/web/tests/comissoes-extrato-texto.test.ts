@@ -30,7 +30,7 @@ describe('A43: o título do lançamento de venda diz que é venda', () => {
 // A17 da 11ª: de onde veio o percentual.
 describe('A17: a regra diz de onde veio', () => {
   it('da pessoa, do item, da rede', () => {
-    expect(regraDoLancamento({ ...base, regraValor: 3, regraDe: 'PESSOA' }, 'Tatiane')).toBe('3% — da Tatiane')
+    expect(regraDoLancamento({ ...base, regraValor: 3, regraDe: 'PESSOA' }, 'Tatiane')).toBe('3% — de Tatiane')
     expect(regraDoLancamento({ ...base, origem: 'PACOTE_VENDA', regraValor: 10, regraDe: 'ITEM' }, 'Tatiane')).toBe('10% — do pacote')
     expect(regraDoLancamento({ ...base, origem: 'PRODUTO', regraValor: 10, regraDe: 'ITEM' }, 'Tatiane')).toBe('10% — do produto')
     expect(regraDoLancamento({ ...base, regraDe: 'CLINICA' }, 'Tatiane')).toBe('5% — da rede')

@@ -320,8 +320,9 @@ export function PainelDoNo({
                 )}
               </div>
             )}
-            {/* AX-06 (o Heitor, 2026-11-11, H1; D6 da 32ª): desligado por padrão
-                (princípio 6). A automação não abre conversa nova (AX-05). */}
+            {/* AX-06 (o Heitor, 2026-11-11, H1; D6 da 32ª; R10, 26/11): desligado
+                por padrão (princípio 6). A automação só abre conversa nova se a
+                rede escolher "Abrir pelo número padrão" (só no WhatsApp). */}
             {c.canal && c.canal !== 'push' && (
               <div data-sem-conversa>
                 <Campo rotulo="Para quem não tem conversa aberta">
@@ -331,15 +332,29 @@ export function PainelDoNo({
                     onChange={e => set({ semConversa: e.target.value === 'nao_mandar' ? undefined : e.target.value })}
                   >
                     <option value="nao_mandar">Não mandar</option>
+                    {(c.canal === 'whatsapp' || c.semConversa === 'abrir_pelo_padrao') && (
+                      <option value="abrir_pelo_padrao">Abrir pelo número padrão</option>
+                    )}
                     <option value="aviso_no_celular">Mandar como aviso no celular</option>
                   </select>
                 </Campo>
                 <Dica>
                   {c.semConversa === 'aviso_no_celular'
                     ? 'A cliente sem conversa aberta recebe o texto como aviso no celular (o app e os avisos do navegador), sem o pedido de resposta: a resposta não chegaria ao inbox.'
-                    : 'A cliente sem conversa aberta não recebe nada, e a execução diz que não mandou e por quê.'}
+                    : c.semConversa === 'abrir_pelo_padrao'
+                      ? textoDoAbrirPeloPadrao(opcoes?.numeroPadrao ?? null)
+                      : 'A cliente sem conversa aberta não recebe nada, e a execução diz que não mandou e por quê.'}
                 </Dica>
               </div>
+            )}
+            {/* R10: o modelo aprovado da conta do número padrão oficial — o que
+                abre a conversa e o que sai fora das 24 horas. */}
+            {c.canal === 'whatsapp' && opcoes?.numeroPadrao?.oficial && (
+              <ModeloDoPasso
+                config={c} set={set} somenteLeitura={somenteLeitura}
+                modelos={opcoes.modelosDoPadrao} grupos={variaveis}
+                exigido={c.semConversa === 'abrir_pelo_padrao'}
+              />
             )}
             <Campo rotulo="Mensagem">
               <TextoComVariaveis
@@ -359,10 +374,10 @@ export function PainelDoNo({
               ) : (
                 <Dica>
                   A mensagem vai para a conversa aberta do cliente neste canal.
-                  Fora das <strong>24 horas</strong> da última mensagem dele, a
-                  Meta só aceita template aprovado — e esta versão ainda não
-                  envia template, então o passo falha dizendo isso em vez de dar
-                  um &quot;enviado&quot; que não chega.
+                  Na API oficial, fora das <strong>24 horas</strong> da última
+                  mensagem dele, a Meta só aceita modelo aprovado: com um modelo
+                  escolhido no passo, é ele que sai; sem, o passo não manda e
+                  diz por quê, em vez de dar um &quot;enviado&quot; que não chega.
                 </Dica>
               )}
             </Campo>
@@ -776,6 +791,92 @@ function MoverDeEtapa({ config, opcoes, set, somenteLeitura }: {
         </select>
       </Campo>
     </>
+  )
+}
+
+/** O que o "Abrir pelo número padrão" faz com o número padrão desta rede (R10). */
+function textoDoAbrirPeloPadrao(padrao: OpcoesDoEditor['numeroPadrao']): string {
+  if (!padrao) return 'A rede não tem número padrão de WhatsApp: sem ele, a automação não liga com esta opção. A Admin da rede escolhe o padrão em Configurações → Integrações.'
+  if (padrao.oficial) {
+    return `A conversa abre pelo número padrão (${padrao.label}), na API oficial: a Meta só aceita começar por um modelo aprovado, escolhido abaixo. A conversa nasce no inbox, na caixa do número padrão, com a mensagem.`
+  }
+  return `A conversa abre pelo número padrão (${padrao.label}), no WhatsApp Web, com o texto abaixo. Mandar a primeira mensagem a quem não escreveu é a rede escolhendo correr o risco de o WhatsApp banir o número. A conversa nasce no inbox, na caixa do número padrão, com a mensagem.`
+}
+
+/**
+ * O modelo (template) aprovado do passo e o valor de cada variável dele, com
+ * as variáveis da automação (R10 — o Heitor, 26/11: "construir (com os
+ * modelos aprovados pela Meta na automação)").
+ */
+function ModeloDoPasso({
+  config: c, set, somenteLeitura, modelos, grupos, exigido,
+}: {
+  config: Record<string, unknown>
+  set: (patch: Record<string, unknown>) => void
+  somenteLeitura?: boolean
+  modelos: OpcoesDoEditor['modelosDoPadrao']
+  grupos: GrupoDeVariaveis[]
+  exigido: boolean
+}) {
+  const escolhido = modelos.find(m => m.id === c.templateId) ?? null
+  const valores = (c.variaveisDoTemplate as Record<string, string> | undefined) ?? {}
+  return (
+    <div data-modelo-do-passo style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <Campo rotulo={exigido ? 'Modelo aprovado pela Meta' : 'Modelo aprovado pela Meta (fora das 24 horas)'}>
+        <select
+          className="field" value={(c.templateId as string) ?? ''}
+          disabled={somenteLeitura}
+          onChange={e => {
+            const novo = modelos.find(m => m.id === e.target.value)
+            if (!novo) { set({ templateId: undefined, variaveisDoTemplate: undefined }); return }
+            // Fica o valor já escrito da variável de mesmo nome; o nome da cliente se sugere.
+            const proximos: Record<string, string> = {}
+            for (const v of novo.variaveis) {
+              proximos[v] = valores[v] ?? (['nome', 'nome_cliente', 'cliente'].includes(v) ? '{{cliente.nome}}' : '')
+            }
+            set({ templateId: novo.id, variaveisDoTemplate: proximos })
+          }}
+        >
+          <option value="">{exigido ? 'Escolha o modelo…' : 'Nenhum: fora das 24 horas, não manda'}</option>
+          {modelos.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+          {!!c.templateId && !escolhido && (
+            <option value={c.templateId as string}>Modelo que não está mais aprovado</option>
+          )}
+        </select>
+      </Campo>
+      {modelos.length === 0 && (
+        <Dica>A conta do número padrão não tem modelo aprovado pela Meta. Crie um na tela de Templates.</Dica>
+      )}
+      {escolhido && (
+        <>
+          <p style={{
+            margin: 0, padding: '8px 10px', whiteSpace: 'pre-wrap',
+            fontSize: 'var(--text-2xs)', color: 'var(--text-soft)', lineHeight: 1.5,
+            background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: 'var(--radius-field-token)',
+          }}>
+            {escolhido.texto}
+          </p>
+          {escolhido.variaveis.map(v => (
+            <Campo key={v} rotulo={`{{${v}}}`}>
+              <TextoComVariaveis
+                valor={valores[v] ?? ''}
+                grupos={grupos}
+                onChange={novo => set({ variaveisDoTemplate: { ...valores, [v]: novo } })}
+                linhas={1}
+                somenteLeitura={somenteLeitura}
+                placeholder="{{cliente.nome}}"
+              />
+            </Campo>
+          ))}
+          {escolhido.variaveis.length > 0 && (
+            <Dica>
+              Cada variável do modelo recebe o que a automação conhece. Sem o
+              dado na hora, o modelo não sai, e a execução diz o que faltou.
+            </Dica>
+          )}
+        </>
+      )}
+    </div>
   )
 }
 

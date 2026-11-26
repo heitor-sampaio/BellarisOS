@@ -21,6 +21,7 @@ import {
 } from '@/lib/pdv/situacoes'
 import { NovaVenda, type VendaDoPdv } from '@/components/shared/pdv/nova-venda'
 import { ProdutosDaComanda } from '@/components/shared/pdv/produtos-da-comanda'
+import { faltaDosProdutosDaComanda } from '@/lib/vendas/falta-de-estoque'
 import type { ItemDaComanda } from '@/lib/pdv/itens-da-comanda'
 import type { ParcelaEmAberto } from '@/lib/pdv/parcelas-da-cliente'
 import { ParcelasEmAberto } from '@/components/shared/pdv/parcelas-em-aberto'
@@ -591,6 +592,7 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, hrefDaAssinatura, ao
             <FormularioDeReceberAtendimento key={`${c.id}:${c.valor}`} appointmentId={c.agendamentoId} slug={slugDaUnidade} price={c.valor}
               clienteId={c.clienteId} pagamentoCombinado={e.pagamentoCombinado} pacotesParaAbater={e.pacotesParaAbater}
               equipeDosProdutos={e.equipeDosProdutos ?? null}
+              faltaDeEstoque={faltaDosProdutosDaComanda(e.itens, e.produtosParaAcrescentar)}
               onFeito={aoReceber} aoMudarOQueSai={(linhas, total) => setNoReceber({ comanda: c.id, linhas, total })} />
           ) : null}
         </div>

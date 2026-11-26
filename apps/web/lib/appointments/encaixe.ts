@@ -1,7 +1,9 @@
 // O que o modal de agendamento avisa ANTES de confirmar (J-30, 2026-10-30):
-// o encaixe fora do horário da profissional e o choque com outro atendimento
-// dela. É AVISO: o encaixe continua permitido (§9.1), e o choque o núcleo
-// recusa ao gravar (`horarioOcupado`). Sem 'use server': a action confere a
+// o encaixe fora do horário da profissional, o choque com outro atendimento
+// dela e o bloqueio. O fora do horário é AVISO: o encaixe continua permitido
+// (§9.1). O choque e o bloqueio o núcleo recusa ao gravar (`horarioOcupado`,
+// `recusaDoBloqueioNoHorario` — R07, o Heitor, 26/11: "se ta bloqueado não dá
+// pra marcar"), e a janela desliga o Confirmar. Sem 'use server': a action confere a
 // sessão e a permissão; aqui, a rede e o alcance.
 
 import type { TenantContext } from '@estetica-os/types'
@@ -17,7 +19,7 @@ import { avisoDoBloqueioDaProfissional, avisoDoBloqueioDaSala, avisoDosBloqueios
 
 export interface AvisosDoHorario {
   foraDoHorario: string | null; conflito: string | null
-  /** O horário cai num BLOQUEIO da profissional ou da sala (decisão 3 da 7ª): avisa, e o encaixe é permitido. */
+  /** O horário cai num BLOQUEIO da profissional ou da sala (decisão 3 da 7ª): não se marca (R07), e a janela desliga o Confirmar. */
   bloqueio?: string | null
 }
 
@@ -30,7 +32,7 @@ export async function avisosDoHorarioCore(ctx: TenantContext, a: {
   branchId: string; professionalId: string; scheduledAt: string; procedureId: string | null; durationMin: number
   /** Ao REMARCAR (A25), o próprio agendamento não conta como choque. */
   excluir?: string | null
-  /** A sala escolhida: o bloqueio dela também avisa. */
+  /** A sala escolhida: o bloqueio dela também não deixa marcar. */
   roomId?: string | null
 }): Promise<AvisosDoHorario> {
   const nada: AvisosDoHorario = { foraDoHorario: null, conflito: null, bloqueio: null }
@@ -77,7 +79,7 @@ export async function avisosDoHorarioCore(ctx: TenantContext, a: {
   const conflito = trechos.length ? `${nome} já tem atendimento ${emLista(trechos)}.` : null
 
   // O bloqueio pontual (decisão 3 da 7ª): da profissional e, com a sala, da
-  // sala DESTA unidade. Só aviso — o encaixe é da clínica (princípio 2).
+  // sala DESTA unidade. Não se marca nele (R07); o aviso diz qual é.
   const fimDoHorario = new Date(inicio.getTime() + duracao * 60_000)
   const sala = a.roomId && UUID.test(a.roomId)
     ? await ler(admin.from('rooms').select('id, name').eq('id', a.roomId).eq('branch_id', a.branchId).maybeSingle(), 'buscar a sala') as { id: string; name: string } | null

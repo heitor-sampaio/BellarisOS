@@ -114,7 +114,8 @@ describe('o documento recusado como senha inicial', () => {
     const a = avisoDoAcessoCriado({ contaLigada: false, email: 'sophie@x.com', documento: PASSAPORTE, emailParaCriarSenha: 'enviado' })
     expect(a.titulo).toBe('Acesso ao app criado')
     expect(a.descricao).toMatch(/sophie@x\.com/)
-    expect(a.descricao).toMatch(/e-mail para criar a senha/)
+    // O Heitor, 26/11, na página de perguntas (R02): "enviamos para esse e-mail o link para criar a senha".
+    expect(a.descricao).toMatch(/enviamos para esse e-mail o link para criar a senha/)
     expect(a.descricao).toMatch(/não aceitou o número do passaporte como senha/)
     expect(a.descricao).not.toMatch(/19FR54321/)
     expect(a.descricao).not.toMatch(/senha inicial é/)

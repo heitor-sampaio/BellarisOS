@@ -492,14 +492,13 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   `e2e/copilot-extras.spec.ts` (contra o build).
 - **O bloqueio pontual da agenda** (decisão 3 da 7ª simulação, 2026-11-05):
   os livres (`horarios_livres`, por `computeAvailableSlots`) já não trazem o
-  horário bloqueado. Pedido num horário bloqueado, `agendar`/`remarcar` AVISAM
-  no cartão e deixam confirmar, como a agenda da equipe ("…está com o horário
-  bloqueado das 12:00 às 13:00 (Almoço). O encaixe é permitido: confirme só se
-  for isso mesmo.", `avisoDoBloqueado`, `lib/copilot/ferramentas/agenda-escrita.ts`).
-  Recusavam ("o encaixe num horário bloqueado é pela agenda"); virou aviso na
-  auditoria das regras (decisão do Claude pelo princípio 2, 2026-11-18: na
-  agenda o bloqueio só avisa, e o Copilot não é mais duro que ela). Bloquear e
-  desfazer é da tela (Agenda → "Bloquear horário").
+  horário bloqueado. Pedido num horário bloqueado (da pessoa que atende ou da
+  sala), `agendar`/`remarcar` RECUSAM já no preparo, com a frase da agenda
+  ("Bruna está com o horário bloqueado das 12:00 às 13:00 (Almoço). Escolha
+  outro horário.", `recusaDoBloqueioNoHorario`, `lib/appointments/core.ts`) —
+  o Heitor, 26/11 (R07), no chat: "r07 se ta bloqueado não dá pra marcar". De
+  18/11 até ali avisavam e deixavam confirmar (decisão do Claude pelo
+  princípio 2). Bloquear e desfazer é da tela (Agenda → "Bloquear horário").
 - **A profissional é de quem ATENDE na unidade** (decisão 2 do Heitor sobre a
   8ª simulação, 2026-11-06: o "atende" vira um checklist das unidades):
   `resolverProfissional` (`lib/copilot/ferramentas/comum.ts`), com a unidade

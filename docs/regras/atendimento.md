@@ -136,15 +136,16 @@
     dizia "Aguardando" e o detalhe e o app, "Agendado"). **As sessões de
     pacote e de plano dizem o procedimento e oferecem a sala**
     (`SessionScheduler` com `procedimento`, `[data-agendar-sessao]`): a
-    sala é opcional, a lista é a do agendar (`salasParaAgendar`, "(ocupada)"
-    desligada) e o servidor confere (`schedulePackageSession` e, desde a D5 da
+    sala é opcional, a lista é a do agendar (`salasParaAgendar`: só as livres
+    no horário — R13, abaixo; sem nenhuma, "Nenhuma sala está livre nesse
+    horário: a sessão vai sem sala.") e o servidor confere (`schedulePackageSession` e, desde a D5 da
     9ª simulação, `schedulePlanSession` pelo núcleo, com a sessão como
     crédito). A unidade pré-paga segue só
     com o horário (o crédito decide o procedimento no servidor). Prova:
     `e2e/pacote-sessao-agendar.spec.ts`. **A sala aparece desde o início**
     (A32 e A58 da 8ª simulação, 2026-11-06): só depois do horário escolhido,
     e o "Agendar a 1ª sessão" da venda do pacote parecia não pedir a sala;
-    escolhido o horário, ela diz qual está "(ocupada)". Prova:
+    escolhido o horário, a ocupada e a bloqueada saem da lista (R13). Prova:
     `e2e/agenda-atritos-da-8.spec.ts` ("A32/A58"). **E diz que os horários vêm
     depois** (A22 da 12ª simulação, 2026-11-11): antes da profissional e da
     data, "Escolha a profissional e a data para ver os horários livres."
@@ -203,27 +204,99 @@
     rótulo (`[data-rotulo-do-bloqueio]`, por cima dos cartões) abre a janela
     "Horário bloqueado": o período, o motivo, quem bloqueou e "Desfazer
     bloqueio".
-  - **Agendar no bloqueado pela EQUIPE avisa e deixa** (princípio 2), como o
-    encaixe fora do horário: o modal (e o remarcar da janela) diz "Horário
-    bloqueado para Bruna das 12:00 às 13:00 (Almoço). O encaixe é permitido."
-    e, com a sala escolhida, "Sala X está bloqueada das …" (`avisosDoHorarioCore`,
-    o `bloqueio` dos avisos). Ao bloquear um período com atendimento já
-    marcado, ele continua, e o aviso diz quantos ("…continuam na agenda.
-    Remarque se precisar.") — na janela, ANTES de gravar
-    (`marcadosNoBloqueio`, `[data-marcados-no-bloqueio]`; A10 da 32ª), e no
-    toast depois. O aviso junto dos bloqueios no agendar termina em "Confirme
-    só se for isso mesmo." (`avisoDosBloqueios`, A9 da 32ª; a frase de cada
-    bloqueio fica como está).
+  - **O horário bloqueado não se marca** (o Heitor, 26/11 (R07), no chat:
+    "r07 se ta bloqueado não dá pra marcar"; era "avisa e deixa encaixar",
+    pelo princípio 2): o bloqueio da pessoa que atende ou da sala, o do dia
+    inteiro também, RECUSA marcar ou mover um agendamento para dentro dele, em
+    todo caminho — o agendar da agenda (`createAppointmentCore`, logo a sessão
+    de pacote e de plano, o CRM, o pré-pago e o app da cliente), o remarcar e
+    o arraste na grade (`remarcarCore`), o mudar de unidade
+    (`mudarUnidadeCore`), a troca de quem atende (`reassignProfessionalInterno`)
+    e o repasse ao desativar (`lib/equipe/repasse.ts`), o checkout do plano e o
+    Copilot (agendar e remarcar, já no preparo do cartão). A frase é uma só,
+    `recusaDoBloqueioNoHorario` (`lib/appointments/core.ts`), no relógio da
+    unidade: "Bruna está com o horário bloqueado das 12:00 às 13:00 (Almoço).
+    Escolha outro horário." / "Sala Rosa está bloqueada o dia 10/11 inteiro
+    (Manutenção). Escolha outro horário.". A sala só entra quando é a do
+    agendamento no horário novo (só trocar quem atende não a confere). Na
+    tela, como o choque (R06): a janela de agendar diz "Não vai ser agendado:
+    Bruna está com o horário bloqueado das …" (`[data-bloqueio-do-horario]`,
+    o `bloqueio` de `avisosDoHorarioCore`) e a de remarcar "Não vai ser
+    remarcado: …"; o Confirmar desliga, com o motivo ao lado ("Escolha outro
+    horário: este está bloqueado.", `motivoDoConfirmarDesligado`,
+    `lib/agenda/motivo-do-confirmar.ts`), e o Enter não envia. A sala ÚNICA que
+    o sistema escolhe sozinho (`salaUnicaDoHorario` no checkout do plano e no
+    remarcar pela cliente, e a sala de antes no remarcar pela cliente) não
+    entra bloqueada: o agendamento vai sem sala, como com a ocupada (decisão
+    do Claude, 26/11; a sala é opcional, H1), e o checkout diz "A Sala X está
+    bloqueada em …: essa sessão vai sem sala.". **Fica encaixe, com aviso**: o
+    fora do horário de quem atende ou da unidade, o dia em que a unidade não
+    abre ou em que a pessoa não atende e o que passa da meia-noite — nada disso
+    é bloqueio (`avisoForaDoHorario`). **O que já estava marcado fica**: ao
+    bloquear um período com atendimento já marcado, ele continua, e o aviso
+    diz quantos ("…continuam na agenda. Remarque se precisar.") — na janela,
+    ANTES de gravar (`marcadosNoBloqueio`, `[data-marcados-no-bloqueio]`; A10
+    da 32ª), e no toast depois; a recusa é só a de marcar ou mover PARA dentro
+    do bloqueio. Os vários bloqueios do horário se juntam numa frase
+    (`avisoDosBloqueios`; o "Confirme só se for isso mesmo." da A9 da 32ª saiu
+    com a R07: não há o que confirmar). Prova: `e2e/agenda-bloqueio.spec.ts`,
+    `e2e/agenda-defeitos-da-8.spec.ts` ("D9"),
+    `tests/agendar-no-horario-bloqueado-recusa.test.ts`.
+  - **As listas só mostram o que está livre** (o Heitor, 26/11, na página de
+    perguntas — R13, sobre o "Trocar profissional" e o "Mudar de unidade":
+    "Só mostra os horarios, salas e pessoas que estão livres"; R14, sobre o
+    "Usar o próximo livre" no bloqueio: "Horarios, salas e pessoas não
+    disponíveis não devem aparecer nas listas"). A leitura é do Claude
+    (26/11): **"não disponível" é o que o sistema RECUSARIA naquele horário**
+    — o choque com outro atendimento, o bloqueio (da pessoa ou da sala), a
+    sala ocupada, o horário que já passou. O encaixe (fora do horário de quem
+    atende, a unidade fechada) é permitido e CONTINUA aparecendo, com o aviso
+    de sempre; quem não atende na unidade já não aparecia. Valem:
+    - a grade de horários (`GradeDeHorarios`: o Agendar, as sessões do
+      pacote/plano e o checkout) — o ocupado e o bloqueado saem; com a sala
+      escolhida, também o da sala;
+    - as salas do agendar, das sessões e do "Mudar de unidade"
+      (`salasParaOHorario` → `indisponibilidadeNoHorario`, que dá
+      `'ocupada' | 'bloqueada'`);
+    - quem atende no Agendar (`quemNaoEstaLivreNoHorario`), no "Trocar
+      profissional" e no "Mudar de unidade";
+    - o "Usar o próximo livre" (livre da pessoa E da sala; aparece também no
+      bloqueio e na sala ocupada).
+    - a sala do agendar pelo painel da oportunidade (CRM; sem sala livre, "Nenhuma
+      sala está livre nesse horário: o agendamento vai sem sala.");
+    - o repasse da desativação (`lib/equipe/repasse.ts`): quem tem atendimento
+      ou BLOQUEIO no horário não aparece; o "repassar todos para X" diz o
+      motivo ("…está com o horário bloqueado: escolha outra pessoa.").
+    **A já escolhida que deixou de estar livre FICA** como valor do campo, com
+    "(ocupada)"/"(bloqueada)" e o "Não vai ser agendado", e o Confirmar
+    desligado (`soOQueEstaLivre`, `rotuloDaEscolhida`,
+    `lib/agenda/so-o-que-esta-livre.ts`) — sumir com ela trocaria a escolha
+    calada. No Agendar, a lista de quem atende só filtra depois que a pessoa
+    escolheu o horário: enquanto ele é só a sugestão (o próximo livre de quem
+    ela escolher, A20), todas aparecem. Lista vazia diz por quê: "Ninguém está
+    livre nesse horário." (`NINGUEM_LIVRE_NO_HORARIO`), "Nenhuma sala … está
+    livre nesse horário: … vai sem sala.", "Nenhum horário livre de X neste
+    dia: escolha outro dia." O servidor segue recusando ao gravar. Prova:
+    `tests/agenda-so-mostra-o-que-esta-livre.test.ts`,
+    `e2e/agenda-salas.spec.ts`, `e2e/agenda-atritos-da-8.spec.ts` ("A58",
+    "A22 (R13)"), `e2e/agenda-defeitos-da-8.spec.ts` ("D5", "D9 (R14)"),
+    `e2e/agenda-unidade-da-9.spec.ts` ("A17").
   - **Os livres não oferecem o bloqueado**: `computeAvailableSlots` tira o
     bloqueio da profissional — logo o app da cliente (agendar, "Sem
     preferência", remarcar), o Copilot (os livres), o CRM e a sugestão do
-    próximo livre (A20). Pedido no bloqueado, o Copilot AVISA no cartão de
-    agendar e de remarcar e deixa confirmar ("…está com o horário bloqueado
-    das 12:00 às 13:00 (Almoço). O encaixe é permitido: confirme só se for
-    isso mesmo.", `avisoDoBloqueado`) — recusava; o encaixe no bloqueado é
-    aviso, e o Copilot não é mais duro que a agenda (decisão do Claude pelo
-    princípio 2, 2026-11-18).
-    O bloqueio da SALA não muda os livres (o app e o Copilot agendam sem sala).
+    próximo livre (A20). Pedido no bloqueado, o Copilot RECUSA já no preparo
+    do cartão de agendar e de remarcar, com a frase da agenda
+    (`recusaDoBloqueioNoHorario`; o Heitor, 26/11 (R07): "r07 se ta bloqueado
+    não dá pra marcar" — de 18/11 até ali avisava e deixava confirmar, decisão
+    do Claude pelo princípio 2). O app da cliente já não oferecia nem gravava
+    o bloqueado da profissional (o agendar e o remarcar conferem o horário
+    pedido contra `computeAvailableSlots`: "Este horário não está mais
+    disponível. Escolha outro.").
+    O bloqueio da SALA não muda os livres do app e do Copilot (eles agendam
+    sem sala; a sala que o sistema escolhe sozinho não entra bloqueada). Na
+    equipe, com a sala escolhida, muda: a grade do dia conta os atendimentos e
+    os bloqueios DA SALA (`getSchedulingDaySlots` com `ocupacaoDaSala`), e o
+    "Usar o próximo livre" pula o horário em que ela não está livre (R14, abaixo).
     **E a régua da equipe também não** (D5 e D15 da 8ª simulação,
     2026-11-06; princípio 3): o horário de N minutos está livre quando o
     intervalo INTEIRO [início, início + N) não bate em agendamento dela (em
@@ -231,8 +304,11 @@
     bloqueio dela — `ocupanteDoHorario`, `lib/agenda/horario-livre.ts`, puro.
     A grade das sessões do pacote/plano e do checkout (`GradeDeHorarios`, que
     `getSchedulingDaySlots` alimenta com os agendamentos e os `bloqueios`) usa
-    essa régua: o bloqueado sai "Bloqueado · motivo", desligado (o encaixe
-    segue pelo "Outro horário"). Era só o INÍCIO dentro de um ocupado, da
+    essa régua: o ocupado e o bloqueado SAEM da grade (R14, abaixo; eram
+    riscados, "Bloqueado · motivo", desligados), e o dia sem nenhum diz
+    "Nenhum horário livre de X neste dia: escolha outro dia." (o "Outro
+    horário" é encaixe fora da grade, não no bloqueio: no bloqueado o servidor
+    recusa — R07). Era só o INÍCIO dentro de um ocupado, da
     unidade: 10:00 aparecia livre para 60 min com outro às 10:30, e o
     Confirmar recusava. O "Horário livre" da "Minha agenda" tira o bloqueio do
     vão (`livresEntre`): a Débora de férias via "Horário livre 02:45 – 04:00".
@@ -277,10 +353,26 @@
     parecia só aviso: agora "Não vai ser agendado: X já tem atendimento das…"
     (`[data-choque-do-horario]`) com "Usar o próximo livre: 11:00"
     (`proximoHorarioLivre` com `aPartirDe`, a partir do horário escolhido). O
-    Confirmar segue clicável (a recusa de sempre, uma mensagem só). O remarcar
-    da janela diz "Não vai ser remarcado: …" e, recusado, fica UMA mensagem
-    ("Não foi remarcado: …"). Prova: `e2e/agenda-atritos-da-8.spec.ts` ("A21",
-    "A58").
+    remarcar da janela diz "Não vai ser remarcado: …". **Com o choque à vista,
+    o Confirmar fica DESLIGADO, com o motivo ao lado** (o Heitor, 26/11, página
+    de perguntas, R06: "Desliga o botão, e os três testes conferem o botão
+    desligado (a proposta)"; era "segue clicável"): "Escolha outro horário:
+    este bate com outro atendimento." (`[data-motivo-do-confirmar]`), no
+    "Confirmar agendamento" e no "Confirmar novo horário" (e o Enter não
+    envia). O bloqueio também desliga (R07, acima: "Escolha outro horário:
+    este está bloqueado."), e a sala escolhida que ficou ocupada no horário
+    novo também ("Não vai ser agendado: X já está ocupada nesse horário.",
+    `[data-sala-ocupada]`; "Escolha outra sala ou outro horário: esta sala
+    está ocupada."); o encaixe fora do horário NÃO desliga. **O "Usar o
+    próximo livre" aparece no choque, no bloqueio e na sala ocupada** (R14,
+    abaixo; era só no choque — `[data-proximo-livre-do-bloqueio]`,
+    `[data-proximo-livre-da-sala]`), e é livre da pessoa E da sala escolhida
+    (`proximoHorarioLivre` com a sala: os atendimentos e os bloqueios dela;
+    o da pessoa já vem de `computeAvailableSlots`). O servidor continua recusando o choque (a ação direta
+    prova); a recusa que chega assim mesmo (outra pessoa agendou depois da
+    conferência) fica UMA mensagem ("Não foi agendado: …"/"Não foi remarcado:
+    …"). Prova: `e2e/agenda-atritos-da-8.spec.ts` ("A21", "A58"),
+    `e2e/agenda-encaixe-avisa.spec.ts`, `tests/agendar-choque-recusado-e-avisos.test.ts` ("R06").
   - **O Confirmar espera os avisos DESTE horário** (D9 da 8ª simulação,
     2026-11-06): `avisosDoHorario` roda 200 ms depois de cada mudança, e o
     botão não esperava — a Ana às 23:55, nas férias e fora do expediente,
@@ -288,15 +380,16 @@
     horário…" até a conferência do horário escolhido chegar (a falha libera,
     sem aviso: o servidor confere ao gravar), como espera as salas (D12 da
     7ª); o "Confirmar novo horário" do remarcar, igual. O aviso (bloqueio,
-    fora do expediente, choque) está na tela ANTES de gravar; o encaixe segue
-    permitido. Prova: `e2e/agenda-defeitos-da-8.spec.ts` ("D9").
+    fora do expediente, choque) está na tela ANTES de gravar; o encaixe fora
+    do expediente segue permitido, e o bloqueio e o choque desligam o
+    Confirmar (R06, R07). Prova: `e2e/agenda-defeitos-da-8.spec.ts` ("D9").
   - **A sala escolhida no Agendar risca a grade, e o "Dia inteiro" se diz
     assim** (A17 da 9ª simulação, 2026-11-07; princípio 3): o bloqueio da
     profissional riscava a grade de horários livres do modal, o da sala não —
     a sala bloqueada o dia inteiro parecia livre. Com a sala escolhida,
     `getSchedulingDaySlots` traz também os bloqueios dela ("Sala Rosa:
-    Manutenção"), e a grade os mostra como bloqueados (o encaixe segue pelo
-    campo de data e hora). E o aviso dizia "das 00:00 às 24:00": o bloqueio de
+    Manutenção"), e a grade os mostra como bloqueados (pelo campo de data e
+    hora, o bloqueado diz "Não vai ser agendado" — R07). E o aviso dizia "das 00:00 às 24:00": o bloqueio de
     meia-noite a meia-noite é "o dia 10/11 inteiro" (ou "de 10/11 a 12/11, os
     dias inteiros"; `trechoDoBloqueio`). Prova: `e2e/agenda-unidade-da-9.spec.ts`
     ("A17"), `tests/agenda-bloqueio-dia-inteiro.test.ts`.
@@ -698,9 +791,11 @@
   confirmação, e o histórico dizia "Remarcado". A janela do agendamento tem
   "Trocar profissional" (`TrocarProfissional`, a quem tem a Agenda em
   Gerenciar, UM1–UM5; o "no agendamento DELA" do "só os meus" saiu com o
-  SM1): só quem ATENDE na unidade do agendamento, com
-  "(ocupada)" na que tem atendimento no horário (`profissionaisParaTrocar`), e
-  "Trocar quem atende de A para B?" antes. Arrastar para a coluna de outra
+  SM1): só quem ATENDE na unidade do agendamento E está livre no horário —
+  sem choque e sem bloqueio (R13, abaixo; era "(ocupada)" desligada, e a
+  bloqueada aparecia — `profissionaisParaTrocar`, `indisponibilidadeNoHorario`).
+  Ninguém livre: "Ninguém está livre nesse horário. Para trocar em outro
+  horário, remarque antes." E "Trocar quem atende de A para B?" antes. Arrastar para a coluna de outra
   profissional pergunta também ("Trocar quem atende de A para B e marcar às
   14:00?", `[data-confirmar-arraste]`; o texto neutro é da revisão de 24/11). O servidor recusa quem não atende na
   unidade (`recusaDeQuemNaoAtende`, em `reassignProfessional` e no
@@ -719,8 +814,13 @@
   agendamento em aberto (Agendado/Confirmado), na rede de duas ou mais
   unidades e para quem tem a Agenda em Gerenciar, tem "Mudar de
   unidade" (`MudarDeUnidade`, `[data-mudar-de-unidade]`): a unidade nova (as
-  que quem muda alcança), a profissional que ATENDE lá ("(ocupada)"
-  desligada) e a sala (opcional, livre); o horário fica. Confirma antes. O
+  que quem muda alcança), a profissional que ATENDE lá e está livre no
+  horário, e a sala (opcional) que serve ao procedimento e está livre (R13,
+  abaixo; era "(ocupada)" desligada, e a bloqueada aparecia —
+  `opcoesParaMudarDeUnidade`). Sem ninguém livre: "Ninguém está livre nesse
+  horário. Para mudar para X em outro horário, remarque antes."; sem sala
+  livre: "Nenhuma sala de X está livre nesse horário: o agendamento vai sem
+  sala." O horário fica. Confirma antes. O
   servidor confere tudo de novo (`mudarUnidadeCore`, `lib/appointments/alteracoes.ts`:
   as duas unidades ao alcance, `conferirPecasDoAgendamento`,
   `recusaDeQuemNaoAtende`, conflito da profissional e da sala); o avulso sem
@@ -1615,7 +1715,10 @@
     com sala ligada, só as ligadas. A regra é UMA, pura,
     `lib/agenda/salas.ts` (`salasParaOProcedimento`).
   - **O agendar** (agenda dos dois portais e o CRM) oferece só as salas que
-    servem, com "(ocupada)" na que tem atendimento no horário, e já escolhe a
+    servem E estão livres no horário (R13, abaixo; era "(ocupada)" desligada,
+    e a bloqueada aparecia livre — `salasParaOHorario` confere o atendimento e
+    o bloqueio da sala); a JÁ escolhida que deixou de estar livre fica, com
+    "(ocupada)"/"(bloqueada)" e o Confirmar desligado. E já escolhe a
     primeira livre (`salasParaAgendar` / `salasParaAgendarNoCrm` →
     `salasDoAgendar`, `lib/appointments/salas.ts`) — **só quando o
     procedimento é LIGADO a salas nesta unidade** (A27 da 5ª simulação: sem
@@ -1916,7 +2019,10 @@ de decisões) — **implementadas na F65 (2026-11-12)**:
   último custo de compra… No atendimento, a baixa sai ao custo do lote que é
   usado…" (`[data-custo-do-insumo-e-o-ultimo]`). A regra (a margem do catálogo
   pelo custo atual, F49 D2) não mudou. E a embalagem tem **"seringa"** (A12: o
-  ácido hialurônico virou "un", com "(seringa)" no nome; `MEDIDAS_DO_PRODUTO`).
+  ácido hialurônico virou "un", com "(seringa)" no nome; `MEDIDAS_DO_PRODUTO`)
+  e **"pote"** (o Heitor, 26/11, página de perguntas, R03: "Sim: 'pote' entra
+  na lista"): embalagem contável como o frasco e a caixa — "potes" no plural,
+  "1/10 do pote" na parte da embalagem (`EMBALAGEM_NA_FRASE`).
   Prova: `e2e/configuracoes-atritos-da-11.spec.ts`, `tests/estoque-medidas.test.ts`.
   **Sem custo, sem margem** (A9 da 12ª simulação, 2026-11-11; princípio 4: a
   calculadora mostrava "Margem de lucro 100%" com custo R$ 0,00): com o custo
@@ -4347,6 +4453,7 @@ O resto do fluxo:
 
 ## O que nunca fazer aqui
 
+❌ Oferecer numa lista (horário, sala, pessoa) o que o servidor recusaria no horário — o ocupado, o bloqueado, a sala ocupada: sai da lista, e só a JÁ escolhida fica, marcada (o Heitor, 26/11, R13/R14: "Só mostra os horarios, salas e pessoas que estão livres")
 ❌ Pedir o catálogo do editor do plano sem a unidade do plano (procedimentosParaPlano com unidade nula) ou gravar sessões de plano sem recusaDosProcedimentosDoPlano (F73, D4 da 14ª; tests/catalogo-do-plano trava) — nem recusar o que JÁ estava no plano e a unidade não faz mais (é aviso, princípio 2: o jaGravado da recusa)
 
 ```
@@ -4401,7 +4508,8 @@ O resto do fluxo:
 ❌ Pôr um agendamento numa grade só pelo dia em que COMEÇA (isSameDay do início, a chave do dia): é agendamentosNoDia (lib/agenda/trecho-do-agendamento), que traz o que continua de antes — e a leitura da agenda pega quem se sobrepõe ao período (podemOcuparDesde), não .gte no início (25/11)
 ❌ Medir até quando um agendamento ocupa o horário fora de fimDaOcupacao (o concluído adiantado libera o resto — A31)
 ❌ Conferir se um agendamento bate num horário fora de bateNaOcupacao (o concluído antes de começar não ocupa nada — D3 da 11ª)
-❌ Oferecer como livre (app da cliente, Copilot, CRM) um horário bloqueado — é computeAvailableSlots, que já tira o bloqueio; nem RECUSAR o encaixe no bloqueado, na agenda da equipe ou pelo Copilot (é aviso — princípio 2; avisoDoBloqueado)
+❌ Oferecer como livre (app da cliente, Copilot, CRM) um horário bloqueado — é computeAvailableSlots, que já tira o bloqueio
+❌ Caminho que cria ou move agendamento sem recusaDoBloqueioNoHorario (lib/appointments/core.ts): o horário bloqueado não se marca, nem pela equipe nem pelo Copilot (o Heitor, 26/11 (R07): "r07 se ta bloqueado não dá pra marcar") — e o fora do horário, que não é bloqueio, segue encaixe com aviso
 ❌ Decidir na tela se um horário está livre pelo INÍCIO, ou sem os bloqueios — é ocupanteDoHorario / livresEntre (lib/agenda/horario-livre.ts), o intervalo inteiro (D5/D15 da 8ª)
 ❌ Deixar o Confirmar do agendar (ou do remarcar) gravar antes de chegar a conferência do horário escolhido (o aviso vinha depois — D9 da 8ª)
 ❌ Trocar a hora que o modal mostra sem dizer (o próximo livre que pula de dia calado — D7 da 12ª): só troca a que não cabe, e com textoDoProximoLivre

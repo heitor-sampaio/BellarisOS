@@ -22,8 +22,11 @@ import {
   getCachedBranchProfessionals, getCachedBranchProcedures, getCachedRoomsByBranch, filtroDeQuemAtendeNaUnidade, getCachedNetworkBranches,
 } from '@/lib/cached-queries'
 import { notifyUser } from '@/lib/notifications/notify'
-import { createAppointmentCore, computeAvailableSlots, conferirPecasDoAgendamento, horarioOcupado, candidatasDoDia, fimDaOcupacao, podemOcuparDesde, CREDITO_JA_USADO } from '@/lib/appointments/core'
+import { createAppointmentCore, computeAvailableSlots, conferirPecasDoAgendamento, horarioOcupado, candidatasDoDia, fimDaOcupacao, podemOcuparDesde, recusaDoBloqueioNoHorario, CREDITO_JA_USADO } from '@/lib/appointments/core'
 import { janelaDaGrade } from '@/lib/appointments/janela-da-grade'
+import { indisponibilidadeNoHorario, ocupacaoDaSala } from '@/lib/appointments/disponibilidade'
+import { salasParaOHorario } from '@/lib/appointments/salas'
+import { ocupanteDoHorario } from '@/lib/agenda/horario-livre'
 import { conferirCredito } from '@/lib/creditos/credito'
 import { bloqueiosDoPeriodo } from '@/lib/agenda/bloqueios'
 import { juntarHorarios, escolherQuemAtende } from '@/lib/appointments/sem-preferencia'
@@ -38,7 +41,7 @@ import { emitirEventoClinico } from '@/lib/events/clinico'
 import { EVENTOS } from '@estetica-os/types'
 import { garantirClienteRapido } from '@/lib/clients/cliente-rapido'
 import type { FichaQueJaExiste } from '@/lib/clients/ja-existe'
-import { periodRef, dayKeyTZ, partsInTZ, startOfDayTZ, endOfDayTZ, horaNoFuso } from '@/lib/datetime'
+import { periodRef, dayKeyTZ, partsInTZ, startOfDayTZ, endOfDayTZ, horaNoFuso, instanteNoFuso } from '@/lib/datetime'
 import { textoDoMesmoProcedimentoNoDia } from '@/lib/appointments/mesmo-no-dia'
 import { fusoValido } from '@/lib/unidades/fuso'
 import { fusoDaUnidade, fusoDaRede, lerFusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
@@ -114,6 +117,14 @@ export async function addAppointment(
         if (await horarioOcupado(admin, {
           tenantId: ctx.tenantId!, professionalId: profissional, inicio: quando, duracaoMin: Number(proc?.duration_min) || 60,
         })) return { error: 'Este profissional já tem agendamento nesse horário.' }
+        // O bloqueio também (R07): recusado, a ficha rápida não nasce. A pessoa
+        // e a unidade conferidas antes (o nome e o motivo do bloqueio são da rede).
+        if (!(await conferirPecasDoAgendamento(admin, ctx, { branchId, professionalId: profissional }))) {
+          const bloqueado = await recusaDoBloqueioNoHorario(admin, {
+            professionalId: profissional, inicio: quando, duracaoMin: Number(proc?.duration_min) || 60, branchId,
+          })
+          if (bloqueado) return { error: bloqueado }
+        }
       }
       const novo = await garantirClienteRapido(admin, ctx, {
         nome:     (formData.get('client_name')  as string) ?? '',
@@ -550,42 +561,57 @@ async function startAppointmentInterno(
 /**
  * Quem pode receber o agendamento na troca pela janela da agenda: quem ATENDE
  * na unidade dele (a regra de `filtroDeQuemAtendeNaUnidade`), menos a de agora,
- * cada uma dizendo se está livre no horário (`horarioOcupado`). Só leitura;
- * `reassignProfessional` confere tudo de novo.
+ * e só quem está DISPONÍVEL no horário — sem choque e sem bloqueio (R13, o
+ * Heitor, 26/11, na página de perguntas: "Só mostra os horarios, salas e
+ * pessoas que estão livres"; era "(ocupada)" desligada, e a bloqueada aparecia
+ * livre). `atendem` é quantas atendem ali (fora a de agora): a lista vazia diz
+ * por quê. Só leitura; `reassignProfessional` confere tudo de novo.
  */
-export async function profissionaisParaTrocar(appointmentId: string): Promise<{ id: string; name: string; livre: boolean }[]> {
+export async function profissionaisParaTrocar(appointmentId: string): Promise<{ livres: { id: string; name: string }[]; atendem: number }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'agenda', 'MANAGE')
-  if (typeof appointmentId !== 'string' || !/^[0-9a-f-]{36}$/i.test(appointmentId)) return []
+  const nada = { livres: [], atendem: 0 }
+  if (typeof appointmentId !== 'string' || !/^[0-9a-f-]{36}$/i.test(appointmentId)) return nada
   const admin = createAdminClient()
   const a = await ler(admin.from('appointments')
     .select('id, status, branch_id, professional_id, scheduled_at, duration_min, branches!inner(tenant_id)')
     .eq('id', appointmentId).eq('branches.tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o agendamento') as {
       id: string; status: string; branch_id: string; professional_id: string | null; scheduled_at: string; duration_min: number | null
     } | null
-  if (!a || !alcancaUnidade(ctx, a.branch_id)) return []
-  if (['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(a.status)) return []
+  if (!a || !alcancaUnidade(ctx, a.branch_id)) return nada
+  if (['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(a.status)) return nada
   const equipe = (await getCachedBranchProfessionals(a.branch_id, ctx.tenantId!)) as { id: string; name: string }[]
   const outras = equipe.filter(p => p.id !== a.professional_id)
-  const livres = await Promise.all(outras.map(p => horarioOcupado(admin, {
+  const indisponiveis = await Promise.all(outras.map(p => indisponibilidadeNoHorario(admin, {
     tenantId: ctx.tenantId!, professionalId: p.id, inicio: new Date(a.scheduled_at),
     duracaoMin: a.duration_min ?? 60, excluir: a.id,
-  }).then(ocupado => !ocupado)))
-  return outras.map((p, i) => ({ id: p.id, name: p.name, livre: livres[i]! }))
+  })))
+  return {
+    livres: outras.filter((_, i) => !indisponiveis[i]).map(p => ({ id: p.id, name: p.name })),
+    atendem: outras.length,
+  }
 }
 
 // --- Mudar a unidade do agendamento (A33 da 9ª) ---------------------
 export interface UnidadeParaMudar {
   id: string; nome: string
-  profissionais: { id: string; name: string; livre: boolean }[]
-  salas: { id: string; name: string; livre: boolean }[]
+  /** Só quem atende lá e está disponível no horário (R13). */
+  profissionais: { id: string; name: string }[]
+  /** Só as salas que servem ao procedimento lá e estão disponíveis no horário (R13). */
+  salas: { id: string; name: string }[]
+  /** Quantas pessoas atendem lá e quantas salas servem: a lista vazia diz por quê. */
+  quemAtende: number
+  salasQueServem: number
 }
 
 /**
  * As unidades para onde o agendamento pode ir (A33 da 9ª simulação): as outras
- * ativas que quem muda alcança, cada uma com quem ATENDE lá (livre ou não no
- * horário) e as salas (livres ou não). Só leitura; `mudarUnidadeDoAgendamento`
- * confere tudo de novo (`mudarUnidadeCore`).
+ * ativas que quem muda alcança, cada uma com quem ATENDE lá e as salas que servem
+ * ao procedimento — só as DISPONÍVEIS no horário, sem choque e sem bloqueio (R13,
+ * o Heitor, 26/11, na página de perguntas: "Só mostra os horarios, salas e
+ * pessoas que estão livres"; era "(ocupada)" desligada, e a bloqueada aparecia
+ * livre). Só leitura; `mudarUnidadeDoAgendamento` confere tudo de novo
+ * (`mudarUnidadeCore`).
  */
 export async function opcoesParaMudarDeUnidade(appointmentId: string): Promise<UnidadeParaMudar[]> {
   const ctx = await getTenantContext()
@@ -593,9 +619,9 @@ export async function opcoesParaMudarDeUnidade(appointmentId: string): Promise<U
   if (typeof appointmentId !== 'string' || !/^[0-9a-f-]{36}$/i.test(appointmentId)) return []
   const admin = createAdminClient()
   const a = await ler(admin.from('appointments')
-    .select('id, status, branch_id, professional_id, scheduled_at, duration_min, branches!inner(tenant_id)')
+    .select('id, status, branch_id, professional_id, procedure_id, scheduled_at, duration_min, branches!inner(tenant_id)')
     .eq('id', appointmentId).eq('branches.tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o agendamento') as {
-      id: string; status: string; branch_id: string; professional_id: string | null; scheduled_at: string; duration_min: number | null
+      id: string; status: string; branch_id: string; professional_id: string | null; procedure_id: string | null; scheduled_at: string; duration_min: number | null
     } | null
   if (!a || !alcancaUnidade(ctx, a.branch_id)) return []
   if (!['SCHEDULED', 'CONFIRMED'].includes(a.status)) return []
@@ -604,18 +630,21 @@ export async function opcoesParaMudarDeUnidade(appointmentId: string): Promise<U
   const unidades = ((await getCachedNetworkBranches(ctx.tenantId!)) as { id: string; name: string }[])
     .filter(u => u.id !== a.branch_id && alcancaUnidade(ctx, u.id))
   return Promise.all(unidades.map(async u => {
+    // As salas: as que servem ao procedimento lá (`mudarUnidadeCore` recusa a
+    // que não serve), pela régua do agendar (`salasParaOHorario`).
     const [equipe, salas] = await Promise.all([
       getCachedBranchProfessionals(u.id, ctx.tenantId!) as Promise<{ id: string; name: string }[]>,
-      getCachedRoomsByBranch(u.id, ctx.tenantId!) as Promise<{ id: string; name: string }[]>,
+      salasParaOHorario(admin, { tenantId: ctx.tenantId!, branchId: u.id, procedureId: a.procedure_id, inicio, duracaoMin, excluir: a.id }),
     ])
-    const [livresP, livresS] = await Promise.all([
-      Promise.all(equipe.map(p => horarioOcupado(admin, { tenantId: ctx.tenantId!, professionalId: p.id, inicio, duracaoMin, excluir: a.id }).then(o => !o))),
-      Promise.all(salas.map(s => horarioOcupado(admin, { tenantId: ctx.tenantId!, roomId: s.id, branchId: u.id, inicio, duracaoMin, excluir: a.id }).then(o => !o))),
-    ])
+    const indisponiveis = await Promise.all(equipe.map(p => indisponibilidadeNoHorario(admin, {
+      tenantId: ctx.tenantId!, professionalId: p.id, inicio, duracaoMin, excluir: a.id,
+    })))
     return {
       id: u.id, nome: u.name,
-      profissionais: equipe.map((p, i) => ({ id: p.id, name: p.name, livre: livresP[i]! })),
-      salas: salas.map((s, i) => ({ id: s.id, name: s.name, livre: livresS[i]! })),
+      profissionais: equipe.filter((_, i) => !indisponiveis[i]).map(p => ({ id: p.id, name: p.name })),
+      salas: salas.salas.filter(s => s.livre).map(s => ({ id: s.id, name: s.name })),
+      quemAtende: equipe.length,
+      salasQueServem: salas.salas.length,
     }
   }))
 }
@@ -699,6 +728,14 @@ async function reassignProfessionalInterno(
       duracaoMin: (appt.duration_min as number | null) ?? 60, excluir: appointmentId,
     })) {
       return { error: 'Este profissional já tem agendamento nesse horário.' }
+    }
+    // E sem bloqueio no horário (R07, o Heitor, 26/11: "r07 se ta bloqueado não dá pra marcar").
+    if (professionalId !== appt.professional_id) {
+      const bloqueado = await recusaDoBloqueioNoHorario(admin, {
+        professionalId, inicio: new Date(appt.scheduled_at as string),
+        duracaoMin: (appt.duration_min as number | null) ?? 60, branchId: apptBranch.id,
+      })
+      if (bloqueado) return { error: bloqueado }
     }
 
     const oldProfId = (appt.professional_id ?? null) as string | null
@@ -2069,6 +2106,13 @@ export async function getSchedulingDaySlots(
       .eq('id', professionalId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o horário do profissional') as Promise<{ horario: unknown } | null>,
     bloqueiosDoPeriodo(ctx.tenantId!, { de: janela.dia, ate: janela.ate, profissionais: [professionalId], salas: sala ? [sala.id] : [] }, admin),
   ])
+  // Com a sala escolhida, os atendimentos DELA (de qualquer pessoa) também
+  // ocupam a grade (R14, o Heitor, 26/11: "Horarios, salas e pessoas não
+  // disponíveis não devem aparecer nas listas"): a grade oferecia o horário da
+  // sala ocupada, e o Confirmar recusava ("Esta sala já está ocupada").
+  const daSala = sala
+    ? await ocupacaoDaSala(admin, { tenantId: ctx.tenantId!, branchId, roomId: sala.id, de: janela.dia, ate: janela.ate })
+    : []
 
   type Linha = { scheduled_at: string; duration_min: number; status: string; completed_at: string | null; branch_id: string; clients: { name: string } | null }
   return {
@@ -2078,7 +2122,7 @@ export async function getSchedulingDaySlots(
       durationMin: Math.max(0, Math.round((fimDaOcupacao(d) - new Date(d.scheduled_at).getTime()) / 60_000)),
       // O nome da cliente só da agenda desta unidade; o de outra unidade diz só que está ocupado.
       clientName:  d.branch_id === branchId ? (d.clients?.name ?? null) : null,
-    })),
+    })).concat(daSala),
     // O da sala diz que é da sala ("Sala Rosa: Manutenção").
     bloqueios: bloqueios.map(b => ({ inicio: b.inicio, fim: b.fim, motivo: b.roomId && sala ? `${sala.name}: ${b.motivo}` : b.motivo })),
     horarioDaUnidade:      normalizarHorario((branch as { horario?: unknown }).horario),
@@ -2244,6 +2288,13 @@ export async function proximoHorarioLivre(
    * do horário escolhido (A21 da 8ª simulação), não o de agora.
    */
   aPartirDe?: string | null,
+  /**
+   * A sala escolhida (R14, o Heitor, 26/11, na página de perguntas: "Horarios,
+   * salas e pessoas não disponíveis não devem aparecer nas listas"): o próximo
+   * livre é livre da pessoa E da sala — pula o horário em que a sala está
+   * ocupada ou bloqueada. A sala que não é da unidade não conta.
+   */
+  roomId?: string | null,
 ): Promise<string | null> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'agenda', 'MANAGE')
@@ -2263,9 +2314,20 @@ export async function proximoHorarioLivre(
   const diaDeInicio = dayKeyTZ(desde ?? new Date(), fuso)
   const p = desde ? partsInTZ(desde, fuso) : null
   const horaDeInicio = p ? `${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}` : null
+  const sala = typeof roomId === 'string' && /^[0-9a-f-]{36}$/i.test(roomId)
+    ? await ler(admin.from('rooms').select('id').eq('id', roomId).eq('branch_id', branchId).maybeSingle(), 'buscar a sala') as { id: string } | null
+    : null
   const achou = await procurarHorarioLivre(diaDeInicio, async data => {
-    const livres = await computeAvailableSlots(admin, branchId, professionalId, data, duracao)
-    return data === diaDeInicio && horaDeInicio ? livres.filter(h => h >= horaDeInicio) : livres
+    const daPessoa = await computeAvailableSlots(admin, branchId, professionalId, data, duracao)
+    const livres = data === diaDeInicio && horaDeInicio ? daPessoa.filter(h => h >= horaDeInicio) : daPessoa
+    if (!sala || !livres.length) return livres
+    // A sala no mesmo dia: os atendimentos dela (de qualquer pessoa) e os bloqueios dela.
+    const janela = janelaDaGrade(data, fuso)
+    const [ocupam, bloqueios] = await Promise.all([
+      ocupacaoDaSala(admin, { tenantId: ctx.tenantId!, branchId, roomId: sala.id, de: janela.dia, ate: janela.ate }),
+      bloqueiosDoPeriodo(ctx.tenantId!, { de: janela.dia, ate: janela.ate, profissionais: [], salas: [sala.id] }, admin),
+    ])
+    return livres.filter(h => !ocupanteDoHorario(instanteNoFuso(data, h, fuso), duracao, ocupam, bloqueios))
   })
   return achou ? `${achou.data}T${achou.hora}` : null
 }
@@ -2282,6 +2344,32 @@ export async function salasParaAgendar(
   const ctx = await getTenantContext()
   assertPermission(ctx, 'agenda', 'MANAGE')
   return salasDoAgendar(ctx, branchId, procedureId, scheduledAt, durationMin)
+}
+
+/**
+ * Quem ATENDE na unidade e NÃO está disponível no horário escolhido no Agendar —
+ * o choque com outro atendimento ou o bloqueio (R13, o Heitor, 26/11, na página
+ * de perguntas: "Só mostra os horarios, salas e pessoas que estão livres"). A
+ * lista de quem atende do modal tira essas pessoas (a já escolhida fica, com o
+ * "Não vai ser agendado"). Só leitura; o núcleo confere de novo ao gravar.
+ */
+export async function quemNaoEstaLivreNoHorario(
+  branchId: string, scheduledAt: string, durationMin: number,
+): Promise<{ id: string; indisponivel: 'ocupada' | 'bloqueada' }[]> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'agenda', 'MANAGE')
+  if (typeof branchId !== 'string' || !/^[0-9a-f-]{36}$/i.test(branchId) || !alcancaUnidade(ctx, branchId)) return []
+  const inicio = new Date(scheduledAt)
+  if (typeof scheduledAt !== 'string' || Number.isNaN(inicio.getTime())) return []
+  const duracaoMin = Number.isFinite(durationMin) && durationMin > 0 ? Math.max(1, Math.round(durationMin)) : 30
+  const admin = createAdminClient()
+  const unidade = await ler(admin.from('branches').select('id').eq('id', branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade')
+  if (!unidade) return []
+  const equipe = (await getCachedBranchProfessionals(branchId, ctx.tenantId!)) as { id: string }[]
+  const motivos = await Promise.all(equipe.map(p => indisponibilidadeNoHorario(admin, {
+    tenantId: ctx.tenantId!, professionalId: p.id, inicio, duracaoMin,
+  })))
+  return equipe.flatMap((p, i) => motivos[i] ? [{ id: p.id, indisponivel: motivos[i]! }] : [])
 }
 
 /**
@@ -2306,16 +2394,17 @@ export async function avisosDoHorario(
  * próprio agendamento), e a cliente ARQUIVADA ("avisar ao remarcar, sem
  * recusar" — revisão do Heitor). Só aviso: `remarcarCore` decide.
  */
-export async function avisosDoRemarcar(appointmentId: string, scheduledAt: string): Promise<AvisosDoHorario & { clienteArquivada: string | null }> {
+export async function avisosDoRemarcar(appointmentId: string, scheduledAt: string): Promise<AvisosDoHorario & { clienteArquivada: string | null; passou?: boolean }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'agenda', 'MANAGE')
   const nada = { foraDoHorario: null, conflito: null, clienteArquivada: null }
   if (typeof appointmentId !== 'string' || !/^[0-9a-f-]{36}$/i.test(appointmentId)) return nada
   const admin = createAdminClient()
   const a = await ler(admin.from('appointments')
-    .select('branch_id, professional_id, procedure_id, duration_min, client_id, branches!inner(tenant_id)')
+    .select('branch_id, professional_id, procedure_id, duration_min, client_id, room_id, branches!inner(tenant_id)')
     .eq('id', appointmentId).eq('branches.tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o agendamento') as {
       branch_id: string; professional_id: string | null; procedure_id: string | null; duration_min: number | null; client_id: string
+      room_id: string | null
     } | null
   if (!a || !alcancaOAgendamento(ctx, a.branch_id, a.professional_id)) return nada
   const [avisos, ficha] = await Promise.all([
@@ -2323,6 +2412,8 @@ export async function avisosDoRemarcar(appointmentId: string, scheduledAt: strin
       ? avisosDoHorarioCore(ctx, {
           branchId: a.branch_id, professionalId: a.professional_id, scheduledAt, procedureId: a.procedure_id,
           durationMin: a.duration_min ?? 60, excluir: appointmentId,
+          // R07: a sala do agendamento bloqueada no horário novo também não deixa remarcar.
+          roomId: a.room_id,
         })
       : Promise.resolve({ foraDoHorario: null, conflito: null }),
     ler(admin.from('clients').select('name, is_active').eq('id', a.client_id).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o cliente') as Promise<{ name: string; is_active: boolean } | null>,
@@ -2333,6 +2424,8 @@ export async function avisosDoRemarcar(appointmentId: string, scheduledAt: strin
   return {
     ...avisos,
     conflito: passou ?? avisos.conflito,
+    // O motivo ao lado do Confirmar desligado diz que o horário já passou (não "bate com outro atendimento").
+    passou: !!passou,
     clienteArquivada: ficha && ficha.is_active === false
       ? `${ficha.name} está arquivada. Remarcar é permitido; para agendar de novo, reative a ficha (em "Mais ações").`
       : null,

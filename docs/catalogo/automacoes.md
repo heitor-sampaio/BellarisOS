@@ -182,15 +182,16 @@ Este é o catálogo das regras das Automações que valem HOJE: o princípio, os
 - Onde: `docs/regras/automacoes.md:348-350`
 - Antes: KB-05
 
-**AX-05.** A automação nunca abre conversa de WhatsApp sozinha: o "Mandar mensagem" em WhatsApp só fala numa conversa já aberta e ligada à ficha (na API oficial, com a janela de 24 h aberta). O número padrão da rede não abre conversa pela automação.
-- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-11: escolheu "opção d, com a a valendo já" (H1)
+**AX-05.** A automação nunca abre conversa de WhatsApp sozinha: o "Mandar mensagem" em WhatsApp só fala numa conversa já aberta e ligada à ficha (na API oficial, com a janela de 24 h aberta, ou com o modelo aprovado do passo). O número padrão da rede só abre conversa pela automação quando a rede escolhe "Abrir pelo número padrão" no passo (AX-06).
+- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-11: escolheu "opção d, com a a valendo já" (H1); o Heitor, 26/11, página de perguntas (R10)
 - Onde: `docs/regras/automacoes.md:293-297`, `:319-321`
 - Antes: KA-39
 
 **AX-06.** O "Mandar mensagem" ganha "Para quem não tem conversa aberta", desligado por padrão: Não mandar · Abrir pelo número padrão · Mandar como aviso no celular. Abrir pelo número padrão é a rede escolhendo correr o risco de banimento do WhatsApp Web; na API oficial pede um modelo aprovado.
 - Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-11: escolheu "opção d, com a a valendo já" (H1)
-- Onde: `docs/regras/automacoes.md:299-304`
-- Estado: decidida, ainda não implementada (`docs/regras/automacoes.md:318-319`: "o 'Depois' segue em aberto"; o envio de modelo aprovado na automação ainda precisa ser construído, `:303-304`)
+- Fonte (a construção): o Heitor, 26/11, página de perguntas (R10): "Está no escopo: construir (com os modelos aprovados pela Meta na automação)"
+- Onde: `docs/regras/automacoes.md`, "A automação e a cliente SEM conversa aberta" e "'Abrir pelo número padrão' e o modelo aprovado na automação"; `lib/automacoes/acoes-mensagem.ts` (`abrirPeloNumeroPadrao`), `lib/automacoes/abrir-pelo-padrao.ts`, `lib/automacoes/abrir-pelo-padrao-regras.ts`, `components/admin/automacoes/painel-do-no.tsx` (`ModeloDoPasso`)
+- Estado: implementada (26/11; prova `tests/automacoes-abrir-pelo-numero-padrao.test.ts`)
 - Antes: KA-41
 
 **AX-07.** Num fato de CONVERSA, a oportunidade do fluxo é a ligada à conversa; sem ela, a aberta mais recente da pessoa. Num fato de CLIENTE sem oportunidade no fato e sem conversa, é a oportunidade ABERTA mais recente da cliente (ganha e perdida não entram). O "agendamento criado" leva a oportunidade pela qual se agendou.

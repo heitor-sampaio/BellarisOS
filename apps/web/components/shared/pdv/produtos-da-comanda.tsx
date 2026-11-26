@@ -7,6 +7,8 @@ import { acrescentarProdutoNaComanda, tirarProdutoDaComanda, tirarUmProdutoDaCom
 import type { ItemDaComanda } from '@/lib/pdv/itens-da-comanda'
 import { situacaoDoItemDaComanda } from '@/lib/pdv/situacoes'
 import { recusaDaQuantidadeDoProduto, avisoDaQuantidadeDoProduto, avisosDosItensDaVenda } from '@/lib/vendas/quantidades'
+import { faltaAoAcrescentarNaComanda, faltaDosProdutosDaComanda, motivoDaFaltaNoBotao } from '@/lib/vendas/falta-de-estoque'
+import { MotivoDoBotao } from '@/components/shared/campos-do-pagamento'
 
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
@@ -74,6 +76,16 @@ export function ProdutosDaComanda({ comandaId, slug, itens, produtos, aReceber =
   // Acima do comum (decisão do Claude, 25/11): mais de 20 produtos na comanda avisa, e grava.
   const avisoDosProdutos = avisosDosItensDaVenda(itens.filter(i => !i.vendido).map(i => i.quantidade)).produtos
   const avisoDoAcrescentar = avisoDaQuantidadeDoProduto(Number(quantidade))
+  // R04 (o Heitor, 26/11: "e tb não deixa realizar a venda de produto sem estoque"): a comanda
+  // não passa do que há na unidade — o "Acrescentar" e o "+" desligam com o motivo, e o que já
+  // está nela e passou do saldo (que caiu depois) diz a falta. O banco confere do mesmo jeito.
+  const naComanda = (produto: string) => itens.filter(i => !i.vendido && i.produtoId === produto).reduce((s, i) => s + i.quantidade, 0)
+  const faltaDoAcrescentar = faltaAoAcrescentarNaComanda(produtos?.find(p => p.id === produtoId), Math.trunc(Number(quantidade)) || 0, naComanda(produtoId))
+  const noLimite = (i: ItemDaComanda) => {
+    const p = produtos?.find(x => x.id === i.produtoId)
+    return !!p && naComanda(i.produtoId) >= p.disponivel
+  }
+  const faltaNaComanda = faltaDosProdutosDaComanda(itens, produtos)
   const tirar = (itemId: string) => {
     setErro(null)
     comecar(async () => {
@@ -115,8 +127,9 @@ export function ProdutosDaComanda({ comandaId, slug, itens, produtos, aReceber =
                 <Minus size={12} aria-hidden />
               </button>
               <span style={{ minWidth: 20, color: 'var(--text-muted)', textAlign: 'center', fontWeight: 600 }}>{i.quantidade}</span>
-              <button type="button" className="btn-ghost" data-mais-um aria-label={`Um ${i.nome} a mais`} title="Um a mais"
-                disabled={pendente} onClick={() => maisUm(i.produtoId)} style={{ padding: '2px 6px' }}>
+              <button type="button" className="btn-ghost" data-mais-um aria-label={`Um ${i.nome} a mais`}
+                title={noLimite(i) ? 'Não há mais na unidade' : 'Um a mais'}
+                disabled={pendente || noLimite(i)} onClick={() => maisUm(i.produtoId)} style={{ padding: '2px 6px' }}>
                 <Plus size={12} aria-hidden />
               </button>
             </span>
@@ -129,6 +142,15 @@ export function ProdutosDaComanda({ comandaId, slug, itens, produtos, aReceber =
           }}>{brl(i.preco * i.quantidade)}</span>
         </div>
       ))}
+
+      {faltaNaComanda && (
+        <p data-falta-de-estoque role="status" style={{
+          marginTop: 8, color: 'var(--warning)', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)',
+          borderRadius: 'var(--radius-field-token)', padding: '8px 12px', fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-semibold)',
+        }}>
+          {faltaNaComanda} Tire ou diminua o produto para receber.
+        </p>
+      )}
 
       {produtos && avisoDosProdutos && (
         <span role="status" data-acima-do-comum="produtos-da-comanda" style={{ display: 'block', marginTop: 8, fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
@@ -171,10 +193,16 @@ export function ProdutosDaComanda({ comandaId, slug, itens, produtos, aReceber =
               {avisoDoAcrescentar}
             </span>
           )}
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          {faltaDoAcrescentar && (
+            <span role="status" data-falta-ao-acrescentar style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+              {faltaDoAcrescentar}
+            </span>
+          )}
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+            <MotivoDoBotao motivo={pendente ? null : motivoDaFaltaNoBotao(faltaDoAcrescentar)} />
             <button type="button" className="btn-secondary" onClick={() => { setAberto(false); setErro(null) }}>Cancelar</button>
             {produtos.length > 0 && (
-              <button type="button" className="btn-primary" disabled={pendente} onClick={acrescentar}>
+              <button type="button" className="btn-primary" disabled={pendente || !!faltaDoAcrescentar} onClick={acrescentar}>
                 {pendente ? 'Acrescentando…' : 'Acrescentar'}
               </button>
             )}

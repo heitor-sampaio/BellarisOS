@@ -22,6 +22,7 @@ import { Dica } from '@/components/shared/dica'
 import { textoDeQuemConclui } from '@/lib/equipe/textos-de-quem-pode'
 import { TEXTO_DA_SESSAO_NA_DESISTENCIA } from '@/lib/atendimento/desistencia'
 import { naParede, daParede } from '@/lib/datetime'
+import { motivoDoConfirmarDesligado } from '@/lib/agenda/motivo-do-confirmar'
 
 interface AppointmentEvent {
   id:               string
@@ -155,12 +156,17 @@ export function AppointmentSheet({ appointment, slug, vistaDela = false, podeGer
   // expediente, choque e a cliente arquivada. Só aviso — o servidor decide.
   // Guardados com o horário a que respondem (D9 da 8ª): o aviso de um horário
   // não vale para o seguinte, e o Confirmar espera o do horário escolhido.
-  const [avisosLidos, setAvisosLidos] = useState<{ de: string; itens: string[]; conflito?: string | null }>({ de: '', itens: [] })
+  const [avisosLidos, setAvisosLidos] = useState<{ de: string; itens: string[]; conflito?: string | null; bloqueio?: string | null; passou?: boolean }>({ de: '', itens: [] })
   const avisosRemarcar = avisosLidos.de === novoDT ? avisosLidos.itens : []
   // A21 da 8ª simulação: o choque não é encaixe — o servidor recusa. O aviso
   // diz "Não vai ser remarcado"; recusado, fica UMA mensagem (eram as duas).
   const conflitoRemarcar = avisosLidos.de === novoDT ? (avisosLidos.conflito ?? null) : null
   const recusadoPorChoque = !!remarcaState?.error && !!conflitoRemarcar
+  // R07 (o Heitor, 26/11: "se ta bloqueado não dá pra marcar"): o bloqueio no
+  // horário novo também não é encaixe — "Não vai ser remarcado", como o choque.
+  const bloqueioRemarcar = avisosLidos.de === novoDT ? (avisosLidos.bloqueio ?? null) : null
+  // R06 e R07: o motivo do Confirmar desligado, ao lado dele.
+  const motivoDoConfirmar = motivoDoConfirmarDesligado({ choque: !!conflitoRemarcar, passou: avisosLidos.de === novoDT && !!avisosLidos.passou, bloqueio: !!bloqueioRemarcar })
   const conferindoRemarcar = remarcando && !!novoDT && novoDT !== inicioLocal && avisosLidos.de !== novoDT
   useEffect(() => {
     if (!remarcando || !novoDT) return
@@ -171,7 +177,10 @@ export function AppointmentSheet({ appointment, slug, vistaDela = false, podeGer
           if (!vivo) return
           // O choque do horário de AGORA é o próprio agendamento: só conta o do novo.
           const novo = novoDT !== inicioLocal
-          setAvisosLidos({ de: novoDT, itens: [r.clienteArquivada, novo ? r.foraDoHorario : null, novo ? (r.bloqueio ?? null) : null].filter((x): x is string => !!x), conflito: novo ? r.conflito : null })
+          setAvisosLidos({
+            de: novoDT, itens: [r.clienteArquivada, novo ? r.foraDoHorario : null].filter((x): x is string => !!x),
+            conflito: novo ? r.conflito : null, bloqueio: novo ? (r.bloqueio ?? null) : null, passou: novo && !!r.passou,
+          })
         })
         // Sem a conferência, nenhum aviso (o servidor ainda decide) — e o Confirmar não espera para sempre.
         .catch(() => { if (vivo) setAvisosLidos({ de: novoDT, itens: [] }) })
@@ -465,11 +474,16 @@ export function AppointmentSheet({ appointment, slug, vistaDela = false, podeGer
                   onChange={e => setNovoDT(e.target.value)}
                   style={{ background: 'var(--surface)' }}
                 />
-                {(avisosRemarcar.length > 0 || (conflitoRemarcar && !recusadoPorChoque)) && (
+                {(avisosRemarcar.length > 0 || (conflitoRemarcar && !recusadoPorChoque) || bloqueioRemarcar) && (
                   <div data-aviso-do-remarcar role="status" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     {conflitoRemarcar && !recusadoPorChoque && (
                       <p style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 700 }}>
                         <Ban size={13} aria-hidden="true" style={{ flexShrink: 0, marginTop: 1 }} /> Não vai ser remarcado: {conflitoRemarcar}
+                      </p>
+                    )}
+                    {bloqueioRemarcar && (
+                      <p data-bloqueio-do-horario style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 700 }}>
+                        <Ban size={13} aria-hidden="true" style={{ flexShrink: 0, marginTop: 1 }} /> Não vai ser remarcado: {bloqueioRemarcar}
                       </p>
                     )}
                     {avisosRemarcar.map(a => (
@@ -484,7 +498,15 @@ export function AppointmentSheet({ appointment, slug, vistaDela = false, podeGer
                     {recusadoPorChoque ? `Não foi remarcado: ${conflitoRemarcar}` : remarcaState.error}
                   </p>
                 )}
-                <button type="submit" disabled={remarcaPending || !novoDT || novoDT === inicioLocal || conferindoRemarcar} className="btn-primary" style={{ justifyContent: 'center' }}>
+                {/* R06 e R07 (o Heitor, 26/11): a janela já diz "Não vai ser remarcado"
+                    (o choque, o bloqueio ou o horário que passou) — o Confirmar
+                    desliga, com o motivo ao lado. O encaixe fora do horário não desliga. */}
+                {motivoDoConfirmar && (
+                  <span data-motivo-do-confirmar style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>
+                    {motivoDoConfirmar}
+                  </span>
+                )}
+                <button type="submit" disabled={remarcaPending || !novoDT || novoDT === inicioLocal || conferindoRemarcar || !!motivoDoConfirmar} className="btn-primary" style={{ justifyContent: 'center' }}>
                   {remarcaPending ? 'Remarcando…' : conferindoRemarcar ? 'Conferindo o horário…' : 'Confirmar novo horário'}
                 </button>
               </form>

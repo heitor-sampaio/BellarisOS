@@ -543,7 +543,8 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     e no plano cancelados, na devolução de produto).
   - **A tela diz de onde veio o percentual**: a linha guarda
     `commission_lines.regra_de` (ITEM, PESSOA, CLINICA), e o extrato e o CSV
-    dizem "3% — da Tatiane", "10% — do pacote", "5% — da rede"
+    dizem "3% — de Tatiane", "10% — do pacote", "5% — da rede" (a da pessoa é
+    "— de <nome>" para todos: o Heitor, 26/11, página de perguntas, R01)
     (`regraDoLancamento`, `lib/comissoes/extrato-texto.ts`; o extrato é
     `comissoes_extrato_com_regra` — o `comissoes_extrato_com_base` ficou sem
     chamador no app). As linhas de antes dizem só a regra.

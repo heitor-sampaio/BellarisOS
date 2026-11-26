@@ -9,7 +9,10 @@ import { LIMITE_DE_DIAS, acimaDeCemAnos, avisoAcimaDoComum } from '@/lib/acima-d
  *
  * - Os livres (`computeAvailableSlots`: o app da cliente, o Copilot, o CRM)
  *   não oferecem o horário bloqueado.
- * - A equipe, pela agenda, é AVISADA e encaixa (princípio 2).
+ * - Marcar ou mover PARA dentro do bloqueio é RECUSADO, por qualquer caminho
+ *   (R07, o Heitor, 26/11, no chat: "r07 se ta bloqueado não dá pra marcar"; era
+ *   o encaixe avisado, princípio 2): `recusaDoBloqueioNoHorario`, no núcleo. O que
+ *   já estava marcado quando o bloqueio nasceu continua.
  */
 export interface BloqueioDaAgenda {
   id:             string
@@ -53,22 +56,32 @@ export function trechoDoBloqueio(b: Periodo, fuso?: string): string {
   return `de ${ddmm(ini)} às ${hh(ini)} a ${ddmm(fim)} às ${hh(fim)}`
 }
 
+/** O bloqueio da pessoa que atende, em palavras: o que a janela diz depois de "Não vai ser agendado:". */
 export function avisoDoBloqueioDaProfissional(nome: string, b: Periodo & { motivo: string }, fuso?: string): string {
-  return `Horário bloqueado para ${nome} ${trechoDoBloqueio(b, fuso)} (${b.motivo}). O encaixe é permitido.`
+  return `${nome} está com o horário bloqueado ${trechoDoBloqueio(b, fuso)} (${b.motivo}).`
 }
 
+/** O bloqueio da sala, em palavras. */
 export function avisoDoBloqueioDaSala(nome: string, b: Periodo & { motivo: string }, fuso?: string): string {
-  return `${nome} está bloqueada ${trechoDoBloqueio(b, fuso)} (${b.motivo}). O encaixe é permitido.`
+  return `${nome} está bloqueada ${trechoDoBloqueio(b, fuso)} (${b.motivo}).`
 }
 
 /**
- * O aviso dos bloqueios que o agendar e o remarcar mostram (A9 da 32ª; AG-20:
- * "…O encaixe é permitido: confirme só se for isso mesmo.", como o Copilot já
- * diz): as frases de cada bloqueio, juntas, e o pedido de confirmar uma vez no
- * fim. Nulo sem bloqueio.
+ * Os bloqueios do horário que o agendar e o remarcar mostram, juntos. Desde a
+ * R07 (o Heitor, 26/11: "r07 se ta bloqueado não dá pra marcar") não pedem mais
+ * "confirme só se for isso mesmo" (A9 da 32ª): o bloqueado não se marca. Nulo sem bloqueio.
  */
 export function avisoDosBloqueios(frases: string[]): string | null {
-  return frases.length ? `${frases.join(' ')} Confirme só se for isso mesmo.` : null
+  return frases.length ? frases.join(' ') : null
+}
+
+/**
+ * A recusa do horário bloqueado (R07): as frases dos bloqueios e o pedido de
+ * outro horário — "Bruna está com o horário bloqueado das 12:00 às 13:00
+ * (Almoço). Escolha outro horário.". Nulo sem bloqueio.
+ */
+export function recusaDoHorarioBloqueado(frases: string[]): string | null {
+  return frases.length ? `${frases.join(' ')} Escolha outro horário.` : null
 }
 
 /**

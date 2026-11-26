@@ -11,10 +11,10 @@ describe('A18: o Vender diz a comissão de venda de quem vendeu e de onde vem', 
     expect(textoDaComissaoDaVenda({ tipo: 'PACOTE', itens: [{ regra: { tipo: 'PERCENTAGE', valor: 5 } }], pessoa: rita }))
       .toBe('Comissão de venda de Rita: 5% do vendido — do pacote. Sai quando a venda estiver paga inteira.')
     expect(textoDaComissaoDaVenda({ tipo: 'PACOTE', itens: [{ regra: null }], pessoa: rita }))
-      .toBe('Comissão de venda de Rita: 8% do vendido — da Rita. Sai quando a venda estiver paga inteira.')
+      .toBe('Comissão de venda de Rita: 8% do vendido — de Rita. Sai quando a venda estiver paga inteira.')
   })
   it('o pré-pago é a da pessoa; sem ela, diz que não há', () => {
-    expect(textoDaComissaoDaVenda({ tipo: 'PRE_PAGO', itens: [{ regra: null }], pessoa: rita })).toContain('8% do vendido — da Rita')
+    expect(textoDaComissaoDaVenda({ tipo: 'PRE_PAGO', itens: [{ regra: null }], pessoa: rita })).toContain('8% do vendido — de Rita')
     expect(textoDaComissaoDaVenda({ tipo: 'PRE_PAGO', itens: [{ regra: null }], pessoa: { nome: 'Rita', pct: null } }))
       .toBe('Rita não tem comissão de venda: o pré-pago usa a comissão de venda da pessoa (Equipe → Comissão).')
   })
@@ -24,7 +24,7 @@ describe('A18: o Vender diz a comissão de venda de quem vendeu e de onde vem', 
     expect(textoDaComissaoDaVenda({
       tipo: 'PRODUTO', pessoa: rita, redePct: 2,
       itens: [{ nome: 'Sérum', regra: { tipo: 'PERCENTAGE', valor: 10 } }, { nome: 'Protetor', regra: { tipo: 'FIXED_AMOUNT', valor: 3 } }, { nome: 'Gel', regra: null }],
-    })?.replace(/\s/g, ' ')).toBe('Comissão de venda de Rita: Sérum, 10% do vendido — do produto; Protetor, R$ 3,00 por unidade — do produto; Gel, 8% do vendido — da Rita. Sai quando a venda estiver paga inteira.')
+    })?.replace(/\s/g, ' ')).toBe('Comissão de venda de Rita: Sérum, 10% do vendido — do produto; Protetor, R$ 3,00 por unidade — do produto; Gel, 8% do vendido — de Rita. Sai quando a venda estiver paga inteira.')
   })
   it('sem saber a da pessoa (a comissão de outra pessoa, que o cargo não vê), não diz nada que dependa dela', () => {
     expect(textoDaComissaoDaVenda({ tipo: 'PACOTE', itens: [{ regra: null }], pessoa: { nome: 'Paula', pct: undefined } })).toBeNull()

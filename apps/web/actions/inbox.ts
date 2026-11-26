@@ -18,7 +18,8 @@ import { seedDefaultFunnel, listAllStages } from '@/lib/crm/funis'
 import { revalidatePath } from 'next/cache'
 import { resolverCanal } from '@/lib/channels/factory'
 import { estadoDaJanela } from '@/lib/channels/window'
-import { enviarNaConversa, ultimoInboundNaCaixa } from '@/lib/inbox/enviar'
+import { enviarNaConversa, enviarModeloNaConversa, ultimoInboundNaCaixa } from '@/lib/inbox/enviar'
+import { reenviarNaConversa } from '@/lib/inbox/reenviar'
 import { falhaDoEnvio, mensagemDeFalha } from '@/lib/inbox/falhas'
 import {
   urlDaMidia, guardarUpload, classificarArquivo, validarArquivo,
@@ -26,9 +27,7 @@ import {
 import type { ChannelKind } from '@/lib/channels/types'
 import { registrarEventoLead } from '@/lib/lead-events'
 import { propagarDadosDaPessoa, telefoneParaGravar } from '@/lib/contatos/propagar'
-import {
-  extrairVariaveis, montarParametrosEnvio, textoDoEnvio,
-} from '@/lib/templates/core'
+import { extrairVariaveis } from '@/lib/templates/core'
 import { gravar, ler, tentar, mensagemDoErro } from '@/lib/db'
 import { passaNasCaixas } from '@/lib/inbox/visibilidade'
 import { caixasDoAlcance, conversaAoAlcance, mensagemAoAlcance } from '@/lib/inbox/alcance'
@@ -1658,6 +1657,44 @@ export async function editMessage(
   return { ok: true, message: atualizada as unknown as Message }
 }
 
+/**
+ * O "Tentar de novo" da bolha "Não enviada" (R11 — o Heitor, 26/11, na página
+ * de perguntas: "Está no escopo: o botão 'Tentar de novo' na bolha que não
+ * saiu"). A MESMA mensagem sai de novo pelo mesmo número (ou pelo da conversa,
+ * se aquele saiu), com as travas do envio normal; o núcleo é
+ * `reenviarNaConversa` (`lib/inbox/reenviar.ts`). Quem não pode mandar recebe
+ * `{ error }` (a tela nem mostra o botão).
+ */
+export async function reenviarMensagem(
+  messageId: string,
+): Promise<{ ok: boolean; message?: Message; error?: string }> {
+  const ctx = await getTenantContext()
+  assertRecurso(ctx, 'inbox')
+  if (!can(ctx, 'crm', 'MANAGE')) return { ok: false, error: 'Seu cargo não responde conversas.' }
+  // No modo suporte nada sai para o paciente (decisão do Heitor).
+  const travado = bloqueioDoSuporte(ctx, 'mandar mensagem ao cliente')
+  if (travado) return { ok: false, error: travado }
+  const admin = createAdminClient()
+  if (!(await mensagemAoAlcance(admin, ctx, messageId))) return { ok: false, error: 'Mensagem não encontrada.' }
+
+  const perfil = await admin.from('users').select('id, name').eq('auth_id', ctx.userId).maybeSingle()
+  if (perfil.error) console.error('[reenviarMensagem] perfil:', perfil.error.message)
+  const membro = perfil.data as { id: string; name: string } | null
+
+  const r = await reenviarNaConversa(ctx.tenantId!, messageId, {
+    id: membro?.id ?? ctx.internalUserId ?? null, nome: ctx.userName || membro?.name || null,
+  })
+  if (!r.mensagemId) return { ok: false, error: r.error }
+
+  revalidarInbox()
+  const linha = await ler(admin.from('messages').select('*').eq('id', r.mensagemId).single(), 'buscar a mensagem') as unknown as Message
+  // O número pode ter mudado (o da mensagem saiu): a bolha diz por qual foi agora.
+  const { data: numeros } = await admin.from('whatsapp_numbers').select('id, label, removido_em').eq('tenant_id', ctx.tenantId!)
+  const [comNumero] = comNumeroDeSaida([linha], (numeros ?? []) as NumeroDaRede[])
+  const message = comNumero!.media_path ? await comUrl(comNumero!, comNumero!.media_path) : comNumero!
+  return r.ok ? { ok: true, message } : { ok: false, error: r.error, message }
+}
+
 export async function markConversationRead(conversationId: string) {
   const ctx   = await getTenantContext()
   assertRecurso(ctx, 'inbox')
@@ -1928,83 +1965,6 @@ export async function sendTemplateMessage(
   const admin = createAdminClient()
   if (!(await conversaAoAlcance(admin, ctx, conversationId))) return { ok: false, error: 'Conversa não encontrada' }
 
-  const { data: conv, error: erroConv } = await admin
-    .from('conversations')
-    .select('id, channel, status, contact_phone, contact_external_id, whatsapp_number_id')
-    .eq('id', conversationId)
-    .eq('tenant_id', ctx.tenantId!)
-    .maybeSingle()
-
-  if (erroConv) return { ok: false, error: erroConv.message }
-  if (!conv)    return { ok: false, error: 'Conversa não encontrada' }
-  if ((conv as { status: string }).status === 'closed') {
-    return { ok: false, error: 'Conversa encerrada' }
-  }
-  // O número da conversa foi removido (r2-cfg-06): não se responde por ela.
-  const removido = await numeroRemovidoDaConversa(admin, (conv as { whatsapp_number_id: string | null }).whatsapp_number_id)
-  if (removido) return { ok: false, error: recusaDoNumeroRemovido(removido) }
-
-  const { data: tpl, error: erroTpl } = await admin
-    .from('message_templates')
-    .select('id, name, language, status, header_text, body_text, footer_text, waba_id, nao_suportado')
-    .eq('id', templateId)
-    .eq('tenant_id', ctx.tenantId!)
-    .maybeSingle()
-
-  if (erroTpl) return { ok: false, error: erroTpl.message }
-  if (!tpl)    return { ok: false, error: 'Template não encontrado.' }
-
-  const t = tpl as unknown as {
-    id: string; name: string; language: string; status: string
-    header_text: string | null; body_text: string; footer_text: string | null
-  }
-  if (t.status !== 'APPROVED') {
-    return { ok: false, error: 'Este template ainda não foi aprovado pela Meta.' }
-  }
-  const naoSuportado = (tpl as { nao_suportado: string | null }).nao_suportado
-  if (naoSuportado) return { ok: false, error: naoSuportado }
-
-  // Variável em branco vira um buraco visível na mensagem do cliente
-  // ("Olá, , seu horário"). Melhor barrar aqui.
-  const faltando = extrairVariaveis(t.header_text, t.body_text)
-    .filter(v => !valores[v]?.trim())
-  if (faltando.length > 0) {
-    return { ok: false, error: `Preencha: ${faltando.map(v => `{{${v}}}`).join(', ')}` }
-  }
-  // Sobrou chave depois de preencher (um `{{1}}` posicional, que o sistema não
-  // reconhece como variável): o cliente receberia as chaves literais. Recusa.
-  if (/\{\{[^}]*\}\}/.test(textoDoEnvio(t, valores))) {
-    return { ok: false, error: 'Este template tem variáveis num formato que o sistema não preenche.' }
-  }
-
-  // Mesma caixa que a lista de templates usou para decidir o que oferecer —
-  // senão a tela mostra o catálogo de uma WABA e o envio tenta por outra.
-  const canal = await resolverCanal(ctx.tenantId!, 'whatsapp', {
-    tipo: 'conversa',
-    numeroId: (conv as { whatsapp_number_id: string | null }).whatsapp_number_id,
-    userId: ctx.internalUserId,
-  })
-  if (!canal?.provider.sendTemplate) {
-    return { ok: false, error: 'Templates exigem o WhatsApp Oficial conectado.' }
-  }
-
-  // O template tem de ser da WABA que vai enviar. A tela já filtra, mas isto é
-  // um export `'use server'` — endpoint público — e um `templateId` de outra
-  // conta de negócio daria 404 na Meta com a mensagem já gravada aqui.
-  const { getNumero } = await import('@/lib/whatsapp/factory')
-  const numeroDeSaida = canal.numeroId ? await getNumero(canal.numeroId) : null
-  const wabaDoTemplate = (tpl as { waba_id?: string | null }).waba_id ?? null
-  if (!numeroDeSaida?.wabaId || wabaDoTemplate !== numeroDeSaida.wabaId) {
-    return {
-      ok: false,
-      error: `Este template não existe na conta do número ${canal.rotulo ?? 'de saída'}.`,
-    }
-  }
-
-  const destino = (conv as { contact_phone: string | null }).contact_phone
-    ?? (conv as { contact_external_id: string | null }).contact_external_id
-  if (!destino) return { ok: false, error: 'Esta conversa não tem um destinatário identificado.' }
-
   // Quem envia — como em `sendMessage`: a falha fica registrada e o id do
   // membro da sessão cobre, porque a autoria não pode impedir o envio.
   const perfil = await admin
@@ -2013,67 +1973,19 @@ export async function sendTemplateMessage(
   const membro = (perfil.data as { id: string; name: string } | null)
     ?? (ctx.internalUserId ? { id: ctx.internalUserId, name: ctx.userName } : null)
 
-  // O histórico guarda o texto JÁ preenchido: é o que o cliente leu. O vínculo
-  // com o template fica em `template_id`, para auditar o que foi disparado.
-  const { data: msgRow, error: erroInsert } = await admin
-    .from('messages')
-    .insert({
-      conversation_id: conversationId,
-      tenant_id:       ctx.tenantId!,
-      direction:       'outbound',
-      content:         textoDoEnvio(t, valores),
-      channel:         'whatsapp',
-      status:          'sending',
-      sent_by_id:      membro?.id ?? null,
-      sent_by_name:    ctx.userName || membro?.name || null,
-      template_id:     t.id,
-      // A caixa que ENVIA, na mensagem (§9.8.0): sem isto o histórico afirmava
-      // que o template saiu pela caixa da conversa, mesmo quando saiu pela do
-      // usuário.
-      whatsapp_number_id: canal.numeroId ?? null,
-    })
-    .select()
-    .single()
-
-  if (erroInsert) return { ok: false, error: erroInsert.message }
-  const criada = msgRow as unknown as { id: string; status: string }
-
-  try {
-    const { externalId } = await canal.provider.sendTemplate(destino, {
-      name:       t.name,
-      language:   t.language,
-      components: montarParametrosEnvio(t, valores),
-    })
-    await gravar(admin
-      .from('messages')
-      .update({ status: 'sent', external_id: externalId, provider: canal.nome })
-      .eq('id', criada.id), 'registrar a mensagem enviada')
-    criada.status = 'sent'
-
-    // A conversa sem caixa adquire a de saída no primeiro envio que deu certo —
-    // a regra de `enviarNaConversa`. `tentar`: a mensagem JÁ saiu; lançar aqui a
-    // marcaria como falhada e quem atende reenviaria.
-    if (!(conv as { whatsapp_number_id: string | null }).whatsapp_number_id && canal.numeroId) {
-      await tentar(admin
-        .from('conversations')
-        .update({ whatsapp_number_id: canal.numeroId, provider: canal.nome })
-        .eq('id', conversationId)
-        .is('whatsapp_number_id', null), 'carimbar a caixa na conversa')
-    }
-  } catch (sendErr) {
-    console.error('[sendTemplateMessage]', sendErr)
-    // O motivo fica na mensagem (a bolha o mostra) — o 131042, sem forma de
-    // pagamento na Meta, é o que mais chega aqui.
-    const falha = falhaDoEnvio(sendErr)
-    await gravar(admin.from('messages')
-      .update({ status: 'failed', erro_codigo: falha.codigo, erro_texto: falha.texto })
-      .eq('id', criada.id), 'marcar a mensagem como falhada')
-    criada.status = 'failed'
-    return { ok: false, error: falha.texto }
-  }
+  // O envio do modelo mora em `lib/inbox/enviar.ts` (`enviarModeloNaConversa`):
+  // a pessoa no inbox e a automação (AX-06, R10) mandam pelo mesmo caminho.
+  const r = await enviarModeloNaConversa(
+    ctx.tenantId!, conversationId, templateId, valores,
+    { id: membro?.id ?? null, nome: ctx.userName || membro?.name || null },
+    { userId: ctx.internalUserId },
+  )
+  if (!r.ok) return { ok: false, error: r.error }
 
   revalidarInbox()
-  return { ok: true, message: msgRow as unknown as Message }
+  const msg = await ler(admin
+    .from('messages').select('*').eq('id', r.mensagemId!).single(), 'buscar a mensagem')
+  return { ok: true, message: msg as unknown as Message }
 }
 
 // --- Envio de arquivo --------------------------------------------------------

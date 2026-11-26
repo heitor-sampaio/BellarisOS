@@ -32,8 +32,8 @@ const emDias = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString(
 const hojeBR = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
 const n = (v: unknown) => Number(v)
 
-async function como<T>(browser: Browser, fn: (p: Page) => Promise<T>) {
-  const ctx = await browser.newContext({ storageState: recepcao!.estado })
+async function como<T>(browser: Browser, fn: (p: Page) => Promise<T>, quem: MembroDeTeste = recepcao!) {
+  const ctx = await browser.newContext({ storageState: quem.estado })
   try { return await fn(await ctx.newPage()) } finally { await ctx.close() }
 }
 async function abrirVendaDeProduto(p: Page) {
@@ -195,11 +195,36 @@ test.describe.serial('a venda de produto', () => {
       await pagoNoPix(dlg)
       await euVendi(dlg)
       await expect(dlg.locator('[data-falta-de-estoque]')).toContainText(/Só há 2 .* nesta unidade/)
-      await expect(dlg.locator('[data-falta-de-estoque]').getByRole('link', { name: 'Dar entrada no Estoque' })).toBeVisible()
+      // R04 (o Heitor, 26/11, na página de perguntas: "O link só para quem tem o Estoque em
+      // Gerenciar; o aviso da falta para todos (a proposta)"): com só o Caixa, o aviso sem o link.
+      await expect(dlg.locator('[data-falta-de-estoque]').getByRole('link', { name: 'Dar entrada no Estoque' })).toHaveCount(0)
       await expect(dlg.getByRole('button', { name: /^Vender por/ })).toBeDisabled()
     })
     expect((await vendas()).length).toBe(antes)
     expect(await lotes()).toEqual({ A: 0, B: 2 })
+  })
+
+  test('R04: quem tem o Estoque em Gerenciar vê o aviso da falta com o "Dar entrada no Estoque"', async ({ browser }) => {
+    const comEstoque = await criarMembro(`vpe${marca}`, {
+      tenant: rede!.tenantId, rotulo: 'Caixa e estoque',
+      permissoes: [{ modulo: 'cashier', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'agenda', nivel: 'VIEW' }, { modulo: 'stock', nivel: 'MANAGE' }],
+    })
+    const antes = (await vendas()).length
+    try {
+      await como(browser, async p => {
+        const dlg = await abrirVendaDeProduto(p)
+        await dlg.getByLabel('Produto', { exact: true }).selectOption(serum)
+        await dlg.getByLabel('Quantidade').fill('5')
+        await pagoNoPix(dlg)
+        await euVendi(dlg)
+        const falta = dlg.locator('[data-falta-de-estoque]')
+        await expect(falta).toContainText(/Só há 2 .* nesta unidade/)
+        await expect(falta.getByRole('link', { name: 'Dar entrada no Estoque' })).toBeVisible()
+        await expect(falta.getByRole('link', { name: 'Dar entrada no Estoque' })).toHaveAttribute('href', /\/estoque$/)
+        await expect(dlg.getByRole('button', { name: /^Vender por/ })).toBeDisabled()
+      }, comEstoque)
+    } finally { await comEstoque.limpar() }
+    expect((await vendas()).length).toBe(antes)
   })
 
   test('exige cliente cadastrada: o servidor recusa a venda sem a ficha da rede', async ({ browser }) => {

@@ -138,7 +138,7 @@ test('A16: o "Agendar" do cabeçalho abre no dia que a pessoa está olhando, nã
   })
 })
 
-test('A17: a sala bloqueada o dia inteiro risca a grade de horários do Agendar, e o aviso diz "o dia inteiro"', async ({ browser }) => {
+test('A17: a sala bloqueada o dia inteiro tira os horários da grade do Agendar, e o aviso diz "o dia inteiro"', async ({ browser }) => {
   const dia = diaEmQueAUnidadeAbre(7)
   const meiaNoite = new Date(`${dia}T00:00:00-03:00`)
   const { error } = await db().from('agenda_bloqueios').insert({
@@ -152,9 +152,17 @@ test('A17: a sala bloqueada o dia inteiro risca a grade de horários do Agendar,
     const modal = p.getByRole('dialog', { name: 'Novo agendamento' })
     await modal.locator('#ag-profissional').selectOption(carolina!.userId)
     await modal.locator('#ag-procedimento').selectOption(rede!.procedureId)
-    await modal.locator('#ag-quando').fill(`${dia}T10:00`)
+    // O Heitor, 26/11, na página de perguntas (R13/R14): "Só mostra os horarios, salas e
+    // pessoas que estão livres" / "Horarios, salas e pessoas não disponíveis não devem
+    // aparecer nas listas".
+    // A sala bloqueada não aparece na lista daquele dia: escolhida num dia em
+    // que está livre, ela FICA (marcada "bloqueada") quando a data muda para o
+    // dia do bloqueio — e o horário dela sai da grade (era riscado).
+    await modal.locator('#ag-quando').fill(`${diaEmQueAUnidadeAbre(8)}T10:00`)
     await modal.locator('#ag-sala').selectOption({ label: SALA })
-    await expect(modal.locator('[data-horario="10:00"]'), 'a sala bloqueada risca').toBeDisabled()
+    await modal.locator('#ag-quando').fill(`${dia}T10:00`)
+    await expect(modal.locator('#ag-sala option:checked')).toHaveText(`${SALA} (bloqueada)`)
+    await expect(modal.locator('[data-horario="10:00"]'), 'a sala bloqueada tira o horário da grade').toHaveCount(0)
     await expect(modal.locator('[data-aviso-do-horario]')).toContainText('o dia ')
     await expect(modal.locator('[data-aviso-do-horario]')).not.toContainText('00:00 às 24:00')
   })

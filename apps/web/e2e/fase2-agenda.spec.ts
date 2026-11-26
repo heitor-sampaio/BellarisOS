@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { banco, unidadeQueAtende, nomeDeTeste, PREFIXO } from './apoio/banco'
 import { apagarAgendamentos, apagarClientes } from './apoio/limpeza'
+import { chamarAcaoComFormulario } from './apoio/acao-direta'
 
 /**
  * Agendar e conduzir o atendimento sem sair do `/admin`.
@@ -227,9 +228,20 @@ test('choque de horário com cliente novo: recusado, e a ficha rápida não nasc
     await procedimento.selectOption({ index: 1 })
     await profissional.selectOption(prof!.id)
     await modal.locator('input[type="datetime-local"]').fill(`${dia}T09:00`)
-    await page.getByRole('button', { name: 'Confirmar agendamento' }).click()
-    // A recusa do choque (A26: uma mensagem só, com o detalhe do aviso).
-    await expect(page.getByRole('alert').filter({ hasText: /Não foi agendado|já tem agendamento nesse horário/ })).toBeVisible()
+    // R06 (o Heitor, 26/11, na página de perguntas: "Desliga o botão, e os três
+    // testes conferem o botão desligado (a proposta)"): o choque à vista desliga
+    // o Confirmar, com o motivo ao lado.
+    await expect(modal.locator('[data-choque-do-horario]')).toContainText('Não vai ser agendado')
+    await expect(page.getByRole('button', { name: 'Confirmar agendamento' })).toBeDisabled()
+    await expect(modal.locator('[data-motivo-do-confirmar]')).toContainText('Escolha outro horário')
+    // A recusa do SERVIDOR continua, e a ficha rápida não nasce: pela ação
+    // direta, com o mesmo nome e telefone e o choque.
+    const r = await chamarAcaoComFormulario(page, 'actions/appointments.ts', 'addAppointment', '/admin/agenda', [undefined], {
+      _branchId: unidade!.id, _slug: unidade!.slug, client_id: '', client_name: nomeNovo,
+      client_phone: '47988' + String(Date.now()).slice(-6), procedure_id: proc!.id, professional_id: prof!.id,
+      scheduled_at: new Date(`${dia}T09:00:00-03:00`).toISOString(),
+    })
+    expect(r.texto).toContain('já tem agendamento nesse horário')
     const { data: criado } = await db.from('clients').select('id').eq('name', nomeNovo)
     expect(criado ?? [], 'a ficha rápida não nasceu').toHaveLength(0)
   } finally {

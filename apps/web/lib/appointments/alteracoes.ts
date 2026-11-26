@@ -5,7 +5,7 @@ import { EVENTOS } from '@estetica-os/types'
 import { alcancaOAgendamento, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
-import { conferirPecasDoAgendamento, horarioOcupado, primeiroConflito, recusaDoConflito } from '@/lib/appointments/core'
+import { conferirPecasDoAgendamento, horarioOcupado, primeiroConflito, recusaDoBloqueioNoHorario, recusaDoConflito } from '@/lib/appointments/core'
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { getUserName, logHistory } from '@/lib/appointments/avisos'
 import { ehODiaDoAgendamento } from '@/lib/agenda/chegada'
@@ -103,6 +103,18 @@ export async function remarcarCore(admin: Admin, ctx: TenantContext, input: {
   })) {
     return { error: 'Esta sala já está ocupada nesse horário.' }
   }
+  // O BLOQUEIO (R07, o Heitor, 26/11: "r07 se ta bloqueado não dá pra marcar"):
+  // mover PARA dentro dele não se faz — o horário novo, de quem atende e da sala
+  // do agendamento; só a troca de quem atende, o bloqueio de quem recebe. Ficar
+  // onde está (um bloqueio criado depois) não é mover: o que já está marcado continua.
+  const novoHorario = inicio.getTime() !== new Date(existente.scheduled_at).getTime()
+  if (novoHorario || trocaDe) {
+    const bloqueado = await recusaDoBloqueioNoHorario(admin, {
+      professionalId: profissional, roomId: novoHorario ? existente.room_id : null,
+      inicio, duracaoMin: existente.duration_min || 60, branchId: existente.branch_id,
+    })
+    if (bloqueado) return { error: bloqueado }
+  }
 
   // Com a guarda do status: concluído entre a leitura e a escrita não remarca.
   // H3 (opção c, o Heitor, 2026-11-11): a equipe ou o Copilot remarcaram —
@@ -179,6 +191,11 @@ export async function mudarUnidadeCore(admin: Admin, ctx: TenantContext, input: 
   if (input.roomId && await horarioOcupado(admin, {
     tenantId: ctx.tenantId!, roomId: input.roomId, branchId: input.branchId, excluir: existente.id, inicio, duracaoMin,
   })) return { error: 'Esta sala já está ocupada nesse horário.' }
+  // R07: quem recebe e a sala nova, bloqueados no horário, não recebem.
+  const bloqueado = await recusaDoBloqueioNoHorario(admin, {
+    professionalId: input.professionalId, roomId: input.roomId ?? null, inicio, duracaoMin, branchId: input.branchId,
+  })
+  if (bloqueado) return { error: bloqueado }
 
   // O preço: o avulso ainda sem lançamento passa ao da unidade nova (D2 da 9ª).
   const [jaPago, lancamentos] = await Promise.all([

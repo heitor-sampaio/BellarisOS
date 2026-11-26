@@ -25,6 +25,7 @@ export function unidadeDoInsumo(p: UnidadesDoProduto): string {
 /** O artigo e o nome da embalagem na frase ("do frasco", "da seringa"); sigla ou medida → "da embalagem". */
 const EMBALAGEM_NA_FRASE: Record<string, string> = {
   frasco: 'do frasco', seringa: 'da seringa', ampola: 'da ampola', cx: 'da caixa', rolo: 'do rolo', par: 'do par',
+  pote: 'do pote',
 }
 
 const mdc = (a: number, b: number): number => (b === 0 ? a : mdc(b, a % b))

@@ -170,7 +170,8 @@ test('A17 e A43: o extrato diz de onde veio o percentual, e a venda do plano diz
     await p.goto('/admin/financeiro/comissoes')
     const cartao = p.locator(`[data-comissoes-de="${tatiane.userId}"]`)
     await cartao.getByRole('button', { name: /Extrato/ }).click()
-    await expect(cartao.getByText(/3%\s*—\s*da \[e2e\] Tatiane/).first()).toBeVisible()
+    // O Heitor, 26/11, na página de perguntas (R01): "'— de <nome>' para todos (a proposta)" — era "— da <nome>".
+    await expect(cartao.getByText(/3%\s*—\s*de \[e2e\] Tatiane/).first()).toBeVisible()
     await expect(cartao.getByText(/10%\s*—\s*do pacote/).first()).toBeVisible()
     await expect(cartao.getByText(/5%\s*—\s*da rede/).first()).toBeVisible()
     // A43: a linha da venda do plano começa por "Venda do plano", não "Procedimento".

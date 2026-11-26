@@ -6,6 +6,7 @@ import type { ChannelKind } from '@/lib/channels/types'
 import { gravar, ler, tentar } from '@/lib/db'
 import { falhaDoEnvio } from '@/lib/inbox/falhas'
 import { numeroRemovidoDaConversa, recusaDoNumeroRemovido } from '@/lib/inbox/numero-removido'
+import { extrairVariaveis, montarParametrosEnvio, textoDoEnvio } from '@/lib/templates/core'
 
 /**
  * Quando o contato falou pela última vez NESTA caixa.
@@ -273,5 +274,158 @@ export async function enviarNaConversa(
       .update({ status: 'failed', erro_codigo: falha.codigo, erro_texto: falha.texto })
       .eq('id', mensagemId), 'marcar a mensagem como falhada')
     return { ok: false, error: (e as Error).message, mensagemId }
+  }
+}
+
+/**
+ * O envio de um MODELO aprovado (template) numa conversa — o núcleo, sem tela
+ * e sem usuário, como `enviarNaConversa`. Dois remetentes: a pessoa no inbox
+ * (`sendTemplateMessage`) e a automação, que abre a conversa pelo número
+ * padrão (AX-06, R10 — o Heitor, 26/11, na página de perguntas: "Está no
+ * escopo: construir (com os modelos aprovados pela Meta na automação)") ou
+ * fala fora das 24 h.
+ *
+ * Não passa pela janela de 24 h de propósito: é ela que o modelo contorna. O
+ * que vale é o modelo estar APROVADO e ser da conta (WABA) do número que envia.
+ */
+export async function enviarModeloNaConversa(
+  tenantId: string,
+  conversationId: string,
+  templateId: string,
+  valores: Record<string, string>,
+  remetente: Remetente,
+  opcoes: {
+    /**
+     * `users.id` de quem envia, para a precedência "o usuário fala pelo número
+     * dele". Nulo (a automação): sai pela caixa da conversa.
+     */
+    userId: string | null
+  },
+): Promise<ResultadoDoEnvio> {
+  const admin = createAdminClient()
+
+  const conv = await ler(admin
+    .from('conversations')
+    .select('id, channel, status, contact_phone, contact_external_id, whatsapp_number_id')
+    .eq('id', conversationId)
+    .eq('tenant_id', tenantId)
+    .maybeSingle(), 'buscar a conversa') as {
+      id: string; channel: string; status: string
+      contact_phone: string | null; contact_external_id: string | null; whatsapp_number_id: string | null
+    } | null
+
+  if (!conv) return { ok: false, error: 'Conversa não encontrada' }
+  if (conv.status === 'closed') return { ok: false, error: 'Conversa encerrada' }
+  // O número da conversa foi removido (r2-cfg-06): não se responde por ela.
+  const removido = await numeroRemovidoDaConversa(admin, conv.whatsapp_number_id)
+  if (removido) return { ok: false, error: recusaDoNumeroRemovido(removido) }
+
+  const t = await ler(admin
+    .from('message_templates')
+    .select('id, name, language, status, header_text, body_text, footer_text, waba_id, nao_suportado')
+    .eq('id', templateId)
+    .eq('tenant_id', tenantId)
+    .maybeSingle(), 'buscar o template') as {
+      id: string; name: string; language: string; status: string
+      header_text: string | null; body_text: string; footer_text: string | null
+      waba_id: string | null; nao_suportado: string | null
+    } | null
+
+  if (!t) return { ok: false, error: 'Template não encontrado.' }
+  if (t.status !== 'APPROVED') {
+    return { ok: false, error: 'Este template ainda não foi aprovado pela Meta.' }
+  }
+  if (t.nao_suportado) return { ok: false, error: t.nao_suportado }
+
+  // Variável em branco vira um buraco visível na mensagem do cliente
+  // ("Olá, , seu horário"). Melhor barrar aqui.
+  const faltando = extrairVariaveis(t.header_text, t.body_text)
+    .filter(v => !valores[v]?.trim())
+  if (faltando.length > 0) {
+    return { ok: false, error: `Preencha: ${faltando.map(v => `{{${v}}}`).join(', ')}` }
+  }
+  // Sobrou chave depois de preencher (um `{{1}}` posicional, que o sistema não
+  // reconhece como variável): o cliente receberia as chaves literais. Recusa.
+  if (/\{\{[^}]*\}\}/.test(textoDoEnvio(t, valores))) {
+    return { ok: false, error: 'Este template tem variáveis num formato que o sistema não preenche.' }
+  }
+
+  // Mesma caixa que a lista de templates usou para decidir o que oferecer —
+  // senão a tela mostra o catálogo de uma WABA e o envio tenta por outra.
+  const canal = await resolverCanal(tenantId, 'whatsapp', {
+    tipo: 'conversa', numeroId: conv.whatsapp_number_id, userId: opcoes.userId,
+  })
+  if (!canal?.provider.sendTemplate) {
+    return { ok: false, error: 'Templates exigem o WhatsApp Oficial conectado.' }
+  }
+
+  // O template tem de ser da WABA que vai enviar: um `templateId` de outra
+  // conta de negócio daria 404 na Meta com a mensagem já gravada aqui.
+  const { getNumero } = await import('@/lib/whatsapp/factory')
+  const numeroDeSaida = canal.numeroId ? await getNumero(canal.numeroId) : null
+  if (!numeroDeSaida?.wabaId || t.waba_id !== numeroDeSaida.wabaId) {
+    return {
+      ok: false,
+      error: `Este template não existe na conta do número ${canal.rotulo ?? 'de saída'}.`,
+    }
+  }
+
+  const destino = conv.contact_phone ?? conv.contact_external_id
+  if (!destino) return { ok: false, error: 'Esta conversa não tem um destinatário identificado.' }
+
+  // O histórico guarda o texto JÁ preenchido: é o que o cliente leu. O vínculo
+  // com o template fica em `template_id`, para auditar o que foi disparado (e
+  // para o "Tentar de novo" refazer os valores — R11).
+  const { data: msgRow, error: erroInsert } = await admin
+    .from('messages')
+    .insert({
+      conversation_id: conversationId,
+      tenant_id:       tenantId,
+      direction:       'outbound',
+      content:         textoDoEnvio(t, valores),
+      channel:         'whatsapp',
+      status:          'sending',
+      sent_by_id:      remetente.id,
+      sent_by_name:    remetente.nome,
+      template_id:     t.id,
+      // A caixa que ENVIA, na mensagem (§9.8.0).
+      whatsapp_number_id: canal.numeroId ?? null,
+    })
+    .select('id')
+    .single()
+
+  if (erroInsert || !msgRow) return { ok: false, error: erroInsert?.message ?? 'Erro ao gravar a mensagem.' }
+  const mensagemId = (msgRow as { id: string }).id
+
+  try {
+    const { externalId } = await canal.provider.sendTemplate(destino, {
+      name:       t.name,
+      language:   t.language,
+      components: montarParametrosEnvio(t, valores),
+    })
+    await gravar(admin
+      .from('messages')
+      .update({ status: 'sent', external_id: externalId, provider: canal.nome })
+      .eq('id', mensagemId), 'registrar a mensagem enviada')
+
+    // A conversa sem caixa adquire a de saída no primeiro envio que deu certo —
+    // a regra de `enviarNaConversa`. `tentar`: a mensagem JÁ saiu.
+    if (!conv.whatsapp_number_id && canal.numeroId) {
+      await tentar(admin
+        .from('conversations')
+        .update({ whatsapp_number_id: canal.numeroId, provider: canal.nome })
+        .eq('id', conversationId)
+        .is('whatsapp_number_id', null), 'carimbar a caixa na conversa')
+    }
+    return { ok: true, mensagemId, externalId, provedor: canal.nome, numeroId: canal.numeroId }
+  } catch (sendErr) {
+    console.error('[enviarModeloNaConversa]', sendErr)
+    // O motivo fica na mensagem (a bolha o mostra) — o 131042, sem forma de
+    // pagamento na Meta, é o que mais chega aqui.
+    const falha = falhaDoEnvio(sendErr)
+    await gravar(admin.from('messages')
+      .update({ status: 'failed', erro_codigo: falha.codigo, erro_texto: falha.texto })
+      .eq('id', mensagemId), 'marcar a mensagem como falhada')
+    return { ok: false, error: falha.texto, mensagemId }
   }
 }

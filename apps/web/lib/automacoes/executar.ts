@@ -465,8 +465,10 @@ async function rodarNo(
         const conferido = await reconferirDepoisDoSilencio(automacao.grafo, no, contexto, evento, run.tenant_id)
         if (!conferido.seguir) return { parar: true, resumo: { enviada: false, motivo: conferido.motivo } }
       }
+      // R10: as variáveis do modelo (template) do passo também se hidratam.
+      const doModelo = Object.values(cfg.variaveisDoTemplate ?? {})
       await hidratarParaCaminhos(contexto, evento, run.tenant_id, [
-        ...caminhosDoTexto(cfg.texto ?? ''), 'cliente', 'conversa',
+        ...caminhosDoTexto(cfg.texto ?? ''), ...doModelo.flatMap(v => caminhosDoTexto(v)), 'cliente', 'conversa',
       ])
 
       // D15 da 32ª (princípio 4): a variável sem o dado não sai em branco
@@ -496,12 +498,23 @@ async function rodarNo(
           : { parar: true, resumo: { enviada: false, motivo: veredito.motivo } }
       }
 
+      const fuso = await fusoDaMensagem(run.tenant_id, contexto, evento)
       const r = await mandarMensagem(atorDaAutomacao(run, automacao), contexto, {
         canal: cfg.canal,
-        texto: interpolarTexto(cfg.texto ?? '', contexto, await fusoDaMensagem(run.tenant_id, contexto, evento)),
+        texto: interpolarTexto(cfg.texto ?? '', contexto, fuso),
         templateId: cfg.templateId ?? null,
-        // AX-06 (D6 da 32ª): sem conversa aberta, o que a rede escolheu.
+        // AX-06 (D6 da 32ª; R10): sem conversa aberta, o que a rede escolheu.
         semConversa: cfg.semConversa ?? 'nao_mandar',
+        // R10 (o Heitor, 26/11): o modelo aprovado do passo, com as variáveis
+        // da automação já trocadas — e as que saíram vazias (princípio 4).
+        modelo: cfg.templateId
+          ? {
+              templateId: cfg.templateId,
+              valores: Object.fromEntries(Object.entries(cfg.variaveisDoTemplate ?? {})
+                .map(([nome, v]) => [nome, interpolarTexto(v, contexto, fuso).trim()])),
+              semDado: Object.values(cfg.variaveisDoTemplate ?? {}).flatMap(v => variaveisSemDado(v, contexto)),
+            }
+          : null,
       })
       return { resumo: r.resumo, esperarAte: r.esperarAte }
     }

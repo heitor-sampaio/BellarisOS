@@ -9,7 +9,7 @@ import {
   Mic, Square,
   ArrowLeft,
   Megaphone,
-  Reply, Pencil, Check,
+  Reply, Pencil, Check, RotateCw,
 } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -17,7 +17,7 @@ import { formatarNoFuso, diaRelativo } from '@/lib/formatar-no-fuso'
 import { useSinais, useSinalDaConversa } from '@/components/shared/realtime-refresher'
 import {
   getMessages, sendMessage, sendMediaMessage, markConversationRead,
-  setConversationStatus, createConversationForLead, getMessageMediaUrl, editMessage,
+  setConversationStatus, createConversationForLead, getMessageMediaUrl, editMessage, reenviarMensagem,
   numerosParaResponderAConversa, responderPorOutroNumero,
   type Conversation, type Message, type InboxChannel, type ConvStatus,
   type ReplyPreview, type AnuncioDaMensagem,
@@ -444,12 +444,14 @@ function LegendaDoCriativo({ texto }: { texto: string }) {
 const JANELA_DE_EDICAO_MS = 15 * 60 * 1000
 
 function Bubble({
-  msg, nomeDoContato, onResponder, onEditar, podeAgir, canalEdita, agora,
+  msg, nomeDoContato, onResponder, onEditar, onTentarDeNovo, podeAgir, canalEdita, agora,
 }: {
   msg: Message
   nomeDoContato: string
   onResponder: (m: Message) => void
   onEditar:    (m: Message) => void
+  /** R11 (o Heitor, 26/11): reenvia a MESMA mensagem que não saiu. */
+  onTentarDeNovo: (m: Message) => void
   podeAgir:    boolean
   /** O canal aceita editar? Só o WhatsApp não oficial aceita. */
   canalEdita:  boolean
@@ -479,6 +481,10 @@ function Bubble({
   const idade = agora === null ? Infinity : agora - new Date(msg.created_at).getTime()
   const podeEditar = podeAgir && canalEdita && out && !falhou
     && msg.status !== 'sending' && !msg.media_type && idade <= JANELA_DE_EDICAO_MS
+  // R11 (o Heitor, 26/11, na página de perguntas): a bolha que não saiu se
+  // tenta de novo — só para quem pode mandar nesta conversa (`podeAgir`), e não
+  // na otimista, que ainda não tem linha no banco.
+  const podeTentarDeNovo = podeAgir && out && falhou && !msg.id.startsWith(PREFIXO_OTIMISTA)
   return (
     <div
       className="bolha-linha"
@@ -613,6 +619,20 @@ function Bubble({
             <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--danger)' }}>
               Não enviada
             </span>
+          )}
+          {podeTentarDeNovo && (
+            <button
+              type="button" data-tentar-de-novo
+              onClick={() => onTentarDeNovo(msg)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 3, padding: 0,
+                background: 'none', border: 'none', cursor: 'pointer',
+                fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--danger)',
+                textDecoration: 'underline', textUnderlineOffset: 2,
+              }}
+            >
+              <RotateCw size={10} /> Tentar de novo
+            </button>
           )}
           {msg.edited_at && (
             <span style={{
@@ -1361,6 +1381,24 @@ export function CRMInbox({
     })
   }
 
+  // R11 (o Heitor, 26/11): a MESMA linha volta a "enviando" e depois a
+  // enviada (ou "Não enviada" de novo, com o motivo). Ela vai para o fim da
+  // conversa: a hora dela passa a ser a do reenvio.
+  function tentarDeNovo(alvo: Message) {
+    if (alvo.status !== 'failed') return
+    setSendError(null)
+    setMessages(prev => prev.map(m => (m.id === alvo.id ? { ...m, status: 'sending', erro_texto: null } : m)))
+    startTransition(async () => {
+      const res = await reenviarMensagem(alvo.id)
+      if (res.message) {
+        setMessages(prev => mesclarMensagem(prev.filter(m => m.id !== alvo.id), res.message!))
+      } else {
+        setMessages(prev => prev.map(m => (m.id === alvo.id ? alvo : m)))
+      }
+      if (!res.ok) setSendError(res.error ?? 'Não foi possível enviar a mensagem.')
+    })
+  }
+
   function handleEnviarAnexo(file: File, caption: string) {
     if (!selectedId) return
     setSendError(null)
@@ -2027,6 +2065,7 @@ export function CRMInbox({
                           nomeDoContato={selectedConv?.contact_name ?? 'Contato'}
                           onResponder={iniciarResposta}
                           onEditar={iniciarEdicao}
+                          onTentarDeNovo={tentarDeNovo}
                           podeAgir={canEdit && selectedConv?.status !== 'closed'}
                           canalEdita={canalEdita}
                           agora={nowMs}

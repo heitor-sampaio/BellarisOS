@@ -14,6 +14,7 @@ import { pagosAntes } from '@/lib/appointments/pago-antes'
 import { precoDoProcedimentoNaUnidade } from '@/lib/procedimentos/preco-na-unidade'
 import { ofereceNaUnidade, COLUNAS_DA_OFERTA } from '@/lib/procedimentos/disponivel-na-unidade'
 import { salaUnicaDoHorario } from '@/lib/appointments/salas'
+import { bloqueiosQueBatem } from '@/lib/agenda/bloqueios'
 import { escolherQuemAtende, juntarHorarios } from '@/lib/appointments/sem-preferencia'
 import { logHistory, notifyCancelledAppointment, notifyRescheduledAppointment } from '@/lib/appointments/avisos'
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
@@ -181,9 +182,10 @@ export async function remarcarPelaCliente(
     // opção, A2 da 10ª); senão, sem sala — a sala é opcional (H1), e a cliente
     // não escolhe sala.
     const duracao = a.duration_min || 30
+    // E não bloqueada no horário novo (R07, o Heitor, 26/11: "se ta bloqueado não dá pra marcar").
     const salaDeAntesLivre = !mudaDeUnidade && !!a.room_id && !(await horarioOcupado(admin, {
       tenantId: a.clients.tenant_id, roomId: a.room_id, branchId: unidade, inicio, duracaoMin: duracao, excluir: a.id,
-    }))
+    })) && !(await bloqueiosQueBatem(admin, { roomId: a.room_id, inicio, fim: new Date(inicio.getTime() + duracao * 60_000) })).length
     const sala = salaDeAntesLivre ? a.room_id : (await salaUnicaDoHorario(admin, {
       tenantId: a.clients.tenant_id, branchId: unidade, procedureId: a.procedure_id, inicio, duracaoMin: duracao, excluir: a.id,
     })).salaId

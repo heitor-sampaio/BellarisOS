@@ -4,6 +4,10 @@ O Heitor, 24/11: "Quando eu voltar a gente revisa as decisoes que precisam de mi
 feito e mudou teste. Cada item diz o que é, o que o Claude propõe e o teste em jogo. As regras que o Claude decidiu sozinho
 estão no catálogo, marcadas "decisão do Claude, 25/11 (o Heitor revisa)".
 
+As perguntas em aberto estão também na página de perguntas, com as opções e o campo livre (o Heitor, 26/11: "Coloca as
+perguntas que dependem de mim em um artefato, fica mais facil de ler e responder, faz isso sempre"):
+https://claude.ai/artifact/568Qg7xFrm69o6QWjgoqKC. As respostas ficam gravadas na própria página.
+
 ## 1. Testes alterados ou apagados nas correções da 28ª (25/11)
 
 Pela regra do CLAUDE.md §15, todo teste alterado vem aqui, com a fala que o permite.
@@ -385,6 +389,8 @@ receber em aberto e o que a operadora do cartão deposita)". 1 e 4 ficam como es
 
 ## 10. A 31ª simulação (26/11)
 
+**Respondidas por você em 26/11, na página (R01 a R05): o que foi feito está no §12.**
+
 Nas correções da 31ª, nenhum teste existente foi alterado nem apagado. Ficaram para você estas, que mudariam testes cuja
 regra é só decisão do Claude, ou que pedem uma regra sua:
 
@@ -411,6 +417,8 @@ regra é só decisão do Claude, ou que pedem uma regra sua:
 
 
 ## 11. A 32ª simulação (26/11)
+
+**Respondidas por você em 26/11, na página e no chat (R06 a R11): o que foi feito está no §12.**
 
 Nas correções da 32ª, nenhum teste existente foi alterado nem apagado (só saiu o nome da rodada do título dos casos NOVOS
 desta rodada). Ficaram para você estas — as que mudariam testes cuja regra é só decisão do Claude, e as que pedem saber
@@ -444,3 +452,108 @@ se está no escopo:
 
 O que mais ficou da rodada: a única automação em produção com a variável `{{first_name}}` (das campanhas, que a
 automação não conhece) é da rede da simulação; ela deixa de ser aceita ao salvar, e a mensagem com o nome vazio não sai.
+
+## 12. As suas respostas de 26/11 (a página de perguntas, R01 a R11): o que foi feito
+
+Cada resposta mudou a regra, e por isso os testes que exigiam o comportamento antigo mudaram junto. Cada teste alterado
+vai abaixo, com a resposta que o mudou.
+
+**O que mudou no sistema.**
+- **R01.** A comissão de uma pessoa diz "— de <nome>" para todos ("3% — de Tatiane"). Sem nome, diz "— da pessoa"
+  (decisão do Claude, 26/11).
+- **R02.** O acesso criado sem documento diz "enviamos para esse e-mail o link para criar a senha" (o Copilot diz o mesmo).
+- **R03.** "Pote" entrou na lista de embalagens do estoque (14 medidas, "do pote").
+- **R04.**
+  - O "Dar entrada no Estoque" só aparece para quem tem o Estoque em Gerenciar; o aviso da falta continua para todos.
+  - Sobre o seu "e tb não deixa realizar a venda de produto sem estoque": o PDV e a comanda já recusavam no servidor, e o
+    Copilot não vende produto. Mas a tela da comanda deixava "Acrescentar", "+" e "Receber" ligados acima do saldo. Agora
+    ficam desligados, com o motivo ao lado (`lib/vendas/falta-de-estoque.ts`).
+- **R05.** O teste do filtro de tags espera a aba "A pagar" antes de mexer na tag.
+- **R06.** O "Confirmar" fica desligado quando o horário bate com outro atendimento, com o motivo ao lado: "Escolha outro
+  horário: este bate com outro atendimento." Levei o mesmo à janela de remarcar (decisão do Claude, 26/11: é o mesmo
+  aviso "Não vai ser remarcado"), e foi isso que mudou um quarto teste (abaixo).
+- **R07** (no chat: "se ta bloqueado não dá pra marcar").
+  - O horário bloqueado (da pessoa que atende ou da sala) não se marca mais: o servidor recusa. Vale no agendar, no
+    remarcar (inclusive o arraste), no trocar quem atende, no mudar de unidade, no checkout do plano, no repasse da
+    desativação e no Copilot.
+  - A tela diz, por exemplo: "Bruna está com o horário bloqueado das 12:00 às 13:00 (Almoço). Escolha outro horário."
+  - O que já estava marcado antes do bloqueio continua.
+  - Fora do horário da pessoa e unidade fechada seguem como encaixe, permitido com aviso.
+  - Quando o sistema escolhe a sala sozinho, ele pula a sala bloqueada (decisão do Claude, 26/11).
+- **R08.** A recusa do estorno parcial no cartão voltou a "No cartão, o estorno é do pagamento inteiro:", sem o porquê
+  (`20261211100001`).
+- **R09** (você: "Como você acha melhor?"; no chat: "ok"). O link "Baixar o CSV do fechamento · no Financeiro →
+  Movimentações" fica no Fechamento, só para quem tem o Financeiro em Ver. O arquivo continua morando no Financeiro. A
+  FC-14 diz isso agora. Nenhum teste mudou.
+- **R10.** A terceira escolha da automação para quem não tem conversa aberta, "Abrir pelo número padrão", existe.
+  - Você pediu para conferir os modelos da Meta. Eles já existiam no inbox (o catálogo, a importação e o envio na
+    conversa). Faltava a automação usá-los, e agora usa.
+  - Na API oficial, o passo escolhe um modelo aprovado do número padrão e as variáveis dele.
+  - No WhatsApp Web, a tela diz que abrir a conversa é a rede correndo o risco.
+  - A escolha nasce desligada.
+- **R11.** O "Tentar de novo" na bolha que não saiu.
+  - Ele reenvia a mesma mensagem, sem duplicar a bolha, com as mesmas travas do envio.
+  - A resposta só conta quando o provedor aceita, uma vez.
+  - O botão só aparece para quem pode mandar mensagem na conversa.
+
+**Testes alterados, com a sua resposta** (todos em 26/11, na página, salvo a R07, que foi no chat):
+- R01, "'— de <nome>' para todos (a proposta)":
+  - `tests/comissoes-extrato-texto.test.ts:33`
+  - `tests/vendas-atritos-da-12.test.ts:14`, `:17` e `:27`
+  - `tests/vendas-f67.test.ts:9`
+  - `e2e/vendas-atritos-da-12.spec.ts:107`
+  - `e2e/comissoes-atritos-da-11.spec.ts:173`, que a suíte completa achou depois
+- R02, "'enviamos para esse e-mail o link para criar a senha' (a proposta)":
+  - `tests/copilot-acesso-senha-por-email.test.ts:37` e `:64`
+  - `tests/acesso-da-cliente-senha-recusada.test.ts:117`, que confere o mesmo texto e não estava na lista da pergunta
+- R04, "O link só para quem tem o Estoque em Gerenciar; o aviso da falta para todos (a proposta)":
+  `e2e/vendas-produto.spec.ts:198`. Para quem só tem o Caixa, o link não aparece e o aviso aparece.
+- R05, "Pode: o teste espera a aba 'A pagar' antes de mexer na tag (a proposta)": `e2e/financeiro-filtro-de-tags.spec.ts:117-127`.
+- R06, "Desliga o botão, e os três testes conferem o botão desligado (a proposta)":
+  - `e2e/agenda-encaixe-avisa.spec.ts:94-100`
+  - `e2e/agenda-modal-erro-mantem-campos.spec.ts:66-73`. A recusa do servidor, com outra pessoa gravando no meio,
+    continua provada.
+  - `e2e/fase2-agenda.spec.ts:230-232`. A recusa do servidor agora se prova pela chamada direta da ação.
+  - Um quarto: `e2e/agenda-atritos-da-8.spec.ts:197-207`, a janela de remarcar. A extensão é decisão do Claude; diga se
+    não concorda.
+  - Um quinto, junto com a sua fala de 25/11 ("remarcar para o passado é possível desde que não tenha passado do
+    horario já"): `e2e/agenda-atritos-da-11.spec.ts:89` (A24). Ele conferia o Confirmar LIGADO no remarcar para um
+    horário que já passou, que o servidor já recusava desde 25/11. Agora confere o botão desligado e o motivo "Escolha
+    outro horário: este já passou.".
+- R07, "se ta bloqueado não dá pra marcar":
+  - `tests/agenda-bloqueio.test.ts:28-35`
+  - `tests/agenda-bloqueio-dia-inteiro.test.ts:12-14`
+  - `tests/auditoria-atendimento-e-permissao.test.ts:242-252` (o Copilot recusa)
+  - `tests/agendar-choque-recusado-e-avisos.test.ts:39-110`
+  - `e2e/agenda-bloqueio.spec.ts:126` e `:155`
+  - `e2e/agenda-defeitos-da-8.spec.ts:162`
+- R08, "Não precisa dessa explicação.": a parte do cartão de `tests/estorno-diz-o-voucher-e-o-porque-do-cartao.test.ts`.
+  Agora ele exige que o porquê NÃO esteja; a parte do voucher ficou.
+
+**As que nasceram destas, respondidas por você em 26/11 na página:**
+- R12, "Fica: o modelo sai também na conversa que já existe, fora das 24 horas": nada mudou no código; a regra agora
+  cita você.
+- R13 ("Só mostra os horarios, salas e pessoas que estão livres") e R14 ("Horarios, salas e pessoas não disponíveis não
+  devem aparecer nas listas"): as listas da agenda só oferecem o que está livre, e o "Usar o próximo livre" sugere um
+  horário livre para a pessoa e para a sala. O que foi feito:
+  - A grade de horários não mostra mais o horário ocupado ou bloqueado; antes aparecia riscado. Isso vale no agendar,
+    nas sessões do pacote e do plano e no checkout. O encaixe tracejado fica.
+  - As salas e as pessoas do agendar, do "Trocar profissional", do "Mudar de unidade", das sessões e do agendar pelo
+    painel da oportunidade só mostram as livres.
+  - No repasse ao desativar alguém, quem tem atendimento ou bloqueio no horário não aparece. Antes a pessoa bloqueada
+    aparecia como livre, e o servidor só recusava ao repassar.
+  - Lista vazia diz por quê, por exemplo "Ninguém está livre nesse horário.".
+  - O "Usar o próximo livre" pula a sala ocupada ou bloqueada e aparece também no bloqueio.
+  - A opção já escolhida que deixou de estar livre, porque o horário mudou, fica no campo, marcada "(ocupada)" ou
+    "(bloqueada)", com o Confirmar desligado. Decisão do Claude: tirá-la trocaria a escolha sem dizer.
+  - Testes alterados com a sua R13/R14:
+    - `e2e/agenda-salas.spec.ts:204`: a sala ocupada sai da lista.
+    - `e2e/agenda-atritos-da-8.spec.ts:237-238` (A58): o horário ocupado sai da grade.
+    - `e2e/agenda-defeitos-da-8.spec.ts:159` (D5): sai da grade. A conferência do rótulo "Bloqueado" do horário das
+      14:00 foi APAGADA, porque o horário não existe mais na grade.
+    - `e2e/agenda-unidade-da-9.spec.ts:141-165` (A17): o horário bloqueado da sala sai da grade, e não fica riscado.
+    - `tests/agendar-choque-recusado-e-avisos.test.ts:25` e `:66`: o "próximo livre" e o motivo do Confirmar contam
+      também a sala ocupada.
+
+**Ficou para você, na página:** R15, sobre o encaixe fora do horário da pessoa. Pela leitura do Claude, ela continua
+aparecendo nas listas, porque o encaixe é permitido.

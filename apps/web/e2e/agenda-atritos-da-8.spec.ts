@@ -195,17 +195,26 @@ test('A21: o choque diz "não vai ser agendado" e oferece o próximo livre; o Re
     await modal.getByRole('button', { name: 'Confirmar agendamento' }).click()
     await expect(modal).toBeHidden()
 
-    // O Remarcar para cima do das 10:00: uma mensagem só.
+    // O Remarcar para cima do das 10:00: uma mensagem só. R06 (o Heitor, 26/11,
+    // na página de perguntas: "Desliga o botão, e os três testes conferem o botão
+    // desligado (a proposta)"): o choque à vista desliga o Confirmar, com o motivo.
     await p.goto(`/${slug}/agenda?date=${DIA1}`)
     await (await cartaoNaGradeDoDia(p, outro)).click()
     const janela = p.getByRole('dialog', { name: 'Agendamento' })
     await janela.getByRole('button', { name: 'Remarcar', exact: true }).click()
     await janela.locator('input[type="datetime-local"]').fill(`${DIA1}T10:15`)
     await expect(janela.locator('[data-aviso-do-remarcar]')).toContainText('Não vai ser remarcado')
-    await janela.getByRole('button', { name: 'Confirmar novo horário' }).click()
-    await expect(janela.getByText(/Não foi remarcado/)).toBeVisible()
+    await expect(janela.getByRole('button', { name: 'Confirmar novo horário' })).toBeDisabled()
+    await expect(janela.locator('[data-motivo-do-confirmar]')).toContainText('Escolha outro horário: este bate com outro atendimento.')
     await expect(janela.getByText(/já tem (atendimento|agendamento)/)).toHaveCount(1)
+    // A recusa do SERVIDOR continua: o mesmo pedido da janela, pela ação direta.
+    const r = await chamarAcaoComFormulario(p, 'actions/appointments.ts', 'rescheduleAppointment', `/${slug}/agenda`, [undefined], {
+      _appointmentId: outro, _slug: slug, scheduled_at: em(DIA1, '10:15'),
+    })
+    expect(r.texto).toContain('já tem agendamento')
   })
+  const { data: oOutro } = await db().from('appointments').select('scheduled_at').eq('id', outro).single<{ scheduled_at: string }>()
+  expect(new Date(oOutro!.scheduled_at).toISOString(), 'o remarcado no choque ficou onde estava').toBe(em(DIA1, '15:00'))
   const { data } = await db().from('appointments').select('id').eq('client_id', cliente).eq('scheduled_at', em(DIA1, '11:00'))
   expect(data).toHaveLength(1)
 })
@@ -221,8 +230,12 @@ test('A58: o modal Agendar tem o seletor de horários livres (a régua da duraç
     await modal.locator('#ag-quando').fill(`${DIA1}T08:00`)
     const grade = modal.locator('[data-grade-de-horarios]')
     // 60 min às 15:30 e às 16:00 batem no das 16:00.
-    await expect(grade.locator('[data-horario="15:30"]')).toBeDisabled()
-    await expect(grade.locator('[data-horario="16:00"]')).toBeDisabled()
+    // O Heitor, 26/11, na página de perguntas (R13/R14): "Só mostra os horarios, salas e
+    // pessoas que estão livres" / "Horarios, salas e pessoas não disponíveis não devem
+    // aparecer nas listas".
+    // O horário ocupado SAI da grade (era desligado).
+    await expect(grade.locator('[data-horario="15:30"]')).toHaveCount(0)
+    await expect(grade.locator('[data-horario="16:00"]')).toHaveCount(0)
     await grade.locator('[data-horario="17:00"]').click()
     await expect(modal.locator('#ag-quando')).toHaveValue(`${DIA1}T17:00`)
   })
@@ -247,6 +260,21 @@ test('A22: a janela troca a profissional (só quem atende na unidade), com confi
   })
   const { data: h } = await db().from('appointment_history').select('description').eq('appointment_id', ag).eq('action', 'REASSIGNED')
   expect(h?.[0]?.description).toBe(`Profissional trocado de ${nomeDaProf} para ${nomeBia}`)
+})
+
+test('A22 (R13): a troca de profissional só oferece quem está livre no horário', async ({ browser }) => {
+  // O Heitor, 26/11, na página de perguntas (R13): "Só mostra os horarios, salas e
+  // pessoas que estão livres". A Bia tem atendimento no mesmo horário: não aparece.
+  const ag = await agendar({ quando: em(DIA2, '08:00') })
+  await agendar({ quando: em(DIA2, '08:00'), prof: bia!.userId })
+  await como(browser, recepcao!, async p => {
+    await p.goto(`/${slug}/agenda?date=${DIA2}`)
+    await (await cartaoNaGradeDoDia(p, ag)).click()
+    const janela = p.getByRole('dialog', { name: 'Agendamento' })
+    await janela.getByRole('button', { name: 'Trocar profissional' }).click()
+    await expect(janela.locator('option', { hasText: nomeBia }), 'quem está ocupada no horário não aparece').toHaveCount(0)
+    await expect(janela.locator('option', { hasText: /\(ocupada\)|\(bloqueada\)/ })).toHaveCount(0)
+  })
 })
 
 test('A22: arrastar para outra profissional pergunta, e soltar no ocupado diz por quê', async ({ browser }) => {

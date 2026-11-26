@@ -26,6 +26,7 @@ import type { CandidataDoHorario } from '@/lib/appointments/sem-preferencia'
 import { recusaDaSala } from '@/lib/appointments/salas'
 import { quemRealizaOProcedimento, realiza } from '@/lib/procedimentos/quem-realiza'
 import { bloqueiosQueBatem } from '@/lib/agenda/bloqueios'
+import { avisoDoBloqueioDaProfissional, avisoDoBloqueioDaSala, recusaDoHorarioBloqueado } from '@/lib/agenda/bloqueio'
 import { precosDaUnidade, precoNaUnidade } from '@/lib/procedimentos/preco-na-unidade'
 import { fimDaOcupacao, bateNaOcupacao } from '@/lib/appointments/ocupacao'
 import { recusaDoHorarioPassado } from '@/lib/appointments/horario-passado'
@@ -169,6 +170,44 @@ export function recusaDoConflito(conflito: { unidadeId: string; unidade: string 
 }
 
 /**
+ * O horário [inicio, inicio + duracaoMin) cai num BLOQUEIO da pessoa que atende
+ * ou da sala (o do dia inteiro também)? Então não se marca: R07 (o Heitor, 26/11,
+ * no chat: "r07 se ta bloqueado não dá pra marcar"; era o encaixe avisado,
+ * decisão 3 da 7ª). A recusa diz o bloqueio — "Bruna está com o horário
+ * bloqueado das 12:00 às 13:00 (Almoço). Escolha outro horário." —, no relógio
+ * da unidade. Nulo: nenhum bloqueio. Mora aqui para servir a TODO caminho que
+ * cria ou move agendamento (o núcleo, o remarcar, o mudar de unidade, a troca e
+ * o repasse de quem atende, o checkout do plano, o Copilot). Fora do horário de
+ * quem atende ou da unidade NÃO é bloqueio: segue encaixe.
+ */
+export async function recusaDoBloqueioNoHorario(admin: Admin, a: {
+  professionalId?: string | null; roomId?: string | null; inicio: Date; duracaoMin: number
+  /** A unidade do agendamento: o fuso do texto. */
+  branchId?: string | null
+}): Promise<string | null> {
+  if (!a.professionalId && !a.roomId) return null
+  const fim = new Date(a.inicio.getTime() + Math.max(1, a.duracaoMin) * 60_000)
+  const [daPessoa, daSala] = await Promise.all([
+    a.professionalId ? bloqueiosQueBatem(admin, { professionalId: a.professionalId, inicio: a.inicio, fim }) : Promise.resolve([]),
+    a.roomId ? bloqueiosQueBatem(admin, { roomId: a.roomId, inicio: a.inicio, fim }) : Promise.resolve([]),
+  ])
+  if (!daPessoa.length && !daSala.length) return null
+  const [fuso, pessoa, sala] = await Promise.all([
+    a.branchId ? lerFusoDaUnidade(admin, a.branchId) : Promise.resolve(undefined),
+    daPessoa.length
+      ? ler(admin.from('users').select('name').eq('id', a.professionalId!).maybeSingle(), 'buscar quem atende') as Promise<{ name: string } | null>
+      : Promise.resolve(null),
+    daSala.length
+      ? ler(admin.from('rooms').select('name').eq('id', a.roomId!).maybeSingle(), 'buscar a sala') as Promise<{ name: string } | null>
+      : Promise.resolve(null),
+  ])
+  return recusaDoHorarioBloqueado([
+    ...daPessoa.map(b => avisoDoBloqueioDaProfissional(pessoa?.name || 'Quem atende', b, fuso)),
+    ...daSala.map(b => avisoDoBloqueioDaSala(sala?.name || 'A sala', b, fuso)),
+  ])
+}
+
+/**
  * As peças de um agendamento que vêm do navegador são DA REDE, e a unidade
  * está ao alcance de quem agenda (§11). Devolve a mensagem de recusa, ou null.
  *
@@ -309,14 +348,20 @@ export async function createAppointmentCore(
 
   // O conflito de SALA (quando há sala) e o de PROFISSIONAL (sempre — impede o
   // duplo agendamento, e diz a unidade quando o outro é de outra: A30), juntos.
-  const [salaOcupada, choque] = await Promise.all([
+  // E o BLOQUEIO da pessoa que atende ou da sala (R07, o Heitor, 26/11: "r07 se
+  // ta bloqueado não dá pra marcar"): todo caminho que agenda passa por aqui.
+  const [salaOcupada, choque, bloqueado] = await Promise.all([
     input.roomId
       ? horarioOcupado(admin, { tenantId: ctx.tenantId!, roomId: input.roomId, branchId: input.branchId, inicio: start, duracaoMin: durationMin })
       : Promise.resolve(false),
     primeiroConflito(admin, { tenantId: ctx.tenantId!, professionalId: input.professionalId, inicio: start, duracaoMin: durationMin }),
+    recusaDoBloqueioNoHorario(admin, {
+      professionalId: input.professionalId, roomId: input.roomId ?? null, inicio: start, duracaoMin: durationMin, branchId: input.branchId,
+    }),
   ])
   if (salaOcupada) return { error: 'Esta sala já está ocupada nesse horário.' }
   if (choque) return { error: recusaDoConflito(choque, input.branchId) }
+  if (bloqueado) return { error: bloqueado }
 
   const origem = oportunidade?.aberta && (input.source ?? 'INTERNAL') === 'INTERNAL' ? 'COMMERCIAL' : (input.source ?? 'INTERNAL')
 
@@ -437,7 +482,7 @@ export async function computeAvailableSlots(
   // o de 30 h de ontem ainda ocupa a manhã de hoje), em páginas.
   // E os BLOQUEIOS da profissional (decisão 3 da 7ª simulação): o livre não
   // oferece o horário bloqueado — é a conta do app da cliente, do Copilot e do
-  // CRM. A equipe, pela agenda, encaixa com o aviso.
+  // CRM. E ninguém marca nele (R07: `recusaDoBloqueioNoHorario`).
   const [booked, bloqueios] = await Promise.all([
     lerTodas((de, ate) => admin
       .from('appointments')

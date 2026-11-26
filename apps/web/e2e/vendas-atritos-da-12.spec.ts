@@ -104,7 +104,7 @@ test('A18: o Vender diz a comissão de venda de quem vendeu e de onde vem o perc
     await quem.selectOption(rita.userId)
     const linha = dlg.locator('[data-comissao-da-venda]')
     await expect(linha, 'sem regra no pacote, a da pessoa').toContainText('8%')
-    await expect(linha).toContainText(`da ${nomeDaRita}`)
+    await expect(linha).toContainText(`— de ${nomeDaRita}`)
     await dlg.getByLabel('Pacote', { exact: true }).selectOption(pacoteComRegra)
     await expect(linha, 'a regra do pacote vence').toContainText('5%')
     await expect(linha).toContainText('do pacote')

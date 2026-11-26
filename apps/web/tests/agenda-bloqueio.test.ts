@@ -25,11 +25,13 @@ describe('o texto do bloqueio', () => {
   it('em vários dias: "de 10/11 às 08:00 a 20/11 às 20:00"', () => {
     expect(trechoDoBloqueio(b('2026-11-10T08:00:00', '2026-11-20T20:00:00'))).toBe('de 10/11 às 08:00 a 20/11 às 20:00')
   })
-  it('o aviso da profissional e o da sala dizem o motivo e que o encaixe é permitido', () => {
+  // R07 (o Heitor, 26/11, no chat, sobre a R07: "r07 se ta bloqueado não dá pra
+  // marcar"): era "…O encaixe é permitido."; o bloqueado não se marca.
+  it('o aviso da profissional e o da sala dizem o motivo (o bloqueado não se marca)', () => {
     expect(avisoDoBloqueioDaProfissional('Bruna', b('2026-11-10T12:00:00', '2026-11-10T13:00:00')))
-      .toBe('Horário bloqueado para Bruna das 12:00 às 13:00 (Almoço). O encaixe é permitido.')
+      .toBe('Bruna está com o horário bloqueado das 12:00 às 13:00 (Almoço).')
     expect(avisoDoBloqueioDaSala('Sala Corporal', b('2026-11-10T15:00:00', '2026-11-10T16:00:00', 'Manutenção')))
-      .toBe('Sala Corporal está bloqueada das 15:00 às 16:00 (Manutenção). O encaixe é permitido.')
+      .toBe('Sala Corporal está bloqueada das 15:00 às 16:00 (Manutenção).')
   })
 })
 

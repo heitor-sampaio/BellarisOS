@@ -53,6 +53,7 @@ import { JanelaModal } from '@/components/shared/janela-modal'
 import { unidadeInicial } from '@/lib/unidades/unidade-inicial'
 import { sugestaoDoAgendar, TEXTO_DA_SUGESTAO, type SugestaoDoAgendar } from '@/lib/crm/sugestao-do-agendar'
 import { rotuloDaOportunidade } from '@/lib/crm'
+import { soOQueEstaLivre, rotuloDaEscolhida } from '@/lib/agenda/so-o-que-esta-livre'
 
 export interface PanelBranch { id: string; name: string; slug: string }
 
@@ -1408,8 +1409,17 @@ export function ScheduleModal({
               {/* "-" = "Nenhuma"; o estado vazio = ninguém escolheu (vale a sugerida). */}
               <select className="field" value={salaFinal || '-'} onChange={e => setRoomId(e.target.value)} style={selectStyle}>
                 <option value="-">Nenhuma</option>
-                {salasOferecidas.map(r => <option key={r.id} value={r.id}>{r.livre ? r.name : `${r.name} (ocupada)`}</option>)}
+                {/* R13/R14 (o Heitor, 26/11): "Só mostra os horarios, salas e pessoas que estão livres" — a
+                    ocupada ou bloqueada não aparece; só a já escolhida fica, marcada. */}
+                {soOQueEstaLivre(salasOferecidas, salaFinal).map(r => (
+                  <option key={r.id} value={r.id}>{rotuloDaEscolhida(r.name, r.livre ? null : r.indisponivel ?? 'ocupada')}</option>
+                ))}
               </select>
+              {salasOferecidas.length > 0 && !salasOferecidas.some(r => r.livre) && (
+                <span data-nenhuma-sala-livre style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+                  Nenhuma sala está livre nesse horário: o agendamento vai sem sala.
+                </span>
+              )}
             </label>
           )}
 

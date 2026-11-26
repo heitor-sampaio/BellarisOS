@@ -3,7 +3,8 @@ import { formatBRL } from '@estetica-os/utils'
 /**
  * A comissão de VENDA dita no "Vender", antes de vender (A18 da 12ª simulação,
  * 2026-11-11; princípio 3): a Rita não sabia quanto ganhava nem de onde vinha
- * o percentual — só o extrato dizia ("8% — da Rita", "5% — do pacote").
+ * o percentual — só o extrato dizia ("8% — de Rita", "5% — do pacote"; o
+ * "— de <nome>" para todos: o Heitor, 26/11, R01).
  *
  * A precedência é a do BANCO (A17 da 11ª, `comissoes.md`; as funções de venda
  * em `20261110005603`): a regra do ITEM (o "De venda" do pacote, a comissão do
@@ -60,7 +61,7 @@ export function textoDaComissaoDaVenda(o: {
           ? `${nome} não tem comissão de venda neste plano: nem ela nem a rede ("Venda de plano") têm regra de venda.`
         : `${nome} não tem comissão de venda nestes produtos: nem o produto, nem ela, nem a rede têm regra de venda.`
   }
-  const deOnde = (de: Origem) => de === 'ITEM' ? (o.tipo === 'PRODUTO' ? 'do produto' : 'do pacote') : de === 'PESSOA' ? `da ${nome}` : 'da rede'
+  const deOnde = (de: Origem) => de === 'ITEM' ? (o.tipo === 'PRODUTO' ? 'do produto' : 'do pacote') : de === 'PESSOA' ? `de ${nome}` : 'da rede'
   const frase = (r: { regra: RegraDeVenda; de: Origem } | null) => r ? `${regraEmTexto(r.regra, o.tipo)} — ${deOnde(r.de)}` : 'sem comissão de venda'
   const iguais = resolvidos.every(r => JSON.stringify(r) === JSON.stringify(resolvidos[0]))
   const corpo = iguais

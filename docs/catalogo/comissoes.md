@@ -108,8 +108,8 @@ Este é o catálogo das regras das Comissões que valem HOJE: onde ficam e quem 
 - Onde: `docs/regras/comissoes.md:455-457`
 - Antes: KB-07
 
-**CV-06.** A Nova venda e o "Receber o plano" dizem a comissão de venda ANTES de vender: escolhido quem vendeu, aparece "Comissão de venda de Rita: 8% do vendido — da Rita. Sai quando a venda estiver paga inteira." (ou "— do pacote", "— da rede"; no kit, cada produto com a sua), pela mesma precedência da conta (CV-04). Mostra só a regra, não o valor em reais. A comissão de outra pessoa só aparece a quem tem o Financeiro em Ver; a regra do pacote, que vence, aparece sempre.
-- Fonte: princípio 3; no "Receber o plano": decisão do Claude, 25/11 (a Q03, o Heitor revisa)
+**CV-06.** A Nova venda e o "Receber o plano" dizem a comissão de venda ANTES de vender: escolhido quem vendeu, aparece "Comissão de venda de Rita: 8% do vendido — de Rita. Sai quando a venda estiver paga inteira." (ou "— do pacote", "— da rede"; a da pessoa diz "— de <nome>" para todos; no kit, cada produto com a sua), pela mesma precedência da conta (CV-04). Mostra só a regra, não o valor em reais. A comissão de outra pessoa só aparece a quem tem o Financeiro em Ver; a regra do pacote, que vence, aparece sempre.
+- Fonte: princípio 3; no "Receber o plano": decisão do Claude, 25/11 (a Q03, o Heitor revisa); o "— de <nome>" para todos: o Heitor, 26/11 (página de perguntas, R01): "'— de <nome>' para todos (a proposta)"
 - Onde: `docs/regras/comissoes.md:543-557`, `:777`; `apps/web/components/shared/pergunta-da-venda.tsx`; `apps/web/e2e/plano-checkout-uma-transacao.spec.ts:122-131`
 - Antes: KB-12
 
@@ -392,8 +392,8 @@ Este é o catálogo das regras das Comissões que valem HOJE: onde ficam e quem 
 - Onde: `docs/regras/comissoes.md:366-367`, `:391-392`
 - Antes: KA-46
 
-**CF-05.** O extrato e o CSV dizem de onde veio o percentual de cada comissão de venda: "3% — da Tatiane", "10% — do pacote", "5% — da rede". Os lançamentos de antes dizem só a regra.
-- Fonte: princípio 3
+**CF-05.** O extrato e o CSV dizem de onde veio o percentual de cada comissão de venda: "3% — de Tatiane", "10% — do pacote", "5% — da rede"; a da pessoa diz "— de <nome>" para todos. Os lançamentos de antes dizem só a regra.
+- Fonte: princípio 3; o "— de <nome>": o Heitor, 26/11 (página de perguntas, R01): "'— de <nome>' para todos (a proposta)"
 - Onde: `docs/regras/comissoes.md:468-473`
 - Antes: KB-09
 

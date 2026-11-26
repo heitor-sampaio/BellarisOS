@@ -210,7 +210,7 @@ export function SessionScheduler({
   const procDuracao = procedimento?.duracaoMin ?? 60
   // A32 e A58 da 8ª: a sala aparece desde o início (antes só depois do horário,
   // e o "Agendar a 1ª sessão" da venda do pacote parecia não pedir a sala);
-  // com o horário escolhido, ela diz qual está ocupada.
+  // com o horário escolhido, só as livres ficam (R13).
   useEffect(() => {
     if (!procId || !branchId) return
     let vivo = true
@@ -319,10 +319,19 @@ export function SessionScheduler({
       {procedimento && salas.length > 0 && (
         <div style={{ marginBottom: 12 }}>
           <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 6 }}>SALA (OPCIONAL)</p>
-          <select className="filtro-select" aria-label="Sala" value={roomId} onChange={e => setRoomId(e.target.value)}>
-            <option value="">Sem sala</option>
-            {salas.map(x => <option key={x.id} value={x.id} disabled={!x.livre}>{x.name}{x.livre ? '' : ' (ocupada)'}</option>)}
-          </select>
+          {/* R13 (o Heitor, 26/11, na página de perguntas: "Só mostra os horarios,
+              salas e pessoas que estão livres"): a sala ocupada ou bloqueada no
+              horário não aparece — era "ocupada", desligada. Nenhuma livre: diz. */}
+          {salas.some(x => x.livre) ? (
+            <select className="filtro-select" aria-label="Sala" value={roomId} onChange={e => setRoomId(e.target.value)}>
+              <option value="">Sem sala</option>
+              {salas.filter(x => x.livre).map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
+            </select>
+          ) : (
+            <p data-nenhuma-sala-livre style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+              Nenhuma sala está livre nesse horário: a sessão vai sem sala.
+            </p>
+          )}
         </div>
       )}
 

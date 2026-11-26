@@ -14,7 +14,9 @@ import { addDaysTZ, dayKeyTZ, weekdayTZ } from '../lib/datetime'
  *   aparecia livre para 60 min com outro atendimento às 10:30, e o bloqueio
  *   nem entrava.
  * - D9: o Confirmar do agendar gravava antes de o aviso do horário chegar (o
- *   bloqueio passava "sem nenhum aviso").
+ *   bloqueio passava "sem nenhum aviso"). Desde a R07 (o Heitor, 26/11, no
+ *   chat: "r07 se ta bloqueado não dá pra marcar") o bloqueado não se marca:
+ *   o aviso chega e o Confirmar fica desligado.
  * - D15: a ocupação contava o tempo bloqueado como disponível, e a "Minha
  *   agenda" mostrava "Horário livre" dentro do bloqueio.
  *
@@ -149,15 +151,19 @@ test('D5: o seletor de horários da sessão do pacote testa a duração inteira 
     const grade = agendar.locator('[data-grade-de-horarios]')
     await expect(grade.locator('[data-horario="11:00"]')).toBeEnabled()
     // 60 min às 10:00 batem no das 10:30; às 13:30 e às 14:30, no bloqueio.
+    // O Heitor, 26/11, na página de perguntas (R13/R14): "Só mostra os horarios, salas e
+    // pessoas que estão livres" / "Horarios, salas e pessoas não disponíveis não devem
+    // aparecer nas listas".
+    // O que não cabe SAI da grade (era desligado, e o das 14:00 dizia "Bloqueado").
     for (const h of ['10:00', '10:30', '13:30', '14:00', '14:30']) {
-      await expect(grade.locator(`[data-horario="${h}"]`), `${h} não cabe`).toBeDisabled()
+      await expect(grade.locator(`[data-horario="${h}"]`), `${h} não cabe`).toHaveCount(0)
     }
     await expect(grade.locator('[data-horario="15:00"]')).toBeEnabled()
-    await expect(grade.locator('[data-horario="14:00"]')).toHaveAttribute('title', /Bloqueado/)
   })
 })
 
-test('D9: o aviso do bloqueio aparece ANTES de o Confirmar gravar', async ({ browser }) => {
+test('D9: o aviso do bloqueio aparece ANTES de o Confirmar gravar — e, bloqueado, o Confirmar desliga (R07)', async ({ browser }) => {
+  // O Heitor, 26/11, no chat, sobre a R07: "r07 se ta bloqueado não dá pra marcar".
   await bloquear(rede!.professionalId, em(ALVO, '18:00'), em(ALVO, '20:00'), 'Ferias')
   await como(browser, gestor!, async p => {
     await p.goto(`/${slug}/agenda?date=${ALVO}&novo=1&cliente=${cliente}`)
@@ -165,20 +171,39 @@ test('D9: o aviso do bloqueio aparece ANTES de o Confirmar gravar', async ({ bro
     await expect(modal.getByText(`${PREFIXO} Agenda`)).toBeVisible()
     await modal.locator('#ag-procedimento').selectOption(rede!.procedureId)
     await modal.locator('#ag-profissional').selectOption(rede!.professionalId)
-    // O que a tela tinha à vista no instante do envio.
-    await p.evaluate(() => {
-      document.addEventListener('submit', () => {
-        (window as unknown as { avisoNoEnvio: boolean }).avisoNoEnvio = !!document.querySelector('[data-aviso-do-horario]')
-      }, true)
-    })
     await modal.locator('#ag-quando').fill(`${ALVO}T18:30`)
-    await modal.getByRole('button', { name: 'Confirmar agendamento' }).click()
-    await expect(modal).toBeHidden()
-    expect(await p.evaluate(() => (window as unknown as { avisoNoEnvio?: boolean }).avisoNoEnvio),
-      'o aviso do bloqueio estava na tela quando o Confirmar gravou').toBe(true)
+    await expect(modal.locator('[data-aviso-do-horario]')).toContainText('Não vai ser agendado:')
+    await expect(modal.locator('[data-aviso-do-horario]')).toContainText('das 18:00 às 20:00 (Ferias)')
+    await expect(modal.getByRole('button', { name: 'Confirmar agendamento' })).toBeDisabled()
+    await expect(modal.locator('[data-motivo-do-confirmar]')).toContainText('Escolha outro horário: este está bloqueado.')
+    // O Enter no campo também não grava (a trava do onSubmit).
+    await modal.locator('#ag-quando').press('Enter')
+    await expect(modal).toBeVisible()
   })
   const { data } = await db().from('appointments').select('id').eq('client_id', cliente).eq('scheduled_at', em(ALVO, '18:30'))
-  expect(data, 'o encaixe no bloqueado é permitido: gravou').toHaveLength(1)
+  expect(data, 'o bloqueado não se marca').toHaveLength(0)
+})
+
+test('D9 (R14): no bloqueio, o "Não vai ser agendado" também oferece o próximo livre', async ({ browser }) => {
+  // O Heitor, 26/11, na página de perguntas (R14): "Horarios, salas e pessoas não
+  // disponíveis não devem aparecer nas listas" — o "Usar o próximo livre" era só do choque.
+  await bloquear(rede!.professionalId, em(ALVO, '06:00'), em(ALVO, '07:00'), 'Exame')
+  await como(browser, gestor!, async p => {
+    await p.goto(`/${slug}/agenda?date=${ALVO}&novo=1&cliente=${cliente}`)
+    const modal = p.getByRole('dialog', { name: 'Novo agendamento' })
+    await expect(modal.getByText(`${PREFIXO} Agenda`)).toBeVisible()
+    await modal.locator('#ag-procedimento').selectOption(rede!.procedureId)
+    await modal.locator('#ag-profissional').selectOption(rede!.professionalId)
+    await modal.locator('#ag-quando').fill(`${ALVO}T06:00`)
+    await expect(modal.locator('[data-aviso-do-horario]')).toContainText('Não vai ser agendado:')
+    const proximo = modal.locator('[data-proximo-livre-do-bloqueio]')
+    await expect(proximo).toContainText('Usar o próximo livre')
+    await proximo.click()
+    await expect(modal.locator('#ag-quando')).not.toHaveValue(`${ALVO}T06:00`)
+    // No horário livre o aviso pode nem existir: o que importa é não haver o "Não vai ser agendado".
+    await expect(modal.getByText('Não vai ser agendado:')).toHaveCount(0)
+    await expect(modal.getByRole('button', { name: 'Confirmar agendamento' })).toBeEnabled()
+  })
 })
 
 test('D15: a ocupação desconta o tempo bloqueado, e a "Minha agenda" não oferece horário livre dentro dele', async ({ browser }) => {

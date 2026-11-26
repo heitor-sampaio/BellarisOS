@@ -72,14 +72,26 @@ export function semConversaVaiNoCelular(grafo: Pick<GrafoDeAutomacao, 'nos'>): b
     && (n.config as { semConversa?: string } | null)?.semConversa === 'aviso_no_celular')
 }
 
+/**
+ * Algum passo de WhatsApp abre a conversa pelo número padrão para quem não
+ * tem uma (AX-06, R10 — o Heitor, 26/11)? A janela de ligar diz isso.
+ */
+export function semConversaAbrePeloPadrao(grafo: Pick<GrafoDeAutomacao, 'nos'>): boolean {
+  return (grafo.nos ?? []).some(n => n.tipo === NODES.ACAO_MENSAGEM
+    && (n.config as { canal?: string } | null)?.canal === 'whatsapp'
+    && (n.config as { semConversa?: string } | null)?.semConversa === 'abrir_pelo_padrao')
+}
+
 /** Por onde a mensagem chega, e a quem — uma frase por canal do fluxo. */
 export function explicacaoAntesDeLigar(
   canais: CanalParaACliente[],
-  opcoes: { semConversaNoCelular?: boolean } = {},
+  opcoes: { semConversaNoCelular?: boolean; semConversaAbre?: boolean } = {},
 ): string {
   const frases: string[] = []
   if (canais.includes('whatsapp')) {
-    frases.push('Ela manda mensagem pelo WhatsApp, e a mensagem só chega a quem tem conversa aberta com a rede: a automação não abre conversa nova.')
+    frases.push(opcoes.semConversaAbre
+      ? 'Ela manda mensagem pelo WhatsApp. Quem não tem conversa aberta recebe pelo número padrão, numa conversa nova.'
+      : 'Ela manda mensagem pelo WhatsApp, e a mensagem só chega a quem tem conversa aberta com a rede: a automação não abre conversa nova.')
   }
   if (opcoes.semConversaNoCelular) {
     frases.push('Quem não tem conversa aberta recebe como aviso no celular (o app ou os avisos do navegador).')

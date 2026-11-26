@@ -9,7 +9,7 @@ import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { recusaDoPagamentoDoUsado, pagamentoDoUsadoParaOBanco } from '@/lib/financeiro/pagamento-do-usado'
 import { recusaDasVezesDoPagamento } from '@/lib/financeiro/vezes-da-rede'
 import { bandeiraDoPagamento } from '@/lib/financeiro/bandeiras'
-import { conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
+import { conferirPecasDoAgendamento, horarioOcupado, recusaDoBloqueioNoHorario } from '@/lib/appointments/core'
 import { salaUnicaDoHorario } from '@/lib/appointments/salas'
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -1907,6 +1907,14 @@ async function checkoutTreatmentPlanInterno(
       })) {
         return { error: 'Este profissional já tem agendamento nesse horário.' }
       }
+      // E fora de um bloqueio (R07, o Heitor, 26/11: "se ta bloqueado não dá pra marcar").
+      if (sess?.mainProcedureId) {
+        const bloqueado = await recusaDoBloqueioNoHorario(admin, {
+          professionalId: sched.professionalId, inicio: new Date(sched.scheduledAt),
+          duracaoMin: sess.mainDurationMin || 60, branchId: sched.branchId,
+        })
+        if (bloqueado) return { error: bloqueado }
+      }
     }
   }
 
@@ -2005,7 +2013,7 @@ async function checkoutTreatmentPlanInterno(
     })
     if (sala.ocupada) {
       const quando = new Date(sched.scheduledAt).toLocaleString('pt-BR', { timeZone: await fusoDaUnidade(ctx.tenantId, sched.branchId), day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(', ', ' às ')
-      avisosDaSala.push(`A ${sala.ocupada} está ocupada em ${quando}: essa sessão vai sem sala.`)
+      avisosDaSala.push(`A ${sala.ocupada} está ${sala.bloqueada ? 'bloqueada' : 'ocupada'} em ${quando}: essa sessão vai sem sala.`)
     }
     agendamentos.push({
       sessao:          sess.id,

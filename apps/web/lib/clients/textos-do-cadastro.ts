@@ -33,7 +33,7 @@ export function avisoDoAcessoCriado({ contaLigada, email, documento, emailParaCr
     return {
       titulo: 'Acesso ao app criado',
       descricao: emailParaCriarSenha === 'enviado'
-        ? `O login é o e-mail${login}. ${porque}: enviamos a ele o e-mail para criar a senha.`
+        ? `O login é o e-mail${login}. ${porque}: enviamos para esse e-mail o link para criar a senha.`
         : `O login é o e-mail${login}. ${porque}, e o e-mail para criar a senha não saiu agora: na entrada do app, “Esqueci a senha”, com esse e-mail, manda o link de novo.`,
     }
   }

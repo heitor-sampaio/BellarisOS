@@ -6,13 +6,22 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { salasParaOProcedimento, salaSugerida } from '@/lib/agenda/salas'
 import { horarioOcupado } from '@/lib/appointments/core'
+import { indisponibilidadeNoHorario } from '@/lib/appointments/disponibilidade'
+import type { Indisponivel } from '@/lib/agenda/so-o-que-esta-livre'
+import { bloqueiosQueBatem } from '@/lib/agenda/bloqueios'
 import { alcancaUnidade } from '@/lib/auth'
 import { aUnica } from '@/lib/uma-opcao'
 import type { TenantContext } from '@estetica-os/types'
 
 type Admin = ReturnType<typeof createAdminClient>
 
-export interface SalaParaAgendar { id: string; name: string; livre: boolean }
+/**
+ * A sala no agendar, livre ou não no horário. `indisponivel` diz por quê: o
+ * choque com outro atendimento ou o bloqueio dela (R13, o Heitor, 26/11: "Só
+ * mostra os horarios, salas e pessoas que estão livres" — a bloqueada também
+ * não está livre; até ali só o choque contava).
+ */
+export interface SalaParaAgendar { id: string; name: string; livre: boolean; indisponivel?: Indisponivel }
 
 /** As salas ATIVAS da unidade e, do procedimento, as ligadas a ele entre elas. */
 async function salasEDaLigacao(admin: Admin, branchId: string, procedureId: string | null) {
@@ -37,7 +46,8 @@ export async function recusaDaSala(admin: Admin, a: { branchId: string; roomId: 
 
 /**
  * As salas que o agendar oferece para o procedimento, cada uma dizendo se está
- * livre no horário, e a sugerida (a primeira livre). Sem horário, todas livres.
+ * livre no horário (sem choque e sem bloqueio — R13), e a sugerida (a primeira
+ * livre). Sem horário, todas livres.
  */
 export async function salasParaOHorario(admin: Admin, a: {
   tenantId: string; branchId: string; procedureId: string | null
@@ -46,12 +56,12 @@ export async function salasParaOHorario(admin: Admin, a: {
   const { salas, ligadas } = await salasEDaLigacao(admin, a.branchId, a.procedureId)
   const servem = salasParaOProcedimento(salas, ligadas)
   const inicio = a.inicio && !Number.isNaN(a.inicio.getTime()) ? a.inicio : null
-  const comLivre = await Promise.all(servem.map(async s => ({
-    id: s.id, name: s.name,
-    livre: inicio ? !(await horarioOcupado(admin, {
+  const comLivre: SalaParaAgendar[] = await Promise.all(servem.map(async s => {
+    const indisponivel = inicio ? await indisponibilidadeNoHorario(admin, {
       tenantId: a.tenantId, roomId: s.id, branchId: a.branchId, inicio, duracaoMin: a.duracaoMin, excluir: a.excluir,
-    })) : true,
-  })))
+    }) : null
+    return indisponivel ? { id: s.id, name: s.name, livre: false, indisponivel } : { id: s.id, name: s.name, livre: true }
+  }))
   // A sala só vem escolhida quando o procedimento é LIGADO a salas nesta
   // unidade (A27 da 5ª simulação): sem procedimento, ou com o que serve em
   // qualquer sala (a avaliação), a pessoa escolhe — vinha a "Sala Rosa —
@@ -101,12 +111,19 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 export async function salaUnicaDoHorario(admin: Admin, a: {
   tenantId: string; branchId: string; procedureId: string | null
   inicio: Date; duracaoMin: number; excluir?: string | null
-}): Promise<{ salaId: string | null; ocupada: string | null }> {
+}): Promise<{ salaId: string | null; ocupada: string | null; bloqueada?: boolean }> {
   const { salas, ligadas } = await salasEDaLigacao(admin, a.branchId, a.procedureId)
   const unica = aUnica(salasParaOProcedimento(salas, ligadas))
   if (!unica) return { salaId: null, ocupada: null }
   const ocupada = await horarioOcupado(admin, {
     tenantId: a.tenantId, roomId: unica.id, branchId: a.branchId, inicio: a.inicio, duracaoMin: a.duracaoMin, excluir: a.excluir,
   })
-  return ocupada ? { salaId: null, ocupada: unica.name } : { salaId: unica.id, ocupada: null }
+  if (ocupada) return { salaId: null, ocupada: unica.name }
+  // A sala bloqueada no horário não entra sozinha (R07, o Heitor, 26/11: "se ta
+  // bloqueado não dá pra marcar"): como a ocupada, o agendamento vai sem sala.
+  // Decisão do Claude, 26/11: o mesmo caminho da ocupada (a sala é opcional, H1).
+  const fim = new Date(a.inicio.getTime() + a.duracaoMin * 60_000)
+  const bloqueios = await bloqueiosQueBatem(admin, { roomId: unica.id, inicio: a.inicio, fim })
+  if (bloqueios.length) return { salaId: null, ocupada: unica.name, bloqueada: true }
+  return { salaId: unica.id, ocupada: null }
 }

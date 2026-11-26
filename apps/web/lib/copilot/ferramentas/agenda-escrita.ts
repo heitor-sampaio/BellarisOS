@@ -2,7 +2,7 @@ import 'server-only'
 import { z } from 'zod/v4'
 import { revalidateTag } from 'next/cache'
 import { ler } from '@/lib/db'
-import { createAppointmentCore, conferirPecasDoAgendamento, horarioOcupado, CREDITO_JA_USADO } from '@/lib/appointments/core'
+import { createAppointmentCore, conferirPecasDoAgendamento, horarioOcupado, recusaDoBloqueioNoHorario, CREDITO_JA_USADO } from '@/lib/appointments/core'
 import { pagoParaAgendar } from '@/lib/creditos/pago-no-app'
 import { conferirCredito, type CreditoDeAgendamento } from '@/lib/creditos/credito'
 import { quemRealizaOProcedimento, realiza } from '@/lib/procedimentos/quem-realiza'
@@ -12,8 +12,6 @@ import { avisoDasVencidasNaChegada } from '@/lib/appointments/vencidas-na-chegad
 import { podeCancelarAlgum, recusaDoCancelar } from '@/lib/appointments/quem-cancela'
 import { TEXTO_DA_SESSAO_NA_DESISTENCIA } from '@/lib/atendimento/desistencia'
 import { garantirClienteRapido, comPermissaoDeUnificar } from '@/lib/clients/cliente-rapido'
-import { bloqueiosQueBatem } from '@/lib/agenda/bloqueios'
-import { trechoDoBloqueio } from '@/lib/agenda/bloqueio'
 import { recusaDoHorarioPassado } from '@/lib/appointments/horario-passado'
 import { fichasQueJaExistem, textoDaFichaQueJaExiste, type FichaQueJaExiste } from '@/lib/clients/ja-existe'
 import { escolhasDaFichaQueJaExiste } from '@/lib/copilot/ferramentas/clientes-escrita'
@@ -33,18 +31,6 @@ import { TELEFONE_INCOMPLETO } from '@/lib/contatos/propagar'
  * núcleos da tela (`createAppointmentCore`, `remarcarCore`, `cancelarCore`) e
  * com os mesmos avisos ao paciente e à equipe.
  */
-
-/**
- * O horário cai num BLOQUEIO da profissional (decisão 3 da 7ª simulação)? O
- * Copilot AVISA no cartão e deixa confirmar, como a agenda da equipe
- * (princípio 2, "não recusar o valor que a rede escolheu: no máximo, avisar";
- * 2026-11-18 — até aqui recusava e mandava encaixar pela agenda). Os livres
- * que ele oferece continuam sem o bloqueado (`computeAvailableSlots`).
- */
-async function avisoDoBloqueado(c: ContextoDaFerramenta, a: { professionalId: string; nome: string; inicio: Date; duracaoMin: number; fuso: string }): Promise<string> {
-  const [b] = await bloqueiosQueBatem(c.admin, { professionalId: a.professionalId, inicio: a.inicio, fim: new Date(a.inicio.getTime() + a.duracaoMin * 60_000) })
-  return b ? `${a.nome} está com o horário bloqueado ${trechoDoBloqueio(b, a.fuso)} (${b.motivo}). O encaixe é permitido: confirme só se for isso mesmo. ` : ''
-}
 
 /** O profissional está livre? A mesma conferência da tela (horarioOcupado, no núcleo). */
 async function livre(c: ContextoDaFerramenta, a: { professionalId: string; inicio: Date; duracaoMin: number; excluir?: string }): Promise<boolean> {
@@ -165,7 +151,12 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
     if (sala && !('erro' in sala) && await horarioOcupado(c.admin, { tenantId: c.ctx.tenantId!, roomId: sala.id, branchId: unidade.id, inicio, duracaoMin: duracao })) {
       return { erro: `A ${sala.name} já está ocupada nesse horário.` }
     }
-    const avisoDoBloqueio = await avisoDoBloqueado(c, { professionalId: prof.id, nome: prof.name, inicio, duracaoMin: duracao, fuso })
+    // O horário num BLOQUEIO, da profissional ou da sala, não se marca (R07, o
+    // Heitor, 26/11: "se ta bloqueado não dá pra marcar"): a mesma recusa da
+    // agenda (`createAppointmentCore`), já no preparo. Os livres que o Copilot
+    // oferece seguem sem o bloqueado (`computeAvailableSlots`).
+    const bloqueado = await recusaDoBloqueioNoHorario(c.admin, { professionalId: prof.id, roomId, inicio, duracaoMin: duracao, branchId: unidade.id })
+    if (bloqueado) return { erro: bloqueado }
 
     // "Quem realiza" (por-01): como a janela da agenda, AVISA sem barrar — o
     // encaixe é da clínica (princípio 2).
@@ -190,7 +181,7 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
             : { rotulo: 'Valor', valor: dinheiro(proc.price) },
           ...(a.observacao ? [{ rotulo: 'Observação', valor: a.observacao }] : []),
         ],
-        aviso: avisoDoBloqueio + avisoDoRealiza + (jaExiste
+        aviso: avisoDoRealiza + (jaExiste
           ? `${textoDaFichaQueJaExiste(jaExiste)} Nada foi gravado: agende numa ficha nova mesmo assim, ou na ficha que existe. ${avisoDaCliente}`
           : avisoDaCliente),
         ...(jaExiste ? { escolhas: escolhasDaFichaQueJaExiste(jaExiste) } : {}),
@@ -304,7 +295,12 @@ export const remarcar: FerramentaDeEscrita<{ agendamento: string; data: string; 
     if (quem && !(await livre(c, { professionalId: quem, inicio, duracaoMin: ag.duration_min || 60, excluir: ag.id }))) {
       return { erro: `${nomeDoProfissional} já tem agendamento nesse horário.` }
     }
-    const avisoDoBloqueio = quem ? await avisoDoBloqueado(c, { professionalId: quem, nome: nomeDoProfissional, inicio, duracaoMin: ag.duration_min || 60, fuso }) : ''
+    // O bloqueio no horário novo, da pessoa ou da sala, recusa (R07): a regra do remarcarCore, já no preparo.
+    const horarioNovo = inicio.getTime() !== new Date(ag.scheduled_at).getTime()
+    const bloqueado = quem ? await recusaDoBloqueioNoHorario(c.admin, {
+      professionalId: quem, roomId: horarioNovo ? ag.room_id : null, inicio, duracaoMin: ag.duration_min || 60, branchId: ag.branch_id,
+    }) : null
+    if (bloqueado) return { erro: bloqueado }
     // A28 da 21ª (princípio 3): a troca só de quem atende saía "Remarcar
     // atendimento", com o De e o Para iguais, sem quem atendia nem a unidade. A
     // palavra é a da Equipe e da Auditoria ("Repassou"): trocar quem atende.
@@ -326,7 +322,7 @@ export const remarcar: FerramentaDeEscrita<{ agendamento: string; data: string; 
           quemAtende,
           { rotulo: 'Unidade', valor: unidade },
         ],
-        aviso: avisoDoBloqueio + await avisoDaClienteNoCartao(c, ag.clientId, 'remarcar'),
+        aviso: await avisoDaClienteNoCartao(c, ag.clientId, 'remarcar'),
       },
       payload: { appointmentId: ag.id, scheduledAt: inicio.toISOString(), professionalId, ...(soQuemAtende ? { soQuemAtende: true } : {}) },
     }

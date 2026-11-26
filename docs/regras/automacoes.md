@@ -329,14 +329,14 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   regras, o Heitor, 2026-11-11, opção d, com a a valendo já; princípios 1, 3
   e 6). O "Mandar mensagem" em WhatsApp só fala numa conversa já aberta e
   ligada à ficha (e, na API oficial, com a janela de 24 h aberta); nunca abre
-  conversa nova sozinho. **Já:** antes de ligar, a tela diz quantas clientes
+  conversa nova sozinho — só se a rede escolheu no passo "Abrir pelo número
+  padrão" (R10, abaixo). **Já:** antes de ligar, a tela diz quantas clientes
   vão receber — "Hoje a busca acharia 40 clientes, e 12 têm conversa aberta
   no WhatsApp." **Depois:** o passo ganha "Para quem não tem conversa
   aberta", desligado por padrão — ( ) Não mandar · ( ) Abrir pelo número
   padrão · ( ) Mandar como aviso no celular. Abrir pelo número padrão é a
   rede escolhendo correr o risco de banimento do WhatsApp Web; na API
-  oficial pede um template aprovado, e o envio de template na automação ainda
-  precisa ser construído. A conta é `contarAntesDeLigar` (`actions/automacoes.ts`):
+  oficial pede um modelo aprovado (as três existem desde 26/11: R10, abaixo). A conta é `contarAntesDeLigar` (`actions/automacoes.ts`):
   a busca do passo "Buscar clientes" (com o teto) e, entre as achadas, as que
   têm a conversa (`publico_com_conversa`, a mesma régua do envio — §9.8.0 de
   `whatsapp-push.md`); sem o passo de busca, as clientes ativas da rede. A
@@ -359,12 +359,52 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   sem acesso ao app fica guardado no sino (`mandarMensagem`,
   `lib/automacoes/acoes-mensagem.ts`). O card do passo diz "sem conversa:
   aviso no celular", e a janela de ligar diz "Quem não tem conversa aberta
-  recebe como aviso no celular" (`semConversaVaiNoCelular`). O "Abrir pelo
-  número padrão" ainda não existe (pede o envio de modelo aprovado na
-  automação, que não foi construído). Prova:
+  recebe como aviso no celular" (`semConversaVaiNoCelular`). Prova:
   `tests/automacoes-sem-conversa-aberta.test.ts`. O "padrão da rede" de
   `whatsapp-push.md` §9.8.0 ("é por ele que sai tudo que o SISTEMA inicia")
   não abre conversa pela automação enquanto essa opção estiver desligada.
+- **"Abrir pelo número padrão" e o modelo aprovado na automação** (o Heitor,
+  26/11, página de perguntas, R10: "Está no escopo: construir (com os modelos
+  aprovados pela Meta na automação)"; AX-06). A terceira opção de "Para quem
+  não tem conversa aberta", **só no WhatsApp** (em Instagram e Messenger o
+  validador recusa: "…só existe no WhatsApp…"), desligada por padrão
+  (princípio 6). A cliente sem conversa recebe pelo número padrão ATIVO da
+  rede (`numeroPadraoDaRede`, nunca "o primeiro ativo"); a conversa nasce no
+  inbox, na caixa do padrão, ligada à ficha, com a mensagem
+  (`conversaNoNumero`, `lib/automacoes/abrir-pelo-padrao.ts`):
+  - **No WhatsApp Web (uazapi)** sai o texto do passo. Mandar a primeira
+    mensagem a quem não escreveu é a rede escolhendo correr o risco de o
+    WhatsApp banir o número, e o painel do passo diz isso.
+  - **Na Cloud API** sai o **modelo aprovado** escolhido no passo
+    (`templateId` + `variaveisDoTemplate`): só os APROVADOS que o sistema
+    monta (`nao_suportado` nulo) da conta (WABA) do número padrão
+    (`modelosDoNumeroPadrao`). Cada variável do modelo recebe um texto com as
+    variáveis da automação (`{{cliente.nome}}`), conferido como o texto do
+    passo — variável desconhecida não salva (`validar.ts`, `textosDoNo`).
+    Sem modelo, com um modelo que não é aprovado da conta do padrão, ou com
+    variável do modelo vazia, a automação **não liga** (e a ligada não salva:
+    `problemasDaAberturaNaRede`, em `salvarAutomacao` e
+    `mudarStatusDaAutomacao`); sem número padrão, também não. Na hora, a
+    variável sem o dado não sai em branco: o passo não manda e diz "Faltou o
+    dado de …" (princípio 4).
+  - Valem todos os limites do "Mandar mensagem": o silêncio e o teto (EV-05),
+    a rede bloqueada (EV-12), o suporte não manda. A conversa encerrada do
+    padrão reabre; a do celular da cliente que no padrão é de OUTRA ficha não
+    se mistura: o passo não manda e diz por quê (decisões do Claude, 26/11).
+  - **O modelo também vale fora das 24 horas** (o Heitor, 26/11, na página de
+    perguntas, R12: "Fica: o modelo sai também na conversa que já existe, fora
+    das 24 horas"; era decisão do Claude do mesmo dia): na conversa que
+    existe, com a janela fechada na API oficial, sai o modelo do passo; sem
+    ele, o passo não manda e diz "…a Meta só aceita um modelo aprovado:
+    escolha um no passo.".
+  - A execução diz "(abriu a conversa pelo número padrão)" e "o modelo
+    aprovado"; o card, "sem conversa: abre pelo número padrão"; a janela de
+    ligar, "Quem não tem conversa aberta recebe pelo número padrão, numa
+    conversa nova." (`semConversaAbrePeloPadrao`). O envio do modelo é o
+    mesmo do inbox (`enviarModeloNaConversa`, `lib/inbox/enviar.ts`, que o
+    `sendTemplateMessage` passou a usar). Prova:
+    `tests/automacoes-abrir-pelo-numero-padrao.test.ts` (com o provedor
+    falso: o envio de verdade à Meta não se prova aqui).
 - **O lembrete antes do agendamento lembra o agendado E o confirmado** (D15
   do levantamento das regras, 2026-11-11; princípio 3): lembrar também o não
   confirmado é o comportamento útil. Desde o MK1 (14/11) o lembrete não é
@@ -780,5 +820,5 @@ o fato se grava e não vai ao motor (`emitirEvento` com `semDespachar`).
 ❌ Assinar domain_events ou automation_runs no Realtime, ou abrir a leitura delas pela sessão sem o módulo (é automacoes_sinais e sessao_ve_o_modulo — AUT-01, 18/11)
 ❌ Remarcar um agendamento sem emitir agendamento.remarcado (é ele que reprograma o lembrete que espera o horário antigo — D1 da 20ª)
 ❌ Mandar à cliente a mensagem com a variável vazia, ou aceitar variável fora do contexto da automação ({{first_name}} é das campanhas — D15 da 32ª)
-❌ Abrir conversa nova pela automação para quem não tem uma — o "Para quem não tem conversa aberta" manda como aviso no celular, e só se a rede escolheu (AX-06)
+❌ Abrir conversa nova pela automação para quem não tem uma fora do "Abrir pelo número padrão" que a rede escolheu no passo (AX-06; R10, 26/11) — e, na API oficial, sem o modelo aprovado do passo
 ```

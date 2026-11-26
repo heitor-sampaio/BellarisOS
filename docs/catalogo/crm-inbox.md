@@ -284,8 +284,8 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/regras/crm-inbox.md:279-293`; `apps/web/app/[slug]/cliente/home/page.tsx:370-376`; `apps/web/components/client-portal/historico-tabs.tsx:177`
 - Antes: KA-53, KA-54, KA-55, KA-56
 
-**PO-14.** O documento que o sistema de login recusa como senha (o curto demais para a senha mínima, como um RNE curto, e o que a proteção contra senha vazada recusa: o passaporte, o RNE ou o CPF fácil de adivinhar) não impede o acesso: o login nasce com uma senha aleatória forte que ninguém recebe (provisória), a ficha é ligada, e a cliente recebe o e-mail "Defina sua senha" — o caminho do "Esqueci a senha". A tela diz isso a quem cadastrou. Nesse caso a senha inicial NÃO é o documento: entrar com ele é recusado, e a cliente entra depois de criar a senha pelo e-mail.
-- Fonte: o Heitor, 2026-11-24, à R1 da 27ª simulação: "E-mail para criar a senha" (registrada em `docs/regras/crm-inbox.md:44-45`)
+**PO-14.** O documento que o sistema de login recusa como senha (o curto demais para a senha mínima, como um RNE curto, e o que a proteção contra senha vazada recusa: o passaporte, o RNE ou o CPF fácil de adivinhar) não impede o acesso: o login nasce com uma senha aleatória forte que ninguém recebe (provisória), a ficha é ligada, e a cliente recebe o e-mail "Defina sua senha" — o caminho do "Esqueci a senha". A tela diz isso a quem cadastrou ("… enviamos para esse e-mail o link para criar a senha."). Nesse caso a senha inicial NÃO é o documento: entrar com ele é recusado, e a cliente entra depois de criar a senha pelo e-mail.
+- Fonte: o Heitor, 2026-11-24, à R1 da 27ª simulação: "E-mail para criar a senha" (registrada em `docs/regras/crm-inbox.md:44-45`); o texto do aviso: o Heitor, 26/11 (página de perguntas, R02): "enviamos para esse e-mail o link para criar a senha"
 - Onde: `docs/regras/crm-inbox.md:42-52`
 - Antes: (sem número: `docs/inventario/leitura.md` §4)
 
@@ -580,8 +580,9 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Antes: KF-29
 
 **IN-18.** A resposta que não saiu não é resposta. A mensagem enviada pela rede que o provedor não aceitou fica na conversa como "Não enviada", com o motivo em português (WM-06 do catálogo de WhatsApp), o "Tentar de novo" e o número por onde tentou sair (WL-06). Ela não tira a conversa do "aguardando" nem conta como 1ª resposta: a conversa segue aguardando desde a mensagem da cliente, e a 1ª resposta conta quando uma mensagem é de fato aceita pelo provedor (também a do "Tentar de novo" que dá certo, no momento em que dá certo).
-- Fonte: decisão do Claude, 26/11 (32ª simulação, Decisão A) — pelo princípio 3: a fila não pode dizer que respondeu quem não recebeu nada (D2 da 32ª: a resposta falhada tirava a conversa do "aguardando" e contava como 1ª resposta)
-- Onde: (ainda não está em `docs/regras/crm-inbox.md`); WL-06, WM-06 e WH-07 do catálogo de WhatsApp; `apps/web/components/admin/crm-inbox.tsx`
+- Fonte: decisão do Claude, 26/11 (32ª simulação, Decisão A) — pelo princípio 3: a fila não pode dizer que respondeu quem não recebeu nada (D2 da 32ª: a resposta falhada tirava a conversa do "aguardando" e contava como 1ª resposta); o "Tentar de novo": o Heitor, 26/11, página de perguntas (R11): "Está no escopo: o botão 'Tentar de novo' na bolha que não saiu"
+- Onde: `docs/regras/crm-inbox.md`, "Correções de 26/11 no inbox e no CRM" ("A resposta que não saiu não conta" e "'Tentar de novo' na bolha que não saiu"); WL-06, WM-06 e WH-07 do catálogo de WhatsApp; `apps/web/components/admin/crm-inbox.tsx`, `apps/web/lib/inbox/reenviar.ts`, `apps/web/actions/inbox.ts` (`reenviarMensagem`)
+- Estado: implementada (26/11; prova `tests/inbox-tentar-de-novo.test.ts`, `e2e/mensagens-saida.spec.ts`)
 - Antes: (nova, 26/11)
 
 ## Oportunidades, funis e quadro (OP)

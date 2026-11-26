@@ -9,8 +9,9 @@ const b = (inicio: string, fim: string, motivo = 'Folga') => ({
 describe('o bloqueio do dia inteiro', () => {
   it('um dia: "o dia 10/11 inteiro"', () => {
     expect(trechoDoBloqueio(b('2026-11-10T00:00:00', '2026-11-11T00:00:00'))).toBe('o dia 10/11 inteiro')
+    // R07 (o Heitor, 26/11, no chat: "r07 se ta bloqueado não dá pra marcar"): sem "O encaixe é permitido.".
     expect(avisoDoBloqueioDaSala('Sala Rosa', b('2026-11-10T00:00:00', '2026-11-11T00:00:00', 'Manutenção')))
-      .toBe('Sala Rosa está bloqueada o dia 10/11 inteiro (Manutenção). O encaixe é permitido.')
+      .toBe('Sala Rosa está bloqueada o dia 10/11 inteiro (Manutenção).')
   })
   it('vários dias inteiros: "de 10/11 a 12/11, os dias inteiros"', () => {
     expect(trechoDoBloqueio(b('2026-11-10T00:00:00', '2026-11-13T00:00:00'))).toBe('de 10/11 a 12/11, os dias inteiros')

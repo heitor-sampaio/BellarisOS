@@ -27,7 +27,8 @@ export function GradeDeHorarios({
   nomeDoProfissional?:   string
   /**
    * Quem já ocupa o horário (o mesmo profissional), ou nulo: o agendamento, ou
-   * o bloqueio dela (`rotulo` "Bloqueado · motivo" — D5 da 8ª simulação).
+   * o bloqueio dela (`rotulo` "Bloqueado · motivo" — D5 da 8ª simulação). O
+   * horário ocupado não aparece na grade (R14).
    */
   ocupado:               (hora: string) => { clientName: string | null; rotulo?: string } | null
   selecionado:           string
@@ -46,10 +47,16 @@ export function GradeDeHorarios({
   const agora = new Date(useAgora() ?? abriuEm)
   const limite = aPartirDeAgora(data, agora, fusoDado ?? fusoDaTela)
   const [erroDoEncaixe, setErroDoEncaixe] = useState<string | null>(null)
-  const grade = gradeDoCheckout(horarioDaUnidade, horarioDoProfissional, data, limite)
-  const jaPassou = !!limite && grade.length === 0 && gradeDoCheckout(horarioDaUnidade, horarioDoProfissional, data).length > 0
+  const daJanela = gradeDoCheckout(horarioDaUnidade, horarioDoProfissional, data, limite)
+  // R14 (o Heitor, 26/11, na página de perguntas: "Horarios, salas e pessoas não
+  // disponíveis não devem aparecer nas listas"): o horário ocupado ou bloqueado
+  // SAI da grade — era riscado e desligado. O encaixe (fora do horário de quem
+  // atende) fica, tracejado: é permitido.
+  const grade = daJanela.filter(h => !ocupado(h.hora))
+  const nenhumLivre = daJanela.length > 0 && grade.length === 0
+  const jaPassou = !!limite && daJanela.length === 0 && gradeDoCheckout(horarioDaUnidade, horarioDoProfissional, data).length > 0
   const temEncaixe = grade.some(h => !h.doProfissional)
-  const foraDaGrade = !!selecionado && !grade.some(h => h.hora === selecionado)
+  const foraDaGrade = !!selecionado && !daJanela.some(h => h.hora === selecionado)
   const quem = nomeDoProfissional?.trim() || 'quem atende'
 
   return (
@@ -68,8 +75,10 @@ export function GradeDeHorarios({
       </div>
 
       {!carregando && grade.length === 0 && (
-        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-          {jaPassou
+        <p data-grade-sem-horario style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+          {nenhumLivre
+            ? `Nenhum horário livre de ${quem} neste dia: escolha outro dia.`
+            : jaPassou
             ? `Os horários de hoje já passaram. Para um encaixe, use ${semOutroHorario ? 'o campo de data e hora' : '“Outro horário”'}.`
             : `A unidade não abre neste dia. Para um encaixe, use ${semOutroHorario ? 'o campo de data e hora' : '“Outro horário”'}.`}
         </p>
@@ -78,25 +87,21 @@ export function GradeDeHorarios({
       {!carregando && grade.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6 }}>
           {grade.map(({ hora, doProfissional }) => {
-            const booked = ocupado(hora)
             const sel    = selecionado === hora
-            const encaixe = !doProfissional && !booked
+            const encaixe = !doProfissional
             return (
-              <button key={hora} type="button" disabled={!!booked} onClick={() => onEscolher(hora)}
+              <button key={hora} type="button" onClick={() => onEscolher(hora)}
                 data-horario={hora} data-encaixe={encaixe ? '' : undefined}
                 aria-pressed={sel}
-                title={booked ? (booked.rotulo ?? `Ocupado${booked.clientName ? ` — ${booked.clientName}` : ''}`)
-                  : encaixe ? `Fora do horário de ${quem} — encaixe` : undefined}
+                title={encaixe ? `Fora do horário de ${quem} — encaixe` : undefined}
                 style={{
                   padding: '8px 4px', borderRadius: 8, fontSize: 'var(--text-sm-sz)', fontWeight: 700,
-                  cursor:     booked ? 'not-allowed' : 'pointer',
-                  background: sel ? 'var(--brand)' : booked || encaixe ? 'var(--bg-app)' : 'var(--surface)',
-                  color:      sel ? 'var(--on-brand)' : booked ? 'var(--text-faint)' : encaixe ? 'var(--text-muted)' : 'var(--text)',
+                  cursor:     'pointer',
+                  background: sel ? 'var(--brand)' : encaixe ? 'var(--bg-app)' : 'var(--surface)',
+                  color:      sel ? 'var(--on-brand)' : encaixe ? 'var(--text-muted)' : 'var(--text)',
                   border:     sel ? '2px solid var(--brand)'
-                    : booked ? '1px solid var(--hairline)'
                     : encaixe ? '1px dashed var(--border)'
                     : '1.5px solid var(--brand-soft-border)',
-                  textDecoration: booked ? 'line-through' : 'none',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3,
                 }}>
                 {sel && <Check size={10} />}{hora}

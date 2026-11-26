@@ -93,18 +93,23 @@ test('a grade sombreia o fora do horário, e o modal avisa do encaixe e do confl
 
     await janela.getByLabel('Data e hora *').fill(`${DIA}T11:30`)
     await expect(aviso).toContainText(`${nomeDaProf} já tem atendimento das 11:00 às 12:00`)
-    // A26 (5ª simulação): confirmar no choque — a recusa aparece UMA vez (eram o
-    // aviso e a recusa do servidor, os dois dizendo o mesmo).
-    await janela.getByRole('button', { name: 'Confirmar agendamento' }).click()
-    await expect(janela.getByText(/Não foi agendado/)).toBeVisible()
+    // R06 (o Heitor, 26/11, na página de perguntas: "Desliga o botão, e os três
+    // testes conferem o botão desligado (a proposta)"): com o choque à vista, o
+    // Confirmar fica desligado, com o motivo ao lado — e o choque é dito UMA vez
+    // (A26 da 5ª: o motivo não repete o detalhe do aviso).
+    await expect(aviso).toContainText('Não vai ser agendado')
+    await expect(janela.getByRole('button', { name: 'Confirmar agendamento' })).toBeDisabled()
+    await expect(janela.locator('[data-motivo-do-confirmar]')).toContainText('Escolha outro horário: este bate com outro atendimento.')
     await expect(janela.getByText(/já tem (atendimento|agendamento)/)).toHaveCount(1)
 
     await janela.getByLabel('Data e hora *').fill(`${DIA}T14:00`)
     await expect(aviso).toHaveCount(0)
+    await expect(janela.locator('[data-motivo-do-confirmar]')).toHaveCount(0)
 
-    // O encaixe continua permitido.
+    // O encaixe continua permitido: o aviso não desliga o Confirmar (R06).
     await janela.getByLabel('Data e hora *').fill(`${DIA}T08:30`)
     await expect(aviso).toContainText('O encaixe é permitido.')
+    await expect(janela.getByRole('button', { name: 'Confirmar agendamento' })).toBeEnabled()
     await janela.getByRole('button', { name: 'Confirmar agendamento' }).click()
     await expect(janela).toBeHidden({ timeout: 15_000 })
   } finally {

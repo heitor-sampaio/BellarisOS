@@ -197,7 +197,11 @@ test('o agendar oferece só as salas do procedimento e sugere uma livre', async 
     await janela.getByLabel('Profissional *').selectOption(rede!.professionalId)
     await janela.getByLabel('Data e hora *').fill(`${DIA}T10:00`)
     const sala = janela.getByLabel('Sala / Cabine')
-    await expect(sala.locator('option')).toHaveText(['Sem sala definida', 'Cabine laser (ocupada)', 'Sala 3'])
+    // O Heitor, 26/11, na página de perguntas (R13/R14): "Só mostra os horarios, salas e
+    // pessoas que estão livres" / "Horarios, salas e pessoas não disponíveis não devem
+    // aparecer nas listas".
+    // A ocupada SAI da lista (era "Cabine laser (ocupada)", desligada).
+    await expect(sala.locator('option')).toHaveText(['Sem sala definida', 'Sala 3'])
     await expect(sala.locator('option:checked')).toHaveText('Sala 3')
   })
 })

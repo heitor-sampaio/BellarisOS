@@ -221,6 +221,8 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
       novaVenda = { dados: {
         cliente: { id: cliente.id, name: cliente.name, phone: cliente.phone }, pacotes, procedimentos, produtos, equipe, aReceber: aReceber.itens,
         podeAgendar: can(ctx, 'agenda', 'MANAGE'), emAberto, fidelidade,
+        // R04 (o Heitor, 26/11): "O link só para quem tem o Estoque em Gerenciar; o aviso da falta para todos".
+        podeDarEntradaNoEstoque: can(ctx, 'stock', 'MANAGE'),
         contratoDoPacote: pacotes.length && contrato ? { ...contrato, podeCompletar: can(ctx, 'clients', 'MANAGE') } : null,
       } }
     }

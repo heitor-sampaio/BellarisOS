@@ -284,6 +284,42 @@ export function montarParametrosEnvio(
   return componentes
 }
 
+/**
+ * O caminho de volta de `textoDoEnvio`: os valores das variáveis, lidos do
+ * texto que ficou no histórico (R11, o "Tentar de novo" da bolha que não saiu:
+ * o modelo sai de novo com os MESMOS valores). `null` quando o texto não é
+ * deste modelo — quem chama recusa em vez de mandar outra coisa.
+ */
+export function valoresDoTextoDoModelo(
+  t: Pick<TemplateRascunho, 'header_text' | 'body_text' | 'footer_text'>,
+  texto: string,
+): Record<string, string> | null {
+  const molde = textoDoEnvio(t, {})
+  const nomes: string[] = []
+  let padrao = ''
+  let ultimo = 0
+  for (const m of molde.matchAll(RE_VARIAVEL)) {
+    padrao += escaparRegex(molde.slice(ultimo, m.index))
+    const nome = m[1]!
+    const i = nomes.indexOf(nome)
+    if (i >= 0) padrao += `\\k<v${i}>`
+    else { nomes.push(nome); padrao += `(?<v${nomes.length - 1}>[\\s\\S]*?)` }
+    ultimo = m.index! + m[0].length
+  }
+  padrao += escaparRegex(molde.slice(ultimo))
+  const casou = new RegExp(`^${padrao}$`).exec(texto)
+  if (!casou) return null
+  const valores: Record<string, string> = {}
+  nomes.forEach((nome, i) => { valores[nome] = casou.groups?.[`v${i}`] ?? '' })
+  // Confere: refazer o texto com estes valores dá o mesmo (variável vazia não sai).
+  if (nomes.some(n => !valores[n]?.trim()) || textoDoEnvio(t, valores) !== texto) return null
+  return valores
+}
+
+function escaparRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 /** O texto que fica no histórico da conversa: o template já preenchido. */
 export function textoDoEnvio(
   t: Pick<TemplateRascunho, 'header_text' | 'body_text' | 'footer_text'>,

@@ -480,7 +480,22 @@ comanda (PDV-P1).
     das partes da mesma parcela, `pagoDasParcelas`).
   - Sem estoque suficiente, a venda de produto diz "Só há N un de X nesta
     unidade." com o "Dar entrada no Estoque", e o "Vender" desliga (A15,
-    `faltaDeEstoqueNaVenda`).
+    `faltaDeEstoqueNaVenda`). **O link é só de quem tem o Estoque em
+    Gerenciar; o aviso da falta, de todos** (o Heitor, 26/11, página de
+    perguntas, R04: "O link só para quem tem o Estoque em Gerenciar; o aviso
+    da falta para todos (a proposta)"; `podeDarEntradaNoEstoque`).
+  - **Sem estoque, nenhum caminho vende produto** (o Heitor, 26/11, R04: "e
+    tb não deixa realizar a venda de produto sem estoque"): a Nova venda
+    (`produto_vender_itens`, direto ou por `venda_com_fidelidade`) e a comanda
+    do atendimento (`comanda_acrescentar_item` ao acrescentar, e
+    `confirmar_pagamento_do_atendimento` → `produto_vender_itens` ao receber)
+    recusam no servidor. Na comanda, o "Acrescentar" e o "+" desligam no que
+    há (somado o que já está nela), e o produto que passou do saldo depois (o
+    saldo caiu) diz a falta e desliga o "Receber", cada um com o motivo
+    (`faltaAoAcrescentarNaComanda`, `faltaDosProdutosDaComanda`; decisão do
+    Claude, 26/11, pela regra do botão desligado com o motivo). O Copilot não
+    vende. Prova: `tests/vendas-produto-sem-estoque.test.ts`,
+    `e2e/vendas-produto.spec.ts`, `e2e/pdv-comanda-varios-itens-e-pontos.spec.ts`.
   - O cartão do Financeiro volta a "A receber da cliente · em aberto" (A17):
     o número grande é o em aberto, e a nota diz "Vence no período: R$ …"
     (`noTopoOEmAberto`). Era o A9 da 22ª.
@@ -3546,7 +3561,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 ### O que a tela do dinheiro diz (decisões do Claude, 26/11 — 32ª simulação)
 
 - A janela do estorno diz o voucher usado no pagamento, que volta a valer, em todo estorno que o devolve — não só no de R$ 0 (ES-01/ES-02; `textoDosPontosDoEstorno`).
-- A recusa do estorno parcial no cartão diz o porquê: "No cartão, o estorno é do pagamento inteiro (a operadora não estorna só uma parte): …" (EX-06) — no pré-pago, na devolução de produto e no gatilho da parcela da operadora; o cancelamento do pacote e o do plano ainda dizem a frase antiga.
+- A recusa do estorno parcial no cartão diz "No cartão, o estorno é do pagamento inteiro: …" e o que fazer, sem o porquê (EX-06) — em toda função que recusa. A 32ª tinha posto o porquê; o Heitor, 26/11 (página de perguntas, R08): "Não precisa dessa explicação." (`20261211100001`).
 - Todo campo de vezes no cartão avisa acima de 12x e deixa (MQ-01; `DicaDasVezes`, princípio 2).
 - O receber da comanda fora do à vista diz "Os pontos e o voucher se usam no pagamento à vista." (PD-06; `TEXTO_PONTOS_SO_A_VISTA`, a mesma da venda).
 - O aviso depois de receber diz o que ficou em aberto e quando vence ("Nada recebido agora (A receber): R$ 200,00 em aberto, vence em 06/12.").

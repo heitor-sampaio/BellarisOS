@@ -14,6 +14,7 @@ import type {
   ConfigBuscarClientes,
 } from '@estetica-os/types'
 import { validarGrafo, podeAtivar, gatilhosDoGrafo } from '@/lib/automacoes/validar'
+import { problemasDaAberturaNaRede, numeroPadraoDaRede, modelosDoNumeroPadrao } from '@/lib/automacoes/abrir-pelo-padrao'
 import { achatarDados, type CampoVisto } from '@/lib/automacoes/disponiveis'
 import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
 import { modeloDeAutomacao, semWhatsapp } from '@/lib/automacoes/modelos'
@@ -281,10 +282,13 @@ export async function salvarAutomacao(input: {
   // salvamento no meio faria perder o trabalho. O que a validação impede é
   // ATIVAR. Já uma automação LIGADA não pode virar inválida por um salvamento:
   // ela dispararia no estado quebrado.
-  if (atual.status === 'ATIVA' && erros.length) {
+  // R10: o "Abrir pelo número padrão" pede o que a REDE tem (o número padrão
+  // e, na Cloud API, o modelo aprovado) — conferido aqui, no servidor.
+  const daRedeParaAbrir = atual.status === 'ATIVA' ? await problemasDaAberturaNaRede(ctx.tenantId!, input.grafo) : []
+  if (atual.status === 'ATIVA' && (erros.length || daRedeParaAbrir.length)) {
     return {
       error: 'Esta automação está ligada: corrija os problemas antes de salvar.',
-      problemas: erros.map(e => e.mensagem),
+      problemas: [...erros.map(e => e.mensagem), ...daRedeParaAbrir],
     }
   }
 
@@ -482,6 +486,9 @@ export async function mudarStatusDaAutomacao(
         problemas: validarGrafo(grafo).filter(p => p.grau === 'erro').map(p => p.mensagem),
       }
     }
+    // R10: o "Abrir pelo número padrão" com o que a rede tem hoje.
+    const paraAbrir = await problemasDaAberturaNaRede(ctx.tenantId!, grafo)
+    if (paraAbrir.length) return { error: 'Não dá para ligar: o fluxo tem problemas.', problemas: paraAbrir }
   }
 
   const { error } = await admin
@@ -552,6 +559,13 @@ export interface OpcoesDoEditor {
   procedimentos: string[]
   /** A rede tem WhatsApp conectado? Sem ele, o passo em WhatsApp avisa (A14). */
   whatsappConectado: boolean
+  /**
+   * O número padrão da rede (R10, o "Abrir pelo número padrão"): o nome e se é
+   * da API oficial — só isso, nunca a credencial. Nulo: a rede não tem padrão.
+   */
+  numeroPadrao: { label: string; oficial: boolean } | null
+  /** Os modelos APROVADOS da conta do número padrão oficial, com as variáveis e o texto. */
+  modelosDoPadrao: { id: string; nome: string; variaveis: string[]; texto: string }[]
 }
 
 export async function opcoesDoEditor(): Promise<OpcoesDoEditor> {
@@ -575,6 +589,8 @@ export async function opcoesDoEditor(): Promise<OpcoesDoEditor> {
     admin.from('procedures').select('name').eq('tenant_id', tenant).eq('is_active', true).order('name'),
     redeTemWhatsapp(tenant),
   ])
+  const padrao = await numeroPadraoDaRede(tenant)
+  const modelosDoPadrao = await modelosDoNumeroPadrao(tenant, padrao)
 
   const tags = new Set<string>(vocabulario)
 
@@ -608,6 +624,8 @@ export async function opcoesDoEditor(): Promise<OpcoesDoEditor> {
     unidades: (unidades.data ?? []).map(b => ({ id: b.id as string, nome: b.name as string })),
     procedimentos: [...new Set((procedimentos.data ?? []).map(p => p.name as string))],
     whatsappConectado,
+    numeroPadrao: padrao ? { label: padrao.label, oficial: padrao.provider === 'official' } : null,
+    modelosDoPadrao,
   }
 }
 

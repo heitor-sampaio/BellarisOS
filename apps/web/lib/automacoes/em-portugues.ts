@@ -82,7 +82,10 @@ export function descreverResumo(tipo: string | null | undefined, resumo: Record<
         return `Aviso no celular: enviado${resumo.semConversa ? ' (não havia conversa aberta)' : ''}`
       }
       const canal = CANAL[String(resumo.canal ?? '')] ?? 'Mensagem'
-      return `${canal}: enviada${resumo.texto ? ` · “${resumo.texto}”` : ''}`
+      // R10: a cliente não tinha conversa, e a rede escolheu abrir pelo número padrão.
+      const abriu = resumo.abriuConversa ? ' (abriu a conversa pelo número padrão)' : ''
+      const modelo = resumo.modelo ? ' · o modelo aprovado' : ''
+      return `${canal}: enviada${abriu}${modelo}${resumo.texto && !resumo.modelo ? ` · “${resumo.texto}”` : ''}`
     }
     case NODES.ACAO_NOTIFICAR_EQUIPE:
       if (typeof resumo.avisados === 'number') return `Avisou ${quantas(resumo.avisados, 'pessoa', 'pessoas')}`

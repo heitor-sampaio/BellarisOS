@@ -79,6 +79,18 @@ export function validarGrafo(grafo: GrafoDeAutomacao): ProblemaDoGrafo[] {
     }
   }
 
+  // ── "Abrir pelo número padrão" (AX-06, R10): só o WhatsApp tem número ──
+  for (const no of nos) {
+    if (no.tipo !== NODES.ACAO_MENSAGEM) continue
+    const c = (no.config ?? {}) as { canal?: string; semConversa?: string }
+    if (c.semConversa === 'abrir_pelo_padrao' && c.canal && c.canal !== 'whatsapp') {
+      problemas.push({
+        grau: 'erro', noId: no.id,
+        mensagem: `Em "${rotuloCurto(no)}", "Abrir pelo número padrão" só existe no WhatsApp: escolha outra opção para quem não tem conversa aberta.`,
+      })
+    }
+  }
+
   // ── Órfãos: node que nunca é alcançado ────────────────────────────────
   const alcancados = alcancaveis(grafo, gatilhos[0]?.id)
   for (const no of nos) {
@@ -284,9 +296,7 @@ function conferirReferencias(grafo: GrafoDeAutomacao): ProblemaDoGrafo[] {
   for (const no of nos) {
     const c = (no.config ?? {}) as Record<string, unknown>
     const jaDitas = new Set<string>()
-    for (const chave of ['titulo', 'corpo', 'texto']) {
-      const v = c[chave]
-      if (typeof v !== 'string') continue
+    for (const v of textosDoNo(c)) {
       for (const m of v.matchAll(/\{\{([^}]*)\}\}/g)) {
         const dentro = m[1]!.trim()
         if (!dentro || jaDitas.has(dentro)) continue
@@ -334,15 +344,29 @@ const RAIZES_DO_CONTEXTO = new Set([
 /** As variáveis das campanhas, e a da automação que diz o mesmo. */
 const VARIAVEIS_DAS_CAMPANHAS: Record<string, string> = { first_name: '{{cliente.nome}}' }
 
+/**
+ * Os textos do node que levam variáveis: o título, o corpo, o texto e — no
+ * "Mandar mensagem" com modelo (R10) — o valor de cada variável do modelo.
+ */
+function textosDoNo(c: Record<string, unknown>): string[] {
+  const textos: string[] = []
+  for (const chave of ['titulo', 'corpo', 'texto']) {
+    const v = c[chave]
+    if (typeof v === 'string') textos.push(v)
+  }
+  const doModelo = c.variaveisDoTemplate
+  if (doModelo && typeof doModelo === 'object') {
+    for (const v of Object.values(doModelo as Record<string, unknown>)) if (typeof v === 'string') textos.push(v)
+  }
+  return textos
+}
+
 /** Todo caminho de contexto que este node cita — em texto ou em condição. */
 function caminhosCitados(no: NoDoGrafo): string[] {
   const c = (no.config ?? {}) as Record<string, unknown>
   const achados: string[] = []
 
-  for (const chave of ['titulo', 'corpo', 'texto']) {
-    const v = c[chave]
-    if (typeof v === 'string') achados.push(...caminhosDoTexto(v))
-  }
+  for (const v of textosDoNo(c)) achados.push(...caminhosDoTexto(v))
 
   if (typeof c.campo === 'string' && c.campo) achados.push(c.campo)
 

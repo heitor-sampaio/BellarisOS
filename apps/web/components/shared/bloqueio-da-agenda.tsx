@@ -18,8 +18,9 @@ import { naParede, daParede, fusoLocal } from '@/lib/datetime'
  * bloqueio (o que é, quem bloqueou, "Desfazer bloqueio").
  *
  * O bloco da grade não segura o clique: clicar no bloqueado abre o novo
- * agendamento, que avisa — o encaixe é da clínica (princípio 2). Só o rótulo
- * do bloco abre a janela dele.
+ * agendamento, que diz "Não vai ser agendado" e desliga o Confirmar (R07, o
+ * Heitor, 26/11: "se ta bloqueado não dá pra marcar"). Só o rótulo do bloco
+ * abre a janela dele.
  */
 
 interface Alvo { id: string; name: string }
@@ -156,7 +157,7 @@ function JanelaDeBloquear({ branchId, profissionais, salas, dia, onFechar }: {
             <span>Bloquear horário</span>
             {/* O "o que o bloqueio faz" mora na dica (2026-11-16, "A explicação mora na dica"). */}
             <Dica rotulo="O que o bloqueio faz">
-              O app da cliente e o Copilot não oferecem o horário bloqueado. Quem agendar nele pela agenda é avisado, e o encaixe continua permitido.
+              O app da cliente e o Copilot não oferecem o horário bloqueado, e ninguém marca nem remarca nele: nem pela agenda, nem pelo Copilot. O que já estava agendado continua.
             </Dica>
           </h2>
           <button type="button" className="btn-ghost" onClick={onFechar} aria-label="Fechar" style={{ padding: '4px 6px' }}><X size={16} /></button>
@@ -361,7 +362,7 @@ export function JanelaDoBloqueio({ bloqueio, titulo, podeDesfazer, onFechar }: {
           <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <span>Horário bloqueado</span>
             <Dica rotulo="O que o bloqueio faz">
-              O app da cliente e o Copilot não oferecem este horário. Pela agenda, o encaixe é permitido, com aviso.
+              O app da cliente e o Copilot não oferecem este horário, e ninguém marca nem remarca nele, nem pela agenda.
             </Dica>
           </h2>
           <button type="button" className="btn-ghost" onClick={onFechar} aria-label="Fechar" style={{ padding: '4px 6px' }}><X size={16} /></button>

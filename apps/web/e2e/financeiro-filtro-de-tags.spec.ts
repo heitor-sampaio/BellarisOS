@@ -114,11 +114,17 @@ for (const portal of ['unidade', 'rede'] as const) {
       // A aba leva o ?tags= junto; a despesa (sem cliente) sai.
       await aba(p, 'Movimentações').click()
       await expect(p).toHaveURL(/aba=movimentacoes/)
+      await expect(aba(p, 'Movimentações')).toHaveAttribute('aria-selected', 'true')
       await expect(p).toHaveURL(/tags=VIP/)
       await expect(linha(p, ids.pagoDaVip)).toBeVisible()
       await expect(linha(p, ids.despesaPaga)).toHaveCount(0)
 
       await aba(p, 'A pagar').click()
+      // R05 (o Heitor, 26/11, na página de perguntas: "Pode: o teste espera a aba
+      // 'A pagar' antes de mexer na tag (a proposta)"): o ?tags=VIP já estava na
+      // URL da aba anterior — a espera é pela aba nova, aberta e marcada.
+      await expect(p).toHaveURL(/aba=a-pagar/)
+      await expect(aba(p, 'A pagar')).toHaveAttribute('aria-selected', 'true')
       await expect(p).toHaveURL(/tags=VIP/)
       await expect(linha(p, ids.despesa)).toHaveCount(0)
       // Sem a tag, a despesa volta.

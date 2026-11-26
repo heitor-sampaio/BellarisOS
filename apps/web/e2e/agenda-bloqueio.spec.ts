@@ -12,8 +12,10 @@ import { diaEmQueAUnidadeAbre } from './apoio/datas'
  *
  * - "Bloquear horário" na agenda, por profissional ou por sala, com início,
  *   fim e motivo; aparece na grade; desfaz-se.
- * - Agendar dentro do bloqueio pela EQUIPE avisa e deixa encaixar
- *   (princípio 2), como o encaixe fora do horário.
+ * - Ninguém marca dentro do bloqueio, nem a EQUIPE pela agenda (R07, o
+ *   Heitor, 26/11, no chat, sobre a R07: "r07 se ta bloqueado não dá pra
+ *   marcar"; era o encaixe avisado). A janela diz "Não vai ser agendado" e
+ *   desliga o Confirmar; o servidor recusa. O fora do horário segue encaixe.
  * - Os livres (o app da cliente, o Copilot, o CRM — `computeAvailableSlots`)
  *   não oferecem o horário bloqueado.
  * - Quem gerencia a agenda bloqueia. Quem só vê, não; nem a "Minha agenda"
@@ -121,31 +123,37 @@ test('os livres não oferecem o horário bloqueado (a conta do app, do Copilot e
   })
 })
 
-test('agendar dentro do bloqueio pela equipe avisa e deixa encaixar (princípio 2)', async ({ browser }) => {
+test('agendar dentro do bloqueio pela equipe é recusado: a janela desliga o Confirmar e o servidor recusa (R07)', async ({ browser }) => {
+  // O Heitor, 26/11, no chat, sobre a R07: "r07 se ta bloqueado não dá pra marcar".
   const cliente = await rede!.criarCliente('Encaixe')
   await como(browser, recepcao!, async p => {
-    // A janela do agendamento avisa antes de confirmar.
+    // A janela do agendamento diz antes de confirmar, e o Confirmar desliga.
     await p.goto(`/${slug}/agenda?date=${DIA}`)
     const coluna = p.locator(`[data-coluna-do-profissional="${nomeDaProf}"]`)
     await expect(coluna).toBeVisible()
     const caixa = (await coluna.boundingBox())!
     await coluna.click({ position: { x: caixa.width / 2, y: 4.25 * 80 } })
     const modal = p.getByRole('dialog', { name: 'Novo agendamento' })
-    await expect(modal.locator('[data-aviso-do-horario]')).toContainText(`Horário bloqueado para ${nomeDaProf} das 12:00 às 13:00 (Almoço). O encaixe é permitido.`)
+    await expect(modal.locator('[data-aviso-do-horario]')).toContainText(`Não vai ser agendado: ${nomeDaProf} está com o horário bloqueado das 12:00 às 13:00 (Almoço).`)
+    await expect(modal.locator('[data-aviso-do-horario]')).not.toContainText('O encaixe é permitido')
+    await expect(modal.getByRole('button', { name: 'Confirmar agendamento' })).toBeDisabled()
+    await expect(modal.locator('[data-motivo-do-confirmar]')).toContainText('Escolha outro horário: este está bloqueado.')
     await modal.getByRole('button', { name: 'Cancelar' }).click()
 
-    // E o encaixe grava.
+    // E pela action, direto, o servidor recusa com a frase do bloqueio.
     const r = await chamarAcaoComFormulario(p, 'actions/appointments.ts', 'addAppointment', `/${slug}/agenda`, [undefined], {
       _branchId: rede!.branchId, _slug: slug, client_id: cliente, procedure_id: rede!.procedureId,
       professional_id: rede!.professionalId, scheduled_at: em('12:00'),
     })
-    expect(r.texto).toContain('"success":true')
+    expect(r.texto).toContain(`${nomeDaProf} está com o horário bloqueado das 12:00 às 13:00 (Almoço). Escolha outro horário.`)
+    expect(r.texto).not.toContain('"success":true')
   })
   const { data } = await db().from('appointments').select('id').eq('client_id', cliente)
-  expect(data ?? [], 'o encaixe no bloqueio foi gravado').toHaveLength(1)
+  expect(data ?? [], 'o bloqueado não se marca').toHaveLength(0)
 })
 
-test('a sala bloqueada aparece na grade e o agendar avisa quando ela é escolhida', async ({ browser }) => {
+test('a sala bloqueada aparece na grade, e o agendar nela é recusado quando ela é escolhida (R07)', async ({ browser }) => {
+  const cliente = await rede!.criarCliente('Sala bloqueada')
   await como(browser, recepcao!, async p => {
     await p.goto(`/${slug}/agenda?date=${DIA}`)
     await p.getByRole('button', { name: 'Bloquear horário' }).click()
@@ -162,8 +170,19 @@ test('a sala bloqueada aparece na grade e o agendar avisa quando ela é escolhid
 
     const r = await chamarAcao(p, 'actions/appointments.ts', 'avisosDoHorario', `/${slug}/agenda`,
       [rede!.branchId, rede!.professionalId, em('15:30'), null, 30, sala])
-    expect(r.texto).toContain(`${NOME_DA_SALA} está bloqueada das 15:00 às 16:00 (Manutenção). O encaixe é permitido.`)
+    expect(r.texto).toContain(`${NOME_DA_SALA} está bloqueada das 15:00 às 16:00 (Manutenção).`)
+    expect(r.texto).not.toContain('O encaixe é permitido')
+
+    // A sala bloqueada não se marca (o Heitor, 26/11, no chat, sobre a R07:
+    // "r07 se ta bloqueado não dá pra marcar"), mesmo com quem atende livre.
+    const g = await chamarAcaoComFormulario(p, 'actions/appointments.ts', 'addAppointment', `/${slug}/agenda`, [undefined], {
+      _branchId: rede!.branchId, _slug: slug, client_id: cliente, procedure_id: rede!.procedureId,
+      professional_id: rede!.professionalId, scheduled_at: em('15:30'), room_id: sala,
+    })
+    expect(g.texto).toContain(`${NOME_DA_SALA} está bloqueada das 15:00 às 16:00 (Manutenção). Escolha outro horário.`)
   })
+  const { data } = await db().from('appointments').select('id').eq('client_id', cliente)
+  expect(data ?? [], 'a sala bloqueada não se marca').toHaveLength(0)
 })
 
 test('a "Minha agenda" (a vista pessoal) mostra o bloqueio dela e não bloqueia — e quem só vê também não', async ({ browser }) => {
@@ -238,7 +257,7 @@ test('o "Bloquear horário" diz, antes de gravar, os atendimentos que continuam 
   const cliente = await rede!.criarCliente('Continua')
   const marcado = await db().from('appointments').insert({
     branch_id: rede!.branchId, client_id: cliente, procedure_id: rede!.procedureId, professional_id: rede!.professionalId,
-    // Às 06:00: o encaixe das 12:00 (o teste de cima) fica depois do período.
+    // Às 06:00, um atendimento já marcado antes do bloqueio: ele continua.
     status: 'SCHEDULED', source: 'INTERNAL', duration_min: 30, price: 0, scheduled_at: em('06:00'),
   }).select('id').single<{ id: string }>()
   expect(marcado.error).toBeNull()

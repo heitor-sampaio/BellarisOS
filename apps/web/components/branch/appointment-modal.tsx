@@ -1,7 +1,8 @@
 'use client'
 
 import { startTransition, useActionState, useCallback, useEffect, useEffectEvent, useState, useMemo, useRef } from 'react'
-import { addAppointment, dadosParaAgendar, proximoHorarioLivre, buscarClientesParaAgendar, clienteParaAgendar, salasParaAgendar, avisosDoHorario, avisoDoPlanoAoAgendar, avisoDoMesmoProcedimentoNoDia, getSchedulingDaySlots } from '@/actions/appointments'
+import { addAppointment, dadosParaAgendar, proximoHorarioLivre, buscarClientesParaAgendar, clienteParaAgendar, salasParaAgendar, avisosDoHorario, avisoDoPlanoAoAgendar, avisoDoMesmoProcedimentoNoDia, getSchedulingDaySlots, quemNaoEstaLivreNoHorario } from '@/actions/appointments'
+import { soOQueEstaLivre, rotuloDaEscolhida, NINGUEM_LIVRE_NO_HORARIO, type Indisponivel } from '@/lib/agenda/so-o-que-esta-livre'
 import { erroParaTela } from '@/lib/erro-na-tela'
 import { faltaNoCadastroAoAgendar, type FaltaNoCadastroDoTermo } from '@/actions/documentos-da-janela'
 import { GradeDeHorarios } from '@/components/shared/grade-de-horarios'
@@ -22,6 +23,7 @@ import { dayKeyTZ, naParede, daParede, instanteNoFuso } from '@/lib/datetime'
 import { useFuso } from '@/components/shared/fuso'
 import { useAgora } from '@/lib/use-agora'
 import { textoDoProximoLivre } from '@/lib/agenda/proximo-livre'
+import { motivoDoConfirmarDesligado } from '@/lib/agenda/motivo-do-confirmar'
 import { unicaOpcao } from '@/lib/uma-opcao'
 import { CampoIndicadaPor } from '@/components/shared/campo-indicada-por'
 import { Dica } from '@/components/shared/dica'
@@ -383,10 +385,41 @@ export function AppointmentModal({
       // do procedimento ligado a salas vem antes — A27 da 5ª).
       ? (salasDoServidor.sugerida ?? unicaOpcao(salasDoServidor.salas.filter(s => s.livre).length === salasDoServidor.salas.length ? salasDoServidor.salas : []))
       : '')
-  // A28: as salas DO procedimento todas ocupadas no horário — vai sem sala
-  // (a sala é opcional, H1), e a janela diz isso em vez de calar.
-  const semSalaLivre = !salaId && salasDoServidor?.chave === chaveDasSalas && !!salasDoServidor.doProcedimento
+  // R13 (o Heitor, 26/11, na página de perguntas: "Só mostra os horarios, salas
+  // e pessoas que estão livres"): a lista tem só as salas livres no horário (sem
+  // choque e sem bloqueio) — era "(ocupada)". A que a pessoa JÁ escolheu e
+  // deixou de estar livre (o horário mudou) fica, como o valor do campo, e a
+  // janela diz "Não vai ser agendado" (decisão do Claude, 26/11).
+  const salasDaLista = soOQueEstaLivre(salasOferecidas, salaEscolhida)
+  const salaDaEscolha = salasDoServidor?.chave === chaveDasSalas ? salasOferecidas.find(s => s.id === salaId) ?? null : null
+  // O bloqueio da sala já vem no aviso do horário; o choque da sala, daqui.
+  const salaOcupada = salaDaEscolha && !salaDaEscolha.livre && salaDaEscolha.indisponivel !== 'bloqueada' ? salaDaEscolha.name : null
+  // A28: nenhuma sala livre no horário — vai sem sala (a sala é opcional, H1),
+  // e a janela diz isso em vez de mostrar um seletor vazio.
+  const semSalaLivre = !salaId && salasDoServidor?.chave === chaveDasSalas
     && salasOferecidas.length > 0 && salasOferecidas.every(s => !s.livre)
+
+  // -- Quem atende, no horário ESCOLHIDO (R13) --------------------------------
+  // Com o horário escolhido pela pessoa (o campo, a grade, o clique na agenda),
+  // a lista tira quem não está livre nele — o choque ou o bloqueio. Com a hora
+  // só sugerida (o próximo livre de quem ela escolher, A20), todas aparecem: a
+  // hora segue a pessoa, e não o contrário (decisão do Claude, 26/11). A já
+  // escolhida fica, com o "Não vai ser agendado".
+  const chaveDeQuem = horaTocada && unidadeId && scheduledAtUTC && !carregandoUnidade ? `${unidadeId}|${scheduledAtUTC}|${duracaoMin}` : ''
+  const [quemNao, setQuemNao] = useState<{ chave: string; itens: { id: string; indisponivel: Indisponivel }[] } | null>(null)
+  useEffect(() => {
+    if (!chaveDeQuem) return
+    let vivo = true
+    quemNaoEstaLivreNoHorario(unidadeId, scheduledAtUTC, duracaoMin)
+      .then(itens => { if (vivo) setQuemNao({ chave: chaveDeQuem, itens }) })
+      // Sem a conta, a lista inteira (o servidor confere ao gravar).
+      .catch(() => { if (vivo) setQuemNao({ chave: chaveDeQuem, itens: [] }) })
+    return () => { vivo = false }
+  }, [chaveDeQuem, unidadeId, scheduledAtUTC, duracaoMin])
+  const indisponiveis = chaveDeQuem && quemNao?.chave === chaveDeQuem ? new Map(quemNao.itens.map(i => [i.id, i.indisponivel])) : null
+  const profissionaisNoHorario = dados.professionals.map(p => ({ ...p, livre: !indisponiveis?.has(p.id), indisponivel: indisponiveis?.get(p.id) ?? null }))
+  const profissionaisDaLista = soOQueEstaLivre(profissionaisNoHorario, profId)
+  const ninguemLivre = !!indisponiveis && profissionaisNoHorario.length > 0 && profissionaisNoHorario.every(p => !p.livre)
 
   // -- O plano com o mesmo procedimento (D-18, A68) --------------------------
   // A cliente tem plano proposto ou fechado com este procedimento: o agendar
@@ -440,7 +473,8 @@ export function AppointmentModal({
   // com outro atendimento dela. É aviso — o encaixe é permitido (§9.1), e o
   // choque o servidor recusa ao gravar.
   // O bloqueio pontual (decisão 3 da 7ª) entra aqui: o da profissional e o da
-  // sala escolhida — avisa, e o encaixe é permitido (princípio 2).
+  // sala escolhida. Não se marca nele (R07, o Heitor, 26/11: "se ta bloqueado
+  // não dá pra marcar"): a janela diz "Não vai ser agendado", como no choque.
   const chaveDosAvisos = profId && unidadeId && scheduledAtUTC
     ? `${unidadeId}|${profId}|${scheduledAtUTC}|${procedimentoDoAgendamento}|${duracaoMin}|${salaId}` : ''
   const [avisos, setAvisos] = useState<{ chave: string; foraDoHorario: string | null; conflito: string | null; bloqueio?: string | null } | null>(null)
@@ -468,24 +502,33 @@ export function AppointmentModal({
   // A recusa do choque de um horário que já não é o da tela (a pessoa trocou o
   // horário depois de recusada): não se repete — o horário novo tem o aviso dele.
   const recusaDeOutroHorario = !!state?.error?.startsWith('Este profissional já tem agendamento') && !!chaveDoEnvio && chaveDoEnvio !== chaveDosAvisos
+  // O que só avisa: o encaixe fora do horário (permitido).
   const avisosDoMomento = avisos && avisos.chave === chaveDosAvisos
-    ? [avisos.bloqueio ?? null, avisos.foraDoHorario].filter((x): x is string => !!x) : []
+    ? [avisos.foraDoHorario].filter((x): x is string => !!x) : []
+  // O bloqueio não é encaixe (R07): o servidor recusa, e o Confirmar desliga.
+  const bloqueioDoAviso = avisos && avisos.chave === chaveDosAvisos ? (avisos.bloqueio ?? null) : null
+  // R06 e R07: o motivo do Confirmar desligado, ao lado dele.
+  const motivoDoConfirmar = motivoDoConfirmarDesligado({ choque: !!conflitoDoAviso, bloqueio: !!bloqueioDoAviso, salaOcupada: !!salaOcupada })
   // A21 da 8ª simulação: o choque não é encaixe — o servidor RECUSA. A janela
   // diz "Não vai ser agendado" e oferece o próximo livre dela a partir do
   // horário escolhido (a régua de `computeAvailableSlots`, a do "próximo livre").
   const choque = recusadoPorChoque ? null : conflitoDoAviso
   // D5 da 32ª (AG-07): o "Usar o próximo livre" segue ali depois da recusa — a
   // conta parte do choque do aviso, com a recusa na tela ou não.
-  const chaveDoProximo = conflitoDoAviso ? chaveDosAvisos : ''
+  // R14 (o Heitor, 26/11, na página de perguntas: "Horarios, salas e pessoas não
+  // disponíveis não devem aparecer nas listas"): ele aparece em TODO "Não vai ser
+  // agendado" — o choque, o bloqueio e a sala escolhida ocupada —, e é livre da
+  // pessoa E da sala escolhida (era só no choque, e só da pessoa).
+  const chaveDoProximo = (conflitoDoAviso || bloqueioDoAviso || salaOcupada) ? chaveDosAvisos : ''
   const [proximoLivre, setProximoLivre] = useState<{ chave: string; quando: string | null } | null>(null)
   useEffect(() => {
     if (!chaveDoProximo) return
     let vivo = true
-    proximoHorarioLivre(unidadeId, profId, duracaoMin, scheduledAtUTC)
+    proximoHorarioLivre(unidadeId, profId, duracaoMin, scheduledAtUTC, salaId || null)
       .then(r => { if (vivo) setProximoLivre({ chave: chaveDoProximo, quando: r }) })
       .catch(() => { if (vivo) setProximoLivre({ chave: chaveDoProximo, quando: null }) })
     return () => { vivo = false }
-  }, [chaveDoProximo, unidadeId, profId, duracaoMin, scheduledAtUTC])
+  }, [chaveDoProximo, unidadeId, profId, duracaoMin, scheduledAtUTC, salaId])
   const proximo = proximoLivre && proximoLivre.chave === chaveDoProximo ? proximoLivre.quando : null
   const rotuloDoProximo = proximo
     ? (proximo.slice(0, 10) === localDT.slice(0, 10) ? proximo.slice(11, 16) : `${proximo.slice(8, 10)}/${proximo.slice(5, 7)} às ${proximo.slice(11, 16)}`)
@@ -513,7 +556,7 @@ export function AppointmentModal({
   // fora do expediente já tem o aviso dele (`foraDoHorario`).
   const horasDaGrade = gradeDoDia ? gradeDoCheckout(gradeDoDia.horarioDaUnidade ?? null, null, diaEscolhido).map(h => h.hora) : []
   const foraDaGrade = horasDaGrade.length > 0 && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(localDT)
-    && !horasDaGrade.includes(localDT.slice(11, 16)) && avisosDoMomento.length === 0
+    && !horasDaGrade.includes(localDT.slice(11, 16)) && avisosDoMomento.length === 0 && !bloqueioDoAviso
 
   // A38 da 24ª: o mínimo do campo anda com o relógio (era o da abertura).
   const relogio = useAgora() ?? agora
@@ -548,7 +591,8 @@ export function AppointmentModal({
           onSubmit={e => {
             e.preventDefault()
             // O Enter no campo não fura a espera da conferência (D9).
-            if (conferindoOHorario || carregandoSalas) return
+            // R06 e R07: nem o choque, nem o bloqueio (o Confirmar está desligado).
+            if (conferindoOHorario || carregandoSalas || motivoDoConfirmar) return
             const dados = new FormData(e.currentTarget)
             if (respostaJaExiste) dados.set('_jaExiste', respostaJaExiste)
             setChaveDoEnvio(chaveDosAvisos)
@@ -813,8 +857,14 @@ export function AppointmentModal({
             <Field label="Profissional *" htmlFor="ag-profissional">
               <select id="ag-profissional" name="professional_id" required className="field" disabled={carregandoUnidade} value={profId} onChange={e => setProfId(e.target.value)}>
                 <option value="">{carregandoUnidade ? 'Carregando…' : 'Selecione…'}</option>
-                {dados.professionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                {/* R13: só quem está livre no horário escolhido (e a já escolhida). */}
+                {profissionaisDaLista.map(p => <option key={p.id} value={p.id}>{rotuloDaEscolhida(p.name, p.livre ? null : p.indisponivel)}</option>)}
               </select>
+              {ninguemLivre && (
+                <p data-ninguem-livre role="status" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 4 }}>
+                  {NINGUEM_LIVRE_NO_HORARIO} Escolha outro horário para ver quem atende.
+                </p>
+              )}
               {/* Quem realiza (por-01): a agenda AVISA, não barra — o encaixe é da clínica. */}
               {naoRealiza && (
                 <p data-aviso-quem-realiza role="status" style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', marginTop: 4 }}>
@@ -833,14 +883,17 @@ export function AppointmentModal({
                   value={salaId} onChange={e => setSalaEscolhida(e.target.value)}>
                   {/* A13 da 19ª: enquanto a lista do horário carrega, o vazio não é "sem sala". */}
                   <option value="">{carregandoSalas && salaEscolhida === null ? 'Conferindo as salas…' : 'Sem sala definida'}</option>
-                  {salasOferecidas.map(r => (
-                    <option key={r.id} value={r.id}>{r.livre ? r.name : `${r.name} (ocupada)`}</option>
+                  {/* R13: só as livres no horário (e a já escolhida, que diz por que não está). */}
+                  {salasDaLista.map(r => (
+                    <option key={r.id} value={r.id}>{rotuloDaEscolhida(r.name, r.livre ? null : r.indisponivel ?? 'ocupada')}</option>
                   ))}
                 </select>
                 {semSalaLivre && (
                   <p data-aviso-da-sala role="status" style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', marginTop: 4 }}>
                     <AlertTriangle size={13} aria-hidden="true" style={{ flexShrink: 0, marginTop: 1 }} />
-                    {salasOferecidas.length === 1 ? 'A sala deste procedimento está ocupada' : 'As salas deste procedimento estão ocupadas'} nesse horário: o agendamento vai sem sala.
+                    {salasDoServidor?.doProcedimento
+                      ? (salasOferecidas.length === 1 ? 'A sala deste procedimento não está livre' : 'Nenhuma sala deste procedimento está livre')
+                      : 'Nenhuma sala está livre'} nesse horário: o agendamento vai sem sala.
                   </p>
                 )}
               </Field>
@@ -861,7 +914,7 @@ export function AppointmentModal({
               </p>
             )}
             <input type="hidden" name="scheduled_at" value={scheduledAtUTC} />
-            {(avisosDoMomento.length > 0 || choque) && (
+            {(avisosDoMomento.length > 0 || choque || bloqueioDoAviso || salaOcupada) && (
               <div data-aviso-do-horario role="status" style={{
                 display: 'flex', flexDirection: 'column', gap: 4, marginTop: 2,
                 background: 'var(--warning-soft)', borderRadius: 'var(--radius-field-token)', padding: '8px 12px',
@@ -873,6 +926,34 @@ export function AppointmentModal({
                     </span>
                     {rotuloDoProximo && proximo && (
                       <button type="button" className="btn-secondary" style={{ alignSelf: 'flex-start', fontSize: 'var(--text-xs-sz)' }}
+                        onClick={() => escolherHora(proximo)}>
+                        Usar o próximo livre: {rotuloDoProximo}
+                      </button>
+                    )}
+                  </div>
+                )}
+                {bloqueioDoAviso && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <span data-bloqueio-do-horario style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-bold)' }}>
+                      <Ban size={13} style={{ flexShrink: 0, marginTop: 1 }} aria-hidden /> Não vai ser agendado: {bloqueioDoAviso}
+                    </span>
+                    {/* R14: o próximo livre também no bloqueio (era só no choque). */}
+                    {!conflitoDoAviso && rotuloDoProximo && proximo && (
+                      <button type="button" data-proximo-livre-do-bloqueio className="btn-secondary" style={{ alignSelf: 'flex-start', fontSize: 'var(--text-xs-sz)' }}
+                        onClick={() => escolherHora(proximo)}>
+                        Usar o próximo livre: {rotuloDoProximo}
+                      </button>
+                    )}
+                  </div>
+                )}
+                {/* R13: a sala JÁ escolhida que ficou ocupada no horário novo (a lista não a oferece mais). */}
+                {salaOcupada && !conflitoDoAviso && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <span data-sala-ocupada style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-bold)' }}>
+                      <Ban size={13} style={{ flexShrink: 0, marginTop: 1 }} aria-hidden /> Não vai ser agendado: {salaOcupada} já está ocupada nesse horário.
+                    </span>
+                    {!bloqueioDoAviso && rotuloDoProximo && proximo && (
+                      <button type="button" data-proximo-livre-da-sala className="btn-secondary" style={{ alignSelf: 'flex-start', fontSize: 'var(--text-xs-sz)' }}
                         onClick={() => escolherHora(proximo)}>
                         Usar o próximo livre: {rotuloDoProximo}
                       </button>
@@ -950,10 +1031,19 @@ export function AppointmentModal({
                 {novoContato ? 'Informe nome e telefone com DDD' : 'Selecione um cliente para continuar'}
               </span>
             )}
+            {/* R06 e R07 (o Heitor, 26/11): a janela já diz "Não vai ser agendado"
+                (o choque ou o bloqueio) — o Confirmar desliga, com o motivo ao
+                lado (o detalhe fica no aviso do campo, não se repete). O encaixe
+                fora do horário não desliga: é permitido. */}
+            {motivoDoConfirmar && (
+              <span data-motivo-do-confirmar style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginRight: 4 }}>
+                {motivoDoConfirmar}
+              </span>
+            )}
             <button type="button" onClick={onClose} className="btn-secondary">Cancelar</button>
             <button
               type="submit"
-              disabled={pending || !podeAgendar || carregandoSalas || conferindoOHorario || conferindoAAbertura || !!credito?.recusa}
+              disabled={pending || !podeAgendar || carregandoSalas || conferindoOHorario || conferindoAAbertura || !!credito?.recusa || !!motivoDoConfirmar}
               className="btn-primary"
               style={{ opacity: podeAgendar ? 1 : 0.5 }}
             >

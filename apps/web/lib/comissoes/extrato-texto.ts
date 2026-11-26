@@ -71,13 +71,14 @@ function regraDoProdutoEmTexto(l: LancamentoDoExtrato, item: { nome: string; qua
 }
 
 /**
- * A17 da 11ª: de onde veio o percentual da comissão de VENDA — "3% — da
- * Tatiane" (a da pessoa), "10% — do pacote" / "do produto" (a do item), "5% —
- * da clínica". A linha de antes (sem a origem gravada) diz só a regra.
+ * A17 da 11ª: de onde veio o percentual da comissão de VENDA — "3% — de
+ * Tatiane" (a da pessoa; "— de <nome>" para todos: o Heitor, 26/11, R01),
+ * "10% — do pacote" / "do produto" (a do item), "5% — da rede". A linha de
+ * antes (sem a origem gravada) diz só a regra.
  */
 export function regraDoLancamento(l: LancamentoDoExtrato, nomeDaPessoa: string | null): string {
   const regra = l.origem === 'PRODUTO' && l.itemDoProduto ? regraDoProdutoEmTexto(l, l.itemDoProduto) : regraEmTexto(l)
-  if (l.regraDe === 'PESSOA') return `${regra} — da ${nomeDaPessoa ?? 'pessoa'}`
+  if (l.regraDe === 'PESSOA') return nomeDaPessoa ? `${regra} — de ${nomeDaPessoa}` : `${regra} — da pessoa`
   if (l.regraDe === 'ITEM') return `${regra} — ${l.origem === 'PRODUTO' ? 'do produto' : 'do pacote'}`
   if (l.regraDe === 'CLINICA') return `${regra} — da rede`
   return regra

@@ -1774,6 +1774,45 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-26 (3) — As respostas do Heitor de 26/11 (a página de perguntas, R01 a R11)
+
+O Heitor respondeu as perguntas da 31ª e da 32ª na página de perguntas, e três no chat ("r09 ok, r10 pode fazer, r07 se
+ta bloqueado não dá pra marcar"). As perguntas para ele agora moram sempre na página (o Heitor, 26/11: "Coloca as
+perguntas que dependem de mim em um artefato, fica mais facil de ler e responder, faz isso sempre"). O detalhe, com cada
+teste alterado e a resposta que o mudou, está em `docs/para-o-heitor.md` §12.
+
+**O que mudou no sistema.**
+- **Agenda.**
+  - O horário bloqueado não se marca mais (R07). O servidor recusa no agendar, no remarcar, no trocar quem atende, no
+    mudar de unidade, no checkout do plano, no repasse e no Copilot (`recusaDoBloqueioNoHorario`,
+    `lib/appointments/core.ts`). A tela diz quem está bloqueado e até quando.
+  - Fora do horário da pessoa e unidade fechada seguem como encaixe.
+  - O "Confirmar" fica desligado, com o motivo, no choque e no bloqueio, no agendar e no remarcar (R06).
+- **Vendas e estoque.**
+  - "— de <nome>" na comissão (R01).
+  - "Pote" nas embalagens (R03).
+  - O "Dar entrada no Estoque" só com o Estoque em Gerenciar. A comanda não acrescenta nem recebe produto acima do saldo
+    (R04).
+  - O estorno parcial no cartão sem o porquê (R08, `20261211100001`).
+  - O link do CSV fica no Fechamento, para quem tem o Financeiro em Ver (R09, FC-14).
+- **Acesso da cliente.** "enviamos para esse e-mail o link para criar a senha" (R02).
+- **Inbox e automações.**
+  - O "Tentar de novo" na bolha que não saiu (R11, `lib/inbox/reenviar.ts`). A mesma linha volta a sair, e a resposta
+    conta uma vez, quando o provedor aceita.
+  - O "Abrir pelo número padrão" na automação (R10, AX-06). Na API oficial, com um modelo aprovado do número padrão.
+- **Testes.** O do filtro de tags espera a aba "A pagar" (R05).
+
+- **As listas só mostram o que está livre** (R13 e R14, o Heitor, 26/11: "Só mostra os horarios, salas e pessoas que
+  estão livres").
+  - Saem da grade de horários e das listas de sala e de pessoa: o ocupado, o bloqueado e a sala ocupada. Vale no
+    agendar, nas sessões, no checkout, no trocar quem atende, no mudar de unidade, no agendar pelo CRM e no repasse da
+    desativação.
+  - O "Usar o próximo livre" pula a sala e aparece também no bloqueio.
+  - O encaixe fora do horário continua aparecendo (leitura do Claude; a R15 na página confirma).
+  - A R12 confirmou o modelo da Meta fora das 24 horas.
+
+**Em aberto, na página:** R15 (o encaixe nas listas).
+
 ### 2026-11-26 (2) — A 32ª simulação e as correções dela
 
 O laço segue (o Heitor, 25/11: "quando acabar essa roda já segue as outras e assim vai"). Cinco redes de teste novas: CRM,

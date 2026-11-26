@@ -10,6 +10,12 @@ import { diaEmQueAUnidadeAbre } from './apoio/datas'
  * o formulário ao fim da action — com erro ou não —, e a observação digitada
  * sumia; a recepção tinha de redigitar tudo para tentar outro horário. Agora
  * o envio é `onSubmit` + `startTransition`, como o cadastro de cliente.
+ *
+ * R06 (o Heitor, 26/11, na página de perguntas: "Desliga o botão, e os três
+ * testes conferem o botão desligado (a proposta)"): o choque que a janela já
+ * mostra desliga o Confirmar. A recusa do servidor chega então pelo choque que
+ * nasce DEPOIS da conferência do horário (outra pessoa agendou no meio) — é
+ * ela que este caso monta para provar que os campos ficam.
  */
 
 const marca = Date.now().toString(36)
@@ -18,6 +24,7 @@ let rede: OutraRede | null = null
 let recepcao: MembroDeTeste | null = null
 let slug = ''
 let cliente = ''
+let ocupante = ''
 const DIA = diaEmQueAUnidadeAbre(1)
 
 test.use({ storageState: { cookies: [], origins: [] } })
@@ -29,6 +36,7 @@ test.beforeAll(async () => {
   expect((await db().from('procedures').update({ duration_min: 60 }).eq('id', rede.procedureId)).error).toBeNull()
   cliente = await rede.criarCliente('Cliente do modal')
   const outra = await rede.criarCliente('Quem já ocupa')
+  ocupante = outra
   // A profissional já atende às 10:00.
   expect((await db().from('appointments').insert({
     branch_id: rede.branchId, client_id: outra, procedure_id: rede.procedureId, professional_id: rede.professionalId,
@@ -63,14 +71,27 @@ test('o conflito recusado não apaga o que foi digitado no modal', async ({ brow
     await janela.getByLabel('Profissional *').selectOption(rede!.professionalId)
     await janela.getByLabel('Data e hora *').fill(`${DIA}T10:30`)
     await janela.getByLabel('Observações internas').fill('Prefere a sala do fundo')
+    // R06: o choque à vista desliga o Confirmar, com o motivo ao lado.
+    await expect(janela.locator('[data-choque-do-horario]')).toContainText('Não vai ser agendado')
+    await expect(janela.getByRole('button', { name: 'Confirmar agendamento' })).toBeDisabled()
+    await expect(janela.locator('[data-motivo-do-confirmar]')).toContainText('Escolha outro horário')
+
+    // O choque que nasce depois da conferência: o horário das 16:30 está livre
+    // quando a janela confere, e outra pessoa agenda às 16:00 antes do Confirmar.
+    await janela.getByLabel('Data e hora *').fill(`${DIA}T16:30`)
+    await expect(janela.getByRole('button', { name: 'Confirmar agendamento' })).toBeEnabled()
+    expect((await db().from('appointments').insert({
+      branch_id: rede!.branchId, client_id: ocupante, procedure_id: rede!.procedureId, professional_id: rede!.professionalId,
+      scheduled_at: new Date(`${DIA}T16:00:00-03:00`).toISOString(), duration_min: 60, price: 0, status: 'SCHEDULED', source: 'INTERNAL',
+    })).error).toBeNull()
     await janela.getByRole('button', { name: 'Confirmar agendamento' }).click()
 
-    // A recusa do choque (A26: uma mensagem só, com o detalhe do aviso).
+    // A recusa do choque (A26: uma mensagem só).
     await expect(janela.getByRole('alert')).toContainText(/Não foi agendado|já tem agendamento nesse horário/)
     await expect(janela.getByLabel('Observações internas')).toHaveValue('Prefere a sala do fundo')
     await expect(janela.getByLabel('Procedimento *')).toHaveValue(rede!.procedureId)
     await expect(janela.getByLabel('Profissional *')).toHaveValue(rede!.professionalId)
-    await expect(janela.getByLabel('Data e hora *')).toHaveValue(`${DIA}T10:30`)
+    await expect(janela.getByLabel('Data e hora *')).toHaveValue(`${DIA}T16:30`)
 
     // Corrige só a hora e agenda: tudo o mais foi junto.
     await janela.getByLabel('Data e hora *').fill(`${DIA}T14:00`)

@@ -11,7 +11,7 @@ import type { BlocoOcupado } from '@/lib/agenda/horario'
  * lia o bloqueio; a "Minha agenda" mostrava "Horário livre" dentro das férias;
  * a ocupação contava o tempo bloqueado como disponível. Puro: roda no
  * navegador. O servidor confere de novo ao gravar (`horarioOcupado`, que
- * recusa o choque; o bloqueio é aviso — o encaixe da equipe é permitido).
+ * recusa o choque, e `recusaDoBloqueioNoHorario`, que recusa o bloqueio — R07).
  */
 
 export interface AgendamentoQueOcupa { scheduledAt: string; durationMin: number; clientName: string | null }

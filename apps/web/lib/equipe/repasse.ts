@@ -5,7 +5,7 @@ import type { TenantContext } from '@estetica-os/types'
 import type { createAdminClient } from '@/lib/supabase/admin'
 import { alcancaUnidade, can } from '@/lib/auth'
 import { gravar, ler, lerTodas } from '@/lib/db'
-import { conferirPecasDoAgendamento, horarioOcupado, podemOcuparDesde } from '@/lib/appointments/core'
+import { conferirPecasDoAgendamento, horarioOcupado, podemOcuparDesde, recusaDoBloqueioNoHorario } from '@/lib/appointments/core'
 import { logHistory, loadApptCtx, fmtDateTime } from '@/lib/appointments/avisos'
 import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { notifyUser } from '@/lib/notifications/notify'
@@ -75,6 +75,8 @@ export interface AgendamentoParaRepassar {
   livres: PessoaDoRepasse[]
   /** Quem atende na unidade, mas já tem atendimento no horário. */
   ocupadas: PessoaDoRepasse[]
+  /** Quem atende na unidade, mas está com o horário bloqueado (R07: não recebe; R13/R14: não aparece na lista). */
+  bloqueadas: PessoaDoRepasse[]
 }
 
 export interface OportunidadeParaRepassar { id: string; nome: string; etapa: string | null }
@@ -182,6 +184,7 @@ export async function pendenciasDoMembro(
 
   // Os horários de quem pode receber, de uma vez (não um por par).
   const ocupados = new Map<string, { ini: number; fim: number }[]>()
+  const bloqueados = new Map<string, { ini: number; fim: number }[]>()
   if (ags.length && equipe.length) {
     // Com qualquer duração (25/11): o de mais de 12 h que começou antes também ocupa.
     const desde = podemOcuparDesde(new Date(ags[0]!.scheduled_at).getTime())
@@ -202,6 +205,21 @@ export async function pendenciasDoMembro(
       lista.push({ ini, fim: fimDaOcupacao(a) })
       ocupados.set(a.professional_id, lista)
     }
+    // Os bloqueios de quem pode receber, na mesma janela (R07, o Heitor, 26/11: "se ta bloqueado não dá pra
+    // marcar"; R13/R14: "Só mostra os horarios, salas e pessoas que estão livres"). Era só o servidor recusar
+    // ao repassar, com a pessoa bloqueada na lista como livre.
+    const bloqueios = await lerTodas((de, ate) => admin.from('agenda_bloqueios')
+      .select('id, professional_id, inicio, fim')
+      .eq('tenant_id', ctx.tenantId!)
+      .in('professional_id', equipe.map(p => p.id))
+      .lt('inicio', fim).gt('fim', new Date(ags[0]!.scheduled_at).toISOString())
+      .order('inicio').order('id').range(de, ate), 'carregar os bloqueios de quem pode receber') as unknown as
+      { professional_id: string; inicio: string; fim: string }[]
+    for (const b of bloqueios) {
+      const lista = bloqueados.get(b.professional_id) ?? []
+      lista.push({ ini: new Date(b.inicio).getTime(), fim: new Date(b.fim).getTime() })
+      bloqueados.set(b.professional_id, lista)
+    }
   }
 
   const unidadesDosAgendamentos = new Set(ags.map(a => a.branch_id))
@@ -213,6 +231,7 @@ export async function pendenciasDoMembro(
       const realizaEste = (p: { id: string }) => realiza(realizam.get(a.procedure_id ?? ''), p.id)
       const daUnidade = equipe.filter(p => atendeNaUnidade(p, a.branch_id) && realizaEste(p))
       const bate = (p: { id: string }) => (ocupados.get(p.id) ?? []).some(o => bateNaOcupacao(ini, fim, o.ini, o.fim))
+      const bloqueada = (p: { id: string }) => (bloqueados.get(p.id) ?? []).some(o => o.ini < fim && o.fim > ini)
       return {
         id: a.id, quando: a.scheduled_at, duracaoMin: a.duration_min || 60,
         cliente: a.clients?.name ?? 'Cliente', procedimento: a.procedures?.name ?? 'Atendimento', unidade: a.branches?.name ?? '', unidadeId: a.branch_id,
@@ -220,8 +239,9 @@ export async function pendenciasDoMembro(
         emOutraUnidade: equipe.filter(p => !atendeNaUnidade(p, a.branch_id) && realizaEste(p) && (p.atende_em ?? []).length && membroAlcancaAUnidade(p, a.branch_id))
           .map(p => ({ id: p.id, nome: p.name, unidades: (p.atende_em ?? []).map(u => nomeDaUnidade.get(u)).filter((x): x is string => !!x) }))
           .filter(p => p.unidades.length),
-        livres:   daUnidade.filter(p => !bate(p)).map(p => ({ id: p.id, nome: p.name })),
+        livres:   daUnidade.filter(p => !bate(p) && !bloqueada(p)).map(p => ({ id: p.id, nome: p.name })),
         ocupadas: daUnidade.filter(bate).map(p => ({ id: p.id, nome: p.name })),
+        bloqueadas: daUnidade.filter(p => !bate(p) && bloqueada(p)).map(p => ({ id: p.id, nome: p.name })),
       }
     }),
     podeRepassarAgendamentos: podeRepassarAgendamentos(ctx),
@@ -302,6 +322,11 @@ export async function aplicarRepasse(
         falhas.push(`O agendamento de ${quando} não foi repassado: ${para.name} já tem atendimento nesse horário.`)
         continue
       }
+      // Nem para quem está com o horário bloqueado (R07, o Heitor, 26/11: "se ta bloqueado não dá pra marcar").
+      const bloqueado = await recusaDoBloqueioNoHorario(admin, {
+        professionalId: para.id, inicio: new Date(ag.scheduled_at), duracaoMin: ag.duration_min || 60, branchId: ag.branch_id,
+      })
+      if (bloqueado) { falhas.push(`O agendamento de ${quando} não foi repassado: ${bloqueado}`); continue }
       // A mesma gravação da troca de profissional da agenda, conferindo que
       // ainda é do membro (outra pessoa pode ter mexido no meio).
       const trocados = await gravar(admin.from('appointments')

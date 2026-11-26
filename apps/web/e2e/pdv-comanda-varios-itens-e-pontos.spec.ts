@@ -415,3 +415,35 @@ test('FD2a na ficha: o voucher de desconto diz que se usa no PDV; FD2c: a Fideli
     await config.limpar()
   }
 })
+
+// R04 (o Heitor, 26/11, na página de perguntas: "e tb não deixa realizar a venda de produto sem
+// estoque"): a comanda não passa do que há na unidade — o "Acrescentar" e o "+" desligam com o
+// motivo (a recusa do servidor segue provada pela action, no caso das recusas acima).
+test('R04: na comanda, o produto não passa do estoque da unidade — o "Acrescentar" e o "+" desligam com o motivo', async ({ browser }) => {
+  const cliente = await rede!.criarCliente('Sem estoque')
+  const { comanda } = await atendimentoIniciado(cliente)
+  const ha = await estoque(serum)
+  expect(ha, 'há sérum na unidade').toBeGreaterThan(0)
+  await como(balcao!, browser, async p => {
+    await p.goto(`/${slug}/pdv?comanda=${comanda}`)
+    const detalhe = p.locator('[data-comanda-aberta]')
+    await detalhe.getByRole('button', { name: 'Acrescentar produto' }).click()
+    const form = detalhe.locator('[data-acrescentar-produto]')
+    await form.getByLabel('Produto a acrescentar').selectOption(serum)
+    await form.getByLabel('Quantidade').fill(String(ha + 1))
+    await expect(form.locator('[data-falta-ao-acrescentar]')).toContainText(`Só há ${ha} un de`)
+    await expect(form.getByRole('button', { name: 'Acrescentar', exact: true })).toBeDisabled()
+    await expect(form.locator('[data-motivo-do-botao]')).toHaveText('Falta estoque nesta unidade.')
+    // Tudo o que há entra; o "+" da linha desliga.
+    await form.getByLabel('Quantidade').fill(String(ha))
+    await form.getByRole('button', { name: 'Acrescentar', exact: true }).click()
+    const item = detalhe.locator('[data-item-da-comanda]', { hasText: nomeSerum })
+    await expect(item.locator('[data-quantidade-do-item]')).toContainText(String(ha))
+    await expect(item.getByRole('button', { name: `Um ${nomeSerum} a mais` })).toBeDisabled()
+    await expect(detalhe.locator('[data-falta-de-estoque]')).toHaveCount(0)
+    await item.getByRole('button', { name: `Tirar ${nomeSerum}` }).click()
+    await expect(item).toHaveCount(0)
+  })
+  expect(await itensDa(comanda), 'nada ficou na comanda').toEqual([])
+  expect(await estoque(serum), 'o estoque não mudou').toBe(ha)
+})

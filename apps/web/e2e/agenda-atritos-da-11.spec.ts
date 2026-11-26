@@ -86,7 +86,10 @@ test('A23: na agenda da rede, o bloqueio de uma profissional é uma faixa estrei
   })
 })
 
-test('A24: remarcar para um horário que já passou avisa — e deixa', async ({ browser }) => {
+// O Heitor, 25/11: "remarcar para o passado é possível desde que não tenha passado do horario já" (o horário que
+// já passou recusa; era só aviso desde a A24); e 26/11, na página de perguntas (R06): "Desliga o botão" quando a
+// janela já diz que não vai ser feito. O Confirmar fica desligado, com o motivo ao lado.
+test('A24: remarcar para um horário que já passou diz que já passou, e o Confirmar fica desligado com o motivo', async ({ browser }) => {
   const ag = await agendar(rede.professionalId, new Date(`${DIA}T10:00:00-03:00`).toISOString())
   await como(browser, recepcao, async p => {
     await p.goto(`/${slug}/agenda?date=${DIA}`)
@@ -95,7 +98,8 @@ test('A24: remarcar para um horário que já passou avisa — e deixa', async ({
     await janela.getByRole('button', { name: 'Remarcar', exact: true }).click()
     await janela.locator('input[type="datetime-local"]').fill(`${ONTEM}T10:00`)
     await expect(janela.locator('[data-aviso-do-remarcar]')).toContainText('já passou')
-    await expect(janela.getByRole('button', { name: 'Confirmar novo horário' })).toBeEnabled()
+    await expect(janela.getByRole('button', { name: 'Confirmar novo horário' })).toBeDisabled()
+    await expect(janela.locator('[data-motivo-do-confirmar]')).toContainText('Escolha outro horário: este já passou.')
   })
 })
 

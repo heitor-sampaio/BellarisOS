@@ -239,12 +239,15 @@ describe('8. A desistência no meio não devolve a sessão paga', () => {
   })
 })
 
-describe('9. O bloqueio pelo Copilot avisa e pede confirmação', () => {
-  it('não recusa mais', () => {
+// R07 (o Heitor, 26/11, no chat, sobre a R07: "r07 se ta bloqueado não dá pra
+// marcar"): era "avisa e pede confirmação" (decisão do Claude, 18/11, pelo
+// princípio 2). O Copilot recusa como o núcleo, com a mesma frase.
+describe('9. O bloqueio pelo Copilot recusa, como a agenda', () => {
+  it('recusa no cartão, pela frase do núcleo', () => {
     const f = fonte('lib/copilot/ferramentas/agenda-escrita.ts')
     expect(f).not.toContain('o encaixe num horário bloqueado é pela agenda')
-    expect(f).not.toMatch(/if \(bloqueado\) return \{ erro/)
-    expect(f).toContain('avisoDoBloqueado')
+    expect(f).toMatch(/if \(bloqueado\) return \{ erro: bloqueado \}/)
+    expect(f).not.toContain('avisoDoBloqueado')
   })
 })
 

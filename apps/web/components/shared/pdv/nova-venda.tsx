@@ -23,6 +23,8 @@ export interface VendaDoPdv {
   equipe:        MembroDaVenda[]
   aReceber:      AtendimentoAReceber[]
   podeAgendar:   boolean
+  /** R04 (o Heitor, 26/11): o "Dar entrada no Estoque" da falta, só com o Estoque em Gerenciar. */
+  podeDarEntradaNoEstoque: boolean
   /** CX1: as parcelas do crediário e os a receber dela no caixa desta unidade. */
   emAberto:      ParcelaEmAberto[]
   /** FD2a: o saldo de pontos e os vouchers de desconto que a cliente pode usar nesta venda (nulo: nada a oferecer). */
@@ -99,7 +101,7 @@ export function NovaVenda({ unidadeId, slugDaUnidade, venda, aviso, unidades, hr
             <ParcelasEmAberto parcelas={venda.emAberto} slug={slugDaUnidade} />
             <VendaNaTela key={venda.cliente.id} clienteId={venda.cliente.id} branchId={unidadeId}
               pacotes={venda.pacotes} procedimentos={venda.procedimentos} produtos={venda.produtos} equipe={venda.equipe}
-              podeAgendar={venda.podeAgendar} aReceber={venda.aReceber} fidelidade={venda.fidelidade} contratoDoPacote={venda.contratoDoPacote ?? null} onFim={aoVender} />
+              podeAgendar={venda.podeAgendar} podeDarEntradaNoEstoque={venda.podeDarEntradaNoEstoque} aReceber={venda.aReceber} fidelidade={venda.fidelidade} contratoDoPacote={venda.contratoDoPacote ?? null} onFim={aoVender} />
           </>
         ) : (
           <>

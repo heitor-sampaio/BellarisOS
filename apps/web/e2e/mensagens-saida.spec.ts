@@ -49,6 +49,8 @@ async function comoSdr(browser: Browser) {
       chamarAcao(page, 'actions/inbox.ts', 'sendMessage', '/admin/inbox', [conversa, texto]),
     editar: (mensagem: string, texto: string) =>
       chamarAcao(page, 'actions/inbox.ts', 'editMessage', '/admin/inbox', [mensagem, texto]),
+    tentarDeNovo: (mensagem: string) =>
+      chamarAcao(page, 'actions/inbox.ts', 'reenviarMensagem', '/admin/inbox', [mensagem]),
     fechar: () => ctx.close(),
   }
 }
@@ -181,6 +183,85 @@ test.describe.serial('mensagens de saída', () => {
       expect(depoisDaAceita.first_response_seconds, 'a 1ª resposta é a aceita').toBeGreaterThanOrEqual(59)
     } finally {
       await apagarConversas([conversa])
+    }
+  })
+
+  // R11 (o Heitor, 26/11, na página de perguntas: "Está no escopo: o botão
+  // 'Tentar de novo' na bolha que não saiu"): a MESMA linha sai de novo, sem
+  // bolha nova, e a régua das respostas conta uma vez só.
+  test('"Tentar de novo": a mesma mensagem sai, sem bolha nova, e conta como resposta uma vez', async ({ browser }) => {
+    const b = db()
+    const tenant = await tenantId()
+    const telefone = '5548' + String(Date.now() + 17).slice(-9)
+    const { data: conv, error } = await b.from('conversations').insert({
+      tenant_id: tenant, status: 'open', channel: 'whatsapp', provider: 'uazapi',
+      whatsapp_number_id: f!.caixa, contact_name: `${PREFIXO} De novo ${marca}`,
+      contact_phone: telefone, contact_external_id: telefone, contact_aliases: [telefone],
+    }).select('id').single<{ id: string }>()
+    expect(error, 'criar a conversa').toBeNull()
+    const conversa = conv!.id
+    const estado = async () => (await b.from('conversations')
+      .select('awaiting_since, first_response_seconds').eq('id', conversa).single()).data!
+    try {
+      const { error: e1 } = await b.from('messages').insert({
+        conversation_id: conversa, tenant_id: tenant, direction: 'inbound', content: 'oi, ainda tem vaga?',
+        channel: 'whatsapp', status: 'delivered', external_id: `in-dn-${marca}`, whatsapp_number_id: f!.caixa,
+        created_at: new Date(Date.now() - 60_000).toISOString(),
+      })
+      expect(e1, 'a mensagem da cliente').toBeNull()
+
+      f!.falsa.modo = 'erro'
+      let sdr = await comoSdr(browser)
+      try { await sdr.enviar(conversa, `${PREFIXO} de novo ${marca}`) } finally { await sdr.fechar(); f!.falsa.modo = 'ok' }
+      const [falhada] = await mensagensDa(conversa)
+      expect(falhada).toMatchObject({ status: 'failed' })
+      expect((await estado()).first_response_seconds, 'a não enviada não conta').toBeNull()
+
+      const antes = f!.falsa.para('/send/text').length
+      sdr = await comoSdr(browser)
+      try {
+        const r = await sdr.tentarDeNovo(falhada!.id as string)
+        expect(r.texto, `chegou à action: ${r.texto.slice(0, 200)}`).not.toContain('Server action not found')
+        const outra = await sdr.tentarDeNovo(falhada!.id as string)
+        expect(outra.texto, 'a que já saiu não sai duas vezes').toContain('Esta mensagem já saiu.')
+      } finally { await sdr.fechar() }
+
+      const saidas = f!.falsa.para('/send/text')
+      expect(saidas, 'o provedor recebeu uma vez').toHaveLength(antes + 1)
+      expect(saidas.at(-1)!.corpo).toMatchObject({ number: telefone, text: `${PREFIXO} de novo ${marca}` })
+      const depois = await mensagensDa(conversa)
+      expect(depois, 'a mesma linha, sem bolha nova').toHaveLength(1)
+      expect(depois[0]).toMatchObject({ id: falhada!.id, status: 'sent', whatsapp_number_id: f!.caixa, sent_by_id: f!.sdr.userId })
+      const respondida = await estado()
+      expect(respondida.awaiting_since, 'a reenviada responde').toBeNull()
+      expect(respondida.first_response_seconds, 'a 1ª resposta é a do reenvio').toBeGreaterThanOrEqual(59)
+    } finally {
+      await apagarConversas([conversa])
+    }
+  })
+
+  test('"Tentar de novo" só para quem pode mandar: quem só vê o CRM recebe a recusa, e nada sai', async ({ browser }) => {
+    const b = db()
+    const tenant = await tenantId()
+    const so = await criarMembro(`saidave${marca}`, { rotulo: 'Só vê o CRM', permissoes: [{ modulo: 'crm', nivel: 'VIEW' }] })
+    const { data: m, error } = await b.from('messages').insert({
+      conversation_id: f!.conversa, tenant_id: tenant, direction: 'outbound', content: `${PREFIXO} recusada ${marca}`,
+      channel: 'whatsapp', status: 'failed', whatsapp_number_id: f!.caixa,
+    }).select('id').single<{ id: string }>()
+    expect(error, 'a mensagem que não saiu').toBeNull()
+    const ctx = await browser.newContext({ storageState: so.estado })
+    const page = await ctx.newPage()
+    try {
+      const antes = f!.falsa.para('/send/text').length
+      const r = await chamarAcao(page, 'actions/inbox.ts', 'reenviarMensagem', '/admin/inbox', [m!.id])
+      expect(r.texto, r.texto.slice(0, 200)).toContain('Seu cargo não responde conversas.')
+      expect(f!.falsa.para('/send/text')).toHaveLength(antes)
+      const linha = (await b.from('messages').select('status').eq('id', m!.id).single()).data!
+      expect(linha.status, 'segue "Não enviada"').toBe('failed')
+    } finally {
+      await ctx.close()
+      await b.from('messages').delete().eq('id', m!.id)
+      await so.limpar()
     }
   })
 

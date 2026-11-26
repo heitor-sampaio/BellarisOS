@@ -48,7 +48,9 @@
   senha" (`/auth/confirm` → `/update-password`), mandado pelo cliente de
   serviço depois de a ficha ligar (`ligarLoginAoCliente`). Nenhuma senha
   aparece; o aviso diz à equipe que o documento não foi aceito e que o
-  e-mail saiu — ou, se não saiu, que o "Esqueci a senha" o manda de novo
+  e-mail saiu ("enviamos para esse e-mail o link para criar a senha": o
+  Heitor, 26/11, página de perguntas, R02; era "enviamos a ele o e-mail")
+  — ou, se não saiu, que o "Esqueci a senha" o manda de novo
   (`avisoDoAcessoCriado` com `emailParaCriarSenha`). Vale no cadastro, na aba
   Dados e no Copilot (`criarLoginDoCliente`, `lib/clients/acesso.ts`; o
   Copilot responde com o mesmo aviso, e o cartão diz que, recusado o
@@ -2008,6 +2010,39 @@ o contato junto.
 - **A bolha que falhou aparece uma vez** (A3 da 32ª; princípio 3): na falha,
   a otimista dá lugar à mensagem gravada que a action devolve, com o id real
   (`trocarOtimista`, `lib/inbox/bolha-otimista.ts`).
+- **"Tentar de novo" na bolha que não saiu** (o Heitor, 26/11, página de
+  perguntas, R11: "Está no escopo: o botão 'Tentar de novo' na bolha que não
+  saiu"; IN-18). A "Não enviada" de saída tem o botão `[data-tentar-de-novo]`,
+  só para quem pode mandar naquela conversa (o CRM em Gerenciar, a mesma
+  régua do campo de resposta); quem só vê não tem o botão, e a action
+  (`reenviarMensagem`, `actions/inbox.ts`) recusa: "Seu cargo não responde
+  conversas.". As travas são as de um envio comum: o recurso do plano,
+  `bloqueioDoSuporte`, a mensagem ao alcance (`mensagemAoAlcance`: a rede, a
+  conversa e as caixas do cargo), a conversa encerrada ou de número removido
+  não reenvia, e a janela de 24 h medida na caixa por onde sai
+  (`ultimoInboundNaCaixa`). O núcleo é `reenviarNaConversa`
+  (`lib/inbox/reenviar.ts`):
+  - sai a MESMA mensagem (texto, mídia com a legenda, resposta citada; o
+    modelo aprovado com os valores refeitos do texto gravado,
+    `valoresDoTextoDoModelo`) pelo MESMO número; se ele saiu do ar ou foi
+    removido, pelo da conversa (`numeroDoReenvio`,
+    `lib/inbox/numero-do-reenvio.ts`). O número de outra pessoa (nem o dela,
+    nem o da conversa) não se usa: a tela diz para escrever de novo
+    (decisão do Claude, 26/11, pela regra do número ligado, `whatsapp-push.md`
+    §9.8.0);
+  - **sem bolha nova**: a mesma linha passa de `failed` a `sending`
+    (reivindicada pelo `status = 'failed'`: dois cliques, um envio só — o
+    segundo ouve "Esta mensagem já está saindo." ou "Esta mensagem já
+    saiu.") e a `sent` com a hora do reenvio; a bolha vai ao fim da conversa
+    (decisões do Claude, 26/11);
+  - a 1ª resposta e o "aguardando" contam UMA vez, quando ela passa a aceita
+    (`on_mensagem_aceita`, migration `20261210100001`, acima); o fato
+    "mensagem enviada" não se emite de novo (decisão do Claude, 26/11: a
+    automação já viu a mensagem quando ela foi escrita);
+  - o provedor recusou de novo: volta a "Não enviada", com o motivo
+    (`falhaDoEnvio`).
+  Prova: `tests/inbox-tentar-de-novo.test.ts`, `e2e/mensagens-saida.spec.ts`
+  ("Tentar de novo").
 - **O painel da conversa acompanha a linha do tempo** (A4 da 32ª; AG-18):
   a linha nova de `lead_events` marca o sinal de cada conversa da pessoa da
   oportunidade (`private.sinal_da_linha_do_tempo`, migration

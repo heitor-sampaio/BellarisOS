@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { conversaDeWhatsappDaCliente } from '@/lib/contatos/conversa-de-whatsapp'
-import { enviarNaConversa } from '@/lib/inbox/enviar'
+import { enviarNaConversa, enviarModeloNaConversa, type ResultadoDoEnvio } from '@/lib/inbox/enviar'
+import { numeroPadraoDaRede, conversaNoNumero } from './abrir-pelo-padrao'
 import { emitirEventoDeConversa } from '@/lib/events/conversa'
 import { EVENTOS } from '@estetica-os/types'
 import { notifyClient } from '@/lib/notifications/notify'
@@ -22,8 +23,8 @@ import type { AtorDaAutomacao } from './acoes-crm'
  *     nenhuma, o passo diz isso em vez de inventar um canal.
  *  2. **A janela de 24h da Meta decide o que dá para mandar.** Fora dela, texto
  *     livre é recusado pela API — e sem checar vira "enviado" que o cliente
- *     nunca recebe. Por isso o node exige um template aprovado para esse caso,
- *     e sem ele o passo falha com motivo legível.
+ *     nunca recebe. Por isso o node usa o modelo aprovado escolhido no passo
+ *     (R10), e sem ele o passo falha com motivo legível.
  *  3. **Passa pelos limites** de silêncio noturno e teto por cliente, que as
  *     ações internas não têm.
  *
@@ -40,6 +41,12 @@ export interface PedidoDeMensagem {
    * rede escolheu no passo. Sem nada, "Não mandar" (princípio 6).
    */
   semConversa?: ConfigAcaoMensagem['semConversa']
+  /**
+   * O modelo aprovado do passo (R10), já com os valores das variáveis
+   * interpolados pelo motor; `semDado` = as variáveis que saíram vazias
+   * (princípio 4: o modelo não sai com o buraco).
+   */
+  modelo?: { templateId: string; valores: Record<string, string>; semDado: string[] } | null
 }
 
 export interface ResultadoDaMensagem {
@@ -52,9 +59,8 @@ export interface ResultadoDaMensagem {
  * A conversa em que falar.
  *
  * Preferência pela que já está no contexto (o fluxo nasceu de uma mensagem);
- * senão, a mais recente do cliente naquele canal. Não CRIA conversa: abrir uma
- * thread para mandar a primeira mensagem é outra feature — e no WhatsApp
- * oficial nem seria possível sem template.
+ * senão, a mais recente do cliente naquele canal. Não CRIA conversa: abrir
+ * pelo número padrão é a escolha da rede no passo (`abrirPeloNumeroPadrao`).
  */
 async function conversaPara(
   tenantId: string,
@@ -108,51 +114,120 @@ export async function mandarMensagem(
 
   if (pedido.canal === 'push') return avisoNoCelular(ator, contexto, texto)
 
+  const remetente = { id: null, nome: `Automação · ${ator.nome}` }
   const alvo = await conversaPara(ator.tenantId, contexto, pedido.canal)
   if ('motivo' in alvo) {
     // AX-06 (o Heitor, 2026-11-11, H1): a rede escolheu mandar como aviso no
-    // celular a quem não tem conversa aberta. A automação continua sem abrir
-    // conversa (AX-05); o aviso não se responde, e o pedido de resposta do
-    // texto sai (AX-03).
+    // celular a quem não tem conversa aberta. O aviso não se responde, e o
+    // pedido de resposta do texto sai (AX-03).
     if (pedido.semConversa === 'aviso_no_celular') {
       const r = await avisoNoCelular(ator, contexto, semPedirResposta(texto))
       return { resumo: { ...r.resumo, semConversa: true } }
     }
+    // R10 (o Heitor, 26/11): a rede escolheu abrir a conversa pelo número padrão.
+    if (pedido.semConversa === 'abrir_pelo_padrao' && pedido.canal === 'whatsapp') {
+      return abrirPeloNumeroPadrao(ator, contexto, texto, pedido.modelo ?? null)
+    }
     return { resumo: { enviada: false, motivo: alvo.motivo } }
   }
 
-  const r = await enviarNaConversa(ator.tenantId, alvo.id, texto, {
-    id:   null,
-    nome: `Automação · ${ator.nome}`,
-  })
+  let r: ResultadoDoEnvio = await enviarNaConversa(ator.tenantId, alvo.id, texto, remetente)
+  let comModelo = false
+
+  // Janela fechada não é um erro do sistema: é uma regra da Meta. Com o modelo
+  // aprovado escolhido no passo (R10), é ele que sai; sem ele, o passo diz o
+  // que fazer.
+  const fechou = !r.ok && !r.mensagemId && /janela/i.test(r.error ?? '')
+  if (fechou && pedido.modelo) {
+    if (pedido.modelo.semDado.length) {
+      return { resumo: { enviada: false, motivo: `Faltou o dado de ${pedido.modelo.semDado.join(', ')}: o modelo não saiu.` } }
+    }
+    r = await enviarModeloNaConversa(ator.tenantId, alvo.id, pedido.modelo.templateId, pedido.modelo.valores, remetente, { userId: null })
+    comModelo = true
+  }
 
   if (!r.ok) {
-    // Janela fechada não é um erro do sistema: é uma regra da Meta que a
-    // clínica precisa ver como tal, com a instrução do que fazer. Como
-    // template ainda não está implementado, a mensagem é explícita sobre isso.
-    const fechou = /janela/i.test(r.error ?? '')
     throw new Error(
-      fechou
-        ? `${r.error} Para falar fora das 24h é preciso um template aprovado, que esta versão ainda não envia.`
+      fechou && !comModelo
+        ? `${r.error} Para falar fora das 24h, a Meta só aceita um modelo aprovado: escolha um no passo.`
         : (r.error ?? 'Falha no envio.'),
     )
   }
 
-  // O mesmo evento que a resposta da equipe emite — quem lê a corrente não
-  // deveria precisar saber se quem digitou foi uma pessoa ou o motor. A
-  // diferença aparece na origem e no ator.
-  await emitirEventoDeConversa(EVENTOS.CONVERSA_MENSAGEM_ENVIADA, alvo.id, ator.tenantId, {
+  await emitirEnviada(ator, alvo.id, texto, r.mensagemId!)
+  return {
+    resumo: {
+      enviada: true, canal: pedido.canal, conversaId: alvo.id,
+      ...(comModelo ? { modelo: true } : {}),
+      // O texto interpolado, não o modelo: é ele que o cliente recebeu.
+      texto: texto.length > 120 ? `${texto.slice(0, 120)}…` : texto,
+    },
+  }
+}
+
+/**
+ * O mesmo evento que a resposta da equipe emite — quem lê a corrente não
+ * deveria precisar saber se quem digitou foi uma pessoa ou o motor. A
+ * diferença aparece na origem e no ator.
+ */
+async function emitirEnviada(ator: AtorDaAutomacao, conversaId: string, texto: string, mensagemId: string) {
+  await emitirEventoDeConversa(EVENTOS.CONVERSA_MENSAGEM_ENVIADA, conversaId, ator.tenantId, {
     texto,
-    mensagemId: r.mensagemId!,
+    mensagemId,
     ator:       { id: null, nome: `Automação · ${ator.nome}`, tipo: 'sistema' },
     origem:     'automacao',
     profundidade: ator.profundidade + 1,
   })
+}
 
+/**
+ * "Abrir pelo número padrão" (AX-06; R10 — o Heitor, 26/11, na página de
+ * perguntas: "Está no escopo: construir (com os modelos aprovados pela Meta
+ * na automação)"). A cliente sem conversa aberta recebe pelo número padrão da
+ * rede; a conversa nasce no inbox, com a mensagem, na caixa dele.
+ *
+ * - No WhatsApp Web (uazapi): o texto do passo — é a rede escolhendo correr o
+ *   risco de banimento, e a tela do passo diz isso.
+ * - Na Cloud API: o modelo aprovado do passo; sem ele, ou com variável sem o
+ *   dado, NÃO abre conversa nenhuma e diz por quê.
+ *
+ * O silêncio noturno, o teto, a rede bloqueada e o suporte o motor já
+ * conferiu antes (são de todo "Mandar mensagem").
+ */
+async function abrirPeloNumeroPadrao(
+  ator: AtorDaAutomacao, contexto: ContextoDaExecucao, texto: string,
+  modelo: PedidoDeMensagem['modelo'] | null,
+): Promise<ResultadoDaMensagem> {
+  const clienteId = (contexto.cliente as { id?: string } | null)?.id
+  if (!clienteId) return { resumo: { enviada: false, motivo: 'Este fluxo não tem cliente — não há para quem abrir a conversa.' } }
+
+  const padrao = await numeroPadraoDaRede(ator.tenantId)
+  if (!padrao) {
+    return { resumo: { enviada: false, motivo: 'A rede não tem número padrão de WhatsApp: a conversa não tem por onde abrir.' } }
+  }
+  const oficial = padrao.provider === 'official'
+  if (oficial && !modelo) {
+    return { resumo: { enviada: false, motivo: `O número padrão (${padrao.label}) é da API oficial: a conversa só abre com um modelo aprovado, e o passo não tem um.` } }
+  }
+  if (oficial && modelo!.semDado.length) {
+    return { resumo: { enviada: false, motivo: `Faltou o dado de ${modelo!.semDado.join(', ')}: o modelo não saiu.` } }
+  }
+
+  const conversa = await conversaNoNumero(ator.tenantId, clienteId, padrao)
+  if ('motivo' in conversa) return { resumo: { enviada: false, motivo: conversa.motivo } }
+
+  const remetente = { id: null, nome: `Automação · ${ator.nome}` }
+  const r = oficial
+    ? await enviarModeloNaConversa(ator.tenantId, conversa.conversaId, modelo!.templateId, modelo!.valores, remetente, { userId: null })
+    : await enviarNaConversa(ator.tenantId, conversa.conversaId, texto, remetente)
+  if (!r.ok) throw new Error(r.error ?? 'Falha no envio.')
+
+  await emitirEnviada(ator, conversa.conversaId, texto, r.mensagemId!)
   return {
     resumo: {
-      enviada: true, canal: pedido.canal, conversaId: alvo.id,
-      // O texto interpolado, não o modelo: é ele que o cliente recebeu.
+      enviada: true, canal: 'whatsapp', conversaId: conversa.conversaId, abriuConversa: true,
+      numero: padrao.label,
+      ...(oficial ? { modelo: true } : {}),
       texto: texto.length > 120 ? `${texto.slice(0, 120)}…` : texto,
     },
   }
