@@ -45,9 +45,10 @@ test.describe('Financeiro: a explicação fica na dica', () => {
     await page.goto('/admin/financeiro?period=month')
     const fluxo = page.locator('[data-fluxo-de-caixa]')
     await expect(fluxo).toBeVisible()
-    await expect(fluxo.getByText(/O que entra \(o a receber da cliente/)).toBeHidden()
+    // O Heitor, 25/11, "3 sim": a série do fluxo é "A receber · em aberto", como o cartão (era "da cliente").
+    await expect(fluxo.getByText(/O que entra \(o a receber em aberto/)).toBeHidden()
     await fluxo.getByRole('button', { name: 'Como se lê o fluxo de caixa' }).hover()
-    await expect(fluxo.getByText(/O que entra \(o a receber da cliente/)).toBeVisible()
+    await expect(fluxo.getByText(/O que entra \(o a receber em aberto/)).toBeVisible()
 
     for (const [aba, dica] of [['a-receber', 'Sobre as contas a receber'], ['a-pagar', 'Sobre as contas a pagar']]) {
       await page.goto(`/admin/financeiro?aba=${aba}`)

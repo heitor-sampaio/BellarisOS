@@ -199,7 +199,7 @@
     (`vendas-financeiro.md` §9.6).
   - **fluxo de caixa** (r2-fin-04, 2026-11-03) = por mês, dos próximos 3, 6
     ou 12 (a escolha do cartão, r3-f13-11; o banco devolve os 12): o
-    a receber da cliente + o a receber da operadora − o a pagar, pelo
+    a receber em aberto + o a receber da operadora − o a pagar, pelo
     vencimento; o vencido em aberto no mês atual — `metrics_fluxo_de_caixa_liquido`
     → `getFluxoDeCaixa`. **A operadora entra no LÍQUIDO** (o que ela
     deposita, já sem a taxa), com o bruto ao lado — no fluxo e no cartão "A

@@ -11,7 +11,7 @@ import { Dica as DicaDoTexto } from '@/components/shared/dica'
 
 /**
  * O fluxo de caixa dos PRÓXIMOS meses (r2-fin-04; o Heitor, 2026-11-03: "crie
- * o gráfico"), nos dois financeiros: o que entra (o a receber da cliente e o
+ * o gráfico"), nos dois financeiros: o que entra (o a receber em aberto e o
  * que a operadora do cartão ainda deposita, empilhados) e o que sai (as
  * despesas a pagar), mês a mês, com o saldo de cada mês na tabela ao lado do
  * gráfico. Todo número vem de `lib/metrics/fluxo-de-caixa` — aqui só se
@@ -19,7 +19,7 @@ import { Dica as DicaDoTexto } from '@/components/shared/dica'
  */
 
 const SERIES = [
-  { chave: 'daCliente',   rotulo: 'A receber da cliente',  cor: 'var(--brand)',   pilha: 'entra' },
+  { chave: 'daCliente',   rotulo: 'A receber · em aberto', cor: 'var(--brand)',   pilha: 'entra' },
   { chave: 'daOperadora', rotulo: 'A receber da operadora', cor: 'var(--brand-3)', pilha: 'entra' },
   { chave: 'aPagar',      rotulo: 'A pagar',               cor: 'var(--danger)',  pilha: 'sai' },
 ] as const
@@ -84,7 +84,7 @@ export function FluxoDeCaixa({ meses: todos }: { meses: MesDoFluxo[] }) {
             <span>Fluxo de caixa — próximos {meses.length} meses</span>
             {/* O "como se lê" mora na dica (2026-11-16 — era um parágrafo fixo). */}
             <DicaDoTexto rotulo="Como se lê o fluxo de caixa">
-              O que entra (o a receber da cliente e o que a operadora do cartão deposita) e o que sai (as despesas a pagar),
+              O que entra (o a receber em aberto e o que a operadora do cartão deposita) e o que sai (as despesas a pagar),
               pelo vencimento. O que já venceu e está em aberto conta no mês atual.
             </DicaDoTexto>
           </h2>

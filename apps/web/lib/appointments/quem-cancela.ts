@@ -13,7 +13,7 @@ import { can } from '@/lib/auth'
  * decidem por ela.
  */
 
-export const RECUSA_DESISTIR = 'Desistir do atendimento em andamento é de quem tem o Atendimento em Gerenciar.'
+export const RECUSA_DESISTIR = 'Cancelar o atendimento em andamento é de quem tem o Atendimento em Gerenciar.'
 export const RECUSA_CANCELAR = 'Cancelar o agendamento é de quem tem a Agenda em Gerenciar.'
 
 export function recusaDoCancelar(

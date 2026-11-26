@@ -148,8 +148,9 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   `confirmar_agendamento` pede a Agenda em Gerenciar (estava em Ver);
   `cancelar_agendamento` segue `recusaDoCancelar` — o agendado é da Agenda em
   Gerenciar, o Em atendimento é DESISTIR, do Atendimento em Gerenciar (UM2),
-  e o cartão diz "Desistir do atendimento" e que a sessão paga conta como
-  usada; `marcar_pago` segue `podeDarBaixa` (o PDV em Gerenciar, ou o
+  e o cartão diz "Cancelar atendimento" (o Heitor, 25/11, "2 sim": o
+  "Cancelar" da tela também no Copilot; era "Desistir do atendimento") e que
+  a sessão paga conta como usada; `marcar_pago` segue `podeDarBaixa` (o PDV em Gerenciar, ou o
   Financeiro em Gerenciar — CX2). Sem o "só os meus" (SM5, 2026-11-23), nenhuma
   ferramenta recorta por dono; a permissão pode ser mais estreita no Copilot,
   nunca mais larga.

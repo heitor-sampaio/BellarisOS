@@ -2090,8 +2090,9 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   12 meses, a rede escolhe no cartão** (r3-f13-11, o Heitor: "quem vende
   pacote em 10x quer ver o ano"; 6 por padrão, o título acompanha: o servidor
   manda os 12, a tela mostra os primeiros N): por mês
-  (Brasília, a partir do atual), o que ENTRA — o a receber da cliente (os
-  lançamentos de receita em aberto) e o que a operadora do cartão ainda
+  (Brasília, a partir do atual), o que ENTRA — o "A receber · em aberto" (os
+  lançamentos de receita em aberto, com e sem cliente; o Heitor, 25/11, "3
+  sim": o nome do cartão, era "A receber da cliente") e o que a operadora do cartão ainda
   deposita (`recebiveis_do_cartao` vivos e não recebidos), empilhados — e o que
   SAI (as despesas a pagar), pelo vencimento, num gráfico de barras e numa
   tabela com o saldo de cada mês. O que já venceu e está em aberto conta no

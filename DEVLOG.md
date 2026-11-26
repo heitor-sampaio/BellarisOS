@@ -1813,8 +1813,10 @@ uma por vez; conferir IGUAL (4666).
 **Em aberto.**
 - O chip da comissão na Equipe quebra em até duas linhas (A13 da 25ª): com dois percentuais diferentes, o texto pode
   cortar, e o inteiro fica no `title`.
-- O cartão do Copilot ainda diz "Desistir do atendimento" no cancelar do Em atendimento (CZ-07, de 18/11): a resposta do
-  Heitor foi sobre o botão da tela.
+- ~~O cartão do Copilot ainda diz "Desistir do atendimento"~~ — o Heitor, 25/11, "2 sim": o cartão diz "Cancelar
+  atendimento", e a recusa "Cancelar o atendimento em andamento é de quem tem o Atendimento em Gerenciar." E "3 sim": a
+  série do fluxo de caixa passa a "A receber · em aberto" (soma o em aberto com e sem cliente), com a dica. O chip da
+  Equipe ("1 ok") e o CSV com linha de CPF na importação ("4 ok") ficam como estão.
 
 ### 2026-11-25 (4) — As respostas do Heitor: os limites que avisam, o "Em andamento" e o dia que continua
 

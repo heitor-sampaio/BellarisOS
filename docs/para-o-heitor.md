@@ -376,3 +376,9 @@ confirmado." (o texto é decisão do Claude).
   Confirmado); o agendamento é posto em Confirmado antes de remarcar, para o caso provar que a confirmação sai.
 
 **Sem mudança:** 3, 5, 9, 12 e as outras nove revisões.
+
+**As pendências da entrega** ("1 ok, 2 sim, 3 sim, 4 ok"). 2: o cartão do Copilot ao cancelar o Em atendimento diz
+"Cancelar atendimento" (era "Desistir do atendimento"), e a recusa diz "Cancelar o atendimento em andamento é de quem tem
+o Atendimento em Gerenciar." 3: a série do fluxo de caixa é "A receber · em aberto", e a dica diz "O que entra (o a
+receber em aberto e o que a operadora do cartão deposita)". 1 e 4 ficam como estão.
+- `e2e/financeiro-dicas.spec.ts:49` e `:51`: a dica do fluxo diz "o a receber em aberto" (era "o a receber da cliente").

@@ -367,7 +367,7 @@ export const cancelar: FerramentaDeEscrita<{ agendamento: string; motivo: string
     const aviso = ag.status === 'IN_PROGRESS' ? [TEXTO_DA_SESSAO_NA_DESISTENCIA, daCliente].filter(Boolean).join(' ') : daCliente
     return {
       resumo: {
-        titulo: ag.status === 'IN_PROGRESS' ? 'Desistir do atendimento' : 'Cancelar agendamento',
+        titulo: ag.status === 'IN_PROGRESS' ? 'Cancelar atendimento' : 'Cancelar agendamento',
         linhas: [
           { rotulo: 'Cliente', valor: ag.cliente },
           { rotulo: 'Procedimento', valor: ag.procedimento },

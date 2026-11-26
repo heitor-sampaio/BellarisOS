@@ -98,7 +98,7 @@ Este é o catálogo das regras do Copilot que valem HOJE: o que ele é e quem us
 - Onde: `docs/regras/copilot.md:23-29`
 - Antes: KA-11
 
-**CZ-07.** No cancelar, o agendamento que ainda não começou se cancela; o que já está Em atendimento é uma desistência, e o cartão diz "Desistir do atendimento" e avisa que a sessão paga conta como usada.
+**CZ-07.** No cancelar, o agendamento que ainda não começou se cancela; o que já está Em atendimento é uma desistência, e o cartão diz "Cancelar atendimento" (o Heitor, 25/11: "2 sim", o "Cancelar" da tela; era "Desistir do atendimento") e avisa que a sessão paga conta como usada.
 - Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-23: "concordo, pode anotar, marcar as questões e ajustar o codigo"
 - Onde: `docs/regras/copilot.md:116-119`; `docs/revisao.md:1309-1314`, `:1329-1330`, `:2229`
 - Antes: KA-07
