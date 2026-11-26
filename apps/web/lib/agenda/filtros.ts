@@ -39,7 +39,7 @@ export interface OpcoesDosFiltros {
   profissionais: readonly string[] | null
   /** As salas da unidade na tela; `null` = sem filtro de sala (a rede sem unidade escolhida). */
   salas:         readonly string[] | null
-  /** O vocabulário ATIVO da rede (`tagsAtivasDaRede`, lido no servidor). */
+  /** As tags do filtro: as ativas da rede e as arquivadas que alguém ainda tem (`comAsArquivadasEmUso`, lido no servidor; TG-14). */
   tags:          readonly string[]
 }
 

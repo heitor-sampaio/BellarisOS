@@ -4,7 +4,7 @@ import { revalidateTag } from 'next/cache'
 import { getTenantContext, assertAnyPermission, can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
-import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
+import { tagsAtivasDaRede, comAsArquivadasEmUso } from '@/lib/tags/vocabulario'
 import { recusaDaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { validarNomeDeTag } from '@/lib/tags/escolha'
 
@@ -31,6 +31,17 @@ export async function listarTagsAtivas(): Promise<string[]> {
   const ctx = await getTenantContext()
   if (!(['clients', 'crm', 'marketing', 'automations'] as const).some(m => can(ctx, m, 'VIEW'))) return []
   return tagsAtivasDaRede(ctx.tenantId!)
+}
+
+/**
+ * As opções de quem FILTRA pelo navegador (o público da campanha): as ativas e
+ * as arquivadas que alguém ainda tem — a mesma lista das telas que filtram
+ * (`comAsArquivadasEmUso`; TG-14). Marcar segue com `listarTagsAtivas` (TG-08).
+ */
+export async function listarTagsDoFiltro(): Promise<string[]> {
+  const ctx = await getTenantContext()
+  if (!(['clients', 'crm', 'marketing', 'automations'] as const).some(m => can(ctx, m, 'VIEW'))) return []
+  return comAsArquivadasEmUso(ctx.tenantId!, tagsAtivasDaRede(ctx.tenantId!))
 }
 
 /** A lista da aba, com o uso de cada uma. */

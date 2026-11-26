@@ -67,7 +67,7 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 54 | A busca achar a pessoa cuja oportunidade está em funil arquivado | 30ª, A09 (BA-04) |
 | 55 | O resumo do cargo sem "ela" fixo | 30ª, Time B; 32ª, Time D |
 | 56 | O `?unidade=` aceitar o endereço curto da unidade, ou avisar que não achou | 30ª, Time B |
-| 57 | A agenda "Toda a rede" indicar que as unidades têm fusos diferentes | 30ª, Time B (ligada à nº 3) |
+| 57 | A agenda "Toda a rede" indicar que as unidades têm fusos diferentes (feita em 26/11, pelo D4 da 33ª: FU-04 de Indicadores) | 30ª, Time B (ligada à nº 3) |
 | 58 | O recibo avisar que sai sem CPF quando a ficha não tem | 30ª, C12 |
 | 59 | O arquivo da DRE com nome em português (não "dre-month.csv") | 30ª, Time C |
 | 60 | O limite de parcelas do crediário também em Configurações → Geral | 30ª, Time C |
@@ -105,3 +105,18 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 92 | O Copilot listar as unidades da rede ("quantas unidades a rede tem?") | 32ª, Time E |
 | 93 | Um filtro de gatilho por etapa ("entrou em…") no "Oportunidade mudou de etapa", sem o "Se" de texto livre | 32ª, Time A (ligada ao A27) |
 | 94 | A lista de campanhas mostrar "guardadas no sino" ao lado de "Enviadas" | 32ª, C13 (ligada ao A18) |
+| 95 | A janela do agendamento dizer que o link da ficha caiu ("o link caiu depois de 5 tentativas: gere outro") | 33ª, A06 (A3) |
+| 96 | O fuso do Amazonas oeste (Eirunepé/Tabatinga, UTC−5) na lista, com o nome da região | 33ª, Time A |
+| 97 | "Respondida pela equipe em dd/mm" dizer quem respondeu | 33ª, A07 |
+| 98 | A variável opcional vazia sumir com a pontuação em volta ("Desconto: ." → nada) | 33ª, B03 |
+| 99 | O Termo de uso de imagem assinado valer por um prazo da rede, sem pedir de novo a cada agendamento | 33ª, B09 |
+| 100 | O "vs anterior" dizer o período comparado, e a Auditoria do lançamento à mão citar a data do pagamento | 33ª, Time C (A12, Decisão C) |
+| 101 | A ficha do atendimento concluído sem pagamento mostrar o saldo ("R$ 300 a receber") | 33ª, C06 |
+| 102 | Ligar a ficha a uma oportunidade depois de cadastrada, por quem tem o CRM | 33ª, C13 |
+| 103 | Confirmar antes de renomear uma tag para o nome de outra ("vai juntar com X em N registros") | 33ª, Time D (A14) |
+| 104 | Um modelo de automação "Faltou: aviso no celular" | 33ª, Time E |
+| 105 | A recusa pelo limite do plano levar a Configurações → Assinatura | 33ª, Time E (A7) |
+| 106 | Arquivar a cliente e arquivar a tag com motivo opcional e confirmação | 33ª, Times B e D (Decisão B, A14) |
+| 107 | Avisar a cliente no sino quando o pacote da LGPD refeito ficar pronto | 33ª, D2 |
+| 108 | O Unificar gravar também o 'Indicada por' e o responsável legal digitados no cadastro | 33ª, D18 |
+| 109 | Marcar na Auditoria as linhas 'Corrigiu o custo do lote' gravadas pela baixa antes da correção | 33ª, D7 |

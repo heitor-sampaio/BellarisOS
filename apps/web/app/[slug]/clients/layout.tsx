@@ -8,6 +8,7 @@ import { ListaDetalhe } from '@/components/shared/lista-detalhe'
 import { getCachedNetworkClients, getCachedUltimasVisitas } from '@/lib/cached-queries'
 import { ler } from '@/lib/db'
 import { aniversariantesDoMes } from '@/lib/clientes/aniversariantes'
+import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 
 export default async function ClientsLayout({
   children,
@@ -39,10 +40,12 @@ export default async function ClientsLayout({
   // O portal da unidade vê TODAS as clientes da rede (CL3 do Bloco Tags,
   // 2026-11-14; H5: "A cliente é da clínica"): não existe tag de unidade para
   // recortar a lista, e a busca "fora da unidade" (A17 da 8ª) saiu com ela.
-  const [rawClients, ultimasVisitas, aniversariantes] = await Promise.all([
+  const [rawClients, ultimasVisitas, aniversariantes, fuso] = await Promise.all([
     getCachedNetworkClients(ctx.tenantId!),
     getCachedUltimasVisitas(ctx.tenantId!, null),
     aniversariantesDoMes(ctx.tenantId!),
+    // A "Última visita" conta dias de calendário no fuso da unidade (D9 da 33ª).
+    fusoDaUnidade(ctx.tenantId!, branch.id as string),
   ])
 
   // A última visita na REDE, agregada no banco.
@@ -79,6 +82,7 @@ export default async function ClientsLayout({
           aniversariantes={aniversariantes}
           // A21 da 16ª: escolher várias e "Marcar tag" (Clientes em Gerenciar).
           marcarTag={can(ctx, 'clients', 'MANAGE') ? { slug } : null}
+          fuso={fuso}
         />
       }
     >

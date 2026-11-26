@@ -193,7 +193,10 @@ um muro que não depende de cada trava do código.
   preenchia 14 campos) e o "Número" do endereço, que entra depois do
   logradouro ("Rua Padre Chagas, 123 — Moinhos de Vento",
   `enderecoComNumero`, `lib/unidades/endereco-com-numero.ts`; também no "Nova
-  unidade"). O `id="br-phone"` em dobro não se reproduziu: o passo 1 usa
+  unidade"). O número sem o logradouro é recusado ao criar e ao editar ("Preencha
+  o logradouro: o número entra depois dele.", `numeroSemLogradouro`; A8 da 33ª,
+  decisão do Claude, 26/11: o "200" sozinho virava o endereço). Prova:
+  `tests/unidade-numero-sem-logradouro.test.ts`. O `id="br-phone"` em dobro não se reproduziu: o passo 1 usa
   `net-phone`, e o setup tem um campo só. Prova: `e2e/setup-atritos-da-9.spec.ts`,
   `tests/endereco-com-numero.test.ts`. **O sentido da numeração vai depois do
   número** (A32 da 32ª, decisão do Claude, 26/11): em Chapecó os Correios (e o
@@ -328,8 +331,16 @@ um muro que não depende de cada trava do código.
     ATIVOS): criar e REATIVAR unidade (`createBranch`, `toggleBranchStatus`),
     membro (`createTeamMember`, `reactivateTeamMember`, o reativar do
     suporte) e número de WhatsApp (o formulário, a uazapi, o cadastro
-    incorporado). A action de formulário devolve `{ error }` com o limite; a
-    que é chamada por formulário que não lê o retorno lança `limiteDoPlano`
+    incorporado). A action de formulário devolve `{ error }` com o limite; o
+    reativar da unidade também (`toggleBranchStatus`; o botão `ReativarUnidade`
+    mostra a recusa ao lado dele — D10 da 33ª, decisão E do Claude, 26/11: a tela
+    inteira virava "Limite do plano atingido"; `tests/unidade-reativar-no-limite-do-plano.test.ts`,
+    `e2e/planos-recursos.spec.ts`); e o reativar do MEMBRO (`reactivateTeamMember`;
+    o `ReativarMembro` da Equipe mostra a recusa ao lado do botão — o mesmo
+    defeito, que dizia "Não deu certo"; decisão do Claude, 26/11;
+    `tests/membro-reativar-no-limite-do-plano.test.ts`). Nenhuma action lança
+    mais o limite; a
+    que fosse chamada por formulário que não lê o retorno lançaria `limiteDoPlano`
     (digest `BELLARIS_LIMITE_DO_PLANO`, em `limite-digest.ts`, que a tela de
     erro e `erroParaTela` reconhecem). O que já existe acima do limite não é
     apagado — só não cresce. EDITAR o que existe não confere limite.
@@ -860,6 +871,11 @@ auditoria das regras, pergunta 8: "só pela conta admin"; antes, H7 de
   outras pedem Configurações da rede em Gerenciar, ou a permissão de cada uma…"
   (`porQueSoEstasAbas`, `lib/configuracoes/abas-que-faltam.ts`;
   `[data-abas-do-acesso]`). Prova: `tests/configuracoes-abas-do-acesso.test.ts`.
+  A aba da rede toda (`ABAS_DA_REDE_TODA`) não "vem da permissão": a nota a diz
+  da rede — "As abas Tags e Importações são da rede toda: só a Admin da rede as
+  muda." —, como o resumo do cargo já não a conta (A-CONF1 da 25ª; D11 da 33ª,
+  decisão do Claude, 26/11, princípio 3). Prova:
+  `tests/configuracoes-nota-das-abas-da-rede-toda.test.ts`.
 - **A aba pedida que não abre diz por quê** (A11 da 12ª simulação, 2026-11-11;
   princípio 3: quem tinha só a Acácia abria `?tab=commissions` e
   `?tab=permissions` e caía nas Tags calada). A tela abre a primeira aba que
@@ -1138,7 +1154,10 @@ abaixo entraram na F70, 2026-11-12):
     Comissões, o Fechamento e os Documentos da rede: o total a conta, o
     `?unidade=` a alcança, e ela leva o selo "Unidade desativada"
     (`nomeNaTela`, `SeloUnidadeDesativada`). "Uma unidade só" (D-19) é uma
-    nos NÚMEROS: com dado da desativada, o cabeçalho diz "Rede".
+    nos NÚMEROS: com dado da desativada, o cabeçalho diz "Rede". O "Por
+    unidade" do Financeiro da rede lista as mesmas (a desativada com a agenda
+    futura entra, com zero; era só a com dinheiro no período — o arremate da
+    33ª, decisão do Claude, 26/11; `tests/financeiro-por-unidade-conta-a-desativada.test.ts`).
   - **para CRIAR** — `unidadesParaCriar` / `quantasUnidadesAtivas`: só as
     ativas. É o seletor de agendar, de dar entrada e transferir PARA, de
     vender, de lançar, de cadastrar, de campanha, de equipe e o trocador de
@@ -1749,6 +1768,20 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
     produto X com o estoque inicial de N em <unidade>", na unidade do
     movimento (era "Da rede"). Prova:
     `tests/auditoria-o-estoque-diz-o-que-aconteceu.test.ts`.
+  - **A 33ª simulação** (decisão do Claude, 26/11; AD-08, AD-13, AD-21, AD-25):
+    - a desistência no meio do atendimento (`desistir_do_atendimento`: a
+      comanda, o agendamento, o prontuário e a evolução, o lote e o insumo) sai
+      na unidade do agendamento, não "Da rede": o registro clínico sem unidade
+      não dá a unidade da gravação (`principalDaGravacao`; D15). Prova:
+      `tests/auditoria-desistencia-na-unidade-do-agendamento.test.ts`;
+    - a autorização do suporte diz o fato e de quem é a conta: "Autorizou o
+      suporte na conta de Luana, com os dados clínicos", "Revogou a autorização
+      do suporte na conta de Luana" e, na troca (a nova substitui a vigente),
+      "Trocou a autorização do suporte na conta de Luana (agora sem os dados
+      clínicos)" — era "Criou 1 e editou 1 liberações do suporte". A conta se lê
+      agora pelo id da autorização (`contasDasAutorizacoes`,
+      `lib/auditoria/contas-das-autorizacoes.ts`); sem ela, "numa conta da
+      equipe" (A9). Prova: `tests/auditoria-autorizacao-do-suporte.test.ts`.
   - Prova: `tests/atritos-da-15.test.ts`, `e2e/auditoria-atritos-da-15.spec.ts`.
 - **A falha do registro não derruba a gravação.** O gatilho segura o erro,
   grava uma linha `incompleto` (quando acha a rede) e deixa um WARNING no log:

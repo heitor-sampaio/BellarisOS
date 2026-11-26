@@ -123,7 +123,7 @@ export function TermosDoCliente({ itens, slug, podeDispensar = false, compacto =
     iniciar(async () => {
       const r = await pedirAssinaturaNoPortal(id)
       if (r.error) { setErro(r.error); return }
-      setAviso('Pedido enviado: o documento está no portal do cliente, e ele foi avisado.')
+      setAviso('Pedido enviado: o documento está no portal do cliente, com o aviso no app.')
       // D21 da 31ª: a linha passa a dizer que foi pedido, e quando.
       router.refresh()
     })

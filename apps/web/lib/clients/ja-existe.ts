@@ -55,7 +55,14 @@ const escaparLike = (s: string) => s.replace(/[\\%_]/g, m => `\\${m}`)
 export async function fichasQueJaExistem(
   admin: Admin, tenantId: string, q: IdentidadeDoCadastro,
   /** As arquivadas do TELEFONE também (os caminhos rápidos; o formulário tem a pergunta própria delas). */
-  opcoes: { comArquivadas?: boolean } = {},
+  /**
+   * `comOCadastro`: a pergunta leva também o resto do que a ficha tem e o
+   * Unificar grava (D18 da 33ª), para a prévia "Se unificar, a ficha fica
+   * assim". Só o cadastro (`addClient`/`conferirTelefoneDoCadastro`, Clientes
+   * em Gerenciar) pede: os caminhos rápidos e o Copilot ficam no e-mail e no
+   * telefone.
+   */
+  opcoes: { comArquivadas?: boolean; comOCadastro?: boolean } = {},
 ): Promise<FichaQueJaExiste[]> {
   const achadas: FichaQueJaExiste[] = []
   const junta = (id: string, nome: string, motivo: MotivoDaFicha, arquivada = false) => {
@@ -88,12 +95,32 @@ export async function fichasQueJaExistem(
   }
   // O que a ficha já tem (A17): a pergunta mostra como ela fica ao unificar.
   if (achadas.length) {
-    const dados = await ler(admin.from('clients').select('id, email, phone').eq('tenant_id', tenantId)
-      .in('id', achadas.map(f => f.id)), 'ler o e-mail e o telefone das fichas que já existem') as
-      { id: string; email: string | null; phone: string | null }[] | null
+    const colunas = opcoes.comOCadastro
+      ? 'id, email, phone, document, documento_tipo, documento_numero, birth_date, gender, tags, notes, auth_id'
+      : 'id, email, phone'
+    const dados = await ler(admin.from('clients').select(colunas).eq('tenant_id', tenantId)
+      .in('id', achadas.map(f => f.id)), 'ler o que as fichas que já existem têm') as unknown as
+      ({ id: string; email: string | null; phone: string | null } & Partial<{
+        document: string | null; documento_tipo: string | null; documento_numero: string | null
+        birth_date: string | null; gender: string | null; tags: string[] | null; notes: string | null; auth_id: string | null
+      }>)[] | null
     for (const f of achadas) {
       const d = (dados ?? []).find(x => x.id === f.id)
-      if (d) f.naFicha = { email: d.email, telefone: d.phone }
+      if (!d) continue
+      f.naFicha = { email: d.email, telefone: d.phone }
+      if (opcoes.comOCadastro) {
+        const tipo = d.documento_tipo === 'PASSAPORTE' || d.documento_tipo === 'RNE' ? d.documento_tipo : null
+        f.naFicha = {
+          ...f.naFicha,
+          documento: d.document ? { tipo: 'CPF', numero: d.document }
+            : tipo && d.documento_numero ? { tipo, numero: d.documento_numero } : null,
+          nascimento: d.birth_date ? String(d.birth_date).slice(0, 10) : null,
+          genero: d.gender ?? null,
+          tags: d.tags ?? [],
+          temObservacoes: !!d.notes?.trim(),
+          temAcesso: !!d.auth_id,
+        }
+      }
     }
   }
   return achadas

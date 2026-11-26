@@ -228,13 +228,27 @@ export function diaDaSemana(data: string): number {
  * conta como fora.
  */
 export function foraDoHorarioDaUnidade(unidade: Horario | null, inicioIso: string, duracaoMin: number, fuso = FUSO_DE_BRASILIA): boolean {
+  return foraDoHorarioDeQuemAtende(unidade, null, inicioIso, duracaoMin, fuso)
+}
+
+/**
+ * O atendimento cai FORA do horário de quem atende naquela unidade (a unidade
+ * ∩ ela; sem horário próprio, o da unidade; a unidade fechada no dia, fora)? É
+ * a mesma conta do aviso do encaixe (`avisoForaDoHorario`, em
+ * `avisosDoHorarioCore`: `cabeNoHorario` sobre `intervalosDoDia`), no relógio
+ * da unidade. As listas da agenda NÃO oferecem quem está fora (R15, o Heitor,
+ * 26/11, na página de perguntas: "Não: quem está fora do horário também some
+ * das listas (o encaixe só pelo campo de horário)") — `indisponibilidadeNoHorario`
+ * e o repasse da desativação. O que atravessa a meia-noite conta como fora.
+ */
+export function foraDoHorarioDeQuemAtende(unidade: Horario | null, profissional: Horario | null, inicioIso: string, duracaoMin: number, fuso = FUSO_DE_BRASILIA): boolean {
   const partes = new Intl.DateTimeFormat('en-CA', {
     timeZone: fuso, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
   }).formatToParts(new Date(inicioIso))
   const v = (t: string) => partes.find(p => p.type === t)?.value ?? '00'
   const data = `${v('year')}-${v('month')}-${v('day')}`
   const inicio = (Number(v('hour')) % 24) * 60 + Number(v('minute'))
-  return !cabeNoHorario(intervalosDoDia(unidade, null, diaDaSemana(data)), inicio, inicio + Math.max(1, duracaoMin))
+  return !cabeNoHorario(intervalosDoDia(unidade, profissional, diaDaSemana(data)), inicio, inicio + Math.max(1, duracaoMin))
 }
 
 const NOME_CURTO = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']

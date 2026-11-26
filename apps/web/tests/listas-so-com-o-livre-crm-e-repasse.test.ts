@@ -36,3 +36,17 @@ describe('o repasse da desativação', () => {
     expect(repasse).toMatch(/bloqueados\.get\(p\.id\)/)
   })
 })
+
+describe('o repasse da desativação: quem está fora do horário (R15)', () => {
+  // O Heitor, 26/11, na página de perguntas (R15): "Não: quem está fora do horário
+  // também some das listas (o encaixe só pelo campo de horário)".
+  const tela = ler('components/admin/desativar-membro.tsx')
+  const repasse = ler('lib/equipe/repasse.ts')
+  it('não conta como livre quem está fora do horário, pela mesma conta do aviso do encaixe', () => {
+    expect(repasse).toMatch(/foraDoHorarioDeQuemAtende\(/)
+    expect(repasse).toMatch(/!bate\(p\) && !bloqueada\(p\) && !fora\(p\)/)
+  })
+  it('o "repassar todos para" diz o motivo', () => {
+    expect(tela).toContain('está fora do horário de atendimento nesse horário: escolha outra pessoa.')
+  })
+})

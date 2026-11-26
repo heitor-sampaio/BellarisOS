@@ -13,7 +13,7 @@ import { oQueFalta } from '@/lib/documentos/o-que-falta'
 import { PainelDeDocumentos } from '@/components/shared/painel-de-documentos'
 import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
 import { tagsDaUrl } from '@/lib/tags/filtro-na-url'
-import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
+import { tagsAtivasDaRede, comAsArquivadasEmUso } from '@/lib/tags/vocabulario'
 
 export interface ParamsDosDocumentos {
   period?: string; from?: string; to?: string
@@ -72,7 +72,7 @@ export async function DocumentosEmitidos({
     getDocumentosDoPainel({ ...recorte, ...filtros, offset: (pagina - 1) * DOCUMENTOS_POR_PAGINA }),
     getResumoDosDocumentos(recorte),
   ])
-  const tagsDaRede = await tagsAtivasDaRede(ctx.tenantId!)
+  const tagsDaRede = await comAsArquivadasEmUso(ctx.tenantId!, tagsAtivasDaRede(ctx.tenantId!))
 
   // O documento que o gatilho acabou de criar (A_GERAR) ainda não tem texto:
   // monta como a ficha monta, e lê de novo — senão ele não saberia se falta dado.

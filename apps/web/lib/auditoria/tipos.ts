@@ -130,6 +130,12 @@ export interface NomesDaAuditoria {
    * uma linha só, que não tem outra linha que a dê. Nunca o conteúdo.
    */
   unidadesDosClinicos?: Record<string, string>
+  /**
+   * A9 da 33ª (AD-08, AD-21): de quem é a conta de cada autorização do suporte
+   * (o id da autorização → o nome do membro), lido agora — o gatilho de
+   * `support_grants` não guarda a conta.
+   */
+  contasDasAutorizacoes?: Record<string, string>
 }
 
 export interface ItemDevolvidoDaAuditoria {

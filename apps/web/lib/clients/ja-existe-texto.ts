@@ -4,6 +4,8 @@
  * gravação moram em `lib/clients/ja-existe.ts` (só servidor).
  */
 
+import type { OQueAFichaTem } from './como-fica-ao-unificar'
+
 export type MotivoDaFicha = 'CPF' | 'TELEFONE' | 'NOME_E_NASCIMENTO'
 
 export interface FichaQueJaExiste {
@@ -22,8 +24,10 @@ export interface FichaQueJaExiste {
    * O e-mail e o telefone que a ficha JÁ tem (A17 da 6ª simulação): a
    * pergunta mostra, antes de unificar, como ela fica — o nome dela, e o
    * e-mail e o telefone digitados no lugar dos dela (ou os dela, sem nada).
+   * Na pergunta do cadastro, também o resto do que o Unificar grava (D18 da
+   * 33ª): o documento, o nascimento, o gênero, as tags, as observações e o acesso.
    */
-  naFicha?: { email: string | null; telefone: string | null }
+  naFicha?: OQueAFichaTem
   /**
    * Quem pergunta pode "Unificar" / "Reativar"? (C66, H4 = b, o Heitor,
    * 2026-11-11): mexer na ficha que existe pede Clientes em Gerenciar. Sem

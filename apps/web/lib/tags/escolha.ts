@@ -56,3 +56,22 @@ export function tagsDoVocabulario(pedidas: readonly string[], vocabulario: reado
   }
   return saida
 }
+
+/** Uma linha de `tags_da_rede`: o nome, se está arquivada e quantas pessoas a têm. */
+export interface UsoDaTag { nome: string; arquivada_em: string | null; clientes: number | string; contatos: number | string }
+
+/**
+ * As opções do FILTRO de tags (A6 e Decisão D da 33ª simulação): as ativas,
+ * mais as ARQUIVADAS que alguma pessoa ainda tem (ficha ou contato sem ficha).
+ * Arquivar tira a tag das opções de MARCAR (TG-08), não do filtro: quem a tem
+ * continua com ela, e o filtro a acha em toda tela (CLAUDE.md §1, Tags). A que
+ * ninguém tem não se oferece: filtraria uma lista vazia.
+ */
+export function opcoesDoFiltroDeTags(ativas: readonly string[], uso: readonly UsoDaTag[]): string[] {
+  const emUso = uso
+    .filter(u => u.arquivada_em && Number(u.clientes) + Number(u.contatos) > 0)
+    .map(u => u.nome)
+    .filter(n => !temTag(ativas, n))
+  if (!emUso.length) return [...ativas]
+  return [...ativas, ...emUso].sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }))
+}

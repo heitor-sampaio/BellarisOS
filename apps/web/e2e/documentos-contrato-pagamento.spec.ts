@@ -4,7 +4,7 @@ import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
 import { apagarDocumentosEmitidos } from './apoio/limpeza'
-import { receberAtendimentoNoPdv } from './apoio/vender'
+import { receberAtendimentoNoPdv, escolherFormaPorValor, botaoDeReceber } from './apoio/vender'
 
 /**
  * O pagamento no contrato do PROCEDIMENTO (atendimento avulso) — decisão do
@@ -171,5 +171,61 @@ test.describe.serial('documentos: pagamento no contrato do procedimento', () => 
       expect(r.texto).toContain('não está mais esperando assinatura')
     })
     expect((await docDoContrato()).payment_snapshot).toMatchObject({ forma: 'AVISTA', metodo: 'DEBIT_CARD' })
+  })
+
+  // D1 da 33ª (DG-03, VD-10): o contrato assinado para "crédito 3x" e o PDV recebeu Pix sem perguntar —
+  // o contrato seguiu assinado com o crédito 3x. Receber com outro pagamento pergunta antes, como o plano.
+  test('receber com outro pagamento do que o contrato assinado pergunta antes, e substituir troca o contrato junto do dinheiro', async ({ browser }) => {
+    const { data: ag3, error: eA } = await db().from('appointments').insert({
+      branch_id: rede!.branchId, client_id: cliente, procedure_id: rede!.procedureId, professional_id: rede!.professionalId,
+      scheduled_at: new Date(Date.now() + 3 * 86_400_000).toISOString(), duration_min: 30, price: 100, status: 'SCHEDULED',
+    }).select('id').single<{ id: string }>()
+    expect(eA).toBeNull()
+    const { data: c3 } = await db().from('issued_documents').select('id').eq('appointment_id', ag3!.id).eq('kind', 'CONTRATO').single<{ id: string }>()
+    expect(c3, 'o contrato do agendamento nasceu').not.toBeNull()
+    await como(browser, gestor!.estado, async page => {
+      const r = await chamarAcao(page, 'actions/documentos.ts', 'definirPagamentoDoContrato', `/admin/clients/${cliente}`,
+        [c3!.id, { forma: 'AVISTA', metodo: 'CREDIT_CARD', vezes: 3 }])
+      // O texto da resposta traz sempre "error":"$undefined" do payload do Next: confere o ok.
+      expect(r.texto).toContain('"ok":true')
+    })
+    // Assinado com o crédito 3x (a assinatura em si é de outros specs).
+    expect((await db().from('issued_documents').update({ status: 'ASSINADO', signed_at: new Date().toISOString() }).eq('id', c3!.id)).error).toBeNull()
+    expect((await db().from('appointments').update({ status: 'COMPLETED', completed_at: new Date().toISOString() }).eq('id', ag3!.id)).error).toBeNull()
+    const lancamentos = async () => ((await db().from('financial_transactions').select('id, payment_method')
+      .eq('appointment_id', ag3!.id).eq('type', 'INCOME')).data ?? []) as { id: string; payment_method: string | null }[]
+
+    await como(browser, recepcao!.estado, async page => {
+      const comanda = await receberAtendimentoNoPdv(page, '/admin', ag3!.id)
+      // O combinado vem inteiro: o crédito (e as vezes), não só o meio.
+      await expect(comanda.locator('[data-forma="CREDIT_CARD"]')).toHaveAttribute('aria-checked', 'true')
+      await escolherFormaPorValor(comanda, 'PIX')
+      await botaoDeReceber(comanda).click()
+      const pergunta = comanda.locator('[data-substitui-contrato]')
+      await expect(pergunta).toContainText('já foi assinado para outro pagamento')
+      await expect(pergunta).toContainText('crédito')
+      // Sem a resposta, nada se gravou.
+      expect(await lancamentos()).toEqual([])
+      expect((await db().from('issued_documents').select('status').eq('id', c3!.id).single<{ status: string }>()).data!.status).toBe('ASSINADO')
+
+      // "Manter o pagamento combinado" volta ao crédito.
+      await pergunta.getByRole('button', { name: 'Manter o pagamento combinado' }).click()
+      await expect(pergunta).toHaveCount(0)
+      await expect(comanda.locator('[data-forma="CREDIT_CARD"]')).toHaveAttribute('aria-checked', 'true')
+
+      // De novo no Pix, e agora "Substituir o contrato".
+      await escolherFormaPorValor(comanda, 'PIX')
+      await botaoDeReceber(comanda).click()
+      await comanda.locator('[data-substitui-contrato]').getByRole('button', { name: 'Substituir o contrato' }).click()
+      await expect.poll(async () => (await lancamentos()).map(l => l.payment_method)).toEqual(['PIX'])
+    })
+    const antigo = (await db().from('issued_documents').select('status, replaced_by').eq('id', c3!.id).single<{ status: string; replaced_by: string | null }>()).data!
+    expect(antigo.status).toBe('SUBSTITUIDO')
+    expect(antigo.replaced_by).not.toBeNull()
+    const novo = (await db().from('issued_documents').select('status, payment_snapshot, appointment_id').eq('id', antigo.replaced_by!).single()).data!
+    expect(novo.appointment_id).toBe(ag3!.id)
+    expect(novo.payment_snapshot).toEqual({ forma: 'AVISTA', metodo: 'PIX' })
+    // O novo espera a cliente assinar (montado com o combinado de agora).
+    await expect.poll(async () => (await db().from('issued_documents').select('status').eq('id', antigo.replaced_by!).single<{ status: string }>()).data!.status).toBe('PENDENTE')
   })
 })

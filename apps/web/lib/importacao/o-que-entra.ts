@@ -232,3 +232,50 @@ export function placarDaImportacao(a: {
 export function rotuloDaEtapaDaImportacao(funis: number): string {
   return funis > 1 ? 'Funil e etapa' : 'Etapa'
 }
+
+/**
+ * O destino de CADA linha pronta, na prévia (A13 da 33ª simulação; IM-12:
+ * "quem cada linha encontra na rede e por quê"): a prévia mostrava só as três
+ * primeiras, sem o destino. Pela mesma conta do botão (`linhasQueJuntamNaPlanilha`
+ * e o "completa quem já existe"): o que a prévia diz de cada linha é o que o
+ * número do botão soma. Puro.
+ */
+export function destinoDeCadaLinha(p: {
+  destino: Destino
+  prontas: readonly { numero: number; dados: { phone?: unknown; email?: unknown; name?: unknown }; mesmoTelefone?: { numero: number; nome: string } }[]
+  cruzados: readonly { numero: number; nome: string; como: 'cpf' | 'telefone' | 'email' }[]
+  naoCompletar: ReadonlySet<number>
+}): Map<number, string> {
+  const pelo = (como: 'cpf' | 'telefone' | 'email') => como === 'cpf' ? 'o mesmo CPF' : como === 'email' ? 'o mesmo e-mail' : 'o mesmo telefone'
+  const cruzado = new Map(p.cruzados.map(c => [c.numero, c]))
+  const saida = new Map<number, string>()
+  if (p.destino === 'clientes') {
+    for (const l of p.prontas) {
+      const c = cruzado.get(l.numero)
+      if (c) {
+        saida.set(l.numero, c.como !== 'cpf' && p.naoCompletar.has(l.numero)
+          ? `ficha nova (o mesmo telefone de ${c.nome})`
+          : `completa a ficha de ${c.nome} (${pelo(c.como)})`)
+      } else if (l.mesmoTelefone) {
+        saida.set(l.numero, p.naoCompletar.has(l.numero)
+          ? `ficha nova (o mesmo telefone da linha ${l.mesmoTelefone.numero})`
+          : `junta com a linha ${l.mesmoTelefone.numero} · ${l.mesmoTelefone.nome} (o mesmo telefone)`)
+      } else {
+        saida.set(l.numero, 'ficha nova')
+      }
+    }
+    return saida
+  }
+  const primeiraDoTelefone = new Map<string, number>()
+  for (const l of p.prontas) {
+    const fone = typeof l.dados.phone === 'string' ? l.dados.phone : ''
+    const primeira = fone ? primeiraDoTelefone.get(fone) : undefined
+    if (fone && primeira === undefined) primeiraDoTelefone.set(fone, l.numero)
+    const c = cruzado.get(l.numero)
+    if (c) saida.set(l.numero, `junta com ${c.nome} (${pelo(c.como)})`)
+    else if (primeira !== undefined) saida.set(l.numero, `junta com a linha ${primeira} (o mesmo telefone)`)
+    else if (!fone) saida.set(l.numero, 'contato novo, sem telefone (entra só com o e-mail)')
+    else saida.set(l.numero, 'contato novo')
+  }
+  return saida
+}

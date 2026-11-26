@@ -38,10 +38,10 @@ Este é o catálogo das regras de Vendas e financeiro que valem HOJE: o PDV e as
 - Onde: `docs/regras/vendas-financeiro.md:12-13`, `:70-74`; `docs/revisao.md:555-561`, `:1976`
 - Antes: KA-04, KG-02
 
-**PV-07.** O "Receber" é o mesmo em toda comanda: a prévia, o voucher, o desconto com o motivo, os pontos, a maquininha, as vezes, a bandeira, o saldo de crédito e o combinado do plano. Dentro da comanda ficam o crediário (entrada + parcelas), o "a receber", o cartão em N vezes, o desconto, "Quem vendeu", o estorno e a devolução.
-- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "implementa lá e se eu achar que precisa mudar algo te aviso"
-- Onde: `docs/regras/vendas-financeiro.md:50-54`; `docs/revisao.md:1983`
-- Antes: KA-15, KG-08
+**PV-07.** O "Receber" é o mesmo em toda comanda: a prévia, o voucher, o desconto com o motivo, os pontos, a maquininha, as vezes, a bandeira, o saldo de crédito e o combinado do plano. Dentro da comanda ficam o crediário (entrada + parcelas), o "a receber", o cartão em N vezes, o desconto, "Quem vendeu", o estorno e a devolução. Com o contrato do procedimento assinado, receber com outro pagamento (ou outro desconto) pergunta antes e substitui o contrato junto do dinheiro (DG-03 de Documentos).
+- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "implementa lá e se eu achar que precisa mudar algo te aviso"; o contrato no receber: decisão do Claude, 26/11 (33ª simulação, D1), pela DG-03
+- Onde: `docs/regras/vendas-financeiro.md:50-54`; `docs/revisao.md:1983`, `:55-60`
+- Antes: KA-15, KG-08; antes de 26/11: o receber da comanda do atendimento não perguntava
 
 ### A comanda do atendimento
 

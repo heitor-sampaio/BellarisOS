@@ -802,6 +802,44 @@ function fraseDasRegrasDeComissao(linhas: readonly RegistroDaAuditoria[], nomes:
 }
 
 /** "O quê": a frase da linha, sem quem e sem quando. */
+/**
+ * A9 da 33ª simulação (AD-08, AD-21; o texto é decisão do Claude, 26/11, no
+ * vocabulário da aba Suporte): a autorização do suporte diz o fato e de quem
+ * é a conta — "Autorizou o suporte na conta de Luana, com os dados clínicos",
+ * "Revogou a autorização do suporte na conta de Luana". Era "Criou a
+ * liberação do suporte". A conta se lê agora pelo id da autorização
+ * (`nomes.contasDasAutorizacoes`): o gatilho não a guarda.
+ */
+function contaDaAutorizacao(r: RegistroDaAuditoria, nomes: NomesDaAuditoria): string {
+  const nome = r.registro_id ? nomes.contasDasAutorizacoes?.[r.registro_id] : undefined
+  return nome ? `na conta de ${nome}` : 'numa conta da equipe'
+}
+const comOClinico = (r: RegistroDaAuditoria) =>
+  typeof r.depois.includes_clinical === 'boolean' ? (r.depois.includes_clinical ? 'com os dados clínicos' : 'sem os dados clínicos') : null
+const revogouAAutorizacao = (r: RegistroDaAuditoria) =>
+  r.tabela === 'support_grants' && r.operacao === 'editou' && r.colunas.includes('revoked_at') && !!r.depois.revoked_at
+
+function fraseDaAutorizacaoDoSuporte(r: RegistroDaAuditoria, nomes: NomesDaAuditoria): string | null {
+  if (r.tabela !== 'support_grants' || r.incompleto) return null
+  if (r.operacao === 'criou') {
+    const clinico = comOClinico(r)
+    return `Autorizou o suporte ${contaDaAutorizacao(r, nomes)}${clinico ? `, ${clinico}` : ''}`
+  }
+  if (revogouAAutorizacao(r)) return `Revogou a autorização do suporte ${contaDaAutorizacao(r, nomes)}`
+  return null
+}
+
+/** A troca: a autorização nova substitui a vigente da mesma conta, na mesma gravação. */
+function fraseDaTrocaDaAutorizacao(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria): string | null {
+  const nova = linhas.filter(l => l.tabela === 'support_grants' && l.operacao === 'criou')
+  const revogadas = linhas.filter(revogouAAutorizacao)
+  if (nova.length !== 1 || !revogadas.length || nova.length + revogadas.length !== linhas.length) return null
+  const contas = new Set([nova[0]!, ...revogadas].map(l => contaDaAutorizacao(l, nomes)))
+  if (contas.size !== 1) return null
+  const clinico = comOClinico(nova[0]!)
+  return `Trocou a autorização do suporte ${[...contas][0]}${clinico ? ` (agora ${clinico})` : ''}`
+}
+
 export function fraseDaAuditoria(r: RegistroDaAuditoria, nomes: NomesDaAuditoria): string {
   const cliente = r.client_id ? nomes.clientes[r.client_id] ?? null : null
   if (r.operacao === 'entrou') return 'Entrou no sistema'
@@ -830,6 +868,8 @@ export function fraseDaAuditoria(r: RegistroDaAuditoria, nomes: NomesDaAuditoria
     const destino = texto(r.depois.juntada_em)
     return `Juntou a tag${nome ? ` ${nome}` : ''} ${destino ? `em ${destino}` : 'à que já existia com o mesmo nome'}`
   }
+  const doSuporte = fraseDaAutorizacaoDoSuporte(r, nomes)
+  if (doSuporte) return doSuporte
   // A6 da 30ª: o fundo de troco é informado ("Criou o fundo de troco" não dizia quanto).
   if (r.tabela === 'fundos_de_troco' && (r.operacao === 'criou' || r.operacao === 'editou')) {
     const valor = numero(r.depois.valor)
@@ -1754,6 +1794,9 @@ export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: Nome
   // A9 da 31ª: salvar a comissão do procedimento ou as regras da pessoa.
   const regrasDeComissao = fraseDasRegrasDeComissao(linhas, nomes)
   if (regrasDeComissao) return regrasDeComissao
+  // A9 da 33ª: a autorização do suporte trocada ("Criou 1 e editou 1 liberações do suporte" não dizia de quem).
+  const trocaDoSuporte = fraseDaTrocaDaAutorizacao(linhas, nomes)
+  if (trocaDoSuporte) return trocaDoSuporte
   if (linhas.every(l => l.tabela === tabela && ORDEM_DAS_OPERACOES.includes(l.operacao))) {
     let coisas = PLURAL_DA_AUDITORIA[tabela] ?? `registros (${tabela})`
     if (tabela === 'role_permissions' && umCargo) coisas = `permissões do cargo ${umCargo}`
@@ -1789,7 +1832,10 @@ function principalDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: Nome
   const estorno = linhas.some(l => l.tabela === 'financial_transactions' && l.operacao === 'criou' && texto(l.depois.category) === 'Estorno')
   const fato = linhas.some(l => l.tabela === 'tenants' && l.operacao === 'criou') || estorno ? null : fatoDaGravacao(linhas, nomes)
   // D9 da 31ª: a gravação do estoque é da unidade do movimento (o produto novo é da rede, e a linha dizia "Da rede").
-  return fato?.principal ?? paiDaGravacao(linhas) ?? linhas.find(l => l.client_id)
+  // D15 da 33ª (AD-13, AD-25): o registro clínico sem unidade (a evolução da desistência no meio) não dá a
+  // unidade da gravação — a cliente fica com o registro dela que a tem (o agendamento cancelado).
+  const clinicoSemUnidade = (l: RegistroDaAuditoria) => !l.branch_id && CLINICO_SEM_UNIDADE.has(l.tabela)
+  return fato?.principal ?? paiDaGravacao(linhas) ?? linhas.find(l => l.client_id && !clinicoSemUnidade(l)) ?? linhas.find(l => l.client_id)
     ?? linhas.find(l => l.tabela === 'stock_movements' && l.branch_id) ?? linhas[linhas.length - 1]!
 }
 

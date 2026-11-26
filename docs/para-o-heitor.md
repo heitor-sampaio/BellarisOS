@@ -555,5 +555,28 @@ vai abaixo, com a resposta que o mudou.
     - `tests/agendar-choque-recusado-e-avisos.test.ts:25` e `:66`: o "próximo livre" e o motivo do Confirmar contam
       também a sala ocupada.
 
-**Ficou para você, na página:** R15, sobre o encaixe fora do horário da pessoa. Pela leitura do Claude, ela continua
-aparecendo nas listas, porque o encaixe é permitido.
+**R15, respondida (26/11, na página):** "Não: quem está fora do horário também some das listas (o encaixe só pelo
+campo de horário)". Feita: quem está fora do horário de trabalho naquele horário (ou com a unidade fechada) sai das
+listas de pessoa e da grade, como o ocupado e o bloqueado; no repasse ao desativar alguém, também. O encaixe continua
+permitido, com o aviso e o Confirmar ligado, escolhendo a pessoa e digitando o horário no campo. A lista vazia, quando
+o motivo é só o horário de trabalho, diz isso: "Para um encaixe fora do horário, escolha primeiro quem atende e depois
+digite o horário." (decisão do Claude). Nenhum teste existente mudou por ela.
+
+## 13. A 33ª simulação (26/11)
+
+Cinco redes novas, sem a conta do suporte. O dinheiro das cinco bateu em todas as telas. 18 defeitos e 14 atritos,
+todos corrigidos; o resumo está no DEVLOG (26/11, entrada 4). Nenhum teste existente foi alterado nem apagado (só saiu
+o nome da rodada do título dos casos novos).
+
+O que você precisa saber:
+- **O receber da comanda com o contrato assinado** era o defeito mais sério: o PDV recebia Pix com desconto num
+  atendimento cujo contrato fora assinado para "crédito 3x", sem perguntar, e o contrato seguia valendo. Agora abre com o
+  pagamento do contrato e, se a pessoa muda, pergunta antes "Manter o pagamento combinado" ou "Substituir o contrato".
+- **O Financeiro → Por unidade** passou a listar a unidade desativada que ainda tem agenda futura, como o painel. O
+  relatório da rodada tinha chamado isso de engano; a regra da unidade desativada (UN-13: ela conta "enquanto tiver o
+  que ficou") diz o contrário, e valeu a regra.
+- **O número do endereço sem a rua** passou a ser recusado no cadastro da unidade. Duas unidades em produção têm só o
+  número gravado; não foram mexidas, e a tela pede a rua quando alguém as editar.
+
+Na página, para você: R16 (o relógio da agenda da rede com unidades de fusos diferentes), R17 (a hora da comissão
+paga numa unidade de outro fuso) e R18 (o nome da permissão "Modelos de documento").

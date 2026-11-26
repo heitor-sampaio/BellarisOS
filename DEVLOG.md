@@ -1774,6 +1774,51 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-26 (4) — A 33ª simulação, as correções dela e a R15
+
+O laço segue (o Heitor, 25/11: "quando acabar essa roda já segue as outras e assim vai"). Cinco redes novas, sem conta
+do suporte (o Heitor, 26/11: "Sem a conta"): o atendimento com insumos, lotes e o produto que acaba (Studio Gloxínia,
+Tabatinga, UTC−5), documentos, assinatura e LGPD (Espaço Tuberosa, Petrolina), os indicadores refeitos à mão em duas
+unidades de fusos diferentes (Rede Fúcsia, Barra do Garças UTC−4 e Aragarças UTC−3), contatos, tags, busca, importação e
+a mesma cliente em duas redes (Ateliê Ciclâmen, Montes Claros) e o limite de unidades do plano (Rede Tagete, RS). O
+dinheiro das cinco bateu em todas as telas. 18 defeitos, 14 atritos, nenhuma regressão. As decisões são do Claude,
+26/11, pelos princípios e pelo catálogo; o que pede o Heitor está na página (R16–R18).
+
+**O que mudou no sistema.**
+- **O PDV e o contrato assinado (D1, o mais sério).** O receber da comanda abre com o pagamento inteiro do contrato
+  (as vezes, o crediário, o desconto); outro pagamento pergunta antes de gravar ("Manter o pagamento combinado" /
+  "Substituir o contrato"), e substituir vale na mesma transação do dinheiro (`20261212400001`, DG-03).
+- **LGPD.** Negar o prontuário refaz o pacote, sem ele (D2); o PDF leva a ficha de saúde preenchida no atendimento (D3).
+- **Estoque por lote.** A entrada de lote cobre a falta que ficou sem lote, e as embalagens seguem o rendimento (D5,
+  `20261212200002`, com os dados provados de antes); o Histórico e as Movimentações dizem o que cada lote cobriu; os
+  zerados dos Relatórios pela régua do Estoque (D6, `20261212200003`); o custo do insumo vai no próprio insert, sem o
+  "Corrigiu o custo do lote" falso na Auditoria (D7, `20261212200001`).
+- **Atendimento e agenda.** A desistência acontece na hora da desistência (D14, `20261212100001`); a ficha da equipe se
+  confere pelo link novo e no app (D16); a ficha obrigatória barra na tela também para quem só lê o prontuário (D17); o
+  planejamento numa Avaliação não oferece "Incluir na baixa" (A1, só se compara com o insumo do cartão); o "Editar
+  registro" diz que os insumos se ajustam no Estoque (A2); a ocupação de quem atende em duas unidades é um número só
+  (D13); a agenda da rede com fusos diferentes diz o relógio de cada coluna (D4; a escolha do relógio é a R16).
+- **Clientes, tags e importação.** "Última visita" e "Reativar clientes" em dias de calendário no fuso (D9); a prévia do
+  Unificar com tudo o que ele grava (D18); a tag arquivada que alguém tem segue como filtro em toda tela e no público da
+  campanha (A6, a regra das Tags do Heitor de 13/11); a prévia da importação diz o destino de cada linha (A13).
+- **A rede.** Reativar unidade e membro no limite do plano diz o limite ao lado do botão (D10); a nota das abas das
+  Configurações não diz que a aba da rede toda vem de permissão (D11); "Copilot" uma vez só em Cargos (D12); a
+  desistência na Auditoria na unidade do agendamento (D15); o número sem o logradouro é recusado (A8); a autorização
+  do suporte diz de quem é a conta (A9); o "Por unidade" do Financeiro lista a desativada com agenda futura (UN-13).
+- **Relatórios.** A aba Comercial diz que as oportunidades são da rede (A10); o DRE diz de que se compõe o "Despesas
+  pagas (caixa)" (A11).
+- **Vocabulário.** "Estes documentos já foram assinados" no plural; sem "ele foi avisado" para a cliente (A4).
+- **R15** (o Heitor, 26/11: "Não: quem está fora do horário também some das listas (o encaixe só pelo campo de
+  horário)"): quem está fora do horário na unidade, ou com a unidade fechada, sai das listas de pessoa e da grade; o
+  encaixe segue pelo campo de horário, com o aviso e o Confirmar ligado; a lista vazia diz como fazer o encaixe.
+
+**Testes.** Nenhuma asserção de teste existente mudou; só casos novos e os títulos novos sem o nome da rodada.
+
+**Sugestões novas:** nº 95–109 (`docs/sugestoes-de-funcionalidades.md`); a nº 57 foi feita pelo D4.
+
+**Em aberto, na página:** R16 (o relógio da agenda da rede com fusos diferentes), R17 (a hora da comissão paga numa
+unidade de outro fuso), R18 (o nome da permissão "Modelos de documento").
+
 ### 2026-11-26 (3) — As respostas do Heitor de 26/11 (a página de perguntas, R01 a R11)
 
 O Heitor respondeu as perguntas da 31ª e da 32ª na página de perguntas, e três no chat ("r09 ok, r10 pode fazer, r07 se
@@ -1811,7 +1856,8 @@ teste alterado e a resposta que o mudou, está em `docs/para-o-heitor.md` §12.
   - O encaixe fora do horário continua aparecendo (leitura do Claude; a R15 na página confirma).
   - A R12 confirmou o modelo da Meta fora das 24 horas.
 
-**Em aberto, na página:** R15 (o encaixe nas listas).
+**R15, respondida (26/11, na página):** "Não: quem está fora do horário também some das listas (o encaixe só pelo
+campo de horário)". Feita na entrada (4).
 
 ### 2026-11-26 (2) — A 32ª simulação e as correções dela
 

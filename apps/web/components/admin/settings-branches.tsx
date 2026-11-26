@@ -4,9 +4,9 @@ import { CaminhosDoQueFicou } from '@/components/admin/o-que-ficou'
 import { getTenantContext, unidadesDoContexto } from '@/lib/auth'
 import { BranchForm } from '@/components/admin/branch-form'
 import { toggleBranchStatus } from '@/actions/branches'
-import { semAcesso } from '@/lib/sem-acesso'
+import { ReativarUnidade } from '@/components/admin/reativar-unidade'
 import { origemDoApp, enderecoDoAppDaCliente } from '@/lib/unidades/app-da-cliente'
-import { MapPin, Mail, Phone, Power, PowerOff, ChevronRight, Clock } from 'lucide-react'
+import { MapPin, Mail, Phone, PowerOff, ChevronRight, Clock } from 'lucide-react'
 import { relogioForaDeBrasilia } from '@/lib/unidades/hora-da-unidade'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import Link from 'next/link'
@@ -218,20 +218,17 @@ export async function SettingsBranches() {
                       <PowerOff size={13} /> Desativar
                     </DesativarUnidade>
                   ) : (
-                    <form action={async () => {
-                      'use server'
-                      // A tela só chega aqui com a aba aberta (só a Admin da rede); a recusa não se ignora (§14).
-                      const r = await toggleBranchStatus(branch.id, true)
-                      if (r.error) throw semAcesso()
-                    }}>
-                      <button
-                        type="submit"
-                        className="btn-ghost"
-                        style={{ fontSize: 'var(--text-xs-sz)', gap: 5, color: 'var(--success)' }}
-                      >
-                        <Power size={13} /> Reativar
-                      </button>
-                    </form>
+                    <ReativarUnidade
+                      // A tela só chega aqui com a aba aberta (só a Admin da rede); a recusa não se
+                      // ignora (§14): o limite do plano aparece ao lado do botão (D10 da 33ª).
+                      reativar={async () => {
+                        'use server'
+                        const r = await toggleBranchStatus(branch.id, true)
+                        return r
+                      }}
+                      className="btn-ghost"
+                      style={{ fontSize: 'var(--text-xs-sz)', gap: 5, color: 'var(--success)' }}
+                    />
                   )}
 
                   <Link

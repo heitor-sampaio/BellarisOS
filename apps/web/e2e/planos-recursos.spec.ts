@@ -484,6 +484,36 @@ test.describe.serial('os limites do plano — unidades, membros e números de Wh
     expect(await ativos('whatsapp_numbers')).toBe(1)
   })
 
+  // PN-11 ("a tela diz o limite") e CLAUDE.md §14; decisão E do Claude, 26/11 (D10 da 33ª):
+  // reativar no limite é recusado como criar — o aviso ao lado do botão, não a tela de erro.
+  test('no limite, o Reativar da unidade diz o limite ao lado do botão', async ({ browser }) => {
+    await comLimites({ unidades: await ativos('branches'), membros: null, whatsapp: null })
+    await comSessao(browser, dono!.estado, async p => {
+      await p.goto(`/admin/branches/${segundaUnidade}`)
+      await p.getByRole('button', { name: 'Reativar' }).click()
+      await expect(p.locator('[data-reativar-unidade-recusa]')).toContainText('O plano da sua rede permite até')
+      await expect(p.getByText('Limite do plano atingido')).toHaveCount(0)
+      await expect(p.getByRole('button', { name: 'Reativar' })).toBeVisible()
+    })
+    expect((await db().from('branches').select('is_active').eq('id', segundaUnidade!).single<{ is_active: boolean }>()).data!.is_active).toBe(false)
+  })
+
+  // O mesmo do Reativar da unidade, no MEMBRO (o arremate da 33ª; PN-11, CLAUDE.md §14):
+  // a action lançava, e o botão dizia "Não deu certo. Tente de novo." no lugar do limite.
+  test('no limite, o Reativar do membro diz o limite ao lado do botão', async ({ browser }) => {
+    await comLimites({ unidades: null, membros: await ativos('users'), whatsapp: null })
+    const nome = (await db().from('users').select('name').eq('id', inativo!.userId).single<{ name: string }>()).data!.name
+    await comSessao(browser, dono!.estado, async p => {
+      await p.goto('/admin/team?status=inactive')
+      const linha = p.locator('tr', { hasText: nome })
+      await linha.getByRole('button', { name: 'Reativar membro' }).click()
+      await expect(linha.getByRole('alert')).toContainText('O plano da sua rede permite até')
+      await expect(linha.getByRole('alert')).not.toContainText('Não deu certo')
+      await expect(p.getByText('Limite do plano atingido')).toHaveCount(0)
+    })
+    expect((await db().from('users').select('is_active').eq('id', inativo!.userId).single<{ is_active: boolean }>()).data!.is_active).toBe(false)
+  })
+
   test('sem limite, as três passam', async ({ browser }) => {
     await comLimites(null)
     await comSessao(browser, dono!.estado, async p => {

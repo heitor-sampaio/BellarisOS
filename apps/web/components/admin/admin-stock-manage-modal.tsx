@@ -12,6 +12,7 @@ import {
 } from '@/actions/stock'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { validadeNaTela, loteVencido } from '@/lib/estoque/validade'
+import { textoDasPartes } from '@/lib/estoque/lotes-do-movimento'
 import { saldoNaPrateleira } from '@/lib/estoque/saldo-em-texto'
 import { medidaNoPlural as pl, recusaDaEmbalagem } from '@/lib/estoque/medidas'
 import { minimoEhDoCadastro } from '@/lib/estoque/situacao'
@@ -1193,10 +1194,9 @@ function HistoricoTab({ product, defaultBranchId, podeDesfazer = true, onAlterou
         const fmtBRL4 = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 4 })
         // O lote e o custo do movimento (J-45): de qual lote saiu (ou qual a
         // entrada criou) e quanto custou a unidade de consumo e a embalagem.
-        const lotes = m.lotes.map(l => [
-          l.numero ? `Lote ${l.numero}` : 'Lote sem número',
-          l.validade ? `val. ${validadeNaTela(l.validade)}` : null,
-        ].filter(Boolean).join(' ')).join(' · ')
+        // D5 da 33ª: com o que cada lote cobriu — "Lote AM1: 2 ml · 2 ml sem
+        // lote" (era "Lote AM1" para os 4 ml), e a entrada que cobriu a falta.
+        const lotes = textoDasPartes(m.partes, m.unidade)
         const custo = m.custoUnitario != null && m.custoUnitario > 0
           ? (m.porEmbalagem
             ? `${fmtBRL4(m.custoUnitario)}/${m.unidade} (${fmtBRL(m.custoPorEmbalagem ?? 0)}/${m.embalagem})`
@@ -1234,7 +1234,7 @@ function HistoricoTab({ product, defaultBranchId, podeDesfazer = true, onAlterou
                 {m.notes ? ` · ${m.notes}` : ''}
               </p>
               {(lotes || custo) && (
-                <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 1 }}>
+                <p data-lotes-do-movimento style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 1 }}>
                   {[lotes, custo ? `custo ${custo}` : null].filter(Boolean).join(' · ')}
                 </p>
               )}

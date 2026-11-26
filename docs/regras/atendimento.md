@@ -50,8 +50,9 @@
     atende → "Não atende neste dia" (`[data-nao-atende-no-dia]`), no estilo do
     "Intervalo" (`rotuloDoDiaSemHorario`). Prova:
     `tests/agenda-fechado-bloqueio-e-horario-que-parte-da-unidade.test.ts`.
-  A equipe ainda marca fora do horário (encaixe): os seletores do checkout e
-  das sessões do plano continuam livres.
+  A equipe ainda marca fora do horário (encaixe), mas só pelo campo de horário
+  (no Agendar, o de data e hora; no checkout e nas sessões, o "Outro horário
+  (encaixe)"): as listas não oferecem o fora do horário (R15, abaixo).
   - **O encaixe é permitido, mas AVISADO** (J-30, 2026-10-30): o modal de
     agendamento diz, antes do Confirmar, "Fora do horário de atendimento de X
     (10:00–18:00). O encaixe é permitido." e o choque com outro atendimento
@@ -117,14 +118,16 @@
   - **Livre não é fixo** (D8 da simulação de 2026-10-29): a grade desses
     seletores (`GradeDeHorarios`, `components/shared/grade-de-horarios.tsx` —
     o checkout do plano, as sessões do plano/pacote e o "Agendar" do pré-pago)
-    é a janela da UNIDADE naquele dia, de 30 em 30 min, sem a pausa e até o
-    último início antes do fechamento (`gradeDoCheckout`,
-    `lib/checkout/grade-de-horarios.ts`). Os horários da profissional (unidade
-    ∩ dela) ficam em destaque; os outros, tracejados, são encaixe e se
-    escolhem; o que nem a unidade oferece (madrugada, dia fechado) vai pelo
-    "Outro horário (encaixe)". Era 08:00–20:00 fixo: oferecia a pausa e
-    cortava a noite. A action `getSchedulingDaySlots` devolve os dois
-    horários. Prova: `e2e/checkout-grade-de-horarios.spec.ts`,
+    é o horário de QUEM ATENDE naquele dia (a unidade ∩ ela), de 30 em 30 min,
+    sem a pausa e até o último início antes do fechamento (`gradeDoCheckout`,
+    `lib/checkout/grade-de-horarios.ts`, marca o `doProfissional`, e a grade
+    só mostra esses). O fora do horário dela não aparece (R15, abaixo; era
+    tracejado e se escolhia): o encaixe vai pelo "Outro horário (encaixe)"
+    (no Agendar, o campo de data e hora). O dia sem horário dela diz "X não
+    atende neste dia. Para um encaixe, use “Outro horário”." (a unidade
+    fechada, "A unidade não abre neste dia…"). Era 08:00–20:00 fixo: oferecia
+    a pausa e cortava a noite. A action `getSchedulingDaySlots` devolve os
+    dois horários. Prova: `e2e/checkout-grade-de-horarios.spec.ts`,
     `tests/checkout-grade-de-horarios.test.ts`.
     **Hoje, a grade começa em AGORA** (A24 da 6ª simulação, 2026-11-04: de
     madrugada, numa unidade 24 h, a sessão do pacote oferecia 00:00–04:00):
@@ -249,12 +252,26 @@
     disponíveis não devem aparecer nas listas"). A leitura é do Claude
     (26/11): **"não disponível" é o que o sistema RECUSARIA naquele horário**
     — o choque com outro atendimento, o bloqueio (da pessoa ou da sala), a
-    sala ocupada, o horário que já passou. O encaixe (fora do horário de quem
-    atende, a unidade fechada) é permitido e CONTINUA aparecendo, com o aviso
-    de sempre; quem não atende na unidade já não aparecia. Valem:
+    sala ocupada, o horário que já passou. **E quem está FORA DO HORÁRIO**
+    (o Heitor, 26/11, na página de perguntas, R15: "Não: quem está fora do horário também some das listas (o encaixe só pelo campo de horário)"):
+    fora do horário dela naquela unidade (sem horário próprio, o da unidade;
+    a unidade fechada, fora) — a MESMA conta do aviso do encaixe
+    (`foraDoHorarioDeQuemAtende`, `lib/agenda/horario.ts`, dentro de
+    `indisponibilidadeNoHorario`, o motivo `'fora_do_horario'`). O encaixe
+    segue permitido (o servidor aceita, com o aviso), mas só pelo campo de
+    horário: a lista não o oferece. Com o horário digitado antes da pessoa e
+    TODOS só fora do horário (ninguém ocupado nem bloqueado), a lista vazia do
+    Agendar diz, ao lado do "Ninguém está livre nesse horário. Escolha outro
+    horário para ver quem atende.", o caminho do encaixe: "Para um encaixe fora
+    do horário, apague o horário, escolha primeiro quem atende e depois digite
+    o horário." (`encaixeDaListaVazia`, `lib/agenda/so-o-que-esta-livre.ts`;
+    decisão do Claude, 26/11, princípio 7; prova
+    `tests/agenda-lista-vazia-diz-o-encaixe.test.ts`). As salas não têm horário próprio: a unidade
+    fechada não as tira (decisão do Claude, 26/11). Quem não atende na unidade
+    já não aparecia. Valem:
     - a grade de horários (`GradeDeHorarios`: o Agendar, as sessões do
-      pacote/plano e o checkout) — o ocupado e o bloqueado saem; com a sala
-      escolhida, também o da sala;
+      pacote/plano e o checkout) — o ocupado, o bloqueado e o fora do horário
+      de quem atende saem; com a sala escolhida, também o da sala;
     - as salas do agendar, das sessões e do "Mudar de unidade"
       (`salasParaOHorario` → `indisponibilidadeNoHorario`, que dá
       `'ocupada' | 'bloqueada'`);
@@ -264,22 +281,27 @@
       bloqueio e na sala ocupada).
     - a sala do agendar pelo painel da oportunidade (CRM; sem sala livre, "Nenhuma
       sala está livre nesse horário: o agendamento vai sem sala.");
-    - o repasse da desativação (`lib/equipe/repasse.ts`): quem tem atendimento
-      ou BLOQUEIO no horário não aparece; o "repassar todos para X" diz o
-      motivo ("…está com o horário bloqueado: escolha outra pessoa.").
+    - o repasse da desativação (`lib/equipe/repasse.ts`): quem tem atendimento,
+      BLOQUEIO ou está fora do horário no horário não aparece; o "repassar
+      todos para X" diz o motivo ("…está com o horário bloqueado: escolha outra
+      pessoa.", "…está fora do horário de atendimento nesse horário: escolha
+      outra pessoa.").
     **A já escolhida que deixou de estar livre FICA** como valor do campo, com
     "(ocupada)"/"(bloqueada)" e o "Não vai ser agendado", e o Confirmar
-    desligado (`soOQueEstaLivre`, `rotuloDaEscolhida`,
-    `lib/agenda/so-o-que-esta-livre.ts`) — sumir com ela trocaria a escolha
-    calada. No Agendar, a lista de quem atende só filtra depois que a pessoa
+    desligado; fora do horário, com "(fora do horário)" e o aviso do encaixe,
+    e o Confirmar LIGADO — é o encaixe pelo campo de horário: escolhida a
+    pessoa, o horário digitado fora do expediente dela segue (`soOQueEstaLivre`,
+    `rotuloDaEscolhida`, `lib/agenda/so-o-que-esta-livre.ts`) — sumir com ela
+    trocaria a escolha calada. No Agendar, a lista de quem atende só filtra depois que a pessoa
     escolheu o horário: enquanto ele é só a sugestão (o próximo livre de quem
     ela escolher, A20), todas aparecem. Lista vazia diz por quê: "Ninguém está
     livre nesse horário." (`NINGUEM_LIVRE_NO_HORARIO`), "Nenhuma sala … está
     livre nesse horário: … vai sem sala.", "Nenhum horário livre de X neste
     dia: escolha outro dia." O servidor segue recusando ao gravar. Prova:
-    `tests/agenda-so-mostra-o-que-esta-livre.test.ts`,
+    `tests/agenda-so-mostra-o-que-esta-livre.test.ts` (com o "R15"),
+    `tests/listas-so-com-o-livre-crm-e-repasse.test.ts`,
     `e2e/agenda-salas.spec.ts`, `e2e/agenda-atritos-da-8.spec.ts` ("A58",
-    "A22 (R13)"), `e2e/agenda-defeitos-da-8.spec.ts` ("D5", "D9 (R14)"),
+    "A22 (R13)", "A22 (R15)"), `e2e/agenda-defeitos-da-8.spec.ts` ("D5", "D9 (R14)"),
     `e2e/agenda-unidade-da-9.spec.ts` ("A17").
   - **Os livres não oferecem o bloqueado**: `computeAvailableSlots` tira o
     bloqueio da profissional — logo o app da cliente (agendar, "Sem
@@ -2190,6 +2212,18 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
     segue "já respondida". A espiada diz `conferir: true` com o estado `usado`
     (migration `20261105002902`: a função serviu ao código de antes até o
     push). Prova: `e2e/ficha-pre-atendimento.spec.ts` ("A52").
+    **Também pelo link NOVO** (D16 da 33ª, FI-13; decisão do Claude, 26/11):
+    a ficha preenchida pela equipe (origem EQUIPE, ou a do formato antigo) e
+    mandada DEPOIS por um link novo, dentro da validade, abre no modo CONFERIR
+    — era "Algo mudou na sua saúde? Nada mudou", o modo de quem respondeu ela
+    mesma (`modoDaFichaPeloLink`, `lib/pre-atendimento/modo-da-ficha.ts`).
+    **E no app**, a mesma regra (o arremate da 33ª; princípio 3, decisão do
+    Claude, 26/11): `/[slug]/cliente/pre-atendimento` decide o modo por
+    `modoDaFichaPeloLink` (sem o `conferir`, que é do link) — a ficha da equipe
+    abria no app em "Algo mudou?"; "Está tudo certo" a grava como da cliente
+    (CLIENTE_APP).
+    Prova: `tests/ficha-da-equipe-pelo-link-novo.test.ts`,
+    `e2e/ficha-pre-atendimento.spec.ts` ("a cliente confere também no app").
     **Antes do CPF, a página não diz nada da ficha** (A50 da 9ª simulação,
     2026-11-07: os dois times viram "A clínica já preencheu a sua ficha…"
     antes da identidade): o título é sempre "X mandou a sua ficha de
@@ -2676,7 +2710,14 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
   mesma unidade (`divergenciasDaBaixa`, `lib/injetaveis/dose.ts`): "O mapa
   soma 8 UI de Toxina; a baixa está em 30 UI." com "Baixar 8 UI, a dose do
   mapa" (ou "Incluir … na baixa"), que muda o cartão de insumos. Só avisa: a
-  baixa continua a da tela. A dose sai com vírgula em toda tela do mapa
+  baixa continua a da tela. **O planejamento para outro dia não é consumo**
+  (A1 da 33ª, Decisão A — decisão do Claude, 26/11, princípio 5): sem
+  aplicação registrada, o planejamento só se compara com o produto que ESTE
+  atendimento tem no cartão de insumos, marcado ou não (o da Toxina numa
+  sessão de Toxina); a Toxina desenhada numa Avaliação, que não a usa, não
+  avisa nem oferece "Incluir … na baixa" (`totaisQueSeComparam`; a aplicação
+  registrada aqui se compara sempre). Prova:
+  `tests/injetaveis-planejamento-para-outro-dia.test.ts`. A dose sai com vírgula em toda tela do mapa
   (`formatarDose`: "0,5 ml"). Prova: `e2e/injetaveis-produto-do-estoque.spec.ts`,
   `tests/injetaveis-dose.test.ts`. **"U" e "UI" são a mesma unidade na
   comparação** (D16 da 9ª simulação, 2026-11-07): a toxina do estoque se conta
@@ -2998,6 +3039,11 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
     a anterior" (`[data-registro-editado]`, `[data-versao-anterior]`), no
     atendimento e no registro da aba Prontuário. A avaliação concluída
     destravada ganhou o "Salvar" (não tinha: destravar não gravava nada).
+    **Os insumos não se corrigem ali** (A2 da 33ª, Decisão A — decisão do
+    Claude, 26/11, princípio 7): a baixa é movimento do estoque, e a faixa do
+    registro destravado diz "Os insumos não se editam aqui: o ajuste é no
+    Estoque, por quem tem o Estoque em Gerenciar."
+    (`TEXTO_DOS_INSUMOS_NO_EDITAR_REGISTRO`). Prova: `tests/registro-travado.test.ts`.
     Corrigir pede o Prontuário em Gerenciar, e só ele (UM4 de 23/11; de 18/11
     a 23/11 pedia também o Atendimento, e antes a Agenda), também a ficha do
     procedimento e a foto dela; a ficha cancelada ou de falta não se preenche
@@ -3569,9 +3615,11 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
     `semEstoqueNoRecorte`/`contarSituacoes` (`lib/estoque/situacao.ts`): os
     cartões "Sem estoque"/"Estoque baixo" das duas telas de estoque e o cartão
     do dashboard da rede ("Produtos zerados", que deixa de dizer "Saudável");
-    Relatórios → Estoque conta `current_stock <= 0` sobre cada produto ativo ×
-    cada unidade ativa do recorte (`metrics_relatorio`, migration
-    `20261104002102`). Era `= 0` sobre as linhas que existiam: o Gel em −1 un
+    Relatórios → Estoque conta o saldo da tela — o rendimento, quando o
+    produto tem unidade de consumo (`saldo_de_consumo`, 4 casas; D6 da 33ª,
+    migration `20261212200003`), que até 26/11 era `current_stock <= 0` —
+    sobre cada produto ativo × cada unidade ativa do recorte
+    (`metrics_relatorio`, migration `20261104002102`). Era `= 0` sobre as linhas que existiam: o Gel em −1 un
     e a luva sem entrada não contavam. Prova:
     `e2e/estoque-negativo-e-sem-saldo.spec.ts`.
     **E é UMA conta de PRODUTOS em todo lugar** (D19 da 8ª simulação,
@@ -3884,6 +3932,48 @@ indicada é a do consolidado do levantamento):
   último custo), não o preço de venda (`DICA_DO_VALOR`); o Giro, os insumos
   dos atendimentos do mês (`DICA_DO_GIRO`). Nos dois portais, também para
   quem só vê. Prova: `e2e/estoque-lotes-da-9.spec.ts` ("A14 da 31ª").
+
+**Corrigidas na 33ª simulação** (2026-11-26):
+- **O lote que entra cobre a falta que ficou sem lote** (D5; ES-18, ES-20,
+  princípio 3; decisão do Claude, 26/11): o consumo maior que o saldo deixa a
+  parte que nenhum lote cobriu em saldo negativo (o ácido em −2 ml), e a
+  entrada seguinte com lote paga essa falta antes de encher o lote — o AM2 de
+  10 ml com o saldo em −2 ml fica com 8 ml, e a soma dos lotes volta a ser o
+  saldo. É um gatilho ADIADO (`trg_lote_cobre_a_falta`, fim da transação:
+  a entrada grava o movimento antes do lote), que abate a falta de antes do
+  movimento positivo, sem passar do que os lotes têm a mais que o saldo, nos
+  lotes que o próprio movimento pôs; a ligação diz o que entrou no lote (o
+  "Desfazer entrada" confere por ela). A entrada grava as embalagens pelo
+  rendimento (a aberta inteira, a devida para longe do zero, a regra de
+  `lib/estoque/baixa.ts`): era o saldo de antes + o que entrou, e o ácido
+  ficava "0 frasco" com 8 ml. Os de antes: só o que o banco prova (a entrada
+  com lote depois do saldo negativo), sem linha nova na Auditoria. O
+  Histórico do produto e as Movimentações dos Relatórios dizem o que cada lote
+  cobriu: "Lote AM1: 2 ml · 2 ml sem lote" e "Lote AM2 val. …: 8 ml · 2 ml
+  cobriram a falta de antes (sem lote)"; o lote que cobre o movimento inteiro
+  diz só o lote, como antes (`partesDoMovimento`/`textoDasPartes`,
+  `lib/estoque/lotes-do-movimento.ts`; a ligação × o rendimento — a coluna
+  Lote das Movimentações dos Relatórios lê as `partes` que o carregador manda,
+  `reports-bi-view.tsx`). Migration
+  `20261212200002`. Prova: `tests/estoque-saldo-e-lotes-batem.test.ts`,
+  `e2e/lotes-baixa.spec.ts` ("o lote que entra cobre a falta").
+- **O zerado dos Relatórios é o saldo da tela** (D6; princípio 3; decisão do
+  Claude, 26/11): `metrics_relatorio` conta "Produtos zerados", na rede e por
+  unidade, pelo saldo que o Estoque mostra (`saldo_de_consumo`, o rendimento
+  com 4 casas, como `situacaoDoEstoque`), não por `current_stock`. Migration
+  `20261212200003`. Prova: `tests/estoque-zerados-pelo-rendimento.test.ts`,
+  `e2e/estoque-zerados-uma-conta.spec.ts` ("o zerado é pelo saldo que a tela mostra").
+- **O custo do insumo vai no próprio insert** (D7; AD-19; decisão do Claude,
+  26/11): o insumo do atendimento e o ajuste a menos nascem com o custo dos
+  lotes de onde vão sair — um gatilho ANTES do insert
+  (`trg_custo_da_saida_pelos_lotes`, `private.custo_da_saida_do_movimento`:
+  o lote escolhido primeiro, depois o FEFO do gatilho do lote; o resto, o
+  custo que o movimento trouxe). O gatilho do lote deixou de fazer o UPDATE de
+  `unit_cost` depois do insert, que a Auditoria lia como "Corrigiu o custo do
+  lote". A transferência usa a mesma conta (`custo_da_saida_pelos_lotes`). O
+  número gravado não muda; as linhas "Corrigiu" de antes ficam na Auditoria.
+  Migration `20261212200001`. Prova: `tests/estoque-saldo-e-lotes-batem.test.ts`,
+  `e2e/lotes-baixa.spec.ts` ("o lote que entra cobre a falta").
 
 ---
 
@@ -4200,7 +4290,11 @@ O resto do fluxo:
     de `quemRespondeAFichaDeSaude`) —, com "Entendi" no lugar do "Responder
     agora", que levava a campos que ela não escreve (A17 da 31ª; decisão do
     Claude, 26/11, princípio 7; a trava fica). Prova:
-    `tests/atendimento-ficha-de-saude-quem-responde.test.ts`.
+    `tests/atendimento-ficha-de-saude-quem-responde.test.ts`. **Também na
+    avaliação** (D17 da 33ª, FI-07): lá a ficha de saúde de quem só LÊ o
+    prontuário é o cartão de leitura, que não estava ligado à conferência — a
+    tela chegava ao "Confirmar conclusão" e só o servidor recusava; o cartão
+    de leitura agora confere as obrigatórias como o editável.
   - **Quem não vê o clínico** (sem o Prontuário em Ver; o caso do prontuário
     "só os meus" num atendimento de outra saiu com o SM1): a tela não tem os
     campos e não aponta nada; o servidor recusa do mesmo jeito, com só o NOME
@@ -4453,7 +4547,7 @@ O resto do fluxo:
 
 ## O que nunca fazer aqui
 
-❌ Oferecer numa lista (horário, sala, pessoa) o que o servidor recusaria no horário — o ocupado, o bloqueado, a sala ocupada: sai da lista, e só a JÁ escolhida fica, marcada (o Heitor, 26/11, R13/R14: "Só mostra os horarios, salas e pessoas que estão livres")
+❌ Oferecer numa lista (horário, sala, pessoa) o que o servidor recusaria no horário — o ocupado, o bloqueado, a sala ocupada — ou quem está fora do horário dela na unidade: sai da lista, e só a JÁ escolhida fica, marcada (o Heitor, 26/11, R13/R14: "Só mostra os horarios, salas e pessoas que estão livres"; R15: "Não: quem está fora do horário também some das listas (o encaixe só pelo campo de horário)") — e o fora do horário é a conta do aviso do encaixe (foraDoHorarioDeQuemAtende), não outra
 ❌ Pedir o catálogo do editor do plano sem a unidade do plano (procedimentosParaPlano com unidade nula) ou gravar sessões de plano sem recusaDosProcedimentosDoPlano (F73, D4 da 14ª; tests/catalogo-do-plano trava) — nem recusar o que JÁ estava no plano e a unidade não faz mais (é aviso, princípio 2: o jaGravado da recusa)
 
 ```
@@ -4530,7 +4624,7 @@ O resto do fluxo:
 ❌ Transferir estoque fora de estoque_transferir (as duas linhas travadas na mesma ordem)
 ❌ Gravar movimento de estoque em embalagens de produto com unidade de consumo, ou com o custo da embalagem (é custo_de_consumo)
 ❌ Ler o custo de um movimento com coalesce(m.unit_cost, p.cost_price) (é custo_do_movimento) ou mandar o custo do insumo do app para a conclusão
-❌ Avaliar o estoque ou o consumo pelo último custo (products.cost_price) quando há lote: é custo_do_lote (o gatilho do lote grava o do consumo; valor_do_saldo soma os lotes — D2 da 10ª)
+❌ Avaliar o estoque ou o consumo pelo último custo (products.cost_price) quando há lote: é custo_do_lote (o gatilho ANTES do insert grava o do consumo — D7 da 33ª; valor_do_saldo soma os lotes — D2 da 10ª)
 ❌ Ajuste positivo de estoque fora de um lote, ou o negativo fora de "Perdas no período" (estoque_ajuste_com_lote, motivo INVENTARIO — D5 da 10ª)
 ❌ Corrigir uma entrada lançada errada com um ajuste a menos (vira perda e sai do lote errado pelo FEFO): é "Desfazer entrada" (estoque_desfazer_entrada — A38 da 10ª), ou o ajuste com o lote escolhido
 ❌ Corrigir um ajuste errado com outro ajuste (a perda do primeiro fica em Perdas): é "Desfazer ajuste" (estoque_desfazer_ajuste — D5 da 11ª)
@@ -4549,6 +4643,10 @@ O resto do fluxo:
 ❌ Mostrar ou guardar o custo por unidade de consumo com 2 casas (R$ 0,038/g vira R$ 0,04 — D6 da 11ª)
 ❌ Escrever a quantidade com a embalagem no singular fixo ("3 frasco") — é medidaNoPlural/quantidadeComMedida (A49 da 12ª)
 ❌ Contar a entrega do voucher de produto (reference voucher:) como "Inventário" em metrics_perdas — é BRINDE, pelo custo do lote (A40 da 12ª)
+❌ Gravar o custo de um movimento por UPDATE depois do insert (a Auditoria lê como "Corrigiu o custo do lote"): o custo vai no insert, pelo gatilho ANTES (D7 da 33ª)
+❌ Entrada com lote que enche o lote sem pagar a falta que ficou sem lote (a soma dos lotes passa do saldo), ou gravar as embalagens da entrada somando ao saldo de antes em vez de arredondar o rendimento (D5 da 33ª)
+❌ Contar "zerado" por current_stock num produto com unidade de consumo — é o saldo da tela (saldo_de_consumo, D6 da 33ª)
+❌ Dizer no Histórico ou nas Movimentações o lote ligado como se cobrisse o movimento inteiro — é o que cada lote cobriu (textoDasPartes, D5 da 33ª)
 ❌ Saída calculada no app (conclusão, voucher) sem mandar o saldo LIDO (antes_embalagens/antes_rendimento) e sem comNovaTentativa — o banco confere e recusa com PT409
 ❌ Mostrar no ajuste o saldo em embalagens arredondadas, ou ler a contagem do inventário tirando dela o "já consumido do frasco aberto" (estoque_ajuste, o de antes): a contagem vale EXATA na unidade digitada — estoque_ajuste_em (D3 da 7ª)
 ❌ Dizer no "Aplicado em" do lote a baixa INTEIRA do atendimento (é stock_movement_batches.quantity × o rendimento) ou a hora marcada (é a conclusão) — D6/A12 da 9ª; ou listar só os lotes com saldo onde o recall pede o esgotado (D15)

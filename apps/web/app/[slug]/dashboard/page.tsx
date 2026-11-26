@@ -20,7 +20,8 @@ import type { AppModule } from '@estetica-os/types'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { RevenueBarChart } from '@/components/branch/revenue-bar-chart'
 import { DashboardEmptyState } from '@/components/shared/dashboard-empty-state'
-import { format, differenceInDays } from 'date-fns'
+import { format } from 'date-fns'
+import { diasDesdeAUltimaVisita } from '@/lib/clientes/ultima-visita'
 import { ptBR } from 'date-fns/locale'
 import { getClientesParaReativarDoRecorte } from '@/lib/metrics/unidade'
 import { startOfDayTZ, endOfDayTZ, startOfMonthTZ, addMonthsTZ, addDaysTZ, monthKeyTZ, naParede } from '@/lib/datetime'
@@ -389,10 +390,11 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
 
   // -- Reativar clientes -----------------------------------------
   // A ordem (quem há mais tempo sem vir primeiro; quem nunca veio no fim) vem
-  // do banco; aqui só os dias para o rótulo.
+  // do banco; aqui só os dias para o rótulo — de calendário, no fuso da
+  // unidade, como a "Última visita" da lista de Clientes.
   const toReactivate = paraReativar.lista.map(c => ({
     ...c,
-    daysSince: c.ultimaVisita ? differenceInDays(now, new Date(c.ultimaVisita)) : null,
+    daysSince: diasDesdeAUltimaVisita(c.ultimaVisita, now, fuso),
   }))
   const inactiveCount = paraReativar.total
 

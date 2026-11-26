@@ -6,6 +6,7 @@ import { ListaDetalhe } from '@/components/shared/lista-detalhe'
 import { getCachedNetworkClients, getCachedUltimasVisitas } from '@/lib/cached-queries'
 import { getClientesAtivos } from '@/lib/metrics/unidade'
 import { aniversariantesDoMes } from '@/lib/clientes/aniversariantes'
+import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 
 export default async function AdminClientsLayout({
   children,
@@ -20,13 +21,15 @@ export default async function AdminClientsLayout({
   // é a trava dela (assertPermission, como toda page.tsx) que diz "sem acesso".
   if (!can(ctx, 'clients', 'VIEW')) return <>{children}</>
 
-  const [rawClients, ultimasVisitas, aniversariantes, ativos] = await Promise.all([
+  const [rawClients, ultimasVisitas, aniversariantes, ativos, fuso] = await Promise.all([
     getCachedNetworkClients(ctx.tenantId!),
     getCachedUltimasVisitas(ctx.tenantId!, null),
     aniversariantesDoMes(ctx.tenantId!),
     // O contador vem do banco (A24). A cliente é da rede (CL2 do Bloco Tags):
     // não há contador por unidade.
     getClientesAtivos({ tenantId: ctx.tenantId! }),
+    // A "Última visita" conta dias de calendário no fuso da rede (D9 da 33ª).
+    fusoDaRede(ctx.tenantId!),
   ])
 
   const lastVisitMap = new Map(ultimasVisitas.map(v => [v.client_id, v.ultima]))
@@ -62,6 +65,7 @@ export default async function AdminClientsLayout({
           aniversariantes={aniversariantes}
           // A21 da 16ª: escolher várias e "Marcar tag" (Clientes em Gerenciar).
           marcarTag={can(ctx, 'clients', 'MANAGE') ? { slug: null } : null}
+          fuso={fuso}
         />
       }
     >

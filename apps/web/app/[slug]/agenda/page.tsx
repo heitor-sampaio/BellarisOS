@@ -15,6 +15,7 @@ import { nomesDosRegistros } from '@/lib/nomes-dos-registros'
 import { pagosAntes } from '@/lib/appointments/pago-antes'
 import { AbertosDeAntes } from '@/components/branch/abertos-de-antes'
 import { bloqueiosDoPeriodo } from '@/lib/agenda/bloqueios'
+import { semOsQueJaSaoCartao } from '@/lib/agenda/ocupado-fora'
 import { podemOcuparDesde } from '@/lib/appointments/core'
 import { lerEmAndamento } from '@/lib/agenda/ler-em-andamento'
 import { EmAndamentoAgora } from '@/components/shared/em-andamento-agora'
@@ -25,7 +26,7 @@ import {
 import { MeusAtendimentosEmOutrasUnidades } from '@/components/branch/meus-de-outras-unidades'
 import { quemConcluiOAtendimento } from '@/lib/equipe/quem-desfaz'
 import { filtrosDaAgenda, aplicarFiltrosDaAgenda, SEM_FILTRO } from '@/lib/agenda/filtros'
-import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
+import { tagsAtivasDaRede, comAsArquivadasEmUso } from '@/lib/tags/vocabulario'
 import { fusosDasUnidades } from '@/lib/unidades/fuso-da-unidade'
 
 export default async function AgendaPage({ params, searchParams }: {
@@ -63,7 +64,7 @@ export default async function AgendaPage({ params, searchParams }: {
   const [professionals, rooms, tagsDaRede] = await Promise.all([
     getCachedBranchProfessionals(branchId, ctx.tenantId!),
     getCachedRoomsByBranch(branchId, ctx.tenantId!),
-    professionalOnly ? Promise.resolve([] as string[]) : tagsAtivasDaRede(ctx.tenantId!),
+    professionalOnly ? Promise.resolve([] as string[]) : comAsArquivadasEmUso(ctx.tenantId!, tagsAtivasDaRede(ctx.tenantId!)),
   ])
   // Os filtros (o Heitor, 18/11: "Então precisa arrumar"; e a regra das Tags):
   // profissional, sala e tags, na CONSULTA. Só valem entre as opções da tela.
@@ -191,16 +192,10 @@ export default async function AgendaPage({ params, searchParams }: {
     ctx.branchId === null && slugDaUnidade.get(a.branch_id as string)
       ? `/${slugDaUnidade.get(a.branch_id as string)}/agenda/${a.id as string}`
       : `/${slug}/agenda/${a.id as string}`
-  // O que já está à vista como cartão sai do "ocupado fora" (senão conta duas vezes).
-  if (ctx.internalUserId && ocupadoFora[ctx.internalUserId] && meusDeFora.length) {
-    const vistos = meusDeFora.map(a => `${a.scheduled_at}|${a.duration_min}`)
-    ocupadoFora[ctx.internalUserId] = ocupadoFora[ctx.internalUserId]!.filter(b => {
-      const i = vistos.indexOf(`${b.inicio}|${b.minutos}`)
-      if (i < 0) return true
-      vistos.splice(i, 1)
-      return false
-    })
-  }
+  // O que já está à vista como cartão NA GRADE (só a Minha agenda) sai do
+  // "ocupado fora" dela lá embaixo (senão conta duas vezes) — `semOsQueJaSaoCartao`.
+  // A agenda inteira recebe o "ocupado fora" inteiro: tirar o de quem vê dava
+  // 28% no topo e 30% no dashboard a quem atende em duas unidades (D13 da 33ª).
 
   // Agenda vazia é um fato; agenda que falhou é outra coisa. `appointments` tem
   // duas chaves para `users` (`professional_id` e `created_by_id`), então o
@@ -309,7 +304,7 @@ export default async function AgendaPage({ params, searchParams }: {
           janela={janelaDaGrade([horarioDaUnidade])}
           horarioDaUnidade={horarioDaUnidade}
           horarioDaProfissional={horariosDosProfissionais[ctx.internalUserId ?? ''] ?? null}
-          ocupadoFora={ocupadoFora[ctx.internalUserId ?? ''] ?? []}
+          ocupadoFora={semOsQueJaSaoCartao(ocupadoFora[ctx.internalUserId ?? ''] ?? [], meusDeFora)}
           dataInicial={dataInicial}
           bloqueios={bloqueios}
           // A vista só mostra (SM2): agendar e bloquear são da Agenda em

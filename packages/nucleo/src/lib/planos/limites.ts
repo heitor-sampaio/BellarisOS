@@ -37,8 +37,9 @@ export function mensagemDoLimite(chave: ChaveDeLimite, limite: number): string {
 
 /**
  * O erro de limite que ATRAVESSA até a tela (o digest mora em
- * `limite-digest.ts`). Para as actions chamadas por formulário que não lê o
- * retorno (reativar unidade, reativar membro); as outras devolvem `{ error }`.
+ * `limite-digest.ts`). Era para as actions chamadas por formulário que não lia
+ * o retorno; desde a 33ª simulação reativar unidade e reativar membro também
+ * devolvem `{ error }` (o limite ao lado do botão), e nenhuma action lança.
  */
 export { DIGEST_LIMITE_DO_PLANO, ehLimiteDoPlano } from './limite-digest'
 

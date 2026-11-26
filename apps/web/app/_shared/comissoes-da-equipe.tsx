@@ -13,7 +13,7 @@ import {
   configDeComissaoDaRede, resumoDasComissoes, extratoDasComissoes, fechamentosRecentes,
 } from '@/lib/comissoes/leitura'
 import { tagsDaUrl, tagsParaAUrl } from '@/lib/tags/filtro-na-url'
-import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
+import { tagsAtivasDaRede, comAsArquivadasEmUso } from '@/lib/tags/vocabulario'
 
 /**
  * Financeiro → Comissões, o corpo dos dois portais. A página da rede passa as
@@ -67,7 +67,7 @@ export async function ComissoesDaEquipe({ ctx, unidades, unidadeAtual, basePath,
     resumoDasComissoes(recorte),
     extratoDasComissoes(recorte),
     fechamentosRecentes(ctx.tenantId!, doFiltro, soAsProprias),
-    tagsAtivasDaRede(ctx.tenantId!),
+    comAsArquivadasEmUso(ctx.tenantId!, tagsAtivasDaRede(ctx.tenantId!)),
   ])
   // Quem foi desativado segue com a comissão dele, MARCADO (A43 da 6ª
   // simulação: a Nina desativada aparecia como qualquer outra) — "(inativo)",

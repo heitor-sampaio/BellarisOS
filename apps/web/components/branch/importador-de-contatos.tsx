@@ -13,7 +13,7 @@ import { validarLinha, marcarRepetidas, nomeDiferente, avisoDaMenorNaPlanilha, p
 import { maskPhone } from '@estetica-os/utils'
 import { importarContatos, andamentoDaImportacao, cruzamentoDaImportacao, type AndamentoDaImportacao, type CruzamentoDaLinha } from '@/actions/importacao'
 import type { ImportacaoAnterior } from '@/lib/importacao/historico'
-import { avisoSemClienteDesde, linhasQueJuntamNaPlanilha, linhasQueNaoJuntam, linhasDeOutroNomeQueJuntam, textoDoBotaoDeImportar, colunasQueNaoEntram, colunasQueAOportunidadeLeva, avisoDasColunasDaOportunidade, ondeEstaoOsImportados, placarDaImportacao, rotuloDaEtapaDaImportacao } from '@/lib/importacao/o-que-entra'
+import { avisoSemClienteDesde, destinoDeCadaLinha, linhasQueJuntamNaPlanilha, linhasQueNaoJuntam, linhasDeOutroNomeQueJuntam, textoDoBotaoDeImportar, colunasQueNaoEntram, colunasQueAOportunidadeLeva, avisoDasColunasDaOportunidade, ondeEstaoOsImportados, placarDaImportacao, rotuloDaEtapaDaImportacao } from '@/lib/importacao/o-que-entra'
 import { abrirABusca } from '@/lib/busca/abrir'
 import { FORMATO_DO_PACOTE_DE_ANTES, pacoteDeAntesLegivel } from '@/lib/importacao/pacote-legivel'
 import { ehPortalDaRede, rotaClientes, rotaOportunidades } from '@/lib/rotas'
@@ -212,6 +212,10 @@ export function ImportadorDeContatos(p: Props) {
   const completamQuemExiste = destino === 'clientes'
     ? (cruzados ?? []).filter(i => i.como === 'cpf' || !naoCompletar.has(i.numero)).length
     : (cruzados ?? []).length
+  // A13 da 33ª (IM-12): o destino de CADA linha pronta, pela mesma conta do botão.
+  const destinos = destinoDeCadaLinha({ destino, prontas: validadas.filter(l => !l.erros.length), cruzados: cruzados ?? [], naoCompletar })
+  // A prévia mostra as linhas aos poucos (sem barra de rolagem na área de conteúdo — design.md).
+  const [linhasAVista, setLinhasAVista] = useState(10)
 
   function importar() {
     if (!arquivo) return
@@ -461,12 +465,15 @@ export function ImportadorDeContatos(p: Props) {
                 {avisoSemClienteDesde(destino, mapa)}
               </p>
             )}
-            {/* A7 da 10ª: uma amostra do que entra — era só "20 linhas prontas". */}
-            {prontas > 0 && (
+            {/* A7 da 10ª: o que entra — era só "20 linhas prontas". A13 da 33ª (IM-12): CADA linha, com o destino dela. */}
+            {prontas > 0 && (() => {
+              const linhasProntas = validadas.filter(l => !l.erros.length)
+              const faltam = linhasProntas.length - Math.min(linhasAVista, linhasProntas.length)
+              return (
               <div data-amostra-da-importacao style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <span className="field-label">Como as primeiras entram</span>
+                <span className="field-label">Como cada linha entra</span>
                 <ul style={{ margin: 0, paddingLeft: 18, fontSize: 'var(--text-sm-sz)', color: 'var(--text)', display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  {validadas.filter(l => !l.erros.length).slice(0, 3).map(l => {
+                  {linhasProntas.slice(0, linhasAVista).map(l => {
                     const d = l.dados as Record<string, unknown>
                     const pacotes = destino === 'clientes' ? pacotesDaLinha(l.dados) : []
                     return (
@@ -478,6 +485,9 @@ export function ImportadorDeContatos(p: Props) {
                           pacotes.length ? plural(pacotes.length, 'pacote de antes', 'pacotes de antes') : null,
                         ].filter(Boolean).map(t => ` · ${t}`).join('')}
                         <span style={{ color: 'var(--text-faint)' }}> (linha {l.numero})</span>
+                        {destinos.get(l.numero) && (
+                          <span data-destino-da-linha style={{ color: 'var(--text-muted)' }}>: {destinos.get(l.numero)}</span>
+                        )}
                         {/* A22 da 29ª (IM-22): o que foi lido de cada pacote, com a validade e o valor. */}
                         {pacotes.length > 0 && (
                           <ul data-pacotes-da-amostra style={{ margin: '2px 0 0', paddingLeft: 16, color: 'var(--text-muted)' }}>
@@ -490,8 +500,15 @@ export function ImportadorDeContatos(p: Props) {
                     )
                   })}
                 </ul>
+                {faltam > 0 && (
+                  <button type="button" className="btn-ghost" data-mostrar-mais-linhas style={{ alignSelf: 'flex-start' }}
+                    onClick={() => setLinhasAVista(n => n + 50)}>
+                    Mostrar mais {Math.min(50, faltam)} {Math.min(50, faltam) === 1 ? 'linha' : 'linhas'} (faltam {faltam} de {linhasProntas.length})
+                  </button>
+                )}
               </div>
-            )}
+              )
+            })()}
             {/* A7 da 10ª: o pacote sem valor de referência, avisado ANTES (princípio 4: conta R$ 0). */}
             {(() => {
               if (destino !== 'clientes') return null

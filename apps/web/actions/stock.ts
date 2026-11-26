@@ -15,6 +15,7 @@ import { comissaoDoProdutoNoFormulario } from '@/lib/comissoes/gravacao'
 import { aplicacoesDoLote as aplicacoesDoLoteCore, type AplicacaoDoLote } from '@/lib/estoque/aplicacoes-do-lote'
 import { unidadeDoInsumo, type UnidadesDoProduto } from '@/lib/estoque/unidade-de-consumo'
 import { notaDaTransferencia, notaDeTransferenciaSemNome } from '@/lib/estoque/transferencia'
+import { partesDoMovimento, type PartesDoMovimento } from '@/lib/estoque/lotes-do-movimento'
 import { linhasDoEstoqueInicial } from '@/lib/estoque/estoque-inicial'
 
 function str(fd: FormData, key: string) {
@@ -760,6 +761,12 @@ export interface MovimentoDeEstoque {
   custoPorEmbalagem: number | null
   /** Os lotes do movimento (de onde saiu, ou o que a entrada criou) — J-45. */
   lotes: { numero: string | null; validade: string | null }[]
+  /**
+   * D5 da 33ª: o que cada lote cobriu, na unidade do movimento — "Lote AM1:
+   * 2 ml · 2 ml sem lote" (o consumo de 4 ml que o AM1 cobriu em 2 ml), e a
+   * entrada que foi cobrir a falta de antes (`partesDoMovimento`).
+   */
+  partes: PartesDoMovimento
   /** A37 da 10ª: o fornecedor e a nota fiscal da entrada. */
   fornecedor: string | null
   /** E14: a marca da entrada (o nome gravado nela). */
@@ -968,6 +975,11 @@ export async function getProductMovements(
     custoPorEmbalagem: m.unit_cost != null ? Math.round(Number(m.unit_cost) * fator * 100) / 100 : null,
     lotes: (m.stock_movement_batches ?? []).flatMap(l => l.product_batches
       ? [{ numero: l.product_batches.batch_number, validade: l.product_batches.expires_at }] : []),
+    partes: partesDoMovimento({
+      quantidade: Number(m.quantity), fator,
+      ligacoes: (m.stock_movement_batches ?? []).flatMap(l => l.product_batches
+        ? [{ numero: l.product_batches.batch_number, validade: l.product_batches.expires_at, embalagens: Number(l.quantity) }] : []),
+    }),
     fornecedor:   m.fornecedor,
     marca:        m.marca,
     notaFiscal:   m.nota_fiscal,

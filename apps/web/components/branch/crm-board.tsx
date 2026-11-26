@@ -463,7 +463,7 @@ interface CRMBoardProps {
   podeAgendar?: boolean
   /** Mover o card pelos botões (A18/A19 da 7ª): o CRM em Gerenciar. Sem ele, o quadro só se lê (D13 da 25ª). */
   podeMover?: boolean
-  /** As tags ativas da rede, para o filtro de Tags (D14 da 25ª). */
+  /** As tags do filtro de Tags (D14 da 25ª): as ativas da rede e as arquivadas que alguém ainda tem (`comAsArquivadasEmUso`; TG-14). */
   tagsDaRede?: string[]
 }
 

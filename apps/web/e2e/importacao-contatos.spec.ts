@@ -312,6 +312,43 @@ test('quem só tem o CRM não importa; "Sem responsável" vale; e o contato sem 
 // só tem e-mail entra como contato; (b) o telefone repetido JUNTA as tags à
 // pessoa que já existe, sem trocar os outros campos. A origem é do card, e não
 // vira tag da pessoa (T3 do Bloco Tags, 2026-11-14).
+// A13 da 33ª simulação (IM-12: "quem cada linha encontra na rede e por quê"):
+// a prévia listava só as três primeiras ("Como as primeiras entram"), sem o destino.
+test('a prévia diz o destino de CADA linha, e as que passam de 10 aparecem com "Mostrar mais"', async ({ browser }) => {
+  const daRede = `${PREFIXO} Valéria da Rede ${marca}`
+  const ja = await db().from('clients').insert({
+    tenant_id: outra.tenantId, branch_id: outra.branchId, name: daRede, phone: `5547955${sufixo.slice(-6)}`,
+    document: '74185296355', is_active: true, tags: [],
+  }).select('id').single<{ id: string }>()
+  expect(ja.error).toBeNull()
+  const novas = Array.from({ length: 12 }, (_, i) => `${PREFIXO} Prévia ${String(i + 1).padStart(2, '0')} ${marca}`)
+  const nome = `previa-cada-linha-${marca}.csv`
+  const arquivo = Buffer.from([
+    'Nome;Celular;CPF',
+    `${PREFIXO} Valéria ${marca};(47) 95${sufixo.slice(-3)}-0000;741.852.963-55`,
+    ...novas.map((n, i) => `${n};(47) 94${sufixo.slice(-3)}-${String(1000 + i)};`),
+  ].join('\n'), 'utf-8')
+  await como(browser, admin, async p => {
+    await abrirArquivo(p, nome, arquivo)
+    await p.getByRole('button', { name: 'Como clientes', exact: true }).click()
+    await p.getByRole('button', { name: 'Continuar', exact: true }).click()
+    await p.getByRole('button', { name: 'Continuar', exact: true }).click()
+    const amostra = p.locator('[data-previa] [data-amostra-da-importacao]')
+    await expect(amostra).toContainText('Como cada linha entra')
+    // A linha 2 completa a ficha que já existe pelo CPF; as outras viram fichas novas.
+    await expect(amostra.locator('li', { hasText: `${PREFIXO} Valéria ${marca}` }).locator('[data-destino-da-linha]'))
+      .toContainText(`completa a ficha de ${daRede} (o mesmo CPF)`)
+    await expect(amostra.locator('li', { hasText: novas[0]! }).locator('[data-destino-da-linha]')).toContainText('ficha nova')
+    // 13 linhas: 10 à vista, e o resto pelo "Mostrar mais" (sem barra de rolagem na área).
+    await expect(amostra).not.toContainText(novas[11]!)
+    await amostra.locator('[data-mostrar-mais-linhas]').click()
+    await expect(amostra.locator('li', { hasText: novas[11]! }).locator('[data-destino-da-linha]')).toContainText('ficha nova')
+    await expect(amostra.locator('[data-mostrar-mais-linhas]')).toHaveCount(0)
+  })
+  // Só a prévia: nada foi importado.
+  expect(await importacao(nome)).toBeUndefined()
+})
+
 test('contatos: a linha só com e-mail entra, e o telefone repetido junta as tags à pessoa (a origem não vira tag)', async ({ browser }) => {
   const s4 = sufixo.slice(-4)
   const emailSo = `e2e-so-email-${marca}@bellaris.invalid`

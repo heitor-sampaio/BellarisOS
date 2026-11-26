@@ -4,7 +4,7 @@ import { cargosAcimaDoMeu, recusaDoCargoAcima } from '@/lib/equipe/cargo-acima'
 import { avisoDeQuemEntrouSemComissao } from '@/lib/equipe/textos-do-cadastro'
 import { cargoSeDaPelaEquipe, ehCargoNaoDefinido } from '@/lib/cargos/sem-acesso'
 import { avisoDoCargoSemAcesso } from '@/lib/equipe/cargos-sem-acesso'
-import { conferirLimite, limiteDoPlano } from '@estetica-os/nucleo/lib/planos/limites'
+import { conferirLimite } from '@estetica-os/nucleo/lib/planos/limites'
 import { erroDoAuth } from '@/lib/erro-do-auth'
 import { normalizarHorario, type Horario } from '@/lib/agenda/horario'
 import { revalidatePath, revalidateTag } from 'next/cache'
@@ -687,9 +687,11 @@ export async function reactivateTeamMember(userId: string, redirectPath: string 
   const recusa = await recusaDeMexerNaAdmin(admin, ctx, membro)
   if (recusa) return { error: recusa }
   // Reativar conta para o LIMITE de membros do plano (lib/planos/limites.ts).
+  // Recusado como criar: o limite volta em { error } e aparece ao lado do
+  // botão (PN-11; CLAUDE.md §14). Lançado, o botão dizia "Não deu certo".
   if (!membro.is_active) {
     const limite = await conferirLimite(ctx.tenantId!, 'membros')
-    if (limite) throw limiteDoPlano(limite)
+    if (limite) return { error: limite }
   }
   await gravar(admin.from('users').update({ is_active: true }).eq('id', userId).eq('tenant_id', ctx.tenantId!), 'reativar o membro')
   let aviso: string | null = null

@@ -285,10 +285,10 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:334-336`
 - Antes: KA-37
 
-**PN-11.** Os limites do plano contam os ativos e valem ao criar e ao reativar unidade, membro e número de WhatsApp (também quando há dois cliques ao mesmo tempo); a tela diz o limite. O que já está acima do limite não é apagado, só não cresce; editar o que existe não confere o limite. A Admin da rede conta como membro. (Os caminhos de ligar um número: WN-08.)
-- Fonte: decisão do Claude
-- Onde: `docs/regras/plataforma.md:312-328`
-- Antes: KA-38
+**PN-11.** Os limites do plano contam os ativos e valem ao criar e ao reativar unidade, membro e número de WhatsApp (também quando há dois cliques ao mesmo tempo); a tela diz o limite — também ao reativar: o aviso do limite aparece ao lado do botão Reativar (da unidade e do membro), e a tela não vira a de erro. O que já está acima do limite não é apagado, só não cresce; editar o que existe não confere o limite. A Admin da rede conta como membro. (Os caminhos de ligar um número: WN-08.)
+- Fonte: decisão do Claude; o reativar com o aviso no lugar: decisão do Claude, 26/11 (33ª simulação, D10 e o arremate), pelo CLAUDE.md §14
+- Onde: `docs/regras/plataforma.md:312-328`, `:328-345`
+- Antes: KA-38; antes de 26/11: reativar no limite trocava a tela inteira por "Limite do plano atingido" (a unidade) ou dizia "Não deu certo" (o membro)
 
 **PN-12.** As funcionalidades do plano têm os nomes da revisão — "Documentos (assinatura eletrônica)", "Fichas de atendimento personalizadas", "Portal e app da cliente" —, os mesmos no sistema, na aba Assinatura, no comparativo e no site.
 - Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Sim" (PL1)
@@ -389,10 +389,10 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:263-268`
 - Antes: KA-26
 
-**UN-05.** No passo da unidade do /setup (e no "Nova unidade"), o endereço tem o campo "Número", que entra depois do logradouro ("Rua Padre Chagas, 123 — Moinhos de Vento"), e a tela diz que o domingo vem fechado e que, se a unidade abre aos domingos (ou 24 horas), é preciso marcá-lo.
-- Fonte: decisão do Claude
-- Onde: `docs/regras/plataforma.md:182-188`, `:238-241`
-- Antes: KA-20
+**UN-05.** No passo da unidade do /setup (e no "Nova unidade"), o endereço tem o campo "Número", que entra depois do logradouro ("Rua Padre Chagas, 123 — Moinhos de Vento"), e a tela diz que o domingo vem fechado e que, se a unidade abre aos domingos (ou 24 horas), é preciso marcá-lo. O número sem o logradouro é recusado ao criar e ao editar ("Preencha o logradouro: o número entra depois dele.").
+- Fonte: decisão do Claude; o número sem o logradouro: decisão do Claude, 26/11 (33ª simulação, A8)
+- Onde: `docs/regras/plataforma.md:182-188`, `:238-241`, `:190-199`
+- Antes: KA-20; antes de 26/11: o "200" sozinho virava o endereço
 
 **UN-06.** O editor de horário (no /setup, em Unidades e na Equipe) tem "Repetir o horário de segunda em todos os dias (domingo incluído)" e "Aberta 24 horas, todos os dias", que preenche os 7 dias de 00:00 a 24:00; o dia inteiro aparece como "24 horas", com "Escolher o horário". Ligado, o atalho fica marcado e diz "Ligado. Toque de novo para voltar ao horário de antes."; o segundo toque devolve o horário de antes.
 - Fonte: decisão do Claude
@@ -430,10 +430,10 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:960-963`, `:1153-1160`; `docs/revisao.md:1189-1199`, `:2236`; `apps/web/lib/equipe/atende.ts` (`atendeAoMudarDeUnidade`, `estadoDoAtende`); `apps/web/actions/branches.ts` (`moverEquipeDaUnidade`)
 - Antes: KC-20
 
-**UN-13.** A unidade desativada continua contada e alcançável, com o selo "Unidade desativada", enquanto tiver o que ficou (agenda futura, estoque com saldo, a receber, comissão a pagar) ou movimento no período da tela: o dashboard, os Relatórios, a agenda, o estoque, o Financeiro, as Comissões, o Fechamento e os Documentos da rede a contam e o filtro de unidade a alcança. Com dado dela, a rede de uma unidade ativa não é "uma unidade só" nos números.
-- Fonte: decisão do Claude
-- Onde: `docs/regras/plataforma.md:977-992`, `:1001-1003`
-- Antes: KC-22
+**UN-13.** A unidade desativada continua contada e alcançável, com o selo "Unidade desativada", enquanto tiver o que ficou (agenda futura, estoque com saldo, a receber, comissão a pagar) ou movimento no período da tela: o dashboard, os Relatórios, a agenda, o estoque, o Financeiro, as Comissões, o Fechamento e os Documentos da rede a contam e o filtro de unidade a alcança. Com dado dela, a rede de uma unidade ativa não é "uma unidade só" nos números. O "Por unidade" do Financeiro da rede lista as mesmas unidades (a desativada com agenda futura entra, com zero).
+- Fonte: decisão do Claude; o "Por unidade" do Financeiro: decisão do Claude, 26/11 (33ª simulação, arremate), pela própria UN-13
+- Onde: `docs/regras/plataforma.md:977-992`, `:1001-1003`, `:1155-1160`
+- Antes: KC-22; antes de 26/11: o "Por unidade" do Financeiro só listava a desativada com dinheiro no período (5 unidades no Financeiro, 6 no dashboard)
 
 **UN-14.** Para criar, só as unidades ativas: os seletores de agendar, de dar entrada e transferir para, de vender, de lançar, de cadastrar, de campanha, de equipe e o trocador de unidade do portal mostram só as ativas, e o servidor recusa agendamento novo ou horário novo na desativada e entrada, estoque inicial ou transferência para ela. Tirar dela (transferir, ajustar, registrar perda) continua. (O estoque da desativada: ES-22.)
 - Fonte: decisão do Claude
@@ -444,6 +444,11 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Fonte: decisão do Claude, 25/11 (o Heitor revisa), pelo CLAUDE.md §6 (o redirecionamento por abrangência leva o motivo, `comAviso`), pelo princípio 7 e pela UN-11 (D5 da 30ª simulação: o endereço da desativada dava "Página não encontrada", sem aviso a quem tem outras unidades e sem saída a quem só tinha ela); o app da cliente já era assim
 - Onde: a regra entra em `docs/regras/plataforma.md` com a correção do D5 (25/11); `apps/web/app/[slug]/layout.tsx` (a desativada caía no `notFound()`), o destino do login; o app da cliente: `docs/regras/plataforma.md:1103-1105`, CLAUDE.md §5 (o portal abre na última unidade usada; sem ela, a primeira ativa)
 - Antes: (sem número: D5 da 30ª simulação)
+
+**UN-16.** Reativar uma unidade é como abrir uma: ela volta ao "Atende" de quem tem "A rede inteira" e atende em todas (AG-62 e AG-72 do Atendimento), sem ninguém mexer; quem escolheu as unidades à mão fica como escolheu. O limite do plano conta só as UNIDADES ativas (PN-11): esse "Atende" não conta em limite nenhum e não cria membro. Com o limite de unidades cheio, reativar é recusado como o criar: o aviso do limite aparece no lugar, e a tela não vira a de erro. O mesmo vale ao reativar um MEMBRO no limite de membros: o aviso aparece ao lado do botão.
+- Fonte: decisão do Claude, 26/11 (33ª simulação, Decisão E) — pela AG-62 (recomendação do Claude aprovada pelo Heitor, 2026-11-14: "Concord."; o "Atende" na unidade que vier pela revisão de 24/11, Q10 do Atendimento), pela PN-11 (o limite conta os ativos e vale ao reativar; a tela diz o limite) e pelo CLAUDE.md §14 (a action devolve `{ error }` em vez de lançar) (Time E da 33ª: a profissional com "A rede inteira" apareceu na unidade nova sem mexer, e está certo; reativar Santa Cruz com 5 de 5 trocava a tela inteira por "Limite do plano atingido", D10); o membro: decisão do Claude, 26/11 (33ª simulação, arremate)
+- Onde: AG-62, AG-72, PN-11, UN-13; `docs/regras/plataforma.md:328-345` (`toggleBranchStatus`; o membro, `reactivateTeamMember`)
+- Antes: (nova, 26/11)
 
 ## O login e a entrada no portal (LO)
 
@@ -651,10 +656,10 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:879-885`, `:894-895`, `:1063-1064`, `:1093-1094`, `:1115-1116`
 - Antes: KC-10
 
-**CG-17.** O resumo do cargo diz QUAIS abas de Configurações a pessoa usa, sem contar as da rede toda (que são só da Admin da rede); a quem só leria abas da rede toda, o menu das duas barras e a busca não oferecem Configurações. As Fichas e os Cargos vão até o Ver na matriz: o Ver abre a aba e lê, e mudar é só da Admin da rede; o resumo diz "Fichas e Cargos em Ver: abre as duas abas e lê.".
-- Fonte: princípio 3; as Fichas e os Cargos em Ver: o Heitor, 25/11, "8 - a" ("o nível passa a se chamar 'Ver': a pessoa abre a aba e lê, como já acontece")
-- Onde: `docs/regras/plataforma.md:848-858`
-- Antes: KC-05
+**CG-17.** O resumo do cargo diz QUAIS abas de Configurações a pessoa usa, sem contar as da rede toda (que são só da Admin da rede); a quem só leria abas da rede toda, o menu das duas barras e a busca não oferecem Configurações. As Fichas e os Cargos vão até o Ver na matriz: o Ver abre a aba e lê, e mudar é só da Admin da rede; o resumo diz "Fichas e Cargos em Ver: abre as duas abas e lê.". A nota de Configurações diz as abas da rede toda como da rede ("As abas Tags e Importações são da rede toda: só a Admin da rede as muda."), não como vindas da permissão.
+- Fonte: princípio 3; as Fichas e os Cargos em Ver: o Heitor, 25/11, "8 - a" ("o nível passa a se chamar 'Ver': a pessoa abre a aba e lê, como já acontece"); a nota das abas da rede toda: decisão do Claude, 26/11 (33ª simulação, D11), pelo princípio 3
+- Onde: `docs/regras/plataforma.md:848-858`, `:868-880`
+- Antes: KC-05; antes de 26/11: a nota dava as abas da rede toda como vindas da permissão
 
 **CG-18.** Em Relatórios, o cargo escolhe quais abas a pessoa vê. Cargo sem nenhuma aba que valha fica sem Relatórios: a entrada some do menu, e o resumo do cargo diz por quê.
 - Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "concordo, o resto fica como está"
@@ -738,10 +743,10 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/revisao.md:1373-1378`, `:2133`
 - Antes: KE-32
 
-**CU-06.** As abas de Configurações ficam em grupos: A rede (Geral, Unidades, Assinatura), Equipe e acesso (Cargos, Suporte), Atendimento (Fichas, Documentos), Clientes (Tags, Fidelidade, Importações, LGPD), Dinheiro (Comissões e taxas), Conexões (Integrações) e Avançado (Ações em lote). Nenhuma aba sai. (Os "Eventos" foram para as Automações: GT-02.)
-- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13 (CF1): "Concordo"
-- Onde: `docs/revisao.md:1386-1390`, `:2128`
-- Antes: KE-30
+**CU-06.** As abas de Configurações ficam em grupos: A rede (Geral, Unidades, Assinatura), Equipe e acesso (Cargos, Suporte), Atendimento (Fichas, Documentos), Clientes (Tags, Fidelidade, Importações, LGPD), Dinheiro (Comissões e taxas), Conexões (Integrações) e Avançado (Ações em lote). Nenhuma aba sai. (Os "Eventos" foram para as Automações: GT-02.) A quem não tem Configurações em Gerenciar, a tela diz por que só aquelas abas, e as da rede toda como só da Admin da rede (CG-17).
+- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13 (CF1): "Concordo"; a nota: decisão do Claude, 26/11 (33ª simulação, D11), pelo princípio 3
+- Onde: `docs/revisao.md:1386-1390`, `:2128`, `docs/regras/plataforma.md:868-880`
+- Antes: KE-30; antes de 26/11: a nota dava as abas da rede toda como vindas da permissão
 
 **CU-07.** Quem não é a Admin da rede e abre Configurações sem pedir uma aba cai na primeira aba que é dela (no portal da unidade, a aba Unidade).
 - Fonte: decisão do Claude
@@ -830,10 +835,10 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:1264-1273`
 - Antes: KD-13
 
-**AD-13.** A gravação se lê pelo FATO, com a unidade e o link dele: a venda ("Vendeu o pacote X (R$ …) — cliente"), o início e a conclusão do atendimento (na unidade do agendamento, não na do pacote usado), o recebimento. Recebido é o lançamento que ficou pago naquela gravação. Vale também na gravação de uma linha só (o recebimento sem linha de comissão, de quem atende sem comissão): ela diz "Recebeu R$ X (forma)", como a de várias linhas, e não "Criou a receita".
-- Fonte: decisão do Claude; a gravação de uma linha só: decisão do Claude, 25/11 (o Heitor revisa), pela AD-16 (D10 da 29ª simulação)
-- Onde: `docs/regras/plataforma.md:1274-1292`, `:1386-1398`; `apps/web/lib/auditoria/frase.ts` (`fatoDaGravacao`)
-- Antes: KD-14
+**AD-13.** A gravação se lê pelo FATO, com a unidade e o link dele: a venda ("Vendeu o pacote X (R$ …) — cliente"), o início, a conclusão e a desistência do atendimento (na unidade do agendamento, não na do pacote usado nem "Da rede"), o recebimento. Recebido é o lançamento que ficou pago naquela gravação. Vale também na gravação de uma linha só (o recebimento sem linha de comissão, de quem atende sem comissão): ela diz "Recebeu R$ X (forma)", como a de várias linhas, e não "Criou a receita".
+- Fonte: decisão do Claude; a gravação de uma linha só: decisão do Claude, 25/11 (o Heitor revisa), pela AD-16 (D10 da 29ª simulação); a desistência: decisão do Claude, 26/11 (33ª simulação, D15), pela própria AD-13
+- Onde: `docs/regras/plataforma.md:1274-1292`, `:1386-1398`; `apps/web/lib/auditoria/frase.ts` (`fatoDaGravacao`), `:1771-1776`
+- Antes: KD-14; antes de 26/11: a desistência no meio do atendimento saía "Da rede"
 
 **AD-14.** Todo campo aparece pelo nome em português ("percentual da comissão de venda", "maquininha"), nunca pelo nome técnico, e toda coisa tem o seu plural ("Criou 2 links de assinatura").
 - Fonte: decisão do Claude
@@ -870,10 +875,10 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:1405-1407`, `:1411-1420`
 - Antes: KD-21
 
-**AD-21.** Na equipe, nos cargos e no comercial, a frase diz o fato: "Desativou / Reativou Fulana"; "Criou o cargo X (N permissões)", "Criou a permissão de (módulo) do cargo X", "Criou a aba de relatório (aba) do cargo X", "Mudou os acessos do cargo X (…)"; "Criou o contato e a oportunidade X", "Mudou a etapa da oportunidade X" ("de A para B" quando a etapa está no registro).
-- Fonte: decisão do Claude
-- Onde: `docs/regras/plataforma.md:1271-1279`, `:1323-1328`, `:1435-1438`
-- Antes: KD-22
+**AD-21.** Na equipe, nos cargos e no comercial, a frase diz o fato: "Desativou / Reativou Fulana"; "Criou o cargo X (N permissões)", "Criou a permissão de (módulo) do cargo X", "Criou a aba de relatório (aba) do cargo X", "Mudou os acessos do cargo X (…)"; "Criou o contato e a oportunidade X", "Mudou a etapa da oportunidade X" ("de A para B" quando a etapa está no registro). Na autorização do suporte, a frase diz o fato e de quem é a conta: "Autorizou o suporte na conta de Luana, com os dados clínicos", "Revogou a autorização do suporte na conta de Luana", "Trocou a autorização do suporte na conta de Luana (agora sem os dados clínicos)"; sem a conta, "numa conta da equipe".
+- Fonte: decisão do Claude; a autorização do suporte: decisão do Claude, 26/11 (33ª simulação, A9), pela própria AD-21
+- Onde: `docs/regras/plataforma.md:1271-1279`, `:1323-1328`, `:1435-1438`, `:1777-1785`
+- Antes: KD-22; antes de 26/11: "Criou 1 e editou 1 liberações do suporte"
 
 **AD-22.** O que a cliente fez pelo link (a ficha de saúde, a assinatura, o documento) aparece como dela: "Dona Cida, pelo link" ("Respondeu a ficha de saúde"); o link em si segue de quem o criou. Quando é a equipe que preenche: "Preencheu a ficha de saúde de X".
 - Fonte: decisão do Claude
@@ -914,6 +919,11 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Fonte: decisão do Claude
 - Onde: `docs/regras/plataforma.md:1240-1241`, `:1365-1369`, `:1432-1434`
 - Antes: KD-30
+
+**AD-30.** A Auditoria diz quando a GRAVAÇÃO aconteceu, não a data do que foi gravado: o lançamento à mão de um pagamento de outubro, feito hoje, aparece hoje, na hora em que foi feito. A data do pagamento fica no Financeiro. (Citar na frase a data do pagamento, quando ela não é o dia da gravação, é a sugestão nº 100.)
+- Fonte: decisão do Claude, 26/11 (33ª simulação, Decisão C) — pela AD-02 (a Auditoria mostra quando) e pela AD-26 (a hora da coluna "Quando"); é o que o sistema faz (Time C da 33ª: os lançamentos à mão de outubro aparecem na Auditoria em 26/11 10:36)
+- Onde: (ainda não está em `docs/regras/plataforma.md`; o sistema já faz isso, visto na 33ª simulação); AD-02, AD-26
+- Antes: (nova, 26/11)
 
 ## Perguntas ao Heitor
 

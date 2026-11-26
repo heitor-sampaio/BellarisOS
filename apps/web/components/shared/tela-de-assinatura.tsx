@@ -341,7 +341,7 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, podeC
             <div className="card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
               <span className="chip chip-warning" style={{ alignSelf: 'flex-start' }}>Faltam dados</span>
               <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
-                {noPortal ? 'A equipe ainda está completando os seus dados para este documento. Você será avisado quando ele estiver pronto para assinar.' : 'Complete o cadastro do cliente para gerar o documento:'}
+                {noPortal ? 'A equipe ainda está completando os seus dados para este documento. O aviso chega aqui quando ele estiver pronto para assinar.' : 'Complete o cadastro do cliente para gerar o documento:'}
               </p>
               {!noPortal && <ul style={{ paddingLeft: 18, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', listStyle: 'disc' }}>
                 {doc.faltando.map(f => <li key={f}>{f}</li>)}

@@ -29,7 +29,7 @@ import type { LinhaLote, LinhaParcela } from '@/components/admin/reports-linhas'
 import {
   getVendas, getResumoDeVendas, ehTipoDeVenda, POR_PAGINA, type Venda, type ResumoDeVendas, type TipoDeVenda,
 } from '@/lib/metrics/vendas'
-import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
+import { tagsAtivasDaRede, comAsArquivadasEmUso } from '@/lib/tags/vocabulario'
 import { tagsDaAba, tagsDaUrl } from '@/lib/metrics/tags-do-relatorio'
 import { cartoesDaVisaoGeral, veOCaixaNosRelatorios } from '@/lib/metrics/visao-geral'
 
@@ -126,7 +126,7 @@ export async function ReportsBiSection({
   // a tag da URL não chega à conta (não há pessoa); a Visão geral e o Financeiro
   // têm o filtro desde a revisão de 24/11 (Q05). As opções são o vocabulário da
   // rede, lido aqui; sem tag nenhuma, a tela nem mostra o filtro.
-  const tagsDaRede = await tagsAtivasDaRede(tenantId)
+  const tagsDaRede = await comAsArquivadasEmUso(tenantId, tagsAtivasDaRede(tenantId))
   const tags = tagsDaAba(tab, tagsDaUrl(rawTags))
   // Com tag, o que não é de uma cliente (a compra de estoque, as perdas) sai da
   // conta (TF-02) — na Visão geral e no Financeiro também (Q05, revisão de 24/11).

@@ -14,7 +14,8 @@ import { avisoDasVencidasNaChegada } from '@/lib/appointments/vencidas-na-chegad
 import { recusaDasVezesDoPagamento } from '@/lib/financeiro/vezes-da-rede'
 import { recusaDasParcelasDaRede } from '@/lib/financeiro/crediario-da-rede'
 import { EntradaDoPagamento, lancamentosDoPagamento, recusaDaEntradaDoPagamento } from '@/lib/checkout/lancamentos'
-import type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
+import { pagamentoNormalizado, type PagamentoDoPlano } from '@/lib/checkout/pagamento'
+import { contratoQueMudaNoReceber, montarOContratoNovo } from '@/lib/pdv/contrato-do-atendimento'
 import { bandeiraDoPagamento } from '@/lib/financeiro/bandeiras'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, lerTodas, contar, mensagemDoErro } from '@/lib/db'
@@ -25,6 +26,7 @@ import { notifyUser } from '@/lib/notifications/notify'
 import { createAppointmentCore, computeAvailableSlots, conferirPecasDoAgendamento, horarioOcupado, candidatasDoDia, fimDaOcupacao, podemOcuparDesde, recusaDoBloqueioNoHorario, CREDITO_JA_USADO } from '@/lib/appointments/core'
 import { janelaDaGrade } from '@/lib/appointments/janela-da-grade'
 import { indisponibilidadeNoHorario, ocupacaoDaSala } from '@/lib/appointments/disponibilidade'
+import type { Indisponivel } from '@/lib/agenda/so-o-que-esta-livre'
 import { salasParaOHorario } from '@/lib/appointments/salas'
 import { ocupanteDoHorario } from '@/lib/agenda/horario-livre'
 import { conferirCredito } from '@/lib/creditos/credito'
@@ -582,9 +584,10 @@ export async function profissionaisParaTrocar(appointmentId: string): Promise<{ 
   if (['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(a.status)) return nada
   const equipe = (await getCachedBranchProfessionals(a.branch_id, ctx.tenantId!)) as { id: string; name: string }[]
   const outras = equipe.filter(p => p.id !== a.professional_id)
+  // R15 (o Heitor, 26/11: "quem está fora do horário também some das listas"): o horário dela NESTA unidade.
   const indisponiveis = await Promise.all(outras.map(p => indisponibilidadeNoHorario(admin, {
     tenantId: ctx.tenantId!, professionalId: p.id, inicio: new Date(a.scheduled_at),
-    duracaoMin: a.duration_min ?? 60, excluir: a.id,
+    duracaoMin: a.duration_min ?? 60, excluir: a.id, unidadeDoHorario: a.branch_id,
   })))
   return {
     livres: outras.filter((_, i) => !indisponiveis[i]).map(p => ({ id: p.id, name: p.name })),
@@ -636,8 +639,9 @@ export async function opcoesParaMudarDeUnidade(appointmentId: string): Promise<U
       getCachedBranchProfessionals(u.id, ctx.tenantId!) as Promise<{ id: string; name: string }[]>,
       salasParaOHorario(admin, { tenantId: ctx.tenantId!, branchId: u.id, procedureId: a.procedure_id, inicio, duracaoMin, excluir: a.id }),
     ])
+    // R15: o horário dela na unidade NOVA (e a unidade nova fechada nesse horário: ninguém).
     const indisponiveis = await Promise.all(equipe.map(p => indisponibilidadeNoHorario(admin, {
-      tenantId: ctx.tenantId!, professionalId: p.id, inicio, duracaoMin, excluir: a.id,
+      tenantId: ctx.tenantId!, professionalId: p.id, inicio, duracaoMin, excluir: a.id, unidadeDoHorario: u.id,
     })))
     return {
       id: u.id, nome: u.name,
@@ -1110,10 +1114,19 @@ async function finishSessionInterno(
 }
 
 // -- Recepcionista/admin confirma pagamento -------------------------------------
+/**
+ * O que o receber devolve: o erro, ou — D1 da 33ª (DG-03) — a pergunta antes de
+ * mudar o combinado de um contrato assinado (nada se gravou). Vazio = recebido.
+ */
+export type RespostaDoReceber = {
+  error?: string
+  substituiContrato?: { id: string; titulo: string; pagamento: string }
+}
+
 export async function confirmPayment(
-  _prev: { error?: string } | null,
+  _prev: RespostaDoReceber | null,
   formData: FormData,
-): Promise<{ error?: string }> {
+): Promise<RespostaDoReceber> {
   try {
     const ctx = await getTenantContext()
     // Quem recebe no PDV: o PDV em Gerenciar (`podeReceber`, PV-04 — o
@@ -1122,7 +1135,11 @@ export async function confirmPayment(
     // O MESMO envio (o clique duplo, a chave `_envio` da tela) grava uma vez, e
     // as duas respostas dizem o recebido (o Heitor, 25/11: "As duas respostas
     // dizem 'recebido'"). Dois envios (duas abas): o "já pago" do banco segue.
-    return await umaVez(ctx.tenantId!, 'confirmPayment', chaveDoEnvio(formData), () => confirmarOPagamento(ctx, formData))
+    // A pergunta do contrato (D1 da 33ª) não gravou nada: a resposta "Substituir
+    // o contrato" é o MESMO envio, e tem de chegar à gravação.
+    return await umaVez(ctx.tenantId!, 'confirmPayment', chaveDoEnvio(formData), () => confirmarOPagamento(ctx, formData), {
+      gravou: r => !r.error && !r.substituiContrato,
+    })
   } catch (e) {
     return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
@@ -1131,7 +1148,7 @@ export async function confirmPayment(
 async function confirmarOPagamento(
   ctx: Awaited<ReturnType<typeof getTenantContext>>,
   formData: FormData,
-): Promise<{ error?: string }> {
+): Promise<RespostaDoReceber> {
   try {
     const appointmentId = (formData.get('appointment_id') as string)?.trim()
     const paymentMethod = (formData.get('payment_method') as string)?.trim() || null
@@ -1260,6 +1277,16 @@ async function confirmarOPagamento(
     const recusaDoValor = recusaDoValorDaVenda(itens, lancamentos.map(l => l.amount))
     if (recusaDoValor) return { error: recusaDoValor }
 
+    // D1 da 33ª (DG-03 e VD-10 do catálogo): receber com outro pagamento (ou
+    // outro desconto) do que o contrato ASSINADO combinou pergunta antes, como o
+    // plano (A45 da 5ª) e o pacote. Sem a resposta, nada se grava; com
+    // "Substituir o contrato", o banco substitui o assinado na mesma transação do
+    // dinheiro, e o novo nasce com o combinado de agora para a cliente assinar.
+    const pagamentoGravado = valorFinal > 0 ? pagamento : null
+    const muda = await contratoQueMudaNoReceber(ctx.tenantId!, appointmentId, pagamentoGravado, descontoVenda)
+    const substituirContrato = (formData.get('substituir_contrato') as string | null)?.trim() || null
+    if (muda && substituirContrato !== muda.id) return { substituiContrato: muda }
+
     // UMA transação no banco: o pagamento (dar baixa no recebível ou lançar),
     // o resgate dos pontos, a comissão (se a rede a quer sobre o valor pago) e a
     // linha do tempo. As travas de plano, pacote e "já pago" moram lá.
@@ -1279,11 +1306,15 @@ async function confirmarOPagamento(
           maquininha_id: valorFinal > 0 ? maquininhaId : null,
           desconto_motivo: descontoVenda > 0 ? motivoDoDesconto : null,
           vendedor_dos_produtos: vendedorDosProdutos,
+          substituir_contrato: muda?.id ?? null,
+          retrato_do_contrato: muda ? pagamentoNormalizado(pagamentoGravado, descontoVenda) : null,
         },
       }), 'confirmar o pagamento')
     } catch (e) {
       return { error: mensagemDoErro(e) }
     }
+    // O contrato novo se monta com o combinado que o banco gravou nele.
+    if (muda) await montarOContratoNovo(ctx.tenantId!, muda.id)
 
     revalidatePath(`/${slug}/agenda`)
     revalidatePath(`/${slug}/agenda/${appointmentId}`)
@@ -2349,13 +2380,16 @@ export async function salasParaAgendar(
 /**
  * Quem ATENDE na unidade e NÃO está disponível no horário escolhido no Agendar —
  * o choque com outro atendimento ou o bloqueio (R13, o Heitor, 26/11, na página
- * de perguntas: "Só mostra os horarios, salas e pessoas que estão livres"). A
- * lista de quem atende do modal tira essas pessoas (a já escolhida fica, com o
- * "Não vai ser agendado"). Só leitura; o núcleo confere de novo ao gravar.
+ * de perguntas: "Só mostra os horarios, salas e pessoas que estão livres"), e
+ * quem está fora do horário dela na unidade (R15, o Heitor, 26/11: "Não: quem
+ * está fora do horário também some das listas (o encaixe só pelo campo de
+ * horário)"). A lista de quem atende do modal tira essas pessoas (a já
+ * escolhida fica: ocupada ou bloqueada, com o "Não vai ser agendado"; fora do
+ * horário, com o aviso do encaixe). Só leitura; o núcleo confere de novo ao gravar.
  */
 export async function quemNaoEstaLivreNoHorario(
   branchId: string, scheduledAt: string, durationMin: number,
-): Promise<{ id: string; indisponivel: 'ocupada' | 'bloqueada' }[]> {
+): Promise<{ id: string; indisponivel: Indisponivel }[]> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'agenda', 'MANAGE')
   if (typeof branchId !== 'string' || !/^[0-9a-f-]{36}$/i.test(branchId) || !alcancaUnidade(ctx, branchId)) return []
@@ -2367,7 +2401,7 @@ export async function quemNaoEstaLivreNoHorario(
   if (!unidade) return []
   const equipe = (await getCachedBranchProfessionals(branchId, ctx.tenantId!)) as { id: string }[]
   const motivos = await Promise.all(equipe.map(p => indisponibilidadeNoHorario(admin, {
-    tenantId: ctx.tenantId!, professionalId: p.id, inicio, duracaoMin,
+    tenantId: ctx.tenantId!, professionalId: p.id, inicio, duracaoMin, unidadeDoHorario: branchId,
   })))
   return equipe.flatMap((p, i) => motivos[i] ? [{ id: p.id, indisponivel: motivos[i]! }] : [])
 }

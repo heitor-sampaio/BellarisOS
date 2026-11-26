@@ -377,7 +377,9 @@ async function perguntaDoTelefone(
   }
 
   const resposta = respostaDoJaExiste(r.jaExiste)
-  const jaExistem = await fichasQueJaExistem(admin, ctx.tenantId!, { cpf: outros.cpf, digitos: fone.digitos, nome: outros.nome, nascimento: outros.nascimento })
+  // D18 da 33ª: o cadastro (Clientes em Gerenciar) recebe o que a ficha tem, para a prévia do Unificar.
+  const jaExistem = await fichasQueJaExistem(admin, ctx.tenantId!, { cpf: outros.cpf, digitos: fone.digitos, nome: outros.nome, nascimento: outros.nascimento },
+    { comOCadastro: true })
   if (resposta.atualizar && jaExistem.some(f => f.id.toLowerCase() === resposta.atualizar)) return { atualizar: resposta.atualizar }
   const pendente = proximaSemResposta(jaExistem, resposta.cadastrar)
   if (pendente) return { pergunta: { jaExiste: { ...pendente, telefone: fone.digitos } } }

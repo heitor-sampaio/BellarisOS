@@ -10,7 +10,7 @@ import { buildPdf, type PdfSection } from '@/lib/pdf'
 import { ensurePrivateBucket, DOCUMENTOS_ASSINADOS_BUCKET } from '@/lib/storage'
 import { formatBRL, formatDate, formatDateTime, maskCPF, maskPhone } from '@estetica-os/utils'
 import { rotuloDoLancamento } from '@/lib/fidelidade/formato'
-import { respostasLegiveis, fichaDoProcedimentoLegivel, linhasDaFichaNoPdf, linhasDasVersoesNoPdf } from '@/lib/lgpd/prontuario-legivel'
+import { respostasLegiveis, fichaDoProcedimentoLegivel, linhasDaFichaNoPdf, linhasDasVersoesNoPdf, fichasDeSaudeDoProntuario, type FichaDeSaudeDoPacote } from '@/lib/lgpd/prontuario-legivel'
 import { lerTodas } from '@/lib/db'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { planoParaOTitular, linhaDoPlano, linhaDaComunicacao, type PlanoLido } from '@/lib/lgpd/plano'
@@ -549,7 +549,18 @@ export async function buildClientExport(
 
   if (includeMedical) {
     const entries = (medical?.atendimentos ?? []) as Record<string, unknown>[]
-    const fichas = (medical?.fichasDeSaude ?? []) as { respondidaEm: string | null; respondidaPor: string | null; ficha: string; respostas: { pergunta: string; resposta: string }[] }[]
+    // D3 da 33ª (LG-12): a ficha do prontuário (`general_anamnesis`, a que a equipe
+    // preenche no atendimento) entra também — ia só ao JSON, e o PDF dizia "Nenhuma".
+    const anamnese = medical?.anamneseGeral as Record<string, unknown> | null | undefined
+    const fichaDoProntuario: FichaDeSaudeDoPacote | null = anamnese && anamnese.versao === 2
+      ? {
+          respondidaEm:  (anamnese.respondidoEm as string | null) ?? null,
+          respondidaPor: typeof anamnese.origem === 'string' ? QUEM_RESPONDEU[anamnese.origem] ?? null : null,
+          ficha:         nomeDaFichaDeSaude((anamnese.ficha as { nome?: string } | null)?.nome),
+          respostas:     respostasLegiveis(anamnese.ficha, anamnese.respostas),
+        }
+      : null
+    const fichas = fichasDeSaudeDoProntuario((medical?.fichasDeSaude ?? []) as FichaDeSaudeDoPacote[], fichaDoProntuario)
     sections.push(
       {
         title: `Prontuário — fichas de saúde respondidas (${fichas.length})`,

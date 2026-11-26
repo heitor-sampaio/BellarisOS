@@ -3,13 +3,19 @@
 // horarios, salas e pessoas que estão livres"). Disponível é o que o núcleo não
 // recusaria: sem choque com outro atendimento (`conflitosDoHorario`, a régua de
 // `horarioOcupado`) e sem bloqueio (`bloqueiosQueBatem`, a de
-// `recusaDoBloqueioNoHorario`). Sem 'use server': quem chama já conferiu a
+// `recusaDoBloqueioNoHorario`). E, para a PESSOA, dentro do horário dela na
+// unidade (R15, o Heitor, 26/11, na página de perguntas: "Não: quem está fora do
+// horário também some das listas (o encaixe só pelo campo de horário)") — a
+// conta do aviso do encaixe (`foraDoHorarioDeQuemAtende`); o núcleo segue
+// aceitando o encaixe, com o aviso. Sem 'use server': quem chama já conferiu a
 // sessão, a permissão e o alcance.
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { lerTodas } from '@/lib/db'
+import { ler, lerTodas } from '@/lib/db'
 import { conflitosDoHorario, fimDaOcupacao, podemOcuparDesde } from '@/lib/appointments/core'
 import { bloqueiosQueBatem } from '@/lib/agenda/bloqueios'
+import { foraDoHorarioDeQuemAtende, normalizarHorario } from '@/lib/agenda/horario'
+import { fusoValido } from '@/lib/unidades/fuso'
 import type { Indisponivel } from '@/lib/agenda/so-o-que-esta-livre'
 import type { AgendamentoQueOcupa } from '@/lib/agenda/horario-livre'
 
@@ -17,12 +23,16 @@ type Admin = ReturnType<typeof createAdminClient>
 
 /**
  * Por que a pessoa (ou a sala) não está disponível em [inicio, inicio + duração):
- * 'ocupada' (outro atendimento), 'bloqueada' (um bloqueio dela). Nulo: livre.
- * Uma das duas: `professionalId` OU `roomId` (com a unidade da sala).
+ * 'ocupada' (outro atendimento), 'bloqueada' (um bloqueio dela) ou, só a pessoa
+ * com `unidadeDoHorario`, 'fora_do_horario' (fora do horário dela naquela
+ * unidade, ou a unidade fechada — R15). Nulo: livre. Uma das duas:
+ * `professionalId` OU `roomId` (com a unidade da sala, `branchId`).
  */
 export async function indisponibilidadeNoHorario(admin: Admin, a: {
   tenantId: string; inicio: Date; duracaoMin: number
   professionalId?: string | null; roomId?: string | null; branchId?: string | null
+  /** A unidade em que a PESSOA atenderia: o horário dela ali (R15). Sem ela, o horário não conta. */
+  unidadeDoHorario?: string | null
   /** O próprio agendamento (trocar quem atende, mudar de unidade). */
   excluir?: string | null
 }): Promise<Indisponivel | null> {
@@ -34,7 +44,25 @@ export async function indisponibilidadeNoHorario(admin: Admin, a: {
   ])
   if (choques.length) return 'ocupada'
   if (bloqueios.length) return 'bloqueada'
+  if (a.professionalId && a.unidadeDoHorario && await foraDoHorario(admin, {
+    tenantId: a.tenantId, professionalId: a.professionalId, unidadeId: a.unidadeDoHorario, inicio: a.inicio, duracaoMin: a.duracaoMin,
+  })) return 'fora_do_horario'
   return null
+}
+
+/** A pessoa está fora do horário dela na unidade (a unidade ∩ ela, no relógio da unidade)? A unidade de outra rede não conta. */
+async function foraDoHorario(admin: Admin, a: {
+  tenantId: string; professionalId: string; unidadeId: string; inicio: Date; duracaoMin: number
+}): Promise<boolean> {
+  const [unidade, pessoa] = await Promise.all([
+    ler(admin.from('branches').select('horario, fuso').eq('id', a.unidadeId).eq('tenant_id', a.tenantId).maybeSingle(), 'buscar o horário da unidade'),
+    ler(admin.from('users').select('horario').eq('id', a.professionalId).eq('tenant_id', a.tenantId).maybeSingle(), 'buscar o horário de quem atende'),
+  ]) as [{ horario?: unknown; fuso?: string | null } | null, { horario?: unknown } | null]
+  if (!unidade) return false
+  return foraDoHorarioDeQuemAtende(
+    normalizarHorario(unidade.horario), normalizarHorario(pessoa?.horario),
+    a.inicio.toISOString(), a.duracaoMin, fusoValido(unidade.fuso),
+  )
 }
 
 /**

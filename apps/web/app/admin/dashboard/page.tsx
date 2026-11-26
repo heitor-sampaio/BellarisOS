@@ -37,7 +37,7 @@ import { etapasDoQueOCargoVe } from '@/lib/dashboard/etapas-do-ciclo'
 import { ClientesDoPeriodo, ReativarClientes, deQuemSaoAsClientes } from '@/components/shared/quadros-de-clientes'
 import { intervaloDosAnuncios } from '@/lib/ads/periodo'
 import { getClientesParaReativarDoRecorte, getClientesAtivos } from '@/lib/metrics/unidade'
-import { differenceInDays } from 'date-fns'
+import { diasDesdeAUltimaVisita } from '@/lib/clientes/ultima-visita'
 import { lotesVencendoDoRecorte } from '@/lib/estoque/lotes'
 import type { LoteNoDashboard } from '@/components/shared/lotes-vencendo'
 import { funilDoDashboard } from '@/lib/crm/funil-do-dashboard'
@@ -682,7 +682,8 @@ export default async function AdminDashboardPage({
       <ReativarClientes
         clientes={paraReativar.lista.map(c => ({
           id: c.id, name: c.name, unidade: c.unidade, antesDoSistema: c.antesDoSistema,
-          diasSemVir: c.ultimaVisita ? differenceInDays(now, new Date(c.ultimaVisita)) : null,
+          // Dias de calendário no fuso do recorte, como a lista de Clientes.
+          diasSemVir: diasDesdeAUltimaVisita(c.ultimaVisita, now, fuso),
         }))}
         total={paraReativar.total}
         comVisita={paraReativar.comVisita} recentesSemVisita={paraReativar.recentesSemVisita}

@@ -8,14 +8,14 @@ import type { ComponentProps } from 'react'
 import { BranchEditForm } from '@/components/admin/branch-edit-form'
 import { SalasDaUnidade, type SalaDaUnidade } from '@/components/admin/salas-da-unidade'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { ArrowLeft, Power, PowerOff, Users } from 'lucide-react'
+import { ArrowLeft, PowerOff, Users } from 'lucide-react'
 import { ler } from '@/lib/db'
 import { DesativarUnidade } from '@/components/admin/desativar-unidade'
 import { oQueFicaNaUnidade, resumoDoQueFica, temOQueFicou } from '@/lib/unidades/desativar'
 import { CaminhosDoQueFicou } from '@/components/admin/o-que-ficou'
 import { origemDoApp, enderecoDoAppDaCliente } from '@/lib/unidades/app-da-cliente'
 import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
-import { semAcesso } from '@/lib/sem-acesso'
+import { ReativarUnidade } from '@/components/admin/reativar-unidade'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -120,15 +120,15 @@ export default async function BranchDetailPage({ params }: Props) {
               <PowerOff size={13} /> Desativar
             </DesativarUnidade>
           ) : (
-            <form action={async () => {
-              'use server'
-              const r = await toggleBranchStatus(id, true)
-              if (r.error) throw semAcesso()
-            }}>
-              <button type="submit" className="btn-secondary" style={{ gap: 6, fontSize: 'var(--text-xs-sz)', color: 'var(--success)' }}>
-                <Power size={13} /> Reativar
-              </button>
-            </form>
+            // D10 da 33ª: a recusa (o limite do plano) aparece ao lado do botão, não na tela de erro.
+            <ReativarUnidade
+              reativar={async () => {
+                'use server'
+                const r = await toggleBranchStatus(id, true)
+                return r
+              }}
+              className="btn-secondary" style={{ gap: 6, fontSize: 'var(--text-xs-sz)', color: 'var(--success)' }}
+            />
           )}
         </div>
       </div>

@@ -277,6 +277,44 @@ test('A22 (R13): a troca de profissional só oferece quem está livre no horári
   })
 })
 
+test('A22 (R15): quem está fora do horário some da troca e do Agendar; o encaixe vai pelo campo de horário', async ({ browser }) => {
+  // O Heitor, 26/11, na página de perguntas (R15): "Não: quem está fora do horário
+  // também some das listas (o encaixe só pelo campo de horário)". A Bia atende só
+  // das 14:00 às 18:00 no dia; às 11:00 ela está livre de agenda, mas fora do horário.
+  const diaDaSemana = new Date(`${DIA2}T12:00:00Z`).getUTCDay()
+  expect((await db().from('users').update({ horario: { dias: { [diaDaSemana]: [{ de: '14:00', ate: '18:00' }] } } }).eq('id', bia!.userId)).error).toBeNull()
+  const ag = await agendar({ quando: em(DIA2, '11:00'), min: 30 })
+  try {
+    await como(browser, recepcao!, async p => {
+      await p.goto(`/${slug}/agenda?date=${DIA2}`)
+      await (await cartaoNaGradeDoDia(p, ag)).click()
+      const janela = p.getByRole('dialog', { name: 'Agendamento' })
+      await janela.getByRole('button', { name: 'Trocar profissional' }).click()
+      await expect(janela.getByLabel('Nova profissional').locator('option', { hasText: nomeBia }), 'fora do horário, não aparece').toHaveCount(0)
+    })
+    await como(browser, recepcao!, async p => {
+      await p.goto(`/${slug}/agenda?date=${DIA2}&novo=1&cliente=${cliente}`)
+      const modal = p.getByRole('dialog', { name: 'Novo agendamento' })
+      await expect(modal.getByText(`${PREFIXO} Agenda`)).toBeVisible()
+      await modal.locator('#ag-procedimento').selectOption(rede!.procedureId)
+      // O horário primeiro: a lista não oferece quem está fora dele.
+      await modal.locator('#ag-quando').fill(`${DIA2}T11:00`)
+      await expect(modal.locator('#ag-profissional option', { hasText: nomeBia })).toHaveCount(0)
+      // O encaixe: quem atende escolhida no horário dela, e o horário digitado no campo.
+      await modal.locator('#ag-quando').fill(`${DIA2}T16:30`)
+      await modal.locator('#ag-profissional').selectOption(bia!.userId)
+      await modal.locator('#ag-quando').fill(`${DIA2}T11:00`)
+      await expect(modal.locator('#ag-profissional option', { hasText: nomeBia })).toContainText('(fora do horário)')
+      await expect(modal.locator('[data-aviso-do-horario]')).toContainText('O encaixe é permitido.')
+      await expect(modal.getByRole('button', { name: 'Confirmar agendamento' }), 'o encaixe não desliga o Confirmar').toBeEnabled()
+      // A grade de horários livres não oferece o fora do horário dela.
+      await expect(modal.locator('[data-grade-de-horarios] [data-horario="11:00"]')).toHaveCount(0)
+    })
+  } finally {
+    await db().from('users').update({ horario: null }).eq('id', bia!.userId)
+  }
+})
+
 test('A22: arrastar para outra profissional pergunta, e soltar no ocupado diz por quê', async ({ browser }) => {
   const ag = await agendar({ quando: em(DIA2, '13:00'), min: 30 })
   await agendar({ quando: em(DIA2, '15:00'), prof: bia!.userId })

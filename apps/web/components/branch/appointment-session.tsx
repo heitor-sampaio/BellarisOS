@@ -45,12 +45,12 @@ import { TreatmentPlanEditor } from '@/components/branch/treatment-plan-editor'
 import type { TreatmentProcedure, TreatmentPackage, ExistingPlan, TreatmentPlanEditorRef } from '@/components/branch/treatment-plan-editor'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { dosesDoMapaDoAtendimento } from '@/actions/injectable-map'
-import { divergenciasDaBaixa, textoDaDivergencia, formatarDose, type TotalDoMapa, type DivergenciaDaBaixa } from '@/lib/injetaveis/dose'
+import { divergenciasDaBaixa, totaisQueSeComparam, textoDaDivergencia, formatarDose, type TotalDoMapa, type DivergenciaDaBaixa, type OrigemDoTotal } from '@/lib/injetaveis/dose'
 import { planejamentosDaFicha } from '@/lib/atendimento/retrato-dos-injetaveis'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { Dica } from '@/components/shared/dica'
 import { avisoDoMenor, ehMenorDeIdade, linhaDoResponsavel, type ResponsavelLegal } from '@/lib/clients/menor'
-import { textoDoRegistroTravado, TEXTO_DO_CLINICO_SO_LEITURA } from '@/lib/atendimento/registro-travado'
+import { textoDoRegistroTravado, TEXTO_DO_CLINICO_SO_LEITURA, TEXTO_DOS_INSUMOS_NO_EDITAR_REGISTRO } from '@/lib/atendimento/registro-travado'
 import { TEXTO_DA_SESSAO_NA_DESISTENCIA } from '@/lib/atendimento/desistencia'
 import { lotesDaBaixa, textoDosLotesDaBaixa, type LoteParaBaixa, type ParteDaBaixa } from '@/lib/estoque/fefo'
 import { textoDoPlanoDoConcluido } from '@/lib/plano-de-tratamento/textos'
@@ -446,7 +446,7 @@ function CancelModal({ appointmentId, slug, onClose, desistencia = null }: {
 }
 
 // Modal 1: Profissional confirma conclusão clínica (sem pagamento)
-function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences, insumos, queixas, anamnese = null, ficha = null, pagamento, onClose, planejamentos = [], estoque = [], onAjustarInsumo, registraClinico = true }: {
+function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences, insumos, insumosDoCartao = insumos, queixas, anamnese = null, ficha = null, pagamento, onClose, planejamentos = [], estoque = [], onAjustarInsumo, registraClinico = true }: {
   appointmentId: string; slug: string
   /**
    * Escreve o clínico (o Prontuário em Gerenciar)? Sem ele, conclui sem a
@@ -458,6 +458,11 @@ function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences,
   planejamentos?: string[]
   /** Os insumos do estoque da unidade (para incluir na baixa o produto do mapa). */
   estoque?: AvailableProduct[]
+  /**
+   * Todos os insumos do cartão, marcados ou não (A1 da 33ª): o planejamento sem
+   * aplicação só se compara com o produto que este atendimento usa.
+   */
+  insumosDoCartao?: SessionProduct[]
   /** Leva a dose do mapa para a baixa (o cartão de insumos da tela). */
   onAjustarInsumo?: (d: DivergenciaDaBaixa) => void
   /** De onde vem o pagamento deste atendimento (J-40). */
@@ -476,7 +481,7 @@ function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences,
   const [state, action, pending] = useActionState(finishSession, null)
   // A dose do mapa de injetáveis × a baixa (A36): o mapa gravava 0,5 ml e o
   // estoque baixava 1 ml, sem aviso. A janela compara e oferece a do mapa.
-  const [totaisDoMapa, setTotaisDoMapa] = useState<TotalDoMapa[]>([])
+  const [totaisDoMapa, setTotaisDoMapa] = useState<(TotalDoMapa & { origem?: OrigemDoTotal })[]>([])
   const chaveDosPlanejamentos = planejamentos.join(',')
   useEffect(() => {
     let vivo = true
@@ -484,7 +489,8 @@ function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences,
       .then(r => { if (vivo) setTotaisDoMapa(r.totais) }).catch(() => {})
     return () => { vivo = false }
   }, [appointmentId, chaveDosPlanejamentos])
-  const divergencias = onAjustarInsumo ? divergenciasDaBaixa(totaisDoMapa, insumos, estoque) : []
+  // A1 da 33ª (Decisão A, princípio 5): o planejamento para outro dia não é consumo.
+  const divergencias = onAjustarInsumo ? divergenciasDaBaixa(totaisQueSeComparam(totaisDoMapa, insumosDoCartao), insumos, estoque) : []
   // Concluiu, mas faltou insumo (o saldo ficou negativo): o modal não some
   // calado — mostra o que faltou e a pessoa fecha. Decisão de 2026-09-27:
   // avisar e deixar concluir.
@@ -1608,6 +1614,7 @@ export function AppointmentSession({
           initialIntercurrences={intercurrences}
           registraClinico={canEditRecords}
           insumos={confirmedInsumos}
+          insumosDoCartao={insumos}
           // As dores e a anamnese da tela vão na conclusão (D3, 2026-10-28). As
           // dores só existem no formulário da avaliação; a anamnese, onde foi digitada.
           queixas={usaFormularioDaAvaliacao && canViewRecords ? evalComplaints : undefined}
@@ -2069,6 +2076,12 @@ export function AppointmentSession({
                   // D11 da 8ª: o cancelado e a falta não dizem "Atendimento concluído".
                   : registroTravado.texto}
               </p>
+              {/* A2 da 33ª (Decisão A): o "Editar registro" não mexe nos insumos — diz onde se corrigem. */}
+              {isUnlocked && (
+                <p data-insumos-no-editar style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
+                  {TEXTO_DOS_INSUMOS_NO_EDITAR_REGISTRO}
+                </p>
+              )}
             </div>
             {/* Desbloquear é para editar o prontuário: o Prontuário em
                 Gerenciar (UM4), e só no concluído (D11: o cancelado não tem
@@ -2360,7 +2373,7 @@ export function AppointmentSession({
                       em branco com as obrigatórias marcadas (A30). */}
                   {/* D8 da 26ª: sem escrever o clínico, também se LÊ (era o formulário editável, e o digitado se perdia). */}
                   {(editLocked || !canEditRecords) ? (
-                    canViewRecords && <AnamneseGeralCartao anamnese={anamnesis} fichaAtual={fichaPreAtendimento} clientId={client.id} canEdit={false} />
+                    canViewRecords && <AnamneseGeralCartao ref={anamneseDoCartao} anamnese={anamnesis} fichaAtual={fichaPreAtendimento} clientId={client.id} canEdit={false} />
                   ) : (
                     // A31 da 6ª simulação: sem o prontuário a anamnese nem é lida
                     // (`anamnesis` vem nula) — e a recepção recebia o formulário

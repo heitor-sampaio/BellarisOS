@@ -182,8 +182,12 @@ export function SettingsLgpd({ requests, canReviewMedical }: Props) {
                 {(r.medical_status === 'approved' || r.medical_status === 'denied') && r.medical_reviewed_at && (
                   <span data-liberado-em style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
                     {r.medical_status === 'approved' ? 'Prontuário liberado' : 'Prontuário negado'} em {fmt(r.medical_reviewed_at, fuso)}
-                    {r.medical_status === 'approved' && (r.status === 'pending' || r.status === 'processing')
-                      ? ' · o pacote novo, com o prontuário, fica pronto em poucos minutos' : ''}
+                    {(r.status === 'pending' || r.status === 'processing')
+                      // D2 da 33ª: negar também refaz o pacote (sai sem o prontuário).
+                      ? (r.medical_status === 'approved'
+                          ? ' · o pacote novo, com o prontuário, fica pronto em poucos minutos'
+                          : ' · o pacote novo, sem o prontuário, fica pronto em poucos minutos')
+                      : ''}
                   </span>
                 )}
                 {r.error_message && (

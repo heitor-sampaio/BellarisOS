@@ -2,8 +2,9 @@
 
 import { useActionState, useEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
-import { X, Loader2, CheckCircle2 } from 'lucide-react'
+import { X, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react'
 import { confirmPayment, previaDoPagamento } from '@/actions/appointments'
+import type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { trocaDePontosDoAtendimento } from '@/actions/fidelidade'
 import { TrocarPontos } from '@/components/shared/trocar-pontos'
@@ -96,8 +97,12 @@ export interface ReceberAtendimentoProps {
   price:         number
   /** A cliente: com o crédito na clínica escolhido, o saldo dela e o que sobra (A36 da 8ª). */
   clienteId?:    string
-  /** O pagamento combinado no contrato do procedimento: o meio (e o desconto) já vêm escolhidos. */
-  pagamentoCombinado?: { metodo: string | null; rotulo: string; desconto?: number } | null
+  /**
+   * O pagamento combinado no contrato do procedimento: o meio (e o desconto) já vêm escolhidos.
+   * D1 da 33ª: com `pagamento`, vem o combinado INTEIRO (as vezes do cartão, o crediário) —
+   * o "crédito 3x" voltava em 1x, e receber "como combinado" já mudava o contrato.
+   */
+  pagamentoCombinado?: { metodo: string | null; rotulo: string; desconto?: number; pagamento?: PagamentoDoPlano | null } | null
   /** Sessões de pacote da cliente que podem pagar este atendimento (D9). */
   pacotesParaAbater?: PacoteParaAbater[]
   /**
@@ -131,7 +136,11 @@ export function FormularioDeReceberAtendimento({
   // A37 da 6ª simulação: a forma nasce VAZIA (o Pix era o padrão calado — um
   // clique gravava no Pix). Só o meio combinado no contrato vem escolhido.
   const metodoInicial = (FORMAS_DO_BALCAO as readonly string[]).includes(pagamentoCombinado?.metodo ?? '') ? pagamentoCombinado!.metodo! : ''
-  const [estado, setEstado] = useState<EstadoDoPagamento>(() => ({ ...estadoDoPagamento(null, 'AVISTA'), metodo: metodoInicial }))
+  // D1 da 33ª: o combinado inteiro do contrato (a forma, as vezes, o crediário); sem ele, só o meio.
+  const estadoCombinado = (): EstadoDoPagamento => pagamentoCombinado?.pagamento
+    ? estadoDoPagamento(pagamentoCombinado?.pagamento, 'AVISTA')
+    : { ...estadoDoPagamento(null, 'AVISTA'), metodo: metodoInicial }
+  const [estado, setEstado] = useState<EstadoDoPagamento>(estadoCombinado)
   // C75: a maquininha de cada cartão entra na recusa (com mais de uma na rede).
   const recusaDoPagamento = useRecusaDoPagamento()
   const [state, action, pending] = useActionState(confirmPayment, null)
@@ -155,6 +164,12 @@ export function FormularioDeReceberAtendimento({
   const [vendedorId, setVendedorId] = useState('')
   const [semVendedor, setSemVendedor] = useState(false)
   const [perguntaDoVendedor, setPerguntaDoVendedor] = useState(false)
+  // D1 da 33ª (DG-03): o contrato assinado para outro pagamento — o servidor pergunta antes de
+  // substituir; "Substituir o contrato" reenvia com o id dele, "Manter" volta ao combinado.
+  const [substituir, setSubstituir] = useState('')
+  // A pergunta é a da última resposta do servidor, até ser respondida (ou o pagamento mudar).
+  const [respondida, setRespondida] = useState<typeof state>(null)
+  const perguntaDoContrato = !pending && state?.substituiContrato && respondida !== state ? state.substituiContrato : null
   const formulario = useRef<HTMLFormElement>(null)
   useEffect(() => {
     let vivo = true
@@ -171,7 +186,7 @@ export function FormularioDeReceberAtendimento({
     setPrevia(p); setTroca(t); setPontos('')
     if (p?.vouchers.some(v => v.id === novo)) setVoucherId(novo)
   }
-  const feito = state !== null && !state?.error && !pending
+  const feito = state !== null && !state?.error && !state?.substituiContrato && !pending
   useEffect(() => { onPendente?.(pending) }, [pending]) // eslint-disable-line react-hooks/exhaustive-deps
   // Recebido: o próximo "Receber" (a comanda reaberta pelo estorno) é outro envio.
   useEffect(() => { if (feito) { envio.renovar(); onFeito() } }, [feito]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -200,6 +215,17 @@ export function FormularioDeReceberAtendimento({
   const mudarPagamento = (e: EstadoDoPagamento) => {
     if (e.forma !== 'AVISTA') { setPontos(''); setVoucherId('') }
     setEstado(e)
+    // Mudou o pagamento depois da pergunta: a resposta era para o de antes.
+    setSubstituir(''); setRespondida(state)
+  }
+  function manterOCombinado() {
+    setEstado(estadoCombinado())
+    setDescontoEstado(estadoDoDesconto(pagamentoCombinado?.desconto))
+    setSubstituir(''); setRespondida(state)
+  }
+  function substituirOContrato(id: string) {
+    flushSync(() => { setSubstituir(id); setRespondida(state) })
+    formulario.current?.requestSubmit()
   }
   const recusa = totalZero ? null : recusaDoPagamento(estado, total, 'da comanda')
   const comProdutos = equipeDosProdutos !== null
@@ -229,7 +255,8 @@ export function FormularioDeReceberAtendimento({
       )}
       {pedidoDeDesconto && <input type="hidden" name="desconto_tipo" value={pedidoDeDesconto.tipo} />}
       {pedidoDeDesconto && <input type="hidden" name="desconto_valor" value={String(pedidoDeDesconto.valor)} />}
-      <CampoDoDesconto estado={descontoEstado} aoMudar={e => { setDescontoEstado(e); setPontos('') }} total={price} />
+      <input type="hidden" name="substituir_contrato" value={substituir} />
+      <CampoDoDesconto estado={descontoEstado} aoMudar={e => { setDescontoEstado(e); setPontos(''); setSubstituir(''); setRespondida(state) }} total={price} />
       {/* J-47: o porquê do desconto, opcional — fica no lançamento e na linha do tempo. */}
       {pedidoDeDesconto && (
         <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>
@@ -319,6 +346,23 @@ export function FormularioDeReceberAtendimento({
       {perguntaDoVendedor && (
         <PerguntaDaVenda texto={PERGUNTA_SEM_VENDEDOR} pendente={pending} rotuloConfirmar="Receber assim"
           aoConfirmar={receberSemVendedor} aoVoltar={() => setPerguntaDoVendedor(false)} />
+      )}
+      {/* D1 da 33ª (DG-03): receber com outro pagamento muda o contrato assinado — pergunta antes, como o plano. */}
+      {perguntaDoContrato && (
+        <div data-substitui-contrato role="alert" style={{ padding: '12px 14px', borderRadius: 'var(--radius-field-token)', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 700, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+            <AlertTriangle size={15} aria-hidden="true" style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 1 }} />
+            <span>O contrato “{perguntaDoContrato.titulo}” já foi assinado para outro pagamento ({perguntaDoContrato.pagamento}).</span>
+          </p>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+            Receber com este pagamento substitui o contrato: o assinado fica guardado como substituído, e a cliente assina o novo.
+            Para manter o contrato, volte ao pagamento combinado.
+          </p>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+            <button type="button" className="btn-secondary" disabled={pending} onClick={manterOCombinado}>Manter o pagamento combinado</button>
+            <button type="button" className="btn-primary" disabled={pending} onClick={() => substituirOContrato(perguntaDoContrato.id)}>Substituir o contrato</button>
+          </div>
+        </div>
       )}
       {state?.error && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{state.error}</p>}
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4, flexWrap: 'wrap' }}>

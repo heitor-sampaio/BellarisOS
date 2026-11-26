@@ -267,10 +267,10 @@ Este é o catálogo das regras dos Documentos que valem HOJE: os tipos, os model
 - Onde: `docs/regras/documentos.md:525-546`; `docs/revisao.md:1982`
 - Antes: KB-11, KC-20
 
-**DG-03.** Mudar o pagamento (ou o desconto) de um contrato já assinado substitui o contrato, e a tela pergunta antes ("O contrato "X" já foi assinado para outro pagamento (à vista no Pix)"), com "Substituir o contrato" ou "Manter o pagamento combinado". Só confirmado, o assinado vira substituído e nasce um novo para a cliente assinar.
-- Fonte: decisão do Claude
-- Onde: `docs/regras/documentos.md:469-476`
-- Antes: KB-12
+**DG-03.** Mudar o pagamento (ou o desconto) de um contrato já assinado substitui o contrato, e a tela pergunta antes ("O contrato "X" já foi assinado para outro pagamento (à vista no Pix)"), com "Substituir o contrato" ou "Manter o pagamento combinado". Só confirmado, o assinado vira substituído e nasce um novo para a cliente assinar. Vale em todo caminho que recebe o combinado no contrato — o plano, o pacote e a comanda do atendimento no PDV: o PDV já abre com o combinado inteiro (a forma, as vezes do cartão, o crediário e o desconto), a pergunta vem antes de gravar qualquer coisa, e substituir o contrato vale junto do dinheiro, na mesma gravação.
+- Fonte: decisão do Claude; a comanda do atendimento no PDV: decisão do Claude, 26/11 (33ª simulação, D1), pela própria DG-03 e pela VD-10 de Vendas
+- Onde: `docs/regras/documentos.md:469-476`, `:545-568`
+- Antes: KB-12; antes de 26/11: o PDV recebia com outro pagamento num contrato assinado sem perguntar, e do combinado só vinha o meio (o "crédito 3x" voltava em 1x)
 
 **DG-04.** Reabrir o pagamento de um plano com o contrato já assinado parte do pagamento e do desconto assinados, e a tela diz: "O contrato “X” já foi assinado com este pagamento: À vista, no Pix. Mudar as condições pede um contrato novo: a cliente assina de novo." Assinar um documento ali não leva a tela de volta ao começo.
 - Fonte: princípio 3

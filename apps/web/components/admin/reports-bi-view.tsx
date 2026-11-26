@@ -26,6 +26,7 @@ import { baixarCsv } from '@/lib/financeiro/csv-dos-lancamentos'
 import { rotuloDoMotivo, perdasComOMotivo } from '@/lib/estoque/perda'
 import { medidaNoPlural } from '@/lib/estoque/medidas'
 import { validadeNaTela } from '@/lib/estoque/validade'
+import { textoDasPartes } from '@/lib/estoque/lotes-do-movimento'
 import { MOVIMENTOS_POR_PAGINA } from '@/lib/metrics/movimentos-de-estoque-comum'
 import type { TipoDoMovimento } from '@/lib/estoque/tipo-do-movimento'
 import { DETALHE_DO_GIRO } from '@/lib/estoque/situacao'
@@ -34,7 +35,7 @@ import {
 } from '@/lib/metrics/vendas-comum'
 import type { SemReceita } from '@/lib/metrics/fechamento-extra'
 import { notasDoTop5 } from '@/lib/relatorios/nota-do-top5'
-import { AlertTriangle, Download } from 'lucide-react'
+import { AlertTriangle, Download, Info } from 'lucide-react'
 import {
   HBarChart, WeekBarChart, DonutChart, MiniAreaChart,
   DreWaterfall, SimpleTable, Badge,
@@ -558,6 +559,16 @@ function TabFinanceiro(p: ReportsBiProps) {
               <p data-dre-sem-taxa role="note" style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: '14px 0 0' }}>
                 <AlertTriangle size={14} aria-hidden style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 2 }} />
                 <span>{avisoDoDreSemTaxa(p.vendasSemTaxa)}</span>
+              </p>
+            )}
+            {/* A11 da 33ª (princípio 3): o cartão do caixa tem mais que a linha das despesas operacionais —
+                o DRE diz de que ele se compõe, com os números de lib/metrics (a soma é a do cartão). */}
+            {opEx !== resultado.despesaOperacional && (
+              <p data-despesas-do-cartao style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: '14px 0 0' }}>
+                As despesas pagas no caixa ({fmtBRLFull(opEx)}, no cartão acima) são {fmtBRLFull(resultado.despesaOperacional)} de despesas operacionais
+                {' '}(a linha do DRE), {fmtBRLFull(p.estoqueNoResultado.atual.despesaDeComissoes ?? 0)} do pagamento das comissões
+                {' '}e {fmtBRLFull(p.estoqueNoResultado.atual.compraDeEstoque)} da compra de estoque. No lucro, a comissão entra quando é
+                {' '}lançada (a linha das comissões), e a compra fica fora.
               </p>
             )}
             {/* A31 da 10ª: o que fica fora do resultado chega a quem não abre o Estoque (a contadora), e o DRE se exporta. */}
@@ -1533,7 +1544,7 @@ function MovimentosDoEstoque({ m, comUnidade }: { m: DadosDosMovimentos; comUnid
                       </span>
                     </td>
                     <td data-label="Quantidade" style={{ ...td('right'), whiteSpace: 'nowrap', fontWeight: 700 }}>{quantidade(l)}</td>
-                    <td data-label="Lote" data-lote style={td()}>{textoDosLotes(l.lotes)}</td>
+                    <td data-label="Lote" data-lote style={td()}>{(l.partes && textoDasPartes(l.partes, l.medida)) || textoDosLotes(l.lotes)}</td>
                     {comUnidade && <td data-label="Unidade" style={td()}>{l.unidade}</td>}
                     <td data-label="Quem fez" style={td()}>{l.quem ?? '—'}</td>
                     <td data-label="Custo" style={{ ...td('right'), whiteSpace: 'nowrap' }}>{fmtBRLFull(l.custo)}</td>
@@ -1593,6 +1604,15 @@ function TabComercial(p: ReportsBiProps) {
         <KpiCard label="Agendados pelo comercial" value={c.comerciaisAgendados} format="int" accent="var(--text)" />
         <KpiCard label="Comparecimento"           value={c.comparecimento} format="pct" accent="var(--text)" />
       </div>
+
+      {/* A10 da 33ª (princípio 3): a oportunidade não tem unidade (a cliente é da rede); o recorte
+          só vale para os agendamentos do comercial (`painelComercial`) — a tela diz. */}
+      {p.selectedBranchId && (p.allBranches ?? p.branches).length > 1 && (
+        <p data-oportunidades-da-rede role="note" style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: 0 }}>
+          <Info size={14} aria-hidden style={{ color: 'var(--text-faint)', flexShrink: 0, marginTop: 2 }} />
+          <span>As oportunidades são da rede: o recorte por unidade não vale para elas. Os agendamentos do comercial e o comparecimento são os da unidade escolhida.</span>
+        </p>
+      )}
 
       <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', margin: 0 }}>
         {c.temGanho

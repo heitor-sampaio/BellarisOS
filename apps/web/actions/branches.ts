@@ -1,7 +1,7 @@
 'use server'
 
-import { enderecoComNumero } from '@/lib/unidades/endereco-com-numero'
-import { conferirLimite, limiteDoPlano } from '@estetica-os/nucleo/lib/planos/limites'
+import { enderecoComNumero, numeroSemLogradouro, NUMERO_SEM_LOGRADOURO } from '@/lib/unidades/endereco-com-numero'
+import { conferirLimite, DIGEST_LIMITE_DO_PLANO } from '@estetica-os/nucleo/lib/planos/limites'
 import { lerHorarioDoForm } from '@/lib/agenda/horario'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission, assertUnidade } from '@/lib/auth'
@@ -68,7 +68,11 @@ export async function createBranch(
   const stateRegistration = (formData.get('state_registration') as string)?.trim() || null
   const email    = (formData.get('email') as string)?.trim().toLowerCase() || null
   const phone    = (formData.get('phone') as string)?.trim() || null
-  // O número entra no endereço, depois do logradouro (A7 da 9ª).
+  // O número entra no endereço, depois do logradouro (A7 da 9ª). Sem o
+  // logradouro, o "200" virava o endereço (UN-05; decisão do Claude, 26/11).
+  if (numeroSemLogradouro(formData.get('address') as string | null, formData.get('address_number') as string | null)) {
+    return { error: NUMERO_SEM_LOGRADOURO }
+  }
   const address  = enderecoComNumero(formData.get('address') as string | null, formData.get('address_number') as string | null)
   const city     = (formData.get('city') as string)?.trim() || null
   const state    = (formData.get('state') as string)?.trim().toUpperCase() || null
@@ -160,6 +164,9 @@ export async function updateBranch(
   const email             = (formData.get('email') as string)?.trim().toLowerCase() || null
   const phone             = (formData.get('phone') as string)?.trim() || null
   // O Número à parte, como na unidade nova (D9 da 13ª, F70); sem o campo, o endereço como veio.
+  if (numeroSemLogradouro(formData.get('address') as string | null, formData.get('address_number') as string | null)) {
+    return { error: NUMERO_SEM_LOGRADOURO }
+  }
   const address           = formData.has('address_number')
     ? enderecoComNumero(formData.get('address') as string | null, formData.get('address_number') as string | null)
     : (formData.get('address') as string)?.trim() || null
@@ -220,18 +227,27 @@ export async function toggleBranchStatus(branchId: string, isActive: boolean): P
 
   const supabase = createAdminClient()
   // Reativar conta para o LIMITE de unidades do plano (lib/planos/limites.ts).
+  // A recusa volta como { error }, como no criar (PN-11, "a tela diz o limite";
+  // decisão E do Claude, 26/11): lançada, a tela inteira virava "Limite do
+  // plano atingido". O Reativar (`ReativarUnidade`) a mostra ao lado do botão.
   if (isActive) {
     const atual = await ler(supabase.from('branches').select('is_active').eq('id', branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade')
     if (atual && !atual.is_active) {
       const limite = await conferirLimite(ctx.tenantId!, 'unidades')
-      if (limite) throw limiteDoPlano(limite)
+      if (limite) return { error: limite }
     }
   }
-  await gravar(supabase
+  const salvo = await supabase
     .from('branches')
     .update({ is_active: isActive })
     .eq('id', branchId)
-    .eq('tenant_id', ctx.tenantId!), 'salvar a unidade')
+    .eq('tenant_id', ctx.tenantId!)
+  // Dois cliques ao mesmo tempo passam pela conta acima e param no banco
+  // (`trg_limite_do_plano`, com o hint do digest): a mesma recusa, no lugar.
+  if (salvo.error?.hint === DIGEST_LIMITE_DO_PLANO) {
+    return { error: (await conferirLimite(ctx.tenantId!, 'unidades')) ?? 'O plano da sua rede chegou ao limite de unidades ativas.' }
+  }
+  await gravar(Promise.resolve(salvo), 'salvar a unidade')
 
   revalidatePath('/admin/branches')
   revalidatePath(`/admin/branches/${branchId}`)

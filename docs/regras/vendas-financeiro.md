@@ -54,7 +54,10 @@ comanda (PDV-P1).
   `components/shared/receber-atendimento.tsx`): prévia, voucher, desconto e
   motivo, pontos, maquininha, vezes, bandeira, saldo de crédito, o combinado
   do plano. Não existe pagamento sem forma (PDV8): o botão "Receber R$ X"
-  espera a forma.
+  espera a forma. Com o contrato do procedimento ASSINADO, receber com outro
+  pagamento (ou outro desconto) pergunta antes e, confirmado, substitui o
+  contrato na mesma transação do dinheiro (D1 da 33ª; DG-03 e VD-10 do
+  catálogo; `documentos.md`, "O contrato do PROCEDIMENTO também cita o pagamento").
 - **Só se vende pelo PDV** (PDV-P3: "O vender da ficha sai e o do inbox ele
   pode sair, ele pode levar pro PDV, tá? Porque só vende pelo PDV."). A
   "Nova venda" (`?nova=1`) escolhe a cliente (busca na rede inteira,

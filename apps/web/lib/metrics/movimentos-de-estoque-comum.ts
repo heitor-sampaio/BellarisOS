@@ -1,4 +1,5 @@
 import type { TipoDoMovimento } from '@/lib/estoque/tipo-do-movimento'
+import type { PartesDoMovimento } from '@/lib/estoque/lotes-do-movimento'
 
 /**
  * O que a tela e o servidor dividem da lista das movimentações de Relatórios →
@@ -24,6 +25,12 @@ export interface MovimentoDoRelatorio {
   embalagem:  string
   embalagens: number
   lotes:      { numero: string | null; validade: string | null }[]
+  /**
+   * D5 da 33ª: o que cada lote cobriu, na unidade do movimento ("Lote AM1:
+   * 2 ml · 2 ml sem lote") — a tela escreve com `textoDasPartes`. Vem de
+   * `getMovimentosDeEstoque` (`partesDaLinha`).
+   */
+  partes?:    PartesDoMovimento
   quem:       string | null
   custo:      number
   /** O movimento foi desfeito depois (a entrada, o ajuste, a perda). */

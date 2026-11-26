@@ -18,6 +18,18 @@ export function enderecoComNumero(endereco: string | null | undefined, numero: s
 }
 
 /**
+ * O número sem o logradouro (A8 da 33ª simulação; UN-05: o número entra
+ * DEPOIS do logradouro): o "200" sozinho era gravado como o endereço, e a
+ * edição o abria como logradouro. Um número sem a rua não é endereço — é o
+ * impossível do princípio 2, e o servidor recusa (decisão do Claude, 26/11).
+ */
+export function numeroSemLogradouro(endereco: string | null | undefined, numero: string | null | undefined): boolean {
+  return !!(numero ?? '').trim() && !(endereco ?? '').trim()
+}
+
+export const NUMERO_SEM_LOGRADOURO = 'Preencha o logradouro: o número entra depois dele.'
+
+/**
  * O sentido da numeração (A32 da 32ª simulação, decisão do Claude, 26/11): em
  * Chapecó os Correios escrevem "Avenida Getúlio Dorneles Vargas - N" (o
  * ViaCEP o traz no logradouro), e o endereço é "Av. Getúlio Vargas, 957-S".

@@ -7,8 +7,7 @@ import Link from 'next/link'
 import { Search, UserPlus, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import { marcarTagEmClientes } from '@/actions/clients'
-import { formatDistanceToNow } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+import { rotuloDaUltimaVisita } from '@/lib/clientes/ultima-visita'
 import { PickerCompacto } from '@/components/shared/picker-compacto'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
 import { useFala } from '@/components/shared/uma-unidade'
@@ -61,23 +60,17 @@ interface Props {
    * a prop, a seleção não aparece.
    */
   marcarTag?:        { slug: string | null } | null
+  /**
+   * O fuso do portal (o da unidade; na rede, o da rede): a "Última visita"
+   * conta dias de calendário nele (D9 da 33ª). Sem ele, o de Brasília.
+   */
+  fuso?:             string
 }
 
 
 type Filter = 'ativos' | 'novos' | 'inativos' | 'aniversario'
 
 
-function lastVisitLabel(iso: string | null): string {
-  if (!iso) return 'Sem visitas'
-  const diff = Date.now() - new Date(iso).getTime()
-  // Concluído antes da hora marcada (scheduled_at mais tarde que agora): é
-  // hoje, não "-1 dias" (simulação de um dia de clínica, 2026-10-20).
-  const days = Math.max(0, Math.floor(diff / 86400000))
-  if (days === 0) return 'Última visita: Hoje'
-  if (days === 1) return 'Última visita: Ontem'
-  if (days < 7)  return `Última visita: ${days} dias`
-  return `Última visita: ${formatDistanceToNow(new Date(iso), { locale: ptBR, addSuffix: true })}`
-}
 
 /** "1 ativo", "2 ativos" (A11 da 5ª simulação: era "1 ativos"). */
 const ativos = (n: number) => `${n.toLocaleString('pt-BR')} ${n === 1 ? 'ativo' : 'ativos'}`
@@ -90,6 +83,7 @@ export function ClientsSidebar({
   importarHref = null,
   aniversariantes = null,
   marcarTag = null,
+  fuso,
 }: Props) {
   const pathname = usePathname()
   const router   = useRouter()
@@ -378,7 +372,7 @@ export function ClientsSidebar({
                     </span>
                   </div>
                   <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {lastVisitLabel(c.lastVisit)}
+                    {rotuloDaUltimaVisita(c.lastVisit, new Date(), fuso)}
                   </p>
                   {filter === 'aniversario' && diaDoAniversario(c.id) !== undefined && (
                     <p data-aniversario style={{ fontSize: 'var(--text-2xs)', color: 'var(--brand)', marginTop: 2, fontWeight: 700 }}>

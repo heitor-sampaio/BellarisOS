@@ -149,7 +149,19 @@
     assim: Nome: Daniela (o da ficha) · Telefone … · E-mail:
     renata@… (o digitado agora, no lugar de daniela@…)", acompanhando o que
     se digita (`ComoFicaAoUnificar`, `[data-unificar-fica]`; o e-mail e o
-    telefone dela vêm em `FichaQueJaExiste.naFicha`). Pelo CPF, só
+    telefone dela vêm em `FichaQueJaExiste.naFicha`). **E com TUDO o que o
+    Unificar grava** (D18 da 33ª simulação; CL-08 — decisão do Claude, 26/11:
+    gravava o CPF e o nascimento digitados, e a prévia só dizia o nome, o
+    telefone e o e-mail): o documento (e, se a ficha já tem outro, "o
+    Unificar recusa" antes do clique) e o nascimento sempre; o gênero, o
+    endereço, as observações (que se somam), as tags (que se juntam) e o
+    acesso ao app quando preenchidos; e "O que ficou em branco aqui não muda
+    na ficha." (`linhasDoComoFica`, `lib/clients/como-fica-ao-unificar.ts`).
+    O resto do que a ficha tem só vai à pergunta do CADASTRO, que pede
+    Clientes em Gerenciar (`fichasQueJaExistem(…, { comOCadastro: true })`):
+    os caminhos rápidos e o Copilot seguem no e-mail e no telefone. Prova:
+    `tests/unificar-previa-com-tudo.test.ts`,
+    `e2e/ficha-cadastro-ja-existe.spec.ts` ("D18"). Pelo CPF, só
     "Unificar" (o CPF é único; o de uma ficha ARQUIVADA é recusado com o
     caminho da busca). Substituiu a pergunta da ficha rápida ("É a mesma
     pessoa?", de 2026-10-29) e o aviso da outra cliente do telefone (D13).
@@ -420,7 +432,16 @@ AG2, MK2; migration `20261114800001_tags_sem_unidade`):**
 - **CL1–CL3** — a lista de Clientes é a da REDE nos dois portais
   (`getCachedNetworkClients`; `getCachedBranchClients` saiu): sem a unidade
   na linha, sem o filtro "Unidade", sem contador por unidade
-  (`getClientesAtivos` conta só a rede), e a última visita é a da rede. A
+  (`getClientesAtivos` conta só a rede), e a última visita é a da rede —
+  contada em DIAS DE CALENDÁRIO no fuso do portal (o da unidade; no `/admin`,
+  o da rede): "Hoje", "Ontem", "N dias", "há 20 dias" não mudam no correr do
+  dia (D9 da 33ª; CLAUDE.md §14 — `rotuloDaUltimaVisita`,
+  `lib/clientes/ultima-visita.ts`; prova
+  `tests/ultima-visita-da-lista-de-clientes.test.ts`). O "Reativar clientes"
+  dos dois dashboards conta os dias sem vir pela mesma conta
+  (`diasDesdeAUltimaVisita`, no fuso do recorte; era `differenceInDays`, blocos
+  de 24 h — decisão do Claude, 26/11; prova
+  `tests/reativar-clientes-dias-de-calendario.test.ts`). A
   busca "fora da unidade" (A17 da 8ª) saiu com `actions/clientes-da-clinica.ts`.
   A ficha não tem mais "Unidades que frequenta"; a oportunidade não tem mais o evento
   "Unidade" (`UNIT_CHANGED` fica só para os antigos).
@@ -598,6 +619,22 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   `e2e/clientes-ficha-aba-oportunidades.spec.ts`.
 - **Arquivar** tira das opções; quem já tem continua com ela, e a ficha a
   mostra marcada. Não há apagar.
+  **Como FILTRO, a arquivada segue oferecida em toda tela enquanto alguém a
+  tiver** (A6 e Decisão D da 33ª simulação — decisão do Claude, 26/11, pela
+  regra das Tags do Heitor de 13/11, "onde tiver for passível de filtro, um dos
+  filtros que ela pode usar são as tags", e o princípio 3): arquivar tira das
+  opções de MARCAR, não do filtro. A Agenda, o Quadro, o Financeiro, as
+  Comissões, os Documentos e os Relatórios liam só as ativas e a perdiam, e
+  Clientes e Inbox a ofereciam. Uma fonte só: `comAsArquivadasEmUso`
+  (`lib/tags/vocabulario.ts`, as ativas mais as arquivadas com uso em
+  `tags_da_rede`; `opcoesDoFiltroDeTags`, `lib/tags/escolha.ts`); a que ninguém
+  tem não se oferece. Prova: `tests/tag-arquivada-no-filtro.test.ts`,
+  `e2e/tags-da-rede.spec.ts` ("a arquivada segue como filtro").
+  O PÚBLICO DA CAMPANHA por tag também é filtro (decisão do Claude, 26/11, no
+  arremate da 33ª): `useTagsDaRede(true, 'filtro')` lê `listarTagsDoFiltro`
+  (`actions/tags.ts`), a mesma lista. Marcar — a ficha, o cadastro, o card, a
+  ação "Pôr a tag" e "Remover tag" da automação — segue só com as ativas. Prova:
+  `tests/campanha-publico-com-a-tag-arquivada.test.ts`.
 - **As sobras do arquivar** (A19 da 5ª simulação, 2026-11-02):
   - a confirmação diz os agendamentos MARCADOS dela (agendado ou confirmado,
     daqui para a frente: "Ela tem 1 agendamento marcado (12/11 às 10:00), que
@@ -759,7 +796,13 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   substituidaEm }]` (o que o "Editar registro" substituiu, com quem corrigiu);
   o PDF, as linhas "Anotação de …" e "Versão anterior: …" sob o atendimento.
   A ficha de saúde sai com o nome "Ficha de saúde" (o retrato velho
-  "Pré-atendimento" também — PR3). Cada "Versão anterior" do PDF diz o que
+  "Pré-atendimento" também — PR3). **O PDF leva também a ficha do
+  prontuário** (D3 da 33ª; decisão do Claude, 26/11, por LG-12 e o princípio
+  3): a que a equipe preenche no atendimento (`general_anamnesis`) ia só ao
+  JSON, e o PDF dizia "Nenhuma ficha de saúde respondida"; a que já veio por um
+  pedido respondido (a mesma hora ou as mesmas respostas) não se repete
+  (`fichasDeSaudeDoProntuario`, `lib/lgpd/prontuario-legivel.ts`). Prova:
+  `tests/lgpd-ficha-de-saude-no-pdf.test.ts`. Cada "Versão anterior" do PDF diz o que
   AQUELA correção trocou — "a evolução dizia: …", "as intercorrências
   diziam: …", "a ficha de atendimento dizia: …" (A33 da 26ª: o "Editar
   registro" grava a ficha e a evolução em dois passos, e as duas linhas
@@ -812,7 +855,14 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   titular pediu e `medical_status` (`not_requested | pending | approved |
   denied`) registra a decisão de quem tem `medical_records: MANAGE`, na aba
   LGPD de `/admin/settings`. Aprovar recoloca o pedido em `pending` e o pacote
-  é regerado com a parte clínica. Na aba, o pacote pronto com o prontuário
+  é regerado com a parte clínica. **Negar também refaz o pacote** (D2 da 33ª;
+  decisão do Claude, 26/11, por LG-05 e LG-07): o pronto dizia "em análise —
+  quando ela decidir, um pacote novo", e o negado ficava com ele; agora o
+  pedido volta a `pending` e o pacote novo sai sem o prontuário, dizendo que
+  não foi liberado (só o liberar registra o acesso ao prontuário), e a aba diz
+  "o pacote novo, sem o prontuário, fica pronto em poucos minutos". Prova:
+  `tests/lgpd-negar-refaz-o-pacote.test.ts`, `e2e/lgpd-atritos-da-8.spec.ts`
+  ("D2"). Na aba, o pacote pronto com o prontuário
   ainda a liberar é "Parte geral entregue", não "Entregue" (A15 da 27ª,
   decisão do Claude pelo princípio 3; o app já dizia "Parte geral pronta" —
   `situacaoDoPedidoNaAba`, prova `tests/lgpd-situacao-do-pedido-na-aba.test.ts`).
@@ -1185,8 +1235,14 @@ oferece segue o módulo (clientes com `clients`, contatos com `crm`).
   pacote sem valor só se via depois, na ficha). O passo das colunas, com a
   coluna do pacote escolhida, diz o formato ("procedimento; total; usadas" e,
   se tiver, o valor e a validade — `[data-formato-do-pacote]`); a prévia mostra
-  como entram as três primeiras (nome, telefone, e-mail, os pacotes —
-  `[data-amostra-da-importacao]`) e avisa "N pacotes de antes sem valor de
+  como entra CADA linha pronta (nome, telefone, e-mail, os pacotes e o DESTINO
+  dela: "ficha nova", "completa a ficha de X (o mesmo CPF)", "junta com a
+  linha N", "contato novo, sem telefone" — `[data-amostra-da-importacao]`,
+  `[data-destino-da-linha]`; A13 da 33ª, IM-12: eram só as três primeiras, sem
+  o destino). O destino sai da mesma conta do botão (`destinoDeCadaLinha`,
+  `lib/importacao/o-que-entra.ts`); a lista abre com 10 e cresce de 50 em 50
+  ("Mostrar mais", `[data-mostrar-mais-linhas]`: sem barra de rolagem na área
+  de conteúdo, `design.md`). Prova: `tests/importacao-previa-de-cada-linha.test.ts`. E avisa "N pacotes de antes sem valor de
   referência: … não geram comissão de execução (R$ 0) nem entram na receita"
   (`[data-pacotes-sem-valor]`, `pacotesDaLinha`). **Com UMA unidade, a
   unidade dos pacotes não se pergunta** (A2 da 10ª, `design.md`). Prova:

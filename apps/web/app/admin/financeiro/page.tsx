@@ -30,7 +30,7 @@ import { pagosSemDinheiro, type LancamentoSemDinheiro } from '@/lib/financeiro/p
 import { getTaxaDosLancamentos } from '@/lib/metrics/contadora'
 import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
 import { tagsDaUrl } from '@/lib/tags/filtro-na-url'
-import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
+import { tagsAtivasDaRede, comAsArquivadasEmUso } from '@/lib/tags/vocabulario'
 import { selectComAsTags, comAsTags } from '@/lib/financeiro/filtro-de-tags'
 
 /** Lançamento como o select pede. */
@@ -208,10 +208,13 @@ export default async function AdminFinanceiroPage({
   const branchNameMap = Object.fromEntries(branches.map(b => [b.id, b.name]))
   const branchSlugMap = Object.fromEntries(branches.map(b => [b.id, b.slug]))
 
-  // Unidade desativada só entra se teve movimento no período (o dinheiro
-  // aconteceu); sem nada, era ruído no ranking (simulação de 2026-10-20).
-  // E a desativada com conta em aberto (ind-11): o dinheiro ainda vai entrar.
-  const branchStats = branchMetrics.filter(b => b.isActive || b.revenueCash || b.revenuePending || b.expensesCash || b.appointmentsTotal
+  // A desativada entra quando a tela a LÊ (UN-13, F72; as unidades de
+  // `unidadesParaLer`: o que ficou — agenda futura, estoque, a receber,
+  // comissão — ou movimento no período), como no dashboard; e, como antes,
+  // quando teve dinheiro no período ou tem conta em aberto (ind-11). Na 33ª, a
+  // Cachoeira com a agenda futura contava no dashboard e sumia daqui.
+  const lidas = new Set(branchIds)
+  const branchStats = branchMetrics.filter(b => b.isActive || lidas.has(b.branchId) || b.revenueCash || b.revenuePending || b.expensesCash || b.appointmentsTotal
     || (aReceberEmAberto.porUnidade[b.branchId] ?? 0) > 0).map(b => ({
     id:          b.branchId,
     name:        nomeNaTela({ name: b.branchName, ativa: b.isActive }),
@@ -249,7 +252,7 @@ export default async function AdminFinanceiroPage({
   ])
   // As opções do filtro de Tags: o vocabulário da rede, lido aqui (quem só tem
   // o Financeiro também as vê); o Resumo não tem o filtro.
-  const tagsDaRede = aba === 'resumo' ? [] : await tagsAtivasDaRede(ctx.tenantId!)
+  const tagsDaRede = aba === 'resumo' ? [] : await comAsArquivadasEmUso(ctx.tenantId!, tagsAtivasDaRede(ctx.tenantId!))
   const transactions = txs.map(({ maquininha_id, ...t }) => ({
     ...t,
     maquininha_nome: maquininhaDoRotulo(maquininhas, maquininha_id ?? maquininhaDoEstorno[t.id]),

@@ -58,6 +58,12 @@ export const MENSAGEM_DO_ESTADO: Record<Exclude<EstadoDoLink, 'valido'>, string>
 }
 
 /**
+ * O link de VÁRIOS documentos já assinados (A4 da 33ª): a página dizia "Este
+ * documento já foi assinado" sob o título "Documentos já assinados".
+ */
+export const MENSAGEM_DOS_ASSINADOS = 'Estes documentos já foram assinados por este link. Se precisar de uma cópia, peça à equipe.'
+
+/**
  * A frase do estado, na página do link: com o remetente que a página já
  * mostra (CA1: o nome, não "a equipe" — "Fale com Studio Manacá."). Sem ele
  * (o link que não existe), "a equipe". "Peça … à equipe" fica: é ela quem age.

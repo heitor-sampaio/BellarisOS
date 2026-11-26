@@ -178,6 +178,23 @@ test('arquivada sai das opções, mas fica em quem já tem', async ({ browser })
   expect((await vocabulario()).find(t => t.nome === noivas)?.arquivada_em).toBeTruthy()
 })
 
+// A6 e Decisão D da 33ª simulação: arquivar tira das opções de MARCAR (TG-08),
+// não do FILTRO — a Agenda e o Financeiro a perdiam, Clientes e Inbox a ofereciam.
+test('a arquivada segue como filtro em toda tela enquanto alguém a tem (a Agenda e o Financeiro)', async ({ browser }) => {
+  const noivas = `${PREFIXO} Noivas ${marca}`
+  expect((await vocabulario()).find(t => t.nome === noivas)?.arquivada_em, 'a do teste anterior, arquivada').toBeTruthy()
+  expect((await db().from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', outra.tenantId)).error).toBeNull()
+  await como(browser, admin, async p => {
+    // A Agenda: a tag da URL só vale se está entre as opções — a arquivada valia nada.
+    await p.goto(`/admin/agenda?tags=${encodeURIComponent(noivas)}`)
+    await expect(p.locator('[data-filtro-tags] button').first()).toContainText('Tags · 1')
+    // O Financeiro: a arquivada está nas opções do filtro.
+    await p.goto('/admin/financeiro?aba=a-receber')
+    await p.locator('[data-filtro-de-tags]').getByRole('button', { name: /^Tags/ }).click()
+    await expect(p.locator('[data-painel-picker]').getByRole('button', { name: noivas, exact: true })).toBeVisible()
+  })
+})
+
 test('quem só vê clientes, ou gerencia sem ser a Admin da rede, não mexe no vocabulário (nem pela action direta)', async ({ browser }) => {
   await como(browser, soVe, async p => {
     const r = await chamarAcao(p, 'actions/tags.ts', 'criarTag', '/admin/settings', [`${PREFIXO} Furo ${marca}`])

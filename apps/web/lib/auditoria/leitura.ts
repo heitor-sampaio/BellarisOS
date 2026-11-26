@@ -10,6 +10,7 @@ import { unidadeDoInsumo, type UnidadesDoProduto } from '@/lib/estoque/unidade-d
 import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
 import { nomesDosAnexosEDevolucoes } from './nomes-dos-anexos-e-devolucoes'
 import { unidadesDosRegistrosClinicos } from './unidades-dos-registros-clinicos'
+import { contasDasAutorizacoes } from './contas-das-autorizacoes'
 import { fusoValido } from '@/lib/unidades/fuso'
 
 /**
@@ -280,7 +281,7 @@ async function nomesDaAuditoria(ctx: TenantContext, registros: readonly Registro
     // A21 da 32ª (AD-08): o motivo do estorno, lido agora.
     motivoDoEstorno: l.estorno_motivo?.trim() || null,
   }]))
-  const [extras, da20, anexosEDevolucoes, sl, cm, clinicos] = await Promise.all([
+  const [extras, da20, anexosEDevolucoes, sl, cm, clinicos, autorizacoes] = await Promise.all([
     nomesDa17(ctx, registros), nomesDa20(ctx, registros), nomesDosAnexosEDevolucoes(ctx, registros),
     salas.length
       ? ler(admin.from('rooms').select('id, name, branches!inner(tenant_id)').eq('branches.tenant_id', ctx.tenantId!).in('id', salas), 'ler as salas da auditoria')
@@ -290,6 +291,8 @@ async function nomesDaAuditoria(ctx: TenantContext, registros: readonly Registro
       : Promise.resolve([]),
     // D13 da 30ª (AD-25): a unidade do registro clínico gravado sozinho (só ids).
     unidadesDosRegistrosClinicos(ctx, registros),
+    // A9 da 33ª (AD-08, AD-21): de quem é a conta da autorização do suporte (`contasDasAutorizacoes`).
+    contasDasAutorizacoes(ctx, registros),
   ])
   const cargosDosMembros = Object.fromEntries(((cm ?? []) as { id: string; label: string | null; key: string | null; is_system: boolean | null }[])
     .filter(x => x.label).map(x => [x.id, { nome: x.label!, adminDaRede: x.key === 'NETWORK_ADMIN' && x.is_system === true }]))
@@ -338,6 +341,7 @@ async function nomesDaAuditoria(ctx: TenantContext, registros: readonly Registro
     ...da20,
     ...anexosEDevolucoes,
     ...clinicos,
+    ...autorizacoes,
   }
 }
 

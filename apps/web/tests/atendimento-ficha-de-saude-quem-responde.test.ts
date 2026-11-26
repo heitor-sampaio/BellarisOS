@@ -31,6 +31,15 @@ describe('a janela do que falta para finalizar diz quem responde a ficha de saú
     expect(fonte).toMatch(/<OQueFaltaParaFinalizar grupos=\{oQueFalta\}[^\n]*quemResponde=\{canEditRecords \? null : quemRespondeAFicha/)
   })
 
+  // D17 da 33ª (FI-07; o A17 da 31ª, de novo): na avaliação, a Kauane (o
+  // Prontuário em Ver) chegava ao "Confirmar conclusão" sem a ficha de saúde
+  // obrigatória, e só o servidor recusava — o cartão de LEITURA da ficha não
+  // estava ligado ao `conferirObrigatorias`, e a tela não tinha o que conferir.
+  it('o cartão da ficha de saúde em leitura também confere as obrigatórias antes do "Finalizar"', () => {
+    const fonte = ler('components/branch/appointment-session.tsx')
+    expect(fonte).toMatch(/\(editLocked \|\| !canEditRecords\) \? \(\s*canViewRecords && <AnamneseGeralCartao ref=\{anamneseDoCartao\} [^>]*canEdit=\{false\}/)
+  })
+
   it('a sessão lê os nomes de quem responde só para quem vê o clínico e não o escreve', () => {
     const pagina = ler('app/_shared/sessao-de-atendimento.tsx')
     expect(pagina).toMatch(/quemRespondeAFicha=\{canViewRecords && !canEditRecords[\s\S]{0,160}quemRespondeAFichaDeSaude\(/)

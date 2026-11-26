@@ -8,6 +8,7 @@ import {
   type FichaDePreAtendimento, type RespostaDaAnamnese,
 } from '@/lib/anamnese-geral'
 import { gravarAnamneseGeral, preAtendimentoPendente, preAtendimentoDoLink, expirarAFichaDaCliente } from './ficha'
+import { modoDaFichaPeloLink } from './modo-da-ficha'
 
 /**
  * O link do pré-atendimento, do lado de quem o ABRE — sem sessão (2026-10-20).
@@ -118,9 +119,8 @@ export async function abrirFichaPorLink(input: IdentidadeDaFicha): Promise<{ err
   if (!p) return { erro: ERRO.indisponivel, status: 410 }
   return {
     ficha: {
-      // Sem resposta anterior (ou com a ficha gravada vazia), "nada mudou" não tem o que confirmar.
-      modo: c.conferir && anamneseRespondida(p.atual) ? 'CONFERIR'
-        : p.pendente.modo === 'CONFIRMAR' && anamneseRespondida(p.atual) ? 'CONFIRMAR' : 'COMPLETO',
+      // A ficha da equipe se confere, também pelo link novo (D16 da 33ª, FI-13).
+      modo: modoDaFichaPeloLink({ conferir: c.conferir, modoDoPendente: p.pendente.modo, atual: p.atual }),
       ficha: p.pendente.ficha,
       respostasAnteriores: p.atual?.respostas ?? {},
     },

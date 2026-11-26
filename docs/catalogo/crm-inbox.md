@@ -45,10 +45,10 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/regras/crm-inbox.md:101-126`
 - Antes: KA-21, KA-22, KA-26
 
-**CL-08.** O "Unificar" grava na ficha existente SÓ o que foi preenchido agora: o campo vazio não mexe no que ela tem, o preenchido toma o lugar, as observações se somam, as tags se juntam e o endereço só vai por cima se preenchido. Não troca o documento que ela já tem (um CPF diferente, um passaporte por outro, CPF por passaporte: recusado). A pergunta mostra antes como a ficha fica, acompanhando o que se digita. Depois, liga o card ou a conversa de onde veio, abre a ficha e registra no Histórico ("Ficha unificada pelo cadastro · Alterou: e-mail · por <quem fez>"). Para as automações é uma alteração de dados; o que não mudou nada não dispara "dados alterados".
-- Fonte: decisão do Claude
-- Onde: `docs/regras/crm-inbox.md:69`, `:113-141`, `:1760`
-- Antes: KA-23, KA-25, KA-28, KA-29, KE-63
+**CL-08.** O "Unificar" grava na ficha existente SÓ o que foi preenchido agora: o campo vazio não mexe no que ela tem, o preenchido toma o lugar, as observações se somam, as tags se juntam e o endereço só vai por cima se preenchido. Não troca o documento que ela já tem (um CPF diferente, um passaporte por outro, CPF por passaporte: recusado). A pergunta mostra antes como a ficha fica com TUDO o que o Unificar grava (o nome, o telefone, o e-mail, o documento e o nascimento sempre; o gênero, o endereço, as observações, as tags e o acesso ao app quando preenchidos; "O que ficou em branco aqui não muda na ficha."), acompanhando o que se digita; com outro documento na ficha, ela diz que o Unificar recusa antes do clique. O "Indicada por" e o responsável legal digitados no cadastro não vão para a ficha (a sugestão nº 108). Depois, liga o card ou a conversa de onde veio, abre a ficha e registra no Histórico ("Ficha unificada pelo cadastro · Alterou: e-mail · por <quem fez>"). Para as automações é uma alteração de dados; o que não mudou nada não dispara "dados alterados".
+- Fonte: decisão do Claude; a prévia com tudo o que o Unificar grava: decisão do Claude, 26/11 (33ª simulação, D18), pelo princípio 3
+- Onde: `docs/regras/crm-inbox.md:69`, `:113-141`, `:1760`, `:150-166`
+- Antes: KA-23, KA-25, KA-28, KA-29, KE-63; antes de 26/11: a prévia dizia só o nome, o telefone e o e-mail, e o Unificar gravava também o CPF e o nascimento digitados
 
 **CL-09.** O "Unificar" nunca muda o NOME da ficha; renomear é editando a ficha.
 - Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
@@ -101,10 +101,10 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/revisao.md:483`, `:504`, `docs/regras/crm-inbox.md:362`, `:517`, `:1710`
 - Antes: KA-64, KA-65, KB-01, KB-02, KE-60, KF-09, KF-10, KF-11
 
-**CL-18.** Pela mesma regra (a cliente é da rede), a "última visita" da lista é a da cliente na rede, a ficha não tem "Unidades que frequenta", e o histórico da oportunidade não registra troca de "Unidade".
-- Fonte: decisão do Claude
-- Onde: `docs/regras/crm-inbox.md:365-367`, `docs/revisao.md:1968`
-- Antes: KA-66, KB-03, KB-04, KF-12
+**CL-18.** Pela mesma regra (a cliente é da rede), a "última visita" da lista é a da cliente na rede, contada em dias de calendário no relógio do portal ("Hoje", "Ontem", "N dias" não mudam no correr do dia; o "Reativar clientes" dos dashboards conta os dias sem vir pela mesma conta), a ficha não tem "Unidades que frequenta", e o histórico da oportunidade não registra troca de "Unidade".
+- Fonte: decisão do Claude; os dias de calendário: decisão do Claude, 26/11 (33ª simulação, D9 e o arremate), pelo princípio 3 e pela FU-06 de Indicadores
+- Onde: `docs/regras/crm-inbox.md:365-367`, `docs/revisao.md:1968`, `docs/regras/crm-inbox.md:434-446`
+- Antes: KA-66, KB-03, KB-04, KF-12; antes de 26/11: a última visita e o "Reativar clientes" contavam blocos de 24 h
 
 **CL-19.** "Novos clientes" só existe na rede, e o "Reativar" é sempre o da rede (não há "atendidas na unidade" nesses números).
 - Fonte: o Heitor, 2026-11-18: "Só na rede"
@@ -182,15 +182,15 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/regras/crm-inbox.md:374-376`
 - Antes: KB-10
 
-**TG-07.** Há um catálogo só de tags, e a ficha, o cadastro, o painel do inbox, o card da oportunidade, as automações e as campanhas oferecem as tags ativas dele — sem lista fixa, sem "as que estão em uso" e sem entrada livre: nenhuma tela cria tag ao marcar (criar é só em Configurações → Tags). Cada nome é único na rede sem diferença de maiúsculas ("VIP" e "vip" são a mesma): marcar grava o nome do catálogo, desmarcar tira qualquer grafia, e o filtro acha a tag escrita de qualquer jeito.
-- Fonte: decisão do Claude
-- Onde: `docs/regras/crm-inbox.md:383-388`, `:420-433`, `:1708`, `:1744`
-- Antes: KB-11, KB-12, KB-17, KE-55
+**TG-07.** Há um catálogo só de tags, e a ficha, o cadastro, o painel do inbox, o card da oportunidade e as automações ("Pôr a tag", "Remover tag") oferecem as tags ativas dele para MARCAR; o público da campanha, que é filtro, oferece também as arquivadas que alguém tem (TG-14) — sem lista fixa, sem "as que estão em uso" e sem entrada livre: nenhuma tela cria tag ao marcar (criar é só em Configurações → Tags). Cada nome é único na rede sem diferença de maiúsculas ("VIP" e "vip" são a mesma): marcar grava o nome do catálogo, desmarcar tira qualquer grafia, e o filtro acha a tag escrita de qualquer jeito.
+- Fonte: decisão do Claude; o público da campanha como filtro: decisão do Claude, 26/11 (33ª simulação, Decisão D e o arremate), pela TG-14
+- Onde: `docs/regras/crm-inbox.md:383-388`, `:420-433`, `:1708`, `:1744`, `:622-640`
+- Antes: KB-11, KB-12, KB-17, KE-55; antes de 26/11: a campanha oferecia só as ativas
 
-**TG-08.** Arquivar uma tag a tira das opções; quem já a tem continua com ela, e a ficha a mostra marcada (assim como qualquer tag que a pessoa tenha fora do catálogo). Não existe apagar tag.
-- Fonte: decisão do Claude
-- Onde: `docs/regras/crm-inbox.md:387`, `:528`
-- Antes: KB-13
+**TG-08.** Arquivar uma tag a tira das opções de marcar (como filtro, ela segue enquanto alguém a tiver: TG-14); quem já a tem continua com ela, e a ficha a mostra marcada (assim como qualquer tag que a pessoa tenha fora do catálogo). Não existe apagar tag.
+- Fonte: decisão do Claude; o filtro: decisão do Claude, 26/11 (33ª simulação, A6 e Decisão D)
+- Onde: `docs/regras/crm-inbox.md:387`, `:528`, `:622-640`
+- Antes: KB-13; antes de 26/11: "a tira das opções", e a Agenda, o quadro, o Financeiro e os Relatórios a tiravam também do filtro
 
 **TG-09.** A tag é da PESSOA, e ela pode ter várias: uma lista só por pessoa, marcada na ficha, no painel do inbox ou no card, que vale em todo filtro (Clientes, inbox, quadro, campanhas, automações, Copilot, Financeiro, Agenda, Relatórios). O contato e a ficha dele têm as mesmas tags; a pessoa sem ficha tem as do contato. A oportunidade não tem tag própria: o card mostra e edita as da pessoa.
 - Fonte: o Heitor, 2026-11-18: "a tag é da pessoa e pode ter mais de uma tag"
@@ -216,6 +216,11 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Fonte: decisão do Claude
 - Onde: `docs/regras/crm-inbox.md:460`
 - Antes: KB-07
+
+**TG-14.** Como FILTRO, a tag arquivada segue oferecida em toda tela que filtra por tag enquanto alguém a tiver — a lista de Clientes, o inbox, a Agenda, o quadro, o Financeiro (também as Comissões), os Documentos, os Relatórios e o público da campanha —, todas pela mesma lista de opções: as tags ativas mais as arquivadas que alguém tem. Ela só sai das opções de MARCAR (TG-08). A arquivada que ninguém mais tem não aparece no filtro.
+- Fonte: decisão do Claude, 26/11 (33ª simulação, Decisão D) — pela regra das Tags do Heitor (CLAUDE.md §1, 2026-11-13: "onde tiver for passível de filtro, um dos filtros que ela pode usar são as tags") e pelo princípio 3: o mesmo filtro não pode existir numa tela e sumir na outra (A6 da 33ª: arquivada a "Noiva 2027", com três clientes marcadas, ela ficava no filtro de Clientes e do inbox e sumia da Agenda, do quadro, do Financeiro e dos Relatórios); o público da campanha: decisão do Claude, 26/11 (33ª simulação, arremate)
+- Onde: `docs/regras/crm-inbox.md:622-640`; TG-08, TG-09, TG-12; `apps/web/components/shared/filtro-de-tags.tsx`, `apps/web/lib/tags/`
+- Antes: (nova, 26/11)
 
 ## Portal e app da cliente (PO)
 
@@ -311,15 +316,15 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/regras/crm-inbox.md:615-624`
 - Antes: KB-37, KB-38
 
-**LG-05.** O pedido diz o prazo, igual no portal e na aba LGPD da rede: em preparo, "costuma ficar pronto em poucos minutos"; com o prontuário esperando liberação, "Responder até DD/MM/AAAA (15 dias do pedido)", o prazo da LGPD. Depois da decisão sobre o prontuário, a aba diz quando ele foi liberado ou negado e que o pacote novo fica pronto em poucos minutos.
-- Fonte: decisão do Claude
-- Onde: `docs/regras/crm-inbox.md:682-685`
-- Antes: KC-01, KC-02
+**LG-05.** O pedido diz o prazo, igual no portal e na aba LGPD da rede: em preparo, "costuma ficar pronto em poucos minutos"; com o prontuário esperando liberação, "Responder até DD/MM/AAAA (15 dias do pedido)", o prazo da LGPD. Depois da decisão sobre o prontuário, a aba diz quando ele foi liberado ou negado e que o pacote novo fica pronto em poucos minutos. Negado o prontuário, o pacote também se refaz, sem ele (dizendo que não foi liberado), e a aba diz que "o pacote novo, sem o prontuário, fica pronto em poucos minutos".
+- Fonte: decisão do Claude; o negar refaz o pacote: decisão do Claude, 26/11 (33ª simulação, D2), pela LG-05 e pela LG-07
+- Onde: `docs/regras/crm-inbox.md:682-685`, `:856-866`
+- Antes: KC-01, KC-02; antes de 26/11: negado, o pacote seguia o pronto, que dizia "em análise — quando ela decidir, um pacote novo"
 
-**LG-06.** O prontuário só entra no pacote se a cliente pediu e se quem tem o Prontuário em Gerenciar o libera, na aba LGPD; liberar pede confirmação (ele vai para a cliente), que aparece abaixo do botão. Depois de liberado, o pacote é gerado de novo, com a parte clínica.
-- Fonte: decisão do Claude
-- Onde: `docs/regras/crm-inbox.md:696`, `:709`
-- Antes: KC-04, KC-06
+**LG-06.** O prontuário só entra no pacote se a cliente pediu e se quem tem o Prontuário em Gerenciar o libera, na aba LGPD; liberar pede confirmação (ele vai para a cliente), que aparece abaixo do botão. Depois de liberado, o pacote é gerado de novo, com a parte clínica. Negar também refaz o pacote, sem a parte clínica (LG-05); só o liberar registra o acesso ao prontuário. A cliente não é avisada no sino quando o pacote refeito fica pronto (a sugestão nº 107).
+- Fonte: decisão do Claude; o negar: decisão do Claude, 26/11 (33ª simulação, D2)
+- Onde: `docs/regras/crm-inbox.md:696`, `:709`, `:856-866`
+- Antes: KC-04, KC-06; antes de 26/11: só o liberar refazia o pacote
 
 **LG-07.** Quando o prontuário fica fora, o pacote e o resumo do pedido dizem por quê (não foi pedido, está em análise, não foi liberado); liberado, dizem que está incluído. Enquanto está em análise, o pedido segue em andamento: o perfil diz "Parte geral pronta" e "Prontuário em análise", deixa baixar a parte geral, não oferece "Solicitar meus dados", e um segundo pedido é recusado.
 - Fonte: decisão do Claude
@@ -346,10 +351,10 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/regras/crm-inbox.md:651-672`, `:714`
 - Antes: KB-47, KB-48, KB-50, KC-09
 
-**LG-12.** A parte geral leva o histórico da ficha de saúde (quando foi mandada, completa ou confirmação, a situação, quando e por onde foi respondida). O prontuário liberado leva as perguntas e respostas da ficha (com o nome "Ficha de saúde"), cada atendimento com as anotações feitas depois de concluir e as versões substituídas pelo "Editar registro" (quem corrigiu e quando), as fotos (inclusive a foto clínica anexada) e os insumos que saíram do estoque nele (produto, quantidade e lote).
-- Fonte: decisão do Claude
-- Onde: `docs/regras/crm-inbox.md:663-669`, `:728-745`
-- Antes: KB-49, KC-11, KC-12, KC-13
+**LG-12.** A parte geral leva o histórico da ficha de saúde (quando foi mandada, completa ou confirmação, a situação, quando e por onde foi respondida). O prontuário liberado leva as perguntas e respostas da ficha (com o nome "Ficha de saúde"), no JSON e no PDF — também a ficha que a equipe preencheu no atendimento, sem repetir a que já veio por um pedido respondido —, cada atendimento com as anotações feitas depois de concluir e as versões substituídas pelo "Editar registro" (quem corrigiu e quando), as fotos (inclusive a foto clínica anexada) e os insumos que saíram do estoque nele (produto, quantidade e lote).
+- Fonte: decisão do Claude; a ficha do prontuário no PDF: decisão do Claude, 26/11 (33ª simulação, D3), pela própria LG-12 e pelo princípio 3
+- Onde: `docs/regras/crm-inbox.md:663-669`, `:728-745`, `:798-806`
+- Antes: KB-49, KC-11, KC-12, KC-13; antes de 26/11: a ficha que a equipe preenche no atendimento ia só ao JSON, e o PDF dizia "Nenhuma ficha de saúde respondida"
 
 **LG-13.** O pacote da LGPD nunca é entregue incompleto: se uma parte da exportação falha, ele não sai.
 - Fonte: decisão do Claude
@@ -360,6 +365,11 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Fonte: decisão do Claude, 25/11 (o Heitor revisa), pelo princípio 7 e pela LG-01; o nome da rede: a Q06 (o CA1, "Concordo") (A23 da 29ª simulação: a cliente procurou no app onde pedir a exclusão e a revogação)
 - Onde: a regra entra em `docs/regras/crm-inbox.md` com a correção da A23 (25/11); o "Meus dados" do app (`apps/web/components/client-portal/data-request-card.tsx`)
 - Antes: (sem número: A23 da 29ª simulação)
+
+**LG-15.** O pedido de eliminação que chega pelo contato da rede (LG-01) se responde à mão, e arquivar a ficha (CL-26) é o que a tela oferece para isso: arquivar não é eliminar. A ficha sai das listas e segue achável pela busca da topbar, com "Arquivada"; as guardas legais ficam (o prontuário por 20 anos, o fiscal por 5: LG-03); e os documentos assinados seguem válidos no /verificar. O arquivar não pede motivo, então nada registra que ele foi a resposta a um pedido de eliminação (a sugestão nº 106).
+- Fonte: decisão do Claude, 26/11 (33ª simulação, Decisão B) — pela LG-01 e pela LG-14 (a eliminação é sob pedido, sem botão) e pela CL-26 (B11 da 33ª: a cliente "ligou e pediu" para apagar, e quem tem Clientes em Gerenciar arquivou a ficha; está certo, e não é defeito)
+- Onde: (ainda não está em `docs/regras/crm-inbox.md`; o sistema já faz isso, visto na 33ª simulação); LG-01, LG-03, LG-14, CL-26
+- Antes: (nova, 26/11)
 
 ## Importações (IM)
 
@@ -424,10 +434,10 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/regras/crm-inbox.md:762`, `:818`, `:829-834`
 - Antes: KC-30, KC-31, KC-34, KC-36
 
-**IM-12.** A prévia diz o que vai acontecer: quem cada linha encontra na rede e por quê ("completa a ficha de X (o mesmo CPF)"), a linha que repete o telefone de outra, quem entra sem telefone e as colunas que ficaram em "Não importar". O botão diz o que entra ("Importar 10 linhas: 9 contatos novos, 1 linha junta com outra"; só "Importar N linhas" quando todas são novas).
-- Fonte: princípio 3
-- Onde: `docs/regras/crm-inbox.md:839`, `:850`, `:877`
-- Antes: KC-37, KC-39, KC-43
+**IM-12.** A prévia diz o que vai acontecer: quem cada linha encontra na rede e por quê ("completa a ficha de X (o mesmo CPF)"), a linha que repete o telefone de outra, quem entra sem telefone e as colunas que ficaram em "Não importar". O botão diz o que entra ("Importar 10 linhas: 9 contatos novos, 1 linha junta com outra"; só "Importar N linhas" quando todas são novas). A prévia mostra o destino de CADA linha ("ficha nova", "completa a ficha de X (o mesmo CPF)", "junta com a linha N", "contato novo, sem telefone"), pela mesma conta do botão; a lista abre com 10 e cresce de 50 em 50 ("Mostrar mais").
+- Fonte: princípio 3; o destino de cada linha: decisão do Claude, 26/11 (33ª simulação, A13), pelo princípio 3
+- Onde: `docs/regras/crm-inbox.md:839`, `:850`, `:877`, `:1236-1246`
+- Antes: KC-37, KC-39, KC-43; antes de 26/11: a prévia mostrava só as três primeiras linhas, sem o destino
 
 **IM-13.** Quando a ficha sem CPF seria completada pelo telefone, a prévia mostra "Completar a ficha de X": marcada se o nome da linha casa com o da ficha, desmarcada se não casa. Desmarcada, a linha vira ficha nova; marcada, completa a ficha. Pelo mesmo CPF, a linha sempre junta.
 - Fonte: o Heitor, 25/11: "Vem desmarcada, a não ser que o nome case"

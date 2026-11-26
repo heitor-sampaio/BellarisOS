@@ -14,6 +14,8 @@ import { quemRealizaOsProcedimentos, realiza } from '@/lib/procedimentos/quem-re
 import { cancelarCore } from '@/lib/appointments/alteracoes'
 import { membroAlcancaAUnidade } from '@/lib/unidades/do-membro'
 import { fimDaOcupacao, bateNaOcupacao } from '@/lib/appointments/ocupacao'
+import { foraDoHorarioDeQuemAtende, normalizarHorario } from '@/lib/agenda/horario'
+import { fusoValido } from '@/lib/unidades/fuso'
 
 /**
  * O REPASSE ao desativar um membro (H6, decisão do Heitor, 5ª simulação,
@@ -77,6 +79,13 @@ export interface AgendamentoParaRepassar {
   ocupadas: PessoaDoRepasse[]
   /** Quem atende na unidade, mas está com o horário bloqueado (R07: não recebe; R13/R14: não aparece na lista). */
   bloqueadas: PessoaDoRepasse[]
+  /**
+   * Quem atende na unidade, mas está FORA DO HORÁRIO dela ali nesse horário (ou a
+   * unidade fechada) — não aparece na lista (R15, o Heitor, 26/11: "Não: quem
+   * está fora do horário também some das listas (o encaixe só pelo campo de
+   * horário)"). O servidor aceitaria (é encaixe); a lista não o oferece.
+   */
+  foraDoHorario?: PessoaDoRepasse[]
 }
 
 export interface OportunidadeParaRepassar { id: string; nome: string; etapa: string | null }
@@ -132,9 +141,9 @@ async function agendamentosDoMembro(admin: Admin, ctx: TenantContext, membroId: 
 
 /** Quem atende (ativo, `provides_services`) na rede, menos o membro que sai. */
 async function quemAtendeNaRede(admin: Admin, tenantId: string, membroId: string) {
-  return ((await ler(admin.from('users').select('id, name, branch_id, outras_unidades, atende_em')
+  return ((await ler(admin.from('users').select('id, name, branch_id, outras_unidades, atende_em, horario')
     .eq('tenant_id', tenantId).eq('is_active', true).eq('provides_services', true).neq('id', membroId)
-    .order('name'), 'carregar quem atende')) ?? []) as { id: string; name: string; branch_id: string | null; outras_unidades: string[] | null; atende_em: string[] | null }[]
+    .order('name'), 'carregar quem atende')) ?? []) as { id: string; name: string; branch_id: string | null; outras_unidades: string[] | null; atende_em: string[] | null; horario?: unknown }[]
 }
 
 /** Quem tem o CRM (Ver ou Gerenciar, ou o cargo de sistema Admin da rede), ativo, menos o membro. */
@@ -174,10 +183,13 @@ export async function pendenciasDoMembro(
     quemAtendeNaRede(admin, ctx.tenantId!, membro.id),
     soNelas ? Promise.resolve([]) : oportunidadesAbertas(admin, ctx.tenantId!, membro.id),
     soNelas ? Promise.resolve([]) : quemTemCrm(admin, ctx.tenantId!, membro.id),
-    ler(admin.from('branches').select('id, name').eq('tenant_id', ctx.tenantId!).eq('is_active', true), 'carregar as unidades da rede'),
+    ler(admin.from('branches').select('id, name, horario, fuso').eq('tenant_id', ctx.tenantId!).eq('is_active', true), 'carregar as unidades da rede'),
   ])
   const ags = soNelas ? todos.filter(a => soNelas.has(a.branch_id)) : todos
   const nomeDaUnidade = new Map(((unidades ?? []) as { id: string; name: string }[]).map(u => [u.id, u.name]))
+  // O horário de cada unidade, para o fora do horário (R15). A unidade que não veio (desativada) não tira ninguém.
+  const horarioDaUnidade = new Map(((unidades ?? []) as { id: string; horario?: unknown; fuso?: string | null }[])
+    .map(u => [u.id, { horario: normalizarHorario(u.horario), fuso: fusoValido(u.fuso) }]))
   const agoraMs = Date.now()
   // Quem realiza cada procedimento (por-01): o repasse oferece só elas.
   const realizam = await quemRealizaOsProcedimentos(admin, ags.map(a => a.procedure_id).filter((x): x is string => !!x))
@@ -232,6 +244,10 @@ export async function pendenciasDoMembro(
       const daUnidade = equipe.filter(p => atendeNaUnidade(p, a.branch_id) && realizaEste(p))
       const bate = (p: { id: string }) => (ocupados.get(p.id) ?? []).some(o => bateNaOcupacao(ini, fim, o.ini, o.fim))
       const bloqueada = (p: { id: string }) => (bloqueados.get(p.id) ?? []).some(o => o.ini < fim && o.fim > ini)
+      // R15: a mesma conta do aviso do encaixe — o horário dela NESTA unidade (sem o próprio, o da unidade).
+      const daAgenda = horarioDaUnidade.get(a.branch_id)
+      const fora = (p: { horario?: unknown }) => !!daAgenda
+        && foraDoHorarioDeQuemAtende(daAgenda.horario, normalizarHorario(p.horario), a.scheduled_at, a.duration_min || 60, daAgenda.fuso)
       return {
         id: a.id, quando: a.scheduled_at, duracaoMin: a.duration_min || 60,
         cliente: a.clients?.name ?? 'Cliente', procedimento: a.procedures?.name ?? 'Atendimento', unidade: a.branches?.name ?? '', unidadeId: a.branch_id,
@@ -239,9 +255,10 @@ export async function pendenciasDoMembro(
         emOutraUnidade: equipe.filter(p => !atendeNaUnidade(p, a.branch_id) && realizaEste(p) && (p.atende_em ?? []).length && membroAlcancaAUnidade(p, a.branch_id))
           .map(p => ({ id: p.id, nome: p.name, unidades: (p.atende_em ?? []).map(u => nomeDaUnidade.get(u)).filter((x): x is string => !!x) }))
           .filter(p => p.unidades.length),
-        livres:   daUnidade.filter(p => !bate(p) && !bloqueada(p)).map(p => ({ id: p.id, nome: p.name })),
+        livres:   daUnidade.filter(p => !bate(p) && !bloqueada(p) && !fora(p)).map(p => ({ id: p.id, nome: p.name })),
         ocupadas: daUnidade.filter(bate).map(p => ({ id: p.id, nome: p.name })),
         bloqueadas: daUnidade.filter(p => !bate(p) && bloqueada(p)).map(p => ({ id: p.id, nome: p.name })),
+        foraDoHorario: daUnidade.filter(p => !bate(p) && !bloqueada(p) && fora(p)).map(p => ({ id: p.id, nome: p.name })),
       }
     }),
     podeRepassarAgendamentos: podeRepassarAgendamentos(ctx),

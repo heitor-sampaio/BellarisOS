@@ -276,26 +276,6 @@ export async function documentosNoPortal(clientId: string): Promise<ResumoDeDocu
   return todos.filter(d => ['A_GERAR', 'INCOMPLETO', 'PENDENTE', 'ASSINADO'].includes(d.status))
 }
 
-/**
- * O pagamento combinado no contrato de um atendimento avulso — a recepção
- * recebe com esse meio já escolhido (pode trocar: o combinado orienta, não
- * trava). Nulo quando o atendimento não tem contrato com pagamento definido.
- */
-export async function pagamentoCombinadoDoAtendimento(
-  tenantId: string, appointmentId: string,
-): Promise<{ metodo: string | null; rotulo: string; desconto: number } | null> {
-  const admin = createAdminClient()
-  const linhas = await ler(admin.from('issued_documents').select('payment_snapshot')
-    .eq('tenant_id', tenantId).eq('appointment_id', appointmentId).eq('kind', 'CONTRATO')
-    .not('status', 'in', '(CANCELADO,SUBSTITUIDO,DISPENSADO)').not('payment_snapshot', 'is', null)
-    .order('created_at', { ascending: false }).limit(1), 'buscar o pagamento combinado no contrato')
-  const retrato = linhas?.[0]?.payment_snapshot
-  if (retrato == null) return null
-  const p = pagamentoDoRetrato(retrato)
-  const desconto = descontoDoRetrato(retrato)
-  return { metodo: p?.metodo ?? null, rotulo: frasesDoPagamento(p, desconto), desconto }
-}
-
 /** Um documento do próprio cliente — ou null, se não for dele. */
 export async function documentoDoClienteParaExibir(clientId: string, docId: string): Promise<DocumentoParaExibir | null> {
   if (!/^[0-9a-f-]{36}$/i.test(docId)) return null

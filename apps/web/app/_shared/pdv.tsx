@@ -6,7 +6,7 @@ import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { comandasDoPdv, situacaoDoPdv } from '@/lib/pdv/comandas'
 import { contarComValorEmAberto } from '@/lib/pdv/situacoes'
 import { creditosDoCliente } from '@/lib/creditos/credito'
-import { pagamentoCombinadoDoAtendimento } from '@/lib/documentos/leitura'
+import { combinadoDoContratoDoAtendimento } from '@/lib/pdv/contrato-do-atendimento'
 import { ler } from '@/lib/db'
 import { ehUuid } from '@/lib/id-da-rota'
 import { FusoProvider } from '@/components/shared/fuso'
@@ -139,7 +139,8 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
       produtosParaAcrescentar: produtos.map(p => ({ id: p.id, name: p.name, price: p.price, unidade: p.unidade, disponivel: p.disponivel })),
       pacotesParaAbater: pacotes,
       pagamentoCombinado: aReceber && comanda.agendamentoId
-        ? await pagamentoCombinadoDoAtendimento(ctx.tenantId!, comanda.agendamentoId) : null,
+        // D1 da 33ª: o combinado INTEIRO (as vezes, o crediário), para receber como combinado sem mudar o contrato.
+        ? await combinadoDoContratoDoAtendimento(ctx.tenantId!, comanda.agendamentoId) : null,
       // com-06 (o Heitor: "Campo vazio não gera comissão para ninguém"): o produto
       // acrescentado na comanda tem "Quem vendeu os produtos", vazio — era quem atendeu.
       equipeDosProdutos: aReceber && comProdutos

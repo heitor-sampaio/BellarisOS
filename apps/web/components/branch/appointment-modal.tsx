@@ -2,7 +2,7 @@
 
 import { startTransition, useActionState, useCallback, useEffect, useEffectEvent, useState, useMemo, useRef } from 'react'
 import { addAppointment, dadosParaAgendar, proximoHorarioLivre, buscarClientesParaAgendar, clienteParaAgendar, salasParaAgendar, avisosDoHorario, avisoDoPlanoAoAgendar, avisoDoMesmoProcedimentoNoDia, getSchedulingDaySlots, quemNaoEstaLivreNoHorario } from '@/actions/appointments'
-import { soOQueEstaLivre, rotuloDaEscolhida, NINGUEM_LIVRE_NO_HORARIO, type Indisponivel } from '@/lib/agenda/so-o-que-esta-livre'
+import { soOQueEstaLivre, rotuloDaEscolhida, NINGUEM_LIVRE_NO_HORARIO, encaixeDaListaVazia, type Indisponivel } from '@/lib/agenda/so-o-que-esta-livre'
 import { erroParaTela } from '@/lib/erro-na-tela'
 import { faltaNoCadastroAoAgendar, type FaltaNoCadastroDoTermo } from '@/actions/documentos-da-janela'
 import { GradeDeHorarios } from '@/components/shared/grade-de-horarios'
@@ -420,6 +420,8 @@ export function AppointmentModal({
   const profissionaisNoHorario = dados.professionals.map(p => ({ ...p, livre: !indisponiveis?.has(p.id), indisponivel: indisponiveis?.get(p.id) ?? null }))
   const profissionaisDaLista = soOQueEstaLivre(profissionaisNoHorario, profId)
   const ninguemLivre = !!indisponiveis && profissionaisNoHorario.length > 0 && profissionaisNoHorario.every(p => !p.livre)
+  // Todos só fora do horário: a lista vazia diz o caminho do encaixe (R15; princípio 7).
+  const encaixeSemNinguem = ninguemLivre ? encaixeDaListaVazia(profissionaisNoHorario.map(p => p.indisponivel)) : null
 
   // -- O plano com o mesmo procedimento (D-18, A68) --------------------------
   // A cliente tem plano proposto ou fechado com este procedimento: o agendar
@@ -863,6 +865,7 @@ export function AppointmentModal({
               {ninguemLivre && (
                 <p data-ninguem-livre role="status" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 4 }}>
                   {NINGUEM_LIVRE_NO_HORARIO} Escolha outro horário para ver quem atende.
+                  {encaixeSemNinguem && <span data-ninguem-livre-encaixe> {encaixeSemNinguem}</span>}
                 </p>
               )}
               {/* Quem realiza (por-01): a agenda AVISA, não barra — o encaixe é da clínica. */}

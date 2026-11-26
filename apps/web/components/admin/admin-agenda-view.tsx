@@ -23,6 +23,7 @@ import { contagemDaAgenda } from '@/lib/metrics/resultado'
 import { useFala } from '@/components/shared/uma-unidade'
 import { dayKeyTZ, naParede, isoNaParede, fusoLocal } from '@/lib/datetime'
 import { FusoProvider, useFuso } from '@/components/shared/fuso'
+import { relogioDaGradeDaRede, relogioDaColuna } from '@/lib/agenda/relogio-da-grade'
 import { useAgora, passouSemFechar } from '@/lib/use-agora'
 import { buscaComFiltro, SEM_FILTRO, type FiltrosDaAgenda } from '@/lib/agenda/filtros'
 import { FiltrosDaAgendaNaBarra } from '@/components/shared/filtros-da-agenda'
@@ -212,8 +213,10 @@ function agendamentosDoDia(lista: Appointment[], dia: string): { a: Appointment;
  * é grosseiro demais para uma agenda de estética, e o minuto exato do pixel
  * não significa nada.
  */
-function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioVazio, bloqueios = [], podeDesfazer = false }: {
+function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioVazio, bloqueios = [], podeDesfazer = false, relogioPorColuna = false }: {
   branches: Branch[]
+  /** Unidades em fusos diferentes (D4 da 33ª): o cabeçalho de cada coluna diz o relógio dela. */
+  relogioPorColuna?: boolean
   /** Os bloqueios pontuais (decisão 3 da 7ª), na coluna da unidade de cada um. */
   bloqueios?: (BloqueioDaAgenda & { rotulo: string })[]
   podeDesfazer?: boolean
@@ -306,6 +309,12 @@ function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioV
               letterSpacing: '0.02em',
             }}>
               {b.name}
+              {/* D4 da 33ª (FU-04): com fusos diferentes, a coluna diz o relógio dela. */}
+              {relogioPorColuna && (
+                <span data-relogio-da-coluna style={{ display: 'block', fontSize: 'var(--text-overline)', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: 0, marginTop: 2 }}>
+                  {relogioDaColuna(b.fuso)}
+                </span>
+              )}
             </div>
           ))}
         </div>
@@ -728,6 +737,8 @@ export function AdminAgendaView({
 
   // Os números do topo vêm de lib/metrics (D13): o cancelado e a falta separados.
   const conta = contagemDaAgenda(naGrade)
+  // D4 da 33ª (FU-04): a grade diz em que relógio está cada unidade.
+  const relogio = relogioDaGradeDaRede(branches)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -856,9 +867,17 @@ export function AdminAgendaView({
       {/* "Em andamento" (o Heitor, 25/11): acima da grade, no dia e na semana. Vem pronto do servidor. */}
       {(view === 'day' || view === 'week') && emAndamento}
 
+      {/* O relógio da grade (D4 da 33ª, FU-04): cada coluna no relógio da sua unidade, e a tela diz qual. */}
+      {relogio.nota && (
+        <p data-relogio-da-grade style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', fontWeight: 'var(--weight-semibold)', margin: 0 }}>
+          {relogio.nota}
+        </p>
+      )}
+
       {/* Grade principal */}
       {view === 'day' ? (
         <DayGrid
+          relogioPorColuna={relogio.porColuna}
           branches={branches}
           appointments={doDesenho}
           janela={janela}

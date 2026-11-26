@@ -91,7 +91,10 @@ export function DesativarMembro({ membroId, nome, redirectPath, atende = true }:
           ? `${nomeDela} já tem atendimento nesse horário: escolha outra pessoa.`
           : (a.bloqueadas ?? []).some(p => p.id === pessoa)
             ? `${nomeDela} está com o horário bloqueado: escolha outra pessoa.`
-            : `${nomeDela} não atende nesta unidade: escolha outra pessoa.`
+            // R15 (o Heitor, 26/11: "quem está fora do horário também some das listas").
+            : (a.foraDoHorario ?? []).some(p => p.id === pessoa)
+              ? `${nomeDela} está fora do horário de atendimento nesse horário: escolha outra pessoa.`
+              : `${nomeDela} não atende nesta unidade: escolha outra pessoa.`
       }
     }
     setParaAg(para); setAvisoAg(avisos)
@@ -295,7 +298,7 @@ export function LinhaDoAgendamento({ a, nome, valor, aviso, estilo, onEscolher, 
         onChange={e => onEscolher(e.target.value)}>
         <option value="">Deixar com {nome} (sem repasse)</option>
         {a.livres.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-        {/* R13/R14 (o Heitor, 26/11): quem não está livre no horário não aparece na lista. */}
+        {/* R13/R14/R15 (o Heitor, 26/11): quem não está livre no horário (ocupada, bloqueada, fora do horário) não aparece na lista. */}
         <option value={CANCELAR}>Cancelar este agendamento</option>
       </select>
       {aviso && <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 600 }}>{aviso}</span>}

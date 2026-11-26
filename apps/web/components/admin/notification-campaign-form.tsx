@@ -89,8 +89,9 @@ export function NotificationCampaignForm({ procedures, existing, podeVerAutomaco
   const [procIds,       setProcIds]       = useState<string[]>(regras.procedure_ids ?? [])
   const [tags,          setTags]          = useState<string[]>(regras.tags ?? [])
   // As tags da rede (Configurações → Tags): digitada à mão, uma grafia
-  // diferente ("vip") deixava a campanha sem ninguém.
-  const vocabulario = useTagsDaRede()
+  // diferente ("vip") deixava a campanha sem ninguém. O público é FILTRO: também
+  // a arquivada que alguém ainda tem (TG-14; decisão do Claude, 26/11).
+  const vocabulario = useTagsDaRede(true, 'filtro')
   const [hasApp,        setHasApp]        = useState(regras.has_app_account ?? false)
   const [maxDays,       setMaxDays]       = useState<number | null>(regras.max_days_since_visit ?? null)
   // A37 da 15ª (princípio 1): a campanha também mira clientes escolhidas uma a uma.

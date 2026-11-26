@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { BadgeCheck, CircleAlert } from 'lucide-react'
 import { espiarLink } from '@/lib/documentos/link-publico'
-import { mensagemDoEstado } from '@/lib/documentos/link'
+import { mensagemDoEstado, MENSAGEM_DOS_ASSINADOS } from '@/lib/documentos/link'
 import { MolduraDaVerificacao } from '@/app/verificar/moldura'
 import { AssinarPorLink } from './assinar-por-link'
 
@@ -43,7 +43,8 @@ export default async function AssinarPeloLinkPage({ params }: { params: Promise<
               {espiada.estado === 'usado' ? (espiada.documentos > 1 ? 'Documentos já assinados' : 'Documento já assinado') : 'Link indisponível'}
             </h1>
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }} data-estado={espiada.estado}>
-              {mensagemDoEstado(espiada.estado, espiada.remetente)}
+              {/* A4 da 33ª: o link de vários documentos assinados fala no plural. */}
+              {espiada.estado === 'usado' && espiada.documentos > 1 ? MENSAGEM_DOS_ASSINADOS : mensagemDoEstado(espiada.estado, espiada.remetente)}
             </p>
           </div>
         )}

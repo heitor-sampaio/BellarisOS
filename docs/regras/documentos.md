@@ -543,8 +543,29 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
     não sai por link, e se BLOQUEIA trava o início do atendimento.
   - Troca até a assinatura (o texto e o hash são montados de novo); assinado,
     não muda.
-  - O recebimento no PDV já vem com o meio combinado
-    (`pagamentoCombinadoDoAtendimento`) — orienta, não trava.
+  - O recebimento no PDV já vem com o combinado INTEIRO — a forma, as vezes
+    do cartão, o crediário e o desconto (`combinadoDoContratoDoAtendimento`,
+    `lib/pdv/contrato-do-atendimento.ts`; D1 da 33ª: só o meio vinha, e o
+    "crédito 3x" voltava em 1x) — orienta, não trava.
+  - **Com o contrato ASSINADO, receber com outro pagamento (ou outro desconto)
+    pergunta antes** (D1 da 33ª, a DG-03 e a VD-10 do catálogo aplicadas à
+    comanda do atendimento, como no plano — A45 da 5ª — e no pacote): o PDV
+    recebia Pix com desconto num contrato assinado para crédito 3x, calado.
+    `confirmPayment` devolve `substituiContrato` sem gravar nada
+    (`contratoQueMudaNoReceber`; a regra pura é `mudaOCombinadoDoContrato`,
+    `lib/pdv/contrato-combinado.ts`: a comparação do plano, sem a maquininha e
+    a bandeira — MQ-15 —; o combinado "no atendimento" não diz a forma, e só o
+    desconto dele conta — decisão do Claude, 26/11, princípio 3), e a comanda
+    mostra "O contrato “X” já foi assinado para outro pagamento (…)" com
+    "Manter o pagamento combinado" (volta ao combinado) e "Substituir o
+    contrato" (`[data-substitui-contrato]`). Substituir vale JUNTO do dinheiro:
+    `confirmar_pagamento_do_atendimento` chama o `documento_substituir` de
+    sempre com `p_dados.substituir_contrato` e grava no novo o combinado de
+    agora (`retrato_do_contrato`; migration `20261212400001`); o novo se monta
+    e espera a cliente assinar. O recebimento não espera a assinatura do novo
+    (o contrato do avulso trava o início, não o dinheiro — decisão do Claude,
+    26/11). Prova: `tests/pdv-receber-pergunta-antes-de-mudar-o-contrato.test.ts`,
+    `e2e/documentos-contrato-pagamento.spec.ts` ("receber com outro pagamento do que o contrato assinado").
   - **No "entrada + parcelas", o meio é da ENTRADA** (D5/D6 da 6ª simulação,
     2026-11-04): `pagamento.forma` diz "entrada de R$ 1.000,00 no cartão de
     crédito em 3x + 2 parcelas de R$ 1.700,00 no crediário: R$ 1.700,00 em

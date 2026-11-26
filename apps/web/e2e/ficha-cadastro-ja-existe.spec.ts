@@ -134,6 +134,32 @@ test('A17: antes de unificar, a pergunta mostra como a ficha fica — o nome del
   })
 })
 
+// D18 da 33ª simulação.
+test('a prévia do Unificar mostra também o CPF e o nascimento que ele grava, acompanhando o que se digita (CL-08)', async ({ browser }) => {
+  // A Dirce unificou com o CPF, o nascimento e o e-mail digitados; a prévia
+  // mostrava só o nome, o telefone e o e-mail.
+  const fone = telefone()
+  const marlene = nome('Marlene')
+  const id = await ficha(marlene, fone, { birth_date: '1980-01-01' })
+  await como(browser, async p => {
+    await digitar(p, marlene, fone)
+    const aviso = p.getByRole('alert').filter({ hasText: 'Já existe a ficha de' })
+    const fica = aviso.locator('[data-unificar-fica]')
+    await expect(fica).toContainText('Documento: — (a ficha não tem)')
+    await expect(fica).toContainText('Nascimento: 01/01/1980 (o da ficha)')
+    await p.getByLabel('Número do documento').fill('741.852.963-55')
+    await p.locator('input[name="birth_date"]').fill('1990-05-05')
+    await expect(fica).toContainText('CPF: 741.852.963-55 (o digitado agora)')
+    await expect(fica).toContainText('Nascimento: 05/05/1990 (o digitado agora, no lugar de 01/01/1980)')
+    await expect(fica).toContainText('O que ficou em branco aqui não muda na ficha.')
+    await aviso.getByRole('button', { name: `Unificar com a ficha de ${marlene}` }).click()
+    await expect(p).toHaveURL(new RegExp(`/clients/${id}`))
+  })
+  const { data } = await db().from('clients').select('document, birth_date').eq('id', id).single()
+  expect(data!.document, 'o que a prévia disse é o que foi gravado').toBe('74185296355')
+  expect(String(data!.birth_date).slice(0, 10)).toBe('1990-05-05')
+})
+
 test('o mesmo telefone: "Cadastrar mesmo assim" cria a ficha nova (mãe e filha), e a outra fica como está', async ({ browser }) => {
   const fone = telefone()
   const mae = nome('mãe')

@@ -91,6 +91,30 @@ export function divergenciasDaBaixa(
   return saida
 }
 
+/**
+ * De onde vem o total do mapa: a APLICAÇÃO registrada neste atendimento (PT-13)
+ * ou o PLANEJAMENTO escolhido na ficha, sem aplicação.
+ */
+export type OrigemDoTotal = 'APLICACAO' | 'PLANEJAMENTO'
+
+/**
+ * Os totais do mapa que se comparam com a baixa (A1 da 33ª e a Decisão A —
+ * decisão do Claude, 26/11, princípio 5: "Sem execução, sem valor"). A
+ * aplicação registrada aqui se compara sempre (PT-18). O planejamento não é
+ * consumo: só se compara com o produto que ESTE atendimento tem no cartão de
+ * insumos (marcado ou não) — o planejamento da Toxina numa sessão de Toxina
+ * (A36 da 5ª). O produto que o atendimento não usa é planejamento para outro
+ * dia (a Toxina desenhada na Avaliação da A01): nem aviso, nem "Incluir na baixa".
+ */
+export function totaisQueSeComparam(
+  totais: readonly (TotalDoMapa & { origem?: OrigemDoTotal })[], doCartao: readonly { name: string }[],
+): TotalDoMapa[] {
+  const usados = new Set(doCartao.map(i => chave(i.name)))
+  return totais
+    .filter(t => t.origem !== 'PLANEJAMENTO' || usados.has(chave(t.product)))
+    .map(({ product, unit, total }) => ({ product, unit, total }))
+}
+
 /** A frase da divergência, na tela. */
 export function textoDaDivergencia(d: DivergenciaDaBaixa): string {
   if (d.medidaDoMapa) {

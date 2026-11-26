@@ -153,3 +153,36 @@ export function linhasDasVersoesNoPdf(
     return `   Versão anterior: corrigido por ${v.editada_por_nome} em ${quando(v.substituida_em)}; ${partes.join(' — ')}`
   })
 }
+
+/** Uma ficha de saúde respondida, no prontuário do pacote. */
+export interface FichaDeSaudeDoPacote {
+  respondidaEm:  string | null
+  respondidaPor: string | null
+  ficha:         string
+  respostas:     RespostaLegivel[]
+}
+
+const instante = (iso: string | null) => (iso ? new Date(iso).getTime() : Number.NaN)
+const mesmasRespostas = (a: RespostaLegivel[], b: RespostaLegivel[]) =>
+  JSON.stringify(a.map(r => [r.pergunta, umaLinha(r.resposta)])) === JSON.stringify(b.map(r => [r.pergunta, umaLinha(r.resposta)]))
+
+/**
+ * As fichas de saúde do prontuário no PDF (D3 da 33ª; LG-12): os pedidos da
+ * ficha respondidos e a ficha do prontuário (`general_anamnesis`) — a que a
+ * equipe preenche no atendimento ia só ao JSON, e o PDF dizia "Nenhuma ficha
+ * de saúde respondida". A do prontuário que já veio por um pedido respondido (a
+ * mesma hora, ou as mesmas respostas: a equipe regravando o mesmo não troca a
+ * hora) não se repete; sem resposta, não entra. Da mais nova para a mais velha.
+ */
+export function fichasDeSaudeDoProntuario(
+  respondidas: FichaDeSaudeDoPacote[],
+  doProntuario: FichaDeSaudeDoPacote | null,
+): FichaDeSaudeDoPacote[] {
+  if (!doProntuario || doProntuario.respostas.length === 0) return respondidas
+  const jaVeio = respondidas.some(r =>
+    (r.respondidaEm !== null && instante(r.respondidaEm) === instante(doProntuario.respondidaEm))
+    || mesmasRespostas(r.respostas, doProntuario.respostas))
+  if (jaVeio) return respondidas
+  const t = (f: FichaDeSaudeDoPacote) => { const v = instante(f.respondidaEm); return Number.isNaN(v) ? -Infinity : v }
+  return [...respondidas, doProntuario].sort((a, b) => t(b) - t(a))
+}

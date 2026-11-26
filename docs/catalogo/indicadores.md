@@ -1,6 +1,6 @@
 # Catálogo de regras — Indicadores
 
-Este é o catálogo das regras dos indicadores que valem HOJE: todo número na tela — o fuso e o período, a regra única de cada conta e a tela que a explica, a receita e o dinheiro, o lucro e a margem, o ticket médio, a receita dos atendimentos, a agenda e a ocupação, as clientes nos números, as oportunidades, o estoque e as Vendas nos Relatórios, o dinheiro que só aparece com o Financeiro, as vistas pessoais, o dashboard e o recorte por unidade, a rede de uma unidade só, os anúncios e o filtro de Tags nos Relatórios. Cada regra diz a fonte: uma fala do Heitor (copiada letra por letra do documento), uma recomendação do Claude que o Heitor aprovou (com a resposta dele), um dos sete princípios de produto, "decisão do Claude". "Onde" aponta a linha do documento; "Antes" lista os números do rascunho que a regra junta (KA: `docs/regras/indicadores.md:1-310`; KB: `:311-620`; KC: `:621-894`; KD: `:895-1169`; KE: `:1170-1517`). Quem vê cada aba dos Relatórios, o cálculo das comissões, o que o Copilot responde e como o dinheiro ENTRA (o PDV, o lançamento, o estorno, o caixa) ficam nos catálogos das áreas donas e estão em "É de outra área"; aqui fica como o número é CONTADO. É um RASCUNHO para o Heitor revisar. Contagem: 132 regras (O fuso horário 8, O período e a comparação 6, Uma conta só, e a tela explica o número 7, A receita e o dinheiro 11, O lucro e a margem 15, O ticket médio e as outras médias 4, A receita dos atendimentos 10, A agenda e a ocupação nos números 12, As clientes nos números 9, As oportunidades 6, O estoque nos Relatórios 6, Relatórios → Vendas 12, O dinheiro só com o Financeiro 4, As vistas pessoais 6, O dashboard e o recorte por unidade 7, A rede de uma unidade só 1, Os anúncios 3, O filtro de Tags nos Relatórios 5), 5 perguntas e 26 divergências. Dos 150 números do rascunho, nenhum ficou fora do catálogo e nenhum é de outra área (o que os rascunhos deram como de outra área veio sem número e está resumido no apêndice); todos estão num "Antes". Das seis perguntas dos rascunhos: a da "Compra de estoque" fora do lucro é a Q02; a da venda parcelada que entra inteira na primeira parcela paga é a Q03; a da frase "contar no dia que foi feita" entrou na Q01, com as outras regras escritas como suas sem a fala; a da lista do que sai da Visão geral sem o Financeiro tinha resposta na sua fala de 23/11 ("financeiro ve entrada/saida/lucro, tudo": o Faturamento por Unidade e a Forma de Pagamento são entrada, FV-02), e só a receita dos atendimentos, que você deixou em aberto, virou a Q04; a do ticket médio no dashboard tinha resposta na sua fala de 23/11 ("ticket médio é parametro/metrica, não é algo/operação financeira", TM-03), e o texto que o dá só com o Financeiro está em "Divergências"; e a do filtro de Tags fora da Visão geral e do Financeiro é a Q05.
+Este é o catálogo das regras dos indicadores que valem HOJE: todo número na tela — o fuso e o período, a regra única de cada conta e a tela que a explica, a receita e o dinheiro, o lucro e a margem, o ticket médio, a receita dos atendimentos, a agenda e a ocupação, as clientes nos números, as oportunidades, o estoque e as Vendas nos Relatórios, o dinheiro que só aparece com o Financeiro, as vistas pessoais, o dashboard e o recorte por unidade, a rede de uma unidade só, os anúncios e o filtro de Tags nos Relatórios. Cada regra diz a fonte: uma fala do Heitor (copiada letra por letra do documento), uma recomendação do Claude que o Heitor aprovou (com a resposta dele), um dos sete princípios de produto, "decisão do Claude". "Onde" aponta a linha do documento; "Antes" lista os números do rascunho que a regra junta (KA: `docs/regras/indicadores.md:1-310`; KB: `:311-620`; KC: `:621-894`; KD: `:895-1169`; KE: `:1170-1517`). Quem vê cada aba dos Relatórios, o cálculo das comissões, o que o Copilot responde e como o dinheiro ENTRA (o PDV, o lançamento, o estorno, o caixa) ficam nos catálogos das áreas donas e estão em "É de outra área"; aqui fica como o número é CONTADO. É um RASCUNHO para o Heitor revisar. Contagem: 133 regras (O fuso horário 8, O período e a comparação 6, Uma conta só, e a tela explica o número 7, A receita e o dinheiro 11, O lucro e a margem 15, O ticket médio e as outras médias 4, A receita dos atendimentos 10, A agenda e a ocupação nos números 12, As clientes nos números 9, As oportunidades 7, O estoque nos Relatórios 6, Relatórios → Vendas 12, O dinheiro só com o Financeiro 4, As vistas pessoais 6, O dashboard e o recorte por unidade 7, A rede de uma unidade só 1, Os anúncios 3, O filtro de Tags nos Relatórios 5), 5 perguntas e 26 divergências. Dos 150 números do rascunho, nenhum ficou fora do catálogo e nenhum é de outra área (o que os rascunhos deram como de outra área veio sem número e está resumido no apêndice); todos estão num "Antes". Das seis perguntas dos rascunhos: a da "Compra de estoque" fora do lucro é a Q02; a da venda parcelada que entra inteira na primeira parcela paga é a Q03; a da frase "contar no dia que foi feita" entrou na Q01, com as outras regras escritas como suas sem a fala; a da lista do que sai da Visão geral sem o Financeiro tinha resposta na sua fala de 23/11 ("financeiro ve entrada/saida/lucro, tudo": o Faturamento por Unidade e a Forma de Pagamento são entrada, FV-02), e só a receita dos atendimentos, que você deixou em aberto, virou a Q04; a do ticket médio no dashboard tinha resposta na sua fala de 23/11 ("ticket médio é parametro/metrica, não é algo/operação financeira", TM-03), e o texto que o dá só com o Financeiro está em "Divergências"; e a do filtro de Tags fora da Visão geral e do Financeiro é a Q05.
 
 ## O fuso horário (FU)
 
@@ -14,25 +14,25 @@ Este é o catálogo das regras dos indicadores que valem HOJE: todo número na t
 - Onde: `docs/regras/indicadores.md:24-28`, `:49-54`
 - Antes: KA-04
 
-**FU-03.** No portal da rede, o dia e a hora são os do fuso comum das unidades na tela; com unidades em fusos diferentes, o de Brasília. Mesmo assim, no número somado da rede cada lançamento e cada atendimento cai no dia do relógio da unidade dele: as barras dos gráficos (também os do resultado e dos custos da venda) e o Fechamento da rede, com o dia de cada unidade.
-- Fonte: decisão do Claude
-- Onde: `docs/regras/indicadores.md:29-37`, `:90-92`
-- Antes: KA-05
+**FU-03.** No portal da rede, o dia e a hora são os do fuso comum das unidades na tela; com unidades em fusos diferentes, o de Brasília. Mesmo assim, no número somado da rede cada lançamento e cada atendimento cai no dia do relógio da unidade dele: as barras dos gráficos (também os do resultado e dos custos da venda) e o Fechamento da rede, com o dia de cada unidade. A grade da agenda da rede desenha cada coluna no relógio da unidade dela e diz qual é (FU-04). Desenhar a grade inteira no relógio de Brasília segue como pergunta ao Heitor.
+- Fonte: decisão do Claude; a grade da agenda da rede: decisão do Claude, 26/11 (33ª simulação, D4), pela FU-04 e pelo princípio 3
+- Onde: `docs/regras/indicadores.md:29-37`, `:90-92`, `:57-67`
+- Antes: KA-05; antes de 26/11: a grade da rede não dizia o relógio de cada coluna
 
-**FU-04.** Quando a unidade não está no horário de Brasília, a tela diz qual é o relógio ("Horário de Manaus"); no de Brasília, não diz nada.
-- Fonte: princípio 3
-- Onde: `docs/regras/indicadores.md:38-41`, `:85-87`; `DEVLOG.md:13755`
-- Antes: KA-06
+**FU-04.** Quando a unidade não está no horário de Brasília, a tela diz qual é o relógio ("Horário de Manaus"); no de Brasília, não diz nada. Na agenda da rede com unidades em fusos diferentes, o cabeçalho de cada coluna do dia diz o relógio dela (também o de Brasília) e a nota acima da grade, no dia e na semana, o de cada unidade ("Cada unidade no relógio dela: Barra do Garças no horário de Cuiabá; Aragarças no horário de Brasília."); com um fuso só fora de Brasília, a nota de sempre.
+- Fonte: princípio 3; a agenda da rede: decisão do Claude, 26/11 (33ª simulação, D4), pelo princípio 3
+- Onde: `docs/regras/indicadores.md:38-41`, `:85-87`; `DEVLOG.md:13755`, `:57-67`
+- Antes: KA-06; antes de 26/11: a grade da rede não dizia o relógio (era a sugestão nº 57)
 
 **FU-05.** O que é da rede e não tem unidade usa o fuso da rede: a fidelidade (inclusive a rotina dela), a LGPD, os aniversariantes e as campanhas (a agendada e a de todo ano).
 - Fonte: decisão do Claude
 - Onde: `docs/regras/indicadores.md:42`, `:53-55`
 - Antes: KA-07
 
-**FU-06.** O dia sem hora — o "cliente desde", a última visita de antes do sistema, a faixa etária, os "para reativar", a busca "de hoje em diante" e o lote vencido do estoque — se compara com o "hoje" do lugar da tela (o da unidade; no que é da rede, o da rede), nunca com o de Brasília fixo.
-- Fonte: decisão do Claude
-- Onde: `docs/regras/indicadores.md:59-65`
-- Antes: KA-08
+**FU-06.** O dia sem hora — o "cliente desde", a última visita de antes do sistema, a faixa etária, os "para reativar", a busca "de hoje em diante" e o lote vencido do estoque — se compara com o "hoje" do lugar da tela (o da unidade; no que é da rede, o da rede), nunca com o de Brasília fixo. A última visita da lista de Clientes e o "Reativar clientes" dos dashboards contam dias de calendário nesse relógio (CL-18 de Clientes).
+- Fonte: decisão do Claude; a lista e o dashboard: decisão do Claude, 26/11 (33ª simulação, D9 e o arremate)
+- Onde: `docs/regras/indicadores.md:59-65`, `docs/regras/crm-inbox.md:434-446`
+- Antes: KA-08; antes de 26/11: a lista e o "Reativar clientes" contavam blocos de 24 h
 
 **FU-07.** Ficam sempre no horário de Brasília a assinatura da rede e a cobrança da plataforma, a cobrança do Copilot e o mês da Meta. O vencimento de uma conta é um dia, o mesmo em todo fuso do Brasil; quem decide se ela já venceu é o "hoje" da unidade.
 - Fonte: decisão do Claude
@@ -43,6 +43,12 @@ Este é o catálogo das regras dos indicadores que valem HOJE: todo número na t
 - Fonte: o Heitor, 2026-11-11: "Não, deixa a clinica configurar o seu fuso"
 - Onde: `docs/regras/indicadores.md:72-75`
 - Antes: KA-10
+
+**FU-09.** (Proposta, PARA O HEITOR.) A hora de um fechamento de comissão sai no fuso da unidade dele, como a de cada lançamento: a comissão de Barra do Garças paga às 13:13 de lá é "13:13 (horário de Cuiabá)" na aba Comissões, nos "Últimos fechamentos" e no CSV, como já é nas linhas do extrato (na tela e no CSV), na Auditoria (AD-26 de Plataforma) e nas Movimentações. O mês da comissão e os limites do fechamento seguem no fuso da rede (CF-08 das Comissões): muda só a hora que a tela e o CSV escrevem.
+- Fonte: proposta do Claude, 26/11 (33ª simulação, Decisão C), PARA O HEITOR. O relatório da 33ª a dava como a FU-02 "da fala do Heitor de 11/11", mas a fala ("Não, deixa a clinica configurar o seu fuso", a resposta à recomendação "o fuso por unidade, escolhido pelo estado do CEP, com Brasília como padrão", `DEVLOG.md:14272-14273`) decide que o fuso se configura; não diz qual relógio vale no portal da rede com unidades em fusos diferentes, nem fala dos CSV. As regras em jogo são todas do Claude: a FU-02 na parte da hora e dos CSV; a FU-03 (no portal da rede com fusos diferentes, o de Brasília); a "D3 da 23ª" (17/11: as três datas do fechamento no fuso da rede, `docs/regras/comissoes.md:785-789`); e a D7 da 26ª (cada lançamento do extrato no fuso da unidade dele, `docs/regras/indicadores.md:85-87`). A proposta fica com a FU-02 e a D7 da 26ª, pelo princípio 3: o mesmo pagamento não pode ter duas horas na mesma tela e no mesmo CSV (D8 da 33ª: 14:13 no fechamento, 13:13 na linha)
+- Onde: hoje, o fuso da rede: `docs/regras/comissoes.md:785-789`, `apps/web/lib/comissoes/extrato-texto.ts` (`textoDoFechamento`); o teste que o trava: `apps/web/tests/fuso-da-auditoria-e-comissoes.test.ts`
+- Estado: proposta, PARA O HEITOR (26/11)
+- Antes: (nova, 26/11)
 
 ## O período e a comparação (PI)
 
@@ -217,10 +223,10 @@ Este é o catálogo das regras dos indicadores que valem HOJE: todo número na t
 - Onde: `docs/regras/indicadores.md:733-745`
 - Antes: KC-09, KC-10
 
-**LU-10.** O cartão das despesas do caixa, no Financeiro da unidade e no da rede e na Visão geral dos Relatórios, se chama "Despesas pagas (caixa)" e diz que inclui a compra de estoque e o pagamento das comissões, que o lucro não desconta.
-- Fonte: princípio 3
-- Onde: `docs/regras/indicadores.md:745-748`; `docs/regras/vendas-financeiro.md:2001-2006`
-- Antes: KC-11
+**LU-10.** O cartão das despesas do caixa, no Financeiro da unidade e no da rede e na Visão geral dos Relatórios, se chama "Despesas pagas (caixa)" e diz que inclui a compra de estoque e o pagamento das comissões, que o lucro não desconta. No Financeiro dos Relatórios, quando o cartão soma mais que a despesa operacional, o DRE diz de que ele se compõe (as despesas operacionais, o pagamento das comissões e a compra de estoque).
+- Fonte: princípio 3; o DRE diz o cartão: decisão do Claude, 26/11 (33ª simulação, A11), pelo princípio 3
+- Onde: `docs/regras/indicadores.md:745-748`; `docs/regras/vendas-financeiro.md:2001-2006`, `docs/regras/indicadores.md:850-858`
+- Antes: KC-11; antes de 26/11: o cartão dizia R$ 367 e o DRE "Despesas operacionais R$ 0", sem dizer por quê
 
 **LU-11.** O cartão "Insumos e produtos" tem a dica do que soma (o insumo dos atendimentos ao custo de consumo e o custo do produto vendido), e o DRE tem a dica "O que fica fora do lucro": a perda e o ajuste de estoque.
 - Fonte: princípio 3; o lugar da explicação: o Heitor, 2026-11-16: a explicação do número mora na dica, não embaixo dele (`docs/regras/design.md:215`)
@@ -333,10 +339,10 @@ Este é o catálogo das regras dos indicadores que valem HOJE: todo número na t
 - Onde: `docs/regras/indicadores.md:342-347`
 - Antes: KB-02
 
-**OC-03.** A ocupação da unidade conta só a agenda dela: entra quem tem o "Atende" marcado naquela unidade, com o horário dele menos o que ele tem agendado em outra unidade e menos o tempo que ele bloqueou. Ninguém aparece livre em duas unidades ao mesmo tempo.
-- Fonte: princípio 3
-- Onde: `docs/regras/indicadores.md:348-360`
-- Antes: KB-03
+**OC-03.** A ocupação da unidade conta só a agenda dela: entra quem tem o "Atende" marcado naquela unidade, com o horário dele menos o que ele tem agendado em outra unidade e menos o tempo que ele bloqueou. Ninguém aparece livre em duas unidades ao mesmo tempo. Vale também quando é ELA quem olha a agenda inteira: a ocupação no topo da agenda e a do dashboard batem (só a Minha agenda põe na grade os atendimentos dela em outra unidade, e lá eles voltam como "ocupado fora").
+- Fonte: princípio 3; quem olha a agenda inteira: decisão do Claude, 26/11 (33ª simulação, D13), pelo princípio 3
+- Onde: `docs/regras/indicadores.md:348-360`, `:432-439`
+- Antes: KB-03; antes de 26/11: quem atende em duas unidades via uma ocupação no topo da agenda e outra no dashboard (28% × 30%)
 
 **OC-04.** A "Minha agenda" mostra a "Ocupação hoje" de quem atende com a mesma conta: o tempo agendado dela no dia (o dia da unidade, FU-02) sobre o horário em que a unidade e ela estão abertas, menos o que ela tem em outra unidade. Sem expediente no dia, mostra "—".
 - Fonte: decisão do Claude
@@ -461,6 +467,11 @@ Este é o catálogo das regras dos indicadores que valem HOJE: todo número na t
 - Fonte: princípio 4
 - Onde: `docs/regras/indicadores.md:1180-1184`
 - Antes: KE-02
+
+**FO-07.** As oportunidades são da rede (a cliente é da rede): o recorte por unidade não vale para elas. Na aba Oportunidades dos Relatórios, com uma unidade escolhida numa rede de mais de uma, a tela diz "As oportunidades são da rede: o recorte por unidade não vale para elas. Os agendamentos do comercial e o comparecimento são os da unidade escolhida."; o recorte fica, e recorta os agendamentos. O quadro de oportunidades também não tem recorte por unidade.
+- Fonte: decisão do Claude, 26/11 (33ª simulação, A10), pelo princípio 3
+- Onde: `docs/regras/indicadores.md:1592-1601`; `docs/regras/crm-inbox.md` (a oportunidade é da rede)
+- Antes: (nova, 26/11); antes de 26/11: com uma unidade escolhida, a aba mostrava as oportunidades da rede sem dizer
 
 ## O estoque nos Relatórios (ER)
 

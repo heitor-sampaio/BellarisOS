@@ -15,6 +15,7 @@ import { Dica } from '@/components/shared/dica'
 import { avisoDoAcessoCriado, avisoDaFichaDaRede, oQueFaltaResponder, POR_QUE_JA_EXISTE, perguntaJuntoDoDocumento, textoDoSimDaPessoa } from '@/lib/clients/textos-do-cadastro'
 import { alternarTag, opcoesDeTag, temTag } from '@/lib/tags/escolha'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
+import { linhasDoComoFica, type OQueFoiDigitado } from '@/lib/clients/como-fica-ao-unificar'
 
 const GENDERS = [
   { value: 'F', label: 'Feminino' },
@@ -109,6 +110,9 @@ export function ClientForm({ branchId, slug, branches, prefill, leadId, conversa
   // Decisão 2 do Heitor (2026-11-05): a menor de idade pede o responsável legal.
   const [nascimento, setNascimento] = useState('')
   const [responsavel, setResponsavel] = useState<CamposDoResponsavel>(RESPONSAVEL_VAZIO)
+  // D18 da 33ª (CL-08): o gênero e as observações também entram na prévia do Unificar.
+  const [genero, setGenero] = useState('')
+  const [observacoes, setObservacoes] = useState('')
 
   const router   = useRouter()
   const pathname = usePathname()
@@ -234,6 +238,12 @@ export function ClientForm({ branchId, slug, branches, prefill, leadId, conversa
 
   // As tags da rede (Configurações → Tags), não mais uma lista fixa.
   const vocabulario = useTagsDaRede()
+
+  // O que está digitado agora: a prévia do Unificar mostra tudo o que ele grava (D18 da 33ª, CL-08).
+  const digitadoAgora: OQueFoiDigitado = {
+    email, telefone: phone, documento: { tipo: tipoDoc, numero: document }, nascimento, genero, observacoes,
+    tags: selectedTags, endereco, acesso: comAcesso && podeAcesso,
+  }
   function toggleTag(tag: string) {
     // A que vem da pessoa não se desmarca: ela chega à ficha de qualquer jeito (TG-10).
     if (temTag(tagsQueVem, tag)) return
@@ -298,7 +308,7 @@ export function ClientForm({ branchId, slug, branches, prefill, leadId, conversa
         {pergunta && !noDocumento && (
           <div ref={perguntaRef} style={{ gridColumn: '1 / -1' }}>
             <PerguntaDoTelefone pergunta={pergunta} pending={pending} responder={responder} reativar={reativar}
-              atualizar={atualizar} cadastrarMesmoAssim={cadastrarMesmoAssim} digitado={{ email, telefone: phone, nome: nomeDigitado }} />
+              atualizar={atualizar} cadastrarMesmoAssim={cadastrarMesmoAssim} digitado={{ ...digitadoAgora, nome: nomeDigitado }} />
           </div>
         )}
 
@@ -335,12 +345,12 @@ export function ClientForm({ branchId, slug, branches, prefill, leadId, conversa
         {pergunta && noDocumento && (
           <div ref={perguntaRef} style={{ gridColumn: '1 / -1' }}>
             <PerguntaDoTelefone pergunta={pergunta} pending={pending} responder={responder} reativar={reativar}
-              atualizar={atualizar} cadastrarMesmoAssim={cadastrarMesmoAssim} digitado={{ email, telefone: phone, nome: nomeDigitado }} />
+              atualizar={atualizar} cadastrarMesmoAssim={cadastrarMesmoAssim} digitado={{ ...digitadoAgora, nome: nomeDigitado }} />
           </div>
         )}
 
         <Field label="Gênero">
-          <select name="gender" className="field" defaultValue=''>
+          <select name="gender" className="field" value={genero} onChange={e => setGenero(e.target.value)}>
             <option value="">Não informado</option>
             {GENDERS.map(g => <option key={g.value} value={g.value}>{g.label}</option>)}
           </select>
@@ -398,7 +408,7 @@ export function ClientForm({ branchId, slug, branches, prefill, leadId, conversa
       <Field label="Observações internas">
         <textarea
           name="notes" rows={3} className="field"
-          defaultValue=''
+          value={observacoes} onChange={e => setObservacoes(e.target.value)}
           placeholder="Alergias, preferências, histórico relevante…"
           style={{ resize: 'vertical' }}
         />
@@ -478,6 +488,7 @@ export function ClientForm({ branchId, slug, branches, prefill, leadId, conversa
   )
 }
 
+type FichaQueJaExisteNaTela = NonNullable<ResultadoDoCadastro['jaExiste']>
 type Pergunta =
   | ({ tipo: 'arquivada' } & NonNullable<ResultadoDoCadastro['arquivada']>)
   | ({ tipo: 'jaExiste' } & NonNullable<ResultadoDoCadastro['jaExiste']>)
@@ -495,29 +506,23 @@ const POR_QUE = POR_QUE_JA_EXISTE
 
 /**
  * Como a ficha FICA ao unificar (A17 da 6ª simulação: a Daniela ficou com o
- * e-mail da Renata, e a tela não tinha dito). O nome é sempre o da ficha
- * (r3-f14-01); o e-mail e o telefone digitados tomam o lugar dos dela, e o
- * campo vazio deixa o dela — a regra de `atualizarFichaComOPreenchido`.
+ * e-mail da Renata, e a tela não tinha dito; D18 da 33ª — CL-08: o Unificar
+ * gravava o CPF e o nascimento digitados, e a prévia mostrava só o nome, o
+ * telefone e o e-mail). Tudo o que `atualizarFichaComOPreenchido` grava, pela
+ * mesma regra (`linhasDoComoFica`), acompanhando o que se digita.
  */
 function ComoFicaAoUnificar({ nome, naFicha, digitado }: {
   nome: string
-  naFicha?: { email: string | null; telefone: string | null }
-  digitado: { email: string; telefone: string }
+  naFicha?: FichaQueJaExisteNaTela['naFicha']
+  digitado: OQueFoiDigitado
 }) {
-  const linha = (rotulo: string, agora: string, dela: string | null) => {
-    const a = agora.trim()
-    if (!a) return dela ? `${rotulo}: ${dela} (o da ficha)` : `${rotulo}: — (a ficha não tem)`
-    if (!dela) return `${rotulo}: ${a} (o digitado agora)`
-    if (dela === a) return `${rotulo}: ${a} (o mesmo da ficha)`
-    return `${rotulo}: ${a} (o digitado agora, no lugar de ${dela})`
-  }
-  const foneDela = naFicha?.telefone ? telefoneParaExibir(naFicha.telefone) : null
+  const linhas = linhasDoComoFica(nome, naFicha, digitado)
   return (
     <span data-unificar-fica style={{ display: 'flex', flexDirection: 'column', gap: 2, fontWeight: 'var(--weight-medium)', color: 'var(--text)' }}>
       <span style={{ color: 'var(--text-muted)' }}>Se unificar, a ficha fica assim:</span>
-      <span>Nome: {nome} (o da ficha)</span>
-      <span>{linha('Telefone', digitado.telefone, foneDela)}</span>
-      <span>{linha('E-mail', digitado.email, naFicha?.email ?? null)}</span>
+      {linhas.map((l, i) => (
+        <span key={i} style={i === linhas.length - 1 && linhas.length > 3 && l.startsWith('O que ficou') ? { color: 'var(--text-muted)' } : undefined}>{l}</span>
+      ))}
     </span>
   )
 }
@@ -532,8 +537,8 @@ function PerguntaDoTelefone({ pergunta, pending, responder, reativar, atualizar,
   reativar: (id: string) => void
   atualizar: (id: string) => void
   cadastrarMesmoAssim: (id: string) => void
-  /** O e-mail e o telefone digitados agora (A17: como a ficha fica ao unificar); o nome, para o "Sim" (A15 da 17ª). */
-  digitado: { email: string; telefone: string; nome: string }
+  /** O que está digitado agora (A17 e D18 da 33ª: como a ficha fica ao unificar); o nome, para o "Sim" (A15 da 17ª). */
+  digitado: OQueFoiDigitado & { nome: string }
 }) {
   if (pergunta.tipo === 'arquivada') {
     return (

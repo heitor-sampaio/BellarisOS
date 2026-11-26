@@ -231,29 +231,32 @@ export async function reviewMedicalData(
       medical_status:      decision,
       medical_reviewed_by: ctx.internalUserId,
       medical_reviewed_at: new Date().toISOString(),
-      // Aprovar significa regerar o pacote com a parte clínica dentro.
-      ...(decision === 'approved'
-        ? { status: 'pending', completed_at: null, export_json_path: null, export_pdf_path: null }
-        : {}),
+      // Decidir (liberar OU negar) refaz o pacote (D2 da 33ª; LG-05, LG-07): o
+      // pronto dizia "em análise — quando ela decidir, um pacote novo", e o
+      // negado ficava com ele. Liberado, o novo leva o prontuário; negado, diz
+      // que ele não foi liberado.
+      status: 'pending', completed_at: null, export_json_path: null, export_pdf_path: null,
       updated_at: new Date().toISOString(),
     }).eq('id', requestId)
 
     if (error) {
-      // Aprovar reabre o pedido (volta a `pending`); se o cliente já abriu
+      // Decidir reabre o pedido (volta a `pending`); se o cliente já abriu
       // OUTRO pedido nesse meio-tempo, o índice de "um pedido aberto por
       // cliente" recusa — e a tela mostrava o "duplicate key" cru.
       if (error.code === '23505') {
-        return { error: 'O cliente já tem outra solicitação em andamento. Libere o prontuário depois que ela terminar.' }
+        return { error: decision === 'approved'
+          ? 'O cliente já tem outra solicitação em andamento. Libere o prontuário depois que ela terminar.'
+          : 'O cliente já tem outra solicitação em andamento. Responda sobre o prontuário depois que ela terminar.' }
       }
       return { error: error.message }
     }
 
     if (decision === 'approved') {
       // O prontuário sai da clínica por decisão de alguém: fica no registro de
-      // acessos (lib/prontuario/acessos.ts).
+      // acessos (lib/prontuario/acessos.ts). Negado, nada clínico sai.
       await registrarAcessoAoProntuario(ctx, row.client_id as string, 'lgpd', requestId)
-      after(() => processExportRequest(requestId))
     }
+    after(() => processExportRequest(requestId))
 
     revalidatePath('/admin/settings')
     return { success: true }

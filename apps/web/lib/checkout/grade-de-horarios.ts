@@ -11,9 +11,11 @@ export interface HorarioDaGrade { hora: string; doProfissional: boolean }
  * 12:00 e 12:30 na pausa da unidade e cortava a noite inteira de quem abre até
  * 23:30. Agora cobre a janela da UNIDADE naquele dia (`intervalosDoDia`, de 30
  * em 30 min, cada período sem atravessar a pausa) e marca os horários em que a
- * PROFISSIONAL atende (unidade ∩ dela). O resto da janela continua oferecido:
- * o seletor do checkout é livre (o encaixe, §9.1) — e o que fica fora da
- * própria unidade (madrugada, dia fechado) é o "Outro horário" da tela.
+ * PROFISSIONAL atende (unidade ∩ dela). A grade da tela oferece só os
+ * marcados (`components/shared/grade-de-horarios.tsx`; R15, o Heitor, 26/11:
+ * "quem está fora do horário também some das listas (o encaixe só pelo campo
+ * de horário)"): o encaixe fora do horário dela, e o que fica fora da própria
+ * unidade (madrugada, dia fechado), vão pelo "Outro horário" da tela.
  *
  * Puro: roda no navegador, com os horários que a action devolve.
  */

@@ -10,6 +10,15 @@ export const TEXTO_DO_CLINICO_SO_LEITURA =
   'Só para ler: escrever a ficha de saúde, as queixas e a evolução pede o Prontuário em Gerenciar.'
 
 /**
+ * A2 da 33ª simulação e a Decisão A (decisão do Claude, 26/11, princípio 7): o
+ * "Editar registro" corrige o texto clínico (PT-11) e não os insumos — a baixa
+ * do atendimento é movimento do estoque, e se corrige no Estoque ("Ajustar o
+ * estoque"). A faixa do registro destravado diz onde.
+ */
+export const TEXTO_DOS_INSUMOS_NO_EDITAR_REGISTRO =
+  'Os insumos não se editam aqui: o ajuste é no Estoque, por quem tem o Estoque em Gerenciar.'
+
+/**
  * O que a faixa do registro travado diz, pelo status do atendimento (D11 da
  * 8ª simulação, 2026-11-06; princípio 3). O cancelado e a falta diziam
  * "Atendimento concluído. Para corrigir, use 'Editar registro'": não houve

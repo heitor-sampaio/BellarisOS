@@ -477,6 +477,31 @@ test.describe.serial('o pré-atendimento: a cliente responde no app', () => {
       await ctx.close()
     }
   })
+
+  // O D16 da 33ª no app (FI-13; princípio 3, o mesmo caso numa tela só; decisão do
+  // Claude, 26/11): a ficha que a equipe preencheu abria no app em "Algo mudou?".
+  test('a ficha que a equipe preencheu, a cliente confere também no app', async ({ browser }) => {
+    const antes = new Date(Date.now() - 40 * 86_400_000).toISOString()
+    expect((await db().from('medical_records').update({ general_anamnesis: { ...(await anamnese()), respondidoEm: antes, origem: 'EQUIPE' } })
+      .eq('client_id', cliente.clientId)).error).toBeNull()
+    expect((await db().from('pre_atendimentos').update({ respondido_em: antes }).eq('client_id', cliente.clientId).eq('status', 'RESPONDIDO')).error).toBeNull()
+    await agendarC()
+    expect((await db().from('pre_atendimentos').select('modo').eq('client_id', cliente.clientId).eq('status', 'PENDENTE')).data).toEqual([{ modo: 'CONFIRMAR' }])
+    const ctx = await browser.newContext({ storageState: cliente.estado })
+    const page = await ctx.newPage()
+    try {
+      await page.goto(`${portal()}/pre-atendimento`)
+      await expect(page.getByText('Confira as respostas que a equipe preencheu')).toBeVisible()
+      await expect(page.getByText('Algo mudou na sua saúde?')).toHaveCount(0)
+      await expect(page.getByRole('button', { name: 'Corrigir respostas' })).toBeVisible()
+      await page.getByRole('button', { name: 'Está tudo certo' }).click()
+      await expect(page.getByText('Respostas enviadas')).toBeVisible()
+      // Conferida, ela passa a ser da cliente.
+      expect(await anamnese()).toMatchObject({ origem: 'CLIENTE_APP' })
+    } finally {
+      await ctx.close()
+    }
+  })
 })
 
 /**
@@ -783,6 +808,45 @@ test.describe('o pré-atendimento: o link para quem não tem o app', () => {
       // O link usado não abre de novo.
       await page.goto(`/pre-atendimento/${token}`)
       await expect(page.getByText('Ficha já respondida')).toBeVisible()
+    } finally {
+      await ctx.close()
+    }
+  })
+
+  // D16 da 33ª simulação (FI-13): a equipe preencheu a ficha na unidade e, DEPOIS,
+  // mandou um link novo. Ele abria em "Algo mudou na sua saúde? Nada mudou" — o
+  // modo de quem respondeu ela mesma. A ficha da equipe se confere pelo link novo também.
+  test('D16: a ficha que a equipe preencheu, mandada depois por um link novo, a cliente confere', async ({ browser }) => {
+    const { cliente, agendamento, cpf } = await agendada('Link novo')
+    const { data: f } = await db().from('forms').select('id, name, schema').eq('tenant_id', D.tenantId).eq('tipo', 'PRE_ATENDIMENTO')
+      .single<{ id: string; name: string; schema: unknown }>()
+    // A equipe respondeu na unidade (a ficha gravada, sem pendente aberto).
+    expect((await db().from('medical_records').upsert({ client_id: cliente, general_anamnesis: {
+      versao: 2, ficha: { formId: f!.id, nome: f!.name, rows: (f!.schema as { rows: unknown[] }).rows },
+      respostas: { allergies: 'Não', isPregnantOrBreastfeeding: 'Não', healthConditions: 'Nenhuma', medications: `Nenhum ${marca}` },
+      respondidoEm: new Date().toISOString(), origem: 'EQUIPE', respondidoPor: null,
+    } }, { onConflict: 'client_id' })).error).toBeNull()
+    // Gravar a ficha pela equipe fecha o pendente que o agendamento abriu (gravarAnamneseGeral).
+    expect((await db().from('pre_atendimentos').update({ status: 'RESPONDIDO', respondido_em: new Date().toISOString(), origem: 'EQUIPE' })
+      .eq('client_id', cliente).eq('status', 'PENDENTE')).error).toBeNull()
+    const { token } = await gerarLink(browser, agendamento)
+    expect(token, 'o link novo').not.toBe('')
+
+    const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } })
+    const page = await ctx.newPage()
+    try {
+      await page.goto(`/pre-atendimento/${token}`)
+      await page.getByLabel('CPF').fill(cpf)
+      await page.getByRole('button', { name: 'Continuar' }).click()
+      await expect(page.getByText('Confira as respostas que a equipe preencheu')).toBeVisible()
+      await expect(page.getByText('Algo mudou na sua saúde?')).toHaveCount(0)
+      await expect(page.getByRole('button', { name: 'Nada mudou' })).toHaveCount(0)
+      await expect(page.getByRole('button', { name: 'Corrigir respostas' })).toBeVisible()
+      await page.getByRole('button', { name: 'Está tudo certo' }).click()
+      await expect(page.getByText('Respostas enviadas')).toBeVisible()
+      // Conferida, ela passa a ser da cliente.
+      const { data: mr } = await db().from('medical_records').select('general_anamnesis').eq('client_id', cliente).single()
+      expect(mr?.general_anamnesis).toMatchObject({ origem: 'CLIENTE_LINK', respostas: { medications: `Nenhum ${marca}` } })
     } finally {
       await ctx.close()
     }

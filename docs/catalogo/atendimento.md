@@ -29,8 +29,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:18-21`
 - Antes: AG-03
 
-**AG-04.** A equipe pode agendar fora do horário de quem atende, e fora da grade de 30 em 30 minutos (encaixe): é permitido, e o modal avisa antes do Confirmar ("…O encaixe é permitido."). A grade sombreia o que está fora do horário de cada pessoa (na agenda da rede, o horário fechado de cada unidade, com a marca "Encaixe"), e clicar no sombreado continua agendando.
-- Fonte: princípio 2
+**AG-04.** A equipe pode agendar fora do horário de quem atende, e fora da grade de 30 em 30 minutos (encaixe): é permitido, e o modal avisa antes do Confirmar ("…O encaixe é permitido."). O encaixe se faz só pelo campo de horário (no Agendar, o campo de data e hora; no checkout e nas sessões, o "Outro horário (encaixe)"): as listas não oferecem quem está fora do horário nem o horário fora do expediente (AG-07). A grade sombreia o que está fora do horário de cada pessoa (na agenda da rede, o horário fechado de cada unidade, com a marca "Encaixe"), e clicar no sombreado continua agendando.
+- Fonte: princípio 2; o encaixe só pelo campo de horário: o Heitor, 26/11 (página de perguntas, R15): "Não: quem está fora do horário também some das listas (o encaixe só pelo campo de horário)"
 - Onde: `docs/regras/atendimento.md:32-44`, `:54-69`
 - Antes: AG-05, AG-06, AG-07
 
@@ -44,9 +44,9 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:57`, `:116-117`
 - Antes: AG-09, AG-15
 
-**AG-07.** O choque com outro atendimento da mesma pessoa que atende não é encaixe: o servidor recusa. O modal avisa antes ("Não vai ser agendado: X já tem atendimento das…"), cita todos os atendimentos que bloqueiam o horário (e a unidade, quando é outra) e oferece "Usar o próximo livre" — também no bloqueio e na sala escolhida que está ocupada, e livre da pessoa E da sala escolhida (R14). Nas listas (a grade de horários, as salas, quem atende — no agendar, nas sessões, no "Trocar profissional" e no "Mudar de unidade") só aparece o que está disponível: o que o servidor recusaria no horário (o choque, o bloqueio da pessoa ou da sala, a sala ocupada, o horário que passou) sai; o encaixe fica, com o aviso; a já escolhida que deixou de estar livre fica marcada ("(ocupada)"/"(bloqueada)"), com o "Confirmar" desligado; a lista vazia diz por quê ("Ninguém está livre nesse horário."). Com o choque à vista, o "Confirmar" da janela de agendar e o da de remarcar ("Não vai ser remarcado: …") ficam desligados, com o motivo ao lado ("Escolha outro horário: este bate com outro atendimento."); o bloqueio também desliga (AG-20); o encaixe fora do horário não desliga.
-- Fonte: princípio 3; o "Confirmar" desligado no choque: o Heitor, 26/11 (página de perguntas, R06): "Desliga o botão, e os três testes conferem o botão desligado (a proposta)". As listas só com o disponível: o Heitor, 26/11 (página de perguntas, R13): "Só mostra os horarios, salas e pessoas que estão livres"; o Heitor, 26/11 (página de perguntas, R14): "Horarios, salas e pessoas não disponíveis não devem aparecer nas listas". A leitura de "não disponível" (o que o servidor recusaria; o encaixe fica) e a escolhida que fica marcada: decisão do Claude, 26/11.
-- Onde: `docs/regras/atendimento.md:36-37`, `:44-46`, `:207-215`, `:1153-1162`
+**AG-07.** O choque com outro atendimento da mesma pessoa que atende não é encaixe: o servidor recusa. O modal avisa antes ("Não vai ser agendado: X já tem atendimento das…"), cita todos os atendimentos que bloqueiam o horário (e a unidade, quando é outra) e oferece "Usar o próximo livre" — também no bloqueio e na sala escolhida que está ocupada, e livre da pessoa E da sala escolhida (R14). Nas listas (a grade de horários, as salas, quem atende — no agendar, nas sessões, no "Trocar profissional" e no "Mudar de unidade") só aparece o que está disponível: o que o servidor recusaria no horário (o choque, o bloqueio da pessoa ou da sala, a sala ocupada, o horário que passou) sai, e também quem está fora do horário dela na unidade (sem horário próprio, o da unidade) ou com a unidade fechada — a grade só oferece o horário de quem atende, e o encaixe vai pelo campo de horário, com o aviso; a já escolhida que deixou de estar livre fica marcada ("(ocupada)"/"(bloqueada)", com o "Confirmar" desligado; "(fora do horário)", com o aviso do encaixe e o "Confirmar" ligado); a lista vazia diz por quê ("Ninguém está livre nesse horário."), e, com todos só fora do horário, o caminho do encaixe ("Para um encaixe fora do horário, apague o horário, escolha primeiro quem atende e depois digite o horário."). Com o choque à vista, o "Confirmar" da janela de agendar e o da de remarcar ("Não vai ser remarcado: …") ficam desligados, com o motivo ao lado ("Escolha outro horário: este bate com outro atendimento."); o bloqueio também desliga (AG-20); o encaixe fora do horário não desliga.
+- Fonte: princípio 3; o "Confirmar" desligado no choque: o Heitor, 26/11 (página de perguntas, R06): "Desliga o botão, e os três testes conferem o botão desligado (a proposta)". As listas só com o disponível: o Heitor, 26/11 (página de perguntas, R13): "Só mostra os horarios, salas e pessoas que estão livres"; o Heitor, 26/11 (página de perguntas, R14): "Horarios, salas e pessoas não disponíveis não devem aparecer nas listas". Quem está fora do horário também sai: o Heitor, 26/11 (página de perguntas, R15): "Não: quem está fora do horário também some das listas (o encaixe só pelo campo de horário)". A leitura de "não disponível" (o que o servidor recusaria) e a escolhida que fica marcada: decisão do Claude, 26/11. As salas não têm horário próprio: a unidade fechada não as tira da lista (decisão do Claude, 26/11). O caminho do encaixe na lista vazia: decisão do Claude, 26/11 (33ª simulação, arremate), pelo princípio 7.
+- Onde: `docs/regras/atendimento.md:36-37`, `:44-46`, `:207-215`, `:1153-1162`, `:258-268`
 - Antes: AG-10, AG-128
 
 **AG-08.** Para a equipe, um horário de N minutos só está livre se o intervalo inteiro não bate em agendamento de quem atende (em qualquer unidade da rede) nem em bloqueio dela. Os livres do app da cliente, do Copilot, do CRM e do "próximo livre" não incluem o horário bloqueado de quem atende (o bloqueio de sala não muda esses livres, a não ser na equipe com a sala escolhida: a grade e o "próximo livre" contam a sala — AG-07, R14). O atendimento concluído antes da hora ocupa só até a conclusão (o concluído antes de começar não ocupa nada). A ocupação e o "Horário livre" descontam o bloqueado. Vale com qualquer duração: o atendimento longo (mais de 12 h, a duração comum) bloqueia o horário até o fim dele, na recusa do choque, nos livres e no "próximo livre", que procura com a duração inteira (era cortada em 8 h, e a conferência olhava só 12 h para trás). A grade de horários do Agendar também recebe o atendimento longo que começou antes de ontem (lia só da véspera). E as agendas (dia, semana e mês da unidade, a da rede e a "Minha agenda") mostram o agendamento em CADA dia que ele ocupa: no dia seguinte o cartão começa no topo e diz o início real ("Continua de 09/12 às 08:00"); o cancelado e a falta ficam só no dia deles; a contagem do topo conta cada um no dia em que começa. E o dia conta o que continua de antes: a ocupação do dia conta o trecho de cada atendimento nele; o destaque da Minha agenda ("Em atendimento agora", "Atrasado") mostra o longo que começou ontem e ocupa agora; a "Agenda de hoje" do dashboard da unidade o lista, primeiro, com a hora real e "desde 09/12"; e o Copilot, ao ler a agenda de alguém num período, traz também o que começou antes e ainda o ocupa, com o início real.
@@ -59,8 +59,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:235-240`, `:703-716`
 - Antes: AG-21, AG-22
 
-**AG-10.** O modal Agendar, depois de escolhidos quem atende e o dia, mostra a grade dos horários livres (com a sala escolhida, também os bloqueios da sala). Os seletores do checkout do plano, das sessões de plano e de pacote e do pré-pago mostram a janela da unidade naquele dia, de 30 em 30 minutos, sem a pausa: os horários de quem atende em destaque, os outros como encaixe que se escolhe, e o resto pelo "Outro horário (encaixe)".
-- Fonte: princípio 3
+**AG-10.** O modal Agendar, depois de escolhidos quem atende e o dia, mostra a grade dos horários livres (com a sala escolhida, também os bloqueios da sala). Os seletores do checkout do plano, das sessões de plano e de pacote e do pré-pago mostram o horário de quem atende naquele dia (a unidade ∩ ela), de 30 em 30 minutos, sem a pausa e sem o ocupado e o bloqueado; o fora do horário dela (e a unidade fechada) não aparece, e o encaixe vai pelo "Outro horário (encaixe)" (no Agendar, pelo campo de data e hora). O dia em que ela não atende diz "X não atende neste dia. Para um encaixe, use …".
+- Fonte: princípio 3; só o horário de quem atende: o Heitor, 26/11 (página de perguntas, R15): "Não: quem está fora do horário também some das listas (o encaixe só pelo campo de horário)"
 - Onde: `docs/regras/atendimento.md:91-102`, `:201-207`, `:225-234`
 - Antes: AG-14, AG-18, AG-20
 
@@ -209,13 +209,13 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:1097-1098`, `:1122-1127`
 - Antes: AG-126
 
-**AG-39.** A janela do agendamento tem "Trocar profissional" (quem tem a Agenda em Gerenciar; sem o "só os meus", SM1). Só se oferece quem atende na unidade do agendamento e está livre no horário — sem choque e sem bloqueio (era "(ocupada)" desligada, e a bloqueada aparecia); ninguém livre, a janela diz "Ninguém está livre nesse horário." e manda remarcar antes; pergunta antes; arrastar para a coluna de outra pessoa também pergunta. O histórico grava a troca.
-- Fonte: o Heitor, 2026-10-28: "a profissional (no que é dela) ou quem gerencia a agenda cancela e passa o atendimento" (o "no que é dela" saiu: o Heitor, 2026-11-23, docs/revisao.md, SM1: "pode tirar, as vistas pessoais resolvem"); só quem está livre: o Heitor, 26/11 (página de perguntas, R13): "Só mostra os horarios, salas e pessoas que estão livres"
+**AG-39.** A janela do agendamento tem "Trocar profissional" (quem tem a Agenda em Gerenciar; sem o "só os meus", SM1). Só se oferece quem atende na unidade do agendamento e está livre no horário — sem choque, sem bloqueio e dentro do horário dela ali (era "(ocupada)" desligada, e a bloqueada aparecia; a fora do horário aparecia até a R15); ninguém livre, a janela diz "Ninguém está livre nesse horário." e manda remarcar antes; pergunta antes; arrastar para a coluna de outra pessoa também pergunta. O histórico grava a troca.
+- Fonte: o Heitor, 2026-10-28: "a profissional (no que é dela) ou quem gerencia a agenda cancela e passa o atendimento" (o "no que é dela" saiu: o Heitor, 2026-11-23, docs/revisao.md, SM1: "pode tirar, as vistas pessoais resolvem"); só quem está livre: o Heitor, 26/11 (página de perguntas, R13): "Só mostra os horarios, salas e pessoas que estão livres"; o Heitor, 26/11 (página de perguntas, R15): "Não: quem está fora do horário também some das listas (o encaixe só pelo campo de horário)"
 - Onde: `docs/regras/atendimento.md:596-615`
 - Antes: AG-84
 
-**AG-40.** Na rede de duas ou mais unidades, quem tem a Agenda em Gerenciar muda a unidade de um agendamento Agendado ou Confirmado ("Mudar de unidade"): escolhe a unidade (das que alcança), quem atende lá e está livre no horário, e a sala (opcional) que serve ao procedimento e está livre — sem ninguém ou sem sala livre, a janela diz por quê; o horário fica, e confirma antes. O avulso ainda sem lançamento passa ao preço da unidade nova; o já pago fica com o dele. O histórico grava, e a cliente recebe o novo horário com a unidade.
-- Fonte: decisão do Claude; só quem e a sala que estão livres: o Heitor, 26/11 (página de perguntas, R13): "Só mostra os horarios, salas e pessoas que estão livres"
+**AG-40.** Na rede de duas ou mais unidades, quem tem a Agenda em Gerenciar muda a unidade de um agendamento Agendado ou Confirmado ("Mudar de unidade"): escolhe a unidade (das que alcança), quem atende lá e está livre no horário (sem choque, sem bloqueio e dentro do horário dela na unidade nova — a unidade nova fechada nesse horário não oferece ninguém), e a sala (opcional) que serve ao procedimento e está livre — sem ninguém ou sem sala livre, a janela diz por quê; o horário fica, e confirma antes. O avulso ainda sem lançamento passa ao preço da unidade nova; o já pago fica com o dele. O histórico grava, e a cliente recebe o novo horário com a unidade.
+- Fonte: decisão do Claude; só quem e a sala que estão livres: o Heitor, 26/11 (página de perguntas, R13): "Só mostra os horarios, salas e pessoas que estão livres"; quem está fora do horário também sai: o Heitor, 26/11 (página de perguntas, R15): "Não: quem está fora do horário também some das listas (o encaixe só pelo campo de horário)"
 - Onde: `docs/regras/atendimento.md:616-633`
 - Antes: AG-85
 
@@ -363,8 +363,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:377-410`
 - Antes: AG-56, AG-58
 
-**AG-67.** O agendamento só se repassa a quem atende na unidade dele, realiza o procedimento e está livre no horário (o servidor também só aceita esses). A oportunidade vai a quem tem o CRM, ou fica "Sem responsável". Repassar pede a Agenda em Gerenciar (os agendamentos) e a permissão de trocar o responsável (as oportunidades); sem isso, a janela só diz quantos ficam. Cada agendamento também pode ser cancelado ali ("Cancelar este agendamento") ou ficar com a pessoa ("Deixar com <nome> (sem repasse)"); quando ninguém cumpre as três condições, só restam essas duas. O que falhar volta à tela e a pessoa segue ativa; o histórico grava o repasse.
-- Fonte: decisão do Claude
+**AG-67.** O agendamento só se repassa a quem atende na unidade dele, realiza o procedimento e está livre no horário (o servidor também só aceita esses). A lista do repasse também não oferece quem está fora do horário dela na unidade (o servidor aceitaria: é encaixe), e o "Repassar todos para" diz o motivo ("X está fora do horário de atendimento nesse horário: escolha outra pessoa."). A oportunidade vai a quem tem o CRM, ou fica "Sem responsável". Repassar pede a Agenda em Gerenciar (os agendamentos) e a permissão de trocar o responsável (as oportunidades); sem isso, a janela só diz quantos ficam. Cada agendamento também pode ser cancelado ali ("Cancelar este agendamento") ou ficar com a pessoa ("Deixar com <nome> (sem repasse)"); quando ninguém cumpre as três condições, só restam essas duas. O que falhar volta à tela e a pessoa segue ativa; o histórico grava o repasse.
+- Fonte: decisão do Claude; quem está fora do horário não aparece na lista: o Heitor, 26/11 (página de perguntas, R15): "Não: quem está fora do horário também some das listas (o encaixe só pelo campo de horário)"
 - Onde: `docs/regras/atendimento.md:384-397`, `:1657`
 - Antes: AG-57, PC-30
 
@@ -493,6 +493,11 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:3764`, `:3913`
 - Antes: AT-44
 
+**AT-22.** O "Editar registro" corrige o registro clínico (PT-11), não os insumos: a baixa do atendimento é movimento do estoque e se corrige no Estoque, pelo Ajuste (ES-26), por quem tem o Estoque em Gerenciar — não no prontuário. A tela do "Editar registro" diz isso: "Os insumos não se editam aqui: o ajuste é no Estoque, por quem tem o Estoque em Gerenciar."
+- Fonte: decisão do Claude, 26/11 (33ª simulação, Decisão A) — o "Editar registro" é do Prontuário em Gerenciar (AT-18) e a baixa é do estoque (ES-01); a frase na tela, pelo princípio 7 (A2 da 33ª: na A10, a tela não dizia onde se corrige o insumo, e a correção foi feita pela ficha da cliente)
+- Onde: `docs/regras/atendimento.md:3042-3046`; AT-18, PT-11, ES-26
+- Antes: (nova, 26/11)
+
 ### A desistência no meio
 
 **AT-20.** Cancelar o atendimento EM ANDAMENTO (a desistência) pede o motivo e oferece "Intercorrência (opcional)" (a quem tem o Prontuário em Gerenciar) e "Baixar do estoque o que já foi aplicado". Grava tudo junto ou nada; não há comissão nem pontos. A tela do cancelado mostra a intercorrência abaixo do motivo, só a quem vê o prontuário. Desistir pede o Atendimento em Gerenciar (UM2), não a Agenda; o agendado que não começou segue com a Agenda. A janela da agenda não oferece "Não compareceu" no Em atendimento. O Copilot segue a mesma regra.
@@ -504,6 +509,11 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Fonte: o Heitor, 2026-11-18: "Não existe isso de desistir no meio do atendimento. Se isso por ventura acontecer, problema de quem desistir."; o cancelar da cliente pelo app como "antes de iniciar": decisão do Claude, 26/11 (31ª simulação, A06) — o cancelar no prazo é o caminho que a AG-53 dá à cliente, não é falta
 - Onde: `docs/regras/atendimento.md:1299-1301`, `:3414`, `:3424`, `:3919`
 - Antes: AT-47, AT-48, AG-118
+
+**AT-23.** A desistência aconteceu na hora em que se desistiu: o atendimento iniciado e cancelado no meio vale, nos números, pelo fim real (a hora da desistência), como o concluído antes da hora marcada vale pela conclusão (OC-01 de Indicadores). Por isso ele entra no "até agora" do dashboard assim que se desiste (CC-03 de Indicadores), mesmo com a hora marcada ainda por vir, e cai no mesmo dia em toda tela.
+- Fonte: decisão do Claude, 26/11 (33ª simulação, Decisão A) — pela OC-01 (o atendimento aconteceu na hora marcada, ou antes, se acabou antes) e pelo princípio 3 (D14 da 33ª: a A08, iniciada às 10:11, desistida às 10:12 e marcada para 14:15, contava "Cancelado 1" nos Relatórios e ficava fora dos "Cancelados/faltas" do dashboard)
+- Onde: `docs/regras/indicadores.md:235-240` (migration `20261212100001`); OC-01 e CC-03 de Indicadores; o `aconteceu_em` (migration `20261022000001`)
+- Antes: (nova, 26/11)
 
 ## Plano de tratamento (PL)
 
@@ -714,6 +724,11 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:2252-2266`
 - Antes: PT-35, PT-36
 
+**PT-19.** O aviso "mapa × baixa" (PT-18) compara sempre a APLICAÇÃO registrada neste atendimento (PT-13); o planejamento sem aplicação só se compara com o produto que ESTE atendimento tem no cartão de insumos, marcado ou não (o da Toxina numa sessão de Toxina). O planejamento para outro dia — a Toxina desenhada numa Avaliação, que não tem a Toxina nos insumos — não é consumo: o "Finalizar" não o compara com a baixa e não oferece "Incluir na baixa".
+- Fonte: decisão do Claude, 26/11 (33ª simulação, Decisão A) — pelo princípio 5 ("Sem execução, sem valor") (A1 da 33ª: na Avaliação da A01, o "Finalizar" oferecia "Incluir 50 UI na baixa" com o planejamento da Toxina, que era para outro agendamento); o texto estreito (o produto do cartão de insumos se compara): decisão do Claude, 26/11 (33ª simulação, arremate), pelo princípio 3 — é o que o sistema faz (`totaisQueSeComparam`)
+- Onde: `docs/regras/atendimento.md:2713-2720`; PT-13, PT-18; `apps/web/lib/injetaveis/dose.ts` (`divergenciasDaBaixa`, `totaisQueSeComparam`)
+- Antes: (nova, 26/11); antes do arremate: "vale só para o mapa com a APLICAÇÃO registrada neste atendimento"
+
 ## Fichas (FI)
 
 **FI-01.** Cada procedimento liga UMA "Ficha de atendimento", montada em Configurações → Fichas; a rede tem quantas quiser. Ela se preenche no atendimento, aparece em todo caminho da tela do atendimento (avaliação, plano gerado, sessão de plano, rede sem planos), só a quem vê o prontuário, e as respostas ficam no registro.
@@ -746,10 +761,10 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:783-793`, `:1868`, `:1891`, `:1989`
 - Antes: FI-09, FI-28, AG-199, AG-200, PT-08
 
-**FI-07.** Tudo que é obrigatório barra: a pergunta obrigatória sem resposta (na ficha de saúde ou na de atendimento) barra o "Salvar ficha", o "Finalizar atendimento", o "Aceitar plano" e o "Gerar plano · a cliente vai pensar", no servidor e não só na tela; a ficha de saúde não se envia vazia nem com obrigatória em branco, pela cliente (app e link) ou pela equipe. Vale o que fica gravado: a resposta da cliente pelo app ou link conta, e contam as perguntas da ficha ATUAL. Sem ficha ligada, ou sem obrigatória, nada barra; a foto e o planejador não barram a ficha de saúde.
-- Fonte: o Heitor, 2026-10-29: "tudo que for obrigatório é obrigatório e barra qualquer progressão se não for feito"
-- Onde: `docs/regras/atendimento.md:1707`, `:1816`, `:1838`, `:1856`, `:3524`, `:3541`, `:3557`, `:3581`, `:3821`
-- Antes: AT-27, AT-29, AT-32, FI-05, FI-26
+**FI-07.** Tudo que é obrigatório barra: a pergunta obrigatória sem resposta (na ficha de saúde ou na de atendimento) barra o "Salvar ficha", o "Finalizar atendimento", o "Aceitar plano" e o "Gerar plano · a cliente vai pensar", no servidor e não só na tela; a ficha de saúde não se envia vazia nem com obrigatória em branco, pela cliente (app e link) ou pela equipe. Vale o que fica gravado: a resposta da cliente pelo app ou link conta, e contam as perguntas da ficha ATUAL. Sem ficha ligada, ou sem obrigatória, nada barra; a foto e o planejador não barram a ficha de saúde. Na avaliação, a ficha de saúde de quem só LÊ o prontuário (o cartão de leitura) barra do mesmo jeito: a tela não chega ao "Confirmar conclusão" com obrigatória em branco.
+- Fonte: o Heitor, 2026-10-29: "tudo que for obrigatório é obrigatório e barra qualquer progressão se não for feito"; o cartão de leitura da avaliação: decisão do Claude, 26/11 (33ª simulação, D17), pela fala acima
+- Onde: `docs/regras/atendimento.md:1707`, `:1816`, `:1838`, `:1856`, `:3524`, `:3541`, `:3557`, `:3581`, `:3821`, `:4294-4297`
+- Antes: AT-27, AT-29, AT-32, FI-05, FI-26; antes de 26/11: na avaliação, o cartão de leitura deixava chegar ao "Confirmar conclusão", e só o servidor recusava
 
 **FI-08.** A ficha de saúde tem validade, da rede (padrão 6 meses). A validade é o que a rede digita, de 1 mês para cima: acima de 36 meses a tela avisa ("Acima do comum (mais de 36 meses). Confira: o valor vale como está.") e o valor vale; só se recusa o zero, o negativo, o fracionário e o que passa de 1.200 meses (100 anos). Dentro dela, a cliente só confirma ("algo mudou?"), e confirmar renova a data; fora dela, ou sem resposta, responde a ficha inteira. A ficha vencida continua valendo, e o atendimento avisa a quem vê o prontuário ("…está vencida… Ela continua valendo; peça a atualização."); a nunca respondida também avisa, com "Responder aqui" e "Enviar o link". O "Enviar o link" aparece a quem tem a Agenda em Gerenciar (a regra do "Enviar a ficha", FI-14), atenda ou não (AG-69).
 - Fonte: o Heitor, 2026-11-02: "mantém como está mas com aviso de que a ficha de saúde está vencida"; o "Enviar o link" atenda ou não: decisão do Claude, 25/11 (o Heitor revisa), pela UM5 (AG-69; D11 da 29ª simulação); a validade acima de 36 meses avisa e grava: o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito."; o impossível (negativo, fracionário, acima de 100 anos): decisão do Claude, 25/11 (o aviso começa no teto de antes)
@@ -776,10 +791,10 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:1754`, `:1896`
 - Antes: FI-17, FI-24
 
-**FI-13.** O link da ficha pede CPF ou nascimento antes de mostrar qualquer pergunta; cinco tentativas erradas derrubam o link, vinte por hora param quem tenta, e o link morre com a ficha pendente. O link que ainda vale se mostra de novo; "Gerar outro" cancela o anterior. A ficha que a equipe preencheu se confere pelo link ("Está tudo certo" ou "Corrigir respostas") e passa a ser da cliente; a que ela mesma respondeu diz "já respondida", com o contato da unidade.
-- Fonte: decisão do Claude
-- Onde: `docs/regras/atendimento.md:1757`, `:1776-1796`
-- Antes: FI-18, FI-22, FI-23
+**FI-13.** O link da ficha pede CPF ou nascimento antes de mostrar qualquer pergunta; cinco tentativas erradas derrubam o link, vinte por hora param quem tenta, e o link morre com a ficha pendente. O link que ainda vale se mostra de novo; "Gerar outro" cancela o anterior. A ficha que a equipe preencheu se confere pelo link ("Está tudo certo" ou "Corrigir respostas") e passa a ser da cliente; a que ela mesma respondeu diz "já respondida", com o contato da unidade. A ficha que a equipe preencheu e que se manda DEPOIS por um link novo, dentro da validade, também abre para conferir; no app (o pré-atendimento do portal da cliente) vale a mesma regra, e "Está tudo certo" a grava como da cliente.
+- Fonte: decisão do Claude; o link novo e o app: decisão do Claude, 26/11 (33ª simulação, D16 e o arremate), pelo princípio 3
+- Onde: `docs/regras/atendimento.md:1757`, `:1776-1796`, `:2215-2227`
+- Antes: FI-18, FI-22, FI-23; antes de 26/11: pelo link novo e no app, a ficha da equipe abria em "Algo mudou na sua saúde? Nada mudou", o modo de quem respondeu ela mesma
 
 **FI-14.** "Enviar a ficha" está sempre na janela do agendamento, para quem tem a Agenda em Gerenciar (copiar o link ou abrir no WhatsApp do aparelho); sem pendente, o botão abre uma para este agendamento, sem a regra dos 30 dias. Quem só vê a agenda não vê o bloco; o suporte não manda. Cliente sem CPF nem nascimento: a janela pede o nascimento a quem tem as Clientes e a Agenda em Gerenciar (só preenche o vazio).
 - Fonte: princípio 1
@@ -963,20 +978,20 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:2600`, `:2776`, `:2793-2808`
 - Antes: ES-34, ES-35, ES-36, ES-37
 
-**ES-18.** O consumo, a perda, a venda e o valor em estoque usam o custo do lote de onde a quantidade saiu; a parte que nenhum lote cobre usa o último custo; o lote transferido herda o custo do de origem. A margem do catálogo usa o custo atual. Editar o produto não muda o custo: ele vem das entradas.
-- Fonte: princípio 3
-- Onde: `docs/regras/atendimento.md:2633`, `:3266`, `:3276`
-- Antes: ES-38, ES-17
+**ES-18.** O consumo, a perda, a venda e o valor em estoque usam o custo do lote de onde a quantidade saiu; a parte que nenhum lote cobre usa o último custo; o lote transferido herda o custo do de origem. A margem do catálogo usa o custo atual. Editar o produto não muda o custo: ele vem das entradas. O insumo do atendimento e o ajuste a menos já nascem com o custo dos lotes de onde saem, e a baixa não deixa "Corrigiu o custo do lote" na Auditoria.
+- Fonte: princípio 3; o custo no próprio lançamento: decisão do Claude, 26/11 (33ª simulação, D7), pelo princípio 3
+- Onde: `docs/regras/atendimento.md:2633`, `:3266`, `:3276`, `:3966-3975`
+- Antes: ES-38, ES-17; antes de 26/11: o custo se corrigia depois da baixa, e cada baixa deixava "Corrigiu o custo do lote" na Auditoria (as linhas de antes ficam: a sugestão nº 109)
 
 **ES-19.** O saldo aparece na unidade de consumo com o equivalente exato em embalagens ("268 UI · 2,68 frascos"); o mínimo, como na prateleira ("10 refis fechados + 1 aberto com 840 g"). O Histórico mostra cada movimento na unidade dele e em embalagens.
 - Fonte: princípio 3
 - Onde: `docs/regras/atendimento.md:2735`, `:2757`, `:2884`
 - Antes: ES-39
 
-**ES-20.** A situação do produto compara o rendimento com o mínimo: "Abaixo do mínimo" e "No mínimo" contam como estoque baixo. "Sem estoque" é o produto sem saldo positivo no recorte (o negativo e o que nunca entrou na unidade contam), uma conta de produtos igual no Estoque e nos Relatórios.
-- Fonte: princípio 3
-- Onde: `docs/regras/atendimento.md:2889`, `:3032`, `:3044`
-- Antes: ES-40, ES-41
+**ES-20.** A situação do produto compara o rendimento com o mínimo: "Abaixo do mínimo" e "No mínimo" contam como estoque baixo. "Sem estoque" é o produto sem saldo positivo no recorte (o negativo e o que nunca entrou na unidade contam), uma conta de produtos igual no Estoque e nos Relatórios. O "Produtos zerados" dos Relatórios conta pelo saldo que o Estoque mostra (o rendimento): 8 ml num frasco de 10 ml não é zerado.
+- Fonte: princípio 3; o zerado pelo rendimento: decisão do Claude, 26/11 (33ª simulação, D6), pelo princípio 3
+- Onde: `docs/regras/atendimento.md:2889`, `:3032`, `:3044`, `:3960-3965`
+- Antes: ES-40, ES-41; antes de 26/11: os Relatórios contavam o zerado pelas embalagens, e o frasco aberto com 8 ml era "zerado"
 
 **ES-21.** Quem tem o Estoque em Ver vê o Valor e o Giro nos dois portais (quem não deve ver custo não recebe o módulo). O giro conta só os insumos dos atendimentos, sem a venda de produto, e a tela diz isso.
 - Fonte: princípio 1
@@ -996,10 +1011,10 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 
 ### Lotes, ajuste, perda e transferência
 
-**ES-24.** O lote é da unidade. A saída tira primeiro do lote válido que vence antes, e os vencidos só depois; a transferência leva o lote ao destino; o vencido é sinalizado, não bloqueado. A validade é um dia: no dia da validade o lote vale, e vencido é a partir do dia seguinte, pelo dia da unidade do lote.
-- Fonte: decisão do Claude
-- Onde: `docs/regras/atendimento.md:2591`, `:2911`
-- Antes: ES-50, ES-51
+**ES-24.** O lote é da unidade. A saída tira primeiro do lote válido que vence antes, e os vencidos só depois; a transferência leva o lote ao destino; o vencido é sinalizado, não bloqueado. A validade é um dia: no dia da validade o lote vale, e vencido é a partir do dia seguinte, pelo dia da unidade do lote. O consumo maior que o saldo deixa a parte que nenhum lote cobriu em saldo negativo; a entrada seguinte com lote paga essa falta antes de encher o lote, e a soma dos lotes volta a ser o saldo. O Histórico do produto e as Movimentações dos Relatórios dizem o que cada lote cobriu ("Lote AM1: 2 ml · 2 ml sem lote"; "Lote AM2 val. …: 8 ml · 2 ml cobriram a falta de antes (sem lote)").
+- Fonte: decisão do Claude; a falta sem lote e o que cada lote cobriu: decisão do Claude, 26/11 (33ª simulação, D5), pelo princípio 3
+- Onde: `docs/regras/atendimento.md:2591`, `:2911`, `:3936-3959`
+- Antes: ES-50, ES-51; antes de 26/11: a entrada enchia o lote inteiro com o saldo negativo, a soma dos lotes passava do saldo, e a linha dizia o lote como se cobrisse o movimento inteiro
 
 **ES-25.** Para o recall, cada lote (inclusive o esgotado) tem "Aplicado em: ver clientes": cada saída do lote para uma cliente, com a hora da conclusão e quem atendeu (ou quem vendeu) e a quantidade daquele lote. Precisa do Estoque em Ver e das Clientes em Ver: sem as Clientes, o botão não aparece. Cada atendimento do prontuário diz o que se tirou de cada lote e, a quem tem os dois, leva ao "Aplicado em".
 - Fonte: princípio 3

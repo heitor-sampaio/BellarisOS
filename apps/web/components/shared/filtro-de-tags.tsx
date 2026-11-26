@@ -11,10 +11,11 @@ import { buscaComAsTags } from '@/lib/tags/filtro-na-url'
  * O filtro "Tags" de uma lista que mora na URL (`?tags=`) — CLAUDE.md §1,
  * Tags: o filtro personalizado da rede, ao lado dos filtros fixos da tela. A
  * consulta é do servidor (a página lê `?tags=` e filtra no banco); aqui só se
- * escolhe e se navega. As opções são o vocabulário da rede, lido no SERVIDOR
- * (`tagsAtivasDaRede`) e passado como prop — quem só tem o Financeiro também
- * as vê —, mais a marcada que saiu dele (arquivada). Sem tag nenhuma na rede,
- * o filtro não aparece.
+ * escolhe e se navega. As opções são lidas no SERVIDOR e passadas como prop
+ * — quem só tem o Financeiro também as vê: as ativas e as ARQUIVADAS que alguém
+ * ainda tem (`comAsArquivadasEmUso`; A6 e Decisão D da 33ª: arquivar tira das
+ * opções de marcar, não do filtro), mais a marcada na URL. Sem tag nenhuma na
+ * rede, o filtro não aparece.
  */
 export function FiltroDeTags({ tagsDaRede, escolhidas, sobre, limpar = [] }: {
   tagsDaRede: string[]

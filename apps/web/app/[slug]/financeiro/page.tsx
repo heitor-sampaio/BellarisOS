@@ -32,7 +32,7 @@ import { startOfDayTZ } from '@/lib/datetime'
 import { situacaoDoVencimento } from '@/lib/financeiro/vencimentos'
 import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { tagsDaUrl } from '@/lib/tags/filtro-na-url'
-import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
+import { tagsAtivasDaRede, comAsArquivadasEmUso } from '@/lib/tags/vocabulario'
 import { selectComAsTags, comAsTags } from '@/lib/financeiro/filtro-de-tags'
 
 /**
@@ -197,7 +197,7 @@ export default async function FinancialPage({
   ])
   // As opções do filtro de Tags: o vocabulário da rede, lido aqui (quem só tem
   // o Financeiro também as vê); o Resumo não tem o filtro.
-  const tagsDaRede = aba === 'resumo' ? [] : await tagsAtivasDaRede(ctx.tenantId!)
+  const tagsDaRede = aba === 'resumo' ? [] : await comAsArquivadasEmUso(ctx.tenantId!, tagsAtivasDaRede(ctx.tenantId!))
   const transactions = (lancamentos ?? []).map(({ client_id, maquininha_id, ...t }) => ({
     ...t,
     maquininha_nome: maquininhaDoRotulo(maquininhas, (maquininha_id as string | null) ?? maquininhaDoEstorno[t.id as string]),

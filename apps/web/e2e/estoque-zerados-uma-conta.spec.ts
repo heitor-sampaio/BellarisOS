@@ -88,3 +88,31 @@ test('D19: Relatórios, dashboard e Estoque da rede dizem o mesmo número de pro
     await expect(rel).toContainText('sem saldo em nenhuma unidade')
   })
 })
+
+// D6 da 33ª simulação.
+test('o zerado é pelo saldo que a tela mostra (o rendimento) — 8 ml num frasco de 10 ml não é zerado', async () => {
+  // O ácido do Batel: o rendimento em 8 ml e as embalagens em 0 (a entrada que
+  // somava ao frasco devido). O Estoque o mostra com saldo (situacaoDoEstoque
+  // lê o rendimento); os Relatórios o contavam zerado por `current_stock`.
+  const { data: p, error: eP } = await db().from('products').insert({
+    tenant_id: rede!.tenantId, name: `${PREFIXO} Ácido ${marca}`, unit: 'frasco', units_per_package: 10, consumption_unit: 'ml',
+  }).select('id').single<{ id: string }>()
+  expect(eP).toBeNull()
+  expect((await db().from('branch_product_stock').insert({
+    product_id: p!.id, branch_id: batel, current_stock: 0, current_rendimento: 8, min_stock: 0,
+  })).error).toBeNull()
+  const agora = new Date()
+  const { data, error } = await db().rpc('metrics_relatorio', {
+    p_tenant: rede!.tenantId, p_branch_ids: [rede!.branchId, batel],
+    p_from: new Date(agora.getTime() - 86_400_000).toISOString(), p_to: agora.toISOString(),
+    p_prev_from: new Date(agora.getTime() - 2 * 86_400_000).toISOString(), p_prev_to: new Date(agora.getTime() - 86_400_000).toISOString(),
+    p_aba: 'estoque', p_granularidade: 'day', p_professional_id: null,
+  })
+  expect(error).toBeNull()
+  const r = data as { zerados: number; estoque_por_unidade: { branch_id: string; zerados: number }[] }
+  // Na rede: só a Luva (o Hidratante e o Ácido têm saldo no Batel).
+  expect(r.zerados, 'o Ácido tem 8 ml no Batel').toBe(1)
+  // Por unidade: na principal, os três sem saldo nela; no Batel, só a Luva.
+  expect(r.estoque_por_unidade.find(u => u.branch_id === rede!.branchId)?.zerados).toBe(3)
+  expect(r.estoque_por_unidade.find(u => u.branch_id === batel)?.zerados, 'o Ácido tem 8 ml no Batel').toBe(1)
+})

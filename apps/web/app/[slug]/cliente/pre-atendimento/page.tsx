@@ -3,7 +3,8 @@ import { CheckCircle2 } from 'lucide-react'
 import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
-import { paraAnamneseGeral, anamneseRespondida } from '@/lib/anamnese-geral'
+import { paraAnamneseGeral } from '@/lib/anamnese-geral'
+import { modoDaFichaPeloLink } from '@/lib/pre-atendimento/modo-da-ficha'
 import { preAtendimentoPendente } from '@/lib/pre-atendimento/ficha'
 import { PreAtendimentoDaCliente } from '@/components/client-portal/pre-atendimento'
 import { Dica } from '@/components/shared/dica'
@@ -42,8 +43,10 @@ export default async function PreAtendimentoPage({ params }: { params: Promise<{
 
   return (
     <PreAtendimentoDaCliente
-      // Sem resposta anterior (ou com a ficha gravada vazia), "nada mudou" não tem o que confirmar: a ficha inteira.
-      modo={pendente.modo === 'CONFIRMAR' && anamneseRespondida(atual) ? 'CONFIRMAR' : 'COMPLETO'}
+      // A regra do link (FI-13; o arremate da 33ª): sem resposta anterior, a ficha
+      // inteira; a que a EQUIPE preencheu, a cliente confere ("Está tudo certo" ou
+      // "Corrigir respostas"); a que ela mesma respondeu, "algo mudou?".
+      modo={modoDaFichaPeloLink({ conferir: false, modoDoPendente: pendente.modo, atual })}
       ficha={pendente.ficha}
       respostasAnteriores={atual?.respostas ?? {}}
       voltar={voltar}

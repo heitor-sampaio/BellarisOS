@@ -21,7 +21,7 @@ import { unidadesParaLer, nomeNaTela } from '@/lib/unidades/da-tela'
 import { fusoComum, fusoValido } from '@/lib/unidades/fuso'
 import { quemConcluiOAtendimento } from '@/lib/equipe/quem-desfaz'
 import { filtrosDaAgenda, aplicarFiltrosDaAgenda, bloqueioPassaNoFiltro } from '@/lib/agenda/filtros'
-import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
+import { tagsAtivasDaRede, comAsArquivadasEmUso } from '@/lib/tags/vocabulario'
 
 type AgendaView = 'day' | 'week'
 
@@ -132,7 +132,7 @@ export default async function AdminAgendaPage({
   const [listasDeQuemAtende, salasDaUnidade, tagsDaRede] = await Promise.all([
     agendaOwner ? Promise.resolve([]) : Promise.all(branchIds.map(id => getCachedBranchProfessionals(id, ctx.tenantId!))),
     umaUnidade ? getCachedRoomsByBranch(umaUnidade.id, ctx.tenantId!) : Promise.resolve(null),
-    tagsAtivasDaRede(ctx.tenantId!),
+    comAsArquivadasEmUso(ctx.tenantId!, tagsAtivasDaRede(ctx.tenantId!)),
   ])
   const quemAtende = agendaOwner ? null : [...new Map(
     listasDeQuemAtende.flatMap(l => (l ?? []) as { id: string; name: string }[]).map(p => [p.id, { id: p.id, name: p.name }]),

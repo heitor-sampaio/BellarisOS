@@ -24,6 +24,7 @@ import { ProdutosDaComanda } from '@/components/shared/pdv/produtos-da-comanda'
 import { faltaDosProdutosDaComanda } from '@/lib/vendas/falta-de-estoque'
 import type { ItemDaComanda } from '@/lib/pdv/itens-da-comanda'
 import type { ParcelaEmAberto } from '@/lib/pdv/parcelas-da-cliente'
+import type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import { ParcelasEmAberto } from '@/components/shared/pdv/parcelas-em-aberto'
 import { AcoesDoLancamentoDaFicha } from '@/components/shared/acoes-do-lancamento-da-ficha'
 import type { LancamentoDaComanda } from '@/lib/pdv/lancamentos-da-comanda'
@@ -41,7 +42,7 @@ export interface ComandaEscolhida {
   /** Os produtos de Venda direta que ainda se podem acrescentar (só na comanda do atendimento a receber). */
   produtosParaAcrescentar: { id: string; name: string; price: number; unidade: string; disponivel: number }[]
   pacotesParaAbater:  PacoteParaAbater[]
-  pagamentoCombinado: { metodo: string | null; rotulo: string; desconto?: number } | null
+  pagamentoCombinado: { metodo: string | null; rotulo: string; desconto?: number; pagamento?: PagamentoDoPlano | null } | null
   /** com-06: a equipe do "Quem vendeu os produtos" da comanda com produto a vender (nulo, sem produto). */
   equipeDosProdutos?: MembroDaVenda[] | null
   /** A2 da 15ª: na comanda paga, quem estorna — só a quem não tem o Financeiro em Gerenciar (nulo: não diz). */

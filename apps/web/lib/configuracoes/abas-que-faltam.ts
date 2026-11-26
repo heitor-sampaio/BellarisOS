@@ -1,5 +1,5 @@
 import type { AppModule } from '@estetica-os/types'
-import { ABAS_DE_CONFIGURACAO, type ChaveDeAba } from '@/lib/configuracoes/abas'
+import { ABAS_DE_CONFIGURACAO, ABAS_DA_REDE_TODA, type ChaveDeAba } from '@/lib/configuracoes/abas'
 
 /**
  * Por que Configurações mostra só estas abas (27ª simulação; princípio 7: "tela
@@ -17,14 +17,26 @@ export function porQueSoEstasAbas(visiveis: readonly ChaveDeAba[], o: {
   nomeDoModulo: (m: AppModule) => string
 }): string | null {
   if (o.gerencia('settings') || !visiveis.length) return null
-  const partes = ABAS_DE_CONFIGURACAO.filter(a => visiveis.includes(a.key)).map(a => {
+  const abas = ABAS_DE_CONFIGURACAO.filter(a => visiveis.includes(a.key))
+  // D11 da 33ª (A-CONF1 da 25ª, como `rotuloDasAbasAlcancadas`): quem chega
+  // aqui não tem Configurações em Gerenciar — não é a Admin da rede, que tem
+  // tudo —, e a aba da rede toda diz "Esta configuração é só da Admin da
+  // rede." lá dentro. Ela não "vem da permissão": a nota diz de quem é.
+  const partes = abas.filter(a => !ABAS_DA_REDE_TODA.includes(a.key)).map(a => {
     const aba = a as { label: string; module: AppModule; alternativas?: readonly AppModule[] }
     const de = [aba.module, ...(aba.alternativas ?? [])].find(m => o.gerencia(m)) ?? aba.module
     return `${aba.label} (vem de ${o.nomeDoModulo(de)} em Gerenciar)`
   })
-  const lista = partes.length === 1 ? partes[0] : `${partes.slice(0, -1).join(', ')} e ${partes[partes.length - 1]}`
-  return `Você vê ${partes.length === 1 ? 'a aba' : 'as abas'} ${lista}. As outras pedem ${o.nomeDoModulo('settings')} em Gerenciar, ou a permissão de cada uma, e as suas permissões não têm.`
+  const daRede = abas.filter(a => ABAS_DA_REDE_TODA.includes(a.key)).map(a => a.label)
+  const ve = partes.length ? `Você vê ${partes.length === 1 ? 'a aba' : 'as abas'} ${emLista(partes)}.` : ''
+  const daRedeToda = daRede.length === 1
+    ? `A aba ${daRede[0]} é da rede toda: só a Admin da rede a muda.`
+    : daRede.length ? `As abas ${emLista(daRede)} são da rede toda: só a Admin da rede as muda.` : ''
+  return [ve, daRedeToda, `As outras pedem ${o.nomeDoModulo('settings')} em Gerenciar, ou a permissão de cada uma, e as suas permissões não têm.`]
+    .filter(Boolean).join(' ')
 }
+
+const emLista = (xs: readonly string[]) => (xs.length === 1 ? xs[0]! : `${xs.slice(0, -1).join(', ')} e ${xs[xs.length - 1]}`)
 
 /**
  * O topo das Configurações de quem não tem a tela inteira: as abas dela, numa

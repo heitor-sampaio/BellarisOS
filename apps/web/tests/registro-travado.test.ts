@@ -1,5 +1,19 @@
 import { describe, it, expect } from 'vitest'
-import { textoDoRegistroTravado } from '@/lib/atendimento/registro-travado'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { textoDoRegistroTravado, TEXTO_DOS_INSUMOS_NO_EDITAR_REGISTRO } from '@/lib/atendimento/registro-travado'
+
+// A2 da 33ª simulação e a Decisão A (decisão do Claude, 26/11, princípio 7):
+// o "Editar registro" corrige o texto clínico (PT-11) e não os insumos — a
+// baixa é movimento do estoque —, mas a tela não dizia onde se corrige o insumo.
+describe('o "Editar registro" diz onde se corrigem os insumos', () => {
+  it('o texto', () =>
+    expect(TEXTO_DOS_INSUMOS_NO_EDITAR_REGISTRO).toBe('Os insumos não se editam aqui: o ajuste é no Estoque, por quem tem o Estoque em Gerenciar.'))
+  it('a faixa do registro destravado o mostra', () => {
+    const fonte = readFileSync(join(__dirname, '..', 'components/branch/appointment-session.tsx'), 'utf8')
+    expect(fonte).toMatch(/data-insumos-no-editar[\s\S]{0,300}\{TEXTO_DOS_INSUMOS_NO_EDITAR_REGISTRO\}/)
+  })
+})
 
 // D11 da 8ª simulação (2026-11-06): o atendimento CANCELADO dizia "Atendimento
 // concluído. Para corrigir, use 'Editar registro'" — o texto do registro

@@ -34,7 +34,8 @@ export function DocumentosDaJanela({ appointmentId, slug }: { appointmentId: str
               : <FileText size={14} style={{ color: d.bloqueia ? 'var(--warning)' : 'var(--text-faint)', flexShrink: 0 }} aria-hidden="true" />}
             {/* A29 da 7ª: o nome inteiro (quebra a linha), e não cortado sem dica. */}
             <span data-titulo-do-documento title={d.titulo} style={{ flex: '1 1 160px', minWidth: 0, overflowWrap: 'anywhere' }}>{d.titulo}</span>
-            <span style={{ flexShrink: 0, fontWeight: 700, color: d.assinado ? 'var(--success)' : d.bloqueia ? 'var(--warning)' : 'var(--text-muted)' }}>
+            {/* A4 da 33ª: "Faltam dados: CPF, … · bloqueia o início" encolhe e quebra a linha (saía cortado no card). */}
+            <span style={{ flex: '0 1 auto', minWidth: 0, overflowWrap: 'anywhere', fontWeight: 700, color: d.assinado ? 'var(--success)' : d.bloqueia ? 'var(--warning)' : 'var(--text-muted)' }}>
               {d.situacao}{!d.assinado && d.bloqueia ? ' · bloqueia o início' : ''}
             </span>
             {/* A23 da 9ª: colher a assinatura daqui, a quem está na janela (2026-11-16: sem o módulo Documentos). */}

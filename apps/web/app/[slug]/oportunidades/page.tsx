@@ -11,7 +11,7 @@ import { funilLembrado } from '@/lib/crm/funil-lembrado-no-servidor'
 import { resumoDoFunil } from '@/lib/metrics/resultado'
 import { ResumoDoQuadro } from '@/components/branch/crm-resumo-do-quadro'
 import { CRMBoard } from '@/components/branch/crm-board'
-import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
+import { tagsAtivasDaRede, comAsArquivadasEmUso } from '@/lib/tags/vocabulario'
 import { EMBED_TAGS_DA_PESSOA, tagsDaPessoaDaOportunidade } from '@/lib/tags/pessoa'
 import { CRMLeadModal } from '@/components/branch/crm-lead-modal'
 import { pessoaParaNovoLead } from '@/lib/crm/pessoa-para-novo-lead'
@@ -259,7 +259,7 @@ export default async function BranchOportunidadesPage({
         podeCadastrarCliente={can(ctx, 'clients', 'MANAGE')}
         podeAgendar={can(ctx, 'crm', 'MANAGE') && can(ctx, 'agenda', 'MANAGE') && temRecurso(ctx, 'agenda')}
         podeMover={can(ctx, 'crm', 'MANAGE')}
-        tagsDaRede={await tagsAtivasDaRede(ctx.tenantId!)}
+        tagsDaRede={await comAsArquivadasEmUso(ctx.tenantId!, tagsAtivasDaRede(ctx.tenantId!))}
       />
     </div>
   )

@@ -15,12 +15,24 @@ import { garantirRenderizado, COLUNAS_DO_DOCUMENTO, type DocumentoEmitido } from
 
 type Contrato = Pick<DocumentoEmitido, 'id' | 'title' | 'template_version_id'> & { payment_snapshot: unknown }
 
-async function contratosAssinadosComPagamento(tenantId: string, planId: string): Promise<Contrato[]> {
+/**
+ * Os contratos ASSINADOS cujo texto cita o pagamento (`uses_payment`): os do
+ * plano (o contrato de plano, sem atendimento) ou os do atendimento (o contrato
+ * do procedimento, o mais novo primeiro). Uma leitura só para o checkout do
+ * plano e o receber da comanda no PDV (`lib/pdv/contrato-do-atendimento.ts`).
+ */
+export async function contratosAssinadosComPagamento(
+  tenantId: string, de: { planoId: string } | { atendimentoId: string },
+): Promise<Contrato[]> {
   const admin = createAdminClient()
-  const assinados = await ler(admin.from('issued_documents')
+  const base = admin.from('issued_documents')
     .select('id, title, template_version_id, payment_snapshot')
-    .eq('tenant_id', tenantId).eq('treatment_plan_id', planId).is('appointment_id', null)
-    .eq('status', 'ASSINADO').eq('kind', 'CONTRATO_PLANO'), 'buscar o contrato assinado do plano')
+    .eq('tenant_id', tenantId).eq('status', 'ASSINADO')
+  const assinados = 'planoId' in de
+    ? await ler(base.eq('treatment_plan_id', de.planoId).is('appointment_id', null)
+      .eq('kind', 'CONTRATO_PLANO'), 'buscar o contrato assinado do plano')
+    : await ler(base.eq('appointment_id', de.atendimentoId).eq('kind', 'CONTRATO')
+      .not('payment_snapshot', 'is', null).order('created_at', { ascending: false }), 'buscar o contrato assinado do atendimento')
   const versoes = [...new Set((assinados ?? []).map(d => d.template_version_id as string | null).filter((x): x is string => !!x))]
   if (!versoes.length) return []
   const comPagamento = await ler(admin.from('document_template_versions')
@@ -40,7 +52,7 @@ export async function contratoQueSeriaSubstituido(
 ): Promise<{ titulo: string; pagamento: string } | null> {
   if (!(await redeTemRecurso(tenantId, 'documentos'))) return null
   const normalizado = pagamentoNormalizado(pagamento, desconto)
-  const c = (await contratosAssinadosComPagamento(tenantId, planId)).find(x => !mesmoPagamento(x.payment_snapshot, normalizado))
+  const c = (await contratosAssinadosComPagamento(tenantId, { planoId: planId })).find(x => !mesmoPagamento(x.payment_snapshot, normalizado))
   if (!c) return null
   return { titulo: c.title, pagamento: frasesDoPagamento(pagamentoDoRetrato(c.payment_snapshot), descontoDoRetrato(c.payment_snapshot)) }
 }
@@ -55,7 +67,7 @@ export async function contratoAssinadoDoPlano(
   tenantId: string, planId: string,
 ): Promise<{ titulo: string; pagamento: PagamentoDoPlano | null; desconto: number; frase: string } | null> {
   if (!(await redeTemRecurso(tenantId, 'documentos'))) return null
-  const c = (await contratosAssinadosComPagamento(tenantId, planId))[0]
+  const c = (await contratosAssinadosComPagamento(tenantId, { planoId: planId }))[0]
   if (!c) return null
   const pagamento = pagamentoDoRetrato(c.payment_snapshot)
   const desconto = descontoDoRetrato(c.payment_snapshot)
@@ -115,7 +127,7 @@ export async function prepararDocumentosDoPlano(
   await gravar(admin.rpc('documentos_emitir_do_plano', { p_plano: planId }), 'emitir os documentos do plano')
 
   const normalizado = pagamentoNormalizado(pagamento, desconto)
-  for (const c of await contratosAssinadosComPagamento(tenantId, planId)) {
+  for (const c of await contratosAssinadosComPagamento(tenantId, { planoId: planId })) {
     if (!mesmoPagamento(c.payment_snapshot, normalizado)) {
       await gravar(admin.rpc('documento_substituir', { p_doc: c.id, p_tenant: tenantId, p_ator: ator }),
         'substituir o contrato assinado com outro pagamento')
@@ -155,7 +167,7 @@ export async function recusaDosDocumentosDoPlano(
   if (travam.length) return `Falta assinar: ${travam.map(t => t.title).join(', ')}.`
 
   const normalizado = pagamentoNormalizado(pagamento, desconto)
-  const divergente = (await contratosAssinadosComPagamento(tenantId, planId))
+  const divergente = (await contratosAssinadosComPagamento(tenantId, { planoId: planId }))
     .find(c => !mesmoPagamento(c.payment_snapshot, normalizado))
   if (divergente) {
     return 'A forma de pagamento ou o desconto são diferentes dos do contrato assinado. Volte à documentação para o cliente assinar o contrato com o pagamento de agora.'

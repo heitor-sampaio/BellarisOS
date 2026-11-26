@@ -591,7 +591,8 @@ function linhaDaLista(l: MapaLido, aplicacoes: ResumoAplicacoes): MapaNaLista {
  * e ao alcance. Só leitura — e é prontuário: pede o módulo.
  */
 export async function dosesDoMapaDoAtendimento(appointmentId: string, planejamentoIds: string[] = []): Promise<{
-  totais: { product: string; unit: string; total: number }[]
+  /** A1 da 33ª: `origem` diz se o total é da aplicação registrada aqui ou do planejamento (`totaisQueSeComparam`). */
+  totais: { product: string; unit: string; total: number; origem: 'APLICACAO' | 'PLANEJAMENTO' }[]
 }> {
   try {
     const ctx = await getTenantContext()
@@ -605,10 +606,10 @@ export async function dosesDoMapaDoAtendimento(appointmentId: string, planejamen
     const aplicacoes = await ler(admin.from('injectable_applications').select('totals')
       .eq('appointment_id', appointmentId), 'buscar as aplicações do atendimento') as { totals: AplicacaoInjetavel['totais'] | null }[] | null
     if (aplicacoes?.length) {
-      return { totais: aplicacoes.flatMap(a => (a.totals ?? []).map(t => ({ product: t.product, unit: t.unit, total: Number(t.applied) || Number(t.planned) || 0 }))) }
+      return { totais: aplicacoes.flatMap(a => (a.totals ?? []).map(t => ({ product: t.product, unit: t.unit, total: Number(t.applied) || Number(t.planned) || 0, origem: 'APLICACAO' as const }))) }
     }
 
-    const totais: { product: string; unit: string; total: number }[] = []
+    const totais: { product: string; unit: string; total: number; origem: 'APLICACAO' | 'PLANEJAMENTO' }[] = []
     for (const id of [...new Set(planejamentoIds)].slice(0, 5)) {
       if (typeof id !== 'string' || !/^[0-9a-f-]{36}$/i.test(id)) continue
       const mapa = await mapaDoTenant(admin, id, ctx)
@@ -616,7 +617,7 @@ export async function dosesDoMapaDoAtendimento(appointmentId: string, planejamen
       const pts = await ler(admin.from('injectable_maps').select('view, points').eq('id', id).single(),
         'ler o planejamento') as { view: string | null; points: unknown } | null
       const valor = { view: (pts?.view ?? 'rosto_f') as InjectableMapValue['view'], points: Array.isArray(pts?.points) ? pts!.points as InjectableMapValue['points'] : [] }
-      for (const t of injectableTotals(valor)) totais.push({ product: t.product, unit: t.unit, total: t.planned })
+      for (const t of injectableTotals(valor)) totais.push({ product: t.product, unit: t.unit, total: t.planned, origem: 'PLANEJAMENTO' })
     }
     return { totais }
   } catch (e) {

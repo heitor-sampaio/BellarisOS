@@ -157,4 +157,71 @@ test.describe.serial('lotes por unidade', () => {
     expect(error).toBeNull()
     expect((await lotes(p!.id)).map(l => l.qtd), '50 UI de frascos de 100 UI = meio frasco').toEqual([1.5])
   })
+
+  // D5 e D7 da 33ª simulação.
+  test('o lote que entra cobre a falta que ficou sem lote, e o consumo nasce com o custo dos lotes (sem "Corrigiu o custo")', async ({ browser }) => {
+    // O ácido (frasco de 10 ml) acaba no meio do atendimento: 2 ml do AM1 e 2 ml
+    // sem lote, o saldo em −2 ml. A entrada do AM2 (1 frasco) leva o saldo a 8 ml
+    // — e o AM2 tem de ficar com 8 ml, não 10 (ES-20; princípio 3). Os consumos
+    // direto no banco, o mesmo insert que `finishSession` faz.
+    const b = db()
+    const nome = `${PREFIXO} ácido ${marca}`
+    const { data: p, error: eP } = await b.from('products').insert({
+      tenant_id: f!.outra.tenantId, name: nome, unit: 'frasco', units_per_package: 10, consumption_unit: 'ml',
+    }).select('id').single<{ id: string }>()
+    expect(eP).toBeNull()
+    const entrada = async (lote: string, vence: string) => expect((await b.rpc('estoque_entrada', {
+      p_produto: p!.id, p_unidade: f!.outra.branchId, p_quantidade: 1, p_custo: 100, p_observacao: null,
+      p_lote: lote, p_validade: vence, p_autor: 'e2e',
+    })).error).toBeNull()
+    const consumo = async (ml: number, saldo: number) => {
+      const { data: m, error } = await b.from('stock_movements').insert({
+        branch_id: f!.outra.branchId, product_id: p!.id, type: 'PROCEDURE_USAGE', quantity: -ml, balance_after: saldo,
+        unit_cost: 12, created_by: f!.gestor.userId,
+      }).select('id').single<{ id: string }>()
+      expect(error).toBeNull()
+      // As embalagens para longe do zero (lib/estoque/baixa.ts): 2 ml = 1 frasco aberto; −2 ml = −1.
+      expect((await b.from('branch_product_stock').update({ current_rendimento: saldo, current_stock: saldo >= 0 ? Math.ceil(saldo / 10) : Math.floor(saldo / 10) })
+        .eq('product_id', p!.id).eq('branch_id', f!.outra.branchId)).error).toBeNull()
+      return m!.id
+    }
+    const custo = async (id: string) => Number((await b.from('stock_movements').select('unit_cost').eq('id', id).single<{ unit_cost: number }>()).data!.unit_cost)
+    const ligacoes = async (id: string) => ((await b.from('stock_movement_batches').select('quantity').eq('movement_id', id)).data ?? []).map(l => Number(l.quantity))
+
+    await entrada('AM1', dia(60))                      // 10 ml a R$ 10/ml
+    const c1 = await consumo(8, 2)
+    expect(await custo(c1), 'os 8 ml saíram do AM1').toBe(10)
+    const c2 = await consumo(4, -2)
+    expect(await ligacoes(c2), 'o AM1 cobriu 2 ml (0,2 frasco)').toEqual([0.2])
+    expect(await custo(c2), '2 ml do AM1 a R$ 10 e 2 ml sem lote a R$ 12').toBe(11)
+    // D7: o custo veio no insert — nenhuma edição do movimento na Auditoria.
+    const { count, error: eA } = await b.from('auditoria').select('id', { count: 'exact', head: true })
+      .eq('tabela', 'stock_movements').in('registro_id', [c1, c2]).eq('operacao', 'editou')
+    expect(eA).toBeNull()
+    expect(count, 'ninguém corrigiu o custo').toBe(0)
+
+    await entrada('AM2', dia(120))
+    expect((await lotes(p!.id)).map(l => [l.lote, l.qtd]), 'o AM2 cobriu os 2 ml que faltavam: fica com 8 ml').toEqual([['AM1', 0], ['AM2', 0.8]])
+    const { data: compra } = await b.from('stock_movements').select('id').eq('product_id', p!.id).eq('type', 'PURCHASE')
+      .order('created_at', { ascending: false }).limit(1).single<{ id: string }>()
+    expect(await ligacoes(compra!.id), 'a ligação diz o que entrou no lote (o "Desfazer entrada" confere por ela)').toEqual([0.8])
+    const { data: s } = await b.from('branch_product_stock').select('current_stock, current_rendimento')
+      .eq('product_id', p!.id).eq('branch_id', f!.outra.branchId).single()
+    expect([Number(s!.current_stock), Number(s!.current_rendimento)], '8 ml = 1 frasco aberto (não "0 frasco")').toEqual([1, 8])
+
+    // O Histórico diz o que cada lote cobriu.
+    const ctx = await browser.newContext({ storageState: f!.gestor.estado })
+    const page = await ctx.newPage()
+    try {
+      await page.goto('/admin/estoque')
+      await page.locator('tr, [role="row"], div').filter({ hasText: nome })
+        .filter({ has: page.getByTitle('Gerenciar estoque') }).last()
+        .getByTitle('Gerenciar estoque').click()
+      const modal = page.locator('dialog[open]').filter({ hasText: 'Gerenciar estoque' })
+      await modal.getByRole('button', { name: 'Histórico' }).click()
+      const linhas = modal.locator('[data-lotes-do-movimento]')
+      await expect(linhas.filter({ hasText: /Lote AM1 .*: 2 ml · 2 ml sem lote/ })).toHaveCount(1)
+      await expect(linhas.filter({ hasText: /Lote AM2 .*: 8 ml · 2 ml cobriram a falta de antes \(sem lote\)/ })).toHaveCount(1)
+    } finally { await ctx.close() }
+  })
 })

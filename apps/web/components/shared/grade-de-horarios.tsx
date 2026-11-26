@@ -10,10 +10,13 @@ import { Dica } from '@/components/shared/dica'
 
 /**
  * A grade de horários de quem agenda pelo checkout do plano e pelas sessões
- * do plano (D8 da simulação de 2026-10-29): a janela da UNIDADE naquele dia,
- * sem a pausa e sem cortar a noite (`gradeDoCheckout`), com os horários da
- * PROFISSIONAL em destaque. O resto é encaixe e continua escolhível (§9.1, o
- * seletor é livre); o que nem a unidade oferece vai pelo "Outro horário".
+ * do plano (D8 da simulação de 2026-10-29): o horário de QUEM ATENDE naquele
+ * dia — a unidade ∩ ela, sem a pausa e sem cortar a noite (`gradeDoCheckout`).
+ * O fora do horário de quem atende (e a unidade fechada) não aparece (R15, o Heitor,
+ * 26/11, na página de perguntas: "Não: quem está fora do horário também some
+ * das listas (o encaixe só pelo campo de horário)"; era tracejado e se
+ * escolhia): o encaixe vai pelo "Outro horário" (no Agendar, o campo de data e
+ * hora), com o aviso de sempre.
  * Era uma grade fixa, 08:00–20:00, igual para toda unidade e profissional.
  * Hoje, só o que ainda não passou — também no "Outro horário" (A24 da 6ª
  * simulação: de madrugada, oferecia 00:00–04:00).
@@ -50,24 +53,28 @@ export function GradeDeHorarios({
   const daJanela = gradeDoCheckout(horarioDaUnidade, horarioDoProfissional, data, limite)
   // R14 (o Heitor, 26/11, na página de perguntas: "Horarios, salas e pessoas não
   // disponíveis não devem aparecer nas listas"): o horário ocupado ou bloqueado
-  // SAI da grade — era riscado e desligado. O encaixe (fora do horário de quem
-  // atende) fica, tracejado: é permitido.
-  const grade = daJanela.filter(h => !ocupado(h.hora))
-  const nenhumLivre = daJanela.length > 0 && grade.length === 0
-  const jaPassou = !!limite && daJanela.length === 0 && gradeDoCheckout(horarioDaUnidade, horarioDoProfissional, data).length > 0
-  const temEncaixe = grade.some(h => !h.doProfissional)
-  const foraDaGrade = !!selecionado && !daJanela.some(h => h.hora === selecionado)
+  // SAI da grade — era riscado e desligado. E R15 ("Não: quem está fora do
+  // horário também some das listas (o encaixe só pelo campo de horário)"): o
+  // fora do horário de quem atende também sai — era tracejado, o encaixe.
+  const doHorarioDela = daJanela.filter(h => h.doProfissional)
+  const grade = doHorarioDela.filter(h => !ocupado(h.hora))
+  const nenhumLivre = doHorarioDela.length > 0 && grade.length === 0
+  const doDiaInteiro = gradeDoCheckout(horarioDaUnidade, horarioDoProfissional, data)
+  const jaPassou = !!limite && doHorarioDela.length === 0 && doDiaInteiro.some(h => h.doProfissional)
+  const unidadeFechada = doDiaInteiro.length === 0
+  const foraDaGrade = !!selecionado && !doHorarioDela.some(h => h.hora === selecionado)
   const quem = nomeDoProfissional?.trim() || 'quem atende'
+  const encaixePor = semOutroHorario ? 'o campo de data e hora' : '“Outro horário”'
 
   return (
     <div data-grade-de-horarios style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <span>Horários</span>
-          {/* A legenda de uso mora na dica (2026-11-16, "A explicação mora na dica"). */}
-          {!carregando && temEncaixe && (
+          {/* A explicação mora na dica (2026-11-16, "A explicação mora na dica"). */}
+          {!carregando && grade.length > 0 && (
             <Dica rotulo="Como se lê a grade de horários">
-              Contorno rosé: o horário de {quem}. Tracejado: encaixe, fora desse horário.
+              Só os horários livres de {quem}. Para um encaixe fora do horário, use {encaixePor}.
             </Dica>
           )}
         </p>
@@ -79,29 +86,27 @@ export function GradeDeHorarios({
           {nenhumLivre
             ? `Nenhum horário livre de ${quem} neste dia: escolha outro dia.`
             : jaPassou
-            ? `Os horários de hoje já passaram. Para um encaixe, use ${semOutroHorario ? 'o campo de data e hora' : '“Outro horário”'}.`
-            : `A unidade não abre neste dia. Para um encaixe, use ${semOutroHorario ? 'o campo de data e hora' : '“Outro horário”'}.`}
+            ? `Os horários de hoje já passaram. Para um encaixe, use ${encaixePor}.`
+            : unidadeFechada
+            ? `A unidade não abre neste dia. Para um encaixe, use ${encaixePor}.`
+            : `${quem === 'quem atende' ? 'Quem atende' : quem} não atende neste dia. Para um encaixe, use ${encaixePor}.`}
         </p>
       )}
 
       {!carregando && grade.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6 }}>
-          {grade.map(({ hora, doProfissional }) => {
+          {grade.map(({ hora }) => {
             const sel    = selecionado === hora
-            const encaixe = !doProfissional
             return (
               <button key={hora} type="button" onClick={() => onEscolher(hora)}
-                data-horario={hora} data-encaixe={encaixe ? '' : undefined}
+                data-horario={hora}
                 aria-pressed={sel}
-                title={encaixe ? `Fora do horário de ${quem} — encaixe` : undefined}
                 style={{
                   padding: '8px 4px', borderRadius: 8, fontSize: 'var(--text-sm-sz)', fontWeight: 700,
                   cursor:     'pointer',
-                  background: sel ? 'var(--brand)' : encaixe ? 'var(--bg-app)' : 'var(--surface)',
-                  color:      sel ? 'var(--on-brand)' : encaixe ? 'var(--text-muted)' : 'var(--text)',
-                  border:     sel ? '2px solid var(--brand)'
-                    : encaixe ? '1px dashed var(--border)'
-                    : '1.5px solid var(--brand-soft-border)',
+                  background: sel ? 'var(--brand)' : 'var(--surface)',
+                  color:      sel ? 'var(--on-brand)' : 'var(--text)',
+                  border:     sel ? '2px solid var(--brand)' : '1.5px solid var(--brand-soft-border)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3,
                 }}>
                 {sel && <Check size={10} />}{hora}
