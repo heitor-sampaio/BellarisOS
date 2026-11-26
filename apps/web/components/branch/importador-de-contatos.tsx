@@ -13,7 +13,7 @@ import { validarLinha, marcarRepetidas, nomeDiferente, avisoDaMenorNaPlanilha, p
 import { maskPhone } from '@estetica-os/utils'
 import { importarContatos, andamentoDaImportacao, cruzamentoDaImportacao, type AndamentoDaImportacao, type CruzamentoDaLinha } from '@/actions/importacao'
 import type { ImportacaoAnterior } from '@/lib/importacao/historico'
-import { avisoSemClienteDesde, linhasQueJuntamNaPlanilha, textoDoBotaoDeImportar, colunasQueNaoEntram, colunasQueAOportunidadeLeva, avisoDasColunasDaOportunidade, ondeEstaoOsImportados, placarDaImportacao, rotuloDaEtapaDaImportacao } from '@/lib/importacao/o-que-entra'
+import { avisoSemClienteDesde, linhasQueJuntamNaPlanilha, linhasQueNaoJuntam, linhasDeOutroNomeQueJuntam, textoDoBotaoDeImportar, colunasQueNaoEntram, colunasQueAOportunidadeLeva, avisoDasColunasDaOportunidade, ondeEstaoOsImportados, placarDaImportacao, rotuloDaEtapaDaImportacao } from '@/lib/importacao/o-que-entra'
 import { abrirABusca } from '@/lib/busca/abrir'
 import { FORMATO_DO_PACOTE_DE_ANTES, pacoteDeAntesLegivel } from '@/lib/importacao/pacote-legivel'
 import { ehPortalDaRede, rotaClientes, rotaOportunidades } from '@/lib/rotas'
@@ -176,7 +176,8 @@ export function ImportadorDeContatos(p: Props) {
   // desmarca (cli-07: a filha com o telefone da mãe completava a ficha dela).
   const chaveDoCruzamento = passo === 3 ? `${destino}|${validadas.length}|${mapa.join(',')}|${arquivo?.nome ?? ''}` : ''
   const [cruzamento, setCruzamento] = useState<{ chave: string; itens: CruzamentoDaLinha[] } | null>(null)
-  const [naoCompletar, setNaoCompletar] = useState<Set<number>>(() => new Set())
+  // O que a pessoa marcou ou desmarcou na prévia (true = juntar), por arquivo.
+  const [escolhas, setEscolhas] = useState<{ chave: string; m: Map<number, boolean> }>(() => ({ chave: '', m: new Map() }))
   useEffect(() => {
     if (!chaveDoCruzamento) return
     let vivo = true
@@ -194,6 +195,17 @@ export function ImportadorDeContatos(p: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- a chave resume as linhas
   }, [chaveDoCruzamento])
   const cruzados = cruzamento?.chave === chaveDoCruzamento ? cruzamento.itens : null
+  // O mesmo telefone sem CPF vem desmarcado, a não ser que o nome case (o
+  // Heitor, 25/11: "Vem desmarcada, a não ser que o nome case").
+  const escolhasDoArquivo = escolhas.chave === chaveDoCruzamento ? escolhas.m : null
+  const naoCompletar = useMemo(() => destino === 'clientes'
+    ? linhasQueNaoJuntam({ prontas: validadas.filter(l => !l.erros.length), cruzados: cruzados ?? [], escolhas: escolhasDoArquivo ?? new Map() })
+    : new Set<number>(), [destino, validadas, cruzados, escolhasDoArquivo])
+  const alternarJuntar = (n: number) => setEscolhas(e => {
+    const m = new Map(e.chave === chaveDoCruzamento ? e.m : [])
+    m.set(n, naoCompletar.has(n))
+    return { chave: chaveDoCruzamento, m }
+  })
   // A14 da 17ª: o botão diz quantas pessoas novas entram, não só quantas linhas.
   const juntamNaPlanilha = linhasQueJuntamNaPlanilha(destino, validadas.filter(l => !l.erros.length),
     new Set((cruzados ?? []).map(i => i.numero)), naoCompletar).length
@@ -210,6 +222,8 @@ export function ImportadorDeContatos(p: Props) {
         mapeamento: mapa, linhas: arquivo.linhas, numeros: arquivo.numeros,
         oportunidade: comOportunidade && etapaId ? { etapaId, responsavelId: responsavelId || null } : null,
         naoCompletar: destino === 'clientes' ? [...naoCompletar] : [],
+        // As de outro nome que a pessoa marcou: sem a marca, o servidor não as junta pelo telefone.
+        juntar: destino === 'clientes' ? linhasDeOutroNomeQueJuntam({ prontas: validadas.filter(l => !l.erros.length), cruzados: cruzados ?? [], escolhas: escolhasDoArquivo ?? new Map() }) : [],
       })
       if (!r.ok) { setErroEnvio(r.error); return }
       setImportacaoId(r.importacaoId)
@@ -235,7 +249,7 @@ export function ImportadorDeContatos(p: Props) {
   }, [importacaoId, rodando, router])
 
   function recomecar() {
-    setPasso(1); setArquivo(null); setImportacaoId(null); setAndamento(null); setComOportunidade(false); setErroEnvio(null); setNaoCompletar(new Set())
+    setPasso(1); setArquivo(null); setImportacaoId(null); setAndamento(null); setComOportunidade(false); setErroEnvio(null); setEscolhas({ chave: '', m: new Map() })
   }
 
   const exemplo = (i: number) => arquivo?.linhas.find(l => (l[i] ?? '').trim())?.[i]?.trim() ?? ''
@@ -500,7 +514,7 @@ export function ImportadorDeContatos(p: Props) {
             <OrigensDaPlanilha validadas={validadas}
               brutas={mapa.indexOf('op_origem') >= 0 ? arquivo.linhas.map(l => (l[mapa.indexOf('op_origem')] ?? '').trim()) : null} />
             <OQueJunta destino={destino} validadas={validadas} cruzados={cruzados} naoCompletar={naoCompletar}
-              alternar={n => setNaoCompletar(s => { const t = new Set(s); if (t.has(n)) t.delete(n); else t.add(n); return t })} />
+              alternar={alternarJuntar} />
           </div>
 
           {comOportunidade && (
@@ -670,8 +684,9 @@ const forte: React.CSSProperties = { color: 'var(--text)', fontWeight: 'var(--we
 /**
  * O que vai JUNTAR com quem já existe, na prévia (A15, cli-07):
  * - clientes: a ficha do mesmo CPF (é a mesma pessoa), e a ficha SEM CPF do
- *   mesmo telefone — essa com a caixa "Completar a ficha de X", que desmarcada
- *   faz a linha virar uma ficha nova (mãe e filha dividem número);
+ *   mesmo telefone — essa com a caixa "Completar a ficha de X", que vem
+ *   desmarcada (a linha vira uma ficha nova) a não ser que o nome case (o
+ *   Heitor, 25/11; mãe e filha dividem número);
  * - contatos: a pessoa do mesmo telefone (ou, sem ele, do mesmo e-mail), a
  *   linha que repete o telefone de outra linha, e quem entra sem telefone.
  */
@@ -685,8 +700,8 @@ function OQueJunta({ destino, validadas, cruzados, naoCompletar, alternar }: {
 
   if (destino === 'clientes') {
     // A14: o mesmo telefone de uma linha anterior, com OUTRO nome (Karina ×
-    // Bianca) — a clínica escolhe: junta (o padrão, a regra do telefone) ou
-    // vira a ficha separada. A que cruza com uma ficha da rede já está acima.
+    // Bianca) — a rede escolhe: vira a ficha separada (o padrão: o nome não
+    // casa — o Heitor, 25/11) ou junta. A que cruza com uma ficha da rede já está acima.
     const cruzadas = new Set(itens.map(i => i.numero))
     const mesmoTelefone = prontas.filter(l => l.mesmoTelefone && !cruzadas.has(l.numero))
     if (!itens.length && !mesmoTelefone.length) return null
@@ -720,7 +735,7 @@ function OQueJunta({ destino, validadas, cruzados, naoCompletar, alternar }: {
             })}
           </ul>
           <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>
-            Mãe e filha com o mesmo telefone? Desmarque, e cada uma ganha a sua ficha.
+            Com outro nome, vem desmarcada: cada uma ganha a sua ficha (mãe e filha dividem o número). É a mesma pessoa? Marque, e a linha junta.
           </span>
         </div>
       )}
@@ -751,7 +766,7 @@ function OQueJunta({ destino, validadas, cruzados, naoCompletar, alternar }: {
         </ul>
         {itens.some(i => i.como === 'telefone') && (
           <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>
-            Mãe e filha com o mesmo telefone? Desmarque, e a linha vira uma ficha nova.
+            Só vem marcada quando o nome também casa; com outro nome, a linha vira uma ficha nova (mãe e filha dividem o número). É a mesma pessoa? Marque.
           </span>
         )}
       </div>

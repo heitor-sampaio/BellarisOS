@@ -514,8 +514,9 @@ export function validarLinha(
  * completa só o vazio.
  * A14 da 6ª simulação (2026-11-04): o mesmo TELEFONE com OUTRO nome (Karina ×
  * Bianca) não é repetida. Na ficha, a linha passa com `mesmoTelefone` e a
- * prévia dá a escolha: juntar (o padrão — completa o vazio da ficha da outra,
- * como a ficha que já existe) ou ficha separada (`naoCompletar`). No contato
+ * prévia dá a escolha: ficha separada (o padrão, `naoCompletar` — o Heitor,
+ * 25/11: "Vem desmarcada, a não ser que o nome case") ou juntar (completa o
+ * vazio da ficha da outra, como a ficha que já existe). No contato
  * ela junta (D-10), e a prévia diz qual nome fica.
  */
 /** Quem é "a mesma pessoa" dentro da planilha (a regra de marcarRepetidas). */

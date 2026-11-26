@@ -169,13 +169,13 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   },
   forms: {
     NONE:   SEM_ACESSO,
-    // A12 da 30ª (CG-17): as fichas são configuração da rede toda (o Heitor, 18/11) — o Gerenciar não abre nada a mais.
-    MANAGE: 'As fichas são configuração da rede toda: montar as fichas de atendimento (as que quem atende preenche) e a ficha de saúde é só da Admin da rede. Preencher a ficha é Prontuário.',
+    // O Heitor, 25/11 ("8 - a"): o nível é Ver — abre a aba e lê; montar é só da Admin da rede (18/11).
+    VIEW:   'Abre a aba Fichas e lê as fichas de atendimento (as que quem atende preenche) e a ficha de saúde; montar e mudar as fichas é só da Admin da rede (configuração da rede toda). Preencher a ficha é Prontuário.',
   },
   roles: {
     NONE:   SEM_ACESSO,
-    // A26 da 26ª: os cargos são configuração da rede toda (o Heitor, 18/11) — "inclusive o próprio" não valia mais.
-    MANAGE: 'Os cargos são configuração da rede toda: criar um cargo e mudar o que ele acessa é só da Admin da rede. A quem não é a Admin da rede, a aba Cargos só diz isso.',
+    // O Heitor, 25/11 ("8 - a"): o nível é Ver — abre a aba e lê; criar e mudar é só da Admin da rede (18/11).
+    VIEW:   'Abre a aba Cargos e lê os cargos e o que cada um acessa; criar um cargo e mudar o que ele acessa é só da Admin da rede (configuração da rede toda).',
   },
   settings: {
     NONE:   SEM_ACESSO,
@@ -346,8 +346,8 @@ export function tratamentosNoResumo(niveis: Partial<Record<'atendimento' | 'agen
  * Quem inicia e conclui, no resumo do cargo (A2 da 23ª, A1 da 24ª; princípio
  * 3). Desde 2026-11-18 é o Atendimento (o Heitor: "Só inicia e conclui
  * atendimento quem tem gerenciar no atendimento"): em Ver, só vê; sem o
- * Prontuário em Gerenciar, conclui sem o clínico. Nulo sem o Atendimento, ou
- * com ele e o Prontuário em Gerenciar.
+ * Prontuário em Gerenciar, conclui sem o clínico; com os dois em Gerenciar, diz
+ * que inicia e conclui (o Heitor, 25/11: "Diz \"Inicia e conclui os atendimentos.\""). Nulo sem o Atendimento.
  */
 export function conclusaoNoResumo(
   niveis: Partial<Record<'atendimento' | 'agenda' | 'medical_records', string>>,
@@ -356,7 +356,7 @@ export function conclusaoNoResumo(
   if (nivel === 'NONE') return null
   if (nivel !== 'MANAGE') return 'Vê os atendimentos, sem iniciar nem concluir: iniciar e concluir pedem o Atendimento em Gerenciar.'
   if (niveis.medical_records !== 'MANAGE') return 'Inicia e conclui os atendimentos. A evolução, as fotos e a ficha de saúde pedem o Prontuário em Gerenciar.'
-  return null
+  return 'Inicia e conclui os atendimentos.'
 }
 
 /**
@@ -373,15 +373,16 @@ export function fidelidadeNoResumo(niveis: Partial<Record<'loyalty' | 'clients',
 }
 
 /**
- * A12 da 30ª (CG-17; o Heitor, 18/11: "Configuração da rede toda só pela conta
- * admin"): as Fichas e os Cargos em Gerenciar não dão nada a quem não é a
- * Admin da rede (`recusaDaConfigDaRede`). O resumo diz. Nulo sem nenhum dos dois.
+ * As Fichas e os Cargos no resumo do cargo (o Heitor, 25/11, "8 - a": "a
+ * pessoa abre a aba e lê, como já acontece"; mudar é só da Admin da rede desde
+ * 18/11, `recusaDaConfigDaRede`). O Gerenciar gravado vale Ver. Nulo sem nenhum dos dois.
  */
 export function configDaRedeNoResumo(niveis: Partial<Record<'forms' | 'roles', string>>): string | null {
-  const quais = [niveis.forms === 'MANAGE' ? 'Fichas' : null, niveis.roles === 'MANAGE' ? 'Cargos' : null].filter((x): x is string => !!x)
+  const le = (n: string | undefined) => n === 'VIEW' || n === 'MANAGE'
+  const quais = [le(niveis.forms) ? 'Fichas' : null, le(niveis.roles) ? 'Cargos' : null].filter((x): x is string => !!x)
   if (!quais.length) return null
-  if (quais.length === 2) return 'Fichas e Cargos são configuração da rede toda: só a Admin da rede os muda. A quem não é a Admin da rede, estas permissões não abrem nada.'
-  return `${quais[0]} é configuração da rede toda: só a Admin da rede a muda. A quem não é a Admin da rede, esta permissão não abre nada.`
+  if (quais.length === 2) return 'Fichas e Cargos em Ver: abre as duas abas e lê. Mudar as fichas e os cargos é só da Admin da rede (configuração da rede toda).'
+  return `${quais[0]} em Ver: abre a aba e lê. Mudar ${quais[0] === 'Fichas' ? 'as fichas' : 'os cargos'} é só da Admin da rede (configuração da rede toda).`
 }
 
 /**

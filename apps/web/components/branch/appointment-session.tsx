@@ -368,9 +368,9 @@ function CancelModal({ appointmentId, slug, onClose, desistencia = null }: {
   }, [cancelado, onClose, router])
   if (cancelado) return null
   const listaDosInsumos = (desistencia?.insumos ?? []).map(i => `${i.name} ${formatarDose(i.quantity)} ${i.unit}`).join(', ')
-  // Pendente 19 / A9 da 28ª (princípio 7): no Em atendimento o gesto é a
-  // desistência, e a janela diz isso; antes de começar, é o cancelamento.
-  const titulo = desistencia ? 'Desistir do atendimento' : 'Cancelar atendimento'
+  // O Em atendimento é a desistência por dentro (o insumo, a intercorrência, a
+  // sessão paga), mas a tela diz "Cancelar" (o Heitor, 25/11: "Mantem o Cancelar").
+  const titulo = 'Cancelar atendimento'
   return (
     <JanelaModal onFechar={onClose} rotulo={titulo} largura={460} travado={pending}>
       <div>
@@ -383,7 +383,7 @@ function CancelModal({ appointmentId, slug, onClose, desistencia = null }: {
           <input type="hidden" name="appointment_id" value={appointmentId} />
           <input type="hidden" name="slug" value={slug} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label htmlFor="cancelamento-motivo" className="field-label">{desistencia ? 'Motivo da desistência *' : 'Motivo do cancelamento *'}</label>
+            <label htmlFor="cancelamento-motivo" className="field-label">Motivo do cancelamento *</label>
             <textarea id="cancelamento-motivo" name="cancellation_reason" required rows={3} placeholder="Descreva o motivo…" className="field" style={{ resize: 'vertical' }} />
             {/* A11 da 25ª (princípio 3): o motivo vai no aviso do cancelamento (textoDoCancelado). */}
             <p data-motivo-vai-a-cliente style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 4 }}>Vai também no aviso à cliente.</p>
@@ -417,7 +417,7 @@ function CancelModal({ appointmentId, slug, onClose, desistencia = null }: {
             <button type="button" onClick={onClose} className="btn-secondary"><X size={13} /> Voltar</button>
             <button type="submit" disabled={pending} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', borderRadius: 8, border: 'none', background: 'var(--warning)', color: 'var(--surface)', fontWeight: 700, fontSize: 'var(--text-base-sz)', cursor: 'pointer' }}>
               {pending ? <Loader2 size={13} className="animate-spin" /> : <XCircle size={13} />}
-              {pending ? (desistencia ? 'Registrando…' : 'Cancelando…') : desistencia ? 'Confirmar desistência' : 'Confirmar cancelamento'}
+              {pending ? 'Cancelando…' : 'Confirmar cancelamento'}
             </button>
           </div>
         </form>
@@ -1766,7 +1766,7 @@ export function AppointmentSession({
             {isActive && (status === 'IN_PROGRESS' ? canManage : canCheckin) && (
               <button type="button" onClick={() => setShowCancel(true)}
                 className="btn-ghost" style={{ padding: '9px 14px', fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)', gap: 5 }}>
-                <XCircle size={14} /> {status === 'IN_PROGRESS' ? 'Desistir do atendimento' : 'Cancelar'}
+                <XCircle size={14} /> Cancelar
               </button>
             )}
           </div>

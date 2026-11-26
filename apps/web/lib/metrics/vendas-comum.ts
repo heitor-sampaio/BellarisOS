@@ -21,14 +21,6 @@ export const ROTULO_DO_TIPO: Record<TipoDeVenda, string> = {
   CREDITO:      'Crédito interno',
 }
 
-/**
- * Os tipos que a lista mostra e o "Total vendido" NÃO soma: o crédito na
- * clínica vendido. O que se paga com ele (o atendimento, o pacote…) é que é a
- * venda — somar os dois contaria o mesmo dinheiro duas vezes. A conta mora no
- * banco (`metrics_vendas_resumo`); isto é o que a tela diz.
- */
-export const FORA_DO_TOTAL = ['CREDITO'] as const satisfies readonly TipoDeVenda[]
-
 export const POR_PAGINA = 50
 
 export interface Venda {
@@ -68,7 +60,11 @@ export function quemDaVenda(tipo: TipoDeVenda): string {
 }
 
 export interface ResumoDeVendas {
-  /** O "Total vendido": todos os tipos, MENOS os de `FORA_DO_TOTAL`. */
+  /**
+   * O "Total vendido": todos os tipos, o crédito interno vendido também (o
+   * Heitor, 25/11: "se o crédito foi vendido, é venda, tem que contar, não conta
+   * é quando só usa"). O pago com crédito interno já sai de cada venda no banco.
+   */
   geral:   { quantidade: number; total: number }
   porTipo: Record<TipoDeVenda, { quantidade: number; total: number }>
   /** Quantas linhas a lista tem sem filtro (o crédito também) — a paginação. */

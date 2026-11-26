@@ -57,8 +57,8 @@ test('a campanha diz que é aviso no celular, não WhatsApp, e quantas clientes 
     await expect(page.getByText(/não vai pelo WhatsApp/i)).toBeVisible()
 
     await page.getByRole('button', { name: 'Próximo' }).click()
-    await page.getByPlaceholder('ex: Aniversariantes de julho').fill(`[e2e] campanha ${marca}`)
-    await page.getByPlaceholder(/Feliz aniversário/).fill('Oi, {{first_name}}')
+    await page.getByPlaceholder('ex: Dia das Mães').fill(`[e2e] campanha ${marca}`)
+    await page.getByPlaceholder(/Feliz Dia das Mães/).fill('Oi, {{first_name}}')
     await page.getByPlaceholder(/Como presente/).fill('Texto da campanha.')
     await page.getByRole('button', { name: 'Próximo' }).click()
 

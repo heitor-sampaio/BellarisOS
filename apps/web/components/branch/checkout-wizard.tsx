@@ -11,6 +11,7 @@ import { useState, useTransition, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { AlertTriangle, Check, ChevronRight, User, FileText, CreditCard, CalendarCheck, Stethoscope, Clock, FileSignature, ScrollText } from 'lucide-react'
 import { checkoutTreatmentPlan, cancelCheckout, avulsosDoPlanoNoCheckout } from '@/actions/treatment-plans'
+import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { prepararDocumentosDoCheckout, documentoParaAssinar } from '@/actions/documentos'
 import { TelaDeAssinatura, type DocumentoNaTela } from '@/components/shared/tela-de-assinatura'
 import type { ResumoDeDocumento } from '@/lib/documentos/leitura'
@@ -300,6 +301,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   const loadingSlots = !!chaveDosSlots && slotsLidos.chave !== chaveDosSlots
 
   const [submitting,   startSubmit]   = useTransition()
+  // O clique duplo no receber é o MESMO envio (o Heitor, 25/11: "As duas respostas dizem 'recebido'").
+  const envio = useEnvioUnico()
   const [error,        setError]      = useState<string | null>(null)
   const [cancelling,   startCancel]   = useTransition()
   const [showCancel,   setShowCancel] = useState(false)
@@ -528,12 +531,13 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
 
     startSubmit(async () => {
       const result = await checkoutTreatmentPlan(plan.id, montarPagamento(), schedules, slug, descontoDoEstado(desconto),
-        temQuemVendeu ? { vendedorId: vendedorId || null, semVendedor } : null, fid.paraEnviar)
+        temQuemVendeu ? { vendedorId: vendedorId || null, semVendedor } : null, fid.paraEnviar, envio.chave())
       if (result.error) { setError(result.error); return }
       // O servidor pergunta o mesmo que a tela (a pergunta já foi respondida no pagamento).
       if ('confirmarSemVendedor' in result && result.confirmarSemVendedor) { setError(result.confirmarSemVendedor); return }
       // O plano fechou: o passo guardado não serve mais.
       limparPassoDoCheckout(plan.id)
+      envio.renovar()
       // D8 da 12ª: a sala única do procedimento estava ocupada — a sessão foi sem sala.
       if ('avisoDaSala' in result && result.avisoDaSala) toast.warning(result.avisoDaSala, { duration: 10_000 })
       // A37 da 8ª: concluir caía na ficha sem confirmação nenhuma.

@@ -1679,15 +1679,17 @@ de decisões) — **implementadas na F65 (2026-11-12)**:
   "Concluído" da agenda (`completeAppointment`) não conclui mais nada (§10).
   **O remarcar recusa o que está em atendimento** (C15, `remarcarCore`), e
   as anotações de rascunho recusam o cancelado e a falta.
-- **A remarcação e a confirmação (H3, opção c; princípio 3: "Confirmado" é
-  "a cliente disse que vem nesse horário").** A cliente que remarca pelo app
-  escolheu o horário novo: ele já nasce Confirmado, sem pedir a confirmação
-  de novo. Quando a equipe ou o Copilot remarcam, ninguém ouviu a cliente: o
-  horário volta a Agendado (sem `confirmed_at` nem `arrived_at`) e a
-  confirmação é pedida de novo (C8). **O app diz** (A12 da 19ª): "Agendamento
-  remarcado: … O horário novo fica confirmado." (`textoDoRemarcado`,
-  `lib/clientes/textos-do-app.ts`). Prova:
-  `e2e/portal-cliente-remarcar-pelo-nucleo.spec.ts`.
+- **A remarcação volta a Agendado, venha de onde vier** (o Heitor, 25/11, ao
+  rever a H3, que fazia o remarcado pelo app nascer Confirmado: "Discordo —
+  Ela já desmarcou uma vez, pode acabar desmarcando de novo, melhor
+  reconfirmar."). Pelo app (`remarcarPelaCliente`), pela equipe ou pelo
+  Copilot (`remarcarCore`, C8), o horário novo fica Agendado (sem
+  `confirmed_at` nem `arrived_at`) e a confirmação é pedida de novo, como a de
+  qualquer agendamento. **O app diz** (A12 da 19ª): "Agendamento remarcado: …
+  O horário novo fica como Agendado até ser confirmado." (`textoDoRemarcado`,
+  `lib/clientes/textos-do-app.ts`; o texto é decisão do Claude, 25/11). Prova:
+  `e2e/portal-cliente-remarcar-pelo-nucleo.spec.ts`,
+  `tests/remarcar-pelo-app-volta-a-agendado.test.ts`.
 - **Quem só agenda cria a ficha, mas não mexe na que existe (H4, opção b;
   princípio 3: a mesma ação não muda conforme a porta).** O "+ Agendar" com
   nome e telefone, e o agendar pelo CRM (cujos horários se chamam "Horários
@@ -3790,17 +3792,18 @@ O resto do fluxo:
   (`lib/appointments/quem-cancela.ts`), lida no `cancelarCore` e na
   desistência com insumo pela situação do agendamento — o agendado segue com
   a Agenda em Gerenciar —, e a gravação vale só na situação lida. A janela da
-  agenda mostra o "Desistir do atendimento" do Em atendimento a quem tem o Atendimento em
+  agenda mostra o "Cancelar" do Em atendimento a quem tem o Atendimento em
   Gerenciar (`podeAtenderEste`), com o aviso da sessão paga, e sem o "Não compareceu"
   (o servidor recusa: "não é falta"); a tela do atendimento, a quem tem o
   Atendimento (`canManage`); o Copilot (`cancelar_agendamento`), pela mesma
   regra, com o aviso no cartão. A intercorrência pede o Prontuário em
   Gerenciar. Sem nada marcado, é o cancelar de sempre. **O botão do Em
-  atendimento diz "Desistir do atendimento"** (A9 e Pendente 19 da 28ª
-  simulação; decisão do Claude, 25/11, pelo princípio 7 — o botão diz o que
-  faz): na janela da agenda e na tela do atendimento, com "Motivo da
-  desistência *" e "Confirmar desistência"; antes do início, segue "Cancelar".
-  Prova: `tests/sessao-do-atendimento-o-que-a-tela-diz.test.ts`. Prova:
+  atendimento diz "Cancelar"**, como antes do início (o Heitor, 25/11, à troca
+  por "Desistir do atendimento" da A9 da 28ª: "Discordo — Mantem o Cancelar"):
+  na janela da agenda e na tela do atendimento, a janela "Cancelar
+  atendimento", com "Motivo do cancelamento *" e "Confirmar cancelamento". Só
+  o nome volta; a desistência por dentro (insumo, intercorrência, sessão paga)
+  segue igual. Prova: `tests/sessao-do-atendimento-o-que-a-tela-diz.test.ts`. Prova:
   `e2e/atendimento-desistir-pelo-modulo.spec.ts`,
   `tests/varredura-atendimento.test.ts`. Prova:
   `e2e/atendimento-atritos-da-8.spec.ts` ("A27"). **E a tela do cancelado

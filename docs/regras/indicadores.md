@@ -171,7 +171,7 @@
     `metrics_a_receber_em_aberto`) sem cliente nem atendimento — a sublocação
     da sala, um aluguel — `metrics_a_receber_sem_cliente` →
     `getAReceberSemCliente` (`lib/metrics/a-receber-sem-cliente.ts`), por
-    unidade e no total. O cartão "A receber da cliente · em aberto" segue
+    unidade e no total. O cartão "A receber · em aberto" (o nome desde 25/11, o Heitor: "O cartão vira 'A receber · em aberto' e soma tudo") segue
     somando todo o em aberto (FN-11), e a nota diz "Inclui sem cliente: R$ …"
     (a dica diz o que é). Prova: `tests/financeiro-a-receber-sem-cliente.test.ts`,
     `e2e/financeiro-a-receber-todos-os-vencimentos.spec.ts`.
@@ -785,8 +785,10 @@ KPI que não fazia nenhum dos dois.
   (`credito_vendido_id`) é receita paga com cliente — a regra única o conta
   sem mudança (caixa, Fechamento, faturamento, ticket, LTV). O uso depois é
   o pagamento com crédito interno, fora da receita (acima). Em Relatórios →
-  Vendas ele é uma LINHA (a comanda dele, desde o RL1, 2026-11-14), mas fica
-  FORA do "Total vendido": a venda é a do que for pago com ele. Prova:
+  Vendas ele é uma LINHA (a comanda dele, desde o RL1, 2026-11-14) e conta no
+  "Total vendido"; o que se paga com ele não conta de novo (o Heitor, 25/11:
+  "se o crédito foi vendido, é venda, tem que contar, não conta é quando só
+  usa"; abaixo, em Vendas). Prova:
   `e2e/vendas-credito-interno.spec.ts`, `e2e/relatorio-vendas-comandas.spec.ts`.
 - **LTV é o que o cliente PAGOU**, desde sempre (`metrics_do_cliente`,
   `metrics_top_clients`). Não é "preço dos atendimentos": atendimento concluído
@@ -867,8 +869,8 @@ geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro — mas
   ser paga; o que teve o único pagamento estornado inteiro também sai. O
   VALOR de cada tipo não muda (o vendido, menos o cancelado, o devolvido e o
   desconto: o parcelado entra inteiro no dia da primeira parcela paga), nem o
-  "Quem vendeu". O pago com crédito interno é pago. Migration
-  `20261125100001` (troca de trechos no corpo vivo de `metrics_vendas`);
+  "Quem vendeu". O pago com crédito interno NÃO faz a venda (abaixo, 25/11).
+  Migration `20261125100001` (troca de trechos no corpo vivo de `metrics_vendas`);
   na produção de 18/11, o avulso caía de 33 para 31, o pacote de 24 para 23 e
   o pré-pago de 7 para 5. O que lê as vendas segue sozinho: a aba, o CSV e o
   Copilot (`getResumoDeVendas`/`getVendas`). A comissão do avulso já era do
@@ -884,15 +886,22 @@ geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro — mas
   ("Atendimentos avulsos", "Pacotes", "Pré-pagos", "Planos", "Produtos",
   "Créditos"). Migration `20261115700003`.
 - **O Crédito interno vendido** (`creditos_vendidos`, tipo `CREDITO`, na
-  data do pagamento — D6 —, o valor menos o devolvido; o estornado inteiro sai) aparece
-  na lista e no CSV, mas o "Total vendido" NÃO o soma: o que se paga com ele
-  é que é a venda, e somar os dois contaria o mesmo dinheiro duas vezes. A
-  conta mora no banco — `metrics_vendas_resumo` devolve o geral sem o crédito
-  e `linhas` (quantas linhas a lista tem, a paginação); a tela diz "Fora do total:
-  N créditos internos vendidos, R$ X — a venda é o que for pago com ele." (`[data-credito-fora-do-total]`,
-  princípio 3; `FORA_DO_TOTAL`, `lib/metrics/vendas-comum.ts`). O crédito não
+  data do pagamento — D6 —, o valor menos o devolvido; o estornado inteiro sai) é
+  VENDA: aparece na lista e no CSV e o "Total vendido" o soma (o Heitor, 25/11:
+  "se o crédito foi vendido, é venda, tem que contar, não conta é quando só
+  usa"; era o contrário desde o RL1, decisão do Claude de 14/11). O que conta
+  uma vez só é o USO: o lançamento pago com crédito interno
+  (`payment_method = 'INTERNAL_CREDIT'`) não faz venda nenhuma entrar — a régua
+  do primeiro recebimento pago (D6) o pula, e a venda paga só com crédito fica
+  fora — e sai do valor da linha (a paga em parte vale o resto, no dia do
+  primeiro dinheiro). Decisão do Claude, 25/11, pela fala: a parte paga com
+  crédito sai da linha da venda, não do crédito (o crédito vendido é a venda;
+  o uso é que não é). Migration `20261208500001` (troca no corpo vivo de
+  `metrics_vendas`; `metrics_vendas_resumo` devolve o geral com todos os
+  tipos e `linhas`, a paginação). A tela não tem mais o "Fora do total". O crédito não
   tem quem vendeu: no recorte por profissional ("venda dela") ele não entra. Prova:
-  `e2e/relatorio-vendas-comandas.spec.ts`, `tests/relatorio-vendas-comandas.test.ts`.
+  `e2e/relatorio-vendas-comandas.spec.ts`, `e2e/relatorio-vendas-so-o-pago.spec.ts`,
+  `tests/vendas-credito-vendido-conta-e-o-uso-nao.test.ts`.
   A dica do Total vendido (`[data-ponte-vendas-caixa]`) diz também que o
   voucher e os pontos pagam parte da venda e não entram no caixa, e que o
   desconto fica fora dos dois (A31 da 20ª; sem número: não há métrica dele).

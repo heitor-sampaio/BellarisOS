@@ -516,8 +516,8 @@ Este é o catálogo das regras dos indicadores que valem HOJE: todo número na t
 - Onde: `docs/regras/indicadores.md:822-825`
 - Antes: KC-16
 
-**VE-05.** O crédito interno vendido aparece na lista e no CSV das Vendas, mas fica fora do "Total vendido" (a venda é o que for pago com ele; somar os dois contaria o mesmo dinheiro duas vezes), e a tela diz: "Fora do total: N créditos internos vendidos, R$ X — a venda é o que for pago com ele." Ele não tem quem vendeu e não entra no recorte de venda de nenhuma pessoa.
-- Fonte: princípio 3
+**VE-05.** O crédito interno vendido é venda: aparece na lista e no CSV das Vendas e conta no "Total vendido". O que a cliente paga com ele não conta de novo: a venda paga só com crédito interno não entra, e a paga em parte entra no dia do primeiro dinheiro, valendo o resto (a parte paga com crédito sai da linha). Ele não tem quem vendeu e não entra no recorte de venda de nenhuma pessoa.
+- Fonte: o Heitor, 25/11: "se o crédito foi vendido, é venda, tem que contar, não conta é quando só usa"; a parte paga com crédito sair da linha da venda (não do crédito): decisão do Claude, 25/11, pela fala
 - Onde: `docs/regras/indicadores.md:705-713`, `:809-818`
 - Antes: KC-17
 

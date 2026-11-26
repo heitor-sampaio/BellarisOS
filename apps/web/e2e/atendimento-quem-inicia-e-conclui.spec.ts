@@ -80,8 +80,8 @@ test('C14: com o Atendimento em Gerenciar, a colega inicia e finaliza o atendime
     await expect(p.getByRole('button', { name: 'Finalizar atendimento' }), 'finaliza o de outra').toBeVisible()
     // Cancelar o Em atendimento é DESISTIR: do Atendimento em Gerenciar, não da
     // Agenda (CLAUDE.md §11, o Heitor, 18/11; ATD-A01 — antes ficava escondido).
-    // O botão diz "Desistir do atendimento" (Pendente 19 da 27ª / A9 da 28ª, princípio 7).
-    await expect(p.getByRole('button', { name: 'Desistir do atendimento', exact: true }), 'o Atendimento em Gerenciar desiste').toBeVisible()
+    // O botão diz "Cancelar" (o Heitor, 25/11: "Mantem o Cancelar").
+    await expect(p.getByRole('button', { name: 'Cancelar', exact: true }), 'o Atendimento em Gerenciar cancela o Em atendimento').toBeVisible()
   })
 })
 
@@ -95,7 +95,7 @@ test('a Agenda em Gerenciar sem o Atendimento em Gerenciar não inicia nem concl
     await p.goto(`/${slug}/agenda/${emCurso}`)
     await expect(p.getByRole('button', { name: 'Finalizar atendimento' }), 'sem o Finalizar').toHaveCount(0)
     // …nem desiste dele: cancelar o Em atendimento é do Atendimento (ATD-A01).
-    await expect(p.getByRole('button', { name: 'Desistir do atendimento', exact: true }), 'sem o Desistir do Em atendimento').toHaveCount(0)
+    await expect(p.getByRole('button', { name: 'Cancelar', exact: true }), 'sem o Cancelar do Em atendimento').toHaveCount(0)
 
     // Pelo id: o status e a conclusão recusam.
     await chamarAcao(p, 'actions/appointments.ts', 'updateAppointmentStatus', `/${slug}/agenda`,

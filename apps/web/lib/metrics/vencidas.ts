@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
  * O a receber da cliente VENCIDO (D13 da 9ª simulação, 2026-11-07; princípio
  * 3): em aberto, com o vencimento antes de hoje em Brasília — o conjunto de
  * `metrics_a_receber_em_aberto`, contado no banco (`metrics_a_receber_vencido`).
- * O cartão "A receber da cliente", o dashboard e o check-in dizem o mesmo número.
+ * O cartão "A receber · em aberto", o dashboard e o check-in dizem o mesmo número.
  */
 export interface AReceberVencido {
   valor:      number

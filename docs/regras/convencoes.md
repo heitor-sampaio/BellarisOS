@@ -204,8 +204,12 @@ edições do sistema". O mecanismo é UM:
   ESTOQUE — a entrada (`adminAddStock`, também a do leitor de código de
   barras), a transferência e a perda; os PONTOS — o ajuste e a troca por
   recompensa (`ajustarPontos`, `resgatarRecompensa`: `envio` no objeto);
-  RECEBER o plano no check-in (`receberDoPlano`, a chave é o último
-  argumento — F11, 2026-11-03); a UNIDADE nova (`createBranch`, o "Nova
+  RECEBER no PDV — a comanda do atendimento (`confirmPayment`, `_envio` no
+  formulário), a parcela e o a receber (`receberParcelaNoPdv`) e o plano
+  (`checkoutTreatmentPlan`), a chave no último argumento: o clique duplo
+  grava uma vez e as duas respostas dizem o recebido (o Heitor, 25/11: "As
+  duas respostas dizem 'recebido'"; era o `receberDoPlano` do check-in, F11,
+  que saiu na 28ª); a UNIDADE nova (`createBranch`, o "Nova
   unidade" e o `/setup` — F12, 2026-11-03).
 - **Duas abas ao mesmo tempo (envios DIFERENTES) é outra coisa**: a chave não
   as junta. No dinheiro que lê um saldo, a função do banco TRAVA a linha e
@@ -214,10 +218,11 @@ edições do sistema". O mecanismo é UM:
   estão em aberto com a soma mostrada, e só então quita ou troca o saldo por
   entrada + parcelas; a segunda chegada ouve "Este saldo já foi recebido ou
   mudou". Prova: `e2e/plano-recebimento-concorrente.spec.ts`.
-- **Onde não precisou**: o que o ESTADO já barra — receber o atendimento
-  (`confirmPayment`: o "já pago" é conferido dentro da transação), o ajuste de
+- **Onde não precisou**: o que o ESTADO já barra — o ajuste de
   estoque (grava o saldo absoluto, repetir dá o mesmo saldo), o cancelamento
-  do plano e do pacote (a situação muda na primeira), o estorno. O checkout do
+  do plano e do pacote (a situação muda na primeira), o estorno. (Receber no
+  PDV também barrava pelo estado, mas a segunda resposta era um erro; desde
+  25/11 o mesmo envio passa por `umaVez`, acima.) O checkout do
   plano TRAVA (C32, F67): `plano_checkout` pega o plano `for update` e confere
   que ainda é PROPOSED — a segunda chegada ouve "Este plano já foi fechado".
   Prova: `e2e/plano-checkout-uma-transacao.spec.ts`.

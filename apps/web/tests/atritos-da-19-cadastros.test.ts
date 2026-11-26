@@ -59,7 +59,9 @@ describe('A22: chipDaComissao', () => {
   })
   it('quem não atende: a de venda', () => {
     // A6 da 24ª: sem a dela, vale a do pacote, do produto ou da rede (era "Sem comissão de venda").
-    expect(chipDaComissao({ padrao: null, excecoes: 0, vendaPct: null, atende: false })).toBe('Venda: a do pacote, produto ou rede')
+    // O Heitor, 25/11: "Diz o percentual da rede" — "Venda: a do pacote ou produto vendido (sem ela, a da rede: X%)".
+    expect(chipDaComissao({ padrao: null, excecoes: 0, vendaPct: null, atende: false, vendaDaRede: { plano: 5, produto: 5 } }))
+      .toBe('Venda: a do pacote ou produto vendido (sem ela, a da rede: 5%)')
     expect(chipDaComissao({ padrao: null, excecoes: 0, vendaPct: 2.5, atende: false })).toBe('Venda 2,5%')
   })
   it('com padrão, como antes', () => {

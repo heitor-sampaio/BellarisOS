@@ -38,9 +38,10 @@ describe('A1/A2: quem conclui, na matriz e no resumo do cargo', () => {
       .toBe('Vê os atendimentos, sem iniciar nem concluir: iniciar e concluir pedem o Atendimento em Gerenciar.')
     expect(conclusaoNoResumo({ atendimento: 'MANAGE', medical_records: 'VIEW' }))
       .toBe('Inicia e conclui os atendimentos. A evolução, as fotos e a ficha de saúde pedem o Prontuário em Gerenciar.')
-    // Sem o Atendimento, nada a dizer; com ele de todos e o Prontuário, tudo.
+    // Sem o Atendimento, nada a dizer; com ele e o Prontuário em Gerenciar, o resumo diz
+    // (o Heitor, 25/11: "Diz \"Inicia e conclui os atendimentos.\"").
     expect(conclusaoNoResumo({ agenda: 'MANAGE', medical_records: 'NONE' })).toBeNull()
-    expect(conclusaoNoResumo({ atendimento: 'MANAGE', medical_records: 'MANAGE' })).toBeNull()
+    expect(conclusaoNoResumo({ atendimento: 'MANAGE', medical_records: 'MANAGE' })).toBe('Inicia e conclui os atendimentos.')
   })
   it('A2: a Agenda em Ver não promete concluir, e diz que não marca horário', async () => {
     const { LEVEL_COPY } = await import('@/lib/permissions-copy')
@@ -77,7 +78,9 @@ describe('A3/A4/A5: a tela de Cargos', () => {
 describe('A6: o chip de quem não atende diz de onde vem a comissão de venda', () => {
   it('sem a dela, vale a do pacote, do produto ou da rede', async () => {
     const { chipDaComissao } = await import('@/lib/comissoes/chip-do-membro')
-    expect(chipDaComissao({ padrao: null, excecoes: 0, vendaPct: null, atende: false })).toBe('Venda: a do pacote, produto ou rede')
+    // O Heitor, 25/11: "Diz o percentual da rede" — "Venda: a do pacote ou produto vendido (sem ela, a da rede: X%)".
+    expect(chipDaComissao({ padrao: null, excecoes: 0, vendaPct: null, atende: false, vendaDaRede: { plano: 5, produto: 5 } }))
+      .toBe('Venda: a do pacote ou produto vendido (sem ela, a da rede: 5%)')
     expect(chipDaComissao({ padrao: null, excecoes: 0, vendaPct: 5, atende: false })).toBe('Venda 5%')
   })
 })

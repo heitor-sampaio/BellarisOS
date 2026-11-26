@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  TIPOS_DE_VENDA, ROTULO_DO_TIPO, FORA_DO_TOTAL, CABECALHO_DO_CSV_DE_VENDAS, colunasDoCsvDeVendas, comandaDaVenda,
+  TIPOS_DE_VENDA, ROTULO_DO_TIPO, CABECALHO_DO_CSV_DE_VENDAS, colunasDoCsvDeVendas, comandaDaVenda,
   type Venda,
 } from '@/lib/metrics/vendas-comum'
 
@@ -15,10 +15,6 @@ describe('RL1: a aba Vendas é a das comandas do PDV', () => {
     expect([...TIPOS_DE_VENDA]).toEqual(['PROCEDIMENTO', 'PACOTE', 'PRE_PAGO', 'PLANO', 'PRODUTO', 'CREDITO'])
     expect(ROTULO_DO_TIPO.PROCEDIMENTO).toBe('Atendimento avulso')
     expect(ROTULO_DO_TIPO.CREDITO).toBe('Crédito interno')
-  })
-
-  it('o crédito aparece na lista e fica FORA do Total vendido (o que se paga com ele é a venda — senão o mesmo dinheiro seria duas)', () => {
-    expect([...FORA_DO_TOTAL]).toEqual(['CREDITO'])
   })
 
   it('cada linha diz a comanda dela; a venda de antes do PDV não tem', () => {

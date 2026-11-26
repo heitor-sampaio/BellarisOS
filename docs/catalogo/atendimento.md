@@ -224,8 +224,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:212-214`, `:642-647`, `:654-657`, `:1462-1463`
 - Antes: AG-88, AG-109
 
-**AG-42.** Na remarcação, quando a cliente remarca pelo app, o horário novo já nasce Confirmado ("O horário novo fica confirmado."); quando a equipe ou o Copilot remarcam, volta a Agendado e a confirmação é pedida de novo.
-- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — H3, opção c, do levantamento de 11/11
+**AG-42.** A remarcação volta a Agendado, venha de onde vier (a cliente pelo app, a equipe ou o Copilot), e a confirmação é pedida de novo. O app diz "O horário novo fica como Agendado até ser confirmado."
+- Fonte: o Heitor, 25/11, ao rever a H3 (a remarcação pela cliente nascia Confirmada): "Discordo — Ela já desmarcou uma vez, pode acabar desmarcando de novo, melhor reconfirmar."; o texto do app: decisão do Claude, 25/11
 - Onde: `docs/regras/atendimento.md:1464-1472`, `docs/revisao.md:462-463`, `docs/revisao.md:1902`
 - Antes: AG-89, AG-179
 

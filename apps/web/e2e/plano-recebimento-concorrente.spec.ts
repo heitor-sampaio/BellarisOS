@@ -89,6 +89,27 @@ test('o saldo à vista por duas abas ao mesmo tempo: só uma recebe', async ({ b
   expect(await lancamentos(plano), 'um recebimento só').toEqual(['300:true'])
 })
 
+/**
+ * O clique duplo é o MESMO envio (a chave da tela): grava uma vez, e as DUAS
+ * respostas dizem o recebido (o Heitor, 25/11: "As duas respostas dizem
+ * 'recebido'" — a segunda dizia "Esse lançamento já está pago", e quem clicou
+ * achava que tinha falhado). Duas abas (os casos acima, sem a chave) não mudam.
+ */
+test('o mesmo envio duas vezes (duplo clique): grava uma, e as duas respostas dizem o recebido', async ({ browser }) => {
+  const { plano, tx } = await planoComSaldo('duplo')
+  const envio = crypto.randomUUID()
+  const respostas = await como(browser, async p => {
+    await p.goto(ROTA)
+    return Promise.all([1, 2].map(() => chamarAcao(p, 'actions/pdv.ts', 'receberParcelaNoPdv', ROTA, [tx, '', { forma: 'PIX' }, envio])))
+  })
+  const textos = respostas.map(r => r!.texto)
+  for (const t of textos) {
+    expect(t, 'as duas respostas dizem o recebido').toContain('"recebido":300')
+    expect(t, 'nenhuma diz que já estava pago').not.toContain(JA_PAGO)
+  }
+  expect(await lancamentos(plano), 'um recebimento só').toEqual(['300:true'])
+})
+
 test('a parcela vencida do crediário do plano por duas abas ao mesmo tempo: só uma recebe, e a de depois fica', async ({ browser }) => {
   const { plano, tx, cliente } = await planoComSaldo('parcelado')
   // O crediário do plano: a entrada paga (o lançamento do saldo) e duas parcelas, a 1ª vencida.

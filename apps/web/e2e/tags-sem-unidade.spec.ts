@@ -204,8 +204,8 @@ test('MK2: o público da campanha não tem "Unidades", e as tags se chamam "Tags
   await como(browser, admin, async p => {
     await p.goto('/admin/notificacoes/nova')
     await p.getByRole('button', { name: /Próximo/ }).click()
-    await p.getByPlaceholder('ex: Aniversariantes de julho').fill(nome('Campanha'))
-    await p.getByPlaceholder(/ex: Feliz aniversário/).fill('Oi')
+    await p.getByPlaceholder('ex: Dia das Mães').fill(nome('Campanha'))
+    await p.getByPlaceholder(/ex: Feliz Dia das Mães/).fill('Oi')
     await p.getByPlaceholder(/ex: Como presente/).fill('Mensagem')
     await p.getByRole('button', { name: /Próximo/ }).click()
     await expect(p.getByText('Gênero', { exact: true })).toBeVisible()

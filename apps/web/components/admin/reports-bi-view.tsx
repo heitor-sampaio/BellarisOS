@@ -649,10 +649,8 @@ function TabVendas(p: ReportsBiProps) {
   const nomeDaUnidade = nomesDasUnidades(p.branches)
   const comUnidade = p.branches.length > 1
   const doFiltro = v.tipo ? resumo.porTipo[v.tipo] : resumo.geral
-  // Sem filtro a lista tem todas as linhas — o crédito também, que o Total
-  // vendido não soma (RL1).
+  // Sem filtro a lista tem todas as linhas (a paginação).
   const linhasDoFiltro = v.tipo ? doFiltro.quantidade : resumo.linhas
-  const credito = resumo.porTipo.CREDITO
   const inicio = linhasDoFiltro === 0 ? 0 : (v.pagina - 1) * POR_PAGINA + 1
   const fim = (v.pagina - 1) * POR_PAGINA + v.linhas.length
 
@@ -698,8 +696,8 @@ function TabVendas(p: ReportsBiProps) {
               {p.veCaixa
                 ? <>:{' '}<strong style={{ color: 'var(--text)' }}>{fmtBRLFull(p.core.revenueCash)}</strong> (Financeiro).</>
                 : <> (no Financeiro, que pede o Financeiro em Ver).</>}{' '}A diferença é a regra: o crédito
-              interno vendido entra no caixa e não no Total vendido (ele aparece na lista, com a comanda; a venda é o que for pago com ele, quando a
-              cliente usar); o pacote, o pré-pago e o plano parcelados entram aqui
+              interno vendido é venda e conta aqui, e o que a cliente paga com ele não conta de novo (a venda paga só com crédito não entra, e a
+              parte paga com crédito sai do valor da linha); o pacote, o pré-pago e o plano parcelados entram aqui
               inteiros, no dia da primeira parcela paga, e no caixa só o que já foi recebido; a sessão de pacote, de plano e a unidade pré-paga não são venda de novo;
               o voucher e os pontos da fidelidade pagam parte da venda (contam aqui) e não entram no caixa; o desconto da venda fica fora dos dois.
             </span>
@@ -781,13 +779,6 @@ function TabVendas(p: ReportsBiProps) {
         }}>
           <p data-total-vendas style={{ margin: 0, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
             {vendasNoPlural(doFiltro.quantidade)} · <strong style={{ color: 'var(--text)' }}>{fmtBRLFull(doFiltro.total)}</strong>
-            {/* RL1: o crédito está na lista e fora do total — a tela diz (princípio 3). */}
-            {!v.tipo && credito.quantidade > 0 && (
-              <span data-credito-fora-do-total style={{ display: 'block', marginTop: 2, fontSize: 'var(--text-xs-sz)' }}>
-                Fora do total: {credito.quantidade.toLocaleString('pt-BR')} {credito.quantidade === 1 ? 'crédito interno vendido' : 'créditos internos vendidos'},{' '}
-                {fmtBRLFull(credito.total)} — a venda é o que for pago com ele.
-              </span>
-            )}
           </p>
           {v.paginas > 1 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

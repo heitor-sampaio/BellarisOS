@@ -1,5 +1,6 @@
 import type { AppModule } from '@estetica-os/types'
 import { CONFIG_DA_REDE } from '@/lib/configuracao-da-rede'
+import { MODULE_LEVELS } from '@/lib/permissions'
 
 /**
  * As abas de Configurações — uma lista só, lida pela tela
@@ -13,7 +14,7 @@ import { CONFIG_DA_REDE } from '@/lib/configuracao-da-rede'
  *
  * Cada aba declara o módulo que a governa: a tela é uma só, mas os assuntos são
  * de três módulos diferentes desde a quebra de `settings`. Abrir a aba pede
- * MANAGE nesse módulo.
+ * o módulo no nível que abre (`nivelQueAbreAAba`).
  */
 export const ABAS_DE_CONFIGURACAO = [
   { key: 'unidades',      label: 'Unidades',     module: 'settings' },
@@ -79,7 +80,16 @@ export function abasEmGrupos<T extends { key: string }>(abas: readonly T[]): { k
 }
 
 /**
- * A aba abre para quem tem o módulo dela em MANAGE — ou um dos alternativos
+ * O nível que abre a aba do módulo: o Gerenciar, se o módulo o oferece; senão,
+ * o Ver — as Fichas e os Cargos (o Heitor, 25/11, "8 - a": "a pessoa abre a aba
+ * e lê, como já acontece"). Quem chama `abaLiberada` passa `m => can(ctx, m, nivelQueAbreAAba(m))`.
+ */
+export function nivelQueAbreAAba(m: AppModule): 'VIEW' | 'MANAGE' {
+  return (MODULE_LEVELS[m] ?? []).includes('MANAGE') ? 'MANAGE' : 'VIEW'
+}
+
+/**
+ * A aba abre para quem tem o módulo dela no nível que abre — ou um dos alternativos
  * (a de Importações: `clients` ou `crm`). A tela, a busca e o menu usam esta.
  */
 export function abaLiberada(aba: object, gerencia: (m: AppModule) => boolean): boolean {
@@ -243,7 +253,7 @@ export function motivoDaAbaFechada(pedida: string, o: {
     return `A aba ${aba.label}: ${CONFIG_DA_REDE}${quem} Você está na aba ${o.abriu}.`
   }
   if (!abaLiberada(aba, o.gerencia)) {
-    return `A aba ${aba.label} pede ${o.nomeDoModulo(aba.module)} em Gerenciar no cargo, e o seu não tem. Você está na aba ${o.abriu}.`
+    return `A aba ${aba.label} pede ${o.nomeDoModulo(aba.module)} em ${nivelQueAbreAAba(aba.module) === 'VIEW' ? 'Ver' : 'Gerenciar'} no cargo, e o seu não tem. Você está na aba ${o.abriu}.`
   }
   return null
 }

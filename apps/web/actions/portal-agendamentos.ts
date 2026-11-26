@@ -210,11 +210,12 @@ export async function remarcarPelaCliente(
       }
     }
 
-    // H3 (opção c, o Heitor, 2026-11-11): a cliente escolheu o horário novo —
-    // ele já nasce CONFIRMADO, sem pedir a confirmação de novo.
+    // O horário novo volta a AGENDADO, como no remarcar da equipe e do Copilot
+    // (o Heitor, 25/11, ao rever a H3: "Ela já desmarcou uma vez, pode acabar
+    // desmarcando de novo, melhor reconfirmar."): a confirmação se pede de novo.
     const agora = new Date().toISOString()
     const remarcadas = await gravar(admin.from('appointments').update({
-      scheduled_at: inicio.toISOString(), status: 'CONFIRMED', confirmed_at: agora, updated_at: agora,
+      scheduled_at: inicio.toISOString(), status: 'SCHEDULED', confirmed_at: null, arrived_at: null, updated_at: agora,
       professional_id: profissional, sem_preferencia: semPreferencia, room_id: sala, branch_id: unidade,
       ...(precoNovo !== undefined ? { price: precoNovo } : {}),
     }).eq('id', a.id).in('status', ABERTOS).select('id'), 'remarcar o agendamento') as { id: string }[] | null

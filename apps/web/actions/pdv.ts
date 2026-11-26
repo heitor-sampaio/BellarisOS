@@ -7,6 +7,7 @@ import { mensagemDoErro } from '@/lib/db'
 import { recusaDaQuantidadeDoProduto } from '@/lib/vendas/quantidades'
 import { lancamentoAoAlcance, marcarPagoCore, marcarPagoEmFormasCore, FORMAS_DE_PAGAMENTO } from '@/lib/financeiro/lancamento'
 import { lerPartesDaBaixa, type ParteDaBaixa } from '@/lib/financeiro/baixa-em-formas'
+import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 
 /**
  * A cliente da "Nova venda" do PDV (PDV2, a revisão do Heitor de 2026-11-13):
@@ -40,6 +41,11 @@ export async function buscarClientesParaVender(termo: string): Promise<{
  * É a MESMA baixa do Financeiro (`marcarPagoCore`): confere a rede e a unidade
  * ao alcance do lançamento pelo id, e grava num UPDATE só, com a guarda do
  * já pago. Quem recebe: `podeReceber` (o PDV em Gerenciar, PV-04).
+ *
+ * O MESMO envio (a chave da tela, `envio`) grava uma vez, e as duas respostas
+ * dizem o recebido (o Heitor, 25/11: "As duas respostas dizem 'recebido'" —
+ * o clique duplo dava "Esse lançamento já está pago" na segunda). Dois envios
+ * (duas abas) seguem como antes: a guarda da baixa deixa um só receber.
  */
 export async function receberParcelaNoPdv(
   transactionId: string, slug: string,
@@ -48,53 +54,61 @@ export async function receberParcelaNoPdv(
     /** A1 da 21ª ("+ Outra forma"): a parcela dividida — todas as formas, a primeira inclusive, cada uma com o valor dela. */
     partes?: ParteDaBaixa[] | null
   },
-): Promise<{ ok: true } | { error: string }> {
+  envio?: string | null,
+): Promise<{ ok: true; recebido: number } | { error: string }> {
   try {
     const ctx = await getTenantContext()
     if (!podeReceber(ctx)) return { error: 'Sem permissão para receber.' }
-    if (pagamento?.partes != null) {
-      const partes = lerPartesDaBaixa(pagamento.partes)
-      if ('error' in partes) return { error: partes.error }
-      if (partes.some(p => !(FORMAS_DE_PAGAMENTO as readonly string[]).includes(p.forma))) return { error: 'Forma de pagamento inválida para receber a parcela.' }
-      if (typeof transactionId !== 'string' || !/^[0-9a-f-]{36}$/i.test(transactionId)) return { error: 'Lançamento não encontrado.' }
-      if (partes.length >= 2) {
-        const r = await marcarPagoEmFormasCore(createAdminClient(), ctx, transactionId, partes)
-        if ('error' in r) return { error: r.error }
-        if (typeof slug === 'string' && slug) {
-          revalidatePath(`/${slug}/pdv`)
-          revalidatePath(`/${slug}/financeiro`)
-        }
-        revalidatePath('/admin/pdv')
-        revalidatePath('/admin/financeiro')
-        return { ok: true }
-      }
-    }
-    const forma = typeof pagamento?.forma === 'string' ? pagamento.forma : ''
-    if (!forma) return { error: 'Escolha a forma de pagamento.' }
-    if (!(FORMAS_DE_PAGAMENTO as readonly string[]).includes(forma)) return { error: 'Forma de pagamento inválida para receber a parcela.' }
-    const { bandeira = null, vezes = null, maquininha = null } = pagamento
-    if (bandeira != null && typeof bandeira !== 'string') return { error: 'Bandeira inválida.' }
-    if (vezes != null && typeof vezes !== 'number') return { error: 'Vezes inválidas.' }
-    if (maquininha != null && (typeof maquininha !== 'string' || !/^[0-9a-f-]{36}$/i.test(maquininha))) return { error: 'Maquininha inválida.' }
-    if (typeof transactionId !== 'string' || !/^[0-9a-f-]{36}$/i.test(transactionId)) return { error: 'Lançamento não encontrado.' }
-
-    const admin = createAdminClient()
-    // A rede e a unidade ao alcance (§11): a recepção da A não recebe na B.
-    const tx = await lancamentoAoAlcance(admin, ctx, transactionId)
-    if (!tx || tx.type !== 'INCOME') return { error: 'Lançamento não encontrado.' }
-    const r = await marcarPagoCore(admin, ctx, transactionId, forma, bandeira, vezes, maquininha)
-    if ('error' in r) return { error: r.error }
-
-    if (typeof slug === 'string' && slug) {
-      revalidatePath(`/${slug}/pdv`)
-      revalidatePath(`/${slug}/financeiro`)
-    }
-    revalidatePath('/admin/pdv')
-    revalidatePath('/admin/financeiro')
-    return { ok: true }
+    return await umaVez(ctx.tenantId!, 'receberParcelaNoPdv', chaveDoEnvio(envio), () => receberAParcela(ctx, transactionId, slug, pagamento))
   } catch (e) {
     return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
+}
+
+async function receberAParcela(
+  ctx: Awaited<ReturnType<typeof getTenantContext>>, transactionId: string, slug: string,
+  pagamento: Parameters<typeof receberParcelaNoPdv>[2],
+): Promise<{ ok: true; recebido: number } | { error: string }> {
+  if (pagamento?.partes != null) {
+    const partes = lerPartesDaBaixa(pagamento.partes)
+    if ('error' in partes) return { error: partes.error }
+    if (partes.some(p => !(FORMAS_DE_PAGAMENTO as readonly string[]).includes(p.forma))) return { error: 'Forma de pagamento inválida para receber a parcela.' }
+    if (typeof transactionId !== 'string' || !/^[0-9a-f-]{36}$/i.test(transactionId)) return { error: 'Lançamento não encontrado.' }
+    if (partes.length >= 2) {
+      const r = await marcarPagoEmFormasCore(createAdminClient(), ctx, transactionId, partes)
+      if ('error' in r) return { error: r.error }
+      if (typeof slug === 'string' && slug) {
+        revalidatePath(`/${slug}/pdv`)
+        revalidatePath(`/${slug}/financeiro`)
+      }
+      revalidatePath('/admin/pdv')
+      revalidatePath('/admin/financeiro')
+      return { ok: true, recebido: Math.round(partes.reduce((s, p) => s + p.valor, 0) * 100) / 100 }
+    }
+  }
+  const forma = typeof pagamento?.forma === 'string' ? pagamento.forma : ''
+  if (!forma) return { error: 'Escolha a forma de pagamento.' }
+  if (!(FORMAS_DE_PAGAMENTO as readonly string[]).includes(forma)) return { error: 'Forma de pagamento inválida para receber a parcela.' }
+  const { bandeira = null, vezes = null, maquininha = null } = pagamento
+  if (bandeira != null && typeof bandeira !== 'string') return { error: 'Bandeira inválida.' }
+  if (vezes != null && typeof vezes !== 'number') return { error: 'Vezes inválidas.' }
+  if (maquininha != null && (typeof maquininha !== 'string' || !/^[0-9a-f-]{36}$/i.test(maquininha))) return { error: 'Maquininha inválida.' }
+  if (typeof transactionId !== 'string' || !/^[0-9a-f-]{36}$/i.test(transactionId)) return { error: 'Lançamento não encontrado.' }
+
+  const admin = createAdminClient()
+  // A rede e a unidade ao alcance (§11): a recepção da A não recebe na B.
+  const tx = await lancamentoAoAlcance(admin, ctx, transactionId)
+  if (!tx || tx.type !== 'INCOME') return { error: 'Lançamento não encontrado.' }
+  const r = await marcarPagoCore(admin, ctx, transactionId, forma, bandeira, vezes, maquininha)
+  if ('error' in r) return { error: r.error }
+
+  if (typeof slug === 'string' && slug) {
+    revalidatePath(`/${slug}/pdv`)
+    revalidatePath(`/${slug}/financeiro`)
+  }
+  revalidatePath('/admin/pdv')
+  revalidatePath('/admin/financeiro')
+  return { ok: true, recebido: Number(tx.amount) }
 }
 
 const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i

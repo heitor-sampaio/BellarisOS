@@ -526,7 +526,7 @@ export function AppointmentSheet({ appointment, slug, vistaDela = false, podeGer
                 </button>
               )}
               <button disabled={loading} onClick={() => { setShowCancelReason(true); setConfirmandoFalta(false) }} className="btn-ghost" style={{ flex: 1, justifyContent: 'center', color: 'var(--warning)' }}>
-                <Ban size={14} /> {emAtendimento ? 'Desistir do atendimento' : 'Cancelar'}
+                <Ban size={14} /> Cancelar
               </button>
               {/* A27 da 12ª (princípio 3): a regra fica — a falta é de quem não veio
                   NA HORA —, e a janela diz quando ela aparece: na dica, ao lado do
@@ -558,7 +558,7 @@ export function AppointmentSheet({ appointment, slug, vistaDela = false, podeGer
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px', background: 'var(--warning-soft)', borderRadius: 'var(--radius-field-token)', border: '1px solid var(--warning)' }}>
                 {/* O rótulo LIGADO ao campo (J-31, design.md). */}
                 <label htmlFor="motivo-do-cancelamento" style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--warning)' }}>
-                  {emAtendimento ? 'Motivo da desistência *' : 'Motivo do cancelamento *'}
+                  Motivo do cancelamento *
                 </label>
                 <input
                   id="motivo-do-cancelamento"
@@ -581,7 +581,7 @@ export function AppointmentSheet({ appointment, slug, vistaDela = false, podeGer
                   className="btn-primary"
                   style={{ justifyContent: 'center' }}
                 >
-                  {emAtendimento ? 'Confirmar desistência' : 'Confirmar cancelamento'}
+                  Confirmar cancelamento
                 </button>
               </div>
             )}

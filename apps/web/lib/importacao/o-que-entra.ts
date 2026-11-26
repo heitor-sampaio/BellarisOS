@@ -73,6 +73,50 @@ export function linhasQueJuntamNaPlanilha(
   return juntam
 }
 
+/**
+ * As linhas de clientes que NÃO juntam (o `naoCompletar` que vai ao servidor):
+ * a ficha sem CPF do mesmo telefone que a linha completaria (IM-13) e a linha
+ * anterior do mesmo telefone com que ela juntaria (IM-15). O padrão é o nome:
+ * só junta quando ele casa (`nomeDiferente`, a comparação da importação) — o
+ * Heitor, 25/11, escolheu "Vem desmarcada, a não ser que o nome case"
+ * (princípio 4: mãe e filha dividem o número). `escolhas` é o que a pessoa
+ * marcou ou desmarcou na prévia (true = juntar), e vence o padrão. O mesmo
+ * CPF junta sempre (é a mesma pessoa): não tem caixa.
+ */
+interface EscolhasDaPrevia {
+  prontas: readonly { numero: number; dados: { name?: unknown }; mesmoTelefone?: { numero: number; nome: string } }[]
+  cruzados: readonly { numero: number; nome: string; como: 'cpf' | 'telefone' | 'email' }[]
+  escolhas: ReadonlyMap<number, boolean>
+}
+
+/** Cada linha com caixa de juntar: se junta, e se o nome casa. */
+function decisoesDaPrevia(p: EscolhasDaPrevia): { numero: number; juntar: boolean; nomeCasa: boolean }[] {
+  const nomeDa = new Map(p.prontas.map(l => [l.numero, typeof l.dados.name === 'string' ? l.dados.name : undefined]))
+  const comQuem = new Map<number, string>()
+  for (const l of p.prontas) if (l.mesmoTelefone) comQuem.set(l.numero, l.mesmoTelefone.nome)
+  // A que cruza com uma ficha da rede é decidida por ela (a prévia a mostra ali).
+  for (const c of p.cruzados) if (c.como === 'telefone') comQuem.set(c.numero, c.nome)
+  for (const c of p.cruzados) if (c.como !== 'telefone') comQuem.delete(c.numero)
+  return [...comQuem].map(([numero, nome]) => {
+    const nomeCasa = !nomeDiferente(nomeDa.get(numero), nome)
+    return { numero, nomeCasa, juntar: p.escolhas.get(numero) ?? nomeCasa }
+  })
+}
+
+export function linhasQueNaoJuntam(p: EscolhasDaPrevia): Set<number> {
+  return new Set(decisoesDaPrevia(p).filter(d => !d.juntar).map(d => d.numero))
+}
+
+/**
+ * As linhas de OUTRO nome que a pessoa marcou para juntar (`importacoes.juntar`):
+ * sem essa marca, o servidor não junta pelo telefone a linha cujo nome não casa
+ * com o da ficha (`gravarCliente`) — a regra vale mesmo que a prévia não tenha
+ * conseguido cruzar a planilha.
+ */
+export function linhasDeOutroNomeQueJuntam(p: EscolhasDaPrevia): number[] {
+  return decisoesDaPrevia(p).filter(d => d.juntar && !d.nomeCasa).map(d => d.numero).sort((a, b) => a - b)
+}
+
 const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`
 
 /** "Importar 10 linhas: 9 contatos novos, 1 linha junta com outra" — só o "Importar N linhas" quando todas viram pessoa nova. */

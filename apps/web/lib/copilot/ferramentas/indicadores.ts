@@ -9,7 +9,7 @@ import { DEFINICOES } from '@/lib/metrics/definicoes'
 import { painelComercial } from '@/lib/metrics/painel-comercial'
 import { getRelatorioDosModulos, getCoreDosModulos } from '@/lib/metrics/dos-modulos'
 import { getResumoDeVendas, getVendas, descricaoDaVenda, ROTULO_DO_TIPO } from '@/lib/metrics/vendas'
-import { comandaDaVenda, FORA_DO_TOTAL, type Venda } from '@/lib/metrics/vendas-comum'
+import { comandaDaVenda, type Venda } from '@/lib/metrics/vendas-comum'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
 import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
 import { DATA, dinheiro, idsDasUnidades, nomesPorId, procedimentosDaUnidade, resolverUnidade, STATUS_DO_AGENDAMENTO, ORIGEM_DO_AGENDAMENTO } from '@/lib/copilot/ferramentas/comum'
@@ -66,7 +66,7 @@ export const indicadores: FerramentaDeLeitura<{
   nome: 'indicadores',
   tipo: 'leitura',
   modulo: 'reports', nivel: 'VIEW',
-  descricao: 'Os números da rede num período (os mesmos dos Relatórios). aba (a chave; entre parênteses, o nome da aba na tela — na resposta, diga sempre o nome da tela, nunca pela chave): overview (Visão geral: faturamento, a receber, despesas e lucro — estes só com o Financeiro em Ver —, atendimentos e o aproveitamento, novos clientes — só na rede inteira, nula numa unidade —, comissões), financeiro (Financeiro: pede o Financeiro em Ver; a receita paga por unidade, por forma de pagamento e por categoria — receitaPorUnidade, receitaPorFormaDePagamento, receitaPorCategoria — e a despesa paga por unidade e por categoria — despesaPorUnidade, despesaPorCategoria —, com os totais), vendas (Vendas: cada venda, com o número da comanda do PDV: atendimento avulso, pacote, pré-pago, plano, produto e crédito interno — o crédito interno fica fora do total —, com o total por tipo), agenda (Agenda: por status, dia da semana, origem, a taxa de conclusão e o aproveitamento, cada um com o que conta; o comparecimento é o dos primeiros atendimentos, na aba comercial), clientes (Clientes: ativos, perfil, quem mais gasta), procedimentos (Procedimentos), profissionais (Profissionais), estoque (Estoque), comercial (Oportunidades: o funil, a conversão, os motivos de perda e a conversão por origem). periodo: today, week, 7d, 15d, 30d, month (padrão), last_month, quarter, ou custom com de/ate. "A semana" sem outra data é week (a semana atual) e "o mês" é month: não pergunte qual; a resposta diz o período ("periodo").',
+  descricao: 'Os números da rede num período (os mesmos dos Relatórios). aba (a chave; entre parênteses, o nome da aba na tela — na resposta, diga sempre o nome da tela, nunca pela chave): overview (Visão geral: faturamento, a receber, despesas e lucro — estes só com o Financeiro em Ver —, atendimentos e o aproveitamento, novos clientes — só na rede inteira, nula numa unidade —, comissões), financeiro (Financeiro: pede o Financeiro em Ver; a receita paga por unidade, por forma de pagamento e por categoria — receitaPorUnidade, receitaPorFormaDePagamento, receitaPorCategoria — e a despesa paga por unidade e por categoria — despesaPorUnidade, despesaPorCategoria —, com os totais), vendas (Vendas: cada venda, com o número da comanda do PDV: atendimento avulso, pacote, pré-pago, plano, produto e crédito interno — o crédito interno vendido conta no total, e o que se paga com ele não conta de novo —, com o total por tipo), agenda (Agenda: por status, dia da semana, origem, a taxa de conclusão e o aproveitamento, cada um com o que conta; o comparecimento é o dos primeiros atendimentos, na aba comercial), clientes (Clientes: ativos, perfil, quem mais gasta), procedimentos (Procedimentos), profissionais (Profissionais), estoque (Estoque), comercial (Oportunidades: o funil, a conversão, os motivos de perda e a conversão por origem). periodo: today, week, 7d, 15d, 30d, month (padrão), last_month, quarter, ou custom com de/ate. "A semana" sem outra data é week (a semana atual) e "o mês" é month: não pergunte qual; a resposta diz o período ("periodo").',
   parametros: z.object({
     aba: z.enum(REPORT_TABS).optional(),
     periodo: z.enum(PERIODOS).optional(),
@@ -185,7 +185,7 @@ export const indicadores: FerramentaDeLeitura<{
           total: dinheiro(resumo.geral.total), vendas: resumo.geral.quantidade,
           porTipo: Object.entries(resumo.porTipo).map(([tipo, x]) => ({ tipo: ROTULO_DO_TIPO[tipo as keyof typeof ROTULO_DO_TIPO], vendas: x.quantidade, total: dinheiro(x.total) })),
           ultimas: ultimas.map(vendaParaOModelo),
-          ...(resumo.porTipo.CREDITO?.quantidade ? { foraDoTotal: `${FORA_DO_TOTAL.map(t => ROTULO_DO_TIPO[t]).join(', ')}: entra na lista e não no total vendido (é dinheiro guardado, que vira atendimento depois).` } : {}),
+          ...(resumo.porTipo.CREDITO?.quantidade ? { creditoInterno: 'O crédito interno vendido é venda e está no total; o que a cliente paga com crédito interno não conta de novo (a venda paga só com ele não entra, e a parte paga com ele sai do valor).' } : {}),
           nota: resumo.geral.quantidade > ultimas.length ? 'A lista traz as 30 mais recentes; a completa está em Relatórios → Vendas.' : undefined,
         },
       }

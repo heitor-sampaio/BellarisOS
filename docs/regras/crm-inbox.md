@@ -152,8 +152,8 @@
     entra na mesma pergunta, com "Reativar a ficha de X") e o Copilot
     (`cadastrar_cliente` e `agendar` com cliente novo: o cartão troca o
     "Confirmar" pelas duas escolhas — `ResumoDaAcao.escolhas`, `copilot.md`).
-    Na importação, a prévia mostra "Completar a ficha de X" marcada e deixa
-    desmarcar (cli-07, abaixo). **O "Unificar" fica no Histórico da ficha**
+    Na importação, a prévia mostra "Completar a ficha de X", desmarcada a
+    não ser que o nome case, e deixa escolher (cli-07, abaixo; o Heitor, 25/11). **O "Unificar" fica no Histórico da ficha**
     (A23 da 7ª simulação, 2026-11-05): "Ficha unificada pelo cadastro ·
     Alterou: e-mail · por Lia" (`CLIENT_UNIFIED`, `unificacoesDaFicha`,
     `lib/clients/unificacoes.ts`). O fato mora na corrente de eventos — o
@@ -954,7 +954,8 @@ oferece segue o módulo (clientes com `clients`, contatos com `crm`).
   (D4 da 29ª, decisão do Claude, 25/11, pelo princípio 3: a linha da Filomena
   completava a ficha da Edna, com a da Filomena ali; `p_nome` em
   `cliente_por_telefone` e o nome da linha em `importacao_cruzamento`,
-  migration `20261205500001`). A caixa "Completar a ficha de X" não muda.
+  migration `20261205500001`). A caixa "Completar a ficha de X" vem marcada
+  só quando o nome casa (abaixo, 25/11).
   Prova: `tests/importacao-ficha-do-mesmo-nome-no-telefone.test.ts`,
   `e2e/importacao-previa-cruzamento.spec.ts` ("D4"). Contato: pelo telefone
   exato; sem telefone, pelo e-mail (sem caixa).
@@ -966,9 +967,22 @@ oferece segue o módulo (clientes com `clients`, contatos com `crm`).
   linha que repete o telefone de outra, e quem entra sem telefone. **A ficha
   SEM CPF completada pelo TELEFONE se desmarca** (cli-07, revisão do Heitor de
   2026-11-02: a filha com o telefone da mãe completava a ficha rápida da mãe):
-  "Completar a ficha de Marlene" vem marcada; desmarcada, a linha vira ficha
-  nova (`importacoes.nao_completar`; o CPF continua juntando, é a mesma
-  pessoa). Prova: `e2e/importacao-previa-cruzamento.spec.ts`.
+  desmarcada, a linha vira ficha nova (`importacoes.nao_completar`; o CPF
+  continua juntando, é a mesma pessoa). **E vem desmarcada, a não ser que o
+  nome case** (o Heitor, 25/11, escolheu "Vem desmarcada, a não ser que o nome
+  case"; princípio 4): "Completar a ficha de Marlene" na linha da filha vem
+  desmarcada ("vira uma ficha nova (com o mesmo telefone de Marlene)"); só vem
+  marcada quando o nome da linha casa com o da ficha (`nomeDiferente`). A
+  pessoa marca ou desmarca, e a escolha dela vale (`linhasQueNaoJuntam` monta
+  o `naoCompletar`; `linhasDeOutroNomeQueJuntam`, as de outro nome que ela
+  marcou, `importacoes.juntar`; os dois em `lib/importacao/o-que-entra.ts`).
+  **O servidor confere sozinho** (`gravarCliente`): a ficha achada pelo
+  TELEFONE cujo nome não casa só recebe a linha que está em `juntar`; sem a
+  marca, a linha vira a ficha dela — também quando a prévia não conseguiu
+  cruzar a planilha ou a pessoa importou antes de o cruzamento chegar
+  (migration `20261208400001`). Prova: `e2e/importacao-previa-cruzamento.spec.ts`,
+  `tests/importacao-mesmo-telefone-outro-nome-desmarcada.test.ts`,
+  `tests/importacao-servidor-mesmo-telefone-outro-nome.test.ts`.
   **O botão conta o que entra** (A14 da 17ª; princípio 3): "Importar 10
   linhas: 9 contatos novos, 1 linha junta com outra" — e "N completam quem já
   existe" (`textoDoBotaoDeImportar`, `lib/importacao/o-que-entra.ts`). Todas
@@ -1006,11 +1020,12 @@ oferece segue o módulo (clientes com `clients`, contatos com `crm`).
   2026-11-04; princípios 1 e 3: a Karina sumia na Bianca, calada): não é a
   repetida. **Na ficha**, a prévia mostra "Linha 3 · Karina tem o mesmo
   telefone da linha 2 · Bianca" com a caixa "Juntar Karina com Bianca",
-  marcada (o padrão é a regra do telefone: completa só o vazio da ficha da
-  Bianca, como a ficha que já existe); desmarcada, a Karina vira a ficha dela,
-  com o mesmo telefone (`importacoes.nao_completar`, o mesmo do cli-07). O
-  nome compara sem caixa, acento e espaço (`nomeDiferente`); o mesmo nome
-  segue "Repetida na planilha". **No contato** não há escolha: um telefone é
+  DESMARCADA (o Heitor, 25/11: "Vem desmarcada, a não ser que o nome case" —
+  aqui o nome nunca casa, que o mesmo nome é a repetida): a Karina vira a
+  ficha dela, com o mesmo telefone; marcada (`importacoes.juntar`, a mesma
+  conferência do servidor do cli-07), completa só o vazio da ficha da Bianca,
+  como a ficha que já existe. O nome compara sem caixa, acento e espaço (`nomeDiferente`); o
+  mesmo nome segue "Repetida na planilha". **No contato** não há escolha: um telefone é
   uma pessoa só (a conversa do WhatsApp é uma, e dois contatos com o mesmo
   identificador é o defeito do §9.2.1), e a prévia diz "… junta com a linha 2
   · Bianca (o mesmo telefone) — o nome que fica é Bianca", também na pessoa

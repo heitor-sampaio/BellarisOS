@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { X, Loader2, CheckCircle2 } from 'lucide-react'
 import { confirmPayment, previaDoPagamento } from '@/actions/appointments'
+import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { trocaDePontosDoAtendimento } from '@/actions/fidelidade'
 import { TrocarPontos } from '@/components/shared/trocar-pontos'
 import { abaterDoPacote } from '@/actions/a-receber'
@@ -127,6 +128,9 @@ export function FormularioDeReceberAtendimento({
   // C75: a maquininha de cada cartão entra na recusa (com mais de uma na rede).
   const recusaDoPagamento = useRecusaDoPagamento()
   const [state, action, pending] = useActionState(confirmPayment, null)
+  // O clique duplo é o MESMO envio (o Heitor, 25/11: "As duas respostas dizem 'recebido'"): a chave nasce
+  // no primeiro clique e vale para o segundo; a comanda recebida sai da tela (`feito`).
+  const envio = useEnvioUnico()
   // Pontos de fidelidade: só aparecem com o programa ligado e saldo positivo
   // (`previaDoPagamento` devolve nulo fora disso). A conta mostrada aqui é a
   // mesma que o servidor refaz — o valor que sai do navegador não é usado.
@@ -162,7 +166,8 @@ export function FormularioDeReceberAtendimento({
   }
   const feito = state !== null && !state?.error && !pending
   useEffect(() => { onPendente?.(pending) }, [pending]) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (feito) onFeito() }, [feito]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Recebido: o próximo "Receber" (a comanda reaberta pelo estorno) é outro envio.
+  useEffect(() => { if (feito) { envio.renovar(); onFeito() } }, [feito]) // eslint-disable-line react-hooks/exhaustive-deps
   // "Desconto, voucher, pontos" (o Heitor, 2026-11-18): o desconto comercial
   // sobre o total da comanda, o voucher sobre o que sobrou, os pontos sobre o
   // resto — a mesma conta do servidor e do banco (`voucherDepoisDoDesconto`).
@@ -209,7 +214,7 @@ export function FormularioDeReceberAtendimento({
   if (feito) return null
 
   return (
-    <form ref={formulario} action={action} onSubmit={antesDeEnviar} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <form ref={formulario} action={fd => { fd.set('_envio', envio.chave()); action(fd) }} onSubmit={antesDeEnviar} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <input type="hidden" name="appointment_id" value={appointmentId} />
       <input type="hidden" name="slug" value={slug} />
       {pacotesParaAbater.length > 0 && (

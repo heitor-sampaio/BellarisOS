@@ -612,9 +612,17 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   **O chip diz QUAL comissão** (A22 da 19ª simulação, princípio 3; era "Sem
   comissão" em toda linha, e a Patrícia deu 25% de atendimento a quem só
   vende): quem atende sem padrão, "Sem comissão de atendimento"; quem não
-  atende, "Venda 3%" ou "Venda: a do pacote, produto ou rede" (A6 da 24ª: o
-  "Sem comissão de venda" escondia a do pacote, do produto e da rede, que
-  valem); com padrão, como antes
+  atende, "Venda 3%" ou "Venda: a do pacote ou produto vendido (sem ela, a
+  da rede: 5%)" (A6 da 24ª: o "Sem comissão de venda" escondia a do pacote,
+  do produto e da rede, que valem; o Heitor, 25/11, "Diz o percentual da
+  rede": a linha dizia "a do pacote, produto ou rede" sem dizer quanto). A da
+  rede é a "Venda de plano" e a "Venda de produto" (`plano_pct`,
+  `produto_pct`): iguais, um número; diferentes, "5% no plano, 2,5% no
+  produto"; uma só, "nenhuma no plano, 3% no produto"; nenhuma, "(sem ela,
+  nenhuma: a rede não tem)" — princípios 3 e 4, decisão do Claude, 25/11
+  (`chipDaComissao` com `vendaDaRede`, lida por `configDeComissaoDaRede` nas
+  duas Equipes; prova `tests/equipe-comissao-de-venda-da-rede.test.ts`); com
+  padrão, como antes
   ("Comissão 25% · 2 exceções · venda 3%") — `chipDaComissao`
   (`lib/comissoes/chip-do-membro.ts`). O campo do valor da regra mostra um
   exemplo ("Ex.: 10", "Ex.: 50,00"), não um 0 que parecia já preenchido (A24).

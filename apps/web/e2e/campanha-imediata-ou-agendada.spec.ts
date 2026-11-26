@@ -76,8 +76,8 @@ test('MK1: só Imediata e Agendada; a agendada é numa data e hora ou todo ano; 
     await p.getByLabel('Dia', { exact: true }).fill(String(dataAnual.day))
     await p.getByRole('button', { name: 'Próximo' }).click()
 
-    await p.getByPlaceholder('ex: Aniversariantes de julho').fill(nome)
-    await p.getByPlaceholder(/Feliz aniversário/).fill('Um dia especial, {{first_name}}')
+    await p.getByPlaceholder('ex: Dia das Mães').fill(nome)
+    await p.getByPlaceholder(/Feliz Dia das Mães/).fill('Um dia especial, {{first_name}}')
     await p.getByPlaceholder(/Como presente/).fill('Venha comemorar com a gente.')
     await p.getByRole('button', { name: 'Próximo' }).click()
     await p.getByRole('button', { name: 'Próximo' }).click()

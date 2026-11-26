@@ -92,7 +92,7 @@ const COLUNAS_AUDITADAS: Record<string, string> = {
   forms: 'name schema is_active tipo',
   fornecedores: 'nome created_by',
   fundos_de_troco: 'branch_id dia valor informado_por informado_por_nome informado_em',
-  importacoes: 'branch_id criada_por destino nome_arquivo mapeamento oportunidade status total processadas novas completadas sem_mudanca com_erro oportunidades erros erro criada_em iniciada_em concluida_em erros_expiram_em execucao nao_completar avisos com_aviso',
+  importacoes: 'branch_id criada_por destino nome_arquivo mapeamento oportunidade status total processadas novas completadas sem_mudanca com_erro oportunidades erros erro criada_em iniciada_em concluida_em erros_expiram_em execucao nao_completar juntar avisos com_aviso',
   indicacao_premios: 'indicada_id indicadora_id branch_id transaction_id tipo pontos loyalty_transaction_id voucher_id estornado_em',
   injectable_applications: 'client_id appointment_id professional_id applied_at view points totals notes map_id',
   injectable_maps: 'client_id branch_id view points name',

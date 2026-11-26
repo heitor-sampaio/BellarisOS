@@ -38,8 +38,8 @@ test('o Esc fecha o seletor de tags, e com ele aberto o "Próximo" avança no pr
   await comoMembro(browser, async page => {
     await page.goto('/admin/notificacoes/nova')
     await page.getByRole('button', { name: 'Próximo' }).click()
-    await page.getByPlaceholder('ex: Aniversariantes de julho').fill(`[e2e] campanha ${marca}`)
-    await page.getByPlaceholder(/Feliz aniversário/).fill('Oi, {{first_name}}')
+    await page.getByPlaceholder('ex: Dia das Mães').fill(`[e2e] campanha ${marca}`)
+    await page.getByPlaceholder(/Feliz Dia das Mães/).fill('Oi, {{first_name}}')
     await page.getByPlaceholder(/Como presente/).fill('Texto da campanha.')
     await page.getByRole('button', { name: 'Próximo' }).click()
     await expect(page.getByTestId('alcance-da-campanha')).toBeVisible()

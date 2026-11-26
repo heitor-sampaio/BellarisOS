@@ -71,7 +71,8 @@ describe('1. O módulo Atendimento', () => {
     expect(conclusaoNoResumo({ atendimento: 'NONE' })).toBeNull()
     expect(conclusaoNoResumo({ atendimento: 'VIEW' }))
       .toBe('Vê os atendimentos, sem iniciar nem concluir: iniciar e concluir pedem o Atendimento em Gerenciar.')
-    expect(conclusaoNoResumo({ atendimento: 'MANAGE', medical_records: 'MANAGE' })).toBeNull()
+    // O Heitor, 25/11: "Diz \"Inicia e conclui os atendimentos.\"".
+    expect(conclusaoNoResumo({ atendimento: 'MANAGE', medical_records: 'MANAGE' })).toBe('Inicia e conclui os atendimentos.')
     expect(conclusaoNoResumo({ atendimento: 'MANAGE', medical_records: 'VIEW' }))
       .toBe('Inicia e conclui os atendimentos. A evolução, as fotos e a ficha de saúde pedem o Prontuário em Gerenciar.')
     expect(tratamentosNoResumo({ atendimento: 'VIEW' })).toBe('Tratamentos vem do Atendimento em “Ver”: os planos de tratamento das clientes, para acompanhar.')

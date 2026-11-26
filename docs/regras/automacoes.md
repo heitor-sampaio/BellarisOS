@@ -134,6 +134,11 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   **O canal tem um nome só** (A25 da 30ª; princípio 3): o detalhe dizia
   "In-app" na linha "Canal" e "Aviso no celular" no aviso; é "Aviso no
   celular" nos dois. Prova: `tests/campanha-canal-e-data-de-todo-ano.test.ts`.
+  **Os exemplos do nome e do título são do Dia das Mães** (o Heitor, 25/11,
+  escolheu "Exemplos do Dia das Mães"): "ex: Dia das Mães" e "ex: Feliz Dia
+  das Mães, {{first_name}}!" — o aniversário não é campanha (é o modelo das
+  Automações). Os E2E acham os dois campos por esses exemplos. Prova: o mesmo
+  teste.
 - **Não há gatilho "Retorno vencendo"** (aut-04, 2026-11-02): o
   `agendamento.retorno_vencendo` e o cron `retornos` saíram com o "Retorno em N
   dias" (`atendimento.md` §10). O retorno é um agendamento novo; o gatilho de

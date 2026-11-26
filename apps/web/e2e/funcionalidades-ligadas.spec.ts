@@ -90,7 +90,7 @@ test('editar campanha: abre preenchida, salva e continua rascunho, sem mudar o t
     await p.getByRole('link', { name: 'Editar' }).click()
     await expect(p).toHaveURL(new RegExp(`/admin/notificacoes/${id}/editar`))
     await p.getByRole('button', { name: /Próximo/ }).click()
-    const campoNome = p.getByPlaceholder('ex: Aniversariantes de julho')
+    const campoNome = p.getByPlaceholder('ex: Dia das Mães')
     await expect(campoNome, 'abre com o nome que já tinha').toHaveValue(`${PREFIXO} Campanha ${marca}`)
     await campoNome.fill(novoNome)
     await p.getByRole('button', { name: /Próximo/ }).click()

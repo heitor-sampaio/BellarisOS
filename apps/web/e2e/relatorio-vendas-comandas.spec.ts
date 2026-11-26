@@ -7,9 +7,9 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  * RL1 (a revisão do Heitor, 2026-11-13: "rl1 ok"): Relatórios → Vendas lista
  * as COMANDAS do PDV — cada venda, do que for: atendimento avulso, pacote,
  * plano, produto e crédito. Cada linha diz o número da comanda dela; o
- * crédito na clínica entra na lista e no filtro, e fica FORA do Total vendido
- * (o que se paga com ele é que é a venda — senão o mesmo dinheiro contaria
- * duas vezes; princípio 3: a tela diz isso). O CSV leva a comanda.
+ * crédito interno vendido entra na lista, no filtro e no Total vendido (o
+ * Heitor, 25/11: "se o crédito foi vendido, é venda, tem que contar, não conta
+ * é quando só usa"). O CSV leva a comanda.
  *
  * Rede `[e2e]` própria, com as datas em maio de 2021.
  */
@@ -84,7 +84,7 @@ async function como(browser: Browser, m: MembroDeTeste, fn: (p: Page) => Promise
 
 const linhas = (p: Page) => p.locator('[data-venda]')
 
-test('cada linha é uma comanda — o crédito também —, e o crédito fica fora do Total vendido', async ({ browser }) => {
+test('cada linha é uma comanda — o crédito também —, e o crédito vendido conta no Total vendido', async ({ browser }) => {
   await como(browser, gestor, async p => {
     await p.goto(MAIO)
     await expect(linhas(p)).toHaveCount(2)
@@ -94,10 +94,10 @@ test('cada linha é uma comanda — o crédito também —, e o crédito fica fo
     await expect(credito.locator('[data-comanda]')).toHaveText(`Nº ${comandaDoCredito}`)
     await expect(linhas(p).nth(1).locator('[data-comanda]')).toHaveText(`Nº ${comandaDoPacote}`)
 
-    // O Total vendido é o pacote; o crédito aparece à parte, dito.
-    await expect(p.locator('[data-total-vendas]')).toContainText('R$ 400,00')
-    await expect(p.locator('[data-total-vendas]')).toContainText('1 venda')
-    await expect(p.locator('[data-credito-fora-do-total]')).toContainText('R$ 300,00')
+    // O Total vendido é o pacote e o crédito vendido (o Heitor, 25/11).
+    await expect(p.locator('[data-total-vendas]')).toContainText('R$ 700,00')
+    await expect(p.locator('[data-total-vendas]')).toContainText('2 vendas')
+    await expect(p.locator('[data-credito-fora-do-total]')).toHaveCount(0)
 
     // O filtro por tipo tem o crédito.
     await p.getByRole('button', { name: 'Créditos', exact: true }).click()

@@ -41,20 +41,21 @@ describe('A13: a Fidelidade no cargo', () => {
 })
 
 describe('A12: as Fichas e os Cargos são da Admin da rede', () => {
-  it('o Gerenciar das Fichas diz que montar é só da Admin da rede', async () => {
+  // O nível das Fichas e dos Cargos é o Ver desde 25/11 (o Heitor, "8 - a": "a pessoa abre a aba e lê").
+  it('o Ver das Fichas diz que montar é só da Admin da rede', async () => {
     const { LEVEL_COPY } = await import('@/lib/permissions-copy')
-    expect(LEVEL_COPY.forms.MANAGE).toMatch(/só da Admin da rede/)
-    expect(LEVEL_COPY.forms.MANAGE).not.toMatch(/documento/i)
+    expect(LEVEL_COPY.forms.VIEW).toMatch(/só da Admin da rede/)
+    expect(LEVEL_COPY.forms.VIEW).not.toMatch(/documento/i)
   })
   it('o resumo diz que a configuração da rede toda fica com a Admin da rede', async () => {
     const { configDaRedeNoResumo } = await import('@/lib/permissions-copy')
     expect(configDaRedeNoResumo({ forms: 'NONE', roles: 'NONE' })).toBeNull()
-    expect(configDaRedeNoResumo({ forms: 'MANAGE', roles: 'MANAGE' }))
-      .toBe('Fichas e Cargos são configuração da rede toda: só a Admin da rede os muda. A quem não é a Admin da rede, estas permissões não abrem nada.')
-    expect(configDaRedeNoResumo({ forms: 'MANAGE' }))
-      .toBe('Fichas é configuração da rede toda: só a Admin da rede a muda. A quem não é a Admin da rede, esta permissão não abre nada.')
-    expect(configDaRedeNoResumo({ roles: 'MANAGE' }))
-      .toBe('Cargos é configuração da rede toda: só a Admin da rede a muda. A quem não é a Admin da rede, esta permissão não abre nada.')
+    expect(configDaRedeNoResumo({ forms: 'VIEW', roles: 'VIEW' }))
+      .toBe('Fichas e Cargos em Ver: abre as duas abas e lê. Mudar as fichas e os cargos é só da Admin da rede (configuração da rede toda).')
+    expect(configDaRedeNoResumo({ forms: 'VIEW' }))
+      .toBe('Fichas em Ver: abre a aba e lê. Mudar as fichas é só da Admin da rede (configuração da rede toda).')
+    expect(configDaRedeNoResumo({ roles: 'VIEW' }))
+      .toBe('Cargos em Ver: abre a aba e lê. Mudar os cargos é só da Admin da rede (configuração da rede toda).')
   })
   it('o resumo do cargo mostra', () => {
     const f = fonte('components/admin/roles-editor.tsx')

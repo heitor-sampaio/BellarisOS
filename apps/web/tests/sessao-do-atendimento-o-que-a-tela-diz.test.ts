@@ -79,17 +79,27 @@ describe('o plano aceito e já recebido (D8 da 28ª)', () => {
   })
 })
 
-describe('"Desistir do atendimento" (A9 da 28ª, princípio 7)', () => {
-  it('na tela do atendimento, o Em atendimento desiste — o botão e a janela dizem isso', () => {
+// O Heitor, 25/11, à troca da A9 da 28ª ("Desistir do atendimento" no lugar de
+// "Cancelar"): "Discordo — Mantem o Cancelar". O Em atendimento segue sendo a
+// desistência por dentro (lib/atendimento/desistencia.ts); a tela diz "Cancelar".
+describe('o Em atendimento diz "Cancelar" (o Heitor, 25/11: "Mantem o Cancelar")', () => {
+  it('na tela do atendimento, o botão e a janela dizem "Cancelar"', () => {
     const s = fonte(SESSAO)
-    expect(s).toContain("'Desistir do atendimento'")
-    expect(s).toContain('Motivo da desistência *')
-    expect(s).toContain('Confirmar desistência')
+    expect(s).not.toContain("'Desistir do atendimento'")
+    expect(s).not.toContain('Motivo da desistência *')
+    expect(s).not.toContain('Confirmar desistência')
+    expect(s).toContain("'Cancelar atendimento'")
+    expect(s).toContain('Motivo do cancelamento *')
+    expect(s).toContain('Confirmar cancelamento')
+    expect(s).toContain("{pending ? 'Cancelando…' : 'Confirmar cancelamento'}")
   })
   it('na janela do agendamento também', () => {
     const j = fonte(JANELA)
-    expect(j).toContain("emAtendimento ? 'Desistir do atendimento' : 'Cancelar'")
-    expect(j).toContain('Motivo da desistência *')
+    expect(j).not.toContain('Desistir do atendimento')
+    expect(j).not.toContain('Motivo da desistência *')
+    expect(j).not.toContain('Confirmar desistência')
+    expect(j).toContain('Motivo do cancelamento *')
+    expect(j).toContain('Confirmar cancelamento')
   })
 })
 

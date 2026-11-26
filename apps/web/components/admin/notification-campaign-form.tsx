@@ -310,7 +310,7 @@ export function NotificationCampaignForm({ procedures, existing, podeVerAutomaco
 
           <div>
             <SectionLabel>Nome interno da campanha</SectionLabel>
-            <input className="field" placeholder="ex: Aniversariantes de julho" value={name} onChange={e => setName(e.target.value)} />
+            <input className="field" placeholder="ex: Dia das Mães" value={name} onChange={e => setName(e.target.value)} />
           </div>
 
           <div>
@@ -318,7 +318,7 @@ export function NotificationCampaignForm({ procedures, existing, podeVerAutomaco
             <SectionLabel dica={{ rotulo: 'Como pôr o nome da cliente', texto: <>Para pôr o primeiro nome da cliente, escreva {'{{first_name}}'}.</> }}>Título</SectionLabel>
             <input
               className="field"
-              placeholder="ex: Feliz aniversário, {{first_name}}! 🎂"
+              placeholder="ex: Feliz Dia das Mães, {{first_name}}!"
               value={title}
               onChange={e => setTitle(e.target.value)}
             />

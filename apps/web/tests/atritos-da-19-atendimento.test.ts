@@ -112,12 +112,14 @@ describe('A11: "Aguardando o pagamento no PDV" diz quem recebe, a quem não rece
   })
 })
 
-// ─── A12: remarcar pelo app diz que o horário fica confirmado ───────────────
-describe('A12: o remarcado pelo app diz que o horário novo fica confirmado (H3)', () => {
+// ─── A12: remarcar pelo app diz como o horário fica ─────────────────────────
+// O Heitor, 25/11: "Ela já desmarcou uma vez, pode acabar desmarcando de novo,
+// melhor reconfirmar." — a remarcação pelo app volta a Agendado (era a H3).
+describe('A12: o remarcado pelo app diz que o horário novo fica Agendado até ser confirmado', () => {
   it('o texto', async () => {
     const { textoDoRemarcado } = await import('@/lib/clientes/textos-do-app')
     expect(textoDoRemarcado({ quemAtende: 'Bianca', dia: 'terça-feira, 17/11', hora: '15:00', unidadeNova: null }))
-      .toBe('Agendamento remarcado: com Bianca, terça-feira, 17/11 às 15:00. O horário novo fica confirmado.')
+      .toBe('Agendamento remarcado: com Bianca, terça-feira, 17/11 às 15:00. O horário novo fica como Agendado até ser confirmado.')
   })
 })
 

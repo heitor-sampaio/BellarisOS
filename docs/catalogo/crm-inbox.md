@@ -429,9 +429,8 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/regras/crm-inbox.md:839`, `:850`, `:877`
 - Antes: KC-37, KC-39, KC-43
 
-**IM-13.** Quando a ficha sem CPF seria completada pelo telefone, a prévia mostra "Completar a ficha de X" já marcado; desmarcado, a linha vira ficha nova. Pelo mesmo CPF, a linha sempre junta.
-- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
-- Proposta do Claude (29ª, D4), o Heitor decide: com o mesmo telefone e outro nome, a caixa viria desmarcada; os testes e2e/importacao-previa-cruzamento.spec.ts exigem marcada.
+**IM-13.** Quando a ficha sem CPF seria completada pelo telefone, a prévia mostra "Completar a ficha de X": marcada se o nome da linha casa com o da ficha, desmarcada se não casa. Desmarcada, a linha vira ficha nova; marcada, completa a ficha. Pelo mesmo CPF, a linha sempre junta.
+- Fonte: o Heitor, 25/11: "Vem desmarcada, a não ser que o nome case"
 - Onde: `docs/regras/crm-inbox.md:844-849`
 - Antes: KC-38
 
@@ -440,9 +439,8 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/regras/crm-inbox.md:854-873`
 - Antes: KC-40, KC-41
 
-**IM-15.** Nas fichas, duas linhas com o mesmo telefone e nomes diferentes mostram a caixa "Juntar Karina com Bianca", marcada (só completa a ficha da primeira); desmarcada, cada linha vira uma ficha, com o mesmo telefone. Linhas com o mesmo nome são "Repetida na planilha" e recusadas. Nos contatos não há escolha: um telefone é uma pessoa, e a prévia diz qual nome fica e orienta importar como clientes quando forem duas pessoas.
-- Fonte: princípios 1 e 3
-- Proposta do Claude (29ª, D4), o Heitor decide: com o mesmo telefone e outro nome, a caixa viria desmarcada; os testes e2e/importacao-previa-cruzamento.spec.ts exigem marcada.
+**IM-15.** Nas fichas, duas linhas com o mesmo telefone e nomes diferentes mostram a caixa "Juntar Karina com Bianca", desmarcada: cada linha vira uma ficha, com o mesmo telefone; marcada, só completa a ficha da primeira (o Heitor, 25/11: "Vem desmarcada, a não ser que o nome case"). Linhas com o mesmo nome são "Repetida na planilha" e recusadas. Nos contatos não há escolha: um telefone é uma pessoa, e a prévia diz qual nome fica e orienta importar como clientes quando forem duas pessoas.
+- Fonte: princípios 1 e 3; a caixa desmarcada: o Heitor, 25/11
 - Onde: `docs/regras/crm-inbox.md:866`, `:883-891`
 - Antes: KC-44, KC-45
 

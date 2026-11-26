@@ -157,7 +157,8 @@ describe('A15 [3, 7]: sem estoque, o Vender desliga com o motivo e aponta a Entr
 describe('A17 [3]: o número grande do "A receber da cliente" é o em aberto; o do período vai abaixo', () => {
   it('o rótulo diz "em aberto"', async () => {
     const { ROTULO_DO_A_RECEBER_DA_CLIENTE } = await import('@/lib/financeiro/abas')
-    expect(ROTULO_DO_A_RECEBER_DA_CLIENTE).toBe('A receber da cliente · em aberto')
+    // O Heitor, 25/11: "O cartão vira 'A receber · em aberto' e soma tudo".
+    expect(ROTULO_DO_A_RECEBER_DA_CLIENTE).toBe('A receber · em aberto')
   })
 
   it('as duas telas põem o em aberto no número grande e o período na nota', () => {

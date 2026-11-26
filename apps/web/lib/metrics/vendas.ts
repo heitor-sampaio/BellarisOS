@@ -110,7 +110,7 @@ export async function getResumoDeVendas(r: Recorte): Promise<ResumoDeVendas> {
   }
   for (const l of linhas ?? []) {
     const valor = { quantidade: Number(l.quantidade), total: Number(l.total) }
-    // O geral (tipo nulo) já vem SEM o crédito: o "Total vendido" (RL1).
+    // O geral (tipo nulo) é o "Total vendido": todos os tipos, o crédito vendido também (o Heitor, 25/11).
     if (l.tipo === null) { resumo.geral = valor; resumo.linhas = Number(l.linhas ?? 0) }
     else if (ehTipoDeVenda(l.tipo)) resumo.porTipo[l.tipo] = valor
   }

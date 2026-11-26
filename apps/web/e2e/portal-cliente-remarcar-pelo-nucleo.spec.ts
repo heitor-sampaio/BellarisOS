@@ -7,10 +7,10 @@ import { chamarAcao, chamarAcaoComFormulario } from './apoio/acao-direta'
 /**
  * F65 — o remarcar do app e o da equipe (C8, H3 = c, A15, C15).
  *
- * - H3 (o Heitor, 2026-11-11, opção c): a cliente que remarca pelo app escolheu
- *   o horário novo — ele nasce CONFIRMADO. Quando a equipe (ou o Copilot)
- *   remarca, ninguém ouviu a cliente: volta a Agendado e a confirmação é
- *   pedida de novo. Era o inverso.
+ * - A remarcação volta a Agendado, pelo app, pela equipe ou pelo Copilot, e a
+ *   confirmação é pedida de novo (o Heitor, 25/11, ao rever a H3 — que fazia o
+ *   remarcado pelo app nascer Confirmado: "Discordo — Ela já desmarcou uma vez,
+ *   pode acabar desmarcando de novo, melhor reconfirmar.").
  * - C8: o remarcar do app passa pelo núcleo (`conferirPecasDoAgendamento`: a
  *   arquivada não remarca) e o "Sem preferência" que troca a profissional
  *   escreve no histórico DE QUEM PARA QUEM.
@@ -101,7 +101,7 @@ test.afterAll(async () => {
   await cliente?.limpar(); await bia?.limpar(); await recepcao?.limpar(); await rede?.limpar()
 })
 
-test('H3 + C8 + C15: o remarcar do app nasce Confirmado, e o "Sem preferência" que troca a profissional diz de quem para quem', async ({ browser }) => {
+test('C8 + C15: o remarcar do app volta a Agendado (o Heitor, 25/11), e o "Sem preferência" que troca a profissional diz de quem para quem', async ({ browser }) => {
   let id = ''
   await como(browser, cliente!, async p => {
     id = await agendarPeloApp(p, bia!.userId, em(dia(3), '10:00'))
@@ -113,21 +113,23 @@ test('H3 + C8 + C15: o remarcar do app nasce Confirmado, e o "Sem preferência" 
     branch_id: rede!.branchId, client_id: outro, procedure_id: rede!.procedureId, professional_id: bia!.userId,
     status: 'SCHEDULED', source: 'INTERNAL', duration_min: 30, price: 0, scheduled_at: em(dia(3), '15:00'),
   })).error).toBeNull()
+  // Confirmado antes: o remarcar do app tira a confirmação (o Heitor, 25/11).
+  expect((await db().from('appointments').update({ status: 'CONFIRMED', confirmed_at: new Date().toISOString() }).eq('id', id)).error).toBeNull()
   await como(browser, cliente!, async p => {
     const r = await remarcar(p, id, em(dia(3), '15:00'), true)
     expect(r.texto).toContain('"ok":true')
   })
   const depois = await linha(id)
   expect(depois.professional_id, 'ficou com a Ana').toBe(rede!.professionalId)
-  expect(depois.status, 'H3: a cliente escolheu o horário — nasce confirmado').toBe('CONFIRMED')
-  expect(depois.confirmed_at).not.toBeNull()
+  expect(depois.status, 'o Heitor, 25/11: "melhor reconfirmar" — volta a Agendado').toBe('SCHEDULED')
+  expect(depois.confirmed_at, 'a confirmação se pede de novo').toBeNull()
   const h = await historico(id)
   expect(h.map(x => x.action), 'o remarcado pela cliente fica no histórico').toContain('RESCHEDULED')
   const troca = h.find(x => x.action === 'REASSIGNED')
   expect(troca?.description, 'C8: de quem para quem').toContain(nomeDaAna)
 })
 
-test('H3: quando a equipe remarca, volta a Agendado e a confirmação é pedida de novo', async ({ browser }) => {
+test('quando a equipe remarca, volta a Agendado e a confirmação é pedida de novo', async ({ browser }) => {
   let id = ''
   await como(browser, cliente!, async p => { id = await agendarPeloApp(p, rede!.professionalId, em(dia(4), '10:00')) })
   expect((await db().from('appointments').update({ status: 'CONFIRMED', confirmed_at: new Date().toISOString() }).eq('id', id)).error).toBeNull()

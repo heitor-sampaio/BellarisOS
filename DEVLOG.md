@@ -1774,6 +1774,48 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-25 (5) — As respostas da página de perguntas: o crédito vendido conta, Fichas e Cargos em Ver, o "Cancelar" volta
+
+O Heitor respondeu as 12 perguntas da 29ª e da 30ª e reviu 11 decisões, numa página só (o artefato "o que eu preciso
+responder"). Cada teste alterado está em `docs/para-o-heitor.md` §9, com a fala dele; nenhum foi apagado.
+
+**O que mudou no sistema.**
+- **Relatórios → Vendas e o crédito interno** ("se o crédito foi vendido, é venda, tem que contar, não conta é quando só
+  usa"). O crédito vendido entra no "Total vendido", e o "Fora do total" saiu. O pago com crédito interno não conta de
+  novo: a régua do primeiro recebimento pago pula o `INTERNAL_CREDIT` (a venda só com crédito não entra), e a parte paga
+  com ele sai do valor da linha. Migration `20261208500001` (troca no corpo vivo de `metrics_vendas`, conferida na
+  produção; `metrics_vendas_resumo` com todos os tipos no geral). Saíram `FORA_DO_TOTAL` e o aviso da tela; a dica do
+  Total vendido e o Copilot dizem a regra nova.
+- **As Fichas e os Cargos vão até o Ver** ("8 - a"). `MODULE_LEVELS` oferece Sem acesso e Ver; a aba abre pelo nível do
+  módulo (`nivelQueAbreAAba`), na tela, na busca e na página; o resumo do cargo diz "em Ver: abre a aba e lê" (dizia
+  "não abrem nada", o que estava errado). Migration `20261208500002`: o Gerenciar gravado (um cargo com cada) vira Ver.
+- **O resumo do cargo** com o Atendimento e o Prontuário em Gerenciar diz "Inicia e conclui os atendimentos."
+- **O clique duplo no "Receber" do PDV**: o mesmo envio grava uma vez e as duas respostas dizem o recebido (`umaVez` no
+  `receberParcelaNoPdv`, no `confirmPayment` e no `checkoutTreatmentPlan`); duas abas seguem com o "já pago".
+- **A importação**: com o mesmo telefone sem CPF e outro nome, a caixa vem desmarcada, e o servidor confere sozinho
+  (`importacoes.juntar`, migration `20261208400001`): sem a marca, a linha vira ficha nova, mesmo se a prévia não cruzou.
+- **A linha da Equipe** diz o percentual de venda da rede ("sem ela, a da rede: 5%"; as duas regras, se diferentes).
+- **O cartão "A receber · em aberto"** (era "A receber da cliente"), somando tudo, com a nota do sem cliente.
+- **Os exemplos da campanha** são do Dia das Mães.
+- **O botão do atendimento em andamento** volta a "Cancelar" ("Discordo — Mantem o Cancelar"); por dentro, a desistência
+  de sempre.
+- **A remarcação pela cliente no app** volta a Agendado ("Ela já desmarcou uma vez, pode acabar desmarcando de novo,
+  melhor reconfirmar."): a H3 de 11/11 mudou.
+
+**Não mudou:** a 3, a 5, a 9 e a 12, e as outras nove revisões.
+
+**A completa** (contra o build): 2641 passaram e 2 falharam, os dois casos NOVOS desta entrega, por montagem: o de Vendas
+pagava com crédito interno sem saldo (o banco recusa; ganhou o crédito de fora antes), e o do duplo clique no PDV
+procurava `"error"` no payload inteiro, que traz o render da página (passou a ler a linha `1:`, o valor da action).
+Rodados de novo contra o build: passam. Migrations `20261208400001`, `20261208500001` e `20261208500002` na produção,
+uma por vez; conferir IGUAL (4666).
+
+**Em aberto.**
+- O chip da comissão na Equipe quebra em até duas linhas (A13 da 25ª): com dois percentuais diferentes, o texto pode
+  cortar, e o inteiro fica no `title`.
+- O cartão do Copilot ainda diz "Desistir do atendimento" no cancelar do Em atendimento (CZ-07, de 18/11): a resposta do
+  Heitor foi sobre o botão da tela.
+
 ### 2026-11-25 (4) — As respostas do Heitor: os limites que avisam, o "Em andamento" e o dia que continua
 
 O Heitor respondeu as seções 2, 3 e 4 de `docs/para-o-heitor.md` e as perguntas de contexto. Cada teste alterado está
@@ -14476,7 +14518,7 @@ O que não cai em nenhum dos quatro é gosto da simulação e não conta. Antes 
 - **De acordo com a recomendação (escritas em `docs/regras`, cada regra com a correção que falta):**
   - H1: a automação não abre conversa no WhatsApp sozinha; já, a tela diz quantas recebem; depois, a opção do passo "Para quem não tem conversa aberta", desligada por padrão (`automacoes.md`, `whatsapp-push.md`).
   - H2: o estorno avulso do pagamento de pacote, plano ou pré-pago reabre a cobrança (`vendas-financeiro.md`).
-  - H3: a remarcação da cliente pelo app nasce Confirmada; a da equipe e do Copilot volta a Agendado (`atendimento.md`).
+  - H3: a remarcação da cliente pelo app nasce Confirmada; a da equipe e do Copilot volta a Agendado (`atendimento.md`). **Revista em 25/11:** a do app também volta a Agendado ("melhor reconfirmar").
   - H4: o "+ Agendar" cria a ficha rápida, mas unificar e reativar pedem Clientes em Gerenciar (`atendimento.md`).
   - H5: só se conclui o que foi iniciado, também pelo id (`atendimento.md` §10).
   - H6: desativar a unidade mostra o que fica e oferece resolver, sem impedir (`plataforma.md`).

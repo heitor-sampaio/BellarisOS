@@ -8,8 +8,10 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  * dizia "10 linhas prontas", e a "Renata Quintas" sumiu na Luana Prado pelo
  * telefone — só o resultado final dizia "1 completado"; e não dizia quem
  * entrava sem telefone. cli-07 (revisão do Heitor, 2026-11-02): a filha com o
- * telefone da mãe completava a ficha rápida da mãe sem perguntar — a prévia
- * marca "vai completar a ficha de Marlene" e deixa desmarcar.
+ * telefone da mãe completava a ficha rápida da mãe sem perguntar. O Heitor,
+ * 25/11, escolheu "Vem desmarcada, a não ser que o nome case": com o mesmo
+ * telefone sem CPF e outro nome, "completar a ficha de Marlene" (e o "juntar"
+ * com a linha anterior) vem desmarcada; marcada só quando o nome casa.
  * Numa rede [e2e] própria.
  */
 
@@ -77,7 +79,7 @@ async function ateAPrevia(p: Page, nome: string, conteudo: string, destino: 'Com
   return p.locator('[data-previa]')
 }
 
-test('cli-07 e A15: a prévia diz quem completa qual ficha, e desmarcar "completar a ficha de Marlene" cria a ficha da filha', async ({ browser }) => {
+test('cli-07 e A15: a prévia diz quem completa qual ficha, e "completar a ficha de Marlene" vem desmarcada (outro nome): a filha ganha a ficha dela', async ({ browser }) => {
   const nome = `cruzamento-${marca}.csv`
   const filha = `${PREFIXO} Filha da Marlene ${marca}`
   const conteudo = [
@@ -92,9 +94,9 @@ test('cli-07 e A15: a prévia diz quem completa qual ficha, e desmarcar "complet
     // O que vai ser fundido, antes de importar.
     await expect(previa).toContainText(`completa a ficha de ${ANA} (o mesmo CPF)`, { timeout: 15_000 })
     const completar = previa.getByRole('checkbox', { name: `Completar a ficha de ${MARLENE}` })
-    await expect(completar).toBeChecked()
-    await completar.uncheck()
-    await expect(previa).toContainText('vira uma ficha nova')
+    // Outro nome no mesmo telefone sem CPF: vem desmarcada (o Heitor, 25/11).
+    await expect(completar).not.toBeChecked()
+    await expect(previa).toContainText(`vira uma ficha nova (com o mesmo telefone de ${MARLENE})`)
     await p.getByRole('button', { name: /Importar 3 linhas/ }).click()
     await expect(p.locator('[data-importacao]')).toContainText('Concluída', { timeout: 60_000 })
   })
@@ -123,7 +125,7 @@ test('D4: duas fichas sem CPF no telefone, a linha completa a do mesmo nome (sem
   await como(browser, admin, async p => {
     const previa = await ateAPrevia(p, `mesmo-nome-${marca}.csv`, conteudo, 'Como clientes')
     await expect(previa).toContainText('1 linha pronta')
-    // A caixa segue a regra de sempre (marcada), com a ficha do mesmo nome.
+    // O nome casa (sem acento nem caixa): a caixa vem marcada, com a ficha do mesmo nome.
     await expect(previa.getByRole('checkbox', { name: `Completar a ficha de ${filomena}` })).toBeChecked({ timeout: 15_000 })
     await expect(previa.getByRole('checkbox', { name: `Completar a ficha de ${edna}` })).toHaveCount(0)
     await p.getByRole('button', { name: /Importar 1 linha/ }).click()
@@ -150,7 +152,7 @@ test('A15: nos contatos, a prévia diz quem junta pelo telefone e quem entra sem
   })
 })
 
-test('A14: na ficha, o mesmo telefone com outro nome mostra os dois nomes e deixa escolher juntar ou criar separada', async ({ browser }) => {
+test('A14: na ficha, o mesmo telefone com outro nome mostra os dois nomes, vem separada e deixa marcar para juntar', async ({ browser }) => {
   const foneA = `(47) 9${fim}-0001`
   const foneB = `(47) 9${fim}-0002`
   const bianca = `${PREFIXO} Bianca ${marca}`
@@ -170,11 +172,14 @@ test('A14: na ficha, o mesmo telefone com outro nome mostra os dois nomes e deix
     await expect(previa).toContainText('4 linhas prontas')
     await expect(previa).toContainText(`Linha 3 · ${karina} tem o mesmo telefone da linha 2 · ${bianca}`)
     const juntarKarina = previa.getByRole('checkbox', { name: `Juntar ${karina} com ${bianca} (linha 2)` })
-    await expect(juntarKarina).toBeChecked()
-    await juntarKarina.uncheck()
+    // Outro nome: vem desmarcada (o Heitor, 25/11: "Vem desmarcada, a não ser que o nome case").
+    await expect(juntarKarina).not.toBeChecked()
     await expect(previa).toContainText(`${karina} vira uma ficha separada`)
-    // A Clarinha fica marcada: junta com a Clara (completa o que está em branco).
-    await expect(previa.getByRole('checkbox', { name: `Juntar ${clarinha} com ${clara} (linha 4)` })).toBeChecked()
+    // A Clarinha também vem desmarcada; marcada, junta com a Clara (completa o que está em branco).
+    const juntarClarinha = previa.getByRole('checkbox', { name: `Juntar ${clarinha} com ${clara} (linha 4)` })
+    await expect(juntarClarinha).not.toBeChecked()
+    await juntarClarinha.check()
+    await expect(previa).toContainText(`junta com a ficha de ${clara}`)
     await p.getByRole('button', { name: /Importar 4 linhas/ }).click()
     await expect(p.locator('[data-importacao]')).toContainText('Concluída', { timeout: 60_000 })
   })

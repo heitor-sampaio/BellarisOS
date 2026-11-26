@@ -86,9 +86,8 @@ test('D1 e A3: no celular, o "Finalizar atendimento" fica à vista — no alto e
     const encosta = a.x < b.x + b.width + 8 && b.x < a.x + a.width + 8 && a.y < b.y + b.height + 4 && b.y < a.y + a.height + 4
     expect(encosta, 'o selo longe do cronômetro').toBe(false)
 
-    // Nenhuma ação do topo fora da largura da tela (o Desistir também se alcança;
-    // era "Cancelar" — Pendente 19 da 27ª / A9 da 28ª, princípio 7).
-    const cancelar = p.getByRole('button', { name: 'Desistir do atendimento', exact: true })
+    // Nenhuma ação do topo fora da largura da tela (o Cancelar também se alcança).
+    const cancelar = p.getByRole('button', { name: 'Cancelar', exact: true })
     const c = (await cancelar.boundingBox())!
     expect(c.x).toBeGreaterThanOrEqual(0)
     expect(c.x + c.width).toBeLessThanOrEqual(412)

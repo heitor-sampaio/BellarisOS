@@ -79,7 +79,8 @@ describe('A2: o resumo diz quem inicia e conclui, sem "só os próprios"', () =>
   // e conclui atendimento quem tem gerenciar no atendimento"): o módulo Atendimento.
   it('o texto, com o Atendimento em Gerenciar', async () => {
     const { conclusaoNoResumo } = await import('@/lib/permissions-copy')
-    expect(conclusaoNoResumo({ atendimento: 'MANAGE', medical_records: 'MANAGE' })).toBeNull()
+    // Com o Atendimento e o Prontuário em Gerenciar, o resumo diz (o Heitor, 25/11: "Diz \"Inicia e conclui os atendimentos.\"").
+    expect(conclusaoNoResumo({ atendimento: 'MANAGE', medical_records: 'MANAGE' })).toBe('Inicia e conclui os atendimentos.')
     expect(conclusaoNoResumo({ atendimento: 'MANAGE' })).not.toContain('próprios')
     // A Agenda e o Prontuário não iniciam nem concluem.
     expect(conclusaoNoResumo({ agenda: 'MANAGE', medical_records: 'MANAGE' })).toBeNull()

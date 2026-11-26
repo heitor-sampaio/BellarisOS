@@ -53,7 +53,7 @@ import { maquininhasDaRede, taxaDoPixDaRede } from '@/lib/financeiro/vezes-da-re
 import { maximoDeParcelasDaRede } from '@/lib/financeiro/crediario-da-rede'
 import {
   ABAS_DE_CONFIGURACAO, ABAS_DA_REDE, ABAS_DA_UNIDADE, ABAS_DA_REDE_TODA, abaNoPlano, abaLiberada, type ChaveDeAba,
-  chaveDaAbaPedida, motivoDaAbaFechada, linkDaAbaNaRede, abasSoDaRede, abasEmGrupos,
+  chaveDaAbaPedida, motivoDaAbaFechada, linkDaAbaNaRede, abasSoDaRede, abasEmGrupos, nivelQueAbreAAba,
 } from '@/lib/configuracoes/abas'
 import { adminsAtivasDaRede } from '@/lib/equipe/quem-desfaz'
 import Link from 'next/link'
@@ -120,7 +120,7 @@ export async function Configuracoes({
   const umaUnidade = await redeTemUmaUnidade(ctx.tenantId!)
   const fala = await falaDaTela(ctx.tenantId)
 
-  const tabs = TABS.filter(t => abas.includes(t.key) && abaLiberada(t, m => can(ctx, m, 'MANAGE')) && abaNoPlano(t, ctx.plano))
+  const tabs = TABS.filter(t => abas.includes(t.key) && abaLiberada(t, m => can(ctx, m, nivelQueAbreAAba(m))) && abaNoPlano(t, ctx.plano))
 
   // O pedido de LGPD esperando a liberação do prontuário aparece no NOME da
   // aba (2026-10-21): só dentro dela, ninguém sabia que havia pedido.
@@ -156,7 +156,7 @@ export async function Configuracoes({
   // tela trocava pela primeira, calada (a gerente lia as Tags no lugar das Comissões).
   const abaFechada = requested && requested !== activeTab
     ? motivoDaAbaFechada(requested, {
-        noPortal: abas, gerencia: m => can(ctx, m, 'MANAGE'), noPlano: a => abaNoPlano(a, ctx.plano),
+        noPortal: abas, gerencia: m => can(ctx, m, nivelQueAbreAAba(m)), noPlano: a => abaNoPlano(a, ctx.plano),
         unidadeFixa: ctx.branchId !== null, nomeDoModulo: m => MODULE_LABELS[m],
         abriu: tabs.find(t => t.key === activeTab)?.label ?? primeira.label,
         // A-CONF2 da 25ª: a aba da rede toda diz que é só da Admin da rede, e quem muda.
@@ -173,7 +173,7 @@ export async function Configuracoes({
   // unidade, quem é da rede tem à mão as abas que só a clínica toda tem
   // (Comissões e taxas, Fidelidade, LGPD…) — antes, só pela busca ou pelo /admin.
   const abasDaRede = unidadeDaTela && mexeNaConfigDaRede(ctx)
-    ? abasSoDaRede(m => can(ctx, m, 'MANAGE'), ctx.plano)
+    ? abasSoDaRede(m => can(ctx, m, nivelQueAbreAAba(m)), ctx.plano)
     : []
 
   // Quem não é a Admin da rede (18/11; era a unidade fixa, H7) abre a aba da
@@ -419,9 +419,9 @@ export async function Configuracoes({
           ))}
         </nav>
         {/* A 27ª (princípio 7): sem Configurações em Gerenciar, de onde vem cada aba e o que pede o resto. */}
-        {porQueSoEstasAbas(tabs.map(t => t.key), { gerencia: m => can(ctx, m, 'MANAGE'), nomeDoModulo: m => MODULE_LABELS[m] }) && (
+        {porQueSoEstasAbas(tabs.map(t => t.key), { gerencia: m => can(ctx, m, nivelQueAbreAAba(m)), nomeDoModulo: m => MODULE_LABELS[m] }) && (
           <p data-abas-do-acesso style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 10, lineHeight: 'var(--leading-snug)' }}>
-            {fala(porQueSoEstasAbas(tabs.map(t => t.key), { gerencia: m => can(ctx, m, 'MANAGE'), nomeDoModulo: m => MODULE_LABELS[m] })!)}
+            {fala(porQueSoEstasAbas(tabs.map(t => t.key), { gerencia: m => can(ctx, m, nivelQueAbreAAba(m)), nomeDoModulo: m => MODULE_LABELS[m] })!)}
           </p>
         )}
         {/* A1 da 14ª: as abas que só a clínica toda tem, à mão no portal da unidade. */}

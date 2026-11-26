@@ -119,6 +119,24 @@ test('duas chegadas ao mesmo tempo: uma recebe o plano, a outra ouve que já foi
   expect(pl?.status).toBe('ACCEPTED')
 })
 
+test('o mesmo envio duas vezes (duplo clique no receber do plano): recebe uma vez, e as duas respostas dizem o recebido', async ({ browser }) => {
+  // O Heitor, 25/11: "As duas respostas dizem 'recebido'". Duas abas (o caso acima, sem a chave) não mudam.
+  test.setTimeout(150_000)
+  const planId = await plano('Duplo')
+  const rota = PDV
+  const envio = crypto.randomUUID()
+  const respostas = await como(browser, async p => {
+    await p.goto(rota)
+    await aceitar(p, planId)
+    return Promise.all([1, 2].map(() => chamarAcao(p, 'actions/treatment-plans.ts', 'checkoutTreatmentPlan', rota,
+      [planId, { forma: 'AVISTA', metodo: 'PIX' }, [], '', null, null, null, envio])))
+  })
+  const textos = respostas.map(r => r!.texto)
+  expect(textos.filter(t => t.includes('"transactionId":"')), 'as duas respostas dizem o recebido').toHaveLength(2)
+  expect(textos.filter(t => /já foi recebido/.test(t)), 'nenhuma diz que já foi recebido').toHaveLength(0)
+  expect(await lancamentos(planId), 'R$ 2.000 uma vez, não duas').toEqual(['2000:true'])
+})
+
 test('o checkout diz a comissão de venda de quem vendeu, e "Quem vendeu" volta escolhido em outra aba', async ({ browser }) => {
   test.setTimeout(150_000)
   const planId = await plano('Retomada')

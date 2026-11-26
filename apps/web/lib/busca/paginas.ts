@@ -1,6 +1,7 @@
 import type { ResolvedPermissions } from '@estetica-os/types'
 import { ADMIN_MENU, BRANCH_MENU, SO_NO_MENU_DA_REDE, menuEntriesFor, soLeriaAsConfiguracoes, type DaPessoa } from '@/lib/menu'
-import { ABAS_DE_CONFIGURACAO, ABAS_DA_REDE, ABAS_DA_UNIDADE, abaNoPlano, abaLiberada } from '@/lib/configuracoes/abas'
+import { ABAS_DE_CONFIGURACAO, ABAS_DA_REDE, ABAS_DA_UNIDADE, abaNoPlano, abaLiberada, nivelQueAbreAAba } from '@/lib/configuracoes/abas'
+import { hasLevel } from '@/lib/permissions'
 import { casaComTermo } from '@/lib/busca/texto'
 import { semAcento } from '@/lib/texto'
 import type { ResultadoDaBusca } from '@/lib/busca/tipos'
@@ -171,7 +172,7 @@ export function paginasDaBusca(
   const abasDoPortal = naRede ? ABAS_DA_REDE : ABAS_DA_UNIDADE
   for (const aba of ABAS_DE_CONFIGURACAO) {
     if (semConfiguracoes || !abasDoPortal.includes(aba.key)) continue
-    if (!abaLiberada(aba, m => permissions[m] === 'MANAGE')) continue
+    if (!abaLiberada(aba, m => hasLevel(permissions[m], nivelQueAbreAAba(m)))) continue
     if (!abaNoPlano(aba, plano)) continue
     paginas.push({
       key:      `settings:${aba.key}`,
@@ -186,7 +187,7 @@ export function paginasDaBusca(
   if (!naRede && opcoes.daRede) {
     for (const aba of ABAS_DE_CONFIGURACAO) {
       if (semConfiguracoes || !SO_NA_REDE.includes(aba.key)) continue
-      if (!abaLiberada(aba, m => permissions[m] === 'MANAGE')) continue
+      if (!abaLiberada(aba, m => hasLevel(permissions[m], nivelQueAbreAAba(m)))) continue
       if (!abaNoPlano(aba, plano)) continue
       paginas.push({
         key:      `settings:${aba.key}`,

@@ -259,6 +259,22 @@ comanda (PDV-P1).
   forma de pagamento."; Crediário/A receber recusados), o id pela rede e pelo
   alcance (`lancamentoAoAlcance`) e só receita; a baixa é a de sempre,
   `marcarPagoCore` (uma gravação com a guarda de não pago e não estornado).
+- **O clique duplo no "Receber" diz "recebido" nas duas respostas** (o
+  Heitor, 25/11, escolheu "As duas respostas dizem 'recebido'": a segunda
+  dizia "Esse lançamento já está pago", e quem clicou achava que tinha
+  falhado). O MESMO envio — o clique duplo, a chave `useEnvioUnico` da tela —
+  grava uma vez, e as duas respostas são a do recebimento (`umaVez`,
+  `lib/envio-unico.ts`; `convencoes.md`). Vale para todo "Receber" do PDV: a
+  comanda do atendimento (`confirmPayment`, `_envio` no formulário), a parcela
+  e o a receber (`receberParcelaNoPdv`, a chave no último argumento; a
+  resposta diz `recebido`, o valor) e o plano (`checkoutTreatmentPlan`, a
+  chave no último argumento; só o que recebeu se guarda — a pergunta "Quem
+  vendeu?" solta a chave). DOIS envios (duas abas) não mudam: um recebe, o
+  outro ouve que já está pago (a guarda da baixa, o "já pago" de
+  `confirmar_pagamento_do_atendimento`, a trava de `plano_checkout`). Prova:
+  `tests/pdv-envio-unico.test.ts`, `e2e/plano-recebimento-concorrente.spec.ts`
+  ("o mesmo envio duas vezes"), `e2e/plano-checkout-uma-transacao.spec.ts`,
+  `e2e/pdv-varias-formas-e-crediario-avulso.spec.ts` ("duplo clique").
 - **O produto na comanda do atendimento** (PDV2, fase 5b, 2026-11-14 — o
   desenho: "na saída ela levou um sérum, que se acrescenta na mesma
   comanda"). Na comanda do atendimento ainda não paga, "Acrescentar produto"
@@ -468,6 +484,13 @@ comanda (PDV-P1).
   - O cartão do Financeiro volta a "A receber da cliente · em aberto" (A17):
     o número grande é o em aberto, e a nota diz "Vence no período: R$ …"
     (`noTopoOEmAberto`). Era o A9 da 22ª.
+  - **O cartão se chama "A receber · em aberto"** (o Heitor, 25/11: "O
+    cartão vira 'A receber · em aberto' e soma tudo"): o número segue somando
+    todo o em aberto, inclusive o que não é de cliente nenhuma (a sublocação
+    de uma sala), e o nome dizia "da cliente". A nota "Inclui sem cliente:
+    R$ …" fica: diz o que o número leva dentro (princípio 3; decisão do
+    Claude, 25/11). `ROTULO_DO_A_RECEBER_DA_CLIENTE` (`lib/financeiro/abas.ts`),
+    nos dois Financeiros.
 - **O PDV e o caixa da 24ª simulação** (2026-11-18; princípios 2, 3 e 7;
   prova: `tests/atritos-da-24-caixa.test.ts`):
   - O "N vendas com parcelas a receber" abre SÓ essas vendas: Fechadas hoje

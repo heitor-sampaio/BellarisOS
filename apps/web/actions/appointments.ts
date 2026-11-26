@@ -44,6 +44,7 @@ import { fusoValido } from '@/lib/unidades/fuso'
 import { fusoDaUnidade, fusoDaRede, lerFusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { linhasDoAtendimento } from '@/lib/comissoes/leitura'
 import { semAcesso } from '@/lib/sem-acesso'
+import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { podeCancelarAlgum, recusaDoCancelar } from '@/lib/appointments/quem-cancela'
 import { recusaDoProcedimentoNaUnidade } from '@/lib/procedimentos/disponivel-na-unidade'
 import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
@@ -1081,7 +1082,20 @@ export async function confirmPayment(
     // Quem recebe no PDV: o PDV em Gerenciar (`podeReceber`, PV-04 — o
     // Heitor, 2026-11-23) — o critério da tela.
     if (!podeReceber(ctx)) return { error: 'Seu cargo não recebe pagamentos.' }
+    // O MESMO envio (o clique duplo, a chave `_envio` da tela) grava uma vez, e
+    // as duas respostas dizem o recebido (o Heitor, 25/11: "As duas respostas
+    // dizem 'recebido'"). Dois envios (duas abas): o "já pago" do banco segue.
+    return await umaVez(ctx.tenantId!, 'confirmPayment', chaveDoEnvio(formData), () => confirmarOPagamento(ctx, formData))
+  } catch (e) {
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
+  }
+}
 
+async function confirmarOPagamento(
+  ctx: Awaited<ReturnType<typeof getTenantContext>>,
+  formData: FormData,
+): Promise<{ error?: string }> {
+  try {
     const appointmentId = (formData.get('appointment_id') as string)?.trim()
     const paymentMethod = (formData.get('payment_method') as string)?.trim() || null
     const slug          = (formData.get('slug') as string)?.trim()

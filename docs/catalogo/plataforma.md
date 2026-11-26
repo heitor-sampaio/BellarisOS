@@ -626,8 +626,8 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/revisao.md:1251-1253`; CLAUDE.md §11 (`:648-658`); `docs/regras/vendas-financeiro.md:636-643`
 - Antes: KE-36
 
-**CG-12.** O Atendimento é um módulo da matriz, no grupo Atendimento logo depois da Agenda, com Ver e Gerenciar. O resumo diz, para o Ver, "Vê os atendimentos, sem iniciar nem concluir: iniciar e concluir pedem o Atendimento em Gerenciar."; para o Gerenciar sem o Prontuário em Gerenciar, "Inicia e conclui os atendimentos. A evolução, as fotos e a ficha de saúde pedem o Prontuário em Gerenciar.". A Agenda não fala de concluir.
-- Fonte: o Heitor, 2026-11-18: "Agenda é agenda e atendimento é atendimento. Só inicia e conclui atendimento quem tem gerenciar no atendimento."
+**CG-12.** O Atendimento é um módulo da matriz, no grupo Atendimento logo depois da Agenda, com Ver e Gerenciar. O resumo diz, para o Ver, "Vê os atendimentos, sem iniciar nem concluir: iniciar e concluir pedem o Atendimento em Gerenciar."; para o Gerenciar sem o Prontuário em Gerenciar, "Inicia e conclui os atendimentos. A evolução, as fotos e a ficha de saúde pedem o Prontuário em Gerenciar."; com os dois em Gerenciar, "Inicia e conclui os atendimentos.". A Agenda não fala de concluir.
+- Fonte: o Heitor, 2026-11-18: "Agenda é agenda e atendimento é atendimento. Só inicia e conclui atendimento quem tem gerenciar no atendimento."; o texto com os dois em Gerenciar: o Heitor, 25/11: "Diz "Inicia e conclui os atendimentos.""
 - Onde: `docs/regras/plataforma.md:1085-1105`; `docs/revisao.md:1302-1337`, `:2228-2232`
 - Antes: KC-11
 
@@ -651,8 +651,8 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:879-885`, `:894-895`, `:1063-1064`, `:1093-1094`, `:1115-1116`
 - Antes: KC-10
 
-**CG-17.** O resumo do cargo diz QUAIS abas de Configurações a pessoa usa, sem contar as da rede toda (que são só da Admin da rede); a quem só leria abas da rede toda, o menu das duas barras e a busca não oferecem Configurações.
-- Fonte: princípio 3
+**CG-17.** O resumo do cargo diz QUAIS abas de Configurações a pessoa usa, sem contar as da rede toda (que são só da Admin da rede); a quem só leria abas da rede toda, o menu das duas barras e a busca não oferecem Configurações. As Fichas e os Cargos vão até o Ver na matriz: o Ver abre a aba e lê, e mudar é só da Admin da rede; o resumo diz "Fichas e Cargos em Ver: abre as duas abas e lê.".
+- Fonte: princípio 3; as Fichas e os Cargos em Ver: o Heitor, 25/11, "8 - a" ("o nível passa a se chamar 'Ver': a pessoa abre a aba e lê, como já acontece")
 - Onde: `docs/regras/plataforma.md:848-858`
 - Antes: KC-05
 

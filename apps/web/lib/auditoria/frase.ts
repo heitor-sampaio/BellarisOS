@@ -216,7 +216,7 @@ const CAMPO: Record<string, string> = {
   includes_clinical: 'com o prontuário', indicacao_pontos: 'pontos da indicação', indicacao_premio: 'prêmio da indicação',
   indicacao_recompensa_id: 'recompensa da indicação', indicada_id: 'indicada', indicada_por: 'indicada por', indicadora_id: 'quem indicou',
   informado_em: 'quando informou', informado_por: 'quem informou', informado_por_nome: 'quem informou', ip: 'IP', is_system: 'do sistema',
-  issued_document_id: 'documento', item_id: 'item', key: 'chave', labor_cost: 'custo da mão de obra', language: 'idioma',
+  issued_document_id: 'documento', item_id: 'item', juntar: 'juntar com outro nome', key: 'chave', labor_cost: 'custo da mão de obra', language: 'idioma',
   legacy_consent_term_id: 'termo antigo', limites: 'limites', link_id: 'link', logo_url: 'logo', loyalty_account_id: 'conta de pontos',
   loyalty_points: 'pontos', loyalty_transaction_id: 'lançamento de pontos', managed: 'gerenciado', map_id: 'mapa',
   mapeamento: 'mapeamento das colunas', marca: 'marca', marca_id: 'marca', medical_record_id: 'prontuário',

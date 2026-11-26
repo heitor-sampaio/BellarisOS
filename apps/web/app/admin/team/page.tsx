@@ -4,7 +4,7 @@ import { getTenantContext, assertPermission, can, temRecurso, unidadesDoContexto
 import { contagemDeMembros } from '@/lib/equipe/contagem'
 import { DesativarMembro } from '@/components/admin/desativar-membro'
 import { ComissaoDoMembro } from '@/components/admin/comissao-do-membro'
-import { regrasDaRede, procedimentosParaComissao, procedimentosComComissaoGeral } from '@/lib/comissoes/leitura'
+import { regrasDaRede, procedimentosParaComissao, procedimentosComComissaoGeral, configDeComissaoDaRede } from '@/lib/comissoes/leitura'
 import { cargosQueVendem } from '@/lib/vendas/equipe-da-venda'
 import { AdminTeamForm } from '@/components/admin/team-form'
 import { TeamMemberEdit } from '@/components/admin/team-member-edit'
@@ -94,9 +94,11 @@ export default async function AdminTeamPage({
   // A comissão de cada um é do financeiro, não da equipe: quem gere a equipe
   // sem `financial: MANAGE` não vê nem muda quanto cada um ganha.
   const podeComissao = can(ctx, 'financial', 'MANAGE') && temRecurso(ctx, 'comissoes')
-  const [regras, procedimentos, comGeral, quemVende] = podeComissao
-    ? await Promise.all([regrasDaRede(ctx.tenantId!), procedimentosParaComissao(ctx.tenantId!, ctx.branchId), procedimentosComComissaoGeral(ctx.tenantId!, ctx.branchId), cargosQueVendem(ctx.tenantId!)])
-    : [null, [], [], new Set<string>()]
+  const [regras, procedimentos, comGeral, quemVende, configDaComissao] = podeComissao
+    ? await Promise.all([regrasDaRede(ctx.tenantId!), procedimentosParaComissao(ctx.tenantId!, ctx.branchId), procedimentosComComissaoGeral(ctx.tenantId!, ctx.branchId), cargosQueVendem(ctx.tenantId!), configDeComissaoDaRede(ctx.tenantId!)])
+    : [null, [], [], new Set<string>(), null]
+  // O Heitor, 25/11 ("Diz o percentual da rede"): o chip de quem vende diz a comissão de venda da rede.
+  const vendaDaRede = configDaComissao ? { plano: configDaComissao.plano_pct, produto: configDaComissao.produto_pct } : undefined
 
   // Na rede de uma unidade (PO2), o cargo "Admin da rede" é "Admin".
   const fala = await falaDaTela(ctx.tenantId)
@@ -343,7 +345,7 @@ export default async function AdminTeamPage({
                       {regras && (m.provides_services || regras.has(m.id) || (!!m.role_id && quemVende.has(m.role_id as string)) || (m as { comissao_venda_pct?: number | null }).comissao_venda_pct != null) && podeMexerEm(m) && (
                         <ComissaoDoMembro membro={{ id: m.id, nome: m.name }} regras={regras.get(m.id) ?? []}
                           procedimentos={procedimentos} comGeral={comGeral} atende={!!m.provides_services}
-                        vendaPct={(m as { comissao_venda_pct?: number | null }).comissao_venda_pct ?? null} />
+                        vendaPct={(m as { comissao_venda_pct?: number | null }).comissao_venda_pct ?? null} vendaDaRede={vendaDaRede} />
                       )}
                       {canManage && podeMexerEm(m) && <TeamMemberEdit
                         member={{

@@ -880,9 +880,15 @@ auditoria das regras, pergunta 8: "só pela conta admin"; antes, H7 de
   oferecem Configurações a quem só leria abas da rede toda
   (`soLeriaAsConfiguracoes`, `lib/menu.ts`); a aba da rede toda aberta pela
   URL diz "Esta configuração é só da Admin da rede." e quem muda (A-CONF2).
-  O resumo diz também que Fichas e Cargos em Gerenciar não abrem nada a quem
-  não é a Admin da rede (`configDaRedeNoResumo`; A12 da 30ª, decisão do
-  Claude, 25/11 — o nível segue na matriz: tirá-lo é com o Heitor).
+  **As Fichas e os Cargos vão até o Ver** (o Heitor, 25/11, "8 - a": "o nível
+  passa a se chamar 'Ver': a pessoa abre a aba e lê, como já acontece"):
+  `MODULE_LEVELS` oferece Sem acesso e Ver; o Ver abre a aba e lê, e mudar
+  segue só da Admin da rede. A aba abre pelo nível do módulo
+  (`nivelQueAbreAAba`, `lib/configuracoes/abas.ts`: o Gerenciar se o módulo o
+  oferece, senão o Ver), na tela, na busca e na página; o Gerenciar gravado
+  vale Ver (`nivelAceito`), e a migration `20261208500002` o regrava como Ver.
+  O resumo do cargo diz "Fichas e Cargos em Ver: abre as duas abas e lê"
+  (`configDaRedeNoResumo`). Prova: `tests/fichas-e-cargos-em-ver.test.ts`.
   O menu lateral segue "Configurações" (o rótulo longo
   cortava, J-16). **O cartão do cargo diz quantas áreas ele abre** ("3
   áreas", `resumoDoCargo`, `lib/cargos/acessos-salvos.ts`; o "· 1 só os
@@ -1021,8 +1027,8 @@ abaixo entraram na F70, 2026-11-12):
   **"Duplicar" o cargo** (A15 da 15ª, 2026-11-17) passa pela mesma trava:
   "Cópia de X" (`nomeDaCopia`, `lib/cargos/duplicar.ts`; "(2)" se o nome já
   existe) com a matriz, as abas de Relatórios e as caixas do inbox do
-  original, numa transação (`salvar_matriz_do_cargo`); Cargos em Gerenciar,
-  a rede toda (`recusaDaConfigDaRede`), o suporte não; quem não é a Admin da
+  original, numa transação (`salvar_matriz_do_cargo`); só a Admin da rede
+  (`recusaDaConfigDaRede`), o suporte não; quem não é a Admin da
   rede não duplica um cargo com módulo que ela não tem (`duplicarCargo`,
   `actions/roles.ts`). O cargo de sistema não se duplica. Prova:
   `tests/pendencias-area-3.test.ts`.

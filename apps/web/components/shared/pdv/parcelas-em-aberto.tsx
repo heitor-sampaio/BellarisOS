@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { AlertCircle, CalendarRange, X } from 'lucide-react'
 import { formatBRL } from '@estetica-os/utils'
 import { receberParcelaNoPdv } from '@/actions/pdv'
+import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { FormasDePagamento, FORMAS_DA_BAIXA } from '@/components/shared/formas-de-pagamento'
 import { CampoDaBandeira, useFaltaAMaquininha } from '@/components/shared/campo-da-bandeira'
@@ -111,6 +112,8 @@ function ReceberAParcela({ parcela, todas, slug, aoFechar }: { parcela: ParcelaE
   const [outras, setOutras] = useState<EstadoDaParte[]>([])
   const [erro, setErro] = useState<string | null>(null)
   const [pendente, iniciar] = useTransition()
+  // O clique duplo é o MESMO envio (o Heitor, 25/11: "As duas respostas dizem 'recebido'"): a mesma chave nos dois.
+  const envio = useEnvioUnico()
   const opcoesDeVezes = useOpcoesDeVezes(maquininha)
   const faltaAMaquininha = useFaltaAMaquininha(forma, maquininha)
   const noCredito = forma === 'CREDIT_CARD'
@@ -127,8 +130,9 @@ function ReceberAParcela({ parcela, todas, slug, aoFechar }: { parcela: ParcelaE
     const r = await receberParcelaNoPdv(parcela.id, slug, {
       forma, bandeira: bandeira || null, vezes: noCredito ? vezes : 1, maquininha: maquininha || null,
       partes: outras.length ? partesDaBaixa({ forma, bandeira: bandeira || null, vezes: noCredito ? vezes : 1, maquininha: maquininha || null }, parcela.valor, outras) : null,
-    })
+    }, envio.chave())
     if ('error' in r) { setErro(r.error); return }
+    envio.renovar()
     aoFechar()
     router.refresh()
   })

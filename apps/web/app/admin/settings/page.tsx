@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
-import { getTenantContext, assertAnyPermission } from '@/lib/auth'
-import { MODULOS_DAS_ABAS } from '@/lib/configuracoes/abas'
+import { getTenantContext, can } from '@/lib/auth'
+import { semAcesso } from '@/lib/sem-acesso'
+import { MODULOS_DAS_ABAS, nivelQueAbreAAba } from '@/lib/configuracoes/abas'
 import { Configuracoes, ABAS_DA_REDE } from '@/app/_shared/configuracoes'
 
 export default async function AdminSettingsPage({
@@ -15,7 +16,8 @@ export default async function AdminSettingsPage({
   const ctx = await getTenantContext()
   // `financial` só alcança a aba de comissões, `clients`/`crm` a de Importações
   // (cada aba confere o seu módulo).
-  assertAnyPermission(ctx, MODULOS_DAS_ABAS, 'MANAGE')
+  // Cada módulo no nível que abre a aba dele: as Fichas e os Cargos com o Ver (o Heitor, 25/11, "8 - a").
+  if (!MODULOS_DAS_ABAS.some(m => can(ctx, m, nivelQueAbreAAba(m)))) throw semAcesso()
 
   return (
     <Configuracoes

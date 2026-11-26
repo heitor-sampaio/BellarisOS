@@ -21,16 +21,25 @@ describe('A25: o canal da campanha tem um nome só', () => {
  * A26 (automacoes CP-02/CP-03): a campanha de todo ano sai numa data igual
  * para todas (o Dia das Mães); o aniversário de CADA cliente — a data de
  * nascimento da ficha — é o modelo das Automações. A tela de criar não dizia
- * de onde vem a data; a dica do "Todo ano em" diz. (Os exemplos do nome,
- * "ex: Aniversariantes de julho", e do título, "ex: Feliz aniversário…",
- * ficam: seis specs E2E acham os campos por eles; a troca é proposta ao Heitor
- * em docs/para-o-heitor.md.) E a busca de aniversariantes diz quantas fichas
- * não têm a data de nascimento (nunca entram).
+ * de onde vem a data; a dica do "Todo ano em" diz. E a busca de
+ * aniversariantes diz quantas fichas não têm a data de nascimento (nunca
+ * entram).
+ *
+ * Os exemplos do nome e do título são do Dia das Mães (o Heitor, 25/11,
+ * escolheu "Exemplos do Dia das Mães"): "ex: Aniversariantes de julho" e
+ * "ex: Feliz aniversário…" sugeriam o aniversário, que não é campanha. Os
+ * specs E2E que acham os campos pelo exemplo foram trocados junto.
  */
 describe('A26: de onde vem a data', () => {
   it('a campanha diz que a data de todo ano é a mesma para todas', () => {
     const t = fonte('components/admin/notification-campaign-form.tsx')
     expect(t).toMatch(/data de nascimento da ficha/)
+  })
+  it('os exemplos do nome e do título são do Dia das Mães', () => {
+    const t = fonte('components/admin/notification-campaign-form.tsx')
+    expect(t).toContain('placeholder="ex: Dia das Mães"')
+    expect(t).toContain('placeholder="ex: Feliz Dia das Mães, {{first_name}}!"')
+    expect(t).not.toMatch(/Aniversariantes de julho|Feliz aniversário/)
   })
   it('a busca de aniversariantes conta as fichas sem a data de nascimento', () => {
     expect(fonte('actions/automacoes.ts')).toMatch(/\.is\('birth_date', null\)/)

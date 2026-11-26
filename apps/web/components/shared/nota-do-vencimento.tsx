@@ -19,7 +19,7 @@ export function NotaDoVencimento({ valor, proximo, emAbertoTotal, semCliente, co
   valor: number
   /**
    * A17 da 30ª: a parte do em aberto SEM cliente (a sublocação, um aluguel),
-   * de `getAReceberSemCliente`. O "A receber da cliente" a soma (FN-11, todo o
+   * de `getAReceberSemCliente`. O "A receber · em aberto" a soma (FN-11, todo o
    * em aberto), e a nota diz (princípio 3).
    */
   semCliente?: number
@@ -104,7 +104,7 @@ export function DicaDoVencimento({ valor, bruto, emAbertoTotal, concluidos = fal
   valor: number
   bruto?: { periodo: number; emAberto: number }
   emAbertoTotal?: number
-  /** O "A receber da cliente": diz o que é o "Concluídos sem pagamento". */
+  /** O "A receber · em aberto": diz o que é o "Concluídos sem pagamento". */
   concluidos?: boolean
   /** A17 da 30ª: diz o que é o "Inclui sem cliente". */
   semCliente?: boolean

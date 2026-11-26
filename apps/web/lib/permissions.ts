@@ -100,8 +100,11 @@ export const MODULE_LEVELS: Record<AppModule, readonly PermissionLevel[]> = {
   marketing:       ['NONE', 'VIEW'],
   reports:         ['NONE', 'VIEW'],
   team:            ['NONE', 'VIEW', 'MANAGE'],
-  forms:           ['NONE', 'MANAGE'],
-  roles:           ['NONE', 'MANAGE'],
+  // As Fichas e os Cargos: só Sem acesso e Ver (o Heitor, 25/11, "8 - a": "o
+  // nível passa a se chamar 'Ver': a pessoa abre a aba e lê, como já acontece").
+  // Mudar é só da Admin da rede desde 18/11; o Gerenciar gravado vale Ver.
+  forms:           ['NONE', 'VIEW'],
+  roles:           ['NONE', 'VIEW'],
   settings:        ['NONE', 'MANAGE'],
   automations:     ['NONE', 'VIEW'],
   // O Copilot também (revisão de 24/11, Q02; "nenhuma ação pede dois", 23/11):

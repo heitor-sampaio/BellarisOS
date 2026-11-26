@@ -5,6 +5,7 @@ import { planoCriado, planoProposto, planoAceito } from '@/lib/events/plano'
 import { avisarDoPlanoProposto } from '@/lib/plano-de-tratamento/aviso-do-proposto'
 import { alcancaOTratamento, alcancaOCaixaDoTratamento } from '@/lib/tratamento/alcance'
 import { getTenantContext, assertPermission, assertPodeReceber, podeReceber, can, alcancaUnidade, alcancaOAgendamento, podeVerClinico, assertRecurso, temRecurso } from '@/lib/auth'
+import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { recusaDoPagamentoDoUsado, pagamentoDoUsadoParaOBanco } from '@/lib/financeiro/pagamento-do-usado'
 import { recusaDasVezesDoPagamento } from '@/lib/financeiro/vezes-da-rede'
 import { bandeiraDoPagamento } from '@/lib/financeiro/bandeiras'
@@ -1725,14 +1726,29 @@ import type { EscolhaDaFidelidade } from '@/lib/fidelidade/conta-na-venda'
  * novo, só que mais caro de achar.
  */
 export async function checkoutTreatmentPlan(
-  ...args: Parameters<typeof checkoutTreatmentPlanInterno>
+  planId: ArgsDoCheckout[0], pagamento: ArgsDoCheckout[1], sessionSchedules: ArgsDoCheckout[2], slug: ArgsDoCheckout[3],
+  desconto?: ArgsDoCheckout[4], equipe?: ArgsDoCheckout[5], fidelidade?: ArgsDoCheckout[6],
+  /**
+   * A chave do envio da tela (`useEnvioUnico`): o MESMO envio (o clique duplo)
+   * recebe uma vez, e as duas respostas dizem o recebido (o Heitor, 25/11: "As
+   * duas respostas dizem 'recebido'"). Sem ela, ou com outra (duas abas), segue
+   * a trava do banco: a segunda ouve que o plano já foi recebido.
+   */
+  envio?: string | null,
 ): ReturnType<typeof checkoutTreatmentPlanInterno> {
   try {
-    return await checkoutTreatmentPlanInterno(...args)
+    const fazer = () => checkoutTreatmentPlanInterno(planId, pagamento, sessionSchedules, slug, desconto, equipe, fidelidade)
+    const chave = chaveDoEnvio(envio)
+    if (!chave) return await fazer()
+    const ctx = await getTenantContext()
+    // Só o que recebeu se guarda: a pergunta "Quem vendeu?" e a recusa soltam a chave.
+    return await umaVez(ctx.tenantId!, 'checkoutTreatmentPlan', chave, fazer, { gravou: r => 'transactionId' in r })
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }
 }
+
+type ArgsDoCheckout = Parameters<typeof checkoutTreatmentPlanInterno>
 
 async function checkoutTreatmentPlanInterno(
   planId:           string,

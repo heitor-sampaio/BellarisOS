@@ -59,6 +59,8 @@ interface Pedido {
   com_aviso: number; avisos: LinhaDoRelatorio[] | null
   /** As linhas em que a prévia desmarcou "completar a ficha de X" (cli-07): o telefone não junta. */
   nao_completar: number[] | null
+  /** As linhas de OUTRO nome que a prévia marcou para juntar: sem a marca, o telefone não junta (25/11). */
+  juntar: number[] | null
 }
 
 type Resultado = 'nova' | 'completada' | 'sem_mudanca'
@@ -105,7 +107,7 @@ export async function processarImportacao(importacaoId: string, ctx: TenantConte
   const { data: p, error: erroDaVez } = await admin.from('importacoes')
     .update({ status: 'importando', execucao, iniciada_em: agora(), atualizada_em: agora(), erro: null })
     .eq('id', importacaoId).eq('status', 'pendente').eq('tenant_id', ctx.tenantId!)
-    .select('id, tenant_id, branch_id, destino, mapeamento, oportunidade, processadas, novas, completadas, sem_mudanca, com_erro, oportunidades, erros, nao_completar, com_aviso, avisos')
+    .select('id, tenant_id, branch_id, destino, mapeamento, oportunidade, processadas, novas, completadas, sem_mudanca, com_erro, oportunidades, erros, nao_completar, juntar, com_aviso, avisos')
     .maybeSingle<Pedido>()
   if (erroDaVez) { console.error('[importacao] reivindicar:', erroDaVez.message); return }
   if (!p) return   // outra passagem já pegou
@@ -159,9 +161,10 @@ export async function processarImportacao(importacaoId: string, ctx: TenantConte
         const { dados, erros: problemas, avisos: daLinha } = validarLinha(p.destino, p.mapeamento, l.valores, refs)
         const nome = (dados.name as string | undefined) ?? null
         // A repetida é só da ficha (clientes): no contato, a segunda linha junta à pessoa (D-10).
-        // A14: o mesmo telefone com OUTRO nome não é repetida — junta pelo
-        // telefone (a regra de gravarCliente) ou, desmarcada na prévia, vira a
-        // ficha separada (`nao_completar`).
+        // A14: o mesmo telefone com OUTRO nome não é repetida — vira a ficha
+        // separada, a não ser que a prévia a tenha marcado para juntar
+        // (`juntar`); a regra mora em gravarCliente, que a confere sozinha (o
+        // Heitor, 25/11: "Vem desmarcada, a não ser que o nome case").
         if (!problemas.length && p.destino === 'clientes') {
           const chave = chaveDaPessoa(p.destino, dados)
           const primeira = vistas.get(chave)
@@ -253,7 +256,7 @@ async function gravarLinha(
   let clientId: string | null = null
   const avisos: string[] = []
   if (p.destino === 'clientes') {
-    const r = await gravarCliente(admin, p, ctx, dados, (p.nao_completar ?? []).includes(numero))
+    const r = await gravarCliente(admin, p, ctx, dados, (p.nao_completar ?? []).includes(numero), (p.juntar ?? []).includes(numero))
     resultado = r.resultado
     clientId = r.clientId
     avisos.push(...r.avisos)
@@ -333,6 +336,8 @@ async function gravarCliente(
   admin: Admin, p: Pedido, ctx: TenantContext, linhaDaPlanilha: DadosDaLinha,
   /** A prévia desmarcou "completar a ficha de X" nesta linha (cli-07): o telefone não junta. */
   naoCompletarPeloTelefone = false,
+  /** A prévia marcou juntar esta linha de OUTRO nome com a ficha do telefone (25/11). */
+  juntarComOutroNome = false,
 ): Promise<{ resultado: Resultado; clientId: string; avisos: string[] }> {
   // A ficha guarda o telefone como o cadastro (o de fora com o "+", cli-06); a
   // busca continua pelos dígitos. A "última visita" da planilha é a coluna
@@ -361,6 +366,12 @@ async function gravarCliente(
     })
     if (error) throw new Error(`Procurar o cliente pelo telefone: ${error.message}`)
     if (id) existente = await ler(admin.from('clients').select('*').eq('id', id as string).maybeSingle(), 'buscar o cliente')
+    // O nome não casa (mãe e filha no mesmo número): só junta com a marca da
+    // prévia — o servidor confere sozinho, mesmo que a prévia não tenha cruzado
+    // a planilha (o Heitor, 25/11: "Vem desmarcada, a não ser que o nome case").
+    if (existente && !juntarComOutroNome && nomeDiferente(dados.name as string | undefined, existente.name as string | undefined)) {
+      existente = null
+    }
   }
 
   // A5: o responsável legal só vai para a ficha da MENOR (pelo nascimento que a

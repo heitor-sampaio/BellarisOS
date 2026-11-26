@@ -181,6 +181,31 @@ test('o avulso a receber: nada entra agora, a comanda fecha e o lançamento a re
   expect(c?.forma).toBe('A_RECEBER')
 })
 
+test('o mesmo envio duas vezes (duplo clique no "Receber" da comanda): recebe uma vez, e as duas respostas dizem o recebido', async ({ browser }) => {
+  // O Heitor, 25/11: "As duas respostas dizem 'recebido'" (a segunda dizia "Pagamento já registrado").
+  const cliente = await rede!.criarCliente('Duplo clique')
+  const { agendamento, comanda } = await atendimentoConcluido(cliente)
+  const envio = crypto.randomUUID()
+
+  const respostas = await como(balcao!, browser, async p => {
+    const rota = `/${slug}/pdv`
+    await p.goto(`${rota}?comanda=${comanda}`)
+    return Promise.all([1, 2].map(() => chamarAcaoComFormulario(p, 'actions/appointments.ts', 'confirmPayment', rota, [null], {
+      appointment_id: agendamento, slug, payment_method: 'PIX', _envio: envio,
+    })))
+  })
+  for (const r of respostas) {
+    // O valor que a action devolveu é a linha `1:` do payload; o resto é o render da página
+    // (que tem `"error":"$undefined"` do Next, não da action).
+    const devolvido = r.texto.split('\n').filter(l => l.startsWith('1:')).map(l => { try { return JSON.parse(l.slice(2)) } catch { return undefined } }).find(v => v !== undefined)
+    expect(devolvido, 'as duas respostas dizem o recebido (nenhuma diz erro)').toEqual({})
+    expect(r.texto).not.toContain('já registrado')
+  }
+  const linhas = await lancamentosDo(agendamento)
+  expect(linhas.map(l => [n(l.amount), l.payment_method, l.is_paid]), 'um recebimento só').toEqual([[300, 'PIX', true]])
+  expect((await comandaPaga(comanda))?.paga).toBe(true)
+})
+
 test('pela action: as formas que não fecham com o valor são recusadas, e os pontos fora do à vista também', async ({ browser }) => {
   const cliente = await rede!.criarCliente('Recusas')
   const { agendamento } = await atendimentoConcluido(cliente)

@@ -40,6 +40,18 @@ export interface PedidoDeImportacao {
   oportunidade: { etapaId: string; responsavelId?: string | null } | null
   /** As linhas (numero) em que a prévia desmarcou "completar a ficha de X" (cli-07). */
   naoCompletar?: number[]
+  /**
+   * As linhas de OUTRO nome que a prévia marcou para juntar (o Heitor, 25/11:
+   * "Vem desmarcada, a não ser que o nome case"): sem a marca, o servidor não
+   * junta pelo telefone a linha cujo nome não casa com o da ficha.
+   */
+  juntar?: number[]
+}
+
+/** Os números de linha que a prévia manda: inteiros de planilha (> 1), sem repetição, até o teto. */
+function numerosDeLinha(lista: unknown): number[] {
+  if (!Array.isArray(lista)) return []
+  return [...new Set(lista.filter((n): n is number => Number.isInteger(n) && n > 1))].slice(0, MAX_LINHAS)
 }
 
 /** A etapa é da rede E de um funil ativo: a de funil arquivado sumiria do quadro. */
@@ -131,9 +143,8 @@ export async function importarContatos(pedido: PedidoDeImportacao): Promise<{ ok
     tenant_id: ctx.tenantId!, branch_id: branchId, criada_por: ctx.internalUserId ?? null, destino,
     nome_arquivo: String(pedido.nomeArquivo ?? 'arquivo.csv').slice(0, 200),
     mapeamento, oportunidade, total: limpas.length,
-    nao_completar: destino === 'clientes' && Array.isArray(pedido.naoCompletar)
-      ? [...new Set(pedido.naoCompletar.filter(n => Number.isInteger(n) && n > 1))].slice(0, MAX_LINHAS)
-      : [],
+    nao_completar: destino === 'clientes' ? numerosDeLinha(pedido.naoCompletar) : [],
+    juntar: destino === 'clientes' ? numerosDeLinha(pedido.juntar) : [],
   }).select('id').single<{ id: string }>()
   if (error) return { ok: false, error: `Não foi possível começar a importação: ${error.message}` }
 

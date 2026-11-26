@@ -47,7 +47,8 @@ describe('A9: o rótulo do A receber diz "vence no período"', () => {
   it('as duas telas do Financeiro usam o rótulo', async () => {
     const { ROTULO_DO_A_RECEBER_DA_CLIENTE } = await import('@/lib/financeiro/abas')
     // A17 da 23ª: o número grande passou a ser o em aberto, e o rótulo diz.
-    expect(ROTULO_DO_A_RECEBER_DA_CLIENTE).toBe('A receber da cliente · em aberto')
+    // O Heitor, 25/11: "O cartão vira 'A receber · em aberto' e soma tudo" (o número leva o sem cliente).
+    expect(ROTULO_DO_A_RECEBER_DA_CLIENTE).toBe('A receber · em aberto')
     expect(ler('components/admin/admin-financial-view.tsx')).toContain('label={ROTULO_DO_A_RECEBER_DA_CLIENTE}')
     expect(ler('components/branch/financial-hub.tsx')).toContain('label={ROTULO_DO_A_RECEBER_DA_CLIENTE}')
   })

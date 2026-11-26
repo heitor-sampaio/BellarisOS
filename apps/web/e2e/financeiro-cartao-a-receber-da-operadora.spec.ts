@@ -242,7 +242,8 @@ test.describe.serial('cartão em N vezes: a receber da operadora, mês a mês', 
     const ate = maisMeses(hoje, 4)
     await comSessao(browser, gestor!.estado, async p => {
       await p.goto(`/admin/financeiro?aba=a-receber&period=custom&from=${hoje}&to=${ate}`)
-      await expect(p.locator('[data-kpi="a-receber"]')).toContainText('A receber da cliente')
+      // O Heitor, 25/11: "O cartão vira 'A receber · em aberto' e soma tudo" (era "A receber da cliente").
+      await expect(p.locator('[data-kpi="a-receber"]')).toContainText('A receber · em aberto')
       const kpi = p.locator('[data-kpi="a-receber-operadora"]')
       await expect(kpi).toContainText('A receber da operadora')
       // O bruto mora na dica do cartão (2026-11-16): abre antes de ler.

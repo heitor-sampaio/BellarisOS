@@ -130,7 +130,8 @@ test('a venda não paga fica fora; a paga entra no dia do primeiro recebimento p
     expect(doTipo.map(l => l.id), `${c.tipo}: a do único pagamento estornado não é venda`).not.toContain(c.estornado)
   }
 
-  // O resumo bate: só as pagas. O "Total vendido" (o geral) não soma o crédito (RL1).
+  // O resumo bate: só as pagas. O "Total vendido" (o geral) soma o crédito vendido também (o Heitor, 25/11:
+  // "se o crédito foi vendido, é venda, tem que contar, não conta é quando só usa").
   const { data: resumo, error } = await db().rpc('metrics_vendas_resumo', {
     p_tenant: rede!.tenantId, p_branch_ids: null, p_from: horas(-24), p_to: horas(24), p_professional_id: null,
   })
@@ -138,7 +139,7 @@ test('a venda não paga fica fora; a paga entra no dia do primeiro recebimento p
   const porTipo = Object.fromEntries((resumo as { tipo: string | null; quantidade: number; total: number }[])
     .map(r => [r.tipo ?? 'GERAL', { q: Number(r.quantidade), total: Number(r.total) }]))
   for (const tipo of TIPOS) expect(porTipo[tipo], `${tipo} no resumo`).toEqual({ q: 1, total: 100 })
-  expect(porTipo.GERAL, 'o Total vendido: as quatro pagas, sem o crédito').toEqual({ q: 4, total: 400 })
+  expect(porTipo.GERAL, 'o Total vendido: as cinco pagas, o crédito também').toEqual({ q: 5, total: 500 })
 
   // A primeira parcela paga faz a venda, no dia em que o dinheiro entrou.
   const pagaAgora = horas(-1)
@@ -150,5 +151,41 @@ test('a venda não paga fica fora; a paga entra no dia do primeiro recebimento p
     const virou = linhas.find(l => l.tipo === c.tipo && l.id === c.aberto)
     expect(virou, `${c.tipo}: paga a parcela, vira venda`).toBeTruthy()
     expect(new Date(virou!.data).toISOString(), `${c.tipo}: no dia do recebimento`).toBe(pagaAgora)
+  }
+})
+
+/**
+ * O Heitor, 25/11: "se o crédito foi vendido, é venda, tem que contar, não conta é quando só usa".
+ * O que a cliente paga com o crédito interno não é venda de novo: a venda paga só com ele não entra,
+ * e a paga em parte com ele entra no dia do primeiro dinheiro, com o valor menos o pago com crédito.
+ */
+test('o pago com crédito interno não conta de novo — a venda só com crédito não entra, e a em parte vale o resto', async () => {
+  test.setTimeout(180_000)
+  const casos: { tipo: string; soCredito: string; emParte: string; dinheiroEm: string }[] = []
+  // O saldo que a cliente já tinha (o crédito de fora, sem venda): é dele que sai o pago com crédito.
+  const comSaldo = async (ligacao: Ligacao) => {
+    const r = await db().from('internal_credits').insert({ client_id: ligacao.client_id, branch_id: rede!.branchId, amount: 100, description: 'Crédito de fora' })
+    expect(r.error, r.error?.message).toBeNull()
+  }
+  for (const tipo of ['PROCEDIMENTO', 'PACOTE', 'PRE_PAGO', 'PRODUTO'] as const) {
+    const so = await vender(tipo, 'SoCredito')
+    await comSaldo(so.ligacao)
+    await receber(so.ligacao, { is_paid: true, paid_at: horas(-3), payment_method: 'INTERNAL_CREDIT' })
+    const parte = await vender(tipo, 'EmParte')
+    await comSaldo(parte.ligacao)
+    await receber(parte.ligacao, { amount: 40, is_paid: true, paid_at: horas(-3), payment_method: 'INTERNAL_CREDIT' })
+    const dinheiroEm = horas(-2)
+    await receber(parte.ligacao, { amount: 60, is_paid: true, paid_at: dinheiroEm, payment_method: 'PIX' })
+    casos.push({ tipo, soCredito: so.id, emParte: parte.id, dinheiroEm })
+  }
+
+  const linhas = await vendas()
+  for (const c of casos) {
+    const doTipo = linhas.filter(l => l.tipo === c.tipo)
+    expect(doTipo.map(l => l.id), `${c.tipo}: a paga só com crédito interno não é venda`).not.toContain(c.soCredito)
+    const parte = doTipo.find(l => l.id === c.emParte)
+    expect(parte, `${c.tipo}: a paga em parte com crédito entra`).toBeTruthy()
+    expect(new Date(parte!.data).toISOString(), `${c.tipo}: no dia do primeiro dinheiro`).toBe(c.dinheiroEm)
+    expect(Number(parte!.valor), `${c.tipo}: o valor sem a parte paga com crédito`).toBe(60)
   }
 })

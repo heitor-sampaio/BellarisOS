@@ -62,9 +62,13 @@ describe('MODULE_LEVELS', () => {
     expect(MODULE_LEVELS.reports).toEqual(['NONE', 'VIEW'])
   })
 
-  it('cashier, forms, roles e settings são tudo ou nada', () => {
-    for (const m of ['cashier', 'forms', 'roles', 'settings'] as const) {
+  // As Fichas e os Cargos vão até o Ver (o Heitor, 25/11, "8 - a": "o nível passa a se chamar 'Ver'").
+  it('cashier e settings são tudo ou nada; forms e roles vão até o Ver', () => {
+    for (const m of ['cashier', 'settings'] as const) {
       expect(MODULE_LEVELS[m]).toEqual(['NONE', 'MANAGE'])
+    }
+    for (const m of ['forms', 'roles'] as const) {
+      expect(MODULE_LEVELS[m]).toEqual(['NONE', 'VIEW'])
     }
   })
 
@@ -141,7 +145,8 @@ describe('a matriz de Cargos diz a regra de agora (plataforma.md, Equipe e Cargo
       expect(copy).not.toContain('mais poderoso que o próprio')
       expect(copy).not.toContain('conceder a si mesmo')
       const { LEVEL_COPY } = await import('@/lib/permissions-copy')
-      expect(LEVEL_COPY.roles.MANAGE).toMatch(/só da Admin da rede/)
+      // O nível dos Cargos é o Ver desde 25/11 (o Heitor: "8 - a").
+      expect(LEVEL_COPY.roles.VIEW).toMatch(/só da Admin da rede/)
       expect(LEVEL_COPY.team.MANAGE).toMatch(/não passe do (seu|próprio)/)
     })
   })

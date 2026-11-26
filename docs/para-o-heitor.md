@@ -24,7 +24,7 @@ O plano saiu da tela do atendimento: agora se recebe só no PDV.
 
 **APAGADO**: o caso do duplo clique ("o mesmo envio duas vezes: grava uma, e as duas respostas dizem o recebido"), em
 `plano-recebimento-concorrente`. No PDV a gravação também é uma só, mas a segunda resposta é um erro, não "recebido".
-Decida se o PDV deve responder "recebido" às duas vezes; se sim, o caso volta, no PDV.
+Decida se o PDV deve responder "recebido" às duas vezes; se sim, o caso volta, no PDV. (Respondida: voltou, §9.)
 
 **Pelo "não recusar o valor que a rede escolheu, no máximo avisar" (princípio 2, 04/11)**
 
@@ -36,7 +36,7 @@ Os limites viraram aviso. Os valores do "comum" acima dos quais se avisa são de
 
 **Pelo "o sistema precisa ser intuitivo" (princípio 7, 11/11)**
 
-"Cancelar" virou "Desistir do atendimento" no atendimento em andamento. O NOME é decisão do Claude.
+"Cancelar" virou "Desistir do atendimento" no atendimento em andamento. O NOME é decisão do Claude. (Você discordou em 25/11: voltou a "Cancelar", §9.)
 - `e2e/atendimento-atritos-da-8.spec.ts`
 - `e2e/atendimento-atritos-da-10.spec.ts`
 - `e2e/atendimento-quem-inicia-e-conclui.spec.ts`
@@ -156,6 +156,8 @@ Claude, 25/11 (o Heitor revisa)". Duas delas viraram sugestão, na lista `docs/s
 
 ## 6. A 29ª simulação (25/11)
 
+Respondidas em 25/11: o que foi feito está no §9.
+
 Nas correções da 29ª, nenhum teste existente foi alterado nem apagado. Ficaram para você cinco propostas, que mudariam
 testes cuja regra é só decisão do Claude:
 
@@ -186,6 +188,8 @@ testes cuja regra é só decisão do Claude:
    descrição "Crédito interno"). A correção foi feita, quebrou o primeiro na suíte completa e foi desfeita.
 
 ## 7. A 30ª simulação (25/11)
+
+Respondidas em 25/11: o que foi feito está no §9.
 
 Nas correções da 30ª, nenhum teste existente foi alterado nem apagado (oito ganharam casos novos). Ficaram para você
 estas propostas, que mudariam testes cuja regra é só decisão do Claude, ou que precisam de uma regra sua:
@@ -294,3 +298,81 @@ não acabou").
 - `e2e/portal-cliente-alterar-agendamento.spec.ts`, o fim do caso A51: o agendamento em andamento aparece em "Em
   andamento", sem o "o horário passou".
 
+
+## 9. As suas respostas de 25/11 (a página de perguntas): o que foi feito
+
+Cada teste alterado, com a sua fala que o permite (CLAUDE.md §15). Nenhum teste foi apagado.
+
+**1, o clique duplo no "Receber" do PDV** ("As duas respostas dizem "recebido""). O mesmo envio grava uma vez e as duas
+respostas dizem o recebido, no "Receber esta parcela", no "Receber" da comanda e no receber do plano (`umaVez`, com a
+chave da tela). Duas abas seguem como antes: uma recebe, a outra ouve que já está pago. O caso apagado na 28ª volta, no
+PDV.
+- `e2e/plano-recebimento-concorrente.spec.ts`: o caso "o mesmo envio duas vezes (duplo clique)…" voltou, no
+  `receberParcelaNoPdv`. Casos novos do mesmo gesto: `e2e/plano-checkout-uma-transacao.spec.ts` e
+  `e2e/pdv-varias-formas-e-crediario-avulso.spec.ts`.
+
+**2, a importação** ("Vem desmarcada, a não ser que o nome case"). Com o mesmo telefone sem CPF, "Completar a ficha de X"
+vem marcada só quando o nome casa; o "Juntar X com Y" (duas linhas da planilha) vem desmarcado. O servidor confere
+sozinho: sem a marca, a linha de outro nome vira ficha nova, mesmo que a prévia não tenha chegado a cruzar.
+- `e2e/importacao-previa-cruzamento.spec.ts`: o caso "cli-07 e A15…" (a caixa da Marlene vem desmarcada; antes o caso a
+  desmarcava) e o caso "A14…" (a Karina e a Clarinha vêm desmarcadas; a Clarinha é marcada para juntar). As fichas
+  conferidas no fim são as mesmas.
+- `tests/auditoria-e-grupos.test.ts:95`: a coluna nova `importacoes.juntar` (a marca de juntar que vai ao servidor) entrou na
+  lista das colunas auditadas.
+
+**4, a comissão de venda na linha da Equipe** ("Diz o percentual da rede"). "Venda: a do pacote ou produto vendido (sem
+ela, a da rede: 5%)". A rede tem duas regras de venda, a do plano e a do produto; diferentes, a linha diz as duas ("5% no
+plano, 2,5% no produto"); nenhuma, "(sem ela, nenhuma: a rede não tem)" (decisão do Claude, 25/11, princípios 3 e 4).
+- `tests/atritos-da-19-cadastros.test.ts:62` e `tests/atritos-da-24-cargos-atendimento-app.test.ts:80`: o texto novo.
+
+**6, o crédito interno vendido** ("se o crédito foi vendido, é venda, tem que contar, não conta é quando só usa"). O
+crédito vendido conta no "Total vendido", e o "Fora do total" saiu da tela. O que a cliente paga com crédito interno não
+conta de novo: a venda paga só com crédito não entra, e a paga em parte entra no dia do primeiro dinheiro, valendo o
+resto. Decisão do Claude, pela sua fala: a parte paga com crédito sai da linha da VENDA, não do crédito.
+- `e2e/relatorio-vendas-comandas.spec.ts`: o Total vendido do caso passou de R$ 400,00 ("1 venda") para R$ 700,00 ("2
+  vendas"), e o "Fora do total" não aparece; o título do caso e o comentário do topo dizem a regra nova.
+- `e2e/relatorio-vendas-so-o-pago.spec.ts:142`: o Total vendido das pagas passou de 4 (R$ 400) para 5 (R$ 500). Caso
+  novo no mesmo spec: a venda paga só com crédito não entra; a paga em parte vale o resto.
+- `tests/relatorio-vendas-comandas.test.ts`: saiu o caso que exigia o crédito fora do total (`FORA_DO_TOTAL`).
+
+**7, o resumo do cargo** ("Diz "Inicia e conclui os atendimentos.""). Com o Atendimento e o Prontuário em Gerenciar, o
+resumo diz "Inicia e conclui os atendimentos." (antes não dizia nada).
+- `tests/atritos-da-23-cargos-atendimento-app.test.ts:82`, `tests/atritos-da-24-cargos-atendimento-app.test.ts:43`,
+  `tests/auditoria-atendimento-e-permissao.test.ts:74`: esperavam nada; esperam a frase.
+
+**8, as Fichas e os Cargos** ("8 - a": o nível passa a se chamar "Ver"). A matriz oferece Sem acesso e Ver; o Ver abre a
+aba e lê, e mudar segue só da Admin da rede. Os dois cargos que tinham o Gerenciar (um com cada) passam a Ver. O resumo
+diz "Fichas e Cargos em Ver: abre as duas abas e lê."
+- `tests/permissions.test.ts:65`: "cashier, forms, roles e settings são tudo ou nada" virou "cashier e settings são tudo
+  ou nada; forms e roles vão até o Ver"; e `:144`, o texto dos Cargos é o do Ver.
+- `tests/cargos-resumo-da-fidelidade-e-da-config.test.ts:44-57`: o texto das Fichas é o do Ver, e o resumo diz "em Ver:
+  abre a aba e lê" (era "estas permissões não abrem nada", que estava errado).
+
+**10, o cartão do Financeiro** ("O cartão vira "A receber · em aberto" e soma tudo"). O número continua somando todo o em
+aberto, com a nota "Inclui sem cliente: R$ …".
+- `tests/atritos-da-22-caixa.test.ts:50`, `tests/atritos-da-23-financeiro.test.ts:160`,
+  `e2e/financeiro-cartao-a-receber-da-operadora.spec.ts:245`: o nome novo.
+
+**11, os exemplos da campanha** ("Exemplos do Dia das Mães"). "ex: Dia das Mães" e "ex: Feliz Dia das Mães,
+{{first_name}}!".
+- Os seis E2E que acham o campo pelo exemplo: `e2e/campanha-aviso-no-celular.spec.ts:60-61`,
+  `e2e/campanha-defeitos-da-11.spec.ts:50-51`, `e2e/campanha-imediata-ou-agendada.spec.ts:79-80`,
+  `e2e/campanha-seletor-de-tags.spec.ts:41-42`, `e2e/funcionalidades-ligadas.spec.ts:93`,
+  `e2e/tags-sem-unidade.spec.ts:207-208`.
+
+**O botão do atendimento em andamento** ("Discordo — Mantem o Cancelar"). Volta a "Cancelar", com "Cancelar
+atendimento", "Motivo do cancelamento *" e "Confirmar cancelamento". Por dentro segue a desistência de sempre (o insumo,
+a intercorrência, a sessão paga).
+- `tests/sessao-do-atendimento-o-que-a-tela-diz.test.ts:82-104`, `e2e/atendimento-atritos-da-8.spec.ts:94-100`,
+  `e2e/atendimento-atritos-da-10.spec.ts:89-90`, `e2e/atendimento-quem-inicia-e-conclui.spec.ts:83-84` e `:98`: os
+  textos de antes da 28ª.
+
+**A remarcação pela cliente no app** ("Discordo — Ela já desmarcou uma vez, pode acabar desmarcando de novo, melhor
+reconfirmar."). Volta a Agendado, como a da equipe e a do Copilot. O app diz "O horário novo fica como Agendado até ser
+confirmado." (o texto é decisão do Claude).
+- `tests/atritos-da-19-atendimento.test.ts:115-123`, `tests/textos-do-app-da-cliente-f73.test.ts:9-23`: o texto novo do
+  app.
+- `e2e/portal-cliente-remarcar-pelo-nucleo.spec.ts`: o caso do app espera Agendado e sem a confirmação (antes,
+  Confirmado); o agendamento é posto em Confirmado antes de remarcar, para o caso provar que a confirmação sai.
+
+**Sem mudança:** 3, 5, 9, 12 e as outras nove revisões.

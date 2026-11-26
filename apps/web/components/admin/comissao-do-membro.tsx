@@ -6,7 +6,7 @@ import { Ban, Banknote, Percent, Plus, Trash2, X } from 'lucide-react'
 import { parseDinheiro } from '@estetica-os/utils'
 import { salvarRegrasDoProfissional } from '@/actions/comissoes'
 import { rotuloDaRegra, recusaDoValorDaComissao, type RegraDeComissao, type TipoDeRegra } from '@/lib/comissoes/config'
-import { chipDaComissao } from '@/lib/comissoes/chip-do-membro'
+import { chipDaComissao, type VendaDaRede } from '@/lib/comissoes/chip-do-membro'
 import { resumoDaComissaoDoMembro } from '@/lib/equipe/textos-do-cadastro'
 import { Dica } from '@/components/shared/dica'
 
@@ -37,7 +37,7 @@ export const paraTexto = (n: number) => String(n).replace('.', ',')
 /** "1.250,50", "1.400" e "12.5" valem — a regra de todo campo de dinheiro (`parseDinheiro`, D3). */
 export const paraNumero = (t: string) => parseDinheiro(t)
 
-export function ComissaoDoMembro({ membro, regras, procedimentos, comGeral = [], atende, vendaPct = null }: {
+export function ComissaoDoMembro({ membro, regras, procedimentos, comGeral = [], atende, vendaPct = null, vendaDaRede }: {
   membro:        { id: string; nome: string }
   regras:        RegraDeComissao[]
   procedimentos: { id: string; name: string }[]
@@ -47,6 +47,8 @@ export function ComissaoDoMembro({ membro, regras, procedimentos, comGeral = [],
   atende:        boolean
   /** A17 da 11ª: a comissão de venda da pessoa (%); nulo é nenhuma. */
   vendaPct?: number | null
+  /** A comissão de venda da rede (plano e produto): o chip diz quanto (o Heitor, 25/11: "Diz o percentual da rede"). */
+  vendaDaRede?: VendaDaRede
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [abertura, setAbertura] = useState(0)
@@ -60,7 +62,7 @@ export function ComissaoDoMembro({ membro, regras, procedimentos, comGeral = [],
   const excecoes = regras.filter(r => r.procedure_id !== null).length
   const semRegra = atende && !padrao
   // A22 da 19ª: o chip diz QUAL comissão falta — a de atendimento (quem atende) ou a de venda.
-  const textoDoChip = chipDaComissao({ padrao: padrao ? rotuloDaRegra(padrao) : null, excecoes, vendaPct, atende })
+  const textoDoChip = chipDaComissao({ padrao: padrao ? rotuloDaRegra(padrao) : null, excecoes, vendaPct, atende, vendaDaRede })
 
   return (
     <>

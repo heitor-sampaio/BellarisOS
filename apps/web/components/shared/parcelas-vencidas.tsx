@@ -6,7 +6,7 @@ import { parcelasVencidas, type AReceberVencido } from '@/lib/metrics/vencidas'
 /**
  * O aviso do dashboard (D13 da 9ª simulação; princípio 3): "1 parcela vencida
  * da cliente: R$ 1.294,00 (desde 05/11) — Ver no Financeiro". A conta é a do
- * cartão "A receber da cliente" (`getAReceberVencido`). Sem vencida, nada.
+ * cartão "A receber · em aberto" (`getAReceberVencido`). Sem vencida, nada.
  */
 export function ParcelasVencidas({ vencidas, href }: { vencidas: AReceberVencido; href: string }) {
   if (vencidas.quantidade <= 0) return null

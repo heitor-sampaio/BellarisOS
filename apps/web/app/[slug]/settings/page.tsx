@@ -1,8 +1,9 @@
 import { notFound, redirect } from 'next/navigation'
-import { getTenantContext, assertAnyPermission, alcancaUnidade } from '@/lib/auth'
+import { getTenantContext, can, alcancaUnidade } from '@/lib/auth'
+import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
-import { MODULOS_DAS_ABAS } from '@/lib/configuracoes/abas'
+import { MODULOS_DAS_ABAS, nivelQueAbreAAba } from '@/lib/configuracoes/abas'
 import { Configuracoes, ABAS_DA_UNIDADE } from '@/app/_shared/configuracoes'
 
 /**
@@ -32,7 +33,8 @@ export default async function BranchSettingsPage({
   // CF2: o Eventos é o "O que já aconteceu" das Automações (que são da rede).
   if (tab === 'eventos') redirect('/admin/automacoes/eventos')
   const ctx = await getTenantContext()
-  assertAnyPermission(ctx, MODULOS_DAS_ABAS.filter(m => m !== 'financial'), 'MANAGE')
+  // Cada módulo no nível que abre a aba dele: as Fichas e os Cargos com o Ver (o Heitor, 25/11, "8 - a").
+  if (!MODULOS_DAS_ABAS.filter(m => m !== 'financial').some(m => can(ctx, m, nivelQueAbreAAba(m)))) throw semAcesso()
   // A unidade da tela: é para ela que a aba Importações cadastra os clientes.
   const unidade = await ler(createAdminClient().from('branches').select('id, name')
     .eq('slug', slug).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade')

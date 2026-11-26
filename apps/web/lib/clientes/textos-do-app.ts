@@ -8,13 +8,15 @@ import { BUSINESS_TZ, partsInTZ } from '@/lib/datetime'
 /**
  * O aviso depois de remarcar (A51 da 12ª: com quem; A29 da 14ª: ONDE). A
  * Marina remarcou da Savassi para a Pampulha, e o aviso não dizia a unidade
- * nova — o topo do app seguia "Manacá Savassi". A12 da 19ª (H3): quem remarca
- * pelo app escolheu o horário, e ele já nasce Confirmado — o aviso diz.
+ * nova — o topo do app seguia "Manacá Savassi". A12 da 19ª: o aviso diz como o
+ * horário novo fica — Agendado, até ser confirmado de novo (o Heitor, 25/11:
+ * "Ela já desmarcou uma vez, pode acabar desmarcando de novo, melhor
+ * reconfirmar."; era "fica confirmado", a H3).
  */
 export function textoDoRemarcado(p: { quemAtende: string | null; dia: string; hora: string; unidadeNova: string | null }): string {
   const com = p.quemAtende ? `: com ${p.quemAtende}` : ''
   const onde = p.unidadeNova ? `, na ${p.unidadeNova} (outro endereço)` : ''
-  return `Agendamento remarcado${com}, ${p.dia} às ${p.hora}${onde}. O horário novo fica confirmado.`
+  return `Agendamento remarcado${com}, ${p.dia} às ${p.hora}${onde}. O horário novo fica como Agendado até ser confirmado.`
 }
 
 function diaEHora(iso: string, fuso: string): { dia: string; hora: string } {
