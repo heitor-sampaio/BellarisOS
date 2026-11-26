@@ -1786,8 +1786,9 @@ As respostas do Heitor na página, 26/11.
   CSV (`textoDoFechamento`, `csvDoExtrato`; `fechamentosRecentes` lê a unidade). O mês e os limites seguem no fuso
   da rede. Ele perguntou por que a hora do pagamento importa. A hora veio da A29 da 24ª (decisão do Claude): ela
   distingue dois fechamentos do mesmo dia e diz até quando os lançamentos entraram. A explicação foi dada no chat.
-- **R18** ("Não sei se entendi o problema"): volta à página como R19, em palavras simples, com uma terceira opção
-  (dispensar documentos também só com a Admin da rede).
+- **R18** ("Não sei se entendi o problema"): voltou à página como R19, em palavras simples. **R19** ("Trocar o nome
+  para \"Dispensar documentos\""): a permissão `documents` se chama "Dispensar documentos" na tela de Cargos e na
+  Auditoria; o que ela faz não mudou.
 - **A regra nova** (o Heitor, 26/11: "isso não é ser intuitivo, é ser explicativo e não isso que eu quero. Ser
   intuitivo é justamente o contrario, ser facil de usar mesmo sem muitas explicações."): entrou no princípio 7 do
   CLAUDE.md. As quatro notas que a 33ª tinha posto como correção de atrito saíram: a composição do "Despesas pagas
@@ -1800,11 +1801,12 @@ As respostas do Heitor na página, 26/11.
 - `tests/agenda-da-rede-diz-o-relogio.test.ts`: o caso dos fusos diferentes espera a nota nula (R16).
 - `tests/fuso-da-auditoria-e-comissoes.test.ts`: o fechamento passa o fuso da unidade, e o título do caso do CSV
   mudou (R17).
+- `tests/documentos-assinar-sem-permissao.test.ts:48`: o nome da permissão é "Dispensar documentos" (R19).
 - `tests/relatorios-o-que-o-recorte-e-o-caixa-somam.test.ts` e `tests/agenda-lista-vazia-diz-o-encaixe.test.ts`:
   apagados; e `tests/registro-travado.test.ts` perdeu o caso do texto dos insumos. Todos travavam as notas que
   saíram ("intuitivo não é explicativo", 26/11).
 
-**Em aberto:** R19 na página. A varredura dos textos explicativos mais antigos (as notas de tela anteriores à 33ª)
+**Em aberto:** nada na página. A varredura dos textos explicativos mais antigos (as notas de tela anteriores à 33ª)
 fica como frente: as correções de atrito das próximas rodadas já não põem texto que explica a tela.
 
 ### 2026-11-26 (4) — A 33ª simulação, as correções dela e a R15

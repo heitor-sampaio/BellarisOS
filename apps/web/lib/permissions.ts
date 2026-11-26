@@ -25,7 +25,7 @@ export const MODULE_LABELS: Record<AppModule, string> = {
   clients:         'Clientes',
   loyalty:         'Fidelidade',
   medical_records: 'Prontuário',
-  documents:       'Modelos de documento',
+  documents:       'Dispensar documentos', // o Heitor, 26/11 (R19); era "Modelos de documento"
   procedures:      'Procedimentos e pacotes',
   stock:           'Estoque',
   financial:       'Financeiro e comissões',

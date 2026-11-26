@@ -591,7 +591,8 @@ que a hora importa. Ela entrou numa rodada anterior (decisão do Claude) por doi
 dia ficavam iguais na lista, e a hora diz até quando os lançamentos entraram naquele fechamento. Se preferir só a
 data, é uma linha.
 
-**R18**: está de novo na página como R19, contada de outro jeito.
+**R18/R19** feita: a permissão se chama "Dispensar documentos" na tela de Cargos e na Auditoria. O que ela faz não
+mudou.
 
 **A sua regra** entrou no princípio 7 do CLAUDE.md. Saíram as quatro notas que a 33ª tinha posto: a explicação do
 "Despesas pagas (caixa)" no DRE; a nota "As oportunidades são da rede…" na aba Comercial (no lugar dela, os dois
@@ -601,5 +602,6 @@ insumos não se editam aqui…" no "Editar registro"; e a frase do encaixe na li
 Testes alterados ou apagados, com a regra que mudou:
 - `tests/agenda-da-rede-diz-o-relogio.test.ts`: o caso dos fusos diferentes, sem a nota (R16).
 - `tests/fuso-da-auditoria-e-comissoes.test.ts`: o fechamento no fuso da unidade (R17).
+- `tests/documentos-assinar-sem-permissao.test.ts:48`: o nome "Dispensar documentos" (R19).
 - Apagados `tests/relatorios-o-que-o-recorte-e-o-caixa-somam.test.ts` e `tests/agenda-lista-vazia-diz-o-encaixe.test.ts`,
   e um caso de `tests/registro-travado.test.ts`: travavam as notas que saíram (a sua fala de 26/11).

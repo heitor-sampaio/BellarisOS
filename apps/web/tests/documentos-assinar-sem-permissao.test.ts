@@ -45,7 +45,9 @@ describe('o módulo Documentos é o dos MODELOS', () => {
   // conta admin"): os modelos são só da Admin da rede (`recusaDaConfigDaRede`),
   // e o Gerenciar do módulo só DISPENSA. A tela diz isso (princípio 3).
   it('a tela de Cargos diz que Gerenciar dispensa, que os modelos são só da Admin da rede — e que colher não pede', async () => {
-    expect(MODULE_LABELS.documents).toMatch(/modelos de documento/i)
+    // O nome diz o que ela faz (o Heitor, 26/11, R19: "Trocar o nome para
+    // \"Dispensar documentos\""); era "Modelos de documento".
+    expect(MODULE_LABELS.documents).toBe('Dispensar documentos')
     const manage = LEVEL_COPY.documents.MANAGE ?? ''
     expect(manage).not.toMatch(/cria, edita e desativa os modelos de documento/i)
     expect(manage).toMatch(/^Dispensa um documento obrigatório da cliente, com motivo\./)

@@ -781,7 +781,7 @@ auditoria das regras, pergunta 8: "só pela conta admin"; antes, H7 de
   setup (`rede.atualizarDadosDaRede`, `setup`; a aba Geral fica só para ler),
   as fichas (`fichas`) e a ficha de saúde, os modelos de documento
   (`modelos-de-documento`; desde 2026-11-16 do módulo `documents`, os
-  "Modelos de documento" — `docs/regras/documentos.md`), as integrações e as caixas de WhatsApp
+  "Dispensar documentos" — `docs/regras/documentos.md`), as integrações e as caixas de WhatsApp
   (`integrations`, `uazapi-connection`, o OAuth da Meta em `/api/oauth/meta`;
   o inbox vazio manda pedir a quem administra), as ações em lote
   (`acoes-em-lote`), as Importações (`importacao`), as automações, as

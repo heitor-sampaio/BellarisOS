@@ -117,7 +117,7 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   // alguém poder criar/editar/excluir os modelos de documentos." Ver os
   // documentos da cliente é de quem vê a cliente; colher é de quem está na tela.
   documents: {
-    NONE:   'Não mexe nos modelos de documento. Vê os documentos da cliente e colhe a assinatura do mesmo jeito (isso vem de Clientes, do Atendimento, da Agenda e do PDV).',
+    NONE:   'Não dispensa documentos. Vê os documentos da cliente e colhe a assinatura do mesmo jeito (isso vem de Clientes, do Atendimento, da Agenda e do PDV).',
     // Os modelos são configuração da rede toda: só da Admin da rede (o Heitor,
     // 18/11: "Configuração da rede toda só pela conta admin"). O Gerenciar dispensa.
     MANAGE: 'Dispensa um documento obrigatório da cliente, com motivo. Criar, editar e desativar os modelos de documento é só da Admin da rede (Configurações → Documentos). Colher a assinatura não pede esta permissão: é de quem está com a cliente — na ficha, no atendimento, na agenda ou no PDV.',

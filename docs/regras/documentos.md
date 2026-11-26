@@ -297,8 +297,9 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   procedimento/plano/pacote que tenha documentos que precisam de assinatura,
   os documentos precisam ser assinados. É só uma questão de disponibilizar
   para o cliente assinar e isso não representa risco.").
-  - **`documents` aceita só NONE/MANAGE** ("Modelos de documento" na tela de
-    Cargos, no grupo Gestão ao lado dos "Modelos de ficha" — `forms`, que
+  - **`documents` aceita só NONE/MANAGE** ("Dispensar documentos" na tela de
+    Cargos — o Heitor, 26/11, R19: "Trocar o nome para \"Dispensar documentos\""; era
+    "Modelos de documento" —, no grupo Gestão ao lado dos "Modelos de ficha" — `forms`, que
     ficou só com as fichas). MANAGE só DISPENSA um documento obrigatório da
     cliente (DQ-02 do catálogo, 24/11), com motivo (`dispensarDocumento`; a tela só mostra "Dispensar" a
     quem pode — `dispensaDocumentos`), e abre a aba Configurações → Documentos

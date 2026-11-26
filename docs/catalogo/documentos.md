@@ -454,12 +454,12 @@ Este é o catálogo das regras dos Documentos que valem HOJE: os tipos, os model
 - Onde: `CLAUDE.md:752-757` (§11, com os modelos de documento na lista); `docs/regras/plataforma.md:742`; `docs/regras/documentos.md:291-302`, `:662-665`
 - Antes: KA-33, KC-34, KB-26
 
-**DQ-02.** O módulo Documentos ("Modelos de documento" na tela de Cargos) tem dois níveis, "Sem acesso" e Gerenciar. Quem o tem em Gerenciar dispensa um documento obrigatório da cliente, sempre com um motivo, e a tela só mostra "Dispensar" a quem pode. Criar e mudar os modelos é da Admin da rede (DQ-01); ver e colher não pedem o módulo (DQ-05, DQ-06).
+**DQ-02.** O módulo Documentos ("Dispensar documentos" na tela de Cargos; o nome é do Heitor, 26/11, R19) tem dois níveis, "Sem acesso" e Gerenciar. Quem o tem em Gerenciar dispensa um documento obrigatório da cliente, sempre com um motivo, e a tela só mostra "Dispensar" a quem pode. Criar e mudar os modelos é da Admin da rede (DQ-01); ver e colher não pedem o módulo (DQ-05, DQ-06).
 - Fonte: decisão do Claude
 - Onde: `docs/regras/documentos.md:293-297`; `docs/revisao.md:54`
 - Antes: KA-35, KC-35
 
-**DQ-03.** Os cargos que a rede recebe como modelo nascem sem os Modelos de documento.
+**DQ-03.** Os cargos que a rede recebe como modelo nascem sem o "Dispensar documentos".
 - Fonte: o Heitor, 2026-11-16: "Pode deixar sem"
 - Onde: `docs/regras/documentos.md:300-302`, `:326-327`
 - Antes: KA-34
@@ -505,7 +505,7 @@ Q01. **Resolvida na revisão de 24/11:** A sua regra (CLAUDE.md §1: "Regra deci
 O texto de `docs/regras/` (ou da própria revisão), e onde se viu também o código ou a tela, contra a decisão mais nova — para corrigir depois.
 
 - DQ-01, DQ-02 (perguntas removidas: a P2 da KA e a primeira da KC): `docs/regras/documentos.md:291-302` diz "MANAGE cria, edita e desativa os modelos", "quem não tem “A rede inteira” não os cria nem muda (H7, 2026-11-01)" e "a rede dá a quem quiser"; `docs/revisao.md:2133`, "a configuração da rede toda só de quem é da rede (H7)"; e a fala de 16/11 ("A permissão de gerenciar documentos serve para alguém poder criar/editar/excluir os modelos de documentos", `documentos.md:284-290`) dava os modelos ao módulo. O Heitor, 18/11 (`CLAUDE.md` §11, `plataforma.md:742`): "Configuração da rede toda só pela conta admin", com os modelos de documento na lista — a mais nova vence. O módulo não ficou vazio (ainda dispensa, DQ-02), então não é pergunta: a regra diz o que cada nível faz. O código já segue a de 18/11 (`apps/web/actions/modelos-de-documento.ts`: `recusaDaConfigDaRede` em toda action dos modelos).
-- DQ-02 (tela, a conferir): o módulo se chama "Modelos de documento" na tela de Cargos (`docs/regras/documentos.md:293`), mas o Gerenciar dele não dá mais criar nem mudar modelo nenhum — só dispensar. O nome e o resumo do cargo dizem o que o nível não dá (princípios 3 e 7).
+- DQ-02 (tela): resolvida em 26/11 — o módulo passou a se chamar "Dispensar documentos" (o Heitor, R19).
 - DL-05, DQ-01: `docs/regras/documentos.md:663-665` diz que a opção "pela conversa" "muda só quem tem os Modelos de documento — `documents: MANAGE` — e abrangência de rede"; pela regra de 18/11 é só da Admin da rede. O código já segue a de 18/11 (`definirEnvioDoLinkPelaConversa`, com `recusaDaConfigDaRede`); só o texto está velho.
 - DQ-06 (CÓDIGO): `docs/regras/documentos.md:306-307` e o código (`apps/web/lib/documentos/acesso.ts:35`, `colheOsDocumentos`) dão o colher a quem tem "Clientes, Agenda ou Prontuário em Ver, ou quem recebe". Falta o Atendimento: desde a UM1 (23/11, `docs/revisao.md:2228`) a tela do atendimento abre com o Atendimento em Ver, e quem só tem o Atendimento chega à tela e não colhe — contra a fala de 16/11 (colhe quem está com a cliente na tela). Também: o "Prontuário em Ver" da lista não corresponde a nenhuma das telas da regra (a conferir), e o "quem recebe" do código (`podeReceber`, `apps/web/lib/auth.ts:379`) aceita o Financeiro em Gerenciar, que a PV-04 do catálogo de Vendas e financeiro já trata como defeito (receber é só do PDV).
 - DT-01 (TELA, pela regra das Tags): a tela Documentos tem filtros (período, situação, tipo, unidade, busca) e não tem o de Tags. A regra das Tags (o Heitor, 13/11, CLAUDE.md §1: "onde tiver for passível de filtro, um dos filtros que ela pode usar são as tags") responde: cada documento é de uma cliente, e a tag é da pessoa. Falta o filtro de Tags.
