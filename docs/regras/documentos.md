@@ -44,7 +44,10 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   mesmo inativo (`outrosDocumentosOferecidos`). A A20 da 20ª, que só oferecia
   um termo depois de escolhido o do campo, estreitava o PC7 e saiu na
   auditoria das regras de 2026-11-18 (o "menos o do campo" é decisão do Claude
-  pelos princípios 3 e 7, 2026-11-18).
+  pelos princípios 3 e 7, 2026-11-18). Escolher o termo ou o contrato tira o
+  mesmo documento dos marcados em "Outros documentos", ao abrir o cadastro e
+  ao escolher (`semOTermoEOContrato`): marcado antes, ele ficava nos dois
+  lugares (A12 da 34ª simulação; decisão do Claude, 26/11, princípio 7).
   ⚠️ É uma COLUNA de array, não uma tabela de ligação: uma tabela com chave
   estrangeira para `procedures` e `document_templates` viraria junção para
   o PostgREST (o PGRST201 de 04/11 — `atendimento.md`). No plano, o cliente

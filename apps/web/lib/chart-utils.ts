@@ -16,6 +16,18 @@ export function categoryAxisWidth(
   return clamp(Math.round(longest * fontPx * CHAR_RATIO) + pad, min, max)
 }
 
+/**
+ * O rótulo de categoria que cabe na largura do eixo, numa linha só (A22 da 34ª:
+ * o nome longo passava dos 150 px e o Recharts o quebrava em linhas que se
+ * encavalavam — "Ponteira demicroagulhamento"). O que não cabe sai cortado com
+ * reticências; o nome inteiro fica no <title> e na dica do gráfico.
+ */
+export function rotuloQueCabe(nome: string, larguraPx: number, { fontPx = 11, pad = 14 }: { fontPx?: number; pad?: number } = {}): string {
+  const cabem = Math.max(1, Math.floor((larguraPx - pad) / (fontPx * CHAR_RATIO)))
+  if (nome.length <= cabem) return nome
+  return `${nome.slice(0, Math.max(1, cabem - 1)).trimEnd()}…`
+}
+
 /** Largura de um eixo numérico, a partir dos rótulos formatados prováveis. */
 export function numericAxisWidth(
   values: number[],

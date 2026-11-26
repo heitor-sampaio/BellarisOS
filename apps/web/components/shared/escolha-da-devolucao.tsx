@@ -160,7 +160,7 @@ export function EscolhaDaDevolucao({ prefixo, devolver, parcial, fidelidade, est
                 <select className="field" aria-label="Forma do pagamento do usado" value={estado.novoMetodo} disabled={desligado}
                   onChange={e => muda({ novoMetodo: e.target.value, novoVezes: 1, novaMaquininha: '' })}>
                   <option value="">Selecione…</option>
-                  {FORMAS_DO_USADO.map(f => <option key={f} value={f}>{rotuloDaForma(f, null, { longo: true })}</option>)}
+                  {FORMAS_DO_USADO.map(f => <option key={f} value={f}>{rotuloDaForma(f, undefined, { longo: true })}</option>)}
                 </select>
               </label>
               {estado.novoMetodo === 'CREDIT_CARD' && (

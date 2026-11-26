@@ -42,3 +42,14 @@ export function outrosDocumentosOferecidos<T extends OutroDocumento & { id: stri
     return o.ativo && o.id !== termo && o.id !== contrato
   }))
 }
+
+/**
+ * Os marcados em "Outros documentos" sem o termo e o contrato escolhidos (A12
+ * da 34ª simulação; princípio 7): marcado aqui ANTES de virar o termo, o mesmo
+ * documento ficava nos dois lugares — o "o que já está marcado fica" acima o
+ * mantinha na lista. Escolhido no campo próprio, ele nasce como o termo (ou o
+ * contrato): a marca de "outro" sai, ao abrir o cadastro e ao escolher.
+ */
+export function semOTermoEOContrato(marcados: readonly string[], escolhidos: { termo: string; contrato: string }): string[] {
+  return marcados.filter(id => id !== escolhidos.termo && id !== escolhidos.contrato)
+}

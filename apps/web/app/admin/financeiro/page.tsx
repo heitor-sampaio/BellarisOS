@@ -4,6 +4,7 @@ import { maquininhaDosEstornos } from '@/lib/financeiro/maquininha-do-estorno'
 import { notaDoEstornoParcial, notaDoUsoDeCredito, type LancamentoParaNota } from '@/lib/financeiro/notas-do-lancamento'
 import { redirect } from 'next/navigation'
 import { getTenantContext, assertPermission, temRecurso, can, vistaPessoal } from '@/lib/auth'
+import { quemCadastraATaxa } from '@/lib/financeiro/quem-cadastra-a-taxa-no-servidor'
 import { podeDarBaixa } from '@/lib/financeiro/so-os-meus'
 import { abaDoFinanceiro } from '@/lib/financeiro/abas'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -300,6 +301,8 @@ export default async function AdminFinanceiroPage({
         debitoNoPeriodo={composicao.formas.find(f => f.chave === 'DEBIT_CARD')?.valor ?? 0}
         debitoPorUnidade={debitoDe}
         taxasDoPeriodo={taxasDoPeriodo}
+        // D6 da 34ª (MQ-10): a quem não cadastra a taxa, o aviso diz quem cadastra.
+        quemCadastraATaxa={taxasDoPeriodo.total.vendasSemTaxa.length ? await quemCadastraATaxa(ctx) : null}
         parcelasDaOperadora={parcelasDaOperadora}
         fluxoDeCaixa={await getFluxoDeCaixa({ tenantId: ctx.tenantId!, branchIds, porUnidade: true, meses: 12 })}
         totalProximoAReceber={emAbertoDaRede.proximoAReceber}

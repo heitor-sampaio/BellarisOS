@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import type { TaxasDoPeriodo } from '@/lib/metrics'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { rotuloDaBandeira } from '@/lib/financeiro/bandeiras'
+import { textoDeQuemCadastraATaxa } from '@/lib/financeiro/quem-cadastra-a-taxa'
 import { baixarCsv } from '@/lib/financeiro/csv-dos-lancamentos'
 import { csvDoFechamentoDoDia } from '@/actions/fechamento'
 import { JanelaModal } from '@/components/shared/janela-modal'
@@ -20,8 +21,13 @@ const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', curren
  * Financeiro, a venda no cartão sem taxa cadastrada (saiu sem desconto da
  * operadora, F16-2) e as taxas da maquininha estimadas (só para conferência:
  * não saem do saldo). Os números vêm de lib/metrics (`getTaxasDoPeriodo`).
+ * D6 da 34ª (MQ-10): a quem não cadastra a taxa, o aviso diz quem cadastra
+ * (`quemCadastra`, de `quemCadastraATaxa` no servidor); nulo: o caminho.
  */
-export function AvisosDasTaxas({ dados }: { dados: TaxasDoPeriodo | null | undefined }) {
+export function AvisosDasTaxas({ dados, quemCadastra = null }: {
+  dados: TaxasDoPeriodo | null | undefined
+  quemCadastra?: readonly string[] | null
+}) {
   if (!dados) return null
   const { taxas, vendasSemTaxa } = dados
   if (!vendasSemTaxa.length && taxas <= 0) return null
@@ -38,7 +44,7 @@ export function AvisosDasTaxas({ dados }: { dados: TaxasDoPeriodo | null | undef
           fontSize: 'var(--text-sm-sz)', color: 'var(--text)',
         }}>
           <AlertTriangle size={15} aria-hidden style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 2 }} />
-          <span>Sem taxa da maquininha cadastrada — saiu sem desconto da operadora: {formas}. Cadastre a taxa em Configurações → Comissões e taxas.</span>
+          <span>Sem taxa da maquininha cadastrada — saiu sem desconto da operadora: {formas}. {quemCadastra ? textoDeQuemCadastraATaxa(quemCadastra) : 'Cadastre a taxa em Configurações → Comissões e taxas.'}</span>
         </p>
       )}
       {taxas > 0 && (

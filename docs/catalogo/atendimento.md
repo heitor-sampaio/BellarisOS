@@ -299,7 +299,7 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:1076-1094`
 - Antes: AG-180
 
-**AG-56.** O que já foi pago aparece como pago, não como valor a cobrar, na agenda e no app ("Pré-pago · 1 de 2", "Pacote X · sessão 1 de 2"). A sessão de plano aceito e ainda não recebido não parece paga ("a receber no PDV (R$ X)" na agenda, só a quem vê valores; "a pagar na unidade" no app). O pago com desconto mostra no app o valor COBRADO e o desconto (pontos usados são forma de pagamento, não desconto). A sessão já agendada não conta como "para agendar" ("2 para agendar · 1 agendada").
+**AG-56.** O que já foi pago aparece como pago, não como valor a cobrar, na agenda e no app ("Pré-pago · 1 de 2", "Pacote X · sessão 1 de 2"). A sessão de plano aceito e ainda não recebido não parece paga ("a receber no PDV (R$ X)" na agenda, só a quem vê valores; "a pagar na unidade" no app). O pago com desconto mostra no app o valor COBRADO e o desconto (pontos usados são forma de pagamento, não desconto). A sessão já agendada não conta como "para agendar" ("2 para agendar · 1 agendada"). No crediário, o cartão do app mostra o valor cobrado inteiro (a entrada e as parcelas em aberto), não só o pago (D4 da 34ª). O cartão do pacote no Início do app diz a agendada ao lado das que restam ("restam 3 · 1 agendada"; A23 da 34ª).
 - Fonte: princípio 3
 - Onde: `docs/regras/atendimento.md:1210-1237`
 - Antes: AG-137, AG-138, AG-139, AG-140
@@ -687,8 +687,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:2539`, `:2557`, `docs/revisao.md:1979-1980`
 - Antes: PT-22, PT-23
 
-**PT-12.** A cliente não vê o prontuário no app, só o histórico de procedimentos e o que a equipe enviar. A exceção é a ficha de saúde pendente: ali ela vê as perguntas e, dentro da validade, as próprias respostas de antes — nada de evolução, foto ou anotação da equipe.
-- Fonte: decisão do Claude
+**PT-12.** A cliente não vê o prontuário no app, só o histórico de procedimentos e o que a equipe enviar. A exceção é a ficha de saúde pendente: ali ela vê as perguntas e, dentro da validade, as próprias respostas de antes — nada de evolução, foto ou anotação da equipe. Não há tela das respostas dela: ela as revê quando a ficha volta a pedir resposta (vencida ou de outra versão), já preenchida com as de antes; o "Solicitar meus dados" (LGPD) leva as respostas da ficha quando o prontuário é liberado (LG-12). Uma tela "minhas respostas" é recurso novo (a sugestão nº 114).
+- Fonte: decisão do Claude; a tela que não existe e a ficha que volta preenchida: decisão do Claude, 26/11 (34ª, Decisão E) (ver "Divergências")
 - Onde: `docs/regras/atendimento.md:1915`, `docs/revisao.md:736`
 - Antes: PT-24
 
@@ -1127,6 +1127,7 @@ Q33. **Resolvida na revisão de 24/11:** O vocabulário do sistema (sem cargo fi
 
 O texto de `docs/regras/` (ou do CLAUDE.md) contra a decisão mais nova — para corrigir o texto depois.
 
+- PT-12 (TEXTO, 34ª, Decisão E): a PT-12 e `docs/regras/atendimento.md` ("Cliente NÃO acessa o prontuário pelo app") dizem "dentro da validade, as próprias respostas de antes"; a Decisão E da 34ª diz que a ficha volta a pedir resposta "vencida ou de outra versão, já preenchida com as de antes", e o código preenche com a última ficha de saúde gravada sem olhar a validade (`apps/web/app/[slug]/cliente/pre-atendimento/page.tsx`: `respostasAnteriores={atual?.respostas ?? {}}`, de `paraAnamneseGeral`). O "dentro da validade" do texto devia sair, ou dizer de qual validade fala. A Decisão E também dizia que o "Solicitar meus dados" "entrega tudo"; pela LG-12, as respostas da ficha vão no pacote só com o prontuário liberado — o catálogo usou a LG-12.
 - AG-16, AG-61: CLAUDE.md §11 ("O 'Atende' é por unidade") e `docs/regras/atendimento.md:283-297` descrevem o "Atende" como um checklist de unidades; `docs/revisao.md:1198-1199` e `:2055` (EQ1c, 14/11) decidiram "o 'Atende' é UMA caixa", com a lista só em "Escolher em quais unidades atende" (`atendimento.md:298-307` já diz a regra nova).
 - AG-61: `docs/regras/atendimento.md:409`, `:416`, `:631-632` e `:1486-1491` chamam o controle de "Atende clientes em", e `:433` de "Atende clientes"; depois do EQ1c o controle é a caixa "Atende clientes" + "Escolher em quais unidades atende" (`apps/web/components/admin/team-form.tsx:173`). O código dizia "Atende clientes em" em cinco avisos (o repasse do Desativar, as duas linhas da janela do agendamento e as duas recusas de quem não atende na unidade). **Resolvido em 25/11** (o Heitor, à proposta de usar a frase da Equipe: "ok"): todos citam a caixa "Atende clientes" e o "Escolher em quais unidades atende" (`O_ATENDE_NA_FICHA`, `apps/web/lib/equipe/atende.ts`).
 - AG-41: `docs/regras/atendimento.md:642-647` (02/11) diz que o choque no remarcar é "Só aviso: o remarcar continua"; `:212-214` (06/11, mais nova) diz que o remarcar com choque é recusado. O catálogo usou a mais nova.

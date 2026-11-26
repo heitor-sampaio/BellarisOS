@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import { HORARIO_PADRAO, MEIA_NOITE, FIM_NO_CAMPO, periodoAoAbrirODia, type Horario, type Intervalo } from '@/lib/agenda/horario'
-import { resumoDoEditorDeHorario } from '@/lib/unidades/horario-no-editor'
+import { aoDesligarAs24Horas, resumoDoEditorDeHorario } from '@/lib/unidades/horario-no-editor'
 import { Dica } from '@/components/shared/dica'
 
 /**
@@ -92,8 +92,9 @@ export function EditorDeHorario({ nome, valor, seguir, base }: {
             onClick={() => {
               setMexeu(true)
               if (todosInteiros) {
-                // Desfaz: o horário de antes do atalho, ou o padrão se ele já veio 24 h.
-                setDias(antesDas24 ?? copiar(base ?? HORARIO_PADRAO))
+                // Desfaz: o horário de antes do atalho; se ele já veio 24 h, todos os dias saem
+                // das 24 h (A24 da 34ª: a base da unidade 24 h devolvia as 24 h, e nada mudava).
+                setDias(antesDas24 ?? aoDesligarAs24Horas(base))
                 setAntesDas24(null)
                 return
               }

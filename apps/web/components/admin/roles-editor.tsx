@@ -358,7 +358,8 @@ function RoleListPanel({
             role={role}
             perms={permsByRole[role.id] ?? {}}
             semAcesso={semAcessoIds.has(role.id)}
-            selected={role.id === selectedId}
+            // A13 da 34ª: com o "Novo" aberto, o selecionado é o novo (o formulário), não o anterior.
+            selected={!showForm && role.id === selectedId}
             unsaved={role.id === dirtyId}
             canSeeTeam={canSeeTeam}
             deleting={pending}

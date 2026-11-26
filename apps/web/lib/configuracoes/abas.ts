@@ -80,6 +80,18 @@ export function abasEmGrupos<T extends { key: string }>(abas: readonly T[]): { k
 }
 
 /**
+ * A aba que abre sem `?tab=` (CU-07): a primeira NA ORDEM DA TELA (os grupos)
+ * que é da pessoa — senão, a primeira da tela. A10 da 34ª simulação: a conta
+ * corria na ordem da lista, e a Admin da rede abria em Unidades com Geral
+ * antes dela na tela. `ehDela`: quem não é a Admin da rede não tem as abas da
+ * rede toda (`ABAS_DA_REDE_TODA`), que só dizem de quem são.
+ */
+export function abaInicial<T extends { key: ChaveDeAba }>(abas: readonly T[], ehDela: (k: ChaveDeAba) => boolean): ChaveDeAba {
+  const naTela = abasEmGrupos(abas).flatMap(g => g.abas)
+  return (naTela.find(a => ehDela(a.key)) ?? naTela[0] ?? abas[0])!.key
+}
+
+/**
  * O nível que abre a aba do módulo: o Gerenciar, se o módulo o oferece; senão,
  * o Ver — as Fichas e os Cargos (o Heitor, 25/11, "8 - a": "a pessoa abre a aba
  * e lê, como já acontece"). Quem chama `abaLiberada` passa `m => can(ctx, m, nivelQueAbreAAba(m))`.

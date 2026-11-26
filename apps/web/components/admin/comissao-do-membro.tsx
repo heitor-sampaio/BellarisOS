@@ -71,8 +71,9 @@ export function ComissaoDoMembro({ membro, regras, procedimentos, comGeral = [],
         data-comissao={membro.id}>
         {/* A13 da 25ª (design.md, "Tabela com coluna de ações cabe no cartão"): o chip é nowrap, e
             o texto longo ("Venda: a do pacote, produto ou…") fazia dele a largura da coluna de ações
-            — a 1440 px a Equipe cortava. Quebra em até duas linhas; o limite mora no span. */}
-        <span data-texto-do-chip style={{ whiteSpace: 'normal', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', maxWidth: 200 }}>
+            — a 1440 px a Equipe cortava. Quebra em até duas linhas; o limite mora no span.
+            A11 da 34ª: 200 px cortava a venda com a da rede (~90 caracteres) no meio; 300 a leva inteira. */}
+        <span data-texto-do-chip style={{ whiteSpace: 'normal', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', maxWidth: 300 }}>
           {textoDoChip}
         </span>
       </button>

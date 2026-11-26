@@ -122,6 +122,8 @@ interface Props {
   comComissoes:     boolean
   /** CX6 (2026-11-14): as taxas estimadas e a venda sem taxa do período (eram do Fechamento do dia). */
   taxasDoPeriodo?:  TaxasDoPeriodo
+  /** D6 da 34ª (MQ-10): quem cadastra a taxa, a quem não cadastra (nulo: a pessoa cadastra). */
+  quemCadastraATaxa?: string[] | null
   /** O vocabulário da rede (lido no servidor): as opções do filtro de Tags das listas. */
   tagsDaRede?:      string[]
   /** As tags marcadas (`?tags=`): a lista já veio filtrada do servidor. */
@@ -538,6 +540,7 @@ export function FinancialHub({
   canWrite,
   canPay,
   taxasDoPeriodo,
+  quemCadastraATaxa = null,
   aba,
   comComissoes,
   tagsDaRede = [],
@@ -619,7 +622,7 @@ export function FinancialHub({
       nota={<NotaDoVencimento noTopoOEmAberto valor={pendingIncome} proximo={emAberto.proximoAReceber} emAbertoTotal={aReceberEmAberto} semCliente={aReceberSemCliente} concluidosSemPagamento={concluidosSemPagamento}
         hrefDaBaixa={naAba ? undefined : daAba('a-receber')} podeDarBaixa={canPay}
         vencidas={vencidas} hrefDasVencidas={naAba && soAsVencidas ? undefined : daAba('a-receber', { aberto: 'vencidas' })} />}
-      dica={<DicaDoVencimento valor={pendingIncome} emAbertoTotal={aReceberEmAberto} concluidos={(concluidosSemPagamento?.n ?? 0) > 0} semCliente={(aReceberSemCliente ?? 0) > 0} />}
+      dica={<DicaDoVencimento noTopoOEmAberto valor={pendingIncome} emAbertoTotal={aReceberEmAberto} concluidos={(concluidosSemPagamento?.n ?? 0) > 0} semCliente={(aReceberSemCliente ?? 0) > 0} />}
       label={ROTULO_DO_A_RECEBER_DA_CLIENTE}
       curr={aReceberEmAberto} prev={0}
       icon={<Clock size={13} style={{ color: 'var(--success)' }} />}
@@ -639,7 +642,7 @@ export function FinancialHub({
         <LinkDasParcelas temParcelas={parcelasDaOperadora.length > 0} href={naAba ? undefined : daAba('a-receber')} />
       </>}
       dica={<>
-        <DicaDoVencimento valor={aReceberDaOperadora.aReceber} emAbertoTotal={aReceberDaOperadora.emAberto}
+        <DicaDoVencimento noTopoOEmAberto valor={aReceberDaOperadora.aReceber} emAbertoTotal={aReceberDaOperadora.emAberto}
           bruto={{ periodo: aReceberDaOperadora.aReceberBruto, emAberto: aReceberDaOperadora.emAbertoBruto }} />
         {/* A38 da 11ª: o débito conta como recebido no dia. */}
         <NotaDoDebito debito={composicao.formas.find(f => f.chave === 'DEBIT_CARD')?.valor ?? 0} />
@@ -922,7 +925,7 @@ export function FinancialHub({
       {/* -- Movimentações (FI5): o extrato do período, os CSVs e os avisos das taxas (CX6). */}
       {aba === 'movimentacoes' && <>
         {/* CX6: a venda sem taxa e as taxas estimadas do período (eram do Fechamento do dia). */}
-        <AvisosDasTaxas dados={taxasDoPeriodo} />
+        <AvisosDasTaxas dados={taxasDoPeriodo} quemCadastra={quemCadastraATaxa} />
         <div id="lancamentos" data-aba-do-financeiro="movimentacoes">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
             <p style={tituloDeSecao}>Lançamentos</p>

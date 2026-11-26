@@ -37,3 +37,18 @@ export function nomeDeSala(texto: unknown): { nome: string } | { erro: string } 
   if (nome.length > NOME_DE_SALA_MAX) return { erro: `O nome da sala tem no máximo ${NOME_DE_SALA_MAX} caracteres.` }
   return { nome }
 }
+
+/** Uma sala na lista do Agendar: livre ou não no horário, e por quê. */
+export interface SalaOferecida { id: string; name: string; livre: boolean; indisponivel?: 'ocupada' | 'bloqueada' | 'fora_do_horario' }
+
+/**
+ * As salas que o Agendar oferece: a lista do horário (`doServidor`, as que
+ * servem ao procedimento, cada uma livre ou não). Enquanto ela não chega, só a
+ * JÁ escolhida — oferecer todas as da unidade como livres deixava escolher a
+ * que não serve ao procedimento, e ela sumia calada quando a lista chegava
+ * (D10 da 34ª). Puro: roda no navegador.
+ */
+export function salasParaOferecer<T extends SalaOferecida>(daUnidade: { id: string; name: string }[], doServidor: T[] | null, escolhida: string | null): (T | SalaOferecida)[] {
+  if (doServidor) return doServidor
+  return daUnidade.filter(r => !!escolhida && r.id === escolhida).map(r => ({ id: r.id, name: r.name, livre: true }))
+}

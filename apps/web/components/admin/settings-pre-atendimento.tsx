@@ -17,17 +17,20 @@ import { avisoDoPrazoDaRede } from '@/lib/configuracoes/prazos-da-rede'
  * agendada (pelo app ou pelo link) e a equipe vê na sessão. Aqui a rede edita
  * as perguntas e decide se a ficha é mandada e por quanto tempo a resposta vale.
  */
-export function SettingsPreAtendimento({ ficha, envio, validadeMeses, podePersonalizar }: {
+export function SettingsPreAtendimento({ ficha, envio, validadeMeses, podePersonalizar, aoEditar }: {
   ficha: { id: string; name: string; rows: AnamnesisRow[] } | null
   envio: boolean
   validadeMeses: number
   /** Personalizar fichas é do plano (`fichas`): fora dele, a ficha fica como está. */
   podePersonalizar: boolean
+  /** O editor das perguntas abriu (true) ou fechou (false) — a aba tira as fichas de atendimento da tela (A2 da 34ª). */
+  aoEditar?: (aberto: boolean) => void
 }) {
   const router = useRouter()
   const idEnvio = useId()
   const idValidade = useId()
-  const [editando, setEditando] = useState(false)
+  const [editando, setEditandoNaTela] = useState(false)
+  const setEditando = (v: boolean) => { setEditandoNaTela(v); aoEditar?.(v) }
   const [ligado, setLigado] = useState(envio)
   const [meses, setMeses] = useState(String(validadeMeses))
   const [salvando, iniciar] = useTransition()

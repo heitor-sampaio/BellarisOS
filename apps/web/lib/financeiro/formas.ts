@@ -41,7 +41,11 @@ export function rotuloDaForma(
   const daBandeira = noCartao && opcoes.bandeira
     ? ` ${BANDEIRA[opcoes.bandeira] ?? opcoes.bandeira}` : ''
   const daMaquininha = noCartao && opcoes.maquininha ? ` · ${opcoes.maquininha}` : ''
-  return (metodo === 'CREDIT_CARD' && vezes && vezes > 1 ? `${nome}${daBandeira} ${vezes}x` : `${nome}${daBandeira}`) + daMaquininha
+  // R20 (o Heitor, 26/11: "Escrever \"1x\" no crédito à vista"): o pagamento à vista diz "Crédito 1x". O banco
+  // grava o à vista com as vezes nulas (`coalesce(cartao_vezes, 1)` nas funções): nulo = 1x. Sem as vezes
+  // (`undefined`: a forma a escolher, ou o lançamento que não se leu), nada — não se chuta número (princípio 4).
+  const v = vezes === null ? 1 : vezes
+  return (metodo === 'CREDIT_CARD' && v && v >= 1 ? `${nome}${daBandeira} ${v}x` : `${nome}${daBandeira}`) + daMaquininha
 }
 
 /**
@@ -74,7 +78,7 @@ export function rotuloDaFormaDoFechamento(chave: string): string {
   if (chave === 'PONTOS') return 'Sem forma (pontos)'
   if (chave === 'SEM_FORMA') return 'Sem forma de pagamento'
   const [metodo, vezes] = chave.split(':')
-  return rotuloDaForma(metodo, vezes ? Number(vezes) : null, { longo: true })
+  return rotuloDaForma(metodo, vezes ? Number(vezes) : null, { longo: true }) // sem ":N" é o à vista (1x)
 }
 
 /**

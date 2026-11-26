@@ -17,7 +17,7 @@ import { STATUS_DO_PROXIMO, jaPassouDaHora, horarioPassouSemAtender, separarAgen
 import { fusoValido } from '@/lib/unidades/fuso'
 import { boasVindas, nomeParaSaudar } from '@/lib/saudacao'
 import { nomesDasSessoesDoPlano } from '@/lib/plano-de-tratamento/nome-da-sessao-no-servidor'
-import { contagemDoPago, textoDoParaAgendar } from '@/lib/pre-pago/contagem'
+import { contagemDoPago, textoDoParaAgendar, textoDoPacoteNoApp } from '@/lib/pre-pago/contagem'
 import { getFinanceiroDoPlano, type FinanceiroDoPlano } from '@/lib/metrics/plano'
 import { getCreditoInternoDoCliente } from '@/lib/metrics/unidade'
 import { bonusDosCreditosDaCliente } from '@/lib/creditos/bonus-da-cliente'
@@ -529,6 +529,8 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
               const used  = Number(pkg.used_sessions)
               const total = Number(pkg.total_sessions)
               const pct   = total > 0 ? Math.round((used / total) * 100) : 0
+              // AG-56: a sessão já agendada aparece ao lado das que restam.
+              const agendadas = (pkg.package_sessions ?? []).filter(s => s.status === 'AVAILABLE' && !!s.appointment_id).length
               // A63: a próxima sessão livre diz o procedimento a agendar — e
               // se o app o agenda: a sessão do pacote já foi comprada, e se
               // agenda pelo app mesmo fora do "Permitir auto agendamento" (PT3,
@@ -554,7 +556,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                     <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
                       {(pkg as { de_fora?: boolean }).de_fora
                         ? restantesDoPacoteDeFora(total, used)
-                        : <>{used} de {total} sessões realizadas · restam {Math.max(0, total - used)}</>}
+                        : textoDoPacoteNoApp(used, total, agendadas)}
                     </span>
                     {pkg.expires_at && (
                       <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>

@@ -509,6 +509,11 @@ comanda (PDV-P1).
     R$ …" fica: diz o que o número leva dentro (princípio 3; decisão do
     Claude, 25/11). `ROTULO_DO_A_RECEBER_DA_CLIENTE` (`lib/financeiro/abas.ts`),
     nos dois Financeiros.
+  - A dica do cartão cujo número é o em aberto (o "A receber · em aberto" e o
+    "A receber da operadora") diz isso: "O valor é o em aberto, de qualquer
+    vencimento." — dizia "o que vence no período", que é o da nota (D7 da
+    34ª; `DicaDoVencimento` com `noTopoOEmAberto`). O "A pagar · vence no
+    período" segue pelo vencimento. Prova: `tests/dica-do-a-receber-em-aberto.test.ts`.
 - **O PDV e o caixa da 24ª simulação** (2026-11-18; princípios 2, 3 e 7;
   prova: `tests/atritos-da-24-caixa.test.ts`):
   - O "N vendas com parcelas a receber" abre SÓ essas vendas: Fechadas hoje
@@ -703,6 +708,11 @@ plano").
   (`contratoParaAssinar`, montado com o `pacote.*` e o `pagamento.*` da venda)
   e não grava nada; assinado — ou dispensado, com o motivo —, a venda fecha e o
   adota; assinado com outro pagamento, pergunta antes de substituir.
+  Enquanto o contrato espera a assinatura, o que a tela escolheu (o pacote, o
+  pagamento, o desconto, quem vendeu, a responsável) fica na aba do navegador
+  e volta se a tela se monta de novo ou recarrega, na aba Pacote (A6 da 34ª;
+  `lib/vendas/venda-do-pacote-na-aba.ts`, sessionStorage por unidade e
+  cliente; vender ou cancelar apaga; o servidor confere tudo de novo).
   **A venda emite** (leva 2, 2026-11-14) os documentos puxados dos
   procedimentos distintos — o termo e os "Outros documentos", menos os que o
   pacote exclui no pop-up (`documentos_excluidos`). Esses NÃO seguram o
@@ -3049,6 +3059,11 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     18/11), o aviso diz QUEM cadastra, pelo nome das Admins da rede ativas
     (`textoDeQuemCadastraATaxa`, `adminsAtivasDaRede` em
     `maquininhasParaAVenda`), em vez de mandar a Configurações (A5 da 16ª).
+    O mesmo no aviso da venda sem taxa do Financeiro e do DRE dos Relatórios
+    (D6 da 34ª; MQ-10): `quemCadastraATaxa`
+    (`lib/financeiro/quem-cadastra-a-taxa-no-servidor.ts`) passa os nomes a
+    `AvisosDasTaxas` e a `avisoDoDreSemTaxa`. Prova:
+    `tests/aviso-da-taxa-a-quem-nao-cadastra.test.ts`.
   - **A linha do tempo também diz a forma pelo nome** (D18 da simulação de
     2026-10-29; migration `20261029000301`): "Pagamento confirmado via
     Crédito 3x", "via Dinheiro" — era "via CREDIT_CARD em 3x". No banco,

@@ -2,7 +2,7 @@
 
 import { useActionState, useState, useEffect, useEffectEvent } from 'react'
 import { Plus, Trash2, CheckCircle2, ChevronDown } from 'lucide-react'
-import { outrosDocumentosOferecidos, rotuloDoOutroDocumento } from '@/lib/documentos/outros-do-procedimento'
+import { outrosDocumentosOferecidos, rotuloDoOutroDocumento, semOTermoEOContrato } from '@/lib/documentos/outros-do-procedimento'
 import { addProcedure, updateProcedure } from '@/actions/procedures'
 import { parseDinheiro, formatDinheiroCampo, DINHEIRO_INVALIDO } from '@estetica-os/utils'
 import { custoDoInsumoNoCampo, lerCustoDoInsumo } from '@/lib/estoque/custo-do-insumo'
@@ -302,8 +302,10 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
   // "Outros documentos" (DC1b/PC7, 2026-11-14): opcional, quantos quiser.
   // Inativos só aparecem se já estão ligados — sumir da lista apagaria o
   // vínculo em silêncio ao salvar.
+  // A12 da 34ª: o termo e o contrato escolhidos não ficam também marcados aqui.
   const [outrosMarcados, setOutrosMarcados] = useState<string[]>(
-    () => (existing?.outros_documentos ?? []).filter(id => (modelos?.outros ?? []).some(o => o.id === id)))
+    () => semOTermoEOContrato((existing?.outros_documentos ?? []).filter(id => (modelos?.outros ?? []).some(o => o.id === id)),
+      { termo: existing?.consent_template_id ?? '', contrato: existing?.contract_template_id ?? '' }))
   // A36 da 15ª (princípio 7): o termo e o contrato escolhidos acima saem desta
   // lista — o que já está marcado nela fica, para não sumir em silêncio.
   const [termoEscolhido, setTermoEscolhido] = useState(existing?.consent_template_id ?? '')
@@ -553,7 +555,7 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
           opcoes={modelos?.termos ?? []} inicial={existing?.consent_template_id ?? null}
           vazio={`Nenhum termo cadastrado ainda — crie em Configurações → Documentos. ${ABRE_EM_OUTRA_ABA}`}
           criar={rotaNoPortal(pathname, null, '/settings?tab=documentos')} aoCriar={() => setFoiCriar(true)}
-          aoMudar={setTermoEscolhido}
+          aoMudar={id => { setTermoEscolhido(id); setOutrosMarcados(m => semOTermoEOContrato(m, { termo: id, contrato: '' })) }}
         />
         <SeletorDeModelo
           nome="contract_template_id" rotulo="Contrato"
@@ -561,7 +563,7 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
           vazio={`Nenhum contrato de procedimento cadastrado — crie em Configurações → Documentos. ${ABRE_EM_OUTRA_ABA}`}
           sempre="só no atendimento avulso (a sessão de pacote e a de plano não pedem)"
           criar={rotaNoPortal(pathname, null, '/settings?tab=documentos')} aoCriar={() => setFoiCriar(true)}
-          aoMudar={setContratoEscolhido}
+          aoMudar={id => { setContratoEscolhido(id); setOutrosMarcados(m => semOTermoEOContrato(m, { termo: '', contrato: id })) }}
         />
         {modelos && (
           <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 6 }}>

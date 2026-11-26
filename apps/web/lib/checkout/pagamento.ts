@@ -75,6 +75,10 @@ export function partesQuePagamAgora(p: PagamentoDoPlano | null | undefined, tota
 export const temOutrasFormas = (p: PagamentoDoPlano | null | undefined): p is Extract<PagamentoDoPlano, { forma: 'AVISTA' }> & { outras: ParteDoPagamento[] } =>
   !!p && p.forma === 'AVISTA' && (p.outras?.length ?? 0) > 0
 
+/** O combinado (antes de pagar) diz as vezes só quando são mais de uma: o à vista se lê "à vista". O "1x" da R20
+ *  (o Heitor, 26/11) é do pagamento já feito. */
+const vezesDoCombinado = (vezes: number | null | undefined) => (vezes && vezes > 1 ? vezes : undefined)
+
 /**
  * A linha do tempo do atendimento: curta, com a forma pelo nome da tela
  * (`rotuloDaForma` — D18, 2026-10-29: dizia "3x em CREDIT_CARD").
@@ -83,12 +87,12 @@ export function rotuloDoPagamento(p: PagamentoDoPlano | null): string {
   // PV-01 (o Heitor, 2026-11-13): o pagamento acontece no PDV, seja do que for.
   if (!p)                      return 'em aberto, a receber no PDV'
   // D1 da 18ª: dividido, cada forma com o valor dela ("Crédito 3x R$ 1.000,00 + Pix R$ 596,00").
-  if (temOutrasFormas(p))      return partesQuePagamAgora(p).map(x => `${rotuloDaForma(x.metodo, x.vezes)} ${formatBRL(x.valor)}`).join(' + ')
+  if (temOutrasFormas(p))      return partesQuePagamAgora(p).map(x => `${rotuloDaForma(x.metodo, vezesDoCombinado(x.vezes))} ${formatBRL(x.valor)}`).join(' + ')
   if (p.forma === 'AVISTA')    return vezesNoCartao(p) > 1 ? rotuloDaForma(p.metodo, vezesNoCartao(p)) : `${rotuloDaForma(p.metodo)} à vista`
   if (p.forma === 'A_RECEBER') return 'a receber'
   // D6: as parcelas são com a CLÍNICA; o meio é só o da entrada.
   const entrada = p.entrada > 0
-    ? `entrada de ${formatBRL(p.entrada).replace(/\s/g, ' ')} em ${rotuloDaForma(p.metodo, vezesNoCartao(p))} + `
+    ? `entrada de ${formatBRL(p.entrada).replace(/\s/g, ' ')} em ${rotuloDaForma(p.metodo, vezesDoCombinado(vezesNoCartao(p)))} + `
     : ''
   return `${entrada}${p.parcelas}x no crediário`
 }

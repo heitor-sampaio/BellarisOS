@@ -580,6 +580,12 @@ function fraseDoRegistroDa20(r: RegistroDaAuditoria, nomes: NomesDaAuditoria, cl
       return `${verbo} ${qual}${daCliente}`
     }
   }
+  // A21 da 34ª: a sessão ligada ao agendamento (ou desligada dele). O gatilho guarda o
+  // id desde 20261213500002; a gravação de antes, sem ele, se lê pela gravação (fraseDoGrupo).
+  if (r.tabela === 'package_sessions' && r.operacao === 'editou' && r.colunas.includes('appointment_id') && 'appointment_id' in r.depois) {
+    const qual = (r.registro_id && texto(nomes.sessoesDoPacote?.[r.registro_id])) || 'a sessão do pacote'
+    return `${texto(r.depois.appointment_id) ? 'Agendou' : 'Desmarcou'} ${qual}${daCliente}`
+  }
   if (r.tabela === 'importacoes') {
     const imp = r.registro_id ? nomes.importacoes?.[r.registro_id] : undefined
     const arquivo = imp?.arquivo ? ` ${imp.arquivo}` : ''
@@ -1297,7 +1303,7 @@ function fraseDoEstorno(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAu
     ? (estornados[0]?.registro_id ? nomes.lancamentos?.[estornados[0].registro_id] : undefined) : undefined
   const forma = saidas.length === 1 ? (original?.forma ?? texto(saidas[0]!.depois.payment_method)) : null
   const parcela = original?.parcela && original.de && original.de > 1 ? `parcela ${original.parcela}/${original.de}` : null
-  const qual = [forma ? rotuloDaForma(forma, original?.vezes ?? null) : null, parcela].filter(Boolean).join(' · ')
+  const qual = [forma ? rotuloDaForma(forma, original ? original.vezes ?? null : undefined) : null, parcela].filter(Boolean).join(' · ')
   const fato = devolveu ? `Devolveu ${devolveu}` : `Estornou ${alvo}`
   // A21 da 32ª (AD-08): o motivo do estorno, lido na hora de mostrar (o do estorno ou o do lançamento estornado).
   const motivo = linhas.filter(l => l.tabela === 'financial_transactions' && l.registro_id)
@@ -1389,7 +1395,7 @@ function recebimentosDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: N
       linha: emOrdem[emOrdem.length - 1]!, tipo: texto(estado.type) ?? lido?.tipo ?? null, valor,
       forma: texto(estado.payment_method) ?? lido?.forma ?? null, categoria,
       // A38 da 22ª: as vezes do crédito ("Crédito 8x") — a auditoria não as guarda; vêm do lançamento lido.
-      vezes: numero(estado.cartao_vezes) ?? lido?.vezes ?? null,
+      vezes: numero(estado.cartao_vezes) ?? (lido ? lido.vezes ?? null : undefined),
       desconto: numero(estado.sale_discount) ?? 0, pontos: numero(estado.loyalty_discount) ?? 0,
       descricao: texto(estado.description) ?? lido?.descricao ?? categoria ?? lido?.categoria ?? null,
     })
@@ -1723,6 +1729,21 @@ export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: Nome
     const estornado = linhas.filter(l => l.tabela === 'financial_transactions' && l.operacao === 'criou' && texto(l.depois.category) === 'Estorno')
       .reduce((t, l) => t + (numero(l.depois.amount) ?? 0), 0)
     return `Cancelou ${nome ? `o pacote ${nome}` : 'um pacote'}${estornado ? ` e estornou ${brl(estornado)}` : ''}${clienteDaGravacao(linhas, nomes, pacoteCancelado)}`
+  }
+  // A21 da 34ª: ligar o agendamento à sessão do pacote fecha o termo do agendamento
+  // (`documentos_da_sessao_de_pacote`: os documentos são os do pacote). O fato é a sessão
+  // agendada; o documento fechado fica no detalhe. Sem o id guardado (a gravação de antes),
+  // o documento fechado junto diz que ligou: o banco só o fecha quando liga.
+  const sessaoLigada = linhas.find(l => l.tabela === 'package_sessions' && l.operacao === 'editou'
+    && l.colunas.includes('appointment_id') && !l.colunas.includes('status'))
+  if (sessaoLigada && linhas.every(l => l.tabela === 'package_sessions' || (l.tabela === 'issued_documents' && l.operacao === 'editou'))) {
+    const ligou = 'appointment_id' in sessaoLigada.depois
+      ? !!texto(sessaoLigada.depois.appointment_id)
+      : linhas.some(l => l.tabela === 'issued_documents' && texto(l.depois.status) === 'CANCELADO')
+    if (ligou) {
+      const qual = (sessaoLigada.registro_id && texto(nomes.sessoesDoPacote?.[sessaoLigada.registro_id])) || 'a sessão do pacote'
+      return `Agendou ${qual}${clienteDaGravacao(linhas, nomes, sessaoLigada)}`
+    }
   }
   const estorno = fraseDoEstorno(linhas, nomes)
   if (estorno) return estorno

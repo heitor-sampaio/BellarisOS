@@ -706,6 +706,34 @@ O modelo diz que a permissão não mostra, nunca que a cliente não tem
 
 Teste: `tests/copilot-depois-do-cartao.test.ts`, `tests/copilot-o-alcance-e-o-ja-recebido.test.ts`.
 
+## Os avisos da agenda, a oportunidade da cliente e "a minha agenda" (34ª simulação, 26/11)
+
+- **O cartão diz os avisos da janela** (D1; o Copilot faz o que a tela faz,
+  CX-13): o `agendar` e o `remarcar` levam o fora do horário de quem atende e
+  da unidade da MESMA função das actions do modal (`avisosDoHorarioCore`,
+  `lib/appointments/encaixe.ts`; no remarcar, sem contar o próprio
+  agendamento), e o `agendar`, como a janela "+ Agendar", o fora da grade de
+  30 em 30 min da unidade ("11:15 fica fora da grade de 30 em 30 minutos: é um
+  encaixe (permitido)."), só sem o do horário (`avisoDoHorarioNoCartao`,
+  `ferramentas/aviso-do-horario.ts`). Só avisa. Teste:
+  `tests/copilot-cartao-com-os-avisos-da-agenda.test.ts`.
+- **A oportunidade de quem já é cliente é a da ficha** (D3; CX-10, §9.2.1 de
+  `crm-inbox.md`): `criar_oportunidade` aceita `cliente` (o id da busca, o
+  nome ou o telefone; achar a ficha pede Clientes em Ver). O nome, o telefone
+  e o e-mail vêm da ficha, e a oportunidade nasce ligada a ela, como o "Sim, é
+  a mesma pessoa" da janela, pelo `criarOportunidadeCore`. O `nome` é o da
+  PESSOA, nunca o assunto. Teste: `tests/copilot-oportunidade-da-cliente.test.ts`.
+- **"A minha agenda"** (A19; decisão do Claude, 26/11, Decisão C da 34ª): com
+  a Agenda e sem atender, o Copilot diz que ela não atende e oferece a agenda
+  da unidade; com a Agenda e atendendo, são os agendamentos com ela; atendendo
+  sem a Agenda, a Minha agenda; sem nenhuma das duas, "A sua permissão não
+  abre a agenda.".
+- **O prompt diz as unidades ativas da rede** a quem é da rede (A20): a
+  unidade que a rede não tem se recusa antes de perguntar o resto; na rede de
+  uma unidade só, o número da unidade é o da rede. **Criar tag é só da Admin
+  da rede** (§11); marcar a que existe pede Clientes em Gerenciar. Teste:
+  `tests/copilot-a-agenda-de-quem-pede-e-as-unidades.test.ts`.
+
 ## O que nunca fazer aqui
 
 ```

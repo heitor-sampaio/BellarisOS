@@ -353,7 +353,10 @@ test.describe.serial('o cartão por bandeira', () => {
       const aviso = p.locator('[data-aviso-sem-taxa]')
       await expect(aviso, 'o Financeiro avisa a venda no cartão sem taxa').toContainText('Sem taxa da maquininha')
       await expect(aviso).toContainText('Crédito 4x (Elo)')
-      await expect(aviso).toContainText('Configurações → Comissões')
+      // D6 da 34ª (MQ-10): a taxa é só da Admin da rede (o Heitor, 18/11: "Configuração da rede toda só pela
+      // conta admin"); a quem não a cadastra, o aviso diz quem cadastra, sem o caminho das Configurações.
+      await expect(aviso).toContainText('Quem cadastra')
+      await expect(aviso).not.toContainText('Configurações → Comissões')
     })
   })
 

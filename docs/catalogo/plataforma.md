@@ -362,8 +362,8 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:178-182`
 - Antes: KA-18
 
-**RB-04.** O fim do /setup tem o "Acessar o painel →" como botão principal, logo abaixo do "Tudo pronto!", e depois "Ou comece pelos próximos passos", nesta ordem, cada um com o porquê: Equipe → Salas → Estoque → Fichas → Documentos → Procedimentos → Taxas da maquininha → Fidelidade → Funil de oportunidades → Outra unidade (se a rede tiver). A outra unidade vem por último: a rede de uma unidade só (o tamanho real do cliente) não começa pelo que não tem. Cada passo é um link que conclui o setup e leva à tela (o clique do meio abre em outra aba); o passo de uma funcionalidade fora do plano da rede não aparece.
-- Fonte: decisão do Claude (a outra unidade por último: A2 da 10ª simulação, pela regra de projeto do CLAUDE.md §1 — "Na dúvida de projeto, otimize para a rede de uma unidade")
+**RB-04.** O fim do /setup tem o "Acessar o painel →" como botão principal, logo abaixo do "Tudo pronto!", e depois "Ou comece pelos próximos passos", nesta ordem, cada um com o porquê: Equipe → Salas → Estoque → Fichas → Documentos → Procedimentos → Taxas da maquininha → Fidelidade → Funil de oportunidades → Outra unidade (se a rede tiver). A outra unidade vem por último: a rede de uma unidade só (o tamanho real do cliente) não começa pelo que não tem. Cada passo é um link que conclui o setup e leva à tela (o clique do meio abre em outra aba); o passo de uma funcionalidade fora do plano da rede não aparece. A ordem é a das dependências, e é nela que a rede nova se monta: o insumo do procedimento pede o produto já no Estoque, a ficha e o termo do procedimento se escolhem entre os que já existem, e a recompensa da fidelidade pede o procedimento já criado. Os quatro modelos de cargo bastam para a Equipe começar; o cargo próprio pode vir depois, porque mudar o cargo vale na hora (LO-06).
+- Fonte: decisão do Claude (a outra unidade por último: A2 da 10ª simulação, pela regra de projeto do CLAUDE.md §1 — "Na dúvida de projeto, otimize para a rede de uma unidade"); a ordem das dependências e o cargo próprio depois: decisão do Claude, 26/11 (34ª, Decisão A) — não muda a lista
 - Onde: `docs/regras/plataforma.md:226-249`; `docs/regras/design.md:205-206`; `apps/web/lib/setup/proximos-passos.ts`
 - Antes: KA-19
 
@@ -477,9 +477,9 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: CLAUDE.md §6 (`:397-400`)
 - Antes: KE-05
 
-**LO-06.** Mudar a unidade ou o cargo de alguém que está com a sessão aberta vale na próxima tela que ela abre, sem precisar sair e entrar de novo (o sistema renova a sessão dela e volta ao mesmo lugar).
-- Fonte: decisão do Claude
-- Onde: `docs/regras/plataforma.md:1171-1186`
+**LO-06.** Mudar a unidade ou o cargo de alguém que está com a sessão aberta vale na próxima tela que ela abre, sem precisar sair e entrar de novo (o sistema renova a sessão dela e volta ao mesmo lugar). A tela que já estava aberta não se redesenha sozinha: a próxima navegação ou o recarregar desenham o menu novo, e o botão que ficou na tela pode ser clicado uma vez e recebe a recusa do módulo em texto ("Seu cargo não recebe pagamentos."), nunca "Algo deu errado".
+- Fonte: decisão do Claude; a tela aberta e a recusa em texto: decisão do Claude, 26/11 (34ª, Decisão B), pela CG-05 (vale o cargo gravado) e pelo CLAUDE.md §14 (a action devolve `{ error }`)
+- Onde: `docs/regras/plataforma.md` ("A sessão aberta quando a unidade ou o cargo mudam"); `apps/web/actions/appointments.ts` (`confirmPayment`, `previaDoPagamento`)
 - Antes: KC-34
 
 ## A Equipe (EQ)
@@ -606,7 +606,7 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:932-944`; CLAUDE.md §11 (`:686-689`); `docs/revisao.md:1180`, `:1262`, `:2115`
 - Antes: KC-17, KE-26
 
-**CG-07.** A rede cria os cargos que quiser. Nasce com quatro modelos editáveis (Gerente, Recepcionista, Profissional, Financeiro) e com os cargos de sistema "Admin da rede" e "Não definido".
+**CG-07.** A rede cria os cargos que quiser. Nasce com quatro modelos editáveis (Gerente, Recepcionista, Profissional, Financeiro) e com os cargos de sistema "Admin da rede" e "Não definido". Cada modelo nasce só com os níveis que cada módulo aceita (o Copilot: Sem acesso ou Ver, CO-05); o cargo gravado num nível que o módulo não tem passa ao que a tela mostra (decisão do Claude, 26/11, D8 da 34ª).
 - Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "concordo, o resto fica como está"
 - Onde: `docs/revisao.md:1248-1250`; CLAUDE.md §11 (`:588-592`)
 - Antes: KE-34

@@ -74,3 +74,33 @@ export function blocosDosBloqueios(bloqueios: BloqueioQueOcupa[]): BlocoOcupado[
     .map(b => ({ inicio: b.inicio, minutos: Math.round((new Date(b.fim).getTime() - new Date(b.inicio).getTime()) / 60_000) }))
     .filter(b => b.minutos > 0)
 }
+
+/** Um cartão da grade da Minha agenda: o que ele OCUPA [de, ate) e até onde ele é DESENHADO (a altura mínima do cartão curto). */
+export interface CartaoDaGrade { de: number; ate: number; ateNoDesenho: number }
+/** Um "Horário livre" da grade: o vão de verdade [de, ate) e de onde o desenho começa (abaixo do cartão de cima). */
+export interface LivreDaGrade { de: number; ate: number; desenhoDe: number }
+
+/**
+ * Os "Horário livre" da Minha agenda: os vãos entre os cartões do dia, cada um
+ * pelo que sobra livre dele (`livresDoVao`: o `livresEntre` com os cortes — os
+ * bloqueios e o que não é horário dela).
+ * O vão conta do fim do ÚLTIMO que ainda ocupa (o longo cobre o curto de dentro
+ * dele), e o desenho começa abaixo do cartão de cima — o curto é desenhado mais
+ * alto do que dura (D11 da 34ª: o "Horário livre" ficava cortado e por cima dos
+ * cartões). O texto diz o vão de verdade.
+ */
+export function livresDaGrade(cartoes: CartaoDaGrade[], livresDoVao: (de: number, ate: number) => [number, number][]): LivreDaGrade[] {
+  const ordem = [...cartoes].sort((a, b) => a.de - b.de)
+  const livres: LivreDaGrade[] = []
+  let ocupaAte = -Infinity, desenhadoAte = -Infinity
+  for (const c of ordem) {
+    if (ocupaAte > -Infinity && c.de > ocupaAte) {
+      for (const [de, ate] of livresDoVao(ocupaAte, c.de)) {
+        livres.push({ de, ate, desenhoDe: Math.min(ate, Math.max(de, desenhadoAte)) })
+      }
+    }
+    ocupaAte = Math.max(ocupaAte, c.ate)
+    desenhadoAte = Math.max(desenhadoAte, c.ateNoDesenho, c.ate)
+  }
+  return livres
+}

@@ -7,6 +7,10 @@ Este é o catálogo das regras das Comissões que valem HOJE: onde ficam e quem 
 **CM-01.** A configuração das comissões é a aba "Comissões e taxas" de Configurações, no grupo "Dinheiro", e todo texto que leva até ela diz "Configurações → Comissões e taxas".
 - Fonte: recomendação do Claude aprovada pelo Heitor, 13/11: "Concordo"
 - Onde: `docs/regras/comissoes.md:119-124`; `docs/revisao.md:1384-1390`, `:2128`
+
+**CM-01a.** A aba começa pelas taxas da maquininha (o Pix, o cartão, cada maquininha); depois vêm a comissão de cada profissional, "Como a comissão acontece" e o crediário. A opção da comissão que desconta a taxa se chama "Taxa da maquininha do pagamento".
+- Fonte: o Heitor, 26/11 (R21 da página): "Subir as taxas para o começo (a proposta)"
+- Onde: `components/admin/settings-comissoes.tsx` (`SettingsComissoes`); `tests/comissoes-taxas-no-comeco.test.ts`
 - Antes: KA-17, KC-03
 
 **CM-02.** As comissões são uma funcionalidade do plano da assinatura. Se o plano da rede não tem essa funcionalidade, a aba Comissões some e a configuração, o fechamento e a mudança de comissão ficam travados. A comissão continua sendo calculada, e o que já foi vendido segue valendo.

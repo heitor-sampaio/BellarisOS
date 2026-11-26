@@ -609,7 +609,9 @@ function FieldSettingsModal({ field: f, tipos, outros, onChangeType, onPatch, on
         </div>
 
         <div style={{ padding: '0 18px 18px', display: 'flex', justifyContent: 'flex-end' }}>
-          <button type="button" onClick={onClose} className="btn-primary">Concluir</button>
+          {/* O campo muda a ficha na hora; quem grava é o "Criar/Salvar" da ficha (A2 da 34ª):
+              um "Concluir" rosé aqui parecia um primeiro salvar. */}
+          <button type="button" onClick={onClose} className="btn-secondary">Voltar à ficha</button>
         </div>
       </div>
       </JanelaModal>

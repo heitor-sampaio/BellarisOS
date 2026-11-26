@@ -5,7 +5,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, AreaChart, Area,
 } from 'recharts'
-import { categoryAxisWidth, numericAxisWidth, rotuloDoEixo } from '@/lib/chart-utils'
+import { categoryAxisWidth, numericAxisWidth, rotuloDoEixo, rotuloQueCabe } from '@/lib/chart-utils'
 
 // -- Palette -------------------------------------------------------------------
 export const CHART_COLORS = ['var(--brand)', 'var(--cat-4)', 'var(--info)', 'var(--success)', 'var(--warning)', 'var(--text-muted)']
@@ -54,6 +54,7 @@ export function HBarChart({
   if (!rows.length || rows.every(d => d.value === 0)) return <EmptyChart msg={emptyMsg} />
 
   const h = Math.max(100, Math.min(rows.length * 46, 400))
+  const largura = categoryAxisWidth(rows.map(r => r.name), { fontPx: 11 })
   return (
     <ResponsiveContainer width="100%" height={h}>
       <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 92, left: 8, bottom: 4 }}>
@@ -66,9 +67,10 @@ export function HBarChart({
         />
         <YAxis
           type="category" dataKey="name"
-          tick={{ fontSize: 'var(--text-2xs)', fill: 'var(--text-muted)' }}
+          // A22 da 34ª: o nome numa linha só, cortado com reticências quando não cabe.
+          tick={(t: { x?: number | string; y?: number | string; payload?: { value?: unknown } }) => <RotuloDaCategoria x={t.x} y={t.y} nome={String(t.payload?.value ?? '')} largura={largura} />}
           tickLine={false} axisLine={false}
-          width={categoryAxisWidth(rows.map(r => r.name), { fontPx: 11 })}
+          width={largura}
         />
         <Tooltip
           formatter={(v) => [formatValue(Number(v ?? 0)), '']}
@@ -84,6 +86,16 @@ export function HBarChart({
         />
       </BarChart>
     </ResponsiveContainer>
+  )
+}
+
+/** O rótulo do eixo de categorias (A22 da 34ª): uma linha, o nome inteiro no <title>. */
+function RotuloDaCategoria({ x, y, nome, largura }: { x?: number | string; y?: number | string; nome: string; largura: number }) {
+  return (
+    <text x={x} y={y} dy="0.355em" textAnchor="end" style={{ fontSize: 'var(--text-2xs)', fill: 'var(--text-muted)' }}>
+      <title>{nome}</title>
+      {rotuloQueCabe(nome, largura)}
+    </text>
   )
 }
 

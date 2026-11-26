@@ -154,6 +154,8 @@ export interface ReportsBiProps {
   comprasNoEstoque?: { linhas: EntradaDeEstoqueDoPeriodo[]; total: number }
   /** A14 da 29ª: as vendas no cartão sem taxa cadastrada no período (lib/metrics) — o aviso do DRE. */
   vendasSemTaxa?: VendaSemTaxa[]
+  /** D6 da 34ª (MQ-10): quem cadastra a taxa, a quem não cadastra (nulo: a pessoa cadastra). */
+  quemCadastraATaxa?: string[] | null
   /** O vocabulário de tags da rede (as opções do filtro). Vazio: o filtro não aparece. */
   tagsDaRede?: string[]
   /** As tags que valem na aba aberta (`?tags=`; nas abas sem o filtro, nenhuma). */
@@ -555,10 +557,10 @@ function TabFinanceiro(p: ReportsBiProps) {
             <DreWaterfall receita={revenue} despesas={resultado.despesaOperacional} insumos={resultado.insumoConsumido}
               taxas={resultado.taxasDaMaquininha} comissoes={resultado.comissoes} lucro={profit} />
             {/* A14 da 29ª (princípio 4): a venda no cartão sem taxa cadastrada entrou com 0% — o DRE diz, como o PDV. */}
-            {avisoDoDreSemTaxa(p.vendasSemTaxa) && (
+            {avisoDoDreSemTaxa(p.vendasSemTaxa, p.quemCadastraATaxa) && (
               <p data-dre-sem-taxa role="note" style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: '14px 0 0' }}>
                 <AlertTriangle size={14} aria-hidden style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 2 }} />
-                <span>{avisoDoDreSemTaxa(p.vendasSemTaxa)}</span>
+                <span>{avisoDoDreSemTaxa(p.vendasSemTaxa, p.quemCadastraATaxa)}</span>
               </p>
             )}
             {/* A31 da 10ª: o que fica fora do resultado chega a quem não abre o Estoque (a contadora), e o DRE se exporta. */}
@@ -588,12 +590,17 @@ function TabFinanceiro(p: ReportsBiProps) {
             emptyMsg="Sem categorias registradas."
           />
         </SCard>
+        {/* D5 da 34ª (UU-01, D-19): com uma unidade, o "por unidade" some. */}
+        {!p.umaUnidade && (
         <SCard title="Faturamento por Unidade — Período Atual">
           <HBarChart data={branchCompareCurr} />
         </SCard>
+        )}
+        {!p.umaUnidade && (
         <SCard title="Faturamento por Unidade — Período Anterior">
           <HBarChart data={branchComparePrev} color={CHART_COLORS[5]} />
         </SCard>
+        )}
         {/* As parcelas a receber são da unidade, não dos atendimentos dela. */}
         {(
           <SCard title="A receber em aberto" style={{ gridColumn: '1 / -1' }}>
@@ -859,9 +866,11 @@ function TabAgenda(p: ReportsBiProps) {
             formatValue={(v) => String(v)}
           />
         </SCard>
+        {!p.umaUnidade && (
         <SCard title="Comparativo por Unidade">
           <SimpleTable columns={branchCols} rows={branchRows} />
         </SCard>
+        )}
       </div>
     </div>
   )

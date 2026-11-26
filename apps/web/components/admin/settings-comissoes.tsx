@@ -72,7 +72,8 @@ export function SettingsComissoes({ inicial, maquininhas, taxaDoPix = 0, semRegr
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Simplificação da F67 (princípio 7): primeiro o que a clínica mais procura — o percentual de cada um. */}
+      {/* R21 (o Heitor, 26/11: "Subir as taxas para o começo"): as taxas da maquininha primeiro; depois a comissão. */}
+      <TabelaDeTaxas maquininhas={maquininhas} pixGravado={taxaDoPix} podeEditar={podeEditar} />
       <div className="card" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 8 }} aria-label="Comissão de cada profissional">
         <h2 style={tituloComDica}>
           <span>Comissão de cada profissional</span>
@@ -100,7 +101,6 @@ export function SettingsComissoes({ inicial, maquininhas, taxaDoPix = 0, semRegr
         <Link href="/admin/team" className="btn-secondary" style={{ alignSelf: 'flex-start' }}>Abrir a equipe</Link>
       </div>
       <ComoAcontece inicial={inicial} podeEditar={podeEditar} produtos={produtos} />
-      <TabelaDeTaxas maquininhas={maquininhas} pixGravado={taxaDoPix} podeEditar={podeEditar} />
       <CrediarioDaRede gravado={crediarioMax} podeEditar={podeEditar} />
     </div>
   )
@@ -228,7 +228,7 @@ function ComoAcontece({ inicial, podeEditar, produtos }: { inicial: ConfigDeComi
       }}>
         {([
           ['desconta_insumos', 'Custo dos insumos usados no atendimento'],
-          ['desconta_taxa', 'Taxa da maquininha do pagamento (tabela abaixo)'],
+          ['desconta_taxa', 'Taxa da maquininha do pagamento'],
         ] as const).map(([k, rotulo]) => (
           <label key={k} style={{ display: 'flex', gap: 10, alignItems: 'center', cursor: podeEditar ? 'pointer' : 'default' }}>
             <input type="checkbox" checked={c[k]} disabled={!podeEditar} onChange={e => mudar(k, e.target.checked)}
@@ -834,8 +834,12 @@ function TabelaDeTaxas({ maquininhas, pixGravado, podeEditar }: {
           </Dica>
         </h2>
       </div>
-      <div style={grade}>
-        {campo('PIX', 1, 'Pix')}
+      {/* A3 da 34ª (princípio 7): o Pix com o nome dele, como o "Cartão" embaixo — sozinho, era um campo solto acima das maquininhas. */}
+      <div data-taxa-do-pix style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <p className="overline">Pix</p>
+        <div style={grade}>
+          {campo('PIX', 1, 'Taxa')}
+        </div>
       </div>
 
       <div data-maquininhas style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>

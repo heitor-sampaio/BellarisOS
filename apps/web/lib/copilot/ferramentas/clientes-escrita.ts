@@ -290,7 +290,7 @@ export const marcarTags: FerramentaDeEscrita<ArgsTags, PayloadTags> = {
   nome: 'marcar_tags',
   tipo: 'escrita',
   modulo: 'clients', nivel: 'MANAGE',
-  descricao: 'Marca e/ou desmarca tags de um cliente (id, nome ou telefone). Só tags que já existem no vocabulário da rede (sem diferença de maiúsculas); tag nova se cria em Configurações → Tags.',
+  descricao: 'Marca e/ou desmarca tags de um cliente (id, nome ou telefone). Só tags que já existem no vocabulário da rede (sem diferença de maiúsculas); tag nova só a Admin da rede cria, em Configurações → Tags.',
   parametros: z.object({
     cliente: texto({ min: 2, max: 120 }),
     // O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." A ficha marca
@@ -308,7 +308,7 @@ export const marcarTags: FerramentaDeEscrita<ArgsTags, PayloadTags> = {
     const adicionar: string[] = []
     for (const pedida of a.adicionar ?? []) {
       const nome = vocabulario.find(v => temTag([v], pedida))
-      if (!nome) return { erro: `A tag "${pedida}" não existe na rede — crie em Configurações → Tags. Tags: ${vocabulario.join(', ') || 'nenhuma'}.` }
+      if (!nome) return { erro: `A tag "${pedida}" não existe na rede — criar tag é só da Admin da rede, em Configurações → Tags. Tags: ${vocabulario.join(', ') || 'nenhuma'}.` }
       if (!temTag(atuais, nome) && !temTag(adicionar, nome)) adicionar.push(nome)
     }
     const remover: string[] = []

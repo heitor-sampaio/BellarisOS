@@ -101,7 +101,8 @@ test.describe.serial('comissões — configuração e regras', () => {
       await expect(como.getByRole('button', { name: 'No atendimento' })).toHaveCount(0)
       await expect(como.getByRole('button', { name: 'Quando o cliente paga' })).toHaveCount(0)
       await como.getByLabel('Custo dos insumos usados no atendimento').check()
-      await como.getByLabel('Taxa da maquininha do pagamento (tabela abaixo)').check()
+      // R21 (o Heitor, 26/11: "Subir as taxas para o começo"): as taxas vêm antes, e o rótulo perdeu o "(tabela abaixo)".
+      await como.getByLabel('Taxa da maquininha do pagamento', { exact: true }).check()
       await como.getByRole('button', { name: 'Quinzenal' }).click()
       await como.getByRole('button', { name: 'Salvar' }).click()
       await expect(como.getByRole('status')).toHaveText('Salvo.')

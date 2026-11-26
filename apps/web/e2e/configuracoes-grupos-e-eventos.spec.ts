@@ -116,6 +116,18 @@ test('CF1: no portal da unidade, a aba Unidade fica no grupo da rede, ao lado de
   })
 })
 
+test('sem aba pedida, abre na primeira da TELA que é da pessoa — Geral para a Admin; LGPD para quem só tem Clientes', async ({ browser }) => {
+  await como(browser, dona, async p => {
+    await p.goto('/admin/settings')
+    await expect(p.locator('[data-aba="general"]')).toHaveAttribute('aria-current', 'page')
+  })
+  // Tags e Importações são da rede toda: só dizem de quem são (CU-07).
+  await como(browser, soClientes, async p => {
+    await p.goto('/admin/settings')
+    await expect(p.locator('[data-aba="lgpd"]')).toHaveAttribute('aria-current', 'page')
+  })
+})
+
 test('CF2: o caminho antigo do Eventos leva às Automações, "O que já aconteceu"', async ({ browser }) => {
   await como(browser, dona, async p => {
     await p.goto('/admin/settings?tab=eventos')

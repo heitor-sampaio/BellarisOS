@@ -69,108 +69,80 @@ export function SettingsGeral({ rede, podeEditar, naRede = true, daAdmin = false
   const [validadePlano, setValidadePlano] = useState(String(rede.validadeDoPlanoDias))
 
   return (
-    <form action={enviar} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-      {/* As explicações da aba moram na dica (2026-11-16 — eram parágrafos fixos). */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>
-          {fala('Dados da rede')}
-        </h2>
-        <Dica rotulo="Sobre estes dados">
-          Aparecem nos documentos e nas mensagens que a rede manda.
-        </Dica>
-      </div>
-
-      {/* Quem não edita (a gerente de unidade fixa, quem só vê) lê o texto, não um campo
-          apagado que parece editável e não tem Salvar (A2 da 13ª, F70; princípio 7). */}
-      {!podeEditar && (
-        <div className="grade-de-campos" data-geral-so-leitura>
-          <SoLeitura rotulo={fala('Nome da rede')} valor={rede.name} />
-          <SoLeitura rotulo="CNPJ ou CPF" valor={documento || '—'} />
-          <SoLeitura rotulo="E-mail" valor={rede.email || '—'} />
-          <SoLeitura rotulo="Telefone" valor={telefone || '—'} />
-          <SoLeitura rotulo="Site" valor={rede.website || '—'} />
-          <SoLeitura rotulo="Prazo do portal" valor={`${rede.prazoPortalHoras} ${rede.prazoPortalHoras === 1 ? 'hora' : 'horas'}`}
-            porque="É o prazo para a cliente remarcar ou cancelar o agendamento pelo app: até quantas horas antes do horário." />
-          <SoLeitura rotulo="O que a cliente avalia" valor={ROTULO_DO_QUE_AVALIA[rede.oQueAClienteAvalia]} />
-          <SoLeitura rotulo="Validade do plano proposto" valor={`${rede.validadeDoPlanoDias} ${rede.validadeDoPlanoDias === 1 ? 'dia' : 'dias'}`} />
-          <SoLeitura rotulo="Pacote com valor em aberto" valor={TEXTO_DO_CREDIARIO[rede.regrasDoPacote.crediarioLibera ? 'sim' : 'nao']} />
-          <SoLeitura rotulo="Pacote vencido" valor={TEXTO_DO_VENCIDO[rede.regrasDoPacote.vencidoCancela ? 'sim' : 'nao']} />
+    // Três cartões e um Salvar (A1 da 34ª simulação, princípio 7): os dados da
+    // rede, o que vale no app da cliente e as regras do pacote — cada assunto
+    // no seu cartão, com o nome dele. O "Dados da rede" misturava os três.
+    <form action={enviar} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <section className="card" data-cartao-da-geral="rede" style={cartao}>
+        {/* As explicações da aba moram na dica (2026-11-16 — eram parágrafos fixos). */}
+        <div style={linhaDoTitulo}>
+          <h2 style={tituloDoCartao}>{fala('Dados da rede')}</h2>
+          <Dica rotulo="Sobre estes dados">
+            Aparecem nos documentos e nas mensagens que a rede manda.
+          </Dica>
         </div>
-      )}
 
-      {podeEditar && (
-      <div className="grade-de-campos">
-        <Campo rotulo={fala('Nome da rede')} obrigatorio>
-          <input name="name" className="field" defaultValue={rede.name} disabled={!podeEditar} required />
-        </Campo>
+        {/* Quem não edita (a gerente de unidade fixa, quem só vê) lê o texto, não um campo
+            apagado que parece editável e não tem Salvar (A2 da 13ª, F70; princípio 7). */}
+        {!podeEditar && (
+          <div className="grade-de-campos" data-geral-so-leitura>
+            <SoLeitura rotulo={fala('Nome da rede')} valor={rede.name} />
+            <SoLeitura rotulo="CNPJ ou CPF" valor={documento || '—'} />
+            <SoLeitura rotulo="E-mail" valor={rede.email || '—'} />
+            <SoLeitura rotulo="Telefone" valor={telefone || '—'} />
+            <SoLeitura rotulo="Site" valor={rede.website || '—'} />
+          </div>
+        )}
 
-        <Campo rotulo="CNPJ ou CPF">
-          <input name="document" className="field" value={documento} disabled={!podeEditar}
-            onChange={e => setDocumento(maskCPFouCNPJDigitando(e.target.value))}
-            inputMode="numeric" placeholder="00.000.000/0000-00" />
-        </Campo>
+        {podeEditar && (
+          <div className="grade-de-campos">
+            <Campo rotulo={fala('Nome da rede')} obrigatorio>
+              <input name="name" className="field" defaultValue={rede.name} disabled={!podeEditar} required />
+            </Campo>
 
-        <Campo rotulo="E-mail">
-          <input name="email" type="email" className="field" defaultValue={rede.email ?? ''} disabled={!podeEditar} />
-        </Campo>
+            <Campo rotulo="CNPJ ou CPF">
+              <input name="document" className="field" value={documento} disabled={!podeEditar}
+                onChange={e => setDocumento(maskCPFouCNPJDigitando(e.target.value))}
+                inputMode="numeric" placeholder="00.000.000/0000-00" />
+            </Campo>
 
-        <Campo rotulo="Telefone">
-          <input name="phone" className="field" value={telefone} disabled={!podeEditar}
-            onChange={e => setTelefone(maskTelefoneDigitando(e.target.value))}
-            inputMode="tel" placeholder="(00) 00000-0000" />
-        </Campo>
+            <Campo rotulo="E-mail">
+              <input name="email" type="email" className="field" defaultValue={rede.email ?? ''} disabled={!podeEditar} />
+            </Campo>
 
-        <Campo rotulo="Site">
-          <input name="website" className="field" defaultValue={rede.website ?? ''} disabled={!podeEditar}
-            placeholder="bellaris.com.br" />
-        </Campo>
+            <Campo rotulo="Telefone">
+              <input name="phone" className="field" value={telefone} disabled={!podeEditar}
+                onChange={e => setTelefone(maskTelefoneDigitando(e.target.value))}
+                inputMode="tel" placeholder="(00) 00000-0000" />
+            </Campo>
 
-        <Campo rotulo="Prazo do portal (horas)" dica="É o prazo para a cliente remarcar ou cancelar o agendamento pelo app: até quantas horas antes do horário. Depois, só falando com a equipe. Não é a validade do plano proposto, que é em dias."
-          nome="portal_prazo_alteracao_horas" aviso={avisoDoPrazoDaRede('portal_prazo_alteracao_horas', numeroOuNada(prazoPortal))}>
-          <input name="portal_prazo_alteracao_horas" type="number" min={0} step={1} className="field"
-            value={prazoPortal} onChange={e => setPrazoPortal(e.target.value)} disabled={!podeEditar} inputMode="numeric" />
-        </Campo>
+            <Campo rotulo="Site">
+              <input name="website" className="field" defaultValue={rede.website ?? ''} disabled={!podeEditar}
+                placeholder="bellaris.com.br" />
+            </Campo>
+          </div>
+        )}
 
-        <Campo rotulo="O que a cliente avalia" dica={`Ao confirmar o atendimento pelo app. A nota do atendimento vale para quem atendeu. ${TEXTO_DA_NOTA_DO_PROCEDIMENTO}`}>
-          <select name="avaliacao_o_que" className="field" defaultValue={rede.oQueAClienteAvalia} disabled={!podeEditar}>
-            {O_QUE_A_CLIENTE_AVALIA.map(o => <option key={o} value={o}>{ROTULO_DO_QUE_AVALIA[o]}</option>)}
-          </select>
-        </Campo>
+        {/* O que não se edita, à vista. */}
+        <div style={{
+          display: 'flex', flexWrap: 'wrap', gap: 20,
+          borderTop: '1px solid var(--hairline)', paddingTop: 14,
+        }}>
+          {/* A situação é estado: fica à vista; o "onde se vê / quem cuida" vai para a dica. */}
+          <SoLeitura rotulo="Plano" valor={nomeDoPlanoNaTela(rede.planName, rede.planStatus)}
+            estado={`${rotuloDaSituacao(rede.planStatus)}.`}
+            porque={naRede && daAdmin ? 'Veja faturas e pagamento na aba Assinatura.' : fala('A assinatura fica com quem administra a rede.')} />
+          <SoLeitura rotulo={fala('Rede criada em')}
+            valor={new Date(rede.criadaEm).toLocaleDateString('pt-BR', { timeZone: fuso })} />
+        </div>
+      </section>
 
-        <Campo rotulo="Validade do plano proposto (dias)" dica="O app da cliente mostra o plano proposto com “Válido até”, contando desde quando foi proposto."
-          nome="plano_validade_dias" aviso={avisoDoPrazoDaRede('plano_validade_dias', numeroOuNada(validadePlano))}>
-          <input name="plano_validade_dias" type="number" min={1} step={1} className="field"
-            value={validadePlano} onChange={e => setValidadePlano(e.target.value)} disabled={!podeEditar} inputMode="numeric" />
-        </Campo>
-
-        {/* Itens 8 e 9 da auditoria (decisões do Claude pelo princípio 1, 2026-11-18): duas
-            regras do pacote que são da rede, com o padrão de antes (lib/pacotes/regras.ts). */}
-        <Campo rotulo="Pacote com valor em aberto" dica="O pacote vendido no crediário (ou a receber) ainda não pago. Liberando, a cliente agenda as sessões e a ficha avisa o que falta; sem liberar, as sessões esperam o pagamento, e a tela diz o porquê.">
-          <select name="pacote_crediario_libera" className="field" defaultValue={rede.regrasDoPacote.crediarioLibera ? 'sim' : 'nao'} disabled={!podeEditar}>
-            <option value="sim">{TEXTO_DO_CREDIARIO.sim}</option>
-            <option value="nao">{TEXTO_DO_CREDIARIO.nao}</option>
-          </select>
-        </Campo>
-
-        <Campo rotulo="Pacote vencido" dica="Cancelando, o pacote vencido com sessões que sobraram se cancela na ficha pela mesma conta do cancelamento de sempre: as sessões que sobraram e o que volta à cliente.">
-          <select name="pacote_vencido_cancela" className="field" defaultValue={rede.regrasDoPacote.vencidoCancela ? 'sim' : 'nao'} disabled={!podeEditar}>
-            <option value="nao">{TEXTO_DO_VENCIDO.nao}</option>
-            <option value="sim">{TEXTO_DO_VENCIDO.sim}</option>
-          </select>
-        </Campo>
-      </div>
-      )}
-
-      {/* O que não se edita, à vista. */}
-      <div style={{
-        display: 'flex', flexWrap: 'wrap', gap: 20,
-        borderTop: '1px solid var(--hairline)', paddingTop: 14,
-      }}>
+      <section className="card" data-cartao-da-geral="app" style={cartao}>
         {/* A4 da 6ª simulação: era o identificador da rede ("/{rede.slug}"), que
             não abre tela nenhuma, e a dona não sabia qual endereço dar à cliente. */}
-        <div data-app-da-cliente style={{ minWidth: 150, maxWidth: '100%' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-            <p className="overline">App da cliente</p>
+        <div data-app-da-cliente style={{ maxWidth: '100%', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={linhaDoTitulo}>
+            <h2 style={tituloDoCartao}>App da cliente</h2>
             <Dica rotulo="Sobre o app da cliente">
               É o endereço que se dá à cliente: ela entra com o e-mail (a senha inicial é o CPF ou, sem ele, o passaporte ou o RNE), e o acesso se cria na ficha dela.
               {appDaCliente.length > 1 ? ' Qualquer unidade abre a mesma ficha.' : ''}
@@ -183,13 +155,69 @@ export function SettingsGeral({ rede, podeEditar, naRede = true, daAdmin = false
             </p>
           ))}
         </div>
-        {/* A situação é estado: fica à vista; o "onde se vê / quem cuida" vai para a dica. */}
-        <SoLeitura rotulo="Plano" valor={nomeDoPlanoNaTela(rede.planName, rede.planStatus)}
-          estado={`${rotuloDaSituacao(rede.planStatus)}.`}
-          porque={naRede && daAdmin ? 'Veja faturas e pagamento na aba Assinatura.' : fala('A assinatura fica com quem administra a rede.')} />
-        <SoLeitura rotulo={fala('Rede criada em')}
-          valor={new Date(rede.criadaEm).toLocaleDateString('pt-BR', { timeZone: fuso })} />
-      </div>
+
+        {!podeEditar && (
+          <div className="grade-de-campos">
+            <SoLeitura rotulo="Prazo do portal" valor={`${rede.prazoPortalHoras} ${rede.prazoPortalHoras === 1 ? 'hora' : 'horas'}`}
+              porque="É o prazo para a cliente remarcar ou cancelar o agendamento pelo app: até quantas horas antes do horário." />
+            <SoLeitura rotulo="O que a cliente avalia" valor={ROTULO_DO_QUE_AVALIA[rede.oQueAClienteAvalia]} />
+            <SoLeitura rotulo="Validade do plano proposto" valor={`${rede.validadeDoPlanoDias} ${rede.validadeDoPlanoDias === 1 ? 'dia' : 'dias'}`} />
+          </div>
+        )}
+
+        {podeEditar && (
+          <div className="grade-de-campos">
+            <Campo rotulo="Prazo do portal (horas)" dica="É o prazo para a cliente remarcar ou cancelar o agendamento pelo app: até quantas horas antes do horário. Depois, só falando com a equipe. Não é a validade do plano proposto, que é em dias."
+              nome="portal_prazo_alteracao_horas" aviso={avisoDoPrazoDaRede('portal_prazo_alteracao_horas', numeroOuNada(prazoPortal))}>
+              <input name="portal_prazo_alteracao_horas" type="number" min={0} step={1} className="field"
+                value={prazoPortal} onChange={e => setPrazoPortal(e.target.value)} disabled={!podeEditar} inputMode="numeric" />
+            </Campo>
+
+            <Campo rotulo="O que a cliente avalia" dica={`Ao confirmar o atendimento pelo app. A nota do atendimento vale para quem atendeu. ${TEXTO_DA_NOTA_DO_PROCEDIMENTO}`}>
+              <select name="avaliacao_o_que" className="field" defaultValue={rede.oQueAClienteAvalia} disabled={!podeEditar}>
+                {O_QUE_A_CLIENTE_AVALIA.map(o => <option key={o} value={o}>{ROTULO_DO_QUE_AVALIA[o]}</option>)}
+              </select>
+            </Campo>
+
+            <Campo rotulo="Validade do plano proposto (dias)" dica="O app da cliente mostra o plano proposto com “Válido até”, contando desde quando foi proposto."
+              nome="plano_validade_dias" aviso={avisoDoPrazoDaRede('plano_validade_dias', numeroOuNada(validadePlano))}>
+              <input name="plano_validade_dias" type="number" min={1} step={1} className="field"
+                value={validadePlano} onChange={e => setValidadePlano(e.target.value)} disabled={!podeEditar} inputMode="numeric" />
+            </Campo>
+          </div>
+        )}
+      </section>
+
+      <section className="card" data-cartao-da-geral="pacotes" style={cartao}>
+        <h2 style={tituloDoCartao}>Pacotes</h2>
+
+        {!podeEditar && (
+          <div className="grade-de-campos">
+            <SoLeitura rotulo="Pacote com valor em aberto" valor={TEXTO_DO_CREDIARIO[rede.regrasDoPacote.crediarioLibera ? 'sim' : 'nao']} />
+            <SoLeitura rotulo="Pacote vencido" valor={TEXTO_DO_VENCIDO[rede.regrasDoPacote.vencidoCancela ? 'sim' : 'nao']} />
+          </div>
+        )}
+
+        {/* Itens 8 e 9 da auditoria (decisões do Claude pelo princípio 1, 2026-11-18): duas
+            regras do pacote que são da rede, com o padrão de antes (lib/pacotes/regras.ts). */}
+        {podeEditar && (
+          <div className="grade-de-campos">
+            <Campo rotulo="Pacote com valor em aberto" dica="O pacote vendido no crediário (ou a receber) ainda não pago. Liberando, a cliente agenda as sessões e a ficha avisa o que falta; sem liberar, as sessões esperam o pagamento, e a tela diz o porquê.">
+              <select name="pacote_crediario_libera" className="field" defaultValue={rede.regrasDoPacote.crediarioLibera ? 'sim' : 'nao'} disabled={!podeEditar}>
+                <option value="sim">{TEXTO_DO_CREDIARIO.sim}</option>
+                <option value="nao">{TEXTO_DO_CREDIARIO.nao}</option>
+              </select>
+            </Campo>
+
+            <Campo rotulo="Pacote vencido" dica="Cancelando, o pacote vencido com sessões que sobraram se cancela na ficha pela mesma conta do cancelamento de sempre: as sessões que sobraram e o que volta à cliente.">
+              <select name="pacote_vencido_cancela" className="field" defaultValue={rede.regrasDoPacote.vencidoCancela ? 'sim' : 'nao'} disabled={!podeEditar}>
+                <option value="nao">{TEXTO_DO_VENCIDO.nao}</option>
+                <option value="sim">{TEXTO_DO_VENCIDO.sim}</option>
+              </select>
+            </Campo>
+          </div>
+        )}
+      </section>
 
       {erro && (
         <p style={{
@@ -219,6 +247,11 @@ export function SettingsGeral({ rede, podeEditar, naRede = true, daAdmin = false
     </form>
   )
 }
+
+/** Cada cartão da aba e o título dele (A1 da 34ª). */
+const cartao = { display: 'flex', flexDirection: 'column', gap: 18 } as const
+const linhaDoTitulo = { display: 'flex', alignItems: 'center', gap: 6 } as const
+const tituloDoCartao = { fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' } as const
 
 /** As opções das regras do pacote (itens 8 e 9 da auditoria), na tela e na leitura. */
 const TEXTO_DO_CREDIARIO = { sim: 'Libera as sessões e avisa o que falta', nao: 'Libera as sessões só depois de pago' } as const

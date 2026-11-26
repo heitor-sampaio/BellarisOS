@@ -17,8 +17,8 @@ import { Lock } from 'lucide-react'
 import { Dica } from '@/components/shared/dica'
 import { MODULE_LABELS } from '@/lib/permissions'
 import { porQueSoEstasAbas, abasDoTopo } from '@/lib/configuracoes/abas-que-faltam'
-import { SettingsFichas, type ItemDeFicha } from '@/components/admin/settings-fichas'
-import { SettingsPreAtendimento } from '@/components/admin/settings-pre-atendimento'
+import type { ItemDeFicha } from '@/components/admin/settings-fichas'
+import { AbaDeFichas } from '@/components/admin/aba-de-fichas'
 import { SettingsDocumentos } from '@/components/admin/settings-documentos'
 import { modelosDaRede, urlsDasImagensDosModelos } from '@/lib/documentos/modelos'
 import { envioPelaConversaLigado } from '@/lib/documentos/link-pela-conversa'
@@ -54,7 +54,7 @@ import { maquininhasDaRede, taxaDoPixDaRede } from '@/lib/financeiro/vezes-da-re
 import { maximoDeParcelasDaRede } from '@/lib/financeiro/crediario-da-rede'
 import {
   ABAS_DE_CONFIGURACAO, ABAS_DA_REDE, ABAS_DA_UNIDADE, ABAS_DA_REDE_TODA, abaNoPlano, abaLiberada, type ChaveDeAba,
-  chaveDaAbaPedida, motivoDaAbaFechada, linkDaAbaNaRede, abasSoDaRede, abasEmGrupos, nivelQueAbreAAba,
+  chaveDaAbaPedida, motivoDaAbaFechada, linkDaAbaNaRede, abasSoDaRede, abasEmGrupos, nivelQueAbreAAba, abaInicial,
 } from '@/lib/configuracoes/abas'
 import { adminsAtivasDaRede } from '@/lib/equipe/quem-desfaz'
 import Link from 'next/link'
@@ -148,9 +148,11 @@ export async function Configuracoes({
   const requested = chaveDaAbaPedida(abaPedida) as ChaveDeAba | undefined
   // Cai na primeira aba permitida quando o link aponta para uma que este cargo
   // não acessa — em vez de renderizar a tela vazia.
-  // Sem aba pedida, quem tem unidade fixa abre na primeira que é DELA (a
-  // Unidade, as Importações), não num aviso de que a aba é da clínica toda.
-  const primeira = tabs.find(t => mexeNaConfigDaRede(ctx) || !ABAS_DA_REDE_TODA.includes(t.key)) ?? tabs[0]!
+  // Sem aba pedida, quem não é a Admin da rede abre na primeira que é DELA (a
+  // Unidade), não num aviso de que a aba é da rede toda — na ordem da TELA
+  // (os grupos; A10 da 34ª: a Admin abria em Unidades com Geral antes).
+  const chaveDaPrimeira = abaInicial(tabs, k => mexeNaConfigDaRede(ctx) || !ABAS_DA_REDE_TODA.includes(k))
+  const primeira = tabs.find(t => t.key === chaveDaPrimeira) ?? tabs[0]!
   const activeTab: ChaveDeAba =
     requested && tabs.some(t => t.key === requested) ? requested : primeira.key
   // A11 da 12ª (princípio 3): a aba pedida que não abre diz por quê — antes a
@@ -506,20 +508,19 @@ export async function Configuracoes({
       )}
 
       {conteudo === 'fichas' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-          {preAtendimento && (() => {
+        // Um editor por vez (A2 da 34ª): abrir a ficha de atendimento tira a de saúde da tela, e vice-versa.
+        <AbaDeFichas
+          preAtendimento={preAtendimento ? (() => {
             const [ficha, rede] = preAtendimento as [{ id: string; name: string; schema: unknown } | null, { pre_atendimento_envio: boolean; pre_atendimento_validade_meses: number }]
-            return (
-              <SettingsPreAtendimento
-                ficha={ficha ? { id: ficha.id, name: ficha.name, rows: normalizeFormSchema(ficha.schema).rows } : null}
-                envio={rede.pre_atendimento_envio}
-                validadeMeses={rede.pre_atendimento_validade_meses}
-                podePersonalizar={temRecurso(ctx, 'fichas')}
-              />
-            )
-          })()}
-          <SettingsFichas forms={fichas} semInjetaveis={!temRecurso(ctx, 'injetaveis')} />
-        </div>
+            return {
+              ficha: ficha ? { id: ficha.id, name: ficha.name, rows: normalizeFormSchema(ficha.schema).rows } : null,
+              envio: rede.pre_atendimento_envio,
+              validadeMeses: rede.pre_atendimento_validade_meses,
+              podePersonalizar: temRecurso(ctx, 'fichas'),
+            }
+          })() : null}
+          fichas={{ forms: fichas, semInjetaveis: !temRecurso(ctx, 'injetaveis') }}
+        />
       )}
 
       {conteudo === 'documentos' && modelosDeDocumento && (

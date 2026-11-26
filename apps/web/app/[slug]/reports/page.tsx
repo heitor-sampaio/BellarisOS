@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { destinoDaAbaPedida } from '@/lib/relatorios/aba-pedida'
+import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
 import {
   ReportsBiSection, type ReportsTab, type ReportsPeriod,
 } from '@/components/admin/reports-bi-section'
@@ -54,6 +55,9 @@ export default async function BranchReportsPage({
   }
   if (!branch) notFound()
 
+  // D5 da 34ª (UU-01, D-19): na rede de uma unidade, o que é "por unidade" some aqui também.
+  const umaUnidade = await redeTemUmaUnidade(ctx.tenantId!)
+
   return (
     <ReportsBiSection
       tenantId={ctx.tenantId!}
@@ -66,6 +70,7 @@ export default async function BranchReportsPage({
       rawPagina={rawPagina}
       rawTags={rawTags}
       scopeLabel={branch.name}
+      umaUnidade={umaUnidade}
     />
   )
 }

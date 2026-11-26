@@ -32,6 +32,7 @@ import {
 import { tagsAtivasDaRede, comAsArquivadasEmUso } from '@/lib/tags/vocabulario'
 import { tagsDaAba, tagsDaUrl } from '@/lib/metrics/tags-do-relatorio'
 import { cartoesDaVisaoGeral, veOCaixaNosRelatorios } from '@/lib/metrics/visao-geral'
+import { quemCadastraATaxa } from '@/lib/financeiro/quem-cadastra-a-taxa-no-servidor'
 
 
 export type ReportsTab    = 'overview' | 'financeiro' | 'vendas' | 'agenda' | 'clientes' | 'procedimentos' | 'profissionais' | 'estoque' | 'comercial'
@@ -408,6 +409,8 @@ export async function ReportsBiSection({
         // A14 da 29ª (princípio 4): as vendas no cartão sem taxa cadastrada (vale 0%), o aviso do DRE.
         // Com tag, não sai: a conta das formas sem taxa não tem o filtro, e o aviso não bateria com o DRE.
         vendasSemTaxa={needInstall && !semPessoa ? (await getTaxasDoPeriodo({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate })).total.vendasSemTaxa : undefined}
+        // D6 da 34ª (MQ-10): a quem não cadastra a taxa, o aviso do DRE diz quem cadastra.
+        quemCadastraATaxa={needInstall && !semPessoa ? await quemCadastraATaxa(ctxDoCargo) : null}
         quemAtende={quemAtende}
         tagsDaRede={tagsDaRede}
         tagsEscolhidas={tags}

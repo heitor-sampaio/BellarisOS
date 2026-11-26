@@ -16,6 +16,7 @@ import { recusaDoHorarioPassado } from '@/lib/appointments/horario-passado'
 import { fichasQueJaExistem, textoDaFichaQueJaExiste, type FichaQueJaExiste } from '@/lib/clients/ja-existe'
 import { escolhasDaFichaQueJaExiste } from '@/lib/copilot/ferramentas/clientes-escrita'
 import { avisoDaAgendaParaACliente, type FatoDaAgenda } from '@/lib/copilot/ferramentas/aviso-do-agendar'
+import { avisoDoHorarioNoCartao } from '@/lib/copilot/ferramentas/aviso-do-horario'
 import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
 import { telefoneDoCopilot } from '@/lib/copilot/ferramentas/clientes-escrita'
 import type { ContextoDaFerramenta, FerramentaDeEscrita } from '@/lib/copilot/ferramentas/tipos'
@@ -162,6 +163,12 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
     // encaixe é da clínica (princípio 2).
     const naoRealiza = !realiza(await quemRealizaOProcedimento(c.admin, proc.id), prof.id)
     const avisoDoRealiza = naoRealiza ? `${prof.name} não está em “Quem realiza” deste procedimento. ` : ''
+    // D1 da 34ª: os avisos da janela "+ Agendar" — o fora do horário de quem atende (e da unidade)
+    // e o fora da grade de 30 em 30 min. Só avisa: o encaixe vale (§9.1).
+    const doHorario = await avisoDoHorarioNoCartao(c, {
+      branchId: unidade.id, professionalId: prof.id, inicio, procedureId: proc.id, duracaoMin: duracao, data: a.data, hora: a.hora, roomId,
+    })
+    const avisoDoEncaixe = doHorario ? `${doHorario} ` : ''
     // A33 da 16ª: o aviso que chega de fato — só pelo app, e só a quem tem acesso.
     const avisoDaCliente = await avisoDaClienteNoCartao(c, clientId, 'agendar')
 
@@ -181,7 +188,7 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
             : { rotulo: 'Valor', valor: dinheiro(proc.price) },
           ...(a.observacao ? [{ rotulo: 'Observação', valor: a.observacao }] : []),
         ],
-        aviso: avisoDoRealiza + (jaExiste
+        aviso: avisoDoRealiza + avisoDoEncaixe + (jaExiste
           ? `${textoDaFichaQueJaExiste(jaExiste)} Nada foi gravado: agende numa ficha nova mesmo assim, ou na ficha que existe. ${avisoDaCliente}`
           : avisoDaCliente),
         ...(jaExiste ? { escolhas: escolhasDaFichaQueJaExiste(jaExiste) } : {}),
@@ -247,6 +254,7 @@ async function agendamentoParaResumo(c: ContextoDaFerramenta, id: string) {
   return {
     ...a,
     clientId: extra.client_id,
+    procedureId: extra.procedure_id,
     cliente: clientes.get(extra.client_id) ?? 'Cliente',
     procedimento: procs.get(extra.procedure_id) ?? 'Atendimento',
     profissional: a.professional_id ? (profs.get(a.professional_id) ?? '—') : '—',
@@ -310,6 +318,12 @@ export const remarcar: FerramentaDeEscrita<{ agendamento: string; data: string; 
     const soQuemAtende = mesmoHorario && outraPessoa
     const unidade = (await nomesPorId(c, 'branches', [ag.branch_id])).get(ag.branch_id) ?? '—'
     const quemAtende = { rotulo: 'Quem atende', valor: outraPessoa ? `${ag.profissional} → ${nomeDoProfissional}` : nomeDoProfissional }
+    // D1 da 34ª: o aviso do horário da janela de remarcar (`avisosDoRemarcar`): o fora do horário
+    // de quem atende no horário novo, sem contar o próprio agendamento. A grade, a janela não diz.
+    const doHorario = quem ? await avisoDoHorarioNoCartao(c, {
+      branchId: ag.branch_id, professionalId: quem, inicio, procedureId: ag.procedureId, duracaoMin: ag.duration_min || 60, excluir: ag.id, roomId: ag.room_id,
+    }) : null
+    const daCliente = await avisoDaClienteNoCartao(c, ag.clientId, 'remarcar')
     return {
       resumo: {
         titulo: soQuemAtende ? 'Trocar quem atende' : 'Remarcar atendimento',
@@ -322,7 +336,7 @@ export const remarcar: FerramentaDeEscrita<{ agendamento: string; data: string; 
           quemAtende,
           { rotulo: 'Unidade', valor: unidade },
         ],
-        aviso: await avisoDaClienteNoCartao(c, ag.clientId, 'remarcar'),
+        aviso: doHorario ? `${doHorario} ${daCliente}`.trim() : daCliente,
       },
       payload: { appointmentId: ag.id, scheduledAt: inicio.toISOString(), professionalId, ...(soQuemAtende ? { soQuemAtende: true } : {}) },
     }

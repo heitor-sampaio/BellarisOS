@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ocupanteDoHorario, livresEntre, blocosDosBloqueios } from '@/lib/agenda/horario-livre'
+import { ocupanteDoHorario, livresEntre, blocosDosBloqueios, livresDaGrade } from '@/lib/agenda/horario-livre'
 import { capacidadeEmMinutos, type Horario } from '@/lib/agenda/horario'
 
 // D5 e D15 da 8ª simulação (2026-11-06): uma régua só de horário livre — o
@@ -51,4 +51,26 @@ describe('ocupanteDoHorario: o concluído antes da hora não ocupa nada (A16 da 
   const concluidosAntes = ['03:00', '04:15', '05:30'].map(h => ({ scheduledAt: em(h).toISOString(), durationMin: 0, clientName: 'Daniela' }))
   for (const h of ['03:00', '03:30', '04:00', '04:30', '05:00', '05:30'])
     it(`60 min às ${h}: livre`, () => expect(ocupanteDoHorario(em(h), 60, concluidosAntes)).toBeNull())
+})
+
+// D11 da 34ª (docs/regras/design.md; princípio 3): na Minha agenda, o "Horário
+// livre" ficava cortado e por cima dos cartões — o vão era contado do fim do
+// cartão ANTERIOR na lista (e não do último que ainda ocupa), e o desenho
+// começava no fim de verdade, dentro do cartão curto (a altura mínima passa dele).
+describe('livresDaGrade: o "Horário livre" da Minha agenda', () => {
+  const ms = (hhmm: string) => em(hhmm).getTime()
+  const cartao = (de: string, ate: string, ateNoDesenho = ate) => ({ de: ms(de), ate: ms(ate), ateNoDesenho: ms(ateNoDesenho) })
+  it('o vão conta do último que ainda ocupa: dentro do atendimento longo não há horário livre', () => {
+    const livres = livresDaGrade([cartao('09:00', '12:00'), cartao('10:00', '10:30'), cartao('13:00', '14:00')], (de, ate) => livresEntre(de, ate, []))
+    expect(livres.map(l => [l.de, l.ate])).toEqual([[ms('12:00'), ms('13:00')]])
+  })
+  it('o texto diz o vão de verdade; o desenho começa abaixo do cartão curto', () => {
+    const [livre] = livresDaGrade([cartao('10:00', '10:15', '10:33'), cartao('11:00', '12:00')], (de, ate) => livresEntre(de, ate, []))
+    expect(livre).toEqual({ de: ms('10:15'), ate: ms('11:00'), desenhoDe: ms('10:33') })
+  })
+  it('o vão passa pelos cortes (o bloqueio parte o livre)', () => {
+    const livres = livresDaGrade([cartao('10:00', '10:30'), cartao('16:00', '17:00')], (de, ate) => livresEntre(de, ate, bloqueios))
+    expect(livres.map(l => [l.de, l.ate])).toEqual([[ms('10:30'), ms('14:00')], [ms('15:00'), ms('16:00')]])
+  })
+  it('sem dois cartões, nada', () => expect(livresDaGrade([cartao('10:00', '11:00')], (de, ate) => livresEntre(de, ate, []))).toEqual([]))
 })

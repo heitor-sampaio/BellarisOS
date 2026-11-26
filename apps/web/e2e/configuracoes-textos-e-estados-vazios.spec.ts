@@ -82,6 +82,25 @@ test('A7: salvar a ficha de pré-atendimento confirma', async ({ browser }) => {
   })
 })
 
+test('em Fichas, um editor por vez, e a janela do campo volta à ficha (o salvar é um só)', async ({ browser }) => {
+  await como(browser, dona, async p => {
+    await p.goto('/admin/settings?tab=fichas')
+    await expect(p.locator('[data-pre-atendimento]')).toBeVisible()
+    await p.getByRole('button', { name: 'Nova ficha de atendimento' }).click()
+    await expect(p.locator('[data-pre-atendimento]'), 'montando a ficha de atendimento, a de saúde sai').toHaveCount(0)
+    await p.locator('.anamnesis-palette').getByText('Texto curto', { exact: true }).click()
+    const campo = p.locator('dialog[open]')
+    await expect(campo.getByRole('button', { name: 'Concluir' })).toHaveCount(0)
+    await campo.getByRole('button', { name: 'Voltar à ficha' }).click()
+    await expect(campo).toHaveCount(0)
+    await p.getByRole('button', { name: 'Voltar às fichas de atendimento' }).click()
+    await expect(p.locator('[data-pre-atendimento]')).toBeVisible()
+
+    await p.locator('[data-pre-atendimento]').getByRole('button', { name: 'Editar perguntas' }).click()
+    await expect(p.locator('[data-fichas-de-atendimento]'), 'editando a de saúde, a lista das de atendimento sai').toHaveCount(0)
+  })
+})
+
 test('A8: na unidade, Geral não manda à aba Assinatura — diz que é de quem administra a rede', async ({ browser }) => {
   await como(browser, daUnidade, async p => {
     await p.goto(`/e2e-un-txt${marca}/settings?tab=general`)

@@ -11,8 +11,8 @@ Este é o catálogo das regras de Vendas e financeiro que valem HOJE: o PDV e as
 - Onde: `docs/regras/vendas-financeiro.md:10-12`; `docs/revisao.md:520-535`, `:1975`
 - Antes: KA-03, KG-01
 
-**PV-02.** O PDV mostra uma unidade por vez (na rede, escolhe-se a unidade). À esquerda ficam as comandas (Abertas / Fechadas hoje / Todas, com busca pela cliente); à direita, a comanda escolhida, com o "Receber". No topo, "Hoje em <unidade>": o que entrou hoje e quantas comandas têm valor a receber (as abertas e as pagas hoje que ainda têm parcela em aberto).
-- Fonte: o Heitor, 13/11: "vamos fazer um PDV."
+**PV-02.** O PDV mostra uma unidade por vez (na rede, escolhe-se a unidade). À esquerda ficam as comandas (Abertas / Fechadas hoje / Todas, com busca pela cliente); à direita, a comanda escolhida, com o "Receber". No topo, "Hoje em <unidade>": o que entrou hoje e quantas comandas têm valor a receber (as abertas e as pagas hoje que ainda têm parcela em aberto). O que entrou hoje é o total de entradas do Fechamento do dia: o crédito parcelado conta inteiro no dia da venda, e as parcelas que a operadora deposita são outro fluxo, o "A receber da operadora" (MQ-01).
+- Fonte: o Heitor, 13/11: "vamos fazer um PDV."; o crédito parcelado inteiro no "Hoje": decisão do Claude, 26/11 (34ª, Decisão D), pela MQ-01 e pelo princípio 5
 - Onde: `docs/regras/vendas-financeiro.md:15-21`, `:384-386`; `docs/revisao.md:520`, `:1975`
 - Antes: KA-01
 
@@ -675,7 +675,7 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Antes: KE-32, KE-33
 
 **MQ-05.** As parcelas da operadora não aparecem para a cliente (nem na ficha, nem no app, nem no Fechamento): ela não deve nada. O Financeiro mostra os dois a receber, cada um com o seu nome, "A receber da cliente" e "A receber da operadora". A lista da operadora tem todo o em aberto, de qualquer vencimento, mais o que vence no período, agrupada pelo mês do depósito, e o cartão tem "Ver as parcelas". O "A receber da operadora" e o fluxo de caixa contam o líquido (o que a operadora deposita), com o bruto ao lado; no cartão da operadora, o número grande é o que ela ainda vai depositar, e o total do período fica embaixo.
-- Fonte: decisão do Claude
+- Fonte: decisão do Claude; o líquido no número (é o que entra na conta) e o bruto embaixo, no fluxo e no cartão da operadora: confirmado, decisão do Claude, 26/11 (34ª, Decisão D), pelos princípios 3 e 5
 - Onde: `docs/regras/vendas-financeiro.md:2047`, `:2516`, `:2528`
 - Antes: KE-34, KE-35
 
@@ -830,6 +830,10 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Onde: `docs/regras/vendas-financeiro.md:1994`, `:2256`, `:2276`, `:3231`
 - Antes: KE-54, KF-10
 
+**FC-15a.** O pagamento já feito no crédito à vista se chama "Crédito 1x" ("Cartão de crédito 1x" no Fechamento e no CSV), como o "Crédito 3x" ao lado. O banco grava o à vista com as vezes nulas, e o nulo vale 1x. A forma a escolher (os botões do PDV, as listas de forma) continua "Crédito"; o combinado antes de pagar continua "à vista".
+- Fonte: o Heitor, 26/11 (R20 da página): "Escrever \"1x\" no crédito à vista (a proposta)"
+- Onde: `apps/web/lib/financeiro/formas.ts` (`rotuloDaForma`); `apps/web/tests/financeiro-formas.test.ts`
+
 ## O Financeiro (FN)
 
 ### As abas
@@ -936,6 +940,11 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Fonte: o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito."; e, 19/11: "Qualquer gravação que não passa pela validação do backend ta errada"; o limite (o tipo da coluna, numeric(10,2)) é decisão do Claude, 25/11
 - Onde: `docs/regras/vendas-financeiro.md` ("O valor do lançamento até o que o registro guarda"); `apps/web/lib/financeiro/limites-do-registro.ts`
 - Antes: o erro do banco, em inglês ("numeric field overflow")
+
+**FN-20.** O "Pagar" da conta a pagar paga o valor inteiro, na forma escolhida: não há baixa parcial da despesa. Quem paga só uma parte remarca o vencimento ou divide a conta à mão. (O pagamento em parte das comissões é outra coisa, por linha: CF-13; a parcela do crediário recebida em parte é a CR-08.)
+- Fonte: decisão do Claude, 26/11 (34ª, Decisão D) — pagar parte da conta é recurso novo (a sugestão nº 110), não correção
+- Onde: `docs/regras/vendas-financeiro.md` (o Financeiro, a baixa); `docs/sugestoes-de-funcionalidades.md` (nº 110)
+- Antes: (sem número: Fausto, Time D da 34ª, material descartável)
 
 ## O CSV e o recibo (CS)
 

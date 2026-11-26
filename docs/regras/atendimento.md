@@ -1589,7 +1589,12 @@
   `lib/appointments/valor-cobrado.ts`: o lançamento vivo do atendimento,
   `amount + loyalty_discount` — os pontos são forma de pagamento, não
   desconto —, e o `sale_discount`). Prova:
-  `e2e/portal-cliente-pagamentos.spec.ts` ("D8").
+  `e2e/portal-cliente-pagamentos.spec.ts` ("D8"). No crediário, o cobrado é
+  a entrada MAIS as parcelas em aberto (D4 da 34ª; princípio 3: o cartão dizia
+  R$ 90 de R$ 190): os lançamentos vivos do atendimento, pagos ou com nota — a
+  régua do "já cobrado" de `confirmar_pagamento_do_atendimento`; a reserva sem
+  nota do concluído sem pagar não é cobrança. Prova:
+  `tests/valor-cobrado-do-crediario.test.ts`.
 - **A agendada não está "para agendar"** (A27 da 6ª simulação, 2026-11-04;
   princípio 3): o pré-pago diz "2 para agendar · 1 agendada" na ficha e no
   app, e o cartão do pacote/plano "2 sessões restantes · 1 agendada"
@@ -2108,6 +2113,11 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
   (Configurações → Fichas, tabela `forms`) e ligada ao procedimento por
   `procedures.form_id`. As respostas ficam em
   `medical_record_entries.form_data`.
+  - **Em Configurações → Fichas, um editor por vez** (A2 da 34ª simulação;
+    decisão do Claude, 26/11, princípio 7): montando uma ficha de atendimento,
+    a ficha de saúde sai da tela, e vice-versa (`blocosDaAbaDeFichas`). A
+    janela do campo só "Volta à ficha": quem grava é o "Criar/Salvar" da
+    ficha (era um "Concluir" rosé, que parecia um primeiro salvar).
   - Eram DUAS — "de anamnese" e "de atendimento" —, com o mesmo construtor, os
     mesmos campos possíveis e o mesmo momento de preenchimento. Quem cadastrava
     um procedimento tinha de escolher em qual das duas pôr cada pergunta, e a
@@ -4563,6 +4573,7 @@ O resto do fluxo:
 ❌ Trava de permissão (assertPermission/semAcesso) num LAYOUT fora do Suspense da página: vira HTTP 500 — o layout só passa a página, que trava por si (D17 da 9ª)
 ❌ Gravar as dores do cliente em appointments.notes (é a observação interna; as dores são medical_record_entries.queixas)
 ❌ Cancelar ou marcar falta num atendimento concluído — o que se desfaz é o pagamento (estorno)
+❌ Deixar a falta só na janela da agenda: a tela do atendimento também oferece o "Não compareceu" (a Agenda em Gerenciar, a partir do horário, de Agendado, Confirmado ou Chegou — mostraAFalta, lib/agenda/falta.ts), com a mesma pergunta (perguntaDaFalta) e a mesma action (A8 da 34ª; decisão do Claude, 26/11, pelo princípio 7)
 ❌ Mudar a situação do agendamento por update direto em vez dos núcleos (cancelarCore, startAppointment, a falta guardada pela situação): o Cancelado sem motivo, a Falta virando Cancelado e o "Em atendimento" que pulava o termo vinham daí (C10–C12, F65)
 ❌ Concluir (finishSession, concluir_atendimento, completeAppointment) o que não está Em atendimento, ou tirar um agendamento de Concluído (C13, F65)
 ❌ Oferecer ou aceitar no agendamento a profissional que não ATENDE na unidade, ou o procedimento que a unidade não FAZ — é conferirPecasDoAgendamento com o procedimento (F65, D7 da 13ª)
@@ -4598,6 +4609,8 @@ O resto do fluxo:
 ❌ Oferecer como livre (app da cliente, Copilot, CRM) um horário bloqueado — é computeAvailableSlots, que já tira o bloqueio
 ❌ Caminho que cria ou move agendamento sem recusaDoBloqueioNoHorario (lib/appointments/core.ts): o horário bloqueado não se marca, nem pela equipe nem pelo Copilot (o Heitor, 26/11 (R07): "r07 se ta bloqueado não dá pra marcar") — e o fora do horário, que não é bloqueio, segue encaixe com aviso
 ❌ Decidir na tela se um horário está livre pelo INÍCIO, ou sem os bloqueios — é ocupanteDoHorario / livresEntre (lib/agenda/horario-livre.ts), o intervalo inteiro (D5/D15 da 8ª)
+❌ Contar o "Horário livre" da Minha agenda par a par (do fim do cartão anterior na lista) ou desenhá-lo por baixo do cartão curto: é livresDaGrade (lib/agenda/horario-livre.ts) — do último que ainda ocupa, e o desenho abaixo do cartão de cima (D11 da 34ª)
+❌ Oferecer no Agendar, enquanto a lista do horário não chega, as salas da unidade como livres: é salasParaOferecer (lib/agenda/salas.ts) — só a já escolhida, até a lista chegar (D10 da 34ª)
 ❌ Deixar o Confirmar do agendar (ou do remarcar) gravar antes de chegar a conferência do horário escolhido (o aviso vinha depois — D9 da 8ª)
 ❌ Trocar a hora que o modal mostra sem dizer (o próximo livre que pula de dia calado — D7 da 12ª): só troca a que não cabe, e com textoDoProximoLivre
 ❌ Filtrar a agenda (profissional, sala, tag) no navegador, sobre o que já veio, ou aceitar da URL o que não está nas opções da tela — é filtrosDaAgenda + aplicarFiltrosDaAgenda, na consulta (lib/agenda/filtros.ts)

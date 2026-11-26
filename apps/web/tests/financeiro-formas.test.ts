@@ -9,8 +9,16 @@ describe('rotuloDaForma', () => {
   it('o crédito em N vezes diz as vezes', () => {
     expect(rotuloDaForma('CREDIT_CARD', 3)).toBe('Crédito 3x')
     expect(rotuloDaForma('CREDIT_CARD', 3, { longo: true })).toBe('Cartão de crédito 3x')
-    expect(rotuloDaForma('CREDIT_CARD', null)).toBe('Crédito')
-    expect(rotuloDaForma('CREDIT_CARD', 1)).toBe('Crédito')
+    // R20 (o Heitor, 26/11: "Escrever \"1x\" no crédito à vista"): o pagamento à vista diz o 1x. O banco grava o
+    // à vista com as vezes nulas (coalesce(cartao_vezes, 1)): nulo = 1x. Sem as vezes (a forma a escolher), nada.
+    expect(rotuloDaForma('CREDIT_CARD', null)).toBe('Crédito 1x')
+    expect(rotuloDaForma('CREDIT_CARD', 1)).toBe('Crédito 1x')
+    expect(rotuloDaForma('CREDIT_CARD', 1, { longo: true })).toBe('Cartão de crédito 1x')
+    expect(rotuloDaForma('CREDIT_CARD')).toBe('Crédito')
+    expect(rotuloDaForma('CREDIT_CARD', undefined, { longo: true })).toBe('Cartão de crédito')
+    expect(rotuloDaFormaDoFechamento('CREDIT_CARD:1')).toBe('Cartão de crédito 1x')
+    expect(rotuloDaFormaDoFechamento('CREDIT_CARD'), 'a chave do à vista não leva as vezes').toBe('Cartão de crédito 1x')
+    expect(formaDoLancamento({ metodo: 'CREDIT_CARD', vezes: null, pago: true })).toBe('Crédito 1x')
   })
   it('os outros meios', () => {
     expect(rotuloDaForma('PIX')).toBe('Pix')
@@ -64,7 +72,7 @@ describe('a forma de um lançamento na ficha e no app (D6)', () => {
 describe('a bandeira no nome da forma (A39)', () => {
   it('o cartão com bandeira diz a bandeira; sem ela, como antes; fora do cartão, nada', () => {
     expect(rotuloDaForma('CREDIT_CARD', 5, { bandeira: 'VISA' })).toBe('Crédito Visa 5x')
-    expect(rotuloDaForma('CREDIT_CARD', 1, { bandeira: 'ELO' })).toBe('Crédito Elo')
+    expect(rotuloDaForma('CREDIT_CARD', 1, { bandeira: 'ELO' })).toBe('Crédito Elo 1x') // R20 (26/11)
     expect(rotuloDaForma('DEBIT_CARD', null, { bandeira: 'MASTERCARD', longo: true })).toBe('Cartão de débito Mastercard')
     expect(rotuloDaForma('CREDIT_CARD', 3, { bandeira: null })).toBe('Crédito 3x')
     expect(rotuloDaForma('PIX', null, { bandeira: 'VISA' })).toBe('Pix')

@@ -5,6 +5,7 @@ import { notaDoEstornoParcial, notaDoUsoDeCredito, type LancamentoParaNota } fro
 import { notFound, redirect } from 'next/navigation'
 import { comAviso } from '@/lib/aviso-da-url'
 import { getTenantContext, assertPermission, assertUnidade, temRecurso, alcancaUnidade, can, vistaPessoal } from '@/lib/auth'
+import { quemCadastraATaxa } from '@/lib/financeiro/quem-cadastra-a-taxa-no-servidor'
 import { podeDarBaixa } from '@/lib/financeiro/so-os-meus'
 import { abaDoFinanceiro } from '@/lib/financeiro/abas'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -284,6 +285,8 @@ export default async function FinancialPage({
         canPay={canPay}
         // CX6 (2026-11-14): as taxas estimadas e a venda sem taxa do período, da unidade.
         taxasDoPeriodo={(await getTaxasDoPeriodo({ ...argsDoNucleo, from: start, to: end })).total}
+        // D6 da 34ª (MQ-10): a quem não cadastra a taxa, o aviso diz quem cadastra.
+        quemCadastraATaxa={await quemCadastraATaxa(ctx)}
         aba={aba}
         tagsDaRede={tagsDaRede}
         tags={tags}

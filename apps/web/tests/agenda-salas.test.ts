@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { salasParaOProcedimento, salaServeAoProcedimento, salaSugerida, nomeDeSala } from '@/lib/agenda/salas'
+import { salasParaOProcedimento, salaServeAoProcedimento, salaSugerida, nomeDeSala, salasParaOferecer } from '@/lib/agenda/salas'
 
 // D5 (2026-10-30): o procedimento ligado às salas em que é feito — ligação
 // opcional, contada por unidade.
@@ -36,5 +36,23 @@ describe('as salas do procedimento', () => {
     expect(nomeDeSala('   ')).toEqual({ erro: 'Dê um nome à sala.' })
     expect(nomeDeSala(42)).toEqual({ erro: 'Dê um nome à sala.' })
     expect('erro' in nomeDeSala('x'.repeat(61))).toBe(true)
+  })
+})
+
+// D10 da 34ª (AG-07; princípio 3; atendimento.md, "O que nunca fazer aqui": a lista
+// não oferece o que o servidor recusaria): enquanto a lista do horário novo não
+// chega, o Agendar oferecia TODAS as salas da unidade, como livres — a escolhida
+// que não serve ao procedimento sumia calada ("Sem sala definida") quando a
+// lista chegava, e o agendamento ia sem sala.
+describe('as salas que o Agendar oferece', () => {
+  const daUnidade = [{ id: 'rosa', name: 'Sala Rosa' }, { id: 'azul', name: 'Sala Azul' }]
+  it('com a lista do horário, ela', () => {
+    const doServidor = [{ id: 'rosa', name: 'Sala Rosa', livre: false, indisponivel: 'ocupada' as const }]
+    expect(salasParaOferecer(daUnidade, doServidor, null)).toEqual(doServidor)
+  })
+  it('esperando a lista, só a já escolhida (nada que possa sumir depois)', () => {
+    expect(salasParaOferecer(daUnidade, null, 'azul')).toEqual([{ id: 'azul', name: 'Sala Azul', livre: true }])
+    expect(salasParaOferecer(daUnidade, null, null)).toEqual([])
+    expect(salasParaOferecer(daUnidade, null, '')).toEqual([])
   })
 })

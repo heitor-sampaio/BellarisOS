@@ -916,7 +916,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
         {(formaPgto === 'AVISTA' || (formaPgto === 'PARCELADO' && entradaNum > 0)) && (
           <p data-forma-do-que-se-recebe style={{ fontSize: 'var(--text-sm-sz)', color: paymentMethod ? 'var(--text)' : 'var(--text-muted)', marginBottom: 14 }}>
             {paymentMethod
-              ? <>Forma: <b style={{ fontWeight: 'var(--weight-bold)' }}>{rotuloDaForma(paymentMethod, null, { longo: true })}</b></>
+              ? <>Forma: <b style={{ fontWeight: 'var(--weight-bold)' }}>{rotuloDaForma(paymentMethod, undefined, { longo: true })}</b></>
               : 'Forma: escolha acima, em “Como vai ser pago”.'}
           </p>
         )}

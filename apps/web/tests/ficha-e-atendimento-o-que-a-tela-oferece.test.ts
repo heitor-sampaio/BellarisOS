@@ -129,3 +129,35 @@ describe('as tags na ficha em leitura', () => {
     expect(bloco.indexOf('opcoesDeTag(')).toBeGreaterThan(bloco.indexOf('data-tags-da-ficha-so-leitura'))
   })
 })
+
+// D2 da 34ª (PT-02: o clínico vai a quem tem o Prontuário em Ver ou Gerenciar):
+// na avaliação sem plano — também a concluída —, quem tem o Prontuário em Ver não
+// via "Observações do atendimento". Nos outros ramos o mesmo cartão é do canViewRecords.
+describe('a evolução da avaliação: lê quem vê o prontuário, escreve quem o escreve', () => {
+  const s = fonte('components/branch/appointment-session.tsx')
+  const unificado = s.slice(s.indexOf('// Plano ainda não gerado → formulário unificado'))
+  const cartao = unificado.slice(unificado.indexOf('{/* Observações do atendimento'), unificado.indexOf('id="avaliacao-intercorrencias"') + 600)
+  it('o cartão aparece com o Prontuário em Ver', () => {
+    expect(cartao).toMatch(/\{canViewRecords && <div className="card"[\s\S]{0,300}Observações do atendimento/)
+    expect(cartao).not.toMatch(/\{canEditRecords && <div className="card"/)
+  })
+  it('sem o Prontuário em Gerenciar, os campos só se leem', () => {
+    for (const id of ['avaliacao-evolucao', 'avaliacao-intercorrencias']) {
+      const t = s.slice(s.indexOf(`id="${id}"`), s.indexOf(`id="${id}"`) + 500)
+      expect(t, id).toMatch(/readOnly=\{editLocked \|\| !canEditRecords\}/)
+      expect(t, id).toMatch(/!canEditRecords \|\| editLocked \? CAMPO_SO_LEITURA/)
+    }
+  })
+})
+
+// A5 da 34ª (princípio 7): ao lado da ficha de saúde digitada, o "Salvar ficha" da
+// ficha do PROCEDIMENTO parecia salvar a ficha de saúde (que vai no "Finalizar").
+// O botão diz o que salva.
+describe('na tela do atendimento, o botão da ficha do procedimento diz qual ficha salva', () => {
+  it('toda ficha de atendimento da tela salva com "Salvar ficha de atendimento"', () => {
+    const s = fonte('components/branch/appointment-session.tsx')
+    const fichas = s.split(/<AnamnesisFormRenderer\s/).slice(1).map(t => t.slice(0, 900))
+    expect(fichas.length).toBeGreaterThan(0)
+    for (const f of fichas) expect(f).toContain('rotuloSalvar="Salvar ficha de atendimento"')
+  })
+})

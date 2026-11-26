@@ -212,7 +212,7 @@ function AppointmentCard({ appt, slug, highlight = false, prazoHoras, comUnidade
   // A47 da 24ª: remarcar num toque — o cartão leva ao formulário já aberto.
   const remarca = prazoHoras != null && !passou && ['SCHEDULED', 'CONFIRMED'].includes(appt.status)
     && appt.branches?.is_active !== false && aindaDaParaAlterar(appt.scheduled_at, prazoHoras)
-  // D8 da 7ª: pago, vale o cobrado (o preço menos o desconto da recepção).
+  // D8 da 7ª: cobrado, vale o cobrado (o preço menos o desconto da recepção); no crediário, a entrada e as parcelas (D4 da 34ª).
   const valor = appt.cobrado ? appt.cobrado.cobrado : Number(appt.price)
   const price = valor
     ? `R$ ${valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`

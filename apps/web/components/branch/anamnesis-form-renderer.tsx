@@ -13,6 +13,7 @@ import { InjectableMapField } from '@/components/branch/injectable-map-field'
 import { PlanejamentoInjetaveis } from '@/components/branch/planejamento-injetaveis'
 import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
+import { formatDia } from '@estetica-os/utils'
 
 // O planejador de injetáveis é o primeiro campo com valor estruturado — até
 // aqui tudo era escalar.
@@ -368,8 +369,10 @@ function ReadOnlyValue({ field: f, value, photoUrl, linkDoPlanejamento, fotosDoA
   // `isInjectableMap` aqui não é redundante: trocar o tipo de um campo no
   // construtor deixa a resposta antiga órfã, e um mapa caindo no ramo de texto
   // imprimiria "[object Object]".
+  // D9 da 34ª: a data é um dia (sem hora): dd/mm/aaaa, como gravado (formatDia — CLAUDE.md §14).
   const text = Array.isArray(value) ? value.join(', ')
     : isInjectableMap(value) ? ''
+    : f.type === 'date' && value ? (formatDia(value) ?? value)
     : (value ?? '')
   return (
     <p style={{ fontSize: 'var(--text-base-sz)', color: text ? 'var(--text)' : 'var(--text-faint)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>

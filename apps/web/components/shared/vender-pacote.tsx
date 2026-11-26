@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { toast } from 'sonner'
 import { avisoDaVenda } from '@/lib/vendas/aviso-da-venda'
@@ -26,6 +26,7 @@ import { useFuso } from '@/components/shared/fuso'
 import { useFidelidadeNaVenda } from '@/components/shared/pontos-na-venda'
 import type { FidelidadeDaVenda } from '@/lib/fidelidade/conta-na-venda'
 import { Dica } from '@/components/shared/dica'
+import { guardarVendaDoPacote, lerVendaDoPacote, esquecerVendaDoPacote } from '@/lib/vendas/venda-do-pacote-na-aba'
 
 /**
  * Vender um pacote (decisão do Heitor, 2026-09-30): o pacote do catálogo, e
@@ -102,6 +103,19 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
   const [semVendedor, setSemVendedor] = useState(false)
   const quemAtende = equipe.filter(m => m.atende)
 
+  // A6 da 34ª: a venda que esperava a assinatura do contrato volta como estava
+  // (a tela que se monta de novo, o recarregar) — lib/vendas/venda-do-pacote-na-aba.
+  useEffect(() => {
+    const guardada = lerVendaDoPacote(branchId, clienteId)
+    if (!guardada || !pacotes.some(p => p.id === guardada.pacoteId)) return
+    /* eslint-disable react-hooks/set-state-in-effect -- o sessionStorage só existe no navegador: ler na renderização desencontraria a hidratação */
+    setPacoteId(guardada.pacoteId); setEstado(guardada.estado); setDesconto(guardada.desconto)
+    setVendedorId(guardada.vendedorId); setSemVendedor(guardada.semVendedor); setResponsavelId(guardada.responsavelId)
+    /* eslint-enable react-hooks/set-state-in-effect */
+    // Só ao montar: depois, quem manda é a tela.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   /** PC2: o contrato a colher abre a tela de assinatura AQUI dentro (sair perderia o pagamento escolhido). */
   function abrirContrato(id: string) {
     setErro(null)
@@ -122,7 +136,7 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
   }
 
   /** Mudou o que o contrato cita (o pacote, o pagamento, o desconto): ele se monta de novo ao vender. */
-  function esquecerContrato() { setContrato(null); setContratoAssinado(false) }
+  function esquecerContrato() { setContrato(null); setContratoAssinado(false); esquecerVendaDoPacote(branchId, clienteId) }
 
   function vender(resposta: { semVendedor?: boolean; semResponsavel?: boolean; substituirContrato?: boolean } = {}) {
     setErro(recusaDoPagamento(estado, fid.aPagar))
@@ -143,10 +157,13 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
         // A5(b) da 25ª: o "Já assinou: vender" sem a assinatura diz por que não vendeu.
         const aviso = avisoDoJaAssinou(contrato?.id ?? null, r.contratoParaAssinar)
         setPergunta(null); setContratoAssinado(false); setContrato(r.contratoParaAssinar)
+        // A6 da 34ª: o que foi escolhido espera a assinatura, guardado na aba.
+        guardarVendaDoPacote(branchId, clienteId, { pacoteId: pacote.id, estado, desconto, vendedorId, semVendedor: semV, responsavelId })
         if (aviso) setErro(aviso)
         return
       }
       if (r.error) { setErro(r.error); return }
+      esquecerVendaDoPacote(branchId, clienteId)
       envio.renovar()
       router.refresh()
       const docs = r.documentos ?? []
@@ -329,7 +346,7 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
       ) : (
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
         <MotivoDoBotao motivo={pendente || erro ? null : recusaForaDoCampo(estado, fid.aPagar, recusaDoPagamento(estado, fid.aPagar))} />
-        <button type="button" className="btn-secondary" onClick={onFim} disabled={pendente}>Cancelar</button>
+        <button type="button" className="btn-secondary" onClick={() => { esquecerVendaDoPacote(branchId, clienteId); onFim() }} disabled={pendente}>Cancelar</button>
         <button type="button" className="btn-primary" onClick={() => vender()} disabled={pendente || !!conta.recusa || !!fid.recusa || !!recusaDoPagamento(estado, fid.aPagar)}>{pendente ? 'Vendendo…' : `Vender por ${formatBRL(fid.aPagar)}`}</button>
       </div>
       )}

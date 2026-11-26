@@ -75,6 +75,8 @@ export function instrucoesDoCopilot(ctx: TenantContext, extras: {
   unidade: string | null
   /** Os nomes das unidades da pessoa, quando tem mais de uma (EQ1a), a principal primeiro. */
   unidades?: string[]
+  /** A20 da 34ª: as unidades ATIVAS da rede — a que a rede não tem se recusa antes do resto, e a rede de uma só não tem "total da rede" à parte. */
+  unidadesDaRede?: string[]
   pagina: string
   slugDoPortal: string | null
   /** O relógio do portal em que a pessoa está (F62b: `fusoDoPortal`); sem ele, Brasília. */
@@ -91,15 +93,25 @@ export function instrucoesDoCopilot(ctx: TenantContext, extras: {
   ].filter(Boolean).join(' ')
   // EQ1a: a pessoa é da rede inteira OU das unidades marcadas, uma ou mais.
   const varias = ctx.branchId !== null && (extras.unidades?.length ?? 0) > 1
+  const daRede = extras.unidadesDaRede ?? []
+  const emLista = (nomes: string[]) => { const q = nomes.map(u => `“${u}”`); return q.length > 1 ? `${q.slice(0, -1).join(', ')} e ${q[q.length - 1]}` : (q[0] ?? '') }
   const abrangencia = ctx.branchId === null
-    ? 'Ela é da rede inteira (alcança todas as unidades).'
+    ? `Ela é da rede inteira (alcança todas as unidades${daRede.length ? `: ${emLista(daRede)}` : ''}).`
     : varias
       ? `Ela alcança só as unidades ${extras.unidades!.map(u => `"${u}"`).join(', ')} e está agora na "${extras.unidade ?? extras.unidades![0]}" (para gravar, sem a pessoa dizer outra, é na "${extras.unidade ?? extras.unidades![0]}"; para gravar em outra das dela, passe a unidade). As consultas sem unidade (agendamentos, lançamentos, estoque) procuram em todas as unidades dela e dizem quais em "procurouEm": ao não encontrar, diga onde procurou.`
       : `Ela só alcança a unidade "${extras.unidade ?? 'dela'}".`
   // A31 da 32ª (CW-03): a Gilvana pediu o faturamento de Cascavel, e a recusa foi só
   // pelo dinheiro — sem dizer que Cascavel está fora do alcance nem a lista das dela.
   const asDela = (varias ? extras.unidades! : [extras.unidade ?? 'dela']).map(u => `“${u}”`)
-  const foraDoAlcance = ctx.branchId === null ? '' : ` Pedido sobre uma unidade fora dessas (consulta ou gravação, de dinheiro ou não): recuse pelo alcance, com a lista das dela — "Essa unidade está fora do seu alcance. As suas: ${asDela.length > 1 ? `${asDela.slice(0, -1).join(', ')} e ${asDela[asDela.length - 1]}` : asDela[0]}." —, mesmo quando o pedido também esbarra na permissão (diga as duas coisas).`
+  // A20 da 34ª: "Goiânia", que a rede não tem, ouviu primeiro "qual profissional?".
+  const unidadeQueNaoExiste = daRede.length && ctx.branchId === null
+    ? `- Pedido com uma unidade que a rede não tem (as da rede: ${emLista(daRede)}): diga já que a rede não tem essa unidade, com as que tem, antes de perguntar o resto (profissional, procedimento, horário).`
+    : undefined
+  // A20 da 34ª: "não encontrei um total para toda a rede" numa rede de uma unidade.
+  const umaUnidadeSo = daRede.length === 1
+    ? `- A rede tem uma unidade só (${emLista(daRede)}): o número da unidade é o da rede — não diga que não achou o total da rede, nem fale em "por unidade".`
+    : undefined
+  const foraDoAlcance = ctx.branchId === null ? '' : ` Pedido sobre uma unidade fora dessas (consulta ou gravação, de dinheiro ou não): recuse pelo alcance, antes de perguntar o resto, com a lista das dela — "Essa unidade está fora do seu alcance. As suas: ${asDela.length > 1 ? `${asDela.slice(0, -1).join(', ')} e ${asDela[asDela.length - 1]}` : asDela[0]}." —, mesmo quando o pedido também esbarra na permissão (diga as duas coisas).`
   const pagina = contextoDaPagina(extras.pagina)
   const telas = telasDaPessoa(ctx, extras.slugDoPortal)
   // A29 da 26ª: nada de mandar a pessoa a uma tela que ela não tem — o PDV é de quem
@@ -109,6 +121,9 @@ export function instrucoesDoCopilot(ctx: TenantContext, extras: {
   // Q03 (catálogo, 24/11): a vista pessoal (SM2) também no Copilot — só leitura, só as dela.
   const minhaAgenda = vistaPessoal(ctx, 'agenda') !== null
   const minhasComissoes = vistaPessoal(ctx, 'financial') !== null && temRecurso(ctx, 'comissoes')
+  // A19 da 34ª (Decisão C, decisão do Claude, 26/11): "a minha agenda" pelo que a tela dela abre.
+  const temAAgenda = can(ctx, 'agenda', 'VIEW')
+  const atende = !!ctx.providesServices
 
   return [
     // A49 da 24ª (§1, Vocabulário): nada de nome de função ("secretária") para o Copilot.
@@ -116,6 +131,8 @@ export function instrucoesDoCopilot(ctx: TenantContext, extras: {
     'Você ajuda a equipe a consultar e a operar o sistema conversando: agenda, clientes e as tags deles, procedimentos, financeiro, estoque, oportunidades, documentos, o que a Meta cobra no WhatsApp e indicadores.',
     '',
     `${quem}. ${abrangencia}${foraDoAlcance}`,
+    unidadeQueNaoExiste,
+    umaUnidadeSo,
     `As permissões dela (módulo: nível): ${permissoesDaPessoa(ctx)}`,
     `Agora: ${agoraLegivel(new Date(), extras.fuso)}.`,
     pagina ?? '',
@@ -170,6 +187,15 @@ export function instrucoesDoCopilot(ctx: TenantContext, extras: {
     minhaAgenda
       ? '- Ela atende e não tem a Agenda: a Minha agenda (só os horários dela, só para ver) vem de minha_agenda. A agenda dos outros a permissão dela não mostra; agendar, remarcar e cancelar pedem a Agenda.'
       : undefined,
+    temAAgenda && !atende
+      ? '- Ela não atende: não há a agenda DELA. Pedido da própria agenda ("a minha agenda", "os meus atendimentos"): diga que ela não atende e ofereça a agenda da unidade (agendamentos, sem quem atende) — nunca responda como se ela atendesse ("não há agendamentos para você").'
+      : undefined,
+    temAAgenda && atende
+      ? '- "A minha agenda" dela são os agendamentos com ela como quem atende (agendamentos, com o nome dela em profissional).'
+      : undefined,
+    !temAAgenda && !minhaAgenda
+      ? '- A agenda a permissão dela não abre (nem a dela, nem a da unidade): a pedido de agenda, diga "A sua permissão não abre a agenda.", sem listar nada.'
+      : undefined,
     // A31 da 32ª (QV-02): sem o Financeiro e sem comissão no nome dela, o Copilot
     // pedia o Financeiro em Gerenciar para VER as comissões — ver pede o Ver.
     !minhasComissoes && !can(ctx, 'financial', 'VIEW')
@@ -194,6 +220,8 @@ export function instrucoesDoCopilot(ctx: TenantContext, extras: {
     // A33 da 22ª: a lista saía duas vezes, no texto (com "abrir") e no cartão "Agenda".
     '- Quando a consulta devolve "cartaoNaTela", a lista já aparece no cartão, com os links: não a repita item por item no texto. Diga o total, o período e o que pede atenção (o aviso, o que ficou de fora do cartão).',
     '- As tags são filtros que a própria rede cria: você marca e desmarca as que já existem; o sistema nunca põe tag sozinho.',
+    // A20 da 34ª: "quem tem Clientes em Gerenciar cria tag" — tag é configuração da rede (§11, o Heitor, 18/11).
+    '- Marcar ou desmarcar numa cliente uma tag que já existe pede Clientes em Gerenciar. Criar, renomear ou arquivar uma tag é configuração da rede: só a Admin da rede. Nunca diga que quem tem Clientes (ou outro módulo) em Gerenciar cria tag.',
     '- O que você não faz por ferramenta (importar uma planilha de contatos, criar ou renomear tags, configurar comissões, conectar o WhatsApp, emitir ou colher assinatura de documento — é na tela de Documentos —, fechar um plano de tratamento…), explique em uma frase e indique a tela, com o link da lista abaixo.',
     // A24 da 17ª: "abra Financeiro → Comissões" a quem só vê o Financeiro.
     // CY-04 (catálogo, 24/11): a configuração da rede toda é só da Admin da rede (18/11).

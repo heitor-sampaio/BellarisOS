@@ -34,6 +34,8 @@ interface Props {
   forms: ItemDeFicha[]
   /** O planejador de injetáveis fora do plano: o construtor não oferece o campo. */
   semInjetaveis?: boolean
+  /** O editor abriu (true) ou fechou (false) — a aba tira a ficha de saúde da tela (A2 da 34ª). */
+  aoEditar?: (aberto: boolean) => void
 }
 
 type View =
@@ -41,10 +43,11 @@ type View =
   | { mode: 'new' }
   | { mode: 'edit'; form: ExistingForm }
 
-export function SettingsFichas({ forms, semInjetaveis = false }: Props) {
+export function SettingsFichas({ forms, semInjetaveis = false, aoEditar }: Props) {
   const router = useRouter()
-  const [view, setView] = useState<View>({ mode: 'list' })
+  const [view, setViewDaTela] = useState<View>({ mode: 'list' })
   const [busy, setBusy] = useState<string | null>(null)
+  const setView = (v: View) => { setViewDaTela(v); aoEditar?.(v.mode !== 'list') }
 
   function done() {
     setView({ mode: 'list' })

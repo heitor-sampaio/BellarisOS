@@ -20,7 +20,7 @@ import { telefoneDaFichaImportada } from '@/lib/importacao/normalizar'
 import { podeTrocarResponsavel, trocarResponsavelCore } from '@/lib/crm/responsavel'
 import { rotaOportunidade } from '@/lib/rotas'
 import type { ContextoDaFerramenta, FerramentaDeEscrita } from '@/lib/copilot/ferramentas/tipos'
-import { DATA, UUID, dinheiro, fusoDe, hojeNoFuso, resolverMembro, resolverProcedimento, resolverUnidade, rota, texto } from '@/lib/copilot/ferramentas/comum'
+import { DATA, UUID, dinheiro, fusoDe, hojeNoFuso, resolverCliente, resolverMembro, resolverProcedimento, resolverUnidade, rota, texto } from '@/lib/copilot/ferramentas/comum'
 import { CHAVES_DA_VENDA } from '@/lib/pdv/parcelas-da-cliente'
 import { BANDEIRAS, rotuloDaBandeira } from '@/lib/financeiro/bandeiras'
 import { CATEGORIA_COMPRA_DE_ESTOQUE, CATEGORIA_MATERIAL_DE_CONSUMO, ehCompraDeEstoque } from '@/lib/financeiro/categorias'
@@ -546,12 +546,14 @@ export const ajusteDeEstoque: FerramentaDeEscrita<{ produto: string; novoSaldo: 
   },
 }
 
-interface ArgsOportunidade { nome: string; telefone?: string; email?: string; origem?: string; interesse?: string[]; observacao?: string; funil?: string; valor?: number; responsavel?: string }
+interface ArgsOportunidade { nome?: string; cliente?: string; telefone?: string; email?: string; origem?: string; interesse?: string[]; observacao?: string; funil?: string; valor?: number; responsavel?: string }
 interface PayloadOportunidade {
   nome: string; telefone: string | null; email: string | null; origem: string | null; procedureIds: string[]; observacoes: string | null; funnelId: string | null
   valor?: number; responsavelId?: string
   /** D11: as fichas ativas com este telefone — a escolha "mesma:<id>" liga a oportunidade a uma. */
   fichas?: string[]
+  /** D3 da 34ª: a cliente pedida (a ficha achada pela busca) — a oportunidade nasce ligada a ela, como o "Sim" da janela. */
+  clientId?: string
 }
 
 export const criarOportunidade: FerramentaDeEscrita<ArgsOportunidade, PayloadOportunidade> = {
@@ -559,12 +561,14 @@ export const criarOportunidade: FerramentaDeEscrita<ArgsOportunidade, PayloadOpo
   tipo: 'escrita',
   modulo: 'crm', nivel: 'MANAGE',
   recurso: 'oportunidades',
-  descricao: 'Cria uma oportunidade no funil: nome e ao menos um contato (telefone ou e-mail); origem, procedimentos de interesse, observação, funil (nome), valor estimado em reais e responsável (nome de um membro da equipe) opcionais. Nasce na primeira etapa; sem responsável, você é o responsável.',
+  descricao: 'Cria uma oportunidade no funil. De quem já é cliente: passe cliente (o id achado pela busca, o nome ou o telefone) — o nome, o telefone e o e-mail vêm da ficha, e a oportunidade nasce ligada a ela. De quem não é: nome (o da PESSOA, nunca o assunto: "Pacote de drenagem" vai em interesse ou observacao) e ao menos um contato (telefone ou e-mail). Origem, procedimentos de interesse, observação, funil (nome), valor estimado em reais e responsável (nome de um membro da equipe) opcionais. Nasce na primeira etapa; sem responsável, você é o responsável.',
   parametros: z.object({
     // O nome e o e-mail, como a janela: o nome só que exista, o e-mail sem teto (`leads.name` e
     // `leads.email` são text, como na ficha — 20261208000001). A origem tem o do registro
     // (`leads.source`, varchar(60)).
-    nome: texto({ min: 1, seCurto: 'Nome é obrigatório.' }),
+    nome: texto({ min: 1, seCurto: 'Nome é obrigatório.' }).optional(),
+    // D3 da 34ª: a cliente achada (id, nome ou telefone) — o nome e o contato saem da ficha.
+    cliente: texto({ min: 2, max: 120 }).optional(),
     telefone: texto({ min: 8, max: 20, seCurto: TELEFONE_INCOMPLETO }).optional(),
     email: z.string().optional(),
     origem: texto({ max: 60, seLongo: acimaDoRegistro(60, 'caracteres') }).optional(),
@@ -579,7 +583,22 @@ export const criarOportunidade: FerramentaDeEscrita<ArgsOportunidade, PayloadOpo
     responsavel: texto({ min: 2, max: 120 }).optional(),
   }),
   async preparar(c, a) {
-    if (!a.telefone && !a.email) return { erro: 'Qual o telefone ou o e-mail?' }
+    // D3 da 34ª (CX-10): a oportunidade de quem já é cliente é a da ficha — o nome, o telefone e o
+    // e-mail dela, ligada a ela (o "Sim, é a mesma pessoa" da janela). Achar a ficha pede Clientes em Ver.
+    let ficha: { id: string; name: string; phone: string | null; email: string | null } | null = null
+    if (a.cliente) {
+      if (!can(c.ctx, 'clients', 'VIEW')) return { erro: 'Sua permissão não abre as fichas de clientes: diga o nome e o telefone ou o e-mail da pessoa.' }
+      const cl = await resolverCliente(c, a.cliente, { apenasAtivos: true })
+      if ('erro' in cl) return { erro: cl.erro }
+      const contato = await ler(c.admin.from('clients').select('email').eq('id', cl.id).eq('tenant_id', c.ctx.tenantId!).maybeSingle(),
+        'ler o contato da cliente') as { email: string | null } | null
+      ficha = { id: cl.id, name: cl.name, phone: cl.phone, email: contato?.email ?? null }
+    }
+    const nome = (ficha?.name ?? a.nome ?? '').trim()
+    if (!nome) return { erro: 'Nome é obrigatório.' }
+    const telefoneDito = a.telefone ?? ficha?.phone ?? undefined
+    const emailDito = a.email ?? ficha?.email ?? undefined
+    if (!telefoneDito && !emailDito) return { erro: ficha ? `A ficha de ${ficha.name} não tem telefone nem e-mail: qual o telefone ou o e-mail?` : 'Qual o telefone ou o e-mail?' }
     // Escolher o responsável é a mesma trava da tela: CRM em Gerenciar.
     let responsavel: { id: string; name: string } | null = null
     if (a.responsavel) {
@@ -598,14 +617,17 @@ export const criarOportunidade: FerramentaDeEscrita<ArgsOportunidade, PayloadOpo
     }
     // O incompleto é recusado e o número vai no formato do WhatsApp (C28, F70).
     let digitos = ''
-    if (a.telefone) {
-      const t = telefoneParaGravar(a.telefone)
-      if ('error' in t) return { erro: t.error }
-      digitos = t.fone ?? ''
+    if (telefoneDito) {
+      const t = telefoneParaGravar(telefoneDito)
+      if ('error' in t) {
+        // O telefone da ficha que não se reconhece não barra: vai o e-mail dela, se houver.
+        if (a.telefone || !emailDito) return { erro: t.error }
+      } else digitos = t.fone ?? ''
     }
     // D11 da 9ª, como o "Novo lead" (C5, F70): o telefone de uma CLIENTE
-    // pergunta "É a mesma pessoa?"; o "Sim" liga a oportunidade à ficha.
-    const fichas = digitos ? (await fichasDoTelefoneDoLead(c.ctx.tenantId!, digitos)).slice(0, 3) : []
+    // pergunta "É a mesma pessoa?"; o "Sim" liga a oportunidade à ficha. A
+    // cliente pedida já disse quem é (D3 da 34ª): sem a pergunta.
+    const fichas = digitos && !ficha ? (await fichasDoTelefoneDoLead(c.ctx.tenantId!, digitos)).slice(0, 3) : []
     const veNomes = can(c.ctx, 'clients', 'VIEW')
     const procs: { id: string; name: string }[] = []
     for (const nome of a.interesse ?? []) {
@@ -623,9 +645,9 @@ export const criarOportunidade: FerramentaDeEscrita<ArgsOportunidade, PayloadOpo
       resumo: {
         titulo: 'Criar oportunidade',
         linhas: [
-          { rotulo: 'Nome', valor: a.nome.trim() },
+          { rotulo: 'Nome', valor: nome },
           ...(digitos ? [{ rotulo: 'Telefone', valor: telefoneDaFichaImportada(digitos) }] : []),
-          ...(a.email ? [{ rotulo: 'E-mail', valor: a.email.trim() }] : []),
+          ...(emailDito ? [{ rotulo: 'E-mail', valor: emailDito.trim() }] : []),
           ...(procs.length ? [{ rotulo: 'Interesse', valor: procs.map(p => p.name).join(', ') }] : []),
           ...(origem ? [{ rotulo: 'Origem', valor: origem }] : []),
           ...(funil ? [{ rotulo: 'Funil', valor: funil.name }] : []),
@@ -643,7 +665,8 @@ export const criarOportunidade: FerramentaDeEscrita<ArgsOportunidade, PayloadOpo
         } : {}),
       },
       payload: {
-        nome: a.nome.trim(), telefone: digitos || null, fichas: fichas.map(f => f.id), email: a.email?.trim().toLowerCase() || null,
+        nome, telefone: digitos || null, fichas: fichas.map(f => f.id), email: emailDito?.trim().toLowerCase() || null,
+        ...(ficha ? { clientId: ficha.id } : {}),
         origem, procedureIds: procs.map(p => p.id), observacoes: a.observacao?.trim() || null, funnelId: funil?.id ?? null,
         ...(a.valor !== undefined ? { valor: a.valor } : {}),
         ...(responsavel ? { responsavelId: responsavel.id } : {}),
@@ -657,7 +680,7 @@ export const criarOportunidade: FerramentaDeEscrita<ArgsOportunidade, PayloadOpo
     const r = await criarOportunidadeCore(c.admin, c.ctx, {
       nome: p.nome, telefone: p.telefone, email: p.email, origem: p.origem, observacoes: p.observacoes,
       procedureIds: p.procedureIds, funnelId: p.funnelId, valor: p.valor ?? null,
-    }, mesma ? { clientId: mesma } : {})
+    }, mesma ? { clientId: mesma } : p.clientId ? { clientId: p.clientId } : {})
     if ('error' in r) return { erro: r.error }
     revalidar('oportunidades')
     // Como a tela (createLead): nasce de quem criou, e o responsável escolhido

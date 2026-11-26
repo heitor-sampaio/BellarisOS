@@ -169,6 +169,8 @@ interface Props {
    * cadastrada, no período — o total e cada unidade (eram do Fechamento do dia).
    */
   taxasDoPeriodo?: { total: TaxasDoPeriodo; porUnidade: Record<string, TaxasDoPeriodo> }
+  /** D6 da 34ª (MQ-10): quem cadastra a taxa, a quem não cadastra (nulo: a pessoa cadastra). */
+  quemCadastraATaxa?: string[] | null
   /** As parcelas da operadora: todo o em aberto e o que vence no período (D3). */
   parcelasDaOperadora: ParcelaDaOperadora[]
   /** r2-fin-04: o fluxo de caixa dos próximos meses — o do recorte e o de cada unidade. */
@@ -298,7 +300,7 @@ function KpiCard({
 export function AdminFinancialView({
   period, periodLabel, customFrom, customTo,
   totalRevenue, totalExpenses, totalResult, totalConta, totalForaDoLucro, totalCommissions, totalAReceber, totalAReceberEmAberto, totalAReceberSemCliente, totalVencidas, totalConcluidosSemPagamento, totalAPagar, totalAPagarEmAberto = 0, totalMovimentacoes,
-  aReceberDaOperadora, parcelasDaOperadora, fluxoDeCaixa, debitoNoPeriodo = 0, debitoPorUnidade = {}, taxasDoPeriodo,
+  aReceberDaOperadora, parcelasDaOperadora, fluxoDeCaixa, debitoNoPeriodo = 0, debitoPorUnidade = {}, taxasDoPeriodo, quemCadastraATaxa = null,
   totalProximoAReceber = null, totalProximoAPagar = null,
   prevRevenue, prevExpenses,
   branchStats, umaUnidade = false, transactions, soAsVencidas = false, nomeDoCsv = 'lancamentos.csv', branchSlugMap, branches, unidadeInicial = '',
@@ -593,7 +595,7 @@ export function AdminFinancialView({
       nota={<NotaDoVencimento noTopoOEmAberto valor={aReceber} proximo={proximoAReceber} emAbertoTotal={aReceberEmAberto} semCliente={aReceberSemCliente} concluidosSemPagamento={concluidosSemPagamento}
         hrefDaBaixa={naAba ? undefined : daAba('a-receber')} podeDarBaixa={canPay}
         vencidas={vencidas} hrefDasVencidas={naAba && soAsVencidas ? undefined : daAba('a-receber', { aberto: 'vencidas' })} />}
-      dica={<DicaDoVencimento valor={aReceber} emAbertoTotal={aReceberEmAberto} concluidos={(concluidosSemPagamento?.n ?? 0) > 0} semCliente={(aReceberSemCliente ?? 0) > 0} />}
+      dica={<DicaDoVencimento noTopoOEmAberto valor={aReceber} emAbertoTotal={aReceberEmAberto} concluidos={(concluidosSemPagamento?.n ?? 0) > 0} semCliente={(aReceberSemCliente ?? 0) > 0} />}
       icon={<Clock size={16} color="var(--brand)" />}
     />
   )
@@ -611,7 +613,7 @@ export function AdminFinancialView({
         <LinkDasParcelas temParcelas={parcelasVisiveis.length > 0} href={naAba ? undefined : daAba('a-receber')} />
       </>}
       dica={<>
-        <DicaDoVencimento valor={operadora.aReceber} emAbertoTotal={operadora.emAberto}
+        <DicaDoVencimento noTopoOEmAberto valor={operadora.aReceber} emAbertoTotal={operadora.emAberto}
           bruto={{ periodo: operadora.aReceberBruto, emAberto: operadora.emAbertoBruto }} />
         {/* A38 da 11ª: o débito conta como recebido no dia. */}
         <NotaDoDebito debito={statDaUnidade ? debitoPorUnidade[statDaUnidade.id] ?? 0 : debitoNoPeriodo} />
@@ -969,7 +971,7 @@ export function AdminFinancialView({
       {/* -- Movimentações (FI5): o extrato do período, os CSVs e os avisos das taxas (CX6). */}
       {aba === 'movimentacoes' && <>
         {/* CX6: a venda sem taxa e as taxas estimadas do período (eram do Fechamento do dia). */}
-        {taxasDoPeriodo && <AvisosDasTaxas dados={filterBranch === 'all' ? taxasDoPeriodo.total : taxasDoPeriodo.porUnidade[filterBranch]} />}
+        {taxasDoPeriodo && <AvisosDasTaxas dados={filterBranch === 'all' ? taxasDoPeriodo.total : taxasDoPeriodo.porUnidade[filterBranch]} quemCadastra={quemCadastraATaxa} />}
         <div data-aba-do-financeiro="movimentacoes">{tabela('Movimentações')}</div>
       </>}
     </div>

@@ -99,9 +99,13 @@ export function NotaDoVencimento({ valor, proximo, emAbertoTotal, semCliente, co
  * A explicação do "A receber" / "A pagar" — na dica do cartão. O período vale
  * pelo VENCIMENTO; o "Em aberto" soma todos os vencimentos (D-14); na
  * operadora, o líquido (o que ela deposita) e o bruto (A30 da 9ª).
+ * D7 da 34ª (FN-11): no cartão cujo número grande é o em aberto
+ * (`noTopoOEmAberto`), a dica diz isso — dizia "o que vence no período".
  */
-export function DicaDoVencimento({ valor, bruto, emAbertoTotal, concluidos = false, semCliente = false }: {
+export function DicaDoVencimento({ valor, bruto, emAbertoTotal, concluidos = false, semCliente = false, noTopoOEmAberto = false }: {
   valor: number
+  /** O número grande do cartão é o em aberto, de qualquer vencimento (FN-11; A27 da 24ª). */
+  noTopoOEmAberto?: boolean
   bruto?: { periodo: number; emAberto: number }
   emAbertoTotal?: number
   /** O "A receber · em aberto": diz o que é o "Concluídos sem pagamento". */
@@ -111,10 +115,16 @@ export function DicaDoVencimento({ valor, bruto, emAbertoTotal, concluidos = fal
 }) {
   return (
     <span data-dica-do-vencimento>
-      {bruto
-        ? <>O valor é o líquido (o que a operadora deposita), pelo vencimento, no período{bruto.periodo > valor ? <> — {formatBRL(bruto.periodo)} bruto</> : null}.</>
-        : <>O valor é o que vence no período (pelo vencimento).</>}
-      {emAbertoTotal !== undefined && (
+      {noTopoOEmAberto
+        ? bruto
+          ? <>O valor é o líquido (o que a operadora deposita) em aberto, de qualquer vencimento{bruto.emAberto > (emAbertoTotal ?? valor) ? <> — {formatBRL(bruto.emAberto)} bruto</> : null}.</>
+          : <>O valor é o em aberto, de qualquer vencimento.</>
+        : bruto
+          ? <>O valor é o líquido (o que a operadora deposita), pelo vencimento, no período{bruto.periodo > valor ? <> — {formatBRL(bruto.periodo)} bruto</> : null}.</>
+          : <>O valor é o que vence no período (pelo vencimento).</>}
+      {/* A34 de 27/10: o período do cartão é o do vencimento — no em aberto, o do "Vence no período". */}
+      {noTopoOEmAberto && <span style={{ display: 'block', marginTop: 4 }}>O “Vence no período” é pelo vencimento.</span>}
+      {!noTopoOEmAberto && emAbertoTotal !== undefined && (
         <span style={{ display: 'block', marginTop: 4 }}>
           “Em aberto” soma todos os vencimentos, de qualquer mês{bruto ? <> ({formatBRL(bruto.emAberto)} bruto)</> : null}.
         </span>

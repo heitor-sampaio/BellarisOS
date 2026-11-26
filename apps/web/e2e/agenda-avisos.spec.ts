@@ -102,4 +102,23 @@ test.describe.serial('a agenda avisa', () => {
       await expect.poll(async () => grade.evaluate(el => el.scrollTop)).toBeGreaterThan(0)
     })
   })
+
+  // A8 da 34ª: quem tem a Agenda em Gerenciar e abre a tela do atendimento de
+  // quem passou do horário sem chegar (pelo "Em andamento") marca a falta ali.
+  test('a tela do atendimento oferece o "Não compareceu" depois do horário', async ({ browser }) => {
+    const id = await agendar('Faltou', new Date(Date.now() - 5 * 60_000))
+    const quem = await criarMembro(`avf${marca}`, {
+      tenant: rede!.tenantId, rotulo: 'Agenda e atendimento',
+      permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'atendimento', nivel: 'VIEW' }, { modulo: 'clients', nivel: 'VIEW' }],
+    })
+    const ctx = await browser.newContext({ storageState: quem.estado })
+    try {
+      const p = await ctx.newPage()
+      await p.goto(`/${slug}/agenda/${id}`)
+      await p.getByRole('button', { name: 'Não compareceu' }).click()
+      await expect(p.getByRole('alert').filter({ hasText: 'não compareceu às' })).toBeVisible()
+      await p.getByRole('button', { name: 'Confirmar a falta' }).click()
+      await expect.poll(() => statusDe(id)).toBe('NO_SHOW')
+    } finally { await ctx.close(); await quem.limpar() }
+  })
 })

@@ -1774,6 +1774,91 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-26 (6) — A 34ª simulação e as correções dela
+
+O laço segue (o Heitor, 25/11: "quando acabar essa roda já segue as outras e assim vai"). Cinco redes novas, sem conta
+da plataforma (o Heitor, 26/11: "Sem a conta"). Os temas: o primeiro mês de uma rede que nasce vazia (Espaço Margarida,
+Alta Floresta, UTC−4); a matriz de permissões em duas unidades (Rede Ranúnculo, Bauru e Marília); o Copilot como
+secretária no plano ULTRA (Instituto Crisântemo, Anápolis); o financeiro do mês, com taxas, bandeiras, crediário e
+estorno (Ateliê Gazânia, Ponta Grossa); e procedimentos, fichas, fidelidade e o app da cliente (Studio Murta, Vitória da
+Conquista). O dinheiro bateu nos cinco times, centavo a centavo. Foram 9 defeitos confirmados e 2 prováveis, nenhum de
+segurança nem de dinheiro gravado errado. Os dois "Algo deu errado" caíram na troca de build do Railway. Salvo onde se
+diz o contrário, as decisões são do Claude (26/11), tomadas pelos princípios e pelo catálogo.
+
+**O que mudou no sistema.**
+- **Copilot.**
+  - O cartão de agendar e o de remarcar dão os mesmos avisos do modal: fora do horário de quem atende, encaixe e fora
+    da grade, com a mesma função (D1, `lib/copilot/ferramentas/aviso-do-horario.ts`, CX-13).
+  - `criar_oportunidade` aceita a cliente achada e usa o nome e o contato dela; o título fica no título (D3, CX-10).
+  - Quem pede "a minha agenda" recebe a vista que a permissão dá: a agenda da unidade, a Minha agenda ou a recusa (A19,
+    CJ-19).
+  - A unidade que não existe é recusada antes de pedir a profissional, e a tag é da Admin da rede (A20).
+- **Atendimento e agenda.**
+  - Quem tem o Prontuário em Ver lê a Evolução da avaliação (D2).
+  - A ficha lida mostra a data como data (D9, `formatDia`).
+  - A sala escolhida não some quando as salas livres chegam do servidor (D10).
+  - O "Horário livre" da Minha agenda não fica por baixo do cartão curto (D11).
+  - O botão da ficha do procedimento diz qual ficha salva (A5).
+  - O "Não compareceu" está também na tela do atendimento aberta pela Agenda Dia (A8, `lib/agenda/falta.ts`).
+- **Vendas e financeiro.**
+  - O app mostra o valor cobrado inteiro do crediário, não só a parte paga (D4).
+  - O aviso de venda sem taxa diz quem cadastra a quem não cadastra (D6, MQ-10).
+  - A dica do "A receber" diz que o número é o em aberto, de qualquer vencimento (D7, FN-11).
+  - A venda do pacote sobrevive à assinatura do contrato (A6).
+  - O nome longo cabe numa linha no gráfico dos Relatórios (A22).
+  - O cartão do pacote no app conta a sessão agendada (A23, AG-56).
+- **Relatórios.** A rede de uma unidade não vê o "por unidade" (D5, UU-01).
+- **Configurações.**
+  - O Geral virou três cartões com um Salvar só (A1).
+  - As Fichas têm um salvamento só (A2, `aba-de-fichas.tsx`).
+  - O Pix ganhou rótulo próprio nas taxas (A3, em parte; a ordem dos cartões é a R21).
+  - A aba inicial é a primeira que a pessoa vê (A10).
+  - O termo do procedimento não aparece de novo em "Outros documentos" (A12).
+  - O formulário de pacote diz "Novo pacote" (A14).
+- **Equipe, Cargos e Auditoria.**
+  - O modelo semeado nasce no nível que o módulo oferece. Os cargos gravados num nível que o módulo não tem passam ao
+    que a tela mostra (D8, `20261213500001`; na produção, 91 linhas do Copilot, 2 das Automações e 3 do Marketing).
+  - Cargos: o cargo novo é o selecionado (A13).
+  - Equipe: o chip da venda cabe (A11); a própria Admin da rede vê a recusa ao lado do seletor e o "Salvo." (A15).
+  - Desligar as 24 horas vale para todos os dias (A24).
+  - Salvar o cargo sem mexer nas abas não registra mudança nelas (A26, `20261213500003`).
+  - A sessão do pacote agendada pela equipe sai como "Agendou a sessão N do pacote", e não como um termo cancelado
+    pela cliente (A21, `20261213500002`).
+- **Não eram defeito:** A7, A9, A18, o "Salvar taxas" e a B13 refeita.
+
+**Testes alterados ou apagados, com a regra:**
+- `e2e/financeiro-cartao-por-bandeira.spec.ts` (~356): o aviso de taxa a quem não cadastra diz quem cadastra, e não o
+  caminho de Configurações. A regra é a do Heitor de 18/11 ("Configuração da rede toda só pela conta admin"). A parte de
+  dizer os nomes vem da A5 da 16ª (decisão do Claude).
+- Os títulos de quatro E2E novos perderam o nome da rodada.
+
+**Sugestões novas:** nº 110–121 (`docs/sugestoes-de-funcionalidades.md`). A nº 117 virou defeito e foi feita (A23).
+
+**A completa** (contra o build): 2.665 casos passaram e 3 falharam. Duas falhas eram regressões desta rodada e foram
+corrigidas no código, sem mexer nos testes antigos:
+- A dica do "A receber" (D7) tinha perdido o "pelo vencimento" que o A34 de 27/10 exige. Agora diz o em aberto e que o
+  "Vence no período" é pelo vencimento.
+- O texto das tags do Copilot (A20) apontava "Configurações → Tags" a quem não abre a tela. O caminho saiu do texto.
+- A terceira (o segundo ponto do planejamento de injetáveis) passou sozinha: foi instabilidade de carga.
+Os 15 specs da R20, da R21 e das falhas passaram contra o build novo.
+
+**Na produção:** `20261213500001`, `500002` e `500003`, conferidas depois (nenhum Gerenciar sobrando nos módulos que
+só vão até Ver; o semear no Ver; o salvar da matriz sem recriar as abas; os 3 gatilhos de package_sessions).
+
+**Divergência registrada:** PT-12 (`docs/catalogo/atendimento.md`).
+
+**As respostas do Heitor na página (26/11):**
+- **R20** ("Escrever \"1x\" no crédito à vista (a proposta)"): o pagamento feito no crédito à vista se chama
+  "Crédito 1x" ("Cartão de crédito 1x" no Fechamento e no CSV). O banco grava o à vista com as vezes nulas (nenhum
+  lançamento da produção tem `cartao_vezes = 1`; 22 têm nulo), e o nulo passa a valer 1x em `rotuloDaForma`. A forma a
+  escolher não leva vezes e segue "Crédito". O combinado antes de pagar segue "à vista". A Auditoria, quando não leu o
+  lançamento, não diz as vezes. Regra FC-15a.
+- **R21** ("Subir as taxas para o começo (a proposta)"): Configurações → Comissões e taxas começa pelas taxas da
+  maquininha. A opção "Taxa da maquininha do pagamento" perdeu o "(tabela abaixo)". Regra CM-01a; a trava é
+  `tests/comissoes-taxas-no-comeco.test.ts`.
+- Testes alterados por elas: `tests/financeiro-formas.test.ts` (o crédito com as vezes nulas e o 1x, com a bandeira,
+  esperam "1x": R20) e `e2e/comissoes-configuracao.spec.ts:104` (o rótulo sem "(tabela abaixo)": R21).
+
 ### 2026-11-26 (5) — As respostas R16 a R18 e "intuitivo não é explicativo"
 
 As respostas do Heitor na página, 26/11.

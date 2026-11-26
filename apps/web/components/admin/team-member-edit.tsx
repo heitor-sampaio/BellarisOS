@@ -170,6 +170,7 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, unidadesDeQue
   useEffect(() => {
     if (!sucesso) return
     if (avisoAoSalvar) toast.warning(avisoAoSalvar)
+    else toast.success('Salvo.') // A15 da 34ª: a janela fechava sem retorno.
     onFechar()
   }, [sucesso, avisoAoSalvar, onFechar])
   // O cargo que fica (o escolhido, ou o travado) não abre nada: a janela diz, à vista.
@@ -217,10 +218,9 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, unidadesDeQue
                       carregamento" e o acesso da Admin da rede moram na dica (2026-11-16). */}
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
                     <label className="overline" htmlFor={`tme-role-${member.id}`}>Cargo</label>
-                    <Dica rotulo="Sobre a escolha do acesso">
-                      {cargoFixo ? (
-                        <span style={{ display: 'block' }}>Você não muda o próprio cargo de {cargoFixo.label}: {fala('outra Admin da rede muda.')}</span>
-                      ) : cargoTravado ? (
+                    {/* A15 da 34ª: o porquê do cargo da própria Admin saiu da dica para junto do seletor. */}
+                    {!cargoFixo && <Dica rotulo="Sobre a escolha do acesso">
+                      {cargoTravado ? (
                         <span data-cargo-travado style={{ display: 'block' }}>{cargoTravado}</span>
                       ) : (
                         <>
@@ -233,7 +233,7 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, unidadesDeQue
                           <span style={{ display: 'block' }}>A troca de cargo vale no próximo carregamento — não é preciso sair e entrar.</span>
                         </>
                       )}
-                    </Dica>
+                    </Dica>}
                   </span>
                   {cargoFixo ? (
                     <>
@@ -242,6 +242,9 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, unidadesDeQue
                       <select id={`tme-role-${member.id}`} className="field" value={cargoFixo.id} disabled>
                         <option value={cargoFixo.id}>{cargoFixo.label}</option>
                       </select>
+                      <p data-cargo-fixo style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+                        Você não muda o próprio cargo de {cargoFixo.label}: {fala('outra Admin da rede muda.')}
+                      </p>
                     </>
                   ) : cargoTravado ? (
                     <>

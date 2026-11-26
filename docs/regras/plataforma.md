@@ -228,7 +228,12 @@ um muro que não depende de cada trava do código.
   atalho fica marcado (`aria-pressed`) e diz "Ligado. Toque de novo para
   voltar ao horário de antes." (`[data-desfazer-24-horas]`); o segundo toque
   devolve o horário de antes do atalho. Prova:
-  `e2e/configuracoes-atritos-da-12.spec.ts` ("A1").
+  `e2e/configuracoes-atritos-da-12.spec.ts` ("A1"). Sem o horário de antes
+  (o horário já veio em 24 h — o da pessoa numa unidade aberta 24 horas),
+  desligar vale para todos os dias: o dia em 24 h na base sai das 24 h, o dia
+  com horário volta a ele, o fechado fica fechado (`aoDesligarAs24Horas`; A24
+  da 34ª, decisão do Claude, 26/11 — voltava às 24 h da unidade, e nada
+  mudava). Prova: `tests/horario-desligar-as-24-horas.test.ts`.
 - **O endereço que se dá à cliente é o do APP DA CLIENTE, inteiro** (A4 da
   6ª simulação, 2026-11-04; princípio 3): Configurações → Geral mostrava como
   "Endereço do portal" o identificador da rede (`/{tenants.slug}`), que não
@@ -864,7 +869,14 @@ auditoria das regras, pergunta 8: "só pela conta admin"; antes, H7 de
     `retomarImportacao`; a aba está em `ABAS_DA_REDE_TODA`). Prova:
     `e2e/permissoes-f70.spec.ts` ("C73").
 - Sem aba pedida, quem não é a Admin da rede abre Configurações na primeira aba que
-  é DELA (a Unidade, no portal da unidade).
+  é DELA (a Unidade, no portal da unidade). "Primeira" é na ordem da TELA, a
+  dos grupos (`abaInicial`, `lib/configuracoes/abas.ts`): a Admin da rede abre
+  em Geral, não em Unidades (A10 da 34ª simulação; decisão do Claude, 26/11).
+- **Configurações → Geral são três cartões e um Salvar** (A1 da 34ª
+  simulação; decisão do Claude, 26/11, princípio 7): "Dados da rede" (nome,
+  documento, contato, o plano), "App da cliente" (o endereço, o prazo do
+  portal, o que a cliente avalia, a validade do plano proposto) e "Pacotes"
+  (o pacote em aberto e o vencido). O "Dados da rede" guardava os três.
 - **Sem Configurações em Gerenciar, a tela diz por que só aquelas abas** (27ª,
   decisão do Claude pelo princípio 7: quem só tinha a LGPD via uma aba, sem
   saber por quê): "Você vê a aba LGPD (vem de Prontuário em Gerenciar). As
@@ -1015,6 +1027,11 @@ auditoria das regras, pergunta 8: "só pela conta admin"; antes, H7 de
   além do Ver; o que está gravado assim vale como Ver (`nivelAceito`,
   `lib/permissions.ts`: a tela mostra, o salvar grava e o "cargo acima"
   compara "Ver"). Prova: `tests/cargos-automacoes-e-marketing-so-ver.test.ts`.
+  **E o que se grava é o que a tela mostra** (D8 da 34ª, princípio 3): os
+  modelos nascem num nível que o módulo oferece (o Gerente nascia com o
+  Copilot em Gerenciar), e o Gerenciar gravado nesses módulos passou a Ver
+  (migration `20261213500001`: 91 linhas do Copilot, 2 das Automações e 3 do
+  Marketing, em 26/11). Prova: `tests/cargos-modelo-nos-niveis-do-modulo.test.ts`.
 - **O Gerente modelo nasce com Configurações em Gerenciar** (D15 da 6ª
   simulação, 2026-11-04; princípio 1, o padrão sensato é o que a H7
   descreve): sem o módulo, quem tinha o Gerente numa unidade só não chegava à aba
@@ -1075,6 +1092,13 @@ abaixo entraram na F70, 2026-11-12):
   quando o RÓTULO já existe na rede (sem diferença de acento e maiúscula).
   Prova: `tests/cargos-duplicar-chave-livre.test.ts`,
   `tests/cargos-criar-chave-livre.test.ts`.
+  **Salvar sem mudar as abas não as recria** (A26 da 34ª, princípio 3):
+  `salvar_matriz_do_cargo` tira só a aba desmarcada e põe só a nova — cada
+  "Salvar acessos" saía na Auditoria como "Mudou os acessos (N abas de
+  relatório…)" (migration `20261213500003`). Prova:
+  `tests/cargos-salvar-sem-mudar-as-abas.test.ts`. **Com o "Novo" aberto, o
+  selecionado é o novo** (A13 da 34ª): nenhum cartão da lista fica realçado
+  enquanto se dá o nome. Prova: `tests/cargos-novo-e-o-salvo-da-equipe.test.ts`.
 - **O "Não definido" se dá pela Equipe, e não abre nada** (item 20 dos itens
   de escopo, o Heitor, 18/11: "pode criar, e quem tem cargo não definido não
   tem permissão de nada"). O cargo de sistema `NAO_DEFINIDO` aparece por
@@ -1305,7 +1329,13 @@ de uma unidade"):**
   aparece em Financeiro → Comissões." (`[data-comissao-em-aberto]`) — a
   comissão não se repassa (o repasse dela é a sugestão 46).
   Na aba Unidades, a unidade sem cidade diz "Sem cidade: complete o endereço."
-  (A19). Prova: `tests/atritos-da-17-cadastros.test.ts`.
+  (A19). Prova: `tests/atritos-da-17-cadastros.test.ts`. **A 34ª** (A15, A11;
+  `tests/cargos-novo-e-o-salvo-da-equipe.test.ts`,
+  `tests/equipe-chip-da-venda-cabe.test.ts`): o seletor de cargo travado da
+  própria Admin da rede diz à vista "Você não muda o próprio cargo de Admin da
+  rede: outra Admin da rede muda." (`[data-cargo-fixo]`; estava só na dica), e
+  salvar a edição do membro confirma "Salvo." (a janela fechava sem retorno); o
+  chip da comissão de venda leva o texto inteiro em duas linhas (300 px).
 - **A 20ª simulação** (`tests/atritos-da-20-configuracoes.test.ts`): o cargo
   escolhido fica no endereço (`?cargo=`), e o recém-criado continua escolhido
   ao recarregar (`cargoEscolhido`, A18); o resumo da comissão aparece uma vez,
@@ -1782,6 +1812,15 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
       agora pelo id da autorização (`contasDasAutorizacoes`,
       `lib/auditoria/contas-das-autorizacoes.ts`); sem ela, "numa conta da
       equipe" (A9). Prova: `tests/auditoria-autorizacao-do-suporte.test.ts`.
+  - **A sessão do pacote agendada** (A21 da 34ª, decisão do Claude, 26/11;
+    princípio 3): ligar o agendamento à sessão fecha o termo do agendamento
+    (`documentos_da_sessao_de_pacote`: os documentos são os do pacote), e a
+    gravação dizia "Cancelou o documento Termo… — Cliente". O fato é "Agendou
+    a sessão 1 do pacote X — Cliente"; o documento fechado fica no detalhe.
+    Quem agiu é o dono da gravação (no caso da 34ª, a própria cliente, pelo
+    app). O gatilho de `package_sessions` passa a guardar o `appointment_id`
+    (só o id), e a sessão desligada é "Desmarcou a sessão…" (migration
+    `20261213500002`). Prova: `tests/auditoria-a-sessao-do-pacote-agendada.test.ts`.
   - Prova: `tests/atritos-da-15.test.ts`, `e2e/auditoria-atritos-da-15.spec.ts`.
 - **A falha do registro não derruba a gravação.** O gatilho segura o erro,
   grava uma linha `incompleto` (quando acha a rede) e deixa um WARNING no log:

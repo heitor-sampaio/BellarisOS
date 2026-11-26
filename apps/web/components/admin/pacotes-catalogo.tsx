@@ -228,6 +228,8 @@ function Formulario({ inicial, procedimentos, documentos, podeComissao, aoTermin
   return (
     <div role="group" aria-label={r.id ? 'Editar pacote' : 'Novo pacote'}
       style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 12, borderRadius: 'var(--radius-field-token)', background: 'var(--bg-app)', border: '1px solid var(--border)' }}>
+      {/* A14 da 34ª (princípio 7): o formulário diz o que é, como os outros cadastros. */}
+      <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>{r.id ? 'Editar pacote' : 'Novo pacote'}</h3>
       <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         <span style={rotulo}>Nome</span>
         <input className="field" aria-label="Nome do pacote" value={r.name} onChange={e => mudar({ name: e.target.value })} placeholder="Ex.: Protocolo facial" />

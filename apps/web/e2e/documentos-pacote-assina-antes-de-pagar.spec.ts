@@ -187,3 +187,27 @@ test('a tela da venda mostra o contrato e o "Colher assinatura" antes do pagamen
     await expect(p.getByRole('heading', { name: NOME.contrato })).toBeVisible()
   })
 })
+
+// A6 da 34ª (princípio 7): depois de assinar o contrato, a venda voltava zerada (a aba, quem vendeu, a
+// forma). O que foi escolhido espera a assinatura guardado na aba do navegador — e volta ao recarregar.
+test('a venda que espera o contrato volta como estava depois de recarregar', async ({ browser }) => {
+  const cliente = await novaCliente('Tela ab')
+  await como(browser, caixa!.estado, async p => {
+    const dlg = await abrirVendaNoPdv(p, `/${slug}`, cliente)
+    const aba = dlg.getByRole('button', { name: 'Pacote', exact: true })
+    if (await aba.count()) await aba.click()
+    await dlg.getByLabel('Pacote', { exact: true }).selectOption(pacote)
+    await pagoNoPix(dlg)
+    await euVendi(dlg)
+    const vendedor = await dlg.getByLabel('Quem vendeu').inputValue()
+    await dlg.getByRole('button', { name: /^Vender por/ }).click()
+    await expect(dlg.locator('[data-contrato-antes-de-vender]')).toBeVisible()
+    await p.reload()
+    const venda = p.getByRole('region', { name: 'Vender' })
+    await expect(venda.getByLabel('Pacote', { exact: true }), 'o pacote escolhido').toHaveValue(pacote)
+    await expect(venda.getByLabel('Quem vendeu'), 'quem vendeu').toHaveValue(vendedor)
+    await expect(venda.getByRole('radiogroup', { name: /Forma de pagamento/ }).getByRole('radio', { name: 'Pix', exact: true }), 'a forma')
+      .toHaveAttribute('aria-checked', 'true')
+    expect(await vendidosDe(cliente), 'nada se vendeu').toEqual([])
+  })
+})

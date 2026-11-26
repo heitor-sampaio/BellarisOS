@@ -44,6 +44,22 @@ test('a aba Geral mostra os dados da rede e salva a edição', async ({ page }) 
   }
 })
 
+test('Geral separa os dados da rede, o app da cliente e os pacotes, cada um no seu cartão', async ({ page }) => {
+  await page.goto('/admin/settings?tab=general')
+  const rede = page.locator('[data-cartao-da-geral="rede"]')
+  const app = page.locator('[data-cartao-da-geral="app"]')
+  const pacotes = page.locator('[data-cartao-da-geral="pacotes"]')
+  await expect(rede.locator('input[name="name"]')).toBeVisible()
+  await expect(rede.locator('input[name="portal_prazo_alteracao_horas"]')).toHaveCount(0)
+  await expect(app.getByRole('heading', { name: 'App da cliente' })).toBeVisible()
+  await expect(app.locator('input[name="portal_prazo_alteracao_horas"]')).toBeVisible()
+  await expect(app.locator('input[name="plano_validade_dias"]')).toBeVisible()
+  await expect(pacotes.getByRole('heading', { name: 'Pacotes' })).toBeVisible()
+  await expect(pacotes.locator('select[name="pacote_vencido_cancela"]')).toBeVisible()
+  // Um Salvar para os três.
+  await expect(page.getByRole('button', { name: 'Salvar', exact: true })).toHaveCount(1)
+})
+
 test('documento com máscara é gravado só com os dígitos', async ({ page }) => {
   const db = banco()
   const { data: antes } = await db.from('tenants').select('id, document').eq('id', await tenantId()).single()

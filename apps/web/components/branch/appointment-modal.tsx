@@ -9,6 +9,7 @@ import { GradeDeHorarios } from '@/components/shared/grade-de-horarios'
 import { gradeDoCheckout } from '@/lib/checkout/grade-de-horarios'
 import { ocupanteDoHorario } from '@/lib/agenda/horario-livre'
 import type { SalaParaAgendar } from '@/lib/appointments/salas'
+import { salasParaOferecer } from '@/lib/agenda/salas'
 import { creditosParaAgendar } from '@/actions/creditos'
 import { formatBRL, maskPhone, maskTelefoneDigitando, telefoneDoCadastro, temDigitosDeMais } from '@estetica-os/utils'
 import type { CreditoParaAgendar } from '@/lib/creditos/credito'
@@ -372,12 +373,13 @@ export function AppointmentModal({
   // antes dela gravava sem sala, e a janela logo mostrava a sugerida. O
   // Confirmar espera a lista do horário — o que a janela mostra é o que grava.
   const carregandoSalas = temSalas && !!unidadeId && !!scheduledAtUTC && salasDoServidor?.chave !== chaveDasSalas
-  const salasOferecidas: SalaParaAgendar[] = salasDoServidor?.chave === chaveDasSalas
-    ? salasDoServidor.salas
-    : dados.rooms.map(r => ({ id: r.id, name: r.name, livre: true }))
   // `null` = ninguém escolheu: vale a sugerida. A escolhida que deixou de
   // servir (outro procedimento) volta a "sem sala".
   const [salaEscolhida, setSalaEscolhida] = useState<string | null>(null)
+  // D10 da 34ª: esperando a lista do horário, só a já escolhida (eram todas as
+  // da unidade, como livres — e a que não serve sumia quando a lista chegava).
+  const salasOferecidas: SalaParaAgendar[] = salasParaOferecer(dados.rooms,
+    salasDoServidor?.chave === chaveDasSalas ? salasDoServidor.salas : null, salaEscolhida)
   const salaId = salaEscolhida !== null
     ? (salaEscolhida === '' || salasOferecidas.some(s => s.id === salaEscolhida) ? salaEscolhida : '')
     : (salasDoServidor?.chave === chaveDasSalas

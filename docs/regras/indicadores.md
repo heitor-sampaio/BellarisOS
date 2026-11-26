@@ -1014,7 +1014,10 @@ rede é "Visão geral" (sem "N unidades"), sem o "Ranking de unidades", com
 "Hoje" e "Aproveitamento" (era "Ocupação"; ind-13, 2026-11-02: a
 ocupação da unidade é outra conta — conta outra, nome outro); o financeiro da rede sem "Por unidade", "Total rede" e o
 filtro de unidade; Relatórios com o nome da unidade no lugar de "Rede" e sem
-"Faturamento por Unidade" e "Saúde do Estoque por Unidade"; o estoque sem
+"Faturamento por Unidade" (também o "— Período Atual/Anterior" da aba
+Financeiro), "Comparativo por Unidade" e "Saúde do Estoque por Unidade" — nos
+Relatórios da rede e nos da unidade (D5 da 34ª: a página da unidade passa
+`redeTemUmaUnidade`); o estoque sem
 "Consolidado / Por unidade" e "TOTAL REDE"; o portal da unidade sem "Voltar
 para a rede" nem o seletor de unidade. Os números não mudam — só o que só
 faz sentido com duas. Seletor de unidade que já some com `length > 1` (agenda

@@ -36,6 +36,15 @@ export function textoDasRestantes(restantes: number, agendadas: number): string 
 }
 
 /**
+ * O cartão do pacote no Início do app (AG-56): "0 de 3 sessões realizadas ·
+ * restam 3 · 1 agendada". A agendada não está "para agendar".
+ */
+export function textoDoPacoteNoApp(realizadas: number, total: number, agendadas: number): string {
+  const base = `${realizadas} de ${total} sessões realizadas · restam ${Math.max(0, total - realizadas)}`
+  return agendadas > 0 ? `${base} · ${agendadasTexto(agendadas)}` : base
+}
+
+/**
  * O valor do pré-pago no card "Procedimentos pagos" da ficha (D8 da 31ª; PP-03:
  * "a venda passa a valer o vendido menos as unidades canceladas"; princípio
  * 3). A ficha seguia "R$ 340,00" depois de cancelar uma das duas sessões e

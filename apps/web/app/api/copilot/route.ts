@@ -170,7 +170,8 @@ export async function POST(req: NextRequest) {
           ctx.branchId
             ? ler(admin.from('branches').select('name').eq('id', ctx.branchId).maybeSingle(), 'ler a unidade') as Promise<{ name: string } | null>
             : Promise.resolve(null),
-          ctx.unidades && ctx.unidades.length > 1 ? getCachedTodasAsUnidades(ctx.tenantId!) : Promise.resolve([]),
+          // A20 da 34ª: as unidades da rede também vão ao prompt (a que a rede não tem se recusa antes do resto).
+          getCachedTodasAsUnidades(ctx.tenantId!),
         ])
         // O relógio do portal (F62b): o "Agora" e o "amanhã" são os da unidade.
         const fuso = await fusoDoPortal({ ctx, admin, pagina, slugDoPortal })
@@ -185,7 +186,8 @@ export async function POST(req: NextRequest) {
           mexeNaConfigDaRede(ctx) ? undefined : quemMudaAsComissoes(ctx.tenantId!).catch(() => undefined),
           can(ctx, 'financial', 'MANAGE') ? undefined : quemTemOFinanceiroEmGerenciar(ctx).catch(() => undefined),
         ])
-        const instrucoes = instrucoesDoCopilot(ctx, { rede: rede?.nome ?? null, unidade: unidade?.name ?? null, unidades, pagina, slugDoPortal, fuso, quemMudaAsComissoes: quemMuda, quemMudaAComissaoDasPessoas })
+        const unidadesDaRede = todasAsUnidades.filter(u => u.is_active).map(u => u.name)
+        const instrucoes = instrucoesDoCopilot(ctx, { rede: rede?.nome ?? null, unidade: unidade?.name ?? null, unidades, unidadesDaRede, pagina, slugDoPortal, fuso, quemMudaAsComissoes: quemMuda, quemMudaAComissaoDasPessoas })
         const disponiveis = ferramentasDoCargo(ctx)
         const ferramentas = paraOModelo(disponiveis)
         const cf = { ctx, admin, pagina, slugDoPortal, conversaId: conversa.id }

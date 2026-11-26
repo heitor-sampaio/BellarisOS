@@ -1,4 +1,4 @@
-import { resumoDoHorario, type Intervalo } from '@/lib/agenda/horario'
+import { HORARIO_PADRAO, periodoAoAbrirODia, resumoDoHorario, type Horario, type Intervalo } from '@/lib/agenda/horario'
 
 /**
  * O horário do editor em texto, à vista antes de salvar (A25 da 19ª
@@ -19,4 +19,17 @@ export function resumoDoEditorDeHorario(dias: Record<string, Intervalo[] | undef
   const fecha = fechados.length
     ? `. ${(junto(fechados).charAt(0).toUpperCase())}${junto(fechados).slice(1)} ${fechados.length === 1 ? 'fechado' : 'fechados'}` : ''
   return `Fica assim: ${abertos.join('; ')}${fecha}`
+}
+
+/**
+ * Desligar o "Aberta 24 horas, todos os dias" sem o horário de antes do atalho
+ * (o horário já veio em 24 h — o da unidade aberta 24 horas). A24 da 34ª
+ * simulação (princípio 7): voltava ao da base, 24 h de novo, e nada mudava.
+ * Vale para todos os dias: o dia em 24 h na base sai das 24 h
+ * (`periodoAoAbrirODia`, sem o dia inteiro); o dia com horário volta a ele; o
+ * fechado na base fica fechado.
+ */
+export function aoDesligarAs24Horas(base: Horario | null | undefined): Record<string, Intervalo[]> {
+  const h = base ?? HORARIO_PADRAO
+  return Object.fromEntries(NOMES.map(([d]) => [d, (h.dias[d] ?? []).length ? periodoAoAbrirODia(h, d, { semDiaInteiro: true }) : []]))
 }

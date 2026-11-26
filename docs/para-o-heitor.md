@@ -605,3 +605,30 @@ Testes alterados ou apagados, com a regra que mudou:
 - `tests/documentos-assinar-sem-permissao.test.ts:48`: o nome "Dispensar documentos" (R19).
 - Apagados `tests/relatorios-o-que-o-recorte-e-o-caixa-somam.test.ts` e `tests/agenda-lista-vazia-diz-o-encaixe.test.ts`,
   e um caso de `tests/registro-travado.test.ts`: travavam as notas que saíram (a sua fala de 26/11).
+
+## 15. A 34ª simulação (26/11)
+
+Cinco redes novas, sem a conta da plataforma. O dinheiro das cinco bateu em todas as telas. Foram 9 defeitos e 2
+prováveis, nenhum de segurança nem de dinheiro gravado errado, e todos foram corrigidos. O resumo está no DEVLOG
+(26/11, entrada 6).
+
+O que você precisa saber:
+- **O Copilot agendava fora do horário sem avisar.** O modal da agenda avisa e o Copilot não avisava. Agora o cartão
+  do Copilot dá os mesmos avisos, pela mesma função.
+- **Um modelo de cargo nascia com o Copilot em "Gerenciar".** O módulo só vai até "Ver". Os cargos gravados assim
+  passam ao nível que a tela já mostrava (na produção, 91 linhas do Copilot, 2 das Automações e 3 do Marketing). O
+  acesso das pessoas não muda.
+- **Um teste existente foi alterado:** `e2e/financeiro-cartao-por-bandeira.spec.ts` (perto da linha 356). Quem não
+  cadastra a taxa recebia o caminho "Configurações → Comissões e taxas", que não abre. Agora o aviso diz quem cadastra.
+  - A regra é a sua de 18/11: "Configuração da rede toda só pela conta admin".
+  - A parte de dizer os nomes é minha (A5 da 16ª).
+  - Se a sua fala de 18/11 não bastar para mudar este teste, a alteração volta.
+- **Uma divergência ficou registrada no catálogo (PT-12):** a ficha vencida vem preenchida com as respostas antigas.
+
+As suas respostas R20 e R21 (26/11) já estão no sistema:
+- **R20:** o crédito à vista pago diz "Crédito 1x". Os botões de escolher a forma continuam "Crédito".
+  - O banco grava o à vista sem as vezes (nulo). Então o nulo passou a valer 1x no nome.
+  - Teste alterado pela sua resposta: `tests/financeiro-formas.test.ts`.
+- **R21:** Comissões e taxas começa pelas taxas da maquininha.
+  - A opção "Taxa da maquininha do pagamento" perdeu o "(tabela abaixo)".
+  - Teste alterado pela sua resposta: `e2e/comissoes-configuracao.spec.ts:104`.

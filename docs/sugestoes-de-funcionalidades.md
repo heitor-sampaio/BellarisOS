@@ -19,9 +19,9 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 6 | A cliente confirmar presença pelo app antes do atendimento | 27ª, D01; item 7 da 25ª, 20 da 26ª |
 | 7 | As avaliações das clientes numa tela própria (hoje só na ficha) | 27ª (Time D) |
 | 8 | Crédito pré-pago também de produto (hoje só de procedimento) | 27ª (Time D) |
-| 9 | O de → para da etapa do funil na Auditoria | 27ª (Time E); 31ª (também a regra de comissão: procedimento, quem e valor, A9); 32ª, Time A |
+| 9 | O de → para da etapa do funil na Auditoria | 27ª (Time E); 31ª (também a regra de comissão: procedimento, quem e valor, A9); 32ª, Time A; 34ª, Time D (a maquininha e a regra de comissão, Leopoldina) |
 | 10 | Ranking por quem vendeu nos Relatórios | 27ª (Time E) |
-| 11 | Outra base de CEP (o 66035-000 não foi encontrado; na 28ª também 76804-000, 74210-000 e 64049-000) | 27ª, A; A37 da 26ª; 28ª, A, B e C; 31ª; 32ª, Time E |
+| 11 | Outra base de CEP (o 66035-000 não foi encontrado; na 28ª também 76804-000, 74210-000 e 64049-000) | 27ª, A; A37 da 26ª; 28ª, A, B e C; 31ª; 32ª, Time E; 34ª, Times A, C e E (78580-000 sem logradouro, 75110-000 e 45028-000) |
 | 12 | Uma resposta da ficha de saúde que a rede marca como alerta (ex.: "Grávida = Sim"), além da alergia | 28ª, C10 (ligada à nº 4) |
 | 13 | Comparar as fotos Antes e Depois lado a lado | 28ª, C07 |
 | 14 | Os pontos e as recompensas da cliente na tela do atendimento | 28ª, Time E |
@@ -31,10 +31,10 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 18 | O pacote, o crédito e a dívida da cliente no cartão do agendamento | 28ª, Time B |
 | 19 | O lote do produto na comanda e no recibo | 28ª, Time A |
 | 20 | Dizer a quem só vê o Estoque quem registra a perda | 28ª, Time A |
-| 21 | Cadastro de fornecedor (com CNPJ), usado no estoque e nas despesas | 28ª, Times A e B; 31ª (com a marca e o custo padrão no cadastro do produto) |
-| 22 | O fornecedor e a forma na lista "A pagar" | 28ª, Time B; 31ª (ligada à nº 21) |
+| 21 | Cadastro de fornecedor (com CNPJ), usado no estoque e nas despesas | 28ª, Times A e B; 31ª (com a marca e o custo padrão no cadastro do produto); 34ª, Times C e D |
+| 22 | O fornecedor e a forma na lista "A pagar" | 28ª, Time B; 31ª (ligada à nº 21); 34ª, Times C e D |
 | 23 | Mostrar a linha de comissão de R$ 0 (atendimento pago com voucher) | 28ª, E03 |
-| 24 | Importar a coluna "origem" da planilha sem criar oportunidade | 28ª, Times A, B, D e E |
+| 24 | Importar a coluna "origem" da planilha sem criar oportunidade | 28ª, Times A, B, D e E; 34ª, Times B, C, D e E |
 | 25 | O telefone da rede como padrão no da unidade, no /setup | 28ª, Time E |
 | 26 | Vender o pacote pela internet ou pelo app da cliente | pergunta do catálogo de Vendas, decidida em 25/11 |
 | 27 | O botão "Desativar produto" na tela do Estoque (a action já existe) | pergunta do catálogo do Atendimento, decidida em 25/11 |
@@ -46,12 +46,12 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 33 | Filtro por tag e por forma no PDV | 29ª, Time B |
 | 34 | O "pagador" (outra pessoa que pagou) na comanda | 29ª, C06 |
 | 35 | Importar procedimentos de planilha | 29ª, Time A |
-| 36 | Os próximos passos do /setup também no dashboard da rede nova | 29ª, Time A (RB-03) |
+| 36 | Os próximos passos do /setup também no dashboard da rede nova | 29ª, Time A (RB-03); 34ª, Time A |
 | 37 | Converter a dose do injetável em UI para o frasco pelo rendimento, e avisar a diferença | 29ª, C01 (PT-18); 31ª (a dose do mapa × o estoque, na tela) |
 | 38 | Um termo avulso para a menor, sem o procedimento ter documento | 29ª, C06 (DA-11) |
 | 39 | A prévia da importação com todas as colunas, além das 3 primeiras linhas | 29ª, Time A (IM-22); 31ª (ligada à nº 77) |
-| 40 | Salas e CEP da unidade dentro do /setup | 29ª, Time A (ligada à nº 11) |
-| 41 | A Equipe da unidade mostrar a Admin da rede que atende ali | 29ª, Time D; 32ª, Time E |
+| 40 | Salas e CEP da unidade dentro do /setup | 29ª, Time A (ligada à nº 11); 34ª, Time A (as salas) |
+| 41 | A Equipe da unidade mostrar a Admin da rede que atende ali | 29ª, Time D; 32ª, Time E; 34ª, Time A |
 | 42 | O histórico do agendamento cancelado (quem, quando, o de → para) na janela dele | 29ª, B12 |
 | 43 | O app ativar os avisos com um botão "Receber avisos no celular" | 29ª, B14 (ligada ao A20) |
 | 44 | O "retorno em N dias" propor o horário na conclusão, sem agendar sozinho | 29ª, C01 (AT-19) |
@@ -82,7 +82,7 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 69 | Escolher o lote na transferência (hoje sai o que vence antes, ES-24) | 31ª, Time E |
 | 70 | Ligar o avulso já agendado à sessão do pacote no momento da venda | 31ª, D07 |
 | 71 | A versão do modelo na lista de Documentos e, ao publicar a v2, o aviso de quantos emitidos pendentes seguem na v1 | 31ª, Time D |
-| 72 | Da tela que avisa "taxa 0%", um caminho ao cadastro da maquininha | 31ª, Times C, D e E; 32ª, Times B e E |
+| 72 | Da tela que avisa "taxa 0%", um caminho ao cadastro da maquininha | 31ª, Times C, D e E; 32ª, Times B e E; 34ª, Times C e E (ligada ao D6) |
 | 73 | A lista de acessos ao prontuário dizer que a repetição em ~5 min não entra de novo | 31ª, D12 |
 | 74 | O Copilot contar os produtos do estoque e cadastrar produto | 31ª, Time E |
 | 75 | Fechamento do dia: "conferido = registrado" num clique para as formas sem divergência | 31ª, Times B e E |
@@ -99,7 +99,7 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 86 | O app dizer "a unidade não abre neste dia" em vez de só "Nenhum horário disponível" | 32ª, B08 |
 | 87 | Escolher a origem ao criar a oportunidade pelo painel do inbox (hoje nasce "Orgânico") | 32ª, Time A |
 | 88 | A hora da unidade no topo do portal (hoje só a data) | 32ª, Time D (UTC−5) |
-| 89 | O antes e depois da taxa da maquininha na Auditoria | 32ª, Time D (ligada à nº 9) |
+| 89 | O antes e depois da taxa da maquininha na Auditoria | 32ª, Time D (ligada à nº 9); 34ª, Time D (Leopoldina) |
 | 90 | Ao ligar uma automação com espera curta, avisar que o horário de silêncio vai segurar a mensagem | 32ª, C11 |
 | 91 | O horário da unidade aceitar o fim às 24:00 digitado (hoje só pelo botão "Aberta 24 horas") | 32ª, Time D |
 | 92 | O Copilot listar as unidades da rede ("quantas unidades a rede tem?") | 32ª, Time E |
@@ -111,7 +111,7 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 98 | A variável opcional vazia sumir com a pontuação em volta ("Desconto: ." → nada) | 33ª, B03 |
 | 99 | O Termo de uso de imagem assinado valer por um prazo da rede, sem pedir de novo a cada agendamento | 33ª, B09 |
 | 100 | O "vs anterior" dizer o período comparado, e a Auditoria do lançamento à mão citar a data do pagamento | 33ª, Time C (A12, Decisão C) |
-| 101 | A ficha do atendimento concluído sem pagamento mostrar o saldo ("R$ 300 a receber") | 33ª, C06 |
+| 101 | A ficha do atendimento concluído sem pagamento mostrar o saldo ("R$ 300 a receber") | 33ª, C06; 34ª, Time A (também o valor no "Aguardando o pagamento no PDV") |
 | 102 | Ligar a ficha a uma oportunidade depois de cadastrada, por quem tem o CRM | 33ª, C13 |
 | 103 | Confirmar antes de renomear uma tag para o nome de outra ("vai juntar com X em N registros") | 33ª, Time D (A14) |
 | 104 | Um modelo de automação "Faltou: aviso no celular" | 33ª, Time E |
@@ -120,3 +120,15 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 107 | Avisar a cliente no sino quando o pacote da LGPD refeito ficar pronto | 33ª, D2 |
 | 108 | O Unificar gravar também o 'Indicada por' e o responsável legal digitados no cadastro | 33ª, D18 |
 | 109 | Marcar na Auditoria as linhas 'Corrigiu o custo do lote' gravadas pela baixa antes da correção | 33ª, D7 |
+| 110 | Baixa parcial de conta a pagar (pagar parte e deixar o resto em aberto) | 34ª, Time D (Fausto, material descartável); Decisão D |
+| 111 | Despesa recorrente "sem fim" (hoje mínimo 2 e um número fixo de repetições) | 34ª, Time D (Fausto, aluguel) |
+| 112 | Anexar a foto da nota fiscal à despesa (pela tela e pelo Copilot) | 34ª, Times D (Fausto) e C (Ester) |
+| 113 | Dizer de onde veio a taxa (a da bandeira ou a da maquininha) na movimentação e no extrato | 34ª, Time D (Mercedes, Leopoldina) |
+| 114 | A cliente rever no app as próprias respostas da ficha de saúde | 34ª, E12; Decisão E |
+| 115 | O Copilot registrar perda de estoque e aceitar "tire N" (quantidade a tirar, não o saldo novo) | 34ª, Time C (Elias) |
+| 116 | O logo da rede em Configurações → Geral | 34ª, Time A (Ivonilde) |
+| 117 | ~~O cartão do pacote no app contar a sessão já agendada~~ — não era recurso novo (AG-56): corrigido como defeito em 26/11 (A23 da 34ª, `textoDoPacoteNoApp`) | 34ª, E07 |
+| 118 | "Sem custo" no lugar de "R$ 0,00" no procedimento grátis do app | 34ª, E02 |
+| 119 | Atalhos "Agendar" e "Novo cliente" no dashboard de quem tem a Agenda em Gerenciar | 34ª, Time A (Telma) |
+| 120 | A troca de pontos na Auditoria com os pontos trocados | 34ª, E09 (ligada à A21 da 34ª) |
+| 121 | A linha do "Em andamento" de um agendamento que ainda não começou abrir a janela da agenda (com o "Não compareceu") em vez da tela do atendimento | 34ª, Time A (Telma; A8 da 34ª) |

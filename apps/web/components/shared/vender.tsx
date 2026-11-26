@@ -19,6 +19,7 @@ import { venderProduto } from '@/actions/produtos'
 import { SessionScheduler } from '@/components/branch/treatment-sessions-modal'
 import { SegSelect } from '@/components/shared/seg-select'
 import { FormularioDoPacote, type PacoteAVenda, type ContratoQuePedeCadastro } from '@/components/shared/vender-pacote'
+import { lerVendaDoPacote } from '@/lib/vendas/venda-do-pacote-na-aba'
 import { CamposDoPagamento, estadoDoPagamento, montarPagamento, useRecusaDoPagamento, recusaForaDoCampo, MotivoDoBotao } from '@/components/shared/campos-do-pagamento'
 import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado } from '@/components/shared/campo-do-desconto'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
@@ -95,6 +96,12 @@ export function VendaNaTela({ clienteId, branchId, pacotes, procedimentos, produ
   onFim:         () => void
 }) {
   const [aba, setAba] = useState<Aba>(procedimentos.length ? 'PROCEDIMENTO' : pacotes.length ? 'PACOTE' : produtos.length ? 'PRODUTO' : 'CREDITO')
+  // A6 da 34ª: a venda do pacote que esperava a assinatura do contrato volta na aba dele.
+  useEffect(() => {
+    if (pacotes.length && lerVendaDoPacote(branchId, clienteId)) setAba('PACOTE') // eslint-disable-line react-hooks/set-state-in-effect -- o sessionStorage só existe no navegador
+    // Só ao montar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const abas = [
     // A7 da 16ª (princípios 3 e 7): a aba vende o PRÉ-PAGO (a cliente agenda depois); o avulso se cobra na comanda do atendimento.
     ...(procedimentos.length ? [{ key: 'PROCEDIMENTO', label: 'Procedimento pré-pago' }] : []),

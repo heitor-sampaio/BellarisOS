@@ -357,7 +357,8 @@ async function nomesDa20(ctx: TenantContext, registros: readonly RegistroDaAudit
   const ids = (filtro: (r: RegistroDaAuditoria) => boolean) =>
     [...new Set(registros.filter(r => filtro(r) && r.registro_id && UUID.test(r.registro_id)).map(r => r.registro_id!))]
   const documentos = ids(r => r.tabela === 'issued_documents' && r.operacao === 'editou' && r.colunas.includes('status'))
-  const sessoes = ids(r => r.tabela === 'package_sessions' && r.operacao === 'editou' && r.colunas.includes('status'))
+  // A21 da 34ª: também a sessão ligada ao agendamento ("Agendou a sessão 1 do pacote X").
+  const sessoes = ids(r => r.tabela === 'package_sessions' && r.operacao === 'editou' && (r.colunas.includes('status') || r.colunas.includes('appointment_id')))
   const pacotes = ids(r => r.tabela === 'client_packages' && r.operacao === 'editou' && r.colunas.includes('cancelado_em'))
   const importacoes = ids(r => r.tabela === 'importacoes')
   const entradas = ids(r => r.tabela === 'stock_movements' && r.operacao === 'criou' && r.depois?.type === 'PURCHASE')

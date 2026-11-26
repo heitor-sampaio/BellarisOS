@@ -1,5 +1,6 @@
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { rotuloDaBandeira } from '@/lib/financeiro/bandeiras'
+import { textoDeQuemCadastraATaxa } from '@/lib/financeiro/quem-cadastra-a-taxa'
 
 /**
  * A venda no cartão sem a taxa da maquininha cadastrada (F16-2: vale 0%, a
@@ -24,9 +25,13 @@ export function formasSemTaxaEmTexto(vendas: readonly VendaSemTaxa[]): string {
  * avisa"): o PDV avisava "sem taxa de débito: 0%", e o DRE mostrava as taxas
  * da maquininha sem dizer que parte das vendas entrou com taxa zero. Sem
  * nenhuma, nulo.
+ *
+ * D6 da 34ª (MQ-10): a quem não cadastra a taxa (`quemCadastra` com os nomes,
+ * `quemCadastraATaxa`), o aviso diz quem cadastra, sem o caminho das
+ * Configurações; nulo (ou sem dizer): a pessoa cadastra, e o caminho fica.
  */
-export function avisoDoDreSemTaxa(vendas: readonly VendaSemTaxa[] | null | undefined): string | null {
+export function avisoDoDreSemTaxa(vendas: readonly VendaSemTaxa[] | null | undefined, quemCadastra?: readonly string[] | null): string | null {
   if (!vendas?.length) return null
   return `Sem taxa da maquininha cadastrada, a taxa destas vendas é ${brl(0)} (0%) no DRE: ${formasSemTaxaEmTexto(vendas)}. `
-    + 'Cadastre a taxa em Configurações → Comissões e taxas.'
+    + (quemCadastra ? textoDeQuemCadastraATaxa(quemCadastra) : 'Cadastre a taxa em Configurações → Comissões e taxas.')
 }

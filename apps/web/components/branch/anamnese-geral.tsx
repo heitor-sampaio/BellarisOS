@@ -9,6 +9,7 @@ import { quemRespondeu, anamneseRespondida, type AnamneseGeral, type FichaDePreA
 import { campoVisivel, type AnamnesisRow } from '@/lib/anamnesis'
 import { faltaNaAnamnese, rotulosQueFaltamNaAnamnese } from '@/lib/atendimento/obrigatorias'
 import { useFuso } from '@/components/shared/fuso'
+import { formatDia } from '@estetica-os/utils'
 
 /**
  * A anamnese geral da cliente (2026-10-20): as perguntas da FICHA DE
@@ -40,7 +41,8 @@ export function RespostasDaAnamnese({ rows, respostas }: { rows: AnamnesisRow[];
         // O detalhe que só vale com outra resposta (a alergia no "Sim") não aparece sem ela.
         if (!campoVisivel(f, respostas, campos)) return null
         const v = respostas[f.id]
-        const texto = Array.isArray(v) ? v.join(', ') : (v ?? '')
+        // D9 da 34ª: a data é um dia (sem hora): dd/mm/aaaa (formatDia — CLAUDE.md §14).
+        const texto = Array.isArray(v) ? v.join(', ') : f.type === 'date' && v ? (formatDia(v) ?? v) : (v ?? '')
         return (
           <div key={f.id} className="anamnese-geral-resposta">
             <span className="anamnese-geral-pergunta">{f.label}</span>

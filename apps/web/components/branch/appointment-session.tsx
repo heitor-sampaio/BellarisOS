@@ -22,6 +22,7 @@ import {
   cancelAppointmentSession,
   saveDraftNotes,
   reassignProfessional,
+  updateAppointmentStatus,
 } from '@/actions/appointments'
 import { generateEvaluationPlan, aceitarPlano } from '@/actions/treatment-plans'
 import { PainelPlanejamento } from '@/components/branch/painel-planejamento'
@@ -61,6 +62,7 @@ import { linhaDoInsumo, type UnidadesDoProduto } from '@/lib/estoque/unidade-de-
 import { useAgora } from '@/lib/use-agora'
 import { atrasoDoInicio } from '@/lib/appointments/inicio-adiantado'
 import { ehODiaDoAgendamento } from '@/lib/agenda/chegada'
+import { mostraAFalta, perguntaDaFalta } from '@/lib/agenda/falta'
 import { useFuso } from '@/components/shared/fuso'
 
 
@@ -950,6 +952,10 @@ export function AppointmentSession({
   const pathname = usePathname()
 
   const [showCancel,    setShowCancel]    = useState(false)
+  // A8 da 34ª: a falta também daqui (a pergunta, como na janela da agenda).
+  const [confirmandoFalta, setConfirmandoFalta] = useState(false)
+  const [marcandoFalta, setMarcandoFalta]       = useState(false)
+  const [erroDaFalta, setErroDaFalta]           = useState<string | null>(null)
   const [showFinish,    setShowFinish]    = useState(false)
   // O que falta para finalizar, a lista inteira (A30): a janela diz, a página marca.
   const [oQueFalta,     setOQueFalta]     = useState<GrupoQueFalta[] | null>(null)
@@ -1152,6 +1158,8 @@ export function AppointmentSession({
   // dentro dele (a evolução, a ficha) segue do Prontuário (`canEditRecords`).
   const mostraFinalizar      = status === 'IN_PROGRESS' && canManage
   const temAcaoPrincipal     = mostraChegarEIniciar || mostraCheckin || mostraIniciar || mostraFinalizar || aReceber
+  // A8 da 34ª (AG-32, AG-36): o "Não compareceu" onde a pessoa está — a mesma regra da janela da agenda.
+  const mostraFalta = mostraAFalta({ status, inicio: appointment.scheduledAt, agoraMs, podeMarcar: canCheckin })
   const isDone    = ['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(status)
   // 15ª A7: a ficha de saúde nunca respondida (só para quem vê o clínico, antes de concluir).
   const avisoDaFichaNao = canViewRecords && !isDone ? avisoDaFichaNaoRespondida(nomeParaSaudar(client.name), anamnesis, fichaPreAtendimento.rows, anamneseDigitada) : null
@@ -1282,6 +1290,17 @@ export function AppointmentSession({
     const id = setInterval(tick, 1000)
     return () => clearInterval(id)
   }, [status, appointment.startedAt])
+
+  async function marcarFalta() {
+    setMarcandoFalta(true)
+    setErroDaFalta(null)
+    const r = await updateAppointmentStatus(appointment.id, 'NO_SHOW', slug)
+    setMarcandoFalta(false)
+    // A recusa do servidor aparece (CLAUDE.md §14: o { error } nunca se descarta).
+    if (r?.error) { setErroDaFalta(r.error); return }
+    setConfirmandoFalta(false)
+    router.refresh()
+  }
 
   async function handleCheckin() {
     setCheckingIn(true)
@@ -1453,6 +1472,8 @@ export function AppointmentSession({
             key={chaveDaFicha}
             initial={respostasIniciaisDaFicha as AnamnesisAnswers} canEdit={canEditRecords}
             saveAction={salvarFicha}
+            // A5 da 34ª: o botão diz qual ficha salva (ao lado, a ficha de saúde vai no "Finalizar").
+            rotuloSalvar="Salvar ficha de atendimento"
             hideSaveButton={unified}
             semInjetaveis={!podeInjetaveis}
             onAnswersChange={setFichaDigitada}
@@ -1483,6 +1504,7 @@ export function AppointmentSession({
           key={chaveDaFicha}
           initial={respostasIniciaisDaFicha as AnamnesisAnswers} canEdit={canEditRecords && !editLocked}
           saveAction={salvarFicha}
+          rotuloSalvar="Salvar ficha de atendimento"
           semInjetaveis={!podeInjetaveis}
           onAnswersChange={setFichaDigitada}
           injetaveis={{ clientId: client.id, branchId, produtos: produtosDoMapa, podeEditar: canManage && canViewRecords }}
@@ -1790,6 +1812,13 @@ export function AppointmentSession({
               </div>
             )}
 
+            {mostraFalta && (
+              <button type="button" onClick={() => { setConfirmandoFalta(true); setErroDaFalta(null) }}
+                className="btn-secondary" style={{ padding: '9px 14px', fontSize: 'var(--text-base-sz)', gap: 5 }}>
+                <AlertCircle size={14} /> Não compareceu
+              </button>
+            )}
+
             {/* Cancelar: a Agenda em Gerenciar (F65); o Em atendimento é DESISTIR, do
                 Atendimento em Gerenciar com o escopo dele (canManage — recusaDoCancelar). */}
             {isActive && (status === 'IN_PROGRESS' ? canManage : canCheckin) && (
@@ -1800,6 +1829,21 @@ export function AppointmentSession({
             )}
           </div>
         </div>
+
+        {confirmandoFalta && mostraFalta && (
+          <div data-confirmar-falta role="alert" style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px', background: 'var(--warning-soft)', borderRadius: 'var(--radius-field-token)', border: '1px solid var(--warning-border)' }}>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 'var(--weight-bold)', lineHeight: 1.5 }}>
+              {perguntaDaFalta(client.name, formatarNoFuso(appointment.scheduledAt, 'HH:mm', fuso))}
+            </p>
+            {erroDaFalta && <p role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erroDaFalta}</p>}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <button type="button" className="btn-secondary" disabled={marcandoFalta} onClick={() => setConfirmandoFalta(false)}>Voltar</button>
+              <button type="button" className="btn-primary" disabled={marcandoFalta} onClick={marcarFalta}>
+                {marcandoFalta ? 'Marcando…' : 'Confirmar a falta'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* A alergia em destaque, acima de tudo (só com o prontuário à vista). */}
         <AlertaDeAlergia alergias={alergiasDaAnamnese(anamneseNaTela)} />
@@ -2404,8 +2448,10 @@ export function AppointmentSession({
                   {canManage && <InsumoCard key={versaoDosInsumos} {...insumoProps} />}
 
                   {/* Observações do atendimento — controladas, sem save individual.
-                      São prontuário: só para quem o escreve. */}
-                  {canEditRecords && <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                      São prontuário: lê quem tem o Prontuário em Ver, escreve quem o tem em
+                      Gerenciar (D2 da 34ª; PT-02 — era só canEditRecords, e a avaliação
+                      concluída escondia a evolução de quem lê o prontuário). */}
+                  {canViewRecords && <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
                     <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--hairline)' }}>
                       <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Observações do atendimento</h3>
                     </div>
@@ -2414,20 +2460,20 @@ export function AppointmentSession({
                         <label htmlFor="avaliacao-evolucao" className="field-label">Evolução</label>
                         <textarea
                           id="avaliacao-evolucao"
-                          rows={4} value={evalSessionNotes} readOnly={editLocked}
+                          rows={4} value={evalSessionNotes} readOnly={editLocked || !canEditRecords}
                           onChange={e => setEvalSessionNotes(e.target.value)}
                           placeholder="Técnicas utilizadas, regiões tratadas, evolução do cliente…"
-                          className="field" style={editLocked ? CAMPO_SO_LEITURA : { resize: 'vertical' }}
+                          className="field" style={!canEditRecords || editLocked ? CAMPO_SO_LEITURA : { resize: 'vertical' }}
                         />
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         <label htmlFor="avaliacao-intercorrencias" className="field-label">Intercorrências</label>
                         <textarea
                           id="avaliacao-intercorrencias"
-                          rows={2} value={evalSessionInterc} readOnly={editLocked}
+                          rows={2} value={evalSessionInterc} readOnly={editLocked || !canEditRecords}
                           onChange={e => setEvalSessionInterc(e.target.value)}
                           placeholder="Reações, intercorrências ou observações…"
-                          className="field" style={editLocked ? CAMPO_SO_LEITURA : { resize: 'vertical' }}
+                          className="field" style={!canEditRecords || editLocked ? CAMPO_SO_LEITURA : { resize: 'vertical' }}
                         />
                       </div>
                     </div>

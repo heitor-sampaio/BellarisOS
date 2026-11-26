@@ -20,7 +20,7 @@ import { useSinais } from '@/components/shared/realtime-refresher'
 import { estenderJanela, rolagemDaGrade } from '@/lib/agenda/grade'
 import { agendamentosNoDia, janelaComOsTrechos, textoDoQueContinua } from '@/lib/agenda/trecho-do-agendamento'
 import { ocupacaoDoDia, minutosAgendadosNoPeriodo } from '@/lib/metrics/ocupacao'
-import { blocosDosBloqueios, livresEntre } from '@/lib/agenda/horario-livre'
+import { blocosDosBloqueios, livresEntre, livresDaGrade } from '@/lib/agenda/horario-livre'
 import { intervalosDoDia, diaDaSemana, forasDoHorario, janelaDoDia, type Horario, type BlocoOcupado } from '@/lib/agenda/horario'
 import type { CalendarEvent } from './agenda-month-view'
 import { SeloDoMenor } from '@/components/shared/selo-do-menor'
@@ -313,23 +313,23 @@ export function ProfessionalAgendaView({
   // dentro do bloqueio). A régua é a de lib/agenda/horario-livre.
   // D4 da 32ª (princípio 3): e tirado o que não é horário dela (a pausa, o
   // antes e o depois do expediente) — a Lauriane via "Horário livre" na pausa.
-  const freeSlots = useMemo(() => {
-    if (dayEvents.length < 2) return []
-    return dayEvents.slice(0, -1).flatMap((ev, i) => {
-      // A17 da 14ª: o concluído adiantado libera o resto (a mesma régua do desenho).
-      const endMs  = parseISO(ev.start).getTime() + minutosDesenhados(ev) * 60000
-      const nextMs = parseISO(dayEvents[i + 1]!.start).getTime()
-      return livresEntre(endMs, nextMs, [...bloqueios, ...foraDela]).map(([de, ate]) => {
-        const deDate  = new Date(de)
-        const ateDate = new Date(ate)
-        return {
-          top:    (getHours(deDate) - DAY_START + getMinutes(deDate) / 60) * PX_PER_HOUR,
-          height: (ate - de) / 3_600_000 * PX_PER_HOUR,
-          label:  `${format(deDate, 'HH:mm')} – ${format(ateDate, 'HH:mm')}`,
-        }
-      })
-    })
-  }, [dayEvents, DAY_START, bloqueios, foraDela])
+  // D11 da 34ª: o vão conta do último que ainda ocupa (não do anterior na
+  // lista), e o desenho começa abaixo do cartão de cima — o curto é desenhado
+  // com 44 px, mais alto do que dura, e o "Horário livre" ficava por baixo dele.
+  const inicioDaGrade = parseISO(`${diaDaGrade}T00:00:00`).getTime() + DAY_START * 3_600_000
+  const pxDe = (ms: number) => (ms - inicioDaGrade) / 3_600_000 * PX_PER_HOUR
+  const freeSlots = livresDaGrade(dayEvents.map(ev => {
+    const de = parseISO(ev.start).getTime()
+    // A17 da 14ª: o concluído adiantado libera o resto (a mesma régua do desenho).
+    return { de, ate: de + minutosDesenhados(ev) * 60000, ateNoDesenho: inicioDaGrade + (evTop(ev) + evHeight(ev)) / PX_PER_HOUR * 3_600_000 }
+  }), (endMs, nextMs) => livresEntre(endMs, nextMs, [...bloqueios, ...foraDela])).map(l => {
+    const deDate = new Date(l.de), ateDate = new Date(l.ate)
+    return {
+      top:    pxDe(l.desenhoDe),
+      height: pxDe(l.ate) - pxDe(l.desenhoDe),
+      label:  `${format(deDate, 'HH:mm')} – ${format(ateDate, 'HH:mm')}`,
+    }
+  }).filter(slot => slot.height >= 24)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -559,14 +559,15 @@ export function ProfessionalAgendaView({
 
               {/* Slots livres */}
               {freeSlots.map((slot, i) => (
-                <div key={i} style={{
+                <div key={i} data-horario-livre style={{
                   position: 'absolute', top: slot.top + 2, left: 58, right: 16,
-                  height: slot.height - 4, minHeight: 28,
+                  height: slot.height - 4,
                   border: '1.5px dashed var(--brand-soft-border)', borderRadius: 8,
                   display: 'flex', alignItems: 'center', padding: '0 14px', gap: 10,
+                  overflow: 'hidden', whiteSpace: 'nowrap', minWidth: 0,
                 }}>
-                  <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)', opacity: 0.55 }}>{slot.label}</span>
-                  <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', fontWeight: 600 }}>Horário livre</span>
+                  <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)', opacity: 0.55, flexShrink: 0 }}>{slot.label}</span>
+                  <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis' }}>Horário livre</span>
                 </div>
               ))}
 
