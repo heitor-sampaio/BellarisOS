@@ -156,7 +156,8 @@ test.describe('a entrada no cartão e o crediário da rede', () => {
       await janela.getByRole('button', { name: 'Ir para a documentação' }).click()
 
       await page.getByRole('button', { name: 'Colher assinatura' }).first().click()
-      await expect(page.getByText(/entrada de R\$\s1\.000,00 no cartão de crédito em 3x \+ 2 parcelas de R\$\s1\.700,00 no crediário/)).toBeVisible()
+      // A entrada no cartão diz o valor de cada vez (o Heitor, 27/11, R33: "A parcela também nesses dois casos (a proposta)").
+      await expect(page.getByText(/entrada de R\$\s1\.000,00 no cartão de crédito em 3x \(2x de R\$\s333,33 \+ 1x de R\$\s333,34\) \+ 2 parcelas de R\$\s1\.700,00 no crediário/)).toBeVisible()
       await page.getByRole('button', { name: 'Assinar no papel' }).click()
       await page.getByRole('button', { name: 'Confirmar: o cliente assinou o papel' }).click()
       await expect(page.getByRole('heading', { name: 'Documento assinado' })).toBeVisible()

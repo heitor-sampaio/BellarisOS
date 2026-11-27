@@ -158,6 +158,24 @@ function meioDaEntrada(p: PagamentoDoPlano): string | null {
   return m && vezes > 1 ? `${m} em ${vezes}x` : m
 }
 
+/**
+ * O CONTRATO diz o valor de cada vez no cartão (o Heitor, 27/11, R29: "A frase diz o valor de cada parcela"; R33:
+ * "A parcela também nesses dois casos", a entrada do crediário e as várias formas): "em 3x de R$ 255,00", ou,
+ * desiguais, "em 3x (2x de R$ 333,33 + 1x de R$ 333,34)" — a divisão dos recebíveis da operadora (a sobra na última).
+ */
+function emVezesComAParcela(valor: number, vezes: number): string {
+  const valores = dividirEmParcelas(valor, vezes, '2026-01-01').map(x => x.amount)
+  const iguais = valorDaParcela(valores) === formatBRL(valores[0] ?? 0)
+  return `em ${vezes}x ${iguais ? `de ${formatBRL(valores[0] ?? 0)}` : `(${parcelasEmTexto(valor, vezes)})`}`
+}
+
+/** O meio da entrada no contrato: com as vezes no cartão, o valor de cada uma (R33). */
+function meioDaEntradaNoContrato(p: PagamentoDoPlano & { forma: 'PARCELADO' }): string | null {
+  const m = metodo(p.metodo)
+  const vezes = vezesNoCartao(p)
+  return m && vezes > 1 ? `${m} ${emVezesComAParcela(p.entrada, vezes)}` : m
+}
+
 /** Para a TELA: o combinado numa frase curta, com o meio de pagamento por extenso. */
 export function frasesDoPagamento(p: PagamentoDoPlano | null, desconto = 0): string {
   const comDesconto = desconto > 0 ? ` · desconto de ${formatBRL(desconto)}` : ''
@@ -194,11 +212,15 @@ export function valoresDoPagamento(p: PagamentoDoPlano | null, total: number, de
   }
 }
 
-/** "R$ 1.000,00 no cartão de crédito em 3x + R$ 596,00 no Pix" (D1 da 18ª). */
-function formasPorExtenso(p: PagamentoDoPlano): string {
+/**
+ * "R$ 1.000,00 no cartão de crédito em 3x + R$ 596,00 no Pix" (D1 da 18ª); no contrato, com o valor de cada vez
+ * no cartão (R33): "em 3x (2x de R$ 333,33 + 1x de R$ 333,34)".
+ */
+function formasPorExtenso(p: PagamentoDoPlano, noContrato = false): string {
   return partesQuePagamAgora(p).map(x => {
     const m = metodo(x.metodo)
-    return `${formatBRL(x.valor)} ${m && x.vezes > 1 ? `${m} em ${x.vezes}x` : m}`
+    if (!m || x.vezes <= 1) return `${formatBRL(x.valor)} ${m}`
+    return `${formatBRL(x.valor)} ${m} ${noContrato ? emVezesComAParcela(x.valor, x.vezes) : `em ${x.vezes}x`}`
   }).join(' + ')
 }
 
@@ -214,21 +236,17 @@ function valoresSemDesconto(p: PagamentoDoPlano | null, total: number): Record<s
     const meios = partesQuePagamAgora(p).map(x => metodo(x.metodo)).filter((m, i, xs): m is string => !!m && xs.indexOf(m) === i)
     return {
       ...vazio, 'pagamento.metodo': meios.length > 1 ? `${meios.slice(0, -1).join(', ')} e ${meios[meios.length - 1]}` : meios[0] ?? null,
-      'pagamento.forma': `${formatBRL(total)} à vista: ${formasPorExtenso(p)}`,
+      'pagamento.forma': `${formatBRL(total)} à vista: ${formasPorExtenso(p, true)}`,
     }
   }
   if (p.forma === 'AVISTA') {
     const vezes = vezesNoCartao(p)
     if (vezes > 1) {
-      // O Heitor, 27/11 (R29): "A frase diz o valor de cada parcela" — "em 3x de R$ 255,00", ou, desiguais,
-      // "em 3x (2x de R$ 283,33 + 1x de R$ 283,34)": a divisão dos recebíveis da operadora (a sobra na última).
       const valores = dividirEmParcelas(total, vezes, '2026-01-01').map(x => x.amount)
-      const iguais = valorDaParcela(valores) === formatBRL(valores[0] ?? 0)
-      const quanto = iguais ? `de ${formatBRL(valores[0] ?? 0)}` : `(${parcelasEmTexto(total, vezes)})`
       return {
         ...vazio, 'pagamento.metodo': metodo(p.metodo), 'pagamento.parcelas': String(vezes),
         'pagamento.valor_parcela': valorDaParcela(valores),
-        'pagamento.forma': `${formatBRL(total)} ${metodo(p.metodo)} em ${vezes}x ${quanto}`,
+        'pagamento.forma': `${formatBRL(total)} ${metodo(p.metodo)} ${emVezesComAParcela(total, vezes)}`,
       }
     }
     return { ...vazio, 'pagamento.metodo': metodo(p.metodo), 'pagamento.forma': `${formatBRL(total)} à vista, ${metodo(p.metodo)}` }
@@ -265,7 +283,7 @@ function valoresSemDesconto(p: PagamentoDoPlano | null, total: number): Record<s
     'pagamento.parcelas':            String(p.parcelas),
     'pagamento.valor_parcela':       valorDaParcela(valores),
     'pagamento.primeiro_vencimento': formatDate(p.primeiroVencimento),
-    'pagamento.forma':               p.entrada > 0 ? `entrada de ${formatBRL(p.entrada)} ${meioDaEntrada(p)} + ${parcelas}` : parcelas,
+    'pagamento.forma':               p.entrada > 0 ? `entrada de ${formatBRL(p.entrada)} ${meioDaEntradaNoContrato(p)} + ${parcelas}` : parcelas,
   }
 }
 

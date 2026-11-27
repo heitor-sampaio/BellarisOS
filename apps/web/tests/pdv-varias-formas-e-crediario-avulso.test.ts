@@ -58,7 +58,8 @@ describe('D1 da 18ª: a comanda recebe em mais de uma forma', () => {
   it('o texto diz as formas com o valor de cada uma (a linha do tempo e o contrato)', () => {
     expect(sp(rotuloDoPagamento(DIVIDIDO))).toBe('Crédito 3x R$ 1.000,00 + Pix R$ 596,00')
     const v = valoresDoPagamento(DIVIDIDO, 1596)
-    expect(sp(v['pagamento.forma']!)).toBe('R$ 1.596,00 à vista: R$ 1.000,00 no cartão de crédito em 3x + R$ 596,00 no Pix')
+    // O cartão diz o valor de cada vez (o Heitor, 27/11, R33: "A parcela também nesses dois casos (a proposta)").
+    expect(sp(v['pagamento.forma']!)).toBe('R$ 1.596,00 à vista: R$ 1.000,00 no cartão de crédito em 3x (2x de R$ 333,33 + 1x de R$ 333,34) + R$ 596,00 no Pix')
   })
 
   it('o retrato do contrato guarda as formas, e o de antes segue igual', () => {

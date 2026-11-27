@@ -32,8 +32,9 @@ describe('D2: as parcelas que a tela e o contrato dizem são as gravadas', () =>
 
   it('o contrato diz cada parcela com o valor e a data (A42)', () => {
     const v = valoresDoPagamento(larissa, 3672)
+    // A entrada no cartão diz o valor de cada vez (o Heitor, 27/11, R33: "A parcela também nesses dois casos (a proposta)").
     expect(br(v['pagamento.forma'])).toBe(
-      'entrada de R$ 1.000,00 no cartão de crédito em 3x + 3 parcelas (2x de R$ 890,66 + 1x de R$ 890,68) no crediário'
+      'entrada de R$ 1.000,00 no cartão de crédito em 3x (2x de R$ 333,33 + 1x de R$ 333,34) + 3 parcelas (2x de R$ 890,66 + 1x de R$ 890,68) no crediário'
       + ': R$ 890,66 em 05/12/2026, R$ 890,66 em 05/01/2027 e R$ 890,68 em 05/02/2027')
     expect(br(v['pagamento.valor_parcela']), 'nunca a média arredondada (890,67)').toBe('R$ 890,66 (a última, R$ 890,68)')
   })

@@ -53,8 +53,9 @@ describe('D6: o crediário da rede não é cartão', () => {
     expect(parcelas.every(p => p.cartao_vezes === undefined && p.cartao_bandeira === undefined)).toBe(true)
   })
   it('o contrato diz a entrada no cartão e as parcelas com a rede', () => {
+    // A entrada no cartão diz o valor de cada vez (o Heitor, 27/11, R33: "A parcela também nesses dois casos (a proposta)").
     expect(valoresDoPagamento(dap, 4400)['pagamento.forma']).toMatch(
-      /^entrada de R\$\s1\.000,00 no cartão de crédito em 3x \+ 2 parcelas de R\$\s1\.700,00 no crediário: R\$\s1\.700,00 em 04\/12\/2026 e R\$\s1\.700,00 em 04\/01\/2027$/)
+      /^entrada de R\$\s1\.000,00 no cartão de crédito em 3x \(2x de R\$\s333,33 \+ 1x de R\$\s333,34\) \+ 2 parcelas de R\$\s1\.700,00 no crediário: R\$\s1\.700,00 em 04\/12\/2026 e R\$\s1\.700,00 em 04\/01\/2027$/)
     expect(valoresDoPagamento({ ...dap, vezes: undefined }, 4400)['pagamento.forma']).toMatch(
       /^entrada de R\$\s1\.000,00 no cartão de crédito \+ 2 parcelas de R\$\s1\.700,00 no crediário/)
     expect(valoresDoPagamento({ ...dap, entrada: 0, vezes: undefined }, 3400)['pagamento.forma']).toMatch(

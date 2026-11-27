@@ -1774,9 +1774,9 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
-### 2026-11-27 (4) — As respostas do Heitor R22–R32
+### 2026-11-27 (4) — As respostas do Heitor R22–R33
 
-O Heitor respondeu as perguntas R22 a R30 (no chat) e, depois, a R31 e a R32 (na página). Cada mudança abaixo é a
+O Heitor respondeu as perguntas R22 a R30 (no chat), depois a R31 e a R32 (na página) e, por fim, a R33. Cada mudança abaixo é a
 regra dele, com a fala; o que não é fala dele vem marcado "decisão do Claude".
 
 **O que mudou no sistema.**
@@ -1805,7 +1805,11 @@ regra dele, com a fala; o que não é fala dele vem marcado "decisão do Claude"
   "está chegou"/"está faltou"). Trava: `tests/check-in-em-todos-os-lugares.test.ts`.
 - **R29, a parcela no contrato** (o Heitor, 27/11: "A frase diz o valor de cada parcela (a proposta)"): "R$ 765,00 no
   cartão de crédito em 3x de R$ 255,00"; desiguais, "3x (2x de R$ 283,33 + 1x de R$ 283,34)", pela mesma divisão das
-  parcelas gravadas (a sobra na última). A entrada do crediário no cartão e o pagamento dividido foram à página (R33).
+  parcelas gravadas (a sobra na última).
+- **R33, a parcela também na entrada e nas várias formas** (o Heitor, 27/11: "A parcela também nesses dois casos (a
+  proposta)"): no contrato, "entrada de R$ 1.000,00 no cartão de crédito em 3x (2x de R$ 333,33 + 1x de R$ 333,34) +
+  2 parcelas…" e "R$ 1.000,00 no cartão de crédito em 3x (2x de R$ 333,33 + 1x de R$ 333,34) + R$ 596,00 no Pix"
+  (`emVezesComAParcela`, a mesma conta da R29). A frase curta da tela ("Crédito 3x R$ 1.000,00") não muda.
 - **R30, a coluna "Unidades"** (o Heitor, 27/11: "A coluna some com uma unidade só (a proposta)"): some com uma unidade
   ativa e volta com a segunda.
 - **R31, o Desativar** (o Heitor, 27/11: "O botão diz "Desativar e repassar 1 de 3" também no um a um (a proposta)"):
@@ -1839,7 +1843,9 @@ regra dele, com a fala; o que não é fala dele vem marcado "decisão do Claude"
   `agenda-dona-chega-e-inicia`, `agenda-guardas-de-status`, `agenda-inicio-adiantado`, `atendimento-fechamento`,
   `atendimento-uso-da-10`, `financeiro-vencidas-da-9` ("Check-in", com `exact` onde "Check-in e iniciar" também casaria).
 - R29: `tests/checkout-pagamento.test.ts:80`. R30: `tests/atritos-da-16.test.ts:186`. R31:
-  `tests/atritos-da-23-cargos-atendimento-app.test.ts:100`. R32: `e2e/atendimento-foto-clinica.spec.ts`.
+  `tests/atritos-da-23-cargos-atendimento-app.test.ts:100`. R32: `e2e/atendimento-foto-clinica.spec.ts`. R33:
+  `tests/checkout-crediario-da-rede.test.ts:57`, `tests/checkout-parcelas-gravadas.test.ts:36`,
+  `tests/pdv-varias-formas-e-crediario-avulso.test.ts:61`, `e2e/checkout-entrada-no-cartao.spec.ts:159`.
 - **Apagados:** o caso "está entre as unidades de dose do planejador de injetáveis" de `tests/estoque-medidas.test.ts`
   (R25: o planejador não tem mais lista própria de medidas) e a linha que exigia "Confirmar aplicação" em
   `tests/injetaveis-mapa-uma-acao-por-momento.test.ts` (R26).
@@ -1852,7 +1858,7 @@ etapa do funil). O A5 de `atendimento-uso-da-10` falhou em 4 de 5 vezes neste c�
 no bloco cai num horário vazio da grade ("Novo agendamento"); esperando a tela assentar, passa. Fica para reconferir
 com a máquina sem a simulação, antes da produção.
 
-**Para o Heitor (a página):** R33 (o valor da parcela também na entrada do crediário no cartão e no pagamento dividido).
+**Para o Heitor (a página):** nada em aberto.
 
 ### 2026-11-27 (3) — A 37ª simulação e as correções dela
 
