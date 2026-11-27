@@ -24,10 +24,33 @@ const comMaiuscula = (t: string) => (t ? t[0]!.toUpperCase() + t.slice(1) : t)
 const ERRO_DE_REDE = /fetch failed|ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|socket hang up|network ?error|AbortError|timed out|timeout/i
 
 /**
+ * A16 da 38ª (AX-06, princípio 3): o "Abrir pelo número padrão" que abriu a
+ * conversa e não conseguiu mandar. A execução diz as duas coisas — a conversa
+ * existe agora no inbox, e a mensagem não saiu —, não só "o número não
+ * respondeu". O motor grava o erro assim; `traduzirErro` o lê.
+ */
+const MARCA_DA_ABERTURA = /^Abriu a conversa pelo número padrão \(([^)]*)\); o envio falhou: ([\s\S]*)$/
+
+export function erroDaAbertura(numero: string, erro: string): string {
+  return `Abriu a conversa pelo número padrão (${numero}); o envio falhou: ${erro}`
+}
+
+/**
  * O erro como a pessoa o lê. O técnico vira frase ("não conseguiu mandar a
  * mensagem (o número não respondeu)"); o que já é frase fica como está.
  */
 function traduzirErro(erro: string, tipo?: string | null): { texto: string; traduzido: boolean } {
+  const abertura = MARCA_DA_ABERTURA.exec(erro)
+  if (abertura) {
+    const abriu = `abriu a conversa pelo número padrão (${abertura[1]})`
+    const resto = abertura[2]!
+    return {
+      traduzido: true,
+      texto: ERRO_DE_REDE.test(resto)
+        ? `${abriu}, mas não conseguiu mandar a mensagem (o número não respondeu).`
+        : `${abriu}, mas a mensagem não saiu: ${resto}`,
+    }
+  }
   if (ERRO_DE_REDE.test(erro)) {
     return {
       traduzido: true,

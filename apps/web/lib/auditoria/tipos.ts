@@ -143,7 +143,7 @@ export interface NomesDaAuditoria {
   /**
    * A5 e A10 da 35ª (AD-08): o motivo do cancelamento do plano, do pacote da
    * cliente ou da sessão do pré-pago (o id → o motivo), lido agora — a
-   * auditoria não guarda texto livre.
+   * auditoria não guarda texto livre. D8 da 38ª: também o da venda de produto.
    */
   motivosDaVendaCancelada?: Record<string, string>
   /** A10 da 35ª: qual sessão de qual pré-pago (o id de `procedure_sale_units` → "a sessão 2 do pré-pago de X"), lido agora. */

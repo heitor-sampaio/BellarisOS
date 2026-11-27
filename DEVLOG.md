@@ -1774,6 +1774,99 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-27 (5) — A 38ª simulação, as correções dela e a resposta R34
+
+O laço segue (o Heitor, 25/11: "quando acabar essa roda já segue as outras e assim vai"). Cinco redes novas, sem conta
+da plataforma (o Heitor, 26/11: "Sem a conta"). Os temas foram estes:
+- as comissões, no Studio Ipomeia (Cáceres, UTC−4);
+- o estoque e a venda de produto, no Espaço Tomilho (Garanhuns);
+- as conversas e o comercial, no Ateliê Sempre-viva (Lages);
+- os relatórios por permissão, na Rede Flamboyant (Rio Verde e Jataí);
+- as automações, no Instituto Jabuticaba (Castanhal).
+
+O dinheiro fechou à mão nos cinco times, sem regressão da 37ª. Ficaram 9 defeitos (1 de prioridade ALTA, nenhum de
+segurança), 20 atritos e 32 enganos. Salvo onde se diz o contrário, as decisões são do Claude (27/11), pelos princípios
+e pelo catálogo. Uma correção (a A4) voltou ao Heitor como R34, porque um teste existente exigia o comportamento de
+hoje; ele respondeu no mesmo dia.
+
+**O que mudou no sistema.**
+- **Inbox.**
+  - **Quem tem o CRM só em Ver não vê a caixa de resposta** (D1, ALTA; CLAUDE.md §14). Saem também o anexo, o áudio,
+    as respostas rápidas e o "Tentar de novo". Antes, o envio derrubava a tela em "Você não tem acesso a esta área".
+  - **A janela de 24 h só vale na caixa da API oficial** (D5, WT-12). A caixa uazapi (WhatsApp Web) envia por outro
+    número sem o aviso nem a recusa.
+  - **A faixa "N aguardando resposta" conta a rede inteira ao alcance** (D6, IN-10, `20261217100002`), e não só as
+    conversas carregadas. A conta respeita as caixas do cargo, os filtros e a busca: a função `inbox_aguardando`, pela
+    mesma `private.inbox_filtradas` da página.
+  - **A prévia da lista e a "Última interação" contam só o que saiu ou chegou** (A6/A7, IN-18, `20261217100001`). A
+    resposta não enviada não vira prévia. Ela passa a ser prévia quando o "Tentar de novo" dá certo.
+  - A conversa fora do alcance aberta pelo `?c=` diz por que não abriu (A8, `?aviso=`).
+- **Cadastro pela conversa e o quadro.**
+  - **O contato recebe o nome e o e-mail da ficha** (D4, CL-14). Vale no cadastro pela conversa e também no "Agendar"
+    do painel, que usa a ficha rápida, nos três caminhos: a ficha usada, a escolhida e a nova (`ligarFichaAConversa`).
+    Não mexe na senha nem no login.
+  - O card da oportunidade em "Só leitura" mostra os valores como texto (A9). O selo do "Limpar" conta cada tag marcada
+    (A10).
+- **Automações.**
+  - **A mensagem automática que falha é reenviada na MESMA bolha** (D2, IN-18). Cada tentativa do cron gravava uma
+    "Não enviada" nova. A mensagem que já saiu (`sent`, `delivered`, `read`) não se reenvia.
+  - O card do gatilho diz o horário da configuração (D7). O passo diz que a espera está parada quando a automação está
+    desligada (A14, RX-05), em vez de "Segue em …".
+  - O modelo Retorno usa `{{agendamento.procedimento}}` (A15). A variável antiga continua resolvendo.
+  - A execução diz que abriu a conversa pelo número padrão (A16). O painel "Mandar mensagem" perdeu os parágrafos
+    explicativos (A18, princípio 7).
+- **Estoque e venda de produto.**
+  - **A venda que tira de lote vencido sinaliza o vencido sem bloquear** (D3, ES-24), na venda, na comanda do PDV e
+    no Histórico do produto.
+  - O "Aplicado em" do lote mostra a devolução (A5, ES-25). A comanda do crediário quitada diz a hora da quitação (A2).
+- **Comissões e relatórios.**
+  - **No fixo por unidade, a linha da comissão mostra unidades × valor** (D9, CB-04), no lugar da "base cheia".
+  - A linha do crédito sem taxa cadastrada diz que aquela forma não tem taxa (A1, princípio 4), como a janela de
+    receber já dizia.
+  - "A receber em aberto" não diz "Nada" quando há concluído sem pagamento (A11).
+  - O "Ticket médio" da aba Clientes tem a dica (A12). A dica do Top 5 ficou com uma frase (A13).
+- **Auditoria.**
+  - **O cancelamento da venda de produto se lê pelo fato** (D8, AD-13/AD-16): cancelou, o motivo, o estorno, o que
+    voltou ao estoque, "1 item".
+  - Salvar a comissão do procedimento sem mudar quem realiza não grava "Apagou 3 / Criou 3" (A3, `20261217600001`).
+- **R34 (o Heitor, 27/11: "Começa vazia, com o botão "Usar a nota NF-…" (a proposta)").**
+  - A Entrada do estoque começa sem a nota e sem o fornecedor. O botão "Usar a nota NF-1002" traz os dois da entrada
+    anterior.
+  - Corrigido junto: o fornecedor criado ali mesmo ("+ Novo fornecedor") não entrava na nota guardada. O E2E novo da
+    R34 pegou.
+- **Pegos pelos E2E desta rodada** (os três falhavam desde `c6d151e3`, e um intermitente):
+  - **O clique antes da hidratação se perdia calado na tela do atendimento.** "Check-in e iniciar", "Check-in",
+    "Iniciar", "Finalizar", "Não compareceu" e "Cancelar" ficam desligados até a tela hidratar (`useHidratado`). No
+    celular lento, a pessoa tocava e nada acontecia.
+  - **As grades da agenda só aceitam clique depois da rolagem automática** (`data-rolagem="pronta"`, no CSS do
+    núcleo). O clique num cartão logo ao abrir caía no "Novo agendamento" de outro horário. A "Minha agenda" rola de
+    novo ao voltar à vista "Dia".
+  - A rede de teste do banco local nasce com o funil padrão (`scripts/rede-de-teste.mjs`), como o primeiro acesso ao
+    CRM numa rede de verdade.
+- **NÃO ERA:**
+  - P1: o Histórico já mostra a nota, a marca e o fornecedor gravados.
+  - P2: o aviso de CA-04 aparece quando a Admin está entre quem realiza e o valor muda o que ela ganha.
+  - A19: a Auditoria pagina certo; as linhas de configuração não existiam no período.
+  - A parte do servidor da D1: a action já devolvia `{ error }`.
+- **Catálogo:** as decisões do Claude da 38ª (1, 2, 3, 4, 5, 6, 10, 11, 12, 13, 14, 15) e as regras dos defeitos com
+  todas as letras (IN-18, WT-12, IN-10, CL-14, ES-24, ES-25, CB-04, AD-13/AD-16). A ES-14 diz a R34.
+
+**Teste alterado** (só um, pela fala do Heitor de 27/11, R34: "Começa vazia, com o botão "Usar a nota NF-…" (a
+proposta)"):
+- `e2e/estoque-atritos-da-11.spec.ts` ("A51, A52 e A54"): exigia a nota da entrada anterior no campo e o aviso
+  "apague". Agora exige o campo vazio, sem fornecedor, e o "Usar a nota NF-…" trazendo os dois.
+- Nenhum teste apagado.
+
+**Sugestões novas:** nº 148–163. A17 (inserir um passo entre dois) é recurso novo e foi anotada como sugestão.
+
+**A completa** (contra o build, banco local): 1.799 isolados + 906 compartilhados passaram e 1 falhou —
+`e2e/sdk-da-meta-so-onde-usa.spec.ts:70` viu dois scripts da Meta. O `sdk.js` que a Meta entrega é um carregador que
+põe ele mesmo um segundo script (`/en_US/bundle/sdk.js`); o sistema põe um só. Sozinho, o spec passou 25 de 25. O
+teste conta todos os scripts da Meta: ajustá-lo para contar só o `#facebook-jssdk` foi ao Heitor (R35), porque a regra
+não mudou.
+
+**Na produção:** `20261217100001`, `100002` e `600001`, uma por vez, conferidas depois.
+
 ### 2026-11-27 (4) — As respostas do Heitor R22–R33
 
 O Heitor respondeu as perguntas R22 a R30 (no chat), depois a R31 e a R32 (na página) e, por fim, a R33. Cada mudança abaixo é a

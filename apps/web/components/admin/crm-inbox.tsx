@@ -46,6 +46,9 @@ import { agruparPorDia } from '@/lib/inbox/dias-da-conversa'
 import { AVISO_SEM_NUMERO_LIGADO } from '@/lib/inbox/aviso-sem-numero'
 import { textoDoNumeroDeSaida } from '@/lib/inbox/numero-da-bolha'
 import { trocarOtimista } from '@/lib/inbox/bolha-otimista'
+import { comPreviaDaMensagem } from '@/lib/inbox/previa'
+import { janelaFechadaNaCaixaDeSaida } from '@/lib/inbox/janela-da-caixa-de-saida'
+import type { AguardandoDoInbox } from '@/lib/inbox/pagina'
 import { useFuso } from '@/components/shared/fuso'
 
 // --- Gesto de puxar (só no celular) ---------------------------------------------
@@ -897,6 +900,8 @@ interface CRMInboxProps {
   /** Há mais conversas além desta página: a lista busca ao chegar no fim. */
   initialTemMais?:      boolean
   initialCursor?:       CursorDoInbox
+  /** A faixa "N aguardando resposta", contada no banco (D6 da 38ª; IN-10). */
+  initialAguardando?:   AguardandoDoInbox | null
   /** Donos, funis, etapas, tags e unidades em uso na rede, para os filtros. */
   opcoesDosFiltros?:    OpcoesDoInbox | null
   leads:                { id: string; name: string; phone?: string | null; branch_name?: string | null }[]
@@ -1008,7 +1013,7 @@ function mesclarMensagem(lista: Message[], entrada: Message): Message[] {
 }
 
 export function CRMInbox({
-  initialConversations, initialTemMais = false, initialCursor = null, opcoesDosFiltros = null,
+  initialConversations, initialTemMais = false, initialCursor = null, initialAguardando = null, opcoesDosFiltros = null,
   leads, canEdit, branches,
   slug = '', initialSelectedId = null, canaisConectados = [], podeConfigurarIntegracoes = false,
   numeroDoUsuario = null, telaCheia = false, semNumeroLigado = false,
@@ -1030,6 +1035,8 @@ export function CRMInbox({
    * mais recentes filtradas aqui — a 201ª nunca aparecia, nem para o filtro.
    */
   const [temMais,       setTemMais]       = useState(initialTemMais)
+  /** A faixa "aguardando": da rede inteira ao alcance, não das carregadas (D6 da 38ª). */
+  const [aguardando,    setAguardando]    = useState<AguardandoDoInbox | null>(initialAguardando)
   const [carregandoMais, setCarregandoMais] = useState(false)
   const cursorRef   = useRef<CursorDoInbox>(initialCursor)
   /** O que está pedido agora — o realtime recarrega com isto, e não do zero. */
@@ -1141,10 +1148,11 @@ export function CRMInbox({
       : null
 
   // A janela de 24h é da caixa que VAI ENVIAR. Como o cliente nunca falou com
-  // o número do usuário nesta conversa, ela está fechada por construção — e o
-  // servidor recusa pelo mesmo motivo (`ultimoInboundNaCaixa`). Dizer aqui
-  // poupa a viagem e o erro genérico.
-  const janelaFechadaNaCaixaPropria = !!respondendoPelaOutra
+  // o número do usuário nesta conversa, ela está fechada por construção — SE
+  // esse número tiver janela: só a API oficial tem (WT-12; D5 da 38ª: o
+  // WhatsApp Web bloqueava sem motivo). O servidor recusa pelo mesmo motivo
+  // (`ultimoInboundNaCaixa`); dizer aqui poupa a viagem e o erro genérico.
+  const janelaFechadaNaCaixaPropria = janelaFechadaNaCaixaDeSaida('whatsapp', respondendoPelaOutra)
 
   const canalEdita = selectedConv?.channel === 'manual'
     || (selectedConv?.channel === 'whatsapp' && provedorDaConversa === 'uazapi')
@@ -1351,11 +1359,8 @@ export function CRMInbox({
     setMessages(prev => [...prev, optimistic])
     setDraft('')
     setRespondendoA(null)
-    setConversations(prev => prev.map(c =>
-      c.id === selectedId
-        ? { ...c, last_message: text, last_message_at: optimistic.created_at }
-        : c
-    ))
+    // A prévia da lista e a "Última interação" esperam a mensagem SAIR (A6/A7
+    // da 38ª; IN-18): a que não sai não é resposta.
 
     setSendError(null)
     startTransition(async () => {
@@ -1364,6 +1369,7 @@ export function CRMInbox({
         // Mesclar, não substituir por id: o realtime pode ter chegado primeiro e
         // já consumido a bolha otimista.
         setMessages(prev => mesclarMensagem(prev, res.message!))
+        setConversations(prev => prev.map(c => comPreviaDaMensagem(c, res.message!)))
         return
       }
       // Sem isto a bolha ficava eternamente em 'sending' e parecia enviada —
@@ -1417,11 +1423,8 @@ export function CRMInbox({
       // a ser anexado.
       if (res.message) {
         setMessages(prev => mesclarMensagem(prev, res.message!))
-        setConversations(prev => prev.map(c =>
-          c.id === selectedId
-            ? { ...c, last_message: res.message!.content, last_message_at: res.message!.created_at }
-            : c,
-        ))
+        // Só o que saiu vira a prévia (A6/A7 da 38ª).
+        setConversations(prev => prev.map(c => comPreviaDaMensagem(c, res.message!)))
       }
       if (!res.ok) setSendError(res.error ?? 'Não foi possível enviar o arquivo.')
     })
@@ -1488,6 +1491,7 @@ export function CRMInbox({
     if (geracao !== geracaoRef.current) return null
     trocarLista(pagina.conversas)
     setTemMais(pagina.temMais)
+    if (pagina.aguardando !== undefined) setAguardando(pagina.aguardando)
     cursorRef.current = pagina.cursor
     return pagina.conversas
   }
@@ -1539,6 +1543,7 @@ export function CRMInbox({
           if (geracao !== geracaoRef.current) return
           trocarLista(pagina.conversas)
           setTemMais(pagina.temMais)
+          if (pagina.aguardando !== undefined) setAguardando(pagina.aguardando)
           cursorRef.current = pagina.cursor
         })
         .catch(err => console.error('[inbox] filtrar conversas', err))
@@ -1642,13 +1647,12 @@ export function CRMInbox({
     && selectedConv?.channel === 'whatsapp'
     && provedorDaConversa === 'official'
 
-  // Awaiting-response counter (aging over the visible/filtered conversations)
-  // Conta CONVERSAS aguardando: é o que a lista mostra, uma linha por conversa.
-  const awaitingConvs = filtered.filter(c => c.awaiting_since != null)
-  const awaitingCount = awaitingConvs.length
-  const hasAwaitingAlert = awaitingConvs.some(
-    c => nowMs != null && agingLevel(secondsSince(c.awaiting_since, nowMs), AWAITING_THRESHOLDS) === 'alert'
-  )
+  // A faixa "aguardando": conta CONVERSAS (uma linha por conversa), da rede
+  // inteira ao alcance e com os filtros da lista — o banco conta, não as 30
+  // carregadas (D6 da 38ª; IN-10). A cor é a da que espera há mais tempo.
+  const awaitingCount = aguardando?.total ?? 0
+  const hasAwaitingAlert = !!aguardando?.desde && nowMs != null
+    && agingLevel(secondsSince(aguardando?.desde ?? null, nowMs), AWAITING_THRESHOLDS) === 'alert'
 
   // O rótulo da caixa só entra na linha quando a rede fala por mais de uma —
   // é ele que distingue as duas conversas da mesma pessoa no WhatsApp. Com uma
@@ -1695,11 +1699,7 @@ export function CRMInbox({
             setMessages(prev => mesclarMensagem(prev, msg))
             setSendError(null)
             // A conversa some do topo da lista se a prévia não acompanhar.
-            setConversations(prev => prev.map(c =>
-              c.id === msg.conversation_id
-                ? { ...c, last_message: msg.content, last_message_at: msg.created_at }
-                : c,
-            ))
+            setConversations(prev => prev.map(c => comPreviaDaMensagem(c, msg)))
           }}
         />
       )}
@@ -2137,213 +2137,225 @@ export function CRMInbox({
                 </div>
               )}
 
-              {/* Você responde pelo SEU número, e este cliente não conhece ele.
-                  O aviso vem ANTES de digitar porque depois é tarde: a mensagem
-                  chegaria de um número estranho, numa conversa nova do lado
-                  dele, e a resposta voltaria como outra conversa aqui. */}
-              {respondendoPelaOutra && !numeroRemovido && (
-                <div style={{
-                  margin: '0 16px 8px',
-                  padding: '9px 12px', borderRadius: 8,
-                  background: 'var(--danger-soft)', border: '1px solid var(--danger-border)',
-                  display: 'flex', alignItems: 'flex-start', gap: 8,
-                  fontSize: 'var(--text-sm-sz)', color: 'var(--danger)',
-                }}>
-                  <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
-                  <div style={{ flex: 1 }}>
-                    <span style={{ fontWeight: 600 }}>
-                      Você fala pelo <strong>{respondendoPelaOutra.label}</strong>, e este
-                      atendimento veio pelo <strong>{selectedConv.numero_label ?? 'outro número'}</strong>.
-                      O cliente nunca falou com o seu — não há janela de 24h, e
-                      o texto livre seria recusado.
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setIgnorarCaixaPropria(true)}
-                      style={{
-                        display: 'block', marginTop: 6, padding: 0, border: 'none',
-                        background: 'none', cursor: 'pointer',
-                        fontSize: 'var(--text-sm-sz)', fontWeight: 700,
-                        color: 'var(--danger)', textDecoration: 'underline',
-                      }}
-                    >
-                      Responder pelo {selectedConv.numero_label ?? 'número da conversa'} →
-                    </button>
-                  </div>
-                </div>
-              )}
+              {/* O que só serve a quem responde (D1 da 38ª; CLAUDE.md §14: a tela
+                  esconde o que a pessoa não pode usar): os avisos de envio, o
+                  anexo, o contexto da resposta e o campo. Quem tem o CRM só em
+                  Ver lê a conversa. */}
+              {canEdit && (
+                <>
+                  {/* Você responde pelo SEU número, e este cliente não conhece ele.
+                      O aviso vem ANTES de digitar porque depois é tarde: a mensagem
+                      chegaria de um número estranho, numa conversa nova do lado
+                      dele, e a resposta voltaria como outra conversa aqui. */}
+                  {respondendoPelaOutra && !numeroRemovido && (
+                    <div style={{
+                      margin: '0 16px 8px',
+                      padding: '9px 12px', borderRadius: 8,
+                      background: 'var(--danger-soft)', border: '1px solid var(--danger-border)',
+                      display: 'flex', alignItems: 'flex-start', gap: 8,
+                      fontSize: 'var(--text-sm-sz)', color: 'var(--danger)',
+                    }}>
+                      <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+                      <div style={{ flex: 1 }}>
+                        <span style={{ fontWeight: 600 }}>
+                          Você fala pelo <strong>{respondendoPelaOutra.label}</strong>, e este
+                          atendimento veio pelo <strong>{selectedConv.numero_label ?? 'outro número'}</strong>.
+                          {janelaFechadaNaCaixaPropria && (
+                            <> O cliente nunca falou com o seu — não há janela de 24h, e
+                          o texto livre seria recusado.</>
+                          )}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setIgnorarCaixaPropria(true)}
+                          style={{
+                            display: 'block', marginTop: 6, padding: 0, border: 'none',
+                            background: 'none', cursor: 'pointer',
+                            fontSize: 'var(--text-sm-sz)', fontWeight: 700,
+                            color: 'var(--danger)', textDecoration: 'underline',
+                          }}
+                        >
+                          Responder pelo {selectedConv.numero_label ?? 'número da conversa'} →
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
-              {/* Janela de 24h da Meta. Sem isto a pessoa escreve, vê "enviado"
-                  e a mensagem nunca chega — a API recusa fora da janela. */}
-              {!janela.aberta && !respondendoPelaOutra && !numeroRemovido && (
-                <div style={{
-                  margin: '0 16px 8px',
-                  padding: '8px 12px', borderRadius: 8,
-                  background: 'var(--warning-soft)', border: '1px solid var(--warning-border)',
-                  display: 'flex', alignItems: 'flex-start', gap: 8,
-                  fontSize: 'var(--text-sm-sz)', color: 'var(--warning)',
-                }}>
-                  <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
-                  <div style={{ flex: 1 }}>
-                    <span>{janela.motivo}</span>
-                    {/* Template é a única saída daqui: a Meta recusa texto livre
-                        fora da janela, mas entrega template aprovado sempre. */}
-                    {selectedConv.channel === 'whatsapp' && provedorDaConversa === 'official' && (
+                  {/* Janela de 24h da Meta. Sem isto a pessoa escreve, vê "enviado"
+                      e a mensagem nunca chega — a API recusa fora da janela. */}
+                  {!janela.aberta && !respondendoPelaOutra && !numeroRemovido && (
+                    <div style={{
+                      margin: '0 16px 8px',
+                      padding: '8px 12px', borderRadius: 8,
+                      background: 'var(--warning-soft)', border: '1px solid var(--warning-border)',
+                      display: 'flex', alignItems: 'flex-start', gap: 8,
+                      fontSize: 'var(--text-sm-sz)', color: 'var(--warning)',
+                    }}>
+                      <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+                      <div style={{ flex: 1 }}>
+                        <span>{janela.motivo}</span>
+                        {/* Template é a única saída daqui: a Meta recusa texto livre
+                            fora da janela, mas entrega template aprovado sempre. */}
+                        {selectedConv.channel === 'whatsapp' && provedorDaConversa === 'official' && (
+                          <button
+                            type="button"
+                            onClick={() => setShowTemplates(true)}
+                            style={{
+                              display: 'block', marginTop: 6, padding: 0, border: 'none',
+                              background: 'none', cursor: 'pointer',
+                              fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: 'var(--warning)',
+                              textDecoration: 'underline',
+                            }}
+                          >
+                            Enviar um template →
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {sendError && (
+                    <div style={{
+                      margin: '0 16px 8px',
+                      padding: '8px 12px', borderRadius: 8,
+                      background: 'var(--danger-soft)', border: '1px solid color-mix(in srgb, var(--danger) 20%, transparent)',
+                      display: 'flex', alignItems: 'flex-start', gap: 8,
+                      fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600,
+                    }}>
+                      <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+                      <span>{sendError}</span>
+                    </div>
+                  )}
+
+                  {selectedConv.status !== 'closed' && (
+                    <PainelDeAnexo a={anexos} enviando={enviandoAnexo} />
+                  )}
+
+                  {/* Contexto preso ao compositor: respondendo a quem, ou editando o
+                      quê. Sem isto, depois de rolar a conversa a pessoa perde de
+                      vista a qual mensagem o que ela está digitando se refere. */}
+                  {(respondendoA || editando) && (
+                    <div style={{
+                      margin: '0 16px 8px', padding: '7px 10px',
+                      borderRadius: 8, borderLeft: '3px solid var(--brand)',
+                      background: 'var(--brand-soft)',
+                      display: 'flex', alignItems: 'center', gap: 8,
+                    }}>
+                      {editando ? <Pencil size={13} color="var(--brand)" /> : <Reply size={13} color="var(--brand)" />}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 'var(--text-overline)', fontWeight: 800, color: 'var(--brand)' }}>
+                          {editando
+                            ? 'Editando mensagem'
+                            : `Respondendo ${respondendoA!.direction === 'outbound' ? 'você mesmo' : selectedConv.contact_name ?? 'o contato'}`}
+                        </div>
+                        <div style={{
+                          fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)',
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}>
+                          {(editando ?? respondendoA)!.content}
+                        </div>
+                      </div>
                       <button
                         type="button"
-                        onClick={() => setShowTemplates(true)}
+                        onClick={() => (editando ? cancelarEdicao() : setRespondendoA(null))}
+                        title={editando ? 'Cancelar edição' : 'Cancelar resposta'}
                         style={{
-                          display: 'block', marginTop: 6, padding: 0, border: 'none',
-                          background: 'none', cursor: 'pointer',
-                          fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: 'var(--warning)',
-                          textDecoration: 'underline',
+                          border: 'none', background: 'none', cursor: 'pointer',
+                          color: 'var(--text-muted)', padding: 2, display: 'flex',
                         }}
                       >
-                        Enviar um template →
+                        <X size={14} />
                       </button>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {sendError && (
-                <div style={{
-                  margin: '0 16px 8px',
-                  padding: '8px 12px', borderRadius: 8,
-                  background: 'var(--danger-soft)', border: '1px solid color-mix(in srgb, var(--danger) 20%, transparent)',
-                  display: 'flex', alignItems: 'flex-start', gap: 8,
-                  fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600,
-                }}>
-                  <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
-                  <span>{sendError}</span>
-                </div>
-              )}
-
-              {selectedConv.status !== 'closed' && (
-                <PainelDeAnexo a={anexos} enviando={enviandoAnexo} />
-              )}
-
-              {/* Contexto preso ao compositor: respondendo a quem, ou editando o
-                  quê. Sem isto, depois de rolar a conversa a pessoa perde de
-                  vista a qual mensagem o que ela está digitando se refere. */}
-              {(respondendoA || editando) && (
-                <div style={{
-                  margin: '0 16px 8px', padding: '7px 10px',
-                  borderRadius: 8, borderLeft: '3px solid var(--brand)',
-                  background: 'var(--brand-soft)',
-                  display: 'flex', alignItems: 'center', gap: 8,
-                }}>
-                  {editando ? <Pencil size={13} color="var(--brand)" /> : <Reply size={13} color="var(--brand)" />}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 'var(--text-overline)', fontWeight: 800, color: 'var(--brand)' }}>
-                      {editando
-                        ? 'Editando mensagem'
-                        : `Respondendo ${respondendoA!.direction === 'outbound' ? 'você mesmo' : selectedConv.contact_name ?? 'o contato'}`}
                     </div>
-                    <div style={{
-                      fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)',
-                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  )}
+
+                  {/* Input */}
+                  {selectedConv.status !== 'closed' && (
+                    <div className="inbox-composer" style={{
+                      padding: '10px 14px', borderTop: '1px solid var(--hairline)',
+                      display: 'flex', gap: 8, alignItems: 'flex-end', flexShrink: 0,
+                      background: 'var(--surface)',
                     }}>
-                      {(editando ?? respondendoA)!.content}
+                      {/* No celular, tudo isto vira um botão só: quatro ícones de
+                          36px comem metade da largura, e o que resta é o campo de
+                          escrever — que é o que importa ali. No desktop cada ação
+                          continua a um clique de distância. */}
+                      <MenuDeAcoes
+                        podeTemplate={podeTemplate}
+                        podeAtalhos={canEdit}
+                        bloqueado={bloqueado}
+                        anexos={anexos}
+                        onTemplate={() => setShowTemplates(true)}
+                        onAtalhos={() => { setBuscaAtalho(''); setShowAtalhos(true) }}
+                      />
+
+                      {/* Template a qualquer momento, não só quando a janela fecha:
+                          lembrete e retorno são mensagem padronizada que a recepção
+                          manda o dia inteiro, dentro do prazo ou fora dele. */}
+                      {podeTemplate && (
+                        <button className="hide-mobile"
+                          type="button"
+                          onClick={() => setShowTemplates(true)}
+                          title="Enviar um template aprovado"
+                          style={{
+                            flexShrink: 0, alignSelf: 'flex-end',
+                            height: 36, width: 36, borderRadius: 9,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            border: '1.5px solid var(--border)', background: 'var(--bg-app)',
+                            color: 'var(--text-muted)', cursor: 'pointer',
+                          }}
+                        >
+                          <FileText size={15} />
+                        </button>
+                      )}
+                      <span className="hide-mobile" style={{ display: "contents" }}><BotoesDeAnexo a={anexos} disabled={bloqueado} /></span>
+                      {canEdit && (
+                        <button className="hide-mobile"
+                          type="button"
+                          onClick={() => { setBuscaAtalho(''); setShowAtalhos(true) }}
+                          title="Respostas rápidas (ou digite / no campo)"
+                          style={{
+                            flexShrink: 0, alignSelf: 'flex-end',
+                            height: 36, width: 36, borderRadius: 9,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            border: '1.5px solid var(--border)', background: 'var(--bg-app)',
+                            color: 'var(--text-muted)', cursor: 'pointer',
+                          }}
+                        >
+                          <Zap size={15} />
+                        </button>
+                      )}
+                      <textarea
+                        ref={textareaRef}
+                        value={draft}
+                        onChange={e => handleDraftChange(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        rows={1}
+                        placeholder={bloqueado
+                          ? 'Não é possível responder agora'
+                          : editando
+                            ? 'Edite a mensagem… (Enter para salvar, Esc para cancelar)'
+                            : 'Digite uma mensagem… (Enter para enviar)'}
+                        disabled={bloqueado}
+                        className="field"
+                        style={{ flex: 1, resize: 'none', fontSize: 'var(--text-base-sz)', lineHeight: 1.5, maxHeight: 100, overflowY: 'auto' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleSend}
+                        disabled={!draft.trim() || isPending || (bloqueado && !editando)}
+                        className="btn-primary"
+                        style={{ flexShrink: 0, alignSelf: 'flex-end', height: 36, padding: '0 14px' }}
+                        title={editando ? 'Salvar edição' : 'Enviar'}
+                      >
+                        {editando ? <Check size={14} /> : <Send size={14} />}
+                      </button>
                     </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => (editando ? cancelarEdicao() : setRespondendoA(null))}
-                    title={editando ? 'Cancelar edição' : 'Cancelar resposta'}
-                    style={{
-                      border: 'none', background: 'none', cursor: 'pointer',
-                      color: 'var(--text-muted)', padding: 2, display: 'flex',
-                    }}
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
+                  )}
+                </>
               )}
-
-              {/* Input */}
-              {selectedConv.status !== 'closed' ? (
-                <div className="inbox-composer" style={{
-                  padding: '10px 14px', borderTop: '1px solid var(--hairline)',
-                  display: 'flex', gap: 8, alignItems: 'flex-end', flexShrink: 0,
-                  background: 'var(--surface)',
-                }}>
-                  {/* No celular, tudo isto vira um botão só: quatro ícones de
-                      36px comem metade da largura, e o que resta é o campo de
-                      escrever — que é o que importa ali. No desktop cada ação
-                      continua a um clique de distância. */}
-                  <MenuDeAcoes
-                    podeTemplate={podeTemplate}
-                    podeAtalhos={canEdit}
-                    bloqueado={bloqueado}
-                    anexos={anexos}
-                    onTemplate={() => setShowTemplates(true)}
-                    onAtalhos={() => { setBuscaAtalho(''); setShowAtalhos(true) }}
-                  />
-
-                  {/* Template a qualquer momento, não só quando a janela fecha:
-                      lembrete e retorno são mensagem padronizada que a recepção
-                      manda o dia inteiro, dentro do prazo ou fora dele. */}
-                  {podeTemplate && (
-                    <button className="hide-mobile"
-                      type="button"
-                      onClick={() => setShowTemplates(true)}
-                      title="Enviar um template aprovado"
-                      style={{
-                        flexShrink: 0, alignSelf: 'flex-end',
-                        height: 36, width: 36, borderRadius: 9,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        border: '1.5px solid var(--border)', background: 'var(--bg-app)',
-                        color: 'var(--text-muted)', cursor: 'pointer',
-                      }}
-                    >
-                      <FileText size={15} />
-                    </button>
-                  )}
-                  <span className="hide-mobile" style={{ display: "contents" }}><BotoesDeAnexo a={anexos} disabled={bloqueado} /></span>
-                  {canEdit && (
-                    <button className="hide-mobile"
-                      type="button"
-                      onClick={() => { setBuscaAtalho(''); setShowAtalhos(true) }}
-                      title="Respostas rápidas (ou digite / no campo)"
-                      style={{
-                        flexShrink: 0, alignSelf: 'flex-end',
-                        height: 36, width: 36, borderRadius: 9,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        border: '1.5px solid var(--border)', background: 'var(--bg-app)',
-                        color: 'var(--text-muted)', cursor: 'pointer',
-                      }}
-                    >
-                      <Zap size={15} />
-                    </button>
-                  )}
-                  <textarea
-                    ref={textareaRef}
-                    value={draft}
-                    onChange={e => handleDraftChange(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    rows={1}
-                    placeholder={bloqueado
-                      ? 'Não é possível responder agora'
-                      : editando
-                        ? 'Edite a mensagem… (Enter para salvar, Esc para cancelar)'
-                        : 'Digite uma mensagem… (Enter para enviar)'}
-                    disabled={bloqueado}
-                    className="field"
-                    style={{ flex: 1, resize: 'none', fontSize: 'var(--text-base-sz)', lineHeight: 1.5, maxHeight: 100, overflowY: 'auto' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={handleSend}
-                    disabled={!draft.trim() || isPending || (bloqueado && !editando)}
-                    className="btn-primary"
-                    style={{ flexShrink: 0, alignSelf: 'flex-end', height: 36, padding: '0 14px' }}
-                    title={editando ? 'Salvar edição' : 'Enviar'}
-                  >
-                    {editando ? <Check size={14} /> : <Send size={14} />}
-                  </button>
-                </div>
-              ) : (
+              {/* Fim do que só serve a quem responde */}
+              {selectedConv.status === 'closed' && (
                 <div className="inbox-encerrada" style={{
                   padding: '12px 16px', borderTop: '1px solid var(--hairline)',
                   textAlign: 'center', fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)',

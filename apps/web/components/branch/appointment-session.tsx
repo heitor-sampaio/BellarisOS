@@ -1,5 +1,6 @@
 'use client'
 
+import { useHidratado } from '@/lib/use-hidratado'
 import { textoDeQuemMarcaAChegada, textoDeQuemRecebe, textoDeQuemConclui, textoDeQuemRespondeAFicha } from '@/lib/equipe/textos-de-quem-pode'
 import { AcoesDoLancamentoDaFicha } from '@/components/shared/acoes-do-lancamento-da-ficha'
 import { textoDasNotas, type NotaNaTela } from '@/lib/avaliacao/notas'
@@ -1390,6 +1391,9 @@ export function AppointmentSession({
   // resposta e devolve a frase; "Iniciar mesmo assim" manda de novo, confirmado.
   const [perguntaDoInicio, setPerguntaDoInicio] = useState<{ texto: string; chegar: boolean } | null>(null)
 
+  // Até hidratar, o clique num botão da ação principal se perderia calado.
+  const hidratado = useHidratado()
+
   async function handleChegarEIniciar(confirmado = false) {
     setStarting(true)
     setErroAoIniciar(null)
@@ -1828,7 +1832,7 @@ export function AppointmentSession({
             {temAcaoPrincipal && <div className="sessao-acao-principal" data-acao-principal>
             {/* A profissional deste atendimento: chegada e início num gesto só (A21). */}
             {mostraChegarEIniciar && (
-              <button type="button" onClick={() => handleChegarEIniciar()} disabled={starting || documentosQueBloqueiam.length > 0} className="btn-primary"
+              <button type="button" onClick={() => handleChegarEIniciar()} disabled={starting || documentosQueBloqueiam.length > 0 || !hidratado} className="btn-primary"
                 title={documentosQueBloqueiam.length ? `Falta assinar: ${documentosQueBloqueiam.map(d => d.titulo).join(', ')}` : undefined}
                 style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 9, fontSize: 'var(--text-base-sz)' }}>
                 {starting ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
@@ -1837,7 +1841,7 @@ export function AppointmentSession({
             )}
 
             {mostraCheckin && (
-              <button type="button" onClick={handleCheckin} disabled={checkingIn}
+              <button type="button" onClick={handleCheckin} disabled={checkingIn || !hidratado}
                 style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 9, border: 'none', background: 'var(--success)', color: 'var(--surface)', fontWeight: 700, fontSize: 'var(--text-base-sz)', cursor: 'pointer' }}>
                 {checkingIn ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
                 {checkingIn ? 'Registrando…' : 'Check-in'}
@@ -1846,7 +1850,7 @@ export function AppointmentSession({
 
             {/* Iniciar (Confirmado ou Chegou + canManage) */}
             {mostraIniciar && (
-              <button type="button" onClick={() => handleStart()} disabled={starting || documentosQueBloqueiam.length > 0} className="btn-primary"
+              <button type="button" onClick={() => handleStart()} disabled={starting || documentosQueBloqueiam.length > 0 || !hidratado} className="btn-primary"
                 title={documentosQueBloqueiam.length ? `Falta assinar: ${documentosQueBloqueiam.map(d => d.titulo).join(', ')}` : undefined}
                 style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 9, fontSize: 'var(--text-base-sz)' }}>
                 {starting ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
@@ -1860,7 +1864,7 @@ export function AppointmentSession({
                 const falta = conferirObrigatorias()
                 if (falta) setOQueFalta(falta.grupos)
                 else setShowFinish(true)
-              }}
+              }} disabled={!hidratado}
                 style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 20px', borderRadius: 9, border: 'none', background: 'var(--brand)', color: 'var(--surface)', fontWeight: 700, fontSize: 'var(--text-base-sz)', cursor: 'pointer', boxShadow: 'var(--shadow-brand-btn)' }}>
                 <CheckCircle2 size={14} /> Finalizar atendimento
               </button>
@@ -1888,7 +1892,7 @@ export function AppointmentSession({
             )}
 
             {mostraFalta && (
-              <button type="button" onClick={() => { setConfirmandoFalta(true); setErroDaFalta(null) }}
+              <button type="button" onClick={() => { setConfirmandoFalta(true); setErroDaFalta(null) }} disabled={!hidratado}
                 className="btn-secondary" style={{ padding: '9px 14px', fontSize: 'var(--text-base-sz)', gap: 5 }}>
                 <AlertCircle size={14} /> Não compareceu
               </button>
@@ -1897,7 +1901,7 @@ export function AppointmentSession({
             {/* Cancelar: a Agenda em Gerenciar (F65); o Em atendimento é DESISTIR, do
                 Atendimento em Gerenciar com o escopo dele (canManage — recusaDoCancelar). */}
             {isActive && (status === 'IN_PROGRESS' ? canManage : canCheckin) && (
-              <button type="button" onClick={() => setShowCancel(true)}
+              <button type="button" onClick={() => setShowCancel(true)} disabled={!hidratado}
                 className="btn-ghost" style={{ padding: '9px 14px', fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)', gap: 5 }}>
                 <XCircle size={14} /> Cancelar
               </button>

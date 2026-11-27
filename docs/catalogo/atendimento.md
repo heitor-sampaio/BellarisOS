@@ -956,8 +956,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:3056`, `:3251`
 - Antes: ES-23
 
-**ES-14.** A Entrada tem quantidade em embalagens, custo, lote, validade, marca, fornecedor, nota fiscal e observações; marca e fornecedor são opcionais e valem em todo caminho (manual, leitor, estoque inicial, Copilot), e o nome novo entra na lista. A entrada com validade e sem número de lote também cria o lote. Na lista, o leitor de código de barras acha o produto e abre a Entrada; sem achar, deixa ligar o código a um produto.
-- Fonte: o Heitor, 13/11: "A entrada adapta para o novo formato de informar marca e fornecedor."
+**ES-14.** A Entrada tem quantidade em embalagens, custo, lote, validade, marca, fornecedor, nota fiscal e observações; marca e fornecedor são opcionais e valem em todo caminho (manual, leitor, estoque inicial, Copilot), e o nome novo entra na lista. A entrada com validade e sem número de lote também cria o lote. Na lista, o leitor de código de barras acha o produto e abre a Entrada; sem achar, deixa ligar o código a um produto. A Entrada começa vazia, sem a nota e o fornecedor da anterior; o botão "Usar a nota NF-…" (a nota da entrada anterior, na mesma aba, por 2 horas) traz os dois.
+- Fonte: o Heitor, 13/11: "A entrada adapta para o novo formato de informar marca e fornecedor."; a nota: o Heitor, 27/11 (R34): "Começa vazia, com o botão "Usar a nota NF-…" (a proposta)"
 - Onde: `docs/regras/atendimento.md:2901`, `:3067`, `:3174`, `:3279`, `docs/revisao.md:129`, `docs/revisao.md:1857`
 - Antes: ES-24, ES-25, ES-30
 
@@ -1011,13 +1011,13 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 
 ### Lotes, ajuste, perda e transferência
 
-**ES-24.** O lote é da unidade. A saída tira primeiro do lote válido que vence antes, e os vencidos só depois; a transferência leva o lote ao destino; o vencido é sinalizado, não bloqueado. A validade é um dia: no dia da validade o lote vale, e vencido é a partir do dia seguinte, pelo dia da unidade do lote. O consumo maior que o saldo deixa a parte que nenhum lote cobriu em saldo negativo; a entrada seguinte com lote paga essa falta antes de encher o lote, e a soma dos lotes volta a ser o saldo. O Histórico do produto e as Movimentações dos Relatórios dizem o que cada lote cobriu ("Lote AM1: 2 ml · 2 ml sem lote"; "Lote AM2 val. …: 8 ml · 2 ml cobriram a falta de antes (sem lote)").
-- Fonte: decisão do Claude; a falta sem lote e o que cada lote cobriu: decisão do Claude, 26/11 (33ª simulação, D5), pelo princípio 3
+**ES-24.** O lote é da unidade. A saída tira primeiro do lote válido que vence antes, e os vencidos só depois; a transferência leva o lote ao destino; o vencido é sinalizado, não bloqueado. A validade é um dia: no dia da validade o lote vale, e vencido é a partir do dia seguinte, pelo dia da unidade do lote. O consumo maior que o saldo deixa a parte que nenhum lote cobriu em saldo negativo; a entrada seguinte com lote paga essa falta antes de encher o lote, e a soma dos lotes volta a ser o saldo. O Histórico do produto e as Movimentações dos Relatórios dizem o que cada lote cobriu ("Lote AM1: 2 ml · 2 ml sem lote"; "Lote AM2 val. …: 8 ml · 2 ml cobriram a falta de antes (sem lote)"). A venda de produto (a venda sozinha e o produto na comanda do PDV) sinaliza, como a sessão do atendimento, quando o que vai sair inclui lote vencido, sem bloquear; a janela da venda não diz o lote nem a divisão entre dois — o Histórico e as Movimentações dizem. O vencido continua no valor do estoque, ao custo do lote, até sair (pela venda, pelo uso ou pela perda "Vencido").
+- Fonte: decisão do Claude; a falta sem lote e o que cada lote cobriu: decisão do Claude, 26/11 (33ª simulação, D5), pelo princípio 3; o sinal na venda: decisão do Claude, 27/11 (D3 da 38ª), pela própria ES-24 ("o vencido é sinalizado"); a venda sem o lote: decisão do Claude, 27/11 (38ª, Decisão 5) — mostrar o lote na venda e no recibo é a sugestão nº 19; o vencido no valor do estoque: decisão do Claude, 27/11 (38ª, Decisão 6), pela própria ES-24 (sinalizar, não bloquear) e pelo princípio 3
 - Onde: `docs/regras/atendimento.md:2591`, `:2911`, `:3936-3959`
 - Antes: ES-50, ES-51; antes de 26/11: a entrada enchia o lote inteiro com o saldo negativo, a soma dos lotes passava do saldo, e a linha dizia o lote como se cobrisse o movimento inteiro
 
-**ES-25.** Para o recall, cada lote (inclusive o esgotado) tem "Aplicado em: ver clientes": cada saída do lote para uma cliente, com a hora da conclusão e quem atendeu (ou quem vendeu) e a quantidade daquele lote. Precisa do Estoque em Ver e das Clientes em Ver: sem as Clientes, o botão não aparece. Cada atendimento do prontuário diz o que se tirou de cada lote e, a quem tem os dois, leva ao "Aplicado em". A dose que saiu de dois lotes mostra os dois, cada um com a sua parte ("TB1 50 UI · TB2 10 UI"), na ordem em que saíram (o que vence antes primeiro, ES-24).
-- Fonte: princípio 3; a dose de dois lotes: decisão do Claude, 27/11 (37ª, Decisão C1), pelo princípio 3 — é como o "Aplicado em" já mostra
+**ES-25.** Para o recall, cada lote (inclusive o esgotado) tem "Aplicado em: ver clientes": cada saída do lote para uma cliente, com a hora da conclusão e quem atendeu (ou quem vendeu) e a quantidade daquele lote. Precisa do Estoque em Ver e das Clientes em Ver: sem as Clientes, o botão não aparece. Cada atendimento do prontuário diz o que se tirou de cada lote e, a quem tem os dois, leva ao "Aplicado em". A dose que saiu de dois lotes mostra os dois, cada um com a sua parte ("TB1 50 UI · TB2 10 UI"), na ordem em que saíram (o que vence antes primeiro, ES-24). A venda devolvida (o cancelamento, o estorno ou a devolução de parte com o produto de volta ao estoque) mostra a volta no "Aplicado em": o lote conta o que entregou de fato, a saída menos o que voltou.
+- Fonte: princípio 3; a dose de dois lotes: decisão do Claude, 27/11 (37ª, Decisão C1), pelo princípio 3 — é como o "Aplicado em" já mostra; a devolução: decisão do Claude, 27/11 (A5 da 38ª), pela própria ES-25 (o que o lote entregou) e pela ES-28
 - Onde: `docs/regras/atendimento.md:1944`, `:2925`, `:2938`
 - Antes: ES-53, PT-05
 
@@ -1185,7 +1185,6 @@ Detalhe de tela sem decisão de produto, texto exato, ou implementação.
 - PT-34: o primeiro ponto do mapa nasce sem produto; "Região (opcional)" (detalhe do mapa).
 - PT-39: a linha que explica cada botão da folha de injetáveis (texto).
 - PC-22: o nome do insumo aparece inteiro no seletor (exibição).
-- ES-28: a Entrada lembra a nota e o fornecedor por 2 horas (conveniência de tela).
 - ES-29: os textos de confirmação de entrada, perda e ajuste (texto).
 - ES-42: as colunas "TOTAL REDE" e "ESTOQUE POR UNIDADE" (colunas da tabela).
 - ES-46: a tela vazia "Nenhum produto cadastrado" (estado vazio).

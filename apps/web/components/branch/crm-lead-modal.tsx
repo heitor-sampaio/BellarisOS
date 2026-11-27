@@ -19,7 +19,7 @@ import { MotivoDaPerdaCampos, type OpcaoDeMotivo } from './pergunta-da-perda'
 import { listarMotivosDePerda } from '@/actions/crm-motivos'
 import { LeadTimeline } from './lead-timeline'
 import type { Lead } from './crm-board'
-import { LEAD_SOURCES, maskPhone as telefoneParaExibir, maskTelefoneDigitando, telefoneDoCadastro } from '@estetica-os/utils'
+import { LEAD_SOURCES, maskPhone as telefoneParaExibir, maskTelefoneDigitando, telefoneDoCadastro, formatDia } from '@estetica-os/utils'
 import { TagBadge } from '@/components/shared/tag-badge'
 import { TagPicker } from '@/components/shared/tag-picker'
 import { Dica } from '@/components/shared/dica'
@@ -61,7 +61,8 @@ export interface CRMLeadModalHandle {
 /**
  * A5 da 32ª: no "Só leitura" (o CRM em Ver), os campos desligados pelo fieldset
  * ficavam com a cara de campo para digitar. Aqui ganham a aparência de leitura:
- * o fundo do card, a linha fina e o cursor comum. Só tokens.
+ * o fundo do card, a linha fina e o cursor comum. Só tokens. A9 da 38ª: sem a
+ * seta do seletor nem o calendário da data, e o vazio é "—" (`exemplo`).
  */
 const CSS_SO_LEITURA = `
 fieldset[data-somente-leitura] :is(.field, input, select, textarea) {
@@ -70,8 +71,10 @@ fieldset[data-somente-leitura] :is(.field, input, select, textarea) {
   color: var(--text);
   cursor: default;
   opacity: 1;
+  appearance: none;
 }
-fieldset[data-somente-leitura] :is(.field, input, select, textarea)::placeholder { color: transparent; }
+fieldset[data-somente-leitura] :is(.field, input, select, textarea)::placeholder { color: var(--text-faint); }
+fieldset[data-somente-leitura] input::-webkit-calendar-picker-indicator { display: none; }
 `
 
 export interface CRMBranch { id: string; name: string; slug: string }
@@ -404,6 +407,9 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
       setTags(prev => prev.filter(t => t !== value))
     }
 
+    /** A9 da 38ª: quem só vê lê "—" no vazio, não o exemplo de como preencher. */
+    const exemplo = (t: string) => (somenteLeitura ? '—' : t)
+
     return (
       <>
         {trigger && (
@@ -543,7 +549,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                 <Label htmlFor={idNome}>Nome *</Label>
                 <input id={idNome} name="name" type="text" required className="field"
-                  defaultValue={existing?.name ?? pessoa?.nome} placeholder="Nome do contato" />
+                  defaultValue={existing?.name ?? pessoa?.nome} placeholder={exemplo('Nome do contato')} />
               </div>
 
               {/* Contato */}
@@ -551,16 +557,18 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                 <p style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em', marginBottom: 4 }}>
                   CONTATO <span style={{ color: 'var(--brand)' }}>*</span>
                 </p>
-                <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginBottom: 10 }}>
-                  Preencha pelo menos um dos campos abaixo
-                </p>
+                {!somenteLeitura && (
+                  <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginBottom: 10 }}>
+                    Preencha pelo menos um dos campos abaixo
+                  </p>
+                )}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', minWidth: 80 }}>Telefone</span>
                     <input name="phone" type="tel" className="field" style={{ flex: 1 }}
                       aria-label="Telefone"
                       value={phone} onChange={e => setPhone(maskTelefoneDigitando(e.target.value))}
-                      placeholder="(00) 00000-0000" />
+                      placeholder={exemplo('(00) 00000-0000')} />
                   </div>
                   {fichaDoFone && (
                     <div data-ficha-do-telefone role="group" aria-label="É a mesma pessoa?" style={{
@@ -588,12 +596,12 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', minWidth: 80 }}>E-mail</span>
                     <input name="email" type="email" className="field" style={{ flex: 1 }} aria-label="E-mail"
-                      defaultValue={existing?.email ?? pessoa?.email ?? ''} placeholder="contato@email.com" />
+                      defaultValue={existing?.email ?? pessoa?.email ?? ''} placeholder={exemplo('contato@email.com')} />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', minWidth: 80 }}>Rede social</span>
                     <input name="social_media" type="text" className="field" style={{ flex: 1 }} aria-label="Rede social"
-                      defaultValue={existing?.social_media ?? ''} placeholder="@usuario ou link do perfil" />
+                      defaultValue={existing?.social_media ?? ''} placeholder={exemplo('@usuario ou link do perfil')} />
                   </div>
                 </div>
               </div>
@@ -603,7 +611,12 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                 <p style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em', marginBottom: 10 }}>
                   PROCEDIMENTOS DE INTERESSE
                 </p>
-                {procedures.length === 0 ? (
+                {/* A9 da 38ª: quem só vê lê os procedimentos escolhidos, não a lista para marcar. */}
+                {somenteLeitura ? (
+                  <p data-procedimentos-so-leitura style={{ fontSize: 'var(--text-sm-sz)', color: selectedProcs.length ? 'var(--text)' : 'var(--text-faint)' }}>
+                    {procedures.filter(p => selectedProcs.includes(p.id)).map(p => p.name).join(', ') || '—'}
+                  </p>
+                ) : procedures.length === 0 ? (
                   <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', padding: '4px 0' }}>
                     Nenhum procedimento cadastrado. Acesse o portal admin para cadastrar.
                   </p>
@@ -676,7 +689,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                 </span>
                 <input id={idValor} name="value" type="text" inputMode="decimal" className="field"
                   key={`valor-${existing?.id ?? 'novo'}-${valorDoCampo(existing?.value)}`}
-                  defaultValue={valorDoCampo(existing?.value)} placeholder="R$ 0,00" style={{ maxWidth: 200 }} />
+                  defaultValue={valorDoCampo(existing?.value)} placeholder={exemplo('R$ 0,00')} style={{ maxWidth: 200 }} />
               </div>
 
               {vaiPerder && (
@@ -745,8 +758,8 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                 <Label htmlFor={idObservacoes}>Observações</Label>
                 <textarea id={idObservacoes} name="notes" rows={3} className="field"
                   defaultValue={existing?.notes ?? ''}
-                  placeholder="Interesse, contexto, próximos passos…"
-                  style={{ resize: 'vertical' }} />
+                  placeholder={exemplo('Interesse, contexto, próximos passos…')}
+                  style={{ resize: somenteLeitura ? 'none' : 'vertical' }} />
               </div>
 
               {/* A42 da 9ª: o lembrete de retorno. No dia, quem tem o lead é
@@ -761,12 +774,18 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: 5, flex: '0 0 170px' }}>
                     <span className="field-label">Retornar em</span>
-                    <input name="retornar_em" type="date" className="field" defaultValue={existing?.retornar_em ?? ''} />
+                    {/* A9 da 38ª: para quem só vê, a data é texto (o campo de data mostraria "dd/mm/aaaa"). */}
+                    {somenteLeitura ? (
+                      <input name="retornar_em" type="text" className="field" readOnly
+                        defaultValue={formatDia(existing?.retornar_em) ?? ''} placeholder="—" />
+                    ) : (
+                      <input name="retornar_em" type="date" className="field" defaultValue={existing?.retornar_em ?? ''} />
+                    )}
                   </label>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: 5, flex: '1 1 220px' }}>
                     <span className="field-label">O que fazer no retorno</span>
                     <input name="retornar_obs" type="text" className="field" maxLength={200}
-                      defaultValue={existing?.retornar_obs ?? ''} placeholder="Ex.: ligar para falar do orçamento" />
+                      defaultValue={existing?.retornar_obs ?? ''} placeholder={exemplo('Ex.: ligar para falar do orçamento')} />
                   </label>
                 </div>
               </div>

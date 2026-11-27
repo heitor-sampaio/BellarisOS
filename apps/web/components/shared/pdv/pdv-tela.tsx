@@ -30,6 +30,7 @@ import { AcoesDoLancamentoDaFicha } from '@/components/shared/acoes-do-lancament
 import type { LancamentoDaComanda } from '@/lib/pdv/lancamentos-da-comanda'
 import type { LinhaDaComanda } from '@/lib/pdv/linha-da-comanda'
 import type { MembroDaVenda } from '@/components/shared/vender'
+import type { LoteParaBaixa } from '@/lib/estoque/fefo'
 
 export interface ComandaEscolhida {
   comanda:            ComandaDoPdv
@@ -40,7 +41,8 @@ export interface ComandaEscolhida {
   /** Fase 5b: os produtos acrescentados na comanda do atendimento. */
   itens:              ItemDaComanda[]
   /** Os produtos de Venda direta que ainda se podem acrescentar (só na comanda do atendimento a receber). */
-  produtosParaAcrescentar: { id: string; name: string; price: number; unidade: string; disponivel: number }[]
+  /** D3 da 38ª: com os lotes com saldo (o que sai de lote vencido se sinaliza). */
+  produtosParaAcrescentar: { id: string; name: string; price: number; unidade: string; disponivel: number; lotes?: LoteParaBaixa[] }[]
   pacotesParaAbater:  PacoteParaAbater[]
   pagamentoCombinado: { metodo: string | null; rotulo: string; desconto?: number; pagamento?: PagamentoDoPlano | null } | null
   /** com-06: a equipe do "Quem vendeu os produtos" da comanda com produto a vender (nulo, sem produto). */

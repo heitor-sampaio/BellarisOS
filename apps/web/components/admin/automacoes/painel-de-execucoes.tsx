@@ -45,9 +45,11 @@ const quando = (iso: string, fuso = 'America/Sao_Paulo') =>
   })
 
 export function PainelDeExecucoes({
-  automacaoId, podeEnsaiar: podeEnsaiarPelaPermissao, ensaioCabe, onFechar,
+  automacaoId, podeEnsaiar: podeEnsaiarPelaPermissao, ensaioCabe, ligada, onFechar,
 }: {
   automacaoId: string
+  /** A automação está no ar: desligada, a que espera está parada (A14 da 38ª; RX-05). */
+  ligada: boolean
   /** O ensaio não grava nem manda nada: continua na sessão de suporte (docs/regras/automacoes.md). */
   podeEnsaiar: boolean
   /** O gatilho é de FATO (ensaioCabe): o de relógio não tem fato para repetir, e o botão só recusaria (D9 da 30ª). */
@@ -170,9 +172,12 @@ export function PainelDeExecucoes({
         ) : execucoes.map(ex => {
           // A28, D6 e D15 da 32ª: a que terminou sem fazer o que o fluxo pedia
           // diz "Parou"/"Não mandou", com o motivo — não "Concluída".
+          // A14 da 38ª: com a automação desligada, a que espera não segue.
           const s = ex.fim
             ? { ...ICONE_STATUS.parado!, cor: ex.fim.rotulo === 'Parou' ? 'var(--text-muted)' : 'var(--warning)', rotulo: ex.fim.rotulo }
-            : ICONE_STATUS[ex.status] ?? ICONE_STATUS.parado!
+            : ex.status === 'esperando' && !ligada
+              ? { ...ICONE_STATUS.parado!, rotulo: 'Parada' }
+              : ICONE_STATUS[ex.status] ?? ICONE_STATUS.parado!
           const expandida = aberta === ex.id
 
           return (
@@ -203,9 +208,9 @@ export function PainelDeExecucoes({
                     {quando(ex.criadaEm, fuso)}{ex.sobre ? ` · ${ex.sobre}` : ''}
                   </p>
                   {/* A14 da 20ª: quando segue — e, se o agendamento caiu, que só vai reconferir. */}
-                  {fraseDaEspera(ex, fuso) && (
+                  {fraseDaEspera(ex, fuso, ligada) && (
                     <p data-frase-da-espera style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-soft)', marginTop: 3, lineHeight: 1.45 }}>
-                      {fraseDaEspera(ex, fuso)}
+                      {fraseDaEspera(ex, fuso, ligada)}
                     </p>
                   )}
                   {ex.fim && (

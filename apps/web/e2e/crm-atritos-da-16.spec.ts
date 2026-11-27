@@ -131,6 +131,25 @@ test('A17: com o filtro, a barra diz quantas mostra, e que o topo é do funil in
   })
 })
 
+/**
+ * A10 da 38ª simulação (princípio 3): com duas tags marcadas no filtro, o selo
+ * do "Limpar" mostrava 1 (contava o grupo). Conta cada filtro marcado, como o inbox.
+ */
+test('A10 da 38ª: com duas tags marcadas, o selo do "Limpar" diz 2', async ({ browser }) => {
+  const id = await lead('Filtro duas tags A10')
+  const { data: k } = await db().from('leads').select('contato_id').eq('id', id).single<{ contato_id: string }>()
+  expect((await db().from('contacts').update({ tags: ['Noivas 2027', 'Indicação'] }).eq('id', k!.contato_id)).error, 'as tags da pessoa').toBeNull()
+  await como(browser, joana, async p => {
+    await p.goto('/admin/oportunidades')
+    await p.getByRole('button', { name: /^Tags/ }).click()
+    const painel = p.locator('[data-painel-picker]')
+    await painel.getByRole('button', { name: 'Noivas 2027' }).click()
+    await painel.getByRole('button', { name: 'Indicação' }).click()
+    await p.keyboard.press('Escape')
+    await expect(p.locator('[data-selo-dos-filtros]')).toHaveText('2')
+  })
+})
+
 test('A19: o funil criado abre selecionado, com as etapas dele', async ({ browser }) => {
   const nomeDoFunil = `Noivas ${marca}`
   await como(browser, dona, async p => {

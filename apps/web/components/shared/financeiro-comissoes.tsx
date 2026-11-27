@@ -10,8 +10,7 @@ import { fecharComissoes, estornarFechamento } from '@/actions/comissoes'
 import { dinheiroNaGavetaDeHoje } from '@/actions/fechamento'
 import { avisoDaGavetaNoPagamento } from '@/lib/financeiro/conferencia-do-fechamento'
 import type { ResumoDoProfissional, LancamentoDoExtrato, Fechamento } from '@/lib/comissoes/leitura'
-import { textoDaBase } from '@/lib/comissoes/base-efetiva'
-import { origemDoLancamento as origemDe, tituloDoLancamento, regraDoLancamento, rotuloDaBaseDoLancamento as base, csvDoExtrato, ehDeVenda, vinculosDoExtrato, situacaoDoLancamento, textoDoFechamento } from '@/lib/comissoes/extrato-texto'
+import { origemDoLancamento as origemDe, tituloDoLancamento, baseERegraDoLancamento, csvDoExtrato, ehDeVenda, vinculosDoExtrato, situacaoDoLancamento, textoDoFechamento } from '@/lib/comissoes/extrato-texto'
 import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
 import { JanelaModal } from '@/components/shared/janela-modal'
@@ -427,7 +426,8 @@ function Extrato({ linhas, nome, fusoDe }: { linhas: LancamentoDoExtrato[]; nome
               {data(l.releasedAt, fusoDe(l))} · {l.kind === 'AGUARDANDO' ? (l.motivo ?? SITUACAO.AGUARDANDO) : `${TIPO[l.kind]}${l.motivo ? ` — ${l.motivo}` : ''}`}
               {l.origem && !ehDeVenda(l) ? ` · ${origemDe(l)}` : ''}
               {/* D3 da 10ª: a base EFETIVA (a que a conta usou) e o caminho do preço até ela; A17 da 11ª: de onde veio a regra. */}
-              {l.preco != null ? ` · ${textoDaBase(base(l), l)} · ${regraDoLancamento(l, nome)}` : ''}
+              {/* D9 da 38ª: no fixo por unidade do produto, a regra (a base não entra na conta); A1 da 38ª: a forma sem taxa cadastrada. */}
+              {l.preco != null ? ` · ${baseERegraDoLancamento(l, nome)}` : ''}
               {vinculos.has(l.id) && <span data-vinculo-do-estorno>{` · ${vinculos.get(l.id)}`}</span>}
             </p>
           </div>

@@ -835,8 +835,8 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:1264-1273`
 - Antes: KD-13
 
-**AD-13.** A gravação se lê pelo FATO, com a unidade e o link dele: a venda ("Vendeu o pacote X (R$ …) — cliente"), o início, a conclusão e a desistência do atendimento (na unidade do agendamento, não na do pacote usado nem "Da rede"), o recebimento. Recebido é o lançamento que ficou pago naquela gravação. Vale também na gravação de uma linha só (o recebimento sem linha de comissão, de quem atende sem comissão): ela diz "Recebeu R$ X (forma)", como a de várias linhas, e não "Criou a receita". O pacote trazido não é venda (PA-24 de Vendas): a frase é "Registrou o pacote de antes X — cliente", nunca "Vendeu".
-- Fonte: decisão do Claude; a gravação de uma linha só: decisão do Claude, 25/11 (o Heitor revisa), pela AD-16 (D10 da 29ª simulação); a desistência: decisão do Claude, 26/11 (33ª simulação, D15), pela própria AD-13; o pacote trazido: decisão do Claude, 27/11 (37ª, D10), pela AD-13 e pela PA-24 de Vendas
+**AD-13.** A gravação se lê pelo FATO, com a unidade e o link dele: a venda ("Vendeu o pacote X (R$ …) — cliente"), o início, a conclusão e a desistência do atendimento (na unidade do agendamento, não na do pacote usado nem "Da rede"), o recebimento. Recebido é o lançamento que ficou pago naquela gravação. Vale também na gravação de uma linha só (o recebimento sem linha de comissão, de quem atende sem comissão): ela diz "Recebeu R$ X (forma)", como a de várias linhas, e não "Criou a receita". O pacote trazido não é venda (PA-24 de Vendas): a frase é "Registrou o pacote de antes X — cliente", nunca "Vendeu". O cancelamento e o estorno da venda de produto (PR-05, PR-06 de Vendas) se leem como cancelamento, não como "Editou a venda de produto": a frase diz que cancelou (ou estornou) a venda, o motivo, o estorno e o que voltou ao estoque (AD-16).
+- Fonte: decisão do Claude; a gravação de uma linha só: decisão do Claude, 25/11 (o Heitor revisa), pela AD-16 (D10 da 29ª simulação); a desistência: decisão do Claude, 26/11 (33ª simulação, D15), pela própria AD-13; o pacote trazido: decisão do Claude, 27/11 (37ª, D10), pela AD-13 e pela PA-24 de Vendas; o cancelamento da venda de produto: decisão do Claude, 27/11 (D8 da 38ª), pela AD-13 e pela AD-16
 - Onde: `docs/regras/plataforma.md:1274-1292`, `:1386-1398`; `apps/web/lib/auditoria/frase.ts` (`fatoDaGravacao`), `:1771-1776`
 - Antes: KD-14; antes de 26/11: a desistência no meio do atendimento saía "Da rede"; antes de 27/11: o pacote trazido saía "Vendeu o pacote … (pacote de antes)"
 
@@ -850,8 +850,8 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:1321-1322`, `:1380-1382`, `:1401-1404`, `:1424-1426`
 - Antes: KD-16
 
-**AD-16.** No dinheiro, a frase diz quanto, como e de quem: a venda (com o crediário: entrada e parcelas), o recebimento (a forma, a parcela, as vezes no crédito, quanto em cada forma quando são duas, o voucher e os pontos usados), a despesa criada com o valor, o lançamento editado "de quanto para quanto" (valor, datas, pago, forma, descrição, parcela, fornecedor, nota; o texto livre só pelo nome) e o estorno com a forma e a parcela do que foi estornado e o que voltou (o produto ao estoque, o voucher a ativo).
-- Fonte: decisão do Claude
+**AD-16.** No dinheiro, a frase diz quanto, como e de quem: a venda (com o crediário: entrada e parcelas), o recebimento (a forma, a parcela, as vezes no crédito, quanto em cada forma quando são duas, o voucher e os pontos usados), a despesa criada com o valor, o lançamento editado "de quanto para quanto" (valor, datas, pago, forma, descrição, parcela, fornecedor, nota; o texto livre só pelo nome) e o estorno com a forma e a parcela do que foi estornado e o que voltou (o produto ao estoque, o voucher a ativo). O cancelamento da venda de produto toda a receber diz também o motivo e o que saiu do a receber, e quantos itens com o plural certo ("1 item").
+- Fonte: decisão do Claude; o cancelamento da venda de produto: decisão do Claude, 27/11 (D8 da 38ª), pela própria AD-16 e pela AD-14 (o plural)
 - Onde: `docs/regras/plataforma.md:1274-1276`, `:1286-1298`, `:1311-1320`, `:1347-1357`, `:1397-1398`, `:1444-1448`, `:1456-1458`
 - Antes: KD-17
 

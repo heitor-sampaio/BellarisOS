@@ -20,7 +20,8 @@ import {
   moverDeEtapa, marcarDesfecho, adicionarTagAoCliente, removerTagDoCliente, definirResponsavel,
   type AtorDaAutomacao,
 } from './acoes-crm'
-import { mandarMensagem } from './acoes-mensagem'
+import { mandarMensagem, EnvioNaoSaiu } from './acoes-mensagem'
+import { naoEnviadaDoPasso, guardarNaoEnviada, esquecerNaoEnviada } from './mensagem-nao-enviada'
 import { podeFalarCom, limitesDe, vesperaSeCairNoSilencio } from './limites'
 import { retidaPeloSilencio, reconferirDepoisDoSilencio } from './silencio'
 import { quandoVoltar, quandoChegarEm, buscarClientes } from './tempo'
@@ -499,23 +500,34 @@ async function rodarNo(
       }
 
       const fuso = await fusoDaMensagem(run.tenant_id, contexto, evento)
-      const r = await mandarMensagem(atorDaAutomacao(run, automacao), contexto, {
-        canal: cfg.canal,
-        texto: interpolarTexto(cfg.texto ?? '', contexto, fuso),
-        templateId: cfg.templateId ?? null,
-        // AX-06 (D6 da 32ª; R10): sem conversa aberta, o que a rede escolheu.
-        semConversa: cfg.semConversa ?? 'nao_mandar',
-        // R10 (o Heitor, 26/11): o modelo aprovado do passo, com as variáveis
-        // da automação já trocadas — e as que saíram vazias (princípio 4).
-        modelo: cfg.templateId
-          ? {
-              templateId: cfg.templateId,
-              valores: Object.fromEntries(Object.entries(cfg.variaveisDoTemplate ?? {})
-                .map(([nome, v]) => [nome, interpolarTexto(v, contexto, fuso).trim()])),
-              semDado: Object.values(cfg.variaveisDoTemplate ?? {}).flatMap(v => variaveisSemDado(v, contexto)),
-            }
-          : null,
-      })
+      // D2 da 38ª (IN-18): a mensagem que a tentativa anterior deixou "Não
+      // enviada" volta pela mesma linha — uma bolha só na conversa. Ela fica
+      // no contexto, que a execução grava ao falhar e relê ao voltar pelo cron.
+      let r: Awaited<ReturnType<typeof mandarMensagem>>
+      try {
+        r = await mandarMensagem(atorDaAutomacao(run, automacao), contexto, {
+          naoEnviada: naoEnviadaDoPasso(contexto, no.id),
+          canal: cfg.canal,
+          texto: interpolarTexto(cfg.texto ?? '', contexto, fuso),
+          templateId: cfg.templateId ?? null,
+          // AX-06 (D6 da 32ª; R10): sem conversa aberta, o que a rede escolheu.
+          semConversa: cfg.semConversa ?? 'nao_mandar',
+          // R10 (o Heitor, 26/11): o modelo aprovado do passo, com as variáveis
+          // da automação já trocadas — e as que saíram vazias (princípio 4).
+          modelo: cfg.templateId
+            ? {
+                templateId: cfg.templateId,
+                valores: Object.fromEntries(Object.entries(cfg.variaveisDoTemplate ?? {})
+                  .map(([nome, v]) => [nome, interpolarTexto(v, contexto, fuso).trim()])),
+                semDado: Object.values(cfg.variaveisDoTemplate ?? {}).flatMap(v => variaveisSemDado(v, contexto)),
+              }
+            : null,
+        })
+      } catch (e) {
+        if (e instanceof EnvioNaoSaiu) guardarNaoEnviada(contexto, no.id, e.naoEnviada)
+        throw e
+      }
+      esquecerNaoEnviada(contexto, no.id)
       return { resumo: r.resumo, esperarAte: r.esperarAte }
     }
 

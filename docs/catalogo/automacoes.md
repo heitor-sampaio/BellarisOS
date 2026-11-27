@@ -236,8 +236,8 @@ Este é o catálogo das regras das Automações que valem HOJE: o princípio, os
 - Onde: `docs/regras/automacoes.md:77-97`
 - Antes: KA-09
 
-**EV-03.** Remarcar o agendamento reprograma a automação que está esperando por ele: o texto e as conferências passam a usar o horário novo, e o "1 dia antes" é refeito sobre esse horário. Se o novo horário está a menos de um dia, a mensagem sai na próxima passagem. A espera por duração ("30 dias depois") não muda. O passo a passo mostra a espera nova.
-- Fonte: decisão do Claude (D1 da 20ª simulação, pelos princípios 3 e 6)
+**EV-03.** Remarcar o agendamento reprograma a automação que está esperando por ele: o texto e as conferências passam a usar o horário novo, e o "1 dia antes" é refeito sobre esse horário. Se o novo horário está a menos de um dia, a mensagem sai na próxima passagem. A espera por duração ("30 dias depois") não muda. O passo a passo mostra a espera nova. A remarcação reprograma na MESMA execução, sem abrir outra, e não é confirmação: ela não dispara o "Agendamento confirmado" (o agendamento volta a Agendado, AG-42 do Atendimento); a automação dele roda de novo só quando o horário novo é confirmado.
+- Fonte: decisão do Claude (D1 da 20ª simulação, pelos princípios 3 e 6); a remarcação que não dispara a confirmação: decisão do Claude, 27/11 (38ª, Decisão 13), pela GT-01 (o fato pela intenção) e pela AG-42 do Atendimento
 - Onde: `docs/regras/automacoes.md:332-342`, `:654`
 - Antes: KB-03
 
@@ -256,9 +256,9 @@ Este é o catálogo das regras das Automações que valem HOJE: o princípio, os
 - Onde: `docs/regras/automacoes.md:355-357`, `:450-451`; `docs/revisao.md:1103-1104`
 - Antes: KB-07, KC-11
 
-**EV-07.** O teto é de 3 mensagens por cliente por dia, por automação, na automação nova. Quando passa do teto, a execução para. O ensaio não conta, e o teto não tem máximo.
-- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "concordo, o resto fica como está"
-- Onde: `docs/regras/automacoes.md:358-359`, `:369`; `docs/revisao.md:1103-1104`
+**EV-07.** O teto é de 3 mensagens por cliente por dia, por automação, na automação nova. Quando passa do teto, a execução para. O ensaio não conta, e o teto não tem máximo. O teto conta as execuções do dia concluídas ou esperando; o envio que falhou não falou com a cliente e não conta (como o aviso guardado no sino, AX-04).
+- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "concordo, o resto fica como está"; o envio que falhou: decisão do Claude, 27/11 (38ª, Decisão 15), pela própria EV-07 ("por cliente") e pela AX-04
+- Onde: `docs/regras/automacoes.md:358-359`, `:369`; `docs/revisao.md:1103-1104`; `apps/web/lib/automacoes/limites.ts` (`falouHojeCom`)
 - Antes: KB-08, KC-11
 
 **EV-08.** A rede desliga o silêncio ou o teto deixando o campo vazio, e a tela diz "Sem silêncio: a mensagem sai a qualquer hora" ou "Sem teto". O vazio continua vazio ao reabrir. O padrão (21:00–08:00 e 3) só entra na automação nova.
@@ -308,9 +308,9 @@ Este é o catálogo das regras das Automações que valem HOJE: o princípio, os
 - Onde: `docs/regras/automacoes.md:170-173`; `docs/revisao.md:1104-1105`
 - Antes: KA-20, KC-12
 
-**RX-05.** Na lista de execuções, a que está esperando diz quando segue ("Segue em 22/11 às 09:00"). Se o agendamento dela caiu, diz "Vai reconferir em 18/11 às 09:00: o agendamento foi cancelado.". O passo "Esperar" diz "Esperando até 22/11 às 09:00".
-- Fonte: princípio 3
-- Onde: `docs/regras/automacoes.md:343-347`
+**RX-05.** Na lista de execuções, a que está esperando diz quando segue ("Segue em 22/11 às 09:00"). Se o agendamento dela caiu, diz "Vai reconferir em 18/11 às 09:00: o agendamento foi cancelado.". O passo "Esperar" diz "Esperando até 22/11 às 09:00". O programado da automação desligada não sai: se, na hora, ela estiver desligada, a execução para com "Automação não está ativa."; religada antes da hora, segue. Com ela desligada, a lista e o registro não prometem "Segue em …" da que espera: dizem que a espera está parada porque a automação está desligada.
+- Fonte: princípio 3; o programado da automação desligada: decisão do Claude, 27/11 (38ª, Decisão 14), pelo princípio 6 (nada se move sozinho) e pelo princípio 3 (A14 da 38ª: a lista seguia com "Segue em …" do que não ia sair)
+- Onde: `docs/regras/automacoes.md:343-347`; `apps/web/lib/automacoes/executar.ts` (`executarRun`)
 - Antes: KB-04
 
 **RX-06.** Quando o fato aponta para um registro (agendamento, cliente, oportunidade…) que não se consegue ler, o passo e a execução FALHAM, com o motivo ("Não consegui carregar o agendamento do fato: …"), e a mensagem não sai. A regra sobre um dado ausente só vale para "está vazio": o agendamento sem situação não passa em "não está em".

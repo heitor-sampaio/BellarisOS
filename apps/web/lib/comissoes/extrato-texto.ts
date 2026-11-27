@@ -1,6 +1,7 @@
 import { formatBRL } from '@estetica-os/utils'
 import type { LancamentoDoExtrato, Fechamento } from '@/lib/comissoes/leitura'
 import { rotuloDaBase } from '@/lib/comissoes/config'
+import { textoDaBase } from '@/lib/comissoes/base-efetiva'
 import { relogioSeOutro } from '@/lib/unidades/hora-da-unidade'
 
 /**
@@ -94,6 +95,40 @@ export function regraDoLancamento(l: LancamentoDoExtrato, nomeDaPessoa: string |
  */
 export const rotuloDaBaseDoLancamento = (l: LancamentoDoExtrato) =>
   rotuloDaBase({ desconta_taxa: l.descontaTaxa, desconta_insumos: l.descontaInsumos, base_com_pontos: l.baseComPontos, regra_tipo: l.regraTipo })
+
+/**
+ * D9 da 38ª (CB-04, CB-03; decisão do Claude, 27/11): o fixo POR UNIDADE do
+ * produto é o valor × as unidades, e a base não entra nessa conta — "base
+ * cheia: R$ 324,00" ao lado de "R$ 15,00 por unidade × 2" era um número que a
+ * conta não usa. Sem os pontos e o voucher tirando parte (nem a devolução), a
+ * linha diz só a regra; com eles, a base (é a proporção que reduz o fixo).
+ */
+function fixoPorUnidadeSemReducao(l: LancamentoDoExtrato): boolean {
+  if (l.origem !== 'PRODUTO' || !l.itemDoProduto || l.regraTipo !== 'FIXED_AMOUNT') return false
+  const base = l.base ?? l.preco
+  return l.preco != null && base != null && base >= l.preco - 0.005 && l.baseFator >= 1
+}
+
+/**
+ * A1 da 38ª (princípio 4, CT-02): a forma do pagamento sem a taxa daquelas
+ * vezes cadastrada valeu 0% na base — a linha diz o que a janela de receber
+ * disse, curto.
+ */
+const textoSemTaxa = (forma: string) => `sem taxa da maquininha cadastrada para o ${forma.charAt(0).toLowerCase()}${forma.slice(1)} (vale 0%)`
+
+/**
+ * O detalhe da linha do extrato depois do tipo: a base que a conta usou, a
+ * forma sem taxa cadastrada (se houver) e a regra — "base sem a taxa da
+ * maquininha: R$ 200,00 · 35%". Vazio na linha sem preço.
+ */
+export function baseERegraDoLancamento(l: LancamentoDoExtrato, nomeDaPessoa: string | null): string {
+  if (l.preco == null) return ''
+  return [
+    fixoPorUnidadeSemReducao(l) ? '' : textoDaBase(rotuloDaBaseDoLancamento(l), l),
+    l.semTaxaCadastrada ? textoSemTaxa(l.semTaxaCadastrada) : '',
+    regraDoLancamento(l, nomeDaPessoa),
+  ].filter(Boolean).join(' · ')
+}
 
 const TIPO: Record<LancamentoDoExtrato['kind'], string> = { LIBERACAO: 'Liberação', AJUSTE: 'Ajuste', ESTORNO: 'Estorno', AGUARDANDO: 'Aguardando' }
 const SITUACAO: Record<LancamentoDoExtrato['status'], string> = { OPEN: 'A pagar', PAID: 'Paga', AGUARDANDO: 'Aguardando o pagamento integral' }

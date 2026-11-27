@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { banco, tenantId, PREFIXO, apagarConversas } from './apoio/banco'
+import { apagarClientes } from './apoio/limpeza'
 
 /**
  * E-mail e rede social são da PESSOA (`contacts`, 2026-10-13): o importador os
@@ -83,5 +84,45 @@ test('A16: o cadastro pelo inbox traz o e-mail do lead, e o telefone do contato 
     if (leadId) await db.from('lead_events').delete().eq('lead_id', leadId)
     if (leadId) await db.from('leads').delete().eq('id', leadId)
     await apagarConversas([conv!.id])
+  }
+})
+
+/**
+ * D4 da 38ª simulação (crm-inbox:CL-14, IN-06; princípio 3): cadastrar pela
+ * conversa deixava o contato com o nome do WhatsApp ("Lena ✨") e o outro
+ * e-mail, com a ficha "Helena Zanella" — a conversa seguia "Lena ✨" e a busca
+ * pelo nome da ficha não a achava. Quem cadastra pela conversa já disse quem é:
+ * o contato recebe o nome e o e-mail da ficha, e o nome vai às conversas dele.
+ */
+test('D4: o cadastro pela conversa dá ao contato o nome e o e-mail da ficha', async ({ page }) => {
+  const db = banco()
+  const tenant = await tenantId()
+  const fone = '5548' + '99' + String(Date.now()).slice(-7)
+  const daFicha = `${NOME} Helena`
+  const emailDaFicha = `helena-d4-${marca}@exemplo.com`
+  const { data: conv, error } = await db.from('conversations').insert({
+    tenant_id: tenant, channel: 'whatsapp', status: 'open', provider: 'uazapi',
+    contact_name: `${NOME} Lena ✨`, contact_phone: fone, contact_external_id: fone, contact_aliases: [fone],
+    last_message_at: new Date().toISOString(), last_message: 'oi',
+  }).select('id, contato_id').single<{ id: string; contato_id: string }>()
+  expect(error, 'criar a conversa').toBeNull()
+  let clienteId: string | null = null
+  try {
+    await db.from('contacts').update({ name: `${NOME} Lena ✨`, email: `lena-d4-${marca}@outro.com` }).eq('id', conv!.contato_id)
+    await page.goto(`/admin/inbox?c=${conv!.id}`)
+    await page.getByRole('button', { name: 'Cadastrar como cliente' }).first().click()
+    const janela = page.getByRole('dialog', { name: 'Cadastrar como cliente' })
+    await janela.locator('input[name="name"]').fill(daFicha)
+    await janela.locator('input[name="email"]').fill(emailDaFicha)
+    await janela.getByRole('button', { name: 'Cadastrar cliente' }).click()
+    await expect.poll(async () => (await db.from('conversations').select('client_id').eq('id', conv!.id).single<{ client_id: string | null }>()).data?.client_id ?? null,
+      { timeout: 20_000 }).not.toBeNull()
+    clienteId = (await db.from('conversations').select('client_id').eq('id', conv!.id).single<{ client_id: string }>()).data!.client_id
+    expect((await db.from('clients').select('name').eq('id', clienteId).single<{ name: string }>()).data!.name).toBe(daFicha)
+    expect((await db.from('contacts').select('name, email').eq('id', conv!.contato_id).single()).data).toEqual({ name: daFicha, email: emailDaFicha })
+    expect((await db.from('conversations').select('contact_name').eq('id', conv!.id).single<{ contact_name: string }>()).data!.contact_name).toBe(daFicha)
+  } finally {
+    await apagarConversas([conv!.id])
+    if (clienteId) await apagarClientes([clienteId])
   }
 })

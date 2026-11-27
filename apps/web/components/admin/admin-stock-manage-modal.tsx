@@ -16,7 +16,7 @@ import { textoDasPartes } from '@/lib/estoque/lotes-do-movimento'
 import { saldoNaPrateleira } from '@/lib/estoque/saldo-em-texto'
 import { medidaNoPlural as pl, recusaDaEmbalagem } from '@/lib/estoque/medidas'
 import { minimoEhDoCadastro } from '@/lib/estoque/situacao'
-import { lerNotaDaEntradaAnterior, guardarNotaDaEntrada } from '@/lib/estoque/nota-da-entrada'
+import { lerNotaDaEntradaAnterior, guardarNotaDaEntrada, rotuloDeUsarANota, ofereceUsarANota } from '@/lib/estoque/nota-da-entrada'
 import { erroParaTela } from '@/lib/erro-na-tela'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { SegSelect } from '@/components/shared/seg-select'
@@ -173,9 +173,27 @@ function EntradaForm({ product, allBranches, defaultBranchId, sugerida, marcas =
   // A19 da 19ª (princípio 2): o custo fora do comum avisa — não recusa.
   const [custo, setCusto] = useState('')
   const custoForaDoComum = avisoDoCustoDaEntrada(custo.trim() === '' ? null : Number(custo), { custo: product.costPrice, venda: product.salePrice })
-  // A54 da 11ª: a nota com vários produtos — a próxima entrada traz a nota e o
-  // fornecedor da anterior (na mesma aba, por 2 horas), e diz que dá para apagar.
+  // A54 da 11ª: a nota com vários produtos — a entrada lembra a nota e o
+  // fornecedor da anterior (na mesma aba, por 2 horas). R34 (o Heitor, 27/11:
+  // "Começa vazia, com o botão "Usar a nota NF-…" (a proposta)"): a entrada
+  // começa sem os dois, e o botão os traz para quem lança a mesma nota.
   const [notaAnterior] = useState(() => lerNotaDaEntradaAnterior())
+  const [nota, setNota] = useState('')
+  const [fornecedorDaNota, setFornecedorDaNota] = useState<string | null>(null)
+  const [trocasDoFornecedor, setTrocasDoFornecedor] = useState(0)
+  // O escolhido no campo (também o criado ali, que a lista da tela não tem):
+  // é o nome que a nota guarda para o "Usar a nota" da próxima entrada.
+  const [fornecedorEscolhido, setFornecedorEscolhido] = useState<ItemDaLista | null>(null)
+  function usarANotaAnterior() {
+    if (!notaAnterior) return
+    setNota(notaAnterior.nota)
+    if (notaAnterior.fornecedor) {
+      // O campo do fornecedor renasce já com o da nota.
+      setFornecedorDaNota(notaAnterior.fornecedor)
+      setFornecedorEscolhido(null)
+      setTrocasDoFornecedor(n => n + 1)
+    }
+  }
   // D2 da 31ª (princípio 3): a quantidade é de EMBALAGENS — com conteúdo, a tela
   // diz quanto ela vale nele ("= 999.000 g"); 999 potes passavam calados. E o
   // produto gravado com "1 g com 1000 g" avisa o que a quantidade conta.
@@ -196,7 +214,7 @@ function EntradaForm({ product, allBranches, defaultBranchId, sugerida, marcas =
         envio.renovar()
         const idEscolhido = String(fd.get('fornecedor_id') ?? '')
         const nomeDoFornecedor = fornecedores.find(f => f.id === idEscolhido)?.nome || ''
-        guardarNotaDaEntrada(String(fd.get('nota_fiscal') ?? ''), nomeDoFornecedor)
+        guardarNotaDaEntrada(String(fd.get('nota_fiscal') ?? ''), fornecedorEscolhido?.nome || nomeDoFornecedor)
         // A52 da 11ª: a entrada confirma — e diz o saldo DEPOIS (C16).
         const saldo = 'saldoAgora' in res && res.saldoAgora ? ` Saldo agora: ${res.saldoAgora}.` : ''
         toast.success(`Entrada registrada: +${Number(fd.get('quantity')).toLocaleString('pt-BR', { maximumFractionDigits: 3 })} ${pl(product.unit, Number(fd.get('quantity')))} de ${product.name}.${saldo}`)
@@ -282,23 +300,24 @@ function EntradaForm({ product, allBranches, defaultBranchId, sugerida, marcas =
 
       {/* E14 (o Heitor, 13/11: "Não existe fornecedor de costume. Na entrada no
           estoque, escolhe fornecedor e marca"): os dois das listas da rede, com
-          busca — o que falta se cria ali mesmo. O fornecedor da nota trazida da
-          entrada anterior vem escolhido (é a mesma nota, A54 da 11ª). */}
+          busca — o que falta se cria ali mesmo. O "Usar a nota" escolhe o
+          fornecedor da nota anterior (R34). */}
       <div className="form-2col">
         <CampoDaLista lista="marcas" rotulo="Marca" nome="marca_id" itens={marcas} placeholder="Buscar ou criar marca…" />
-        <CampoDaLista lista="fornecedores" rotulo="Fornecedor" nome="fornecedor_id" itens={fornecedores}
-          inicial={notaAnterior?.fornecedor ?? null} placeholder="Buscar ou criar fornecedor…" />
+        <CampoDaLista key={trocasDoFornecedor} lista="fornecedores" rotulo="Fornecedor" nome="fornecedor_id" itens={fornecedores}
+          inicial={fornecedorDaNota} aoMudar={setFornecedorEscolhido} placeholder="Buscar ou criar fornecedor…" />
       </div>
       <FieldWrap>
         <Label htmlFor="entrada-nota">Nota fiscal</Label>
         <input id="entrada-nota" name="nota_fiscal" type="text" maxLength={60} className="field" placeholder="Número da nota"
-          defaultValue={notaAnterior?.nota ?? ''} />
+          value={nota} onChange={e => setNota(e.target.value)} />
+        {notaAnterior && ofereceUsarANota(notaAnterior, nota) && (
+          <button type="button" className="btn-ghost" data-usar-a-nota-anterior onClick={usarANotaAnterior}
+            style={{ alignSelf: 'flex-start' }}>
+            {rotuloDeUsarANota(notaAnterior)}
+          </button>
+        )}
       </FieldWrap>
-      {notaAnterior && (
-        <p data-nota-da-entrada-anterior style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-          A nota {notaAnterior.nota} veio da entrada anterior (outro produto da mesma nota) — apague se esta for outra.
-        </p>
-      )}
 
       <FieldWrap>
         <Label htmlFor="entrada-obs">Observações</Label>
@@ -1238,6 +1257,12 @@ function HistoricoTab({ product, defaultBranchId, podeDesfazer = true, onAlterou
               {(lotes || custo) && (
                 <p data-lotes-do-movimento style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 1 }}>
                   {[lotes, custo ? `custo ${custo}` : null].filter(Boolean).join(' · ')}
+                </p>
+              )}
+              {/* D3 da 38ª (ES-24): a saída para a cliente que tirou de lote vencido se sinaliza. */}
+              {m.vencidoNaSaida && (
+                <p data-vencido-na-saida style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 700, marginTop: 1 }}>
+                  {m.vencidoNaSaida}
                 </p>
               )}
               {/* A13 da 31ª: o "Corrigir custo" do lote diz de quanto para quanto (por embalagem, como se corrige). */}

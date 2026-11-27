@@ -1423,8 +1423,9 @@ profissional e `receita_dos_atendimentos`, e
 `metrics_receita_por_categoria_de_procedimento`; migration
 `20261103001305`). O nome passou a ser "receita dos atendimentos" ("Ranking —
 Profissionais por receita dos atendimentos", "Receita dos atendimentos
-(de todos)"), e a dica diz que é a conta da EXECUÇÃO e que o "Meu
-faturamento" é a da VENDA. Não conta duas vezes: a sessão não tem
+(de todos)"), e a dica diz que é a conta da EXECUÇÃO — o pago pelos
+atendimentos feitos, para quem atendeu, no dia do atendimento (curta desde a
+A13 da 38ª: o contraste com o "Meu faturamento" mora na dica dele). Não conta duas vezes: a sessão não tem
 lançamento. **E também a unidade PRÉ-PAGA usada e a sessão de PLANO feita**
 (r3-f13-07, o Heitor, 2026-11-03: "para quem atende, sessão de pacote, de
 pré-pago ou de plano é o mesmo trabalho"; migration `20261103001501`): a
@@ -1727,6 +1728,14 @@ Prova: `tests/relatorios-filtro-de-tags.test.ts`,
   Migration `20261216500001`. Teste:
   `tests/margem-da-unidade-so-o-que-ela-faz.test.ts`; E2E:
   `e2e/indicadores-margem-da-unidade.spec.ts` ("A19 da 37ª").
+- **Relatórios: a tela não se contradiz e diz a conta** (38ª simulação):
+  "A receber em aberto" não diz "Nada a receber em aberto." quando há
+  concluídos sem pagamento — só a nota deles aparece (A11; RE-10); o "Ticket
+  médio" da aba Clientes tem a dica `DEFINICOES.ticket`, como a Visão geral e
+  os Procedimentos (A12; TM-02); e a dica `DEFINICOES.receitaDosAtendimentos`
+  diz a conta numa frase, sem o parágrafo que explicava a tela (A13; princípio
+  7, "intuitivo não é explicativo"). Teste:
+  `tests/relatorios-a-tela-nao-se-contradiz.test.ts`.
 
 ## O que nunca fazer aqui
 

@@ -35,11 +35,19 @@ function diaEHora(iso: string, fuso: string): string {
   return `${dia} às ${hora}`
 }
 
+/**
+ * `ligada`: a automação está no ar. Desligada, a espera não segue — quando a
+ * hora chega, o motor encerra a execução ("Automação não está ativa.") —, e a
+ * lista diz isso, não "Segue em …" (A14 da 38ª; RX-05, princípio 3). Religada
+ * antes da hora, a execução segue, e a frase volta a ser a de sempre.
+ */
 export function fraseDaEspera(
   e: { retomaEm: string | null; situacaoDoAgendamento: string | null; gatilho?: string | null },
   fuso: string = FUSO_DE_BRASILIA,
+  ligada = true,
 ): string | null {
   if (!e.retomaEm) return null
+  if (!ligada) return 'A automação está desligada.'
   const quando = diaEHora(e.retomaEm, fuso)
   const situacao = e.situacaoDoAgendamento
   const ehOGatilho = !!situacao && !!e.gatilho && GATILHO_DA_SITUACAO[situacao] === e.gatilho

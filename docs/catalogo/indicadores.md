@@ -430,8 +430,8 @@ Este é o catálogo das regras dos indicadores que valem HOJE: todo número na t
 - Onde: `docs/regras/indicadores.md:1436-1439`
 - Antes: KE-32
 
-**CC-09.** A retenção é as clientes atendidas no período que já tinham sido atendidas antes dele, sobre as clientes atendidas no período. "Já atendida antes" vale por qualquer pessoa e em qualquer unidade da rede, também quando a tela olha uma unidade só.
-- Fonte: o Heitor, 2026-10-29: "A cliente é da clínica, o atendimento é da profissional"
+**CC-09.** A retenção é as clientes atendidas no período que já tinham sido atendidas antes dele, sobre as clientes atendidas no período. "Já atendida antes" vale por qualquer pessoa e em qualquer unidade da rede, também quando a tela olha uma unidade só. A "Primeira vez" é o outro lado: a cliente cuja primeira visita na REDE caiu no período, também no recorte de uma unidade (a que veio pela primeira vez à rede em outra unidade, dentro do período, conta como primeira vez também nesta).
+- Fonte: o Heitor, 2026-10-29: "A cliente é da clínica, o atendimento é da profissional"; a "Primeira vez" no recorte da unidade: decisão do Claude, 27/11 (38ª, Decisão 11), pela fala acima e pelo CLAUDE.md §5 (a cliente é da rede)
 - Onde: `docs/regras/indicadores.md:539-552`; `DEVLOG.md:11123-11126`, `:14574-14575`
 - Antes: KB-20
 
@@ -648,8 +648,8 @@ Este é o catálogo das regras dos indicadores que valem HOJE: todo número na t
 - Onde: `docs/regras/indicadores.md:947-955`
 - Antes: KD-15
 
-**DB-05.** Os Relatórios também guardam a unidade escolhida no endereço da página (o seletor de unidade a grava), como o dashboard; e o endereço em português ("relatorios", no portal da rede e no da unidade) leva aos Relatórios, com o que veio no endereço.
-- Fonte: decisão do Claude
+**DB-05.** Os Relatórios também guardam a unidade escolhida no endereço da página (o seletor de unidade a grava), como o dashboard; e o endereço em português ("relatorios", no portal da rede e no da unidade) leva aos Relatórios, com o que veio no endereço. O `?unidade=` é o recorte do portal da rede; no portal da unidade ele não é endereço de nada e se ignora: a tela segue a unidade do portal, sem mostrar dado de fora.
+- Fonte: decisão do Claude; o `?unidade=` no portal da unidade: decisão do Claude, 27/11 (38ª, Decisão 12), pelo drill-down só da rede (CLAUDE.md §6) — avisar é a sugestão nº 56
 - Onde: `docs/regras/indicadores.md:959-966`
 - Antes: KD-17
 

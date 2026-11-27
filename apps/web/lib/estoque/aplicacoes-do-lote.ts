@@ -2,6 +2,7 @@ import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, lerTodas } from '@/lib/db'
 import { nomesDosRegistros } from '@/lib/nomes-dos-registros'
+import { devolucaoDaVenda, type DevolucaoDaVenda } from '@/lib/estoque/devolucao-no-lote'
 
 /**
  * "Em quem foi aplicado o lote X" (A40 da 7ª simulação, 2026-11-05: não havia
@@ -33,6 +34,12 @@ export interface AplicacaoDoLote {
    */
   quantidade:   number
   unidade:      string
+  /**
+   * A5 da 38ª (ES-25): a venda que voltou ao estoque (o estorno com "O produto
+   * voltou") ou teve parte devolvida — as unidades já na unidade da linha. Nulo:
+   * nada voltou (o atendimento, a venda viva, a estornada que não voltou).
+   */
+  devolucao?:   DevolucaoDaVenda | null
 }
 
 type Admin = ReturnType<typeof createAdminClient>
@@ -60,18 +67,34 @@ export async function aplicacoesDoLote(admin: Admin, tenantId: string, loteId: s
       .select('id, client_id, professional_id, scheduled_at, completed_at, branches!inner(tenant_id)')
       .in('id', ids).eq('branches.tenant_id', tenantId), 'ler os atendimentos do lote'))),
     Promise.all(emLotes(daVenda.map(m => m.id)).map(ids => ler(admin.from('product_sale_items')
-      .select('stock_movement_id, product_sales!inner(client_id, sold_at, sold_by, tenant_id)')
+      .select('stock_movement_id, devolvidas, devolucao_movement_id, product_sales!inner(client_id, sold_at, sold_by, tenant_id, estornada_em, produto_voltou)')
       .in('stock_movement_id', ids).eq('product_sales.tenant_id', tenantId), 'ler as vendas do lote'))),
     Promise.all(emLotes(daVenda.map(m => m.id)).map(ids => ler(admin.from('product_sales')
-      .select('stock_movement_id, client_id, sold_at, sold_by')
+      .select('stock_movement_id, client_id, sold_at, sold_by, estornada_em, produto_voltou, devolvidas:unidades_devolvidas, devolucao_movement_id')
       .in('stock_movement_id', ids).eq('tenant_id', tenantId), 'ler as vendas antigas do lote'))),
   ])
   type Atend = { id: string; client_id: string | null; professional_id: string | null; scheduled_at: string; completed_at: string | null }
-  type Venda = { client_id: string | null; sold_at: string; sold_by: string | null }
+  type Venda = {
+    client_id: string | null; sold_at: string; sold_by: string | null; estornada_em: string | null; produto_voltou: boolean | null
+    devolvidas: number | null; devolucao_movement_id: string | null
+  }
   const porAtendimento = new Map((atendimentos.flat().filter(Boolean) as Atend[]).map(a => [a.id, a]))
   const porVenda = new Map<string, Venda>()
   for (const v of (vendasAntigas.flat().filter(Boolean) as (Venda & { stock_movement_id: string })[])) porVenda.set(v.stock_movement_id, v)
-  for (const i of (itens.flat().filter(Boolean) as unknown as { stock_movement_id: string; product_sales: Venda }[])) porVenda.set(i.stock_movement_id, i.product_sales)
+  type Item = { stock_movement_id: string; devolvidas: number | null; devolucao_movement_id: string | null
+    product_sales: Omit<Venda, 'devolvidas' | 'devolucao_movement_id'> }
+  // A5 da 38ª: a devolução é da LINHA da venda (o kit tem uma por produto).
+  for (const i of (itens.flat().filter(Boolean) as unknown as Item[])) {
+    porVenda.set(i.stock_movement_id, { ...i.product_sales, devolvidas: i.devolvidas, devolucao_movement_id: i.devolucao_movement_id })
+  }
+  // O dia da devolução de parte é o do movimento dela.
+  const idsDasDevolucoes = [...new Set([...porVenda.values()].map(v => v.devolucao_movement_id).filter(Boolean) as string[])]
+  const devolvidaEm = new Map<string, string>()
+  for (const ids of emLotes(idsDasDevolucoes)) {
+    const movs = await ler(admin.from('stock_movements').select('id, created_at, branches!inner(tenant_id)').in('id', ids).eq('branches.tenant_id', tenantId), 'ler as devoluções do lote') as { id: string; created_at: string }[] | null
+    for (const m of movs ?? []) devolvidaEm.set(m.id, m.created_at)
+  }
+  const f = fator > 0 ? fator : 1
 
   const nomes = await nomesDosRegistros(tenantId, {
     clientes: [...[...porAtendimento.values()].map(a => a.client_id), ...[...porVenda.values()].map(v => v.client_id)],
@@ -90,7 +113,11 @@ export async function aplicacoesDoLote(admin: Admin, tenantId: string, loteId: s
       const v = porVenda.get(m.id)
       if (!v?.client_id) continue
       saida.push({ movimentoId: m.id, tipo: 'VENDA', quando: v.sold_at, cliente: nomes.clientes[v.client_id] ?? 'Cliente',
-        quem: v.sold_by ? nomes.membros[v.sold_by] ?? null : null, quantidade, unidade })
+        quem: v.sold_by ? nomes.membros[v.sold_by] ?? null : null, quantidade, unidade,
+        // As unidades devolvidas (embalagens) na unidade da linha, como a quantidade.
+        devolucao: devolucaoDaVenda({ estornadaEm: v.estornada_em, produtoVoltou: v.produto_voltou,
+          devolvidas: v.devolvidas != null ? Math.round(Number(v.devolvidas) * f * 1000) / 1000 : null,
+          devolvidaEm: v.devolucao_movement_id ? devolvidaEm.get(v.devolucao_movement_id) ?? null : null }) })
     }
   }
   return saida.sort((x, y) => y.quando.localeCompare(x.quando))

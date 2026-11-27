@@ -7,7 +7,7 @@ import { expirarCacheDasTags } from '@/lib/tags/da-pessoa'
 import { getTenantContext, assertPermission, podeReceber, assertRecurso, temRecurso, can } from '@/lib/auth'
 import { redeTemWhatsapp } from '@/lib/automacoes/canal-da-rede'
 import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
-import { idsDaPaginaDoInbox } from '@/lib/inbox/pagina'
+import { idsDaPaginaDoInbox, aguardandoDoInbox, type AguardandoDoInbox } from '@/lib/inbox/pagina'
 import type { FiltrosInbox } from '@/components/admin/inbox-filtros'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { nomesDeAnuncios, type NomesDoAnuncio } from '@/lib/ads/ad-lookup'
@@ -221,6 +221,12 @@ export interface PaginaDoInbox {
   conversas: Conversation[]
   temMais:   boolean
   cursor:    { em: string; id: string } | null
+  /**
+   * A faixa "N aguardando resposta", da rede inteira ao alcance (D6 da 38ª;
+   * IN-10), com os filtros e a busca da lista. Só na primeira página (sem
+   * cursor): a próxima página não muda a conta. Nulo: não se pôde contar.
+   */
+  aguardando?: AguardandoDoInbox | null
 }
 
 export async function getConversations(opcoes: {
@@ -247,6 +253,11 @@ export async function getConversations(opcoes: {
   const admin = createAdminClient()
   const vazia: PaginaDoInbox = { conversas: [], temMais: false, cursor: null }
 
+  // D6 da 38ª: a contagem é do banco, não das 30 carregadas. Em paralelo com a página.
+  const contagem: Promise<AguardandoDoInbox | null> | undefined = !opcoes.depois
+    ? aguardandoDoInbox(admin, ctx, { filtros: opcoes.filtros, busca: opcoes.busca })
+    : undefined
+
   // A lista era as 200 mais recentes, filtradas no navegador: a 201ª não
   // aparecia nunca, e o filtro só enxergava as 200 (2026-09-28). Agora vem de
   // 30 em 30, já filtrada e com o alcance (as caixas do cargo) aplicado no
@@ -259,7 +270,8 @@ export async function getConversations(opcoes: {
     limite:  limite + 1,   // um a mais: é assim que se sabe se há próxima página
   })
   // Sem saber o alcance, não se mostra nada: mostrar tudo seria vazar.
-  if (!paginaIds) return vazia
+  if (!paginaIds) return contagem ? { ...vazia, aguardando: null } : vazia
+  const aguardando: AguardandoDoInbox | null | undefined = contagem ? await contagem : undefined
 
   const linhas  = paginaIds
   const temMais = linhas.length > limite
@@ -273,7 +285,7 @@ export async function getConversations(opcoes: {
     ? opcoes.incluirId : null
 
   const todos = incluir ? [incluir, ...ids] : ids
-  if (todos.length === 0) return vazia
+  if (todos.length === 0) return aguardando === undefined ? vazia : { ...vazia, aguardando }
 
   const lidas = await ler(admin
     .from('conversations')
@@ -290,6 +302,7 @@ export async function getConversations(opcoes: {
     conversas: await anexarDadosDoCard(ordenadas, ctx.tenantId!),
     temMais,
     cursor: ultima ? { em: ultima.last_message_at, id: ultima.id } : null,
+    ...(aguardando === undefined ? {} : { aguardando }),
   }
 }
 
@@ -1505,6 +1518,14 @@ export async function openLeadConversation(
   return { conversationId: null, error: 'Não foi possível abrir a conversa desta oportunidade.' }
 }
 
+/**
+ * A recusa de quem só VÊ as conversas (o CRM em Ver). As actions de mandar a
+ * DEVOLVEM em vez de lançar (CLAUDE.md §14; D1 da 38ª): a tela já esconde o
+ * compositor de quem não responde, e o lançamento virava "Você não tem acesso a
+ * esta área" no meio da conversa.
+ */
+const SO_VE_AS_CONVERSAS = 'Seu cargo não responde conversas.'
+
 export async function sendMessage(
   conversationId: string,
   content: string,
@@ -1515,7 +1536,7 @@ export async function sendMessage(
 ): Promise<{ ok: boolean; message?: Message; error?: string }> {
   const ctx   = await getTenantContext()
   assertRecurso(ctx, 'inbox')
-  assertPermission(ctx, 'crm', 'MANAGE')
+  if (!can(ctx, 'crm', 'MANAGE')) return { ok: false, error: SO_VE_AS_CONVERSAS }
   // No modo suporte nada sai para o paciente (decisão do Heitor).
   const travado = bloqueioDoSuporte(ctx, 'mandar mensagem ao cliente')
   if (travado) return { ok: false, error: travado }
@@ -1584,7 +1605,7 @@ export async function editMessage(
 ): Promise<{ ok: boolean; message?: Message; error?: string }> {
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'inbox')
-  assertPermission(ctx, 'crm', 'MANAGE')
+  if (!can(ctx, 'crm', 'MANAGE')) return { ok: false, error: SO_VE_AS_CONVERSAS }
   // No modo suporte nada sai para o paciente (decisão do Heitor).
   const travado = bloqueioDoSuporte(ctx, 'editar mensagem enviada ao cliente')
   if (travado) return { ok: false, error: travado }
@@ -1671,7 +1692,7 @@ export async function reenviarMensagem(
 ): Promise<{ ok: boolean; message?: Message; error?: string }> {
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'inbox')
-  if (!can(ctx, 'crm', 'MANAGE')) return { ok: false, error: 'Seu cargo não responde conversas.' }
+  if (!can(ctx, 'crm', 'MANAGE')) return { ok: false, error: SO_VE_AS_CONVERSAS }
   // No modo suporte nada sai para o paciente (decisão do Heitor).
   const travado = bloqueioDoSuporte(ctx, 'mandar mensagem ao cliente')
   if (travado) return { ok: false, error: travado }
@@ -1825,7 +1846,7 @@ export async function responderPorOutroNumero(
 ): Promise<{ conversationId?: string; error?: string }> {
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'inbox')
-  if (!can(ctx, 'crm', 'MANAGE')) return { error: 'Seu cargo não responde conversas.' }
+  if (!can(ctx, 'crm', 'MANAGE')) return { error: SO_VE_AS_CONVERSAS }
   // No modo suporte nada sai para o paciente (decisão do Heitor).
   const travado = bloqueioDoSuporte(ctx, 'mandar mensagem ao cliente')
   if (travado) return { error: travado }
@@ -1959,7 +1980,7 @@ export async function sendTemplateMessage(
 ): Promise<{ ok: boolean; message?: Message; error?: string }> {
   const ctx   = await getTenantContext()
   assertRecurso(ctx, 'inbox')
-  assertPermission(ctx, 'crm', 'MANAGE')
+  if (!can(ctx, 'crm', 'MANAGE')) return { ok: false, error: SO_VE_AS_CONVERSAS }
   // No modo suporte nada sai para o paciente (decisão do Heitor).
   const travado = bloqueioDoSuporte(ctx, 'mandar mensagem ao cliente')
   if (travado) return { ok: false, error: travado }
@@ -2006,7 +2027,7 @@ export async function sendMediaMessage(
 ): Promise<{ ok: boolean; message?: Message; error?: string }> {
   const ctx   = await getTenantContext()
   assertRecurso(ctx, 'inbox')
-  assertPermission(ctx, 'crm', 'MANAGE')
+  if (!can(ctx, 'crm', 'MANAGE')) return { ok: false, error: SO_VE_AS_CONVERSAS }
   // No modo suporte nada sai para o paciente (decisão do Heitor).
   const travado = bloqueioDoSuporte(ctx, 'mandar arquivo ao cliente')
   if (travado) return { ok: false, error: travado }

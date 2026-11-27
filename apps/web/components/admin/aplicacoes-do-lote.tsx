@@ -5,6 +5,7 @@ import { X } from 'lucide-react'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { aplicacoesDoLote, lotesEsgotados, type LoteEsgotado } from '@/actions/stock'
 import type { AplicacaoDoLote } from '@/lib/estoque/aplicacoes-do-lote'
+import { rotuloDaDevolucao } from '@/lib/estoque/devolucao-no-lote'
 import { validadeNaTela } from '@/lib/estoque/validade'
 import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
@@ -145,9 +146,17 @@ export function BotaoAplicadoEm({ loteId, rotulo, abrirAoMontar = false, semBota
                       {lista.map(a => (
                         <tr key={a.movimentoId} data-aplicacao-do-lote style={{ borderTop: '1px solid var(--hairline)' }}>
                           <td style={{ padding: '8px', fontWeight: 700, color: 'var(--text)' }}>{a.cliente}</td>
-                          <td style={{ padding: '8px', color: 'var(--text-soft)' }}>{dia(a.quando)}{a.tipo === 'VENDA' ? ' · venda' : ''}</td>
+                          <td style={{ padding: '8px', color: 'var(--text-soft)' }}>
+                            {dia(a.quando)}{a.tipo === 'VENDA' ? ' · venda' : ''}
+                            {/* A5 da 38ª (ES-25): o que voltou ao estoque se diz — o lote não entregou. */}
+                            {a.devolucao && (
+                              <span data-venda-devolvida style={{ display: 'block', fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+                                {rotuloDaDevolucao(a.devolucao, a.unidade, dia)}
+                              </span>
+                            )}
+                          </td>
                           <td style={{ padding: '8px', color: 'var(--text-soft)' }}>{a.quem ?? '—'}</td>
-                          <td style={{ padding: '8px', textAlign: 'right', color: 'var(--text)' }}>{a.quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 3 })} {a.unidade}</td>
+                          <td style={{ padding: '8px', textAlign: 'right', color: a.devolucao?.toda ? 'var(--text-muted)' : 'var(--text)', textDecoration: a.devolucao?.toda ? 'line-through' : undefined }}>{a.quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 3 })} {a.unidade}</td>
                         </tr>
                       ))}
                     </tbody>

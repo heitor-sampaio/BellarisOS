@@ -1,4 +1,6 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
+import { conversaDoEnderecoForaDoAlcance } from '@/lib/inbox/conversa-do-endereco'
+import { comAviso } from '@/lib/aviso-da-url'
 import { unidadesParaCriar } from '@/lib/unidades/da-tela'
 import { getTenantContext, assertPermission, can, assertRecurso, alcancaUnidade } from '@/lib/auth'
 import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
@@ -16,10 +18,10 @@ export default async function BranchInboxPage({
   params, searchParams,
 }: {
   params:       Promise<{ slug: string }>
-  searchParams: Promise<{ c?: string }>
+  searchParams: Promise<{ c?: string; aviso?: string }>
 }) {
   const { slug } = await params
-  const { c: convParam } = await searchParams
+  const { c: convParam, aviso: avisoParam } = await searchParams
 
   const ctx = await getTenantContext()
 
@@ -35,6 +37,13 @@ export default async function BranchInboxPage({
   // A sessão só lê sinais (o Heitor, 19/11, "vai na 2"): a unidade se lê pelo
   // servidor, e a abrangência que a RLS conferia se confere aqui.
   if (!alcancaUnidade(ctx, branch.id as string)) notFound()
+
+  // A8 da 38ª: a conversa da rede fora das caixas do cargo não abre calada — a
+  // página volta com o motivo (CLAUDE.md §6), uma vez. O `?c=` fica: a tela
+  // pede as mensagens, e o servidor segue sem entregá-las.
+  if (convParam && !avisoParam && await conversaDoEnderecoForaDoAlcance(createAdminClient(), ctx, convParam)) {
+    redirect(comAviso(`/${slug}/inbox?c=${convParam}`, 'conversa-fora-do-alcance'))
+  }
 
   // ⚠️ Sem recorte por unidade, igual ao quadro de Oportunidades: lead e
   // conversa são da REDE. Quem responde na unidade vê as mesmas conversas de
@@ -91,6 +100,7 @@ export default async function BranchInboxPage({
         initialConversations={pagina.conversas}
         initialTemMais={pagina.temMais}
         initialCursor={pagina.cursor}
+        initialAguardando={pagina.aguardando ?? null}
         opcoesDosFiltros={opcoesDosFiltros}
         leads={inboxLeads}
         canEdit={can(ctx, 'crm', 'MANAGE')}

@@ -210,8 +210,8 @@ Este é o catálogo das regras de WhatsApp e push que valem HOJE: os números de
 - Onde: `docs/regras/whatsapp-push.md:192-199`
 - Antes: KA-31
 
-**WT-12.** Quando a rede tem números de provedores diferentes, cada conversa segue o provedor do número dela: a janela de 24 h (que só o oficial tem) e o botão de editar mensagem valem conversa a conversa, nunca por um "provedor da rede".
-- Fonte: decisão do Claude
+**WT-12.** Quando a rede tem números de provedores diferentes, cada conversa segue o provedor do número dela: a janela de 24 h (que só o oficial tem) e o botão de editar mensagem valem conversa a conversa, nunca por um "provedor da rede". A janela só vale quando o número que vai enviar é da API oficial (Cloud API, WT-11): pelo WhatsApp Web não há janela, e o inbox envia, sem aviso nem recusa de janela, também quando a pessoa responde por outro número.
+- Fonte: decisão do Claude; a janela só no número oficial que envia: decisão do Claude, 27/11 (D5 da 38ª), pela própria WT-12 ("que só o oficial tem")
 - Onde: `docs/regras/whatsapp-push.md:273`
 - Antes: KB-04
 

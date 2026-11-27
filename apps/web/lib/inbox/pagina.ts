@@ -53,3 +53,37 @@ export async function idsDaPaginaDoInbox(admin: Admin, ctx: TenantContext, opcoe
 
   return linhas ?? []
 }
+
+/** Quantas conversas aguardam resposta, e desde quando a mais antiga espera. */
+export interface AguardandoDoInbox { total: number; desde: string | null }
+
+/**
+ * A faixa "N aguardando resposta" (D6 da 38ª; IN-10): da rede inteira ao
+ * alcance de quem pede — as caixas do cargo, os filtros e a busca da lista —,
+ * não só das conversas carregadas. A conta do filtro é a da página
+ * (`private.inbox_filtradas`, migration 20261217100002).
+ *
+ * Nulo quando o alcance (ou a conta) não pôde ser lido: a faixa não aparece,
+ * em vez de um número inventado.
+ */
+export async function aguardandoDoInbox(admin: Admin, ctx: TenantContext, opcoes: {
+  filtros?: Partial<FiltrosInbox>
+  busca?:   string
+}): Promise<AguardandoDoInbox | null> {
+  try {
+    const minhasCaixas = await caixasDoAlcance(admin, ctx)
+    const linhas = await ler(admin.rpc('inbox_aguardando', {
+      p_tenant:  ctx.tenantId!,
+      p_dono:    null,
+      p_modo:    'pessoa',
+      p_caixas:  minhasCaixas,
+      p_filtros: opcoes.filtros ?? {},
+      p_busca:   opcoes.busca ?? '',
+    }), 'contar as conversas aguardando') as { total: number; desde: string | null }[] | null
+    const linha = linhas?.[0]
+    return { total: linha?.total ?? 0, desde: linha?.desde ?? null }
+  } catch (e) {
+    console.error('[aguardandoDoInbox]', e instanceof Error ? e.message : e)
+    return null
+  }
+}

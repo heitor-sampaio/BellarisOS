@@ -136,7 +136,7 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
       valorDoAtendimento: agendamento ? Number(agendamento.price ?? 0) : null,
       linha,
       itens,
-      produtosParaAcrescentar: produtos.map(p => ({ id: p.id, name: p.name, price: p.price, unidade: p.unidade, disponivel: p.disponivel })),
+      produtosParaAcrescentar: produtos.map(p => ({ id: p.id, name: p.name, price: p.price, unidade: p.unidade, disponivel: p.disponivel, lotes: p.lotes })),
       pacotesParaAbater: pacotes,
       pagamentoCombinado: aReceber && comanda.agendamentoId
         // D1 da 33ª: o combinado INTEIRO (as vezes, o crediário), para receber como combinado sem mudar o contrato.

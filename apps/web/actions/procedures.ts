@@ -8,6 +8,7 @@ import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { parseDinheiro, DINHEIRO_INVALIDO } from '@estetica-os/utils'
 import { procedimentoCriado, procedimentoPrecoAlterado } from '@/lib/events/cadastro'
 import { marcaSemInsumo } from '@/lib/procedimentos/sem-insumo'
+import { diferencaDasLigacoes } from '@/lib/procedimentos/ligacoes'
 import { lerPontosDoProcedimento } from '@/lib/fidelidade/pontos-acima-do-comum'
 import { TIPOS_DE_OUTROS_DOCUMENTOS, type TipoDeModelo } from '@/lib/documentos/variaveis'
 
@@ -131,16 +132,37 @@ async function salasDoFormulario(
   return { ids }
 }
 
+/**
+ * Troca as ligações do procedimento pelas do formulário, gravando SÓ a
+ * diferença (A3 da 38ª simulação; plataforma:AD-13, princípio 3): era apagar
+ * todas e recriar, e salvar só a comissão saía na Auditoria "Apagou 3" / "Criou 3
+ * profissionais do procedimento". `chave` é a ligação dentro do procedimento;
+ * `campos`, os valores que, mudando, atualizam a linha (o insumo, o preço).
+ */
+type Ligacao = Record<string, unknown>
+async function trocarLigacoes(
+  admin: ReturnType<typeof createAdminClient>, tabela: string, procedureId: string,
+  chave: string, desejadas: Ligacao[], campos: readonly string[], oQue: string,
+) {
+  const existentes = (await ler(admin.from(tabela).select([chave, ...campos].join(', ')).eq('procedure_id', procedureId),
+    `ler ${oQue}`) ?? []) as unknown as Ligacao[]
+  const { apagar, criar, mudar } = diferencaDasLigacoes(existentes, desejadas, chave, campos)
+  if (apagar.length) {
+    await gravar(admin.from(tabela).delete().eq('procedure_id', procedureId).in(chave, apagar.map(e => e[chave] as string)), `tirar ${oQue}`)
+  }
+  if (criar.length) await gravar(admin.from(tabela).insert(criar), `salvar ${oQue}`)
+  for (const m of mudar) {
+    await gravar(admin.from(tabela).update(Object.fromEntries(campos.map(c => [c, m[c]])))
+      .eq('procedure_id', procedureId).eq(chave, m[chave] as string), `atualizar ${oQue}`)
+  }
+}
+
 /** Troca as salas ligadas ao procedimento pelas do formulário. */
 async function gravarSalasDoProcedimento(
   admin: ReturnType<typeof createAdminClient>, tenantId: string, procedureId: string, ids: string[],
 ) {
-  await gravar(admin.from('procedure_rooms').delete().eq('procedure_id', procedureId), 'limpar as salas do procedimento')
-  if (ids.length) {
-    await gravar(admin.from('procedure_rooms').insert(
-      ids.map(room_id => ({ procedure_id: procedureId, room_id, tenant_id: tenantId })),
-    ), 'salvar as salas do procedimento')
-  }
+  await trocarLigacoes(admin, 'procedure_rooms', procedureId, 'room_id',
+    ids.map(room_id => ({ procedure_id: procedureId, room_id, tenant_id: tenantId })), [], 'as salas do procedimento')
 }
 
 /**
@@ -168,12 +190,8 @@ async function profissionaisDoFormulario(
 async function gravarQuemRealiza(
   admin: ReturnType<typeof createAdminClient>, tenantId: string, procedureId: string, ids: string[],
 ) {
-  await gravar(admin.from('procedure_professionals').delete().eq('procedure_id', procedureId), 'limpar quem realiza o procedimento')
-  if (ids.length) {
-    await gravar(admin.from('procedure_professionals').insert(
-      ids.map(user_id => ({ procedure_id: procedureId, user_id, tenant_id: tenantId })),
-    ), 'salvar quem realiza o procedimento')
-  }
+  await trocarLigacoes(admin, 'procedure_professionals', procedureId, 'user_id',
+    ids.map(user_id => ({ procedure_id: procedureId, user_id, tenant_id: tenantId })), [], 'quem realiza o procedimento')
 }
 
 
@@ -428,29 +446,15 @@ async function updateProcedureInterno(
 
   if (error) return { error: 'Erro ao atualizar procedimento.' }
 
-  // Substitui disponibilidade por unidade (delete + insert)
-  await gravar(admin.from('procedure_branch_availability').delete().eq('procedure_id', procedureId), 'limpar as unidades do procedimento')
-  if (branchIds.length > 0) {
-    await gravar(admin.from('procedure_branch_availability').insert(
-      branchIds.map(bid => ({ procedure_id: procedureId, branch_id: bid }))
-    ), 'definir em quais unidades o procedimento aparece')
-  }
-
-  // Substitui insumos (delete + insert)
-  await gravar(admin.from('procedure_products').delete().eq('procedure_id', procedureId), 'limpar os insumos do procedimento')
-  if (products.length > 0) {
-    await gravar(admin.from('procedure_products').insert(
-      products.map(p => ({ procedure_id: procedureId, product_id: p.product_id, quantity: p.quantity, unit_cost: p.unit_cost ?? 0 }))
-    ), 'salvar os insumos do procedimento')
-  }
-
-  // Substitui overrides de preço/custo por unidade (delete + insert)
-  await gravar(admin.from('procedure_branch_pricing').delete().eq('procedure_id', procedureId), 'limpar os preços por unidade')
-  if (branchPricing.length > 0) {
-    await gravar(admin.from('procedure_branch_pricing').insert(
-      branchPricing.map(bp => ({ procedure_id: procedureId, branch_id: bp.branch_id, price: bp.price, labor_cost: bp.labor_cost }))
-    ), 'salvar os preços por unidade')
-  }
+  // A disponibilidade por unidade, os insumos e os preços por unidade: só a diferença (A3 da 38ª).
+  await trocarLigacoes(admin, 'procedure_branch_availability', procedureId, 'branch_id',
+    branchIds.map(bid => ({ procedure_id: procedureId, branch_id: bid })), [], 'as unidades do procedimento')
+  await trocarLigacoes(admin, 'procedure_products', procedureId, 'product_id',
+    products.map(p => ({ procedure_id: procedureId, product_id: p.product_id, quantity: p.quantity, unit_cost: p.unit_cost ?? 0 })),
+    ['quantity', 'unit_cost'], 'os insumos do procedimento')
+  await trocarLigacoes(admin, 'procedure_branch_pricing', procedureId, 'branch_id',
+    branchPricing.map(bp => ({ procedure_id: procedureId, branch_id: bp.branch_id, price: bp.price, labor_cost: bp.labor_cost })),
+    ['price', 'labor_cost'], 'os preços por unidade')
 
   // Só quando o preço mudou de verdade. Editar a descrição e salvar é o uso
   // comum desta tela; emitir aí faria a automação de preço disparar à toa.

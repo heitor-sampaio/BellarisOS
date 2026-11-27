@@ -524,6 +524,8 @@ function TabFinanceiro(p: ReportsBiProps) {
     // Dia a dia, no dia da unidade (lib/financeiro/vencimentos; IND-08 da varredura de 18/11).
     daysLeft: i.due_date ? diasAteOVencimento(i.due_date, today, fuso) : '',
   }))
+  const comConcluidos = (p.concluidosSemPagamento?.n ?? 0) > 0
+  const estiloDosConcluidos = (comTabela: boolean) => ({ padding: '10px 18px', borderTop: comTabela ? '1px solid var(--hairline)' : undefined, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' })
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -605,15 +607,14 @@ function TabFinanceiro(p: ReportsBiProps) {
         </SCard>
         )}
         {/* As parcelas a receber são da unidade, não dos atendimentos dela. */}
+        {/* A11 da 38ª (RE-10): com concluídos sem pagamento, o "Nada a receber" não aparece ao lado deles. */}
         {(
           <SCard title="A receber em aberto" style={{ gridColumn: '1 / -1' }}>
-            <SimpleTable
-              columns={installCols}
-              rows={installRows}
-              emptyMsg="Nada a receber em aberto."
-            />
-            {(p.concluidosSemPagamento?.n ?? 0) > 0 && (
-              <p style={{ padding: '10px 18px', borderTop: '1px solid var(--hairline)', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+            {(installRows.length > 0 || !comConcluidos) && (
+              <SimpleTable columns={installCols} rows={installRows} emptyMsg="Nada a receber em aberto." />
+            )}
+            {comConcluidos && (
+              <p style={estiloDosConcluidos(installRows.length > 0)}>
                 <NotaDosConcluidosSemPagamento concluidos={p.concluidosSemPagamento} />
               </p>
             )}
@@ -944,7 +945,7 @@ function TabClientes(p: ReportsBiProps) {
         <KpiCard label="Atendidos no Período" value={clientsServed}    format="int" accent={CHART_COLORS[1]} />
         <KpiCard label="Primeira Vez"         value={firstTimeClients} format="int" accent={CHART_COLORS[2]} />
         <KpiCard label="Taxa de Retenção"     value={taxaRetencao}     format="pct" accent={taxaRetencao == null ? undefined : taxaRetencao >= 40 ? 'var(--success)' : 'var(--warning)'} />
-        <KpiCard label="Ticket médio"     value={gastoMedio}   format="brl" />
+        <KpiCard label="Ticket médio"     value={gastoMedio}   format="brl" dica={DEFINICOES.ticket} />
       </div>
       <div className="rg-2" style={{ gap: 16 }}>
         {novos !== null && (

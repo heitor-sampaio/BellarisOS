@@ -117,6 +117,24 @@ test.describe.serial('quem realiza o procedimento', () => {
     expect((data ?? []).map(l => l.user_id).sort()).toEqual([bia!.userId, cris!.userId].sort())
   })
 
+  // A3 da 38ª simulação (plataforma:AD-13, princípio 3): salvar sem mudar quem realiza
+  // não apaga e recria as ligações — a Auditoria dizia "Apagou 2" / "Criou 2 profissionais do procedimento".
+  test('salvar sem mudar quem realiza não grava as ligações de novo', async ({ browser }) => {
+    const desde = new Date().toISOString()
+    await como(browser, gestora!.estado, async p => {
+      await p.goto('/admin/procedures')
+      await p.locator('tr', { hasText: nomeProc }).getByRole('button', { name: 'Editar' }).click()
+      await p.locator('dialog[open]').getByRole('button', { name: 'Salvar alterações' }).click()
+      await expect(p.locator('dialog[open]')).toHaveCount(0, { timeout: 15_000 })
+    })
+    const { data: ligacoes } = await db().from('procedure_professionals').select('user_id').eq('procedure_id', rede!.procedureId)
+    expect((ligacoes ?? []).map(l => l.user_id).sort(), 'quem realiza segue o mesmo').toEqual([bia!.userId, cris!.userId].sort())
+    const { data: rastro, error } = await db().from('auditoria').select('id, operacao')
+      .eq('tenant_id', rede!.tenantId).eq('tabela', 'procedure_professionals').gte('criado_em', desde)
+    expect(error).toBeNull()
+    expect(rastro ?? [], 'nada apagado nem criado').toEqual([])
+  })
+
   test('o app oferece só quem realiza', async ({ browser }) => {
     await como(browser, cliente!.estado, async p => {
       await p.goto(`/${slug}/cliente/agendamentos/novo`)

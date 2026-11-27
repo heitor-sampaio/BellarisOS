@@ -320,6 +320,19 @@ export function PainelDoNo({
                 )}
               </div>
             )}
+            {/* A18 da 38ª (princípio 7, "intuitivo não é explicativo"): a
+                mensagem logo depois do canal, sem parágrafo — o canal "Aviso no
+                celular (push)" e o modelo "(fora das 24 horas)" dizem o resto. */}
+            <Campo rotulo="Mensagem">
+              <TextoComVariaveis
+                valor={(c.texto as string) ?? ''}
+                grupos={variaveis}
+                onChange={v => set({ texto: v })}
+                linhas={4}
+                somenteLeitura={somenteLeitura}
+                placeholder="Oi {{cliente.nome}}, tudo bem?"
+              />
+            </Campo>
             {/* AX-06 (o Heitor, 2026-11-11, H1; D6 da 32ª; R10, 26/11): desligado
                 por padrão (princípio 6). A automação só abre conversa nova se a
                 rede escolher "Abrir pelo número padrão" (só no WhatsApp). */}
@@ -338,13 +351,10 @@ export function PainelDoNo({
                     <option value="aviso_no_celular">Mandar como aviso no celular</option>
                   </select>
                 </Campo>
-                <Dica>
-                  {c.semConversa === 'aviso_no_celular'
-                    ? 'A cliente sem conversa aberta recebe o texto como aviso no celular (o app e os avisos do navegador), sem o pedido de resposta: a resposta não chegaria ao inbox.'
-                    : c.semConversa === 'abrir_pelo_padrao'
-                      ? textoDoAbrirPeloPadrao(opcoes?.numeroPadrao ?? null)
-                      : 'A cliente sem conversa aberta não recebe nada, e a execução diz que não mandou e por quê.'}
-                </Dica>
+                {/* A18 da 38ª: só o estado do número padrão e o risco (AX-06). */}
+                {c.semConversa === 'abrir_pelo_padrao' && (
+                  <Dica>{textoDoAbrirPeloPadrao(opcoes?.numeroPadrao ?? null)}</Dica>
+                )}
               </div>
             )}
             {/* R10: o modelo aprovado da conta do número padrão oficial — o que
@@ -356,31 +366,6 @@ export function PainelDoNo({
                 exigido={c.semConversa === 'abrir_pelo_padrao'}
               />
             )}
-            <Campo rotulo="Mensagem">
-              <TextoComVariaveis
-                valor={(c.texto as string) ?? ''}
-                grupos={variaveis}
-                onChange={v => set({ texto: v })}
-                linhas={4}
-                somenteLeitura={somenteLeitura}
-                placeholder="Oi {{cliente.nome}}, tudo bem?"
-              />
-              {c.canal === 'push' ? (
-                <Dica>
-                  O aviso chega no celular da cliente (no app e no navegador em
-                  que ela ativou os avisos) e fica no sino do portal dela. Não
-                  abre conversa: a resposta não chega no inbox.
-                </Dica>
-              ) : (
-                <Dica>
-                  A mensagem vai para a conversa aberta do cliente neste canal.
-                  Na API oficial, fora das <strong>24 horas</strong> da última
-                  mensagem dele, a Meta só aceita modelo aprovado: com um modelo
-                  escolhido no passo, é ele que sai; sem, o passo não manda e
-                  diz por quê, em vez de dar um &quot;enviado&quot; que não chega.
-                </Dica>
-              )}
-            </Campo>
           </>
         )}
 
@@ -796,11 +781,10 @@ function MoverDeEtapa({ config, opcoes, set, somenteLeitura }: {
 
 /** O que o "Abrir pelo número padrão" faz com o número padrão desta rede (R10). */
 function textoDoAbrirPeloPadrao(padrao: OpcoesDoEditor['numeroPadrao']): string {
-  if (!padrao) return 'A rede não tem número padrão de WhatsApp: sem ele, a automação não liga com esta opção. A Admin da rede escolhe o padrão em Configurações → Integrações.'
-  if (padrao.oficial) {
-    return `A conversa abre pelo número padrão (${padrao.label}), na API oficial: a Meta só aceita começar por um modelo aprovado, escolhido abaixo. A conversa nasce no inbox, na caixa do número padrão, com a mensagem.`
-  }
-  return `A conversa abre pelo número padrão (${padrao.label}), no WhatsApp Web, com o texto abaixo. Mandar a primeira mensagem a quem não escreveu é a rede escolhendo correr o risco de o WhatsApp banir o número. A conversa nasce no inbox, na caixa do número padrão, com a mensagem.`
+  // A18 da 38ª: curto — por onde abre, e o risco que a rede escolhe correr (AX-06).
+  if (!padrao) return 'A rede não tem número padrão de WhatsApp (Configurações → Integrações).'
+  if (padrao.oficial) return `Abre pelo número ${padrao.label} (API oficial), com o modelo aprovado.`
+  return `Abre pelo número ${padrao.label} (WhatsApp Web). Risco de o WhatsApp banir o número.`
 }
 
 /**
@@ -868,12 +852,6 @@ function ModeloDoPasso({
               />
             </Campo>
           ))}
-          {escolhido.variaveis.length > 0 && (
-            <Dica>
-              Cada variável do modelo recebe o que a automação conhece. Sem o
-              dado na hora, o modelo não sai, e a execução diz o que faltou.
-            </Dica>
-          )}
         </>
       )}
     </div>

@@ -100,6 +100,23 @@ async function main() {
   }).select('id').single(), 'criar a rede')
   const tenantId = rede.id
   await um(db.rpc('documentos_modelos_padrao', { p_tenant: tenantId }), 'semear o contrato de plano padrão')
+  // O funil padrão: numa rede de verdade, o primeiro acesso ao CRM o cria
+  // (`seedDefaultFunnel`, a mesma função). Sem ele, o spec que precisa de uma
+  // etapa aberta dependia de outro ter aberto o quadro antes. O nome e as
+  // etapas são os de `lib/crm.ts` (tests/rede-de-teste-nasce-com-o-funil-padrao trava).
+  const ETAPAS = [
+    { name: 'Novo', color: '#c34d6b', outcome: 'OPEN' },
+    { name: 'Em contato', color: '#7c4ddb', outcome: 'OPEN' },
+    { name: 'Avaliação', color: '#c98a1e', outcome: 'OPEN' },
+    { name: 'Em negociação', color: '#b0568f', outcome: 'OPEN' },
+    { name: 'Agendado', color: '#2563b0', outcome: 'OPEN' },
+    { name: 'Fechado', color: '#3f9b6f', outcome: 'WON' },
+    { name: 'Perdido', color: '#9e9e9e', outcome: 'LOST' },
+  ]
+  await um(db.rpc('crm_funil_padrao', {
+    p_tenant: tenantId, p_nome: 'Funil de vendas',
+    p_etapas: ETAPAS.map((e, i) => ({ ...e, position: i })),
+  }), 'semear o funil padrão')
 
   const cargos = await um(db.from('tenant_roles').select('id, key').eq('tenant_id', tenantId), 'ler os cargos')
   const cargo = key => {

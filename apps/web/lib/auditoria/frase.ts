@@ -1166,6 +1166,13 @@ const FILHAS: Record<string, string> = {
   procedure_branch_pricing: 'preços por unidade', service_package_items: 'itens', treatment_plan_sessions: 'sessões',
   treatment_plan_items: 'itens', comanda_itens: 'itens', product_sale_items: 'itens',
 }
+/** D8 da 38ª: a filha de uma só, no singular ("1 item", não "1 itens"). */
+const FILHA: Record<string, string> = {
+  role_permissions: 'permissão', role_report_tabs: 'aba de relatório', procedure_products: 'insumo',
+  procedure_professionals: 'profissional', procedure_rooms: 'sala', procedure_branch_availability: 'unidade',
+  procedure_branch_pricing: 'preço por unidade', service_package_items: 'item', treatment_plan_sessions: 'sessão',
+  treatment_plan_items: 'item', comanda_itens: 'item', product_sale_items: 'item',
+}
 /** O plural de cada coisa, sem o artigo. Fora daqui: "registros". */
 export const PLURAL_DA_AUDITORIA: Record<string, string> = {
   recebiveis_do_cartao: 'parcelas da operadora',
@@ -1334,6 +1341,33 @@ function fraseDoEstorno(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAu
   const motivo = linhas.filter(l => l.tabela === 'financial_transactions' && l.registro_id)
     .map(l => nomes.lancamentos?.[l.registro_id!]?.motivoDoEstorno).find((m): m is string => !!m)
   return `${fato} (${brl(valor)}${qual ? ` · ${qual}` : ''})${volta}${ativos}${motivo ? ` (motivo: ${motivo})` : ''}${cliente ? ` — ${cliente}` : ''}`
+}
+
+/**
+ * D8 da 38ª simulação (AD-13, AD-16; decisão do Claude, 27/11): a venda de
+ * produto A RECEBER cancelada (`produto_estornar_venda`: o a receber sai marcado,
+ * sem contra-lançamento; a paga é o estorno, acima) saía "Editou a venda de
+ * produto (devolução ao estoque, estorno…)". O fato: "Cancelou a venda de produto
+ * (R$ 90,00 a receber), e 1 X voltou ao estoque (motivo: …) — Cliente". O valor e
+ * o motivo se leem agora (o lançamento a receber; sem ele, a venda): a baixa não
+ * os grava, e a auditoria não guarda texto livre.
+ */
+function fraseDaVendaDeProdutoCancelada(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria): string | null {
+  const venda = linhas.find(l => l.tabela === 'product_sales' && l.operacao === 'editou' && l.colunas.includes('estornada_em'))
+  if (!venda) return null
+  const aReceber = linhas.filter(l => l.tabela === 'financial_transactions' && l.operacao === 'editou' && l.registro_id
+    && l.colunas.includes('estorno_motivo') && !l.colunas.includes('paid_at'))
+  const lidos = aReceber.map(l => nomes.lancamentos?.[l.registro_id!]).filter((x): x is NonNullable<typeof x> => !!x)
+  const valor = Math.round(lidos.reduce((t, x) => t + (x.valor ?? 0), 0) * 100) / 100
+  const quanto = lidos.length && valor > 0 ? ` (${brl(valor)} a receber)` : ''
+  const voltas = linhas.filter(l => l.tabela === 'stock_movements' && l.operacao === 'criou' && texto(l.depois.type) === 'SALE_RETURN')
+    .map(l => doProduto(l, nomes))
+  const volta = voltas.length
+    ? `, e ${emLista(voltas)} ${voltas.length === 1 ? 'voltou' : 'voltaram'} ao estoque`
+    : venda.colunas.includes('devolucao_movement_id') ? '' : ', e o produto não voltou ao estoque'
+  const motivo = lidos.map(x => texto(x.motivoDoEstorno ?? null)).find((m): m is string => !!m)
+    ?? (venda.registro_id ? texto(nomes.motivosDaVendaCancelada?.[venda.registro_id]) : null)
+  return `Cancelou a venda de produto${quanto}${volta}${motivo ? ` (motivo: ${motivo})` : ''}${clienteDaGravacao(linhas, nomes, venda)}`
 }
 
 /**
@@ -1873,6 +1907,8 @@ export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: Nome
   }
   const estorno = fraseDoEstorno(linhas, nomes)
   if (estorno) return estorno
+  const vendaDeProdutoCancelada = fraseDaVendaDeProdutoCancelada(linhas, nomes)
+  if (vendaDeProdutoCancelada) return vendaDeProdutoCancelada
   const brinde = fraseDaEntregaDoBrinde(linhas, nomes)
   if (brinde) return brinde
   // A35 da 20ª: a entrada e o desfazer gravam o lote e o custo do produto junto (o lote podia sair primeiro: "Editou o lote").
@@ -1923,7 +1959,8 @@ export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: Nome
   if (pai) {
     const filhas = new Map<string, number>()
     for (const f of linhas) if (PAI[f.tabela] === pai.tabela) filhas.set(f.tabela, (filhas.get(f.tabela) ?? 0) + 1)
-    const doPai = [...filhas.entries()].map(([t, n]) => `${n} ${FILHAS[t] ?? PLURAL_DA_AUDITORIA[t] ?? 'registros'}`).join(', ')
+    const doPai = [...filhas.entries()]
+      .map(([t, n]) => `${n} ${n === 1 ? FILHA[t] ?? FILHAS[t] ?? 'registro' : FILHAS[t] ?? PLURAL_DA_AUDITORIA[t] ?? 'registros'}`).join(', ')
     const base = fraseDaAuditoria(pai, nomes)
     return base.endsWith(')') ? `${base.slice(0, -1)}; ${doPai})` : `${base} (${doPai})`
   }

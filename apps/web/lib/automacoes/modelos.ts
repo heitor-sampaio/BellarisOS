@@ -97,7 +97,8 @@ export const MODELOS_DE_AUTOMACAO: readonly ModeloDeAutomacao[] = [
         { id: 'n_ret_msg', tipo: NODES.ACAO_MENSAGEM, nome: 'Convite para o retorno', pos: { x: 920, y: 120 },
           config: {
             canal: 'whatsapp',
-            texto: 'Oi, {{cliente.nome}}! Já faz um mês do seu {{evento.dados.procedimentoNome}}. Que tal agendar o retorno? É só responder esta mensagem.',
+            // A15 da 38ª (ED-08): a variável pelo nome, como nos outros modelos.
+            texto: 'Oi, {{cliente.nome}}! Já faz um mês do seu {{agendamento.procedimento}}. Que tal agendar o retorno? É só responder esta mensagem.',
           } },
       ],
       ligacoes: [

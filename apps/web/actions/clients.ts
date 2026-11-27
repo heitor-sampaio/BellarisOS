@@ -17,6 +17,7 @@ import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { atualizarClienteCore } from '@/lib/clients/atualizar'
 import { pessoaDoCrmDoTelefone, ligarPessoaDoCrmAoCliente, type PessoaDoCrm } from '@/lib/clients/pessoa-do-crm'
+import { levarAFichaAoContato } from '@/lib/contatos/ficha-no-contato'
 import { criarLoginDoCliente, darAcessoAoCliente, desfazerLogin, ligarLoginAoCliente, documentoDoAcesso, type DocumentoDoAcesso, type EmailParaCriarSenha } from '@/lib/clients/acesso'
 import { CPF_INVALIDO, documentoDaFicha, documentoEstrangeiroRepetido } from '@/lib/clients/documento'
 import { colunasDoResponsavel } from '@/lib/clients/menor'
@@ -281,6 +282,9 @@ async function addClientInterno(ctx: TenantContext, formData: FormData): Promise
   //    nenhuma oportunidade é tocada: cadastrar cliente não fecha negócio.
   if (conversationId) {
     await ligarContatoAoCliente(admin, ctx.tenantId!, conversationId, client.id as string)
+    // D4 da 38ª (CL-14, IN-06): quem cadastra pela conversa já disse quem é — o
+    // contato recebe o nome e o e-mail da ficha, como no "Sim, é a mesma pessoa".
+    await levarAFichaAoContato(admin, ctx, { conversationId }, client.id as string)
     revalidatePath('/admin/inbox')
   }
   // "É a mesma pessoa do lead": as outras oportunidades e as conversas dela.
@@ -288,6 +292,9 @@ async function addClientInterno(ctx: TenantContext, formData: FormData): Promise
     await ligarPessoaDoCrmAoCliente(admin, ctx, pessoaDoCrm, client.id as string, name, email)
     revalidatePath('/admin/inbox')
   }
+
+  // O cadastro pelo card do quadro (sem conversa) também já disse quem é: o contato do card recebe a ficha (D4 da 38ª).
+  if (leadId && !conversationId) await levarAFichaAoContato(admin, ctx, { leadId }, client.id as string)
 
   // 5) Conversão de lead: liga o lead e dispara Meta CAPI (CompleteRegistration)
   if (leadDaConversao) {
@@ -468,10 +475,15 @@ async function reativarPeloCadastro(
       .eq('id', clientId).eq('tenant_id', ctx.tenantId!).select('id').single(), 'reativar a ficha')
     await emitirEventoDeCliente(EVENTOS.CLIENTE_REATIVADO, clientId, ctx)
   }
-  if (de.conversationId) await ligarContatoAoCliente(admin, ctx.tenantId!, de.conversationId, clientId)
+  if (de.conversationId) {
+    await ligarContatoAoCliente(admin, ctx.tenantId!, de.conversationId, clientId)
+    // D4 da 38ª: a ficha que já existia (unificada ou reativada) também dá o nome e o e-mail ao contato.
+    await levarAFichaAoContato(admin, ctx, { conversationId: de.conversationId }, clientId)
+  }
   if (de.leadId) {
     await gravar(admin.from('leads').update({ client_id: clientId }).eq('id', de.leadId).eq('tenant_id', ctx.tenantId!), 'vincular a oportunidade ao cliente')
     await registrarEventoLead({ tenantId: ctx.tenantId!, leadId: de.leadId, type: 'CONVERTED', actorUserId: ctx.internalUserId, actorName: ctx.userName || null })
+    if (!de.conversationId) await levarAFichaAoContato(admin, ctx, { leadId: de.leadId }, clientId)
     revalidatePath('/admin/oportunidades')
     revalidatePath(`/${de.slug}/oportunidades`)
   }

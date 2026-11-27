@@ -26,6 +26,9 @@ let financeiro: MembroDeTeste | null = null
 let cliente = ''
 let serum = ''
 let luva = ''
+// D3 e A5 da 38ª: um produto com um lote vencido e um válido.
+let protetor = ''
+const nomeProtetor = `${PREFIXO} Protetor ${marca}`
 const nomeSerum = `${PREFIXO} Sérum ${marca}`
 const nomeLuva  = `${PREFIXO} Luva ${marca}`
 const emDias = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString()
@@ -129,7 +132,7 @@ test.afterAll(async () => {
       const r = await b.from('product_sales').delete().in('id', ids)
       if (r.error) falhas.push(`vendas: ${r.error.message}`)
     }
-    for (const id of [serum, luva].filter(Boolean)) {
+    for (const id of [serum, luva, protetor].filter(Boolean)) {
       for (const t of ['product_batches', 'stock_movements', 'branch_product_stock']) {
         const r = await b.from(t).delete().eq('product_id', id)
         if (r.error) falhas.push(`${t}: ${r.error.message}`)
@@ -533,6 +536,72 @@ test.describe.serial('a venda de produto', () => {
     expect(await saldo(), 'voltou ao estoque').toBe(antes + 1)
     const { data: txs } = await db().from('financial_transactions').select('is_paid, notes').eq('product_sale_id', id)
     expect(txs).toEqual([{ is_paid: false, notes: 'Estornada' }])
+  })
+
+  // D3 da 38ª (atendimento:ES-24, "o vencido é sinalizado, não bloqueado"): o válido sai
+  // primeiro, o vencido depois — e a venda diz o que sai do vencido, sem desligar o Vender.
+  test('D3 da 38ª: a venda que tira de lote vencido sinaliza na linha do produto e vende', async ({ browser }) => {
+    const p1 = await db().from('products').insert({
+      tenant_id: rede!.tenantId, name: nomeProtetor, unit: 'un', uso: 'REVENDA', sale_price: 90,
+    }).select('id').single<{ id: string }>()
+    expect(p1.error).toBeNull()
+    protetor = p1.data!.id
+    for (const [lote, qtd, validade] of [['PV1', 5, emDias(-10)], ['PV2', 1, emDias(60)]] as const) {
+      const r = await db().rpc('estoque_entrada', {
+        p_produto: protetor, p_unidade: rede!.branchId, p_quantidade: qtd, p_custo: 30, p_observacao: 'e2e',
+        p_lote: lote, p_validade: validade, p_autor: 'e2e',
+      })
+      expect(r.error).toBeNull()
+    }
+    await como(browser, async p => {
+      const dlg = await abrirVendaDeProduto(p)
+      await dlg.getByLabel('Produto', { exact: true }).selectOption(protetor)
+      await dlg.getByLabel('Quantidade').fill('1')
+      await expect(dlg.locator('[data-lote-vencido-na-venda]'), 'só o válido sai: nada a sinalizar').toHaveCount(0)
+      await dlg.getByLabel('Quantidade').fill('2')
+      await expect(dlg.locator('[data-lote-vencido-na-venda]')).toContainText('1 un sai do lote PV1, vencido em')
+      await dlg.getByRole('radio', { name: 'Pix', exact: true }).click()
+      await pagoNoPix(dlg)
+      await euVendi(dlg)
+      await dlg.getByRole('button', { name: /^Vender por R\$\s180,00$/ }).click()
+      await expect(p.getByText(/1 un saiu do lote PV1, vencido em/)).toBeVisible()
+      await expect(dlg).toBeHidden()
+    })
+    const { data } = await db().from('product_batches').select('batch_number, quantity').eq('product_id', protetor).order('batch_number')
+    expect(Object.fromEntries((data ?? []).map(l => [l.batch_number as string, n(l.quantity)]))).toEqual({ PV1: 4, PV2: 0 })
+  })
+
+  // A5 da 38ª (atendimento:ES-25, "para o recall, o que o lote entregou de fato"): a venda
+  // cancelada com o produto de volta segue no "Aplicado em" do lote, com a volta dita.
+  test('A5 da 38ª: o "Aplicado em" do lote diz a venda que voltou ao estoque', async ({ browser }) => {
+    const sufixo = `volta ${marca}`
+    const nova = await db().rpc('produto_vender', {
+      p_tenant: rede!.tenantId, p_cliente: cliente, p_produto: protetor, p_unidade: rede!.branchId, p_ator: recepcao!.userId,
+      p_quantidade: 1, p_desconto: 0, p_lancamentos: [{ amount: 90, is_paid: false, sufixo }],
+    })
+    expect(nova.error).toBeNull()
+    const ctxFin = await browser.newContext({ storageState: financeiro!.estado })
+    try {
+      const p = await ctxFin.newPage()
+      await p.goto('/admin/financeiro?aba=movimentacoes')
+      await p.locator('tr', { hasText: sufixo }).getByTitle('Cancelar venda').click()
+      const dlg = p.getByRole('dialog', { name: 'Cancelar esta venda de produto?' })
+      await dlg.getByLabel('Motivo do cancelamento *').fill('Desistiu')
+      await dlg.getByRole('radio', { name: /Sim, voltou ao estoque/ }).check()
+      await dlg.getByRole('button', { name: 'Confirmar cancelamento' }).click()
+      await expect(dlg).toBeHidden()
+    } finally { await ctxFin.close() }
+
+    await como(browser, async p => {
+      await p.goto('/admin/estoque')
+      await p.getByRole('row').filter({ hasText: nomeProtetor }).first().click()
+      await p.locator('[data-lotes-do-produto]').filter({ hasText: 'Lote PV1' }).getByRole('button', { name: 'Aplicado em' }).click()
+      const janela = p.getByRole('dialog', { name: /Aplicado em/ })
+      // A venda do D3 (paga, ficou com a cliente) e a cancelada, que voltou.
+      await expect(janela.locator('[data-aplicacao-do-lote]')).toHaveCount(2)
+      await expect(janela.locator('[data-venda-devolvida]')).toHaveCount(1)
+      await expect(janela.locator('[data-venda-devolvida]')).toContainText('Voltou ao estoque em')
+    }, dona!)
   })
 })
 

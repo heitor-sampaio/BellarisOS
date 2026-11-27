@@ -280,7 +280,7 @@ export function ProfessionalAgendaView({
       aberturaEmMin: comecoDela, primeiroEmMin: primeiroDoDia,
     })
     gradeRef.current.dataset.rolagem = 'pronta'
-  }, [diaDaGrade, ehHojeNaGrade, DAY_START, comecoDela, primeiroDoDia, fuso])
+  }, [view, diaDaGrade, ehHojeNaGrade, DAY_START, comecoDela, primeiroDoDia, fuso])
 
   // O que continua de antes começa no topo da grade (como o bloqueio de vários
   // dias), e o que segue amanhã para no fim dela (25/11).

@@ -10,11 +10,14 @@ import { lerTodas } from '@/lib/db'
 import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { caixasDoAlcance } from '@/lib/inbox/alcance'
 import { semNumeroLigado } from '@/lib/inbox/aviso-sem-numero'
+import { conversaDoEnderecoForaDoAlcance } from '@/lib/inbox/conversa-do-endereco'
+import { comAviso } from '@/lib/aviso-da-url'
+import { redirect } from 'next/navigation'
 
 export default async function AdminInboxPage({
   searchParams,
 }: {
-  searchParams: Promise<{ c?: string }>
+  searchParams: Promise<{ c?: string; aviso?: string }>
 }) {
   const ctx = await getTenantContext()
   // A funcionalidade é do PLANO da rede (lib/planos/recursos.ts).
@@ -22,9 +25,15 @@ export default async function AdminInboxPage({
   assertPermission(ctx, 'crm', 'VIEW')
 
   // `?c=` é o deep-link do card de Oportunidades para a conversa.
-  const { c: convParam } = await searchParams
+  const { c: convParam, aviso: avisoParam } = await searchParams
 
   const admin    = createAdminClient()
+  // A8 da 38ª: a conversa da rede fora das caixas do cargo não abre calada — a
+  // página volta com o motivo (CLAUDE.md §6), uma vez. O `?c=` fica: a tela
+  // pede as mensagens, e o servidor segue sem entregá-las.
+  if (convParam && !avisoParam && await conversaDoEnderecoForaDoAlcance(admin, ctx, convParam)) {
+    redirect(comAviso(`/admin/inbox?c=${convParam}`, 'conversa-fora-do-alcance'))
+  }
   const branches = await unidadesAtivas(ctx.tenantId!)
 
   // `convParam` entra aqui: a conversa vinda de um card do funil pode não ter
@@ -79,6 +88,7 @@ export default async function AdminInboxPage({
         initialConversations={pagina.conversas}
         initialTemMais={pagina.temMais}
         initialCursor={pagina.cursor}
+        initialAguardando={pagina.aguardando ?? null}
         opcoesDosFiltros={opcoesDosFiltros}
         leads={inboxLeads}
         canEdit={can(ctx, 'crm', 'MANAGE')}

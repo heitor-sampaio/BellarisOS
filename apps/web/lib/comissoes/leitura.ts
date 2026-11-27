@@ -8,6 +8,8 @@ import {
 } from './config'
 import { paramDeTags } from '@/lib/metrics/tags-do-relatorio'
 import { adminsDaRede } from '@/lib/equipe/admin-da-rede'
+import { maquininhasDaRede } from '@/lib/financeiro/vezes-da-rede'
+import { formaSemTaxaCadastrada, type PagamentoDaLinha } from '@/lib/comissoes/taxa-sem-cadastro'
 
 /** A configuração de comissões da rede (os padrões, se ela nunca salvou). */
 export async function configDeComissaoDaRede(tenantId: string): Promise<ConfigDeComissao> {
@@ -319,6 +321,12 @@ export interface LancamentoDoExtrato {
    * sobre o total e nas outras origens.
    */
   itemDoProduto?: { nome: string; quantidade: number } | null
+  /**
+   * A1 da 38ª (princípio 4, CT-02): a forma do pagamento da linha ("Crédito
+   * 8x", "Débito") quando a maquininha dele não tem a taxa daquelas vezes — a
+   * taxa valeu 0% na base, e o extrato diz. Nulo quando não se aplica.
+   */
+  semTaxaCadastrada?: string | null
 }
 
 export interface Fechamento {
@@ -365,7 +373,7 @@ export async function extratoDasComissoes(r: Recorte): Promise<LancamentoDoExtra
     'ler o extrato das comissões',
   )
   const pagoEm = await diasDosFechamentos(r.tenantId, linhas.map(l => (l.payout_id as string | null) ?? null))
-  const [transacoes, itens] = await Promise.all([transacoesDasLinhas(linhas), itensDosProdutosDasLinhas(linhas)])
+  const [transacoes, itens, semTaxa] = await Promise.all([transacoesDasLinhas(linhas), itensDosProdutosDasLinhas(linhas), formasSemTaxaDasLinhas(r.tenantId, linhas)])
   return linhas.map(l => ({
     id: String(l.id), professionalId: String(l.professional_id), branchId: String(l.branch_id),
     releasedAt: String(l.released_at), kind: l.kind as LancamentoDoExtrato['kind'], motivo: (l.motivo as string | null) ?? null,
@@ -387,7 +395,51 @@ export async function extratoDasComissoes(r: Recorte): Promise<LancamentoDoExtra
     regraDe: l.regra_de === 'ITEM' || l.regra_de === 'PESSOA' || l.regra_de === 'CLINICA' ? l.regra_de : null,
     transacaoId: transacoes.get(String(l.id)) ?? null,
     itemDoProduto: itens.get(String(l.id)) ?? null,
+    semTaxaCadastrada: semTaxa.get(String(l.id)) ?? null,
   }))
+}
+
+/**
+ * A1 da 38ª (princípio 4, CT-02): a forma do pagamento de cada lançamento cuja
+ * taxa valeu 0% por falta de cadastro na maquininha ("Crédito 8x"). Só as
+ * linhas em que a taxa sairia da base (a rede a desconta, a regra é em
+ * percentual) e nada saiu; o pagamento é o do lançamento
+ * (`commissions.transaction_id`), em lotes. A decisão é `formaSemTaxaCadastrada`.
+ */
+async function formasSemTaxaDasLinhas(tenantId: string, linhas: Record<string, unknown>[]): Promise<Map<string, string>> {
+  const mapa = new Map<string, string>()
+  const candidatas = linhas.filter(l => l.kind !== 'AGUARDANDO' && l.preco != null && l.desconta_taxa === true
+    && l.regra_tipo === 'PERCENTAGE' && Number(l.base_taxa ?? 0) <= 0.005)
+  if (!candidatas.length) return mapa
+  const admin = createAdminClient()
+  const unidades = [...new Set(candidatas.map(l => String(l.branch_id)))]
+  const ids = [...new Set(candidatas.map(l => String(l.id)))]
+  const transacaoDe = new Map<string, string>()
+  for (let i = 0; i < ids.length; i += 150) {
+    const lote = await ler(admin.from('commissions').select('id, transaction_id')
+      .in('branch_id', unidades).in('id', ids.slice(i, i + 150)), 'ler os pagamentos das comissões')
+    for (const c of (lote ?? []) as { id: string; transaction_id: string | null }[]) if (c.transaction_id) transacaoDe.set(c.id, c.transaction_id)
+  }
+  const txIds = [...new Set(transacaoDe.values())]
+  if (!txIds.length) return mapa
+  const pagamentos = new Map<string, PagamentoDaLinha>()
+  for (let i = 0; i < txIds.length; i += 150) {
+    const lote = await ler(admin.from('financial_transactions').select('id, payment_method, cartao_vezes, cartao_bandeira, maquininha_id')
+      .in('branch_id', unidades).in('id', txIds.slice(i, i + 150)), 'ler a forma dos pagamentos das comissões')
+    for (const t of (lote ?? []) as (PagamentoDaLinha & { id: string })[]) pagamentos.set(t.id, t)
+  }
+  const noCartao = [...pagamentos.values()].some(p => p.payment_method === 'CREDIT_CARD' || p.payment_method === 'DEBIT_CARD')
+  if (!noCartao) return mapa
+  const maquininhas = await maquininhasDaRede(tenantId)
+  for (const l of candidatas) {
+    const tx = transacaoDe.get(String(l.id))
+    const forma = formaSemTaxaCadastrada(
+      { descontaTaxa: true, regraTipo: 'PERCENTAGE', baseTaxa: Number(l.base_taxa ?? 0), preco: Number(l.preco) },
+      tx ? pagamentos.get(tx) : null, maquininhas,
+    )
+    if (forma) mapa.set(String(l.id), forma)
+  }
+  return mapa
 }
 
 /**

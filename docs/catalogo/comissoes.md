@@ -33,8 +33,8 @@ Este é o catálogo das regras das Comissões que valem HOJE: onde ficam e quem 
 - Onde: `docs/regras/comissoes.md:518-520`; `docs/regras/plataforma.md:765-769`
 - Antes: KB-16, KC-09
 
-**CM-06.** A comissão de uma Admin da rede só outra Admin da rede muda: na Equipe e no valor dela num procedimento. Para quem não é Admin da rede, a linha de uma Admin na Equipe não mostra a comissão, e a recusa diz: "Só quem é Admin da rede altera a comissão de uma Admin da rede."
-- Fonte: o Heitor, 2026-10-29: "somente admin pode alterar admin"
+**CM-06.** A comissão de uma Admin da rede só outra Admin da rede muda: na Equipe e no valor dela num procedimento. Para quem não é Admin da rede, a linha de uma Admin na Equipe não mostra a comissão, e a recusa diz: "Só quem é Admin da rede altera a comissão de uma Admin da rede." A Admin da rede muda também a própria comissão: a linha dela tem o lápis, e na rede com uma Admin só ninguém mais a daria.
+- Fonte: o Heitor, 2026-10-29: "somente admin pode alterar admin"; a própria comissão: decisão do Claude, 27/11 (38ª, Decisão 4), pela própria CM-06 e pela Admin da rede que atende (CLAUDE.md §11)
 - Onde: `docs/regras/comissoes.md:95-106`; `CLAUDE.md:734-741` (§11)
 - Antes: KA-14, KC-10
 
@@ -55,8 +55,8 @@ Este é o catálogo das regras das Comissões que valem HOJE: onde ficam e quem 
 
 ## A comissão de quem atende (CA)
 
-**CA-01.** A comissão de execução é da PESSOA, na rede: um padrão (% ou R$ fixo) e exceções por procedimento; quem atende em mais de uma unidade tem a mesma comissão em todas. Vale a exceção do procedimento; sem ela, o padrão; sem os dois, o atendimento conclui sem comissão, e a tela avisa quem atende sem padrão. O valor da regra não tem teto além do registro (o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito."): o percentual vai até 100%, e o R$ fixo até R$ 999.999,99 — o maior valor que a comissão guarda ("No máximo R$ 999.999,99 (o limite do registro)."); vale também na comissão geral, no pacote e no produto, e não há limite de exceções nem de profissionais (o número é decisão do Claude).
-- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele): "Decisões do Heitor" no topo da seção
+**CA-01.** A comissão de execução é da PESSOA, na rede: um padrão (% ou R$ fixo) e exceções por procedimento; quem atende em mais de uma unidade tem a mesma comissão em todas. Vale a exceção do procedimento; sem ela, o padrão; sem os dois, o atendimento conclui sem comissão, e a tela avisa quem atende sem padrão. O valor da regra não tem teto além do registro (o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito."): o percentual vai até 100%, e o R$ fixo até R$ 999.999,99 — o maior valor que a comissão guarda ("No máximo R$ 999.999,99 (o limite do registro)."); vale também na comissão geral, no pacote e no produto, e não há limite de exceções nem de profissionais (o número é decisão do Claude). Com a regra igual, cada comissão é da unidade do atendimento: Financeiro → Comissões a mostra por pessoa e unidade (CF-09), e as Minhas comissões somam as unidades ("nas 2 unidades", VP-06 de Indicadores).
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele): "Decisões do Heitor" no topo da seção; quem atende em duas unidades: decisão do Claude, 27/11 (38ª, Decisão 10), pela CF-09 e pela VP-06 de Indicadores
 - Onde: `docs/regras/comissoes.md:10`, `:63-69`, `:520-522`
 - Antes: KA-09, KB-17
 
@@ -102,8 +102,8 @@ Este é o catálogo das regras das Comissões que valem HOJE: onde ficam e quem 
 - Onde: `docs/regras/comissoes.md:445-453`
 - Antes: KB-05
 
-**CV-04.** Na comissão de venda, a regra do item vence a da pessoa, e a da pessoa vence a da rede: item = o "De venda" do pacote, ou a comissão do produto (só no modo "Por produto"); rede = o "Venda de plano" e a "Venda de produto" (a geral ou a regra sobre o total). O pacote e o pré-pago não têm regra da rede; o pré-pago só tem a da pessoa.
-- Fonte: decisão do Claude
+**CV-04.** Na comissão de venda, a regra do item vence a da pessoa, e a da pessoa vence a da rede: item = o "De venda" do pacote, ou a comissão do produto (só no modo "Por produto"); rede = o "Venda de plano" e a "Venda de produto" (a geral ou a regra sobre o total). O pacote e o pré-pago não têm regra da rede; o pré-pago só tem a da pessoa. No modo "Por produto", a geral é a da rede para o produto sem regra própria: quem tem comissão de venda própria ganha a dela nesse produto ("4% do vendido — de Rúbia", CF-05).
+- Fonte: decisão do Claude; a geral do "Por produto": decisão do Claude, 27/11 (38ª, Decisão 2), pela própria CV-04
 - Onde: `docs/regras/comissoes.md:454-461`, `:499-501`, `:775`
 - Antes: KB-06
 
@@ -236,13 +236,13 @@ Este é o catálogo das regras das Comissões que valem HOJE: onde ficam e quem 
 - Onde: `docs/regras/comissoes.md:144-163`
 - Antes: KA-20
 
-**CB-03.** Na regra em percentual, a base é o preço menos o desconto comercial (sempre), menos os pontos e o voucher (se a rede escolheu "Sobre o valor pago"), menos a taxa do recebimento (se marcada), menos os insumos (se marcados). Na regra em valor fixo, só os pontos e o voucher a reduzem, na proporção; taxa, insumo e desconto não. No pacote e no plano, o desconto já está no preço da sessão e do procedimento.
-- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
+**CB-03.** Na regra em percentual, a base é o preço menos o desconto comercial (sempre), menos os pontos e o voucher (se a rede escolheu "Sobre o valor pago"), menos a taxa do recebimento (se marcada), menos os insumos (se marcados). Na regra em valor fixo, só os pontos e o voucher a reduzem, na proporção; taxa, insumo e desconto não. No pacote e no plano, o desconto já está no preço da sessão e do procedimento. Com a taxa marcada, a sessão do pré-pago pago no cartão tira da parte dela a taxa daquele recebimento (CT-01, CT-02): a parte de R$ 180 no crédito 3x a 4,9% fica em R$ 171,18.
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele); a sessão do pré-pago: decisão do Claude, 27/11 (38ª, Decisão 1), pela própria CB-03 e pela CT-01
 - Onde: `docs/regras/comissoes.md:586-590`
 - Antes: KB-25
 
-**CB-04.** O valor ao lado da frase é a base que a conta usa de fato: "base sem a taxa da maquininha: R$ 413,70 (R$ 420,00 − R$ 6,30 da taxa) · 40%". O CSV tem Preço, Desconto, Taxa da maquininha, Insumos, Proporção que ficou e Base. Na comissão em R$ fixo, a base é o preço sem os pontos e o voucher.
-- Fonte: princípio 3
+**CB-04.** O valor ao lado da frase é a base que a conta usa de fato: "base sem a taxa da maquininha: R$ 413,70 (R$ 420,00 − R$ 6,30 da taxa) · 40%". O CSV tem Preço, Desconto, Taxa da maquininha, Insumos, Proporção que ficou e Base. Na comissão em R$ fixo, a base é o preço sem os pontos e o voucher. Na comissão de produto em "R$ por unidade", a linha mostra a conta que valeu, as unidades × o valor por unidade (2 × R$ 15,00), e não o vendido como base.
+- Fonte: princípio 3; o "R$ por unidade": decisão do Claude, 27/11 (D9 da 38ª), pela própria CB-04 e pela CB-03 (no fixo o desconto não reduz a base)
 - Onde: `docs/regras/comissoes.md:164-179`
 - Antes: KA-21
 
@@ -433,8 +433,8 @@ Este é o catálogo das regras das Comissões que valem HOJE: onde ficam e quem 
 - Onde: `docs/regras/comissoes.md:652-656`; `docs/revisao.md:2272`
 - Antes: KB-35
 
-**CF-12.** No período ainda em curso, o fechamento paga até AGORA, e a tela diz ("O período de nov/2026 ainda está em curso: o que for lançado até o fim dele fica para o próximo fechamento."). Cada fechamento diz de quando a quando foram os lançamentos ("de 10/11/2026 até 10/11/2026 às 02:30") e quando foi pago, com a hora ("pago em 18/11/2026 às 10:05"), tudo no fuso da rede, na tela e no CSV.
-- Fonte: princípio 3
+**CF-12.** No período ainda em curso, o fechamento paga até AGORA, e a tela diz ("O período de nov/2026 ainda está em curso: o que for lançado até o fim dele fica para o próximo fechamento."). Cada fechamento diz de quando a quando foram os lançamentos ("de 10/11/2026 até 10/11/2026 às 02:30") e quando foi pago, com a hora ("pago em 18/11/2026 às 10:05"), tudo no fuso da rede, na tela e no CSV. A comissão liberada depois do fechamento (o pagamento que chegou depois) é do dia em que foi liberada (CF-07): fica "A pagar" e entra no próximo fechamento, que lista também os a pagar de antes do período (CF-13).
+- Fonte: princípio 3; a liberação depois do fechamento: decisão do Claude, 27/11 (38ª, Decisão 3), pela CF-07 e pela CF-13
 - Onde: `docs/regras/comissoes.md:662-674`
 - Antes: KB-36
 

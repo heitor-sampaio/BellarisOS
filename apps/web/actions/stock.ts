@@ -17,6 +17,8 @@ import { unidadeDoInsumo, type UnidadesDoProduto } from '@/lib/estoque/unidade-d
 import { notaDaTransferencia, notaDeTransferenciaSemNome } from '@/lib/estoque/transferencia'
 import { partesDoMovimento, type PartesDoMovimento } from '@/lib/estoque/lotes-do-movimento'
 import { idDaVendaDoMovimento } from '@/lib/estoque/venda-do-movimento'
+import { vencidoNaSaidaDoMovimento } from '@/lib/vendas/lote-vencido'
+import { fusosDasUnidades } from '@/lib/unidades/fuso-da-unidade'
 import { linhasDoEstoqueInicial } from '@/lib/estoque/estoque-inicial'
 // D1 da 36ª: o cruzamento do mínimo vai à fila no banco; o aviso sai logo depois do movimento.
 import { avisarOMinimoDepois } from '@/lib/estoque/aviso-do-minimo'
@@ -776,6 +778,11 @@ export interface MovimentoDeEstoque {
    * entrada que foi cobrir a falta de antes (`partesDoMovimento`).
    */
   partes: PartesDoMovimento
+  /**
+   * D3 da 38ª (ES-24, "o vencido é sinalizado"): a venda ou o insumo que saiu de
+   * lote já vencido no dia da saída — "1 un saiu do lote PS1, vencido em 14/11/2026".
+   */
+  vencidoNaSaida: string | null
   /** A37 da 10ª: o fornecedor e a nota fiscal da entrada. */
   fornecedor: string | null
   /** E14: a marca da entrada (o nome gravado nela). */
@@ -972,6 +979,14 @@ export async function getProductMovements(
       'conferir as vendas estornadas') as { id: string }[] | null
     for (const v of vendas ?? []) estornadasSemVolta.add(v.id)
   }
+  // D3 da 38ª: o dia da saída é o da unidade dela (F62b).
+  const fusos = linhas.some(m => (m.type === 'SALE' || m.type === 'PROCEDURE_USAGE') && (m.stock_movement_batches ?? []).length)
+    ? await fusosDasUnidades(ctx.tenantId) : {}
+  const partesDe = (m: Row) => partesDoMovimento({
+    quantidade: Number(m.quantity), fator,
+    ligacoes: (m.stock_movement_batches ?? []).flatMap(l => l.product_batches
+      ? [{ numero: l.product_batches.batch_number, validade: l.product_batches.expires_at, embalagens: Number(l.quantity) }] : []),
+  })
   const nota = (m: Row) => {
     if (!m.reference || !notaDeTransferenciaSemNome(m.type, m.notes)) return m.notes
     const outra = outraPerna.get(`${m.reference}|${m.type === 'TRANSFER_OUT' ? 'TRANSFER_IN' : 'TRANSFER_OUT'}`) || null
@@ -995,11 +1010,8 @@ export async function getProductMovements(
     custoPorEmbalagem: m.unit_cost != null ? Math.round(Number(m.unit_cost) * fator * 100) / 100 : null,
     lotes: (m.stock_movement_batches ?? []).flatMap(l => l.product_batches
       ? [{ numero: l.product_batches.batch_number, validade: l.product_batches.expires_at }] : []),
-    partes: partesDoMovimento({
-      quantidade: Number(m.quantity), fator,
-      ligacoes: (m.stock_movement_batches ?? []).flatMap(l => l.product_batches
-        ? [{ numero: l.product_batches.batch_number, validade: l.product_batches.expires_at, embalagens: Number(l.quantity) }] : []),
-    }),
+    partes: partesDe(m),
+    vencidoNaSaida: vencidoNaSaidaDoMovimento(m.type, partesDe(m).lotes, emConsumo ? consumo! : embalagem, new Date(m.created_at), fusos[m.branch_id]),
     fornecedor:   m.fornecedor,
     marca:        m.marca,
     notaFiscal:   m.nota_fiscal,

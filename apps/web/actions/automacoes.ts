@@ -103,6 +103,8 @@ export async function listarAutomacoes(): Promise<{
 
   const ids = (data ?? []).map(a => a.id as string)
   const resumo = await resumoDeExecucoes(ctx.tenantId!, ids)
+  // D7 da 38ª: o card diz o horário do gatilho no relógio da rede, como o editor.
+  const fuso = await fusoDaRede(ctx.tenantId!)
 
   return {
     automacoes: (data ?? []).map(a => ({
@@ -114,7 +116,7 @@ export async function listarAutomacoes(): Promise<{
       atualizadoEm: a.updated_at as string,
       execucoes:    resumo.get(a.id as string)?.total ?? 0,
       falhas:       resumo.get(a.id as string)?.falhas ?? 0,
-      passos:       caminhoDoFluxo(a.grafo as GrafoDeAutomacao | null),
+      passos:       caminhoDoFluxo(a.grafo as GrafoDeAutomacao | null, fuso),
     })),
   }
 }

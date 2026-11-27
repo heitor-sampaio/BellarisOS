@@ -75,16 +75,15 @@ export const DEFINICOES = {
     texto: 'A sessão de pacote, de plano ou pré-paga que você atende não entra aqui: o dinheiro é de quem vendeu. '
       + 'Ela aparece nas suas comissões e na receita dos atendimentos dos Relatórios.',
   },
+  /**
+   * A13 da 38ª (princípio 7, "intuitivo não é explicativo", o Heitor, 26/11): era um
+   * parágrafo que explicava a tela. Fica a conta; a A36 da 22ª (o líquido do
+   * voucher e dos pontos, que no Total vendido contam) continua.
+   */
   receitaDosAtendimentos: {
     rotulo: 'O que a receita dos atendimentos conta',
-    texto: 'O valor dos atendimentos FEITOS, para quem atendeu, no dia em que o atendimento foi FEITO (no fuso da unidade): '
-      + 'o que a cliente pagou pelo avulso (com o desconto e sem estornos; líquido do voucher e dos pontos, que se rateiam com os '
-      + 'produtos da comanda; pago depois, entra no dia do atendimento) e, na '
-      + 'sessão de pacote, de pré-pago ou de plano, a parte dela no que foi vendido (na de plano, cada procedimento da sessão '
-      + 'conta no seu). É a conta da EXECUÇÃO; o caixa e o "Meu faturamento" contam no dia do pagamento (o pacote e o '
-      + 'pré-pago inteiros para quem vendeu). O concluído ainda não pago não entra; o produto também não (está '
-      + 'no faturamento e nas Vendas). Por isso o mesmo atendimento pode valer menos aqui do que no Total vendido das Vendas: '
-      + 'lá o voucher e os pontos contam como pagamento.',
+    texto: 'O que as clientes pagaram pelos atendimentos feitos, para quem atendeu, no dia do atendimento (no fuso da unidade): '
+      + 'o avulso, líquido do voucher e dos pontos (no Total vendido eles contam), e a parte da sessão de pacote, de pré-pago ou de plano no vendido.',
   },
   /**
    * A30 da 24ª (princípio 3): a base de cada aba dos Relatórios. O voucher de

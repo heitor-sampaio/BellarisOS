@@ -267,6 +267,35 @@ test('no "Só leitura", os campos da oportunidade têm a aparência de leitura',
   }
 })
 
+/**
+ * A9 da 38ª simulação (CLAUDE.md §14; princípio 7): no "Só leitura", o seletor
+ * mantinha a seta, a data o "dd/mm/aaaa", o "Preencha pelo menos um dos campos
+ * abaixo" seguia à vista e os procedimentos eram botões de marcar. Quem só vê
+ * lê os valores.
+ */
+test('A9 da 38ª: no "Só leitura", sem seletor, sem convite a preencher e os procedimentos como texto', async ({ browser }) => {
+  const id = await lead('Só leitura A9')
+  const leitor = await criarMembro(`cr9n${marca}`, {
+    tenant: rede.tenantId, rotulo: 'Só vê o CRM (A9)',
+    permissoes: [{ modulo: 'crm', nivel: 'VIEW' }],
+  })
+  try {
+    await como(browser, leitor, async p => {
+      await p.goto('/admin/oportunidades')
+      await p.locator(`[data-lead-id="${id}"]`).click()
+      const janela = p.locator('dialog[open]')
+      await expect(janela.locator('[data-oportunidade-so-leitura]')).toContainText('Só leitura')
+      expect(await janela.getByLabel('Origem', { exact: true }).evaluate(el => getComputedStyle(el).appearance)).toBe('none')
+      await expect(janela.getByText('Preencha pelo menos um dos campos abaixo')).toHaveCount(0)
+      await expect(janela.locator('[data-procedimentos-so-leitura]')).toBeVisible()
+      await expect(janela.locator('button.chip-filtro')).toHaveCount(0)
+      await expect(janela.locator('input[name="retornar_em"]')).toHaveAttribute('type', 'text')
+    })
+  } finally {
+    await leitor.limpar()
+  }
+})
+
 test('o filtro "Etapa" do inbox diz o funil de cada etapa e, com o funil escolhido, mostra só as dele', async ({ browser }) => {
   const { data: f2, error } = await db().from('crm_funnels').insert({ tenant_id: rede.tenantId, name: 'Corporal', is_default: false, position: 1 }).select('id').single<{ id: string }>()
   expect(error, 'o segundo funil').toBeNull()

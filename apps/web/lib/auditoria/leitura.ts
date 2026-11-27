@@ -367,6 +367,8 @@ async function nomesDa20(ctx: TenantContext, registros: readonly RegistroDaAudit
   // A5 e A10 da 35ª (AD-08): o plano e a sessão do pré-pago cancelados — o motivo e qual sessão, lidos agora.
   const planosCancelados = ids(r => r.tabela === 'treatment_plans' && r.operacao === 'editou' && r.colunas.includes('cancelado_em'))
   const sessoesDoPrePago = ids(r => r.tabela === 'procedure_sale_units' && r.operacao === 'editou' && r.colunas.includes('cancelled_at'))
+  // D8 da 38ª (AD-13, AD-16): a venda de produto cancelada — o motivo, lido agora.
+  const vendasDeProdutoCanceladas = ids(r => r.tabela === 'product_sales' && r.operacao === 'editou' && r.colunas.includes('estornada_em'))
   const importacoes = ids(r => r.tabela === 'importacoes')
   const entradas = ids(r => r.tabela === 'stock_movements' && r.operacao === 'criou' && r.depois?.type === 'PURCHASE')
   const procedimentos = [...new Set([
@@ -381,7 +383,7 @@ async function nomesDa20(ctx: TenantContext, registros: readonly RegistroDaAudit
     .filter((v): v is string => typeof v === 'string' && UUID.test(v)))]
   const nada = Promise.resolve([] as Record<string, unknown>[])
 
-  const [dc, ss, pk, im, en, pr, ag, pc, su, cf] = await Promise.all([
+  const [dc, ss, pk, im, en, pr, ag, pc, su, cf, vp] = await Promise.all([
     documentos.length ? ler(admin.from('issued_documents').select('id, closed_reason').eq('tenant_id', tenant).in('id', documentos), 'ler os motivos dos documentos') : nada,
     sessoes.length ? ler(admin.from('package_sessions').select('id, session_number, client_packages!inner(branches!inner(tenant_id), service_packages(name))')
       .eq('client_packages.branches.tenant_id', tenant).in('id', sessoes), 'ler as sessões dos pacotes') : nada,
@@ -400,6 +402,8 @@ async function nomesDa20(ctx: TenantContext, registros: readonly RegistroDaAudit
       .eq('procedure_sales.tenant_id', tenant).in('id', sessoesDoPrePago), 'ler as sessões canceladas do pré-pago') : nada,
     pacotesCriados.length ? ler(admin.from('client_packages').select('id, de_fora, branches!inner(tenant_id)')
       .eq('branches.tenant_id', tenant).in('id', pacotesCriados), 'ler os pacotes trazidos') : nada,
+    vendasDeProdutoCanceladas.length ? ler(admin.from('product_sales').select('id, estorno_motivo')
+      .eq('tenant_id', tenant).in('id', vendasDeProdutoCanceladas), 'ler o motivo das vendas de produto canceladas') : nada,
   ]) as Record<string, unknown>[][]
   const str = (v: unknown) => (typeof v === 'string' ? v : null)
   const num = (v: unknown) => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) ? null : Number(v))
@@ -431,6 +435,7 @@ async function nomesDa20(ctx: TenantContext, registros: readonly RegistroDaAudit
       ...(pk ?? []).map(x => [x.id as string, str(x.cancelamento_motivo)] as const),
       ...(pc ?? []).map(x => [x.id as string, str(x.cancelamento_motivo)] as const),
       ...(su ?? []).map(x => [x.id as string, str(x.cancel_reason)] as const),
+      ...(vp ?? []).map(x => [x.id as string, str(x.estorno_motivo)] as const),
     ].map(([k, m]) => [k, (m?.trim() ?? '').slice(0, 120)]).filter(([, m]) => m)),
     sessoesDoPrePago: Object.fromEntries((su ?? []).map(x => {
       const procedimento = nomeDe((x.procedure_sales as { procedures?: unknown } | null)?.procedures)

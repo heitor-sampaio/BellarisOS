@@ -19,6 +19,7 @@ import { gravar, ler } from '@/lib/db'
 import { conferirIndicadaPor } from '@/lib/clients/indicada-por'
 import { fichasQueJaExistem, respostaDoJaExiste, proximaSemResposta, atualizarFichaComOPreenchido, type FichaQueJaExiste } from '@/lib/clients/ja-existe'
 import { RECUSA_DE_UNIFICAR_SEM_CLIENTES } from '@/lib/clients/ja-existe-texto'
+import { levarAFichaAoContato } from '@/lib/contatos/ficha-no-contato'
 
 /**
  * Quem pode unificar com / reativar a ficha que existe (C66, H4 = b): Clientes
@@ -97,6 +98,16 @@ export interface ClienteRapidoResult {
 }
 
 /**
+ * A ficha usada pela conversa (o "Agendar" do painel): liga a conversa e dá ao
+ * contato o nome e o e-mail da ficha, como o cadastro pela conversa (D4 da 38ª;
+ * crm-inbox:CL-14 — quem agenda pela conversa já disse quem é).
+ */
+async function ligarFichaAConversa(admin: Admin, ctx: TenantContext, conversationId: string, clientId: string) {
+  await ligarContatoAoCliente(admin, ctx.tenantId!, conversationId, clientId)
+  await levarAFichaAoContato(admin, ctx, { conversationId }, clientId)
+}
+
+/**
  * Devolve o cliente para este nome + telefone, criando-o se ainda não existir.
  *
  * A ficha que JÁ EXISTE — o mesmo telefone (até a arquivada), o mesmo CPF, ou o
@@ -155,7 +166,7 @@ export async function garantirClienteRapido(
   const usada = resposta.usar ? jaExistem.find(f => f.id.toLowerCase() === resposta.usar) : null
   if (usada) {
     if (usada.arquivada) return { error: `A ficha de ${usada.nome} está arquivada: reativá-la pede Clientes em Gerenciar. Cadastre mesmo assim, ou peça a quem cuida dos clientes.` }
-    if (input.conversationId) await ligarContatoAoCliente(admin, ctx.tenantId!, input.conversationId, usada.id)
+    if (input.conversationId) await ligarFichaAConversa(admin, ctx, input.conversationId, usada.id)
     return { clientId: usada.id, criado: false }
   }
   const escolhida = resposta.atualizar ? jaExistem.find(f => f.id.toLowerCase() === resposta.atualizar) : null
@@ -176,7 +187,7 @@ export async function garantirClienteRapido(
       birth_date: input.complemento?.birthDate ?? null,
     })
     if (r.error) return { error: r.error }
-    if (input.conversationId) await ligarContatoAoCliente(admin, ctx.tenantId!, input.conversationId, escolhida.id)
+    if (input.conversationId) await ligarFichaAConversa(admin, ctx, input.conversationId, escolhida.id)
     return { clientId: escolhida.id, criado: false }
   }
   const pendente = proximaSemResposta(jaExistem, resposta.cadastrar)
@@ -215,7 +226,7 @@ export async function garantirClienteRapido(
   await emitirEventoDeCliente(EVENTOS.CLIENTE_CRIADO, cliente.id as string, ctx)
 
   if (input.conversationId) {
-    await ligarContatoAoCliente(admin, ctx.tenantId!, input.conversationId, cliente.id as string)
+    await ligarFichaAConversa(admin, ctx, input.conversationId, cliente.id as string)
   }
 
   return { clientId: cliente.id as string, criado: true }

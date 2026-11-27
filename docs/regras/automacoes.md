@@ -305,7 +305,10 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   → "Avisar a equipe" a "Quem cuida da oportunidade", o lembrete que o cron
   do CRM mandava a todas as redes)) e
   `criarAutomacaoDeModelo` grava o grafo DO SERVIDOR (o navegador manda só a
-  chave), em RASCUNHO, para a rede revisar. O procedimento fica no passo
+  chave), em RASCUNHO, para a rede revisar. O texto do modelo usa as
+  variáveis pelo nome que o editor oferece (`{{agendamento.procedimento}}`; o
+  de retorno trazia `{{evento.dados.procedimentoNome}}` — A15 da 38ª, ED-08),
+  e o texto antigo das redes que já o criaram continua resolvendo. O procedimento fica no passo
   "Se", nunca no gatilho. Modelo novo usa só nodes e eventos do catálogo, e
   nasce com tudo ligado (`tests/automacoes-modelos.test.ts` confere).
 - **Regra do "Se" sem valor não liga** (D-4): "Procedimento é ___" nunca é
@@ -325,6 +328,15 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   resposta não chega a lugar nenhum): o modelo e o "Mandar como aviso no
   celular" tiram o "É só responder esta mensagem" (`semPedirResposta`).
   Prova: `tests/atritos-da-17-cadastros.test.ts`.
+- **O painel do "Mandar mensagem" não explica o passo** (A18 da 38ª; o Heitor,
+  26/11: "Ser intuitivo é justamente o contrario, ser facil de usar mesmo sem
+  muitas explicações."; princípio 7). A ordem é o canal, a mensagem, "Para
+  quem não tem conversa aberta" e o modelo aprovado; os parágrafos sobre o
+  aviso no celular, a conversa aberta, as 24 horas e as variáveis do modelo
+  saíram (o canal "Aviso no celular (push)" e o modelo "(fora das 24 horas)"
+  dizem). Fica o estado: a rede sem WhatsApp e, no "Abrir pelo número padrão",
+  por onde abre e o risco. Prova:
+  `tests/automacoes-painel-da-mensagem-sem-paragrafo.test.ts`.
 - **A automação e a cliente SEM conversa aberta** (H1 do levantamento das
   regras, o Heitor, 2026-11-11, opção d, com a a valendo já; princípios 1, 3
   e 6). O "Mandar mensagem" em WhatsApp só fala numa conversa já aberta e
@@ -405,6 +417,14 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
     `sendTemplateMessage` passou a usar). Prova:
     `tests/automacoes-abrir-pelo-numero-padrao.test.ts` (com o provedor
     falso: o envio de verdade à Meta não se prova aqui).
+    **A que abriu a conversa e não conseguiu mandar diz as duas coisas** (A16
+    da 38ª; princípio 3): "Mandar mensagem: abriu a conversa pelo número
+    padrão (Recepção), mas não conseguiu mandar a mensagem (o número não
+    respondeu)." — também nas tentativas seguintes (`erroDaAbertura`,
+    `lib/automacoes/em-portugues.ts`). O painel do passo diz, curto, por onde
+    abre e o risco: "Abre pelo número Recepção (WhatsApp Web). Risco de o
+    WhatsApp banir o número." (A18 da 38ª, abaixo). Prova:
+    `tests/automacoes-mensagem-que-falhou.test.ts`.
 - **O lembrete antes do agendamento lembra o agendado E o confirmado** (D15
   do levantamento das regras, 2026-11-11; princípio 3): lembrar também o não
   confirmado é o comportamento útil. Desde o MK1 (14/11) o lembrete não é
@@ -436,7 +456,12 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   AUTOMÁTICO do passo (o do deslocamento anterior, ou o "Um dia antes" do
   modelo) acompanha o deslocamento novo, por `renomearPasso`
   (`nomeQueAcompanhaODeslocamento`); o nome que a rede escreveu fica. Prova:
-  `tests/automacoes-a-espera-escolhida.test.ts`.
+  `tests/automacoes-a-espera-escolhida.test.ts`. **E o gatilho de relógio, pelo
+  horário gravado** (D7 da 38ª; ED-08): o "Parabéns no aniversário" às 11:15
+  aparecia "Todo dia às 9h", o nome do nó no modelo; o card diz "Todo dia às
+  11:15", no relógio da rede, como o editor (`resumoDoNo`) — também nas
+  automações já criadas, sem reescrever o nome gravado. Prova:
+  `tests/automacoes-o-card-e-o-modelo-dizem-a-config.test.ts`.
 - **O ensaio só aparece com gatilho de fato** (D9 da 30ª; RX-03 e CLAUDE.md
   §14): o gatilho de relógio não tem fato para repetir. `ensaioCabe`
   (`lib/automacoes/ensaio.ts`, pelo grafo GRAVADO, o que a action lê) esconde
@@ -452,6 +477,12 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   atendimento" (gatilho: atendimento concluído) segue — "Segue em …" —, e
   igual para o cancelado e a falta quando o gatilho é o deles (o `gatilho`
   da execução, `listarExecucoes`). Prova: `tests/automacoes-execucao-diz-o-que-houve.test.ts`.
+  **Com a automação desligada, a que espera está "Parada"** (A14 da 38ª;
+  RX-05, princípio 3): a lista não diz "Segue em …" — quando a hora chega, o
+  motor a encerra ("Automação não está ativa.") —, e sim "Parada · A automação
+  está desligada." (`fraseDaEspera(…, ligada)`). O motor não mudou: religada
+  antes da hora, a execução segue, e a frase volta a ser a de sempre. Prova:
+  `tests/automacoes-espera-da-desligada.test.ts`.
 - **A execução que não fez o que o fluxo pedia não é "Concluída"** (A28, D6 e
   D15 da 32ª; decisão do Claude, 26/11, pelo princípio 3). No banco ela segue
   `ok` (nada falhou); o motor guarda no contexto o fim (`fimDaExecucao`,
@@ -470,6 +501,17 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   trocando por vazio). Em 26/11 havia uma automação na produção com variável
   desconhecida (ligada, `{{first_name}}`): a partir daqui ela não manda vazio,
   e a tela acusa o erro. Prova: `tests/automacoes-variavel-desconhecida.test.ts`.
+- **A nova tentativa reaproveita a mensagem que não saiu** (D2 da 38ª;
+  `crm-inbox.md` IN-18, princípio 3). O cron tenta de novo a execução que
+  falhou (até 3 vezes), e cada tentativa gravava uma bolha "Não enviada" NOVA
+  na conversa. A mensagem que o provedor não aceitou fica no contexto da
+  execução, por passo (`lib/automacoes/mensagem-nao-enviada.ts`), e a
+  tentativa seguinte reenvia a MESMA linha pelo núcleo do "Tentar de novo" da
+  bolha (`reenviarNaConversa`): uma "Não enviada" só. A que já saiu pelo
+  "Tentar de novo" da conversa não sai outra vez; fora das 24 h, com o modelo
+  aprovado do passo, sai o modelo (R12). A execução continua registrando cada
+  tentativa, e o fato "mensagem enviada" sai uma vez, quando ela sai. Prova:
+  `tests/automacoes-mensagem-que-falhou.test.ts`.
 - **O detalhe da execução fala português** (A17 da 32ª; princípio 7): o erro
   técnico do provedor vira "Mandar mensagem: não conseguiu mandar a mensagem
   (o número não respondeu)."; o passo diz "Aviso no celular: enviado",
@@ -821,4 +863,6 @@ o fato se grava e não vai ao motor (`emitirEvento` com `semDespachar`).
 ❌ Remarcar um agendamento sem emitir agendamento.remarcado (é ele que reprograma o lembrete que espera o horário antigo — D1 da 20ª)
 ❌ Mandar à cliente a mensagem com a variável vazia, ou aceitar variável fora do contexto da automação ({{first_name}} é das campanhas — D15 da 32ª)
 ❌ Abrir conversa nova pela automação para quem não tem uma fora do "Abrir pelo número padrão" que a rede escolheu no passo (AX-06; R10, 26/11) — e, na API oficial, sem o modelo aprovado do passo
+❌ Nova tentativa da execução que grava OUTRA mensagem na conversa — reenvia a "Não enviada" da tentativa anterior (mensagem-nao-enviada.ts, reenviarNaConversa — D2 da 38ª)
+❌ Dizer o gatilho de relógio no card pelo nome do nó (é a config, resumoDoNo — D7 da 38ª)
 ```

@@ -201,7 +201,15 @@
     também pergunta, a quem vê o CRM (A25 da 15ª simulação): a pessoa já
     existe no CRM. "Sim" acerta o NOME do contato para o da ficha (vale para
     toda pessoa ligada assim). Resposta em `_pessoaDoCrm` (`mesma:`/`outra:<contato>`). Quem
-    cadastra pelo card ou pela conversa não é perguntado (já disse quem é).
+    cadastra pelo card ou pela conversa não é perguntado (já disse quem é), e
+    o efeito é o do "Sim" (D4 da 38ª; CL-14, IN-06, princípio 3 — decisão do
+    Claude, 27/11, de estender o "Sim" a esses dois caminhos): o contato recebe o
+    nome e o e-mail da ficha (o e-mail só quando ela tem), o nome vai às
+    conversas e oportunidades dele (`levarAFichaAoContato`,
+    `lib/contatos/ficha-no-contato.ts`) — também ao unificar ou reativar a ficha
+    por ali. O contato de outra ficha não muda. Prova:
+    `tests/cadastro-pela-conversa-leva-a-ficha-ao-contato.test.ts`,
+    `e2e/inbox-contato-email.spec.ts` ("D4").
     **A pessoa da oportunidade criada à mão também é achada** (A16 da 6ª simulação,
     2026-11-04: a Alice, criada no quadro com "(81) 99600-0070", virou uma
     ficha solta na unidade, e a Pri não soube que ela agendou): o gatilho da
@@ -1597,6 +1605,10 @@ compara o DIA da criação no fuso do negócio (`dayKeyTZ`).
 **Com filtro, o quadro diz o recorte** (A17 da 16ª, princípio 3): "Mostrando
 2 de 3 oportunidades: os números do topo são do funil inteiro."
 (`[data-filtro-do-quadro]`) — o resumo do topo continua o do funil.
+**O selo do "Limpar" conta cada filtro marcado** (A10 da 38ª, princípio 3):
+duas tags são 2, como no inbox; situação e período contam 1 cada
+(`contarFiltrosDoQuadro`, `lib/crm/filtros-do-quadro.ts`). Prova:
+`tests/quadro-conta-cada-filtro.test.ts`, `e2e/crm-atritos-da-16.spec.ts` ("A10 da 38ª").
 **O campo "Etapa" da janela lista só as etapas do funil do card** (A16 da
 16ª: com dois funis, "Perdido" aparecia duas vezes); mudar de funil é o
 "Mover para outro funil" do menu "···" do card. O menu abre num portal
@@ -2115,11 +2127,53 @@ o contato junto.
 - **O "Só leitura" da oportunidade parece leitura** (A5 da 32ª; princípio
   7): os campos do fieldset desligado têm o fundo do card, a linha fina e o
   cursor comum (`CSS_SO_LEITURA`, no modal).
+  E sem nada que convide a mexer (A9 da 38ª; CLAUDE.md §14, princípio 7):
+  sem a seta do seletor, sem o calendário da data (a data de retorno é
+  texto), sem a alça das observações, sem o "Preencha pelo menos um dos
+  campos abaixo", o vazio como "—" e os procedimentos de interesse só os
+  escolhidos, em texto (`[data-procedimentos-so-leitura]`). Prova:
+  `tests/crm-oportunidade-so-leitura-sem-cara-de-campo.test.ts`,
+  `e2e/crm-atritos-da-9.spec.ts` ("A9 da 38ª").
 - **O filtro "Etapa" do inbox não mistura os funis** (A5 da 32ª; princípio
   7): cada etapa da conversa leva o funil DELA (`stage_funnel_ids`, alinhado
   a `stage_ids`); escolhido o funil, só as etapas dele; com mais de um funil
   e nenhum escolhido, a etapa diz o funil ("Vendas · Novo" — `rotuloDaEtapa`,
   `lib/inbox/rotulo-da-etapa.ts`).
+
+## Correções de 27/11 no inbox (38ª; decisões do Claude)
+
+- **Quem só vê não tem o campo de resposta** (D1 da 38ª; CLAUDE.md §14): com
+  o CRM em Ver, a conversa se lê, e o compositor (campo, anexo, áudio,
+  respostas rápidas, modelo), o contexto da resposta e os avisos de envio (a
+  outra caixa, a janela de 24 h) não aparecem — um bloco só, aberto por
+  `canEdit`, em `crm-inbox.tsx`. `sendMessage`, `sendMediaMessage`,
+  `sendTemplateMessage` e `editMessage` devolvem "Seu cargo não responde
+  conversas." (`{ error }`, como o `reenviarMensagem`) em vez de lançar. Prova:
+  `tests/inbox-quem-so-ve-nao-responde.test.ts`.
+- **A faixa "N aguardando resposta" é da rede inteira ao alcance** (D6 da
+  38ª; IN-10): conta no banco (`inbox_aguardando`), com as caixas do cargo, os
+  filtros e a busca da lista, sem o corte da página; a cor é a da que espera
+  há mais tempo. O filtro mora num lugar só, `private.inbox_filtradas`, de onde
+  leem a página (`inbox_pagina`) e a contagem (migration `20261217100002`). A
+  primeira página (`getConversations` sem cursor) traz `aguardando`
+  (`aguardandoDoInbox`, `lib/inbox/pagina.ts`). Prova:
+  `tests/inbox-aguardando-da-rede-inteira.test.ts`.
+- **A prévia e a "Última interação" contam só o que saiu ou chegou** (A6 e A7
+  da 38ª; IN-18): a saída que não foi aceita pelo provedor não mexe no texto,
+  na hora nem na direção da última mensagem (`on_new_message`); passa a mexer
+  quando é aceita (`on_mensagem_aceita`, sem passar por cima de uma mais nova).
+  A conversa sem nenhuma mensagem que conte fica na lista com a hora da
+  primeira (a "Não enviada" com o "Tentar de novo" segue à vista). Na tela,
+  nada de prévia otimista: `comPreviaDaMensagem` (`lib/inbox/previa.ts`) no que
+  o servidor devolve. Migration `20261217100001` (com os dados de antes).
+  Prova: `tests/inbox-previa-so-o-que-saiu.test.ts`.
+- **O `?c=` de uma conversa da rede fora das caixas do cargo avisa** (A8 da
+  38ª; CLAUDE.md §6): a página volta com `?aviso=conversa-fora-do-alcance`
+  ("Essa conversa é de um número de WhatsApp que o seu cargo não vê no
+  Inbox."), uma vez, mantendo o `?c=` — as mensagens seguem trancadas por
+  `conversaAoAlcance`. O id que não é da rede não avisa (diria que existe).
+  `conversaDoEnderecoForaDoAlcance`, `lib/inbox/conversa-do-endereco.ts`.
+  Prova: `tests/inbox-conversa-fora-do-alcance-avisa.test.ts`.
 
 ## Correções de 27/11 na LGPD (35ª; decisão do Claude)
 
@@ -2192,4 +2246,7 @@ o contato junto.
 ❌ Unificar ficha trocando o documento que ela já tem (CPF por passaporte, um passaporte por outro): a ficha tem UM documento (F70, C31)
 ❌ Barrar o cadastro ou o atendimento da menor sem responsável (é aviso — princípio 2), ou decidir "menor" fora de ehMenorDeIdade
 ❌ Oferecer cadastrar ou editar cliente a quem tem Clientes em Ver, ou recusar isso lançando semAcesso dentro do useActionState (é { error: SO_CONSULTA_CLIENTES })
+❌ Mostrar o campo de resposta do inbox a quem tem o CRM só em Ver, ou recusar o envio lançando (é { error: SO_VE_AS_CONVERSAS } — D1 da 38ª)
+❌ Contar a fila do inbox ("aguardando") pelas conversas carregadas — é inbox_aguardando, do mesmo filtro da página (private.inbox_filtradas; D6 da 38ª)
+❌ Pôr na prévia da conversa (ou na "Última interação") a mensagem que ainda não saiu — só a aceita ou a que chegou (comPreviaDaMensagem; A6/A7 da 38ª)
 ```

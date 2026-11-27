@@ -83,7 +83,7 @@ test('A49: o ajuste fala da contagem sem assustar, e diz o aberto em palavras si
   })
 })
 
-test('A51, A52 e A54: a validade vencida avisa, a entrada confirma, e a próxima entrada traz a mesma nota', async ({ browser }) => {
+test('A51, A52 e A54: a validade vencida avisa, a entrada confirma, e a próxima entrada começa vazia, com o "Usar a nota"', async ({ browser }) => {
   await como(browser, dona, async p => {
     const modal = await abrirGerenciar(p, nomeGel)
     await modal.getByLabel('Quantidade *').fill('3')
@@ -96,10 +96,15 @@ test('A51, A52 e A54: a validade vencida avisa, a entrada confirma, e a próxima
     await expect(modal.locator('[data-campo-escolhido="Fornecedor"]')).toContainText('Distribuidora Sul')
     await modal.getByRole('button', { name: 'Registrar entrada' }).click()
     await expect(p.getByText(/Entrada registrada: \+3 frasco/)).toBeVisible({ timeout: 15_000 })
-    // A54: a próxima entrada (outro produto da mesma nota) já vem com ela.
+    // A54 + R34 (o Heitor, 27/11: "Começa vazia, com o botão "Usar a nota NF-…"
+    // (a proposta)"): a próxima entrada (outro produto da mesma nota) começa
+    // vazia, e o botão traz a nota e o fornecedor da anterior.
     const outro = await abrirGerenciar(p, nomeCera)
+    await expect(outro.getByLabel('Nota fiscal')).toHaveValue('')
+    await expect(outro.locator('[data-campo-escolhido="Fornecedor"]')).toHaveCount(0)
+    await outro.getByRole('button', { name: `Usar a nota NF-${marca}` }).click()
     await expect(outro.getByLabel('Nota fiscal')).toHaveValue(`NF-${marca}`)
-    await expect(outro.locator('[data-nota-da-entrada-anterior]')).toContainText('apague')
+    await expect(outro.locator('[data-campo-escolhido="Fornecedor"]')).toContainText('Distribuidora Sul')
   })
 })
 

@@ -729,3 +729,28 @@ apagados: o que exigia a lista própria de medidas do planejador (R25) e a linha
 (R26).
 
 Nada em aberto na página.
+
+## 20. A 38ª simulação e a sua resposta R34 (27/11)
+
+Cinco redes novas, sem a conta da plataforma: comissões, estoque e venda de produto, conversas e comercial, relatórios
+por permissão e automações. O dinheiro das cinco bateu. Foram 9 defeitos, nenhum de segurança, e um era alto. Os
+defeitos e os atritos foram corrigidos. O resumo está no DEVLOG (27/11, (5)).
+
+O que você precisa saber:
+- **Quem tem o CRM só em Ver via a caixa de resposta do inbox, e o envio derrubava a tela.** Agora a caixa não aparece
+  para quem não pode responder.
+- **A mensagem automática que falhava virava uma bolha "Não enviada" a cada nova tentativa do sistema.** Agora é uma
+  bolha só, e a mensagem que já saiu não se reenvia.
+- **A venda de produto tirava de lote vencido sem dizer.** Agora sinaliza o vencido, sem bloquear.
+- **O cadastro pela conversa não levava o nome e o e-mail da ficha ao contato.** Agora leva, também pelo "Agendar" do
+  painel da conversa.
+- **"N aguardando resposta" contava só as conversas carregadas na tela.** Agora conta todas as que a pessoa alcança.
+- **A sua R34 está feita:** a entrada do estoque começa vazia, e o botão "Usar a nota NF-…" traz a nota e o fornecedor
+  da anterior.
+- **Um teste mudou pela R34:** o que exigia a nota da entrada anterior já preenchida. Nenhum teste foi apagado.
+- **Os testes acharam dois tropeços antigos e eles foram corrigidos.** Um clique logo ao abrir a tela do atendimento se
+  perdia sem aviso, e na agenda caía no horário errado. No celular lento, a pessoa tocava em "Check-in e iniciar" e nada
+  acontecia.
+
+Na página, uma pergunta nova: **R35**, ajustar o teste do "Conectar pela Meta" que conta também o script que a
+própria Meta acrescenta e falha quando a máquina está lenta. A regra não muda.

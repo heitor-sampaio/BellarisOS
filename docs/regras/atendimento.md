@@ -3425,14 +3425,20 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
       frasco de Gel.", "Perda registrada: …", "Ajuste aplicado: … agora tem …".
     - **"Aplicado em: ver clientes"** (A53): o botão do lote se lia como um
       rótulo vazio no lote sem uso.
-    - **A nota com vários produtos** (A54): a entrada lembra a nota e o
-      fornecedor da anterior NESTA aba, por 2 horas (`lib/estoque/nota-da-entrada.ts`,
-      sessionStorage), e a próxima entrada — outro produto da mesma nota — já
-      vem com eles, dizendo "A nota X veio da entrada anterior… apague se esta
-      for outra." (`[data-nota-da-entrada-anterior]`). A entrada de várias
-      linhas numa janela só ficou de fora (decisão da F56: o atrito era repetir
-      a nota).
-    - Prova: `e2e/estoque-atritos-da-11.spec.ts`, `tests/estoque-saldo-na-prateleira.test.ts`.
+    - **A nota com vários produtos** (A54; R34, o Heitor, 27/11: "Começa
+      vazia, com o botão "Usar a nota NF-…" (a proposta)"): a entrada lembra a
+      nota e o fornecedor da anterior NESTA aba, por 2 horas
+      (`lib/estoque/nota-da-entrada.ts`, sessionStorage). A próxima entrada
+      começa VAZIA — sem a nota e sem o fornecedor —, e o botão "Usar a nota
+      NF-1002" (a nota da anterior; `rotuloDeUsarANota`,
+      `[data-usar-a-nota-anterior]`) traz os dois para quem lança outro produto
+      da mesma nota; com a nota já no campo, o botão some
+      (`ofereceUsarANota`). Até 27/11 a entrada já vinha com eles, com o aviso
+      "apague se esta for outra" (decisão do Claude, 10/11), que saiu. A
+      entrada de várias linhas numa janela só ficou de fora (decisão da F56: o
+      atrito era repetir a nota).
+    - Prova: `e2e/estoque-atritos-da-11.spec.ts`, `tests/estoque-saldo-na-prateleira.test.ts`,
+      `tests/estoque-nota-da-entrada-comeca-vazia.test.ts` (R34).
   - **Os atritos de estoque da 12ª simulação** (2026-11-11; princípio 3):
     - **A embalagem no plural** (A49: "3 frasco", "Saem 13.500 ml (27
       frasco)"): a palavra vai ao plural a partir de 2 ("27 frascos", "10
@@ -3590,6 +3596,24 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
   Não é consumo nem entrada: fora do giro. A regra é de
   `produto_estornar_venda` (`vendas-financeiro.md` §9.3.3). Prova:
   `e2e/vendas-produto.spec.ts`.
+  **O "Aplicado em" diz a volta** (A5 da 38ª; ES-25, princípio 3): a venda que
+  voltou ao estoque segue na lista do lote, com "Voltou ao estoque em …" e a
+  quantidade riscada; a devolução de parte diz "Devolução de 1 un em …" (a da
+  linha da venda: de qual lote ela voltou não se chuta, princípio 4). A
+  estornada sem a volta fica como estava: a cliente ficou com o produto
+  (`devolucaoDaVenda`, `lib/estoque/devolucao-no-lote.ts`; decisão do Claude,
+  27/11). Prova: `tests/estoque-aplicado-em-mostra-a-devolucao.test.ts`,
+  `e2e/vendas-produto.spec.ts` ("A5 da 38ª").
+- **A venda de produto sinaliza o lote vencido** (D3 da 38ª; ES-24, "o
+  vencido é sinalizado, não bloqueado"): a venda sozinha e a comanda do PDV
+  dizem, na linha do produto, o que sai de lote vencido pela ordem do gatilho
+  ("1 un sai do lote PS1, vencido em 14/11/2026"), sem desligar o Vender; o
+  "deu certo" da venda e o Histórico do produto dizem "saiu" (a venda e o
+  insumo do atendimento que tiraram de lote já vencido no dia da saída).
+  A conta é a da sessão (`lotesDaBaixa`): `partesVencidasDaSaida` e
+  `textoDoVencidoNaVenda` (`lib/vendas/lote-vencido.ts`). Prova:
+  `tests/vendas-lote-vencido-na-venda.test.ts`, `e2e/vendas-produto.spec.ts`
+  ("D3 da 38ª").
 - **A tela de Estoque mostra o saldo na unidade de CONSUMO** (J-43/J-44/J-45,
   2026-10-30). A regra é UMA, `lib/estoque/situacao.ts` (tela da rede, da
   unidade e o "Estoque crítico" do dashboard): o produto com unidade de
@@ -3929,8 +3953,8 @@ indicada é a do consolidado do levantamento):
     nome sem caixa nem espaços é o mesmo; o novo entra) e confere que o id
     escolhido é da rede; `estoque_entrada` de 11 argumentos (`p_marca`; a de
     10 e a de 8 chamam ela). O Histórico e a linha do lote dizem "NF … ·
-    marca · fornecedor". A Entrada vem com o fornecedor da nota trazida da
-    entrada anterior (A54 da 11ª).
+    marca · fornecedor". A Entrada começa sem fornecedor; o "Usar a nota
+    NF-…" escolhe o da entrada anterior (A54 da 11ª; R34, o Heitor, 27/11).
   - **Os três filtros** (E15: "Garanta que existam os 3 filtros: categorias,
     marca, fornecedores"), sempre à vista ao lado da busca: "Filtrar por
     categoria", "Filtrar por marca", "Filtrar por fornecedor". Marca e

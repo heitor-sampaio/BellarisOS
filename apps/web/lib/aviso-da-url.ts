@@ -23,6 +23,9 @@ export const AVISOS_DA_URL = {
   // Com `?desativada=<slug>`, a faixa troca "Essa unidade" pelo nome dela, lido do banco.
   'unidade-desativada': 'Essa unidade foi desativada. Você está na sua unidade.',
   'unidade-desativada-rede': 'Essa unidade foi desativada. O que ficou nela está no portal da rede, no filtro de unidade de cada tela.',
+  // A8 da 38ª (decisão do Claude, 27/11, pelo CLAUDE.md §6): o `?c=` de uma conversa da rede fora
+  // das caixas do cargo abria calado em "Selecione uma conversa". Nada da conversa é dito.
+  'conversa-fora-do-alcance': 'Essa conversa é de um número de WhatsApp que o seu cargo não vê no Inbox.',
 } as const
 
 export type ChaveDoAviso = keyof typeof AVISOS_DA_URL

@@ -9,6 +9,9 @@ import { situacaoDoItemDaComanda } from '@/lib/pdv/situacoes'
 import { recusaDaQuantidadeDoProduto, avisoDaQuantidadeDoProduto, avisosDosItensDaVenda } from '@/lib/vendas/quantidades'
 import { faltaAoAcrescentarNaComanda, faltaDosProdutosDaComanda, motivoDaFaltaNoBotao } from '@/lib/vendas/falta-de-estoque'
 import { MotivoDoBotao } from '@/components/shared/campos-do-pagamento'
+import { useFuso } from '@/components/shared/fuso'
+import type { LoteParaBaixa } from '@/lib/estoque/fefo'
+import { partesVencidasDaSaida, textoDoVencidoNaVenda } from '@/lib/vendas/lote-vencido'
 
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
@@ -32,7 +35,7 @@ export function ProdutosDaComanda({ comandaId, slug, itens, produtos, aReceber =
   aReceber?: boolean
   /** A32 da 20ª: a venda de produto não pontua nesta rede (com a fidelidade ligada). */
   naoPontua?: boolean
-  produtos:  { id: string; name: string; price: number; unidade: string; disponivel: number }[] | null
+  produtos:  { id: string; name: string; price: number; unidade: string; disponivel: number; lotes?: LoteParaBaixa[] }[] | null
 }) {
   const router = useRouter()
   const [aberto, setAberto] = useState(false)
@@ -86,6 +89,17 @@ export function ProdutosDaComanda({ comandaId, slug, itens, produtos, aReceber =
     return !!p && naComanda(i.produtoId) >= p.disponivel
   }
   const faltaNaComanda = faltaDosProdutosDaComanda(itens, produtos)
+  // D3 da 38ª (ES-24, "o vencido é sinalizado, não bloqueado"): o que cada linha ainda não
+  // vendida tira de lote vencido — pela ordem do gatilho, contando o que as linhas de cima
+  // do mesmo produto já tiram. Lido uma vez (Date não roda no render).
+  const fuso = useFuso()
+  const [agora] = useState(() => new Date())
+  const vencidoDoItem = (i: ItemDaComanda, n: number) => {
+    const p = produtos?.find(x => x.id === i.produtoId)
+    if (!p || i.vendido) return null
+    const antes = itens.slice(0, n).filter(o => !o.vendido && o.produtoId === i.produtoId).reduce((s, o) => s + o.quantidade, 0)
+    return textoDoVencidoNaVenda(partesVencidasDaSaida(p.lotes, i.quantidade, agora, fuso, antes), p.unidade)
+  }
   const tirar = (itemId: string) => {
     setErro(null)
     comecar(async () => {
@@ -97,7 +111,7 @@ export function ProdutosDaComanda({ comandaId, slug, itens, produtos, aReceber =
 
   return (
     <>
-      {itens.map(i => (
+      {itens.map((i, n) => (
         <div key={i.id} data-item-da-comanda data-estornado={i.estornadoEm ? 'true' : undefined} style={{
           display: 'grid', gridTemplateColumns: produtos && !i.vendido ? 'minmax(0, 1fr) auto 110px' : 'minmax(0, 1fr) 40px 110px',
           gap: 10, alignItems: 'center', padding: '11px 0', borderBottom: '1px solid var(--hairline)',
@@ -107,6 +121,11 @@ export function ProdutosDaComanda({ comandaId, slug, itens, produtos, aReceber =
             <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 2 }}>
               {situacaoDoItemDaComanda(i, aReceber, naoPontua)}
             </p>
+            {vencidoDoItem(i, n) && (
+              <span role="status" data-lote-vencido-na-venda style={{ display: 'block', marginTop: 2, fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+                {vencidoDoItem(i, n)}
+              </span>
+            )}
             {produtos && !i.vendido && avisoDaQuantidadeDoProduto(i.quantidade) && (
               <span role="status" data-acima-do-comum="quantidade-do-item" style={{ display: 'block', marginTop: 2, fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
                 {avisoDaQuantidadeDoProduto(i.quantidade)}

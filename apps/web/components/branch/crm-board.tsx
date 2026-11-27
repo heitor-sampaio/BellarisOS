@@ -12,6 +12,7 @@ import { idadeDoLead } from '@/lib/crm/idade-do-lead'
 import { updateLeadStage, automacoesAoMoverOCard } from '@/actions/leads'
 import { valorDoCard } from '@/lib/crm/valor-do-card'
 import { opcoesDeTagDoQuadro, temTodasAsTags } from '@/lib/crm/filtro-de-tags'
+import { contarFiltrosDoQuadro } from '@/lib/crm/filtros-do-quadro'
 import { usePerguntaDasAutomacoes } from './pergunta-das-automacoes'
 import { ClientForm } from './client-form'
 import { rotuloDaOportunidade, type CRMFunnel, type CRMStage } from '@/lib/crm'
@@ -140,14 +141,8 @@ function FiltersBar({
     return [...map.entries()].map(([id, nome]) => ({ id, nome })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
   }, [leads])
 
-  const activeCount =
-    (filters.motivos.length > 0 ? 1 : 0) +
-    (filters.sources.length > 0 ? 1 : 0) +
-    (filters.tags.length > 0 ? 1 : 0) +
-    (filters.owners.length > 0 ? 1 : 0) +
-    (filters.procedureIds.length > 0 ? 1 : 0) +
-    (filters.situation !== 'all' ? 1 : 0) +
-    (filters.period !== 'all' ? 1 : 0)
+  // A10 da 38ª: cada filtro marcado conta (as duas tags = 2), como no inbox.
+  const activeCount = contarFiltrosDoQuadro(filters)
 
   function toggleSource(src: string) {
     const next = filters.sources.includes(src)
@@ -377,7 +372,7 @@ function FiltersBar({
             <X size={11} />
             Limpar
             {activeCount > 0 && (
-              <span style={{
+              <span data-selo-dos-filtros style={{
                 fontSize: 'var(--text-overline)', fontWeight: 800, minWidth: 16, height: 16,
                 background: 'var(--brand)', color: 'var(--surface)',
                 borderRadius: 99, display: 'flex', alignItems: 'center', justifyContent: 'center',

@@ -3021,3 +3021,12 @@ body:has(.copilot-botao:not([data-subir="sim"])) main {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* As grades da agenda rolam sozinhas depois de hidratar e marcam
+   data-rolagem="pronta". Até lá, o clique num cartão cairia noutro horário
+   (o "Novo agendamento" de uma vaga no lugar do agendamento clicado). */
+[data-grade-da-rede]:not([data-rolagem="pronta"]),
+[data-grade-do-dia]:not([data-rolagem="pronta"]),
+[data-rolagem-minha-agenda]:not([data-rolagem="pronta"]) {
+  pointer-events: none;
+}

@@ -11,6 +11,7 @@ import { maquininhaDoRotulo } from '@/lib/financeiro/formas'
  */
 
 import type { ComandaDoPdv, EstornoAnteriorDaComanda, SituacaoDoPdv } from './situacoes'
+import { pagaEmDaComanda } from './situacoes'
 export { SITUACOES_DO_PDV, situacaoDoPdv, type ComandaDoPdv, type SituacaoDoPdv } from './situacoes'
 
 interface Linha {
@@ -43,11 +44,35 @@ export async function comandasDoPdv(args: {
     .range(de, ate), 'carregar as comandas do PDV')
   // A15 da 26ª: o nome da maquininha do cartão (só com mais de uma na rede).
   const maquininhas = linhas.some(l => l.formas?.some(f => f.maquininha)) ? await nomesDasMaquininhas(args.tenantId) : null
+  // A2 da 38ª (princípio 3): a comanda quitada depois (a última parcela do crediário, o
+  // a receber) diz a hora do último pagamento — `paga_em` é a do fechamento.
+  const quitadas = linhas.filter(l => l.paga && l.origem !== 'VENDA' && !(Number(l.em_aberto ?? 0) > 0))
+  const ultimo = new Map<string, string>()
+  const guardar = (chave: string | null, quando: string | null) => {
+    if (chave && quando && (!ultimo.has(chave) || Date.parse(quando) > Date.parse(ultimo.get(chave)!))) ultimo.set(chave, quando)
+  }
+  const emLotes = (xs: readonly string[]) => Array.from({ length: Math.ceil(xs.length / 150) }, (_, i) => xs.slice(i * 150, (i + 1) * 150))
+  for (const [coluna, ids] of [
+    ['appointment_id', [...new Set(quitadas.filter(l => l.origem === 'ATENDIMENTO').map(l => l.appointment_id).filter(Boolean) as string[])]],
+    ['treatment_plan_id', [...new Set(quitadas.filter(l => l.origem === 'PLANO').map(l => l.treatment_plan_id).filter(Boolean) as string[])]],
+  ] as const) {
+    for (const lote of emLotes(ids)) {
+      const pagos = await lerTodas<{ appointment_id: string | null; treatment_plan_id: string | null; paid_at: string | null }>((de, ate) => admin
+        .from('financial_transactions').select('appointment_id, treatment_plan_id, paid_at, branches!inner(tenant_id)')
+        .eq('branches.tenant_id', args.tenantId).in(coluna, lote)
+        .eq('type', 'INCOME').eq('is_paid', true).is('estorno_de', null)
+        .or('notes.is.null,notes.neq.Estornada')
+        .order('id').range(de, ate), 'ler o último pagamento das comandas')
+      for (const t of pagos) guardar(coluna === 'appointment_id' ? t.appointment_id : t.treatment_plan_id, t.paid_at)
+    }
+  }
   return linhas.map(l => ({
     id: l.id, numero: l.numero, origem: l.origem, abertaEm: l.aberta_em, canceladaEm: l.cancelada_em, canceladaMotivo: l.cancelada_motivo,
     clienteId: l.client_id, cliente: l.cliente ?? '—', agendamentoId: l.appointment_id,
     procedimento: l.procedimento, profissional: l.profissional, agendadoPara: l.agendado_para,
-    atendimento: l.atendimento_status, valor: Number(l.valor), paga: l.paga, pagaEm: l.paga_em,
+    atendimento: l.atendimento_status, valor: Number(l.valor), paga: l.paga,
+    pagaEm: pagaEmDaComanda({ paga: l.paga, origem: l.origem, emAberto: Number(l.em_aberto ?? 0), pagaEm: l.paga_em },
+      ultimo.get((l.origem === 'PLANO' ? l.treatment_plan_id : l.appointment_id) ?? '')),
     recebido: l.recebido == null ? null : Number(l.recebido), forma: l.forma, estornada: !!l.estornada,
     planoId: l.treatment_plan_id,
     emAberto: Number(l.em_aberto ?? 0), parcelasEmAberto: l.parcelas_em_aberto ?? 0, proximaParcela: l.proxima_parcela, produtos: l.produtos ?? 0,

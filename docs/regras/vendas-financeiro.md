@@ -95,7 +95,11 @@ comanda (PDV-P1).
   selo é "A receber", nunca "Paga" — nem o cabeçalho da comanda, que diz
   "Fechada às 09:29 · A receber · R$ 0,00 recebidos" enquanto houver dinheiro
   em aberto (A9 da 30ª; `verboDaComandaPaga`, `lib/pdv/situacoes.ts`; a venda
-  segue "Vendida às"). **A linha do lançamento diz qual parcela é** (A16 da
+  segue "Vendida às"). **Quitada, "Paga às" é a hora do último pagamento**
+  (A2 da 38ª, princípio 3: o crediário quitado na 2/2 seguia "Paga às 10:43",
+  a hora da entrada — `pdv_comandas` dá a do fechamento; `pagaEmDaComanda`,
+  `lib/pdv/situacoes.ts`, lê o `paid_at` mais novo; o pagamento gravado só com
+  o dia fica com a de antes; decisão do Claude, 27/11). **A linha do lançamento diz qual parcela é** (A16 da
   30ª; CR-05, AC-01): com o procedimento, "Microagulhamento — parcela 2/3"
   ou "— entrada" (`nomeDaLinhaDoLancamento`,
   `lib/financeiro/nome-da-parcela.ts`; a aba Financeiro da ficha, pela

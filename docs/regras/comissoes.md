@@ -882,6 +882,22 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     comissão do procedimento diz o que muda para cada Admin da rede que atende
     (`avisoDaGeralParaAsAdmins`, `[data-aviso-da-admin]`).
 
+- **A 38ª simulação (decisão do Claude, 27/11):**
+  - **No R$ por unidade do produto, a linha diz a conta** (D9, CB-03/CB-04): o
+    fixo por unidade é o valor × as unidades, e a base não entra nela — a linha
+    do Sérum dizia "base cheia …: R$ 324,00" ao lado de "R$ 15,00 por unidade ×
+    2" (R$ 30). Sem os pontos e o voucher tirando parte (nem a devolução), a
+    linha do extrato diz só a regra; com eles, a base, que é a proporção que
+    reduz o fixo (`baseERegraDoLancamento`, `lib/comissoes/extrato-texto.ts`).
+    O CSV segue com as colunas de sempre.
+  - **A linha diz a taxa que valeu 0% por falta de cadastro** (A1, CT-02,
+    princípio 4): quando a rede desconta a taxa, a regra é em percentual, nada
+    saiu de taxa e o pagamento do lançamento foi no cartão numa maquininha sem
+    a taxa daquelas vezes, o extrato diz "sem taxa da maquininha cadastrada
+    para o crédito 8x (vale 0%)" — o que a janela de receber disse
+    (`formaSemTaxaCadastrada`, `lib/comissoes/taxa-sem-cadastro.ts`, lido em
+    `extratoDasComissoes`). Teste: `tests/comissoes-extrato-texto.test.ts`.
+
 ---
 
 ## O que nunca fazer aqui

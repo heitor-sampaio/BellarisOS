@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { conversaDeWhatsappDaCliente } from '@/lib/contatos/conversa-de-whatsapp'
 import { enviarNaConversa, enviarModeloNaConversa, type ResultadoDoEnvio } from '@/lib/inbox/enviar'
+import { reenviarNaConversa } from '@/lib/inbox/reenviar'
 import { numeroPadraoDaRede, conversaNoNumero } from './abrir-pelo-padrao'
 import { emitirEventoDeConversa } from '@/lib/events/conversa'
 import { EVENTOS } from '@estetica-os/types'
@@ -9,6 +10,8 @@ import { ler } from '@/lib/db'
 import type { ChannelKind } from '@/lib/channels/types'
 import type { ConfigAcaoMensagem } from '@estetica-os/types'
 import { semPedirResposta } from './modelos'
+import { erroDaAbertura } from './em-portugues'
+import type { MensagemNaoEnviada } from './mensagem-nao-enviada'
 import type { ContextoDaExecucao } from './contexto'
 import type { AtorDaAutomacao } from './acoes-crm'
 
@@ -47,6 +50,32 @@ export interface PedidoDeMensagem {
    * (princípio 4: o modelo não sai com o buraco).
    */
   modelo?: { templateId: string; valores: Record<string, string>; semDado: string[] } | null
+  /**
+   * D2 da 38ª (IN-18): a mensagem que a tentativa anterior desta execução
+   * gravou e o provedor não aceitou. A nova tentativa reenvia ESTA linha — a
+   * mesma bolha "Não enviada" —, em vez de gravar outra.
+   */
+  naoEnviada?: MensagemNaoEnviada | null
+}
+
+/**
+ * O envio que não saiu, com a mensagem que ficou "Não enviada" na conversa
+ * (D2 da 38ª). O passo falha (o cron tenta de novo), e o motor guarda
+ * `naoEnviada` no contexto para a tentativa seguinte reaproveitá-la.
+ */
+export class EnvioNaoSaiu extends Error {
+  constructor(message: string, readonly naoEnviada: MensagemNaoEnviada) {
+    super(message)
+    this.name = 'EnvioNaoSaiu'
+  }
+}
+
+/** A falha do envio: com a linha gravada, leva-a junto; sem ela, é o erro de sempre. */
+function falhaDoEnvio(texto: string, mensagemId: string | undefined, abriuPeloPadrao?: string | null): Error {
+  const mensagem = abriuPeloPadrao ? erroDaAbertura(abriuPeloPadrao, texto) : texto
+  return mensagemId
+    ? new EnvioNaoSaiu(mensagem, { mensagemId, ...(abriuPeloPadrao ? { abriuPeloPadrao } : {}) })
+    : new Error(mensagem)
 }
 
 export interface ResultadoDaMensagem {
@@ -115,6 +144,13 @@ export async function mandarMensagem(
   if (pedido.canal === 'push') return avisoNoCelular(ator, contexto, texto)
 
   const remetente = { id: null, nome: `Automação · ${ator.nome}` }
+
+  // D2 da 38ª: a tentativa anterior deixou uma "Não enviada" — é ela que sai.
+  if (pedido.naoEnviada) {
+    const r = await tentarDeNovo(ator, pedido, texto, remetente, pedido.naoEnviada)
+    if (r) return r
+  }
+
   const alvo = await conversaPara(ator.tenantId, contexto, pedido.canal)
   if ('motivo' in alvo) {
     // AX-06 (o Heitor, 2026-11-11, H1): a rede escolheu mandar como aviso no
@@ -147,10 +183,11 @@ export async function mandarMensagem(
   }
 
   if (!r.ok) {
-    throw new Error(
+    throw falhaDoEnvio(
       fechou && !comModelo
         ? `${r.error} Para falar fora das 24h, a Meta só aceita um modelo aprovado: escolha um no passo.`
         : (r.error ?? 'Falha no envio.'),
+      r.mensagemId,
     )
   }
 
@@ -163,6 +200,69 @@ export async function mandarMensagem(
       texto: texto.length > 120 ? `${texto.slice(0, 120)}…` : texto,
     },
   }
+}
+
+/**
+ * A nova tentativa da execução (D2 da 38ª; crm-inbox:IN-18, princípio 3): a
+ * mensagem que a anterior gravou e não saiu volta pela MESMA linha
+ * (`reenviarNaConversa`, o núcleo do "Tentar de novo" da bolha) — a conversa
+ * fica com uma "Não enviada" só, e a execução segue registrando cada
+ * tentativa.
+ *
+ * - Já saiu (alguém usou o "Tentar de novo" na conversa): não sai de novo.
+ * - Está saindo agora: não manda outra; a tentativa seguinte confere.
+ * - Sumiu: `null`, e o passo segue o envio de sempre.
+ * - A janela de 24 h fechou e o passo tem o modelo aprovado (R12): sai o modelo.
+ *
+ * O fato "mensagem enviada" sai quando ela sai: a tentativa que falhou não o
+ * emitiu.
+ */
+async function tentarDeNovo(
+  ator: AtorDaAutomacao,
+  pedido: PedidoDeMensagem,
+  texto: string,
+  remetente: { id: null; nome: string },
+  naoEnviada: MensagemNaoEnviada,
+): Promise<ResultadoDaMensagem | null> {
+  const linha = await ler(createAdminClient().from('messages')
+    .select('id, status, conversation_id')
+    .eq('id', naoEnviada.mensagemId).eq('tenant_id', ator.tenantId).maybeSingle(),
+  'buscar a mensagem que não saiu') as { id: string; status: string; conversation_id: string } | null
+  if (!linha) return null
+
+  const abriu = naoEnviada.abriuPeloPadrao ?? null
+  const enviada = (extra?: Record<string, unknown>): ResultadoDaMensagem => ({
+    resumo: {
+      enviada: true, canal: pedido.canal, conversaId: linha.conversation_id,
+      ...(abriu ? { abriuConversa: true, numero: abriu } : {}),
+      ...extra,
+      texto: texto.length > 120 ? `${texto.slice(0, 120)}…` : texto,
+    },
+  })
+
+  if (['sent', 'delivered', 'read'].includes(linha.status)) return enviada()
+  if (linha.status !== 'failed') {
+    throw falhaDoEnvio('A mensagem ainda estava saindo pelo "Tentar de novo" da conversa.', linha.id, abriu)
+  }
+
+  const r = await reenviarNaConversa(ator.tenantId, linha.id, remetente)
+  if (r.ok) {
+    await emitirEnviada(ator, linha.conversation_id, texto, linha.id)
+    return enviada()
+  }
+
+  // R12 (o Heitor, 26/11): fora das 24 h, sai o modelo aprovado do passo. A
+  // "Não enviada" do texto fica como está (é a que não saiu).
+  if (!r.mensagemId && /janela/i.test(r.error ?? '') && pedido.modelo && !pedido.modelo.semDado.length) {
+    const m = await enviarModeloNaConversa(ator.tenantId, linha.conversation_id, pedido.modelo.templateId, pedido.modelo.valores, remetente, { userId: null })
+    if (m.ok) {
+      await emitirEnviada(ator, linha.conversation_id, texto, m.mensagemId!)
+      return enviada({ modelo: true })
+    }
+    throw falhaDoEnvio(m.error ?? 'Falha no envio.', m.mensagemId ?? linha.id, abriu)
+  }
+
+  throw falhaDoEnvio(r.error ?? 'Falha no envio.', linha.id, abriu)
 }
 
 /**
@@ -220,7 +320,8 @@ async function abrirPeloNumeroPadrao(
   const r = oficial
     ? await enviarModeloNaConversa(ator.tenantId, conversa.conversaId, modelo!.templateId, modelo!.valores, remetente, { userId: null })
     : await enviarNaConversa(ator.tenantId, conversa.conversaId, texto, remetente)
-  if (!r.ok) throw new Error(r.error ?? 'Falha no envio.')
+  // A16 da 38ª (AX-06): a conversa abriu, e a execução diz isso junto da falha.
+  if (!r.ok) throw falhaDoEnvio(r.error ?? 'Falha no envio.', r.mensagemId, padrao.label)
 
   await emitirEnviada(ator, conversa.conversaId, texto, r.mensagemId!)
   return {

@@ -100,3 +100,78 @@ describe('cada lançamento de comissão guarda o retrato da base (princípio 3, 
     })
   })
 })
+
+// ─── CB-04: no fixo POR UNIDADE do produto, a linha diz a conta ─────────────
+// D9 da 38ª (CB-04: "o valor ao lado da frase é a base que a conta usa de
+// fato"; CB-03: no fixo o desconto não reduz a base). O Sérum a R$ 15 por
+// unidade × 2 deu R$ 30, e a linha dizia "base cheia …: R$ 324,00" — o vendido,
+// um número que não entra na conta.
+describe('CB-04: a linha do produto em R$ por unidade não mostra a base que a conta não usa', () => {
+  const nb = (s: string) => s.replace(/\s/g, ' ')
+  const serum: LancamentoDoExtrato = {
+    ...base, origem: 'PRODUTO', procedimento: '2× Sérum + 1× Protetor', amount: 30, preco: 324, base: 324,
+    regraTipo: 'FIXED_AMOUNT', regraValor: 30, regraDe: 'ITEM', descontaTaxa: true, baseComPontos: null, itemDoProduto: { nome: 'Sérum', quantidade: 2 },
+  }
+  it('o fixo por unidade diz as unidades × o valor, sem a base', async () => {
+    const { baseERegraDoLancamento } = await import('@/lib/comissoes/extrato-texto')
+    expect(nb(baseERegraDoLancamento(serum, 'Rúbia'))).toBe('R$ 15,00 por unidade × 2 — do produto')
+  })
+  it('com os pontos que reduzem o fixo, a base que a conta usa aparece', async () => {
+    const { baseERegraDoLancamento } = await import('@/lib/comissoes/extrato-texto')
+    const comPontos = { ...serum, baseComPontos: 'VALOR_PAGO' as const, base: 300, baseDesconto: 24, baseFidelidade: 24 }
+    expect(nb(baseERegraDoLancamento(comPontos, 'Rúbia'))).toContain('R$ 300,00 (R$ 324,00 − R$ 24,00 de pontos e voucher)')
+  })
+  it('o percentual e o fixo de um atendimento seguem com a base', async () => {
+    const { baseERegraDoLancamento } = await import('@/lib/comissoes/extrato-texto')
+    expect(nb(baseERegraDoLancamento({ ...serum, regraTipo: 'PERCENTAGE', regraValor: 10, amount: 32.4 }, 'Rúbia')))
+      .toBe('base sem a taxa da maquininha: R$ 324,00 · 10% do vendido — do produto')
+    const fixo = { ...serum, origem: 'AVULSO', itemDoProduto: null, regraDe: null, regraValor: 90, preco: 380, base: 380, procedimento: 'Peeling', baseComPontos: 'PRECO' as const }
+    expect(nb(baseERegraDoLancamento(fixo, 'Rúbia'))).toBe('base cheia (sem taxa nem insumo descontados; os pontos e o voucher usados não saem dela): R$ 380,00 · R$ 90,00 fixo')
+  })
+  it('a tela do extrato escreve a linha por ela', () => {
+    const t = nodeFs.readFileSync(nodePath.join(__dirname, '..', 'components', 'shared', 'financeiro-comissoes.tsx'), 'utf8')
+    expect(t).toContain('baseERegraDoLancamento(l, nome)')
+    expect(t).not.toContain('textoDaBase(base(l), l)')
+  })
+})
+
+// ─── CT-02 e o princípio 4: a linha diz a taxa que valeu 0% por falta de cadastro ─
+// A1 da 38ª: o crédito 8x sem taxa cadastrada valeu 0% na base (CT-02), a
+// janela de receber avisou, e a linha da comissão dizia só "base sem a taxa da
+// maquininha: R$ 200,00".
+describe('CT-02: a linha da comissão diz a forma sem taxa cadastrada', () => {
+  const nb = (s: string) => s.replace(/\s/g, ' ')
+  const limpeza: LancamentoDoExtrato = {
+    ...base, origem: 'AVULSO', procedimento: 'Limpeza', amount: 70, preco: 200, base: 200, regraTipo: 'PERCENTAGE', regraValor: 35,
+    regraDe: null, descontaTaxa: true, baseTaxa: 0, baseComPontos: null, transacaoId: 't1',
+  }
+  it('a linha diz o que a janela de receber disse, curto', async () => {
+    const { baseERegraDoLancamento } = await import('@/lib/comissoes/extrato-texto')
+    expect(nb(baseERegraDoLancamento({ ...limpeza, semTaxaCadastrada: 'Crédito 8x' }, 'Nayara')))
+      .toBe('base sem a taxa da maquininha: R$ 200,00 · sem taxa da maquininha cadastrada para o crédito 8x (vale 0%) · 35%')
+    expect(nb(baseERegraDoLancamento(limpeza, 'Nayara'))).toBe('base sem a taxa da maquininha: R$ 200,00 · 35%')
+  })
+  it('a forma sem taxa sai do pagamento da linha e da maquininha dele (a conta de taxaNaMaquininha)', async () => {
+    const { formaSemTaxaCadastrada } = await import('@/lib/comissoes/taxa-sem-cadastro')
+    const stone = { id: 'm1', taxas: { 'CREDIT_CARD:3': 4.9, 'DEBIT_CARD:1': 1.8 }, cobraPorBandeira: false, porBandeira: {} }
+    const pag = (metodo: string, vezes: number | null) => ({ payment_method: metodo, cartao_vezes: vezes, cartao_bandeira: null, maquininha_id: 'm1' })
+    expect(formaSemTaxaCadastrada(limpeza, pag('CREDIT_CARD', 8), [stone])).toBe('Crédito 8x')
+    // Com a taxa daquelas vezes, nada; no débito cadastrado, nada.
+    expect(formaSemTaxaCadastrada(limpeza, pag('CREDIT_CARD', 3), [stone])).toBeNull()
+    expect(formaSemTaxaCadastrada(limpeza, pag('DEBIT_CARD', null), [stone])).toBeNull()
+    expect(formaSemTaxaCadastrada(limpeza, pag('DEBIT_CARD', null), [{ ...stone, taxas: {} }])).toBe('Débito')
+    // O Pix não é cartão; a rede que não desconta a taxa e o R$ fixo não a usam; a taxa que saiu não é zero.
+    expect(formaSemTaxaCadastrada(limpeza, pag('PIX', null), [stone])).toBeNull()
+    expect(formaSemTaxaCadastrada({ ...limpeza, descontaTaxa: false }, pag('CREDIT_CARD', 8), [stone])).toBeNull()
+    expect(formaSemTaxaCadastrada({ ...limpeza, regraTipo: 'FIXED_AMOUNT' }, pag('CREDIT_CARD', 8), [stone])).toBeNull()
+    expect(formaSemTaxaCadastrada({ ...limpeza, baseTaxa: 6 }, pag('CREDIT_CARD', 8), [stone])).toBeNull()
+    // Sem a maquininha do pagamento na lista, não se chuta (princípio 4).
+    expect(formaSemTaxaCadastrada(limpeza, { ...pag('CREDIT_CARD', 8), maquininha_id: 'outra' }, [stone])).toBeNull()
+  })
+  it('o extrato lê o pagamento de cada linha e a maquininha dele', () => {
+    const t = nodeFs.readFileSync(nodePath.join(__dirname, '..', 'lib', 'comissoes', 'leitura.ts'), 'utf8')
+    expect(t).toContain('semTaxaCadastrada:')
+    expect(t).toContain('formaSemTaxaCadastrada(')
+    expect(t).toContain('maquininhasDaRede(')
+  })
+})

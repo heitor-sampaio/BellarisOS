@@ -202,7 +202,13 @@ como conversa nova, e a janela de 24h daquela conversa não vale ali. Por isso:
 
 - **a janela de 24h é da CAIXA QUE VAI ENVIAR**, nunca da conversa
   (`ultimoInboundNaCaixa`). Medir na conversa faz o sistema gravar a mensagem e
-  só então a Meta recusar com 400 genérico;
+  só então a Meta recusar com 400 genérico. **E só a caixa da API oficial tem
+  janela** (WT-12): respondendo pelo próprio número no WhatsApp Web, o envio
+  sai, e o aviso dos dois números fica sem a frase das 24 h
+  (`janelaFechadaNaCaixaDeSaida`, `lib/inbox/janela-da-caixa-de-saida.ts`, a
+  régua de `estadoDaJanela`; D5 da 38ª, decisão do Claude, 27/11 — a tela
+  bloqueava o WhatsApp Web; o servidor já media pelo provedor). Prova:
+  `tests/inbox-janela-so-na-api-oficial.test.ts`;
 - a mensagem de erro nomeia a caixa e o motivo;
 - **`messages.whatsapp_number_id` existe** separado do da conversa, senão o
   histórico afirma que tudo saiu pela caixa dela;

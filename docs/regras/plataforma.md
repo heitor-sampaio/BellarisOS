@@ -1876,6 +1876,19 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
     "Creditou 500 pontos a X (motivo: …)" (`motivosDosPontos`; P4). O `horario`
     da unidade é "horário de funcionamento" (A20). Prova:
     `tests/auditoria-o-trazido-o-abatimento-o-brinde-e-o-ajuste.test.ts`.
+  - **A 38ª simulação** (decisão do Claude, 27/11; AD-13, AD-16, princípio 3):
+    a venda de produto A RECEBER cancelada é o fato — "Cancelou a venda de
+    produto (R$ 90,00 a receber), e 1 frasco de X voltou ao estoque (motivo: …)
+    — Cliente" (ou "e o produto não voltou ao estoque"); o valor e o motivo se
+    leem agora (o lançamento a receber; sem ele, a venda). A paga segue
+    "Estornou a venda de produto". A filha de uma só vai no singular ("1 item").
+    E o que não mudou não se grava: salvar o procedimento troca só a diferença
+    das ligações (quem realiza, salas, insumos, unidades, preços por unidade;
+    `diferencaDasLigacoes`, `lib/procedimentos/ligacoes.ts`) — era apagar e
+    recriar tudo, e saía "Apagou 3" / "Criou 3 profissionais do procedimento" —, e
+    a comissão pedida igual à gravada não se apaga e recria (migration
+    `20261217600001`). Prova: `tests/auditoria-o-cancelamento-da-venda-e-o-que-nao-mudou.test.ts`,
+    `e2e/procedimento-quem-realiza.spec.ts`.
   - Prova: `tests/atritos-da-15.test.ts`, `e2e/auditoria-atritos-da-15.spec.ts`.
 - **A falha do registro não derruba a gravação.** O gatilho segura o erro,
   grava uma linha `incompleto` (quando acha a rede) e deixa um WARNING no log:

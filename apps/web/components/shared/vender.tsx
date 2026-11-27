@@ -16,6 +16,8 @@ import { textoDoBonus } from '@/lib/creditos/bonus'
 import { rotaCliente, rotaDaComanda, rotaNoPortal } from '@/lib/rotas'
 import { faltaDeEstoqueNaVenda, fimDoResumoDoProduto, motivoDaFaltaNoBotao } from '@/lib/vendas/falta-de-estoque'
 import { venderProduto } from '@/actions/produtos'
+import type { LoteParaBaixa } from '@/lib/estoque/fefo'
+import { partesVencidasDaSaida, textoDoVencidoNaVenda } from '@/lib/vendas/lote-vencido'
 import { SessionScheduler } from '@/components/branch/treatment-sessions-modal'
 import { SegSelect } from '@/components/shared/seg-select'
 import { FormularioDoPacote, type PacoteAVenda, type ContratoQuePedeCadastro } from '@/components/shared/vender-pacote'
@@ -48,6 +50,8 @@ export interface ProdutoAVenda {
   comissaoDoItem?: RegraDeVenda | null
   /** A18 da 12ª: a "Venda de produto" da clínica (%), a que vale sem a do produto e a da pessoa. */
   comissaoDaRedePct?: number | null
+  /** D3 da 38ª (ES-24): os lotes com saldo na unidade, para dizer o que sai de lote vencido. */
+  lotes?: LoteParaBaixa[]
 }
 
 /** Alguém da equipe numa venda (com-04/com-06): a responsável do pacote sai de quem atende. */
@@ -163,6 +167,10 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe, fid
   // A15 da 23ª: sem estoque, o botão desliga com o motivo e a tela aponta a Entrada.
   const falta = faltaDeEstoqueNaVenda(linhas.map(l => ({ nome: l.prod.name, quantidade: l.qtd, disponivel: l.prod.disponivel, unidade: l.prod.unidade })))
   const pathname = usePathname()
+  // D3 da 38ª (ES-24, "o vencido é sinalizado, não bloqueado"): o que sai de lote
+  // vencido, pela ordem do gatilho (o válido primeiro). Lido uma vez (Date não roda no render).
+  const [agora] = useState(() => new Date())
+  const vencidos = linhas.map(l => textoDoVencidoNaVenda(partesVencidasDaSaida(l.prod.lotes, l.qtd, agora, fuso), l.prod.unidade))
   // FD2a: o voucher e os pontos, à vista; o pagamento é o que sobra.
   const fid = useFidelidadeNaVenda(fidelidade, conta.liquido, estado.forma)
   const livres = produtos.filter(p => !itens.some(i => i.prodId === p.id))
@@ -182,7 +190,10 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe, fid
       envio.renovar()
       router.refresh()
       // A46 da 8ª: a janela fechava calada.
-      toast.success(avisoDaVenda(linhas.map(l => `${l.qtd}× ${l.prod.name}`).join(' + '), fid.aPagar, estado.forma))
+      // D3 da 38ª: o "deu certo" diz o que saiu de lote vencido.
+      toast.success([avisoDaVenda(linhas.map(l => `${l.qtd}× ${l.prod.name}`).join(' + '), fid.aPagar, estado.forma),
+        ...linhas.map(l => textoDoVencidoNaVenda(partesVencidasDaSaida(l.prod.lotes, l.qtd, agora, fuso), l.prod.unidade, true))
+          .filter(Boolean).map(t => `${t}.`)].join(' '))
       onFim()
     })
   }
@@ -221,6 +232,11 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe, fid
                 onClick={() => setItens(xs => xs.filter((_, i) => i !== n))}>
                 <X size={15} aria-hidden />
               </button>
+            )}
+            {vencidos[n] && (
+              <span role="status" data-lote-vencido-na-venda style={{ flexBasis: '100%', fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+                {vencidos[n]}
+              </span>
             )}
           </div>
         )

@@ -631,6 +631,7 @@ export function EditorDeAutomacao({
             automacaoId={automacao.id}
             podeEnsaiar={podeEnsaiar}
             ensaioCabe={ensaioCabe(automacao.grafo)}
+            ligada={status === 'ATIVA'}
             onFechar={() => setGaveta(null)}
           />
         ) : null}

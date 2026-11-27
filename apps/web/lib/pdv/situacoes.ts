@@ -1,4 +1,5 @@
 import { rotuloDaForma } from '@/lib/financeiro/formas'
+import { diaSemHora } from '@/lib/financeiro/vencimentos'
 
 /**
  * As situações e a forma de uma comanda do PDV, sem nada do servidor: a tela
@@ -124,6 +125,21 @@ export function verboDaComandaPaga(c: ComandaDoPdv): 'Vendida' | 'Fechada' | 'Re
   if (c.origem === 'VENDA') return 'Vendida'
   if (c.emAberto > 0) return 'Fechada'
   return c.origem === 'PLANO' ? 'Recebido' : 'Paga'
+}
+
+/**
+ * A hora da comanda paga (A2 da 38ª simulação, princípio 3): o crediário com
+ * a entrada às 10:43, quitado na 2/2, seguia "Paga às 10:43" — `pdv_comandas`
+ * dá a hora do fechamento, em que as linhas nasceram. Quitada (nada em
+ * aberto), a hora é a do ÚLTIMO pagamento. A venda segue "Vendida" na hora da
+ * venda; o pagamento gravado só com o dia (a âncora do meio-dia) não tem hora
+ * para dizer, e fica a de antes.
+ */
+export function pagaEmDaComanda(
+  c: Pick<ComandaDoPdv, 'paga' | 'origem' | 'emAberto' | 'pagaEm'>, ultimoPagamento: string | null | undefined,
+): string | null {
+  if (!c.paga || c.origem === 'VENDA' || c.emAberto > 0 || !c.pagaEm || !ultimoPagamento || diaSemHora(ultimoPagamento)) return c.pagaEm
+  return Date.parse(ultimoPagamento) > Date.parse(c.pagaEm) ? ultimoPagamento : c.pagaEm
 }
 
 /**

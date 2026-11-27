@@ -1,6 +1,7 @@
 import { NODES, TIPOS_DE_GATILHO, ROTULOS_DE_NO, rotuloDoEvento } from '@estetica-os/types'
 import type { GrafoDeAutomacao, NoDoGrafo, TipoDeNo } from '@estetica-os/types'
 import { nomeDoDeslocamento } from './deslocamento'
+import { resumoDoNo } from './resumo'
 
 /**
  * O caminho do fluxo, do gatilho para a frente — o card da lista das
@@ -13,9 +14,12 @@ import { nomeDoDeslocamento } from './deslocamento'
  *
  * A espera diz o prazo GRAVADO, não o nome do passo (D8 da 30ª; princípio 3):
  * o lembrete de 3 horas aparecia como "Um dia antes", o nome que o passo
- * trouxe do modelo. Puro (saiu de `actions/automacoes.ts` para ser testado).
+ * trouxe do modelo. E o gatilho de relógio diz o horário GRAVADO (D7 da 38ª;
+ * princípio 3, ED-08): o "Parabéns no aniversário" às 11:15 aparecia como
+ * "Todo dia às 9h", o nome do nó no modelo — no relógio da rede (`fuso`), como
+ * o editor. Puro (saiu de `actions/automacoes.ts` para ser testado).
  */
-export function caminhoDoFluxo(grafo: GrafoDeAutomacao | null): string[] {
+export function caminhoDoFluxo(grafo: GrafoDeAutomacao | null, fuso?: string): string[] {
   const nos = grafo?.nos ?? []
   if (nos.length === 0) return []
 
@@ -27,6 +31,7 @@ export function caminhoDoFluxo(grafo: GrafoDeAutomacao | null): string[] {
     // No gatilho de evento, o evento diz mais que o rótulo do node: entre
     // "Quando acontecer" e "Mensagem recebida", a segunda é a informação.
     if (c.evento) return rotuloDoEvento(c.evento)
+    if (no.tipo === NODES.GATILHO_AGENDA) return resumoDoNo(NODES.GATILHO_AGENDA, no.config ?? {}, fuso)
     if (no.tipo === NODES.ESPERA_ATE) return nomeDoDeslocamento(Number(c.minutos ?? -1440))
     if (no.tipo === NODES.ESPERA_DURACAO) {
       const n = Number(c.quantidade ?? 1)
