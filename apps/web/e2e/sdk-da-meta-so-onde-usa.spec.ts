@@ -78,7 +78,11 @@ test.describe.serial('com sessão', () => {
       if (await cartao.count()) await cartao.first().click()
       await page.getByRole('button', { name: /WhatsApp Oficial/ }).first().click()
       await expect(page.getByRole('button', { name: 'Conectar pela Meta' })).toBeVisible()
-      await expect(page.locator('script[src*="connect.facebook.net"]')).toHaveCount(1)
+      // Conta só o script que o SISTEMA põe (o de id facebook-jssdk): o sdk.js
+      // da Meta é um carregador e acrescenta o dele sozinho, e com a máquina
+      // lenta o teste via os dois (o Heitor, 27/11, R35: "Pode ajustar: contar
+      // só o script que o sistema põe (a proposta)").
+      await expect(page.locator('script#facebook-jssdk[src*="connect.facebook.net"]')).toHaveCount(1)
       // A inicialização vem com o botão, e sem contar a visita (`logPageView`).
       const init = await page.evaluate(() => String((window as { fbAsyncInit?: unknown }).fbAsyncInit ?? ''))
       expect(init).not.toBe('')

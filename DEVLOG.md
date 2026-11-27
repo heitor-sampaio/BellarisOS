@@ -1863,7 +1863,9 @@ proposta)"):
 `e2e/sdk-da-meta-so-onde-usa.spec.ts:70` viu dois scripts da Meta. O `sdk.js` que a Meta entrega é um carregador que
 põe ele mesmo um segundo script (`/en_US/bundle/sdk.js`); o sistema põe um só. Sozinho, o spec passou 25 de 25. O
 teste conta todos os scripts da Meta: ajustá-lo para contar só o `#facebook-jssdk` foi ao Heitor (R35), porque a regra
-não mudou.
+não mudou. Ele respondeu no mesmo dia ("Pode ajustar: contar só o script que o sistema põe (a proposta)"), e o teste
+conta só o `script#facebook-jssdk` — **teste alterado** pela R35, a regra (o programa da Meta só na tela que o usa, uma
+vez) igual. O spec passou 5 de 5 contra o build.
 
 **Na produção:** `20261217100001`, `100002` e `600001`, uma por vez, conferidas depois.
 

@@ -753,4 +753,6 @@ O que você precisa saber:
   acontecia.
 
 Na página, uma pergunta nova: **R35**, ajustar o teste do "Conectar pela Meta" que conta também o script que a
-própria Meta acrescenta e falha quando a máquina está lenta. A regra não muda.
+própria Meta acrescenta e falha quando a máquina está lenta. A regra não muda. Você respondeu "Pode ajustar: contar só
+o script que o sistema põe (a proposta)", e foi feito: o teste conta só o script que o sistema põe (um teste alterado,
+`e2e/sdk-da-meta-so-onde-usa.spec.ts`).
