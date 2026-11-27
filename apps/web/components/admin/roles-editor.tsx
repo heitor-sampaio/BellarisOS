@@ -18,7 +18,7 @@ import {
   MODULE_GROUPS, LEVEL_COPY, notaDoResumoDaRede,
   NETWORK_ONLY, notaDeAbrangencia, SO_NA_REDE_NOTE, quemVendeNoResumo, fechamentoNoResumo, copilotNoResumo, textoDoQueFaltaNoCargo, documentosNoResumo,
   tratamentosNoResumo, conclusaoNoResumo, vistasPessoaisNoResumo, prontuarioSemClientesNoResumo,
-  fidelidadeNoResumo, configDaRedeNoResumo,
+  fidelidadeNoResumo, configDaRedeNoResumo, dispensaNoResumo, injetaveisNoResumo,
 } from '@/lib/permissions-copy'
 import { ADMIN_MENU, BRANCH_MENU, menuLabelsFor, soLeriaAsConfiguracoes } from '@/lib/menu'
 import { rotuloDasAbasAlcancadas, ABAS_DA_REDE, ABAS_DA_UNIDADE } from '@/lib/configuracoes/abas'
@@ -1094,6 +1094,17 @@ function MenuPreview({ levels, reportTabs, foraDoPlano }: { levels: Levels; repo
       {conclusaoNoResumo(levels) && (
         <p data-resumo-conclui style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
           {conclusaoNoResumo(levels)}
+        </p>
+      )}
+      {/* A21 da 37ª: os injetáveis (Atendimento em Gerenciar e Prontuário em Ver) e o "Dispensar documentos". */}
+      {injetaveisNoResumo(levels, foraDoPlano) && (
+        <p data-resumo-injetaveis style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
+          {injetaveisNoResumo(levels, foraDoPlano)}
+        </p>
+      )}
+      {dispensaNoResumo(levels, foraDoPlano) && (
+        <p data-resumo-dispensa style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
+          {dispensaNoResumo(levels, foraDoPlano)}
         </p>
       )}
       {/* A19 da 27ª: a Minha agenda e as Minhas comissões dependem de a pessoa atender (ou ter comissão). */}

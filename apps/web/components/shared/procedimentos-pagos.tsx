@@ -11,6 +11,7 @@ import type { PrePagoDoCliente, UnidadePrePaga } from '@/lib/pre-pago/leitura'
 import { textoDoParaAgendar, valorDoPrePagoNaFicha, SESSAO_AGENDADA_SE_CANCELA_NA_AGENDA } from '@/lib/pre-pago/contagem'
 import { Dica } from '@/components/shared/dica'
 import { useFuso } from '@/components/shared/fuso'
+import { sessaoInterrompida, textoDaSessaoInterrompida } from '@/lib/plano-de-tratamento/sessao-no-app'
 
 const TZ = 'America/Sao_Paulo'
 const dia = (iso: string, fuso = TZ) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: fuso })
@@ -74,6 +75,8 @@ function Venda({ venda: v, podeCancelar, agenda }: { venda: PrePagoDoCliente; po
 }
 
 function situacao(u: UnidadePrePaga, fuso = TZ): string {
+  // AT-21 (D4 da 37ª): a sessão gasta pela desistência no meio diz que foi usada, e quando.
+  if (sessaoInterrompida(u.status, u.agendamentoStatus) && u.agendamentoEm) return textoDaSessaoInterrompida(u.agendamentoEm, fuso)
   if (u.status === 'USADA') return 'Usada'
   if (u.status === 'CANCELADA') return `Cancelada${u.canceladaPor ? ` — ${u.canceladaPor}` : ''}`
   return u.agendamentoEm ? `Agendada para ${diaEHora(u.agendamentoEm, fuso)}` : 'Disponível'

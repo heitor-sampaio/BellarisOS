@@ -53,6 +53,12 @@ export interface ContratoParaAssinar {
   vazias: string[]
   /** Um link de assinatura vivo, até quando. */
   linkAte: string | null
+  /**
+   * A10 da 37ª (DQ-06, colher "pelo app"): a cliente tem o app e a rede tem o
+   * portal no plano — a venda oferece o "Pedir no portal" (e diz se já pediu).
+   * Nulo sem o app (A26 da 7ª) ou sem o portal no plano (C57a).
+   */
+  noPortal: { pedidoEm: string | null } | null
 }
 
 /**
@@ -113,10 +119,15 @@ export async function contratoDaVendaDoPacote(args: {
   }
   // Aberto: monta com o combinado DESTA venda (o que a cliente assina é o que se cobra — princípio 3).
   const montado = await garantirRenderizado(args.tenantId, id, { forcar: true, pagamento: { valor: args.pagamento, desconto: args.desconto } })
-  const link = await ler(admin.from('document_sign_links').select('expires_at')
-    .eq('issued_document_id', id).is('used_at', null).is('revoked_at', null)
-    .gt('expires_at', new Date().toISOString()).order('expires_at', { ascending: false }).limit(1).maybeSingle(),
-    'buscar o link de assinatura do contrato')
+  const [link, portal, cliente, pedido] = await Promise.all([
+    ler(admin.from('document_sign_links').select('expires_at')
+      .eq('issued_document_id', id).is('used_at', null).is('revoked_at', null)
+      .gt('expires_at', new Date().toISOString()).order('expires_at', { ascending: false }).limit(1).maybeSingle(),
+      'buscar o link de assinatura do contrato'),
+    redeTemRecurso(args.tenantId, 'portal'),
+    ler(admin.from('clients').select('auth_id').eq('id', args.clienteId).eq('tenant_id', args.tenantId).maybeSingle(), 'ver se a cliente tem o app'),
+    ler(admin.from('issued_documents').select('pedido_no_portal_em').eq('id', id).eq('tenant_id', args.tenantId).maybeSingle(), 'ver se o contrato já foi pedido no portal'),
+  ])
   return { assinar: {
     id,
     titulo: (montado?.title ?? doc.title) as string,
@@ -124,5 +135,6 @@ export async function contratoDaVendaDoPacote(args: {
     faltando: oQueFalta((montado?.missing_fields ?? []).map(rotuloDoQueFalta)),
     vazias: montado?.vazias ?? [],
     linkAte: (link?.expires_at as string | undefined) ?? null,
+    noPortal: portal && cliente?.auth_id ? { pedidoEm: (pedido?.pedido_no_portal_em as string | null | undefined) ?? null } : null,
   } }
 }

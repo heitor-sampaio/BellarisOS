@@ -1708,6 +1708,26 @@ Prova: `tests/relatorios-filtro-de-tags.test.ts`,
   no mês" conta até agora (o Heitor, 29/10) e Relatórios → Agenda, o período
   inteiro; a dica do quadro já diz isso (`[data-recorte-dos-cancelados]`).
 
+## Correções de 27/11 (decisões do Claude)
+
+- **O que some com uma unidade, além da lista do D-19** (A14 da 37ª; UU-01;
+  Decisão E1, do Claude: some o que só é recorte por unidade, fica o que é
+  dado): o "Hoje" do dashboard da rede de uma unidade (ou recortado a uma) não
+  lista a unidade — fica a conta do dia (`[data-hoje-da-unidade-unica]`); o
+  Financeiro da rede de uma unidade não diz "1 unidade" no subtítulo. O modo do
+  mapa que junta as duas camadas se chama "Concentração e LTV" (era
+  "Consolidado", lido como a rede consolidada). Teste:
+  `tests/rede-de-uma-unidade-o-que-some.test.ts`; E2E:
+  `e2e/rede-de-uma-unidade.spec.ts` ("A14 da 37ª").
+- **A margem do recorte é a do que a unidade oferece** (A19 da 37ª; LU-14):
+  `metrics_margem_procedimentos_na_unidade` lista só o procedimento que a
+  unidade faz — a régua de `ofereceNaUnidade` (o dela, o da rede sem
+  disponibilidade, o da rede com ela na disponibilidade). Listava o catálogo
+  inteiro, e o recorte de uma unidade mostrava o procedimento da outra.
+  Migration `20261216500001`. Teste:
+  `tests/margem-da-unidade-so-o-que-ela-faz.test.ts`; E2E:
+  `e2e/indicadores-margem-da-unidade.spec.ts` ("A19 da 37ª").
+
 ## O que nunca fazer aqui
 
 ```

@@ -8,7 +8,7 @@ import {
   configDaRede, saldoDoCliente, extratoDoCliente, vouchersDoCliente, recompensasDaRede, pontosVencendo,
 } from '@/lib/fidelidade/leitura'
 import { descricaoDoVoucher, situacaoDoVoucher } from '@/lib/fidelidade/voucher'
-import { formatarPontos, rotuloDoLancamento, descricaoParaACliente, faltamPontos, jaPodeTrocar } from '@/lib/fidelidade/formato'
+import { formatarPontos, rotuloDoLancamento, descricaoParaACliente, faltamPontos, jaPodeTrocar, vencimentoDoGanho } from '@/lib/fidelidade/formato'
 import { TrocarRecompensa } from '@/components/client-portal/trocar-recompensa'
 import { quemTrocaPontos } from '@/lib/equipe/quem-desfaz'
 import { textoDoIndiqueUmaAmiga, COMO_INDICAR } from '@/lib/fidelidade/indicacao'
@@ -185,7 +185,8 @@ export default async function FidelidadeDoClientePage({ params }: { params: Prom
                   <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
                     {new Date(l.created_at).toLocaleDateString('pt-BR', { timeZone: fuso })}
                     {l.branch_name && ` · ${l.branch_name}`}
-                    {l.expires_at && l.points > 0 && ` · vence em ${data(l.expires_at)}`}
+                    {/* A13 da 37ª: o que resta deste ganho e quando vence (a conta é do banco). */}
+                    {vencimentoDoGanho(l, data) && ` · ${vencimentoDoGanho(l, data)}`}
                   </p>
                 </div>
                 <span style={{

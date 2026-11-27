@@ -619,8 +619,10 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   rede": a linha dizia "a do pacote, produto ou rede" sem dizer quanto). A da
   rede é a "Venda de plano" e a "Venda de produto" (`plano_pct`,
   `produto_pct`): iguais, um número; diferentes, "5% no plano, 2,5% no
-  produto"; uma só, "nenhuma no plano, 3% no produto"; nenhuma, "(sem ela,
-  nenhuma: a rede não tem)" — princípios 3 e 4, decisão do Claude, 25/11
+  produto"; uma só, "nenhuma no plano, 3% no produto"; nenhuma, só "Venda: a
+  do pacote ou produto vendido", sem número (princípio 4) e sem o parêntese que
+  explicava a tela (A21 da 37ª; o Heitor, 26/11: "isso não é ser intuitivo, é
+  ser explicativo") — princípios 3 e 4, decisão do Claude, 25/11
   (`chipDaComissao` com `vendaDaRede`, lida por `configDeComissaoDaRede` nas
   duas Equipes; prova `tests/equipe-comissao-de-venda-da-rede.test.ts`); com
   padrão, como antes

@@ -96,6 +96,24 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
     (`uniq_contrato_da_venda_do_pacote`). A validade citada é contada de hoje
     (decisão do Claude pelo princípio 4, 2026-11-18: o vendido conta da venda;
     a diferença é a dos dias entre colher e vender).
+  - **Os puxados vão junto: uma assinatura só** (P3 da 37ª simulação; PA-10):
+    com o contrato a colher nascem com ele o termo e os "Outros documentos" do
+    pacote do CATÁLOGO (`private.documentos_puxados_antes_da_venda`, os modelos
+    de `private.modelos_do_pacote_a_vender`), com `service_package_id`, o
+    momento `VENDA_PACOTE` e um vivo por cliente, pacote e modelo
+    (`uniq_puxado_da_venda_do_pacote`; o `uniq_contrato_da_venda_do_pacote`
+    passa a olhar só o contrato). O momento antes da venda é a cliente e o
+    pacote do catálogo (`documentosDoMomento`): o link e o "Colher assinatura"
+    da venda (`documentoParaAssinar(id, { juntos: true })`) levam todos. A venda
+    os ADOTA, como adota o contrato; o puxado que o pacote não puxa mais (ou de
+    outra unidade) se cancela, "O pacote mudou" (decisão do Claude, 27/11).
+    Migration `20261216300002`. Prova:
+    `tests/documentos-venda-do-pacote-uma-assinatura.test.ts`,
+    `e2e/documentos-link-unico-e-pacote.spec.ts` ("P3 da 37ª").
+  - A tela da venda tem também o "Pedir no portal" (A10 da 37ª; DQ-06), o da
+    ficha, com as mesmas condições (o app e o portal no plano da rede:
+    `ContratoParaAssinar.noPortal`); e o aviso das vazias diz "Neste pacote…"
+    (A7 da 37ª). Prova: `tests/documentos-venda-do-pacote-telas.test.ts`.
   - Prova: `e2e/documentos-pacote-assina-antes-de-pagar.spec.ts`,
     `tests/auditoria-c-documentos.test.ts`.
 - **A venda do pacote emite os outros documentos** (PC2, DC1c/PC9b — Bloco
@@ -253,8 +271,17 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
     estilo do texto; a prévia, que usa o mesmo conversor, já mostra o valor de
     exemplo, e o catálogo do tipo vale como no "Inserir" (fora do tipo, recusada
     ao salvar). Chaves que não formam variável ("{{ Nome }}", "{{}}") são
-    recusadas dizendo qual — como `chavesMalFormadas` na marcação. Prova:
+    recusadas dizendo qual — como `chavesMalFormadas` na marcação. A digitada
+    em dois estilos (o "{{" em negrito e o resto não) também vira variável: o
+    conversor junta os pedaços de texto vizinhos antes de procurar, e a
+    variável fica com o estilo de onde começa (P5 da 37ª). Prova:
     `tests/documentos-arvore.test.ts` ("A9 da 9ª").
+  - **Os exemplos da prévia fecham a conta** (A16 da 37ª; princípio 3): o
+    pagamento de exemplo sai da mesma conta do contrato (`valoresDoPagamento`),
+    sobre uma venda do tipo do modelo (o valor, o desconto, a entrada e 3
+    parcelas que somam o que se paga), e as datas partem de hoje
+    (`exemplosDoTipo`, `lib/documentos/exemplos.ts`; os valores são decisão do
+    Claude, 27/11). Prova: `tests/documentos-exemplos-da-previa.test.ts`.
   - A marcação leve de antes ainda vale (versões antigas, o contrato de plano
     semeado, E2E por `p_texto`): `editor/da-marcacao.ts` a converte para o
     MESMO JSON, e ela passa pelo mesmo conversor. A v1 gravada (array) se lê
@@ -376,9 +403,14 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   ("D7": o termo que a trava pede existe para colher desde o agendamento).
   **Sessão de plano e de pacote não emitem** (PC2: assina-se UMA vez, pelo
   plano ou pelo pacote). O agendamento de plano (`treatment_plan_id`) nunca
-  emite. A sessão de pacote nasce como agendamento comum e só DEPOIS se liga
-  ao pacote (`package_sessions.appointment_id`, por `ligarCredito`,
-  `agendamento_usar_credito` ou o "abater do pacote"): o gatilho
+  emite. A sessão de pacote AGENDADA nasce ligada (D5 da 37ª simulação: o
+  agendamento ficava com o termo cancelado na lista):
+  `agendamento_criar_na_sessao_de_pacote` grava o agendamento e liga a sessão
+  na MESMA transação, com a marca `bellaris.sessao_de_pacote`, que o gatilho de
+  emissão respeita — não nasce documento nenhum, nem cancelado (migration
+  `20261216300001`; o `createAppointmentCore` a chama no crédito de pacote, no
+  lugar do insert + `ligarCredito`). O agendamento que só DEPOIS se liga ao
+  pacote (`agendamento_usar_credito` ou o "abater do pacote"): o gatilho
   `trg_documentos_da_sessao_de_pacote` cancela os abertos dela ("Sessão de
   pacote: os documentos são os do pacote"), e a emissão já não acha modelo
   para agendamento ligado a pacote (reabrir, trocar o procedimento). Desligar
@@ -386,7 +418,8 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   sessão de pacote cancela ou reagenda). O pré-pago
   (`procedure_sale_units`) é avulso e emite. ⚠️ O `termo.emitido` do INSERT
   fica registrado mesmo quando a ligação ao pacote cancela o termo logo
-  depois. Prova: `e2e/documentos-tipos-e-nascimento.spec.ts` ("PC2").
+  depois. Prova: `e2e/documentos-tipos-e-nascimento.spec.ts` ("PC2", "D5 da
+  37ª"), `tests/documentos-sessao-de-pacote-nao-emite.test.ts`.
   **A janela do agendamento leva a colher** (A23 da 9ª): o termo que falta
   assinar tem "Colher assinatura" (`[data-colher-assinatura]`, a tela
   `/documentos/[id]/assinar` com a volta à agenda) para quem abre a janela —
@@ -399,7 +432,8 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   como a rede escreveu (`concordarComOGenero`, `lib/documentos/concordancia.ts`,
   só no texto do MODELO, não no valor das variáveis — o `ajustar` de
   `interpolar`). O documento montado é o que se assina e o que o hash cobre.
-  Prova: `tests/documentos-concordancia.test.ts`.
+  O par em maiúscula também concorda e segue maiúsculo ("O(a) paciente" → "A
+  paciente"; D7 da 37ª). Prova: `tests/documentos-concordancia.test.ts`.
 - **O gatilho só cria a linha (A_GERAR)**; o texto é montado pelo app
   (`lib/documentos/renderizar.ts` → `documento_registrar_render`), e toda tela
   que mostra um documento chama `garantirRenderizado` antes. Faltou dado

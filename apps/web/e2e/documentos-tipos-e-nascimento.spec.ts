@@ -225,4 +225,39 @@ test.describe.serial('documentos: os cinco tipos e "nasce ao agendar"', () => {
     const apPlano = await agendar({ treatment_plan_id: plano!.id })
     expect(await docsDo(apPlano)).toEqual([])
   })
+
+  test('a sessão de pacote agendada nasce ligada e não emite nada — nem documento cancelado', async () => {
+    const { data: sp } = await db().from('service_packages').insert({
+      tenant_id: rede!.tenantId, procedure_id: rede!.procedureId, name: `${PREFIXO} Pacote D5 ${marca}`, total_sessions: 2, price: 200,
+    }).select('id').single<{ id: string }>()
+    const { data: cp } = await db().from('client_packages').insert({
+      client_id: cliente, package_id: sp!.id, branch_id: rede!.branchId, total_sessions: 2, used_sessions: 0,
+    }).select('id').single<{ id: string }>()
+    const { data: sessoes, error: eSessao } = await db().from('package_sessions').insert([
+      { client_package_id: cp!.id, appointment_id: null, status: 'AVAILABLE', session_number: 1 },
+      { client_package_id: cp!.id, appointment_id: null, status: 'AVAILABLE', session_number: 2 },
+    ]).select('id, session_number')
+    expect(eSessao).toBeNull()
+    const primeira = (sessoes ?? []).find(s => s.session_number === 1)!.id as string
+
+    const linha = {
+      branch_id: rede!.branchId, client_id: cliente, procedure_id: rede!.procedureId, professional_id: rede!.professionalId,
+      status: 'SCHEDULED', source: 'INTERNAL', duration_min: 30, price: 100, scheduled_at: haMinutosHoje(240),
+    }
+    const { data: ap, error } = await db().rpc('agendamento_criar_na_sessao_de_pacote', { p_agendamento: linha, p_sessao: primeira })
+    expect(error, 'agendar a sessão do pacote').toBeNull()
+    agendamentos.push(ap as string)
+    expect(await docsDo(ap as string), 'a sessão de pacote não emite documento (DE-14)').toEqual([])
+    const { data: ligada } = await db().from('package_sessions').select('appointment_id').eq('id', primeira).single<{ appointment_id: string }>()
+    expect(ligada!.appointment_id).toBe(ap)
+
+    // A sessão já tomada: recusa, e o agendamento não fica.
+    const antes = (await db().from('appointments').select('id').eq('client_id', cliente)).data?.length ?? 0
+    const outra = await db().rpc('agendamento_criar_na_sessao_de_pacote', { p_agendamento: linha, p_sessao: primeira })
+    expect(outra.error?.message ?? '').toContain('CREDITO_JA_USADO')
+    expect((await db().from('appointments').select('id').eq('client_id', cliente)).data?.length ?? 0).toBe(antes)
+
+    // O avulso segue emitindo (a marca é da transação, não fica).
+    expect((await docsDo(await agendar())).length).toBe(4)
+  })
 })

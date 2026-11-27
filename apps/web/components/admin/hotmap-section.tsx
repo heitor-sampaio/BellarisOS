@@ -26,7 +26,8 @@ type HeatMode = 'clients' | 'ltv' | 'consolidated'
 const MODES: { key: HeatMode; label: string }[] = [
   { key: 'clients',      label: 'Concentração' },
   { key: 'ltv',         label: 'LTV'           },
-  { key: 'consolidated', label: 'Consolidado'  },
+  // A14 da 37ª (princípio 7): as duas camadas juntas — "Consolidado" se lia como a rede consolidada.
+  { key: 'consolidated', label: 'Concentração e LTV' },
 ]
 
 const LEGENDS: Record<HeatMode, Array<{ gradient: string; label: string }>> = {

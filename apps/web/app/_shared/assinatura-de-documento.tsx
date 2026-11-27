@@ -43,9 +43,9 @@ export async function AssinaturaDeDocumento({ id, base, voltar }: {
   let juntos: JuntosNaAssinatura | undefined
   if (doc.resumo.status === 'PENDENTE') {
     const ancora = await ler(createAdminClient().from('issued_documents')
-      .select('id, client_id, appointment_id, treatment_plan_id, client_package_id')
+      .select('id, client_id, appointment_id, treatment_plan_id, client_package_id, service_package_id')
       .eq('id', id).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o momento do documento') as
-      { id: string; client_id: string; appointment_id: string | null; treatment_plan_id: string | null; client_package_id: string | null } | null
+      { id: string; client_id: string; appointment_id: string | null; treatment_plan_id: string | null; client_package_id: string | null; service_package_id: string | null } | null
     if (ancora) {
       const momento = await documentosDoMomento(ctx.tenantId!, ancora)
       juntos = {

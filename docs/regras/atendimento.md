@@ -1258,7 +1258,10 @@
   uma ativa (A28 da 6ª simulação, 2026-11-04): "Botox em 05/11 às 10:00, na
   unidade Boa Viagem." (`textoDoHorarioMarcado`, `unidadeParaOAviso`, nos dois
   avisos de agendamento novo). Prova: `e2e/pacote-sessao-agendar.spec.ts`,
-  `tests/texto-do-horario-marcado.test.ts`.
+  `tests/texto-do-horario-marcado.test.ts`. E o toast "Horário marcado" do
+  agendar do app também (A15 da 37ª, `descricaoDoHorarioMarcado`): "Com Ana,
+  …, na unidade Açailândia." Prova: `tests/horario-marcado-no-app-diz-a-unidade.test.ts`,
+  `e2e/portal-cliente-outra-unidade.spec.ts` ("A15 da 37ª").
   **E o remarcado e o cancelado também; e nenhum aviso decide o gênero** (A48
   da 9ª simulação, 2026-11-07): "Seu Avaliação foi concluído" e "Seu Drenagem
   linfática foi concluído" — o nome do procedimento é da rede, e o texto
@@ -2594,8 +2597,9 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
   atendimento (Planejamento → Injetáveis). Fora dele (a tela de Injetáveis, a
   ficha da cliente), o mapa não oferece "Confirmar aplicação" — dizia
   "Aplicação confirmada" sem gravar nada (`salvarPlanejamentoInjetavel` grava
-  só a vista e os pontos) — e mostra no lugar a linha "A aplicação se
-  registra no atendimento…" (`InjectableMapField confirmaAqui`). O mapa no
+  só a vista e os pontos) — e não põe nada no lugar (`InjectableMapField
+  confirmaAqui`; a frase "A aplicação se registra no atendimento…" saiu na A8
+  da 37ª: o Heitor, 26/11, "intuitivo não é explicativo"). O mapa no
   corpo do atendimento depende de CONFIGURAÇÃO: só aparece quando o
   procedimento tem uma ficha com o campo "planejador de injetáveis"; sem ela
   (a Toxina da simulação não tinha ficha), o mapa do atendimento é o do
@@ -2616,6 +2620,20 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
   encerrado…"). O evento `injetavel.aplicado` sai só na primeira. O par
   duplicado de antes (dado de [sim]) ficou. Prova: `e2e/injetaveis-da-9.spec.ts`
   ("D14", também dois envios ao mesmo tempo).
+  **A aplicação do atendimento são só os pontos aplicados NELE** (D2 da 37ª;
+  Decisão C3 — decisão do Claude, 27/11, princípio 3): o retoque à tarde no
+  mapa da toxina de manhã copiava o mapa inteiro (60 UI contra 10 do
+  retoque), o histórico somava 110 UI no dia e o Finalizar avisava um falso
+  "60 × 10". O ponto leva o atendimento em que foi aplicado
+  (`atendimento`, no JSON do ponto); o de antes, sem a marca, é de outro
+  atendimento quando está numa aplicação dele deste mapa. O "Registrar
+  aplicação" grava só os pontos deste atendimento e os totais deles
+  (`pontosDaAplicacao`, `lib/injetaveis/aplicacao-do-atendimento.ts`); sem
+  ponto novo, é o plano inteiro aplicado de novo (a reaplicação). O
+  "Confirmar aplicação" confirma os pontos deste atendimento e deixa os de
+  outro com 0 hoje (`confirmarNoAtendimento`); mexer na dose aplicada de um
+  ponto o traz a este atendimento. As aplicações gravadas antes ficam como
+  estão. Prova: `tests/injetaveis-aplicacao-do-atendimento.test.ts`.
   **O mapa se abre e se cria da própria sessão** (A10 da 9ª): era preciso ir
   ao menu Injetáveis, criar, ligar a cliente e voltar. A tela do atendimento
   tem "Mapa de injetáveis" ao lado do "Planejamento" (quem vê o clínico, no
@@ -2634,11 +2652,13 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
   `[data-dica-do-mapa]`). O "marcar um ponto rola a folha" NÃO se reproduziu
   (toque de verdade a 360 e 412 px, na tela de Injetáveis e na folha do
   atendimento: a ilustração fica onde estava, e o segundo toque marca) — a
-  prova continua no spec. Na folha do atendimento, uma linha diz o que cada
-  botão faz (`[data-o-que-cada-botao-faz]`): "Salvar planejamento" guarda os
-  pontos e as doses previstas; "Confirmar aplicação" copia a prevista para a
-  aplicada, na tela; "Registrar aplicação" grava neste atendimento (depois,
-  "Atualizar a aplicação registrada"). **O "Registrar aplicação" também guarda
+  prova continua no spec. Na folha do atendimento, "Salvar planejamento"
+  guarda os pontos e as doses previstas; "Confirmar aplicação" copia a
+  prevista para a aplicada, na tela; "Registrar aplicação" grava neste
+  atendimento (depois, "Atualizar a aplicação registrada"). A dica que
+  explicava os botões (A28 da 11ª) saiu na A8 da 37ª (o Heitor, 26/11:
+  "intuitivo não é explicativo"; prova
+  `tests/injetaveis-mapa-uma-acao-por-momento.test.ts`). **O "Registrar aplicação" também guarda
   o planejamento** (A35 da 24ª: a tela recarregava o salvo, vazio, e os pontos
   sumiam — "Nenhum ponto nesta ilustração"): `registrarAplicacao` grava os
   pontos no `injectable_maps` junto. **A linha do procedimento no editor do
@@ -2667,7 +2687,12 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
     `form_data.ficha`). O navegador diz QUAL planejamento; os pontos o
     servidor lê (`retratarInjetaveis`, `lib/injetaveis/alcance.ts`; a conta
     pura em `lib/atendimento/retrato-dos-injetaveis.ts`). Edição do mapa não
-    salva no planejamento não entra no retrato (a tela diz isso no campo).
+    salva no planejamento não entra no retrato, e **o "Finalizar" diz** (D9 da
+    37ª, PT-15): o mapa aberto marca o que não salvou
+    (`lib/injetaveis/edicao-nao-salva.ts`), e a janela do Finalizar mostra
+    "O planejamento "X" tem pontos não salvos: eles não entram na ficha." com
+    "Salvar planejamento" ali mesmo. Prova:
+    `tests/injetaveis-edicao-nao-salva.test.ts`.
   - O planejamento tem de ser da cliente DO ATENDIMENTO, da rede e da unidade
     ao alcance (o "de cliente que ela atende" do prontuário "só os meus" saiu,
     SM1) — senão o salvar e o finalizar recusam ("Planejamento de injetáveis
@@ -2956,7 +2981,13 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
   ligada a um atendimento iniciado e cancelado dizia "Agendada para …" na
   página do plano, e o app "Usada em … (atendimento interrompido)". A página
   diz o mesmo, pela mesma função (`situacaoDaSessaoNoApp`). Prova:
-  `tests/plano-sessao-interrompida.test.ts`.
+  `tests/plano-sessao-interrompida.test.ts`. **Também a do pacote e a do
+  pré-pago** (D4 da 37ª, AT-21): a sessão `USED`/`USADA` ligada a um
+  agendamento cancelado (`sessaoInterrompida`) diz "Usada em … (atendimento
+  interrompido)" na ficha de tratamento, em "Gerenciar sessões" (sem o
+  "Agendar"), em "Procedimentos pagos" e na agenda do app (o iniciado e
+  cancelado que gastou o que já estava pago). Prova:
+  `tests/sessao-do-pacote-interrompida.test.ts`.
 - **O agendar da sessão (pacote, plano, pré-pago) só oferece as unidades ao
   alcance** (D18 da 28ª simulação; CLAUDE.md §11 e §14): a lista vinha das
   unidades do pacote e oferecia uma fora da abrangência da pessoa — escolhida,
@@ -3005,7 +3036,10 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
   cliente somam o em aberto da venda (`pagosAntes` →
   `getEmAbertoDasVendas`), dizendo de quem ele é: "4 limpezas · sessão 1 de
   4 · pacote com R$ 400,00 em aberto" (A19 da 26ª, princípio 3; "pré-pago
-  com…", "plano com…"). Ali o plano é opcional: "Propor um plano novo
+  com…", "plano com…"). **A sessão do pré-pago tem a mesma faixa** (A3 da 37ª,
+  AG-56): "Sessão 1 de 3 do pré-pago de Drenagem, já paga." (no crediário em
+  aberto, "incluída no pré-pago, que tem …"; `textoDaSessaoDoPrePago`, prova
+  `tests/atendimento-faixa-do-pre-pago.test.ts`). Ali o plano é opcional: "Propor um plano novo
   (opcional)", e o "Aceitar plano" é o secundário. A linha do insumo diz a
   quantidade com a embalagem do produto (`linhaDoInsumo`, A9).
 - **"Aceitar plano" usa o que está na tela** (A29 da 12ª simulação, 2026-11-11;
@@ -3102,7 +3136,12 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
     `salvarFichaDoProcedimento`); o acesso já fica registrado pela aba. Só
     existia na tela do atendimento, que pede o Atendimento em Ver. Prova:
     `tests/prontuario-correcao-na-ficha.test.ts`,
-    `e2e/prontuario-anotacoes-e-versoes.spec.ts` ("D4").
+    `e2e/prontuario-anotacoes-e-versoes.spec.ts` ("D4"). **Corrigir só a
+    evolução guarda UMA versão** (P1 da 37ª, PT-11): o "Salvar correção"
+    gravava sempre também a ficha, e a do planejador de injetáveis voltava com
+    um retrato novo (`retratoEm`), que contava como mudança — a segunda
+    versão, a "Como estava", já tinha a evolução nova. A ficha só se grava se
+    quem corrige mexeu nela (`tests/prontuario-correcao-uma-versao.test.ts`).
   - **As duas tabelas são só do servidor**: RLS ligada sem política
     permissiva (a sessão não lê nem grava — prova com o token de um membro no
     spec), as restritivas `suporte_sem_clinico` e `suporte_sem_escrita_*`,
@@ -4691,6 +4730,7 @@ O resto do fluxo:
 ❌ Um segundo planejador de injetáveis: o campo da ficha é o PlanejamentoInjetaveis de Planejamento → Injetáveis
 ❌ Exportar de actions/injectable-map.ts ('use server') uma regra de alcance do mapa — ela mora em lib/injetaveis/alcance.ts
 ❌ Inserir em injectable_applications fora de injetavel_registrar_aplicacao (uma por mapa por atendimento, com o mapa travado — D14 da 9ª)
+❌ Registrar na aplicação de um atendimento o mapa inteiro: são só os pontos dele (pontosDaAplicacao — D2 da 37ª)
 ❌ Trava de permissão (assertPermission/semAcesso) num LAYOUT fora do Suspense da página: vira HTTP 500 — o layout só passa a página, que trava por si (D17 da 9ª)
 ❌ Gravar as dores do cliente em appointments.notes (é a observação interna; as dores são medical_record_entries.queixas)
 ❌ Cancelar ou marcar falta num atendimento concluído — o que se desfaz é o pagamento (estorno)

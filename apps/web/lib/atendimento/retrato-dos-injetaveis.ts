@@ -68,7 +68,13 @@ export function comRetratos(
     if (!mapa) return { error: RECUSA_DO_PLANEJAMENTO }
     const retrato: InjectableMapValue = {
       view:         (mapa.view as InjectableMapValue['view'] | null) ?? 'rosto_f',
-      points:       Array.isArray(mapa.points) ? (mapa.points as InjectableMapValue['points']) : [],
+      // A marca do atendimento em que o ponto foi aplicado (`atendimento`,
+      // PT-13) é controle do planejamento: o retrato guarda os pontos como a
+      // tela os mostra.
+      points:       Array.isArray(mapa.points)
+        ? (mapa.points as (InjectableMapValue['points'][number] & { atendimento?: string })[])
+            .map(p => { const r = { ...p }; delete r.atendimento; return r })
+        : [],
       confirmedAt:  null,
       planejamento: { id: mapa.id, nome: mapa.name?.trim() || SEM_NOME },
       retratoEm:    agora,

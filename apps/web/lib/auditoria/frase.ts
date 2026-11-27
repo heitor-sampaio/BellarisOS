@@ -269,6 +269,8 @@ const CAMPO_DA_TABELA: Record<string, Record<string, string>> = {
   prontuario_anotacoes: { texto: 'texto da anotação' },
   crm_stages: { marca: 'marca da etapa' },
   commission_configs: { modo: 'modo da comissão' },
+  // A20 da 37ª: o `horario` da unidade é o de funcionamento ("de trabalho" é o da pessoa).
+  branches: { horario: 'horário de funcionamento' },
   // A21 da 32ª: a parcela da operadora (a antecipação e o estorno).
   recebiveis_do_cartao: {
     recebida_em: 'recebimento', recebida_por: 'quem marcou como recebida', cancelada_em: 'cancelamento',
@@ -510,7 +512,10 @@ function fraseDoRegistroDa17(r: RegistroDaAuditoria, nomes: NomesDaAuditoria, cl
     if (pontos === null || pontos === 0) return null
     const dela = (r.registro_id && nomes.clientesDosPontos?.[r.registro_id]) || cliente
     const n = Math.abs(pontos).toLocaleString('pt-BR')
-    return pontos > 0 ? `Creditou ${n} pontos${dela ? ` a ${dela}` : ''}` : `Debitou ${n} pontos${dela ? ` de ${dela}` : ''}`
+    // P4 da 37ª (AD-08): o ajuste diz o motivo gravado nele, lido agora.
+    const motivo = r.registro_id ? texto(nomes.motivosDosPontos?.[r.registro_id]) : null
+    const porque = motivo ? ` (motivo: ${motivo})` : ''
+    return pontos > 0 ? `Creditou ${n} pontos${dela ? ` a ${dela}` : ''}${porque}` : `Debitou ${n} pontos${dela ? ` de ${dela}` : ''}${porque}`
   }
   if (r.tabela === 'comanda_itens' && r.operacao === 'criou') {
     const q = numero(r.depois.quantidade) ?? 1
@@ -1601,8 +1606,12 @@ function fatoDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAu
     const nome = pk ? nomes.pacotes?.[pk] : null
     const preco = numero(pacote.depois.price)
     // A20b da 25ª: o pacote de antes do sistema é registrado, não vendido (não entrou dinheiro).
-    if (pacote.depois.de_fora === true) {
-      return { principal: pacote, frase: `Registrou ${nome ? `o pacote de antes ${nome}` : 'um pacote de antes do sistema'}${clienteDaGravacao(linhas, nomes, pacote)}` }
+    // D10 da 37ª (AD-13, PA-24): o gatilho não guarda o `de_fora` — ele se lê agora
+    // (`nomes.pacotesDeFora`), e o nome não repete o "(pacote de antes)" do modelo criado junto.
+    const deFora = pacote.depois.de_fora === true || (!!pacote.registro_id && nomes.pacotesDeFora?.[pacote.registro_id] === true)
+    if (deFora) {
+      const semSufixo = nome ? nome.replace(/\s*\(pacote de antes\)\s*$/i, '') : null
+      return { principal: pacote, frase: `Registrou ${semSufixo ? `o pacote de antes ${semSufixo}` : 'um pacote de antes do sistema'}${clienteDaGravacao(linhas, nomes, pacote)}` }
     }
     return {
       principal: pacote,
@@ -1762,6 +1771,52 @@ function fraseDoCancelamentoDaVenda(linhas: readonly RegistroDaAuditoria[], nome
   return `Cancelou ${oQue}${motivo ? ` (motivo: ${motivo})` : ''}${devolveu}${usado}${clienteDaGravacao(linhas, nomes, alvo)}`
 }
 
+/**
+ * D11 da 37ª simulação (AD-20; decisão do Claude, 27/11): o "Abater do pacote" da
+ * comanda (`atendimento_abater_do_pacote`) usa a sessão e zera a receita e a
+ * comanda junto — saía "Editou a comanda (cancelamento…)". O fato é a sessão usada,
+ * na unidade do atendimento. A desistência (o agendamento muda de situação) não é isto.
+ */
+function sessaoAbatida(linhas: readonly RegistroDaAuditoria[]): RegistroDaAuditoria | null {
+  if (linhas.some(l => l.tabela === 'appointments' && l.colunas.includes('status'))) return null
+  return linhas.find(l => l.tabela === 'package_sessions' && l.operacao === 'editou' && l.colunas.includes('status')
+    && texto(l.depois.status) === 'USED' && !!texto(l.depois.appointment_id)) ?? null
+}
+
+function fraseDoAbatimento(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria): string | null {
+  const sessao = sessaoAbatida(linhas)
+  if (!sessao) return null
+  const qual = (sessao.registro_id && texto(nomes.sessoesDoPacote?.[sessao.registro_id])) || 'a sessão do pacote'
+  return `Usou ${qual}${clienteDaGravacao(linhas, nomes, sessao)}`
+}
+
+/**
+ * D12 da 37ª simulação (AD-19, AD-20; decisão do Claude, 27/11): a entrega do
+ * brinde (`entregar_voucher_produto`) baixa o estoque e marca o voucher usado — saía
+ * "Editou o lote (quantidade)". O fato é o brinde entregue, à cliente do voucher;
+ * a unidade é a do movimento (onde saiu do estoque). O voucher usado num pagamento
+ * (com o lançamento na gravação) não é isto.
+ */
+function entregaDoBrinde(linhas: readonly RegistroDaAuditoria[]): { voucher: RegistroDaAuditoria; movimento: RegistroDaAuditoria | null } | null {
+  const voucher = linhas.find(l => l.tabela === 'loyalty_vouchers' && l.operacao === 'editou' && l.colunas.includes('status')
+    && texto(l.depois.status) === 'USADO')
+  if (!voucher) return null
+  const tipo = texto(voucher.depois.type) ?? texto(voucher.antes.type)
+  const movimento = linhas.find(l => l.tabela === 'stock_movements' && l.operacao === 'criou' && texto(l.depois.type) === 'MANUAL_ADJUSTMENT') ?? null
+  const soOEstoque = linhas.every(l => l === voucher || ['stock_movements', 'product_batches', 'branch_product_stock'].includes(l.tabela))
+  if (!soOEstoque) return null
+  if (tipo !== 'PRODUTO' && !(movimento && voucher.colunas.includes('used_stock_movement_id'))) return null
+  return { voucher, movimento }
+}
+
+function fraseDaEntregaDoBrinde(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria): string | null {
+  const entrega = entregaDoBrinde(linhas)
+  if (!entrega) return null
+  const nome = texto(entrega.voucher.depois.name) ?? texto(entrega.voucher.antes.name)
+  const baixa = entrega.movimento ? ` (baixou ${doProduto(entrega.movimento, nomes)} do estoque)` : ''
+  return `Entregou o brinde${nome ? ` ${nome}` : ''}${baixa}${clienteDaGravacao(linhas, nomes, entrega.voucher)}`
+}
+
 /** A frase de uma gravação inteira. */
 export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria): string {
   // A baixa sozinha de um lançamento (D7 da 16ª): "Recebeu a parcela 1/4 (R$ 200,00, Pix)".
@@ -1774,7 +1829,8 @@ export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: Nome
     // D7 da 36ª: a parcela única do crediário sem entrada, sozinha na gravação.
     const crediarioAoCriar = so.tabela === 'financial_transactions' && !!parcelasDoCrediario(linhas, nomes)
     const baixa = so.tabela === 'financial_transactions' && (so.operacao === 'editou' || recebidaAoCriar || crediarioAoCriar) ? fatoDaGravacao(linhas, nomes) : null
-    return baixa?.frase ?? fraseDaAuditoria(so, nomes)
+    // D12 da 37ª: o brinde sem produto grava só o voucher.
+    return baixa?.frase ?? fraseDaEntregaDoBrinde(linhas, nomes) ?? fraseDaAuditoria(so, nomes)
   }
 
   // A4 da 30ª (tags:TG-08): juntar a tag a outra troca a tag nas fichas, nos
@@ -1817,6 +1873,8 @@ export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: Nome
   }
   const estorno = fraseDoEstorno(linhas, nomes)
   if (estorno) return estorno
+  const brinde = fraseDaEntregaDoBrinde(linhas, nomes)
+  if (brinde) return brinde
   // A35 da 20ª: a entrada e o desfazer gravam o lote e o custo do produto junto (o lote podia sair primeiro: "Editou o lote").
   const entrada = linhas.find(l => l.tabela === 'stock_movements' && l.operacao === 'criou' && texto(l.depois.type) === 'PURCHASE')
   const doEstoque = (tabelas: string[]) => linhas.every(l => tabelas.includes(l.tabela))
@@ -1842,6 +1900,8 @@ export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: Nome
   if (transferencia) return transferencia
   const fato = fatoDaGravacao(linhas, nomes)
   if (fato) return fato.frase
+  const abatimento = fraseDoAbatimento(linhas, nomes)
+  if (abatimento) return abatimento
   // A34 da 19ª: o remarcar, o repasse e o cancelamento gravados com outros registros.
   const doAgendamento = linhas.map(l => (l.tabela === 'appointments' && l.operacao === 'editou' ? fraseDaAuditoria(l, nomes) : null))
     .find(f => f && /^(Remarcou|Repassou|Mudou de unidade|Cancelou|Marcou a falta) /.test(f))
@@ -1942,6 +2002,12 @@ function principalDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: Nome
   // A5 e A10 da 35ª: o cancelamento da venda é o fato (a unidade e o link são os do plano, do pacote, do pré-pago).
   const cancelada = vendaCancelada(linhas)
   if (cancelada) return cancelada
+  // D12 da 37ª: a entrega do brinde é da unidade do movimento, com a cliente do voucher (o link é a ficha).
+  const brinde = estorno ? null : entregaDoBrinde(linhas)
+  if (brinde) return brinde.movimento ? { ...brinde.movimento, client_id: brinde.movimento.client_id ?? brinde.voucher.client_id } : brinde.voucher
+  // D11 da 37ª: o "Abater do pacote" é da sessão usada (na unidade do atendimento, `naUnidadeDoAgendamento`).
+  const abatida = fato ? null : sessaoAbatida(linhas)
+  if (abatida) return abatida
   // D12 da 35ª: a sessão do pacote agendada (com o documento fechado junto) é o fato da gravação.
   const sessaoAgendada = linhas.every(l => l.tabela === 'package_sessions' || (l.tabela === 'issued_documents' && l.operacao === 'editou'))
     ? linhas.find(l => l.tabela === 'package_sessions' && l.operacao === 'editou' && l.colunas.includes('appointment_id') && !l.colunas.includes('status'))

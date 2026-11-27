@@ -179,6 +179,19 @@ describe('A9 da 9ª: a variável digitada no texto', () => {
     ] }])
     expect(variaveisDoDocumento(d)).toEqual(['cliente.nome', 'cliente.cpf'])
   })
+  // P5 da 37ª (DV-07: "vira variável na hora, com o estilo do texto em volta"):
+  // digitada com um pedaço em negrito (ou noutra cor), a variável fica em DOIS
+  // textos do editor — e ficava com as chaves na prévia e no documento.
+  it('a variável digitada em dois estilos também vira variável (com o estilo de onde começa)', () => {
+    const d = converter(doc(p(txt('Eu, {{cliente.', { type: 'bold' }), txt('nome}}, autorizo.'))))
+    expect(d.blocos).toEqual([{ tipo: 'paragrafo', trechos: [
+      { texto: 'Eu, ', negrito: true },
+      { variavel: 'cliente.nome', negrito: true },
+      { texto: ', autorizo.' },
+    ] }])
+    const tres = converter(doc(p(txt('{{'), txt('cliente', { type: 'italic' }), txt('.cpf}} ok'))))
+    expect(tres.blocos).toEqual([{ tipo: 'paragrafo', trechos: [{ variavel: 'cliente.cpf' }, { texto: ' ok' }] }])
+  })
   it('chaves que não formam variável são recusadas, dizendo qual', () => {
     expect(converterDocumentoDoEditor(doc(p(txt('Eu, {{ Nome }}'))), { tenantId: null }))
       .toMatchObject({ erro: expect.stringContaining('{{ Nome }}') })

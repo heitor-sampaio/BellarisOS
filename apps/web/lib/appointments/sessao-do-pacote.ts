@@ -44,3 +44,23 @@ export function comOEmAberto(
   if (deQue) return `${texto} · ${deQue} com ${quanto}`
   return `${texto} · ${mostraOValor ? quanto : `com ${quanto}`}`
 }
+
+/**
+ * A3 da 37ª (AG-56, princípio 3): a mesma faixa para a sessão do PRÉ-PAGO —
+ * a tela do atendimento do pacote dizia "já paga", e a do pré-pago, nada. No
+ * crediário com parcelas em aberto, como no pacote, "incluída no pré-pago".
+ */
+export function textoDaSessaoDoPrePago(s: {
+  numero: number; total: number | null
+  /** O procedimento do pré-pago. */
+  nome: string | null
+  emAberto?: number | null
+  mostraOValor?: boolean
+}): string {
+  const qual = s.total ? `Sessão ${s.numero} de ${s.total}` : `Sessão ${s.numero}`
+  const prePago = s.nome?.trim() ? `do pré-pago de ${s.nome.trim()}` : 'do pré-pago'
+  if (s.emAberto != null && Math.round(s.emAberto * 100) > 0) {
+    return `${qual} ${prePago}: incluída no pré-pago, que tem ${s.mostraOValor ? `${formatBRL(s.emAberto)} em aberto` : 'parcelas em aberto'}.`
+  }
+  return `${qual} ${prePago}, já paga.`
+}

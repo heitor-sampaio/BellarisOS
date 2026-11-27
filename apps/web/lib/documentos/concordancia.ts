@@ -10,13 +10,15 @@
  */
 export type SexoDaFicha = 'F' | 'M' | 'O' | null | undefined
 
-const PAR = /(^|[^\p{L}])(\p{L}*?)([ao])\(([ao])\)(?!\p{L})/gu
+// D7 da 37ª (DV-09): também em maiúscula ("O(a) paciente" no começo da frase),
+// e a forma que sai mantém a caixa da primeira letra do par.
+const PAR = /(^|[^\p{L}])(\p{L}*?)([aoAO])\(([aoAO])\)(?!\p{L})/gu
 
 export function concordarComOGenero(texto: string, sexo: SexoDaFicha): string {
   if (sexo !== 'F' && sexo !== 'M') return texto
   const quer = sexo === 'F' ? 'a' : 'o'
   return texto.replace(PAR, (inteiro, antes: string, raiz: string, primeira: string, segunda: string) => {
-    if (primeira === segunda) return inteiro
-    return `${antes}${raiz}${quer}`
+    if (primeira.toLowerCase() === segunda.toLowerCase()) return inteiro
+    return `${antes}${raiz}${primeira === primeira.toUpperCase() ? quer.toUpperCase() : quer}`
   })
 }

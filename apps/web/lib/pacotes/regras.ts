@@ -36,6 +36,21 @@ export function recusaDaSessaoNaoLiberada(regras: RegrasDoPacote, emAberto: numb
   return `Este pacote ainda tem ${formatBRL(emAberto)} em aberto, e a rede libera as sessões do pacote no crediário só depois de pago. O que falta se recebe no PDV. ${BAIXA_NO_FINANCEIRO}`
 }
 
+/**
+ * A5 da 37ª (PA-13, "a sessão não se agenda"; CLAUDE.md §14, o botão que não
+ * se pode usar, a tela esconde): as sessões do pacote estão presas — a rede só
+ * libera depois de pago, e ele tem dinheiro em aberto. A ficha e o app não
+ * oferecem "Agendar" nelas (a action e o banco continuam recusando).
+ */
+export function sessoesPresas(regras: RegrasDoPacote, emAberto: number): boolean {
+  return !regras.crediarioLibera && emAberto > 0
+}
+
+/** A recusa da sessão presa no APP: fala com a cliente (o PDV e o Financeiro são da equipe). */
+export function recusaDaSessaoNaoLiberadaNoApp(regras: RegrasDoPacote, emAberto: number): string | null {
+  return sessoesPresas(regras, emAberto) ? 'As sessões deste pacote se liberam quando ele estiver pago.' : null
+}
+
 /** O fim do aviso do em aberto do pacote (`AvisoDoPacoteEmAberto`), pela regra da rede. */
 export function textoDoPacoteEmAberto(liberaAsSessoes: boolean): string {
   return liberaAsSessoes

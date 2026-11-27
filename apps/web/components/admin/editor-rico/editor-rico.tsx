@@ -8,6 +8,7 @@ import { DocumentoRenderizado } from '@/components/shared/documento-renderizado'
 import { converterDocumentoDoEditor, type DocumentoDoEditor, type NoPM } from '@/lib/documentos/editor/converter'
 import { interpolar } from '@/lib/documentos/arvore'
 import { VARIAVEIS_DE_DOCUMENTO, variaveisDoTipo, ehOpcional, rotuloNoMenu, type TipoDeModelo } from '@/lib/documentos/variaveis'
+import { exemplosDoTipo } from '@/lib/documentos/exemplos'
 import { extensoesDoDocumento } from './extensoes'
 import { BarraDoEditor, type Parte } from './barra'
 import { Dica } from '@/components/shared/dica'
@@ -85,14 +86,16 @@ export default function EditorRico({ inicial, tipo, imagens, onChange }: {
   }, [tipo])
 
   // A prévia é o documento de verdade: conversor + interpolação com os
-  // exemplos do catálogo, desenhado pelo mesmo componente da assinatura.
+  // exemplos do tipo (A16 da 37ª: a conta fecha e as datas partem de hoje),
+  // desenhado pelo mesmo componente da assinatura.
   const [previa, setPrevia] = useState<DocumentoDoEditor | null>(null)
   const resultado = useMemo(() => {
     if (!previa) return null
     const r = converterDocumentoDoEditor(previa, { tenantId: null })
     if ('erro' in r) return { erro: r.erro }
-    return { documento: interpolar(r.documento, v => CATALOGO[v]?.exemplo ?? null, ehOpcional).documento }
-  }, [previa])
+    const exemplos = exemplosDoTipo(tipo)
+    return { documento: interpolar(r.documento, v => exemplos[v] ?? null, ehOpcional).documento }
+  }, [previa, tipo])
 
   function aoEnviarImagem(caminho: string, url: string | null) {
     if (!url) return

@@ -13,11 +13,12 @@ const pct = (v: number) => v.toLocaleString('pt-BR', { maximumFractionDigits: 2 
  */
 export interface VendaDaRede { plano: number | null; produto: number | null }
 
-const daRedeEmTexto = (r: VendaDaRede): string => {
+const daRedeEmTexto = (r: VendaDaRede): string | null => {
   const plano = r.plano != null && r.plano > 0 ? r.plano : null
   const produto = r.produto != null && r.produto > 0 ? r.produto : null
-  // Princípio 4 (não chutar): sem nenhuma, a linha diz que a rede não tem.
-  if (plano == null && produto == null) return 'sem ela, nenhuma: a rede não tem'
+  // Princípio 4 (não chutar): sem nenhuma, nenhum número; e a linha não explica (o
+  // Heitor, 26/11: "isso não é ser intuitivo, é ser explicativo" — A21 da 37ª).
+  if (plano == null && produto == null) return null
   if (plano === produto) return `sem ela, a da rede: ${pct(plano!)}%`
   const parte = (v: number | null, onde: string) => `${v == null ? 'nenhuma' : `${pct(v)}%`} no ${onde}`
   return `sem ela, a da rede: ${parte(plano, 'plano')}, ${parte(produto, 'produto')}`
@@ -37,5 +38,6 @@ export function chipDaComissao(c: {
   // pacote — sem a dela, vale a do pacote ou do produto, e depois a da rede.
   // O Heitor, 25/11 ("Diz o percentual da rede"): a linha diz quanto é a da rede.
   if (venda != null) return `Venda ${pct(venda)}%`
-  return `Venda: a do pacote ou produto vendido${c.vendaDaRede ? ` (${daRedeEmTexto(c.vendaDaRede)})` : ' (sem ela, a da rede)'}`
+  const daRede = c.vendaDaRede ? daRedeEmTexto(c.vendaDaRede) : 'sem ela, a da rede'
+  return `Venda: a do pacote ou produto vendido${daRede ? ` (${daRede})` : ''}`
 }

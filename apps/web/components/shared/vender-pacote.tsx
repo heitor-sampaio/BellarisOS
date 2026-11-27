@@ -8,8 +8,9 @@ import { avisoDosDocumentosDaVenda, avisoDoContratoAntesDeVender, avisoDoJaAssin
 import { formatBRL } from '@estetica-os/utils'
 import { venderPacote, type DocumentoDaVenda } from '@/actions/pacotes'
 import { documentoParaAssinar } from '@/actions/documentos'
-import { TelaDeAssinatura, type DocumentoNaTela } from '@/components/shared/tela-de-assinatura'
+import { TelaDeAssinatura, type DocumentoNaTela, type JuntosNaAssinatura } from '@/components/shared/tela-de-assinatura'
 import { EnviarLinkDeAssinatura } from '@/components/shared/enviar-link-de-assinatura'
+import { PedirNoPortal } from '@/components/shared/pedir-no-portal'
 import { avisoDasVazias } from '@/lib/documentos/variaveis'
 import type { ContratoParaAssinar } from '@/lib/documentos/pacote'
 import Link from 'next/link'
@@ -74,7 +75,7 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
   // PC2: os termos e os outros documentos que a venda deixou para assinar (esses não seguram o dinheiro).
   // O CONTRATO de pacote, sim: "primeiro colhe assinatura, depois paga" (auditoria de 2026-11-18).
   const [contrato, setContrato] = useState<ContratoParaAssinar | null>(null)
-  const [assinando, setAssinando] = useState<DocumentoNaTela | null>(null)
+  const [assinando, setAssinando] = useState<{ doc: DocumentoNaTela; juntos?: JuntosNaAssinatura } | null>(null)
   const [contratoAssinado, setContratoAssinado] = useState(false)
   // D14 da 35ª: de volta da assinatura, o servidor confere — o pedido do contrato não volta à tela enquanto isso.
   const [conferindo, setConferindo] = useState(false)
@@ -122,9 +123,10 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
   function abrirContrato(id: string) {
     setErro(null)
     iniciar(async () => {
-      const r = await documentoParaAssinar(id)
+      // P3 da 37ª: o contrato e os puxados do pacote, numa assinatura só (PA-10).
+      const r = await documentoParaAssinar(id, { juntos: true })
       if (r.error || !r.doc) { setErro(r.error ?? 'Não consegui abrir o contrato.'); return }
-      setAssinando(r.doc)
+      setAssinando({ doc: r.doc, juntos: r.juntos })
     })
   }
 
@@ -195,7 +197,7 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
   )
 
   if (assinando && contrato) return (
-    <TelaDeAssinatura doc={assinando} podeColher aoTerminar={() => voltarDoContrato(contrato.id)} />
+    <TelaDeAssinatura doc={assinando.doc} juntos={assinando.juntos} podeColher aoTerminar={() => voltarDoContrato(contrato.id)} />
   )
 
   if (vendida) return (
@@ -328,9 +330,9 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
               <Link href={rotaDosDados} style={{ color: 'var(--brand)', fontWeight: 'var(--weight-bold)' }}>Completar o cadastro</Link>
             </p>
           )}
-          {avisoDasVazias(contrato.vazias) && (
+          {avisoDasVazias(contrato.vazias, 'pacote') && (
             <p data-variaveis-vazias style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
-              {avisoDasVazias(contrato.vazias)}
+              {avisoDasVazias(contrato.vazias, 'pacote')}
             </p>
           )}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -338,6 +340,8 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
               <button type="button" className="btn-primary" disabled={pendente} onClick={() => abrirContrato(contrato.id)}>Colher assinatura</button>
             )}
             {contrato.status === 'PENDENTE' && <EnviarLinkDeAssinatura documentoId={contrato.id} jaEnviadoAte={contrato.linkAte} />}
+            {/* A10 da 37ª (DQ-06): o pedido pelo app, como na ficha — a quem tem o app, com o portal no plano. */}
+            {contrato.status === 'PENDENTE' && contrato.noPortal && <PedirNoPortal documentoId={contrato.id} pedidoEm={contrato.noPortal.pedidoEm} />}
             <button type="button" className="btn-secondary" disabled={pendente} onClick={() => vender()}>Já assinou: vender</button>
           </div>
         </div>

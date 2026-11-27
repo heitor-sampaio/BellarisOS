@@ -1774,6 +1774,126 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-27 (3) — A 37ª simulação e as correções dela
+
+O laço segue (o Heitor, 25/11: "quando acabar essa roda já segue as outras e assim vai"). Cinco redes novas, sem conta
+da plataforma (o Heitor, 26/11: "Sem a conta"). Os temas: pacotes e pré-pago ao longo da validade (Studio Copaíba,
+Rondonópolis, UTC−4); a fidelidade do bônus à troca (Espaço Plumbago, Arapiraca); os injetáveis com retoque e dois lotes
+(Instituto Tumbérgia, Poços de Caldas); os documentos da venda do pacote (Ateliê Aroeira, Campina Grande); e a segunda
+unidade (Rede Andiroba, Imperatriz e Açailândia). O dinheiro bateu nos cinco times (caixa, a receber, operadora,
+comissões, lucro, ticket, execução, lotes e pontos), sem regressão da 36ª. Foram 13 defeitos confirmados, todos novos e
+nenhum de segurança, 6 prováveis e 21 atritos. Salvo onde se diz o contrário, as decisões são do Claude (27/11), pelos
+princípios e pelo catálogo; seis correções voltaram ao Heitor (R25–R30) porque um teste existente exige o de hoje.
+
+**O que mudou no sistema.**
+- **Pacote e pré-pago.**
+  - **O crédito não se marca para depois da validade** (D1, PP-05; a validade é um DIA, no fuso da unidade do crédito,
+    contra o DIA MARCADO da sessão — `lib/creditos/validade.ts`). Vale no núcleo (`createAppointmentCore`: agenda,
+    app, sessão de pacote e de plano), na remarcação da equipe e do app e no "usar o crédito" do avulso já marcado. A
+    recusa diz até quando: "Este pacote vale até 29/11/2026: marque a sessão até esse dia." O app aceitava 30/11 num
+    pacote que vencia em 29/11. Junto, a ficha ("Tratamento em andamento") e o "vencida" do pré-pago passaram a ler o
+    dia, não a hora da compra (o pacote vencia às 05:22 do último dia).
+  - **O crédito que vem escolhido é o mais antigo, de qualquer tipo** (D3, PP-07): pacote e pré-pago juntos, pelo dia
+    da compra; empatando, o que vence antes. A frase "Incluído no pacote X (sessão N de M)" acompanha também a escolha
+    manual (A2).
+  - **A sessão gasta pela desistência no meio aparece como "Usada em … (atendimento interrompido)"** (D4, AT-21) na
+    ficha de tratamento, em "Gerenciar sessões" (conta como usada, sem "Agendar"), em "Procedimentos pagos" e no app.
+  - **O cartão do pacote na ficha mostra a parte de cada sessão e a validade** (A1, PA-07/PA-11): "R$ 124,90 × 3 ·
+    R$ 195,15 × 2 · vale até …" (`partesDoPacote`).
+  - **"Libera as sessões só depois de pago": o que não se agenda, a tela não oferece** (A5, PA-13, CLAUDE.md §14). O
+    "Agendar" some do cartão, da ficha de tratamento, de "Gerenciar sessões" e do Início do app; o modal tem um aviso só;
+    a recusa no app fala com a cliente. A venda do pacote no crediário também deixa de oferecer "Agendar a 1ª sessão
+    agora?" quando ela não se agenda (`venderPacote` confere com o `conferirCredito` do agendar). A action e o banco
+    continuam recusando.
+  - O pacote trazido com a validade já passada é aceito, e a janela avisa numa linha: "Esta validade já passou: o pacote
+    nasce vencido." (decisão A2; o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito").
+  - A tela do atendimento do pré-pago ganhou a faixa do pacote: "Sessão 1 de 3 do pré-pago de Drenagem, já paga." (A3,
+    AG-56).
+- **Injetáveis.**
+  - **A aplicação do retoque grava só os pontos daquele atendimento** (D2, PT-13/PT-19,
+    `lib/injetaveis/aplicacao-do-atendimento.ts`): gravava o mapa inteiro (60 UI no lugar de 10), o histórico somava
+    110 UI no dia e o Finalizar avisava um falso "60 × 10". Sem ponto novo no atendimento, entra o plano inteiro (a
+    reaplicação). Nenhum dado gravado mudou. O ponto aplicado leva no planejamento a marca do atendimento
+    (`atendimento`); o retrato da ficha a tira (o E2E do planejador pegou o retrato com a marca).
+  - O ponto posto sem salvar não some calado (D9, PT-15): o mapa marca o que não salvou, e a janela do Finalizar diz
+    quais planejamentos têm pontos não salvos, com o "Salvar planejamento" ali.
+  - Saíram as duas notas que explicavam o mapa (A8; o Heitor, 26/11: "isso não é ser intuitivo, é ser explicativo").
+  - A correção da evolução não grava a ficha que ninguém mexeu (P1): nascia uma versão 2 só pelo retrato do mapa, e o
+    "ver a anterior" mostrava o texto novo.
+- **Documentos.**
+  - **A sessão de pacote agendada não emite documento nenhum** (D5, DE-14, `20261216300001`): nascia avulsa, emitia o
+    termo e o gatilho o cancelava em seguida (um "termo cancelado" na lista e a contagem inflada). A função
+    `agendamento_criar_na_sessao_de_pacote` grava o agendamento e liga a sessão na mesma transação, com a marca
+    `bellaris.sessao_de_pacote` que o gatilho respeita; o núcleo a usa para o crédito PACOTE.
+  - **Na venda do pacote, o termo e os outros documentos vão junto do contrato, numa assinatura só** (P3, PA-10,
+    `20261216300002`): nascem antes da venda com o contrato a colher, o link e o "Colher assinatura" levam todos, e a
+    venda os adota. O puxado que o pacote não puxa mais é cancelado com "O pacote mudou".
+  - "O(a)" no começo da frase concorda com o sexo da ficha e mantém a maiúscula (D7, DV-09).
+  - A variável digitada em dois estilos vira variável na prévia (P5, DV-07).
+  - O aviso das variáveis vazias diz "Neste pacote…" na venda do pacote (A7); a venda do pacote tem o "Pedir no portal"
+    da ficha (A10, DQ-06, `pedir-no-portal.tsx`); a prévia dos modelos usa exemplos que fecham a conta, com datas a
+    partir de hoje (A16, `lib/documentos/exemplos.ts`).
+- **Auditoria, cargos e estoque.**
+  - Frases novas: "Registrou o pacote de antes X — Cliente" (D10, AD-13; dizia "Vendeu"); "Usou a sessão 2 do pacote X —
+    Cliente" (D11, AD-20; dizia "Editou a comanda"); "Entregou o brinde X (baixou 1 frasco de X do estoque) — Cliente"
+    (D12; dizia "Editou o lote"); o ajuste de pontos diz o motivo (P4, AD-08). O histórico do estoque diz "Entrega de
+    recompensa: X — Cliente" (`20261216400001`). A edição do horário da unidade diz "horário de funcionamento" (era o nome
+    do horário da pessoa).
+  - "O que essa pessoa vai ver" cita o "Dispensar documentos" e os injetáveis (A21); a linha "Venda:" da Equipe sem a
+    comissão da rede ficou só "Venda: a do pacote ou produto vendido".
+  - Os lotes dizem "3 frascos", "2 seringas" (D13).
+  - Vocabulário (CLAUDE.md §1, o Heitor, 13/11): "Quem você escolheu não atende nesta unidade…" e "Se a pessoa atende…".
+- **Uma e duas unidades, fidelidade.**
+  - Com uma unidade, o "Hoje" do dashboard da rede não repete a linha da unidade, e o Financeiro diz só o período (A14,
+    UU-01). O modo "Consolidado" do mapa de calor chama-se "Concentração e LTV" (era o nome, não um recorte por unidade).
+  - O "Horário marcado" do app diz a unidade quando a rede tem mais de uma (A15, AG-51).
+  - **A margem do recorte de uma unidade lista só o que ela faz** (A19, LU-14, `20261216500001`): lia o catálogo inteiro
+    da rede.
+  - **O extrato de pontos diz o que resta de cada ganho depois da troca** (A13, SA-04/SA-05, `20261216500002`): "restam
+    N pontos, vencem em …", "já usados". A conta é do banco (`fidelidade_restante_dos_ganhos`, pela mesma
+    `fidelidade_a_expirar` do saldo).
+- **NÃO ERA:** P2 (o percentual de quem vende só vai a quem vê a comissão de todos), P6/A17 (o "aguardando o pagamento
+  integral" da venda aparece no card), A11, A18 e A20 (o horário entrou na linha "Criou a unidade").
+- **Catálogo:** as decisões do Claude da 37ª (A1, A2, A3, B1, B2, C1, C2, C3, D1, D2, E1) e as regras dos defeitos com
+  todas as letras (PP-05, PP-07, AT-21, DE-14, PT-13/PT-19, AD-13/AD-20, UU-01). PT-18, DG-02 e UU-01 dizem o que foi
+  ao Heitor (R25, R29, R30).
+
+**Testes alterados** (todos pela fala do Heitor de 26/11: "isso não é ser intuitivo, é ser explicativo e não isso que eu
+quero. Ser intuitivo é justamente o contrario, ser facil de usar mesmo sem muitas explicações."):
+- `e2e/injetaveis-atritos-da-11.spec.ts` (A28): exigia a dica "O que cada botão faz"; agora exige os três botões e a dica
+  ausente.
+- `e2e/injetaveis-confirmar-so-no-atendimento.spec.ts`: exigia a frase "A aplicação se registra no atendimento" na dica;
+  agora a exige ausente. (O cabeçalho do spec chama de "decisão do Heitor" a linha antiga, sem fala dele: fica para
+  corrigir.)
+- `tests/equipe-comissao-de-venda-da-rede.test.ts` ("a rede sem nenhuma"): exigia "(sem ela, nenhuma: a rede não tem)".
+- Nenhum teste apagado.
+
+**Para o Heitor (a página):** R25 (UI × ml com o insumo marcado: avisar), R26 (um botão só, "Registrar aplicação"),
+R27 (o "Produtos do mapa" da ficha), R28 ("Check-in" → "Chegou"), R29 (o valor da parcela na forma do contrato), R30 (a
+coluna "Unidades" com uma unidade). R22, R23 e R24 seguem abertas.
+
+**Ficou para a próxima rodada:** corrigir a evolução e a ficha juntas ainda gera duas versões (P1 a); o ramo
+`COMPLETED` de `salvarFichaDoProcedimento` refaz o retrato do mapa com o planejamento de hoje (P1 b); a etiqueta da
+agenda diz "Cancelado" no atendimento interrompido; o modal da agenda não avisa da validade antes do Confirmar (a recusa
+do servidor é clara); a linha "Aproveitamento por unidade" com uma unidade.
+
+**Sugestões novas:** nº 143–147.
+
+**A completa** (contra o build): 2.694 casos passaram e 1 falhou —
+`e2e/prontuario-anotacoes-e-versoes.spec.ts` ("Editar registro" e salvar grava a versão de antes) achou dois botões
+"Salvar". A regressão era da 36ª: o "Salvar" do cartão "Ficha de saúde" (A3) aparecia também na avaliação CONCLUÍDA
+aberta em "Editar registro", ao lado do "Salvar" do registro — e a ficha de saúde ali nem se gravava (a correção do
+registro concluído não leva a anamnese). A 36ª só reconferiu o spec do planejador depois de dar ao botão o nome
+"Salvar". O teste ficou; concluída, a ficha de saúde da avaliação se LÊ (`appointment-session.tsx`). Antes, os E2E desta
+rodada pegaram dois tropeços dela: o retrato da ficha com a marca do atendimento (corrigido no código) e um caso novo
+do spec da rede de uma unidade que procurava o link da agenda na página inteira (o "Aproveitamento" o tem de propósito; o
+caso passou a olhar o cartão "Hoje").
+
+**Na produção:** `20261216300001`, `300002`, `400001`, `500001` e `500002`, uma por vez, conferidas depois (a função da
+sessão de pacote só do servidor e o gatilho com a marca; os dois índices, sem duplicado antes, o contrato que puxa e a
+venda que adota; o brinde com a cliente; a margem com a régua da unidade; o restante dos ganhos rodando, só do
+servidor). O extrato de pontos lê a função nova: as migrations entraram ANTES do código.
+
 ### 2026-11-27 (2) — A 36ª simulação e as correções dela
 
 O laço segue (o Heitor, 25/11: "quando acabar essa roda já segue as outras e assim vai"). Cinco redes novas, sem conta

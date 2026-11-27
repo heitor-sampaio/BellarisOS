@@ -757,9 +757,10 @@ export function AdminFinancialView({
             {umaUnidade ? 'Financeiro' : 'Financeiro da Rede'}
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)', marginTop: 3 }}>
-            {periodLabel} · {statDaUnidade
-              ? statDaUnidade.name
-              : `${branchStats.length} ${branchStats.length === 1 ? 'unidade' : 'unidades'}`}
+            {/* A14 da 37ª (UU-01): com uma unidade, sem o "1 unidade" (como o dashboard). */}
+            {periodLabel}{statDaUnidade
+              ? ` · ${statDaUnidade.name}`
+              : umaUnidade ? '' : ` · ${branchStats.length} ${branchStats.length === 1 ? 'unidade' : 'unidades'}`}
           </p>
         </div>
 

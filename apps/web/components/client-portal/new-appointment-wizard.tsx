@@ -14,6 +14,7 @@ import { instanteNoFuso } from '@/lib/datetime'
 import { useFalaDaRede } from '@/components/client-portal/rede-do-portal'
 import { formatBRL } from '@estetica-os/utils'
 import { textoDoCreditoNoConfirmar } from '@/lib/clientes/textos-do-app'
+import { descricaoDoHorarioMarcado } from '@/lib/appointments/texto-do-aviso'
 
 /** O dia no relógio da unidade (F62). */
 const diaNoFuso = (ms: number, fuso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: fuso }).format(new Date(ms))
@@ -163,7 +164,8 @@ export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], p
       // A52 da 12ª: dentro do prazo do app, o aviso diz também que o app não muda mais este horário.
       const noPrazo = prazoHoras != null && prazoHoras > 0 && new Date(scheduledAt).getTime() - Date.now() < prazoHoras * 3_600_000
       toast.success('Horário marcado', {
-        description: `${res.quemAtende ? `Com ${res.quemAtende}, ` : ''}${fmtDate(date)} às ${time}.`
+        // A15 da 37ª (AG-51): com mais de uma unidade ativa, diz onde.
+        description: descricaoDoHorarioMarcado(res.quemAtende ?? null, `${fmtDate(date)} às ${time}`, unidades.length > 1 ? (unidade ?? null) : null)
           + (noPrazo ? ` Fica a menos de ${prazoHoras} horas: para cancelar ou remarcar, ${fala.faleCom}.` : ''),
       })
       if (res.documentosParaAssinar) {

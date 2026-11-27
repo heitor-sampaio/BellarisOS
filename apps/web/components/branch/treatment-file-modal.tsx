@@ -17,6 +17,7 @@ import { RespostasDaAnamnese } from '@/components/branch/anamnese-geral'
 import { quemRespondeu } from '@/lib/anamnese-geral'
 import { situacaoDaExecucao } from '@/lib/plano-de-tratamento/situacao'
 import { usadasAntesDoSistema } from '@/lib/pacotes/de-fora'
+import { sessaoInterrompida, textoDaSessaoInterrompida } from '@/lib/plano-de-tratamento/sessao-no-app'
 import { useFuso } from '@/components/shared/fuso'
 
 // -- Helpers -------------------------------------------------------------------
@@ -352,6 +353,7 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
         agendarSessaoId={agendarSessao}
         onCancelarPlano={onCancelarPlano}
         emAberto={activePackage.emAberto ?? null}
+        sessoesPresas={!!activePackage.sessoesPresas}
       />
     )
   }
@@ -611,12 +613,15 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
                                   <span style={{ fontWeight: 500, color: 'var(--text-muted)', marginLeft: 6 }}>· {s.procedureName ?? activePackage.procedureName}</span>
                                 )}
                                 <span style={{ display: 'block', fontSize: 'var(--text-2xs)', fontWeight: 500, color: 'var(--text-muted)', marginTop: 2 }}>
-                                  {s.scheduledAt ? fmtDateTime(s.scheduledAt, fuso) + (s.professionalName ? ` · ${s.professionalName}` : '')
+                                  {/* AT-21 (D4 da 37ª): a sessão gasta pela desistência no meio diz que foi usada. */}
+                                  {sessaoInterrompida(s.status, s.apptStatus) && s.scheduledAt ? textoDaSessaoInterrompida(s.scheduledAt, fuso)
+                                    : s.scheduledAt ? fmtDateTime(s.scheduledAt, fuso) + (s.professionalName ? ` · ${s.professionalName}` : '')
                                     : usadaAntes ? 'Usada antes do sistema'
                                     : s.status === 'CANCELLED' ? 'Cancelada' : 'Sem agendamento'}
                                 </span>
                               </span>
-                              {livre && (
+                              {/* A5 da 37ª: a sessão presa (só depois de pago) não oferece "Agendar". */}
+                              {livre && !activePackage.sessoesPresas && (
                                 <button type="button" onClick={() => abrirSessoes(s.id)}
                                   style={{ padding: '4px 9px', borderRadius: 6, fontSize: 'var(--text-2xs)', fontWeight: 700, cursor: 'pointer', background: 'var(--brand-soft)', color: 'var(--brand)', border: 'none' }}>
                                   Agendar

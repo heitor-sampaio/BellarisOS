@@ -24,3 +24,18 @@ export function situacaoDaSessaoNoApp(a: AgendamentoDaSessao | null | undefined,
   }
   return { texto: 'A agendar', cor: 'var(--text-muted)', aAgendar: true }
 }
+
+/**
+ * AT-21 (o Heitor, 2026-11-18): a sessão já paga gasta pela desistência no
+ * meio — a do PACOTE (`USED`) e a do PRÉ-PAGO (`USADA`) — fica ligada ao
+ * agendamento CANCELADO (o cancelado antes de iniciar se solta: `pre_pago_libera`).
+ * D4 da 37ª: a frase valia só para a sessão do plano.
+ */
+export function sessaoInterrompida(statusDaSessao: string | null | undefined, statusDoAgendamento: string | null | undefined): boolean {
+  return (statusDaSessao === 'USED' || statusDaSessao === 'USADA') && statusDoAgendamento === 'CANCELLED'
+}
+
+/** "Usada em 26/11 (atendimento interrompido)" — a mesma frase da sessão do plano. */
+export function textoDaSessaoInterrompida(scheduledAt: string, fuso: string): string {
+  return situacaoDaSessaoNoApp({ status: 'CANCELLED', scheduled_at: scheduledAt, completed_at: null }, fuso).texto
+}

@@ -153,6 +153,32 @@ test.describe.serial('a clínica de uma unidade só', () => {
     })
   })
 
+  test('com UMA unidade, o "Hoje" não lista a unidade, o Financeiro não diz "1 unidade" e o mapa não tem "Consolidado"', async ({ browser }) => {
+    // UU-01 (o Heitor, 2026-10-29) e a Decisão E1 (do Claude, 27/11): some o que só é recorte por unidade.
+    const { data: ag, error } = await db().from('appointments').insert({
+      branch_id: rede!.branchId, client_id: clienteId, procedure_id: rede!.procedureId, professional_id: rede!.professionalId,
+      status: 'SCHEDULED', source: 'INTERNAL', duration_min: 30, price: 0, scheduled_at: new Date().toISOString(),
+    }).select('id').single<{ id: string }>()
+    expect(error).toBeNull()
+    try {
+      await como(browser, async p => {
+        await p.goto('/admin/dashboard')
+        // A conta do dia fica; a linha da unidade (o nome e o mesmo total do cabeçalho), não.
+        await expect(p.locator('[data-hoje-da-unidade-unica]')).toBeVisible()
+        // No cartão "Hoje" (o "Aproveitamento" segue com o nome da unidade: é dado, E1).
+        const hoje = p.locator('.card').filter({ has: p.locator('[data-hoje-da-unidade-unica]') })
+        await expect(hoje.locator(`a[href="/admin/agenda?unidade=${slug}"]`)).toHaveCount(0)
+        await expect(p.getByRole('button', { name: 'Consolidado', exact: true })).toHaveCount(0)
+
+        await p.goto('/admin/financeiro')
+        await expect(p.getByRole('heading', { name: 'Financeiro', exact: true })).toBeVisible()
+        await expect(p.getByText(/·\s*1 unidade$/)).toHaveCount(0)
+      })
+    } finally {
+      expect((await db().from('appointments').delete().eq('id', ag!.id)).error).toBeNull()
+    }
+  })
+
   test('com UMA unidade, nenhuma tela dos dois portais fala "clínica" ou "filial" (PO2)', async ({ browser }) => {
     test.setTimeout(15 * 60_000)
     await como(browser, async p => {

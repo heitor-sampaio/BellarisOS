@@ -24,8 +24,8 @@ Este é o catálogo das regras da Fidelidade que valem HOJE: o programa e quem m
 - Onde: `docs/revisao.md:673-676`, `:684-685`, `:2028`; `docs/regras/fidelidade.md:264-265`
 - Antes: KA-48, KB-02
 
-**PG-05.** Quem tem a Fidelidade em Ver vê o saldo, o extrato e os vouchers; quem tem em Gerenciar também troca pontos por recompensa (na ficha e no PDV), cancela e entrega o voucher e ajusta pontos. Quem só vê lê na ficha a quem pedir ("Trocar pontos por recompensa e ajustar pontos é de quem tem a Fidelidade em Gerenciar: Lúcia, Fernanda." — as pessoas ativas que alcançam a unidade, e a Admin da rede); no app sem a troca pelo portal, a cliente lê com quem falar ("A troca é feita pela equipe, com quem cuida da fidelidade: Lúcia.").
-- Fonte: decisão do Claude
+**PG-05.** Quem tem a Fidelidade em Ver vê o saldo, o extrato e os vouchers; quem tem em Gerenciar também troca pontos por recompensa (na ficha e no PDV), cancela e entrega o voucher e ajusta pontos. Usar os pontos e o voucher no pagamento não é da Fidelidade: é de quem recebe (o PDV em Gerenciar, `podeReceber`, PV-04 de Vendas), também com a Fidelidade só em Ver. Quem só vê lê na ficha a quem pedir ("Trocar pontos por recompensa e ajustar pontos é de quem tem a Fidelidade em Gerenciar: Lúcia, Fernanda." — as pessoas ativas que alcançam a unidade, e a Admin da rede); no app sem a troca pelo portal, a cliente lê com quem falar ("A troca é feita pela equipe, com quem cuida da fidelidade: Lúcia.").
+- Fonte: decisão do Claude; os pontos no pagamento: decisão do Claude, 27/11 (37ª, Decisão B2) — os pontos usados são forma de pagamento (AG-56 do Atendimento), e receber é do PDV (PV-04 de Vendas); é o que o sistema faz (o receber de `apps/web/actions/appointments.ts` pede só o `podeReceber`)
 - Onde: `docs/regras/fidelidade.md:89-97`, `:419`; `apps/web/lib/permissions.ts:84`; `apps/web/actions/fidelidade.ts:244-248`, `:262`; `apps/web/components/branch/vouchers-do-cliente.tsx:82`, `:174`
 - Antes: KA-03
 
@@ -81,8 +81,8 @@ Este é o catálogo das regras da Fidelidade que valem HOJE: o programa e quem m
 - Onde: `docs/regras/fidelidade.md:52-64`; `docs/regras/vendas-financeiro.md:1274`, `:1308`, `:1353`
 - Antes: KA-11, KA-12, KC-04, KC-05
 
-**GA-08.** O pacote pontua na venda. A venda de produto só pontua se a rede ligou essa opção (nasce desligada); ligada, a venda de produto paga dá pontos por real pago, também no modo "por procedimento".
-- Fonte: recomendação do Claude aprovada pelo Heitor, 13/11: "concordo"
+**GA-08.** O pacote pontua na venda. A venda de produto só pontua se a rede ligou essa opção (nasce desligada); ligada, a venda de produto paga dá pontos por real pago, também no modo "por procedimento". Vale onde quer que o produto seja vendido: o produto acrescentado na comanda do atendimento (PV-10 de Vendas) segue a mesma opção — desligada, não pontua, e a comanda diz "· não pontua" (GA-09).
+- Fonte: recomendação do Claude aprovada pelo Heitor, 13/11: "concordo"; o produto na comanda do atendimento: decisão do Claude, 27/11 (37ª, Decisão B1) — a GA-08 fala da venda de produto sem distinguir onde ela é feita
 - Onde: `docs/revisao.md:675`, `:688`, `:2025`; `docs/regras/fidelidade.md:285-291`; `docs/regras/vendas-financeiro.md:1190`
 - Antes: KA-13, KB-06, KC-07
 

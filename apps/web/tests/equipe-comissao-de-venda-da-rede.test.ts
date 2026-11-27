@@ -13,7 +13,8 @@ import { chipDaComissao } from '@/lib/comissoes/chip-do-membro'
  * PESSOA"): a "Venda de plano" (`plano_pct`) e a "Venda de produto"
  * (`produto_pct`); o pacote e o pré-pago não têm a da rede. Iguais, um número
  * só; diferentes, cada uma com o nome (princípio 3); sem nenhuma, a linha diz
- * que a rede não tem (princípio 4: não chutar) — decisão do Claude, 25/11.
+ * número nenhum (princípio 4: não chutar) e sem explicação (o Heitor, 26/11,
+ * "intuitivo não é explicativo"; A21 da 37ª).
  */
 const base = { padrao: null, excecoes: 0, vendaPct: null, atende: false } as const
 
@@ -30,9 +31,11 @@ describe('o chip de quem vende sem a dela diz a comissão de venda da rede', () 
     expect(chipDaComissao({ ...base, vendaDaRede: { plano: null, produto: 3 } }))
       .toBe('Venda: a do pacote ou produto vendido (sem ela, a da rede: nenhuma no plano, 3% no produto)')
   })
-  it('a rede sem nenhuma: diz que não tem, sem chutar número', () => {
+  // A21 da 37ª: o parêntese "(sem ela, nenhuma: a rede não tem)" explicava a tela — o
+  // Heitor, 26/11: "isso não é ser intuitivo, é ser explicativo e não isso que eu quero."
+  it('a rede sem nenhuma: sem número e sem explicação', () => {
     expect(chipDaComissao({ ...base, vendaDaRede: { plano: null, produto: null } }))
-      .toBe('Venda: a do pacote ou produto vendido (sem ela, nenhuma: a rede não tem)')
+      .toBe('Venda: a do pacote ou produto vendido')
   })
   it('com a dela, a dela (como antes)', () => {
     expect(chipDaComissao({ ...base, vendaPct: 4, vendaDaRede: { plano: 5, produto: 5 } })).toBe('Venda 4%')

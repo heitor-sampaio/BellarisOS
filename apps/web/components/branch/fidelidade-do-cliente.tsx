@@ -5,7 +5,7 @@ import { Loader2, Star } from 'lucide-react'
 import { SegSelect } from '@/components/shared/seg-select'
 import { ajustarPontos, extratoDoCliente } from '@/actions/fidelidade'
 import { erroParaTela } from '@/lib/erro-na-tela'
-import { formatarPontos, rotuloDoLancamento, descricaoDoLancamento } from '@/lib/fidelidade/formato'
+import { formatarPontos, rotuloDoLancamento, descricaoDoLancamento, vencimentoDoGanho } from '@/lib/fidelidade/formato'
 import type { FidelidadeDoPerfil, LinhaDoExtrato } from '@/lib/fidelidade/leitura'
 import { VouchersDoCliente } from '@/components/branch/vouchers-do-cliente'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
@@ -29,6 +29,7 @@ export function FidelidadeDoCliente({
   unidadePadrao: string
 }) {
   const fuso = useFuso()
+  const dia = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: fuso })
   const [saldo,   setSaldo]   = useState(fidelidade.saldo)
   const [linhas,  setLinhas]  = useState<LinhaDoExtrato[]>(fidelidade.extrato.linhas)
   const [temMais, setTemMais] = useState(fidelidade.extrato.temMais)
@@ -169,7 +170,8 @@ export function FidelidadeDoCliente({
                     {new Date(l.created_at).toLocaleDateString('pt-BR', { timeZone: fuso })}
                     {l.branch_name && ` · ${l.branch_name}`}
                     {l.autor && ` · por ${l.autor}`}
-                    {l.expires_at && l.points > 0 && ` · vence em ${new Date(l.expires_at).toLocaleDateString('pt-BR', { timeZone: fuso })}`}
+                    {/* A13 da 37ª: o que resta deste ganho e quando vence (a conta é do banco). */}
+                    {vencimentoDoGanho(l, dia) && ` · ${vencimentoDoGanho(l, dia)}`}
                   </p>
                 </div>
                 <span style={{

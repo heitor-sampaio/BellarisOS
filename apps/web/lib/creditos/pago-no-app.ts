@@ -106,6 +106,7 @@ export async function procedimentosComSessaoComprada(
       if (primeiro?.procedure_id) ids.add(primeiro.procedure_id)
     }
   }
-  for (const c of dados.creditos) if (c.tipo === 'PACOTE' && c.procedureId) ids.add(c.procedureId)
+  // A5 da 37ª: a sessão presa (a rede só libera o pacote depois de pago) não se oferece.
+  for (const c of dados.creditos) if (c.tipo === 'PACOTE' && c.procedureId && !c.recusa) ids.add(c.procedureId)
   return ids
 }

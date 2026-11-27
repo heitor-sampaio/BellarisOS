@@ -1,5 +1,7 @@
 import type { ProfilePackage } from '@/components/branch/client-profile'
+import { formatBRL } from '@estetica-os/utils'
 import { camposDoPacoteDeFora } from '@/lib/pacotes/de-fora'
+import { creditoValeHoje } from '@/lib/creditos/validade'
 
 /**
  * Os pacotes em andamento da ficha — o mesmo nos dois portais.
@@ -18,17 +20,41 @@ export interface PacoteLido {
   expires_at: string | null
   cancelado_em?: string | null
   service_packages?: unknown
-  package_sessions?: { status: string; appointment_id: string | null }[]
+  package_sessions?: { status: string; appointment_id: string | null; preco?: number | string | null }[]
   de_fora?: boolean
   usadas_antes?: number
   valor_referencia?: number | null
+  /** A unidade do pacote: a validade é um dia no fuso dela. */
+  branches?: { fuso?: string | null } | null
 }
 
 export function pacotesEmAndamento<T extends PacoteLido>(pkgs: T[], agora: Date): T[] {
   return pkgs.filter(p =>
     !p.cancelado_em &&
     p.used_sessions < p.total_sessions &&
-    (!p.expires_at || new Date(p.expires_at) > agora))
+    // A validade é um DIA, no fuso da unidade do pacote (PP-05, como o agendar).
+    creditoValeHoje(p.expires_at, p.branches?.fuso ?? undefined, agora))
+}
+
+/**
+ * A1 da 37ª (PA-07, PA-11): a parte de cada sessão no rateio, agrupada pelo
+ * valor, na ordem em que aparece — "R$ 124,90 × 3 · R$ 195,15 × 2". A sessão
+ * sem preço gravado (o pacote de antes do rateio) vale `valor ÷ sessões`; sem
+ * valor nenhum (o pacote de antes sem valor de referência), não há partes.
+ */
+export function partesDoPacote(
+  sessoes: { preco?: number | string | null }[], total: number, valor: number | null,
+): string | null {
+  const reserva = valor == null ? null : Math.round(valor * 100 / Math.max(1, total)) / 100
+  const grupos = new Map<number, number>()
+  for (const s of sessoes) {
+    const preco = s.preco != null ? Number(s.preco) : reserva
+    if (preco == null) continue
+    const centavos = Math.round(preco * 100)
+    grupos.set(centavos, (grupos.get(centavos) ?? 0) + 1)
+  }
+  if (!grupos.size) return null
+  return [...grupos].map(([centavos, n]) => `${formatBRL(centavos / 100)} × ${n}`).join(' · ')
 }
 
 /** O cartão de um pacote em andamento. */
@@ -46,6 +72,10 @@ export function pacoteDaFicha(pkg: PacoteLido): ProfilePackage {
     procedureName: proc?.name ?? sp?.name ?? '—',
     price:         Number(sp?.price ?? 0) / (pkg.total_sessions || 1),
     durationMin:   proc?.duration_min ?? 60,
+    // A1 da 37ª: a validade e a parte de cada sessão, como o pré-pago mostra.
+    venceEm:       pkg.expires_at,
+    partes:        partesDoPacote(pkg.package_sessions ?? [], pkg.total_sessions,
+      pkg.de_fora ? (pkg.valor_referencia == null ? null : Number(pkg.valor_referencia)) : Number(sp?.price ?? 0)),
     // O pacote trazido de fora (F35): "Pacote de antes" e as usadas antes do sistema (A57).
     ...camposDoPacoteDeFora(pkg),
   }

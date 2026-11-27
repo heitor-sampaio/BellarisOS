@@ -58,6 +58,8 @@ export interface NomesDaAuditoria {
   cargos?:   Record<string, string>
   /** O nome do pacote vendido (`client_packages.package_id` → o pacote), lido agora (D7 da 16ª). */
   pacotes?:  Record<string, string>
+  /** D10 da 37ª: o pacote trazido de antes do sistema (o id de `client_packages` → true), lido agora — o gatilho não guarda o `de_fora`. */
+  pacotesDeFora?: Record<string, boolean>
   /**
    * O lançamento da gravação, lido agora (D7 da 16ª): a baixa grava só as
    * colunas que mudaram, e "Recebeu a parcela 1/4 (R$ 200,00)" precisa do
@@ -85,6 +87,8 @@ export interface NomesDaAuditoria {
   recebiveis?: Record<string, { valor: number | null }>
   /** A cliente do lançamento de pontos (o id do lançamento → a cliente; a tabela não tem `client_id`). */
   clientesDosPontos?: Record<string, string>
+  /** P4 da 37ª: o motivo do ajuste de pontos (o id do lançamento → o motivo), lido agora. */
+  motivosDosPontos?: Record<string, string>
   /** O fechamento do dia que veio depois de outro do mesmo dia e unidade (o "Fechar de novo"). */
   fechamentosDeNovo?: Record<string, boolean>
   /** A31 da 18ª: o motivo do cancelamento (o id do agendamento → o motivo), lido agora — a auditoria não guarda texto livre. */

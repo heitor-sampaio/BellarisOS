@@ -835,10 +835,10 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:1264-1273`
 - Antes: KD-13
 
-**AD-13.** A gravação se lê pelo FATO, com a unidade e o link dele: a venda ("Vendeu o pacote X (R$ …) — cliente"), o início, a conclusão e a desistência do atendimento (na unidade do agendamento, não na do pacote usado nem "Da rede"), o recebimento. Recebido é o lançamento que ficou pago naquela gravação. Vale também na gravação de uma linha só (o recebimento sem linha de comissão, de quem atende sem comissão): ela diz "Recebeu R$ X (forma)", como a de várias linhas, e não "Criou a receita".
-- Fonte: decisão do Claude; a gravação de uma linha só: decisão do Claude, 25/11 (o Heitor revisa), pela AD-16 (D10 da 29ª simulação); a desistência: decisão do Claude, 26/11 (33ª simulação, D15), pela própria AD-13
+**AD-13.** A gravação se lê pelo FATO, com a unidade e o link dele: a venda ("Vendeu o pacote X (R$ …) — cliente"), o início, a conclusão e a desistência do atendimento (na unidade do agendamento, não na do pacote usado nem "Da rede"), o recebimento. Recebido é o lançamento que ficou pago naquela gravação. Vale também na gravação de uma linha só (o recebimento sem linha de comissão, de quem atende sem comissão): ela diz "Recebeu R$ X (forma)", como a de várias linhas, e não "Criou a receita". O pacote trazido não é venda (PA-24 de Vendas): a frase é "Registrou o pacote de antes X — cliente", nunca "Vendeu".
+- Fonte: decisão do Claude; a gravação de uma linha só: decisão do Claude, 25/11 (o Heitor revisa), pela AD-16 (D10 da 29ª simulação); a desistência: decisão do Claude, 26/11 (33ª simulação, D15), pela própria AD-13; o pacote trazido: decisão do Claude, 27/11 (37ª, D10), pela AD-13 e pela PA-24 de Vendas
 - Onde: `docs/regras/plataforma.md:1274-1292`, `:1386-1398`; `apps/web/lib/auditoria/frase.ts` (`fatoDaGravacao`), `:1771-1776`
-- Antes: KD-14; antes de 26/11: a desistência no meio do atendimento saía "Da rede"
+- Antes: KD-14; antes de 26/11: a desistência no meio do atendimento saía "Da rede"; antes de 27/11: o pacote trazido saía "Vendeu o pacote … (pacote de antes)"
 
 **AD-14.** Todo campo aparece pelo nome em português ("percentual da comissão de venda", "maquininha"), nunca pelo nome técnico, e toda coisa tem o seu plural ("Criou 2 links de assinatura").
 - Fonte: decisão do Claude
@@ -865,15 +865,15 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:1315-1320`, `:1397-1400`, `:1459-1461`
 - Antes: KD-19
 
-**AD-19.** No estoque, a frase diz o fato na medida em que o produto se consome: "Deu entrada em N X (R$ …)" com o custo, "Desfez a entrada de N X", "Transferiu N X de A para B", "Registrou a perda de N X", "Corrigiu o custo do lote de X: de R$ … para R$ … por (medida)" e "Ajustou o estoque (correção de cadastro): …".
-- Fonte: decisão do Claude
+**AD-19.** No estoque, a frase diz o fato na medida em que o produto se consome: "Deu entrada em N X (R$ …)" com o custo, "Desfez a entrada de N X", "Transferiu N X de A para B", "Registrou a perda de N X", "Corrigiu o custo do lote de X: de R$ … para R$ … por (medida)" e "Ajustou o estoque (correção de cadastro): …". A entrega do brinde de produto da fidelidade diz o fato — a entrega do voucher à cliente e a perda "Brinde da fidelidade" (ES-27 do Atendimento) —, nunca "Editou o lote".
+- Fonte: decisão do Claude; a entrega do brinde: decisão do Claude, 27/11 (37ª, D12), pela própria AD-19 e pela AD-20
 - Onde: `docs/regras/plataforma.md:1276-1277`, `:1357-1361`, `:1421-1423`, `:1439-1441`
-- Antes: KD-20
+- Antes: KD-20; antes de 27/11: a entrega do brinde saía "Editou o lote (quantidade)"
 
-**AD-20.** Nos documentos, nos pacotes e nas importações, a frase diz o fato: "Gerou o documento X" (o contrato gerado na venda entra na gravação da venda); "Cancelou / Dispensou / Substituiu o documento X (motivo: …)"; "Criou a ficha de X"; "Cancelou / Usou / Devolveu a sessão N do pacote X"; "Cancelou o pacote X" (", e estornou R$ …"); "Criou a importação (arquivo) (N linhas, para …)", "Concluiu a importação … (novas, completadas, com erro)", "A importação … falhou".
-- Fonte: decisão do Claude
+**AD-20.** Nos documentos, nos pacotes e nas importações, a frase diz o fato: "Gerou o documento X" (o contrato gerado na venda entra na gravação da venda); "Cancelou / Dispensou / Substituiu o documento X (motivo: …)"; "Criou a ficha de X"; "Cancelou / Usou / Devolveu a sessão N do pacote X" (também o "Abater do pacote" da comanda, PA-15 de Vendas: "Usou a sessão N do pacote X", não "Editou a comanda"); "Cancelou o pacote X" (", e estornou R$ …"); "Criou a importação (arquivo) (N linhas, para …)", "Concluiu a importação … (novas, completadas, com erro)", "A importação … falhou".
+- Fonte: decisão do Claude; o "Abater do pacote": decisão do Claude, 27/11 (37ª, D11), pela própria AD-20
 - Onde: `docs/regras/plataforma.md:1405-1407`, `:1411-1420`
-- Antes: KD-21
+- Antes: KD-21; antes de 27/11: o "Abater do pacote" saía "Editou a comanda (cancelamento…)"
 
 **AD-21.** Na equipe, nos cargos e no comercial, a frase diz o fato: "Desativou / Reativou Fulana"; "Criou o cargo X (N permissões)", "Criou a permissão de (módulo) do cargo X", "Criou a aba de relatório (aba) do cargo X", "Mudou os acessos do cargo X (…)"; "Criou o contato e a oportunidade X", "Mudou a etapa da oportunidade X" ("de A para B" quando a etapa está no registro), "Repassou a oportunidade de X a Fulano" (o repasse ao desativar, OP-10 do CRM). Na autorização do suporte, a frase diz o fato e de quem é a conta: "Autorizou o suporte na conta de Luana, com os dados clínicos", "Revogou a autorização do suporte na conta de Luana", "Trocou a autorização do suporte na conta de Luana (agora sem os dados clínicos)"; sem a conta, "numa conta da equipe".
 - Fonte: decisão do Claude; a autorização do suporte: decisão do Claude, 26/11 (33ª simulação, A9), pela própria AD-21; o repasse da oportunidade: decisão do Claude, 27/11 (36ª, A5), pela AD-15

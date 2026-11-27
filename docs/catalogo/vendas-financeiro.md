@@ -433,10 +433,10 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 
 ### Trazer pacote de fora
 
-**PA-23.** "Trazer pacote de fora" registra o saldo que a cliente já tinha antes do sistema: na ficha (no cartão do tratamento em andamento), com o procedimento, as sessões do pacote, as já usadas antes, a validade (opcional) e um valor de referência (opcional); a janela diz a conta antes de gravar ("Ficam 4 de 6 sessões para agendar · R$ 200,00 por sessão…"). Também entra pela importação (a coluna "Pacote de antes"). Traz quem tem o Financeiro em Gerenciar (quem dá o crédito interno); na ficha da rede com duas ou mais unidades, a janela pergunta a unidade. Acima de 100 sessões e de R$ 10.000.000 de valor de referência a janela avisa e vale; só se recusa o que o registro não guarda — mais de 32.767 sessões e valor acima de R$ 99.999.999,99 —, na ficha e na importação (o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito."; os números são decisão do Claude).
-- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-06: "concordo"
+**PA-23.** "Trazer pacote de fora" registra o saldo que a cliente já tinha antes do sistema: na ficha (no cartão do tratamento em andamento), com o procedimento, as sessões do pacote, as já usadas antes, a validade (opcional) e um valor de referência (opcional); a janela diz a conta antes de gravar ("Ficam 4 de 6 sessões para agendar · R$ 200,00 por sessão…"). Também entra pela importação (a coluna "Pacote de antes"). Traz quem tem o Financeiro em Gerenciar (quem dá o crédito interno); na ficha da rede com duas ou mais unidades, a janela pergunta a unidade. Acima de 100 sessões e de R$ 10.000.000 de valor de referência a janela avisa e vale; só se recusa o que o registro não guarda — mais de 32.767 sessões e valor acima de R$ 99.999.999,99 —, na ficha e na importação (o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito."; os números são decisão do Claude). A validade que já passou também vale: a janela avisa que o pacote já nasce vencido, e o vencido segue a opção "Pacote vencido" da rede (PA-21).
+- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-06: "concordo"; a validade já passada: decisão do Claude, 27/11 (37ª, Decisão A2), pelo princípio 2 e pela fala do Heitor de 25/11 ("Se não for impossível, ainda que improvável, pode ser feito.") — registrar o pacote vencido que a cliente trouxe é improvável, não impossível
 - Onde: `docs/regras/vendas-financeiro.md:955-970`
-- Antes: KB-48, KB-49
+- Antes: KB-48, KB-49; antes de 27/11: a validade já passada entrava sem aviso
 
 **PA-24.** O pacote trazido não é venda: não tem comanda nem lançamento, não entra no caixa, não dá pontos nem comissão de venda, não aparece no catálogo de venda, no Relatório de Vendas, no ticket médio, no faturamento nem no app com recibo; esse registro não se edita.
 - Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-06: "concordo"
@@ -479,20 +479,20 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 
 ### Agendar com o que já foi pago (pacote e pré-pago)
 
-**PP-05.** Agendar usando o que já foi pago (uma sessão do pré-pago ou uma sessão de pacote) confere o crédito: é da cliente, da rede, está livre e dentro da validade. O crédito decide o procedimento, a parte do preço e a duração do agendamento; não se troca o procedimento, e procedimento diferente é recusado. Dois agendamentos não usam o mesmo crédito: quem chega depois tem o agendamento desfeito. O conflito de horário vale pela duração inteira, como em todo agendamento.
-- Fonte: decisão do Claude
-- Onde: `docs/regras/vendas-financeiro.md:601-603`, `:1060-1068`, `:1091-1094`
-- Antes: KC-05, KB-23
+**PP-05.** Agendar usando o que já foi pago (uma sessão do pré-pago ou uma sessão de pacote) confere o crédito: é da cliente, da rede, está livre e dentro da validade. A validade se confere no DIA MARCADO para a sessão, não no dia em que se agenda: marcar ou remarcar a sessão para depois da validade é recusado, em todo caminho (a agenda, o app, a remarcação), e a recusa diz até quando o crédito vale. A validade é um dia: no dia da validade o crédito vale, pelo dia da unidade do agendamento (como o lote, ES-24 do catálogo do Atendimento), qualquer que seja a hora gravada na compra. O crédito decide o procedimento, a parte do preço e a duração do agendamento; não se troca o procedimento, e procedimento diferente é recusado. Dois agendamentos não usam o mesmo crédito: quem chega depois tem o agendamento desfeito. O conflito de horário vale pela duração inteira, como em todo agendamento.
+- Fonte: decisão do Claude; o dia marcado e a validade como um dia: decisão do Claude, 27/11 (37ª, Decisão A3 e A6), pelo princípio 3 (a tela diz "válido até 29/11") e pela ES-24 do catálogo do Atendimento
+- Onde: `docs/regras/vendas-financeiro.md:601-603`, `:1060-1068`, `:1091-1094`; `apps/web/lib/creditos/credito.ts` (`valido`, `conferirCredito`)
+- Antes: KC-05, KB-23; antes de 27/11: a validade se comparava com a hora de agora, e a sessão se marcava para depois dela (D1 da 37ª: o app aceitou 30/11 num pacote que vencia em 29/11)
 
 **PP-06.** Agenda-se com o que já foi pago pelo "Agendar" do card "Procedimentos pagos" da ficha, pelo campo "Incluído" do modal da agenda e do inbox, e pelo "Agendar agora" que aparece depois de vender um procedimento (este, para quem tem a Agenda em Gerenciar).
 - Fonte: decisão do Claude
 - Onde: `docs/regras/vendas-financeiro.md:1069-1074`
 - Antes: KC-06
 
-**PP-07.** No modal da agenda, quando o procedimento escolhido bate com um crédito da cliente, o crédito mais antigo já vem escolhido, com o aviso "Incluído no pacote X (sessão 2 de 3). Para cobrar à parte, escolha “Não usar”." e a dica "Escolhido porque o procedimento é o mesmo.".
-- Fonte: princípio 3
-- Onde: `docs/regras/vendas-financeiro.md:1073-1081`
-- Antes: KC-07
+**PP-07.** No modal da agenda, quando o procedimento escolhido bate com um crédito da cliente, o crédito mais antigo já vem escolhido, com o aviso "Incluído no pacote X (sessão 2 de 3). Para cobrar à parte, escolha “Não usar”." e a dica "Escolhido porque o procedimento é o mesmo.". O mais antigo é o da data de compra, qualquer que seja o tipo (o pacote, o pré-pago, o pacote trazido, que conta pela data em que foi registrado); empatando, o que vence antes. O aviso acompanha o crédito escolhido, também quando a pessoa troca o crédito à mão.
+- Fonte: princípio 3; o mais antigo de qualquer tipo e o empate: decisão do Claude, 27/11 (37ª, Decisão A1) — a PP-07 não distingue o tipo, e gastar primeiro o que vence antes é o critério da SA-05 de Fidelidade e da ES-24 do Atendimento; o aviso na troca à mão: decisão do Claude, 27/11 (37ª, A2), pelo princípio 3
+- Onde: `docs/regras/vendas-financeiro.md:1073-1081`; `apps/web/lib/creditos/credito.ts` (`creditosDoCliente`), `apps/web/components/branch/appointment-modal.tsx`
+- Antes: KC-07; antes de 27/11: os pré-pagos vinham antes dos pacotes, sem ordem de data entre os tipos (D3 da 37ª), e o aviso sumia na troca à mão
 
 **PP-08.** O agendamento avulso já marcado e ainda em aberto (sem plano, sem crédito e sem lançamento) de quem tem crédito do MESMO procedimento oferece "Usar o pacote X (sessão N de M)": o agendamento passa a usar o crédito, o preço vira a parte do crédito e o histórico registra "Ligado ao que já foi pago". O atendimento já concluído segue pelo "Abater do pacote" (PA-15).
 - Fonte: decisão do Claude

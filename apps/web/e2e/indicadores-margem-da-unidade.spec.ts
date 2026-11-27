@@ -56,3 +56,31 @@ test('sobra da F40: recortada à unidade, a margem usa o preço e a mão de obra
     await expect(naRede).toContainText('84,6%')
   })
 })
+
+test('recortada à unidade, a margem lista só o que ela oferece (LU-14, a régua de ofereceNaUnidade)', async ({ browser }) => {
+  const b = db()
+  // Um procedimento DA primeira unidade e um da rede com disponibilidade só nela: nenhum é feito na Menino.
+  const daPrimeira = `${PREFIXO} So na primeira ${marca}`
+  const comDisponibilidade = `${PREFIXO} Disponivel na primeira ${marca}`
+  const { error: e1 } = await b.from('procedures').insert({
+    tenant_id: rede!.tenantId, branch_id: rede!.branchId, name: daPrimeira, category: 'e2e', duration_min: 30, price: 300, labor_cost: 50, is_active: true,
+  })
+  expect(e1).toBeNull()
+  const { data: outro, error: e2 } = await b.from('procedures').insert({
+    tenant_id: rede!.tenantId, name: comDisponibilidade, category: 'e2e', duration_min: 30, price: 300, labor_cost: 60, is_active: true,
+  }).select('id').single<{ id: string }>()
+  expect(e2).toBeNull()
+  expect((await b.from('procedure_branch_availability').insert({ procedure_id: outro!.id, branch_id: rede!.branchId })).error).toBeNull()
+
+  await como(browser, dona!, async p => {
+    await p.goto(`/admin/dashboard?unidade=${menino}`)
+    // O da rede sem disponibilidade (vale em todas) continua.
+    await expect(p.locator('tr', { hasText: nome })).toBeVisible()
+    await expect(p.locator('tr', { hasText: daPrimeira })).toHaveCount(0)
+    await expect(p.locator('tr', { hasText: comDisponibilidade })).toHaveCount(0)
+
+    await p.goto(`/admin/dashboard?unidade=${rede!.branchId}`)
+    await expect(p.locator('tr', { hasText: daPrimeira })).toBeVisible()
+    await expect(p.locator('tr', { hasText: comDisponibilidade })).toBeVisible()
+  })
+})

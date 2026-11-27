@@ -676,3 +676,33 @@ A pergunta nova (na página):
 - **R24:** ao desativar alguém e repassar os agendamentos um a um, o botão diz só "Desativar", mesmo com 1 de 3
   escolhido. A correção mudaria um teste que exige isso, e a regra só tem o princípio 3, que é anterior ao teste. Por
   isso desfiz a correção e deixei a decisão com você.
+
+## 18. A 37ª simulação (27/11)
+
+Cinco redes novas, sem a conta da plataforma: pacotes e pré-pago, fidelidade, injetáveis, documentos da venda do pacote
+e a segunda unidade. O dinheiro e os números das cinco bateram. Foram 13 defeitos, nenhum de segurança; dois eram altos.
+Os defeitos e a maior parte dos atritos foram corrigidos. Seis correções dependem de você e estão na página de perguntas
+(R25 a R30). O resumo está no DEVLOG (27/11, (3)).
+
+O que você precisa saber:
+- **O app marcava a sessão do pacote para depois da validade** (30/11 num pacote que vencia em 29/11). Agora nenhum
+  caminho aceita: a validade é o dia, e a recusa diz até quando o pacote vale.
+- **O retoque no mesmo mapa de injetáveis registrava o mapa inteiro** (60 UI no lugar de 10). Agora a aplicação de um
+  atendimento são só os pontos aplicados nele.
+- **A sessão de pacote agendada nascia com um termo cancelado.** Agora ela não emite documento nenhum, e na venda do
+  pacote o termo vai junto do contrato, numa assinatura só.
+- **Com "Libera as sessões só depois de pago", o sistema oferecia "Agendar" e recusava no fim.** Agora o botão não
+  aparece enquanto o pacote não está pago, nem logo depois da venda.
+- **O extrato de pontos não dizia o que restava de cada ganho depois de uma troca.** Agora diz "restam N pontos, vencem
+  em …" ou "já usados".
+- **Três testes mudaram pela sua fala de 26/11** ("intuitivo não é explicativo"), porque exigiam só o texto que
+  explicava a tela: as duas notas do mapa de injetáveis e o parêntese "(sem ela, nenhuma: a rede não tem)" da Equipe. A
+  lista está no DEVLOG. Nenhum teste foi apagado.
+
+As perguntas novas (na página), todas por um teste que exige o comportamento de hoje:
+- **R25:** avisar quando o mapa está em UI e a baixa do mesmo produto em ml.
+- **R26:** juntar "Confirmar aplicação" com "Registrar aplicação" no atendimento.
+- **R27:** o campo "Produtos do mapa" da ficha, que quase nunca é usado.
+- **R28:** o botão da chegada da cliente: "Check-in" ou "Chegou".
+- **R29:** o contrato no cartão em vezes dizer o valor de cada parcela.
+- **R30:** a coluna "Unidades" da lista de procedimentos numa rede de uma unidade só.

@@ -3,7 +3,7 @@
 import { textoDeQuemMarcaAChegada, textoDeQuemRecebe, textoDeQuemConclui, textoDeQuemRespondeAFicha } from '@/lib/equipe/textos-de-quem-pode'
 import { AcoesDoLancamentoDaFicha } from '@/components/shared/acoes-do-lancamento-da-ficha'
 import { textoDasNotas, type NotaNaTela } from '@/lib/avaliacao/notas'
-import { useActionState, useState, useRef, useMemo, useEffect, type ReactNode } from 'react'
+import { useActionState, useState, useRef, useMemo, useEffect, useSyncExternalStore, type ReactNode } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import {
   ArrowLeft, Check, X, Loader2, AlertTriangle,
@@ -47,6 +47,7 @@ import type { TreatmentProcedure, TreatmentPackage, ExistingPlan, TreatmentPlanE
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { dosesDoMapaDoAtendimento } from '@/actions/injectable-map'
 import { divergenciasDaBaixa, totaisQueSeComparam, textoDaDivergencia, formatarDose, type TotalDoMapa, type DivergenciaDaBaixa, type OrigemDoTotal } from '@/lib/injetaveis/dose'
+import { assinarEdicoesNaoSalvas, edicoesNaoSalvas, semEdicoesNaoSalvas } from '@/lib/injetaveis/edicao-nao-salva'
 import { planejamentosDaFicha } from '@/lib/atendimento/retrato-dos-injetaveis'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { Dica } from '@/components/shared/dica'
@@ -56,7 +57,7 @@ import { TEXTO_DA_SESSAO_NA_DESISTENCIA, insumosDaDesistencia } from '@/lib/aten
 import { lotesDaBaixa, textoDosLotesDaBaixa, type LoteParaBaixa, type ParteDaBaixa } from '@/lib/estoque/fefo'
 import { textoDoPlanoDoConcluido } from '@/lib/plano-de-tratamento/textos'
 import { mesDeClienteDesde } from '@/lib/clientes/cliente-desde'
-import { textoDaSessaoDoPacote } from '@/lib/appointments/sessao-do-pacote'
+import { textoDaSessaoDoPacote, textoDaSessaoDoPrePago } from '@/lib/appointments/sessao-do-pacote'
 import { textoDoPagamentoAoFinalizar, textoDoPacoteNoConcluido } from '@/lib/atendimento/pagamento-ao-finalizar'
 import { linhaDoInsumo, type UnidadesDoProduto } from '@/lib/estoque/unidade-de-consumo'
 import { useAgora } from '@/lib/use-agora'
@@ -233,6 +234,8 @@ interface Props {
   sessaoDoPacote?:       { numero: number; total: number | null; nome: string | null; deFora: boolean; emAberto?: number | null; mostraOValor?: boolean } | null
   /** Procedimento pré-pago: pago na venda, a recepção não cobra de novo. */
   isPrePago?:            boolean
+  /** A3 da 37ª: a sessão do pré-pago (a faixa "já paga", como a do pacote). */
+  sessaoDoPrePago?:      { numero: number; total: number | null; nome: string | null; emAberto?: number | null; mostraOValor?: boolean } | null
   /**
    * Pode receber (caixa ou financeiro) — quem fecha a venda da avaliação sem
    * mandar a cliente a outra pessoa. O mesmo critério do PDV (`podeReceber`).
@@ -516,12 +519,18 @@ function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences,
   // estoque baixava 1 ml, sem aviso. A janela compara e oferece a do mapa.
   const [totaisDoMapa, setTotaisDoMapa] = useState<(TotalDoMapa & { origem?: OrigemDoTotal })[]>([])
   const chaveDosPlanejamentos = planejamentos.join(',')
+  // D9 da 37ª (PT-15): o planejamento com ponto não salvo não entra no retrato
+  // da ficha — a janela diz qual e oferece salvar ali.
+  const naoSalvas = useSyncExternalStore(assinarEdicoesNaoSalvas, edicoesNaoSalvas, semEdicoesNaoSalvas)
+  const [salvandoMapa, setSalvandoMapa] = useState<string | null>(null)
+  const [erroDoMapa, setErroDoMapa] = useState<string | null>(null)
+  const [mapasSalvos, setMapasSalvos] = useState(0)
   useEffect(() => {
     let vivo = true
     dosesDoMapaDoAtendimento(appointmentId, chaveDosPlanejamentos ? chaveDosPlanejamentos.split(',') : [])
       .then(r => { if (vivo) setTotaisDoMapa(r.totais) }).catch(() => {})
     return () => { vivo = false }
-  }, [appointmentId, chaveDosPlanejamentos])
+  }, [appointmentId, chaveDosPlanejamentos, mapasSalvos])
   // A1 da 33ª (Decisão A, princípio 5): o planejamento para outro dia não é consumo.
   const divergencias = onAjustarInsumo ? divergenciasDaBaixa(totaisQueSeComparam(totaisDoMapa, insumosDoCartao), insumos, estoque) : []
   // Concluiu, mas faltou insumo (o saldo ficou negativo): o modal não some
@@ -619,6 +628,26 @@ function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences,
               <textarea id="conclusao-intercorrencias" name="intercurrences" rows={2} defaultValue="" placeholder="Reações ou observações…" className="field" style={{ resize: 'vertical' }} />
             </div>
           )}
+          {naoSalvas.map(e => (
+            <div key={e.mapId} data-mapa-nao-salvo role="alert" style={{ padding: '10px 12px', borderRadius: 'var(--radius-field-token)', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 700, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                <AlertTriangle size={15} aria-hidden="true" style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 1 }} />
+                {`O planejamento "${e.nome || 'sem nome'}" tem pontos não salvos: eles não entram na ficha.`}
+              </p>
+              {erroDoMapa && salvandoMapa === null && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{erroDoMapa}</p>}
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button type="button" className="btn-secondary" disabled={salvandoMapa !== null} onClick={async () => {
+                  setSalvandoMapa(e.mapId); setErroDoMapa(null)
+                  const r = await e.salvar()
+                  setSalvandoMapa(null)
+                  if (r.error) { setErroDoMapa(r.error); return }
+                  setMapasSalvos(n => n + 1)
+                }}>
+                  {salvandoMapa === e.mapId ? 'Salvando…' : 'Salvar planejamento'}
+                </button>
+              </div>
+            </div>
+          ))}
           {divergencias.map(d => (
             <div key={d.productId} data-dose-do-mapa style={{ padding: '10px 12px', borderRadius: 'var(--radius-field-token)', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
               <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 700, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
@@ -974,7 +1003,7 @@ export function AppointmentSession({
   professionals, history, branchId, slug,
   canCheckin, canManage, ehDaProfissional = false, canEditRecords, canViewRecords = true, fotosDoAtendimento = null, anotacoes = null, versoesDoRegistro = [], podeAnotar = false, portalNoPlano = false, canReassign, canPayment, paymentTransaction, pagamentoEstornado = null, comandaId = null,
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
-  isPartOfPlan = false, isPackageSession = false, pacoteDeFora = false, sessaoDoPacote = null, isPrePago = false, podeReceber = false, quemEstorna = null, quemRecebe = null, quemConclui = null, quemRespondeAFicha = null, faltaSemVerOClinico = null, quemMarcaAChegada = null, podeEstornar = false, planoEmAberto = null, documentos = null, podeMontarPlano = true, montaPlanoNaUnidade = false, podeInjetaveis = true, podeVerPlanos = false, podeGerenciarAgenda = false,
+  isPartOfPlan = false, isPackageSession = false, pacoteDeFora = false, sessaoDoPacote = null, isPrePago = false, sessaoDoPrePago = null, podeReceber = false, quemEstorna = null, quemRecebe = null, quemConclui = null, quemRespondeAFicha = null, faltaSemVerOClinico = null, quemMarcaAChegada = null, podeEstornar = false, planoEmAberto = null, documentos = null, podeMontarPlano = true, montaPlanoNaUnidade = false, podeInjetaveis = true, podeVerPlanos = false, podeGerenciarAgenda = false,
 }: Props) {
   const router   = useRouter()
   // Portal de onde se está vendo o atendimento — `slug` é o endereço da
@@ -2006,6 +2035,17 @@ export function AppointmentSession({
             <span>{textoDaSessaoDoPacote(sessaoDoPacote)}</span>
           </div>
         )}
+        {/* A3 da 37ª (AG-56): a do pré-pago, igual. */}
+        {isPrePago && sessaoDoPrePago && (
+          <div data-sessao-do-pre-pago role="note" style={{
+            display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 'var(--radius-field-token)',
+            background: 'var(--success-bg)', border: '1px solid var(--success-border)', color: 'var(--success)',
+            fontSize: 'var(--text-sm-sz)', fontWeight: 700,
+          }}>
+            <CheckCircle2 size={16} aria-hidden="true" style={{ flexShrink: 0 }} />
+            <span>{textoDaSessaoDoPrePago(sessaoDoPrePago)}</span>
+          </div>
+        )}
 
         {erroAoIniciar && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -2457,6 +2497,11 @@ export function AppointmentSession({
                       em branco com as obrigatórias marcadas (A30). */}
                   {/* D8 da 26ª: sem escrever o clínico, também se LÊ (era o formulário editável, e o digitado se perdia). */}
                   {(editLocked || !canEditRecords) ? (
+                    canViewRecords && <AnamneseGeralCartao ref={anamneseDoCartao} anamnese={anamnesis} fichaAtual={fichaPreAtendimento} clientId={client.id} canEdit={false} />
+                  ) : isDone ? (
+                    // Concluída, a ficha de saúde também se LÊ no "Editar registro": a correção do registro não a
+                    // grava (`generateEvaluationPlan` concluída não leva a anamnese), e o "Salvar" dela ao lado do
+                    // "Salvar" do registro eram dois "Salvar" na mesma tela (e2e/prontuario-anotacoes-e-versoes).
                     canViewRecords && <AnamneseGeralCartao ref={anamneseDoCartao} anamnese={anamnesis} fichaAtual={fichaPreAtendimento} clientId={client.id} canEdit={false} />
                   ) : (
                     // A31 da 6ª simulação: sem o prontuário a anamnese nem é lida

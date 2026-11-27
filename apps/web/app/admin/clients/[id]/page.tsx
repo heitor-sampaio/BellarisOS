@@ -23,6 +23,7 @@ import { ehAnexoClinico, atendimentoDoAnexo } from '@/lib/clientes/anexos'
 import { formatarNoFuso } from '@/lib/formatar-no-fuso'
 import { fusoDaUnidade, fusosDasUnidades } from '@/lib/unidades/fuso-da-unidade'
 import { regrasDoPacoteDaRede, pacoteVencidoDaFicha } from '@/lib/pacotes/regras-da-rede'
+import { sessoesPresas } from '@/lib/pacotes/regras'
 import { ClientProfile } from '@/components/branch/client-profile'
 import { pedidoLgpdDaFicha } from '@/lib/lgpd/aviso-do-pedido'
 import { eventosDeConfirmacaoEChegada, eventoDaAvaliacao, eventosDeRemarcacao, comAutores, linkDoAtendimento } from '@/lib/clients/historico-do-agendamento'
@@ -157,7 +158,7 @@ export default async function AdminClientProfilePage({
 
     ler(admin
       .from('client_packages')
-      .select('id, branch_id, total_sessions, used_sessions, expires_at, purchased_at, cancelado_em, cancelamento_motivo, cancelamento, de_fora, usadas_antes, valor_referencia, service_packages(name, procedure_id, price, procedures(name, duration_min)), package_sessions(status, appointment_id)')
+      .select('id, branch_id, total_sessions, used_sessions, expires_at, purchased_at, cancelado_em, cancelamento_motivo, cancelamento, de_fora, usadas_antes, valor_referencia, branches(fuso), service_packages(name, procedure_id, price, procedures(name, duration_min)), package_sessions(status, appointment_id, preco)')
       .eq('client_id', id)
       .order('purchased_at', { ascending: false })
       .limit(10), 'carregar os pacotes'),
@@ -263,10 +264,13 @@ export default async function AdminClientProfilePage({
   // D17 da 28ª: TODOS os pacotes em andamento (dois iguais, os dois) — cada um, um cartão na ficha.
   const pacotesDaFicha: ProfilePackage[] = pacotesEmAndamento(pkgsArray as unknown as PacoteLido[], now).map(pacoteDaFicha)
   // A41 da 11ª: o crediário do pacote ainda em aberto (só a quem recebe — o dinheiro é do caixa, A39 da 7ª).
-  if (podeReceber(ctx) && pacotesDaFicha.length > 0) {
+  // A5 da 37ª: na rede que só libera depois de pago, a sessão presa não oferece "Agendar" — a quem vê a ficha.
+  if ((podeReceber(ctx) || !regrasDoPacote.crediarioLibera) && pacotesDaFicha.length > 0) {
     const emAbertoDos = await getEmAbertoDosPacotes(ctx.tenantId!, pacotesDaFicha.map(p => p.id))
     for (const pacote of pacotesDaFicha) {
       const emAberto = emAbertoDos[pacote.id] ?? null
+      pacote.sessoesPresas = sessoesPresas(regrasDoPacote, emAberto?.valor ?? 0)
+      if (!podeReceber(ctx)) continue
       const unidade = (pkgsArray.find(p => p.id === pacote.id) as { branch_id?: string | null } | undefined)?.branch_id ?? null
       // CX1: o aviso leva ao PDV da unidade do pacote, onde as parcelas dele estão.
       pacote.emAberto = emAberto ? { ...emAberto, unidadeId: unidade, liberaAsSessoes: regrasDoPacote.crediarioLibera } : null

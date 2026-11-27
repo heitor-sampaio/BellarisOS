@@ -140,6 +140,23 @@ test.describe.serial('a cliente agenda em outra unidade da rede pelo app', () =>
     })
   })
 
+  test('AG-51: com duas unidades, o toast "Horário marcado" diz a unidade', async ({ browser }) => {
+    await como(browser, async p => {
+      await p.goto(`/${slugB}/cliente/agendamentos/novo`)
+      const passoDaData = p.getByText('Escolha a data e o horário disponível.')
+      await expect(async () => {
+        if (!(await passoDaData.isVisible())) await p.getByRole('button', { name: nomeProc }).click({ timeout: 2000 })
+        await expect(passoDaData).toBeVisible({ timeout: 2000 })
+      }).toPass({ timeout: 30_000 })
+      await p.getByLabel('Data').fill(dia(4))
+      await p.getByRole('button', { name: '11:00', exact: true }).click()
+      await p.getByRole('button', { name: 'Confirmar agendamento' }).click()
+      const toast = p.locator('[data-sonner-toast]', { hasText: 'Horário marcado' })
+      await expect(toast).toBeVisible()
+      await expect(toast).toContainText(`na unidade ${nomeB}.`)
+    })
+  })
+
   test('a arquivada não agenda pelo app: "Fale com a rede para agendar", e a action recusa', async ({ browser }) => {
     expect((await db().from('clients').update({ is_active: false }).eq('id', cliente!.clientId)).error).toBeNull()
     try {

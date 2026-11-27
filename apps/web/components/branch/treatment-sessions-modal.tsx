@@ -24,6 +24,7 @@ import { GradeDeHorarios } from '@/components/shared/grade-de-horarios'
 import type { Horario } from '@/lib/agenda/horario'
 import { ocupanteDoHorario } from '@/lib/agenda/horario-livre'
 import { AvisoDoPacoteEmAberto } from '@/components/shared/aviso-do-pacote-em-aberto'
+import { sessaoInterrompida, textoDaSessaoInterrompida } from '@/lib/plano-de-tratamento/sessao-no-app'
 
 // -- Types ---------------------------------------------------------------------
 
@@ -75,6 +76,8 @@ interface Props {
   onCancelarPlano?: () => void
   /** A41 da 11ª: o crediário deste pacote ainda em aberto (só a quem recebe). */
   emAberto?: { valor: number; parcelas: number; unidadeId?: string | null; liberaAsSessoes?: boolean } | null
+  /** A5 da 37ª: a rede só libera depois de pago, e o pacote tem dinheiro em aberto — sem "Agendar". */
+  sessoesPresas?: boolean
   /** A21 da 14ª: aberta pelo "Agendar" de uma sessão da ficha de tratamento — já com o agendar dela aberto. */
   agendarSessaoId?: string | null
   /**
@@ -357,7 +360,7 @@ export function TreatmentSessionsModal({
   clientPackageId, planId, planStatus,
   packageName, totalSessions,
   clientId, procedureId, procedureName, price, durationMin,
-  slug, branches, currentBranchId, onClose, onCancelarPlano, emAberto = null, agendarSessaoId = null, podeIniciar = false,
+  slug, branches, currentBranchId, onClose, onCancelarPlano, emAberto = null, agendarSessaoId = null, podeIniciar = false, sessoesPresas = false,
 }: Props) {
   const fuso = useFuso()
   const router = useRouter()
@@ -455,7 +458,9 @@ export function TreatmentSessionsModal({
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
               {sessions.map((sess, i) => {
-                const rawStatus = sess.apptStatus ?? sess.status
+                // AT-21 (D4 da 37ª): a sessão gasta pela desistência no meio é usada, não "Cancelada" — e não se agenda.
+                const interrompida = sessaoInterrompida(sess.status, sess.apptStatus)
+                const rawStatus = interrompida ? 'USED' : sess.apptStatus ?? sess.status
                 const st        = STATUS_LABEL[rawStatus] ?? { label: rawStatus, color: 'var(--text-faint)' }
                 const isLast    = i === sessions.length - 1
                 const isScheduling = schedulingId === sess.id
@@ -493,7 +498,7 @@ export function TreatmentSessionsModal({
                         {sess.scheduledAt ? (
                           <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 2 }}>
                             <Calendar size={10} style={{ display: 'inline', marginRight: 3 }} />
-                            {formatarNoFuso(isDone && sess.completedAt ? sess.completedAt : sess.scheduledAt, "EEE, dd MMM · HH:mm", fuso)}
+                            {interrompida ? textoDaSessaoInterrompida(sess.scheduledAt, fuso) : formatarNoFuso(isDone && sess.completedAt ? sess.completedAt : sess.scheduledAt, "EEE, dd MMM · HH:mm", fuso)}
                             {sess.professionalName && ` · ${sess.professionalName}`}
                           </p>
                         ) : isDone && !sess.appointmentId ? (
@@ -508,7 +513,7 @@ export function TreatmentSessionsModal({
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                         <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: st.color }}>{st.label}</span>
 
-                        {isAvail && !isScheduling && (
+                        {isAvail && !isScheduling && !sessoesPresas && (
                           <button type="button" onClick={() => setSchedulingId(sess.id)}
                             style={{ padding: '5px 10px', borderRadius: 7, fontSize: 'var(--text-2xs)', fontWeight: 700, cursor: 'pointer', background: 'var(--brand-soft)', color: 'var(--brand)', border: 'none' }}>
                             Agendar

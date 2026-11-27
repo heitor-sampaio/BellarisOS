@@ -750,6 +750,17 @@ export function AdminDashboardView({
               <CheckCircle2 size={16} color="var(--text-faint)" style={{ flexShrink: 0 }} />
               <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Nenhum agendamento para hoje</p>
             </div>
+          ) : umaUnidade ? (
+            // A14 da 37ª (UU-01; E1, decisão do Claude, 27/11): com uma unidade
+            // (ou recortado a uma), a linha dela repetia o nome e o total do
+            // cabeçalho — fica só a conta do dia.
+            // A linha é uma só (a unidade da rede, ou a do recorte).
+            <div data-hoje-da-unidade-unica style={{ padding: '13px 18px', display: 'flex', flexWrap: 'wrap', gap: '4px 12px' }}>
+              <StatusPill label="ag."    count={todayByBranch[0]!.scheduled}  colorKey="scheduled"  />
+              <StatusPill label="conf."  count={todayByBranch[0]!.confirmed}  colorKey="confirmed"  />
+              <StatusPill label="em at." count={todayByBranch[0]!.inProgress} colorKey="inProgress" />
+              <StatusPill label="ok"     count={todayByBranch[0]!.completed}  colorKey="completed"  />
+            </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               {[...todayByBranch]

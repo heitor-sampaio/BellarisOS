@@ -112,6 +112,35 @@ test('D14: registrada a aplicação, o botão vira "Atualizar", e o mesmo mapa n
   expect(depois[0]!.totals[0]!.applied, 'a última gravação vale').toBe(56)
 })
 
+// D2 da 37ª (PT-13; Decisão C3, decisão do Claude, 27/11): o retoque à tarde no
+// mapa da toxina de manhã registrava o mapa inteiro. A aplicação de um
+// atendimento são só os pontos aplicados nele.
+test('o retoque no mesmo mapa registra só o ponto novo', async ({ browser }) => {
+  const manha = await atendimento('Retoque')
+  const { data: tarde, error } = await db().from('appointments').insert({
+    branch_id: rede!.branchId, client_id: manha.cliente, procedure_id: rede!.procedureId, professional_id: profissional!.userId,
+    status: 'IN_PROGRESS', source: 'INTERNAL', duration_min: 30, price: 0,
+    scheduled_at: new Date(Date.now() - 10 * 60_000).toISOString(), started_at: new Date(Date.now() - 5 * 60_000).toISOString(),
+  }).select('id').single<{ id: string }>()
+  expect(error).toBeNull()
+  const p1 = { id: 'p1', x: 0.5, y: 0.3, product: 'Toxina', dose: 28, unit: 'UI', applied: 28, view: 'rosto_f' }
+  const p2 = { ...p1, id: 'p2', x: 0.4 }
+  const p3 = { ...p1, id: 'p3', x: 0.6, dose: 10, applied: 10 }
+  await como(browser, profissional!, async p => {
+    await p.goto(`/${slug}/agenda/${manha.id}`)
+    const r1 = await chamarAcao(p, 'actions/injectable-map.ts', 'registrarAplicacao', `/${slug}/agenda/${manha.id}`,
+      [manha.mapa, manha.id, { view: 'rosto_f', points: [p1, p2] }, null, slug])
+    expect(r1!.texto).not.toContain('Erro ao registrar')
+    const r2 = await chamarAcao(p, 'actions/injectable-map.ts', 'registrarAplicacao', `/${slug}/agenda/${tarde!.id}`,
+      [manha.mapa, tarde!.id, { view: 'rosto_f', points: [p1, p2, p3] }, null, slug])
+    expect(r2!.texto).not.toContain('Erro ao registrar')
+  })
+  const daTarde = await aplicacoes(tarde!.id)
+  expect(daTarde).toHaveLength(1)
+  expect(daTarde[0]!.totals.map(t => t.applied), 'só os 10 UI do retoque, não os 66 do mapa').toEqual([10])
+  expect((await aplicacoes(manha.id))[0]!.totals.map(t => t.applied), 'a da manhã fica como foi').toEqual([56])
+})
+
 test('A10: a tela do atendimento abre e cria o mapa de injetáveis sem sair dela', async ({ browser }) => {
   const { id, cliente } = await atendimento('Carolina', false)
   await como(browser, profissional!, async p => {

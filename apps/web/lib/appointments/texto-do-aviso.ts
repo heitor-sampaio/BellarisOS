@@ -18,6 +18,14 @@ export function textoDoHorarioMarcado(procedimento: string, quando: string, unid
  */
 const naUnidade = (unidade: string | null) => (unidade ? `, na unidade ${unidade}` : '')
 
+/**
+ * A descrição do toast "Horário marcado" do agendar do app (A15 da 37ª, AG-51):
+ * quem atende e quando — e, com mais de uma unidade ativa, onde.
+ */
+export function descricaoDoHorarioMarcado(quemAtende: string | null, quando: string, unidade: string | null): string {
+  return `${quemAtende ? `Com ${quemAtende}, ` : ''}${quando}${naUnidade(unidade)}.`
+}
+
 export function textoDoRemarcado(procedimento: string, quando: string, unidade: string | null): string {
   return `Novo horário: ${procedimento} em ${quando}${naUnidade(unidade)}.`
 }

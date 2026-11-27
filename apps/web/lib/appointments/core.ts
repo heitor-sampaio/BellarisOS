@@ -20,6 +20,7 @@ import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { EVENTOS } from '@estetica-os/types'
 import { ler, lerTodas, tentar } from '@/lib/db'
 import { conferirCredito, ligarCredito, type CreditoDeAgendamento } from '@/lib/creditos/credito'
+import { inserirAgendamentoDaSessaoDePacote } from '@/lib/documentos/sessao-de-pacote'
 import { oportunidadeDoAgendamento, ligarAgendamentoAOportunidade } from '@/lib/crm/liga-agendamento'
 import { filtroDeQuemAtendeNaUnidade } from '@/lib/cached-queries'
 import type { CandidataDoHorario } from '@/lib/appointments/sem-preferencia'
@@ -267,7 +268,7 @@ export async function conferirPecasDoAgendamento(
   // até 2026-11-12 o núcleo gravava a profissional que não atende ali. O
   // encaixe fora do horário dela segue valendo — isto é a unidade, não a hora.
   if (pecas.branchId && pecas.professionalId && !(profissional.atende_em ?? []).includes(pecas.branchId)) {
-    return `${profissional.name || 'Esta profissional'} não atende nesta unidade: marque ${O_ATENDE_NA_FICHA} no lápis dela, na Equipe.`
+    return `${profissional.name || 'Quem você escolheu'} não atende nesta unidade: marque ${O_ATENDE_NA_FICHA} no lápis da pessoa, na Equipe.`
   }
   if (procedimentoNaoFeito) return procedimentoNaoFeito
   return null
@@ -298,7 +299,8 @@ export async function createAppointmentCore(
   // procedimento diferente do crédito é recusado (o navegador não escolhe).
   let doCredito: { procedureId: string; preco: number; duracaoMin?: number; planoId?: string } | null = null
   if (input.credito) {
-    const c = await conferirCredito(admin, ctx.tenantId!, input.clientId, input.credito)
+    // PP-05 (decisão do Claude, 27/11 — A3 da 37ª): o crédito vale no DIA MARCADO da sessão, não no de hoje.
+    const c = await conferirCredito(admin, ctx.tenantId!, input.clientId, input.credito, { quando: input.scheduledAt, paraACliente: ctx.isClient })
     if ('error' in c) return { error: c.error }
     if (input.procedureId && input.procedureId !== c.procedureId) return { error: 'Este crédito é de outro procedimento.' }
     doCredito = c
@@ -365,9 +367,7 @@ export async function createAppointmentCore(
 
   const origem = oportunidade?.aberta && (input.source ?? 'INTERNAL') === 'INTERNAL' ? 'COMMERCIAL' : (input.source ?? 'INTERNAL')
 
-  const { data, error } = await admin
-    .from('appointments')
-    .insert({
+  const linha = {
       branch_id:       input.branchId,
       client_id:       input.clientId,
       procedure_id:    input.procedureId || null,
@@ -385,15 +385,26 @@ export async function createAppointmentCore(
       // A sessão do plano nasce no plano (o gatilho dos documentos não emite o
       // do avulso para ela — o plano tem os dele).
       ...(doCredito?.planoId ? { treatment_plan_id: doCredito.planoId } : {}),
-    })
-    .select('id')
-    .single()
+  }
 
-  if (error || !data) return { error: `Erro ao criar agendamento: ${error?.message ?? 'desconhecido'}` }
+  // A sessão de PACOTE nasce já ligada, numa transação só (DE-14: a sessão não
+  // emite documento próprio — nem para cancelá-lo em seguida). A sessão já
+  // tomada por outro agendamento (a corrida) desfaz tudo no banco.
+  let data: { id: string }
+  if (input.credito?.tipo === 'PACOTE') {
+    const r = await inserirAgendamentoDaSessaoDePacote(admin, linha, input.credito.id)
+    if ('jaUsado' in r) return { error: CREDITO_JA_USADO }
+    if ('error' in r) return { error: r.error }
+    data = r
+  } else {
+    const { data: criado, error } = await admin.from('appointments').insert(linha).select('id').single()
+    if (error || !criado) return { error: `Erro ao criar agendamento: ${error?.message ?? 'desconhecido'}` }
+    data = criado as { id: string }
+  }
 
   // Liga o crédito, só se ainda estiver livre. Perdeu a corrida (outro
   // agendamento o pegou no meio): o agendamento sai, antes de virar fato.
-  if (input.credito && !(await ligarCredito(admin, input.credito, data.id as string))) {
+  if (input.credito && input.credito.tipo !== 'PACOTE' && !(await ligarCredito(admin, input.credito, data.id as string))) {
     await tentar(admin.from('appointments').delete().eq('id', data.id as string), 'desfazer o agendamento sem crédito')
     return { error: CREDITO_JA_USADO }
   }

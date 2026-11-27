@@ -287,10 +287,14 @@ export function rotuloNoMenu(nome: string): string {
  * VAZIAS neste documento, pelo nome do menu. Só aviso — nada se bloqueia
  * (princípio 2). Nulo sem nenhuma.
  */
-export function avisoDasVazias(nomes: readonly string[]): string | null {
+export function avisoDasVazias(
+  nomes: readonly string[],
+  /** O que se vende (A7 da 37ª: na venda do pacote dizia "Neste plano"). */
+  doQue: 'plano' | 'pacote' = 'plano',
+): string | null {
   const rotulos = [...new Set(nomes)].map(n => CATALOGO[n]?.rotulo ?? n)
   if (!rotulos.length) return null
   const lista = rotulos.length === 1 ? rotulos[0] : `${rotulos.slice(0, -1).join(', ')} e ${rotulos[rotulos.length - 1]}`
   const um = rotulos.length === 1
-  return `Neste plano ${um ? 'sai vazia' : 'saem vazias'}: ${lista}. Confira se o texto do contrato fica certo sem ${um ? 'ela' : 'elas'} (a forma de pagamento já é a frase completa).`
+  return `Neste ${doQue} ${um ? 'sai vazia' : 'saem vazias'}: ${lista}. Confira se o texto do contrato fica certo sem ${um ? 'ela' : 'elas'} (a forma de pagamento já é a frase completa).`
 }

@@ -8,7 +8,9 @@ import { parseDinheiro, DINHEIRO_INVALIDO } from '@estetica-os/utils'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { trazerPacoteDeFora } from '@/actions/pacotes'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
-import { contaDoPacoteDeFora } from '@/lib/pacotes/de-fora'
+import { contaDoPacoteDeFora, avisoDoPacoteDeForaVencido } from '@/lib/pacotes/de-fora'
+import { useFuso } from '@/components/shared/fuso'
+import { dayKeyTZ } from '@/lib/datetime'
 import { avisoDasSessoesDoPacote, avisoDoValorDeReferencia } from '@/lib/pacotes/tamanho-e-valor'
 import { Dica } from '@/components/shared/dica'
 
@@ -55,6 +57,8 @@ function JanelaTrazerPacote({ clientId, procedimentos, unidades, unidadeAtual, o
   const [total, setTotal] = useState('')
   const [usadas, setUsadas] = useState('0')
   const [validade, setValidade] = useState('')
+  const fuso = useFuso()
+  const [hoje] = useState(() => dayKeyTZ(new Date(), fuso))
   const [valorTexto, setValorTexto] = useState('')
   const [erro, setErro] = useState<string | null>(null)
   const [pendente, startTransition] = useTransition()
@@ -136,6 +140,11 @@ function JanelaTrazerPacote({ clientId, procedimentos, unidades, unidadeAtual, o
           <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             <span className={rotulo}>Válido até (opcional)</span>
             <input className="field" type="date" value={validade} onChange={e => setValidade(e.target.value)} />
+            {avisoDoPacoteDeForaVencido(validade, hoje) && (
+              <span role="status" data-pacote-nasce-vencido style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+                {avisoDoPacoteDeForaVencido(validade, hoje)}
+              </span>
+            )}
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             <span className={rotulo}>Valor de referência (opcional)</span>

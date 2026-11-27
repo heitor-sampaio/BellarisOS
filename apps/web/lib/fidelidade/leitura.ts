@@ -52,6 +52,11 @@ export interface LinhaDoExtrato {
   branch_name: string | null
   /** Quem lançou (ajuste da equipe); nulo quando foi o sistema. */
   autor:       string | null
+  /**
+   * O que resta deste ganho com validade (A13 da 37ª; a conta do banco,
+   * `fidelidade_restante_dos_ganhos`); nulo na linha que não é ganho com validade.
+   */
+  restante?:   number | null
 }
 
 /** O que a ficha do cliente mostra da fidelidade. */
@@ -172,11 +177,22 @@ export async function extratoDoCliente(
     for (const u of (us ?? []) as { id: string; name: string }[]) nomes.set(u.id, u.name)
   }
 
+  // A13 da 37ª (SA-04/SA-05): o que resta de cada ganho com validade da
+  // página — a conta é do banco, pela mesma do vencimento.
+  const comValidade = brutas.filter(l => Number(l.points) > 0 && l.expires_at).map(l => l.id)
+  const restantes = new Map<string, number>()
+  if (comValidade.length) {
+    const rs = await ler(admin.rpc('fidelidade_restante_dos_ganhos', { p_conta: (conta as { id: string }).id })
+      .in('transaction_id', comValidade), 'ler o que resta de cada ganho')
+    for (const r of (rs ?? []) as { transaction_id: string; restante: number }[]) restantes.set(r.transaction_id, Number(r.restante))
+  }
+
   const linhas = brutas.map(({ branches, ...l }) => ({
     ...l,
     points:      Number(l.points),
     branch_name: branches?.name ?? null,
     autor:       l.created_by === 'sistema' || !l.created_by ? null : nomes.get(l.created_by) ?? null,
+    restante:    restantes.get(l.id) ?? null,
   }))
   return { linhas: linhas.slice(0, limite), temMais: linhas.length > limite }
 }

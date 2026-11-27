@@ -20,5 +20,5 @@ export async function recusaDeQuemNaoAtende(admin: Admin, tenantId: string, prof
     .or(filtroDeQuemAtendeNaUnidade(branchId)).maybeSingle(), 'conferir quem atende na unidade')
   if (quem) return null
   const nome = (await ler(admin.from('users').select('name').eq('id', professionalId).eq('tenant_id', tenantId).maybeSingle(), 'buscar o profissional') as { name: string } | null)?.name
-  return `${nome ?? 'Esta profissional'} não atende nesta unidade: marque ${O_ATENDE_NA_FICHA} no lápis dela, na Equipe.`
+  return `${nome || 'Quem você escolheu'} não atende nesta unidade: marque ${O_ATENDE_NA_FICHA} no lápis da pessoa, na Equipe.`
 }

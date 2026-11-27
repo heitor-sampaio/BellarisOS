@@ -11,6 +11,7 @@ import { StockProductModal } from '../branch/stock-product-modal'
 import type { StockProduct, StockProductModalHandle } from '../branch/stock-product-modal'
 import type { ItemDaLista } from './campo-da-lista'
 import { rotuloDoUso } from '@/lib/estoque/uso'
+import { quantidadeComMedida } from '@/lib/estoque/medidas'
 import { SegSelect } from '@/components/shared/seg-select'
 import { BotaoAplicadoEm, LotesEsgotados } from '@/components/admin/aplicacoes-do-lote'
 import { CorrigirCustoDoLote } from '@/components/admin/corrigir-custo-do-lote'
@@ -654,7 +655,7 @@ export function AdminStockView({ products, branches, productCategories = [], mar
                                             <span style={{ color: vencido ? 'var(--danger)' : undefined }}>
                                               {l.validade ? `${vencido ? 'venceu' : 'vence'} ${validadeNaTela(l.validade)}` : 'sem validade'}
                                             </span>
-                                            <span>{l.quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} {p.unit}</span>
+                                            <span>{quantidadeComMedida(l.quantidade, p.unit, 2)}</span>
                                             {podeVerAplicacoes && <BotaoAplicadoEm loteId={l.id} rotulo={`${p.name} · ${l.numero ? `lote ${l.numero}` : 'lote sem número'}`} />}
                                             <span>{l.custoPorEmbalagem != null ? `custo ${fmtBRLv(l.custoPorEmbalagem)}/${p.unit}${l.origemDoCusto === 'AJUSTE' ? ' (último custo)' : ''}` : 'custo —'}</span>
                                             {!readOnly && l.custoEditavel && (

@@ -81,6 +81,22 @@ test.describe.serial('fidelidade: validade', () => {
     expect((data ?? []).map(l => l.points)).toEqual([-30])
   })
 
+  test('SA-04/SA-05: o que resta de cada ganho, pela conta do vencimento', async () => {
+    const c = await rede!.criarCliente('Resta')
+    await lancar(c, 100, '2027-02-27T12:00:00Z')   // ganho A (vence antes)
+    await lancar(c, 130, '2027-02-27T12:00:00Z')   // ganho B (mesmo vencimento, mais novo)
+    await lancar(c, 100, '2027-11-27T12:00:00Z')   // ganho C (vence depois)
+    await lancar(c, -150, null)                     // a troca: os 230 de fev. pagam, o mais antigo primeiro
+    expect(await saldo(c)).toBe(180)
+    const { data, error } = await db().rpc('fidelidade_restante_dos_ganhos', { p_conta: await conta(c) })
+    expect(error).toBeNull()
+    const { data: linhas } = await db().from('loyalty_transactions').select('id, points, expires_at')
+      .eq('loyalty_account_id', await conta(c)).gt('points', 0).order('created_at')
+    const resta = new Map(((data ?? []) as { transaction_id: string; restante: number }[]).map(r => [r.transaction_id, r.restante]))
+    // A: 100 → 0 (saiu inteiro); B: 130 → 80; C: 100 → 100. A soma é o saldo.
+    expect((linhas ?? []).map(l => resta.get(l.id as string))).toEqual([0, 80, 100])
+  })
+
   test('o estorno leva a validade do lote: o lote estornado não vence de novo; "a vencer" para a tela', async () => {
     const c = await rede!.criarCliente('Estorno')
     const pago = new Date().toISOString()

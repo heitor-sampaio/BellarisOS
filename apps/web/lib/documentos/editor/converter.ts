@@ -154,28 +154,47 @@ function trechosDe(nos: NoPM[] | undefined, ctx: Contexto): TrechoDeModelo[] {
     if (anterior && 'texto' in anterior && JSON.stringify(soEstilo(anterior)) === JSON.stringify(estilo)) anterior.texto += texto
     else saida.push({ texto, ...estilo })
   }
-  for (const n of nos ?? []) {
+  const lista = nos ?? []
+  for (let i = 0; i < lista.length; i++) {
+    const n = lista[i]!
     switch (n.type) {
       case 'text': {
         // A9 da 9ª simulação: a variável DIGITADA ("{{cliente.nome}}") vira
         // variável, com o estilo do texto — ficava literal na prévia e no
         // documento (princípio 3). Chaves que não formam variável são recusadas
         // dizendo qual, como na marcação (`chavesMalFormadas`).
-        const texto = typeof n.text === 'string' ? n.text : ''
-        const estilo = estiloDasMarcas(n.marks)
+        // P5 da 37ª (DV-07): os textos SEGUIDOS são lidos juntos — a variável
+        // digitada com um pedaço em negrito (ou noutra cor) fica em dois
+        // textos do editor, e ficava com as chaves. Ela leva o estilo de onde
+        // começa; o texto em volta, o seu.
+        const pedacos: { texto: string; estilo: Estilo; de: number }[] = []
+        let inteiro = ''
+        for (; i < lista.length && lista[i]!.type === 'text'; i++) {
+          const t = typeof lista[i]!.text === 'string' ? lista[i]!.text as string : ''
+          pedacos.push({ texto: t, estilo: estiloDasMarcas(lista[i]!.marks), de: inteiro.length })
+          inteiro += t
+        }
+        i--
+        const estiloEm = (pos: number) => [...pedacos].reverse().find(x => x.de <= pos && x.texto.length > 0)?.estilo ?? pedacos[0]!.estilo
+        const textoEntre = (de: number, ate: number) => {
+          for (const x of pedacos) {
+            const a = Math.max(de, x.de), b = Math.min(ate, x.de + x.texto.length)
+            if (a < b) pushTexto(inteiro.slice(a, b), x.estilo)
+          }
+        }
         let desde = 0
-        for (const m of texto.matchAll(/\{\{([^{}]*)\}\}/g)) {
+        for (const m of inteiro.matchAll(/\{\{([^{}]*)\}\}/g)) {
           const nome = m[1]!.trim()
           if (!RE_VARIAVEL.test(nome)) {
             // Anotada, não lançada: a tela diz todas de uma vez (A6 da 11ª).
             ctx.malFormadas.push(m[0])
             continue
           }
-          pushTexto(texto.slice(desde, m.index), estilo)
-          saida.push({ variavel: nomeDaVariavel(nome), ...estilo })
+          textoEntre(desde, m.index!)
+          saida.push({ variavel: nomeDaVariavel(nome), ...estiloEm(m.index!) })
           desde = m.index! + m[0].length
         }
-        pushTexto(texto.slice(desde), estilo)
+        textoEntre(desde, inteiro.length)
         break
       }
       case 'hardBreak':

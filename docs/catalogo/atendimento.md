@@ -505,10 +505,10 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:3402`, `:3431`, `:3447`, `:3871`
 - Antes: AT-46, AT-49, AT-50
 
-**AT-21.** O atendimento INICIADO e cancelado gasta a sessão já paga: a sessão do pacote, a unidade do pré-pago e a sessão do plano contam como usadas (no app: "Usada em … (atendimento interrompido)"; para as automações, "Sessão de pacote usada"). Cancelar ANTES de iniciar, ou marcar a falta, devolve o que estava pago. A janela de cancelar avisa isso. Vale por todo caminho de cancelar antes de iniciar, também o da cliente pelo app dentro do prazo (AG-53): a sessão do pacote volta a ficar livre, e a ficha diz "Cancelado … por <nome> (app)".
-- Fonte: o Heitor, 2026-11-18: "Não existe isso de desistir no meio do atendimento. Se isso por ventura acontecer, problema de quem desistir."; o cancelar da cliente pelo app como "antes de iniciar": decisão do Claude, 26/11 (31ª simulação, A06) — o cancelar no prazo é o caminho que a AG-53 dá à cliente, não é falta
-- Onde: `docs/regras/atendimento.md:1299-1301`, `:3414`, `:3424`, `:3919`
-- Antes: AT-47, AT-48, AG-118
+**AT-21.** O atendimento INICIADO e cancelado gasta a sessão já paga: a sessão do pacote, a unidade do pré-pago e a sessão do plano contam como usadas, e a ficha e o app dizem isso de cada uma das três: "Usada em … (atendimento interrompido)" (para as automações, "Sessão de pacote usada"). Cancelar ANTES de iniciar, ou marcar a falta, devolve o que estava pago. A janela de cancelar avisa isso. Vale por todo caminho de cancelar antes de iniciar, também o da cliente pelo app dentro do prazo (AG-53): a sessão do pacote volta a ficar livre, e a ficha diz "Cancelado … por <nome> (app)".
+- Fonte: o Heitor, 2026-11-18: "Não existe isso de desistir no meio do atendimento. Se isso por ventura acontecer, problema de quem desistir."; o cancelar da cliente pelo app como "antes de iniciar": decisão do Claude, 26/11 (31ª simulação, A06) — o cancelar no prazo é o caminho que a AG-53 dá à cliente, não é falta; a frase também no pacote e no pré-pago, na ficha e no app: decisão do Claude, 27/11 (37ª, D4), pela própria AT-21 e pelo princípio 3
+- Onde: `docs/regras/atendimento.md:1299-1301`, `:3414`, `:3424`, `:3919`; `apps/web/lib/plano-de-tratamento/sessao-no-app.ts`
+- Antes: AT-47, AT-48, AG-118; antes de 27/11: a frase só aparecia na sessão do plano, e a sessão de pacote gasta pela desistência ficava só "Cancelado"
 
 **AT-23.** A desistência aconteceu na hora em que se desistiu: o atendimento iniciado e cancelado no meio vale, nos números, pelo fim real (a hora da desistência), como o concluído antes da hora marcada vale pela conclusão (OC-01 de Indicadores). Por isso ele entra no "até agora" do dashboard assim que se desiste (CC-03 de Indicadores), mesmo com a hora marcada ainda por vir, e cai no mesmo dia em toda tela.
 - Fonte: decisão do Claude, 26/11 (33ª simulação, Decisão A) — pela OC-01 (o atendimento aconteceu na hora marcada, ou antes, se acabou antes) e pelo princípio 3 (D14 da 33ª: a A08, iniciada às 10:11, desistida às 10:12 e marcada para 14:15, contava "Cancelado 1" nos Relatórios e ficava fora dos "Cancelados/faltas" do dashboard)
@@ -694,10 +694,10 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 
 ### Injetáveis
 
-**PT-13.** A aplicação de injetáveis só se registra dentro de um atendimento ("Registrar aplicação"); fora dele, o mapa não oferece "Confirmar aplicação" e o registro é recusado. Há UMA aplicação por mapa por atendimento: registrada, o botão vira "Atualizar a aplicação registrada" enquanto o atendimento está aberto; encerrado, ela fica.
-- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
-- Onde: `docs/regras/atendimento.md:2112`, `:2127`, `:2162`
-- Antes: PT-25, PT-26
+**PT-13.** A aplicação de injetáveis só se registra dentro de um atendimento ("Registrar aplicação"); fora dele, o mapa não oferece "Confirmar aplicação" e o registro é recusado. Há UMA aplicação por mapa por atendimento: registrada, o botão vira "Atualizar a aplicação registrada" enquanto o atendimento está aberto; encerrado, ela fica. A aplicação de um atendimento são só os pontos aplicados NELE, não o mapa inteiro: o retoque de 10 UI num mapa que já tinha 50 UI aplicadas de manhã registra 10 UI, e o histórico do dia soma 60.
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele); só os pontos daquele atendimento: decisão do Claude, 27/11 (37ª, Decisão C3), pelo princípio 3
+- Onde: `docs/regras/atendimento.md:2112`, `:2127`, `:2162`; `apps/web/actions/injectable-map.ts` (`registrarAplicacao`)
+- Antes: PT-25, PT-26; antes de 27/11: a aplicação copiava o mapa inteiro (D2 da 37ª: o retoque gravou 60 UI, e o histórico somou 110 contra 60 de baixa)
 
 **PT-14.** O mapa se abre e se cria da tela do atendimento ("Mapa de injetáveis": abre a quem vê o clínico; criar e mexer no mapa é de quem tem o Atendimento em Gerenciar, PT-16). O campo "Planejador de injetáveis" da ficha abre o planejamento DA CLIENTE (os dela, ou um novo ligado a ela; o vazio que ela já tem se reaproveita) — não há segundo planejador; as opções do campo são os "Produtos do mapa". Sem esse campo na ficha, o mapa é o do Planejamento.
 - Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
@@ -720,14 +720,14 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Antes: PT-32
 
 **PT-18.** O produto do ponto se escolhe numa lista do estoque (o que estava escrito fora dela fica, marcado "(fora do estoque)"). O "Finalizar" compara a dose do mapa com a baixa do insumo e AVISA a diferença, com atalho para ajustar; não recusa, e a baixa é a da tela. "U" e "UI" são a mesma unidade; ml e UI não.
-- Fonte: decisão do Claude
-- Onde: `docs/regras/atendimento.md:2252-2266`
+- Fonte: decisão do Claude; com o produto entre os insumos marcados, UI × ml hoje não avisa (três testes o exigem): foi ao Heitor, 27/11 (R25)
+- Onde: `docs/regras/atendimento.md:2252-2266`; `apps/web/lib/injetaveis/dose.ts` (`divergenciasDaBaixa`)
 - Antes: PT-35, PT-36
 
-**PT-19.** O aviso "mapa × baixa" (PT-18) compara sempre a APLICAÇÃO registrada neste atendimento (PT-13); o planejamento sem aplicação só se compara com o produto que ESTE atendimento tem no cartão de insumos, marcado ou não (o da Toxina numa sessão de Toxina). O planejamento para outro dia — a Toxina desenhada numa Avaliação, que não tem a Toxina nos insumos — não é consumo: o "Finalizar" não o compara com a baixa e não oferece "Incluir na baixa".
-- Fonte: decisão do Claude, 26/11 (33ª simulação, Decisão A) — pelo princípio 5 ("Sem execução, sem valor") (A1 da 33ª: na Avaliação da A01, o "Finalizar" oferecia "Incluir 50 UI na baixa" com o planejamento da Toxina, que era para outro agendamento); o texto estreito (o produto do cartão de insumos se compara): decisão do Claude, 26/11 (33ª simulação, arremate), pelo princípio 3 — é o que o sistema faz (`totaisQueSeComparam`)
+**PT-19.** O aviso "mapa × baixa" (PT-18) compara sempre a APLICAÇÃO registrada neste atendimento (PT-13) — a dose dele, não o mapa inteiro: no retoque, os 10 UI do retoque contra a baixa do retoque; o planejamento sem aplicação só se compara com o produto que ESTE atendimento tem no cartão de insumos, marcado ou não (o da Toxina numa sessão de Toxina). O planejamento para outro dia — a Toxina desenhada numa Avaliação, que não tem a Toxina nos insumos — não é consumo: o "Finalizar" não o compara com a baixa e não oferece "Incluir na baixa".
+- Fonte: decisão do Claude, 26/11 (33ª simulação, Decisão A) — pelo princípio 5 ("Sem execução, sem valor") (A1 da 33ª: na Avaliação da A01, o "Finalizar" oferecia "Incluir 50 UI na baixa" com o planejamento da Toxina, que era para outro agendamento); o texto estreito (o produto do cartão de insumos se compara): decisão do Claude, 26/11 (33ª simulação, arremate), pelo princípio 3 — é o que o sistema faz (`totaisQueSeComparam`); o retoque: decisão do Claude, 27/11 (37ª, Decisão C3), pela PT-13
 - Onde: `docs/regras/atendimento.md:2713-2720`; PT-13, PT-18; `apps/web/lib/injetaveis/dose.ts` (`divergenciasDaBaixa`, `totaisQueSeComparam`)
-- Antes: (nova, 26/11); antes do arremate: "vale só para o mapa com a APLICAÇÃO registrada neste atendimento"
+- Antes: (nova, 26/11); antes do arremate: "vale só para o mapa com a APLICAÇÃO registrada neste atendimento"; antes de 27/11: o "Finalizar" do retoque comparava o mapa inteiro (o falso "60 × 10" da C04 da 37ª)
 
 ## Fichas (FI)
 
@@ -1016,20 +1016,20 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:2591`, `:2911`, `:3936-3959`
 - Antes: ES-50, ES-51; antes de 26/11: a entrada enchia o lote inteiro com o saldo negativo, a soma dos lotes passava do saldo, e a linha dizia o lote como se cobrisse o movimento inteiro
 
-**ES-25.** Para o recall, cada lote (inclusive o esgotado) tem "Aplicado em: ver clientes": cada saída do lote para uma cliente, com a hora da conclusão e quem atendeu (ou quem vendeu) e a quantidade daquele lote. Precisa do Estoque em Ver e das Clientes em Ver: sem as Clientes, o botão não aparece. Cada atendimento do prontuário diz o que se tirou de cada lote e, a quem tem os dois, leva ao "Aplicado em".
-- Fonte: princípio 3
+**ES-25.** Para o recall, cada lote (inclusive o esgotado) tem "Aplicado em: ver clientes": cada saída do lote para uma cliente, com a hora da conclusão e quem atendeu (ou quem vendeu) e a quantidade daquele lote. Precisa do Estoque em Ver e das Clientes em Ver: sem as Clientes, o botão não aparece. Cada atendimento do prontuário diz o que se tirou de cada lote e, a quem tem os dois, leva ao "Aplicado em". A dose que saiu de dois lotes mostra os dois, cada um com a sua parte ("TB1 50 UI · TB2 10 UI"), na ordem em que saíram (o que vence antes primeiro, ES-24).
+- Fonte: princípio 3; a dose de dois lotes: decisão do Claude, 27/11 (37ª, Decisão C1), pelo princípio 3 — é como o "Aplicado em" já mostra
 - Onde: `docs/regras/atendimento.md:1944`, `:2925`, `:2938`
 - Antes: ES-53, PT-05
 
-**ES-26.** O Ajuste é a contagem da prateleira: mostra o saldo nas duas unidades, conta em embalagem (padrão) ou consumo, mostra a conta antes de aplicar e pede "Confirmo que contei na prateleira". A sobra entra num lote escolhido (ou "Um lote novo, sem número"), ao custo dele; a falta sai do lote escolhido ("O que vence primeiro" por padrão), ao custo dele, e entra em "Perdas no período" como "Inventário". A contagem que muda o saldo em mais de 50% avisa forte, sem recusar.
-- Fonte: princípio 3
+**ES-26.** O Ajuste é a contagem da prateleira: mostra o saldo nas duas unidades, conta em embalagem (padrão) ou consumo, mostra a conta antes de aplicar e pede "Confirmo que contei na prateleira". A sobra entra num lote escolhido (ou "Um lote novo, sem número"), ao custo dele; a falta sai do lote escolhido ("O que vence primeiro" por padrão), ao custo dele, e entra em "Perdas no período" como "Inventário". A contagem que muda o saldo em mais de 50% avisa forte, sem recusar. A unidade de consumo se escolhe no próprio Ajuste; a entrada, a transferência, o saldo, o mínimo e os lotes seguem em embalagens (ES-17).
+- Fonte: princípio 3; onde a unidade de consumo se digita: decisão do Claude, 27/11 (37ª, Decisão C2), pela ES-17
 - Onde: `docs/regras/atendimento.md:2615`, `:2650`, `:2663`, `:2721`, `:2727`
 - Antes: ES-54, ES-55, ES-56
 
-**ES-27.** A perda (Movimentar → Perda) tem o lote (ou "sem lote", que tira do que vence antes), a quantidade em embalagem ou consumo, o motivo (um dos motivos de perda da rede) e uma observação; é recusada se pede mais do que o lote ou o saldo têm. Os motivos de perda são um cadastro da rede, ao lado das categorias, das marcas e dos fornecedores (o botão "Motivos de perda" no Estoque): a rede nasce com Vencido, Quebrou, Amostra e Uso interno, editáveis, e quem tem o Estoque em Gerenciar cria, renomeia e exclui. Excluir um motivo usado não apaga a história (ele sai das opções, e a perda guarda o nome); renomear junta no relatório as perdas do motivo sob o nome novo. A perda não é consumo: fica fora do giro e do lucro, sai ao custo do lote e aparece em "Perdas no período". Entregar o brinde de produto da fidelidade é perda com o motivo "Brinde da fidelidade" (o brinde sem produto não mexe no estoque).
-- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele); os motivos como cadastro da rede: o Heitor, 2026-11-18 (item 7 do escopo): "motivos de perda configuraveis, poder adicionar/editar/excluir" (`DEVLOG.md:1875`); quem mexe e o excluir que guarda o nome: decisão do Claude (26ª)
+**ES-27.** A perda (Movimentar → Perda) tem o lote (ou "sem lote", que tira do que vence antes), a quantidade em embalagem ou consumo, o motivo (um dos motivos de perda da rede) e uma observação; é recusada se pede mais do que o lote ou o saldo têm. Os motivos de perda são um cadastro da rede, ao lado das categorias, das marcas e dos fornecedores (o botão "Motivos de perda" no Estoque): a rede nasce com Vencido, Quebrou, Amostra e Uso interno, editáveis, e quem tem o Estoque em Gerenciar cria, renomeia e exclui. Excluir um motivo usado não apaga a história (ele sai das opções, e a perda guarda o nome); renomear junta no relatório as perdas do motivo sob o nome novo. A perda não é consumo: fica fora do giro e do lucro, sai ao custo do lote e aparece em "Perdas no período". Entregar o brinde de produto da fidelidade é perda com o motivo "Brinde da fidelidade" (o brinde sem produto não mexe no estoque), e o Histórico do produto diz a cliente que o recebeu, como diz a da venda.
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele); os motivos como cadastro da rede: o Heitor, 2026-11-18 (item 7 do escopo): "motivos de perda configuraveis, poder adicionar/editar/excluir" (`DEVLOG.md:1875`); quem mexe e o excluir que guarda o nome: decisão do Claude (26ª); a cliente do brinde no Histórico: decisão do Claude, 27/11 (37ª, D12), pelo princípio 3 (a venda já diz a cliente)
 - Onde: `docs/regras/atendimento.md:2769`, `:2849-2864`, `:2884-2917`
-- Antes: ES-58, ES-59, ES-61
+- Antes: ES-58, ES-59, ES-61; antes de 27/11: o Histórico dizia "Brinde da fidelidade — Entrega de recompensa", sem a cliente
 
 **ES-28.** O estorno de uma venda de produto pergunta se o produto voltou: se voltou, volta ao saldo e aos mesmos lotes como "Devolução de venda"; se não, o estoque fica e a venda vira perda "Venda estornada". Nenhum dos dois entra no giro.
 - Fonte: a pergunta "houve devolução?" é decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele); a venda estornada sem devolução virar perda "Venda estornada" é decisão do Claude, pelos princípios

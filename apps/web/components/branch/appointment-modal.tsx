@@ -772,21 +772,24 @@ export function AppointmentModal({
                   </option>
                 ))}
               </select>
-              {credito && creditoAutomatico && (
+              {/* A2 da 37ª (PP-07): a frase acompanha o crédito escolhido, à mão também;
+                  o porquê da escolha automática fica na dica dela. */}
+              {credito && !credito.recusa && (
                 <p data-credito-pre-escolhido role="status" style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 'var(--text-xs-sz)', color: 'var(--success)', fontWeight: 'var(--weight-semibold)' }}>
                   <CheckCircle2 size={13} aria-hidden style={{ flexShrink: 0, marginTop: 1 }} />
                   <span>
                     {textoDoCreditoAoAgendar(credito)}. Para cobrar à parte, escolha “Não usar”.
                   </span>
                   {/* O porquê mora na dica (2026-11-16); o que fazer fica à vista. */}
-                  <Dica rotulo="Por que já veio escolhido">Escolhido porque o procedimento é o mesmo.</Dica>
+                  {creditoAutomatico && <Dica rotulo="Por que já veio escolhido">Escolhido porque o procedimento é o mesmo.</Dica>}
                 </p>
               )}
               {/* D15 da 31ª (PA-14): a sessão do pacote no crediário diz o que falta
                   pagar (só a quem recebe); PA-13: na rede que libera só depois de
                   pago, diz por que não se agenda, e o salvar se desliga. */}
               {credito?.emAberto && <AvisoDoPacoteEmAberto valor={credito.emAberto.valor} parcelas={credito.emAberto.parcelas} clienteId={selectedClient?.id ?? null} unidadeId={credito.emAberto.unidadeId} slug={dados.slug} liberaAsSessoes={credito.emAberto.liberaAsSessoes} />}
-              {credito?.recusa && (
+              {/* A5 da 37ª: um aviso só — o do em aberto (a quem recebe) já diz por quê. */}
+              {!credito?.emAberto && credito?.recusa && (
                 <p data-recusa-da-sessao role="alert" style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>
                   <Ban size={13} aria-hidden style={{ flexShrink: 0, marginTop: 1 }} />
                   <span>{credito.recusa}</span>

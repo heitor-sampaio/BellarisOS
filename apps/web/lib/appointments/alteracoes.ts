@@ -16,6 +16,7 @@ import { recusaDoHorarioPassado } from '@/lib/appointments/horario-passado'
 import { precoDoProcedimentoNaUnidade } from '@/lib/procedimentos/preco-na-unidade'
 import { recusaDoCancelar } from '@/lib/appointments/quem-cancela'
 import { textoDaRemarcacao } from '@/lib/appointments/texto-da-remarcacao'
+import { recusaDoCreditoDoAgendamento } from '@/lib/creditos/credito'
 
 /**
  * REMARCAR e CANCELAR um agendamento — os núcleos que a agenda (actions/
@@ -73,6 +74,9 @@ export async function remarcarCore(admin: Admin, ctx: TenantContext, input: {
   if (inicio.getTime() !== new Date(existente.scheduled_at).getTime()) {
     const passou = recusaDoHorarioPassado(inicio.toISOString(), new Date(), existente.fuso)
     if (passou) return { error: passou }
+    // PP-05 (decisão do Claude, 27/11 — A3 da 37ª): a sessão do pacote ou do pré-pago não vai para depois da validade.
+    const vencido = await recusaDoCreditoDoAgendamento(admin, existente.id, inicio.toISOString(), existente.fuso)
+    if (vencido) return { error: vencido }
   }
 
   // O profissional novo vinha do formulário sem conferência nenhuma.

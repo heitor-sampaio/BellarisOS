@@ -37,10 +37,14 @@ export function CorrecaoDoRegistro({ appointmentId, slug, evolucao, intercorrenc
   const [interc, setInterc] = useState(intercorrencias ?? '')
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  // P1 da 37ª (PT-11): a ficha só se grava se quem corrige mexeu nela. Gravada
+  // sempre, a do planejador de injetáveis voltava com um retrato novo e criava
+  // uma SEGUNDA versão, a "Como estava", já com a evolução nova.
+  const [fichaMexida, setFichaMexida] = useState(false)
   const id = (campo: string) => `correcao-${campo}-${appointmentId}`
 
   function cancelar() {
-    setAberta(false); setErro(null)
+    setAberta(false); setErro(null); setFichaMexida(false)
     setNotas(evolucao ?? ''); setInterc(intercorrencias ?? '')
   }
 
@@ -57,10 +61,10 @@ export function CorrecaoDoRegistro({ appointmentId, slug, evolucao, intercorrenc
       const r = await saveDraftNotes(null, fd)
       if (r.error) { setSalvando(false); setErro(r.error); return }
     }
-    const daFicha = await fichaRef.current?.save()
+    const daFicha = fichaMexida ? await fichaRef.current?.save() : undefined
     setSalvando(false)
     if (daFicha?.error) { setErro(daFicha.error); return }
-    setAberta(false)
+    setAberta(false); setFichaMexida(false)
     router.refresh()
   }
 
@@ -93,7 +97,8 @@ export function CorrecaoDoRegistro({ appointmentId, slug, evolucao, intercorrenc
           <p className="field-label">{ficha.name}</p>
           <AnamnesisFormRenderer ref={fichaRef} appointmentId={appointmentId} slug={slug}
             formName={ficha.name} rows={ficha.rows} initial={ficha.answers as AnamnesisAnswers}
-            canEdit hideSaveButton semInjetaveis />
+            canEdit hideSaveButton semInjetaveis
+            onAnswersChange={respostas => setFichaMexida(JSON.stringify(respostas) !== JSON.stringify(ficha.answers))} />
         </div>
       )}
       <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>

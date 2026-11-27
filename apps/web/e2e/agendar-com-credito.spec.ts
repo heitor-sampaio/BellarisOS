@@ -254,4 +254,28 @@ test.describe.serial('agendar com crédito', () => {
     expect((hist ?? []).map(h => h.action)).toContain('CREATED')
     await db().from('procedures').update({ duration_min: 30 }).eq('id', rede!.procedureId)
   })
+
+  test('PP-05: a sessão do pacote não se marca para depois do dia da validade, e a recusa diz até quando', async ({ browser }) => {
+    const cliente = await rede!.criarCliente('Validade')
+    const { data: cp, error } = await db().rpc('pacote_vender', {
+      p_tenant: rede!.tenantId, p_cliente: cliente, p_pacote: pacoteId, p_unidade: rede!.branchId, p_ator: null,
+      p_lancamentos: [{ amount: 500, payment_method: 'PIX', is_paid: true }],
+      p_sessoes: [{ procedure_id: rede!.procedureId, preco: 250 }, { procedure_id: rede!.procedureId, preco: 250 }],
+    })
+    expect(error).toBeNull()
+    // Vale até HOJE (meio-dia de Brasília): amanhã já passou da validade; hoje, mais tarde, ainda vale.
+    const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+    expect((await db().from('client_packages').update({ expires_at: new Date(`${hoje}T12:00:00-03:00`).toISOString() }).eq('id', cp as string)).error).toBeNull()
+    const { data: s1 } = await db().from('package_sessions').select('id').eq('client_package_id', cp as string).eq('session_number', 1).single()
+    await comSessao(browser, async p => {
+      const r = await chamarAcao(p, 'actions/appointments.ts', 'schedulePackageSession', `/admin/clients/${cliente}`, [{
+        packageSessionId: s1!.id, branchId: rede!.branchId, professionalId: rede!.professionalId,
+        scheduledAt: amanha('15:00').iso, clientId: cliente, procedureId: rede!.procedureId, price: 0, durationMin: 60, slug: 'admin',
+      }])
+      expect(r.texto).toContain('Este pacote vale até')
+      expect(r.texto).toContain('marque a sessão até esse dia')
+    })
+    expect((await db().from('package_sessions').select('appointment_id').eq('id', s1!.id).single()).data?.appointment_id,
+      'a sessão segue livre').toBeNull()
+  })
 })

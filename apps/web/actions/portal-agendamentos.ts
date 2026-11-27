@@ -20,6 +20,7 @@ import { logHistory, notifyCancelledAppointment, notifyRescheduledAppointment } 
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { dayKeyTZ, partsInTZ } from '@/lib/datetime'
 import { lerFusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
+import { recusaDoCreditoDoAgendamento } from '@/lib/creditos/credito'
 import { falaDaRede, type FalaDaRede } from '@/lib/clientes/fala-da-rede'
 
 /**
@@ -197,6 +198,9 @@ export async function remarcarPelaCliente(
       branchId: unidade, professionalId: profissional, clientId: a.client_id, roomId: sala, procedureId: a.procedure_id,
     })
     if (recusaDasPecas) return { error: recusaDasPecas }
+    // PP-05 (decisão do Claude, 27/11 — A3 da 37ª): a sessão do pacote ou do pré-pago não vai para depois da validade.
+    const vencido = await recusaDoCreditoDoAgendamento(admin, a.id, inicio.toISOString(), fuso)
+    if (vencido) return { error: vencido }
 
     // Outra unidade: o avulso ainda sem lançamento passa ao preço dela (D2 da
     // 9ª, a regra do mudar de unidade da equipe); o já pago fica como estava.

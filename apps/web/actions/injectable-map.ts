@@ -10,6 +10,7 @@ import { emitirEventoClinico } from '@/lib/events/clinico'
 import { EVENTOS } from '@estetica-os/types'
 import { injectableTotals, emptyInjectableMap, type InjectableMapValue } from '@/lib/anamnesis'
 import { ler, lerTodas, mensagemDoErro } from '@/lib/db'
+import { pontosDeOutroAtendimento, pontosDaAplicacao } from '@/lib/injetaveis/aplicacao-do-atendimento'
 
 /**
  * Planejamento de injetáveis.
@@ -381,6 +382,27 @@ export async function registrarAplicacao(
     return { error: 'Marque ao menos um ponto antes de registrar a aplicação.' }
   }
 
+  // D2 da 37ª (PT-13; Decisão C3, decisão do Claude, 27/11): a aplicação
+  // deste atendimento são só os pontos aplicados NELE. O retoque à tarde no
+  // mapa da toxina de manhã copiava o mapa inteiro (60 UI, contra 10 do
+  // retoque). Os pontos já registrados em outro atendimento deste mapa ficam
+  // de fora; sem ponto novo, é o plano inteiro aplicado de novo.
+  let deOutro: Set<string>
+  try {
+    const anteriores = await lerTodas((de, ate) => admin.from('injectable_applications')
+      .select('id, appointment_id, points').eq('map_id', mapId).order('id').range(de, ate),
+      'buscar as aplicações deste planejamento') as { appointment_id: string | null; points: unknown }[]
+    deOutro = pontosDeOutroAtendimento(anteriores.map(a => ({
+      appointmentId: a.appointment_id,
+      points: Array.isArray(a.points) ? a.points as { id: string }[] : [],
+    })), appointmentId)
+  } catch (e) {
+    return { error: `Erro ao registrar a aplicação: ${mensagemDoErro(e)}` }
+  }
+  const pontosDeste = pontosDaAplicacao(mapa.points, appointmentId, deOutro)
+  const marcados = new Set(pontosDeste.map(p => p.id))
+  const mapaComAMarca = (mapa.points ?? []).map(p => (marcados.has(p.id) ? { ...p, atendimento: appointmentId } : p))
+
   // UMA aplicação por mapa por atendimento (D14 da 9ª simulação: cada clique
   // gravava outra, e o "Finalizar" somava as duas). Já registrada, atualiza —
   // com o atendimento ainda aberto; fechado, a registrada fica como está.
@@ -390,8 +412,8 @@ export async function registrarAplicacao(
     p_agendamento:  appointmentId,
     p_profissional: ctx.internalUserId,
     p_view:         mapa.view ?? 'front',
-    p_points:       mapa.points,
-    p_totals:       injectableTotals(mapa),
+    p_points:       pontosDeste,
+    p_totals:       injectableTotals({ ...mapa, points: pontosDeste }),
     p_notes:        notes?.trim() || null,
     p_atualizar:    atendimentoAberto,
   })
@@ -403,7 +425,7 @@ export async function registrarAplicacao(
   // concluído abria o mapa sem os pontos. Só com a aplicação gravada agora.
   if (data.novo || data.atualizada) {
     const { error: erroDoMapa } = await admin.from('injectable_maps')
-      .update({ view: mapa.view ?? 'front', points: mapa.points ?? [], updated_by: ctx.internalUserId, updated_at: new Date().toISOString() })
+      .update({ view: mapa.view ?? 'front', points: mapaComAMarca, updated_by: ctx.internalUserId, updated_at: new Date().toISOString() })
       .eq('id', mapId)
     if (erroDoMapa) return { error: `A aplicação foi registrada, mas o mapa não foi salvo: ${erroDoMapa.message}` }
   }

@@ -58,14 +58,16 @@ test.afterAll(async () => {
   await profissional?.limpar(); await rede?.limpar()
 })
 
-test('fora do atendimento, o mapa não oferece "Confirmar aplicação": diz que a aplicação se registra no atendimento', async ({ browser }) => {
+// A8 da 37ª (o Heitor, 26/11: "isso não é ser intuitivo, é ser explicativo e
+// não isso que eu quero. Ser intuitivo é justamente o contrario, ser facil de
+// usar mesmo sem muitas explicações."): a frase "A aplicação se registra no
+// atendimento…" da dica do mapa saiu; fora do atendimento, nada de confirmar.
+test('fora do atendimento, o mapa não oferece "Confirmar aplicação"', async ({ browser }) => {
   await como(browser, async p => {
     await p.goto(`/${slug}/injetaveis/${mapa}`)
     await expect(p.getByText('Aplicações do cliente (0)')).toBeVisible()
     await expect(p.getByRole('button', { name: 'Confirmar aplicação' }), 'nada de "confirmar" que não grava').toHaveCount(0)
-    // Onde a aplicação se registra mora na dica "Como usar o mapa" (2026-11-16).
-    await p.getByRole('button', { name: 'Como usar o mapa' }).hover()
-    await expect(p.getByText(/A aplicação se registra no atendimento/)).toBeVisible()
+    await expect(p.getByText(/A aplicação se registra no atendimento/)).toHaveCount(0)
     await expect(p.getByText('Aplicação confirmada', { exact: false })).toHaveCount(0)
   })
 })

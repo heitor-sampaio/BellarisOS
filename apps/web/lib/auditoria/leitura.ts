@@ -362,6 +362,8 @@ async function nomesDa20(ctx: TenantContext, registros: readonly RegistroDaAudit
   // A21 da 34ª: também a sessão ligada ao agendamento ("Agendou a sessão 1 do pacote X").
   const sessoes = ids(r => r.tabela === 'package_sessions' && r.operacao === 'editou' && (r.colunas.includes('status') || r.colunas.includes('appointment_id')))
   const pacotes = ids(r => r.tabela === 'client_packages' && r.operacao === 'editou' && r.colunas.includes('cancelado_em'))
+  // D10 da 37ª (AD-13, PA-24): o pacote criado é trazido ou vendido — o gatilho não guarda o `de_fora`.
+  const pacotesCriados = ids(r => r.tabela === 'client_packages' && r.operacao === 'criou')
   // A5 e A10 da 35ª (AD-08): o plano e a sessão do pré-pago cancelados — o motivo e qual sessão, lidos agora.
   const planosCancelados = ids(r => r.tabela === 'treatment_plans' && r.operacao === 'editou' && r.colunas.includes('cancelado_em'))
   const sessoesDoPrePago = ids(r => r.tabela === 'procedure_sale_units' && r.operacao === 'editou' && r.colunas.includes('cancelled_at'))
@@ -379,7 +381,7 @@ async function nomesDa20(ctx: TenantContext, registros: readonly RegistroDaAudit
     .filter((v): v is string => typeof v === 'string' && UUID.test(v)))]
   const nada = Promise.resolve([] as Record<string, unknown>[])
 
-  const [dc, ss, pk, im, en, pr, ag, pc, su] = await Promise.all([
+  const [dc, ss, pk, im, en, pr, ag, pc, su, cf] = await Promise.all([
     documentos.length ? ler(admin.from('issued_documents').select('id, closed_reason').eq('tenant_id', tenant).in('id', documentos), 'ler os motivos dos documentos') : nada,
     sessoes.length ? ler(admin.from('package_sessions').select('id, session_number, client_packages!inner(branches!inner(tenant_id), service_packages(name))')
       .eq('client_packages.branches.tenant_id', tenant).in('id', sessoes), 'ler as sessões dos pacotes') : nada,
@@ -396,6 +398,8 @@ async function nomesDa20(ctx: TenantContext, registros: readonly RegistroDaAudit
       .eq('branches.tenant_id', tenant).in('id', planosCancelados), 'ler o motivo dos planos cancelados') : nada,
     sessoesDoPrePago.length ? ler(admin.from('procedure_sale_units').select('id, numero, cancel_reason, procedure_sales!inner(tenant_id, procedures(name))')
       .eq('procedure_sales.tenant_id', tenant).in('id', sessoesDoPrePago), 'ler as sessões canceladas do pré-pago') : nada,
+    pacotesCriados.length ? ler(admin.from('client_packages').select('id, de_fora, branches!inner(tenant_id)')
+      .eq('branches.tenant_id', tenant).in('id', pacotesCriados), 'ler os pacotes trazidos') : nada,
   ]) as Record<string, unknown>[][]
   const str = (v: unknown) => (typeof v === 'string' ? v : null)
   const num = (v: unknown) => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) ? null : Number(v))
@@ -421,6 +425,7 @@ async function nomesDa20(ctx: TenantContext, registros: readonly RegistroDaAudit
     })),
     procedimentos: Object.fromEntries((pr ?? []).map(x => [x.id as string, str(x.name) ?? '']).filter(([, n]) => n)),
     unidadesDosAgendamentos: Object.fromEntries((ag ?? []).map(x => [x.id as string, str(x.branch_id) ?? '']).filter(([, b]) => b)),
+    pacotesDeFora: Object.fromEntries((cf ?? []).filter(x => x.de_fora === true).map(x => [x.id as string, true])),
     // O motivo é texto livre: curto na frase, como o do documento.
     motivosDaVendaCancelada: Object.fromEntries([
       ...(pk ?? []).map(x => [x.id as string, str(x.cancelamento_motivo)] as const),
@@ -466,7 +471,7 @@ async function nomesDa17(ctx: TenantContext, registros: readonly RegistroDaAudit
     etapas.length ? ler(admin.from('crm_stages').select('id, name').eq('tenant_id', tenant).in('id', etapas), 'ler as etapas da auditoria') : nada,
     itens.length ? ler(admin.from('comanda_itens').select('id, product_id').eq('tenant_id', tenant).in('id', itens), 'ler os itens da comanda da auditoria') : nada,
     pagamentos.length ? ler(admin.from('commission_payouts').select('id, professional_id').eq('tenant_id', tenant).in('id', pagamentos), 'ler os pagamentos de comissão da auditoria') : nada,
-    pontos.length ? ler(admin.from('loyalty_transactions').select('id, loyalty_account_id').in('id', pontos), 'ler os lançamentos de pontos da auditoria') : nada,
+    pontos.length ? ler(admin.from('loyalty_transactions').select('id, loyalty_account_id, kind, description').in('id', pontos), 'ler os lançamentos de pontos da auditoria') : nada,
     fechamentos.length ? ler(admin.from('fechamentos_do_dia').select('id, branch_id, dia, fechado_em, contado_dinheiro, conferido').eq('tenant_id', tenant).in('id', fechamentos), 'ler os fechamentos da auditoria') : nada,
     cancelados.length ? ler(admin.from('appointments').select('id, cancellation_reason, branches!inner(tenant_id)').eq('branches.tenant_id', tenant).in('id', cancelados), 'ler os motivos do cancelamento') : nada,
     comissoes.length ? ler(admin.from('commissions').select('id, appointment_id, transaction_id, branches!inner(tenant_id)').eq('branches.tenant_id', tenant).in('id', comissoes), 'ler as comissões da auditoria') : nada,
@@ -539,6 +544,10 @@ async function nomesDa17(ctx: TenantContext, registros: readonly RegistroDaAudit
     itensDaComanda: Object.fromEntries((it ?? []).map(i => [i.id as string, nomeDoProduto.get(str(i.product_id) ?? '') ?? '']).filter(([, n]) => n)),
     pagamentosDeComissao: Object.fromEntries((po ?? []).map(x => [x.id as string, nomeDoMembro.get(str(x.professional_id) ?? '') ?? '']).filter(([, n]) => n)),
     clientesDosPontos: Object.fromEntries((lt ?? []).map(l => [l.id as string, nomeDaCliente.get(clienteDaConta.get(str(l.loyalty_account_id) ?? '') ?? '') ?? '']).filter(([, n]) => n)),
+    // P4 da 37ª (AD-08): o motivo do ajuste de pontos (texto livre: curto na frase), só o da cliente desta rede.
+    motivosDosPontos: Object.fromEntries((lt ?? [])
+      .filter(l => str(l.kind) === 'AJUSTE' && nomeDaCliente.get(clienteDaConta.get(str(l.loyalty_account_id) ?? '') ?? ''))
+      .map(l => [l.id as string, (str(l.description)?.trim() ?? '').slice(0, 120)]).filter(([, m]) => m)),
     fechamentosDeNovo,
     conferidosDoFechamento,
     // O motivo é texto livre de quem cancelou: curto na frase.

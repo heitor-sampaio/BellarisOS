@@ -892,6 +892,17 @@ plano").
     OF `appointment_id` em `package_sessions`, só na ligação de livre a
     ligada; migration `20261124000301`). O em aberto é o de
     `metrics_em_aberto_dos_pacotes` (a parcela estornada não conta).
+    **A sessão presa não oferece "Agendar"** (A5 da 37ª, decisão do Claude,
+    27/11 — PA-13 e CLAUDE.md §14, o botão que não se pode usar, a tela
+    esconde): a ficha (o cartão diz "Abrir para ver as sessões"), a ficha de
+    tratamento, "Gerenciar sessões" e o cartão do pacote no app escondem o
+    "Agendar" dessas sessões (`sessoesPresas`, `ProfilePackage.sessoesPresas`);
+    a action e o banco seguem recusando. No modal da agenda, UM aviso: o do em
+    aberto a quem recebe; a recusa a quem não o vê. No app, a recusa fala com
+    a cliente: "As sessões deste pacote se liberam quando ele estiver pago."
+    (`recusaDaSessaoNaoLiberadaNoApp`, pelo `paraACliente` do núcleo; o cartão
+    do Início diz o mesmo no lugar do "Agendar"). Prova:
+    `tests/agendar-credito-escolhido-e-sessao-presa.test.ts`.
   O pacote de entrada R$ 150 + 3 × R$ 100 liberava as 6 sessões
   calado (A41). Na ficha, embaixo do cartão "Tratamento em andamento", e ao agendar a
   sessão (a ficha de tratamento → "Gerenciar sessões"): "R$ 300,00 deste
@@ -907,6 +918,12 @@ plano").
   → `getEmAbertoDosPacotes`, `lib/metrics/pacote-em-aberto.ts`; migration
   `20261110005604`). Prova: `e2e/vendas-atritos-da-11.spec.ts` ("A41"),
   `e2e/pacote-regras-da-rede.spec.ts` ("8"), `tests/pacote-regras-da-rede.test.ts`.
+  **O cartão do pacote na ficha diz a parte de cada sessão e a validade**
+  (A1 da 37ª, PA-07, PA-11, princípio 3; o pacote de antes também), como o
+  pré-pago: "R$ 124,90 × 3 · R$ 195,15 × 2 · vale até 29/12/2026"
+  (`[data-partes-do-pacote]`, `partesDoPacote` em
+  `lib/clientes/pacotes-da-ficha.ts`; a sessão sem preço gravado vale
+  valor ÷ sessões; o de antes sem valor de referência, só a validade).
 - **"Abater do pacote": o pacote vendido DEPOIS paga o avulso já concluído**
   (D9 da simulação de 2026-10-28, decisão do Heitor). No recebimento de um
   avulso CONCLUÍDO e a receber — a comanda dele no PDV, desde o PDV7 (a
@@ -1191,6 +1208,10 @@ plano").
     Histórico, "Pacote de antes registrado" sem valor; o app da cliente,
     "Pacote de antes: 4 de 6 restantes" (`restantesDoPacoteDeFora`) — sem
     pagamento nem recibo.
+  - **A validade já passada se aceita, e a janela avisa** (decisão A2 da 37ª,
+    do Claude, 27/11, pelo princípio 2 e a fala do Heitor de 25/11): "Esta
+    validade já passou: o pacote nasce vencido." (`[data-pacote-nasce-vencido]`,
+    `avisoDoPacoteDeForaVencido`).
   - **Cancelar o pacote trazido** é o cancelamento de sempre: nada foi pago à
     rede por ele, então não há o que devolver nem parcela a cair, e nenhum
     lançamento nem crédito nasce (prova: o caso "sobra da F35" de
@@ -1270,7 +1291,17 @@ o procedimento avulso pago antes.
   (`lib/creditos/credito.ts`; a sessão do plano fechado desde a D5/A18 da 9ª —
   `atendimento.md`). O crédito é conferido (do cliente, da rede,
   livre, na validade) e decide o procedimento e o preço — procedimento
-  diferente é recusado; depois do insert ele é ligado por compare-and-swap
+  diferente é recusado. **A validade vale o DIA MARCADO** (A3 e A6 da 37ª,
+  decisões do Claude, 27/11, PP-05): a sessão do pacote ou do pré-pago não se
+  marca para depois do dia da validade em caminho nenhum — o agendar da
+  equipe e o do app (pelo núcleo, `quando`), a remarcação (da equipe e do
+  app, `recusaDoCreditoDoAgendamento`), a ligação do avulso já marcado
+  (`recusaDoCreditoNoDia`); a recusa diz até quando ("Este pacote vale até
+  29/11/2026: marque a sessão até esse dia."; vencido hoje, "Este pacote
+  venceu em …"). A validade é um dia, no fuso da unidade do crédito, não a
+  hora gravada em `expires_at` (`lib/creditos/validade.ts`); o "Incluído" do
+  modal e o do avulso só oferecem o que vale. Prova:
+  `tests/credito-vale-no-dia-marcado.test.ts`; depois do insert ele é ligado por compare-and-swap
   (`appointment_id` nulo), e quem perde a corrida tem o agendamento desfeito.
   Com conflito de horário, histórico e evento, como todo agendamento.
   - Onde: o card "Procedimentos pagos" ("Agendar" na unidade,
@@ -1285,7 +1316,12 @@ o procedimento avulso pago antes.
     dele (o mais antigo) vem escolhido, com o aviso "Incluído no pacote X
     (sessão 2 de 3). Para cobrar à parte, escolha “Não usar”." (o porquê na
     dica: "Escolhido porque o procedimento é o mesmo.") (`[data-credito-pre-escolhido]`). Como o
-    app (que já usava o pacote sozinho).
+    app (que já usava o pacote sozinho). **O mais antigo é pela data da
+    compra, de qualquer tipo** (D3 da 37ª, decisão do Claude, 27/11): o
+    pacote e o pré-pago juntos, pelo dia da compra no fuso da unidade;
+    empatando, o que vence antes (`creditosDoCliente`). **A frase acompanha o
+    crédito escolhido à mão também** (A2 da 37ª, princípio 3); a dica é só da
+    escolha automática.
   - **O avulso já marcado se liga depois** (A20): a janela do agendamento EM
     ABERTO, avulso (sem plano, sem crédito ligado, sem lançamento vivo), de
     quem tem crédito do MESMO procedimento, oferece "Usar o pacote X (sessão

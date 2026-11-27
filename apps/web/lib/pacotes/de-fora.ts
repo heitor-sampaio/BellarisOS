@@ -38,6 +38,15 @@ export function contaDoPacoteDeFora(entrada: { total: number; usadas: number; va
   }
 }
 
+/**
+ * Decisão A2 da 37ª (decisão do Claude, 27/11 — princípio 2 e a fala do Heitor
+ * de 25/11, "Se não for impossível, ainda que improvável, pode ser feito"): a
+ * validade já passada se aceita, e a janela avisa. Os dois dias: "aaaa-mm-dd".
+ */
+export function avisoDoPacoteDeForaVencido(validade: string, hoje: string): string | null {
+  return /^\d{4}-\d{2}-\d{2}$/.test(validade) && validade < hoje ? 'Esta validade já passou: o pacote nasce vencido.' : null
+}
+
 /** "Pacote de antes: 3 de 10 restantes" — o app da cliente e a ficha. */
 export function restantesDoPacoteDeFora(total: number, usadas: number): string {
   return `Pacote de antes: ${Math.max(0, total - usadas)} de ${total} restantes`

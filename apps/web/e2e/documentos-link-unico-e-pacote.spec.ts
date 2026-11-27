@@ -341,6 +341,31 @@ test.describe.serial('documentos: o link único, uma assinatura para todos e o p
     expect((await db().from('service_packages').update({ documentos_excluidos: [modelos.imagem] }).eq('id', pacote)).error).toBeNull()
   })
 
+  test('PA-10: o contrato a colher leva junto o termo e os outros documentos do pacote — um link, uma assinatura', async ({ browser }) => {
+    const slug = `e2e-un-lu${marca}`
+    const args = [outraCliente, pacote, rede!.branchId, { forma: 'AVISTA', metodo: 'PIX' }, null, null, null]
+    let contratoId = ''
+    await como(browser, gestor!.estado, async p => {
+      const r = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', `/${slug}/pdv`, args)
+      contratoId = /"contratoParaAssinar":\{"id":"([0-9a-f-]{36})"/.exec(r.texto)?.[1] ?? ''
+    })
+    expect(contratoId, 'a venda devolveu o contrato a colher').not.toBe('')
+    const antes = ((await db().from('issued_documents').select('id, template_id, kind, moment')
+      .eq('client_id', outraCliente).eq('service_package_id', pacote).is('client_package_id', null)
+      .not('status', 'in', '(CANCELADO,SUBSTITUIDO)')).data ?? []) as { id: string; template_id: string; kind: string; moment: string }[]
+    expect(antes.map(d => d.template_id).sort(), 'o contrato e os puxados nascem juntos, antes da venda (nem o excluído, nem o contrato do procedimento)')
+      .toEqual([modelos.pacote, modelos.termo, modelos.termoB, modelos.endereco].sort())
+    expect(new Set(antes.map(d => d.moment))).toEqual(new Set(['VENDA_PACOTE']))
+    // Pedir de novo não duplica.
+    await como(browser, gestor!.estado, async p => { await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', `/${slug}/pdv`, args) })
+    expect(((await db().from('issued_documents').select('id').eq('client_id', outraCliente).eq('service_package_id', pacote)
+      .is('client_package_id', null).not('status', 'in', '(CANCELADO,SUBSTITUIDO)')).data ?? []).length).toBe(4)
+    // O link do contrato leva o momento inteiro (o de "faltam dados" fica de fora).
+    const linhas = await linhasDoLink(await gerarLink(browser, contratoId, outraCliente))
+    expect(linhas.map(l => l.issued_document_id).sort())
+      .toEqual(antes.filter(d => d.template_id !== modelos.endereco).map(d => d.id).sort())
+  })
+
   test('PC2: o contrato de pacote, preenchido, se assina ANTES do dinheiro; assinado, a venda o adota e emite os puxados que ficaram', async ({ browser }) => {
     const slug = `e2e-un-lu${marca}`
     const args = [cliente, pacote, rede!.branchId, { forma: 'AVISTA', metodo: 'PIX' }, null, null, null]

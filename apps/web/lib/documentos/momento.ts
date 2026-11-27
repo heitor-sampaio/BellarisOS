@@ -7,7 +7,8 @@ import type { DocumentoNaTela } from '@/components/shared/tela-de-assinatura'
 
 /**
  * O MOMENTO de um documento (DC3/AG1/PC10, Bloco Documentos leva 2): o
- * agendamento, o pacote vendido ou o plano — e, de uma cliente só. É o que
+ * agendamento, o pacote vendido (ou, antes da venda, o pacote do catálogo —
+ * P3 da 37ª) ou o plano — e, de uma cliente só. É o que
  * vai junto num link e numa assinatura: "um link por cliente e momento, com
  * todos os documentos abertos dele".
  *
@@ -22,7 +23,11 @@ export interface ForaDaAssinatura { id: string; titulo: string; faltando: string
 
 export interface MomentoDoDocumento { abertos: DocumentoEmitido[]; fora: ForaDaAssinatura[] }
 
-type Ancora = Pick<DocumentoEmitido, 'id' | 'client_id' | 'appointment_id' | 'treatment_plan_id'> & { client_package_id?: string | null }
+type Ancora = Pick<DocumentoEmitido, 'id' | 'client_id' | 'appointment_id' | 'treatment_plan_id'> & {
+  client_package_id?: string | null
+  /** O pacote do CATÁLOGO, antes da venda (P3 da 37ª): o contrato e os puxados vão juntos. */
+  service_package_id?: string | null
+}
 
 export async function documentosDoMomento(tenantId: string, doc: Ancora): Promise<MomentoDoDocumento> {
   const admin = createAdminClient()
@@ -31,6 +36,9 @@ export async function documentosDoMomento(tenantId: string, doc: Ancora): Promis
     .in('status', ['A_GERAR', 'INCOMPLETO', 'PENDENTE'])
   if (doc.appointment_id) q = q.eq('appointment_id', doc.appointment_id)
   else if (doc.client_package_id) q = q.eq('client_package_id', doc.client_package_id)
+  // P3 da 37ª (PA-10: "junto do contrato de pacote, para uma assinatura só"):
+  // antes da venda, o momento é a cliente e o pacote do catálogo.
+  else if (doc.service_package_id) q = q.eq('service_package_id', doc.service_package_id).is('client_package_id', null)
   else if (doc.treatment_plan_id) q = q.eq('treatment_plan_id', doc.treatment_plan_id).is('appointment_id', null)
   else q = q.eq('id', doc.id)
   const linhas = await ler(q.order('kind').order('title'), 'listar os documentos do momento') as unknown as DocumentoEmitido[] | null

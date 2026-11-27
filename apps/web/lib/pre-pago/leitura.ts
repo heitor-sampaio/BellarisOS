@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import type { ProcedimentoAVenda } from '@/components/shared/vender'
 import { contagemDoPago } from '@/lib/pre-pago/contagem'
+import { creditoValeHoje } from '@/lib/creditos/validade'
 import { precosDaUnidade, precoNaUnidade } from '@/lib/procedimentos/preco-na-unidade'
 
 /**
@@ -40,6 +41,8 @@ export interface UnidadePrePaga {
   status:        'DISPONIVEL' | 'USADA' | 'CANCELADA'
   agendamentoId: string | null
   agendamentoEm: string | null
+  /** O status do agendamento ligado — AT-21: a USADA ligada a um cancelado foi gasta pela desistência no meio. */
+  agendamentoStatus?: string | null
   canceladaPor:  string | null
 }
 
@@ -65,7 +68,7 @@ export interface PrePagoDoCliente {
 /** As vendas de pré-pago do cliente, com as unidades — a ficha. */
 export async function prePagosDoCliente(tenantId: string, clientId: string): Promise<PrePagoDoCliente[]> {
   const linhas = await ler(createAdminClient().from('procedure_sales')
-    .select(`id, procedure_id, branch_id, quantity, price, desconto, sold_at, expires_at, procedures(name),
+    .select(`id, procedure_id, branch_id, quantity, price, desconto, sold_at, expires_at, branches(fuso), procedures(name),
              procedure_sale_units(id, numero, preco, status, appointment_id, cancel_reason, appointments(scheduled_at, status))`)
     .eq('tenant_id', tenantId).eq('client_id', clientId)
     .order('sold_at', { ascending: false }), 'carregar os procedimentos pré-pagos do cliente')
@@ -73,17 +76,19 @@ export async function prePagosDoCliente(tenantId: string, clientId: string): Pro
     appointments: { scheduled_at: string; status: string } | null }
   return ((linhas ?? []) as unknown as {
     id: string; procedure_id: string; branch_id: string; quantity: number; price: number; desconto: number
-    sold_at: string; expires_at: string | null; procedures: { name: string } | null; procedure_sale_units: U[]
+    sold_at: string; expires_at: string | null; branches?: { fuso?: string | null } | null; procedures: { name: string } | null; procedure_sale_units: U[]
   }[]).map(v => {
     const unidades = [...(v.procedure_sale_units ?? [])].sort((a, b) => a.numero - b.numero).map(u => ({
       id: u.id, numero: u.numero, preco: Number(u.preco), status: u.status,
       agendamentoId: u.appointment_id, agendamentoEm: u.appointments?.scheduled_at ?? null,
+      agendamentoStatus: u.appointments?.status ?? null,
       canceladaPor: u.cancel_reason,
     }))
     return {
       id: v.id, procedimento: v.procedures?.name ?? 'Procedimento', procedureId: v.procedure_id, branchId: v.branch_id,
       quantidade: v.quantity, price: Number(v.price), desconto: Number(v.desconto), vendidoEm: v.sold_at, venceEm: v.expires_at,
-      vencida: v.expires_at != null && new Date(v.expires_at).getTime() < Date.now(),
+      // A validade é um DIA, no fuso da unidade da venda (PP-05, como o agendar).
+      vencida: !creditoValeHoje(v.expires_at, v.branches?.fuso ?? undefined),
       ...(() => {
         const c = contagemDoPago(unidades.map(u => ({ status: u.status, agendada: !!u.agendamentoId })))
         return { disponiveis: c.paraAgendar, agendadas: c.agendadas }

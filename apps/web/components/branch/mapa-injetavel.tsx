@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { maskPhone } from '@estetica-os/utils'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -11,6 +11,8 @@ import {
 import { InjectableMapField } from '@/components/branch/injectable-map-field'
 import { injectableTotals, type InjectableMapValue } from '@/lib/anamnesis'
 import { formatarDose } from '@/lib/injetaveis/dose'
+import { pontosDeOutroAtendimento } from '@/lib/injetaveis/aplicacao-do-atendimento'
+import { temEdicaoNaoSalva, marcarEdicaoNaoSalva } from '@/lib/injetaveis/edicao-nao-salva'
 import {
   getPlanejamentoInjetavel, salvarPlanejamentoInjetavel, renomearPlanejamentoInjetavel,
   vincularClienteAoPlanejamento, registrarAplicacao,
@@ -76,15 +78,30 @@ export function MapaInjetavel({
     return () => { vivo = false }
   }, [mapId, aplicar])
 
-  async function salvar() {
-    if (!mapa) return
+  async function salvar(m: InjectableMapValue | null = mapa): Promise<{ error?: string }> {
+    if (!m) return {}
     setErro(null); setMsg(null); setSalvando(true)
-    const res = await salvarPlanejamentoInjetavel(mapId, mapa, slug)
+    const res = await salvarPlanejamentoInjetavel(mapId, m, slug)
     setSalvando(false)
-    if (res.error) { setErro(res.error); return }
+    if (res.error) { setErro(res.error); return res }
+    // O salvo agora é o da tela: a edição não salva acaba aqui (D9 da 37ª).
+    setPlano(p => (p ? { ...p, mapa: m } : p))
     setMsg('Planejamento salvo.')
     onMudou?.()
+    return {}
   }
+
+  // D9 da 37ª (PT-15): o ponto posto sem salvar não entra no retrato da ficha
+  // — o "Finalizar" do atendimento diz e oferece salvar (`edicao-nao-salva`).
+  const naoSalvo = podeEditar && !!plano && !!mapa && temEdicaoNaoSalva(plano.mapa.points, mapa.points)
+  const nomeDoPlano = plano?.nome ?? ''
+  const salvarRef = useRef(salvar)
+  useEffect(() => { salvarRef.current = salvar })
+  useEffect(() => {
+    if (!naoSalvo) return
+    marcarEdicaoNaoSalva(mapId, { nome: nomeDoPlano, salvar: () => salvarRef.current() })
+    return () => marcarEdicaoNaoSalva(mapId, null)
+  }, [naoSalvo, mapId, nomeDoPlano])
 
   async function registrar() {
     if (!mapa) return
@@ -157,6 +174,12 @@ export function MapaInjetavel({
   // grava outra (cada clique gravava uma, e o Finalizar somava as duas).
   const registrada = appointmentId
     ? plano.aplicacoes.find(a => a.appointmentId === appointmentId && a.mapId === mapId) ?? null
+    : null
+  // D2 da 37ª: os pontos deste mapa já registrados em outro atendimento não
+  // entram na aplicação deste (o retoque à tarde não reaplica a manhã).
+  const noAtendimento = appointmentId
+    ? { id: appointmentId, deOutro: pontosDeOutroAtendimento(
+        plano.aplicacoes.filter(a => a.mapId === mapId).map(a => ({ appointmentId: a.appointmentId, points: a.mapa.points })), appointmentId) }
     : null
 
   return (
@@ -250,6 +273,7 @@ export function MapaInjetavel({
         onChange={v => { setMapa(v); setMsg(null) }}
         // Confirmar a aplicação só no atendimento, onde ela se registra (D14).
         confirmaAqui={!!appointmentId}
+        atendimento={noAtendimento}
       />
 
       {totais.length > 0 && (
@@ -267,7 +291,7 @@ export function MapaInjetavel({
 
       {podeEditar && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <button type="button" onClick={salvar} disabled={salvando} className="btn-ghost"
+          <button type="button" onClick={() => { void salvar() }} disabled={salvando} className="btn-ghost"
             style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-base-sz)' }}>
             {salvando ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
             Salvar planejamento
@@ -281,16 +305,8 @@ export function MapaInjetavel({
               <Syringe size={14} /> {registrada ? 'Atualizar a aplicação registrada' : 'Registrar aplicação'}
             </button>
           )}
-          {/* A28 da 11ª: quatro botões sem dizer a diferença — a dica diz (2026-11-16 — era uma linha fixa acima dos botões). */}
-          {appointmentId && plano.clientId && (
-            <Dica rotulo="O que cada botão faz" largura={320}>
-              <span data-o-que-cada-botao-faz style={{ display: 'block' }}>
-                <strong>Salvar planejamento</strong> guarda os pontos e as doses previstas (o plano, para esta e as próximas sessões).{' '}
-                <strong>Confirmar aplicação</strong> copia a dose prevista de cada ponto para a aplicada, na tela, para você ajustar.{' '}
-                <strong>Registrar aplicação</strong> grava neste atendimento o que foi aplicado — uma vez; depois, “Atualizar a aplicação registrada” troca a gravada.
-              </span>
-            </Dica>
-          )}
+          {/* A8 da 37ª ("intuitivo não é explicativo", o Heitor, 26/11): saiu a dica
+              que explicava a diferença dos botões (A28 da 11ª). */}
           {registrada && !msg && (
             <span data-aplicacao-registrada style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
               Aplicação registrada neste atendimento às {new Date(registrada.appliedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: fuso })}: atualizar troca a registrada.

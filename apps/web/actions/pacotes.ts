@@ -32,6 +32,7 @@ import { recusaDasParcelasDaRede } from '@/lib/financeiro/crediario-da-rede'
 import { recusaDasVezesDoPagamento } from '@/lib/financeiro/vezes-da-rede'
 import { recusaDoPagamentoDoUsado, pagamentoDoUsadoParaOBanco } from '@/lib/financeiro/pagamento-do-usado'
 import { sessoesDoPacote } from '@/lib/pacotes/rateio'
+import { conferirCredito } from '@/lib/creditos/credito'
 import { itensParaRateio } from '@/lib/pacotes/leitura'
 import { trazerPacoteCore } from '@/lib/pacotes/trazer'
 import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto, motivoDoDesconto } from '@/lib/vendas/desconto'
@@ -286,8 +287,16 @@ async function venderPacoteUmaVez(
       .select('id, procedure_id, procedures(name, duration_min)')
       .eq('client_package_id', clientPackageId).order('session_number').limit(1).maybeSingle(), 'ler a 1ª sessão do pacote')
     const procDaPrimeira = primeira?.procedures as unknown as { name: string; duration_min: number | null } | null
-    const primeiraSessao = primeira && primeira.procedure_id
-      ? { id: primeira.id as string, procedimento: { id: primeira.procedure_id as string, nome: procDaPrimeira?.name ?? 'Sessão', duracaoMin: Number(procDaPrimeira?.duration_min ?? 0) } }
+    // PA-13 (§14: o que não se pode usar, a tela não oferece): na rede que só
+    // libera depois de pago, a sessão do pacote com dinheiro em aberto não se
+    // agenda — a venda não oferece agendá-la (a mesma conferência do agendar).
+    const livre = primeira && primeira.procedure_id
+      // A venda já está gravada: a conferência que falha só não oferece o agendar.
+      ? await conferirCredito(admin, ctx.tenantId!, clienteId, { tipo: 'PACOTE', id: primeira.id as string }).catch(() => ({ error: '' }))
+      : null
+    const primeiraSessao = primeira && primeira.procedure_id && livre
+      ? ('error' in livre ? null :
+        { id: primeira.id as string, procedimento: { id: primeira.procedure_id as string, nome: procDaPrimeira?.name ?? 'Sessão', duracaoMin: Number(procDaPrimeira?.duration_min ?? 0) } })
       : null
 
     // PC2: os termos e os outros documentos da venda (o contrato, já assinado,

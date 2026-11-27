@@ -126,10 +126,10 @@ Este é o catálogo das regras dos Documentos que valem HOJE: os tipos, os model
 - Onde: `docs/regras/documentos.md:753-770`
 - Antes: KB-16
 
-**DV-09.** O texto do documento concorda com o sexo da ficha. O par "a(o)"/"o(a)" no fim de uma palavra, ou sozinho como em "o(a) paciente", vira a forma do sexo cadastrado: "informada" e "a paciente" para F, "informado" e "o paciente" para M. Sem o dado, ou com "Outro", o texto fica como a rede escreveu. O ajuste vale só para o texto do modelo, não para o valor das variáveis. O que se assina é o texto já ajustado.
-- Fonte: decisão do Claude
-- Onde: `docs/regras/documentos.md:371-379`
-- Antes: KA-45
+**DV-09.** O texto do documento concorda com o sexo da ficha. O par "a(o)"/"o(a)" no fim de uma palavra, ou sozinho como em "o(a) paciente", vira a forma do sexo cadastrado: "informada" e "a paciente" para F, "informado" e "o paciente" para M. No começo da frase vale o mesmo, com a maiúscula ("O(a) paciente" vira "A paciente" ou "O paciente"). Sem o dado, ou com "Outro", o texto fica como a rede escreveu. O ajuste vale só para o texto do modelo, não para o valor das variáveis. O que se assina é o texto já ajustado.
+- Fonte: decisão do Claude; a maiúscula: decisão do Claude, 27/11 (37ª, D7), pela própria DV-09
+- Onde: `docs/regras/documentos.md:371-379`; `apps/web/lib/documentos/concordancia.ts`
+- Antes: KA-45; antes de 27/11: "O(a)" maiúsculo ficava como estava
 
 ## Onde o documento se liga, quando nasce e o que trava (DE)
 
@@ -198,10 +198,10 @@ Este é o catálogo das regras dos Documentos que valem HOJE: os tipos, os model
 - Onde: `docs/regras/documentos.md:347-349`; `docs/revisao.md:826`, `:2054`
 - Antes: KA-40, KC-17
 
-**DE-14.** Um documento do plano que "Bloqueia" trava o início de cada sessão do plano enquanto estiver aberto, e um do pacote, o de cada sessão do pacote. A janela do agendamento e a tela do atendimento mostram esses documentos. A sessão não emite documento próprio.
-- Fonte: decisão do Claude (D4 da 25ª, 2026-11-18; leva 2 de Documentos, 14/11)
-- Onde: `docs/regras/documentos.md:119`, `:157-164`; `docs/revisao.md:1818`
-- Antes: KA-18, KC-18
+**DE-14.** Um documento do plano que "Bloqueia" trava o início de cada sessão do plano enquanto estiver aberto, e um do pacote, o de cada sessão do pacote. A janela do agendamento e a tela do atendimento mostram esses documentos. A sessão não emite documento próprio: o agendamento que já nasce como sessão de pacote não emite os documentos do procedimento, nem para cancelá-los em seguida (o cancelamento "Sessão de pacote: os documentos são os do pacote", DE-11, é só do agendamento comum ligado ao pacote depois).
+- Fonte: decisão do Claude (D4 da 25ª, 2026-11-18; leva 2 de Documentos, 14/11); o que nasce como sessão não emite nem cancela: decisão do Claude, 27/11 (37ª, D5), pela própria DE-14 e pelo princípio 3 (a contagem de emitidos da tela Documentos contava os cancelados na hora)
+- Onde: `docs/regras/documentos.md:119`, `:157-164`; `docs/revisao.md:1818`; o gatilho `private.documentos_da_sessao_de_pacote` (`supabase/migrations/20261115200001_documentos_tipos_e_nascimento.sql`)
+- Antes: KA-18, KC-18; antes de 27/11: a sessão de pacote nascia avulsa, emitia os documentos do procedimento e o gatilho os cancelava em seguida
 
 **DE-15.** Nenhum caminho do sistema inicia o atendimento com um documento que "Bloqueia" ainda aberto. O documento dispensado, com motivo, conta como cumprido e libera o início.
 - Fonte: decisão do Claude
@@ -262,9 +262,9 @@ Este é o catálogo das regras dos Documentos que valem HOJE: os tipos, os model
 - Onde: `docs/regras/documentos.md:349-350`, `:512-522`; `docs/revisao.md:826-828`, `:2054`
 - Antes: KA-43, KB-10, KC-19
 
-**DG-02.** O que o contrato diz do pagamento é o que foi gravado. A forma é a frase inteira: no "entrada + parcelas", a entrada com o meio e as vezes dela, e as parcelas no crediário, cada uma com o valor gravado e a data ("entrada de R$ 1.000,00 no cartão de crédito em 3x + 2 parcelas de R$ 1.700,00 no crediário: R$ 1.700,00 em 04/12/2026 e R$ 1.700,00 em 04/01/2027"; diferentes: "3 parcelas (2x de R$ 890,66 + 1x de R$ 890,68) no crediário: …"), nunca a média. O valor da parcela diz a diferente ("R$ 890,66 (a última, R$ 890,68)"), também no cartão em N vezes. O meio de pagamento é o da entrada e, sem entrada, "Crediário" — nunca em branco.
-- Fonte: o Heitor, 2026-11-13 (PDV8): "sempre tem que ter forma de pagamento, o crediario é uma forma de pagamento, não existe pagamento sem forma de pagamento"
-- Onde: `docs/regras/documentos.md:525-546`; `docs/revisao.md:1982`
+**DG-02.** O que o contrato diz do pagamento é o que foi gravado. A forma é a frase inteira: no "entrada + parcelas", a entrada com o meio e as vezes dela, e as parcelas no crediário, cada uma com o valor gravado e a data ("entrada de R$ 1.000,00 no cartão de crédito em 3x + 2 parcelas de R$ 1.700,00 no crediário: R$ 1.700,00 em 04/12/2026 e R$ 1.700,00 em 04/01/2027"; diferentes: "3 parcelas (2x de R$ 890,66 + 1x de R$ 890,68) no crediário: …"), nunca a média. O valor da parcela diz a diferente ("R$ 890,66 (a última, R$ 890,68)"), também no cartão em N vezes. O meio de pagamento é o da entrada e, sem entrada, "Crediário" — nunca em branco. O contrato do procedimento avulso, emitido ao agendar, diz o valor do procedimento, e o pagamento se acerta no PDV, no dia do atendimento ("R$ …, a receber no PDV"; a forma vai no recibo); o contrato que precisa da forma (o do pacote, o do plano) nasce na venda, que a grava.
+- Fonte: o Heitor, 2026-11-13 (PDV8): "sempre tem que ter forma de pagamento, o crediario é uma forma de pagamento, não existe pagamento sem forma de pagamento"; o valor de cada parcela na FORMA do cartão em N vezes ("R$ 765,00 no cartão de crédito em 3x" não o diz; o teste `tests/checkout-pagamento.test.ts:80` exige a frase): foi ao Heitor, 27/11 (R29); o contrato do avulso acertado no PDV: decisão do Claude, 27/11 (37ª, Decisão D2) — ao agendar ninguém sabe a forma, e o contrato diz o que foi GRAVADO
+- Onde: `docs/regras/documentos.md:525-546`; `docs/revisao.md:1982`; `apps/web/lib/checkout/pagamento.ts` (`pagamento.forma`)
 - Antes: KB-11, KC-20
 
 **DG-03.** Mudar o pagamento (ou o desconto) de um contrato já assinado substitui o contrato, e a tela pergunta antes ("O contrato "X" já foi assinado para outro pagamento (à vista no Pix)"), com "Substituir o contrato" ou "Manter o pagamento combinado". Só confirmado, o assinado vira substituído e nasce um novo para a cliente assinar. Vale em todo caminho que recebe o combinado no contrato — o plano, o pacote e a comanda do atendimento no PDV: o PDV já abre com o combinado inteiro (a forma, as vezes do cartão, o crediário e o desconto), a pergunta vem antes de gravar qualquer coisa, e substituir o contrato vale junto do dinheiro, na mesma gravação.
@@ -319,8 +319,8 @@ Este é o catálogo das regras dos Documentos que valem HOJE: os tipos, os model
 - Onde: `docs/regras/documentos.md:439-447`; `DEVLOG.md:5556-5557`, `:5578`, `:14605`, `:14615`
 - Antes: KB-05
 
-**DA-07.** A assinatura só vale se o que a cliente viu é o que está gravado. O aparelho em que ela assina calcula uma impressão digital (SHA-256) do texto que recebeu, e a assinatura é recusada se ela não for igual à do texto gravado.
-- Fonte: decisão do Claude
+**DA-07.** A assinatura só vale se o que a cliente viu é o que está gravado. O aparelho em que ela assina calcula uma impressão digital (SHA-256) do texto que recebeu, e a assinatura é recusada se ela não for igual à do texto gravado. Por isso o documento emitido fica na versão do modelo com que nasceu, e a cliente assina esse texto, mesmo que uma versão nova tenha sido publicada depois; a versão nova vale para o que se emitir depois, e quem a quer no documento pendente o substitui ("Substituiu o documento", AD-20 de Plataforma).
+- Fonte: decisão do Claude; a versão do emitido: decisão do Claude, 27/11 (37ª, Decisão D1), pela própria DA-07 e pela DM-15 — é o que o sistema faz (D05 da 37ª)
 - Onde: `docs/regras/documentos.md:392-394`
 - Antes: KA-49
 
@@ -427,9 +427,9 @@ Este é o catálogo das regras dos Documentos que valem HOJE: os tipos, os model
 
 ## A tela de Documentos (DT)
 
-**DT-01.** A tela Documentos (menu Atendimento, nos dois portais) lista todo termo e contrato emitido no período com a situação — faltam dados (e o quê), a enviar, enviado, assinado, dispensado, cancelado; o substituído só pelo filtro —, as contagens no topo e os filtros de período, situação, tipo, unidade e busca. "Enviado" é link gerado, pedido no app ou link pela conversa, e a linha mostra o envio mais recente, se o link vale ou venceu e se a cliente abriu.
-- Fonte: o Heitor, 2026-10-14: "algum lugar para visualizar a lista de assinaturas com status — o que foi gerado, o que foi enviado, se já foi assinado"
-- Onde: `docs/regras/documentos.md:675-683`, `:705-706`; `docs/revisao.md:801`, `:2055`; `DEVLOG.md:6208-6221`
+**DT-01.** A tela Documentos (menu Atendimento, nos dois portais) lista todo termo e contrato emitido no período com a situação — faltam dados (e o quê), a enviar, enviado, assinado, dispensado, cancelado; o substituído só pelo filtro —, as contagens no topo e os filtros de período, situação, tipo, unidade, busca e Tags (a da cliente do documento; a rede sem tag nenhuma não vê esse filtro). "Enviado" é link gerado, pedido no app ou link pela conversa, e a linha mostra o envio mais recente, se o link vale ou venceu e se a cliente abriu.
+- Fonte: o Heitor, 2026-10-14: "algum lugar para visualizar a lista de assinaturas com status — o que foi gerado, o que foi enviado, se já foi assinado"; o filtro de Tags: o Heitor, 2026-11-13 (CLAUDE.md §1): "onde tiver for passível de filtro, um dos filtros que ela pode usar são as tags"
+- Onde: `docs/regras/documentos.md:675-683`, `:705-706`, `:750-756`; `docs/revisao.md:801`, `:2055`; `DEVLOG.md:6208-6221`; `apps/web/components/shared/painel-de-documentos.tsx` (`FiltroDeTags`)
 - Antes: KB-28, KC-39
 
 **DT-02.** A tela Documentos só lê: abre a quem tem Clientes em Ver, com os documentos das unidades ao alcance da pessoa. A janela do documento mostra a trilha (sem o CPF de quem assinou), o PDF e "Abrir na ficha"; as ações ficam na ficha.
@@ -508,7 +508,7 @@ O texto de `docs/regras/` (ou da própria revisão), e onde se viu também o có
 - DQ-02 (tela): resolvida em 26/11 — o módulo passou a se chamar "Dispensar documentos" (o Heitor, R19).
 - DL-05, DQ-01: `docs/regras/documentos.md:663-665` diz que a opção "pela conversa" "muda só quem tem os Modelos de documento — `documents: MANAGE` — e abrangência de rede"; pela regra de 18/11 é só da Admin da rede. O código já segue a de 18/11 (`definirEnvioDoLinkPelaConversa`, com `recusaDaConfigDaRede`); só o texto está velho.
 - DQ-06 (CÓDIGO): `docs/regras/documentos.md:306-307` e o código (`apps/web/lib/documentos/acesso.ts:35`, `colheOsDocumentos`) dão o colher a quem tem "Clientes, Agenda ou Prontuário em Ver, ou quem recebe". Falta o Atendimento: desde a UM1 (23/11, `docs/revisao.md:2228`) a tela do atendimento abre com o Atendimento em Ver, e quem só tem o Atendimento chega à tela e não colhe — contra a fala de 16/11 (colhe quem está com a cliente na tela). Também: o "Prontuário em Ver" da lista não corresponde a nenhuma das telas da regra (a conferir), e o "quem recebe" do código (`podeReceber`, `apps/web/lib/auth.ts:379`) aceita o Financeiro em Gerenciar, que a PV-04 do catálogo de Vendas e financeiro já trata como defeito (receber é só do PDV).
-- DT-01 (TELA, pela regra das Tags): a tela Documentos tem filtros (período, situação, tipo, unidade, busca) e não tem o de Tags. A regra das Tags (o Heitor, 13/11, CLAUDE.md §1: "onde tiver for passível de filtro, um dos filtros que ela pode usar são as tags") responde: cada documento é de uma cliente, e a tag é da pessoa. Falta o filtro de Tags.
+- DT-01 (TELA, pela regra das Tags): resolvida — a tela Documentos tem o filtro de Tags (`apps/web/components/shared/painel-de-documentos.tsx`, `FiltroDeTags`; o banco filtra em `documentos_emitidos_pagina` e `documentos_emitidos_resumo`, migration `20261203400003`), e a DT-01 o diz. O texto de antes: a tela Documentos tem filtros (período, situação, tipo, unidade, busca) e não tem o de Tags. A regra das Tags (o Heitor, 13/11, CLAUDE.md §1: "onde tiver for passível de filtro, um dos filtros que ela pode usar são as tags") responde: cada documento é de uma cliente, e a tag é da pessoa. Falta o filtro de Tags.
 - DT-03, DQ-05: `docs/revisao.md:803-804` e `:2055` ("Mantém: … a tela Documentos só de leitura e o "só os meus"") ainda falam em "só os meus", que saiu em 23/11 (SM1, `docs/revisao.md:1293`, `:2214`). `docs/regras/documentos.md:708` já foi atualizado.
 - DE-07: `docs/revisao.md:2054` (DC4 do Bloco: "os termos e os outros nascem no ACEITE do plano") e `:1856` ("os termos e os outros nascem no ACEITE") contrariam o DC4 aprovado (`docs/revisao.md:822-823`, "o do pacote e o do plano, na venda/na criação"); `docs/regras/documentos.md:140-147` e `docs/regras/vendas-financeiro.md:123` já foram corrigidos (auditoria de 18/11). O texto da revisão ficou velho.
 - DV-02, DV-04: `docs/regras/documentos.md:776-781` (A13/A14 de 11/11) diz que "Profissional que atende" e o registro valem "em todo tipo"; o contrato de pacote (DC1, 14/11, mais novo, `:57-59`) não tem variável de quem atende ("o pacote vendido não tem quem atende"). O "todo tipo" foi escrito antes do contrato de pacote existir.

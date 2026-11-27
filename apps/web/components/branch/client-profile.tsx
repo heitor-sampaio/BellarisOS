@@ -34,7 +34,8 @@ import { CampoIndicadaPor, type FichaQueIndicou } from '@/components/shared/camp
 import { CamposDeEndereco, mascaraDoCep, type EnderecoNaTela } from '@/components/shared/campos-de-endereco'
 import type { IndicacaoDaFicha } from '@/lib/clientes/indicacao-da-ficha'
 import { rotaComParams } from '@/lib/query-params'
-import { iniciaisDoNome, maskPhone, TIPOS_DE_DOCUMENTO } from '@estetica-os/utils'
+import { iniciaisDoNome, maskPhone, TIPOS_DE_DOCUMENTO, formatDia } from '@estetica-os/utils'
+import { dayKeyTZ } from '@/lib/datetime'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
 import { alternarTag, opcoesDeTag, temTag } from '@/lib/tags/escolha'
 import { formatarNoFuso, diaRelativo } from '@/lib/formatar-no-fuso'
@@ -162,6 +163,11 @@ export interface ProfilePackage {
   emAberto?:     { valor: number; parcelas: number; unidadeId?: string | null
     /** Item 8 da auditoria: a rede libera as sessões antes de pago (o padrão)? `tenants.pacote_crediario_libera`. */
     liberaAsSessoes?: boolean } | null
+  /** A5 da 37ª: a rede só libera depois de pago, e ele tem dinheiro em aberto — as sessões não se agendam. */
+  sessoesPresas?: boolean
+  /** A1 da 37ª: a validade (ISO) e a parte de cada sessão no rateio ("R$ 124,90 × 3 · R$ 195,15 × 2"). */
+  venceEm?:      string | null
+  partes?:       string | null
 }
 
 
@@ -2090,9 +2096,15 @@ export function ClientProfile({
                       {textoDasRestantes(pacote.totalSessions - pacote.usedSessions, pacote.scheduledSessions ?? 0)}
                     </p>
                   )}
+                  {/* A1 da 37ª (PA-07, PA-11): a parte de cada sessão e a validade, como o pré-pago mostra. */}
+                  {(pacote.partes || pacote.venceEm) && (
+                    <p data-partes-do-pacote style={{ fontSize: 'var(--text-2xs)', opacity: 0.85, marginTop: 6, fontWeight: 600 }}>
+                      {[pacote.partes, pacote.venceEm ? `vale até ${formatDia(dayKeyTZ(new Date(pacote.venceEm), fuso))}` : null].filter(Boolean).join(' · ')}
+                    </p>
+                  )}
                   {/* A18 da 9ª: nada dizia que o cartão abre — e é por ele que se agendam as sessões. */}
                   <p data-tratamento-que-abre style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-xs-sz)', fontWeight: 700, marginTop: 10 }}>
-                    Abrir para ver e agendar as sessões <ChevronRight size={14} aria-hidden="true" />
+                    {pacote.sessoesPresas ? 'Abrir para ver as sessões' : 'Abrir para ver e agendar as sessões'} <ChevronRight size={14} aria-hidden="true" />
                   </p>
                 </div>
                 {/* A41 da 11ª: o pacote segue liberando; a ficha diz o que falta pagar dele. */}

@@ -41,7 +41,7 @@ import {
   ipEAparelho, dadosDoAssinante, depoisDeAssinar, assinarJuntos, itensDaAssinatura, recusaDaImagem,
   COLUNAS_ASSINAVEIS, type DocumentoAssinavel,
 } from '@/lib/documentos/assinar'
-import { documentosDoMomento } from '@/lib/documentos/momento'
+import { documentosDoMomento, abertosNaTela } from '@/lib/documentos/momento'
 import { notifyClient } from '@/lib/notifications/notify'
 import { documentoParaExibir, resumirDocumentos, type ResumoDeDocumento } from '@/lib/documentos/leitura'
 import { vezesNoCartao, maquininhaDoPagamento } from '@/lib/checkout/pagamento'
@@ -51,7 +51,7 @@ import { precosDoPlano, descontoDoPlano } from '@/lib/checkout/desconto-do-plano
 import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto } from '@/lib/vendas/desconto'
 import { recusaDaEntradaDoPagamento } from '@/lib/checkout/lancamentos'
 import { pagamentoValido } from '@/lib/checkout/pagamento-valido'
-import type { DocumentoNaTela } from '@/components/shared/tela-de-assinatura'
+import type { DocumentoNaTela, JuntosNaAssinatura } from '@/components/shared/tela-de-assinatura'
 import type { TenantContext } from '@estetica-os/types'
 import { mensagemDoLink } from '@/lib/saudacao'
 import { unidadeDoPortal } from '@/lib/clientes/unidade-do-portal'
@@ -349,7 +349,7 @@ export async function definirPagamentoDoContrato(
 }
 
 /** Um documento inteiro, para assinar DENTRO de outra tela (o checkout). */
-export async function documentoParaAssinar(id: string): Promise<{ doc?: DocumentoNaTela; error?: string }> {
+export async function documentoParaAssinar(id: string, opcoes: { juntos?: boolean } = {}): Promise<{ doc?: DocumentoNaTela; juntos?: JuntosNaAssinatura; error?: string }> {
   try {
     const ctx = await getTenantContext()
     assertColheOsDocumentos(ctx)
@@ -357,7 +357,19 @@ export async function documentoParaAssinar(id: string): Promise<{ doc?: Document
     if (!alvo) return { error: 'Documento não encontrado.' }
     const d = await documentoParaExibir(ctx.tenantId!, alvo.id, { montarDeNovo: true })
     if (!d) return { error: 'Documento não encontrado.' }
+    // P3 da 37ª (PA-10: "junto do contrato de pacote, para uma assinatura só"):
+    // o "Colher assinatura" da venda entrega o aparelho com o MOMENTO inteiro —
+    // o contrato e os puxados do pacote —, como a tela de assinar da ficha.
+    let juntos: JuntosNaAssinatura | undefined
+    if (opcoes?.juntos === true && d.resumo.status === 'PENDENTE') {
+      const momento = await documentosDoMomento(ctx.tenantId!, alvo)
+      juntos = {
+        documentos: await abertosNaTela(ctx.tenantId!, momento.abertos.map(x => x.id).filter(x => x !== alvo.id)),
+        fora: momento.fora,
+      }
+    }
     return {
+      juntos,
       doc: {
         id: d.resumo.id, titulo: d.resumo.titulo, tipo: d.resumo.tipo, status: d.resumo.status,
         faltando: d.resumo.faltando, codigo: d.resumo.codigo, motivo: d.resumo.motivo,

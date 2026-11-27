@@ -12,6 +12,14 @@ describe('a concordância pelo sexo da ficha', () => {
     expect(concordarComOGenero(t, 'O')).toBe(t)
     expect(concordarComOGenero(t, null)).toBe(t)
   })
+  // D7 da 37ª (DV-09): "O(a) paciente" no começo da frase ficava "O(a)".
+  it('a maiúscula concorda e continua maiúscula', () => {
+    expect(concordarComOGenero('O(a) paciente declara. A(o) cliente autoriza.', 'F')).toBe('A paciente declara. A cliente autoriza.')
+    expect(concordarComOGenero('O(a) paciente declara. A(o) cliente autoriza.', 'M')).toBe('O paciente declara. O cliente autoriza.')
+    expect(concordarComOGenero('INFORMADA(O) e Esclarecido(a)', 'M')).toBe('INFORMADO e Esclarecido')
+    expect(concordarComOGenero('O(A) PACIENTE', 'F')).toBe('A PACIENTE')
+    expect(concordarComOGenero('O(a) paciente', 'O')).toBe('O(a) paciente')
+  })
   it('não mexe no que não é o par a/o', () => {
     expect(concordarComOGenero('Valor (opcional) e item (1)', 'F')).toBe('Valor (opcional) e item (1)')
   })

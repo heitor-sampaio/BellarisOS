@@ -324,6 +324,15 @@ recompensas, igual (`salvarConfigFidelidade` e `salvarRecompensa` passam por
   - A baixa é o cron `fidelidade` (`expirar_pontos`, lança
     EXPIRACAO "Pontos vencidos"). Ficha e portal mostram "vencem nos próximos
     30 dias" (`pontos_expirando`) e o "vence em" de cada linha.
+  - **O "vence em" diz o que RESTA da linha** (A13 da 37ª; SA-04, SA-05;
+    decisão do Claude, 27/11): `fidelidade_restante_dos_ganhos` (migration
+    `20261216500002`, só o servidor) dá o que resta de cada ganho com validade
+    pela conta de `fidelidade_a_expirar` (o a vencer até o vencimento menos o
+    a vencer até o anterior); no mesmo vencimento, o mais antigo sai primeiro.
+    A ficha e o app escrevem com `vencimentoDoGanho`: inteiro, "vence em …";
+    em parte, "restam N pontos, vencem em …"; gasto, "já usados" (vencido e
+    gasto, nada). Teste: `tests/extrato-de-pontos-o-que-resta-de-cada-ganho.test.ts`;
+    E2E: `e2e/fidelidade-validade.spec.ts` ("A13 da 37ª").
 - **O saldo é UM, da rede** (FD3 do plano de adaptação, o Heitor, 2026-11-13:
   "concordo"; migration `20261114900001`). A cliente é da rede e qualquer
   unidade a atende (CL3): o ponto ganho numa unidade se usa em todas — no

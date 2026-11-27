@@ -22,6 +22,9 @@ import { getFinanceiroDoPlano, type FinanceiroDoPlano } from '@/lib/metrics/plan
 import { getCreditoInternoDoCliente } from '@/lib/metrics/unidade'
 import { bonusDosCreditosDaCliente } from '@/lib/creditos/bonus-da-cliente'
 import { restantesDoPacoteDeFora } from '@/lib/pacotes/de-fora'
+import { regrasDoPacoteDaRede } from '@/lib/pacotes/regras-da-rede'
+import { recusaDaSessaoNaoLiberadaNoApp } from '@/lib/pacotes/regras'
+import { getEmAbertoDosPacotes } from '@/lib/metrics/pacote-em-aberto'
 import { quemMarcaAsSessoes } from '@/lib/plano-de-tratamento/textos'
 import { agendavelPeloApp } from '@/lib/clientes/agendavel-no-app'
 import { validoAteDaProposta, avisoDaPropostaVencida } from '@/lib/plano-de-tratamento/validade'
@@ -223,6 +226,15 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
   // O cliente não carrega a rede no token: ela vem da ficha dele. Programa
   // desligado = nenhum sinal de pontos, nem com saldo.
   const redeDoCliente = (clientRes as { tenant_id: string | null } | null)?.tenant_id ?? null
+  // A5 da 37ª (PA-13): na rede que só libera o pacote do crediário depois de
+  // pago, a sessão presa não oferece "Agendar"; o cartão diz por quê, a ela.
+  const regrasDoPacote = redeDoCliente && activePkgs.length ? await regrasDoPacoteDaRede(redeDoCliente) : null
+  const emAbertoDosPacotes = regrasDoPacote && !regrasDoPacote.crediarioLibera
+    ? await getEmAbertoDosPacotes(redeDoCliente!, activePkgs.map(p => p.id)) : {}
+  const presos = new Map(activePkgs.flatMap(p => {
+    const recusa = regrasDoPacote ? recusaDaSessaoNaoLiberadaNoApp(regrasDoPacote, emAbertoDosPacotes[p.id]?.valor ?? 0) : null
+    return recusa ? [[p.id, recusa] as const] : []
+  }))
   const cfgDaRede = redeDoCliente ? await configDaRede(redeDoCliente, admin) : null
   const fidelidadeLigada = !!cfgDaRede?.enabled
   // A54 da 12ª: o "Indique uma amiga" também no Início — só com o prêmio ligado, e
@@ -539,6 +551,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                 .filter(s => s.status === 'AVAILABLE' && !s.appointment_id)
                 .sort((a, b) => a.session_number - b.session_number)[0]
               const proc = proxima?.procedures ?? null
+              const presa = presos.has(pkg.id)
               const peloApp = !!proc && agendavelPeloApp({ visivelNoApp: proc.visible_on_client_app, sessaoComprada: true }) && proc.is_active && (!proc.branch_id || proc.branch_id === unidadeDoEndereco?.id)
               return (
                 <div key={pkg.id} data-pacote className="card" style={{ padding: '14px 18px' }}>
@@ -564,7 +577,11 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                       </span>
                     )}
                   </div>
-                  {proc && (peloApp ? (
+                  {proc && (presa ? (
+                    <p data-sessoes-presas style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 10 }}>
+                      {presos.get(pkg.id)}
+                    </p>
+                  ) : peloApp ? (
                     <Link href={`/${slug}/cliente/agendamentos/novo?procedimento=${proc.id}`} className="btn-secondary"
                       style={{ marginTop: 10, justifyContent: 'center', width: '100%' }}>
                       <CalendarDays size={14} aria-hidden="true" /> Agendar {proc.name}

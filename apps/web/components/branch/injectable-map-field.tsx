@@ -4,6 +4,7 @@ import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { Trash2, Check, Syringe, Plus, Minus, Maximize2 } from 'lucide-react'
 import { InjectableOutline, MAP_VIEWBOX, viewDe, partesDaView } from '@/components/shared/injectable-outline'
 import { formatarDose } from '@/lib/injetaveis/dose'
+import { confirmarNoAtendimento } from '@/lib/injetaveis/aplicacao-do-atendimento'
 import { Dica } from '@/components/shared/dica'
 import {
   INJECTABLE_UNITS, emptyInjectableMap, injectableTotals, newId,
@@ -36,6 +37,12 @@ interface Props {
    * a linha que diz onde se registra.
    */
   confirmaAqui?: boolean
+  /**
+   * O atendimento em que o mapa está aberto e os pontos deste mapa já
+   * registrados em outro (D2 da 37ª): "Confirmar aplicação" confirma só os
+   * pontos deste atendimento, e o ponto cuja dose aplicada muda passa a ser dele.
+   */
+  atendimento?: { id: string; deOutro: ReadonlySet<string> } | null
 }
 
 const ZOOM_MIN  = 1
@@ -44,7 +51,7 @@ const ZOOM_STEP = 1.5
 /** Arrasto abaixo disso (em unidades do viewBox) conta como clique, não pan. */
 const PAN_LIMIAR = 1.5
 
-export function InjectableMapField({ value, products, canEdit, onChange, confirmaAqui = true }: Props) {
+export function InjectableMapField({ value, products, canEdit, onChange, confirmaAqui = true, atendimento = null }: Props) {
   const map = value ?? emptyInjectableMap()
   const svgRef = useRef<SVGSVGElement>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -332,7 +339,10 @@ export function InjectableMapField({ value, products, canEdit, onChange, confirm
       confirmedAt: new Date().toISOString(),
       // A dose aplicada nasce igual à planejada; ajustar ponto a ponto é comum
       // (sobra ou falta produto), e é isso que o registro precisa refletir.
-      points: map.points.map(p => ({ ...p, applied: p.applied ?? p.dose })),
+      // No atendimento, só os pontos dele (D2 da 37ª: o retoque não reaplica a manhã).
+      points: atendimento
+        ? confirmarNoAtendimento(map.points, atendimento.id, atendimento.deOutro)
+        : map.points.map(p => ({ ...p, applied: p.applied ?? p.dose })),
     })
   }
 
@@ -407,11 +417,8 @@ export function InjectableMapField({ value, products, canEdit, onChange, confirm
                     ? 'Toque (ou clique) para marcar. Arraste o fundo para deslocar; aproxime com + e −.'
                     : 'Toque (ou clique) para marcar. Aproxime com + e − (ou a roda do mouse).'}
                 </span>
-                {map.points.length > 0 && !confirmaAqui && (
-                  <span data-aplicacao-no-atendimento style={{ display: 'block', marginTop: 6 }}>
-                    A aplicação se registra no atendimento: abra o atendimento da cliente e use “Registrar aplicação” no Planejamento.
-                  </span>
-                )}
+                {/* A8 da 37ª ("intuitivo não é explicativo", o Heitor, 26/11): saiu a
+                    frase de onde a aplicação se registra. */}
               </Dica>
             </span>
           )}
@@ -539,7 +546,8 @@ export function InjectableMapField({ value, products, canEdit, onChange, confirm
               confirmed={confirmed}
               selected={p.id === selectedId}
               onSelect={() => setSelectedId(p.id)}
-              onChange={patch => updatePoint(p.id, patch)}
+              // A dose aplicada mexida aqui é deste atendimento (D2 da 37ª).
+              onChange={patch => updatePoint(p.id, atendimento && 'applied' in patch ? { ...patch, atendimento: atendimento.id } as Partial<InjectablePoint> : patch)}
               onRemove={() => {
                 update({ points: map.points.filter(x => x.id !== p.id) })
                 if (selectedId === p.id) setSelectedId(null)

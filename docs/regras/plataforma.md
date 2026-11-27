@@ -959,11 +959,21 @@ auditoria das regras, pergunta 8: "só pela conta admin"; antes, H7 de
   acesso" diz que quem atende ou tem comissão de venda vê as Minhas comissões
   (`comissoes.md`). Prova: `tests/resumo-do-cargo-da-11.test.ts`.
   **E o resumo diz as vistas pessoais, como condição** (A19 da 27ª, decisão do
-  Claude pelo §11 e o princípio 3): sem a Agenda, "Se ela atende, vê também a
-  Minha agenda…"; sem o Financeiro, "…as Minhas comissões" a quem atende ou
+  Claude pelo §11 e o princípio 3): sem a Agenda, "Se a pessoa atende, vê também a
+  Minha agenda…" (o Heitor, 13/11: "não quero mais tu falando nomes de cargos
+  como se fossem cargos fixos" — era "Se ela atende"; 37ª); sem o Financeiro, "…as Minhas comissões" a quem atende ou
   tem comissão no nome dela; fora do plano, nada (`vistasPessoaisNoResumo`,
   `lib/permissions-copy.ts`; `[data-resumo-vistas-pessoais]`). O resumo é do
-  cargo, e a vista depende da pessoa. **E as Minhas comissões voltam ao
+  cargo, e a vista depende da pessoa. **E diz o "Dispensar documentos" e os
+  injetáveis** (A21 da 37ª, decisão do Claude, 27/11, princípio 3): "Dispensa um
+  documento obrigatório da cliente, com o motivo." (`documents` em Gerenciar;
+  `documentos.md`) e "Planeja os injetáveis e registra a aplicação." (o
+  Atendimento em Gerenciar com o Prontuário em Ver; sem o Prontuário, "Os
+  injetáveis pedem também o Prontuário em “Ver”."; só o Prontuário, "Vê os
+  injetáveis, sem planejar nem registrar."; `atendimento.md`) —
+  `dispensaNoResumo`, `injetaveisNoResumo`, `[data-resumo-dispensa]`,
+  `[data-resumo-injetaveis]`; fora do plano, nada. Prova:
+  `tests/resumo-do-cargo-dispensa-e-injetaveis.test.ts`. **E as Minhas comissões voltam ao
   Dashboard** (27ª, princípio 7): o "← Financeiro" levava quem não tem o
   Financeiro a uma tela que ela não abre. Prova:
   `tests/resumo-do-cargo-vistas-pessoais.test.ts`,
@@ -1852,6 +1862,20 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
     oportunidade: "Da rede" na criada pelo CRM (`branch_id` nulo,
     `lib/crm/oportunidade.ts`, H16) (A5;
     `tests/auditoria-o-repasse-da-oportunidade.test.ts`).
+  - **A 37ª simulação** (decisão do Claude, 27/11; AD-08, AD-13, AD-19, AD-20,
+    PA-24): o pacote TRAZIDO é "Registrou o pacote de antes Massagem — Cliente"
+    (o gatilho de `client_packages` não guarda o `de_fora`: ele se lê agora,
+    `pacotesDeFora`, e o nome sai sem o "(pacote de antes)"; D10). O "Abater do
+    pacote" da comanda é "Usou a sessão 2 do pacote X — Cliente", na unidade do
+    atendimento (era "Editou a comanda (cancelamento…)"; D11). A entrega do
+    brinde é "Entregou o brinde X (baixou 1 frasco de X do estoque) — Cliente",
+    na unidade do movimento (era "Editou o lote (quantidade)"); sem produto,
+    "Entregou o brinde X — Cliente"; e o motivo do movimento diz a cliente,
+    "Entrega de recompensa: X — Cliente", como a venda (migration
+    `20261216400001`; D12). O ajuste de pontos diz o motivo, lido agora:
+    "Creditou 500 pontos a X (motivo: …)" (`motivosDosPontos`; P4). O `horario`
+    da unidade é "horário de funcionamento" (A20). Prova:
+    `tests/auditoria-o-trazido-o-abatimento-o-brinde-e-o-ajuste.test.ts`.
   - Prova: `tests/atritos-da-15.test.ts`, `e2e/auditoria-atritos-da-15.spec.ts`.
 - **A falha do registro não derruba a gravação.** O gatilho segura o erro,
   grava uma linha `incompleto` (quando acha a rede) e deixa um WARNING no log:

@@ -12,7 +12,8 @@ import { getTenantContext, can, podeReceber } from '@/lib/auth'
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, mensagemDoErro } from '@/lib/db'
-import { creditosDoCliente, lerCredito, type CreditoParaAgendar } from '@/lib/creditos/credito'
+import { creditosDoCliente, lerCredito, recusaDoCreditoNoDia, type CreditoParaAgendar } from '@/lib/creditos/credito'
+import { recusaDaValidadeDoCredito } from '@/lib/creditos/validade'
 import { agendamentoAoAlcance, revalidarAgendamento } from '@/lib/appointments/alteracoes'
 import { revalidatePath } from 'next/cache'
 
@@ -53,7 +54,9 @@ export async function creditosDoAgendamento(appointmentId: string): Promise<Cred
   if ((sessao ?? []).length || (unidade ?? []).length || (lancamento ?? []).length) return []
   // A sessão do plano (A18 da 9ª) se oferece ao agendar, não ao ligar um avulso já
   // marcado: `agendamento_usar_credito` é do pacote e do pré-pago.
-  return (await creditosDoCliente(admin, ctx.tenantId!, ag.client_id)).filter(c => c.procedureId === ag.procedure_id && c.tipo !== 'PLANO')
+  // PP-05 (A3 da 37ª): só o que vale no dia marcado do agendamento.
+  return (await creditosDoCliente(admin, ctx.tenantId!, ag.client_id)).filter(c => c.procedureId === ag.procedure_id && c.tipo !== 'PLANO'
+    && !recusaDaValidadeDoCredito({ tipo: c.tipo === 'PACOTE' ? 'pacote' : 'pré-pago', expiresAt: c.venceEm, fuso: a.fuso, quando: a.scheduled_at }))
 }
 
 /**
@@ -70,6 +73,9 @@ export async function usarCreditoNoAgendamento(appointmentId: string, credito: s
     const admin = createAdminClient()
     const a = await agendamentoAoAlcance(admin, ctx, appointmentId)
     if (!a) return { error: 'Agendamento não encontrado.' }
+    // PP-05 (decisão do Claude, 27/11 — A3 da 37ª): o crédito vale no dia marcado do agendamento.
+    const vencido = await recusaDoCreditoNoDia(admin, c, a.scheduled_at, a.fuso)
+    if (vencido) return { error: vencido }
     const { error } = await admin.rpc('agendamento_usar_credito', {
       p_agendamento: appointmentId, p_tenant: ctx.tenantId!, p_tipo: c.tipo, p_credito: c.id,
       p_ator: ctx.internalUserId, p_ator_nome: ctx.userName || 'Equipe',

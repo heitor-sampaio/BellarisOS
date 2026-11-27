@@ -72,6 +72,30 @@ export function formatarPontos(pontos: number): string {
 }
 
 /**
+ * O "vence em" de uma linha de ganho do extrato (A13 da 37ª; SA-04, SA-05): o
+ * que RESTA dela (a conta é do banco, `fidelidade_restante_dos_ganhos`, pela de
+ * `fidelidade_a_expirar`) e quando vence. Inteira, "vence em …"; em parte,
+ * "restam N pontos, vencem em …"; gasta, "já usados" (vencida e gasta, nada: a
+ * linha "Pontos vencidos" diz o que saiu). Sem validade, ou saída, nada.
+ * `restante` nulo (sem a conta) mantém o "vence em" de sempre.
+ */
+export function vencimentoDoGanho(
+  linha: { points: number; expires_at: string | null; restante?: number | null },
+  data: (iso: string) => string,
+  agora: number = Date.now(),
+): string | null {
+  if (!linha.expires_at || linha.points <= 0) return null
+  const quando = data(linha.expires_at)
+  const resta = linha.restante
+  if (resta == null || resta >= linha.points) return `vence em ${quando}`
+  if (resta <= 0) {
+    if (Date.parse(linha.expires_at) <= agora) return null
+    return linha.points === 1 ? 'já usado' : 'já usados'
+  }
+  return resta === 1 ? `resta 1 ponto, vence em ${quando}` : `restam ${formatarPontos(resta)}, vencem em ${quando}`
+}
+
+/**
  * "Faltam 120 pontos" para a recompensa que o saldo não alcança — ou nulo,
  * quando alcança (J-52, 2026-10-30: o "Trocar" desabilitado não explicava, no
  * app nem na ficha). Saldo negativo conta a partir do que se deve.

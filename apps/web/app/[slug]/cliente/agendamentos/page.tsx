@@ -15,6 +15,7 @@ import { rotuloDoPagoAntes } from '@/lib/appointments/pago-antes-textos'
 import { pagosAntes } from '@/lib/appointments/pago-antes'
 import { valoresCobrados, type ValorCobrado } from '@/lib/appointments/valor-cobrado'
 import { nomesDasSessoesDoPlano } from '@/lib/plano-de-tratamento/nome-da-sessao-no-servidor'
+import { textoDaSessaoInterrompida } from '@/lib/plano-de-tratamento/sessao-no-app'
 
 const STATUS_LABEL: Record<string, string> = {
   SCHEDULED:   'Agendado',
@@ -43,6 +44,8 @@ type Appt = {
   price:         number
   duration_min:  number
   completed_at:  string | null
+  /** Iniciado (AT-21): o cancelado depois de iniciar gastou o que já estava pago. */
+  started_at?:   string | null
   procedures:    { name: string } | null
   professionals: { name: string } | null
   branches:      { name: string; fuso?: string | null; is_active?: boolean } | null
@@ -60,7 +63,7 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
   const admin = createAdminClient()
   const data = await ler(admin
     .from('appointments')
-    .select('id, scheduled_at, status, price, duration_min, completed_at, procedures(name), professionals:users!professional_id(name), branches(name, fuso, is_active)')
+    .select('id, scheduled_at, status, price, duration_min, completed_at, started_at, procedures(name), professionals:users!professional_id(name), branches(name, fuso, is_active)')
     .eq('client_id', ctx.clientId!)
     .order('scheduled_at', { ascending: false }), 'carregar os agendamentos')
 
@@ -208,7 +211,9 @@ function AppointmentCard({ appt, slug, highlight = false, prazoHoras, comUnidade
   const concluidoEm = appt.status === 'COMPLETED' ? textoDoConcluido(appt.scheduled_at, appt.completed_at, fuso) : null
   // A46 da 24ª: o de hoje cujo horário acabou sem a equipe registrar.
   const passou = horarioPassouSemAtender(appt)
-  const color = passou ? 'var(--warning)' : STATUS_COLOR[appt.status] ?? 'var(--text-muted)'
+  // AT-21 (D4 da 37ª): o atendimento iniciado e cancelado gastou a sessão já paga (do pacote, do pré-pago, do plano).
+  const interrompido = appt.status === 'CANCELLED' && !!appt.started_at && !!appt.pagoAntes
+  const color = passou ? 'var(--warning)' : interrompido ? 'var(--text-muted)' : STATUS_COLOR[appt.status] ?? 'var(--text-muted)'
   // A47 da 24ª: remarcar num toque — o cartão leva ao formulário já aberto.
   const remarca = prazoHoras != null && !passou && ['SCHEDULED', 'CONFIRMED'].includes(appt.status)
     && appt.branches?.is_active !== false && aindaDaParaAlterar(appt.scheduled_at, prazoHoras)
@@ -242,16 +247,16 @@ function AppointmentCard({ appt, slug, highlight = false, prazoHoras, comUnidade
           {appt.procedures?.name ?? 'Procedimento'}
         </p>
         <span style={{
-          flexShrink:   0,
           padding:      '3px 10px',
           borderRadius: 'var(--radius-chip-token)',
           fontSize: 'var(--text-overline)',
           fontWeight:   700,
           background:   `${color}18`,
           color,
-          whiteSpace:   'nowrap',
+          whiteSpace:   interrompido ? 'normal' : 'nowrap',
+          flexShrink:   interrompido ? 1 : 0,
         }}>
-          {passou ? 'Horário passou' : STATUS_LABEL[appt.status] ?? appt.status}
+          {passou ? 'Horário passou' : interrompido ? textoDaSessaoInterrompida(appt.scheduled_at, fuso) : STATUS_LABEL[appt.status] ?? appt.status}
         </span>
         {/* A seta diz que o cartão abre (J-61). */}
         <ChevronRight data-abre-detalhe size={16} color="var(--text-faint)" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />

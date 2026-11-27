@@ -40,7 +40,7 @@ import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { FusoProvider } from '@/components/shared/fuso'
 import { comPrecoDaUnidade } from '@/lib/procedimentos/preco-na-unidade'
 import { podeEstornar } from '@/lib/financeiro/so-os-meus'
-import { getEmAbertoDosPacotes } from '@/lib/metrics/pacote-em-aberto'
+import { getEmAbertoDosPacotes, getEmAbertoDasVendas } from '@/lib/metrics/pacote-em-aberto'
 
 /**
  * Tela de um atendimento — a mesma nos dois portais.
@@ -217,7 +217,8 @@ export async function SessaoDeAtendimento({
     ler(admin.from('package_sessions').select('id, session_number, client_package_id, client_packages(de_fora, total_sessions, service_packages(name))').eq('appointment_id', id).maybeSingle(),
       'conferir se é sessão de pacote'),
     // Procedimento pré-pago: também pago na venda.
-    ler(admin.from('procedure_sale_units').select('id').eq('appointment_id', id).neq('status', 'CANCELADA').maybeSingle(),
+    // A3 da 37ª: o número da sessão e o total da venda, para a faixa "já paga".
+    ler(admin.from('procedure_sale_units').select('id, numero, sale_id, procedure_sales(quantity)').eq('appointment_id', id).neq('status', 'CANCELADA').maybeSingle(),
       'conferir se é procedimento pré-pago'),
 
   ])
@@ -688,6 +689,12 @@ export async function SessaoDeAtendimento({
           }
         })() : null}
         isPrePago={!!unidadePrePaga}
+        // A3 da 37ª (AG-56): a faixa "Sessão 1 de 3 do pré-pago de X, já paga", como a do pacote.
+        sessaoDoPrePago={unidadePrePaga ? await (async () => {
+          const u = unidadePrePaga as unknown as { numero: number; sale_id: string; procedure_sales: { quantity: number | null } | null }
+          const emAberto = (await getEmAbertoDasVendas(ctx.tenantId!, [u.sale_id]))[u.sale_id]?.valor ?? 0
+          return { numero: u.numero, total: u.procedure_sales?.quantity ?? null, nome: proc?.name ?? null, emAberto, mostraOValor: podeReceber(ctx) }
+        })() : null}
         podeReceber={podeReceber(ctx)}
         // A35 da 12ª: quem recebe e não estorna lê, no pagamento confirmado, a quem pedir.
         quemEstorna={podeReceber(ctx) && !can(ctx, 'financial', 'MANAGE') ? await quemDesfazNoCaixa(ctx.tenantId!, branchId) : null}

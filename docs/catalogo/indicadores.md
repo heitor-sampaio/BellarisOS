@@ -665,10 +665,10 @@ Este é o catálogo das regras dos indicadores que valem HOJE: todo número na t
 
 ## A rede de uma unidade só (UU)
 
-**UU-01.** Na rede com UMA unidade ativa, some o que só faz sentido com duas: o dashboard da rede se chama "Visão geral" (sem "N unidades") e não tem o "Ranking de unidades"; o Financeiro da rede fica sem "Por unidade", "Total rede" e o filtro de unidade; os Relatórios ficam sem "Faturamento por Unidade" e "Saúde do Estoque por Unidade"; o estoque, sem "Consolidado / Por unidade" e "TOTAL REDE"; o portal da unidade, sem "Voltar para a rede" e sem o seletor de unidade. Os números não mudam, e tudo volta quando nasce a segunda unidade.
-- Fonte: o Heitor, 2026-10-29: "Com UMA unidade ativa, somem os termos e gráficos de rede … e o seletor de unidade. O modelo não muda: tudo volta quando nascer a segunda unidade."
-- Onde: `docs/regras/indicadores.md:895-913`; `DEVLOG.md:12282`
-- Antes: KD-01
+**UU-01.** Na rede com UMA unidade ativa, some o que só faz sentido com duas: o dashboard da rede se chama "Visão geral" (sem "N unidades") e não tem o "Ranking de unidades"; o Financeiro da rede fica sem "Por unidade", "Total rede" e o filtro de unidade; os Relatórios ficam sem "Faturamento por Unidade" e "Saúde do Estoque por Unidade"; o estoque, sem "Consolidado / Por unidade" e "TOTAL REDE"; o portal da unidade, sem "Voltar para a rede" e sem o seletor de unidade; o "Hoje" do dashboard da rede, sem a linha por unidade (fica só a conta do dia); o Financeiro, sem o "N unidades" do subtítulo. Fica o que é dado, não recorte: o nome da unidade nos cartões e no recibo. Os números não mudam, e tudo volta quando nasce a segunda unidade.
+- Fonte: o Heitor, 2026-10-29: "Com UMA unidade ativa, somem os termos e gráficos de rede … e o seletor de unidade. O modelo não muda: tudo volta quando nascer a segunda unidade."; o "Hoje" e o subtítulo do Financeiro: decisão do Claude, 27/11 (37ª, Decisão E1), pelo mesmo critério (some o que só é recorte por unidade, como o "Ranking de unidades" e o seletor do estoque); a coluna UNIDADES da lista de procedimentos com uma unidade (o teste `tests/atritos-da-16.test.ts:186` exige o chip com o nome dela): foi ao Heitor, 27/11 (R30)
+- Onde: `docs/regras/indicadores.md:895-913`; `DEVLOG.md:12282`; `apps/web/components/admin/admin-dashboard-view.tsx`, `apps/web/components/admin/admin-financial-view.tsx`
+- Antes: KD-01; antes de 27/11: com uma unidade, a linha por unidade do "Hoje" e o "1 unidade" do Financeiro continuavam à vista (A14 da 37ª)
 
 ## Os anúncios (AN)
 

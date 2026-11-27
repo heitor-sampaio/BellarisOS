@@ -27,11 +27,13 @@ export interface DocumentoAssinavel {
   treatment_plan_id: string | null
   /** O pacote vendido do documento (PC2, leva 2), se houver. */
   client_package_id?: string | null
+  /** O pacote do catálogo, antes da venda (P3 da 37ª): o momento do contrato e dos puxados. */
+  service_package_id?: string | null
   title:          string
   status:         string
 }
 
-export const COLUNAS_ASSINAVEIS = 'id, tenant_id, branch_id, client_id, appointment_id, treatment_plan_id, client_package_id, title, status'
+export const COLUNAS_ASSINAVEIS = 'id, tenant_id, branch_id, client_id, appointment_id, treatment_plan_id, client_package_id, service_package_id, title, status'
 
 /**
  * O IP de quem está na tela. O `X-Real-IP` vem PRIMEIRO: é a borda do Railway

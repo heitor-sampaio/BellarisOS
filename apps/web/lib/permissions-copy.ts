@@ -343,6 +343,38 @@ export function documentosNoResumo(niveis: Partial<Record<'clients' | 'documents
   return 'Documentos vem de Clientes em “Ver”: ver e colher os documentos da cliente. Criar e editar os modelos é só da Admin da rede.'
 }
 
+/**
+ * O "Dispensar documentos" no resumo do cargo (A21 da 37ª; princípio 3;
+ * `docs/regras/documentos.md`: o módulo em Gerenciar só DISPENSA um documento
+ * obrigatório da cliente, com motivo — `dispensaDocumentos`). Nulo sem o módulo
+ * ou com ele fora do plano.
+ */
+export function dispensaNoResumo(
+  niveis: Partial<Record<'documents', string>>, foraDoPlano: readonly AppModule[] = [],
+): string | null {
+  if (niveis.documents !== 'MANAGE' || foraDoPlano.includes('documents')) return null
+  return 'Dispensa um documento obrigatório da cliente, com o motivo.'
+}
+
+/**
+ * Os injetáveis no resumo do cargo (A21 da 37ª; princípio 3;
+ * `docs/regras/atendimento.md`, "Os injetáveis são de quem realiza o
+ * atendimento; ver é do Prontuário"): planejar e registrar a aplicação pedem o
+ * Atendimento em Gerenciar E o Prontuário em Ver; ver, o Prontuário em Ver.
+ * Nulo sem nada a dizer, ou com o Prontuário fora do plano.
+ */
+export function injetaveisNoResumo(
+  niveis: Partial<Record<'atendimento' | 'medical_records', string>>, foraDoPlano: readonly AppModule[] = [],
+): string | null {
+  if (foraDoPlano.includes('medical_records')) return null
+  const ve = (niveis.medical_records ?? 'NONE') !== 'NONE'
+  const atende = niveis.atendimento === 'MANAGE'
+  if (atende && ve) return 'Planeja os injetáveis e registra a aplicação.'
+  if (atende) return 'Os injetáveis pedem também o Prontuário em “Ver”.'
+  if (ve) return 'Vê os injetáveis, sem planejar nem registrar.'
+  return null
+}
+
 // O "Aberto pelo Financeiro em Gerenciar" da linha do PDV (A1 da 22ª) e o
 // seletor travado nele (A1 da 23ª) saíram com a PV-04 (catálogo de 24/11):
 // receber é só do PDV, e o Financeiro não abre o PDV.
@@ -413,8 +445,8 @@ export function vistasPessoaisNoResumo(
 ): string | null {
   const agenda = (niveis.agenda ?? 'NONE') === 'NONE' && !foraDoPlano.includes('agenda')
   const comissoes = (niveis.financial ?? 'NONE') === 'NONE' && !foraDoPlano.includes('financial')
-  if (agenda && comissoes) return 'Se ela atende, vê também a Minha agenda (só os horários dela) e as Minhas comissões (só as dela). Sem atender, com comissão no nome dela, vê as Minhas comissões.'
-  if (agenda) return 'Se ela atende, vê também a Minha agenda, só com os horários dela.'
-  if (comissoes) return 'Se ela atende ou tem comissão no nome dela, vê também as Minhas comissões, só as dela.'
+  if (agenda && comissoes) return 'Se a pessoa atende, vê também a Minha agenda (só os horários dela) e as Minhas comissões (só as dela). Sem atender, com comissão no nome dela, vê as Minhas comissões.'
+  if (agenda) return 'Se a pessoa atende, vê também a Minha agenda, só com os horários dela.'
+  if (comissoes) return 'Se a pessoa atende ou tem comissão no nome dela, vê também as Minhas comissões, só as dela.'
   return null
 }
