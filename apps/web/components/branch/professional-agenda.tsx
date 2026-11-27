@@ -370,9 +370,10 @@ export function ProfessionalAgendaView({
           display: 'flex', alignItems: 'center', gap: 14, textDecoration: 'none',
           background: heroEvent ? 'var(--brand)' : 'var(--surface)',
           border: heroEvent ? 'none' : '1.5px solid var(--border)',
-          boxShadow: heroEvent ? '0 2px 12px rgba(195,77,107,.22)' : 'none',
+          boxShadow: heroEvent ? 'var(--shadow-brand-card)' : 'none',
         }}>
-          <div style={{
+          {/* A8 da 39ª: no celular o círculo sai (`.destaque-avatar`), e o rótulo cabe. */}
+          <div className="destaque-avatar" style={{
             width: 46, height: 46, borderRadius: '50%', flexShrink: 0,
             background: heroEvent ? 'rgba(255,255,255,0.2)' : 'var(--bg-app)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -383,7 +384,7 @@ export function ProfessionalAgendaView({
               : <Clock size={18} style={{ color: 'var(--text-faint)' }} />}
           </div>
           <div style={{ minWidth: 0 }}>
-            <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: heroEvent ? 'rgba(255,255,255,0.65)' : 'var(--text-faint)', marginBottom: 3 }}>
+            <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: heroEvent ? 'var(--on-brand)' : 'var(--text-faint)', opacity: heroEvent ? 0.85 : 1, marginBottom: 3 }}>
               {heroEvent ? heroEvent.label : 'Hoje'}
             </p>
             {heroEvent ? (
@@ -391,7 +392,7 @@ export function ProfessionalAgendaView({
                 <p data-nome-do-destaque style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--on-brand)', letterSpacing: '-0.01em', overflowWrap: 'anywhere' }}>
                   {heroEvent.ev.clientName}
                 </p>
-                <p style={{ fontSize: 'var(--text-xs-sz)', color: 'rgba(255,255,255,0.75)', marginTop: 2, overflowWrap: 'anywhere' }}>
+                <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--on-brand)', opacity: 0.85, marginTop: 2, overflowWrap: 'anywhere' }}>
                   {/* 25/11: o que continua de ontem diz de quando vem (o início real), como o cartão da grade. */}
                   {heroEvent.continuaDeAntes
                     ? <span data-destaque-continua>{textoDoQueContinua(heroEvent.ev.start)}</span>
@@ -401,7 +402,7 @@ export function ProfessionalAgendaView({
                   {heroEvent.ate && heroEvent.ev.roomName && <span data-destaque-sala> · {heroEvent.ev.roomName}</span>}
                 </p>
                 {heroEvent.tambemEmAndamento.length > 0 && (
-                  <p data-tambem-em-andamento style={{ fontSize: 'var(--text-2xs)', color: 'rgba(255,255,255,0.75)', marginTop: 4, overflowWrap: 'anywhere' }}>
+                  <p data-tambem-em-andamento style={{ fontSize: 'var(--text-2xs)', color: 'var(--on-brand)', opacity: 0.85, marginTop: 4, overflowWrap: 'anywhere' }}>
                     Também em andamento: {heroEvent.tambemEmAndamento.map(e =>
                       `${e.clientName} (${format(parseISO(e.start), 'HH:mm') /* parede */}–${format(new Date(fimDaOcupacao({ scheduled_at: e.start, duration_min: e.durationMin })), 'HH:mm') /* parede */})`).join(', ')}
                   </p>
@@ -500,6 +501,13 @@ export function ProfessionalAgendaView({
               ))}
             </div>
           </div>
+
+          {/* D9 da 39ª (AG-23): a folga com um encaixe marcado também diz que ela não atende no dia. */}
+          {naoAtende && dayEvents.length > 0 && (
+            <p data-nao-atende-no-dia style={{ padding: '8px 20px', borderBottom: '1px solid var(--hairline)', fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>
+              Você não atende neste dia
+            </p>
+          )}
 
           {/* Grade de horários */}
           <div ref={gradeRef} data-rolagem-minha-agenda style={{ overflowY: 'auto', maxHeight: 620 }}>

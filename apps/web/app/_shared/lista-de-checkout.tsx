@@ -1,4 +1,4 @@
-import { getTenantContext, assertPodeReceber, podeVerClinico } from '@/lib/auth'
+import { getTenantContext, assertPodeReceber, podeVerClinico, can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
@@ -89,6 +89,9 @@ export async function ListaDeCheckout({
 
   // No portal da rede tudo resolve dentro de /admin; na unidade, dentro dela.
   const base = ehRede ? '/admin' : `/${slug}`
+  // D12 da 39ª (CLAUDE.md §14, "a tela esconde"): a página do plano é do
+  // Atendimento em Ver (PL-01). Quem recebe sem ele vê a fila, sem o link.
+  const abreOPlano = can(ctx, 'atendimento', 'VIEW')
 
   return (
     <div>
@@ -121,10 +124,10 @@ export async function ListaDeCheckout({
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {plans.map(plan => (
-            <Link key={plan.id} href={`${base}/planejamentos/${plan.id}`} style={{ textDecoration: 'none' }}>
+          {plans.map(plan => {
+            const cartao = (
               <div
-                className="card card-hover"
+                className={abreOPlano ? 'card card-hover' : 'card'}
                 style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16 }}
               >
                 <div style={{
@@ -149,14 +152,19 @@ export async function ListaDeCheckout({
                   <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
                     {plan.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                   </p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, justifyContent: 'flex-end' }}>
-                    <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--brand)' }}>Ver o plano</span>
-                    <ChevronRight size={14} style={{ color: 'var(--brand)' }} />
-                  </div>
+                  {abreOPlano && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, justifyContent: 'flex-end' }}>
+                      <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--brand)' }}>Ver o plano</span>
+                      <ChevronRight size={14} style={{ color: 'var(--brand)' }} />
+                    </div>
+                  )}
                 </div>
               </div>
-            </Link>
-          ))}
+            )
+            return abreOPlano
+              ? <Link key={plan.id} href={`${base}/planejamentos/${plan.id}`} style={{ textDecoration: 'none' }}>{cartao}</Link>
+              : <div key={plan.id}>{cartao}</div>
+          })}
         </div>
       )}
     </div>

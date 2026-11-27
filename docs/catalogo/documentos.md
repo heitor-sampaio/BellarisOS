@@ -178,8 +178,8 @@ Este é o catálogo das regras dos Documentos que valem HOJE: os tipos, os model
 - Onde: `docs/regras/documentos.md:148-154`
 - Antes: KA-17
 
-**DE-10.** No atendimento avulso, cancelar o agendamento ou marcar a falta cancela os documentos abertos dele e invalida os links; reabrir um agendamento cancelado, ou desfazer a falta, emite os documentos de novo; trocar o procedimento troca os documentos. Iniciar o atendimento não emite nada: tudo foi emitido ao agendar. (O cancelamento do pacote e o do plano: PA-10 do catálogo de Vendas e financeiro e DE-09.)
-- Fonte: decisão do Claude
+**DE-10.** No atendimento avulso, cancelar o agendamento ou marcar a falta cancela os documentos abertos dele e invalida os links (o documento fica, com a marca "Cancelado — Agendamento cancelado": documento emitido não se apaga); reabrir um agendamento cancelado, ou desfazer a falta, emite os documentos de novo; trocar o procedimento troca os documentos. Iniciar o atendimento não emite nada: tudo foi emitido ao agendar. (O cancelamento do pacote e o do plano: PA-10 do catálogo de Vendas e financeiro e DE-09.)
+- Fonte: decisão do Claude; o termo do agendamento cancelado fica com a marca: decisão do Claude, 27/11 (39ª simulação, Decisão B), pelo CLAUDE.md §14 (registro não se apaga)
 - Onde: `docs/regras/documentos.md:341-347`; `docs/revisao.md:790-791`, `:1819`; `docs/regras/atendimento.md:758`, `:2380`
 - Antes: KA-41, KC-23
 

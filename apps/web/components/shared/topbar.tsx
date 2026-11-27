@@ -3,7 +3,7 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import { iniciaisDoNome } from '@estetica-os/utils'
 import { saudacao, primeiroNome } from '@/lib/saudacao'
-import { Menu } from 'lucide-react'
+import { Menu, X } from 'lucide-react'
 import { useSidebar } from '@/components/shared/sidebar-context'
 import { savePushToken } from '@/actions/push-subscriptions'
 import { StaffNotificationBell } from '@/components/shared/staff-notification-bell'
@@ -84,7 +84,7 @@ export function Topbar({ userName, userRole, roleLabel, internalUserId, initialU
   const firstName  = primeiroNome(userName)
   const fuso       = useFuso()
   const ola        = useSyncExternalStore(assinarOMinuto, () => saudacao(new Date(), fuso), () => saudacaoInicial ?? saudacao(new Date(), fuso))
-  const { toggle } = useSidebar()
+  const { toggle, isOpen } = useSidebar()
   const umaUnidade = useUmaUnidade()
 
   useEffect(() => {
@@ -118,15 +118,17 @@ export function Topbar({ userName, userRole, roleLabel, internalUserId, initialU
       zIndex:          40,
       transition:      'left var(--sidebar-anim) var(--sidebar-ease)',
     }}>
-      {/* Hamburger — visível apenas em mobile (< 1024px) */}
+      {/* Hamburger — visível apenas em mobile (< 1024px). A1 da 39ª: o menu
+          aberto desce embaixo da topbar, e este botão o fecha. */}
       <button
         type="button"
         className="btn-ghost show-mobile"
         onClick={toggle}
-        aria-label="Abrir menu"
+        aria-label={isOpen ? 'Fechar menu' : 'Abrir menu'}
+        aria-expanded={isOpen}
         style={{ padding: 8, marginLeft: -8 }}
       >
-        <Menu size={20} />
+        {isOpen ? <X size={20} /> : <Menu size={20} />}
       </button>
 
       {/* PO1: "Unidade: X ▾" para quem tem várias — troca para a mesma tela na outra. */}

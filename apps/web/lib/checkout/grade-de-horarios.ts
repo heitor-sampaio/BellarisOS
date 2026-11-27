@@ -17,14 +17,20 @@ export interface HorarioDaGrade { hora: string; doProfissional: boolean }
  * de horário)"): o encaixe fora do horário dela, e o que fica fora da própria
  * unidade (madrugada, dia fechado), vão pelo "Outro horário" da tela.
  *
+ * `duracao` (D1 da 39ª; AG-07 e AG-10, princípio 3): o horário de quem atende
+ * só marca o início em que o atendimento INTEIRO cabe — o fim não atravessa o
+ * almoço, a pausa dela nem o fechamento (o último início é o fim da janela
+ * menos a duração). É a conta do app da cliente (`computeAvailableSlots`,
+ * `slotsDoDia(intervalos, duração)`). A janela da unidade segue de 30 em 30.
+ *
  * Puro: roda no navegador, com os horários que a action devolve.
  */
 export function gradeDoCheckout(
-  unidade: Horario | null, profissional: Horario | null, data: string, aPartirDe: string | null = null,
+  unidade: Horario | null, profissional: Horario | null, data: string, aPartirDe: string | null = null, duracao = 30,
 ): HorarioDaGrade[] {
   const dia = diaDaSemana(data)
   const daUnidade = slotsDoDia(intervalosDoDia(unidade, null, dia), 30)
-  const dela = new Set(slotsDoDia(intervalosDoDia(unidade, profissional, dia), 30))
+  const dela = new Set(slotsDoDia(intervalosDoDia(unidade, profissional, dia), duracao > 0 ? duracao : 30))
   return daUnidade
     .filter(hora => !aPartirDe || hora >= aPartirDe)
     .map(hora => ({ hora, doProfissional: dela.has(hora) }))

@@ -260,14 +260,21 @@ um muro que não depende de cada trava do código.
   da unidade diz "O domingo vem fechado. Se a unidade abre aos domingos (ou
   24 horas), marque o domingo…" (`data-domingo-fechado`). Prova: o mesmo spec
   ("A3/A1", "A2").
+  **Cada passo é o nome e o link, sem o porquê** (A10 da 39ª; princípio 7,
+  o Heitor, 26/11: "intuitivo não é explicativo"; decisão do Claude, 27/11):
+  a ordem diz o que vem antes. Só duas frases curtas ficam, porque dizem ONDE
+  (não por quê): a das taxas ("Em Configurações → Comissões e taxas.") e a da
+  outra unidade ("Depois, na Equipe, quem atende nela."). O "cada um com o
+  porquê" e o "o porquê dele diz" deste item valem só para essas duas. Prova:
+  `tests/catalogo-plano-e-equipe-o-que-a-tela-mostra.test.ts` ("A10").
   **E passam pela 2ª unidade e pelas Salas, com o painel em destaque**
   (A1 da 8ª simulação, 2026-11-06): "Outra unidade (se a rede tiver)" é o
   ÚLTIMO passo (A2 da 10ª: era o primeiro, e a rede de uma unidade — o tamanho
   real do cliente, CLAUDE.md §1 — lia primeiro o que não tem; o porquê dele diz
   que, cadastrada, se marca na Equipe quem atende nela), e "Salas" vem logo
   depois da Equipe, antes do Estoque e do Procedimento (`lib/setup/proximos-passos.ts`; o das Salas leva a `/admin/settings?tab=unidades#salas`;
-  com duas unidades, as salas ficam no "Ver detalhes" de cada uma, e o passo
-  diz). O "Acessar o painel →" é o botão principal, logo abaixo do "Tudo
+  com duas unidades, as salas ficam no "Ver detalhes" de cada uma — o passo
+  não diz mais, A10 da 39ª). O "Acessar o painel →" é o botão principal, logo abaixo do "Tudo
   pronto!", e a lista vem depois ("Ou comece pelos próximos passos"). Prova:
   `e2e/setup-retoma.spec.ts` ("A3/A1").
 - **A unidade nova NÃO herda o CNPJ da rede calada** (cfg-01, revisão do
@@ -1889,6 +1896,17 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
     a comissão pedida igual à gravada não se apaga e recria (migration
     `20261217600001`). Prova: `tests/auditoria-o-cancelamento-da-venda-e-o-que-nao-mudou.test.ts`,
     `e2e/procedimento-quem-realiza.spec.ts`.
+  - **A 39ª simulação** (decisão do Claude, 27/11; AD-13): quem realiza o
+    procedimento diz quem e de qual — "Tirou Damião de quem realiza Limpeza de
+    pele" / "Marcou Damião em quem realiza Limpeza de pele" (várias de uma vez,
+    "Damião e Leontina"). O gatilho de `procedure_professionals` passa a
+    guardar `user_id` e `procedure_id` (a chave da tabela pareia o UPDATE;
+    migration `20261218500001`); a gravação de antes, sem os ids, diz "Tirou
+    uma pessoa de quem realiza o procedimento". A conta tem nome: "Remarcou o
+    vencimento da despesa Aluguel da sala: 10/12/2026 → 20/12/2026" (sem a
+    descrição lida, "do lançamento") e "Estornou a despesa Aluguel da sala
+    (R$ 2.000,00 · Boleto)". Prova:
+    `tests/auditoria-quem-realiza-e-o-nome-da-conta.test.ts`.
   - Prova: `tests/atritos-da-15.test.ts`, `e2e/auditoria-atritos-da-15.spec.ts`.
 - **A falha do registro não derruba a gravação.** O gatilho segura o erro,
   grava uma linha `incompleto` (quando acha a rede) e deixa um WARNING no log:

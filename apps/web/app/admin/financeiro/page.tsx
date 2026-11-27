@@ -15,7 +15,8 @@ import { situacaoDoVencimento } from '@/lib/financeiro/vencimentos'
 import { getAReceberVencido } from '@/lib/metrics/vencidas'
 import { getAReceberSemCliente } from '@/lib/metrics/a-receber-sem-cliente'
 import { nomeDoCsvDosLancamentos } from '@/lib/financeiro/csv-dos-lancamentos'
-import { resolvePeriod, getCore, getByBranch, getMovimentacoes, getEmAberto, getResultadoDoEstoque, getAReceberEmAberto, getAPagarEmAberto, getComposicaoFinanceira, getTaxasDoPeriodo } from '@/lib/metrics'
+import { resolvePeriod, getCore, getByBranch, getMovimentacoes, getEmAberto, getResultadoDoEstoque, getAReceberEmAberto, getAPagarEmAberto, getComposicaoFinanceira, getTaxasDoPeriodo, getSeries } from '@/lib/metrics'
+import { granularidadeDoPeriodo } from '@/lib/financeiro/barras'
 import { extrasDoCsv, type LancamentoParaOCsv } from '@/lib/financeiro/extras-do-csv'
 import { lerTodas } from '@/lib/db'
 import { umaUnidadeSo } from '@/lib/unidades/uma-so'
@@ -175,10 +176,23 @@ export default async function AdminFinanceiroPage({
   const concluidosSemPagamentoDe = Object.fromEntries(await Promise.all(branchMetrics.map(async b =>
     [b.branchId, await getTotalDosAtendimentosAReceber({ tenantId: ctx.tenantId!, unidadeId: b.branchId })] as const)))
   const emAbertoDe = Object.fromEntries(emAbertoPorUnidade)
-  // D8 da 13ª: o débito do período de cada unidade, para o recorte (a nota
-  // dizia o débito da rede inteira com a unidade filtrada).
-  const debitoDe = Object.fromEntries(await Promise.all(branchMetrics.map(async b =>
-    [b.branchId, (await getComposicaoFinanceira({ ...metricArgs, branchIds: [b.branchId] })).formas.find(f => f.chave === 'DEBIT_CARD')?.valor ?? 0] as const)))
+  // A composição do período de cada unidade, para o recorte: o débito da nota
+  // (D8 da 13ª: dizia o da rede inteira com a unidade filtrada) e os cartões
+  // de formas e categorias do Resumo (D11 da 39ª).
+  const composicaoDe = Object.fromEntries(await Promise.all(branchMetrics.map(async b =>
+    [b.branchId, await getComposicaoFinanceira({ ...metricArgs, branchIds: [b.branchId] })] as const)))
+  const debitoDe = Object.fromEntries(Object.entries(composicaoDe).map(([id, c]) =>
+    [id, c.formas.find(f => f.chave === 'DEBIT_CARD')?.valor ?? 0] as const))
+  // D11 da 39ª (FN-02): a evolução do Resumo — a série da rede e a de cada
+  // unidade (metrics_series, a mesma da unidade). Só o Resumo a mostra.
+  const granularidade = granularidadeDoPeriodo(period)
+  const [serieDaRede, seriesDasUnidades] = aba === 'resumo'
+    ? await Promise.all([
+        getSeries({ ...metricArgs, granularity: granularidade }),
+        Promise.all(branchMetrics.map(async b =>
+          [b.branchId, await getSeries({ ...metricArgs, branchIds: [b.branchId], granularity: granularidade })] as const)),
+      ])
+    : [[], []]
   // D13 da 9ª: o que já venceu (antes de hoje) — o total e cada unidade.
   const vencidas = await getAReceberVencido({ tenantId: ctx.tenantId!, branchIds: null })
   // A17 da 30ª: a parte do em aberto sem cliente (a sublocação), o total e cada unidade.
@@ -300,6 +314,12 @@ export default async function AdminFinanceiroPage({
         aReceberDaOperadora={operadora}
         debitoNoPeriodo={composicao.formas.find(f => f.chave === 'DEBIT_CARD')?.valor ?? 0}
         debitoPorUnidade={debitoDe}
+        periodStart={start.toISOString()}
+        detalhesDoPeriodo={{
+          total: { serie: serieDaRede, composicao },
+          porUnidade: Object.fromEntries(Object.entries(composicaoDe).map(([id, c]) =>
+            [id, { serie: Object.fromEntries(seriesDasUnidades)[id] ?? [], composicao: c }])),
+        }}
         taxasDoPeriodo={taxasDoPeriodo}
         // D6 da 34ª (MQ-10): a quem não cadastra a taxa, o aviso diz quem cadastra.
         quemCadastraATaxa={taxasDoPeriodo.total.vendasSemTaxa.length ? await quemCadastraATaxa(ctx) : null}

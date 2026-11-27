@@ -197,7 +197,9 @@ test('A47: vendido o pacote, a venda oferece agendar a 1ª sessão agora', async
   })
 })
 
-test('A49: com desconto e sem motivo, o recebimento no PDV lembra que o motivo existe (segue opcional)', async ({ browser }) => {
+// O Heitor, 27/11, R37: "Pode tirar a frase (a proposta)" — a frase que lembrava o motivo saiu (explicava a tela);
+// fica o rótulo "Motivo do desconto (opcional)". Era: "lembra que o motivo existe" e exigia [data-lembrete-do-motivo].
+test('A49: com desconto e sem motivo, o recebimento no PDV mostra o campo do motivo, opcional e sem frase que explica', async ({ browser }) => {
   const cliente = await rede!.criarCliente('Desconto')
   const agora = new Date().toISOString()
   const ag = await db().from('appointments').insert({
@@ -209,9 +211,8 @@ test('A49: com desconto e sem motivo, o recebimento no PDV lembra que o motivo e
     // PDV7/CX3: recebe-se na comanda do atendimento, no PDV.
     const janela = await receberAtendimentoNoPdv(p, `/${slug}`, ag.data!.id)
     await janela.getByLabel('Desconto', { exact: true }).fill('100')
-    const lembrete = janela.locator('[data-lembrete-do-motivo]')
-    await expect(lembrete).toContainText('Sem motivo')
+    await expect(janela.getByText('Motivo do desconto (opcional)')).toBeVisible()
+    await expect(janela.getByText('Sem motivo, a lista do Financeiro')).toHaveCount(0)
     await janela.getByLabel('Motivo do desconto').fill('Cliente fiel')
-    await expect(lembrete).toHaveCount(0)
   })
 })

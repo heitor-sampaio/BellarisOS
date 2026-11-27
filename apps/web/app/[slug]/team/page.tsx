@@ -187,7 +187,8 @@ export default async function TeamPage({
               marginTop: 8, padding: '8px 12px', borderRadius: 'var(--radius-field-token)', maxWidth: 560,
               background: 'var(--warning-soft)', color: 'var(--warning)', fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)',
             }}>
-              {fala('Ninguém atende nesta unidade ainda: marque esta unidade no “Atende clientes” de quem atende aqui, no lápis de cada pessoa. Quem é de fora, a Equipe da rede marca.')}
+              {/* A13 da 39ª (princípio 7, o Heitor, 26/11: intuitivo não é explicativo): a faixa diz o estado. */}
+              {fala('Ninguém atende nesta unidade ainda.')}
             </p>
           )}
         </div>

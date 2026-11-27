@@ -92,3 +92,30 @@ test.describe.serial('os cancelados na agenda', () => {
     })
   })
 })
+
+// D16 da 39ª (AG-26: o cancelado fica à mostra, legível): com "Mostrar
+// cancelados", o cancelado ficava SOB o concluído adiantado do mesmo horário
+// (os dois eram "soltos" e nenhum dividia a largura), com o nome cortado.
+test('o cancelado e o concluído do mesmo horário ficam lado a lado, sem um sob o outro', async ({ browser }) => {
+  const DIA3 = dia(3)
+  const cliente = await rede!.criarCliente('Lado a lado')
+  const base = { branch_id: rede!.branchId, client_id: cliente, procedure_id: rede!.procedureId, professional_id: rede!.professionalId, source: 'INTERNAL', duration_min: 60, price: 0 }
+  const { data, error } = await db().from('appointments').insert([
+    { ...base, status: 'CANCELLED', cancelled_at: new Date().toISOString(), cancellation_reason: 'remarcou', scheduled_at: new Date(`${DIA3}T14:00:00-03:00`).toISOString() },
+    { ...base, status: 'COMPLETED', completed_at: new Date(`${DIA3}T14:30:00-03:00`).toISOString(), scheduled_at: new Date(`${DIA3}T14:00:00-03:00`).toISOString() },
+  ]).select('id, status')
+  expect(error, 'o cancelado e o concluído').toBeNull()
+  const doCancelado = data!.find(a => a.status === 'CANCELLED')!.id as string
+  const doConcluido = data!.find(a => a.status === 'COMPLETED')!.id as string
+  await como(browser, async p => {
+    await p.goto(`/${slug}/agenda?date=${DIA3}&cancelados=1`)
+    const c = p.locator(`[data-agendamento="${doCancelado}"]`)
+    const k = p.locator(`[data-agendamento="${doConcluido}"]`)
+    await expect(c).toBeVisible()
+    await expect(k).toBeVisible()
+    const a = (await c.boundingBox())!, b = (await k.boundingBox())!
+    const cruzaNaLargura = a.x < b.x + b.width - 1 && b.x < a.x + a.width - 1
+    expect(cruzaNaLargura, 'um não fica sob o outro').toBe(false)
+    await expect(c.locator('[data-cliente-do-cancelado]')).toContainText('Lado a lado')
+  })
+})

@@ -145,8 +145,8 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
     return (
       <div data-fora-do-prazo className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-          O prazo para alterar pelo app terminou em {limite} ({prazoHoras} horas antes do horário){' '}
-          <NotaDoFuso fuso={fusoDoAgendamento} prefixo="· " />. A equipe ainda
+          {/* A14 da 39ª: o espaço vai com a nota do fuso — sem ela, ficava "horário) ." */}
+          O prazo para alterar pelo app terminou em {limite} ({prazoHoras} horas antes do horário)<NotaDoFuso fuso={fusoDoAgendamento} prefixo=" · " />. A equipe ainda
           cancela ou remarca: para isso, fale com ela.
         </p>
         {telefone && (

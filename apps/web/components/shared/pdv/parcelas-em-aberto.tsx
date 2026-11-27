@@ -162,7 +162,7 @@ function ReceberAParcela({ parcela, todas, slug, aoFechar }: { parcela: ParcelaE
               {opcoesDeVezes.map(n => <option key={n} value={String(n)}>{n === 1 ? 'À vista' : `${n}x`}</option>)}
             </select>
             <DicaDasVezes total={valorDaPrimeira} vezes={vezes} opcoes={opcoesDeVezes} />
-            <AvisoDaTaxa vezes={vezes} bandeira={bandeira} maquininha={maquininha} />
+            <AvisoDaTaxa vezes={vezes} bandeira={bandeira} maquininha={maquininha} total={valorDaPrimeira} />
           </div>
         )}
         {/* A7 da 22ª (princípio 7): o "+ Outra forma" aparece com a janela, sem esperar a primeira forma. */}

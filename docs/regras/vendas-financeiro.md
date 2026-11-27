@@ -727,6 +727,12 @@ plano").
   De volta da assinatura ("Continuar"), a tela diz "Conferindo a
   assinatura…" enquanto o servidor confere — o pedido do contrato não volta à
   tela nesse meio —, e a conferência que falha diz o erro (D14 da 35ª).
+  Conferido o ASSINADO, a venda que a pessoa já pediu SEGUE, sem um segundo
+  "Vender por" (A20 da 39ª, princípio 3; decisão do Claude, 27/11, pelo
+  "assinado, a venda fecha"): o retorno é o de toda venda ("Venda
+  registrada", o PDV recarregado). O link e o "Pedir no portal" voltam pelo
+  "Já assinou: vender". Prova: `tests/venda-do-pacote-segue-depois-do-contrato.test.ts`,
+  `e2e/documentos-pacote-assina-antes-de-pagar.spec.ts` ("A20 da 39ª").
   **A venda emite** (leva 2, 2026-11-14) os documentos puxados dos
   procedimentos distintos — o termo e os "Outros documentos", menos os que o
   pacote exclui no pop-up (`documentos_excluidos`). Esses NÃO seguram o
@@ -1682,7 +1688,13 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     "O que vem pela frente" — o a receber da cliente, o da operadora e o a
     pagar, cada um com o link para a aba dele —, o fluxo de caixa, a evolução,
     as formas e as categorias (na rede, "Por unidade"). O Resumo não lê a
-    lista de lançamentos.
+    lista de lançamentos. **Na rede, os mesmos cartões** (D11 da 39ª, FN-02;
+    decisão do Claude, 27/11): a evolução, as formas e as categorias (a
+    despesa incluída) são o `DetalhesDoPeriodo`
+    (`components/shared/detalhes-do-periodo.tsx`) nos dois portais, com a série
+    (`getSeries`) e a composição (`getComposicaoFinanceira`) da rede ou da
+    unidade filtrada; o "Por unidade" vem depois. Prova:
+    `tests/financeiro-da-rede-resumo-e-caixa-da-lista.test.ts`.
   - **A receber** (`?aba=a-receber`): todo o a receber em aberto das
     clientes, de qualquer vencimento, do mais antigo para o mais novo (as
     vencidas primeiro), com "Receber" (CX2) e "Remarcar vencimento"
@@ -2204,6 +2216,9 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   lida inteira (`lerTodas`); a tela fazia o reduce e tirava o sinal com
   `Math.abs` (só a cor dizia que era negativo). Prova:
   `e2e/financeiro-lista-total-com-sinal.spec.ts`, `tests/metrics-resultado-da-lista.test.ts`.
+  **A mesma linha na rede** (D10 da 39ª, FN-13): a lista da rede dizia só "N
+  registros"; as duas desenham o `CaixaDaLista` (`components/shared/caixa-da-lista.tsx`)
+  com o `resultadoDaLista` da lista do recorte.
   **E diz que é o caixa da lista, não o resultado do período** (A31 da 9ª
   simulação, 2026-11-07; princípio 3): eram dois "resultados" na tela (o
   "Lucro líquido" de −R$ 4.325,82 e a lista de −R$ 1.929). A lista diz "14
@@ -2822,6 +2837,14 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
       máximo a parcela inteira) e a estimativa do Fechamento segue só
       informativa. Prova: `e2e/financeiro-cartao-por-bandeira.spec.ts`
       ("F16-3"), `tests/cartao-por-bandeira.test.ts`, `tests/comissoes-config.test.ts`.
+    - **O "Pagamento confirmado" diz TODAS as formas** (D8 da 39ª, princípio
+      3): pago em Pix + Débito, dizia só a primeira. "Pagamento confirmado —
+      Pix · R$ 100,00 + Débito · R$ 62,00", a maior primeiro, com um recibo e
+      um estorno por forma ("Recibo (Pix)"); e a janela do agendamento recebido
+      diz "Recebido" com as mesmas formas no lugar do "Valor" (A23 da 39ª;
+      `situacaoDaCobranca` → `recebido`). Um texto só:
+      `lib/financeiro/pagamento-do-atendimento.ts`. Prova:
+      `tests/pagamento-confirmado-com-todas-as-formas.test.ts`.
     - **A bandeira aparece onde a forma aparece** (A39 da 6ª simulação,
       2026-11-04): o recibo, o "Pagamento confirmado" da tela do atendimento,
       a ficha e o app (Financeiro e Histórico → Pagamentos) dizem "Crédito
@@ -3102,6 +3125,10 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     `lib/metrics/resultado.ts`); e, à vista, a linha das vezes diz para que
     serve: "À vista · parcela até 4x no crédito em “Vezes no cartão”". Prova:
     `e2e/caixa-atritos-da-8.spec.ts` ("A40"), `tests/liquido-na-maquininha.test.ts`.
+    Em TODA folha de receber (A25 da 39ª): a do crédito das parcelas em aberto
+    do PDV e o "Receber no cartão" não passavam o valor ao `AvisoDaTaxa`, e a
+    taxa vinha escondida; todo `<AvisoDaTaxa>` passa o `total`
+    (`tests/taxa-do-cartao-a-vista-ao-escolher.test.ts` trava).
   - **Uma conta só para a parcela do crediário** (D2 da 7ª simulação,
     2026-11-05; princípio 3): o checkout do plano dizia "3× de R$ 890,67" (o
     saldo ÷ 3) e o recebimento do plano no check-in (que saiu, PV-01) "3x de
@@ -3389,12 +3416,12 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     por parcela). Venda com desconto e SEM motivo não ganha a linha (o
     desconto dela aparece em Relatórios → Vendas). Prova:
     `e2e/financeiro-motivo-do-desconto.spec.ts`.
-  - **O motivo segue opcional, e a janela lembra que ele existe** (A49 da 7ª
-    simulação, 2026-11-05: o desconto de R$ 100 da Ana gravou sem o porquê): com
-    desconto e o motivo em branco, a janela do pagamento e as do "Vender" dizem
-    "Sem motivo, a lista do Financeiro mostra só o valor do desconto…"
-    (`LembreteDoMotivo`, `[data-lembrete-do-motivo]`). Prova:
-    `e2e/financeiro-atritos-da-7.spec.ts` ("A49").
+  - **O motivo segue opcional, só com o rótulo** "Motivo do desconto (opcional)"
+    (o Heitor, 27/11, R37: "Pode tirar a frase (a proposta)"). Era a A49 da 7ª
+    (decisão do Claude): a janela dizia "Sem motivo, a lista do Financeiro mostra
+    só o valor do desconto…" — texto que explica a tela (o Heitor, 26/11,
+    "intuitivo não é explicativo"). Prova: `e2e/financeiro-atritos-da-7.spec.ts`
+    ("A49"), `tests/desconto-sem-frase-que-explica.test.ts`.
   - **Contrato**: o desconto é parte do COMBINADO — vai no retrato do
     pagamento (`pagamentoNormalizado(p, desconto)`, só quando existe), e
     trocá-lo depois de assinar substitui o contrato como trocar a forma.

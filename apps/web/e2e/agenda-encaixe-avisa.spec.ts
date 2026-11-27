@@ -118,3 +118,53 @@ test('a grade sombreia o fora do horário, e o modal avisa do encaixe e do confl
   const { data } = await db().from('appointments').select('scheduled_at').eq('client_id', cliente).single<{ scheduled_at: string }>()
   expect(new Date(data!.scheduled_at).toISOString()).toBe(new Date(`${DIA}T08:30:00-03:00`).toISOString())
 })
+
+// A19 da 39ª (AG-04, princípio 3): no domingo fechado, o Agendar dizia
+// "Ninguém está livre nesse horário" junto do aviso do encaixe permitido logo
+// abaixo. Com a escolhida no encaixe, fica só o aviso do encaixe.
+test('no dia fechado, o encaixe com a escolhida não diz "Ninguém está livre"', async ({ browser }) => {
+  const d = new Date(`${DIA}T12:00:00-03:00`)
+  d.setUTCDate(d.getUTCDate() + ((7 - d.getUTCDay()) % 7 || 7))
+  const domingo = d.toISOString().slice(0, 10)
+  const ctx = await browser.newContext({ storageState: recepcao!.estado })
+  const p = await ctx.newPage()
+  try {
+    await p.goto(`/${slug}/agenda?date=${DIA}`)
+    await p.getByRole('button', { name: 'Agendar', exact: true }).click()
+    const janela = p.locator('dialog[open]')
+    await janela.getByLabel('Procedimento *').selectOption(rede!.procedureId)
+    await janela.getByLabel('Profissional *').selectOption(rede!.professionalId)
+    await janela.getByLabel('Data e hora *').fill(`${domingo}T10:00`)
+    await expect(janela.locator('[data-aviso-do-horario]')).toContainText('O encaixe é permitido.')
+    await expect(janela.locator('[data-ninguem-livre]')).toHaveCount(0)
+  } finally {
+    await ctx.close()
+  }
+})
+
+// D1 da 39ª (AG-07 e AG-10, princípio 3): os chips do Agendar ofereciam o
+// início cujo FIM passava do horário de quem atende (a Drenagem de 50 min às
+// 11:30 com o almoço às 12:00). Com 60 min e ela das 10:00 às 18:00, o último
+// início é 17:00 — a mesma conta do app da cliente. O encaixe segue pelo campo.
+test('os chips do Agendar só oferecem o início em que a duração inteira cabe', async ({ browser }) => {
+  const ctx = await browser.newContext({ storageState: recepcao!.estado })
+  const p = await ctx.newPage()
+  try {
+    await p.goto(`/${slug}/agenda?date=${DIA}`)
+    await p.getByRole('button', { name: 'Agendar', exact: true }).click()
+    const janela = p.locator('dialog[open]')
+    await janela.getByLabel('Procedimento *').selectOption(rede!.procedureId)
+    await janela.getByLabel('Profissional *').selectOption(rede!.professionalId)
+    await janela.getByLabel('Data e hora *').fill(`${DIA}T14:00`)
+    const grade = janela.locator('[data-grade-de-horarios]')
+    await expect(grade.locator('[data-horario="17:00"]')).toBeVisible()
+    await expect(grade.locator('[data-horario="17:30"]'), '17:30 + 60 min passa das 18:00').toHaveCount(0)
+    // 10:30 + 60 min bate no das 11:00 (a régua dos ocupados, que já valia).
+    await expect(grade.locator('[data-horario="10:30"]')).toHaveCount(0)
+    // O encaixe pelo campo continua: 17:30 avisa e não desliga o Confirmar.
+    await janela.getByLabel('Data e hora *').fill(`${DIA}T17:30`)
+    await expect(janela.locator('[data-aviso-do-horario]')).toContainText('O encaixe é permitido.')
+  } finally {
+    await ctx.close()
+  }
+})

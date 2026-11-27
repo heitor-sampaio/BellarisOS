@@ -12,6 +12,8 @@ interface Props {
   requests: LgpdAdminRow[]
   /** Só quem gerencia prontuário pode liberar a parte clínica. */
   canReviewMedical: boolean
+  /** Sem Clientes, com o Prontuário em Gerenciar: a lista é só a dos prontuários a liberar (D2 da 39ª). */
+  soOProntuario?: boolean
 }
 
 // A15 da 27ª: a situação é a do pedido inteiro (`situacaoDoPedidoNaAba`) — o pacote
@@ -108,7 +110,7 @@ function ReviewButtons({ requestId }: { requestId: string }) {
   )
 }
 
-export function SettingsLgpd({ requests, canReviewMedical }: Props) {
+export function SettingsLgpd({ requests, canReviewMedical, soOProntuario = false }: Props) {
   const fuso = useFuso()
   const awaiting = requests.filter(r => r.medical_status === 'pending')
 
@@ -145,7 +147,7 @@ export function SettingsLgpd({ requests, canReviewMedical }: Props) {
         <div className="card" style={{ padding: '28px 22px', textAlign: 'center' }}>
           <ShieldCheck size={22} style={{ color: 'var(--text-faint)' }} />
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 8 }}>
-            Nenhuma solicitação até agora.
+            {soOProntuario ? 'Nenhum prontuário à espera de liberação.' : 'Nenhuma solicitação até agora.'}
           </p>
         </div>
       ) : (

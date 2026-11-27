@@ -10,6 +10,7 @@ import { processExportRequest } from '@/lib/lgpd/processar'
 import { avisarPedidoDaCliente } from '@/lib/lgpd/aviso-do-pedido'
 import { ler, lerTodas, mensagemDoErro } from '@/lib/db'
 import { registrarAcessoAoProntuario } from '@/lib/prontuario/acessos'
+import { pedidosDaAbaLgpd } from '@/lib/lgpd/pedidos-da-aba'
 
 /**
  * Pedido de acesso aos dados pessoais (LGPD art. 18).
@@ -170,17 +171,24 @@ export type LgpdAdminRow = LgpdRequestRow & {
 /** Solicitações do tenant, para a tela da equipe. */
 export async function listDataRequests(): Promise<LgpdAdminRow[]> {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'clients', 'VIEW')
+  // Clientes em Ver vê a lista; quem só libera o prontuário (o Prontuário em
+  // Gerenciar), os pedidos com ele à espera (D2 da 39ª; LG-06, LG-08).
+  const alcance = pedidosDaAbaLgpd((m, n) => can(ctx, m, n))
+  if (alcance === 'nenhum') assertPermission(ctx, 'clients', 'VIEW')
 
   // Todos os pedidos, em páginas (C31, F70): o `.limit(100)` escondia o mais
   // antigo — inclusive o que ainda esperava resposta dentro do prazo.
-  const data = await lerTodas((de, ate) => createAdminClient()
-    .from('lgpd_requests')
-    .select('id, type, status, requested_at, completed_at, include_medical, medical_status, medical_reviewed_at, expires_at, error_message, export_pdf_path, requested_via, client_id, clients(name)')
-    .eq('tenant_id', ctx.tenantId!)
-    .order('requested_at', { ascending: false })
-    .order('id')
-    .range(de, ate), 'carregar os pedidos de LGPD')
+  const data = await lerTodas((de, ate) => {
+    let q = createAdminClient()
+      .from('lgpd_requests')
+      .select('id, type, status, requested_at, completed_at, include_medical, medical_status, medical_reviewed_at, expires_at, error_message, export_pdf_path, requested_via, client_id, clients(name)')
+      .eq('tenant_id', ctx.tenantId!)
+    if (alcance === 'prontuario') q = q.eq('include_medical', true).eq('medical_status', 'pending')
+    return q
+      .order('requested_at', { ascending: false })
+      .order('id')
+      .range(de, ate)
+  }, 'carregar os pedidos de LGPD')
 
   return data.map(r => ({
     id: r.id, type: r.type, status: r.status,

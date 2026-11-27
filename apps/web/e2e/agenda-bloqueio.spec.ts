@@ -241,6 +241,32 @@ test('a vista da SEMANA também desenha o bloqueio: a da unidade, a da rede e a 
   })
 })
 
+// D5 da 39ª (AG-22; design.md, o celular): a 375 px a Semana colava os
+// cabeçalhos ("QUAQUI"), cortava o domingo e escrevia o bloqueio uma letra por
+// linha. A grade rola de lado, com a coluna de quem atende parada.
+test('a Semana no celular: os dias não se colam, o domingo se alcança e o bloqueio se lê', async ({ browser }) => {
+  const ctx = await browser.newContext({ storageState: recepcao!.estado, viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true })
+  try {
+    const p = await ctx.newPage()
+    await p.goto(`/${slug}/agenda?date=${DIA}`)
+    await p.getByRole('button', { name: 'Modo de visualização' }).click()
+    await p.getByRole('menu').getByRole('button', { name: 'Semana', exact: true }).click()
+    const qua = (await p.locator('th', { hasText: 'QUA' }).boundingBox())!
+    const qui = (await p.locator('th', { hasText: 'QUI' }).boundingBox())!
+    expect(qui.x, 'QUA e QUI não se colam').toBeGreaterThanOrEqual(qua.x + qua.width - 1)
+    expect(qua.width, 'a coluna do dia tem largura para ler').toBeGreaterThanOrEqual(100)
+    const etiqueta = p.locator(`[data-bloqueio-da-semana][data-profissional="${rede!.professionalId}"]`)
+    await etiqueta.scrollIntoViewIfNeeded()
+    expect((await etiqueta.boundingBox())!.width, 'o bloqueio não vira uma letra por linha').toBeGreaterThanOrEqual(90)
+    const domingo = p.locator('th', { hasText: 'DOM' })
+    await domingo.scrollIntoViewIfNeeded()
+    const dom = (await domingo.boundingBox())!
+    expect(dom.x + dom.width, 'o domingo cabe na tela depois de rolar').toBeLessThanOrEqual(376)
+    // A coluna de quem atende fica parada: o nome segue à vista com o domingo.
+    await expect(p.locator('td', { hasText: nomeDaProf }).first()).toBeInViewport()
+  } finally { await ctx.close() }
+})
+
 test('quem tem a Agenda em Ver abre o bloqueio só para ler, e fecha pelo "Fechar" (princípio 7)', async ({ browser }) => {
   await como(browser, soVe!, async p => {
     await p.goto(`/${slug}/agenda?date=${DIA}`)

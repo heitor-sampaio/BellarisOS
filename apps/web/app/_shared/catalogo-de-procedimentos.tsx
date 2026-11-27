@@ -335,6 +335,9 @@ export async function CatalogoDeProcedimentos({ termo }: { termo: string }) {
                     room_ids:             p.room_ids,
                     professional_ids:     p.professional_ids,
                   }
+                  // A21 da 39ª (princípio 3): o inativo não está no app, mesmo com o
+                  // "Aparece no app" marcado no cadastro (a marca volta a valer ao reativar).
+                  const noApp = p.visible_on_client_app && p.is_active
 
                   return (
                     <tr key={p.id} style={{ borderBottom: i < procs.length - 1 ? '1px solid var(--hairline)' : undefined, opacity: p.is_active ? 1 : 0.55 }}>
@@ -378,8 +381,8 @@ export async function CatalogoDeProcedimentos({ termo }: { termo: string }) {
                       </td>
                       )}
                       {/* A9 da 24ª (princípio 3): o ícone sozinho, igual nas linhas, não dizia sim nem não. */}
-                      <td data-label="App" data-par data-no-app={p.visible_on_client_app ? 'sim' : 'nao'} style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
-                        {p.visible_on_client_app
+                      <td data-label="App" data-par data-no-app={noApp ? 'sim' : 'nao'} style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
+                        {noApp
                           ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--brand)', fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)' }}>
                               <Smartphone size={13} aria-hidden /> Sim
                             </span>

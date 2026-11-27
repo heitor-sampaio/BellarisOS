@@ -364,10 +364,13 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
                 <input className="field" value={obs} onChange={e => setObs(e.target.value)}
                   placeholder={pedidoDoMotivo ? 'O motivo da diferença' : 'Opcional'} maxLength={500} />
               </label>
-              {reabrindo && (
-                <button type="button" className="btn-ghost" disabled={pendente} onClick={() => { setReabrindo(false); setErro(null) }}>Cancelar</button>
-              )}
-              <button type="submit" className="btn-primary" disabled={pendente}>{rotuloDoBotaoDeFechar({ reabrindo, pendente })}</button>
+              {/* D4 da 39ª: no celular, o "Fechar o dia" fica preso no rodapé (`.acao-presa`, design.md). */}
+              <div className="acao-presa">
+                {reabrindo && (
+                  <button type="button" className="btn-ghost" disabled={pendente} onClick={() => { setReabrindo(false); setErro(null) }}>Cancelar</button>
+                )}
+                <button type="submit" className="btn-primary" disabled={pendente}>{rotuloDoBotaoDeFechar({ reabrindo, pendente })}</button>
+              </div>
             </div>
           )}
           {pedidoDoMotivo && (

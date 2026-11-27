@@ -41,11 +41,13 @@ export function liberouOHorario(a: AgendamentoNaGrade): boolean {
  * cruzam NA TELA (com a altura mínima de cada um) ficam lado a lado, em
  * vez de um por cima do outro. Devolve, por id, a coluna e o total de colunas
  * do grupo que se cruza. `topo` e `altura` em px (a conta da própria grade).
+ * `desempate`: no mesmo topo, quem vem primeiro (à esquerda) — na grade do dia,
+ * o ativo antes do cancelado e do concluído adiantado (D16 da 39ª).
  */
 export function ladoALado<T extends { id: string }>(
-  itens: T[], topo: (x: T) => number, altura: (x: T) => number,
+  itens: T[], topo: (x: T) => number, altura: (x: T) => number, desempate?: (a: T, b: T) => number,
 ): Map<string, { col: number; total: number }> {
-  const ordem = [...itens].sort((a, b) => topo(a) - topo(b) || a.id.localeCompare(b.id))
+  const ordem = [...itens].sort((a, b) => topo(a) - topo(b) || (desempate?.(a, b) ?? 0) || a.id.localeCompare(b.id))
   const saida = new Map<string, { col: number; total: number }>()
   let grupo: T[] = []
   let fimDoGrupo = -Infinity

@@ -356,10 +356,11 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
 
   // A régua única do horário livre (D5 da 8ª): a sessão INTEIRA (a duração
   // dela, como o servidor confere) contra os agendamentos e os bloqueios.
+  // D1 da 39ª: a mesma duração decide o que a grade oferece (o fim cabe no horário).
+  const duracaoDaSessao = plan.sessions.find(s => s.id === activeSession)?.mainDurationMin || 60
   function isSlotBooked(time: string): { clientName: string | null; rotulo?: string } | null {
     if (!activeDate) return null
-    const duracao = plan.sessions.find(s => s.id === activeSession)?.mainDurationMin || 60
-    return ocupanteDoHorario(instanteNoFuso(activeDate, time, fuso), duracao, daySlots, slotsLidos.chave === chaveDosSlots ? slotsLidos.bloqueios : [])
+    return ocupanteDoHorario(instanteNoFuso(activeDate, time, fuso), duracaoDaSessao, daySlots, slotsLidos.chave === chaveDosSlots ? slotsLidos.bloqueios : [])
   }
 
   // A37: o que se recebe agora (à vista, entrada + parcelas) pede a forma.
@@ -1240,6 +1241,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
                 horarioDaUnidade={slotsLidos.unidade}
                 horarioDoProfissional={slotsLidos.profissional}
                 nomeDoProfissional={schedProfs.find(p => p.id === schedProfId)?.name}
+                duracaoMin={duracaoDaSessao}
                 ocupado={isSlotBooked}
                 selecionado={activeTime}
                 onEscolher={setActiveTime}

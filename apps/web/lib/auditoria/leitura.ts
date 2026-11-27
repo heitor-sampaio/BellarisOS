@@ -217,6 +217,8 @@ async function nomesDaAuditoria(ctx: TenantContext, registros: readonly Registro
     ...registros.filter(r => r.tabela === 'commission_rules').map(r => doRegistro(r, 'professional_id')).filter((v): v is string => !!v),
     // A5 da 36ª: a quem foi a oportunidade repassada ("Repassou a oportunidade de X a Fulano").
     ...registros.filter(r => r.tabela === 'leads').map(r => doRegistro(r, 'owner_id')).filter((v): v is string => !!v),
+    // A15 da 39ª: quem entrou ou saiu de "Quem realiza" do procedimento ("Tirou Damião de quem realiza X").
+    ...registros.filter(r => r.tabela === 'procedure_professionals').map(r => doRegistro(r, 'user_id')).filter((v): v is string => !!v),
   ])]
   // A16: a sala do bloqueio; A17: o cargo do membro editado (o de → para e o "Promoveu").
   const salas = [...new Set(registros.filter(r => r.tabela === 'agenda_bloqueios').map(r => doRegistro(r, 'room_id')).filter((v): v is string => !!v))]
@@ -375,6 +377,8 @@ async function nomesDa20(ctx: TenantContext, registros: readonly RegistroDaAudit
     ...registros.filter(r => r.tabela === 'appointments' && r.operacao === 'criou').map(r => r.depois?.procedure_id),
     // A9 da 31ª: o procedimento da regra de comissão (a apagada o tem no `antes`).
     ...registros.filter(r => r.tabela === 'commission_rules').map(r => r.depois?.procedure_id ?? r.antes?.procedure_id),
+    // A15 da 39ª: o procedimento de "Quem realiza" (o tirado o tem no `antes`).
+    ...registros.filter(r => r.tabela === 'procedure_professionals').map(r => r.depois?.procedure_id ?? r.antes?.procedure_id),
   ].filter((v): v is string => typeof v === 'string' && UUID.test(v)))]
   // D12 da 35ª (AD-13): o agendamento que a sessão do pacote ligou ou desligou — a unidade é a dele.
   const agendamentosDasSessoes = [...new Set(registros

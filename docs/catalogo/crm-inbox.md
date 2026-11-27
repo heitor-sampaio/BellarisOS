@@ -321,8 +321,8 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/regras/crm-inbox.md:682-685`, `:856-866`
 - Antes: KC-01, KC-02; antes de 26/11: negado, o pacote seguia o pronto, que dizia "em análise — quando ela decidir, um pacote novo"
 
-**LG-06.** O prontuário só entra no pacote se a cliente pediu e se quem tem o Prontuário em Gerenciar o libera, na aba LGPD; liberar pede confirmação (ele vai para a cliente), que aparece abaixo do botão. Depois de liberado, o pacote é gerado de novo, com a parte clínica. Negar também refaz o pacote, sem a parte clínica (LG-05); só o liberar registra o acesso ao prontuário. A cliente não é avisada no sino quando o pacote refeito fica pronto (a sugestão nº 107).
-- Fonte: decisão do Claude; o negar: decisão do Claude, 26/11 (33ª simulação, D2)
+**LG-06.** O prontuário só entra no pacote se a cliente pediu e se quem tem o Prontuário em Gerenciar o libera, na aba LGPD (sem precisar de Clientes em Ver: liberar e negar pedem o Prontuário em Gerenciar, e só ele); liberar pede confirmação (ele vai para a cliente), que aparece abaixo do botão. Depois de liberado, o pacote é gerado de novo, com a parte clínica. Negar também refaz o pacote, sem a parte clínica (LG-05); só o liberar registra o acesso ao prontuário. A cliente não é avisada no sino quando o pacote refeito fica pronto (a sugestão nº 107).
+- Fonte: decisão do Claude; o negar: decisão do Claude, 26/11 (33ª simulação, D2); sem precisar de Clientes em Ver: decisão do Claude, 27/11 (39ª simulação, D2), pela própria LG-06 e pela LG-08
 - Onde: `docs/regras/crm-inbox.md:696`, `:709`, `:856-866`
 - Antes: KC-04, KC-06; antes de 26/11: só o liberar refazia o pacote
 
@@ -331,8 +331,8 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/regras/crm-inbox.md:700`, `:723`
 - Antes: KC-05, KC-10
 
-**LG-08.** A aba LGPD existe nos dois portais (quem tem só unidades abre a da unidade) e mostra no nome quantos pedidos esperam: "LGPD (n)". A lista de pedidos pede Clientes em Ver; quem não tem lê na aba o porquê. O pedido com prontuário avisa também quem tem o Prontuário em Gerenciar (é quem libera), e a aba abre para essa pessoa; o menu mostra Configurações a ela.
-- Fonte: decisão do Claude
+**LG-08.** A aba LGPD existe nos dois portais (quem tem só unidades abre a da unidade) e mostra no nome quantos pedidos esperam: "LGPD (n)". A lista de pedidos pede Clientes em Ver; quem não tem lê na aba o porquê. O pedido com prontuário avisa também quem tem o Prontuário em Gerenciar (é quem libera), e a aba abre para essa pessoa; o menu mostra Configurações a ela. Sem Clientes em Ver, quem tem o Prontuário em Gerenciar vê na aba os pedidos com o prontuário esperando a decisão, com o Liberar e o Negar da parte do prontuário — só isso; o resto dos pedidos continua pedindo Clientes em Ver.
+- Fonte: decisão do Claude; os pedidos com prontuário para quem tem o Prontuário em Gerenciar sem Clientes em Ver: decisão do Claude, 27/11 (39ª simulação, D2), pela LG-06 e pela própria LG-08 (o aviso chamava quem não conseguia decidir)
 - Onde: `docs/regras/crm-inbox.md:610-612`, `:711-712`
 - Antes: KB-39, KB-40, KC-07, KC-08
 
@@ -351,8 +351,8 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/regras/crm-inbox.md:651-672`, `:714`
 - Antes: KB-47, KB-48, KB-50, KC-09
 
-**LG-12.** A parte geral leva o histórico da ficha de saúde (quando foi mandada, completa ou confirmação, a situação, quando e por onde foi respondida). O prontuário liberado leva as perguntas e respostas da ficha (com o nome "Ficha de saúde"), no JSON e no PDF — também a ficha que a equipe preencheu no atendimento, sem repetir a que já veio por um pedido respondido —, cada atendimento com as anotações feitas depois de concluir e as versões substituídas pelo "Editar registro" (quem corrigiu e quando), as fotos (inclusive a foto clínica anexada) e os insumos que saíram do estoque nele (produto, quantidade e lote).
-- Fonte: decisão do Claude; a ficha do prontuário no PDF: decisão do Claude, 26/11 (33ª simulação, D3), pela própria LG-12 e pelo princípio 3
+**LG-12.** A parte geral leva o histórico da ficha de saúde (quando foi mandada, completa ou confirmação, a situação, quando e por onde foi respondida). O prontuário liberado leva as perguntas e respostas da ficha (com o nome "Ficha de saúde"), no JSON e no PDF — também a ficha que a equipe preencheu no atendimento, sem repetir a que já veio por um pedido respondido —, cada atendimento com as anotações feitas depois de concluir e as versões substituídas pelo "Editar registro" (quem corrigiu e quando), as fotos (inclusive a foto clínica anexada) e os insumos que saíram do estoque nele (produto, quantidade e lote). Cada foto vai no pacote para a cliente abrir (o arquivo ou o link para baixá-lo, como os outros anexos), não só a contagem; e a ficha de saúde aparece uma vez só (não de novo como anamnese geral).
+- Fonte: decisão do Claude; a ficha do prontuário no PDF: decisão do Claude, 26/11 (33ª simulação, D3), pela própria LG-12 e pelo princípio 3; as fotos abertas e a ficha uma vez só: decisão do Claude, 27/11 (39ª simulação, D14), pela própria LG-12
 - Onde: `docs/regras/crm-inbox.md:663-669`, `:728-745`, `:798-806`
 - Antes: KB-49, KC-11, KC-12, KC-13; antes de 26/11: a ficha que a equipe preenche no atendimento ia só ao JSON, e o PDF dizia "Nenhuma ficha de saúde respondida"
 

@@ -22,9 +22,15 @@ import { Dica } from '@/components/shared/dica'
  * simulação: de madrugada, oferecia 00:00–04:00).
  */
 export function GradeDeHorarios({
-  data, horarioDaUnidade, horarioDoProfissional, nomeDoProfissional, ocupado, selecionado, onEscolher, carregando, semOutroHorario = false, fuso: fusoDado,
+  data, horarioDaUnidade, horarioDoProfissional, nomeDoProfissional, duracaoMin, ocupado, selecionado, onEscolher, carregando, semOutroHorario = false, fuso: fusoDado,
 }: {
   data:                  string
+  /**
+   * A duração do atendimento (D1 da 39ª; AG-07 e AG-10): só aparece o início
+   * em que ele cabe INTEIRO no horário de quem atende — a mesma conta do app
+   * da cliente. O que não cabe vai pelo encaixe, com o aviso.
+   */
+  duracaoMin:            number
   horarioDaUnidade:      Horario | null
   horarioDoProfissional: Horario | null
   nomeDoProfissional?:   string
@@ -50,7 +56,7 @@ export function GradeDeHorarios({
   const agora = new Date(useAgora() ?? abriuEm)
   const limite = aPartirDeAgora(data, agora, fusoDado ?? fusoDaTela)
   const [erroDoEncaixe, setErroDoEncaixe] = useState<string | null>(null)
-  const daJanela = gradeDoCheckout(horarioDaUnidade, horarioDoProfissional, data, limite)
+  const daJanela = gradeDoCheckout(horarioDaUnidade, horarioDoProfissional, data, limite, duracaoMin)
   // R14 (o Heitor, 26/11, na página de perguntas: "Horarios, salas e pessoas não
   // disponíveis não devem aparecer nas listas"): o horário ocupado ou bloqueado
   // SAI da grade — era riscado e desligado. E R15 ("Não: quem está fora do
@@ -58,9 +64,11 @@ export function GradeDeHorarios({
   // fora do horário de quem atende também sai — era tracejado, o encaixe.
   const doHorarioDela = daJanela.filter(h => h.doProfissional)
   const grade = doHorarioDela.filter(h => !ocupado(h.hora))
-  const nenhumLivre = doHorarioDela.length > 0 && grade.length === 0
+  // Ela atende no que resta do dia, mas nada livre comporta a duração (D1 da 39ª): "nenhum livre".
+  const atendeNoQueResta = gradeDoCheckout(horarioDaUnidade, horarioDoProfissional, data, limite).some(h => h.doProfissional)
+  const nenhumLivre = atendeNoQueResta && grade.length === 0
   const doDiaInteiro = gradeDoCheckout(horarioDaUnidade, horarioDoProfissional, data)
-  const jaPassou = !!limite && doHorarioDela.length === 0 && doDiaInteiro.some(h => h.doProfissional)
+  const jaPassou = !!limite && !atendeNoQueResta && doDiaInteiro.some(h => h.doProfissional)
   const unidadeFechada = doDiaInteiro.length === 0
   const foraDaGrade = !!selecionado && !doHorarioDela.some(h => h.hora === selecionado)
   const quem = nomeDoProfissional?.trim() || 'quem atende'

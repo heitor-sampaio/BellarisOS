@@ -344,7 +344,7 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Antes: KA-28, KG-05, KB-09
 
 **PA-07.** A venda grava tudo junto ou nada: o pacote da cliente com o retrato do preço vendido (o de tabela menos o desconto), das sessões e da validade (mudar o catálogo vale só para as próximas vendas), todas as sessões livres e o dinheiro; o pagamento e as sessões fecham com o preço vendido, e se a soma das sessões não fechar, a venda é recusada. Vendido o pacote, quem tem a Agenda em Gerenciar vê "Venda registrada. Agendar a 1ª sessão agora?", com o procedimento da sessão nº 1, e agenda ali mesmo; "Cancelar" deixa para depois.
-- Fonte: decisão do Claude
+- Fonte: decisão do Claude; o retrato vale igual em todas as telas (agenda, PDV, Financeiro, Relatórios, comissão) depois de mudar o catálogo: decisão do Claude, 27/11 (39ª simulação, Decisão E)
 - Onde: `docs/regras/vendas-financeiro.md:694-698`, `:945-952`, `:2904`
 - Antes: KB-15, KF-36, KB-17
 
@@ -463,7 +463,7 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Antes: KC-02, KF-52
 
 **PP-02.** A venda do pré-pago guarda o retrato do que foi vendido: preço unitário e total de tabela, desconto, valor vendido, validade (opcional) e quem vendeu; cada sessão fica com a sua parte do valor vendido, dividida por igual em centavos. Quantas sessões é o que quem vende escolhe: acima de 100 a tela avisa ("Acima do comum (mais de 100 sessões). Confira: o valor vale como está.") e a venda grava; só o impossível é recusado — zero, fracionário e acima de 32.767 sessões (cada sessão é uma linha no registro). O atendimento feito com uma sessão do pré-pago não se cobra de novo: concluir marca a sessão como usada, o recebimento recusa cobrar e a tela não mostra o botão de receber.
-- Fonte: decisão do Claude; as sessões: o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." (o "comum", 100, e o impossível, 32.767: decisão do Claude, 25/11)
+- Fonte: decisão do Claude; as sessões: o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." (o "comum", 100, e o impossível, 32.767: decisão do Claude, 25/11); o retrato vale igual em todas as telas depois de mudar o catálogo: decisão do Claude, 27/11 (39ª simulação, Decisão E)
 - Onde: `docs/regras/vendas-financeiro.md:1047-1059`
 - Antes: KC-03, KC-04
 
@@ -843,8 +843,8 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Onde: `docs/regras/vendas-financeiro.md:1394`, `:1422`; `docs/revisao.md:634-640`, `:2002-2007`, `:2012`, `:2015`
 - Antes: KD-01, KG-21, KD-07, KG-27
 
-**FN-02.** O Resumo mostra o que entrou, o que saiu e o resultado do período. Embaixo vem "O que vem pela frente": o a receber das clientes, o da operadora do cartão e o a pagar, cada um com link para a sua aba; depois, o fluxo de caixa, a evolução, as formas e as categorias (na rede, também por unidade). O Resumo não mostra a lista de lançamentos.
-- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Blz pode manter e anotar no plano como voce sugeriu"
+**FN-02.** O Resumo mostra o que entrou, o que saiu e o resultado do período. Embaixo vem "O que vem pela frente": o a receber das clientes, o da operadora do cartão e o a pagar, cada um com link para a sua aba; depois, o fluxo de caixa, a evolução, as formas e as categorias (na rede, também por unidade). O Resumo da rede tem os mesmos cartões do da unidade — o fluxo, a evolução, as formas de pagamento e as categorias (a despesa por categoria incluída), com os números da rede (ou da unidade filtrada) — e, além deles, o "Por unidade". O Resumo não mostra a lista de lançamentos.
+- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Blz pode manter e anotar no plano como voce sugeriu"; os cartões também na rede: decisão do Claude, 27/11 (39ª simulação, D11), pela própria FN-02
 - Onde: `docs/regras/vendas-financeiro.md:1401`; `docs/revisao.md:2008`
 - Antes: KD-02, KG-22
 
@@ -894,8 +894,8 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Onde: `docs/regras/vendas-financeiro.md:1820`
 - Antes: KD-54
 
-**FN-11.** O cartão "A receber · em aberto" (o Heitor, 25/11: "O cartão vira 'A receber · em aberto' e soma tudo"; era "A receber da cliente") mostra no número grande todo o em aberto, de qualquer vencimento, nas unidades ao alcance, inclusive o que não é de cliente nenhuma (a nota diz "Inclui sem cliente: R$ …"), e a nota diz "Vence no período: R$ …", com o link "Ver e receber", que abre a aba A receber. O cartão "A pagar · vence no período" diz o recorte no título e conta pelo vencimento, até o fim do período; com zero, mostra o próximo vencimento depois do período ("Próximo: R$ 300,00 em 05/11"); embaixo, "Em aberto, de qualquer vencimento: R$ 5.200,00", com o "Ver e pagar", que abre a aba A pagar. O "pelo vencimento, no período" e o resto da conta moram na dica do cartão (a explicação mora na dica). Para quem não pode dar baixa, o link é "Ver a lista", e a faixa diz de quem é a baixa.
-- Fonte: princípio 3; a explicação na dica: o Heitor, 2026-11-16: "pode tirar esse monte de aviso e explicação, se quiser manter bota em um tooltipzinho que só aparece se passar o mouse em cima. Aproveita e faz esse ajuste pra todo sistema."
+**FN-11.** O cartão "A receber · em aberto" (o Heitor, 25/11: "O cartão vira 'A receber · em aberto' e soma tudo"; era "A receber da cliente") mostra no número grande todo o em aberto, de qualquer vencimento, nas unidades ao alcance, inclusive o que não é de cliente nenhuma (a nota diz "Inclui sem cliente: R$ …"), e a nota diz "Vence no período: R$ …", com o link "Ver e receber", que abre a aba A receber. O cartão "A pagar · vence no período" diz o recorte no título e conta pelo vencimento, até o fim do período; com zero, mostra o próximo vencimento depois do período ("Próximo: R$ 300,00 em 05/11"); embaixo, "Em aberto, de qualquer vencimento: R$ 5.200,00" (as ocorrências futuras da despesa recorrente incluídas), com o "Ver e pagar", que abre a aba A pagar. O "pelo vencimento, no período" e o resto da conta moram na dica do cartão (a explicação mora na dica). Para quem não pode dar baixa, o link é "Ver a lista", e a faixa diz de quem é a baixa.
+- Fonte: princípio 3; a explicação na dica: o Heitor, 2026-11-16: "pode tirar esse monte de aviso e explicação, se quiser manter bota em um tooltipzinho que só aparece se passar o mouse em cima. Aproveita e faz esse ajuste pra todo sistema."; o cartão do A pagar é um só e o em aberto conta as ocorrências futuras da recorrente: decisão do Claude, 27/11 (39ª simulação, Decisão D)
 - Onde: `docs/regras/vendas-financeiro.md:436-438`, `:478`, `:1903-1908` (o título do a pagar: A6 de 25/11, decisão do Claude), `:1951-1965`; `docs/regras/design.md:215`; `apps/web/components/shared/nota-do-vencimento.tsx`; `apps/web/lib/financeiro/abas.ts:86`, `:93`
 - Antes: KA-57, KD-56, KD-57, KD-55
 
@@ -904,8 +904,8 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Onde: `docs/regras/vendas-financeiro.md:1848`, `:1850`
 - Antes: KD-58, KD-59
 
-**FN-13.** O total da lista vem com sinal e se chama "caixa da lista", não resultado ("14 lançamentos · caixa da lista −R$ 1.929,00"). Ele conta o dinheiro de verdade: entra o pagamento, pelo valor que entrou, e o estorno, com o sinal dele; não entram o que está em aberto, o uso do crédito interno (e o estorno dele) e o que foi pago todo em pontos. A lista de um dia soma o mesmo saldo do Fechamento daquele dia. A dica do Lucro do período explica a diferença: "É o resultado do período: a receita e a despesa pelo que foi pago; o insumo quando é usado; o custo do produto quando ele é vendido, mesmo a receber; a comissão quando é lançada. O total da lista de lançamentos é o caixa." — sem a palavra "competência" —, e, com despesa em aberto vencendo no período, a tela diz "A pagar no período, fora do resultado: R$ …".
-- Fonte: princípio 3 (a frase sem "competência": D4 da 10ª simulação — a regra é a despesa PAGA, como a receita); a explicação na dica: o Heitor, 2026-11-16 (ver a FN-11)
+**FN-13.** O total da lista vem com sinal e se chama "caixa da lista", não resultado ("14 lançamentos · caixa da lista −R$ 1.929,00"). Ele conta o dinheiro de verdade: entra o pagamento, pelo valor que entrou, e o estorno, com o sinal dele; não entram o que está em aberto, o uso do crédito interno (e o estorno dele) e o que foi pago todo em pontos. A lista de um dia soma o mesmo saldo do Fechamento daquele dia. Vale nos dois portais: as listas da rede (Movimentações, A pagar, A receber) têm a mesma linha "N lançamentos · caixa da lista", com o mesmo número, das unidades ao alcance (ou da filtrada). A dica do Lucro do período explica a diferença: "É o resultado do período: a receita e a despesa pelo que foi pago; o insumo quando é usado; o custo do produto quando ele é vendido, mesmo a receber; a comissão quando é lançada. O total da lista de lançamentos é o caixa." — sem a palavra "competência" —, e, com despesa em aberto vencendo no período, a tela diz "A pagar no período, fora do resultado: R$ …".
+- Fonte: princípio 3 (a frase sem "competência": D4 da 10ª simulação — a regra é a despesa PAGA, como a receita); a explicação na dica: o Heitor, 2026-11-16 (ver a FN-11); a linha também na rede: decisão do Claude, 27/11 (39ª simulação, D10), pela própria FN-13
 - Onde: `docs/regras/vendas-financeiro.md:1864`, `:1871`, `:1881`; `docs/regras/indicadores.md:353-361`; `apps/web/components/shared/conta-do-resultado.tsx:34-38`
 - Antes: KD-60, KD-61
 
@@ -922,12 +922,12 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Antes: KE-14
 
 **FN-16.** A despesa não tem desconto: o campo "Desconto" só aparece na receita, e na despesa o campo se chama "Valor". As categorias da despesa são uma lista só (a mesma na tela e no Copilot), na ordem do uso: "Compra de estoque", "Salários", "Aluguel", "Contas (energia, água, internet)", "Marketing", "Material de consumo (limpeza, copa)", "Manutenção", "Equipamentos", "Fornecedores", "Material de escritório" e, por último, "Outro". Todas contam como despesa operacional (no caixa e no lucro), menos a "Compra de estoque", que fica fora do lucro.
-- Fonte: decisão do Claude
+- Fonte: decisão do Claude; a "Compra de estoque" fora do lucro sem frase no seletor (explicar ali seria texto que explica a tela, princípio 7): decisão do Claude, 27/11 (39ª simulação, Decisão D)
 - Onde: `docs/regras/vendas-financeiro.md:2081`, `:2085`
 - Antes: KE-15, KE-16
 
-**FN-17.** O "Novo lançamento" pede o Fornecedor (na despesa) e a Nota fiscal. A despesa não segue o limite do crediário: parcelada e recorrente vão de 2 vezes para cima; acima de 48 parcelas ou de 60 repetições a tela avisa ("Acima do comum (…). Confira: o valor vale como está.") e o valor vale (o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito."). Só o impossível é recusado: menos de 2, fração e a última data a mais de 100 anos (cada vez é um lançamento com a sua data: 1.200 parcelas mensais; as repetições pela frequência, 5.214 semanais a 100 anuais — decisão do Claude, 25/11). As duas pedem um vencimento só (o da 1ª parcela, ou o do primeiro lançamento). O "Pagar despesa" sempre abre a janela: na despesa sem forma, o campo começa vazio, é obrigatório e oferece o Boleto; na que já tem forma, a forma lançada vem escolhida, e quem paga confirma ou troca, como na baixa da receita. A janela diz quanto e, quando a despesa diz, a quem.
-- Fonte: decisão do Claude (a despesa com forma também abre a janela: A13 da 26ª, princípio 3 — revê a da 9ª, que pagava direto)
+**FN-17.** O "Novo lançamento" pede o Fornecedor (na despesa) e a Nota fiscal; no portal da rede, pede também a unidade: a despesa da rede pesa na unidade escolhida, e o Financeiro da rede soma as unidades. A despesa não segue o limite do crediário: parcelada e recorrente vão de 2 vezes para cima; acima de 48 parcelas ou de 60 repetições a tela avisa ("Acima do comum (…). Confira: o valor vale como está.") e o valor vale (o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito."). Só o impossível é recusado: menos de 2, fração e a última data a mais de 100 anos (cada vez é um lançamento com a sua data: 1.200 parcelas mensais; as repetições pela frequência, 5.214 semanais a 100 anuais — decisão do Claude, 25/11). As duas pedem um vencimento só (o da 1ª parcela, ou o do primeiro lançamento). O "Pagar despesa" sempre abre a janela: na despesa sem forma, o campo começa vazio, é obrigatório e oferece o Boleto; na que já tem forma, a forma lançada vem escolhida, e quem paga confirma ou troca, como na baixa da receita. A janela diz quanto e, quando a despesa diz, a quem.
+- Fonte: decisão do Claude (a despesa com forma também abre a janela: A13 da 26ª, princípio 3 — revê a da 9ª, que pagava direto); a unidade da despesa lançada pela rede: decisão do Claude, 27/11 (39ª simulação, Decisão D) — a rede de uma unidade é o caso comum, e a soma da rede fica certa
 - Onde: `docs/regras/vendas-financeiro.md:1957`, `:2138`, `:2145`, `:2205-2213`, `:2634`
 - Antes: KE-03, KE-18, KF-07, KE-20
 

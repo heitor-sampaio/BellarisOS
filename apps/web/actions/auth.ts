@@ -201,11 +201,24 @@ export async function updatePasswordAction(
 
   // Trocada, a senha deixa de ser provisória: a marca sai (só o servidor
   // escreve app_metadata) e a sessão renova, para o token novo já vir sem ela
-  // — senão o proxy levaria de volta à troca até o token vencer.
-  if ((user.app_metadata as { senha_provisoria?: boolean } | undefined)?.senha_provisoria) {
+  // — senão o proxy (que lê a marca do TOKEN, getClaims) levaria de volta à
+  // troca até o token vencer. D15 da 39ª: a renovação não era conferida, e a
+  // 2ª troca (a marca já fora da conta, ainda no token) nem renovava — a
+  // pessoa voltava à troca com a senha já mudada. Renova se a conta OU o token
+  // têm a marca; não renovou, a sessão fecha e ela entra com a senha nova.
+  const marcada = (m: unknown) => (m as { senha_provisoria?: boolean } | undefined)?.senha_provisoria === true
+  const naConta = marcada(user.app_metadata)
+  const noToken = marcada((await supabase.auth.getClaims()).data?.claims?.app_metadata)
+  if (naConta) {
     const { error: eMarca } = await createAdminClient().auth.admin.updateUserById(user.id, { app_metadata: { senha_provisoria: null } })
     if (eMarca) return { error: 'A senha foi trocada, mas não consegui liberar a entrada. Tente de novo.' }
-    await supabase.auth.refreshSession()
+  }
+  if (naConta || noToken) {
+    const { data: renovada, error: eRenova } = await supabase.auth.refreshSession()
+    if (eRenova || !renovada.session || marcada(renovada.session.user.app_metadata)) {
+      await supabase.auth.signOut({ scope: 'local' })
+      return { redirectTo: '/login' }
+    }
   }
 
   return { redirectTo: await destinoDaSessao(supabase) }

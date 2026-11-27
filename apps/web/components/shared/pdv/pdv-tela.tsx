@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { ArrowLeft, Lock, Plus, Search, ShoppingBag } from 'lucide-react'
@@ -194,6 +194,14 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
     return `${basePath}?${q.toString()}`
   }
   const textoDaRecebida = recebidaAgora ? recebidaAgoraEmTexto(recebidaAgora, fuso) : null
+  // A7 da 39ª: no celular a comanda fica EMBAIXO da lista — escolher uma (ou
+  // começar a venda) leva a tela até ela.
+  const cartaoDaComanda = useRef<HTMLDivElement>(null)
+  const aberta = novaVenda ? 'nova' : escolhida?.comanda.id ?? null
+  useEffect(() => {
+    if (!aberta || !window.matchMedia('(max-width: 860px)').matches) return
+    cartaoDaComanda.current?.scrollIntoView({ block: 'start' })
+  }, [aberta])
   const visiveis = useMemo(() => {
     const t = busca.trim().toLocaleLowerCase('pt-BR')
     const doFiltro = comandasDoFiltro(comandas, so)
@@ -246,7 +254,8 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
               basePath={basePath} paramName="ver" extraParams={naRede ? { unidade: unidadeId } : undefined} ariaLabel="Comandas" />
             <label style={{ flex: 1, minWidth: 140, position: 'relative', display: 'flex', alignItems: 'center' }}>
               <Search size={14} aria-hidden style={{ position: 'absolute', left: 10, color: 'var(--text-faint)' }} />
-              <input className="field" placeholder="Cliente" aria-label="Buscar a cliente" value={busca}
+              {/* A4 da 39ª: a busca da barra é campo de busca — a altura do "Comandas" ao lado. */}
+              <input className="field campo-busca" placeholder="Cliente" aria-label="Buscar a cliente" value={busca}
                 onChange={e => setBusca(e.target.value)} style={{ paddingLeft: 30, width: '100%' }} />
             </label>
           </div>
@@ -299,7 +308,7 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
           )}
         </div>
 
-        <div className="card" data-comanda-aberta={!novaVenda && escolhida ? escolhida.comanda.id : undefined}>
+        <div ref={cartaoDaComanda} className="card pdv-comanda-aberta" data-comanda-aberta={!novaVenda && escolhida ? escolhida.comanda.id : undefined}>
           {novaVenda ? (
             <NovaVenda unidadeId={unidadeId} slugDaUnidade={slugDaUnidade} venda={novaVenda.dados} aviso={novaVenda.aviso}
               unidades={novaVenda.perguntaAUnidade ? unidades.filter(u => u.ativa !== false).map(u => ({ ...u, href: hrefNaUnidade(u.id) })) : null}
@@ -408,7 +417,7 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, hrefDaAssinatura, ao
       <div className="pdv-comanda-corpo">
         <div className="pdv-itens" style={{ padding: '18px 22px' }}>
           <p className="overline" style={{ marginBottom: 4 }}>O que está na comanda</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 40px 110px', gap: 10, alignItems: 'center', padding: '11px 0', borderBottom: '1px solid var(--hairline)' }}>
+          <div className="pdv-linha-da-comanda" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 40px 110px', gap: 10, alignItems: 'center', padding: '11px 0', borderBottom: '1px solid var(--hairline)' }}>
             <div style={{ minWidth: 0 }}>
               <p style={{ fontWeight: 700, color: 'var(--text)' }}>{c.procedimento ?? 'Atendimento'}</p>
               <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 2 }}>

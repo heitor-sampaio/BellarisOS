@@ -871,6 +871,50 @@ function fraseDaTrocaDaAutorizacao(linhas: readonly RegistroDaAuditoria[], nomes
   return `Trocou a autorização do suporte ${[...contas][0]}${clinico ? ` (agora ${clinico})` : ''}`
 }
 
+/**
+ * A15 da 39ª simulação (AD-13; decisão do Claude, 27/11): marcar ou tirar
+ * alguém de "Quem realiza" no cadastro do procedimento. Cada gravação é um
+ * lado só (`trocarLigacoes` tira e põe em pedidos separados). O gatilho guarda
+ * `user_id` e `procedure_id` desde 20261218500001; a gravação de antes não os
+ * tem, e a frase diz "uma pessoa" e "o procedimento".
+ */
+function fraseDeQuemRealiza(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria): string | null {
+  const op = linhas[0]?.operacao
+  if (!linhas.length || (op !== 'criou' && op !== 'apagou')) return null
+  if (!linhas.every(l => l.tabela === 'procedure_professionals' && l.operacao === op)) return null
+  const lado = (l: RegistroDaAuditoria) => (op === 'apagou' ? l.antes : l.depois)
+  const pessoas = linhas.map(l => { const u = texto(lado(l).user_id); return u ? nomes.membros[u] ?? null : null })
+  const conhecidas = pessoas.filter((p): p is string => !!p)
+  const faltam = linhas.length - conhecidas.length
+  const quem = !conhecidas.length ? (linhas.length === 1 ? 'uma pessoa' : `${linhas.length} pessoas`)
+    : faltam ? `${emLista(conhecidas)} e mais ${faltam === 1 ? 'uma pessoa' : `${faltam} pessoas`}` : emLista(conhecidas)
+  const procs = [...new Set(linhas.map(l => texto(lado(l).procedure_id)))]
+  const procedimento = procs.length === 1 && procs[0] ? nomes.procedimentos?.[procs[0]] ?? null : null
+  const qual = procedimento ?? 'o procedimento'
+  return op === 'apagou' ? `Tirou ${quem} de quem realiza ${qual}` : `Marcou ${quem} em quem realiza ${qual}`
+}
+
+/**
+ * A16 da 39ª simulação (AD-13; decisão do Claude, 27/11): "Remarcar
+ * vencimento" (`lancamento_remarcar_vencimento`) grava o vencimento e o
+ * histórico dele; a frase diz de qual conta (a descrição da despesa, lida
+ * agora) e de quando para quando — era "Editou o lançamento (vencimento: …;
+ * vencimentos anteriores)".
+ */
+function fraseDoVencimentoRemarcado(r: RegistroDaAuditoria, nomes: NomesDaAuditoria): string | null {
+  if (r.tabela !== 'financial_transactions' || r.operacao !== 'editou') return null
+  const daPessoa = r.colunas.filter(c => !DERIVADAS.has(c) && c !== 'vencimentos_anteriores')
+  if (daPessoa.length !== 1 || daPessoa[0] !== 'due_date') return null
+  const lido = r.registro_id ? nomes.lancamentos?.[r.registro_id] : undefined
+  const conta = lido?.descricao ? `da ${lido.tipo === 'INCOME' ? 'receita' : 'despesa'} ${lido.descricao}` : 'do lançamento'
+  const fuso = fusoDoRegistro(r, nomes)
+  const de = 'due_date' in r.antes ? valorDoLancamento('due_date', r.antes.due_date, fuso) : null
+  const para = 'due_date' in r.depois ? valorDoLancamento('due_date', r.depois.due_date, fuso) : null
+  const quando = de && para ? `: ${de} → ${para}` : para ? ` para ${para}` : ''
+  const cliente = r.client_id ? nomes.clientes[r.client_id] ?? null : null
+  return `Remarcou o vencimento ${conta}${quando}${cliente ? ` — ${cliente}` : ''}`
+}
+
 export function fraseDaAuditoria(r: RegistroDaAuditoria, nomes: NomesDaAuditoria): string {
   const cliente = r.client_id ? nomes.clientes[r.client_id] ?? null : null
   if (r.operacao === 'entrou') return 'Entrou no sistema'
@@ -901,6 +945,12 @@ export function fraseDaAuditoria(r: RegistroDaAuditoria, nomes: NomesDaAuditoria
   }
   const doSuporte = fraseDaAutorizacaoDoSuporte(r, nomes)
   if (doSuporte) return doSuporte
+  // A15 da 39ª (AD-13): quem entrou ou saiu de "Quem realiza" — era "Apagou quem faz o procedimento".
+  const quemRealiza = fraseDeQuemRealiza([r], nomes)
+  if (quemRealiza) return quemRealiza
+  // A16 da 39ª (AD-13): o vencimento remarcado, de qual conta e de quando para quando.
+  const remarcou = fraseDoVencimentoRemarcado(r, nomes)
+  if (remarcou) return remarcou
   // A6 da 30ª: o fundo de troco é informado ("Criou o fundo de troco" não dizia quanto).
   if (r.tabela === 'fundos_de_troco' && (r.operacao === 'criou' || r.operacao === 'editou')) {
     const valor = numero(r.depois.valor)
@@ -1314,8 +1364,13 @@ function fraseDoEstorno(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAu
   // A7 da 21ª: o estorno do fechamento de comissão ("Estornou um pagamento (R$ 630,00)" não dizia de quem).
   const fechamento = linhas.find(l => l.tabela === 'commission_payouts' && l.operacao === 'editou' && l.colunas.includes('estornado_at'))
   const deQuem = fechamento?.registro_id ? nomes.pagamentosDeComissao?.[fechamento.registro_id] : null
+  // A16 da 39ª (AD-13): a conta estornada diz qual (a descrição da despesa, lida agora) — era "um pagamento".
+  const estornadoSo = linhas.filter(l => l.tabela === 'financial_transactions' && l.operacao === 'editou'
+    && l.registro_id && nomes.lancamentos?.[l.registro_id])
+  const daConta = saidas.length === 1 && estornadoSo.length === 1 ? nomes.lancamentos?.[estornadoSo[0]!.registro_id!] : undefined
+  const despesa = daConta?.tipo === 'EXPENSE' && daConta.descricao ? `a despesa ${daConta.descricao}` : null
   const alvo = fechamento ? `o fechamento da comissão${deQuem ? ` de ${deQuem}` : ''}`
-    : ALVO.find(([t]) => linhas.some(l => l.tabela === t))?.[1] ?? (doAtendimento ? 'o atendimento' : 'um pagamento')
+    : ALVO.find(([t]) => linhas.some(l => l.tabela === t))?.[1] ?? (doAtendimento ? 'o atendimento' : despesa ?? 'um pagamento')
   const voltas = linhas.filter(l => l.tabela === 'stock_movements' && texto(l.depois.type) === 'SALE_RETURN').map(l => doProduto(l, nomes))
   // A24 da 26ª: a devolução de PARTE da venda (a venda segue, não foi estornada) é "Devolveu 1 de 2 Protetor".
   const devolucoes = linhas.filter(l => l.tabela === 'product_sale_returns' && l.operacao === 'criou')
@@ -1953,6 +2008,10 @@ export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: Nome
     const nome = nomeDoRegistro(oportunidade, nomes) ?? (contato ? nomeDoRegistro(contato, nomes) : null)
     return `Criou ${contato ? 'o contato e ' : ''}a oportunidade${nome ? ` ${nome}` : ''}`
   }
+
+  // A15 da 39ª: tirar (ou marcar) várias pessoas de "Quem realiza" de uma vez.
+  const quemRealiza = fraseDeQuemRealiza(linhas, nomes)
+  if (quemRealiza) return quemRealiza
 
   // O pai e as filhas: "Criou o cargo X (19 permissões)".
   const pai = paiDaGravacao(linhas)

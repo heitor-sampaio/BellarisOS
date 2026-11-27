@@ -428,7 +428,8 @@ export function AgendaCalendar({
       {/* Calendar card */}
       <div className="card" style={{ padding: 'var(--card-pad-sm)', overflow: 'hidden' }}>
         {/* Navigation bar */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        {/* A6 da 39ª: a 375 px a legenda, sem quebrar, saía cortada ("Confir…"): ela desce. */}
+        <div data-navegacao-da-agenda style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', columnGap: 14, rowGap: 10, marginBottom: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button
               type="button"
@@ -439,7 +440,7 @@ export function AgendaCalendar({
             >
               <ChevronLeft size={16} />
             </button>
-            <span style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', minWidth: 200, textAlign: 'center' }}>
+            <span style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', minWidth: 'min(200px, 40vw)', textAlign: 'center' }}>
               {navLabel(view, currentDate)}
             </span>
             <button
@@ -470,7 +471,7 @@ export function AgendaCalendar({
 
           {/* Legend (day view only) */}
           {view === 'dia' && (
-            <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+            <div data-legenda-da-agenda style={{ display: 'flex', alignItems: 'center', columnGap: 14, rowGap: 4, flexWrap: 'wrap' }}>
               {/* A6 da 29ª: com o Concluído, e o Agendado tracejado como o cartão. */}
               {LEGENDA_DA_AGENDA.map(l => (
                 <div key={l.rotulo} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>

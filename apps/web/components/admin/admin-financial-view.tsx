@@ -29,7 +29,11 @@ import { ParcelasDaOperadora, LinkDasParcelas } from '@/components/shared/parcel
 import type { AReceberDaOperadora, ParcelaDaOperadora } from '@/lib/metrics/operadora'
 import { FluxoDeCaixa } from '@/components/shared/fluxo-de-caixa'
 import type { MesDoFluxo } from '@/lib/metrics/fluxo-de-caixa'
-import { variacaoPercentual, type ResultadoDoPeriodo } from '@/lib/metrics/resultado'
+import { variacaoPercentual, resultadoDaLista, type ResultadoDoPeriodo } from '@/lib/metrics/resultado'
+import { CaixaDaLista } from '@/components/shared/caixa-da-lista'
+import { DetalhesDoPeriodo } from '@/components/shared/detalhes-do-periodo'
+import type { PontoDaSerie } from '@/lib/financeiro/barras'
+import type { ComposicaoFinanceira } from '@/lib/metrics'
 import { ContaDoResultado } from '@/components/shared/conta-do-resultado'
 import { csvDosLancamentos, linhaDoLancamento, baixarCsv } from '@/lib/financeiro/csv-dos-lancamentos'
 import { useFuso } from '@/components/shared/fuso'
@@ -129,8 +133,15 @@ interface AdminTx {
   vendedor_nome?: string | null
 }
 
+/** A série e a composição do período (lib/metrics): os cartões do Resumo. */
+interface DetalhesDoRecorte { serie: PontoDaSerie[]; composicao: ComposicaoFinanceira }
+
 interface Props {
   period:           string
+  /** O início do período (ISO): onde a evolução começa. */
+  periodStart?:     string
+  /** D11 da 39ª (FN-02): a evolução, as formas e as categorias da rede e de cada unidade. */
+  detalhesDoPeriodo?: { total: DetalhesDoRecorte; porUnidade: Record<string, DetalhesDoRecorte> }
   periodLabel:      string
   customFrom?:      string
   customTo?:        string
@@ -298,7 +309,7 @@ function KpiCard({
 // --- Main component -----------------------------------------------------------
 
 export function AdminFinancialView({
-  period, periodLabel, customFrom, customTo,
+  period, periodStart, detalhesDoPeriodo, periodLabel, customFrom, customTo,
   totalRevenue, totalExpenses, totalResult, totalConta, totalForaDoLucro, totalCommissions, totalAReceber, totalAReceberEmAberto, totalAReceberSemCliente, totalVencidas, totalConcluidosSemPagamento, totalAPagar, totalAPagarEmAberto = 0, totalMovimentacoes,
   aReceberDaOperadora, parcelasDaOperadora, fluxoDeCaixa, debitoNoPeriodo = 0, debitoPorUnidade = {}, taxasDoPeriodo, quemCadastraATaxa = null,
   totalProximoAReceber = null, totalProximoAPagar = null,
@@ -370,6 +381,7 @@ export function AdminFinancialView({
   const visibleTxs = filterBranch === 'all'
     ? transactions
     : transactions.filter(t => t.branch_id === filterBranch)
+  const caixaDaLista = resultadoDaLista(visibleTxs as Parameters<typeof resultadoDaLista>[0])
 
   // Com uma unidade recortada, os números do topo são os DELA — senão a tela
   // diria "receita total" mostrando a rede inteira enquanto a lista embaixo já
@@ -656,13 +668,10 @@ export function AdminFinancialView({
         <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>
           {titulo}
           {sobre && <span style={{ marginLeft: 6 }}><Dica rotulo={sobre.rotulo}>{sobre.texto}</Dica></span>}
-          <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 500, color: 'var(--text-muted)', marginLeft: 8 }}>
-            {visibleTxs.length} registro{visibleTxs.length !== 1 ? 's' : ''}
-          </span>
         </span>
 
         {/* A44 da 8ª: o CSV de todas as movimentações do recorte (a tela mostra as 100 primeiras). */}
-        <button type="button" className="btn-secondary" disabled={visibleTxs.length === 0} style={{ marginLeft: 'auto' }}
+        <button type="button" className="btn-secondary" disabled={visibleTxs.length === 0}
           onClick={() => baixarCsv(nomeDoCsv, csvDosLancamentos(
             visibleTxs.map(t => linhaDoLancamento(t, branches.find(b => b.id === t.branch_id)?.name ?? null)), fuso))}>
           <Download size={14} aria-hidden /> Exportar CSV
@@ -689,6 +698,8 @@ export function AdminFinancialView({
             <option key={b.id} value={b.id}>{b.name}</option>
           ))}
         </select>}
+        {/* D10 da 39ª (FN-13): a mesma linha da unidade — quantos e o caixa da lista (lib/metrics). */}
+        <CaixaDaLista lancamentos={visibleTxs.length} caixa={caixaDaLista} />
       </div>
 
       {visibleTxs.length === 0 ? (
@@ -848,6 +859,13 @@ export function AdminFinancialView({
         {fluxoDeCaixa && (
           <FluxoDeCaixa meses={filterBranch === 'all' ? fluxoDeCaixa.total : (fluxoDeCaixa.porUnidade[filterBranch] ?? [])} />
         )}
+
+        {/* D11 da 39ª (FN-02): os mesmos cartões da unidade, com os números do recorte (a rede ou a unidade filtrada). */}
+        {detalhesDoPeriodo && periodStart && (() => {
+          const d = filterBranch === 'all' ? detalhesDoPeriodo.total : detalhesDoPeriodo.porUnidade[filterBranch]
+          return d ? <DetalhesDoPeriodo serie={d.serie} period={period} periodStart={periodStart}
+            composicao={d.composicao} receita={revenue} despesa={expenses} /> : null
+        })()}
 
         {/* Por unidade — só com mais de uma unidade (D-19). */}
         {!umaUnidade && (

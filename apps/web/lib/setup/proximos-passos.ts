@@ -3,20 +3,34 @@
  * depende do outro: o procedimento pede quem o realiza e os insumos que
  * consome, e a taxa da maquininha vale desde a primeira venda no cartão. A
  * segunda unidade é o último (A2 da 10ª: a clínica única não começa por ela).
+ *
+ * A10 da 39ª (princípio 7, o Heitor, 26/11: intuitivo não é explicativo): cada
+ * passo é o nome e o link, na ordem — o "porquê" de cada um saiu. Ficam duas
+ * frases curtas que dizem ONDE (não por quê), que os testes da A2 da 14ª e da
+ * A2 da 10ª pedem: a aba das taxas e a Equipe depois da outra unidade.
  */
-export const PROXIMOS_PASSOS = [
-  { titulo: 'Equipe', porque: 'Quem atende, e em quais unidades: sem profissional, o procedimento não tem quem o realize.', href: '/admin/team' },
-  { titulo: 'Salas', porque: 'As salas ou cabines: o agendar oferece a livre. Com duas unidades, ficam em “Salas e detalhes”, na linha de cada uma.', href: '/admin/settings?tab=unidades#salas' },
-  { titulo: 'Estoque', porque: 'Os insumos: o procedimento só baixa o que já está cadastrado.', href: '/admin/estoque' },
+export interface ProximoPasso {
+  titulo:   string
+  href:     string
+  /** Só onde a frase diz ONDE fica (A10 da 39ª). */
+  porque?:  string
+  /** A funcionalidade do plano: fora dele, o passo não aparece. */
+  recurso?: string
+}
+
+export const PROXIMOS_PASSOS: readonly ProximoPasso[] = [
+  { titulo: 'Equipe', href: '/admin/team' },
+  { titulo: 'Salas', href: '/admin/settings?tab=unidades#salas' },
+  { titulo: 'Estoque', href: '/admin/estoque' },
   // A1 da 7ª simulação: o procedimento pede a ficha e o termo JÁ existentes.
-  { titulo: 'Fichas', porque: 'A ficha de atendimento de cada procedimento: ele escolhe uma ficha que já existe.', href: '/admin/settings?tab=fichas', recurso: 'fichas' },
-  { titulo: 'Documentos', porque: 'O termo que o procedimento pede antes de começar — também escolhido de um que já existe.', href: '/admin/settings?tab=documentos', recurso: 'documentos' },
-  { titulo: 'Procedimentos', porque: 'O catálogo, com quem realiza, os insumos, a ficha, o termo e o preço.', href: '/admin/procedures' },
-  { titulo: 'Taxas da maquininha', porque: 'Em Configurações → Comissões e taxas: o que a operadora desconta em cada forma e bandeira.', href: '/admin/settings?tab=comissoes' },
-  { titulo: 'Fidelidade', porque: 'Os pontos e as recompensas: o programa nasce desligado, e a rede liga se quiser.', href: '/admin/settings?tab=fidelidade', recurso: 'fidelidade' },
-  { titulo: 'Funil de oportunidades', porque: 'As etapas, as origens das oportunidades e os motivos de perda do comercial.', href: '/admin/oportunidades', recurso: 'oportunidades' },
+  { titulo: 'Fichas', href: '/admin/settings?tab=fichas', recurso: 'fichas' },
+  { titulo: 'Documentos', href: '/admin/settings?tab=documentos', recurso: 'documentos' },
+  { titulo: 'Procedimentos', href: '/admin/procedures' },
+  { titulo: 'Taxas da maquininha', porque: 'Em Configurações → Comissões e taxas.', href: '/admin/settings?tab=comissoes' },
+  { titulo: 'Fidelidade', href: '/admin/settings?tab=fidelidade', recurso: 'fidelidade' },
+  { titulo: 'Funil de oportunidades', href: '/admin/oportunidades', recurso: 'oportunidades' },
   // A1 da 8ª simulação: a 2ª unidade e as salas não apareciam. A2 da 10ª: ela
   // era o PRIMEIRO passo, e a clínica de uma unidade (o tamanho real do
   // cliente, CLAUDE.md §1) lia primeiro o que não tem — vai para o fim.
-  { titulo: 'Outra unidade (se a rede tiver)', porque: 'Cadastrada a segunda unidade, marque na Equipe quem atende nela: cada pessoa atende nas unidades marcadas.', href: '/admin/settings?tab=unidades' },
-] as const
+  { titulo: 'Outra unidade (se a rede tiver)', porque: 'Depois, na Equipe, quem atende nela.', href: '/admin/settings?tab=unidades' },
+]

@@ -17,6 +17,7 @@ import { getAtendimentosAReceber } from '@/lib/metrics/a-receber'
 import { Dica } from '@/components/shared/dica'
 import { nomeDaLinhaDoLancamento, nomeDaLinhaDoPlano } from '@/lib/financeiro/nome-da-parcela'
 import { procedimentosDosPlanos } from '@/lib/financeiro/procedimentos-do-plano'
+import { descontosDosLancamentos } from '@/lib/financeiro/desconto-do-lancamento'
 
 type TxRow = {
   id:             string
@@ -52,6 +53,8 @@ type TxRow = {
   devolvidoEmParte: string | null
   /** A55 da 12ª: o lançamento de um plano diz o nome que a clínica deu (e o desconto do plano). */
   plano:          string | null
+  /** D7 da 39ª (AG-56): o desconto do que ela pagou, com o motivo — "Desconto R$ 18,00 · aniversário" (o do recibo). */
+  desconto:       string | null
 }
 
 /** Lançamento como o select pede, com o procedimento do agendamento (se houver). */
@@ -62,6 +65,8 @@ type LancamentoLido = {
   treatment_plan_id: string | null
   due_date: string | null; data_de_referencia: string | null
   cartao_bandeira: string | null; product_sale_id: string | null
+  sale_discount: number | string | null; desconto_motivo: string | null
+  client_package_id: string | null; procedure_sale_id: string | null
   type: string; category: string | null; client_packages: { cancelado_em: string | null } | null
   treatment_plans: { cancelado_em: string | null; name: string | null; desconto: number | string | null } | null
   valor_antes_do_estorno: number | string | null
@@ -83,6 +88,7 @@ export default async function ClientFinancialPage({ params }: { params: Promise<
     .from('financial_transactions')
     .select(`
       id, description, amount, payment_method, cartao_vezes, cartao_bandeira, is_paid, paid_at, created_at, notes, parcela_numero, parcela_total, product_sale_id, treatment_plan_id,
+      sale_discount, desconto_motivo, client_package_id, procedure_sale_id,
       due_date, data_de_referencia, valor_antes_do_estorno,
       type, category, client_packages(cancelado_em), treatment_plans(cancelado_em, name, desconto),
       appointments(procedures(name))
@@ -99,6 +105,8 @@ export default async function ClientFinancialPage({ params }: { params: Promise<
   const produtoNaoPontua = fichaDaRede ? await vendaDeProdutoNaoPontua(fichaDaRede.tenant_id as string, admin) : false
   // A5 da 31ª (princípio 3): a parcela do plano diz os procedimentos dele, como no PDV.
   const dosPlanos = await procedimentosDosPlanos((data ?? []).map(r => (r as { treatment_plan_id: string | null }).treatment_plan_id))
+  // D7 da 39ª (AG-56, princípio 3): o pago com desconto diz o desconto — o mesmo texto da equipe e do recibo.
+  const descontos = await descontosDosLancamentos((data ?? []) as unknown as LancamentoLido[])
   // D8 da 36ª (CR-07): a parcela paga em várias formas é UMA linha, como na equipe.
   const rows: TxRow[] = juntarAsFormasDaParcela((data ?? []) as unknown as LancamentoLido[]).map(r => ({
     id:             r.id,
@@ -124,6 +132,8 @@ export default async function ClientFinancialPage({ params }: { params: Promise<
     plano: r.treatment_plans
       ? `Plano “${nomeDoPlanoNoApp(r.treatment_plans.name)}”${descontoDoPlanoNoApp(r.treatment_plans.desconto) ? ` · ${descontoDoPlanoNoApp(r.treatment_plans.desconto)!.replace(/^Com /, 'com ')} no total` : ''}`
       : null,
+    // O do plano já diz o desconto na linha do plano ("com desconto de R$ 70,00 no total").
+    desconto: r.treatment_plans || r.notes === 'Estornada' || r.category === 'Estorno' ? null : descontos[r.id] ?? null,
     devolvidoEmParte: r.type === 'INCOME' && r.category !== 'Estorno'
       ? notaDoEstornoParcialParaACliente({ type: r.type, amount: r.amount, is_paid: Boolean(r.is_paid), notes: r.notes, valor_antes_do_estorno: r.valor_antes_do_estorno })
       : null,
@@ -239,6 +249,9 @@ export default async function ClientFinancialPage({ params }: { params: Promise<
               </p>
               {r.plano && (
                 <p data-plano-do-lancamento style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>{r.plano}</p>
+              )}
+              {r.desconto && (
+                <p data-desconto-do-lancamento style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>{r.desconto}</p>
               )}
               {r.pacoteCancelado && (
                 <p data-pacote-cancelado style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginTop: 2 }}>

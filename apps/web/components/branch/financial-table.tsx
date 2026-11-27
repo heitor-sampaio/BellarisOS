@@ -20,6 +20,7 @@ import { RemarcarVencimento, VencimentoRemarcado, type RemarcacaoDoVencimento } 
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { diaSemHora, emAbertoSemVencimento, SEM_VENCIMENTO } from '@/lib/financeiro/vencimentos'
 import { resultadoDaLista } from '@/lib/metrics/resultado'
+import { CaixaDaLista } from '@/components/shared/caixa-da-lista'
 import { csvDosLancamentos, linhaDoLancamento, baixarCsv } from '@/lib/financeiro/csv-dos-lancamentos'
 import { juntarAsFormasDaParcela, formasDaParcelaEmTexto, posicaoNaParcela } from '@/lib/financeiro/formas-da-parcela'
 import { useFuso } from '@/components/shared/fuso'
@@ -283,14 +284,8 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
           <Download size={14} aria-hidden /> Exportar CSV
         </button>
 
-        {/* Resultado filtrado */}
-        {/* A31 da 9ª: é o CAIXA da lista (o pago que entrou − o que saiu), não o resultado do período (o Lucro). */}
-        <span data-total-da-lista title="O caixa do que está na lista: o pago que entrou menos o pago que saiu. O resultado do período (o Lucro, no Resumo) é outra conta." style={{
-          marginLeft: 'auto', fontSize: 'var(--text-sm-sz)', fontWeight: 800,
-          color: totalFiltered >= 0 ? 'var(--success)' : 'var(--danger)',
-        }}>
-          {linhas.length} lançamento{linhas.length !== 1 ? 's' : ''} · caixa da lista {totalFiltered < 0 ? '−' : ''}{fmtBRL(Math.abs(totalFiltered))}
-        </span>
+        {/* Resultado filtrado: o caixa da lista (A31 da 9ª), a mesma linha da rede. */}
+        <CaixaDaLista lancamentos={linhas.length} caixa={totalFiltered} />
       </div>
 
       {/* Tabela */}

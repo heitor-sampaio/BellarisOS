@@ -188,6 +188,28 @@ test('a tela da venda mostra o contrato e o "Colher assinatura" antes do pagamen
   })
 })
 
+// A20 da 39ª (princípio 3; "Assinado, a venda segue"): colhido o contrato no papel, o "Continuar" voltava ao
+// formulário e a venda só saía num segundo "Vender por" — a tela não dizia que vendeu. Agora a venda pedida segue.
+test('colhido o contrato no papel, o "Continuar" vende e a tela diz que vendeu', async ({ browser }) => {
+  const cliente = await novaCliente('Tela ac')
+  await como(browser, caixa!.estado, async p => {
+    const dlg = await abrirVendaNoPdv(p, `/${slug}`, cliente)
+    const aba = dlg.getByRole('button', { name: 'Pacote', exact: true })
+    if (await aba.count()) await aba.click()
+    await dlg.getByLabel('Pacote', { exact: true }).selectOption(pacote)
+    await pagoNoPix(dlg)
+    await euVendi(dlg)
+    await dlg.getByRole('button', { name: /^Vender por/ }).click()
+    await dlg.locator('[data-contrato-antes-de-vender]').getByRole('button', { name: 'Colher assinatura' }).click()
+    await p.getByRole('button', { name: 'Assinar no papel' }).click()
+    await p.getByRole('button', { name: 'Confirmar: o cliente assinou o papel' }).click()
+    await p.getByRole('button', { name: 'Continuar' }).click()
+    await expect(p.getByText(/Venda registrada:/).first(), 'a tela diz que vendeu').toBeVisible({ timeout: 20_000 })
+    await expect.poll(() => vendidosDe(cliente), { timeout: 20_000 }).toHaveLength(1)
+    await expect(p.getByRole('button', { name: /^Vender por/ }), 'sem um segundo "Vender por"').toHaveCount(0)
+  })
+})
+
 // A6 da 34ª (princípio 7): depois de assinar o contrato, a venda voltava zerada (a aba, quem vendeu, a
 // forma). O que foi escolhido espera a assinatura guardado na aba do navegador — e volta ao recarregar.
 test('a venda que espera o contrato volta como estava depois de recarregar', async ({ browser }) => {

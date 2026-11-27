@@ -19,8 +19,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:9-13`
 - Antes: AG-01
 
-**AG-02.** Os horários livres que o app da cliente, o CRM e o Copilot oferecem ficam dentro do horário da unidade e do de quem atende, cabem inteiros num período (não atravessam a pausa) e, no dia de hoje, nunca começam antes de agora.
-- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
+**AG-02.** Os horários livres que o app da cliente, o CRM e o Copilot oferecem ficam dentro do horário da unidade e do de quem atende, cabem inteiros num período (não atravessam a pausa), vêm de 30 em 30 minutos (AG-10) e, no dia de hoje, nunca começam antes de agora.
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele); o passo de 30 minutos no app (10:50 não é passo): decisão do Claude, 27/11 (39ª simulação, Decisão C), pela AG-10
 - Onde: `docs/regras/atendimento.md:15-17`
 - Antes: AG-02
 
@@ -30,7 +30,7 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Antes: AG-03
 
 **AG-04.** A equipe pode agendar fora do horário de quem atende, e fora da grade de 30 em 30 minutos (encaixe): é permitido, e o modal avisa antes do Confirmar ("…O encaixe é permitido."). O encaixe se faz só pelo campo de horário (no Agendar, o campo de data e hora; no checkout e nas sessões, o "Outro horário (encaixe)"): as listas não oferecem quem está fora do horário nem o horário fora do expediente (AG-07). A grade sombreia o que está fora do horário de cada pessoa (na agenda da rede, o horário fechado de cada unidade, com a marca "Encaixe"), e clicar no sombreado continua agendando.
-- Fonte: princípio 2; o encaixe só pelo campo de horário: o Heitor, 26/11 (página de perguntas, R15): "Não: quem está fora do horário também some das listas (o encaixe só pelo campo de horário)"
+- Fonte: princípio 2; o encaixe só pelo campo de horário: o Heitor, 26/11 (página de perguntas, R15): "Não: quem está fora do horário também some das listas (o encaixe só pelo campo de horário)"; o encaixe no dia fechado grava com o aviso (o "Ninguém está livre" ao lado dele é atrito, A19, não defeito): decisão do Claude, 27/11 (39ª simulação, Decisão C)
 - Onde: `docs/regras/atendimento.md:32-44`, `:54-69`
 - Antes: AG-05, AG-06, AG-07
 
@@ -44,8 +44,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:57`, `:116-117`
 - Antes: AG-09, AG-15
 
-**AG-07.** O choque com outro atendimento da mesma pessoa que atende não é encaixe: o servidor recusa. O modal avisa antes ("Não vai ser agendado: X já tem atendimento das…"), cita todos os atendimentos que bloqueiam o horário (e a unidade, quando é outra) e oferece "Usar o próximo livre" — também no bloqueio e na sala escolhida que está ocupada, e livre da pessoa E da sala escolhida (R14). Nas listas (a grade de horários, as salas, quem atende — no agendar, nas sessões, no "Trocar profissional" e no "Mudar de unidade") só aparece o que está disponível: o que o servidor recusaria no horário (o choque, o bloqueio da pessoa ou da sala, a sala ocupada, o horário que passou) sai, e também quem está fora do horário dela na unidade (sem horário próprio, o da unidade) ou com a unidade fechada — a grade só oferece o horário de quem atende, e o encaixe vai pelo campo de horário, com o aviso; a já escolhida que deixou de estar livre fica marcada ("(ocupada)"/"(bloqueada)", com o "Confirmar" desligado; "(fora do horário)", com o aviso do encaixe e o "Confirmar" ligado); a lista vazia diz por quê ("Ninguém está livre nesse horário.") (sem ensinar o caminho do encaixe: o Heitor, 26/11, "intuitivo não é explicativo"). Com o choque à vista, o "Confirmar" da janela de agendar e o da de remarcar ("Não vai ser remarcado: …") ficam desligados, com o motivo ao lado ("Escolha outro horário: este bate com outro atendimento."); o bloqueio também desliga (AG-20); o encaixe fora do horário não desliga.
-- Fonte: princípio 3; o "Confirmar" desligado no choque: o Heitor, 26/11 (página de perguntas, R06): "Desliga o botão, e os três testes conferem o botão desligado (a proposta)". As listas só com o disponível: o Heitor, 26/11 (página de perguntas, R13): "Só mostra os horarios, salas e pessoas que estão livres"; o Heitor, 26/11 (página de perguntas, R14): "Horarios, salas e pessoas não disponíveis não devem aparecer nas listas". Quem está fora do horário também sai: o Heitor, 26/11 (página de perguntas, R15): "Não: quem está fora do horário também some das listas (o encaixe só pelo campo de horário)". A leitura de "não disponível" (o que o servidor recusaria) e a escolhida que fica marcada: decisão do Claude, 26/11. As salas não têm horário próprio: a unidade fechada não as tira da lista (decisão do Claude, 26/11). O caminho do encaixe na lista vazia: decisão do Claude, 26/11 (33ª simulação, arremate), pelo princípio 7.
+**AG-07.** O choque com outro atendimento da mesma pessoa que atende não é encaixe: o servidor recusa. O modal avisa antes ("Não vai ser agendado: X já tem atendimento das…"), cita todos os atendimentos que bloqueiam o horário (e a unidade, quando é outra) e oferece "Usar o próximo livre" — também no bloqueio e na sala escolhida que está ocupada, e livre da pessoa E da sala escolhida (R14). Nas listas (a grade de horários, as salas, quem atende — no agendar, nas sessões, no "Trocar profissional" e no "Mudar de unidade") só aparece o que está disponível: o que o servidor recusaria no horário (o choque, o bloqueio da pessoa ou da sala, a sala ocupada, o horário que passou) sai, e também quem está fora do horário dela na unidade (sem horário próprio, o da unidade) ou com a unidade fechada, e o horário cujo FIM sai do horário dela (AG-10) — a grade só oferece o horário de quem atende, e o encaixe vai pelo campo de horário, com o aviso; a já escolhida que deixou de estar livre fica marcada ("(ocupada)"/"(bloqueada)", com o "Confirmar" desligado; "(fora do horário)", com o aviso do encaixe e o "Confirmar" ligado); a lista vazia diz por quê ("Ninguém está livre nesse horário.") (sem ensinar o caminho do encaixe: o Heitor, 26/11, "intuitivo não é explicativo"); com a escolhida no encaixe, a frase não aparece e fica o aviso do encaixe (A19 da 39ª: as duas se contradiziam; decisão do Claude, 27/11, pela AG-04 e pelo princípio 3). Com o choque à vista, o "Confirmar" da janela de agendar e o da de remarcar ("Não vai ser remarcado: …") ficam desligados, com o motivo ao lado ("Escolha outro horário: este bate com outro atendimento."); o bloqueio também desliga (AG-20); o encaixe fora do horário não desliga.
+- Fonte: princípio 3; o "Confirmar" desligado no choque: o Heitor, 26/11 (página de perguntas, R06): "Desliga o botão, e os três testes conferem o botão desligado (a proposta)". As listas só com o disponível: o Heitor, 26/11 (página de perguntas, R13): "Só mostra os horarios, salas e pessoas que estão livres"; o Heitor, 26/11 (página de perguntas, R14): "Horarios, salas e pessoas não disponíveis não devem aparecer nas listas". Quem está fora do horário também sai: o Heitor, 26/11 (página de perguntas, R15): "Não: quem está fora do horário também some das listas (o encaixe só pelo campo de horário)". A leitura de "não disponível" (o que o servidor recusaria) e a escolhida que fica marcada: decisão do Claude, 26/11. As salas não têm horário próprio: a unidade fechada não as tira da lista (decisão do Claude, 26/11). O caminho do encaixe na lista vazia: decisão do Claude, 26/11 (33ª simulação, arremate), pelo princípio 7. O horário cujo fim sai do horário dela: decisão do Claude, 27/11 (39ª simulação, D1), pela AG-02 e pelo R15.
 - Onde: `docs/regras/atendimento.md:36-37`, `:44-46`, `:207-215`, `:1153-1162`, `:258-268`
 - Antes: AG-10, AG-128
 
@@ -59,8 +59,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:235-240`, `:703-716`
 - Antes: AG-21, AG-22
 
-**AG-10.** O modal Agendar, depois de escolhidos quem atende e o dia, mostra a grade dos horários livres (com a sala escolhida, também os bloqueios da sala). Os seletores do checkout do plano, das sessões de plano e de pacote e do pré-pago mostram o horário de quem atende naquele dia (a unidade ∩ ela), de 30 em 30 minutos, sem a pausa e sem o ocupado e o bloqueado; o fora do horário dela (e a unidade fechada) não aparece, e o encaixe vai pelo "Outro horário (encaixe)" (no Agendar, pelo campo de data e hora). O dia em que ela não atende diz "X não atende neste dia. Para um encaixe, use …".
-- Fonte: princípio 3; só o horário de quem atende: o Heitor, 26/11 (página de perguntas, R15): "Não: quem está fora do horário também some das listas (o encaixe só pelo campo de horário)"
+**AG-10.** O modal Agendar, depois de escolhidos quem atende e o dia, mostra a grade dos horários livres (com a sala escolhida, também os bloqueios da sala). Os seletores do checkout do plano, das sessões de plano e de pacote e do pré-pago mostram o horário de quem atende naquele dia (a unidade ∩ ela), de 30 em 30 minutos, sem a pausa e sem o ocupado e o bloqueado; o fora do horário dela (e a unidade fechada) não aparece, e o encaixe vai pelo "Outro horário (encaixe)" (no Agendar, pelo campo de data e hora). Cada horário que a grade e os seletores oferecem (no Agendar, no Reagendar, nas sessões e no PDV) cabe inteiro, com a duração do atendimento, num período do horário de quem atende: o fim não atravessa a pausa da unidade, a pausa da pessoa nem o fechamento — o último início é o fim do período menos a duração —, a mesma conta do app (AG-02). O dia em que ela não atende diz "X não atende neste dia. Para um encaixe, use …".
+- Fonte: princípio 3; só o horário de quem atende: o Heitor, 26/11 (página de perguntas, R15): "Não: quem está fora do horário também some das listas (o encaixe só pelo campo de horário)"; o horário que cabe inteiro com a duração: decisão do Claude, 27/11 (39ª simulação, D1), pela AG-02 e pelo R15
 - Onde: `docs/regras/atendimento.md:91-102`, `:201-207`, `:225-234`
 - Antes: AG-14, AG-18, AG-20
 
@@ -113,8 +113,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:149-160`, `:231-233`, `:241-247`
 - Antes: AG-26, AG-34
 
-**AG-20.** O horário bloqueado não se marca: agendar, remarcar, arrastar, mudar de unidade, trocar ou repassar quem atende, o checkout do plano e o Copilot recusam o horário que cai num bloqueio de quem atende ou da sala, o do dia inteiro também ("Bruna está com o horário bloqueado das 12:00 às 13:00 (Almoço). Escolha outro horário."). As janelas de agendar e de remarcar dizem "Não vai ser agendado/remarcado: …" e desligam o "Confirmar", com o motivo ao lado ("Escolha outro horário: este está bloqueado."). A sala que o sistema escolhe sozinho não entra bloqueada: o agendamento vai sem sala. O fora do horário de quem atende ou da unidade não é bloqueio e segue encaixe. Iniciar um atendimento dentro de um bloqueio avisa e segue; bloquear um período que já tem atendimento não mexe nele, e o aviso diz quantos continuam — contando só os que se sobrepõem ao período (começam antes do fim dele e terminam depois do começo, pela duração do agendamento).
-- Fonte: o Heitor, 26/11 (R07), no chat: "r07 se ta bloqueado não dá pra marcar" (era "o bloqueio só avisa", princípio 2); a sala escolhida sozinha que vai sem sala: decisão do Claude, 26/11; o que o aviso conta: decisão do Claude, 27/11 (D3 da 36ª)
+**AG-20.** O horário bloqueado não se marca: agendar, remarcar, arrastar, mudar de unidade, trocar ou repassar quem atende, o checkout do plano e o Copilot recusam o horário que cai num bloqueio de quem atende ou da sala, o do dia inteiro também ("Bruna está com o horário bloqueado das 12:00 às 13:00 (Almoço). Escolha outro horário."). As janelas de agendar e de remarcar dizem "Não vai ser agendado/remarcado: …" e desligam o "Confirmar", com o motivo ao lado ("Escolha outro horário: este está bloqueado."). A sala que o sistema escolhe sozinho não entra bloqueada: o agendamento vai sem sala. O fora do horário de quem atende ou da unidade não é bloqueio e segue encaixe. Iniciar um atendimento dentro de um bloqueio avisa e segue; bloquear um período (também o dia inteiro) que já tem atendimento não mexe nele, e o aviso diz quantos continuam — contando só os que se sobrepõem ao período (começam antes do fim dele e terminam depois do começo, pela duração do agendamento).
+- Fonte: o Heitor, 26/11 (R07), no chat: "r07 se ta bloqueado não dá pra marcar" (era "o bloqueio só avisa", princípio 2); a sala escolhida sozinha que vai sem sala: decisão do Claude, 26/11; o que o aviso conta: decisão do Claude, 27/11 (D3 da 36ª); o bloqueio de dia inteiro sobre o já marcado: decisão do Claude, 27/11 (39ª simulação, Decisão C)
 - Onde: `docs/regras/atendimento.md:169-175`, `:179-184`, `:248-253`
 - Antes: AG-29, AG-30, AG-32, AG-35
 
@@ -125,13 +125,13 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 
 ### As vistas da agenda
 
-**AG-22.** A vista da Semana tem os 7 dias, de segunda a domingo sempre (o domingo fechado também), e conta e agrupa os agendamentos pelo dia de Brasília, na unidade e na rede.
-- Fonte: princípio 3
+**AG-22.** A vista da Semana tem os 7 dias, de segunda a domingo sempre (o domingo fechado também), e conta e agrupa os agendamentos pelo dia de Brasília, na unidade e na rede. No celular a Semana se lê: cada dia com largura para o cabeçalho (dia e data) e para o que há nele, os 7 dias inteiros (o domingo não se corta) e o texto do cartão e do bloqueio em palavras, não letra por letra — a grade rola de lado, com a coluna das horas parada.
+- Fonte: princípio 3; no celular: decisão do Claude, 27/11 (39ª simulação, D5), pela própria AG-22 e por `docs/regras/design.md` (no celular, a tela cabe e se lê)
 - Onde: `docs/regras/atendimento.md:271-281`
 - Antes: AG-37
 
-**AG-23.** A "Minha agenda" é a vista pessoal (SM2): abre a quem atende e não tem a Agenda, só com os horários dela, e só mostra (não agenda nem bloqueia). A grade do dia é o horário da unidade cruzado com o da pessoa (no dia em que ela não atende, "Você não atende neste dia"); o destaque do topo anda com o relógio e mostra antes o atendimento atrasado em aberto; tocar no cartão abre a tela do atendimento, só para ver (na agenda da unidade, abre a janela de ações); o atalho "Minhas comissões" fica no topo para quem tem o Financeiro em Ver (leva à aba Comissões) ou as Minhas comissões (a vista pessoal: quem atende ou tem comissão de venda e não tem o Financeiro, só as dela). Ela traz também os atendimentos da pessoa em outras unidades ("Na unidade Batel"), e a agenda inteira da unidade traz "Seus atendimentos em outras unidades"; abrir um deles leva ao endereço da unidade do agendamento. Quando o cargo ganha a Agenda, a Minha agenda dá lugar à Agenda, com todos os horários.
-- Fonte: decisão do Claude; a vista pessoal: o Heitor, 2026-11-23 (docs/revisao.md, SM2): "pode tirar, as vistas pessoais resolvem"; o cargo que ganha a Agenda: decisão do Claude, 27/11 (36ª, Decisão B), pela vista pessoal (nula para quem tem o módulo, CLAUDE.md §11)
+**AG-23.** A "Minha agenda" é a vista pessoal (SM2): abre a quem atende e não tem a Agenda, só com os horários dela, e só mostra (não agenda nem bloqueia). A grade do dia é o horário da unidade cruzado com o da pessoa (no dia em que ela não atende, "Você não atende neste dia", também quando há um encaixe marcado nele: a frase e o cartão); o destaque do topo anda com o relógio e mostra antes o atendimento atrasado em aberto; tocar no cartão abre a tela do atendimento, só para ver (na agenda da unidade, abre a janela de ações); o atalho "Minhas comissões" fica no topo para quem tem o Financeiro em Ver (leva à aba Comissões) ou as Minhas comissões (a vista pessoal: quem atende ou tem comissão de venda e não tem o Financeiro, só as dela). Ela traz também os atendimentos da pessoa em outras unidades ("Na unidade Batel"), e a agenda inteira da unidade traz "Seus atendimentos em outras unidades"; abrir um deles leva ao endereço da unidade do agendamento. Quando o cargo ganha a Agenda, a Minha agenda dá lugar à Agenda, com todos os horários.
+- Fonte: decisão do Claude; a vista pessoal: o Heitor, 2026-11-23 (docs/revisao.md, SM2): "pode tirar, as vistas pessoais resolvem"; o cargo que ganha a Agenda: decisão do Claude, 27/11 (36ª, Decisão B), pela vista pessoal (nula para quem tem o módulo, CLAUDE.md §11); a frase também com um encaixe no dia: decisão do Claude, 27/11 (39ª simulação, D9), pela própria AG-23
 - Onde: `docs/regras/atendimento.md:22-30`, `:317-333`, `:636-638`, `:669-695`
 - Antes: AG-04, AG-39, AG-40, AG-41, AG-50, AG-51
 
@@ -145,8 +145,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:718-742`
 - Antes: AG-45, AG-46
 
-**AG-26.** A agenda da unidade deixa o cancelado e a falta fora da grade; "Mostrar cancelados" traz de volta os dois (o cancelado e a falta), apagados, riscados e com o motivo. Eles não contam em nada (atendimentos, ocupação, contagem de quem atende) e não se arrastam. A agenda da rede sempre os mostra, apagados e com o motivo.
-- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — 2026-10-21
+**AG-26.** A agenda da unidade deixa o cancelado e a falta fora da grade; "Mostrar cancelados" traz de volta os dois (o cancelado e a falta), apagados, riscados e com o motivo. Mostrado, o cancelado (ou a falta) fica ao lado do agendamento do mesmo horário, como dois agendamentos que se sobrepõem, com o nome à vista — nunca por baixo de outro cartão. Eles não contam em nada (atendimentos, ocupação, contagem de quem atende) e não se arrastam. A agenda da rede sempre os mostra, apagados e com o motivo.
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — 2026-10-21; ao lado do outro do mesmo horário: decisão do Claude, 27/11 (39ª simulação, D16), pela própria AG-26
 - Onde: `docs/regras/atendimento.md:1163-1171`
 - Antes: AG-129
 
@@ -299,8 +299,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:1076-1094`
 - Antes: AG-180
 
-**AG-56.** O que já foi pago aparece como pago, não como valor a cobrar, na agenda e no app ("Pré-pago · 1 de 2", "Pacote X · sessão 1 de 2"). A sessão de plano aceito e ainda não recebido não parece paga ("a receber no PDV (R$ X)" na agenda, só a quem vê valores; "a pagar na unidade" no app). O pago com desconto mostra no app o valor COBRADO e o desconto (pontos usados são forma de pagamento, não desconto). A sessão já agendada não conta como "para agendar" ("2 para agendar · 1 agendada"). No crediário, o cartão do app mostra o valor cobrado inteiro (a entrada e as parcelas em aberto), não só o pago (D4 da 34ª). O cartão do pacote no Início do app diz a agendada ao lado das que restam ("restam 3 · 1 agendada"; A23 da 34ª).
-- Fonte: princípio 3
+**AG-56.** O que já foi pago aparece como pago, não como valor a cobrar, na agenda e no app ("Pré-pago · 1 de 2", "Pacote X · sessão 1 de 2"). A sessão de plano aceito e ainda não recebido não parece paga ("a receber no PDV (R$ X)" na agenda, só a quem vê valores; "a pagar na unidade" no app). O pago com desconto mostra no app o valor COBRADO e o desconto, em toda tela do app que diz o que ela pagou (também o Financeiro do app) (pontos usados são forma de pagamento, não desconto). A sessão já agendada não conta como "para agendar" ("2 para agendar · 1 agendada"). No crediário, o cartão do app mostra o valor cobrado inteiro (a entrada e as parcelas em aberto), não só o pago (D4 da 34ª). O cartão do pacote no Início do app diz a agendada ao lado das que restam ("restam 3 · 1 agendada"; A23 da 34ª).
+- Fonte: princípio 3; o desconto também no Financeiro do app: decisão do Claude, 27/11 (39ª simulação, D7), pela própria AG-56
 - Onde: `docs/regras/atendimento.md:1210-1237`
 - Antes: AG-137, AG-138, AG-139, AG-140
 
@@ -562,8 +562,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:2320`, `docs/revisao.md:2011`
 - Antes: PL-05
 
-**PL-10.** O desconto do plano se combina no editor, em R$ ou %, e o total mostra o subtotal riscado e o que fica. Enquanto proposto, as sessões ficam com o preço de tabela e as telas mostram o total combinado. No ACEITE (da equipe ou da cliente), o desconto se aplica aos preços das sessões, ao centavo, e daí em diante vale o preço vendido. Nunca se aplicam dois descontos.
-- Fonte: decisão do Claude
+**PL-10.** O desconto do plano se combina no editor, em R$ ou %, e o total mostra o subtotal riscado e o que fica. Enquanto proposto, as sessões ficam com o preço de tabela e as telas mostram o total combinado. O preço de tabela das sessões do plano proposto é o do momento em que o plano foi montado (a proposta): mudar o preço do procedimento depois não muda o plano proposto. No ACEITE (da equipe ou da cliente), o desconto se aplica aos preços das sessões, ao centavo, e daí em diante vale o preço vendido. Nunca se aplicam dois descontos.
+- Fonte: decisão do Claude; o preço do plano proposto: o Heitor, 27/11 (R36): "Fica como está: vale o preço de quando o plano foi proposto (a proposta)" (o D13 da 39ª simulação não era defeito)
 - Onde: `docs/regras/atendimento.md:3654`
 - Antes: AT-37
 
@@ -792,7 +792,7 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Antes: FI-17, FI-24
 
 **FI-13.** O link da ficha pede CPF ou nascimento antes de mostrar qualquer pergunta; cinco tentativas erradas derrubam o link, vinte por hora param quem tenta, e o link morre com a ficha pendente. O link que ainda vale se mostra de novo; "Gerar outro" cancela o anterior. A ficha que a equipe preencheu se confere pelo link ("Está tudo certo" ou "Corrigir respostas") e passa a ser da cliente; a que ela mesma respondeu diz "já respondida", com o contato da unidade. A ficha que a equipe preencheu e que se manda DEPOIS por um link novo, dentro da validade, também abre para conferir; no app (o pré-atendimento do portal da cliente) vale a mesma regra, e "Está tudo certo" a grava como da cliente.
-- Fonte: decisão do Claude; o link novo e o app: decisão do Claude, 26/11 (33ª simulação, D16 e o arremate), pelo princípio 3
+- Fonte: decisão do Claude; o link novo e o app: decisão do Claude, 26/11 (33ª simulação, D16 e o arremate), pelo princípio 3; o link da ficha já respondida diz "Ficha já respondida" e não a reabre (o link é de uso único): decisão do Claude, 27/11 (39ª simulação, Decisão B)
 - Onde: `docs/regras/atendimento.md:1757`, `:1776-1796`, `:2215-2227`
 - Antes: FI-18, FI-22, FI-23; antes de 26/11: pelo link novo e no app, a ficha da equipe abria em "Algo mudou na sua saúde? Nada mudou", o modo de quem respondeu ela mesma
 
@@ -853,8 +853,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:1518`, `:1538-1547`, `:1674-1685`
 - Antes: PC-10, PC-11
 
-**PC-10.** Onde a unidade tem preço próprio, vale o dela em todo caminho (listar, agendar, cobrar, vender, pacote, plano); onde não tem, o da rede; sem unidade (oportunidade, recompensa da fidelidade), o da rede. A comissão sai do preço gravado. A lista da rede mostra o preço próprio de cada unidade embaixo do preço. O histórico de preço é só o da rede.
-- Fonte: princípio 3
+**PC-10.** Onde a unidade tem preço próprio, vale o dela em todo caminho (listar, agendar, cobrar, vender, pacote, plano); onde não tem, o da rede; sem unidade (oportunidade, recompensa da fidelidade), o da rede. A comissão sai do preço gravado. O agendamento guarda o preço e a duração do momento em que foi marcado: mudar depois o preço, a duração, quem realiza, o "no app" ou o ativo/inativo do procedimento não mexe no que já está marcado (a avaliação marcada grátis continua grátis), e todas as telas dizem o gravado (agenda, PDV, Financeiro, Relatórios, comissão). A lista da rede mostra o preço próprio de cada unidade embaixo do preço. O histórico de preço é só o da rede.
+- Fonte: princípio 3; o preço e a duração gravados no agendamento, iguais em todas as telas: decisão do Claude, 27/11 (39ª simulação, Decisões C e E), pelo princípio 3
 - Onde: `docs/regras/atendimento.md:1580-1606`
 - Antes: PC-12, PC-13, PC-14, PC-15
 

@@ -11,7 +11,7 @@ import { TrocarPontos } from '@/components/shared/trocar-pontos'
 import { abaterDoPacote } from '@/actions/a-receber'
 import { calcularDescontoComPontos, maximoDePontos } from '@/lib/fidelidade/resgate'
 import { formatarPontos } from '@/lib/fidelidade/formato'
-import { CampoDoDesconto, LembreteDoMotivo, contaDoDesconto, descontoDoEstado, estadoDoDesconto } from '@/components/shared/campo-do-desconto'
+import { CampoDoDesconto, contaDoDesconto, descontoDoEstado, estadoDoDesconto } from '@/components/shared/campo-do-desconto'
 import { FORMAS_DO_BALCAO } from '@/components/shared/formas-de-pagamento'
 import { Dica } from '@/components/shared/dica'
 import { oQueSaiNoReceber, TEXTO_PONTOS_SO_A_VISTA, type SaiDaComanda } from '@/lib/pdv/situacoes'
@@ -263,7 +263,6 @@ export function FormularioDeReceberAtendimento({
           Motivo do desconto (opcional)
           <input name="desconto_motivo" className="field" maxLength={300} placeholder="Ex.: cliente fiel, retorno, cortesia da casa"
             value={motivoDoDesconto} onChange={e => setMotivoDoDesconto(e.target.value)} />
-          {!motivoDoDesconto.trim() && <LembreteDoMotivo />}
         </label>
       )}
       {aVista && previa && previa.vouchers.length > 0 && (
@@ -367,13 +366,16 @@ export function FormularioDeReceberAtendimento({
       {state?.error && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{state.error}</p>}
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4, flexWrap: 'wrap' }}>
         <MotivoDoBotao motivo={pending || state?.error ? null : motivoDaFaltaNoBotao(faltaDeEstoque) ?? recusaForaDoCampo(estado, total, recusa, 'da comanda')} />
-        {onVoltar && <button type="button" onClick={onVoltar} className="btn-secondary"><X size={13} /> Voltar</button>}
-        <button type="submit" disabled={pending || !!faltaDeEstoque || !!doDesconto.recusa || !!recusa} className="btn-primary"
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', fontSize: 'var(--text-base-sz)', minWidth: 170, justifyContent: 'center', flex: 1 }}>
-          {pending ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
-          {/* No crediário e no a receber, nada (ou só a entrada) entra agora: o botão fecha a comanda. */}
-          {pending ? 'Registrando…' : aVista || totalZero ? `Receber ${brl(total)}` : 'Fechar a comanda'}
-        </button>
+        {/* D4 da 39ª: no celular, o Receber fica preso no rodapé (`.acao-presa`, design.md). */}
+        <div className="acao-presa">
+          {onVoltar && <button type="button" onClick={onVoltar} className="btn-secondary"><X size={13} /> Voltar</button>}
+          <button type="submit" disabled={pending || !!faltaDeEstoque || !!doDesconto.recusa || !!recusa} className="btn-primary"
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', fontSize: 'var(--text-base-sz)', minWidth: 170, justifyContent: 'center', flex: 1 }}>
+            {pending ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+            {/* No crediário e no a receber, nada (ou só a entrada) entra agora: o botão fecha a comanda. */}
+            {pending ? 'Registrando…' : aVista || totalZero ? `Receber ${brl(total)}` : 'Fechar a comanda'}
+          </button>
+        </div>
       </div>
     </form>
   )

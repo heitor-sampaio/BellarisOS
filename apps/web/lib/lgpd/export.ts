@@ -16,6 +16,7 @@ import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { planoParaOTitular, linhaDoPlano, linhaDaComunicacao, type PlanoLido } from '@/lib/lgpd/plano'
 import { responsavelNoPacote, documentoNoPacote } from '@/lib/lgpd/responsavel'
 import { insumosDosAtendimentos, insumosEmTexto, type InsumoDoAtendimento } from '@/lib/lgpd/insumos'
+import { fotosDoProntuario, linhasDasFotosNoPdf, type DocumentoDaFoto, type FotoDoPacote } from '@/lib/lgpd/fotos'
 
 /**
  * Monta o pacote de dados pessoais de um cliente (LGPD art. 18, II e V).
@@ -105,20 +106,33 @@ function nomeDaFichaDeSaude(nome: string | null | undefined): string {
 type AnotacaoLida = { appointment_id: string; texto: string; autor_nome: string; criada_em: string }
 type VersaoLida = { appointment_id: string; evolucao: string | null; intercorrencias: string | null; ficha: unknown; editada_por_nome: string; substituida_em: string }
 
-/** O prontuário liberado, legível: cada atendimento por extenso, a ficha pergunta a pergunta. */
-function prontuarioLegivel(medical: Json | null): Json | null {
+/**
+ * O prontuário liberado, legível: cada atendimento por extenso, a ficha pergunta a pergunta.
+ *
+ * D14 da 39ª (LG-12: "sem repetir a que já veio por um pedido respondido"): a
+ * ficha do prontuário (`general_anamnesis`, versão 2) ia ao JSON como
+ * `anamneseGeral` E a mesma ficha, pelo pedido respondido, em `fichasDeSaude`.
+ * Ela entra nas fichas de saúde pela mesma regra do PDF
+ * (`fichasDeSaudeDoProntuario`), uma vez; a ficha antiga (sem a versão 2) segue
+ * como estava.
+ */
+export function prontuarioLegivel(medical: Json | null): Json | null {
   if (!medical) return null
   const anamnese = medical.anamneseGeral as Record<string, unknown> | null
   const entradas = (medical.atendimentos ?? []) as Record<string, unknown>[]
+  const v2 = !!anamnese && anamnese.versao === 2
+  const fichaDoProntuario: FichaDeSaudeDoPacote | null = v2
+    ? {
+        respondidaEm:  (anamnese!.respondidoEm as string | null) ?? null,
+        respondidaPor: typeof anamnese!.origem === 'string' ? QUEM_RESPONDEU[anamnese!.origem] ?? null : null,
+        ficha:         nomeDaFichaDeSaude((anamnese!.ficha as { nome?: string } | null)?.nome),
+        respostas:     respostasLegiveis(anamnese!.ficha, anamnese!.respostas),
+      }
+    : null
   return {
     ...medical,
-    anamneseGeral: anamnese && anamnese.versao === 2
-      ? {
-          ficha: nomeDaFichaDeSaude((anamnese.ficha as { nome?: string } | null)?.nome),
-          respondidaEm: anamnese.respondidoEm ?? null,
-          respostas: respostasLegiveis(anamnese.ficha, anamnese.respostas),
-        }
-      : anamnese,
+    anamneseGeral: v2 ? undefined : anamnese,
+    fichasDeSaude: fichasDeSaudeDoProntuario((medical.fichasDeSaude ?? []) as FichaDeSaudeDoPacote[], fichaDoProntuario),
     atendimentos: entradas.map(e => {
       // D1 da 26ª: a ficha gravada é { name, rows, answers } — lida por um lugar só.
       const f = (e.form_data as { ficha?: unknown } | null)?.ficha
@@ -132,6 +146,8 @@ function prontuarioLegivel(medical: Json | null): Json | null {
         insumos: e.insumos_do_estoque ?? e.products_used ?? null,
         fichaDoProcedimento: fichaDoProcedimentoLegivel(f),
         fotos: Number(e.fotos_do_atendimento ?? ((e.record_photos ?? []) as unknown[]).length),
+        // D14 da 39ª (LG-12): as fotos com o link do arquivo (eram só contadas).
+        fotosDoAtendimento: (e.fotos_com_link ?? []) as FotoDoPacote[],
         // PR2c (bloco Prontuário): o que se escreveu depois e o que a correção
         // substituiu — o titular tem direito ao registro inteiro, com o rastro.
         anotacoes: ((e.anotacoes_do_atendimento ?? []) as AnotacaoLida[]).map(a => ({ texto: a.texto, por: a.autor_nome, em: a.criada_em })),
@@ -215,7 +231,7 @@ export async function buildClientExport(
       .select('purchased_at, expires_at, total_sessions, used_sessions, cancelado_em, service_packages(name)')
       .eq('client_id', clientId),
     admin.from('client_documents')
-      .select('created_at, name, category, file_name, mime_type, file_size, apagado_em, appointment_id').eq('client_id', clientId),
+      .select('created_at, name, category, file_name, file_path, mime_type, file_size, apagado_em, appointment_id').eq('client_id', clientId),
     // TODAS (2026-10-22): tinha teto de 200, e o pacote do titular saía
     // incompleto parecendo completo. Em páginas — o PostgREST corta em 1000.
     lerTodas((de, ate) => admin.from('client_notifications')
@@ -304,7 +320,12 @@ export async function buildClientExport(
     const insumos = await insumosDosAtendimentos(admin, (record?.medical_record_entries ?? [])
       .map(e => e.appointment_id as string | null).filter((x): x is string => !!x))
 
-    if (record || fichasRespondidas.length) {
+    // D14 da 39ª (LG-12): as fotos vão com o link do arquivo, com a validade do pacote.
+    const fotos = await fotosDoProntuario(admin, (documents ?? []) as unknown as DocumentoDaFoto[],
+      new Set((record?.medical_record_entries ?? []).map(e => e.appointment_id as string | null).filter((x): x is string => !!x)),
+      EXPORT_TTL_DAYS * 24 * 60 * 60)
+
+    if (record || fichasRespondidas.length || fotos.daFicha.length) {
       medical = {
         criadoEm:      record?.created_at ?? null,
         anamneseGeral: record?.general_anamnesis ?? null,
@@ -316,10 +337,12 @@ export async function buildClientExport(
           fotos_do_atendimento: ((e.record_photos ?? []) as unknown[]).length
             + (documents ?? []).filter(d => d.appointment_id && d.appointment_id === e.appointment_id && d.category === 'foto_clinica' && !d.apagado_em).length,
           insumos_do_estoque: e.appointment_id ? insumos.get(e.appointment_id as string) ?? [] : null,
+          fotos_com_link: e.appointment_id ? fotos.porAtendimento.get(e.appointment_id as string) ?? [] : [],
           anotacoes_do_atendimento: anotacoesLidas.filter(a => a.appointment_id === e.appointment_id),
           versoes_do_registro: versoesLidas.filter(v => v.appointment_id === e.appointment_id),
         })),
         fichasDeSaude: fichasRespondidas,
+        fotosAnexadasAFicha: fotos.daFicha,
       }
     }
   }
@@ -598,12 +621,17 @@ export async function buildClientExport(
                + (inter ? ` — intercorrências: ${inter}` : '')
                + (insumos ? ` — insumos: ${insumos}` : ''),
             ...linhasDaFichaNoPdf(fichaDoProcedimentoLegivel(fichaAtual)),
+            ...linhasDasFotosNoPdf((e.fotos_com_link ?? []) as FotoDoPacote[], fmtDateTime),
             ...anotacoes.map(a => `   Anotação de ${a}`),
             ...versoes,
           ]
         }).flat(),
       },
     )
+    const fotosDaFicha = (medical?.fotosAnexadasAFicha ?? []) as FotoDoPacote[]
+    if (fotosDaFicha.length) {
+      sections.push({ title: `Prontuário — fotos anexadas à ficha (${fotosDaFicha.length})`, lines: linhasDasFotosNoPdf(fotosDaFicha, fmtDateTime) })
+    }
   } else {
     sections.push({ title: 'Prontuário', lines: foraDoPacote.pdf })
   }

@@ -14,6 +14,7 @@ import { notasDaAvaliacao, type NotaNaTela } from '@/lib/avaliacao/notas'
 import { notasDosProcedimentos } from '@/lib/avaliacao/leitura'
 import { ordemDosPagamentosDoApp } from '@/lib/clientes/ordem-dos-pagamentos'
 import { abaDoHistoricoNoApp } from '@/lib/clientes/textos-do-app'
+import { descontosDosLancamentos } from '@/lib/financeiro/desconto-do-lancamento'
 
 // -- Types ----------------------------------------------------------
 export type ProcedimentoItem = {
@@ -66,6 +67,8 @@ export type PagamentoItem = {
   estorno?:       boolean
   /** A46: o pagamento de um pacote cancelado — o dia do cancelamento. */
   pacoteCancelado?: string | null
+  /** D7 da 39ª (AG-56): o desconto do que ela pagou, com o motivo — "Desconto R$ 18,00 · aniversário" (o do recibo). */
+  desconto?:      string | null
   /** O atendimento avulso concluído e não pago (A64): não é um lançamento, é `atendimentos_a_receber`. */
   aPagarNaUnidade?: boolean
   /** Estornado: o dinheiro voltou — não é "Pago" nem tem recibo (como o Financeiro do app). */
@@ -100,6 +103,8 @@ type PagamentoLido = {
   is_paid: boolean; paid_at: string | null; notes: string | null; created_at: string
   due_date: string | null; data_de_referencia: string | null; parcela_numero: number | null; parcela_total: number | null
   type: string; category: string | null
+  sale_discount: number | string | null; desconto_motivo: string | null
+  product_sale_id: string | null; client_package_id: string | null; procedure_sale_id: string | null; treatment_plan_id: string | null
   client_packages: { cancelado_em: string | null } | null
   appointments: { procedures: { name: string } | null } | null
 }
@@ -133,6 +138,7 @@ export default async function HistoricoPage({ params, searchParams }: {
       .select(`
         id, description, amount, payment_method, cartao_vezes, cartao_bandeira, is_paid, paid_at, notes, created_at,
         due_date, data_de_referencia, parcela_numero, parcela_total, type, category,
+        sale_discount, desconto_motivo, product_sale_id, client_package_id, procedure_sale_id, treatment_plan_id,
         client_packages(cancelado_em),
         appointments(procedures(name))
       `)
@@ -184,6 +190,8 @@ export default async function HistoricoPage({ params, searchParams }: {
 
   // -- Pagamentos -------------------------------------------------
   // D8 da 36ª (CR-07): a parcela paga em várias formas é UMA linha, como na equipe.
+  // D7 da 39ª (AG-56, princípio 3): o pago com desconto diz o desconto — o mesmo texto da equipe e do recibo.
+  const descontos = await descontosDosLancamentos((pagamentosRes ?? []) as unknown as PagamentoLido[])
   const pagamentos: PagamentoItem[] = juntarAsFormasDaParcela((pagamentosRes ?? []) as unknown as PagamentoLido[]).map(r => ({
     id:             r.id,
     description:    r.description,
@@ -203,6 +211,7 @@ export default async function HistoricoPage({ params, searchParams }: {
     ...formaERecibosDaLinha(r, formaDoLancamento({ metodo: r.payment_method, vezes: r.cartao_vezes, bandeira: r.cartao_bandeira, pago: Boolean(r.is_paid), parcela: r.parcela_numero })),
     estorno:        r.type === 'EXPENSE' && r.category === 'Estorno',
     pacoteCancelado: r.client_packages?.cancelado_em ?? null,
+    desconto:       r.notes === 'Estornada' || r.category === 'Estorno' ? null : descontos[r.id] ?? null,
     // D17 da 8ª: a mesma ordem do Financeiro do app (era a da criação: 2/2 antes da 1/2).
     referencia:     r.data_de_referencia ?? r.paid_at ?? r.created_at,
   })).sort(ordemDosPagamentosDoApp)

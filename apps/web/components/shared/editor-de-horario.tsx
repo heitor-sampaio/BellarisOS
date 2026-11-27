@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import { HORARIO_PADRAO, MEIA_NOITE, FIM_NO_CAMPO, periodoAoAbrirODia, type Horario, type Intervalo } from '@/lib/agenda/horario'
-import { aoDesligarAs24Horas, resumoDoEditorDeHorario } from '@/lib/unidades/horario-no-editor'
+import { aoDesligarAs24Horas, diasQueValem, resumoDoEditorDeHorario } from '@/lib/unidades/horario-no-editor'
 import { Dica } from '@/components/shared/dica'
 
 /**
@@ -37,7 +37,7 @@ const comAMeiaNoite = (dias: Record<string, Intervalo[]>): Record<string, Interv
 const copiar = (h: Horario): Record<string, Intervalo[]> =>
   Object.fromEntries(DIAS.map(d => [d.chave, (h.dias[d.chave] ?? []).map(i => ({ ...i }))]))
 
-export function EditorDeHorario({ nome, valor, seguir, base }: {
+export function EditorDeHorario({ nome, valor, seguir, base, dentroDe = null }: {
   /** O nome do campo oculto (o que a action lê). */
   nome:    string
   valor:   Horario | null
@@ -48,6 +48,11 @@ export function EditorDeHorario({ nome, valor, seguir, base }: {
    * membro (`horarioDeQuemDeixaDeSeguir`). Sem ele, o padrão comercial.
    */
   base?:   Horario | null
+  /**
+   * O horário da unidade em que o próprio vale (quem é de uma unidade só): o
+   * "Fica assim" diz o cruzamento, o que vale de fato (`diasQueValem`, AG-10).
+   */
+  dentroDe?: Horario | null
 }) {
   const [segue, setSegue] = useState(!!seguir && !valor)
   const [dias, setDias]   = useState<Record<string, Intervalo[]>>(() => copiar(valor ?? base ?? HORARIO_PADRAO))
@@ -178,7 +183,7 @@ export function EditorDeHorario({ nome, valor, seguir, base }: {
           abre o domingo, e quem repetiu achava que ele seguia fechado. */}
       {!segue && (
         <p data-resumo-do-horario aria-live="polite" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 'var(--weight-semibold)' }}>
-          {resumoDoEditorDeHorario(comAMeiaNoite(dias))}
+          {resumoDoEditorDeHorario(diasQueValem(comAMeiaNoite(dias), dentroDe))}
         </p>
       )}
     </div>

@@ -756,3 +756,27 @@ Na página, uma pergunta nova: **R35**, ajustar o teste do "Conectar pela Meta" 
 própria Meta acrescenta e falha quando a máquina está lenta. A regra não muda. Você respondeu "Pode ajustar: contar só
 o script que o sistema põe (a proposta)", e foi feito: o teste conta só o script que o sistema põe (um teste alterado,
 `e2e/sdk-da-meta-so-onde-usa.spec.ts`).
+
+## 21. A 39ª simulação e as suas respostas R36 e R37 (27/11)
+
+Cinco redes novas, sem a conta da plataforma: o dia inteiro no celular, o app da cliente e a LGPD, a agenda e os
+horários, o a pagar e as despesas, e o catálogo mudando com coisas já marcadas. O dinheiro das cinco bateu. Foram 16
+defeitos, nenhum de segurança, e dois eram altos. Os defeitos e os atritos foram corrigidos. O resumo está no DEVLOG
+(27/11, (6)).
+
+O que você precisa saber:
+- **O Agendar da equipe oferecia horários que não cabiam.** Os horários sugeridos olhavam só o início: uma Drenagem de
+  50 min às 11:30 atravessava o almoço, e um Peeling às 21:30 passava do fechamento. Agora só aparece o horário em que o
+  atendimento inteiro cabe, como já era no app da cliente.
+- **O pedido da LGPD com prontuário travava.** Quem tem o Prontuário em Gerenciar recebia o aviso, mas não conseguia
+  liberar nem negar sem ter também Clientes. Agora ela decide a parte do prontuário sem precisar de mais nada.
+- **No celular, o botão que fecha o trabalho fica preso embaixo:** Receber, Fechar a comanda, Fechar o dia, Salvar,
+  Confirmar. Antes era preciso rolar até 1.900 px para achá-lo. A matriz de Cargos, a Semana da agenda e o Resumo do
+  Financeiro também passaram a caber na tela.
+- **O Financeiro da rede ganhou o Resumo completo:** evolução, formas de pagamento e despesas por categoria, como na
+  unidade.
+- **O app da cliente mostra o desconto no que ela pagou.** O pacote da LGPD traz as fotos.
+- **A venda do pacote parava depois do contrato assinado no papel.** Agora a venda conclui.
+- **As suas respostas estão feitas.** R36: o plano proposto guarda o preço de quando foi proposto. R37: a frase
+  embaixo do "Motivo do desconto" saiu.
+- **Um teste mudou pela R37:** o que exigia a frase do motivo do desconto. Nenhum teste foi apagado.

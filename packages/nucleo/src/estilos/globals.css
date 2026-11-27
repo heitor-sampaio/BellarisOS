@@ -605,6 +605,17 @@
 
 @media (max-width: 1023px) {
   .sidebar-scrim { display: block; }
+  /* A1 da 39ª (a sobreposição no celular começa EMBAIXO da topbar): a barra e
+     o véu desciam do topo (0), por cima da topbar — e o botão do menu, que
+     fecha o que abriu, ficava escondido. O `!important` vence o `top: 0` e o
+     respiro do safe-area do style da barra (no computador ela começa no topo). */
+  .main-sidebar {
+    top: calc(var(--topbar-h) + env(safe-area-inset-top, 0px)) !important;
+    padding-top: 0 !important;
+  }
+  .sidebar-scrim {
+    top: calc(var(--topbar-h) + env(safe-area-inset-top, 0px));
+  }
 }
 
 /* Título de categoria do menu, que recolhe e expande a categoria
@@ -859,27 +870,34 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
 /* 3 colunas → 2 → 1 */
 .rg-3 {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
-@media (max-width: 1023px) { .rg-3 { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 639px)  { .rg-3 { grid-template-columns: 1fr; } }
+@media (max-width: 1023px) { .rg-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 639px)  { .rg-3 { grid-template-columns: minmax(0, 1fr); } }
+/* D6 da 39ª: `1fr` é `minmax(auto, 1fr)` — o cartão com um filho largo (o
+   gráfico de 400 px, a rosca, a lista que não quebra) empurrava a trilha além
+   da tela no celular. A trilha começa em zero e o cartão encolhe com ela: o
+   que é largo rola ou quebra DENTRO do cartão. O mesmo nas outras grades. */
+.rg-3 > * { min-width: 0; }
 
 /* 2 colunas → 1 */
 .rg-2 {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
-@media (max-width: 639px) { .rg-2 { grid-template-columns: 1fr; } }
+@media (max-width: 639px) { .rg-2 { grid-template-columns: minmax(0, 1fr); } }
+.rg-2 > * { min-width: 0; }
 
 /* 2 colunas para formulários (gap menor) */
 .form-2col {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
-@media (max-width: 639px) { .form-2col { grid-template-columns: 1fr; } }
+@media (max-width: 639px) { .form-2col { grid-template-columns: minmax(0, 1fr); } }
+.form-2col > * { min-width: 0; }
 
 /* Editor de modelo de documento: o texto de um lado, a prévia do outro. Em
    tela estreita a prévia desce para baixo do texto. */
@@ -903,11 +921,12 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
 /* 3 colunas para formulários */
 .form-3col {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
-@media (max-width: 767px) { .form-3col { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 479px) { .form-3col { grid-template-columns: 1fr; } }
+@media (max-width: 767px) { .form-3col { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 479px) { .form-3col { grid-template-columns: minmax(0, 1fr); } }
+.form-3col > * { min-width: 0; }
 
 /* -- Header de página (título + botão de ação) ------------ */
 .page-header {
@@ -1778,9 +1797,22 @@ input[type="search"].field {
   border: 1px solid var(--border);
   border-radius: calc(var(--radius-field-token) + 3px);
 }
+/* A2 da 39ª (princípio 7): no celular, os sete grupos empilhados tomavam
+   três quartos da tela, e o formulário da aba começava a ~630 px. Os grupos
+   viram UMA linha que rola de lado, como a barra de abas (`.tabs-bar`): o
+   grupo cortado na borda diz que há mais, e a barra de rolagem some. A aba
+   aberta vem à vista ao abrir (`<AtivoAVista />`). */
 @media (max-width: 639px) {
-  .grupos-de-abas { gap: 12px; }
-  .grupo-de-abas, .grupo-de-abas-chips { width: 100%; }
+  .grupos-de-abas {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    gap: 12px;
+  }
+  .grupos-de-abas::-webkit-scrollbar { display: none; }
+  .grupo-de-abas { flex-shrink: 0; }
+  .grupo-de-abas-chips { flex-wrap: nowrap; }
 }
 
 /* A lista da Auditoria (CF3a, 2026-11-14): quando · quem · o quê · unidade.
@@ -2544,6 +2576,67 @@ a.suporte-link-forte:hover { color: var(--brand); }
   }
   .sessao-acao-principal > * { flex: 1; justify-content: center; }
   .sessao-espaco-da-barra { display: block; height: calc(64px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* ── A ação que fecha o trabalho, presa no rodapé no celular (D4 da 39ª) ──
+   A regra (design.md, D1 da 10ª): numa tela longa, a ação final fica à vista
+   no celular — a barra presa no fim, com o safe-area, abaixo da topbar e do
+   Copilot, e um espaço no fim da página. É a `.sessao-acao-principal` do
+   atendimento, para as outras telas: o `<div className="acao-presa">` em volta
+   dos botões finais não existe no computador (`display: contents`: os botões
+   ficam na linha de sempre); no celular, vira a barra. Vazio, não aparece.
+   Na folha (o modal no celular), o espaço vai no fim do corpo que rola. */
+.acao-presa { display: contents; }
+@media (max-width: 767px) {
+  .acao-presa:not(:empty) {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    display: flex; gap: 10px;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+    background: var(--surface); border-top: 1px solid var(--border);
+  }
+  /* O `!important` vence a margem do style de quem estava solto na tela. */
+  .acao-presa > * { flex: 1 1 0; min-width: 0; justify-content: center; margin: 0 !important; }
+  main:has(.acao-presa:not(:empty))::after {
+    content: ''; display: block; height: calc(64px + env(safe-area-inset-bottom, 0px));
+  }
+  .modal-body:has(.acao-presa:not(:empty))::after { content: ''; display: block; height: 64px; }
+  body:has(.acao-presa:not(:empty)) .copilot-botao { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+}
+/* Entre 640 e 767 px a janela ainda é o cartão centrado (com `transform`), e o
+   `fixed` de dentro dela não seria o fim da tela: ali a barra é só a folha. */
+@media (min-width: 640px) and (max-width: 767px) {
+  dialog .acao-presa:not(:empty) { display: contents; }
+  dialog .acao-presa > * { flex: 0 1 auto; }
+  .modal-body:has(.acao-presa:not(:empty))::after { content: none; }
+}
+
+/* Alvo de toque (A3 da 39ª): o "+", o "−" e o "Tirar" da comanda tinham 24 × 16
+   px. O botão pequeno de dentro de uma linha tem, no mínimo, a altura do
+   controle nos dois sentidos. */
+.botao-de-toque {
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  min-height: var(--altura-controle);
+  min-width: var(--altura-controle);
+  padding: 0 8px;
+}
+
+/* A comanda no PDV do celular (A6 e A7 da 39ª). Ela abre EMBAIXO da lista: ao
+   escolher, a tela rola até ela, e o topo dela para abaixo da topbar. E a linha
+   do que está na comanda dá a largura ao nome (era 40 + 110 px fixos e 22 px de
+   respiro: o nome do procedimento saía em três, quatro linhas). */
+.pdv-comanda-aberta { scroll-margin-top: calc(var(--topbar-h) + env(safe-area-inset-top, 0px) + 12px); }
+@media (max-width: 639px) {
+  .pdv-comanda-aberta .pdv-itens { padding: 14px !important; }
+  .pdv-linha-da-comanda { grid-template-columns: minmax(0, 1fr) auto auto !important; gap: 8px !important; }
+}
+
+/* O "Próximo atendimento" da Minha agenda (A8 da 39ª): no celular, em duas
+   colunas, o círculo das iniciais deixava ~70 px ao rótulo, e "ATENDIMENTO"
+   encostava na borda. O círculo sai (o nome está logo abaixo), e o respiro é
+   o dos outros cartões da faixa. */
+@media (max-width: 767px) {
+  .destaque-avatar { display: none; }
+  .kpi-grid > [data-destaque-de-hoje] { padding: 13px 15px !important; }
 }
 
 /* -- Copilot: a secretária virtual (apps/web/components/copilot, 2026-10-08) --

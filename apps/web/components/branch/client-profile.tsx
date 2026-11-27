@@ -520,7 +520,7 @@ function AvisosDaVisaoGeral({ menor, faltando, faltas, linkDosDados, linkDoHisto
             Pedido de dados (LGPD) feito pelo app em {formatarDiaDaFalta(pedidoLgpd.pedidoEm, fuso)}: {pedidoLgpd.aberto
               ? `responder até ${pedidoLgpd.prazo} (15 dias do pedido).`
               : 'o pacote já está no app dela.'}
-            {!pedidoLgpd.caminho && ' A resposta é em Configurações → LGPD.'}
+            {/* A17 da 39ª: quem não alcança a aba LGPD não lê que a resposta é lá (CLAUDE.md §14). */}
           </span>
           {pedidoLgpd.caminho && <Link href={pedidoLgpd.caminho} style={link}>Abrir Configurações → LGPD</Link>}
         </p>
@@ -1099,17 +1099,20 @@ function DadosTab({ client, slug, podeEditar }: {
       {saveError && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600 }}>{saveError}</p>}
 
       {podeEditar && <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving || cpfStatus === 'dup'}
-          className="btn-primary"
-          style={{ minWidth: 120, justifyContent: 'center' }}
-        >
-          {saving   ? <><Loader2 size={13} className="animate-spin" /> Salvando…</> :
-           saved    ? <><Check size={13} /> Salvo</>                                  :
-                      'Salvar dados'}
-        </button>
+        {/* D4 da 39ª: no celular, o "Salvar dados" fica preso no rodapé (`.acao-presa`, design.md). */}
+        <div className="acao-presa">
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving || cpfStatus === 'dup'}
+            className="btn-primary"
+            style={{ minWidth: 120, justifyContent: 'center' }}
+          >
+            {saving   ? <><Loader2 size={13} className="animate-spin" /> Salvando…</> :
+             saved    ? <><Check size={13} /> Salvo</>                                  :
+                        'Salvar dados'}
+          </button>
+        </div>
       </div>}
     </div>
   )
@@ -1599,6 +1602,10 @@ export function ClientProfile({
   const pacoteAberto = pacotesNaFicha.find(p => p.id === pacoteAbertoId) ?? activePackage
   const cancelaPacote = (p: ProfilePackage | null) => podeCancelarPacote && !!p && !p.planId
   const cancelaPlano = (p: ProfilePackage | null) => podeCancelarPacote && !!p?.planId && p.planStatus === 'ACCEPTED'
+  // D12 da 39ª (CLAUDE.md §14, "a tela esconde"): o cartão do PLANO abre a
+  // ficha de tratamento, que é do Atendimento em Ver (getTreatmentPlanDetails;
+  // PL-01). Sem ele, o cartão mostra o andamento e não abre nem diz que abre.
+  const abreOTratamento = (p: ProfilePackage) => !p.planId || podeVerPlanos
   // Item 9: o pacote vencido, quando a rede o cancela.
   const [cancelandoVencido, setCancelandoVencido] = useState(false)
   const pacoteCancelavel = cancelaPacote(pacoteAberto)
@@ -2061,10 +2068,10 @@ export function ClientProfile({
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {pacotesNaFicha.map(pacote => (
               <div key={pacote.id} data-pacote-da-ficha={pacote.id} style={{ display: 'flex', flexDirection: 'column', gap: 6 }} {...(pacote.deFora ? { 'data-pacote-de-fora': '' } : {})}>
-                <div role="button" onClick={() => { setPacoteAbertoId(pacote.id); setTreatmentModalOpen(true) }} style={{
+                <div {...(abreOTratamento(pacote) ? { role: 'button' } : {})} onClick={abreOTratamento(pacote) ? () => { setPacoteAbertoId(pacote.id); setTreatmentModalOpen(true) } : undefined} style={{
                   borderRadius: 'var(--radius-card)',
                   background: 'var(--gradient-brand)',
-                  padding: '20px 24px', color: 'var(--on-brand)', cursor: 'pointer',
+                  padding: '20px 24px', color: 'var(--on-brand)', cursor: abreOTratamento(pacote) ? 'pointer' : 'default',
                 }}>
                   <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, letterSpacing: '0.08em', opacity: 0.75, marginBottom: 6 }}>
                     {pacote.deFora ? 'PACOTE DE ANTES' : 'TRATAMENTO EM ANDAMENTO'}
@@ -2103,9 +2110,11 @@ export function ClientProfile({
                     </p>
                   )}
                   {/* A18 da 9ª: nada dizia que o cartão abre — e é por ele que se agendam as sessões. */}
+                  {abreOTratamento(pacote) && (
                   <p data-tratamento-que-abre style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-xs-sz)', fontWeight: 700, marginTop: 10 }}>
                     {pacote.sessoesPresas ? 'Abrir para ver as sessões' : 'Abrir para ver e agendar as sessões'} <ChevronRight size={14} aria-hidden="true" />
                   </p>
+                  )}
                 </div>
                 {/* A41 da 11ª: o pacote segue liberando; a ficha diz o que falta pagar dele. */}
                 {pacote.emAberto && <AvisoDoPacoteEmAberto valor={pacote.emAberto.valor} parcelas={pacote.emAberto.parcelas} clienteId={client.id} unidadeId={pacote.emAberto.unidadeId} slug={slug} liberaAsSessoes={pacote.emAberto.liberaAsSessoes ?? true} />}

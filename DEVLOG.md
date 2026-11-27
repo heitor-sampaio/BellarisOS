@@ -1774,6 +1774,102 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-27 (6) — A 39ª simulação, as correções dela e as respostas R35–R37
+
+O laço segue (o Heitor, 25/11: "quando acabar essa roda já segue as outras e assim vai"). Cinco redes novas, sem conta
+da plataforma (o Heitor, 26/11: "Sem a conta"). Os temas foram estes:
+- o dia inteiro no celular (375 × 812), no Studio Pitanga (Vilhena, UTC−4);
+- o app da cliente e a LGPD, no Espaço Caliandra (Erechim);
+- a agenda e os horários, no Ateliê Murici (Barreiras);
+- o a pagar e as despesas, na Rede Cambará (Bagé e Dom Pedrito);
+- o catálogo mudando com coisas já marcadas, no Instituto Hortelã (Picos).
+
+O dinheiro fechou à mão nas cinco redes, e os Relatórios, o Fechamento, o CSV e a DRE bateram com a conta. Nenhuma
+regressão da 38ª. Ficaram 16 defeitos (2 de prioridade ALTA, nenhum de segurança), 25 atritos e 19 enganos. Salvo onde
+se diz o contrário, as decisões são do Claude (27/11), pelos princípios e pelo catálogo. Duas perguntas foram ao Heitor
+(R36 e R37), e ele respondeu as duas no mesmo dia.
+
+**O que mudou no sistema.**
+- **Agenda e horários.**
+  - **Os horários oferecidos pela equipe conferem o FIM do atendimento** (D1, ALTA; AG-07, AG-10). O Agendar, o
+    Reagendar e as sessões do pacote e do plano ofereciam início que atravessava o almoço, a pausa da pessoa ou o
+    fechamento (11:30 numa Drenagem de 50 min, 21:30 num Peeling de 45 com a unidade fechando às 22:00). A grade agora
+    recebe a duração, como o app da cliente já fazia (`gradeDoCheckout(…, duracao)`).
+  - Com o encaixe permitido no horário digitado, o Agendar não diz mais "Ninguém está livre nesse horário" junto do
+    aviso do encaixe (A19).
+  - **A Minha agenda diz "Você não atende neste dia" também quando há um encaixe nele** (D9, AG-23).
+  - Na vista Dia, o cancelado ("Mostrar cancelados") fica ao lado do concluído do mesmo horário, legível (D16, AG-26).
+  - **O horário próprio de quem atende mostra o que vale** (A18, princípio 3). O "Fica assim:" do editor dizia 07:00 com
+    a unidade abrindo às 08:00. Para quem é de uma unidade só, o resumo é o cruzamento com o horário da unidade
+    (`diasQueValem`).
+- **Celular** (`design.md`; a decisão do Claude sobre celular × computador virou a XT-05).
+  - **A ação que fecha o trabalho fica presa ao rodapé** (D4): o "Receber" do PDV, o "Fechar a comanda" do crediário, o
+    "Fechar o dia", o "Salvar dados" da ficha, o "Salvar procedimento", o "Confirmar" do Agendar com aviso, o
+    "Confirmar cancelamento" e o "Reagendar". A classe `.acao-presa` vale até 767 px e não muda nada no computador.
+  - A matriz de Cargos se lê (D3). A Semana da agenda rola de lado com a primeira coluna parada (D5). Os cartões do
+    Resumo do Financeiro cabem na largura (D6, `minmax(0, 1fr)` nas grades `.rg-*`).
+  - O menu lateral começa embaixo da topbar (A1). As abas de Configurações viram uma linha que rola de lado (A2). Os
+    "+" e "−" da comanda têm o tamanho de toque (A3). Os seletores do Bloquear e o "Comandas" têm a altura do controle
+    (A4). A comanda aberta no PDV vem à vista (A7). O cartão "Próximo atendimento" da Minha agenda ficou legível (A8).
+  - Os cartões espremidos (A6): a faixa da cliente e a do registro bloqueado na tela do atendimento, o check-in numa
+    linha, a coluna de cada profissional na vista Dia com largura mínima, a navegação e a legenda da agenda que quebram.
+    O rótulo do dia ("Hoje") não corta mais.
+- **LGPD e o app da cliente.**
+  - **Quem tem o Prontuário em Gerenciar libera e nega a parte do prontuário do pedido, sem precisar de Clientes**
+    (D2, ALTA; LG-06, LG-08). A aba LGPD mostra a ela só os pedidos com prontuário pendente
+    (`pedidosDaAbaLgpd`).
+  - **O pacote com prontuário traz as fotos** (D14, LG-12), com links de 30 dias, e a ficha de saúde aparece uma vez,
+    legível.
+  - **O app da cliente mostra o desconto e o motivo no que ela pagou** (D7, AG-56).
+  - A troca da senha provisória não fica presa na marca (D15). Se a sessão não renova depois da troca, a pessoa entra
+    de novo.
+  - O " ." do Alterar agendamento do app (A14). A ficha não manda quem só vê à aba LGPD que ela não tem (A17).
+- **Financeiro e venda.**
+  - **O Financeiro da rede tem a linha "N lançamentos · caixa da lista"** (D10, FN-13) e **o Resumo completo**:
+    evolução, formas de pagamento e categorias (D11, FN-02). A rede passa a ter as despesas por categoria.
+  - **"Pagamento confirmado" diz todas as formas** (D8, princípio 3), não só a primeira.
+  - **A venda do pacote segue depois do contrato assinado** (A20). Assinado o contrato no papel, a tela parava em
+    "Documento assinado… Continuar" e o total não mudava. Agora a venda conclui e a tela mostra o total novo.
+  - A janela do agendamento recebido diz "Recebido" (A23). A folha do crédito mostra a taxa e o líquido ao escolher a
+    forma (A25).
+- **Catálogo, plano e auditoria.**
+  - **Quem não tem o Atendimento não vê o "Ver o plano"** (D12, CLAUDE.md §14), na lista do checkout, na ficha e no
+    dashboard.
+  - A Auditoria diz quem foi desmarcado em "quem faz o procedimento" (A15, `20261218500001`) e o nome da conta na
+    remarcação de vencimento e no estorno (A16).
+  - O modal do procedimento aponta o campo certo do termo (A11). A lista de Procedimentos marca o inativo no "App"
+    (A21). Os cartões do setup e as faixas da Equipe perderam a explicação (A10, A13).
+- **R36 (o Heitor, 27/11: "Fica como está: vale o preço de quando o plano foi proposto (a proposta)").** O plano
+  proposto guarda o preço do momento da proposta. A D13 virou NÃO ERA, e a PL-10 diz a regra com a fala.
+- **R37 (o Heitor, 27/11: "Pode tirar a frase (a proposta)").** O motivo do desconto em branco não mostra mais a frase
+  que explicava a lista do Financeiro (A9). O campo segue opcional, só com o rótulo.
+- **NÃO ERA:**
+  - A24: a lista de Movimentações ordena pela data de referência (FN-09).
+  - A5, A22 e a parte da agenda da A21.
+  - As frases que levam ao único caminho para agir ficam: as de ONDE do setup, o "Ninguém atende… quem tem a Equipe em
+    Gerenciar marca" (agenda e Unidades) e a faixa da Equipe da rede (`design.md`, "explicação que leva o único caminho
+    para agir fica à vista"). A mensagem de recusa da A12 também fica.
+- **Catálogo:** XT-05 nova; as regras dos defeitos com todas as letras (AG-07, AG-10, AG-22, AG-23, AG-26, LG-06,
+  LG-08, LG-12, AG-56, FN-02, FN-13, AD-13); PL-10 com a R36.
+
+**Testes alterados:**
+- `e2e/sdk-da-meta-so-onde-usa.spec.ts` (R35, o Heitor, 27/11: "Pode ajustar: contar só o script que o sistema põe (a
+  proposta)"). Conta só o `script#facebook-jssdk`. Já registrado na entrada (5).
+- `e2e/financeiro-atritos-da-7.spec.ts` "A49" (R37, o Heitor, 27/11: "Pode tirar a frase (a proposta)"). Exigia a
+  frase "Sem motivo, a lista do Financeiro…"; agora exige o campo "Motivo do desconto (opcional)" sem ela.
+- Nenhum teste apagado.
+
+**Sugestões novas:** nº 164–169 (169: baixar pelo app os PDFs assinados do pacote LGPD). As nº 9, 11, 85 e 158
+apareceram de novo.
+
+**Pegos pelos E2E desta rodada:** a Semana no celular ainda quebrava "Manutenção" no meio da palavra na etiqueta do
+bloqueio (a coluna do dia passou de 110 para 124 px); e o seletor do E2E novo da Minha agenda procurava o `<Link>`, que
+tem altura zero (o cartão é o `[data-cartao-minha-agenda]`), corrigido no próprio teste novo, antes de ele passar.
+
+**A completa** (contra o build, banco local): 1.807 isolados + 908 compartilhados passaram, 1 pulado, nenhuma falha.
+
+**Na produção:** `20261218500001`, aplicada sozinha e conferida depois.
+
 ### 2026-11-27 (5) — A 38ª simulação, as correções dela e a resposta R34
 
 O laço segue (o Heitor, 25/11: "quando acabar essa roda já segue as outras e assim vai"). Cinco redes novas, sem conta

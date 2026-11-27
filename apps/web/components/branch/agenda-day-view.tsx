@@ -8,7 +8,7 @@ import { SeloDaFicha } from '@/components/shared/selo-da-ficha'
 import { SeloDoMenor } from '@/components/shared/selo-do-menor'
 import { textoDoConcluido } from '@/lib/agenda/hora-real'
 import { rolagemDaGrade, estenderJanela } from '@/lib/agenda/grade'
-import { minutosDesenhados, liberouOHorario } from '@/lib/agenda/desenho'
+import { minutosDesenhados, liberouOHorario, ladoALado } from '@/lib/agenda/desenho'
 import { agendamentosNoDia, janelaComOsTrechos, textoDoQueContinua, type TrechoDoAgendamento } from '@/lib/agenda/trecho-do-agendamento'
 import { intervalosDoDia, diaDaSemana, forasDoHorario, textoDosIntervalos, type Horario } from '@/lib/agenda/horario'
 import { pausasDoDia, textoDaPausa, rotuloDoDiaSemHorario } from '@/lib/agenda/intervalos-da-grade'
@@ -55,9 +55,16 @@ function gradeDe(inicio: number, fim: number): Grade {
   return { START_HOUR: inicio, END_HOUR: fim, TOTAL_PX: (fim - inicio) * HOUR_PX, HOURS: Array.from({ length: fim - inicio }, (_, i) => inicio + i) }
 }
 const GradeCtx = createContext<Grade>(gradeDe(START_PADRAO, END_PADRAO))
-const TIME_COL_W = 60
-/** A coluna de cada profissional: duas cabem num celular de 390–412 px (A26 da 11ª). */
-const COL_MIN_W = 150
+/**
+ * A coluna das horas e a de cada profissional: as duas cabem inteiras a 375 px
+ * (A26 da 11ª; A6 da 39ª: 60 + 2 × 150 passava da tela útil, 317 px, e a
+ * segunda saía cortada). Com mais gente, a grade rola de lado sem a barra à
+ * mostra (design.md), e as horas ficam paradas.
+ */
+const TIME_COL_W = 52
+const COL_MIN_W = 128
+const LARGURA_DA_GRADE = (colunas: number) => TIME_COL_W + Math.max(1, colunas) * COL_MIN_W
+const COLUNA_PARADA: React.CSSProperties = { position: 'sticky', left: 0, zIndex: 1, background: 'var(--surface)' }
 
 const PROF_COLORS = [
   { bg: 'var(--brand-soft)', text: 'var(--brand)' },
@@ -136,7 +143,7 @@ function ProfColumn({
       data-coluna-do-profissional={pro.name}
       data-horario-de-trabalho={horarioDoDia ? (textoDosIntervalos(horarioDoDia) || 'Não atende') : undefined}
       style={{
-        flex: 1, minWidth: COL_MIN_W, position: 'relative', height: g.TOTAL_PX,
+        flex: 1, minWidth: COL_MIN_W, position: 'relative', isolation: 'isolate', height: g.TOTAL_PX,
         borderLeft: isFirst ? 'none' : '1px solid var(--border)',
         background: dropPreviewY !== null ? 'rgba(195,77,107,0.025)' : undefined,
         cursor: canWrite ? 'crosshair' : 'default',
@@ -210,13 +217,15 @@ function ProfColumn({
       )}
 
       {/* Events */}
-      {events.map(ev => {
+      {(() => {
         // O cancelado (com "Mostrar cancelados") divide o horário com quem o
-        // ocupou depois: o ativo à esquerda, o cancelado apagado à direita.
+        // ocupou depois: o ativo à esquerda, o cancelado apagado ao lado.
         // A17 da 14ª: o concluído ADIANTADO também (a régua da recusa,
         // fimDaOcupacao): ele é desenhado até a conclusão e, se ainda cruza na
-        // tela com quem ocupou o resto do horário, vai para a direita.
-        const desmarcado = eventoDesmarcado(ev)
+        // tela com quem ocupou o resto do horário, vai para o lado.
+        // D16 da 39ª (AG-26): cada um que se cruza na tela é uma COLUNA
+        // (`ladoALado`, a conta das outras grades) — o cancelado e o concluído
+        // adiantado do mesmo horário eram os dois "soltos", e um ficava sob o outro.
         const solto = (e: CalendarEvent) => eventoDesmarcado(e) || (e.status === 'COMPLETED' && liberouOHorario(e))
         // O que dura além do dia (25/11): o que continua de antes começa no topo
         // da grade (como o bloqueio de vários dias), e o que segue amanhã para
@@ -231,18 +240,25 @@ function ProfColumn({
           const b = t + Math.max(32, (minutosDesenhados(e) / 60) * HOUR_PX - 4)
           return { t, b: tr?.continuaDepois ? Math.max(t + 32, Math.min(b, g.TOTAL_PX)) : b }
         }
-        const eu = caixa(ev), euSolto = solto(ev)
-        const divide = events.some(o => {
-          if (o.id === ev.id || solto(o) === euSolto) return false
-          const c = caixa(o)
-          return c.t < eu.b && c.b > eu.t
-        })
+        const caixas = new Map(events.map(e => [e.id, caixa(e)]))
+        const lados = ladoALado(events, e => caixas.get(e.id)!.t, e => caixas.get(e.id)!.b - caixas.get(e.id)!.t,
+          (a, b) => Number(solto(a)) - Number(solto(b)))
+        // A largura da coluna da profissional dividida pelos que se cruzam (4 px de margem de cada lado).
+        const naColuna = (id: string): { left: number | string; right?: number; width?: string } => {
+          const l = lados.get(id)
+          if (!l || l.total < 2) return { left: 4, right: 4 }
+          return { left: `calc(4px + (100% - 8px) * ${l.col} / ${l.total})`, width: `calc((100% - 8px) / ${l.total} - 2px)` }
+        }
+        return events.map(ev => {
+        const desmarcado = eventoDesmarcado(ev)
+        const eu = caixas.get(ev.id)!, euSolto = solto(ev)
         const top       = eu.t
         const height    = eu.b - eu.t
         const isDragging = draggingId === ev.id
         const isProgress  = ev.status === 'IN_PROGRESS'
         const isConfirmed = ev.status === 'CONFIRMED' || ev.status === 'ARRIVED'
         const isArrived   = ev.status === 'ARRIVED'
+        const textoDoCheckin = `Check-in${ev.arrivedAt ? ` ${format(new Date(ev.arrivedAt) /* parede */, 'HH:mm')}` : ''}`
         const isScheduled = ev.status === 'SCHEDULED'
         const isCompleted = ev.status === 'COMPLETED'
         // A21 da 9ª: passou do horário e segue em aberto — marcado, nada se fecha sozinho.
@@ -268,7 +284,7 @@ function ProfColumn({
               title={`${ev.status === 'NO_SHOW' ? 'Não compareceu' : 'Cancelado'} · ${ev.clientName}${ev.motivoDoCancelamento ? `: ${ev.motivoDoCancelamento}` : ''}`}
               style={{
                 position: 'absolute', top: top + 2, height,
-                left: divide ? '50%' : 4, right: 4,
+                ...naColuna(ev.id),
                 borderRadius: 8, padding: '5px 8px', overflow: 'hidden',
                 cursor: 'pointer', userSelect: 'none', zIndex: 1, opacity: 0.6,
                 background: 'var(--bg-app)', border: '1px dashed var(--border)',
@@ -277,7 +293,8 @@ function ProfColumn({
               <div style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--danger)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {timeStr} · {ev.status === 'NO_SHOW' ? 'Não compareceu' : 'Cancelado'}
               </div>
-              <div style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text-muted)', textDecoration: 'line-through', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {/* D16 da 39ª: na coluna dividida, o nome quebra a linha (até duas) em vez de cortar. */}
+              <div data-cliente-do-cancelado style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text-muted)', textDecoration: 'line-through', marginTop: 2, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflowWrap: 'anywhere' }}>
                 {ev.clientName}
               </div>
               {ev.motivoDoCancelamento && height > 42 && (
@@ -297,7 +314,7 @@ function ProfColumn({
             data-continua-de-antes={continua ? '' : undefined}
             data-continua-depois={trecho?.continuaDepois ? '' : undefined}
             // O cartão curto corta o texto (A23): a dica diz tudo.
-            title={[timeStr, ev.clientName, ev.procedureName, ev.roomName, `${ev.durationMin} min`, trecho?.continuaDepois ? 'continua no dia seguinte' : null, passou ? TEXTO_DO_PASSOU : null].filter(Boolean).join(' · ')}
+            title={[timeStr, ev.clientName, ev.procedureName, ev.roomName, `${ev.durationMin} min`, isArrived ? textoDoCheckin : null, trecho?.continuaDepois ? 'continua no dia seguinte' : null, passou ? TEXTO_DO_PASSOU : null].filter(Boolean).join(' · ')}
             draggable={isDraggable}
             onDragStart={isDraggable ? e => { e.stopPropagation(); onDragStart(e, ev.id) } : undefined}
             onDragEnd={isDraggable ? onDragEnd : undefined}
@@ -305,7 +322,7 @@ function ProfColumn({
             style={{
               position:   'absolute',
               top:        top + 2,
-              left:       divide && euSolto ? '50%' : 4, right: divide && !euSolto ? '50%' : 4,
+              ...naColuna(ev.id),
               height,
               borderRadius: 8,
               padding:    compacto ? '3px 8px' : '5px 8px',
@@ -342,9 +359,12 @@ function ProfColumn({
               {compacto && <span style={{ color: isCompleted ? 'var(--text-muted)' : 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.clientName}</span>}
               <SeloDaFicha estado={ev.fichaDeSaude} />
               <SeloDoMenor menor={ev.menor} />
-              {isProgress && <span style={{ color: 'var(--brand)' }}>· em atend.</span>}
-              {isArrived && <span>· Check-in{ev.arrivedAt ? ` ${format(new Date(ev.arrivedAt) /* parede */, 'HH:mm')}` : ''}</span>}
-              {isCompleted && <span style={{ color: 'var(--text-faint)' }}>· {textoDoConcluido(ev.start, ev.completedAt, fusoLocal()) ?? 'concluído'}</span>}
+              {/* A6 da 39ª: o item do flex encolhia até a palavra mais larga, e
+                  "· Check-in 14:45" virava três linhas; o que não cabe, corta
+                  (o title do cartão diz tudo). */}
+              {isProgress && <span style={{ color: 'var(--brand)', whiteSpace: 'nowrap' }}>· em atend.</span>}
+              {isArrived && <span style={{ whiteSpace: 'nowrap' }}>· {textoDoCheckin}</span>}
+              {isCompleted && <span style={{ color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>· {textoDoConcluido(ev.start, ev.completedAt, fusoLocal()) ?? 'concluído'}</span>}
               {passou && <span data-passou-sem-fechar style={{ color: 'var(--warning)', whiteSpace: 'nowrap' }}>· passou do horário</span>}
             </div>
             {/* O bloco curto (30 min): o procedimento e a sala numa segunda linha (A23 da 6ª
@@ -368,7 +388,8 @@ function ProfColumn({
             )}
           </div>
         )
-      })}
+        })
+      })()}
     </div>
   )
 }
@@ -484,22 +505,23 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
         Fechado: a unidade não abre neste dia.
       </p>
     )}
-    <div className="table-wrap">
     {/* A26 da 11ª: a largura mínima é a das colunas que há (era 500 fixo — no
-        celular de 412 px a coluna da segunda profissional saía cortada). */}
-    <div ref={scrollRef} data-grade-do-dia style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 320px)', minWidth: TIME_COL_W + Math.max(1, professionals.length) * COL_MIN_W }}>
+        celular de 412 px a coluna da segunda profissional saía cortada). A6 da
+        39ª: a grade rola nos dois sentidos, sem a barra à mostra, e o cabeçalho e
+        as horas ficam parados (a mesma rolagem segura os dois). */}
+    <div ref={scrollRef} data-grade-do-dia style={{ overflow: 'auto', scrollbarWidth: 'none', maxHeight: 'calc(100vh - 320px)' }}>
       {/* Sticky professional headers — dentro do scroll para largura idêntica à do grid */}
       <div style={{
-        display: 'flex', position: 'sticky', top: 0, zIndex: 10,
+        display: 'flex', position: 'sticky', top: 0, zIndex: 10, minWidth: LARGURA_DA_GRADE(professionals.length),
         background: 'var(--surface)', borderBottom: '1px solid var(--border)',
       }}>
-        <div style={{ width: TIME_COL_W, flexShrink: 0 }} />
+        <div style={{ ...COLUNA_PARADA, width: TIME_COL_W, flexShrink: 0 }} />
         {professionals.map((pro, i) => {
           const clr    = PROF_COLORS[i % PROF_COLORS.length]!
           const proEvs = todayEvents.filter(e => e.professionalId === pro.id && !eventoDesmarcado(e))
           return (
             <div key={pro.id} style={{
-              flex: 1, minWidth: COL_MIN_W, padding: '12px 14px',
+              flex: 1, minWidth: COL_MIN_W, padding: '12px 10px',
               borderLeft: i > 0 ? '1px solid var(--border)' : 'none',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
@@ -511,8 +533,8 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
                 }}>
                   {getInitials(pro.name)}
                 </div>
-                <div>
-                  <div style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{pro.name}</div>
+                <div style={{ minWidth: 0 }}>
+                  <div data-nome-do-profissional title={pro.name} style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pro.name}</div>
                   {pro.foraDoAtende && <div data-nao-atende-aqui style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 600, marginTop: 1 }}>Não atende mais nesta unidade</div>}
                   {/* A6 da 32ª: a unidade abre e ela não atende neste dia. */}
                   {horariosDosProfissionais && rotuloDoDiaSemHorario(horarioDaUnidade ?? null, horariosDosProfissionais[pro.id] ?? null, diaDaSemana(diaChave)) === 'Não atende neste dia' && (
@@ -529,9 +551,9 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
       </div>
 
       {/* Grid */}
-      <div style={{ display: 'flex', minHeight: g.TOTAL_PX }}>
+      <div style={{ display: 'flex', minHeight: g.TOTAL_PX, minWidth: LARGURA_DA_GRADE(professionals.length) }}>
         {/* Time labels */}
-        <div style={{ width: TIME_COL_W, flexShrink: 0, position: 'relative' }}>
+        <div style={{ ...COLUNA_PARADA, width: TIME_COL_W, flexShrink: 0 }}>
           {g.HOURS.map(h => (
             <div key={h} style={{
               position: 'absolute',
@@ -577,7 +599,6 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
           )
         })}
       </div>
-    </div>
     </div>
     </GradeCtx.Provider>
   )

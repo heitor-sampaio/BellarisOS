@@ -20,6 +20,7 @@ let rede: OutraRede
 let dona: MembroDeTeste
 let deClientes: MembroDeTeste
 let soConfig: MembroDeTeste
+let soProntuario: MembroDeTeste
 let cliente: ClienteDeTeste
 
 async function como(browser: Browser, estado: string, fn: (p: Page) => Promise<void>) {
@@ -34,6 +35,8 @@ test.beforeAll(async () => {
   // Revisão de 24/11 (Q09 do catálogo de Clientes): responde quem tem Clientes em Gerenciar.
   deClientes = await criarMembro(`lg9k${marca}`, { tenant: rede.tenantId, permissoes: [{ modulo: 'clients', nivel: 'MANAGE' }] })
   soConfig = await criarMembro(`lg9s${marca}`, { tenant: rede.tenantId, permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }] })
+  // D2 da 39ª (LG-06, LG-08): quem libera o prontuário, sem Clientes.
+  soProntuario = await criarMembro(`lg9p${marca}`, { tenant: rede.tenantId, permissoes: [{ modulo: 'medical_records', nivel: 'MANAGE' }] })
   cliente = await clienteComSessao(`lg9c${marca}`, { id: rede.branchId, slug: `e2e-un-lg9${marca}` }, { tenant: rede.tenantId })
 })
 
@@ -42,6 +45,7 @@ test.afterAll(async () => {
   await dona?.limpar()
   await deClientes?.limpar()
   await soConfig?.limpar()
+  await soProntuario?.limpar()
   await rede?.limpar()
 })
 
@@ -91,5 +95,21 @@ test('a aba LGPD abre para quem tem Clientes em Gerenciar, e não para quem só 
     await p.goto('/admin/settings?tab=general')
     await expect(p.getByRole('heading', { name: 'Configurações' })).toBeVisible()
     await expect(p.getByRole('link', { name: /^LGPD/ })).toHaveCount(0)
+  })
+})
+
+// D2 da 39ª (LG-06, LG-08): o aviso chamava quem tem o Prontuário em Gerenciar, e
+// a aba dela, sem Clientes em Ver, escondia o pedido — a rede teve de dar Clientes
+// ao cargo. Ela vê o pedido com o prontuário a liberar e o Liberar/Negar. Corre
+// depois do A49, que fez o pedido com o prontuário.
+test('quem tem o Prontuário em Gerenciar, sem Clientes, vê na aba LGPD o pedido a liberar e o Liberar/Negar', async ({ browser }) => {
+  const nome = (await db().from('clients').select('name').eq('id', cliente.clientId).single<{ name: string }>()).data!.name
+  await como(browser, soProntuario.estado, async p => {
+    await p.goto('/admin/settings?tab=lgpd')
+    const pedido = p.locator('[data-pedido-lgpd]', { hasText: nome })
+    await expect(pedido).toContainText('Prontuário a liberar')
+    await expect(pedido.getByRole('button', { name: 'Liberar' })).toBeVisible()
+    await expect(pedido.getByRole('button', { name: 'Negar' })).toBeVisible()
+    await expect(p.getByText(/precisa de Clientes \(Ver\)/)).toHaveCount(0)
   })
 })

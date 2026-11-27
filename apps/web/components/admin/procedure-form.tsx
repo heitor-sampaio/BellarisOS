@@ -565,38 +565,32 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
           criar={rotaNoPortal(pathname, null, '/settings?tab=documentos')} aoCriar={() => setFoiCriar(true)}
           aoMudar={id => { setContratoEscolhido(id); setOutrosMarcados(m => semOTermoEOContrato(m, { termo: '', contrato: id })) }}
         />
-        {modelos && (
+        {/* A11 da 39ª (princípio 3): sem documento a oferecer, o bloco não
+            aparece. Dizia que a rede não tinha documento com o único
+            documento da rede escolhido no "Termo de consentimento" acima — e o
+            termo e o contrato já dizem, cada um, onde se criam. */}
+        {modelos && outrosVisiveis.length > 0 && (
           <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 6 }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
               <span id="outros-documentos-rotulo" style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
                 Outros documentos
               </span>
-              {outrosVisiveis.length > 0 && (
-                <Dica rotulo="Sobre os outros documentos">
-                  Opcional, quantos quiser. Os marcados nascem junto com o termo e o contrato quando o atendimento avulso é agendado.
-                </Dica>
-              )}
+              <Dica rotulo="Sobre os outros documentos">
+                Opcional, quantos quiser. Os marcados nascem junto com o termo e o contrato quando o atendimento avulso é agendado.
+              </Dica>
             </span>
-            {outrosVisiveis.length === 0 ? (
-              <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-                Nenhum documento cadastrado ainda — crie em Configurações → Documentos.
-              </p>
-            ) : (
-              <>
-                <div role="group" aria-label="Outros documentos" style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
-                  {outrosVisiveis.map(o => {
-                    const on = outrosMarcados.includes(o.id)
-                    return (
-                      <button key={o.id} type="button" className={on ? 'chip-filtro is-ativo' : 'chip-filtro'}
-                        aria-pressed={on} onClick={() => alternarOutro(o.id)}
-                        title={o.exigencia === 'BLOQUEIA' ? 'Bloqueia o início sem assinatura' : 'Só avisa se faltar'}>
-                        {rotuloDoOutroDocumento(o)}
-                      </button>
-                    )
-                  })}
-                </div>
-              </>
-            )}
+            <div role="group" aria-label="Outros documentos" style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+              {outrosVisiveis.map(o => {
+                const on = outrosMarcados.includes(o.id)
+                return (
+                  <button key={o.id} type="button" className={on ? 'chip-filtro is-ativo' : 'chip-filtro'}
+                    aria-pressed={on} onClick={() => alternarOutro(o.id)}
+                    title={o.exigencia === 'BLOQUEIA' ? 'Bloqueia o início sem assinatura' : 'Só avisa se faltar'}>
+                    {rotuloDoOutroDocumento(o)}
+                  </button>
+                )
+              })}
+            </div>
           </div>
         )}
 
@@ -1017,12 +1011,15 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
       )}
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 4 }}>
-        <button type="button" onClick={onCancel} className="btn-secondary" disabled={pending}>
-          Cancelar
-        </button>
-        <button type="submit" disabled={pending} className="btn-primary">
-          {pending ? (isEdit ? 'Salvando…' : 'Criando…') : (isEdit ? 'Salvar alterações' : 'Criar procedimento')}
-        </button>
+        {/* D4 da 39ª: no celular, o "Criar/Salvar" fica preso no rodapé (`.acao-presa`, design.md). */}
+        <div className="acao-presa">
+          <button type="button" onClick={onCancel} className="btn-secondary" disabled={pending}>
+            Cancelar
+          </button>
+          <button type="submit" disabled={pending} className="btn-primary">
+            {pending ? (isEdit ? 'Salvando…' : 'Criando…') : (isEdit ? 'Salvar alterações' : 'Criar procedimento')}
+          </button>
+        </div>
       </div>
     </form>
   )

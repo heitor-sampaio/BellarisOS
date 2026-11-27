@@ -50,3 +50,25 @@ test('a grade da Minha agenda é o horário dela, não o da unidade', async ({ b
     await expect(grade.getByText('19:00', { exact: true })).toHaveCount(0)
   } finally { await ctx.close() }
 })
+
+// D9 da 39ª (AG-23): na folga com um encaixe marcado, a Minha agenda mostrava o
+// cartão e não dizia "Você não atende neste dia" (só com o dia vazio).
+test('a folga com um encaixe mostra o cartão e diz "Você não atende neste dia"', async ({ browser }) => {
+  const d = new Date(`${DIA}T12:00:00-03:00`)
+  d.setUTCDate(d.getUTCDate() + ((7 - d.getUTCDay()) % 7 || 7))
+  const domingo = d.toISOString().slice(0, 10)
+  const cliente = await rede!.criarCliente('Encaixe na folga')
+  const { data: ag, error } = await db().from('appointments').insert({
+    branch_id: rede!.branchId, client_id: cliente, procedure_id: rede!.procedureId, professional_id: renata!.userId,
+    scheduled_at: new Date(`${domingo}T10:00:00-03:00`).toISOString(), duration_min: 30,
+    price: 0, status: 'SCHEDULED', source: 'INTERNAL',
+  }).select('id').single<{ id: string }>()
+  expect(error, 'o encaixe no domingo').toBeNull()
+  const ctx = await browser.newContext({ storageState: renata!.estado })
+  try {
+    const p = await ctx.newPage()
+    await p.goto(`/${slug}/agenda?date=${domingo}`)
+    await expect(p.locator(`[data-grade-minha-agenda] [data-cartao-minha-agenda="${ag!.id}"]`), 'o cartão do encaixe').toBeVisible()
+    await expect(p.locator('[data-nao-atende-no-dia]')).toHaveText('Você não atende neste dia')
+  } finally { await ctx.close() }
+})

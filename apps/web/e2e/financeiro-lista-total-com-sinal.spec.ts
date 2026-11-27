@@ -14,6 +14,7 @@ const marca = Date.now().toString(36)
 const db = () => banco()
 let rede: OutraRede | null = null
 let financeiro: MembroDeTeste | null = null
+let daRede: MembroDeTeste | null = null
 let slug = ''
 
 test.beforeAll(async () => {
@@ -21,6 +22,10 @@ test.beforeAll(async () => {
   slug = (await db().from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
   financeiro = await criarMembro(`ftsf${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Financeiro', permissoes: [{ modulo: 'financial', nivel: 'MANAGE' }],
+  })
+  // D10 da 39ª (FN-13): a lista da REDE tem a mesma linha (dizia só "N registros").
+  daRede = await criarMembro(`ftsr${marca}`, {
+    tenant: rede.tenantId, branchId: null, rotulo: 'Financeiro da rede', permissoes: [{ modulo: 'financial', nivel: 'MANAGE' }],
   })
   const agora = new Date().toISOString()
   const base = { branch_id: rede.branchId, is_paid: true, paid_at: agora, created_by: 'e2e' }
@@ -32,7 +37,7 @@ test.beforeAll(async () => {
 })
 test.afterAll(async () => {
   if (rede) await db().from('financial_transactions').delete().eq('branch_id', rede.branchId)
-  await financeiro?.limpar(); await rede?.limpar()
+  await financeiro?.limpar(); await daRede?.limpar(); await rede?.limpar()
 })
 
 test('o total da lista diz o sinal: entrou R$ 300, saiu R$ 2.700 — resultado −R$ 2.400,00', async ({ browser }) => {
@@ -41,5 +46,15 @@ test('o total da lista diz o sinal: entrou R$ 300, saiu R$ 2.700 — resultado �
     const p = await ctx.newPage()
     await p.goto(`/${slug}/financeiro?aba=movimentacoes`)
     await expect(p.locator('[data-total-da-lista]')).toHaveText('2 lançamentos · caixa da lista −R$ 2.400,00')
+  } finally { await ctx.close() }
+})
+
+test('na rede, a mesma linha: "2 lançamentos · caixa da lista −R$ 2.400,00", não "N registros"', async ({ browser }) => {
+  const ctx = await browser.newContext({ storageState: daRede!.estado })
+  try {
+    const p = await ctx.newPage()
+    await p.goto('/admin/financeiro?aba=movimentacoes')
+    await expect(p.locator('[data-total-da-lista]')).toHaveText('2 lançamentos · caixa da lista −R$ 2.400,00')
+    await expect(p.locator('#movimentacoes').getByText(/^\d+ registros?$/)).toHaveCount(0)
   } finally { await ctx.close() }
 })

@@ -104,6 +104,7 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
   const [vendedorId, setVendedorId] = useState('')
   const [pergunta, setPergunta] = useState<{ texto: string; sem: 'VENDEDOR' | 'RESPONSAVEL' | 'CONTRATO' } | null>(null)
   const [semVendedor, setSemVendedor] = useState(false)
+  const [semResponsavel, setSemResponsavel] = useState(false)
   const quemAtende = equipe.filter(m => m.atende)
 
   // A6 da 34ª: a venda que esperava a assinatura do contrato volta como estava
@@ -130,7 +131,11 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
     })
   }
 
-  /** De volta da assinatura: assinado, é vender; senão, o contrato segue à vista. */
+  /**
+   * De volta da assinatura: assinado, a venda que a pessoa já pediu SEGUE (A20 da 39ª: "Assinado, a
+   * venda segue" — era um segundo "Vender por", e a tela não dizia que tinha vendido); senão, o
+   * contrato segue à vista. O retorno é o de toda venda: "vendido", e o PDV recarregado.
+   */
   function voltarDoContrato(id: string) {
     setAssinando(null)
     setConferindo(true)
@@ -138,7 +143,7 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
       const r = await documentoParaAssinar(id)
       setConferindo(false)
       if (r.error) { setErro(r.error); return }
-      if (r.doc?.status === 'ASSINADO') { setContrato(null); setContratoAssinado(true) }
+      if (r.doc?.status === 'ASSINADO') { setContrato(null); setContratoAssinado(true); vender() }
     })
   }
 
@@ -150,10 +155,13 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
     if (recusaDoPagamento(estado, fid.aPagar)) return
     const semV = resposta.semVendedor ?? semVendedor
     if (resposta.semVendedor) setSemVendedor(true)
+    // A20 da 39ª: a resposta dada antes do contrato vale na venda que segue depois dele.
+    const semR = resposta.semResponsavel ?? semResponsavel
+    if (resposta.semResponsavel) setSemResponsavel(true)
     iniciar(async () => {
       const r = await venderPacote(clienteId, pacote.id, branchId, montarPagamento(estado, fid.aPagar), descontoDoEstado(desconto), envio.chave(),
         { vendedorId: vendedorId || null, semVendedor: semV,
-          responsavelId: pacote.pedeResponsavel ? responsavelId || null : null, semResponsavel: resposta.semResponsavel === true,
+          responsavelId: pacote.pedeResponsavel ? responsavelId || null : null, semResponsavel: semR === true,
           substituirContrato: resposta.substituirContrato === true },
         fid.paraEnviar)
       if (r.confirmarSemVendedor) { setPergunta({ texto: r.confirmarSemVendedor, sem: 'VENDEDOR' }); return }
@@ -348,7 +356,7 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
       )}
       {contratoAssinado && !contrato && (
         <p data-contrato-assinado role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', fontWeight: 'var(--weight-semibold)' }}>
-          Contrato assinado. Agora, o pagamento.
+          Contrato assinado.
         </p>
       )}
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}

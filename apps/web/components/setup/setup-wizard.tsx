@@ -608,7 +608,7 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
 
 function StepDone({ tenantName, foraDoPlano = [] }: { tenantName: string; foraDoPlano?: readonly string[] }) {
   // O passo de uma funcionalidade fora do plano da rede não aparece.
-  const passosDoPlano = PROXIMOS_PASSOS.filter(p => !('recurso' in p) || !foraDoPlano.includes(p.recurso))
+  const passosDoPlano = PROXIMOS_PASSOS.filter(p => !p.recurso || !foraDoPlano.includes(p.recurso))
   const router = useRouter()
   const [pending, startTransition] = useTransition()
 
@@ -684,7 +684,10 @@ function StepDone({ tenantName, foraDoPlano = [] }: { tenantName: string; foraDo
                 <span style={{ fontWeight: 'var(--weight-extrabold)', color: 'var(--brand)', minWidth: 16 }}>{i + 1}</span>
                 <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>{passo.titulo}</span>
-                  <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>{passo.porque}</span>
+                  {/* A10 da 39ª (princípio 7): só a frase de ONDE, nos passos que a têm. */}
+                  {passo.porque && (
+                    <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>{passo.porque}</span>
+                  )}
                 </span>
               </a>
             </li>

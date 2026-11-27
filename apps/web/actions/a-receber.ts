@@ -6,6 +6,8 @@ import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { conferirCredito } from '@/lib/creditos/credito'
 import { getAtendimentosAReceber } from '@/lib/metrics/a-receber'
+import { formasDoPagamentoDoAtendimento, pagamentoConfirmadoEmTexto, type LancamentoDoPagamento } from '@/lib/financeiro/pagamento-do-atendimento'
+import { nomesDasMaquininhas } from '@/lib/financeiro/vezes-da-rede'
 
 /**
  * Como está a cobrança de um atendimento CONCLUÍDO, para a janela da agenda
@@ -26,6 +28,12 @@ export async function situacaoDaCobranca(appointmentId: string): Promise<{
   podeReceber: boolean
   /** A comanda aberta no PDV (só no A_RECEBER). */
   comanda?: { id: string | null; unidadeId: string } | null
+  /**
+   * A23 da 39ª (princípio 3): o recebido do atendimento, com as formas — "Pix · R$ 100,00 +
+   * Débito · R$ 62,00" (`pagamentoConfirmadoEmTexto`, o mesmo da tela do atendimento). Só no
+   * RESOLVIDO pago no próprio atendimento; o pago em outro lugar (plano, pacote, pré-pago) não traz.
+   */
+  recebido?: string
 } | null> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'agenda', 'VIEW')
@@ -40,7 +48,15 @@ export async function situacaoDaCobranca(appointmentId: string): Promise<{
   if (!appt.treatment_plan_id && !(Number(appt.price) > 0)) return { situacao: 'SEM_COBRANCA', podeReceber: recebe }
   const { itens } = await getAtendimentosAReceber({ tenantId: ctx.tenantId!, agendamentoId: appointmentId })
   const item = itens[0]
-  if (!item) return { situacao: 'RESOLVIDO', podeReceber: recebe }
+  if (!item) {
+    const lancamentos = await ler(createAdminClient().from('financial_transactions')
+      .select('id, payment_method, amount, cartao_vezes, cartao_bandeira, maquininha_id, is_paid, notes')
+      .eq('appointment_id', appointmentId).eq('branch_id', appt.branch_id as string).eq('type', 'INCOME').eq('is_paid', true),
+      'buscar o pagamento do atendimento') as LancamentoDoPagamento[] | null
+    const vivos = (lancamentos ?? []).filter(l => l.notes !== 'Estornada')
+    const formas = vivos.length ? formasDoPagamentoDoAtendimento(vivos, await nomesDasMaquininhas(ctx.tenantId!)) : []
+    return { situacao: 'RESOLVIDO', podeReceber: recebe, ...(formas.length ? { recebido: pagamentoConfirmadoEmTexto(formas) } : {}) }
+  }
   return { situacao: 'A_RECEBER', podeReceber: recebe, comanda: { id: item.comandaId, unidadeId: item.branchId } }
 }
 

@@ -311,6 +311,7 @@ export function SessionScheduler({
             horarioDaUnidade={horarios.unidade}
             horarioDoProfissional={horarios.profissional}
             nomeDoProfissional={profs.find(p => p.id === profId)?.name}
+            duracaoMin={procedimento?.duracaoMin ?? 30}
             ocupado={isBooked}
             selecionado={time}
             onEscolher={setTime}

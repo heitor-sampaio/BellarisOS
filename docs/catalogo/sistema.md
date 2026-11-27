@@ -1,6 +1,6 @@
 # Catálogo de regras — O sistema inteiro
 
-Este é o catálogo das regras que valem HOJE para o sistema inteiro, fora de uma área: a aparência da tela, a explicação que mora na dica, o texto e os campos, a sessão e o servidor (com o endereço que traz um id) e o menu. Nasceu em 25/11, das regras de `docs/regras/design.md`, `docs/regras/convencoes.md` e `docs/regras/vendas-financeiro.md` que não tinham par no catálogo (`docs/inventario/leitura.md` §4). Cada regra diz a fonte: uma fala do Heitor (copiada letra por letra do documento), um dos sete princípios de produto, ou "decisão do Claude". "Onde" aponta a linha do documento; "Antes" diz de onde a regra veio. É um RASCUNHO para o Heitor revisar. Contagem: 13 regras (A tela 4, A explicação na dica 2, O texto e os campos 3, A sessão e o servidor 3, O menu 1), nenhuma pergunta e 1 divergência. O que é como o código se testa ou se implanta (`docs/regras/e2e.md`, `docs/regras/infra.md`, a aparência do seletor no CSS, `design.md:55`, `:239`) não é regra do produto e ficou fora.
+Este é o catálogo das regras que valem HOJE para o sistema inteiro, fora de uma área: a aparência da tela, a explicação que mora na dica, o texto e os campos, a sessão e o servidor (com o endereço que traz um id) e o menu. Nasceu em 25/11, das regras de `docs/regras/design.md`, `docs/regras/convencoes.md` e `docs/regras/vendas-financeiro.md` que não tinham par no catálogo (`docs/inventario/leitura.md` §4). Cada regra diz a fonte: uma fala do Heitor (copiada letra por letra do documento), um dos sete princípios de produto, ou "decisão do Claude". "Onde" aponta a linha do documento; "Antes" diz de onde a regra veio. É um RASCUNHO para o Heitor revisar. Contagem: 14 regras (A tela 5, A explicação na dica 2, O texto e os campos 3, A sessão e o servidor 3, O menu 1), nenhuma pergunta e 1 divergência. O que é como o código se testa ou se implanta (`docs/regras/e2e.md`, `docs/regras/infra.md`, a aparência do seletor no CSS, `design.md:55`, `:239`) não é regra do produto e ficou fora.
 
 ## A tela (XT)
 
@@ -23,6 +23,11 @@ Este é o catálogo das regras que valem HOJE para o sistema inteiro, fora de um
 - Fonte: o Heitor, 2026-11-13 (vocabulário, CLAUDE.md §1): "Filial" sai de vez
 - Onde: `docs/regras/design.md:176-184`
 - Antes: (sem número: `docs/inventario/leitura.md` §4)
+
+**XT-05.** O celular faz tudo o que o computador faz; o leiaute pode ser outro (Dia, Semana e Mês num seletor, os períodos num popover, "Comandas" no lugar das abas). No celular a tela cabe na largura e se lê, a ação que fecha o trabalho de uma tela longa fica à vista (a barra presa no rodapé), o que se abre por cima começa embaixo da barra do topo (XT-02) e o seletor tem a altura de todos (XT-01).
+- Fonte: decisão do Claude, 27/11 (39ª simulação, Decisão A), por `docs/regras/design.md`
+- Onde: `docs/regras/design.md:79-84`, `:102-109`, `:138-142`
+- Antes: (nova, 27/11)
 
 ## A explicação na dica (XD)
 

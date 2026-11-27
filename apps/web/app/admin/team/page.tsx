@@ -191,9 +191,11 @@ export default async function AdminTeamPage({
           marginBottom: 16, padding: '10px 14px', borderRadius: 'var(--radius-field-token)',
           background: 'var(--warning-soft)', color: 'var(--warning)', fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)',
         }}>
+          {/* A13 da 39ª (princípio 7, o Heitor, 26/11: intuitivo não é explicativo): a faixa diz o
+              estado, sem o caminho até o “Atende clientes”. */}
           {semNinguem.length === 1 && !variasUnidades
-            ? 'Ninguém atende nesta unidade ainda: marque o “Atende clientes” de quem atende, no lápis de cada pessoa.'
-            : `Ninguém atende ${semNinguem.length === 1 ? 'na unidade' : 'nas unidades'} ${listaDeUnidades(semNinguem.map(b => b.name))} ainda: marque o “Atende clientes” de quem atende lá, no lápis de cada pessoa (com mais de uma unidade, em “Escolher em quais unidades atende”).`}
+            ? 'Ninguém atende nesta unidade ainda.'
+            : `Ninguém atende ${semNinguem.length === 1 ? 'na unidade' : 'nas unidades'} ${listaDeUnidades(semNinguem.map(b => b.name))} ainda.`}
         </p>
       )}
 

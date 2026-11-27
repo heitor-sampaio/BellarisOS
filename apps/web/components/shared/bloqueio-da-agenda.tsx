@@ -168,10 +168,11 @@ function JanelaDeBloquear({ branchId, profissionais, salas, dia, onFechar }: {
               options={[{ key: 'PROFISSIONAL', label: 'Profissional' }, { key: 'SALA', label: 'Sala' }]} />
           </div>
         )}
+        {/* A4 da 39ª: a profissional e a sala são seletor de dados (`.filtro-select`), com a altura do "Bloquear para". */}
         {para === 'PROFISSIONAL' && (
           <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             <span style={rotulo}>Profissional</span>
-            <select className="field" value={profId} onChange={e => setProfId(e.target.value)} aria-label="Profissional">
+            <select className="filtro-select" value={profId} onChange={e => setProfId(e.target.value)} aria-label="Profissional">
               <option value="">Selecione…</option>
               {profissionais.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
@@ -180,7 +181,7 @@ function JanelaDeBloquear({ branchId, profissionais, salas, dia, onFechar }: {
         {para === 'SALA' && (
           <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             <span style={rotulo}>Sala</span>
-            <select className="field" value={salaId} onChange={e => setSalaId(e.target.value)} aria-label="Sala">
+            <select className="filtro-select" value={salaId} onChange={e => setSalaId(e.target.value)} aria-label="Sala">
               <option value="">Selecione…</option>
               {salas.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>

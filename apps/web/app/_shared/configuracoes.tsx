@@ -15,6 +15,7 @@ import { SalasDaUnidade, type SalaDaUnidade } from '@/components/admin/salas-da-
 import { CONFIG_DA_REDE, mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { Lock } from 'lucide-react'
 import { Dica } from '@/components/shared/dica'
+import { AtivoAVista } from '@/components/shared/ativo-a-vista'
 import { MODULE_LABELS } from '@/lib/permissions'
 import { abasDoTopo } from '@/lib/configuracoes/abas-que-faltam'
 import type { ItemDeFicha } from '@/components/admin/settings-fichas'
@@ -27,6 +28,7 @@ import type { IntegrationConfig } from '@/actions/integrations'
 import { listarNumerosWhatsApp, opcoesDeVinculoDoNumero } from '@/actions/integrations'
 import { SettingsLgpd } from '@/components/admin/settings-lgpd'
 import { listDataRequests } from '@/actions/lgpd'
+import { pedidosDaAbaLgpd } from '@/lib/lgpd/pedidos-da-aba'
 import { SettingsAcoesEmLote } from '@/components/admin/settings-acoes-em-lote'
 import { ImportarContatos } from '@/app/_shared/importar-contatos'
 import { SettingsTags } from '@/components/admin/settings-tags'
@@ -255,7 +257,10 @@ export async function Configuracoes({
   // Só carrega quando a aba está aberta: a lista não é usada nas outras.
   // A lista mostra nomes de clientes e pede Clientes (Ver): sem o módulo, a tela
   // inteira caía em "sem acesso" (2026-10-21). Sem ele, a aba diz o porquê.
-  const lgpdSemClientes = conteudo === 'lgpd' && !can(ctx, 'clients', 'VIEW')
+  // Quem libera o prontuário (o Prontuário em Gerenciar) vê, sem Clientes, os
+  // pedidos com ele à espera (D2 da 39ª; LG-06, LG-08).
+  const pedidosDaAba = pedidosDaAbaLgpd((m, n) => can(ctx, m, n))
+  const lgpdSemClientes = conteudo === 'lgpd' && pedidosDaAba === 'nenhum'
   const lgpdRequests = conteudo === 'lgpd' && !lgpdSemClientes ? await listDataRequests() : []
   const dadosDoSuporte = conteudo === 'suporte' && !ctx.suporte ? await dadosDaAbaSuporte(ctx.tenantId!) : null
   // A assinatura do BellarisOS (o plano, as faturas): só a aba dela lê.
@@ -396,11 +401,12 @@ export async function Configuracoes({
           organização). Cada grupo é um segmentado (a escolha é exclusiva, como
           era o `<SegSelect>`), com o nome do grupo em cima; o grupo sem aba
           visível não aparece. A aba mora na URL (`?tab=`): esta tela é Server
-          Component, e cada chip é um link. No celular os grupos empilham e os
-          chips quebram em linha — dezesseis abas num menu suspenso escondiam
-          o que existe. */}
+          Component, e cada chip é um link. No celular (A2 da 39ª) os grupos
+          são uma linha que rola de lado, com a aba aberta à vista — empilhados,
+          tomavam três quartos da tela; num menu suspenso, escondiam o que existe. */}
       <div style={{ marginBottom: 28 }}>
         <nav aria-label="Assunto das configurações" data-grupos-de-abas className="grupos-de-abas">
+          <AtivoAVista />
           {abasEmGrupos(tabs).map(g => (
             // "A rede" fala "A clínica" na rede de uma unidade (F8), como o resto da tela.
             <div key={g.key} data-grupo-de-abas={g.label} className="grupo-de-abas">
@@ -572,6 +578,7 @@ export async function Configuracoes({
       {conteudo === 'lgpd' && !lgpdSemClientes && (
         <SettingsLgpd
           requests={lgpdRequests}
+          soOProntuario={pedidosDaAba === 'prontuario'}
           canReviewMedical={ctx.permissions.medical_records === 'MANAGE'}
         />
       )}

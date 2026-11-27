@@ -139,7 +139,21 @@ Princípios inegociáveis:
   (D1 da 10ª): a barra presa no rodapé, com o `safe-area`, abaixo da topbar e
   do Copilot na ordem das camadas, e um espaço no fim da página — como a
   `.sessao-acao-principal` do atendimento. Linha de ações que não quebra é o
-  defeito de volta.
+  defeito de volta. Nas outras telas e folhas, a barra é o
+  `<div className="acao-presa">` em volta dos botões finais (D4 da 39ª,
+  `globals.css`): no computador não existe (`display: contents`), no celular
+  é a barra, com o espaço no fim da página ou do corpo da folha, e o Copilot
+  sobe acima dela. Vale no PDV (Receber, Fechar a comanda), no Fechamento do
+  dia, na ficha (Salvar dados), no procedimento, no Agendar e na janela do
+  agendamento (Confirmar cancelamento, Reagendar). Prova:
+  `tests/celular-cabe-e-se-le.test.ts`.
+- **A grade de cartões começa a trilha em zero** (D6 da 39ª): `.rg-2`,
+  `.rg-3`, `.form-2col` e `.form-3col` são `minmax(0, 1fr)` com os filhos em
+  `min-width: 0` — `1fr` é `minmax(auto, 1fr)`, e o filho largo (o gráfico, a
+  rosca) empurrava a trilha além da tela no celular.
+- **No celular, as abas em grupos de Configurações são uma linha que rola de
+  lado** (A2 da 39ª), sem barra à mostra, com a aba aberta à vista
+  (`AtivoAVista`): empilhados, os grupos tomavam três quartos da tela.
 - **Popover ancorado num gatilho que fica à direita vira o lado no celular.**
   `left: 0` de um gatilho encostado na borda direita nasce metade fora da
   tela, e o que fica de fora não tem rolagem que o alcance. O `<SegSelect>`

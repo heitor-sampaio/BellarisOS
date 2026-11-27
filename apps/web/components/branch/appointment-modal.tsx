@@ -508,6 +508,11 @@ export function AppointmentModal({
   // O que só avisa: o encaixe fora do horário (permitido).
   const avisosDoMomento = avisos && avisos.chave === chaveDosAvisos
     ? [avisos.foraDoHorario].filter((x): x is string => !!x) : []
+  // A19 da 39ª (AG-04, princípio 3): com a escolhida no encaixe (fora do
+  // horário, com o aviso), a lista vazia não diz "Ninguém está livre" — a
+  // janela não diz duas coisas opostas; fica o aviso do encaixe.
+  const escolhidaNoEncaixe = !!profId && indisponiveis?.get(profId) === 'fora_do_horario'
+  const ninguemLivreNaTela = ninguemLivre && !escolhidaNoEncaixe && avisosDoMomento.length === 0
   // O bloqueio não é encaixe (R07): o servidor recusa, e o Confirmar desliga.
   const bloqueioDoAviso = avisos && avisos.chave === chaveDosAvisos ? (avisos.bloqueio ?? null) : null
   // R06 e R07: o motivo do Confirmar desligado, ao lado dele.
@@ -866,7 +871,7 @@ export function AppointmentModal({
                 {/* R13: só quem está livre no horário escolhido (e a já escolhida). */}
                 {profissionaisDaLista.map(p => <option key={p.id} value={p.id}>{rotuloDaEscolhida(p.name, p.livre ? null : p.indisponivel)}</option>)}
               </select>
-              {ninguemLivre && (
+              {ninguemLivreNaTela && (
                 <p data-ninguem-livre role="status" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 4 }}>
                   {NINGUEM_LIVRE_NO_HORARIO} Escolha outro horário para ver quem atende.
                 </p>
@@ -990,6 +995,7 @@ export function AppointmentModal({
                   horarioDaUnidade={gradeDoDia.horarioDaUnidade ?? null}
                   horarioDoProfissional={gradeDoDia.horarioDoProfissional ?? null}
                   nomeDoProfissional={dados.professionals.find(p => p.id === profId)?.name}
+                  duracaoMin={duracaoMin}
                   ocupado={h => ocupanteDoHorario(instanteNoFuso(diaEscolhido, h, fuso), duracaoMin, gradeDoDia.slots, gradeDoDia.bloqueios ?? [])}
                   selecionado={localDT.slice(11, 16)}
                   onEscolher={h => escolherHora(`${diaEscolhido}T${h}`)}
@@ -1046,16 +1052,19 @@ export function AppointmentModal({
                 {motivoDoConfirmar}
               </span>
             )}
-            <button type="button" onClick={onClose} className="btn-secondary">Cancelar</button>
-            <button
-              type="submit"
-              disabled={pending || !podeAgendar || carregandoSalas || conferindoOHorario || conferindoAAbertura || !!credito?.recusa || !!motivoDoConfirmar}
-              className="btn-primary"
-              style={{ opacity: podeAgendar ? 1 : 0.5 }}
-            >
-              <Calendar size={14} />
-              {pending ? 'Agendando…' : conferindoOHorario || conferindoAAbertura ? 'Conferindo o horário…' : 'Confirmar agendamento'}
-            </button>
+            {/* D4 da 39ª: no celular, o Confirmar fica preso no rodapé da folha (`.acao-presa`, design.md). */}
+            <div className="acao-presa">
+              <button type="button" onClick={onClose} className="btn-secondary">Cancelar</button>
+              <button
+                type="submit"
+                disabled={pending || !podeAgendar || carregandoSalas || conferindoOHorario || conferindoAAbertura || !!credito?.recusa || !!motivoDoConfirmar}
+                className="btn-primary"
+                style={{ opacity: podeAgendar ? 1 : 0.5 }}
+              >
+                <Calendar size={14} />
+                {pending ? 'Agendando…' : conferindoOHorario || conferindoAAbertura ? 'Conferindo o horário…' : 'Confirmar agendamento'}
+              </button>
+            </div>
           </div>
         </form>
       </div>

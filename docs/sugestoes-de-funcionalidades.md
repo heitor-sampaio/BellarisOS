@@ -19,9 +19,9 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 6 | A cliente confirmar presença pelo app antes do atendimento | 27ª, D01; item 7 da 25ª, 20 da 26ª |
 | 7 | As avaliações das clientes numa tela própria (hoje só na ficha) | 27ª (Time D) |
 | 8 | Crédito pré-pago também de produto (hoje só de procedimento) | 27ª (Time D) |
-| 9 | O de → para da etapa do funil na Auditoria | 27ª (Time E); 31ª (também a regra de comissão: procedimento, quem e valor, A9); 32ª, Time A; 34ª, Time D (a maquininha e a regra de comissão, Leopoldina); 35ª, Time C (a etapa e também o responsável, Eulália: C01, C10, C12, C13); 36ª, Time B (o "Atende" e a regra de comissão de 30% para 35%, sem o valor antigo); 38ª, Time A (a regra de comissão do procedimento, A06) |
+| 9 | O de → para da etapa do funil na Auditoria | 27ª (Time E); 31ª (também a regra de comissão: procedimento, quem e valor, A9); 32ª, Time A; 34ª, Time D (a maquininha e a regra de comissão, Leopoldina); 35ª, Time C (a etapa e também o responsável, Eulália: C01, C10, C12, C13); 36ª, Time B (o "Atende" e a regra de comissão de 30% para 35%, sem o valor antigo); 38ª, Time A (a regra de comissão do procedimento, A06); também na 39ª, B05 e Time E (M1–M8: o prazo do app, o preço e a duração do procedimento) |
 | 10 | Ranking por quem vendeu nos Relatórios | 27ª (Time E) |
-| 11 | Outra base de CEP (o 66035-000 não foi encontrado; na 28ª também 76804-000, 74210-000 e 64049-000) | 27ª, A; A37 da 26ª; 28ª, A, B e C; 31ª; 32ª, Time E; 34ª, Times A, C e E (78580-000 sem logradouro, 75110-000 e 45028-000); 35ª, Times A (76900-000) e B (15010-000); 36ª, Times A, B, C e E (78300-000, 64200-000, 63100-000, Itabuna e Ilhéus, Mossoró); 37ª, Times A, B, C e D (78700-000, 37700-000, 58400-000 e o de Arapiraca) |
+| 11 | Outra base de CEP (o 66035-000 não foi encontrado; na 28ª também 76804-000, 74210-000 e 64049-000) | 27ª, A; A37 da 26ª; 28ª, A, B e C; 31ª; 32ª, Time E; 34ª, Times A, C e E (78580-000 sem logradouro, 75110-000 e 45028-000); 35ª, Times A (76900-000) e B (15010-000); 36ª, Times A, B, C e E (78300-000, 64200-000, 63100-000, Itabuna e Ilhéus, Mossoró); 37ª, Times A, B, C e D (78700-000, 37700-000, 58400-000 e o de Arapiraca); também na 39ª, Times B, C e D (99700-000, 47800-000, 96400-000 e 96450-000) |
 | 12 | Uma resposta da ficha de saúde que a rede marca como alerta (ex.: "Grávida = Sim"), além da alergia | 28ª, C10 (ligada à nº 4) |
 | 13 | Comparar as fotos Antes e Depois lado a lado | 28ª, C07 |
 | 14 | Os pontos e as recompensas da cliente na tela do atendimento | 28ª, Time E |
@@ -95,7 +95,7 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 82 | No "Receber o plano", sugerir o pacote que cobre PARTE do plano (hoje só o equivalente inteiro, DP-05) | 31ª, D14 |
 | 83 | Na janela de venda do pacote, antes de vender, os termos que vão nascer | 31ª, D17 |
 | 84 | "Pote" na lista fixa de embalagens do estoque (ES-05) | 31ª, D2 |
-| 85 | Fechar a unidade um dia só (feriado), sem mexer no horário da semana | 32ª, Time B; 36ª, Time A (dois papéis: o feriado bloqueado pessoa por pessoa) |
+| 85 | Fechar a unidade um dia só (feriado), sem mexer no horário da semana | 32ª, Time B; 36ª, Time A (dois papéis: o feriado bloqueado pessoa por pessoa); também na 39ª, Time C (C11: um bloqueio por pessoa e por sala) |
 | 86 | O app dizer "a unidade não abre neste dia" em vez de só "Nenhum horário disponível" | 32ª, B08 |
 | 87 | Escolher a origem ao criar a oportunidade pelo painel do inbox (hoje nasce "Orgânico") | 32ª, Time A |
 | 88 | A hora da unidade no topo do portal (hoje só a data) | 32ª, Time D (UTC−5) |
@@ -168,9 +168,14 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 155 | "Feito" no lembrete de retorno (hoje se apaga na edição) e o lembrete com hora, não só com o dia | 38ª, C03 |
 | 156 | A taxa de faltas em número em Relatórios → Agenda | 38ª, D10 (dois papéis) |
 | 157 | A idade na ficha da cliente | 38ª, E07 |
-| 158 | O fuso de Belém (America/Belem) na lista e o fuso sugerido pelo CEP | 38ª, Time E (ligada à nº 96) |
+| 158 | O fuso de Belém (America/Belem) na lista e o fuso sugerido pelo CEP | 38ª, Time E (ligada à nº 96); também na 39ª, Time C (America/Bahia) |
 | 159 | A execução "Parou" dizer qual valor barrou o "Se" (o procedimento que não era Limpeza) | 38ª, E13 |
 | 160 | A lista de execuções não contar a execução-mãe do "Buscar clientes" junto com as filhas | 38ª, Time E |
 | 161 | A janela "Ligar a automação?" dizer que só vale para o que acontecer depois, e se o Aniversário ligado depois do horário ainda roda hoje | 38ª, E01 e E07 |
 | 162 | A Auditoria da edição da automação dizer o que mudou (hoje "Editou a automação Confirmação (fluxo e versão)") | 38ª, Time E (ligada à nº 9) |
 | 163 | Inserir um passo ENTRE dois já ligados no editor (o ED-09 só liga ao anterior) | 38ª, E09 (ligada ao A17 da 38ª, que não foi feito por ser recurso novo) |
+| 164 | Avisar o que já está marcado ou vendido ao mudar a duração, o horário da semana, quem faz, o "no app", o preço ou o ativo/inativo do procedimento | 39ª, C09, C13 e Time E (M1–M8) |
+| 165 | Confirmação no "Desativar" do procedimento (hoje age na hora) | 39ª, Time E (M6) |
+| 166 | Motivo opcional no "Negar" da parte do prontuário da LGPD | 39ª, B13 |
+| 167 | Avisar a despesa repetida (mesma conta, valor e vencimento) | 39ª, Time D (P12) |
+| 168 | Categoria e fornecedor na lista do A pagar da rede (hoje só no CSV) | 39ª, Time D (ligada à nº 22) |

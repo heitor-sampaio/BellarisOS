@@ -4,7 +4,7 @@ import { useHidratado } from '@/lib/use-hidratado'
 import { textoDeQuemMarcaAChegada, textoDeQuemRecebe, textoDeQuemConclui, textoDeQuemRespondeAFicha } from '@/lib/equipe/textos-de-quem-pode'
 import { AcoesDoLancamentoDaFicha } from '@/components/shared/acoes-do-lancamento-da-ficha'
 import { textoDasNotas, type NotaNaTela } from '@/lib/avaliacao/notas'
-import { useActionState, useState, useRef, useMemo, useEffect, useSyncExternalStore, type ReactNode } from 'react'
+import { Fragment, useActionState, useState, useRef, useMemo, useEffect, useSyncExternalStore, type ReactNode } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import {
   ArrowLeft, Check, X, Loader2, AlertTriangle,
@@ -51,6 +51,7 @@ import { divergenciasDaBaixa, totaisQueSeComparam, textoDaDivergencia, formatarD
 import { assinarEdicoesNaoSalvas, edicoesNaoSalvas, semEdicoesNaoSalvas } from '@/lib/injetaveis/edicao-nao-salva'
 import { planejamentosDaFicha } from '@/lib/atendimento/retrato-dos-injetaveis'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
+import { pagamentoConfirmadoEmTexto, rotuloDaFormaDoPagamento, type FormaDoPagamento } from '@/lib/financeiro/pagamento-do-atendimento'
 import { Dica } from '@/components/shared/dica'
 import { avisoDoMenor, ehMenorDeIdade, linhaDoResponsavel, type ResponsavelLegal } from '@/lib/clients/menor'
 import { textoDoRegistroTravado, TEXTO_DO_CLINICO_SO_LEITURA } from '@/lib/atendimento/registro-travado'
@@ -201,6 +202,8 @@ interface Props {
   /** A39: com a bandeira, "Crédito Visa 5x". */
   /** `maquininha`: o NOME, só com mais de uma na rede (A18 da 14ª). */
   paymentTransaction: { id: string; paymentMethod: string; amount: number; cartaoVezes?: number | null; cartaoBandeira?: string | null; maquininha?: string | null } | null
+  /** D8 da 39ª: TODAS as formas pagas (a maior primeiro); `paymentTransaction` é a primeira delas. */
+  formasDoPagamento?: FormaDoPagamento[]
   /** O último recebimento ESTORNADO, quando não há outro vivo: a cobrança reabriu (D6, 2026-10-28). */
   pagamentoEstornado?: { paymentMethod: string; amount: number; cartaoVezes?: number | null; cartaoBandeira?: string | null; maquininha?: string | null; motivo: string | null } | null
   /**
@@ -1002,7 +1005,7 @@ function DorasCard({ value, onChange, readonly, erro }: {
 export function AppointmentSession({
   appointment, client, anamnesis, fichaDeSaudeVencidaEm = null, fichaPreAtendimento, ficha, respostasDaFicha, products, availableProducts, lotesDosInsumos,
   professionals, history, branchId, slug,
-  canCheckin, canManage, ehDaProfissional = false, canEditRecords, canViewRecords = true, fotosDoAtendimento = null, anotacoes = null, versoesDoRegistro = [], podeAnotar = false, portalNoPlano = false, canReassign, canPayment, paymentTransaction, pagamentoEstornado = null, comandaId = null,
+  canCheckin, canManage, ehDaProfissional = false, canEditRecords, canViewRecords = true, fotosDoAtendimento = null, anotacoes = null, versoesDoRegistro = [], podeAnotar = false, portalNoPlano = false, canReassign, canPayment, paymentTransaction, formasDoPagamento: formasRecebidas, pagamentoEstornado = null, comandaId = null,
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
   isPartOfPlan = false, isPackageSession = false, pacoteDeFora = false, sessaoDoPacote = null, isPrePago = false, sessaoDoPrePago = null, podeReceber = false, quemEstorna = null, quemRecebe = null, quemConclui = null, quemRespondeAFicha = null, faltaSemVerOClinico = null, quemMarcaAChegada = null, podeEstornar = false, planoEmAberto = null, documentos = null, podeMontarPlano = true, montaPlanoNaUnidade = false, podeInjetaveis = true, podeVerPlanos = false, podeGerenciarAgenda = false,
 }: Props) {
@@ -1025,6 +1028,11 @@ export function AppointmentSession({
   // não tem mais janela de pagamento própria (PDV7, a revisão do Heitor de
   // 2026-11-13: "Sai a cobrança da conclusão do atendimento como porta
   // própria (vira a comanda)").
+  // D8 da 39ª: as formas do "Pagamento confirmado" (sem a lista, a forma única de antes).
+  const formasDoPagamento: FormaDoPagamento[] = formasRecebidas ?? (paymentTransaction ? [{
+    id: paymentTransaction.id, paymentMethod: paymentTransaction.paymentMethod, amount: paymentTransaction.amount,
+    cartaoVezes: paymentTransaction.cartaoVezes ?? null, cartaoBandeira: paymentTransaction.cartaoBandeira ?? null, maquininha: paymentTransaction.maquininha ?? null,
+  }] : [])
   const aReceber = appointment.status === 'COMPLETED' && !paymentTransaction && podeReceber
     && !isPartOfPlan && !isPackageSession && !isPrePago && appointment.price > 0
   // Atendimento de R$ 0 (a avaliação) não tem o que receber (D9, 2026-10-27).
@@ -2105,14 +2113,16 @@ export function AppointmentSession({
 
         {/* -- Client strip ----------------------------------------------- */}
         <div className="card" style={{ padding: '16px 20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          {/* A6 da 39ª: a 375 px os selos da direita espremiam o nome (uma
+              palavra por linha): sem lugar, eles descem para a linha de baixo. */}
+          <div data-faixa-da-cliente style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', columnGap: 16, rowGap: 10 }}>
             {/* Avatar */}
             <div style={{ width: 48, height: 48, borderRadius: 'var(--radius-squircle)', background: 'var(--brand)', color: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'var(--text-card-title)', fontWeight: 800, flexShrink: 0 }}>
               {initials(client.name)}
             </div>
 
             {/* Nome + info */}
-            <div style={{ flex: 1, minWidth: 0 }}>
+            <div data-nome-da-faixa style={{ flex: '1 1 160px', minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 3 }}>
                 <span style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>{client.name}</span>
                 {/* A menor de idade (decisão 2 do Heitor, 2026-11-05). */}
@@ -2185,11 +2195,12 @@ export function AppointmentSession({
 
         {/* -- Banner de bloqueio / edição -------------------------------- */}
         {isDone && (
-          <div style={{
+          // A6 da 39ª: a 375 px o botão espremia o texto; sem lugar, ele desce.
+          <div data-faixa-do-registro style={{
             padding: '12px 20px', borderRadius: 'var(--radius-field-token)',
             background: isUnlocked ? 'var(--warning-soft)' : 'var(--surface)',
             border: `1.5px solid ${isUnlocked ? 'var(--warning-border)' : 'var(--border)'}`,
-            display: 'flex', alignItems: 'center', gap: 12,
+            display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12,
           }}>
             <div style={{
               width: 32, height: 32, borderRadius: 8, flexShrink: 0,
@@ -2200,7 +2211,7 @@ export function AppointmentSession({
                 ? <LockOpen size={15} style={{ color: 'var(--warning)' }} />
                 : <Lock     size={15} style={{ color: 'var(--text-faint)' }} />}
             </div>
-            <div style={{ flex: 1 }}>
+            <div data-texto-da-faixa-do-registro style={{ flex: '1 1 160px', minWidth: 0 }}>
               <p data-registro-travado={status} style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: isUnlocked ? 'var(--warning)' : 'var(--text-muted)' }}>
                 {isUnlocked ? 'Editando registro finalizado' : registroTravado.titulo}
               </p>
@@ -2217,12 +2228,12 @@ export function AppointmentSession({
             {registroTravado.podeEditar && (
               isUnlocked ? (
                 <button type="button" onClick={() => setIsUnlocked(false)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, border: '1.5px solid var(--warning-border)', background: 'transparent', color: 'var(--warning)', fontWeight: 700, fontSize: 'var(--text-sm-sz)', cursor: 'pointer' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', padding: '7px 14px', borderRadius: 8, border: '1.5px solid var(--warning-border)', background: 'transparent', color: 'var(--warning)', fontWeight: 700, fontSize: 'var(--text-sm-sz)', cursor: 'pointer' }}>
                   <Lock size={13} /> Bloquear
                 </button>
               ) : (
                 <button type="button" onClick={() => setIsUnlocked(true)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', fontWeight: 700, fontSize: 'var(--text-sm-sz)', cursor: 'pointer' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', padding: '7px 14px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', fontWeight: 700, fontSize: 'var(--text-sm-sz)', cursor: 'pointer' }}>
                   <LockOpen size={13} /> Editar registro
                 </button>
               )
@@ -2250,19 +2261,28 @@ export function AppointmentSession({
                 </p>
                 {paymentTransaction ? (
                   <div style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    <span>Pagamento confirmado — {rotuloDaForma(paymentTransaction.paymentMethod, paymentTransaction.cartaoVezes, { bandeira: paymentTransaction.cartaoBandeira, maquininha: paymentTransaction.maquininha })} · {fmtBRL(paymentTransaction.amount)}</span>
-                    {/* r2-ven-13: o recibo do pagamento (PDF), para quem recebe. */}
-                    {canPayment && (
-                      <a href={`/api/recibos/${paymentTransaction.id}`} target="_blank" rel="noopener" title="Recibo (PDF): imprimir ou baixar"
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)', textDecoration: 'none' }}>
-                        <FileText size={12} aria-hidden /> Recibo
-                      </a>
-                    )}
-                    {/* A19 da 14ª: quem estorna, estorna daqui — a mesma janela do Financeiro e da ficha. */}
-                    {podeEstornar && (
-                      <AcoesDoLancamentoDaFicha slug={slug} podeEstornar podeReceber={false}
-                        lancamento={{ id: paymentTransaction.id, descricao: 'Atendimento concluído', valor: paymentTransaction.amount, pago: true, metodo: paymentTransaction.paymentMethod, doAtendimento: true }} />
-                    )}
+                    {/* D8 da 39ª (princípio 3): todas as formas — "Pix · R$ 100,00 + Débito · R$ 62,00". */}
+                    <span>Pagamento confirmado — {pagamentoConfirmadoEmTexto(formasDoPagamento)}</span>
+                    {formasDoPagamento.map(f => {
+                      // Com mais de uma forma, cada recibo e cada estorno diz a sua ("Recibo (Pix)").
+                      const daForma = formasDoPagamento.length > 1 ? rotuloDaFormaDoPagamento(f) : undefined
+                      return (
+                        <Fragment key={f.id}>
+                          {/* r2-ven-13: o recibo do pagamento (PDF), para quem recebe. */}
+                          {canPayment && (
+                            <a href={`/api/recibos/${f.id}`} target="_blank" rel="noopener" title="Recibo (PDF): imprimir ou baixar"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)', textDecoration: 'none' }}>
+                              <FileText size={12} aria-hidden /> {daForma ? `Recibo (${daForma})` : 'Recibo'}
+                            </a>
+                          )}
+                          {/* A19 da 14ª: quem estorna, estorna daqui — a mesma janela do Financeiro e da ficha. */}
+                          {podeEstornar && (
+                            <AcoesDoLancamentoDaFicha slug={slug} podeEstornar podeReceber={false} forma={daForma}
+                              lancamento={{ id: f.id, descricao: 'Atendimento concluído', valor: f.amount, pago: true, metodo: f.paymentMethod, doAtendimento: true }} />
+                          )}
+                        </Fragment>
+                      )
+                    })}
                     {/* A35 da 12ª: a recepção não estorna, e a página não dizia a quem pedir (a ficha dizia). */}
                     {/* Na dica desde 2026-11-16 ("isto é de quem tem tal permissão"). */}
                     {quemEstorna && (

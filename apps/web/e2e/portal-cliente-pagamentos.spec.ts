@@ -90,6 +90,21 @@ test('a Agenda do app mostra o valor cobrado no atendimento pago com desconto (D
   })
 })
 
+// D7 da 39ª (AG-56): o Financeiro e o Histórico → Pagamentos diziam só o valor pago,
+// sem o desconto — ele mora no lançamento (sale_discount, desconto_motivo).
+test('o Financeiro e os Pagamentos do app dizem o desconto do que ela pagou (AG-56)', async ({ browser }) => {
+  await como(browser, async p => {
+    await p.goto(`/${slug}/cliente/financeiro`)
+    // O único lançamento com desconto desta cliente é o da Toxina (R$ 1.100 pagos).
+    await expect(p.locator('[data-desconto-do-lancamento]')).toHaveText(/Desconto R\$\s100,00/)
+
+    await p.goto(`/${slug}/cliente/historico`)
+    await p.getByRole('button', { name: /Pagamentos/ }).click()
+    const pagamento = p.locator('[data-pagamento]', { hasText: /R\$\s1\.100,00/ })
+    await expect(pagamento.locator('[data-desconto-do-lancamento]')).toHaveText(/Desconto R\$\s100,00/)
+  })
+})
+
 // D4 da 7ª simulação: o Financeiro do app mostrava as parcelas com a data de
 // CRIAÇÃO (todas 05/11), na ordem 3/3, 2/3, 1/3 — não lia o vencimento.
 test('o Financeiro do app diz "Vence dd/mm" no pendente e ordena pelo vencimento (D4)', async ({ browser }) => {

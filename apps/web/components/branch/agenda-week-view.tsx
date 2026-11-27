@@ -39,6 +39,14 @@ interface Props {
 // numa clínica que abre os 7 dias o agendamento de domingo só aparecia no Mês e no Dia.
 const WEEKDAYS = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM']
 
+// D5 da 39ª (AG-22; design.md, o celular): a 375 px as 7 colunas, presas à
+// largura da tela, colavam os cabeçalhos ("QUAQUI"), cortavam o domingo e
+// escreviam o bloqueio uma letra por linha. Cada dia tem largura mínima, a
+// grade rola de lado (sem a barra à mostra) e a coluna de quem atende fica parada.
+const LARGURA_DA_PRIMEIRA = 132
+const LARGURA_DO_DIA = 124
+const COLUNA_PARADA: React.CSSProperties = { position: 'sticky', left: 0, zIndex: 1, background: 'var(--surface)' }
+
 const PROF_COLORS = [
   { bg: 'var(--brand-soft)', text: 'var(--brand)' },
   { bg: 'var(--info-soft)', text: 'var(--info)' },
@@ -151,16 +159,16 @@ export function AgendaWeekView({ currentDate, events, professionals, onEventClic
   }
 
   return (
-    <div className="table-wrap">
-      <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+    <div className="table-wrap" style={{ scrollbarWidth: 'none' }}>
+      <table style={{ width: '100%', minWidth: LARGURA_DA_PRIMEIRA + 7 * LARGURA_DO_DIA, borderCollapse: 'collapse', tableLayout: 'fixed' }}>
         <colgroup>
-          <col style={{ width: 148 }} />
+          <col style={{ width: LARGURA_DA_PRIMEIRA }} />
           {weekDays.map((_, i) => <col key={i} />)}
         </colgroup>
 
         <thead>
           <tr>
-            <th style={{ padding: '0 0 12px', borderBottom: '1px solid var(--border)' }} />
+            <th style={{ ...COLUNA_PARADA, padding: '0 0 12px', borderBottom: '1px solid var(--border)' }} />
             {weekDays.map((day, i) => {
               const isToday = isSameDay(day, today)
               return (
@@ -186,7 +194,7 @@ export function AgendaWeekView({ currentDate, events, professionals, onEventClic
         <tbody>
           {daSala.length > 0 && (
             <tr data-salas-da-semana>
-              <td style={{ padding: '10px', borderBottom: '1px solid var(--border)', borderRight: '1px solid var(--border)', verticalAlign: 'top', fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)' }}>
+              <td style={{ ...COLUNA_PARADA, padding: '10px', borderBottom: '1px solid var(--border)', borderRight: '1px solid var(--border)', verticalAlign: 'top', fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)' }}>
                 Salas bloqueadas
               </td>
               {weekDays.map((day, di) => (
@@ -209,6 +217,7 @@ export function AgendaWeekView({ currentDate, events, professionals, onEventClic
               <tr key={pro.id}>
                 {/* Professional cell */}
                 <td style={{
+                  ...COLUNA_PARADA,
                   padding: '12px 10px',
                   borderBottom: '1px solid var(--border)',
                   borderRight: '1px solid var(--border)',
@@ -255,7 +264,7 @@ export function AgendaWeekView({ currentDate, events, professionals, onEventClic
                         borderBottom: '1px solid var(--border)',
                         borderRight: di < 6 ? '1px solid var(--border)' : 'none',
                         verticalAlign: 'top',
-                        minWidth: 110,
+                        minWidth: LARGURA_DO_DIA,
                         background: isToday ? 'rgba(195,77,107,0.025)' : undefined,
                         cursor: canWrite ? 'pointer' : 'default',
                       }}

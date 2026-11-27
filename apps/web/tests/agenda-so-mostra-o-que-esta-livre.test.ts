@@ -269,3 +269,16 @@ describe('R15: quem está fora do horário some das listas', () => {
     expect(grade).toContain('não atende neste dia. Para um encaixe, use')
   })
 })
+
+// A19 da 39ª (AG-04, princípio 3): no domingo fechado, o Agendar dizia
+// "Ninguém está livre nesse horário" junto do aviso do encaixe permitido logo
+// abaixo — duas coisas opostas. Com a escolhida no encaixe (fora do horário,
+// com o aviso), a frase da lista vazia não aparece; fica o aviso do encaixe.
+describe('a lista vazia não contradiz o encaixe', () => {
+  it('a frase "Ninguém está livre" sai quando a escolhida está no encaixe', () => {
+    const modal = fonte('components/branch/appointment-modal.tsx')
+    expect(modal).toMatch(/const ninguemLivreNaTela = ninguemLivre && !escolhidaNoEncaixe && avisosDoMomento\.length === 0/)
+    expect(modal).toMatch(/const escolhidaNoEncaixe = !!profId && indisponiveis\?\.get\(profId\) === 'fora_do_horario'/)
+    expect(modal).toMatch(/\{ninguemLivreNaTela && \(\s*<p data-ninguem-livre/)
+  })
+})

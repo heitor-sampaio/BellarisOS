@@ -307,7 +307,8 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, unidadesDeQue
                     <p data-relogio-do-horario style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>{relogioDoHorario}</p>
                   )}
                   <EditorDeHorario nome="horario" valor={normalizarHorario(member.horario)} seguir="Segue o horário da unidade"
-                    base={horarioDeQuemDeixaDeSeguir(branches, unidades === 'rede' ? null : (unidades[0] ?? null))} />
+                    base={horarioDeQuemDeixaDeSeguir(branches, unidades === 'rede' ? null : (unidades[0] ?? null))}
+                    dentroDe={unidadesDela.length === 1 ? horarioDeQuemDeixaDeSeguir(branches, unidadesDela[0]!) : null} />
                 </div>
               </div>
 

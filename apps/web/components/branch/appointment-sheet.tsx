@@ -351,6 +351,14 @@ export function AppointmentSheet({ appointment, slug, vistaDela = false, podeGer
                       {appointment.pagoAntes}
                     </p>
                   </>
+                ) : cobranca?.recebido ? (
+                  <>
+                    {/* A23 da 39ª (princípio 3; AG-56): o recebido diz que foi recebido, com as formas. */}
+                    <p className="overline">Recebido</p>
+                    <p data-recebido style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--success)', marginTop: 3 }}>
+                      {cobranca.recebido}
+                    </p>
+                  </>
                 ) : (
                   <>
                     <p className="overline">Valor</p>
@@ -597,14 +605,17 @@ export function AppointmentSheet({ appointment, slug, vistaDela = false, podeGer
                     {TEXTO_DA_SESSAO_NA_DESISTENCIA}
                   </p>
                 )}
-                <button
-                  disabled={!cancelReason.trim() || loading}
-                  onClick={() => changeStatus('CANCELLED')}
-                  className="btn-primary"
-                  style={{ justifyContent: 'center' }}
-                >
-                  Confirmar cancelamento
-                </button>
+                {/* D4 da 39ª: no celular, o Confirmar fica preso no rodapé da folha (`.acao-presa`, design.md). */}
+                <div className="acao-presa">
+                  <button
+                    disabled={!cancelReason.trim() || loading}
+                    onClick={() => changeStatus('CANCELLED')}
+                    className="btn-primary"
+                    style={{ justifyContent: 'center' }}
+                  >
+                    Confirmar cancelamento
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -639,6 +650,8 @@ export function AppointmentSheet({ appointment, slug, vistaDela = false, podeGer
         )}
         {/* A29: o cancelado e a falta ganham "Reagendar" — o novo agendamento
             já com a cliente (o `?novo=1&cliente=` da agenda). */}
+        {/* D4 da 39ª: no celular, o Reagendar fica preso no rodapé da folha (`.acao-presa`, design.md). */}
+        <div className="acao-presa">
         {(appointment.status === 'CANCELLED' || appointment.status === 'NO_SHOW') && podeCancelar && appointment.clientId && (
           <button type="button" className="btn-secondary" style={{ width: '100%', justifyContent: 'center', marginBottom: 10 }}
             onClick={() => {
@@ -654,6 +667,7 @@ export function AppointmentSheet({ appointment, slug, vistaDela = false, podeGer
             <CalendarClock size={14} /> Reagendar
           </button>
         )}
+        </div>
         {/* A14 da 10ª: com o pagamento ainda a receber, o atendimento não está
             "encerrado" — a frase contradizia o "Receber no PDV" logo acima. */}
         {isDone && cobranca?.situacao !== 'A_RECEBER' && (

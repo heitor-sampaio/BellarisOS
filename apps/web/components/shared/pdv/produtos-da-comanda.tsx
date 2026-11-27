@@ -112,7 +112,7 @@ export function ProdutosDaComanda({ comandaId, slug, itens, produtos, aReceber =
   return (
     <>
       {itens.map((i, n) => (
-        <div key={i.id} data-item-da-comanda data-estornado={i.estornadoEm ? 'true' : undefined} style={{
+        <div key={i.id} data-item-da-comanda data-estornado={i.estornadoEm ? 'true' : undefined} className="pdv-linha-da-comanda" style={{
           display: 'grid', gridTemplateColumns: produtos && !i.vendido ? 'minmax(0, 1fr) auto 110px' : 'minmax(0, 1fr) 40px 110px',
           gap: 10, alignItems: 'center', padding: '11px 0', borderBottom: '1px solid var(--hairline)',
         }}>
@@ -132,23 +132,24 @@ export function ProdutosDaComanda({ comandaId, slug, itens, produtos, aReceber =
               </span>
             )}
             {produtos && !i.vendido && (
-              <button type="button" className="btn-ghost" aria-label={`Tirar ${i.nome}`}
+              // A3 da 39ª: o "Tirar", o "−" e o "+" têm o alvo de toque (`.botao-de-toque`).
+              <button type="button" className="btn-ghost botao-de-toque" aria-label={`Tirar ${i.nome}`}
                 disabled={pendente} onClick={() => tirar(i.id)}
-                style={{ marginTop: 4, padding: '2px 6px', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+                style={{ marginTop: 4, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
                 <X size={12} aria-hidden /> Tirar
               </button>
             )}
           </div>
           {produtos && !i.vendido ? (
             <span data-quantidade-do-item style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <button type="button" className="btn-ghost" data-menos-um aria-label={`Um ${i.nome} a menos`} title="Um a menos"
-                disabled={pendente} onClick={() => menosUm(i.id)} style={{ padding: '2px 6px' }}>
+              <button type="button" className="btn-ghost botao-de-toque" data-menos-um aria-label={`Um ${i.nome} a menos`} title="Um a menos"
+                disabled={pendente} onClick={() => menosUm(i.id)}>
                 <Minus size={12} aria-hidden />
               </button>
               <span style={{ minWidth: 20, color: 'var(--text-muted)', textAlign: 'center', fontWeight: 600 }}>{i.quantidade}</span>
-              <button type="button" className="btn-ghost" data-mais-um aria-label={`Um ${i.nome} a mais`}
+              <button type="button" className="btn-ghost botao-de-toque" data-mais-um aria-label={`Um ${i.nome} a mais`}
                 title={noLimite(i) ? 'Não há mais na unidade' : 'Um a mais'}
-                disabled={pendente || noLimite(i)} onClick={() => maisUm(i.produtoId)} style={{ padding: '2px 6px' }}>
+                disabled={pendente || noLimite(i)} onClick={() => maisUm(i.produtoId)}>
                 <Plus size={12} aria-hidden />
               </button>
             </span>

@@ -236,6 +236,9 @@ export function HistoricoTabs({ slug, procedimentos, deAntes, pagamentos, docume
                   {/* D6: a parcela do crediário sem meio diz "Com a clínica" (a forma pronta da página). */}
                   {!p.aPagarNaUnidade && (p.forma !== undefined ? (p.forma ? ` · ${p.forma}` : '') : p.payment_method ? ` · ${rotuloDaForma(p.payment_method, p.cartao_vezes)}` : '')}
                 </p>
+                {p.desconto && (
+                  <p data-desconto-do-lancamento style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>{p.desconto}</p>
+                )}
                 {/* A46: o pagamento de um pacote cancelado diz isso. */}
                 {p.pacoteCancelado && (
                   <p data-pacote-cancelado style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>

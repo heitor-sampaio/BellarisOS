@@ -828,12 +828,15 @@ function ModuleRow({
     }}>
       {/* `flexWrap`: nome do módulo e seletor de nível lado a lado quando cabe,
           um sobre o outro quando não. Sem isso, no celular o seletor de três
-          níveis espremia o nome do módulo até ele quebrar letra a letra. */}
+          níveis espremia o nome do módulo até ele quebrar letra a letra.
+          D3 da 39ª: com `flex: 1` (base 0) o nome nunca descia — encolhia até
+          uma palavra por linha, com o seletor por cima. A base de 240 px faz o
+          seletor descer para baixo do nome quando os dois não cabem. */}
       <div style={{
         display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
         gap: 12, flexWrap: 'wrap',
       }}>
-        <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ minWidth: 0, flex: '1 1 240px' }}>
           <div style={{
             fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)',
           }}>

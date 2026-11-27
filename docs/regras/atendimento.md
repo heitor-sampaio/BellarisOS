@@ -28,7 +28,9 @@
   - **a "Minha agenda" é o horário DELA** ("Reforça", item 8 da 5ª simulação):
     a grade do dia é unidade ∩ ela (`janelaDoDia`), estendida pelos
     atendimentos de fora, com o resto sombreado; no dia em que ela não atende,
-    a janela da unidade e "Você não atende neste dia". A Renata, de 07–12, via
+    a janela da unidade e "Você não atende neste dia" — também com um encaixe
+    marcado no dia, acima da grade (`[data-nao-atende-no-dia]`; D9 da 39ª, AG-23:
+    a frase vinha só com o dia vazio). A Renata, de 07–12, via
     07:00–21:00 livre. Prova: `e2e/agenda-minha-agenda-horario.spec.ts`. O
     destaque do topo (`[data-destaque-de-hoje]`), sem nada por vir hoje e com
     um atendimento de hoje já passado ou concluído, diz "Nenhum outro
@@ -102,6 +104,13 @@
     06–22; `uniaoDosHorarios`, a unidade sem cadastro conta como o padrão
     dela). Prova: `e2e/equipe-horario-parte-da-unidade.spec.ts`,
     `tests/agenda-horario.test.ts` ("A11").
+  - **O "Fica assim" do horário próprio diz o que vale** (A18 da 39ª,
+    princípio 3; decisão do Claude, 27/11): para quem é de uma unidade só (ou
+    da rede de uma unidade), o resumo mostra o cruzamento com o horário da
+    unidade (AG-10) — 07:00 com a unidade abrindo às 08:00 diz 08:00
+    (`diasQueValem`, `dentroDe` do `EditorDeHorario`). Com várias unidades, o
+    que ela marcou (em cada uma vale o daquela, AG-64). Sem frase nova.
+    Prova: `tests/equipe-horario-proprio-mostra-o-que-vale.test.ts`.
   - **O X do segundo período TIRA aquele período** (A7 da 5ª simulação,
     2026-11-01; `components/shared/editor-de-horario.tsx`): era "Tirar a
     pausa", que juntava os dois — a profissional de 07–12 e 18–22 ficava
@@ -129,6 +138,15 @@
     a pausa e cortava a noite. A action `getSchedulingDaySlots` devolve os
     dois horários. Prova: `e2e/checkout-grade-de-horarios.spec.ts`,
     `tests/checkout-grade-de-horarios.test.ts`.
+    **O chip só oferece o início em que a DURAÇÃO inteira cabe** (D1 da 39ª;
+    AG-07 e AG-10, princípio 3): o fim não atravessa o almoço, a pausa de quem
+    atende nem o fechamento — o último início é o fim da janela menos a
+    duração. É a conta do app da cliente (`slotsDoDia(intervalos, duração)`,
+    `computeAvailableSlots`): `GradeDeHorarios` recebe `duracaoMin` (o
+    procedimento no Agendar e no Reagendar, a sessão no checkout e nas sessões)
+    e a passa a `gradeDoCheckout`. O que não cabe é encaixe, pelo campo de
+    horário, com o aviso. Prova: `tests/checkout-grade-de-horarios.test.ts`
+    ("D1 da 39ª"), `e2e/agenda-encaixe-avisa.spec.ts`.
     **Hoje, a grade começa em AGORA** (A24 da 6ª simulação, 2026-11-04: de
     madrugada, numa unidade 24 h, a sessão do pacote oferecia 00:00–04:00):
     `aPartirDeAgora` (Brasília) corta o que já passou, e o "Outro horário" no
@@ -265,7 +283,10 @@
     segue permitido (o servidor aceita, com o aviso), mas só pelo campo de
     horário: a lista não o oferece. A lista vazia diz "Ninguém está livre nesse
     horário. Escolha outro horário para ver quem atende.", sem ensinar o
-    caminho do encaixe (o Heitor, 26/11: "isso não é ser intuitivo, é ser explicativo e não isso que eu quero"); prova `tests/telas-sem-texto-que-explica.test.ts`. As salas não têm horário próprio: a unidade
+    caminho do encaixe (o Heitor, 26/11: "isso não é ser intuitivo, é ser explicativo e não isso que eu quero"); prova `tests/telas-sem-texto-que-explica.test.ts`. Com a escolhida no
+    encaixe (fora do horário, com o aviso "O encaixe é permitido."), a frase
+    não aparece: a janela não diz duas coisas opostas (A19 da 39ª, AG-04 e
+    princípio 3; `ninguemLivreNaTela`). As salas não têm horário próprio: a unidade
     fechada não as tira (decisão do Claude, 26/11). Quem não atende na unidade
     já não aparecia. Valem:
     - a grade de horários (`GradeDeHorarios`: o Agendar, as sessões do
@@ -457,6 +478,13 @@
     UTC — o das 23:55 de quinta caía na sexta; agora `dayKeyTZ`, e a conta das
     datas da tela é do calendário (meio-dia UTC), não `toISOString` da
     meia-noite local. Prova: `e2e/agenda-defeitos-da-8.spec.ts` ("D3", "D4").
+    **No celular, a Semana rola de lado** (D5 da 39ª; AG-22 e o celular do
+    `design.md`): a 375 px as 7 colunas, presas à largura da tela, colavam os
+    cabeçalhos, cortavam o domingo e escreviam o bloqueio uma letra por linha.
+    Cada dia tem largura mínima (`LARGURA_DO_DIA`), a grade rola de lado sem a
+    barra à mostra e a coluna de quem atende fica parada (`COLUNA_PARADA`,
+    sticky). Prova: `tests/agenda-semana-no-celular.test.ts`,
+    `e2e/agenda-bloqueio.spec.ts` ("a Semana no celular").
   - Prova: `e2e/agenda-bloqueio.spec.ts`, `tests/agenda-bloqueio.test.ts`.
 - **Quem atende é marcado POR UNIDADE** (decisão 2 do Heitor sobre a 8ª
   simulação, 2026-11-06: "Inves de atende também em, o atende vira um
@@ -1558,7 +1586,10 @@
   e com o motivo (`cancellation_reason`). No celular a barra do cabeçalho
   quebra a linha, em vez de cortar o botão (A14 da 19ª). Não contam em nada (atendimentos,
   ocupação, a contagem do profissional) e não se arrastam; no dia, dividem o
-  horário com quem o ocupou depois (o ativo à esquerda). A agenda da rede, que
+  horário com quem o ocupou depois (o ativo à esquerda): cada um que se cruza
+  na tela é uma coluna (`ladoALado`, a conta das outras grades), e o nome do
+  cancelado quebra a linha em vez de cortar (D16 da 39ª, AG-26: o cancelado e o
+  concluído adiantado do mesmo horário ficavam um sob o outro). A agenda da rede, que
   sempre os mostrou, apaga o bloco e diz o motivo. Prova:
   `e2e/agenda-cancelados.spec.ts`.
 - **Os filtros: profissional, sala e tag** (o Heitor, 18/11, sobre a agenda
@@ -1619,7 +1650,12 @@
   `lib/appointments/valor-cobrado.ts`: o lançamento vivo do atendimento,
   `amount + loyalty_discount` — os pontos são forma de pagamento, não
   desconto —, e o `sale_discount`). Prova:
-  `e2e/portal-cliente-pagamentos.spec.ts` ("D8"). No crediário, o cobrado é
+  `e2e/portal-cliente-pagamentos.spec.ts` ("D8"). O Financeiro e o Histórico →
+  Pagamentos do app dizem o desconto embaixo do lançamento, com o motivo, o
+  mesmo texto da equipe e do recibo ("Desconto R$ 18,00 · aniversário",
+  `descontosDosLancamentos`; D7 da 39ª, decisão do Claude, 27/11, por AG-56;
+  o do plano segue na linha do plano). Prova:
+  `tests/app-da-cliente-desconto-no-pagamento.test.ts` e o mesmo spec ("AG-56"). No crediário, o cobrado é
   a entrada MAIS as parcelas em aberto (D4 da 34ª; princípio 3: o cartão dizia
   R$ 90 de R$ 190): os lançamentos vivos do atendimento, pagos ou com nota — a
   régua do "já cobrado" de `confirmar_pagamento_do_atendimento`; a reserva sem
@@ -1704,13 +1740,25 @@
   marcado não se liga a uma sessão de plano (`agendamento_usar_credito` é do
   pacote e do pré-pago). E o cartão "Tratamento em andamento" diz "Abrir para
   ver e agendar as sessões" (`[data-tratamento-que-abre]`). Prova: o mesmo spec
-  ("A18").
+  ("A18"). **O cartão do PLANO só abre a quem tem o Atendimento em Ver** (D12
+  da 39ª; CLAUDE.md §14, "a tela esconde"; PL-01; decisão do Claude, 27/11):
+  a ficha de tratamento do plano lê pelo `getTreatmentPlanDetails`, que é do
+  Atendimento em Ver. Sem ele, o cartão mostra o andamento, não abre e não diz
+  que abre (`abreOTratamento`); o do pacote segue abrindo. Pelo mesmo motivo,
+  a lista de planos propostos (`app/_shared/lista-de-checkout.tsx`) e o painel
+  da rede só levam ao plano (o "Ver o plano") quem tem o Atendimento em Ver.
+  Prova: `tests/catalogo-plano-e-equipe-o-que-a-tela-mostra.test.ts` ("D12").
 - **Cancelar (ou faltar) devolve o que estava pago**: o gatilho
   `private.pre_pago_libera` solta a unidade pré-paga, a sessão de pacote e a
   sessão do plano (estas duas ficavam presas ao agendamento cancelado).
 - **O procedimento novo nasce FORA do app** (`visible_on_client_app` desligado,
   2026-10-21): só vai para o self-service o que a rede marca. Nascia ligado,
   e a Toxina da simulação ficaria agendável pelo app.
+  **O inativo não diz "App: Sim"** (A21 da 39ª; princípio 3; decisão do
+  Claude, 27/11): a coluna App da lista de Procedimentos diz "Sim" só do
+  procedimento ATIVO com a marca (`noApp`, `app/_shared/catalogo-de-procedimentos.tsx`);
+  a marca gravada fica e volta a valer ao reativar. Prova:
+  `tests/catalogo-plano-e-equipe-o-que-a-tela-mostra.test.ts` ("A21").
 - **A sessão JÁ COMPRADA se agenda pelo app mesmo fora do "Permitir auto
   agendamento"** (PT3/CA3, Bloco Plano de tratamento, leva 2, 2026-11-14 — o
   Heitor: "se for uma sessão de plano ou pacote, pode agendar"): a sessão
@@ -4581,7 +4629,11 @@ O resto do fluxo:
   guardado no plano (`treatment_plans.desconto_combinado_tipo`/`_valor`/`_por`,
   migration `20261123100001`; a avaliação o grava junto, em
   `gerar_plano_da_avaliacao`). Enquanto o plano é rascunho ou proposto, os
-  preços das sessões ficam os de tabela e as telas mostram o total com o
+  preços das sessões ficam os de tabela DO MOMENTO EM QUE O PLANO FOI
+  PROPOSTO: mudar depois o preço do procedimento não mexe no plano proposto (o
+  Heitor, 27/11, R36: "Fica como está: vale o preço de quando o plano foi
+  proposto (a proposta)"; a D13 da 39ª simulação não era defeito). As telas
+  mostram o total com o
   combinado (o editor, o app da cliente — que aceita vendo esse total). **No
   ACEITE ele se aplica aos preços** (decisão do CLAUDE pelo princípio 3,
   2026-11-18, levada ao Heitor: vale em TODA tela a partir do aceite): o `plano_aceitar` — o aceite da
@@ -4852,6 +4904,8 @@ O resto do fluxo:
 ❌ Oferecer como livre (app da cliente, Copilot, CRM) um horário bloqueado — é computeAvailableSlots, que já tira o bloqueio
 ❌ Caminho que cria ou move agendamento sem recusaDoBloqueioNoHorario (lib/appointments/core.ts): o horário bloqueado não se marca, nem pela equipe nem pelo Copilot (o Heitor, 26/11 (R07): "r07 se ta bloqueado não dá pra marcar") — e o fora do horário, que não é bloqueio, segue encaixe com aviso
 ❌ Decidir na tela se um horário está livre pelo INÍCIO, ou sem os bloqueios — é ocupanteDoHorario / livresEntre (lib/agenda/horario-livre.ts), o intervalo inteiro (D5/D15 da 8ª)
+❌ Montar os chips da grade sem a duração (GradeDeHorarios sem duracaoMin, gradeDoCheckout de 30 em 30 só): o início cujo fim atravessa a pausa ou o fechamento não é oferecido — a conta é a do app (slotsDoDia com a duração; D1 da 39ª)
+❌ Dividir a largura de uma grade por "ativo × solto" em vez de ladoALado: o cancelado e o concluído adiantado do mesmo horário ficam um sob o outro (D16 da 39ª)
 ❌ Contar o "Horário livre" da Minha agenda par a par (do fim do cartão anterior na lista) ou desenhá-lo por baixo do cartão curto: é livresDaGrade (lib/agenda/horario-livre.ts) — do último que ainda ocupa, e o desenho abaixo do cartão de cima (D11 da 34ª)
 ❌ Oferecer no Agendar, enquanto a lista do horário não chega, as salas da unidade como livres: é salasParaOferecer (lib/agenda/salas.ts) — só a já escolhida, até a lista chegar (D10 da 34ª)
 ❌ Deixar o Confirmar do agendar (ou do remarcar) gravar antes de chegar a conferência do horário escolhido (o aviso vinha depois — D9 da 8ª)

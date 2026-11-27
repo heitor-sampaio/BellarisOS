@@ -1,6 +1,7 @@
 import { combinadoDoPlano } from '@/lib/plano-de-tratamento/desconto-combinado'
 import { nomesDasMaquininhas } from '@/lib/financeiro/vezes-da-rede'
 import { maquininhaDoRotulo } from '@/lib/financeiro/formas'
+import { formasDoPagamentoDoAtendimento } from '@/lib/financeiro/pagamento-do-atendimento'
 import { notFound } from 'next/navigation'
 import { idOu404 } from '@/lib/id-da-rota'
 import { getTenantContext, can, podeReceber, podeVerClinico, temRecurso } from '@/lib/auth'
@@ -569,9 +570,10 @@ export async function SessaoDeAtendimento({
   const estornado = pago ? null : (lancamentos.find(l => l.notes === 'Estornada') ?? null)
   // A18 da 14ª: com mais de uma maquininha na rede, o rótulo diz qual.
   const maquininhas = pago || estornado ? await nomesDasMaquininhas(ctx.tenantId!) : null
-  const paymentTransaction = pago
-    ? { id: pago.id, paymentMethod: pago.payment_method, amount: Number(pago.amount), cartaoVezes: pago.cartao_vezes, cartaoBandeira: pago.cartao_bandeira, maquininha: maquininhaDoRotulo(maquininhas, pago.maquininha_id) }
-    : null
+  // D8 da 39ª (princípio 3): TODAS as formas pagas, a maior primeiro — pago
+  // em Pix + Débito, o bloco dizia só a primeira.
+  const formasDoPagamento = formasDoPagamentoDoAtendimento(lancamentos, maquininhas)
+  const paymentTransaction = formasDoPagamento[0] ?? null
   const pagamentoEstornado = estornado
     ? { paymentMethod: estornado.payment_method, amount: Number(estornado.amount), cartaoVezes: estornado.cartao_vezes, cartaoBandeira: estornado.cartao_bandeira, maquininha: maquininhaDoRotulo(maquininhas, estornado.maquininha_id), motivo: estornado.estorno_motivo }
     : null
@@ -661,6 +663,7 @@ export async function SessaoDeAtendimento({
         canReassign={canReassign}
         canPayment={canPayment}
         paymentTransaction={paymentTransaction}
+        formasDoPagamento={formasDoPagamento}
         pagamentoEstornado={pagamentoEstornado}
         comandaId={comandaId}
         treatmentProcedures={treatmentProcedures}

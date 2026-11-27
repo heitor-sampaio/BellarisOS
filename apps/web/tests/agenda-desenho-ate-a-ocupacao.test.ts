@@ -141,3 +141,26 @@ describe('o repasse mede a ocupação pela régua da agenda', () => {
     expect(bateNaOcupacao(ini, ini + 30 * 60_000, oIni, fimDaOcupacao({ ...concluido, status: 'CONFIRMED' }))).toBe(true)
   })
 })
+
+// D16 da 39ª (AG-26: o cancelado fica à mostra, legível): com "Mostrar
+// cancelados", o cartão cancelado ficava SOB o concluído do mesmo horário, com o
+// nome cortado — a grade do dia só dividia "o ativo" com "o solto" (o cancelado
+// e o concluído adiantado eram os dois soltos, e nenhum dividia). O cancelado é
+// mais uma coluna do mesmo horário, como dois agendamentos que se cruzam.
+describe('o cancelado é mais uma coluna do horário', () => {
+  it('o desempate põe o ativo antes do solto no mesmo início', () => {
+    const itens = [
+      { id: 'a-cancelado', t: 0, h: 80, solto: true },
+      { id: 'b-concluido', t: 0, h: 40, solto: true },
+      { id: 'c-ativo', t: 0, h: 80, solto: false },
+    ]
+    const l = ladoALado(itens, x => x.t, x => x.h, (a, b) => Number(a.solto) - Number(b.solto))
+    expect(l.get('c-ativo')).toEqual({ col: 0, total: 3 })
+    expect(new Set([l.get('a-cancelado')!.col, l.get('b-concluido')!.col])).toEqual(new Set([1, 2]))
+  })
+  it('a grade do dia da unidade divide pela mesma conta (ladoALado), não por "ativo × solto"', () => {
+    const fonte = readFileSync(join(__dirname, '..', 'components/branch/agenda-day-view.tsx'), 'utf8')
+    expect(fonte).toMatch(/ladoALado\(events,/)
+    expect(fonte).not.toMatch(/solto\(o\) === euSolto/)
+  })
+})

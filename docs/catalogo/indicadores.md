@@ -178,7 +178,7 @@ Este é o catálogo das regras dos indicadores que valem HOJE: todo número na t
 ## O lucro e a margem (LU)
 
 **LU-01.** O lucro do período é: a receita paga − as despesas operacionais pagas − os insumos consumidos e os produtos vendidos − as taxas da maquininha − as comissões lançadas. As despesas operacionais são as despesas pagas tirando as das categorias "Compra de estoque" e "Comissões", que contam no caixa (os cartões de despesa, o Fechamento, o fluxo, o gráfico) e não no lucro, para nada ser descontado duas vezes.
-- Fonte: o Heitor, 2026-11-04: "pode descontar as duas" (as taxas e as comissões; a "Compra de estoque" fora do lucro é desenho do Claude — ver a Q02)
+- Fonte: o Heitor, 2026-11-04: "pode descontar as duas" (as taxas e as comissões; a "Compra de estoque" fora do lucro é desenho do Claude — ver a Q02); conferida na 39ª simulação (a taxa da maquininha no lucro das redes D e E; o lucro de E, 3.350 − 396 de comissões − 16,20 de taxa = 2.937,80): decisão do Claude, 27/11 (39ª simulação, Decisões D e E), não é defeito
 - Onde: `docs/regras/indicadores.md:225-240`, `:278-282`, `:291-296`; `DEVLOG.md:12803-12806`
 - Antes: KA-19
 
@@ -277,7 +277,7 @@ Este é o catálogo das regras dos indicadores que valem HOJE: todo número na t
 ## A receita dos atendimentos (RA)
 
 **RA-01.** A "receita dos atendimentos" — o ranking por procedimento e por quem atendeu (nos Relatórios e no dashboard), a tabela, o cartão "Receita dos atendimentos" da aba Procedimentos com o "% do Total" e a receita por categoria — é o dinheiro que entrou pelos atendimentos, não o preço dos concluídos: o avulso concluído e não pago não entra, o desconto já sai, e as sessões de pacote, pré-pago e plano entram pela parte delas (RA-04, RA-05). A venda de produto não é atendimento e fica fora. A dica diz que é a conta da execução, e que o "Meu faturamento" é a da venda. O ranking por receita ordena pela receita. A "receita de serviço" (o preço dos atendimentos concluídos, no dia em que aconteceram) é outra conta, com outro nome.
-- Fonte: princípio 3
+- Fonte: princípio 3; o Top 5 que conta o crediário pela entrada recebida: decisão do Claude, 27/11 (39ª simulação, indicadores do Time A: a A09 por R$ 40), pela própria RA-01
 - Onde: `docs/regras/indicadores.md:161-162`, `:1247-1263`, `:1274-1277`, `:1287-1291`
 - Antes: KE-09, KA-14
 
@@ -363,8 +363,8 @@ Este é o catálogo das regras dos indicadores que valem HOJE: todo número na t
 - Onde: `docs/regras/indicadores.md:905-906`, `:918-925`, `:1017-1018`
 - Antes: KD-02
 
-**OC-08.** O "Status dos agendamentos do período" da Visão geral dos Relatórios conta o período INTEIRO, até o fim dele, com a fatia "Em aberto" (os que ainda vão acontecer); as fatias são as mesmas da aba Agenda, e cada uma diz quantos e o percentual.
-- Fonte: decisão do Claude
+**OC-08.** O "Status dos agendamentos do período" da Visão geral dos Relatórios conta o período INTEIRO, até o fim dele, com a fatia "Em aberto" (os que ainda vão acontecer); as fatias são as mesmas da aba Agenda, e cada uma diz quantos e o percentual. Por isso ele não bate com o dashboard, que conta até agora, e os dois não se contradizem.
+- Fonte: decisão do Claude; o dashboard até agora × o Status do período inteiro: decisão do Claude, 27/11 (39ª simulação, indicadores do Time A: 11 × 14)
 - Onde: `docs/regras/indicadores.md:932-938`
 - Antes: KD-05
 

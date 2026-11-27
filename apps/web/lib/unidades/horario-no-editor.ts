@@ -1,4 +1,4 @@
-import { HORARIO_PADRAO, periodoAoAbrirODia, resumoDoHorario, type Horario, type Intervalo } from '@/lib/agenda/horario'
+import { HORARIO_PADRAO, intervalosDoDia, periodoAoAbrirODia, resumoDoHorario, type Horario, type Intervalo } from '@/lib/agenda/horario'
 
 /**
  * O horário do editor em texto, à vista antes de salvar (A25 da 19ª
@@ -11,6 +11,18 @@ const NOMES: [string, string][] = [
   ['1', 'segunda'], ['2', 'terça'], ['3', 'quarta'], ['4', 'quinta'], ['5', 'sexta'], ['6', 'sábado'], ['0', 'domingo'],
 ]
 const junto = (l: string[]) => (l.length < 2 ? l.join('') : `${l.slice(0, -1).join(', ')} e ${l[l.length - 1]}`)
+
+/**
+ * O que vale do horário próprio (AG-10, AG-64; princípio 3): dentro do horário
+ * da unidade. Com a unidade (quem é de uma unidade só, ou da rede de uma
+ * unidade), o resumo do editor mostra o cruzamento — 07:00 com a unidade
+ * abrindo às 08:00 diz 08:00 (decisão do Claude, 27/11, 39ª simulação). Sem
+ * ela (várias unidades: vale o de cada uma), o que a pessoa marcou.
+ */
+export function diasQueValem(dias: Record<string, Intervalo[]>, dentroDe: Horario | null): Record<string, Intervalo[]> {
+  if (!dentroDe) return dias
+  return Object.fromEntries(Object.keys(dias).map(k => [k, intervalosDoDia(dentroDe, { dias }, Number(k))]))
+}
 
 export function resumoDoEditorDeHorario(dias: Record<string, Intervalo[] | undefined>): string {
   const abertos = resumoDoHorario({ dias }, null)

@@ -64,3 +64,50 @@ describe('hoje, a grade não oferece o que já passou (A24 da 6ª simulação)',
     expect(gradeDoCheckout(vinteEQuatro, null, '2026-11-04', '04:00')[0]?.hora, 'a hora cheia ainda vale').toBe('04:00')
   })
 })
+
+// D1 da 39ª (AG-07 e AG-10, princípio 3): os chips da equipe — o Agendar, o
+// Reagendar, as sessões do pacote e do plano, o checkout — ofereciam o início
+// cujo FIM atravessa o almoço, a pausa própria de quem atende ou o fechamento
+// (Drenagem de 50 min às 11:30 com o almoço às 12:00). A conta é a do app da
+// cliente (`computeAvailableSlots`: `slotsDoDia(intervalos, duração)`): o último
+// início é o fim da janela menos a duração.
+describe('a grade só oferece o início em que a duração inteira cabe', () => {
+  const unidade = todoDia(['08:00', '12:00'], ['13:00', '22:00'])
+  const dela = (u: Parameters<typeof gradeDoCheckout>[0], p: Parameters<typeof gradeDoCheckout>[1], duracao: number) =>
+    gradeDoCheckout(u, p, QUARTA, null, duracao).filter(h => h.doProfissional).map(h => h.hora)
+
+  it('50 min não começa às 11:30 com o almoço às 12:00, nem às 21:30 com o fechamento às 22:00', () => {
+    const h = dela(unidade, null, 50)
+    expect(h).toContain('11:00')
+    expect(h).not.toContain('11:30')
+    expect(h).toContain('21:00')
+    expect(h).not.toContain('21:30')
+  })
+  it('a pausa própria de quem atende também corta o fim', () => {
+    const lucivania = todoDia(['08:00', '14:30'], ['15:30', '19:00'])
+    const h = dela(unidade, lucivania, 50)
+    expect(h).toContain('13:30')
+    expect(h).not.toContain('14:00')
+    expect(h).not.toContain('14:30')
+    expect(h).toContain('15:30')
+    expect(h.at(-1)).toBe('18:00')
+  })
+  it('120 min: o último início é o fim menos a duração', () => {
+    const h = dela(unidade, null, 120)
+    expect(h).toEqual(['08:00', '08:30', '09:00', '09:30', '10:00', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00'])
+  })
+  it('é a mesma conta do app da cliente (slotsDoDia com a duração)', async () => {
+    const { slotsDoDia, intervalosDoDia, diaDaSemana } = await import('@/lib/agenda/horario')
+    const lucivania = todoDia(['09:00', '12:00'], ['13:00', '16:00'])
+    expect(dela(unidade, lucivania, 80)).toEqual(slotsDoDia(intervalosDoDia(unidade, lucivania, diaDaSemana(QUARTA)), 80))
+  })
+  it('a tela passa a duração do procedimento à grade, nos três lugares que pedem os horários', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { join } = await import('node:path')
+    const fonte = (f: string) => readFileSync(join(__dirname, '..', f), 'utf8')
+    expect(fonte('components/shared/grade-de-horarios.tsx')).toMatch(/gradeDoCheckout\(horarioDaUnidade, horarioDoProfissional, data, limite, duracaoMin\)/)
+    for (const f of ['components/branch/appointment-modal.tsx', 'components/branch/checkout-wizard.tsx', 'components/branch/treatment-sessions-modal.tsx']) {
+      expect(fonte(f), f).toMatch(/<GradeDeHorarios[\s\S]*?duracaoMin=\{/)
+    }
+  })
+})

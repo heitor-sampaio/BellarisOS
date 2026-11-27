@@ -900,12 +900,15 @@ export function AdminDashboardView({
                         {p.branchName} · {timeSince(p.createdAt)}
                       </p>
                     </div>
-                    <a
-                      href={`/admin/planejamentos/${p.id}`}
-                      style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--warning)', textDecoration: 'none', whiteSpace: 'nowrap' }}
-                    >
-                      Ver o plano →
-                    </a>
+                    {/* D12 da 39ª: a página do plano é do Atendimento em Ver (PL-01). */}
+                    {can('atendimento') && (
+                      <a
+                        href={`/admin/planejamentos/${p.id}`}
+                        style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--warning)', textDecoration: 'none', whiteSpace: 'nowrap' }}
+                      >
+                        Ver o plano →
+                      </a>
+                    )}
                   </div>
                 ))}
                 {totalDePlanos > 5 && (

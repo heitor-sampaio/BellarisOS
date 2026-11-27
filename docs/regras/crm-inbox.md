@@ -786,8 +786,9 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   da aba (`data.caminho`). A Visão geral da ficha diz o pedido do app
   (`[data-pedido-lgpd-da-ficha]`): o em aberto, "responder até …", e o dos
   últimos 30 dias já entregue, "o pacote já está no app dela"; a quem responde,
-  o link "Abrir Configurações → LGPD"; aos outros, "A resposta é em
-  Configurações → LGPD." O pacote da equipe (`requested_via =
+  o link "Abrir Configurações → LGPD"; aos outros, nada sobre a aba (A17 da
+  39ª: a frase "A resposta é em Configurações → LGPD" apontava uma aba que
+  eles não têm). O pacote da equipe (`requested_via =
   'equipe'`) não entra. Prova: `e2e/lgpd-atritos-da-9.spec.ts`.
 - **O plano cancelado diz o cancelamento no pacote** (sobra da F41, 9ª
   simulação): `cancelamento: { em, valorUsado, valorQueCaiu }` no JSON e, no
@@ -894,7 +895,9 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   nasce ABAIXO do botão, nunca no lugar dele: trocado debaixo do cursor, o
   mesmo clique liberava), e a aba mostra os pedidos esperando: "LGPD (n)".
   A lista pede Clientes (Ver): sem o módulo, a aba diz o porquê (era a tela
-  inteira em "sem acesso"). **O que é "o prontuário" se diz igual nos três
+  inteira em "sem acesso") — menos a quem tem o Prontuário em Gerenciar, que
+  vê os pedidos com o prontuário a liberar, e só esses (D2 da 39ª,
+  `pedidosDaAbaLgpd`). **O que é "o prontuário" se diz igual nos três
   lugares** (A35 da 26ª, princípio 3): a caixa do app, a confirmação do
   Liberar e o PDF dizem "a ficha de saúde respondida e o registro de cada
   atendimento (evolução, ficha de atendimento, dores, intercorrências,
@@ -2185,6 +2188,28 @@ o contato junto.
   foi gerado pela equipe sem o prontuário." (`textoDoProntuarioForaDoPacote` e
   `prontuarioNaSolicitacao` com `{ pelaEquipe }`, `processExportRequest`). O
   pedido da cliente segue como era. Prova: `tests/lgpd-pacote-da-equipe-sem-prontuario.test.ts`.
+
+## Correções de 27/11 na LGPD (39ª; decisões do Claude)
+
+- **Quem libera o prontuário vê o pedido sem Clientes** (D2; LG-06, LG-08): o
+  aviso chamava quem tem o Prontuário em Gerenciar, e a aba dela escondia tudo
+  ("o cargo precisa de Clientes (Ver)"). Sem Clientes em Ver e com o
+  Prontuário em Gerenciar, a aba lista os pedidos com o prontuário a liberar,
+  com o Liberar/Negar (`pedidosDaAbaLgpd`, `lib/lgpd/pedidos-da-aba.ts`; a
+  `listDataRequests` filtra no banco). O resto da lista segue pedindo
+  Clientes em Ver (Q08). Prova: `tests/lgpd-aba-de-quem-libera-o-prontuario.test.ts`.
+- **As fotos vão no pacote, com o link** (D14; LG-12): vinham só contadas
+  ("fotos: 1"). Cada foto clínica viva da ficha vai com um link assinado do
+  arquivo, com a validade do pacote (30 dias): a do atendimento sob ele
+  (`fotosDoAtendimento`; no PDF, 'Foto "Antes" (…): <link>'), as outras em
+  "Prontuário — fotos anexadas à ficha" (`fotosAnexadasAFicha`). O arquivo que
+  não existe mais diz "o arquivo não foi encontrado" (`lib/lgpd/fotos.ts`). A
+  contagem (`fotos`) continua.
+- **A ficha de saúde não se repete no JSON** (D14; LG-12): a do prontuário
+  (`general_anamnesis`, versão 2) ia como `anamneseGeral` E, pelo pedido
+  respondido, em `fichasDeSaude`. Ela entra em `fichasDeSaude` pela regra do
+  PDF (`fichasDeSaudeDoProntuario`), uma vez; a ficha antiga (sem a versão 2)
+  segue em `anamneseGeral`. Prova: `tests/lgpd-fotos-e-ficha-no-pacote.test.ts`.
 
 ## O que nunca fazer aqui
 

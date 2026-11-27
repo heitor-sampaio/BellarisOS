@@ -49,3 +49,15 @@ describe('D14: a ocupação da Minha agenda diz como é contada', () => {
     expect(f).toMatch(/\{DEFINICOES\.ocupacao\.texto\}/)
   })
 })
+
+// D9 da 39ª (AG-23: "no dia em que ela não atende, 'Você não atende neste
+// dia'"): com um encaixe marcado na folga, a Minha agenda mostrava o cartão e
+// não dizia que ela não atende — a frase só vinha com o dia vazio. A frase vale
+// pelo DIA, com ou sem cartão.
+describe('"Você não atende neste dia" também com o encaixe no dia', () => {
+  it('a frase do dia não depende de o dia estar vazio', () => {
+    const tela = fonte('components/branch/professional-agenda.tsx')
+    const comCartao = tela.match(/\{naoAtende && dayEvents\.length > 0 && \([\s\S]*?data-nao-atende-no-dia[\s\S]*?Você não atende neste dia/)
+    expect(comCartao, 'com cartão no dia, a frase aparece').not.toBeNull()
+  })
+})
