@@ -81,6 +81,17 @@ export function diasAteOVencimento(vencimento: Date | string, agora: Date = new 
   return Math.round(emDias(diaDe(vencimento)) - emDias(dayKeyTZ(agora, fuso)))
 }
 
+/**
+ * O em aberto SEM vencimento (A4 da 36ª, princípio 3): o "A receber" sem data
+ * nasce com `due_date` nulo, e a linha mostrava a data de criação como se
+ * fosse a do lançamento (e o app, "Vence" nesse dia). A linha diz
+ * `SEM_VENCIMENTO`. O período continua contando pela criação (FN-09).
+ */
+export const SEM_VENCIMENTO = 'Sem vencimento'
+export function emAbertoSemVencimento(l: { pago: boolean; vencimento: string | null | undefined; estornado?: boolean }): boolean {
+  return !l.pago && !l.estornado && !l.vencimento
+}
+
 /** "Vencida em 05/11", "Vence hoje" ou "Vence 05/12/2026" — a mesma frase em toda tela. */
 export function textoDoVencimento(vencimento: string | null | undefined, agora: Date = new Date(), fuso: string = BUSINESS_TZ): string | null {
   const s = situacaoDoVencimento(vencimento, agora, fuso)

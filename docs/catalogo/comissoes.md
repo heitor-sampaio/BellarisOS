@@ -271,8 +271,8 @@ Este é o catálogo das regras das Comissões que valem HOJE: onde ficam e quem 
 - Onde: `docs/regras/comissoes.md:249-250`, `:342`, `:428`
 - Antes: KA-28
 
-**CB-10.** A comissão guarda a regra e a configuração do dia em que nasceu (percentual, o que sai da base, pontos): mudar a configuração vale para os próximos atendimentos e vendas, não reescreve os já concluídos.
-- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
+**CB-10.** A comissão guarda a regra e a configuração do dia em que nasceu (percentual, o que sai da base, pontos): mudar a configuração vale para os próximos atendimentos e vendas, não reescreve os já concluídos. A do atendimento nasce na conclusão, mesmo quando espera o pagamento (CN-02): o concluído antes da mudança e pago depois fica com a regra de antes.
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele); o concluído antes da mudança e pago depois: decisão do Claude, 27/11 (36ª, Decisão B)
 - Onde: `docs/regras/comissoes.md:567-569`
 - Antes: KB-22
 
@@ -330,8 +330,8 @@ Este é o catálogo das regras das Comissões que valem HOJE: onde ficam e quem 
 - Onde: `docs/regras/comissoes.md:12-17`, `:26-31`, `:56-59`
 - Antes: KA-01, KA-07
 
-**CN-02.** Só espera o que a cliente ainda deve à rede. No crediário (entrada mais parcelas), a comissão sai quando entra a última parcela. O atendimento avulso concluído sem pagamento espera o pagamento. O avulso pago em duas formas fica pago com as duas.
-- Fonte: o Heitor, 2026-11-01: "f2 ok, concordamos"
+**CN-02.** Só espera o que a cliente ainda deve à rede. No crediário (entrada mais parcelas), a comissão sai quando entra a última parcela. O atendimento avulso concluído sem pagamento espera o pagamento. O avulso pago em duas formas fica pago com as duas. Não há receber parte de uma parcela: o "pago em parte" (CR-08 de Vendas e financeiro) vem de um estorno, e a comissão segue esperando até a parcela ficar paga inteira.
+- Fonte: o Heitor, 2026-11-01: "f2 ok, concordamos"; a parcela paga em parte: decisão do Claude, 27/11 (36ª, Decisão C), pela própria CN-02 e pela CN-03
 - Onde: `docs/regras/comissoes.md:18-22`, `:31-34`
 - Antes: KA-02
 

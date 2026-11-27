@@ -310,7 +310,10 @@ test('D9 da 13ª: a pergunta do CNPJ não apaga o Número nem desmarca o Domingo
   }
 })
 
-test('A1 da 13ª: Cargos → Novo diz que o cargo novo começa sem acesso, sem a matriz de outro cargo', async ({ browser }) => {
+// A2 da 36ª (o Heitor, 26/11: "isso não é ser intuitivo, é ser explicativo e não isso que eu quero. Ser intuitivo é
+// justamente o contrario, ser facil de usar mesmo sem muitas explicações."): o cartão "Cargo novo: começa sem acesso
+// nenhum. Dê o nome…" saiu. O "Novo" abre o campo do nome com o "Criar", sem a matriz de outro cargo.
+test('A1 da 13ª: Cargos → Novo abre o nome e o Criar, sem a matriz de outro cargo', async ({ browser }) => {
   const b = db()
   const dona = await criarMembro(`f70cn${marca}`, { tenant: rede!.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
   await b.from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede!.tenantId)
@@ -319,7 +322,9 @@ test('A1 da 13ª: Cargos → Novo diz que o cargo novo começa sem acesso, sem a
       await p.goto('/admin/settings?tab=permissions')
       await expect(p.getByRole('button', { name: 'Salvar acessos' })).toBeVisible({ timeout: 20_000 })
       await p.getByRole('button', { name: 'Novo' }).click()
-      await expect(p.getByText('Cargo novo: começa sem acesso nenhum')).toBeVisible()
+      await expect(p.getByRole('textbox', { name: 'Nome do cargo' })).toBeFocused()
+      await expect(p.getByRole('button', { name: 'Criar', exact: true })).toBeVisible()
+      await expect(p.getByText('Cargo novo: começa sem acesso nenhum')).toHaveCount(0)
       await expect(p.getByRole('button', { name: 'Salvar acessos' })).toBeHidden()
       await p.getByRole('button', { name: 'Cancelar' }).click()
       await expect(p.getByRole('button', { name: 'Salvar acessos' })).toBeVisible()

@@ -63,6 +63,7 @@ import { AcoesDoLancamentoDaFicha } from '@/components/shared/acoes-do-lancament
 import { textoDaOrigemDoCredito } from '@/lib/creditos/origem'
 import { mesDeClienteDesde } from '@/lib/clientes/cliente-desde'
 import { isoDaLinha } from '@/lib/clientes/ordem-das-transacoes'
+import { emAbertoSemVencimento, SEM_VENCIMENTO } from '@/lib/financeiro/vencimentos'
 import { AvisoDoPacoteEmAberto } from '@/components/shared/aviso-do-pacote-em-aberto'
 import type { PacoteVencidoDaFicha } from '@/lib/pacotes/regras'
 import { useFuso } from '@/components/shared/fuso'
@@ -1390,7 +1391,10 @@ function FinanceiroTab({
                   <tr key={t.id} data-lancamento={t.id} data-transacao-da-ficha data-vencida-da-ficha={vencidaEmDestaque ? '' : undefined}
                     style={{ borderBottom: isLast ? 'none' : '1px solid var(--hairline)', background: vencidaEmDestaque ? 'var(--danger-soft)' : undefined }}>
                     <td data-label="Data" style={{ padding: '12px 16px', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                      {!t.isPaid && t.dueDate
+                      {/* A4 da 36ª (princípio 3): o em aberto sem data diz que não tem, e não a criação. */}
+                      {emAbertoSemVencimento({ pago: t.isPaid, vencimento: t.dueDate, estornado: t.estornada })
+                        ? SEM_VENCIMENTO
+                        : !t.isPaid && t.dueDate
                         // O vencimento é a âncora do meio-dia de Brasília: o dia dele se lê por essa régua (formatarNoFuso, o fuso padrão).
                         ? `Vence ${formatarNoFuso(t.dueDate, 'dd/MM/yyyy')}`
                         // D4 da 28ª: o pago, no dia em que o dinheiro entrou (RE-01, princípio 5) — a mesma data da ordem.

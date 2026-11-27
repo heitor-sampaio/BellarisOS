@@ -18,8 +18,11 @@ export function realiza(quemRealiza: readonly string[] | null | undefined, profi
   return !quemRealiza || quemRealiza.length === 0 || quemRealiza.includes(profissionalId)
 }
 
-/** A recusa do servidor, a mesma no app e no repasse. */
-export const NAO_REALIZA = 'Esta profissional não realiza este procedimento.'
+/** A recusa do servidor, a mesma no app e no repasse (sem cargo no texto: CLAUDE.md §1, o Heitor, 13/11). */
+export const NAO_REALIZA = 'Quem você escolheu não realiza este procedimento.'
+
+/** O aviso da agenda da equipe (PC-14), sem servidor: as telas o importam de `aviso-de-quem-realiza`. */
+export { avisoDeQuemNaoRealiza } from '@/lib/procedimentos/aviso-de-quem-realiza'
 
 /** Quem realiza cada procedimento (vazio = todas). Os ids vão no corpo de uma consulta por lote. */
 export async function quemRealizaOsProcedimentos(admin: Admin, procedimentos: string[]): Promise<Map<string, string[]>> {

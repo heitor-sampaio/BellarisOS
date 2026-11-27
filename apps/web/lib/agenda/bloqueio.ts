@@ -1,5 +1,6 @@
 import { partsInTZ, dayKeyTZ } from '@/lib/datetime'
 import { LIMITE_DE_DIAS, acimaDeCemAnos, avisoAcimaDoComum } from '@/lib/acima-do-comum'
+import { fimDaOcupacao, bateNaOcupacao } from '@/lib/appointments/ocupacao'
 
 /**
  * O bloqueio pontual da agenda (decisão 3 do Heitor, 7ª simulação,
@@ -92,6 +93,20 @@ export function recusaDoHorarioBloqueado(frases: string[]): string | null {
 export function avisoDosMarcadosNoBloqueio(quantos: number): string | null {
   if (!quantos) return null
   return `${quantos === 1 ? 'Já há 1 atendimento marcado' : `Já há ${quantos} atendimentos marcados`} perto desse período: ${quantos === 1 ? 'ele continua' : 'eles continuam'} na agenda. Remarque se precisar.`
+}
+
+/**
+ * Quantos dos atendimentos já marcados BATEM no período do bloqueio (AG-20: o
+ * aviso diz quantos continuam nele) — os que se sobrepõem, pela duração de
+ * cada um (`fimDaOcupacao`, `bateNaOcupacao`). O que termina antes do início
+ * ou começa depois do fim não conta (D3 da 36ª: o das 10:00 entrava no
+ * bloqueio das 13–16, pela janela das 12 h antes).
+ */
+export function quantosBatemNoBloqueio(
+  marcados: { scheduled_at: string; duration_min: number | null; status?: string | null; completed_at?: string | null }[],
+  iniMs: number, fimMs: number,
+): number {
+  return marcados.filter(a => bateNaOcupacao(iniMs, fimMs, new Date(a.scheduled_at).getTime(), fimDaOcupacao(a))).length
 }
 
 /**

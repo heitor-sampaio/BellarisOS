@@ -1109,7 +1109,8 @@ export async function criarOportunidade(
   const atribuicao = (c.attribution ?? {}) as Record<string, string | undefined>
   const insert: Record<string, unknown> = {
     tenant_id:       ctx.tenantId!,
-    branch_id:       c.branch_id ?? null,
+    // A oportunidade é sempre da rede (crm-inbox.md; OP-10), como a da "Nova oportunidade" — não a unidade da conversa.
+    branch_id:       null,
     // A thread onde nasceu. A dona é a pessoa (`contato_id`).
     conversation_id: conversationId,
     contato_id:      c.contato_id,

@@ -60,10 +60,14 @@ describe('A3/A4/A5: a tela de Cargos', () => {
     expect(f).toContain('const escondido = !available || (travado && !active)')
     expect(f).toMatch(/travado && active && <Lock/)
   })
-  it('A4: o texto aponta a lista de cargos, e o campo tem nome', () => {
+  it('A4: o campo tem nome (o texto que apontava a lista saiu na A2 da 36ª)', () => {
     const f = fonte('components/admin/roles-editor.tsx')
     expect(f).not.toContain('Dê o nome ao lado')
-    expect(f).toContain('Dê o nome na lista de cargos e clique em Criar')
+    // A2 da 36ª (o Heitor, 26/11: "isso não é ser intuitivo, é ser explicativo e não isso que eu quero.
+    // Ser intuitivo é justamente o contrario, ser facil de usar mesmo sem muitas explicações."):
+    // o cartão que explicava o "Novo" saiu; o campo com nome e o "Criar" ficam onde se clicou.
+    expect(f).not.toContain('Dê o nome na lista de cargos e clique em Criar')
+    expect(f).not.toContain('Cargo novo: começa sem acesso nenhum')
     expect(f).toContain('aria-label="Nome do cargo"')
   })
   it('A5: o resumo diz de onde vêm a venda e o Fechamento do dia', async () => {

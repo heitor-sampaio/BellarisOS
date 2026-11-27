@@ -6,6 +6,7 @@ import { gravar, ler } from '@/lib/db'
 import { saldoNaPrateleira } from '@/lib/estoque/saldo-em-texto'
 import { medidaNoPlural } from '@/lib/estoque/medidas'
 import { recusaDoCustoDaEntrada, recusaDoEstoqueAcimaDoRegistro } from '@/lib/estoque/limites-do-registro'
+import { avisarOMinimoDepois } from '@/lib/estoque/aviso-do-minimo'
 
 /**
  * ENTRADA e AJUSTE de estoque — os núcleos que a tela de estoque (actions/
@@ -183,6 +184,8 @@ export async function entradaDeEstoqueCore(admin: Admin, ctx: TenantContext, e: 
     p_fornecedor: fornecedor, p_nota_fiscal: e.notaFiscal?.trim() || null,
     p_marca: marca,
   }), 'registrar a entrada de estoque') as number
+  // D1 da 36ª: a linha que nasce abaixo do mínimo é um cruzamento (o gatilho o põe na fila).
+  avisarOMinimoDepois(ctx.tenantId!)
   return { ok: true, saldo: Number(saldo) }
 }
 
@@ -235,5 +238,7 @@ export async function ajusteDeEstoqueCore(admin: Admin, ctx: TenantContext, a: {
     p_motivo: a.motivo.trim(), p_autor: ctx.internalUserId,
     p_lote: a.loteId || null, p_lote_numero: null, p_lote_validade: a.loteValidade || null,
   }), 'registrar o ajuste de estoque') as number
+  // D1 da 36ª: o aviso de cada cruzamento do mínimo sai logo depois (a rotina é a rede de segurança).
+  avisarOMinimoDepois(ctx.tenantId!)
   return { ok: true, de: Number(anterior) }
 }

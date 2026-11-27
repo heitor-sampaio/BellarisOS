@@ -15,6 +15,7 @@ import { recusaDaVendaNaUnidade } from '@/lib/vendas/unidade-da-venda'
 import { getTenantContext, alcancaUnidade, podeReceber } from '@/lib/auth'
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { avisarOMinimoDepois } from '@/lib/estoque/aviso-do-minimo'
 import { ler, mensagemDoErro } from '@/lib/db'
 import { quemVendeu, type QuemVendeuDaTela } from '@/lib/vendas/equipe-da-venda'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
@@ -173,6 +174,8 @@ async function venderProdutoUmaVez(
       if (error.code === 'P0001' || error.code === 'P0002') return { error: error.message }
       throw new Error(`Não consegui vender o produto: ${error.message}`)
     }
+    // A venda pode cruzar o mínimo: o aviso sai já (D1 da 36ª; a rotina é a rede de segurança).
+    avisarOMinimoDepois(ctx.tenantId!)
 
     revalidatePath('/admin/clients/[id]', 'page')
     revalidatePath('/[slug]/clients/[id]', 'page')

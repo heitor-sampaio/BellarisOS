@@ -257,6 +257,12 @@ interface Props {
   quemConclui?:          string[] | null
   /** A17 da 31ª: quem vê o clínico e não o escreve lê, na falta da ficha de saúde, quem a responde. Nulo: não se aplica. */
   quemRespondeAFicha?:   string[] | null
+  /**
+   * AT-03/AT-05: a quem conclui sem VER o clínico (sem o Prontuário), o que
+   * falta nas fichas — só o nome das perguntas, do servidor — e quem responde.
+   * Nulo: quem vê a tela vê o clínico (a conta é a da tela), ou não conclui.
+   */
+  faltaSemVerOClinico?:  { saude: string[]; ficha: string[]; quem: string[] } | null
   /** A10 da 19ª: quem não marca a chegada lê quem marca (quemMarcaAChegada). Nulo: não se aplica. */
   quemMarcaAChegada?:    string[] | null
   /** A19 da 14ª: quem estorna (o Financeiro em Gerenciar, de todos) vê o "Estornar" ao lado do Recibo — a janela do Financeiro. */
@@ -319,8 +325,10 @@ const ONDE_NA_FICHA = 'Na ficha de atendimento'
  * o "Confirmar conclusão" ("tudo que é obrigatório barra"). Os campos já estão
  * marcados na página; "Responder agora" fecha e deixa a tela no primeiro.
  */
-function OQueFaltaParaFinalizar({ grupos, onFechar, quemResponde = null }: {
+function OQueFaltaParaFinalizar({ grupos, onFechar, quemResponde = null, leAFicha = true }: {
   grupos: GrupoQueFalta[]; onFechar: () => void
+  /** Quem vê a janela LÊ a ficha de saúde (o Prontuário em Ver)? Sem ele, os nomes vêm do servidor (AT-03). */
+  leAFicha?: boolean
   /**
    * A17 da 31ª (princípio 7): quem LÊ o prontuário e não o escreve (sem o
    * Prontuário em Gerenciar) não responde a ficha de saúde — a trava fica, e a
@@ -352,7 +360,7 @@ function OQueFaltaParaFinalizar({ grupos, onFechar, quemResponde = null }: {
           </p>
           {faltaNaSaude && (
             <p data-quem-responde-a-ficha role="note" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', lineHeight: 'var(--leading-snug)' }}>
-              Você lê a ficha de saúde, mas não a responde. {textoDeQuemRespondeAFicha(quemResponde)}
+              {leAFicha ? 'Você lê a ficha de saúde, mas não a responde. ' : ''}{textoDeQuemRespondeAFicha(quemResponde)}
             </p>
           )}
           {faltaNaFicha && (
@@ -966,7 +974,7 @@ export function AppointmentSession({
   professionals, history, branchId, slug,
   canCheckin, canManage, ehDaProfissional = false, canEditRecords, canViewRecords = true, fotosDoAtendimento = null, anotacoes = null, versoesDoRegistro = [], podeAnotar = false, portalNoPlano = false, canReassign, canPayment, paymentTransaction, pagamentoEstornado = null, comandaId = null,
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
-  isPartOfPlan = false, isPackageSession = false, pacoteDeFora = false, sessaoDoPacote = null, isPrePago = false, podeReceber = false, quemEstorna = null, quemRecebe = null, quemConclui = null, quemRespondeAFicha = null, quemMarcaAChegada = null, podeEstornar = false, planoEmAberto = null, documentos = null, podeMontarPlano = true, montaPlanoNaUnidade = false, podeInjetaveis = true, podeVerPlanos = false, podeGerenciarAgenda = false,
+  isPartOfPlan = false, isPackageSession = false, pacoteDeFora = false, sessaoDoPacote = null, isPrePago = false, podeReceber = false, quemEstorna = null, quemRecebe = null, quemConclui = null, quemRespondeAFicha = null, faltaSemVerOClinico = null, quemMarcaAChegada = null, podeEstornar = false, planoEmAberto = null, documentos = null, podeMontarPlano = true, montaPlanoNaUnidade = false, podeInjetaveis = true, podeVerPlanos = false, podeGerenciarAgenda = false,
 }: Props) {
   const router   = useRouter()
   // Portal de onde se está vendo o atendimento — `slug` é o endereço da
@@ -1216,7 +1224,19 @@ export function AppointmentSession({
    * decide é o servidor, e a recusa dele aparece na janela.
    */
   function conferirObrigatorias(): { mensagem: string; grupos: GrupoQueFalta[] } | null {
-    if (!canViewRecords) return null
+    // AT-03/AT-05: quem não vê o clínico não tem os campos na tela — o que
+    // falta vem do servidor (só o nome das perguntas), e a janela diz antes do
+    // "Confirmar conclusão", com quem responde. A recusa do servidor fica.
+    if (!canViewRecords) {
+      const f = faltaSemVerOClinico
+      if (!f || (!f.saude.length && !f.ficha.length)) return null
+      const grupos: GrupoQueFalta[] = []
+      if (f.saude.length) grupos.push({ onde: ONDE_NA_SAUDE, rotulos: f.saude })
+      if (f.ficha.length) grupos.push({ onde: ONDE_NA_FICHA, rotulos: f.ficha })
+      const mensagem = grupos.map(g => `${g.onde.toLowerCase()}: ${g.rotulos.map(r => `"${r}"`).join(', ')}`).join('; ')
+      const quem = f.saude.length ? ` ${textoDeQuemRespondeAFicha(f.quem)}` : ''
+      return { mensagem: `Falta responder ${mensagem}.${quem}`, grupos }
+    }
     // TODAS de uma vez (A30 da 6ª simulação: era uma por clique). A tela rola
     // até a primeira da página — a anamnese, se faltar algo nela.
     const anamnese = (anamneseDaAvaliacao.current ?? anamneseDoCartao.current)?.validar()
@@ -1651,7 +1671,7 @@ export function AppointmentSession({
           desistencia={status === 'IN_PROGRESS' && canManage ? { insumos: confirmedInsumos, registraClinico: canEditRecords } : null}
           estoque={availableProducts} />
       )}
-      {oQueFalta   && <OQueFaltaParaFinalizar grupos={oQueFalta} onFechar={() => setOQueFalta(null)} quemResponde={canEditRecords ? null : quemRespondeAFicha ?? []} />}
+      {oQueFalta   && <OQueFaltaParaFinalizar grupos={oQueFalta} onFechar={() => setOQueFalta(null)} quemResponde={canEditRecords ? null : quemRespondeAFicha ?? faltaSemVerOClinico?.quem ?? []} leAFicha={canViewRecords} />}
       {showFinish  && (
         <FinishModal
           appointmentId={appointment.id} slug={slug}
@@ -2442,7 +2462,7 @@ export function AppointmentSession({
                     // A31 da 6ª simulação: sem o prontuário a anamnese nem é lida
                     // (`anamnesis` vem nula) — e a recepção recebia o formulário
                     // inteiro em branco, como se a cliente nunca tivesse respondido.
-                    canViewRecords && <AnamneseNaAvaliacao ref={anamneseDaAvaliacao} anamnese={anamnesis} fichaAtual={fichaPreAtendimento}
+                    canViewRecords && <AnamneseNaAvaliacao ref={anamneseDaAvaliacao} anamnese={anamnesis} fichaAtual={fichaPreAtendimento} clientId={client.id}
                       key={anamneseDoRascunho ? 'rascunho' : 'gravada'} rascunho={anamneseDoRascunho} onMudou={setAnamneseDigitada} />
                   )}
 

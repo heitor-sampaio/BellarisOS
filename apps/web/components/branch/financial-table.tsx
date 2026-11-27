@@ -18,7 +18,7 @@ import { SituacaoDoEmAberto } from '@/components/shared/situacao-do-em-aberto'
 import { PagarDespesa } from '@/components/shared/pagar-despesa'
 import { RemarcarVencimento, VencimentoRemarcado, type RemarcacaoDoVencimento } from '@/components/shared/remarcar-vencimento'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
-import { diaSemHora } from '@/lib/financeiro/vencimentos'
+import { diaSemHora, emAbertoSemVencimento, SEM_VENCIMENTO } from '@/lib/financeiro/vencimentos'
 import { resultadoDaLista } from '@/lib/metrics/resultado'
 import { csvDosLancamentos, linhaDoLancamento, baixarCsv } from '@/lib/financeiro/csv-dos-lancamentos'
 import { juntarAsFormasDaParcela, formasDaParcelaEmTexto, posicaoNaParcela } from '@/lib/financeiro/formas-da-parcela'
@@ -331,8 +331,13 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
                     }}>
                       {/* Data */}
                       <td data-label="Data" data-par style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
-                        {/* O em aberto mostra o VENCIMENTO (cada parcela no seu dia); o pago, o dia do pagamento. */}
-                        {!tx.is_paid && tx.due_date ? (
+                        {/* O em aberto mostra o VENCIMENTO (cada parcela no seu dia); o pago, o dia do pagamento.
+                            A4 da 36ª (princípio 3): o em aberto sem data diz que não tem, e não a criação. */}
+                        {emAbertoSemVencimento({ pago: tx.is_paid, vencimento: tx.due_date, estornado: isReversed }) ? (
+                          <p data-sem-vencimento style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text-muted)' }}>
+                            {SEM_VENCIMENTO}
+                          </p>
+                        ) : !tx.is_paid && tx.due_date ? (
                           <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text-muted)' }}>
                             Vence {new Date(tx.due_date).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
                           </p>

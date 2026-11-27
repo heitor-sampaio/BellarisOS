@@ -1774,6 +1774,85 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-27 (2) — A 36ª simulação e as correções dela
+
+O laço segue (o Heitor, 25/11: "quando acabar essa roda já segue as outras e assim vai"). Cinco redes novas, sem conta
+da plataforma (o Heitor, 26/11: "Sem a conta"). Os temas: a agenda de uma semana cheia (Studio Petréa, Tangará da Serra,
+UTC−4); a equipe que muda ao longo do mês em duas unidades (Rede Bauhínia, Itabuna e Ilhéus); o crediário e o a receber
+ao longo dos meses (Espaço Alpínia, Mossoró); os avisos e quem os recebe (Ateliê Capuchinha, Divinópolis); e os
+cadastros fora do comum — passaporte, RNE, a menor, a mesma pessoa em duas redes (Instituto Kalanchoe, Parnaíba, e Rede
+Pacová, Crato). O dinheiro e os números bateram nos cinco times, a ocupação ao minuto. Foram 8 defeitos confirmados, todos
+novos e nenhum de segurança nem de dinheiro gravado errado, e 6 atritos. Sete defeitos foram corrigidos; um (D6) voltou
+ao Heitor (R24). Salvo onde se diz o contrário, as decisões são do Claude (27/11), pelos princípios e pelo catálogo.
+
+**O que mudou no sistema.**
+- **Agenda e atendimento.**
+  - Quem tem o Atendimento em Gerenciar sem o Prontuário sabe ANTES do "Confirmar conclusão" que falta a ficha de saúde
+    obrigatória: o servidor manda só os nomes das perguntas que faltam e quem responde, nunca as respostas (D2, AT-03,
+    `oQueFaltaSemOClinico`). A recusa do servidor continua.
+  - A ficha de saúde do atendimento se salva sem concluir, para quem tem o Prontuário em Gerenciar (o "Salvar" do cartão
+    "Ficha de saúde", pela action da ficha da cliente; A3). Só "Salvar": ao lado está o "Salvar ficha de atendimento".
+  - O aviso do "Bloquear horário" conta só os atendimentos que se sobrepõem ao período, pela duração de cada um (D3,
+    AG-20, `quantosBatemNoBloqueio`); contava tudo o que começava até 12 h antes.
+  - "Trocar profissional" oferece também quem não realiza o procedimento, e avisa com o texto do novo agendamento (D4,
+    PC-14: avisa, não recusa). Os textos com nome de cargo saíram (CLAUDE.md §1, o Heitor, 13/11): "Quem você escolheu
+    não realiza este procedimento.", "Quem vai atender", "Agora quem atende é X." (Q33).
+  - O "Quem realiza" vazio de dois procedimentos da rede A não era do código: a criação grava o que se marca
+    (`procedure-form.tsx`, `addProcedureInterno`, `gravarQuemRealiza`).
+- **Dinheiro e app da cliente.**
+  - A parcela paga em duas formas é uma linha só também no Financeiro e no Histórico do app, com um recibo por forma
+    (D8, CR-07, `formaERecibosDaLinha`).
+  - O valor em aberto sem vencimento diz "Sem vencimento" no lugar da data, no Financeiro, na ficha e no app — no app
+    ele ainda virava "Vencida" no dia seguinte ao de criado (A4, princípio 3; a contagem no período pela criação, FN-09,
+    não muda).
+  - O telefone de fora fica como foi escrito no Perfil do app (D5, CL-04, `maskPhone`).
+  - O Histórico do app lê as listas inteiras (`lerTodas`): cortava em 50 atendimentos, 50 pagamentos e 30 documentos.
+  - As formas de uma parcela vêm na ordem do valor, a maior primeiro: as cópias nascem com a mesma criação, a ordem lida
+    empatava, e a mesma parcela lia "Dinheiro + Pix" numa tela e "Pix + Dinheiro" noutra (o E2E novo pegou).
+- **O aviso do estoque mínimo sai a cada cruzamento, logo depois do movimento** (D1, ES-30/NE-06, `20261215300001`).
+  Um gatilho em `branch_product_stock` põe cada ENTRADA no mínimo (a régua da tela) na fila
+  `estoque_cruzamentos_do_minimo`; o envio lê a fila e reivindica cada linha antes de avisar, pelo `after()` das actions
+  que mexem no estoque (entrada, ajuste, perda, transferência, os desfazer, a conclusão, a desistência, a venda e o
+  brinde do voucher); a rotina de hora em hora é a rede de segurança. Repor acima do mínimo rearma. Era a rotina
+  sozinha, pelo estado da linha: dois cruzamentos na mesma hora viravam um aviso.
+- **Auditoria.** O crediário sem entrada diz "Lançou 3 parcelas no crediário (R$ 300,00)" (D7, AD-16); o repasse da
+  oportunidade diz "Repassou a oportunidade de X a Fulano" (A5, `20261215400001`: o gatilho de `leads` guarda o
+  responsável). A mesma migration corrigiu a etapa: o gatilho listava `stage_id` e `funnel_id`, que não existem em
+  `leads`, e por isso "Mudou a etapa" nunca dizia "de A para B" (AD-21).
+- **A oportunidade aberta pela conversa é da rede**, como a da "Nova oportunidade" (OP-10): levava a unidade da conversa.
+- **Configurações e Cargos sem as notas que explicavam a tela** (A1, A2; o Heitor, 26/11: "isso não é ser intuitivo, é
+  ser explicativo"): saíram "Você vê a aba LGPD (vem de…)" e o cartão "Cargo novo: começa sem acesso nenhum…".
+- **Catálogo:** as decisões do Claude da 36ª; NC-05 diz "quando a rede tem mais de uma unidade"; PO-04 cobre a recusa
+  com CPF e com outro documento; ES-30/NE-06 dizem quando o aviso do mínimo sai, e AG-20 o que o aviso do bloqueio conta.
+
+**Testes alterados ou apagados** (todos pela fala do Heitor que mudou a regra):
+- `e2e/agenda-atritos-da-8.spec.ts` (duas linhas): o rótulo "Nova profissional" virou "Quem vai atender" — CLAUDE.md §1,
+  o Heitor, 13/11: "não quero mais tu falando nomes de cargos como se fossem cargos fixos".
+- `tests/atritos-da-24-cargos-atendimento-app.test.ts` (A4), `e2e/permissoes-f70.spec.ts` ("A1 da 13ª"),
+  `tests/configuracoes-abas-do-acesso.test.ts` (três casos que exigiam a nota) e, APAGADO,
+  `tests/configuracoes-nota-das-abas-da-rede-toda.test.ts` (só testava o texto da nota) — o Heitor, 26/11: "isso não é
+  ser intuitivo, é ser explicativo e não isso que eu quero. Ser intuitivo é justamente o contrario, ser facil de usar
+  mesmo sem muitas explicações."
+- O D6 (o botão do Desativar dizer "Desativar e repassar 1 de 3" no repasse um a um) mudaria
+  `tests/atritos-da-23-cargos-atendimento-app.test.ts`, que exige "Desativar" — a regra (EQ-16) só tem o princípio 3,
+  anterior ao teste: desfeito, e foi à página (R24).
+
+**Sugestões novas:** nº 127–142 (trocar a sala sem remarcar, a ocupação do período, receber várias parcelas de uma vez,
+o "(inativo)" na grade, a Auditoria do desativar e do "Unificou", o recibo com o nome do dia, o aviso da assinatura do
+termo, a ficha rápida com nascimento, o aviso ao dar acesso a uma menor, entre outras).
+
+**Para o Heitor:** R24 (o número no botão do Desativar no repasse um a um). R22 e R23 seguem abertas.
+
+**A completa** (contra o build): 2.683 casos passaram e 1 falhou — regressão da rodada: o botão novo chamava-se
+"Salvar ficha de saúde", e o `getByRole('button', { name: 'Salvar ficha' })` de
+`e2e/atendimento-ficha-planejador-injetaveis.spec.ts` passou a achar dois botões. O teste ficou; o botão virou "Salvar",
+dentro do cartão. O spec inteiro passou depois (inclusive os 7 casos que a falha impediu de rodar), e o E2E novo também.
+
+**Na produção:** `20261215300001` e `20261215400001`, uma por vez, conferidas depois (a fila com RLS e as três
+restritivas, o gatilho, a função fora da sessão, e um update de estoque passando pelo gatilho numa transação desfeita;
+os gatilhos de `leads` com `status,crm_stage_id,owner_id`). A do estoque entrou ANTES do código: a rotina antiga segue
+valendo até o deploy, e o envio novo não repete o que ela já avisou.
+
 ### 2026-11-27 — A 35ª simulação e as correções dela
 
 O laço segue (o Heitor, 25/11: "quando acabar essa roda já segue as outras e assim vai"). Cinco redes novas, sem conta

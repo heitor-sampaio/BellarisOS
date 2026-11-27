@@ -2,7 +2,7 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ClipboardList, Edit2, X } from 'lucide-react'
+import { CheckCircle2, ClipboardList, Edit2, Save, X } from 'lucide-react'
 import { AnamnesisFormRenderer, type AnamnesisFormHandle, type AnamnesisAnswers, type ValidacaoDaFicha } from '@/components/branch/anamnesis-form-renderer'
 import { salvarAnamneseGeral } from '@/actions/pre-atendimento'
 import { quemRespondeu, anamneseRespondida, type AnamneseGeral, type FichaDePreAtendimento } from '@/lib/anamnese-geral'
@@ -182,14 +182,41 @@ export interface AnamneseNaAvaliacaoHandle {
 export const AnamneseNaAvaliacao = forwardRef<AnamneseNaAvaliacaoHandle, {
   anamnese: AnamneseGeral | null
   fichaAtual: FichaDePreAtendimento
+  /**
+   * A cliente da ficha: com ela, o cartão grava a ficha de saúde ali mesmo,
+   * sem concluir (AT-03, o Prontuário em Gerenciar "sem precisar atender") —
+   * pela action da ficha da cliente. Sem ela, só o plano ou o "Finalizar" gravam.
+   */
+  clientId?: string
   /** As respostas do rascunho do atendimento (D3): o formulário nasce com elas. */
   rascunho?: Record<string, unknown> | null
-  /** Cada resposta mudada (o rascunho e o "Finalizar" — D3). */
-  onMudou?: (respostas: Record<string, unknown>) => void
-}>(function AnamneseNaAvaliacao({ anamnese, fichaAtual, rascunho = null, onMudou }, ref) {
+  /** Cada resposta mudada (o rascunho e o "Finalizar" — D3); `null` depois de salvar. */
+  onMudou?: (respostas: Record<string, unknown> | null) => void
+}>(function AnamneseNaAvaliacao({ anamnese, fichaAtual, clientId, rascunho = null, onMudou }, ref) {
   const fuso = useFuso()
+  const router = useRouter()
   const renderer = useRef<AnamnesisFormHandle>(null)
   const colhidas = useRef<Record<string, unknown> | null>(null)
+  const [salvando, setSalvando] = useState(false)
+  const [salvo, setSalvo] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
+
+  // Grava a ficha de saúde sem concluir: as obrigatórias barram (o validar do
+  // formulário, como o "Salvar ficha de saúde" da ficha da cliente).
+  async function salvarAgora() {
+    if (!clientId) return
+    setErro(null); setSalvo(false)
+    colhidas.current = null
+    const v = await renderer.current?.save()
+    if (v?.error) return
+    setSalvando(true)
+    const r = await salvarAnamneseGeral({ clientId, respostas: colhidas.current ?? {} })
+    setSalvando(false)
+    if ('error' in r) { setErro(r.error); return }
+    setSalvo(true)
+    onMudou?.(null)
+    router.refresh()
+  }
 
   useImperativeHandle(ref, () => ({
     async coletar() {
@@ -220,9 +247,22 @@ export const AnamneseNaAvaliacao = forwardRef<AnamneseNaAvaliacaoHandle, {
           canEdit
           semInjetaveis
           hideSaveButton
-          onAnswersChange={onMudou}
+          onAnswersChange={r => { setSalvo(false); onMudou?.(r) }}
           saveAction={async ({ answers }) => { colhidas.current = answers; return { ok: true } }}
         />
+        {clientId && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 14, flexWrap: 'wrap' }}>
+            <button type="button" onClick={salvarAgora} disabled={salvando} className="btn-primary" style={{ fontSize: 'var(--text-base-sz)' }}>
+              <Save size={14} /> {salvando ? 'Salvando…' : 'Salvar'}
+            </button>
+            {salvo && (
+              <span data-ficha-de-saude-salva role="status" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-sm-sz)', color: 'var(--success)', fontWeight: 700 }}>
+                <CheckCircle2 size={13} aria-hidden="true" /> Salvo
+              </span>
+            )}
+            {erro && <p role="alert" style={{ color: 'var(--danger)', fontSize: 'var(--text-sm-sz)', fontWeight: 600 }}>{erro}</p>}
+          </div>
+        )}
       </div>
     </div>
   )

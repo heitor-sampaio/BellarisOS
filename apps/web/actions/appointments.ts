@@ -37,6 +37,7 @@ import {
   agendamentoAoAlcance, cancelarCore, checkinCore, confirmarCore, remarcarCore, revalidarAgendamento, mudarUnidadeCore,
 } from '@/lib/appointments/alteracoes'
 import { comNovaTentativa } from '@/lib/estoque/nova-tentativa'
+import { avisarOMinimoDepois } from '@/lib/estoque/aviso-do-minimo'
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { emitirSessaoDePacoteUsada, emitirComissaoGerada } from '@/lib/events/atendimento-financeiro'
 import { emitirEventoClinico } from '@/lib/events/clinico'
@@ -569,19 +570,22 @@ async function startAppointmentInterno(
  * livre). `atendem` é quantas atendem ali (fora a de agora): a lista vazia diz
  * por quê. Só leitura; `reassignProfessional` confere tudo de novo.
  */
-export async function profissionaisParaTrocar(appointmentId: string): Promise<{ livres: { id: string; name: string }[]; atendem: number }> {
+export async function profissionaisParaTrocar(appointmentId: string): Promise<{ livres: { id: string; name: string; realiza: boolean }[]; atendem: number }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'agenda', 'MANAGE')
   const nada = { livres: [], atendem: 0 }
   if (typeof appointmentId !== 'string' || !/^[0-9a-f-]{36}$/i.test(appointmentId)) return nada
   const admin = createAdminClient()
   const a = await ler(admin.from('appointments')
-    .select('id, status, branch_id, professional_id, scheduled_at, duration_min, branches!inner(tenant_id)')
+    .select('id, status, branch_id, professional_id, procedure_id, scheduled_at, duration_min, branches!inner(tenant_id)')
     .eq('id', appointmentId).eq('branches.tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o agendamento') as {
-      id: string; status: string; branch_id: string; professional_id: string | null; scheduled_at: string; duration_min: number | null
+      id: string; status: string; branch_id: string; professional_id: string | null; procedure_id: string | null; scheduled_at: string; duration_min: number | null
     } | null
   if (!a || !alcancaUnidade(ctx, a.branch_id)) return nada
   if (['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(a.status)) return nada
+  // PC-14: quem não realiza o procedimento continua na lista — a agenda da
+  // equipe só AVISA (o encaixe é da rede, princípio 2), como no novo agendamento.
+  const quemRealiza = a.procedure_id ? await quemRealizaOProcedimento(admin, a.procedure_id) : []
   const equipe = (await getCachedBranchProfessionals(a.branch_id, ctx.tenantId!)) as { id: string; name: string }[]
   const outras = equipe.filter(p => p.id !== a.professional_id)
   // R15 (o Heitor, 26/11: "quem está fora do horário também some das listas"): o horário dela NESTA unidade.
@@ -590,7 +594,7 @@ export async function profissionaisParaTrocar(appointmentId: string): Promise<{ 
     duracaoMin: a.duration_min ?? 60, excluir: a.id, unidadeDoHorario: a.branch_id,
   })))
   return {
-    livres: outras.filter((_, i) => !indisponiveis[i]).map(p => ({ id: p.id, name: p.name })),
+    livres: outras.filter((_, i) => !indisponiveis[i]).map(p => ({ id: p.id, name: p.name, realiza: realiza(quemRealiza, p.id) })),
     atendem: outras.length,
   }
 }
@@ -845,6 +849,8 @@ async function cancelAppointmentSessionInterno(
         })
       })
       await gravar(Promise.resolve(resposta), 'registrar a desistência')
+      // O insumo da desistência pode cruzar o mínimo: o aviso sai já (D1 da 36ª; a rotina é a rede de segurança).
+      avisarOMinimoDepois(ctx.tenantId!)
       await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_CANCELADO, appointmentId, { ...ctx, userName }, { motivo: cancellationReason })
       revalidarAgendamento(ctx, appointmentId, slug)
       notifyCancelledAppointment(appointmentId, cancellationReason, ctx.internalUserId)
@@ -1081,6 +1087,8 @@ async function finishSessionInterno(
     } | null
 
     // ─── Depois: os avisos do que aconteceu ───────────────────────────────
+    // A baixa dos insumos pode cruzar o mínimo: o aviso sai já (D1 da 36ª; a rotina é a rede de segurança).
+    avisarOMinimoDepois(ctx.tenantId!)
     // Um fato por linha que já nasce devida. Sem o pagamento integral (H4)
     // a linha nasce zerada e é liberada no pagamento.
     for (const linha of gravado?.comissoes ?? []) {

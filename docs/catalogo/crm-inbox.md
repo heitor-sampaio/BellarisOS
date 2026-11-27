@@ -224,8 +224,8 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 
 ## Portal e app da cliente (PO)
 
-**PO-01.** Só a rede cria o acesso da cliente ao portal e ao app (não há cadastro pela própria cliente): o login é o e-mail, e a senha inicial é o CPF (só os números) ou, sem CPF, o número do passaporte ou do RNE como está na ficha — provisória, trocada no primeiro acesso. A tela de login e o aviso do acesso criado dizem qual é. Vale no cadastro, na aba Dados e no Copilot.
-- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Concordo"
+**PO-01.** Só a rede cria o acesso da cliente ao portal e ao app (não há cadastro pela própria cliente): o login é o e-mail, e a senha inicial é o CPF (só os números) ou, sem CPF, o número do passaporte ou do RNE como está na ficha — provisória, trocada no primeiro acesso. A tela de login e o aviso do acesso criado dizem qual é. Vale no cadastro, na aba Dados e no Copilot, e também para a ficha da menor.
+- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Concordo"; a menor: decisão do Claude, 27/11 (36ª, Decisão E) — nenhuma regra proíbe (a CL-06 cobre o termo assinado pelo responsável)
 - Onde: `docs/regras/crm-inbox.md:18`, `docs/revisao.md:1483`, `:1503`
 - Antes: KA-03, KF-31
 
@@ -239,8 +239,8 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/regras/crm-inbox.md:70-75`
 - Antes: KA-13, KA-14, KA-15
 
-**PO-04.** Quem já tem conta no BellarisOS (cliente de outra rede) recebe a ficha nova na MESMA conta só se o documento bate: o mesmo CPF ou, sem CPF, o mesmo passaporte/RNE (tipo e número). Com outro documento, o mesmo e-mail é recusado ("Este e-mail já tem uma conta no BellarisOS com outro documento.").
-- Fonte: decisão do Claude
+**PO-04.** Quem já tem conta no BellarisOS (cliente de outra rede) recebe a ficha nova na MESMA conta só se o documento bate: o mesmo CPF ou, sem CPF, o mesmo passaporte/RNE (tipo e número). Com outro documento, o mesmo e-mail é recusado: a ficha nova com CPF diz "Este e-mail já tem uma conta no BellarisOS com outro CPF. Confira o e-mail e o CPF da cliente."; sem CPF, "Este e-mail já tem uma conta no BellarisOS com outro documento. Confira o e-mail e o documento da cliente.".
+- Fonte: decisão do Claude; as duas frases: decisão do Claude, 27/11 (36ª, A6) — a do CPF é a mais precisa (`apps/web/lib/clients/acesso.ts`, `RECUSA`)
 - Onde: `docs/regras/crm-inbox.md:31`
 - Antes: KA-05
 
@@ -646,8 +646,8 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/regras/crm-inbox.md:1330-1333`, `:1742`, `docs/revisao.md:1287`, `:2214`
 - Antes: KD-39, KD-40, KE-49, KF-26
 
-**OP-10.** Ao desativar um membro, o sistema oferece repassar as oportunidades abertas dele a outra pessoa com o CRM ou deixá-las "Sem responsável"; o padrão é não repassar, e a janela diz antes o que fica com ele. O filtro "Responsável" do quadro marca "(inativo)" quem foi desativado e ainda responde por algum card.
-- Fonte: princípio 6
+**OP-10.** Ao desativar um membro, o sistema oferece repassar as oportunidades abertas dele a outra pessoa com o CRM (qualquer uma da rede, mesmo a de uma unidade só: a oportunidade é da rede) ou deixá-las "Sem responsável"; o padrão é não repassar, e a janela diz antes o que fica com ele. O filtro "Responsável" do quadro marca "(inativo)" quem foi desativado e ainda responde por algum card.
+- Fonte: princípio 6; quem é de uma unidade só: decisão do Claude, 27/11 (36ª, Decisão B), pelo `leadAoAlcance` (a rede e o CRM)
 - Onde: `docs/regras/crm-inbox.md:1337`
 - Antes: KD-41
 
@@ -771,8 +771,8 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/regras/crm-inbox.md:1577`, `docs/revisao.md:861`, `:881`
 - Antes: KE-35
 
-**OP-33.** No dia do retorno, o RESPONSÁVEL recebe aviso no sino ("Retorno de hoje: X" a partir das 7h de Brasília, ou "Retorno atrasado: X (10/11)"), com "Abrir", que leva ao card. Um aviso por dia marcado (trocar a data vale de novo); card ganho ou perdido não avisa; sem responsável, ninguém é avisado. O lembrete nunca move o card.
-- Fonte: decisão do Claude
+**OP-33.** No dia do retorno, o RESPONSÁVEL recebe aviso no sino ("Retorno de hoje: X" a partir das 7h de Brasília, ou "Retorno atrasado: X (10/11)"), com "Abrir", que leva ao card. Um aviso por dia marcado (trocar a data vale de novo); card ganho ou perdido não avisa; sem responsável, ninguém é avisado. O lembrete nunca move o card. O aviso sai pela rotina de hora em hora: o retorno marcado antes das 7h chega na primeira passada das 7h; o marcado depois, na passada seguinte (até 1 h).
+- Fonte: decisão do Claude; a hora em que o aviso chega: decisão do Claude, 27/11 (36ª, Decisão D)
 - Onde: `docs/regras/crm-inbox.md:1575-1610`
 - Antes: KE-36
 

@@ -18,6 +18,8 @@ import { notaDaTransferencia, notaDeTransferenciaSemNome } from '@/lib/estoque/t
 import { partesDoMovimento, type PartesDoMovimento } from '@/lib/estoque/lotes-do-movimento'
 import { idDaVendaDoMovimento } from '@/lib/estoque/venda-do-movimento'
 import { linhasDoEstoqueInicial } from '@/lib/estoque/estoque-inicial'
+// D1 da 36ª: o cruzamento do mínimo vai à fila no banco; o aviso sai logo depois do movimento.
+import { avisarOMinimoDepois } from '@/lib/estoque/aviso-do-minimo'
 
 function str(fd: FormData, key: string) {
   return (fd.get(key) as string | null)?.trim() || null
@@ -243,6 +245,8 @@ async function createProductInterno(
         ? `O produto não foi criado: o estoque inicial não entrou (${mensagemDoErro(e)}).`
         : mensagemDoErro(e) }
     }
+    // O estoque inicial abaixo do mínimo é um cruzamento (D1 da 36ª).
+    if (linhas.length > 0) avisarOMinimoDepois(ctx.tenantId!)
 
     revalidatePath('/admin/produtos')
     revalidatePath('/admin/estoque')
@@ -454,6 +458,8 @@ async function adminUpdateMinStockInterno(productId: string, branchId: string, m
     // trg_bps_minimo_do_produto); o mínimo salvo à mão é o da unidade, mesmo 0.
     await gravar(admin.from('branch_product_stock').update({ min_stock: minStock })
       .eq('product_id', productId).eq('branch_id', branchId), 'salvar o estoque mínimo')
+    // Subir o mínimo acima do saldo é entrar nele (D1 da 36ª).
+    avisarOMinimoDepois(ctx.tenantId!)
 
     revalidatePath('/admin/estoque')
     if (ctx.branchId) revalidatePath(`/*/stock`)
@@ -600,6 +606,7 @@ async function adminTransferStockInterno(
       if (error.code === 'P0001') return { error: error.message }
       throw new Error(`Não consegui transferir: ${error.message}`)
     }
+    avisarOMinimoDepois(ctx.tenantId!)
 
     revalidatePath('/admin/estoque')
     // A16 da 8ª simulação: os saldos DEPOIS (o da função, com as linhas
@@ -728,6 +735,7 @@ async function registrarPerdaInterno(
     if (error.code === 'P0001') return { error: error.message }
     throw new Error(`Não consegui registrar a perda: ${error.message}`)
   }
+  avisarOMinimoDepois(ctx.tenantId!)
 
   revalidatePath('/admin/estoque')
   revalidatePath('/[slug]/estoque', 'page')
@@ -1187,6 +1195,7 @@ export async function desfazerEntradaDeEstoque(movimentoId: string, motivo: stri
       if (error.code === 'P0001') return { error: error.message }
       throw new Error(`Não consegui desfazer a entrada: ${error.message}`)
     }
+    avisarOMinimoDepois(ctx.tenantId!)
     revalidatePath('/admin/estoque')
     if (ctx.branchId) revalidatePath('/*/stock')
     return { success: true }
@@ -1261,6 +1270,7 @@ export async function desfazerAjusteDeEstoque(movimentoId: string, motivo: strin
       if (error.code === 'P0001') return { error: error.message }
       throw new Error(`Não consegui desfazer o ajuste: ${error.message}`)
     }
+    avisarOMinimoDepois(ctx.tenantId!)
     revalidatePath('/admin/estoque')
     if (ctx.branchId) revalidatePath('/*/stock')
     return { success: true }
@@ -1298,6 +1308,7 @@ export async function desfazerPerdaDeEstoque(movimentoId: string, motivo: string
       if (error.code === 'P0001') return { error: error.message }
       throw new Error(`Não consegui desfazer a perda: ${error.message}`)
     }
+    avisarOMinimoDepois(ctx.tenantId!)
     revalidatePath('/admin/estoque')
     if (ctx.branchId) revalidatePath('/*/stock')
     return { success: true }

@@ -1,4 +1,4 @@
-import { situacaoDoVencimento, textoDoVencimento } from '@/lib/financeiro/vencimentos'
+import { situacaoDoVencimento, textoDoVencimento, emAbertoSemVencimento, SEM_VENCIMENTO } from '@/lib/financeiro/vencimentos'
 import { getTenantContext, assertClient } from '@/lib/auth'
 import { falaDaRedeDoPortal } from '@/lib/clientes/nome-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -7,6 +7,7 @@ import { getDoCliente, getCreditoInternoDoCliente } from '@/lib/metrics/unidade'
 import { bonusDosCreditosDaCliente } from '@/lib/creditos/bonus-da-cliente'
 import { formatBRL, formatDia } from '@estetica-os/utils'
 import { formaDoLancamento } from '@/lib/financeiro/formas'
+import { juntarAsFormasDaParcela, formaERecibosDaLinha } from '@/lib/financeiro/formas-da-parcela'
 import { vendaDeProdutoNaoPontua } from '@/lib/fidelidade/leitura'
 import { ordemDosPagamentosDoApp } from '@/lib/clientes/ordem-dos-pagamentos'
 import { notaDoEstornoParcialParaACliente } from '@/lib/financeiro/notas-do-lancamento'
@@ -33,8 +34,12 @@ type TxRow = {
   procedure_name: string | null
   /** Estornado (`notes = 'Estornada'`): o dinheiro voltou à cliente (D6, 2026-10-28). */
   estornado:      boolean
-  /** A forma pronta: a parcela do crediário sem meio é "Com a clínica" (D6 da 6ª simulação). */
+  /** A forma pronta: a parcela do crediário sem meio é "Com a clínica" (D6 da 6ª simulação); a parcela em várias formas, as formas (D8 da 36ª). */
   forma:          string | null
+  /** D8 da 36ª (CR-07): o recibo de cada forma da parcela (uma forma: um recibo, sem rótulo). */
+  recibos:        { id: string; forma: string | null }[]
+  /** A4 da 36ª (princípio 3): o em aberto sem data diz "Sem vencimento", não a criação. */
+  semVencimento:  boolean
   /** A40: a venda de produto paga que não pontua (fidelidade ligada, produto sem pontos). */
   semPontos:      boolean
   /** A46: o estorno devolvido à cliente (a contra-transação): saiu, com o sinal. */
@@ -94,7 +99,8 @@ export default async function ClientFinancialPage({ params }: { params: Promise<
   const produtoNaoPontua = fichaDaRede ? await vendaDeProdutoNaoPontua(fichaDaRede.tenant_id as string, admin) : false
   // A5 da 31ª (princípio 3): a parcela do plano diz os procedimentos dele, como no PDV.
   const dosPlanos = await procedimentosDosPlanos((data ?? []).map(r => (r as { treatment_plan_id: string | null }).treatment_plan_id))
-  const rows: TxRow[] = ((data ?? []) as unknown as LancamentoLido[]).map(r => ({
+  // D8 da 36ª (CR-07): a parcela paga em várias formas é UMA linha, como na equipe.
+  const rows: TxRow[] = juntarAsFormasDaParcela((data ?? []) as unknown as LancamentoLido[]).map(r => ({
     id:             r.id,
     description:    r.description,
     amount:         Number(r.amount),
@@ -104,12 +110,13 @@ export default async function ClientFinancialPage({ params }: { params: Promise<
     paid_at:        r.paid_at,
     created_at:     r.created_at,
     vencimento:     r.is_paid || r.notes === 'Estornada' ? null : (r.due_date ?? r.data_de_referencia ?? null),
+    semVencimento:  emAbertoSemVencimento({ pago: Boolean(r.is_paid), vencimento: r.due_date, estornado: r.notes === 'Estornada' }),
     referencia:     r.data_de_referencia ?? r.paid_at ?? r.created_at,
     // A16 da 30ª (CR-05, AC-01): a parcela do crediário diz qual é ("Microagulhamento — parcela 2/3").
     procedure_name: nomeDaLinhaDoLancamento(r.appointments?.procedures?.name, { numero: r.parcela_numero, total: r.parcela_total, descricao: r.description })
       ?? (r.treatment_plan_id ? nomeDaLinhaDoPlano(dosPlanos.get(r.treatment_plan_id) ?? [], r.description) : null),
     estornado:      r.notes === 'Estornada',
-    forma:          formaDoLancamento({ metodo: r.payment_method, vezes: r.cartao_vezes, bandeira: r.cartao_bandeira, pago: Boolean(r.is_paid), parcela: r.parcela_numero }),
+    ...formaERecibosDaLinha(r, formaDoLancamento({ metodo: r.payment_method, vezes: r.cartao_vezes, bandeira: r.cartao_bandeira, pago: Boolean(r.is_paid), parcela: r.parcela_numero })),
     semPontos:      produtoNaoPontua && !!r.product_sale_id && Boolean(r.is_paid) && r.notes !== 'Estornada',
     estorno:        r.type === 'EXPENSE' && r.category === 'Estorno',
     pacoteCancelado: r.client_packages?.cancelado_em ?? null,
@@ -220,8 +227,10 @@ export default async function ClientFinancialPage({ params }: { params: Promise<
                 {r.procedure_name ?? r.description}
               </p>
               <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-                {/* D13 da 9ª: a vencida diz que venceu (era só "Pendente"). */}
-                {r.vencimento && !r.is_paid && !r.estornado && situacaoDoVencimento(r.vencimento, new Date(), fuso) === 'VENCIDA'
+                {/* D13 da 9ª: a vencida diz que venceu (era só "Pendente"). A4 da 36ª: o sem data diz que não tem. */}
+                {r.semVencimento
+                  ? SEM_VENCIMENTO
+                  : r.vencimento && !r.is_paid && !r.estornado && situacaoDoVencimento(r.vencimento, new Date(), fuso) === 'VENCIDA'
                   ? textoDoVencimento(r.vencimento, new Date(), fuso)
                   : r.vencimento
                   ? `Vence ${formatDia(r.vencimento)}`
@@ -262,18 +271,18 @@ export default async function ClientFinancialPage({ params }: { params: Promise<
                 fontSize: 'var(--text-overline)',
                 fontWeight: 700,
                 color:      r.estornado || r.estorno ? 'var(--text-muted)' : r.is_paid ? 'var(--success)'
-                  : r.vencimento && situacaoDoVencimento(r.vencimento, new Date(), fuso) === 'VENCIDA' ? 'var(--danger)' : 'var(--warning)',
+                  : !r.semVencimento && r.vencimento && situacaoDoVencimento(r.vencimento, new Date(), fuso) === 'VENCIDA' ? 'var(--danger)' : 'var(--warning)',
               }}>
                 {r.estorno ? 'Estorno' : r.estornado ? 'Estornado' : r.is_paid ? 'Pago'
-                  : r.vencimento && situacaoDoVencimento(r.vencimento, new Date(), fuso) === 'VENCIDA' ? 'Vencida' : 'Pendente'}
+                  : !r.semVencimento && r.vencimento && situacaoDoVencimento(r.vencimento, new Date(), fuso) === 'VENCIDA' ? 'Vencida' : 'Pendente'}
               </span>
-              {/* ven-06: o recibo do que ela pagou (PDF). */}
-              {r.is_paid && !r.estornado && !r.estorno && (
-                <a href={`/api/recibos/${r.id}`} target="_blank" rel="noopener" data-recibo
+              {/* ven-06: o recibo do que ela pagou (PDF) — um por forma (D8 da 36ª, CR-07). */}
+              {r.is_paid && !r.estornado && !r.estorno && r.recibos.map(rec => (
+                <a key={rec.id} href={`/api/recibos/${rec.id}`} target="_blank" rel="noopener" data-recibo
                   style={{ display: 'block', marginTop: 4, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)' }}>
-                  Recibo
+                  {rec.forma ? `Recibo (${rec.forma})` : 'Recibo'}
                 </a>
-              )}
+              ))}
             </div>
           </div>
         ))}

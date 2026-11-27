@@ -237,7 +237,11 @@
     abre ou em que a pessoa não atende e o que passa da meia-noite — nada disso
     é bloqueio (`avisoForaDoHorario`). **O que já estava marcado fica**: ao
     bloquear um período com atendimento já marcado, ele continua, e o aviso
-    diz quantos ("…continuam na agenda. Remarque se precisar.") — na janela,
+    diz quantos ("…continuam na agenda. Remarque se precisar.") — só os que
+    se SOBREPÕEM ao período, pela duração de cada um (`quantosBatemNoBloqueio`,
+    `lib/agenda/bloqueio.ts`; D3 da 36ª, decisão do Claude, 27/11: contava todo
+    o que começava até 12 h antes, e o das 10:00 entrava no bloqueio das
+    13–16; prova `tests/agenda-bloqueio-conta-so-o-que-bate.test.ts`) — na janela,
     ANTES de gravar (`marcadosNoBloqueio`, `[data-marcados-no-bloqueio]`; A10
     da 32ª), e no toast depois; a recusa é só a de marcar ou mover PARA dentro
     do bloqueio. Os vários bloqueios do horário se juntam numa frase
@@ -811,6 +815,13 @@
   SM1): só quem ATENDE na unidade do agendamento E está livre no horário —
   sem choque e sem bloqueio (R13, abaixo; era "(ocupada)" desligada, e a
   bloqueada aparecia — `profissionaisParaTrocar`, `indisponibilidadeNoHorario`).
+  Quem não REALIZA o procedimento continua na lista, e escolhê-lo AVISA, como
+  no novo agendamento ("X não está em “Quem realiza” deste procedimento.",
+  `avisoDeQuemNaoRealiza`, `[data-aviso-quem-realiza]`; PC-14, princípio 2;
+  D4 da 36ª, decisão do Claude, 27/11; prova
+  `tests/agenda-trocar-quem-atende-avisa-quem-nao-realiza.test.ts`). O campo
+  é "Quem vai atender", e o retorno "Agora quem atende é X." (sem cargo no
+  texto: CLAUDE.md §1, o Heitor, 13/11).
   Ninguém livre: "Ninguém está livre nesse horário. Para trocar em outro
   horário, remarque antes." E "Trocar quem atende de A para B?" antes. Arrastar para a coluna de outra
   profissional pergunta também ("Trocar quem atende de A para B e marcar às
@@ -2082,10 +2093,12 @@ de decisões) — **implementadas na F65 (2026-11-12)**:
   `realiza` (`lib/procedimentos/quem-realiza.ts`), usada por:
   - o app da cliente: o passo "Profissional" e o "Sem preferência"
     (`candidatasDoDia` com o procedimento) oferecem só quem realiza, e
-    `createClientAppointment` recusa as outras ("Esta profissional não
-    realiza este procedimento.");
-  - a agenda da equipe: o modal AVISA ("X não está em “Quem realiza” deste
-    procedimento"), sem barrar — o encaixe é da rede;
+    `createClientAppointment` recusa as outras ("Quem você escolheu não
+    realiza este procedimento." — sem cargo no texto, CLAUDE.md §1, o Heitor,
+    13/11; era "Esta profissional…");
+  - a agenda da equipe: o novo agendamento e o "Trocar profissional" AVISAM
+    ("X não está em “Quem realiza” deste procedimento.",
+    `avisoDeQuemNaoRealiza`), sem barrar — o encaixe é da rede;
   - o repasse ao desativar (`lib/equipe/repasse.ts`): a lista e a action.
   Só o servidor grava a ligação (`actions/procedures.ts`, quem atende, ativa
   e da rede); a sessão lê a da própria rede. Prova:
@@ -3621,6 +3634,23 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
     `notificacoes-interessados` rodava sem recorte e avisou uma rede [sim] na
     F51). Prova: `e2e/estoque-minimo-no-sino.spec.ts`,
     `e2e/notificacoes-interessados.spec.ts`.
+    **A cada cruzamento, registrado na hora do movimento** (D1 da 36ª
+    simulação; ES-30/NE-06, "uma vez a cada vez que cruza"; decisão do Claude,
+    27/11, quanto à forma): a Máscara, mínimo 5, foi 6 → 4 → 3 → 7 → 4 numa
+    hora e o sino teve UM aviso, às 03:02 — a rotina de hora em hora olhava o
+    estado da linha. Agora o gatilho de `branch_product_stock`
+    (`private.estoque_registrar_cruzamento_do_minimo`, que todo caminho que
+    mexe no saldo atravessa) põe cada ENTRADA no mínimo na fila
+    `estoque_cruzamentos_do_minimo`, com o saldo dela (o último, enquanto não
+    avisada); sair do mínimo rearma. A régua do banco é o espelho da da tela
+    (`private.estoque_avisa_no_minimo`: `saldo_de_consumo` contra o mínimo ×
+    `fator_de_consumo`, 4 casas; o zerado conta). O aviso de cada cruzamento
+    sai logo depois do movimento (`avisarOMinimoDepois`, pelo `after()`, nas
+    actions do estoque e nos núcleos de entrada e ajuste), e a rotina manda o
+    que ficou — cada um reivindicado antes de avisar (`avisado_em`).
+    `minimo_avisado_em` perdeu o escritor (migration `20261215300001`). Prova:
+    `tests/estoque-aviso-do-minimo-a-cada-cruzamento.test.ts`,
+    `e2e/estoque-minimo-no-sino.spec.ts` ("D1 da 36ª").
   - **O giro do Estoque diz o que conta** (A13 da 9ª, 2026-11-07): "insumos
     dos atendimentos, sem a venda de produto" (`DETALHE_DO_GIRO`,
     `[data-kpi="giro"]`, nas duas telas) — o Financeiro somava o custo da
@@ -4104,6 +4134,16 @@ O resto do fluxo:
   com o link do Estoque (Novo produto, uso "Insumo"); sem resultado para o
   texto, "Nenhum insumo com “x”" (`[data-busca-de-insumo-vazia]`). Prova:
   `e2e/atendimento-atritos-da-7.spec.ts` ("A38").
+- **A ficha de saúde do atendimento se salva sem concluir** (A3 da 36ª;
+  AT-03, o clínico é do Prontuário em Gerenciar "sem precisar atender", UM4;
+  decisão do Claude, 27/11): no formulário da avaliação ela só se gravava com
+  o plano ou no "Finalizar". O cartão "Ficha de saúde" tem o "Salvar" (só "Salvar": ao lado está o "Salvar ficha de atendimento", e outro "Salvar ficha…" tornava ambíguo o dela; as
+  obrigatórias barram), pela action da ficha da cliente
+  (`salvarAnamneseGeral` → `gravarAnamneseGeral`), e responde "Salvo"
+  (`[data-ficha-de-saude-salva]`); o plano e o "Finalizar" levam o que estiver
+  na tela, como antes. Prova:
+  `tests/atendimento-ficha-de-saude-salva-sem-concluir.test.ts`,
+  `e2e/atendimento-obrigatorias-barram.spec.ts`.
 - **O rascunho da ficha de saúde sobrevive ao recarregar NA MESMA ABA** (A36 da 7ª,
   conferido em 2026-11-05: não reproduzido — o robô recarregou num contexto
   novo, e o rascunho morre com a aba por decisão). Prova:
@@ -4334,8 +4374,14 @@ O resto do fluxo:
     de leitura agora confere as obrigatórias como o editável.
   - **Quem não vê o clínico** (sem o Prontuário em Ver; o caso do prontuário
     "só os meus" num atendimento de outra saiu com o SM1): a tela não tem os
-    campos e não aponta nada; o servidor recusa do mesmo jeito, com só o NOME
-    da pergunta na mensagem. Quem responde é quem tem o Prontuário em
+    campos; o servidor recusa do mesmo jeito, com só o NOME da pergunta na
+    mensagem. **E a tela diz antes do "Confirmar conclusão"** (AT-03/AT-05;
+    D2 da 36ª, decisão do Claude, 27/11): a página pede ao servidor o que
+    falta nas duas fichas — só os nomes das perguntas, pelo que está gravado
+    (`oQueFaltaSemOClinico`, `lib/atendimento/obrigatorias-no-servidor.ts`;
+    nunca uma resposta) — e o "Finalizar" abre "O que falta para finalizar"
+    com eles e quem responde, sem o "Você lê a ficha de saúde…" (ela nem lê).
+    Prova: `tests/atendimento-sem-o-prontuario-sabe-antes-o-que-falta.test.ts`. Quem responde é quem tem o Prontuário em
     Gerenciar, sem precisar atender (UM4) — também na ficha da cliente, aba
     Prontuário, com as perguntas atuais da rede (`podeEditarFichaDeSaude`, a
     permissão de `salvarAnamneseGeral`, que expira na hora a ficha da cliente —
@@ -4722,6 +4768,7 @@ O resto do fluxo:
 ❌ Decidir quem cadastra produto por ser da rede ou de unidade (era a C63) — é o Estoque em Gerenciar, e só isso; a unidade do estoque inicial é das que a pessoa alcança, conferida na action (E13)
 ❌ Gravar o produto e o estoque inicial em passos soltos (o produto ficava se o estoque falhasse) — é produto_cadastrar, uma transação com todas as linhas (E11)
 ❌ Avisar um lote sem reivindicá-lo antes (vencimento_avisado_em — C25)
+❌ Avisar o estoque mínimo pelo ESTADO da linha (o que cruza, repõe e cruza de novo entre duas passadas vira um aviso só): é a fila estoque_cruzamentos_do_minimo, que o gatilho enche na hora do movimento; caminho novo que mexe no saldo chama avisarOMinimoDepois depois de gravar (D1 da 36ª)
 ❌ Criar a linha da unidade (branch_product_stock) desligando o gatilho do mínimo, ou mostrar o custo de um lote por outra conta que não custo_do_lote (custos_dos_lotes — D2 e D4 da 11ª)
 ❌ Mostrar ou guardar o custo por unidade de consumo com 2 casas (R$ 0,038/g vira R$ 0,04 — D6 da 11ª)
 ❌ Escrever a quantidade com a embalagem no singular fixo ("3 frasco") — é medidaNoPlural/quantidadeComMedida (A49 da 12ª)

@@ -128,3 +128,53 @@ test('o Histórico → Pagamentos ordena pelo vencimento, como o Financeiro do a
     expect(ordem, 'a próxima a vencer primeiro').toEqual(['1', '2'])
   })
 })
+
+// D8 da 36ª (CR-07): a parcela paga em duas formas aparecia em duas linhas no
+// Financeiro e no Histórico do app (a equipe já as juntava); o recibo segue por
+// forma. A4 da 36ª (princípio 3): o a receber sem data dizia a data de criação
+// ("Vence" no dia em que nasceu) — diz "Sem vencimento".
+test('a parcela em duas formas é uma linha, e o a receber sem data diz "Sem vencimento" (D8 e A4 da 36ª)', async ({ browser }) => {
+  const criada = new Date(Date.now() - 2 * 86_400_000).toISOString()
+  const pagaEm = new Date(Date.now() - 86_400_000).toISOString()
+  const parcela = {
+    branch_id: rede!.branchId, client_id: cliente!.clientId, type: 'INCOME', category: 'Serviços',
+    description: `${PREFIXO} Duas formas ${marca} — parcela 1/3`, is_paid: true, paid_at: pagaEm, created_at: criada,
+    parcela_numero: 1, parcela_total: 3, created_by: 'e2e',
+  }
+  const { data, error } = await db().from('financial_transactions').insert([
+    { ...parcela, amount: 400, payment_method: 'PIX' },
+    { ...parcela, amount: 200, payment_method: 'CASH' },
+    { branch_id: rede!.branchId, client_id: cliente!.clientId, type: 'INCOME', category: 'Serviços',
+      description: `${PREFIXO} Sem data ${marca}`, amount: 300, is_paid: false, payment_method: null, due_date: null,
+      created_at: criada, created_by: 'e2e' },
+  ]).select('id, payment_method')
+  expect(error, 'lançar as duas formas e o a receber sem data').toBeNull()
+  lancamentos.push(...(data ?? []).map(l => l.id as string))
+  const pix = data!.find(l => l.payment_method === 'PIX')!.id as string
+  const dinheiro = data!.find(l => l.payment_method === 'CASH')!.id as string
+  const diaDaCriacao = new Date(criada).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+
+  await como(browser, async p => {
+    await p.goto(`/${slug}/cliente/financeiro`)
+    const duas = p.locator('.card', { hasText: `Duas formas ${marca}` })
+    await expect(duas, 'uma linha só').toHaveCount(1)
+    await expect(duas).toContainText(/Pix R\$\s400,00 \+ Dinheiro R\$\s200,00/)
+    await expect(duas).toContainText(/R\$\s600,00/)
+    await expect(duas.getByRole('link', { name: 'Recibo (Pix)' })).toHaveAttribute('href', `/api/recibos/${pix}`)
+    await expect(duas.getByRole('link', { name: 'Recibo (Dinheiro)' })).toHaveAttribute('href', `/api/recibos/${dinheiro}`)
+    const semData = p.locator('.card', { hasText: `Sem data ${marca}` })
+    await expect(semData).toContainText('Sem vencimento')
+    await expect(semData).not.toContainText(diaDaCriacao)
+    await expect(semData).toContainText('Pendente')
+
+    await p.goto(`/${slug}/cliente/historico`)
+    await p.getByRole('button', { name: /Pagamentos/ }).click()
+    const naLista = p.locator('[data-pagamento]', { hasText: `Duas formas ${marca}` })
+    await expect(naLista, 'uma linha só').toHaveCount(1)
+    await expect(naLista).toContainText(/Pix R\$\s400,00 \+ Dinheiro R\$\s200,00/)
+    await expect(naLista.locator('[data-recibo]')).toHaveCount(2)
+    const semDataNoHistorico = p.locator('[data-pagamento]', { hasText: `Sem data ${marca}` })
+    await expect(semDataNoHistorico).toContainText('Sem vencimento')
+    await expect(semDataNoHistorico).not.toContainText(diaDaCriacao)
+  })
+})

@@ -1,12 +1,13 @@
-﻿import { situacaoDoVencimento } from '@/lib/financeiro/vencimentos'
+﻿import { situacaoDoVencimento, emAbertoSemVencimento } from '@/lib/financeiro/vencimentos'
 import { unidadesParaLer } from '@/lib/unidades/da-tela'
 import { fusoValido } from '@/lib/unidades/fuso'
 import { getTenantContext, assertClient } from '@/lib/auth'
 import { getAtendimentosAReceber } from '@/lib/metrics/a-receber'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { assinadosDoCliente } from '@/lib/documentos/leitura'
-import { ler } from '@/lib/db'
+import { ler, lerTodas } from '@/lib/db'
 import { formaDoLancamento } from '@/lib/financeiro/formas'
+import { juntarAsFormasDaParcela, formaERecibosDaLinha } from '@/lib/financeiro/formas-da-parcela'
 import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
 import { HistoricoTabs } from '@/components/client-portal/historico-tabs'
 import { notasDaAvaliacao, type NotaNaTela } from '@/lib/avaliacao/notas'
@@ -55,8 +56,12 @@ export type PagamentoItem = {
   vencida?:       boolean
   /** "Parcela 2 de 3" (A64). */
   parcela?:       string | null
-  /** A forma pronta (`formaDoLancamento`): a parcela do crediário sem meio é "Com a clínica" (D6). */
+  /** A forma pronta (`formaDoLancamento`): a parcela do crediário sem meio é "Com a clínica" (D6); a parcela em várias formas, as formas (D8 da 36ª). */
   forma?:         string | null
+  /** D8 da 36ª (CR-07): o recibo de cada forma da parcela (uma forma: um recibo, sem rótulo). */
+  recibos?:       { id: string; forma: string | null }[]
+  /** A4 da 36ª (princípio 3): o em aberto sem data diz "Sem vencimento", não a criação. */
+  semVencimento?: boolean
   /** A46: o estorno devolvido à cliente (a contra-transação): dinheiro que SAIU, com o sinal. */
   estorno?:       boolean
   /** A46: o pagamento de um pacote cancelado — o dia do cancelamento. */
@@ -116,15 +121,15 @@ export default async function HistoricoPage({ params, searchParams }: {
 
   const [procedimentosRes, pagamentosRes, docsRes, consentRes] = await Promise.all([
     // Procedimentos = appointments concluídos
-    ler(admin.from('appointments')
+    lerTodas((de, ate) => admin.from('appointments')
       .select('id, scheduled_at, client_confirmed_at, procedure_rating, client_rating, client_feedback, procedures(name), professionals:users!professional_id(name), branches(name, tenant_id)')
       .eq('client_id', ctx.clientId!)
       .eq('status', 'COMPLETED')
-      .order('scheduled_at', { ascending: false })
-      .limit(50), 'carregar os atendimentos'),
+      .order('scheduled_at', { ascending: false }).order('id')
+      .range(de, ate), 'carregar os atendimentos'),
 
     // Pagamentos = transações financeiras ligadas ao cliente
-    ler(admin.from('financial_transactions')
+    lerTodas((de, ate) => admin.from('financial_transactions')
       .select(`
         id, description, amount, payment_method, cartao_vezes, cartao_bandeira, is_paid, paid_at, notes, created_at,
         due_date, data_de_referencia, parcela_numero, parcela_total, type, category,
@@ -136,20 +141,20 @@ export default async function HistoricoPage({ params, searchParams }: {
       .eq('client_id', ctx.clientId!)
       // A46: o estorno devolvido a ela também (era só a receita).
       .or('type.eq.INCOME,category.eq.Estorno')
-      .order('created_at', { ascending: false })
-      .limit(50), 'carregar os pagamentos'),
+      .order('created_at', { ascending: false }).order('id')
+      .range(de, ate), 'carregar os pagamentos'),
 
     // Documentos = só os arquivos que a clínica ENVIOU à cliente (decisão do
     // Heitor, 2026-10-30). A foto clínica, o exame e o laudo anexados ficam
     // com a equipe até alguém enviar pela ficha (`enviado_em`). A data é a
     // do envio.
-    ler(admin.from('client_documents')
+    lerTodas((de, ate) => admin.from('client_documents')
       .select('id, name, category, file_path, momento, created_at:enviado_em')
       .eq('client_id', ctx.clientId!)
       .is('apagado_em', null)
       .not('enviado_em', 'is', null)
-      .order('enviado_em', { ascending: false })
-      .limit(30), 'carregar os documentos'),
+      .order('enviado_em', { ascending: false }).order('id')
+      .range(de, ate), 'carregar os documentos'),
 
     // Termos e contratos assinados (os de agora e o legado do checkout antigo).
     assinadosDoCliente(null, ctx.clientId!),
@@ -178,7 +183,8 @@ export default async function HistoricoPage({ params, searchParams }: {
   }))
 
   // -- Pagamentos -------------------------------------------------
-  const pagamentos: PagamentoItem[] = ((pagamentosRes ?? []) as unknown as PagamentoLido[]).map(r => ({
+  // D8 da 36ª (CR-07): a parcela paga em várias formas é UMA linha, como na equipe.
+  const pagamentos: PagamentoItem[] = juntarAsFormasDaParcela((pagamentosRes ?? []) as unknown as PagamentoLido[]).map(r => ({
     id:             r.id,
     description:    r.description,
     amount:         Number(r.amount),
@@ -190,10 +196,11 @@ export default async function HistoricoPage({ params, searchParams }: {
     estornado:      r.notes === 'Estornada',
     // A64: o vencimento e a parcela — "Pendente" sozinho não dizia quando.
     vencimento:     r.is_paid ? null : (r.due_date ?? r.data_de_referencia ?? null),
+    semVencimento:  emAbertoSemVencimento({ pago: Boolean(r.is_paid), vencimento: r.due_date, estornado: r.notes === 'Estornada' }),
     // D13 da 9ª: "Vencida em 05/11" (o dia decidido aqui, no servidor).
     vencida:        !r.is_paid && r.notes !== 'Estornada' && situacaoDoVencimento(r.due_date, new Date(), fuso) === 'VENCIDA',
     parcela:        r.parcela_numero && r.parcela_total && r.parcela_total > 1 ? `Parcela ${r.parcela_numero} de ${r.parcela_total}` : null,
-    forma:          formaDoLancamento({ metodo: r.payment_method, vezes: r.cartao_vezes, bandeira: r.cartao_bandeira, pago: Boolean(r.is_paid), parcela: r.parcela_numero }),
+    ...formaERecibosDaLinha(r, formaDoLancamento({ metodo: r.payment_method, vezes: r.cartao_vezes, bandeira: r.cartao_bandeira, pago: Boolean(r.is_paid), parcela: r.parcela_numero })),
     estorno:        r.type === 'EXPENSE' && r.category === 'Estorno',
     pacoteCancelado: r.client_packages?.cancelado_em ?? null,
     // D17 da 8ª: a mesma ordem do Financeiro do app (era a da criação: 2/2 antes da 1/2).

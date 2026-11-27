@@ -46,6 +46,18 @@ export function faltaNaFichaDoProcedimento(
 }
 
 /**
+ * Os rótulos de TODAS as obrigatórias vazias da ficha do procedimento (a conta
+ * de `faltaNaFichaDoProcedimento`, sem parar na primeira): a tela de quem não
+ * vê o clínico os recebe do servidor antes do "Confirmar conclusão" (AT-03).
+ */
+export function rotulosQueFaltamNaFicha(
+  rows: AnamnesisRow[], respostas: Record<string, unknown>, o: { semInjetaveis?: boolean } = {},
+): string[] {
+  const ignorar: AnamnesisFieldType[] = o.semInjetaveis ? ['injectable_map'] : []
+  return obrigatoriasVazias(rows, respostas, ignorar).map(f => f.label)
+}
+
+/**
  * D7 e A17 da 35ª (FI-07: "contam as perguntas da ficha ATUAL"; PT-12: a
  * ficha volta a pedir resposta "de outra versão"): a ficha RESPONDIDA numa
  * versão sem a obrigatória que a rede acrescentou depois está pendente. Os

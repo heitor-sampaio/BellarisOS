@@ -1,34 +1,25 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import type { AppModule } from '@estetica-os/types'
 
 /**
- * Configurações diz por que aparecem só aquelas abas (27ª simulação; princípio
- * 7): quem só tinha a LGPD (pelo Prontuário em Gerenciar) via a tela com uma
- * aba, sem dizer por quê.
+ * A nota "Você vê a aba LGPD (vem de Prontuário em Gerenciar)… As outras
+ * pedem…" (27ª simulação) explicava a tela, e saiu (A1 da 36ª simulação; o
+ * Heitor, 26/11: "isso não é ser intuitivo, é ser explicativo e não isso que eu
+ * quero. Ser intuitivo é justamente o contrario, ser facil de usar mesmo sem
+ * muitas explicações."; princípio 7). As abas da pessoa já se dizem no topo
+ * (`abasDoTopo`) e na barra; a aba pedida que não abre diz por quê.
  */
 const fonte = (arquivo: string) => readFileSync(join(__dirname, '..', arquivo), 'utf8')
-describe('Configurações diz por que aparecem só aquelas abas [7]', () => {
-  const nome = (m: AppModule) => ({ medical_records: 'Prontuário', crm: 'CRM', settings: 'Configurações da rede', financial: 'Financeiro e comissões' } as Record<string, string>)[m] ?? m
-
-  it('só a LGPD (do Prontuário em Gerenciar): diz de onde vem e o que falta', async () => {
-    const { porQueSoEstasAbas } = await import('@/lib/configuracoes/abas-que-faltam')
-    const t = porQueSoEstasAbas(['lgpd'], { gerencia: m => m === 'medical_records', nomeDoModulo: nome })!
-    expect(t).toMatch(/LGPD/)
-    expect(t).toMatch(/Prontuário em Gerenciar/)
-    expect(t).toMatch(/Configurações da rede em Gerenciar/)
-  })
-
-  it('com Configurações em Gerenciar, nada a dizer', async () => {
-    const { porQueSoEstasAbas } = await import('@/lib/configuracoes/abas-que-faltam')
-    expect(porQueSoEstasAbas(['general', 'lgpd'], { gerencia: m => m === 'settings', nomeDoModulo: nome })).toBeNull()
-  })
-
-  it('a tela mostra a nota', () => {
+describe('Configurações não explica por que aparecem só aquelas abas [7]', () => {
+  it('a tela não mostra a nota', () => {
     const tela = fonte('app/_shared/configuracoes.tsx')
-    expect(tela).toMatch(/porQueSoEstasAbas\(/)
-    expect(tela).toMatch(/data-abas-do-acesso/)
+    expect(tela).not.toMatch(/porQueSoEstasAbas/)
+    expect(tela).not.toMatch(/data-abas-do-acesso/)
+  })
+
+  it('a função da nota saiu', () => {
+    expect(fonte('lib/configuracoes/abas-que-faltam.ts')).not.toMatch(/porQueSoEstasAbas|As outras pedem/)
   })
 })
 

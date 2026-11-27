@@ -62,7 +62,10 @@ export function juntarAsFormasDaParcela<T extends LinhaParaJuntar>(linhas: reado
     const g = k ? por.get(k)! : null
     if (!g || g.length < 2) { saida.push({ ...l, formasDaParcela: null }); continue }
     if (g[0] !== l) continue
+    // As cópias da parcela nascem com a mesma criação: a ordem lida empata. A maior forma primeiro (e, no empate, a
+    // forma e o id), para a mesma parcela ler igual em toda tela (decisão do Claude, 27/11).
     const formas = g.map(x => ({ id: x.id, forma: x.payment_method, vezes: x.cartao_vezes ?? null, valor: Number(x.amount) }))
+      .sort((x, y) => y.valor - x.valor || (x.forma ?? '').localeCompare(y.forma ?? '') || x.id.localeCompare(y.id))
     const centavos = formas.reduce((t, f) => t + Math.round(f.valor * 100), 0)
     saida.push({ ...l, amount: centavos / 100, formasDaParcela: formas })
   }
@@ -72,6 +75,23 @@ export function juntarAsFormasDaParcela<T extends LinhaParaJuntar>(linhas: reado
 /** "Pix R$ 400,00 + Dinheiro R$ 200,00". */
 export function formasDaParcelaEmTexto(formas: readonly FormaDaParcela[]): string {
   return formas.map(f => `${rotuloDaForma(f.forma, f.vezes)} ${formatBRL(f.valor)}`).join(' + ')
+}
+
+/**
+ * A forma e os recibos de uma linha da lista JÁ juntada (o app da cliente, D8
+ * da 36ª — CR-07): a parcela em várias formas diz as formas e tem um recibo
+ * por forma, com o rótulo dela; a linha comum fica com a forma pronta dela
+ * (`formaSozinha`, a de `formaDoLancamento`) e um recibo, sem rótulo.
+ */
+export function formaERecibosDaLinha(
+  l: { id: string; formasDaParcela: readonly FormaDaParcela[] | null },
+  formaSozinha: string | null,
+): { forma: string | null; recibos: { id: string; forma: string | null }[] } {
+  if (!l.formasDaParcela) return { forma: formaSozinha, recibos: [{ id: l.id, forma: null }] }
+  return {
+    forma:   formasDaParcelaEmTexto(l.formasDaParcela),
+    recibos: l.formasDaParcela.map(f => ({ id: f.id, forma: rotuloDaForma(f.forma, f.vezes) })),
+  }
 }
 
 /**

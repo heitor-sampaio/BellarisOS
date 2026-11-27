@@ -355,7 +355,7 @@ Este é o catálogo das regras de WhatsApp e push que valem HOJE: os números de
 - Onde: `docs/regras/whatsapp-push.md:32-34`; `docs/revisao.md:1530-1531`
 - Antes: KA-08, KC-15
 
-**NE-06.** Os avisos da operação à equipe são: agendamento novo, cancelamento, remarcação, chegada da cliente e produto no estoque mínimo ou abaixo (pelo mínimo que a tela mostra, uma vez a cada vez que cruza).
+**NE-06.** Os avisos da operação à equipe são: agendamento novo, cancelamento, remarcação, chegada da cliente e produto no estoque mínimo ou abaixo (pelo mínimo que a tela mostra, uma vez a cada vez que cruza, logo depois do movimento — ES-30 do Atendimento).
 - Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Pode fechar"
 - Onde: `docs/regras/whatsapp-push.md:35-37`; `docs/revisao.md:1530-1531`
 - Antes: KA-09, KC-15
@@ -382,8 +382,8 @@ Este é o catálogo das regras de WhatsApp e push que valem HOJE: os números de
 - Onde: `docs/regras/whatsapp-push.md:54-63`; `CLAUDE.md:322`, `:344-345` (§5)
 - Antes: KA-13, KC-18
 
-**NC-05.** O aviso no celular aparece na tela de bloqueio, então o aviso do que é clínico não diz o procedimento nem nada de saúde: o texto é genérico, e o detalhe fica do outro lado do link (o plano novo, o pedido de assinatura, a ficha de saúde, a resposta do chamado). Os avisos do agendamento (marcado, remarcado, cancelado, concluído, o pagamento) dizem o próprio fato, com o procedimento, o dia e a unidade ("Novo horário: Limpeza de pele em …, na unidade …").
-- Fonte: decisão do Claude, 25/11 (o Heitor revisa): o texto do aviso do agendamento é o fato que a própria cliente marcou, e é o que o sistema manda (`docs/regras/whatsapp-push.md:38-40`); o recorte do genérico ao que é clínico, pelo princípio 3
+**NC-05.** O aviso no celular aparece na tela de bloqueio, então o aviso do que é clínico não diz o procedimento nem nada de saúde: o texto é genérico, e o detalhe fica do outro lado do link (o plano novo, o pedido de assinatura, a ficha de saúde, a resposta do chamado). Os avisos do agendamento (marcado, remarcado, cancelado, concluído, o pagamento) dizem o próprio fato, com o procedimento, o dia e, quando a rede tem mais de uma unidade, a unidade ("Novo horário: Limpeza de pele em …, na unidade …").
+- Fonte: decisão do Claude, 25/11 (o Heitor revisa): o texto do aviso do agendamento é o fato que a própria cliente marcou, e é o que o sistema manda (`docs/regras/whatsapp-push.md:38-40`); o recorte do genérico ao que é clínico, pelo princípio 3; a unidade só quando a rede tem mais de uma: decisão do Claude, 27/11 (36ª, Decisão D), pela A28 da 6ª simulação (`textoDoHorarioMarcado`), o §1 e o princípio 7
 - Onde: `docs/regras/whatsapp-push.md:38-53`; `docs/regras/documentos.md:593-594`; `docs/regras/atendimento.md:1740-1741`; `docs/regras/plataforma.md:689-690`; `apps/web/lib/appointments/texto-do-aviso.ts`
 - Antes: KC-19
 

@@ -4,7 +4,7 @@ import { ler } from '@/lib/db'
 import { normalizeFormSchema } from '@/lib/anamnesis'
 import { paraAnamneseGeral, type AnamneseGeral } from '@/lib/anamnese-geral'
 import { fichaDePreAtendimento } from '@/lib/pre-atendimento/ficha'
-import { faltaNaAnamnese, faltaNaFichaDoProcedimento } from '@/lib/atendimento/obrigatorias'
+import { faltaNaAnamnese, faltaNaFichaDoProcedimento, rotulosQueFaltamNaAnamnese, rotulosQueFaltamNaFicha } from '@/lib/atendimento/obrigatorias'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -76,4 +76,46 @@ export async function oQueFaltaParaSeguir(admin: Admin, o: {
     }
   }
   return null
+}
+
+/**
+ * AT-03 / AT-05 (FI-07): quem conclui sem VER o clínico (sem o Prontuário)
+ * descobria a obrigatória em branco só na recusa, depois do "Confirmar
+ * conclusão". A tela pede ao servidor, antes, o que falta — só o NOME das
+ * perguntas (a estrutura da ficha, o que a recusa já diz), nunca resposta.
+ * Vale o que está GRAVADO (essa pessoa não digita o clínico): a ficha de saúde
+ * da cliente contra a ficha atual da rede, e a ficha de atendimento salva
+ * contra a ligada ao procedimento agora — a mesma conta de `oQueFaltaParaSeguir`.
+ */
+export async function oQueFaltaSemOClinico(admin: Admin, o: {
+  tenantId:      string
+  appointmentId: string
+  procedureId:   string | null
+  clientId:      string | null
+  semInjetaveis: boolean
+}): Promise<{ saude: string[]; ficha: string[] }> {
+  let saude: string[] = []
+  if (o.clientId) {
+    const fichaAtual = await fichaDePreAtendimento(admin, o.tenantId)
+    const mr = await ler(admin.from('medical_records').select('general_anamnesis')
+      .eq('client_id', o.clientId).maybeSingle(), 'buscar a ficha de saúde da cliente') as { general_anamnesis: unknown } | null
+    saude = rotulosQueFaltamNaAnamnese(fichaAtual.rows, paraAnamneseGeral(mr?.general_anamnesis ?? null, fichaAtual)?.respostas ?? {})
+  }
+  let ficha: string[] = []
+  if (o.procedureId) {
+    const proc = await ler(admin.from('procedures').select('form_id')
+      .eq('id', o.procedureId).eq('tenant_id', o.tenantId).maybeSingle(), 'buscar o procedimento') as { form_id: string | null } | null
+    const form = proc?.form_id
+      ? await ler(admin.from('forms').select('schema')
+          .eq('id', proc.form_id).eq('tenant_id', o.tenantId).eq('tipo', 'PROCEDIMENTO').maybeSingle(), 'buscar a ficha de atendimento') as { schema: unknown } | null
+      : null
+    if (form) {
+      const entrada = await ler(admin.from('medical_record_entries').select('form_data')
+        .eq('appointment_id', o.appointmentId).maybeSingle(), 'buscar a ficha salva') as { form_data: { ficha?: { answers?: unknown } } | null } | null
+      const salvas = entrada?.form_data?.ficha?.answers
+      const respostas = salvas && typeof salvas === 'object' && !Array.isArray(salvas) ? salvas as Record<string, unknown> : {}
+      ficha = rotulosQueFaltamNaFicha(normalizeFormSchema(form.schema).rows, respostas, { semInjetaveis: o.semInjetaveis })
+    }
+  }
+  return { saude, ficha }
 }

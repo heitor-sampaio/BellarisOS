@@ -14,6 +14,7 @@ import { EntradaDaRecompensa } from '@/lib/fidelidade/recompensa'
 import { recusaDoAjusteDePontos } from '@/lib/fidelidade/pontos-acima-do-comum'
 import { saidaDoVoucher } from '@/lib/estoque/baixa'
 import { comNovaTentativa } from '@/lib/estoque/nova-tentativa'
+import { avisarOMinimoDepois } from '@/lib/estoque/aviso-do-minimo'
 import { voucherEmitido } from '@/lib/events/fidelidade'
 import { recusaDaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { trocaNaComanda } from '@/lib/fidelidade/troca-na-comanda-leitura'
@@ -382,6 +383,8 @@ export async function entregarVoucherProduto(entrada: { voucherId: string; branc
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }
+  // A saída do brinde pode cruzar o mínimo: o aviso sai já (D1 da 36ª).
+  avisarOMinimoDepois(ctx.tenantId!)
   revalidatePath(`/admin/clients/${voucher.client_id}`)
   return depois.embalagens < 0
     ? { aviso: `${prod.name as string}: o estoque da unidade ficou negativo.` }

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { updateClientSelf } from '@/actions/clients'
 import { Pencil, X, Check } from 'lucide-react'
 import { fetchCep } from '@/lib/cep'
+import { maskPhone } from '@estetica-os/utils'
 
 /** 00000-000 enquanto digita. */
 function mascaraDoCep(v: string): string {
@@ -67,13 +68,8 @@ export function EditProfileForm({ client }: Props) {
     preencher('state', r.uf)
   }
 
-  const fmtPhone = (p: string | null) => {
-    if (!p) return '—'
-    const d = p.replace(/\D/g, '')
-    if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
-    if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`
-    return p
-  }
+  // D5 da 36ª (CL-04): a máscara da equipe — o de outro país ("+33 …") fica como foi escrito.
+  const fmtPhone = (p: string | null) => (p ? maskPhone(p) : '—')
 
   // After success, close edit mode
   if (state?.success && editing) {

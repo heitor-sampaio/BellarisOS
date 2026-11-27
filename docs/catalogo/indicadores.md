@@ -333,8 +333,8 @@ Este é o catálogo das regras dos indicadores que valem HOJE: todo número na t
 - Onde: `docs/regras/indicadores.md:163-175`, `:1391-1392`; `DEVLOG.md:11486-11488`
 - Antes: KA-15, KE-24
 
-**OC-02.** A ocupação é o tempo agendado (os atendimentos concluídos contam; os cancelados e as faltas não) sobre o tempo aberto, que é, para cada pessoa que atende e em cada dia, o horário em que a unidade e ela estão abertas ao mesmo tempo. Sai em percentual inteiro, e a agenda e o dashboard da unidade mostram o mesmo número. O tempo agendado de um dia (ou do período da agenda) é o que cada atendimento ocupa DENTRO dele, pela duração marcada (o concluído conta a duração, também o adiantado): o que atravessa a meia-noite, ou dura dias, conta em cada dia o seu pedaço (o de 30 h dava mais de 100% num dia e 0% no seguinte). A contagem dos atendimentos do dia segue pelo dia em que começam.
-- Fonte: decisão do Claude; o recorte pelo dia: decisão do Claude, 25/11, pelo princípio 3
+**OC-02.** A ocupação é o tempo agendado (os atendimentos concluídos contam; os cancelados e as faltas não) sobre o tempo aberto, que é, para cada pessoa que atende e em cada dia, o horário em que a unidade e ela estão abertas ao mesmo tempo. Sai em percentual inteiro, e a agenda e o dashboard da unidade mostram o mesmo número. O tempo agendado de um dia (ou do período da agenda) é o que cada atendimento ocupa DENTRO dele, pela duração marcada (o concluído conta a duração, também o adiantado e o que acabou depois da hora): o que atravessa a meia-noite, ou dura dias, conta em cada dia o seu pedaço (o de 30 h dava mais de 100% num dia e 0% no seguinte). A contagem dos atendimentos do dia segue pelo dia em que começam. O encaixe fora do horário conta no tempo agendado, e o tempo aberto não cresce por ele.
+- Fonte: decisão do Claude; o recorte pelo dia: decisão do Claude, 25/11, pelo princípio 3; o encaixe fora do horário e o concluído depois da hora: decisão do Claude, 27/11 (36ª, Decisão A), pela própria OC-02
 - Onde: `docs/regras/indicadores.md:342-347`
 - Antes: KB-02
 

@@ -16,7 +16,7 @@ import { CONFIG_DA_REDE, mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { Lock } from 'lucide-react'
 import { Dica } from '@/components/shared/dica'
 import { MODULE_LABELS } from '@/lib/permissions'
-import { porQueSoEstasAbas, abasDoTopo } from '@/lib/configuracoes/abas-que-faltam'
+import { abasDoTopo } from '@/lib/configuracoes/abas-que-faltam'
 import type { ItemDeFicha } from '@/components/admin/settings-fichas'
 import { AbaDeFichas } from '@/components/admin/aba-de-fichas'
 import { SettingsDocumentos } from '@/components/admin/settings-documentos'
@@ -421,12 +421,6 @@ export async function Configuracoes({
             </div>
           ))}
         </nav>
-        {/* A 27ª (princípio 7): sem Configurações em Gerenciar, de onde vem cada aba e o que pede o resto. */}
-        {porQueSoEstasAbas(tabs.map(t => t.key), { gerencia: m => can(ctx, m, nivelQueAbreAAba(m)), nomeDoModulo: m => MODULE_LABELS[m] }) && (
-          <p data-abas-do-acesso style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 10, lineHeight: 'var(--leading-snug)' }}>
-            {fala(porQueSoEstasAbas(tabs.map(t => t.key), { gerencia: m => can(ctx, m, nivelQueAbreAAba(m)), nomeDoModulo: m => MODULE_LABELS[m] })!)}
-          </p>
-        )}
         {/* A1 da 14ª: as abas que só a clínica toda tem, à mão no portal da unidade. */}
         {abasDaRede.length > 0 && (
           <p data-abas-da-rede style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 10, lineHeight: 'var(--leading-snug)' }}>

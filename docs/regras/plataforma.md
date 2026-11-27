@@ -877,17 +877,15 @@ auditoria das regras, pergunta 8: "só pela conta admin"; antes, H7 de
   documento, contato, o plano), "App da cliente" (o endereço, o prazo do
   portal, o que a cliente avalia, a validade do plano proposto) e "Pacotes"
   (o pacote em aberto e o vencido). O "Dados da rede" guardava os três.
-- **Sem Configurações em Gerenciar, a tela diz por que só aquelas abas** (27ª,
-  decisão do Claude pelo princípio 7: quem só tinha a LGPD via uma aba, sem
-  saber por quê): "Você vê a aba LGPD (vem de Prontuário em Gerenciar). As
-  outras pedem Configurações da rede em Gerenciar, ou a permissão de cada uma…"
-  (`porQueSoEstasAbas`, `lib/configuracoes/abas-que-faltam.ts`;
-  `[data-abas-do-acesso]`). Prova: `tests/configuracoes-abas-do-acesso.test.ts`.
-  A aba da rede toda (`ABAS_DA_REDE_TODA`) não "vem da permissão": a nota a diz
-  da rede — "As abas Tags e Importações são da rede toda: só a Admin da rede as
-  muda." —, como o resumo do cargo já não a conta (A-CONF1 da 25ª; D11 da 33ª,
-  decisão do Claude, 26/11, princípio 3). Prova:
-  `tests/configuracoes-nota-das-abas-da-rede-toda.test.ts`.
+- **Sem Configurações em Gerenciar, a tela NÃO explica por que só aquelas
+  abas** (A1 da 36ª; o Heitor, 26/11: "isso não é ser intuitivo, é ser
+  explicativo e não isso que eu quero. Ser intuitivo é justamente o contrario,
+  ser facil de usar mesmo sem muitas explicações."; princípio 7). A nota da 27ª
+  ("Você vê a aba LGPD (vem de Prontuário em Gerenciar). As outras pedem…",
+  `porQueSoEstasAbas`, `[data-abas-do-acesso]`) saiu: o topo diz as abas dela
+  (`abasDoTopo`), a aba da rede toda diz lá dentro que é só da Admin da rede, e
+  a aba pedida que não abre diz por quê (abaixo). Prova:
+  `tests/configuracoes-abas-do-acesso.test.ts`.
 - **A aba pedida que não abre diz por quê** (A11 da 12ª simulação, 2026-11-11;
   princípio 3: quem tinha só a Acácia abria `?tab=commissions` e
   `?tab=permissions` e caía nas Tags calada). A tela abre a primeira aba que
@@ -1289,7 +1287,11 @@ de uma unidade"):**
   concluir pede o Prontuário em Gerenciar.", "Concluir também pede o
   Prontuário em Gerenciar", A2) saíram: valem as do módulo Atendimento, logo
   abaixo; o seletor travado mostra só o nível que vale, com o cadeado (A3); "Dê o nome
-  na lista de cargos e clique em Criar" (A4); o resumo diz de onde vêm a venda
+  na lista de cargos e clique em Criar" (A4 — o cartão do "Novo", com o "Cargo
+  novo: começa sem acesso nenhum.", saiu na A2 da 36ª: explicava a tela — o
+  Heitor, 26/11: "isso não é ser intuitivo, é ser explicativo" —; o "Novo" abre
+  o campo do nome com o "Criar" ali mesmo, e o painel ao lado fica vazio até o
+  cargo nascer); o resumo diz de onde vêm a venda
   e o Fechamento do dia: a venda, só do PDV (PV-04, 24/11); o Fechamento, do
   PDV ou do Financeiro em Ver (A5, `quemVendeNoResumo`).
   **O módulo Atendimento** (o Heitor, 2026-11-18: "Agenda é agenda e
@@ -1837,6 +1839,19 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
     geração do documento juntada à gravação que o criou não lhe dá a hora; A20).
     Prova: `tests/auditoria-a-sessao-do-pacote-na-unidade-do-agendamento.test.ts`,
     `tests/auditoria-o-fato-do-cancelamento-e-do-anexo-apagado.test.ts`.
+  - **A 36ª simulação** (decisão do Claude, 27/11; AD-13, AD-15, AD-16):
+    o crediário SEM entrada é o fato — "Lançou 3 parcelas no crediário
+    (R$ 300,00) — Cliente" (também a parcela única sozinha na gravação) e, com
+    a conclusão junto, "Concluiu o atendimento e lançou 3 parcelas…"; era
+    "Criou 3 lançamentos" (D7; `tests/auditoria-o-crediario-sem-entrada.test.ts`).
+    O responsável trocado da oportunidade (o repasse ao desativar, a troca no
+    CRM) diz para quem: "Repassou a oportunidade de X a Fulano" / "Deixou a
+    oportunidade de X sem responsável" — o gatilho de `leads` passa a guardar o
+    `owner_id` (só o id; migration `20261215400001`), e a gravação de antes
+    segue "Editou a oportunidade X (responsável)". A unidade da linha é a da
+    oportunidade: "Da rede" na criada pelo CRM (`branch_id` nulo,
+    `lib/crm/oportunidade.ts`, H16) (A5;
+    `tests/auditoria-o-repasse-da-oportunidade.test.ts`).
   - Prova: `tests/atritos-da-15.test.ts`, `e2e/auditoria-atritos-da-15.spec.ts`.
 - **A falha do registro não derruba a gravação.** O gatilho segura o erro,
   grava uma linha `incompleto` (quando acha a rede) e deixa um WARNING no log:

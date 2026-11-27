@@ -15,9 +15,8 @@ import { z } from 'zod'
 import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, lerTodas, mensagemDoErro } from '@/lib/db'
-import { recusaDoBloqueio, avisoDosMarcadosNoBloqueio } from '@/lib/agenda/bloqueio'
-import { DURACAO_COMUM_MIN, podemOcuparDesde } from '@/lib/appointments/core'
-import { fimDaOcupacao, bateNaOcupacao } from '@/lib/appointments/ocupacao'
+import { recusaDoBloqueio, avisoDosMarcadosNoBloqueio, quantosBatemNoBloqueio } from '@/lib/agenda/bloqueio'
+import { podemOcuparDesde } from '@/lib/appointments/core'
 import { filtroDeQuemAtendeNaUnidade } from '@/lib/cached-queries'
 
 const UUID = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
@@ -60,9 +59,11 @@ async function recusaDoAlvo(admin: Admin, tenantId: string, e: Entrada): Promise
 }
 
 /**
- * Quantos atendimentos já marcados continuam no período (princípio 2).
- * "Perto" é o que começou até 12 h antes ou ainda ocupa o período, com
- * qualquer duração (25/11: o de 30 h de ontem ficava de fora, calado).
+ * Quantos atendimentos já marcados continuam no período (AG-20): os que se
+ * sobrepõem a ele, com qualquer duração (25/11: o de 30 h de ontem ficava de
+ * fora, calado). A leitura pega os que podem ocupar o período
+ * (`podemOcuparDesde`); a conta é `quantosBatemNoBloqueio` — o que termina
+ * antes do início não conta (D3 da 36ª).
  */
 async function contarMarcados(admin: Admin, tenantId: string, e: Entrada, inicio: string, fim: string): Promise<number> {
   const iniMs = new Date(inicio).getTime(), fimMs = new Date(fim).getTime()
@@ -74,10 +75,7 @@ async function contarMarcados(admin: Admin, tenantId: string, e: Entrada, inicio
     q = e.professionalId ? q.eq('professional_id', e.professionalId) : q.eq('room_id', e.roomId!)
     return q.order('scheduled_at').order('id').range(de, ate)
   }, 'contar os atendimentos do período') as { scheduled_at: string; duration_min: number | null; status: string; completed_at: string | null }[]
-  return marcados.filter(a => {
-    const aIni = new Date(a.scheduled_at).getTime()
-    return aIni >= iniMs - DURACAO_COMUM_MIN * 60_000 || bateNaOcupacao(iniMs, fimMs, aIni, fimDaOcupacao(a))
-  }).length
+  return quantosBatemNoBloqueio(marcados, iniMs, fimMs)
 }
 
 /**

@@ -551,6 +551,18 @@ function fraseDoRegistroDa17(r: RegistroDaAuditoria, nomes: NomesDaAuditoria, cl
     const resto = camposMudados(r.colunas.filter(c => c !== 'crm_stage_id'))
     return `Mudou a etapa ${nome ? `da oportunidade ${nome}` : 'de uma oportunidade'}${de && para ? ` de ${de} para ${para}` : ''}${resto ? ` (e editou: ${resto})` : ''}`
   }
+  // A5 da 36ª (AD-13, como o "Repassou o agendamento de X a Fulano" da AD-15; decisão do
+  // Claude, 27/11): o responsável trocado diz para quem. O gatilho guarda o `owner_id` desde
+  // a migration 20261215400001; a gravação de antes, sem ele, segue "Editou … (responsável)".
+  if (r.tabela === 'leads' && r.operacao === 'editou' && r.colunas.includes('owner_id') && 'owner_id' in r.depois) {
+    const nome = nomeDoRegistro(r, nomes)
+    const daOportunidade = nome ? `a oportunidade de ${nome}` : 'uma oportunidade'
+    const para = texto(r.depois.owner_id)
+    const resto = camposMudados(r.colunas.filter(c => c !== 'owner_id'))
+    const eEditou = resto ? ` (e editou: ${resto})` : ''
+    if (!para) return `Deixou ${daOportunidade} sem responsável${eEditou}`
+    return `Repassou ${daOportunidade} a ${nomes.membros[para] ?? 'outra pessoa da equipe'}${eEditou}`
+  }
   return null
 }
 
@@ -1500,18 +1512,19 @@ function pontosDebitadosDaGravacao(linhas: readonly RegistroDaAuditoria[]): numb
  * princípio 3): "Recebeu R$ 100,00 (Pix)" não dizia que ficaram 3 parcelas em
  * aberto. A parcela vem do lançamento (o gatilho a guarda) ou do lido agora.
  */
-function parcelasDoCrediario(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria): { n: number; total: number } | null {
+function parcelasDoCrediario(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria): { n: number; total: number; primeira: RegistroDaAuditoria } | null {
   const abertas = linhas.filter(l => l.tabela === 'financial_transactions' && l.operacao === 'criou' && !l.depois.paid_at
     && (texto(l.depois.type) ?? (l.registro_id ? nomes.lancamentos?.[l.registro_id]?.tipo : null)) === 'INCOME'
     && texto(l.depois.category) !== 'Estorno'
     && (numero(l.depois.parcela_numero) ?? (l.registro_id ? nomes.lancamentos?.[l.registro_id]?.parcela ?? null : null)) !== null)
   if (!abertas.length) return null
   const total = abertas.reduce((t, l) => t + (numero(l.depois.amount) ?? (l.registro_id ? nomes.lancamentos?.[l.registro_id]?.valor ?? 0 : 0)), 0)
-  return { n: abertas.length, total: Math.round(total * 100) / 100 }
+  return { n: abertas.length, total: Math.round(total * 100) / 100, primeira: abertas[0]! }
 }
 
-const lancouAsParcelas = (p: { n: number; total: number }) =>
-  ` e lançou ${p.n} ${p.n === 1 ? 'parcela' : 'parcelas'} no crediário (${brl(p.total)})`
+const asParcelasDoCrediario = (p: { n: number; total: number }) =>
+  `${p.n} ${p.n === 1 ? 'parcela' : 'parcelas'} no crediário (${brl(p.total)})`
+const lancouAsParcelas = (p: { n: number; total: number }) => ` e lançou ${asParcelasDoCrediario(p)}`
 
 /** " — Rita Moura": a cliente da gravação, se for uma só. */
 function clienteDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria, preferida?: RegistroDaAuditoria): string {
@@ -1575,10 +1588,11 @@ function fatoDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAu
   const formasDaEntrada = formasComValor(entradas)
   const abatimentos = abatimentosDasEntradas(entradas, voucher, pontosDebitadosDaGravacao(linhas))
   // A7 da 28ª: o crediário da comanda (a entrada recebida e as parcelas lançadas na mesma gravação).
-  const crediario = entradas.length ? parcelasDoCrediario(linhas, nomes) : null
+  // D7 da 36ª (AD-16): sem entrada, as parcelas também são o fato ("Criou 3 lançamentos" não dizia).
+  const crediario = parcelasDoCrediario(linhas, nomes)
   const eRecebeu = entradas.length
     ? ` e recebeu ${crediario ? 'a entrada de ' : ''}${brl(totalRecebido)}${formasDaEntrada ? ` (${formasDaEntrada})` : ''}${abatimentos}${crediario ? lancouAsParcelas(crediario) : ''}`
-    : ''
+    : crediario ? lancouAsParcelas(crediario) : ''
 
   // A venda: o pacote, o pré-pago, o crédito.
   const pacote = criada('client_packages')
@@ -1658,6 +1672,10 @@ function fatoDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAu
       principal,
       frase: `Recebeu ${crediario ? 'a entrada de ' : ''}${brl(totalRecebido)}${forma ? ` (${forma})` : ''}${abatimentos}${produtos ? `, com ${produtos}` : ''}${crediario ? lancouAsParcelas(crediario) : ''}${clienteDaGravacao(linhas, nomes, principal)}`,
     }
+  }
+  // D7 da 36ª (AD-16): o crediário sem entrada — só as parcelas em aberto, nenhum recebimento.
+  if (crediario) {
+    return { principal: crediario.primeira, frase: `Lançou ${asParcelasDoCrediario(crediario)}${clienteDaGravacao(linhas, nomes, crediario.primeira)}` }
   }
   const saidasPagas = recebidos.filter(x => x.tipo === 'EXPENSE')
   if (saidasPagas.length) {
@@ -1753,7 +1771,9 @@ export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: Nome
     const so = linhas[0]!
     const recebidaAoCriar = so.operacao === 'criou' && texto(so.depois.type) === 'INCOME' && !!so.depois.paid_at
       && texto(so.depois.category) !== 'Estorno'
-    const baixa = so.tabela === 'financial_transactions' && (so.operacao === 'editou' || recebidaAoCriar) ? fatoDaGravacao(linhas, nomes) : null
+    // D7 da 36ª: a parcela única do crediário sem entrada, sozinha na gravação.
+    const crediarioAoCriar = so.tabela === 'financial_transactions' && !!parcelasDoCrediario(linhas, nomes)
+    const baixa = so.tabela === 'financial_transactions' && (so.operacao === 'editou' || recebidaAoCriar || crediarioAoCriar) ? fatoDaGravacao(linhas, nomes) : null
     return baixa?.frase ?? fraseDaAuditoria(so, nomes)
   }
 

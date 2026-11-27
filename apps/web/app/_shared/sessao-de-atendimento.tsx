@@ -27,6 +27,7 @@ import { paraAnamneseGeral, anamneseRespondida } from '@/lib/anamnese-geral'
 import { fichaDeSaudeVencida } from '@/lib/pre-atendimento/validade'
 import { responsavelDaFicha } from '@/lib/clients/menor'
 import { fichaDePreAtendimento } from '@/lib/pre-atendimento/ficha'
+import { oQueFaltaSemOClinico } from '@/lib/atendimento/obrigatorias-no-servidor'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { ler, lerTodas } from '@/lib/db'
 import { registrarAcessoAoProntuario } from '@/lib/prontuario/acessos'
@@ -699,6 +700,17 @@ export async function SessaoDeAtendimento({
         // A17 da 31ª: quem lê o clínico e não o escreve lê, na ficha de saúde em branco, quem a responde.
         quemRespondeAFicha={canViewRecords && !canEditRecords && ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(apptRaw.status as string)
           ? await quemRespondeAFichaDeSaude(ctx.tenantId!, branchId) : null}
+        // AT-03/AT-05: quem conclui sem VER o clínico sabe, antes do "Confirmar
+        // conclusão", o que falta (só o nome das perguntas) e quem responde.
+        faltaSemVerOClinico={!canViewRecords && canManage && ['ARRIVED', 'IN_PROGRESS'].includes(apptRaw.status as string)
+          ? await (async () => {
+              const falta = await oQueFaltaSemOClinico(admin, {
+                tenantId: ctx.tenantId!, appointmentId: appointment.id, procedureId, clientId: cli.id,
+                semInjetaveis: !temRecurso(ctx, 'injetaveis'),
+              })
+              const quem = falta.saude.length || falta.ficha.length ? await quemRespondeAFichaDeSaude(ctx.tenantId!, branchId) : []
+              return { ...falta, quem }
+            })() : null}
         // A10 da 19ª: sem o check-in no cargo, o agendado diz QUEM marca a chegada.
         quemMarcaAChegada={!canCheckin && apptRaw.status === 'SCHEDULED' ? await quemMarcaAChegada(ctx.tenantId!, branchId) : null}
         // A19 da 14ª: quem estorna (o Financeiro em Gerenciar, de todos — a régua da ficha) estorna daqui, pela mesma janela.

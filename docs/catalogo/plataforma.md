@@ -875,8 +875,8 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:1405-1407`, `:1411-1420`
 - Antes: KD-21
 
-**AD-21.** Na equipe, nos cargos e no comercial, a frase diz o fato: "Desativou / Reativou Fulana"; "Criou o cargo X (N permissões)", "Criou a permissão de (módulo) do cargo X", "Criou a aba de relatório (aba) do cargo X", "Mudou os acessos do cargo X (…)"; "Criou o contato e a oportunidade X", "Mudou a etapa da oportunidade X" ("de A para B" quando a etapa está no registro). Na autorização do suporte, a frase diz o fato e de quem é a conta: "Autorizou o suporte na conta de Luana, com os dados clínicos", "Revogou a autorização do suporte na conta de Luana", "Trocou a autorização do suporte na conta de Luana (agora sem os dados clínicos)"; sem a conta, "numa conta da equipe".
-- Fonte: decisão do Claude; a autorização do suporte: decisão do Claude, 26/11 (33ª simulação, A9), pela própria AD-21
+**AD-21.** Na equipe, nos cargos e no comercial, a frase diz o fato: "Desativou / Reativou Fulana"; "Criou o cargo X (N permissões)", "Criou a permissão de (módulo) do cargo X", "Criou a aba de relatório (aba) do cargo X", "Mudou os acessos do cargo X (…)"; "Criou o contato e a oportunidade X", "Mudou a etapa da oportunidade X" ("de A para B" quando a etapa está no registro), "Repassou a oportunidade de X a Fulano" (o repasse ao desativar, OP-10 do CRM). Na autorização do suporte, a frase diz o fato e de quem é a conta: "Autorizou o suporte na conta de Luana, com os dados clínicos", "Revogou a autorização do suporte na conta de Luana", "Trocou a autorização do suporte na conta de Luana (agora sem os dados clínicos)"; sem a conta, "numa conta da equipe".
+- Fonte: decisão do Claude; a autorização do suporte: decisão do Claude, 26/11 (33ª simulação, A9), pela própria AD-21; o repasse da oportunidade: decisão do Claude, 27/11 (36ª, A5), pela AD-15
 - Onde: `docs/regras/plataforma.md:1271-1279`, `:1323-1328`, `:1435-1438`, `:1777-1785`
 - Antes: KD-22; antes de 26/11: "Criou 1 e editou 1 liberações do suporte"
 

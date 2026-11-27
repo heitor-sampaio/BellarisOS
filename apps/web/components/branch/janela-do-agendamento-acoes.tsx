@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { HandCoins, MapPin, UserCog } from 'lucide-react'
+import { AlertTriangle, HandCoins, MapPin, UserCog } from 'lucide-react'
 import { toast } from 'sonner'
 import { profissionaisParaTrocar, reassignProfessional, opcoesParaMudarDeUnidade, mudarUnidadeDoAgendamento, type UnidadeParaMudar } from '@/actions/appointments'
 import { useUmaUnidade } from '@/components/shared/uma-unidade'
@@ -9,6 +9,7 @@ import { creditosDoAgendamento, usarCreditoNoAgendamento } from '@/actions/credi
 import type { CreditoParaAgendar } from '@/lib/creditos/credito'
 import { O_ATENDE_NA_FICHA } from '@/lib/equipe/atende'
 import { NINGUEM_LIVRE_NO_HORARIO } from '@/lib/agenda/so-o-que-esta-livre'
+import { avisoDeQuemNaoRealiza } from '@/lib/procedimentos/aviso-de-quem-realiza'
 
 /**
  * Trocar quem atende pela janela do agendamento (A22 da 8ª simulação,
@@ -23,7 +24,7 @@ export function TrocarProfissional({ appointmentId, slug, atual, onTrocou }: {
   appointmentId: string; slug: string; atual: string; onTrocou: () => void
 }) {
   const [aberto, setAberto] = useState(false)
-  const [lidas, setLidas] = useState<{ livres: { id: string; name: string }[]; atendem: number } | null>(null)
+  const [lidas, setLidas] = useState<{ livres: { id: string; name: string; realiza: boolean }[]; atendem: number } | null>(null)
   const [escolhida, setEscolhida] = useState('')
   const [confirmando, setConfirmando] = useState(false)
   const [gravando, setGravando] = useState(false)
@@ -43,7 +44,7 @@ export function TrocarProfissional({ appointmentId, slug, atual, onTrocou }: {
     const r = await reassignProfessional(appointmentId, nova.id, slug)
     setGravando(false)
     if (r?.error) { setErro(r.error); setConfirmando(false); return }
-    toast.success(`Profissional trocada: agora é ${nova.name}.`)
+    toast.success(`Agora quem atende é ${nova.name}.`)
     onTrocou()
   }
 
@@ -56,12 +57,19 @@ export function TrocarProfissional({ appointmentId, slug, atual, onTrocou }: {
   }
   return (
     <div data-trocar-profissional style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px', background: 'var(--bg-app)', borderRadius: 'var(--radius-field-token)', border: '1px solid var(--border)' }}>
-      <label htmlFor="troca-de-profissional" className="field-label">Nova profissional</label>
+      <label htmlFor="troca-de-profissional" className="field-label">Quem vai atender</label>
       <select id="troca-de-profissional" className="field" style={{ background: 'var(--surface)' }} value={escolhida}
         disabled={!opcoes} onChange={e => { setEscolhida(e.target.value); setConfirmando(false) }}>
         <option value="">{opcoes ? 'Selecione…' : 'Carregando…'}</option>
         {(opcoes ?? []).map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
       </select>
+      {/* PC-14: quem não realiza o procedimento só avisa — como no novo agendamento. */}
+      {nova && !nova.realiza && (
+        <p data-aviso-quem-realiza role="status" style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 'var(--text-xs-sz)', color: 'var(--warning)' }}>
+          <AlertTriangle size={13} aria-hidden="true" style={{ flexShrink: 0, marginTop: 1 }} />
+          {avisoDeQuemNaoRealiza(nova.name)}
+        </p>
+      )}
       {/* A lista vazia diz por quê: ninguém mais atende aqui, ou ninguém está livre no horário. */}
       {lidas && opcoes && opcoes.length === 0 && (
         <p data-ninguem-para-trocar style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>

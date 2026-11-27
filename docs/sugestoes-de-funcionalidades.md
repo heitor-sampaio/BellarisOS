@@ -19,9 +19,9 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 6 | A cliente confirmar presença pelo app antes do atendimento | 27ª, D01; item 7 da 25ª, 20 da 26ª |
 | 7 | As avaliações das clientes numa tela própria (hoje só na ficha) | 27ª (Time D) |
 | 8 | Crédito pré-pago também de produto (hoje só de procedimento) | 27ª (Time D) |
-| 9 | O de → para da etapa do funil na Auditoria | 27ª (Time E); 31ª (também a regra de comissão: procedimento, quem e valor, A9); 32ª, Time A; 34ª, Time D (a maquininha e a regra de comissão, Leopoldina); 35ª, Time C (a etapa e também o responsável, Eulália: C01, C10, C12, C13) |
+| 9 | O de → para da etapa do funil na Auditoria | 27ª (Time E); 31ª (também a regra de comissão: procedimento, quem e valor, A9); 32ª, Time A; 34ª, Time D (a maquininha e a regra de comissão, Leopoldina); 35ª, Time C (a etapa e também o responsável, Eulália: C01, C10, C12, C13); 36ª, Time B (o "Atende" e a regra de comissão de 30% para 35%, sem o valor antigo) |
 | 10 | Ranking por quem vendeu nos Relatórios | 27ª (Time E) |
-| 11 | Outra base de CEP (o 66035-000 não foi encontrado; na 28ª também 76804-000, 74210-000 e 64049-000) | 27ª, A; A37 da 26ª; 28ª, A, B e C; 31ª; 32ª, Time E; 34ª, Times A, C e E (78580-000 sem logradouro, 75110-000 e 45028-000); 35ª, Times A (76900-000) e B (15010-000) |
+| 11 | Outra base de CEP (o 66035-000 não foi encontrado; na 28ª também 76804-000, 74210-000 e 64049-000) | 27ª, A; A37 da 26ª; 28ª, A, B e C; 31ª; 32ª, Time E; 34ª, Times A, C e E (78580-000 sem logradouro, 75110-000 e 45028-000); 35ª, Times A (76900-000) e B (15010-000); 36ª, Times A, B, C e E (78300-000, 64200-000, 63100-000, Itabuna e Ilhéus, Mossoró) |
 | 12 | Uma resposta da ficha de saúde que a rede marca como alerta (ex.: "Grávida = Sim"), além da alergia | 28ª, C10 (ligada à nº 4) |
 | 13 | Comparar as fotos Antes e Depois lado a lado | 28ª, C07 |
 | 14 | Os pontos e as recompensas da cliente na tela do atendimento | 28ª, Time E |
@@ -31,10 +31,10 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 18 | O pacote, o crédito e a dívida da cliente no cartão do agendamento | 28ª, Time B |
 | 19 | O lote do produto na comanda e no recibo | 28ª, Time A |
 | 20 | Dizer a quem só vê o Estoque quem registra a perda | 28ª, Time A |
-| 21 | Cadastro de fornecedor (com CNPJ), usado no estoque e nas despesas | 28ª, Times A e B; 31ª (com a marca e o custo padrão no cadastro do produto); 34ª, Times C e D |
+| 21 | Cadastro de fornecedor (com CNPJ), usado no estoque e nas despesas | 28ª, Times A e B; 31ª (com a marca e o custo padrão no cadastro do produto); 34ª, Times C e D; 36ª, Time D (o custo no cadastro do produto) |
 | 22 | O fornecedor e a forma na lista "A pagar" | 28ª, Time B; 31ª (ligada à nº 21); 34ª, Times C e D |
 | 23 | Mostrar a linha de comissão de R$ 0 (atendimento pago com voucher) | 28ª, E03 |
-| 24 | Importar a coluna "origem" da planilha sem criar oportunidade | 28ª, Times A, B, D e E; 34ª, Times B, C, D e E |
+| 24 | Importar a coluna "origem" da planilha sem criar oportunidade | 28ª, Times A, B, D e E; 34ª, Times B, C, D e E; 36ª, Times A e B |
 | 25 | O telefone da rede como padrão no da unidade, no /setup | 28ª, Time E |
 | 26 | Vender o pacote pela internet ou pelo app da cliente | pergunta do catálogo de Vendas, decidida em 25/11 |
 | 27 | O botão "Desativar produto" na tela do Estoque (a action já existe) | pergunta do catálogo do Atendimento, decidida em 25/11 |
@@ -65,7 +65,7 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 52 | Escolher o funil ao abrir o contato do CRM pela busca | 30ª, A03 |
 | 53 | Escolher a etapa no "Mover para outro funil" | 30ª, A06 |
 | 54 | A busca achar a pessoa cuja oportunidade está em funil arquivado | 30ª, A09 (BA-04) |
-| 55 | O resumo do cargo sem "ela" fixo | 30ª, Time B; 32ª, Time D; 35ª, B02 |
+| 55 | O resumo do cargo sem "ela" fixo | 30ª, Time B; 32ª, Time D; 35ª, B02; 36ª, Time A |
 | 56 | O `?unidade=` aceitar o endereço curto da unidade, ou avisar que não achou | 30ª, Time B |
 | 57 | A agenda "Toda a rede" indicar que as unidades têm fusos diferentes (feita em 26/11, pelo D4 da 33ª: FU-04 de Indicadores) | 30ª, Time B (ligada à nº 3) |
 | 58 | O recibo avisar que sai sem CPF quando a ficha não tem | 30ª, C12 |
@@ -82,7 +82,7 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 69 | Escolher o lote na transferência (hoje sai o que vence antes, ES-24) | 31ª, Time E; 35ª, Time B (Osmar) |
 | 70 | Ligar o avulso já agendado à sessão do pacote no momento da venda | 31ª, D07 |
 | 71 | A versão do modelo na lista de Documentos e, ao publicar a v2, o aviso de quantos emitidos pendentes seguem na v1 | 31ª, Time D |
-| 72 | Da tela que avisa "taxa 0%", um caminho ao cadastro da maquininha | 31ª, Times C, D e E; 32ª, Times B e E; 34ª, Times C e E (ligada ao D6) |
+| 72 | Da tela que avisa "taxa 0%", um caminho ao cadastro da maquininha | 31ª, Times C, D e E; 32ª, Times B e E; 34ª, Times C e E (ligada ao D6); 36ª, Times B, C e E |
 | 73 | A lista de acessos ao prontuário dizer que a repetição em ~5 min não entra de novo | 31ª, D12 |
 | 74 | O Copilot contar os produtos do estoque e cadastrar produto | 31ª, Time E |
 | 75 | Fechamento do dia: "conferido = registrado" num clique para as formas sem divergência | 31ª, Times B e E |
@@ -95,7 +95,7 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 82 | No "Receber o plano", sugerir o pacote que cobre PARTE do plano (hoje só o equivalente inteiro, DP-05) | 31ª, D14 |
 | 83 | Na janela de venda do pacote, antes de vender, os termos que vão nascer | 31ª, D17 |
 | 84 | "Pote" na lista fixa de embalagens do estoque (ES-05) | 31ª, D2 |
-| 85 | Fechar a unidade um dia só (feriado), sem mexer no horário da semana | 32ª, Time B |
+| 85 | Fechar a unidade um dia só (feriado), sem mexer no horário da semana | 32ª, Time B; 36ª, Time A (dois papéis: o feriado bloqueado pessoa por pessoa) |
 | 86 | O app dizer "a unidade não abre neste dia" em vez de só "Nenhum horário disponível" | 32ª, B08 |
 | 87 | Escolher a origem ao criar a oportunidade pelo painel do inbox (hoje nasce "Orgânico") | 32ª, Time A |
 | 88 | A hora da unidade no topo do portal (hoje só a data) | 32ª, Time D (UTC−5) |
@@ -108,7 +108,7 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 95 | A janela do agendamento dizer que o link da ficha caiu ("o link caiu depois de 5 tentativas: gere outro") | 33ª, A06 (A3) |
 | 96 | O fuso do Amazonas oeste (Eirunepé/Tabatinga, UTC−5) na lista, com o nome da região | 33ª, Time A |
 | 97 | "Respondida pela equipe em dd/mm" dizer quem respondeu | 33ª, A07 |
-| 98 | A variável opcional vazia sumir com a pontuação em volta ("Desconto: ." → nada) | 33ª, B03 |
+| 98 | A variável opcional vazia sumir com a pontuação em volta ("Desconto: ." → nada) | 33ª, B03; 36ª, Time E (o termo de adulta com ", , CPF .") |
 | 99 | O Termo de uso de imagem assinado valer por um prazo da rede, sem pedir de novo a cada agendamento | 33ª, B09 |
 | 100 | O "vs anterior" dizer o período comparado, e a Auditoria do lançamento à mão citar a data do pagamento | 33ª, Time C (A12, Decisão C) |
 | 101 | A ficha do atendimento concluído sem pagamento mostrar o saldo ("R$ 300 a receber") | 33ª, C06; 34ª, Time A (também o valor no "Aguardando o pagamento no PDV") |
@@ -120,7 +120,7 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 107 | Avisar a cliente no sino quando o pacote da LGPD refeito ficar pronto | 33ª, D2 |
 | 108 | O Unificar gravar também o 'Indicada por' e o responsável legal digitados no cadastro | 33ª, D18 |
 | 109 | Marcar na Auditoria as linhas 'Corrigiu o custo do lote' gravadas pela baixa antes da correção | 33ª, D7 |
-| 110 | Baixa parcial de conta a pagar (pagar parte e deixar o resto em aberto) | 34ª, Time D (Fausto, material descartável); Decisão D |
+| 110 | Baixa parcial de conta a pagar (pagar parte e deixar o resto em aberto) | 34ª, Time D (Fausto, material descartável); Decisão D; 36ª, Time C (o mesmo do lado do a receber: receber parte da parcela do crediário, C06 e C12) |
 | 111 | Despesa recorrente "sem fim" (hoje mínimo 2 e um número fixo de repetições) | 34ª, Time D (Fausto, aluguel) |
 | 112 | Anexar a foto da nota fiscal à despesa (pela tela e pelo Copilot) | 34ª, Times D (Fausto) e C (Ester) |
 | 113 | Dizer de onde veio a taxa (a da bandeira ou a da maquininha) na movimentação e no extrato | 34ª, Time D (Mercedes, Leopoldina) |
@@ -137,3 +137,19 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 124 | A unidade da venda na linha da sessão do pacote (extrato da comissão e linha do tempo da ficha) | 35ª, B02 (Neide) |
 | 125 | A Auditoria da desativação de unidade com o que ela listou (equipe, agendamentos, estoque, a receber, comissão) | 35ª, Time B (Hermínia) |
 | 126 | Cancelar o pacote ou o plano aceito sem nenhum pagamento recebido, para quem tem só o Financeiro em Gerenciar (sem pagamento não há "Estornar", e a janela do estorno é o caminho dela) | 35ª, correção do D1 (Times A e D) |
+| 127 | Trocar a sala do agendamento sem remarcar (hoje a sala só muda ao remarcar, ou com a unidade, AG-40) | 36ª, Time A (Decisão A) |
+| 128 | A ocupação do período nos Relatórios → Agenda | 36ª, Time A |
+| 129 | A exceção de comissão oferecer só os procedimentos que a pessoa realiza | 36ª, Time B |
+| 130 | Receber várias parcelas de uma vez | 36ª, Time C (Decisão C) |
+| 131 | O "(inativo)" no nome da coluna de quem foi desativado, na grade da agenda (hoje "Não atende mais nesta unidade", AG-68) | 36ª, Time B |
+| 132 | A Auditoria do desativar com o resumo dos repasses (agendamentos e oportunidades, para quem) | 36ª, Time B (ligada à nº 46) |
+| 133 | A Auditoria do "Unificou" e do acesso ao app criado no cadastro | 36ª, Time E |
+| 134 | O recibo guardar o nome da cliente do dia em que foi emitido, como o documento assinado (DA-13) | 36ª, Time E (E09) |
+| 135 | Avisar a equipe, no sino, quando a cliente assina o termo pelo app | 36ª, Time D (D08; Decisão D) |
+| 136 | O "Ligar a automação?" (RX-01) dizer também quantas clientes veem o aviso no sino do app, além das que têm o aparelho | 36ª, Time D (ligada à nº 94) |
+| 137 | A data de nascimento na ficha rápida do agendar | 36ª, E04 |
+| 138 | Um aviso ao dar acesso ao app à ficha de uma menor | 36ª, E03 (Decisão E) |
+| 139 | A descrição inteira da parcela na ficha da cliente | 36ª, C02 |
+| 140 | Uma tela do dinheiro do pacote no app (pago e a pagar), como a do plano (PL-19) | 36ª, C02 |
+| 141 | A tela de Cargos dizer quem recebe cada aviso | 36ª, Time D |
+| 142 | Quem tem Clientes em Ver pedir a reativação da ficha arquivada a quem tem Clientes em Gerenciar (evita a ficha duplicada) | 36ª, E07 |

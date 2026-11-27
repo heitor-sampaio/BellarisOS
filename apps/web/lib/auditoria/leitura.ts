@@ -215,6 +215,8 @@ async function nomesDaAuditoria(ctx: TenantContext, registros: readonly Registro
     ...registros.filter(r => r.tabela === 'agenda_bloqueios').map(r => doRegistro(r, 'professional_id')).filter((v): v is string => !!v),
     // A9 da 31ª: de quem é a regra de comissão ("a comissão de Limpeza de pele para Marcela").
     ...registros.filter(r => r.tabela === 'commission_rules').map(r => doRegistro(r, 'professional_id')).filter((v): v is string => !!v),
+    // A5 da 36ª: a quem foi a oportunidade repassada ("Repassou a oportunidade de X a Fulano").
+    ...registros.filter(r => r.tabela === 'leads').map(r => doRegistro(r, 'owner_id')).filter((v): v is string => !!v),
   ])]
   // A16: a sala do bloqueio; A17: o cargo do membro editado (o de → para e o "Promoveu").
   const salas = [...new Set(registros.filter(r => r.tabela === 'agenda_bloqueios').map(r => doRegistro(r, 'room_id')).filter((v): v is string => !!v))]

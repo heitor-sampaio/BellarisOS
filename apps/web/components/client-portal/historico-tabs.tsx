@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
+import { SEM_VENCIMENTO } from '@/lib/financeiro/vencimentos'
 import { formatDia } from '@estetica-os/utils'
 import Link from 'next/link'
 import { FileText, Download, CheckCircle2, Clock3, Star, ChevronRight } from 'lucide-react'
@@ -229,6 +230,7 @@ export function HistoricoTabs({ slug, procedimentos, deAntes, pagamentos, docume
                     ? new Date(p.paid_at).toLocaleDateString('pt-BR', { timeZone: fuso })
                     : p.aPagarNaUnidade
                       ? 'A pagar na unidade'
+                      : p.semVencimento ? SEM_VENCIMENTO
                       : p.vencida && p.vencimento ? `Vencida em ${(formatDia(p.vencimento) ?? "").slice(0, 5)}`
                       : p.vencimento ? `vence em ${formatDia(p.vencimento)}` : 'Pendente'}
                   {/* D6: a parcela do crediário sem meio diz "Com a clínica" (a forma pronta da página). */}
@@ -257,13 +259,13 @@ export function HistoricoTabs({ slug, procedimentos, deAntes, pagamentos, docume
                     {p.estorno ? 'Estorno' : p.estornado ? 'Estornado' : p.is_paid ? 'Pago' : p.vencida ? 'Vencida' : 'Pendente'}
                   </span>
                 </div>
-                {/* r2-ven-13: o recibo do que ela pagou (PDF), também aqui. */}
-                {p.is_paid && !p.estornado && !p.estorno && !p.aPagarNaUnidade && (
-                  <a href={`/api/recibos/${p.id}`} target="_blank" rel="noopener" data-recibo
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)', textDecoration: 'none' }}>
-                    <FileText size={11} aria-hidden /> Recibo
+                {/* r2-ven-13: o recibo do que ela pagou (PDF), também aqui — um por forma (D8 da 36ª, CR-07). */}
+                {p.is_paid && !p.estornado && !p.estorno && !p.aPagarNaUnidade && (p.recibos ?? [{ id: p.id, forma: null }]).map(rec => (
+                  <a key={rec.id} href={`/api/recibos/${rec.id}`} target="_blank" rel="noopener" data-recibo
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: 4, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)', textDecoration: 'none' }}>
+                    <FileText size={11} aria-hidden /> {rec.forma ? `Recibo (${rec.forma})` : 'Recibo'}
                   </a>
-                )}
+                ))}
               </div>
             </div>
           ))}

@@ -165,6 +165,20 @@ test.describe.serial('quem realiza o procedimento', () => {
     })
   })
 
+  // PC-14 (D4 da 36ª): na agenda da equipe, escolher quem não realiza só avisa —
+  // a troca de quem atende oferecia quem não realiza sem dizer nada.
+  test('a troca de quem atende oferece quem não realiza, marcado para o aviso', async ({ browser }) => {
+    const quando = diaEmQueAUnidadeAbre(9)
+    const ag = await ocupar(bia!.userId, `${quando}T10:00:00-03:00`)
+    await como(browser, gestora!.estado, async p => {
+      await p.goto(`/${slug}/agenda?date=${quando}`)
+      const r = await chamarAcao(p, 'actions/appointments.ts', 'profissionaisParaTrocar', `/${slug}/agenda`, [ag])
+      const lidas = devolvido(r.texto) as { livres: { id: string; realiza: boolean }[] }
+      expect(lidas.livres.find(l => l.id === rede!.professionalId), 'quem não realiza continua na lista').toMatchObject({ realiza: false })
+      expect(lidas.livres.find(l => l.id === cris!.userId)).toMatchObject({ realiza: true })
+    })
+  })
+
   test('o repasse ao desativar oferece só quem realiza', async ({ browser }) => {
     const ag = await ocupar(cris!.userId, `${dia(4)}T10:00:00-03:00`)
     await como(browser, gestora!.estado, async p => {

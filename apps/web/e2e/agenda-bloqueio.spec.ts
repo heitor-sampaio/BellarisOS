@@ -283,6 +283,37 @@ test('o "Bloquear horário" diz, antes de gravar, os atendimentos que continuam 
   }
 })
 
+// AG-20 (D3 da 36ª): o aviso conta só o que se sobrepõe ao período. O das 06:00
+// (30 min) terminava antes do bloqueio das 07:00 e entrava na conta, pela janela
+// das 12 h antes.
+test('o aviso do "Bloquear horário" não conta o atendimento que termina antes do período (AG-20)', async ({ browser }) => {
+  const cliente = await rede!.criarCliente('Antes do bloqueio')
+  const marcado = await db().from('appointments').insert({
+    branch_id: rede!.branchId, client_id: cliente, procedure_id: rede!.procedureId, professional_id: rede!.professionalId,
+    status: 'SCHEDULED', source: 'INTERNAL', duration_min: 30, price: 0, scheduled_at: em('06:00'),
+  }).select('id').single<{ id: string }>()
+  expect(marcado.error).toBeNull()
+  try {
+    await como(browser, recepcao!, async p => {
+      await p.goto(`/${slug}/agenda?date=${DIA}`)
+      await p.getByRole('button', { name: 'Bloquear horário' }).click()
+      const janela = p.getByRole('dialog', { name: 'Bloquear horário' })
+      await janela.getByLabel('Profissional').selectOption(rede!.professionalId)
+      // O controle: das 06:15 às 07:00 ele ainda ocupa — conta.
+      await janela.getByLabel('Início').fill(`${DIA}T06:15`)
+      await janela.getByLabel('Fim').fill(`${DIA}T07:00`)
+      await expect(janela.locator('[data-marcados-no-bloqueio]')).toContainText('Já há 1 atendimento marcado')
+      // Das 07:00 às 08:00 ele já terminou: nada a dizer.
+      await janela.getByLabel('Início').fill(`${DIA}T07:00`)
+      await janela.getByLabel('Fim').fill(`${DIA}T08:00`)
+      await expect(janela.locator('[data-marcados-no-bloqueio]')).toHaveCount(0)
+      await janela.getByRole('button', { name: 'Cancelar' }).click()
+    })
+  } finally {
+    await db().from('appointments').delete().eq('id', marcado.data!.id)
+  }
+})
+
 test('desfazer o bloqueio devolve o horário aos livres', async ({ browser }) => {
   await como(browser, recepcao!, async p => {
     await p.goto(`/${slug}/agenda?date=${DIA}`)

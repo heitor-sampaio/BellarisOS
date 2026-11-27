@@ -84,3 +84,52 @@ test('A48: o estoque no mínimo ou abaixo chega ao sino de quem cuida do estoque
   await rodar()
   await expect.poll(async () => (await avisos()).length, 'o novo cruzamento avisa de novo').toBe(primeira.length * 2)
 })
+
+/**
+ * D1 da 36ª simulação (ES-30 / NE-06: "uma vez a cada vez que cruza"): a
+ * Máscara, mínimo 5, foi 6 → 4 → 3 → 7 → 4 numa hora — cruzou duas vezes — e o
+ * sino teve UM aviso, às 03:02: a rotina olhava o ESTADO da linha. Agora o
+ * cruzamento vai à fila no banco, na hora do movimento
+ * (`estoque_cruzamentos_do_minimo`, gatilho de `branch_product_stock`), e UMA
+ * passada da rotina manda os dois. (As actions mandam logo depois do
+ * movimento, pelo after(); aqui os movimentos vão direto às funções, e quem
+ * manda é a rotina, a rede de segurança.)
+ */
+test('D1 da 36ª: dois cruzamentos do mínimo antes de a rotina passar são dois avisos', async ({ request }) => {
+  const segredo = process.env.CRON_SECRET
+  test.skip(!segredo, 'sem CRON_SECRET')
+  const nome = `${PREFIXO} Máscara ${marca}`
+  const { data: p, error } = await db().from('products').insert({
+    tenant_id: rede!.tenantId, name: nome, unit: 'un', min_stock: 5, uso: 'INSUMO', cost_price: 30,
+  }).select('id').single<{ id: string }>()
+  expect(error).toBeNull()
+  const mascara = p!.id
+  const entrada = async (quantidade: number) => expect((await db().rpc('estoque_entrada', {
+    p_produto: mascara, p_unidade: rede!.branchId, p_quantidade: quantidade, p_custo: 30, p_observacao: null,
+    p_lote: null, p_validade: null, p_autor: 'e2e',
+  })).error).toBeNull()
+  const contagem = async (n: number) => expect((await db().rpc('estoque_ajuste_com_lote', {
+    p_produto: mascara, p_unidade: rede!.branchId, p_contagem: n, p_em_consumo: false, p_motivo: 'Inventário', p_autor: 'e2e',
+    p_lote: null, p_lote_numero: null, p_lote_validade: null,
+  })).error).toBeNull()
+  const avisos = async () => ((await db().from('user_notifications').select('user_id, body, created_at')
+    .eq('type', 'stock_below_minimum').filter('data->>produto_id', 'eq', mascara)
+    .eq('user_id', estoquista!.userId).order('created_at')).data ?? []) as { user_id: string; body: string }[]
+
+  await entrada(6)
+  await contagem(4)   // cruzou
+  await contagem(3)
+  await entrada(4)    // 7: repôs, saiu do mínimo
+  await contagem(4)   // cruzou de novo
+
+  const r = await request.get(`/api/cron/estoque-minimo?rede=${rede!.tenantId}`, { headers: { authorization: `Bearer ${segredo}` } })
+  expect(r.ok(), await r.text()).toBe(true)
+  await expect.poll(async () => (await avisos()).length, 'um aviso por cruzamento').toBe(2)
+  const lista = await avisos()
+  expect(lista[1]!.body).toContain(nome)
+  expect(lista[1]!.body, 'o segundo cruzamento diz o saldo dele').toContain('4 un em estoque')
+
+  const r2 = await request.get(`/api/cron/estoque-minimo?rede=${rede!.tenantId}`, { headers: { authorization: `Bearer ${segredo}` } })
+  expect(r2.ok()).toBe(true)
+  expect((await avisos()).length, 'a rotina de novo não repete').toBe(2)
+})

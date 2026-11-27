@@ -632,7 +632,14 @@ comanda (PDV-P1).
   a mesma descrição, parcela, criação e pagamento, paga e viva). O recibo e o
   estorno seguem POR FORMA, na própria linha ("Estornar (Pix)"). No CSV, uma
   linha por forma (a contadora concilia assim), com "(forma 1 de 2)" na
-  descrição (`posicaoNaParcela`).
+  descrição (`posicaoNaParcela`). **E o Financeiro e o Histórico → Pagamentos
+  do app também** (D8 da 36ª: liam só `formaDoLancamento`, e a parcela vinha em
+  duas linhas): a mesma junção, com um recibo por forma ("Recibo (Pix)",
+  "Recibo (Dinheiro)"; a linha de uma forma só segue "Recibo") —
+  `formaERecibosDaLinha`. Prova: `tests/app-da-cliente-formas-da-parcela.test.ts`,
+  `e2e/portal-cliente-pagamentos.spec.ts` ("D8 e A4 da 36ª"). As formas vêm na ordem do valor, a maior primeiro (as cópias da parcela
+  nascem com a mesma criação, e a ordem lida empatava: a mesma parcela lia
+  "Dinheiro + Pix" numa tela e "Pix + Dinheiro" noutra; decisão do Claude, 27/11).
 - **O troco no dinheiro** (item 14 do escopo de 18/11; o Heitor: "ok"): em
   toda tela que recebe — a comanda do atendimento e a Nova venda
   (`CamposDoPagamento`), a parcela no PDV, o "Receber" do Financeiro e da
@@ -858,7 +865,13 @@ plano").
   - O a receber se quita no financeiro, como qualquer conta a receber. O
     vencimento do "a receber" é OPCIONAL (aqui e no pagamento do contrato):
     sem data, o lançamento nasce sem `due_date` e o contrato diz "a receber"
-    sem o dia.
+    sem o dia. **A linha diz "Sem vencimento"** no lugar da data (A4 da 36ª,
+    princípio 3: o Financeiro e a ficha mostravam a data de criação, e o app
+    dizia "Vence" nesse dia): o Financeiro (as duas listas), a ficha e o app
+    (Financeiro e Histórico), por `emAbertoSemVencimento`/`SEM_VENCIMENTO`
+    (`lib/financeiro/vencimentos.ts`). No período ele continua contando pela
+    criação (FN-09), e no app a ordem segue a mesma. Prova:
+    `tests/a-receber-sem-vencimento-na-linha.test.ts`.
 - **Liberar as sessões do pacote no crediário é da REDE, e a tela diz o que
   falta pagar** (decisão do Claude pelo princípio 1, 2026-11-18 — item 8 da
   auditoria das regras; era "o pacote segue liberando: princípio 1, nada muda

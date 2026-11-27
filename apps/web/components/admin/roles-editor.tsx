@@ -178,18 +178,9 @@ export function RolesEditor({ roles: cargosDoServidor, permsByRole, tabsByRole, 
       />
 
       <div style={{ flex: 1, minWidth: 0 }}>
-        {criando && (
-          <div className="card" data-cargo-novo style={{ background: 'var(--bg-app)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>
-              Cargo novo: começa sem acesso nenhum.
-            </p>
-            <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
-              {/* A4 da 24ª: o campo fica na lista de cargos (no celular, acima). */}
-              Dê o nome na lista de cargos e clique em Criar. Depois, escolha aqui o que ele acessa.
-            </p>
-          </div>
-        )}
-
+        {/* A1 da 13ª: com o "Novo" aberto, a matriz de outro cargo não aparece. A2 da 36ª (o Heitor,
+            26/11: "isso não é ser intuitivo, é ser explicativo"): o cartão que explicava o "Novo" saiu —
+            o campo do nome e o "Criar" ficam onde se clicou, e o cargo criado abre aqui, sem acesso. */}
         <div hidden={criando}>
         {selected?.is_system && <SystemRoleCard role={selected} />}
 

@@ -884,8 +884,8 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 
 ### As listas e os cartões
 
-**FN-09.** Na lista do período, o lançamento pago aparece no dia do pagamento, e o em aberto no vencimento (sem vencimento, no dia em que foi criado): a parcela de novembro aparece em novembro.
-- Fonte: decisão do Claude
+**FN-09.** Na lista do período, o lançamento pago aparece no dia do pagamento, e o em aberto no vencimento (sem vencimento, no dia em que foi criado, e a linha diz "Sem vencimento" no lugar da data): a parcela de novembro aparece em novembro.
+- Fonte: decisão do Claude; a linha "Sem vencimento": decisão do Claude, 27/11 (36ª, Decisão C, A4), pelo princípio 3
 - Onde: `docs/regras/vendas-financeiro.md:1816`, `:3204`
 - Antes: KD-53, KF-84
 
@@ -899,8 +899,8 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Onde: `docs/regras/vendas-financeiro.md:436-438`, `:478`, `:1903-1908` (o título do a pagar: A6 de 25/11, decisão do Claude), `:1951-1965`; `docs/regras/design.md:215`; `apps/web/components/shared/nota-do-vencimento.tsx`; `apps/web/lib/financeiro/abas.ts:86`, `:93`
 - Antes: KA-57, KD-56, KD-57, KD-55
 
-**FN-12.** O cartão "Fluxo de caixa — próximos meses", nos dois Financeiros, mostra mês a mês o que vai entrar e o que vai sair, pelo vencimento: o que entra é o a receber das clientes somado ao que a operadora ainda vai depositar, empilhados; o que sai são as despesas a pagar. Há gráfico de barras e tabela com o saldo de cada mês; o que já venceu e continua em aberto conta no mês atual; na rede, o filtro de unidade troca o gráfico; o atendimento concluído sem pagamento não entra, porque não tem vencimento. No próprio cartão, a rede escolhe ver 3, 6 ou 12 meses (6 é o padrão, e o título acompanha).
-- Fonte: o Heitor, 2026-11-03: "crie o gráfico"
+**FN-12.** O cartão "Fluxo de caixa — próximos meses", nos dois Financeiros, mostra mês a mês o que vai entrar e o que vai sair, pelo vencimento: o que entra é o a receber das clientes somado ao que a operadora ainda vai depositar, empilhados; o que sai são as despesas a pagar. Há gráfico de barras e tabela com o saldo de cada mês; o que já venceu e continua em aberto conta no mês atual; o a receber sem vencimento, no mês em que foi criado (FN-09); na rede, o filtro de unidade troca o gráfico; o atendimento concluído sem pagamento não entra, porque não tem vencimento. No próprio cartão, a rede escolhe ver 3, 6 ou 12 meses (6 é o padrão, e o título acompanha).
+- Fonte: o Heitor, 2026-11-03: "crie o gráfico"; o sem vencimento: decisão do Claude, 27/11 (36ª, Decisão C), pela FN-09 (é o que `metrics_fluxo_de_caixa` faz)
 - Onde: `docs/regras/vendas-financeiro.md:1848`, `:1850`
 - Antes: KD-58, KD-59
 

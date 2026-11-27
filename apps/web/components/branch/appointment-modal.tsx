@@ -15,6 +15,7 @@ import { formatBRL, maskPhone, maskTelefoneDigitando, telefoneDoCadastro, temDig
 import type { CreditoParaAgendar } from '@/lib/creditos/credito'
 import { textoDoCreditoAoAgendar } from '@/lib/creditos/texto-do-pago'
 import { X, Calendar, Search, UserPlus, Loader2, AlertTriangle, CheckCircle2, Ban, FileSignature } from 'lucide-react'
+import { avisoDeQuemNaoRealiza } from '@/lib/procedimentos/aviso-de-quem-realiza'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { PerguntaJaExiste } from '@/components/shared/pergunta-ja-existe'
 import Link from 'next/link'
@@ -871,7 +872,7 @@ export function AppointmentModal({
               {naoRealiza && (
                 <p data-aviso-quem-realiza role="status" style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', marginTop: 4 }}>
                   <AlertTriangle size={13} aria-hidden="true" style={{ flexShrink: 0, marginTop: 1 }} />
-                  {naoRealiza} não está em “Quem realiza” deste procedimento.
+                  {avisoDeQuemNaoRealiza(naoRealiza)}
                 </p>
               )}
             </Field>

@@ -248,7 +248,8 @@ test('A22: a janela troca a profissional (só quem atende na unidade), com confi
     await (await cartaoNaGradeDoDia(p, ag)).click()
     const janela = p.getByRole('dialog', { name: 'Agendamento' })
     await janela.getByRole('button', { name: 'Trocar profissional' }).click()
-    const escolha = janela.getByLabel('Nova profissional')
+    // O rótulo sem cargo (CLAUDE.md §1, o Heitor, 13/11: "não quero mais tu falando nomes de cargos como se fossem cargos fixos").
+    const escolha = janela.getByLabel('Quem vai atender')
     await expect(escolha.locator('option', { hasText: nomeBia })).toHaveCount(1)
     await expect(escolha.locator('option', { hasText: 'Cora' }), 'quem não atende na unidade não aparece').toHaveCount(0)
     await escolha.selectOption(bia!.userId)
@@ -290,7 +291,7 @@ test('A22 (R15): quem está fora do horário some da troca e do Agendar; o encai
       await (await cartaoNaGradeDoDia(p, ag)).click()
       const janela = p.getByRole('dialog', { name: 'Agendamento' })
       await janela.getByRole('button', { name: 'Trocar profissional' }).click()
-      await expect(janela.getByLabel('Nova profissional').locator('option', { hasText: nomeBia }), 'fora do horário, não aparece').toHaveCount(0)
+      await expect(janela.getByLabel('Quem vai atender').locator('option', { hasText: nomeBia }), 'fora do horário, não aparece').toHaveCount(0)
     })
     await como(browser, recepcao!, async p => {
       await p.goto(`/${slug}/agenda?date=${DIA2}&novo=1&cliente=${cliente}`)

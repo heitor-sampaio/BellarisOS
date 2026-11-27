@@ -400,8 +400,8 @@ Este é o catálogo das regras dos Documentos que valem HOJE: os tipos, os model
 
 ## No app da cliente (DC)
 
-**DC-01.** No app, em Documentos, a cliente vê o que espera a assinatura dela e os assinados, e assina todos os abertos de uma vez, com a própria sessão — só documento dela. No Histórico, cada assinado abre o documento (só o dela).
-- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Concordo" (Portal e app da cliente: "O resto, como está")
+**DC-01.** No app, em Documentos, a cliente vê o que espera a assinatura dela e os assinados, e assina todos os abertos de uma vez, com a própria sessão — só documento dela. No Histórico, cada assinado abre o documento (só o dela). O assinado pelo app vai para a ficha ("A equipe já recebeu o documento assinado."), sem aviso no sino da equipe.
+- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Concordo" (Portal e app da cliente: "O resto, como está"); o assinado pelo app sem aviso à equipe: decisão do Claude, 27/11 (36ª, Decisão D) — nenhuma regra pede o aviso (a NE-06 de WhatsApp e push lista os avisos da operação)
 - Onde: `docs/regras/documentos.md:590-596`; `docs/revisao.md:1476`, `:1492`, `:1498`, `:2150`
 - Antes: KB-20, KC-42
 

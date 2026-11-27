@@ -122,8 +122,11 @@
     lê o número só-dígitos do WhatsApp com 12 a 15 dígitos sem o 55 como de
     fora), o Copilot (`telefoneDoCopilot`) e a importação (`normalizarTelefone`
     com 8 a 15 dígitos; a ficha importada guarda o de fora com o "+",
-    `telefoneDaFichaImportada`). Prova: `e2e/clientes-telefone-de-outro-pais.spec.ts`,
-    `tests/telefone-de-outro-pais.test.ts`;
+    `telefoneDaFichaImportada`). **E o Perfil do app o mostra como foi
+    escrito** (D5 da 36ª: a máscara própria do Perfil punha o "+33 6 12 34 56
+    78" como celular brasileiro): é `maskPhone` (`@estetica-os/utils`), a da
+    equipe. Prova: `e2e/clientes-telefone-de-outro-pais.spec.ts`,
+    `tests/telefone-de-outro-pais.test.ts`, `tests/telefone-de-fora-no-perfil-do-app.test.ts`;
   - **a ficha que JÁ EXISTE pergunta, antes de gravar** (r2-cli-01, o Heitor
     em 2026-11-03: "antes de gravar no banco, confere se já existe; se já
     existir, retorna avisando que já existe, perguntando se deseja cadastrar

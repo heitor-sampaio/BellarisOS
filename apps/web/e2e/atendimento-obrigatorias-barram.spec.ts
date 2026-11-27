@@ -218,6 +218,56 @@ test('A8: sem o Prontuário, a recusa pela ficha de saúde diz quem a responde',
   }
 })
 
+// AT-03/AT-05 (FI-07): sem o Prontuário, a tela diz o que falta ANTES do
+// "Confirmar conclusão" — só o nome das perguntas, vindo do servidor — e quem
+// responde. Era só a recusa, depois do Confirmar.
+test('sem o Prontuário, o "Finalizar" diz antes do "Confirmar conclusão" o que falta e quem responde', async ({ browser }) => {
+  const soAtende = await criarMembro(`obt${marca}`, {
+    tenant: rede!.tenantId, branchId: rede!.branchId, rotulo: 'Só o atendimento',
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'atendimento', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }],
+  })
+  try {
+    const { id } = await atendimentoEmCurso('Antes do confirmar')
+    const ctx = await browser.newContext({ storageState: soAtende.estado })
+    try {
+      const p = await ctx.newPage()
+      await p.goto(`/${slug}/agenda/${id}`)
+      await p.getByRole('button', { name: 'Finalizar atendimento' }).click()
+      const falta = p.locator('[data-o-que-falta]')
+      await expect(falta, 'a janela diz o que falta').toBeVisible()
+      await expect(falta.getByText('Na ficha de saúde')).toBeVisible()
+      await expect(falta.getByText('Fototipo', { exact: true })).toBeVisible()
+      await expect(falta.locator('[data-quem-responde-a-ficha]')).toContainText('Quem responde a ficha de saúde é quem tem o Prontuário em Gerenciar (')
+      await expect(falta.locator('[data-quem-responde-a-ficha]'), 'ela nem lê a ficha').not.toContainText('Você lê a ficha de saúde')
+      await expect(p.getByRole('button', { name: 'Confirmar conclusão' }), 'não chega ao Confirmar').toHaveCount(0)
+      await falta.getByRole('button', { name: 'Entendi' }).click()
+      expect(await status(id)).toBe('IN_PROGRESS')
+    } finally {
+      await ctx.close()
+    }
+  } finally {
+    await soAtende.limpar()
+  }
+})
+
+// AT-03 (UM4: o clínico é do Prontuário em Gerenciar, "sem precisar atender"):
+// a ficha de saúde digitada no atendimento só se gravava no "Finalizar".
+test('com o Prontuário em Gerenciar, a ficha de saúde do atendimento se salva sem concluir', async ({ browser }) => {
+  const { id, cliente } = await atendimentoEmCurso('Salva antes')
+  await como(browser, async p => {
+    await p.goto(`/${slug}/agenda/${id}`)
+    const ficha = p.locator(ANAMNESE)
+    await campo(p, ANAMNESE, 'isPregnantOrBreastfeeding').getByLabel('Não se aplica').check()
+    await campo(p, ANAMNESE, 'allergies').getByLabel('Não', { exact: true }).check()
+    for (const c of ['medications', 'healthConditions']) await campo(p, ANAMNESE, c).locator('textarea').fill(`Nega ${marca}`)
+    await ficha.getByRole('button', { name: 'Salvar', exact: true }).click()
+    // Gravada já, sem o "Finalizar" (no formulário da avaliação, a tela diz "Salvo").
+    await expect.poll(async () => ((await db().from('medical_records').select('general_anamnesis').eq('client_id', cliente)
+      .maybeSingle()).data?.general_anamnesis as { origem?: string } | null)?.origem, { timeout: 15_000 }).toBe('EQUIPE')
+  })
+  expect(await status(id), 'salvar a ficha não conclui').toBe('IN_PROGRESS')
+})
+
 test('a anamnese que a cliente respondeu pelo app vale: só a ficha do procedimento falta', async ({ browser }) => {
   const { id, cliente } = await atendimentoEmCurso('PeloApp')
   await responderAnamnese(cliente, rede!.tenantId)

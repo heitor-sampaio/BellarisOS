@@ -653,3 +653,26 @@ O que você precisa saber:
 As duas perguntas novas (na página):
 - **R22:** num plano com contrato, o "Falta pagar" quase nunca aparece, porque o contrato só nasce junto do pagamento.
 - **R23:** quem não tem o Prontuário vê, no histórico do atendimento, que houve foto clínica (sem o título nem a foto).
+
+## 17. A 36ª simulação (27/11)
+
+Cinco redes novas, sem a conta da plataforma. O dinheiro e os números das cinco bateram, a ocupação ao minuto. Foram 8
+defeitos, nenhum de segurança nem de dinheiro gravado errado. Sete foram corrigidos; um depende de você e está na página
+de perguntas (R24). O resumo está no DEVLOG (27/11, (2)).
+
+O que você precisa saber:
+- **O aviso de estoque mínimo só saía de hora em hora**, e dois cruzamentos na mesma hora viravam um aviso só. Agora
+  cada cruzamento se registra na hora do movimento e o aviso sai logo depois; a rotina de hora em hora ficou como rede
+  de segurança.
+- **Quem conclui sem o Prontuário só descobria a ficha de saúde obrigatória em branco depois do "Confirmar conclusão".**
+  Agora a tela diz antes o que falta e quem responde, sem mostrar resposta nenhuma.
+- **A ficha de saúde digitada no atendimento só se gravava ao concluir.** Quem tem o Prontuário em Gerenciar agora salva
+  ali mesmo.
+- **Saíram mais duas notas que explicavam a tela** (Configurações e Cargos), pela sua fala de 26/11. Os testes que
+  exigiam as notas mudaram junto, com essa fala; a lista está no DEVLOG.
+- **Os textos com "profissional" como cargo saíram** da troca de quem atende ("Quem vai atender"), pela sua fala de 13/11.
+
+A pergunta nova (na página):
+- **R24:** ao desativar alguém e repassar os agendamentos um a um, o botão diz só "Desativar", mesmo com 1 de 3
+  escolhido. A correção mudaria um teste que exige isso, e a regra só tem o princípio 3, que é anterior ao teste. Por
+  isso desfiz a correção e deixei a decisão com você.
