@@ -114,8 +114,10 @@ test.describe.serial('a foto clínica pela tela do atendimento', () => {
   // J-41 e J-36 (ajustes J, 2026-10-30): o nome dado à foto era ignorado — a
   // miniatura mostrava o nome do ARQUIVO — e a foto não entrava no histórico
   // do atendimento. O histórico diz só "Foto clínica anexada": o título é
-  // escrito por quem atende e pode dizer o que a foto mostra, e o histórico
-  // aparece para quem abre o atendimento sem o prontuário.
+  // escrito por quem atende e pode dizer o que a foto mostra. Quem abre o
+  // atendimento sem o Prontuário em Ver não vê as linhas da foto (o Heitor,
+  // 27/11: "O historico do atendimento é parte do prontuario."; "Somem só as
+  // linhas clínicas (as da foto); as da agenda e do caixa ficam").
   const TITULO = `Antes — região malar ${marca}`
   test('o título dado à foto aparece no cartão e no Prontuário, e o histórico registra a foto sem o título', async ({ browser }) => {
     const antes = (await fotosDo(atendimento)).length
@@ -140,10 +142,16 @@ test.describe.serial('a foto clínica pela tela do atendimento', () => {
     const daFoto = (linhas ?? []).filter(l => l.action === 'FOTO_CLINICA')
     expect(daFoto.length, 'uma linha por foto anexada').toBe((await fotosDo(atendimento)).length)
     for (const l of daFoto) expect(l.description).toBe('Foto clínica anexada')
-    // Quem abre o atendimento sem o prontuário vê o histórico — e nada do título.
+    // Quem abre o atendimento sem o prontuário vê o histórico da agenda — e nada da foto nem do título.
+    const linhaDaAgenda = `Confirmado pela equipe ${marca}`
+    expect((await db().from('appointment_history').insert({
+      appointment_id: atendimento, action: 'CONFIRMED', description: linhaDaAgenda, changed_by_name: 'Equipe',
+    })).error).toBeNull()
     await como(recepcao!, browser, async p => {
       await p.goto(`/${slug}/agenda/${atendimento}`)
-      await expect(p.locator('[data-historico-do-atendimento]').getByText('Foto clínica anexada').first()).toBeVisible()
+      const historico = p.locator('[data-historico-do-atendimento]')
+      await expect(historico.getByText(linhaDaAgenda), 'a linha da agenda fica').toBeVisible()
+      await expect(historico.getByText('Foto clínica anexada'), 'a linha da foto some').toHaveCount(0)
       await expect(p.locator('body')).not.toContainText(TITULO)
     })
   })

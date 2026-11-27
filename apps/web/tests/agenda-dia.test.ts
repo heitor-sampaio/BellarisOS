@@ -14,7 +14,8 @@ describe('A17: o plural dos atendimentos', () => {
   })
 })
 
-describe('A18: "Chegou" só no dia do agendamento (Brasília)', () => {
+// O nome é "Check-in" (o Heitor, 27/11: "Fica "Check-in"" — "Fica Check-in em todos os lugares").
+describe('A18: o check-in só no dia do agendamento (Brasília)', () => {
   const agendado = '2026-10-27T13:00:00.000Z' // 10:00 em Brasília
   it('a virada do dia é a de Brasília, não a de UTC', () => {
     // 26/10 23:30 em Brasília já é 27/10 02:30 UTC: ainda é a véspera.
@@ -72,7 +73,8 @@ describe('A23: a confirmação e a chegada na linha do tempo da cliente', () => 
     const ev = eventosDeConfirmacaoEChegada(a, '/c/agenda/x')
     expect(ev.map(e => e.type)).toEqual(['APPOINTMENT_CONFIRMED', 'APPOINTMENT_ARRIVED'])
     expect(ev[0]).toMatchObject({ date: a.confirmed_at, title: 'Confirmado: Limpeza', link: '/c/agenda/x' })
-    expect(ev[1]).toMatchObject({ date: a.arrived_at, title: 'Chegou: Limpeza' })
+    // Era "Chegou: Limpeza"; o nome é "Check-in" (o Heitor, 27/11: "Fica "Check-in"" — "Fica Check-in em todos os lugares").
+    expect(ev[1]).toMatchObject({ date: a.arrived_at, title: 'Check-in: Limpeza' })
   })
   it('sem a data, sem o evento', () => {
     expect(eventosDeConfirmacaoEChegada({ ...a, arrived_at: null }, null).map(e => e.type)).toEqual(['APPOINTMENT_CONFIRMED'])

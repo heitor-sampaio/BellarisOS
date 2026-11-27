@@ -3,14 +3,15 @@
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission, alcancaUnidade, alcancaOAgendamento, assertRecurso } from '@/lib/auth'
 import { registrarAcessoAoProntuario } from '@/lib/prontuario/acessos'
-import { mapaAoAlcance, mapaDoTenant } from '@/lib/injetaveis/alcance'
+import { mapaAoAlcance, mapaDoTenant, produtosDoMapaDaRede } from '@/lib/injetaveis/alcance'
+import { recusaDaMedidaDosPontos } from '@/lib/injetaveis/medida-do-ponto'
 import { agendamentoAoAlcance } from '@/lib/appointments/alteracoes'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { emitirEventoClinico } from '@/lib/events/clinico'
 import { EVENTOS } from '@estetica-os/types'
 import { injectableTotals, emptyInjectableMap, type InjectableMapValue } from '@/lib/anamnesis'
 import { ler, lerTodas, mensagemDoErro } from '@/lib/db'
-import { pontosDeOutroAtendimento, pontosDaAplicacao } from '@/lib/injetaveis/aplicacao-do-atendimento'
+import { pontosDeOutroAtendimento, pontosDaAplicacao, aplicadoAoRegistrar } from '@/lib/injetaveis/aplicacao-do-atendimento'
 
 /**
  * Planejamento de injetáveis.
@@ -258,6 +259,8 @@ export async function salvarPlanejamentoInjetavel(
 
   const plano = await mapaDoTenant(admin, mapId, ctx)
   if (!plano) return { error: 'Planejamento não encontrado.' }
+  const recusa = await recusaDaMedida(admin, ctx.tenantId!, mapa, plano.points)
+  if (recusa) return { error: recusa }
 
   const { error } = await admin
     .from('injectable_maps')
@@ -381,6 +384,8 @@ export async function registrarAplicacao(
   if ((mapa.points ?? []).length === 0) {
     return { error: 'Marque ao menos um ponto antes de registrar a aplicação.' }
   }
+  const recusa = await recusaDaMedida(admin, ctx.tenantId!, mapa, plano.points)
+  if (recusa) return { error: recusa }
 
   // D2 da 37ª (PT-13; Decisão C3, decisão do Claude, 27/11): a aplicação
   // deste atendimento são só os pontos aplicados NELE. O retoque à tarde no
@@ -399,9 +404,13 @@ export async function registrarAplicacao(
   } catch (e) {
     return { error: `Erro ao registrar a aplicação: ${mensagemDoErro(e)}` }
   }
-  const pontosDeste = pontosDaAplicacao(mapa.points, appointmentId, deOutro)
+  // Um botão só (o Heitor, 27/11: "Um botão só, "Registrar aplicação" (a
+  // proposta)"): o registrar copia a dose prevista nos pontos em que ninguém
+  // escreveu a aplicada — a conta que o "Confirmar aplicação" fazia na tela.
+  const comAplicado = aplicadoAoRegistrar(mapa.points ?? [], appointmentId, deOutro)
+  const pontosDeste = pontosDaAplicacao(comAplicado, appointmentId, deOutro)
   const marcados = new Set(pontosDeste.map(p => p.id))
-  const mapaComAMarca = (mapa.points ?? []).map(p => (marcados.has(p.id) ? { ...p, atendimento: appointmentId } : p))
+  const mapaComAMarca = comAplicado.map(p => (marcados.has(p.id) ? { ...p, atendimento: appointmentId } : p))
 
   // UMA aplicação por mapa por atendimento (D14 da 9ª simulação: cada clique
   // gravava outra, e o "Finalizar" somava as duas). Já registrada, atualiza —
@@ -459,6 +468,24 @@ export async function registrarAplicacao(
   }
 
   return { id: data.id as string }
+}
+
+/**
+ * A medida dos pontos (o Heitor, 27/11: "O consumo é sempre na unidade
+ * cadastrada no produto, seja no mapa, seja no atendimento, seja no consumo do
+ * estoque."): o ponto novo, ou de produto ou medida trocados, é de um insumo
+ * da rede e na medida dele; o gravado antes fica como foi gravado.
+ */
+async function recusaDaMedida(
+  admin: ReturnType<typeof createAdminClient>, tenantId: string, mapa: InjectableMapValue, salvos: unknown,
+): Promise<string | null> {
+  const pontos = mapa.points ?? []
+  if (!pontos.some(p => (p.product ?? '').trim())) return null
+  try {
+    return recusaDaMedidaDosPontos(pontos, Array.isArray(salvos) ? salvos as InjectableMapValue['points'] : [], await produtosDoMapaDaRede(admin, tenantId))
+  } catch (e) {
+    return `Não foi possível conferir os produtos do mapa: ${mensagemDoErro(e)}`
+  }
 }
 
 function revalidarPlanejamento(slug: string, clientId: string | null) {

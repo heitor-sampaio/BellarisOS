@@ -82,7 +82,8 @@ for (const tela of ['agenda', 'dashboard'] as const) {
       await expect(aviso).not.toContainText(nome('Chegou hoje'))
       // O agendado que passou sem chegada, num grupo próprio.
       const semChegada = p.locator('[data-abertos-de-antes] [data-grupo="sem-chegada"]')
-      await expect(semChegada).toContainText('1 agendamento de dias anteriores passou sem chegada')
+      // O nome é "Check-in" (o Heitor, 27/11: "Fica "Check-in"" — "Fica Check-in em todos os lugares"); era "Chegou"/"Marcar chegada e iniciar".
+      await expect(semChegada).toContainText('1 agendamento de dias anteriores passou sem check-in')
       await expect(semChegada).toContainText('marcar falta ou concluir?')
       await expect(semChegada).toContainText(nome('Agendado ontem'))
       await expect(aviso.getByRole('link', { name: new RegExp(nome('Chegou ontem').replace(/[[\]]/g, '\\$&')) })).toHaveAttribute('href', new RegExp(`^/${slug}/agenda/[0-9a-f-]{36}$`))

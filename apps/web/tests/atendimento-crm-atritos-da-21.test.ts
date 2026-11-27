@@ -19,12 +19,13 @@ import { join } from 'node:path'
 const fonte = (arquivo: string) => readFileSync(join(__dirname, '..', arquivo), 'utf8')
 
 describe('A12: quem não conclui lê isso à vista, antes de iniciar', () => {
+  // O botão era "Marcar chegada e iniciar"; o nome é "Check-in" (o Heitor, 27/11: "Fica "Check-in"" — "Fica Check-in em todos os lugares").
   const botoes: [string, string][] = [
-    ['components/branch/appointment-session.tsx', `'Iniciando…' : 'Marcar chegada e iniciar'`],
-    ['components/branch/appointment-sheet.tsx', '<Play size={14} /> Marcar chegada e iniciar'],
+    ['components/branch/appointment-session.tsx', `'Iniciando…' : 'Check-in e iniciar'`],
+    ['components/branch/appointment-sheet.tsx', '<Play size={14} /> Check-in e iniciar'],
   ]
   for (const [arquivo, botao] of botoes) {
-    it(`${arquivo}: o aviso vem antes do "Marcar chegada e iniciar", com cara de aviso`, () => {
+    it(`${arquivo}: o aviso vem antes do "Check-in e iniciar", com cara de aviso`, () => {
       const f = fonte(arquivo)
       const aviso = f.indexOf('data-quem-conclui')
       expect(aviso).toBeGreaterThan(-1)

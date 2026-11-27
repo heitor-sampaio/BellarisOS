@@ -8,8 +8,12 @@ import { join } from 'node:path'
  * justamente o contrario, ser facil de usar mesmo sem muitas explicações."):
  * o mapa mostrava "Confirmar aplicação" e "Registrar aplicação" com uma dica
  * que explicava a diferença dos botões, e o campo do mapa tinha outra frase
- * que explicava onde a aplicação se registra. As duas explicações saem; os
- * botões ficam (o que cada um faz continua).
+ * que explicava onde a aplicação se registra. As duas explicações saem.
+ *
+ * E o "Confirmar aplicação" sai também (o Heitor, 27/11: "Um botão só,
+ * "Registrar aplicação" (a proposta)"): o registrar já copia a dose prevista
+ * nos pontos sem a aplicada, e a coluna "Aplicado" fica sempre à vista no
+ * atendimento. Antes, este teste exigia o "Confirmar aplicação" no campo.
  */
 const fonte = (rel: string) => readFileSync(join(__dirname, '..', rel), 'utf8')
 
@@ -27,6 +31,13 @@ describe('o mapa de injetáveis sem as explicações dos botões', () => {
     const f = fonte('components/branch/injectable-map-field.tsx')
     expect(f).not.toContain('data-aplicacao-no-atendimento')
     expect(f).not.toContain('A aplicação se registra no atendimento')
-    expect(f).toContain('Confirmar aplicação')
+  })
+
+  it('um botão só: o campo não tem "Confirmar aplicação", e o "Aplicado" vem da conta do registrar', () => {
+    const f = fonte('components/branch/injectable-map-field.tsx')
+    expect(f).not.toContain('Confirmar aplicação')
+    expect(f).not.toContain('Aplicação confirmada')
+    expect(f).toContain('aplicadoAoRegistrar(')
+    expect(f).toContain('label="Aplicado"')
   })
 })

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { injectableTotals } from '@/lib/anamnesis'
 import {
-  pontosDeOutroAtendimento, pontosDaAplicacao, confirmarNoAtendimento, type InjectablePoint,
+  pontosDeOutroAtendimento, pontosDaAplicacao, aplicadoAoRegistrar, type InjectablePoint,
 } from '@/lib/injetaveis/aplicacao-do-atendimento'
 
 /**
@@ -14,6 +14,11 @@ import {
  * "60 × 10". PT-13 (uma aplicação por mapa por atendimento), PT-19 e a Decisão
  * C3 (decisão do Claude, 27/11): a aplicação de um atendimento são só os
  * pontos aplicados nele.
+ *
+ * Um botão só, "Registrar aplicação" (o Heitor, 27/11: "Um botão só,
+ * "Registrar aplicação" (a proposta)"): saiu o "Confirmar aplicação", e o
+ * registrar copia a dose prevista nos pontos em que ninguém escreveu a
+ * aplicada — a conta que o "Confirmar" fazia (`aplicadoAoRegistrar`).
  */
 
 const ponto = (id: string, extra: Partial<InjectablePoint> = {}): InjectablePoint => ({
@@ -58,18 +63,30 @@ describe('a aplicação de um atendimento são só os pontos aplicados nele', ()
     expect(aplicacao.every(p => p.atendimento === TARDE)).toBe(true)
   })
 
-  it('"Confirmar aplicação" no retoque: o ponto novo com a dose; os da manhã com 0 hoje', () => {
+  it('"Registrar aplicação" no retoque: o ponto novo com a dose; os da manhã com 0 hoje', () => {
     const outros = new Set(daManha.map(p => p.id))
-    const confirmados = confirmarNoAtendimento([...daManha, ponto('p6')], TARDE, outros)
+    const confirmados = aplicadoAoRegistrar([...daManha, ponto('p6')], TARDE, outros)
     expect(confirmados.find(p => p.id === 'p6')).toMatchObject({ applied: 10, atendimento: TARDE })
     for (const p of confirmados.filter(x => x.id !== 'p6')) expect(p.applied).toBe(0)
     expect(pontosDaAplicacao(confirmados, TARDE, outros).map(p => p.id)).toEqual(['p6'])
   })
 
-  it('"Confirmar aplicação" sem ponto novo: o plano inteiro, com a dose planejada', () => {
+  it('"Registrar aplicação" sem ponto novo: o plano inteiro, com a dose planejada', () => {
     const outros = new Set(daManha.map(p => p.id))
-    const confirmados = confirmarNoAtendimento(daManha.map(p => ({ ...p, dose: 12 })), TARDE, outros)
+    const confirmados = aplicadoAoRegistrar(daManha.map(p => ({ ...p, dose: 12 })), TARDE, outros)
     expect(confirmados.every(p => p.applied === 12 && p.atendimento === TARDE)).toBe(true)
+  })
+
+  it('"Registrar aplicação" não mexe na dose aplicada que alguém escreveu', () => {
+    const escritos = aplicadoAoRegistrar([ponto('p1', { applied: 7 }), ponto('p2', { applied: 0 }), ponto('p3')], TARDE, new Set())
+    expect(escritos.map(p => p.applied)).toEqual([7, 0, 10])
+  })
+
+  it('registrarAplicacao copia a dose prevista antes de separar os pontos deste atendimento', () => {
+    const f = readFileSync(join(__dirname, '..', 'actions/injectable-map.ts'), 'utf8')
+    const c = f.slice(f.indexOf('export async function registrarAplicacao'), f.indexOf('function revalidarPlanejamento'))
+    expect(c).toContain('aplicadoAoRegistrar(')
+    expect(c.indexOf('aplicadoAoRegistrar(')).toBeLessThan(c.indexOf('pontosDaAplicacao('))
   })
 
   it('registrarAplicacao grava só os pontos deste atendimento, e os totais deles', () => {

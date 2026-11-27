@@ -29,13 +29,13 @@ export function AbertosDeAntes({ base, abertos, semChegada, mostrarUnidade = fal
         <Grupo base={base} mostrarUnidade={mostrarUnidade} grupo={abertos} chave="abertos"
           titulo={abertos.total === 1 ? 'atendimento de dias anteriores ainda aberto' : 'atendimentos de dias anteriores ainda abertos'}
           acao="Abra para concluir ou registrar o que houve."
-          porque="A cliente chegou (ou o atendimento começou) e nada foi fechado." />
+          porque="O check-in foi feito (ou o atendimento começou) e nada foi fechado." />
       )}
       {semChegada.total > 0 && (
         <Grupo base={base} mostrarUnidade={mostrarUnidade} grupo={semChegada} chave="sem-chegada"
-          titulo={semChegada.total === 1 ? 'agendamento de dias anteriores passou sem chegada' : 'agendamentos de dias anteriores passaram sem chegada'}
+          titulo={semChegada.total === 1 ? 'agendamento de dias anteriores passou sem check-in' : 'agendamentos de dias anteriores passaram sem check-in'}
           acao="Abra cada um: marcar falta ou concluir?"
-          porque="Ninguém marcou a chegada. A falta não registrada distorce a agenda e os números." />
+          porque="Ninguém fez o check-in. A falta não registrada distorce a agenda e os números." />
       )}
     </section>
   )
@@ -54,13 +54,13 @@ function Grupo({ base, mostrarUnidade, grupo, chave, titulo, acao, porque }: {
     return `${dd(p.day)}/${dd(p.month)} ${dd(p.hour)}:${dd(p.minute)}`
   }
   const rotulo = (s: AbertoDeAntes['status']) =>
-    s === 'ARRIVED' ? 'Chegou' : s === 'IN_PROGRESS' ? 'Em atendimento' : s === 'CONFIRMED' ? 'Confirmado' : 'Agendado'
+    s === 'ARRIVED' ? 'Check-in' : s === 'IN_PROGRESS' ? 'Em atendimento' : s === 'CONFIRMED' ? 'Confirmado' : 'Agendado'
   return (
     <div data-grupo={chave} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <p style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-extrabold)', color: 'var(--warning)' }}>
         <AlertTriangle size={15} aria-hidden style={{ flexShrink: 0 }} />
         <span>{grupo.total} {titulo}</span>
-        <Dica rotulo={chave === 'abertos' ? 'Sobre os atendimentos abertos' : 'Sobre os agendamentos sem chegada'}>{porque}</Dica>
+        <Dica rotulo={chave === 'abertos' ? 'Sobre os atendimentos abertos' : 'Sobre os agendamentos sem check-in'}>{porque}</Dica>
       </p>
       <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)' }}>{acao}</p>
       <ul style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>

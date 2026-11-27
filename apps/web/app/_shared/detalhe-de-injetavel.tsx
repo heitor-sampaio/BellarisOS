@@ -29,7 +29,7 @@ export async function DetalheDeInjetavel({
       mapId={mapId}
       slug={slug}
       basePath={basePath}
-      produtos={catalogo.products.map(p => p.name)}
+      produtos={catalogo.products.map(p => ({ name: p.name, unit: p.unit }))}
       podeEditar={can(ctx, 'atendimento', 'MANAGE') && can(ctx, 'medical_records', 'VIEW')}
     />
   )

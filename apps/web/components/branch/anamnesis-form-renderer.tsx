@@ -11,6 +11,7 @@ import {
 import { salvarFichaDoProcedimento, uploadAnamnesisPhoto, signAnamnesisPhotos } from '@/actions/anamnesis'
 import { InjectableMapField } from '@/components/branch/injectable-map-field'
 import { PlanejamentoInjetaveis } from '@/components/branch/planejamento-injetaveis'
+import type { ProdutoDoMapa } from '@/lib/injetaveis/medida-do-ponto'
 import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
 import { formatDia } from '@estetica-os/utils'
@@ -74,11 +75,12 @@ export interface ContextoDosInjetaveis {
   clientId?: string
   branchId?: string
   /**
-   * Os produtos que o ponto oferece: no atendimento, os INSUMOS do estoque da
-   * unidade (A36 — o nome do insumo liga o mapa à baixa). Sem eles, a lista
-   * de opções do campo na ficha, como antes.
+   * Os produtos que o ponto oferece: os INSUMOS do estoque da unidade, com a
+   * medida de consumo (A36 — o nome do insumo liga o mapa à baixa). Sempre o
+   * estoque: a ficha não tem lista própria (o Heitor, 27/11: "O mapa usa sempre
+   * o estoque, e a ficha não pede mais a lista (a proposta)").
    */
-  produtos?: string[]
+  produtos?: ProdutoDoMapa[]
   linkDoPlanejamento?: (mapId: string) => string | null
   /**
    * Cria, edita e registra a aplicação no planejamento: o Atendimento em
@@ -337,7 +339,7 @@ function FieldView({ field: f, value, canEdit, appointmentId, slug, injetaveis, 
         </div>
       )}
       {f.type === 'injectable_map' && (
-        <CampoDoPlanejador field={f} value={value} appointmentId={appointmentId} slug={slug} injetaveis={injetaveis} onChange={onChange} />
+        <CampoDoPlanejador value={value} appointmentId={appointmentId} slug={slug} injetaveis={injetaveis} onChange={onChange} />
       )}
       {f.type === 'photo' && (
         <PhotoField path={str} displayUrl={photoUrl} appointmentId={appointmentId} onChange={onChange} onUploaded={onPhotoUploaded} />
@@ -377,18 +379,18 @@ function ReadOnlyValue({ field: f, value, photoUrl, linkDoPlanejamento, fotosDoA
     // naquele dia, mesmo que o planejamento tenha mudado depois.
     const plan = planejamentoDoValor(value)
     if (plan && isInjectableMap(value)) {
-      return <RetratoDoPlanejamento valor={value} nome={plan.nome} link={linkDoPlanejamento?.(plan.id) ?? null} products={f.options ?? []} />
+      return <RetratoDoPlanejamento valor={value} nome={plan.nome} link={linkDoPlanejamento?.(plan.id) ?? null} />
     }
     if (!isInjectableMap(value) || value.points.length === 0) {
       // A19 da 35ª: no atendimento em aberto, o campo vazio mostra a aplicação
       // registrada pela sub-aba do mapa, como a edição.
       if (injetaveis?.aoVivo && injetaveis.clientId && injetaveis.branchId && appointmentId) {
         return <PlanejadorEmLeitura injetaveis={injetaveis} clientId={injetaveis.clientId} branchId={injetaveis.branchId}
-          appointmentId={appointmentId} slug={slug} produtos={injetaveis.produtos?.length ? injetaveis.produtos : (f.options ?? [])} />
+          appointmentId={appointmentId} slug={slug} produtos={injetaveis.produtos ?? []} />
       }
       return <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)' }}>Nenhum ponto marcado</p>
     }
-    return <InjectableMapField value={value} products={f.options ?? []} canEdit={false} onChange={() => {}} />
+    return <InjectableMapField value={value} products={[]} canEdit={false} onChange={() => {}} />
   }
 
   // `isInjectableMap` aqui não é redundante: trocar o tipo de um campo no
@@ -413,7 +415,7 @@ function ReadOnlyValue({ field: f, value, photoUrl, linkDoPlanejamento, fotosDoA
  * de quem só lê não grava nada.
  */
 function PlanejadorEmLeitura({ injetaveis, clientId, branchId, appointmentId, slug, produtos }: {
-  injetaveis: ContextoDosInjetaveis; clientId: string; branchId: string; appointmentId: string; slug: string; produtos: string[]
+  injetaveis: ContextoDosInjetaveis; clientId: string; branchId: string; appointmentId: string; slug: string; produtos: ProdutoDoMapa[]
 }) {
   const [aberto, setAberto] = useState<string | null>(null)
   return (
@@ -440,8 +442,7 @@ const dicaStyle: React.CSSProperties = { fontSize: 'var(--text-2xs)', color: 'va
  * A ficha antiga, com o mapa SOLTO, continua como está, só para ler. Sem a
  * cliente (um renderizador fora do atendimento), o mapa solto de antes.
  */
-function CampoDoPlanejador({ field: f, value, appointmentId, slug, injetaveis, onChange }: {
-  field: AnamnesisField
+function CampoDoPlanejador({ value, appointmentId, slug, injetaveis, onChange }: {
   value: AnswerValue | undefined
   appointmentId: string
   slug: string
@@ -457,7 +458,7 @@ function CampoDoPlanejador({ field: f, value, appointmentId, slug, injetaveis, o
           <span>Só para ler</span>
           <Dica rotulo="Sobre este mapa">Mapa registrado antes de o planejador abrir os planejamentos da cliente. Fica como está, só para ler.</Dica>
         </p>
-        <InjectableMapField value={value} products={f.options ?? []} canEdit={false} onChange={() => {}} />
+        <InjectableMapField value={value} products={[]} canEdit={false} onChange={() => {}} />
       </div>
     )
   }
@@ -465,7 +466,7 @@ function CampoDoPlanejador({ field: f, value, appointmentId, slug, injetaveis, o
     return (
       <InjectableMapField
         value={isInjectableMap(value) ? value : emptyInjectableMap()}
-        products={f.options ?? []}
+        products={injetaveis?.produtos ?? []}
         canEdit
         onChange={onChange}
       />
@@ -490,7 +491,7 @@ function CampoDoPlanejador({ field: f, value, appointmentId, slug, injetaveis, o
         branchId={injetaveis.branchId}
         slug={slug}
         appointmentId={appointmentId}
-        produtos={injetaveis.produtos?.length ? injetaveis.produtos : (f.options ?? [])}
+        produtos={injetaveis.produtos ?? []}
         podeEditar={injetaveis.podeEditar === true}
         abertoId={plan?.id ?? null}
         onAbrir={id => onChange(id ? { ...emptyInjectableMap(), planejamento: { id, nome: '' } } : emptyInjectableMap())}
@@ -501,8 +502,8 @@ function CampoDoPlanejador({ field: f, value, appointmentId, slug, injetaveis, o
 }
 
 /** O retrato do planejamento na ficha lida: o nome, de quando, o link (se a pessoa pode abri-lo) e os pontos. */
-function RetratoDoPlanejamento({ valor, nome, link, products }: {
-  valor: InjectableMapValue; nome: string; link: string | null; products: string[]
+function RetratoDoPlanejamento({ valor, nome, link }: {
+  valor: InjectableMapValue; nome: string; link: string | null
 }) {
   const fuso = useFuso()
   const quando = valor.retratoEm ? new Date(valor.retratoEm) : null
@@ -528,7 +529,7 @@ function RetratoDoPlanejamento({ valor, nome, link, products }: {
       </div>
       {valor.points.length === 0
         ? <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)' }}>Nenhum ponto marcado</p>
-        : <InjectableMapField value={valor} products={products} canEdit={false} onChange={() => {}} />}
+        : <InjectableMapField value={valor} products={[]} canEdit={false} onChange={() => {}} />}
     </div>
   )
 }

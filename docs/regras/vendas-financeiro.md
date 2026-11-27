@@ -2262,7 +2262,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     05/11)… Ver no Financeiro" (`ParcelasVencidas`, `[data-parcelas-vencidas]`).
   - O app (Financeiro e Histórico → Pagamentos) diz "Vencida em 05/11" e a
     situação "Vencida".
-  - **O check-in avisa, sem recusar**: quem marca "Chegou" lê
+  - **O check-in avisa, sem recusar**: quem faz o "Check-in" lê
     "Mariana tem 1 parcela vencida (R$ 1.294,00, desde 05/11): receba no
     PDV." (`updateAppointmentStatus`/`checkinAppointment` devolvem
     `aviso`, só para quem recebe; `lib/appointments/vencidas-na-chegada.ts`).

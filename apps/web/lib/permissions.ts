@@ -50,7 +50,7 @@ export const MODULE_LABELS: Record<AppModule, string> = {
 export const MODULE_HINTS: Partial<Record<AppModule, string>> = {
   // A Agenda volta a ser agenda (o Heitor, 2026-11-18): agendar, confirmar,
   // chegada, remarcar, cancelar, falta e trocar quem atende.
-  agenda:          'Agendamentos, confirmação, chegada e remarcação',
+  agenda:          'Agendamentos, confirmação, check-in e remarcação',
   atendimento:     'A tela do atendimento: iniciar e concluir',
   clients:         'Cadastro e ficha de clientes',
   // PG-05: em Gerenciar também troca pontos por recompensa e cancela e entrega o voucher.

@@ -259,8 +259,10 @@ test('PT1e: a sessão do plano não cobra nada; a parcela que venceu aparece no 
 
 test('PT1f: Tratamentos filtra por situação — Proposto, Aceito (falta assinar), Falta pagar, Em andamento, Concluído, Cancelado', async ({ browser }) => {
   const proposto = (await rede!.criarPlanoProposto('Fp', { semTermo: true })).planId
-  const faltaAssinar = (await planoAceito('Fa')).planId
+  const faltaAssinarDoc = await planoAceito('Fa')
+  const faltaAssinar = faltaAssinarDoc.planId
   const faltaPagar = await planoAceito('Fg')
+  const contratoPorEmitir = (await planoAceito('Fn')).planId
   const andamento = await planoAceito('Fe')
   const concluido = (await planoAceito('Fc')).planId
   const cancelado = (await planoAceito('Fx')).planId
@@ -268,7 +270,11 @@ test('PT1f: Tratamentos filtra por situação — Proposto, Aceito (falta assina
   await db().from('treatment_plans').update({ status: 'CANCELLED', cancelado_em: new Date().toISOString() }).eq('id', cancelado)
 
   // O contrato de plano da rede (a rede de verdade nasce com ele; a de teste o
-  // semeia aqui): assinado no "falta pagar", por emitir no "falta assinar".
+  // semeia aqui): assinado no "falta pagar", emitido e por assinar no "falta
+  // assinar", e ainda por emitir (sai no PDV, junto do pagamento) também no
+  // "falta pagar" — o Heitor, 27/11: "Se contrato emitido e falta assinar, o
+  // aviso é falta assinar, se falta pagar, o aviso é falta pagar." (era: o
+  // contrato por emitir contava como "falta assinar").
   expect((await db().rpc('documentos_modelos_padrao', { p_tenant: rede!.tenantId })).error).toBeNull()
   const { data: modelo } = await db().from('document_templates').select('id')
     .eq('tenant_id', rede!.tenantId).eq('kind', 'CONTRATO_PLANO').eq('is_active', true).limit(1).maybeSingle<{ id: string }>()
@@ -281,6 +287,12 @@ test('PT1f: Tratamentos filtra por situação — Proposto, Aceito (falta assina
     moment: 'FECHAMENTO_PLANO', enforcement: 'BLOQUEIA', status: 'ASSINADO', signed_at: new Date().toISOString(),
   })
   expect(eDoc).toBeNull()
+  const { error: eEmitido } = await db().from('issued_documents').insert({
+    tenant_id: rede!.tenantId, branch_id: rede!.branchId, client_id: faltaAssinarDoc.clientId, treatment_plan_id: faltaAssinar,
+    template_id: modelo!.id, template_version_id: versao, kind: 'CONTRATO_PLANO', source: 'EDITOR', title: `${PREFIXO} contrato emitido ${marca}`,
+    moment: 'FECHAMENTO_PLANO', enforcement: 'BLOQUEIA', status: 'PENDENTE', content: '{}', content_sha256: 'a'.repeat(64),
+  })
+  expect(eEmitido).toBeNull()
   // O recebido: um lançamento vivo do plano.
   expect((await db().from('financial_transactions').insert({
     branch_id: rede!.branchId, client_id: andamento.clientId, treatment_plan_id: andamento.planId, type: 'INCOME', category: 'Serviços',
@@ -289,6 +301,7 @@ test('PT1f: Tratamentos filtra por situação — Proposto, Aceito (falta assina
 
   const casos: [string, string][] = [
     ['Proposto', proposto], ['Aceito (falta assinar)', faltaAssinar], ['Falta pagar', faltaPagar.planId],
+    ['Falta pagar', contratoPorEmitir],
     ['Em andamento', andamento.planId], ['Concluído', concluido], ['Cancelado', cancelado],
   ]
   await como(atende!, browser, async p => {
@@ -301,7 +314,7 @@ test('PT1f: Tratamentos filtra por situação — Proposto, Aceito (falta assina
       await expect(p.locator(`[data-plano-da-lista][href$="/${id}"]`), `${rotulo}: o plano dele aparece`).toHaveCount(1)
       await expect(p.locator(`[data-plano-da-lista][href$="/${id}"]`)).toContainText(rotulo)
       for (const [outro, idDoOutro] of casos) {
-        if (idDoOutro !== id) await expect(p.locator(`[data-plano-da-lista][href$="/${idDoOutro}"]`), `${rotulo}: sem o "${outro}"`).toHaveCount(0)
+        if (outro !== rotulo) await expect(p.locator(`[data-plano-da-lista][href$="/${idDoOutro}"]`), `${rotulo}: sem o "${outro}"`).toHaveCount(0)
       }
     }
   })

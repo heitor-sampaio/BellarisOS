@@ -157,7 +157,9 @@ test('abre pelo campo o planejamento que a cliente já tem, registra a aplicaç�
   const mapa = await mapaNaFicha(id)
   expect(mapa, 'a ficha guarda o planejamento usado').not.toBeNull()
   expect(mapa!.planejamento).toEqual({ id: mapaExistente, nome: `[e2e] ${NOME_DO_MAPA}` })
-  expect(mapa!.points, 'o retrato dos pontos do planejamento').toEqual(PONTOS)
+  // O "Registrar aplicação" copia a dose prevista nos pontos sem a aplicada (o Heitor, 27/11: "Um botão só,
+  // "Registrar aplicação" (a proposta)"): o retrato leva a dose aplicada de cada ponto.
+  expect(mapa!.points, 'o retrato dos pontos do planejamento').toEqual(PONTOS.map(p => ({ ...p, applied: p.dose })))
   expect(mapa!.retratoEm).toBeTruthy()
 
   const { data: aplicacoes } = await db().from('injectable_applications').select('appointment_id, map_id').eq('client_id', clienteComMapa)
@@ -165,7 +167,7 @@ test('abre pelo campo o planejamento que a cliente já tem, registra a aplicaç�
 
   // O retrato é DAQUELE dia: o planejamento mudar depois não mexe no prontuário.
   expect((await db().from('injectable_maps').update({ points: [] }).eq('id', mapaExistente)).error).toBeNull()
-  expect((await mapaNaFicha(id))!.points).toEqual(PONTOS)
+  expect((await mapaNaFicha(id))!.points).toEqual(PONTOS.map(p => ({ ...p, applied: p.dose })))
   expect((await db().from('injectable_maps').update({ points: PONTOS }).eq('id', mapaExistente)).error).toBeNull()
 })
 

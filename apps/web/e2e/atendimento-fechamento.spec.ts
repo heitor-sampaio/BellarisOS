@@ -121,7 +121,8 @@ test.describe.serial('fechar um atendimento', () => {
     const db = banco()
     await page.goto(`/admin/agenda/${c!.agendamento}`)
 
-    await page.getByRole('button', { name: 'Check-in' }).click()
+    // exact: o "Check-in e iniciar" também diz Check-in (o Heitor, 27/11: "Fica Check-in em todos os lugares").
+    await page.getByRole('button', { name: 'Check-in', exact: true }).click()
     await expect.poll(async () => (await db.from('appointments').select('status').eq('id', c!.agendamento).single()).data?.status)
       .toBe('ARRIVED')
 

@@ -30,7 +30,7 @@ export function mostraOValor(ctx: TenantContext): boolean {
 
 const ORIGEM: Record<string, string> = { ATENDIMENTO: 'atendimento', PLANO: 'plano de tratamento', VENDA: 'venda' }
 const STATUS_DO_ATENDIMENTO: Record<string, string> = {
-  SCHEDULED: 'agendado', CONFIRMED: 'confirmado', ARRIVED: 'chegou', IN_PROGRESS: 'em atendimento', COMPLETED: 'concluído',
+  SCHEDULED: 'agendado', CONFIRMED: 'confirmado', ARRIVED: 'check-in', IN_PROGRESS: 'em atendimento', COMPLETED: 'concluído',
 }
 
 export const comandasAbertas: FerramentaDeLeitura<{ unidade?: string; cliente?: string }> = {

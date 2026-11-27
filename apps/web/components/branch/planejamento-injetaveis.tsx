@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Syringe, Plus, Loader2 } from 'lucide-react'
 import { MapaInjetavel } from '@/components/branch/mapa-injetavel'
+import type { ProdutoDoMapa } from '@/lib/injetaveis/medida-do-ponto'
 import {
   listarPlanejamentosDoCliente, criarPlanejamentoInjetavel, type MapaNaLista,
 } from '@/actions/injectable-map'
@@ -37,7 +38,8 @@ export function PlanejamentoInjetaveis({
   branchId:       string
   slug:           string
   appointmentId?: string | null
-  produtos:       string[]
+  /** Os produtos do estoque que o ponto oferece, com a medida de cada um. */
+  produtos:       ProdutoDoMapa[]
   podeEditar:     boolean
   /**
    * Qual planejamento está aberto, decidido de fora. Com `onAbrir` presente,

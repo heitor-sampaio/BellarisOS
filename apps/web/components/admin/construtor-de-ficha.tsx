@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import { InjectableMapField } from '@/components/branch/injectable-map-field'
 import {
-  FIELD_TYPES, FIELD_TYPE_LABEL, OPTION_TYPES, MAX_COLS, textoDasOpcoes, faltaDeOpcoes, newId, emptyInjectableMap,
+  FIELD_TYPES, FIELD_TYPE_LABEL, OPTION_TYPES, MAX_COLS, faltaDeOpcoes, newId, emptyInjectableMap,
   type AnamnesisField, type AnamnesisFieldType, type AnamnesisRow, type InjectableMapValue,
 } from '@/lib/anamnesis'
 import { criarFicha, atualizarFicha } from '@/actions/fichas'
@@ -422,7 +422,7 @@ export function ConstrutorDeFicha({ existing, onDone, onSaved, createAction, upd
         <FieldSettingsModal
           field={editingField}
           tipos={tipos}
-          outros={rows.flatMap(r => r.fields).filter(x => x.id !== editingField.id && OPTION_TYPES.includes(x.type) && x.type !== 'injectable_map')}
+          outros={rows.flatMap(r => r.fields).filter(x => x.id !== editingField.id && OPTION_TYPES.includes(x.type))}
           onChangeType={type => changeType(editingField.id, type)}
           onPatch={ch => patch(editingField.id, ch)}
           onSetOption={(i, v) => setOption(editingField.id, i, v)}
@@ -550,21 +550,22 @@ function FieldSettingsModal({ field: f, tipos, outros, onChangeType, onPatch, on
             <input className="field" value={f.label} onChange={e => onPatch({ label: e.target.value })} placeholder={isSection ? 'Ex: Histórico de saúde' : 'Ex: Você tem alergias?'} autoFocus />
           </ModalField>
 
+          {/* O planejador de injetáveis não tem opções: o mapa oferece sempre os produtos
+              do estoque (o Heitor, 27/11: "O mapa usa sempre o estoque, e a ficha não pede
+              mais a lista (a proposta)"). */}
           {OPTION_TYPES.includes(f.type) && (
-            // A4 da 7ª simulação: no planejador, as opções são os produtos do mapa — o "quais são" na dica (2026-11-16).
-            <ModalField label={textoDasOpcoes(f.type).titulo}
-              dica={textoDasOpcoes(f.type).ajuda ? <span data-ajuda-das-opcoes>{textoDasOpcoes(f.type).ajuda}</span> : undefined}>
+            <ModalField label="Opções">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {(f.options ?? []).map((opt, oi) => (
                   <div key={oi} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                    <input className="field" style={{ flex: 1 }} value={opt} onChange={e => onSetOption(oi, e.target.value)} placeholder={textoDasOpcoes(f.type).exemplo(oi + 1)} />
+                    <input className="field" style={{ flex: 1 }} value={opt} onChange={e => onSetOption(oi, e.target.value)} placeholder={`Opção ${oi + 1}`} />
                     <button type="button" onClick={() => onRemoveOption(oi)} title="Remover opção" style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--danger)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
                       <X size={14} />
                     </button>
                   </div>
                 ))}
                 <button type="button" onClick={onAddOption} style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--brand)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                  <Plus size={14} /> {textoDasOpcoes(f.type).adicionar}
+                  <Plus size={14} /> Adicionar opção
                 </button>
               </div>
             </ModalField>
@@ -621,12 +622,14 @@ function FieldSettingsModal({ field: f, tipos, outros, onChangeType, onPatch, on
 
 // Pré-visualização da ficha (somente leitura) — modal.
 /** Planejador de verdade dentro da pré-visualização, com estado descartável. */
-function PreviewInjectableMap({ options }: { options: string[] }) {
+function PreviewInjectableMap() {
   const [value, setValue] = useState<InjectableMapValue>(() => emptyInjectableMap())
+  // Os produtos do ponto são os do estoque da unidade, no atendimento: aqui,
+  // fora dele, a pré-visualização mostra o desenho sem lista.
   return (
     <InjectableMapField
       value={value}
-      products={options.filter(Boolean)}
+      products={[]}
       canEdit
       onChange={setValue}
     />
@@ -715,7 +718,7 @@ function PreviewField({ field: f }: { field: AnamnesisField }) {
       )}
       {/* Interativo de propósito: é aqui que dá para experimentar o planejador
           sem abrir um atendimento. Os pontos ficam só no estado local. */}
-      {f.type === 'injectable_map' && <PreviewInjectableMap options={opts} />}
+      {f.type === 'injectable_map' && <PreviewInjectableMap />}
     </div>
   )
 }

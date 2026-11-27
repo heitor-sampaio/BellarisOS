@@ -57,7 +57,7 @@ import { ROTULO_DO_STATUS } from '@/lib/agenda/rotulo-do-status'
 const STATUS_STYLE: Record<string, { label: string; bg: string; color: string }> = {
   SCHEDULED:   { label: ROTULO_DO_STATUS.SCHEDULED, bg: 'var(--bg-app)',      color: 'var(--text-muted)' },
   CONFIRMED:   { label: 'Confirmado',  bg: 'var(--brand-soft)',  color: 'var(--brand)'      },
-  ARRIVED:     { label: 'Chegou',      bg: 'var(--success-soft)', color: 'var(--success)'    },
+  ARRIVED:     { label: 'Check-in',    bg: 'var(--success-soft)', color: 'var(--success)'    },
   IN_PROGRESS: { label: 'Em atend.',   bg: 'var(--warning-soft)',color: 'var(--warning)'    },
   COMPLETED:   { label: 'Concluído',   bg: 'var(--success-soft)',color: 'var(--success)'    },
   CANCELLED:   { label: 'Cancelado',   bg: 'var(--bg-app)',      color: 'var(--text-faint)' },

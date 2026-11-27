@@ -4,6 +4,7 @@ import { maquininhaDoRotulo } from '@/lib/financeiro/formas'
 import { notFound } from 'next/navigation'
 import { idOu404 } from '@/lib/id-da-rota'
 import { getTenantContext, can, podeReceber, podeVerClinico, temRecurso } from '@/lib/auth'
+import { linhasDoHistoricoParaQuemVe } from '@/lib/clients/historico-do-agendamento'
 import { semAcesso } from '@/lib/sem-acesso'
 import { montaPlano } from '@/lib/plano-de-tratamento/quem-monta'
 import { quemDesfazNoCaixa, quemMarcaAChegada, quemRecebeNaUnidade, quemConcluiOAtendimento, quemRespondeAFichaDeSaude } from '@/lib/equipe/quem-desfaz'
@@ -368,7 +369,8 @@ export async function SessaoDeAtendimento({
   }))
 
   type RawHistory = { id: string; changed_by_name: string; action: string; description: string; created_at: string }
-  const history: HistoryEntry[] = ((historyRaw ?? []) as RawHistory[]).map(h => ({
+  // As linhas da foto clínica só com o Prontuário em Ver (o Heitor, 27/11: "Somem só as linhas clínicas").
+  const history: HistoryEntry[] = linhasDoHistoricoParaQuemVe((historyRaw ?? []) as RawHistory[], canViewRecords).map(h => ({
     id:            h.id,
     changedByName: h.changed_by_name,
     action:        h.action,

@@ -1774,6 +1774,86 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-27 (4) — As respostas do Heitor R22–R32
+
+O Heitor respondeu as perguntas R22 a R30 (no chat) e, depois, a R31 e a R32 (na página). Cada mudança abaixo é a
+regra dele, com a fala; o que não é fala dele vem marcado "decisão do Claude".
+
+**O que mudou no sistema.**
+- **R22, Tratamentos** (o Heitor, 27/11: "Se contrato emitido e falta assinar, o aviso é falta assinar, se falta pagar,
+  o aviso é falta pagar."): o plano aceito com o contrato ainda não emitido (ele sai no PDV, junto do pagamento) está em
+  "Falta pagar"; "Aceito (falta assinar)" é o contrato emitido e não assinado (`contratoFaltaAssinar`,
+  `lib/plano-de-tratamento/situacao.ts`), na lista, no topo do plano e no Copilot. O termo do plano em aberto continua
+  "falta assinar" (decisão do Claude: é documento emitido e não assinado, a primeira parte da fala).
+- **R25, a medida da dose** (o Heitor, 27/11: "O consumo é sempre na unidade cadastrada no produto, seja no mapa, seja no
+  atendimento, seja no consumo do estoque."): o ponto do mapa escolhe o produto entre os do estoque, e a medida é a de
+  consumo dele (`lib/injetaveis/medida-do-ponto.ts`); saiu o seletor UI/U/ml/mg. O servidor recusa o ponto novo de
+  produto fora do estoque ou noutra medida ("A dose de X é em ml, a medida do produto no estoque."). Decisões do Claude
+  (princípios 3 e 4): o ponto gravado antes noutra medida fica como foi gravado e não se converte; o ponto novo depois
+  dele nasce na medida do produto, sem copiar a dose; com o estoque sem insumo, o mapa não tem produto a escolher.
+- **R26, um botão só** (o Heitor, 27/11: "Um botão só, "Registrar aplicação" (a proposta)"): saiu o "Confirmar
+  aplicação"; o "Registrar aplicação" copia a dose prevista nos pontos em que ninguém escreveu a aplicada
+  (`aplicadoAoRegistrar`), e a coluna "Aplicado" fica à vista no atendimento com a mesma conta.
+- **R27, a ficha sem a lista** (o Heitor, 27/11: "O mapa usa sempre o estoque, e a ficha não pede mais a lista (a
+  proposta)"): o construtor não mostra mais "Produtos do mapa"; o planejador oferece sempre os insumos do estoque; ficha
+  antiga com a lista não quebra (a lista é ignorada).
+- **R28, "Check-in" em todo lugar** (o Heitor, 27/11: "Fica "Check-in"", e "Fica Check-in em todos os lugares"): a
+  situação e o gesto da chegada dizem "Check-in" na agenda, na Minha agenda, na janela, na tela do atendimento, no app
+  da cliente, no dashboard, nos relatórios, no histórico, nos avisos, no evento, na Auditoria, no Copilot, nas
+  permissões, no PDV e no site. Formas (decisão do Claude): "Check-in feito", "fazer o check-in", "Check-in e iniciar",
+  "Check-in 10:02". A recusa do Copilot diz "Este agendamento está com o check-in feito" (e "marcado como falta"; dizia
+  "está chegou"/"está faltou"). Trava: `tests/check-in-em-todos-os-lugares.test.ts`.
+- **R29, a parcela no contrato** (o Heitor, 27/11: "A frase diz o valor de cada parcela (a proposta)"): "R$ 765,00 no
+  cartão de crédito em 3x de R$ 255,00"; desiguais, "3x (2x de R$ 283,33 + 1x de R$ 283,34)", pela mesma divisão das
+  parcelas gravadas (a sobra na última). A entrada do crediário no cartão e o pagamento dividido foram à página (R33).
+- **R30, a coluna "Unidades"** (o Heitor, 27/11: "A coluna some com uma unidade só (a proposta)"): some com uma unidade
+  ativa e volta com a segunda.
+- **R31, o Desativar** (o Heitor, 27/11: "O botão diz "Desativar e repassar 1 de 3" também no um a um (a proposta)"):
+  no um a um, escolhida uma parte, o botão diz quantos vão; todos ou nenhum, "Desativar".
+- **R32, o histórico do atendimento** (o Heitor, 27/11, R23: "O historico do atendimento é parte do prontuario."; R32:
+  "Somem só as linhas clínicas (as da foto); as da agenda e do caixa ficam"): sem o Prontuário em Ver, somem as linhas
+  da foto (anexada, enviada, tirada pelo app, apagada) na janela da agenda e na tela do atendimento
+  (`linhasDoHistoricoParaQuemVe`).
+
+**TDD (a falha vista antes):** `tests/plano-quem-monta-e-situacao` ("contratoFaltaAssinar is not a function");
+`tests/injetaveis-medida-do-ponto` ("Cannot find package '@/lib/injetaveis/medida-do-ponto'");
+`tests/injetaveis-aplicacao-do-atendimento` ("aplicadoAoRegistrar is not a function");
+`tests/check-in-em-todos-os-lugares` ("expected [ …(54) ] to deeply equal []"); `tests/copilot-situacao-na-frase`
+("Cannot read properties of undefined (reading 'ARRIVED')"); `tests/historico-sem-as-linhas-da-foto`
+("linhasDoHistoricoParaQuemVe is not a function"); os alterados abaixo falharam antes pela regra nova.
+
+**Testes alterados** (cada um pela fala acima, citada no próprio teste):
+- R22: `e2e/plano-tratamento-leva-1.spec.ts` (PT1f: o plano com o contrato emitido está em "falta assinar"; o sem
+  contrato emitido, em "Falta pagar").
+- R25: `tests/injetaveis-dose.test.ts`, `tests/injetaveis-dose-u-e-ui.test.ts`, `tests/injetaveis-dose-em-outra-medida.test.ts`
+  (os títulos falam do ponto gravado antes; as asserções seguem), `e2e/injetaveis-da-9.spec.ts` (o retoque usa um produto
+  do estoque), `e2e/injetaveis-ponto-novo.spec.ts` (a medida é a do produto, sem seletor).
+- R26: `tests/injetaveis-aplicacao-do-atendimento.test.ts`, `tests/injetaveis-mapa-uma-acao-por-momento.test.ts`,
+  `e2e/injetaveis-confirmar-so-no-atendimento.spec.ts` (sem o Confirmar; o cabeçalho passou a dizer de quem é cada
+  regra), `e2e/injetaveis-atritos-da-11.spec.ts`, `e2e/atendimento-ficha-planejador-injetaveis.spec.ts` (o retrato leva
+  a dose aplicada).
+- R27: `tests/planejador-opcoes-sao-produtos.test.ts` (reescrito: o planejador sem lista).
+- R28: `tests/agenda-dia`, `tests/atendimento-crm-atritos-da-21`, `tests/atritos-da-19-atendimento`,
+  `tests/sessao-do-atendimento-o-que-a-tela-diz` e `tests/inicio-diz-antes-o-que-falta` (títulos); E2E
+  `agenda-abertos-de-dias-anteriores`, `agenda-check-in`, `agenda-chegar-e-iniciar`, `agenda-dia-a-dia`,
+  `agenda-dona-chega-e-inicia`, `agenda-guardas-de-status`, `agenda-inicio-adiantado`, `atendimento-fechamento`,
+  `atendimento-uso-da-10`, `financeiro-vencidas-da-9` ("Check-in", com `exact` onde "Check-in e iniciar" também casaria).
+- R29: `tests/checkout-pagamento.test.ts:80`. R30: `tests/atritos-da-16.test.ts:186`. R31:
+  `tests/atritos-da-23-cargos-atendimento-app.test.ts:100`. R32: `e2e/atendimento-foto-clinica.spec.ts`.
+- **Apagados:** o caso "está entre as unidades de dose do planejador de injetáveis" de `tests/estoque-medidas.test.ts`
+  (R25: o planejador não tem mais lista própria de medidas) e a linha que exigia "Confirmar aplicação" em
+  `tests/injetaveis-mapa-uma-acao-por-momento.test.ts` (R26).
+
+**Os E2E** (contra o build, em série): dos 49 (os alterados e os vizinhos), 42 passaram de primeira; o do check-in e o
+da dona passaram ao rodar de novo; o do planejador passou depois de alterado pela R26. Três falham IGUAIS na `main`
+(build da main, hoje): `agenda-chegar-e-iniciar:67` e `atendimento-fechamento:120` (o clique logo depois de abrir a tela
+do atendimento não chega à action; esperando a tela assentar, passa) e `permissoes-acoes:167` (a montagem não acha a
+etapa do funil). O A5 de `atendimento-uso-da-10` falhou em 4 de 5 vezes neste código e passou 1 de 1 na main: o clique
+no bloco cai num horário vazio da grade ("Novo agendamento"); esperando a tela assentar, passa. Fica para reconferir
+com a máquina sem a simulação, antes da produção.
+
+**Para o Heitor (a página):** R33 (o valor da parcela também na entrada do crediário no cartão e no pagamento dividido).
+
 ### 2026-11-27 (3) — A 37ª simulação e as correções dela
 
 O laço segue (o Heitor, 25/11: "quando acabar essa roda já segue as outras e assim vai"). Cinco redes novas, sem conta

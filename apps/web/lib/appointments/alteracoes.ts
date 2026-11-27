@@ -317,16 +317,16 @@ export async function checkinCore(admin: Admin, ctx: TenantContext, appointmentI
   // A cliente chega no dia dela (A18, 2026-10-27): a chegada de amanhã ou de
   // ontem é engano. Vale para a agenda, o Copilot e "Marcar chegada e iniciar".
   if (!ehODiaDoAgendamento(existente.scheduled_at, new Date(), existente.fuso)) {
-    return { error: 'A chegada só se marca no dia do agendamento.' }
+    return { error: 'O check-in só se faz no dia do agendamento.' }
   }
   const agora = new Date().toISOString()
   const feitas = await gravar(admin.from('appointments')
     .update({ status: 'ARRIVED', arrived_at: agora, ...(existente.status === 'SCHEDULED' ? { confirmed_at: agora } : {}) })
-    .eq('id', existente.id).eq('status', existente.status).select('id'), 'registrar a chegada do cliente') as { id: string }[] | null
+    .eq('id', existente.id).eq('status', existente.status).select('id'), 'fazer o check-in') as { id: string }[] | null
   if (!feitas?.length) return { error: 'O agendamento mudou de situação. Confira na agenda.' }
 
   const userName = ctx.userName || await getUserName(admin, ctx.userId)
-  await logHistory(admin, existente.id, ctx.internalUserId, userName, 'CHECKIN', 'Check-in realizado — cliente chegou')
+  await logHistory(admin, existente.id, ctx.internalUserId, userName, 'CHECKIN', 'Check-in feito')
   await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_CHECK_IN, existente.id, { ...ctx, userName })
   return { ok: true }
 }

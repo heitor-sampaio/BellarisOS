@@ -305,7 +305,7 @@ const DESTAQUES: Destaque[] = [
   },
   {
     overline: 'Agenda e atendimento', titulo: 'A agenda que a equipe entende de primeira',
-    texto: 'Por quem atende e por sala, com confirmação, chegada e falta. A sessão abre a ficha certa.',
+    texto: 'Por quem atende e por sala, com confirmação, check-in e falta. A sessão abre a ficha certa.',
     itens: [
       { forte: 'A sessão completa', resto: ': ficha de saúde, ficha de atendimento, fotos e consumo de produtos num lugar só — e a comanda já espera no PDV.' },
       { forte: 'O histórico inteiro da cliente', resto: ' — pacotes, créditos, próximos horários — na ficha.' },

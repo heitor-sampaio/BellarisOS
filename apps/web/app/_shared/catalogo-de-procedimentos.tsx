@@ -19,7 +19,7 @@ import { configDaRede } from '@/lib/fidelidade/leitura'
 import { opcoesDeModeloParaProcedimento } from '@/lib/documentos/modelos'
 import { BuscaNaUrl } from '@/components/shared/busca-na-url'
 import { contemSemAcento } from '@/lib/texto'
-import { falaDaTela } from '@/lib/unidades/uma-so'
+import { falaDaTela, umaUnidadeSo } from '@/lib/unidades/uma-so'
 import { Dica } from '@/components/shared/dica'
 
 function formatBRL(v: string | number) {
@@ -33,12 +33,13 @@ function precosProprios(linhas: unknown): { branch_id: string; price: number }[]
 }
 
 /** Largura fixa por coluna, compartilhada por todas as tabelas de categoria.
- *  A de comissão só existe para quem vê quanto cada um ganha. */
-const colunas = (comComissao: boolean) => [
+ *  A de comissão só existe para quem vê quanto cada um ganha; a de unidades,
+ *  com duas ou mais (o Heitor, 27/11: "A coluna some com uma unidade só"). */
+const colunas = (comComissao: boolean, comUnidades: boolean) => [
   { titulo: 'Procedimento', largura: undefined },
   { titulo: 'Duração',      largura: 98 },
   { titulo: 'Preço',        largura: 116 },
-  { titulo: 'Unidades',     largura: 132 },
+  ...(comUnidades ? [{ titulo: 'Unidades', largura: 132 }] : []),
   { titulo: 'App',          largura: 64 },
   { titulo: 'Situação',     largura: 108 },
   ...(comComissao ? [{ titulo: 'Comissão', largura: 168 }] : []),
@@ -63,7 +64,6 @@ export async function CatalogoDeProcedimentos({ termo }: { termo: string }) {
   // 18/11, "só pela conta admin") — a MESMA regra da action, senão o chip
   // abria um modal que não salvava.
   const podeComissao = podeMudarComissaoDoProcedimento(ctx)
-  const COLUNAS = colunas(podeComissao)
 
   const admin = createAdminClient()
 
@@ -202,6 +202,10 @@ export async function CatalogoDeProcedimentos({ termo }: { termo: string }) {
   const totalActive   = procList.filter(p => p.is_active).length
   const totalInactive = procList.filter(p => !p.is_active).length
   const branchList    = branches ?? []
+  // Com uma unidade só, a coluna "Unidades" some e volta com a segunda (o Heitor, 27/11). A régua é a das
+  // unidades ATIVAS (`umaUnidadeSo`), a mesma do "Em quais unidades" do cadastro.
+  const comUnidades = !umaUnidadeSo(branchList.length)
+  const COLUNAS = colunas(podeComissao, comUnidades)
   const salasDoCadastro = ((salasDaRede ?? []) as unknown as { id: string; name: string; branches: { name: string } }[])
     .map(s => ({ id: s.id, name: s.name, unidade: s.branches.name }))
   const profissionaisDoCadastro = ((quemAtende ?? []) as { id: string; name: string }[]).map(p => ({ id: p.id, name: p.name }))
@@ -301,10 +305,9 @@ export async function CatalogoDeProcedimentos({ termo }: { termo: string }) {
                   const branchCount  = availability?.length ?? 0
                   // A24 da 15ª (princípio 3): uma unidade diz o nome; várias, "3 de 4" com os nomes na dica.
                   const nomesDasUnidades = (availability ?? []).map(a => branchNameMap[a.branch_id]).filter((n): n is string => !!n)
-                  // A25 da 16ª: na rede de uma unidade, "Toda a rede" virava o nome
-                  // da rede (PO2) — o chip diz o nome da unidade.
+                  // Com uma unidade só, a coluna nem aparece (o Heitor, 27/11).
                   const branchLabel  = branchCount === 0
-                    ? (branchList.length === 1 ? branchList[0]!.name : fala('Toda a rede'))
+                    ? fala('Toda a rede')
                     : branchCount === 1
                       ? nomesDasUnidades[0] ?? '1 unidade'
                       : `${branchCount} de ${branchList.length}`
@@ -361,6 +364,7 @@ export async function CatalogoDeProcedimentos({ termo }: { termo: string }) {
                           </p>
                         ))}
                       </td>
+                      {comUnidades && (
                       <td data-label="Unidades" data-par style={{ padding: '13px 16px' }}>
                         <span style={{
                           fontSize: 'var(--text-2xs)', fontWeight: 700,
@@ -372,6 +376,7 @@ export async function CatalogoDeProcedimentos({ termo }: { termo: string }) {
                           {branchLabel}
                         </span>
                       </td>
+                      )}
                       {/* A9 da 24ª (princípio 3): o ícone sozinho, igual nas linhas, não dizia sim nem não. */}
                       <td data-label="App" data-par data-no-app={p.visible_on_client_app ? 'sim' : 'nao'} style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
                         {p.visible_on_client_app

@@ -65,5 +65,7 @@ export function textoDoReativado(nome: string, atende: boolean): string {
  * quantos vão.
  */
 export function rotuloDoDesativar(p: { todosParaAlguem: boolean; repassados: number; total: number }): string {
-  return p.todosParaAlguem && p.repassados < p.total ? `Desativar e repassar ${p.repassados} de ${p.total}` : 'Desativar'
+  // O um a um também diz quantos vão (o Heitor, 27/11, R31); nele, nenhum escolhido fica "Desativar".
+  const parte = p.todosParaAlguem ? p.repassados < p.total : p.repassados > 0 && p.repassados < p.total
+  return parte ? `Desativar e repassar ${p.repassados} de ${p.total}` : 'Desativar'
 }

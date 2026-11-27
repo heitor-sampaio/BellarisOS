@@ -146,7 +146,7 @@ function prontuarioLegivel(medical: Json | null): Json | null {
 }
 
 const STATUS_LABEL: Record<string, string> = {
-  SCHEDULED: 'Agendado', CONFIRMED: 'Confirmado', ARRIVED: 'Chegou', IN_PROGRESS: 'Em atendimento',
+  SCHEDULED: 'Agendado', CONFIRMED: 'Confirmado', ARRIVED: 'Check-in', IN_PROGRESS: 'Em atendimento',
   COMPLETED: 'Concluído', CANCELLED: 'Cancelado', NO_SHOW: 'Não compareceu',
 }
 

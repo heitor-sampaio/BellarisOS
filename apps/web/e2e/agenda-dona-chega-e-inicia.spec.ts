@@ -61,12 +61,13 @@ test('no agendamento DELA, a dona marca a chegada e inicia num gesto; no de outr
     await p.goto(`/admin/agenda?date=${hoje}`)
     await p.locator(`[data-agendamento="${deOutra}"]`).click()
     const janela = p.getByRole('dialog', { name: 'Agendamento' })
-    await expect(janela.getByRole('button', { name: 'Chegou' })).toBeVisible()
-    await expect(janela.getByRole('button', { name: 'Marcar chegada e iniciar' }), 'no de outra, o caminho da recepção').toHaveCount(0)
+    // O nome é "Check-in" (o Heitor, 27/11: "Fica "Check-in"" — "Fica Check-in em todos os lugares"); era "Chegou"/"Marcar chegada e iniciar".
+    await expect(janela.getByRole('button', { name: 'Check-in', exact: true })).toBeVisible()
+    await expect(janela.getByRole('button', { name: 'Check-in e iniciar' }), 'no de outra, o caminho da recepção').toHaveCount(0)
     await p.keyboard.press('Escape')
 
     await p.locator(`[data-agendamento="${dela}"]`).click()
-    await janela.getByRole('button', { name: 'Marcar chegada e iniciar' }).click()
+    await janela.getByRole('button', { name: 'Check-in e iniciar' }).click()
     await expect(p).toHaveURL(new RegExp(`/admin/agenda/${dela}`))
     await expect.poll(async () => (await db().from('appointments').select('status').eq('id', dela).single()).data?.status).toBe('IN_PROGRESS')
   } finally { await ctx.close() }

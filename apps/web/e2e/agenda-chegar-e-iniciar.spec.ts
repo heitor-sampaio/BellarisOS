@@ -70,7 +70,7 @@ test('a profissional marca a chegada e inicia, pela tela do atendimento, o agend
     // Na "Minha agenda" o bloco é o link para a tela do atendimento.
     await p.goto(`/${slug}/agenda/${id}`)
     await expect(p.getByRole('button', { name: 'Iniciar atendimento' }), 'o "Agendado" não começa sem a chegada').toHaveCount(0)
-    await p.getByRole('button', { name: 'Marcar chegada e iniciar' }).click()
+    await p.getByRole('button', { name: 'Check-in e iniciar' }).click()
     await expect(p).toHaveURL(new RegExp(`/${slug}/agenda/${id}`))
     await expect.poll(async () => (await situacao(id)).status).toBe('IN_PROGRESS')
   })
@@ -102,7 +102,7 @@ test('a profissional da REDE marca a chegada e inicia pela janela da agenda', as
       await p.goto(`/admin/agenda?date=${HOJE}`)
       await p.locator(`[title*="Janela ce${marca}"]`).first().click()
       await expect(p.getByRole('button', { name: 'Iniciar atendimento' }), 'o "Agendado" não começa sem a chegada').toHaveCount(0)
-      await p.getByRole('button', { name: 'Marcar chegada e iniciar' }).click()
+      await p.getByRole('button', { name: 'Check-in e iniciar' }).click()
       await expect(p).toHaveURL(new RegExp(`/admin/agenda/${id}`))
     } finally { await ctx.close() }
     await expect.poll(async () => (await situacao(id)).status).toBe('IN_PROGRESS')

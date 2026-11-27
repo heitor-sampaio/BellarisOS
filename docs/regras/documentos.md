@@ -629,6 +629,15 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
     `pagamento.valor_parcela` "R$ 890,66 (a última, R$ 890,68)" — também no
     cartão em N vezes. Prova: `e2e/checkout-entrada-no-cartao.spec.ts`
     ("D2, A42"), `tests/checkout-parcelas-gravadas.test.ts`.
+  - **No cartão em N vezes, a frase diz o valor de cada parcela** (o Heitor,
+    27/11: "A frase diz o valor de cada parcela (a proposta)"; era só "em
+    3x"): "R$ 765,00 no cartão de crédito em 3x de R$ 255,00"; desiguais, "R$
+    850,00 no cartão de crédito em 3x (2x de R$ 283,33 + 1x de R$ 283,34)" — a
+    divisão dos recebíveis da operadora (`dividirEmParcelas`, a sobra na
+    última, a mesma do gatilho de `recebiveis_do_cartao`). Vale para o à vista
+    no crédito de uma forma só; a entrada do crediário e o pagamento dividido em
+    formas seguem com "em 3x" (a fala foi sobre o à vista). Prova:
+    `tests/checkout-pagamento.test.ts`.
 - **A trava do checkout vem ANTES do dinheiro** (`recusaDosDocumentosDoPlano`
   em `checkoutTreatmentPlanInterno`): documento que BLOQUEIA aberto, ou contrato
   assinado para OUTRO pagamento, recusam. Ela EMITE antes de conferir — quem

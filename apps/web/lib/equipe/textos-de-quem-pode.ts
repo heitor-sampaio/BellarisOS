@@ -11,7 +11,7 @@ const entreParenteses = (quem: string[] | null | undefined) => quem?.length ? ` 
 
 /** A10: o atendimento "Agendado" de quem não marca a chegada. */
 export function textoDeQuemMarcaAChegada(quem: string[] | null | undefined): string {
-  return `Quem tem a Agenda em Gerenciar marca a chegada${entreParenteses(quem)}; depois você inicia.`
+  return `Quem tem a Agenda em Gerenciar faz o check-in${entreParenteses(quem)}; depois você inicia.`
 }
 
 /**

@@ -6,7 +6,7 @@
 export const ROTULO_DO_STATUS = {
   SCHEDULED:   'Agendado',
   CONFIRMED:   'Confirmado',
-  ARRIVED:     'Chegou',
+  ARRIVED:     'Check-in',
   IN_PROGRESS: 'Em atendimento',
   COMPLETED:   'Concluído',
   CANCELLED:   'Cancelado',

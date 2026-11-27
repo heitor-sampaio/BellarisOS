@@ -83,7 +83,7 @@ interface AppointmentSheetProps {
 const STATUS_LABEL: Record<string, string> = {
   SCHEDULED:   'Agendado',
   CONFIRMED:   'Confirmado',
-  ARRIVED:     'Chegou',
+  ARRIVED:     'Check-in',
   IN_PROGRESS: 'Em atendimento',
   COMPLETED:   'Concluído',
   CANCELLED:   'Cancelado',
@@ -191,7 +191,7 @@ export function AppointmentSheet({ appointment, slug, vistaDela = false, podeGer
   // O que dizer quando dá certo (2026-10-21): a janela fechava em silêncio.
   const AVISO: Partial<Record<Parameters<typeof updateAppointmentStatus>[1], string>> = {
     CONFIRMED: 'Agendamento confirmado.',
-    ARRIVED:   'Chegada registrada: a cliente está na espera.',
+    ARRIVED:   'Check-in feito: a cliente está na espera.',
     NO_SHOW:   'Marcado como "não compareceu".',
     CANCELLED: 'Agendamento cancelado.',
   }
@@ -228,7 +228,7 @@ export function AppointmentSheet({ appointment, slug, vistaDela = false, podeGer
     setErro(null)
     setPerguntaDoInicio(null)
     const r: { error?: string; chegou?: boolean; confirmarInicioAdiantado?: boolean } = await chegarEIniciar(appointment.id, slug, { inicioAdiantadoConfirmado })
-      .catch(() => ({ error: 'Não foi possível marcar a chegada.', chegou: false }))
+      .catch(() => ({ error: 'Não foi possível fazer o check-in.', chegou: false }))
     setLoading(false)
     if (r?.confirmarInicioAdiantado && r.error) { setPerguntaDoInicio({ texto: r.error, chegar: true }); return }
     // Chegou mas não começou (documento a assinar): a tela do atendimento diz o quê.
@@ -399,7 +399,7 @@ export function AppointmentSheet({ appointment, slug, vistaDela = false, podeGer
                 gesto DELA, então vem primeiro (A5 da 10ª). */}
             {mostraChegarEIniciar && (
               <button disabled={loading} onClick={() => chegarEComecar()} className={principal === 'chegarEIniciar' ? 'btn-primary' : 'btn-secondary'} style={{ width: '100%', justifyContent: 'center' }}>
-                <Play size={14} /> Marcar chegada e iniciar
+                <Play size={14} /> Check-in e iniciar
               </button>
             )}
             {/* Confirmar: só admins/recepcionistas */}
@@ -412,7 +412,7 @@ export function AppointmentSheet({ appointment, slug, vistaDela = false, podeGer
             {mostraChegou && (
               <button disabled={loading} onClick={() => changeStatus('ARRIVED')}
                 className={principal === 'chegou' ? 'btn-primary' : 'btn-secondary'} style={{ width: '100%', justifyContent: 'center' }}>
-                <DoorOpen size={14} /> Chegou
+                <DoorOpen size={14} /> Check-in
               </button>
             )}
             {/* A5 da 10ª: três botões quase iguais, dois em rosé. Um só em
@@ -425,8 +425,8 @@ export function AppointmentSheet({ appointment, slug, vistaDela = false, podeGer
                   <span data-o-que-cada-um-faz>
                     {[
                       mostraConfirmar && 'Confirmar: a cliente confirmou que vem.',
-                      mostraChegou && 'Chegou: ela está na espera.',
-                      mostraChegarEIniciar && 'Marcar chegada e iniciar: ela chegou e o atendimento começa agora.',
+                      mostraChegou && 'Check-in: ela está na espera.',
+                      mostraChegarEIniciar && 'Check-in e iniciar: o atendimento começa agora.',
                     ].filter(Boolean).join(' ')}
                   </span>
                 </Dica>

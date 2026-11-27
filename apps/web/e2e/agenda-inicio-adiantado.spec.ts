@@ -101,12 +101,12 @@ test('pelo servidor: os três caminhos recusam sem a confirmação e iniciam com
   expect([await status(peloStatus), await status(peloInicio), await status(chegandoAgora)]).toEqual(['IN_PROGRESS', 'IN_PROGRESS', 'IN_PROGRESS'])
 })
 
-test('"Marcar chegada e iniciar" também pergunta — e sem a resposta nem a chegada se marca', async ({ browser }) => {
+test('"Check-in e iniciar" também pergunta — e sem a resposta nem o check-in se faz', async ({ browser }) => {
   test.skip(!cabeHoje(46), MEIA_NOITE)
   const id = await agendamento('CONFIRMED')
   await como(browser, async p => {
     await p.goto(`/${slug}/agenda/${id}`)
-    await p.getByRole('button', { name: 'Marcar chegada e iniciar' }).click()
+    await p.getByRole('button', { name: 'Check-in e iniciar' }).click()
     const pergunta = p.locator('[data-inicio-adiantado]')
     await expect(pergunta).toContainText('Iniciar mesmo assim?')
     expect(await status(id)).toBe('CONFIRMED')
@@ -115,7 +115,7 @@ test('"Marcar chegada e iniciar" também pergunta — e sem a resposta nem a che
   })
 })
 
-test('r2-age-06: 10 min antes também pergunta, no "Iniciar atendimento" e no "Marcar chegada e iniciar"', async ({ browser }) => {
+test('r2-age-06: 10 min antes também pergunta, no "Iniciar atendimento" e no "Check-in e iniciar"', async ({ browser }) => {
   test.skip(!cabeHoje(11), MEIA_NOITE)
   const chegou = await agendamento('ARRIVED', 10)
   const confirmado = await agendamento('CONFIRMED', 10)
@@ -126,7 +126,7 @@ test('r2-age-06: 10 min antes também pergunta, no "Iniciar atendimento" e no "M
     expect(await status(chegou), 'sem a resposta, nada começa').toBe('ARRIVED')
 
     await p.goto(`/${slug}/agenda/${confirmado}`)
-    await p.getByRole('button', { name: 'Marcar chegada e iniciar' }).click()
+    await p.getByRole('button', { name: 'Check-in e iniciar' }).click()
     await expect(p.locator('[data-inicio-adiantado]')).toContainText('Iniciar mesmo assim?')
     expect(await status(confirmado), 'nem a chegada se marca').toBe('CONFIRMED')
   })
@@ -144,19 +144,19 @@ test('controle: na hora marcada (já passou) inicia sem perguntar', async ({ bro
 // D10 da 7ª simulação: em 05/11, numa sessão de 06/11, "Marcar chegada e
 // iniciar" perguntava "Iniciar mesmo assim?" e só no clique dizia "A chegada
 // só se marca no dia do agendamento". A trava do dia vem ANTES da pergunta.
-test('D10: "Marcar chegada e iniciar" de outro dia diz logo que a chegada é do dia — sem perguntar do horário', async ({ browser }) => {
+test('D10: "Check-in e iniciar" de outro dia diz logo que o check-in é do dia — sem perguntar do horário', async ({ browser }) => {
   const amanha = await agendamento('CONFIRMED', 26 * 60)
   await como(browser, async p => {
     const rota = `/${slug}/agenda/${amanha}`
     await p.goto(rota)
     const r = await chamarAcao(p, 'actions/appointments.ts', 'chegarEIniciar', rota, [amanha, slug])
-    expect(r.texto, 'a trava do dia primeiro').toContain('A chegada só se marca no dia do agendamento.')
+    expect(r.texto, 'a trava do dia primeiro').toContain('O check-in só se faz no dia do agendamento.')
     expect(r.texto).not.toContain('Iniciar mesmo assim?')
     await p.goto(rota)
-    const botao = p.getByRole('button', { name: 'Marcar chegada e iniciar' })
+    const botao = p.getByRole('button', { name: 'Check-in e iniciar' })
     if (await botao.count()) {
       await botao.click()
-      await expect(p.getByText('A chegada só se marca no dia do agendamento.')).toBeVisible()
+      await expect(p.getByText('O check-in só se faz no dia do agendamento.')).toBeVisible()
       await expect(p.locator('[data-inicio-adiantado]')).toHaveCount(0)
     }
   })

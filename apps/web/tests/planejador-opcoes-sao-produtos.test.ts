@@ -1,27 +1,44 @@
 import { describe, it, expect } from 'vitest'
-import { textoDasOpcoes, validateFormSchema } from '@/lib/anamnesis'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { validateFormSchema, normalizeFormSchema, OPTION_TYPES, faltaDeOpcoes } from '@/lib/anamnesis'
 
 /**
- * A4 da 7ª simulação (2026-11-05): o construtor pedia "Opções" para o
- * planejador de injetáveis sem dizer que são os PRODUTOS do mapa — e a recusa
- * "precisa de ao menos uma opção" deixava a Rita e a Tânia sem saber o quê.
+ * O planejador de injetáveis não tem lista de produtos na ficha (o Heitor,
+ * 27/11: "O mapa usa sempre o estoque, e a ficha não pede mais a lista (a
+ * proposta)"). Até aqui (A4 da 7ª simulação, 2026-11-05) o construtor pedia
+ * "Produtos do mapa" e recusava o planejador sem nenhum ("precisa de ao menos
+ * um produto do mapa"); a lista só valia quando a unidade não tinha produto no
+ * estoque. Agora o mapa oferece sempre os produtos do estoque, e a ficha antiga
+ * com a lista gravada não quebra: a lista é ignorada.
  */
-describe('as opções do planejador de injetáveis são os produtos do mapa', () => {
-  it('o construtor chama de "Produtos do mapa" e diz para que servem', () => {
-    const t = textoDasOpcoes('injectable_map')
-    expect(t.titulo).toBe('Produtos do mapa')
-    expect(t.ajuda).toContain('os produtos que o planejador oferece')
-    expect(t.adicionar).toBe('Adicionar produto')
-    expect(t.exemplo(1)).toContain('Botox')
+describe('o planejador de injetáveis usa sempre o estoque', () => {
+  it('o planejador não tem opções: o construtor não pede "Produtos do mapa"', () => {
+    expect(OPTION_TYPES).not.toContain('injectable_map')
+    const construtor = readFileSync(join(__dirname, '..', 'components/admin/construtor-de-ficha.tsx'), 'utf8')
+    expect(construtor).not.toContain('Produtos do mapa')
   })
 
   it('os outros campos seguem com "Opções"', () => {
-    expect(textoDasOpcoes('select').titulo).toBe('Opções')
-    expect(textoDasOpcoes('radio').adicionar).toBe('Adicionar opção')
+    const construtor = readFileSync(join(__dirname, '..', 'components/admin/construtor-de-ficha.tsx'), 'utf8')
+    expect(construtor).toContain('Adicionar opção')
+    expect(OPTION_TYPES).toEqual(['select', 'radio', 'checkbox'])
+    expect(faltaDeOpcoes({ label: 'Fototipo' })).toBe('O campo "Fototipo" precisa de ao menos uma opção.')
   })
 
-  it('a recusa do planejador sem produto diz o que falta', () => {
-    const erro = validateFormSchema({ rows: [{ id: 'r', fields: [{ id: 'f', type: 'injectable_map', label: 'Mapa', required: false, options: [] }] }] })
-    expect(erro).toBe('O planejador "Mapa" precisa de ao menos um produto do mapa (ex.: Botox 100 UI).')
+  it('a ficha com o planejador sem produto é aceita', () => {
+    expect(validateFormSchema({ rows: [{ id: 'r', fields: [{ id: 'f', type: 'injectable_map', label: 'Mapa', required: false }] }] })).toBeNull()
+  })
+
+  it('a ficha antiga com a lista gravada não quebra: a lista é ignorada', () => {
+    const s = normalizeFormSchema({ rows: [{ fields: [{ id: 'f', type: 'injectable_map', label: 'Mapa', options: ['Botox 100 UI'] }] }] })
+    expect(s.rows[0]!.fields[0]).toEqual({ id: 'f', type: 'injectable_map', label: 'Mapa' })
+    expect(validateFormSchema(s)).toBeNull()
+  })
+
+  it('o mapa da ficha não lê a lista do campo', () => {
+    const renderer = readFileSync(join(__dirname, '..', 'components/branch/anamnesis-form-renderer.tsx'), 'utf8')
+    expect(renderer).not.toMatch(/products=\{.*f\.options/)
+    expect(renderer).not.toMatch(/produtos=\{.*f\.options/)
   })
 })

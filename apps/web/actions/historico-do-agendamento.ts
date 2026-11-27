@@ -1,10 +1,10 @@
 'use server'
 
-import { getTenantContext, can, alcancaOAgendamento, vistaPessoal } from '@/lib/auth'
+import { getTenantContext, can, alcancaOAgendamento, vistaPessoal, podeVerClinico } from '@/lib/auth'
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
-import { rotuloDaAcao } from '@/lib/clients/historico-do-agendamento'
+import { rotuloDaAcao, linhasDoHistoricoParaQuemVe } from '@/lib/clients/historico-do-agendamento'
 
 export interface PassoDoHistorico {
   quando: string
@@ -38,5 +38,6 @@ export async function historicoDoAgendamento(appointmentId: string): Promise<Pas
     .eq('appointment_id', appointmentId)
     .order('created_at')
     .limit(200), 'carregar o histórico do agendamento')) as { action: string; description: string | null; changed_by_name: string | null; created_at: string }[] | null
-  return (linhas ?? []).map(l => ({ quando: l.created_at, oQue: rotuloDaAcao(l.action, l.description), quem: l.changed_by_name }))
+  // As linhas da foto clínica só com o Prontuário em Ver (o Heitor, 27/11).
+  return linhasDoHistoricoParaQuemVe(linhas ?? [], podeVerClinico(ctx)).map(l => ({ quando: l.created_at, oQue: rotuloDaAcao(l.action, l.description), quem: l.changed_by_name }))
 }

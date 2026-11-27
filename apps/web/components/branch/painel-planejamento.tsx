@@ -108,8 +108,9 @@ export function PainelPlanejamento({
     router.push(rotaComParams(pathname, params, { aberto: id }), { scroll: false })
   }
 
-  // Os produtos do mapa são os do estoque: é o que a clínica de fato aplica.
-  const produtosInjetaveis = availableProducts.map(p => p.name)
+  // Os produtos do mapa são os do estoque: é o que a clínica de fato aplica, e a
+  // dose do ponto é na medida de consumo deles (o Heitor, 27/11).
+  const produtosInjetaveis = availableProducts.map(p => ({ name: p.name, unit: p.unit }))
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

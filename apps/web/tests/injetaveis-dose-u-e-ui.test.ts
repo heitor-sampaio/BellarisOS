@@ -21,7 +21,11 @@ describe('D16: o mapa em "UI" e o insumo em "U" se comparam no Finalizar', () =>
     const d = divergenciasDaBaixa([{ product: 'Toxina', unit: 'UI', total: 20 }], [], estoque)
     expect(d).toEqual([{ productId: 'tox', nome: 'Toxina', unidade: 'U', doMapa: 20, naBaixa: null }])
   })
-  it('ml e UI seguem sem se comparar', () => {
+  // O ponto novo nasce na medida do produto (o Heitor, 27/11: "O consumo é
+  // sempre na unidade cadastrada no produto, seja no mapa, seja no atendimento,
+  // seja no consumo do estoque."): ml contra U só no ponto gravado antes, que
+  // não se converte (princípio 4; decisão do Claude). Antes: "ml e UI seguem sem se comparar".
+  it('o ponto gravado antes em ml, com a toxina em U, não se compara nem se converte', () => {
     expect(divergenciasDaBaixa([{ product: 'Toxina', unit: 'ml', total: 1 }], [{ productId: 'tox', name: 'Toxina', unit: 'U', quantity: 40 }], estoque)).toEqual([])
   })
 })

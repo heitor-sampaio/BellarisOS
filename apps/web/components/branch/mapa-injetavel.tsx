@@ -13,6 +13,7 @@ import { injectableTotals, type InjectableMapValue } from '@/lib/anamnesis'
 import { formatarDose } from '@/lib/injetaveis/dose'
 import { pontosDeOutroAtendimento } from '@/lib/injetaveis/aplicacao-do-atendimento'
 import { temEdicaoNaoSalva, marcarEdicaoNaoSalva } from '@/lib/injetaveis/edicao-nao-salva'
+import type { ProdutoDoMapa } from '@/lib/injetaveis/medida-do-ponto'
 import {
   getPlanejamentoInjetavel, salvarPlanejamentoInjetavel, renomearPlanejamentoInjetavel,
   vincularClienteAoPlanejamento, registrarAplicacao,
@@ -37,8 +38,8 @@ export function MapaInjetavel({
   slug:           string
   /** Atendimento aberto — só aqui faz sentido registrar a aplicação. */
   appointmentId?: string | null
-  /** Produtos oferecidos (os do estoque). */
-  produtos:       string[]
+  /** Produtos oferecidos (os do estoque), com a medida de consumo de cada um. */
+  produtos:       ProdutoDoMapa[]
   podeEditar:     boolean
   /** Quando existe, mostra o "voltar" para a lista de onde veio. */
   onVoltar?:      () => void
@@ -271,8 +272,7 @@ export function MapaInjetavel({
         products={produtos}
         canEdit={podeEditar}
         onChange={v => { setMapa(v); setMsg(null) }}
-        // Confirmar a aplicação só no atendimento, onde ela se registra (D14).
-        confirmaAqui={!!appointmentId}
+        // A dose aplicada só no atendimento, onde a aplicação se registra (D14).
         atendimento={noAtendimento}
       />
 
@@ -298,7 +298,9 @@ export function MapaInjetavel({
           </button>
 
           {/* Registrar aplicação só dentro de um atendimento: é dele que a
-              cópia congelada passa a fazer parte. */}
+              cópia congelada passa a fazer parte. Um botão só (o Heitor, 27/11:
+              "Um botão só, "Registrar aplicação" (a proposta)"): ele copia a dose
+              prevista nos pontos sem a aplicada (`aplicadoAoRegistrar`, no servidor). */}
           {appointmentId && plano.clientId && (
             <button type="button" onClick={registrar} disabled={salvando} className="btn-primary"
               style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-base-sz)' }}>

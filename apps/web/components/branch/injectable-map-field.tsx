@@ -1,15 +1,16 @@
 'use client'
 
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
-import { Trash2, Check, Syringe, Plus, Minus, Maximize2 } from 'lucide-react'
+import { Trash2, Plus, Minus, Maximize2 } from 'lucide-react'
 import { InjectableOutline, MAP_VIEWBOX, viewDe, partesDaView } from '@/components/shared/injectable-outline'
 import { formatarDose } from '@/lib/injetaveis/dose'
-import { confirmarNoAtendimento } from '@/lib/injetaveis/aplicacao-do-atendimento'
+import { aplicadoAoRegistrar } from '@/lib/injetaveis/aplicacao-do-atendimento'
+import { comOProduto, pontoNovo, type ProdutoDoMapa } from '@/lib/injetaveis/medida-do-ponto'
 import { Dica } from '@/components/shared/dica'
 import {
-  INJECTABLE_UNITS, emptyInjectableMap, injectableTotals, newId,
+  emptyInjectableMap, injectableTotals, newId,
   normalizeInjectableView, pointsOfView,
-  type InjectableMapValue, type InjectablePoint, type InjectableUnit, type InjectableView,
+  type InjectableMapValue, type InjectablePoint, type InjectableView,
 } from '@/lib/anamnesis'
 
 /**
@@ -25,22 +26,22 @@ const HIT_R = 6.5
 
 interface Props {
   value:    InjectableMapValue | undefined
-  /** Produtos oferecidos por esta ficha (as opções do campo). */
-  products: string[]
+  /**
+   * Os produtos do ESTOQUE que o ponto oferece, com a medida de consumo de
+   * cada um: a dose do ponto é nessa medida (o Heitor, 27/11: "O consumo é
+   * sempre na unidade cadastrada no produto, seja no mapa, seja no
+   * atendimento, seja no consumo do estoque."). Na leitura, não se usa.
+   */
+  products: ProdutoDoMapa[]
   canEdit:  boolean
   onChange: (v: InjectableMapValue) => void
   /**
-   * A aplicação se confirma AQUI? Só dentro de um atendimento (D14 da
-   * simulação de 2026-10-28): no planejamento aberto fora dele, "Confirmar
-   * aplicação" dizia "confirmada" sem gravar nada — a aplicação congelada só
-   * nasce por "Registrar aplicação" no atendimento. Falso: no lugar do botão,
-   * a linha que diz onde se registra.
-   */
-  confirmaAqui?: boolean
-  /**
    * O atendimento em que o mapa está aberto e os pontos deste mapa já
-   * registrados em outro (D2 da 37ª): "Confirmar aplicação" confirma só os
-   * pontos deste atendimento, e o ponto cuja dose aplicada muda passa a ser dele.
+   * registrados em outro (D2 da 37ª). Só nele há a dose "Aplicado", sempre à
+   * vista (o Heitor, 27/11: "Um botão só, "Registrar aplicação" (a
+   * proposta)"): mostra o que o registrar vai gravar (`aplicadoAoRegistrar`),
+   * e o ponto cuja dose aplicada muda passa a ser deste atendimento. Fora dele
+   * (D14 da simulação de 2026-10-28), a aplicação não existe.
    */
   atendimento?: { id: string; deOutro: ReadonlySet<string> } | null
 }
@@ -51,7 +52,7 @@ const ZOOM_STEP = 1.5
 /** Arrasto abaixo disso (em unidades do viewBox) conta como clique, não pan. */
 const PAN_LIMIAR = 1.5
 
-export function InjectableMapField({ value, products, canEdit, onChange, confirmaAqui = true, atendimento = null }: Props) {
+export function InjectableMapField({ value, products, canEdit, onChange, atendimento = null }: Props) {
   const map = value ?? emptyInjectableMap()
   const svgRef = useRef<SVGSVGElement>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -90,10 +91,16 @@ export function InjectableMapField({ value, products, canEdit, onChange, confirm
   // precisão nenhuma.
   const s = 1 / zoom
 
+  // O mapa solto das fichas de antes podia vir "confirmado" (o botão que saiu).
   const confirmed = !!map.confirmedAt
+  // No atendimento, a dose aplicada que o "Registrar aplicação" vai gravar — a
+  // coluna "Aplicado" e o total dizem a mesma conta (princípio 3).
+  const comAplicado = atendimento ? aplicadoAoRegistrar(map.points, atendimento.id, atendimento.deOutro) : null
+  const aplicadoDe  = new Map((comAplicado ?? map.points).map(p => [p.id, p.applied ?? 0]))
+  const mostraAplicado = !!atendimento || confirmed
   // O total é de TODAS as vistas: é a dose que sai do estoque, não a que está
   // na tela. Mostrar só a da vista aberta faria a conferência mentir.
-  const totals    = injectableTotals(map)
+  const totals    = injectableTotals(comAplicado ? { ...map, points: comAplicado } : map)
 
   // Ilustração aberta. Os pontos das outras continuam guardados no valor — um
   // planejamento cobre rosto e corpo, e trocar de vista não apaga nada.
@@ -159,17 +166,15 @@ export function InjectableMapField({ value, products, canEdit, onChange, confirm
     if (!canEdit || dragId) return
     const rel = toRelative(e)
     if (!rel) return
-    // O ponto novo repete o produto, a dose e a unidade do ÚLTIMO marcado
-    // (J-38, 2026-10-30): na toxina, os pontos vizinhos são do mesmo produto.
-    // O primeiro nasce SEM produto — a linha pede a escolha. Nascia com o
+    // O ponto novo repete o produto e a dose do ÚLTIMO marcado (J-38,
+    // 2026-10-30): na toxina, os pontos vizinhos são do mesmo produto. O
+    // primeiro nasce SEM produto — a linha pede a escolha. Nascia com o
     // primeiro da lista ("Ácido hialurônico") e dose 0, e quem marcava toxina
-    // sem reparar gravava ácido.
+    // sem reparar gravava ácido. A medida é a do produto (o Heitor, 27/11).
     const ultimo = map.points[map.points.length - 1]
     const point: InjectablePoint = {
       id: newId(), x: rel.x, y: rel.y,
-      product: ultimo?.product ?? '',
-      dose: ultimo?.dose ?? 0,
-      unit: ultimo?.unit ?? 'UI',
+      ...pontoNovo(ultimo, products),
       applied: confirmed ? 0 : null,
       // O ponto pertence à ilustração em que foi marcado — é o que permite
       // rosto e corpo no mesmo planejamento.
@@ -332,18 +337,6 @@ export function InjectableMapField({ value, products, canEdit, onChange, confirm
       panRef.current = { x: 0, y: 0, panX: pan.x, panY: pan.y, moveu: true }
     }
     if (panRef.current) setTimeout(() => { panRef.current = null }, 0)
-  }
-
-  function confirmApplication() {
-    update({
-      confirmedAt: new Date().toISOString(),
-      // A dose aplicada nasce igual à planejada; ajustar ponto a ponto é comum
-      // (sobra ou falta produto), e é isso que o registro precisa refletir.
-      // No atendimento, só os pontos dele (D2 da 37ª: o retoque não reaplica a manhã).
-      points: atendimento
-        ? confirmarNoAtendimento(map.points, atendimento.id, atendimento.deOutro)
-        : map.points.map(p => ({ ...p, applied: p.applied ?? p.dose })),
-    })
   }
 
   return (
@@ -543,7 +536,7 @@ export function InjectableMapField({ value, products, canEdit, onChange, confirm
               point={p}
               products={products}
               canEdit={canEdit}
-              confirmed={confirmed}
+              aplicado={mostraAplicado ? (aplicadoDe.get(p.id) ?? 0) : null}
               selected={p.id === selectedId}
               onSelect={() => setSelectedId(p.id)}
               // A dose aplicada mexida aqui é deste atendimento (D2 da 37ª).
@@ -568,7 +561,7 @@ export function InjectableMapField({ value, products, canEdit, onChange, confirm
                   }}>
                     <span style={{ color: 'var(--text)' }}>{t.product}</span>
                     <span style={{ fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>
-                      {confirmed
+                      {mostraAplicado
                         ? <>{fmt(t.applied)} {t.unit} <span style={{ color: 'var(--text-faint)', fontWeight: 'var(--weight-regular)' }}>(plano {fmt(t.planned)})</span></>
                         : <>{fmt(t.planned)} {t.unit}</>}
                     </span>
@@ -578,25 +571,6 @@ export function InjectableMapField({ value, products, canEdit, onChange, confirm
             </div>
           )}
 
-          {canEdit && map.points.length > 0 && confirmaAqui && (
-            confirmed ? (
-              <p style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                fontSize: 'var(--text-2xs)', color: 'var(--success)', fontWeight: 'var(--weight-semibold)',
-              }}>
-                <Check size={13} /> Aplicação confirmada. Ajuste a dose aplicada se precisar.
-              </p>
-            ) : (
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={confirmApplication}
-                style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-              >
-                <Syringe size={14} /> Confirmar aplicação
-              </button>
-            )
-          )}
         </div>
       </div>
     </div>
@@ -635,18 +609,20 @@ function BotaoZoom({
 }
 
 function PointRow({
-  index, point, products, canEdit, confirmed, selected, onSelect, onChange, onRemove,
+  index, point, products, canEdit, aplicado, selected, onSelect, onChange, onRemove,
 }: {
   index: number
   point: InjectablePoint
-  products: string[]
+  products: ProdutoDoMapa[]
   canEdit: boolean
-  confirmed: boolean
+  /** A dose aplicada à vista (no atendimento); nula, sem a coluna. */
+  aplicado: number | null
   selected: boolean
   onSelect: () => void
   onChange: (patch: Partial<InjectablePoint>) => void
   onRemove: () => void
 }) {
+  const nomes = [...new Set(products.map(p => p.name))]
   return (
     <div
       data-ponto-do-mapa
@@ -668,44 +644,31 @@ function PointRow({
           {index + 1}
         </span>
 
-        {/* O produto vem do ESTOQUE (A36): com a lista, escolhe-se nela — o nome
+        {/* O produto vem do ESTOQUE (A36), e só dele (o Heitor, 27/11: "O mapa usa
+            sempre o estoque, e a ficha não pede mais a lista (a proposta)") — o nome
             é o do insumo, e é por ele que o "Finalizar" liga o mapa à baixa.
-            O que já estava escrito fora da lista continua, marcado. */}
-        {canEdit && products.length > 0 ? (
+            Escolher o produto é escolher a medida da dose (`comOProduto`). O que
+            já estava escrito fora da lista continua, marcado. */}
+        {canEdit ? (
           <select
             value={point.product}
-            onChange={e => onChange({ product: e.target.value })}
+            onChange={e => onChange(e.target.value === point.product ? {} : comOProduto(e.target.value, products))}
             aria-label="Produto"
             aria-invalid={!point.product.trim() || undefined}
             className="field"
             style={{ flex: 1, minWidth: 0, padding: '5px 8px', fontSize: 'var(--text-xs-sz)', borderColor: point.product.trim() ? undefined : 'var(--warning)' }}
           >
             <option value="">Selecione…</option>
-            {point.product.trim() && !products.includes(point.product) && (
+            {point.product.trim() && !nomes.includes(point.product) && (
               <option value={point.product}>{point.product} (fora do estoque)</option>
             )}
-            {products.map(p => <option key={p} value={p}>{p}</option>)}
+            {nomes.map(n => <option key={n} value={n}>{n}</option>)}
           </select>
-        ) : canEdit ? (
-          <input
-            list={`inj-products-${point.id}`}
-            value={point.product}
-            onChange={e => onChange({ product: e.target.value })}
-            placeholder="Produto"
-            aria-label="Produto"
-            aria-invalid={!point.product.trim() || undefined}
-            className="field"
-            style={{ flex: 1, minWidth: 0, padding: '5px 8px', fontSize: 'var(--text-xs-sz)', borderColor: point.product.trim() ? undefined : 'var(--warning)' }}
-          />
         ) : (
           <span style={{ flex: 1, fontSize: 'var(--text-xs-sz)', color: 'var(--text)' }}>
             {point.product || '—'}
           </span>
         )}
-
-        <datalist id={`inj-products-${point.id}`}>
-          {products.map(p => <option key={p} value={p} />)}
-        </datalist>
 
         {canEdit && (
           <button
@@ -753,25 +716,17 @@ function PointRow({
           canEdit={canEdit}
           onChange={dose => onChange({ dose })}
         />
-        {confirmed && (
+        {aplicado !== null && (
           <DoseInput
             label="Aplicado"
-            value={point.applied ?? 0}
+            value={aplicado}
             canEdit={canEdit}
             onChange={applied => onChange({ applied })}
           />
         )}
-        {canEdit ? (
-          <select
-            value={point.unit}
-            onChange={e => onChange({ unit: e.target.value as InjectableUnit })}
-            className="field"
-            style={{ width: 68, padding: '5px 6px', fontSize: 'var(--text-xs-sz)' }}
-          >
-            {INJECTABLE_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-          </select>
-        ) : (
-          <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>{point.unit}</span>
+        {/* A medida é a do produto, como foi gravada no ponto: não se escolhe. */}
+        {point.unit && (
+          <span data-medida-do-ponto style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>{point.unit}</span>
         )}
       </div>
     </div>

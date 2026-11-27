@@ -685,22 +685,38 @@
 - Campos de timestamp por transição: `confirmedAt`, `arrivedAt`, `startedAt`, `completedAt`, `cancelledAt`
 - **Confirmar e chegar são passos diferentes** (2026-10-21, decisão do Heitor;
   migrations `20261021000009/10`): CONFIRMED é "confirmou presença"; ARRIVED
-  ("Chegou", `arrived_at`) é o check-in — a cliente está na sala de espera.
+  ("Check-in", `arrived_at`) é o check-in — a cliente está na sala de espera.
   Antes os dois gravavam CONFIRMED. O check-in (`checkinCore`, a agenda e o
   Copilot) vale de Agendado (chegar também confirma) ou de Confirmado; o
-  atendimento começa de Confirmado ou de Chegou. Chegar não emite documento
+  atendimento começa de Confirmado ou de Check-in. Chegar não emite documento
   nenhum: desde o DC4 (2026-11-14) todos nascem ao agendar (`documentos.md`). Lista nova de status "em aberto" inclui ARRIVED.
   Prova: `e2e/agenda-check-in.spec.ts`.
+- **O nome é "Check-in" em todo lugar** (o Heitor, 27/11, à pergunta se o
+  botão da tela do atendimento devia virar "Chegou": "Fica "Check-in"", com
+  "Fica Check-in em todos os lugares"). A situação ARRIVED se diz "Check-in"
+  (`ROTULO_DO_STATUS` e todo mapa de situação: a agenda, a janela, a tela do
+  atendimento, o painel, os relatórios, a ficha, o app da cliente, a LGPD, as
+  automações, o Copilot), e o gesto também: o botão "Check-in" (na janela e na
+  tela do atendimento), "Check-in e iniciar", "Check-in feito: a cliente está
+  na espera.", "O check-in só se faz no dia do agendamento.", a linha do tempo
+  "Check-in: <procedimento>", o histórico "Check-in", o aviso "Check-in feito",
+  o evento "Check-in feito", o "Check-in · atrasado 5 min" da Minha agenda, o
+  "sem check-in" dos abertos de dias anteriores e o campo "check-in" da
+  Auditoria. Só o texto à vista: rota, chave do banco e identificador ficam
+  (`chegarEIniciar`, `semChegada`, `lib/agenda/chegada.ts`). "Chegou" e
+  "chegada" ficam no que não é a situação (o e-mail que não chegou, o plano
+  que chegou ao limite, a entrada de mercadoria). Trava:
+  `tests/check-in-em-todos-os-lugares.test.ts`.
 - **A chegada e o início num gesto, no agendamento dela** (A21 da simulação de
   2026-10-27): no agendamento DELA que ainda não chegou (Agendado ou
-  Confirmado), a tela do atendimento e a janela da agenda mostram "Marcar
-  chegada e iniciar" (`chegarEIniciar`, `actions/appointments.ts`) — o MESMO
+  Confirmado), a tela do atendimento e a janela da agenda mostram "Check-in
+  e iniciar" (`chegarEIniciar`, `actions/appointments.ts`) — o MESMO
   `checkinCore` (o plano em aberto aparece na tela
   como em todo check-in) e depois o MESMO `startAppointment` (a trava dos
   documentos). Cada metade com o seu módulo (UM2): a chegada pede a Agenda em
   Gerenciar, e iniciar o Atendimento em Gerenciar (desde 2026-11-18, §9.1
-  "Quem faz o quê na agenda e no atendimento"): sem os dois, o "Marcar
-  chegada e iniciar" não aparece, e sem o Atendimento nem o "Iniciar"
+  "Quem faz o quê na agenda e no atendimento"): sem os dois, o "Check-in
+  e iniciar" não aparece, e sem o Atendimento nem o "Iniciar"
   (`podeAtenderEste`). Sem o
   check-in no cargo, a tela diz que quem tem a Agenda em Gerenciar marca a chegada
   — e o NOME de quem marca (A10 da 19ª, princípio 3; `quemMarcaAChegada`,
@@ -708,19 +724,19 @@
   `e2e/agenda-chegar-e-iniciar.spec.ts`, `tests/atritos-da-19-atendimento.test.ts`. **E a quem atende AQUELE
   agendamento** (A25 da 6ª simulação,
   2026-11-04): a Admin da rede que atende, na agenda da unidade, chegava ao dela em
-  quatro cliques e uma confirmação ("Chegou" → "Iniciar" → "mesmo assim"); a
-  janela (dos dois portais) oferece "Marcar chegada e iniciar" quando o
+  quatro cliques e uma confirmação ("Check-in" → "Iniciar" → "mesmo assim"); a
+  janela (dos dois portais) oferece "Check-in e iniciar" quando o
   agendamento é do membro logado e ele tem a agenda e o Atendimento em
   Gerenciar (`meuId`, `podeAtenderEste`).
   O início adiantado continua perguntando (r2-age-06). Prova:
   `e2e/agenda-dona-chega-e-inicia.spec.ts`.
   **Um gesto de chegada em destaque** (A5 da 10ª simulação, 2026-11-10;
   princípio 3): no agendamento DELA a janela tinha "Confirmar agendamento",
-  "Chegou" e "Marcar chegada e iniciar", dois em rosé. Só o próximo passo é
+  "Check-in" e "Check-in e iniciar", dois em rosé. Só o próximo passo é
   primário — o gesto dela no agendamento dela (que vem primeiro); chegou,
   iniciar; confirmado, a chegada; agendado, confirmar — e, com mais de um, a
   linha diz o que cada um faz ("Confirmar: a cliente confirmou que vem.
-  Chegou: ela está na espera. …", `[data-o-que-cada-um-faz]`). **Quem não
+  Check-in: ela está na espera. …", `[data-o-que-cada-um-faz]`). **Quem não
   inicia nem conclui lê ANTES de iniciar** (A20): sem o Atendimento em
   Gerenciar, a
   janela (`podeConcluir`) e a tela do atendimento não
@@ -784,22 +800,22 @@
   documento que BLOQUEIA aberto, `startAppointment` responde "Falta assinar: …
   Colha a assinatura antes de iniciar o atendimento." (a frase da trava do
   banco, `faltaAssinarParaIniciar`, `lib/appointments/documentos-do-inicio.ts`)
-  sem perguntar do horário, e o "Marcar chegada e iniciar" marca a chegada sem
+  sem perguntar do horário, e o "Check-in e iniciar" faz o check-in sem
   perguntar e diz o que falta, com o "Colher assinatura neste aparelho". A
   trava continua sendo o gatilho. Prova: `tests/inicio-diz-antes-o-que-falta.test.ts`.
 - **A chegada é do DIA do agendamento** (A18, 2026-10-27): `checkinCore`
   recusa fora do dia (Brasília, `ehODiaDoAgendamento`) — vale para a agenda, o
-  Copilot e "Marcar chegada e iniciar" — e a janela não oferece "Chegou". O
+  Copilot e "Check-in e iniciar" — e a janela não oferece o "Check-in". O
   cancelado traz o motivo inteiro na janela e no tooltip do bloco. **No
-  "Marcar chegada e iniciar", a trava do dia vem ANTES da pergunta do
+  "Check-in e iniciar", a trava do dia vem ANTES da pergunta do
   horário** (D10 da 7ª simulação, 2026-11-05): numa sessão de amanhã a tela
-  perguntava "Iniciar mesmo assim?" e só no clique dizia "A chegada só se
-  marca no dia do agendamento". `chegarEIniciar` confere o dia
+  perguntava "Iniciar mesmo assim?" e só no clique dizia que o check-in só
+  se faz no dia do agendamento. `chegarEIniciar` confere o dia
   (`ehODiaDoAgendamento`) antes de `perguntaDoInicio`. Prova:
   `e2e/agenda-inicio-adiantado.spec.ts` ("D10"). **E a tela do atendimento
   também não oferece a chegada fora do dia** (D2 da 28ª simulação; decisão do
   Claude, 25/11, CLAUDE.md §14: o botão que não se pode usar, a tela esconde):
-  o "Check-in" e o "Marcar chegada e iniciar" da tela do atendimento só
+  o "Check-in" e o "Check-in e iniciar" da tela do atendimento só
   aparecem no dia (`ehODiaDoAgendamento`, no fuso da unidade), e o `{ error }`
   do check-in aparece na tela — era descartado, e o clique não fazia nada.
   Prova: `tests/sessao-do-atendimento-o-que-a-tela-diz.test.ts`.
@@ -908,7 +924,7 @@
     congelava o dia e a hora —, com a avaliação das 00:30 em aberto). O "agora"
     é o `useAgora` (de 30 em 30 s); o horário que já começou e segue em aberto
     (agendado, confirmado ou chegou, ainda dentro da duração) vem antes do
-    próximo: "Atrasado: 5 min" (ou "Chegou · atrasado 5 min").
+    próximo: "Atrasado: 5 min" (ou "Check-in · atrasado 5 min").
   - **A janela diz quando a falta aparece** (A27; a regra fica — "Não
     compareceu" só depois do início): antes do horário, "“Não compareceu”
     aparece a partir do horário marcado (…): antes dele, a cliente ainda pode
@@ -954,7 +970,7 @@
   o ind-02, 2026-11-02; o aviso em `components/branch/abertos-de-antes.tsx`).
   A cliente das 23:50 sumia da agenda à meia-noite. O agendado/confirmado que
   passou sem ninguém mexer vem num GRUPO À PARTE (agenda-03, revisão de
-  2026-11-02: "N agendamentos de dias anteriores passaram sem chegada —
+  2026-11-02: "N agendamentos de dias anteriores passaram sem check-in —
   marcar falta ou concluir?"); era deixado de fora. O aviso aparece também
   no dashboard da REDE (H3, "a dona vê tudo, sempre": quem tem o cargo Admin da rede, na rede de uma
   unidade só, usa o /admin), das unidades do recorte, com a unidade de cada linha quando
@@ -965,7 +981,7 @@
   simulação, 2026-11-07: o órfão das 00:30 da Rosana parecia um agendamento
   como outro qualquer): agendado ou confirmado com o FIM já passado diz "·
   passou do horário" (`[data-passou-sem-fechar]`, aviso; a dica: "marque a
-  falta, a chegada ou conclua"), no Dia e na Semana da agenda da unidade
+  falta, faça o check-in ou conclua"), no Dia e na Semana da agenda da unidade
   (`passouSemFechar`, `lib/use-agora.ts` — o relógio do navegador, sem erro
   de hidratação: no servidor não marca). Nada se fecha sozinho (princípio 6).
   **E na agenda da REDE** (`/admin/agenda`, o Dia e a Semana; sobra da F43,
@@ -1397,7 +1413,7 @@
     agenda (profissional, sala, tag) não recortam a faixa (decisão do Claude,
     25/11: ela é o "agora" da unidade, não o período da grade).
   - **A Minha agenda**: no DESTAQUE do topo, não num segundo bloco
-    (`destaqueDaMinhaAgenda`): o "já começou e segue" ("Atrasado", "Chegou ·
+    (`destaqueDaMinhaAgenda`): o "já começou e segue" ("Atrasado", "Check-in ·
     atrasado") é a regra `emAndamento`; o em andamento diz "até 15:00" e a
     sala, e os outros dela em andamento ao mesmo tempo aparecem em "Também em
     andamento" (`[data-tambem-em-andamento]`). O que ela iniciou e não
@@ -1850,10 +1866,10 @@ de decisões) — **implementadas na F65 (2026-11-12)**:
   Gerenciar deixou de iniciar — e de abrir a comanda do atendimento pelo
   início (PDV3); a rede que quiser dá o Atendimento em Gerenciar a ele.
   `updateAppointmentStatusInterno` pede Gerenciar
-  para Confirmado, Chegou, Cancelado e Falta (C10) — o Cancelado do Em
+  para Confirmado, Check-in, Cancelado e Falta (C10) — o Cancelado do Em
   atendimento é a desistência, do Atendimento em Gerenciar (ATD-A01); o Cancelado passa pelo
   `cancelarCore` (motivo, aviso, histórico — C12), a Falta só sai de
-  Agendado/Confirmado/Chegou e nunca vira Cancelado, e o "Em atendimento"
+  Agendado/Confirmado/Check-in e nunca vira Cancelado, e o "Em atendimento"
   passa pelo início de verdade (`startAppointment`). A janela só mostra o
   que o cargo faz. Prova: `e2e/agenda-guardas-de-status.spec.ts`,
   `e2e/permissoes-acoes.spec.ts` ("agenda: cancelar agendamento" pede
@@ -1865,7 +1881,7 @@ de decisões) — **implementadas na F65 (2026-11-12)**:
   unidade ao alcance (UM2, SM1 — saiu o "só os meus" = só o próprio), na tela
   e no servidor (C14). Prova: `e2e/atendimento-quem-inicia-e-conclui.spec.ts`.
 - **O "Iniciar" não reabre o que acabou** (C11): só sai de Confirmado ou
-  Chegou (a gravação confere a situação); o gatilho do banco recusa sair de
+  Check-in (a gravação confere a situação); o gatilho do banco recusa sair de
   Concluído ("Atendimento concluído não muda de situação…", migration
   `20261112006501`). Os pontos não duplicam: nascem no pagamento, e o
   "Concluído" da agenda (`completeAppointment`) não conclui mais nada (§10).
@@ -1976,6 +1992,11 @@ de decisões) — **implementadas na F65 (2026-11-12)**:
   ou outro procedimento." A regra é UMA, `ofereceNaUnidade` /
   `recusaDoProcedimentoNaUnidade` (`lib/procedimentos/disponivel-na-unidade.ts`).
   Prova: `e2e/agenda-procedimento-e-quem-atende-na-unidade.spec.ts`.
+  **Com uma unidade só, a coluna "Unidades" da lista some** (o Heitor, 27/11:
+  "A coluna some com uma unidade só (a proposta)"; era o chip com o nome da
+  unidade) e volta com a segunda; a régua é `umaUnidadeSo` das unidades
+  ATIVAS, a mesma que já esconde o "Em quais unidades" do cadastro. Prova:
+  `tests/atritos-da-16.test.ts` ("A25").
   **O plano: o catálogo é o da unidade DO PLANO** (D4 da 14ª, F73): o plano
   da Pampulha aberto pela rede oferecia o Laser que só a Savassi faz, e o
   servidor gravava. `procedimentosParaPlano` sempre com a unidade: a do plano
@@ -2595,11 +2616,17 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
   (D14 da simulação de 2026-10-28, decisão do Heitor): a aplicação congelada
   (`injectable_applications`) só nasce por "Registrar aplicação", dentro de um
   atendimento (Planejamento → Injetáveis). Fora dele (a tela de Injetáveis, a
-  ficha da cliente), o mapa não oferece "Confirmar aplicação" — dizia
-  "Aplicação confirmada" sem gravar nada (`salvarPlanejamentoInjetavel` grava
-  só a vista e os pontos) — e não põe nada no lugar (`InjectableMapField
-  confirmaAqui`; a frase "A aplicação se registra no atendimento…" saiu na A8
-  da 37ª: o Heitor, 26/11, "intuitivo não é explicativo"). O mapa no
+  ficha da cliente), o mapa não tem dose aplicada nem botão de aplicação — o
+  "Confirmar aplicação" de antes dizia "Aplicação confirmada" sem gravar nada
+  (decisão do Claude na correção de 28/10, confirmada pelo Heitor em 29/10; a
+  frase "A aplicação se registra no atendimento…" saiu na A8 da 37ª: o Heitor,
+  26/11, "intuitivo não é explicativo"). **Um botão só, "Registrar
+  aplicação"** (o Heitor, 27/11: "Um botão só, "Registrar aplicação" (a
+  proposta)"): saiu o "Confirmar aplicação"; o registrar copia a dose prevista
+  nos pontos em que ninguém escreveu a aplicada (`aplicadoAoRegistrar`, no
+  servidor), e a coluna "Aplicado" fica sempre à vista no atendimento, com a
+  mesma conta (`InjectableMapField atendimento`). Prova:
+  `tests/injetaveis-mapa-uma-acao-por-momento.test.ts`. O mapa no
   corpo do atendimento depende de CONFIGURAÇÃO: só aparece quando o
   procedimento tem uma ficha com o campo "planejador de injetáveis"; sem ela
   (a Toxina da simulação não tinha ficha), o mapa do atendimento é o do
@@ -2629,10 +2656,10 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
   atendimento quando está numa aplicação dele deste mapa. O "Registrar
   aplicação" grava só os pontos deste atendimento e os totais deles
   (`pontosDaAplicacao`, `lib/injetaveis/aplicacao-do-atendimento.ts`); sem
-  ponto novo, é o plano inteiro aplicado de novo (a reaplicação). O
-  "Confirmar aplicação" confirma os pontos deste atendimento e deixa os de
-  outro com 0 hoje (`confirmarNoAtendimento`); mexer na dose aplicada de um
-  ponto o traz a este atendimento. As aplicações gravadas antes ficam como
+  ponto novo, é o plano inteiro aplicado de novo (a reaplicação). A dose
+  aplicada que ele grava é a dos pontos deste atendimento (a escrita ou, sem
+  ela, a prevista) e 0 hoje nos de outro (`aplicadoAoRegistrar`); mexer na
+  dose aplicada de um ponto o traz a este atendimento. As aplicações gravadas antes ficam como
   estão. Prova: `tests/injetaveis-aplicacao-do-atendimento.test.ts`.
   **O mapa se abre e se cria da própria sessão** (A10 da 9ª): era preciso ir
   ao menu Injetáveis, criar, ligar a cliente e voltar. A tela do atendimento
@@ -2653,9 +2680,9 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
   (toque de verdade a 360 e 412 px, na tela de Injetáveis e na folha do
   atendimento: a ilustração fica onde estava, e o segundo toque marca) — a
   prova continua no spec. Na folha do atendimento, "Salvar planejamento"
-  guarda os pontos e as doses previstas; "Confirmar aplicação" copia a
-  prevista para a aplicada, na tela; "Registrar aplicação" grava neste
-  atendimento (depois, "Atualizar a aplicação registrada"). A dica que
+  guarda os pontos e as doses previstas; "Registrar aplicação" grava neste
+  atendimento, com a dose prevista onde ninguém escreveu a aplicada (depois,
+  "Atualizar a aplicação registrada"). A dica que
   explicava os botões (A28 da 11ª) saiu na A8 da 37ª (o Heitor, 26/11:
   "intuitivo não é explicativo"; prova
   `tests/injetaveis-mapa-uma-acao-por-momento.test.ts`). **O "Registrar aplicação" também guarda
@@ -2673,12 +2700,13 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
   o MESMO `PlanejamentoInjetaveis` de Planejamento → Injetáveis: lista os
   planejamentos dela para abrir, cria um novo (nasce ligado a ela) e abre o
   planejador com o "Registrar aplicação". Não há segundo planejador.
-  - **As "opções" do campo são os PRODUTOS do mapa** (A4 da 7ª simulação,
-    2026-11-05: a Rita e a Tânia liam "Opções" e "precisa de ao menos uma
-    opção" sem saber o quê): o construtor de fichas diz "Produtos do mapa",
-    para que servem e "Adicionar produto", e a recusa é "O planejador X
-    precisa de ao menos um produto do mapa" (`textoDasOpcoes`,
-    `faltaDeOpcoes`, `lib/anamnesis.ts`, na tela e no servidor). Prova:
+  - **O campo não tem lista de produtos: o mapa usa sempre o estoque** (o
+    Heitor, 27/11: "O mapa usa sempre o estoque, e a ficha não pede mais a
+    lista (a proposta)"). Era "Produtos do mapa" no construtor (A4 da 7ª), que
+    só valia com a unidade sem produto no estoque. O planejador não é tipo com
+    opções (`OPTION_TYPES`), `validateFormSchema` não pede produto, e a lista
+    gravada nas fichas de antes é ignorada (`normField`). O retrato de um mapa
+    gravado mostra o produto gravado nele. Prova:
     `tests/planejador-opcoes-sao-produtos.test.ts`.
   - **A resposta guarda o id e um RETRATO**: `{ view, points, planejamento:
     { id, nome }, retratoEm }` — os pontos do planejamento GRAVADO no momento
@@ -2760,6 +2788,23 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
   a unidade do ÚLTIMO marcado. Nascia com o primeiro produto do catálogo
   ("Ácido hialurônico") e dose 0. Cada ponto tem "Região (opcional)"
   (`InjectablePoint.regiao`). Prova: `e2e/injetaveis-ponto-novo.spec.ts`.
+- **A dose do ponto é na medida do PRODUTO do estoque** (o Heitor, 27/11: "O
+  consumo é sempre na unidade cadastrada no produto, seja no mapa, seja no
+  atendimento, seja no consumo do estoque."). A medida é a de consumo
+  (`unidadeDoInsumo`), a mesma da baixa e do movimento; o ponto não escolhe
+  nem digita outra (saiu o seletor UI/U/ml/mg, `INJECTABLE_UNITS`): escolher
+  o produto é escolher a medida (`comOProduto`, `pontoNovo`,
+  `lib/injetaveis/medida-do-ponto.ts`), em toda tela do mapa (atendimento,
+  Planejamento, ficha, tela de Injetáveis). O servidor recusa o ponto novo, ou
+  de produto ou medida trocados, fora do estoque ou noutra medida
+  (`recusaDaMedidaDosPontos` em `salvarPlanejamentoInjetavel` e
+  `registrarAplicacao`; os produtos são os insumos ativos da rede,
+  `produtosDoMapaDaRede`). Assim o mapa em UI com a baixa do mesmo produto em
+  ml deixa de existir. **O ponto gravado antes noutra medida fica como foi
+  gravado** (decisão do Claude, princípios 3 e 4: trocar só o rótulo mudaria
+  o que a dose diz, converter seria chutar número): a tela o mostra assim, o
+  servidor o aceita enquanto o produto e a medida dele não mudam, e o
+  "Finalizar" não o converte. Prova: `tests/injetaveis-medida-do-ponto.test.ts`.
 - **O produto do ponto vem do ESTOQUE, e o mapa se liga à baixa** (A36 da 5ª
   simulação: o mapa gravava 0,5 ml e o estoque baixava 1 ml, sem aviso). O
   ponto escolhe o produto numa LISTA — os insumos da unidade no atendimento
@@ -2771,7 +2816,9 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
   ficha — `dosesDoMapaDoAtendimento`) com a baixa, pelo nome do insumo e na
   mesma unidade (`divergenciasDaBaixa`, `lib/injetaveis/dose.ts`): "O mapa
   soma 8 UI de Toxina; a baixa está em 30 UI." com "Baixar 8 UI, a dose do
-  mapa" (ou "Incluir … na baixa"), que muda o cartão de insumos. Só avisa: a
+  mapa" (ou "Incluir … na baixa"), que muda o cartão de insumos — sempre na
+  mesma medida, a do produto (acima); o ponto gravado antes noutra medida não
+  se compara nem se converte. Só avisa: a
   baixa continua a da tela. **O planejamento para outro dia não é consumo**
   (A1 da 33ª, Decisão A — decisão do Claude, 26/11, princípio 5): sem
   aplicação registrada, o planejamento só se compara com o produto que ESTE
@@ -2787,11 +2834,13 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
   do mapa da Marina e os 40 U da baixa nunca se comparavam, e o aviso não
   saía. A soma do mapa e a comparação juntam as duas, e o texto fala na
   unidade do insumo ("O mapa soma 56 U de Toxina; a baixa está em 40 U.").
-  ml e UI seguem sem se comparar. Prova: `tests/injetaveis-dose-u-e-ui.test.ts`.
+  O ponto gravado antes em ml de um produto em U não se compara. Prova:
+  `tests/injetaveis-dose-u-e-ui.test.ts`.
   **O insumo do mapa contado em outra medida também avisa** (D10 da 31ª;
   decisão do Claude, 26/11, princípios 3 e 4): o produto do mapa que não está
   na baixa e que o estoque conta noutra medida (a toxina em frasco, o ácido em
-  seringa, sem a medida de consumo) passava calado. Agora: "O mapa soma 30 UI
+  seringa, sem a medida de consumo) passava calado — desde 27/11, só o ponto
+  gravado antes (o novo nasce em frasco, a medida do produto). Agora: "O mapa soma 30 UI
   de Toxina, que não está nos insumos da baixa. O estoque conta este produto
   em frasco: inclua no cartão de insumos quanto foi usado." — sem botão (o
   sistema não converte UI em frasco: não chuta número). O mapa continua sem
@@ -2999,9 +3048,14 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
   (falta assinar), Falta pagar, Em andamento, Concluído, Cancelado
   (`situacaoComercialDoPlano`, `lib/plano-de-tratamento/situacao.ts`; o banco
   lido em `andamento-do-plano.ts`). O aceito com documento por assinar — ou
-  com o contrato de plano por emitir/assinar — é "Aceito (falta assinar)"; sem
-  isso e sem dinheiro, "Falta pagar"; com dinheiro recebido, "Em andamento" (o
-  recebido vence o documento aberto). O REJECTED antigo é "Cancelado". Sete
+  com o contrato de plano EMITIDO e por assinar — é "Aceito (falta assinar)";
+  sem isso e sem dinheiro, "Falta pagar", inclusive com o contrato ainda por
+  emitir (ele sai no PDV, junto do pagamento — o Heitor, 27/11: "Se contrato
+  emitido e falta assinar, o aviso é falta assinar, se falta pagar, o aviso é
+  falta pagar."; `contratoFaltaAssinar`; era "por emitir/assinar"). O termo do
+  plano nasce com o plano e não depende do pagamento: aberto, segue "falta
+  assinar" (decisão do Claude, 27/11, pela mesma fala: é documento emitido). Com
+  dinheiro recebido, "Em andamento" (o recebido vence o documento aberto). O REJECTED antigo é "Cancelado". Sete
   situações: um seletor (`.filtro-select`), não um segmentado. O plano
   proposto se chama "Proposto" em toda tela (era "Aguardando checkout").
 - **Os planos de tratamento seguem o Atendimento, sem recorte** (era a
@@ -4102,7 +4156,7 @@ barrando (`obrigatoria_que_falta`) — quem a responde é quem tem o Prontuário
 Heitor, 2026-11-11, opção a; princípio 3, a tela já só oferece "Finalizar" a
 partir de "Em atendimento", e princípio 5, a execução precisa ter
 acontecido). `finishSession`, `concluir_atendimento` e `completeAppointment`
-recusam Agendado, Confirmado e Chegou — pelo id também, para que o termo do
+recusam Agendado, Confirmado e Check-in — pelo id também, para que o termo do
 início, a pergunta do horário adiantado e a trava dos termos que bloqueiam
 não sejam puladas. A profissional que esqueceu de iniciar clica Iniciar e
 depois Finalizar (C13, F65): `finishSession` recusa o que não está Em
@@ -4634,7 +4688,7 @@ O resto do fluxo:
   JavaScript), o título quebrava uma palavra por linha e o selo "Atendimento em
   andamento" encostava no cronômetro. O topo quebra linha (`.sessao-topo`: o
   título com a largura da tela, as ações embaixo) e, abaixo de 768 px, a ação
-  principal do estado — Marcar chegada e iniciar, Check-in, Iniciar,
+  principal do estado — Check-in e iniciar, Check-in, Iniciar,
   Finalizar, Receber no PDV (`[data-acao-principal]`; era o "Confirmar
   pagamento", que abria a janela do pagamento — saiu no PDV7) — é uma barra presa
   no rodapé, com a barra de navegação do Android (`env(safe-area-inset-bottom)`)
@@ -4731,10 +4785,14 @@ O resto do fluxo:
 ❌ Exportar de actions/injectable-map.ts ('use server') uma regra de alcance do mapa — ela mora em lib/injetaveis/alcance.ts
 ❌ Inserir em injectable_applications fora de injetavel_registrar_aplicacao (uma por mapa por atendimento, com o mapa travado — D14 da 9ª)
 ❌ Registrar na aplicação de um atendimento o mapa inteiro: são só os pontos dele (pontosDaAplicacao — D2 da 37ª)
+❌ Deixar o ponto do mapa escolher ou digitar a medida da dose, ou gravar o ponto novo (ou de produto trocado) fora do estoque ou noutra medida que a do produto — é comOProduto na tela e recusaDaMedidaDosPontos no servidor (o Heitor, 27/11: "O consumo é sempre na unidade cadastrada no produto"); nem reescrever a medida do ponto gravado antes
+❌ Dar ao planejador de injetáveis uma lista de produtos na ficha, ou ler f.options no mapa: o mapa usa sempre o estoque (o Heitor, 27/11)
+❌ Um segundo botão de aplicação ao lado do "Registrar aplicação" (o Heitor, 27/11: "Um botão só") — a dose prevista vira a aplicada no registrar (aplicadoAoRegistrar)
 ❌ Trava de permissão (assertPermission/semAcesso) num LAYOUT fora do Suspense da página: vira HTTP 500 — o layout só passa a página, que trava por si (D17 da 9ª)
 ❌ Gravar as dores do cliente em appointments.notes (é a observação interna; as dores são medical_record_entries.queixas)
 ❌ Cancelar ou marcar falta num atendimento concluído — o que se desfaz é o pagamento (estorno)
-❌ Deixar a falta só na janela da agenda: a tela do atendimento também oferece o "Não compareceu" (a Agenda em Gerenciar, a partir do horário, de Agendado, Confirmado ou Chegou — mostraAFalta, lib/agenda/falta.ts), com a mesma pergunta (perguntaDaFalta) e a mesma action (A8 da 34ª; decisão do Claude, 26/11, pelo princípio 7)
+❌ Dizer "Chegou" ou "chegada" na tela pela situação ARRIVED ou pelo gesto que a marca: é "Check-in" em todo lugar (o Heitor, 27/11: "Fica Check-in em todos os lugares"; tests/check-in-em-todos-os-lugares.test.ts trava)
+❌ Deixar a falta só na janela da agenda: a tela do atendimento também oferece o "Não compareceu" (a Agenda em Gerenciar, a partir do horário, de Agendado, Confirmado ou Check-in — mostraAFalta, lib/agenda/falta.ts), com a mesma pergunta (perguntaDaFalta) e a mesma action (A8 da 34ª; decisão do Claude, 26/11, pelo princípio 7)
 ❌ Mudar a situação do agendamento por update direto em vez dos núcleos (cancelarCore, startAppointment, a falta guardada pela situação): o Cancelado sem motivo, a Falta virando Cancelado e o "Em atendimento" que pulava o termo vinham daí (C10–C12, F65)
 ❌ Concluir (finishSession, concluir_atendimento, completeAppointment) o que não está Em atendimento, ou tirar um agendamento de Concluído (C13, F65)
 ❌ Oferecer ou aceitar no agendamento a profissional que não ATENDE na unidade, ou o procedimento que a unidade não FAZ — é conferirPecasDoAgendamento com o procedimento (F65, D7 da 13ª)

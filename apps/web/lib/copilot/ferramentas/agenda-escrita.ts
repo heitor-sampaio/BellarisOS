@@ -22,7 +22,7 @@ import { telefoneDoCopilot } from '@/lib/copilot/ferramentas/clientes-escrita'
 import type { ContextoDaFerramenta, FerramentaDeEscrita } from '@/lib/copilot/ferramentas/tipos'
 import {
   DATA, HORA, UUID, dinheiro, fusoDe, instanteDe, quandoLegivel, resolverCliente, resolverProcedimento,
-  resolverProfissional, resolverSala, resolverUnidade, rota, nomesPorId, STATUS_DO_AGENDAMENTO, texto,
+  resolverProfissional, resolverSala, resolverUnidade, rota, nomesPorId, STATUS_DO_AGENDAMENTO, SITUACAO_NA_FRASE, texto,
 } from '@/lib/copilot/ferramentas/comum'
 import { TELEFONE_INCOMPLETO } from '@/lib/contatos/propagar'
 
@@ -277,7 +277,7 @@ export const remarcar: FerramentaDeEscrita<{ agendamento: string; data: string; 
   async preparar(c, a) {
     const ag = await agendamentoParaResumo(c, a.agendamento)
     if (!ag) return { erro: 'Agendamento não encontrado.' }
-    if (['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(ag.status)) return { erro: `Este agendamento está ${STATUS_DO_AGENDAMENTO[ag.status]}.` }
+    if (['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(ag.status)) return { erro: `Este agendamento está ${SITUACAO_NA_FRASE[ag.status] ?? STATUS_DO_AGENDAMENTO[ag.status]}.` }
     // O Em atendimento não se remarca (C15, F65): o remarcarCore recusa, mas só no
     // Confirmar — o cartão aparecia para algo que ia falhar. Recusa no preparo, com a frase dele.
     if (ag.status === 'IN_PROGRESS') return { erro: RECUSA_DO_REMARCAR_EM_ATENDIMENTO }
@@ -369,7 +369,7 @@ export const cancelar: FerramentaDeEscrita<{ agendamento: string; motivo: string
   async preparar(c, a) {
     const ag = await agendamentoParaResumo(c, a.agendamento)
     if (!ag) return { erro: 'Agendamento não encontrado.' }
-    if (['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(ag.status)) return { erro: `Este agendamento está ${STATUS_DO_AGENDAMENTO[ag.status]}.` }
+    if (['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(ag.status)) return { erro: `Este agendamento está ${SITUACAO_NA_FRASE[ag.status] ?? STATUS_DO_AGENDAMENTO[ag.status]}.` }
     const recusa = recusaDoCancelar(c.ctx, ag)
     if (recusa) return { erro: recusa }
     const daCliente = await avisoDaClienteNoCartao(c, ag.clientId, 'cancelar')
@@ -408,7 +408,7 @@ export const confirmarAgendamento: FerramentaDeEscrita<{ agendamento: string }, 
   async preparar(c, a) {
     const ag = await agendamentoParaResumo(c, a.agendamento)
     if (!ag) return { erro: 'Agendamento não encontrado.' }
-    if (ag.status !== 'SCHEDULED' && ag.status !== 'CONFIRMED') return { erro: `Este agendamento está ${STATUS_DO_AGENDAMENTO[ag.status]}.` }
+    if (ag.status !== 'SCHEDULED' && ag.status !== 'CONFIRMED') return { erro: `Este agendamento está ${SITUACAO_NA_FRASE[ag.status] ?? STATUS_DO_AGENDAMENTO[ag.status]}.` }
     return {
       resumo: {
         titulo: 'Confirmar presença',
@@ -434,17 +434,17 @@ export const fazerCheckIn: FerramentaDeEscrita<{ agendamento: string }, { appoin
   nome: 'fazer_check_in',
   tipo: 'escrita',
   modulo: 'agenda', nivel: 'MANAGE',
-  descricao: 'Faz o CHECK-IN de um agendamento (id): o cliente chegou à unidade (fica "chegou", na sala de espera). De agendamento "agendado" ou "confirmado".',
+  descricao: 'Faz o CHECK-IN de um agendamento (id): a cliente está na unidade, na sala de espera (a situação fica "check-in"). De agendamento "agendado" ou "confirmado".',
   parametros: z.object({ agendamento: UUID }),
   async preparar(c, a) {
     const ag = await agendamentoParaResumo(c, a.agendamento)
     if (!ag) return { erro: 'Agendamento não encontrado.' }
     // O agendado E o confirmado, como o núcleo da agenda (checkinCore) e a
     // descrição — recusava o confirmado (CP1).
-    if (ag.status !== 'SCHEDULED' && ag.status !== 'CONFIRMED') return { erro: `Este agendamento está ${STATUS_DO_AGENDAMENTO[ag.status]}.` }
+    if (ag.status !== 'SCHEDULED' && ag.status !== 'CONFIRMED') return { erro: `Este agendamento está ${SITUACAO_NA_FRASE[ag.status] ?? STATUS_DO_AGENDAMENTO[ag.status]}.` }
     return {
       resumo: {
-        titulo: 'Check-in — o cliente chegou',
+        titulo: 'Check-in',
         linhas: [
           { rotulo: 'Cliente', valor: ag.cliente },
           { rotulo: 'Procedimento', valor: ag.procedimento },

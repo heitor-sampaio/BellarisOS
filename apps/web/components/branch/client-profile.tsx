@@ -678,7 +678,7 @@ const STATUS_LABEL: Record<string, string> = {
   COMPLETED:   'Concluído',
   SCHEDULED:   'Agendado',
   CONFIRMED:   'Confirmado',
-  ARRIVED:     'Chegou',
+  ARRIVED:     'Check-in',
   IN_PROGRESS: 'Em atendimento',
   CANCELLED:   'Cancelado',
   NO_SHOW:     'Não compareceu',
@@ -2198,7 +2198,7 @@ export function ClientProfile({
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                 <AlertCircle size={14} style={{ color: 'var(--warning)' }} />
                 <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Em aberto de dias anteriores</h3>
-                <Dica rotulo="Por que estão aqui">O horário já passou e ninguém registrou o que aconteceu. Na agenda, marque a falta, a chegada ou conclua o atendimento.</Dica>
+                <Dica rotulo="Por que estão aqui">O horário já passou e ninguém registrou o que aconteceu. Na agenda, marque a falta, faça o check-in ou conclua o atendimento.</Dica>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 {emAbertoDeAntes.map((a, i) => (

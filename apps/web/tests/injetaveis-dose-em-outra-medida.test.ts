@@ -11,6 +11,12 @@ import { divergenciasDaBaixa, textoDaDivergencia } from '@/lib/injetaveis/dose'
  * A dose em outra medida segue sem conversão (princípio 4: não chutar número),
  * mas o produto do mapa que NÃO está na baixa avisa, dizendo em que medida o
  * estoque o conta — e sem botão que incluiria "30 frascos".
+ *
+ * Desde a regra da medida do produto (o Heitor, 27/11: "O consumo é sempre na
+ * unidade cadastrada no produto, seja no mapa, seja no atendimento, seja no
+ * consumo do estoque."), o ponto novo nasce na medida do produto ("frasco"): o
+ * mapa em UI de um produto em frasco é só o ponto gravado antes, que fica como
+ * foi gravado (decisão do Claude, princípios 3 e 4).
  */
 const estoque = [
   { id: 'tox', name: 'Toxina botulínica 100U', unit: 'frasco' },
@@ -18,7 +24,7 @@ const estoque = [
 ]
 
 describe('o mapa × a baixa quando o estoque conta o produto em outra medida', () => {
-  it('fora da baixa: avisa, com a medida do estoque e sem a dose a incluir', () => {
+  it('o ponto gravado antes, fora da baixa: avisa, com a medida do estoque e sem a dose a incluir', () => {
     const d = divergenciasDaBaixa([
       { product: 'Toxina botulínica 100U', unit: 'UI', total: 30 },
       { product: 'Ácido hialurônico 1 ml', unit: 'ml', total: 1 },
@@ -31,7 +37,8 @@ describe('o mapa × a baixa quando o estoque conta o produto em outra medida', (
       'O mapa soma 30 UI de Toxina botulínica 100U, que não está nos insumos da baixa. O estoque conta este produto em frasco: inclua no cartão de insumos quanto foi usado.')
   })
 
-  it('já na baixa em outra medida: não se compara (como antes)', () => {
+  // Antes: "já na baixa em outra medida: não se compara (como antes)".
+  it('o ponto gravado antes, já na baixa em outra medida: não se compara nem se converte', () => {
     expect(divergenciasDaBaixa([{ product: 'Toxina botulínica 100U', unit: 'UI', total: 30 }],
       [{ productId: 'tox', name: 'Toxina botulínica 100U', unit: 'frasco', quantity: 1 }], estoque)).toEqual([])
   })

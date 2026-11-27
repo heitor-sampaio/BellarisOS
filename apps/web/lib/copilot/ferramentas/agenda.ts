@@ -33,8 +33,8 @@ export const agendamentos: FerramentaDeLeitura<{
     ate: DATA.optional().describe('Último dia (AAAA-MM-DD). Padrão: o mesmo de "de"; com a cliente ou quem atende e sem datas, 30 dias depois de hoje.'),
     profissional: z.string().max(80).optional(),
     unidade: z.string().max(80).optional(),
-    status: z.array(z.enum(STATUS)).max(7).optional().describe('SCHEDULED, CONFIRMED, ARRIVED (chegou), IN_PROGRESS, COMPLETED, CANCELLED, NO_SHOW. Padrão: todos menos cancelados.'),
-    emAberto: z.boolean().optional().describe('true para "em aberto": agendado, confirmado, chegou e em atendimento (sem o concluído, o cancelado e a falta). Vence "status".'),
+    status: z.array(z.enum(STATUS)).max(7).optional().describe('SCHEDULED, CONFIRMED, ARRIVED (check-in), IN_PROGRESS, COMPLETED, CANCELLED, NO_SHOW. Padrão: todos menos cancelados.'),
+    emAberto: z.boolean().optional().describe('true para "em aberto": agendado, confirmado, check-in e em atendimento (sem o concluído, o cancelado e a falta). Vence "status".'),
     cliente: z.string().min(1).max(120).optional().describe('Nome, telefone ou id do cliente.'),
   }),
   async executar(c, args) {

@@ -14,7 +14,7 @@ export function eventosDeConfirmacaoEChegada(a: EventoDoAgendamento, link: strin
   const base = { subtitle: null, amount: null, link, agendamentoId: a.id }
   const eventos: { id: string; date: string; type: 'APPOINTMENT_CONFIRMED' | 'APPOINTMENT_ARRIVED'; title: string; subtitle: null; amount: null; link: string | null; agendamentoId: string }[] = []
   if (a.confirmed_at) eventos.push({ id: `${a.id}-conf`, date: a.confirmed_at, type: 'APPOINTMENT_CONFIRMED', title: `Confirmado: ${a.procedureName}`, ...base })
-  if (a.arrived_at) eventos.push({ id: `${a.id}-cheg`, date: a.arrived_at, type: 'APPOINTMENT_ARRIVED', title: `Chegou: ${a.procedureName}`, ...base })
+  if (a.arrived_at) eventos.push({ id: `${a.id}-cheg`, date: a.arrived_at, type: 'APPOINTMENT_ARRIVED', title: `Check-in: ${a.procedureName}`, ...base })
   return eventos
 }
 
@@ -114,9 +114,21 @@ export function eventosDeRemarcacao(
   }))
 }
 
+/**
+ * As linhas da foto clínica no histórico do atendimento: só para quem tem o Prontuário em Ver (o Heitor, 27/11:
+ * "O historico do atendimento é parte do prontuario."; "Somem só as linhas clínicas (as da foto); as da agenda e
+ * do caixa ficam").
+ */
+export const ACOES_DA_FOTO_NO_HISTORICO: ReadonlySet<string> = new Set([
+  'FOTO_CLINICA', 'FOTO_CLINICA_APAGADA', 'FOTO_ENVIADA', 'FOTO_TIRADA_DO_APP',
+])
+export function linhasDoHistoricoParaQuemVe<L extends { action: string }>(linhas: readonly L[], veOClinico: boolean): L[] {
+  return veOClinico ? [...linhas] : linhas.filter(l => !ACOES_DA_FOTO_NO_HISTORICO.has(l.action))
+}
+
 /** O nome de cada ação do histórico, na janela do agendamento (J-27). */
 const ROTULO_DA_ACAO: Record<string, string> = {
-  CREATED: 'Agendado', CONFIRMED: 'Confirmado', CHECKIN: 'Chegou', ARRIVED: 'Chegou',
+  CREATED: 'Agendado', CONFIRMED: 'Confirmado', CHECKIN: 'Check-in', ARRIVED: 'Check-in',
   STARTED: 'Atendimento iniciado', IN_PROGRESS: 'Atendimento iniciado', COMPLETED: 'Concluído',
   CANCELLED: 'Cancelado', NO_SHOW: 'Não compareceu', RESCHEDULED: 'Remarcado',
   REASSIGNED: 'Profissional trocado', EDITED: 'Editado', PAYMENT_CONFIRMED: 'Pagamento recebido',

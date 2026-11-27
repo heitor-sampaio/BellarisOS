@@ -2,8 +2,11 @@ import 'server-only'
 import { alcancaUnidade, can } from '@/lib/auth'
 import type { TenantContext } from '@estetica-os/types'
 import type { createAdminClient } from '@/lib/supabase/admin'
-import { ler } from '@/lib/db'
+import { ler, lerTodas } from '@/lib/db'
 import type { AnamnesisRow } from '@/lib/anamnesis'
+import { unidadeDoInsumo, type UnidadesDoProduto } from '@/lib/estoque/unidade-de-consumo'
+import { ehInsumo } from '@/lib/estoque/uso'
+import type { ProdutoDoMapa } from '@/lib/injetaveis/medida-do-ponto'
 import {
   planejamentosDaFicha, comRetratos, comOPlanejamentoAplicado, temPlanejadorSemPlanejamento, type PlanejamentoParaRetrato,
 } from '@/lib/atendimento/retrato-dos-injetaveis'
@@ -30,11 +33,27 @@ export function mapaAoAlcance(ctx: TenantContext, branchId: string | null): bool
 export async function mapaDoTenant(admin: Admin, mapId: string, ctx: TenantContext) {
   const data = await ler(admin
     .from('injectable_maps')
-    .select('id, tenant_id, client_id, branch_id, name, updated_by')
+    .select('id, tenant_id, client_id, branch_id, name, updated_by, points')
     .eq('id', mapId)
     .maybeSingle(), 'carregar o planejamento')
   if (!data || data.tenant_id !== ctx.tenantId || !mapaAoAlcance(ctx, data.branch_id as string | null)) return null
   return data
+}
+
+/**
+ * Os produtos que o ponto do mapa pode ter, com a medida de cada um: os
+ * insumos ativos da rede, na medida de consumo (`unidadeDoInsumo`) — o que a
+ * tela oferece no atendimento e na tela de Injetáveis. É com eles que o
+ * servidor confere a medida do ponto (o Heitor, 27/11: "O consumo é sempre na
+ * unidade cadastrada no produto, seja no mapa, seja no atendimento, seja no
+ * consumo do estoque."; `recusaDaMedidaDosPontos`).
+ */
+export async function produtosDoMapaDaRede(admin: Admin, tenantId: string): Promise<ProdutoDoMapa[]> {
+  const linhas = await lerTodas((de, ate) => admin.from('products')
+    .select('id, name, unit, consumption_unit, units_per_package, uso')
+    .eq('tenant_id', tenantId).eq('is_active', true).order('id').range(de, ate),
+    'carregar os produtos do estoque') as ({ name: string; uso: string | null } & UnidadesDoProduto)[]
+  return linhas.filter(p => ehInsumo(p.uso)).map(p => ({ name: p.name, unit: unidadeDoInsumo(p) }))
 }
 
 /**

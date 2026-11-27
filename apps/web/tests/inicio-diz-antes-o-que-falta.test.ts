@@ -35,7 +35,7 @@ describe('o início diz antes o que falta assinar', () => {
     expect(doc).toBeLessThan(pergunta)
   })
 
-  it('"Chegou e iniciar" não pergunta do horário quando falta assinar', () => {
+  it('"Check-in e iniciar" não pergunta do horário quando falta assinar', () => {
     const c = corpo('actions/appointments.ts', 'chegarEIniciar')
     const doc = c.indexOf('faltaAssinarParaIniciar(')
     const pergunta = c.indexOf('perguntaDoInicio(')
@@ -43,7 +43,7 @@ describe('o início diz antes o que falta assinar', () => {
     expect(doc).toBeLessThan(pergunta)
   })
 
-  it('a tela leva a colher também quando a chegada ficou registrada', () => {
+  it('a tela leva a colher também quando o check-in ficou feito', () => {
     expect(fonte('components/branch/appointment-session.tsx')).toContain("erroAoIniciar.includes('Falta assinar')")
   })
 })

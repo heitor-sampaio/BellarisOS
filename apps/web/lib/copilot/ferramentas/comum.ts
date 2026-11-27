@@ -150,8 +150,14 @@ export async function nomesPorId(c: ContextoDaFerramenta, tabela: 'users' | 'pro
 
 /** O texto curto do status do agendamento. */
 export const STATUS_DO_AGENDAMENTO: Record<string, string> = {
-  SCHEDULED: 'agendado', CONFIRMED: 'confirmado', ARRIVED: 'chegou', IN_PROGRESS: 'em atendimento',
+  SCHEDULED: 'agendado', CONFIRMED: 'confirmado', ARRIVED: 'check-in', IN_PROGRESS: 'em atendimento',
   COMPLETED: 'concluído', CANCELLED: 'cancelado', NO_SHOW: 'faltou',
+}
+
+/** A situação como cabe depois de "Este agendamento está…" (o rótulo da lista diria "está check-in"). */
+export const SITUACAO_NA_FRASE: Record<string, string> = {
+  SCHEDULED: 'agendado', CONFIRMED: 'confirmado', ARRIVED: 'com o check-in feito', IN_PROGRESS: 'em atendimento',
+  COMPLETED: 'concluído', CANCELLED: 'cancelado', NO_SHOW: 'marcado como falta',
 }
 
 /** A origem do agendamento como a tela a diz (Relatórios → Agenda), para o Copilot não repetir o código (A20 da 30ª). */

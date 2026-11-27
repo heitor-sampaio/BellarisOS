@@ -86,7 +86,7 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
     // Sem escopo no cargo (o Heitor, 2026-11-23): quem atende vê a Minha agenda (a vista pessoal).
     NONE:   'Não aparece para esta pessoa — a menos que ela atenda: aí vê a Minha agenda, só com os horários dela, sem mexer.',
     VIEW:   'Abre a agenda e vê os horários marcados. Não marca nem remarca horário: isso é Gerenciar.',
-    MANAGE: 'Tudo do Ver, mais marcar, confirmar, marcar a chegada, remarcar, cancelar, marcar falta e trocar quem atende no horário.',
+    MANAGE: 'Tudo do Ver, mais marcar, confirmar, fazer o check-in, remarcar, cancelar, marcar falta e trocar quem atende no horário.',
   },
   // O Heitor, 2026-11-18: "Só inicia e conclui atendimento quem tem gerenciar no
   // atendimento." Cada passo, um módulo (2026-11-23, UM1–UM3). E os injetáveis

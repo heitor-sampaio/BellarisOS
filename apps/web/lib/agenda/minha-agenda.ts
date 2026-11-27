@@ -78,7 +78,7 @@ export function destaqueDaMinhaAgenda<E extends AgendamentoNaGrade & { id: strin
   const atrasado = emCurso[0]
   if (atrasado) {
     const min = Math.max(0, Math.floor((now - inicio(atrasado)) / 60_000))
-    return com(atrasado, atrasado.status === 'ARRIVED' ? `Chegou · atrasado ${min} min` : `Atrasado: ${min} min`)
+    return com(atrasado, atrasado.status === 'ARRIVED' ? `Check-in · atrasado ${min} min` : `Atrasado: ${min} min`)
   }
   // O já concluído (atendido antes da hora) também sai: o destaque dizia
   // "Próximo atendimento" de quem já tinha ido embora (simulação, 2026-10-20).

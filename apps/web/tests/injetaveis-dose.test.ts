@@ -17,8 +17,15 @@ describe('divergenciasDaBaixa (A36)', () => {
     expect(d).toEqual([{ productId: 'tox', nome: 'Toxina', unidade: 'UI', doMapa: 8, naBaixa: 30 }])
     expect(textoDaDivergencia(d[0]!)).toBe('O mapa soma 8 UI de Toxina; a baixa está em 30 UI.')
   })
-  it('igual não diverge; unidade diferente não se compara', () => {
+  it('igual não diverge', () => {
     expect(divergenciasDaBaixa([{ product: 'toxina', unit: 'ui', total: 30 }], [{ productId: 'tox', name: 'Toxina', unit: 'UI', quantity: 30 }], estoque)).toEqual([])
+  })
+  // A dose do ponto é na medida do produto (o Heitor, 27/11: "O consumo é sempre
+  // na unidade cadastrada no produto, seja no mapa, seja no atendimento, seja no
+  // consumo do estoque."): o mapa e a baixa se comparam sempre na mesma medida.
+  // Outra medida só no ponto gravado antes, que fica como foi gravado — e não se
+  // converte (princípio 4; decisão do Claude). Antes: "unidade diferente não se compara".
+  it('o ponto gravado antes noutra medida não se compara nem se converte', () => {
     expect(divergenciasDaBaixa([{ product: 'Toxina', unit: 'ml', total: 1 }], [{ productId: 'tox', name: 'Toxina', unit: 'UI', quantity: 30 }], estoque)).toEqual([])
   })
   it('o produto do mapa fora da baixa, mas no estoque', () => {

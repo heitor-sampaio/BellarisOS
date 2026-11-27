@@ -147,7 +147,7 @@ test('C11: "Iniciar" pelo status não reabre o concluído, o cancelado nem a fal
   await como(browser, gerente!, async p => {
     const a = acoes(p)
     const r = await a.status(concluido, 'IN_PROGRESS')
-    expect(r.texto, 'a recusa diz por quê').toContain('confirmado ou ter chegado')
+    expect(r.texto, 'a recusa diz por quê').toContain('confirmado ou com o check-in feito')
     await a.status(cancelado, 'IN_PROGRESS')
     await a.status(falta, 'IN_PROGRESS')
     await a.status(agendadoS, 'IN_PROGRESS')

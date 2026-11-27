@@ -10,9 +10,18 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  * cliente (0)". É REGRA que a aplicação congelada (`injectable_applications`)
  * só nasce por "Registrar aplicação" DENTRO de um atendimento.
  *
- * Decisão do Heitor: fora do atendimento o mapa não oferece "Confirmar
- * aplicação" (nada de dizer "confirmada" sem gravar); no lugar, uma linha que
- * diz que a aplicação se registra no atendimento. Dentro dele, tudo como era.
+ * De quem é cada regra:
+ * - Fora do atendimento, nada de confirmar nem de dizer "confirmada" sem
+ *   gravar: decisão do Claude na correção da frente C (2026-10-28), que o
+ *   Heitor confirmou em 2026-10-29 (o DEVLOG registra a confirmação, sem fala
+ *   dele sobre o botão).
+ * - A frase "A aplicação se registra no atendimento…" saiu (o Heitor, 26/11:
+ *   "isso não é ser intuitivo, é ser explicativo e não isso que eu quero.").
+ * - Dentro do atendimento há um botão só (o Heitor, 27/11: "Um botão só,
+ *   "Registrar aplicação" (a proposta)"): saiu o "Confirmar aplicação"; o
+ *   registrar copia a dose prevista nos pontos sem a aplicada, e a coluna
+ *   "Aplicado" fica sempre à vista. Antes, este teste clicava "Confirmar
+ *   aplicação" e esperava "Aplicação confirmada".
  */
 
 const marca = Date.now().toString(36)
@@ -72,7 +81,7 @@ test('fora do atendimento, o mapa não oferece "Confirmar aplicação"', async (
   })
 })
 
-test('dentro do atendimento continua: confirma, ajusta e registra a aplicação', async ({ browser }) => {
+test('dentro do atendimento, um botão só: "Registrar aplicação" grava a dose prevista onde ninguém escreveu a aplicada', async ({ browser }) => {
   const { data: ag, error } = await db().from('appointments').insert({
     branch_id: rede!.branchId, client_id: cliente, procedure_id: rede!.procedureId, professional_id: profissional!.userId,
     status: 'IN_PROGRESS', source: 'INTERNAL', duration_min: 30, price: 0,
@@ -86,11 +95,14 @@ test('dentro do atendimento continua: confirma, ajusta e registra a aplicação'
     await p.getByRole('main').getByRole('button', { name: 'Mapa de injetáveis' }).click()
     const janela = p.getByRole('dialog')
     await janela.getByText(`Toxina terço superior ${marca}`).click()
-    await janela.getByRole('button', { name: 'Confirmar aplicação' }).click()
-    await expect(janela.getByText('Aplicação confirmada', { exact: false })).toBeVisible()
+    await expect(janela.getByRole('button', { name: 'Confirmar aplicação' }), 'o segundo botão saiu').toHaveCount(0)
+    // A coluna "Aplicado" já à vista, com a dose prevista (o que o registrar vai gravar).
+    await expect(janela.locator('[data-ponto-do-mapa]').first().getByLabel('Aplicado')).toHaveValue('20')
     await janela.getByRole('button', { name: 'Registrar aplicação' }).click()
     await expect(janela.getByText('Aplicação registrada neste atendimento.')).toBeVisible()
   })
-  const { data: aplicacoes } = await db().from('injectable_applications').select('appointment_id').eq('client_id', cliente)
-  expect(aplicacoes).toEqual([{ appointment_id: ag!.id }])
+  const { data: aplicacoes } = await db().from('injectable_applications').select('appointment_id, points').eq('client_id', cliente)
+  expect(aplicacoes?.map(a => a.appointment_id)).toEqual([ag!.id])
+  expect((aplicacoes?.[0]?.points as { id: string; applied: number | null }[]).map(p => ({ id: p.id, applied: p.applied })),
+    'a dose prevista vira a aplicada no registro').toEqual([{ id: 'p1', applied: 20 }])
 })

@@ -64,7 +64,8 @@ test('A18: a chegada de outro dia é recusada, e a janela não oferece "Chegou"'
     await p.goto(`/admin/agenda?date=${AMANHA}`)
     await p.locator(`[title*="Amanhã ad${marca}"]`).first().click()
     await expect(p.getByRole('button', { name: 'Confirmar agendamento' })).toBeVisible()
-    await expect(p.getByRole('button', { name: 'Chegou' })).toHaveCount(0)
+    // O nome é "Check-in" (o Heitor, 27/11: "Fica "Check-in"" — "Fica Check-in em todos os lugares"); era "Chegou"/"Marcar chegada e iniciar".
+    await expect(p.getByRole('button', { name: 'Check-in', exact: true })).toHaveCount(0)
   })
   const { data } = await db().from('appointments').select('status').eq('id', id).single<{ status: string }>()
   expect(data!.status).toBe('SCHEDULED')
@@ -150,6 +151,6 @@ test('A23: a confirmação e a chegada entram na linha do tempo da cliente', asy
   await como(browser, recepcao!, async p => {
     await p.goto(`/admin/clients/${cliente}?aba=historico`)
     await expect(p.getByText(/^Confirmado:/)).toBeVisible()
-    await expect(p.getByText(/^Chegou:/)).toBeVisible()
+    await expect(p.getByText(/^Check-in:/)).toBeVisible()
   })
 })

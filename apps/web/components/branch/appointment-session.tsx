@@ -308,7 +308,7 @@ function realDurationMin(startedAt: string | null, completedAt: string | null): 
 const STATUS_OVERLINE: Record<string, { label: string; color: string }> = {
   SCHEDULED:   { label: 'Agendado',          color: 'var(--text-muted)' },
   CONFIRMED:   { label: 'Confirmado',         color: 'var(--info)' },
-  ARRIVED:     { label: 'Chegou — na espera', color: 'var(--success)' },
+  ARRIVED:     { label: 'Check-in — na espera', color: 'var(--success)' },
   IN_PROGRESS: { label: 'Atendimento em andamento', color: 'var(--brand)' },
   COMPLETED:   { label: 'Concluído',          color: 'var(--success)' },
   CANCELLED:   { label: 'Cancelado',          color: 'var(--warning)' },
@@ -1066,7 +1066,7 @@ export function AppointmentSession({
   const [anamneseDigitada,   setAnamneseDigitada]   = useState<Record<string, unknown> | null>(null)
   const [anamneseDoRascunho, setAnamneseDoRascunho] = useState<Record<string, unknown> | null>(null)
   // O mapa de injetáveis da ficha oferece os insumos do estoque (A36), como o Planejamento.
-  const produtosDoMapa = useMemo(() => availableProducts.map(p => p.name), [availableProducts])
+  const produtosDoMapa = useMemo(() => availableProducts.map(p => ({ name: p.name, unit: p.unit })), [availableProducts])
   // A faixa da alergia acompanha o que está NA TELA (A34 da 5ª simulação): a
   // alergia digitada só virava faixa depois de concluir, porque a faixa lia a
   // anamnese salva. Com a anamnese mexida, valem as respostas da tela, contra
@@ -1395,7 +1395,7 @@ export function AppointmentSession({
     setErroAoIniciar(null)
     setPerguntaDoInicio(null)
     const r: { error?: string; confirmarInicioAdiantado?: boolean } = await chegarEIniciar(appointment.id, slug, { inicioAdiantadoConfirmado: confirmado })
-      .catch(() => ({ error: 'Não foi possível marcar a chegada.' }))
+      .catch(() => ({ error: 'Não foi possível fazer o check-in.' }))
     if (r?.confirmarInicioAdiantado && r.error) { setPerguntaDoInicio({ texto: r.error, chegar: true }); setStarting(false); return }
     if (r?.error) setErroAoIniciar(r.error)
     router.refresh()
@@ -1832,7 +1832,7 @@ export function AppointmentSession({
                 title={documentosQueBloqueiam.length ? `Falta assinar: ${documentosQueBloqueiam.map(d => d.titulo).join(', ')}` : undefined}
                 style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 9, fontSize: 'var(--text-base-sz)' }}>
                 {starting ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
-                {starting ? 'Iniciando…' : 'Marcar chegada e iniciar'}
+                {starting ? 'Iniciando…' : 'Check-in e iniciar'}
               </button>
             )}
 

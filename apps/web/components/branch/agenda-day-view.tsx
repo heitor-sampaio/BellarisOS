@@ -110,7 +110,7 @@ interface ColProps {
 }
 
 /** A dica do cartão que passou do horário em aberto (A21 da 9ª). */
-const TEXTO_DO_PASSOU = 'passou do horário sem chegada nem conclusão: marque a falta, a chegada ou conclua'
+const TEXTO_DO_PASSOU = 'passou do horário sem check-in nem conclusão: marque a falta, faça o check-in ou conclua'
 
 function ProfColumn({
   pro, bloqueios, horarioDoDia, events, trechos, currentDate, isFirst, canWrite,
@@ -343,7 +343,7 @@ function ProfColumn({
               <SeloDaFicha estado={ev.fichaDeSaude} />
               <SeloDoMenor menor={ev.menor} />
               {isProgress && <span style={{ color: 'var(--brand)' }}>· em atend.</span>}
-              {isArrived && <span>· Chegou{ev.arrivedAt ? ` ${format(new Date(ev.arrivedAt) /* parede */, 'HH:mm')}` : ''}</span>}
+              {isArrived && <span>· Check-in{ev.arrivedAt ? ` ${format(new Date(ev.arrivedAt) /* parede */, 'HH:mm')}` : ''}</span>}
               {isCompleted && <span style={{ color: 'var(--text-faint)' }}>· {textoDoConcluido(ev.start, ev.completedAt, fusoLocal()) ?? 'concluído'}</span>}
               {passou && <span data-passou-sem-fechar style={{ color: 'var(--warning)', whiteSpace: 'nowrap' }}>· passou do horário</span>}
             </div>

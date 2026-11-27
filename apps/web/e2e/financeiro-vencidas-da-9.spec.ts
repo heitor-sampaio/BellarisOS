@@ -115,7 +115,7 @@ test('D13: o check-in de quem tem parcela vencida avisa, e a chegada vale', asyn
     const hoje = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
     await p.goto(`/admin/agenda?date=${hoje}`)
     await p.locator(`[title*="Cliente portal ven${marca}"]`).first().click()
-    await p.getByRole('dialog', { name: 'Agendamento' }).getByRole('button', { name: 'Chegou' }).click()
+    await p.getByRole('dialog', { name: 'Agendamento' }).getByRole('button', { name: 'Check-in', exact: true }).click()
     // Com o PDV (CX1), a parcela se recebe lá — o aviso dizia "no Financeiro".
     await expect(p.getByText(/tem 1 parcela vencida \(R\$\s1\.294,00.*\): receba no PDV\./)).toBeVisible({ timeout: 15_000 })
   })

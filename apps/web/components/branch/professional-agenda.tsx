@@ -46,7 +46,7 @@ const STATUS_COLORS: Record<string, {
 }> = {
   SCHEDULED:   { bg: 'var(--surface)', border: 'var(--border)',   pill: { bg: 'var(--bg-app)', color: 'var(--text-muted)' }, dot: 'var(--text-faint)',       label: ROTULO_DO_STATUS.SCHEDULED },
   CONFIRMED:   { bg: 'var(--surface)', border: 'var(--border)',   pill: { bg: 'var(--success-soft)', color: 'var(--success)' }, dot: 'var(--success)',        label: 'Confirmado'       },
-  ARRIVED:     { bg: 'var(--surface)', border: 'var(--success)',  pill: { bg: 'var(--success-soft)', color: 'var(--success)' }, dot: 'var(--success)',        label: 'Chegou'           },
+  ARRIVED:     { bg: 'var(--surface)', border: 'var(--success)',  pill: { bg: 'var(--success-soft)', color: 'var(--success)' }, dot: 'var(--success)',        label: 'Check-in'         },
   IN_PROGRESS: { bg: 'var(--bg-app)',        border: 'var(--brand)',    pill: { bg: 'var(--brand-soft)', color: 'var(--brand)' }, dot: 'var(--brand)', label: 'Em atendimento'   },
   COMPLETED:   { bg: 'var(--bg-app)',  border: 'var(--hairline)', pill: { bg: 'var(--bg-app)', color: 'var(--text-faint)' }, dot: 'var(--text-faint)',       label: 'Concluído'        },
   NO_SHOW:     { bg: 'var(--bg-app)',  border: 'var(--hairline)', pill: { bg: 'var(--warning-soft)', color: 'var(--warning)' }, dot: 'var(--warning)',       label: 'Não compareceu'   },

@@ -129,8 +129,9 @@ test('A27: na folha do atendimento (o celular da médica), marcar não rola a fo
 
 // A8 da 37ª (o Heitor, 26/11: "isso não é ser intuitivo, é ser explicativo e
 // não isso que eu quero. Ser intuitivo é justamente o contrario, ser facil de
-// usar mesmo sem muitas explicações."): a dica que explicava os botões saiu;
-// os botões ficam.
+// usar mesmo sem muitas explicações."): a dica que explicava os botões saiu.
+// E o "Confirmar aplicação" saiu (o Heitor, 27/11: "Um botão só, "Registrar
+// aplicação" (a proposta)"); antes, este teste o exigia à vista.
 test('A28: na folha do atendimento, o mapa mostra os botões, sem a dica que os explica', async ({ browser }) => {
   const slug = (await db().from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
   const prof = await criarMembro(`inj11q${marca}`, {
@@ -156,7 +157,7 @@ test('A28: na folha do atendimento, o mapa mostra os botões, sem a dica que os 
       const janela = p.getByRole('dialog')
       await janela.getByText(`Toxina A28 ${marca}`).click()
       await expect(janela.getByRole('button', { name: 'Salvar planejamento' })).toBeVisible()
-      await expect(janela.getByRole('button', { name: 'Confirmar aplicação' })).toBeVisible()
+      await expect(janela.getByRole('button', { name: 'Confirmar aplicação' })).toHaveCount(0)
       await expect(janela.getByRole('button', { name: 'Registrar aplicação' })).toBeVisible()
       await expect(janela.getByRole('button', { name: 'O que cada botão faz' })).toHaveCount(0)
       await expect(janela.locator('[data-o-que-cada-botao-faz]')).toHaveCount(0)

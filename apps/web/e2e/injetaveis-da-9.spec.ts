@@ -123,7 +123,14 @@ test('o retoque no mesmo mapa registra só o ponto novo', async ({ browser }) =>
     scheduled_at: new Date(Date.now() - 10 * 60_000).toISOString(), started_at: new Date(Date.now() - 5 * 60_000).toISOString(),
   }).select('id').single<{ id: string }>()
   expect(error).toBeNull()
-  const p1 = { id: 'p1', x: 0.5, y: 0.3, product: 'Toxina', dose: 28, unit: 'UI', applied: 28, view: 'rosto_f' }
+  // O ponto novo (o p3 do retoque) é de um produto do estoque, na medida dele (o
+  // Heitor, 27/11: "O consumo é sempre na unidade cadastrada no produto, seja no
+  // mapa, seja no atendimento, seja no consumo do estoque."): o servidor recusa o
+  // ponto novo de produto fora do estoque. Antes, o produto era o texto "Toxina".
+  const toxina = await rede!.criarProduto('Toxina do retoque')
+  expect((await db().from('products').update({ units_per_package: 100, consumption_unit: 'UI', uso: 'INSUMO' }).eq('id', toxina)).error).toBeNull()
+  const produto = (await db().from('products').select('name').eq('id', toxina).single<{ name: string }>()).data!.name
+  const p1 = { id: 'p1', x: 0.5, y: 0.3, product: produto, dose: 28, unit: 'UI', applied: 28, view: 'rosto_f' }
   const p2 = { ...p1, id: 'p2', x: 0.4 }
   const p3 = { ...p1, id: 'p3', x: 0.6, dose: 10, applied: 10 }
   await como(browser, profissional!, async p => {

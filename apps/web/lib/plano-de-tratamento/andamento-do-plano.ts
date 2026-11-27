@@ -2,7 +2,9 @@ import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, lerTodas } from '@/lib/db'
 import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
-import { situacaoComercialDoPlano, type SituacaoComercial } from './situacao'
+import { situacaoComercialDoPlano, contratoFaltaAssinar, type SituacaoComercial, type SituacaoDoContrato } from './situacao'
+
+export type { SituacaoDoContrato }
 
 /**
  * O que se lê do banco para a situação de um plano aceito (PT1a/PT1f, Bloco
@@ -24,13 +26,6 @@ export interface DocumentosDoPlano {
   /** "Faltam dados do cadastro": não entram no link até o cadastro ter o dado. */
   faltamDados: number
 }
-
-export type SituacaoDoContrato =
-  | 'SEM_CONTRATO'   // a rede não tem contrato de plano ativo (ou não tem Documentos)
-  | 'NO_PDV'         // ainda não emitido: sai no PDV, com a forma de pagamento
-  | 'FALTA_ASSINAR'
-  | 'ASSINADO'
-  | 'DISPENSADO'
 
 export interface AndamentoDoPlano {
   documentos: DocumentosDoPlano
@@ -113,7 +108,7 @@ export async function situacoesDosPlanos(
       status: p.status,
       recebido: a?.recebido ?? false,
       documentosAbertos: a?.documentos.abertos ?? 0,
-      contratoFalta: a ? a.contrato === 'NO_PDV' || a.contrato === 'FALTA_ASSINAR' : false,
+      contratoFalta: contratoFaltaAssinar(a?.contrato ?? 'SEM_CONTRATO'),
     }))
   }
   return mapa

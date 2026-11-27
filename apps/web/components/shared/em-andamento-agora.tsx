@@ -44,7 +44,7 @@ export function EmAndamentoAgora({ itens, agora, base, mostrarUnidade = false, s
         <Timer size={15} aria-hidden style={{ flexShrink: 0 }} />
         <span>Em andamento · {visiveis.length}</span>
         <Dica rotulo="Sobre o Em andamento">
-          Os agendamentos em aberto (agendado, confirmado, chegou ou em atendimento) com o início já passado e o fim
+          Os agendamentos em aberto (agendado, confirmado, check-in ou em atendimento) com o início já passado e o fim
           ainda por vir, de qualquer dia: o atendimento longo que começou ontem também aparece. Sai daqui quando é
           concluído ou quando o horário acaba.
         </Dica>

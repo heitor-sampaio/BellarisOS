@@ -76,8 +76,15 @@ describe('cartão de crédito em N vezes (2026-10-20)', () => {
   // cada parcela A RECEBER — e o check-in oferecia cobrar de novo.
   const tresVezes: PagamentoDoPlano = { forma: 'AVISTA', metodo: 'CREDIT_CARD', vezes: 3 }
 
-  it('a frase do contrato diz em quantas vezes', () => {
-    expect(valoresDoPagamento(tresVezes, 600)['pagamento.forma']).toMatch(/^R\$\s600,00 no cartão de crédito em 3x$/)
+  // O Heitor, 27/11 (R29): "A frase diz o valor de cada parcela (a proposta)" — era só "em 3x". O valor é o que
+  // a operadora grava em cada recebível (`dividirEmParcelas`: centavos, a sobra na última).
+  it('a frase do contrato diz em quantas vezes e o valor de cada parcela', () => {
+    expect(valoresDoPagamento(tresVezes, 600)['pagamento.forma']).toMatch(/^R\$\s600,00 no cartão de crédito em 3x de R\$\s200,00$/)
+    expect(valoresDoPagamento(tresVezes, 765)['pagamento.forma']).toMatch(/^R\$\s765,00 no cartão de crédito em 3x de R\$\s255,00$/)
+    expect(valoresDoPagamento(tresVezes, 850)['pagamento.forma'])
+      .toMatch(/^R\$\s850,00 no cartão de crédito em 3x \(2x de R\$\s283,33 \+ 1x de R\$\s283,34\)$/)
+    expect(valoresDoPagamento(tresVezes, 900, 50)['pagamento.forma'])
+      .toMatch(/^R\$\s850,00 no cartão de crédito em 3x \(2x de R\$\s283,33 \+ 1x de R\$\s283,34\), com desconto de R\$\s50,00 sobre R\$\s900,00$/)
     expect(valoresDoPagamento(tresVezes, 600)['pagamento.parcelas']).toBe('3')
     expect(rotuloDoPagamento(tresVezes)).toBe('Crédito 3x')
   })

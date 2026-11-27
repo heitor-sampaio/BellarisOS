@@ -706,3 +706,25 @@ As perguntas novas (na página), todas por um teste que exige o comportamento de
 - **R28:** o botão da chegada da cliente: "Check-in" ou "Chegou".
 - **R29:** o contrato no cartão em vezes dizer o valor de cada parcela.
 - **R30:** a coluna "Unidades" da lista de procedimentos numa rede de uma unidade só.
+
+## 19. As suas respostas de 27/11 (R22 a R32)
+
+Todas estão no código; vão à produção depois da 38ª simulação. O resumo está no DEVLOG (27/11, (4)).
+- **R22:** o plano aceito com o contrato ainda por emitir está em "Falta pagar"; emitido e sem assinatura, em "Aceito
+  (falta assinar)".
+- **R25:** o ponto do mapa escolhe o produto do estoque, e a dose é na medida dele. Mapa antigo com outra medida fica
+  como foi gravado.
+- **R26:** um botão só, "Registrar aplicação", que já copia a dose prevista.
+- **R27:** a ficha não pede mais a lista de produtos; o mapa usa o estoque.
+- **R28:** "Check-in" em todo lugar (agenda, atendimento, app, avisos, Auditoria, Copilot, relatórios).
+- **R29:** o contrato diz "em 3x de R$ 255,00".
+- **R30:** a coluna "Unidades" some com uma unidade só.
+- **R31:** o "Desativar e repassar 1 de 3" também no um a um.
+- **R32:** sem o Prontuário em Ver, as linhas da foto somem do histórico do atendimento; as da agenda e do caixa ficam.
+
+Os testes que mudaram por essas falas estão listados no DEVLOG, cada um com a sua resposta. Dois casos de teste foram
+apagados: o que exigia a lista própria de medidas do planejador (R25) e a linha que exigia o "Confirmar aplicação"
+(R26).
+
+Uma pergunta nova na página: **R33**, o valor da parcela também na entrada do crediário paga no cartão e no pagamento
+dividido em duas formas.

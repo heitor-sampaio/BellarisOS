@@ -55,11 +55,12 @@ describe('D4: o aviso pós-venda não aponta outra pessoa para colher', () => {
 
 // ─── A10: o "Falta assinar" e a chegada dizem o nome de quem pode ───────────
 describe('A10: quem atende sem o módulo lê quem pode, pelo nome', () => {
-  it('quem marca a chegada', async () => {
+  // Era "marca a chegada"; o nome é "Check-in" (o Heitor, 27/11: "Fica "Check-in"" — "Fica Check-in em todos os lugares").
+  it('quem faz o check-in', async () => {
     const { textoDeQuemMarcaAChegada } = await import('@/lib/equipe/textos-de-quem-pode')
     expect(textoDeQuemMarcaAChegada(['Renan Dias', 'Patrícia Begônia']))
-      .toBe('Quem tem a Agenda em Gerenciar marca a chegada (Renan Dias e Patrícia Begônia); depois você inicia.')
-    expect(textoDeQuemMarcaAChegada([])).toBe('Quem tem a Agenda em Gerenciar marca a chegada; depois você inicia.')
+      .toBe('Quem tem a Agenda em Gerenciar faz o check-in (Renan Dias e Patrícia Begônia); depois você inicia.')
+    expect(textoDeQuemMarcaAChegada([])).toBe('Quem tem a Agenda em Gerenciar faz o check-in; depois você inicia.')
   })
   // Sem o "só os meus" (SM1, o Heitor, 2026-11-23): a Agenda em Gerenciar marca a chegada de todos, sem escopo.
   it('quem marca a chegada de OUTRA pessoa é a Agenda em Gerenciar, sem escopo', async () => {
@@ -76,7 +77,7 @@ describe('A10: quem atende sem o módulo lê quem pode, pelo nome', () => {
     expect(pagina).toContain('quemMarcaAChegada(')
     const tela = ler('components/branch/appointment-session.tsx')
     expect(tela).toContain('textoDeQuemMarcaAChegada(')
-    expect(tela).not.toContain('Quem tem a Agenda em Gerenciar marca a chegada; depois você inicia.')
+    expect(tela).not.toContain('Quem tem a Agenda em Gerenciar faz o check-in; depois você inicia.')
   })
 })
 

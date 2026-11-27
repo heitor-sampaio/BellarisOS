@@ -95,7 +95,7 @@ function EventCard({ ev, onClick, continuaDeAntes = false }: { ev: CalendarEvent
     <div
       data-agendamento={ev.id}
       data-continua-de-antes={continuaDeAntes ? '' : undefined}
-      title={passou ? 'Passou do horário sem chegada nem conclusão: marque a falta, a chegada ou conclua' : undefined}
+      title={passou ? 'Passou do horário sem check-in nem conclusão: marque a falta, faça o check-in ou conclua' : undefined}
       onClick={e => { e.stopPropagation(); onClick() }}
       style={{
         padding:     '6px 8px',
@@ -119,7 +119,7 @@ function EventCard({ ev, onClick, continuaDeAntes = false }: { ev: CalendarEvent
     >
       <div style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--success)', display: 'flex', alignItems: 'center', gap: 4 }}>
         {time}
-        {ev.status === 'ARRIVED' && <span>· Chegou</span>}
+        {ev.status === 'ARRIVED' && <span>· Check-in</span>}
         {passou && <span data-passou-sem-fechar style={{ color: 'var(--warning)', whiteSpace: 'nowrap' }}>· passou do horário</span>}
         <SeloDaFicha estado={ev.fichaDeSaude} />
               <SeloDoMenor menor={ev.menor} />

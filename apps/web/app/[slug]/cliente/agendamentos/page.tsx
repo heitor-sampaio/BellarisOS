@@ -20,7 +20,7 @@ import { textoDaSessaoInterrompida } from '@/lib/plano-de-tratamento/sessao-no-a
 const STATUS_LABEL: Record<string, string> = {
   SCHEDULED:   'Agendado',
   CONFIRMED:   'Confirmado',
-  ARRIVED:     'Chegou',
+  ARRIVED:     'Check-in',
   IN_PROGRESS: 'Em atendimento',
   COMPLETED:   'Concluído',
   CANCELLED:   'Cancelado',

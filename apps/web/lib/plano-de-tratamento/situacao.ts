@@ -53,8 +53,9 @@ export { TEXTO_QUEM_MONTA } from './textos-de-quem-monta'
  * Segue a ordem do Heitor: aceitar → assinar → pagar → agendar.
  *
  * - Aceito (falta assinar): aceito, sem dinheiro, com documento do plano
- *   aberto ou o contrato de plano da rede ainda sem assinatura (nem dispensa).
- * - Falta pagar: aceito, tudo assinado, sem dinheiro.
+ *   aberto ou o contrato de plano EMITIDO e ainda sem assinatura (nem dispensa).
+ * - Falta pagar: aceito, sem dinheiro, nada emitido por assinar — inclusive o
+ *   contrato que ainda vai sair no PDV (o Heitor, 27/11; `contratoFaltaAssinar`).
  * - Em andamento: o plano já foi recebido (um lançamento vivo dele) — o
  *   dinheiro que entrou vence o documento que ficou aberto.
  * - Rascunho fica à parte: o plano salvo que ainda não foi à cliente.
@@ -74,13 +75,30 @@ const COMERCIAL: Record<SituacaoComercial, SituacaoDoPlano> = {
   CANCELADO:     { label: 'Cancelado',              cor: 'var(--danger)',     fundo: 'var(--danger-soft)' },
 }
 
+/** Onde está o contrato de plano do plano aceito (lido por `andamentoDosPlanos`). */
+export type SituacaoDoContrato =
+  | 'SEM_CONTRATO'   // a rede não tem contrato de plano ativo (ou não tem Documentos)
+  | 'NO_PDV'         // ainda não emitido: sai no PDV, com a forma de pagamento
+  | 'FALTA_ASSINAR'
+  | 'ASSINADO'
+  | 'DISPENSADO'
+
+/**
+ * O contrato conta como "falta assinar" só depois de EMITIDO. O Heitor, 27/11: "Se contrato emitido e falta
+ * assinar, o aviso é falta assinar, se falta pagar, o aviso é falta pagar." O contrato de plano sai no PDV, junto
+ * do pagamento: o que ainda não saiu (NO_PDV) é "Falta pagar".
+ */
+export function contratoFaltaAssinar(contrato: SituacaoDoContrato): boolean {
+  return contrato === 'FALTA_ASSINAR'
+}
+
 export function situacaoComercialDoPlano(p: {
   status: string
   /** Há lançamento de receita vivo do plano (o plano foi recebido). */
   recebido: boolean
   /** Documentos do plano ainda por assinar (prontos, a gerar ou com dados faltando). */
   documentosAbertos: number
-  /** A rede tem contrato de plano ativo e este plano não tem um assinado nem dispensado. */
+  /** O contrato de plano foi emitido e ainda não foi assinado nem dispensado (`contratoFaltaAssinar`). */
   contratoFalta: boolean
 }): SituacaoComercial {
   switch (p.status) {

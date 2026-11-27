@@ -12,7 +12,10 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  * Agora: o PRIMEIRO ponto nasce sem produto (a linha pede "Escolha o
  * produto"); os seguintes repetem o produto, a dose e a unidade do último
  * ponto marcado (na toxina, os pontos vizinhos são do mesmo produto). O ponto
- * tem "Região (opcional)". A lista de produtos continua texto livre.
+ * tem "Região (opcional)". Os produtos são os do estoque, e a medida é a do
+ * produto (o Heitor, 27/11: "O mapa usa sempre o estoque, e a ficha não pede
+ * mais a lista (a proposta)"; "O consumo é sempre na unidade cadastrada no
+ * produto, seja no mapa, seja no atendimento, seja no consumo do estoque.").
  */
 
 const marca = Date.now().toString(36)
@@ -84,6 +87,9 @@ test('o primeiro ponto nasce sem produto; o seguinte repete o último; a região
     await expect(primeiro.getByText('Escolha o produto')).toBeVisible()
 
     await primeiro.getByRole('combobox', { name: 'Produto' }).selectOption(TOXINA)
+    // A medida da dose é a do produto do estoque ("un"), e não se escolhe.
+    await expect(primeiro.locator('[data-medida-do-ponto]')).toHaveText('un')
+    await expect(primeiro.getByRole('combobox'), 'só o produto se escolhe').toHaveCount(1)
     await primeiro.getByLabel('Plano').fill('4')
     await primeiro.getByLabel('Região (opcional)').fill('Glabela')
     await expect(primeiro.getByText('Escolha o produto')).toHaveCount(0)

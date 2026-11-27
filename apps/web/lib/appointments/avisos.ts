@@ -177,7 +177,7 @@ export function notifyCheckin(appointmentId: string): void {
     const c = await loadApptCtx(admin, appointmentId)
     if (!c?.professionalId) return
     await notifyUser(admin, c.professionalId, {
-      type: 'client_checkin', title: 'Cliente chegou',
+      type: 'client_checkin', title: 'Check-in feito',
       body: `${c.clientName} fez check-in para ${c.procedureName}.`,
       data: { appointment_id: appointmentId },
     })

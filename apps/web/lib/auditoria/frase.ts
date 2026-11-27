@@ -121,7 +121,7 @@ const CAMPO: Record<string, string> = {
   // A27 da 15ª: as colunas que a auditoria já gravou e a frase não sabia dizer ("um campo", "outros campos").
   crm_stage_id: 'etapa', owner_id: 'responsável', perdido_em: 'perdida', motivo_perda_id: 'motivo da perda',
   completed_at: 'conclusão', confirmed_at: 'confirmação', client_confirmed_at: 'confirmação da cliente',
-  arrived_at: 'chegada', started_at: 'início', cancelled_at: 'cancelamento', cancellation_reason: 'motivo do cancelamento',
+  arrived_at: 'check-in', started_at: 'início', cancelled_at: 'cancelamento', cancellation_reason: 'motivo do cancelamento',
   aconteceu_em: 'data do atendimento', client_feedback: 'avaliação da cliente', client_rating: 'nota da cliente',
   app_account_created_at: 'acesso ao app', last_app_login_at: 'última entrada no app', portal_ultima_entrada_em: 'última entrada no portal',
   rendered_at: 'geração', pedido_no_portal_em: 'pedido no portal', content: 'conteúdo', content_text: 'conteúdo', content_sha256: 'conteúdo', missing_fields: 'campos que faltam',

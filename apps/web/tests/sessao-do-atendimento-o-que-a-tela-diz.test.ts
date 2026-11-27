@@ -49,8 +49,8 @@ describe('o desconto do plano vai à comanda do PDV (PL-10)', () => {
   })
 })
 
-describe('a chegada só no dia do agendamento (D2 da 28ª)', () => {
-  it('o "Check-in" e o "Marcar chegada e iniciar" da tela do atendimento conferem o dia', () => {
+describe('o check-in só no dia do agendamento (D2 da 28ª)', () => {
+  it('o "Check-in" e o "Check-in e iniciar" da tela do atendimento conferem o dia', () => {
     const s = fonte(SESSAO)
     expect(s).toMatch(/const mostraChegarEIniciar\s*=\s*aChegar && ehODia &&/)
     expect(s).toMatch(/const mostraCheckin\s*=\s*aChegar && ehODia &&/)

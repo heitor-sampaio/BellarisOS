@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import type { ResolvedPermissions } from '@estetica-os/types'
 import { NO_PERMISSIONS } from '@/lib/permissions'
 import { montaPlano, TEXTO_QUEM_MONTA } from '@/lib/plano-de-tratamento/quem-monta'
-import { situacaoComercialDoPlano, SITUACOES_COMERCIAIS, rotuloDaSituacaoComercial } from '@/lib/plano-de-tratamento/situacao'
+import { situacaoComercialDoPlano, SITUACOES_COMERCIAIS, rotuloDaSituacaoComercial, contratoFaltaAssinar } from '@/lib/plano-de-tratamento/situacao'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
 
@@ -65,6 +65,24 @@ describe('PT1f: a situação do plano na lista de Tratamentos', () => {
   })
   it('aceito, tudo assinado, sem dinheiro: falta pagar', () => {
     expect(situacaoComercialDoPlano({ ...base, status: 'ACCEPTED' })).toBe('FALTA_PAGAR')
+  })
+  // O Heitor, 27/11: "Se contrato emitido e falta assinar, o aviso é falta assinar, se falta pagar, o aviso é
+  // falta pagar." O contrato de plano só é emitido no PDV, junto do pagamento: o que ainda não saiu é falta pagar.
+  it('o contrato ainda não emitido (sai no PDV) é falta pagar; o emitido e não assinado, falta assinar', () => {
+    expect(contratoFaltaAssinar('NO_PDV')).toBe(false)
+    expect(contratoFaltaAssinar('FALTA_ASSINAR')).toBe(true)
+    for (const c of ['SEM_CONTRATO', 'ASSINADO', 'DISPENSADO'] as const) expect(contratoFaltaAssinar(c)).toBe(false)
+    expect(situacaoComercialDoPlano({ ...base, status: 'ACCEPTED', contratoFalta: contratoFaltaAssinar('NO_PDV') })).toBe('FALTA_PAGAR')
+    // O termo do plano nasce na criação do plano (não depende do pagamento): emitido e aberto, falta assinar.
+    expect(situacaoComercialDoPlano({ ...base, status: 'ACCEPTED', documentosAbertos: 1, contratoFalta: contratoFaltaAssinar('NO_PDV') })).toBe('FALTA_ASSINAR')
+  })
+  it('a lista de Tratamentos e o topo do plano contam o contrato pela mesma regra', () => {
+    const ler = (p: string) => nodeFs.readFileSync(nodePath.join(__dirname, '..', p), 'utf8')
+    for (const arquivo of ['lib/plano-de-tratamento/andamento-do-plano.ts', 'actions/treatment-plans.ts']) {
+      const fonte = ler(arquivo)
+      expect(fonte, arquivo).not.toMatch(/contrato === 'NO_PDV' \|\|/)
+      expect(fonte, arquivo).toMatch(/contratoFalta:\s*contratoFaltaAssinar\(/)
+    }
   })
   it('recebido: em andamento (o recebido vence o documento aberto — o dinheiro já entrou)', () => {
     expect(situacaoComercialDoPlano({ ...base, status: 'ACCEPTED', recebido: true, documentosAbertos: 2 })).toBe('EM_ANDAMENTO')

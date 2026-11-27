@@ -899,7 +899,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.55, flex: 1, minWidth: 220 }}>
               O plano é aceito por {fmtBRL(liquido)} e o valor fica em aberto. O PDV
-              recebe na chegada da primeira sessão.
+              recebe no check-in da primeira sessão.
             </p>
             <span style={{ fontSize: 'var(--text-name)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>{fmtBRL(liquido)}</span>
           </div>

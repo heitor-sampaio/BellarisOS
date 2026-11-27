@@ -95,12 +95,13 @@ test('A5: no agendamento DELA, um botão de chegada em destaque — e o que cada
     await p.goto(`/admin/agenda?date=${hoje}`)
     await p.locator(`[data-agendamento="${id}"]`).click()
     const janela = p.getByRole('dialog', { name: 'Agendamento' })
-    await expect(janela.getByRole('button', { name: 'Marcar chegada e iniciar' })).toBeVisible()
+    // O nome é "Check-in" (o Heitor, 27/11: "Fica "Check-in"" — "Fica Check-in em todos os lugares"); era "Chegou"/"Marcar chegada e iniciar".
+    await expect(janela.getByRole('button', { name: 'Check-in e iniciar' })).toBeVisible()
     await expect(janela.getByRole('button', { name: 'Confirmar agendamento' })).toBeVisible()
-    await expect(janela.getByRole('button', { name: 'Chegou' })).toBeVisible()
-    const primarios = janela.locator('button.btn-primary').filter({ hasText: /Confirmar agendamento|Chegou|Marcar chegada e iniciar/ })
+    await expect(janela.getByRole('button', { name: 'Check-in', exact: true })).toBeVisible()
+    const primarios = janela.locator('button.btn-primary').filter({ hasText: /Confirmar agendamento|Check-in/ })
     await expect(primarios, 'um botão de chegada em destaque, não dois').toHaveCount(1)
-    await expect(primarios).toHaveText(/Marcar chegada e iniciar/)
+    await expect(primarios).toHaveText(/Check-in e iniciar/)
     // E a janela diz a diferença entre os outros dois — na dica (2026-11-16).
     await expect(janela.getByText(/Confirmar: a cliente confirmou que vem/)).toBeHidden()
     await janela.getByRole('button', { name: 'O que cada botão faz' }).hover()

@@ -36,7 +36,7 @@ function fmtDateTime(d: string, fuso: string) {
 const APPT_STATUS: Record<string, { label: string; color: string }> = {
   SCHEDULED:   { label: 'Agendada',     color: 'var(--info)' },
   CONFIRMED:   { label: 'Confirmada',   color: 'var(--info)' },
-  ARRIVED:     { label: 'Chegou',   color: 'var(--success)' },
+  ARRIVED:     { label: 'Check-in', color: 'var(--success)' },
   IN_PROGRESS: { label: 'Em andamento', color: 'var(--warning)' },
   COMPLETED:   { label: 'Realizada',    color: 'var(--success)' },
   CANCELLED:   { label: 'Cancelada',    color: 'var(--danger)' },

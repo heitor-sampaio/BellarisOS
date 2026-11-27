@@ -357,7 +357,7 @@ const SRC_LABELS: Record<string, string> = {
 
 const STATUS_LABELS: Record<string, string> = {
   COMPLETED: 'Concluído', CANCELLED: 'Cancelado', NO_SHOW: 'Não Compareceu', ABERTO: 'Em aberto',
-  SCHEDULED: 'Agendado', CONFIRMED: 'Confirmado', ARRIVED: 'Chegou', IN_PROGRESS: 'Em Andamento',
+  SCHEDULED: 'Agendado', CONFIRMED: 'Confirmado', ARRIVED: 'Check-in', IN_PROGRESS: 'Em Andamento',
 }
 
 /** Nome da unidade pelo id — os agregados vêm por `branch_id`. */

@@ -50,12 +50,15 @@ export function pontosDaAplicacao(
 }
 
 /**
- * "Confirmar aplicação" no atendimento: a dose planejada vira a aplicada nos
- * pontos deste atendimento; os de outro ficam com 0 hoje (quem os aplicou de
- * novo ajusta a dose, e o ponto passa a ser deste). Sem ponto novo, o plano
- * inteiro, com a dose planejada.
+ * A dose aplicada que o "Registrar aplicação" grava (o Heitor, 27/11: "Um botão
+ * só, "Registrar aplicação" (a proposta)" — saiu o "Confirmar aplicação", que
+ * fazia esta conta antes): nos pontos deste atendimento, a que alguém escreveu
+ * ou, sem ela, a prevista; os de outro ficam com 0 hoje (quem os aplicou de
+ * novo escreve a dose, e o ponto passa a ser deste). Sem ponto novo, o plano
+ * inteiro, com a dose prevista. A coluna "Aplicado" da tela mostra esta mesma
+ * conta antes do registro (princípio 3).
  */
-export function confirmarNoAtendimento(
+export function aplicadoAoRegistrar(
   points: readonly InjectablePoint[], atendimento: string, deOutro: ReadonlySet<string>,
 ): InjectablePoint[] {
   const temDeste = points.some(p => !ehDeOutroAtendimento(p, atendimento, deOutro))

@@ -29,7 +29,7 @@ import { buscaComFiltro, SEM_FILTRO, type FiltrosDaAgenda } from '@/lib/agenda/f
 import { FiltrosDaAgendaNaBarra } from '@/components/shared/filtros-da-agenda'
 
 /** A dica do agendamento em aberto que passou do horário (A21 da 9ª; sobra da F43 na agenda da rede). */
-const TEXTO_DO_PASSOU = 'passou do horário sem chegada nem conclusão: marque a falta, a chegada ou conclua'
+const TEXTO_DO_PASSOU = 'passou do horário sem check-in nem conclusão: marque a falta, faça o check-in ou conclua'
 
 // -- Tipos ---------------------------------------------------------------------
 type AgendaView = 'day' | 'week'
@@ -129,14 +129,14 @@ function desmarcado(a: { status: string }): boolean {
 
 /** "Chegou 9:42" no bloco — o check-in (2026-10-21). */
 function chegouEm(iso: string | null | undefined): string {
-  if (!iso) return 'Chegou'
-  return `Chegou ${new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: fusoLocal() })}`
+  if (!iso) return 'Check-in'
+  return `Check-in ${new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: fusoLocal() })}`
 }
 
 const STATUS_STYLE: Record<string, { bg: string; border: string; text: string; label: string }> = {
   SCHEDULED:   { bg: 'var(--info-soft)', border: 'var(--info-border)', text: 'var(--info)', label: 'Agendado'      },
   CONFIRMED:   { bg: 'var(--success-bg)', border: 'var(--cat-4-soft)', text: 'var(--cat-4)', label: 'Confirmado'     },
-  ARRIVED:     { bg: 'var(--success-soft)', border: 'var(--success)', text: 'var(--success)', label: 'Chegou'         },
+  ARRIVED:     { bg: 'var(--success-soft)', border: 'var(--success)', text: 'var(--success)', label: 'Check-in'       },
   IN_PROGRESS: { bg: 'var(--warning-soft)', border: 'var(--warning-border)', text: 'var(--warning)', label: 'Em atendimento' },
   COMPLETED:   { bg: 'var(--success-bg)', border: 'var(--success-border)', text: 'var(--success)', label: 'Concluído'      },
   CANCELLED:   { bg: 'var(--bg-app)', border: 'var(--border)', text: 'var(--text-faint)', label: 'Cancelado'      },

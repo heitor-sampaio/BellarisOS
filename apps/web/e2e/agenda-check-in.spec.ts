@@ -63,10 +63,11 @@ test.describe.serial('o check-in', () => {
 
       await p.reload()
       await p.locator(`[title*="Chegada ci${marca}"]`).first().click()
-      await p.getByRole('button', { name: 'Chegou' }).click()
+      // O nome é "Check-in" (o Heitor, 27/11: "Fica "Check-in"" — "Fica Check-in em todos os lugares"); era "Chegou"/"Marcar chegada e iniciar".
+      await p.getByRole('button', { name: 'Check-in', exact: true }).click()
       await expect.poll(async () => (await situacao(id)).status).toBe('ARRIVED')
       await p.reload()
-      await expect(p.locator(`[title*="Chegada ci${marca}"]`).first(), 'a grade mostra quem está na espera').toContainText('Chegou')
+      await expect(p.locator(`[title*="Chegada ci${marca}"]`).first(), 'a grade mostra quem está na espera').toContainText('Check-in')
     })
     expect((await situacao(id)).arrived_at, 'a hora da chegada').toBeTruthy()
   })

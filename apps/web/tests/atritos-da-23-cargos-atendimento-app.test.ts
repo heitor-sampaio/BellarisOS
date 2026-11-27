@@ -97,7 +97,11 @@ describe('A3: o Desativar diz quantos o "Repassar todos" repassou', () => {
     const { rotuloDoDesativar } = await import('@/lib/equipe/textos-do-cadastro')
     expect(rotuloDoDesativar({ todosParaAlguem: true, repassados: 1, total: 5 })).toBe('Desativar e repassar 1 de 5')
     expect(rotuloDoDesativar({ todosParaAlguem: true, repassados: 5, total: 5 })).toBe('Desativar')
-    expect(rotuloDoDesativar({ todosParaAlguem: false, repassados: 1, total: 5 })).toBe('Desativar')
+    // O um a um diz o mesmo (o Heitor, 27/11, R31: "O botão diz "Desativar e repassar 1 de 3" também no um a um");
+    // escolhidos todos, ou nenhum, fica "Desativar".
+    expect(rotuloDoDesativar({ todosParaAlguem: false, repassados: 1, total: 5 })).toBe('Desativar e repassar 1 de 5')
+    expect(rotuloDoDesativar({ todosParaAlguem: false, repassados: 5, total: 5 })).toBe('Desativar')
+    expect(rotuloDoDesativar({ todosParaAlguem: false, repassados: 0, total: 5 })).toBe('Desativar')
   })
   it('a janela usa', () => {
     expect(fonte('components/admin/desativar-membro.tsx')).toContain('rotuloDoDesativar(')

@@ -441,7 +441,7 @@ export const ROTULOS_DE_EVENTO: Record<NomeDeEvento, string> = {
   // Agenda
   'agendamento.criado':          'Agendamento criado',
   'agendamento.confirmado':      'Agendamento confirmado',
-  'agendamento.check_in':        'Cliente chegou',
+  'agendamento.check_in':        'Check-in feito',
   'agendamento.iniciado':        'Atendimento iniciado',
   'agendamento.concluido':       'Atendimento concluído',
   'agendamento.cancelado':       'Agendamento cancelado',

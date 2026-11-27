@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import { MapaInjetavel } from '@/components/branch/mapa-injetavel'
+import type { ProdutoDoMapa } from '@/lib/injetaveis/medida-do-ponto'
 
 /**
  * Um planejamento aberto, ao lado da lista no desktop e sozinho no celular.
@@ -17,7 +18,7 @@ export function InjetavelAberto({
   mapId:      string
   slug:       string
   basePath:   string
-  produtos:   string[]
+  produtos:   ProdutoDoMapa[]
   podeEditar: boolean
 }) {
   const router = useRouter()

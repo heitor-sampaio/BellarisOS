@@ -458,7 +458,7 @@ export async function chegarEIniciar(
     // A trava do DIA vem antes da pergunta do horário (D10 da 7ª simulação):
     // numa sessão de amanhã, perguntar "Iniciar mesmo assim?" e recusar no
     // clique não servia de nada. É a mesma regra do checkinCore.
-    if (!ehODiaDoAgendamento(ag.scheduled_at, new Date(), ag.fuso)) return { error: 'A chegada só se marca no dia do agendamento.' }
+    if (!ehODiaDoAgendamento(ag.scheduled_at, new Date(), ag.fuso)) return { error: 'O check-in só se faz no dia do agendamento.' }
     // O início adiantado pergunta ANTES da chegada (A32): sem a resposta, nem
     // a chegada se marca — senão ficaria "chegou" sem ter começado.
     // A7 da 29ª: faltando assinar, não pergunta do horário — a chegada se marca
@@ -475,7 +475,7 @@ export async function chegarEIniciar(
     revalidarAgendamento(ctx, appointmentId, slug || null)
 
     const inicio = await startAppointmentInterno(appointmentId, slug, { inicioAdiantadoConfirmado: true })
-    if (inicio.error) return { error: `Chegada registrada, mas o atendimento não começou: ${inicio.error}`, chegou: true }
+    if (inicio.error) return { error: `Check-in feito, mas o atendimento não começou: ${inicio.error}`, chegou: true }
     return {}
   } catch (e) {
     if (e && typeof e === 'object' && 'digest' in e) throw e
@@ -523,7 +523,7 @@ async function startAppointmentInterno(
     const apptBranch = appt?.branches as unknown as { id: string; tenant_id: string } | null
     // A unidade do agendamento ao alcance (`alcancaOAgendamento`: a abrangência).
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId || !alcancaOAgendamento(ctx, apptBranch.id, appt.professional_id as string | null)) return { error: 'Agendamento não encontrado.' }
-    if (appt.status !== 'CONFIRMED' && appt.status !== 'ARRIVED') return { error: 'O cliente precisa estar confirmado ou ter chegado (check-in) antes de iniciar.' }
+    if (appt.status !== 'CONFIRMED' && appt.status !== 'ARRIVED') return { error: 'O cliente precisa estar confirmado ou com o check-in feito antes de iniciar.' }
 
     // A7 da 29ª (princípio 7): o que falta assinar vem ANTES da pergunta do
     // horário — respondida a pergunta, o banco recusaria pelo termo do mesmo jeito.

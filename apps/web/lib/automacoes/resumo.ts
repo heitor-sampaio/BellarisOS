@@ -56,7 +56,7 @@ export function rotuloDaSaida(saida: string): string {
  * nenhuma clínica escreve; o valor que a clínica escreveu passa como está.
  */
 const VALOR_TEXTO: Record<string, string> = {
-  SCHEDULED: 'Agendado', CONFIRMED: 'Confirmado', ARRIVED: 'Chegou', IN_PROGRESS: 'Em atendimento',
+  SCHEDULED: 'Agendado', CONFIRMED: 'Confirmado', ARRIVED: 'Check-in', IN_PROGRESS: 'Em atendimento',
   COMPLETED: 'Concluído', CANCELLED: 'Cancelado', NO_SHOW: 'Não compareceu',
   OPEN: 'Aberta', WON: 'Ganha', LOST: 'Perdida',
 }

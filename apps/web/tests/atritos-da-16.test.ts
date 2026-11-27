@@ -183,8 +183,14 @@ describe('os cadastros da 16ª', () => {
     expect(descontoDoPacote(2000, 1950)).toBeNull()
     expect(ler('components/admin/pacotes-catalogo.tsx')).toContain('descontoDoPacote(')
   })
-  it('A25: com uma unidade, o chip diz o nome da unidade', () => {
-    expect(ler('app/_shared/catalogo-de-procedimentos.tsx')).toMatch(/branchList\.length === 1/)
+  // O Heitor, 27/11 (R30): "A coluna some com uma unidade só (a proposta)" — era o chip com o nome da unidade.
+  // Volta com a segunda; a contagem é a das unidades ativas, a mesma do "Em quais unidades" do cadastro.
+  it('A25: com uma unidade só, a coluna "Unidades" some (e volta com a segunda)', () => {
+    const f = ler('app/_shared/catalogo-de-procedimentos.tsx')
+    expect(f).toMatch(/const comUnidades = !umaUnidadeSo\(branchList\.length\)/)
+    expect(f).toMatch(/colunas\(podeComissao, comUnidades\)/)
+    expect(f).toMatch(/\{comUnidades && \(\s*<td data-label="Unidades"/)
+    expect(f).not.toMatch(/branchList\.length === 1 \? branchList\[0\]!\.name/)
   })
   it('A27: a aba Tags não diz que a tag entra sozinha', () => {
     const f = ler('components/admin/settings-tags.tsx')

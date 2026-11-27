@@ -220,10 +220,15 @@ function valoresSemDesconto(p: PagamentoDoPlano | null, total: number): Record<s
   if (p.forma === 'AVISTA') {
     const vezes = vezesNoCartao(p)
     if (vezes > 1) {
+      // O Heitor, 27/11 (R29): "A frase diz o valor de cada parcela" — "em 3x de R$ 255,00", ou, desiguais,
+      // "em 3x (2x de R$ 283,33 + 1x de R$ 283,34)": a divisão dos recebíveis da operadora (a sobra na última).
+      const valores = dividirEmParcelas(total, vezes, '2026-01-01').map(x => x.amount)
+      const iguais = valorDaParcela(valores) === formatBRL(valores[0] ?? 0)
+      const quanto = iguais ? `de ${formatBRL(valores[0] ?? 0)}` : `(${parcelasEmTexto(total, vezes)})`
       return {
         ...vazio, 'pagamento.metodo': metodo(p.metodo), 'pagamento.parcelas': String(vezes),
-        'pagamento.valor_parcela': valorDaParcela(dividirEmParcelas(total, vezes, '2026-01-01').map(x => x.amount)),
-        'pagamento.forma': `${formatBRL(total)} ${metodo(p.metodo)} em ${vezes}x`,
+        'pagamento.valor_parcela': valorDaParcela(valores),
+        'pagamento.forma': `${formatBRL(total)} ${metodo(p.metodo)} em ${vezes}x ${quanto}`,
       }
     }
     return { ...vazio, 'pagamento.metodo': metodo(p.metodo), 'pagamento.forma': `${formatBRL(total)} à vista, ${metodo(p.metodo)}` }

@@ -41,7 +41,7 @@ import { recusaDaSessaoVazia } from '@/lib/plano-de-tratamento/textos'
 import { planoFechado, RECUSA_DO_PLANO_FECHADO } from '@/lib/plano-de-tratamento/fechado'
 import { EntradaDoCancelamentoProposto, recusaDoCancelamentoSemDinheiro, RECUSA_DO_PLANO_CANCELADO } from '@/lib/plano-de-tratamento/cancelar-proposto'
 import { situacoesDosPlanos, andamentoDosPlanos, type DocumentosDoPlano, type SituacaoDoContrato } from '@/lib/plano-de-tratamento/andamento-do-plano'
-import { SITUACOES_COMERCIAIS, situacaoComercialDoPlano, type SituacaoComercial } from '@/lib/plano-de-tratamento/situacao'
+import { SITUACOES_COMERCIAIS, situacaoComercialDoPlano, contratoFaltaAssinar, type SituacaoComercial } from '@/lib/plano-de-tratamento/situacao'
 
 /**
  * Quem pode o quê, neste arquivo.
@@ -2363,7 +2363,7 @@ export async function getPassosDoPlano(planId: string): Promise<{ passos?: Passo
         status:      plan.status as string,
         situacao:    situacaoComercialDoPlano({
           status: plan.status as string, recebido: a.recebido, documentosAbertos: a.documentos.abertos,
-          contratoFalta: a.contrato === 'NO_PDV' || a.contrato === 'FALTA_ASSINAR',
+          contratoFalta: contratoFaltaAssinar(a.contrato),
         }),
         aceitoEm:    (extra?.aceito_em as string | null) ?? null,
         clienteId:   (plan.client_id as string | null) ?? null,
