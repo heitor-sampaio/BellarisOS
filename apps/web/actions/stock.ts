@@ -16,6 +16,7 @@ import { aplicacoesDoLote as aplicacoesDoLoteCore, type AplicacaoDoLote } from '
 import { unidadeDoInsumo, type UnidadesDoProduto } from '@/lib/estoque/unidade-de-consumo'
 import { notaDaTransferencia, notaDeTransferenciaSemNome } from '@/lib/estoque/transferencia'
 import { partesDoMovimento, type PartesDoMovimento } from '@/lib/estoque/lotes-do-movimento'
+import { idDaVendaDoMovimento } from '@/lib/estoque/venda-do-movimento'
 import { linhasDoEstoqueInicial } from '@/lib/estoque/estoque-inicial'
 
 function str(fd: FormData, key: string) {
@@ -801,6 +802,8 @@ export interface MovimentoDeEstoque {
   perdaSemDesfazer: string | null
   /** C23: o brinde entregue pela fidelidade (o ajuste do voucher) — não é "Ajuste manual". */
   brinde: boolean
+  /** A11 da 35ª (ES-28): a saída de uma venda estornada cujo produto NÃO voltou — é perda "Venda estornada". */
+  vendaEstornadaSemVolta: boolean
   /** A10 da 24ª: o ajuste da "Correção de cadastro" — não é perda. */
   correcao: boolean
   /**
@@ -952,6 +955,15 @@ export async function getProductMovements(
   for (const m of linhas) {
     if (m.type === 'LOSS' && Number(m.quantity) < 0 && !m.desfeita_em && !ultimaPerda.has(m.branch_id)) ultimaPerda.set(m.branch_id, m.id)
   }
+  // A11 da 35ª (ES-28): a venda estornada cujo produto não voltou — a saída dela é perda.
+  const vendasDosMovimentos = [...new Set(linhas.map(idDaVendaDoMovimento).filter(Boolean) as string[])]
+  const estornadasSemVolta = new Set<string>()
+  if (vendasDosMovimentos.length) {
+    const vendas = await ler(admin.from('product_sales').select('id').eq('tenant_id', ctx.tenantId!)
+      .in('id', vendasDosMovimentos).not('estornada_em', 'is', null).eq('produto_voltou', false),
+      'conferir as vendas estornadas') as { id: string }[] | null
+    for (const v of vendas ?? []) estornadasSemVolta.add(v.id)
+  }
   const nota = (m: Row) => {
     if (!m.reference || !notaDeTransferenciaSemNome(m.type, m.notes)) return m.notes
     const outra = outraPerna.get(`${m.reference}|${m.type === 'TRANSFER_OUT' ? 'TRANSFER_IN' : 'TRANSFER_OUT'}`) || null
@@ -992,6 +1004,7 @@ export async function getProductMovements(
       ? 'Só a perda mais nova de cada unidade se desfaz: para desfazer esta, desfaça antes as mais novas desta unidade.'
       : null,
     brinde: m.type === 'MANUAL_ADJUSTMENT' && (m.reference ?? '').startsWith('voucher:'),
+    vendaEstornadaSemVolta: estornadasSemVolta.has(idDaVendaDoMovimento(m) ?? ''),
     correcao: m.type === 'MANUAL_ADJUSTMENT' && m.correcao_de_cadastro === true,
     custoCorrigido: m.custo_corrigido_de != null && m.unit_cost != null
       ? { de: Math.round(Number(m.custo_corrigido_de) * fator * 100) / 100, para: Math.round(Number(m.unit_cost) * fator * 100) / 100, em: m.custo_corrigido_em }

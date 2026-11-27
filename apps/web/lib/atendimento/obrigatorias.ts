@@ -46,6 +46,37 @@ export function faltaNaFichaDoProcedimento(
 }
 
 /**
+ * D7 e A17 da 35ª (FI-07: "contam as perguntas da ficha ATUAL"; PT-12: a
+ * ficha volta a pedir resposta "de outra versão"): a ficha RESPONDIDA numa
+ * versão sem a obrigatória que a rede acrescentou depois está pendente. Os
+ * rótulos das obrigatórias da ficha atual que as respostas gravadas não cobrem
+ * — a conta do Finalizar (`faltaNaAnamnese`), para o app oferecer a ficha e a
+ * aba Prontuário mostrar a pergunta. A nunca respondida (ou vazia) devolve
+ * vazio: essa é a "não respondida" (`avisoDaFichaNaoRespondida`).
+ */
+export function obrigatoriasNovasQueFaltam(rows: AnamnesisRow[], anamnese: AnamneseGeral | null | undefined): string[] {
+  if (!anamneseRespondida(anamnese)) return []
+  return rotulosQueFaltamNaAnamnese(rows, anamnese.respostas)
+}
+
+/**
+ * A15 da 35ª (AT-05, a Decisão E1): na janela do "Finalizar", quem LÊ o
+ * prontuário e não o escreve vê quem preenche a ficha de atendimento — pela
+ * permissão e com os nomes (`quemRespondeAFichaDeSaude`: o Prontuário em
+ * Gerenciar), como a ficha de saúde já dizia (`textoDeQuemRespondeAFicha`).
+ */
+export function textoDeQuemPreencheAFicha(quem: string[] | null | undefined): string {
+  const lista = quem ?? []
+  const nomes = lista.length <= 1 ? (lista[0] ?? '') : `${lista.slice(0, -1).join(', ')} e ${lista[lista.length - 1]}`
+  return `Quem preenche a ficha de atendimento é quem tem o Prontuário em Gerenciar${nomes ? ` (${nomes})` : ''}.`
+}
+
+/** O selo da pendência no cartão da ficha de saúde (A17 da 35ª). */
+export function textoDaPendenciaDaFicha(rotulos: string[]): string {
+  return `Falta responder: ${rotulos.map(r => `"${r}"`).join(', ')}`
+}
+
+/**
  * A faixa da ficha de saúde NUNCA respondida no atendimento (15ª A7;
  * princípios 3 e 7): o "Finalizar" barra pelas obrigatórias dela, e a tela só
  * avisava da ficha vencida. Diz quantas obrigatórias faltam, para responder

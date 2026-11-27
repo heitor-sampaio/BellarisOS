@@ -209,8 +209,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:1097-1098`, `:1122-1127`
 - Antes: AG-126
 
-**AG-39.** A janela do agendamento tem "Trocar profissional" (quem tem a Agenda em Gerenciar; sem o "só os meus", SM1). Só se oferece quem atende na unidade do agendamento e está livre no horário — sem choque, sem bloqueio e dentro do horário dela ali (era "(ocupada)" desligada, e a bloqueada aparecia; a fora do horário aparecia até a R15); ninguém livre, a janela diz "Ninguém está livre nesse horário." e manda remarcar antes; pergunta antes; arrastar para a coluna de outra pessoa também pergunta. O histórico grava a troca.
-- Fonte: o Heitor, 2026-10-28: "a profissional (no que é dela) ou quem gerencia a agenda cancela e passa o atendimento" (o "no que é dela" saiu: o Heitor, 2026-11-23, docs/revisao.md, SM1: "pode tirar, as vistas pessoais resolvem"); só quem está livre: o Heitor, 26/11 (página de perguntas, R13): "Só mostra os horarios, salas e pessoas que estão livres"; o Heitor, 26/11 (página de perguntas, R15): "Não: quem está fora do horário também some das listas (o encaixe só pelo campo de horário)"
+**AG-39.** A janela do agendamento tem "Trocar profissional" (quem tem a Agenda em Gerenciar; sem o "só os meus", SM1). Só se oferece quem atende na unidade do agendamento e está livre no horário — sem choque, sem bloqueio e dentro do horário dela ali (era "(ocupada)" desligada, e a bloqueada aparecia; a fora do horário aparecia até a R15); ninguém livre, a janela diz "Ninguém está livre nesse horário." e manda remarcar antes; pergunta antes; arrastar para a coluna de outra pessoa também pergunta. O histórico grava a troca. A troca não muda a situação: dia e hora ficam, e o Confirmado continua Confirmado (a volta a Agendado da AG-42 é da remarcação).
+- Fonte: o Heitor, 2026-10-28: "a profissional (no que é dela) ou quem gerencia a agenda cancela e passa o atendimento" (o "no que é dela" saiu: o Heitor, 2026-11-23, docs/revisao.md, SM1: "pode tirar, as vistas pessoais resolvem"); só quem está livre: o Heitor, 26/11 (página de perguntas, R13): "Só mostra os horarios, salas e pessoas que estão livres"; o Heitor, 26/11 (página de perguntas, R15): "Não: quem está fora do horário também some das listas (o encaixe só pelo campo de horário)"; a situação que fica: decisão do Claude, 27/11 (35ª, Decisão A3), pela AG-42, que é da remarcação
 - Onde: `docs/regras/atendimento.md:596-615`
 - Antes: AG-84
 
@@ -348,8 +348,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:357-361`
 - Antes: AG-55
 
-**AG-64.** Desmarcar "Segue o horário da unidade" parte do horário da unidade da pessoa; quem é da rede parte da unidade quando a rede tem uma só e, com várias, da união dos horários delas.
-- Fonte: princípio 4
+**AG-64.** Desmarcar "Segue o horário da unidade" parte do horário da unidade da pessoa; quem é da rede parte da unidade quando a rede tem uma só e, com várias, da união dos horários delas. A união é só esse ponto de partida: em cada unidade, para quem é da rede, vale o horário daquela unidade (com horário próprio, o dela dentro dele: AG-10); fora dele, é encaixe (AG-04).
+- Fonte: princípio 4; o horário de cada unidade para quem é da rede: decisão do Claude, 27/11 (35ª, Decisão B1), pela AG-10
 - Onde: `docs/regras/atendimento.md:70-77`
 - Antes: AG-11
 
@@ -403,8 +403,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:1425-1431`
 - Antes: AG-103
 
-**AT-03.** O registro clínico do atendimento (evolução, fotos, ficha de saúde, ficha de atendimento, dores, intercorrência) pede o Prontuário em Gerenciar, e só ele: sem precisar atender nem do Atendimento (UM4). Quem tem só o Atendimento em Gerenciar inicia e conclui, mas a tela não mostra os campos clínicos e nada clínico se grava; ela também não vê nem recebe a ficha de saúde. A obrigatória em branco a barra como a qualquer um, e a recusa diz quem pode responder (com os nomes) ou que a cliente responde pelo app ou pelo link.
-- Fonte: decisão do Claude; o clínico só com o Prontuário em Gerenciar: recomendação do Claude aprovada pelo Heitor, 2026-11-23 (docs/revisao.md, UM4): "concordo, pode anotar, marcar as questões e ajustar o codigo"
+**AT-03.** O registro clínico do atendimento (evolução, fotos, ficha de saúde, ficha de atendimento, dores, intercorrência) pede o Prontuário em Gerenciar, e só ele: sem precisar atender nem do Atendimento (UM4). Quem tem só o Atendimento em Gerenciar inicia e conclui, mas a tela não mostra os campos clínicos e nada clínico se grava; ela também não vê nem recebe a ficha de saúde. A obrigatória em branco a barra como a qualquer um, e a recusa diz quem pode responder (com os nomes) ou que a cliente responde pelo app ou pelo link. Na ficha de saúde e na de atendimento, a tela diz isso antes do "Confirmar conclusão" (AT-05): quem responde ou preenche, pela permissão e com os nomes.
+- Fonte: decisão do Claude; o clínico só com o Prontuário em Gerenciar: recomendação do Claude aprovada pelo Heitor, 2026-11-23 (docs/revisao.md, UM4): "concordo, pode anotar, marcar as questões e ajustar o codigo"; o aviso antes do Confirmar, nas duas fichas: decisão do Claude, 27/11 (35ª, Decisão E1), pela AT-05
 - Onde: `docs/regras/atendimento.md:1416-1422`, `:1926`, `:3311`, `:3586`
 - Antes: AT-03, AG-102, PT-03
 
@@ -587,8 +587,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/revisao.md:1029`, `docs/revisao.md:2014`
 - Antes: PL-15
 
-**PL-15.** O plano fechado (aceito, concluído, cancelado ou recusado) não se altera nem volta a rascunho ("Este plano já foi fechado e não pode mais ser alterado."). O plano se grava inteiro ou nada.
-- Fonte: decisão do Claude
+**PL-15.** O plano fechado (aceito, concluído, cancelado ou recusado) não se altera nem volta a rascunho ("Este plano já foi fechado e não pode mais ser alterado."). O plano se grava inteiro ou nada. Para mudar o plano aceito, cancela-se (DP-08 de Vendas e financeiro: o usado fica, e o resto volta como crédito interno ou estorno, à escolha de quem cancela) e monta-se outro, que esse crédito pode pagar; não há "editar o aceito".
+- Fonte: decisão do Claude; o plano aceito que muda: decisão do Claude, 27/11 (35ª, Decisão A1), pela própria PL-15 e pela DP-09 de Vendas e financeiro
 - Onde: `docs/regras/atendimento.md:1562-1572`
 - Antes: PC-18
 
@@ -607,7 +607,7 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:1286-1298`, `:2402`
 - Antes: AG-147
 
-**PL-19.** No app, a cliente vê tudo do plano (só os dela; o proposto com as sessões, o valor, a validade e "Aceitar o plano"; o aceito com cada sessão e a situação, os pagamentos — "Pago R$ X", "A pagar R$ Y" — e os documentos) e agenda as sessões em aberto. O título é o nome que a rede deu ao plano. Nada clínico vai ao app, nem a anotação de quem atende.
+**PL-19.** No app, a cliente vê tudo do plano (só os dela; o proposto com as sessões, o valor, a validade e "Aceitar o plano"; o aceito com cada sessão e a situação, os pagamentos — "Pago R$ X", "A pagar R$ Y" — e os documentos) e agenda as sessões em aberto. O título é o nome que a rede deu ao plano. Nada clínico vai ao app, nem a anotação de quem atende. O "Pago R$ X" conta o crédito interno que pagou o plano (DP-03 de Vendas e financeiro; decisão do Claude, 27/11, 35ª D3).
 - Fonte: o Heitor, 13/11: "pt3, a cliente ve tudo sobre o plano, o plano em si, pagamentos, sessoes abertas e realizadas, documentos assinados e também pode agendar sessões em aberto." e "PT3 isso, se for uma sessão de plano ou pacote, pode agendar."
 - Onde: `docs/regras/atendimento.md:1052-1068`, `:1319-1327`, `docs/revisao.md:979`, `docs/revisao.md:1005`, `docs/revisao.md:2018`
 - Antes: PL-20, AG-182, AG-183
@@ -766,7 +766,7 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:1707`, `:1816`, `:1838`, `:1856`, `:3524`, `:3541`, `:3557`, `:3581`, `:3821`, `:4294-4297`
 - Antes: AT-27, AT-29, AT-32, FI-05, FI-26; antes de 26/11: na avaliação, o cartão de leitura deixava chegar ao "Confirmar conclusão", e só o servidor recusava
 
-**FI-08.** A ficha de saúde tem validade, da rede (padrão 6 meses). A validade é o que a rede digita, de 1 mês para cima: acima de 36 meses a tela avisa ("Acima do comum (mais de 36 meses). Confira: o valor vale como está.") e o valor vale; só se recusa o zero, o negativo, o fracionário e o que passa de 1.200 meses (100 anos). Dentro dela, a cliente só confirma ("algo mudou?"), e confirmar renova a data; fora dela, ou sem resposta, responde a ficha inteira. A ficha vencida continua valendo, e o atendimento avisa a quem vê o prontuário ("…está vencida… Ela continua valendo; peça a atualização."); a nunca respondida também avisa, com "Responder aqui" e "Enviar o link". O "Enviar o link" aparece a quem tem a Agenda em Gerenciar (a regra do "Enviar a ficha", FI-14), atenda ou não (AG-69).
+**FI-08.** A ficha de saúde tem validade, da rede (padrão 6 meses). A validade é o que a rede digita, de 1 mês para cima: acima de 36 meses a tela avisa ("Acima do comum (mais de 36 meses). Confira: o valor vale como está.") e o valor vale; só se recusa o zero, o negativo, o fracionário e o que passa de 1.200 meses (100 anos). Dentro dela, a cliente só confirma ("algo mudou?"), e confirmar renova a data; fora dela, ou sem resposta, responde a ficha inteira. A ficha vencida continua valendo, e o atendimento avisa a quem vê o prontuário ("…está vencida… Ela continua valendo; peça a atualização."); a nunca respondida também avisa, com "Responder aqui" e "Enviar o link". A ficha respondida numa versão que não tinha uma pergunta obrigatória de agora conta como pendente, mesmo dentro da validade: o app oferece a ficha inteira, já preenchida com as respostas de antes, e a aba Prontuário e o atendimento mostram "Falta responder: …" (decisão do Claude, 27/11, 35ª D7/A17). O "Enviar o link" aparece a quem tem a Agenda em Gerenciar (a regra do "Enviar a ficha", FI-14), atenda ou não (AG-69).
 - Fonte: o Heitor, 2026-11-02: "mantém como está mas com aviso de que a ficha de saúde está vencida"; o "Enviar o link" atenda ou não: decisão do Claude, 25/11 (o Heitor revisa), pela UM5 (AG-69; D11 da 29ª simulação); a validade acima de 36 meses avisa e grava: o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito."; o impossível (negativo, fracionário, acima de 100 anos): decisão do Claude, 25/11 (o aviso começa no teto de antes)
 - Onde: `docs/regras/atendimento.md:1739`, `:1744`, `:3562`, `:3572`, `:3699-3707`, `docs/revisao.md:1226`; `apps/web/lib/configuracoes/prazos-da-rede.ts`; `apps/web/tests/prazos-da-rede-acima-do-comum.test.ts`
 - Antes: FI-12, AT-30, AT-31

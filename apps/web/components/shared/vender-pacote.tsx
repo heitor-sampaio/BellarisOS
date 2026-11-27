@@ -76,6 +76,8 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
   const [contrato, setContrato] = useState<ContratoParaAssinar | null>(null)
   const [assinando, setAssinando] = useState<DocumentoNaTela | null>(null)
   const [contratoAssinado, setContratoAssinado] = useState(false)
+  // D14 da 35ª: de volta da assinatura, o servidor confere — o pedido do contrato não volta à tela enquanto isso.
+  const [conferindo, setConferindo] = useState(false)
   // A14 da 26ª: vendido, o formulário sai da tela (era o "Vender por" preenchido depois do contrato).
   const [registrada, setRegistrada] = useState<string | null>(null)
   const [docsDaVenda, setDocsDaVenda] = useState<DocumentoDaVenda[]>([])
@@ -129,8 +131,11 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
   /** De volta da assinatura: assinado, é vender; senão, o contrato segue à vista. */
   function voltarDoContrato(id: string) {
     setAssinando(null)
+    setConferindo(true)
     iniciar(async () => {
       const r = await documentoParaAssinar(id)
+      setConferindo(false)
+      if (r.error) { setErro(r.error); return }
       if (r.doc?.status === 'ASSINADO') { setContrato(null); setContratoAssinado(true) }
     })
   }
@@ -301,7 +306,12 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
         )}
       </div>
       {/* PC2 (auditoria de 2026-11-18): "primeiro colhe assinatura, depois paga" — o contrato do pacote antes do dinheiro. */}
-      {contrato && (
+      {conferindo && (
+        <p data-conferindo-a-assinatura role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+          Conferindo a assinatura…
+        </p>
+      )}
+      {contrato && !conferindo && (
         <div data-contrato-antes-de-vender={contrato.id} role="note" style={{
           display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px', borderRadius: 'var(--radius-field-token)',
           background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-border)',

@@ -44,12 +44,13 @@ import {
 import { documentosDoMomento } from '@/lib/documentos/momento'
 import { notifyClient } from '@/lib/notifications/notify'
 import { documentoParaExibir, resumirDocumentos, type ResumoDeDocumento } from '@/lib/documentos/leitura'
-import { vezesNoCartao, maquininhaDoPagamento, type PagamentoDoPlano } from '@/lib/checkout/pagamento'
+import { vezesNoCartao, maquininhaDoPagamento } from '@/lib/checkout/pagamento'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { ROTULO_DO_EVENTO, ROTULO_DO_CANAL } from '@/lib/documentos/situacao'
 import { precosDoPlano, descontoDoPlano } from '@/lib/checkout/desconto-do-plano'
 import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto } from '@/lib/vendas/desconto'
 import { recusaDaEntradaDoPagamento } from '@/lib/checkout/lancamentos'
+import { pagamentoValido } from '@/lib/checkout/pagamento-valido'
 import type { DocumentoNaTela } from '@/components/shared/tela-de-assinatura'
 import type { TenantContext } from '@estetica-os/types'
 import { mensagemDoLink } from '@/lib/saudacao'
@@ -227,24 +228,6 @@ export async function marcarAssinadoEmPapel(formData: FormData): Promise<Resulta
 
 // ─── Checkout do plano ───────────────────────────────────────────────────────
 
-/** O pagamento que veio do navegador tem a forma de um pagamento? */
-function pagamentoValido(p: unknown): p is PagamentoDoPlano | null {
-  if (p === null) return true
-  if (!p || typeof p !== 'object') return false
-  const x = p as Record<string, unknown>
-  const texto = (v: unknown) => typeof v === 'string' && v.length <= 40
-  const data = (v: unknown) => typeof v === 'string' && !Number.isNaN(Date.parse(v))
-  switch (x.forma) {
-    case 'AVISTA':    return texto(x.metodo)
-    case 'A_RECEBER': return (x.metodo === null || texto(x.metodo)) && (x.vencimento === null || data(x.vencimento))
-    // A forma só (o limite da rede vem depois, `recusaDasParcelasDaRede`): o 48
-    // daqui recusava o crediário que a rede faz em 60 (princípio 2, CR-02).
-    case 'PARCELADO': return texto(x.metodo) && Number.isFinite(x.entrada) && (x.entrada as number) >= 0
-      && Number.isInteger(x.parcelas) && (x.parcelas as number) >= 1 && (x.parcelas as number) <= TETO_DO_CREDIARIO && data(x.primeiroVencimento)
-    default:          return false
-  }
-}
-
 /**
  * Os documentos do fechamento do plano, com o pagamento escolhido: um termo
  * por procedimento e o contrato de plano. Quem pode fechar o plano (prontuário
@@ -268,7 +251,7 @@ export async function prepararDocumentosDoCheckout(
   try {
     const ctx = await getTenantContext()
     if (!can(ctx, 'medical_records', 'MANAGE') && !podeReceber(ctx)) throw semAcesso()
-    if (!pagamentoValido(pagamento)) return { error: 'Forma de pagamento inválida.' }
+    if (!pagamentoValido(pagamento, TETO_DO_CREDIARIO)) return { error: 'Forma de pagamento inválida.' }
     // Até quantas vezes a clínica parcela no crédito (D-15): o servidor recusa acima.
     const recusaDasVezes = await recusaDasVezesDaRede(ctx.tenantId!, vezesNoCartao(pagamento), maquininhaDoPagamento(pagamento))
     if (recusaDasVezes) return { error: recusaDasVezes }
@@ -332,7 +315,7 @@ export async function definirPagamentoDoContrato(
   try {
     const ctx = await getTenantContext()
     assertColheOsDocumentos(ctx)
-    if (!pagamentoValido(pagamento)) return { error: 'Forma de pagamento inválida.' }
+    if (!pagamentoValido(pagamento, TETO_DO_CREDIARIO)) return { error: 'Forma de pagamento inválida.' }
     // Até quantas vezes a clínica parcela no crédito (D-15): o servidor recusa acima.
     const recusaDasVezes = await recusaDasVezesDaRede(ctx.tenantId!, vezesNoCartao(pagamento), maquininhaDoPagamento(pagamento))
     if (recusaDasVezes) return { error: recusaDasVezes }

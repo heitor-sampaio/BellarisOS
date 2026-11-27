@@ -9,6 +9,7 @@ import { createRole, updateRole, deleteRole, duplicarCargo } from '@/actions/rol
 import { saveRolePermissions } from '@/actions/permissions'
 import { cargoEscolhido, cargoPedidoPeloEndereco, comOsCriados } from '@/lib/cargos/cargo-escolhido'
 import { acessosDoSalvo, resumoDoCargo } from '@/lib/cargos/acessos-salvos'
+import { rotuloDosRelatorios } from '@/lib/cargos/relatorios-no-resumo'
 import {
   ALL_MODULES, MODULOS_DO_CARGO, MODULE_LABELS, MODULE_HINTS, MODULE_LEVELS, LEVEL_LABELS,
   ALL_REPORT_TABS, REPORT_TAB_LABELS, REPORT_TAB_HINTS, abasQueValem, motivoDaAbaFechada, nivelAceito,
@@ -1023,8 +1024,11 @@ function MenuPreview({ levels, reportTabs, foraDoPlano }: { levels: Levels; repo
   // A7 da 7ª simulação: "Configurações" sem Configurações em Gerenciar é só a
   // aba dos outros módulos (o Financeiro, só Comissões e taxas) — o resumo diz.
   const gerencia = (m: AppModule) => permissions[m] === 'MANAGE'
+  // A9 da 35ª: e "Relatórios" diz quais abas abrem (princípio 3).
+  const relatorios = rotuloDosRelatorios(reportTabs)
   const comAbas = (abas: Parameters<typeof rotuloDasAbasAlcancadas>[0]) => (rotulo: string) =>
-    rotulo === 'Configurações' ? (rotuloDasAbasAlcancadas(abas, gerencia) ?? rotulo) : rotulo
+    rotulo === 'Configurações' ? (rotuloDasAbasAlcancadas(abas, gerencia) ?? rotulo)
+      : rotulo === 'Relatórios' ? relatorios : rotulo
   // A-CONF1 da 25ª: o cargo editável nunca é o de Admin da rede — sem aba que a pessoa use, Configurações
   // não aparece (a configuração da rede toda é só da Admin da rede, CLAUDE.md §11).
   const semConfiguracoes = soLeriaAsConfiguracoes(permissions, false)

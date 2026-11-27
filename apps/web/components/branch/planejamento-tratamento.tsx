@@ -309,6 +309,7 @@ export function PlanejamentoTratamento({
     if (termo.trim().length < 2) { setAchados([]); return }
     const res = await buscarClientesParaPlano(termo)
     if (termoRef.current !== termo) return
+    if (res.error) setErro(res.error)
     setAchados(res.clientes)
   }
 

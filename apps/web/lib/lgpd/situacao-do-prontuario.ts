@@ -23,7 +23,10 @@ export function oQueOPedidoLeva(incluiProntuario: boolean): string {
   return incluiProntuario ? 'com o prontuário' : 'sem o prontuário'
 }
 
-export function textoDoProntuarioForaDoPacote(situacao: SituacaoDoProntuario): { json: string; pdf: string[] } {
+/** Quem gerou o pacote: a equipe, pela ficha (LG-10), e não um pedido da cliente. */
+export interface OrigemDoPacote { pelaEquipe?: boolean }
+
+export function textoDoProntuarioForaDoPacote(situacao: SituacaoDoProntuario, o: OrigemDoPacote = {}): { json: string; pdf: string[] } {
   if (situacao === 'pending') {
     return {
       json: 'Pedido — em análise pela equipe. Quando ela liberar, um pacote novo é preparado com o prontuário.',
@@ -39,6 +42,14 @@ export function textoDoProntuarioForaDoPacote(situacao: SituacaoDoProntuario): {
         'Você pediu também o prontuário, e a equipe não o liberou nesta',
         'solicitação. Para saber o motivo, procure a unidade onde você é atendido.',
       ],
+    }
+  }
+  // D10 da 35ª (LG-07, LG-10): a equipe gerou o pacote pela ficha sem o
+  // prontuário — a cliente não pediu nada, e "faça um novo pedido" não cabe.
+  if (o.pelaEquipe) {
+    return {
+      json: 'Não incluído: o pacote foi gerado pela equipe sem o prontuário.',
+      pdf: [`Este pacote foi gerado pela equipe sem o prontuário (${CONTEUDO_DO_PRONTUARIO}).`],
     }
   }
   // D18 da 31ª (LG-07: o pacote diz por quê): não pedido é escolha da pessoa,
@@ -57,11 +68,11 @@ export function textoDoProntuarioForaDoPacote(situacao: SituacaoDoProntuario): {
  * `incluiProntuario: false` antes da liberação, e o pedido parecia ignorado.
  * Vai ao lado do `incluiProntuario` em `solicitacao` (`lib/lgpd/export.ts`).
  */
-export function prontuarioNaSolicitacao(situacao: SituacaoDoProntuario, incluido: boolean): string {
+export function prontuarioNaSolicitacao(situacao: SituacaoDoProntuario, incluido: boolean, o: OrigemDoPacote = {}): string {
   if (incluido || situacao === 'approved') return 'pedido — liberado e incluído neste pacote'
   if (situacao === 'pending') return 'pedido — pendente de liberação pela equipe'
   if (situacao === 'denied') return 'pedido — não liberado pela equipe'
-  return 'não pedido'
+  return o.pelaEquipe ? 'gerado pela equipe sem o prontuário' : 'não pedido'
 }
 
 /**

@@ -538,7 +538,8 @@
     produto estornada cujo produto NÃO voltou também é perda ali
     (`VENDA_ESTORNADA`, "Venda estornada (não voltou)" — decisão do Claude
     na F3, pelos princípios; a H2 de 01/11 pediu só a pergunta "houve
-    devolução?").
+    devolução?"), com o lote de onde a venda saiu (o movimento da venda —
+    A11 da 35ª, `20261214200001`).
     **E o ajuste de inventário que contou a MENOS** (`INVENTARIO`,
     "Inventário" — D5 da 10ª, 2026-11-10; migration `20261110004903`): o
     movimento `MANUAL_ADJUSTMENT` negativo, ao custo do lote de onde saiu (os

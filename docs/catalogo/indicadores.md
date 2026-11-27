@@ -462,8 +462,8 @@ Este é o catálogo das regras dos indicadores que valem HOJE: todo número na t
 - Onde: `docs/regras/indicadores.md:1170-1178`
 - Antes: KE-01
 
-**FO-06.** O comparecimento da aba Oportunidades conta só os agendamentos (não cancelados) cujo horário já passou: o agendamento de amanhã não entra como falta. Sem nenhum que já devia ter acontecido, a tela mostra "—", não 0%.
-- Fonte: princípio 4
+**FO-06.** O comparecimento da aba Oportunidades conta só os agendamentos (não cancelados) cujo horário já passou: o agendamento de amanhã não entra como falta. Sem nenhum que já devia ter acontecido, a tela mostra "—", não 0%. O "Agendados pelo comercial" conta todo agendamento de origem comercial (AG-17 do Atendimento) do período, inclusive o cancelado depois: é o trabalho do comercial; o que aconteceu é o comparecimento.
+- Fonte: princípio 4; o que conta "Agendados pelo comercial": decisão do Claude, 27/11 (35ª, Decisão C4), pela AG-17
 - Onde: `docs/regras/indicadores.md:1180-1184`
 - Antes: KE-02
 

@@ -21,8 +21,9 @@ import { lerEmAndamento } from '@/lib/agenda/ler-em-andamento'
 import { EmAndamentoAgora } from '@/components/shared/em-andamento-agora'
 import {
   getCachedBranchBySlug, getCachedBranchProcedures,
-  getCachedBranchProfessionals, getCachedRoomsByBranch, filtroDeQuemAtendeNaUnidade, getCachedNetworkBranches,
+  getCachedBranchProfessionals, getCachedRoomsByBranch, filtroDeQuemAtendeNaUnidade,
 } from '@/lib/cached-queries'
+import { unidadesParaLer, nomeNaTela } from '@/lib/unidades/da-tela'
 import { MeusAtendimentosEmOutrasUnidades } from '@/components/branch/meus-de-outras-unidades'
 import { quemConcluiOAtendimento } from '@/lib/equipe/quem-desfaz'
 import { filtrosDaAgenda, aplicarFiltrosDaAgenda, SEM_FILTRO } from '@/lib/agenda/filtros'
@@ -143,6 +144,12 @@ export default async function AgendaPage({ params, searchParams }: {
   const idsDosProfissionais = professionalOnly
     ? (ctx.internalUserId ? [ctx.internalUserId] : [])
     : Object.keys(horariosDosProfissionais)
+  // Os nomes das unidades (D9 da 35ª; UN-13, CLAUDE.md §14): as de LEITURA —
+  // a desativada com o que ficou, ou com movimento na janela, leva o selo; o
+  // "outra unidade" fica só para a fora do alcance. (A leitura é memorizada
+  // na requisição: `todasDaRede` e `desativadaComAlgo` são `cache`.)
+  const nomesParaLer = async () => new Map((await unidadesParaLer(ctx.tenantId!, { periodo: { de: new Date(from), ate: new Date(to) } }))
+    .map(u => [u.id, nomeNaTela(u)] as const))
   const ocupadoFora: Record<string, BlocoOcupado[]> = {}
   if (idsDosProfissionais.length) {
     const fora = await lerTodas((de, ate) => createAdminClient().from('appointments')
@@ -154,9 +161,7 @@ export default async function AgendaPage({ params, searchParams }: {
       .lte('scheduled_at', to)
       .order('scheduled_at').order('id').range(de, ate), 'carregar a agenda dos profissionais nas outras unidades')
     // A unidade de cada um (A9 da 13ª): a base da ocupação diz onde ela está.
-    const nomes = (fora ?? []).length
-      ? new Map(((await getCachedNetworkBranches(ctx.tenantId!)) as { id: string; name: string }[]).map(b => [b.id, b.name]))
-      : new Map<string, string>()
+    const nomes = (fora ?? []).length ? await nomesParaLer() : new Map<string, string>()
     for (const a of (fora ?? []) as { professional_id: string; scheduled_at: string; duration_min: number; branch_id: string }[]) {
       // A13 da 16ª: a agenda de uma unidade fora do alcance não se cita pelo nome.
       (ocupadoFora[a.professional_id] ??= []).push({ inicio: a.scheduled_at, minutos: a.duration_min, onde: alcancaUnidade(ctx, a.branch_id) ? (nomes.get(a.branch_id) ?? 'outra unidade') : 'outra unidade' })
@@ -181,8 +186,8 @@ export default async function AgendaPage({ params, searchParams }: {
         .or(podemOcuparDesde(new Date(from).getTime())).lte('scheduled_at', to), { ...filtros, profissional: null })
         .order('scheduled_at').order('id').range(de, ate), 'carregar os meus agendamentos nas outras unidades')) ?? [])
     : []
-  const unidadesDaRede = meusDeFora.length ? (await getCachedNetworkBranches(ctx.tenantId!)) as { id: string; name: string; slug: string }[] : []
-  const nomeDaUnidade = new Map(unidadesDaRede.map(b => [b.id, b.name]))
+  const unidadesDaRede = meusDeFora.length ? await unidadesParaLer(ctx.tenantId!, { periodo: { de: new Date(from), ate: new Date(to) } }) : []
+  const nomeDaUnidade = new Map(unidadesDaRede.map(b => [b.id, nomeNaTela(b)]))
   // 26ª (D3): o fuso da unidade de cada um de fora — a hora do cartão sai no relógio dela.
   const fusosDeFora: Record<string, string> = meusDeFora.length ? await fusosDasUnidades(ctx.tenantId) : {}
   // D10 da 9ª: quem é da rede abre o atendimento no endereço da unidade DELE

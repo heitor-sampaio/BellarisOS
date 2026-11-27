@@ -1,4 +1,6 @@
 import { anamneseRespondida, type AnamneseGeral } from '@/lib/anamnese-geral'
+import type { AnamnesisRow } from '@/lib/anamnesis'
+import { obrigatoriasNovasQueFaltam } from '@/lib/atendimento/obrigatorias'
 
 /**
  * Em que modo o link da ficha de saúde abre, depois da identidade (FI-13). Puro.
@@ -23,4 +25,17 @@ export function modoDaFichaPeloLink({ conferir, modoDoPendente, atual }: {
   if (conferir) return 'CONFERIR'
   if (modoDoPendente !== 'CONFIRMAR') return 'COMPLETO'
   return atual.origem === 'EQUIPE' || atual.origem === 'LEGADO' ? 'CONFERIR' : 'CONFIRMAR'
+}
+
+/**
+ * D7 da 35ª (PT-12, FI-07): o pendente "algo mudou?" (CONFIRMAR, aberto dentro
+ * da validade) de quem respondeu numa versão SEM a obrigatória que a rede
+ * acrescentou depois pede a ficha inteira (COMPLETO), já preenchida com as de
+ * antes — "Nada mudou" não responde a pergunta nova. `rows`: as perguntas que o
+ * pendente pede (a ficha atual); a conta é a do Finalizar (`obrigatoriasNovasQueFaltam`).
+ */
+export function modoDoPendentePelaFichaAtual(
+  modo: 'COMPLETO' | 'CONFIRMAR', rows: AnamnesisRow[], atual: AnamneseGeral | null,
+): 'COMPLETO' | 'CONFIRMAR' {
+  return modo === 'CONFIRMAR' && obrigatoriasNovasQueFaltam(rows, atual).length > 0 ? 'COMPLETO' : modo
 }

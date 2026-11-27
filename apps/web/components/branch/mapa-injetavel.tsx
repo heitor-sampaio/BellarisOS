@@ -356,6 +356,7 @@ function BuscaDeCliente({ onEscolher }: { onEscolher: (id: string, nome: string)
   const [termo,   setTermo]   = useState('')
   const [achados, setAchados] = useState<{ id: string; name: string; phone: string | null }[]>([])
   const [buscando, setBuscando] = useState(false)
+  const [erroDaBusca, setErroDaBusca] = useState<string | null>(null)
 
   useEffect(() => {
     let vivo = true
@@ -363,7 +364,7 @@ function BuscaDeCliente({ onEscolher }: { onEscolher: (id: string, nome: string)
       if (termo.trim().length < 2) { setAchados([]); return }
       setBuscando(true)
       const res = await buscarClientesParaPlano(termo)
-      if (vivo) { setAchados(res.clientes); setBuscando(false) }
+      if (vivo) { setAchados(res.clientes); setErroDaBusca(res.error ?? null); setBuscando(false) }
     }, 250)
     return () => { vivo = false; clearTimeout(t) }
   }, [termo])
@@ -386,6 +387,7 @@ function BuscaDeCliente({ onEscolher }: { onEscolher: (id: string, nome: string)
         />
       </div>
       {buscando && <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>Procurando…</span>}
+      {erroDaBusca && !buscando && <span role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)' }}>{erroDaBusca}</span>}
       {achados.map(c => (
         <button key={c.id} type="button" onClick={() => onEscolher(c.id, c.name)}
           style={{

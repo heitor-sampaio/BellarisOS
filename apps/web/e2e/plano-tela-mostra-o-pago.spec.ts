@@ -106,3 +106,29 @@ test('o plano fechado mostra o recebido, as parcelas e as sessões feitas — e 
     await expect(p.getByText('O que estiver em aberto é recebido no check-in')).toHaveCount(0)
   })
 })
+
+// D3 da 35ª (PL-19, princípio 3): o plano pago com crédito interno e Pix diz o
+// pago inteiro — o crédito pagou o plano (a receita segue sem ele: CI-03, VE-05).
+test('D3: o plano pago com crédito interno e Pix tem o recebido inteiro (R$ 910, não R$ 50)', async () => {
+  const cliente = await rede!.criarCliente('Plano com crédito')
+  const { data: pl, error } = await db().from('treatment_plans').insert({
+    branch_id: rede!.branchId, professional_id: rede!.professionalId, client_id: cliente,
+    status: 'ACCEPTED', name: `[e2e] Plano com crédito ${marca}`,
+  }).select('id').single<{ id: string }>()
+  expect(error).toBeNull()
+  const { data: s, error: eS } = await db().from('treatment_plan_sessions').insert({ plan_id: pl!.id, sort_order: 0 }).select('id').single<{ id: string }>()
+  expect(eS).toBeNull()
+  expect((await db().from('treatment_plan_session_procedures').insert({ session_id: s!.id, procedure_id: rede!.procedureId, price: 910 })).error).toBeNull()
+  // O saldo que o cancelamento do plano anterior devolveu (o banco recusa o crédito interno sem saldo).
+  expect((await db().from('internal_credits').insert({ client_id: cliente, branch_id: rede!.branchId, amount: 860, description: '[e2e] Crédito do plano cancelado' })).error).toBeNull()
+  const lanc = { branch_id: rede!.branchId, client_id: cliente, treatment_plan_id: pl!.id, type: 'INCOME', category: 'Serviços', created_by: 'e2e', is_paid: true, paid_at: new Date().toISOString() }
+  expect((await db().from('financial_transactions').insert([
+    { ...lanc, description: '[e2e] Plano — crédito interno', amount: 860, payment_method: 'INTERNAL_CREDIT' },
+    { ...lanc, description: '[e2e] Plano — Pix', amount: 50, payment_method: 'PIX' },
+  ])).error).toBeNull()
+  const { data: fin, error: eF } = await db().rpc('metrics_financeiro_do_plano', { p_tenant: rede!.tenantId, p_plan: pl!.id }).single<{ valor: number; recebido: number; a_receber: number }>()
+  expect(eF).toBeNull()
+  expect(Number(fin!.valor)).toBe(910)
+  expect(Number(fin!.recebido)).toBe(910)
+  expect(Number(fin!.a_receber)).toBe(0)
+})

@@ -442,7 +442,8 @@ export default async function AdminDashboardPage({
   // Renomeado de "ocupação": o denominador é o total marcado, não a
   // capacidade instalada. É taxa de comparecimento, e o rótulo agora diz isso.
   const branchOccupancy = branchMetrics.filter(b => b.isActive || b.revenueCash || b.revenuePending || b.expensesCash || b.appointmentsTotal).map(b => ({
-    name:         b.branchName,
+    // D13 da 35ª (UN-13): o selo da desativada, como o "Por unidade".
+    name:         nomeNaTela({ name: b.branchName, ativa: b.isActive }),
     slug:         b.branchSlug,
     completed:    b.appointmentsCompleted,
     cancelled:    b.appointmentsCancelled,
@@ -551,7 +552,8 @@ export default async function AdminDashboardPage({
   // no browser para não bloquear o SSR do dashboard.
   const hotmapRawBranches = branches.map(b => ({
     id:      b.id as string,
-    name:    b.name as string,
+    // D13 da 35ª (UN-13): o selo da desativada no mapa também.
+    name:    nomeNaTela(b),
     slug:    b.slug as string,
     cityKey: [b.city, b.state].filter(Boolean).join(', '),
     // D15: a unidade pelo CEP dela (duas na mesma cidade caíam no mesmo ponto).

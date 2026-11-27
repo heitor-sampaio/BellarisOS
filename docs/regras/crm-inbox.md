@@ -567,7 +567,8 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   oportunidades da cliente; sem o CRM (ou sem as oportunidades no plano) a aba some; e a leitura que
   falha diz "Não consegui ler as oportunidades desta cliente." em vez de "Nenhuma oportunidade"
   (`oportunidadesDoCliente`, `lib/crm/oportunidades-do-cliente.ts`). Prova:
-  `tests/crm-varredura-de-18-11.test.ts`.
+  `tests/crm-varredura-de-18-11.test.ts`. A lista vazia diz só "Nenhuma oportunidade." (A6 da
+  35ª, princípio 7: mandava abrir uma "pela conversa no Inbox", também na rede sem WhatsApp).
 - **A ficha abre também com o Prontuário em Ver, sem o Clientes — só na aba Prontuário** (o clínico
   é do Prontuário: CLAUDE.md §11, "cada passo do atendimento, um módulo", o Heitor, 2026-11-23; a
   forma é decisão do Claude, 25/11, no arremate da 28ª). As duas fichas travam por `assertAbreAFicha`
@@ -1814,7 +1815,11 @@ inteiro (`crm_sinais_do_quadro`, só `service_role`; `lib/crm/sinais-do-card.ts`
   `leads.retornar_em`) e "O que fazer no retorno" (`retornar_obs`), no "Nova
   oportunidade" e na edição (`diaDoRetorno`, `lib/crm/retorno.ts`) — e o quadro diz
   "Retornar 12/11", "Retornar hoje" (aviso) ou "Retorno atrasado (10/11)"
-  (`[data-retornar-em]`, `textoDoRetorno`). No dia, o cron `crm-lembretes` (de
+  (`[data-retornar-em]`, `textoDoRetorno`). **No card ganho ou perdido, o dia
+  sem destaque** ("Retornar 27/11", nem "hoje" nem "atrasado": esse card não
+  avisa no sino — A7 da 35ª, Decisão C2, decisão do Claude, 27/11, pelo
+  princípio 3; `retornoNoCard`, com o desfecho da etapa do card; prova
+  `tests/crm-retorno-no-card-fechado-e-aba-vazia.test.ts`). No dia, o cron `crm-lembretes` (de
   hora em hora) avisa o RESPONSÁVEL no sino: "Retorno de hoje: X" a partir das
   7h de Brasília (o de madrugada tocaria o celular), ou "Retorno atrasado: X
   (10/11)" — e o texto do atrasado sem observação diz "O dia combinado para
@@ -2112,6 +2117,17 @@ o contato junto.
   a `stage_ids`); escolhido o funil, só as etapas dele; com mais de um funil
   e nenhum escolhido, a etapa diz o funil ("Vendas · Novo" — `rotuloDaEtapa`,
   `lib/inbox/rotulo-da-etapa.ts`).
+
+## Correções de 27/11 na LGPD (35ª; decisão do Claude)
+
+- **O pacote que a equipe gerou pela ficha sem o prontuário diz que foi a
+  equipe** (D10 da 35ª; LG-07, LG-10): dizia "Você não pediu o prontuário…
+  faça um novo pedido no app", como se a cliente tivesse pedido. Com
+  `requested_via = 'equipe'` e o prontuário fora, o PDF diz "Este pacote foi
+  gerado pela equipe sem o prontuário (…)." e o JSON "Não incluído: o pacote
+  foi gerado pela equipe sem o prontuário." (`textoDoProntuarioForaDoPacote` e
+  `prontuarioNaSolicitacao` com `{ pelaEquipe }`, `processExportRequest`). O
+  pedido da cliente segue como era. Prova: `tests/lgpd-pacote-da-equipe-sem-prontuario.test.ts`.
 
 ## O que nunca fazer aqui
 

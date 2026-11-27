@@ -84,7 +84,9 @@ export function PlanejamentosClient({
     let vivo = true
     const t = setTimeout(async () => {
       const res = await buscarClientesParaPlano(termoCliente)
-      if (vivo) setAchados(res.clientes)
+      if (!vivo) return
+      if (res.error) setErro(res.error)
+      setAchados(res.clientes)
     }, 250)
     return () => { vivo = false; clearTimeout(t) }
   }, [termoCliente, podeBuscarCliente])

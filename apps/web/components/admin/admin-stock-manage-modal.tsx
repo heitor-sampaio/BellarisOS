@@ -26,6 +26,7 @@ import { useFuso } from '@/components/shared/fuso'
 import { avisoDoCustoDaEntrada } from '@/lib/estoque/custo-da-entrada'
 import { CampoDaLista, type ItemDaLista } from '@/components/admin/campo-da-lista'
 import { Dica } from '@/components/shared/dica'
+import { rotuloDoMotivo, MOTIVO_VENDA_ESTORNADA } from '@/lib/estoque/perda'
 
 type BranchStock = {
   branchId:     string
@@ -1213,6 +1214,7 @@ function HistoricoTab({ product, defaultBranchId, podeDesfazer = true, onAlterou
                 {m.type === 'PURCHASE' && m.quantity < 0 ? 'Entrada desfeita'
                   : m.type === 'LOSS' && m.quantity > 0 ? 'Perda desfeita'
                   : m.desfazAjuste ? 'Ajuste desfeito'
+                  : m.vendaEstornadaSemVolta ? rotuloDoMotivo(MOTIVO_VENDA_ESTORNADA)
                   : m.brinde ? 'Brinde da fidelidade'
                   : m.correcao ? 'Correção de cadastro'
                   : (MOV_LABEL[m.type] ?? m.type)}

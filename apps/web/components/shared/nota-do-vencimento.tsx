@@ -85,12 +85,22 @@ export function NotaDoVencimento({ valor, proximo, emAbertoTotal, semCliente, co
           Inclui sem cliente: <strong>{formatBRL(semCliente)}</strong>
         </span>
       )}
-      {concluidosSemPagamento && concluidosSemPagamento.n > 0 && (
-        <span data-concluidos-sem-pagamento style={{ display: 'block', marginTop: 2 }}>
-          Concluídos sem pagamento: <strong>{formatBRL(concluidosSemPagamento.valor)}</strong>
-          {' '}({concluidosSemPagamento.n} {concluidosSemPagamento.n === 1 ? 'atendimento' : 'atendimentos'})
-        </span>
-      )}
+      <NotaDosConcluidosSemPagamento concluidos={concluidosSemPagamento} />
+    </span>
+  )
+}
+
+/**
+ * "Concluídos sem pagamento: R$ 60,00 (1 atendimento)" — os atendimentos feitos
+ * e não recebidos (`getTotalDosAtendimentosAReceber`). A mesma linha no
+ * Financeiro e nos Relatórios → Financeiro (A12 da 35ª, princípio 3).
+ */
+export function NotaDosConcluidosSemPagamento({ concluidos }: { concluidos?: { n: number; valor: number } }) {
+  if (!concluidos || !(concluidos.n > 0)) return null
+  return (
+    <span data-concluidos-sem-pagamento style={{ display: 'block', marginTop: 2 }}>
+      Concluídos sem pagamento: <strong>{formatBRL(concluidos.valor)}</strong>
+      {' '}({concluidos.n} {concluidos.n === 1 ? 'atendimento' : 'atendimentos'})
     </span>
   )
 }

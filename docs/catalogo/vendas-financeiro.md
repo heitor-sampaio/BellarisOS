@@ -260,7 +260,7 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Onde: `docs/regras/vendas-financeiro.md:182-186`, `:1463`, `:1493`, `:2868`, `:3228`
 - Antes: KA-49, KD-18, KF-30, KD-19
 
-**DP-03.** O plano aceito com saldo diz "Plano aceito. Falta receber" e que a comanda do plano está no PDV; o aceito sem dinheiro nenhum ainda diz "Plano aceito e ainda não recebido: a comanda do plano está no PDV." A tela do plano fechado mostra "Valor do plano", "Recebido" e "A receber", cada lançamento com a situação (pago em tal dia e forma, a vencer, ou vencido — receba no PDV) e as sessões feitas e agendadas; o rodapé diz que o que falta se recebe no PDV — a quem recebe, com o "Receber no PDV"; a quem não recebe, com o nome de quem tem o PDV em Gerenciar naquela unidade — e que, se caiu na conta, a baixa é no Financeiro (FN-06). O saldo do plano (o em aberto e o a vencer) na tela do atendimento só aparece a quem recebe.
+**DP-03.** O plano aceito com saldo diz "Plano aceito. Falta receber" e que a comanda do plano está no PDV; o aceito sem dinheiro nenhum ainda diz "Plano aceito e ainda não recebido: a comanda do plano está no PDV." A tela do plano fechado mostra "Valor do plano", "Recebido" e "A receber", cada lançamento com a situação (pago em tal dia e forma, a vencer, ou vencido — receba no PDV) e as sessões feitas e agendadas; o rodapé diz que o que falta se recebe no PDV — a quem recebe, com o "Receber no PDV"; a quem não recebe, com o nome de quem tem o PDV em Gerenciar naquela unidade — e que, se caiu na conta, a baixa é no Financeiro (FN-06). O saldo do plano (o em aberto e o a vencer) na tela do atendimento só aparece a quem recebe. O "Recebido" conta o crédito interno que pagou o plano, sem que ele vire receita de novo (CI-03, VE-05) (decisão do Claude, 27/11, 35ª D3).
 - Fonte: princípio 3; quem recebe é só o PDV: recomendação do Claude aprovada pelo Heitor, 2026-11-23: "concordo, pode anotar, marcar as questões e ajustar o codigo" (PV-04); a baixa do que caiu na conta: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Blz pode ser assim" (CX2)
 - Onde: `docs/regras/vendas-financeiro.md:2734`, `:2803-2806`, `:2862`, `:2875`, `:2884`; `apps/web/lib/plano-de-tratamento/textos.ts:31-59`
 - Antes: KF-22, KF-31, KF-29
@@ -292,7 +292,7 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 
 ### Cancelar o plano fechado
 
-**DP-08.** Cancelar o plano fechado é o mesmo "Cancelar pacote", sem configuração nem conta própria (nem tabela, nem multa, nem preço de tabela): "Cancelar plano" no "Tratamento em andamento" da ficha, na ficha de tratamento, no "Gerenciar" das sessões e na página do plano, para quem tem o Financeiro em Gerenciar, com a unidade do plano ao alcance. Quem recebe e não cancela lê "Cancelar o plano é de quem tem o Financeiro em Gerenciar: …".
+**DP-08.** Cancelar o plano fechado é o mesmo "Cancelar pacote", sem configuração nem conta própria (nem tabela, nem multa, nem preço de tabela): "Cancelar plano" no "Tratamento em andamento" da ficha, na ficha de tratamento, no "Gerenciar" das sessões e na página do plano, para quem tem o Financeiro em Gerenciar, com a unidade do plano ao alcance. Quem recebe e não cancela lê "Cancelar o plano é de quem tem o Financeiro em Gerenciar: …". O cancelamento também abre na janela do estorno ("Cancelar pacote", "Cancelar plano", "Cancelar a sessão N"), que se abre nos dois financeiros, na ficha e no PDV: quem tem o Financeiro em Gerenciar sem Clientes e sem o Atendimento cancela por ali, e a janela não manda a um lugar que a pessoa não abre (decisão do Claude, 27/11, 35ª D1).
 - Fonte: o Heitor, 2026-11-07 (decisão 2): "sim usa a mesma coisa do pacote"
 - Onde: `docs/regras/vendas-financeiro.md:870-889`, `:3199`; `docs/revisao.md:2077`
 - Antes: KB-45, KF-32
@@ -635,8 +635,8 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Onde: `docs/regras/vendas-financeiro.md:3121`
 - Antes: KF-74
 
-**EX-09.** Estornado o pagamento de um atendimento avulso, a cobrança dele reabre: a comanda volta a ficar aberta no PDV, e receber de novo é um pagamento novo. A janela avisa que o atendimento volta a receber; o histórico do agendamento ganha "Pagamento estornado — <motivo>"; na lista do Financeiro a linha é "Estorno" e diz "Anula a receita estornada"; o app mostra o pago estornado como "Estornado", e a ficha mostra o original estornado e o estorno como saída.
-- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
+**EX-09.** Estornado o pagamento de um atendimento avulso, a cobrança dele reabre: a comanda volta a ficar aberta no PDV, e receber de novo é um pagamento novo. A janela avisa que o atendimento volta a receber; o histórico do agendamento ganha "Pagamento estornado — <motivo>"; na lista do Financeiro a linha é "Estorno" e diz "Anula a receita estornada"; o app mostra o pago estornado como "Estornado", e a ficha mostra o original estornado e o estorno como saída. Vale também para a parcela estornada do crediário do avulso: o valor dela reabre na comanda, e as outras parcelas seguem com o vencimento delas (pagar e estornar por parcela, a CR-05, é do pacote, do pré-pago, do plano e da despesa).
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele); a parcela do crediário do avulso: decisão do Claude, 27/11 (35ª, Decisão D2), pela própria EX-09 e pela CR-05
 - Onde: `docs/regras/vendas-financeiro.md:3147`, `:3168`
 - Antes: KF-75, KF-76
 
@@ -800,8 +800,8 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Onde: `docs/regras/vendas-financeiro.md:1639`; `docs/revisao.md:1995`
 - Antes: KD-36, KG-16
 
-**FC-10.** Os estornos do dia aparecem numa linha própria ("Estornos do dia: R$ X"), e nos "Detalhes do dia" cada estorno pago no dia vem com a descrição, a forma e o motivo, e o total. Se um pagamento de hoje foi estornado hoje mesmo, a linha da forma diz isso ("R$ 320,00 estornado de um pagamento de hoje: já fora das entradas") e continua na tabela, zerada — mas não pede conferência, porque não há o que conferir (a forma só com saída, ou zerada, não se confere, a não ser que tenha sido conferida no último fechamento).
-- Fonte: princípio 3
+**FC-10.** Os estornos do dia aparecem numa linha própria ("Estornos do dia: R$ X"), e nos "Detalhes do dia" cada estorno pago no dia vem com a descrição, a forma e o motivo, e o total. Se um pagamento de hoje foi estornado hoje mesmo, a linha da forma diz isso ("R$ 320,00 estornado de um pagamento de hoje: já fora das entradas") e continua na tabela, zerada — mas não pede conferência, porque não há o que conferir (a forma só com saída, ou zerada, não se confere, a não ser que tenha sido conferida no último fechamento). O estorno parcial do mesmo dia também sai das entradas, na própria forma ("R$ 720,00 estornado de um pagamento de hoje: já fora das entradas"), e a entrada aparece pelo que ficou.
+- Fonte: princípio 3; o estorno parcial do mesmo dia: decisão do Claude, 27/11 (35ª, Decisão D1), pela FC-11
 - Onde: `docs/regras/vendas-financeiro.md:1565`, `:1597`, `:1610-1618`, `:1658`
 - Antes: KD-37, KD-27
 

@@ -4,7 +4,6 @@ import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission, alcancaUnidade, can } from '@/lib/auth'
 import { podeDarBaixa } from '@/lib/financeiro/so-os-meus'
 import { semAcesso } from '@/lib/sem-acesso'
-import { formatBRL } from '@estetica-os/utils'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
@@ -16,7 +15,7 @@ import { lerQuantidadeDaDespesa, recusaDasParcelasDaDespesa, recusaDasRepeticoes
 import { recusaDoDinheiroAcimaDoRegistro } from '@/lib/financeiro/limites-do-registro'
 import { logHistory } from '@/lib/appointments/avisos'
 import { textoDosPontosDoEstorno } from '@/lib/fidelidade/pontos-do-estorno'
-import { textoDaReaberturaDoPacote, textoDaComissaoETaxaDoEstorno, vendaDoEstornoEmTexto } from '@/lib/financeiro/reabertura-do-estorno'
+import { textoDaReaberturaDoPacote, textoDaReaberturaDoPlano, textoDaReaberturaDoPrePago, textoDaComissaoETaxaDoEstorno, vendaDoEstornoEmTexto, type CancelarPeloEstorno } from '@/lib/financeiro/reabertura-do-estorno'
 import { veComissaoDeTodos } from '@/lib/comissoes/quem-ve'
 import { ehUuid } from '@/lib/id-da-rota'
 
@@ -410,7 +409,7 @@ export async function pontosDoEstorno(transactionId: string): Promise<{ texto: s
  * estornam pela venda; a venda cancelada não reabre). A mesma régua de
  * `estornar_e_reabrir`.
  */
-export async function reaberturaDoEstorno(transactionId: string): Promise<{ texto: string | null }> {
+export async function reaberturaDoEstorno(transactionId: string): Promise<{ texto: string | null; cancelar?: CancelarPeloEstorno }> {
   try {
     const ctx = await getTenantContext()
     if (!can(ctx, 'financial', 'MANAGE')) return { texto: null }
@@ -421,20 +420,39 @@ export async function reaberturaDoEstorno(transactionId: string): Promise<{ text
     const txTenant = (tx?.branches as unknown as { tenant_id: string } | null)?.tenant_id
     if (!tx || txTenant !== ctx.tenantId || !alcancaUnidade(ctx, tx.branch_id as string)) return { texto: null }
     if (tx.type !== 'INCOME' || tx.appointment_id || tx.product_sale_id || tx.credito_vendido_id) return { texto: null }
-    const valor = formatBRL(Number(tx.amount))
+    // D1 da 35ª (DP-08; decisão do Claude, 27/11): quem tem só o Financeiro em
+    // Gerenciar não abre a ficha nem a página do plano — o cancelamento vai na
+    // própria janela (a mesma janela do pacote, do plano e da sessão pré-paga;
+    // as actions conferem de novo a permissão e a unidade).
     if (tx.client_package_id) {
       const cp = await ler(admin.from('client_packages').select('cancelado_em, total_sessions, used_sessions').eq('id', tx.client_package_id).maybeSingle(), 'ler o pacote')
       if (!cp || cp.cancelado_em) return { texto: null }
+      const usadas = Number(cp.used_sessions ?? 0), total = Number(cp.total_sessions ?? 0)
+      const cancela = usadas < total
       // A6 da 19ª: as sessões já feitas seguem feitas — a janela diz quantas.
-      return { texto: textoDaReaberturaDoPacote(Number(tx.amount), Number(cp.used_sessions ?? 0), Number(cp.total_sessions ?? 0)) }
+      return {
+        texto: textoDaReaberturaDoPacote(Number(tx.amount), usadas, total, cancela ? 'aqui' : 'na ficha'),
+        ...(cancela ? { cancelar: { tipo: 'PACOTE', id: tx.client_package_id as string } as const } : {}),
+      }
     }
     if (tx.treatment_plan_id) {
-      const tp = await ler(admin.from('treatment_plans').select('cancelado_em').eq('id', tx.treatment_plan_id).maybeSingle(), 'ler o plano')
+      const tp = await ler(admin.from('treatment_plans').select('cancelado_em, status').eq('id', tx.treatment_plan_id).maybeSingle(), 'ler o plano')
       if (!tp || tp.cancelado_em) return { texto: null }
-      return { texto: `O dinheiro volta à cliente, e o plano volta a ter ${valor} a receber. Para desfazer a venda, use “Cancelar plano” na ficha.` }
+      const cancela = tp.status === 'ACCEPTED'
+      return {
+        texto: textoDaReaberturaDoPlano(Number(tx.amount), cancela ? 'aqui' : 'na ficha'),
+        ...(cancela ? { cancelar: { tipo: 'PLANO', id: tx.treatment_plan_id as string } as const } : {}),
+      }
     }
     if (tx.procedure_sale_id) {
-      return { texto: `O dinheiro volta à cliente, e o pré-pago volta a ter ${valor} a receber. Para desfazer a venda, cancele a sessão pré-paga na ficha.` }
+      // As sessões que se cancelam: as livres (a agendada se cancela na agenda — A11 da 31ª).
+      const livres = ((await ler(admin.from('procedure_sale_units').select('id, numero')
+        .eq('sale_id', tx.procedure_sale_id).eq('status', 'DISPONIVEL').is('appointment_id', null)
+        .order('numero'), 'ler as sessões do pré-pago')) ?? []) as { id: string; numero: number }[]
+      return {
+        texto: textoDaReaberturaDoPrePago(Number(tx.amount), livres.length ? 'aqui' : 'na ficha'),
+        ...(livres.length ? { cancelar: { tipo: 'PRE_PAGO', sessoes: livres.map(u => ({ id: u.id, numero: Number(u.numero) })) } as const } : {}),
+      }
     }
     return { texto: null }
   } catch {

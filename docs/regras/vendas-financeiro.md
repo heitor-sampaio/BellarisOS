@@ -713,6 +713,9 @@ plano").
   e volta se a tela se monta de novo ou recarrega, na aba Pacote (A6 da 34ª;
   `lib/vendas/venda-do-pacote-na-aba.ts`, sessionStorage por unidade e
   cliente; vender ou cancelar apaga; o servidor confere tudo de novo).
+  De volta da assinatura ("Continuar"), a tela diz "Conferindo a
+  assinatura…" enquanto o servidor confere — o pedido do contrato não volta à
+  tela nesse meio —, e a conferência que falha diz o erro (D14 da 35ª).
   **A venda emite** (leva 2, 2026-11-14) os documentos puxados dos
   procedimentos distintos — o termo e os "Outros documentos", menos os que o
   pacote exclui no pop-up (`documentos_excluidos`). Esses NÃO seguram o
@@ -1048,6 +1051,15 @@ plano").
     quem não pode, o "a quem pedir" (`[data-quem-cancela-o-plano]`). Prova:
     `e2e/ficha-uso-da-10.spec.ts` ("A27"). A janela é a do pacote
     (`CancelarPlano`, `components/shared/cancelar-pacote.tsx`).
+    **E na janela do estorno** (D1 da 35ª; decisão do Claude, 27/11): quem tem
+    só o Financeiro em Gerenciar não abre a ficha (o Clientes) nem a página do
+    plano (o Atendimento), e a janela do estorno mandava cancelar "na ficha".
+    O estorno do pagamento do pacote, do plano aceito ou do pré-pago oferece ali
+    mesmo "Cancelar pacote", "Cancelar plano" ou "Cancelar a sessão N" (as
+    livres), que abre a janela de sempre (`reaberturaDoEstorno` → `cancelar`,
+    `ConfirmarEstorno`, `[data-cancelar-pelo-estorno]`), e a frase termina em
+    "Para desfazer a venda:". Vale nos dois financeiros, na ficha e no PDV.
+    Prova: `tests/cancelar-pelo-estorno.test.ts`.
   - **O usado é o preço das sessões FEITAS no plano** (o agendamento
     concluído), cada uma pela soma dos procedimentos dela, já com o desconto
     rateado — sem multa e sem preço de tabela. Ex.: 3 sessões (R$ 585 + R$ 144 +
@@ -2999,7 +3011,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     recorrente)"). E o banco não prende mais a parcela em 48
     (`financial_transactions_parcela_coerente`, migration `20261206900001`:
     o crediário em 60 vezes era recusado ao gravar), nem a forma do pagamento
-    do contrato do plano (`pagamentoValido`, `actions/documentos.ts`, vai até
+    do contrato do plano (`pagamentoValido`, `lib/checkout/pagamento-valido.ts`, vai até
     o registro e o limite da rede vem depois).
   - **O crediário tem UM nome, diz o limite e só pede a forma da entrada**
     (A23 da 14ª simulação, F75; princípio 7; PDV8, 2026-11-14): a
@@ -3014,9 +3026,12 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     servidor (`EntradaDoPagamento`: o meio é um meio ou nulo, nunca `''`;
     com entrada e sem meio, "Escolha a forma da entrada."). Vale para o
     PDV, o receber do plano no PDV e a caixa do plano no atendimento
-    (`receberDoPlanoInterno` recusa igual). Trava:
+    (`receberDoPlanoInterno` recusa igual) — e o contrato do plano e o do
+    avulso (`pagamentoValido`; D2 da 35ª: o crediário sem entrada era
+    "Forma de pagamento inválida."). Quem pede a forma do que entra agora é
+    `pedeAFormaAgora` (`lib/checkout/pagamento-valido.ts`). Trava:
     `tests/crediario-nomes-e-entrada.test.ts` (nenhuma tela escreve o nome
-    velho à mão).
+    velho à mão), `tests/crediario-sem-entrada-no-contrato.test.ts`.
   - **A tela diz o limite e o valor da parcela** (A47 da 5ª simulação):
     junto de todo "Vezes no cartão" (venda de pacote, pré-pago e produto, o
     recebimento do avulso e do plano, o checkout), "Até 4x no crédito" e,
@@ -3587,6 +3602,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 - O pago só com a data (gravado no meio-dia de Brasília) mostra só a data (`diaSemHora`).
 - O Fechamento do dia de outro dia diz o dia ("Sem espécie em 25/11"); a forma só com saída diz por que não se confere (FC-10); a forma sem bandeira nenhuma não lista "Bandeira não informada"; o estorno diz a maquininha do pagamento estornado (`maquininhaDosEstornos`; a saída não leva maquininha); no portal da rede, o fechamento diz a unidade.
 - Relatórios → Financeiro, "A receber em aberto": a régua do cartão "A receber · em aberto" (FN-11) — as parcelas e o "A receber", fora o estorno.
+- E a nota "Concluídos sem pagamento: R$ … (N atendimentos)" do Financeiro, embaixo da lista — a mesma linha (`NotaDosConcluidosSemPagamento`) e o mesmo número (`getTotalDosAtendimentosAReceber`): a cobrança do avulso reaberta pelo estorno da parcela (EX-09) é atendimento a receber, não lançamento (A12 da 35ª, princípio 3).
 - A mudança da parcela da operadora (marcada como recebida, desfeita) entra na Auditoria (AD-04): só o UPDATE de `recebiveis_do_cartao` (a criação vem com o pagamento).
 
 ## O que nunca fazer aqui

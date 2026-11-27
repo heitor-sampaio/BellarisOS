@@ -360,6 +360,9 @@ async function nomesDa20(ctx: TenantContext, registros: readonly RegistroDaAudit
   // A21 da 34ª: também a sessão ligada ao agendamento ("Agendou a sessão 1 do pacote X").
   const sessoes = ids(r => r.tabela === 'package_sessions' && r.operacao === 'editou' && (r.colunas.includes('status') || r.colunas.includes('appointment_id')))
   const pacotes = ids(r => r.tabela === 'client_packages' && r.operacao === 'editou' && r.colunas.includes('cancelado_em'))
+  // A5 e A10 da 35ª (AD-08): o plano e a sessão do pré-pago cancelados — o motivo e qual sessão, lidos agora.
+  const planosCancelados = ids(r => r.tabela === 'treatment_plans' && r.operacao === 'editou' && r.colunas.includes('cancelado_em'))
+  const sessoesDoPrePago = ids(r => r.tabela === 'procedure_sale_units' && r.operacao === 'editou' && r.colunas.includes('cancelled_at'))
   const importacoes = ids(r => r.tabela === 'importacoes')
   const entradas = ids(r => r.tabela === 'stock_movements' && r.operacao === 'criou' && r.depois?.type === 'PURCHASE')
   const procedimentos = [...new Set([
@@ -367,19 +370,30 @@ async function nomesDa20(ctx: TenantContext, registros: readonly RegistroDaAudit
     // A9 da 31ª: o procedimento da regra de comissão (a apagada o tem no `antes`).
     ...registros.filter(r => r.tabela === 'commission_rules').map(r => r.depois?.procedure_id ?? r.antes?.procedure_id),
   ].filter((v): v is string => typeof v === 'string' && UUID.test(v)))]
+  // D12 da 35ª (AD-13): o agendamento que a sessão do pacote ligou ou desligou — a unidade é a dele.
+  const agendamentosDasSessoes = [...new Set(registros
+    .filter(r => r.tabela === 'package_sessions' && r.operacao === 'editou' && r.colunas.includes('appointment_id'))
+    .flatMap(r => [r.depois?.appointment_id, r.antes?.appointment_id])
+    .filter((v): v is string => typeof v === 'string' && UUID.test(v)))]
   const nada = Promise.resolve([] as Record<string, unknown>[])
 
-  const [dc, ss, pk, im, en, pr] = await Promise.all([
+  const [dc, ss, pk, im, en, pr, ag, pc, su] = await Promise.all([
     documentos.length ? ler(admin.from('issued_documents').select('id, closed_reason').eq('tenant_id', tenant).in('id', documentos), 'ler os motivos dos documentos') : nada,
     sessoes.length ? ler(admin.from('package_sessions').select('id, session_number, client_packages!inner(branches!inner(tenant_id), service_packages(name))')
       .eq('client_packages.branches.tenant_id', tenant).in('id', sessoes), 'ler as sessões dos pacotes') : nada,
-    pacotes.length ? ler(admin.from('client_packages').select('id, service_packages(name), branches!inner(tenant_id)')
+    pacotes.length ? ler(admin.from('client_packages').select('id, cancelamento_motivo, service_packages(name), branches!inner(tenant_id)')
       .eq('branches.tenant_id', tenant).in('id', pacotes), 'ler os pacotes cancelados') : nada,
     importacoes.length ? ler(admin.from('importacoes').select('id, nome_arquivo, destino, total, novas, completadas, com_erro')
       .eq('tenant_id', tenant).in('id', importacoes), 'ler as importações da auditoria') : nada,
     entradas.length ? ler(admin.from('stock_movements').select('id, quantity, unit_cost, branches!inner(tenant_id)')
       .eq('branches.tenant_id', tenant).in('id', entradas), 'ler o custo das entradas') : nada,
     procedimentos.length ? ler(admin.from('procedures').select('id, name').eq('tenant_id', tenant).in('id', procedimentos), 'ler os procedimentos agendados') : nada,
+    agendamentosDasSessoes.length ? ler(admin.from('appointments').select('id, branch_id, branches!inner(tenant_id)')
+      .eq('branches.tenant_id', tenant).in('id', agendamentosDasSessoes), 'ler a unidade dos agendamentos das sessões de pacote') : nada,
+    planosCancelados.length ? ler(admin.from('treatment_plans').select('id, cancelamento_motivo, branches!inner(tenant_id)')
+      .eq('branches.tenant_id', tenant).in('id', planosCancelados), 'ler o motivo dos planos cancelados') : nada,
+    sessoesDoPrePago.length ? ler(admin.from('procedure_sale_units').select('id, numero, cancel_reason, procedure_sales!inner(tenant_id, procedures(name))')
+      .eq('procedure_sales.tenant_id', tenant).in('id', sessoesDoPrePago), 'ler as sessões canceladas do pré-pago') : nada,
   ]) as Record<string, unknown>[][]
   const str = (v: unknown) => (typeof v === 'string' ? v : null)
   const num = (v: unknown) => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) ? null : Number(v))
@@ -404,6 +418,18 @@ async function nomesDa20(ctx: TenantContext, registros: readonly RegistroDaAudit
       return q !== null && c !== null && c > 0 ? [[m.id as string, Math.round(Math.abs(q) * c * 100) / 100]] : []
     })),
     procedimentos: Object.fromEntries((pr ?? []).map(x => [x.id as string, str(x.name) ?? '']).filter(([, n]) => n)),
+    unidadesDosAgendamentos: Object.fromEntries((ag ?? []).map(x => [x.id as string, str(x.branch_id) ?? '']).filter(([, b]) => b)),
+    // O motivo é texto livre: curto na frase, como o do documento.
+    motivosDaVendaCancelada: Object.fromEntries([
+      ...(pk ?? []).map(x => [x.id as string, str(x.cancelamento_motivo)] as const),
+      ...(pc ?? []).map(x => [x.id as string, str(x.cancelamento_motivo)] as const),
+      ...(su ?? []).map(x => [x.id as string, str(x.cancel_reason)] as const),
+    ].map(([k, m]) => [k, (m?.trim() ?? '').slice(0, 120)]).filter(([, m]) => m)),
+    sessoesDoPrePago: Object.fromEntries((su ?? []).map(x => {
+      const procedimento = nomeDe((x.procedure_sales as { procedures?: unknown } | null)?.procedures)
+      const n = num(x.numero)
+      return [x.id as string, `a sessão${n !== null ? ` ${n}` : ''} do pré-pago${procedimento ? ` de ${procedimento}` : ''}`]
+    })),
   }
 }
 

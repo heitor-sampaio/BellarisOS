@@ -169,6 +169,11 @@ function QuadroInterno({
     const obs = new ResizeObserver(entradas => {
       const w = Math.round(entradas[0]?.contentRect.width ?? 0)
       if (w === largura) return
+      // Antes da abertura, quem enquadra é a abertura: o `fitView` pedido antes de os nodes terem tamanho fica
+      // na fila do React Flow (`fitViewQueued`) e roda depois, com as opções do quadro — o fluxo inteiro a 0,65
+      // por cima do enquadramento pelo gatilho (`e2e/automacoes-mobile.spec.ts`). A largura que mudar depois
+      // da abertura enquadra, e a primeira, sem animação.
+      if (!abriu.current) return
       const primeira = largura < 0
       largura = w
       enquadrar(primeira ? 0 : 200)

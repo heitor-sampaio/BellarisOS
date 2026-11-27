@@ -322,7 +322,7 @@ function ComoAcontece({ inicial, podeEditar, produtos }: { inicial: ConfigDeComi
           {pctPlano.trim()
             ? 'Quem vendeu o plano (o “Quem vendeu” do checkout) ganha a regra de venda dela (Equipe); sem ela, esse percentual do valor do plano, com o desconto.'
             : 'Vazio: vale a regra de venda de quem vendeu; sem ela, a venda do plano não gera comissão.'}
-          {' '}Se o plano for cancelado, ela volta. A comissão de quem atende cada sessão segue a regra do profissional.
+          {' '}Se o plano for cancelado, ela cai na proporção do cancelado. A comissão de quem atende cada sessão segue a regra do profissional.
         </>,
       }}>
         {/* Decisão 4 do Heitor (7ª simulação): o plano é personalizado para a

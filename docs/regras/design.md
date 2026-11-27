@@ -107,6 +107,10 @@ Princípios inegociáveis:
     APARECE no fim de um formulário longo depois de um clique (a pergunta antes
     de gravar) rola até ficar à vista e leva o foco (`PerguntaDaVenda`).
     Prova: `e2e/vendas-pergunta-no-celular.spec.ts`.
+- **O selo não se clica** (A1 e A13 da 35ª, decisão do Claude, 27/11; a pílula
+  é a forma do selo, a curva de 10 px a do botão — skill `/lumiere-design`): o
+  "Ativo" do modelo de documento é selo, e "Desativar"/"Ativar" são botões ao
+  lado; o que abre a comissão na Equipe tem a curva do botão e o lápis.
 - **O botão flutuante do Copilot não cobre o fim da página** (A4 da 10ª no
   celular; A38 da 12ª no computador, 2026-11-11: cobria o valor da última linha
   do "Fechar e pagar"): com o botão na tela, o `main` ganha embaixo a altura
@@ -114,6 +118,11 @@ Princípios inegociáveis:
   inbox, onde ele sobe. Prova: `e2e/financeiro-atritos-da-12.spec.ts` ("A38").
   E o que ganha o foco atrás dele, no meio da página, sobe acima dele (A16 da
   23ª: o "Confirmar estorno" da comissão; `useFocoAcimaDoBotao`, `copilot.md`).
+  Fora do plano ele é um aviso, não uma ação: com uma ação embaixo dele (o
+  lápis do canto de um cartão, no meio da página), ele SOBE até um lugar sem
+  ação, e volta quando a página rola (A2 da 35ª, decisão do Claude, 27/11;
+  `desvioDoBotao`, `copilot-fora-do-plano.tsx`). Prova:
+  `tests/copilot-fora-do-plano-nao-cobre-acao.test.ts`.
 - **A grade de cartões não deixa um sozinho na linha nem estica os vizinhos**
   (A37 da 12ª: no Financeiro da rede, o "A pagar" caía sozinho numa segunda
   linha, e o "Resultado líquido", com a conta embaixo, esticava os outros): os

@@ -48,6 +48,7 @@ import {
 } from '@/lib/metrics/resultado'
 import { useFuso } from '@/components/shared/fuso'
 import { diasAteOVencimento } from '@/lib/financeiro/vencimentos'
+import { NotaDosConcluidosSemPagamento } from '@/components/shared/nota-do-vencimento'
 
 // -- Types ---------------------------------------------------------------------
 type Tab = 'overview' | 'financeiro' | 'vendas' | 'agenda' | 'clientes' | 'procedimentos' | 'profissionais' | 'estoque' | 'comercial'
@@ -123,6 +124,8 @@ export interface ReportsBiProps {
   /** A rede tem UMA unidade ativa (D-19): "Faturamento por Unidade" e "Saúde do Estoque por Unidade" somem. */
   umaUnidade?: boolean
   installments: LinhaParcela[]
+  /** A12 da 35ª: os atendimentos concluídos sem pagamento, a nota do "A receber em aberto" (como o Financeiro). */
+  concluidosSemPagamento?: { n: number; valor: number }
   productBatches: LinhaLote[]
   retention: { clientsServed: number; returningClients: number; firstTimeClients: number }
   newClientsSeries: { bucket: string; count: number }[]
@@ -609,6 +612,11 @@ function TabFinanceiro(p: ReportsBiProps) {
               rows={installRows}
               emptyMsg="Nada a receber em aberto."
             />
+            {(p.concluidosSemPagamento?.n ?? 0) > 0 && (
+              <p style={{ padding: '10px 18px', borderTop: '1px solid var(--hairline)', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+                <NotaDosConcluidosSemPagamento concluidos={p.concluidosSemPagamento} />
+              </p>
+            )}
           </SCard>
         )}
       </div>

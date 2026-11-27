@@ -4,9 +4,10 @@ import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { paraAnamneseGeral } from '@/lib/anamnese-geral'
-import { modoDaFichaPeloLink } from '@/lib/pre-atendimento/modo-da-ficha'
-import { preAtendimentoPendente } from '@/lib/pre-atendimento/ficha'
+import { modoDaFichaPeloLink, modoDoPendentePelaFichaAtual } from '@/lib/pre-atendimento/modo-da-ficha'
+import { preAtendimentoPendente, ofertaDaFichaDaCliente } from '@/lib/pre-atendimento/ficha'
 import { PreAtendimentoDaCliente } from '@/components/client-portal/pre-atendimento'
+import { OfertaDaFichaDeSaude } from '@/components/client-portal/oferta-da-ficha-de-saude'
 import { Dica } from '@/components/shared/dica'
 
 /**
@@ -18,10 +19,14 @@ export default async function PreAtendimentoPage({ params }: { params: Promise<{
   const ctx = await getTenantContext()
   assertClient(ctx)
   const admin = createAdminClient()
-  const pendente = await preAtendimentoPendente(admin, ctx.clientId!)
+  const gravado = await preAtendimentoPendente(admin, ctx.clientId!)
   const voltar = `/${slug}/cliente/home`
 
-  if (!pendente) {
+  if (!gravado) {
+    // A16 da 35ª (FI-09): pelo endereço, a ficha se oferece como no cartão do
+    // Início (o pendente nasce no clique dela) — não "Nada para responder agora".
+    const oferta = await ofertaDaFichaDaCliente(admin, ctx.clientId!)
+    if (oferta) return <OfertaDaFichaDeSaude appointmentId={oferta} slug={slug} />
     return (
       <div className="card pre-atendimento-cliente-fim">
         <CheckCircle2 size={28} color="var(--success)" aria-hidden="true" />
@@ -39,7 +44,9 @@ export default async function PreAtendimentoPage({ params }: { params: Promise<{
 
   const registro = await ler(admin.from('medical_records').select('general_anamnesis')
     .eq('client_id', ctx.clientId!).maybeSingle(), 'buscar a ficha de saúde')
-  const atual = paraAnamneseGeral(registro?.general_anamnesis ?? null, pendente.ficha)
+  const atual = paraAnamneseGeral(registro?.general_anamnesis ?? null, gravado.ficha)
+  // D7 da 35ª: a obrigatória que a rede acrescentou depois da resposta pede a ficha inteira.
+  const pendente = { ...gravado, modo: modoDoPendentePelaFichaAtual(gravado.modo, gravado.ficha.rows, atual) }
 
   return (
     <PreAtendimentoDaCliente

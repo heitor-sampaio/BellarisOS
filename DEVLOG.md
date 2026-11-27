@@ -1774,6 +1774,79 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-27 — A 35ª simulação e as correções dela
+
+O laço segue (o Heitor, 25/11: "quando acabar essa roda já segue as outras e assim vai"). Cinco redes novas, sem conta
+da plataforma (o Heitor, 26/11: "Sem a conta"), nascidas vazias no teste grátis. Os temas: o plano de tratamento que
+muda no meio (Studio Gipsófila, Ji-Paraná, UTC−4); três unidades, uma 24 horas e uma desativada no fim do dia (Rede
+Acanto); o CRM — quadro, ganho e perda, tempo real e o funil em números (Espaço Cinerária, Uberaba); estornos,
+devoluções, cancelamentos e o fechamento com eles (Ateliê Arnica, Criciúma); e o prontuário, quem o vê e a LGPD
+(Instituto Tília, Governador Valadares). O dinheiro bateu nos cinco times; a única divergência de número era de tela
+(D3). Foram 11 defeitos confirmados e 4 prováveis, nenhum de segurança nem de dinheiro gravado errado. Treze foram
+corrigidos; dois foram ao Heitor (R22 e R23). Salvo onde se diz o contrário, as decisões são do Claude (27/11), pelos
+princípios e pelo catálogo.
+
+**O que mudou no sistema.**
+- **Planos de tratamento.**
+  - O cancelamento do pacote, do plano aceito e da sessão livre do pré-pago abre também na janela do estorno, nos dois
+    financeiros, na ficha e no PDV: quem tem só o Financeiro em Gerenciar chegava ao "Cancelar" por lugar nenhum (D1,
+    DP-08; `reaberturaDoEstorno` devolve o que se cancela, `[data-cancelar-pelo-estorno]`). Sem pagamento não há
+    "Estornar", e esse caso foi para as sugestões.
+  - O "Recebido" da página do plano e o "Pago" do app contam o crédito interno que pagou o plano (D3,
+    `20261214100001`: `metrics_financeiro_do_plano` lê `metrics_movimentos_pagos`). A receita não muda (CI-03, VE-05).
+  - Quem monta o plano sem o Clientes liga a cliente (só o nome); sem nenhuma das duas, a recusa é `{ error }`, não o 500
+    (D5, `buscaClienteParaPlano`). O mapa de injetáveis mostra a recusa.
+  - O plano PROPOSTO se edita onde o editor salva pelo plano (D6, `planoFechado`).
+  - A sessão da desistência diz "Usada em dd/MM (atendimento interrompido)" (D8/A3).
+  - "A comanda está no PDV." só a quem tem o PDV em Gerenciar (A4).
+- **Vendas e financeiro.**
+  - O crediário sem entrada passa no contrato do plano, no do avulso e no recebimento do plano, como no PDV (D2,
+    `lib/checkout/pagamento-valido.ts`, `pedeAFormaAgora`).
+  - A venda do pacote, de volta da assinatura, diz "Conferindo a assinatura…" e não pede o contrato de novo (D14).
+  - A venda estornada que não voltou diz "Venda estornada (não voltou)" no histórico do produto, e a perda traz o lote
+    (A11, `20261214200001`).
+  - Relatórios → Financeiro diz os concluídos sem pagamento, como o Financeiro (A12).
+- **Prontuário, fichas e LGPD.**
+  - A ficha de saúde respondida numa versão sem a obrigatória de agora conta como pendente: o app pede de novo, já
+    preenchida, e a equipe vê "Falta responder" (D7/A17, `obrigatoriasNovasQueFaltam`).
+  - O pacote da LGPD gerado pela equipe sem o prontuário diz isso, sem mandar a cliente pedir de novo (D10).
+  - A obrigatória da ficha de atendimento barra antes do "Confirmar conclusão" também para quem só lê, e a janela diz
+    quem preenche (A15/E1).
+  - "Responda a sua ficha" pelo endereço mostra o mesmo cartão do Início (A16).
+  - A desistência baixa do estoque a dose da aplicação registrada (A18); a ficha em leitura mostra o planejamento
+    aplicado com o atendimento aberto (A19).
+- **CRM.** O card ganho ou perdido mostra o retorno sem destaque (A7, `retornoNoCard`); a aba vazia diz só
+  "Nenhuma oportunidade." (A6).
+- **Unidades, Auditoria, Cargos e telas.**
+  - A Minha agenda e o dashboard da rede dão o nome da unidade desativada, com o selo (D9, D13).
+  - Auditoria: a sessão do pacote vai na unidade do agendamento (D12); os cancelamentos se leem pelo fato, com o motivo
+    (A5/A10); o anexo clínico apagado e a ordem pela hora (A20).
+  - A dica da comissão do plano cancelado diz "cai na proporção do cancelado" (D15).
+  - Documentos: "Ativo/Inativo" é selo; "Tornar ativo" sem outro ativo liga direto; desativar o contrato pergunta (A1).
+  - O resumo do cargo diz quais abas dos Relatórios (A9); a comissão da Equipe abre por um botão com o lápis (A13); o
+    procedimento criado dá o aviso (A14); o Copilot fora do plano sobe para não cobrir uma ação (A2).
+- **Catálogo:** as 12 decisões do Claude da 35ª, e as regras dos defeitos (DP-03, DP-08, PL-19, FI-08, LG-07).
+
+**Testes alterados ou apagados:** nenhum.
+
+**Sugestões novas:** nº 122–125, e a nº 126 (cancelar o pacote ou plano sem pagamento, para quem tem só o Financeiro).
+
+**Para o Heitor:** R22 (o "Falta pagar" com o contrato que só nasce no pagamento — o E2E PT1f exige o de hoje) e R23
+(o histórico do atendimento mostra a foto clínica a quem não tem o Prontuário — o E2E de `atendimento-foto-clinica`
+exige o de hoje).
+
+**A completa** (contra o build): 2.683 casos passaram e 1 falhou — `e2e/automacoes-mobile.spec.ts`, que já falhava de
+vez em quando em completas antigas. Não era desta rodada (desligado o botão novo do Copilot, falhava igual). A causa,
+medida com uma sonda: a primeira medida do quadro (largura 0, antes de os nodes terem tamanho) pedia o enquadramento, o
+React Flow o guardava na fila (`fitViewQueued`) e o fazia depois, com as opções do quadro — o fluxo inteiro a 0,65 por
+cima do enquadramento pelo gatilho. Agora, antes da abertura, só a abertura enquadra (`quadro.tsx`; trava
+`tests/automacoes-quadro-enquadra-depois-de-medir.test.ts`). O spec passou 15 vezes seguidas, e os vizinhos também. O
+E2E novo do D3 falhou uma vez pela montagem (o crédito interno sem saldo) e foi corrigido no próprio spec, que é desta
+rodada.
+
+**Na produção:** `20261214100001` e `20261214200001`, uma por vez, conferidas depois (o plano lê os movimentos pagos; a
+perda da venda estornada liga o movimento da venda e o do item; as duas funções rodam).
+
 ### 2026-11-26 (6) — A 34ª simulação e as correções dela
 
 O laço segue (o Heitor, 25/11: "quando acabar essa roda já segue as outras e assim vai"). Cinco redes novas, sem conta

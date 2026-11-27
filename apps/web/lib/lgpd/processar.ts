@@ -22,7 +22,7 @@ export async function processExportRequest(requestId: string): Promise<void> {
     .update({ status: 'processing', updated_at: new Date().toISOString() })
     .eq('id', requestId)
     .eq('status', 'pending')
-    .select('id, client_id, include_medical, medical_status')
+    .select('id, client_id, include_medical, medical_status, requested_via')
     .maybeSingle(), 'conferir se já há pedido em aberto')
 
   if (!claimed) return
@@ -32,6 +32,8 @@ export async function processExportRequest(requestId: string): Promise<void> {
     const includeMedical = claimed.include_medical && claimed.medical_status === 'approved'
     const { jsonPath, pdfPath, expiresAt } = await buildClientExport(
       claimed.id, claimed.client_id, includeMedical, claimed.medical_status,
+      // D10 da 35ª: gerado pela equipe pela ficha (LG-10), o pacote diz isso.
+      claimed.requested_via === 'equipe',
     )
 
     await gravar(admin.from('lgpd_requests').update({

@@ -1004,6 +1004,11 @@ auditoria das regras, pergunta 8: "só pela conta admin"; antes, H7 de
   "Sem Clientes, ela acha a cliente pela busca (só pelo nome), e na ficha abre
   só a aba Prontuário." (`prontuarioSemClientesNoResumo`,
   `[data-resumo-prontuario-sem-clientes]`).
+- **O resumo do cargo diz QUAIS abas dos Relatórios** (A9 da 35ª, decisão do
+  Claude, 27/11; princípio 3): "Relatórios (só Oportunidades)", "Relatórios
+  (sem Financeiro)"; com todas, só "Relatórios" (`rotuloDosRelatorios`,
+  `lib/cargos/relatorios-no-resumo.ts`). Prova:
+  `tests/cargos-resumo-diz-as-abas-dos-relatorios.test.ts`.
 - **O eixo das abas de Relatórios: a Financeiro pede o Financeiro** (o
   Heitor, 2026-11-23: "financeiro é uma coisa, vendas é outra. financeiro ve
   entrada/saida/lucro, tudo. vendas é sobre performance de vendas."). A aba
@@ -1821,6 +1826,17 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
     app). O gatilho de `package_sessions` passa a guardar o `appointment_id`
     (só o id), e a sessão desligada é "Desmarcou a sessão…" (migration
     `20261213500002`). Prova: `tests/auditoria-a-sessao-do-pacote-agendada.test.ts`.
+  - **A 35ª simulação** (decisão do Claude, 27/11; AD-08, princípio 3):
+    a sessão do pacote agendada leva a unidade do AGENDAMENTO, não a da venda
+    (`unidadesDosAgendamentos`, D12); o cancelamento do plano, do pacote e da
+    sessão do pré-pago é o fato — "Cancelou o plano X (motivo: …) e devolveu
+    R$ 860,00 em crédito interno", "… e estornou R$ 400,00, e lançou o usado
+    de novo (…)" — com o motivo lido agora (`motivosDaVendaCancelada`,
+    `sessoesDoPrePago`; A5, A10); o anexo clínico apagado é "Apagou um anexo
+    clínico (laudo)"; e a página vai pela HORA que cada linha mostra (a
+    geração do documento juntada à gravação que o criou não lhe dá a hora; A20).
+    Prova: `tests/auditoria-a-sessao-do-pacote-na-unidade-do-agendamento.test.ts`,
+    `tests/auditoria-o-fato-do-cancelamento-e-do-anexo-apagado.test.ts`.
   - Prova: `tests/atritos-da-15.test.ts`, `e2e/auditoria-atritos-da-15.spec.ts`.
 - **A falha do registro não derruba a gravação.** O gatilho segura o erro,
   grava uma linha `incompleto` (quando acha a rede) e deixa um WARNING no log:

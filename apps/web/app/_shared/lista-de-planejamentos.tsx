@@ -1,5 +1,5 @@
-import { getTenantContext, assertPermission, can, assertRecurso } from '@/lib/auth'
-import { montaPlano } from '@/lib/plano-de-tratamento/quem-monta'
+import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
+import { montaPlano, buscaClienteParaPlano } from '@/lib/plano-de-tratamento/quem-monta'
 import { listarPlanejamentos } from '@/actions/treatment-plans'
 import { getCachedNetworkBranches } from '@/lib/cached-queries'
 import { PlanejamentosClient } from '@/components/branch/planejamentos-client'
@@ -49,7 +49,8 @@ export async function ListaDePlanejamentos({
       basePath={basePath}
       unidades={unidadesQueMonta}
       podeEditar={branchId ? montaPlano(ctx, branchId) : unidadesQueMonta.length > 0}
-      podeBuscarCliente={can(ctx, 'clients', 'VIEW')}
+      // D5 da 35ª (PL-02): liga a cliente quem monta o plano, mesmo sem o Clientes (só o nome).
+      podeBuscarCliente={buscaClienteParaPlano(ctx) !== null}
     />
   )
 }

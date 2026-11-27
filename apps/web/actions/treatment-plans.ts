@@ -34,7 +34,7 @@ import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { notifyCancelledAppointment } from '@/lib/appointments/avisos'
 import { quemDesfazNoCaixa, quemRecebeNoPdv } from '@/lib/equipe/quem-desfaz'
 import { retratoDoCancelamento, type RetratoDoCancelamento } from '@/lib/plano-de-tratamento/retrato-do-cancelamento'
-import { montaPlano, RECUSA_QUEM_MONTA, RECUSA_QUEM_ATENDE } from '@/lib/plano-de-tratamento/quem-monta'
+import { montaPlano, buscaClienteParaPlano, RECUSA_QUEM_MONTA, RECUSA_QUEM_ATENDE } from '@/lib/plano-de-tratamento/quem-monta'
 import { recusaDoDesconto } from '@/lib/vendas/desconto'
 import { combinadoDoPlano, totalDoPlanoNaLista } from '@/lib/plano-de-tratamento/desconto-combinado'
 import { recusaDaSessaoVazia } from '@/lib/plano-de-tratamento/textos'
@@ -570,9 +570,14 @@ export async function vincularClienteAoPlano(
  */
 export async function buscarClientesParaPlano(termo: string): Promise<{
   clientes: { id: string; name: string; phone: string | null; document: string | null }[]
+  error?: string
 }> {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'clients', 'VIEW')
+  // D5 da 35ª (PL-02): busca quem liga a cliente ao plano — o Clientes em Ver
+  // ou quem monta (o Atendimento em Gerenciar, só o nome). A recusa é { error },
+  // nunca o erro lançado (era 500 na tela).
+  const alcance = buscaClienteParaPlano(ctx)
+  if (!alcance) return { clientes: [], error: RECUSA_QUEM_MONTA }
 
   const busca = termo.trim()
   if (busca.length < 2) return { clientes: [] }
@@ -598,7 +603,9 @@ export async function buscarClientesParaPlano(termo: string): Promise<{
   const fichas = (await ler(admin.from('clients').select('id, name, phone, document')
     .eq('tenant_id', ctx.tenantId!).in('id', ids), 'carregar os clientes') as Achado[] | null) ?? []
   // A ordem da regra (quem começa com o termo primeiro), depois o CPF.
-  return { clientes: ids.map(id => fichas.find(f => f.id === id)).filter((f): f is Achado => !!f) }
+  const achados = ids.map(id => fichas.find(f => f.id === id)).filter((f): f is Achado => !!f)
+  // Sem o Clientes, nada do cadastro vai à tela (o telefone e o documento são dele).
+  return { clientes: alcance === 'SO_O_NOME' ? achados.map(f => ({ id: f.id, name: f.name, phone: null, document: null })) : achados }
 }
 
 /** Renomeia o plano. */
@@ -1730,6 +1737,7 @@ import { pontosDoConjunto } from '@/lib/pacotes/pontos-do-cancelamento'
 import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { fidelidadeDaVenda, fidelidadeParaAVenda } from '@/lib/fidelidade/na-venda'
 import type { EscolhaDaFidelidade } from '@/lib/fidelidade/conta-na-venda'
+import { pedeAFormaAgora } from '@/lib/checkout/pagamento-valido'
 
 /**
  * Erro de banco vira mensagem na tela, e não uma exceção nua.
@@ -1811,8 +1819,9 @@ async function checkoutTreatmentPlanInterno(
   // C38: o crediário até o limite da rede (era `Math.min(…, 48)`, calado).
   const recusaDasParcelas = await recusaDasParcelasDaRede(ctx.tenantId!, pagamento)
   if (recusaDasParcelas) return { error: recusaDasParcelas }
-  // A37: o que se recebe agora pede a forma (a tela a deixa nascer vazia).
-  if (pagamento && pagamento.forma !== 'A_RECEBER' && !pagamento.metodo) return { error: 'Escolha a forma de pagamento.' }
+  // A37: o que se recebe agora pede a forma (a tela a deixa nascer vazia). O crediário sem
+  // entrada não recebe nada agora, e não pede forma (CR-01, PDV8; D2 da 35ª).
+  if (pedeAFormaAgora(pagamento) && !pagamento.metodo) return { error: 'Escolha a forma de pagamento.' }
 
   const plan = await ler(admin
     .from('treatment_plans')

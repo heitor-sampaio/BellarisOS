@@ -60,6 +60,8 @@ interface Props {
    * diz para onde leva o planejamento retratado (nulo: sem link).
    */
   injetaveis?: ContextoDosInjetaveis
+  /** O atendimento está em aberto (A19 da 35ª): vai ao contexto como `aoVivo`. */
+  planejadorAoVivo?: boolean
   /**
    * A34 da 11ª: as fotos clínicas anexadas NESTE atendimento (que o
    * prontuário mostra no registro dele, PR1a). Na leitura, o campo de foto vazio diz que elas existem — a
@@ -85,12 +87,19 @@ export interface ContextoDosInjetaveis {
    * (a ficha é do Prontuário), sem mexer no mapa.
    */
   podeEditar?: boolean
+  /**
+   * O atendimento está em aberto (A19 da 35ª): na LEITURA, o campo do
+   * planejador vazio mostra o planejamento com a aplicação deste atendimento,
+   * como a edição (`abrirOAplicado`) — e não "Nenhum ponto marcado".
+   */
+  aoVivo?: boolean
 }
 
 export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(function AnamnesisFormRenderer(
-  { appointmentId, slug, rows, initial, canEdit, saveAction, hideSaveButton, semInjetaveis = false, rotuloSalvar = 'Salvar ficha', onAnswersChange, injetaveis, fotosDoAtendimento = 0 }, ref,
+  { appointmentId, slug, rows, initial, canEdit, saveAction, hideSaveButton, semInjetaveis = false, rotuloSalvar = 'Salvar ficha', onAnswersChange, injetaveis: contexto, planejadorAoVivo = false, fotosDoAtendimento = 0 }, ref,
 ) {
   const doSave = saveAction ?? salvarFichaDoProcedimento
+  const injetaveis = contexto && planejadorAoVivo ? { ...contexto, aoVivo: true } : contexto
   const [answers, setAnswers] = useState<AnamnesisAnswers>(initial ?? {})
   const [saving, setSaving]   = useState(false)
   const [savedAt, setSavedAt] = useState<number | null>(null)
@@ -153,9 +162,15 @@ export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(func
    * ver: não barra.
    */
   function validar(o: { rolar?: boolean } = {}): ValidacaoDaFicha {
-    if (!canEdit) return {}
-    setError(null); setInvalidos({})
     const vazias = obrigatoriasVazias(rows, answers, semInjetaveis ? ['injectable_map'] : [])
+    // A15 da 35ª (FI-07, AT-05): em LEITURA (quem vê e não escreve o prontuário)
+    // a ficha também diz o que falta, antes do "Confirmar conclusão" — a trava é
+    // a mesma do servidor. Não marca campo: ela não o preenche.
+    if (!canEdit) {
+      if (!vazias.length) return {}
+      return { error: resumoDasObrigatoriasVazias(vazias.map(f => f.label))!, faltam: vazias.map(f => f.label) }
+    }
+    setError(null); setInvalidos({})
     const primeira = vazias[0]
     if (!primeira) return {}
     const marcados: Record<string, string> = {}
@@ -259,7 +274,8 @@ function FieldView({ field: f, value, canEdit, appointmentId, slug, injetaveis, 
     return (
       <div data-campo={f.id}>
         <span style={labelStyle}>{f.label}</span>
-        <ReadOnlyValue field={f} value={value} photoUrl={photoUrl} linkDoPlanejamento={injetaveis?.linkDoPlanejamento} fotosDoAtendimento={fotosDoAtendimento} />
+        <ReadOnlyValue field={f} value={value} photoUrl={photoUrl} linkDoPlanejamento={injetaveis?.linkDoPlanejamento} fotosDoAtendimento={fotosDoAtendimento}
+          injetaveis={injetaveis} appointmentId={appointmentId} slug={slug} />
       </div>
     )
   }
@@ -330,10 +346,13 @@ function FieldView({ field: f, value, canEdit, appointmentId, slug, injetaveis, 
   )
 }
 
-function ReadOnlyValue({ field: f, value, photoUrl, linkDoPlanejamento, fotosDoAtendimento = 0 }: {
+function ReadOnlyValue({ field: f, value, photoUrl, linkDoPlanejamento, fotosDoAtendimento = 0, injetaveis, appointmentId = '', slug = '' }: {
   field: AnamnesisField; value: AnswerValue | undefined; photoUrl?: string
   linkDoPlanejamento?: (mapId: string) => string | null
   fotosDoAtendimento?: number
+  injetaveis?: ContextoDosInjetaveis
+  appointmentId?: string
+  slug?: string
 }) {
   if (f.type === 'photo') {
     if (typeof value === 'string' && value && photoUrl) {
@@ -361,6 +380,12 @@ function ReadOnlyValue({ field: f, value, photoUrl, linkDoPlanejamento, fotosDoA
       return <RetratoDoPlanejamento valor={value} nome={plan.nome} link={linkDoPlanejamento?.(plan.id) ?? null} products={f.options ?? []} />
     }
     if (!isInjectableMap(value) || value.points.length === 0) {
+      // A19 da 35ª: no atendimento em aberto, o campo vazio mostra a aplicação
+      // registrada pela sub-aba do mapa, como a edição.
+      if (injetaveis?.aoVivo && injetaveis.clientId && injetaveis.branchId && appointmentId) {
+        return <PlanejadorEmLeitura injetaveis={injetaveis} clientId={injetaveis.clientId} branchId={injetaveis.branchId}
+          appointmentId={appointmentId} slug={slug} produtos={injetaveis.produtos?.length ? injetaveis.produtos : (f.options ?? [])} />
+      }
       return <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)' }}>Nenhum ponto marcado</p>
     }
     return <InjectableMapField value={value} products={f.options ?? []} canEdit={false} onChange={() => {}} />
@@ -378,6 +403,25 @@ function ReadOnlyValue({ field: f, value, photoUrl, linkDoPlanejamento, fotosDoA
     <p style={{ fontSize: 'var(--text-base-sz)', color: text ? 'var(--text)' : 'var(--text-faint)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
       {text || 'Não informado'}
     </p>
+  )
+}
+
+/**
+ * O planejador no campo vazio da ficha em LEITURA (A19 da 35ª): o mesmo
+ * PlanejamentoInjetaveis da edição, que abre sozinho o planejamento com a
+ * aplicação deste atendimento (`abrirOAplicado`). O aberto fica aqui: a ficha
+ * de quem só lê não grava nada.
+ */
+function PlanejadorEmLeitura({ injetaveis, clientId, branchId, appointmentId, slug, produtos }: {
+  injetaveis: ContextoDosInjetaveis; clientId: string; branchId: string; appointmentId: string; slug: string; produtos: string[]
+}) {
+  const [aberto, setAberto] = useState<string | null>(null)
+  return (
+    <PlanejamentoInjetaveis
+      clientId={clientId} branchId={branchId} slug={slug} appointmentId={appointmentId}
+      produtos={produtos} podeEditar={injetaveis.podeEditar === true}
+      abertoId={aberto} onAbrir={setAberto} abrirOAplicado
+    />
   )
 }
 

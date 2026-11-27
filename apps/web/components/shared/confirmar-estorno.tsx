@@ -2,8 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import { formatBRL } from '@estetica-os/utils'
+import { toast } from 'sonner'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { pontosDoEstorno, reaberturaDoEstorno, comissaoETaxaDoEstorno, vendaDoEstorno } from '@/actions/financial'
+import { CancelarPacote, CancelarPlano } from '@/components/shared/cancelar-pacote'
+import { CancelarUnidadePrePaga } from '@/components/shared/cancelar-unidade-pre-paga'
+import type { CancelarPeloEstorno } from '@/lib/financeiro/reabertura-do-estorno'
 
 /**
  * A confirmação do estorno de um lançamento, nos dois financeiros (rede e
@@ -40,6 +44,10 @@ export function ConfirmarEstorno({ alvo, estornando, onConfirmar, onVoltar, onDe
   const [pontos, setPontos] = useState<string | null>(null)
   // C39 (H2 = a): o pagamento de um pacote, plano ou pré-pago volta a ser a receber.
   const [reabre, setReabre] = useState<string | null>(null)
+  // D1 da 35ª (DP-08): o cancelamento do pacote, do plano ou da sessão pré-paga
+  // mora aqui também — quem tem só o Financeiro em Gerenciar não abre a ficha.
+  const [aCancelar, setACancelar] = useState<CancelarPeloEstorno | null>(null)
+  const [cancelando, setCancelando] = useState<{ tipo: 'PACOTE' | 'PLANO' | 'SESSAO'; id: string } | null>(null)
   // A7 da 20ª: a comissão que o pagamento liberou e a taxa do cartão, ditas antes.
   const [comissaoETaxa, setComissaoETaxa] = useState<string | null>(null)
   // A13 da 23ª: a venda de produto se estorna inteira — o valor e as formas são os dela.
@@ -49,7 +57,7 @@ export function ConfirmarEstorno({ alvo, estornando, onConfirmar, onVoltar, onDe
     let vivo = true
     if (alvo.vendaDeProduto) vendaDoEstorno(alvo.id).then(r => { if (vivo) setVenda(r) }).catch(() => {})
     pontosDoEstorno(alvo.id).then(r => { if (vivo) setPontos(r.texto) }).catch(() => {})
-    reaberturaDoEstorno(alvo.id).then(r => { if (vivo) setReabre(r.texto) }).catch(() => {})
+    reaberturaDoEstorno(alvo.id).then(r => { if (vivo) { setReabre(r.texto); setACancelar(r.cancelar ?? null) } }).catch(() => {})
     comissaoETaxaDoEstorno(alvo.id).then(r => { if (vivo) setComissaoETaxa(r.texto) }).catch(() => {})
     return () => { vivo = false }
   }, [alvo.id, alvo.vendaDeProduto])
@@ -57,6 +65,10 @@ export function ConfirmarEstorno({ alvo, estornando, onConfirmar, onVoltar, onDe
   const cancelar = produto && !!alvo.cancelarVenda
   const pronto = motivo.trim().length > 0 && (!produto || voltou !== null)
   const semDinheiro = !produto && !!alvo.pagoSemDinheiro
+  // A janela do cancelamento ocupa o lugar desta; fechar volta à lista.
+  if (cancelando?.tipo === 'PACOTE') return <CancelarPacote clientPackageId={cancelando.id} onFechar={onVoltar} />
+  if (cancelando?.tipo === 'PLANO') return <CancelarPlano planId={cancelando.id} onFechar={onVoltar} />
+  if (cancelando?.tipo === 'SESSAO') return <CancelarUnidadePrePaga unidadeId={cancelando.id} onFechar={onVoltar} onCancelada={aviso => toast.success(aviso)} />
   const titulo = cancelar ? 'Cancelar esta venda de produto?' : produto ? 'Estornar esta venda de produto?' : semDinheiro ? 'Desfazer este pagamento?' : 'Estornar este lançamento?'
   return (
     <JanelaModal rotulo={titulo} largura={440} travado={estornando} onFechar={onVoltar}>
@@ -85,6 +97,22 @@ export function ConfirmarEstorno({ alvo, estornando, onConfirmar, onVoltar, onDe
         )}
         {reabre && !produto && (
           <p data-venda-reabre style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 600 }}>{reabre}</p>
+        )}
+        {aCancelar && !produto && (
+          <div data-cancelar-pelo-estorno style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {aCancelar.tipo === 'PACOTE' && (
+              <button type="button" className="btn-secondary" disabled={estornando}
+                onClick={() => setCancelando({ tipo: 'PACOTE', id: aCancelar.id })}>Cancelar pacote</button>
+            )}
+            {aCancelar.tipo === 'PLANO' && (
+              <button type="button" className="btn-secondary" disabled={estornando}
+                onClick={() => setCancelando({ tipo: 'PLANO', id: aCancelar.id })}>Cancelar plano</button>
+            )}
+            {aCancelar.tipo === 'PRE_PAGO' && aCancelar.sessoes.map(u => (
+              <button key={u.id} type="button" className="btn-secondary" disabled={estornando}
+                onClick={() => setCancelando({ tipo: 'SESSAO', id: u.id })}>Cancelar a sessão {u.numero}</button>
+            ))}
+          </div>
         )}
         {comissaoETaxa && (
           <p data-comissao-e-taxa-do-estorno style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 600 }}>{comissaoETaxa}</p>

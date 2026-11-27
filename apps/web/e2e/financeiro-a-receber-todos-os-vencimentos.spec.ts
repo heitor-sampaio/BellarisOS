@@ -104,6 +104,28 @@ test('"Reforça", item 4: o Financeiro mostra o atendimento concluído sem pagam
   })
 })
 
+// A12 da 35ª (princípio 3): Relatórios → Financeiro, "A receber em aberto", diz os concluídos sem
+// pagamento como o Financeiro — o mesmo número, a mesma linha.
+test('A12: os Relatórios dizem os concluídos sem pagamento como o Financeiro', async ({ browser }) => {
+  const b = db()
+  const cli = await rede!.criarCliente('Concluído nos relatórios')
+  const agora = new Date().toISOString()
+  expect((await b.from('appointments').insert({
+    branch_id: rede!.branchId, client_id: cli, procedure_id: rede!.procedureId, professional_id: rede!.professionalId,
+    status: 'COMPLETED', source: 'INTERNAL', duration_min: 30, price: 120, scheduled_at: agora, completed_at: agora,
+  })).error).toBeNull()
+
+  await como(browser, dona!, async p => {
+    await p.goto(`/${slug}/financeiro?period=month`)
+    const noFinanceiro = (await p.locator('[data-kpi="a-receber"] [data-concluidos-sem-pagamento]').innerText()).trim()
+    expect(noFinanceiro).toMatch(/Concluídos sem pagamento:/)
+    for (const tela of [`/${slug}/reports?tab=financeiro`, '/admin/reports?tab=financeiro']) {
+      await p.goto(tela)
+      await expect(p.locator('[data-concluidos-sem-pagamento]'), tela).toHaveText(noFinanceiro)
+    }
+  })
+})
+
 test('ind-11: a unidade DESATIVADA com conta a receber entra no em aberto da rede', async ({ browser }) => {
   // "A unidade pode ter sido desativada comercialmente mas ainda tem contas a
   // receber" (o Heitor, revisão de 2026-11-02).

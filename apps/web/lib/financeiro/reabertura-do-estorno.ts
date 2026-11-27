@@ -30,14 +30,39 @@ export function vendaDoEstornoEmTexto(linhas: readonly LancamentoDaVendaDoEstorn
  * feitas: a janela dizia só o dinheiro, e o pacote com 4 das 5 sessões
  * surpreendia. Agora diz quantas foram feitas e quantas restam.
  */
-export function textoDaReaberturaDoPacote(valor: number, usadas: number, total: number): string {
+export function textoDaReaberturaDoPacote(valor: number, usadas: number, total: number, onde: OndeSeCancela = 'na ficha'): string {
   const feitas = Math.max(0, Math.min(usadas, total))
   const restam = total - feitas
   const sessoes = feitas <= 0 || total <= 0 ? ''
     : restam === 0 ? ` As ${total} sessões já foram feitas.`
     : ` ${feitas} das ${total} sessões já ${feitas === 1 ? 'foi feita' : 'foram feitas'}, e o pacote segue com ${restam === 1 ? 'a 1 que resta' : `as ${restam} que restam`}.`
-  return `O dinheiro volta à cliente, e o pacote volta a ter ${formatBRL(valor)} a receber.${sessoes} Para desfazer a venda, use “Cancelar pacote” na ficha.`
+  return `O dinheiro volta à cliente, e o pacote volta a ter ${formatBRL(valor)} a receber.${sessoes}${paraDesfazer('use “Cancelar pacote” na ficha', onde)}`
 }
+
+/**
+ * D1 da 35ª (DP-08; decisão do Claude, 27/11): quem tem só o Financeiro em
+ * Gerenciar não abre a ficha (o Clientes) nem a página do plano (o
+ * Atendimento), e a janela mandava cancelar "na ficha". Com o botão do
+ * cancelamento na própria janela (`'aqui'`), a frase termina nele.
+ */
+export type OndeSeCancela = 'na ficha' | 'aqui'
+
+const paraDesfazer = (naFicha: string, onde: OndeSeCancela) =>
+  onde === 'aqui' ? ' Para desfazer a venda:' : ` Para desfazer a venda, ${naFicha}.`
+
+export function textoDaReaberturaDoPlano(valor: number, onde: OndeSeCancela = 'na ficha'): string {
+  return `O dinheiro volta à cliente, e o plano volta a ter ${formatBRL(valor)} a receber.${paraDesfazer('use “Cancelar plano” na ficha', onde)}`
+}
+
+export function textoDaReaberturaDoPrePago(valor: number, onde: OndeSeCancela = 'na ficha'): string {
+  return `O dinheiro volta à cliente, e o pré-pago volta a ter ${formatBRL(valor)} a receber.${paraDesfazer('cancele a sessão pré-paga na ficha', onde)}`
+}
+
+/** O que a janela do estorno oferece cancelar (D1 da 35ª): a mesma janela de cada um. */
+export type CancelarPeloEstorno =
+  | { tipo: 'PACOTE'; id: string }
+  | { tipo: 'PLANO'; id: string }
+  | { tipo: 'PRE_PAGO'; sessoes: { id: string; numero: number }[] }
 
 const emLista = (itens: string[]) => itens.length <= 1 ? (itens[0] ?? '') : `${itens.slice(0, -1).join(', ')} e ${itens[itens.length - 1]}`
 

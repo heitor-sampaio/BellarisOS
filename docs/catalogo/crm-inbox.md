@@ -77,8 +77,8 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 
 ### A mesma pessoa do CRM
 
-**CL-14.** Se o telefone digitado no cadastro é de uma pessoa do CRM que ainda não é cliente (com oportunidade, até a perdida que voltou, só com conversa, ou só vinda da Importação), a tela pergunta, a quem tem o CRM em Ver, "É a mesma pessoa do contato X?". O "Sim" diz antes o que muda no contato ("Com o Sim: o contato X passa a se chamar Y, com o e-mail Z."), grava no contato o nome e o e-mail da ficha e liga à ficha nova as oportunidades e conversas que quem cadastra alcança; a mais recente conta a conversão (o clique do anúncio, a API de Conversões) e as outras ficam ligadas e convertidas. "Não" cadastra sem ligar.
-- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
+**CL-14.** Se o telefone digitado no cadastro é de uma pessoa do CRM que ainda não é cliente (com oportunidade, até a perdida que voltou, só com conversa, ou só vinda da Importação), a tela pergunta, a quem tem o CRM em Ver, "É a mesma pessoa do contato X?". O "Sim" diz antes o que muda no contato ("Com o Sim: o contato X passa a se chamar Y, com o e-mail Z."), grava no contato o nome e o e-mail da ficha e liga à ficha nova as oportunidades e conversas que quem cadastra alcança; a mais recente conta a conversão (o clique do anúncio, a API de Conversões) e as outras ficam ligadas e convertidas. "Não" cadastra sem ligar. Para quem não tem o CRM não há pergunta nem ligação; a ligação vem depois, quando quem tem o CRM agenda pelo card ("Agendar para a ficha de …", AG-15 do Atendimento).
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele); quem não tem o CRM: decisão do Claude, 27/11 (35ª, Decisão C3)
 - Onde: `docs/regras/crm-inbox.md:146-164`, `:213`, `:1070`
 - Antes: KA-30, KA-31, KA-32, KA-33, KD-03
 
@@ -326,7 +326,7 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/regras/crm-inbox.md:696`, `:709`, `:856-866`
 - Antes: KC-04, KC-06; antes de 26/11: só o liberar refazia o pacote
 
-**LG-07.** Quando o prontuário fica fora, o pacote e o resumo do pedido dizem por quê (não foi pedido, está em análise, não foi liberado); liberado, dizem que está incluído. Enquanto está em análise, o pedido segue em andamento: o perfil diz "Parte geral pronta" e "Prontuário em análise", deixa baixar a parte geral, não oferece "Solicitar meus dados", e um segundo pedido é recusado.
+**LG-07.** Quando o prontuário fica fora, o pacote e o resumo do pedido dizem por quê (não foi pedido, está em análise, não foi liberado) ou, no pacote gerado pela equipe sem o prontuário (LG-10), "gerado pela equipe sem o prontuário", sem mandar a cliente fazer um pedido novo (decisão do Claude, 27/11, 35ª D10); liberado, dizem que está incluído. Enquanto está em análise, o pedido segue em andamento: o perfil diz "Parte geral pronta" e "Prontuário em análise", deixa baixar a parte geral, não oferece "Solicitar meus dados", e um segundo pedido é recusado.
 - Fonte: decisão do Claude
 - Onde: `docs/regras/crm-inbox.md:700`, `:723`
 - Antes: KC-05, KC-10
@@ -609,8 +609,8 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/regras/crm-inbox.md:1064-1066`, `:1732`, `docs/revisao.md:879`, `:2062`
 - Antes: KD-02, KE-47, KF-15
 
-**OP-03.** Mover os cards, criar e editar oportunidades é de quem tem o CRM em Gerenciar.
-- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
+**OP-03.** Mover os cards, criar e editar oportunidades é de quem tem o CRM em Gerenciar. Quando duas pessoas movem o mesmo card ao mesmo tempo, as duas mudanças se gravam em ordem no histórico e vale a última, sem aviso; cada tela mostra a etapa final no sinal seguinte.
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele); os dois movimentos ao mesmo tempo: decisão do Claude, 27/11 (35ª, Decisão C1)
 - Onde: `docs/regras/crm-inbox.md:1411`
 - Antes: KE-02
 
@@ -766,8 +766,8 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 
 ### O lembrete de retorno
 
-**OP-32.** A oportunidade tem "Lembrete de retorno": "Retornar em" (o dia) e "O que fazer no retorno", na "Nova oportunidade" e na edição. O quadro diz "Retornar 12/11", "Retornar hoje" (em aviso) ou "Retorno atrasado (10/11)".
-- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "o resto fica como está"
+**OP-32.** A oportunidade tem "Lembrete de retorno": "Retornar em" (o dia) e "O que fazer no retorno", na "Nova oportunidade" e na edição. O quadro diz "Retornar 12/11", "Retornar hoje" (em aviso) ou "Retorno atrasado (10/11)". No card ganho ou perdido, o lembrete não fica em destaque, como o sino não avisa (OP-33).
+- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "o resto fica como está"; o card ganho ou perdido sem destaque: decisão do Claude, 27/11 (35ª, Decisão C2), pela OP-33 e pelo princípio 3
 - Onde: `docs/regras/crm-inbox.md:1577`, `docs/revisao.md:861`, `:881`
 - Antes: KE-35
 

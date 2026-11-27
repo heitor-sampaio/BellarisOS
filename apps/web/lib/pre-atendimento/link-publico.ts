@@ -8,7 +8,7 @@ import {
   type FichaDePreAtendimento, type RespostaDaAnamnese,
 } from '@/lib/anamnese-geral'
 import { gravarAnamneseGeral, preAtendimentoPendente, preAtendimentoDoLink, expirarAFichaDaCliente } from './ficha'
-import { modoDaFichaPeloLink } from './modo-da-ficha'
+import { modoDaFichaPeloLink, modoDoPendentePelaFichaAtual } from './modo-da-ficha'
 
 /**
  * O link do pré-atendimento, do lado de quem o ABRE — sem sessão (2026-10-20).
@@ -108,7 +108,9 @@ async function pendenteConferido(c: Extract<Conferida, { ok: true }>) {
   if (!pendente || pendente.id !== c.pre) return null
   const registro = await ler(admin.from('medical_records').select('general_anamnesis')
     .eq('client_id', c.cliente).maybeSingle(), 'buscar a ficha de saúde')
-  return { pendente, atual: paraAnamneseGeral(registro?.general_anamnesis ?? null, pendente.ficha) }
+  const atual = paraAnamneseGeral(registro?.general_anamnesis ?? null, pendente.ficha)
+  // D7 da 35ª: a obrigatória que a rede acrescentou depois da resposta pede a ficha inteira.
+  return { pendente: { ...pendente, modo: modoDoPendentePelaFichaAtual(pendente.modo, pendente.ficha.rows, atual) }, atual }
 }
 
 /** Confere a identidade e devolve a ficha para responder. */

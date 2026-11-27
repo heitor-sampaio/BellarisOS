@@ -19,9 +19,16 @@ export function ofereceAFichaNoApp(o: {
   /** A última resposta com conteúdo (a ficha gravada vazia não conta). */
   ultimaResposta: string | null
   validadeMeses: number
+  /**
+   * D7 da 35ª (FI-07, PT-12): as respostas gravadas não cobrem uma obrigatória
+   * da ficha ATUAL (`obrigatoriasNovasQueFaltam`, a conta do Finalizar) — a
+   * ficha está pendente mesmo dentro da validade.
+   */
+  faltaObrigatoria?: boolean
   agora?: Date
 }): string | null {
   if (o.pendente || !o.proximoAgendamentoId || !o.temFichaAtiva) return null
+  if (o.faltaObrigatoria) return o.proximoAgendamentoId
   if (o.ultimaResposta && !fichaDeSaudeVencida(o.ultimaResposta, o.validadeMeses, o.agora)) return null
   return o.proximoAgendamentoId
 }

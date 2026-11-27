@@ -27,6 +27,19 @@ export function montaPlano(
   return unidadeId ? alcancaUnidade(ctx, unidadeId) : true
 }
 
+/**
+ * Quem busca a cliente para ligar ao plano (D5 da 35ª; PL-02: "vincula" é de
+ * quem monta): o Clientes em Ver vê a ficha (nome, telefone, documento); quem
+ * só monta o plano (o Atendimento em Gerenciar), só o nome — nada do cadastro,
+ * que é do Clientes. Sem nenhum dos dois, ninguém.
+ */
+export function buscaClienteParaPlano(
+  ctx: Pick<TenantContext, 'isNetworkAdmin' | 'permissions' | 'branchId' | 'unidades'>,
+): 'FICHA' | 'SO_O_NOME' | null {
+  if (ctx.isNetworkAdmin || can(ctx as TenantContext, 'clients', 'VIEW')) return 'FICHA'
+  return montaPlano(ctx) ? 'SO_O_NOME' : null
+}
+
 // Os textos moram à parte: a lista de planejamentos (componente do navegador) os
 // lê, e este arquivo puxa o lib/auth, que é do servidor.
 export { TEXTO_QUEM_MONTA, RECUSA_QUEM_MONTA, RECUSA_QUEM_ATENDE } from './textos-de-quem-monta'

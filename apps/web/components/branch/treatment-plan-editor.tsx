@@ -6,6 +6,7 @@ import { saveTreatmentPlan, proposeTreatmentPlan, pacotesParaODicaDoPlano } from
 import { pacoteEquivalente, type PacoteParaComparar } from '@/lib/checkout/pacote-equivalente'
 import type { PlanSessionInput } from '@/actions/treatment-plans'
 import { situacaoDoPlano, TEXTO_QUEM_MONTA } from '@/lib/plano-de-tratamento/situacao'
+import { planoFechado } from '@/lib/plano-de-tratamento/fechado'
 import { Dica } from '@/components/shared/dica'
 import { textoDeQuemConclui } from '@/lib/equipe/textos-de-quem-pode'
 import type { RetratoDoCancelamento } from '@/lib/plano-de-tratamento/retrato-do-cancelamento'
@@ -505,7 +506,9 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
   // D4 da 12ª: o cancelado e o recusado também são só leitura (reabriam como
   // rascunho editável, com "Nova sessão" e as lixeiras).
   // UM3: sem a permissão de montar, o plano também só se lê.
-  const isPlanLocked = !podeEditar || ['PROPOSED', 'ACCEPTED', 'COMPLETED', 'CANCELLED', 'REJECTED'].includes(existingPlan?.status ?? '')
+  // D6 da 35ª (PL-02, PL-15): só o FECHADO trava (`planoFechado`, a regra do servidor); o
+  // proposto se edita onde o editor salva pelo plano — na avaliação, o cartão só o mostra.
+  const isPlanLocked = !podeEditar || planoFechado(existingPlan?.status) || (existingPlan?.status === 'PROPOSED' && !onSalvarPorPlano)
   const situacaoTravada = situacaoDoPlano(existingPlan?.status ?? 'PROPOSED')
 
   const grandTotal = sessions.reduce(

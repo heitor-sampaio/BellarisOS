@@ -136,6 +136,23 @@ test('A42: o lembrete de retorno se marca no card, com o dia e o que fazer, e o 
   expect(data).toEqual({ retornar_em: hoje, retornar_obs: 'Ligar para falar do orçamento', crm_stage_id: etapa.novo })
 })
 
+test('A7 da 35ª: no card perdido ou ganho, o lembrete fica com o dia, sem o destaque de hoje (OP-33, Decisão C2)', async ({ browser }) => {
+  const hoje = dayKeyTZ(new Date())
+  const dia = `${hoje.slice(8, 10)}/${hoje.slice(5, 7)}`
+  const perdido = await lead('Retorno perdido A7', { retornar_em: hoje, crm_stage_id: etapa.perdido })
+  const ganho = await lead('Retorno ganho A7', { retornar_em: hoje, crm_stage_id: etapa.ganho })
+  const aberto = await lead('Retorno aberto A7', { retornar_em: hoje })
+  await como(browser, sdr, async p => {
+    await p.goto('/admin/oportunidades')
+    for (const id of [perdido, ganho]) {
+      const r = p.locator(`[data-lead-id="${id}"] [data-retornar-em]`)
+      await expect(r).toContainText(`Retornar ${dia}`)
+      await expect(r).not.toContainText('hoje')
+    }
+    await expect(p.locator(`[data-lead-id="${aberto}"] [data-retornar-em]`)).toContainText('Retornar hoje')
+  })
+})
+
 /**
  * O card e o "Ir para a conversa" (A16, A17 e A18 da 27ª simulação):
  * - A16 (CLAUDE.md §14; "quem só pode ver só pode ver"): com o CRM em Ver, o

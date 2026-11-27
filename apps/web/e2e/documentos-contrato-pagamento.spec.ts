@@ -228,4 +228,24 @@ test.describe.serial('documentos: pagamento no contrato do procedimento', () => 
     // O novo espera a cliente assinar (montado com o combinado de agora).
     await expect.poll(async () => (await db().from('issued_documents').select('status').eq('id', antigo.replaced_by!).single<{ status: string }>()).data!.status).toBe('PENDENTE')
   })
+
+  // D2 da 35ª (CR-01): o crediário SEM entrada vem da tela com `metodo: null` — nada entra agora,
+  // nenhuma forma é pedida. O contrato recusava com "Forma de pagamento inválida.".
+  test('CR-01: o crediário sem entrada vai ao contrato sem forma; com entrada e sem forma, recusa', async ({ browser }) => {
+    const { data: ag4, error: eA } = await db().from('appointments').insert({
+      branch_id: rede!.branchId, client_id: cliente, procedure_id: rede!.procedureId, professional_id: rede!.professionalId,
+      scheduled_at: new Date(Date.now() + 4 * 86_400_000).toISOString(), duration_min: 30, price: 100, status: 'SCHEDULED',
+    }).select('id').single<{ id: string }>()
+    expect(eA).toBeNull()
+    const { data: c4 } = await db().from('issued_documents').select('id').eq('appointment_id', ag4!.id).eq('kind', 'CONTRATO').single<{ id: string }>()
+    expect(c4, 'o contrato do agendamento nasceu').not.toBeNull()
+    const semEntrada = { forma: 'PARCELADO', metodo: null, entrada: 0, parcelas: 2, primeiroVencimento: '2026-12-10T15:00:00.000Z' }
+    await como(browser, gestor!.estado, async page => {
+      const definir = (p: unknown) => chamarAcao(page, 'actions/documentos.ts', 'definirPagamentoDoContrato', `/admin/clients/${cliente}`, [c4!.id, p])
+      expect((await definir(semEntrada)).texto, 'sem entrada, sem forma: passa').toContain('"ok":true')
+      expect((await definir({ ...semEntrada, entrada: 30 })).texto).toContain('Forma de pagamento inválida')
+    })
+    const { data: d } = await db().from('issued_documents').select('payment_snapshot').eq('id', c4!.id).single<{ payment_snapshot: unknown }>()
+    expect(d!.payment_snapshot).toEqual({ forma: 'PARCELADO', metodo: null, entrada: 0, parcelas: 2, primeiroVencimento: '2026-12-10' })
+  })
 })

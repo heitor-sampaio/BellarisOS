@@ -651,6 +651,14 @@ function fraseDoRegistroDa26(r: RegistroDaAuditoria, nomes: NomesDaAuditoria, cl
     const categoria = r.registro_id ? texto(nomes.categoriasDosAnexos?.[r.registro_id]) : null
     return `Anexou ${(categoria && ANEXO_DA_CATEGORIA[categoria]) || 'um arquivo'}${daCliente}`
   }
+  // A20 da 35ª: o anexo clínico apagado sai das telas e a linha fica (apagado_em) — o fato é apagar, não "Editou".
+  if (r.tabela === 'client_documents' && r.operacao === 'editou' && r.colunas.includes('apagado_em')) {
+    const categoria = r.registro_id ? texto(nomes.categoriasDosAnexos?.[r.registro_id]) : null
+    return `Apagou ${(categoria && ANEXO_DA_CATEGORIA[categoria]) || 'um arquivo'}${daCliente}`
+  }
+  // A5 e A10 da 35ª: o cancelamento gravado sozinho (a sessão do pré-pago sem nada a devolver).
+  const cancelada = fraseDoCancelamentoDaVenda([r], nomes)
+  if (cancelada) return cancelada
   if (r.tabela === 'lgpd_requests' && r.operacao === 'editou' && r.colunas.includes('medical_status')) {
     // O gatilho grava a decisão (desde a 26ª); antes dela, liberar reabria o pedido (a situação mudava) e recusar não.
     const decisao = texto(r.depois.medical_status)
@@ -1689,6 +1697,53 @@ function fraseDaDespesaEmParcelas(linhas: readonly RegistroDaAuditoria[]): strin
   return `Criou a despesa${nome}, em ${linhas.length} parcelas (${brl(total)})`
 }
 
+/** O registro cancelado de uma venda: o plano, o pacote da cliente ou a sessão do pré-pago. */
+function vendaCancelada(linhas: readonly RegistroDaAuditoria[]): RegistroDaAuditoria | undefined {
+  return linhas.find(l => l.tabela === 'treatment_plans' && l.operacao === 'editou' && l.colunas.includes('cancelado_em'))
+    ?? linhas.find(l => l.tabela === 'client_packages' && l.operacao === 'editou' && l.colunas.includes('cancelado_em') && l.colunas.includes('cancelamento'))
+    ?? linhas.find(l => l.tabela === 'procedure_sale_units' && l.operacao === 'editou' && l.colunas.includes('cancelled_at')
+      && texto(l.depois.status) === 'CANCELLED')
+}
+
+/**
+ * A5 e A10 da 35ª simulação (AD-08; princípio 3; decisão do Claude, 27/11): o
+ * cancelamento do plano, do pacote e da sessão do pré-pago é o fato — "Cancelou
+ * o plano X (motivo: …) e devolveu R$ 860,00 em crédito interno — Cliente" (era
+ * "Cancelou o agendamento … (Plano cancelado)"; a sessão do pré-pago era
+ * "Estornou um pagamento"). O motivo é lido agora (a auditoria não guarda texto
+ * livre); o que voltou: o estorno, ou o crédito interno; e, no estorno do
+ * pagamento inteiro, o usado lançado de novo.
+ */
+function fraseDoCancelamentoDaVenda(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria): string | null {
+  const alvo = vendaCancelada(linhas)
+  if (!alvo) return null
+  const id = alvo.registro_id
+  let oQue: string
+  if (alvo.tabela === 'treatment_plans') {
+    const nome = texto(alvo.depois.name) ?? texto(alvo.antes.name)
+    oQue = nome ? `o plano ${nome}` : 'um plano de tratamento'
+  } else if (alvo.tabela === 'client_packages') {
+    const nome = id ? nomes.pacotesDaCliente?.[id] : null
+    oQue = nome ? `o pacote ${nome}` : 'um pacote'
+  } else {
+    oQue = (id && texto(nomes.sessoesDoPrePago?.[id])) || 'uma sessão do pré-pago'
+  }
+  const motivo = id ? texto(nomes.motivosDaVendaCancelada?.[id]) : null
+  const soma = (ls: readonly RegistroDaAuditoria[]) => Math.round(ls.reduce((t, l) => t + (numero(l.depois.amount) ?? 0), 0) * 100) / 100
+  const estornado = soma(linhas.filter(l => l.tabela === 'financial_transactions' && l.operacao === 'criou' && texto(l.depois.category) === 'Estorno'))
+  const credito = soma(linhas.filter(l => l.tabela === 'internal_credits' && l.operacao === 'criou'))
+  const devolveu = estornado ? ` e estornou ${brl(estornado)}` : credito ? ` e devolveu ${brl(credito)} em crédito interno` : ''
+  // r2-ven-05 (b): o pagamento estornado inteiro, e o usado lançado de novo, pago agora.
+  const relancados = estornado
+    ? recebimentosDaGravacao(linhas, nomes).filter(x => x.tipo === 'INCOME' && x.linha.operacao === 'criou')
+    : []
+  const forma = formasDe(relancados)
+  const usado = relancados.length
+    ? `, e lançou o usado de novo (${brl(relancados.reduce((t, x) => t + x.valor, 0))}${forma ? `, ${forma}` : ''})`
+    : ''
+  return `Cancelou ${oQue}${motivo ? ` (motivo: ${motivo})` : ''}${devolveu}${usado}${clienteDaGravacao(linhas, nomes, alvo)}`
+}
+
 /** A frase de uma gravação inteira. */
 export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria): string {
   // A baixa sozinha de um lançamento (D7 da 16ª): "Recebeu a parcela 1/4 (R$ 200,00, Pix)".
@@ -1722,14 +1777,9 @@ export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: Nome
   }
 
   // A34 da 20ª: o cancelamento do pacote fecha as sessões e o contrato junto; o fato é o pacote.
-  const pacoteCancelado = linhas.find(l => l.tabela === 'client_packages' && l.operacao === 'editou' && l.colunas.includes('cancelado_em')
-    && l.colunas.includes('cancelamento'))
-  if (pacoteCancelado) {
-    const nome = pacoteCancelado.registro_id ? nomes.pacotesDaCliente?.[pacoteCancelado.registro_id] : null
-    const estornado = linhas.filter(l => l.tabela === 'financial_transactions' && l.operacao === 'criou' && texto(l.depois.category) === 'Estorno')
-      .reduce((t, l) => t + (numero(l.depois.amount) ?? 0), 0)
-    return `Cancelou ${nome ? `o pacote ${nome}` : 'um pacote'}${estornado ? ` e estornou ${brl(estornado)}` : ''}${clienteDaGravacao(linhas, nomes, pacoteCancelado)}`
-  }
+  // A5 e A10 da 35ª: o do plano (cancela os agendamentos, devolve em crédito) e o da sessão do pré-pago também.
+  const cancelamento = fraseDoCancelamentoDaVenda(linhas, nomes)
+  if (cancelamento) return cancelamento
   // A21 da 34ª: ligar o agendamento à sessão do pacote fecha o termo do agendamento
   // (`documentos_da_sessao_de_pacote`: os documentos são os do pacote). O fato é a sessão
   // agendada; o documento fechado fica no detalhe. Sem o id guardado (a gravação de antes),
@@ -1835,16 +1885,29 @@ export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: Nome
 export function gruposDaAuditoria(
   registros: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria, pathname: string, slug: string | null, fuso?: string,
 ): GrupoDaAuditoria[] {
-  return agruparAuditoria(registros).map(linhas => {
+  return comAHora(agruparAuditoria(registros).map(gravadas => {
+    const linhas = naUnidadeDoAgendamento(gravadas, nomes)
     // A34 da 21ª: no detalhe, o registro clínico sem unidade leva a da gravação (como o CSV, A37 da 20ª).
     const detalhes = comAUnidadeDaGravacao(linhas, nomes).map(l => linhaDaAuditoria(l, nomes, pathname, slug, fuso))
-    if (linhas.length === 1) return { ...detalhes[0]!, oQue: fraseDoGrupo(linhas, nomes), detalhes }
+    if (linhas.length === 1) return { grupo: { ...detalhes[0]!, oQue: fraseDoGrupo(linhas, nomes), detalhes }, criadoEm: linhas[0]!.criado_em }
     // D6 da 16ª: a unidade e o link são os do FATO (o agendamento, a venda, o
     // recebimento), não os do primeiro registro com cliente (a sessão do pacote
     // vendido em outra unidade puxava a conclusão para lá).
     const principal = principalDaGravacao(linhas, nomes)
-    return { ...linhaDaAuditoria(principal, nomes, pathname, slug, fuso), id: linhas[0]!.id, oQue: fraseDoGrupo(linhas, nomes), detalhes }
-  })
+    return { grupo: { ...linhaDaAuditoria(principal, nomes, pathname, slug, fuso), id: linhas[0]!.id, oQue: fraseDoGrupo(linhas, nomes), detalhes }, criadoEm: principal.criado_em }
+  }))
+}
+
+/**
+ * A20 da 35ª (princípio 3): a página vai pela HORA que cada linha mostra, da
+ * mais nova à mais antiga — a ordem do id não basta quando uma gravação junta
+ * a de outra hora. A mesma hora fica na ordem em que veio (estável).
+ */
+function comAHora(grupos: readonly { grupo: GrupoDaAuditoria; criadoEm: string }[]): GrupoDaAuditoria[] {
+  return grupos
+    .map((x, i) => ({ ...x, i, t: Date.parse(x.criadoEm) }))
+    .sort((a, b) => (b.t - a.t) || (a.i - b.i))
+    .map(x => x.grupo)
 }
 
 /** O registro que dá a unidade e o link de uma gravação: o do fato, o pai, o da cliente, ou o primeiro gravado. */
@@ -1856,8 +1919,18 @@ function principalDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: Nome
   // D15 da 33ª (AD-13, AD-25): o registro clínico sem unidade (a evolução da desistência no meio) não dá a
   // unidade da gravação — a cliente fica com o registro dela que a tem (o agendamento cancelado).
   const clinicoSemUnidade = (l: RegistroDaAuditoria) => !l.branch_id && CLINICO_SEM_UNIDADE.has(l.tabela)
-  return fato?.principal ?? paiDaGravacao(linhas) ?? linhas.find(l => l.client_id && !clinicoSemUnidade(l)) ?? linhas.find(l => l.client_id)
-    ?? linhas.find(l => l.tabela === 'stock_movements' && l.branch_id) ?? linhas[linhas.length - 1]!
+  // A5 e A10 da 35ª: o cancelamento da venda é o fato (a unidade e o link são os do plano, do pacote, do pré-pago).
+  const cancelada = vendaCancelada(linhas)
+  if (cancelada) return cancelada
+  // D12 da 35ª: a sessão do pacote agendada (com o documento fechado junto) é o fato da gravação.
+  const sessaoAgendada = linhas.every(l => l.tabela === 'package_sessions' || (l.tabela === 'issued_documents' && l.operacao === 'editou'))
+    ? linhas.find(l => l.tabela === 'package_sessions' && l.operacao === 'editou' && l.colunas.includes('appointment_id') && !l.colunas.includes('status'))
+    : undefined
+  // A20 da 35ª: a geração do documento juntada à gravação que o criou (`comAGeracaoNaVenda`) não dá a
+  // hora nem o resto à linha — o registro vem da gravação que o criou (a mais antiga).
+  const daGravacao = linhas.filter(l => l.criado_em === linhas[linhas.length - 1]!.criado_em)
+  return sessaoAgendada ?? fato?.principal ?? paiDaGravacao(linhas) ?? daGravacao.find(l => l.client_id && !clinicoSemUnidade(l))
+    ?? daGravacao.find(l => l.client_id) ?? daGravacao.find(l => l.tabela === 'stock_movements' && l.branch_id) ?? linhas[linhas.length - 1]!
 }
 
 /**
@@ -1871,7 +1944,7 @@ export function gravacoesDaUnidade(
 ): RegistroDaAuditoria[] {
   return agruparAuditoria(registros).filter(linhas => {
     // D13 da 30ª: o registro clínico sozinho leva a unidade do atendimento dele.
-    const principal = principalDaGravacao(comAUnidadeDaGravacao(linhas, nomes), nomes)
+    const principal = principalDaGravacao(comAUnidadeDaGravacao(naUnidadeDoAgendamento(linhas, nomes), nomes), nomes)
     // A ficha é da REDE (auditoria das regras, 18/11; H16): a gravação dela não
     // tem unidade, e o filtro de unidade não a esconde.
     return principal.branch_id === unidade || ehDaFicha(principal)
@@ -1881,6 +1954,22 @@ export function gravacoesDaUnidade(
 /** A linha da ficha da cliente: da rede, sem unidade (o gatilho não lê `clients.branch_id`). */
 function ehDaFicha(l: RegistroDaAuditoria): boolean {
   return l.tabela === 'clients' && !l.branch_id
+}
+
+/**
+ * D12 da 35ª simulação (AD-08, AD-13; decisão do Claude, 27/11): a sessão do
+ * pacote ligada (ou desligada) a um agendamento leva a unidade DELE — o gatilho
+ * lhe dá a do pacote, que é a da venda, e o fato é o agendamento (a sessão
+ * vendida em Rio Preto e agendada em Prudente é de Prudente). Sem o agendamento
+ * lido, fica a do gatilho.
+ */
+function naUnidadeDoAgendamento(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria): RegistroDaAuditoria[] {
+  return linhas.map(l => {
+    if (l.tabela !== 'package_sessions' || l.operacao !== 'editou' || !l.colunas.includes('appointment_id')) return l
+    const agendamento = texto(l.depois.appointment_id) ?? texto(l.antes.appointment_id)
+    const unidade = agendamento ? nomes.unidadesDosAgendamentos?.[agendamento] : undefined
+    return unidade ? { ...l, branch_id: unidade } : l
+  })
 }
 
 /** O registro clínico que não guarda unidade (o prontuário é da cliente, não da unidade). */
@@ -1914,7 +2003,8 @@ function comAUnidadeDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: No
 export function linhasDoCsvDaAuditoria(
   registros: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria, fuso?: string,
 ): (LinhaDaAuditoria & { gravacao: string })[] {
-  return agruparAuditoria(registros).flatMap(linhas => {
+  return agruparAuditoria(registros).flatMap(gravadas => {
+    const linhas = naUnidadeDoAgendamento(gravadas, nomes)
     const gravacao = fraseDoGrupo(linhas, nomes)
     // A7 da 21ª: a gravação de um registro só diz no "O quê" a frase da tela, e a
     // "Gravação" fica vazia; na de vários, a linha que já é a frase dela não a repete.

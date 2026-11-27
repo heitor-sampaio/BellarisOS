@@ -197,7 +197,10 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   confirmação" —, e estendê-la ao "Tornar ativo" foi do Claude): "Trocar o contrato?" com "O contrato de pacote “Íris” passa a
   valer; “De fábrica” fica inativo." (`confirmacaoDeTornarAtivo`,
   `lib/documentos/tornar-ativo.ts`). O do aviso já é a resposta à pergunta
-  "Usar este no lugar de…?", e troca direto.
+  "Usar este no lugar de…?", e troca direto. Sem um ativo, não há o que
+  trocar: "Tornar ativo" liga direto; desativar o ativo pergunta antes
+  ("Desativar o contrato?"). O "Ativo/Inativo" da linha é selo, não botão
+  (A1 da 35ª, decisão do Claude, 27/11; `tests/documentos-selo-e-acao-do-modelo.test.ts`).
 - **O documento da cliente sem CPF** (cli-09, revisão do Heitor de
   2026-11-02: "contrato sem documento da cliente vale menos"): `cliente.cpf`,
   sem CPF, é o passaporte (ou o RNE) com o tipo — "Passaporte CB1234567" —, e

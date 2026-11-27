@@ -1704,6 +1704,18 @@
   plano (`documentosDoPlanoNoPortal`). Nada clínico: a anotação da
   profissional não sai do servidor. Os cartões do Início levam a ela ("Ver o
   plano").
+  **O "Pago" do plano conta o crédito interno** (D3 da 35ª; PL-19 e o
+  princípio 3; decisão do Claude, 27/11): o plano de R$ 910 pago com R$ 860 de
+  crédito e R$ 50 no Pix dizia "Pago R$ 50" (no app) e "Recebido R$ 50" (na
+  página). O `recebido` de `metrics_financeiro_do_plano` é o movimento pago do
+  plano (`metrics_movimentos_pagos`, de toda forma), não a receita
+  (`metrics_receitas_pagas` segue sem o crédito — CI-03, VE-05); migration
+  `20261214100001`. Prova: `tests/plano-pago-com-credito-interno.test.ts`,
+  `e2e/plano-tela-mostra-o-pago.spec.ts` ("D3").
+  **O sino "Plano aceito pelo app" diz o PDV só a quem recebe** (A4 da 35ª;
+  PL-22): "A comanda está no PDV." vai a quem tem o PDV em Gerenciar; a quem
+  agenda ou atende, o aceite sem a frase (`avisoDoPlanoAceitoPeloApp`,
+  `lib/plano-de-tratamento/textos.ts`). Prova: `tests/plano-aceito-pelo-app-aviso.test.ts`.
 - **Todo agendamento tem procedimento.** A "avaliação" era a exceção que
   permitia marcar sem escolher um — ela deixou de ser entidade em 2026-09-25 e
   virou um procedimento como outro qualquer, com a ficha que precisar. Não há
@@ -1980,6 +1992,13 @@ de decisões) — **implementadas na F65 (2026-11-12)**:
   ser alterado." antes de gravar (o rascunho da avaliação reabria o aceito como
   DRAFT). Prova: `tests/plano-sessoes-numa-transacao.test.ts`,
   `e2e/plano-tratamento-leva-1.spec.ts` (A20d).
+  **O PROPOSTO se edita** (D6 da 35ª; PL-02 e PL-15): o editor trava pela
+  mesma regra do servidor (`planoFechado`) — era o proposto junto do fechado, e
+  o proposto se cancelava e refazia. Onde o editor salva pelo plano (a página
+  do plano, a ficha, o Planejamento) o proposto se edita e segue proposto; o
+  cartão "Tratamento" da avaliação, que salva o rascunho da avaliação, só o
+  mostra (o aceite dele mora no "A cliente vai pensar"; decisão do Claude,
+  27/11). Prova: `tests/plano-proposto-se-edita.test.ts`.
 - **O preço vazio é R$ 0,00 — o procedimento gratuito** (A1 da 6ª simulação,
   2026-11-04; princípios 2 e 4): a avaliação grátis tinha só o "0,00" de
   exemplo, e o navegador recusava o campo vazio. O campo não é mais
@@ -2802,7 +2821,12 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
   (`criarPlanoDoCliente`, `salvarPlanoDoCliente`, `renomearPlano`,
   `vincularClienteAoPlano`, `proposeTreatmentPlan`, `saveTreatmentPlan`)
   devolvem `{ error: RECUSA_QUEM_MONTA }` a quem não monta na unidade do
-  plano, depois de conferidos a rede e o alcance.
+  plano, depois de conferidos a rede e o alcance. **A busca da cliente para
+  ligar ao plano** (`buscarClientesParaPlano`, o "Novo plano" e a tela do
+  plano; D5 da 35ª) é de quem liga: o Clientes em Ver vê nome, telefone e
+  documento; quem só monta (o Atendimento em Gerenciar), só o nome
+  (`buscaClienteParaPlano`); sem nenhum dos dois, `{ error }` — era 500.
+  Prova: `tests/plano-ligar-cliente.test.ts`.
   - **A anotação clínica dentro do plano continua do Prontuário** (as
     "Observações de quem atende", `professional_notes`; A9 da 15ª): só quem tem o
     Prontuário em Gerenciar (`anotaNoPlano`) a escreve. Para quem monta sem ele, o editor não mostra o
@@ -2915,6 +2939,11 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
   sessões do pacote e do plano; e o plano cancelado diz "Cancelado" no passo
   do pagamento e não fala em "depois do aceite". Prova:
   `tests/sessao-do-atendimento-o-que-a-tela-diz.test.ts`.
+  **A sessão da desistência é "Usada"** (D8 e A3 da 35ª; AT-21): a sessão
+  ligada a um atendimento iniciado e cancelado dizia "Agendada para …" na
+  página do plano, e o app "Usada em … (atendimento interrompido)". A página
+  diz o mesmo, pela mesma função (`situacaoDaSessaoNoApp`). Prova:
+  `tests/plano-sessao-interrompida.test.ts`.
 - **O agendar da sessão (pacote, plano, pré-pago) só oferece as unidades ao
   alcance** (D18 da 28ª simulação; CLAUDE.md §11 e §14): a lista vinha das
   unidades do pacote e oferecia uma fora da abrangência da pessoa — escolhida,
@@ -3447,6 +3476,11 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
   lote de onde saiu (pelo `stock_movement_batches` da venda — o gatilho do
   lote não mexe em movimento positivo, quem devolve é a função). Não voltou:
   o estoque fica, e a venda é perda no relatório (motivo "Venda estornada").
+  No Histórico do produto, a saída dessa venda diz "Venda estornada (não
+  voltou)" (`vendaEstornadaSemVolta`, pela referência `venda:<id>` —
+  `idDaVendaDoMovimento`), e a perda nos Relatórios traz o lote da saída
+  (`metrics_perdas` liga a venda ao movimento dela, `20261214200001`; A11
+  da 35ª, princípio 3).
   Não é consumo nem entrada: fora do giro. A regra é de
   `produto_estornar_venda` (`vendas-financeiro.md` §9.3.3). Prova:
   `e2e/vendas-produto.spec.ts`.
@@ -4548,6 +4582,47 @@ O resto do fluxo:
 
 ---
 
+## Correções de 27/11 na ficha de saúde, na ficha de atendimento e na desistência (35ª; decisões do Claude)
+
+- **A ficha respondida numa versão sem a obrigatória nova está pendente**
+  (D7 e A17 da 35ª; FI-07, "contam as perguntas da ficha ATUAL"; PT-12). A
+  conta é a do Finalizar, num lugar só: `obrigatoriasNovasQueFaltam`
+  (`lib/atendimento/obrigatorias.ts`; a nunca respondida fica de fora — é a
+  "não respondida"). O app OFERECE a ficha mesmo dentro da validade
+  (`dadosDaOfertaNoApp` → `faltaObrigatoria`, `ofereceAFichaNoApp`); aberta,
+  o pendente "algo mudou?" vira a ficha inteira, já preenchida com as de antes
+  (`modoDoPendentePelaFichaAtual`, no app e no link); e o cartão da ficha de
+  saúde (a aba Prontuário, o atendimento) põe o selo `Falta responder: "…"`
+  (`[data-ficha-de-saude-pendente]`). Prova:
+  `tests/ficha-de-saude-obrigatoria-nova.test.ts`.
+- **"Responda a sua ficha" aberta pelo endereço oferece a ficha como o cartão
+  do Início** (A16 da 35ª; FI-09): sem pendente e com a oferta valendo
+  (`ofertaDaFichaDaCliente`, o agendamento futuro dela), a página mostra o
+  mesmo cartão (`OfertaDaFichaDeSaude`); o pendente segue nascendo no clique
+  dela. "Nada para responder agora" fica para quando não há o que responder.
+- **A ficha de atendimento em LEITURA também barra antes do "Confirmar
+  conclusão"** (A15 da 35ª e a Decisão E1; AT-05, FI-07): quem vê e não
+  escreve o prontuário (o Prontuário em Ver) via a recusa só depois do
+  Confirmar. O `validar` do formulário em leitura devolve o que falta (sem
+  marcar campo), e a janela "O que falta para finalizar" diz, na falta de cada
+  ficha, quem responde a de saúde e quem preenche a de atendimento — o
+  Prontuário em Gerenciar, com os nomes (`textoDeQuemPreencheAFicha`). A
+  recusa do servidor não mudou. Prova:
+  `tests/atendimento-ficha-de-atendimento-quem-preenche.test.ts`.
+- **A baixa da desistência parte da aplicação registrada** (A18 da 35ª;
+  princípio 3, PT-13/PT-19): "Baixar do estoque o que já foi aplicado" usa a
+  dose da APLICAÇÃO deste atendimento no mapa (8 UI), não a do insumo do
+  procedimento (20 UI); o produto aplicado e não marcado entra pelo produto do
+  estoque. O planejamento sem aplicação não é o aplicado: a baixa fica a da
+  tela (`insumosDaDesistencia`, `lib/atendimento/desistencia.ts`, pela conta do
+  Finalizar, `divergenciasDaBaixa`). Prova: `tests/desistencia-baixa-do-aplicado.test.ts`.
+- **O campo do planejador em leitura, no atendimento em aberto, mostra a
+  aplicação** (A19 da 35ª; "A aplicação registrada por Planejamento →
+  Injetáveis chega à ficha"): o campo vazio da ficha de quem só lê abre o mesmo
+  planejador, com o planejamento aplicado neste atendimento
+  (`PlanejadorEmLeitura`, `abrirOAplicado`; `aoVivo` = o atendimento não
+  encerrado). Prova: `tests/ficha-em-leitura-mostra-a-aplicacao.test.ts`.
+
 ## O que nunca fazer aqui
 
 ❌ Oferecer numa lista (horário, sala, pessoa) o que o servidor recusaria no horário — o ocupado, o bloqueado, a sala ocupada — ou quem está fora do horário dela na unidade: sai da lista, e só a JÁ escolhida fica, marcada (o Heitor, 26/11, R13/R14: "Só mostra os horarios, salas e pessoas que estão livres"; R15: "Não: quem está fora do horário também some das listas (o encaixe só pelo campo de horário)") — e o fora do horário é a conta do aviso do encaixe (foraDoHorarioDeQuemAtende), não outra
@@ -4618,6 +4693,8 @@ O resto do fluxo:
 ❌ Trocar a profissional de um agendamento (janela, arraste, remarcação) para quem não atende na unidade dele, ou sem "de quem para quem" no histórico — é recusaDeQuemNaoAtende + textoDaTroca (A22 da 8ª)
 ❌ Somar o scrollTop da grade à posição do arraste (o retângulo da coluna já anda com a rolagem — A22 da 8ª)
 ❌ Gravar a desistência no meio (intercorrência, insumo) fora de desistir_do_atendimento, ou calcular a baixa fora de montarInsumosDaBaixa (A27 da 8ª)
+❌ Oferecer na desistência a dose do insumo do procedimento quando há aplicação registrada no mapa deste atendimento — é insumosDaDesistencia (A18 da 35ª)
+❌ Decidir se a ficha de saúde está pendente só pela validade: a respondida numa versão sem a obrigatória nova está pendente — é obrigatoriasNovasQueFaltam, a conta do Finalizar (D7 da 35ª)
 ❌ Deixar o "Incluído" (era "Já pago") em "Não usar" quando a cliente tem crédito do MESMO procedimento (vem escolhido, com aviso — A20 da 8ª), ou ligar crédito a agendamento já marcado fora de agendamento_usar_credito
 ❌ Ler as anotações da ficha (clients.notes) para decidir alergia: elas aparecem como estão escritas (A28 da 8ª; atend-15)
 ❌ Ler ou gravar agenda_bloqueios pela sessão (só o servidor: actions/agenda-bloqueios.ts e lib/agenda/bloqueios.ts), ou deixar bloquear quem não tem a Agenda em Gerenciar (a Minha agenda só mostra — SM2)

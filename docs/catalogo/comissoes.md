@@ -174,8 +174,8 @@ Este é o catálogo das regras das Comissões que valem HOJE: onde ficam e quem 
 - Onde: `docs/regras/comissoes.md:335-342`
 - Antes: KA-38
 
-**CQ-04.** A comissão de execução do pacote é de quem atende cada sessão, e o pacote escolhe qual vale: a regra da pessoa (o padrão), um % da parte da sessão no preço do pacote, um R$ fixo por sessão ou nenhuma. A regra do pacote vale também para quem não tem regra própria. Ela também só sai com o pacote pago inteiro.
-- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13 (PC5): "ok, mantém"
+**CQ-04.** A comissão de execução do pacote é de quem atende cada sessão, e o pacote escolhe qual vale: a regra da pessoa (o padrão), um % da parte da sessão no preço do pacote, um R$ fixo por sessão ou nenhuma. A regra do pacote vale também para quem não tem regra própria. Ela também só sai com o pacote pago inteiro. A comissão de execução da sessão é da unidade do atendimento, como o indicador de execução (princípio 5), mesmo com o pacote vendido em outra unidade; o dinheiro da venda fica na unidade da venda (PA-12 de Vendas e financeiro, CV-14).
+- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13 (PC5): "ok, mantém"; a unidade da comissão da sessão: decisão do Claude, 27/11 (35ª, Decisão B2), pelo princípio 5
 - Onde: `docs/regras/comissoes.md:343-348`
 - Antes: KA-39
 
@@ -219,8 +219,8 @@ Este é o catálogo das regras das Comissões que valem HOJE: onde ficam e quem 
 - Onde: `docs/regras/comissoes.md:534-538`
 - Antes: KB-19
 
-**CQ-13.** A venda do plano de tratamento tem comissão para quem está em "Quem vendeu" do plano: o percentual "Venda de plano" de Configurações → Comissões e taxas, vazio por padrão (vazio = sem comissão), sobre o valor do plano (a soma dos procedimentos, já com o desconto rateado). Ela só libera com o plano pago inteiro (à vista ou no cartão em N vezes, na hora; no crediário, com a última parcela), o estorno a devolve, desconta a taxa da maquininha se a rede escolheu descontá-la e nunca desconta insumo. O extrato diz "Venda do plano X", com a cliente e o dia do aceite.
-- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-05: "concordo"
+**CQ-13.** A venda do plano de tratamento tem comissão para quem está em "Quem vendeu" do plano: o percentual "Venda de plano" de Configurações → Comissões e taxas, vazio por padrão (vazio = sem comissão), sobre o valor do plano (a soma dos procedimentos, já com o desconto rateado). Ela só libera com o plano pago inteiro (à vista ou no cartão em N vezes, na hora; no crediário, com a última parcela), o estorno a devolve, desconta a taxa da maquininha se a rede escolheu descontá-la e nunca desconta insumo. O extrato diz "Venda do plano X", com a cliente e o dia do aceite. O crédito interno que paga o plano (todo ou em parte) conta como pago e fica na base, que é o valor do plano (CB-13): ele não é receita de novo (CI-03 de Vendas e financeiro), mas paga o plano.
+- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-05: "concordo"; o plano pago com crédito interno: decisão do Claude, 27/11 (35ª, Decisão A2), pela CB-13
 - Onde: `docs/regras/comissoes.md:406-418`, `:428-431`
 - Antes: KB-01
 
@@ -453,8 +453,8 @@ Este é o catálogo das regras das Comissões que valem HOJE: onde ficam e quem 
 - Onde: `docs/regras/comissoes.md:698-706`
 - Antes: KB-39
 
-**CF-16.** Fechamento não se reabre: o estorno que chega depois dele vira um lançamento negativo para o próximo fechamento, e saldo negativo não fecha.
-- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
+**CF-16.** Fechamento não se reabre: o estorno que chega depois dele vira um lançamento negativo para o próximo fechamento, e saldo negativo não fecha. A comissão estornada depois de paga aparece "A descontar" (CF-14) e entra no próximo fechamento.
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele); a comissão estornada depois de paga: decisão do Claude, 27/11 (35ª, Decisão D1)
 - Onde: `docs/regras/comissoes.md:707-708`
 - Antes: KB-40
 

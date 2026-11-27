@@ -193,7 +193,12 @@ export function SettingsDocumentos({ modelos, imagens, envio }: {
                         ].filter(Boolean).join(' · ')}
                       </p>
                     </div>
-                    {ehDaRede(g.tipo) && !m.ativo ? (
+                    {/* A1 da 35ª (princípio 7): o selo diz o estado e não se clica (a pílula é
+                        a forma do selo, design.md); ativar e desativar são ações com nome. */}
+                    <span data-selo-do-modelo className={m.ativo ? 'chip chip-success' : 'chip chip-muted'}>
+                      {m.ativo ? 'Ativo' : 'Inativo'}
+                    </span>
+                    {ehDaRede(g.tipo) && !m.ativo && atualAtivo(g.tipo) ? (
                       // Um só ativo: o inativo não liga sozinho, ele TOMA o
                       // lugar do atual (D-5). A32 da 15ª: a troca pede
                       // confirmação, com o que passa a valer e o que sai.
@@ -203,14 +208,24 @@ export function SettingsDocumentos({ modelos, imagens, envio }: {
                         explicacao={confirmacaoDeTornarAtivo({ tipo: g.tipo, novo: m.nome, atual: atualAtivo(g.tipo) })}>
                         Tornar ativo
                       </BotaoComConfirmacao>
+                    ) : ehDaRede(g.tipo) && !m.ativo ? (
+                      // A1 da 35ª: sem um ativo, não há o que trocar — liga direto.
+                      <button type="button" className="btn-secondary" disabled={ocupado === m.id} onClick={() => tornarAtivo(m)}>
+                        {ocupado === m.id ? 'Ativando…' : 'Tornar ativo'}
+                      </button>
+                    ) : ehDaRede(g.tipo) ? (
+                      <span data-desativar-modelo style={{ display: 'contents' }}>
+                        <BotaoComConfirmacao className="btn-ghost"
+                          acao={() => definirModeloAtivo(m.id, false)}
+                          titulo="Desativar o contrato?" rotuloConfirmar="Desativar"
+                          explicacao={`“${m.nome}” deixa de valer até outro ${ROTULO_DO_TIPO[g.tipo].toLowerCase()} ficar ativo.`}>
+                          {'Desativar'}
+                        </BotaoComConfirmacao>
+                      </span>
                     ) : (
-                      <button
-                        type="button" onClick={() => alternar(m)} disabled={ocupado === m.id}
-                        aria-pressed={m.ativo}
-                        className={m.ativo ? 'chip chip-success' : 'chip chip-muted'}
-                        style={{ cursor: 'pointer', border: 0 }}
-                      >
-                        {m.ativo ? 'Ativo' : 'Inativo'}
+                      <button type="button" data-desativar-modelo={m.ativo ? '' : undefined}
+                        className={m.ativo ? 'btn-ghost' : 'btn-secondary'} onClick={() => alternar(m)} disabled={ocupado === m.id}>
+                        {ocupado === m.id ? (m.ativo ? 'Desativando…' : 'Ativando…') : m.ativo ? 'Desativar' : 'Ativar'}
                       </button>
                     )}
                     <button type="button" title="Editar" aria-label={`Editar ${m.nome}`}

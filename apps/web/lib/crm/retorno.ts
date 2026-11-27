@@ -22,6 +22,25 @@ export function textoDoRetorno(dia: string, hoje: string): { texto: string; atra
 }
 
 /**
+ * O lembrete como o card o mostra. No card ganho ou perdido (o desfecho da
+ * etapa, `WON`/`LOST`), o dia sem destaque, nem "hoje" nem "atrasado": esse
+ * card não avisa no sino (OP-33), e a tela segue o mesmo (A7 da 35ª, Decisão
+ * C2 — decisão do Claude, 27/11, pelo princípio 3).
+ */
+export function retornoNoCard(
+  dia: string,
+  hoje: string,
+  desfecho: string | null | undefined,
+): { texto: string; destaque: 'hoje' | 'atrasado' | null } {
+  if (desfecho === 'WON' || desfecho === 'LOST') {
+    const [, m, d] = dia.split('-')
+    return { texto: `Retornar ${d}/${m}`, destaque: null }
+  }
+  const r = textoDoRetorno(dia, hoje)
+  return { texto: r.texto, destaque: r.atrasado ? 'atrasado' : r.hoje ? 'hoje' : null }
+}
+
+/**
  * O aviso do sino no dia do retorno (cron `crm-lembretes`). O atrasado sem
  * observação dizia "Hoje é o dia combinado…" (CRM-07, varredura de 18/11 —
  * princípio 3: a tela diz o que vale): agora diz o dia que era.

@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Ban, Banknote, Percent, Plus, Trash2, X } from 'lucide-react'
+import { Ban, Banknote, Pencil, Percent, Plus, Trash2, X } from 'lucide-react'
 import { parseDinheiro } from '@estetica-os/utils'
 import { salvarRegrasDoProfissional } from '@/actions/comissoes'
 import { rotuloDaRegra, recusaDoValorDaComissao, type RegraDeComissao, type TipoDeRegra } from '@/lib/comissoes/config'
@@ -66,8 +66,11 @@ export function ComissaoDoMembro({ membro, regras, procedimentos, comGeral = [],
 
   return (
     <>
-      <button type="button" onClick={abrir} title={`${textoDoChip} — Comissão de ${membro.nome}`} aria-label={`Comissão de ${membro.nome}`}
-        className={semRegra ? 'chip chip-warning' : 'chip chip-muted'} style={{ cursor: 'pointer', textAlign: 'left' }}
+      {/* A13 da 35ª (design.md, "a curva que distingue um badge de um botão"): o que abre a comissão
+          é botão — a curva do botão e o lápis; a cor e o texto dizem qual comissão falta (A22 da 19ª). */}
+      <button type="button" onClick={abrir} title={`${textoDoChip} — Editar a comissão de ${membro.nome}`} aria-label={`Editar a comissão de ${membro.nome}`}
+        className={semRegra ? 'chip chip-warning' : 'chip chip-muted'}
+        style={{ cursor: 'pointer', textAlign: 'left', borderRadius: 'var(--radius-field)', gap: 6 }}
         data-comissao={membro.id}>
         {/* A13 da 25ª (design.md, "Tabela com coluna de ações cabe no cartão"): o chip é nowrap, e
             o texto longo ("Venda: a do pacote, produto ou…") fazia dele a largura da coluna de ações
@@ -76,6 +79,7 @@ export function ComissaoDoMembro({ membro, regras, procedimentos, comGeral = [],
         <span data-texto-do-chip style={{ whiteSpace: 'normal', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', maxWidth: 300 }}>
           {textoDoChip}
         </span>
+        <Pencil size={12} aria-hidden="true" style={{ flexShrink: 0 }} />
       </button>
 
       <dialog ref={dialogRef} className="modal modal-flex" style={{ maxWidth: 560, textAlign: 'left' }}

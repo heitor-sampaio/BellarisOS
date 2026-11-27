@@ -7,7 +7,7 @@ import { AnamnesisFormRenderer, type AnamnesisFormHandle, type AnamnesisAnswers,
 import { salvarAnamneseGeral } from '@/actions/pre-atendimento'
 import { quemRespondeu, anamneseRespondida, type AnamneseGeral, type FichaDePreAtendimento } from '@/lib/anamnese-geral'
 import { campoVisivel, type AnamnesisRow } from '@/lib/anamnesis'
-import { faltaNaAnamnese, rotulosQueFaltamNaAnamnese } from '@/lib/atendimento/obrigatorias'
+import { faltaNaAnamnese, rotulosQueFaltamNaAnamnese, obrigatoriasNovasQueFaltam, textoDaPendenciaDaFicha } from '@/lib/atendimento/obrigatorias'
 import { useFuso } from '@/components/shared/fuso'
 import { formatDia } from '@estetica-os/utils'
 
@@ -122,6 +122,14 @@ export const AnamneseGeralCartao = forwardRef<AnamneseGeralCartaoHandle, {
     <p className="anamnese-geral-vazio">{anamnese ? 'A ficha de saúde está vazia: nenhuma pergunta foi respondida.' : 'A cliente ainda não respondeu a ficha de saúde.'}</p>
   )
 
+  // A17 da 35ª (FI-07): a pergunta obrigatória que a rede acrescentou depois da
+  // resposta não aparece nas respostas lidas (são as perguntas de quando foi
+  // respondida) — o selo a diz, pela conta do Finalizar.
+  const pendentes = obrigatoriasNovasQueFaltam(fichaAtual.rows, anamnese)
+  const pendencia = !editando && pendentes.length > 0 && (
+    <span data-ficha-de-saude-pendente className="anamnese-geral-selo anamnese-geral-selo-vazia">{textoDaPendenciaDaFicha(pendentes)}</span>
+  )
+
   const acoes = canEdit && (
     editando
       ? respondida && (
@@ -141,6 +149,7 @@ export const AnamneseGeralCartao = forwardRef<AnamneseGeralCartaoHandle, {
       <div data-anamnese-geral className="anamnese-geral">
         <div className="anamnese-geral-topo">
           {anamnese && (!editando || !respondida) && <SeloDaAnamnese anamnese={anamnese} />}
+          {pendencia}
           <span style={{ flex: 1 }} />
           {acoes}
         </div>
@@ -155,6 +164,7 @@ export const AnamneseGeralCartao = forwardRef<AnamneseGeralCartaoHandle, {
         <ClipboardList size={15} style={{ color: 'var(--brand)' }} aria-hidden="true" />
         <h3 className="anamnese-geral-titulo">Ficha de saúde</h3>
         {anamnese && (!editando || !respondida) && <SeloDaAnamnese anamnese={anamnese} />}
+        {pendencia}
         {acoes}
       </div>
       <div style={{ padding: '18px 20px' }}>{corpo}</div>

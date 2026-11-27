@@ -14,7 +14,7 @@ import { emitirEventoDePlano } from '@/lib/events/plano'
 import { EVENTOS } from '@estetica-os/types'
 import { interessadosNoFato } from '@/lib/notifications/interessados'
 import { notifyUser } from '@/lib/notifications/notify'
-import { formatBRL } from '@estetica-os/utils'
+import { avisoDoPlanoAceitoPeloApp } from '@/lib/plano-de-tratamento/textos'
 import { combinadoDoPlano, totalComOCombinado } from '@/lib/plano-de-tratamento/desconto-combinado'
 import { RECUSA_DO_PLANO_CANCELADO_NO_APP } from '@/lib/plano-de-tratamento/cancelar-proposto'
 
@@ -86,10 +86,12 @@ export async function aceitarPlanoPelaCliente(planId: string): Promise<{ error?:
         const listas = await Promise.all((['agenda', 'cashier', 'financial'] as const).map(modulo =>
           interessadosNoFato(admin, { modulo, branchId: plano.branch_id, envolvidos: [plano.professional_id] })))
         const ids = [...new Set(listas.flat())]
+        // A4 da 35ª: a frase do PDV só a quem recebe (o PDV em Gerenciar, sem o envolvido).
+        const recebem = new Set(await interessadosNoFato(admin, { modulo: 'cashier', branchId: plano.branch_id }))
         await Promise.allSettled(ids.map(id => notifyUser(admin, id, {
           type: 'plano_aceito',
           title: 'Plano aceito pelo app',
-          body: `${cliente.name ?? 'A cliente'} aceitou o plano de tratamento (${sessoes.length} ${sessoes.length === 1 ? 'sessão' : 'sessões'}, ${formatBRL(total)}). A comanda está no PDV.`,
+          body: avisoDoPlanoAceitoPeloApp({ nome: cliente.name, sessoes: sessoes.length, total, recebe: recebem.has(id) }),
           data: { treatment_plan_id: planId },
         })))
       } catch (e) {

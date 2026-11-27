@@ -441,6 +441,27 @@ test.describe.serial('a venda de produto', () => {
     expect({ q: n(linha?.quantidade), custo: n(linha?.custo) }).toEqual({ q: 1, custo: n(v.custo) })
   })
 
+  // A11 da 35ª (ES-28; princípio 3): a venda estornada que não voltou é perda — o Histórico do produto
+  // a marca (era "Venda", sem marca), e a perda nos Relatórios traz o lote de onde ela saiu (era "lote —").
+  test('A11: a venda estornada que não voltou — o Histórico diz "Venda estornada (não voltou)" e a perda traz o lote', async ({ browser }) => {
+    const dia = hojeBR()
+    const { data: perdas, error } = await db().rpc('metrics_perdas', {
+      p_tenant: rede!.tenantId, p_branch_ids: [rede!.branchId], p_from: `${dia}T00:00:00-03:00`, p_to: `${dia}T23:59:59-03:00`,
+    })
+    expect(error).toBeNull()
+    const linha = (perdas as { motivo: string | null; product_id: string | null; lotes: { numero: string | null }[] | null }[])
+      .find(l => l.motivo === 'VENDA_ESTORNADA' && l.product_id === serum)
+    expect((linha?.lotes ?? []).map(l => l.numero).filter(Boolean).length, 'a perda diz o lote').toBeGreaterThan(0)
+
+    const movs = await como(browser, async p => {
+      await p.goto('/admin/estoque')
+      const r = await chamarAcao(p, 'actions/stock.ts', 'getProductMovements', '/admin/estoque', [serum, rede!.branchId, 80])
+      return r.texto
+    }, dona!)
+    // Só a segunda venda do sérum foi estornada sem volta: uma saída marcada.
+    expect(movs.match(/"vendaEstornadaSemVolta":true/g)?.length, 'a saída da venda estornada vem marcada').toBe(1)
+  })
+
   test('venda com entrada e parcela: o estorno estorna a entrada, cancela a parcela e a comissão — e a venda não se estorna duas vezes', async ({ browser }) => {
     const nova = await db().rpc('produto_vender', {
       p_tenant: rede!.tenantId, p_cliente: cliente, p_produto: serum, p_unidade: rede!.branchId, p_ator: recepcao!.userId,

@@ -2,6 +2,7 @@
 
 import { useRef, useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import { Sparkles, X } from 'lucide-react'
 import { ProcedureForm, type ModelosDoProcedimento, type SalaDoCadastro, type ProfissionalDoCadastro } from './procedure-form'
 import type { DadosDaComissao } from './comissao-do-procedimento'
@@ -78,6 +79,8 @@ export function ProcedureModal({ salas = [], profissionais = [], branches, produ
 
   function handleSuccess() {
     close()
+    // A14 da 35ª (princípio 7): a janela fecha na hora — o retorno é o aviso, como nas outras telas.
+    toast.success(existing ? 'Procedimento salvo.' : 'Procedimento criado.')
     router.refresh()
   }
 

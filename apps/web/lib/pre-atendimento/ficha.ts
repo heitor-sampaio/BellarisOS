@@ -4,7 +4,9 @@ import type { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { normalizeFormSchema } from '@/lib/anamnesis'
 import { avisoDoPreAtendimento } from '@/lib/pre-atendimento/aviso'
-import { respostasDaFicha, alergiasDaAnamnese, avisoDeAlergia, type FichaDePreAtendimento, type OrigemDaAnamnese, type AnamneseGeral } from '@/lib/anamnese-geral'
+import { respostasDaFicha, alergiasDaAnamnese, avisoDeAlergia, paraAnamneseGeral, type FichaDePreAtendimento, type OrigemDaAnamnese, type AnamneseGeral } from '@/lib/anamnese-geral'
+import { obrigatoriasNovasQueFaltam } from '@/lib/atendimento/obrigatorias'
+import { ofereceAFichaNoApp } from '@/lib/pre-atendimento/oferta-no-app'
 import { notifyUser } from '@/lib/notifications/notify'
 import { lerFusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 
@@ -224,12 +226,13 @@ export async function avisarDoPreAtendimento(
  * `ofereceAFichaNoApp`): a rede tem a ficha ativa, a validade dela e a ÚLTIMA
  * resposta com conteúdo — a mesma conta de `pre_atendimento_abrir_manual`
  * (a anamnese do prontuário e os pré-atendimentos respondidos; a gravada
- * vazia não conta).
+ * vazia não conta). E se as respostas gravadas cobrem as obrigatórias da
+ * ficha ATUAL (D7 da 35ª, FI-07: a conta do Finalizar, `obrigatoriasNovasQueFaltam`).
  */
 export async function dadosDaOfertaNoApp(admin: Admin, tenantId: string, clientId: string): Promise<{
-  temFichaAtiva: boolean; ultimaResposta: string | null; validadeMeses: number
+  temFichaAtiva: boolean; ultimaResposta: string | null; validadeMeses: number; faltaObrigatoria: boolean
 }> {
-  const [ficha, rede, prontuario, respondidos] = await Promise.all([
+  const [ficha, rede, prontuario, respondidos, fichaAtual] = await Promise.all([
     ler(admin.from('forms').select('id').eq('tenant_id', tenantId).eq('tipo', 'PRE_ATENDIMENTO').eq('is_active', true).limit(1),
       'conferir a ficha de saúde da rede') as Promise<{ id: string }[] | null>,
     ler(admin.from('tenants').select('pre_atendimento_validade_meses').eq('id', tenantId).maybeSingle(),
@@ -239,6 +242,7 @@ export async function dadosDaOfertaNoApp(admin: Admin, tenantId: string, clientI
     ler(admin.from('pre_atendimentos').select('respondido_em, respostas').eq('client_id', clientId).eq('status', 'RESPONDIDO')
       .not('respondido_em', 'is', null).order('respondido_em', { ascending: false }).limit(10),
       'ler as fichas respondidas') as Promise<{ respondido_em: string; respostas: Record<string, unknown> | null }[] | null>,
+    fichaDePreAtendimento(admin, tenantId),
   ])
   const g = prontuario?.general_anamnesis ?? null
   const vazia = !!g && String(g.versao) === '2' && Object.keys((g.respostas as Record<string, unknown> | null) ?? {}).length === 0
@@ -250,5 +254,24 @@ export async function dadosDaOfertaNoApp(admin: Admin, tenantId: string, clientI
     temFichaAtiva: (ficha ?? []).length > 0,
     ultimaResposta,
     validadeMeses: Number(rede?.pre_atendimento_validade_meses ?? 6),
+    faltaObrigatoria: obrigatoriasNovasQueFaltam(fichaAtual.rows, paraAnamneseGeral(g, fichaAtual)).length > 0,
   }
+}
+
+/**
+ * A16 da 35ª (FI-09): a página "Responda a sua ficha", aberta pelo endereço,
+ * oferece a ficha como o cartão do Início — o agendamento futuro DELA (o que
+ * `abrirMinhaFichaDeSaude` aceita) e a mesma oferta (`ofereceAFichaNoApp`).
+ * O pendente segue nascendo no clique dela. Devolve o agendamento, ou null.
+ */
+export async function ofertaDaFichaDaCliente(admin: Admin, clientId: string): Promise<string | null> {
+  const [cliente, proximo] = await Promise.all([
+    ler(admin.from('clients').select('tenant_id').eq('id', clientId).maybeSingle(), 'buscar a ficha da cliente') as Promise<{ tenant_id: string | null } | null>,
+    ler(admin.from('appointments').select('id').eq('client_id', clientId).in('status', ['SCHEDULED', 'CONFIRMED'])
+      .gt('scheduled_at', new Date().toISOString()).order('scheduled_at').order('id').limit(1),
+      'buscar o próximo agendamento') as Promise<{ id: string }[] | null>,
+  ])
+  const ag = proximo?.[0]?.id ?? null
+  if (!cliente?.tenant_id || !ag) return null
+  return ofereceAFichaNoApp({ pendente: false, proximoAgendamentoId: ag, ...(await dadosDaOfertaNoApp(admin, cliente.tenant_id, clientId)) })
 }

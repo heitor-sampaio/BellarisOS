@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { ChevronRight, ClipboardList, Loader2 } from 'lucide-react'
 import { abrirMinhaFichaDeSaude } from '@/actions/pre-atendimento-cliente'
 
@@ -12,6 +12,7 @@ import { abrirMinhaFichaDeSaude } from '@/actions/pre-atendimento-cliente'
  */
 export function OfertaDaFichaDeSaude({ appointmentId, slug }: { appointmentId: string; slug: string }) {
   const router = useRouter()
+  const pathname = usePathname()
   const [abrindo, iniciar] = useTransition()
   const [erro, setErro] = useState<string | null>(null)
 
@@ -20,7 +21,10 @@ export function OfertaDaFichaDeSaude({ appointmentId, slug }: { appointmentId: s
     iniciar(async () => {
       const r = await abrirMinhaFichaDeSaude(appointmentId)
       if ('error' in r) { setErro(r.error); return }
-      router.push(`/${slug}/cliente/pre-atendimento`)
+      // A16 da 35ª: na própria página da ficha (aberta pelo endereço), recarrega.
+      const destino = `/${slug}/cliente/pre-atendimento`
+      if (pathname === destino) router.refresh()
+      else router.push(destino)
     })
   }
 

@@ -12,6 +12,7 @@ import { formatarNoFuso } from '@/lib/formatar-no-fuso'
 import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
 import { rotuloDoPassoDoPagamento } from '@/lib/plano-de-tratamento/textos'
+import { situacaoDaSessaoNoApp } from '@/lib/plano-de-tratamento/sessao-no-app'
 
 /**
  * Os passos do plano (PT1a, Bloco Plano de tratamento — a revisão do Heitor de
@@ -226,6 +227,9 @@ export function PassosDoPlano({
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {passos.sessoes.map(s => {
               const feita = s.apptStatus === 'COMPLETED'
+              // D8 da 35ª (AT-21): a ligada a um agendamento cancelado é a desistência no meio — a
+              // sessão foi usada. O mesmo texto do app (a cancelada antes de iniciar se solta do plano).
+              const interrompida = s.apptStatus === 'CANCELLED'
               const quando = s.scheduledAt ? formatarNoFuso(s.scheduledAt, "dd/MM 'às' HH:mm", fuso) : null
               // D7 da 28ª (princípio 3): a feita diz a hora em que foi feita.
               const feitaEm = feita && s.completedAt ? formatarNoFuso(s.completedAt, "dd/MM 'às' HH:mm", fuso) : quando
@@ -234,8 +238,9 @@ export function PassosDoPlano({
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', minWidth: 70 }}>Sessão {s.numero}</span>
                     <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', flex: 1, minWidth: 140 }}>{s.procedimentos}</span>
-                    <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 600, color: feita ? 'var(--success)' : s.appointmentId ? 'var(--info)' : 'var(--text-faint)' }}>
+                    <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 600, color: feita ? 'var(--success)' : interrompida ? 'var(--text-muted)' : s.appointmentId ? 'var(--info)' : 'var(--text-faint)' }}>
                       {feita ? `Realizada${feitaEm ? ` em ${feitaEm}` : ''}`
+                        : interrompida ? situacaoDaSessaoNoApp({ status: s.apptStatus!, scheduled_at: s.scheduledAt ?? '', completed_at: s.completedAt }, fuso).texto
                         : s.appointmentId ? `Agendada${quando ? ` para ${quando}` : ''}${s.profissional ? ` · ${s.profissional}` : ''}`
                         : 'Não agendada'}
                     </span>

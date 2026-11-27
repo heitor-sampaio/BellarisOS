@@ -2349,8 +2349,7 @@ export function ClientProfile({
 
             {opportunities.length === 0 ? (
               <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>
-                Nenhuma oportunidade. Abra uma pela conversa no Inbox quando houver
-                interesse em algo novo.
+                Nenhuma oportunidade.
               </div>
             ) : (
               <div>

@@ -15,6 +15,7 @@ import { getRelatorioDosModulos, getCoreDosModulos } from '@/lib/metrics/dos-mod
 import { getAtendimentosSemReceita } from '@/lib/metrics/fechamento-extra'
 import { SEM_ESTOQUE_NO_RESULTADO } from '@/lib/metrics/resultado'
 import { getPerdas } from '@/lib/metrics/perdas'
+import { getTotalDosAtendimentosAReceber } from '@/lib/metrics/a-receber'
 import { getTransferenciasDeEstoque } from '@/lib/metrics/transferencias'
 import { getMovimentosDeEstoque, MOVIMENTOS_POR_PAGINA, type MovimentosDoRelatorio } from '@/lib/metrics/movimentos-de-estoque'
 import { getEntradasDeEstoque } from '@/lib/metrics/contadora'
@@ -292,6 +293,15 @@ export async function ReportsBiSection({
     id: l.id, product_id: l.produtoId, batch_number: l.numero, expires_at: l.validade ?? '',
     quantity: l.quantidade, saldo: l.saldo, products: { name: l.produto, tenant_id: ctx.tenantId! },
   }))
+  // A12 da 35ª: os concluídos sem pagamento do recorte, a nota do "A receber em
+  // aberto" — a mesma conta do Financeiro: a rede inteira de uma vez; a unidade,
+  // a dela; as unidades de quem tem mais de uma, uma por unidade.
+  const daRedeInteira = !selectedBranchId && ctxDoCargo.unidades == null && branchIds.length !== 1
+  const concluidosSemPagamento = !needInstall ? undefined
+    : daRedeInteira || branchIds.length === 1
+      ? await getTotalDosAtendimentosAReceber({ tenantId: ctx.tenantId!, unidadeId: daRedeInteira ? null : branchIds[0]! })
+      : (await Promise.all(branchIds.map(id => getTotalDosAtendimentosAReceber({ tenantId: ctx.tenantId!, unidadeId: id }))))
+          .reduce((t, c) => ({ n: t.n + c.n, valor: Math.round((t.valor + c.valor) * 100) / 100 }), { n: 0, valor: 0 })
   const parcelasLidas = ((installmentsRaw  ?? []) as unknown as LinhaParcela[])
     .filter(i => branchIds.includes(i.branch_id))
   // A5 da 31ª (princípio 3): a parcela do plano diz os procedimentos dele, como
@@ -385,6 +395,7 @@ export async function ReportsBiSection({
         branches={branches}
         relatorio={relatorio}
         installments={installments}
+        concluidosSemPagamento={concluidosSemPagamento}
         productBatches={productBatches}
         retention={retention}
         newClientsSeries={newClientsSeries}

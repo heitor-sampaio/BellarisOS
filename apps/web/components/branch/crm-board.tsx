@@ -17,7 +17,7 @@ import { ClientForm } from './client-form'
 import { rotuloDaOportunidade, type CRMFunnel, type CRMStage } from '@/lib/crm'
 import { rotaCliente } from '@/lib/rotas'
 import { dayKeyTZ } from '@/lib/datetime'
-import { textoDoRetorno } from '@/lib/crm/retorno'
+import { retornoNoCard } from '@/lib/crm/retorno'
 import { rotaComParams } from '@/lib/query-params'
 import { CRMLeadModal, type Procedure, type CRMLeadModalHandle } from './crm-lead-modal'
 import {
@@ -1026,13 +1026,18 @@ function LeadCard({
         {/* A18 da 7ª simulação: o card diz quando a cliente vem, e — depois
             de ela comprar — SUGERE levar a oportunidade a Ganho. Não move
             sozinho (crm-05, princípio 6): quem move é a pessoa, no botão. */}
-        {/* A42 da 9ª: o lembrete de retorno — o dia combinado; hoje e atrasado em destaque. */}
+        {/* A42 da 9ª: o lembrete de retorno — o dia combinado; hoje e atrasado em destaque.
+            A7 da 35ª (OP-33): no card ganho ou perdido, o dia sem destaque. */}
         {lead.retornar_em && (() => {
-          const r = textoDoRetorno(lead.retornar_em, nowMs != null ? dayKeyTZ(new Date(nowMs), fuso) : '0000-00-00')
+          const r = retornoNoCard(
+            lead.retornar_em,
+            nowMs != null ? dayKeyTZ(new Date(nowMs), fuso) : '0000-00-00',
+            allStages.find(s => s.id === lead.crm_stage_id)?.outcome,
+          )
           return (
             <p data-retornar-em title={lead.retornar_obs ?? undefined} style={{
               marginTop: 8, display: 'flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-2xs)', fontWeight: 700,
-              color: r.atrasado ? 'var(--danger)' : r.hoje ? 'var(--warning)' : 'var(--text-muted)',
+              color: r.destaque === 'atrasado' ? 'var(--danger)' : r.destaque === 'hoje' ? 'var(--warning)' : 'var(--text-muted)',
             }}>
               <BellRing size={11} /> {r.texto}{lead.retornar_obs ? ` · ${lead.retornar_obs}` : ''}
             </p>

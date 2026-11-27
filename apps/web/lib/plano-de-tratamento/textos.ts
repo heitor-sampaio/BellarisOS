@@ -124,3 +124,13 @@ export function rotuloDoPassoDoPagamento(p: { recebido: boolean; aReceber: numbe
   if (p.aReceber > 0) return { texto: `Recebido em parte · ${formatBRL(p.aReceber)} a receber`, falta: true }
   return { texto: 'Recebido', falta: false }
 }
+
+/**
+ * O sino "Plano aceito pelo app" (A4 da 35ª; PL-22: receber é do PDV). A frase
+ * "A comanda está no PDV." vai só a quem recebe (o PDV em Gerenciar); a quem
+ * agenda ou atende, o aceite sem ela.
+ */
+export function avisoDoPlanoAceitoPeloApp(p: { nome: string | null; sessoes: number; total: number; recebe: boolean }): string {
+  const sessoes = `${p.sessoes} ${p.sessoes === 1 ? 'sessão' : 'sessões'}`
+  return `${p.nome ?? 'A cliente'} aceitou o plano de tratamento (${sessoes}, ${formatBRL(p.total)}).${p.recebe ? ' A comanda está no PDV.' : ''}`
+}

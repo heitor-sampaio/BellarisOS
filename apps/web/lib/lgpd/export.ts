@@ -165,8 +165,10 @@ export async function buildClientExport(
   includeMedical: boolean,
   /** A situação do pedido do prontuário (`lgpd_requests.medical_status`): o que dizer quando ele não vai. */
   situacaoDoProntuario: SituacaoDoProntuario = null,
+  /** D10 da 35ª: o pacote que a equipe gerou pela ficha (`requested_via = 'equipe'`, LG-10). */
+  pelaEquipe = false,
 ): Promise<ExportResult> {
-  const foraDoPacote = textoDoProntuarioForaDoPacote(situacaoDoProntuario)
+  const foraDoPacote = textoDoProntuarioForaDoPacote(situacaoDoProntuario, { pelaEquipe })
   const admin = createAdminClient()
 
   const { data: client, error: clientErr } = await admin
@@ -330,7 +332,7 @@ export async function buildClientExport(
     geradoEm: new Date().toISOString(),
     aviso: 'Documento gerado a pedido do titular, nos termos da Lei 13.709/2018 (LGPD).',
     // A56 da 8ª: e a situação do prontuário por extenso ("pendente de liberação").
-    solicitacao: { incluiProntuario: includeMedical, prontuario: prontuarioNaSolicitacao(situacaoDoProntuario, includeMedical) },
+    solicitacao: { incluiProntuario: includeMedical, prontuario: prontuarioNaSolicitacao(situacaoDoProntuario, includeMedical, { pelaEquipe }) },
     cadastro: {
       nome: client.name, cpf: client.document,
       // Sem CPF, o passaporte ou o RNE (decisão 1 do Heitor); e o responsável legal

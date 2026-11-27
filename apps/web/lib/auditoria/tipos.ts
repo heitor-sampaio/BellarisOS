@@ -131,6 +131,20 @@ export interface NomesDaAuditoria {
    */
   unidadesDosClinicos?: Record<string, string>
   /**
+   * D12 da 35ª (AD-08, AD-13): a unidade do agendamento que a sessão do pacote
+   * ligou ou desligou (o id do agendamento → o id da unidade), lida agora — a
+   * linha da sessão leva a do pacote (a da venda), e o fato é o agendamento.
+   */
+  unidadesDosAgendamentos?: Record<string, string>
+  /**
+   * A5 e A10 da 35ª (AD-08): o motivo do cancelamento do plano, do pacote da
+   * cliente ou da sessão do pré-pago (o id → o motivo), lido agora — a
+   * auditoria não guarda texto livre.
+   */
+  motivosDaVendaCancelada?: Record<string, string>
+  /** A10 da 35ª: qual sessão de qual pré-pago (o id de `procedure_sale_units` → "a sessão 2 do pré-pago de X"), lido agora. */
+  sessoesDoPrePago?: Record<string, string>
+  /**
    * A9 da 33ª (AD-08, AD-21): de quem é a conta de cada autorização do suporte
    * (o id da autorização → o nome do membro), lido agora — o gatilho de
    * `support_grants` não guarda a conta.

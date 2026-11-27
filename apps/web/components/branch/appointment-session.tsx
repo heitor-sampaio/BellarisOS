@@ -36,7 +36,7 @@ import { AnotacoesDoAtendimento, RegistroEditado } from '@/components/branch/ano
 import type { AnotacaoDoAtendimento, VersaoDoRegistro } from '@/lib/prontuario/anotacoes-e-versoes'
 import { FotosDoAtendimento, type FotoDoAtendimento } from '@/components/branch/fotos-do-atendimento'
 import { lerRascunho, gravarRascunho, limparRascunho, type RespostaDaFicha } from '@/lib/atendimento/rascunho'
-import { avisoDaFichaNaoRespondida, avisoDaFichaParaOPlano } from '@/lib/atendimento/obrigatorias'
+import { avisoDaFichaNaoRespondida, avisoDaFichaParaOPlano, textoDeQuemPreencheAFicha } from '@/lib/atendimento/obrigatorias'
 import { PreAtendimentoDoAgendamento } from '@/components/branch/pre-atendimento-do-agendamento'
 import { salvarFichaDoProcedimento } from '@/actions/anamnesis'
 import type { AnamnesisRow } from '@/lib/anamnesis'
@@ -52,7 +52,7 @@ import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { Dica } from '@/components/shared/dica'
 import { avisoDoMenor, ehMenorDeIdade, linhaDoResponsavel, type ResponsavelLegal } from '@/lib/clients/menor'
 import { textoDoRegistroTravado, TEXTO_DO_CLINICO_SO_LEITURA } from '@/lib/atendimento/registro-travado'
-import { TEXTO_DA_SESSAO_NA_DESISTENCIA } from '@/lib/atendimento/desistencia'
+import { TEXTO_DA_SESSAO_NA_DESISTENCIA, insumosDaDesistencia } from '@/lib/atendimento/desistencia'
 import { lotesDaBaixa, textoDosLotesDaBaixa, type LoteParaBaixa, type ParteDaBaixa } from '@/lib/estoque/fefo'
 import { textoDoPlanoDoConcluido } from '@/lib/plano-de-tratamento/textos'
 import { mesDeClienteDesde } from '@/lib/clientes/cliente-desde'
@@ -310,6 +310,8 @@ const STATUS_OVERLINE: Record<string, { label: string; color: string }> = {
 
 /** Um grupo do que falta para finalizar: onde (a anamnese, a ficha) e os rótulos. */
 interface GrupoQueFalta { onde: string; rotulos: string[] }
+const ONDE_NA_SAUDE = 'Na ficha de saúde'
+const ONDE_NA_FICHA = 'Na ficha de atendimento'
 
 /**
  * A janela do "Finalizar" com obrigatória em branco (A30 da 6ª simulação): diz
@@ -329,6 +331,9 @@ function OQueFaltaParaFinalizar({ grupos, onFechar, quemResponde = null }: {
 }) {
   const total = grupos.reduce((n, g) => n + g.rotulos.length, 0)
   const naoResponde = quemResponde !== null
+  // A15 da 35ª: cada ficha diz quem a responde ou preenche, só na falta dela.
+  const faltaNaSaude = naoResponde && grupos.some(g => g.onde === ONDE_NA_SAUDE)
+  const faltaNaFicha = naoResponde && grupos.some(g => g.onde === ONDE_NA_FICHA)
   return (
     <JanelaModal onFechar={onFechar} rotulo="O que falta para finalizar" largura={460}>
       <div data-o-que-falta>
@@ -345,9 +350,14 @@ function OQueFaltaParaFinalizar({ grupos, onFechar, quemResponde = null }: {
               ? 'O atendimento só se finaliza com elas respondidas.'
               : 'O atendimento só se finaliza com elas respondidas. Os campos estão marcados na página.'}
           </p>
-          {naoResponde && (
+          {faltaNaSaude && (
             <p data-quem-responde-a-ficha role="note" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', lineHeight: 'var(--leading-snug)' }}>
               Você lê a ficha de saúde, mas não a responde. {textoDeQuemRespondeAFicha(quemResponde)}
+            </p>
+          )}
+          {faltaNaFicha && (
+            <p data-quem-preenche-a-ficha role="note" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', lineHeight: 'var(--leading-snug)' }}>
+              {textoDeQuemPreencheAFicha(quemResponde)}
             </p>
           )}
           {grupos.map(g => (
@@ -367,8 +377,10 @@ function OQueFaltaParaFinalizar({ grupos, onFechar, quemResponde = null }: {
   )
 }
 
-function CancelModal({ appointmentId, slug, onClose, desistencia = null }: {
+function CancelModal({ appointmentId, slug, onClose, desistencia = null, estoque = [] }: {
   appointmentId: string; slug: string; onClose: () => void
+  /** Os insumos do estoque da unidade: o produto aplicado no mapa e não marcado entra por eles (A18 da 35ª). */
+  estoque?: AvailableProduct[]
   /**
    * A desistência NO MEIO do atendimento (A27 da 8ª simulação), para quem
    * atende (o Atendimento em Gerenciar): baixar o insumo já aplicado (os
@@ -380,6 +392,17 @@ function CancelModal({ appointmentId, slug, onClose, desistencia = null }: {
   const router = useRouter()
   const [state, action, pending] = useActionState(cancelAppointmentSession, null)
   const [baixar, setBaixar] = useState(false)
+  // A18 da 35ª (princípio 3): "o que já foi aplicado" é a aplicação registrada
+  // no mapa deste atendimento, quando há (insumosDaDesistencia).
+  const [totaisDoMapa, setTotaisDoMapa] = useState<(TotalDoMapa & { origem?: OrigemDoTotal })[]>([])
+  const comDesistencia = !!desistencia
+  useEffect(() => {
+    if (!comDesistencia) return
+    let vivo = true
+    dosesDoMapaDoAtendimento(appointmentId).then(r => { if (vivo) setTotaisDoMapa(r.totais) }).catch(() => {})
+    return () => { vivo = false }
+  }, [appointmentId, comDesistencia])
+  const insumosDaBaixa = desistencia ? insumosDaDesistencia(desistencia.insumos, totaisDoMapa, estoque) : []
   // Cancelado, fecha e recarrega — num efeito: chamar onClose DURANTE a
   // renderização mudava o estado do pai no meio dela (o aviso do React, sobra
   // da F37).
@@ -388,7 +411,7 @@ function CancelModal({ appointmentId, slug, onClose, desistencia = null }: {
     if (cancelado) { onClose(); router.refresh() }
   }, [cancelado, onClose, router])
   if (cancelado) return null
-  const listaDosInsumos = (desistencia?.insumos ?? []).map(i => `${i.name} ${formatarDose(i.quantity)} ${i.unit}`).join(', ')
+  const listaDosInsumos = insumosDaBaixa.map(i => `${i.name} ${formatarDose(i.quantity)} ${i.unit}`).join(', ')
   // O Em atendimento é a desistência por dentro (o insumo, a intercorrência, a
   // sessão paga), mas a tela diz "Cancelar" (o Heitor, 25/11: "Mantem o Cancelar").
   const titulo = 'Cancelar atendimento'
@@ -423,13 +446,13 @@ function CancelModal({ appointmentId, slug, onClose, desistencia = null }: {
                   <textarea id="cancelamento-intercorrencia" name="intercorrencia" rows={2} placeholder="O que aconteceu — fica no prontuário do atendimento" className="field" style={{ resize: 'vertical' }} />
                 </div>
               )}
-              {desistencia.insumos.length > 0 && (
+              {insumosDaBaixa.length > 0 && (
                 <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
                   <input type="checkbox" checked={baixar} onChange={e => setBaixar(e.target.checked)} style={{ marginTop: 3 }} />
                   <span>Baixar do estoque o que já foi aplicado: {listaDosInsumos}</span>
                 </label>
               )}
-              {baixar && <input type="hidden" name="products_used" value={JSON.stringify(desistencia.insumos)} />}
+              {baixar && <input type="hidden" name="products_used" value={JSON.stringify(insumosDaBaixa)} />}
               <input type="hidden" name="desistencia" value="1" />
             </div>
           )}
@@ -1200,8 +1223,8 @@ export function AppointmentSession({
     const daFicha = fichaRef.current?.validar({ rolar: !anamnese?.error })
     if (!anamnese?.error && !daFicha?.error) return null
     const grupos: GrupoQueFalta[] = []
-    if (anamnese?.error) grupos.push({ onde: 'Na ficha de saúde', rotulos: anamnese.faltam ?? [] })
-    if (daFicha?.error) grupos.push({ onde: 'Na ficha de atendimento', rotulos: daFicha.faltam ?? [] })
+    if (anamnese?.error) grupos.push({ onde: ONDE_NA_SAUDE, rotulos: anamnese.faltam ?? [] })
+    if (daFicha?.error) grupos.push({ onde: ONDE_NA_FICHA, rotulos: daFicha.faltam ?? [] })
     const mensagem = grupos.map(g => `${g.onde.toLowerCase()}: ${g.rotulos.map(r => `"${r}"`).join(', ')}`).join('; ')
     return { mensagem: `Falta responder ${mensagem}.`, grupos }
   }
@@ -1478,6 +1501,7 @@ export function AppointmentSession({
             semInjetaveis={!podeInjetaveis}
             onAnswersChange={setFichaDigitada}
             injetaveis={{ clientId: client.id, branchId, produtos: produtosDoMapa, podeEditar: canManage && canViewRecords }}
+            planejadorAoVivo={!editLocked}
           />
         ),
       } : null}
@@ -1508,6 +1532,7 @@ export function AppointmentSession({
           semInjetaveis={!podeInjetaveis}
           onAnswersChange={setFichaDigitada}
           injetaveis={{ clientId: client.id, branchId, produtos: produtosDoMapa, podeEditar: canManage && canViewRecords }}
+            planejadorAoVivo={!editLocked}
         />
       </div>
     </section>
@@ -1623,7 +1648,8 @@ export function AppointmentSession({
 
       {showCancel  && (
         <CancelModal appointmentId={appointment.id} slug={slug} onClose={() => setShowCancel(false)}
-          desistencia={status === 'IN_PROGRESS' && canManage ? { insumos: confirmedInsumos, registraClinico: canEditRecords } : null} />
+          desistencia={status === 'IN_PROGRESS' && canManage ? { insumos: confirmedInsumos, registraClinico: canEditRecords } : null}
+          estoque={availableProducts} />
       )}
       {oQueFalta   && <OQueFaltaParaFinalizar grupos={oQueFalta} onFechar={() => setOQueFalta(null)} quemResponde={canEditRecords ? null : quemRespondeAFicha ?? []} />}
       {showFinish  && (

@@ -632,3 +632,24 @@ As suas respostas R20 e R21 (26/11) já estão no sistema:
 - **R21:** Comissões e taxas começa pelas taxas da maquininha.
   - A opção "Taxa da maquininha do pagamento" perdeu o "(tabela abaixo)".
   - Teste alterado pela sua resposta: `e2e/comissoes-configuracao.spec.ts:104`.
+
+## 16. A 35ª simulação (27/11)
+
+Cinco redes novas, sem a conta da plataforma. O dinheiro das cinco bateu em todas as telas. Foram 11 defeitos e 4
+prováveis, nenhum de segurança. Treze foram corrigidos; dois dependem de você e estão na página de perguntas (R22 e
+R23). O resumo está no DEVLOG (27/11).
+
+O que você precisa saber:
+- **Quem tem só o Financeiro em Gerenciar não tinha onde cancelar um pacote ou plano.** O "Cancelar" morava na ficha
+  (que pede Clientes) e na página do plano (que pede o Atendimento). Agora o cancelamento abre também na janela do
+  estorno. Ficou um caso sem caminho: o pacote ou plano sem nenhum pagamento não tem "Estornar". Foi para as sugestões.
+- **O plano pago com crédito interno dizia "Recebido R$ 50" em vez de R$ 910.** O "Recebido" e o "Pago" do app agora
+  contam o crédito interno. A receita, as Vendas e o caixa não mudam.
+- **O crediário sem entrada era recusado no contrato do plano e no recebimento do plano.** Agora passa, como no PDV.
+- **A ficha de saúde com uma pergunta obrigatória nova** contava como válida dentro da validade. Agora o app pede de
+  novo, já preenchida, e a equipe vê "Falta responder".
+- **Nenhum teste existente foi alterado ou apagado.**
+
+As duas perguntas novas (na página):
+- **R22:** num plano com contrato, o "Falta pagar" quase nunca aparece, porque o contrato só nasce junto do pagamento.
+- **R23:** quem não tem o Prontuário vê, no histórico do atendimento, que houve foto clínica (sem o título nem a foto).
