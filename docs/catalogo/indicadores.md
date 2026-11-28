@@ -227,9 +227,9 @@ Este é o catálogo das regras dos indicadores que valem HOJE: todo número na t
 - Onde: `docs/regras/indicadores.md:745-748`; `docs/regras/vendas-financeiro.md:2001-2006`, `docs/regras/indicadores.md:850-858`
 - Antes: KC-11; antes de 26/11: o cartão dizia R$ 367 e o DRE "Despesas operacionais R$ 0", sem dizer por quê
 
-**LU-11.** O cartão "Insumos e produtos" tem a dica do que soma (o insumo dos atendimentos ao custo de consumo e o custo do produto vendido), e o DRE tem a dica "O que fica fora do lucro": a perda e o ajuste de estoque.
-- Fonte: princípio 3; o lugar da explicação: o Heitor, 2026-11-16: a explicação do número mora na dica, não embaixo dele (`docs/regras/design.md:215`)
-- Onde: `docs/regras/indicadores.md:748-754`; `apps/web/e2e/dicas-relatorios-dashboard.spec.ts`
+**LU-11.** O cartão "Insumos e produtos" tem a dica do que soma (o insumo dos atendimentos ao custo de consumo e o custo do produto vendido), e o DRE tem a dica "O que fica fora do lucro": a perda e o ajuste de estoque. A linha embaixo do DRE, "Fora do resultado no período: compras no estoque (as entradas, ao custo)", soma as entradas no estoque, não a despesa da categoria "Compra de estoque" (LU-01), que fica em "Despesas pagas (caixa)" (LU-10).
+- Fonte: princípio 3; o lugar da explicação: o Heitor, 2026-11-16: a explicação do número mora na dica, não embaixo dele (`docs/regras/design.md:215`); o que a linha soma: decisão do Claude, 28/11 (43ª, Time A), como a tela já diz
+- Onde: `docs/regras/indicadores.md:748-754`; `docs/regras/vendas-financeiro.md:2349-2351`; `apps/web/e2e/dicas-relatorios-dashboard.spec.ts`; `apps/web/components/admin/reports-bi-view.tsx` (`[data-fora-do-resultado]`)
 - Antes: KC-12
 
 **LU-12.** A margem do procedimento é (preço − custo) ÷ preço. O custo é a soma dos insumos, pelo custo da medida de consumo (o preço da embalagem dividido pelo que ela rende), da mão de obra e dos outros custos, sempre pelo custo de hoje no catálogo.
@@ -334,7 +334,7 @@ Este é o catálogo das regras dos indicadores que valem HOJE: todo número na t
 - Antes: KA-15, KE-24
 
 **OC-02.** A ocupação é o tempo agendado (os atendimentos concluídos contam; os cancelados e as faltas não) sobre o tempo aberto, que é, para cada pessoa que atende e em cada dia, o horário em que a unidade e ela estão abertas ao mesmo tempo. Sai em percentual inteiro, e a agenda e o dashboard da unidade mostram o mesmo número. O tempo agendado de um dia (ou do período da agenda) é o que cada atendimento ocupa DENTRO dele, pela duração marcada (o concluído conta a duração, também o adiantado e o que acabou depois da hora): o que atravessa a meia-noite, ou dura dias, conta em cada dia o seu pedaço (o de 30 h dava mais de 100% num dia e 0% no seguinte). A contagem dos atendimentos do dia segue pelo dia em que começam. O encaixe fora do horário conta no tempo agendado, e o tempo aberto não cresce por ele.
-- Fonte: decisão do Claude; o recorte pelo dia: decisão do Claude, 25/11, pelo princípio 3; o encaixe fora do horário e o concluído depois da hora: decisão do Claude, 27/11 (36ª, Decisão A), pela própria OC-02
+- Fonte: decisão do Claude; o recorte pelo dia: decisão do Claude, 25/11, pelo princípio 3; o encaixe fora do horário e o concluído depois da hora: decisão do Claude, 27/11 (36ª, Decisão A), pela própria OC-02; o número para em 100% mesmo com o encaixe além do horário: o Heitor, 28/11 (R45): "Fica parando em 100%"
 - Onde: `docs/regras/indicadores.md:342-347`
 - Antes: KB-02
 
@@ -430,8 +430,8 @@ Este é o catálogo das regras dos indicadores que valem HOJE: todo número na t
 - Onde: `docs/regras/indicadores.md:1436-1439`
 - Antes: KE-32
 
-**CC-09.** A retenção é as clientes atendidas no período que já tinham sido atendidas antes dele, sobre as clientes atendidas no período. "Já atendida antes" vale por qualquer pessoa e em qualquer unidade da rede, também quando a tela olha uma unidade só. A "Primeira vez" é o outro lado: a cliente cuja primeira visita na REDE caiu no período, também no recorte de uma unidade (a que veio pela primeira vez à rede em outra unidade, dentro do período, conta como primeira vez também nesta).
-- Fonte: o Heitor, 2026-10-29: "A cliente é da clínica, o atendimento é da profissional"; a "Primeira vez" no recorte da unidade: decisão do Claude, 27/11 (38ª, Decisão 11), pela fala acima e pelo CLAUDE.md §5 (a cliente é da rede)
+**CC-09.** A retenção é as clientes atendidas no período que já tinham sido atendidas antes dele, sobre as clientes atendidas no período. "Já atendida antes" vale por qualquer pessoa e em qualquer unidade da rede, também quando a tela olha uma unidade só. A "Primeira vez" é o outro lado: a cliente cuja primeira visita na REDE caiu no período, também no recorte de uma unidade (a que veio pela primeira vez à rede em outra unidade, dentro do período, conta como primeira vez também nesta). A visita é o atendimento concluído no sistema: a "Última visita" e o "Cliente desde" da importação não contam, e a cliente de antes atendida pela primeira vez no sistema é "Primeira vez" e fica fora da retenção.
+- Fonte: o Heitor, 2026-10-29: "A cliente é da clínica, o atendimento é da profissional"; a "Primeira vez" no recorte da unidade: decisão do Claude, 27/11 (38ª, Decisão 11), pela fala acima e pelo CLAUDE.md §5 (a cliente é da rede); a cliente de antes: decisão do Claude, 28/11 (43ª, Time E), pela IM-21 do catálogo de Clientes (a "Última visita" de antes do sistema não vira atendimento)
 - Onde: `docs/regras/indicadores.md:539-552`; `DEVLOG.md:11123-11126`, `:14574-14575`
 - Antes: KB-20
 
@@ -527,7 +527,7 @@ Este é o catálogo das regras dos indicadores que valem HOJE: todo número na t
 - Antes: KC-16
 
 **VE-05.** O crédito interno vendido é venda: aparece na lista e no CSV das Vendas e conta no "Total vendido". O que a cliente paga com ele não conta de novo: a venda paga só com crédito interno não entra, e a paga em parte entra no dia do primeiro dinheiro, valendo o resto (a parte paga com crédito sai da linha). Ele não tem quem vendeu e não entra no recorte de venda de nenhuma pessoa.
-- Fonte: o Heitor, 25/11: "se o crédito foi vendido, é venda, tem que contar, não conta é quando só usa"; a parte paga com crédito sair da linha da venda (não do crédito): decisão do Claude, 25/11, pela fala
+- Fonte: o Heitor, 25/11: "se o crédito foi vendido, é venda, tem que contar, não conta é quando só usa"; a parte paga com crédito sair da linha da venda (não do crédito): decisão do Claude, 25/11, pela fala; vale também para o crédito que voltou do cancelamento de outro plano: o Heitor, 28/11 (R46): "Fica como está (R$ 20): pagar com crédito não conta"
 - Onde: `docs/regras/indicadores.md:705-713`, `:809-818`
 - Antes: KC-17
 

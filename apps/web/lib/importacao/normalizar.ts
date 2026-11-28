@@ -296,6 +296,27 @@ export function avisoDaMenorNaPlanilha(dados: DadosDaLinha, hoje: Date = new Dat
   return `Menor de idade (${idadeEm(nascimento, hoje)} anos) sem responsável legal na planilha: cadastre o responsável na ficha.`
 }
 
+/** A5: o responsável legal da planilha — só a ficha da menor o grava (a regra de `colunasDoResponsavel`). */
+export const CAMPOS_DO_RESPONSAVEL = ['responsavel_nome', 'responsavel_cpf', 'responsavel_parentesco', 'responsavel_telefone'] as const
+
+/**
+ * O responsável legal da planilha que NÃO vai para a ficha (IM-23): a linha
+ * não é de menor (ou não tem nascimento). D6 da 43ª (IM-09): o aviso nascia só
+ * no processamento, e a prévia não o mostrava — os dois usam esta função.
+ * `nascimento` é o que a ficha fica tendo: no servidor, o da ficha que já
+ * existe vale; na prévia, o da planilha.
+ */
+export function avisoDoResponsavelNaoGravado(
+  dados: DadosDaLinha,
+  nascimento: string | null | undefined = dados.birth_date as string | undefined,
+  hoje: Date = new Date(),
+): string | null {
+  if (!CAMPOS_DO_RESPONSAVEL.some(c => dados[c]) || ehMenorDeIdade(nascimento, hoje)) return null
+  return nascimento
+    ? 'Responsável legal não gravado: pela data de nascimento, não é menor de idade (só a menor tem responsável na ficha).'
+    : 'Responsável legal não gravado: sem a data de nascimento, não se sabe se é menor de idade.'
+}
+
 const UFS = new Set(['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'])
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 

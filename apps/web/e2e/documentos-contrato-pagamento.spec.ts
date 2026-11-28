@@ -5,6 +5,7 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
 import { apagarDocumentosEmitidos } from './apoio/limpeza'
 import { receberAtendimentoNoPdv, escolherFormaPorValor, botaoDeReceber } from './apoio/vender'
+import { diaEmQueAUnidadeAbre } from './apoio/datas'
 
 /**
  * O pagamento no contrato do PROCEDIMENTO (atendimento avulso) — decisão do
@@ -247,5 +248,50 @@ test.describe.serial('documentos: pagamento no contrato do procedimento', () => 
     })
     const { data: d } = await db().from('issued_documents').select('payment_snapshot').eq('id', c4!.id).single<{ payment_snapshot: unknown }>()
     expect(d!.payment_snapshot).toEqual({ forma: 'PARCELADO', metodo: null, entrada: 0, parcelas: 2, primeiroVencimento: '2026-12-10' })
+  })
+  // D4 da 43ª (DG-01: "Quem colhe a assinatura define o pagamento antes dela"; DQ-06): a janela do
+  // agendamento dizia "Faltam dados: o pagamento do contrato" sem ação, a tela de assinar mandava à
+  // ficha e a tela Documentos oferecia "Completar o cadastro", que não resolve.
+  test('D4 da 43ª: o pagamento do contrato se define onde se colhe — a janela, a tela de assinar e a tela Documentos', async ({ browser }) => {
+    const slug = (await db().from('branches').select('slug').eq('id', rede!.branchId).single<{ slug: string }>()).data!.slug
+    const dia = diaEmQueAUnidadeAbre(5)
+    const { data: ag5, error: eA } = await db().from('appointments').insert({
+      branch_id: rede!.branchId, client_id: cliente, procedure_id: rede!.procedureId, professional_id: rede!.professionalId,
+      scheduled_at: new Date(`${dia}T10:00:00-03:00`).toISOString(), duration_min: 30, price: 100, status: 'SCHEDULED',
+    }).select('id').single<{ id: string }>()
+    expect(eA).toBeNull()
+    const { data: c5 } = await db().from('issued_documents').select('id').eq('appointment_id', ag5!.id).eq('kind', 'CONTRATO').single<{ id: string }>()
+    expect(c5, 'o contrato do agendamento nasceu').not.toBeNull()
+
+    await como(browser, gestor!.estado, async page => {
+      // A tela Documentos: o pagamento leva à ficha, em Documentos; sem "Completar o cadastro".
+      await page.goto('/admin/documentos')
+      const linha = page.locator(`[data-documento="${c5!.id}"]`)
+      await expect(linha).toHaveAttribute('data-situacao', 'FALTAM_DADOS')
+      await expect(linha.locator('[data-completar-cadastro]')).toHaveCount(0)
+      await expect(linha.locator('[data-definir-pagamento-do-contrato]')).toHaveAttribute('href', new RegExp(`/clients/${cliente}\\?aba=documentos$`))
+      // A tela de assinar: o "Definir pagamento" ali, sem o recado da ficha.
+      await page.goto(`/admin/documentos/${c5!.id}/assinar`)
+      await expect(page.getByRole('button', { name: 'Definir pagamento' })).toBeVisible()
+      await expect(page.getByText('se define na ficha')).toHaveCount(0)
+    })
+
+    await como(browser, recepcao!.estado, async page => {
+      await page.goto(`/${slug}/agenda?date=${dia}`)
+      await page.locator(`[data-agendamento="${ag5!.id}"]`).first().click()
+      const lista = page.getByRole('dialog', { name: 'Agendamento' }).locator('[data-documentos-do-agendamento]')
+      await expect(lista).toContainText('Faltam dados: o pagamento do contrato')
+      await expect(lista.locator('[data-completar-cadastro]')).toHaveCount(0)
+      await lista.getByRole('button', { name: 'Definir pagamento' }).click()
+      const form = lista.locator('[data-definir-pagamento]')
+      await form.getByRole('radio', { name: 'Pix', exact: true }).click()
+      await form.getByRole('button', { name: 'Salvar pagamento' }).click()
+      // A janela relê os documentos: o contrato montado espera a assinatura.
+      await expect(lista).toContainText('Falta assinar')
+      await expect(lista.locator('[data-colher-assinatura]')).toBeVisible()
+    })
+    const { data: d } = await db().from('issued_documents').select('status, payment_snapshot').eq('id', c5!.id).single<{ status: string; payment_snapshot: unknown }>()
+    expect(d!.status).toBe('PENDENTE')
+    expect(d!.payment_snapshot).toEqual({ forma: 'AVISTA', metodo: 'PIX' })
   })
 })

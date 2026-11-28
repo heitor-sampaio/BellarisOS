@@ -1774,6 +1774,73 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-28 (3) — A 43ª simulação e as correções dela
+
+O laço segue (o Heitor, 25/11: "quando acabar essa roda já segue as outras e assim vai"). Cinco times e cinco redes
+novas, sem a conta da plataforma (o Heitor, 26/11: "Sem a conta"). Os temas foram estes:
+- o dinheiro que sai (contas a pagar, despesa no cartão, Fechamento), no Acre (UTC−5);
+- as comissões de uma equipe grande, em Cabo Frio;
+- a equipe e os cargos numa rede de duas unidades, em Teresópolis e Nova Friburgo;
+- os documentos (termos e contratos), em Guarapuava;
+- a rede que chega de outro sistema (a importação), em Itumbiara.
+
+Os números bateram nas cinco, menos os R$ 0,70 da bandeira informada depois do pagamento (D2, que foi ao Heitor). Foram
+7 defeitos (nenhum ALTO, nenhum de segurança, nenhuma regressão da 42ª) e 18 atritos. Salvo onde se diz o contrário, as
+decisões são do Claude (28/11), pelos princípios e pelo catálogo. Junto entraram as respostas R42 a R46 do Heitor.
+
+**As respostas do Heitor (28/11).**
+- R42: o aviso de cancelamento e o de pagamento à cliente não repetem o título.
+- R43: o crédito do cancelamento diz "Cancelamento do pacote “X”" (e do plano), com o nome entre aspas
+  (`20261221400001`).
+- R44: no atendimento, o "Aplicado" do mapa de injetáveis fica vazio até alguém escrever, com a dose do plano como
+  sugestão.
+- R45 (a ocupação para em 100%) e R46 (pagar com crédito não conta em Vendas): só o catálogo.
+
+**O que mudou no sistema.**
+- **O dinheiro que sai.**
+  - **No Fechamento, a despesa paga no cartão da rede é a linha "Cartão"**, que não se confere (D3, FC-15, MQ-15): o
+    Débito da maquininha volta a ser o que passou nela (o "Conserto da maca" de R$ 270 tirava R$ 270 do Débito).
+    O cartão por maquininha deixa de ter a despesa (`20261221700001`).
+  - O "Estornar" some na despesa do pagamento das comissões, que o banco recusa estornar (A3, CF-17).
+  - O "Selecione…" do pagar a conta só aparece sem forma escolhida (A2).
+- **Os documentos.**
+  - **O "Definir pagamento" do contrato também na janela do agendamento e na tela de assinar** (D4, DG-01, DQ-06); a
+    tela Documentos leva à aba Documentos da ficha, e o "Completar o cadastro" só aparece com dado do cadastro faltando.
+  - O combinado do contrato não fala da taxa da maquininha (D7, MQ-15). Na ficha, os arquivos se chamam "Anexos" (A10).
+    A janela aberta acompanha a agenda em tempo real (A13).
+  - Saiu o parágrafo que explicava a etapa Documentação do plano (A11; o Heitor, 26/11: "isso não é ser intuitivo, é
+    ser explicativo").
+- **Os indicadores e a ficha.**
+  - "Meus números" diz o nome das unidades ("Em Friburgo e Teresópolis"), não "Nas 2 unidades em que você atende" (D5,
+    CA-06).
+  - No Reativar, a cliente de antes do sistema sem visita diz "Cliente desde mar 2017", não "Nunca veio" (A14, CC-05,
+    IM-20); o Copilot responde igual. O "Ver mais" abre o resto do mesmo recorte no próprio quadro, 20 por vez (A18,
+    CC-06; `20261222100001`).
+  - O eixo do fluxo de caixa diz o mês curto, com o ano só no primeiro e em janeiro (A5).
+- **A importação e o cadastro.**
+  - A prévia da importação já mostra o "Responsável legal não gravado" da adulta, como o resultado (D6, IM-09).
+  - O telefone colado com +55 ou com o 0 da discagem não perde dígitos (A17).
+- **A equipe e os cargos.**
+  - **O menu se atualiza na próxima navegação quando a matriz do cargo muda** (A7, LO-06), sem sair e entrar.
+  - As iniciais da Equipe da unidade saem de `iniciaisDoNome` ("Dra. Edna Ribeiro" → "ER", A8). O repasse sem ninguém
+    livre diz quem atende ali e por que não está livre (A9; quem está ocupado segue fora da lista, R14). O resumo do
+    cargo diz a baixa que vem do PDV (A6, CG-16).
+- **As vendas de pacote.**
+  - A janela de cancelar só fala da comissão de venda quando a venda tem uma (A16, CQ-07, PA-26). A venda do pacote
+    aparece na ficha na hora (A12). O próprio "Vender por" diz "Conferindo a assinatura…" (A4).
+- **Achado na completa:** com o menu se atualizando a cada navegação, a sessão de suporte que vencia no meio de uma
+  navegação pelo menu travava a tela em vez de devolver o atendente ao painel (a pergunta do menu lia a sessão já
+  vencida antes da página). Na sessão de suporte, o menu não pergunta nada.
+- **Para o Heitor** (na página das perguntas): R47 (os nomes "Investido total" e "Preço médio" na ficha da migrada),
+  R48 (a migrada só com a "Última visita" de antes: o indicador e o selo divergem), R49 (a bandeira informada depois do
+  pagamento) e R50 (dividir a conta a pagar).
+- **Sugestões:** as nº 196–201.
+- **Catálogo:** CG-09, CG-20, CG-22, CG-27, CC-09, LU-11, CS-04, DE-15 alinhados com o sistema; as regras dos defeitos
+  (FC-15, MQ-15, DG-01, DQ-06, CA-06, CC-05, CC-06, IM-09, IM-20, LO-06, CQ-07) e as respostas (OC-02, VE-05).
+**Testes alterados:** `tests/textos-dos-avisos-da-9.test.ts` (R42), `tests/comissoes-base-efetiva.test.ts` (R43) e
+`e2e/injetaveis-confirmar-so-no-atendimento.spec.ts` (R44), todas do Heitor, 28/11. **Apagado:**
+`tests/checkout-exigencia-do-modelo.test.ts` (A11; o Heitor, 26/11).
+
 ### 2026-11-28 (2) — A 42ª simulação e as correções dela
 
 O laço segue (o Heitor, 25/11: "quando acabar essa roda já segue as outras e assim vai"). Cinco times e seis redes

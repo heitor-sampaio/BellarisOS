@@ -30,8 +30,13 @@ export function textoDoRemarcado(procedimento: string, quando: string, unidade: 
   return `Novo horário: ${procedimento} em ${quando}${naUnidade(unidade)}.`
 }
 
+/**
+ * R42 (o Heitor, 28/11: "O texto não repete o título (a proposta)"): o título
+ * do aviso já diz "Agendamento cancelado" e "Pagamento confirmado", e o texto
+ * não os repete — como o da equipe (A13 da 41ª).
+ */
 export function textoDoCancelado(procedimento: string, quando: string, unidade: string | null, motivo: string | null): string {
-  return `Agendamento cancelado: ${procedimento} de ${quando}${naUnidade(unidade)}.${motivo?.trim() ? ` Motivo: ${motivo.trim()}.` : ''}`
+  return `${procedimento} de ${quando}${naUnidade(unidade)}.${motivo?.trim() ? ` Motivo: ${motivo.trim()}.` : ''}`
 }
 
 /**
@@ -48,5 +53,5 @@ export function textoDoConcluido(procedimento: string): string {
 }
 
 export function textoDoPagamento(procedimento: string): string {
-  return `Pagamento confirmado: ${procedimento}.`
+  return `${procedimento}.`
 }

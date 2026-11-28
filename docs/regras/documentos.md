@@ -460,7 +460,10 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   Minha agenda, no agendamento dela — SM2), com o agendamento da rede e ao
   alcance da unidade. Colher
   a assinatura é na sessão, na ficha e, desde a A23 da 9ª, pelo link da
-  janela (acima). Prova:
+  janela (acima). **A janela aberta relê os documentos** a cada sinal da
+  agenda (A13 da 43ª; princípio 3; decisão do Claude, 28/11: `useSinais(['agenda'])`
+  — o documento montado de novo, assinado ou dispensado marca o sinal) e
+  depois de definir o pagamento. Prova:
   `e2e/agenda-janela-termo.spec.ts`.
 - **Assinar é UMA função** para todos os canais (`documentos_assinar`; a
   `documento_assinar` antiga é a mesma, para um): trava, confere hash, grava a
@@ -567,12 +570,28 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   os Clientes em Gerenciar completa o cadastro (…)" (`quemCompletaOCadastro`).
   Depois de vender o pacote, o aviso "Completado o cadastro…" vem com o botão
   (A11, `[data-completar-depois-da-venda]`); a aba Documentos vazia diz
-  "Nenhum anexo". Prova: `tests/atritos-da-20-vendas.test.ts`.
+  "Nenhum anexo". Prova: `tests/atritos-da-20-vendas.test.ts`. Na aba, os
+  termos são "Documentos para assinatura" e os arquivos da cliente,
+  "Anexos" (A10 da 43ª, princípio 7: eram dois "Documentos"; decisão do
+  Claude, 28/11).
 - **O contrato do PROCEDIMENTO também cita o pagamento** (decisão do Heitor,
   2026-09-30): `pagamento.*` vale em CONTRATO e CONTRATO_PLANO. No avulso o
   pagamento só é recebido depois do atendimento, então quem colhe a assinatura
   o DEFINE antes dela (`definirPagamentoDoContrato`, ficha e painel da sessão;
   o mesmo `PagamentoDoPlano` do checkout, guardado em `payment_snapshot`).
+  **Em todo lugar de colher** (D4 da 43ª; DG-01 e DQ-06, decisão do Claude,
+  28/11): a janela do agendamento (`podeDefinirPagamento`,
+  `documentoNaJanela` em `lib/documentos/na-janela.ts`) e a tela de assinar
+  (`DocumentoNaTela.pagamento`) têm o "Definir pagamento" com o mesmo
+  `DefinirPagamento`, a quem colhe; o "Completar o cadastro" só aparece com
+  dado do cadastro faltando (`faltaNoCadastro`, `lib/documentos/o-que-falta.ts`).
+  A tela Documentos, que só lê, leva o "Definir pagamento" à ficha, em
+  Documentos (`faltaOPagamento`). Prova:
+  `tests/documentos-pagamento-do-contrato-onde-se-colhe.test.ts`.
+  **O combinado não fala da taxa** (D7 da 43ª; MQ-15: a maquininha se escolhe
+  quando o dinheiro entra; decisão do Claude, 28/11): com `semMaquininha`, os
+  campos do pagamento não mostram o aviso da taxa do crédito nem a do débito
+  (`CampoDaBandeira semTaxa`) — nada se cobra no contrato.
   Definir o combinado é um dado do CONTRATO, não um recebimento: grava só o
   retrato do documento, e por isso fica na tela do atendimento, que não recebe
   nem tem janela de pagamento (PV-13 do catálogo de Vendas): o contrato que

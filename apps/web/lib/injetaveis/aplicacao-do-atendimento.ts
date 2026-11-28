@@ -67,3 +67,15 @@ export function aplicadoAoRegistrar(
     ? { ...p, applied: 0 }
     : { ...p, applied: p.applied ?? p.dose, atendimento })
 }
+
+/**
+ * A dose que alguém ESCREVEU no ponto neste atendimento, ou nada (R44, o
+ * Heitor, 28/11: "Vazio, com a dose do plano como sugestão (a proposta)"). O
+ * campo "Aplicado" mostra esta; a que o "Registrar aplicação" vai gravar
+ * (`aplicadoAoRegistrar`) vira a sugestão apagada dentro dele. O ponto
+ * aplicado em outro atendimento não foi aplicado neste: fica vazio.
+ */
+export function aplicadoEscrito(p: InjectablePoint, atendimento: string, deOutro: ReadonlySet<string>): number | null {
+  if (ehDeOutroAtendimento(p, atendimento, deOutro)) return null
+  return p.applied ?? null
+}

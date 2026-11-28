@@ -56,11 +56,20 @@ describe('o cancelamento do pacote ou do plano acerta a comissão uma vez, com o
       const m = ultimaCom('bellaris.comissao_adiada')!.nome
       // O Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito." — acima de 12 vezes avisa.
       // A 20261206800001 troca só o trecho das vezes no corpo VIVO (trocar_no_corpo): o que esta pôs fica.
-      const das12 = '20261206800001_cartao_acima_de_12_vezes.sql'
-      expect([m, das12]).toContain(ultimaCom('pacote_cancelar_devolvendo')!.nome)
-      expect([m, das12]).toContain(ultimaCom('plano_cancelar_devolvendo')!.nome)
-      const sql12 = nodeFs.readFileSync(nodePath.join(MIGRATIONS, das12), 'utf8')
-      expect(sql12).not.toMatch(/create (or replace )?function public\.(pacote|plano)_cancelar_devolvendo/)
+      // R43 (o Heitor, 28/11: "Pode corrigir, e o teste aceita a troca de trecho (a proposta)"): depois
+      // dela, só vale a migration que TROCA UM TRECHO no corpo vivo (trocar_no_corpo), sem recriar as
+      // funções nem mexer na comissão — o que esta pôs fica.
+      const depois = migrations().filter(f => f > m && /public\.(pacote|plano)_cancelar_devolvendo/.test(
+        nodeFs.readFileSync(nodePath.join(MIGRATIONS, f), 'utf8')))
+      for (const f of depois) {
+        const sql = nodeFs.readFileSync(nodePath.join(MIGRATIONS, f), 'utf8')
+        expect(sql, f).toContain('pg_temp.trocar_no_corpo(')
+        expect(sql, f).not.toMatch(/create (or replace )?function public\.(pacote|plano)_cancelar_devolvendo/)
+        const semComentario = sql.split('\n').filter(l => !l.trim().startsWith('--')).join('\n')
+        expect(semComentario, f).not.toMatch(/comiss/i)
+      }
+      expect([m, ...depois]).toContain(ultimaCom('pacote_cancelar_devolvendo')!.nome)
+      expect([m, ...depois]).toContain(ultimaCom('plano_cancelar_devolvendo')!.nome)
       expect(ultimaCom('comissoes_do_pagamento')!.nome).toBe(m)
     })
   })

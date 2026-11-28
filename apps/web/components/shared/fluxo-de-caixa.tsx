@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { TrendingUp } from 'lucide-react'
 import { formatBRL } from '@estetica-os/utils'
-import { numericAxisWidth, rotuloDoEixo } from '@/lib/chart-utils'
+import { numericAxisWidth, rotuloDoEixo, rotuloDoMes, rotuloDoMesNoEixo } from '@/lib/chart-utils'
 import type { MesDoFluxo } from '@/lib/metrics/fluxo-de-caixa'
 import { SegSelect } from '@/components/shared/seg-select'
 import { Dica as DicaDoTexto } from '@/components/shared/dica'
@@ -23,10 +23,6 @@ const SERIES = [
   { chave: 'daOperadora', rotulo: 'A receber da operadora', cor: 'var(--brand-3)', pilha: 'entra' },
   { chave: 'aPagar',      rotulo: 'A pagar',               cor: 'var(--danger)',  pilha: 'sai' },
 ] as const
-
-const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
-/** "2026-11" → "nov/26". */
-const rotuloDoMes = (m: string) => `${MESES[Number(m.slice(5, 7)) - 1] ?? m}/${m.slice(2, 4)}`
 
 /** O eixo em reais (A52 da 9ª: "1,5k", não "2k" ao lado do 2.000). */
 const fmtEixo = (v: number) => rotuloDoEixo(v)
@@ -112,7 +108,7 @@ export function FluxoDeCaixa({ meses: todos }: { meses: MesDoFluxo[] }) {
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={meses} margin={{ top: 6, right: 8, left: 0, bottom: 0 }} barGap={2}>
                 <CartesianGrid strokeDasharray="3 0" vertical={false} stroke="var(--hairline)" />
-                <XAxis dataKey="mes" tickFormatter={rotuloDoMes} tickLine={false} axisLine={false}
+                <XAxis dataKey="mes" tickFormatter={rotuloDoMesNoEixo} tickLine={false} axisLine={false} minTickGap={8}
                   tick={{ fontSize: 'var(--text-overline)', fill: 'var(--text-muted)' }} />
                 <YAxis width={eixo} tickFormatter={fmtEixo} tickLine={false} axisLine={false}
                   tick={{ fontSize: 'var(--text-overline)', fill: 'var(--text-faint)' }} />

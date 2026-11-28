@@ -695,7 +695,7 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 ### Injetáveis
 
 **PT-13.** A aplicação de injetáveis só se registra dentro de um atendimento ("Registrar aplicação"); fora dele, o mapa não oferece "Confirmar aplicação" e o registro é recusado. Há UMA aplicação por mapa por atendimento: registrada, o botão vira "Atualizar a aplicação registrada" enquanto o atendimento está aberto; encerrado, ela fica. A aplicação de um atendimento são só os pontos aplicados NELE, não o mapa inteiro: o retoque de 10 UI num mapa que já tinha 50 UI aplicadas de manhã registra 10 UI, e o histórico do dia soma 60. No mapa, o ponto planejado e ainda não aplicado não vem com o "Aplicado" preenchido pela dose do Plano: lendo o cartão, o que não se aplicou não parece aplicado.
-- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele); só os pontos daquele atendimento: decisão do Claude, 27/11 (37ª, Decisão C3), pelo princípio 3; o ponto não aplicado: decisão do Claude, 28/11 (41ª simulação, A2), pela própria PT-13 e pelo princípio 3
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele); só os pontos daquele atendimento: decisão do Claude, 27/11 (37ª, Decisão C3), pelo princípio 3; o ponto não aplicado: decisão do Claude, 28/11 (41ª simulação, A2), pela própria PT-13 e pelo princípio 3; o campo vazio com a dose do plano como sugestão: o Heitor, 28/11 (R44): "Vazio, com a dose do plano como sugestão (a proposta)"
 - Onde: `docs/regras/atendimento.md:2112`, `:2127`, `:2162`; `apps/web/actions/injectable-map.ts` (`registrarAplicacao`)
 - Antes: PT-25, PT-26; antes de 27/11: a aplicação copiava o mapa inteiro (D2 da 37ª: o retoque gravou 60 UI, e o histórico somou 110 contra 60 de baixa)
 

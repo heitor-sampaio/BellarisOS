@@ -121,6 +121,27 @@ test.afterAll(async () => {
 })
 
 test.describe.serial('desativar oferece repassar o que fica com a pessoa', () => {
+  // A9 da 43ª (princípio 7): sem ninguém livre, a linha diz quem atende ali e não está livre, e por quê —
+  // a lista segue só com as livres (o Heitor, 26/11, R14). Escrito, não rodado.
+  test('sem ninguém livre, a linha diz quem atende ali e está ocupada no horário', async ({ browser }) => {
+    const dela = await agendar(renata!, '10:00', 5)
+    const ocupando = [
+      await agendar(tatiane!, '10:00', 5), await agendar(bianca!, '10:00', 5), await agendar(renata2!, '10:00', 5),
+    ]
+    const nT = await nome(tatiane!)
+    try {
+      await como(browser, async p => {
+        const janela = await abrirDesativar(p, renata!)
+        const linha = janela.locator(`[data-agendamento="${dela}"]`)
+        await expect(linha.locator('option', { hasText: nT }), 'a ocupada não entra na lista (R14)').toHaveCount(0)
+        await expect(linha).toContainText('Ninguém livre que atenda nesta unidade:')
+        await expect(linha.locator('[data-quem-nao-esta-livre]')).toContainText(`${nT} tem atendimento nesse horário`)
+      })
+    } finally {
+      expect(await apagarAgendamentos([dela, ...ocupando])).toEqual([])
+    }
+  })
+
   test('todos de uma vez: o que conflita é avisado e vai no caso a caso; a oportunidade só para quem tem o CRM', async ({ browser }) => {
     const a1 = await agendar(renata!, '10:00')
     const a2 = await agendar(renata!, '14:00')

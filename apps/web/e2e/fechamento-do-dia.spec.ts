@@ -81,3 +81,30 @@ test.describe.serial('o fechamento do dia', () => {
     })
   })
 })
+
+// D3 da 43ª (FC-15, MQ-15): a despesa paga no cartão da rede não sai da forma da maquininha — é a linha
+// "Cartão", à parte; o cartão por maquininha e bandeira é só o que passou nela. Num dia passado, para não
+// mexer no dia de hoje dos casos acima.
+test('a despesa no cartão da rede fica na linha "Cartão", sem abater o Débito da maquininha', async () => {
+  const dia = new Date(Date.now() - 10 * 86_400_000).toISOString().slice(0, 10)
+  const meioDia = new Date(`${dia}T12:00:00-03:00`).toISOString()
+  const base = { branch_id: rede!.branchId, is_paid: true, paid_at: meioDia, created_by: 'e2e' }
+  expect((await db().from('financial_transactions').insert([
+    { ...base, type: 'INCOME', category: 'Atendimento', description: `Débito ${marca}`, amount: 420, payment_method: 'DEBIT_CARD' },
+    { ...base, type: 'EXPENSE', category: 'Manutenção', description: `Conserto da maca ${marca}`, amount: 270, payment_method: 'DEBIT_CARD' },
+  ])).error).toBeNull()
+  const janela = {
+    p_tenant: rede!.tenantId, p_branch: rede!.branchId,
+    p_from: new Date(`${dia}T00:00:00-03:00`).toISOString(), p_to: new Date(`${dia}T23:59:59.999-03:00`).toISOString(),
+  }
+  const { data, error } = await db().rpc('metrics_fechamento_do_dia', janela)
+  expect(error).toBeNull()
+  const forma = Object.fromEntries(((data ?? []) as { forma: string; entradas: number; saidas: number; saldo: number }[])
+    .map(l => [l.forma, { entradas: Number(l.entradas), saidas: Number(l.saidas), saldo: Number(l.saldo) }]))
+  expect(forma.DEBIT_CARD, 'o Débito é o da maquininha').toEqual({ entradas: 420, saidas: 0, saldo: 420 })
+  expect(forma.CARTAO, 'a despesa no cartão, à parte').toEqual({ entradas: 0, saidas: 270, saldo: -270 })
+  expect(forma.TOTAL?.saldo, 'o total do dia não muda').toBe(150)
+  const porMaquininha = await db().rpc('metrics_fechamento_por_maquininha', janela)
+  expect(porMaquininha.error).toBeNull()
+  expect(((porMaquininha.data ?? []) as { saidas: number }[]).every(l => Number(l.saidas) === 0), 'sem a despesa').toBe(true)
+})

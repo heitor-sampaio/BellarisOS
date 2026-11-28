@@ -1,4 +1,4 @@
-import { maskPhone } from './format'
+import { maskPhone, digitosNacionais } from './format'
 
 /**
  * O CPF digitado vale: 11 dígitos, os dois verificadores conferidos, e não é
@@ -26,8 +26,8 @@ export function cpfValido(cpf: string | null | undefined): boolean {
  * cadastro e a ficha mostrava "(41) 9920-" (D13 da simulação de 2026-10-29).
  */
 export function telefoneNacional(telefone: string | null | undefined): string | null {
-  const d = (telefone ?? '').replace(/\D/g, '')
-  const nacional = (d.length === 12 || d.length === 13) && d.startsWith('55') ? d.slice(2) : d
+  // O 55 do país e o 0 da discagem saem como na máscara (A17 da 43ª).
+  const nacional = digitosNacionais(telefone ?? '')
   return nacional.length === 10 || nacional.length === 11 ? nacional : null
 }
 

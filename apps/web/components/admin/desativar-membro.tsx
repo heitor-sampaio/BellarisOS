@@ -8,7 +8,7 @@ import { deactivateTeamMember, pendenciasParaDesativar, marcarUnidadeNoAtende } 
 import type { PendenciasDoMembro, AgendamentoParaRepassar } from '@/lib/equipe/repasse'
 import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
-import { rotuloDoDesativar, linhasDoRodapeDoDesativar } from '@/lib/equipe/textos-do-cadastro'
+import { rotuloDoDesativar, linhasDoRodapeDoDesativar, quemNaoEstaLivre } from '@/lib/equipe/textos-do-cadastro'
 
 /**
  * "Desativar membro?" com o REPASSE (H6, decisão do Heitor, 2026-11-01):
@@ -291,6 +291,11 @@ export function LinhaDoAgendamento({ a, nome, valor, aviso, estilo, onEscolher, 
   equipe?: string; onAtualizar?: () => void; atualizando?: boolean
 }) {
   const fuso = useFuso()
+  // A9 da 43ª: quem atende aqui e não está livre no horário, e por quê — a lista segue só com as livres (R14).
+  const naoLivres = quemNaoEstaLivre(a)
+  const ninguemLivre = naoLivres
+    ? <>Ninguém livre que atenda nesta unidade: <span data-quem-nao-esta-livre>{naoLivres}</span>.</>
+    : null
   return (
     <div data-agendamento={a.id} style={estilo}>
       <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
@@ -310,7 +315,7 @@ export function LinhaDoAgendamento({ a, nome, valor, aviso, estilo, onEscolher, 
         <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
           {/* A11 da 8ª: diz quem atende em outra unidade e como incluí-la. */}
           {a.emOutraUnidade.length
-            ? <>Ninguém livre que atenda nesta unidade. Atende{a.emOutraUnidade.length > 1 ? 'm' : ''} em outra unidade:{' '}
+            ? <>{ninguemLivre ?? 'Ninguém livre que atenda nesta unidade.'} Atende{a.emOutraUnidade.length > 1 ? 'm' : ''} em outra unidade:{' '}
                 {a.emOutraUnidade.map(p => `${p.nome} (${p.unidades.join(', ')})`).join('; ')}.
                 {/* 18ª A29 (resto): marca a unidade no "Atende" dela daqui mesmo, pelo núcleo da Equipe. */}
                 {equipe && onAtualizar && a.unidadeId && (
@@ -329,7 +334,9 @@ export function LinhaDoAgendamento({ a, nome, valor, aviso, estilo, onEscolher, 
                       {' '}— ou cancele aqui.
                     </>
                   : <>Equipe, e {deNovo} — ou cancele aqui.</>}</>
-            : 'Ninguém livre que atenda nesta unidade: remarque pela agenda, ou cancele aqui.'}
+            : ninguemLivre
+              ? <>{ninguemLivre} Remarque pela agenda, ou cancele aqui.</>
+              : 'Ninguém livre que atenda nesta unidade: remarque pela agenda, ou cancele aqui.'}
         </span>
       )}
     </div>

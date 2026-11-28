@@ -110,7 +110,12 @@
     `cpfValido` (`@estetica-os/utils`), a MESMA conta do Copilot e da
     importação. O 11111111111 passava e virava a senha inicial do login;
   - o telefone com 10 ou 11 dígitos nacionais (`telefoneNacional`: o 55 do
-    WhatsApp é tirado); "(41) 9920" passava. **O de outro país começa com
+    WhatsApp é tirado); "(41) 9920" passava. **O 55 do país e o 0 da discagem
+    antes do DDD saem sem levar os do fim** (A17 da 43ª, decisão do Claude,
+    28/11, pelo princípio 3: o "+55 (064) 99123-4567" colado virava "(55)
+    06499-1234"): `digitosNacionais` (`@estetica-os/utils`), a mesma na
+    máscara, na conta do cadastro e na exibição; o "+55" completo vira a
+    máscara no campo, como a ficha o grava. **O de outro país começa com
     "+"** e o código (8 a 15 dígitos, não o +55) e passa como foi escrito
     ("+351 912 345 678"; decisão do Heitor, frente de cadastro de
     2026-10-29) — a conta é `telefoneDoCadastro` (`@estetica-os/utils`), no
@@ -1249,8 +1254,10 @@ oferece segue o módulo (clientes com `clients`, contatos com `crm`).
     avaliação. Prova: `e2e/portal-cliente-historico-da-10.spec.ts`.
   - **O responsável legal** (A5: nome, CPF, parentesco, telefone): só na
     MENOR (pelo nascimento que a ficha fica tendo — a regra de
-    `colunasDoResponsavel`); na adulta, "Responsável legal não gravado".
-    A menor que fica sem responsável é avisada na prévia e no resultado ("Menor
+    `colunasDoResponsavel`); na adulta, "Responsável legal não gravado" —
+    na prévia e no resultado, pela mesma `avisoDoResponsavelNaoGravado`
+    (`lib/importacao/normalizar.ts`; D6 da 43ª, IM-09: nascia só no
+    processamento). A menor que fica sem responsável é avisada na prévia e no resultado ("Menor
     de idade (15 anos), sem responsável legal no cadastro…") — avisar, não
     barrar.
   - Quem já existe só tem o VAZIO completado, como sempre (inclusive as datas

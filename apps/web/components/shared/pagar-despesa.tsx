@@ -36,7 +36,8 @@ export function PagarDespesa({ descricao, valor, fornecedor, formaInicial, pende
         <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <span className="field-label">Forma de pagamento</span>
           <select className="field" value={forma} onChange={e => setForma(e.target.value)} disabled={pendente}>
-            <option value="">Selecione…</option>
+            {/* A2 da 43ª (princípio 3): o "Selecione…" é da forma ainda não escolhida — com a forma, ele sai. */}
+            {!forma && <option value="">Selecione…</option>}
             {FORMAS_DA_DESPESA.map(f => <option key={f} value={f}>{rotuloDaForma(f, undefined, { longo: true })}</option>)}
           </select>
         </label>

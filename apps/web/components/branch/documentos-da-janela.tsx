@@ -1,12 +1,15 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { FileCheck, FileText, PenLine } from 'lucide-react'
 import { rotaNoPortal } from '@/lib/rotas'
-import { documentosDaJanela, type DocumentoDaJanela } from '@/actions/documentos-da-janela'
+import { documentosDaJanela } from '@/actions/documentos-da-janela'
+import type { DocumentoDaJanela } from '@/lib/documentos/na-janela'
 import { EnviarLinkDeAssinatura } from '@/components/shared/enviar-link-de-assinatura'
+import { DefinirPagamento } from '@/components/shared/definir-pagamento'
+import { useSinais } from '@/components/shared/realtime-refresher'
 
 /**
  * Os termos e contratos do agendamento na janela da agenda (A34 da 6ª
@@ -16,11 +19,18 @@ import { EnviarLinkDeAssinatura } from '@/components/shared/enviar-link-de-assin
 export function DocumentosDaJanela({ appointmentId, slug }: { appointmentId: string; slug: string }) {
   const pathname = usePathname()
   const [docs, setDocs] = useState<DocumentoDaJanela[] | null>(null)
+  // D4 da 43ª: o contrato cujo pagamento está sendo definido (formulário aberto).
+  const [pagando, setPagando] = useState<string | null>(null)
+  const [leitura, setLeitura] = useState(0)
+  const recarregar = useCallback(() => setLeitura(n => n + 1), [])
   useEffect(() => {
     let vivo = true
     documentosDaJanela(appointmentId).then(r => { if (vivo) setDocs(r) }).catch(() => { /* sem a lista, o bloco não aparece */ })
     return () => { vivo = false }
-  }, [appointmentId])
+  }, [appointmentId, leitura])
+  // A13 da 43ª: a janela aberta acompanha o documento — montado de novo (o
+  // cadastro completado), assinado, dispensado: cada um marca o sinal da agenda.
+  useSinais(['agenda'], recarregar, true, 500)
 
   if (!docs?.length) return null
   return (
@@ -54,6 +64,19 @@ export function DocumentosDaJanela({ appointmentId, slug }: { appointmentId: str
             )}
             {/* A8 da 11ª: o link de assinatura também daqui, não só da ficha. */}
             {d.podeEnviarLink && <EnviarLinkDeAssinatura documentoId={d.id} jaEnviadoAte={d.linkAte} compacto />}
+            {/* D4 da 43ª (DG-01, DQ-06): quem colhe define o pagamento do contrato daqui, como na ficha. */}
+            {d.podeDefinirPagamento && pagando !== d.id && (
+              <button type="button" className="btn-secondary" data-definir-pagamento-do-contrato onClick={() => setPagando(d.id)}
+                style={{ flexShrink: 0, padding: '4px 10px', fontSize: 'var(--text-xs-sz)' }}>
+                Definir pagamento
+              </button>
+            )}
+            {d.podeDefinirPagamento && pagando === d.id && (
+              <div style={{ flexBasis: '100%' }}>
+                <DefinirPagamento documentoId={d.id} atual={d.pagamento?.valor} descontoAtual={d.pagamento?.desconto}
+                  total={d.valorDoAtendimento} aoTerminar={() => { setPagando(null); recarregar() }} />
+              </div>
+            )}
           </li>
         ))}
       </ul>

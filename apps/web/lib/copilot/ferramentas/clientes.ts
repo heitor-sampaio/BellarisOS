@@ -10,7 +10,7 @@ import { addDaysTZ } from '@/lib/datetime'
 import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
 import { temTag } from '@/lib/tags/escolha'
 import { filtroDosClientesNovos } from '@/lib/copilot/clientes-novos'
-import { diaDeClienteDesde } from '@/lib/clientes/cliente-desde'
+import { diaDeClienteDesde, mesDeClienteDesde } from '@/lib/clientes/cliente-desde'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
 import { getEmAbertoDasVendas } from '@/lib/metrics/pacote-em-aberto'
 import { mostraOValor, planosDaCliente } from '@/lib/copilot/ferramentas/vendas'
@@ -202,7 +202,7 @@ export const clientes: FerramentaDeLeitura<{
       total = r.total
       lista = r.lista.map(x => ({
         id: x.id, name: x.name, phone: x.phone,
-        detalhe: [x.ultimaVisita ? `última visita ${x.ultimaVisita.slice(0, 10)}` : 'nunca veio', x.unidade].filter(Boolean).join(' · '),
+        detalhe: [x.ultimaVisita ? `última visita ${x.ultimaVisita.slice(0, 10)}` : x.clienteDesde ? `cliente desde ${mesDeClienteDesde({ clienteDesde: x.clienteDesde })}` : 'nunca veio', x.unidade].filter(Boolean).join(' · '),
       }))
     } else if (args.filtro === 'novos') {
       // Sobra da F49 (10ª): pela regra do dashboard — coalesce(cliente_desde,

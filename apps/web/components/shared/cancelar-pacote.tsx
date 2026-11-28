@@ -10,7 +10,7 @@ import { formatBRL } from '@estetica-os/utils'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { previaDoCancelamentoDoPacote, cancelarPacote } from '@/actions/pacotes'
 import { previaDoCancelamentoDoPlano, cancelarPlano } from '@/actions/treatment-plans'
-import type { EscolhaDosAgendamentos, PreviaDoCancelamento } from '@/lib/pacotes/cancelamento'
+import { fimDoCancelamento, type EscolhaDosAgendamentos, type PreviaDoCancelamento } from '@/lib/pacotes/cancelamento'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
 import { Dica } from '@/components/shared/dica'
 import {
@@ -228,8 +228,9 @@ function CancelarConjunto({ tipo, id, onFechar, onCancelado }: { tipo: 'PACOTE' 
               <textarea className="field" rows={2} maxLength={500} value={motivo} disabled={cancelando}
                 onChange={e => setMotivo(e.target.value)} placeholder="Ex.: a cliente mudou de cidade" />
             </label>
+            {/* A16 da 43ª: a comissão de venda só entra quando a venda a tem (o pacote de antes não tem). */}
             <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-              As sessões que sobraram deixam de valer, e a comissão de venda volta na proporção do que caiu. Não se desfaz.
+              {fimDoCancelamento(previa.comissaoDeVenda === true)}
             </p>
           </>
         )}

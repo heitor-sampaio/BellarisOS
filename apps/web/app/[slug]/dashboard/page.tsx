@@ -24,6 +24,7 @@ import { format } from 'date-fns'
 import { diasDesdeAUltimaVisita } from '@/lib/clientes/ultima-visita'
 import { ptBR } from 'date-fns/locale'
 import { getClientesParaReativarDoRecorte } from '@/lib/metrics/unidade'
+import { maisClientesParaReativar } from '@/actions/reativar-clientes'
 import { startOfDayTZ, endOfDayTZ, startOfMonthTZ, addMonthsTZ, addDaysTZ, monthKeyTZ, naParede } from '@/lib/datetime'
 import { fusoDaUnidade, fusoDaRede, fusosDasUnidades } from '@/lib/unidades/fuso-da-unidade'
 import { horaNaUnidadeDele } from '@/lib/unidades/hora-da-unidade'
@@ -31,7 +32,7 @@ import {
   resolvePeriod, delta, occupancyPct,
   getCore, getSeries, getTopProcedures, getTicketMedio, EMPTY_CORE,
 } from '@/lib/metrics'
-import { recortePessoal, unidadesDoQueEDela } from '@/lib/metrics/escopo'
+import { recortePessoal, unidadesDoQueEDela, nomesDasUnidades } from '@/lib/metrics/escopo'
 import { totaisDoResumoDasComissoes } from '@/lib/metrics/comissoes'
 import { variacaoDoSemestre } from '@/lib/metrics/evolucao'
 import { configDeComissaoDaRede, resumoDasComissoes } from '@/lib/comissoes/leitura'
@@ -529,7 +530,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
           </p>
           {dinheiroDela && unidadesDoDinheiro.length > 1 && (
             <p data-nas-unidades style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
-              Nas {unidadesDoDinheiro.length} unidades em que você atende
+              Em {nomesDasUnidades(unidadesDoDinheiro, nomeDaUnidade)}
             </p>
           )}
           {revDelta && (
@@ -770,12 +771,13 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
         {/* Reativar clientes */}
         {canClients && (
           <ReativarClientes
-            clientes={toReactivate.map(c => ({ id: c.id, name: c.name, diasSemVir: c.daysSince, antesDoSistema: c.antesDoSistema }))}
+            clientes={toReactivate.map(c => ({ id: c.id, name: c.name, diasSemVir: c.daysSince, antesDoSistema: c.antesDoSistema, clienteDesde: c.clienteDesde }))}
             total={inactiveCount}
             comVisita={paraReativar.comVisita} recentesSemVisita={paraReativar.recentesSemVisita}
             deQuem={deQuemSaoAsClientes()}
             hrefAgendar={`/${slug}/agenda`}
-            hrefVerTodas={`/${slug}/clients?status=active`}
+            // A18 da 43ª: o "Ver mais" abre o resto do recorte no próprio quadro (era a lista de Clientes inteira).
+            carregarMais={maisClientesParaReativar} unidade={branchId} mostrarUnidade={false}
           />
         )}
 

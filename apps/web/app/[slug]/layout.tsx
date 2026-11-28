@@ -21,6 +21,8 @@ import { saudacao } from '@/lib/saudacao'
 import { FusoProvider } from '@/components/shared/fuso'
 import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
+import { MenuEmDia } from '@/components/shared/menu-em-dia'
+import { assinaturaDoMenu } from '@/lib/sessao/assinatura-do-menu'
 
 export default async function BranchLayout({
   children,
@@ -131,6 +133,8 @@ export default async function BranchLayout({
     <FusoProvider fuso={fuso}>
     <UnidadesDesativadasProvider nomes={desativadas}>
     <SidebarProvider>
+      {/* LO-06 (A7 da 43ª): a próxima navegação desenha o menu novo quando o cargo muda. */}
+      {!ctx.suporte && <MenuEmDia assinatura={assinaturaDoMenu(ctx)} />}
       <BranchSidebar
         slug={branch.slug}
         branchName={branch.name}

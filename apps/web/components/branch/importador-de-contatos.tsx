@@ -9,7 +9,7 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { StageOptions } from './stage-options'
 import { decodificar, lerCsv } from '@/lib/importacao/csv'
 import { camposDoDestino, sugerirMapeamento, colunasQueFaltam, type ChaveDeCampo, type Destino } from '@/lib/importacao/campos'
-import { validarLinha, marcarRepetidas, nomeDiferente, avisoDaMenorNaPlanilha, pacotesDaLinha, type LinhaValidada, type Referencias } from '@/lib/importacao/normalizar'
+import { validarLinha, marcarRepetidas, nomeDiferente, avisoDaMenorNaPlanilha, avisoDoResponsavelNaoGravado, pacotesDaLinha, type LinhaValidada, type Referencias } from '@/lib/importacao/normalizar'
 import { maskPhone } from '@estetica-os/utils'
 import { importarContatos, andamentoDaImportacao, cruzamentoDaImportacao, type AndamentoDaImportacao, type CruzamentoDaLinha } from '@/actions/importacao'
 import type { ImportacaoAnterior } from '@/lib/importacao/historico'
@@ -162,11 +162,13 @@ export function ImportadorDeContatos(p: Props) {
   }, [passo, arquivo, destino, mapa, refs])
   const prontas = validadas.filter(l => !l.erros.length).length
   const comErro = validadas.length - prontas
-  // D2 (F35): as que entram sem algum campo, e a menor sem responsável (A5).
+  // D2 (F35): as que entram sem algum campo, a menor sem responsável (A5) e o
+  // responsável que não vai para a ficha da adulta — a mesma conta do resultado (D6 da 43ª).
   const comAviso = destino === 'clientes'
     ? validadas.filter(l => !l.erros.length).map(l => {
         const menor = avisoDaMenorNaPlanilha(l.dados)
-        return { ...l, avisos: [...(l.avisos ?? []), ...(menor ? [menor] : [])] }
+        const naoGravado = avisoDoResponsavelNaoGravado(l.dados)
+        return { ...l, avisos: [...(l.avisos ?? []), ...(naoGravado ? [naoGravado] : []), ...(menor ? [menor] : [])] }
       }).filter(l => l.avisos.length)
     : validadas.filter(l => !l.erros.length && (l.avisos ?? []).length)
   const nomeDe = (l: LinhaValidada) => (l.dados.name as string | undefined) || 'sem nome'

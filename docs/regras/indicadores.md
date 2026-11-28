@@ -1742,6 +1742,39 @@ Prova: `tests/relatorios-filtro-de-tags.test.ts`,
   7, "intuitivo não é explicativo"). Teste:
   `tests/relatorios-a-tela-nao-se-contradiz.test.ts`.
 
+## Correções de 28/11 (decisões do Claude)
+
+- **O "Meu faturamento" diz as unidades do número** (D5 da 43ª; CA-06,
+  princípio 3): a vista pessoal soma a unidade do endereço e as outras em que
+  ela atende (`unidadesDoQueEDela`) — a do endereço entra mesmo sem o
+  "Atende" nela. A linha dizia "Nas 2 unidades em que você atende" a quem
+  atende em uma; diz as unidades pelo nome ("Em Friburgo e Teresópolis",
+  `nomesDasUnidades`, `lib/metrics/escopo.ts`). Teste:
+  `tests/meus-numeros-dizem-as-unidades.test.ts`.
+- **O eixo do fluxo de caixa cabe** (A5 da 43ª; princípio 7): o eixo diz o
+  mês curto ("dez") e o ano só no primeiro rótulo e em janeiro ("jan/27") —
+  `rotuloDoMesNoEixo`, `lib/chart-utils.ts` —, com folga entre os rótulos; a
+  dica e a tabela seguem com "dez/26". Teste:
+  `tests/fluxo-de-caixa-o-eixo-cabe.test.ts`.
+- **O "Reativar" não diz "Nunca veio" da cliente de antes do sistema** (A14
+  da 43ª; CC-05, IM-20, princípio 3): sem visita nenhuma (nem a de antes), a
+  linha da ficha com "Cliente desde" diz "Cliente desde mar 2017"
+  (`semVisitaDoReativar`, `quadros-de-clientes.tsx`); sem ele, "Nunca veio".
+  A "Última visita" de antes já aparece como visita ("· antes do sistema").
+  Teste: `tests/reativar-a-ficha-de-antes-nao-nunca-veio.test.ts`.
+- **O "Ver mais" do "Reativar" abre as que faltam no próprio quadro** (A18 da
+  43ª; CC-06, princípio 3): "Ver mais 6 (9 no total)" levava à lista de
+  Clientes inteira, sem o recorte. Agora traz a página seguinte (20 por vez) do
+  MESMO recorte, com o desenho das primeiras (`LinhaDoReativar`), e o link diz
+  o novo resto até sumir. A lista de Clientes não ganhou filtro. A leitura é
+  `maisClientesParaReativar` (`actions/reativar-clientes.ts`: Clientes em Ver,
+  a rede do contexto, a unidade da tela pelo alcance, só para o relógio dos
+  dias) → `getClientesParaReativarDoRecorte` com o `deslocamento` →
+  `metrics_clientes_para_reativar_rede(…, p_deslocamento)`, com o desempate
+  por id na ordem (migration `20261222100001`). Teste:
+  `tests/reativar-ver-mais-no-proprio-quadro.test.ts`; E2E:
+  `e2e/indicadores-reativar-clientes-da-rede.spec.ts` ("A18 da 43ª").
+
 ## O que nunca fazer aqui
 
 ```
@@ -1752,4 +1785,5 @@ Prova: `tests/relatorios-filtro-de-tags.test.ts`,
 ❌ Contar como venda o que não tem recebimento pago (D6) — a régua é a do primeiro lançamento de receita pago, a mesma dos seis tipos
 ❌ Número que conta de 0 até o valor na tela (quem olha no meio lê um número que não existe — D3 da 31ª)
 ❌ Número de uma lista cortada (as 20 primeiras) no lugar do total dela
+❌ "Ver mais N (T no total)" que leva a uma lista sem o recorte do quadro — o resto abre no quadro, pela mesma conta (A18 da 43ª)
 ```

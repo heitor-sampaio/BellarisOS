@@ -77,6 +77,10 @@ export async function AssinaturaDeDocumento({ id, base, voltar }: {
         pdfUrl:     doc.pdfUrl,
         imagens:    doc.imagens,
         assinatura: doc.assinatura,
+        // D4 da 43ª (DG-01): o contrato que espera o pagamento combinado o define aqui.
+        pagamento:  doc.resumo.pedePagamento
+          ? { pede: true, valor: doc.resumo.pagamento?.valor ?? null, desconto: doc.resumo.pagamento?.desconto ?? 0, total: doc.resumo.valorDoAtendimento }
+          : null,
       }}
     />
   )

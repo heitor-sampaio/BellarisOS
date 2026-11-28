@@ -85,6 +85,27 @@ export function linhasDoRodapeDoDesativar(p: { agendamentosRepassados: number; a
 }
 
 /**
+ * Quem atende na unidade do agendamento e não está livre no horário, e por quê
+ * (A9 da 43ª; princípio 7): a linha sem ninguém livre dizia só "Ninguém
+ * livre…", e a Glória, ocupada em Teresópolis, sumia. A lista de quem recebe
+ * segue só com quem está livre (o Heitor, 26/11, R14: "Horarios, salas e
+ * pessoas não disponíveis não devem aparecer nas listas"); é a linha que diz
+ * (decisão do Claude, 28/11). Nulo sem ninguém.
+ */
+export function quemNaoEstaLivre(a: {
+  ocupadas: { nome: string }[]
+  bloqueadas?: { nome: string }[]
+  foraDoHorario?: { nome: string }[]
+}): string | null {
+  const partes = [
+    ...a.ocupadas.map(p => `${p.nome} tem atendimento nesse horário`),
+    ...(a.bloqueadas ?? []).map(p => `${p.nome} está com o horário bloqueado`),
+    ...(a.foraDoHorario ?? []).map(p => `${p.nome} está fora do horário de atendimento`),
+  ]
+  return partes.length ? partes.join('; ') : null
+}
+
+/**
  * Quem muda o cargo da própria Admin da rede (A11 da 40ª; EQ-13): a tela dizia
  * "outra Admin da rede muda." à única Admin ativa — e a última não é rebaixada.
  */

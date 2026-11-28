@@ -25,12 +25,12 @@ import { cargosQueSeDaoPelaEquipe, avisoDoMembroSemAcesso } from '@/lib/cargos/s
 import { cargosSemAcesso } from '@/lib/equipe/cargos-sem-acesso'
 import { abreAEquipe } from '@/lib/equipe/quem-abre-a-equipe'
 import { alcancaOMembro } from '@/lib/equipe/alcance-do-membro'
+import { iniciaisDoNome } from '@estetica-os/utils'
 
+// As iniciais pela mesma função da Equipe da rede (CLAUDE.md §14): sem o
+// título ("Dra. Edna Ribeiro" é "ER", não "DR").
 function Initials({ name }: { name: string }) {
-  const parts = name.trim().split(' ')
-  const letters = parts.length >= 2
-    ? parts[0]![0]! + parts[parts.length - 1]![0]!
-    : parts[0]!.substring(0, 2)
+  const letters = iniciaisDoNome(name)
   return (
     <div style={{
       width: 36, height: 36, borderRadius: '50%',

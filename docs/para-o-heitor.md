@@ -855,3 +855,24 @@ O que você precisa saber:
 - **Duas perguntas novas na página** (R45 e R46): a ocupação de quem atende além do próprio horário parar em 100%, e se
   o plano pago com o crédito que voltou de um cancelamento conta em Vendas.
 - **Nenhum teste mudou nem foi apagado.**
+
+## 25. A 43ª simulação (28/11)
+
+Cinco times e cinco redes novas, sem a conta da plataforma. Os temas foram o dinheiro que sai, as comissões de uma
+equipe grande, a equipe e os cargos em duas unidades, os documentos e a rede que chega de outro sistema. Os números
+bateram nas cinco, menos R$ 0,70 da bandeira informada depois do pagamento. Foram 7 defeitos, nenhum de segurança. O
+resumo está no DEVLOG (28/11, (3)). As suas respostas R42 a R46 entraram junto.
+
+O que você precisa saber:
+- **No Fechamento, a despesa paga no cartão da rede vira a linha "Cartão"** e não mexe mais no Débito da maquininha
+  (o conserto de R$ 270 pago no débito aparecia como R$ 270 de diferença na conferência).
+- **O "Definir pagamento" do contrato aparece também na janela do agendamento e na tela de assinar.**
+- **O menu de quem teve o cargo alterado se atualiza sozinho** na próxima tela que a pessoa abrir.
+- **O Reativar não diz "Nunca veio" de quem é cliente desde antes do sistema**, e o "Ver mais" abre o resto ali mesmo.
+- **A prévia da importação já avisa** o responsável legal que não será gravado, e o telefone colado com +55 não perde
+  dígitos.
+- **Quatro perguntas novas na página** (R47 a R50): os nomes "Investido total" e "Preço médio" na ficha da migrada, a
+  migrada que só tem a "Última visita" de antes, a bandeira informada depois do pagamento e dividir a conta a pagar.
+- **Testes mudados, cada um por uma resposta sua:** o dos avisos (R42), o da comissão (R43) e o do mapa de injetáveis
+  (R44). **Um apagado:** o que travava o parágrafo da etapa Documentação, que saiu pela sua fala de 26/11 ("isso não é
+  ser intuitivo, é ser explicativo").

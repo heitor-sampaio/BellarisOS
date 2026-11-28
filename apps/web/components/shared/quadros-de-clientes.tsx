@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { ArrowUpRight } from 'lucide-react'
 import { iniciaisDoNome } from '@estetica-os/utils'
 import { Dica } from '@/components/shared/dica'
+import { mesDeClienteDesde } from '@/lib/clientes/cliente-desde'
+import { ListaDoReativar } from '@/components/shared/lista-do-reativar'
 
 /**
  * Os dois quadros de clientes do dashboard — "Clientes no mês/período" e
@@ -105,6 +107,18 @@ export interface ClienteSumida {
   unidade?: string | null
   /** A última visita é a importada, do sistema de antes (sobra da F35). */
   antesDoSistema?: boolean
+  /** O "Cliente desde" da importação (AAAA-MM-DD), para a linha sem visita (A14 da 43ª). */
+  clienteDesde?: string | null
+}
+
+/**
+ * A linha sem visita nenhuma (A14 da 43ª; CC-05, IM-20; princípio 3): a ficha
+ * de antes do sistema ("Cliente desde mar 2017") não "nunca veio" — a linha diz
+ * o que a ficha tem. Sem "Cliente desde", "Nunca veio". Decisão do Claude, 28/11.
+ */
+export function semVisitaDoReativar(clienteDesde: string | null | undefined): string {
+  const desde = clienteDesde ? mesDeClienteDesde({ clienteDesde }) : null
+  return desde ? `Cliente desde ${desde}` : 'Nunca veio'
 }
 
 /**
@@ -139,16 +153,69 @@ export function deQuemSaoAsClientes(): string {
   return 'da rede'
 }
 
+/**
+ * O link do quadro diz quantas faltam e o total (A35 da 10ª; indicadores:CC-06):
+ * "Ver mais 6 (9 no total)" — o que ele abre são essas, no próprio quadro (A18 da 43ª).
+ */
+export function rotuloDoVerMais(mostradas: number, total: number): string {
+  return `Ver mais ${Math.max(0, total - mostradas)} (${total} no total)`
+}
+
+/** A página seguinte entra depois das que o quadro já mostra, sem repetir ninguém. */
+export function juntarClientesDoReativar<T extends { id: string }>(atuais: T[], novas: T[]): T[] {
+  const ja = new Set(atuais.map(c => c.id))
+  return [...atuais, ...novas.filter(c => !ja.has(c.id))]
+}
+
+/** A página seguinte do quadro (`maisClientesParaReativar`, actions/reativar-clientes.ts). */
+export type CarregarMaisDoReativar = (pedido: { deslocamento: number; unidade: string | null }) => Promise<
+  { clientes: ClienteSumida[]; total: number; error?: undefined } | { error: string }
+>
+
+/** Uma linha do quadro — a mesma nas primeiras e nas que o "Ver mais" traz. */
+export function LinhaDoReativar({ c, hrefAgendar }: { c: ClienteSumida; hrefAgendar: string }) {
+  return (
+    <div data-cliente style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <AvatarDaCliente name={c.name} size={34} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {c.name}
+        </p>
+        <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 1 }}>
+          {c.diasSemVir !== null ? `Última visita há ${c.diasSemVir} dias` : semVisitaDoReativar(c.clienteDesde)}
+          {c.diasSemVir !== null && c.antesDoSistema && <> · <span data-antes-do-sistema>antes do sistema</span></>}
+          {c.unidade ? ` · ${c.unidade}` : ''}
+        </p>
+      </div>
+      <Link href={hrefAgendar} style={{
+        width: 28, height: 28, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'var(--bg-app)', border: '1px solid var(--border)', color: 'var(--text-muted)', textDecoration: 'none',
+      }} title="Agendar">
+        <ArrowUpRight size={13} />
+      </Link>
+    </div>
+  )
+}
+
 /** As clientes sem visita há mais de 90 dias (o total e as há mais tempo sem vir). */
-export function ReativarClientes({ clientes, total, hrefAgendar, hrefVerTodas, comVisita = 1, recentesSemVisita = 0, deQuem }: {
-  clientes: ClienteSumida[]; total: number; hrefAgendar: string; hrefVerTodas: string
+export function ReativarClientes({ clientes, total, hrefAgendar, carregarMais, unidade = null, mostrarUnidade = true, comVisita = 1, recentesSemVisita = 0, deQuem }: {
+  clientes: ClienteSumida[]; total: number; hrefAgendar: string
+  /**
+   * O resto do MESMO recorte, no próprio quadro (A18 da 43ª: o "Ver mais" levava
+   * à lista de Clientes inteira). A página passa `maisClientesParaReativar`.
+   */
+  carregarMais: CarregarMaisDoReativar
+  /** A unidade da tela (a do portal, a do `?unidade=`): o relógio dos dias da página seguinte. */
+  unidade?: string | null
+  /** As linhas dizem a unidade da última visita (o portal da rede); no da unidade, não. */
+  mostrarUnidade?: boolean
   /** As do recorte com alguma visita concluída, e as novas sem nenhuma — o texto do vazio (D16). */
   comVisita?: number; recentesSemVisita?: number
   /** De quais clientes o quadro fala (`deQuemSaoAsClientes`, A10). */
   deQuem?: string
 }) {
   return (
-    <div className="card" data-reativar-clientes style={{ display: 'flex', flexDirection: 'column' }}>
+    <div className="card" id="reativar-clientes" data-reativar-clientes style={{ display: 'flex', flexDirection: 'column' }}>
       <div style={{ marginBottom: 18, display: 'flex', alignItems: 'center', gap: 6 }}>
         <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
           Reativar clientes
@@ -168,42 +235,8 @@ export function ReativarClientes({ clientes, total, hrefAgendar, hrefVerTodas, c
           {vazioDoReativar(comVisita, recentesSemVisita, deQuem)}
         </p>
       ) : (
-        <>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
-            {clientes.map(c => (
-              <div key={c.id} data-cliente style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <AvatarDaCliente name={c.name} size={34} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {c.name}
-                  </p>
-                  <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 1 }}>
-                    {c.diasSemVir !== null ? `Última visita há ${c.diasSemVir} dias` : 'Nunca veio'}
-                    {c.diasSemVir !== null && c.antesDoSistema && <> · <span data-antes-do-sistema>antes do sistema</span></>}
-                    {c.unidade ? ` · ${c.unidade}` : ''}
-                  </p>
-                </div>
-                <Link href={hrefAgendar} style={{
-                  width: 28, height: 28, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: 'var(--bg-app)', border: '1px solid var(--border)', color: 'var(--text-muted)', textDecoration: 'none',
-                }} title="Agendar">
-                  <ArrowUpRight size={13} />
-                </Link>
-              </div>
-            ))}
-          </div>
-
-          {total > clientes.length && (
-            <Link href={hrefVerTodas} style={{
-              display: 'block', textAlign: 'center', marginTop: 16,
-              padding: '8px', borderRadius: 10, border: '1px solid var(--border)',
-              fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', textDecoration: 'none',
-            }}>
-              {/* A35 da 10ª: "Ver 5 clientes inativos" parecia o total (são as além das que o quadro lista). */}
-              Ver mais {total - clientes.length} ({total} no total)
-            </Link>
-          )}
-        </>
+        <ListaDoReativar clientes={clientes} total={total} hrefAgendar={hrefAgendar}
+          carregarMais={carregarMais} unidade={unidade} mostrarUnidade={mostrarUnidade} />
       )}
     </div>
   )

@@ -191,6 +191,18 @@ test('sobra da F35: o "Reativar clientes" do dashboard diz "antes do sistema" ao
   })
 })
 
+// A14 da 43ª (CC-05, IM-20; princípio 3; decisão do Claude, 28/11): a ficha de
+// antes do sistema sem visita nenhuma não "nunca veio" — a linha diz o "Cliente
+// desde" dela. A Tatiana é cliente desde 2024 e não tem visita registrada.
+test('A14 da 43ª: no "Reativar clientes", a cliente de antes sem visita diz "Cliente desde", não "Nunca veio"', async ({ browser }) => {
+  await como(browser, dona, async p => {
+    await p.goto('/admin/dashboard')
+    const linha = p.locator('[data-reativar-clientes] [data-cliente]', { hasText: nome('Tatiana') })
+    await expect(linha).toContainText('Cliente desde jan 2024')
+    await expect(linha).not.toContainText('Nunca veio')
+  })
+})
+
 // D7 da 25ª simulação (decisão 1 (c) do Heitor; crm-inbox.md): a ficha que veio
 // SÓ com a "Última visita" (sem "Cliente desde") é cliente de antes — entra no
 // "Reativar clientes" e no público "sem retorno". O "é cliente antes do corte"
@@ -219,4 +231,28 @@ test('D7: a ficha só com a "Última visita" de antes entra no Reativar e no pú
   expect(e2).toBeNull()
   const ids = ((publico ?? []) as { id: string }[]).map(c => c.id)
   expect(ids).toContain(bruna!.id)
+})
+
+// D6 da 43ª (IM-09, IM-23): o "Responsável legal não gravado" da adulta só
+// aparecia no resultado; a prévia mostra o mesmo aviso. Fica no fim: a Zeni
+// é nova pelo cadastro, e os números acima não a contam.
+test('D6: a adulta com o responsável na planilha é avisada na prévia, como no resultado', async ({ browser }) => {
+  const csv = [
+    'Nome;Celular;Nascimento;Responsável legal;Parentesco',
+    `${nome('Zeni')};${fone(6)};10/02/1980;Marta Lima;Mãe`,
+  ].join('\r\n')
+  const AVISO = 'Responsável legal não gravado: pela data de nascimento, não é menor de idade'
+  await como(browser, dona, async p => {
+    await p.goto('/admin/settings?tab=importacoes')
+    await p.getByLabel('Arquivo CSV').setInputFiles({ name: `adulta-${marca}.csv`, mimeType: 'text/csv', buffer: Buffer.from(csv, 'utf-8') })
+    await p.getByRole('button', { name: 'Continuar', exact: true }).click()
+    await expect(p.getByLabel('Campo da coluna Responsável legal')).toHaveValue('responsavel_nome')
+    await p.getByRole('button', { name: 'Continuar', exact: true }).click()
+    await expect(p.locator('[data-previa] [data-importadas-com-aviso]')).toContainText(`${nome('Zeni')}: ${AVISO}`)
+    await p.getByRole('button', { name: /Importar 1 linha/ }).click()
+    const resultado = p.locator('[data-importacao]')
+    await expect(resultado).toContainText('Concluída', { timeout: 60_000 })
+    await expect(resultado.locator('[data-importadas-com-aviso]')).toContainText(`${nome('Zeni')}: ${AVISO}`)
+  })
+  expect(await ficha('Zeni')).toMatchObject({ responsavel_nome: null })
 })

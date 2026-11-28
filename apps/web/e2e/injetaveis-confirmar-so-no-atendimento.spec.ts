@@ -96,8 +96,11 @@ test('dentro do atendimento, um botão só: "Registrar aplicação" grava a dose
     const janela = p.getByRole('dialog')
     await janela.getByText(`Toxina terço superior ${marca}`).click()
     await expect(janela.getByRole('button', { name: 'Confirmar aplicação' }), 'o segundo botão saiu').toHaveCount(0)
-    // A coluna "Aplicado" já à vista, com a dose prevista (o que o registrar vai gravar).
-    await expect(janela.locator('[data-ponto-do-mapa]').first().getByLabel('Aplicado')).toHaveValue('20')
+    // A coluna "Aplicado" já à vista. R44 (o Heitor, 28/11: "Vazio, com a dose do plano como sugestão (a
+    // proposta)"): vazia até alguém escrever, com a dose que o registrar vai gravar como sugestão.
+    const aplicado = janela.locator('[data-ponto-do-mapa]').first().getByLabel('Aplicado')
+    await expect(aplicado).toHaveValue('')
+    await expect(aplicado).toHaveAttribute('placeholder', '20')
     await janela.getByRole('button', { name: 'Registrar aplicação' }).click()
     await expect(janela.getByText('Aplicação registrada neste atendimento.')).toBeVisible()
   })

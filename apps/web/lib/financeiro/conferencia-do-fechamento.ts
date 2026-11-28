@@ -32,8 +32,11 @@ import { avisoAcimaDoComum } from '@/lib/acima-do-comum'
  * Puro (sem banco): o servidor monta as linhas, a tela só as desenha.
  */
 
-/** As chaves de forma que não se conferem. */
-export const FORMAS_SEM_CONFERENCIA = ['PONTOS', 'SEM_FORMA'] as const
+/**
+ * As chaves de forma que não se conferem. CARTAO (D3 da 43ª; FC-15, MQ-15): a
+ * despesa no cartão da rede — não é a maquininha, e não sai da forma dela.
+ */
+export const FORMAS_SEM_CONFERENCIA = ['PONTOS', 'SEM_FORMA', 'CARTAO'] as const
 
 /** A chave de uma linha do fechamento: CASH, PIX, DEBIT_CARD, CREDIT_CARD:3… (até CREDIT_CARD:1200 — o Heitor, 25/11: acima de 12 vezes avisa). */
 export const CHAVE_DE_FORMA = /^[A-Z_]{2,30}(:\d{1,4})?$/

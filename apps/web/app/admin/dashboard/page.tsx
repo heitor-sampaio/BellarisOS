@@ -37,6 +37,7 @@ import { etapasDoQueOCargoVe } from '@/lib/dashboard/etapas-do-ciclo'
 import { ClientesDoPeriodo, ReativarClientes, deQuemSaoAsClientes } from '@/components/shared/quadros-de-clientes'
 import { intervaloDosAnuncios } from '@/lib/ads/periodo'
 import { getClientesParaReativarDoRecorte, getClientesAtivos } from '@/lib/metrics/unidade'
+import { maisClientesParaReativar } from '@/actions/reativar-clientes'
 import { diasDesdeAUltimaVisita } from '@/lib/clientes/ultima-visita'
 import { lotesVencendoDoRecorte } from '@/lib/estoque/lotes'
 import type { LoteNoDashboard } from '@/components/shared/lotes-vencendo'
@@ -660,7 +661,7 @@ export default async function AdminDashboardPage({
   const noventaDias = addDaysTZ(now, -90, fuso)
   // A regra é UMA, a do Copilot também (r3-f13-10): getClientesParaReativarDoRecorte.
   const paraReativar = !canClients
-    ? { total: 0, comVisita: 0, recentesSemVisita: 0, lista: [] as { id: string; name: string; ultimaVisita: string | null; unidade: string | null; antesDoSistema?: boolean }[] }
+    ? { total: 0, comVisita: 0, recentesSemVisita: 0, lista: [] as { id: string; name: string; ultimaVisita: string | null; unidade: string | null; antesDoSistema?: boolean; clienteDesde?: string | null }[] }
     : await getClientesParaReativarDoRecorte({
         tenantId: ctx.tenantId!,
         unidade: branches.length === 1 ? { id: branches[0]!.id as string, name: branches[0]!.name as string } : null,
@@ -683,7 +684,7 @@ export default async function AdminDashboardPage({
       />
       <ReativarClientes
         clientes={paraReativar.lista.map(c => ({
-          id: c.id, name: c.name, unidade: c.unidade, antesDoSistema: c.antesDoSistema,
+          id: c.id, name: c.name, unidade: c.unidade, antesDoSistema: c.antesDoSistema, clienteDesde: c.clienteDesde,
           // Dias de calendário no fuso do recorte, como a lista de Clientes.
           diasSemVir: diasDesdeAUltimaVisita(c.ultimaVisita, now, fuso),
         }))}
@@ -691,8 +692,8 @@ export default async function AdminDashboardPage({
         comVisita={paraReativar.comVisita} recentesSemVisita={paraReativar.recentesSemVisita}
         deQuem={deQuemSaoAsClientes()}
         hrefAgendar="/admin/agenda"
-        // A lista de clientes é da rede (não há "?unidade=" nela).
-        hrefVerTodas="/admin/clients"
+        // A18 da 43ª: o "Ver mais" abre o resto do recorte no próprio quadro (era a lista de Clientes inteira).
+        carregarMais={maisClientesParaReativar} unidade={unidadeId}
       />
     </div>
   ) : null

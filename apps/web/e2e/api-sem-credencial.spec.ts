@@ -193,6 +193,19 @@ test('geocode exige sessão', async ({ request, browser }) => {
   }
 })
 
+// A assinatura do menu (LO-06, A7 da 43ª): só a quem tem sessão. Escrito, não rodado.
+test('a assinatura do menu exige sessão', async ({ request, browser }) => {
+  expect((await request.get('/api/menu')).status()).toBe(401)
+  const ctx = await browser.newContext({ storageState: ARQUIVO_DE_SESSAO })
+  try {
+    const logado = await ctx.request.get('/api/menu')
+    expect(logado.status()).toBe(200)
+    expect((await logado.json() as { assinatura?: string }).assinatura).toMatch(/^[0-9a-f]{8}$/)
+  } finally {
+    await ctx.close()
+  }
+})
+
 test('OAuth da Meta: sem sessão e sem permissão de configurações não começa nem grava', async ({ request, browser }) => {
   const inicio = await request.get('/api/oauth/meta?produto=mensagens', { maxRedirects: 0 })
   expect([401, 500], 'sem sessão (500 só se o META_APP_ID faltar no ambiente)').toContain(inicio.status())

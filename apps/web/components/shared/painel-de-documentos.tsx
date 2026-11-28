@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { mesclarParams } from '@/lib/query-params'
 import { rotaCliente } from '@/lib/rotas'
+import { faltaNoCadastro, faltaOPagamento } from '@/lib/documentos/o-que-falta'
 import { PeriodSelector, type Period } from '@/components/admin/period-selector'
 import { PickerCompacto } from '@/components/shared/picker-compacto'
 import { BuscaNaUrl } from '@/components/shared/busca-na-url'
@@ -52,11 +53,20 @@ function Situacao({ l }: { l: LinhaDoPainel }) {
       {/* A22 da 14ª (F73): onde completar — a aba Dados da cliente, como a
           janela do agendamento já levava (A9 da 11ª). A linha abre a janela
           do documento: o link não a abre junto. */}
-      {l.situacao === 'FALTAM_DADOS' && l.podeCompletar && l.clienteId && (
+      {l.situacao === 'FALTAM_DADOS' && l.podeCompletar && l.clienteId && faltaNoCadastro(l.faltando) && (
         <Link data-completar-cadastro href={`${rotaCliente(pathname, l.slug, l.clienteId)}?aba=dados`}
           onClick={e => e.stopPropagation()}
           style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--brand)', textDecoration: 'none' }}>
           Completar o cadastro
+        </Link>
+      )}
+      {/* D4 da 43ª (DG-01): o pagamento do contrato não se completa no cadastro —
+          define-se onde se colhe; daqui, na ficha, em Documentos (as ações ficam lá). */}
+      {l.situacao === 'FALTAM_DADOS' && l.clienteId && faltaOPagamento(l.faltando) && (
+        <Link data-definir-pagamento-do-contrato href={`${rotaCliente(pathname, l.slug, l.clienteId)}?aba=documentos`}
+          onClick={e => e.stopPropagation()}
+          style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--brand)', textDecoration: 'none' }}>
+          Definir pagamento
         </Link>
       )}
       {(l.situacao === 'DISPENSADO' || l.situacao === 'CANCELADO') && l.motivo && (

@@ -278,6 +278,18 @@ export function fechamentoNoResumo(niveis: Partial<Record<'cashier' | 'financial
 }
 
 /**
+ * A baixa no Financeiro (o "Receber" e o "Pagar" da lista) que vem do PDV
+ * (FN-06: é de quem tem o PDV ou o Financeiro em Gerenciar, `podeDarBaixa`;
+ * CG-16, princípio 3 — A6 da 43ª). Com o Financeiro em Ver, a pessoa abre a
+ * lista e paga a conta pelo PDV; o resumo diz. Nulo nos outros: o Financeiro
+ * em Gerenciar já dá a baixa, e sem o Financeiro a lista não abre.
+ */
+export function baixaNoResumo(niveis: Partial<Record<'cashier' | 'financial', string>>): string | null {
+  if (niveis.cashier !== 'MANAGE' || niveis.financial !== 'VIEW') return null
+  return 'No Financeiro, dá baixa (o “Receber” e o “Pagar” da lista): vem do PDV.'
+}
+
+/**
  * O “Vender” da ficha (pacote, procedimento pré-pago, produto, crédito) é de
  * quem RECEBE — o PDV em Gerenciar, e só ele (`podeReceber`, lib/auth.ts;
  * PV-04: cada passo, um módulo — o Heitor, 23/11). D1 da 12ª simulação: a Rita, com Procedimentos e CRM em

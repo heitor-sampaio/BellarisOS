@@ -971,6 +971,10 @@ auditoria das regras, pergunta 8: "só pela conta admin"; antes, H7 de
   saiu com a vista pessoal (SM2, 2026-11-23): a linha do Financeiro em "Sem
   acesso" diz que quem atende ou tem comissão de venda vê as Minhas comissões
   (`comissoes.md`). Prova: `tests/resumo-do-cargo-da-11.test.ts`.
+  **E a baixa que vem do PDV** (A6 da 43ª; CG-16, FN-06, princípio 3): com o PDV
+  em Gerenciar e o Financeiro em Ver, "No Financeiro, dá baixa (o “Receber” e o
+  “Pagar” da lista): vem do PDV." (`baixaNoResumo`, `[data-resumo-baixa]`; a
+  régua é a de `podeDarBaixa`). Prova: `tests/cargos-resumo-diz-a-baixa-pelo-pdv.test.ts`.
   **E o resumo diz as vistas pessoais, como condição** (A19 da 27ª, decisão do
   Claude pelo §11 e o princípio 3): sem a Agenda, "Se a pessoa atende, vê também a
   Minha agenda…" (o Heitor, 13/11: "não quero mais tu falando nomes de cargos
@@ -1064,7 +1068,7 @@ auditoria das regras, pergunta 8: "só pela conta admin"; antes, H7 de
   Unidade até a Admin da rede liberar. `private.cargos_modelo_semear` (migration `20261104002101`); as
   redes que já existiam não mudam sozinhas (princípio 6), só as `[e2e]`.
   Prova: `e2e/permissoes-gerente-modelo.spec.ts`.
-- **Sem o "só os meus", os modelos nascem sem o Financeiro e o Profissional sem a Agenda**
+- **Sem o "só os meus", a Recepcionista e o Profissional modelo nascem sem o Financeiro, e o Profissional sem a Agenda**
   (o Heitor, 2026-11-23, à pergunta do Claude: o Financeiro e a Agenda "só os meus" viram
   "Sem acesso"). O que a Recepcionista e o Profissional modelo viam do Financeiro eram as
   próprias comissões — hoje a vista pessoal (SM2), a quem atende ou tem comissão de venda;
@@ -1366,6 +1370,15 @@ de uma unidade"):**
   (`marcarUnidadeNoAtende` → `updateTeamMember`, sem repetir as regras: a
   Admin da rede, o cargo acima, a abrangência); depois, a lista se atualiza
   e a pessoa aparece no repasse. Prova: `tests/pendencias-area-1.test.ts`.
+- **Sem ninguém livre, a linha do repasse diz quem atende ali e não está
+  livre, e por quê** (A9 da 43ª; decisão do Claude, 28/11, princípio 7): "Ninguém
+  livre que atenda nesta unidade: Glória tem atendimento nesse horário." — a
+  ocupada (em qualquer unidade), a bloqueada e a fora do horário (`quemNaoEstaLivre`,
+  `lib/equipe/textos-do-cadastro.ts`; `[data-quem-nao-esta-livre]`). A lista de
+  quem recebe segue só com quem está livre (o Heitor, 26/11, R14: "Horarios,
+  salas e pessoas não disponíveis não devem aparecer nas listas"). Prova:
+  `tests/repasse-diz-quem-nao-esta-livre.test.ts`, o caso "sem ninguém livre" de
+  `e2e/equipe-desativar-repassa.spec.ts` (escrito, não rodado).
 - **Os textos da Equipe dizem o que vale para ESTA pessoa** (A17, A18, A21 da
   17ª; princípio 3): salvar o cargo confirma ("Cargo “X” salvo."), e "O que
   essa pessoa vai ver" diz o Copilot pelo nível (`copilotNoResumo`); o aviso
@@ -1448,6 +1461,19 @@ RLS (claim velha) a escondia, e o `.single()` lançava.
   inteira). Um cookie de 60 s (`bellaris-renovou`) evita o laço se a renovação
   não pegar. A action segue pelo banco, como antes.
 - Prova: `e2e/equipe-unidade-da-9.spec.ts` ("D9"), `tests/claims-velhas.test.ts`.
+- **A próxima navegação desenha o menu novo** (LO-06; A7 da 43ª, decisão do
+  Claude, 28/11: a navegação do Next mantém o layout, e com a MATRIZ do cargo
+  mudada — o cargo é o mesmo, o token não fica velho — o menu seguia o de antes
+  até recarregar). O layout dos dois portais dá ao `MenuEmDia`
+  (`components/shared/menu-em-dia.tsx`) a assinatura do que o menu mostra
+  (`assinaturaDoMenu`, `lib/sessao/assinatura-do-menu.ts`: os níveis, as abas de
+  Relatórios, o plano, o "Atende", a comissão de venda, "A rede inteira", as
+  unidades, a Admin da rede, o cargo — nunca a unidade do endereço); a cada
+  navegação ele pergunta a de agora (`GET /api/menu`, pela sessão) e, se mudou,
+  redesenha (`router.refresh()`). A tela aberta não se redesenha sozinha. Prova:
+  `tests/menu-novo-na-proxima-navegacao.test.ts`, o caso "LO-06" de
+  `e2e/permissoes-f70.spec.ts` e o de `e2e/api-sem-credencial.spec.ts` (escritos,
+  não rodados).
 
 ### Auditoria (CF3a–CF3c, docs/revisao.md — 2026-11-16)
 

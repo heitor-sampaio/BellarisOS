@@ -16,7 +16,7 @@ import {
 } from '@/lib/permissions'
 import {
   MODULE_GROUPS, LEVEL_COPY, notaDoResumoDaRede,
-  NETWORK_ONLY, notaDeAbrangencia, SO_NA_REDE_NOTE, quemVendeNoResumo, fechamentoNoResumo, copilotNoResumo, textoDoQueFaltaNoCargo, documentosNoResumo,
+  NETWORK_ONLY, notaDeAbrangencia, SO_NA_REDE_NOTE, quemVendeNoResumo, fechamentoNoResumo, baixaNoResumo, copilotNoResumo, textoDoQueFaltaNoCargo, documentosNoResumo,
   tratamentosNoResumo, conclusaoNoResumo, vistasPessoaisNoResumo, prontuarioSemClientesNoResumo,
   fidelidadeNoResumo, configDaRedeNoResumo, dispensaNoResumo, injetaveisNoResumo,
 } from '@/lib/permissions-copy'
@@ -1096,6 +1096,12 @@ function MenuPreview({ levels, reportTabs, foraDoPlano }: { levels: Levels; repo
       {fechamentoNoResumo(levels) && (
         <p data-resumo-fechamento style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
           {fechamentoNoResumo(levels)}
+        </p>
+      )}
+      {/* A6 da 43ª (CG-16/FN-06): com o Financeiro em Ver, a baixa vem do PDV. */}
+      {baixaNoResumo(levels) && (
+        <p data-resumo-baixa style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
+          {baixaNoResumo(levels)}
         </p>
       )}
       {quemVendeNoResumo(levels) && (

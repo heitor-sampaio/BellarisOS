@@ -577,7 +577,7 @@ Detalhe de dado antigo ou regra que perdeu efeito, sem decisão de produto que v
 - O Copilot não muda comissão, só indica a tela (`docs/regras/copilot.md:215`), e dá a comissão só a quem tem o Financeiro em Ver (`:275-276`, a regra é a QV-02) — área: Copilot.
 - O "repasse" do EQ1c e do UM5 (`docs/revisao.md:2113`, `:2232`) é o repasse dos agendamentos e das oportunidades ao desativar alguém, não o pagamento da comissão — área: Plataforma (Equipe).
 - A pessoa só pode atender nas unidades dela (o Heitor, 23/11: "uma pessoa só pode atender nas unidades que faz parte, isso é obvio") — área: Plataforma (Equipe).
-- Os cargos-modelo nascem sem o Financeiro, porque o que eles viam do Financeiro eram as próprias comissões, que hoje são a vista pessoal (`docs/regras/plataforma.md:916-922`) — área: Plataforma (Cargos).
+- Os cargos-modelo "Recepcionista" e "Profissional" nascem sem o Financeiro (o "Gerente" e o "Financeiro" o têm), porque o que eles viam do Financeiro eram as próprias comissões, que hoje são a vista pessoal (`docs/regras/plataforma.md:916-922`) — área: Plataforma (Cargos).
 - Ao desativar uma unidade, a janela mostra a comissão a pagar e oferece "Fechar as comissões"; a unidade desativada que ainda tem comissão a pagar continua contada e alcançável (`docs/regras/plataforma.md:953-990`) — área: Plataforma (unidades).
 - O catálogo dos planos da assinatura, que lista as comissões entre as funcionalidades — área: Plataforma (assinatura); CM-02 é só o efeito na comissão.
 - A sessão não lê comissão e a tela escuta um sinal (`docs/regras/comissoes.md:550-562`) — regra do sistema inteiro, no CLAUDE.md §4.

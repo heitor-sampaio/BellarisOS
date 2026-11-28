@@ -100,27 +100,48 @@ export interface ClienteParaReativarDaRede {
   unidade: string | null; unidadeSlug: string | null
   /** A última visita é a do sistema de antes (a importada, F35). */
   antesDoSistema: boolean
+  /**
+   * O "Cliente desde" da importação (`clients.cliente_desde`, AAAA-MM-DD), ou
+   * null. Sem visita, a linha diz isso em vez de "Nunca veio" (A14 da 43ª).
+   */
+  clienteDesde: string | null
 }
 
 export async function getClientesParaReativarDaRede(args: {
   tenantId: string; desde: Date; limite?: number
+  /**
+   * Quantas pular (a página seguinte do "Ver mais" do quadro — A18 da 43ª).
+   * Só vai à função quando é mais que zero: a primeira página é a chamada de sempre.
+   */
+  deslocamento?: number
   /** "Só os meus": só as clientes dela (agendamento não cancelado com ela). */
   professionalId?: string | null
 }): Promise<{ total: number; lista: ClienteParaReativarDaRede[]; comVisita: number; recentesSemVisita: number }> {
+  const deslocamento = Math.max(0, Math.floor(args.deslocamento ?? 0))
   const data = await ler(createAdminClient().rpc('metrics_clientes_para_reativar_rede', {
     p_tenant: args.tenantId, p_desde: args.desde.toISOString(), p_limite: args.limite ?? 3,
     p_professional_id: args.professionalId ?? null,
+    ...(deslocamento > 0 ? { p_deslocamento: deslocamento } : {}),
   }), 'buscar os clientes da rede para reativar')
   const d = (data ?? {}) as {
     total?: number; com_visita?: number; recentes_sem_visita?: number
     lista?: { id: string; name: string; phone: string | null; ultima_visita: string | null; unidade: string | null; unidade_slug: string | null; antes_do_sistema?: boolean }[]
   }
+  // A14 da 43ª: o "Cliente desde" das que não têm visita nenhuma (a lista é
+  // curta — o `p_limite` —, e só elas precisam dele).
+  const semVisita = (d.lista ?? []).filter(c => !c.ultima_visita).map(c => c.id)
+  const desdes = semVisita.length
+    ? await ler(createAdminClient().from('clients').select('id, cliente_desde')
+        .eq('tenant_id', args.tenantId).in('id', semVisita), 'ler o "cliente desde" das clientes a reativar') as { id: string; cliente_desde: string | null }[] | null
+    : []
+  const desdeDe = new Map((desdes ?? []).map(c => [c.id, c.cliente_desde ? String(c.cliente_desde).slice(0, 10) : null]))
   return {
     total: Number(d.total ?? 0),
     comVisita: Number(d.com_visita ?? 0), recentesSemVisita: Number(d.recentes_sem_visita ?? 0),
     lista: (d.lista ?? []).map(c => ({
       id: c.id, name: c.name, phone: c.phone, ultimaVisita: c.ultima_visita,
       unidade: c.unidade, unidadeSlug: c.unidade_slug, antesDoSistema: c.antes_do_sistema === true,
+      clienteDesde: desdeDe.get(c.id) ?? null,
     })),
   }
 }
@@ -140,13 +161,16 @@ export async function getClientesParaReativarDoRecorte(args: {
   /** A unidade do recorte (a do portal, a do `?unidade=`, a do pedido). Não estreita: a cliente é da rede. */
   unidade?: { id: string; name: string } | null
   desde: Date; limite?: number
+  /** Quantas pular: a página seguinte do "Ver mais" (A18 da 43ª). */
+  deslocamento?: number
   /** "Só os meus" da agenda: as dela. */
   professionalId?: string | null
 }): Promise<{ total: number; lista: ClienteParaReativarDaRede[]; comVisita: number; recentesSemVisita: number }> {
   const [umaSo, r] = await Promise.all([
     redeTemUmaUnidade(args.tenantId),
     getClientesParaReativarDaRede({
-      tenantId: args.tenantId, desde: args.desde, limite: args.limite, professionalId: args.professionalId,
+      tenantId: args.tenantId, desde: args.desde, limite: args.limite, deslocamento: args.deslocamento,
+      professionalId: args.professionalId,
     }),
   ])
   return { ...r, lista: umaSo ? r.lista.map(c => ({ ...c, unidade: null, unidadeSlug: null })) : r.lista }

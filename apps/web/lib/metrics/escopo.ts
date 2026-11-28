@@ -95,3 +95,14 @@ export function unidadesDoQueEDela(
   if ((modulo === 'agenda' ? recorte.agenda : recorte.financeiro) === null) return [unidade]
   return [unidade, ...(ctx.atendeEm ?? []).filter(u => u !== unidade).sort()]
 }
+
+/**
+ * As unidades de um número "Meu…", pelo nome ("Friburgo e Teresópolis"), na
+ * ordem de `unidadesDoQueEDela` (D5 da 43ª; princípio 3): a do endereço entra
+ * mesmo sem o "Atende" nela, e "nas 2 unidades em que você atende" não era
+ * verdade para quem atende em uma.
+ */
+export function nomesDasUnidades(ids: string[], nomeDe: Map<string, string>): string {
+  const nomes = ids.map(id => nomeDe.get(id)).filter((n): n is string => !!n)
+  return new Intl.ListFormat('pt-BR', { style: 'long', type: 'conjunction' }).format(nomes)
+}

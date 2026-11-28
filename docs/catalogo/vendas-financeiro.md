@@ -401,8 +401,8 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Onde: `docs/regras/vendas-financeiro.md:754-767`
 - Antes: KB-31, KB-32
 
-**PA-17.** O crediário cai antes de se devolver qualquer coisa: o a receber que passa do usado cai da parcela mais nova para a mais antiga (a que cai inteira sai estornada, a que cai em parte diminui). O que foi pago além do usado volta como quem cancela escolher — estorno (do pagamento mais novo para o mais antigo) ou crédito interno ("Cancelamento do pacote X"; no crédito, o dinheiro e os pontos ficam) —, nunca como uma despesa "Devolução" a pagar.
-- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-01: "concordo"
+**PA-17.** O crediário cai antes de se devolver qualquer coisa: o a receber que passa do usado cai da parcela mais nova para a mais antiga (a que cai inteira sai estornada, a que cai em parte diminui). O que foi pago além do usado volta como quem cancela escolher — estorno (do pagamento mais novo para o mais antigo) ou crédito interno ("Cancelamento do pacote “X”", o nome entre aspas; no crédito, o dinheiro e os pontos ficam) —, nunca como uma despesa "Devolução" a pagar.
+- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-01: "concordo"; o nome entre aspas: o Heitor, 28/11 (R43): "Pode corrigir, e o teste aceita a troca de trecho (a proposta)"
 - Onde: `docs/regras/vendas-financeiro.md:768-782`, `:3211`
 - Antes: KB-33, KB-34, KF-57
 
@@ -963,8 +963,8 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Onde: `docs/regras/vendas-financeiro.md:391-392`, `:411-412`, `:1979`, `:1987`, `:3258`
 - Antes: KE-04, KE-05, KF-43, KA-55
 
-**CS-04.** O CSV do fechamento do dia se baixa pelo Financeiro, nos dois portais: o botão "CSV do fechamento do dia", ao lado do "Exportar CSV", pede o Dia (e a Unidade, quando há mais de uma) e traz as formas, o total, o esperado em espécie, os estornos, o "Cartão por bandeira" e a "Taxa e líquido por maquininha (estimados)", com o Pix numa linha própria. Baixa quem tem o Financeiro em Ver, nas unidades ao alcance; o Fechamento do dia tem um link para ele, e na rede sem unidade escolhida o arquivo traz um bloco por unidade ao alcance.
-- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Blz pode ser assim"
+**CS-04.** O CSV do fechamento do dia se baixa pelo Financeiro, nos dois portais: o botão "CSV do fechamento do dia", ao lado do "Exportar CSV", pede o Dia (e a Unidade, quando há mais de uma) e traz as formas, o total, o esperado em espécie, os estornos, o "Cartão por bandeira" e a "Taxa e líquido por maquininha (estimados)", com o Pix numa linha própria. Baixa quem tem o Financeiro em Ver, nas unidades ao alcance; o Fechamento do dia tem o link "Baixar o CSV do fechamento · no Financeiro → Movimentações", que leva às Movimentações, onde fica o botão, e na rede sem unidade escolhida o arquivo traz um bloco por unidade ao alcance.
+- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Blz pode ser assim"; o link que leva às Movimentações: decisão do Claude, 28/11 (43ª, Time A), como a tela já faz
 - Onde: `docs/regras/vendas-financeiro.md:463-468`, `:1968`, `:1998`, `:2278`; `docs/revisao.md:611`, `:1997`
 - Antes: KE-06, KA-53
 

@@ -491,8 +491,9 @@ export function ClientDocumentsTab({ documents, clientId, branchId, slug, podeAn
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <FileText size={15} style={{ color: 'var(--brand)' }} />
+            {/* A10 da 43ª: "Anexos" — o "Documentos" da aba já é dos termos ("Documentos para assinatura"). */}
             <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>
-              Documentos
+              Anexos
             </span>
             {localDocs.length > 0 && (
               <span style={{

@@ -4,7 +4,7 @@ import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { Trash2, Plus, Minus, Maximize2 } from 'lucide-react'
 import { InjectableOutline, MAP_VIEWBOX, viewDe, partesDaView } from '@/components/shared/injectable-outline'
 import { formatarDose } from '@/lib/injetaveis/dose'
-import { aplicadoAoRegistrar } from '@/lib/injetaveis/aplicacao-do-atendimento'
+import { aplicadoAoRegistrar, aplicadoEscrito } from '@/lib/injetaveis/aplicacao-do-atendimento'
 import { comOProduto, pontoNovo, type ProdutoDoMapa } from '@/lib/injetaveis/medida-do-ponto'
 import { Dica } from '@/components/shared/dica'
 import {
@@ -536,7 +536,13 @@ export function InjectableMapField({ value, products, canEdit, onChange, atendim
               point={p}
               products={products}
               canEdit={canEdit}
-              aplicado={mostraAplicado ? (aplicadoDe.get(p.id) ?? 0) : null}
+              aplicado={mostraAplicado
+                ? (atendimento
+                  // R44 (o Heitor, 28/11): o campo diz o que alguém escreveu; vazio, a dose que o registrar
+                  // vai gravar fica como sugestão.
+                  ? { valor: aplicadoEscrito(p, atendimento.id, atendimento.deOutro), sugestao: aplicadoDe.get(p.id) ?? 0 }
+                  : { valor: aplicadoDe.get(p.id) ?? 0, sugestao: null })
+                : null}
               selected={p.id === selectedId}
               onSelect={() => setSelectedId(p.id)}
               // A dose aplicada mexida aqui é deste atendimento (D2 da 37ª).
@@ -615,8 +621,11 @@ function PointRow({
   point: InjectablePoint
   products: ProdutoDoMapa[]
   canEdit: boolean
-  /** A dose aplicada à vista (no atendimento); nula, sem a coluna. */
-  aplicado: number | null
+  /**
+   * A dose aplicada à vista (no atendimento): a escrita (nula = vazia) e a
+   * sugestão, que é a que o "Registrar aplicação" vai gravar. Nula, sem a coluna.
+   */
+  aplicado: { valor: number | null; sugestao: number | null } | null
   selected: boolean
   onSelect: () => void
   onChange: (patch: Partial<InjectablePoint>) => void
@@ -719,7 +728,8 @@ function PointRow({
         {aplicado !== null && (
           <DoseInput
             label="Aplicado"
-            value={aplicado}
+            value={aplicado.valor}
+            sugestao={aplicado.sugestao}
             canEdit={canEdit}
             onChange={applied => onChange({ applied })}
           />
@@ -733,13 +743,15 @@ function PointRow({
   )
 }
 
-function DoseInput({
-  label, value, canEdit, onChange,
+function DoseInput<V extends number | null = number>({
+  label, value, sugestao, canEdit, onChange,
 }: {
   label: string
-  value: number
+  value: V
+  /** Com o campo vazio (valor nulo), a dose sugerida, apagada (R44). */
+  sugestao?: number | null
   canEdit: boolean
-  onChange: (v: number) => void
+  onChange: (v: V) => void
 }) {
   return (
     <label style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }} onClick={e => e.stopPropagation()}>
@@ -749,14 +761,16 @@ function DoseInput({
       {canEdit ? (
         <input
           type="number" step="0.01" min="0"
-          value={Number.isFinite(value) ? value : 0}
-          onChange={e => onChange(parseFloat(e.target.value) || 0)}
+          value={value === null ? '' : (Number.isFinite(value) ? value : 0)}
+          placeholder={value === null && sugestao != null ? String(sugestao) : undefined}
+          // Com sugestão (o "Aplicado" do atendimento), apagar o campo volta a vazio: vale a sugestão.
+          onChange={e => onChange((sugestao !== undefined && e.target.value === '' ? null : (parseFloat(e.target.value) || 0)) as V)}
           className="field"
           style={{ width: 64, padding: '5px 6px', fontSize: 'var(--text-xs-sz)' }}
         />
       ) : (
         <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text)', fontWeight: 'var(--weight-bold)' }}>
-          {fmt(value)}
+          {value === null ? '—' : fmt(value)}
         </span>
       )}
     </label>

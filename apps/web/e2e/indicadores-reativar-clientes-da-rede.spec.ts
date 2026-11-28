@@ -148,6 +148,38 @@ test('r2-ind-03: na rede de UMA unidade, o quadro conta todas as clientes ativas
   }
 })
 
+// A18 da 43ª (indicadores:CC-06, princípio 3; decisão do Claude, 28/11): o "Ver mais 6 (9 no
+// total)" levava à lista de Clientes inteira, sem o recorte. Agora abre o resto do MESMO
+// recorte no próprio quadro (a página seguinte da mesma conta), nos dois portais.
+test('A18 da 43ª: o "Ver mais" abre no quadro as que faltam, e só elas', async ({ browser }) => {
+  // Mais cinco sumidas (cadastradas há 200 dias, sem visita): o quadro mostra 3 e o link diz o resto.
+  const rotulos = ['Ana', 'Bia', 'Cris', 'Duda', 'Edna'].map(r => `Sumida ${r}`)
+  for (const r of rotulos) await cliente(r, 200)
+  const sumidas = rotulos.map(nome)
+  const slug = (await db().from('branches').select('slug').eq('id', rede!.branchId).single<{ slug: string }>()).data!.slug
+  await como(browser, async p => {
+    for (const rota of ['/admin/dashboard', `/${slug}/dashboard`]) {
+      await p.goto(rota)
+      const quadro = p.locator('[data-reativar-clientes]')
+      await expect(quadro, rota).toBeVisible()
+      await expect(quadro.locator('[data-cliente]'), rota).toHaveCount(3)
+      const link = quadro.getByRole('link', { name: /Ver mais \d+ \(\d+ no total\)/ })
+      const [, faltam, total] = (await link.innerText()).match(/Ver mais (\d+) \((\d+) no total\)/)!.map(Number)
+      expect(faltam, rota).toBe(total! - 3)
+      await link.click()
+      // As que faltavam entram no quadro, e o link some: o total é o que o quadro mostra.
+      await expect(quadro.locator('[data-cliente]'), rota).toHaveCount(total!)
+      await expect(quadro.getByRole('link', { name: /Ver mais/ }), rota).toHaveCount(0)
+      for (const n of sumidas) await expect(quadro.locator('[data-cliente]', { hasText: n }), `${rota}: ${n}`).toContainText('Nunca veio')
+      await expect(quadro.locator('[data-cliente]', { hasText: nome('Marlene') }), rota).toContainText('Última visita há 120 dias')
+      // A Carla veio à outra unidade há 10 dias: nem na página seguinte.
+      await expect(quadro, rota).not.toContainText(nome('Carla'))
+      // Não saiu do dashboard (era a lista de Clientes).
+      expect(new URL(p.url()).pathname, rota).toBe(rota)
+    }
+  })
+})
+
 // A regra que o caso da função por unidade provava (2026-10-20: "cliente nova não é
 // cliente sumida"), agora na da rede — a que a tela usa. A por unidade saiu (o Heitor,
 // 25/11: "ok mas tenha certeza absoluta que não é usada").

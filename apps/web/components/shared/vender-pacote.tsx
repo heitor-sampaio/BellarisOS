@@ -315,12 +315,8 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>O valor fica a receber no financeiro, com o vencimento, se você informar um.</p>
         )}
       </div>
-      {/* PC2 (auditoria de 2026-11-18): "primeiro colhe assinatura, depois paga" — o contrato do pacote antes do dinheiro. */}
-      {conferindo && (
-        <p data-conferindo-a-assinatura role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-          Conferindo a assinatura…
-        </p>
-      )}
+      {/* PC2 (auditoria de 2026-11-18): "primeiro colhe assinatura, depois paga" — o contrato do pacote antes do dinheiro.
+          A4 da 43ª: a conferência da assinatura aparece no próprio "Vender por" (era uma linha discreta aqui). */}
       {contrato && !conferindo && (
         <div data-contrato-antes-de-vender={contrato.id} role="note" style={{
           display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px', borderRadius: 'var(--radius-field-token)',
@@ -369,7 +365,10 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
         <MotivoDoBotao motivo={pendente || erro ? null : recusaForaDoCampo(estado, fid.aPagar, recusaDoPagamento(estado, fid.aPagar))} />
         <button type="button" className="btn-secondary" onClick={() => { esquecerVendaDoPacote(branchId, clienteId); onFim() }} disabled={pendente}>Cancelar</button>
-        <button type="button" className="btn-primary" onClick={() => vender()} disabled={pendente || !!conta.recusa || !!fid.recusa || !!recusaDoPagamento(estado, fid.aPagar)}>{pendente ? 'Vendendo…' : `Vender por ${formatBRL(fid.aPagar)}`}</button>
+        <button type="button" className="btn-primary" onClick={() => vender()} data-conferindo-a-assinatura={conferindo || undefined} aria-live="polite"
+          disabled={conferindo || pendente || !!conta.recusa || !!fid.recusa || !!recusaDoPagamento(estado, fid.aPagar)}>
+          {conferindo ? 'Conferindo a assinatura…' : pendente ? 'Vendendo…' : `Vender por ${formatBRL(fid.aPagar)}`}
+        </button>
       </div>
       )}
     </div>

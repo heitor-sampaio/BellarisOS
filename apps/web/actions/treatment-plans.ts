@@ -1365,7 +1365,11 @@ export async function previaDoCancelamentoDoPlano(
       p_estorno: null, p_novo: null,
     }), 'calcular o cancelamento do plano') as Record<string, unknown>
     const previa = lerPreviaDoCancelamento(j)
-    return { previa: { ...previa, pontos: previa.fidelidade ? await pontosDoConjunto(ctx.tenantId!, { plano: plano.id }) : null } }
+    return { previa: {
+      ...previa, pontos: previa.fidelidade ? await pontosDoConjunto(ctx.tenantId!, { plano: plano.id }) : null,
+      // A16 da 43ª: o plano sem o "Venda de plano" não tem comissão de venda.
+      comissaoDeVenda: await temComissaoDeVenda(ctx.tenantId!, { plano: plano.id }),
+    } }
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }
@@ -1741,6 +1745,7 @@ import { oQueFaltaParaSeguir } from '@/lib/atendimento/obrigatorias-no-servidor'
 import { aQuemPedirAFichaDeSaude } from '@/lib/atendimento/quem-responde-a-ficha'
 import { registrarAcessoAoProntuario } from '@/lib/prontuario/acessos'
 import { pontosDoConjunto } from '@/lib/pacotes/pontos-do-cancelamento'
+import { temComissaoDeVenda } from '@/lib/pacotes/comissao-de-venda-do-cancelamento'
 import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { fidelidadeDaVenda, fidelidadeParaAVenda } from '@/lib/fidelidade/na-venda'
 import type { EscolhaDaFidelidade } from '@/lib/fidelidade/conta-na-venda'

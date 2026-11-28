@@ -182,6 +182,13 @@ test.describe.serial('comissões — fechamento e visibilidade', () => {
     // Pelo financeiro comum, a despesa do fechamento não se estorna.
     const porFora = await db().rpc('estornar_transacao', { p_transacao: ultimo!.transaction_id, p_tenant: rede!.tenantId, p_ator: 'e2e' })
     expect(porFora.error?.message).toMatch(/estorne pelo fechamento/)
+    // A3 da 43ª (CF-17; CLAUDE.md §14): nas Movimentações, a linha dessa despesa não oferece o "Estornar".
+    await comSessao(browser, gestor!, async p => {
+      await p.goto(`/admin/financeiro?aba=movimentacoes&unidade=${rede!.branchId}`)
+      const despesa = p.locator(`[data-lancamento="${ultimo!.transaction_id}"]`).first()
+      await expect(despesa).toBeVisible()
+      await expect(despesa.locator('[data-estornar]')).toHaveCount(0)
+    })
 
     await comSessao(browser, gestor!, async p => {
       await p.goto(ROTA)

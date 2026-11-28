@@ -203,8 +203,8 @@ Este é o catálogo das regras dos Documentos que valem HOJE: os tipos, os model
 - Onde: `docs/regras/documentos.md:119`, `:157-164`; `docs/revisao.md:1818`; o gatilho `private.documentos_da_sessao_de_pacote` (`supabase/migrations/20261115200001_documentos_tipos_e_nascimento.sql`)
 - Antes: KA-18, KC-18; antes de 27/11: a sessão de pacote nascia avulsa, emitia os documentos do procedimento e o gatilho os cancelava em seguida
 
-**DE-15.** Nenhum caminho do sistema inicia o atendimento com um documento que "Bloqueia" ainda aberto. O documento dispensado, com motivo, conta como cumprido e libera o início.
-- Fonte: decisão do Claude
+**DE-15.** Nenhum caminho do sistema inicia o atendimento com um documento que "Bloqueia" ainda aberto. O documento dispensado, com motivo, conta como cumprido e libera o início. A tela mostra o motivo; quem dispensou fica na Auditoria.
+- Fonte: decisão do Claude; o que a tela mostra: decisão do Claude, 28/11 (43ª, Time D)
 - Onde: `docs/regras/documentos.md:395-396`; `docs/revisao.md:798`, `:1811`
 - Antes: KA-50, KC-26
 

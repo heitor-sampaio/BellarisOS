@@ -7,7 +7,7 @@ import { criarOportunidadeCore } from '@/lib/crm/oportunidade'
 import { fichasDoTelefoneDoLead, fichaDaOportunidadeImportada } from '@/lib/crm/ficha-do-telefone'
 import { propagarDadosDaPessoa } from '@/lib/contatos/propagar'
 import type { ChaveDeCampo, Destino } from './campos'
-import { validarLinha, chaveDaPessoa, nomeDiferente, variantesDoTelefone, telefoneDaFichaImportada, pacotesDaLinha, type DadosDaLinha } from './normalizar'
+import { validarLinha, chaveDaPessoa, nomeDiferente, variantesDoTelefone, telefoneDaFichaImportada, pacotesDaLinha, avisoDoResponsavelNaoGravado, CAMPOS_DO_RESPONSAVEL, type DadosDaLinha } from './normalizar'
 import { ehMenorDeIdade, avisoDoMenor, responsavelDaFicha } from '@/lib/clients/menor'
 import { trazerPacoteCore, jaTemOPacoteDeFora } from '@/lib/pacotes/trazer'
 import { mensagemDoErro } from '@/lib/db'
@@ -329,8 +329,6 @@ const CAMPOS_DO_CLIENTE = [
   'address_complement', 'neighborhood', 'city', 'state', 'referred_by', 'notes', 'tags',
   'cliente_desde', 'ultima_visita_antes',
 ] as const
-/** A5: o responsável legal — só na menor (a regra de `colunasDoResponsavel`). */
-const CAMPOS_DO_RESPONSAVEL = ['responsavel_nome', 'responsavel_cpf', 'responsavel_parentesco', 'responsavel_telefone'] as const
 
 async function gravarCliente(
   admin: Admin, p: Pedido, ctx: TenantContext, linhaDaPlanilha: DadosDaLinha,
@@ -378,13 +376,10 @@ async function gravarCliente(
   // ficha fica tendo); na adulta, a planilha não o grava e a linha diz por quê.
   const nascimento = ((existente?.birth_date as string | null | undefined) || (dados.birth_date as string | undefined)) ?? null
   const menor = ehMenorDeIdade(nascimento)
-  const trouxeResponsavel = CAMPOS_DO_RESPONSAVEL.some(c => dados[c])
   const campos: readonly string[] = menor ? [...CAMPOS_DO_CLIENTE, ...CAMPOS_DO_RESPONSAVEL] : CAMPOS_DO_CLIENTE
-  if (trouxeResponsavel && !menor) {
-    avisos.push(nascimento
-      ? 'Responsável legal não gravado: pela data de nascimento, não é menor de idade (só a menor tem responsável na ficha).'
-      : 'Responsável legal não gravado: sem a data de nascimento, não se sabe se é menor de idade.')
-  }
+  // A mesma conta da prévia (D6 da 43ª), com o nascimento que a ficha fica tendo.
+  const naoGravado = avisoDoResponsavelNaoGravado(dados as DadosDaLinha, nascimento)
+  if (naoGravado) avisos.push(naoGravado)
   // A menor que fica sem responsável é avisada no resultado (avisar, não barrar — princípio 2).
   const responsavel = responsavelDaFicha({
     responsavel_nome: (existente?.responsavel_nome as string | null | undefined) || (menor ? dados.responsavel_nome as string | undefined : null),

@@ -59,6 +59,23 @@ export function rotuloDoEixo(v: number, prefixo = ''): string {
   return `${prefixo}${v}`
 }
 
+const MESES_CURTOS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+
+/** "2026-11" → "nov/26": o mês e o ano, na dica e na tabela do fluxo de caixa. */
+export function rotuloDoMes(m: string): string {
+  return `${MESES_CURTOS[Number(m.slice(5, 7)) - 1] ?? m}/${m.slice(2, 4)}`
+}
+
+/**
+ * O rótulo do mês no EIXO (A5 da 43ª; princípio 7): "nov/26 dez/26 jan/27…"
+ * se encavalavam com 6 meses. O eixo diz o mês curto ("dez") e o ano só no
+ * primeiro rótulo e em janeiro ("jan/27").
+ */
+export function rotuloDoMesNoEixo(m: string, i: number): string {
+  if (i === 0 || m.slice(5, 7) === '01') return rotuloDoMes(m)
+  return MESES_CURTOS[Number(m.slice(5, 7)) - 1] ?? m
+}
+
 /**
  * A curva do "Evolução do período" (A52 da 9ª): reta entre os pontos, com o
  * ponto de cada dia à vista. A suavizada parecia subir antes do primeiro dia

@@ -1323,11 +1323,13 @@
   da 9ª simulação, 2026-11-07): "Seu Avaliação foi concluído" e "Seu Drenagem
   linfática foi concluído" — o nome do procedimento é da rede, e o texto
   não decide por ele. Os avisos à cliente ficam neutros, com o procedimento
-  depois de dois-pontos ("Atendimento concluído: Avaliação.", "Pagamento
-  confirmado: Avaliação.", "Agendamento cancelado: Avaliação de 07/11 às
-  10:00, na unidade Moinhos.", "Novo horário: … na unidade Moinhos." —
-  `lib/appointments/texto-do-aviso.ts`), e o da equipe também ("Cancelado:
-  Juliana — Avaliação de …"). Prova: `tests/textos-dos-avisos-da-9.test.ts`.
+  depois de dois-pontos ("Atendimento concluído: Avaliação.", "Novo
+  horário: … na unidade Moinhos." — `lib/appointments/texto-do-aviso.ts`).
+  **O texto não repete o título** (R42, o Heitor, 28/11: "O texto não repete
+  o título (a proposta)"): o aviso "Agendamento cancelado" diz "Avaliação de
+  07/11 às 10:00, na unidade Moinhos. Motivo: …", e o "Pagamento confirmado"
+  só o procedimento ("Avaliação."); o da equipe já era assim ("Juliana —
+  Avaliação de …", A13 da 41ª). Prova: `tests/textos-dos-avisos-da-9.test.ts`.
   **O motivo do cancelamento vai no aviso, e o campo diz** (A11 da 25ª;
   princípio 3): "Vai também no aviso à cliente." embaixo do "Motivo do
   cancelamento *", na janela da agenda e na sessão
@@ -2696,7 +2698,14 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
   nos pontos em que ninguém escreveu a aplicada (`aplicadoAoRegistrar`, no
   servidor), e a coluna "Aplicado" fica sempre à vista no atendimento, com a
   mesma conta (`InjectableMapField atendimento`). Prova:
-  `tests/injetaveis-mapa-uma-acao-por-momento.test.ts`. O mapa no
+  `tests/injetaveis-mapa-uma-acao-por-momento.test.ts`. **O "Aplicado" fica
+  vazio até alguém escrever** (R44, o Heitor, 28/11: "Vazio, com a dose do
+  plano como sugestão (a proposta)"): o campo mostra só a dose escrita neste
+  atendimento (`aplicadoEscrito`); vazio, a dose que o registrar vai gravar
+  aparece como sugestão apagada dentro dele, e apagar o campo volta a ela. O
+  total e o registro seguem a mesma conta. Prova:
+  `tests/injetaveis-aplicado-vazio-ate-escrever.test.ts`,
+  `e2e/injetaveis-confirmar-so-no-atendimento.spec.ts`. O mapa no
   corpo do atendimento depende de CONFIGURAÇÃO: só aparece quando o
   procedimento tem uma ficha com o campo "planejador de injetáveis"; sem ela
   (a Toxina da simulação não tinha ficha), o mapa do atendimento é o do

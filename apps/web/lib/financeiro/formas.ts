@@ -94,6 +94,8 @@ export function nomeDaBandeira(bandeira: string | null | undefined): string {
 export function rotuloDaFormaDoFechamento(chave: string): string {
   if (chave === 'PONTOS') return 'Sem forma (pontos)'
   if (chave === 'SEM_FORMA') return 'Sem forma de pagamento'
+  // D3 da 43ª (FC-15, MQ-15): a despesa no cartão da rede, à parte da maquininha.
+  if (chave === 'CARTAO') return 'Cartão'
   const [metodo, vezes] = chave.split(':')
   return rotuloDaForma(metodo, vezes ? Number(vezes) : null, { longo: true }) // sem ":N" é o à vista (1x)
 }

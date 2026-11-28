@@ -616,9 +616,9 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:910-915`
 - Antes: KC-14
 
-**CG-09.** Sem o "só os meus", nenhum modelo de cargo nasce com o Financeiro, e o modelo "Profissional" nasce sem a Agenda (o que eles viam está nas vistas pessoais: as Minhas comissões e a Minha agenda). Nos cargos que já existiam, o Financeiro e a Agenda que eram "só os meus" viraram "Sem acesso", e o resto ficou com o nível.
-- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — "o Heitor, 23/11, à pergunta do Claude"
-- Onde: `docs/regras/plataforma.md:916-925`; `docs/revisao.md:2206-2210`
+**CG-09.** Sem o "só os meus", os modelos de cargo "Recepcionista" e "Profissional" nascem sem o Financeiro, e o "Profissional" também sem a Agenda (o que eles viam está nas vistas pessoais: as Minhas comissões e a Minha agenda); o "Gerente" e o "Financeiro" seguem nascendo com o Financeiro em Gerenciar. Nos cargos que já existiam, o Financeiro e a Agenda que eram "só os meus" viraram "Sem acesso", e o resto ficou com o nível.
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — "o Heitor, 23/11, à pergunta do Claude"; quais modelos perdem o Financeiro: decisão do Claude, 28/11 (43ª, Time C), pelo que a migration faz
+- Onde: `docs/regras/plataforma.md:916-925`; `docs/revisao.md:2206-2210`; `supabase/migrations/20261129000001_cargos_sem_so_os_meus.sql`
 - Antes: KC-15, KE-35
 
 **CG-10.** O modelo "Profissional" nasce com o Atendimento e o Prontuário em Gerenciar.
@@ -671,9 +671,9 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:896-909`; `docs/revisao.md:2237`; CLAUDE.md §11 (`:666-668`)
 - Antes: KC-13, KE-42
 
-**CG-20.** Os números dos Relatórios são os das unidades ao alcance da pessoa, e o cargo não tem mais "a minha unidade × a rede inteira".
-- Fonte: o Heitor, 2026-11-23: "pode tirar, as vistas pessoais resolvem"
-- Onde: `docs/revisao.md:2217`; `docs/regras/indicadores.md:1091-1094`
+**CG-20.** Os números dos Relatórios são os das unidades ao alcance da pessoa, e o cargo não tem mais "a minha unidade × a rede inteira". No portal da unidade, os Relatórios são os da unidade do endereço: quem tem mais de uma unidade vê uma por vez e troca de unidade no seletor; o consolidado é o do portal da rede, de quem tem "A rede inteira".
+- Fonte: o Heitor, 2026-11-23: "pode tirar, as vistas pessoais resolvem"; uma unidade por vez no portal da unidade: decisão do Claude, 28/11 (43ª, Time C), pelo CLAUDE.md §11 (o endereço diz em que unidade a pessoa está)
+- Onde: `docs/revisao.md:2217`; `docs/regras/indicadores.md:1091-1094`; `apps/web/app/[slug]/reports/page.tsx`
 - Antes: KE-41
 
 **CG-21.** O que falta escolher no cargo (as abas de Relatórios) aparece junto do "Salvar acessos" enquanto falta, com "Ir até lá", que rola até a primeira linha pendente; clicar em salvar com algo faltando vira alerta e leva ao módulo.
@@ -681,9 +681,9 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:886-892`, `:1064-1065`
 - Antes: KC-12
 
-**CG-22.** O cartão de cada cargo diz quantas áreas ele abre ("3 áreas"), e o cargo recém-salvo já diz o que abre, sem recarregar; salvar confirma ("Cargo “X” salvo.") e voltar ao cargo mostra o que foi salvo.
-- Fonte: princípio 3
-- Onde: `docs/regras/plataforma.md:860-863`, `:892-894`, `:1115-1116`
+**CG-22.** O cartão de cada cargo diz quantas áreas da matriz ele abre, as que não estão em "Sem acesso" ("3 áreas"), e o cargo recém-salvo já diz o que abre, sem recarregar; salvar confirma ("Cargo “X” salvo.") e voltar ao cargo mostra o que foi salvo.
+- Fonte: princípio 3; o que se conta: decisão do Claude, 28/11 (43ª, Time C: o "8 áreas"), como a tela já conta
+- Onde: `docs/regras/plataforma.md:860-863`, `:892-894`, `:1115-1116`; `apps/web/lib/cargos/acessos-salvos.ts` (`resumoDoCargo`)
 - Antes: KC-06
 
 **CG-23.** A tela de Cargos guarda a escolha: o cargo escolhido fica no endereço, o recém-criado continua escolhido ao recarregar, e a lista de cargos não muda de ordem ao salvar (com a mesma data de criação, o nome desempata).
@@ -706,10 +706,10 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:1010-1024`
 - Antes: (sem número: `docs/inventario/leitura.md` §4)
 
-**CG-27.** Criar um cargo é dar o nome na lista de cargos e clicar em "Criar" — a tela diz isso ("Dê o nome na lista de cargos e clique em Criar"), e o campo do nome tem rótulo.
-- Fonte: princípio 7 (A4 da 24ª simulação)
-- Onde: `docs/regras/plataforma.md:1175-1176`
-- Antes: (sem número: `docs/inventario/leitura.md` §4)
+**CG-27.** Criar um cargo é clicar em "Novo", dar o nome no campo que se abre ali mesmo, na lista de cargos (o campo tem rótulo, "Nome do cargo"), e clicar em "Criar". Nenhuma frase explica o caminho.
+- Fonte: princípio 7 (A4 da 24ª simulação); sem a frase que explicava: o Heitor, 2026-11-26: "isso não é ser intuitivo, é ser explicativo e não isso que eu quero. Ser intuitivo é justamente o contrario, ser facil de usar mesmo sem muitas explicações." (A2 da 36ª); o texto do catálogo: decisão do Claude, 28/11 (43ª, Time C)
+- Onde: `docs/regras/plataforma.md:1175-1176`, `:1331-1334`; `apps/web/tests/atritos-da-24-cargos-atendimento-app.test.ts` ("A4")
+- Antes: (sem número: `docs/inventario/leitura.md` §4); até a 36ª, a tela dizia "Dê o nome na lista de cargos e clique em Criar"
 
 **CG-28.** O cargo da rede que não abre módulo nenhum é válido: ele se salva e se dá. A tela de Cargos avisa uma vez, em cima da matriz ("Sem acesso a nenhum módulo: quem tem este cargo entra e não vê nada."; o cartão do cargo fica com o resumo de sempre), e a Equipe, na linha e na janela de criar e de editar ("Sem acesso a nenhum módulo: ela entra e não vê nada."). "Nenhum" é o que vale com o plano (Relatórios sem aba que valha não conta). Quem tem esse cargo e atende segue na agenda para receber horários e tem as vistas pessoais (a Minha agenda, e as Minhas comissões com comissão no nome dela), que só mostram (CG-04).
 - Fonte: o aviso no lugar da recusa: recomendação do Claude aprovada pelo Heitor, 2026-11-18 (item 21 do escopo): "21 - ok" (`DEVLOG.md:1974`), e o princípio 2; o aviso só em cima da matriz: o Heitor, 2026-11-27 (R41): "Só em cima da matriz (a proposta)"; o cargo sem módulo é válido e as vistas pessoais: decisão do Claude, 25/11 (o Heitor revisa), pelo CLAUDE.md §11 ("As vistas pessoais") (Tainá, Time D da 30ª simulação)

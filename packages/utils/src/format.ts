@@ -22,6 +22,25 @@ export const maskCPF = (cpf: string) =>
   cpf.replace(/\D/g, '').replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
 
 /**
+ * Os dígitos do número NACIONAL, sem o que vem antes do DDD: o 55 do país e o
+ * 0 da discagem de longa distância (nenhum DDD começa com 0). A17 da 43ª
+ * simulação (princípio 3): o "+55 (064) 99123-4567" colado virava
+ * "(55) 06499-1234" e o "0 64 99123-4567", "(06) 49912-3456". Só tira o
+ * prefixo quando o que sobra é um número de 10 ou 11 dígitos; o 55 com 12 ou
+ * 13 dígitos continua saindo (o do WhatsApp), e o DDD 55 de 11 dígitos fica.
+ */
+export const digitosNacionais = (valor: string) => {
+  const d = valor.replace(/\D/g, '')
+  const completo = (r: string) => r.length === 10 || r.length === 11
+  if (d.startsWith('55')) {
+    const r = d.slice(2).replace(/^0/, '')
+    if (completo(r)) return r
+  }
+  if (d.startsWith('0') && completo(d.slice(1))) return d.slice(1)
+  return (d.length === 12 || d.length === 13) && d.startsWith('55') ? d.slice(2) : d
+}
+
+/**
  * O telefone para EXIBIR, seja qual for o formato gravado (A25, 2026-10-27): a
  * cliente de balcão guarda "(48) 99000-0011", mas a convertida do lead guarda o
  * número do WhatsApp ("5548990000011") e aparecia crua. Aceita só dígitos,
@@ -32,7 +51,7 @@ export const maskPhone = (phone: string) => {
   const digits = phone.replace(/\D/g, '')
   // "+" de outro país não é número nacional.
   if (/^\s*\+/.test(phone) && !digits.startsWith('55')) return phone
-  const nacional = (digits.length === 12 || digits.length === 13) && digits.startsWith('55') ? digits.slice(2) : digits
+  const nacional = digitosNacionais(phone)
   if (nacional.length === 11) return nacional.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')
   if (nacional.length === 10) return nacional.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3')
   return phone
@@ -71,8 +90,8 @@ export function idadeEm(nascimento: string | null | undefined, hoje: Date = new 
  * Sem isso, o telefone gravado assim voltava ao setup cortado (J-1).
  */
 export const maskPhoneDigitando = (valor: string) => {
-  const todos = valor.replace(/\D/g, '')
-  const d = ((todos.length === 12 || todos.length === 13) && todos.startsWith('55') ? todos.slice(2) : todos).slice(0, 11)
+  // Sem o 55 do país e o 0 da discagem (A17 da 43ª): `digitosNacionais`.
+  const d = digitosNacionais(valor).slice(0, 11)
   if (d.length === 0) return ''
   if (d.length <= 2) return `(${d}`
   if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`
@@ -88,9 +107,7 @@ export const maskPhoneDigitando = (valor: string) => {
  */
 export const temDigitosDeMais = (valor: string) => {
   if (valor.trimStart().startsWith('+')) return false
-  const todos = valor.replace(/\D/g, '')
-  const d = (todos.length === 12 || todos.length === 13) && todos.startsWith('55') ? todos.slice(2) : todos
-  return d.length > 11
+  return digitosNacionais(valor).length > 11
 }
 
 /**
@@ -102,6 +119,10 @@ export const temDigitosDeMais = (valor: string) => {
 export const maskTelefoneDigitando = (valor: string) => {
   const s = valor.trimStart()
   if (!s.startsWith('+')) return maskPhoneDigitando(valor)
+  // O "+55" é o Brasil: completo, o campo mostra o número como a ficha o grava
+  // (A17 da 43ª; princípio 3). Incompleto, fica como se escreve.
+  const nacional = s.replace(/\D/g, '').startsWith('55') ? digitosNacionais(s) : ''
+  if (nacional.length === 10 || nacional.length === 11) return maskPhoneDigitando(nacional)
   return '+' + s.slice(1).replace(/[^\d\s().-]/g, '').slice(0, 24)
 }
 

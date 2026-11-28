@@ -24,7 +24,6 @@ import { EnviarLinkDeAssinatura } from '@/components/shared/enviar-link-de-assin
 import { ocupanteDoHorario } from '@/lib/agenda/horario-livre'
 import type { Horario } from '@/lib/agenda/horario'
 import { rotaCliente, rotaAtendimento } from '@/lib/rotas'
-import { textoDaExigenciaDoModelo } from '@/lib/checkout/exigencia-do-modelo'
 import Link from 'next/link'
 import { lerEntrada, erroDaEntrada, recusaDaEntradaAcimaDoTotal } from '@/lib/checkout/entrada'
 import { parcelasEmTexto } from '@/lib/checkout/resumo-do-pagamento'
@@ -1095,13 +1094,6 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
             )
           })}
         </div>
-
-        {/* A28 da 10ª: quem exige a assinatura é o modelo, que a clínica configura. */}
-        {documentosQueTravam.length > 0 && (
-          <p data-exigencia-do-modelo style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.5 }}>
-            {textoDaExigenciaDoModelo(documentosQueTravam.map(d => d.titulo))}
-          </p>
-        )}
 
         {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-base-sz)', fontWeight: 600, marginBottom: 12 }}>{error}</p>}
 

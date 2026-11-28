@@ -44,6 +44,7 @@ import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { notifyCancelledAppointment, getUserName } from '@/lib/appointments/avisos'
 import { EVENTOS } from '@estetica-os/types'
 import { pontosDoConjunto } from '@/lib/pacotes/pontos-do-cancelamento'
+import { temComissaoDeVenda } from '@/lib/pacotes/comissao-de-venda-do-cancelamento'
 import { prepararDocumentosDoPacote, contratoDaVendaDoPacote, type ContratoParaAssinar } from '@/lib/documentos/pacote'
 import { rotuloDoQueFalta } from '@/lib/documentos/leitura'
 import { oQueFalta } from '@/lib/documentos/o-que-falta'
@@ -311,6 +312,8 @@ async function venderPacoteUmaVez(
     } catch (e) {
       console.error('[pacote] documentos da venda:', mensagemDoErro(e))
     }
+    // A12 da 43ª: os pacotes da ficha moram no cache dela (tag client:<id>, 60 s) — vendido, aparece na hora.
+    revalidateTag(`client:${clienteId}`, { expire: 0 })
     revalidatePath('/admin/clients/[id]', 'page')
     revalidatePath('/[slug]/clients/[id]', 'page')
     revalidatePath('/admin/financeiro')
@@ -430,7 +433,11 @@ export async function previaDoCancelamentoDoPacote(
       p_estorno: null, p_novo: null,
     }), 'calcular o cancelamento do pacote') as Record<string, unknown>
     const previa = lerPreviaDoCancelamento(j)
-    return { previa: { ...previa, pontos: previa.fidelidade ? await pontosDoConjunto(ctx.tenantId!, { pacote: cp.id }) : null } }
+    return { previa: {
+      ...previa, pontos: previa.fidelidade ? await pontosDoConjunto(ctx.tenantId!, { pacote: cp.id }) : null,
+      // A16 da 43ª: o pacote trazido de fora (e o vendido sem a comissão) não tem comissão de venda.
+      comissaoDeVenda: await temComissaoDeVenda(ctx.tenantId!, { pacote: cp.id }),
+    } }
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }

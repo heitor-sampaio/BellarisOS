@@ -727,9 +727,11 @@ plano").
   e volta se a tela se monta de novo ou recarrega, na aba Pacote (A6 da 34ª;
   `lib/vendas/venda-do-pacote-na-aba.ts`, sessionStorage por unidade e
   cliente; vender ou cancelar apaga; o servidor confere tudo de novo).
-  De volta da assinatura ("Continuar"), a tela diz "Conferindo a
-  assinatura…" enquanto o servidor confere — o pedido do contrato não volta à
-  tela nesse meio —, e a conferência que falha diz o erro (D14 da 35ª).
+  De volta da assinatura ("Continuar"), o próprio botão diz "Conferindo a
+  assinatura…", desligado, enquanto o servidor confere (A4 da 43ª, princípio 7:
+  era uma linha discreta acima dos botões; `[data-conferindo-a-assinatura]`)
+  — o pedido do contrato não volta à tela nesse meio —, e a conferência que
+  falha diz o erro (D14 da 35ª). Prova: `tests/vender-pacote-botao-confere-a-assinatura.test.ts`.
   Conferido o ASSINADO, a venda que a pessoa já pediu SEGUE, sem um segundo
   "Vender por" (A20 da 39ª, princípio 3; decisão do Claude, 27/11, pelo
   "assinado, a venda fecha"): o retorno é o de toda venda ("Venda
@@ -874,7 +876,10 @@ plano").
     RETRATO do preço, das sessões e da validade (mudar o catálogo vale para as
     próximas vendas), todas as sessões (`AVAILABLE`) e o dinheiro com
     `financial_transactions.client_package_id`. Recusa se a soma não fechar
-    com o preço.
+    com o preço. Vendido, a ficha mostra o pacote na hora: a venda expira o
+    cache dela na hora (a tag `client:<id>`, `{ expire: 0 }` — A12 da 43ª,
+    princípio 3: ficava ~30 s em "Nenhum pacote ativo"). Prova:
+    `tests/pacote-vendido-aparece-na-ficha.test.ts`.
   - O a receber se quita no financeiro, como qualquer conta a receber. O
     vencimento do "a receber" é OPCIONAL (aqui e no pagamento do contrato):
     sem data, o lançamento nasce sem `due_date` e o contrato diz "a receber"
@@ -979,7 +984,10 @@ plano").
     mais antigo; o último em parte — o lançamento fica com o que sobra e um
     contra-lançamento "Estorno parcial", na mesma forma, leva o resto, com os
     pontos daquele pagamento na proporção) ou CRÉDITO INTERNO
-    (`internal_credits`, "Cancelamento do pacote X"; o dinheiro fica e os
+    (`internal_credits`, "Cancelamento do pacote “X”" — o nome entre aspas,
+    que o do pacote costuma começar com "Pacote" (R43, o Heitor, 28/11: "Pode
+    corrigir, e o teste aceita a troca de trecho (a proposta)"; o plano, igual;
+    `20261221400001`); o dinheiro fica e os
     pontos também — ele não voltou). Ex.: Pix de R$ 3.300, 2 de 6 feitas:
     R$ 2.200 de crédito, ou o Pix fica com R$ 1.100 e R$ 2.200 voltam.
   - **O pagamento que volta EM PARTE: duas formas, quem cancela escolhe**
@@ -1055,7 +1063,11 @@ plano").
     `20261103001303`, a partir de `20261101000252`; o valor novo do enum em
     `20261101000251`).
   - A comissão: a de venda volta na proporção do que foi cancelado, e a de
-    execução das sessões feitas fica (`comissoes.md`). Os pontos seguem o
+    execução das sessões feitas fica (`comissoes.md`). A janela só fala da
+    comissão de venda quando a venda tem a linha dela (A16 da 43ª, CQ-07: o
+    pacote de antes não tem, nem a venda sem a comissão ligada; vale no plano;
+    `temComissaoDeVenda`, `fimDoCancelamento`). Prova:
+    `tests/cancelar-pacote-comissao-de-venda-so-quando-ha.test.ts`. Os pontos seguem o
     estorno (`fidelidade.md`). Nas Vendas, o pacote vale o usado
     (`indicadores.md`).
   - Na ficha, o pacote cancelado sai do "Tratamento em andamento" e entra no
@@ -2708,6 +2720,15 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
         tem maquininha — migration `20261112006709` — e aparece como
         "Cartão", `fechamento-do-dia-tela.tsx` e `csv-da-contadora.ts`), na
         tela e no CSV.
+        **A despesa no cartão não sai da forma da maquininha** (D3 da 43ª;
+        FC-15, MQ-15, princípio 3; decisão do Claude, 28/11): o "Conserto da
+        maca" de R$ 270 no débito da rede deixava o "Débito registrado" em
+        R$ 150 contra os R$ 420 da maquininha. A despesa no crédito ou no
+        débito (e o estorno dela) é a linha própria "Cartão" do Fechamento
+        (a chave `CARTAO` de `metrics_fechamento_do_dia`, em
+        `FORMAS_SEM_CONFERENCIA`: não se confere), e o cartão por maquininha
+        e bandeira é só o que passou nela (migration `20261221700001`). Prova:
+        `tests/fechamento-despesa-no-cartao-a-parte.test.ts`.
       - Prova: `e2e/maquininhas-f67.spec.ts`, `tests/maquininhas.test.ts`; os
         specs das taxas leem pela `e2e/apoio/maquininha.ts`.
       - **A rede cadastra as maquininhas que usa** (Stone, Mercado Pago…):
@@ -3265,13 +3286,12 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     pagamento (o contrato assinado para ele fica; `prepararDocumentosDoCheckout`
     confere). Fechar ou cancelar o checkout o apaga. Prova:
     `e2e/financeiro-atritos-da-7.spec.ts` ("A45").
-- **A assinatura que trava o checkout diz de onde vem a exigência** (A28 da 10ª
-  simulação, 2026-11-10; princípio 1): com um documento que "Bloqueia" sem
-  assinatura, o passo da documentação diz "Quem exige a assinatura de “Contrato
-  do plano” é o modelo do documento: em Configurações → Documentos, a rede
-  escolhe se ele “Bloqueia” o checkout ou “Só avisa”." (`textoDaExigenciaDoModelo`,
-  `lib/checkout/exigencia-do-modelo.ts`, `[data-exigencia-do-modelo]`). Prova:
-  `tests/checkout-exigencia-do-modelo.test.ts`.
+- **A assinatura que trava o checkout se diz pelo botão** ("Falta assinar: …",
+  com o "Colher assinatura" em cada documento). O parágrafo da A28 da 10ª
+  ("Quem exige a assinatura de “X” é o modelo do documento: em Configurações →
+  Documentos…") saiu na A11 da 43ª: explicava a tela (o Heitor, 2026-11-26:
+  "Ser intuitivo é justamente o contrario, ser facil de usar mesmo sem muitas
+  explicações."). Prova: `tests/documentos-nomes-da-ficha-e-da-documentacao.test.ts`.
 - **O checkout do plano diz o que fica sem data e confirma ao concluir** (A37
   da 8ª simulação, 2026-11-06; princípio 3). O "Receber o plano" do PDV — o
   único que abre o checkout — não agenda as sessões (DP-01: elas se agendam

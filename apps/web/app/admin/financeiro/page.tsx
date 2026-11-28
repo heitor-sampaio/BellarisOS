@@ -1,6 +1,7 @@
 import { nomesDasMaquininhas } from '@/lib/financeiro/vezes-da-rede'
 import { maquininhaDoRotulo } from '@/lib/financeiro/formas'
 import { maquininhaDosEstornos } from '@/lib/financeiro/maquininha-do-estorno'
+import { despesasDasComissoes } from '@/lib/financeiro/despesa-das-comissoes'
 import { notaDoPagamentoQueVoltou, notaDoUsoDeCredito, type LancamentoParaNota } from '@/lib/financeiro/notas-do-lancamento'
 import { creditoDasDevolucoesDosLancamentos } from '@/lib/financeiro/devolucao-em-credito'
 import { redirect } from 'next/navigation'
@@ -258,7 +259,7 @@ export default async function AdminFinanceiroPage({
   const descontos = await descontosDosLancamentos(txs)
   // A23 e A31 da 10ª: o pago com voucher/pontos e a taxa e o líquido de cada receita (do banco).
   // A44 da 12ª: o desconto em reais e a profissional de cada lançamento, para o CSV.
-  const [semDinheiro, taxas, extras, maquininhas, maquininhaDoEstorno, emCredito] = await Promise.all([
+  const [semDinheiro, taxas, extras, maquininhas, maquininhaDoEstorno, emCredito, dasComissoes] = await Promise.all([
     pagosSemDinheiro(txs as unknown as LancamentoSemDinheiro[]),
     getTaxaDosLancamentos(ctx.tenantId!, txs.map(t => t.id)),
     extrasDoCsv(ctx.tenantId!, txs as unknown as LancamentoParaOCsv[]),
@@ -268,6 +269,8 @@ export default async function AdminFinanceiroPage({
     maquininhaDosEstornos(ctx.tenantId!, txs.filter(t => t.category === 'Estorno' && !t.maquininha_id).map(t => t.id)),
     // D6 da 41ª (EX-11): a parte do pagamento que virou crédito interno na devolução de parte da venda.
     creditoDasDevolucoesDosLancamentos(ctx.tenantId!, txs as unknown as { product_sale_id?: string | null }[]),
+    // A3 da 43ª (CF-17): a despesa paga de um fechamento de comissões só se estorna pelo fechamento.
+    despesasDasComissoes(ctx.tenantId!, txs.filter(t => t.type === 'EXPENSE' && t.is_paid).map(t => t.id)),
   ])
   // PD-03: o pago com pontos ou voucher embaixo da forma também com dinheiro junto (como na ficha, D10 da 42ª);
   // o R$ 0 segue no `pagosSemDinheiro`, que decide o "Desfazer o pagamento". Desligado, nada (fidelidade.md).
@@ -281,6 +284,7 @@ export default async function AdminFinanceiroPage({
     maquininha_nome: maquininhaDoRotulo(maquininhas, maquininha_id ?? maquininhaDoEstorno[t.id]),
     desconto_texto: descontos[t.id] ?? null,
     pago_sem_dinheiro: semDinheiro[t.id] ?? null,
+    do_fechamento_das_comissoes: dasComissoes.has(t.id),
     pago_com_fidelidade: comFidelidade[t.id] ?? null,
     // A36 e A37 da 11ª: o pago e o estornado em parte; o uso do crédito não é receita.
     // D6 da 41ª: e a parte que virou crédito interno na devolução de parte da venda.

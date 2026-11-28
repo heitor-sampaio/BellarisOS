@@ -137,6 +137,46 @@ test('C60: Relatórios em "Ver" sem aba é recusado; com aba, a matriz e as abas
   }
 })
 
+// LO-06 (A7 da 43ª): "a próxima navegação ou o recarregar desenham o menu novo". A navegação do Next mantém o
+// layout, e o menu ficava o de antes até recarregar. Escrito, não rodado.
+test('LO-06: a matriz do cargo muda com a sessão aberta, e a próxima navegação desenha o menu novo, sem recarregar', async ({ browser }) => {
+  const b = db()
+  const dona = await criarMembro(`f70md${marca}`, { tenant: rede!.tenantId, donoDaRede: true, rotulo: 'Dona do menu', permissoes: [] })
+  await b.from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede!.tenantId)
+  const quem = await criarMembro(`f70mn${marca}`, {
+    tenant: rede!.tenantId, branchId: rede!.branchId, rotulo: 'Agenda e depois relatórios', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }],
+  })
+  const aberta = await browser.newContext({ storageState: quem.estado })
+  try {
+    const p = await aberta.newPage()
+    await p.goto(`/${slug}/agenda`)
+    const menu = p.locator('aside nav')
+    await expect(menu.getByRole('link', { name: 'Dashboard' })).toHaveCount(1)
+    await expect(menu.getByRole('link', { name: 'Relatórios' })).toHaveCount(0)
+    await p.evaluate(() => { (window as unknown as { semRecarregar?: boolean }).semRecarregar = true })
+
+    await como(browser, dona.estado, async d => {
+      const r = await chamarAcaoComFormulario(d, 'actions/permissions.ts', 'saveRolePermissions', '/admin/settings?tab=permissions', [undefined], {
+        roleId: quem.roleId, 'level:agenda': 'VIEW', 'scope:agenda': 'ALL', 'level:reports': 'VIEW', 'scope:reports': 'ALL', 'report:vendas': 'on',
+      })
+      // O retorno da action é a linha `1:` do payload (o resto é a página, que tem "error" nos props do router).
+      expect(r.texto).toMatch(/(^|\n)1:\{"success":true\}/)
+    })
+    const { data: rel } = await b.from('role_permissions').select('level').eq('role_id', quem.roleId).eq('module', 'reports').maybeSingle<{ level: string }>()
+    expect(rel?.level, 'o cargo ganhou os Relatórios').toBe('VIEW')
+
+    // A próxima navegação, pelo menu, sem recarregar a página.
+    await menu.getByRole('link', { name: 'Dashboard' }).click()
+    await expect(p).toHaveURL(new RegExp(`/${slug}/dashboard`))
+    await expect(menu.getByRole('link', { name: 'Relatórios' }), 'o menu novo, depois da navegação').toHaveCount(1)
+    expect(await p.evaluate(() => (window as unknown as { semRecarregar?: boolean }).semRecarregar), 'sem recarregar').toBe(true)
+  } finally {
+    await aberta.close()
+    await quem.limpar()
+    await dona.limpar()
+  }
+})
+
 test('C62: ninguém dá um cargo com mais acesso que o próprio', async ({ browser }) => {
   const b = db()
   const rh = await criarMembro(`f70rh${marca}`, {

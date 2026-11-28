@@ -17,6 +17,8 @@ import { UmaUnidadeProvider } from '@/components/shared/uma-unidade'
 import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
 import { getCachedRede, getCachedTodasAsUnidades } from '@/lib/cached-queries'
 import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
+import { MenuEmDia } from '@/components/shared/menu-em-dia'
+import { assinaturaDoMenu } from '@/lib/sessao/assinatura-do-menu'
 import { FusoProvider } from '@/components/shared/fuso'
 import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 import { saudacao } from '@/lib/saudacao'
@@ -76,6 +78,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <FusoProvider fuso={fuso}>
     <UnidadesDesativadasProvider nomes={desativadas}>
     <SidebarProvider>
+      {/* LO-06 (A7 da 43ª): a próxima navegação desenha o menu novo quando o cargo muda. */}
+      {!ctx.suporte && <MenuEmDia assinatura={assinaturaDoMenu(ctx)} />}
       <AdminSidebar permissions={ctx.permissions} pessoa={{ atende: ctx.providesServices, comissaoDeVenda: ctx.comissaoDeVenda }} plano={ctx.plano ?? null} adminDaRede={mexeNaConfigDaRede(ctx)} />
       <Topbar userName={ctx.userName || 'Usuário'} userRole={ctx.role} roleLabel={ctx.roleLabel} internalUserId={ctx.internalUserId} initialUnread={initialUnread} slug={null} permissions={ctx.permissions} pessoa={{ atende: ctx.providesServices, comissaoDeVenda: ctx.comissaoDeVenda }} plano={ctx.plano ?? null} agendaPropria={vistaPessoal(ctx, 'agenda') !== null} adminDaRede={mexeNaConfigDaRede(ctx)} suporte={ctx.suporte ?? null} assinatura={await avisoDaAssinatura(ctx)} saudacaoInicial={saudacao(new Date(), fuso)} />
       <main style={{

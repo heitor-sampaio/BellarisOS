@@ -318,11 +318,13 @@ export function CamposDoPagamento({ estado, aoMudar, formas, total, doQue = 'da 
                 {opcoesDeVezes.map(n => <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x`}</option>)}
               </select>
               {pagaAgora !== undefined && <DicaDasVezes total={pagaAgora} vezes={estado.vezes} opcoes={opcoesDeVezes} />}
-              <AvisoDaTaxa vezes={estado.vezes} bandeira={estado.bandeira} maquininha={estado.maquininha} total={pagaAgora} />
+              {/* D7 da 43ª (MQ-15): o combinado do contrato só vira texto — nada se cobra, e a
+                  maquininha se escolhe quando o dinheiro entra: a taxa não é deste momento. */}
+              {!semMaquininha && <AvisoDaTaxa vezes={estado.vezes} bandeira={estado.bandeira} maquininha={estado.maquininha} total={pagaAgora} />}
             </label>
           )}
           <CampoDaBandeira metodo={estado.metodo} valor={estado.bandeira} aoMudar={v => mudar({ bandeira: v })} maquininha={estado.maquininha}
-            total={pagaAgora} />
+            total={pagaAgora} semTaxa={semMaquininha} />
         </div>
       )}
       {/* A7 da 22ª (princípio 7): no à vista, o "+ Outra forma" aparece antes de escolher a primeira forma. */}

@@ -75,6 +75,18 @@ export interface PreviaDoCancelamento {
    * a janela avisa que o estorno pode deixar o saldo negativo. Nulo sem fidelidade.
    */
   pontos?:       { ganhos: number; saldo: number } | null
+  /**
+   * A16 da 43ª (comissoes:CQ-07): a venda tem a linha de comissão de venda — o
+   * pacote trazido de fora não tem, nem a venda sem a comissão ligada.
+   */
+  comissaoDeVenda?: boolean
+}
+
+/** O fim da janela de cancelar: a comissão de venda só entra quando a venda a tem (A16 da 43ª). */
+export function fimDoCancelamento(comissaoDeVenda: boolean): string {
+  return comissaoDeVenda
+    ? 'As sessões que sobraram deixam de valer, e a comissão de venda volta na proporção do que caiu. Não se desfaz.'
+    : 'As sessões que sobraram deixam de valer. Não se desfaz.'
 }
 
 const num = (v: unknown) => Math.round(Number(v ?? 0) * 100) / 100

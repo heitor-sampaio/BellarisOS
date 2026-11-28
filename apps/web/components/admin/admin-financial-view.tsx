@@ -117,6 +117,8 @@ interface AdminTx {
   appointment_id?: string | null
   /** A23 da 10ª: o pagamento de R$ 0, todo com o voucher ou os pontos. */
   pago_sem_dinheiro?: string | null
+  /** A3 da 43ª (CF-17): a despesa paga de um fechamento de comissões vivo — estorna-se pelo fechamento. */
+  do_fechamento_das_comissoes?: boolean
   /** PD-03: o pago com pontos/voucher embaixo da forma, também com dinheiro junto. */
   pago_com_fidelidade?: string | null
   /** A31 da 10ª: a taxa e o líquido da receita paga (do banco), o fornecedor e a nota — para o CSV. */
@@ -558,7 +560,7 @@ export function AdminFinancialView({
             )}
             {/* Estorno não se estorna (o banco também recusa): desfazer é
                 coisa do financeiro, não um segundo clique. */}
-            {t.is_paid && !estornada && t.category !== 'Estorno' && canReverse && (
+            {t.is_paid && !estornada && t.category !== 'Estorno' && !t.do_fechamento_das_comissoes && canReverse && (
               // A32 da 9ª: o "Estornar" com texto (era só o ícone de 30 px).
               <button type="button" data-estornar title={t.pago_sem_dinheiro ? 'Desfazer o pagamento' : 'Estornar'} onClick={() => t.credito_vendido_id
                 ? setCreditoAEstornar({ id: t.id, descricao: t.description })

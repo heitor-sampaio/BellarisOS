@@ -68,6 +68,8 @@ export interface Transaction {
   cliente?: { name: string } | null
   /** A23 da 10ª: o pagamento de R$ 0, todo com o voucher ou os pontos ("Pago com pontos: R$ 180,00"). */
   pago_sem_dinheiro?: string | null
+  /** A3 da 43ª (CF-17): a despesa paga de um fechamento de comissões vivo — estorna-se pelo fechamento. */
+  do_fechamento_das_comissoes?: boolean
   /** PD-03: o pago com pontos/voucher embaixo da forma, também com dinheiro junto. */
   pago_com_fidelidade?: string | null
   /** A31 da 10ª: a taxa da maquininha e o líquido da receita paga (do banco), o fornecedor e a nota — para o CSV. */
@@ -541,7 +543,7 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
                           </a>
                           )}
                           {/* Estorno não se estorna — o banco também recusa. */}
-                          {!tx.formasDaParcela && tx.is_paid && !isReversed && tx.category !== 'Estorno' && canReverse && (
+                          {!tx.formasDaParcela && tx.is_paid && !isReversed && tx.category !== 'Estorno' && !tx.do_fechamento_das_comissoes && canReverse && (
                             // A32 da 9ª: o "Estornar" com texto (era só o ícone de 30 px).
                             <button type="button" data-estornar title={tx.pago_sem_dinheiro ? "Desfazer o pagamento" : "Estornar"} onClick={() => tx.credito_vendido_id
                               ? setCreditoAEstornar({ id: tx.id, descricao: tx.description })

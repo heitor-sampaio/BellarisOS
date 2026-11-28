@@ -17,6 +17,8 @@ import { nomeParaSaudar } from '@/lib/saudacao'
 import { nomesDaAssinatura } from '@/lib/documentos/nome-de-quem-assinou'
 import { useFuso } from '@/components/shared/fuso'
 import { textoDeQuemCompletaOCadastro } from '@/lib/equipe/textos-de-quem-pode'
+import { DefinirPagamento } from '@/components/shared/definir-pagamento'
+import type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
 
 /**
  * Colher a assinatura na clínica.
@@ -46,6 +48,12 @@ export interface DocumentoNaTela {
   imagens?:    Record<string, string>
   assinatura:  { png: string | null; nome: string; em: string; canal: string; conduzidoPor: string | null } | null
   motivo:      string | null
+  /**
+   * D4 da 43ª (DG-01: "Quem colhe a assinatura define o pagamento antes dela"):
+   * o contrato do procedimento que cita o pagamento — o combinado (nulo: não
+   * combinado) e o preço do atendimento, sobre o qual se dá o desconto.
+   */
+  pagamento?:  { pede: boolean; valor: PagamentoDoPlano | null; desconto: number; total: number | null } | null
 }
 
 type Modo = 'equipe' | 'cliente' | 'papel' | 'feito'
@@ -117,6 +125,14 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, podeC
   // "Documentos assinados" e mostrava o termo com o quadro de assinar de novo.
   const [entregues, setEntregues] = useState<JuntosNaAssinatura['documentos'] | null>(null)
   const [enviando, iniciar] = useTransition()
+  // D4 da 43ª: o formulário do pagamento do contrato, aberto aqui.
+  const [pagando, setPagando] = useState(false)
+
+  // O que falta no CADASTRO (a lista e o "Completar o cadastro") e o pagamento
+  // do contrato, que não se completa no cadastro: define-se aqui (D4 da 43ª).
+  const doDoCadastro = doc.faltando.filter(f => !f.startsWith('Pagamento ·'))
+  const faltaOPagamento = doc.faltando.some(f => f.startsWith('Pagamento ·'))
+  const podeDefinirOPagamento = !noPortal && podeColher && faltaOPagamento && !!doc.pagamento?.pede
 
   const arvore = useMemo<DocumentoResolvido | null>(() => (doc.conteudo ? lerConteudo(doc.conteudo) : null), [doc.conteudo])
 
@@ -340,22 +356,30 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, podeC
           {doc.status === 'INCOMPLETO' && (
             <div className="card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
               <span className="chip chip-warning" style={{ alignSelf: 'flex-start' }}>Faltam dados</span>
-              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
-                {noPortal ? 'A equipe ainda está completando os seus dados para este documento. O aviso chega aqui quando ele estiver pronto para assinar.' : 'Complete o cadastro do cliente para gerar o documento:'}
-              </p>
-              {!noPortal && <ul style={{ paddingLeft: 18, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', listStyle: 'disc' }}>
-                {doc.faltando.map(f => <li key={f}>{f}</li>)}
-              </ul>}
-              {!noPortal && doc.faltando.some(f => f.startsWith('Pagamento ·')) && (
-                <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                  O pagamento do contrato se define na ficha do cliente, em Documentos (“Definir pagamento”).
+              {(noPortal || doDoCadastro.length > 0) && (
+                <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
+                  {noPortal ? 'A equipe ainda está completando os seus dados para este documento. O aviso chega aqui quando ele estiver pronto para assinar.' : 'Complete o cadastro do cliente para gerar o documento:'}
                 </p>
+              )}
+              {!noPortal && doDoCadastro.length > 0 && <ul style={{ paddingLeft: 18, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', listStyle: 'disc' }}>
+                {doDoCadastro.map(f => <li key={f}>{f}</li>)}
+              </ul>}
+              {/* D4 da 43ª (DG-01, DQ-06): falta o pagamento combinado — quem colhe o define aqui. */}
+              {!noPortal && faltaOPagamento && (
+                <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>Falta definir o pagamento do contrato.</p>
+              )}
+              {podeDefinirOPagamento && pagando && doc.pagamento && (
+                <DefinirPagamento documentoId={doc.id} atual={doc.pagamento.valor} descontoAtual={doc.pagamento.desconto}
+                  total={doc.pagamento.total} aoTerminar={() => setPagando(false)} />
               )}
               {podeColher && (
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {rotaDoCliente && podeCompletar && <Link href={`${rotaDoCliente}?aba=dados`} className="btn-secondary">Completar o cadastro</Link>}
+                  {podeDefinirOPagamento && !pagando && (
+                    <button type="button" className="btn-primary" data-definir-pagamento-do-contrato onClick={() => setPagando(true)}>Definir pagamento</button>
+                  )}
+                  {rotaDoCliente && podeCompletar && doDoCadastro.length > 0 && <Link href={`${rotaDoCliente}?aba=dados`} className="btn-secondary">Completar o cadastro</Link>}
                   {/* A10 da 20ª: quem colhe sem editar os Clientes lê quem completa. */}
-                  {!podeCompletar && quemCompleta && (
+                  {!podeCompletar && quemCompleta && doDoCadastro.length > 0 && (
                     <span data-quem-completa style={{ alignSelf: 'center', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
                       {textoDeQuemCompletaOCadastro(quemCompleta)}
                     </span>

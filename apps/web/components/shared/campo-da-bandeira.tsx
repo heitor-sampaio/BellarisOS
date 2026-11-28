@@ -14,7 +14,7 @@ import { useMaquininhas } from '@/components/shared/use-maquininhas'
  *   nela.
  * Com `name`/`nameDaMaquininha`, vão no FormData do formulário.
  */
-export function CampoDaBandeira({ metodo, valor, aoMudar, name, rotuloComoLabel = 'field-label', estiloDoRotulo, gap = 4, total, maquininha, aoMudarMaquininha, nameDaMaquininha }: {
+export function CampoDaBandeira({ metodo, valor, aoMudar, name, rotuloComoLabel = 'field-label', estiloDoRotulo, gap = 4, total, maquininha, aoMudarMaquininha, nameDaMaquininha, semTaxa = false }: {
   metodo: string | null | undefined
   valor: string
   aoMudar: (v: string) => void
@@ -30,6 +30,11 @@ export function CampoDaBandeira({ metodo, valor, aoMudar, name, rotuloComoLabel 
   maquininha?: string
   aoMudarMaquininha?: (v: string) => void
   nameDaMaquininha?: string
+  /**
+   * D7 da 43ª (MQ-15): o pagamento combinado do contrato não recebe nada — a
+   * maquininha se escolhe quando o dinheiro entra, e a taxa do débito não é dele.
+   */
+  semTaxa?: boolean
 }) {
   if (!temBandeira(metodo)) return null
   return (
@@ -45,7 +50,7 @@ export function CampoDaBandeira({ metodo, valor, aoMudar, name, rotuloComoLabel 
           {BANDEIRAS.map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
         </select>
         {/* A34 da 9ª: o débito diz a taxa que vai valer (a da bandeira, senão a da maquininha). */}
-        {metodo === 'DEBIT_CARD' && <AvisoDaTaxaDoDebito bandeira={valor} total={total} maquininha={maquininha} />}
+        {metodo === 'DEBIT_CARD' && !semTaxa && <AvisoDaTaxaDoDebito bandeira={valor} total={total} maquininha={maquininha} />}
       </label>
     </>
   )
