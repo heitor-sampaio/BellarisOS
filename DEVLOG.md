@@ -1853,10 +1853,15 @@ diz o contrário, as decisões são do Claude (28/11), pelos princípios e pelo 
 
 **Testes alterados:** nenhum. Nenhum apagado.
 
-**Pendente para o arremate:** a dica da tela do atendimento ("A ficha de saúde, a evolução e a ficha digitadas ficam
-guardadas só nesta aba até o 'Finalizar atendimento'") ficou em parte desatualizada com o "Salvar evolução"; um teste da
-21ª exige a frase vizinha. E a gravação da ficha de saúde (`gravarAnamneseGeral`) em duas idas ao banco: a leitura da
-Auditoria já as junta.
+**O arremate** (feito depois do deploy, decisões do Claude, 28/11):
+- A ficha de saúde respondida grava a ficha no prontuário e fecha o pendente da cliente numa transação só
+  (`pre_atendimento_gravar_ficha_de_saude`, `20261220900001`; CLAUDE.md §14). Eram duas idas ao banco: falhando a
+  segunda, a cliente seria chamada a responder de novo.
+- A entrada da cliente na Auditoria grava "A cliente, pelo portal" e a ficha, sem o nome dela (`20261220900002`;
+  "o nome da cliente se lê na hora de mostrar", `docs/regras/plataforma.md`). As linhas de antes ficam (a Auditoria
+  não se altera), e a tela já as mostra pelo nome lido da ficha.
+- Saiu a dica do aviso do rascunho no atendimento, que explicava a tela e ficou errada com o "Salvar evolução"; o aviso
+  curto do risco fica.
 
 **A completa** (contra o build dos três apps): isolados 1.807 passaram, 1 falhou e 7 não rodaram (o resto do bloco em série); compartilhados 909 passaram e 2 pularam. A falha foi `atendimento-ficha-planejador-injetaveis:174`, que passou de novo sem mudança nenhuma (9 de 9), como na 40ª: instável. Os E2E da rodada passaram antes (198 + 37). Vitest: 823 arquivos, sem falha.
 

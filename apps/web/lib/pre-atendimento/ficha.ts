@@ -94,17 +94,13 @@ export async function gravarAnamneseGeral(admin: Admin, o: {
     origem: o.origem,
     respondidoPor: o.porUsuario,
   }
-  await gravar(admin.from('medical_records').upsert(
-    { client_id: o.clientId, general_anamnesis: anamnese },
-    { onConflict: 'client_id' },
-  ), 'salvar a ficha de saúde')
+  // A ficha no prontuário e o pendente fechado valem juntos: uma função, uma
+  // transação (CLAUDE.md §14; migration 20261220900001).
+  await gravar(admin.rpc('pre_atendimento_gravar_ficha_de_saude', {
+    p_tenant: o.tenantId, p_client: o.clientId, p_anamnese: anamnese,
+    p_fechar: temResposta, p_origem: o.origem, p_por: o.porUsuario,
+  }), 'salvar a ficha de saúde')
   if (!temResposta) return anamnese
-  await gravar(admin.from('pre_atendimentos')
-    .update({
-      status: 'RESPONDIDO', respostas: anamnese.respostas, respondido_em: anamnese.respondidoEm,
-      origem: o.origem, respondido_por: o.porUsuario, updated_at: anamnese.respondidoEm,
-    })
-    .eq('client_id', o.clientId).eq('tenant_id', o.tenantId).eq('status', 'PENDENTE'), 'fechar a ficha de saúde')
   if (pendenteAntes?.appointment_id) await avisarAProfissional(admin, pendenteAntes.appointment_id, anamnese)
   return anamnese
 }

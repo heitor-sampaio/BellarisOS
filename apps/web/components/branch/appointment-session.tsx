@@ -2033,13 +2033,10 @@ export function AppointmentSession({
             A tela diz isso, em vez de a profissional descobrir ao trocar de aparelho. */}
         {status === 'IN_PROGRESS' && podeRascunhar && (
           <p data-aviso-do-rascunho role="note" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-            {/* 2026-11-16 ("A explicação mora na dica"): o risco (perder o
-                digitado) fica à vista, curto; o detalhe, na dica. */}
-            {/* A14 da 21ª: o aviso diz o que se perde, não só onde fica. */}
+            {/* A14 da 21ª: o aviso diz o que se perde, não só onde fica. A dica
+                que explicava a tela saiu (28/11: intuitivo não é explicativo, e
+                ela ficou errada com o "Salvar evolução"). */}
             <span>Fica só nesta aba: fechar a aba antes do “Finalizar atendimento” perde o que foi digitado.</span>
-            <Dica rotulo="Sobre o que se digita aqui">
-              A ficha de saúde, a evolução e a ficha digitadas ficam guardadas só nesta aba até o “Finalizar atendimento”: recarregar mantém; fechar a aba ou abrir em outro aparelho, não.
-            </Dica>
           </p>
         )}
 
