@@ -828,3 +828,30 @@ O que você precisa saber:
 - **"Enviar a ficha" aparece em qualquer situação do agendamento**, como a regra diz ("sempre").
 - **Três perguntas novas na página** (R42, R43 e R44): cada uma é uma correção pequena que mudaria um teste antigo.
 - **Nenhum teste mudou nem foi apagado.**
+- **Depois do deploy, três arremates da 41ª:** a ficha de saúde respondida grava tudo de uma vez (antes, uma falha no
+  meio chamaria a cliente a responder de novo); a Auditoria não guarda mais o nome da cliente quando ela entra no app
+  (a tela continua mostrando, lido da ficha); e saiu a dica do rascunho do atendimento, que explicava a tela.
+
+## 24. A 42ª simulação (28/11)
+
+Cinco times e seis redes novas, sem a conta da plataforma. Os temas foram a agenda de um dia apertado, a fidelidade por
+procedimento, o plano de tratamento numa rede de duas unidades, a mesma cliente em duas redes e o estoque com lotes. O
+dinheiro, as taxas e as comissões das seis bateram, o estoque bateu movimento a movimento, e as duas redes da mesma
+cliente não viram nada uma da outra. Foram 12 defeitos, nenhum de segurança. O resumo está no DEVLOG (28/11, (2)).
+
+O que você precisa saber:
+- **Os pontos por procedimento descontam o voucher e os pontos usados** no atendimento avulso, como já faziam no pacote
+  e no plano (a Massagem de R$ 140 paga com um voucher de R$ 15 dava 55 pontos; agora dá 49).
+- **"Devolver parte da venda" diz os pontos que saem e o saldo de antes e de depois**, como o estorno inteiro.
+- **A ficha não mostra mais o plano de uma unidade a quem não cuida dela.** Ver e agendar o plano fechado continuam na
+  rede inteira (a cliente é da rede).
+- **O plano com todas as sessões feitas aparece como "Concluído"** em Tratamentos; antes ficava "Em andamento" para
+  sempre.
+- **A agenda abre e fecha no horário daquele dia.** O sábado que fecha às 09:30 abria até meia-noite.
+- **O Histórico do app mostra a hora real do atendimento**, e a transferência do estoque diz o que a unidade tem de
+  verdade ("1,9 frasco (57 ml)").
+- **No Receber dividido em duas formas, o aviso do crédito, as parcelas e a taxa do cartão olham só a parte de cada
+  forma**, não o plano inteiro.
+- **Duas perguntas novas na página** (R45 e R46): a ocupação de quem atende além do próprio horário parar em 100%, e se
+  o plano pago com o crédito que voltou de um cancelamento conta em Vendas.
+- **Nenhum teste mudou nem foi apagado.**

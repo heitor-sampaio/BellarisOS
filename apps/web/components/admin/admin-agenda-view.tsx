@@ -14,7 +14,7 @@ import { SeloDaFicha } from '@/components/shared/selo-da-ficha'
 import { SeloDoMenor, type MenorDoAgendamento } from '@/components/shared/selo-do-menor'
 import { estenderJanela, rolagemDaGrade } from '@/lib/agenda/grade'
 import { agendamentosNoDia, janelaComOsTrechos, textoDoQueContinua, trechoDoAgendamentoNoDia, type TrechoDoAgendamento } from '@/lib/agenda/trecho-do-agendamento'
-import { intervalosDoDia, diaDaSemana, forasDoHorario, foraDoHorarioDaUnidade, type Horario } from '@/lib/agenda/horario'
+import { intervalosDoDia, diaDaSemana, forasDoHorario, foraDoHorarioDaUnidade, janelaDaGrade, type Horario } from '@/lib/agenda/horario'
 import { bloqueioNoDia, trechoNoDia, type BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
 import { BlocoDoBloqueio, BotaoBloquearHorario, EtiquetaDoBloqueio } from '@/components/shared/bloqueio-da-agenda'
 import { textoDoConcluido } from '@/lib/agenda/hora-real'
@@ -237,8 +237,13 @@ function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioV
   // Os do dia: os que começam nele e os que continuam de antes (25/11).
   const doDia = agendamentosDoDia(appointments, dia)
   const trechos = new Map(doDia.map(x => [x.a.id, x.trecho]))
+  // AG-03 (D12 da 42ª): a grade do DIA mostrado — o mais cedo e o mais tarde
+  // entre as unidades naquele dia, não na semana. Sem o horário das colunas, a do servidor.
+  const janelaDoDiaMostrado = branches.length && branches.every(b => b.horario !== undefined)
+    ? janelaDaGrade(branches.map(b => b.horario ?? null), diaDaSemana(dia))
+    : janela
   const { inicio, fim } = janelaComOsTrechos(
-    estenderJanela(janela, doDia.filter(x => !x.trecho.continuaDeAntes).map(({ a }) => ({ start: a.scheduled_at, durationMin: apptDuration(a) }))),
+    estenderJanela(janelaDoDiaMostrado, doDia.filter(x => !x.trecho.continuaDeAntes).map(({ a }) => ({ start: a.scheduled_at, durationMin: apptDuration(a) }))),
     doDia.map(x => x.trecho),
   )
   const HOURS  = Array.from({ length: fim - inicio }, (_, i) => i + inicio)
@@ -279,10 +284,10 @@ function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioV
     if (!rolagemRef.current) return
     rolagemRef.current.scrollTop = rolagemDaGrade({
       ehHoje, horaAgora: naParede(new Date(), fusoDaTela).getHours(), startHour: inicio, hourPx: HOUR_H,
-      aberturaEmMin: janela.inicio * 60, primeiroEmMin,
+      aberturaEmMin: janelaDoDiaMostrado.inicio * 60, primeiroEmMin,
     })
     rolagemRef.current.dataset.rolagem = 'pronta'
-  }, [dia, ehHoje, inicio, janela.inicio, primeiroEmMin, fusoDaTela])
+  }, [dia, ehHoje, inicio, janelaDoDiaMostrado.inicio, primeiroEmMin, fusoDaTela])
 
   return (
     <div ref={rolagemRef} data-grade-da-rede style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '75vh', borderRadius: 'var(--radius-field-token)', border: '1px solid var(--border)' }}>

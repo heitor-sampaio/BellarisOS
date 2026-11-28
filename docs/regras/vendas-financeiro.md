@@ -1087,7 +1087,11 @@ plano").
     Gerenciar (a permissão do pacote), com a unidade do plano ao alcance
     (`cancelarPlano` e `previaDoCancelamentoDoPlano`, `actions/treatment-plans.ts`).
     Quem recebe e não cancela lê "Cancelar o plano é de quem tem o Financeiro em
-    Gerenciar: …" (`quemDesfazNoCaixa`). **Também na página do plano**
+    Gerenciar: …" (`quemDesfazNoCaixa`), com os nomes de quem alcança a
+    unidade DO PLANO (ou do pacote), não a do portal (`quemCancelaNosCartoes`,
+    `lib/plano-de-tratamento/quem-cancela-na-ficha.ts`; D5 da 42ª, DP-08: o
+    plano de Arapongas aberto no portal de Apucarana nomeava só quem não pode
+    cancelá-lo). **Também na página do plano**
     (`/planejamentos/<id>`, A27 da 10ª simulação, 2026-11-10: os dois times
     procuraram ali): o resumo do plano fechado tem "Cancelar plano"
     (`[data-cancelar-plano]`, `getResumoDoPlano` devolve `podeCancelar`) ou, para
@@ -2426,7 +2430,11 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   41ª): a linha do pagamento, a parcela em várias formas e o recibo dizem
   "Crédito em <a rede>" (`formaDoLancamento({ credito })`,
   `formaERecibosDaLinha(…, credito)`); a equipe segue "Crédito interno".
-  Prova: `tests/app-credito-com-o-nome-da-rede.test.ts`.
+  Prova: `tests/app-credito-com-o-nome-da-rede.test.ts`. **Também o texto que
+  o banco devolve** (A4 da 42ª): a venda de crédito na lista do PDV
+  (`pdv_comandas`) dizia "Crédito na rede"; é "Crédito interno" (migration
+  `20261221300001`), e a trava de `tests/vocabulario-no-texto.test.ts` lê
+  também o SQL.
 - **O "Estorno" da devolução de parte da venda diz para onde volta** (CI-04,
   A7 da 41ª): paga com crédito interno, "volta ao crédito interno dela, a
   forma em que ela pagou"; numa forma, o nome dela ("… (Pix)"); em várias, as
@@ -3478,7 +3486,11 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   pagamento: R$ 170,00", ou que não cobre e quanto falta
   (`[data-saldo-do-credito]`, `SaldoDoCredito`; o saldo do banco,
   `getCreditoInternoDoCliente`, pela action `saldoDoCreditoDaCliente`, de quem
-  recebe). Prova: `e2e/caixa-atritos-da-8.spec.ts`.
+  recebe). Prova: `e2e/caixa-atritos-da-8.spec.ts`. **Dividida a conta, o saldo
+  se compara com a PARTE posta no crédito** (A2 da 42ª; princípios 3 e 7): a 1ª
+  forma fica com o que falta das outras, e é essa parte que se debita; o checkout
+  do plano comparava com o plano inteiro e dizia "recusado" com o Pix cobrindo o
+  resto. Prova: `tests/credito-saldo-na-tela.test.ts`.
 - **O crédito comprado conta no Investido total na compra, e a ficha diz** (A29
   da 10ª simulação, 2026-11-10: logo depois da venda do vale, o LTV foi a R$ 650
   sem nota): com um crédito interno comprado (`internal_credits.credito_vendido_id`),

@@ -202,3 +202,24 @@ test('A34: o estorno da venda inteira depois de uma devolução em parte devolve
   expect(await saldo(serum), 'volta só o sérum que ficou com ela (o já devolvido não volta de novo)').toBe(3)
   expect(await saldo(protetor)).toBe(5)
 })
+
+// ES-02 (fidelidade: a janela do estorno diz os pontos que saem e o saldo de antes e de depois). D7 da 42ª:
+// a devolução de parte dizia só "e os pontos dele saem do saldo". Com a venda de produto pontuando (1 por
+// real), 2 séruns no Pix dão 200; devolver 1 no estorno parcial tira 100.
+test('ES-02: devolver parte da venda diz os pontos que saem e o saldo de antes e de depois', async ({ browser }) => {
+  test.setTimeout(120_000)
+  expect((await db().from('loyalty_configs').upsert({
+    tenant_id: rede!.tenantId, enabled: true, earn_mode: 'POR_REAL', points_per_real: 1, pontua_venda_de_produto: true,
+  }, { onConflict: 'tenant_id' })).error).toBeNull()
+  await como(browser, async p => {
+    const venda = await vender(p, [{ produtoId: serum, quantidade: 2 }], { forma: 'AVISTA', metodo: 'PIX' })
+    const { data: saldoAntes } = await db().rpc('saldo_de_pontos', { p_cliente: cliente })
+    expect(Number(saldoAntes), 'a venda de R$ 200 deu 200 pontos').toBe(200)
+    const { data: item } = await db().from('product_sale_items').select('id').eq('sale_id', venda).single<{ id: string }>()
+    const r = await chamarAcao(p, 'actions/devolucao-de-produto.ts', 'previaDaDevolucao', `/${slug}/financeiro`,
+      [venda, [{ item: item!.id, quantidade: 1 }]])
+    // Um pagamento só, pego em parte: o estorno parcial tira 100; o inteiro tira os 200 e o que fica (R$ 100) dá 100.
+    expect(r.texto).toMatch(/"PARCIAL":"Saem 100 pontos de [^"]+: o saldo dela vai de 200 a 100 pontos\."/)
+    expect(r.texto).toMatch(/"INTEIRO":"Saem 200 pontos de [^"]+, e o que fica, lançado de novo, dá 100 pontos: o saldo dela vai de 200 a 100 pontos\."/)
+  })
+})

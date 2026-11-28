@@ -1,7 +1,7 @@
 import { quemRealizaOsProcedimentos } from '@/lib/procedimentos/quem-realiza'
 import { nomesDosSemInsumo, procedimentosSemInsumoLigado } from '@/lib/procedimentos/sem-insumo'
 import { unidadesParaCriar } from '@/lib/unidades/da-tela'
-import { getTenantContext, can } from '@/lib/auth'
+import { getTenantContext, can, temRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedProductsReference } from '@/lib/cached-queries'
 import { ehInsumo } from '@/lib/estoque/uso'
@@ -124,9 +124,10 @@ export async function CatalogoDeProcedimentos({ termo }: { termo: string }) {
   // Termo e contrato que o procedimento pode ligar — só quem edita precisa.
   const modelos = canEdit ? await opcoesDeModeloParaProcedimento(ctx.tenantId!) : undefined
 
-  // O campo de pontos só existe quando a rede ganha por procedimento.
+  // O campo de pontos só existe quando a rede ganha por procedimento (GA-03) — com o programa ligado ou
+  // ainda desligado: a rede prepara os pontos e liga depois (princípio 6; A1 da 42ª, decisão B-3 do Claude).
   const cfgFidelidade = await configDaRede(ctx.tenantId!, admin)
-  const pontosPorProcedimento = cfgFidelidade.enabled && cfgFidelidade.earn_mode === 'POR_PROCEDIMENTO'
+  const pontosPorProcedimento = temRecurso(ctx, 'fidelidade') && cfgFidelidade.earn_mode === 'POR_PROCEDIMENTO'
 
   const baseProcs = procedures ?? []
 

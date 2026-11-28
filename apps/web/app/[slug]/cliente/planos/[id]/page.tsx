@@ -9,7 +9,7 @@ import { ler } from '@/lib/db'
 import { fusoValido } from '@/lib/unidades/fuso'
 import { getFinanceiroDoPlano } from '@/lib/metrics/plano'
 import { documentosDoPlanoNoPortal } from '@/lib/documentos/leitura'
-import { situacaoDaSessaoNoApp } from '@/lib/plano-de-tratamento/sessao-no-app'
+import { situacaoDaSessaoNoApp, rotaDoAgendarDaSessaoNoApp } from '@/lib/plano-de-tratamento/sessao-no-app'
 import { nomeDaSessao, nomeDoPlanoNoApp, descontoDoPlanoNoApp } from '@/lib/plano-de-tratamento/nome'
 import { combinadoDoPlano, totalComOCombinado } from '@/lib/plano-de-tratamento/desconto-combinado'
 import { propostaVencida, validoAteDaProposta, avisoDaPropostaVencida } from '@/lib/plano-de-tratamento/validade'
@@ -52,12 +52,14 @@ export default async function PlanoDaClientePage({ params, searchParams }: {
   if (!cliente) notFound()
 
   const plano = await ler(admin.from('treatment_plans')
-    .select('id, status, name, desconto, desconto_combinado_tipo, desconto_combinado_valor, created_at, branches!inner(tenant_id), treatment_plan_sessions(id, sort_order, appointments!treatment_plan_sessions_appointment_id_fkey(status, scheduled_at, completed_at), treatment_plan_session_procedures(price, sort_order, procedures(id, name, is_active)))')
+    .select('id, status, name, desconto, desconto_combinado_tipo, desconto_combinado_valor, created_at, branches!inner(tenant_id, slug, is_active), treatment_plan_sessions(id, sort_order, appointments!treatment_plan_sessions_appointment_id_fkey(status, scheduled_at, completed_at), treatment_plan_session_procedures(price, sort_order, procedures(id, name, is_active)))')
     .eq('id', id).eq('client_id', ctx.clientId!).eq('branches.tenant_id', cliente.tenant_id)
     .in('status', ['PROPOSED', 'ACCEPTED', 'COMPLETED'])
     .maybeSingle(), 'buscar o plano') as {
       id: string; status: 'PROPOSED' | 'ACCEPTED' | 'COMPLETED'; name: string | null; desconto: number | null; created_at: string
       desconto_combinado_tipo: string | null; desconto_combinado_valor: number | string | null
+      /** D6 da 42ª: a unidade DO plano — o "Agendar" da sessão abre nela. */
+      branches: { tenant_id: string; slug: string; is_active: boolean } | null
       treatment_plan_sessions: Sessao[]
     } | null
   if (!plano) notFound()
@@ -157,7 +159,7 @@ export default async function PlanoDaClientePage({ params, searchParams }: {
                 </span>
               </div>
               {peloApp && principal && (
-                <Link href={`/${slug}/cliente/agendamentos/novo?procedimento=${principal.id}`} prefetch={false} className="btn-secondary"
+                <Link href={rotaDoAgendarDaSessaoNoApp(slug, plano.branches, principal.id)} prefetch={false} className="btn-secondary"
                   style={{ flexShrink: 0 }}>
                   <CalendarDays size={14} aria-hidden="true" /> Agendar
                 </Link>

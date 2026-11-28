@@ -1774,6 +1774,73 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-28 (2) — A 42ª simulação e as correções dela
+
+O laço segue (o Heitor, 25/11: "quando acabar essa roda já segue as outras e assim vai"). Cinco times e seis redes
+novas, sem a conta da plataforma (o Heitor, 26/11: "Sem a conta"). Os temas foram estes:
+- a agenda de um dia apertado, no Espaço Cambuci (Sinop, UTC−4);
+- a fidelidade por procedimento do começo ao fim, no Studio Uvaia (Patos de Minas);
+- o plano de tratamento numa rede de duas unidades, na Rede Taperebá (Arapongas e Apucarana);
+- a mesma cliente em duas redes, no Ateliê Grumixama e no Espaço Seriguela (Itabira e João Monlevade);
+- o estoque com lotes numa rede de duas unidades, na Rede Butiá (Lajeado e Venâncio Aires).
+
+O dinheiro, as taxas e as comissões bateram nas seis redes, e o estoque com lotes bateu movimento a movimento (34 de 34).
+As duas redes da mesma cliente não viram nada uma da outra. Ficaram 12 defeitos (dois de prioridade ALTA: D1 e D2;
+nenhum de segurança nem regressão da 41ª) e 7 atritos. Salvo onde se diz o contrário, as decisões são do Claude (28/11),
+pelos princípios e pelo catálogo. Duas perguntas foram ao Heitor (R45 e R46), na página das perguntas.
+
+**O que mudou no sistema.**
+- **A fidelidade.**
+  - **Os pontos do atendimento avulso no modo por procedimento saem do dinheiro que entrou** (D1, GA-02): o voucher e os
+    pontos usados saem da base, como no pacote e no plano (a Massagem de R$ 140 com voucher de R$ 15 dava 55 pontos, e
+    não 49). O desconto comercial sai do preço vendido e não tira pontos (`20261221100001`).
+  - **"Devolver parte da venda" diz os pontos que saem e o saldo de antes e de depois** (D7, ES-02), pela mesma conta do
+    estorno inteiro.
+  - A linha da ficha e a da lista do Financeiro (da unidade e da rede) dizem "Pago com pontos: R$ 30,00" também com
+    dinheiro junto (D10, PD-03; a lista, achada na revisão).
+  - O campo de pontos do procedimento aparece no modo por procedimento com o programa desligado, para a rede preparar
+    antes de ligar (A1, GA-03, princípio 6). Sem a troca pelo app, o bloco do app se chama "Recompensas" (A5, AP-01). A dica da
+    configuração não diz mais que "nada de pontos aparece — nem para a equipe".
+- **O plano de tratamento entre unidades.**
+  - **O Planejamento da ficha só lista os planos das unidades ao alcance** (D2, PL-01, CLAUDE.md §11). Ver e agendar o
+    plano fechado seguem na rede inteira (F73: a cliente é da rede).
+  - **O plano aceito, recebido e com todas as sessões feitas é "Concluído"** (D4, PL-20), na lista e no filtro de
+    Tratamentos; feitas e sem dinheiro, segue "Falta pagar".
+  - "Quem pode cancelar" lista quem alcança a unidade do plano ou do pacote, não a do portal (D5, DP-08). O "Agendar" da
+    sessão no app abre na unidade do plano (D6). O cancelado antes do aceite mostra o valor com o desconto combinado
+    (D9). O "Incluído" da janela de agendar só oferece o que a unidade do agendamento faz (A3).
+- **Vendas e o Receber.**
+  - O aviso do crédito interno no Receber do plano compara o saldo com a parte posta no crédito, não com o plano
+    inteiro (A2); as vezes e a taxa do cartão da 1ª forma saem sobre a parte dela também (o mesmo vício, achado na
+    revisão).
+  - A lista do PDV diz "Crédito interno", não "Crédito na rede" (A4, CI-10; o texto vinha do banco,
+    `20261221300001`). A trava do vocabulário passou a ler também o SQL.
+- **A agenda e o estoque.**
+  - **A grade do dia abre e fecha no horário daquele dia** (D12, AG-03): o sábado que fecha às 09:30 abria até 24:00 pela
+    união dos sete dias. No dia fechado em todas as unidades, vale a janela da semana. Vale na agenda da unidade, na
+    Minha agenda e na da rede.
+  - O Histórico do app mostra a hora real do concluído ("marcado para 07:30 · concluído às 07:17", D11, AG-24).
+  - A transferência diz o que a origem rende: "1,9 frasco (57 ml)", o mesmo número no seletor e no máximo do campo (A6,
+    ES-19).
+- **NÃO ERA:** A7 (o cartão da grade sempre abre a janela de ações; depois do horário, a linha da faixa "Em andamento"
+  leva ao atendimento, AG-23 e AG-70).
+- **Para o Heitor** (na página das perguntas): R45 (a ocupação de quem atende além do próprio horário para em 100%, e
+  um teste trava o teto; D3) e R46 (Vendas e o plano pago com o crédito que voltou do cancelamento de outro plano: hoje
+  conta só o dinheiro, pela fala de 25/11; D8).
+- **Sugestões:** as nº 190–195 vieram do relatório; a 40, a 121, a 150 e a 166 ganharam a origem da 42ª.
+- **Catálogo:** as decisões da rodada (AG-19, CQ-04, NC-01, NC-04, PO-03, ES-18, ES-26, PD-05) e as regras dos defeitos
+  (AG-03, AG-24, PL-01, PL-20, ES-19, GA-02, GA-03, ES-02, PD-03, AP-01, DP-08).
+**Testes alterados:** nenhum. Nenhum apagado.
+
+**A completa** (contra o build dos três apps): isolados 1.816 passaram, 1 falhou e 7 não rodaram (o resto do bloco em
+série); compartilhados 911 passaram e 1 pulou. A falha foi `atendimento-ficha-planejador-injetaveis:174`, que passou de
+novo sem mudança nenhuma (9 de 9), como na 40ª e na 41ª: instável. Os E2E da rodada passaram antes (86 + 23, e 25 + 7
+depois da revisão). Vitest: 834 arquivos, sem falha.
+
+**Na produção:** o arremate da 41ª (`20261220900001`, `20261220900002`) e as da 42ª (`20261221100001`,
+`20261221300001`), aplicadas uma de cada vez e conferidas depois.
+
+
 ### 2026-11-28 (1) — A 41ª simulação e as correções dela
 
 O laço segue (o Heitor, 25/11: "quando acabar essa roda já segue as outras e assim vai"). Cinco redes novas, sem a conta

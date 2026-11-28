@@ -5,6 +5,7 @@ import type { ComoEstornar, DestinoDaDevolucao, PagamentoEmParte } from '@/lib/p
 import { rotuloDaForma, ondeVoltaOEstorno } from '@/lib/financeiro/formas'
 import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
 import { CampoDaBandeira, useFaltaAMaquininha } from '@/components/shared/campo-da-bandeira'
+import type { PontosDaDevolucaoNaTela } from '@/lib/produtos/devolucao'
 
 /** As formas do pagamento novo do usado (r2-ven-05). */
 export const FORMAS_DO_USADO = ['PIX', 'CASH', 'DEBIT_CARD', 'CREDIT_CARD'] as const
@@ -80,7 +81,12 @@ export function useFaltaAMaquininhaDoUsado(e: EscolhaDaDevolucaoEstado): string 
  * estorno parcial fica desligado, com o motivo (r2-fin-03), e o inteiro já
  * vem escolhido (quem abre a janela o marca ao ler a prévia).
  */
-export function EscolhaDaDevolucao({ prefixo, devolver, parcial, fidelidade, estado, aoMudar, desligado, opcoesDeVezes, soEstorno = false, formas }: {
+export function EscolhaDaDevolucao({ prefixo, devolver, parcial, fidelidade, estado, aoMudar, desligado, opcoesDeVezes, soEstorno = false, formas, pontosDaDevolucao }: {
+  /**
+   * ES-02 (D7 da 42ª): os pontos que saem no estorno, com o saldo de antes e de depois, por jeito de
+   * estornar. Dado, a janela diz o número no lugar do "e os pontos dele saem do saldo".
+   */
+  pontosDaDevolucao?: PontosDaDevolucaoNaTela | null
   /** CI-04 (A7 da 41ª): as formas em que ela pagou — o "Estorno" diz para onde volta. Sem elas, o texto de sempre. */
   formas?:       readonly (string | null)[] | null
   /** O prefixo dos ids dos grupos ("cancelar-pacote", "cancelar-unidade"). */
@@ -102,6 +108,11 @@ export function EscolhaDaDevolucao({ prefixo, devolver, parcial, fidelidade, est
   const muda = (parte: Partial<EscolhaDaDevolucaoEstado>) => aoMudar({ ...estado, ...parte })
   const emParte = pagamentoEmParte(devolver, parcial, estado)
   if (devolver <= 0) return null
+  const comNumero = pontosDaDevolucao !== undefined
+  // Sem pagamento em parte, os dois jeitos são o mesmo; com ele, o texto do jeito escolhido.
+  const textoDosPontos = !pontosDaDevolucao || estado.destino !== 'ESTORNO' ? null
+    : emParte ? (estado.comoEstornar ? pontosDaDevolucao[estado.comoEstornar] : null)
+    : pontosDaDevolucao.PARCIAL
   return (
     <>
       {!soEstorno && <div role="radiogroup" aria-labelledby={`${prefixo}-destino`} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -109,7 +120,7 @@ export function EscolhaDaDevolucao({ prefixo, devolver, parcial, fidelidade, est
         <label style={opcao}>
           <input type="radio" name={`${prefixo}-destino`} checked={estado.destino === 'ESTORNO'} disabled={desligado}
             onChange={() => muda({ destino: 'ESTORNO' })} style={{ accentColor: 'var(--brand)', marginTop: 3 }} />
-          <span>Estorno <span style={{ color: 'var(--text-muted)' }}>— {ondeVoltaOEstorno(formas)}{fidelidade ? ', e os pontos dele saem do saldo' : ''}</span></span>
+          <span>Estorno <span style={{ color: 'var(--text-muted)' }}>— {ondeVoltaOEstorno(formas)}{fidelidade && !comNumero ? ', e os pontos dele saem do saldo' : ''}</span></span>
         </label>
         <label style={opcao}>
           <input type="radio" name={`${prefixo}-destino`} checked={estado.destino === 'CREDITO'} disabled={desligado}
@@ -180,6 +191,10 @@ export function EscolhaDaDevolucao({ prefixo, devolver, parcial, fidelidade, est
             </div>
           )}
         </div>
+      )}
+
+      {textoDosPontos && (
+        <p data-pontos-da-devolucao style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>{textoDosPontos}</p>
       )}
     </>
   )

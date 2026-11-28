@@ -1,6 +1,7 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { ler } from '@/lib/db'
+import { ler, lerTodas } from '@/lib/db'
+import { contarSessoesDosPlanos, type AgendamentoDaSessaoFeita, type SessoesDoPlano } from '@/lib/plano-de-tratamento/sessoes-feitas'
 import { juntarAsFormasDaParcela, type FormaDaParcela, type LinhaParaJuntar } from '@/lib/financeiro/formas-da-parcela'
 
 /**
@@ -69,4 +70,30 @@ export async function getFinanceiroDoPlano(tenantId: string, planId: string): Pr
       formas:        l.formasDaParcela,
     })),
   }
+}
+
+/**
+ * As sessões de VÁRIOS planos (D4 da 42ª): o total e as feitas de cada um, pela
+ * régua de `metrics_financeiro_do_plano` (`sessaoFeitaDoPlano`), para a lista de
+ * Tratamentos dizer "Concluído" (PL-20). Em lotes de ids e em páginas
+ * (`lerTodas`). Quem chama já conferiu a rede e o alcance dos planos.
+ */
+export async function getSessoesDosPlanos(planIds: string[]): Promise<Map<string, SessoesDoPlano>> {
+  if (!planIds.length) return new Map()
+  const admin = createAdminClient()
+  type Lida = { plan_id: string; appointments: AgendamentoDaSessaoFeita | AgendamentoDaSessaoFeita[] | null }
+  const linhas: { plan_id: string; appointments: AgendamentoDaSessaoFeita | null }[] = []
+  for (let i = 0; i < planIds.length; i += 150) {
+    const lote = planIds.slice(i, i + 150)
+    const lidas = await lerTodas<Lida>((de, ate) => admin.from('treatment_plan_sessions')
+      .select('plan_id, appointments:appointment_id(status, started_at)')
+      .in('plan_id', lote).order('id').range(de, ate),
+      'contar as sessões dos planos')
+    // O embed por chave estrangeira vem como objeto (o tipo do cliente o diz lista).
+    for (const l of lidas) {
+      const a = Array.isArray(l.appointments) ? (l.appointments[0] ?? null) : l.appointments
+      linhas.push({ plan_id: l.plan_id, appointments: a })
+    }
+  }
+  return contarSessoesDosPlanos(planIds, linhas)
 }

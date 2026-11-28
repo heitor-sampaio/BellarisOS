@@ -51,13 +51,13 @@ Este é o catálogo das regras da Fidelidade que valem HOJE: o programa e quem m
 - Onde: `docs/revisao.md:667`, `:687`, `:2025`; `docs/regras/fidelidade.md:18-21`; `docs/regras/atendimento.md:1391`, `:1445`, `:3318`, `:3784`
 - Antes: KA-05, KA-33, KB-05, KC-01
 
-**GA-02.** O ponto sai do dinheiro que entrou: na comanda do atendimento (também no produto dela), na "Nova venda" e na comanda do plano, o ganho é sobre o valor pago, depois do voucher e dos pontos usados.
-- Fonte: recomendação do Claude aprovada pelo Heitor, 13/11: "concordo"
+**GA-02.** O ponto sai do dinheiro que entrou: na comanda do atendimento (também no produto dela), na "Nova venda" e na comanda do plano, o ganho é sobre o valor pago, depois do voucher e dos pontos usados. No modo por procedimento, os pontos do procedimento valem na proporção do dinheiro que entrou sobre o preço vendido: o voucher, os pontos usados e o crédito interno saem da base; o desconto comercial já sai do preço vendido e não tira pontos (como no pacote e no plano).
+- Fonte: recomendação do Claude aprovada pelo Heitor, 13/11: "concordo"; decisão do Claude, 28/11 (42ª, B-1 e D1)
 - Onde: `docs/revisao.md:2025`; `docs/regras/fidelidade.md:163-167`, `:171-177`; `docs/regras/vendas-financeiro.md:179`, `:265`
 - Antes: KA-33, KA-34, KC-02
 
-**GA-03.** A rede escolhe UM modo de ganho: por real pago (arredondado para baixo) ou por procedimento. No modo por procedimento, os pontos de cada procedimento se editam no cadastro dele, e o campo só aparece nesse modo. Acima de 1.000.000 de pontos o cadastro avisa e vale; só se recusa o negativo, o fracionário e o acima de 2.147.483.647 (o limite do registro) (o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito."; os números são decisão do Claude).
-- Fonte: recomendação do Claude aprovada pelo Heitor, 13/11: "concordo"
+**GA-03.** A rede escolhe UM modo de ganho: por real pago (arredondado para baixo) ou por procedimento. No modo por procedimento, os pontos de cada procedimento se editam no cadastro dele, e o campo só aparece nesse modo. Acima de 1.000.000 de pontos o cadastro avisa e vale; só se recusa o negativo, o fracionário e o acima de 2.147.483.647 (o limite do registro) (o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito."; os números são decisão do Claude). O campo aparece no modo por procedimento também com o programa desligado (a rede prepara e liga depois, princípio 6), e não aparece sem a fidelidade no plano da assinatura.
+- Fonte: recomendação do Claude aprovada pelo Heitor, 13/11: "concordo"; decisão do Claude, 28/11 (42ª, B-3 e A1)
 - Onde: `docs/revisao.md:666`, `:218`, `:1929`, `:2028`; `docs/regras/fidelidade.md:22-24`
 - Antes: KA-06, KB-04
 
@@ -103,8 +103,8 @@ Este é o catálogo das regras da Fidelidade que valem HOJE: o programa e quem m
 - Onde: `docs/revisao.md:667`, `:1718`, `:2025`; `docs/regras/fidelidade.md:65-67`, `:121`, `:221-222`; `docs/regras/vendas-financeiro.md:275`, `:2015`
 - Antes: KA-15, KA-41, KB-07, KC-15, KC-16
 
-**ES-02.** A janela do estorno diz ANTES o que acontece com os pontos: quantos saem e o saldo de antes e de depois ("…o saldo dela vai de 380 a 200 pontos…"), o prêmio de indicação que sai junto, os pontos usados que voltam, o voucher que volta a valer, o prêmio que passa a outro pagamento, o voucher do prêmio cancelado (ou, já usado, que fica). Com a fidelidade desligada, nada.
-- Fonte: princípio 3
+**ES-02.** A janela do estorno diz ANTES o que acontece com os pontos: quantos saem e o saldo de antes e de depois ("…o saldo dela vai de 380 a 200 pontos…"), o prêmio de indicação que sai junto, os pontos usados que voltam, o voucher que volta a valer, o prêmio que passa a outro pagamento, o voucher do prêmio cancelado (ou, já usado, que fica). Com a fidelidade desligada, nada. O "Devolver parte da venda" diz o mesmo: os pontos que saem e o saldo de antes e de depois.
+- Fonte: princípio 3; decisão do Claude, 28/11 (42ª, D7)
 - Onde: `docs/regras/fidelidade.md:67-77`; `docs/regras/vendas-financeiro.md:2015`
 - Antes: KA-16, KC-16
 
@@ -135,8 +135,8 @@ Este é o catálogo das regras da Fidelidade que valem HOJE: o programa e quem m
 - Onde: `docs/revisao.md:669`, `:682`; `docs/regras/fidelidade.md:98-102`
 - Antes: KA-24, KB-09
 
-**PD-03.** O que se paga com pontos ou voucher não é dinheiro recebido nem desconto comercial: o preço vendido (e o do contrato) não muda, o lançamento registra o dinheiro que entrou e o que foi pago com pontos ou voucher aparece à parte ("Pago com pontos/voucher" no CSV, "Pago com o voucher “X”: R$ 180,00" ou "Pago com pontos: …" na linha, "Sem forma (pontos)" no Fechamento do dia). Receita, LTV e estorno contam o dinheiro. Pago todo com pontos, o lançamento é de R$ 0,00, sem forma de pagamento, e não vai como compra para a API de Conversões da Meta. O cartão da Agenda do app mostra o valor cobrado contando os pontos.
-- Fonte: decisão do Claude
+**PD-03.** O que se paga com pontos ou voucher não é dinheiro recebido nem desconto comercial: o preço vendido (e o do contrato) não muda, o lançamento registra o dinheiro que entrou e o que foi pago com pontos ou voucher aparece à parte ("Pago com pontos/voucher" no CSV, "Pago com o voucher “X”: R$ 180,00" ou "Pago com pontos: …" na linha, "Sem forma (pontos)" no Fechamento do dia). Receita, LTV e estorno contam o dinheiro. Pago todo com pontos, o lançamento é de R$ 0,00, sem forma de pagamento, e não vai como compra para a API de Conversões da Meta. O cartão da Agenda do app mostra o valor cobrado contando os pontos. A linha da ficha diz "Pago com pontos/voucher" também quando há dinheiro junto na mesma linha.
+- Fonte: decisão do Claude; decisão do Claude, 28/11 (42ª, D10)
 - Onde: `docs/regras/fidelidade.md:102-105`, `:119-120`, `:431`; `docs/regras/vendas-financeiro.md:180`, `:391`, `:2011`, `:2721`, `:2896`; `docs/regras/atendimento.md:1213`
 - Antes: KA-25, KA-32, KC-14
 
@@ -145,8 +145,8 @@ Este é o catálogo das regras da Fidelidade que valem HOJE: o programa e quem m
 - Onde: `docs/regras/fidelidade.md:124-127`; `docs/regras/vendas-financeiro.md:272`
 - Antes: KA-27, KC-12
 
-**PD-05.** Recebendo em várias formas ("+ Outra forma"), os pontos e o voucher abatem na primeira forma e não passam do valor dela; a base do teto e do voucher é a venda inteira. Toda tela soma a fidelidade de volta à primeira forma, então isso não limita quem recebe.
-- Fonte: decisão do Claude
+**PD-05.** Recebendo em várias formas ("+ Outra forma"), os pontos e o voucher abatem na primeira forma e não passam do valor dela; a base do teto e do voucher é a venda inteira. Toda tela soma a fidelidade de volta à primeira forma, então isso não limita quem recebe. O ponto sai só do dinheiro que entrou nas formas: os pontos, o voucher e o crédito interno usados ficam fora da base (o crédito já pontuou na venda, GA-07); no modo por procedimento, os pontos do procedimento saem na proporção desse dinheiro.
+- Fonte: decisão do Claude; a base do ponto sem os pontos, o voucher e o crédito interno usados: decisão do Claude, 28/11 (42ª, Decisão B-1), pela GA-02 e pela GA-07
 - Onde: `docs/regras/fidelidade.md:133-138`, `:148-151`; `docs/regras/vendas-financeiro.md:502`
 - Antes: KA-28, KC-13
 
@@ -292,8 +292,8 @@ Este é o catálogo das regras da Fidelidade que valem HOJE: o programa e quem m
 
 ## O que a cliente vê no app (AP)
 
-**AP-01.** No portal e no app, a aba Fidelidade mostra à cliente o saldo, o extrato e as recompensas. A troca aparece só se a rede ligou a troca pelo portal: aí a cliente troca pontos por recompensa com o saldo da rede (a unidade do portal é só onde a troca fica registrada); desligada, ela não troca pelo app.
-- Fonte: recomendação do Claude aprovada pelo Heitor, 13/11: "Concordo"
+**AP-01.** No portal e no app, a aba Fidelidade mostra à cliente o saldo, o extrato e as recompensas. A troca aparece só se a rede ligou a troca pelo portal: aí a cliente troca pontos por recompensa com o saldo da rede (a unidade do portal é só onde a troca fica registrada); desligada, ela não troca pelo app. Sem a troca pelo app, o bloco se chama "Recompensas"; com ela, "Troque seus pontos".
+- Fonte: recomendação do Claude aprovada pelo Heitor, 13/11: "Concordo"; decisão do Claude, 28/11 (42ª, A5)
 - Onde: `docs/revisao.md:1493`, `:1498`, `:1503`, `:2151`; `docs/regras/fidelidade.md:300-303`, `:433`
 - Antes: KA-52, KB-11, KB-19
 

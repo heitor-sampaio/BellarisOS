@@ -8,7 +8,7 @@ import {
   configDaRede, saldoDoCliente, extratoDoCliente, vouchersDoCliente, recompensasDaRede, pontosVencendo,
 } from '@/lib/fidelidade/leitura'
 import { descricaoDoVoucher, situacaoDoVoucher } from '@/lib/fidelidade/voucher'
-import { formatarPontos, rotuloDoLancamento, descricaoParaACliente, faltamPontos, jaPodeTrocar, vencimentoDoGanho } from '@/lib/fidelidade/formato'
+import { formatarPontos, rotuloDoLancamento, descricaoParaACliente, faltamPontos, jaPodeTrocar, tituloDasRecompensasNoApp, vencimentoDoGanho } from '@/lib/fidelidade/formato'
 import { TrocarRecompensa } from '@/components/client-portal/trocar-recompensa'
 import { quemTrocaPontos } from '@/lib/equipe/quem-desfaz'
 import { textoDoIndiqueUmaAmiga, COMO_INDICAR } from '@/lib/fidelidade/indicacao'
@@ -122,7 +122,7 @@ export default async function FidelidadeDoClientePage({ params }: { params: Prom
       {recompensas.length > 0 && (
         <section className="card" style={{ padding: '14px 18px' }} aria-label="Recompensas">
           <p className="overline" style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span>Troque seus pontos</span>
+            <span>{tituloDasRecompensasNoApp(cfg.client_redeem)}</span>
             {/* Sem a troca pelo app, a quem pedir mora na dica; o "Você já pode trocar: peça à equipe." fica na linha. */}
             {!cfg.client_redeem && (
               <Dica rotulo="Quem faz a troca">

@@ -168,6 +168,11 @@ export interface ProfilePackage {
   /** A1 da 37ª: a validade (ISO) e a parte de cada sessão no rateio ("R$ 124,90 × 3 · R$ 195,15 × 2"). */
   venceEm?:      string | null
   partes?:       string | null
+  /**
+   * D5 da 42ª (DP-08): quem cancela ESTE plano/pacote — o Financeiro em Gerenciar
+   * com a unidade dele ao alcance (`quemCancelaNosCartoes`). Ausente: a lista do portal.
+   */
+  quemCancela?:  string[] | null
 }
 
 
@@ -200,6 +205,8 @@ export interface ProfileTransaction {
   forma?:        string | null
   /** A40: a venda de produto paga que não pontua (fidelidade ligada, produto sem pontos). */
   semPontos?:    boolean
+  /** PD-03 (D10 da 42ª): "Pago com pontos: R$ 30,00" / "Pago com o voucher “X”: …" — também com dinheiro junto. */
+  pagoComFidelidade?: string | null
   /** O recebimento estornado (`notes = 'Estornada'`) — não é "Pago" (D6, 2026-10-28). */
   estornada?:    boolean
   /** A contra-transação do estorno (`category = 'Estorno'`). */
@@ -1442,6 +1449,11 @@ function FinanceiroTab({
                           Venda de produto não pontua
                         </span>
                       )}
+                      {t.pagoComFidelidade && (
+                        <span data-pago-com-fidelidade style={{ display: 'block', marginTop: 4, fontSize: 'var(--text-overline)', color: 'var(--text-muted)' }}>
+                          {t.pagoComFidelidade}
+                        </span>
+                      )}
                     </td>
                     <td data-label="Valor" data-par style={{
                       padding: '12px 16px', fontSize: 'var(--text-base-sz)', fontWeight: 800, whiteSpace: 'nowrap',
@@ -1605,6 +1617,8 @@ export function ClientProfile({
   const pacoteAberto = pacotesNaFicha.find(p => p.id === pacoteAbertoId) ?? activePackage
   const cancelaPacote = (p: ProfilePackage | null) => podeCancelarPacote && !!p && !p.planId
   const cancelaPlano = (p: ProfilePackage | null) => podeCancelarPacote && !!p?.planId && p.planStatus === 'ACCEPTED'
+  // D5 da 42ª (DP-08): a quem pedir o cancelamento é quem alcança a unidade DO cartão.
+  const quemCancelaDoCartao = (p: ProfilePackage) => (p.quemCancela !== undefined ? p.quemCancela : quemDesfaz)
   // D12 da 39ª (CLAUDE.md §14, "a tela esconde"): o cartão do PLANO abre a
   // ficha de tratamento, que é do Atendimento em Ver (getTreatmentPlanDetails;
   // PL-01). Sem ele, o cartão mostra o andamento e não abre nem diz que abre.
@@ -2134,10 +2148,10 @@ export function ClientProfile({
                   </p>
                 )}
                 {/* A33 da 8ª: quem recebe e não cancela sabe a quem pedir. */}
-                {!cancelaPacote(pacote) && !cancelaPlano(pacote) && quemDesfaz && quemDesfaz.length > 0
+                {!cancelaPacote(pacote) && !cancelaPlano(pacote) && (quemCancelaDoCartao(pacote)?.length ?? 0) > 0
                   && (!pacote.planId || pacote.planStatus === 'ACCEPTED') && (
                   <p data-quem-cancela-o-pacote style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-                    Cancelar o {pacote.planId ? 'plano' : 'pacote'} é de quem tem o Financeiro em Gerenciar: {quemDesfaz.join(', ')}.
+                    Cancelar o {pacote.planId ? 'plano' : 'pacote'} é de quem tem o Financeiro em Gerenciar: {quemCancelaDoCartao(pacote)!.join(', ')}.
                   </p>
                 )}
                 {/* Cancelar o pacote (F2b) e o plano (D4 da 9ª): fora do cartão, que já é o botão da ficha de tratamento. */}

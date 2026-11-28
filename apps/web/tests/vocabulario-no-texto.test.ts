@@ -308,6 +308,22 @@ describe('Vocabulário: o texto que se lê fala o sistema revisado', { timeout: 
     expect(errados(/cr[ée]dito na rede/i), 'é "Crédito interno" (e "Seu crédito" no app da cliente)').toEqual([])
   })
 
+  // A4 da 42ª: o nome da venda de crédito na lista do PDV vem do BANCO (`pdv_comandas`), e a trava
+  // acima só lia o TypeScript. Aqui o SQL: a última migration com o literal 'Crédito na rede' (fora
+  // de comentário) é a troca que o tira — recriar a função com o corpo velho, ou um texto novo assim,
+  // passa a ser a última e cai aqui.
+  it('o crédito vendido tem UM nome também no texto que o banco devolve (a lista do PDV): nunca "Crédito na rede"', () => {
+    const pasta = join(MONO, 'supabase', 'migrations')
+    const semComentario = (t: string) => t.split('\n').map(l => l.replace(/--.*$/, '')).join('\n')
+    const comOLiteral = readdirSync(pasta).filter(f => f.endsWith('.sql')).sort()
+      .filter(f => /'Cr[ée]dito na rede'/i.test(semComentario(readFileSync(join(pasta, f), 'utf8'))))
+    const ultima = comOLiteral[comOLiteral.length - 1]
+    expect(ultima, 'alguma migration já devolveu "Crédito na rede"').toBeTruthy()
+    const t = readFileSync(join(pasta, ultima!), 'utf8')
+    expect(t, `${ultima}: a última com o literal tem de ser a troca que o tira`).toMatch(/\$t\$then 'Crédito na rede'\$t\$/)
+    expect(t, `${ultima}: e o nome que fica é "Crédito interno"`).toMatch(/\$t\$then 'Crédito interno'\$t\$/)
+  })
+
   it('V1 / V2 nos nomes internos: nenhum identificador nem arquivo diz "clínica" ou "filial"', () => {
     expect(nomesErrados(), 'é "rede" ou "unidade" também no código (16/11)').toEqual([])
   })

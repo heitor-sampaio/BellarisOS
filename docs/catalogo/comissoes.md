@@ -174,8 +174,8 @@ Este é o catálogo das regras das Comissões que valem HOJE: onde ficam e quem 
 - Onde: `docs/regras/comissoes.md:335-342`
 - Antes: KA-38
 
-**CQ-04.** A comissão de execução do pacote é de quem atende cada sessão, e o pacote escolhe qual vale: a regra da pessoa (o padrão), um % da parte da sessão no preço do pacote, um R$ fixo por sessão ou nenhuma. A regra do pacote vale também para quem não tem regra própria. Ela também só sai com o pacote pago inteiro. A comissão de execução da sessão é da unidade do atendimento, como o indicador de execução (princípio 5), mesmo com o pacote vendido em outra unidade; o dinheiro da venda fica na unidade da venda (PA-12 de Vendas e financeiro, CV-14).
-- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13 (PC5): "ok, mantém"; a unidade da comissão da sessão: decisão do Claude, 27/11 (35ª, Decisão B2), pelo princípio 5
+**CQ-04.** A comissão de execução do pacote é de quem atende cada sessão, e o pacote escolhe qual vale: a regra da pessoa (o padrão), um % da parte da sessão no preço do pacote, um R$ fixo por sessão ou nenhuma. A regra do pacote vale também para quem não tem regra própria. Ela também só sai com o pacote pago inteiro. A comissão de execução da sessão é da unidade do atendimento, como o indicador de execução (princípio 5), mesmo com o pacote vendido em outra unidade; o dinheiro da venda fica na unidade da venda (PA-12 de Vendas e financeiro, CV-14). Na sessão do plano de tratamento é igual: a comissão de execução é da unidade do agendamento, não da unidade do plano.
+- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13 (PC5): "ok, mantém"; a unidade da comissão da sessão: decisão do Claude, 27/11 (35ª, Decisão B2), pelo princípio 5; a sessão do plano: decisão do Claude, 28/11 (42ª, Decisão C-3)
 - Onde: `docs/regras/comissoes.md:343-348`
 - Antes: KA-39
 

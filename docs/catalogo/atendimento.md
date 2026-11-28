@@ -24,8 +24,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:15-17`
 - Antes: AG-02
 
-**AG-03.** A grade do dia abre e fecha no horário da unidade, estendida pelos agendamentos que caem fora dele. É a mesma regra na agenda da unidade, na "Minha agenda" e na agenda da rede (na rede, do horário mais cedo ao mais tarde entre as unidades).
-- Fonte: decisão do Claude
+**AG-03.** A grade do dia abre e fecha no horário da unidade, estendida pelos agendamentos que caem fora dele. É a mesma regra na agenda da unidade, na "Minha agenda" e na agenda da rede (na rede, do horário mais cedo ao mais tarde entre as unidades). O horário é o DO DIA mostrado (o sábado que fecha às 09:30 não abre a grade até 24:00); no dia fechado em todas as unidades, vale a janela da semana, para o encaixe ter onde cair.
+- Fonte: decisão do Claude; decisão do Claude, 28/11 (42ª, D12)
 - Onde: `docs/regras/atendimento.md:18-21`
 - Antes: AG-03
 
@@ -108,8 +108,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 
 ### O bloqueio pontual
 
-**AG-19.** "Bloquear horário" fica no cabeçalho da agenda da unidade e da agenda da rede com uma unidade na tela; a "Minha agenda" (a vista pessoal) só mostra o bloqueio (SM2). Bloqueia-se uma pessoa que atende ou uma sala, com início e fim (ou "Dia inteiro") e motivo obrigatório. Vale o fim que a pessoa escolher: acima de um ano, a janela avisa ao lado do fim ("Acima do comum (mais de 1 ano). Confira: o valor vale como está.") e grava; só se recusa acima de 100 anos ("No máximo 36.500 dias (100 anos, o limite das datas).") — era "até um ano". O bloqueio aparece na grade e na Semana, e abre a janela "Horário bloqueado" com "Desfazer bloqueio".
-- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-05: "concordo"; acima de um ano avisa: o Heitor, 25/11, perguntado se um bloqueio mais longo (uma licença) recusa ou avisa, escolheu "Acima de 1 ano avisa"; o comum (um ano, o teto de antes) e o impossível (acima de 100 anos): decisão do Claude, 25/11
+**AG-19.** "Bloquear horário" fica no cabeçalho da agenda da unidade e da agenda da rede com uma unidade na tela; a "Minha agenda" (a vista pessoal) só mostra o bloqueio (SM2). Bloqueia-se uma pessoa que atende ou uma sala, com início e fim (ou "Dia inteiro") e motivo obrigatório. Vale o fim que a pessoa escolher: acima de um ano, a janela avisa ao lado do fim ("Acima do comum (mais de 1 ano). Confira: o valor vale como está.") e grava; só se recusa acima de 100 anos ("No máximo 36.500 dias (100 anos, o limite das datas).") — era "até um ano". O bloqueio aparece na grade e na Semana, e abre a janela "Horário bloqueado" com "Desfazer bloqueio". O feriado se faz com o bloqueio "Dia inteiro": não há cadastro de feriado à parte.
+- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-05: "concordo"; acima de um ano avisa: o Heitor, 25/11, perguntado se um bloqueio mais longo (uma licença) recusa ou avisa, escolheu "Acima de 1 ano avisa"; o comum (um ano, o teto de antes) e o impossível (acima de 100 anos): decisão do Claude, 25/11; o feriado pelo bloqueio "Dia inteiro": decisão do Claude, 28/11 (42ª, Decisão A-3) — fechar a unidade um dia só é a sugestão nº 85
 - Onde: `docs/regras/atendimento.md:149-160`, `:231-233`, `:241-247`
 - Antes: AG-26, AG-34
 
@@ -136,7 +136,7 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Antes: AG-04, AG-39, AG-40, AG-41, AG-50, AG-51
 
 **AG-24.** O atendimento concluído mostra a hora real ao lado da agendada ("23:30 · concluído em 29/10 às 00:22"), na agenda da unidade e da rede, na janela, e no app da cliente (Agenda, Histórico, "Como foram os seus atendimentos?", "Confirmar e avaliar").
-- Fonte: decisão do Claude
+- Fonte: decisão do Claude; decisão do Claude, 28/11 (42ª, D11: o Histórico do app cumpre, "marcado para 07:30 · concluído às 07:17")
 - Onde: `docs/regras/atendimento.md:755-771`
 - Antes: AG-44, AG-187
 
@@ -517,8 +517,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 
 ## Plano de tratamento (PL)
 
-**PL-01.** O plano de tratamento só existe para quem tem o Atendimento (Ver; sem o "só os meus", SM1: vê todos os planos das unidades ao alcance). Na ficha, sem o Atendimento e sem o Prontuário, a aba Planejamento some; com o Prontuário e sem o Atendimento, ela tem só os injetáveis.
-- Fonte: o Heitor, 2026-11-18: "Agenda é agenda e atendimento é atendimento"
+**PL-01.** O plano de tratamento só existe para quem tem o Atendimento (Ver; sem o "só os meus", SM1: vê todos os planos das unidades ao alcance). Na ficha, sem o Atendimento e sem o Prontuário, a aba Planejamento some; com o Prontuário e sem o Atendimento, ela tem só os injetáveis. A lista de planos da ficha (o Planejamento) mostra só os das unidades ao alcance; ver e agendar o plano fechado da cliente seguem valendo na rede inteira (F73, a cliente é da rede).
+- Fonte: o Heitor, 2026-11-18: "Agenda é agenda e atendimento é atendimento"; decisão do Claude, 28/11 (42ª, C-1 e D2)
 - Onde: `docs/regras/atendimento.md:2295`
 - Antes: PL-01
 
@@ -612,8 +612,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:1052-1068`, `:1319-1327`, `docs/revisao.md:979`, `docs/revisao.md:1005`, `docs/revisao.md:2018`
 - Antes: PL-20, AG-182, AG-183
 
-**PL-20.** Nomes na tela dos planos: a tela se chama "Tratamentos", como o menu, no grupo "Planejamento" (Tratamentos e Injetáveis). A tela Tratamentos filtra pela situação: Rascunho, Proposto, Aceito (falta assinar), Falta pagar, Em andamento, Concluído, Cancelado; o dinheiro recebido vence o documento aberto ("Em andamento"); o proposto se chama "Proposto" em toda tela. A ficha de tratamento diz o andamento das sessões ("A começar · 0 de 2", "Em andamento · 1 de 2", "Concluído · 2 de 2").
-- Fonte: recomendação do Claude aprovada pelo Heitor, 13/11: "faz sentido, pode fechar o plano de tratamento"
+**PL-20.** Nomes na tela dos planos: a tela se chama "Tratamentos", como o menu, no grupo "Planejamento" (Tratamentos e Injetáveis). A tela Tratamentos filtra pela situação: Rascunho, Proposto, Aceito (falta assinar), Falta pagar, Em andamento, Concluído, Cancelado; o dinheiro recebido vence o documento aberto ("Em andamento"); o proposto se chama "Proposto" em toda tela. A ficha de tratamento diz o andamento das sessões ("A começar · 0 de 2", "Em andamento · 1 de 2", "Concluído · 2 de 2"). O aceito já recebido com todas as sessões feitas é "Concluído" (a sessão feita é a concluída, ou a iniciada e desistida no meio); feitas e sem dinheiro, segue "Falta pagar". O cancelado antes do aceite vale o proposto, com o desconto combinado.
+- Fonte: recomendação do Claude aprovada pelo Heitor, 13/11: "faz sentido, pode fechar o plano de tratamento"; decisão do Claude, 28/11 (42ª, D4 e D9)
 - Onde: `docs/regras/atendimento.md:1238-1245`, `:2415`, `:2453`, `docs/revisao.md:2017`
 - Antes: PL-21, PL-25, AG-141
 
@@ -978,13 +978,13 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:2600`, `:2776`, `:2793-2808`
 - Antes: ES-34, ES-35, ES-36, ES-37
 
-**ES-18.** O consumo, a perda, a venda e o valor em estoque usam o custo do lote de onde a quantidade saiu; a parte que nenhum lote cobre usa o último custo; o lote transferido herda o custo do de origem. A margem do catálogo usa o custo atual. Editar o produto não muda o custo: ele vem das entradas. O insumo do atendimento e o ajuste a menos já nascem com o custo dos lotes de onde saem, e a baixa não deixa "Corrigiu o custo do lote" na Auditoria.
-- Fonte: princípio 3; o custo no próprio lançamento: decisão do Claude, 26/11 (33ª simulação, D7), pelo princípio 3
+**ES-18.** O consumo, a perda, a venda e o valor em estoque usam o custo do lote de onde a quantidade saiu; a parte que nenhum lote cobre usa o último custo, e fica nele quando a entrada seguinte paga essa falta (ES-24): o lote que a cobriu não a reprecifica; o lote transferido herda o custo do de origem. A margem do catálogo usa o custo atual. Editar o produto não muda o custo: ele vem das entradas. O insumo do atendimento e o ajuste a menos já nascem com o custo dos lotes de onde saem, e a baixa não deixa "Corrigiu o custo do lote" na Auditoria.
+- Fonte: princípio 3; o custo no próprio lançamento: decisão do Claude, 26/11 (33ª simulação, D7), pelo princípio 3; a falta paga depois fica ao último custo: decisão do Claude, 28/11 (42ª, Decisão E-1)
 - Onde: `docs/regras/atendimento.md:2633`, `:3266`, `:3276`, `:3966-3975`
 - Antes: ES-38, ES-17; antes de 26/11: o custo se corrigia depois da baixa, e cada baixa deixava "Corrigiu o custo do lote" na Auditoria (as linhas de antes ficam: a sugestão nº 109)
 
-**ES-19.** O saldo aparece na unidade de consumo com o equivalente exato em embalagens ("268 UI · 2,68 frascos"); o mínimo, como na prateleira ("10 refis fechados + 1 aberto com 840 g"). O Histórico mostra cada movimento na unidade dele e em embalagens.
-- Fonte: princípio 3
+**ES-19.** O saldo aparece na unidade de consumo com o equivalente exato em embalagens ("268 UI · 2,68 frascos"); o mínimo, como na prateleira ("10 refis fechados + 1 aberto com 840 g"). O Histórico mostra cada movimento na unidade dele e em embalagens. Na transferência, o disponível na origem é o que ela rende, em embalagens com a fração e na unidade de uso ("1,9 frasco (57 ml)"), o mesmo número no seletor de unidade e no máximo do campo.
+- Fonte: princípio 3; decisão do Claude, 28/11 (42ª, A6)
 - Onde: `docs/regras/atendimento.md:2735`, `:2757`, `:2884`
 - Antes: ES-39
 
@@ -1021,8 +1021,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:1944`, `:2925`, `:2938`
 - Antes: ES-53, PT-05
 
-**ES-26.** O Ajuste é a contagem da prateleira: mostra o saldo nas duas unidades, conta em embalagem (padrão) ou consumo, mostra a conta antes de aplicar e pede "Confirmo que contei na prateleira". A sobra entra num lote escolhido (ou "Um lote novo, sem número"), ao custo dele; a falta sai do lote escolhido ("O que vence primeiro" por padrão), ao custo dele, e entra em "Perdas no período" como "Inventário". A contagem que muda o saldo em mais de 50% avisa forte, sem recusar. A unidade de consumo se escolhe no próprio Ajuste; a entrada, a transferência, o saldo, o mínimo e os lotes seguem em embalagens (ES-17).
-- Fonte: princípio 3; onde a unidade de consumo se digita: decisão do Claude, 27/11 (37ª, Decisão C2), pela ES-17
+**ES-26.** O Ajuste é a contagem da prateleira: mostra o saldo nas duas unidades, conta em embalagem (padrão) ou consumo, mostra a conta antes de aplicar e pede "Confirmo que contei na prateleira". A sobra entra no lote que a pessoa escolher ("Um lote novo, sem número" por padrão), ao custo dele; a falta sai do lote escolhido ("O que vence primeiro" por padrão), ao custo dele, e entra em "Perdas no período" como "Inventário". A contagem que muda o saldo em mais de 50% avisa forte, sem recusar. A unidade de consumo se escolhe no próprio Ajuste; a entrada, a transferência, o saldo, o mínimo e os lotes seguem em embalagens (ES-17).
+- Fonte: princípio 3; onde a unidade de consumo se digita: decisão do Claude, 27/11 (37ª, Decisão C2), pela ES-17; o lote da sobra e o padrão: decisão do Claude, 28/11 (42ª, Decisão E-2)
 - Onde: `docs/regras/atendimento.md:2615`, `:2650`, `:2663`, `:2721`, `:2727`
 - Antes: ES-54, ES-55, ES-56
 

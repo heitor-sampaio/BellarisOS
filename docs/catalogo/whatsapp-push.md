@@ -362,8 +362,8 @@ Este é o catálogo das regras de WhatsApp e push que valem HOJE: os números de
 
 ## Os avisos à cliente (NC)
 
-**NC-01.** A cliente recebe no celular o aviso do próprio fato, sem a rede ligar nada: o horário marcado, remarcado, cancelado e concluído, e o pagamento. É a confirmação do que aconteceu, não automação: o lembrete antes do agendamento e a confirmação de presença são modelos das Automações, desligados até a rede ligar (NC-03).
-- Fonte: decisão do Claude (a Q01, decidida em 25/11: fica)
+**NC-01.** A cliente recebe no celular o aviso do próprio fato, sem a rede ligar nada: o horário marcado, remarcado, cancelado e concluído, e o pagamento. É a confirmação do que aconteceu, não automação: o lembrete antes do agendamento e a confirmação de presença são modelos das Automações, desligados até a rede ligar (NC-03). O aviso do cancelamento diz o procedimento, a data e a hora e o motivo; o nome da unidade, só com mais de uma unidade ativa.
+- Fonte: decisão do Claude (a Q01, decidida em 25/11: fica); o texto do cancelamento: decisão do Claude, 28/11 (42ª, Decisão D-2)
 - Onde: `docs/regras/whatsapp-push.md:38-44`
 - Antes: KA-10, KC-16
 
@@ -377,8 +377,8 @@ Este é o catálogo das regras de WhatsApp e push que valem HOJE: os números de
 - Onde: `docs/regras/whatsapp-push.md:40-45`; `docs/revisao.md:1041`, `:1064-1072`, `:1531-1533`, `:2083`
 - Antes: KA-11, KC-17
 
-**NC-04.** O aviso da cliente vai aos aparelhos de todas as fichas do login dela (ela pode ser cliente de várias redes com uma conta só), também os registrados quando ela estava em outra rede, e só dele. O aviso fica registrado na ficha da rede de que ele trata, e o link leva ao portal dessa rede. A campanha segue a mesma regra, e o "vai receber no celular" conta do mesmo jeito.
-- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — ver a Q03
+**NC-04.** O aviso da cliente vai aos aparelhos de todas as fichas do login dela (ela pode ser cliente de várias redes com uma conta só), também os registrados quando ela estava em outra rede, e só dele. O aviso fica registrado na ficha da rede de que ele trata, e o link leva ao portal dessa rede; o sino do app mostra só os avisos da rede do endereço. A campanha segue a mesma regra, e o "vai receber no celular" conta do mesmo jeito.
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele) — ver a Q03; o sino só com a rede do endereço: decisão do Claude, 28/11 (42ª, Decisão D-1)
 - Onde: `docs/regras/whatsapp-push.md:54-63`; `CLAUDE.md:322`, `:344-345` (§5)
 - Antes: KA-13, KC-18
 

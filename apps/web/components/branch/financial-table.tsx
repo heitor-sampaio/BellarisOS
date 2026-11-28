@@ -68,6 +68,8 @@ export interface Transaction {
   cliente?: { name: string } | null
   /** A23 da 10ª: o pagamento de R$ 0, todo com o voucher ou os pontos ("Pago com pontos: R$ 180,00"). */
   pago_sem_dinheiro?: string | null
+  /** PD-03: o pago com pontos/voucher embaixo da forma, também com dinheiro junto. */
+  pago_com_fidelidade?: string | null
   /** A31 da 10ª: a taxa da maquininha e o líquido da receita paga (do banco), o fornecedor e a nota — para o CSV. */
   taxa?:        number | null
   liquido?:     number | null
@@ -400,13 +402,20 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
                             {formasDaParcelaEmTexto(tx.formasDaParcela)}
                           </span>
                         ) : tx.payment_method && pmStyle ? (
-                          <span style={{
-                            fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '3px 9px', borderRadius: 99,
-                            background: pmStyle.bg, color: pmStyle.color,
-                            border: `1px solid ${pmStyle.color}30`,
-                          }}>
-                            {rotuloDaForma(tx.payment_method, tx.cartao_vezes, { maquininha: tx.maquininha_nome })}
-                          </span>
+                          <>
+                            <span style={{
+                              fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '3px 9px', borderRadius: 99,
+                              background: pmStyle.bg, color: pmStyle.color,
+                              border: `1px solid ${pmStyle.color}30`,
+                            }}>
+                              {rotuloDaForma(tx.payment_method, tx.cartao_vezes, { maquininha: tx.maquininha_nome })}
+                            </span>
+                            {tx.pago_com_fidelidade && (
+                              <span data-pago-com-fidelidade style={{ display: 'block', marginTop: 4, fontSize: 'var(--text-overline)', color: 'var(--text-muted)' }}>
+                                {tx.pago_com_fidelidade}
+                              </span>
+                            )}
+                          </>
                         ) : tx.pago_sem_dinheiro ? (
                           // A23 da 10ª: o R$ 0 pago todo com o voucher ou os pontos diz isso.
                           <span data-pago-sem-dinheiro style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', whiteSpace: 'normal' }}>

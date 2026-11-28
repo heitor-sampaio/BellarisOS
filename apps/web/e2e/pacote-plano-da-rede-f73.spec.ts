@@ -179,3 +179,23 @@ test('D3: cancelar o pacote e o plano segue do caixa da Savassi', async ({ brows
   })
   void slugA
 })
+
+// D2 da 42ª (PL-01, CLAUDE.md §11): ver e agendar o tratamento seguem da rede
+// (F73, acima), mas a LISTA de planos da ficha (o Planejamento) é das unidades
+// ao alcance de quem vê.
+test('PL-01: o Planejamento da ficha de quem só tem a Pampulha não lista o plano da Savassi', async ({ browser }) => {
+  await como(browser, recepcaoDeB, async p => {
+    const rota = `/${slugB}/clients/${cliente}`
+    await p.goto(rota)
+    const r = await chamarAcao(p, 'actions/treatment-plans.ts', 'getPlanosDoCliente', rota, [cliente])
+    expect(r.texto).toContain('planos')
+    expect(r.texto, 'o plano da Savassi fica fora').not.toContain(plano)
+  })
+  // Controle: a gestão da rede vê o plano.
+  await como(browser, gestor, async p => {
+    const rota = `/admin/clients/${cliente}`
+    await p.goto(rota)
+    const r = await chamarAcao(p, 'actions/treatment-plans.ts', 'getPlanosDoCliente', rota, [cliente])
+    expect(r.texto, 'a rede vê').toContain(plano)
+  })
+})

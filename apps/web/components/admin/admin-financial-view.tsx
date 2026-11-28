@@ -117,6 +117,8 @@ interface AdminTx {
   appointment_id?: string | null
   /** A23 da 10ª: o pagamento de R$ 0, todo com o voucher ou os pontos. */
   pago_sem_dinheiro?: string | null
+  /** PD-03: o pago com pontos/voucher embaixo da forma, também com dinheiro junto. */
+  pago_com_fidelidade?: string | null
   /** A31 da 10ª: a taxa e o líquido da receita paga (do banco), o fornecedor e a nota — para o CSV. */
   taxa?:        number | null
   liquido?:     number | null
@@ -473,6 +475,11 @@ export function AdminFinancialView({
           {t.payment_method ? rotuloDaForma(t.payment_method, t.cartao_vezes, { maquininha: t.maquininha_nome })
             // A23 da 10ª: o R$ 0 pago todo com o voucher ou os pontos diz isso.
             : t.pago_sem_dinheiro ? <span data-pago-sem-dinheiro>{t.pago_sem_dinheiro}</span> : '—'}
+          {t.payment_method && t.pago_com_fidelidade && (
+            <span data-pago-com-fidelidade style={{ display: 'block', marginTop: 4, fontSize: 'var(--text-overline)', color: 'var(--text-muted)' }}>
+              {t.pago_com_fidelidade}
+            </span>
+          )}
         </td>
         <td data-label="Tipo" data-par style={{ padding: '11px 16px' }}>
           <span data-tipo-do-lancamento className={isIncome ? 'chip chip-success' : 'chip chip-muted'} style={{ fontSize: 'var(--text-overline)' }}>

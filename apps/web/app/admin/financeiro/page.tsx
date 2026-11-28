@@ -29,7 +29,8 @@ import { getTotalDosAtendimentosAReceber } from '@/lib/metrics/a-receber'
 import { resultadoDoPeriodo, SEM_ESTOQUE_NO_RESULTADO } from '@/lib/metrics/resultado'
 import { foraDoLucro } from '@/components/shared/despesas-do-caixa'
 import { descontosDosLancamentos, type LancamentoComDesconto } from '@/lib/financeiro/desconto-do-lancamento'
-import { pagosSemDinheiro, type LancamentoSemDinheiro } from '@/lib/financeiro/pago-sem-dinheiro'
+import { pagosSemDinheiro, pagosComFidelidade, type LancamentoSemDinheiro } from '@/lib/financeiro/pago-sem-dinheiro'
+import { configDaRede } from '@/lib/fidelidade/leitura'
 import { getTaxaDosLancamentos } from '@/lib/metrics/contadora'
 import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
 import { tagsDaUrl } from '@/lib/tags/filtro-na-url'
@@ -268,6 +269,10 @@ export default async function AdminFinanceiroPage({
     // D6 da 41ª (EX-11): a parte do pagamento que virou crédito interno na devolução de parte da venda.
     creditoDasDevolucoesDosLancamentos(ctx.tenantId!, txs as unknown as { product_sale_id?: string | null }[]),
   ])
+  // PD-03: o pago com pontos ou voucher embaixo da forma também com dinheiro junto (como na ficha, D10 da 42ª);
+  // o R$ 0 segue no `pagosSemDinheiro`, que decide o "Desfazer o pagamento". Desligado, nada (fidelidade.md).
+  const comFidelidade: Record<string, string> = (await configDaRede(ctx.tenantId!, admin)).enabled
+    ? await pagosComFidelidade(txs as unknown as LancamentoSemDinheiro[]) : {}
   // As opções do filtro de Tags: o vocabulário da rede, lido aqui (quem só tem
   // o Financeiro também as vê); o Resumo não tem o filtro.
   const tagsDaRede = aba === 'resumo' ? [] : await comAsArquivadasEmUso(ctx.tenantId!, tagsAtivasDaRede(ctx.tenantId!))
@@ -276,6 +281,7 @@ export default async function AdminFinanceiroPage({
     maquininha_nome: maquininhaDoRotulo(maquininhas, maquininha_id ?? maquininhaDoEstorno[t.id]),
     desconto_texto: descontos[t.id] ?? null,
     pago_sem_dinheiro: semDinheiro[t.id] ?? null,
+    pago_com_fidelidade: comFidelidade[t.id] ?? null,
     // A36 e A37 da 11ª: o pago e o estornado em parte; o uso do crédito não é receita.
     // D6 da 41ª: e a parte que virou crédito interno na devolução de parte da venda.
     estorno_parcial_texto: notaDoPagamentoQueVoltou(t as unknown as LancamentoParaNota, emCredito[t.id] ?? 0),

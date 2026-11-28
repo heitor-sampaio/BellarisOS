@@ -921,10 +921,11 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
               : 'Forma: escolha acima, em “Como vai ser pago”.'}
           </p>
         )}
-        {/* A36 da 8ª: com o crédito na clínica, o saldo dela e o que sobra. */}
+        {/* A36 da 8ª: com o crédito na clínica, o saldo dela e o que sobra. A2 da 42ª: dividida a conta,
+            o saldo se compara com a parte posta no crédito (o que falta das outras formas), não com o plano inteiro. */}
         {(formaPgto === 'AVISTA' || formaPgto === 'PARCELADO') && paymentMethod === 'INTERNAL_CREDIT' && (
           <div style={{ marginBottom: 16 }}>
-            <SaldoDoCredito clienteId={plan.clientId} valor={formaPgto === 'PARCELADO' ? entradaNum : liquido} />
+            <SaldoDoCredito clienteId={plan.clientId} valor={Math.max(0, naPrimeiraForma)} />
           </div>
         )}
         {(formaPgto === 'AVISTA' || (formaPgto === 'PARCELADO' && entradaNum > 0)) && (
@@ -943,8 +944,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
                 ))}
               </select>
             </label>
-            <DicaDasVezes total={formaPgto === 'PARCELADO' ? entradaNum : liquido}vezes={vezesCartao} opcoes={opcoesDeVezes} />
-            <AvisoDaTaxa vezes={vezesCartao} bandeira={bandeira} maquininha={maquininha} total={formaPgto === 'PARCELADO' ? entradaNum : liquido} />
+            <DicaDasVezes total={Math.max(0, naPrimeiraForma)} vezes={vezesCartao} opcoes={opcoesDeVezes} />
+            <AvisoDaTaxa vezes={vezesCartao} bandeira={bandeira} maquininha={maquininha} total={Math.max(0, naPrimeiraForma)} />
           </div>
         )}
         {(formaPgto === 'AVISTA' || formaPgto === 'PARCELADO') && (

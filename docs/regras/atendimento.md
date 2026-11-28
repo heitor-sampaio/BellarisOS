@@ -24,7 +24,11 @@
   - a grade da agenda (dia) abre e fecha no horário da unidade, estendida pelos
     agendamentos que caem fora dele — a MESMA regra (`estenderJanela`, `lib/agenda/grade.ts`) na
     agenda da unidade, na "Minha agenda" e em `/admin/agenda` (na rede, o mais cedo e o mais
-    tarde entre as unidades; D5 de 2026-10-28, era 07–21 fixo nas duas últimas);
+    tarde entre as unidades; D5 de 2026-10-28, era 07–21 fixo nas duas últimas). O horário
+    é o DO DIA mostrado (`janelaDaGrade(horarios, dia)`; D12 da 42ª: a unidade 24 h na
+    semana e até 09:30 no sábado abria o sábado de 00:00 a 24:00, a janela da semana); no
+    dia fechado em todas, a da semana (decisão do Claude, 28/11). Prova:
+    `tests/agenda-janela-do-dia.test.ts`;
   - **a "Minha agenda" é o horário DELA** ("Reforça", item 8 da 5ª simulação):
     a grade do dia é unidade ∩ ela (`janelaDoDia`), estendida pelos
     atendimentos de fora, com o resto sombreado; no dia em que ela não atende,
@@ -1040,7 +1044,9 @@
   `lib/agenda/hora-real.ts`, Brasília). Prova:
   `e2e/agenda-concluido-hora-real.spec.ts`, `tests/agenda-hora-real.test.ts`.
   No Histórico do app a marcada se diz: "marcado para 19:00 · concluído às
-  18:11" (A31 da 14ª, F73, `textoDoHorarioNoHistorico`). O cartão "Como foram
+  18:11" (A31 da 14ª, F73, `textoDoHorarioNoHistorico`) — no Histórico da Agenda
+  e na tela Histórico (Procedimentos), que dizia só o dia (D11 da 42ª; prova:
+  `tests/agenda-hora-real.test.ts`, `e2e/agenda-concluido-hora-real.spec.ts`). O cartão "Como foram
   os seus atendimentos?" da home diz a hora (a real) e, com mais de uma
   unidade, onde: "Concluído em 12/11 às 18:11 · Manacá Pampulha · toque para
   avaliar" (A30, `textoDoParaAvaliar`). E o "Agendamento remarcado" do app diz
@@ -1743,7 +1749,12 @@
   procedimento bate, como a do pacote (A20 da 8ª): "Incluído no plano de
   tratamento (sessão 2 de 3)" (A3 da 25ª: era "Já pago", também com o plano no
   crediário, de parcelas em aberto; o campo é "Incluído",
-  `textoDoCreditoAoAgendar`). A grade de horários é a do modal. O avulso já
+  `textoDoCreditoAoAgendar`). O "Incluído" só oferece o crédito cujo
+  procedimento principal a unidade do AGENDAMENTO faz
+  (`creditosOferecidosNaUnidade`, A3 da 42ª; princípio 7): a sessão do Micro,
+  que só Arapongas faz, não aparece no agendar de Apucarana — a recusa
+  (`recusaDoProcedimentoNaUnidade`) só vinha ao salvar. Na agenda da rede, até
+  escolher a unidade, não corta. A grade de horários é a do modal. O avulso já
   marcado não se liga a uma sessão de plano (`agendamento_usar_credito` é do
   pacote e do pré-pago). E o cartão "Tratamento em andamento" diz "Abrir para
   ver e agendar as sessões" (`[data-tratamento-que-abre]`). Prova: o mesmo spec
@@ -1786,7 +1797,11 @@
   (PT1b, `docs/regras/vendas-financeiro.md`); o aceito, cada sessão (feita,
   agendada ou a agendar, `situacaoDaSessaoNoApp`) com o "Agendar" da que está
   em aberto, os pagamentos (de `getFinanceiroDoPlano`) e os documentos do
-  plano (`documentosDoPlanoNoPortal`). Nada clínico: a anotação da
+  plano (`documentosDoPlanoNoPortal`). O "Agendar" abre na unidade DO PLANO
+  (`rotaDoAgendarDaSessaoNoApp`, D6 da 42ª; decisão do Claude, 28/11), não na
+  do endereço: a sessão de Arapongas não abre o agendar de Apucarana, que não
+  faz o procedimento. Unidade do plano desativada: a do endereço, e o agendar
+  pergunta a unidade como sempre (H5). Nada clínico: a anotação da
   profissional não sai do servidor. Os cartões do Início levam a ela ("Ver o
   plano").
   **O "Pago" do plano conta o crédito interno** (D3 da 35ª; PL-19 e o
@@ -3110,7 +3125,14 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
   falta pagar."; `contratoFaltaAssinar`; era "por emitir/assinar"). O termo do
   plano nasce com o plano e não depende do pagamento: aberto, segue "falta
   assinar" (decisão do Claude, 27/11, pela mesma fala: é documento emitido). Com
-  dinheiro recebido, "Em andamento" (o recebido vence o documento aberto). O REJECTED antigo é "Cancelado". Sete
+  dinheiro recebido, "Em andamento" (o recebido vence o documento aberto);
+  recebido e com TODAS as sessões feitas, "Concluído" (D4 da 42ª; decisão do
+  Claude, 28/11: o plano só passava a COMPLETED pela mão, e o aceito com as
+  sessões todas feitas ficava em "Em andamento" para sempre). Sessão feita é a
+  régua de `metrics_financeiro_do_plano` — concluída, ou iniciada e desistida
+  (`sessaoFeitaDoPlano`, `lib/plano-de-tratamento/sessoes-feitas.ts`; lida por
+  `getSessoesDosPlanos`); feitas e sem dinheiro segue "Falta pagar"; plano sem
+  sessão não se conclui. O filtro "Concluído" lê o aceito e o COMPLETED. O REJECTED antigo é "Cancelado". Sete
   situações: um seletor (`.filtro-select`), não um segmentado. O plano
   proposto se chama "Proposto" em toda tela (era "Aguardando checkout").
 - **Os planos de tratamento seguem o Atendimento, sem recorte** (era a
@@ -3121,7 +3143,11 @@ const procedures = await comPrecoDaUnidade(admin, unidadeId,
   salvar, renomear, ligar cliente, enviar ao PDV, aceitar, receber dele no
   PDV, o arquivo do tratamento) valem para todo plano da rede, na unidade ao
   alcance. Saiu o recorte ao plano DELA (`planoDaProfissional`,
-  `clienteAtendidaPor`). Cancelar o plano fechado é do Financeiro em
+  `clienteAtendidaPor`). A lista da ficha (`getPlanosDoCliente`) também confere
+  a unidade de CADA plano (`alcancaUnidade`, D2 da 42ª): quem tem só a unidade B
+  não vê no Planejamento o plano montado na A. Ver e agendar as sessões do plano
+  FECHADO seguem da rede (o cartão "Tratamento em andamento", F73,
+  `vendas-financeiro.md`). Cancelar o plano fechado é do Financeiro em
   Gerenciar, como o pacote (D4 da 9ª, `vendas-financeiro.md`). A anotação do
   profissional no plano continua do Prontuário (`podeVerClinico`). Os gestos
   de quem RECEBE (`getCheckoutPlan`, `cancelCheckout`; o `receberDoPlano`
@@ -4099,7 +4125,12 @@ indicada é a do consolidado do levantamento):
   `e2e/estoque-cadastro-f66.spec.ts`, `tests/varredura-atendimento.test.ts`.
 - **A transferência confere o RENDIMENTO** (C18): 2 frascos de 1,5 (150 UI)
   são recusados — "Disponível: 1,5 frasco (o frasco aberto conta pelo que
-  sobra nele)" —, e a janela diz o disponível pela prateleira. Era a conta
+  sobra nele)" —, e a janela diz o disponível que a transferência confere, em
+  embalagens com a fração e na unidade de uso: "Disponível na origem: 1,9
+  frasco (57 ml)"; o seletor da unidade, o mesmo número ("Lajeado · 1,9"), e o
+  máximo do campo também (A6 da 42ª, ES-19: dizia "2 frascos (2 frascos)" e
+  "· 2", o `current_stock`; `disponivelEmEmbalagens`/`textoDoDisponivel`,
+  `lib/estoque/saldo-em-texto.ts`). Era a conta
   nas embalagens arredondadas, e o destino ganhava o que não existia.
 - **A perda e a venda saem ao custo DO LOTE** (C20, `custo_do_lote`, que
   acha também o lote do ajuste positivo); o que nenhum lote cobre, ao último
@@ -4942,6 +4973,7 @@ O resto do fluxo:
 ❌ Ler o nome da cliente ou do profissional de um registro da unidade por join da sessão (clients(name), users!professional_id(name)) — a cliente de outra unidade e o profissional da rede viram "—"; é nomesDosRegistros
 ❌ Conferir conflito de horário fora de horarioOcupado (lib/appointments/core.ts): a duração de CADA agendamento, e o profissional em qualquer unidade da rede
 ❌ Ler os agendamentos que ocupam um horário com uma janela fixa para trás (as 12 h de antes): é podemOcuparDesde (qualquer duração), e o "próximo livre" com a duração inteira, sem teto (25/11)
+❌ Abrir a grade do DIA pela janela da semana (janelaDaGrade sem o dia): a unidade fechada cedo naquele dia abria até a hora mais tarde de outro (D12 da 42ª, AG-03)
 ❌ Pôr um agendamento numa grade só pelo dia em que COMEÇA (isSameDay do início, a chave do dia): é agendamentosNoDia (lib/agenda/trecho-do-agendamento), que traz o que continua de antes — e a leitura da agenda pega quem se sobrepõe ao período (podemOcuparDesde), não .gte no início (25/11)
 ❌ Medir até quando um agendamento ocupa o horário fora de fimDaOcupacao (o concluído adiantado libera o resto — A31)
 ❌ Conferir se um agendamento bate num horário fora de bateNaOcupacao (o concluído antes de começar não ocupa nada — D3 da 11ª)
@@ -4980,7 +5012,7 @@ O resto do fluxo:
 ❌ Corrigir o custo de um lote de onde já saiu algo, ou mexer no unit_cost fora de estoque_corrigir_custo_do_lote: depois da saída é o Ajuste "Correção de cadastro" (estoque_ajuste_de_correcao — A10 da 24ª), que não é perda
 ❌ Corrigir uma perda lançada errada com um ajuste a mais (a perda fica em Perdas e o lote certo não volta): é "Desfazer perda" (estoque_desfazer_perda — C69)
 ❌ Lista fixa de motivos de perda na tela ou no banco: os motivos são da REDE (estoque_motivos_de_perda), e a perda grava o nome e o id pelo private.motivo_da_perda_de (item 7 do escopo de 18/11)
-❌ Conferir o disponível de uma transferência (ou de qualquer saída) pelo current_stock de produto com unidade de consumo — o frasco aberto conta inteiro; é o rendimento (C18)
+❌ Conferir o disponível de uma transferência (ou de qualquer saída) pelo current_stock de produto com unidade de consumo — o frasco aberto conta inteiro; é o rendimento (C18; na tela também, no rótulo e no seletor da unidade: disponivelEmEmbalagens — A6 da 42ª)
 ❌ Gravar o custo do produto ao editar o cadastro (o custo vem das entradas — C17)
 ❌ Campo de categoria, marca ou fornecedor em texto livre (ou num select sem busca) numa porta de entrada nova — é CampoDaLista (a lista da rede, com busca e "+ Nova …" — E6)
 ❌ Pôr marca ou fornecedor no PRODUTO — são da entrada (E10)

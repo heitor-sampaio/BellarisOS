@@ -5,6 +5,7 @@ import { idOu404 } from '@/lib/id-da-rota'
 import { getTenantContext, can, podeReceber, podeVerClinico, temRecurso } from '@/lib/auth'
 import { montaPlano } from '@/lib/plano-de-tratamento/quem-monta'
 import { quemDesfazNoCaixa, quemCompletaOCadastro } from '@/lib/equipe/quem-desfaz'
+import { quemCancelaNosCartoes } from '@/lib/plano-de-tratamento/quem-cancela-na-ficha'
 import { veOsDocumentos, dispensaDocumentos } from '@/lib/documentos/acesso'
 import { getPagoComCreditoDoCliente } from '@/lib/metrics/fechamento-extra'
 import { idadeEm, formatBRL } from '@estetica-os/utils'
@@ -508,6 +509,17 @@ export default async function AdminClientProfilePage({
     podeReceber(ctx) && !can(ctx, 'financial', 'MANAGE') ? quemDesfazNoCaixa(ctx.tenantId!, ctx.branchId ?? null) : Promise.resolve(null),
     getPagoComCreditoDoCliente(ctx.tenantId!, id),
   ])
+
+  // D5 da 42ª (DP-08): a quem pedir o cancelamento é quem alcança a unidade DO
+  // cartão (o plano, o pacote), não a do portal.
+  if (quemDesfaz) {
+    const cartoes = [activePackage, ...outrosPacotes].filter((c): c is ProfilePackage => !!c)
+    const unidadeDoCartao = (c: ProfilePackage): string | null => c.planId
+      ? ((activePlansRaw?.[0] as { branch_id?: string | null } | undefined)?.branch_id ?? null)
+      : ((pkgsArray.find(p => p.id === c.id) as { branch_id?: string | null } | undefined)?.branch_id ?? null)
+    const quem = await quemCancelaNosCartoes(ctx.tenantId!, cartoes.map(c => ({ id: c.id, unidadeId: unidadeDoCartao(c) })), ctx.branchId ?? null)
+    for (const c of cartoes) c.quemCancela = quem.get(c.id) ?? []
+  }
 
   // Sem o Clientes, a ficha inteira não chega a ser desenhada: vai só o
   // nome e o clínico (`soOProntuarioDaFicha`, a lista do que fica).

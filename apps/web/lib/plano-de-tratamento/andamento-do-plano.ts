@@ -2,6 +2,7 @@ import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, lerTodas } from '@/lib/db'
 import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
+import { getSessoesDosPlanos } from '@/lib/metrics/plano'
 import { situacaoComercialDoPlano, contratoFaltaAssinar, type SituacaoComercial, type SituacaoDoContrato } from './situacao'
 
 export type { SituacaoDoContrato }
@@ -100,7 +101,8 @@ export async function situacoesDosPlanos(
   tenantId: string, planos: { id: string; status: string }[],
 ): Promise<Map<string, SituacaoComercial>> {
   const aceitos = planos.filter(p => p.status === 'ACCEPTED').map(p => p.id)
-  const andamento = await andamentoDosPlanos(tenantId, aceitos)
+  // D4 da 42ª (PL-20): as sessões feitas decidem o "Concluído" do aceito.
+  const [andamento, sessoes] = await Promise.all([andamentoDosPlanos(tenantId, aceitos), getSessoesDosPlanos(aceitos)])
   const mapa = new Map<string, SituacaoComercial>()
   for (const p of planos) {
     const a = andamento.get(p.id)
@@ -109,6 +111,7 @@ export async function situacoesDosPlanos(
       recebido: a?.recebido ?? false,
       documentosAbertos: a?.documentos.abertos ?? 0,
       contratoFalta: contratoFaltaAssinar(a?.contrato ?? 'SEM_CONTRATO'),
+      sessoes: a ? sessoes.get(p.id) : undefined,
     }))
   }
   return mapa

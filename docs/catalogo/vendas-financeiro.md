@@ -292,8 +292,8 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 
 ### Cancelar o plano fechado
 
-**DP-08.** Cancelar o plano fechado é o mesmo "Cancelar pacote", sem configuração nem conta própria (nem tabela, nem multa, nem preço de tabela): "Cancelar plano" no "Tratamento em andamento" da ficha, na ficha de tratamento, no "Gerenciar" das sessões e na página do plano, para quem tem o Financeiro em Gerenciar, com a unidade do plano ao alcance. Quem recebe e não cancela lê "Cancelar o plano é de quem tem o Financeiro em Gerenciar: …". O cancelamento também abre na janela do estorno ("Cancelar pacote", "Cancelar plano", "Cancelar a sessão N"), que se abre nos dois financeiros, na ficha e no PDV: quem tem o Financeiro em Gerenciar sem Clientes e sem o Atendimento cancela por ali, e a janela não manda a um lugar que a pessoa não abre (decisão do Claude, 27/11, 35ª D1).
-- Fonte: o Heitor, 2026-11-07 (decisão 2): "sim usa a mesma coisa do pacote"
+**DP-08.** Cancelar o plano fechado é o mesmo "Cancelar pacote", sem configuração nem conta própria (nem tabela, nem multa, nem preço de tabela): "Cancelar plano" no "Tratamento em andamento" da ficha, na ficha de tratamento, no "Gerenciar" das sessões e na página do plano, para quem tem o Financeiro em Gerenciar, com a unidade do plano ao alcance. Quem recebe e não cancela lê "Cancelar o plano é de quem tem o Financeiro em Gerenciar: …". O cancelamento também abre na janela do estorno ("Cancelar pacote", "Cancelar plano", "Cancelar a sessão N"), que se abre nos dois financeiros, na ficha e no PDV: quem tem o Financeiro em Gerenciar sem Clientes e sem o Atendimento cancela por ali, e a janela não manda a um lugar que a pessoa não abre (decisão do Claude, 27/11, 35ª D1). Os nomes de quem pode cancelar, na ficha, são os de quem alcança a unidade do plano (ou do pacote), não a do portal.
+- Fonte: o Heitor, 2026-11-07 (decisão 2): "sim usa a mesma coisa do pacote"; decisão do Claude, 28/11 (42ª, D5)
 - Onde: `docs/regras/vendas-financeiro.md:870-889`, `:3199`; `docs/revisao.md:2077`
 - Antes: KB-45, KF-32
 

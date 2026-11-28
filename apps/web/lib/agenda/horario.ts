@@ -373,14 +373,24 @@ export function janelaDoDia(intervalos: Intervalo[]): { inicio: number; fim: num
   return ate > de ? { inicio: Math.floor(de / 60), fim: Math.ceil(ate / 60) } : null
 }
 
-/** As horas da grade da agenda: da primeira abertura ao último fechamento da semana. */
-export function janelaDaGrade(horarios: (Horario | null)[]): { inicio: number; fim: number } {
-  let inicio = 24 * 60, fim = 0
-  for (const h of horarios.length ? horarios : [null]) for (let d = 0; d < 7; d++) {
-    for (const i of intervalosDoDia(h, null, d)) { inicio = Math.min(inicio, minutos(i.de)); fim = Math.max(fim, minutos(i.ate)) }
+/**
+ * As horas da grade da agenda: da primeira abertura ao último fechamento.
+ * Com `dia` (0 = domingo), a grade do DIA (AG-03; D12 da 42ª: a unidade 24 h
+ * na semana e até 09:30 no sábado abria o sábado de 00:00 a 24:00): o horário
+ * de cada unidade naquele dia, do mais cedo ao mais tarde. No dia fechado em
+ * todas, a janela da semana (decisão do Claude, 28/11: o encaixe tem onde cair).
+ * Sem `dia`, a semana inteira.
+ */
+export function janelaDaGrade(horarios: (Horario | null)[], dia?: number): { inicio: number; fim: number } {
+  const lista = horarios.length ? horarios : [null]
+  const conta = (dias: number[]) => {
+    let inicio = 24 * 60, fim = 0
+    for (const h of lista) for (const d of dias) {
+      for (const i of intervalosDoDia(h, null, d)) { inicio = Math.min(inicio, minutos(i.de)); fim = Math.max(fim, minutos(i.ate)) }
+    }
+    return fim > inicio ? { inicio: Math.floor(inicio / 60), fim: Math.ceil(fim / 60) } : null
   }
-  if (fim <= inicio) return { inicio: 8, fim: 20 }
-  return { inicio: Math.floor(inicio / 60), fim: Math.ceil(fim / 60) }
+  return (dia !== undefined ? conta([dia]) : null) ?? conta([0, 1, 2, 3, 4, 5, 6]) ?? { inicio: 8, fim: 20 }
 }
 
 /**

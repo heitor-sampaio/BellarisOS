@@ -73,3 +73,13 @@ test('o app da cliente mostra a hora agendada e a hora real do concluído', asyn
     await expect(cartao).toContainText(`concluído em ${ddmm} às 00:22`)
   })
 })
+
+// D11 da 42ª (AG-24): o Histórico do app dizia só o dia ("Dra. Lucélia · 28 de
+// nov. de 2026"), sem a hora marcada nem a real.
+test('o Histórico do app mostra a hora marcada e a hora real do concluído', async ({ browser }) => {
+  await como(browser, cliente!.estado, async p => {
+    await p.goto(`/${slug}/cliente/historico`)
+    const horario = p.locator('[data-hora-real]').filter({ hasText: `concluído em ${ddmm} às 00:22` })
+    await expect(horario).toHaveText(`marcado para 23:30 · concluído em ${ddmm} às 00:22`)
+  })
+})

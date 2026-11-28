@@ -209,7 +209,7 @@ export function DevolverParteDaVenda({ transacaoId, onFechar }: { transacaoId: s
                 </div>
 
                 <EscolhaDaDevolucao prefixo="devolver-parte" devolver={previa.devolver} parcial={previa.parcial}
-                  fidelidade={previa.fidelidade} estado={escolha} aoMudar={setEscolha} desligado={devolvendo} opcoesDeVezes={opcoesDeVezes} formas={previa.formas} />
+                  fidelidade={previa.fidelidade} estado={escolha} aoMudar={setEscolha} desligado={devolvendo} opcoesDeVezes={opcoesDeVezes} formas={previa.formas} pontosDaDevolucao={previa.pontos ?? null} />
               </>
             )}
 

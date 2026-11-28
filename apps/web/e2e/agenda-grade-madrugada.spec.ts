@@ -165,3 +165,29 @@ test('/admin/agenda: com duas unidades de horários diferentes, a grade vai do m
     expect((await db().from('branches').delete().eq('id', norte!.id)).error, 'apagar a segunda unidade').toBeNull()
   }
 })
+
+/**
+ * D12 da 42ª (AG-03): a unidade aberta o dia inteiro nos outros dias e só de
+ * 10 às 12 HOJE abria a grade de hoje de 00:00 a 24:00 — a janela era a da
+ * semana. A grade do dia é o horário da unidade naquele dia (e o agendamento
+ * de fora ainda a estende).
+ */
+test('agenda da unidade: a grade do dia é o horário da unidade NAQUELE dia, não o da semana', async ({ browser }) => {
+  await apagar(); await agendar('h', '10:30')
+  const diaDeHoje = new Date(`${hoje}T12:00:00-03:00`).getUTCDay()
+  const dias = Object.fromEntries([0, 1, 2, 3, 4, 5, 6].map(d => [d, d === diaDeHoje ? [{ de: '10:00', ate: '12:00' }] : [{ de: '00:00', ate: '24:00' }]]))
+  expect((await db().from('branches').update({ horario: { dias } }).eq('id', rede!.branchId)).error).toBeNull()
+  const ctx = await browser.newContext({ storageState: gestor!.estado })
+  try {
+    const p = await ctx.newPage()
+    await p.goto(`/${slug}/agenda?date=${hoje}`)
+    await expect(p.locator(`[data-agendamento="${ids.h}"]`)).toBeVisible()
+    const horas = await rotulosDeHora(p)
+    expect(Math.min(...horas), 'abre na abertura de hoje').toBe(10)
+    expect(Math.max(...horas), 'fecha no fim de hoje (12:00), não às 24:00 de outro dia').toBe(11)
+  } finally {
+    await ctx.close()
+    const todoDia = Object.fromEntries([0, 1, 2, 3, 4, 5, 6].map(d => [d, [{ de: '10:00', ate: '18:00' }]]))
+    expect((await db().from('branches').update({ horario: { dias: todoDia } }).eq('id', rede!.branchId)).error).toBeNull()
+  }
+})

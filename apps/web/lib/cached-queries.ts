@@ -461,7 +461,7 @@ export function getCachedClientProfileData(clientId: string, branchId: string, t
           .order('name'),
         admin
           .from('treatment_plans')
-          .select('id, status, treatment_plan_sessions(id, treatment_plan_session_procedures(procedure_id, price, procedures(name, duration_min)))')
+          .select('id, status, branch_id, treatment_plan_sessions(id, treatment_plan_session_procedures(procedure_id, price, procedures(name, duration_min)))')
           .eq('client_id', clientId)
           .eq('status', 'ACCEPTED')
           .order('created_at', { ascending: false })

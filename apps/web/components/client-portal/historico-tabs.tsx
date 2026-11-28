@@ -163,6 +163,8 @@ export function HistoricoTabs({ slug, procedimentos, deAntes, pagamentos, docume
                       day: '2-digit', month: 'short', year: 'numeric',
                     })}
                   </span>
+                  {/* D11 da 42ª (AG-24): a hora, e a real do concluído, como a Agenda do app. */}
+                  <span data-hora-real={p.horario.includes('concluído') ? '' : undefined}>{p.horario}</span>
                 </div>
 
                 {/* Confirmação / avaliação */}

@@ -58,6 +58,14 @@ export function jaPodeTrocar(saldo: number, custo: number): string | null {
   return saldo >= custo ? 'Você já pode trocar: peça à equipe.' : null
 }
 
+/**
+ * O título do bloco das recompensas no app (AP-01; A5 da 42ª): sem a troca pelo app, "Troque seus pontos"
+ * prometia o que a tela não faz — o bloco só mostra as recompensas.
+ */
+export function tituloDasRecompensasNoApp(trocaPeloApp: boolean): string {
+  return trocaPeloApp ? 'Troque seus pontos' : 'Recompensas'
+}
+
 /** Quanto os pontos valem em R$, pelo valor do ponto da rede. Nunca negativo. */
 export function pontosEmReais(pontos: number, valorDoPonto: number): number {
   if (!Number.isFinite(pontos) || !Number.isFinite(valorDoPonto) || pontos <= 0 || valorDoPonto <= 0) return 0

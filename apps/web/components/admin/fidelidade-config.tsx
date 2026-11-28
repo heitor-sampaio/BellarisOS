@@ -14,8 +14,9 @@ import { Dica } from '@/components/shared/dica'
  * Configurações → Fidelidade: a rede liga o programa e escolhe as regras.
  *
  * O programa é da REDE e nasce desligado (decisão do Heitor, 2026-09-28).
- * Desligado, nada de pontos aparece em lugar nenhum — nem para a equipe, nem
- * para o cliente. O que cada escolha faz mora na dica ao lado do título do
+ * Desligado, ninguém ganha pontos e nada de pontos aparece, fora o campo de
+ * pontos do procedimento no modo por procedimento (GA-03, A1 da 42ª), para a
+ * rede preparar antes de ligar. O que cada escolha faz mora na dica ao lado do título do
  * bloco (2026-11-16, o Heitor: "Não dá pra ficar poluindo tela com um monte de
  * explicaçãozinha" — docs/regras/design.md, "A explicação mora na dica").
  */
@@ -126,7 +127,7 @@ export function FidelidadeConfig({ inicial, podeEditar, recompensas = [] }: {
           <h2 style={{ ...linhaComDica, fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>
             <span id="titulo-fidelidade">Programa de fidelidade</span>
             <Dica rotulo="Sobre o programa de fidelidade">
-              O cliente acumula pontos a cada pagamento. Desligado, nada de pontos aparece — nem para a equipe, nem para o cliente.
+              O cliente acumula pontos a cada pagamento. Desligado, ninguém ganha pontos, e o cliente não vê pontos.
             </Dica>
           </h2>
         </div>

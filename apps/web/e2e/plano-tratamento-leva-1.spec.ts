@@ -320,6 +320,36 @@ test('PT1f: Tratamentos filtra por situação — Proposto, Aceito (falta assina
   })
 })
 
+// D4 da 42ª (PL-20): nada grava COMPLETED — o aceito, recebido, com TODAS as
+// sessões feitas é "Concluído" na lista e no filtro (a sessão feita é a de
+// metrics_financeiro_do_plano). Era "Em andamento · 1 de 1", e o filtro trazia 0.
+test('PL-20: o plano aceito com todas as sessões feitas aparece em "Concluído", não em "Em andamento"', async ({ browser }) => {
+  const { planId, clientId, sessaoId } = await planoAceito('Fz')
+  const agora = new Date().toISOString()
+  const { data: ag, error: eAg } = await db().from('appointments').insert({
+    branch_id: rede!.branchId, client_id: clientId, procedure_id: rede!.procedureId, professional_id: rede!.professionalId,
+    treatment_plan_id: planId, status: 'COMPLETED', started_at: agora, completed_at: agora,
+    source: 'INTERNAL', duration_min: 30, price: 80, scheduled_at: new Date(Date.now() - 3_600_000).toISOString(),
+  }).select('id').single<{ id: string }>()
+  expect(eAg, 'a sessão feita').toBeNull()
+  expect((await db().from('treatment_plan_sessions').update({ appointment_id: ag!.id }).eq('id', sessaoId)).error).toBeNull()
+  expect((await db().from('financial_transactions').insert({
+    branch_id: rede!.branchId, client_id: clientId, treatment_plan_id: planId, type: 'INCOME', category: 'Serviços',
+    description: `${PREFIXO} recebido concluído ${marca}`, amount: 80, is_paid: true, payment_method: 'PIX', created_by: 'e2e',
+  })).error).toBeNull()
+
+  await como(atende!, browser, async p => {
+    await p.goto(`/${slug}/planejamentos`)
+    const filtro = p.getByLabel('Filtrar por situação do plano')
+    const linha = p.locator(`[data-plano-da-lista][href$="/${planId}"]`)
+    await filtro.selectOption({ label: 'Concluído' })
+    await expect(linha, 'o filtro Concluído acha o plano').toHaveCount(1)
+    await expect(linha).toContainText('Concluído')
+    await filtro.selectOption({ label: 'Em andamento' })
+    await expect(linha, 'e ele não está mais em andamento').toHaveCount(0)
+  })
+})
+
 // Sem o "só os meus" (SM1, o Heitor, 2026-11-23): com o Atendimento em Ver, o
 // plano de cliente que ela não atende abre, com os passos.
 test('os passos do plano de cliente que ela não atende abrem a quem tem o Atendimento — pelo id também', async ({ browser }) => {

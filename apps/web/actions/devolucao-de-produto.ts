@@ -21,7 +21,9 @@ import { FORMAS_DE_PAGAMENTO } from '@/lib/financeiro/lancamento'
 import { BANDEIRAS } from '@/lib/financeiro/bandeiras'
 import { LIMITE_DE_VEZES_NO_CARTAO, acimaDeCemAnos } from '@/lib/acima-do-comum'
 import { recusaDaQuantidadeQueVolta } from '@/lib/vendas/quantidades'
-import { lerPreviaDaDevolucao, type PreviaDaDevolucao, type VendaParaDevolver } from '@/lib/produtos/devolucao'
+import { lerPreviaDaDevolucao, type PontosDaDevolucaoNaTela, type PreviaDaDevolucao, type VendaParaDevolver } from '@/lib/produtos/devolucao'
+import { pontosDaDevolucao, textoDosPontosDaDevolucao } from '@/lib/fidelidade/pontos-da-devolucao'
+import { textoDosPontosDoEstorno } from '@/lib/fidelidade/pontos-do-estorno'
 
 const UUID = /^[0-9a-f-]{36}$/i
 
@@ -101,21 +103,80 @@ export async function previaDaDevolucao(vendaId: string, itens: unknown): Promis
       p_estorno: null, p_novo: null,
     }), 'calcular a devolução') as Record<string, unknown>
     const previa = lerPreviaDaDevolucao(j)
+    const ligada = previa.fidelidade
     // A40 da 9ª: "os pontos dele saem do saldo" só quando a venda PONTUOU (a
     // venda de produto só pontua com a opção da clínica ligada).
     if (previa.fidelidade && !await vendaPontuou(admin, vendaId)) previa.fidelidade = false
     // CI-04 (A7 da 41ª): pago com crédito interno, o "Estorno" diz que volta ao crédito — as formas em que ela pagou.
     const pagamentos = await ler(admin.from('financial_transactions')
-      .select('payment_method, notes, category, amount, branches!inner(tenant_id)')
+      .select('id, payment_method, notes, category, amount, paid_at, created_at, branches!inner(tenant_id)')
       .eq('branches.tenant_id', ctx.tenantId!).eq('product_sale_id', vendaId).eq('type', 'INCOME').eq('is_paid', true)
-      .limit(100), 'ler as formas da venda') as { payment_method: string | null; notes: string | null; category: string | null; amount: number | string }[] | null
-    previa.formas = [...new Set((pagamentos ?? [])
-      .filter(p => p.notes !== 'Estornada' && p.category !== 'Estorno' && Number(p.amount) > 0 && p.payment_method)
-      .map(p => p.payment_method!))]
+      .limit(100), 'ler as formas da venda') as {
+        id: string; payment_method: string | null; notes: string | null; category: string | null; amount: number | string
+        paid_at: string | null; created_at: string
+      }[] | null
+    const vivos = (pagamentos ?? []).filter(p => p.notes !== 'Estornada' && p.category !== 'Estorno' && Number(p.amount) > 0)
+    previa.formas = [...new Set(vivos.filter(p => p.payment_method).map(p => p.payment_method!))]
+    previa.pontos = ligada && previa.devolver > 0 ? await pontosDaDevolucaoNaTela(admin, ctx.tenantId!, vivos, previa.devolver) : null
     return { previa }
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }
+}
+
+/**
+ * ES-02 (D7 da 42ª): os pontos que o estorno da devolução tira, com o saldo de antes e de depois — cada
+ * pagamento pela conta do estorno inteiro (`fidelidade_pontos_do_estorno`), na ordem e na proporção de
+ * `produto_devolver_itens` (`pontosDaDevolucao`). O voucher usado e o prêmio de indicação do pagamento
+ * estornado inteiro seguem o estorno inteiro (`textoDosPontosDoEstorno`).
+ */
+async function pontosDaDevolucaoNaTela(
+  admin: ReturnType<typeof createAdminClient>, tenantId: string,
+  vivos: { id: string; amount: number | string; paid_at: string | null; created_at: string }[], devolver: number,
+): Promise<PontosDaDevolucaoNaTela | null> {
+  type Linha = {
+    ligada: boolean; cliente: string | null; ganhos: number; usados: number; saldo: number
+    indicadora: string | null; premio_pontos: number; premio_voucher: string | null; premio_voucher_status: string | null; premio_passa: boolean
+  }
+  const lidos = await Promise.all(vivos.map(async p => {
+    const l = ((await ler(admin.rpc('fidelidade_pontos_do_estorno', { p_tenant: tenantId, p_transacao: p.id }),
+      'ler os pontos do estorno')) as Linha[] | null ?? [])[0]
+    return { p, l }
+  }))
+  const primeira = lidos.find(x => x.l)?.l
+  if (!primeira) return null
+  const cfg = await ler(admin.from('loyalty_configs').select('points_per_real, pontua_venda_de_produto')
+    .eq('tenant_id', tenantId).maybeSingle(), 'ler a configuração da fidelidade')
+  const pontosPorReal = cfg?.pontua_venda_de_produto ? Number(cfg.points_per_real) : null
+  const contas = pontosDaDevolucao(lidos.map(({ p, l }) => ({
+    id: p.id, valor: Number(p.amount), pagoEm: p.paid_at, criadoEm: p.created_at,
+    ganhos: Number(l?.ganhos ?? 0), usados: Number(l?.usados ?? 0),
+  })), devolver, pontosPorReal)
+  const cliente = primeira.cliente ?? 'a cliente'
+  const saldo = Number(primeira.saldo)
+  // O voucher usado e o prêmio de indicação de cada pagamento que sai inteiro: as frases do estorno inteiro.
+  const vouchers = await ler(admin.from('loyalty_vouchers').select('name, used_transaction_id')
+    .eq('tenant_id', tenantId).in('used_transaction_id', vivos.map(p => p.id)).eq('status', 'USADO'), 'ler os vouchers dos pagamentos')
+  const doInteiro = (id: string) => {
+    const l = lidos.find(x => x.p.id === id)?.l
+    if (!l) return null
+    const temPremio = !!l.indicadora && (Number(l.premio_pontos) > 0 || (!!l.premio_voucher && l.premio_voucher_status !== 'CANCELADO'))
+    return textoDosPontosDoEstorno({
+      ligada: !!l.ligada, cliente, ganhos: 0, usados: 0, saldo,
+      premio: temPremio ? {
+        indicadora: l.indicadora!, pontos: Number(l.premio_pontos), voucher: l.premio_voucher,
+        voucherUsado: l.premio_voucher_status === 'USADO', passaParaOutro: !!l.premio_passa,
+      } : null,
+      voucherDoPagamento: ((vouchers ?? []).find(v => v.used_transaction_id === id)?.name as string | undefined) ?? null,
+    })
+  }
+  const texto = (modo: 'PARCIAL' | 'INTEIRO') => {
+    const c = contas[modo]
+    const partes = [textoDosPontosDaDevolucao({ ligada: !!primeira.ligada, cliente, saldo, conta: c }), ...c.inteiros.map(doInteiro)]
+      .filter((t): t is string => !!t)
+    return partes.length ? partes.join(' ') : null
+  }
+  return { PARCIAL: texto('PARCIAL'), INTEIRO: texto('INTEIRO') }
 }
 
 const EntradaDaDevolucao = z.object({

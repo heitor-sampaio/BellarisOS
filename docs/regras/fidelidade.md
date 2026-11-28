@@ -21,7 +21,10 @@ recompensas, igual (`salvarConfigFidelidade` e `salvarRecompensa` passam por
   paga nasce em vários lugares do código. Emite `fidelidade.pontos_ganhos`.
 - **Modo de ganho — a rede escolhe UM:** por real pago (`floor(valor ×
   points_per_real)`) ou por procedimento (`procedures.loyalty_points`, editado
-  no cadastro do procedimento, só nesse modo; sem teto de 1.000.000 — o
+  no cadastro do procedimento, só nesse modo — também com o programa ainda
+  desligado, para a rede preparar e ligar depois (GA-03, princípio 6; A1 da
+  42ª, decisão B-3 do Claude, 28/11; sem a fidelidade no plano, não aparece;
+  `tests/fidelidade-pontos-do-procedimento-com-o-programa-desligado.test.ts`); sem teto de 1.000.000 — o
   Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser
   feito." —: acima disso, o comum por decisão do Claude, 25/11, o cadastro
   avisa, `[data-acima-do-comum="pontos-do-procedimento"]`, e grava; recusa só
@@ -47,7 +50,15 @@ recompensas, igual (`salvarConfigFidelidade` e `salvarRecompensa` passam por
   `20261121000001`): desde que ele se recebe em várias formas e no crediário,
   são vários lançamentos — cada um dá o alvo do atendimento na proporção do
   que já foi pago, menos o que já foi dado; o procedimento com pontos fixos
-  não os dá duas vezes.
+  não os dá duas vezes. **No modo "por procedimento", a base é o dinheiro que
+  entrou sobre o preço vendido** (D1 da 42ª; GA-02, o Heitor, 13/11:
+  "concordo" — "depois do voucher e dos pontos usados"; a conta é a do pacote
+  e do plano, decisão B-1 do Claude, 28/11): os pontos × o pago ÷ (o preço
+  menos o desconto comercial). O voucher e os pontos usados não são pago; o
+  desconto comercial sai do preço vendido e não tira pontos; o crédito interno
+  não é pago (GA-07). A Massagem de R$ 140 (55 pontos) paga R$ 125 com um
+  voucher de R$ 15 dá 49. Migration `20261221100001`. Prova:
+  `e2e/fidelidade-ganho.spec.ts`, `tests/fidelidade-base-do-avulso-por-procedimento.test.ts`.
   **O pago com o programa DESLIGADO não conta** (D12 da 26ª; o Heitor, 18/11:
   "se o programa é ligado no meio não conta ponto"): a entrada de R$ 200 paga
   antes de a rede ligar a fidelidade entrava no "já pago" e a parcela de
@@ -123,6 +134,16 @@ recompensas, igual (`salvarConfigFidelidade` e `salvarRecompensa` passam por
   `textoDosPontosDoEstorno`, `lib/fidelidade/pontos-do-estorno.ts`). Com a
   fidelidade desligada, nada. A regra não mudou. Prova:
   `e2e/fidelidade-atritos-da-12.spec.ts` ("A30"), `tests/atritos-da-12-f61.test.ts`.
+  **O "Devolver parte da venda" diz o mesmo** (ES-02; D7 da 42ª: dizia só "e
+  os pontos dele saem do saldo"): no estorno, "Saem 100 pontos de Glória: o
+  saldo dela vai de 170 a 70 pontos.", pelo jeito escolhido de estornar o
+  pagamento pego em parte (o parcial tira na proporção; o inteiro tira tudo,
+  devolve os usados, e o que fica, lançado de novo, pontua). Cada pagamento
+  pela conta do estorno inteiro (`fidelidade_pontos_do_estorno`), na ordem de
+  `produto_devolver_itens` (`pontosDaDevolucao`,
+  `lib/fidelidade/pontos-da-devolucao.ts`; `[data-pontos-da-devolucao]`).
+  Prova: `tests/fidelidade-pontos-da-devolucao-de-parte.test.ts`,
+  `e2e/vendas-produto-devolver-parte.spec.ts` ("ES-02").
 - **Ajuste manual** pela equipe (`loyalty: MANAGE`), com motivo, por
   `ajustar_pontos` — débito acima do saldo é recusado.
   **Sem teto de 1.000.000** (o Heitor, 25/11: "Se não for impossível, ainda
@@ -181,6 +202,17 @@ recompensas, igual (`salvarConfigFidelidade` e `salvarRecompensa` passam por
   princípios 2 e 3, 2026-11-18; era só no avulso; `comissoes.md`).
 - Pago todo com pontos: `amount` 0, sem forma de pagamento, sem "Purchase" na
   API de Conversões (o `pagamento.recebido` sai, com 0).
+- **A linha da aba Financeiro da ficha e a da lista do Financeiro (da unidade e
+  da rede) dizem o pago com pontos ou voucher** (PD-03; D10 da 42ª, e a lista
+  na revisão dela, decisão do Claude, 28/11): "Pago com pontos: R$ 30,00" ou
+  "Pago com o voucher “X”: …" embaixo da forma, também com dinheiro junto (o
+  texto só saía no R$ 0; o R$ 0 segue no `pagosSemDinheiro`, que decide o
+  "Desfazer o pagamento"). Com o programa desligado, nada
+  (`pagosComFidelidade`, `lib/financeiro/pago-sem-dinheiro.ts`;
+  `[data-pago-com-fidelidade]`). Prova:
+  `tests/fidelidade-pago-com-pontos-na-linha-da-ficha.test.ts`,
+  `tests/financeiro-pago-com-pontos-na-linha-da-lista.test.ts`,
+  `e2e/fidelidade-desconto-no-pagamento.spec.ts` ("PD-03").
 - Estorno devolve os pontos usados (ESTORNO_RESGATE) e tira os ganhos.
 - **FD2 no PDV** (fase 5b, 2026-11-14 — regra do PDV em
   `vendas-financeiro.md`):
@@ -388,7 +420,10 @@ recompensas, igual (`salvarConfigFidelidade` e `salvarRecompensa` passam por
   - **Troca pelo portal** (`client_redeem`): o cliente troca pontos por
     recompensa em `/[slug]/cliente/fidelidade` (`actions/fidelidade-portal.ts`),
     com o saldo da rede (a unidade do portal é só onde a troca fica
-    registrada). Desligada, só a equipe troca, na ficha.
+    registrada). Desligada, só a equipe troca, na ficha — e o bloco do app se
+    chama "Recompensas", não "Troque seus pontos" (AP-01; A5 da 42ª, o título
+    prometia o que a tela não faz; `tituloDasRecompensasNoApp`,
+    `tests/fidelidade-app-titulo-das-recompensas.test.ts`).
   - **A recompensa fora do alcance diz quanto falta** (J-52, 2026-10-30):
     "Faltam 120 pontos" embaixo do "Trocar" desabilitado, no app e na ficha —
     o texto é UM, `faltamPontos` (`lib/fidelidade/formato.ts`). Sem a troca pelo
@@ -515,7 +550,7 @@ recompensas, igual (`salvarConfigFidelidade` e `salvarRecompensa` passam por
 ```
 ❌ Dar ponto de fidelidade no TypeScript (o ponto nasce no gatilho do pagamento; o saldo é saldo_de_pontos)
 ❌ Calcular vencimento de pontos fora de fidelidade_a_expirar (é a única cópia do FIFO)
-❌ Mostrar qualquer sinal de pontos com o programa da rede desligado
+❌ Mostrar qualquer sinal de pontos com o programa da rede desligado (a exceção é a rede PREPARAR: o campo de pontos do procedimento no modo "por procedimento" — GA-03, A1 da 42ª)
 ❌ Recusar um número da configuração por ser grande (bônus, validade, aviso, pontos por real): acima do comum é aviso — princípio 2
 ❌ Pôr o desconto de pontos em amount (amount é o dinheiro recebido; o desconto é loyalty_discount)
 ❌ Confirmar pagamento de atendimento fora de confirmar_pagamento_do_atendimento, ou confiar no valor que o navegador manda

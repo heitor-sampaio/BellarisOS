@@ -50,7 +50,7 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 37 | Converter a dose do injetável em UI para o frasco pelo rendimento, e avisar a diferença | 29ª, C01 (PT-18); 31ª (a dose do mapa × o estoque, na tela) |
 | 38 | Um termo avulso para a menor, sem o procedimento ter documento | 29ª, C06 (DA-11) |
 | 39 | A prévia da importação com todas as colunas, além das 3 primeiras linhas | 29ª, Time A (IM-22); 31ª (ligada à nº 77) |
-| 40 | Salas e CEP da unidade dentro do /setup | 29ª, Time A (ligada à nº 11); 34ª, Time A (as salas); 35ª, Time D (as salas, Genoveva); 38ª, Times A e E (as salas) |
+| 40 | Salas e CEP da unidade dentro do /setup | 29ª, Time A (ligada à nº 11); 34ª, Time A (as salas); 35ª, Time D (as salas, Genoveva); 38ª, Times A e E (as salas); também na 42ª, Times D e E (as salas: as duas redes da D sem sala) |
 | 41 | A Equipe da unidade mostrar a Admin da rede que atende ali | 29ª, Time D; 32ª, Time E; 34ª, Time A; também na 40ª, Time E |
 | 42 | O histórico do agendamento cancelado (quem, quando, o de → para) na janela dele | 29ª, B12 |
 | 43 | O app ativar os avisos com um botão "Receber avisos no celular" | 29ª, B14 (ligada ao A20) |
@@ -131,7 +131,7 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 118 | "Sem custo" no lugar de "R$ 0,00" no procedimento grátis do app | 34ª, E02 |
 | 119 | Atalhos "Agendar" e "Novo cliente" no dashboard de quem tem a Agenda em Gerenciar | 34ª, Time A (Telma) |
 | 120 | A troca de pontos na Auditoria com os pontos trocados | 34ª, E09 (ligada à A21 da 34ª) |
-| 121 | A linha do "Em andamento" de um agendamento que ainda não começou abrir a janela da agenda (com o "Não compareceu") em vez da tela do atendimento | 34ª, Time A (Telma; A8 da 34ª) |
+| 121 | A linha do "Em andamento" de um agendamento que ainda não começou abrir a janela da agenda (com o "Não compareceu") em vez da tela do atendimento | 34ª, Time A (Telma; A8 da 34ª); também na 42ª, Time A (Elza) |
 | 122 | Desfazer a chegada marcada por engano ("Chegou" → Agendado), para quem tem a Agenda em Gerenciar | 35ª, A05 (Kelly) e C08 (Nilza) |
 | 123 | O valor somado por etapa e por funil no resumo do quadro (hoje a OP-17 só conta) | 35ª, Time C (Rafaela, Débora) |
 | 124 | A unidade da venda na linha da sessão do pacote (extrato da comissão e linha do tempo da ficha) | 35ª, B02 (Neide) |
@@ -160,7 +160,7 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 147 | O "a quem pedir" da Fidelidade (PG-05) mais à vista para quem tem a Fidelidade só em Ver (hoje na dica) | 37ª, Time B |
 | 148 | A linha da comissão de EXECUÇÃO dizer de onde veio a regra ("— da comissão geral do procedimento", "— exceção de Ítalo"), como a CF-05 faz na de venda | 38ª, Time A (três papéis; A05, A06) |
 | 149 | "Dar entrada no Estoque" voltar à venda em curso, sem perder o que estava escolhido | 38ª, B05 |
-| 150 | O Histórico do produto dizer quem fez cada movimento | 38ª, Time B (Jucineide) |
+| 150 | O Histórico do produto dizer quem fez cada movimento | 38ª, Time B (Jucineide); também na 42ª, Time E (Marlei; e a cliente na baixa do atendimento) |
 | 151 | A margem de cada produto (preço − custo) e o CSV de Relatórios → Estoque, com as unidades vendidas por produto | 38ª, Time B |
 | 152 | Esconder o saldo ("10 un em estoque") na venda para quem não tem o Estoque | 38ª, B02 (Bruno) |
 | 153 | "Nova oportunidade" pela ficha da cliente, com o telefone dela preenchido | 38ª, C05 (ligada à nº 102) |
@@ -176,7 +176,7 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 163 | Inserir um passo ENTRE dois já ligados no editor (o ED-09 só liga ao anterior) | 38ª, E09 (ligada ao A17 da 38ª, que não foi feito por ser recurso novo) |
 | 164 | Avisar o que já está marcado ou vendido ao mudar a duração, o horário da semana, quem faz, o "no app", o preço ou o ativo/inativo do procedimento | 39ª, C09, C13 e Time E (M1–M8); também na 40ª, Time A (fechar a quarta-feira, tirar o Oziel de quem realiza) |
 | 165 | Confirmação no "Desativar" do procedimento (hoje age na hora) | 39ª, Time E (M6) |
-| 166 | Motivo opcional no "Negar" da parte do prontuário da LGPD | 39ª, B13 |
+| 166 | Motivo opcional no "Negar" da parte do prontuário da LGPD | 39ª, B13; também na 42ª, D08 |
 | 167 | Avisar a despesa repetida (mesma conta, valor e vencimento) | 39ª, Time D (P12) |
 | 168 | Categoria e fornecedor na lista do A pagar da rede (hoje só no CSV) | 39ª, Time D (ligada à nº 22) |
 | 169 | Baixar pelo app os PDFs assinados do pacote da LGPD | 39ª, B12 (nas correções do D14, o pacote LGPD com prontuário) |
@@ -200,3 +200,9 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 187 | O custo no cadastro do produto (hoje só na entrada de estoque) | 41ª, Time E (a dona; ligada à nº 21) |
 | 188 | A Auditoria da conferência da ficha pela cliente dizer "conferiu" quando ela só confirma ("Está tudo certo") | 41ª, Time C (C09) |
 | 189 | A pré-visualização da ficha seguir o "Mostrar só quando" (esconder o campo até a resposta que o mostra), para a rede testar a condição antes de publicar | 41ª, Time C (A14) |
+| 190 | O extrato de pontos dizer o procedimento ou a venda do "Ganho no pagamento" | 42ª, B08 |
+| 191 | Avisar, ao salvar um modelo de documento com 0 procedimentos, que ele não nasce sozinho em atendimento nenhum | 42ª, D06 (a dona teve de ligá-lo à Avaliação) |
+| 192 | O campo da perda mostrar o máximo do lote antes do envio | 42ª, Time E (Rosicler) |
+| 193 | A janela "Receber a parcela" dizer quantos pontos a parcela dá | 42ª, B02 |
+| 194 | Um nome próprio para o plano no lugar do genérico "Plano de tratamento" | 42ª, Time C (3 planos) |
+| 195 | Avisar, antes de concluir, que um insumo do procedimento está sem saldo na unidade | 42ª, E08 (a AT-15 avisa ao concluir) |

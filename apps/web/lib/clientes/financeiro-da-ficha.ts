@@ -9,7 +9,8 @@ import { formaDoLancamento, rotuloDaForma } from '@/lib/financeiro/formas'
 import { juntarAsFormasDaParcela, formasDaParcelaEmTexto } from '@/lib/financeiro/formas-da-parcela'
 import { nomeDaLinhaDoLancamento, nomeDaLinhaDoPlano } from '@/lib/financeiro/nome-da-parcela'
 import { procedimentosDosPlanos } from '@/lib/financeiro/procedimentos-do-plano'
-import { vendaDeProdutoNaoPontua } from '@/lib/fidelidade/leitura'
+import { configDaRede, vendaDeProdutoNaoPontua } from '@/lib/fidelidade/leitura'
+import { pagosComFidelidade } from '@/lib/financeiro/pago-sem-dinheiro'
 import { ordenarTransacoesDaFicha } from '@/lib/clientes/ordem-das-transacoes'
 import { getAtendimentosAReceber, type ListaAReceber } from '@/lib/metrics/a-receber'
 import type { ProfileTransaction, ProfileInternalCredit } from '@/components/branch/client-profile'
@@ -59,6 +60,7 @@ type Linha = {
   credito_vendido_id: string | null
   client_package_id: string | null; procedure_sale_id: string | null; treatment_plan_id: string | null
   branch_id: string | null
+  loyalty_discount: number | string | null
   appointment: { scheduled_at: string; professional_id: string | null; procedures: { name: string } | null } | null
 }
 
@@ -71,7 +73,7 @@ export async function financeiroDaFicha(ctx: TenantContext, clientId: string): P
 
   const [linhas, totaisRaw, aReceber, creditos, planosNaoRecebidos] = await Promise.all([
     lerTodas<unknown>((de, ate) => admin.from('financial_transactions')
-        .select(`id, type, description, amount, payment_method, cartao_vezes, cartao_bandeira, is_paid, paid_at, created_at, due_date, notes, category, appointment_id, parcela_numero, parcela_total, product_sale_id, credito_vendido_id, client_package_id, procedure_sale_id, treatment_plan_id, branch_id,
+        .select(`id, type, description, amount, payment_method, cartao_vezes, cartao_bandeira, is_paid, paid_at, created_at, due_date, notes, category, appointment_id, parcela_numero, parcela_total, product_sale_id, credito_vendido_id, client_package_id, procedure_sale_id, treatment_plan_id, branch_id, loyalty_discount,
           branches!inner(tenant_id),
           appointment:appointments!financial_transactions_appointment_id_fkey(scheduled_at, professional_id, procedures(name))`)
         .eq('client_id', clientId).eq('branches.tenant_id', ctx.tenantId!)
@@ -91,6 +93,10 @@ export async function financeiroDaFicha(ctx: TenantContext, clientId: string): P
   // pontuar (a regra de padrão, D4), o lançamento da venda diz por quê — a
   // ficha mostrava o pago e nada sobre os pontos que não vieram.
   const produtoNaoPontua = await vendaDeProdutoNaoPontua(ctx.tenantId!, admin)
+  // PD-03 (D10 da 42ª): o pago com pontos ou voucher, à parte na linha — também com dinheiro junto.
+  // Com o programa desligado, nenhum sinal de pontos (fidelidade.md).
+  const comFidelidade: Record<string, string> = (await configDaRede(ctx.tenantId!, admin)).enabled
+    ? await pagosComFidelidade(linhas as Linha[]) : {}
   // A5 da 31ª (princípio 3): a parcela do plano diz os procedimentos dele, como no PDV.
   const dosPlanos = await procedimentosDosPlanos((linhas as Linha[]).map(l => l.treatment_plan_id))
   // O "hoje" do vencimento é o da unidade do lançamento (F64, C4).
@@ -122,6 +128,8 @@ export async function financeiroDaFicha(ctx: TenantContext, clientId: string): P
     paymentMethod: l.payment_method,
     cartaoVezes:   l.cartao_vezes,
     semPontos:     produtoNaoPontua && !!l.product_sale_id && l.is_paid && l.type === 'INCOME' && l.notes !== 'Estornada',
+    // A parcela em várias formas é uma linha: os pontos e o voucher moram numa das formas dela.
+    pagoComFidelidade: comFidelidade[l.id] ?? l.formasDaParcela?.map(fm => comFidelidade[fm.id]).find(Boolean) ?? null,
     // D6: a parcela do crediário sem meio diz "Com a clínica".
     forma:         formaDoLancamento({ metodo: l.payment_method, vezes: l.cartao_vezes, bandeira: l.cartao_bandeira, pago: l.is_paid, parcela: l.parcela_numero }),
     isPaid:        l.is_paid,

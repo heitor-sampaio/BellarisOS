@@ -46,6 +46,14 @@ export interface PreviaDaDevolucao {
   parcial:        PagamentoEmParte | null
   /** CI-04 (A7 da 41ª): as formas dos pagamentos vivos da venda — o "Estorno" diz para onde volta. */
   formas?:        string[]
+  /** ES-02 (D7 da 42ª): os pontos que saem no estorno, por jeito de estornar o pagamento pego em parte. */
+  pontos?:        PontosDaDevolucaoNaTela | null
+}
+
+/** O texto dos pontos de cada jeito de estornar (sem pagamento em parte, os dois são o mesmo). */
+export interface PontosDaDevolucaoNaTela {
+  PARCIAL: string | null
+  INTEIRO: string | null
 }
 
 const num = (v: unknown) => Math.round(Number(v ?? 0) * 100) / 100

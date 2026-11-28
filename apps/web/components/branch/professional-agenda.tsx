@@ -21,7 +21,7 @@ import { estenderJanela, rolagemDaGrade } from '@/lib/agenda/grade'
 import { agendamentosNoDia, janelaComOsTrechos, textoDoQueContinua } from '@/lib/agenda/trecho-do-agendamento'
 import { ocupacaoDoDia, minutosAgendadosNoPeriodo } from '@/lib/metrics/ocupacao'
 import { blocosDosBloqueios, livresEntre, livresDaGrade } from '@/lib/agenda/horario-livre'
-import { intervalosDoDia, diaDaSemana, forasDoHorario, janelaDoDia, type Horario, type BlocoOcupado } from '@/lib/agenda/horario'
+import { intervalosDoDia, diaDaSemana, forasDoHorario, janelaDoDia, janelaDaGrade, type Horario, type BlocoOcupado } from '@/lib/agenda/horario'
 import type { CalendarEvent } from './agenda-month-view'
 import { SeloDoMenor } from '@/components/shared/selo-do-menor'
 import { BlocoDoBloqueio } from '@/components/shared/bloqueio-da-agenda'
@@ -72,8 +72,6 @@ interface Props {
   branchName:       string
   professionalId:   string
   branchId:         string
-  /** O horário de funcionamento da unidade (horas cheias): a grade abre nele. */
-  janela:           { inicio: number; fim: number }
   /** A ocupação de hoje (D11): o horário da unidade, o dela e o que ela tem em outra unidade. */
   horarioDaUnidade:      Horario | null
   horarioDaProfissional: Horario | null
@@ -91,7 +89,7 @@ interface Props {
 }
 
 export function ProfessionalAgendaView({
-  events: eventosDoServidor, slug, professionalName, branchName, professionalId, janela,
+  events: eventosDoServidor, slug, professionalName, branchName, professionalId,
   horarioDaUnidade, horarioDaProfissional, ocupadoFora: ocupadoForaDoServidor, dataInicial = null, bloqueios: bloqueiosDoServidor = [],
   comissoes = null,
 }: Props) {
@@ -241,11 +239,11 @@ export function ProfessionalAgendaView({
   // A grade é o horário DELA no dia (unidade ∩ ela — "Reforça", item 8 da 5ª
   // simulação: a Renata, de 07–12, via a unidade inteira livre), estendida
   // pelos atendimentos de fora dele (§9.1). No dia em que ela não atende, a
-  // janela da unidade, toda sombreada.
+  // janela da unidade NAQUELE dia (AG-03; D12 da 42ª), toda sombreada.
   const intervalosDela = intervalosDoDia(horarioDaUnidade, horarioDaProfissional, diaDaSemana(format(selectedDate, 'yyyy-MM-dd')))
   const naoAtende = intervalosDela.length === 0
   const { inicio: DAY_START, fim: DAY_END } = janelaComOsTrechos(
-    estenderJanela(janelaDoDia(intervalosDela) ?? janela, doDiaDaGrade.filter(x => !x.trecho.continuaDeAntes).map(x => x.ev)),
+    estenderJanela(janelaDoDia(intervalosDela) ?? janelaDaGrade([horarioDaUnidade], diaDaSemana(format(selectedDate, 'yyyy-MM-dd'))), doDiaDaGrade.filter(x => !x.trecho.continuaDeAntes).map(x => x.ev)),
     doDiaDaGrade.map(x => x.trecho),
   )
   const forasDela = forasDoHorario(intervalosDela, DAY_START * 60, DAY_END * 60)

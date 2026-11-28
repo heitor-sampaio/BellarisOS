@@ -234,8 +234,8 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/regras/crm-inbox.md:29`
 - Antes: KA-04
 
-**PO-03.** O acesso só nasce se quem cadastra marcar "Criar o acesso ao app", que só se marca com o e-mail e o documento; sem a caixa, nenhum login nasce. Depois, a aba Dados dá o acesso, com o e-mail e o documento já salvos. Criado o acesso, a tela confirma o login, a senha inicial e que ela é trocada no primeiro acesso (em texto neutro), e a ficha mostra o selo "Tem acesso ao app".
-- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele)
+**PO-03.** O acesso só nasce se quem cadastra marcar "Criar o acesso ao app", que só se marca com o e-mail e o documento; sem a caixa, nenhum login nasce. Depois, a aba Dados dá o acesso, com o e-mail e o documento já salvos. Criado o acesso, a tela confirma o login, a senha inicial e que ela é trocada no primeiro acesso (em texto neutro), e a ficha mostra o selo "Tem acesso ao app". A ficha sem acesso não conta para o login: a rede dela não entra no seletor de redes até a rede dar o acesso.
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele); a ficha sem acesso fora do seletor: decisão do Claude, 28/11 (42ª, Decisão D-3)
 - Onde: `docs/regras/crm-inbox.md:70-75`
 - Antes: KA-13, KA-14, KA-15
 

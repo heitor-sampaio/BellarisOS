@@ -496,7 +496,7 @@ export function AgendaCalendar({
         {/* View content */}
         {view === 'dia' && (
           <AgendaDayView
-            janela={janelaDaGrade([horarioDaUnidade])}
+            janela={janelaDaGrade([horarioDaUnidade], diaDaSemana(diaNaUrl))}
             aberturaDoDia={aberturaDaUnidade(horarioDaUnidade ?? null, currentDate)}
             horarioDaUnidade={horarioDaUnidade}
             horariosDosProfissionais={horariosDosProfissionais}

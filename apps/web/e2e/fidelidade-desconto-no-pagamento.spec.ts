@@ -191,4 +191,43 @@ test.describe.serial('fidelidade: pontos como desconto no pagamento', () => {
     // 200 − 200 + 80 ganhos no pagamento que passou.
     expect(await saldo(c)).toBe(80)
   })
+  // PD-03: o pago com pontos ou voucher aparece à parte na linha ("Pago com pontos: …"). D10 da 42ª: com
+  // dinheiro junto, a linha da aba Financeiro da ficha não dizia nada (o texto só saía no pagamento de R$ 0).
+  test('PD-03: a linha da ficha diz "Pago com pontos" também com dinheiro junto', async ({ browser }) => {
+    await configurar({ redeem_max_pct: 100, redeem_points_value: 0.1 })
+    const c = await rede!.criarCliente('Linha da ficha')
+    await dar(c, 300)
+    const ap = await atendimentoConcluido(c, 100)
+    expect((await pagarPelaFuncao(ap, { metodo: 'PIX', pontos: 300, desconto: 30, valor_final: 70 })).error).toBeNull()
+    const t = await tx(ap)
+    const ctx = await browser.newContext({ storageState: recepcao!.estado })
+    try {
+      const p = await ctx.newPage()
+      await p.goto(`/admin/clients/${c}?aba=financeiro`)
+      const linha = p.locator(`[data-lancamento="${t!.id}"]`)
+      await expect(linha.locator('[data-forma-do-lancamento]')).toContainText('Pix')
+      await expect(linha.locator('[data-pago-com-fidelidade]')).toHaveText(/^Pago com pontos: R\$\s30,00$/)
+    } finally { await ctx.close() }
+  })
+
+  test('PD-03: a lista do Financeiro também diz "Pago com pontos" com dinheiro junto', async ({ browser }) => {
+    await configurar({ redeem_max_pct: 100, redeem_points_value: 0.1 })
+    const c = await rede!.criarCliente('Linha da lista')
+    await dar(c, 300)
+    const ap = await atendimentoConcluido(c, 100)
+    expect((await pagarPelaFuncao(ap, { metodo: 'PIX', pontos: 300, desconto: 30, valor_final: 70 })).error).toBeNull()
+    const t = await tx(ap)
+    const financeiro = await criarMembro(`fdf${marca}`, {
+      tenant: rede!.tenantId, rotulo: 'Financeiro pontos',
+      permissoes: [{ modulo: 'financial', nivel: 'VIEW' }],
+    })
+    const ctx = await browser.newContext({ storageState: financeiro.estado })
+    try {
+      const p = await ctx.newPage()
+      await p.goto('/admin/financeiro?aba=movimentacoes')
+      const linha = p.locator(`[data-lancamento="${t!.id}"]`)
+      await expect(linha).toContainText('Pix')
+      await expect(linha.locator('[data-pago-com-fidelidade]')).toHaveText(/^Pago com pontos: R\$\s30,00$/)
+    } finally { await ctx.close(); await financeiro.limpar() }
+  })
 })

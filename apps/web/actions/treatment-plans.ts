@@ -386,8 +386,8 @@ export async function getPlanosDoCliente(clientId: string): Promise<{
   const consulta = admin
     .from('treatment_plans')
     .select(`
-      id, status, professional_notes, professional_id, created_at, evaluation_appointment_id,
-      desconto_combinado_tipo, desconto_combinado_valor,
+      id, status, branch_id, professional_notes, professional_id, created_at, evaluation_appointment_id,
+      desconto_combinado_tipo, desconto_combinado_valor, cancelamento,
       clients!inner(tenant_id),
       treatment_plan_sessions(treatment_plan_session_procedures(price))
     `)
@@ -398,6 +398,10 @@ export async function getPlanosDoCliente(clientId: string): Promise<{
 
   const planos = (data ?? [])
     .filter(p => (p.clients as unknown as { tenant_id: string } | null)?.tenant_id === ctx.tenantId)
+    // D2 da 42ª (PL-01, §11): os planos das unidades ao ALCANCE — a cliente é da
+    // rede, o plano é da unidade dele. Quem só tem Arapongas via na ficha os de
+    // Apucarana (que a página do plano, pelo `planoDoTenant`, já recusava).
+    .filter(p => alcancaUnidade(ctx, p.branch_id as string))
     .map(p => {
       const sessoes = (p.treatment_plan_sessions as unknown as RawSess[]) ?? []
       return {
@@ -411,7 +415,8 @@ export async function getPlanosDoCliente(clientId: string): Promise<{
         total:    totalDoPlanoNaLista(p.status as string, sessoes.reduce(
           (s, sess) => s + (sess.treatment_plan_session_procedures ?? []).reduce((t, pr) => t + Number(pr.price), 0),
           0,
-        ), combinadoDoPlano(p as unknown as { desconto_combinado_tipo?: string | null; desconto_combinado_valor?: number | string | null })),
+          // D9 da 42ª: o cancelado antes do aceite vale o proposto, com o combinado.
+        ), combinadoDoPlano(p as unknown as { desconto_combinado_tipo?: string | null; desconto_combinado_valor?: number | string | null }), (p as { cancelamento?: unknown }).cancelamento),
         origemId: (p.evaluation_appointment_id as string | null) ?? null,
       }
     })
@@ -733,7 +738,8 @@ export async function listarPlanejamentos(opcoes?: {
   const statusDaSituacao: string[] | null = !situacaoPedida ? null
     : situacaoPedida === 'RASCUNHO' ? ['DRAFT']
     : situacaoPedida === 'PROPOSTO' ? ['PROPOSED']
-    : situacaoPedida === 'CONCLUIDO' ? ['COMPLETED']
+    // D4 da 42ª (PL-20): o aceito com todas as sessões feitas é "Concluído" (`situacaoComercialDoPlano`).
+    : situacaoPedida === 'CONCLUIDO' ? ['ACCEPTED', 'COMPLETED']
     : situacaoPedida === 'CANCELADO' ? ['CANCELLED', 'REJECTED']
     : ['ACCEPTED']
 
@@ -742,7 +748,7 @@ export async function listarPlanejamentos(opcoes?: {
   const data = await lerTodas((de, ate) => {
     let query = admin
       .from('treatment_plans')
-      .select(`id, name, status, created_at, branch_id, desconto_combinado_tipo, desconto_combinado_valor,
+      .select(`id, name, status, created_at, branch_id, desconto_combinado_tipo, desconto_combinado_valor, cancelamento,
            clients(id, name, phone, document),
            treatment_plan_sessions(treatment_plan_session_procedures(price))`)
       .in('branch_id', alcance.map(b => b.id))
@@ -779,7 +785,8 @@ export async function listarPlanejamentos(opcoes?: {
         total:    totalDoPlanoNaLista(p.status as string, sessoes.reduce(
           (s, sess) => s + (sess.treatment_plan_session_procedures ?? []).reduce((t, pr) => t + Number(pr.price), 0),
           0,
-        ), combinadoDoPlano(p as unknown as { desconto_combinado_tipo?: string | null; desconto_combinado_valor?: number | string | null })),
+          // D9 da 42ª: o cancelado antes do aceite vale o proposto, com o combinado.
+        ), combinadoDoPlano(p as unknown as { desconto_combinado_tipo?: string | null; desconto_combinado_valor?: number | string | null }), (p as { cancelamento?: unknown }).cancelamento),
         cliente:  cli ? { id: cli.id, name: cli.name, phone: cli.phone } : null,
         unidade:  doTenant.find(b => b.id === p.branch_id)?.name ?? null,
       }
@@ -2364,6 +2371,8 @@ export async function getPassosDoPlano(planId: string): Promise<{ passos?: Passo
         situacao:    situacaoComercialDoPlano({
           status: plan.status as string, recebido: a.recebido, documentosAbertos: a.documentos.abertos,
           contratoFalta: contratoFaltaAssinar(a.contrato),
+          // D4 da 42ª (PL-20): todas as sessões feitas é "Concluído" — a contagem da fonte única.
+          sessoes: { total: financeiro.sessoes.total, feitas: financeiro.sessoes.feitas },
         }),
         aceitoEm:    (extra?.aceito_em as string | null) ?? null,
         clienteId:   (plan.client_id as string | null) ?? null,

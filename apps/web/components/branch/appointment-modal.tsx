@@ -30,6 +30,7 @@ import { unicaOpcao } from '@/lib/uma-opcao'
 import { CampoIndicadaPor } from '@/components/shared/campo-indicada-por'
 import { Dica } from '@/components/shared/dica'
 import { AvisoDoPacoteEmAberto } from '@/components/shared/aviso-do-pacote-em-aberto'
+import { creditosOferecidosNaUnidade } from '@/lib/creditos/oferecidos-na-unidade'
 
 /** "“A”", "“A” e “B”", "“A”, “B” e “C”". */
 const emListaDeNomes = (nomes: readonly string[]) => {
@@ -203,7 +204,11 @@ export function AppointmentModal({
     creditosParaAgendar(id).then(itens => { if (vivo) setCreditos({ de: id, itens }) }).catch(() => { /* sem créditos a oferecer */ })
     return () => { vivo = false }
   }, [selectedClient?.id])
-  const creditosDoCliente = selectedClient && creditos.de === selectedClient.id ? creditos.itens : []
+  // A3 da 42ª (princípio 7): só o que a unidade do agendamento faz — a sessão do plano
+  // de outra unidade com um procedimento que esta não faz era oferecida e recusada ao salvar.
+  const procedimentosDaUnidade = escolheUnidade && (!unidadeId || carregandoUnidade) ? null : dados.procedures
+  const creditosDoCliente = selectedClient && creditos.de === selectedClient.id
+    ? creditosOferecidosNaUnidade(creditos.itens, procedimentosDaUnidade) : []
   const chaveDoCredito = (c: CreditoParaAgendar) => `${c.tipo}:${c.id}`
   const creditoAutomatico = creditoSel === null && procId ? (creditosDoCliente.find(c => c.procedureId === procId) ?? null) : null
   const credito = creditoSel === null ? creditoAutomatico : (creditosDoCliente.find(c => chaveDoCredito(c) === creditoSel) ?? null)

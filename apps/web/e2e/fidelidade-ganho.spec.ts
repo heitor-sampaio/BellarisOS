@@ -121,6 +121,39 @@ test.describe.serial('fidelidade: ganho no pagamento', () => {
     expect(await saldo(c)).toBe(40)
   })
 
+  // GA-02 (o Heitor, 13/11, "concordo"): "o ganho é sobre o valor pago, depois do voucher e dos pontos usados".
+  // D1 da 42ª: a base do avulso contava o voucher e os pontos (loyalty_discount) como pago. O desconto
+  // comercial (sale_discount) sai do preço vendido, como no pacote e no plano: não tira pontos.
+  test('por procedimento: o voucher e os pontos usados saem da base do avulso; o desconto comercial não tira pontos', async () => {
+    await configurar({ enabled: true, earn_mode: 'POR_PROCEDIMENTO' })
+    await db().from('procedures').update({ loyalty_points: 55 }).eq('id', rede!.procedureId)
+    const atendimento = async (cliente: string, preco: number) => {
+      const { data: ap, error } = await db().from('appointments').insert({
+        branch_id: rede!.branchId, client_id: cliente, professional_id: rede!.professionalId, procedure_id: rede!.procedureId,
+        scheduled_at: new Date().toISOString(), duration_min: 30, price: preco, status: 'COMPLETED',
+      }).select('id').single<{ id: string }>()
+      expect(error).toBeNull()
+      return ap!.id
+    }
+
+    // A Massagem de R$ 140 (55 pontos) paga R$ 125 com um voucher de R$ 15: 55 × 125 ÷ 140 = 49.
+    const voucher = await rede!.criarCliente('Avulso com voucher')
+    await pagar(voucher, 125, { appointment_id: await atendimento(voucher, 140), loyalty_discount: 15 })
+    expect(await saldo(voucher), 'o voucher não é dinheiro pago').toBe(49)
+
+    // Com desconto comercial de R$ 40, o preço vendido é R$ 100: pago inteiro, os 55 inteiros.
+    const desconto = await rede!.criarCliente('Avulso com desconto')
+    await pagar(desconto, 100, { appointment_id: await atendimento(desconto, 140), sale_discount: 40 })
+    expect(await saldo(desconto), 'o desconto comercial não tira pontos').toBe(55)
+
+    // Desconto de R$ 40 e pontos de R$ 20 em duas formas: o dinheiro é 80 dos 100 vendidos → 44.
+    const duas = await rede!.criarCliente('Avulso em duas formas')
+    const ap = await atendimento(duas, 140)
+    await pagar(duas, 50, { appointment_id: ap, sale_discount: 40, loyalty_discount: 20 })
+    await pagar(duas, 30, { appointment_id: ap, payment_method: 'CASH' })
+    expect(await saldo(duas), 'a soma das duas formas: 55 × 80 ÷ 100').toBe(44)
+  })
+
   test('plano: cumulativo — entrada e restante somam exatamente os pontos do plano', async () => {
     const c = await rede!.criarCliente('Plano')
     await configurar({ enabled: true, earn_mode: 'POR_PROCEDIMENTO' })

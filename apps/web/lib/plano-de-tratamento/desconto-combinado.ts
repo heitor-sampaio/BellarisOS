@@ -36,11 +36,29 @@ export function totalComOCombinado(subtotal: number, combinado: DescontoCombinad
  * o total com o combinado (atendimento.md, "O desconto combinado"); do aceite
  * em diante o gravado já é o vendido (`plano_aceitar` aplica o combinado) —
  * vale ele. A lista dizia 480 onde o contrato e o recebido diziam 420.
+ *
+ * D9 da 42ª (princípio 3): o plano CANCELADO ANTES DO ACEITE nunca teve o
+ * combinado aplicado aos preços — vale o proposto, com ele ("3 Limpeza − R$ 30 =
+ * R$ 450", e a lista dizia R$ 480). É o `cancelamento.antes_do_aceite` que
+ * `plano_cancelar_proposto` grava, e o REJECTED antigo (a recusa, antes do
+ * aceite). O cancelado depois do aceite segue o gravado (o vendido).
  */
-export function totalDoPlanoNaLista(status: string, soma: number, combinado: DescontoCombinado | null | undefined): number {
+export function totalDoPlanoNaLista(
+  status: string, soma: number, combinado: DescontoCombinado | null | undefined,
+  /** O retrato do cancelamento (`treatment_plans.cancelamento`), no cancelado. */
+  cancelamento?: unknown,
+): number {
   const redonda = Math.round(soma * 100) / 100
-  if (status !== 'DRAFT' && status !== 'PROPOSED') return redonda
+  if (!antesDoAceite(status, cancelamento)) return redonda
   return totalComOCombinado(redonda, combinado).total
+}
+
+/** Os preços do plano ainda são os de tabela (o combinado não foi aplicado)? */
+function antesDoAceite(status: string, cancelamento: unknown): boolean {
+  if (status === 'DRAFT' || status === 'PROPOSED' || status === 'REJECTED') return true
+  if (status !== 'CANCELLED') return false
+  const c = cancelamento && typeof cancelamento === 'object' ? cancelamento as Record<string, unknown> : null
+  return c?.antes_do_aceite === true
 }
 
 /** O combinado → o estado do campo do desconto (`CampoDoDesconto`). */

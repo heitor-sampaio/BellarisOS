@@ -117,3 +117,39 @@ test('A16: a transferência diz o saldo do destino depois, também para quem tem
     await gerente.limpar()
   }
 })
+
+/**
+ * A6 da 42ª simulação (ES-19, princípio 3): com 1 frasco fechado + 27 ml de 30,
+ * a janela dizia "Disponível na origem: 2 frascos (2 frascos)" e o seletor
+ * "Butiá Lajeado · 2", e o campo recusava 2 ("O máximo é 1,9."). A janela e o
+ * seletor dizem o que a origem rende, o número que a transferência confere.
+ */
+test('A6: o disponível na origem é o que ela rende — "1,9 frasco (57 ml)", no rótulo e no seletor', async ({ browser }) => {
+  const nome = `Acido 30 ml tn${marca}`
+  const a = await db().from('products').insert({ tenant_id: rede!.tenantId, name: `${PREFIXO} ${nome}`, unit: 'frasco', consumption_unit: 'ml', units_per_package: 30, uso: 'INSUMO' })
+    .select('id').single<{ id: string }>()
+  expect(a.error).toBeNull()
+  expect((await db().rpc('estoque_entrada', {
+    p_produto: a.data!.id, p_unidade: rede!.branchId, p_quantidade: 2, p_custo: 60, p_observacao: 'e2e', p_lote: null, p_validade: null, p_autor: 'e2e',
+  })).error).toBeNull()
+  // Um frasco fechado e o aberto com 27 ml (3 ml já usados).
+  expect((await db().from('branch_product_stock').update({ current_rendimento: 57 }).eq('product_id', a.data!.id).eq('branch_id', rede!.branchId)).error).toBeNull()
+  const ctx = await browser.newContext({ storageState: gestor!.estado })
+  try {
+    const p = await ctx.newPage()
+    await p.goto('/admin/estoque')
+    const engrenagem = p.locator('tr, [role="row"], div').filter({ hasText: nome })
+      .filter({ has: p.getByTitle('Gerenciar estoque') }).last().getByTitle('Gerenciar estoque')
+    const modal = p.locator('dialog[open]').filter({ hasText: 'Gerenciar estoque' })
+    await expect(async () => {
+      await engrenagem.click()
+      await expect(modal).toBeVisible({ timeout: 2_000 })
+    }).toPass({ timeout: 30_000 })
+    await modal.getByRole('button', { name: 'Transferência', exact: true }).click()
+    const origem = modal.locator('select[name="fromBranchId"]')
+    await expect(origem.locator('option', { hasText: AGUA_VERDE })).toHaveText(`${AGUA_VERDE} · 1,9`)
+    await origem.selectOption(rede!.branchId)
+    await expect(modal.locator('[data-disponivel-na-origem]')).toHaveText('1,9 frasco (57 ml)')
+    await expect(modal.locator('input[name="quantity"]')).toHaveAttribute('max', '1.9')
+  } finally { await ctx.close() }
+})

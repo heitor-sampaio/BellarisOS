@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { getTenantContext, can, alcancaUnidade, podeReceber, vistaPessoal } from '@/lib/auth'
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { normalizarHorario, janelaDaGrade, type Horario, type BlocoOcupado } from '@/lib/agenda/horario'
+import { normalizarHorario, type Horario, type BlocoOcupado } from '@/lib/agenda/horario'
 import { ler, lerTodas } from '@/lib/db'
 import { AgendaCalendar } from '@/components/branch/agenda-calendar'
 import { ProfessionalAgendaView } from '@/components/branch/professional-agenda'
@@ -306,7 +306,6 @@ export default async function AgendaPage({ params, searchParams }: {
           branchName={branch.name}
           professionalId={ctx.internalUserId ?? ''}
           branchId={branchId}
-          janela={janelaDaGrade([horarioDaUnidade])}
           horarioDaUnidade={horarioDaUnidade}
           horarioDaProfissional={horariosDosProfissionais[ctx.internalUserId ?? ''] ?? null}
           ocupadoFora={semOsQueJaSaoCartao(ocupadoFora[ctx.internalUserId ?? ''] ?? [], meusDeFora)}

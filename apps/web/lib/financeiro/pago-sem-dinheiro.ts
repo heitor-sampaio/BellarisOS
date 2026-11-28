@@ -23,7 +23,23 @@ export interface LancamentoSemDinheiro {
 
 /** O texto da linha (por id), só dos pagamentos de R$ 0 com desconto de fidelidade. */
 export async function pagosSemDinheiro<T extends LancamentoSemDinheiro>(linhas: T[]): Promise<Record<string, string>> {
-  const alvo = linhas.filter(l => l.type === 'INCOME' && l.is_paid && Number(l.amount) === 0 && Number(l.loyalty_discount ?? 0) > 0)
+  return textosDaFidelidade(linhas.filter(l => l.type === 'INCOME' && l.is_paid && Number(l.amount) === 0 && Number(l.loyalty_discount ?? 0) > 0))
+}
+
+/**
+ * PD-03 (D10 da 42ª): o pago com pontos ou voucher aparece à parte na linha também quando o pagamento tem
+ * dinheiro junto ("Pago com pontos: R$ 30,00" embaixo do Pix). Os recebimentos vivos com pontos ou voucher.
+ */
+export function linhasPagasComFidelidade<T extends LancamentoSemDinheiro>(linhas: readonly T[]): T[] {
+  return linhas.filter(l => l.type === 'INCOME' && l.is_paid && l.notes !== 'Estornada' && Number(l.loyalty_discount ?? 0) > 0)
+}
+
+/** O texto da linha (por id) de todo recebimento vivo com pontos ou voucher, com ou sem dinheiro junto. */
+export async function pagosComFidelidade<T extends LancamentoSemDinheiro>(linhas: readonly T[]): Promise<Record<string, string>> {
+  return textosDaFidelidade(linhasPagasComFidelidade(linhas))
+}
+
+async function textosDaFidelidade<T extends LancamentoSemDinheiro>(alvo: readonly T[]): Promise<Record<string, string>> {
   const saida: Record<string, string> = {}
   if (!alvo.length) return saida
   const vouchers = ((await ler(createAdminClient().from('loyalty_vouchers').select('name, used_transaction_id')

@@ -13,7 +13,7 @@ import {
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { validadeNaTela, loteVencido } from '@/lib/estoque/validade'
 import { textoDasPartes } from '@/lib/estoque/lotes-do-movimento'
-import { saldoNaPrateleira } from '@/lib/estoque/saldo-em-texto'
+import { saldoNaPrateleira, disponivelEmEmbalagens, textoDoDisponivel } from '@/lib/estoque/saldo-em-texto'
 import { medidaNoPlural as pl, recusaDaEmbalagem } from '@/lib/estoque/medidas'
 import { minimoEhDoCadastro } from '@/lib/estoque/situacao'
 import { lerNotaDaEntradaAnterior, guardarNotaDaEntrada, rotuloDeUsarANota, ofereceUsarANota } from '@/lib/estoque/nota-da-entrada'
@@ -123,18 +123,24 @@ const unicaUnidade = (lista: { id: string }[]) => lista.length === 1 ? lista[0]!
 const unidadeSugerida = (lista: { id: string }[], sugerida?: string) =>
   sugerida && lista.some(b => b.id === sugerida) ? sugerida : unicaUnidade(lista)
 
+/** Quanto a embalagem rende, no produto com unidade de consumo (nulo: sem ela). */
+const rendeDoProduto = (p: ProductInfo): number | null =>
+  p.consumptionUnit && Number(p.unitsPerPackage) > 0 ? Number(p.unitsPerPackage) : null
+
 function BranchSelect({
-  name, branches, allBranches, label, required, onChange, defaultValue,
+  name, branches, allBranches, label, required, onChange, defaultValue, rende = null,
 }: {
   name:          string
   branches:      BranchStock[]
+  /** A6 da 42ª (ES-19): o saldo de cada unidade é o que ela RENDE, em embalagens com a fração. */
+  rende?:        number | null
   allBranches:   AllBranch[]
   label:         string
   required?:     boolean
   onChange?:     (id: string) => void
   defaultValue?: string
 }) {
-  const stockMap = Object.fromEntries(branches.map(b => [b.branchId, b.currentStock]))
+  const stockMap = Object.fromEntries(branches.map(b => [b.branchId, disponivelEmEmbalagens(b, rende)]))
   return (
     <FieldWrap>
       <Label>{label}{required && ' *'}</Label>
@@ -144,7 +150,7 @@ function BranchSelect({
         <option value="" disabled>Selecionar unidade…</option>
         {allBranches.map(b => (
           <option key={b.id} value={b.id}>
-            {b.name}{stockMap[b.id] !== undefined ? ` · ${stockMap[b.id]!.toLocaleString('pt-BR')}` : ''}
+            {b.name}{stockMap[b.id] !== undefined ? ` · ${stockMap[b.id]!.toLocaleString('pt-BR', { maximumFractionDigits: 3 })}` : ''}
           </option>
         ))}
       </select>
@@ -230,7 +236,7 @@ function EntradaForm({ product, allBranches, defaultBranchId, sugerida, marcas =
       {defaultBranchId ? (
         <input type="hidden" name="branchId" value={defaultBranchId} />
       ) : (
-        <BranchSelect name="branchId" branches={product.branches} allBranches={soAtivas(allBranches)}
+        <BranchSelect name="branchId" branches={product.branches} rende={rendeDoProduto(product)} allBranches={soAtivas(allBranches)}
           label="Unidade de destino" required defaultValue={unidadeSugerida(soAtivas(allBranches), sugerida)} />
       )}
 
@@ -355,14 +361,11 @@ function TransferenciaForm({ product, allBranches, defaultBranchId, origemSugeri
 
   // C18: o disponível é o que a origem RENDE — o frasco aberto conta pelo que
   // sobra nele (era o saldo em embalagens arredondado, e 1,5 frasco deixava
-  // transferir 2). Em embalagens, com a fração, e a prateleira por extenso.
-  const rende     = product.consumptionUnit && Number(product.unitsPerPackage) > 0 ? Number(product.unitsPerPackage) : null
-  const daOrigem  = fromId ? product.branches.find(b => b.branchId === fromId) : undefined
-  const rendOrigem = rende ? (daOrigem?.currentRendimento ?? (daOrigem?.currentStock ?? 0) * rende) : null
-  const fromStock = fromId
-    ? (rende ? Math.max(0, Math.floor(rendOrigem! / rende * 1000) / 1000) : (daOrigem?.currentStock ?? 0))
-    : null
-  const naPrateleira = fromId && rende ? saldoNaPrateleira(rendOrigem!, rende, product.unit, product.consumptionUnit!) : null
+  // transferir 2). A6 da 42ª (ES-19): em embalagens com a fração e na unidade
+  // de uso ("1,9 frasco (57 ml)"), o mesmo número no seletor e no máximo do campo.
+  const rende     = rendeDoProduto(product)
+  const daOrigem  = fromId ? (product.branches.find(b => b.branchId === fromId) ?? { currentStock: 0 }) : undefined
+  const fromStock = daOrigem ? disponivelEmEmbalagens(daOrigem, rende) : null
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault(); setPending(true); setError(undefined)
@@ -390,13 +393,13 @@ function TransferenciaForm({ product, allBranches, defaultBranchId, origemSugeri
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div className="flex-wrap-mobile" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'end', gap: 8 }}>
-        <BranchSelect name="fromBranchId" branches={product.branches}
+        <BranchSelect name="fromBranchId" branches={product.branches} rende={rende}
           allBranches={defaultBranchId ? allBranches.filter(b => b.id === defaultBranchId) : allBranches}
           label="Origem" required onChange={setFromId} defaultValue={origemInicial} />
         <div style={{ paddingBottom: 10, color: 'var(--text-faint)' }}>
           <ArrowLeftRight size={16} />
         </div>
-        <BranchSelect name="toBranchId" branches={product.branches}
+        <BranchSelect name="toBranchId" branches={product.branches} rende={rende}
           allBranches={soAtivas(allBranches).filter(b => b.id !== fromId)}
           label="Destino" required onChange={setToId} />
       </div>
@@ -415,9 +418,8 @@ function TransferenciaForm({ product, allBranches, defaultBranchId, origemSugeri
         }}>
           Disponível na origem:&nbsp;
           <strong data-disponivel-na-origem style={{ color: 'var(--text)' }}>
-            {fromStock.toLocaleString('pt-BR', { maximumFractionDigits: 3 })} {pl(product.unit, fromStock)}
+            {textoDoDisponivel(daOrigem!, rende, product.unit, product.consumptionUnit ?? '')}
           </strong>
-          {naPrateleira && <span> ({naPrateleira})</span>}
         </div>
       )}
 
@@ -546,7 +548,7 @@ function AjusteForm({ product, allBranches, defaultBranchId, sugerida, onClose, 
       {defaultBranchId ? (
         <input type="hidden" name="branchId" value={defaultBranchId} />
       ) : (
-        <BranchSelect name="branchId" branches={product.branches} allBranches={allBranches} defaultValue={branchId}
+        <BranchSelect name="branchId" branches={product.branches} rende={rendeDoProduto(product)} allBranches={allBranches} defaultValue={branchId}
           label="Unidade" required onChange={id => { setBranchId(id); setConfirmed(false) }} />
       )}
 
@@ -799,7 +801,7 @@ function PerdaForm({ product, allBranches, defaultBranchId, sugerida, motivosDeP
       {defaultBranchId ? (
         <input type="hidden" name="branchId" value={defaultBranchId} />
       ) : (
-        <BranchSelect name="branchId" branches={product.branches} allBranches={allBranches} defaultValue={branchId}
+        <BranchSelect name="branchId" branches={product.branches} rende={rendeDoProduto(product)} allBranches={allBranches} defaultValue={branchId}
           label="Unidade" required onChange={setBranchId} />
       )}
 

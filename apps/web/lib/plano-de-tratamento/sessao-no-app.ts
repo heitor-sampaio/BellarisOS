@@ -39,3 +39,23 @@ export function sessaoInterrompida(statusDaSessao: string | null | undefined, st
 export function textoDaSessaoInterrompida(scheduledAt: string, fuso: string): string {
   return situacaoDaSessaoNoApp({ status: 'CANCELLED', scheduled_at: scheduledAt, completed_at: null }, fuso).texto
 }
+
+/**
+ * O "Agendar" da sessão em aberto, na página do plano no app (D6 da 42ª; PL-19
+ * e CLAUDE.md §6, "Portal não é a unidade do registro"): o agendar do app usa a
+ * unidade do ENDEREÇO (§5, H5), e o link montava o endereço de onde ela estava —
+ * a sessão do plano de Arapongas, aberta pelo portal de Apucarana, ia ao agendar
+ * de Apucarana, que pode nem fazer o procedimento. Abre no endereço da unidade
+ * DO PLANO; com mais de uma unidade, o agendar ainda pergunta "Em qual
+ * unidade?" (a cliente é da rede e agenda em qualquer uma — H5). A unidade do
+ * plano desativada fica de fora (só as ativas se agendam): o endereço de onde
+ * ela está.
+ */
+export function rotaDoAgendarDaSessaoNoApp(
+  slugDoEndereco: string,
+  unidadeDoPlano: { slug: string; is_active: boolean } | null | undefined,
+  procedimentoId: string,
+): string {
+  const slug = unidadeDoPlano?.is_active && unidadeDoPlano.slug ? unidadeDoPlano.slug : slugDoEndereco
+  return `/${slug}/cliente/agendamentos/novo?procedimento=${procedimentoId}`
+}

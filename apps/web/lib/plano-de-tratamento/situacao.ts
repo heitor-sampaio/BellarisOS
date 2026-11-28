@@ -58,6 +58,11 @@ export { TEXTO_QUEM_MONTA } from './textos-de-quem-monta'
  *   contrato que ainda vai sair no PDV (o Heitor, 27/11; `contratoFaltaAssinar`).
  * - Em andamento: o plano já foi recebido (um lançamento vivo dele) — o
  *   dinheiro que entrou vence o documento que ficou aberto.
+ * - Concluído: o COMPLETED gravado, ou o aceito já recebido com TODAS as
+ *   sessões feitas (D4 da 42ª, PL-20: nada grava COMPLETED, e o plano de 1 de
+ *   1 feita seguia "Em andamento"; a feita é a de `metrics_financeiro_do_plano`).
+ *   Feitas e sem dinheiro, o que falta é pagar (a ordem do Heitor: o passo
+ *   que falta aparece) — decisão do Claude, 28/11.
  * - Rascunho fica à parte: o plano salvo que ainda não foi à cliente.
  *
  * Pura: quem lê o banco é `listarPlanejamentos` / `getPassosDoPlano`.
@@ -100,6 +105,8 @@ export function situacaoComercialDoPlano(p: {
   documentosAbertos: number
   /** O contrato de plano foi emitido e ainda não foi assinado nem dispensado (`contratoFaltaAssinar`). */
   contratoFalta: boolean
+  /** As sessões do plano e as feitas (D4 da 42ª). Sem elas, o aceito não se conclui por aqui. */
+  sessoes?: { total: number; feitas: number }
 }): SituacaoComercial {
   switch (p.status) {
     case 'DRAFT':     return 'RASCUNHO'
@@ -108,7 +115,10 @@ export function situacaoComercialDoPlano(p: {
     case 'CANCELLED':
     case 'REJECTED':  return 'CANCELADO'
   }
-  if (p.recebido) return 'EM_ANDAMENTO'
+  if (p.recebido) {
+    const s = p.sessoes
+    return s && s.total > 0 && s.feitas >= s.total ? 'CONCLUIDO' : 'EM_ANDAMENTO'
+  }
   if (p.documentosAbertos > 0 || p.contratoFalta) return 'FALTA_ASSINAR'
   return 'FALTA_PAGAR'
 }

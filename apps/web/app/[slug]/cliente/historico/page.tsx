@@ -13,7 +13,8 @@ import { HistoricoTabs } from '@/components/client-portal/historico-tabs'
 import { notasDaAvaliacao, type NotaNaTela } from '@/lib/avaliacao/notas'
 import { notasDosProcedimentos } from '@/lib/avaliacao/leitura'
 import { ordemDosPagamentosDoApp } from '@/lib/clientes/ordem-dos-pagamentos'
-import { abaDoHistoricoNoApp } from '@/lib/clientes/textos-do-app'
+import { abaDoHistoricoNoApp, textoDoHorarioNoHistorico } from '@/lib/clientes/textos-do-app'
+import { textoDoConcluido } from '@/lib/agenda/hora-real'
 import { descontosDosLancamentos } from '@/lib/financeiro/desconto-do-lancamento'
 import { falaDaRedeDoPortal } from '@/lib/clientes/nome-da-rede'
 import { notaDoPagamentoQueVoltouParaACliente } from '@/lib/financeiro/notas-do-lancamento'
@@ -25,6 +26,8 @@ export type ProcedimentoItem = {
   scheduled_at:        string
   procedure_name:      string
   professional_name:   string | null
+  /** D11 da 42ª (AG-24): "marcado para 07:30 · concluído às 07:17" — a hora real, como a Agenda do app; sem ela, a marcada. */
+  horario:             string
   confirmed:           boolean
   /** F17-3: as notas que ela deu — "Atendimento" e cada procedimento pelo nome. */
   notas:               NotaNaTela[]
@@ -98,10 +101,10 @@ export type DocumentoItem = {
 
 // -- Linhas como os selects as pedem ------------------------------
 type AtendimentoLido = {
-  id: string; scheduled_at: string; client_confirmed_at: string | null
+  id: string; scheduled_at: string; completed_at: string | null; client_confirmed_at: string | null
   procedure_rating: number | null; client_rating: number | null; client_feedback: string | null
   procedures: { name: string } | null; professionals: { name: string } | null
-  branches?: { name: string; tenant_id: string } | null
+  branches?: { name: string; tenant_id: string; fuso: string | null } | null
 }
 type PagamentoLido = {
   id: string; description: string; amount: number | string; payment_method: string | null; cartao_vezes: number | null; cartao_bandeira: string | null
@@ -133,7 +136,7 @@ export default async function HistoricoPage({ params, searchParams }: {
   const [procedimentosRes, pagamentosRes, docsRes, consentRes] = await Promise.all([
     // Procedimentos = appointments concluídos
     lerTodas((de, ate) => admin.from('appointments')
-      .select('id, scheduled_at, client_confirmed_at, procedure_rating, client_rating, client_feedback, procedures(name), professionals:users!professional_id(name), branches(name, tenant_id)')
+      .select('id, scheduled_at, completed_at, client_confirmed_at, procedure_rating, client_rating, client_feedback, procedures(name), professionals:users!professional_id(name), branches(name, tenant_id, fuso)')
       .eq('client_id', ctx.clientId!)
       .eq('status', 'COMPLETED')
       .order('scheduled_at', { ascending: false }).order('id')
@@ -182,17 +185,23 @@ export default async function HistoricoPage({ params, searchParams }: {
     // A desativada onde ela foi atendida conta (F72, lib/unidades/da-tela).
     ? (await unidadesParaLer(redeDosAtendimentos)).length > 1
     : false
-  const procedimentos: ProcedimentoItem[] = lidos.map(r => ({
+  const procedimentos: ProcedimentoItem[] = lidos.map(r => {
+    // O relógio da unidade do atendimento (F62), como o cartão da Agenda do app.
+    const fusoDoAtendimento = fusoValido(r.branches?.fuso)
+    const horaMarcada = new Date(r.scheduled_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: fusoDoAtendimento })
+    return {
     id:                  r.id,
     scheduled_at:        r.scheduled_at,
     procedure_name:      r.procedures?.name ?? 'Procedimento',
     professional_name:   r.professionals?.name ?? null,
+    horario:             textoDoHorarioNoHistorico(horaMarcada, textoDoConcluido(r.scheduled_at, r.completed_at, fusoDoAtendimento)),
     confirmed:           r.client_confirmed_at != null,
     notas:               notasDaAvaliacao({ client_rating: r.client_rating, procedure_rating: r.procedure_rating, procedureName: r.procedures?.name ?? 'Procedimento' },
       notasDasAvaliacoes.get(r.id) ?? []),
     feedback:            r.client_feedback?.trim() || null,
     unidade:             variasUnidades ? r.branches?.name ?? null : null,
-  }))
+  }
+  })
 
   // -- Pagamentos -------------------------------------------------
   // D8 da 36ª (CR-07): a parcela paga em várias formas é UMA linha, como na equipe.
