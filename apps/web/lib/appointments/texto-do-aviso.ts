@@ -34,6 +34,15 @@ export function textoDoCancelado(procedimento: string, quando: string, unidade: 
   return `Agendamento cancelado: ${procedimento} de ${quando}${naUnidade(unidade)}.${motivo?.trim() ? ` Motivo: ${motivo.trim()}.` : ''}`
 }
 
+/**
+ * O cancelamento no sino da EQUIPE (A13 da 41ª, princípio 7): o título já diz
+ * "Agendamento cancelado", e o texto não o repete — quem, o quê e quando, como
+ * o "Novo agendamento", com o motivo.
+ */
+export function textoDoCanceladoParaAEquipe(cliente: string, procedimento: string, quando: string, motivo: string | null): string {
+  return `${cliente} — ${procedimento} de ${quando}.${motivo?.trim() ? ` Motivo: ${motivo.trim()}.` : ''}`
+}
+
 export function textoDoConcluido(procedimento: string): string {
   return `Atendimento concluído: ${procedimento}. Confirme e avalie pelo app.`
 }

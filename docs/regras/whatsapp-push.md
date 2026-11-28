@@ -34,7 +34,14 @@
     inteiro.
 - Notificações operacionais: novo agendamento, cancelamento, remarcação,
   check-in e estoque no mínimo ou abaixo (pela régua da tela, uma vez por
-  cruzamento — A48 da 11ª, `atendimento.md` §9.5)
+  cruzamento — A48 da 11ª, `atendimento.md` §9.5). **O do mínimo também tira
+  quem causou** (D3 da 41ª, NE-04): o cruzamento guarda quem gravou o
+  movimento que cruzou (`estoque_cruzamentos_do_minimo.autor_id`, o
+  `created_by` do movimento da mesma transação — a transferência, nos dois
+  lados, a entrada, o ajuste, a perda, a venda, quem concluiu o atendimento),
+  e o aviso não vai a ela; sem autor (o mínimo salvo à mão), vai a todos.
+  Prova: `tests/estoque-aviso-do-minimo-sem-quem-causou.test.ts`,
+  `e2e/estoque-minimo-no-sino.spec.ts` ("D3 da 41ª").
 - Notificações para cliente, no celular (push): o horário marcado, remarcado,
   cancelado e concluído e o pagamento — o aviso do próprio fato
   (`lib/appointments/avisos.ts`, `texto-do-aviso.ts`). O lembrete antes do

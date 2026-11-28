@@ -31,6 +31,12 @@ export interface RegistroDaAuditoria {
   ator_nome:   string
   ator_tipo:   TipoDeAtor
   incompleto:  boolean
+  /**
+   * D7 (AD-05, AD-22): a ficha de quem agiu, quando foi a cliente (o gatilho
+   * grava a ficha do login NA rede da linha, e o texto fixo "A cliente, pelo
+   * portal" no nome). O nome se lê agora por ela.
+   */
+  ator_cliente_id?: string | null
 }
 
 /** Os nomes que a frase usa, lidos na hora (a anonimização da LGPD vale aqui). */
@@ -154,6 +160,13 @@ export interface NomesDaAuditoria {
    * `support_grants` não guarda a conta.
    */
   contasDasAutorizacoes?: Record<string, string>
+  /**
+   * D10 (AD-13, AD-20; documentos: DA-11): quem assinou cada documento (o id
+   * do documento → o nome da evidência, "Marta Lima, responsável legal de
+   * Beatriz Lima" na menor), lido agora — o gatilho de `document_signatures`
+   * não guarda valor nenhum.
+   */
+  assinaturasDosDocumentos?: Record<string, string>
 }
 
 export interface ItemDevolvidoDaAuditoria {

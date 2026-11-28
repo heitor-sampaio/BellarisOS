@@ -467,8 +467,8 @@ Este é o catálogo das regras dos indicadores que valem HOJE: todo número na t
 - Onde: `docs/regras/indicadores.md:1180-1184`
 - Antes: KE-02
 
-**FO-07.** As oportunidades são da rede (a cliente é da rede): o recorte por unidade não vale para elas. Na aba Oportunidades dos Relatórios, com uma unidade escolhida numa rede de mais de uma, os dois cartões que não seguem o recorte se chamam "Conversão (rede)" e "Oportunidades recebidas (rede)", sem nota que explique (o Heitor, 26/11: "intuitivo não é explicativo"); o recorte fica, e recorta os agendamentos. O quadro de oportunidades também não tem recorte por unidade.
-- Fonte: decisão do Claude, 26/11 (33ª simulação, A10), pelo princípio 3
+**FO-07.** As oportunidades são da rede (a cliente é da rede): o recorte por unidade não vale para elas. Na aba Oportunidades dos Relatórios, com uma unidade escolhida numa rede de mais de uma (no portal da rede e também no portal da unidade), os dois cartões que não seguem o recorte se chamam "Conversão (rede)" e "Oportunidades recebidas (rede)", sem nota que explique (o Heitor, 26/11: "intuitivo não é explicativo"); o recorte fica, e recorta os agendamentos. O quadro de oportunidades também não tem recorte por unidade.
+- Fonte: decisão do Claude, 26/11 (33ª simulação, A10), pelo princípio 3; também no portal da unidade: decisão do Claude, 28/11 (41ª simulação, D12), pela própria FO-07
 - Onde: `docs/regras/indicadores.md:1592-1601`; `docs/regras/crm-inbox.md` (a oportunidade é da rede)
 - Antes: (nova, 26/11); antes de 26/11: com uma unidade escolhida, a aba mostrava as oportunidades da rede sem dizer
 

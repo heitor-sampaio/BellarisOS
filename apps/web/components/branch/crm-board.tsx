@@ -448,6 +448,12 @@ interface CRMBoardProps {
   networkMode?: boolean
   branches?:    { id: string; name: string; slug: string }[]
   /**
+   * No portal da UNIDADE, as unidades em que a pessoa agenda pelo card (as
+   * dela, ativas — OP-35; D2 da 41ª): com duas ou mais, a janela pede a
+   * unidade. Sem a lista, a do endereço.
+   */
+  unidadesDeAgendar?: { id: string; name: string; slug: string }[]
+  /**
    * Lead a abrir ao montar (`?lead=` da URL — é por aqui que a busca universal
    * entra no card). Fora da lista carregada (alcance, outro funil), nada abre.
    */
@@ -1164,7 +1170,7 @@ const semRelogio = () => null
 // --- Board principal ---------------------------------------------
 export function CRMBoard({
   initialLeads, stages, allStages, funnels, funnelId,
-  procedures, branchId, branchName, slug, networkMode, branches, leadAberto, motivos = [], podeCadastrarCliente = false,
+  procedures, branchId, branchName, slug, networkMode, branches, unidadesDeAgendar, leadAberto, motivos = [], podeCadastrarCliente = false,
   podeAgendar = false, podeMover = false, tagsDaRede = [],
 }: CRMBoardProps) {
   // O dia da criação no relógio da unidade (F62b).
@@ -1174,9 +1180,11 @@ export function CRMBoard({
   const desfechos = podeMover
     ? { ganho: stages.find(s => s.outcome === 'WON') ?? null, perdido: stages.find(s => s.outcome === 'LOST') ?? null }
     : null
-  // O "Agendar" do card (A16): na rede, as unidades dela; na unidade, ela.
+  // O "Agendar" do card (A16): na rede, as unidades dela; na unidade, as da
+  // PESSOA (D2 da 41ª, OP-35: com duas, a caixa vem vazia) — sem a lista, ela.
   const unidadesParaAgendar = !podeAgendar ? null
     : networkMode ? (branches ?? [])
+    : unidadesDeAgendar?.length ? unidadesDeAgendar
     : branchId ? [{ id: branchId, name: branchName ?? '', slug }] : null
   // Levar o card à etapa de desfecho perdido pergunta o motivo antes de mover.
   const [perdaPendente, setPerdaPendente] = useState<{ id: string; etapa: string; disparar: boolean } | null>(null)

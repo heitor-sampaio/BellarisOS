@@ -690,8 +690,8 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/revisao.md:865`, `:881`, `docs/regras/crm-inbox.md:1346`, `:1616`
 - Antes: KF-24, KD-42, KE-37
 
-**OP-18.** O filtro de período tem "Personalizado" (De/Até), que só filtra ao aplicar e compara o dia da criação no fuso do negócio. Com filtro, o quadro diz o recorte ("Mostrando 2 de 3 oportunidades: os números do topo são do funil inteiro."). A idade do card ("hoje", "ontem", "há N dias") conta dias do calendário de Brasília.
-- Fonte: princípio 3
+**OP-18.** O filtro de período tem "Personalizado" (De/Até), que só filtra ao aplicar e compara o dia da criação no fuso do negócio. Com filtro que esconde cards, o quadro diz o recorte ("Mostrando 2 de 3 oportunidades: os números do topo são do funil inteiro."); com filtro que não esconde nenhum, não há recorte a dizer, e o "Limpar N" já diz que há filtro. A idade do card ("hoje", "ontem", "há N dias") conta dias do calendário de Brasília.
+- Fonte: princípio 3; o filtro que não esconde card: decisão do Claude, 28/11 (41ª simulação, Decisão 8), pela própria OP-18
 - Onde: `docs/regras/crm-inbox.md:1355-1358`, `:1628`
 - Antes: KD-43, KD-44, KE-38
 
@@ -783,8 +783,8 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/regras/crm-inbox.md:1242-1247`, `:1671`
 - Antes: KD-24, KD-25, KE-33
 
-**OP-35.** O "Agendar" do inbox e do card escolhe a unidade numa caixa de seleção simples: com duas ou mais unidades ela vem vazia ("Selecione a unidade…"); com uma, já vem escolhida e a caixa nem aparece. A tag não escolhe unidade.
-- Fonte: o Heitor, 2026-11-13: "coloca uma caixa de seleção para a unidade, simples."
+**OP-35.** O "Agendar" do inbox e do card escolhe a unidade numa caixa de seleção simples: com duas ou mais unidades ela vem vazia ("Selecione a unidade…"); com uma, já vem escolhida e a caixa nem aparece. As unidades são as da pessoa (com "A rede inteira", todas as ativas), nos dois portais: quem tem duas ou mais tem a caixa também no portal da unidade, e não fica presa à unidade do endereço. A tag não escolhe unidade.
+- Fonte: o Heitor, 2026-11-13: "coloca uma caixa de seleção para a unidade, simples."; as unidades da pessoa nos dois portais: decisão do Claude, 28/11 (41ª simulação, D2), pela própria OP-35
 - Onde: `docs/revisao.md:472`, `:870`, `:1959`, `docs/regras/crm-inbox.md:369`, `:1252`
 - Antes: KA-68, KB-09, KD-26, KF-28
 

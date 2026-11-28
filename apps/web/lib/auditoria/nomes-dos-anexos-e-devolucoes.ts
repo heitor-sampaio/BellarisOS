@@ -20,7 +20,9 @@ export async function nomesDosAnexosEDevolucoes(ctx: TenantContext, registros: r
   const ids = (filtro: (r: RegistroDaAuditoria) => boolean) =>
     [...new Set(registros.filter(r => filtro(r) && r.registro_id && UUID.test(r.registro_id)).map(r => r.registro_id!))]
   // A20 da 35ª: também o anexo apagado (o clínico fica, com `apagado_em`): "Apagou um anexo clínico (laudo)".
-  const anexos = ids(r => r.tabela === 'client_documents' && (r.operacao === 'criou' || (r.operacao === 'editou' && r.colunas.includes('apagado_em'))))
+  // D9: e o anexo enviado ao app ou tirado dele ("Enviou ao app uma foto clínica").
+  const anexos = ids(r => r.tabela === 'client_documents' && (r.operacao === 'criou'
+    || (r.operacao === 'editou' && (r.colunas.includes('apagado_em') || r.colunas.includes('enviado_em')))))
   const devolucoes = ids(r => r.tabela === 'product_sale_returns' && r.operacao === 'criou')
   if (!anexos.length && !devolucoes.length) return {}
 

@@ -179,6 +179,10 @@ export function linhasDaConferencia(args: {
  * É o dia de agora contra o retrato daquele fechamento, somado em centavos:
  * mais entradas ou menos saídas é o que ENTROU; menos entradas (o estorno de um
  * pagamento do dia) ou mais saídas, o que SAIU. Os pontos não são dinheiro.
+ *
+ * D5 da 41ª: a soma anula o estorno de um pagamento de hoje com o recebimento
+ * novo — o aviso do Fechamento passou a ler `getMovimentoDepoisDoFechamento`
+ * (lib/metrics, os lançamentos de depois). Esta conta não é mais lida pela tela.
  */
 export function movimentoDepoisDoFechamento(
   agora: LinhaRegistrada[], retrato: LinhaRegistrada[] | null,
@@ -356,7 +360,11 @@ export type DiferencaNaTela = { tipo: 'valor'; valor: number } | { tipo: 'a-conf
 export function diferencaNaTela(l: LinhaDaConferencia, args: { conferindo: boolean; texto: string; fechado: boolean }): DiferencaNaTela {
   if (!l.conferivel) return { tipo: 'nada' }
   if (args.conferindo) {
-    const digitada = diferencaAoDigitar(args.texto, l.registrado)
+    // A10 da 41ª (princípio 3): o dinheiro contado é o da gaveta — o que o fechar recusa (o negativo) não
+    // tem diferença: "−55" contra −R$ 55,00 dizia "Bateu", e o fechar recusava.
+    const lido = lerConferidoDoCampo(args.texto)
+    const recusado = l.forma === 'CASH' && lido != null && Number.isFinite(lido) && recusaDoDinheiroContado(lido) != null
+    const digitada = recusado ? null : diferencaAoDigitar(args.texto, l.registrado)
     if (digitada != null) return { tipo: 'valor', valor: digitada }
     // O primeiro fechamento do dia: em branco, nada ainda. O "Fechar de novo": o branco grava "não conferido".
     return !args.fechado || l.forma === 'CASH' ? { tipo: 'nada' } : { tipo: 'nao-conferido' }

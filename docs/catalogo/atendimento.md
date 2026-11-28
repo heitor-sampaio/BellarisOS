@@ -413,8 +413,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:473-495`, `:577-586`
 - Antes: AG-71
 
-**AT-05.** Quem não pode fazer o passo vê, já antes, um aviso que trava e diz quem faz, pela permissão e com os nomes: sem marcar a chegada, quem tem a Agenda em Gerenciar; sem iniciar nem concluir, "Você não inicia nem conclui este atendimento." e quem conclui — quem tem o Atendimento em Gerenciar (UM2).
-- Fonte: princípio 3
+**AT-05.** Quem não pode fazer o passo vê, já antes, um aviso que trava e diz quem faz, pela permissão e com os nomes: sem marcar a chegada, quem tem a Agenda em Gerenciar; sem iniciar nem concluir, "Você não inicia nem conclui este atendimento." e quem conclui — quem tem o Atendimento em Gerenciar (UM2); sem escrever o clínico (o Prontuário só em Ver), quem o escreve — quem tem o Prontuário em Gerenciar.
+- Fonte: princípio 3; o clínico: decisão do Claude, 28/11 (41ª simulação, A1), pela própria AT-05
 - Onde: `docs/regras/atendimento.md:482-487`, `:502-525`
 - Antes: AG-72, AG-74, AG-75
 
@@ -500,8 +500,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 
 ### A desistência no meio
 
-**AT-20.** Cancelar o atendimento EM ANDAMENTO (a desistência) pede o motivo e oferece "Intercorrência (opcional)" (a quem tem o Prontuário em Gerenciar) e "Baixar do estoque o que já foi aplicado". Grava tudo junto ou nada; não há comissão nem pontos. A tela do cancelado mostra a intercorrência abaixo do motivo, só a quem vê o prontuário. Desistir pede o Atendimento em Gerenciar (UM2), não a Agenda; o agendado que não começou segue com a Agenda. A janela da agenda não oferece "Não compareceu" no Em atendimento. O Copilot segue a mesma regra.
-- Fonte: decisão do Claude; desistir no Atendimento em Gerenciar: recomendação do Claude aprovada pelo Heitor, 2026-11-23 (docs/revisao.md, UM2): "concordo, pode anotar, marcar as questões e ajustar o codigo"
+**AT-20.** Cancelar o atendimento EM ANDAMENTO (a desistência) pede o motivo e oferece "Intercorrência (opcional)" (a quem tem o Prontuário em Gerenciar) e "Baixar do estoque o que já foi aplicado". Grava tudo junto ou nada; não há comissão nem pontos. A tela do cancelado mostra a intercorrência abaixo do motivo, só a quem vê o prontuário. Desistir pede o Atendimento em Gerenciar (UM2), não a Agenda; o agendado que não começou segue com a Agenda. A janela da agenda não oferece "Não compareceu" no Em atendimento. O Copilot segue a mesma regra. A comanda segue a PV-09 de Vendas: sem pagamento, sai do PDV sem cobrança; paga antes da desistência, fica paga, e o que volta à cliente é escolha da rede (o estorno ou um crédito concedido).
+- Fonte: decisão do Claude; desistir no Atendimento em Gerenciar: recomendação do Claude aprovada pelo Heitor, 2026-11-23 (docs/revisao.md, UM2): "concordo, pode anotar, marcar as questões e ajustar o codigo"; a comanda: decisão do Claude, 28/11 (41ª simulação, Decisão 1), pela PV-09 de Vendas e pelo princípio 1
 - Onde: `docs/regras/atendimento.md:3402`, `:3431`, `:3447`, `:3871`
 - Antes: AT-46, AT-49, AT-50
 
@@ -694,8 +694,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 
 ### Injetáveis
 
-**PT-13.** A aplicação de injetáveis só se registra dentro de um atendimento ("Registrar aplicação"); fora dele, o mapa não oferece "Confirmar aplicação" e o registro é recusado. Há UMA aplicação por mapa por atendimento: registrada, o botão vira "Atualizar a aplicação registrada" enquanto o atendimento está aberto; encerrado, ela fica. A aplicação de um atendimento são só os pontos aplicados NELE, não o mapa inteiro: o retoque de 10 UI num mapa que já tinha 50 UI aplicadas de manhã registra 10 UI, e o histórico do dia soma 60.
-- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele); só os pontos daquele atendimento: decisão do Claude, 27/11 (37ª, Decisão C3), pelo princípio 3
+**PT-13.** A aplicação de injetáveis só se registra dentro de um atendimento ("Registrar aplicação"); fora dele, o mapa não oferece "Confirmar aplicação" e o registro é recusado. Há UMA aplicação por mapa por atendimento: registrada, o botão vira "Atualizar a aplicação registrada" enquanto o atendimento está aberto; encerrado, ela fica. A aplicação de um atendimento são só os pontos aplicados NELE, não o mapa inteiro: o retoque de 10 UI num mapa que já tinha 50 UI aplicadas de manhã registra 10 UI, e o histórico do dia soma 60. No mapa, o ponto planejado e ainda não aplicado não vem com o "Aplicado" preenchido pela dose do Plano: lendo o cartão, o que não se aplicou não parece aplicado.
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele); só os pontos daquele atendimento: decisão do Claude, 27/11 (37ª, Decisão C3), pelo princípio 3; o ponto não aplicado: decisão do Claude, 28/11 (41ª simulação, A2), pela própria PT-13 e pelo princípio 3
 - Onde: `docs/regras/atendimento.md:2112`, `:2127`, `:2162`; `apps/web/actions/injectable-map.ts` (`registrarAplicacao`)
 - Antes: PT-25, PT-26; antes de 27/11: a aplicação copiava o mapa inteiro (D2 da 37ª: o retoque gravou 60 UI, e o histórico somou 110 contra 60 de baixa)
 
@@ -776,8 +776,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:1740`, `:1747`, `:1827`
 - Antes: FI-13, FI-14, FI-25
 
-**FI-10.** Quem respondeu na unidade não responde de novo no app: gravar a ficha fecha a pendente, e a equipe regravando as mesmas respostas não muda quem respondeu nem a data. A ficha gravada vazia não conta como respondida em lugar nenhum ("Ficha de saúde vazia").
-- Fonte: decisão do Claude
+**FI-10.** Quem respondeu na unidade não responde de novo no app: gravar a ficha fecha a pendente, e a equipe regravando as mesmas respostas não muda quem respondeu nem a data. A edição da equipe que MUDA uma resposta passa a ficha a "Respondida pela equipe em <data>": quem respondeu é quem deu as respostas que estão gravadas agora, e a conferência e a correção pela cliente (FI-13) a fazem dela de novo. A ficha gravada vazia não conta como respondida em lugar nenhum ("Ficha de saúde vazia").
+- Fonte: decisão do Claude; a edição que muda uma resposta: decisão do Claude, 28/11 (41ª simulação, Decisão 3), pela própria FI-10 e pela FI-13
 - Onde: `docs/regras/atendimento.md:1733`, `:1859`
 - Antes: FI-15, FI-27
 
@@ -796,8 +796,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:1757`, `:1776-1796`, `:2215-2227`
 - Antes: FI-18, FI-22, FI-23; antes de 26/11: pelo link novo e no app, a ficha da equipe abria em "Algo mudou na sua saúde? Nada mudou", o modo de quem respondeu ela mesma
 
-**FI-14.** "Enviar a ficha" está sempre na janela do agendamento, para quem tem a Agenda em Gerenciar (copiar o link ou abrir no WhatsApp do aparelho); sem pendente, o botão abre uma para este agendamento, sem a regra dos 30 dias. Quem só vê a agenda não vê o bloco; o suporte não manda. Cliente sem CPF nem nascimento: a janela pede o nascimento a quem tem as Clientes e a Agenda em Gerenciar (só preenche o vazio).
-- Fonte: princípio 1
+**FI-14.** "Enviar a ficha" está sempre na janela do agendamento, em qualquer situação dele (também no concluído, no cancelado e na falta), para quem tem a Agenda em Gerenciar (copiar o link ou abrir no WhatsApp do aparelho); sem pendente, o botão abre uma para este agendamento, sem a regra dos 30 dias. Quem só vê a agenda não vê o bloco; o suporte não manda. Cliente sem CPF nem nascimento: a janela pede o nascimento a quem tem as Clientes e a Agenda em Gerenciar (só preenche o vazio).
+- Fonte: princípio 1; em qualquer situação do agendamento: decisão do Claude, 28/11 (41ª simulação, D16), pela própria FI-14 ("sempre")
 - Onde: `docs/regras/atendimento.md:1761`, `:1767`, `:1807`
 - Antes: FI-19, FI-21
 
@@ -1016,8 +1016,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:2591`, `:2911`, `:3936-3959`
 - Antes: ES-50, ES-51; antes de 26/11: a entrada enchia o lote inteiro com o saldo negativo, a soma dos lotes passava do saldo, e a linha dizia o lote como se cobrisse o movimento inteiro
 
-**ES-25.** Para o recall, cada lote (inclusive o esgotado) tem "Aplicado em: ver clientes": cada saída do lote para uma cliente, com a hora da conclusão e quem atendeu (ou quem vendeu) e a quantidade daquele lote. Precisa do Estoque em Ver e das Clientes em Ver: sem as Clientes, o botão não aparece. Cada atendimento do prontuário diz o que se tirou de cada lote e, a quem tem os dois, leva ao "Aplicado em". A dose que saiu de dois lotes mostra os dois, cada um com a sua parte ("TB1 50 UI · TB2 10 UI"), na ordem em que saíram (o que vence antes primeiro, ES-24). A venda devolvida (o cancelamento, o estorno ou a devolução de parte com o produto de volta ao estoque) mostra a volta no "Aplicado em": o lote conta o que entregou de fato, a saída menos o que voltou.
-- Fonte: princípio 3; a dose de dois lotes: decisão do Claude, 27/11 (37ª, Decisão C1), pelo princípio 3 — é como o "Aplicado em" já mostra; a devolução: decisão do Claude, 27/11 (A5 da 38ª), pela própria ES-25 (o que o lote entregou) e pela ES-28
+**ES-25.** Para o recall, cada lote (inclusive o esgotado) tem "Aplicado em: ver clientes": cada saída do lote para uma cliente, com a hora da conclusão e quem atendeu (ou quem vendeu) e a quantidade daquele lote. Precisa do Estoque em Ver e das Clientes em Ver: sem as Clientes, o botão não aparece. Cada atendimento do prontuário diz o que se tirou de cada lote e, a quem tem os dois, leva ao "Aplicado em". A dose que saiu de dois lotes mostra os dois, cada um com a sua parte ("TB1 50 UI · TB2 10 UI"), na ordem em que saíram (o que vence antes primeiro, ES-24). A venda devolvida (o cancelamento, o estorno ou a devolução de parte com o produto de volta ao estoque) mostra a volta no "Aplicado em": o lote conta o que entregou de fato, a saída menos o que voltou. A dose baixada na desistência (AT-20, "Baixar do estoque o que já foi aplicado") também é saída do lote e entra no "Aplicado em", com a cliente, a hora e quem atendeu.
+- Fonte: princípio 3; a dose de dois lotes: decisão do Claude, 27/11 (37ª, Decisão C1), pelo princípio 3 — é como o "Aplicado em" já mostra; a devolução: decisão do Claude, 27/11 (A5 da 38ª), pela própria ES-25 (o que o lote entregou) e pela ES-28; a dose da desistência: decisão do Claude, 28/11 (41ª simulação, Decisão 1), pela AT-20 e pela própria ES-25
 - Onde: `docs/regras/atendimento.md:1944`, `:2925`, `:2938`
 - Antes: ES-53, PT-05
 
@@ -1043,8 +1043,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 
 ### Avisos
 
-**ES-30.** O dashboard da unidade tem "Estoque no mínimo ou abaixo" e o da rede "Estoque crítico"; quem tem o Estoque vê "Lotes vencendo em 30 dias" nos dois (até três lotes, depois "e mais N"). O sino avisa quem tem o Estoque em Gerenciar na unidade quando um produto chega ao mínimo ou abaixo (a mesma régua da tela, uma vez a cada cruzamento: o aviso sai logo depois do movimento que cruza, a rotina de hora em hora é só a rede de segurança, e repor acima do mínimo rearma) e avisa uma vez cada lote que vence em 30 dias.
-- Fonte: princípio 3; quando o aviso sai: decisão do Claude, 27/11 (D1 da 36ª: dois cruzamentos na mesma hora viravam um aviso só)
+**ES-30.** O dashboard da unidade tem "Estoque no mínimo ou abaixo" e o da rede "Estoque crítico"; quem tem o Estoque vê "Lotes vencendo em 30 dias" nos dois (até três lotes, depois "e mais N"). O sino avisa quem tem o Estoque em Gerenciar na unidade quando um produto chega ao mínimo ou abaixo (a mesma régua da tela, uma vez a cada cruzamento: o aviso sai logo depois do movimento que cruza, a rotina de hora em hora é só a rede de segurança, e repor acima do mínimo rearma) e avisa uma vez cada lote que vence em 30 dias. Receber uma transferência que deixa o produto no mínimo ou abaixo também é cruzamento: de "Sem estoque" para "Abaixo do mínimo" (0 → 2 com mínimo 3, ES-20) avisa. O aviso do lote sai na rotina (avisar já na entrada do lote é a sugestão nº 181). Quem fez o movimento não recebe o aviso dele (NE-04 de WhatsApp e push).
+- Fonte: princípio 3; quando o aviso sai: decisão do Claude, 27/11 (D1 da 36ª: dois cruzamentos na mesma hora viravam um aviso só); a transferência recebida e o aviso do lote na rotina: decisão do Claude, 28/11 (41ª simulação, Decisões 5 e 6), pela ES-20 e pela própria ES-30; quem fez o movimento: decisão do Claude, 28/11 (41ª simulação, D3), pela NE-04
 - Onde: `docs/regras/atendimento.md:2955`, `:2988-3019`, `:3289-3292`
 - Antes: ES-67, ES-68
 

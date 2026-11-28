@@ -60,8 +60,10 @@ export function OrigensDoLeadConfig({ origens }: { origens: OrigemConfiguravel[]
             aria-pressed={o.ativo}
             title={o.ativo ? 'Clique para desativar' : 'Clique para reativar'}
             className={o.ativo ? 'chip-filtro is-ativo' : 'chip-filtro'}
-            style={o.ativo ? undefined : { textDecoration: 'line-through', color: 'var(--text-faint)' }}>
-            {o.nome}
+            style={o.ativo ? undefined : { color: 'var(--text-faint)' }}>
+            {/* A15 da 41ª: o desativado diz o estado (a cor não basta). */}
+            <span style={o.ativo ? undefined : { textDecoration: 'line-through' }}>{o.nome}</span>
+            {!o.ativo && <span data-estado-do-chip> · desativada</span>}
           </button>
         ))}
       </div>

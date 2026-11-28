@@ -1,7 +1,8 @@
 import { nomesDasMaquininhas } from '@/lib/financeiro/vezes-da-rede'
 import { maquininhaDoRotulo } from '@/lib/financeiro/formas'
 import { maquininhaDosEstornos } from '@/lib/financeiro/maquininha-do-estorno'
-import { notaDoEstornoParcial, notaDoUsoDeCredito, type LancamentoParaNota } from '@/lib/financeiro/notas-do-lancamento'
+import { notaDoPagamentoQueVoltou, notaDoUsoDeCredito, type LancamentoParaNota } from '@/lib/financeiro/notas-do-lancamento'
+import { creditoDasDevolucoesDosLancamentos } from '@/lib/financeiro/devolucao-em-credito'
 import { notFound, redirect } from 'next/navigation'
 import { comAviso } from '@/lib/aviso-da-url'
 import { getTenantContext, assertPermission, assertUnidade, temRecurso, alcancaUnidade, can, vistaPessoal } from '@/lib/auth'
@@ -186,7 +187,7 @@ export default async function FinancialPage({
   // A23 e A31 da 10ª: o pago com voucher/pontos e a taxa e o líquido de cada receita (do banco).
   // A44 da 12ª: o desconto em reais e a profissional de cada lançamento, para o CSV;
   // A43: todo o a pagar em aberto da unidade.
-  const [semDinheiro, taxas, extras, aPagarEmAberto, maquininhas, maquininhaDoEstorno] = await Promise.all([
+  const [semDinheiro, taxas, extras, aPagarEmAberto, maquininhas, maquininhaDoEstorno, emCredito] = await Promise.all([
     pagosSemDinheiro((lancamentos ?? []) as unknown as LancamentoSemDinheiro[]),
     getTaxaDosLancamentos(ctx.tenantId!, (lancamentos ?? []).map(t => t.id as string)),
     extrasDoCsv(ctx.tenantId!, (lancamentos ?? []) as unknown as LancamentoParaOCsv[]),
@@ -195,6 +196,8 @@ export default async function FinancialPage({
     nomesDasMaquininhas(ctx.tenantId!),
     // A24 da 32ª: o estorno (uma saída, sem maquininha) diz a do pagamento estornado.
     maquininhaDosEstornos(ctx.tenantId!, (lancamentos ?? []).filter(t => t.category === 'Estorno' && !t.maquininha_id).map(t => t.id as string)),
+    // D6 da 41ª (EX-11): a parte do pagamento que virou crédito interno na devolução de parte da venda.
+    creditoDasDevolucoesDosLancamentos(ctx.tenantId!, (lancamentos ?? []) as { product_sale_id?: string | null }[]),
   ])
   // As opções do filtro de Tags: o vocabulário da rede, lido aqui (quem só tem
   // o Financeiro também as vê); o Resumo não tem o filtro.
@@ -205,7 +208,8 @@ export default async function FinancialPage({
     desconto_texto: descontos[t.id as string] ?? null,
     pago_sem_dinheiro: semDinheiro[t.id as string] ?? null,
     // A36 e A37 da 11ª: o pago e o estornado em parte; o uso do crédito não é receita.
-    estorno_parcial_texto: notaDoEstornoParcial(t as unknown as LancamentoParaNota),
+    // D6 da 41ª: e a parte que virou crédito interno na devolução de parte da venda.
+    estorno_parcial_texto: notaDoPagamentoQueVoltou(t as unknown as LancamentoParaNota, emCredito[t.id as string] ?? 0),
     uso_de_credito_texto: notaDoUsoDeCredito(t as unknown as LancamentoParaNota),
     taxa: taxas[t.id as string]?.taxa ?? null,
     liquido: taxas[t.id as string]?.liquido ?? null,

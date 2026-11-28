@@ -4845,6 +4845,43 @@ O resto do fluxo:
   (`PlanejadorEmLeitura`, `abrirOAplicado`; `aoVivo` = o atendimento não
   encerrado). Prova: `tests/ficha-em-leitura-mostra-a-aplicacao.test.ts`.
 
+## Correções de 28/11 no atendimento e na ficha de saúde (41ª; decisões do Claude, 28/11)
+
+- **A evolução se salva sem concluir** (D4 da 41ª; AT-05, o clínico é do
+  Prontuário em Gerenciar, sem precisar atender): no atendimento em
+  andamento, o cartão da evolução (o da avaliação e o do plano já gerado)
+  tem "Salvar evolução" (`saveDraftNotes`, a trava de antes) para quem tem o
+  Prontuário em Gerenciar. A tela de quem conclui recebe o que foi salvo pelo
+  sinal do prontuário e só troca o campo que ela não mexeu (o digitado ali
+  não se perde); concluir com o campo vazio não apaga o salvo
+  (`concluir_atendimento`, AT-16). Prova:
+  `tests/atendimento-evolucao-salva-sem-concluir.test.ts`.
+- **O cancelado mostra a baixa gravada** (D11 da 41ª; princípio 3): a
+  desistência com baixa mostra, nos Insumos, o que baixou (o lote junto),
+  como o concluído. Prova: `tests/atendimento-cancelado-mostra-a-baixa-gravada.test.ts`.
+- **O cancelado e a falta não oferecem o que o servidor recusa** (A3 da 41ª;
+  princípio 7): sem o editor de "Nova sessão" do plano (o `gerar_plano_da_avaliacao`
+  recusa) e sem o cartão de Insumos quando não houve baixa. O "Planejamento"
+  fica: o plano se monta depois, também do cancelado (CLAUDE.md §11). Prova:
+  `tests/atendimento-cancelado-sem-o-que-o-servidor-recusa.test.ts`.
+- **A faixa "Só para ler" do clínico diz quem escreve** (A1 da 41ª; AT-05):
+  depois da permissão, "Quem escreve: …" com os nomes de quem tem o
+  Prontuário em Gerenciar (`textoDeQuemEscreveOClinico`). Prova:
+  `tests/atendimento-so-leitura-diz-quem-escreve.test.ts`.
+- **"Enviar a ficha" em qualquer situação do agendamento** (D16 da 41ª;
+  FI-14, "sempre"): a janela mostra o bloco da ficha também no concluído, no
+  cancelado e na falta, e a ficha já respondida para o agendamento segue com
+  o envio para quem tem a Agenda em Gerenciar (o selo fica; sem pendente, o
+  botão abre um para este agendamento). O banco deixou de recusar o cancelado
+  e a falta (`pre_atendimento_abrir_manual`, migration `20261220300002`).
+  Prova: `tests/ficha-enviar-em-qualquer-situacao.test.ts`,
+  `e2e/ficha-pre-atendimento-envio-manual.spec.ts`.
+- **O caminho antigo das fichas leva à aba Fichas** (D17 da 41ª; FI-02):
+  `/<unidade>/settings/fichas` vai a `?tab=fichas`, os ids antigos
+  (`anamnese`, `atendimento`, `pre-atendimento`) são apelidos dela
+  (`APELIDOS_DE_ABA`, `lib/configuracoes/abas.ts`). Prova:
+  `tests/configuracoes-aba-antiga-das-fichas.test.ts`, `e2e/ficha-unica.spec.ts`.
+
 ## O que nunca fazer aqui
 
 ❌ Oferecer numa lista (horário, sala, pessoa) o que o servidor recusaria no horário — o ocupado, o bloqueado, a sala ocupada — ou quem está fora do horário dela na unidade: sai da lista, e só a JÁ escolhida fica, marcada (o Heitor, 26/11, R13/R14: "Só mostra os horarios, salas e pessoas que estão livres"; R15: "Não: quem está fora do horário também some das listas (o encaixe só pelo campo de horário)") — e o fora do horário é a conta do aviso do encaixe (foraDoHorarioDeQuemAtende), não outra

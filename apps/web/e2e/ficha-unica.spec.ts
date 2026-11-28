@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { banco } from './apoio/banco'
+import { banco, unidadesAtivas } from './apoio/banco'
 
 /**
  * Um construtor de fichas, e a avaliação é um procedimento como outro qualquer.
@@ -22,6 +22,19 @@ test('Configurações tem UMA aba de fichas', async ({ page }) => {
   // As duas abas que existiam não podem voltar.
   await expect(page.getByRole('link', { name: 'Anamnese', exact: true })).toHaveCount(0)
   await expect(page.getByRole('link', { name: 'Atendimento', exact: true })).toHaveCount(0)
+})
+
+/**
+ * D17 da 41ª (FI-02): o caminho antigo /<unidade>/settings/fichas levava a
+ * `?tab=anamnese`, a aba de antes, e a tela dizia 'A aba "anamnese" não existe'
+ * — o nome interno à vista. Agora leva à aba Fichas, sem aviso.
+ */
+test('FI-02: o caminho antigo das fichas abre a aba Fichas, sem o nome interno', async ({ page }) => {
+  const [unidade] = await unidadesAtivas()
+  test.skip(!unidade, 'sem unidade ativa na rede de teste')
+  await page.goto(`/${unidade!.slug}/settings/fichas`)
+  await expect(page).toHaveURL(url => url.pathname === `/${unidade!.slug}/settings` && url.searchParams.get('tab') === 'fichas')
+  await expect(page.locator('[data-aba-fora-do-acesso]')).toHaveCount(0)
 })
 
 test('o procedimento tem UM seletor de ficha e nenhuma marca de avaliação', async ({ page }) => {

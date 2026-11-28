@@ -110,4 +110,42 @@ test.describe.serial('os avisos do fechamento do dia', () => {
       await expect(p.locator('[data-taxas-estimadas]')).toContainText('Taxas da maquininha no período (estimadas): R$ 17,00')
     })
   })
+
+  test('FC-08: entrou e saiu depois do fechamento, sem se anular — o Pix novo e a despesa estornada entram, os estornos às clientes saem', async ({ browser }) => {
+    // FC-08 ("o estorno conta como 'saiu'"); decisão do Claude, 28/11 (pela FC-08 e pela FC-11): X é
+    // todo dinheiro que entrou no caixa depois do retrato, Y os estornos às clientes e as saídas novas.
+    // O aviso dizia "entrou R$ 85,00 e saiu R$ 255,00": o estorno do débito de hoje anulava o Pix novo.
+    const ids = async (descricoes: string[]) => {
+      const { data, error } = await db().from('financial_transactions').select('id, description')
+        .eq('branch_id', rede!.branchId).in('description', descricoes)
+      expect(error).toBeNull()
+      return Object.fromEntries((data ?? []).map(t => [t.description as string, t.id as string]))
+    }
+    const antes = [`D08 débito ${marca}`, `D10 Pix ${marca}`, `D11 Pix ${marca}`, `Energia ${marca}`]
+    await lancar([
+      { type: 'INCOME', description: antes[0], amount: 150, payment_method: 'DEBIT_CARD' },
+      { type: 'INCOME', description: antes[1], amount: 165, payment_method: 'PIX' },
+      { type: 'INCOME', description: antes[2], amount: 90, payment_method: 'PIX' },
+      { type: 'EXPENSE', category: 'Fornecedores', description: antes[3], amount: 85, payment_method: 'PIX' },
+    ])
+    // O fechamento (o retrato) depois desses lançamentos — o dia é o do fechamento do primeiro teste.
+    const { data: primeiro } = await db().from('fechamentos_do_dia').select('dia').eq('branch_id', rede!.branchId)
+      .order('fechado_em', { ascending: false }).limit(1).single<{ dia: string }>()
+    await new Promise(r => setTimeout(r, 1_100))
+    expect((await db().from('fechamentos_do_dia').insert({
+      tenant_id: rede!.tenantId, branch_id: rede!.branchId, dia: primeiro!.dia, resumo: [],
+      esperado_dinheiro: 0, contado_dinheiro: 0, fechado_por_nome: 'e2e',
+    })).error).toBeNull()
+    await new Promise(r => setTimeout(r, 1_100))
+    // Depois: os três estornos às clientes, a despesa estornada e o débito recebido de novo no Pix.
+    const id = await ids(antes)
+    for (const d of antes) {
+      expect((await db().rpc('estornar_transacao', { p_transacao: id[d], p_tenant: rede!.tenantId, p_ator: 'e2e', p_motivo: 'e2e' })).error, d).toBeNull()
+    }
+    await lancar([{ type: 'INCOME', description: `D08 de novo no Pix ${marca}`, amount: 150, payment_method: 'PIX' }])
+    await como(recepcao!, browser, async p => {
+      await p.goto(`/${slug}/pdv?fechar=1`)
+      await expect(p.locator('[data-aviso="movimento-depois"]')).toContainText(/\(entrou R\$\s235,00 e saiu R\$\s405,00\): confira e feche de novo/)
+    })
+  })
 })

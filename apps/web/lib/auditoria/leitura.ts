@@ -11,6 +11,7 @@ import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
 import { nomesDosAnexosEDevolucoes } from './nomes-dos-anexos-e-devolucoes'
 import { unidadesDosRegistrosClinicos } from './unidades-dos-registros-clinicos'
 import { contasDasAutorizacoes } from './contas-das-autorizacoes'
+import { assinaturasDosDocumentos } from './assinaturas-dos-documentos'
 import { fusoValido } from '@/lib/unidades/fuso'
 
 /**
@@ -31,7 +32,7 @@ export const POR_PAGINA = 50
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const escaparLike = (s: string) => s.replace(/[\\%_]/g, m => `\\${m}`)
 
-const COLUNAS = 'id, criado_em, branch_id, client_id, tabela, operacao, registro_id, colunas, antes, depois, ator_user_id, ator_nome, ator_tipo, incompleto'
+const COLUNAS = 'id, criado_em, branch_id, client_id, tabela, operacao, registro_id, colunas, antes, depois, ator_user_id, ator_cliente_id, ator_nome, ator_tipo, incompleto'
 const baseDaAuditoria = (admin: ReturnType<typeof createAdminClient>) => admin.from('auditoria').select(COLUNAS)
 type Consulta = ReturnType<typeof baseDaAuditoria>
 
@@ -201,7 +202,8 @@ async function lerPorGravacao(
 /** Os nomes que as frases usam, lidos agora (só os da página). */
 async function nomesDaAuditoria(ctx: TenantContext, registros: readonly RegistroDaAuditoria[]): Promise<NomesDaAuditoria> {
   const admin = createAdminClient()
-  const clientes = [...new Set(registros.map(r => r.client_id).filter((v): v is string => !!v))]
+  // D7 (AD-05): também a ficha de quem agiu, quando foi a cliente ("Alzira, pelo app").
+  const clientes = [...new Set(registros.flatMap(r => [r.client_id, r.ator_cliente_id]).filter((v): v is string => !!v))]
   // O produto do movimento e o cargo da permissão (A27/A28 da 15ª): a frase diz o nome, não "um produto".
   const doRegistro = (r: RegistroDaAuditoria, chave: string) => {
     const v = r.depois?.[chave] ?? r.antes?.[chave]
@@ -285,7 +287,7 @@ async function nomesDaAuditoria(ctx: TenantContext, registros: readonly Registro
     // A21 da 32ª (AD-08): o motivo do estorno, lido agora.
     motivoDoEstorno: l.estorno_motivo?.trim() || null,
   }]))
-  const [extras, da20, anexosEDevolucoes, sl, cm, clinicos, autorizacoes] = await Promise.all([
+  const [extras, da20, anexosEDevolucoes, sl, cm, clinicos, autorizacoes, assinaturas] = await Promise.all([
     nomesDa17(ctx, registros), nomesDa20(ctx, registros), nomesDosAnexosEDevolucoes(ctx, registros),
     salas.length
       ? ler(admin.from('rooms').select('id, name, branches!inner(tenant_id)').eq('branches.tenant_id', ctx.tenantId!).in('id', salas), 'ler as salas da auditoria')
@@ -297,6 +299,8 @@ async function nomesDaAuditoria(ctx: TenantContext, registros: readonly Registro
     unidadesDosRegistrosClinicos(ctx, registros),
     // A9 da 33ª (AD-08, AD-21): de quem é a conta da autorização do suporte (`contasDasAutorizacoes`).
     contasDasAutorizacoes(ctx, registros),
+    // D10 (AD-20, DA-11): quem assinou cada documento assinado, pela evidência.
+    assinaturasDosDocumentos(ctx, registros),
   ])
   const cargosDosMembros = Object.fromEntries(((cm ?? []) as { id: string; label: string | null; key: string | null; is_system: boolean | null }[])
     .filter(x => x.label).map(x => [x.id, { nome: x.label!, adminDaRede: x.key === 'NETWORK_ADMIN' && x.is_system === true }]))
@@ -346,6 +350,7 @@ async function nomesDaAuditoria(ctx: TenantContext, registros: readonly Registro
     ...anexosEDevolucoes,
     ...clinicos,
     ...autorizacoes,
+    ...assinaturas,
   }
 }
 

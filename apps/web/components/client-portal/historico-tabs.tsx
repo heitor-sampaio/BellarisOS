@@ -239,6 +239,10 @@ export function HistoricoTabs({ slug, procedimentos, deAntes, pagamentos, docume
                 {p.desconto && (
                   <p data-desconto-do-lancamento style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>{p.desconto}</p>
                 )}
+                {/* A57 da 12ª e D6 da 41ª: o que voltou do pagamento (devolvido, ou como crédito). */}
+                {p.devolvidoEmParte && (
+                  <p data-devolvido-em-parte style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>{p.devolvidoEmParte}</p>
+                )}
                 {/* A46: o pagamento de um pacote cancelado diz isso. */}
                 {p.pacoteCancelado && (
                   <p data-pacote-cancelado style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>

@@ -205,7 +205,14 @@ export async function situacaoDoPreAtendimento(appointmentId: string): Promise<S
       noAppEm: cliente?.auth_id ? (noApp?.created_at ?? null) : null,
     }
   }
-  if (deste) return { estado: 'RESPONDIDO', respondidoEm: deste.respondido_em as string | null, podeLink }
+  // D16 da 41ª (FI-14, "sempre"): respondida para este agendamento, a janela
+  // ainda manda (o botão abre outra para ele) — com o que o envio precisa.
+  if (deste) {
+    return {
+      estado: 'RESPONDIDO', respondidoEm: deste.respondido_em as string | null, podeLink, podeCompletarNascimento, ...cadastro,
+      pelaConversa, clienteId: ap.client_id as string,
+    }
+  }
   // Nenhuma ficha mandada (o envio automático da rede desligado, ou respondida
   // há pouco): a equipe manda à mão daqui (A49 da 6ª simulação).
   // A1 da 26ª: a cliente com ficha válida — a janela diz até quando, em vez de "não foi enviada".

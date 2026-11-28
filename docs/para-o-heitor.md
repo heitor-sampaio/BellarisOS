@@ -805,3 +805,26 @@ O que você precisa saber:
   acesso só em cima da matriz.
 - **Cinco testes mudaram pelas suas respostas** (R39, R40 e R41), cada um com a sua fala no comentário. Nenhum foi
   apagado.
+
+## 23. A 41ª simulação (28/11)
+
+Cinco redes novas, sem a conta da plataforma. Os temas foram os injetáveis e o prontuário, o comercial sem WhatsApp
+numa rede de duas unidades, as fichas e o link da ficha de saúde, o dinheiro que volta e o sino de cada pessoa. O
+dinheiro das cinco bateu, e nenhum dado clínico chegou a quem não tem o Prontuário. Foram 18 defeitos, nenhum de
+segurança. O resumo está no DEVLOG (28/11, (1)).
+
+O que você precisa saber:
+- **O estorno da venda de crédito com bônus, "na proporção", voltou a gravar.** A janela confirmava com a conta de
+  antes da escolha e o banco recusava. Agora ela só confirma a conta da opção marcada.
+- **O aviso "Houve movimento depois do fechamento" diz o que entrou e o que saiu de verdade.** Antes, um estorno de
+  hoje anulava um recebimento novo na conta.
+- **A devolução que vira crédito aparece na linha** ("Pago R$ 180,00 · R$ 90,00 em crédito interno"), e a ficha diz
+  quanto a cliente pagou com crédito interno.
+- **A Auditoria diz o nome da cliente no que ela fez pelo app**, não mostra mais a mesma resposta duas vezes, e diz
+  "Enviou ao app", "Tirou do app" e "Assinou o documento".
+- **Quem tem o Prontuário em Gerenciar e não atende salva a evolução** no atendimento em andamento.
+- **Quem cuida de duas unidades agenda pelo card da oportunidade** escolhendo a unidade, sem trocar de portal.
+- **O aviso do estoque no mínimo não vai mais a quem fez o movimento.**
+- **"Enviar a ficha" aparece em qualquer situação do agendamento**, como a regra diz ("sempre").
+- **Três perguntas novas na página** (R42, R43 e R44): cada uma é uma correção pequena que mudaria um teste antigo.
+- **Nenhum teste mudou nem foi apagado.**

@@ -210,6 +210,26 @@ export function formasDaComandaEmTexto(c: ComandaDoPdv): string {
 }
 
 /**
+ * O recebido da comanda paga (CI-03, A5 da 41ª): o crédito interno não é
+ * dinheiro que entrou — "R$ 165,00 pagos com crédito interno"; parte em
+ * dinheiro e parte com crédito, as duas ("R$ 50,00 recebidos + R$ 115,00
+ * pagos com crédito interno").
+ */
+export function partesDoRecebidoDaComanda(c: Pick<ComandaDoPdv, 'recebido' | 'formas'>): { valor: number; rotulo: string }[] {
+  const recebido = c.recebido ?? 0
+  const centavos = c.formas.filter(f => f.forma === 'INTERNAL_CREDIT').reduce((t, f) => t + Math.round(Number(f.valor) * 100), 0)
+  if (!(centavos > 0)) return [{ valor: recebido, rotulo: 'recebidos' }]
+  const credito = centavos / 100
+  const resto = Math.round(recebido * 100 - centavos) / 100
+  if (!(resto > 0)) return [{ valor: recebido, rotulo: 'pagos com crédito interno' }]
+  return [{ valor: resto, rotulo: 'recebidos' }, { valor: credito, rotulo: 'pagos com crédito interno' }]
+}
+
+export function recebidoDaComandaEmTexto(c: Pick<ComandaDoPdv, 'recebido' | 'formas'>): string {
+  return partesDoRecebidoDaComanda(c).map(p => `${brl(p.valor)} ${p.rotulo}`).join(' + ')
+}
+
+/**
  * As linhas do que se descontou na comanda paga (A1 da 17ª, princípio 3): o
  * desconto comercial, e o da fidelidade — o voucher pelo nome, ou os pontos.
  * A comanda a receber não as tem (o desconto se escolhe ao receber).

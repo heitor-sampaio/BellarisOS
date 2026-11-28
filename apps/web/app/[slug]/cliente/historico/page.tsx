@@ -15,6 +15,9 @@ import { notasDosProcedimentos } from '@/lib/avaliacao/leitura'
 import { ordemDosPagamentosDoApp } from '@/lib/clientes/ordem-dos-pagamentos'
 import { abaDoHistoricoNoApp } from '@/lib/clientes/textos-do-app'
 import { descontosDosLancamentos } from '@/lib/financeiro/desconto-do-lancamento'
+import { falaDaRedeDoPortal } from '@/lib/clientes/nome-da-rede'
+import { notaDoPagamentoQueVoltouParaACliente } from '@/lib/financeiro/notas-do-lancamento'
+import { creditoDasDevolucoesDosLancamentos } from '@/lib/financeiro/devolucao-em-credito'
 
 // -- Types ----------------------------------------------------------
 export type ProcedimentoItem = {
@@ -75,6 +78,8 @@ export type PagamentoItem = {
   estornado?:     boolean
   /** O dia de referência (o do pagamento; o vencimento no em aberto): a ordem da lista (D17). */
   referencia?:    string
+  /** A57 da 12ª e D6 da 41ª: o que voltou do pagamento — "R$ 180,00 pagos · R$ 90,00 voltaram como Crédito em <a rede>". */
+  devolvidoEmParte?: string | null
 }
 
 export type DocumentoItem = {
@@ -102,7 +107,7 @@ type PagamentoLido = {
   id: string; description: string; amount: number | string; payment_method: string | null; cartao_vezes: number | null; cartao_bandeira: string | null
   is_paid: boolean; paid_at: string | null; notes: string | null; created_at: string
   due_date: string | null; data_de_referencia: string | null; parcela_numero: number | null; parcela_total: number | null
-  type: string; category: string | null
+  type: string; category: string | null; valor_antes_do_estorno: number | string | null
   sale_discount: number | string | null; desconto_motivo: string | null
   product_sale_id: string | null; client_package_id: string | null; procedure_sale_id: string | null; treatment_plan_id: string | null
   client_packages: { cancelado_em: string | null } | null
@@ -116,6 +121,7 @@ export default async function HistoricoPage({ params, searchParams }: {
   searchParams: Promise<{ aba?: string }>
 }) {
   const [{ slug }, { aba }] = await Promise.all([params, searchParams])
+  const { credito: creditoNaRede } = await falaDaRedeDoPortal(slug)
   const ctx = await getTenantContext()
   assertClient(ctx)
 
@@ -137,7 +143,7 @@ export default async function HistoricoPage({ params, searchParams }: {
     lerTodas((de, ate) => admin.from('financial_transactions')
       .select(`
         id, description, amount, payment_method, cartao_vezes, cartao_bandeira, is_paid, paid_at, notes, created_at,
-        due_date, data_de_referencia, parcela_numero, parcela_total, type, category,
+        due_date, data_de_referencia, parcela_numero, parcela_total, type, category, valor_antes_do_estorno,
         sale_discount, desconto_motivo, product_sale_id, client_package_id, procedure_sale_id, treatment_plan_id,
         client_packages(cancelado_em),
         appointments(procedures(name))
@@ -192,6 +198,11 @@ export default async function HistoricoPage({ params, searchParams }: {
   // D8 da 36ª (CR-07): a parcela paga em várias formas é UMA linha, como na equipe.
   // D7 da 39ª (AG-56, princípio 3): o pago com desconto diz o desconto — o mesmo texto da equipe e do recibo.
   const descontos = await descontosDosLancamentos((pagamentosRes ?? []) as unknown as PagamentoLido[])
+  const ficha = await ler(admin.from('clients').select('tenant_id, ultima_visita_antes').eq('id', ctx.clientId!).maybeSingle(), 'buscar a ficha') as { tenant_id: string; ultima_visita_antes: string | null } | null
+  // D6 da 41ª (EX-11, PR-08): a parte da venda devolvida que virou crédito diz que virou — como no Financeiro do app.
+  const emCredito = ficha
+    ? await creditoDasDevolucoesDosLancamentos(ficha.tenant_id, (pagamentosRes ?? []) as { product_sale_id?: string | null }[])
+    : {}
   const pagamentos: PagamentoItem[] = juntarAsFormasDaParcela((pagamentosRes ?? []) as unknown as PagamentoLido[]).map(r => ({
     id:             r.id,
     description:    r.description,
@@ -208,17 +219,19 @@ export default async function HistoricoPage({ params, searchParams }: {
     // D13 da 9ª: "Vencida em 05/11" (o dia decidido aqui, no servidor).
     vencida:        !r.is_paid && r.notes !== 'Estornada' && situacaoDoVencimento(r.due_date, new Date(), fuso) === 'VENCIDA',
     parcela:        r.parcela_numero && r.parcela_total && r.parcela_total > 1 ? `Parcela ${r.parcela_numero} de ${r.parcela_total}` : null,
-    ...formaERecibosDaLinha(r, formaDoLancamento({ metodo: r.payment_method, vezes: r.cartao_vezes, bandeira: r.cartao_bandeira, pago: Boolean(r.is_paid), parcela: r.parcela_numero })),
+    ...formaERecibosDaLinha(r, formaDoLancamento({ metodo: r.payment_method, vezes: r.cartao_vezes, bandeira: r.cartao_bandeira, pago: Boolean(r.is_paid), parcela: r.parcela_numero, credito: creditoNaRede }), creditoNaRede),
     estorno:        r.type === 'EXPENSE' && r.category === 'Estorno',
     pacoteCancelado: r.client_packages?.cancelado_em ?? null,
     desconto:       r.notes === 'Estornada' || r.category === 'Estorno' ? null : descontos[r.id] ?? null,
+    devolvidoEmParte: r.type === 'INCOME' && r.category !== 'Estorno'
+      ? notaDoPagamentoQueVoltouParaACliente({ type: r.type, amount: r.amount, is_paid: Boolean(r.is_paid), notes: r.notes, valor_antes_do_estorno: r.valor_antes_do_estorno }, emCredito[r.id] ?? 0, creditoNaRede)
+      : null,
     // D17 da 8ª: a mesma ordem do Financeiro do app (era a da criação: 2/2 antes da 1/2).
     referencia:     r.data_de_referencia ?? r.paid_at ?? r.created_at,
   })).sort(ordemDosPagamentosDoApp)
   // A64: o atendimento avulso concluído e não pago (a conta de
   // `atendimentos_a_receber`, a mesma do Fechamento e da ficha) — não tinha
   // lançamento, e não aparecia para a cliente.
-  const ficha = await ler(admin.from('clients').select('tenant_id, ultima_visita_antes').eq('id', ctx.clientId!).maybeSingle(), 'buscar a ficha') as { tenant_id: string; ultima_visita_antes: string | null } | null
   const aReceber = ficha ? await getAtendimentosAReceber({ tenantId: ficha.tenant_id, clienteId: ctx.clientId! }) : null
   pagamentos.unshift(...(aReceber?.itens ?? []).map(a => ({
     id:             `a-receber-${a.appointmentId}`,

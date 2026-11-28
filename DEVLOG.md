@@ -1774,6 +1774,95 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-28 (1) — A 41ª simulação e as correções dela
+
+O laço segue (o Heitor, 25/11: "quando acabar essa roda já segue as outras e assim vai"). Cinco redes novas, sem a conta
+da plataforma (o Heitor, 26/11: "Sem a conta"). Os temas foram estes:
+- os injetáveis e o prontuário, no Espaço Jenipapo (Três Lagoas, UTC−4);
+- o comercial sem WhatsApp numa rede de duas unidades, na Rede Bacuri (Itajubá e Pouso Alegre);
+- as fichas próprias e o link da ficha de saúde, no Studio Pitomba (Caicó);
+- o dinheiro que volta, no Ateliê Cupuaçu (Araguaína);
+- o sino de cada pessoa numa rede de duas unidades, na Rede Mandacaru (Bento Gonçalves e Garibaldi).
+
+O dinheiro, as comissões, o estoque e os números dos relatórios bateram nas cinco redes. O "Quem viu" bateu linha a
+linha com o "Abriu o prontuário" da Auditoria, e nenhum dado clínico chegou a quem não tem o Prontuário. Ficaram 18
+defeitos (nenhum de segurança nem regressão; o único de prioridade ALTA era o D1) e 17 atritos. O achado ALTA mais
+repetido (o "Finalizar" barrado pela ficha de saúde nunca respondida) era ENGANO: a FI-07 manda barrar. Salvo onde se
+diz o contrário, as decisões são do Claude (28/11), pelos princípios e pelo catálogo. Três perguntas foram ao Heitor
+(R42–R44), na página das perguntas.
+
+**O que mudou no sistema.**
+- **O dinheiro que volta.**
+  - **O estorno da venda de crédito com bônus pelo PROPORCIONAL grava** (D1, CI-08). A recusa era uma corrida na
+    janela: ela confirmava com a conta da simulação feita ANTES da escolha (a do INTEIRO). A janela só mostra e confirma
+    a conta que o banco fez com a opção marcada ("Calculando…" até ela chegar). A conferência do banco continua.
+  - **"Houve movimento depois do fechamento (entrou R$ X e saiu R$ Y)" soma os lançamentos de depois** (D5, FC-08), sem
+    que um anule o outro: entrou = os recebimentos novos e o estorno de despesa; saiu = os estornos às clientes e as
+    saídas novas (`metrics_movimento_depois_do_fechamento`, `20261220100001`).
+  - O Dinheiro com o contado negativo não diz mais "Bateu"; o contado 0 vale e mostra a diferença (A10, FC-06).
+  - **A devolução de parte que virou crédito interno aparece na linha** (D6, EX-11): "Pago R$ 180,00 · R$ 90,00 em
+    crédito interno" nos dois Financeiros; no app, "R$ 180,00 pagos · R$ 90,00 voltaram como Crédito em <rede>".
+  - **A ficha diz quanto a cliente pagou com crédito interno**, e o crédito concedido diz "Concedido, sem dinheiro"
+    (D14, CI-04). O app diz "Crédito em <rede>" também na forma do pagamento e no recibo (D15, CI-10).
+  - A comanda paga com crédito diz "pagos com crédito interno", não "recebidos" (A5, CI-03). O "Devolver só parte da
+    venda" tem o peso dos comandos ao lado (A6). O estorno diz para onde volta ("volta ao crédito interno dela", "na
+    forma em que ela pagou (Pix)", A7). O Resumo das comissões diz "Paga" / "A pagar", como o Extrato (A11).
+- **A Auditoria.**
+  - **A cliente aparece pelo nome no que fez pelo app** ("Alzira Souza, pelo app", D7, AD-05/AD-22), lido da ficha dela
+    naquela rede; as linhas antigas também.
+  - **A mesma gravação feita em duas idas ao banco é uma linha só** (D8, AD-12): a resposta da ficha e o documento
+    gerado de novo, da mesma pessoa, até 2 minutos depois.
+  - **"Enviou ao app" e "Tirou do app" a foto clínica** (D9, AD-13): o gatilho de `client_documents` guarda só a data do
+    envio, sem nada do anexo (`20261220200001`).
+  - **"Assinou o documento X"**, e pela equipe "Colheu a assinatura de Y no documento X"; na menor, quem assinou aparece
+    como na evidência ("Gorete Maia, responsável legal de Flávia Maia") (D10, AD-20, DA-11).
+- **O atendimento e as fichas.**
+  - **Quem tem o Prontuário em Gerenciar sem atender salva a evolução no andamento** (D4, CLAUDE.md §11): "Salvar
+    evolução" na avaliação e no plano gerado; a tela de quem conclui recebe o salvo e só troca o campo que ela não mexeu.
+  - O atendimento desistido mostra a baixa gravada, com o lote, e não o "38 UI sem lote" (D11). Sai o editor "Nova
+    sessão" (o servidor recusa) e o cartão de Insumos sem baixa (A3; o "Planejamento" fica, porque o plano se monta
+    "na avaliação ou depois").
+  - A faixa "Só para ler" diz quem escreve o clínico, com os nomes (A1, AT-05).
+  - **O "Iniciar" se libera sem recarregar quando o termo é assinado fora da tela** (A4, DE-15): o documento do
+    atendimento marca o sinal da agenda (`20261220300001`).
+  - **"Enviar a ficha" em qualquer situação do agendamento** (D16, FI-14 "sempre"): o concluído, o cancelado, a falta e
+    a ficha já respondida (`20261220300002`).
+  - O caminho antigo das fichas leva à aba Fichas, sem "anamnese" na tela (D17, FI-02).
+- **O comercial, os relatórios e o sino.**
+  - **O "Agendar" do card e do inbox oferece as unidades da pessoa** nos dois portais (D2, OP-35): com duas ou mais, a
+    caixa vem vazia; com uma, ela nem aparece.
+  - **O aviso do estoque no mínimo não vai a quem fez o movimento** (D3, NE-04): o cruzamento guarda o autor (quem
+    gravou a transferência, a entrada, a saída ou quem concluiu o atendimento); sem autor, vai a todos
+    (`20261220400001`).
+  - No portal da unidade, os cartões das oportunidades dizem "(rede)" numa rede de mais de uma unidade (D12, FO-07).
+  - O aviso de cancelamento da equipe não repete o título (A13, em parte: o da cliente está na R42). O motivo e a
+    origem desativados dizem " · desativado" no chip (A15).
+- **NÃO ERA:** D13 (o "Faltam dados: CPF" vem da variável `cliente.cpf` do texto do modelo, que é o CPF da menor; a
+  identidade de quem assina já é a do responsável), D18 (OC-02: o concluído adiantado conta a duração marcada, no
+  horário marcado, e um teste trava isso), A9 (o débito já diz "No cartão, a operadora estorna o pagamento inteiro"), A12
+  (o Histórico do app já mostra o dia no fuso da unidade: 27/11), A17 (avisar do contrato antes do "Vender" seria texto
+  que explica a tela; o Heitor, 26/11: "intuitivo não é explicativo").
+- **Para o Heitor** (na página das perguntas): R42 (o aviso de cancelamento da cliente repete o título; um teste da 9ª
+  exige o texto de hoje), R43 (o "Cancelamento do pacote Pacote …": a correção está pronta, mas um teste só aceita duas
+  migrations naquelas funções) e R44 (o "Aplicado" do ponto ainda não aplicado, que um E2E exige preenchido).
+- **Sugestões:** A14 (a pré-visualização da ficha seguir o "Mostrar só quando") virou a nº 189, e A16 (o "sem horário
+  livre" na escolha de profissional pede uma consulta por pessoa) fica anotado aqui. As nº 178–188 vieram do relatório.
+- **Catálogo:** as decisões da rodada nas regras que já existiam (ES-25, AT-20, FI-10, FC-08, NE-01, NE-04, NE-06, ES-30,
+  NA-03, OP-18) e as regras dos defeitos com todas as letras (FC-06, EX-11, AD-05, AD-12, AD-20, AD-22, OP-35, FO-07,
+  FI-14, AT-05, PT-13).
+
+**Testes alterados:** nenhum. Nenhum apagado.
+
+**Pendente para o arremate:** a dica da tela do atendimento ("A ficha de saúde, a evolução e a ficha digitadas ficam
+guardadas só nesta aba até o 'Finalizar atendimento'") ficou em parte desatualizada com o "Salvar evolução"; um teste da
+21ª exige a frase vizinha. E a gravação da ficha de saúde (`gravarAnamneseGeral`) em duas idas ao banco: a leitura da
+Auditoria já as junta.
+
+**A completa** (contra o build dos três apps): isolados 1.807 passaram, 1 falhou e 7 não rodaram (o resto do bloco em série); compartilhados 909 passaram e 2 pularam. A falha foi `atendimento-ficha-planejador-injetaveis:174`, que passou de novo sem mudança nenhuma (9 de 9), como na 40ª: instável. Os E2E da rodada passaram antes (198 + 37). Vitest: 823 arquivos, sem falha.
+
+**Na produção:** `20261220100001`, `20261220200001`, `20261220300001`, `20261220300002` e `20261220400001`, aplicadas
+uma de cada vez e conferidas depois.
+
 ### 2026-11-27 (7) — A 40ª simulação, as correções dela e as respostas R38–R41
 
 O laço segue (o Heitor, 25/11: "quando acabar essa roda já segue as outras e assim vai"). Cinco redes novas, sem a conta

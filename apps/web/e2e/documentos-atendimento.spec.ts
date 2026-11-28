@@ -281,6 +281,26 @@ test.describe.serial('documentos: emissão pelo atendimento e assinatura na unid
     expect(await documentos({ appointment_id: ag5 }), 'o plano tem os documentos dele (fase 3)').toEqual([])
   })
 
+  // A4 da 41ª (DE-15): cumprida a exigência fora desta tela (o link, o app, a
+  // ficha), o "Iniciar" se libera sem recarregar — o documento do atendimento
+  // marca o sinal da agenda, que a tela assina.
+  test('cumprido o termo fora da tela, o "Iniciar" se libera sem recarregar', async ({ browser }) => {
+    const ag = await agendar(rede!, cliente)
+    await db().from('appointments').update({ status: 'CONFIRMED' }).eq('id', ag)
+    await db().from('appointments').update({ status: 'ARRIVED', arrived_at: new Date().toISOString() }).eq('id', ag)
+    const [doc] = await documentos({ appointment_id: ag, template_id: termo })
+    await como(browser, async page => {
+      await page.goto(`/admin/agenda/${ag}`)
+      await expect(page.locator('[data-tempo-real*="agenda"]')).toHaveAttribute('data-estado', 'ligado', { timeout: 30_000 })
+      await expect(page.getByRole('button', { name: 'Iniciar atendimento' })).toBeDisabled()
+      const { error } = await db().rpc('documento_dispensar', {
+        p_doc: doc!.id, p_tenant: rede!.tenantId, p_motivo: 'Assinado em outro lugar (e2e)', p_ator: null,
+      })
+      expect(error, 'cumprir a exigência fora da tela').toBeNull()
+      await expect(page.getByRole('button', { name: 'Iniciar atendimento' }), 'sem recarregar').toBeEnabled({ timeout: 15_000 })
+    })
+  })
+
   // Até 2026-11-16 era "quem só VÊ os Documentos lê, mas não colhe". Desde
   // então (o Heitor: colher não pede permissão de documento), quem vê a
   // cliente colhe; dispensar segue de quem tem os Modelos de documento.

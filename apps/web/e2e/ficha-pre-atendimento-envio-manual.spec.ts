@@ -133,6 +133,36 @@ test.describe('A49: a ficha de pré-atendimento se manda à mão, com o envio au
     expect(links, 'um link só, e valendo').toEqual([{ revoked_at: null }])
   })
 
+  /**
+   * D16 da 41ª simulação (FI-14, "sempre"): no agendamento CONCLUÍDO não havia
+   * o "Enviar a ficha" — a janela só mostrava o bloco nos agendamentos em
+   * aberto, e o banco recusava o cancelado e a falta. Em qualquer situação do
+   * agendamento a ficha se manda (decisão do Claude, 28/11).
+   */
+  test('FI-14: o concluído, o cancelado e a falta também mandam a ficha', async ({ browser }) => {
+    const concluido = await agendada('Concluido')
+    expect((await db().from('appointments').update({ status: 'COMPLETED' }).eq('id', concluido.agendamento)).error).toBeNull()
+    const ctx = await browser.newContext({ storageState: recepcao.estado })
+    const page = await ctx.newPage()
+    try {
+      await page.goto(`/admin/agenda?date=${DIA}`)
+      await page.locator(`[title*="Concluido pm${marca}"]`).first().click()
+      const ficha = page.locator('[data-pre-atendimento-do-agendamento]')
+      await ficha.getByRole('button', { name: 'Enviar a ficha' }).click()
+      await expect(ficha.getByLabel('Link da ficha')).toHaveValue(/\/pre-atendimento\/[A-Za-z0-9_-]{43}$/)
+    } finally {
+      await ctx.close()
+    }
+    expect(await pendentesDe(concluido.cliente)).toEqual([expect.objectContaining({ appointment_id: concluido.agendamento })])
+
+    for (const status of ['CANCELLED', 'NO_SHOW'] as const) {
+      const { cliente, agendamento } = await agendada(`Situacao ${status}`)
+      expect((await db().from('appointments').update({ status }).eq('id', agendamento)).error).toBeNull()
+      expect(await gerarLink(browser, agendamento, recepcao), `o link sai no ${status}`).not.toBe('')
+      expect(await pendentesDe(cliente)).toEqual([expect.objectContaining({ appointment_id: agendamento })])
+    }
+  })
+
   test('quem só vê a agenda não manda — nem abre o pendente', async ({ browser }) => {
     const { cliente, agendamento } = await agendada('So ve')
     expect(await gerarLink(browser, agendamento, soVe)).toBe('')

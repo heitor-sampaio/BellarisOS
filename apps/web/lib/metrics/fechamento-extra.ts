@@ -194,3 +194,23 @@ export async function getTaxasPorMaquininha(args: { tenantId: string; branchId: 
   }).range(de, ate), 'ler a taxa e o líquido de cada maquininha no dia') as { maquininha: string; bruto: number | string; taxa: number | string; liquido: number | string }[]
   return (linhas ?? []).map(l => ({ maquininha: l.maquininha, bruto: Number(l.bruto), taxa: Number(l.taxa), liquido: Number(l.liquido) }))
 }
+
+/**
+ * D5 da 41ª simulação (FC-08; decisão do Claude, 28/11, pela FC-08 e pela FC-11):
+ * o que se moveu depois do último fechamento, para o aviso "(entrou R$ X e saiu
+ * R$ Y)". X: todo dinheiro que entrou no caixa depois do retrato — os
+ * recebimentos novos e o estorno de uma despesa; Y: os estornos às clientes e as
+ * saídas novas. Nada se anula entre si (a soma do dia contra o retrato deixava o
+ * estorno de um pagamento de hoje anular o recebimento novo). A conta é do banco
+ * (`metrics_movimento_depois_do_fechamento`), sobre os lançamentos de depois.
+ */
+export async function getMovimentoDepoisDoFechamento(args: {
+  tenantId: string; branchId: string; from: Date; to: Date; desde: string
+}): Promise<{ entrou: number; saiu: number }> {
+  const { data, error } = await createAdminClient().rpc('metrics_movimento_depois_do_fechamento', {
+    p_tenant: args.tenantId, p_branch: args.branchId, p_from: args.from.toISOString(), p_to: args.to.toISOString(), p_desde: args.desde,
+  })
+  if (error) throw new Error(`Não consegui somar o movimento depois do fechamento: ${error.message}`)
+  const r = ((data as { entrou: number | string; saiu: number | string }[] | null) ?? [])[0]
+  return { entrou: Number(r?.entrou ?? 0), saiu: Number(r?.saiu ?? 0) }
+}

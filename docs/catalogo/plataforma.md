@@ -795,8 +795,8 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:1197-1206`; `docs/revisao.md:1360-1363`, `:2131`
 - Antes: KD-05, KE-50
 
-**AD-05.** Quem agiu é a pessoa que fez a gravação, nunca um nome mandado pela tela. O que ninguém fez (rotina automática, webhook) aparece como "O sistema". O que o suporte fez aparece como "Fulana (via suporte: Atendente)".
-- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Pode ser no menu" (CF3: "QUEM (o nome, com a marca 'via suporte')")
+**AD-05.** Quem agiu é a pessoa que fez a gravação, nunca um nome mandado pela tela. O que ninguém fez (rotina automática, webhook) aparece como "O sistema". O que o suporte fez aparece como "Fulana (via suporte: Atendente)". O que a cliente fez pelo app aparece com o nome dela (o da ficha dela naquela rede) e o caminho, como o que ela fez pelo link (AD-22), nunca só "A cliente"; as linhas gravadas antes sem o nome continuam lendo.
+- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Pode ser no menu" (CF3: "QUEM (o nome, com a marca 'via suporte')"); o nome da cliente pelo app: decisão do Claude, 28/11 (41ª simulação, D7), pela própria AD-05 e pela AD-22
 - Onde: `docs/regras/plataforma.md:1212-1221`, `:1523`; `docs/revisao.md:1356-1357`
 - Antes: KD-06
 
@@ -830,8 +830,8 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:1306-1310`
 - Antes: KD-12
 
-**AD-12.** A tela mostra cada GRAVAÇÃO como uma linha só (o que a pessoa fez de uma vez), com "Ver as N mudanças desta gravação" para o detalhe. Nada deixa de ser gravado: muda só a leitura.
-- Fonte: princípio 7
+**AD-12.** A tela mostra cada GRAVAÇÃO como uma linha só (o que a pessoa fez de uma vez), com "Ver as N mudanças desta gravação" para o detalhe. A gravação que escreve em duas tabelas (a resposta da ficha e o prontuário; o documento e o PDF dele) também é uma linha só, com a frase uma vez. Nada deixa de ser gravado: muda só a leitura.
+- Fonte: princípio 7; as duas tabelas da mesma gravação: decisão do Claude, 28/11 (41ª simulação, D8), pela própria AD-12
 - Onde: `docs/regras/plataforma.md:1264-1273`
 - Antes: KD-13
 
@@ -870,8 +870,8 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:1276-1277`, `:1357-1361`, `:1421-1423`, `:1439-1441`
 - Antes: KD-20; antes de 27/11: a entrega do brinde saía "Editou o lote (quantidade)"
 
-**AD-20.** Nos documentos, nos pacotes e nas importações, a frase diz o fato: "Gerou o documento X" (o contrato gerado na venda entra na gravação da venda); "Cancelou / Dispensou / Substituiu o documento X (motivo: …)"; "Criou a ficha de X"; "Cancelou / Usou / Devolveu a sessão N do pacote X" (também o "Abater do pacote" da comanda, PA-15 de Vendas: "Usou a sessão N do pacote X", não "Editou a comanda"); "Cancelou o pacote X" (", e estornou R$ …"); "Criou a importação (arquivo) (N linhas, para …)", "Concluiu a importação … (novas, completadas, com erro)", "A importação … falhou".
-- Fonte: decisão do Claude; o "Abater do pacote": decisão do Claude, 27/11 (37ª, D11), pela própria AD-20
+**AD-20.** Nos documentos, nos pacotes e nas importações, a frase diz o fato: "Gerou o documento X" (o contrato gerado na venda entra na gravação da venda); "Assinou o documento X" (a assinatura, nunca "Editou o documento"); "Cancelou / Dispensou / Substituiu o documento X (motivo: …)"; a foto clínica enviada ao app e a tirada dele, cada uma pelo fato, pela direção da mudança: "Enviou ao app …" e "Tirou do app …" (nunca as duas como "Editou o documento da cliente"); "Criou a ficha de X"; "Cancelou / Usou / Devolveu a sessão N do pacote X" (também o "Abater do pacote" da comanda, PA-15 de Vendas: "Usou a sessão N do pacote X", não "Editou a comanda"); "Cancelou o pacote X" (", e estornou R$ …"); "Criou a importação (arquivo) (N linhas, para …)", "Concluiu a importação … (novas, completadas, com erro)", "A importação … falhou".
+- Fonte: decisão do Claude; o "Abater do pacote": decisão do Claude, 27/11 (37ª, D11), pela própria AD-20; a assinatura e o enviar e tirar do app: decisão do Claude, 28/11 (41ª simulação, D9 e D10), pela AD-13 (a gravação se lê pelo fato) e pela própria AD-20
 - Onde: `docs/regras/plataforma.md:1405-1407`, `:1411-1420`
 - Antes: KD-21; antes de 27/11: o "Abater do pacote" saía "Editou a comanda (cancelamento…)"
 
@@ -880,8 +880,8 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:1271-1279`, `:1323-1328`, `:1435-1438`, `:1777-1785`
 - Antes: KD-22; antes de 26/11: "Criou 1 e editou 1 liberações do suporte"
 
-**AD-22.** O que a cliente fez pelo link (a ficha de saúde, a assinatura, o documento) aparece como dela: "Dona Cida, pelo link" ("Respondeu a ficha de saúde"); o link em si segue de quem o criou. Quando é a equipe que preenche: "Preencheu a ficha de saúde de X" — também na tela do atendimento, onde a ficha se grava no prontuário: nunca "Criou o prontuário".
-- Fonte: decisão do Claude; a ficha preenchida na tela do atendimento: decisão do Claude, 27/11 (40ª simulação, D7), pela própria AD-22
+**AD-22.** O que a cliente fez pelo link ou pelo app (a ficha de saúde, a assinatura, o documento) aparece como dela, com o nome da ficha dela naquela rede: "Dona Cida, pelo link" ("Respondeu a ficha de saúde"); pelo app, o mesmo nome, com o caminho do app. Na assinatura pela responsável legal (DA-11 de Documentos), quem agiu é ela, com o mesmo texto da evidência ("Gorete Maia, responsável legal de Flávia Maia") e o caminho. O link em si segue de quem o criou. Quando é a equipe que preenche: "Preencheu a ficha de saúde de X" — também na tela do atendimento, onde a ficha se grava no prontuário: nunca "Criou o prontuário".
+- Fonte: decisão do Claude; a ficha preenchida na tela do atendimento: decisão do Claude, 27/11 (40ª simulação, D7), pela própria AD-22; o app e a responsável legal: decisão do Claude, 28/11 (41ª simulação, D7 e D10), pela AD-05 e pela DA-11 de Documentos
 - Onde: `docs/regras/plataforma.md:1299-1305`
 - Antes: KD-23
 

@@ -73,3 +73,42 @@ test('a conversão junta só os funis ativos: sem etapa de ganho neles, "—"', 
     await expect(kpi).toContainText('—')
   })
 })
+
+/**
+ * FO-07 (D12 da 41ª): com uma unidade no recorte numa rede de mais de uma — o
+ * `/admin?unidade=` E o portal da unidade —, os dois cartões que não seguem o
+ * recorte (as oportunidades são da rede) se chamam "Conversão (rede)" e
+ * "Oportunidades recebidas (rede)". No portal da unidade eles saíam sem
+ * "(rede)". Na rede de uma unidade, sem "(rede)".
+ */
+test('FO-07: no portal da unidade de uma rede de duas, os cartões das oportunidades dizem "(rede)"; na de uma, não', async ({ browser }) => {
+  const duas = await criarOutraRede(`cv2${marca}`)
+  let gestora: MembroDeTeste | null = null
+  try {
+    const { error: eB } = await db().from('branches')
+      .insert({ tenant_id: duas.tenantId, name: `[e2e] Segunda ${marca}`, slug: `e2e-cv2-${marca}` })
+    expect(eB).toBeNull()
+    gestora = await criarMembro(`cv2g${marca}`, {
+      tenant: duas.tenantId, branchId: duas.branchId, rotulo: 'Gestora da unidade',
+      permissoes: [{ modulo: 'crm', nivel: 'VIEW' }, { modulo: 'reports', nivel: 'VIEW' }],
+    })
+    expect((await db().from('role_report_tabs').insert({ tenant_id: duas.tenantId, role_id: gestora.roleId, tab: 'comercial' })).error).toBeNull()
+    const slugDuas = (await db().from('branches').select('slug').eq('id', duas.branchId).single<{ slug: string }>()).data!.slug
+    const ctx = await browser.newContext({ storageState: gestora.estado })
+    try {
+      const p = await ctx.newPage()
+      await p.goto(`/${slugDuas}/reports?period=month&tab=comercial`)
+      await expect(p.getByText('Conversão (rede)', { exact: true })).toBeVisible()
+      await expect(p.getByText('Oportunidades recebidas (rede)', { exact: true })).toBeVisible()
+    } finally { await ctx.close() }
+  } finally {
+    await gestora?.limpar(); await duas.limpar()
+  }
+
+  const slugUma = (await db().from('branches').select('slug').eq('id', rede!.branchId).single<{ slug: string }>()).data!.slug
+  await como(browser, async p => {
+    await p.goto(`/${slugUma}/reports?period=month&tab=comercial`)
+    await expect(p.getByText('Conversão', { exact: true }).first()).toBeVisible()
+    await expect(p.getByText('Conversão (rede)', { exact: true }), 'rede de uma unidade: sem "(rede)"').toHaveCount(0)
+  })
+})

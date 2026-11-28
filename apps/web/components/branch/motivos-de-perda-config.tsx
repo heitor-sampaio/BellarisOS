@@ -59,8 +59,10 @@ export function MotivosDePerdaConfig({ motivos }: { motivos: MotivoConfiguravel[
             aria-pressed={m.ativo}
             title={m.ativo ? 'Clique para desativar' : 'Clique para reativar'}
             className={m.ativo ? 'chip-filtro is-ativo' : 'chip-filtro'}
-            style={m.ativo ? undefined : { textDecoration: 'line-through', color: 'var(--text-faint)' }}>
-            {m.nome}
+            style={m.ativo ? undefined : { color: 'var(--text-faint)' }}>
+            {/* A15 da 41ª: o desativado diz o estado (a cor não basta). */}
+            <span style={m.ativo ? undefined : { textDecoration: 'line-through' }}>{m.nome}</span>
+            {!m.ativo && <span data-estado-do-chip> · desativado</span>}
           </button>
         ))}
       </div>

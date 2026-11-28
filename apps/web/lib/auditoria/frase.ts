@@ -676,6 +676,16 @@ function fraseDoRegistroDa26(r: RegistroDaAuditoria, nomes: NomesDaAuditoria, cl
     const categoria = r.registro_id ? texto(nomes.categoriasDosAnexos?.[r.registro_id]) : null
     return `Apagou ${(categoria && ANEXO_DA_CATEGORIA[categoria]) || 'um arquivo'}${daCliente}`
   }
+  // D9 (AD-13; decisão do Claude, 28/11): "Enviar ao app" e "Tirar do app" diziam o
+  // mesmo ("Editou o documento da cliente (envio e quem enviou)"). O gatilho guarda o
+  // `enviado_em` desde 20261220200001 (a data, sem conteúdo): nulo → valor é enviar,
+  // valor → nulo é tirar. A gravação de antes, só com o nome da coluna, não chuta.
+  if (r.tabela === 'client_documents' && r.operacao === 'editou' && r.colunas.includes('enviado_em')) {
+    const categoria = r.registro_id ? texto(nomes.categoriasDosAnexos?.[r.registro_id]) : null
+    const anexo = (categoria && ANEXO_DA_CATEGORIA[categoria]) || 'um arquivo'
+    if (!('enviado_em' in r.depois)) return `Mudou o envio ao app de ${anexo}${daCliente}`
+    return `${texto(r.depois.enviado_em) ? 'Enviou ao app' : 'Tirou do app'} ${anexo}${daCliente}`
+  }
   // A5 e A10 da 35ª: o cancelamento gravado sozinho (a sessão do pré-pago sem nada a devolver).
   const cancelada = fraseDoCancelamentoDaVenda([r], nomes)
   if (cancelada) return cancelada
@@ -1033,6 +1043,14 @@ export function fraseDaAuditoria(r: RegistroDaAuditoria, nomes: NomesDaAuditoria
   // A33 da 19ª: o voucher devolvido (o estorno do pagamento que o usou) diz que voltou a ativo.
   const devolvido = voucherDevolvido(r)
   if (devolvido) return `Devolveu ${devolvido} (voltou a ativo)${cliente ? ` — ${cliente}` : ''}`
+  // D10 (AD-13, AD-20; decisão do Claude, 28/11): a assinatura é o fato — era
+  // "Editou o documento X (assinatura e situação)"; e o PDF assinado, gravado à
+  // parte, era "Editou o documento X (PDF assinado)".
+  if (ehAssinatura(r)) return fraseDaAssinatura([r], nomes)
+  if (r.tabela === 'issued_documents' && r.operacao === 'editou' && r.colunas.includes('signed_pdf_path')) {
+    const nome = nomeDoRegistro(r, nomes)
+    return `Gerou o PDF assinado do documento${nome ? ` ${nome}` : ''}${cliente ? ` — ${cliente}` : ''}`
+  }
   // D21 da 31ª: o "Pedir no portal" marca o documento (`pedido_no_portal_em`) — o pedido é o fato.
   if (r.tabela === 'issued_documents' && r.operacao === 'editou' && r.colunas.includes('pedido_no_portal_em')) {
     const nome = nomeDoRegistro(r, nomes)
@@ -1188,11 +1206,73 @@ function feitoPeloLink(r: RegistroDaAuditoria): boolean {
   }
 }
 
-/** Quem agiu, como a tela o diz: a cliente, pelo link, onde o banco disse "O sistema". */
+/** O texto fixo que o gatilho grava quando quem agiu é a cliente (o nome se lê agora, pela ficha). */
+const A_CLIENTE_PELO_PORTAL = 'A cliente, pelo portal'
+
+/**
+ * Quem agiu, como a tela o diz: a cliente, pelo link, onde o banco disse "O
+ * sistema"; e a cliente pelo app pelo nome (D7, AD-05/AD-22; decisão do Claude,
+ * 28/11): o gatilho grava "A cliente, pelo portal" e a ficha dela NAQUELA rede
+ * (`ator_cliente_id`); o nome é o dessa ficha, lido agora (AD-08) — "Alzira,
+ * pelo app", o "pelo app" do catálogo. Na assinatura da menor, quem assinou é a
+ * responsável legal (DA-11): "Marta Lima, responsável legal de Beatriz Lima".
+ */
 function quemAgiu(r: RegistroDaAuditoria, nomes: NomesDaAuditoria): { quem: string; tipoDeAtor: RegistroDaAuditoria['ator_tipo'] } {
   const cliente = r.client_id ? nomes.clientes[r.client_id] ?? null : null
-  if (cliente && feitoPeloLink(r)) return { quem: `${cliente}, pelo link`, tipoDeAtor: 'cliente' }
+  const responsavel = responsavelQueAssinou(r, nomes)
+  if (cliente && feitoPeloLink(r)) return { quem: `${responsavel ?? cliente}, pelo link`, tipoDeAtor: 'cliente' }
+  if (r.ator_tipo === 'cliente') {
+    const ficha = r.ator_cliente_id ?? (r.ator_nome === A_CLIENTE_PELO_PORTAL ? r.client_id : null)
+    const nome = ficha ? nomes.clientes[ficha] ?? null : null
+    if (nome) return { quem: r.operacao === 'entrou' ? nome : `${responsavel ?? nome}, pelo app`, tipoDeAtor: 'cliente' }
+  }
   return { quem: r.ator_nome, tipoDeAtor: r.ator_tipo }
+}
+
+/** A assinatura do documento: o `signed_at` que `documentos_assinar` grava (com a situação ASSINADO). */
+function ehAssinatura(r: RegistroDaAuditoria): boolean {
+  return r.tabela === 'issued_documents' && r.operacao === 'editou' && r.colunas.includes('signed_at')
+}
+
+const RESPONSAVEL_LEGAL_DE = ', responsável legal de '
+
+/**
+ * DA-11: na menor com responsável, quem assina é ele, e a evidência diz "Marta
+ * Lima, responsável legal de Beatriz Lima". O nome do responsável é o da
+ * evidência (DA-13: o nome com que assinou); o da cliente, o da ficha lido
+ * agora. Nulo quando a cliente assinou por si.
+ */
+function responsavelQueAssinou(r: RegistroDaAuditoria, nomes: NomesDaAuditoria): string | null {
+  if (!ehAssinatura(r) || !r.registro_id) return null
+  const evidencia = nomes.assinaturasDosDocumentos?.[r.registro_id]
+  const i = evidencia ? evidencia.indexOf(RESPONSAVEL_LEGAL_DE) : -1
+  if (!evidencia || i <= 0) return null
+  const cliente = r.client_id ? nomes.clientes[r.client_id] ?? null : null
+  return `${evidencia.slice(0, i)}${RESPONSAVEL_LEGAL_DE}${cliente ?? evidencia.slice(i + RESPONSAVEL_LEGAL_DE.length)}`
+}
+
+/**
+ * D10 (AD-13, AD-20, AD-22; decisão do Claude, 28/11): a assinatura é o fato.
+ * Pela cliente (o link, o app): "Assinou o documento X — Cliente". Pela equipe
+ * na tela, quem agiu é o membro e a frase diz de quem colheu: "Colheu a
+ * assinatura de Marta Lima, responsável legal de Beatriz Lima, no documento X".
+ */
+function fraseDaAssinatura(assinados: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria): string {
+  const p = assinados[0]!
+  const titulos = [...new Set(assinados.map(a => nomeDoRegistro(a, nomes)).filter((t): t is string => !!t))]
+  const varios = assinados.length > 1
+  const todos = titulos.length === assinados.length
+  const [qual, noQual] = !varios
+    ? [`o documento${titulos[0] ? ` ${titulos[0]}` : ''}`, `no documento${titulos[0] ? ` ${titulos[0]}` : ''}`]
+    : todos ? [`os documentos ${emLista(titulos)}`, `nos documentos ${emLista(titulos)}`]
+    : [`${assinados.length} documentos`, `em ${assinados.length} documentos`]
+  const cliente = p.client_id ? nomes.clientes[p.client_id] ?? null : null
+  if (p.ator_tipo === 'membro' || p.ator_tipo === 'suporte' || p.ator_tipo === 'plataforma') {
+    const responsavel = responsavelQueAssinou(p, nomes)
+    const de = responsavel ? ` de ${responsavel},` : cliente ? ` de ${cliente}` : ''
+    return `Colheu a assinatura${de} ${noQual}`
+  }
+  return `Assinou ${qual}${cliente ? ` — ${cliente}` : ''}`
 }
 
 export function linhaDaAuditoria(
@@ -1296,12 +1376,12 @@ export function agruparAuditoria(registros: readonly RegistroDaAuditoria[]): Reg
     if (g) g.push(r)
     else grupos.set(chave, [r])
   }
-  return comAGeracaoNaVenda([...grupos.values()])
+  return comAsRepeticoesJuntas(comAGeracaoNaVenda([...grupos.values()]))
 }
 
 /** Até quanto depois da criação a geração do documento ainda é parte da mesma gravação. */
 const JANELA_DA_GERACAO_MS = 5 * 60_000
-const atorDe = (r: RegistroDaAuditoria) => `${r.ator_user_id ?? ''}|${r.ator_nome}|${r.ator_tipo}`
+const atorDe = (r: RegistroDaAuditoria) => `${r.ator_user_id ?? ''}|${r.ator_cliente_id ?? ''}|${r.ator_nome}|${r.ator_tipo}`
 const soGeracaoDeDocumento = (g: readonly RegistroDaAuditoria[]) =>
   g.every(l => l.tabela === 'issued_documents' && l.operacao === 'editou' && l.colunas.includes('rendered_at') && !!l.registro_id)
 
@@ -1323,6 +1403,55 @@ function comAGeracaoNaVenda(grupos: RegistroDaAuditoria[][]): RegistroDaAuditori
         && atorDe(l) === atorDe(g[0]!) && depois >= 0 && depois <= JANELA_DA_GERACAO_MS
     }))
     if (!dono) continue
+    dono.push(...g)
+    dono.sort((a, b) => b.id - a.id)
+    levados.add(g)
+  }
+  return levados.size ? grupos.filter(g => !levados.has(g)) : grupos
+}
+
+/** Até quanto depois a mesma ficha (ou o mesmo documento) gravada de novo ainda é o mesmo ato. */
+const JANELA_DA_REPETICAO_MS = 2 * 60_000
+/** A resposta da ficha de saúde: o pendente fechado, o prontuário com a ficha, o link usado. */
+const ehDaRespostaDaFichaDeSaude = (l: RegistroDaAuditoria) =>
+  (l.tabela === 'pre_atendimentos' && l.operacao === 'editou' && l.colunas.includes('respondido_em'))
+  || (l.tabela === 'medical_records' && (l.operacao === 'criou' || l.operacao === 'editou') && l.colunas.includes('general_anamnesis'))
+const ehDoLinkDaFichaUsado = (l: RegistroDaAuditoria) =>
+  l.tabela === 'pre_atendimento_links' && l.operacao === 'editou' && l.colunas.includes('used_at')
+/** O documento gerado de novo ou o PDF assinado, gravados sozinhos. */
+const soGeracaoOuPdf = (g: readonly RegistroDaAuditoria[]) => g.every(l => l.tabela === 'issued_documents' && l.operacao === 'editou'
+  && !!l.registro_id && (l.colunas.includes('rendered_at') || l.colunas.includes('signed_pdf_path')))
+
+/**
+ * D8 (AD-12, "cada GRAVAÇÃO como uma linha só"; decisão do Claude, 28/11): a
+ * resposta da ficha de saúde grava o prontuário, o pendente e o link em idas
+ * separadas ao banco (`gravarAnamneseGeral`), e o documento se gera de novo (ou
+ * ganha o PDF assinado) logo depois — eram duas ou três linhas com a mesma
+ * frase. O que repete o MESMO ato (a mesma ficha, o mesmo documento), da mesma
+ * pessoa, até 2 min depois, entra na gravação anterior mais próxima. Nada deixa
+ * de ser gravado: fica no detalhe. Sem a anterior na mesma página, fica sozinha.
+ */
+function comAsRepeticoesJuntas(grupos: RegistroDaAuditoria[][]): RegistroDaAuditoria[][] {
+  const doMesmoAto = (g: readonly RegistroDaAuditoria[]): ((l: RegistroDaAuditoria) => boolean) | null => {
+    const cliente = g[0]!.client_id
+    if (cliente && g.every(l => l.client_id === cliente && (ehDaRespostaDaFichaDeSaude(l) || ehDoLinkDaFichaUsado(l)))) {
+      return l => l.client_id === cliente && ehDaRespostaDaFichaDeSaude(l)
+    }
+    const doc = g[0]!.registro_id
+    if (soGeracaoOuPdf(g) && g.every(l => l.registro_id === doc)) return l => l.tabela === 'issued_documents' && l.registro_id === doc
+    return null
+  }
+  const levados = new Set<RegistroDaAuditoria[]>()
+  const ficam: RegistroDaAuditoria[][] = []
+  // Da mais antiga à mais nova: a repetição vai para a gravação de antes dela.
+  for (const g of [...grupos].reverse()) {
+    const casa = doMesmoAto(g)
+    const quando = Date.parse(g[0]!.criado_em)
+    const dono = casa ? [...ficam].reverse().find(h => h.some(l => {
+      const depois = quando - Date.parse(l.criado_em)
+      return casa(l) && atorDe(l) === atorDe(g[0]!) && depois >= 0 && depois <= JANELA_DA_REPETICAO_MS
+    })) : undefined
+    if (!dono) { ficam.push(g); continue }
     dono.push(...g)
     dono.sort((a, b) => b.id - a.id)
     levados.add(g)
@@ -1974,6 +2103,15 @@ export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: Nome
     return `Montou a rede nova${nome ? ` ${nome}` : ''} (${linhas.length} registros: ${resumoDasTabelas(linhas.filter(l => l !== rede))})`
   }
 
+  // D10 (AD-13, AD-20): a assinatura grava o documento, a prova e o link juntos (e o
+  // PDF logo depois, `comAsRepeticoesJuntas`); o fato é a assinatura.
+  const assinados = linhas.filter(ehAssinatura)
+  if (assinados.length) return fraseDaAssinatura(assinados, nomes)
+  // D8 (AD-12): o mesmo documento gerado de novo logo depois é uma geração só.
+  if (soGeracaoDeDocumento(linhas) && new Set(linhas.map(l => l.registro_id)).size === 1) {
+    return fraseDaAuditoria(linhas[linhas.length - 1]!, nomes)
+  }
+
   // A34 da 20ª: o cancelamento do pacote fecha as sessões e o contrato junto; o fato é o pacote.
   // A5 e A10 da 35ª: o do plano (cancela os agendamentos, devolve em crédito) e o da sessão do pré-pago também.
   const cancelamento = fraseDoCancelamentoDaVenda(linhas, nomes)
@@ -2127,6 +2265,9 @@ function comAHora(grupos: readonly { grupo: GrupoDaAuditoria; criadoEm: string }
 /** O registro que dá a unidade e o link de uma gravação: o do fato, o pai, o da cliente, ou o primeiro gravado. */
 function principalDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria): RegistroDaAuditoria {
   if (linhas.length === 1) return linhas[0]!
+  // D10: a assinatura é o fato da gravação — o documento assinado dá a unidade, o link e quem assinou.
+  const assinado = linhas.find(ehAssinatura)
+  if (assinado) return assinado
   const estorno = linhas.some(l => l.tabela === 'financial_transactions' && l.operacao === 'criou' && texto(l.depois.category) === 'Estorno')
   const fato = linhas.some(l => l.tabela === 'tenants' && l.operacao === 'criou') || estorno ? null : fatoDaGravacao(linhas, nomes)
   // D9 da 31ª: a gravação do estoque é da unidade do movimento (o produto novo é da rede, e a linha dizia "Da rede").

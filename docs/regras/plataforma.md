@@ -1496,7 +1496,8 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
   `medical_record_entries`, `prontuario_anotacoes`, injetáveis,
   a ficha de saúde, documentos da cliente, termos) e das de credencial
   (`integration_configs`, `whatsapp_numbers`, links de assinatura) vão só os
-  NOMES das colunas mudadas. Das outras, os nomes e uma lista curta de valores
+  NOMES das colunas mudadas (o anexo da cliente guarda também a data do envio
+  ao app, `enviado_em`, para dizer se enviou ou tirou — 41ª simulação). Das outras, os nomes e uma lista curta de valores
   sem dado pessoal (situação, datas, valores, o nome da sala ou da tag). O nome
   da cliente e do membro se lê na hora de mostrar (`lib/auditoria/frase.ts`):
   anonimizada pela LGPD, sai anonimizada aqui também.
@@ -1957,6 +1958,27 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
     ficha pendente é "Concluiu o atendimento — X" (a resposta fica no detalhe;
     sem eles, a resposta segue o fato). Prova:
     `tests/auditoria-o-fato-da-agenda-da-ficha-de-saude-e-do-cargo.test.ts`.
+  - **A 41ª simulação** (decisão do Claude, 28/11; AD-05, AD-12, AD-13, AD-20,
+    AD-22; DA-11):
+    - o que a cliente fez pelo app é dela, com o nome: o gatilho grava "A
+      cliente, pelo portal" e a ficha dela naquela rede (`ator_cliente_id`); a
+      leitura diz "Alzira Souza, pelo app" (o nome dessa ficha, lido agora — vale
+      para as linhas antigas também); a entrada no sistema, só o nome;
+    - o que repete o MESMO ato em outra ida ao banco (a resposta da ficha grava
+      o prontuário, o pendente e o link à parte; o documento gerado de novo; o
+      PDF assinado), da mesma pessoa, até 2 min depois, entra na gravação
+      anterior (`comAsRepeticoesJuntas`) — era a mesma frase duas vezes;
+    - enviar e tirar do app são o fato: "Enviou ao app uma foto clínica" /
+      "Tirou do app uma foto clínica". O gatilho de `client_documents` passa a
+      guardar só o `enviado_em` (a data do envio, sem conteúdo do anexo;
+      migration `20261220200001`); a gravação de antes diz "Mudou o envio ao
+      app de …";
+    - a assinatura é o fato: "Assinou o documento X — Cliente" (pela cliente)
+      e "Colheu a assinatura de Y no documento X" (pela equipe, que é quem
+      agiu); o PDF assinado sozinho, "Gerou o PDF assinado do documento X". Na
+      menor, quem assinou é o da evidência: "Marta Lima, responsável legal de
+      Beatriz Lima, pelo link" (`assinaturasDosDocumentos`, só o nome).
+    Prova: `tests/auditoria-a-cliente-pelo-app-a-gravacao-repetida-o-envio-e-a-assinatura.test.ts`.
   - Prova: `tests/atritos-da-15.test.ts`, `e2e/auditoria-atritos-da-15.spec.ts`.
 - **A falha do registro não derruba a gravação.** O gatilho segura o erro,
   grava uma linha `incompleto` (quando acha a rede) e deixa um WARNING no log:

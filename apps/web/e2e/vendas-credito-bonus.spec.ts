@@ -171,6 +171,40 @@ test('A20: o bônus inteiro — e sem escolher, o estorno com bônus recusa', as
   expect(await saldoDe(rosana)).toBe(0)
 })
 
+test('CI-08: na proporção, marcar e confirmar logo grava — volta R$ 250 e saem R$ 25 (R$ 400 + R$ 40, R$ 165 usados)', async ({ browser }) => {
+  // CI-08: a rede escolhe como o bônus sai. A janela deixava confirmar com a conta
+  // do inteiro (R$ 235) enquanto a da proporção não chegava, e o banco recusava
+  // ("Os valores do crédito mudaram…") — só o INTEIRO gravava.
+  const iracema = await rede.criarCliente('Iracema')
+  await como(browser, recepcao.estado, async p => {
+    const r = await chamarAcao(p, 'actions/credito-interno.ts', 'venderCredito', `/${slug}/pdv`, [iracema, rede.branchId, '400', { forma: 'AVISTA', metodo: 'PIX' }, null, '40'])
+    expect(r.texto).toContain('vendaId')
+  })
+  expect((await db().from('financial_transactions').insert({
+    branch_id: rede.branchId, client_id: iracema, type: 'INCOME', category: 'Serviços', description: 'Limpeza paga com crédito [e2e]',
+    amount: 165, is_paid: true, paid_at: new Date().toISOString(), payment_method: 'INTERNAL_CREDIT', created_by: dona.userId,
+  })).error).toBeNull()
+  expect(await saldoDe(iracema)).toBe(275)
+  await como(browser, dona.estado, async p => {
+    await p.goto(`/${slug}/financeiro?aba=movimentacoes`)
+    const linha = p.locator('[data-lancamento]', { hasText: 'Crédito interno' }).filter({ hasText: '400,00' }).first()
+    await linha.getByRole('button', { name: 'Estornar' }).click()
+    const dlg = p.getByRole('dialog', { name: 'Estornar a venda de crédito interno?' })
+    await dlg.getByLabel('Motivo do estorno').fill('Desistiu [e2e]')
+    // Marca e segue sem esperar: a janela só deixa seguir com a conta da proporção.
+    await dlg.locator('[data-como-sai-o-bonus]').getByRole('radio', { name: /proporção/ }).check()
+    await dlg.getByRole('radio', { name: /Estorno parcial/ }).check()
+    await dlg.getByRole('button', { name: 'Confirmar estorno' }).click()
+    await expect(dlg).toBeHidden({ timeout: 15_000 })
+  })
+  const { data: contra } = await db().from('financial_transactions').select('amount').eq('client_id', iracema).eq('category', 'Estorno')
+  expect((contra ?? []).map(c => n(c.amount))).toEqual([250])
+  const { data: venda } = await db().from('creditos_vendidos').select('valor_devolvido, estorno').eq('client_id', iracema).single()
+  expect(n(venda!.valor_devolvido)).toBe(250)
+  expect(n((venda!.estorno as { bonus_sai: number }).bonus_sai)).toBe(25)
+  expect(await saldoDe(iracema)).toBe(0)
+})
+
 test('A55: a venda do crédito avisa que a cliente não tem acesso ao app', async ({ browser }) => {
   await como(browser, recepcao.estado, async p => {
     const dlg = await abrirVendaNoPdv(p, `/${slug}`, rosana)

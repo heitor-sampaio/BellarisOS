@@ -13,7 +13,7 @@ import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { rotaCliente, rotaNoPortal } from '@/lib/rotas'
 import { ReceberOPlano } from '@/components/shared/pdv/receber-o-plano'
 import {
-  SITUACOES_DO_PDV, seloDaComanda, emAbertoDaComanda, detalheDaComanda, formasDaComandaEmTexto, descontosDaComanda,
+  SITUACOES_DO_PDV, seloDaComanda, emAbertoDaComanda, detalheDaComanda, formasDaComandaEmTexto, partesDoRecebidoDaComanda, descontosDaComanda,
   estornoAnteriorEmTexto, valorNaLista, produtosEstornadosEmTexto, pagoJuntoEmTexto, rotuloDoPagamentoDaComanda,
   estornoDaVendaEmTexto, recebidaAgoraEmTexto, voucherDoProdutoEstornadoEmTexto, vendaEstornadaEmTexto, rotuloDoDiaNoPdv, textoDasComValorEmAberto,
   abertasNasOutrasEmTexto, vazioDasAbertas, hrefDasComValorEmAberto, comandasDoFiltro, FILTRO_COM_VALOR_EM_ABERTO,
@@ -492,7 +492,7 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, hrefDaAssinatura, ao
             <>
               <p data-comanda-paga style={{ color: 'var(--text)', fontSize: 'var(--text-sm-sz)' }}>
                 {/* A9 da 30ª: com dinheiro em aberto, "Fechada" (a regra do selo). */}
-                {verboDaComandaPaga(c)} às {hora(c.pagaEm)} · {formasDaComandaEmTexto(c)} · <b>{brl(c.recebido ?? 0)}</b> recebidos
+                {verboDaComandaPaga(c)} às {hora(c.pagaEm)} · {formasDaComandaEmTexto(c)} · {/* A5 da 41ª (CI-03): o pago com crédito interno não é "recebido". */}{partesDoRecebidoDaComanda(c).map((p, i) => <span key={p.rotulo}>{i ? ' + ' : ''}<b>{brl(p.valor)}</b> {p.rotulo}</span>)}
                 {/* A2 da 15ª: a quem não estorna, de quem é o estorno — a frase da ficha.
                     Mora na dica (2026-11-16 — era uma caixa fixa embaixo dos pagamentos). */}
                 {e.quemEstorna && (

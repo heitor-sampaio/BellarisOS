@@ -141,7 +141,7 @@ export function ConfirmarEstorno({ alvo, estornando, onConfirmar, onVoltar, onDe
         {produto && !cancelar && onDevolverParte && (
           <p data-devolver-so-parte style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
             Voltou só uma parte (um dos produtos, ou menos unidades)?
-            <button type="button" className="btn-ghost" disabled={estornando} onClick={onDevolverParte}>Devolver só parte da venda</button>
+            <button type="button" className="btn-secondary" disabled={estornando} onClick={onDevolverParte}>Devolver só parte da venda</button>
           </p>
         )}
         <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>

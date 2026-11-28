@@ -44,6 +44,8 @@ export interface PreviaDaDevolucao {
   devolver:       number
   fidelidade:     boolean
   parcial:        PagamentoEmParte | null
+  /** CI-04 (A7 da 41ª): as formas dos pagamentos vivos da venda — o "Estorno" diz para onde volta. */
+  formas?:        string[]
 }
 
 const num = (v: unknown) => Math.round(Number(v ?? 0) * 100) / 100

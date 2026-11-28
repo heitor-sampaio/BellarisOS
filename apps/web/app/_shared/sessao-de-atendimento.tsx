@@ -291,7 +291,9 @@ export async function SessaoDeAtendimento({
   // movimento (a de consumo). Era o cadastro do procedimento ou a sessão do
   // plano — o insumo acrescentado na hora sumia ("Nenhum insumo registrado"
   // com a baixa no banco), e o do cadastro que não foi usado aparecia.
-  const insumosDaBaixa: SessionProduct[] | null = apptRaw.status === 'COMPLETED'
+  // D11 da 41ª (princípio 3, AT-20): o desistido no meio também — a tela dizia
+  // o insumo do cadastro (50 UI, "38 UI sem lote") com a baixa gravada de 12 UI.
+  const insumosDaBaixa: SessionProduct[] | null = (apptRaw.status === 'COMPLETED' || apptRaw.status === 'CANCELLED')
     ? await (async () => {
         type RawBaixa = { product_id: string; quantity: number | string; products: { name: string; unit: string; consumption_unit: string | null; units_per_package: number | null } | null }
         const baixas = (await ler(admin.from('stock_movements')

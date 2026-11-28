@@ -318,8 +318,8 @@ Este é o catálogo das regras de WhatsApp e push que valem HOJE: os números de
 - Onde: `docs/regras/whatsapp-push.md:11`, `:69-71`
 - Antes: KA-02
 
-**NA-03.** No sino do app, o aviso aberto continua na lista, esmaecido; clicar só marca como lido. "Em dia" aparece quando todos estão lidos.
-- Fonte: decisão do Claude
+**NA-03.** No sino do app da cliente, o aviso aberto continua na lista, esmaecido; clicar só marca como lido. "Em dia" aparece quando todos estão lidos. O sino da equipe não segue esta regra: o aviso lido sai da lista dele (mantê-lo, esmaecido, é a sugestão nº 178).
+- Fonte: decisão do Claude; só o sino da cliente: decisão do Claude, 28/11 (41ª simulação, Decisão 7), pela própria NA-03 (`getClientNotifications`)
 - Onde: `docs/regras/whatsapp-push.md:64-68`
 - Antes: KA-14
 
@@ -330,8 +330,8 @@ Este é o catálogo das regras de WhatsApp e push que valem HOJE: os números de
 
 ## Os avisos à equipe (NE)
 
-**NE-01.** O aviso de um fato da operação vai às partes interessadas nele: quem está envolvido diretamente (o profissional do agendamento recebe porque a agenda é dele, com permissão ou sem) e quem responde pelo fato — quem tem o módulo daquele fato em Gerenciar e alcança a unidade onde ele aconteceu. A Admin da rede responde por todo módulo do plano e recebe os avisos de todos eles.
-- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Pode fechar"
+**NE-01.** O aviso de um fato da operação vai às partes interessadas nele: quem está envolvido diretamente (o profissional do agendamento recebe porque a agenda é dele, com permissão ou sem) e quem responde pelo fato — quem tem o módulo daquele fato em Gerenciar e alcança a unidade onde ele aconteceu. A Admin da rede responde por todo módulo do plano e recebe os avisos de todos eles. Na remarcação para outra unidade, a unidade do fato é a nova, onde o atendimento passa a acontecer: avisa quem responde por ela, não quem só responde pela de antes.
+- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Pode fechar"; a remarcação para outra unidade: decisão do Claude, 28/11 (41ª simulação, Decisão 5), pela própria NE-01
 - Onde: `docs/regras/whatsapp-push.md:12-24`; `docs/revisao.md:1527-1530`
 - Antes: KA-03, KA-04, KC-14
 
@@ -345,8 +345,8 @@ Este é o catálogo das regras de WhatsApp e push que valem HOJE: os números de
 - Onde: `docs/regras/whatsapp-push.md:27-29`; `docs/revisao.md:2214`
 - Antes: KA-06
 
-**NE-04.** Quem causou o fato não recebe o aviso dele.
-- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Pode fechar"
+**NE-04.** Quem causou o fato não recebe o aviso dele. No aviso do estoque no mínimo ou abaixo (NE-06), quem causou é quem gravou o movimento que cruzou o mínimo (a transferência, a entrada, a saída avulsa; no atendimento concluído, quem concluiu); o cruzamento que nasce da rotina, sem autor, avisa todos. O "Lote vencendo" não é causado pela entrada do lote: o fato é o lote a 30 dias da validade, que nasce na rotina, e quem deu a entrada também recebe.
+- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Pode fechar"; o aviso do mínimo: decisão do Claude, 28/11 (41ª simulação, D3), pela própria NE-04; o lote vencendo: decisão do Claude, 28/11 (41ª simulação, Decisão 5), pela própria NE-04 e pela ES-30 do Atendimento
 - Onde: `docs/regras/whatsapp-push.md:30-31`; `docs/revisao.md:1529-1530`
 - Antes: KA-07, KC-14
 
@@ -355,8 +355,8 @@ Este é o catálogo das regras de WhatsApp e push que valem HOJE: os números de
 - Onde: `docs/regras/whatsapp-push.md:32-34`; `docs/revisao.md:1530-1531`
 - Antes: KA-08, KC-15
 
-**NE-06.** Os avisos da operação à equipe são: agendamento novo, cancelamento, remarcação, chegada da cliente e produto no estoque mínimo ou abaixo (pelo mínimo que a tela mostra, uma vez a cada vez que cruza, logo depois do movimento — ES-30 do Atendimento).
-- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Pode fechar"
+**NE-06.** Os avisos da operação à equipe são: agendamento novo, cancelamento, remarcação, chegada da cliente e produto no estoque mínimo ou abaixo (pelo mínimo que a tela mostra, uma vez a cada vez que cruza, logo depois do movimento — ES-30 do Atendimento). Fora desta lista, só avisam os fatos com regra própria: a ficha de saúde respondida (FI-11 do Atendimento), o pedido LGPD pelo app (LG-09 de Clientes, CRM e inbox), o plano aceito pelo app (PL-07 do Atendimento) e o lote que vence em 30 dias (ES-30 do Atendimento).
+- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Pode fechar"; os avisos com regra própria: decisão do Claude, 28/11 (41ª simulação, Decisão 5), pela própria NE-06
 - Onde: `docs/regras/whatsapp-push.md:35-37`; `docs/revisao.md:1530-1531`
 - Antes: KA-09, KC-15
 

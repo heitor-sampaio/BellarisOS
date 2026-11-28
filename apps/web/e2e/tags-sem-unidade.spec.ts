@@ -37,6 +37,8 @@ let gestao: MembroDeTeste
 let recepcaoA: MembroDeTeste
 let comercialUnica: MembroDeTeste
 let admin: MembroDeTeste
+let vendaAB: MembroDeTeste
+let vendaA: MembroDeTeste
 let etapaNovo = ''
 let etapaNovoUnica = ''
 
@@ -119,6 +121,15 @@ test.beforeAll(async () => {
   // A campanha é configuração da rede toda: só a Admin da rede a monta (o
   // Heitor, 18/11: "Configuração da rede toda só pela conta admin").
   admin = await criarMembro(`tsua${marca}`, { tenant: rede.tenantId, rotulo: 'Admin', donoDaRede: true, permissoes: [] })
+  // D2 da 41ª (OP-35): no portal da unidade, o Agendar do card usa as unidades
+  // da PESSOA — a de duas (sem "A rede inteira") e a de uma.
+  const vendas = [{ modulo: 'crm', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'agenda', nivel: 'MANAGE' }] as const
+  vendaAB = await criarMembro(`tsuv${marca}`, {
+    tenant: rede.tenantId, branchId: unidadeA.id, outrasUnidades: [unidadeB.id], rotulo: 'Vendas AB', permissoes: [...vendas],
+  })
+  vendaA = await criarMembro(`tsuw${marca}`, {
+    tenant: rede.tenantId, branchId: unidadeA.id, rotulo: 'Vendas A', permissoes: [...vendas],
+  })
 })
 
 test.afterAll(async () => {
@@ -129,6 +140,7 @@ test.afterAll(async () => {
     if (ids.length) { await db().from('lead_events').delete().in('lead_id', ids); await db().from('leads').delete().in('id', ids) }
   }
   await gestao?.limpar(); await recepcaoA?.limpar(); await comercialUnica?.limpar(); await admin?.limpar()
+  await vendaAB?.limpar(); await vendaA?.limpar()
   await rede?.limpar(); await unica?.limpar()
 })
 
@@ -249,5 +261,32 @@ test('AG2: com uma unidade só, a caixa da unidade não aparece', async ({ brows
     await expect(janela).toBeVisible()
     await expect(janela.getByLabel('Procedimento')).toBeVisible()
     await expect(caixaDaUnidade(janela)).toHaveCount(0)
+  })
+})
+
+test('AG2 (OP-35): no portal da unidade, quem tem duas unidades escolhe entre as dela; quem tem uma não vê a caixa', async ({ browser }) => {
+  const { data: l, error } = await db().from('leads').insert({
+    tenant_id: rede.tenantId, name: nome('Lia de duas'), phone: '5548' + String(Date.now()).slice(-9), crm_stage_id: etapaNovo,
+  }).select('id').single<{ id: string }>()
+  expect(error).toBeNull()
+  const abrirOAgendar = async (p: Page) => {
+    await p.goto(`/${unidadeA.slug}/oportunidades?lead=${l!.id}`)
+    const card = p.getByRole('dialog').filter({ hasText: 'Editar oportunidade' })
+    await card.getByRole('button', { name: 'Agendar', exact: true }).click()
+    const janela = p.getByRole('dialog').filter({ hasText: 'Novo agendamento' })
+    await expect(janela).toBeVisible()
+    return janela
+  }
+  await como(browser, vendaAB, async p => {
+    const janela = await abrirOAgendar(p)
+    await expect(caixaDaUnidade(janela), 'duas unidades: a caixa vem vazia').toHaveValue('')
+    await expect(caixaDaUnidade(janela).locator('option', { hasText: unidadeB.name }), 'a outra unidade dela está na caixa').toHaveCount(1)
+    await caixaDaUnidade(janela).selectOption(unidadeB.id)
+    await expect(caixaDaUnidade(janela)).toHaveValue(unidadeB.id)
+  })
+  await como(browser, vendaA, async p => {
+    const janela = await abrirOAgendar(p)
+    await expect(janela.getByLabel('Procedimento')).toBeVisible()
+    await expect(caixaDaUnidade(janela), 'uma unidade: já escolhida, sem caixa').toHaveCount(0)
   })
 })

@@ -645,10 +645,10 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Onde: `docs/regras/vendas-financeiro.md:105-107`, `:323-336`, `:364-365`, `:404-405`
 - Antes: KA-36, KA-37
 
-**EX-11.** A linha do lançamento diz o que aconteceu: o pagamento estornado em parte diz o pago e o estornado ("Pago R$ 1.100,00 · R$ 990,00 estornados") nos dois Financeiros, e o app diz o mesmo ("R$ 300,00 pagos · R$ 136,36 devolvidos"). O pagamento de R$ 0 (feito todo com o voucher ou com os pontos) diz com o que foi pago ("Pago com o voucher “X”: R$ 180,00" ou "Pago com pontos: …"); o botão é "Desfazer o pagamento", e a janela avisa que nenhum dinheiro volta (o voucher volta a valer, e os pontos voltam ao saldo).
-- Fonte: princípio 3
+**EX-11.** A linha do lançamento diz o que aconteceu: o pagamento estornado em parte diz o pago e o estornado ("Pago R$ 1.100,00 · R$ 990,00 estornados") nos dois Financeiros, e o app diz o mesmo ("R$ 300,00 pagos · R$ 136,36 devolvidos"). A devolução de parte da venda em que o pago além do novo valor voltou em crédito interno (PR-07) também se diz na linha: o pagamento fica, e a linha diz o pago e a parte que virou crédito ("Pago R$ 180,00 · R$ 90,00 em crédito interno"); o app diz o mesmo, com o nome do crédito no app (CI-10). O pagamento de R$ 0 (feito todo com o voucher ou com os pontos) diz com o que foi pago ("Pago com o voucher “X”: R$ 180,00" ou "Pago com pontos: …"); o botão é "Desfazer o pagamento", e a janela avisa que nenhum dinheiro volta (o voucher volta a valer, e os pontos voltam ao saldo).
+- Fonte: princípio 3; a devolução em crédito interno: decisão do Claude, 28/11 (41ª simulação, D6), pela própria EX-11 e pela PR-08
 - Onde: `docs/regras/vendas-financeiro.md:2010`, `:2018`, `:2028`, `:2030`
-- Antes: KE-09, KE-10, KE-08
+- Antes: KE-09, KE-10, KE-08; antes de 28/11: a devolução que virou crédito interno não aparecia na linha nem no app (D6 da 41ª: "R$ 180" sem os R$ 90,00 que voltaram em crédito)
 
 ## O cartão, as maquininhas e as taxas (MQ)
 
@@ -780,8 +780,8 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Onde: `docs/regras/vendas-financeiro.md:389-390`, `:1571`, `:1595`
 - Antes: KD-30, KA-51
 
-**FC-06.** Quando o dinheiro registrado no dia fica negativo, o fechamento avisa: "Saiu R$ X a mais do que entrou em dinheiro: confira a saída em dinheiro, ou informe o fundo de troco."; pagar uma comissão em Dinheiro que deixa a gaveta do dia negativa também avisa, e o pagamento segue. Nas formas que não são dinheiro, o conferido pode ser negativo (o Pix que saiu mais do que entrou): a tela diz "confira com o sinal de menos", e o sistema aceita.
-- Fonte: princípio 2
+**FC-06.** Quando o dinheiro registrado no dia fica negativo, o fechamento avisa: "Saiu R$ X a mais do que entrou em dinheiro: confira a saída em dinheiro, ou informe o fundo de troco."; pagar uma comissão em Dinheiro que deixa a gaveta do dia negativa também avisa, e o pagamento segue. Nas formas que não são dinheiro, o conferido pode ser negativo (o Pix que saiu mais do que entrou): a tela diz "confira com o sinal de menos", e o sistema aceita. Com o dinheiro esperado negativo, o contado continua obrigatório (FC-02) e o zero é um contado válido: a diferença aparece, e a linha sem o contado não diz "Bateu".
+- Fonte: princípio 2; o esperado negativo: decisão do Claude, 28/11 (41ª simulação, A10), pela FC-02, pela FC-04 (o em branco é "não conferido") e pelo princípio 3
 - Onde: `docs/regras/vendas-financeiro.md:369-372`, `:409-410`, `:471-472`, `:1590`
 - Antes: KA-51, KA-54, KD-31
 
@@ -790,10 +790,10 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Onde: `docs/regras/vendas-financeiro.md:1611`, `:1716`; `docs/revisao.md:1998`
 - Antes: KD-33, KD-43, KG-19
 
-**FC-08.** O Fechamento tem só estes avisos: "Há N comanda(s) aberta(s)", com link para as comandas abertas, para quem recebe; "Houve movimento depois do fechamento das HH:MM (entrou R$ X e saiu R$ Y): confira e feche de novo" (o estorno conta como "saiu"); e, quando a unidade fecha hoje antes do fim do expediente, "A unidade atende até 22:00: o dia ainda está aberto. O que entrar depois deste fechamento pede fechar de novo." — só aviso: o fechamento antes da hora vale. "Por quem recebeu" e "Estornos do dia" ficam recolhidos em "Detalhes do dia".
-- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Blz pode ser assim"
+**FC-08.** O Fechamento tem só estes avisos: "Há N comanda(s) aberta(s)", com link para as comandas abertas, para quem recebe; "Houve movimento depois do fechamento das HH:MM (entrou R$ X e saiu R$ Y): confira e feche de novo" (o estorno conta como "saiu"), que conta só o que se gravou depois do fechamento, sem nada se anular: X é todo dinheiro que entrou no caixa (os recebimentos novos e o estorno de uma despesa, que devolve o dinheiro ao caixa, FC-11), Y são os estornos às clientes (também o de um pagamento do mesmo dia) e as saídas novas, e o aviso só aparece com X ou Y acima de zero; e, quando a unidade fecha hoje antes do fim do expediente, "A unidade atende até 22:00: o dia ainda está aberto. O que entrar depois deste fechamento pede fechar de novo." — só aviso: o fechamento antes da hora vale. "Por quem recebeu" e "Estornos do dia" ficam recolhidos em "Detalhes do dia".
+- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Blz pode ser assim"; o X e o Y: decisão do Claude, 28/11 (41ª simulação, Decisão 4 e D5), pela própria FC-08 ("o estorno conta como 'saiu'") e pela FC-11 ("Anula a despesa estornada")
 - Onde: `docs/regras/vendas-financeiro.md:1614`, `:1633`; `docs/revisao.md:1996`
-- Antes: KD-34, KG-17, KD-35
+- Antes: KD-34, KG-17, KD-35; antes de 28/11: o aviso comparava as somas do dia com as do fechamento, e o estorno de um pagamento do mesmo dia saía das entradas e se anulava com o recebimento novo (D5 da 41ª: "entrou R$ 85,00 e saiu R$ 255,00", no lugar de R$ 235,00 e R$ 405,00)
 
 **FC-09.** O fundo de troco é opcional, na linha do dinheiro: quem fecha o dia pode "Informar fundo de troco", o dinheiro que já estava na gaveta no começo do dia — um por unidade e por dia; informar de novo substitui, e zero é sem fundo. Com fundo, o dinheiro esperado é o fundo mais o saldo em dinheiro do dia, e o fechamento guarda o fundo; sem fundo, nada muda. Acima de R$ 1.000.000 de fundo a tela avisa e vale; só se recusa o acima de R$ 9.999.999.999,99 (o limite do registro do fechamento), no fundo, no dinheiro contado e no esperado na gaveta (o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito."; os números são decisão do Claude).
 - Fonte: o Heitor, 2026-11-02: "flexibilidade, precisamos dar as opções para que a rede possa operar da maneira que melhor lhe convier"

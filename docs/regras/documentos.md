@@ -924,6 +924,13 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   `e2e/documentos-portal.spec.ts`, `e2e/documentos-link-publico.spec.ts`,
   `e2e/documentos-link-conversa.spec.ts`, `e2e/documentos-editor-rico.spec.ts` e
   `e2e/documentos-contrato-pagamento.spec.ts`.
+- **O documento do atendimento acorda a tela do atendimento** (A4 da 41ª;
+  DE-15, princípio 3; decisão do Claude, 28/11): o documento ligado a um
+  atendimento marca o sinal da agenda (`trg_sinal_issued_documents_agenda`,
+  migration `20261220300001`) na emissão, na assinatura (tela, link, app ou
+  papel), no PDF e na dispensa — o "Iniciar" se libera sem recarregar. Prova:
+  `tests/atendimento-recebe-a-assinatura-do-termo.test.ts`,
+  `e2e/documentos-atendimento.spec.ts`.
 
 ---
 

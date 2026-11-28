@@ -188,3 +188,15 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 175 | Dizer, na tela do atendimento, quem pode responder a ficha de saúde quando quem atende não tem o Prontuário | 40ª, Times D (Josué) e E (Edivaldo) |
 | 176 | Na prévia da importação, contar as fichas novas sem "Cliente desde" (a coluna mapeada, mas vazia na linha), que contam como novas a partir de hoje | 40ª, Time C (D11) |
 | 177 | O seletor de Responsável da oportunidade oferecer só quem tem o CRM, como o repasse do Desativar já faz (hoje a OP-08 lista os membros ativos da rede) | 40ª, Time E (A5) |
+| 178 | O sino da EQUIPE manter o aviso lido na lista, esmaecido, como o do app da cliente (NA-03) | 41ª, Time E (todos os papéis; Decisão do Claude: a NA-03 é a regra do sino do app da cliente) |
+| 179 | Um "Abrir" nos avisos da equipe que leve ao registro (o agendamento, o produto no Estoque, o plano), como o da LGPD já faz | 41ª, Time E |
+| 180 | O nome da unidade no texto dos avisos da equipe em rede de mais de uma unidade (agendamento, remarcação, cancelamento, check-in, estoque) | 41ª, Time E (a mesma Máscara nas duas unidades) |
+| 181 | O aviso "Lote vencendo" sair logo na entrada do lote que já nasce a menos de 30 dias da validade (hoje só na rotina) | 41ª, Time E (Decisão do Claude: a ES-30 avisa uma vez cada lote, sem dizer que é na hora) |
+| 182 | A remarcação pelo app mostrar o preço do novo horário ou da nova unidade | 41ª, Time E (E03) |
+| 183 | A página Injetáveis não abrir sozinha o primeiro mapa (e não registrar "Quem viu" de todas as clientes listadas ao abrir) | 41ª, Time A (Dra. Valquíria e Dra. Itamara; a PT-04 registra quando o dado vai à tela; ligada à nº 146) |
+| 184 | Avisar, no motivo da desistência, que ele vai ao texto da Auditoria (ele pode falar da saúde da cliente) | 41ª, Time A (A05; AD-15) |
+| 185 | Mostrar o custo do lote também por UI/ml (R$ 9,50/UI) além de por embalagem | 41ª, Time A (Gilmar) |
+| 186 | O cadastro do pacote dizer o preço por sessão ("R$ 120,00 por sessão") | 41ª, Time D (a dona) |
+| 187 | O custo no cadastro do produto (hoje só na entrada de estoque) | 41ª, Time E (a dona; ligada à nº 21) |
+| 188 | A Auditoria da conferência da ficha pela cliente dizer "conferiu" quando ela só confirma ("Está tudo certo") | 41ª, Time C (C09) |
+| 189 | A pré-visualização da ficha seguir o "Mostrar só quando" (esconder o campo até a resposta que o mostra), para a rede testar a condição antes de publicar | 41ª, Time C (A14) |

@@ -814,7 +814,8 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     este com todos os abertos — a conta do fechamento mora num lugar só; o
     `fecharComissoes` sem a lista (chamador antigo) segue pagando tudo. **E cada
     lançamento diz se foi pago**: o extrato e o "Minhas comissões" mostram
-    "Paga em 10/11/2026" ou "A pagar" na linha, e o CSV ganhou a coluna "Pago
+    "Paga em 10/11/2026" ou "A pagar" na linha (o Resumo do Financeiro
+    também: "Paga" / "A pagar", era "Pago" / "Pend." — A11 da 41ª), e o CSV ganhou a coluna "Pago
     em" ao lado da "Situação" (o dia do fechamento dele, `pagoEm` em
     `extratoDasComissoes`). Prova: `e2e/comissoes-pagamento-parcial.spec.ts`.
     **O CSV segue a ordem do tempo e diz a ligação** (A8 da 21ª; princípio

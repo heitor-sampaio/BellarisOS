@@ -49,6 +49,14 @@ export function textoDeQuemRespondeAFicha(quem: string[] | null | undefined): st
 }
 
 /**
+ * A1 da 41ª (AT-05): a faixa "Só para ler" do clínico diz quem escreve — quem
+ * tem o Prontuário em Gerenciar. Sem nomes, nada (a faixa já diz a permissão).
+ */
+export function textoDeQuemEscreveOClinico(quem: string[] | null | undefined): string {
+  return quem?.length ? `Quem escreve: ${emLista(quem)}.` : ''
+}
+
+/**
  * A10 da 20ª (princípio 3): "Completar o cadastro" é de quem edita os
  * Clientes; quem colhe a assinatura sem editar lê quem completa.
  */

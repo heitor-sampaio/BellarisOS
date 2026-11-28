@@ -3,6 +3,7 @@ import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { destinoDaAbaPedida } from '@/lib/relatorios/aba-pedida'
 import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
+import { getCachedNetworkBranches } from '@/lib/cached-queries'
 import {
   ReportsBiSection, type ReportsTab, type ReportsPeriod,
 } from '@/components/admin/reports-bi-section'
@@ -57,11 +58,17 @@ export default async function BranchReportsPage({
 
   // D5 da 34ª (UU-01, D-19): na rede de uma unidade, o que é "por unidade" some aqui também.
   const umaUnidade = await redeTemUmaUnidade(ctx.tenantId!)
+  // D12 da 41ª (FO-07): a unidade da rota é o RECORTE, numa rede que tem as
+  // outras — os cartões que não seguem o recorte (as oportunidades são da
+  // rede) dizem "(rede)", como no `/admin?unidade=`. O cálculo segue só nela.
+  const unidadesDaRede = await getCachedNetworkBranches(ctx.tenantId!)
 
   return (
     <ReportsBiSection
       tenantId={ctx.tenantId!}
       branches={[branch]}
+      todasAsUnidades={unidadesDaRede}
+      selectedBranchId={branch.id}
       tab={(rawTab ?? 'overview') as ReportsTab}
       period={(rawPeriod ?? 'month') as ReportsPeriod}
       rawFrom={rawFrom}

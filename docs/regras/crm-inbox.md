@@ -1519,6 +1519,15 @@ pessoa (`lib/crm/atividade-da-pessoa.ts`).
   uma, ela já vem escolhida e a caixa some. A tag da oportunidade não escolhe nada (o
   A25 da 14ª, `unidadeDaTag`, saiu: não existe tag de unidade). Prova:
   `e2e/tags-sem-unidade.spec.ts` ("AG2").
+  **As unidades da caixa são as da PESSOA, nos dois portais** (D2 da 41ª,
+  OP-35 e CLAUDE.md §11): no portal da unidade, o card usava só a do
+  endereço (a vendedora de duas unidades trocava de portal para agendar na
+  outra), e o inbox oferecia as da rede inteira, também as fora do alcance.
+  Agora as dela, ativas (`unidadesDaPessoa`, `lib/unidades/do-membro.ts`, sobre
+  `unidadesParaCriar`; "A rede inteira" = todas): duas ou mais, a caixa vazia;
+  uma, já escolhida e sem caixa. Prova:
+  `tests/agendar-do-crm-nas-unidades-da-pessoa.test.ts` e
+  `e2e/tags-sem-unidade.spec.ts` ("AG2 (D2 da 41ª)").
 - **Os separadores de dia da conversa são do dia de Brasília** (sobra da F33):
   agrupavam por `created_at.slice(0, 10)`, o dia em UTC — a mensagem das
   23:30 caía no separador do dia seguinte. É `agruparPorDia`

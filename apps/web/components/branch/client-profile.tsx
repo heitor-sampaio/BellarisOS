@@ -61,7 +61,7 @@ import { documentoDoAcesso } from '@/lib/clients/documento-do-acesso'
 import { SituacaoDoEmAberto } from '@/components/shared/situacao-do-em-aberto'
 import { RemarcarVencimento } from '@/components/shared/remarcar-vencimento'
 import { AcoesDoLancamentoDaFicha } from '@/components/shared/acoes-do-lancamento-da-ficha'
-import { textoDaOrigemDoCredito } from '@/lib/creditos/origem'
+import { textoDaOrigemDoCredito, rotuloDaOrigemDoCredito } from '@/lib/creditos/origem'
 import { mesDeClienteDesde } from '@/lib/clientes/cliente-desde'
 import { isoDaLinha } from '@/lib/clientes/ordem-das-transacoes'
 import { emAbertoSemVencimento, SEM_VENCIMENTO } from '@/lib/financeiro/vencimentos'
@@ -1324,9 +1324,11 @@ function FinanceiroTab({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
       {/* KPIs */}
-      <div className="rg-3" style={{ gap: 8 }}>
+      {/* CI-04 (D14 da 41ª): o pago com crédito interno à vista, ao lado do Total pago (não entra nele). */}
+      <div className={pagoComCredito > 0 && creditoTotal != null ? 'kpi-grid' : 'rg-3'} style={{ gap: 8 }}>
         {[
           { chave: 'pago', label: 'TOTAL PAGO',       value: fmtBRL(totalPago),     accent: false },
+          ...(pagoComCredito > 0 ? [{ chave: 'pago-com-credito', label: 'PAGO COM CRÉDITO INTERNO', value: fmtBRL(pagoComCredito), accent: false }] : []),
           { chave: 'a-receber', label: 'A RECEBER',        value: fmtBRL(totalPendente),  accent: totalPendente > 0 },
           ...(creditoTotal == null ? [] : [{ chave: 'credito', label: 'CRÉDITO INTERNO',  value: fmtBRL(creditoTotal),   accent: creditoTotal > 0 }]),
         ].map(k => (
@@ -1549,7 +1551,8 @@ function FinanceiroTab({
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 600, color: 'var(--text)' }}>{c.description}</p>
                 <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 2 }}>
-                  {formatarNoFuso(c.createdAt, "dd/MM/yyyy", fuso)}
+                  {/* CI-04 (D14 da 41ª): de onde veio — o concedido diz que não teve dinheiro. */}
+                  {[rotuloDaOrigemDoCredito(c), formatarNoFuso(c.createdAt, "dd/MM/yyyy", fuso)].filter(Boolean).join(' · ')}
                 </p>
               </div>
               {/* Desde 2026-09-27 o USO do crédito entra negativo (o gatilho

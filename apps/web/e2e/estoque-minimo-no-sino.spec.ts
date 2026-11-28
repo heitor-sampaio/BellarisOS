@@ -133,3 +133,47 @@ test('D1 da 36ª: dois cruzamentos do mínimo antes de a rotina passar são dois
   expect(r2.ok()).toBe(true)
   expect((await avisos()).length, 'a rotina de novo não repete').toBe(2)
 })
+
+/**
+ * D3 da 41ª simulação (NE-04: "Quem causou o fato não recebe o aviso dele"): a
+ * Jussara transferiu 2 Máscaras de Bento para Garibaldi e recebeu os dois
+ * avisos do mínimo. O cruzamento leva quem gravou o movimento
+ * (`estoque_cruzamentos_do_minimo.autor_id`, 20261220400001), e o aviso o
+ * exclui; quem também cuida do estoque recebe.
+ */
+test('NE-04: o aviso do mínimo da transferência não vai a quem transferiu, e vai à colega', async ({ request }) => {
+  const segredo = process.env.CRON_SECRET
+  test.skip(!segredo, 'sem CRON_SECRET')
+  const colega = await criarMembro(`em41c${marca}`, { tenant: rede!.tenantId, rotulo: 'Colega do estoque', permissoes: [{ modulo: 'stock', nivel: 'MANAGE' }] })
+  try {
+    const { data: b, error: eB } = await db().from('branches')
+      .insert({ tenant_id: rede!.tenantId, name: `${PREFIXO} Garibaldi ${marca}`, slug: `e2e-em41-${marca}` })
+      .select('id').single<{ id: string }>()
+    expect(eB).toBeNull()
+    const nome = `${PREFIXO} Kit ${marca}`
+    const { data: p, error } = await db().from('products').insert({
+      tenant_id: rede!.tenantId, name: nome, unit: 'un', min_stock: 3, uso: 'INSUMO', cost_price: 30,
+    }).select('id').single<{ id: string }>()
+    expect(error).toBeNull()
+    const kit = p!.id
+    // 4 un (acima do mínimo de 3), e a transferência de 2 pela estoquista: a origem cruza.
+    expect((await db().rpc('estoque_entrada', {
+      p_produto: kit, p_unidade: rede!.branchId, p_quantidade: 4, p_custo: 30, p_observacao: null,
+      p_lote: null, p_validade: null, p_autor: 'e2e',
+    })).error).toBeNull()
+    expect((await db().rpc('estoque_transferir', {
+      p_produto: kit, p_origem: rede!.branchId, p_destino: b!.id, p_quantidade: 2, p_observacao: null, p_autor: estoquista!.userId,
+    })).error).toBeNull()
+    const { data: fila } = await db().from('estoque_cruzamentos_do_minimo').select('autor_id').eq('product_id', kit).eq('branch_id', rede!.branchId)
+    expect((fila ?? []).map(f => f.autor_id), 'o cruzamento sabe quem transferiu').toEqual([estoquista!.userId])
+
+    const r = await request.get(`/api/cron/estoque-minimo?rede=${rede!.tenantId}`, { headers: { authorization: `Bearer ${segredo}` } })
+    expect(r.ok(), await r.text()).toBe(true)
+    const avisosDe = async (quem: string) => ((await db().from('user_notifications').select('id')
+      .eq('type', 'stock_below_minimum').filter('data->>produto_id', 'eq', kit).eq('user_id', quem)).data ?? []).length
+    await expect.poll(() => avisosDe(colega.userId), 'a colega que cuida do estoque recebe').toBeGreaterThan(0)
+    expect(await avisosDe(estoquista!.userId), 'quem transferiu não recebe o aviso do que fez').toBe(0)
+  } finally {
+    await colega.limpar()
+  }
+})

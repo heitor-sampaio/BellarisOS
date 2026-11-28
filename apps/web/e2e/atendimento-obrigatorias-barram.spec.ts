@@ -268,6 +268,24 @@ test('com o Prontuário em Gerenciar, a ficha de saúde do atendimento se salva 
   expect(await status(id), 'salvar a ficha não conclui').toBe('IN_PROGRESS')
 })
 
+// D4 da 41ª (AT-03, UM4): a evolução que quem tem o Prontuário em Gerenciar, sem
+// o Atendimento, digitava no andamento ficava só na aba dela.
+test('com o Prontuário em Gerenciar e sem o Atendimento, a evolução do andamento se salva sem concluir', async ({ browser }) => {
+  const { id } = await atendimentoEmCurso('Evolução salva')
+  const EVOLUCAO = `Peeling em face inteira ${marca}`
+  const INTERC = `Leve ardência ${marca}`
+  await como(browser, async p => {
+    await p.goto(`/${slug}/agenda/${id}`)
+    await p.getByLabel('Evolução', { exact: true }).fill(EVOLUCAO)
+    await p.getByLabel('Intercorrências', { exact: true }).fill(INTERC)
+    await p.getByRole('button', { name: 'Salvar evolução' }).click()
+    await expect(p.locator('[data-evolucao-salva]')).toBeVisible({ timeout: 15_000 })
+  })
+  await expect.poll(async () => (await db().from('medical_record_entries').select('notes, intercurrences').eq('appointment_id', id)
+    .maybeSingle()).data, { timeout: 15_000 }).toEqual({ notes: EVOLUCAO, intercurrences: INTERC })
+  expect(await status(id), 'salvar a evolução não conclui').toBe('IN_PROGRESS')
+})
+
 test('a anamnese que a cliente respondeu pelo app vale: só a ficha do procedimento falta', async ({ browser }) => {
   const { id, cliente } = await atendimentoEmCurso('PeloApp')
   await responderAnamnese(cliente, rede!.tenantId)

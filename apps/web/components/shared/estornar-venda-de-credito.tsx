@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { formatBRL } from '@estetica-os/utils'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { previaDoEstornoDoCredito, estornarVendaDeCredito } from '@/actions/credito-interno'
-import type { PreviaDoEstornoDoCredito } from '@/lib/creditos/venda-de-credito'
+import { contaDaEscolha, type PreviaDoEstornoDoCredito } from '@/lib/creditos/venda-de-credito'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { textoDoJaUsado } from '@/lib/creditos/bonus'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
@@ -55,18 +55,21 @@ export function EstornarVendaDeCredito({ transacaoId, descricao, onFechar }: {
   }, [transacaoId, bonusComo])
 
   const temBonus = !!previa && previa.bonus > 0
-  // A conta da janela é a da escolha: com bônus, só depois de escolher como ele sai.
-  const contaPronta = !!previa && (!temBonus || !!bonusComo)
-  const pronto = !!previa && contaPronta && previa.volta > 0 && motivo.trim().length > 0 && escolhaCompleta(previa.volta, previa.parcial, escolha) && !faltaMaquininha
+  // A conta da janela é a da escolha: com bônus, só depois de escolher como ele sai — e
+  // só a que o banco fez COM essa escolha (D1 da 41ª: a do inteiro seguia na tela até a
+  // da proporção chegar, e confirmar nesse meio mandava o "volta" errado).
+  const conta = contaDaEscolha(previa, bonusComo)
+  const calculando = temBonus && !!bonusComo && !conta
+  const pronto = !!conta && conta.volta > 0 && motivo.trim().length > 0 && escolhaCompleta(conta.volta, conta.parcial, escolha) && !faltaMaquininha
 
   function confirmar() {
-    if (!previa) return
+    if (!conta) return
     setErro(null)
-    const { estorno, novo } = escolhaParaAAcao(previa.volta, previa.parcial, escolha)
+    const { estorno, novo } = escolhaParaAAcao(conta.volta, conta.parcial, escolha)
     iniciar(async () => {
-      const r = await estornarVendaDeCredito(transacaoId, { motivo: motivo.trim(), estorno, novo, esperado: previa.volta, bonus: temBonus ? bonusComo : null })
+      const r = await estornarVendaDeCredito(transacaoId, { motivo: motivo.trim(), estorno, novo, esperado: conta.volta, bonus: temBonus ? bonusComo : null })
       if (r.error) { setErro(r.error); return }
-      toast.success(`Venda de crédito estornada: ${formatBRL(r.volta ?? previa.volta)} voltam à cliente.`)
+      toast.success(`Venda de crédito estornada: ${formatBRL(r.volta ?? conta.volta)} voltam à cliente.`)
       onFechar()
       router.refresh()
     })
@@ -83,7 +86,7 @@ export function EstornarVendaDeCredito({ transacaoId, descricao, onFechar }: {
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
           <strong style={{ color: 'var(--text)' }}>{descricao}</strong>. Volta à cliente o crédito que ela ainda não usou; o que ela já usou fica pago. Não se desfaz.
         </p>
-        {!previa && !erro && (
+        {(!previa || calculando) && !erro && (
           <p style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>
             <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Calculando…
           </p>
@@ -111,39 +114,39 @@ export function EstornarVendaDeCredito({ transacaoId, descricao, onFechar }: {
             })}
           </div>
         )}
-        {previa && contaPronta && (
+        {conta && (
           <>
             <div data-conta-do-estorno-do-credito style={{
               display: 'flex', flexDirection: 'column', gap: 6, padding: '12px 14px',
               borderRadius: 'var(--radius-field-token)', border: '1px solid var(--border)', background: 'var(--bg-app)',
             }}>
-              <div style={linha}><span>Vendido</span><span style={valor}>{formatBRL(previa.pago)}</span></div>
+              <div style={linha}><span>Vendido</span><span style={valor}>{formatBRL(conta.pago)}</span></div>
               {/* A31 da 12ª: o usado inteiro, e quanto dele foi do bônus. */}
-              <div style={linha}><span>Já usado</span><span data-ja-usado style={{ ...valor, whiteSpace: 'normal', textAlign: 'right' }}>{textoDoJaUsado(previa)}</span></div>
-              {temBonus && <div style={linha}><span>Bônus que sai</span><span style={valor}>{formatBRL(previa.bonusSai)}</span></div>}
+              <div style={linha}><span>Já usado</span><span data-ja-usado style={{ ...valor, whiteSpace: 'normal', textAlign: 'right' }}>{textoDoJaUsado(conta)}</span></div>
+              {temBonus && <div style={linha}><span>Bônus que sai</span><span style={valor}>{formatBRL(conta.bonusSai)}</span></div>}
               {/* Item 6 da auditoria (2026-11-18): o crédito concedido não vira dinheiro. */}
-              {previa.concedidoFica > 0 && (
-                <div data-concedido-fica style={linha}><span>Crédito concedido (fica com a cliente)</span><span style={valor}>{formatBRL(previa.concedidoFica)}</span></div>
+              {conta.concedidoFica > 0 && (
+                <div data-concedido-fica style={linha}><span>Crédito concedido (fica com a cliente)</span><span style={valor}>{formatBRL(conta.concedidoFica)}</span></div>
               )}
               <div style={{ ...linha, borderTop: '1px solid var(--hairline)', paddingTop: 6 }}>
                 <span style={{ color: 'var(--text)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                   <span>Volta à cliente</span>
                   {/* O "como se calcula" mora na dica (2026-11-16); o que não se desfaz fica no topo da janela. */}
                   <Dica rotulo="Como se calcula o que volta">
-                    O que volta é o saldo de crédito dela hoje ({formatBRL(previa.saldo)}), sem o crédito concedido
+                    O que volta é o saldo de crédito dela hoje ({formatBRL(conta.saldo)}), sem o crédito concedido
                     (ele fica com ela e não vira dinheiro), até o que ela pagou
-                    {previa.metodo ? ` (${rotuloDaForma(previa.metodo, previa.vezes)})` : ''}. O crédito que volta sai do saldo dela.
+                    {conta.metodo ? ` (${rotuloDaForma(conta.metodo, conta.vezes)})` : ''}. O crédito que volta sai do saldo dela.
                   </Dica>
                 </span>
-                <span style={valor}>{formatBRL(previa.volta)}</span>
+                <span style={valor}>{formatBRL(conta.volta)}</span>
               </div>
             </div>
-            {previa.volta <= 0 ? (
+            {conta.volta <= 0 ? (
               <p role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
                 O crédito desta venda já foi todo usado: não há o que devolver.
               </p>
-            ) : previa.parcial ? (
-              <EscolhaDaDevolucao prefixo="estorno-credito" devolver={previa.volta} parcial={previa.parcial} fidelidade={false}
+            ) : conta.parcial ? (
+              <EscolhaDaDevolucao prefixo="estorno-credito" devolver={conta.volta} parcial={conta.parcial} fidelidade={false}
                 estado={escolha} aoMudar={setEscolha} desligado={estornando} opcoesDeVezes={opcoesDeVezes} soEstorno />
             ) : null}
           </>

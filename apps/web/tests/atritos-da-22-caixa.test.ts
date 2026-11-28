@@ -261,3 +261,31 @@ describe('A38: a Auditoria', () => {
     expect(leitura).not.toMatch(/r\.tabela === 'financial_transactions' && r\.operacao === 'editou'\s*\n?\s*&& r\.registro_id/)
   })
 })
+
+// ── A10 da 41ª: o dinheiro com o registrado negativo não diz "Bateu" com um contado negativo ──
+// Princípio 3 (a tela e a action dizem a mesma coisa) e FC-02 (o Dinheiro é obrigatório): com −R$ 55,00 na
+// gaveta (entradas R$ 115, saídas R$ 170), digitar "−55" mostrava "Bateu" e o fechar recusava ("Informe o
+// dinheiro contado."): o contado é o dinheiro da gaveta, e não existe negativo. Decisão do Claude, 28/11: o
+// esperado negativo é o que a conta diz, o contado 0 vale (a diferença aparece), e sem contado válido a
+// tela não diz "Bateu".
+describe('FC-06: o contado negativo não mostra "Bateu"', () => {
+  const dinheiro = {
+    forma: 'CASH', entradas: 115, saidas: 170, registrado: -55, conferivel: true, conferido: null, diferenca: null,
+    mudouDepois: false, registradoNoFechamento: null,
+  }
+  it('"−55" no dinheiro: nada na diferença (o fechar recusa o mesmo número)', async () => {
+    const { diferencaNaTela, recusaDoDinheiroContado } = await import('@/lib/financeiro/conferencia-do-fechamento')
+    expect(diferencaNaTela(dinheiro, { conferindo: true, texto: '-55', fechado: false })).toEqual({ tipo: 'nada' })
+    expect(diferencaNaTela(dinheiro, { conferindo: true, texto: '−55,00', fechado: false })).toEqual({ tipo: 'nada' })
+    expect(recusaDoDinheiroContado(-55)).toBe('Informe o dinheiro contado.')
+  })
+  it('contado 0 vale: a diferença aparece', async () => {
+    const { diferencaNaTela, recusaDoDinheiroContado } = await import('@/lib/financeiro/conferencia-do-fechamento')
+    expect(diferencaNaTela(dinheiro, { conferindo: true, texto: '0', fechado: false })).toEqual({ tipo: 'valor', valor: 55 })
+    expect(recusaDoDinheiroContado(0)).toBeNull()
+  })
+  it('nas outras formas, o conferido negativo continua valendo (D3 da 18ª)', async () => {
+    const { diferencaNaTela } = await import('@/lib/financeiro/conferencia-do-fechamento')
+    expect(diferencaNaTela({ ...dinheiro, forma: 'PIX' }, { conferindo: true, texto: '-55', fechado: false })).toEqual({ tipo: 'valor', valor: 0 })
+  })
+})

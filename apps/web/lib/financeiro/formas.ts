@@ -33,9 +33,11 @@ export const FORMAS_DA_DESPESA = ['PIX', 'BOLETO', 'CASH', 'DEBIT_CARD', 'CREDIT
  * o nome quando a rede tem MAIS DE UMA (`maquininhaDoRotulo`); com uma, nada.
  */
 export function rotuloDaForma(
-  metodo: string | null | undefined, vezes?: number | null, opcoes: { longo?: boolean; bandeira?: string | null; maquininha?: string | null } = {},
+  metodo: string | null | undefined, vezes?: number | null, opcoes: { longo?: boolean; bandeira?: string | null; maquininha?: string | null; credito?: string | null } = {},
 ): string {
   if (!metodo) return 'Sem forma de pagamento'
+  // CI-10 (D15 da 41ª): no app, o crédito interno tem o nome da rede ("Crédito em <a rede>", `falaDaRede`).
+  if (metodo === 'INTERNAL_CREDIT' && opcoes.credito) return opcoes.credito
   const nome = (opcoes.longo ? LONGO : CURTO)[metodo] ?? metodo
   const noCartao = metodo === 'CREDIT_CARD' || metodo === 'DEBIT_CARD'
   const daBandeira = noCartao && opcoes.bandeira
@@ -46,6 +48,21 @@ export function rotuloDaForma(
   // (`undefined`: a forma a escolher, ou o lançamento que não se leu), nada — não se chuta número (princípio 4).
   const v = vezes === null ? 1 : vezes
   return (metodo === 'CREDIT_CARD' && v && v >= 1 ? `${nome}${daBandeira} ${v}x` : `${nome}${daBandeira}`) + daMaquininha
+}
+
+/**
+ * Para onde vai o "Estorno" da devolução (CI-04, A7 da 41ª): pago com crédito
+ * interno, volta ao crédito; senão, a forma em que ela pagou, pelo nome. Sem
+ * saber as formas, o texto de sempre.
+ */
+export function ondeVoltaOEstorno(formas?: readonly (string | null | undefined)[] | null): string {
+  const distintas = [...new Set((formas ?? []).filter((f): f is string => !!f))]
+  if (!distintas.length) return 'o dinheiro volta à cliente na forma em que ela pagou'
+  if (distintas.every(f => f === 'INTERNAL_CREDIT')) return 'volta ao crédito interno dela, a forma em que ela pagou'
+  const nomes = distintas.map(f => rotuloDaForma(f))
+  if (nomes.length === 1) return `o dinheiro volta à cliente na forma em que ela pagou (${nomes[0]})`
+  const lista = `${nomes.slice(0, -1).join(', ')} e ${nomes[nomes.length - 1]}`
+  return `o valor volta à cliente nas formas em que ela pagou (${lista})`
 }
 
 /**
@@ -103,8 +120,10 @@ export function taxaQueVale(taxas: { parcelas: number; taxa_pct: number }[], vez
  */
 export function formaDoLancamento(l: {
   metodo: string | null | undefined; vezes?: number | null; bandeira?: string | null; pago: boolean; parcela?: number | null
+  /** CI-10: o nome do crédito interno no app ("Crédito em <a rede>"); sem ele, "Crédito interno" (a equipe). */
+  credito?: string | null
 }): string | null {
-  if (l.metodo) return rotuloDaForma(l.metodo, l.vezes, { bandeira: l.bandeira })
+  if (l.metodo) return rotuloDaForma(l.metodo, l.vezes, { bandeira: l.bandeira, credito: l.credito })
   if (!l.pago && l.parcela) return 'Crediário'
   return null
 }

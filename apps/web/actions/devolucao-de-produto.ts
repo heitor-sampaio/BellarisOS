@@ -104,6 +104,14 @@ export async function previaDaDevolucao(vendaId: string, itens: unknown): Promis
     // A40 da 9ª: "os pontos dele saem do saldo" só quando a venda PONTUOU (a
     // venda de produto só pontua com a opção da clínica ligada).
     if (previa.fidelidade && !await vendaPontuou(admin, vendaId)) previa.fidelidade = false
+    // CI-04 (A7 da 41ª): pago com crédito interno, o "Estorno" diz que volta ao crédito — as formas em que ela pagou.
+    const pagamentos = await ler(admin.from('financial_transactions')
+      .select('payment_method, notes, category, amount, branches!inner(tenant_id)')
+      .eq('branches.tenant_id', ctx.tenantId!).eq('product_sale_id', vendaId).eq('type', 'INCOME').eq('is_paid', true)
+      .limit(100), 'ler as formas da venda') as { payment_method: string | null; notes: string | null; category: string | null; amount: number | string }[] | null
+    previa.formas = [...new Set((pagamentos ?? [])
+      .filter(p => p.notes !== 'Estornada' && p.category !== 'Estorno' && Number(p.amount) > 0 && p.payment_method)
+      .map(p => p.payment_method!))]
     return { previa }
   } catch (e) {
     return { error: mensagemDoErro(e) }

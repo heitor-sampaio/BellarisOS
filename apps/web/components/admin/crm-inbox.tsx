@@ -907,6 +907,8 @@ interface CRMInboxProps {
   leads:                { id: string; name: string; phone?: string | null; branch_name?: string | null }[]
   canEdit:              boolean
   branches:             PanelBranch[]
+  /** As unidades em que a pessoa agenda pelo painel (as dela — OP-35; D2 da 41ª). Sem a lista, `branches`. */
+  unidadesDeAgendar?:   PanelBranch[]
   /** Unidade em que a caixa está aberta — vazio no portal da rede. */
   slug?:                string
   /** Canais que a rede realmente conectou — decide o aviso de integração. */
@@ -1014,7 +1016,7 @@ function mesclarMensagem(lista: Message[], entrada: Message): Message[] {
 
 export function CRMInbox({
   initialConversations, initialTemMais = false, initialCursor = null, initialAguardando = null, opcoesDosFiltros = null,
-  leads, canEdit, branches,
+  leads, canEdit, branches, unidadesDeAgendar,
   slug = '', initialSelectedId = null, canaisConectados = [], podeConfigurarIntegracoes = false,
   numeroDoUsuario = null, telaCheia = false, semNumeroLigado = false,
 }: CRMInboxProps) {
@@ -2408,6 +2410,7 @@ export function CRMInbox({
               conversation={selectedConv}
               canEdit={canEdit}
               branches={branches}
+              unidadesDeAgendar={unidadesDeAgendar}
               slug={slug}
               onLeadChanged={() => { void recarregarLista() }}
               // O cruzamento do handoff: abrir outra thread da mesma pessoa.

@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { getFechamentoDoDia, getAvisosDoFechamento } from '@/lib/metrics'
 import { diaDoFechamento, janelaDoDia, diaAindaAberto } from '@/lib/financeiro/fechamento'
-import { linhasDaConferencia, movimentoDepoisDoFechamento, fechamentoGravadoDaLinha, linkDoCsvDoFechamento } from '@/lib/financeiro/conferencia-do-fechamento'
+import { linhasDaConferencia, fechamentoGravadoDaLinha, linkDoCsvDoFechamento } from '@/lib/financeiro/conferencia-do-fechamento'
 import { normalizarHorario } from '@/lib/agenda/horario'
 import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { comandasDoPdv } from '@/lib/pdv/comandas'
@@ -12,7 +12,7 @@ import { FusoProvider } from '@/components/shared/fuso'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { FechamentoDoDiaTela, type FechamentoFeito } from '@/components/shared/fechamento-do-dia-tela'
 import { CabecalhoDoPdv } from '@/components/shared/pdv/pdv-tela'
-import { getEstornosDoDia, getFechamentoPorQuemRecebeu, getFechamentoPorBandeira, type MovimentoDaUnidade } from '@/lib/metrics/fechamento-extra'
+import { getEstornosDoDia, getFechamentoPorQuemRecebeu, getFechamentoPorBandeira, getMovimentoDepoisDoFechamento, type MovimentoDaUnidade } from '@/lib/metrics/fechamento-extra'
 
 /**
  * O fechamento do dia, DENTRO do PDV (CX4 do plano de adaptação — a revisão
@@ -72,20 +72,21 @@ export async function FechamentoDoDia({ ctx, unidades, unidadeId, diaPedido, bas
   const gravados = (feitos ?? []) as Record<string, unknown>[]
   const ultimo = gravados[0]
   // CX5: o movimento depois do ÚLTIMO fechamento (feche de novo).
-  const avisos = await getAvisosDoFechamento({ ...args, desde: ultimo ? String(ultimo.fechado_em) : null })
+  // D5 da 41ª: o que entrou e o que saiu depois dele são os lançamentos de depois, sem se anular.
+  const [avisos, movimentoDepois] = await Promise.all([
+    getAvisosDoFechamento({ ...args, desde: ultimo ? String(ultimo.fechado_em) : null }),
+    ultimo ? getMovimentoDepoisDoFechamento({ ...args, desde: String(ultimo.fechado_em) }) : null,
+  ])
 
   // CX4: uma linha por forma — o registrado, o conferido e a diferença do último fechamento.
   // D2 da 21ª: a mesma leitura do CSV do fechamento (`fechamentoGravadoDaLinha`).
   const gravado = ultimo ? fechamentoGravadoDaLinha(ultimo) : null
-  const retrato = gravado?.resumo ?? null
   const linhas = linhasDaConferencia({
     formas: resumo.formas, esperadoDinheiro: resumo.esperadoDinheiro,
     // A4 da 18ª: a forma estornada no mesmo dia continua na tabela, com zero.
     estornadoHoje: estornos.mesmoDiaPorForma,
     ultimo: gravado,
   })
-  // A3 da 17ª: o que entrou e o que saiu depois do último fechamento (o dia de agora × o retrato).
-  const movimentoDepois = ultimo ? movimentoDepoisDoFechamento(resumo.formas, retrato) : null
 
   const recebe = podeReceber(ctx)
   return (

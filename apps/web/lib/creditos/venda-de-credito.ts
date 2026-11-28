@@ -22,6 +22,8 @@ export interface PreviaDoEstornoDoCredito {
   bonusSai: number
   /** As duas formas de o bônus sair, com o que volta em cada uma (do banco). */
   opcoesDoBonus: { INTEIRO: { volta: number; bonusSai: number }; PROPORCIONAL: { volta: number; bonusSai: number } } | null
+  /** D1 da 41ª: a escolha do bônus com que o banco fez ESTA conta (nula sem escolha, ou sem bônus). */
+  bonusComo: 'INTEIRO' | 'PROPORCIONAL' | null
   /**
    * O crédito CONCEDIDO (o "Conceder crédito", o bônus de outra venda) que está no
    * saldo e fica com a cliente: não volta em dinheiro (auditoria das regras,
@@ -52,8 +54,25 @@ export function lerPreviaDoEstornoDoCredito(v: unknown): PreviaDoEstornoDoCredit
     bonus:    num(j.bonus),
     bonusSai: num(j.bonus_sai),
     concedidoFica: num(j.concedido_fica),
+    bonusComo: j.bonus_como === 'INTEIRO' || j.bonus_como === 'PROPORCIONAL' ? j.bonus_como : null,
     opcoesDoBonus: j.opcoes_do_bonus && typeof j.opcoes_do_bonus === 'object'
       ? { INTEIRO: opcao((j.opcoes_do_bonus as Record<string, unknown>).INTEIRO), PROPORCIONAL: opcao((j.opcoes_do_bonus as Record<string, unknown>).PROPORCIONAL) }
       : null,
   }
+}
+
+/**
+ * A conta que a janela mostra e manda ao banco como o "esperado" (D1 da 41ª
+ * simulação; CI-08). Na venda com bônus, só a conta que o banco fez COM a
+ * escolha marcada: ao marcar "Na proporção", a janela seguia com a simulação
+ * anterior (a do inteiro) até a nova chegar, e confirmar nesse meio mandava o
+ * "volta" do inteiro — o banco calculava o da proporção e recusava ("Os valores
+ * do crédito mudaram…"). Nula: ainda calculando (ou sem escolha).
+ */
+export function contaDaEscolha(
+  previa: PreviaDoEstornoDoCredito | null, bonusComo: 'INTEIRO' | 'PROPORCIONAL' | null,
+): PreviaDoEstornoDoCredito | null {
+  if (!previa) return null
+  if (!(previa.bonus > 0)) return previa
+  return bonusComo && previa.bonusComo === bonusComo ? previa : null
 }

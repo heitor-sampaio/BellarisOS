@@ -25,6 +25,16 @@ export function unidadesDoMembro(m: { branchId: string | null; outrasUnidades?: 
 }
 
 /**
+ * Das unidades da lista (as ativas, de `unidadesParaCriar`), as da PESSOA:
+ * todas para "A rede inteira" (null), senão só as dela, na ordem da lista.
+ * É a caixa do "Agendar" do card e do inbox (OP-35; D2 da 41ª).
+ */
+export function unidadesDaPessoa<T extends { id: string }>(lista: T[], minhas: string[] | null): T[] {
+  if (minhas === null) return lista
+  return lista.filter(u => minhas.includes(u.id))
+}
+
+/**
  * O membro (a linha de `users`) alcança a unidade? A rede inteira, a principal
  * ou uma das outras (D1 da 17ª simulação: "Quem vendeu" e a trava da venda
  * olhavam só a principal).

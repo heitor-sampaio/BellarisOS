@@ -1,7 +1,9 @@
 import { notFound } from 'next/navigation'
 import { motivosDaRede } from '@/lib/crm/motivos-perda'
 import { origensDaRede } from '@/lib/crm/origens'
-import { getTenantContext, assertPermission, can, assertRecurso, temRecurso, alcancaUnidade } from '@/lib/auth'
+import { getTenantContext, assertPermission, can, assertRecurso, temRecurso, alcancaUnidade, unidadesDoContexto } from '@/lib/auth'
+import { unidadesParaCriar } from '@/lib/unidades/da-tela'
+import { unidadesDaPessoa } from '@/lib/unidades/do-membro'
 import { avisoDosFunis, mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { seedDefaultFunnel, listAllStages } from '@/lib/crm/funis'
@@ -185,6 +187,10 @@ export default async function BranchOportunidadesPage({
   // E é da rede toda: só a Admin da rede configura (o Heitor, 18/11: "só pela
   // conta admin"; era quem tinha "A rede inteira", H7).
   const podeConfigurar = can(ctx, 'settings', 'MANAGE') && mexeNaConfigDaRede(ctx)
+  const podeAgendar = can(ctx, 'crm', 'MANAGE') && can(ctx, 'agenda', 'MANAGE') && temRecurso(ctx, 'agenda')
+  // O "Agendar" do card nas unidades da PESSOA (D2 da 41ª, OP-35): com duas
+  // ou mais, a janela pede a unidade; com uma, é ela.
+  const unidadesDeAgendar = podeAgendar ? unidadesDaPessoa(await unidadesParaCriar(ctx.tenantId!), unidadesDoContexto(ctx)) : []
 
   return (
     <div className="crm-page" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -257,7 +263,8 @@ export default async function BranchOportunidadesPage({
         slug={slug}
         leadAberto={leadAberto}
         podeCadastrarCliente={can(ctx, 'clients', 'MANAGE')}
-        podeAgendar={can(ctx, 'crm', 'MANAGE') && can(ctx, 'agenda', 'MANAGE') && temRecurso(ctx, 'agenda')}
+        podeAgendar={podeAgendar}
+        unidadesDeAgendar={unidadesDeAgendar}
         podeMover={can(ctx, 'crm', 'MANAGE')}
         tagsDaRede={await comAsArquivadasEmUso(ctx.tenantId!, tagsAtivasDaRede(ctx.tenantId!))}
       />

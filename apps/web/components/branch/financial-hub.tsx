@@ -311,7 +311,7 @@ function CommissionsCard({ entries }: { entries: CommissionEntry[] }) {
                           color:      item.isPaid ? 'var(--success)' : 'var(--warning)',
                           border:     `1px solid ${item.isPaid ? 'var(--success-border)' : 'var(--warning-border)'}`,
                         }}>
-                          {item.isPaid ? 'Pago' : 'Pend.'}
+                          {item.isPaid ? 'Paga' : 'A pagar'}
                         </span>
                       </div>
                     </div>

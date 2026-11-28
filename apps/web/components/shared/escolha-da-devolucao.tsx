@@ -2,7 +2,7 @@
 
 import { formatBRL } from '@estetica-os/utils'
 import type { ComoEstornar, DestinoDaDevolucao, PagamentoEmParte } from '@/lib/pacotes/cancelamento'
-import { rotuloDaForma } from '@/lib/financeiro/formas'
+import { rotuloDaForma, ondeVoltaOEstorno } from '@/lib/financeiro/formas'
 import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
 import { CampoDaBandeira, useFaltaAMaquininha } from '@/components/shared/campo-da-bandeira'
 
@@ -80,7 +80,9 @@ export function useFaltaAMaquininhaDoUsado(e: EscolhaDaDevolucaoEstado): string 
  * estorno parcial fica desligado, com o motivo (r2-fin-03), e o inteiro já
  * vem escolhido (quem abre a janela o marca ao ler a prévia).
  */
-export function EscolhaDaDevolucao({ prefixo, devolver, parcial, fidelidade, estado, aoMudar, desligado, opcoesDeVezes, soEstorno = false }: {
+export function EscolhaDaDevolucao({ prefixo, devolver, parcial, fidelidade, estado, aoMudar, desligado, opcoesDeVezes, soEstorno = false, formas }: {
+  /** CI-04 (A7 da 41ª): as formas em que ela pagou — o "Estorno" diz para onde volta. Sem elas, o texto de sempre. */
+  formas?:       readonly (string | null)[] | null
   /** O prefixo dos ids dos grupos ("cancelar-pacote", "cancelar-unidade"). */
   prefixo:       string
   devolver:      number
@@ -107,7 +109,7 @@ export function EscolhaDaDevolucao({ prefixo, devolver, parcial, fidelidade, est
         <label style={opcao}>
           <input type="radio" name={`${prefixo}-destino`} checked={estado.destino === 'ESTORNO'} disabled={desligado}
             onChange={() => muda({ destino: 'ESTORNO' })} style={{ accentColor: 'var(--brand)', marginTop: 3 }} />
-          <span>Estorno <span style={{ color: 'var(--text-muted)' }}>— o dinheiro volta à cliente na forma em que ela pagou{fidelidade ? ', e os pontos dele saem do saldo' : ''}</span></span>
+          <span>Estorno <span style={{ color: 'var(--text-muted)' }}>— {ondeVoltaOEstorno(formas)}{fidelidade ? ', e os pontos dele saem do saldo' : ''}</span></span>
         </label>
         <label style={opcao}>
           <input type="radio" name={`${prefixo}-destino`} checked={estado.destino === 'CREDITO'} disabled={desligado}

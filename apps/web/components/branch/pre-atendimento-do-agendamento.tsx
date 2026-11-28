@@ -51,12 +51,18 @@ export function PreAtendimentoDoAgendamento({ appointmentId, slug, podeMandar }:
   const naoEnviada = situacao.estado === 'NAO_ENVIADA'
   if (naoEnviada && !podeMandar) return null
 
-  if (situacao.estado === 'RESPONDIDO') {
+  const respondida = situacao.estado === 'RESPONDIDO'
+  const seloDaRespondida = (
+    <span className="chip chip-success">
+      Ficha de saúde respondida{situacao.respondidoEm ? ` em ${formatDate(situacao.respondidoEm, fuso)}` : ''}
+    </span>
+  )
+  // D16 da 41ª (FI-14, "sempre"): a respondida para este agendamento é só o selo
+  // para quem não manda; quem tem a Agenda em Gerenciar manda de novo daqui.
+  if (respondida && !podeMandar) {
     return (
       <div data-pre-atendimento-do-agendamento className="pre-atendimento-agendamento">
-        <span className="chip chip-success">
-          Ficha de saúde respondida{situacao.respondidoEm ? ` em ${formatDate(situacao.respondidoEm, fuso)}` : ''}
-        </span>
+        {seloDaRespondida}
       </div>
     )
   }
@@ -111,7 +117,7 @@ export function PreAtendimentoDoAgendamento({ appointmentId, slug, podeMandar }:
 
   // Como o link funciona: mora na dica do chip (2026-11-16, "A explicação mora na
   // dica"). Sem CPF, o "complete a data de nascimento" pede uma ação: fica à vista.
-  const comoFunciona = naoEnviada && !link && !enviado
+  const comoFunciona = (naoEnviada || respondida) && !link && !enviado
     ? 'Enviar a ficha gera o link: ela confirma o CPF (ou o nascimento) e responde pelo celular — e, se tiver o app, a ficha aparece lá também.'
     : 'A cliente recebe no app. Sem o app, mande o link: ela confirma o CPF (ou o nascimento) e responde pelo celular.'
 
@@ -119,7 +125,7 @@ export function PreAtendimentoDoAgendamento({ appointmentId, slug, podeMandar }:
     <div data-pre-atendimento-do-agendamento className="pre-atendimento-agendamento">
       <div className="pre-atendimento-agendamento-topo">
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          {naoEnviada && !link && !enviado ? (
+          {respondida && !link && !enviado ? seloDaRespondida : naoEnviada && !link && !enviado ? (
             <span className="chip chip-muted">
               <ClipboardList size={12} aria-hidden="true" /> Ficha de saúde
             </span>

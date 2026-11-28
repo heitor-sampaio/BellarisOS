@@ -46,6 +46,8 @@ export async function avisarEstoqueMinimo(admin: Admin, opcoes: { tenantId?: str
   type Cruzamento = {
     id: string; branch_id: string; product_id: string; cruzou_em: string
     current_stock: Num; current_rendimento: Num | null; min_stock: Num
+    /** Quem gravou o movimento que cruzou (D3 da 41ª, NE-04); nulo = sem autor. */
+    autor_id?: string | null
     branch_product_stock: {
       minimo_avisado_em: string | null
       products: { name: string; unit: string; consumption_unit: string | null; units_per_package: Num | null; is_active: boolean; min_stock: Num | null } | null
@@ -53,7 +55,7 @@ export async function avisarEstoqueMinimo(admin: Admin, opcoes: { tenantId?: str
   }
   const fila = await lerTodas<Cruzamento>((de, ate) => {
     let q = admin.from('estoque_cruzamentos_do_minimo')
-      .select('id, branch_id, product_id, cruzou_em, current_stock, current_rendimento, min_stock, branch_product_stock!inner(minimo_avisado_em, products!inner(name, unit, consumption_unit, units_per_package, is_active, min_stock))')
+      .select('id, branch_id, product_id, cruzou_em, current_stock, current_rendimento, min_stock, autor_id, branch_product_stock!inner(minimo_avisado_em, products!inner(name, unit, consumption_unit, units_per_package, is_active, min_stock))')
       .is('avisado_em', null)
     if (opcoes.tenantId) q = q.eq('tenant_id', opcoes.tenantId)
     return q.order('cruzou_em').order('id').range(de, ate) as unknown as PromiseLike<{ data: Cruzamento[] | null; error: { message: string } | null }>
@@ -82,9 +84,11 @@ export async function avisarEstoqueMinimo(admin: Admin, opcoes: { tenantId?: str
     // A15 da 14ª: o mínimo herdado do cadastro diz "(do cadastro)", como na tela.
     const textoDoMinimo = rotuloDoMinimo(minimoParaMostrar(saldo, medidas), minimoEhDoCadastro(saldo.minimo, p.min_stock != null ? Number(p.min_stock) : null))
     await notificarInteressados(admin,
-      // Sem envolvido direto: estoque não é "de" ninguém. E sem ator: o saldo
-      // pode ter caído por um atendimento de terceiros.
-      { modulo: 'stock', branchId: c.branch_id },
+      // Sem envolvido direto: estoque não é "de" ninguém. O ator é quem gravou
+      // o movimento que cruzou (D3 da 41ª, NE-04: "Quem causou o fato não
+      // recebe o aviso dele") — a transferência, a entrada, quem concluiu o
+      // atendimento; sem autor (o mínimo salvo à mão), vai a todos.
+      { modulo: 'stock', branchId: c.branch_id, ...(c.autor_id ? { ator: c.autor_id } : {}) },
       {
         type:  'stock_below_minimum',
         title: `Estoque ${ROTULO_DA_SITUACAO[situacao].toLowerCase()}`,

@@ -1591,6 +1591,11 @@ mudou, pelos princípios (3: o que a tela mostra é o que vale; 4: não chutar):
   rede), e só os agendamentos do comercial (e o comparecimento) respeitam o recorte
   (`painelComercial`). Com uma unidade escolhida, numa rede de mais de uma, os dois cartões
   que não seguem o recorte se chamam "Conversão (rede)" e "Oportunidades recebidas (rede)".
+  No portal da unidade também (D12 da 41ª; decisão do Claude, 28/11, pela própria regra): a
+  unidade da rota é o recorte (`selectedBranchId`, e as unidades ativas da rede em
+  `todasAsUnidades`); na rede de uma unidade, sem "(rede)". Prova:
+  `tests/relatorios-oportunidades-da-rede-no-portal-da-unidade.test.ts`,
+  `e2e/relatorios-conversao-funis-ativos.spec.ts` ("FO-07").
   Sem nota explicando o recorte (o Heitor, 26/11: "isso não é ser intuitivo, é ser explicativo e não isso que eu quero"). O recorte fica: ele recorta os agendamentos. Prova:
   `tests/telas-sem-texto-que-explica.test.ts`. O QUADRO de
   oportunidades não tem recorte por unidade: as duas páginas não leem `?unidade=`

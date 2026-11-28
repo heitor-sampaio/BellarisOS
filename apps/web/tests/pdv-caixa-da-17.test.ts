@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { linhasDaConferencia, movimentoDepoisDoFechamento, textoDoMovimentoDepois } from '@/lib/financeiro/conferencia-do-fechamento'
 import { filtroDosMembrosDaUnidade, membroAlcancaAUnidade } from '@/lib/unidades/do-membro'
@@ -139,6 +139,35 @@ describe('A3: o aviso diz se entrou ou saiu, e quanto', () => {
   })
   it('sem diferença no retrato, a frase não inventa número', () => {
     expect(textoDoMovimentoDepois({ entrou: 0, saiu: 0 }, '21:23')).toBe('Houve movimento depois do fechamento das 21:23: confira e feche de novo.')
+  })
+})
+
+// ─── D5 da 41ª: o X e o Y do aviso são o que se moveu depois, sem se anular ──
+// FC-08 ("(entrou R$ X e saiu R$ Y)… o estorno conta como 'saiu'"), decisão do Claude, 28/11 (pela FC-08 e
+// pela FC-11): X é todo dinheiro que entrou no caixa depois do retrato (os recebimentos novos e o estorno
+// de uma despesa); Y, os estornos às clientes e as saídas novas. O aviso dizia "entrou R$ 85,00 e saiu
+// R$ 255,00" para o Pix novo de R$ 150 + a despesa estornada de R$ 85 (entrou R$ 235) e os estornos de
+// R$ 150, R$ 165 e R$ 90 (saiu R$ 405): a soma do dia contra o retrato deixava o estorno do débito de
+// hoje anular o Pix novo. A conta são os lançamentos depois do fechamento, no banco.
+describe('FC-08: o aviso do movimento depois do fechamento soma os lançamentos de depois', () => {
+  const pagina = ler('app/_shared/fechamento-do-dia.tsx')
+  it('a página lê o movimento de lib/metrics, não da soma do dia contra o retrato', () => {
+    expect(pagina).toMatch(/getMovimentoDepoisDoFechamento\(/)
+    expect(pagina).not.toMatch(/movimentoDepoisDoFechamento\(resumo\.formas/)
+    expect(ler('lib/metrics/fechamento-extra.ts')).toMatch(/rpc\('metrics_movimento_depois_do_fechamento'/)
+  })
+  it('o banco separa: o recebimento e o estorno da despesa entram; a saída e o estorno à cliente saem', () => {
+    const pasta = join(WEB, '..', '..', 'supabase', 'migrations')
+    const arquivo = readdirSync(pasta).find(f => /^202612201\d{5}_/.test(f) && readFileSync(join(pasta, f), 'utf8').includes('metrics_movimento_depois_do_fechamento'))
+    expect(arquivo).toBeTruthy()
+    const sql = readFileSync(join(pasta, arquivo!), 'utf8')
+    // A receita nova e o estorno de uma despesa: entrou; a despesa nova e o estorno de uma receita: saiu.
+    expect(sql).toMatch(/filter \(where \(tipo = 'INCOME'\) <> estorno\)/)
+    expect(sql).toMatch(/filter \(where \(tipo = 'INCOME'\) = estorno\)/)
+    // O crédito interno não é dinheiro do caixa (FC-11).
+    expect(sql).toMatch(/payment_method is distinct from 'INTERNAL_CREDIT'/)
+    expect(sql).toMatch(/revoke execute on function public\.metrics_movimento_depois_do_fechamento/)
+    expect(sql.trimEnd()).toMatch(/notify pgrst, 'reload schema';$/)
   })
 })
 

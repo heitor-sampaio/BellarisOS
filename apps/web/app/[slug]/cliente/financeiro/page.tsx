@@ -10,7 +10,8 @@ import { formaDoLancamento } from '@/lib/financeiro/formas'
 import { juntarAsFormasDaParcela, formaERecibosDaLinha } from '@/lib/financeiro/formas-da-parcela'
 import { vendaDeProdutoNaoPontua } from '@/lib/fidelidade/leitura'
 import { ordemDosPagamentosDoApp } from '@/lib/clientes/ordem-dos-pagamentos'
-import { notaDoEstornoParcialParaACliente } from '@/lib/financeiro/notas-do-lancamento'
+import { notaDoPagamentoQueVoltouParaACliente } from '@/lib/financeiro/notas-do-lancamento'
+import { creditoDasDevolucoesDosLancamentos } from '@/lib/financeiro/devolucao-em-credito'
 import { nomeDoPlanoNoApp, descontoDoPlanoNoApp } from '@/lib/plano-de-tratamento/nome'
 import { fusoValido } from '@/lib/unidades/fuso'
 import { getAtendimentosAReceber } from '@/lib/metrics/a-receber'
@@ -107,6 +108,10 @@ export default async function ClientFinancialPage({ params }: { params: Promise<
   const dosPlanos = await procedimentosDosPlanos((data ?? []).map(r => (r as { treatment_plan_id: string | null }).treatment_plan_id))
   // D7 da 39ª (AG-56, princípio 3): o pago com desconto diz o desconto — o mesmo texto da equipe e do recibo.
   const descontos = await descontosDosLancamentos((data ?? []) as unknown as LancamentoLido[])
+  // D6 da 41ª (EX-11, PR-08): a parte da venda devolvida que virou crédito diz que virou.
+  const emCredito = fichaDaRede
+    ? await creditoDasDevolucoesDosLancamentos(fichaDaRede.tenant_id as string, (data ?? []) as { product_sale_id?: string | null }[])
+    : {}
   // D8 da 36ª (CR-07): a parcela paga em várias formas é UMA linha, como na equipe.
   const rows: TxRow[] = juntarAsFormasDaParcela((data ?? []) as unknown as LancamentoLido[]).map(r => ({
     id:             r.id,
@@ -124,7 +129,7 @@ export default async function ClientFinancialPage({ params }: { params: Promise<
     procedure_name: nomeDaLinhaDoLancamento(r.appointments?.procedures?.name, { numero: r.parcela_numero, total: r.parcela_total, descricao: r.description })
       ?? (r.treatment_plan_id ? nomeDaLinhaDoPlano(dosPlanos.get(r.treatment_plan_id) ?? [], r.description) : null),
     estornado:      r.notes === 'Estornada',
-    ...formaERecibosDaLinha(r, formaDoLancamento({ metodo: r.payment_method, vezes: r.cartao_vezes, bandeira: r.cartao_bandeira, pago: Boolean(r.is_paid), parcela: r.parcela_numero })),
+    ...formaERecibosDaLinha(r, formaDoLancamento({ metodo: r.payment_method, vezes: r.cartao_vezes, bandeira: r.cartao_bandeira, pago: Boolean(r.is_paid), parcela: r.parcela_numero, credito: creditoNaRede }), creditoNaRede),
     semPontos:      produtoNaoPontua && !!r.product_sale_id && Boolean(r.is_paid) && r.notes !== 'Estornada',
     estorno:        r.type === 'EXPENSE' && r.category === 'Estorno',
     pacoteCancelado: r.client_packages?.cancelado_em ?? null,
@@ -135,7 +140,7 @@ export default async function ClientFinancialPage({ params }: { params: Promise<
     // O do plano já diz o desconto na linha do plano ("com desconto de R$ 70,00 no total").
     desconto: r.treatment_plans || r.notes === 'Estornada' || r.category === 'Estorno' ? null : descontos[r.id] ?? null,
     devolvidoEmParte: r.type === 'INCOME' && r.category !== 'Estorno'
-      ? notaDoEstornoParcialParaACliente({ type: r.type, amount: r.amount, is_paid: Boolean(r.is_paid), notes: r.notes, valor_antes_do_estorno: r.valor_antes_do_estorno })
+      ? notaDoPagamentoQueVoltouParaACliente({ type: r.type, amount: r.amount, is_paid: Boolean(r.is_paid), notes: r.notes, valor_antes_do_estorno: r.valor_antes_do_estorno }, emCredito[r.id] ?? 0, creditoNaRede)
       : null,
   }))
     // D4 da 7ª simulação: as parcelas apareciam com a data de CRIAÇÃO (todas

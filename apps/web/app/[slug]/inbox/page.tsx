@@ -2,7 +2,8 @@ import { notFound, redirect } from 'next/navigation'
 import { conversaDoEnderecoForaDoAlcance } from '@/lib/inbox/conversa-do-endereco'
 import { comAviso } from '@/lib/aviso-da-url'
 import { unidadesParaCriar } from '@/lib/unidades/da-tela'
-import { getTenantContext, assertPermission, can, assertRecurso, alcancaUnidade } from '@/lib/auth'
+import { getTenantContext, assertPermission, can, assertRecurso, alcancaUnidade, unidadesDoContexto } from '@/lib/auth'
+import { unidadesDaPessoa } from '@/lib/unidades/do-membro'
 import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { caixasDoAlcance } from '@/lib/inbox/alcance'
 import { semNumeroLigado } from '@/lib/inbox/aviso-sem-numero'
@@ -64,6 +65,9 @@ export default async function BranchInboxPage({
 
   // A unidade do contato e do agendar pelo inbox: as ATIVAS (lib/unidades/da-tela).
   const branches = await unidadesParaCriar(ctx.tenantId!)
+  // O agendar pelo inbox, nas unidades da PESSOA (D2 da 41ª, OP-35): quem não
+  // tem "A rede inteira" só agenda nas dela (CLAUDE.md §11).
+  const unidadesDeAgendar = unidadesDaPessoa(branches, unidadesDoContexto(ctx))
 
   // Todas, em páginas (2026-10-22): com o corte de 1000 do PostgREST, as
   // oportunidades mais antigas não podiam ser escolhidas.
@@ -105,6 +109,7 @@ export default async function BranchInboxPage({
         leads={inboxLeads}
         canEdit={can(ctx, 'crm', 'MANAGE')}
         branches={branches}
+        unidadesDeAgendar={unidadesDeAgendar}
         slug={slug}
         initialSelectedId={convParam ?? null}
         canaisConectados={canais.canais}

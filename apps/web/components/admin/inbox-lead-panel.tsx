@@ -179,6 +179,7 @@ export function InboxLeadPanel({
   conversation,
   canEdit,
   branches,
+  unidadesDeAgendar,
   slug,
   onLeadChanged,
   onAbrirConversa,
@@ -186,6 +187,8 @@ export function InboxLeadPanel({
   conversation:   Conversation
   canEdit:        boolean
   branches:       PanelBranch[]
+  /** As unidades em que a pessoa agenda (as dela — OP-35; D2 da 41ª). Sem a lista, `branches`. */
+  unidadesDeAgendar?: PanelBranch[]
   /**
    * Unidade em que o painel está — vazio no portal da rede.
    *
@@ -720,7 +723,7 @@ export function InboxLeadPanel({
           clienteId={cliente?.id ?? null}
           contatoInicial={{ nome, telefone }}
           procedimentosDeInteresse={(card.abertas.find(o => o.id === (scheduling || card.abertas[0]?.id))?.procedure_ids) ?? []}
-          branches={branches}
+          branches={unidadesDeAgendar ?? branches}
           onClose={() => setScheduling(null)}
           onScheduled={() => { setScheduling(null); void recarregar(); setHistoricoKey(k => k + 1); onLeadChanged?.() }}
         />

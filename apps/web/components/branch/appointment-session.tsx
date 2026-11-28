@@ -1,7 +1,7 @@
 'use client'
 
 import { useHidratado } from '@/lib/use-hidratado'
-import { textoDeQuemMarcaAChegada, textoDeQuemRecebe, textoDeQuemConclui, textoDeQuemRespondeAFicha } from '@/lib/equipe/textos-de-quem-pode'
+import { textoDeQuemMarcaAChegada, textoDeQuemRecebe, textoDeQuemConclui, textoDeQuemRespondeAFicha, textoDeQuemEscreveOClinico } from '@/lib/equipe/textos-de-quem-pode'
 import { AcoesDoLancamentoDaFicha } from '@/components/shared/acoes-do-lancamento-da-ficha'
 import { textoDasNotas, type NotaNaTela } from '@/lib/avaliacao/notas'
 import { Fragment, useActionState, useState, useRef, useMemo, useEffect, useSyncExternalStore, type ReactNode } from 'react'
@@ -918,10 +918,41 @@ function InsumoCard({ items, available, lotes, checkedIds, onToggle, onChangeQty
  */
 const CAMPO_SO_LEITURA = { resize: 'none', background: 'var(--bg-app)', cursor: 'default' } as const
 
-function ObservacoesCard({ notes, intercurrences, onNotesChange, onIntercurrencesChange, readonly }: {
+/**
+ * O "Salvar evolução" do atendimento em andamento (D4 da 41ª; AT-03, UM4): quem
+ * escreve o clínico grava a evolução e a intercorrência ali mesmo, sem
+ * depender do "Finalizar" de quem conclui.
+ */
+interface SalvarDaEvolucao {
+  onSalvar: () => void
+  salvando: boolean
+  salvo: boolean
+  erro: string | null
+}
+
+function BotaoSalvarEvolucao({ salvar }: { salvar: SalvarDaEvolucao }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+      <button type="button" data-salvar-evolucao onClick={salvar.onSalvar} disabled={salvar.salvando} className="btn-primary" style={{ fontSize: 'var(--text-base-sz)' }}>
+        {salvar.salvando ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+        {salvar.salvando ? 'Salvando…' : 'Salvar evolução'}
+      </button>
+      {salvar.salvo && !salvar.salvando && (
+        <span data-evolucao-salva role="status" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-sm-sz)', color: 'var(--success)', fontWeight: 700 }}>
+          <CheckCircle2 size={13} aria-hidden="true" /> Salvo
+        </span>
+      )}
+      {salvar.erro && <p role="alert" style={{ color: 'var(--danger)', fontSize: 'var(--text-sm-sz)', fontWeight: 600 }}>{salvar.erro}</p>}
+    </div>
+  )
+}
+
+function ObservacoesCard({ notes, intercurrences, onNotesChange, onIntercurrencesChange, readonly, salvar }: {
   notes: string; intercurrences: string
   onNotesChange: (v: string) => void; onIntercurrencesChange: (v: string) => void
   readonly: boolean
+  /** O "Salvar evolução" (D4 da 41ª); sem ele, o cartão não tem botão (o "Salvar" de fora, ou o "Finalizar"). */
+  salvar?: SalvarDaEvolucao | null
 }) {
   return (
     <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -941,6 +972,7 @@ function ObservacoesCard({ notes, intercurrences, onNotesChange, onIntercurrence
             placeholder={readonly ? '—' : 'Reações, intercorrências ou observações…'}
             className="field" style={readonly ? CAMPO_SO_LEITURA : { resize: 'vertical' }} />
         </div>
+        {salvar && !readonly && <BotaoSalvarEvolucao salvar={salvar} />}
       </div>
     </div>
   )
@@ -1105,6 +1137,21 @@ export function AppointmentSession({
   // para o segundo — vazio — e o "Finalizar" levava o vazio ao prontuário.
   const [notes,          setNotes]          = useState(appointment.savedNotes ?? '')
   const [intercurrences, setIntercurrences] = useState(appointment.savedIntercurrences ?? '')
+  // D4 da 41ª (AT-16; decisão do Claude, 28/11): quem tem o Prontuário em
+  // Gerenciar e não conclui salva a evolução no andamento, e a tela de quem
+  // conclui recarrega pelo sinal do prontuário. O campo que ESTA tela não mexeu
+  // passa a mostrar o gravado; o que ela mexeu fica (o "Finalizar" leva o que
+  // está na tela de quem conclui).
+  const [notasGravadas, setNotasGravadas] = useState(appointment.savedNotes ?? '')
+  const [intercorrenciasGravadas, setIntercorrenciasGravadas] = useState(appointment.savedIntercurrences ?? '')
+  if ((appointment.savedNotes ?? '') !== notasGravadas) {
+    setNotasGravadas(appointment.savedNotes ?? '')
+    if (notes === notasGravadas) setNotes(appointment.savedNotes ?? '')
+  }
+  if ((appointment.savedIntercurrences ?? '') !== intercorrenciasGravadas) {
+    setIntercorrenciasGravadas(appointment.savedIntercurrences ?? '')
+    if (intercurrences === intercorrenciasGravadas) setIntercurrences(appointment.savedIntercurrences ?? '')
+  }
   const evalSessionNotes  = notes
   const evalSessionInterc = intercurrences
   const setEvalSessionNotes  = setNotes
@@ -1350,6 +1397,35 @@ export function AppointmentSession({
     setSavedAllAt(Date.now())
     router.refresh()
   }
+
+  // D4 da 41ª (AT-03, UM4): a evolução e a intercorrência se salvam no
+  // andamento, pela action da evolução (o Prontuário em Gerenciar e o alcance).
+  const [salvandoEvolucao, setSalvandoEvolucao] = useState(false)
+  const [evolucaoSalva,    setEvolucaoSalva]    = useState(false)
+  const [erroDaEvolucao,   setErroDaEvolucao]   = useState<string | null>(null)
+  async function salvarEvolucao() {
+    setSalvandoEvolucao(true); setErroDaEvolucao(null); setEvolucaoSalva(false)
+    const fd = new FormData()
+    fd.set('appointment_id', appointment.id)
+    fd.set('notes', notes)
+    fd.set('intercurrences', intercurrences)
+    const r = await saveDraftNotes(null, fd)
+    setSalvandoEvolucao(false)
+    if (r?.error) { setErroDaEvolucao(r.error); return }
+    // O gravado agora é o da tela: o recarregar não o troca.
+    setNotasGravadas(notes.trim()); setIntercorrenciasGravadas(intercurrences.trim())
+    setEvolucaoSalva(true)
+    router.refresh()
+  }
+  // O formulário da avaliação e o do plano gerado não têm o "Salvar" de fora:
+  // quem escreve o clínico salva a evolução no cartão dela, antes de concluir.
+  const salvarDaEvolucao = !isDone && canEditRecords
+    ? {
+        onSalvar: salvarEvolucao, salvando: salvandoEvolucao, erro: erroDaEvolucao,
+        // "Salvo" enquanto a tela for o que se gravou.
+        salvo: evolucaoSalva && notes.trim() === notasGravadas && intercurrences.trim() === intercorrenciasGravadas,
+      }
+    : null
 
   // Qual formulário de evolução está à vista (o mesmo critério do corpo da página).
   const usaFormularioDaAvaliacao = !isPartOfPlan && podeMontarPlano
@@ -1628,6 +1704,9 @@ export function AppointmentSession({
     },
   }
   const insumosSection = <InsumoCard key={versaoDosInsumos} embedded {...insumoProps} />
+  // A3 da 41ª (decisão do Claude, 28/11): no cancelado e na falta, o cartão é o registro da baixa
+  // que houve (a desistência, AT-20); sem baixa, não há o que dizer nem o que mexer.
+  const mostraOsInsumos = canManage && !(isDone && status !== 'COMPLETED' && insumos.length === 0)
 
   return (
     <>
@@ -2483,7 +2562,7 @@ export function AppointmentSession({
                   />}
                   {/* Os insumos de HOJE continuam até concluir (D8): gerar o plano não
                       encerra o atendimento, e quem usou outra dose corrige aqui. */}
-                  {canManage && <InsumoCard key={versaoDosInsumos} {...insumoProps} />}
+                  {mostraOsInsumos && <InsumoCard key={versaoDosInsumos} {...insumoProps} />}
                   {/* D8 da 26ª: a evolução é prontuário — só com ele, e escrita só por quem escreve o clínico. */}
                   {canViewRecords && <ObservacoesCard
                     notes={notes}
@@ -2491,6 +2570,7 @@ export function AppointmentSession({
                     onNotesChange={setNotes}
                     onIntercurrencesChange={setIntercurrences}
                     readonly={editLocked || !canEditRecords}
+                    salvar={salvarDaEvolucao}
                   />}
                 </>
               )
@@ -2505,7 +2585,8 @@ export function AppointmentSession({
                       background: 'var(--bg-app)', border: '1px solid var(--hairline)', color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)',
                     }}>
                       <Lock size={14} aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
-                      <span>{TEXTO_DO_CLINICO_SO_LEITURA}</span>
+                      {/* A1 da 41ª (AT-05): com os nomes de quem escreve. */}
+                      <span>{TEXTO_DO_CLINICO_SO_LEITURA}{textoDeQuemEscreveOClinico(quemRespondeAFicha) ? ` ${textoDeQuemEscreveOClinico(quemRespondeAFicha)}` : ''}</span>
                     </p>
                   )}
                   {/* As dores são prontuário (D3): sem o módulo, nem aparecem. */}
@@ -2539,7 +2620,8 @@ export function AppointmentSession({
                   {/* D10 da 26ª: o editor do plano só com o Atendimento ao menos em Ver (§9.4: o plano só existe para quem o tem).
                       UM3: monta quem tem o Atendimento em Gerenciar na unidade; com ele só em Ver, o
                       cartão só se LÊ — sem "Nova sessão" nem "Adicionar procedimento" (CLAUDE.md §14). */}
-                  {podeVerPlanos && <TreatmentPlanEditor
+                  {/* A3 da 41ª: o cancelado e a falta não geram plano (gerar_plano_da_avaliacao recusa): sem o editor. */}
+                  {(status === 'COMPLETED' || !isDone) && podeVerPlanos && <TreatmentPlanEditor
                     appointmentId={appointment.id} slug={slug}
                     ref={evalEditorRef}
                     podeEditar={montaPlanoNaUnidade}
@@ -2559,7 +2641,7 @@ export function AppointmentSession({
                   {/* O que foi USADO hoje. O formulário da avaliação não tinha
                       onde lançar: a profissional lançava no editor do plano e o
                       estoque nunca baixava (simulação de 2026-10-20). */}
-                  {canManage && <InsumoCard key={versaoDosInsumos} {...insumoProps} />}
+                  {mostraOsInsumos && <InsumoCard key={versaoDosInsumos} {...insumoProps} />}
 
                   {/* Observações do atendimento — controladas, sem save individual.
                       São prontuário: lê quem tem o Prontuário em Ver, escreve quem o tem em
@@ -2590,6 +2672,7 @@ export function AppointmentSession({
                           className="field" style={!canEditRecords || editLocked ? CAMPO_SO_LEITURA : { resize: 'vertical' }}
                         />
                       </div>
+                      {salvarDaEvolucao && <BotaoSalvarEvolucao salvar={salvarDaEvolucao} />}
                     </div>
                   </div>}
 

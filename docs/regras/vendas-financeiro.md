@@ -573,6 +573,9 @@ comanda (PDV-P1).
   - A comanda do PLANO no crediário diz a forma da entrada, como a da venda
     (A15 da 26ª): "Crediário (Pix) · R$ 1.000,00 recebidos" (`pdv_comandas`
     lê as formas também pelo `treatment_plan_id`).
+  - O pago com crédito interno não é "recebido" (CI-03, A5 da 41ª): "R$ 165,00
+    pagos com crédito interno"; parte em dinheiro, as duas ("R$ 50,00
+    recebidos + R$ 115,00 pagos com crédito interno") — `partesDoRecebidoDaComanda`.
   - O valor em reais do total (a comanda, o "Total:" e o "Total a cobrar" do
     plano) não quebra em duas linhas.
   - A lista vazia do Financeiro só sugere o "Novo lançamento" a quem o tem
@@ -1652,7 +1655,10 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     ou PROPORCIONAL — o saldo se divide entre o pago e o bônus, e o bônus sai
     na proporção do que volta. Ex.: R$ 500 + R$ 50, usados R$ 130 (saldo
     R$ 420): inteiro, volta R$ 370 e saem R$ 50 de bônus; na proporção, volta
-    R$ 381,82 e saem R$ 38,18. **Nunca volta mais do que ela pagou**, e o que
+    R$ 381,82 e saem R$ 38,18. A janela só mostra e confirma a conta que o
+    banco fez COM a opção marcada (`contaDaEscolha`; D1 da 41ª: confirmar logo
+    depois de marcar "Na proporção" mandava o "volta" do inteiro, e o banco
+    recusava). **Nunca volta mais do que ela pagou**, e o que
     sai do crédito nunca passa do saldo dela. O resto do estorno é o de sempre
     (parcial ou o inteiro com o usado de novo; no cartão, só o inteiro; os
     pontos do que voltou). `credito_estornar_venda` ganhou `p_bonus`.
@@ -1878,7 +1884,10 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     se confere, a diferença acompanha o que se digita — a MESMA conta do
     fechamento, conferido − registrado em centavos (`diferencaAoDigitar`;
     A3 da 19ª: a linha seguia "a conferir" até fechar); o que vale é o que o
-    servidor grava ao fechar.
+    servidor grava ao fechar. No Dinheiro, o contado negativo (que o fechar
+    recusa: não há dinheiro negativo na gaveta) não tem diferença — nunca
+    "Bateu" contra o registrado negativo; o contado 0 vale, e a diferença
+    aparece (A10 da 41ª, decisão do Claude, 28/11; `diferencaNaTela`).
     **O registrado mudou depois do fechamento** (D2 da 17ª, princípios 3 e
     4): a linha não diz "Bateu" juntando o registrado de agora com o
     conferido de antes — a diferença diz "a conferir · mudou depois do
@@ -1935,9 +1944,13 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     "Houve movimento depois do fechamento das HH:MM (entrou R$ X e saiu
     R$ Y): confira e feche de novo" — movimento pago depois de `fechado_em`
     (`metrics_avisos_do_fechamento`, `getAvisosDoFechamento`). O que entrou e
-    o que saiu é o dia de agora contra o retrato do fechamento
-    (`movimentoDepoisDoFechamento`, `textoDoMovimentoDepois`): o estorno é
-    "saiu", não "entrou dinheiro" (A3 da 17ª). Saíram do fechamento: a lista "Concluídos a
+    o que saiu são os lançamentos de depois do fechamento, sem se anular
+    (D5 da 41ª, decisão do Claude, 28/11, pela FC-08 e pela FC-11;
+    `metrics_movimento_depois_do_fechamento`, `getMovimentoDepoisDoFechamento`,
+    `textoDoMovimentoDepois`): "entrou" é todo dinheiro que entrou no caixa —
+    os recebimentos novos e o estorno de uma despesa —; "saiu", os estornos às
+    clientes (de um pagamento de qualquer dia: o estorno é "saiu", não "entrou
+    dinheiro", A3 da 17ª) e as saídas novas. O crédito interno fica fora. Saíram do fechamento: a lista "Concluídos a
     receber" (o concluído sem pagamento é comanda aberta, CX3), as parcelas
     em aberto, a espécie negativa (a linha do Dinheiro já mostra o registrado
     negativo), o a receber da operadora, a venda sem taxa e as taxas
@@ -2394,6 +2407,31 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   (`notaDoEstornoParcialParaACliente`, `[data-devolvido-em-parte]`, no
   Financeiro do app). Prova: `e2e/financeiro-dinheiro-da-12.spec.ts` ("A57"),
   `tests/financeiro-notas-do-lancamento.test.ts`.
+  **E a devolução de parte da venda em crédito interno também** (D6 da 41ª,
+  EX-11 e PR-08; decisão do Claude, 28/11): o pagamento fica como estava (o
+  dinheiro fica no caixa) e a linha dizia só o valor. Agora "Pago R$ 180,00 ·
+  R$ 90,00 em crédito interno" nos dois financeiros, e no app (o Financeiro e
+  o Histórico) "R$ 180,00 pagos · R$ 90,00 voltaram como Crédito em <a
+  rede>" (`notaDoPagamentoQueVoltou`, `notaDoPagamentoQueVoltouParaACliente`).
+  O valor vem do retrato da devolução (`product_sale_returns.retrato.devolver`,
+  destino CREDITO) e se põe nos pagamentos vivos da venda do mais recente
+  para trás (`lib/financeiro/devolucao-em-credito.ts`). Prova:
+  `tests/financeiro-nota-da-devolucao-em-credito.test.ts`.
+- **A aba Financeiro da ficha mostra o pago com crédito interno** (CI-04, D14
+  da 41ª): um número "Pago com crédito interno" ao lado do "Total pago"
+  (quando há), e a linha do crédito concedido pelo "Conceder crédito" diz
+  "Concedido, sem dinheiro" (`rotuloDaOrigemDoCredito`); as outras origens já
+  dizem na descrição gravada. Prova: `tests/creditos-origem-na-ficha.test.ts`.
+- **No app, a forma "crédito interno" tem o nome da rede** (CI-10, D15 da
+  41ª): a linha do pagamento, a parcela em várias formas e o recibo dizem
+  "Crédito em <a rede>" (`formaDoLancamento({ credito })`,
+  `formaERecibosDaLinha(…, credito)`); a equipe segue "Crédito interno".
+  Prova: `tests/app-credito-com-o-nome-da-rede.test.ts`.
+- **O "Estorno" da devolução de parte da venda diz para onde volta** (CI-04,
+  A7 da 41ª): paga com crédito interno, "volta ao crédito interno dela, a
+  forma em que ela pagou"; numa forma, o nome dela ("… (Pix)"); em várias, as
+  formas (`ondeVoltaOEstorno`, as formas vivas da venda em
+  `previaDaDevolucao`). Prova: `tests/estorno-e-devolucao-dizem-a-forma.test.ts`.
 - **O uso do crédito interno diz que não é receita** (A37 da 11ª): a linha
   "Receita · Pago · + R$ 130,00" do pagamento com `INTERNAL_CREDIT` ganha "Uso
   do crédito interno: não é receita — o caixa foi quando o crédito foi
@@ -3773,6 +3811,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 ❌ Recriar uma política de leitura ou escrita em financial_transactions para a sessão (saiu no FI8; a lista é do servidor)
 ❌ Ler "os membros da unidade" em users com branch_id.eq sozinho: as outras unidades ficam de fora — é filtroDosMembrosDaUnidade / membroAlcancaAUnidade (D1 da 17ª)
 ❌ Dizer "Bateu" no fechamento com o registrado de agora e o conferido de um fechamento em que ele era outro (D2 da 17ª: "a conferir")
+❌ Contar o "entrou/saiu depois do fechamento" pela soma do dia contra o retrato (o estorno de hoje anula o recebimento novo): são os lançamentos de depois, metrics_movimento_depois_do_fechamento (D5 da 41ª)
+❌ Mandar como "esperado" do estorno da venda de crédito uma conta feita com outra escolha do bônus (é contaDaEscolha — D1 da 41ª)
 ❌ Somar no valor da comanda da venda o lançamento "Estornada" que ganhou o reaberto (estornar_e_reabrir): o reaberto é ele de novo (D1 da 19ª)
 ❌ Mostrar a hora da âncora (meio-dia de Brasília) de um pagamento gravado só com a data: é a data só (diaSemHora — A24 da 32ª)
 ```

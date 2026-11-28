@@ -219,6 +219,9 @@ const APELIDOS_DE_ABA: Record<string, ChaveDeAba> = {
   units: 'unidades', integracoes: 'integrations', loyalty: 'fidelidade', geral: 'general',
   // A29 da 16ª: a aba se chama "Ações em lote"; quem cola o nome dela chega a ela.
   'acoes-em-lote': 'lotes',
+  // D17 da 41ª (FI-02): as abas de antes dos construtores de ficha (o caminho
+  // antigo /settings/fichas levava a elas) são a aba Fichas.
+  anamnese: 'fichas', atendimento: 'fichas', 'pre-atendimento': 'fichas',
 }
 
 /** A chave da aba pedida na URL, com os apelidos resolvidos. */

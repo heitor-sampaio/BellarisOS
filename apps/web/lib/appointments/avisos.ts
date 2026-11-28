@@ -7,7 +7,7 @@ import { ler, tentar } from '@/lib/db'
 import { notificadorDoCliente, notifyUser } from '@/lib/notifications/notify'
 import { notificarInteressados } from '@/lib/notifications/interessados'
 import { avisarDoPreAtendimento } from '@/lib/pre-atendimento/ficha'
-import { textoDoHorarioMarcado, textoDoRemarcado, textoDoCancelado, textoDoConcluido, textoDoPagamento } from '@/lib/appointments/texto-do-aviso'
+import { textoDoHorarioMarcado, textoDoRemarcado, textoDoCancelado, textoDoCanceladoParaAEquipe, textoDoConcluido, textoDoPagamento } from '@/lib/appointments/texto-do-aviso'
 import { unidadeParaOAviso } from '@/lib/appointments/unidade-do-aviso'
 
 /**
@@ -127,7 +127,6 @@ export function notifyCancelledAppointment(appointmentId: string, reason?: strin
     const c = await loadApptCtx(admin, appointmentId)
     if (!c) return
     const when = fmtDateTime(c.scheduledAt, c.fuso)
-    const motivo = reason?.trim() ? ` Motivo: ${reason.trim()}.` : ''
     const data = { appointment_id: appointmentId }
     await avisarCliente(admin, c.clientId, {
       type: 'appointment_cancelled', title: 'Agendamento cancelado',
@@ -137,7 +136,8 @@ export function notifyCancelledAppointment(appointmentId: string, reason?: strin
       { modulo: 'agenda', branchId: c.branchId, envolvidos: [c.professionalId], ator },
       {
         type: 'appointment_cancelled', title: 'Agendamento cancelado',
-        body: `Cancelado: ${c.clientName} — ${c.procedureName} de ${when}.${motivo}`, data,
+        // A13 da 41ª: o texto não repete o título.
+        body: textoDoCanceladoParaAEquipe(c.clientName, c.procedureName, when, reason ?? null), data,
       })
   })
 }

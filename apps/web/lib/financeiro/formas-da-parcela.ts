@@ -73,8 +73,8 @@ export function juntarAsFormasDaParcela<T extends LinhaParaJuntar>(linhas: reado
 }
 
 /** "Pix R$ 400,00 + Dinheiro R$ 200,00". */
-export function formasDaParcelaEmTexto(formas: readonly FormaDaParcela[]): string {
-  return formas.map(f => `${rotuloDaForma(f.forma, f.vezes)} ${formatBRL(f.valor)}`).join(' + ')
+export function formasDaParcelaEmTexto(formas: readonly FormaDaParcela[], credito?: string | null): string {
+  return formas.map(f => `${rotuloDaForma(f.forma, f.vezes, { credito })} ${formatBRL(f.valor)}`).join(' + ')
 }
 
 /**
@@ -86,11 +86,13 @@ export function formasDaParcelaEmTexto(formas: readonly FormaDaParcela[]): strin
 export function formaERecibosDaLinha(
   l: { id: string; formasDaParcela: readonly FormaDaParcela[] | null },
   formaSozinha: string | null,
+  /** CI-10: o nome do crédito interno no app ("Crédito em <a rede>"). */
+  credito?: string | null,
 ): { forma: string | null; recibos: { id: string; forma: string | null }[] } {
   if (!l.formasDaParcela) return { forma: formaSozinha, recibos: [{ id: l.id, forma: null }] }
   return {
-    forma:   formasDaParcelaEmTexto(l.formasDaParcela),
-    recibos: l.formasDaParcela.map(f => ({ id: f.id, forma: rotuloDaForma(f.forma, f.vezes) })),
+    forma:   formasDaParcelaEmTexto(l.formasDaParcela, credito),
+    recibos: l.formasDaParcela.map(f => ({ id: f.id, forma: rotuloDaForma(f.forma, f.vezes, { credito }) })),
   }
 }
 
