@@ -749,7 +749,8 @@ export function AdminAgendaView({
           ✦ {fala('Rede')}
         </p>
         <h1 style={{ fontSize: 'var(--text-name)', fontWeight: 800, color: 'var(--text)', margin: 0, letterSpacing: '-0.02em' }}>
-          Agenda
+          {/* A vista pessoal só mostra os horários dela (SM2; A6 da 40ª): o título diz de quem é. */}
+          {vistaDela ? 'Minha agenda' : 'Agenda'}
         </h1>
       </div>
 
@@ -795,9 +796,10 @@ export function AdminAgendaView({
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           {/* Recorte por unidade — o destino do "ver esta unidade" no dashboard
-              da rede, que antes saía do portal. */}
+              da rede, que antes saía do portal. Na vista pessoal não há
+              "Toda a rede" a escolher: ela vê só os horários dela (A6 da 40ª). */}
           {recorteDesativado && <SeloUnidadeDesativada />}
-          {todasUnidades.length > 1 && (
+          {!vistaDela && todasUnidades.length > 1 && (
             <SegSelect
               options={[
                 { key: '', label: 'Toda a rede' },

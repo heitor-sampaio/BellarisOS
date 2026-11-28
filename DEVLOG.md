@@ -1774,6 +1774,94 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-27 (7) — A 40ª simulação, as correções dela e as respostas R38–R41
+
+O laço segue (o Heitor, 25/11: "quando acabar essa roda já segue as outras e assim vai"). Cinco redes novas, sem a conta
+da plataforma (o Heitor, 26/11: "Sem a conta"). Os temas foram estes:
+- a Auditoria de um dia, no Espaço Pequi (Rio Branco, UTC−5);
+- as tags e os filtros em toda tela, no Studio Umbu (Juazeiro do Norte);
+- a rede com muitos dados (a planilha de 1.250 clientes), no Instituto Cajá (Sobral);
+- o caixa do dia com três pessoas no PDV, no Ateliê Buriti (Santarém);
+- a equipe e os cargos ao longo do dia, na Rede Mangaba (Lavras e Varginha).
+
+O dinheiro fechou à mão nas cinco redes: caixa, fechamento, "Por quem recebeu", comissões, taxas, operadora e lucro. A
+importação de 1.250 linhas entrou sem corte em 1.000, e todas as contagens das telas bateram com o banco. Ficaram 14
+defeitos (nenhum de segurança; um era REGRESSÃO da A16 da 39ª, e o único de prioridade ALTA, a D2, não era defeito pela R38) e 12 atritos. Salvo onde se diz
+o contrário, as decisões são do Claude (27/11), pelos princípios e pelo catálogo. Quatro perguntas foram ao Heitor
+(R38–R41), na página das perguntas, e ele respondeu as quatro no mesmo dia.
+
+**O que mudou no sistema.**
+- **Auditoria.**
+  - **A remarcação do vencimento volta a dizer o nome da conta** (D1, REGRESSÃO da A16). A coluna gerada
+    `data_de_referencia` muda junto com o vencimento e derrubava a frase; ela passa a contar como derivada
+    (`DERIVADAS`). O teste novo usa as colunas que o banco grava de verdade.
+  - **A ficha de saúde preenchida pela equipe diz "Preencheu a ficha de saúde de X"** (D7, AD-22), não "Criou o
+    prontuário". O gatilho da Auditoria passa a dizer, no INSERT do prontuário, que a ficha veio junto: só o nome da
+    coluna, nunca o conteúdo (`20261219100001`).
+  - **A confirmação, o check-in e o início dizem o fato** (D8, AD-13/AD-15): "Confirmou o agendamento de X", "Fez o
+    check-in de X", "Iniciou o atendimento — X" e "Concluiu o atendimento — X", também na avaliação de R$ 0 sem
+    comanda. A conclusão gravada junto com a ficha pendente diz "Concluiu o atendimento" (achado da correção).
+  - O módulo vai pelo nome da tela de Cargos ("Atendimento", D6). A maquininha diz "parcelar no crédito até" (D10; o "Editou" da primeira maquininha
+    NÃO ERA: a rede nasce com ela, e o primeiro salvar a edita).
+- **Tags.**
+  - **Nenhum nome de tag tem sentido para o sistema** (D3, TG-01, CL-20): saiu o selo "VIP" da lista de Clientes e o
+    realce da tag VIP na tela do atendimento. Um teste trava qualquer comparação de tag com nome fixo.
+  - **O "Buscar clientes" das automações tem o filtro de Tags** (D4, TG-12, AX-12), com o mesmo seletor do público da
+    campanha, e "Tags (todas)" com mais de uma.
+- **Importação.** Os números saem com o milhar ("Importar 1.235 linhas", "1.235 novos · …"; A1 e D13 em parte). D11,
+  D12 e o total no placar NÃO ERA: o aviso sem "Cliente desde" aparece quando a coluna não está mapeada (o time a
+  tinha mapeado), as fichas de mesmo telefone não têm aviso pela IM-15, e as partes do placar já somam o total.
+- **Equipe e cargos.**
+  - **Quem tem o Financeiro em Gerenciar sem a Equipe chega à comissão da pessoa** (D5, CM-04): a Equipe abre para
+    ela só com o chip da comissão (sem o lápis, o cadastro nem o desativar), e o menu mostra "Equipe".
+  - **Quem tem unidades edita quem tem "A rede inteira" e atende nelas** (D14, EQ-05): o "Atende" (só as unidades
+    dela) e o horário, com o cargo e a abrangência travados; trocar o cargo, desativar e reativar seguem pedindo todas
+    as unidades. "A rede inteira" conta como "alguma unidade" para editar, nunca como "todas".
+  - A Admin da rede tem "Unidades: A rede inteira" travado (A8). O rodapé do Desativar diz uma linha por coisa (A9). A
+    última Admin lê "ninguém muda enquanto você for a única Admin da rede ativa." (A11).
+- **Avulsos.** O "Reativar" da busca põe o "Reativar cliente" à vista também com a ficha já aberta (A2). A recusa da
+  configuração da rede diz a frase inteira também na rede de uma unidade (A3). No /admin, a vista pessoal se chama
+  "Minha agenda" e não oferece "Toda a rede" (A6). O campo Termo/Contrato sem modelo diz só "Nenhum termo cadastrado."
+  (A12, princípio 7).
+- **NÃO ERA:** D10 (o "Editou"), D11, D12, A5 (o seletor de Responsável lista os membros ativos, como diz a OP-08: virou
+  a sugestão nº 177), A7 (a nota do cargo acima está na dica ao lado do Cargo), A10 (o card "Reativar clientes" nunca
+  mostra o vazio com a lista; as 100 com "Cliente desde" de 2021 contam certo).
+- **R38 (o Heitor, 27/11: "Entra na lista: importar é a rede criando a tag (como está)").** A tag da planilha que a rede
+  não tinha criado entra na lista de tags. A D2 virou NÃO ERA, e a Q11, a TG-07 e a IM-16 dizem a regra com a fala.
+- **R39 (o Heitor, 27/11: "\"Mudou os acessos do cargo X (N permissões)\" (a proposta)").** Salvar a matriz de um cargo
+  que já existe diz "Mudou os acessos do cargo X (19 permissões)", com as abas de relatório quando mudam (D6).
+- **R40 (o Heitor, 27/11: "Cada parte com o seu plural (a proposta)").** "Criou 2 regras e apagou 1 regra de comissão de
+  …", "Criou 3 insumos e apagou 3 insumos do procedimento" (D9).
+- **R41 (o Heitor, 27/11: "Só em cima da matriz (a proposta)").** O aviso "Sem acesso a nenhum módulo" aparece uma vez,
+  em cima da matriz; o cartão do cargo fica com o resumo (A13, CG-28).
+- **Catálogo:** as decisões do Claude da rodada nas regras que já existiam (AD-04, CB-10, BA-01, CL-20, CL-26, FC-13,
+  AG-68, EQ-05) e as regras dos defeitos com todas as letras (AD-13, AD-15, AD-22, TG-01, AX-12, IM-12, IM-18, IM-20,
+  CM-04, EQ-01, EQ-07, EQ-11, EQ-13, EQ-16, AO-06, AG-23, CU-03, PC-07). A CL-20 dizia "horário de Brasília" para as
+  aniversariantes; o código conta pelo fuso da rede (`lib/clientes/aniversariantes.ts:20`), e o texto foi acertado.
+
+**Testes alterados** (todos pelas respostas de 27/11, com a fala no comentário):
+- `tests/atritos-da-15.test.ts:181` (R39): "Criou 18 e editou 1 permissões do cargo Balcão Íris" → "Mudou os acessos do
+  cargo Balcão Íris (19 permissões)"; `:191` (R40): "Criou 3 e apagou 3 insumos do procedimento" → "Criou 3 insumos e
+  apagou 3 insumos do procedimento".
+- `tests/auditoria-a-regra-de-comissao.test.ts:61` (R40): "Criou 2 e apagou 1 regras de comissão de Limpeza de pele (…)"
+  → "Criou 2 regras e apagou 1 regra de comissão de Limpeza de pele (…)".
+- `e2e/auditoria-atritos-da-15.spec.ts:63` (R39): procurava "18 permissões do cargo X"; procura "Mudou os acessos do cargo
+  X (18 permissões)".
+- `e2e/equipe-cargo-nao-definido.spec.ts:166` (R41): exigia o aviso no cartão do cargo; exige que o cartão não o tenha e
+  que o aviso apareça uma vez.
+- Nenhum teste apagado.
+
+**Sugestões novas:** nº 169 (entrou atrasada, da 39ª) e nº 170–177. As nº 9, 11, 41, 77, 89, 103, 106, 131, 132, 158 e
+164 apareceram de novo.
+
+**Pego pelos E2E:** o caso novo do EQ-05 criava o membro da rede sem o "Atende" na unidade, e a Equipe da unidade só
+mostra quem é da rede e atende nela; o teste passou a marcá-lo. E o "Unidades: A rede inteira" da A8 nasceu como um
+seletor desligado, cuja opção escondida o `suporte-credenciais` achava; virou um campo de texto desligado.
+
+**A completa** (contra o build dos três apps): isolados 1.795 passaram, 2 falharam e 13 não rodaram (o resto do bloco em série do suporte); compartilhados 906 passaram, 1 falhou e 2 pularam. As três falhas: `suporte-credenciais:119` achava "Rede inteira" na opção escondida do seletor desligado da A8 (o campo travado virou um campo de texto desligado, como os outros travados); `equipe-cargo-nao-definido:158` era o spec da R41 mudado depois do build; `atendimento-ficha-planejador-injetaveis:174` passou de novo sem mudança nenhuma (instável). Refeito o build, os oito specs que as respostas e a troca atingem passaram (31 + 26). Vitest: 804 arquivos, 6.456 testes.
+
+**Na produção:** `20261219100001`, aplicada sozinha e conferida depois.
+
 ### 2026-11-27 (6) — A 39ª simulação, as correções dela e as respostas R35–R37
 
 O laço segue (o Heitor, 25/11: "quando acabar essa roda já segue as outras e assim vai"). Cinco redes novas, sem conta

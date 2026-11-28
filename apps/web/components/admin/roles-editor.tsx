@@ -30,7 +30,7 @@ import type {
   AppModule, PermissionLevel, ResolvedPermissions, ReportTab,
 } from '@estetica-os/types'
 import { resumoDoCargoDeSistema, explicacaoDoCargoDeSistema } from '@/lib/cargos/de-sistema'
-import { cargoSemAcesso, CARGO_SEM_ACESSO, type PlanoDoCargo } from '@/lib/cargos/sem-acesso'
+import { cargoSemAcesso, CARGO_SEM_ACESSO } from '@/lib/cargos/sem-acesso'
 
 export interface EditorRole {
   id:           string
@@ -58,15 +58,6 @@ interface RolesEditorProps {
   foraDoPlano?: AppModule[]
   /** As abas de Relatórios fora do plano: sem outra, Relatórios não abre nada (item 21 de 18/11). */
   abasForaDoPlano?: string[]
-}
-
-/**
- * O cargo da rede que não abre módulo nenhum, pela mesma conta do contexto
- * (item 21 de 18/11; `lib/cargos/sem-acesso.ts`).
- */
-function semAcessoNaMatriz(perms: Partial<Record<AppModule, RoleModulePermission>>, tabs: readonly string[], plano: PlanoDoCargo): boolean {
-  const linhas = Object.entries(perms).map(([module, p]) => ({ module, level: p?.level ?? 'NONE' }))
-  return cargoSemAcesso({ linhas, abas: tabs }, plano)
 }
 
 type Levels = Record<AppModule, PermissionLevel>
@@ -139,11 +130,8 @@ export function RolesEditor({ roles: cargosDoServidor, permsByRole, tabsByRole, 
     [permsByRole, salvos],
   )
 
-  // Item 21 de 18/11: a lista diz qual cargo da rede não abre nada (o salvo).
-  const plano: PlanoDoCargo = { foraDoPlano, abasForaDoPlano }
-  const semAcessoIds = new Set(roles
-    .filter(r => !r.is_system && semAcessoNaMatriz(permsDaLista[r.id] ?? {}, salvos[r.id]?.tabs ?? tabsByRole[r.id] ?? [], plano))
-    .map(r => r.id))
+  // O cargo que não abre nada se avisa só em cima da matriz, não no cartão da
+  // lista (R41, o Heitor, 27/11: "Só em cima da matriz (a proposta)").
 
   // Trocar de cargo com alteração pendente descartava tudo em silêncio.
   function requestSelect(id: string) {
@@ -168,7 +156,6 @@ export function RolesEditor({ roles: cargosDoServidor, permsByRole, tabsByRole, 
         roles={roles}
         selectedId={selectedId}
         permsByRole={permsDaLista}
-        semAcessoIds={semAcessoIds}
         canSeeTeam={canSeeTeam}
         dirtyId={dirty ? selectedId : null}
         onSelect={requestSelect}
@@ -225,13 +212,11 @@ export function RolesEditor({ roles: cargosDoServidor, permsByRole, tabsByRole, 
 // ─── Lista de cargos ─────────────────────────────────────────────────────────
 
 function RoleListPanel({
-  roles, selectedId, permsByRole, semAcessoIds, canSeeTeam, dirtyId, onSelect, onCriado, showForm, setShowForm,
+  roles, selectedId, permsByRole, canSeeTeam, dirtyId, onSelect, onCriado, showForm, setShowForm,
 }: {
   roles: EditorRole[]
   selectedId: string | null
   permsByRole: Record<string, Partial<Record<AppModule, RoleModulePermission>>>
-  /** Os cargos da rede que não abrem módulo nenhum (item 21 de 18/11). */
-  semAcessoIds: Set<string>
   canSeeTeam: boolean
   dirtyId: string | null
   onSelect: (id: string) => void
@@ -349,7 +334,6 @@ function RoleListPanel({
             key={role.id}
             role={role}
             perms={permsByRole[role.id] ?? {}}
-            semAcesso={semAcessoIds.has(role.id)}
             // A13 da 34ª: com o "Novo" aberto, o selecionado é o novo (o formulário), não o anterior.
             selected={!showForm && role.id === selectedId}
             unsaved={role.id === dirtyId}
@@ -383,11 +367,10 @@ function RoleListPanel({
 }
 
 function RoleCard({
-  role, perms, semAcesso, selected, unsaved, canSeeTeam, deleting, onSelect, onRename, onDuplicate, onDelete,
+  role, perms, selected, unsaved, canSeeTeam, deleting, onSelect, onRename, onDuplicate, onDelete,
 }: {
   role: EditorRole
   perms: Partial<Record<AppModule, RoleModulePermission>>
-  semAcesso: boolean
   selected: boolean
   unsaved: boolean
   canSeeTeam: boolean
@@ -448,15 +431,9 @@ function RoleCard({
         )}
       </div>
 
-      {semAcesso ? (
-        <p data-cargo-sem-acesso style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)', marginTop: 2 }}>
-          {CARGO_SEM_ACESSO}
-        </p>
-      ) : (
-        <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 2 }}>
-          {role.is_system ? <Fala>{resumoDoCargoDeSistema(role.key)}</Fala> : resumoDoCargo(perms)}
-        </p>
-      )}
+      <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 2 }}>
+        {role.is_system ? <Fala>{resumoDoCargoDeSistema(role.key)}</Fala> : resumoDoCargo(perms)}
+      </p>
 
       {/* A contagem explica por que a exclusão é recusada, então conta ativos e
           inativos — igual ao que `deleteRole` checa. */}

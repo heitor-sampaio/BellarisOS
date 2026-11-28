@@ -89,6 +89,13 @@ const rotuloDeConfiguracoes = (comFinanceiro: boolean) => (p: ResolvedPermission
     ? 'Configurações'
     : 'Tags e importações'
 
+/**
+ * A Equipe de quem não tem o módulo mas muda a comissão de cada pessoa (o chip
+ * da linha): o Financeiro em Gerenciar — o plano entra pelo `recurso` da
+ * entrada (`abreAEquipe`, lib/equipe/quem-abre-a-equipe.ts; D5 da 40ª).
+ */
+const semAEquipeComAComissao = (p: ResolvedPermissions) => !has(p, 'team') && p.financial === 'MANAGE'
+
 /** Recebe pagamento: o PDV em Gerenciar, e só ele (PV-04) — o `podeReceber` de lib/auth, pelas permissões. */
 export const recebe = (p: ResolvedPermissions) => p.cashier === 'MANAGE'
 
@@ -153,6 +160,9 @@ export const ADMIN_MENU: readonly MenuEntry[] = [
   // CF3a (2026-11-14): o que mudou, quem mudou e quando — ao lado de Relatórios.
   { key: 'auditoria',    group: 'gestao',       label: 'Auditoria',     href: '/admin/auditoria',      visible: p => has(p, 'audit') },
   { key: 'team',         group: 'gestao',       label: 'Equipe',        href: '/admin/team',           visible: p => has(p, 'team') },
+  // D5 da 40ª (CM-04): a comissão de cada pessoa mora no chip da Equipe e muda quem tem o
+  // Financeiro em Gerenciar — sem a Equipe, a mesma entrada, com as comissões no plano.
+  { key: 'team', recurso: 'comissoes', group: 'gestao', label: 'Equipe', href: '/admin/team',    visible: semAEquipeComAComissao },
   // Só na rede: a automação reage a fatos de todas as unidades, e uma versão
   // por unidade prometeria um recorte que o motor não faz.
   { key: 'automations',  group: 'gestao',       label: 'Automações',    href: '/admin/automacoes',     visible: p => has(p, 'automations') },
@@ -194,6 +204,7 @@ export const BRANCH_MENU: readonly MenuEntry[] = [
   { key: 'reports',       group: 'gestao',      label: 'Relatórios',    href: '/reports',       visible: p => has(p, 'reports') },
   { key: 'auditoria',     group: 'gestao',      label: 'Auditoria',     href: '/auditoria',     visible: p => has(p, 'audit') },
   { key: 'team',          group: 'gestao',      label: 'Equipe',        href: '/team',          visible: p => has(p, 'team') },
+  { key: 'team', recurso: 'comissoes', group: 'gestao', label: 'Equipe', href: '/team',    visible: semAEquipeComAComissao },
   // Mesma tela da rede, e pelo mesmo motivo do `/admin`: uma entrada, três
   // módulos. Quem tem unidade fixa não entra em `/admin`, então sem esta linha
   // `settings`, `roles` ou `forms` em MANAGE não valiam nada numa gerente.

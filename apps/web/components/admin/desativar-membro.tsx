@@ -8,7 +8,7 @@ import { deactivateTeamMember, pendenciasParaDesativar, marcarUnidadeNoAtende } 
 import type { PendenciasDoMembro, AgendamentoParaRepassar } from '@/lib/equipe/repasse'
 import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
-import { rotuloDoDesativar } from '@/lib/equipe/textos-do-cadastro'
+import { rotuloDoDesativar, linhasDoRodapeDoDesativar } from '@/lib/equipe/textos-do-cadastro'
 
 /**
  * "Desativar membro?" com o REPASSE (H6, decisão do Heitor, 2026-11-01):
@@ -128,8 +128,11 @@ export function DesativarMembro({ membroId, nome, redirectPath, atende = true }:
   const titulo = { fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' } as const
   const texto  = { fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5 } as const
   const linha  = { display: 'flex', flexDirection: 'column', gap: 6, padding: '10px 0', borderTop: '1px solid var(--border)' } as const
-  const repassados = Object.values(paraAg).filter(p => p && p !== CANCELAR).length + Object.values(paraOp).filter(Boolean).length
-  const cancelados = Object.values(paraAg).filter(p => p === CANCELAR).length
+  const rodape = linhasDoRodapeDoDesativar({
+    agendamentosRepassados: Object.values(paraAg).filter(p => p && p !== CANCELAR).length,
+    agendamentosCancelados: Object.values(paraAg).filter(p => p === CANCELAR).length,
+    oportunidadesRepassadas: Object.values(paraOp).filter(Boolean).length,
+  })
   const vencidos = dados?.agendamentos.filter(a => a.vencido).length ?? 0
   // A19 da 15ª (princípios 6 e 3): o padrão segue "sem repasse", e o Desativar diz o que fica com ela.
   const ficamAg = dados?.agendamentos.filter(a => !paraAg[a.id]).length ?? 0
@@ -255,9 +258,10 @@ export function DesativarMembro({ membroId, nome, redirectPath, atende = true }:
             )}
             {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600 }}>{erro}</p>}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap' }}>
-              {(repassados > 0 || cancelados > 0) && (
-                <span style={{ ...texto, marginRight: 'auto' }}>
-                  {[repassados ? `${repassados} para repassar` : '', cancelados ? `${cancelados} para cancelar` : ''].filter(Boolean).join(' · ')}
+              {/* A9 da 40ª: os agendamentos e as oportunidades, cada um na sua linha. */}
+              {rodape.length > 0 && (
+                <span style={{ ...texto, marginRight: 'auto', display: 'flex', flexDirection: 'column' }}>
+                  {rodape.map(l => <span key={l}>{l}</span>)}
                 </span>
               )}
               <button type="button" className="btn-secondary" disabled={fazendo} onClick={() => setAberta(false)}>Voltar</button>

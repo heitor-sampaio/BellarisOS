@@ -69,3 +69,25 @@ export function rotuloDoDesativar(p: { todosParaAlguem: boolean; repassados: num
   const parte = p.todosParaAlguem ? p.repassados < p.total : p.repassados > 0 && p.repassados < p.total
   return parte ? `Desativar e repassar ${p.repassados} de ${p.total}` : 'Desativar'
 }
+
+/**
+ * O rodapé do Desativar (A9 da 40ª simulação; princípio 3): somava os
+ * agendamentos e as oportunidades num "3 para repassar" só. Cada coisa na sua
+ * linha, com o nome dela.
+ */
+export function linhasDoRodapeDoDesativar(p: { agendamentosRepassados: number; agendamentosCancelados: number; oportunidadesRepassadas: number }): string[] {
+  const conta = (n: number, um: string, varios: string, oQue: string) => n > 0 ? [`${n} ${n === 1 ? um : varios} ${oQue}`] : []
+  return [
+    ...conta(p.agendamentosRepassados, 'agendamento', 'agendamentos', 'para repassar'),
+    ...conta(p.agendamentosCancelados, 'agendamento', 'agendamentos', 'para cancelar'),
+    ...conta(p.oportunidadesRepassadas, 'oportunidade', 'oportunidades', 'para repassar'),
+  ]
+}
+
+/**
+ * Quem muda o cargo da própria Admin da rede (A11 da 40ª; EQ-13): a tela dizia
+ * "outra Admin da rede muda." à única Admin ativa — e a última não é rebaixada.
+ */
+export function quemMudaOCargoDaPropriaAdmin(ultima: boolean): string {
+  return ultima ? 'ninguém muda enquanto você for a única Admin da rede ativa.' : 'outra Admin da rede muda.'
+}

@@ -600,7 +600,8 @@
     unidades do membro aparecem travadas no checklist, e `updateTeamMember`/
     `createTeamMember` mudam só a dela (`atendeQueGrava`, `lib/equipe/atende.ts`).
     Quem é de fora e atende ali aparece na Equipe da unidade ("Da rede"), sem
-    ações — "Da unidade X" só sobra para dado de antes de 23/11 (o "Atende"
+    ações — menos quem tem "A rede inteira", que se edita ali com o cargo e a
+    abrangência travados (D14 da 40ª, decisão do Claude, 27/11; `plataforma.md`). "Da unidade X" só sobra para dado de antes de 23/11 (o "Atende"
     só vale nas unidades da pessoa).
   Prova: `e2e/equipe-atende-por-unidade.spec.ts`, `tests/equipe-atende.test.ts`,
   `e2e/agenda-profissional-da-rede.spec.ts` (a da rede marcada nas duas).
@@ -681,7 +682,9 @@
   como qualquer profissional da rede. A **Equipe da unidade** lista também
   quem é de fora e atende ali (ativo, com a unidade marcada no "Atende"), com o chip "Da rede" ou "Da unidade X", só o nome e o
   cargo, e SEM ações: cargo, comissão e acesso se mexem na Equipe da rede
-  (quem é da rede vê o lápis que leva para lá). A sessão de unidade não lê
+  (quem é da rede vê o lápis que leva para lá). A exceção é quem tem "A rede
+  inteira" (não a Admin da rede): quem tem a Equipe em Gerenciar o edita ali,
+  com o cargo e a abrangência travados (D14 da 40ª, decisão do Claude, 27/11). A sessão de unidade não lê
   membros da rede (RLS): essa lista vem pelo servidor. **E diz o recorte**
   (A12 da 6ª simulação, 2026-11-04: quem não tinha “A rede inteira” via 3 de 7 sem saber por
   quê): "Equipe da unidade Casa Forte: quem é dela e quem é da rede e atende
@@ -851,6 +854,10 @@
   atende e não tem a Agenda — não agenda nem bloqueia; agendar é da Agenda em
   Gerenciar, para qualquer pessoa que atende na unidade. Saiu com o "só os
   meus" (SM1) o "Agendar" da Minha agenda só para ela (A25 da 8ª).
+  No portal da rede ela também se chama "Minha agenda" e não oferece o
+  seletor das unidades ("Toda a rede"): ela vê só os horários dela (A6 da
+  40ª, princípio 7). Prova: `tests/minha-agenda-no-portal-da-rede.test.ts`,
+  `e2e/vistas-pessoais-e-cada-passo.spec.ts`.
 - **Trocar a profissional pela janela, com confirmação e "de quem para quem"**
   (A22 da 8ª simulação, 2026-11-06): só se trocava arrastando, sem
   confirmação, e o histórico dizia "Remarcado". A janela do agendamento tem

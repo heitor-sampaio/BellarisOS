@@ -35,6 +35,17 @@ export function recusaDaConfigDaRede(ctx: QuemMexe): string | null {
 }
 
 /**
+ * A fala da tela que deixa a recusa INTEIRA (A3 da 40ª simulação; CU-03): na
+ * rede de uma unidade, "Admin da rede" vira "Admin" (CG-25), e o aviso que
+ * passava pela fala dizia "só da Admin" enquanto o cartão da mesma tela dizia
+ * "só da Admin da rede". A frase da recusa é uma só em toda rede (decisão do
+ * Claude, 27/11); o resto do texto passa pela fala como sempre.
+ */
+export function falaQueGuardaARecusa(fala: (texto: string) => string): (texto: string) => string {
+  return texto => texto.split(CONFIG_DA_REDE).map(fala).join(CONFIG_DA_REDE)
+}
+
+/**
  * A frase do quadro de oportunidades para quem não configura os funis (A18
  * da 18ª simulação): o "Configurar funis" some do quadro dela, e a explicação
  * só existia em Configurações. Nulo para quem configura.

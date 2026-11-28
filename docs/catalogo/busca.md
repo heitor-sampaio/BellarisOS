@@ -4,8 +4,8 @@ Este é o catálogo das regras da busca que valem HOJE: a busca da barra do topo
 
 ## O que a busca é e o que ela acha (BA)
 
-**BA-01.** A busca é um campo no meio da barra do topo dos dois portais da equipe (o da rede e o da unidade), com os resultados num painel logo abaixo. Ela acha cliente (também a arquivada), conversa, oportunidade, contato do CRM sem oportunidade, o próximo agendamento, membro da equipe, procedimento, pacote, produto e as próprias páginas e abas de Configurações. A cliente final não usa a busca: o pedido dela é recusado.
-- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Ok" (BU1; o resto fica como está)
+**BA-01.** A busca é um campo no meio da barra do topo dos dois portais da equipe (o da rede e o da unidade), com os resultados num painel logo abaixo. Ela acha cliente (também a arquivada), conversa, oportunidade, contato do CRM sem oportunidade, o próximo agendamento, membro da equipe, procedimento, pacote, produto e as próprias páginas e abas de Configurações. Ela não procura pelo nome de tag: filtrar por tag é do filtro de cada tela (TG-01 de Clientes). A cliente final não usa a busca: o pedido dela é recusado.
+- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Ok" (BU1; o resto fica como está); a tag: decisão do Claude, 27/11 (40ª simulação, Time B), pela regra das Tags (CLAUDE.md §1: a tag é filtro de cada tela) — levar a busca por tag à lista de Clientes filtrada é a sugestão nº 172
 - Onde: `docs/regras/busca.md:10-14`, `:22`; `docs/revisao.md:1543`, `:1547-1552`; `DEVLOG.md:7405-7410`, `:7440-7441`
 - Antes: KA-01, KA-06
 
@@ -137,8 +137,8 @@ Este é o catálogo das regras da busca que valem HOJE: a busca da barra do topo
 - Onde: `docs/regras/busca.md:122`, `:142-143`
 - Antes: KA-32
 
-**AO-06.** A cliente arquivada vem depois das ativas, com "Arquivada" na linha e só a ação "Reativar" — nada de agendar nem vender. Ela conta como cliente achada: o "Cadastrar «termo»" não aparece (criaria a ficha em dobro).
-- Fonte: decisão do Claude
+**AO-06.** A cliente arquivada vem depois das ativas, com "Arquivada" na linha e só a ação "Reativar" — nada de agendar nem vender. O "Reativar" leva à ficha com o "Reativar cliente" à vista, também quando a ficha já está aberta (a ficha confere a permissão, AO-01). Ela conta como cliente achada: o "Cadastrar «termo»" não aparece (criaria a ficha em dobro).
+- Fonte: decisão do Claude; o "Reativar cliente" à vista: decisão do Claude, 27/11 (40ª simulação, A2), pela própria AO-06 e pela AO-01 (a busca não grava nada)
 - Onde: `docs/regras/busca.md:123`, `:137-141`; `docs/catalogo/crm-inbox.md:148` (CL-26)
 - Antes: KA-33
 

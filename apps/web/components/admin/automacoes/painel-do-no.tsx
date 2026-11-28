@@ -23,6 +23,9 @@ import { conferirLimiteDaBusca, avisoDoLimiteDaBusca, LIMITE_PADRAO_DA_BUSCA } f
 import { recusaDoDiaDoMes, dicaDoDiaDoMes } from '@/lib/automacoes/dia-do-mes'
 import { amostraDoEvento, contarBuscaDeClientes } from '@/actions/automacoes'
 import type { OpcoesDoEditor } from '@/actions/automacoes'
+import { TagPicker } from '@/components/shared/tag-picker'
+import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
+import { opcoesDeTag } from '@/lib/tags/escolha'
 
 /**
  * O painel de configuração do node selecionado.
@@ -563,6 +566,11 @@ export function PainelDoNo({
                 dia (no relógio da rede).
               </Dica>
             </Campo>
+            <TagsDaBusca
+              marcadas={Array.isArray(c.tags) ? (c.tags as string[]) : []}
+              somenteLeitura={somenteLeitura}
+              onChange={tags => set({ tags: tags.length > 0 ? tags : undefined })}
+            />
             <Campo rotulo="No máximo">
               {/* Vale o número gravado (princípios 2 e 3; o Heitor, 25/11: "Se não
                   for impossível, ainda que improvável, pode ser feito."): o
@@ -1337,6 +1345,46 @@ function AvisoDoLimite({ valor }: { valor: unknown }) {
   return aviso
     ? <span role="status" data-acima-do-comum="limite-da-busca" style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>{aviso}</span>
     : null
+}
+
+/**
+ * As tags do "Buscar clientes" (D4 da 40ª; TG-12, AX-12): o seletor das outras
+ * telas que filtram (o do público da campanha), com a lista do FILTRO — as
+ * ativas e as arquivadas que alguém tem (TG-14) — e a marcada que saiu dela,
+ * para poder tirar. Com mais de uma, entra quem tem todas (E).
+ */
+function TagsDaBusca({ marcadas, somenteLeitura, onChange }: {
+  marcadas: string[]; somenteLeitura?: boolean; onChange: (tags: string[]) => void
+}) {
+  const daRede = useTagsDaRede(true, 'filtro')
+  // Um grupo, não um <label>: dentro do rótulo, o clique no texto acionaria o primeiro botão.
+  return (
+    <div data-tags-da-busca role="group" aria-label="Tags">
+      <span style={{
+        display: 'block',
+        fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-soft)',
+        marginBottom: 5,
+      }}>
+        {marcadas.length > 1 ? 'Tags (todas)' : 'Tags'}
+      </span>
+      {marcadas.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+          {marcadas.map(t => (
+            <span key={t} className="chip-filtro is-ativo" style={{ cursor: 'default', paddingRight: 6 }}>
+              {t}
+              {!somenteLeitura && (
+                <button type="button" aria-label={`Tirar a tag ${t}`} onClick={() => onChange(marcadas.filter(x => x !== t))}
+                  style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0, color: 'inherit', display: 'inline-flex' }}>
+                  <X size={12} />
+                </button>
+              )}
+            </span>
+          ))}
+        </div>
+      )}
+      <TagPicker selecionadas={marcadas} disponiveis={opcoesDeTag(daRede ?? [], marcadas)} disabled={somenteLeitura} onChange={onChange} />
+    </div>
+  )
 }
 
 /**

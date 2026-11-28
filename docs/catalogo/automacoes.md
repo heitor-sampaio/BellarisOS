@@ -219,8 +219,8 @@ Este é o catálogo das regras das Automações que valem HOJE: o princípio, os
 - Onde: `docs/regras/automacoes.md:430-436`; `docs/revisao.md:1086`, `:1112-1116`
 - Antes: KB-17
 
-**AX-12.** O passo "Buscar clientes" diz "Hoje, a busca acharia N clientes", e essa conta não grava nada. O "No máximo" vale o número que a rede gravou, na conta e no motor (200 sem valor); acima de 500 a tela avisa "Acima do comum (mais de 500 clientes). Confira: o valor vale como está.", e só o impossível (zero, negativo, fracionário, acima do registro) se recusa. As tags do filtro vão todas. Quando o teto corta, o passo diz o teto que valeu.
-- Fonte: princípio 3; o "No máximo" e as tags, decisão do Claude, 25/11, pelos princípios 2 e 3 (o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito.") — cortavam em 500 e em 50, calados
+**AX-12.** O passo "Buscar clientes" diz "Hoje, a busca acharia N clientes", e essa conta não grava nada. O "No máximo" vale o número que a rede gravou, na conta e no motor (200 sem valor); acima de 500 a tela avisa "Acima do comum (mais de 500 clientes). Confira: o valor vale como está.", e só o impossível (zero, negativo, fracionário, acima do registro) se recusa. O painel do passo oferece o filtro de Tags (várias, E entre elas: TG-12 de Clientes), e as tags do filtro vão todas. Quando o teto corta, o passo diz o teto que valeu.
+- Fonte: princípio 3; o "No máximo" e as tags, decisão do Claude, 25/11, pelos princípios 2 e 3 (o Heitor, 25/11: "Se não for impossível, ainda que improvável, pode ser feito.") — cortavam em 500 e em 50, calados; o filtro de Tags no painel: a TG-12 (o Heitor, 2026-11-19: "Quem tem TODAS (E)") e a regra das Tags (CLAUDE.md §1) — faltava na tela (40ª simulação, D4)
 - Onde: `docs/regras/automacoes.md:581-586`
 - Antes: KB-32
 

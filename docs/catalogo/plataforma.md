@@ -484,8 +484,8 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 
 ## A Equipe (EQ)
 
-**EQ-01.** O cadastro do membro tem nome completo, e-mail, cargo, "Unidades", "Atende", horário de atendimento, registro no conselho (opcional) e a senha temporária. A lista mostra nome, cargo, unidades e situação, com filtros por unidade, cargo e situação. (A comissão de cada pessoa na Equipe: CM-04 a CM-08.)
-- Fonte: decisão do Claude (levantamento mantido no Bloco: Equipe)
+**EQ-01.** O cadastro do membro tem nome completo, e-mail, cargo, "Unidades", "Atende", horário de atendimento, registro no conselho (opcional) e a senha temporária. A lista mostra nome, cargo, unidades e situação, com filtros por unidade, cargo e situação. (A comissão de cada pessoa na Equipe: CM-04 a CM-08.) A Equipe abre também para quem tem o Financeiro em Gerenciar sem a Equipe (com as comissões no plano), só com o chip da comissão: sem o lápis, o cadastro nem o desativar; o menu mostra "Equipe" a essa pessoa (CM-04).
+- Fonte: decisão do Claude (levantamento mantido no Bloco: Equipe); a Equipe de quem tem o Financeiro em Gerenciar: decisão do Claude, 27/11 (40ª simulação, D5), pela CM-04
 - Onde: `docs/revisao.md:1173-1179`, `:2115`
 - Antes: KE-14
 
@@ -504,8 +504,8 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:1029-1031`, `:1038`
 - Antes: KC-26
 
-**EQ-05.** Para editar um membro basta alcançar ALGUMA unidade dele; para trocar o cargo, desativar e reativar, é preciso alcançar TODAS. Na Equipe da unidade, a pessoa com outra unidade fora do alcance aparece sem Desativar/Reativar e com o cargo travado (a dica diz por quê), e o servidor diz "Essa pessoa também está numa unidade fora do seu alcance: …".
-- Fonte: decisão do Claude
+**EQ-05.** Para editar um membro basta alcançar ALGUMA unidade dele; para trocar o cargo, desativar e reativar, é preciso alcançar TODAS. Na Equipe da unidade, a pessoa com outra unidade fora do alcance aparece sem Desativar/Reativar e com o cargo travado (a dica diz por quê), e o servidor diz "Essa pessoa também está numa unidade fora do seu alcance: …". Quem tem "A rede inteira" tem todas, inclusive as que vierem: para editar, "A rede inteira" conta como "alguma unidade" (quem alcança uma unidade edita o "Atende" e o horário dela, menos na linha da Admin da rede, EQ-10), e nunca como "todas" — só quem tem "A rede inteira" troca o cargo dela, a desativa e a reativa, porque duas unidades marcadas não são a rede (EQ-03), nem numa rede que hoje tem só essas duas.
+- Fonte: decisão do Claude; quem tem "A rede inteira": decisão do Claude, 27/11 (40ª simulação, Time E e D14), pela própria EQ-05 e pela EQ-03
 - Onde: `docs/regras/plataforma.md:1031-1038`
 - Antes: KC-27
 
@@ -514,8 +514,8 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:1048-1052`
 - Antes: KC-29
 
-**EQ-07.** A Equipe da unidade lista também quem é da rede e atende ali, com o selo "Da rede", só o nome e o cargo e sem ações, e diz esse recorte na tela.
-- Fonte: decisão do Claude
+**EQ-07.** A Equipe da unidade lista também quem é da rede e atende ali, com o selo "Da rede", só o nome e o cargo e sem ações, e diz esse recorte na tela. A exceção é quem tem "A rede inteira" sem ser a Admin da rede: a linha dela tem o editar ("Atende", horário), com o cargo e a abrangência travados, sem desativar nem reativar (EQ-05).
+- Fonte: decisão do Claude; a exceção de quem tem "A rede inteira": decisão do Claude, 27/11 (40ª simulação, D14), pela EQ-05
 - Onde: `docs/regras/atendimento.md:458-468`
 - Antes: KE-13
 
@@ -534,8 +534,8 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: CLAUDE.md §11 (`:732-752`); `docs/revisao.md:1180-1181`; `docs/regras/atendimento.md:454-461`
 - Antes: KE-21
 
-**EQ-11.** No "Adicionar membro", a Admin da rede pode cadastrar outra Admin direto, e a tela não pergunta as unidades, porque a Admin é sempre da rede toda. Quem gere a equipe sem ser Admin não vê esse cargo.
-- Fonte: o Heitor, 2026-11-02 (eq-01): "oferecer no cadastro; o caminho em dois passos não protege nada"
+**EQ-11.** No "Adicionar membro", a Admin da rede pode cadastrar outra Admin direto, e a tela não pergunta as unidades, porque a Admin é sempre da rede toda: com o cargo de Admin da rede, o campo "Unidades" fica em "A rede inteira", travado. Quem gere a equipe sem ser Admin não vê esse cargo.
+- Fonte: o Heitor, 2026-11-02 (eq-01): "oferecer no cadastro; o caminho em dois passos não protege nada"; o campo travado: decisão do Claude, 27/11 (40ª simulação, A8), pelo princípio 3
 - Onde: `docs/regras/atendimento.md:469-475`; `docs/regras/plataforma.md:1038`
 - Antes: KE-23
 
@@ -544,8 +544,8 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/atendimento.md:476-484`
 - Antes: KE-24
 
-**EQ-13.** A Admin da rede não muda o próprio cargo (edita em si o "Atende" e o horário, com o cargo travado — AG-65), e a última Admin ativa não pode ser rebaixada nem desativada.
-- Fonte: decisão do Claude
+**EQ-13.** A Admin da rede não muda o próprio cargo (edita em si o "Atende" e o horário, com o cargo travado — AG-65), e a última Admin ativa não pode ser rebaixada nem desativada: para ela, a tela diz "ninguém muda enquanto você for a única Admin da rede ativa." (não "outra Admin da rede muda").
+- Fonte: decisão do Claude; o texto da última Admin: decisão do Claude, 27/11 (40ª simulação, A11), pelo princípio 3
 - Onde: CLAUDE.md §11 (`:760-763`); `docs/regras/atendimento.md:454-457`; `docs/revisao.md:1181`
 - Antes: KE-22
 
@@ -559,8 +559,8 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: CLAUDE.md §11 (`:714-723`); `docs/revisao.md:1183`
 - Antes: KE-20
 
-**EQ-16.** O botão de desativar diz quantos agendamentos vão ser repassados quando não são todos ("Desativar e repassar 1 de 5"). Desativar quem não atende não diz "e sai da agenda", e o selo "Atende em …" sai da linha de quem está desativado.
-- Fonte: princípio 3
+**EQ-16.** O botão de desativar diz quantos agendamentos vão ser repassados quando não são todos ("Desativar e repassar 1 de 5"). O rodapé do Desativar mostra uma linha por coisa: os agendamentos a repassar, os a cancelar e as oportunidades a repassar. Desativar quem não atende não diz "e sai da agenda", e o selo "Atende em …" sai da linha de quem está desativado.
+- Fonte: princípio 3; uma linha por coisa no rodapé: decisão do Claude, 27/11 (40ª simulação, A9), pelo princípio 7
 - Onde: `docs/regras/plataforma.md:1073-1075`, `:1119-1120`, `:1126-1127`
 - Antes: KC-30
 
@@ -711,8 +711,8 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:1175-1176`
 - Antes: (sem número: `docs/inventario/leitura.md` §4)
 
-**CG-28.** O cargo da rede que não abre módulo nenhum é válido: ele se salva e se dá. A tela de Cargos avisa no cartão e na matriz ("Sem acesso a nenhum módulo: quem tem este cargo entra e não vê nada."), e a Equipe, na linha e na janela de criar e de editar ("Sem acesso a nenhum módulo: ela entra e não vê nada."). "Nenhum" é o que vale com o plano (Relatórios sem aba que valha não conta). Quem tem esse cargo e atende segue na agenda para receber horários e tem as vistas pessoais (a Minha agenda, e as Minhas comissões com comissão no nome dela), que só mostram (CG-04).
-- Fonte: o aviso no lugar da recusa: recomendação do Claude aprovada pelo Heitor, 2026-11-18 (item 21 do escopo): "21 - ok" (`DEVLOG.md:1974`), e o princípio 2; o cargo sem módulo é válido e as vistas pessoais: decisão do Claude, 25/11 (o Heitor revisa), pelo CLAUDE.md §11 ("As vistas pessoais") (Tainá, Time D da 30ª simulação)
+**CG-28.** O cargo da rede que não abre módulo nenhum é válido: ele se salva e se dá. A tela de Cargos avisa uma vez, em cima da matriz ("Sem acesso a nenhum módulo: quem tem este cargo entra e não vê nada."; o cartão do cargo fica com o resumo de sempre), e a Equipe, na linha e na janela de criar e de editar ("Sem acesso a nenhum módulo: ela entra e não vê nada."). "Nenhum" é o que vale com o plano (Relatórios sem aba que valha não conta). Quem tem esse cargo e atende segue na agenda para receber horários e tem as vistas pessoais (a Minha agenda, e as Minhas comissões com comissão no nome dela), que só mostram (CG-04).
+- Fonte: o aviso no lugar da recusa: recomendação do Claude aprovada pelo Heitor, 2026-11-18 (item 21 do escopo): "21 - ok" (`DEVLOG.md:1974`), e o princípio 2; o aviso só em cima da matriz: o Heitor, 2026-11-27 (R41): "Só em cima da matriz (a proposta)"; o cargo sem módulo é válido e as vistas pessoais: decisão do Claude, 25/11 (o Heitor revisa), pelo CLAUDE.md §11 ("As vistas pessoais") (Tainá, Time D da 30ª simulação)
 - Onde: `docs/regras/plataforma.md:1039-1051`; `apps/web/lib/cargos/sem-acesso.ts` (`cargoSemAcesso`, `CARGO_SEM_ACESSO`, `MEMBRO_SEM_ACESSO`); `apps/web/lib/auth.ts` (`vistaPessoal`)
 - Antes: (sem número: decisão 3 da 30ª simulação)
 
@@ -728,8 +728,8 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:739-742`, `:750-757`; CLAUDE.md §11
 - Antes: KB-35
 
-**CU-03.** A aba da rede toda diz quem muda: depois de "Esta configuração é só da Admin da rede.", "Quem muda: …" com o nome das Admins da rede ativas.
-- Fonte: princípio 3
+**CU-03.** A aba da rede toda diz quem muda: depois de "Esta configuração é só da Admin da rede.", "Quem muda: …" com o nome das Admins da rede ativas. A frase é essa, inteira, em toda recusa da configuração da rede, também na rede de uma unidade (nunca "só da Admin").
+- Fonte: princípio 3; a frase inteira também na rede de uma unidade: decisão do Claude, 27/11 (40ª simulação, A3), pela própria CU-03
 - Onde: `docs/regras/plataforma.md:731-733`
 - Antes: KB-36
 
@@ -790,8 +790,8 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:1242-1263`, `:1481`; `docs/revisao.md:1366-1369`, `:2132`; CLAUDE.md §11 (`:648-652`)
 - Antes: KD-03, KE-48
 
-**AD-04.** Entra na Auditoria toda gravação que muda o que alguém FAZ no sistema (criar, editar, cancelar, estornar, arquivar ou apagar, mudar permissão ou configuração), cada abertura do prontuário, cada entrada no sistema — de quem é da equipe e da cliente no portal e no app — e o que o suporte fez. O que só registra andamento (filas, sinais, cache, logs) não entra.
-- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Pode ser no menu" (CF3: "entradas no sistema (login)", sem recorte; e a fala do Heitor, "onde o admin pudesse ver tudo o que aconteceu")
+**AD-04.** Entra na Auditoria toda gravação que muda o que alguém FAZ no sistema (criar, editar, cancelar, estornar, arquivar ou apagar, mudar permissão ou configuração), cada abertura do prontuário, cada entrada no sistema — de quem é da equipe e da cliente no portal e no app — e o que o suporte fez. O que só registra andamento (filas, sinais, cache, logs) não entra, nem a troca da senha (também a provisória do primeiro acesso): a senha é credencial do login, guardada fora da rede (AD-07).
+- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-13: "Pode ser no menu" (CF3: "entradas no sistema (login)", sem recorte; e a fala do Heitor, "onde o admin pudesse ver tudo o que aconteceu"); a troca da senha: decisão do Claude, 27/11 (40ª simulação, Time A), pela própria AD-04 e pela AD-07 (registrar "Trocou a senha", sem o valor, é a sugestão nº 170)
 - Onde: `docs/regras/plataforma.md:1197-1206`; `docs/revisao.md:1360-1363`, `:2131`
 - Antes: KD-05, KE-50
 
@@ -835,18 +835,18 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:1264-1273`
 - Antes: KD-13
 
-**AD-13.** A gravação se lê pelo FATO, com a unidade e o link dele: a venda ("Vendeu o pacote X (R$ …) — cliente"), o início, a conclusão e a desistência do atendimento (na unidade do agendamento, não na do pacote usado nem "Da rede"), o recebimento. Recebido é o lançamento que ficou pago naquela gravação. Vale também na gravação de uma linha só (o recebimento sem linha de comissão, de quem atende sem comissão): ela diz "Recebeu R$ X (forma)", como a de várias linhas, e não "Criou a receita". O pacote trazido não é venda (PA-24 de Vendas): a frase é "Registrou o pacote de antes X — cliente", nunca "Vendeu". O cancelamento e o estorno da venda de produto (PR-05, PR-06 de Vendas) se leem como cancelamento, não como "Editou a venda de produto": a frase diz que cancelou (ou estornou) a venda, o motivo, o estorno e o que voltou ao estoque (AD-16). A mudança de quem realiza o procedimento diz quem saiu e quem entrou (nunca só "Apagou quem faz o procedimento"), e a remarcação do vencimento e o estorno de uma conta dizem o nome da conta.
-- Fonte: decisão do Claude; quem saiu e quem entrou do procedimento e o nome da conta: decisão do Claude, 27/11 (39ª simulação, A15 e A16), pela própria AD-13; a gravação de uma linha só: decisão do Claude, 25/11 (o Heitor revisa), pela AD-16 (D10 da 29ª simulação); a desistência: decisão do Claude, 26/11 (33ª simulação, D15), pela própria AD-13; o pacote trazido: decisão do Claude, 27/11 (37ª, D10), pela AD-13 e pela PA-24 de Vendas; o cancelamento da venda de produto: decisão do Claude, 27/11 (D8 da 38ª), pela AD-13 e pela AD-16
+**AD-13.** A gravação se lê pelo FATO, com a unidade e o link dele: a venda ("Vendeu o pacote X (R$ …) — cliente"), o início (também o da avaliação sem comanda, de R$ 0), a conclusão e a desistência do atendimento (na unidade do agendamento, não na do pacote usado nem "Da rede"), o recebimento. Recebido é o lançamento que ficou pago naquela gravação. Vale também na gravação de uma linha só (o recebimento sem linha de comissão, de quem atende sem comissão): ela diz "Recebeu R$ X (forma)", como a de várias linhas, e não "Criou a receita". O pacote trazido não é venda (PA-24 de Vendas): a frase é "Registrou o pacote de antes X — cliente", nunca "Vendeu". O cancelamento e o estorno da venda de produto (PR-05, PR-06 de Vendas) se leem como cancelamento, não como "Editou a venda de produto": a frase diz que cancelou (ou estornou) a venda, o motivo, o estorno e o que voltou ao estoque (AD-16). A mudança de quem realiza o procedimento diz quem saiu e quem entrou (nunca só "Apagou quem faz o procedimento"), e a remarcação do vencimento e o estorno de uma conta dizem o nome da conta.
+- Fonte: decisão do Claude; quem saiu e quem entrou do procedimento e o nome da conta: decisão do Claude, 27/11 (39ª simulação, A15 e A16), pela própria AD-13; o início sem comanda: decisão do Claude, 27/11 (40ª simulação, D8), pela própria AD-13; a gravação de uma linha só: decisão do Claude, 25/11 (o Heitor revisa), pela AD-16 (D10 da 29ª simulação); a desistência: decisão do Claude, 26/11 (33ª simulação, D15), pela própria AD-13; o pacote trazido: decisão do Claude, 27/11 (37ª, D10), pela AD-13 e pela PA-24 de Vendas; o cancelamento da venda de produto: decisão do Claude, 27/11 (D8 da 38ª), pela AD-13 e pela AD-16
 - Onde: `docs/regras/plataforma.md:1274-1292`, `:1386-1398`; `apps/web/lib/auditoria/frase.ts` (`fatoDaGravacao`), `:1771-1776`
 - Antes: KD-14; antes de 26/11: a desistência no meio do atendimento saía "Da rede"; antes de 27/11: o pacote trazido saía "Vendeu o pacote … (pacote de antes)"
 
-**AD-14.** Todo campo aparece pelo nome em português ("percentual da comissão de venda", "maquininha"), nunca pelo nome técnico, e toda coisa tem o seu plural ("Criou 2 links de assinatura").
-- Fonte: decisão do Claude
+**AD-14.** Todo campo aparece pelo nome em português ("percentual da comissão de venda", "maquininha"), nunca pelo nome técnico, e toda coisa tem o seu plural ("Criou 2 links de assinatura") — cada parte da frase com o seu ("Criou 2 regras e apagou 1 regra de comissão", "Criou 1 maquininha e apagou 1 maquininha").
+- Fonte: decisão do Claude; cada parte com o seu plural: o Heitor, 27/11 (R40, 40ª simulação): "Cada parte com o seu plural (a proposta)"
 - Onde: `docs/regras/plataforma.md:1293-1298`, `:1376-1379`, `:1395-1396`, `:1413`, `:1419-1420`
 - Antes: KD-15
 
-**AD-15.** Na agenda, a frase diz o fato: "Agendou X para (data e hora) — procedimento, com quem atende"; "Remarcou o agendamento de X para (data e hora)" (", com Fulano" se quem atende mudou junto); "Repassou o agendamento de X a Fulano"; "Cancelou o agendamento de X (motivo: …)".
-- Fonte: decisão do Claude
+**AD-15.** Na agenda, a frase diz o fato: "Agendou X para (data e hora) — procedimento, com quem atende"; "Remarcou o agendamento de X para (data e hora)" (", com Fulano" se quem atende mudou junto); "Repassou o agendamento de X a Fulano"; "Cancelou o agendamento de X (motivo: …)". A confirmação e a chegada também dizem o fato (que confirmou o agendamento de X, que X chegou), nunca "Editou o agendamento (check-in, confirmação e situação)".
+- Fonte: decisão do Claude; a confirmação e a chegada: decisão do Claude, 27/11 (40ª simulação, D8), pela própria AD-15 e pela AD-13
 - Onde: `docs/regras/plataforma.md:1321-1322`, `:1380-1382`, `:1401-1404`, `:1424-1426`
 - Antes: KD-16
 
@@ -875,13 +875,13 @@ Este é o catálogo das regras que valem HOJE para a plataforma (o app sistema e
 - Onde: `docs/regras/plataforma.md:1405-1407`, `:1411-1420`
 - Antes: KD-21; antes de 27/11: o "Abater do pacote" saía "Editou a comanda (cancelamento…)"
 
-**AD-21.** Na equipe, nos cargos e no comercial, a frase diz o fato: "Desativou / Reativou Fulana"; "Criou o cargo X (N permissões)", "Criou a permissão de (módulo) do cargo X", "Criou a aba de relatório (aba) do cargo X", "Mudou os acessos do cargo X (…)"; "Criou o contato e a oportunidade X", "Mudou a etapa da oportunidade X" ("de A para B" quando a etapa está no registro), "Repassou a oportunidade de X a Fulano" (o repasse ao desativar, OP-10 do CRM). Na autorização do suporte, a frase diz o fato e de quem é a conta: "Autorizou o suporte na conta de Luana, com os dados clínicos", "Revogou a autorização do suporte na conta de Luana", "Trocou a autorização do suporte na conta de Luana (agora sem os dados clínicos)"; sem a conta, "numa conta da equipe".
-- Fonte: decisão do Claude; a autorização do suporte: decisão do Claude, 26/11 (33ª simulação, A9), pela própria AD-21; o repasse da oportunidade: decisão do Claude, 27/11 (36ª, A5), pela AD-15
+**AD-21.** Na equipe, nos cargos e no comercial, a frase diz o fato: "Desativou / Reativou Fulana"; "Criou o cargo X (N permissões)", "Criou a permissão de (módulo) do cargo X", "Criou a aba de relatório (aba) do cargo X", "Mudou os acessos do cargo X (…)" — a matriz salva de um cargo que já existe é "Mudou os acessos do cargo X (N permissões)", com as abas quando elas mudam ("(2 abas de relatório e 1 permissão)"); o (módulo) vai pelo nome da tela de Cargos (AD-14: "Atendimento", não "atendimento"); "Criou o contato e a oportunidade X", "Mudou a etapa da oportunidade X" ("de A para B" quando a etapa está no registro), "Repassou a oportunidade de X a Fulano" (o repasse ao desativar, OP-10 do CRM). Na autorização do suporte, a frase diz o fato e de quem é a conta: "Autorizou o suporte na conta de Luana, com os dados clínicos", "Revogou a autorização do suporte na conta de Luana", "Trocou a autorização do suporte na conta de Luana (agora sem os dados clínicos)"; sem a conta, "numa conta da equipe".
+- Fonte: decisão do Claude; a autorização do suporte: decisão do Claude, 26/11 (33ª simulação, A9), pela própria AD-21; o repasse da oportunidade: decisão do Claude, 27/11 (36ª, A5), pela AD-15; o nome do módulo: decisão do Claude, 27/11 (40ª simulação, D6), pela AD-14; a matriz salva de um cargo que já existe: o Heitor, 27/11 (R39): "'Mudou os acessos do cargo X (N permissões)' (a proposta)"
 - Onde: `docs/regras/plataforma.md:1271-1279`, `:1323-1328`, `:1435-1438`, `:1777-1785`
 - Antes: KD-22; antes de 26/11: "Criou 1 e editou 1 liberações do suporte"
 
-**AD-22.** O que a cliente fez pelo link (a ficha de saúde, a assinatura, o documento) aparece como dela: "Dona Cida, pelo link" ("Respondeu a ficha de saúde"); o link em si segue de quem o criou. Quando é a equipe que preenche: "Preencheu a ficha de saúde de X".
-- Fonte: decisão do Claude
+**AD-22.** O que a cliente fez pelo link (a ficha de saúde, a assinatura, o documento) aparece como dela: "Dona Cida, pelo link" ("Respondeu a ficha de saúde"); o link em si segue de quem o criou. Quando é a equipe que preenche: "Preencheu a ficha de saúde de X" — também na tela do atendimento, onde a ficha se grava no prontuário: nunca "Criou o prontuário".
+- Fonte: decisão do Claude; a ficha preenchida na tela do atendimento: decisão do Claude, 27/11 (40ª simulação, D7), pela própria AD-22
 - Onde: `docs/regras/plataforma.md:1299-1305`
 - Antes: KD-23
 

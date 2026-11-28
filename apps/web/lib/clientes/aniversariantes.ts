@@ -7,7 +7,7 @@ import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
 
 /**
- * As aniversariantes do mês de Brasília (A9 da 8ª simulação, 2026-11-06: não
+ * As aniversariantes do mês no fuso da rede (A9 da 8ª simulação, 2026-11-06: não
  * havia tela nem filtro, só a automação desligada). Quem faz aniversário é
  * decidido PELO BANCO (`clientes_aniversariantes`, só o servidor — §14 do
  * CLAUDE.md: nada de filtrar no app depois de ler um lote); a lista de
@@ -16,7 +16,7 @@ const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julh
 export async function aniversariantesDoMes(tenantId: string, hoje: Date = new Date()): Promise<{
   mes: number; nomeDoMes: string; dias: Record<string, number>
 }> {
-  // O mês da clínica (F62b): o da rede.
+  // O mês da rede (F62b): no fuso dela.
   const mes = partsInTZ(hoje, await fusoDaRede(tenantId)).month
   const linhas = await lerTodas<{ client_id: string; dia: number }>((de, ate) => createAdminClient()
     .rpc('clientes_aniversariantes', { p_tenant: tenantId, p_mes: mes })

@@ -637,6 +637,11 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   (`clientes_do_publico`), com duas tags entra só quem tem as duas — era OU
   (`&&`) —, sem distinguir a caixa. A prévia da campanha diz "Tags (todas):
   …". Prova: `e2e/campanha-cada-filtro-chega.spec.ts` ("duas tags (E)").
+  O passo tem o campo "Tags" (D4 da 40ª, TG-12 e AX-12: o tipo e o motor já
+  liam `tags`, e a tela não as oferecia): o `TagPicker` do público da
+  campanha, com a lista do filtro (`useTagsDaRede(true, 'filtro')`: as ativas
+  e as arquivadas que alguém tem, TG-14); com mais de uma, o rótulo diz
+  "Tags (todas)". Prova: `tests/automacoes-vale-o-numero-que-a-rede-escolheu.test.ts`.
 - **"Buscar clientes" é da rede, sem unidade** (T1 do Bloco Tags, 2026-11-14:
   a cliente é da REDE — não existe tag de unidade, e `clients.branch_id` não
   decide nada). O campo "Unidade" do passo saiu, e o dia do aniversário é o

@@ -207,4 +207,25 @@ test.describe.serial('arquivar a cliente', () => {
       await expect.poll(async () => (await db().from('clients').select('is_active').eq('id', id).single()).data?.is_active).toBe(true)
     } finally { await ctx.close() }
   })
+
+  // A2 da 40ª (AO-06): com a ficha DELA já aberta, o "Reativar" da busca só
+  // trocava a URL — o menu abria só ao montar a ficha.
+  test('o "Reativar" da busca, com a ficha dela já aberta, põe o "Reativar cliente" à vista', async ({ browser }) => {
+    const nome = `Valdete Aberta ${marca}`
+    const id = await rede!.criarCliente(nome)
+    const { data: c } = await db().from('clients').select('name').eq('id', id).single<{ name: string }>()
+    expect((await db().from('clients').update({ is_active: false }).eq('id', id)).error).toBeNull()
+    const ctx = await browser.newContext({ storageState: recepcao!.estado })
+    try {
+      const p = await ctx.newPage()
+      await p.goto(`/${slug}/clients/${id}`)
+      await expect(p.locator('.card').filter({ has: p.locator('h1') }).first().getByText('Arquivada', { exact: true })).toBeVisible()
+      await expect(p.getByRole('button', { name: 'Reativar cliente' }), 'o menu começa fechado').toHaveCount(0)
+      const campo = p.getByRole('combobox', { name: 'Busca universal' })
+      await campo.fill(`valdete aberta ${marca}`)
+      await p.getByRole('option', { name: `Reativar ${c!.name}` }).click({ timeout: 15_000 })
+      await p.getByRole('button', { name: 'Reativar cliente' }).click()
+      await expect.poll(async () => (await db().from('clients').select('is_active').eq('id', id).single()).data?.is_active).toBe(true)
+    } finally { await ctx.close() }
+  })
 })

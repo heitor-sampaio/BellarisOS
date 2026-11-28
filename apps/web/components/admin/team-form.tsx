@@ -4,7 +4,7 @@ import { useActionState, useEffect, useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import { createTeamMember } from '@/actions/team'
 import { JanelaModal } from '@/components/shared/janela-modal'
-import { UnidadesDoMembro, AtendeDoMembro, useAtendeDoMembro, type ValorDasUnidades } from '@/components/shared/unidades-do-membro'
+import { UnidadesDoMembro, UnidadesTravadasNaRede, AtendeDoMembro, useAtendeDoMembro, type ValorDasUnidades } from '@/components/shared/unidades-do-membro'
 import { toast } from 'sonner'
 import { confirmacaoDoCadastro } from '@/lib/equipe/textos-do-cadastro'
 import { Dica } from '@/components/shared/dica'
@@ -164,8 +164,10 @@ function NovoMembro({ branches, roles, isNetworkAdmin, podeComissao = false, car
                   )}
                 </div>
 
-                {/* Abrangência — a Admin é sempre da rede toda (o porquê, na dica do Cargo). */}
-                {!ehAdmin && (
+                {/* Abrangência — a Admin é sempre da rede toda: o campo aparece travado (A8 da 40ª, EQ-11). */}
+                {ehAdmin ? (
+                  <UnidadesTravadasNaRede id="tm-unidades" />
+                ) : (
                   <UnidadesDoMembro id="tm-unidades" unidades={branches} editaveis={isNetworkAdmin ? null : branches.map(b => b.id)}
                     valor={unidades} aoMudar={setUnidades} />
                 )}

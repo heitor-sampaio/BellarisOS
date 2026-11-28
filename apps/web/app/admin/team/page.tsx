@@ -21,6 +21,7 @@ import { listaDeUnidades, unidadesDaLinhaDaEquipe, seloDoAtende } from '@/lib/eq
 import { Dica } from '@/components/shared/dica'
 import { cargosQueSeDaoPelaEquipe, avisoDoMembroSemAcesso } from '@/lib/cargos/sem-acesso'
 import { cargosSemAcesso } from '@/lib/equipe/cargos-sem-acesso'
+import { abreAEquipe } from '@/lib/equipe/quem-abre-a-equipe'
 
 function Initials({ name }: { name: string }) {
   const letters = iniciaisDoNome(name)
@@ -45,7 +46,8 @@ export default async function AdminTeamPage({
   const ctx = await getTenantContext()
   // "Ver" abre a lista sem as ações, como já acontece no portal da unidade.
   // Antes o menu aparecia com Ver e o clique caía em Forbidden.
-  assertPermission(ctx, 'team', 'VIEW')
+  // D5 da 40ª (CM-04): quem muda a comissão (o Financeiro em Gerenciar) chega ao chip sem a Equipe.
+  if (!abreAEquipe(ctx.permissions, temRecurso(ctx, 'comissoes'))) assertPermission(ctx, 'team', 'VIEW')
   const canManage = ctx.permissions.team === 'MANAGE'
 
   const { q = '', branch = '', role = '', status = '' } = await searchParams
@@ -117,6 +119,12 @@ export default async function AdminTeamPage({
   // e horário com o cargo travado (D2). As actions conferem de novo.
   const cargoDeAdmin = allRoles.find(r => r.key === 'NETWORK_ADMIN' && r.is_system)
   const souAdmin = !!cargoDeAdmin && ctx.roleId === cargoDeAdmin.id
+  // A11 da 40ª (EQ-13): a última Admin ativa não é rebaixada nem desativada — a
+  // janela dela não diz "outra Admin da rede muda." quando não há outra.
+  const souAUltimaAdmin = souAdmin && cargoDeAdmin && ctx.internalUserId
+    ? ((await ler(admin.from('users').select('id').eq('tenant_id', ctx.tenantId!).eq('role_id', cargoDeAdmin.id)
+        .eq('is_active', true).neq('id', ctx.internalUserId).limit(1), 'contar as Admins da rede')) ?? []).length === 0
+    : false
   // A9 da 7ª simulação: a Admin vem PRIMEIRO, como na tela de Cargos (era a última da lista).
   // C62 (F70; H7 = b): o cargo com mais acesso que o de quem age aparece
   // desligado, dizendo por quê — a action também recusa.
@@ -369,7 +377,7 @@ export default async function AdminTeamPage({
                         redirectPath="/admin/team"
                         // Travado só para a própria Admin; outra Admin troca o cargo dela.
                         cargoFixo={cargoDeAdmin && m.role_id === cargoDeAdmin.id && m.id === ctx.internalUserId
-                          ? { id: cargoDeAdmin.id, label: cargoDeAdmin.label } : undefined}
+                          ? { id: cargoDeAdmin.id, label: cargoDeAdmin.label, ultimaAdmin: souAUltimaAdmin } : undefined}
                         cargoDeAdminId={souAdmin ? cargoDeAdmin?.id : undefined}
                       />}
                       {/* Não se oferece desativar a si mesmo: trancaria a pessoa do lado de fora

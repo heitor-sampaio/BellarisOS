@@ -815,8 +815,8 @@ Aceitar o plano, as sessões e o contrato junto do pagamento são do catálogo d
 - Onde: `docs/regras/vendas-financeiro.md:1688`; `docs/revisao.md:1998`
 - Antes: KD-41, KG-19
 
-**FC-13.** "Por quem recebeu" lista as entradas do dia de cada pessoa, por forma, com o total dela. Quem recebeu é quem lançou o lançamento que já nasceu pago, ou quem deu a baixa depois; quando isso não ficou registrado, aparece "Quem recebeu não registrado". As saídas e os estornos ficam no total da unidade. O CSV do Fechamento traz essa seção.
-- Fonte: princípio 3
+**FC-13.** "Por quem recebeu" lista as entradas do dia de cada pessoa, por forma, com o total dela. Quem recebeu é quem lançou o lançamento que já nasceu pago, ou quem deu a baixa depois; quando isso não ficou registrado, aparece "Quem recebeu não registrado". As saídas e os estornos ficam no total da unidade. O pagamento estornado no mesmo dia não está na linha de quem o recebeu, porque já está fora das entradas (FC-10, FC-11); o estorno aparece no total da unidade e na Auditoria, com quem estornou. O CSV do Fechamento traz essa seção.
+- Fonte: princípio 3; o estornado no mesmo dia: decisão do Claude, 27/11 (40ª simulação, Time D), pela FC-11 e pelo princípio 3 (contá-lo em quem recebeu faria a soma das linhas passar das entradas)
 - Onde: `docs/regras/vendas-financeiro.md:1698`
 - Antes: KD-42
 

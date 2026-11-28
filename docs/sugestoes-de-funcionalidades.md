@@ -19,9 +19,9 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 6 | A cliente confirmar presença pelo app antes do atendimento | 27ª, D01; item 7 da 25ª, 20 da 26ª |
 | 7 | As avaliações das clientes numa tela própria (hoje só na ficha) | 27ª (Time D) |
 | 8 | Crédito pré-pago também de produto (hoje só de procedimento) | 27ª (Time D) |
-| 9 | O de → para da etapa do funil na Auditoria | 27ª (Time E); 31ª (também a regra de comissão: procedimento, quem e valor, A9); 32ª, Time A; 34ª, Time D (a maquininha e a regra de comissão, Leopoldina); 35ª, Time C (a etapa e também o responsável, Eulália: C01, C10, C12, C13); 36ª, Time B (o "Atende" e a regra de comissão de 30% para 35%, sem o valor antigo); 38ª, Time A (a regra de comissão do procedimento, A06); também na 39ª, B05 e Time E (M1–M8: o prazo do app, o preço e a duração do procedimento) |
+| 9 | O de → para da etapa do funil na Auditoria | 27ª (Time E); 31ª (também a regra de comissão: procedimento, quem e valor, A9); 32ª, Time A; 34ª, Time D (a maquininha e a regra de comissão, Leopoldina); 35ª, Time C (a etapa e também o responsável, Eulália: C01, C10, C12, C13); 36ª, Time B (o "Atende" e a regra de comissão de 30% para 35%, sem o valor antigo); 38ª, Time A (a regra de comissão do procedimento, A06); também na 39ª, B05 e Time E (M1–M8: o prazo do app, o preço e a duração do procedimento); também na 40ª, Times A ("Criou o procedimento" sem os valores, "Criou o membro" sem o cargo; o horário, o preço e a duração, a taxa e o horário do membro) e E (o "Atende em") |
 | 10 | Ranking por quem vendeu nos Relatórios | 27ª (Time E) |
-| 11 | Outra base de CEP (o 66035-000 não foi encontrado; na 28ª também 76804-000, 74210-000 e 64049-000) | 27ª, A; A37 da 26ª; 28ª, A, B e C; 31ª; 32ª, Time E; 34ª, Times A, C e E (78580-000 sem logradouro, 75110-000 e 45028-000); 35ª, Times A (76900-000) e B (15010-000); 36ª, Times A, B, C e E (78300-000, 64200-000, 63100-000, Itabuna e Ilhéus, Mossoró); 37ª, Times A, B, C e D (78700-000, 37700-000, 58400-000 e o de Arapiraca); também na 39ª, Times B, C e D (99700-000, 47800-000, 96400-000 e 96450-000) |
+| 11 | Outra base de CEP (o 66035-000 não foi encontrado; na 28ª também 76804-000, 74210-000 e 64049-000) | 27ª, A; A37 da 26ª; 28ª, A, B e C; 31ª; 32ª, Time E; 34ª, Times A, C e E (78580-000 sem logradouro, 75110-000 e 45028-000); 35ª, Times A (76900-000) e B (15010-000); 36ª, Times A, B, C e E (78300-000, 64200-000, 63100-000, Itabuna e Ilhéus, Mossoró); 37ª, Times A, B, C e D (78700-000, 37700-000, 58400-000 e o de Arapiraca); também na 39ª, Times B, C e D (99700-000, 47800-000, 96400-000 e 96450-000); também na 40ª, Time C |
 | 12 | Uma resposta da ficha de saúde que a rede marca como alerta (ex.: "Grávida = Sim"), além da alergia | 28ª, C10 (ligada à nº 4) |
 | 13 | Comparar as fotos Antes e Depois lado a lado | 28ª, C07 |
 | 14 | Os pontos e as recompensas da cliente na tela do atendimento | 28ª, Time E |
@@ -51,7 +51,7 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 38 | Um termo avulso para a menor, sem o procedimento ter documento | 29ª, C06 (DA-11) |
 | 39 | A prévia da importação com todas as colunas, além das 3 primeiras linhas | 29ª, Time A (IM-22); 31ª (ligada à nº 77) |
 | 40 | Salas e CEP da unidade dentro do /setup | 29ª, Time A (ligada à nº 11); 34ª, Time A (as salas); 35ª, Time D (as salas, Genoveva); 38ª, Times A e E (as salas) |
-| 41 | A Equipe da unidade mostrar a Admin da rede que atende ali | 29ª, Time D; 32ª, Time E; 34ª, Time A |
+| 41 | A Equipe da unidade mostrar a Admin da rede que atende ali | 29ª, Time D; 32ª, Time E; 34ª, Time A; também na 40ª, Time E |
 | 42 | O histórico do agendamento cancelado (quem, quando, o de → para) na janela dele | 29ª, B12 |
 | 43 | O app ativar os avisos com um botão "Receber avisos no celular" | 29ª, B14 (ligada ao A20) |
 | 44 | O "retorno em N dias" propor o horário na conclusão, sem agendar sozinho | 29ª, C01 (AT-19) |
@@ -87,7 +87,7 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 74 | O Copilot contar os produtos do estoque e cadastrar produto | 31ª, Time E |
 | 75 | Fechamento do dia: "conferido = registrado" num clique para as formas sem divergência | 31ª, Times B e E |
 | 76 | O Confirmar do app e o /verificar dizerem o fuso da unidade | 31ª, Time D |
-| 77 | A prévia da importação dizer as tags que cada linha recebe | 31ª, Time E (2ª planilha; ligada à nº 39) |
+| 77 | A prévia da importação dizer as tags que cada linha recebe | 31ª, Time E (2ª planilha; ligada à nº 39); também na 40ª, Time B (a decisão da tag fora do catálogo, TG-07) |
 | 78 | O total do plano proposto na lista de Tratamentos | 31ª, C12 |
 | 79 | O aviso do valor em aberto do plano na Visão geral da ficha | 31ª, C05 (ligada à nº 28) |
 | 80 | A matriz de Cargos avisar, ao pôr Relatórios em Ver sem nenhuma aba, que o módulo vale nada (A5) | 31ª, Time C |
@@ -99,7 +99,7 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 86 | O app dizer "a unidade não abre neste dia" em vez de só "Nenhum horário disponível" | 32ª, B08 |
 | 87 | Escolher a origem ao criar a oportunidade pelo painel do inbox (hoje nasce "Orgânico") | 32ª, Time A |
 | 88 | A hora da unidade no topo do portal (hoje só a data) | 32ª, Time D (UTC−5) |
-| 89 | O antes e depois da taxa da maquininha na Auditoria | 32ª, Time D (ligada à nº 9); 34ª, Time D (Leopoldina) |
+| 89 | O antes e depois da taxa da maquininha na Auditoria | 32ª, Time D (ligada à nº 9); 34ª, Time D (Leopoldina); também na 40ª, Time A |
 | 90 | Ao ligar uma automação com espera curta, avisar que o horário de silêncio vai segurar a mensagem | 32ª, C11 |
 | 91 | O horário da unidade aceitar o fim às 24:00 digitado (hoje só pelo botão "Aberta 24 horas") | 32ª, Time D |
 | 92 | O Copilot listar as unidades da rede ("quantas unidades a rede tem?") | 32ª, Time E |
@@ -113,10 +113,10 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 100 | O "vs anterior" dizer o período comparado, e a Auditoria do lançamento à mão citar a data do pagamento | 33ª, Time C (A12, Decisão C) |
 | 101 | A ficha do atendimento concluído sem pagamento mostrar o saldo ("R$ 300 a receber") | 33ª, C06; 34ª, Time A (também o valor no "Aguardando o pagamento no PDV") |
 | 102 | Ligar a ficha a uma oportunidade depois de cadastrada, por quem tem o CRM | 33ª, C13; 35ª, C04 |
-| 103 | Confirmar antes de renomear uma tag para o nome de outra ("vai juntar com X em N registros") | 33ª, Time D (A14) |
+| 103 | Confirmar antes de renomear uma tag para o nome de outra ("vai juntar com X em N registros") | 33ª, Time D (A14); também na 40ª, B08 ("Cliente ouro" juntada em VIP) |
 | 104 | Um modelo de automação "Faltou: aviso no celular" | 33ª, Time E |
 | 105 | A recusa pelo limite do plano levar a Configurações → Assinatura | 33ª, Time E (A7) |
-| 106 | Arquivar a cliente e arquivar a tag com motivo opcional e confirmação | 33ª, Times B e D (Decisão B, A14) |
+| 106 | Arquivar a cliente e arquivar a tag com motivo opcional e confirmação | 33ª, Times B e D (Decisão B, A14); também na 40ª, Time B |
 | 107 | Avisar a cliente no sino quando o pacote da LGPD refeito ficar pronto | 33ª, D2 |
 | 108 | O Unificar gravar também o 'Indicada por' e o responsável legal digitados no cadastro | 33ª, D18 |
 | 109 | Marcar na Auditoria as linhas 'Corrigiu o custo do lote' gravadas pela baixa antes da correção | 33ª, D7 |
@@ -141,8 +141,8 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 128 | A ocupação do período nos Relatórios → Agenda | 36ª, Time A |
 | 129 | A exceção de comissão oferecer só os procedimentos que a pessoa realiza | 36ª, Time B; 38ª, Time A (também no "Por profissional" do procedimento) |
 | 130 | Receber várias parcelas de uma vez | 36ª, Time C (Decisão C) |
-| 131 | O "(inativo)" no nome da coluna de quem foi desativado, na grade da agenda (hoje "Não atende mais nesta unidade", AG-68) | 36ª, Time B |
-| 132 | A Auditoria do desativar com o resumo dos repasses (agendamentos e oportunidades, para quem) | 36ª, Time B (ligada à nº 46) |
+| 131 | O "(inativo)" no nome da coluna de quem foi desativado, na grade da agenda (hoje "Não atende mais nesta unidade", AG-68) | 36ª, Time B; também na 40ª, Time E (a E05 com o Edivaldo) |
+| 132 | A Auditoria do desativar com o resumo dos repasses (agendamentos e oportunidades, para quem) | 36ª, Time B (ligada à nº 46); também na 40ª, Time E |
 | 133 | A Auditoria do "Unificou" e do acesso ao app criado no cadastro | 36ª, Time E |
 | 134 | O recibo guardar o nome da cliente do dia em que foi emitido, como o documento assinado (DA-13) | 36ª, Time E (E09) |
 | 135 | Avisar a equipe, no sino, quando a cliente assina o termo pelo app | 36ª, Time D (D08; Decisão D) |
@@ -168,14 +168,23 @@ aqui com a origem e sai da conta dos defeitos e atritos.
 | 155 | "Feito" no lembrete de retorno (hoje se apaga na edição) e o lembrete com hora, não só com o dia | 38ª, C03 |
 | 156 | A taxa de faltas em número em Relatórios → Agenda | 38ª, D10 (dois papéis) |
 | 157 | A idade na ficha da cliente | 38ª, E07 |
-| 158 | O fuso de Belém (America/Belem) na lista e o fuso sugerido pelo CEP | 38ª, Time E (ligada à nº 96); também na 39ª, Time C (America/Bahia) |
+| 158 | O fuso de Belém (America/Belem) na lista e o fuso sugerido pelo CEP | 38ª, Time E (ligada à nº 96); também na 39ª, Time C (America/Bahia); também na 40ª, Times B (America/Fortaleza) e C (o fuso pelo CEP) |
 | 159 | A execução "Parou" dizer qual valor barrou o "Se" (o procedimento que não era Limpeza) | 38ª, E13 |
 | 160 | A lista de execuções não contar a execução-mãe do "Buscar clientes" junto com as filhas | 38ª, Time E |
 | 161 | A janela "Ligar a automação?" dizer que só vale para o que acontecer depois, e se o Aniversário ligado depois do horário ainda roda hoje | 38ª, E01 e E07 |
 | 162 | A Auditoria da edição da automação dizer o que mudou (hoje "Editou a automação Confirmação (fluxo e versão)") | 38ª, Time E (ligada à nº 9) |
 | 163 | Inserir um passo ENTRE dois já ligados no editor (o ED-09 só liga ao anterior) | 38ª, E09 (ligada ao A17 da 38ª, que não foi feito por ser recurso novo) |
-| 164 | Avisar o que já está marcado ou vendido ao mudar a duração, o horário da semana, quem faz, o "no app", o preço ou o ativo/inativo do procedimento | 39ª, C09, C13 e Time E (M1–M8) |
+| 164 | Avisar o que já está marcado ou vendido ao mudar a duração, o horário da semana, quem faz, o "no app", o preço ou o ativo/inativo do procedimento | 39ª, C09, C13 e Time E (M1–M8); também na 40ª, Time A (fechar a quarta-feira, tirar o Oziel de quem realiza) |
 | 165 | Confirmação no "Desativar" do procedimento (hoje age na hora) | 39ª, Time E (M6) |
 | 166 | Motivo opcional no "Negar" da parte do prontuário da LGPD | 39ª, B13 |
 | 167 | Avisar a despesa repetida (mesma conta, valor e vencimento) | 39ª, Time D (P12) |
 | 168 | Categoria e fornecedor na lista do A pagar da rede (hoje só no CSV) | 39ª, Time D (ligada à nº 22) |
+| 169 | Baixar pelo app os PDFs assinados do pacote da LGPD | 39ª, B12 (nas correções do D14, o pacote LGPD com prontuário) |
+| 170 | Registrar na Auditoria a troca da própria senha ("Trocou a senha"), sem o valor | 40ª, Time A (Decisão do Claude: a troca da senha não entra pela AD-04 e pela AD-07) |
+| 171 | Exportar a lista de Clientes, com os filtros aplicados | 40ª, Time C (Decisão do Claude: nenhuma regra pede a exportação) |
+| 172 | A busca da topbar por nome de tag levar à lista de Clientes com o filtro da tag | 40ª, Time B (Decisão do Claude: a busca não procura tag, BA-01) |
+| 173 | Avisar ao receber uma parcela do crediário antes do vencimento | 40ª, Time D |
+| 174 | Avisar ao agendar em horário sobreposto da mesma profissional | 40ª, Time D (a D11 sobrepôs a D05) |
+| 175 | Dizer, na tela do atendimento, quem pode responder a ficha de saúde quando quem atende não tem o Prontuário | 40ª, Times D (Josué) e E (Edivaldo) |
+| 176 | Na prévia da importação, contar as fichas novas sem "Cliente desde" (a coluna mapeada, mas vazia na linha), que contam como novas a partir de hoje | 40ª, Time C (D11) |
+| 177 | O seletor de Responsável da oportunidade oferecer só quem tem o CRM, como o repasse do Desativar já faz (hoje a OP-08 lista os membros ativos da rede) | 40ª, Time E (A5) |

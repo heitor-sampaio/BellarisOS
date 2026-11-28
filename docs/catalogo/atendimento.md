@@ -130,8 +130,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:271-281`
 - Antes: AG-37
 
-**AG-23.** A "Minha agenda" é a vista pessoal (SM2): abre a quem atende e não tem a Agenda, só com os horários dela, e só mostra (não agenda nem bloqueia). A grade do dia é o horário da unidade cruzado com o da pessoa (no dia em que ela não atende, "Você não atende neste dia", também quando há um encaixe marcado nele: a frase e o cartão); o destaque do topo anda com o relógio e mostra antes o atendimento atrasado em aberto; tocar no cartão abre a tela do atendimento, só para ver (na agenda da unidade, abre a janela de ações); o atalho "Minhas comissões" fica no topo para quem tem o Financeiro em Ver (leva à aba Comissões) ou as Minhas comissões (a vista pessoal: quem atende ou tem comissão de venda e não tem o Financeiro, só as dela). Ela traz também os atendimentos da pessoa em outras unidades ("Na unidade Batel"), e a agenda inteira da unidade traz "Seus atendimentos em outras unidades"; abrir um deles leva ao endereço da unidade do agendamento. Quando o cargo ganha a Agenda, a Minha agenda dá lugar à Agenda, com todos os horários.
-- Fonte: decisão do Claude; a vista pessoal: o Heitor, 2026-11-23 (docs/revisao.md, SM2): "pode tirar, as vistas pessoais resolvem"; o cargo que ganha a Agenda: decisão do Claude, 27/11 (36ª, Decisão B), pela vista pessoal (nula para quem tem o módulo, CLAUDE.md §11); a frase também com um encaixe no dia: decisão do Claude, 27/11 (39ª simulação, D9), pela própria AG-23
+**AG-23.** A "Minha agenda" é a vista pessoal (SM2): abre a quem atende e não tem a Agenda, só com os horários dela, e só mostra (não agenda nem bloqueia). A grade do dia é o horário da unidade cruzado com o da pessoa (no dia em que ela não atende, "Você não atende neste dia", também quando há um encaixe marcado nele: a frase e o cartão); o destaque do topo anda com o relógio e mostra antes o atendimento atrasado em aberto; tocar no cartão abre a tela do atendimento, só para ver (na agenda da unidade, abre a janela de ações); o atalho "Minhas comissões" fica no topo para quem tem o Financeiro em Ver (leva à aba Comissões) ou as Minhas comissões (a vista pessoal: quem atende ou tem comissão de venda e não tem o Financeiro, só as dela). Ela traz também os atendimentos da pessoa em outras unidades ("Na unidade Batel"), e a agenda inteira da unidade traz "Seus atendimentos em outras unidades"; abrir um deles leva ao endereço da unidade do agendamento. Quando o cargo ganha a Agenda, a Minha agenda dá lugar à Agenda, com todos os horários. No portal da rede também: o título é "Minha agenda", sem o seletor de unidades.
+- Fonte: decisão do Claude; a vista pessoal: o Heitor, 2026-11-23 (docs/revisao.md, SM2): "pode tirar, as vistas pessoais resolvem"; o cargo que ganha a Agenda: decisão do Claude, 27/11 (36ª, Decisão B), pela vista pessoal (nula para quem tem o módulo, CLAUDE.md §11); a frase também com um encaixe no dia: decisão do Claude, 27/11 (39ª simulação, D9), pela própria AG-23; o título e o seletor no portal da rede: decisão do Claude, 27/11 (40ª simulação, A6), pela vista pessoal (SM2) e pelo princípio 7
 - Onde: `docs/regras/atendimento.md:22-30`, `:317-333`, `:636-638`, `:669-695`
 - Antes: AG-04, AG-39, AG-40, AG-41, AG-50, AG-51
 
@@ -368,8 +368,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:384-397`, `:1657`
 - Antes: AG-57, PC-30
 
-**AG-68.** Deixar de atender numa unidade (ou desmarcar o "Atende") com agendamentos em aberto ali passa antes pelo mesmo repasse do Desativar (repassar, cancelar ou deixar); a mudança vale na hora. A grade da unidade mantém a coluna de quem tem agendamento ali e não atende mais ("Não atende mais nesta unidade"), fora do agendar.
-- Fonte: princípio 3
+**AG-68.** Deixar de atender numa unidade (ou desmarcar o "Atende") com agendamentos em aberto ali passa antes pelo mesmo repasse do Desativar (repassar, cancelar ou deixar); a mudança vale na hora. A grade da unidade mantém a coluna de quem tem agendamento ali e não atende mais ("Não atende mais nesta unidade"), fora do agendar — também a de quem foi desativado e ficou com o agendamento (o padrão do AG-66): a coluna aparece no dia do agendamento, com ele intacto, para que alguém o repasse ou cancele.
+- Fonte: princípio 3; o desativado que ficou com o agendamento: decisão do Claude, 27/11 (40ª simulação, Time E), pelo princípio 3 (sem a coluna, o horário sumiria da tela e valeria do mesmo jeito)
 - Onde: `docs/regras/atendimento.md:411-430`
 - Antes: AG-59, AG-60
 
@@ -838,8 +838,8 @@ linha do documento; "Antes" lista os números do rascunho que a regra junta.
 - Onde: `docs/regras/atendimento.md:1302-1304`, `:1534-1537`
 - Antes: PC-06, AG-160
 
-**PC-07.** O procedimento pode ligar um "Termo de consentimento", um "Contrato" (que só vale no atendimento avulso) e "outros documentos", quantos quiser, de qualquer documento criado ou anexado no sistema. Os três são opcionais.
-- Fonte: o Heitor, 13/11 (PC7): "…a gente vai poder listar um termo de consentimento do procedimento e vai poder adicionar um contrato para quando esse procedimento for realizado avulso. … E também nos procedimentos aí permite adicionar outros documentos que a rede queira que seja assinado, e aí qualquer documento que tenha sido criado ou anexado no sistema, tá?" (opcionais: PC8, "Não é obrigatório que aparece na tela do cadastro.")
+**PC-07.** O procedimento pode ligar um "Termo de consentimento", um "Contrato" (que só vale no atendimento avulso) e "outros documentos", quantos quiser, de qualquer documento criado ou anexado no sistema. Os três são opcionais. Sem modelo do tipo, o campo diz só "Nenhum termo cadastrado." ou "Nenhum contrato de procedimento cadastrado.".
+- Fonte: o Heitor, 13/11 (PC7): "…a gente vai poder listar um termo de consentimento do procedimento e vai poder adicionar um contrato para quando esse procedimento for realizado avulso. … E também nos procedimentos aí permite adicionar outros documentos que a rede queira que seja assinado, e aí qualquer documento que tenha sido criado ou anexado no sistema, tá?" (opcionais: PC8, "Não é obrigatório que aparece na tela do cadastro."); o campo sem modelo: decisão do Claude, 27/11 (40ª simulação, A12), pelo princípio 7 (o Heitor, 26/11: "Ser intuitivo é justamente o contrario, ser facil de usar mesmo sem muitas explicações.")
 - Onde: `docs/revisao.md:299-335`, `docs/revisao.md:1869`, `docs/revisao.md:1879`
 - Antes: PC-08
 

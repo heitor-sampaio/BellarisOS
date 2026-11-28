@@ -111,8 +111,8 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/regras/crm-inbox.md:349-351`; `DEVLOG.md:2202`
 - Antes: KA-67
 
-**CL-20.** A lista filtra por Situação (Ativos, Novos, Arquivadas ou Aniversariantes de <mês> — escolha uma) e por Tags (várias); não há segmento fixo "VIP": VIP é uma tag como as outras. "Arquivadas" é o nome da ação da ficha (era "Inativos"). "Aniversariantes de <mês>" mostra as ativas que fazem aniversário no mês corrente (horário de Brasília), em ordem de dia, com "Aniversário dia DD/MM", nos dois portais.
-- Fonte: decisão do Claude; o "Arquivadas": princípio 3 (J-23 — o filtro tem o nome da ação da ficha)
+**CL-20.** A lista filtra por Situação (Ativos, Novos, Arquivadas ou Aniversariantes de <mês> — escolha uma) e por Tags (várias); não há segmento fixo "VIP" nem selo "VIP" na linha: VIP é uma tag como as outras (o selo "Novo" é calculado, IM-20, não tag). "Arquivadas" é o nome da ação da ficha (era "Inativos"). "Aniversariantes de <mês>" mostra as ativas que fazem aniversário no mês corrente (no fuso da rede, FU-05 de Indicadores), em ordem de dia, com "Aniversário dia DD/MM", nos dois portais. As aniversariantes de hoje se acham nesse filtro, no card do dashboard e na condição "aniversário hoje" das automações: não há filtro fixo "de hoje". A lista não se exporta.
+- Fonte: decisão do Claude; o "Arquivadas": princípio 3 (J-23 — o filtro tem o nome da ação da ficha); o selo "VIP": decisão do Claude, 27/11 (40ª simulação, D3), pela TG-01 e pela própria CL-20; as aniversariantes de hoje: decisão do Claude, 27/11 (40ª simulação, Time C), pelo princípio 7 (simples primeiro: a lista já ordena pelo dia); a exportação: decisão do Claude, 27/11 (40ª simulação, Time C) — nenhuma regra a pede (é a sugestão nº 171); o mês no fuso da rede: a FU-05 e o código (`apps/web/lib/clientes/aniversariantes.ts:20`, `partsInTZ(hoje, await fusoDaRede(tenantId)).month`) — o texto dizia "horário de Brasília" (corrigido em 27/11)
 - Onde: `docs/regras/crm-inbox.md:443`, `:467`; `apps/web/components/branch/clients-sidebar.tsx:141-148`
 - Antes: KB-05, KB-06
 
@@ -145,15 +145,15 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 
 ### Arquivar
 
-**CL-26.** Arquivar a cliente ("Mais ações" da ficha, com Clientes em Gerenciar) a tira das listas (Clientes, aniversariantes, reativar, a base ativa dos relatórios), mas não muda quantas clientes novas houve em nenhum período. A confirmação diz os agendamentos marcados dela daqui para a frente e que continuam na agenda (arquivar não os cancela). A busca universal acha a arquivada, com "Arquivada" e a ação "Reativar" (para quem tem Clientes em Gerenciar), e não oferece cadastrá-la de novo.
-- Fonte: decisão do Claude
+**CL-26.** Arquivar a cliente ("Mais ações" da ficha, com Clientes em Gerenciar) a tira das listas (Clientes, aniversariantes, reativar, a base ativa dos relatórios), mas não muda quantas clientes novas houve em nenhum período: ela sai do filtro "Novos" da lista, e o card "Novos clientes" do dashboard segue contando-a. A confirmação diz os agendamentos marcados dela daqui para a frente e que continuam na agenda (arquivar não os cancela). A busca universal acha a arquivada, com "Arquivada" e a ação "Reativar" (para quem tem Clientes em Gerenciar), e não oferece cadastrá-la de novo.
+- Fonte: decisão do Claude; o filtro "Novos" e o card do dashboard: decisão do Claude, 27/11 (40ª simulação, Time C), pela própria CL-26 (o card é o indicador das fichas que entraram no período, e arquivar não desfaz o cadastro; a lista mostra as ativas, CL-17 e CL-20)
 - Onde: `docs/regras/crm-inbox.md:474-475`, `:531-535`
 - Antes: KB-31, KB-32, KB-33, KB-34
 
 ## Tags (TG)
 
-**TG-01.** Tag é filtro personalizado da rede: ela cria com o nome que quiser e filtra por ela onde houver filtro. Nenhum nome de tag tem significado para o sistema: não existe tag de unidade, e nenhuma tela ou conta (o público das campanhas, o "Buscar clientes" das automações, as novas clientes, o "Reativar", a lista de Clientes, o "Agendar") lê uma tag como "a unidade da cliente".
-- Fonte: o Heitor, 2026-11-13: "não existem tags de unidade, existem tags, a rede cria a tag que quiser e usa elas como filtro depois, do que quiser, com nome que quiser. Não complica."
+**TG-01.** Tag é filtro personalizado da rede: ela cria com o nome que quiser e filtra por ela onde houver filtro. Nenhum nome de tag tem significado para o sistema: não existe tag de unidade, e nenhuma tela ou conta (o público das campanhas, o "Buscar clientes" das automações, as novas clientes, o "Reativar", a lista de Clientes, o "Agendar") lê uma tag como "a unidade da cliente". Nem o "VIP" tem sentido próprio: a lista de Clientes não lhe dá selo, e a tela do atendimento a mostra como as outras tags.
+- Fonte: o Heitor, 2026-11-13: "não existem tags de unidade, existem tags, a rede cria a tag que quiser e usa elas como filtro depois, do que quiser, com nome que quiser. Não complica."; o "VIP": a mesma fala, aplicada na 40ª simulação (D3: o selo "VIP" na lista e o realce dela no atendimento)
 - Onde: `docs/regras/crm-inbox.md:309`, `:1709`, `docs/revisao.md:397`, `:419`, `:1948`
 - Antes: KA-61, KE-59, KF-02
 
@@ -178,12 +178,12 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Antes: KA-60, KB-22, KE-56, KF-08
 
 **TG-06.** As tags ficam em Configurações → Tags, nos dois portais. Criar, renomear e arquivar tag é só da Admin da rede; para os outros a aba diz "Esta configuração é só da Admin da rede.", e a ação é recusada.
-- Fonte: o Heitor, 2026-11-18: "Configuração da rede toda só pela conta admin"
+- Fonte: o Heitor, 2026-11-18: "Configuração da rede toda só pela conta admin"; a tag da planilha entra no catálogo: o Heitor, 2026-11-27, R38: "Entra na lista: importar é a rede criando a tag (como está)"
 - Onde: `docs/regras/crm-inbox.md:374-376`
 - Antes: KB-10
 
-**TG-07.** Há um catálogo só de tags, e a ficha, o cadastro, o painel do inbox, o card da oportunidade e as automações ("Pôr a tag", "Remover tag") oferecem as tags ativas dele para MARCAR; o público da campanha, que é filtro, oferece também as arquivadas que alguém tem (TG-14) — sem lista fixa, sem "as que estão em uso" e sem entrada livre: nenhuma tela cria tag ao marcar (criar é só em Configurações → Tags). Cada nome é único na rede sem diferença de maiúsculas ("VIP" e "vip" são a mesma): marcar grava o nome do catálogo, desmarcar tira qualquer grafia, e o filtro acha a tag escrita de qualquer jeito.
-- Fonte: decisão do Claude; o público da campanha como filtro: decisão do Claude, 26/11 (33ª simulação, Decisão D e o arremate), pela TG-14
+**TG-07.** Há um catálogo só de tags, e a ficha, o cadastro, o painel do inbox, o card da oportunidade e as automações ("Pôr a tag", "Remover tag") oferecem as tags ativas dele para MARCAR; o público da campanha, que é filtro, oferece também as arquivadas que alguém tem (TG-14) — sem lista fixa, sem "as que estão em uso" e sem entrada livre: nenhuma tela cria tag ao marcar (criar é só em Configurações → Tags). A importação, sim: a tag da planilha que o catálogo não tem entra nele, porque importar é a rede criando a tag dela (Q11; R38). Cada nome é único na rede sem diferença de maiúsculas ("VIP" e "vip" são a mesma): marcar grava o nome do catálogo, desmarcar tira qualquer grafia, e o filtro acha a tag escrita de qualquer jeito.
+- Fonte: decisão do Claude; o público da campanha como filtro: decisão do Claude, 26/11 (33ª simulação, Decisão D e o arremate), pela TG-14; a tag da planilha entra no catálogo: o Heitor, 2026-11-27, R38: "Entra na lista: importar é a rede criando a tag (como está)"
 - Onde: `docs/regras/crm-inbox.md:383-388`, `:420-433`, `:1708`, `:1744`, `:622-640`
 - Antes: KB-11, KB-12, KB-17, KE-55; antes de 26/11: a campanha oferecia só as ativas
 
@@ -434,8 +434,8 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/regras/crm-inbox.md:762`, `:818`, `:829-834`
 - Antes: KC-30, KC-31, KC-34, KC-36
 
-**IM-12.** A prévia diz o que vai acontecer: quem cada linha encontra na rede e por quê ("completa a ficha de X (o mesmo CPF)"), a linha que repete o telefone de outra, quem entra sem telefone e as colunas que ficaram em "Não importar". O botão diz o que entra ("Importar 10 linhas: 9 contatos novos, 1 linha junta com outra"; só "Importar N linhas" quando todas são novas). A prévia mostra o destino de CADA linha ("ficha nova", "completa a ficha de X (o mesmo CPF)", "junta com a linha N", "contato novo, sem telefone"), pela mesma conta do botão; a lista abre com 10 e cresce de 50 em 50 ("Mostrar mais").
-- Fonte: princípio 3; o destino de cada linha: decisão do Claude, 26/11 (33ª simulação, A13), pelo princípio 3
+**IM-12.** A prévia diz o que vai acontecer: quem cada linha encontra na rede e por quê ("completa a ficha de X (o mesmo CPF)"), a linha que repete o telefone de outra, quem entra sem telefone e as colunas que ficaram em "Não importar". O botão diz o que entra ("Importar 10 linhas: 9 contatos novos, 1 linha junta com outra"; só "Importar N linhas" quando todas são novas), com o ponto do milhar ("1.235"). A prévia mostra o destino de CADA linha ("ficha nova", "completa a ficha de X (o mesmo CPF)", "junta com a linha N", "contato novo, sem telefone"), pela mesma conta do botão; a lista abre com 10 e cresce de 50 em 50 ("Mostrar mais").
+- Fonte: princípio 3; o destino de cada linha: decisão do Claude, 26/11 (33ª simulação, A13), pelo princípio 3; o ponto do milhar: decisão do Claude, 27/11 (40ª simulação, A1 e D13)
 - Onde: `docs/regras/crm-inbox.md:839`, `:850`, `:877`, `:1236-1246`
 - Antes: KC-37, KC-39, KC-43; antes de 26/11: a prévia mostrava só as três primeiras linhas, sem o destino
 
@@ -457,7 +457,7 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 ### O que nasce e o que a tela conta
 
 **IM-16.** A cliente nova da importação vem só com as tags da planilha, ganha a conta de fidelidade e nasce sem acesso ao portal (o acesso se cria na ficha). A importação de clientes não cria contato do CRM: a ficha se liga à pessoa quando a conversa começar.
-- Fonte: decisão do Claude
+- Fonte: decisão do Claude; a tag da planilha entra no catálogo: o Heitor, 2026-11-27, R38: "Entra na lista: importar é a rede criando a tag (como está)"
 - Onde: `docs/regras/crm-inbox.md:899`
 - Antes: KC-46
 
@@ -466,8 +466,8 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 - Onde: `docs/regras/crm-inbox.md:904`, `:1735`
 - Antes: KC-47, KE-65
 
-**IM-18.** O relatório ("Baixar o relatório", CSV com Linha; Nome; Situação; Motivo) traz as recusadas e as que entraram com aviso, com a linha da planilha, e vale 7 dias, também quando a importação falha. O placar soma o total de linhas, com "com aviso" como parte das que entraram. No fim, a importação diz onde estão os importados (Clientes, o quadro do funil, ou "Contatos do CRM" na busca), e a linha que juntou com quem já existe diz em quem entrou e o que ficou de fora.
-- Fonte: princípio 3
+**IM-18.** O relatório ("Baixar o relatório", CSV com Linha; Nome; Situação; Motivo) traz as recusadas e as que entraram com aviso, com a linha da planilha, e vale 7 dias, também quando a importação falha. O placar soma o total de linhas, com "com aviso" como parte das que entraram, e os números vão com o ponto do milhar ("1.250 linhas"). No fim, a importação diz onde estão os importados (Clientes, o quadro do funil, ou "Contatos do CRM" na busca), e a linha que juntou com quem já existe diz em quem entrou e o que ficou de fora.
+- Fonte: princípio 3; o ponto do milhar: decisão do Claude, 27/11 (40ª simulação, D13), como no botão (IM-12)
 - Onde: `docs/regras/crm-inbox.md:925-947`, `:1042`
 - Antes: KC-49, KC-51, KC-52, KC-53
 
@@ -478,8 +478,8 @@ Este é o catálogo das regras da área de Clientes, CRM e inbox que valem HOJE:
 
 ### A migração de outro sistema
 
-**IM-20.** A coluna "Cliente desde" (aceita "03/2021" e "2019") vale: a ficha, o cabeçalho do atendimento e o pacote LGPD mostram "Cliente desde" por ela (sem ela, a data do cadastro), e a ficha que já era cliente antes de um mês não conta como cliente nova dele, nem no selo "Novo" (calculado, não tag). Sem essa coluna, a prévia avisa que as fichas novas contam como novas a partir de hoje.
-- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-06: "concordo"
+**IM-20.** A coluna "Cliente desde" (aceita "03/2021" e "2019") vale: a ficha, o cabeçalho do atendimento e o pacote LGPD mostram "Cliente desde" por ela (sem ela, a data do cadastro), e a ficha que já era cliente antes de um mês não conta como cliente nova dele, nem no selo "Novo" (calculado, não tag). Sem essa coluna, a prévia avisa que as fichas novas contam como novas a partir de hoje — também quando a coluna está na planilha e ficou em "Não importar".
+- Fonte: recomendação do Claude aprovada pelo Heitor, 2026-11-06: "concordo"; a coluna em "Não importar": decisão do Claude, 27/11 (40ª simulação, D11), pela própria IM-20
 - Onde: `docs/regras/crm-inbox.md:955-984`, `:1738-1739`
 - Antes: KC-55, KC-56, KC-59, KE-68
 
@@ -822,7 +822,7 @@ Q09. **Resolvida na revisão de 24/11:** "A rede toda com Configurações em Ger
 
 Q10. **Resolvida na revisão de 24/11:** As Importações estão na configuração da rede toda (CLAUDE.md §11): a tela inteira, o histórico e o relatório, é só da Admin da rede. Defeito a corrigir. — *Era:* **IM-04 — o histórico das importações:** importar é só da Admin da rede, mas ler as "Importações anteriores", retomar e baixar o relatório (que traz dados pessoais) pedem só o módulo do destino (`crm-inbox.md:929-931`, `:1036-1037`). Quem tem Clientes ou o CRM em Gerenciar e não é a Admin da rede deve ver o histórico e baixar o relatório, ou isso também é só da Admin?
 
-Q11. **Resolvida na revisão de 24/11:** Quem importa é a Admin da rede, a mesma que cria as tags: a tag da planilha é a rede criando a tag dela, não o sistema pondo tag sozinho (princípio 2). A importação cria a tag. — *Era:* **TG-07 — a tag da planilha que não está no catálogo:** nenhuma tela cria tag e criar é só em Configurações → Tags, mas `crm-inbox.md:428` diz que o catálogo "cresce" com toda tag gravada por quem pode marcar. Na Importação, uma tag da planilha que ainda não existe deve ser criada ou recusada?
+Q11. **Resolvida na revisão de 24/11:** Quem importa é a Admin da rede, a mesma que cria as tags: a tag da planilha é a rede criando a tag dela, não o sistema pondo tag sozinho (princípio 2). A importação cria a tag. Confirmada pelo Heitor, 2026-11-27 (R38): "Entra na lista: importar é a rede criando a tag (como está)". — *Era:* **TG-07 — a tag da planilha que não está no catálogo:** nenhuma tela cria tag e criar é só em Configurações → Tags, mas `crm-inbox.md:428` diz que o catálogo "cresce" com toda tag gravada por quem pode marcar. Na Importação, uma tag da planilha que ainda não existe deve ser criada ou recusada?
 
 Q12. **Decidida pelo Claude, 25/11 (o Heitor revisa):** Fica o "Remover tag", como o sistema faz hoje. A fala de 13/11 é sobre o NOME da ação ("deve se chamar só adicionar tag"); o princípio 7 ("simplificar não é reduzir funcionalidade") não tira um recurso que existia, e o princípio 1 deixa a rede decidir: o fluxo é ela que monta e liga, então tirar a tag pelo fluxo não é o sistema mexendo em tag sozinho. `docs/regras/automacoes.md:464` registra uma confirmação sua de 18/11, noite ("automacao pode tirar tag"), que não está no DEVLOG — por isso a decisão não se apoia nela. Nada muda no código. — *Era:* **TG-04 — a automação pode TIRAR uma tag?** A sua fala de 13/11 diz que a ação "deve se chamar só adicionar tag". Em 14/11 o Claude leu isso como "só adiciona" e tirou o "remover"; em 18/11 a auditoria das regras leu a fala como sobre o NOME e, pelo princípio 7 ("simplificar não é reduzir funcionalidade"), trouxe o "Remover tag" de volta — é o que o sistema faz hoje (`docs/regras/automacoes.md:452-461`). Qual vale?
 

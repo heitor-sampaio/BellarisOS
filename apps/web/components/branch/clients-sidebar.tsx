@@ -200,7 +200,7 @@ export function ClientsSidebar({
               <span style={{ display: 'block' }}>Os selos da lista são calculados pelo sistema, não são tags.</span>
               <span style={{ display: 'block', marginTop: 6 }}>
                 Novo: cliente há menos de 30 dias, pela data &quot;Cliente desde&quot; da ficha — sem ela, a do cadastro (a ficha
-                importada sem essa data aparece como nova). Arquivada: a ficha arquivada. VIP: a ficha com a tag VIP da rede.
+                importada sem essa data aparece como nova). Arquivada: a ficha arquivada.
                 Regular: as outras.
               </span>
             </Dica>
@@ -314,11 +314,11 @@ export function ClientsSidebar({
             const isSelected = c.id === selectedId
             const escolhida  = escolhidas.includes(c.id)
             const initials   = iniciaisDoNome(c.name)
-            const isVip      = c.tags.includes('VIP')
-            // A arquivada tem a marca na linha (J-23).
-            const badgeLabel = !c.isActive ? 'Arquivada' : isVip ? 'VIP' : c.isNew ? 'Novo' : 'Regular'
-            const badgeColor = !c.isActive ? 'var(--warning)' : isVip ? 'var(--brand)' : c.isNew ? 'var(--success)' : 'var(--text-faint)'
-            const badgeBg    = !c.isActive ? 'var(--warning-soft)' : isVip ? 'var(--brand-soft)' : c.isNew ? 'var(--success-soft)' : 'var(--bg-app)'
+            // A arquivada tem a marca na linha (J-23). Nenhuma tag vira selo: VIP é uma tag como as
+            // outras (TG-01, CL-20; D3 da 40ª).
+            const badgeLabel = !c.isActive ? 'Arquivada' : c.isNew ? 'Novo' : 'Regular'
+            const badgeColor = !c.isActive ? 'var(--warning)' : c.isNew ? 'var(--success)' : 'var(--text-faint)'
+            const badgeBg    = !c.isActive ? 'var(--warning-soft)' : c.isNew ? 'var(--success-soft)' : 'var(--bg-app)'
 
             return (
               <button

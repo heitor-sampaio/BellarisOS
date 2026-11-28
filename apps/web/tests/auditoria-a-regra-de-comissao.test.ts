@@ -58,7 +58,8 @@ describe('A9: a regra de comissão diz de quê, de quem e quanto', () => {
       regra({ depois: { procedure_id: 'prL', professional_id: 'pT', type: 'PERCENTAGE', value: 40 } }),
     ]
     expect(sp(fraseDoGrupo(linhas, nomes)))
-      .toBe('Criou 2 e apagou 1 regras de comissão de Limpeza de pele (Marcela: R$ 50,00; Tamires: 40%)')
+      // R40, o Heitor, 27/11: "Cada parte com o seu plural (a proposta)".
+      .toBe('Criou 2 regras e apagou 1 regra de comissão de Limpeza de pele (Marcela: R$ 50,00; Tamires: 40%)')
   })
   it('salvar as regras da pessoa diz a pessoa e o que ficou', async () => {
     const { fraseDoGrupo } = await import('@/lib/auditoria/frase')

@@ -8,12 +8,13 @@ import { Pencil, X } from 'lucide-react'
 import { updateTeamMember } from '@/actions/team'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { useFala } from '@/components/shared/uma-unidade'
-import { UnidadesDoMembro, AtendeDoMembro, useAtendeDoMembro, type ValorDasUnidades } from '@/components/shared/unidades-do-membro'
+import { UnidadesDoMembro, UnidadesTravadasNaRede, AtendeDoMembro, useAtendeDoMembro, type ValorDasUnidades } from '@/components/shared/unidades-do-membro'
 import { RepasseDoAtende, repasseDasEscolhas } from '@/components/admin/repasse-do-atende'
 import { Dica } from '@/components/shared/dica'
 import { textoDoRelogioDoHorario } from '@/lib/unidades/hora-da-unidade'
 import { toast } from 'sonner'
 import { MEMBRO_SEM_ACESSO, MEMBRO_SEM_ACESSO_QUE_ATENDE } from '@/lib/cargos/sem-acesso'
+import { quemMudaOCargoDaPropriaAdmin } from '@/lib/equipe/textos-do-cadastro'
 
 interface Branch { id: string; name: string; /** O horário de funcionamento (J-9: de onde parte o do membro). */ horario?: unknown }
 /** C62 (F70): o porquê do cargo desligado (o mesmo texto da recusa da action, `lib/equipe/cargo-acima.ts`). */
@@ -25,6 +26,8 @@ interface Role   {
   acimaDoMeu?: boolean
   /** Item 21 de 18/11: o cargo não abre módulo nenhum (o "Não definido", ou todo em Sem acesso). */
   semAcesso?: boolean
+  /** A11 da 40ª (EQ-13): ela é a única Admin da rede ativa — ninguém muda o cargo dela. */
+  ultimaAdmin?: boolean
 }
 
 export interface EditableMember {
@@ -136,7 +139,8 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, unidadesDeQue
   const paraAdmin = !!cargoDeAdminId && cargo === cargoDeAdminId
   const unidades: ValorDasUnidades = paraAdmin ? 'rede' : unidadesEscolhidas
   // O campo "Unidades": quem tem a rede inteira, ou quem tem mais de uma unidade.
-  const mostraUnidades = !cargoFixo && !paraAdmin && (canChooseScope || (unidadesDeQuemEdita?.length ?? 0) > 1)
+  // D14 da 40ª: quem tem "A rede inteira" fica com ela quando quem edita não a tem (EQ-04).
+  const mostraUnidades = !cargoFixo && !paraAdmin && (canChooseScope || (unidadesDeQuemEdita?.length ?? 0) > 1) && (canChooseScope || member.branchId !== null)
   const todasAsAtivas = unidadesDoAtende ?? branches
   const unidadesDela = unidades === 'rede' ? todasAsAtivas.map(b => b.id) : unidades
   const [state, action, pending] = useActionState(updateTeamMember, undefined)
@@ -243,7 +247,7 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, unidadesDeQue
                         <option value={cargoFixo.id}>{cargoFixo.label}</option>
                       </select>
                       <p data-cargo-fixo style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                        Você não muda o próprio cargo de {cargoFixo.label}: {fala('outra Admin da rede muda.')}
+                        Você não muda o próprio cargo de {cargoFixo.label}: {fala(quemMudaOCargoDaPropriaAdmin(!!cargoFixo.ultimaAdmin))}
                       </p>
                     </>
                   ) : cargoTravado ? (
@@ -282,6 +286,8 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, unidadesDeQue
                   )}
                 </div>
 
+                {/* A8 da 40ª (EQ-11): a Admin da rede tem a rede inteira — o campo mostra, travado. */}
+                {(paraAdmin || cargoFixo) && <UnidadesTravadasNaRede id={`tme-unidades-${member.id}`} />}
                 {mostraUnidades && (
                   <UnidadesDoMembro id={`tme-unidades-${member.id}`}
                     // Quem edita vê as dela; a unidade do membro fora do alcance aparece travada.

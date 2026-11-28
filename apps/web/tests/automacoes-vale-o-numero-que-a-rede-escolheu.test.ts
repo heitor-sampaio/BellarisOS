@@ -171,3 +171,21 @@ describe('o dia do mês vai de 1 a 31, e a tela diz o mês sem aquele dia', () =
     expect(painel).toMatch(/dicaDoDiaDoMes\(/)
   })
 })
+
+// D4 da 40ª simulação: o passo "Buscar clientes" não oferecia o filtro de Tags, e o motor e o tipo já o
+// aceitavam. TG-12 (o Heitor, 19/11: "Quem tem TODAS (E)" — o "Buscar clientes" entre as telas do filtro), AX-12
+// ("As tags do filtro vão todas") e CLAUDE.md §1, Tags ("onde tiver for passível de filtro, um dos filtros que
+// ela pode usar são as tags"). O seletor é o das outras telas: o TagPicker, com a lista do FILTRO (TG-14).
+describe('o "Buscar clientes" filtra por tags, com o seletor das outras telas', () => {
+  const painel = fonte('components/admin/automacoes/painel-do-no.tsx')
+  const bloco = painel.slice(painel.indexOf('no.tipo === NODES.BUSCAR_CLIENTES'), painel.indexOf('no.tipo === NODES.ESPERA_DURACAO'))
+
+  it('o painel do passo tem o campo de Tags, que grava `tags` na config', () => {
+    expect(bloco).toMatch(/set\(\{ tags/)
+    expect(painel, 'o seletor das outras telas').toMatch(/<TagPicker/)
+  })
+
+  it('as opções são as do filtro (as ativas e as arquivadas que alguém tem), não só as de marcar', () => {
+    expect(painel).toMatch(/useTagsDaRede\([^)]*'filtro'\)/)
+  })
+})

@@ -2130,9 +2130,8 @@ export function AppointmentSession({
                 {client.tags.map(tag => (
                   <span key={tag} style={{
                     fontSize: 'var(--text-overline)', fontWeight: 700, padding: '2px 8px', borderRadius: 10,
-                    background: tag === 'VIP' ? 'var(--brand-soft)' : 'var(--warning-soft)',
-                    color: tag === 'VIP' ? 'var(--brand)' : 'var(--warning)',
-                    border: `1px solid ${tag === 'VIP' ? 'var(--brand-soft-border)' : 'var(--warning-border)'}`,
+                    // Toda tag com a mesma aparência: nenhum nome tem sentido para o sistema (TG-01; D3 da 40ª).
+                    background: 'var(--warning-soft)', color: 'var(--warning)', border: '1px solid var(--warning-border)',
                   }}>{tag}</span>
                 ))}
               </div>

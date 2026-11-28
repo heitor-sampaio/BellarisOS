@@ -12,7 +12,7 @@ import { SettingsIntegrations } from '@/components/admin/settings-integrations'
 import { SettingsBranches } from '@/components/admin/settings-branches'
 import { BranchEditForm } from '@/components/admin/branch-edit-form'
 import { SalasDaUnidade, type SalaDaUnidade } from '@/components/admin/salas-da-unidade'
-import { CONFIG_DA_REDE, mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
+import { CONFIG_DA_REDE, falaQueGuardaARecusa, mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { Lock } from 'lucide-react'
 import { Dica } from '@/components/shared/dica'
 import { AtivoAVista } from '@/components/shared/ativo-a-vista'
@@ -445,7 +445,8 @@ export async function Configuracoes({
         <div className="card" data-aba-fora-do-acesso role="status" style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '14px 18px', marginBottom: 20 }}>
           <Lock size={15} aria-hidden style={{ color: 'var(--text-faint)', flexShrink: 0, marginTop: 2 }} />
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 'var(--leading-snug)' }}>
-            {fala(abaFechada)}
+            {/* A recusa da rede passa inteira (A3 da 40ª; CU-03). */}
+            {falaQueGuardaARecusa(fala)(abaFechada)}
             {linkDaAbaFechada && (
               <>
                 {' '}

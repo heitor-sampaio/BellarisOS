@@ -190,3 +190,21 @@ describe('Tags no banco: o gatilho da "Unidade: X" saiu, e ela é uma tag como a
     }
   })
 })
+
+// D3 da 40ª simulação: a lista de Clientes tinha o selo "VIP" (`c.tags.includes('VIP')`) e a tela do
+// atendimento pintava a tag 'VIP' de outra cor. TG-01 (o Heitor, 2026-11-13: "a rede cria a tag que
+// quiser e usa elas como filtro depois, do que quiser, com nome que quiser") e CL-20 ("VIP é uma tag
+// como as outras"): nenhum nome de tag tem significado para o sistema.
+describe('Nenhum nome de tag tem significado para o sistema (TG-01, CL-20)', () => {
+  it('nenhum código compara uma tag a um nome fixo', () => {
+    const NOME_FIXO = /(?<!typeof )\btags?\s*(===|!==)\s*'[^']+'|\btags\.includes\(\s*'[^']+'\s*\)|\bisVip\b/
+    const achados = codigo.filter(c => NOME_FIXO.test(c.texto)).map(c => c.arquivo)
+    expect(achados).toEqual([])
+  })
+
+  it('a lista de Clientes não tem selo de tag (o "VIP" sai dos selos e da dica deles)', () => {
+    const lista = codigo.find(c => c.arquivo === 'apps/web/components/branch/clients-sidebar.tsx')!.texto
+    expect(lista).not.toMatch(/'VIP'/)
+    expect(lista).not.toMatch(/tag VIP/)
+  })
+})

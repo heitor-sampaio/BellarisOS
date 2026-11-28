@@ -243,3 +243,49 @@ test('PLAT-02/03: na Equipe da unidade, o cargo acima do dela vem desligado; que
     await acima.limpar(); await deAeC.limpar()
   }
 })
+
+test('EQ-05: quem tem a rede inteira aparece na Equipe da unidade com o editar; o cargo e a abrangência ficam, o desativar não aparece', async ({ browser }) => {
+  // D14 da 40ª simulação (EQ-05, decisão do Claude, 27/11): editar pede
+  // ALGUMA unidade do membro, e quem tem "A rede inteira" está em todas — quem
+  // tem A e B achava a linha dele sem ação nenhuma. Trocar o cargo, a
+  // abrangência, desativar e reativar pedem TODAS: duas unidades não são a rede.
+  const daRede = await criarMembro(`eqvur${marca}`, {
+    tenant: rede!.tenantId, branchId: null, rotulo: 'Da rede', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }],
+    // A Equipe da unidade mostra quem é da rede e ATENDE nela.
+    atendeEm: [un.A.id, un.B.id],
+  })
+  const nomeDaRede = (await db().from('users').select('name').eq('id', daRede.userId).single<{ name: string }>()).data!.name
+  try {
+    await como(browser, pessoa!, async p => {
+      const rota = `/${un.A.slug}/team`
+      await p.goto(rota)
+      const linha = p.locator('tr').filter({ has: p.getByLabel(`Editar ${nomeDaRede}`) })
+      await expect(linha, 'a linha tem o editar').toBeVisible()
+      await expect(linha.getByRole('button', { name: /Desativar/ }), 'sem o desativar').toHaveCount(0)
+      await linha.getByLabel(`Editar ${nomeDaRede}`).click()
+      await expect(p.locator(`#tme-role-${daRede.userId}`), 'o cargo fica travado').toBeDisabled()
+      await expect(p.getByRole('dialog').locator('[data-unidades-do-membro]'), 'a abrangência não se escolhe').toHaveCount(0)
+
+      // Pela action: o registro grava; o cargo e a abrangência pedidos não.
+      const r = await chamarAcaoComFormulario(p, 'actions/team.ts', 'updateTeamMember', rota, [undefined], {
+        userId: daRede.userId, roleId: daRede.roleId, scope: 'branch', _unidades: '1', unidades: un.A.id,
+        registro_conselho: `CRM ${marca}`, redirectPath: rota,
+      })
+      expect(r.status, r.texto.slice(0, 300)).toBe(200)
+      const outroCargo = await chamarAcaoComFormulario(p, 'actions/team.ts', 'updateTeamMember', rota, [undefined], {
+        userId: daRede.userId, roleId: pessoa!.roleId, redirectPath: rota,
+      })
+      expect(outroCargo.texto, 'trocar o cargo pede todas as unidades').toContain('o cargo dela só muda quem alcança todas as unidades dela')
+      const d = await chamarAcao(p, 'actions/team.ts', 'deactivateTeamMember', rota, [daRede.userId, rota])
+      expect(d.texto, 'desativar pede todas as unidades').toContain('desativar e reativar é de quem alcança todas as unidades dela')
+    })
+    const { data } = await db().from('users').select('branch_id, role_id, is_active, registro_conselho')
+      .eq('id', daRede.userId).single<{ branch_id: string | null; role_id: string; is_active: boolean; registro_conselho: string | null }>()
+    expect(data!.registro_conselho, 'a edição gravou').toBe(`CRM ${marca}`)
+    expect(data!.branch_id, 'segue com a rede inteira').toBeNull()
+    expect(data!.role_id, 'o cargo ficou').toBe(daRede.roleId)
+    expect(data!.is_active, 'segue ativa').toBe(true)
+  } finally {
+    await daRede.limpar()
+  }
+})

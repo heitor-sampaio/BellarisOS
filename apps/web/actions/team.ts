@@ -19,6 +19,7 @@ import { comLoginNovo } from '@/lib/login-novo'
 import { EntradaDoRepasse, aplicarRepasse, pendenciasDoMembro, type PendenciasDoMembro } from '@/lib/equipe/repasse'
 import { falaDaRede } from '@/lib/unidades/uma-so'
 import { atendeDoFormulario, atendeQueGrava, atendeForaDasUnidades, listaDeUnidades, ATENDE_SO_NAS_UNIDADES_DA_PESSOA } from '@/lib/equipe/atende'
+import { alcancaOMembro, mantemAAbrangencia } from '@/lib/equipe/alcance-do-membro'
 import { unidadesDoFormulario, unidadesDoMembro, unidadesQueGrava, FORA_DO_ALCANCE_PARA_DESATIVAR, CARGO_DE_QUEM_TEM_OUTRA_UNIDADE } from '@/lib/unidades/do-membro'
 
 /** As unidades ATIVAS da rede (o checklist do "Atende" só marca estas). */
@@ -84,24 +85,6 @@ async function unidadesDoPedido(
     if ('error' in ok) return ok
   }
   return r
-}
-
-/**
- * O membro está ao alcance de quem edita: quem tem a rede inteira alcança
- * todos; quem tem unidades, o membro de alguma delas (`todas`: de TODAS as
- * dele — desativar tranca o login, e ele trabalha também onde ela não chega).
- * O membro da rede inteira, só quem também a tem.
- */
-function alcancaOMembro(
-  ctx: Awaited<ReturnType<typeof getTenantContext>>,
-  membro: { branch_id: string | null; outras_unidades?: string[] | null },
-  todas = false,
-): boolean {
-  const minhas = unidadesDoContexto(ctx)
-  if (minhas === null) return true
-  const dele = unidadesDoMembro({ branchId: membro.branch_id, outrasUnidades: membro.outras_unidades })
-  if (dele === null) return false
-  return todas ? dele.every(u => minhas.includes(u)) : dele.some(u => minhas.includes(u))
 }
 
 /**
@@ -357,7 +340,7 @@ export async function updateTeamMember(
   // O membro tem de estar ao alcance de quem edita (§11): a gerente da unidade
   // A editava — e puxava para a A — gente da B e até da rede.
   // Com várias unidades (EQ1a): o membro de alguma das de quem edita.
-  if (!member || !alcancaOMembro(ctx, member as { branch_id: string | null; outras_unidades: string[] | null })) return { error: 'Membro não encontrado.' }
+  if (!member || !alcancaOMembro(unidadesDoContexto(ctx), member as { branch_id: string | null; outras_unidades: string[] | null })) return { error: 'Membro não encontrado.' }
   const unidadesAntes = unidadesDoMembro({ branchId: member.branch_id as string | null, outrasUnidades: member.outras_unidades as string[] | null })
 
   // "Somente admin pode alterar admin" (revisão do Heitor, 2026-10-29): a
@@ -393,13 +376,19 @@ export async function updateTeamMember(
   // Só o cargo de Admin da rede: o "Não definido" (de sistema também) segue
   // editável nas unidades, e se troca como qualquer outro (item 20 de 18/11).
   const mantemCargoDoSistema = !!cargoAtual?.is_system && cargoAtual.key === 'NETWORK_ADMIN' && roleId === member.role_id
+  // D14 da 40ª (EQ-05): quem tem unidades edita quem tem "A rede inteira" — o
+  // "Atende" e o horário. O cargo (o de todas as unidades dele) e "A rede
+  // inteira" (só quem a tem dá ou tira, EQ-04) ficam como estão.
+  const mantemAbrangencia = mantemAAbrangencia(unidadesDoContexto(ctx), unidadesAntes)
+  if (mantemAbrangencia && roleId !== member.role_id) return { error: CARGO_DE_QUEM_TEM_OUTRA_UNIDADE }
+  const mantemCargoEUnidades = mantemCargoDoSistema || mantemAbrangencia
 
   let unidades = unidadesAntes
   let cargoDado: { id: string; key: string | null; is_system: boolean | null } | null = null
-  if (!mantemCargoDoSistema) {
+  if (!mantemCargoEUnidades) {
     // O cargo vale em TODAS as unidades do membro: quem não alcança todas não o
     // troca (H7: "gerente de uma unidade só mexe no que é da unidade").
-    if (roleId !== member.role_id && !alcancaOMembro(ctx, member as { branch_id: string | null; outras_unidades: string[] | null }, true)) {
+    if (roleId !== member.role_id && !alcancaOMembro(unidadesDoContexto(ctx), member as { branch_id: string | null; outras_unidades: string[] | null }, true)) {
       return { error: CARGO_DE_QUEM_TEM_OUTRA_UNIDADE }
     }
     // Dar o cargo de Admin da rede só quem o tem (`assertRoleInTenant`).
@@ -465,7 +454,7 @@ export async function updateTeamMember(
   const atualizar = admin
     .from('users')
     .update({
-      ...(mantemCargoDoSistema ? {} : { role_id: roleId, branch_id: effectiveBranchId, outras_unidades: unidades?.slice(1) ?? [] }),
+      ...(mantemCargoEUnidades ? {} : { role_id: roleId, branch_id: effectiveBranchId, outras_unidades: unidades?.slice(1) ?? [] }),
       // Com a lista, o gatilho do banco acerta `provides_services` (= atende em alguma).
       ...(atendeEm ? { atende_em: atendeEm } : { provides_services: providesServices }),
       ...(horario !== undefined ? { horario } : {}),
@@ -483,7 +472,7 @@ export async function updateTeamMember(
   // invalidação de `user:` logo abaixo), então a mudança vale na hora; os claims
   // continuam sendo reescritos porque é deles que o RLS do Postgres depende.
   // Com o cargo de sistema mantido, cargo e abrangência não mudaram.
-  if (!mantemCargoDoSistema) {
+  if (!mantemCargoEUnidades) {
     await gravar(admin.rpc('set_user_claims', {
       p_auth_id:   member.auth_id,
       p_tenant_id: ctx.tenantId!,
@@ -558,8 +547,8 @@ async function membroDaRede(
   // Com várias unidades (EQ1a): de TODAS as dele — o login é um só. Quem
   // alcança só ALGUMA ouve o motivo (era "Membro não encontrado.", e a pessoa
   // estava na lista da Equipe dela — PLAT-03 da varredura de 18/11).
-  if (!membro || !alcancaOMembro(ctx, membro as { branch_id: string | null; outras_unidades: string[] | null })) return null
-  if (!alcancaOMembro(ctx, membro as { branch_id: string | null; outras_unidades: string[] | null }, true)) return FORA_DO_ALCANCE_PARA_DESATIVAR
+  if (!membro || !alcancaOMembro(unidadesDoContexto(ctx), membro as { branch_id: string | null; outras_unidades: string[] | null })) return null
+  if (!alcancaOMembro(unidadesDoContexto(ctx), membro as { branch_id: string | null; outras_unidades: string[] | null }, true)) return FORA_DO_ALCANCE_PARA_DESATIVAR
   return membro as { id: string; name: string; auth_id: string | null; is_active: boolean; role_id: string | null }
 }
 

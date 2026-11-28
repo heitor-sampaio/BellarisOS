@@ -23,6 +23,8 @@ import { alcancaTodasAsDoMembro, CARGO_DE_QUEM_TEM_OUTRA_UNIDADE } from '@/lib/u
 import { Dica } from '@/components/shared/dica'
 import { cargosQueSeDaoPelaEquipe, avisoDoMembroSemAcesso } from '@/lib/cargos/sem-acesso'
 import { cargosSemAcesso } from '@/lib/equipe/cargos-sem-acesso'
+import { abreAEquipe } from '@/lib/equipe/quem-abre-a-equipe'
+import { alcancaOMembro } from '@/lib/equipe/alcance-do-membro'
 
 function Initials({ name }: { name: string }) {
   const parts = name.trim().split(' ')
@@ -54,7 +56,8 @@ export default async function TeamPage({
   const ctx = await getTenantContext()
   // A página lista a equipe da unidade e todos os cargos do tenant. Sem este gate
   // bastava a URL direta: o cargo sem acesso a Equipe via tudo, só sem botões.
-  assertPermission(ctx, 'team', 'VIEW')
+  // D5 da 40ª (CM-04): quem muda a comissão (o Financeiro em Gerenciar) chega ao chip sem a Equipe.
+  if (!abreAEquipe(ctx.permissions, temRecurso(ctx, 'comissoes'))) assertPermission(ctx, 'team', 'VIEW')
   // A sessão só lê sinais (o Heitor, 19/11, "vai na 2"): tudo se lê pelo
   // servidor, com a rede e a abrangência conferidas aqui (era a RLS).
   const admin = createAdminClient()
@@ -86,11 +89,12 @@ export default async function TeamPage({
     // no "Atende" (decisão 2 da 8ª simulação; era só "da rede, que atende em
     // todas") — a dona da clínica que atende é o caso típico (A5/D2,
     // 2026-10-29), e a Talita da Água Verde cobrindo o Batel. A sessão de
-    // unidade não lê esses membros (RLS): o servidor lê só estes, só o nome,
-    // o cargo e onde atendem, e a linha vai sem e-mail nem ações.
+    // unidade não lê esses membros (RLS): o servidor lê só estes. A linha
+    // mostra o nome, o cargo e onde atendem; o e-mail e o horário vão só à
+    // janela de editar de quem tem unidades (D14 da 40ª, EQ-05).
     ler(createAdminClient()
       .from('users')
-      .select('id, name, role_id, branch_id, atende_em')
+      .select('id, name, email, role_id, branch_id, outras_unidades, provides_services, atende_em, horario, registro_conselho')
       .eq('tenant_id', ctx.tenantId!)
       .contains('atende_em', [branchId])
       .or(`branch_id.is.null,branch_id.neq.${branchId}`)
@@ -142,6 +146,15 @@ export default async function TeamPage({
   /** EQ1: o cargo e o desativar valem em TODAS as unidades do membro — só quem alcança todas mexe. */
   const alcancaTodas = (m: { branch_id?: string | null; outras_unidades?: string[] | null }) =>
     alcancaTodasAsDoMembro(minhas, { branchId: m.branch_id ?? null, outrasUnidades: m.outras_unidades ?? [] })
+  /**
+   * D14 da 40ª (EQ-05): quem tem "A rede inteira" e atende aqui se edita por quem
+   * tem unidades — o "Atende" (só as dela) e o horário, com o cargo travado; o
+   * desativar e o reativar pedem todas as unidades dele. A Admin da rede, só outra
+   * Admin (EQ-10), e quem tem a rede inteira a edita na Equipe da rede.
+   */
+  const editaQuemEDaRede = (m: { role_id: string | null; branch_id: string | null; outras_unidades?: string[] | null }) =>
+    canManage && minhas !== null && m.branch_id === null && alcancaOMembro(minhas, m)
+    && !allRoles.some(r => r.id === m.role_id && r.key === 'NETWORK_ADMIN' && r.is_system)
 
   return (
     <div>
@@ -325,9 +338,9 @@ export default async function TeamPage({
                   </td>
                 </tr>
               ))}
-              {/* Quem é da rede e atende aqui: só leitura. Cargo, comissão e
-                  acesso se mexem na Equipe da rede — a unidade não alcança
-                  quem é da rede (§11), e a action recusaria. */}
+              {/* Quem é da rede e atende aqui. Cargo, comissão, desativar e acesso
+                  se mexem na Equipe da rede (pedem todas as unidades dele); quem
+                  tem unidades edita o "Atende" e o horário (D14 da 40ª, EQ-05). */}
               {daRede.map((m, i) => (
                 <tr
                   key={m.id}
@@ -363,6 +376,31 @@ export default async function TeamPage({
                     <span className="chip chip-success">Ativo</span>
                   </td>
                   <td style={{ padding: '14px 20px', textAlign: 'right' }}>
+                    {editaQuemEDaRede(m as { role_id: string | null; branch_id: string | null; outras_unidades?: string[] | null }) && (
+                      <TeamMemberEdit
+                        member={{
+                          id:               m.id,
+                          name:             m.name,
+                          email:            (m as { email?: string | null }).email ?? '',
+                          roleId:           m.role_id ?? null,
+                          branchId:         null,
+                          outrasUnidades:   [],
+                          providesServices: !!(m as { provides_services?: boolean | null }).provides_services,
+                          horario:          (m as { horario?: unknown }).horario ?? null,
+                          atendeEm:         ((m.atende_em as string[] | null) ?? []),
+                          registroConselho: (m as { registro_conselho?: string | null }).registro_conselho ?? null,
+                        }}
+                        branches={[{ id: branchId, name: branch?.name ?? 'Esta unidade', horario: branch?.horario }]}
+                        unidadesDoAtende={unidadesDoAtende}
+                        fusos={fusos}
+                        editaveisDoAtende={editaveisDoAtende}
+                        roles={comTrava}
+                        cargoTravado={CARGO_DE_QUEM_TEM_OUTRA_UNIDADE}
+                        canChooseScope={false}
+                        unidadesDeQuemEdita={minhas}
+                        redirectPath={`/${slug}/team`}
+                      />
+                    )}
                     {canManage && ctx.branchId === null && (
                       <Link
                         href={`/admin/team?q=${encodeURIComponent(m.name)}`}

@@ -553,14 +553,14 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
         <SeletorDeModelo
           nome="consent_template_id" rotulo="Termo de consentimento"
           opcoes={modelos?.termos ?? []} inicial={existing?.consent_template_id ?? null}
-          vazio={`Nenhum termo cadastrado ainda — crie em Configurações → Documentos. ${ABRE_EM_OUTRA_ABA}`}
+          vazio="Nenhum termo cadastrado."
           criar={rotaNoPortal(pathname, null, '/settings?tab=documentos')} aoCriar={() => setFoiCriar(true)}
           aoMudar={id => { setTermoEscolhido(id); setOutrosMarcados(m => semOTermoEOContrato(m, { termo: id, contrato: '' })) }}
         />
         <SeletorDeModelo
           nome="contract_template_id" rotulo="Contrato"
           opcoes={modelos?.contratos ?? []} inicial={existing?.contract_template_id ?? null}
-          vazio={`Nenhum contrato de procedimento cadastrado — crie em Configurações → Documentos. ${ABRE_EM_OUTRA_ABA}`}
+          vazio="Nenhum contrato de procedimento cadastrado."
           sempre="só no atendimento avulso (a sessão de pacote e a de plano não pedem)"
           criar={rotaNoPortal(pathname, null, '/settings?tab=documentos')} aoCriar={() => setFoiCriar(true)}
           aoMudar={id => { setContratoEscolhido(id); setOutrosMarcados(m => semOTermoEOContrato(m, { termo: '', contrato: id })) }}

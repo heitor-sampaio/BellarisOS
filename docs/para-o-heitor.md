@@ -780,3 +780,28 @@ O que você precisa saber:
 - **As suas respostas estão feitas.** R36: o plano proposto guarda o preço de quando foi proposto. R37: a frase
   embaixo do "Motivo do desconto" saiu.
 - **Um teste mudou pela R37:** o que exigia a frase do motivo do desconto. Nenhum teste foi apagado.
+
+## 22. A 40ª simulação e as suas respostas R38 a R41 (27/11)
+
+Cinco redes novas, sem a conta da plataforma. Os temas foram a Auditoria de um dia, as tags em toda tela, uma rede com
+1.250 clientes, o caixa com três pessoas no PDV e a equipe mudando ao longo do dia. O dinheiro das cinco bateu. A
+planilha de 1.250 linhas entrou sem corte, e todas as contagens bateram com o banco. Foram 14 defeitos, nenhum de
+segurança. O resumo está no DEVLOG (27/11, (7)).
+
+O que você precisa saber:
+- **A Auditoria fala o que aconteceu.** A ficha de saúde preenchida pela equipe aparecia como "Criou o prontuário", e
+  agora diz "Preencheu a ficha de saúde de X". A confirmação, o check-in e o início do atendimento caíam em "Editou o
+  agendamento"; agora cada um diz o fato. A remarcação do vencimento tinha voltado a sair sem o nome da conta, e isso
+  também foi corrigido.
+- **O sistema parou de dar sentido ao nome "VIP".** A lista de Clientes punha um selo VIP em quem tinha essa tag. Agora
+  a tag VIP é uma tag como as outras, pela sua regra das tags.
+- **As automações filtram por tag no "Buscar clientes"**, com o mesmo seletor da campanha.
+- **Quem cuida do Financeiro chega à comissão de cada pessoa sem ter a Equipe.** A Equipe abre para essa pessoa só
+  com a comissão.
+- **Quem cuida de duas unidades edita quem tem "A rede inteira" e atende nelas**: o "Atende" e o horário. O cargo e o
+  desativar continuam com quem tem a rede inteira.
+- **As suas respostas estão feitas.** R38: a tag da planilha entra na lista, como já era. R39: salvar os acessos diz
+  "Mudou os acessos do cargo X (N permissões)". R40: cada parte da frase com o seu plural. R41: o aviso de cargo sem
+  acesso só em cima da matriz.
+- **Cinco testes mudaram pelas suas respostas** (R39, R40 e R41), cada um com a sua fala no comentário. Nenhum foi
+  apagado.

@@ -1642,8 +1642,15 @@ export function ClientProfile({
   const proximosDeHoje = upcomingAppointments.filter(a => !a.emAbertoDeAntes)
   const emAbertoDeAntes = upcomingAppointments.filter(a => a.emAbertoDeAntes)
 
-  // O `?acao=reativar` sai da URL (recarregar não reabre o menu).
+  // O `?acao=reativar` sai da URL (recarregar não reabre o menu). Abre o menu
+  // quando o pedido CHEGA, não só ao montar: com a ficha dela já aberta, o
+  // "Reativar" da busca só trocava a URL (A2 da 40ª; AO-06).
   const acaoDaUrl = params.get('acao')
+  const [acaoVista, setAcaoVista] = useState(acaoDaUrl)
+  if (acaoDaUrl !== acaoVista) {
+    setAcaoVista(acaoDaUrl)
+    if (acaoDaUrl === 'reativar' && !client.isActive) setMenuAberto(true)
+  }
   const aoPedirReativar = useEffectEvent(() => {
     const q = new URLSearchParams(params.toString())
     q.delete('acao')

@@ -178,7 +178,8 @@ describe('A27/A28: a auditoria agrupa a gravação e lê o fato', () => {
       r({ tabela: 'role_permissions', operacao: 'editou', registro_id: 'rp1', colunas: ['level'] }),
     ])
     expect(g).toHaveLength(1)
-    expect(g[0]!.oQue).toBe('Criou 18 e editou 1 permissões do cargo Balcão Íris')
+    // R39, o Heitor, 27/11: "'Mudou os acessos do cargo X (N permissões)' (a proposta)".
+    expect(g[0]!.oQue).toBe('Mudou os acessos do cargo Balcão Íris (19 permissões)')
   })
 
   it('os insumos salvos juntos são uma linha', () => {
@@ -187,7 +188,8 @@ describe('A27/A28: a auditoria agrupa a gravação e lê o fato', () => {
       ...Array.from({ length: 3 }, () => r({ tabela: 'procedure_products', operacao: 'apagou' })),
     ])
     expect(g).toHaveLength(1)
-    expect(g[0]!.oQue).toBe('Criou 3 e apagou 3 insumos do procedimento')
+    // R40, o Heitor, 27/11: "Cada parte com o seu plural (a proposta)".
+    expect(g[0]!.oQue).toBe('Criou 3 insumos e apagou 3 insumos do procedimento')
   })
 
   it('gravações de quem ou de quando diferentes não se juntam', () => {

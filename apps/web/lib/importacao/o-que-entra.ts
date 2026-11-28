@@ -117,7 +117,9 @@ export function linhasDeOutroNomeQueJuntam(p: EscolhasDaPrevia): number[] {
   return decisoesDaPrevia(p).filter(d => d.juntar && !d.nomeCasa).map(d => d.numero).sort((a, b) => a - b)
 }
 
-const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`
+/** O número com o milhar ("1.235"), como o resto do sistema (A1 e D13 da 40ª). */
+const numero = (n: number) => n.toLocaleString('pt-BR')
+const plural = (n: number, um: string, varios: string) => `${numero(n)} ${n === 1 ? um : varios}`
 
 /** "Importar 10 linhas: 9 contatos novos, 1 linha junta com outra" — só o "Importar N linhas" quando todas viram pessoa nova. */
 export function textoDoBotaoDeImportar(p: { destino: Destino; prontas: number; juntamNaPlanilha: number; completam: number }): string {
@@ -128,7 +130,7 @@ export function textoDoBotaoDeImportar(p: { destino: Destino; prontas: number; j
     novos === 0
       ? (p.destino === 'clientes' ? 'nenhuma ficha nova' : 'nenhum contato novo')
       : p.destino === 'clientes' ? plural(novos, 'ficha nova', 'fichas novas') : plural(novos, 'contato novo', 'contatos novos'),
-    p.completam ? `${p.completam} ${p.completam === 1 ? 'completa' : 'completam'} quem já existe` : null,
+    p.completam ? `${numero(p.completam)} ${p.completam === 1 ? 'completa' : 'completam'} quem já existe` : null,
     p.juntamNaPlanilha ? `${plural(p.juntamNaPlanilha, 'linha junta', 'linhas juntam')} com outra` : null,
   ]
   return `${base}: ${partes.filter(Boolean).join(', ')}`
@@ -217,10 +219,10 @@ export function placarDaImportacao(a: {
   const entraram = a.novas + a.completadas + a.semMudanca
   return [
     plural(a.novas, 'novo', 'novos'), plural(a.completadas, 'completado', 'completados'),
-    a.semMudanca ? `${a.semMudanca} sem mudança` : null,
+    a.semMudanca ? `${numero(a.semMudanca)} sem mudança` : null,
     plural(a.recusadas, 'recusada', 'recusadas'),
     a.oportunidades ? plural(a.oportunidades, 'oportunidade', 'oportunidades') : null,
-    a.comAviso ? (entraram === 1 ? 'a que entrou, com aviso' : `das ${entraram} que entraram, ${a.comAviso} com aviso`) : null,
+    a.comAviso ? (entraram === 1 ? 'a que entrou, com aviso' : `das ${numero(entraram)} que entraram, ${numero(a.comAviso)} com aviso`) : null,
   ].filter(Boolean).join(' · ')
 }
 

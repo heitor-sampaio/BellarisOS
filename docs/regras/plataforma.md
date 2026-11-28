@@ -783,6 +783,12 @@ auditoria das regras, pergunta 8: "só pela conta admin"; antes, H7 de
 - **A aba da rede toda diz QUEM muda** (A5 da 14ª, princípio 3): depois de
   "Esta configuração é só da Admin da rede.", "Quem muda: …" com os nomes das
   Admins da rede ativas (`adminsAtivasDaRede`, `lib/equipe/quem-desfaz.ts`).
+- **A frase da recusa é uma só, também na rede de uma unidade** (A3 da 40ª;
+  decisão do Claude, 27/11): o texto que passa pela fala da rede de uma
+  unidade ("Admin da rede" vira "Admin") deixa `CONFIG_DA_REDE` inteira
+  (`falaQueGuardaARecusa`, `lib/configuracao-da-rede.ts`) — o aviso da aba
+  fechada dizia "só da Admin" e o cartão da mesma tela "só da Admin da rede".
+  Prova: `tests/config-da-rede-a-recusa-numa-frase-so.test.ts`.
 - **Fica com a Admin da rede** (a action recusa, a aba diz "Esta configuração é
   só da Admin da rede." sem o editor, `ABAS_DA_REDE_TODA`): tags
   (`actions/tags.ts`), funis, etapas, motivos e origens (`crm-funnels`,
@@ -1146,8 +1152,10 @@ abaixo entraram na F70, 2026-11-12):
   de editar dizem "Sem acesso a nenhum módulo: ela entra e não vê nada."
   (`[data-sem-acesso]`, `[data-cargo-sem-acesso]`; a opção do seletor leva
   "(sem acesso)"), e salvar confirma com o mesmo aviso. A tela de Cargos diz
-  no cartão e na matriz "Sem acesso a nenhum módulo: quem tem este cargo
-  entra e não vê nada." Prova: `tests/permissions.test.ts`,
+  uma vez, em cima da matriz, "Sem acesso a nenhum módulo: quem tem este
+  cargo entra e não vê nada."; o cartão do cargo fica com o resumo de sempre
+  (R41, o Heitor, 27/11: "Só em cima da matriz (a proposta)"; A13 da 40ª).
+  Prova: `tests/permissions.test.ts`, `tests/cargo-sem-acesso-so-na-matriz.test.ts`,
   `e2e/equipe-cargo-nao-definido.spec.ts`.
 - **Desativar uma unidade mostra o que fica e oferece resolver, sem impedir**
   (H6, opção a; a mesma regra da H6 de 01/11 para o membro, e os princípios 2
@@ -1260,6 +1268,22 @@ de uma unidade"):**
   está numa unidade fora do seu alcance: …" (era "Membro não encontrado.";
   `alcancaTodasAsDoMembro`, `lib/unidades/do-membro.ts`; PLAT-03 da varredura
   de 18/11). A Admin da rede é sempre da rede.
+  Quem tem "A rede inteira" está em todas as unidades: na Equipe da unidade,
+  quem tem a Equipe em Gerenciar (e unidades) o EDITA — o "Atende", o horário,
+  o registro —, com o cargo travado e sem o campo "Unidades"; trocar o cargo,
+  a abrangência, desativar e reativar seguem de quem tem "A rede inteira"
+  (`alcancaOMembro`/`mantemAAbrangencia`, `lib/equipe/alcance-do-membro.ts`).
+  A Admin da rede segue sem o lápis (EQ-10). Decisão do Claude, 27/11 (D14 da
+  40ª: a linha de quem tem a rede inteira ficava sem ação nenhuma).
+- **A Equipe abre para quem tem o Financeiro em Gerenciar** (com as comissões
+  no plano), mesmo sem a Equipe: é onde mora o chip da comissão de cada
+  pessoa (CM-04). Sem a Equipe, a tela não mostra o lápis, o cadastro nem o
+  desativar (`abreAEquipe`, `lib/equipe/quem-abre-a-equipe.ts`; a entrada
+  "Equipe" do menu, `lib/menu.ts`). Decisão do Claude, 27/11 (D5 da 40ª).
+- **A Admin da rede, no cadastro e na edição, tem o campo "Unidades" com "A
+  rede inteira", travado** (EQ-11; A8 da 40ª, decisão do Claude, 27/11: o
+  campo sumia). Na edição de si mesma, a única Admin ativa lê que ninguém muda
+  o cargo dela (A11 da 40ª; EQ-13).
 - **O portal (PO1)**: a pessoa de várias unidades entra no portal da unidade —
   a ÚLTIMA usada (o cookie `bellaris-unidade`, que o seletor grava; o servidor
   confere que ainda é dela e está ativa, `lib/unidades/de-entrada.ts`), senão a
@@ -1513,15 +1537,19 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
     transação, e a mesma pessoa) viram UMA linha, com as outras guardadas nela
     ("Ver as N mudanças desta gravação", `[data-detalhe-da-auditoria]`; a frase
     da linha é `[data-frase-da-auditoria]`). A tabela-filha se lê sob a do pai
-    ("Criou o cargo X (19 permissões)"); sem o pai, no plural ("Criou 3 e
-    apagou 3 insumos do procedimento"); a semente da rede nova é "Montou a rede
+    ("Criou o cargo X (19 permissões)"); sem o pai, cada parte com o seu plural
+    ("Criou 3 insumos e apagou 3 insumos do procedimento"; R40, o Heitor,
+    27/11: "Cada parte com o seu plural (a proposta)"); a semente da rede nova é "Montou a rede
     nova X (N registros: …)".
   - A frase lê o fato: "Estornou a venda de produto (R$ 139,00), e 1 Sérum
     voltou ao estoque" (o motivo é texto livre e não entra na auditoria),
     "Desativou/Reativou Fulana", "Transferiu 2 Protetor de Batel para Água
     Verde", "Deu entrada em 5 …", "Registrou a perda de 1 …". O produto e o
     cargo das permissões se leem na hora, como os nomes ("Criou a permissão de
-    Agenda do cargo X"; "Criou 19 permissões do cargo X").
+    Agenda do cargo X"). A matriz salva de um cargo que já existe, só as
+    permissões ou com as abas, é "Mudou os acessos do cargo X (19 permissões)"
+    (R39, o Heitor, 27/11: "'Mudou os acessos do cargo X (N permissões)' (a
+    proposta)").
   - **A gravação se lê pelo FATO, e leva a unidade e o link dele** (D6/D7 da
     16ª simulação, `fatoDaGravacao`): a venda do pacote, do pré-pago e do
     crédito ("Vendeu o pacote 5 radiofrequências (R$ 1.650,00) — Bárbara"); o
@@ -1728,7 +1756,7 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
     - a aba de relatório diz qual e de qual cargo ("Criou a aba de relatório
       Financeiro do cargo X", o cargo lido agora); o "Salvar acessos" sem o
       cargo na gravação é "Mudou os acessos do cargo X (2 abas de relatório e
-      1 permissão)";
+      1 permissão)" (sem as abas, "(19 permissões)": R39, o Heitor, 27/11);
     - o movimento de estoque diz a medida em que se grava (a de consumo,
       quando há; `unidadeDoInsumo`): "Transferiu 2 frascos de Toxina 1 frasco
       de … para …" — o número colado no nome confundia;
@@ -1805,8 +1833,9 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
     `20261209500001`): diz de quê, de quem e quanto — "Criou a comissão de
     Limpeza de pele, a mesma para todos (30%)", "… para Marcela (R$ 50,00)",
     "Criou a comissão padrão de Tamires (35%)"; salvar o procedimento ou as
-    regras da pessoa é "Criou 2 e apagou 1 regras de comissão de Limpeza de
-    pele (Marcela: R$ 50,00; Tamires: 40%)". O gatilho passa a guardar
+    regras da pessoa é "Criou 2 regras e apagou 1 regra de comissão de
+    Limpeza de pele (Marcela: R$ 50,00; Tamires: 40%)" (cada parte com o seu
+    plural: R40, o Heitor, 27/11). O gatilho passa a guardar
     `procedure_id` e `professional_id`; a gravação de antes diz o valor.
   - **O pedido de assinatura no portal** (D21 da 31ª, decisão do Claude,
     26/11; migration `20261209100001`, `issued_documents.pedido_no_portal_em`):
@@ -1907,6 +1936,27 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
     descrição lida, "do lançamento") e "Estornou a despesa Aluguel da sala
     (R$ 2.000,00 · Boleto)". Prova:
     `tests/auditoria-quem-realiza-e-o-nome-da-conta.test.ts`.
+  - **A 40ª simulação** (decisão do Claude, 27/11; AD-13, AD-14, AD-15, AD-22):
+    a `data_de_referencia` do lançamento (gerada) é derivada como o
+    `aconteceu_em` — não conta como o que a pessoa mudou, e a remarcação do
+    vencimento volta a dizer a conta (no lançamento editado ela segue com o
+    antes e o depois); a permissão diz o módulo pelo nome da tela de Cargos
+    (`MODULE_LABELS`, todos os módulos); a ficha de saúde que a equipe grava no
+    prontuário é "Preencheu a ficha de saúde de X" (pelo link, "Respondeu a
+    ficha de saúde") — o gatilho diz, no INSERT de `medical_records`, que a
+    ficha veio junto, só o nome da coluna (migration `20261219100001`; a
+    gravação de antes segue "Criou o prontuário"); "Confirmou o agendamento de
+    X", "Fez o check-in de X", e o início e a conclusão gravados sozinhos são
+    "Iniciou / Concluiu o atendimento — X"; cada parte com o seu plural
+    ("Criou 2 regras e apagou 1 regra de comissão"; R40, o Heitor, 27/11:
+    "Cada parte com o seu plural (a proposta)"); o "Salvar acessos" de um cargo
+    que já existe é "Mudou os acessos do cargo X (N permissões)" (R39, o
+    Heitor, 27/11: "'Mudou os acessos do cargo X (N permissões)' (a
+    proposta)"); o `max_vezes` da
+    maquininha é "parcelar no crédito até"; o início ou a conclusão que fecha a
+    ficha pendente é "Concluiu o atendimento — X" (a resposta fica no detalhe;
+    sem eles, a resposta segue o fato). Prova:
+    `tests/auditoria-o-fato-da-agenda-da-ficha-de-saude-e-do-cargo.test.ts`.
   - Prova: `tests/atritos-da-15.test.ts`, `e2e/auditoria-atritos-da-15.spec.ts`.
 - **A falha do registro não derruba a gravação.** O gatilho segura o erro,
   grava uma linha `incompleto` (quando acha a rede) e deixa um WARNING no log:

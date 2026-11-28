@@ -105,6 +105,23 @@ export function UnidadesDoMembro({ unidades, editaveis, valor, aoMudar, id = 'un
 }
 
 /**
+ * O campo "Unidades" da Admin da rede (A8 da 40ª; EQ-11, o Heitor, 02/11): ela
+ * tem a rede inteira — o campo aparece com "A rede inteira", travado, como o
+ * cargo travado. Não manda nada: o servidor grava a rede inteira para a Admin.
+ */
+export function UnidadesTravadasNaRede({ id = 'unidades' }: { id?: string }) {
+  const fala = useFala()
+  const titulo = `${id}-titulo`
+  return (
+    <div role="group" aria-labelledby={titulo} data-unidades-travadas
+      style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <span id={titulo} className="overline" style={{ color: 'var(--text-muted)' }}>Unidades</span>
+      <input className="field" aria-labelledby={titulo} value={fala('A rede inteira')} disabled readOnly />
+    </div>
+  )
+}
+
+/**
  * O estado do "Atende" (EQ1c): UMA caixa — marcada, a pessoa atende em todas
  * as unidades dela. "Escolher em quais unidades atende" abre a lista.
  * D9 da 32ª (decisão do Claude, 26/11; a regra é a do Heitor, 8ª: "as que

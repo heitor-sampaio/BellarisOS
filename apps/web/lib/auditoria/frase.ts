@@ -4,7 +4,7 @@ import { rotaAtendimento, rotaCliente, rotaNoPortal } from '@/lib/rotas'
 import { rotuloDaForma, rotuloDaFormaDoFechamento } from '@/lib/financeiro/formas'
 import { quantidadeComMedida } from '@/lib/estoque/medidas'
 import { MOTIVO_BRINDE, rotuloDoMotivo } from '@/lib/estoque/perda'
-import { REPORT_TAB_LABELS } from '@/lib/permissions'
+import { MODULE_LABELS, REPORT_TAB_LABELS } from '@/lib/permissions'
 import type { ReportTab } from '@estetica-os/types'
 import type { LinhaDaAuditoria, NomesDaAuditoria, RegistroDaAuditoria } from './tipos'
 
@@ -132,7 +132,8 @@ const CAMPO: Record<string, string> = {
   loyalty_discount: 'desconto em pontos', estornada_em: 'estorno', estornada_por: 'quem estornou', produto_voltou: 'produto de volta ao estoque',
   devolucao_movement_id: 'devolução ao estoque', stock_movement_id: 'baixa do estoque', custo: 'custo', cost_price: 'custo',
   inbox_caixas: 'caixas do WhatsApp', pix_taxa_pct: 'taxa do Pix', taxas: 'taxas',
-  max_vezes: 'máximo de vezes', portal_prazo_alteracao_horas: 'prazo para a cliente alterar', plano_validade_dias: 'validade do plano',
+  // D10 da 40ª (AD-14): o nome da tela da maquininha ("Parcelar no crédito até"), não "máximo de vezes".
+  max_vezes: 'parcelar no crédito até', portal_prazo_alteracao_horas: 'prazo para a cliente alterar', plano_validade_dias: 'validade do plano',
   pacote_crediario_libera: 'sessões do pacote com valor em aberto', pacote_vencido_cancela: 'cancelar o pacote vencido',
   document: 'CNPJ', onboarding_completed_at: 'configuração inicial', atende_em: 'atende em', outras_unidades: 'outras unidades',
   provides_services: 'atende', config: 'configuração', phone_e164: 'telefone', is_default: 'padrão', social_media: 'redes sociais',
@@ -290,18 +291,18 @@ export const campoTemNomeNaAuditoria = (c: string, tabela?: string): boolean =>
 /**
  * Colunas que o sistema deriva de outras (A26 da 17ª: "quando aconteceu" é a
  * conta do horário e da conclusão, não um campo que a pessoa mudou): saem da
- * frase quando outra coluna mudou junto.
+ * frase quando outra coluna mudou junto. A `data_de_referencia` do lançamento
+ * é GERADA (o vencimento ou o pagamento, migration 20260930000023) e muda junto
+ * deles: a remarcação do vencimento voltava a "Editou o lançamento" (D1 da 40ª;
+ * decisão do Claude, 27/11, pela AD-13). No lançamento editado ela segue com o
+ * antes e o depois, quando os tem (as datas da AD-16).
  */
-const DERIVADAS: ReadonlySet<string> = new Set(['aconteceu_em'])
+const DERIVADAS: ReadonlySet<string> = new Set(['aconteceu_em', 'data_de_referencia'])
 
 const VERBO: Record<string, string> = { criou: 'Criou', editou: 'Editou', apagou: 'Apagou' }
 
-const MODULO: Record<string, string> = {
-  agenda: 'Agenda', clients: 'Clientes', loyalty: 'Fidelidade', medical_records: 'Prontuário', documents: 'Dispensar documentos',
-  procedures: 'Procedimentos e pacotes', stock: 'Estoque', financial: 'Financeiro e comissões', cashier: 'PDV',
-  crm: 'CRM', marketing: 'Marketing', reports: 'Relatórios', team: 'Equipe', forms: 'Modelos de ficha',
-  roles: 'Cargos e permissões', settings: 'Configurações da rede', automations: 'Automações', copilot: 'Copilot', audit: 'Auditoria',
-}
+/** D6 da 40ª (AD-14): o módulo pelo nome da tela de Cargos — todos (o Atendimento saía "de atendimento"). */
+const MODULO: Readonly<Record<string, string>> = MODULE_LABELS
 
 function texto(v: unknown): string | null {
   return typeof v === 'string' && v.trim() ? v.trim() : null
@@ -384,7 +385,9 @@ function valorDoLancamento(col: string, v: unknown, fuso?: string): string | nul
  * só pelo nome.
  */
 function camposDoLancamentoEditado(r: RegistroDaAuditoria, fuso?: string): string {
-  const daPessoa = r.colunas.filter(c => !DERIVADAS.has(c))
+  // A data de referência (gerada) fica quando traz o antes e o depois (A33 da 24ª: as datas).
+  const comValor = (c: string) => c === 'data_de_referencia' && (c in r.antes || c in r.depois)
+  const daPessoa = r.colunas.filter(c => !DERIVADAS.has(c) || comValor(c))
   const partes = [...new Set(daPessoa.length ? daPessoa : r.colunas)].map(c => {
     const nome = CAMPO[c] ?? c.replace(/_/g, ' ')
     if (!(c in r.antes) && !(c in r.depois)) return nome
@@ -808,8 +811,9 @@ function fraseDaRegraDeComissao(r: RegistroDaAuditoria, nomes: NomesDaAuditoria)
 
 /**
  * Salvar a comissão do procedimento (ou as regras da pessoa) apaga e grava de
- * novo, numa gravação só: "Criou 2 e apagou 1 regras de comissão de Limpeza de
- * pele (Marcela: R$ 50,00; Tamires: 40%)" — o que ficou, pelo que varia.
+ * novo, numa gravação só: "Criou 2 regras e apagou 1 regra de comissão de
+ * Limpeza de pele (Marcela: R$ 50,00; Tamires: 40%)" — o que ficou, pelo que
+ * varia (cada parte com o seu plural: R40, o Heitor, 27/11).
  */
 function fraseDasRegrasDeComissao(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria): string | null {
   if (linhas.length < 2 || !linhas.every(l => l.tabela === 'commission_rules' && (l.operacao === 'criou' || l.operacao === 'apagou'))) return null
@@ -829,7 +833,7 @@ function fraseDasRegrasDeComissao(linhas: readonly RegistroDaAuditoria[], nomes:
       : (proc ? nomes.procedimentos?.[proc] || 'outro procedimento' : 'padrão')
     return valor ? `${quem}: ${valor}` : quem
   })
-  return `${contagemDasOperacoes(linhas)} regras de comissão de ${deQue}${ficou.length ? ` (${ficou.join('; ')})` : ''}`
+  return `${contagemComAsCoisas(linhas, 'regra de comissão', 'regras de comissão')} de ${deQue}${ficou.length ? ` (${ficou.join('; ')})` : ''}`
 }
 
 /** "O quê": a frase da linha, sem quem e sem quando. */
@@ -1016,6 +1020,15 @@ export function fraseDaAuditoria(r: RegistroDaAuditoria, nomes: NomesDaAuditoria
       const resto = camposMudados(r.colunas.filter(c => c !== 'professional_id'))
       return `Repassou o agendamento${de} a ${quemAtende ?? 'outra pessoa da equipe'}${resto ? ` (e editou: ${resto})` : ''}`
     }
+    // D8 da 40ª (AD-15; decisão do Claude, 27/11): confirmar e o check-in (o
+    // nome da tela) são o fato — era "Editou o agendamento (check-in,
+    // confirmação e situação)". O início e a conclusão são o fato da GRAVAÇÃO
+    // (`fatoDaGravacao`), também quando ela tem só o agendamento.
+    const para = texto(r.depois.status)
+    if (para && r.colunas.includes('status') && texto(r.antes.status) !== para) {
+      if (para === 'ARRIVED') return `Fez o check-in${de}`
+      if (para === 'CONFIRMED') return `Confirmou o agendamento${de}`
+    }
   }
   // A33 da 19ª: o voucher devolvido (o estorno do pagamento que o usou) diz que voltou a ativo.
   const devolvido = voucherDevolvido(r)
@@ -1041,6 +1054,14 @@ export function fraseDaAuditoria(r: RegistroDaAuditoria, nomes: NomesDaAuditoria
   }
   // A36 da 16ª: a resposta da ficha de saúde é o fato. Pela cliente (o link, o app) ela "respondeu"; pela equipe, "preencheu".
   if (r.tabela === 'pre_atendimentos' && r.operacao === 'editou' && r.colunas.includes('respondido_em')) {
+    if (r.ator_tipo === 'sistema' || r.ator_tipo === 'cliente') return 'Respondeu a ficha de saúde'
+    return `Preencheu a ficha de saúde${cliente ? ` de ${cliente}` : ''}`
+  }
+  // D7 da 40ª (AD-22; decisão do Claude, 27/11): a ficha de saúde gravada no
+  // prontuário sem pendente a fechar (a equipe na sessão, ou o prontuário criado
+  // com ela) — era "Criou o prontuário" / "Editou o prontuário (ficha de saúde)".
+  // O INSERT diz a coluna desde 20261219100001; o de antes não, e segue o que era.
+  if (r.tabela === 'medical_records' && (r.operacao === 'criou' || r.operacao === 'editou') && r.colunas.includes('general_anamnesis')) {
     if (r.ator_tipo === 'sistema' || r.ator_tipo === 'cliente') return 'Respondeu a ficha de saúde'
     return `Preencheu a ficha de saúde${cliente ? ` de ${cliente}` : ''}`
   }
@@ -1162,7 +1183,7 @@ function feitoPeloLink(r: RegistroDaAuditoria): boolean {
     case 'document_signatures': return true
     case 'pre_atendimentos': case 'pre_atendimento_links': case 'document_sign_links': case 'issued_documents':
       return r.operacao === 'editou'
-    case 'medical_records': return r.operacao === 'editou' && r.colunas.includes('general_anamnesis')
+    case 'medical_records': return (r.operacao === 'editou' || r.operacao === 'criou') && r.colunas.includes('general_anamnesis')
     default: return false
   }
 }
@@ -1309,15 +1330,24 @@ function comAGeracaoNaVenda(grupos: RegistroDaAuditoria[][]): RegistroDaAuditori
   return levados.size ? grupos.filter(g => !levados.has(g)) : grupos
 }
 
-/** "Criou 3 e apagou 1": as operações das linhas, na ordem criou, editou, apagou. */
-function contagemDasOperacoes(linhas: readonly RegistroDaAuditoria[]): string {
+/**
+ * Cada parte com o seu plural (R40, o Heitor, 27/11: "Cada parte com o seu
+ * plural (a proposta)"; AD-14): "Criou 2 regras e apagou 1 regra de comissão".
+ * O complemento comum ("de comissão") vai uma vez, no fim; quando o singular e
+ * o plural não dividem o complemento, cada parte leva o nome inteiro.
+ */
+function contagemComAsCoisas(linhas: readonly RegistroDaAuditoria[], um: string, varios: string): string {
+  const [cabecaUm = um, ...restoUm] = um.split(' ')
+  const [cabecaVarios = varios, ...restoVarios] = varios.split(' ')
+  const comum = restoUm.join(' ') === restoVarios.join(' ') ? restoUm.join(' ') : null
   const partes = ORDEM_DAS_OPERACOES
     .map(op => ({ op, n: linhas.filter(l => l.operacao === op).length }))
     .filter(x => x.n > 0)
-    .map(x => `${x.op} ${x.n}`)
-  const frase = emLista(partes)
+    .map(x => `${x.op} ${x.n} ${comum === null ? (x.n === 1 ? um : varios) : x.n === 1 ? cabecaUm : cabecaVarios}`)
+  const frase = `${emLista(partes)}${comum ? ` ${comum}` : ''}`
   return frase.charAt(0).toUpperCase() + frase.slice(1)
 }
+const noSingular = (tabela: string) => (COISA_DA_AUDITORIA[tabela] ?? `registro (${tabela})`).replace(/^(o|a|os|as) /, '')
 
 /** "19 permissões dos cargos, 8 tags" — as tabelas do grupo, da que tem mais à que tem menos. */
 function resumoDasTabelas(linhas: readonly RegistroDaAuditoria[]): string {
@@ -1917,7 +1947,10 @@ export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: Nome
       && texto(so.depois.category) !== 'Estorno'
     // D7 da 36ª: a parcela única do crediário sem entrada, sozinha na gravação.
     const crediarioAoCriar = so.tabela === 'financial_transactions' && !!parcelasDoCrediario(linhas, nomes)
-    const baixa = so.tabela === 'financial_transactions' && (so.operacao === 'editou' || recebidaAoCriar || crediarioAoCriar) ? fatoDaGravacao(linhas, nomes) : null
+    // D8 da 40ª (AD-13): o início sozinho (a avaliação de R$ 0, sem comanda) e a conclusão sozinha.
+    const doAtendimento = so.tabela === 'appointments' && so.operacao === 'editou'
+    const baixa = (so.tabela === 'financial_transactions' && (so.operacao === 'editou' || recebidaAoCriar || crediarioAoCriar)) || doAtendimento
+      ? fatoDaGravacao(linhas, nomes) : null
     // D12 da 37ª: o brinde sem produto grava só o voucher.
     return baixa?.frase ?? fraseDaEntregaDoBrinde(linhas, nomes) ?? fraseDaAuditoria(so, nomes)
   }
@@ -1985,8 +2018,12 @@ export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: Nome
     && ['LOSS', 'MANUAL_ADJUSTMENT'].includes(texto(l.depois.type) ?? ''))
   if (perdaOuAjuste && doEstoque(['stock_movements', 'product_batches'])) return fraseDaAuditoria(perdaOuAjuste, nomes)
   // A36 da 16ª: a resposta da ficha grava o link e o prontuário junto; o fato é a resposta.
+  // Achado da 40ª (AD-13; decisão do Claude, 27/11): o início ou a conclusão que fecha a ficha pendente é o fato
+  // da gravação ("Concluiu o atendimento — X"); a resposta fica no detalhe. Sem eles, a resposta é o fato (AD-22).
   const resposta = linhas.find(l => l.tabela === 'pre_atendimentos' && l.operacao === 'editou' && l.colunas.includes('respondido_em'))
-  if (resposta) return fraseDaAuditoria(resposta, nomes)
+  const noAtendimento = linhas.some(l => l.tabela === 'appointments' && l.operacao === 'editou'
+    && ACONTECEU_NO_ATENDIMENTO[texto(l.depois.status) ?? ''] && l.antes.status !== l.depois.status)
+  if (resposta && !noAtendimento) return fraseDaAuditoria(resposta, nomes)
   const transferencia = fraseDaTransferencia(linhas, nomes)
   if (transferencia) return transferencia
   const fato = fatoDaGravacao(linhas, nomes)
@@ -1995,7 +2032,7 @@ export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: Nome
   if (abatimento) return abatimento
   // A34 da 19ª: o remarcar, o repasse e o cancelamento gravados com outros registros.
   const doAgendamento = linhas.map(l => (l.tabela === 'appointments' && l.operacao === 'editou' ? fraseDaAuditoria(l, nomes) : null))
-    .find(f => f && /^(Remarcou|Repassou|Mudou de unidade|Cancelou|Marcou a falta) /.test(f))
+    .find(f => f && /^(Remarcou|Repassou|Mudou de unidade|Cancelou|Marcou a falta|Confirmou|Fez o check-in) /.test(f))
   if (doAgendamento) return doAgendamento
   // A36 da 20ª: o agendamento criado com outros registros (o link da ficha, a oportunidade) é o fato.
   const agendou = [...linhas].reverse().find(l => l.tabela === 'appointments' && l.operacao === 'criou')
@@ -2025,15 +2062,18 @@ export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: Nome
   }
 
   // A7 da 21ª: o "Salvar acessos" grava as permissões e as abas de relatório, sem o cargo na gravação.
+  // R39 (o Heitor, 27/11: "'Mudou os acessos do cargo X (N permissões)' (a proposta)"): só as
+  // permissões, sem as abas, também é "Mudou os acessos" — a matriz salva, não "Criou 19 permissões".
   const doCargo = (l: RegistroDaAuditoria) => l.tabela === 'role_permissions' || l.tabela === 'role_report_tabs'
   const cargosDaGravacao = [...new Set(linhas.map(l => (l.registro_id && nomes.cargos?.[l.registro_id]) || null))]
   const umCargo = cargosDaGravacao.length === 1 ? cargosDaGravacao[0] ?? null : null
-  if (linhas.every(doCargo) && linhas.some(l => l.tabela === 'role_permissions') && linhas.some(l => l.tabela === 'role_report_tabs')) {
-    const conta = (t: string, um: string, varios: string) => { const n = linhas.filter(l => l.tabela === t).length; return `${n} ${n === 1 ? um : varios}` }
-    return `Mudou os acessos ${umCargo ? `do cargo ${umCargo}` : 'dos cargos'} (${conta('role_report_tabs', 'aba de relatório', 'abas de relatório')} e ${conta('role_permissions', 'permissão', 'permissões')})`
+  if (linhas.every(doCargo)) {
+    const conta = (t: string, um: string, varios: string) => { const n = linhas.filter(l => l.tabela === t).length; return n ? `${n} ${n === 1 ? um : varios}` : null }
+    const partes = [conta('role_report_tabs', 'aba de relatório', 'abas de relatório'), conta('role_permissions', 'permissão', 'permissões')].filter(Boolean)
+    return `Mudou os acessos ${umCargo ? `do cargo ${umCargo}` : 'dos cargos'} (${partes.join(' e ')})`
   }
 
-  // Muitas linhas da mesma tabela: "Criou 3 e apagou 3 insumos do procedimento".
+  // Muitas linhas da mesma tabela: "Criou 3 insumos e apagou 3 insumos do procedimento" (R40).
   const tabela = linhas[0]!.tabela
   // A7 da 28ª (princípio 3): a despesa lançada em parcelas é UMA despesa, pela descrição ("Criou 3 lançamentos" não dizia).
   const despesaEmParcelas = fraseDaDespesaEmParcelas(linhas)
@@ -2045,12 +2085,10 @@ export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: Nome
   const trocaDoSuporte = fraseDaTrocaDaAutorizacao(linhas, nomes)
   if (trocaDoSuporte) return trocaDoSuporte
   if (linhas.every(l => l.tabela === tabela && ORDEM_DAS_OPERACOES.includes(l.operacao))) {
-    let coisas = PLURAL_DA_AUDITORIA[tabela] ?? `registros (${tabela})`
-    if (tabela === 'role_permissions' && umCargo) coisas = `permissões do cargo ${umCargo}`
-    if (tabela === 'role_report_tabs' && umCargo) coisas = `abas de relatório do cargo ${umCargo}`
     const clientes = [...new Set(linhas.map(l => l.client_id))]
     const cliente = clientes.length === 1 && clientes[0] ? nomes.clientes[clientes[0]] ?? null : null
-    return `${contagemDasOperacoes(linhas)} ${coisas}${cliente ? ` — ${cliente}` : ''}`
+    const coisas = contagemComAsCoisas(linhas, noSingular(tabela), PLURAL_DA_AUDITORIA[tabela] ?? `registros (${tabela})`)
+    return `${coisas}${cliente ? ` — ${cliente}` : ''}`
   }
 
   // Tabelas diferentes, sem pai conhecido: a frase do primeiro registro gravado.

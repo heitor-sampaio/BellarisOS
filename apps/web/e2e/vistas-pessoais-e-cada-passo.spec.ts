@@ -353,3 +353,52 @@ test.describe('no atendimento, cada passo pede o módulo dele: o clínico, o env
     })
   })
 })
+
+// A6 da 40ª (SM2; princípio 7): no portal da rede, a vista pessoal tinha o
+// título "Agenda" e o seletor "Toda a rede" — parecia a agenda inteira.
+test.describe('no portal da rede, a vista pessoal é a "Minha agenda"', () => {
+  let R2: OutraRede | null = null
+  let daRede: MembroDeTeste | null = null
+  let comAgenda: MembroDeTeste | null = null
+
+  test.beforeAll(async () => {
+    R2 = await criarOutraRede(`ma${marca}`)
+    expect((await db().from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', R2.tenantId)).error).toBeNull()
+    const { data: b2, error } = await db().from('branches')
+      .insert({ tenant_id: R2.tenantId, name: `${PREFIXO} Segunda ma${marca}`, slug: `e2e-ma2-${marca}` })
+      .select('id').single<{ id: string }>()
+    expect(error, 'criar a segunda unidade').toBeNull()
+    // "A rede inteira", atende nas duas, sem a Agenda: a vista pessoal.
+    daRede = await criarMembro(`ma${marca}`, {
+      tenant: R2.tenantId, branchId: null, rotulo: 'Atende, sem a Agenda', atendeEm: [R2.branchId, b2!.id],
+      permissoes: [{ modulo: 'agenda', nivel: 'NONE' }, { modulo: 'atendimento', nivel: 'NONE' }],
+    })
+    // Controle: com a Agenda em Ver, é a agenda da rede, com o seletor.
+    comAgenda = await criarMembro(`mc${marca}`, {
+      tenant: R2.tenantId, branchId: null, rotulo: 'Agenda em Ver',
+      permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }],
+    })
+  })
+
+  test.afterAll(async () => {
+    await daRede?.limpar(); await comAgenda?.limpar()
+    await R2?.limpar()
+  })
+
+  test('o título diz "Minha agenda" e não há "Toda a rede" a escolher; com a Agenda, há', async ({ browser }) => {
+    const ctx = await browser.newContext({ storageState: daRede!.estado })
+    try {
+      const p = await ctx.newPage()
+      await p.goto('/admin/agenda')
+      await expect(p.getByRole('heading', { level: 1, name: 'Minha agenda' })).toBeVisible()
+      await expect(p.getByRole('button', { name: 'Toda a rede' })).toHaveCount(0)
+    } finally { await ctx.close() }
+    const ctx2 = await browser.newContext({ storageState: comAgenda!.estado })
+    try {
+      const p = await ctx2.newPage()
+      await p.goto('/admin/agenda')
+      await expect(p.getByRole('heading', { level: 1, name: 'Agenda', exact: true })).toBeVisible()
+      await expect(p.getByRole('button', { name: 'Toda a rede' }).first()).toBeVisible()
+    } finally { await ctx2.close() }
+  })
+})

@@ -163,8 +163,10 @@ test('a tela de Cargos diz do cargo que não abre módulo nenhum', async ({ brow
     await como(browser, dona!.estado, async p => {
       await p.goto(`/admin/settings?tab=permissions&cargo=${vazio!.id}`)
       const texto = 'Sem acesso a nenhum módulo: quem tem este cargo entra e não vê nada.'
-      await expect(p.locator(`[data-cargo="${vazio!.id}"] [data-cargo-sem-acesso]`)).toHaveText(texto)
+      // R41, o Heitor, 27/11: "Só em cima da matriz (a proposta)" — o cartão não repete o aviso.
+      await expect(p.locator(`[data-cargo="${vazio!.id}"] [data-cargo-sem-acesso]`)).toHaveCount(0)
       await expect(p.locator('form [data-cargo-sem-acesso]')).toContainText(texto)
+      await expect(p.getByText(texto)).toHaveCount(1)
       // Controle: o cargo com a Agenda não leva o aviso.
       await expect(p.locator(`[data-cargo="${alvo!.roleId}"] [data-cargo-sem-acesso]`)).toHaveCount(0)
     })

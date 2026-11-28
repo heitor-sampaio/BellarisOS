@@ -533,7 +533,10 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
 - **A lista de clientes filtra pelo vocabulário** (2026-10-14): Situação
   (Ativos, Novos, Inativos — escolha única) e Tags (várias, todas valem juntas,
   sem caixa) no `PickerCompacto`, como o quadro. O segmento fixo "Todos / VIP /
-  Novos / Inativos" saiu: VIP é uma tag como as outras.
+  Novos / Inativos" saiu: VIP é uma tag como as outras — e nenhum nome de tag
+  vira selo na lista nem cor própria na tela do atendimento (D3 da 40ª, TG-01 e
+  CL-20: o selo "VIP" e o realce da tag 'VIP' saíram; os selos são só os
+  calculados, Arquivada, Novo e Regular). Prova: `tests/tags-so-quem-marca.test.ts`.
 - **O filtro de Tags é E em todo lugar** (decisão do Heitor, 19/11: "Quem tem
   TODAS (E)", entre E, OU e a pessoa escolher; proposta do Claude em 18/11 pelo
   princípio 7, quando a lista de Clientes era E e o quadro e as campanhas, OU): com duas tags
@@ -655,7 +658,9 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   - a BUSCA UNIVERSAL acha a arquivada (`busca_clientes_arquivados`, a
     regra de casar da `busca_universal`), com "Arquivada" na linha e a ação
     "Reativar" (`acoesDaArquivada`, Clientes em Gerenciar), que abre a ficha
-    com o menu e o "Reativar cliente" à vista (`?acao=reativar`). Achada
+    com o menu e o "Reativar cliente" à vista (`?acao=reativar`) — também
+    quando a ficha dela já está aberta (o menu abre quando o pedido chega, A2
+    da 40ª). Achada
     uma arquivada, a busca não oferece "Cadastrar … como cliente" (era a
     duplicata);
   - o botão desligado PARECE desligado também no secundário e no fantasma
@@ -1073,6 +1078,10 @@ oferece segue o módulo (clientes com `clients`, contatos com `crm`).
   linhas: 9 contatos novos, 1 linha junta com outra" — e "N completam quem já
   existe" (`textoDoBotaoDeImportar`, `lib/importacao/o-que-entra.ts`). Todas
   novas, só "Importar N linhas". Prova: `tests/atritos-da-17-cadastros.test.ts`.
+  **Os números com o milhar** (A1 e D13 da 40ª; decisão do Claude, 27/11,
+  como o resto do sistema): "Importar 1.235 linhas", "1.235 novos · 0
+  completados · 15 recusadas", "1.250 de 1.250 linhas". Prova:
+  `tests/importacao-numeros-com-milhar.test.ts`.
 - **O contato entra com o telefone OU o e-mail** (D-10, decisão do Heitor,
   frente de cadastro de 2026-10-29): a linha só com e-mail vira pessoa sem
   telefone (`identifiers` vazio), e a oportunidade dela vai para ESSA pessoa
@@ -1216,7 +1225,9 @@ oferece segue o módulo (clientes com `clients`, contatos com `crm`).
     princípio 3): "Sem uma coluna em “Cliente desde”, as fichas novas contam
     como clientes novas a partir de hoje (em “Novos clientes” e no selo
     “Novo”)." (`avisoSemClienteDesde`, `[data-sem-cliente-desde]`). Prova:
-    `tests/atritos-da-25-ficha-estoque-app.test.ts`.
+    `tests/atritos-da-25-ficha-estoque-app.test.ts`,
+    `tests/importacao-aviso-sem-cliente-desde.test.ts` (a coluna em "Não
+    importar" avisa; mapeada, não).
   - **"Pacote de antes (procedimento; total; usadas)"** — e, opcionais, o valor
     de referência e a validade ("Limpeza de pele; 10; 7; 1500; 31/12/2027";
     mais de um com "|"; `lerPacotesDaPlanilha`): cria o pacote trazido de
@@ -2217,6 +2228,7 @@ o contato junto.
 ❌ Mover a oportunidade pela TELA sem a pergunta das automações (usePerguntaDasAutomacoes) — o "Não" do Heitor sumiria nesse caminho
 ❌ Pôr tag sozinho (gatilho, origem, unidade, importação de outra coluna) — só a pessoa marca, ou a ação "Adicionar tag" que a rede montou (tests/tags-so-quem-marca trava)
 ❌ Entrada livre de tag numa tela (o gatilho põe a tag nova no vocabulário da rede): é o TagPicker, e a action passa por tagsDoVocabulario (D7 da 18ª)
+❌ Dar sentido a um nome de tag (selo, cor, regra que compara a tag a um nome fixo) — nenhum nome tem significado para o sistema (TG-01; tests/tags-so-quem-marca trava)
 ❌ Ler uma tag como "a unidade da cliente" — não existe tag de unidade (H16); "a cliente nesta unidade" é a atendida nela
 ❌ Recortar a lista de Clientes por unidade — a cliente é da rede (CL1–CL3)
 ❌ Gerar exportação de LGPD dentro do request — usar after() + o cron de retomada

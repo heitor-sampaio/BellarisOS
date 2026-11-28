@@ -23,8 +23,8 @@ Este é o catálogo das regras das Comissões que valem HOJE: onde ficam e quem 
 - Onde: `docs/regras/comissoes.md:125-131`, `:240-242`; `CLAUDE.md:752-757` (§11); `docs/regras/plataforma.md:748-750`; `docs/regras/atendimento.md:1515-1516`
 - Antes: KA-18, KC-11
 
-**CM-04.** A comissão de cada pessoa (a padrão, a de venda e as exceções por procedimento) se define na Equipe, pelo chip "Comissão …" da linha, e não é configuração da rede toda: muda quem tem o Financeiro em Gerenciar. Ter a Equipe em Gerenciar não dá acesso a quanto cada um ganha.
-- Fonte: o Heitor, 2026-11-13 (sobre a comissão na Equipe): "esquece, deixa como está"
+**CM-04.** A comissão de cada pessoa (a padrão, a de venda e as exceções por procedimento) se define na Equipe, pelo chip "Comissão …" da linha, e não é configuração da rede toda: muda quem tem o Financeiro em Gerenciar, também sem a Equipe: a ela (com as comissões no plano) a Equipe abre só com o chip da comissão — sem o lápis, o cadastro nem o desativar —, e o menu mostra "Equipe" (EQ-01). Ter a Equipe em Gerenciar não dá acesso a quanto cada um ganha.
+- Fonte: o Heitor, 2026-11-13 (sobre a comissão na Equipe): "esquece, deixa como está"; o "também sem a Equipe" é a leitura da própria CM-04 (40ª simulação, D5: quem tinha o Financeiro em Gerenciar sem a Equipe não chegava ao chip); a Equipe só com o chip: decisão do Claude, 27/11 (40ª simulação, D5), pelo princípio 7
 - Onde: `docs/regras/comissoes.md:516-518`; `docs/revisao.md:1168`, `:1173-1179`, `:2115`; `docs/regras/plataforma.md:765-769`
 - Antes: KB-15, KC-07, KC-09
 
@@ -271,8 +271,8 @@ Este é o catálogo das regras das Comissões que valem HOJE: onde ficam e quem 
 - Onde: `docs/regras/comissoes.md:249-250`, `:342`, `:428`
 - Antes: KA-28
 
-**CB-10.** A comissão guarda a regra e a configuração do dia em que nasceu (percentual, o que sai da base, pontos): mudar a configuração vale para os próximos atendimentos e vendas, não reescreve os já concluídos. A do atendimento nasce na conclusão, mesmo quando espera o pagamento (CN-02): o concluído antes da mudança e pago depois fica com a regra de antes.
-- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele); o concluído antes da mudança e pago depois: decisão do Claude, 27/11 (36ª, Decisão B)
+**CB-10.** A comissão guarda a regra e a configuração do momento em que nasceu (percentual, o que sai da base, pontos): mudar a configuração vale para os próximos atendimentos e vendas, não reescreve os já concluídos. A do atendimento nasce na conclusão, mesmo quando espera o pagamento (CN-02): o concluído antes da mudança e pago depois fica com a regra de antes. No mesmo dia também: o concluído antes da mudança fica com o percentual de antes, e o de depois, com o novo.
+- Fonte: decisão do Claude (o documento a atribuía ao Heitor, sem a fala dele); o concluído antes da mudança e pago depois: decisão do Claude, 27/11 (36ª, Decisão B); a mudança no meio do dia: decisão do Claude, 27/11 (40ª simulação, Time A), pelo princípio 3 (o que a tela mostrava na conclusão é o que vale; recalcular o passado seria regra escondida)
 - Onde: `docs/regras/comissoes.md:567-569`
 - Antes: KB-22
 

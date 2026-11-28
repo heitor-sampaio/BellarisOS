@@ -60,7 +60,8 @@ test('A27: as 18 permissões salvas numa gravação são uma linha, com as outra
 
   await como(browser, dona, async p => {
     await p.goto('/admin/auditoria')
-    const linha = p.locator('[data-linha-da-auditoria]', { hasText: `18 permissões do cargo ${CARGO}` })
+    // R39, o Heitor, 27/11: "'Mudou os acessos do cargo X (N permissões)' (a proposta)".
+    const linha = p.locator('[data-linha-da-auditoria]', { hasText: `Mudou os acessos do cargo ${CARGO} (18 permissões)` })
     await expect(linha).toHaveCount(1)
     // Nenhuma outra frase fala deste cargo: as 18, uma a uma, ficam guardadas na linha, fechadas.
     await expect(p.locator('[data-frase-da-auditoria]', { hasText: `do cargo ${CARGO}` })).toHaveCount(1)

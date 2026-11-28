@@ -29,7 +29,9 @@ import { Dica } from '@/components/shared/dica'
 const MAX_BYTES = 5 * 1024 * 1024
 const MAX_LINHAS = 10_000
 
-const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`
+// O número com o milhar ("1.235"), como o resto do sistema (A1 e D13 da 40ª).
+const numero = (n: number) => n.toLocaleString('pt-BR')
+const plural = (n: number, um: string, varios: string) => `${n.toLocaleString('pt-BR')} ${n === 1 ? um : varios}`
 const DESTINOS: Record<Destino, { rotulo: string; explica: string }> = {
   clientes: {
     rotulo: 'Como clientes',
@@ -503,7 +505,7 @@ export function ImportadorDeContatos(p: Props) {
                 {faltam > 0 && (
                   <button type="button" className="btn-ghost" data-mostrar-mais-linhas style={{ alignSelf: 'flex-start' }}
                     onClick={() => setLinhasAVista(n => n + 50)}>
-                    Mostrar mais {Math.min(50, faltam)} {Math.min(50, faltam) === 1 ? 'linha' : 'linhas'} (faltam {faltam} de {linhasProntas.length})
+                    Mostrar mais {Math.min(50, faltam)} {Math.min(50, faltam) === 1 ? 'linha' : 'linhas'} (faltam {numero(faltam)} de {numero(linhasProntas.length)})
                   </button>
                 )}
               </div>
@@ -571,7 +573,7 @@ export function ImportadorDeContatos(p: Props) {
                   {rodando ? <Loader2 size={16} className="animate-spin" color="var(--brand)" /> : a?.status === 'concluida'
                     ? <CheckCircle2 size={16} color="var(--success)" /> : <AlertCircle size={16} color="var(--danger)" />}
                   <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>{status}</span>
-                  {a && <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>· {a.processadas} de {plural(a.total, 'linha', 'linhas')}</span>}
+                  {a && <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>· {numero(a.processadas)} de {plural(a.total, 'linha', 'linhas')}</span>}
                 </div>
                 {rodando && (
                   <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label={`Importação: ${pct}%`}
@@ -649,7 +651,7 @@ function LinhasDoRelatorio({ rotulo, atributo, linhas }: {
           <li key={`${l.linha}-${l.motivo.slice(0, 20)}`}>Linha {l.linha} · {l.nome || 'sem nome'}: {l.motivo}</li>
         ))}
       </ul>
-      {linhas.length > 50 && <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>E mais {linhas.length - 50} — o relatório (CSV) traz todas.</span>}
+      {linhas.length > 50 && <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>E mais {numero(linhas.length - 50)} — o relatório (CSV) traz todas.</span>}
     </div>
   )
 }
